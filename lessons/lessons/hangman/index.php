@@ -8,6 +8,8 @@ $words = [
   ["word" => "DOG", "hint" => "A friendly animal 🐶"]
 ];
 
+$maxWrong = 7;
+
 if (!isset($_SESSION['word']) || isset($_POST['reset'])) {
   $item = $words[array_rand($words)];
   $_SESSION['word'] = $item['word'];
@@ -23,41 +25,54 @@ if (isset($_POST['letter'])) {
   $letter = $_POST['letter'];
   if (!in_array($letter, $_SESSION['guessed'])) {
     $_SESSION['guessed'][] = $letter;
-    if (!str_contains($word, $letter)) {
+    if (strpos($word, $letter) === false) {
       $_SESSION['wrong']++;
     }
   }
 }
 
-$wrong = $_SESSION['wrong'];
-$max = 6;
-
-$display = "";
+$display = '';
 $won = true;
-foreach (str_split($word) as $l) {
-  if (in_array($l, $_SESSION['guessed'])) {
-    $display .= $l . " ";
+foreach (str_split($word) as $char) {
+  if (in_array($char, $_SESSION['guessed'])) {
+    $display .= $char . ' ';
   } else {
-    $display .= "_ ";
+    $display .= '_ ';
     $won = false;
   }
 }
 
-$lost = $wrong >= $max;
+$lost = $_SESSION['wrong'] >= $maxWrong;
+$img = "assets/hangman" . $_SESSION['wrong'] . ".png";
 ?>
 
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <title>Hangman – InglesDeUna</title>
 <style>
-body { font-family: Arial; text-align: center; }
-.word { font-size: 32px; letter-spacing: 8px; }
-button { margin: 4px; padding: 8px 12px; }
-.win { color: green; font-size: 24px; }
-.lose { color: red; font-size: 22px; }
-.hint { font-style: italic; margin: 10px; }
+body {
+  font-family: Arial, sans-serif;
+  text-align: center;
+}
+.word {
+  font-size: 32px;
+  letter-spacing: 5px;
+}
+button {
+  padding: 8px 12px;
+  margin: 3px;
+  font-size: 16px;
+}
+.win {
+  color: green;
+  font-size: 26px;
+}
+.lose {
+  color: red;
+  font-size: 26px;
+}
 </style>
 </head>
 
@@ -65,32 +80,32 @@ button { margin: 4px; padding: 8px 12px; }
 
 <h1>🎯 Hangman – InglesDeUna</h1>
 
-<img src="https://raw.githubusercontent.com/inglesdeuna/inglesdeuna-container-test/main/assets/hangman<?= $wrong ?>.png"
-     alt="Hangman" width="200">
+<img src="<?php echo $img; ?>" width="250"><br><br>
 
-<p class="word"><?= $display ?></p>
-<p>Wrong attempts: <?= $wrong ?> / <?= $max ?></p>
+<p><strong>Hint:</strong> <?php echo $hint; ?></p>
 
-<p class="hint">💡 Hint: <?= $hint ?></p>
+<p class="word"><?php echo $display; ?></p>
+
+<p>Wrong attempts: <?php echo $_SESSION['wrong']; ?> / <?php echo $maxWrong; ?></p>
 
 <?php if ($won): ?>
-  <p class="win">🎉 CONGRATULATIONS!</p>
-  <img src="https://media.giphy.com/media/111ebonMs90YLu/giphy.gif" width="200">
+  <p class="win">🎉 CONGRATULATIONS! YOU WIN!</p>
 <?php elseif ($lost): ?>
-  <p class="lose">❌ Try again! Word was: <b><?= $word ?></b></p>
+  <p class="lose">❌ Game Over</p>
+  <p>The word was: <strong><?php echo $word; ?></strong></p>
 <?php else: ?>
-<form method="post">
-<?php foreach (range('A','Z') as $l): ?>
-  <button name="letter" value="<?= $l ?>"
-    <?= in_array($l, $_SESSION['guessed']) ? "disabled" : "" ?>>
-    <?= $l ?>
-  </button>
-<?php endforeach; ?>
-</form>
+  <form method="post">
+    <?php foreach (range('A', 'Z') as $l): ?>
+      <button name="letter" value="<?php echo $l; ?>"
+        <?php echo in_array($l, $_SESSION['guessed']) ? 'disabled' : ''; ?>>
+        <?php echo $l; ?>
+      </button>
+    <?php endforeach; ?>
+  </form>
 <?php endif; ?>
 
 <form method="post">
-  <button name="reset">🔄 Reset</button>
+  <button name="reset">🔄 Try Again</button>
 </form>
 
 </body>
