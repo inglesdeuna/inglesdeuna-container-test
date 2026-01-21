@@ -42,8 +42,9 @@ foreach (str_split($word) as $char) {
   }
 }
 
-$lost = $_SESSION['wrong'] >= $maxWrong;
-$img = "assets/hangman" . $_SESSION['wrong'] . ".png";
+$lost = $_SESSION['wrong'] >= 7;
+$img = "/lessons/lessons/hangman/assets/hangman" . $_SESSION['wrong'] . ".png";
+
 ?>
 
 <!DOCTYPE html>
