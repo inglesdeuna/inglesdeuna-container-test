@@ -42,9 +42,8 @@ foreach (str_split($word) as $char) {
   }
 }
 
-$lost = $_SESSION['wrong'] >= 7;
+$lost = $_SESSION['wrong'] >= $maxWrong;
 $img = "/lessons/lessons/hangman/assets/hangman" . $_SESSION['wrong'] . ".png";
-
 ?>
 
 <!DOCTYPE html>
@@ -52,27 +51,37 @@ $img = "/lessons/lessons/hangman/assets/hangman" . $_SESSION['wrong'] . ".png";
 <head>
 <meta charset="UTF-8">
 <title>Hangman – InglesDeUna</title>
+
 <style>
 body {
   font-family: Arial, sans-serif;
   text-align: center;
 }
+
 .word {
   font-size: 32px;
   letter-spacing: 5px;
 }
+
 button {
   padding: 8px 12px;
   margin: 3px;
   font-size: 16px;
 }
+
 .win {
   color: green;
   font-size: 26px;
 }
+
 .lose {
   color: red;
   font-size: 26px;
+}
+
+/* ✅ SUAVIZA EL CAMBIO DE IMAGEN (EL FLASH) */
+.hangman-img {
+  transition: opacity 0.25s ease-in-out;
 }
 </style>
 </head>
@@ -81,7 +90,7 @@ button {
 
 <h1>🎯 Hangman – InglesDeUna</h1>
 
-<img src="<?php echo $img; ?>" width="250"><br><br>
+<img src="<?php echo $img; ?>" class="hangman-img" width="250"><br><br>
 
 <p><strong>Hint:</strong> <?php echo $hint; ?></p>
 
