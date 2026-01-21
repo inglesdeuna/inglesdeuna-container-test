@@ -10,7 +10,6 @@ $words = [
 
 $maxWrong = 7;
 
-/* INIT / RESET */
 if (!isset($_SESSION['word']) || isset($_POST['reset'])) {
   $item = $words[array_rand($words)];
   $_SESSION['word'] = $item['word'];
@@ -19,28 +18,26 @@ if (!isset($_SESSION['word']) || isset($_POST['reset'])) {
   $_SESSION['wrong'] = 0;
 }
 
-$word = $_SESSION['word'];
-$hint = $_SESSION['hint'];
+if (isset($_POST['ajax'])) {
+  $letter = $_POST['letter'] ?? null;
 
-/* AJAX */
-if (isset($_POST['ajax']) && isset($_POST['letter'])) {
-  $letter = $_POST['letter'];
-  $correct = false;
-
-  if (!in_array($letter, $_SESSION['guessed'])) {
+  if ($letter && !in_array($letter, $_SESSION['guessed'])) {
     $_SESSION['guessed'][] = $letter;
-    if (strpos($word, $letter) === false) {
+    if (strpos($_SESSION['word'], $letter) === false) {
       $_SESSION['wrong']++;
+      $correct = false;
     } else {
       $correct = true;
     }
+  } else {
+    $correct = true;
   }
 
   $display = '';
   $won = true;
-  foreach (str_split($word) as $char) {
-    if (in_array($char, $_SESSION['guessed'])) {
-      $display .= $char . ' ';
+  foreach (str_split($_SESSION['word']) as $c) {
+    if (in_array($c, $_SESSION['guessed'])) {
+      $display .= $c . ' ';
     } else {
       $display .= '_ ';
       $won = false;
@@ -50,24 +47,22 @@ if (isset($_POST['ajax']) && isset($_POST['letter'])) {
   $lost = $_SESSION['wrong'] >= $maxWrong;
 
   echo json_encode([
-    "display" => trim($display),
+    "display" => $display,
     "wrong" => $_SESSION['wrong'],
+    "img" => "/lessons/lessons/hangman/assets/hangman" . $_SESSION['wrong'] . ".png",
+    "correct" => $correct,
     "won" => $won,
     "lost" => $lost,
-    "correct" => $correct,
-    "word" => $word,
-    "img" => "/lessons/lessons/hangman/assets/hangman" . $_SESSION['wrong'] . ".png"
+    "word" => $_SESSION['word']
   ]);
   exit;
 }
 
-/* INITIAL */
 $display = '';
-foreach (str_split($word) as $char) {
-  $display .= '_ ';
+foreach (str_split($_SESSION['word']) as $c) {
+  $display .= in_array($c, $_SESSION['guessed']) ? $c . ' ' : '_ ';
 }
 ?>
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -75,32 +70,34 @@ foreach (str_split($word) as $char) {
 <title>Hangman – InglesDeUna</title>
 
 <style>
-body { font-family: Arial; text-align: center; }
-.word { font-size: 32px; letter-spacing: 6px; }
-button { padding: 8px 12px; margin: 3px; font-size: 16px; }
-
-.win { color: green; font-size: 26px; }
-.lose { color: red; font-size: 26px; }
-
-#hangmanImg {
-  width: 250px;
-  transition: transform 0.3s ease, opacity 0.2s ease;
+body {
+  font-family: Arial, sans-serif;
+  text-align: center;
 }
 
-.shake {
-  animation: shake 0.4s;
+.word {
+  font-size: 32px;
+  letter-spacing: 6px;
+}
+
+button {
+  padding: 8px 12px;
+  margin: 3px;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+img {
+  width: 250px;
+  transition: opacity .25s ease;
 }
 
 .bounce {
-  animation: bounce 0.4s;
+  animation: bounce .4s;
 }
 
-@keyframes shake {
-  0% { transform: translateX(0); }
-  25% { transform: translateX(-6px); }
-  50% { transform: translateX(6px); }
-  75% { transform: translateX(-6px); }
-  100% { transform: translateX(0); }
+.shake {
+  animation: shake .4s;
 }
 
 @keyframes bounce {
@@ -108,6 +105,17 @@ button { padding: 8px 12px; margin: 3px; font-size: 16px; }
   50% { transform: scale(1.1); }
   100% { transform: scale(1); }
 }
+
+@keyframes shake {
+  0% { transform: translateX(0); }
+  25% { transform: translateX(-5px); }
+  50% { transform: translateX(5px); }
+  75% { transform: translateX(-5px); }
+  100% { transform: translateX(0); }
+}
+
+.win { color: green; font-size: 26px; }
+.lose { color: red; font-size: 26px; }
 </style>
 </head>
 
@@ -115,30 +123,29 @@ button { padding: 8px 12px; margin: 3px; font-size: 16px; }
 
 <h1>🎯 Hangman – InglesDeUna</h1>
 
-<img id="hangmanImg"
-     src="/lessons/lessons/hangman/assets/hangman0.png"><br><br>
+<img id="hangmanImg" src="/lessons/lessons/hangman/assets/hangman<?php echo $_SESSION['wrong']; ?>.png">
 
-<p><strong>Hint:</strong> <?php echo $hint; ?></p>
+<p><strong>Hint:</strong> <?php echo $_SESSION['hint']; ?></p>
 
-<p class="word" id="wordDisplay"><?php echo trim($display); ?></p>
+<p id="wordDisplay" class="word"><?php echo $display; ?></p>
 
-<p id="wrongCount">Wrong attempts: 0 / <?php echo $maxWrong; ?></p>
-
-<div id="message"></div>
+<p id="wrongCount">Wrong attempts: <?php echo $_SESSION['wrong']; ?> / <?php echo $maxWrong; ?></p>
 
 <div id="letters">
 <?php foreach (range('A','Z') as $l): ?>
-  <button id="btn_<?php echo $l; ?>" onclick="guess('<?php echo $l; ?>')">
+  <button onclick="guess('<?php echo $l; ?>')" <?php echo in_array($l,$_SESSION['guessed'])?'disabled':''; ?>>
     <?php echo $l; ?>
   </button>
 <?php endforeach; ?>
 </div>
 
+<div id="message"></div>
+
 <form method="post">
   <button name="reset">🔄 Try Again</button>
 </form>
 
-<!-- 🔊 Sounds -->
+<!-- Sounds -->
 <audio id="soundCorrect" preload="auto">
   <source src="https://cdn.pixabay.com/audio/2022/03/15/audio_115b9fbb97.mp3" type="audio/mpeg">
 </audio>
@@ -147,56 +154,66 @@ button { padding: 8px 12px; margin: 3px; font-size: 16px; }
   <source src="https://cdn.pixabay.com/audio/2022/03/15/audio_c8b6d8b0c6.mp3" type="audio/mpeg">
 </audio>
 
-
 <script>
-/* Preload images */
-for (let i = 0; i <= <?php echo $maxWrong; ?>; i++) {
-  const img = new Image();
-  img.src = "/lessons/lessons/hangman/assets/hangman" + i + ".png";
+let audioUnlocked = false;
+
+function unlockAudio() {
+  if (audioUnlocked) return;
+
+  const ok = document.getElementById("soundCorrect");
+  const bad = document.getElementById("soundWrong");
+
+  ok.muted = true;
+  bad.muted = true;
+
+  ok.play().then(() => {
+    ok.pause();
+    ok.currentTime = 0;
+    ok.muted = false;
+    bad.muted = false;
+    audioUnlocked = true;
+  }).catch(()=>{});
 }
 
-function guess(letter) {
-  document.getElementById("btn_" + letter).disabled = true;
+document.addEventListener("click", unlockAudio, { once:true });
 
+function guess(letter) {
   fetch("", {
     method: "POST",
-    headers: {"Content-Type": "application/x-www-form-urlencoded"},
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: "ajax=1&letter=" + letter
   })
-  .then(res => res.json())
+  .then(r => r.json())
   .then(data => {
-
     document.getElementById("wordDisplay").innerText = data.display;
     document.getElementById("wrongCount").innerText =
       "Wrong attempts: " + data.wrong + " / <?php echo $maxWrong; ?>";
 
     const img = document.getElementById("hangmanImg");
     img.style.opacity = 0;
+
     setTimeout(() => {
       img.src = data.img;
       img.style.opacity = 1;
-    }, 60);
+    }, 80);
 
-   if (data.correct) {
-  const ok = document.getElementById("soundCorrect");
-  ok.currentTime = 0;
-  ok.play();
-
-  img.classList.add("bounce");
-  setTimeout(() => img.classList.remove("bounce"), 400);
-} else {
-  const bad = document.getElementById("soundWrong");
-  bad.currentTime = 0;
-  bad.play();
-
-  img.classList.add("shake");
-  setTimeout(() => img.classList.remove("shake"), 400);
-}
-
+    if (data.correct) {
+      const ok = document.getElementById("soundCorrect");
+      ok.currentTime = 0;
+      ok.play();
+      img.classList.add("bounce");
+      setTimeout(()=>img.classList.remove("bounce"),400);
+    } else {
+      const bad = document.getElementById("soundWrong");
+      bad.currentTime = 0;
+      bad.play();
+      img.classList.add("shake");
+      setTimeout(()=>img.classList.remove("shake"),400);
+    }
 
     if (data.won) {
       document.getElementById("message").innerHTML =
-        '<p class="win">🎉 CONGRATULATIONS! YOU WIN!</p>';
+        '<p class="win">🎉 CONGRATULATIONS!</p>';
       document.getElementById("letters").style.display = "none";
     }
 
@@ -208,14 +225,6 @@ function guess(letter) {
   });
 }
 </script>
-<!-- Sounds -->
-<audio id="soundCorrect" preload="auto">
-  <source src="https://cdn.pixabay.com/audio/2022/03/15/audio_115b9fbb97.mp3" type="audio/mpeg">
-</audio>
-
-<audio id="soundWrong" preload="auto">
-  <source src="https://cdn.pixabay.com/audio/2022/03/15/audio_c8b6d8b0c6.mp3" type="audio/mpeg">
-</audio>
 
 </body>
 </html>
