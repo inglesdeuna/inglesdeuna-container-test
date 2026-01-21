@@ -18,11 +18,14 @@ if (!isset($_SESSION['word']) || isset($_POST['reset'])) {
   $_SESSION['wrong'] = 0;
 }
 
+$word = $_SESSION['word'];
+$hint = $_SESSION['hint'];
+
 if (isset($_POST['letter'])) {
-  $l = $_POST['letter'];
-  if (!in_array($l, $_SESSION['guessed'])) {
-    $_SESSION['guessed'][] = $l;
-    if (strpos($_SESSION['word'], $l) === false) {
+  $letter = $_POST['letter'];
+  if (!in_array($letter, $_SESSION['guessed'])) {
+    $_SESSION['guessed'][] = $letter;
+    if (strpos($word, $letter) === false) {
       $_SESSION['wrong']++;
     }
   }
@@ -30,9 +33,9 @@ if (isset($_POST['letter'])) {
 
 $display = '';
 $won = true;
-foreach (str_split($_SESSION['word']) as $c) {
-  if (in_array($c, $_SESSION['guessed'])) {
-    $display .= $c . ' ';
+foreach (str_split($word) as $char) {
+  if (in_array($char, $_SESSION['guessed'])) {
+    $display .= $char . ' ';
   } else {
     $display .= '_ ';
     $won = false;
@@ -55,21 +58,44 @@ body {
   text-align: center;
 }
 
-.word {
-  font-size: 32px;
-  letter-spacing: 5px;
+#soundToggle {
+  cursor: pointer;
+  font-size: 26px;
+  position: fixed;
+  top: 20px;
+  right: 20px;
 }
 
-button {
-  padding: 8px 12px;
-  margin: 3px;
-  font-size: 16px;
+img {
+  width: 250px;
+  transition: transform 0.3s ease;
+}
+
+.bounce {
+  animation: bounce 0.4s;
+}
+
+.shake {
+  animation: shake 0.4s;
+}
+
+@keyframes bounce {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+  100% { transform: scale(1); }
+}
+
+@keyframes shake {
+  0% { transform: translateX(0); }
+  25% { transform: translateX(-5px); }
+  50% { transform: translateX(5px); }
+  75% { transform: translateX(-5px); }
+  100% { transform: translateX(0); }
 }
 
 .win {
   color: green;
   font-size: 28px;
-  animation: pop 0.6s ease-in-out infinite alternate;
 }
 
 .lose {
@@ -77,118 +103,93 @@ button {
   font-size: 26px;
 }
 
-#hangmanImg {
-  width: 250px;
-  transition: opacity 0.3s ease, transform 0.3s ease;
+.word {
+  font-size: 32px;
+  letter-spacing: 6px;
 }
 
-.shake {
-  animation: shake 0.4s;
-}
-
-.bounce {
-  animation: bounce 0.4s;
-}
-
-@keyframes shake {
-  0% { transform: translateX(0); }
-  25% { transform: translateX(-6px); }
-  50% { transform: translateX(6px); }
-  75% { transform: translateX(-6px); }
-  100% { transform: translateX(0); }
-}
-
-@keyframes bounce {
-  0% { transform: scale(1); }
-  50% { transform: scale(1.15); }
-  100% { transform: scale(1); }
-}
-
-@keyframes pop {
-  from { transform: scale(1); }
-  to { transform: scale(1.2); }
+button {
+  padding: 8px 12px;
+  margin: 3px;
+  font-size: 16px;
 }
 </style>
 </head>
 
 <body>
 
+<div id="soundToggle">🔊</div>
+
 <h1>🎯 Hangman – InglesDeUna</h1>
 
-<button id="enableSound" onclick="enableSound()">🔊 Activate Sound</button>
+<img id="hangmanImg" src="<?= $img ?>">
 
-<br><br>
+<p><strong>Hint:</strong> <?= $hint ?></p>
 
-<img id="hangmanImg" src="<?php echo $img; ?>">
+<p class="word"><?= $display ?></p>
 
-<p><strong>Hint:</strong> <?php echo $_SESSION['hint']; ?></p>
-
-<p class="word"><?php echo $display; ?></p>
-
-<p id="wrongCount">
-  Wrong attempts: <?php echo $_SESSION['wrong']; ?> / <?php echo $maxWrong; ?>
-</p>
+<p>Wrong attempts: <?= $_SESSION['wrong'] ?> / <?= $maxWrong ?></p>
 
 <?php if ($won): ?>
   <p class="win">🎉 YOU WIN! 🎉</p>
 <?php elseif ($lost): ?>
-  <p class="lose">❌ Game Over</p>
-  <p>The word was: <strong><?php echo $_SESSION['word']; ?></strong></p>
+  <p class="lose">❌ GAME OVER</p>
+  <p>The word was: <strong><?= $word ?></strong></p>
 <?php else: ?>
-<form method="post">
-<?php foreach (range('A','Z') as $l): ?>
-  <button name="letter" value="<?php echo $l; ?>"
-    <?php echo in_array($l, $_SESSION['guessed']) ? 'disabled' : ''; ?>>
-    <?php echo $l; ?>
-  </button>
-<?php endforeach; ?>
-</form>
+  <form method="post">
+    <?php foreach (range('A','Z') as $l): ?>
+      <button name="letter" value="<?= $l ?>"
+        <?= in_array($l, $_SESSION['guessed']) ? 'disabled' : '' ?>>
+        <?= $l ?>
+      </button>
+    <?php endforeach; ?>
+  </form>
 <?php endif; ?>
 
 <form method="post">
   <button name="reset">🔄 Try Again</button>
 </form>
 
-<!-- SOUNDS -->
-<audio id="soundCorrect" preload="auto" volume="0.25">
-  <source src="https://cdn.pixabay.com/audio/2022/03/15/audio_115b9fbb97.mp3">
-</audio>
-
-<audio id="soundWrong" preload="auto" volume="0.25">
-  <source src="https://cdn.pixabay.com/audio/2022/03/15/audio_c8b6d8b0c6.mp3">
-</audio>
-
-<audio id="soundWin" preload="auto" volume="0.3">
-  <source src="https://cdn.pixabay.com/audio/2022/10/03/audio_33c55c32b7.mp3">
-</audio>
-
-<audio id="soundLose" preload="auto" volume="0.3">
-  <source src="https://cdn.pixabay.com/audio/2022/03/10/audio_3b1f6a9f50.mp3">
-</audio>
+<!-- Sounds -->
+<audio id="sCorrect" src="https://cdn.pixabay.com/audio/2022/03/15/audio_115b9fbb97.mp3"></audio>
+<audio id="sWrong" src="https://cdn.pixabay.com/audio/2022/03/15/audio_c8b6d8b0c6.mp3"></audio>
+<audio id="sWin" src="https://cdn.pixabay.com/audio/2022/10/30/audio_946b2a3b8b.mp3"></audio>
+<audio id="sLose" src="https://cdn.pixabay.com/audio/2022/03/10/audio_4c8eeb1c38.mp3"></audio>
 
 <script>
-let soundEnabled = false;
+let soundOn = localStorage.getItem("soundOn") !== "false";
 
-function enableSound() {
-  const sounds = [
-    soundCorrect,
-    soundWrong,
-    soundWin,
-    soundLose
-  ];
-  sounds.forEach(s => {
-    s.currentTime = 0;
-    s.play().then(()=>s.pause());
-  });
-  soundEnabled = true;
-  document.getElementById("enableSound").innerText = "🔊 Sound Enabled";
-  document.getElementById("enableSound").disabled = true;
+const icon = document.getElementById("soundToggle");
+icon.textContent = soundOn ? "🔊" : "🔇";
+
+icon.onclick = () => {
+  soundOn = !soundOn;
+  localStorage.setItem("soundOn", soundOn);
+  icon.textContent = soundOn ? "🔊" : "🔇";
+};
+
+function play(id) {
+  if (!soundOn) return;
+  const a = document.getElementById(id);
+  a.volume = 0.25;
+  a.currentTime = 0;
+  a.play();
 }
 
+<?php if (isset($_POST['letter'])): ?>
+  <?php if (strpos($word, $_POST['letter']) !== false): ?>
+    play("sCorrect");
+    document.getElementById("hangmanImg").classList.add("bounce");
+  <?php else: ?>
+    play("sWrong");
+    document.getElementById("hangmanImg").classList.add("shake");
+  <?php endif; ?>
+<?php endif; ?>
+
 <?php if ($won): ?>
-if (soundEnabled) soundWin.play();
+  play("sWin");
 <?php elseif ($lost): ?>
-if (soundEnabled) soundLose.play();
+  play("sLose");
 <?php endif; ?>
 </script>
 
