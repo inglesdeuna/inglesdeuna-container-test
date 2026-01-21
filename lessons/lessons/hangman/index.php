@@ -139,8 +139,14 @@ button { padding: 8px 12px; margin: 3px; font-size: 16px; }
 </form>
 
 <!-- 🔊 Sounds -->
-<audio id="soundCorrect" src="https://cdn.pixabay.com/audio/2022/03/15/audio_115b9fbb97.mp3"></audio>
-<audio id="soundWrong" src="https://cdn.pixabay.com/audio/2022/03/15/audio_c8b6d8b0c6.mp3"></audio>
+<audio id="soundCorrect" preload="auto">
+  <source src="https://cdn.pixabay.com/audio/2022/03/15/audio_115b9fbb97.mp3" type="audio/mpeg">
+</audio>
+
+<audio id="soundWrong" preload="auto">
+  <source src="https://cdn.pixabay.com/audio/2022/03/15/audio_c8b6d8b0c6.mp3" type="audio/mpeg">
+</audio>
+
 
 <script>
 /* Preload images */
@@ -171,15 +177,22 @@ function guess(letter) {
       img.style.opacity = 1;
     }, 60);
 
-    if (data.correct) {
-      document.getElementById("soundCorrect").play();
-      img.classList.add("bounce");
-      setTimeout(() => img.classList.remove("bounce"), 400);
-    } else {
-      document.getElementById("soundWrong").play();
-      img.classList.add("shake");
-      setTimeout(() => img.classList.remove("shake"), 400);
-    }
+   if (data.correct) {
+  const ok = document.getElementById("soundCorrect");
+  ok.currentTime = 0;
+  ok.play();
+
+  img.classList.add("bounce");
+  setTimeout(() => img.classList.remove("bounce"), 400);
+} else {
+  const bad = document.getElementById("soundWrong");
+  bad.currentTime = 0;
+  bad.play();
+
+  img.classList.add("shake");
+  setTimeout(() => img.classList.remove("shake"), 400);
+}
+
 
     if (data.won) {
       document.getElementById("message").innerHTML =
@@ -195,6 +208,14 @@ function guess(letter) {
   });
 }
 </script>
+<!-- Sounds -->
+<audio id="soundCorrect" preload="auto">
+  <source src="https://cdn.pixabay.com/audio/2022/03/15/audio_115b9fbb97.mp3" type="audio/mpeg">
+</audio>
+
+<audio id="soundWrong" preload="auto">
+  <source src="https://cdn.pixabay.com/audio/2022/03/15/audio_c8b6d8b0c6.mp3" type="audio/mpeg">
+</audio>
 
 </body>
 </html>
