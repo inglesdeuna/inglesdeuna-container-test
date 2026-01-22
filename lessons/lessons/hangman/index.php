@@ -43,70 +43,64 @@ foreach (str_split($word) as $char) {
 }
 
 $lost = $_SESSION['wrong'] >= $maxWrong;
-$img = "/lessons/lessons/hangman/assets/hangman" . $_SESSION['wrong'] . ".png";
+$img = "assets/hangman" . $_SESSION['wrong'] . ".png";
 ?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Hangman Kids – InglesDeUna</title>
+<title>Hangman Kids</title>
 
 <style>
 body{
   font-family: "Comic Sans MS", Arial;
-  background: linear-gradient(#e8f4ff, #ffffff);
+  background:#eaf6ff;
   text-align:center;
-  overflow:hidden;
+  margin:0;
+  padding:0;
 }
 
-h1{ color:#4a90e2; }
+h1{
+  color:#4a90e2;
+  margin:20px 0;
+}
 
 .stage{
-  height:260px;
+  height:300px;
   display:flex;
   justify-content:center;
   align-items:center;
 }
 
 #hangmanImg{
-  width:220px;
-  transition: opacity .15s ease, transform .15s ease;
+  max-height:280px;
+  transition:opacity .15s ease-in-out;
 }
 
-.bounce{ animation:bounce .3s; }
-.shake{ animation:shake .3s; }
-
-@keyframes bounce{
-  0%{transform:scale(1);}
-  50%{transform:scale(1.05);}
-  100%{transform:scale(1);}
-}
-
-@keyframes shake{
-  0%{transform:translateX(0);}
-  25%{transform:translateX(-4px);}
-  50%{transform:translateX(4px);}
-  75%{transform:translateX(-4px);}
-  100%{transform:translateX(0);}
+.hint{
+  margin-top:10px;
+  font-size:18px;
 }
 
 .word{
-  font-size:34px;
-  letter-spacing:6px;
+  font-size:36px;
+  letter-spacing:8px;
+  margin:20px 0;
 }
 
-.letters button{
+button{
   padding:8px 12px;
-  margin:3px;
-  border-radius:10px;
-  border:1px solid #aaa;
+  margin:4px;
+  font-size:16px;
+  border-radius:8px;
   cursor:pointer;
 }
 
 .win{
   color:green;
-  font-size:28px;
-  animation:bounce .6s infinite alternate;
+  font-size:26px;
+  animation:pop .6s ease-in-out infinite alternate;
 }
 
 .lose{
@@ -114,10 +108,9 @@ h1{ color:#4a90e2; }
   font-size:26px;
 }
 
-button.reset{
-  margin-top:12px;
-  padding:10px 16px;
-  font-size:16px;
+@keyframes pop{
+  from{transform:scale(1)}
+  to{transform:scale(1.1)}
 }
 </style>
 </head>
@@ -130,68 +123,68 @@ button.reset{
   <img id="hangmanImg" src="<?php echo $img; ?>">
 </div>
 
-<!-- HINT SOLO AQUÍ -->
-<p><strong>Hint:</strong> <?php echo $hint; ?></p>
+<p class="hint"><strong>Hint:</strong> <?php echo $hint; ?></p>
 
 <p class="word"><?php echo $display; ?></p>
 
 <p>Wrong attempts: <?php echo $_SESSION['wrong']; ?> / <?php echo $maxWrong; ?></p>
 
-<div id="message">
 <?php if ($won): ?>
   <p class="win">🎉 CONGRATULATIONS! 🎉</p>
 <?php elseif ($lost): ?>
   <p class="lose">❌ Game Over</p>
   <p>The word was: <strong><?php echo $word; ?></strong></p>
-<?php endif; ?>
-</div>
-
-<?php if (!$won && !$lost): ?>
-<form method="post" class="letters">
+<?php else: ?>
+<form method="post">
 <?php foreach (range('A','Z') as $l): ?>
   <button name="letter" value="<?php echo $l; ?>"
-  <?php echo in_array($l,$_SESSION['guessed'])?'disabled':''; ?>>
-  <?php echo $l; ?>
+    <?php echo in_array($l,$_SESSION['guessed'])?'disabled':''; ?>>
+    <?php echo $l; ?>
   </button>
 <?php endforeach; ?>
 </form>
 <?php endif; ?>
 
 <form method="post">
-  <button class="reset" name="reset">🔄 Try Again</button>
+  <button name="reset">🔄 Try Again</button>
 </form>
 
-<!-- AUDIO FILES EXISTENTES -->
-<audio id="sndCorrect" src="assets/correct.wav"></audio>
-<audio id="sndWrong" src="assets/wrong.wav"></audio>
-<audio id="sndWin" src="assets/win.wav"></audio>
-<audio id="sndLose" src="assets/lose.wav"></audio>
+<!-- AUDIO -->
+<audio id="sndCorrect" src="assets/correct.wav" preload="auto"></audio>
+<audio id="sndWrong" src="assets/wrong.wav" preload="auto"></audio>
+<audio id="sndWin" src="assets/win.wav" preload="auto"></audio>
+<audio id="sndLose" src="assets/lose.wav" preload="auto"></audio>
 
 <script>
+const buttons = document.querySelectorAll("button[name='letter']");
 const img = document.getElementById("hangmanImg");
 
-<?php if(isset($_POST['letter'])): ?>
-<?php if(strpos($word, $_POST['letter']) !== false): ?>
-  document.getElementById("sndCorrect").volume = 0.25;
-  document.getElementById("sndCorrect").play();
-  img.classList.add("bounce");
-<?php else: ?>
-  document.getElementById("sndWrong").volume = 0.25;
-  document.getElementById("sndWrong").play();
-  img.classList.add("shake");
-<?php endif; ?>
-setTimeout(()=>img.className="",300);
-<?php endif; ?>
+buttons.forEach(btn=>{
+  btn.addEventListener("click",()=>{
+    const correct = <?php echo json_encode(str_split($word)); ?>.includes(btn.value);
+
+    if(correct){
+      play("sndCorrect");
+    }else{
+      play("sndWrong");
+    }
+  });
+});
 
 <?php if($won): ?>
-  document.getElementById("sndWin").volume = 0.35;
-  document.getElementById("sndWin").play();
+  play("sndWin");
 <?php endif; ?>
 
 <?php if($lost): ?>
-  document.getElementById("sndLose").volume = 0.35;
-  document.getElementById("sndLose").play();
+  play("sndLose");
 <?php endif; ?>
+
+function play(id){
+  const a = document.getElementById(id);
+  a.volume = 0.35;
+  a.currentTime = 0;
+  a.play();
+}
 </script>
 
 </body>
