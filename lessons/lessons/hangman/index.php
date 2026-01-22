@@ -55,7 +55,7 @@ body{
 h1{ color:#4a90e2; }
 
 .stage{
-  height:280px;
+  height:360px;
   display:flex;
   justify-content:center;
   align-items:center;
