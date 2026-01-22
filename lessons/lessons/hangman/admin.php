@@ -46,7 +46,14 @@ input, button{
 <h3>📚 Current words</h3>
 <ul>
 <?php foreach($data["default"] as $w): ?>
-  <li><strong><?= $w["word"] ?></strong> – <?= $w["hint"] ?></li>
+  <li>
+  <strong><?= $w["word"] ?></strong><br>
+  <small><?= $w["hint"] ?></small><br>
+  <span style="letter-spacing:8px;font-size:18px;">
+   <?= str_repeat("_ ", strlen($w["word"])) ?>
+  </span>
+</li>
+
 <?php endforeach; ?>
 </ul>
 
