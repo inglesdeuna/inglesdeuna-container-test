@@ -2,197 +2,198 @@
 session_start();
 
 $words = [
-  ["word" => "APPLE", "hint" => "A fruit 🍎"],
-  ["word" => "HOUSE", "hint" => "A place to live 🏠"],
-  ["word" => "TEACHER", "hint" => "Works at a school 👩‍🏫"],
-  ["word" => "DOG", "hint" => "A friendly animal 🐶"]
+  ["word"=>"APPLE","hint"=>"A fruit 🍎"],
+  ["word"=>"HOUSE","hint"=>"A place to live 🏠"],
+  ["word"=>"DOG","hint"=>"A friendly animal 🐶"],
+  ["word"=>"CAT","hint"=>"A cute pet 🐱"]
 ];
 
 $maxWrong = 7;
 
 if (!isset($_SESSION['word']) || isset($_POST['reset'])) {
-  $item = $words[array_rand($words)];
-  $_SESSION['word'] = $item['word'];
-  $_SESSION['hint'] = $item['hint'];
+  $pick = $words[array_rand($words)];
+  $_SESSION['word'] = $pick['word'];
+  $_SESSION['hint'] = $pick['hint'];
   $_SESSION['guessed'] = [];
   $_SESSION['wrong'] = 0;
 }
 
-$word = $_SESSION['word'];
-$hint = $_SESSION['hint'];
-
 if (isset($_POST['letter'])) {
-  $letter = $_POST['letter'];
-  if (!in_array($letter, $_SESSION['guessed'])) {
-    $_SESSION['guessed'][] = $letter;
-    if (strpos($word, $letter) === false) {
+  $l = $_POST['letter'];
+  if (!in_array($l, $_SESSION['guessed'])) {
+    $_SESSION['guessed'][] = $l;
+    if (strpos($_SESSION['word'],$l) === false) {
       $_SESSION['wrong']++;
     }
   }
 }
 
-$display = '';
+$display = "";
 $won = true;
-foreach (str_split($word) as $char) {
-  if (in_array($char, $_SESSION['guessed'])) {
-    $display .= $char . ' ';
-  } else {
-    $display .= '_ ';
-    $won = false;
-  }
+foreach(str_split($_SESSION['word']) as $c){
+  if(in_array($c,$_SESSION['guessed'])) $display .= $c." ";
+  else { $display .= "_ "; $won=false; }
 }
 
 $lost = $_SESSION['wrong'] >= $maxWrong;
-$img = "/lessons/lessons/hangman/assets/hangman" . $_SESSION['wrong'] . ".png";
+$img = "/lessons/lessons/hangman/assets/hangman".$_SESSION['wrong'].".png";
 ?>
-
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
 <meta charset="UTF-8">
-<title>Hangman – InglesDeUna</title>
+<title>Hangman Kids</title>
 
 <style>
-body {
-  font-family: Arial, sans-serif;
-  text-align: center;
-  background: #f7fbff;
+body{
+  font-family: "Comic Sans MS", Arial;
+  background: linear-gradient(#e8f4ff,#ffffff);
+  text-align:center;
+  overflow:hidden;
 }
 
-.hangman {
-  width: 260px;
-  transition: transform 0.35s ease;
+h1{ color:#4a90e2; }
+
+.stage{
+  height:280px;
+  display:flex;
+  justify-content:center;
+  align-items:center;
 }
 
-.word {
-  font-size: 40px;
-  letter-spacing: 12px;
-  margin: 20px 0;
+#hangman{
+  width:240px;
+  animation: float 1.4s ease-in-out infinite;
 }
 
-button {
-  padding: 10px 14px;
-  margin: 4px;
-  font-size: 16px;
-  border-radius: 12px;
-  border: 2px solid #dce9ff;
-  background: #fff;
-  cursor: pointer;
+@keyframes float{
+  0%{ transform: translateY(0); }
+  50%{ transform: translateY(-10px); }
+  100%{ transform: translateY(0); }
 }
 
-button:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
+.word{
+  font-size:42px;
+  letter-spacing:14px;
+  margin:20px 0;
 }
 
-.win {
-  color: #2ecc71;
-  font-size: 26px;
+button{
+  padding:12px 16px;
+  margin:4px;
+  font-size:18px;
+  border-radius:14px;
+  border:none;
+  background:#fff;
+  box-shadow:0 4px 0 #cfe2ff;
+  cursor:pointer;
 }
 
-.lose {
-  color: #e74c3c;
-  font-size: 26px;
+button:disabled{ opacity:.4; }
+
+.win{
+  font-size:34px;
+  color:#2ecc71;
+  animation: pop 0.6s ease infinite alternate;
 }
 
-/* Animaciones */
-.correct {
-  animation: bounce 0.35s;
+@keyframes pop{
+  from{ transform: scale(1); }
+  to{ transform: scale(1.12); }
 }
 
-.wrong {
-  animation: shake 0.35s;
+.lose{
+  font-size:28px;
+  color:#e74c3c;
 }
 
-@keyframes bounce {
-  0% { transform: scale(1); }
-  50% { transform: scale(1.08); }
-  100% { transform: scale(1); }
+/* 🎉 CONFETTI */
+.confetti{
+  position:fixed;
+  top:-10px;
+  width:12px;
+  height:12px;
+  animation: fall linear infinite;
 }
-
-@keyframes shake {
-  0% { transform: translateX(0); }
-  25% { transform: translateX(-6px); }
-  50% { transform: translateX(6px); }
-  75% { transform: translateX(-6px); }
-  100% { transform: translateX(0); }
+@keyframes fall{
+  to{ transform: translateY(110vh) rotate(360deg); }
 }
 </style>
 </head>
 
 <body>
 
-<h1>🎯 Hangman – InglesDeUna</h1>
+<h1>🎯 Hangman Kids</h1>
 
-<img id="hangmanImg" class="hangman" src="<?php echo $img; ?>" alt="Hangman">
+<div class="stage">
+  <img id="hangman" src="<?=$img?>">
+</div>
 
-<p><strong>Hint:</strong> <?php echo $hint; ?></p>
+<p><strong>Hint:</strong> <?=$_SESSION['hint']?></p>
+<p class="word"><?=$display?></p>
 
-<p class="word"><?php echo $display; ?></p>
-
-<p>Wrong attempts: <?php echo $_SESSION['wrong']; ?> / <?php echo $maxWrong; ?></p>
-
-<?php if ($won): ?>
-  <p class="win">🎉 CONGRATULATIONS! YOU WIN!</p>
-<?php elseif ($lost): ?>
-  <p class="lose">❌ Game Over</p>
-  <p>The word was: <strong><?php echo $word; ?></strong></p>
+<?php if($won): ?>
+  <div class="win">🎉 YOU WIN! 🎉</div>
+<?php elseif($lost): ?>
+  <div class="lose">😢 GAME OVER</div>
 <?php else: ?>
-  <form method="post">
-    <?php foreach (range('A', 'Z') as $l): ?>
-      <button name="letter" value="<?php echo $l; ?>"
-        <?php echo in_array($l, $_SESSION['guessed']) ? 'disabled' : ''; ?>>
-        <?php echo $l; ?>
-      </button>
-    <?php endforeach; ?>
-  </form>
+<form method="post">
+<?php foreach(range('A','Z') as $l): ?>
+<button name="letter" value="<?=$l?>" <?=in_array($l,$_SESSION['guessed'])?'disabled':''?>>
+<?=$l?>
+</button>
+<?php endforeach; ?>
+</form>
 <?php endif; ?>
 
 <form method="post">
-  <button name="reset">🔄 Try Again</button>
+<button name="reset">🔄 New Word</button>
 </form>
 
-<!-- Audios (sin botón) -->
-<audio id="soundCorrect" src="/lessons/lessons/hangman/assets/correct.wav"></audio>
-<audio id="soundWrong" src="/lessons/lessons/hangman/assets/wrong.wav"></audio>
-<audio id="soundWin" src="/lessons/lessons/hangman/assets/win.wav"></audio>
-<audio id="soundLose" src="/lessons/lessons/hangman/assets/lose.wav"></audio>
+<!-- AUDIO (DIFERENCIADOS) -->
+<audio id="ok"   src="assets/correct.wav"></audio>
+<audio id="bad"  src="assets/wrong.wav"></audio>
+<audio id="win"  src="assets/win.wav"></audio>
+<audio id="lose" src="assets/lose.wav"></audio>
 
 <script>
 // volumen infantil
-["soundCorrect","soundWrong","soundWin","soundLose"].forEach(id => {
-  document.getElementById(id).volume = 0.3;
-});
+ok.volume   = 0.25;
+bad.volume  = 0.25;
+win.volume  = 0.4;
+lose.volume = 0.4;
 
-// pre-carga imágenes (elimina flashes)
-for (let i = 0; i <= 7; i++) {
-  const img = new Image();
-  img.src = `/lessons/lessons/hangman/assets/hangman${i}.png`;
+// precarga imágenes
+for(let i=0;i<=7;i++){
+  const im=new Image();
+  im.src=`/lessons/lessons/hangman/assets/hangman${i}.png`;
 }
 
-// animaciones + sonido
-const img = document.getElementById("hangmanImg");
-<?php if (isset($_POST['letter'])): ?>
-  <?php if (strpos($word, $_POST['letter']) !== false): ?>
-    document.getElementById("soundCorrect").play();
-    img.classList.add("correct");
-  <?php else: ?>
-    document.getElementById("soundWrong").play();
-    img.classList.add("wrong");
-  <?php endif; ?>
+<?php if(isset($_POST['letter'])): ?>
+<?php if($won): ?>
+  win.play();
+  launchConfetti();
+<?php elseif($lost): ?>
+  lose.play();
+<?php elseif(strpos($_SESSION['word'],$_POST['letter'])!==false): ?>
+  ok.play();
+<?php else: ?>
+  bad.play();
+<?php endif; ?>
 <?php endif; ?>
 
-<?php if ($won): ?>
-  document.getElementById("soundWin").play();
-<?php endif; ?>
-
-<?php if ($lost): ?>
-  document.getElementById("soundLose").play();
-<?php endif; ?>
-
-setTimeout(() => {
-  img.classList.remove("correct","wrong");
-}, 400);
+// 🎉 CONFETTI SCRIPT
+function launchConfetti(){
+  for(let i=0;i<40;i++){
+    const c=document.createElement("div");
+    c.className="confetti";
+    c.style.left=Math.random()*100+"vw";
+    c.style.background=`hsl(${Math.random()*360},80%,60%)`;
+    c.style.animationDuration=2+Math.random()*2+"s";
+    document.body.appendChild(c);
+    setTimeout(()=>c.remove(),4000);
+  }
+}
 </script>
 
 </body>
