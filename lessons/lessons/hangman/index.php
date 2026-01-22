@@ -150,10 +150,10 @@ button{
 </form>
 
 <!-- AUDIO -->
-<audio id="sndCorrect" src="assets/correct.wav" preload="auto"></audio>
-<audio id="sndWrong" src="assets/wrong.wav" preload="auto"></audio>
-<audio id="sndWin" src="assets/win.wav" preload="auto"></audio>
-<audio id="sndLose" src="assets/lose.wav" preload="auto"></audio>
+<audio id="soundCorrect" src="assets/correct.wav" preload="auto"></audio>
+<audio id="soundWrong" src="assets/wrong.wav" preload="auto"></audio>
+<audio id="soundWin" src="assets/win.mp3" preload="auto"></audio>
+<audio id="soundLose" src="assets/lose.mp3" preload="auto"></audio>
 
 <script>
 const buttons = document.querySelectorAll("button[name='letter']");
