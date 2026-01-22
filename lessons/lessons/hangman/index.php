@@ -123,7 +123,9 @@ button:disabled{ opacity:.4; }
 
 <body>
 
-<h1>🎯 Hangman Kids</h1>
+<h1 class="title">🎯 Hangman Kids</h1>
+<p class="hint"><strong>Hint:</strong> <?= $_SESSION['hint'] ?></p>
+
 
 <div class="stage">
   <img id="hangman" src="<?=$img?>">
