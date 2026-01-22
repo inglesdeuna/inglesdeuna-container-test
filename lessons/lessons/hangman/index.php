@@ -2,27 +2,30 @@
 session_start();
 
 $words = [
-  ["word"=>"APPLE","hint"=>"A fruit 🍎"],
-  ["word"=>"HOUSE","hint"=>"A place to live 🏠"],
-  ["word"=>"DOG","hint"=>"A friendly animal 🐶"],
-  ["word"=>"CAT","hint"=>"A cute pet 🐱"]
+  ["word" => "APPLE", "hint" => "A fruit 🍎"],
+  ["word" => "HOUSE", "hint" => "A place to live 🏠"],
+  ["word" => "TEACHER", "hint" => "Works at a school 👩‍🏫"],
+  ["word" => "DOG", "hint" => "A friendly animal 🐶"]
 ];
 
 $maxWrong = 7;
 
 if (!isset($_SESSION['word']) || isset($_POST['reset'])) {
-  $pick = $words[array_rand($words)];
-  $_SESSION['word'] = $pick['word'];
-  $_SESSION['hint'] = $pick['hint'];
+  $item = $words[array_rand($words)];
+  $_SESSION['word'] = $item['word'];
+  $_SESSION['hint'] = $item['hint'];
   $_SESSION['guessed'] = [];
   $_SESSION['wrong'] = 0;
 }
+
+$word = $_SESSION['word'];
+$hint = $_SESSION['hint'];
 
 if (isset($_POST['letter'])) {
   $l = $_POST['letter'];
   if (!in_array($l, $_SESSION['guessed'])) {
     $_SESSION['guessed'][] = $l;
-    if (strpos($_SESSION['word'],$l) === false) {
+    if (strpos($word, $l) === false) {
       $_SESSION['wrong']++;
     }
   }
@@ -30,172 +33,151 @@ if (isset($_POST['letter'])) {
 
 $display = "";
 $won = true;
-foreach(str_split($_SESSION['word']) as $c){
-  if(in_array($c,$_SESSION['guessed'])) $display .= $c." ";
-  else { $display .= "_ "; $won=false; }
+foreach (str_split($word) as $c) {
+  if (in_array($c, $_SESSION['guessed'])) {
+    $display .= $c . " ";
+  } else {
+    $display .= "_ ";
+    $won = false;
+  }
 }
 
 $lost = $_SESSION['wrong'] >= $maxWrong;
-$img = "/lessons/lessons/hangman/assets/hangman".$_SESSION['wrong'].".png";
+$img = "assets/hangman" . $_SESSION['wrong'] . ".png";
 ?>
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Hangman Kids</title>
+<title>Hangman Kids – InglesDeUna</title>
 
 <style>
 body{
   font-family: "Comic Sans MS", Arial;
-  background: linear-gradient(#e8f4ff,#ffffff);
+  background:#e8f4ff;
   text-align:center;
-  overflow:hidden;
 }
 
 h1{ color:#4a90e2; }
 
 .stage{
-  height:360px;
+  height:380px;
   display:flex;
   justify-content:center;
-  align-items:center;
+  align-items:flex-start;
+  margin-top:10px;
 }
 
-#hangman{
-  width:240px;
-  animation: float 1.4s ease-in-out infinite;
-}
-
-@keyframes float{
-  0%{ transform: translateY(0); }
-  50%{ transform: translateY(-10px); }
-  100%{ transform: translateY(0); }
+#hangmanImg{
+  max-height:300px;
+  transition:opacity 0.25s ease-in-out, transform 0.25s ease-in-out;
+  margin-bottom:20px;
 }
 
 .word{
-  font-size:42px;
-  letter-spacing:14px;
-  margin:20px 0;
+  font-size:34px;
+  letter-spacing:8px;
 }
 
 button{
-  padding:12px 16px;
+  padding:8px 12px;
   margin:4px;
-  font-size:18px;
-  border-radius:14px;
-  border:none;
-  background:#fff;
-  box-shadow:0 4px 0 #cfe2ff;
+  font-size:16px;
+  border-radius:10px;
+  border:1px solid #bbb;
+  background:white;
   cursor:pointer;
 }
 
-button:disabled{ opacity:.4; }
-
-.win{
-  font-size:34px;
-  color:#2ecc71;
-  animation: pop 0.6s ease infinite alternate;
+button:disabled{
+  opacity:0.4;
 }
 
-@keyframes pop{
-  from{ transform: scale(1); }
-  to{ transform: scale(1.12); }
+.win{
+  color:#1a9c3c;
+  font-size:28px;
 }
 
 .lose{
-  font-size:28px;
-  color:#e74c3c;
+  color:#e53935;
+  font-size:26px;
 }
 
-/* 🎉 CONFETTI */
-.confetti{
-  position:fixed;
-  top:-10px;
-  width:12px;
-  height:12px;
-  animation: fall linear infinite;
+.bounce{
+  transform:scale(1.08);
 }
-@keyframes fall{
-  to{ transform: translateY(110vh) rotate(360deg); }
+
+.shake{
+  transform:translateX(-6px);
 }
 </style>
 </head>
 
 <body>
 
-<h1 class="title">🎯 Hangman Kids</h1>
-<p class="hint"><strong>Hint:</strong> <?= $_SESSION['hint'] ?></p>
-
+<h1>🎯 Hangman Kids – InglesDeUna</h1>
 
 <div class="stage">
-  <img id="hangman" src="<?=$img?>">
+  <img id="hangmanImg" src="<?php echo $img; ?>">
 </div>
 
-<p><strong>Hint:</strong> <?=$_SESSION['hint']?></p>
-<p class="word"><?=$display?></p>
+<p><strong>Hint:</strong> <?php echo $hint; ?></p>
 
-<?php if($won): ?>
-  <div class="win">🎉 YOU WIN! 🎉</div>
-<?php elseif($lost): ?>
-  <div class="lose">😢 GAME OVER</div>
+<p class="word"><?php echo $display; ?></p>
+<p>Wrong attempts: <?php echo $_SESSION['wrong']; ?> / <?php echo $maxWrong; ?></p>
+
+<?php if ($won): ?>
+  <p class="win">🎉 CONGRATULATIONS! 👏👏</p>
+<?php elseif ($lost): ?>
+  <p class="lose">❌ GAME OVER</p>
+  <p>The word was: <strong><?php echo $word; ?></strong></p>
 <?php else: ?>
 <form method="post">
 <?php foreach(range('A','Z') as $l): ?>
-<button name="letter" value="<?=$l?>" <?=in_array($l,$_SESSION['guessed'])?'disabled':''?>>
-<?=$l?>
+<button name="letter" value="<?php echo $l; ?>"
+<?php echo in_array($l,$_SESSION['guessed'])?'disabled':''; ?>>
+<?php echo $l; ?>
 </button>
 <?php endforeach; ?>
 </form>
 <?php endif; ?>
 
 <form method="post">
-<button name="reset">🔄 New Word</button>
+  <button name="reset">🔄 Try Again</button>
 </form>
 
-<!-- AUDIO (DIFERENCIADOS) -->
-<audio id="ok"   src="assets/correct.wav"></audio>
-<audio id="bad"  src="assets/wrong.wav"></audio>
-<audio id="win"  src="assets/win.wav"></audio>
-<audio id="lose" src="assets/lose.wav"></audio>
+<!-- SOUNDS -->
+<audio id="sCorrect" src="assets/correct.wav"></audio>
+<audio id="sWrong" src="assets/wrong.wav"></audio>
+<audio id="sWin" src="assets/win.wav"></audio>
+<audio id="sLose" src="assets/lose.wav"></audio>
 
 <script>
-// volumen infantil
-ok.volume   = 0.25;
-bad.volume  = 0.25;
-win.volume  = 0.4;
-lose.volume = 0.4;
+const correct = <?php echo isset($_POST['letter']) && strpos($word,$_POST['letter'])!==false ? 'true':'false'; ?>;
+const won = <?php echo $won?'true':'false'; ?>;
+const lost = <?php echo $lost?'true':'false'; ?>;
 
-// precarga imágenes
-for(let i=0;i<=7;i++){
-  const im=new Image();
-  im.src=`/lessons/lessons/hangman/assets/hangman${i}.png`;
+function play(id, vol){
+  const a = document.getElementById(id);
+  a.volume = vol;
+  a.currentTime = 0;
+  a.play();
 }
 
-<?php if(isset($_POST['letter'])): ?>
-<?php if($won): ?>
-  win.play();
-  launchConfetti();
-<?php elseif($lost): ?>
-  lose.play();
-<?php elseif(strpos($_SESSION['word'],$_POST['letter'])!==false): ?>
-  ok.play();
-<?php else: ?>
-  bad.play();
-<?php endif; ?>
-<?php endif; ?>
+const img = document.getElementById("hangmanImg");
 
-// 🎉 CONFETTI SCRIPT
-function launchConfetti(){
-  for(let i=0;i<40;i++){
-    const c=document.createElement("div");
-    c.className="confetti";
-    c.style.left=Math.random()*100+"vw";
-    c.style.background=`hsl(${Math.random()*360},80%,60%)`;
-    c.style.animationDuration=2+Math.random()*2+"s";
-    document.body.appendChild(c);
-    setTimeout(()=>c.remove(),4000);
-  }
+if(correct){
+  play("sCorrect",0.5);
+  img.classList.add("bounce");
+  setTimeout(()=>img.classList.remove("bounce"),300);
+}else if(<?php echo isset($_POST['letter'])?'true':'false'; ?>){
+  play("sWrong",0.6);
+  img.classList.add("shake");
+  setTimeout(()=>img.classList.remove("shake"),300);
 }
+
+if(won){ play("sWin",0.7); }
+if(lost){ play("sLose",0.7); }
 </script>
 
 </body>
