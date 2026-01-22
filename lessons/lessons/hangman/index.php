@@ -18,26 +18,23 @@ if (!isset($_SESSION['word']) || isset($_POST['reset'])) {
   $_SESSION['wrong'] = 0;
 }
 
-$word = $_SESSION['word'];
-$hint = $_SESSION['hint'];
-
 if (isset($_POST['letter'])) {
-  $letter = $_POST['letter'];
-  if (!in_array($letter, $_SESSION['guessed'])) {
-    $_SESSION['guessed'][] = $letter;
-    if (strpos($word, $letter) === false) {
+  $l = $_POST['letter'];
+  if (!in_array($l, $_SESSION['guessed'])) {
+    $_SESSION['guessed'][] = $l;
+    if (strpos($_SESSION['word'], $l) === false) {
       $_SESSION['wrong']++;
     }
   }
 }
 
-$display = '';
+$display = "";
 $won = true;
-foreach (str_split($word) as $char) {
-  if (in_array($char, $_SESSION['guessed'])) {
-    $display .= $char . ' ';
+foreach (str_split($_SESSION['word']) as $c) {
+  if (in_array($c, $_SESSION['guessed'])) {
+    $display .= $c . " ";
   } else {
-    $display .= '_ ';
+    $display .= "_ ";
     $won = false;
   }
 }
@@ -58,49 +55,17 @@ body {
   text-align: center;
 }
 
-#soundToggle {
-  cursor: pointer;
-  font-size: 26px;
-  position: fixed;
-  top: 20px;
-  right: 20px;
-}
-
-img {
+#hangmanImg {
   width: 250px;
-  transition: transform 0.3s ease;
-}
-
-.bounce {
-  animation: bounce 0.4s;
+  transition: transform 0.25s ease;
 }
 
 .shake {
-  animation: shake 0.4s;
+  transform: translateX(-12px);
 }
 
-@keyframes bounce {
-  0% { transform: scale(1); }
-  50% { transform: scale(1.1); }
-  100% { transform: scale(1); }
-}
-
-@keyframes shake {
-  0% { transform: translateX(0); }
-  25% { transform: translateX(-5px); }
-  50% { transform: translateX(5px); }
-  75% { transform: translateX(-5px); }
-  100% { transform: translateX(0); }
-}
-
-.win {
-  color: green;
-  font-size: 28px;
-}
-
-.lose {
-  color: red;
-  font-size: 26px;
+.bounce {
+  transform: scale(1.05);
 }
 
 .word {
@@ -113,6 +78,17 @@ button {
   margin: 3px;
   font-size: 16px;
 }
+
+.win { color: green; font-size: 26px; }
+.lose { color: red; font-size: 26px; }
+
+#soundToggle {
+  position: fixed;
+  top: 12px;
+  right: 14px;
+  font-size: 22px;
+  cursor: pointer;
+}
 </style>
 </head>
 
@@ -122,74 +98,67 @@ button {
 
 <h1>🎯 Hangman – InglesDeUna</h1>
 
-<img id="hangmanImg" src="<?= $img ?>">
+<img id="hangmanImg" src="<?php echo $img; ?>"><br><br>
 
-<p><strong>Hint:</strong> <?= $hint ?></p>
-
-<p class="word"><?= $display ?></p>
-
-<p>Wrong attempts: <?= $_SESSION['wrong'] ?> / <?= $maxWrong ?></p>
+<p><strong>Hint:</strong> <?php echo $_SESSION['hint']; ?></p>
+<p class="word"><?php echo $display; ?></p>
+<p>Wrong attempts: <?php echo $_SESSION['wrong']; ?> / <?php echo $maxWrong; ?></p>
 
 <?php if ($won): ?>
-  <p class="win">🎉 YOU WIN! 🎉</p>
+  <p class="win">🎉 YOU WIN!</p>
 <?php elseif ($lost): ?>
   <p class="lose">❌ GAME OVER</p>
-  <p>The word was: <strong><?= $word ?></strong></p>
+  <p>The word was: <strong><?php echo $_SESSION['word']; ?></strong></p>
 <?php else: ?>
-  <form method="post">
-    <?php foreach (range('A','Z') as $l): ?>
-      <button name="letter" value="<?= $l ?>"
-        <?= in_array($l, $_SESSION['guessed']) ? 'disabled' : '' ?>>
-        <?= $l ?>
-      </button>
-    <?php endforeach; ?>
-  </form>
+<form method="post">
+<?php foreach (range('A','Z') as $l): ?>
+<button name="letter" value="<?php echo $l; ?>" <?php echo in_array($l,$_SESSION['guessed'])?'disabled':''; ?>>
+<?php echo $l; ?>
+</button>
+<?php endforeach; ?>
+</form>
 <?php endif; ?>
 
 <form method="post">
-  <button name="reset">🔄 Try Again</button>
+<button name="reset">🔄 Try Again</button>
 </form>
 
-<!-- Sounds -->
-<audio id="sCorrect" src="https://cdn.pixabay.com/audio/2022/03/15/audio_115b9fbb97.mp3"></audio>
-<audio id="sWrong" src="https://cdn.pixabay.com/audio/2022/03/15/audio_c8b6d8b0c6.mp3"></audio>
-<audio id="sWin" src="https://cdn.pixabay.com/audio/2022/10/30/audio_946b2a3b8b.mp3"></audio>
-<audio id="sLose" src="https://cdn.pixabay.com/audio/2022/03/10/audio_4c8eeb1c38.mp3"></audio>
+<!-- AUDIO -->
+<audio id="ok" src="https://cdn.pixabay.com/audio/2022/03/15/audio_115b9fbb97.mp3"></audio>
+<audio id="bad" src="https://cdn.pixabay.com/audio/2022/03/15/audio_c8b6d8b0c6.mp3"></audio>
+<audio id="win" src="https://cdn.pixabay.com/audio/2022/10/16/audio_59f6f94d1e.mp3"></audio>
+<audio id="lose" src="https://cdn.pixabay.com/audio/2022/03/10/audio_3c9e4f1b75.mp3"></audio>
 
 <script>
-let soundOn = localStorage.getItem("soundOn") !== "false";
+let sound = localStorage.getItem("sound") !== "off";
+const toggle = document.getElementById("soundToggle");
+toggle.textContent = sound ? "🔊" : "🔇";
 
-const icon = document.getElementById("soundToggle");
-icon.textContent = soundOn ? "🔊" : "🔇";
-
-icon.onclick = () => {
-  soundOn = !soundOn;
-  localStorage.setItem("soundOn", soundOn);
-  icon.textContent = soundOn ? "🔊" : "🔇";
+toggle.onclick = () => {
+  sound = !sound;
+  localStorage.setItem("sound", sound ? "on" : "off");
+  toggle.textContent = sound ? "🔊" : "🔇";
 };
 
-function play(id) {
-  if (!soundOn) return;
-  const a = document.getElementById(id);
-  a.volume = 0.25;
-  a.currentTime = 0;
-  a.play();
-}
+const img = document.getElementById("hangmanImg");
 
 <?php if (isset($_POST['letter'])): ?>
-  <?php if (strpos($word, $_POST['letter']) !== false): ?>
-    play("sCorrect");
-    document.getElementById("hangmanImg").classList.add("bounce");
-  <?php else: ?>
-    play("sWrong");
-    document.getElementById("hangmanImg").classList.add("shake");
-  <?php endif; ?>
+<?php if (strpos($_SESSION['word'], $_POST['letter']) !== false): ?>
+  if (sound) document.getElementById("ok").play();
+  img.classList.add("bounce");
+<?php else: ?>
+  if (sound) document.getElementById("bad").play();
+  img.classList.add("shake");
+<?php endif; ?>
+setTimeout(()=>img.className="",250);
 <?php endif; ?>
 
 <?php if ($won): ?>
-  play("sWin");
-<?php elseif ($lost): ?>
-  play("sLose");
+if (sound) document.getElementById("win").play();
+<?php endif; ?>
+
+<?php if ($lost): ?>
+if (sound) document.getElementById("lose").play();
 <?php endif; ?>
 </script>
 
