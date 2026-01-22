@@ -2,12 +2,9 @@
 session_start();
 
 /* ---------- CONFIG ---------- */
-$words = [
-  ["word"=>"APPLE","hint"=>"A fruit 🍎"],
-  ["word"=>"HOUSE","hint"=>"A place to live 🏠"],
-  ["word"=>"DOG","hint"=>"A friendly animal 🐶"],
-  ["word"=>"CAT","hint"=>"A cute pet 🐱"]
-];
+$data = json_decode(file_get_contents("words.json"), true);
+$words = $data["default"];
+
 $maxWrong = 7;
 
 /* ---------- INIT ---------- */
