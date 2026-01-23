@@ -1,18 +1,18 @@
 <?php
-$pdfUrl = null;
-
 $uploadDir = __DIR__ . "/uploads/";
-$publicPath = "uploads/";
+$webDir = "uploads/";
+$pdfFile = null;
+
+if (!file_exists($uploadDir)) {
+  mkdir($uploadDir, 0777, true);
+}
 
 if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["pdf"])) {
-
-  if ($_FILES["pdf"]["error"] === UPLOAD_ERR_OK) {
-
-    $filename = time() . "_" . basename($_FILES["pdf"]["name"]);
-    $targetFile = $uploadDir . $filename;
-
-    if (move_uploaded_file($_FILES["pdf"]["tmp_name"], $targetFile)) {
-      $pdfUrl = $publicPath . $filename;
+  if ($_FILES["pdf"]["type"] === "application/pdf") {
+    $name = time() . "_" . basename($_FILES["pdf"]["name"]);
+    $target = $uploadDir . $name;
+    if (move_uploaded_file($_FILES["pdf"]["tmp_name"], $target)) {
+      $pdfFile = $webDir . $name;
     }
   }
 }
@@ -22,59 +22,108 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["pdf"])) {
 <head>
 <meta charset="UTF-8">
 <title>PDF Flipbook</title>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+
 <style>
 body{
   font-family: Arial, sans-serif;
   background:#f2f7ff;
   padding:40px;
 }
+
 .container{
   max-width:900px;
   margin:auto;
   background:white;
   padding:30px;
   border-radius:14px;
-  box-shadow:0 6px 14px rgba(0,0,0,.12);
+  box-shadow:0 10px 20px rgba(0,0,0,.15);
 }
-h1{
-  color:#2a6edb;
+
+canvas{
+  border-radius:10px;
+  box-shadow:0 6px 14px rgba(0,0,0,.2);
 }
+
+.controls{
+  margin-top:15px;
+  text-align:center;
+}
+
 button{
+  padding:8px 16px;
+  margin:0 10px;
+  border:none;
+  border-radius:10px;
   background:#2a6edb;
   color:white;
-  border:none;
-  padding:10px 18px;
-  border-radius:10px;
   cursor:pointer;
-}
-.viewer{
-  margin-top:30px;
-}
-iframe{
-  width:100%;
-  height:600px;
-  border:1px solid #ccc;
-  border-radius:10px;
 }
 </style>
 </head>
 
 <body>
 <div class="container">
-  <h1>📘 PDF Flipbook</h1>
+  <h2>📘 PDF Flipbook</h2>
 
   <form method="post" enctype="multipart/form-data">
     <input type="file" name="pdf" accept="application/pdf" required>
     <br><br>
-    <button type="submit">⬆️ Upload PDF</button>
+    <button type="submit">Upload PDF</button>
   </form>
 
-  <?php if ($pdfUrl): ?>
-    <div class="viewer">
-      <h2>📖 Preview</h2>
-      <iframe src="<?= htmlspecialchars($pdfUrl) ?>"></iframe>
-    </div>
-  <?php endif; ?>
+<?php if ($pdfFile): ?>
+<hr>
+<h3>📖 Flipbook Preview</h3>
+
+<canvas id="pdfCanvas"></canvas>
+
+<div class="controls">
+  <button onclick="prevPage()">⬅ Prev</button>
+  <span id="pageInfo"></span>
+  <button onclick="nextPage()">Next ➡</button>
+</div>
+
+<script>
+const url = "<?= $pdfFile ?>";
+
+let pdfDoc = null,
+    pageNum = 1,
+    canvas = document.getElementById('pdfCanvas'),
+    ctx = canvas.getContext('2d');
+
+pdfjsLib.getDocument(url).promise.then(pdf => {
+  pdfDoc = pdf;
+  renderPage(pageNum);
+});
+
+function renderPage(num) {
+  pdfDoc.getPage(num).then(page => {
+    const viewport = page.getViewport({ scale: 1.4 });
+    canvas.height = viewport.height;
+    canvas.width = viewport.width;
+
+    page.render({ canvasContext: ctx, viewport: viewport });
+    document.getElementById("pageInfo").innerText =
+      "Page " + num + " / " + pdfDoc.numPages;
+  });
+}
+
+function prevPage(){
+  if (pageNum <= 1) return;
+  pageNum--;
+  renderPage(pageNum);
+}
+
+function nextPage(){
+  if (pageNum >= pdfDoc.numPages) return;
+  pageNum++;
+  renderPage(pageNum);
+}
+</script>
+<?php endif; ?>
+
 </div>
 </body>
 </html>
