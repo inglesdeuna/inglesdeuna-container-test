@@ -86,7 +86,13 @@ iframe{
   <?php if ($pdfFile): ?>
     <div class="viewer">
       <h2>📖 Preview</h2>
-      <iframe src="<?= $pdfFile ?>"></iframe>
+      <iframe 
+  src="/lessons/lessons/admin/uploads/<?= basename($pdfFile) ?>" 
+  width="100%" 
+  height="650" 
+  style="border:none;">
+</iframe>
+
     </div>
   <?php endif; ?>
 </div>
