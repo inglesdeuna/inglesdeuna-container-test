@@ -1,4 +1,12 @@
 <?php
+
+$uploadDir = __DIR__ . "/uploads";
+
+// crear carpeta si no existe (EN EL SERVIDOR)
+if (!is_dir($uploadDir)) {
+    mkdir($uploadDir, 0777, true);
+}
+
 // ===== CONFIG =====
 $uploadDir = __DIR__ . '/uploads/';
 $webDir    = '/lessons/lessons/admin/uploads/';
