@@ -23,7 +23,10 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["pdf"])) {
 <meta charset="UTF-8">
 <title>PDF Flipbook</title>
 
+<!-- PDF.js -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+
+<!-- PageFlip -->
 <script src="https://unpkg.com/page-flip/dist/page-flip.browser.js"></script>
 <link rel="stylesheet" href="https://unpkg.com/page-flip/dist/page-flip.css">
 
@@ -35,7 +38,7 @@ body{
 }
 
 .container{
-  max-width:900px;
+  max-width:1000px;
   margin:auto;
   background:white;
   padding:30px;
@@ -43,19 +46,25 @@ body{
   box-shadow:0 10px 20px rgba(0,0,0,.15);
 }
 
-canvas{
-  border-radius:10px;
-  box-shadow:0 6px 14px rgba(0,0,0,.2);
+#flipbook{
+  width:900px;
+  height:600px;
+  margin:30px auto;
 }
 
-.controls{
-  margin-top:15px;
-  text-align:center;
+.page{
+  background:white;
+  display:flex;
+  align-items:center;
+  justify-content:center;
 }
 
+.page canvas{
+  max-width:100%;
+  height:auto;
+}
 button{
   padding:8px 16px;
-  margin:0 10px;
   border:none;
   border-radius:10px;
   background:#2a6edb;
@@ -79,18 +88,21 @@ button{
 <hr>
 <h3>📖 Flipbook Preview</h3>
 
-<div id="flipbook" style="width:800px;height:600px;margin:auto;"></div>
+<div id="flipbook"></div>
 
 <script>
+// 🔴 MUY IMPORTANTE: worker de pdf.js
+pdfjsLib.GlobalWorkerOptions.workerSrc =
+  "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+
 const url = "<?= $pdfFile ?>";
+const flipbookEl = document.getElementById("flipbook");
 
-const flipbook = document.getElementById("flipbook");
-
-const pageFlip = new St.PageFlip(flipbook, {
-  width: 400,
+const pageFlip = new St.PageFlip(flipbookEl, {
+  width: 450,
   height: 600,
   size: "stretch",
-  maxShadowOpacity: 0.5,
+  maxShadowOpacity: 0.4,
   showCover: true,
   mobileScrollSupport: false
 });
@@ -113,7 +125,11 @@ pdfjsLib.getDocument(url).promise.then(async pdf => {
       viewport: viewport
     }).promise;
 
-    pages.push(canvas);
+    const pageDiv = document.createElement("div");
+    pageDiv.className = "page";
+    pageDiv.appendChild(canvas);
+
+    pages.push(pageDiv);
   }
 
   pageFlip.loadFromHTML(pages);
