@@ -7,6 +7,34 @@ if (!file_exists($uploadDir)) {
   mkdir($uploadDir, 0777, true);
 }
 
+// 🔹 Si viene desde la URL
+if (isset($_GET["file"])) {
+  $pdfFile = $webDir . basename($_GET["file"]);
+}
+
+// 🔹 Si se sube un PDF
+if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["pdf"])) {
+  if ($_FILES["pdf"]["type"] === "application/pdf") {
+    $name = time() . "_" . basename($_FILES["pdf"]["name"]);
+    $target = $uploadDir . $name;
+
+    if (move_uploaded_file($_FILES["pdf"]["tmp_name"], $target)) {
+      // 🔴 REDIRECCIÓN (ESTA ES LA CLAVE)
+      header("Location: flipbook.php?file=" . $name);
+      exit;
+    }
+  }
+}
+?>
+<?php
+$uploadDir = __DIR__ . "/uploads/";
+$webDir = "uploads/";
+$pdfFile = null;
+
+if (!file_exists($uploadDir)) {
+  mkdir($uploadDir, 0777, true);
+}
+
 if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["pdf"])) {
   if ($_FILES["pdf"]["type"] === "application/pdf") {
     $name = time() . "_" . basename($_FILES["pdf"]["name"]);
