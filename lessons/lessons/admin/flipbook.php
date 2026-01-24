@@ -3,131 +3,61 @@ $uploadDir = __DIR__ . "/uploads/";
 $webDir = "uploads/";
 $pdfFile = null;
 
-if (!file_exists($uploadDir)) {
+// Crear carpeta si no existe
+if (!is_dir($uploadDir)) {
   mkdir($uploadDir, 0777, true);
 }
 
-// 👉 Leer PDF desde URL
-if (isset($_GET["file"])) {
-  $pdfFile = $webDir . basename($_GET["file"]);
-}
+// Procesar subida
+if ($_SERVER["REQUEST_METHOD"] === "POST") {
+  if (isset($_FILES["pdf"]) && $_FILES["pdf"]["error"] === 0) {
 
-// 👉 Subida de PDF
-if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["pdf"])) {
-  if ($_FILES["pdf"]["type"] === "application/pdf") {
-    $name = time() . "_" . basename($_FILES["pdf"]["name"]);
-    $target = $uploadDir . $name;
+    if (mime_content_type($_FILES["pdf"]["tmp_name"]) === "application/pdf") {
+      $name = time() . "_" . preg_replace("/[^a-zA-Z0-9._-]/", "", $_FILES["pdf"]["name"]);
+      $target = $uploadDir . $name;
 
-    if (move_uploaded_file($_FILES["pdf"]["tmp_name"], $target)) {
-      header("Location: flipbook.php?file=" . $name);
-      exit;
+      if (move_uploaded_file($_FILES["pdf"]["tmp_name"], $target)) {
+        $pdfFile = $webDir . $name;
+      } else {
+        die("❌ ERROR: No se pudo mover el archivo");
+      }
+
+    } else {
+      die("❌ ERROR: El archivo no es PDF");
     }
+
+  } else {
+    die("❌ ERROR: No llegó ningún archivo");
   }
 }
 ?>
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>PDF Flipbook</title>
-
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-<script src="https://unpkg.com/page-flip/dist/page-flip.browser.js"></script>
-<link rel="stylesheet" href="https://unpkg.com/page-flip/dist/page-flip.css">
-
+<title>Test Upload PDF</title>
 <style>
-body{
-  font-family: Arial, sans-serif;
-  background:#f2f7ff;
-  padding:40px;
-}
-.container{
-  max-width:1000px;
-  margin:auto;
-  background:white;
-  padding:30px;
-  border-radius:14px;
-  box-shadow:0 10px 20px rgba(0,0,0,.15);
-}
-#flipbook{
-  width:900px;
-  height:600px;
-  margin:30px auto;
-}
-.page{
-  background:white;
-  display:flex;
-  justify-content:center;
-  align-items:center;
-}
-.page canvas{
-  max-width:100%;
-}
-button{
-  padding:8px 16px;
-  border:none;
-  border-radius:10px;
-  background:#2a6edb;
-  color:white;
-}
+body{font-family:Arial;background:#f2f7ff;padding:40px}
+.container{max-width:900px;margin:auto;background:#fff;padding:30px;border-radius:12px}
 </style>
 </head>
 
 <body>
 <div class="container">
-  <h2>📘 PDF Flipbook</h2>
+<h2>🧪 Test de subida de PDF</h2>
 
-  <form method="post" enctype="multipart/form-data">
-    <input type="file" name="pdf" accept="application/pdf" required>
-    <br><br>
-    <button type="submit">Upload PDF</button>
-  </form>
+<form method="post" enctype="multipart/form-data">
+  <input type="file" name="pdf" accept="application/pdf" required>
+  <br><br>
+  <button type="submit">Subir PDF</button>
+</form>
 
 <?php if ($pdfFile): ?>
 <hr>
-<h3>📖 Flipbook Preview</h3>
+<h3>✅ PDF subido correctamente</h3>
+<p><strong>Ruta:</strong> <?= $pdfFile ?></p>
 
-<div id="flipbook"></div>
-
-<script>
-pdfjsLib.GlobalWorkerOptions.workerSrc =
-  "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
-
-const url = "<?= $pdfFile ?>";
-const flipbookEl = document.getElementById("flipbook");
-
-const pageFlip = new St.PageFlip(flipbookEl, {
-  width: 450,
-  height: 600,
-  size: "stretch",
-  showCover: true,
-  maxShadowOpacity: 0.4
-});
-
-pdfjsLib.getDocument(url).promise.then(async pdf => {
-  const pages = [];
-
-  for (let i = 1; i <= pdf.numPages; i++) {
-    const page = await pdf.getPage(i);
-    const viewport = page.getViewport({ scale: 1.5 });
-
-    const canvas = document.createElement("canvas");
-    const ctx = canvas.getContext("2d");
-    canvas.width = viewport.width;
-    canvas.height = viewport.height;
-
-    await page.render({ canvasContext: ctx, viewport }).promise;
-
-    const pageDiv = document.createElement("div");
-    pageDiv.className = "page";
-    pageDiv.appendChild(canvas);
-
-    pages.push(pageDiv);
-  }
-
-  pageFlip.loadFromHTML(pages);
-});
-</script>
+<iframe src="<?= $pdfFile ?>" width="100%" height="600"></iframe>
 <?php endif; ?>
 
 </div>
