@@ -3,35 +3,24 @@ $uploadDir = __DIR__ . "/uploads/";
 $webDir = "uploads/";
 $pdfFile = null;
 
-// Crear carpeta si no existe
-if (!is_dir($uploadDir)) {
+if (!file_exists($uploadDir)) {
   mkdir($uploadDir, 0777, true);
 }
 
-// Si viene desde URL
-if (isset($_GET["file"])) {
-  $pdfFile = $webDir . basename($_GET["file"]);
-}
-
-// Si se sube PDF
 if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["pdf"])) {
-
-  if ($_FILES["pdf"]["error"] === 0 &&
-      mime_content_type($_FILES["pdf"]["tmp_name"]) === "application/pdf") {
-
+  if ($_FILES["pdf"]["type"] === "application/pdf") {
     $name = time() . "_" . preg_replace("/[^a-zA-Z0-9._-]/", "", $_FILES["pdf"]["name"]);
     $target = $uploadDir . $name;
 
     if (move_uploaded_file($_FILES["pdf"]["tmp_name"], $target)) {
-      header("Location: flipbook.php?file=" . $name);
+      header("Location: flipbook.php?file=" . urlencode($name));
       exit;
-    } else {
-      die("❌ Error moviendo el archivo");
     }
-
-  } else {
-    die("❌ Archivo inválido");
   }
+}
+
+if (isset($_GET["file"])) {
+  $pdfFile = $webDir . basename($_GET["file"]);
 }
 ?>
 <!DOCTYPE html>
@@ -53,6 +42,7 @@ body{
   background:#f2f7ff;
   padding:40px;
 }
+
 .container{
   max-width:1100px;
   margin:auto;
@@ -61,23 +51,26 @@ body{
   border-radius:14px;
   box-shadow:0 10px 20px rgba(0,0,0,.15);
 }
+
 #flipbook{
   width:900px;
   height:600px;
-  margin:30px auto;
+  margin:40px auto;
 }
+
 .page{
   background:white;
   display:flex;
   align-items:center;
   justify-content:center;
 }
-.page canvas{
-  max-width:100%;
+
+.page img{
+  width:100%;
   height:auto;
 }
 button{
-  padding:8px 16px;
+  padding:10px 20px;
   border:none;
   border-radius:10px;
   background:#2a6edb;
@@ -89,13 +82,13 @@ button{
 
 <body>
 <div class="container">
-<h2>📘 PDF Flipbook</h2>
+  <h2>📘 PDF Flipbook</h2>
 
-<form method="post" enctype="multipart/form-data">
-  <input type="file" name="pdf" accept="application/pdf" required>
-  <br><br>
-  <button type="submit">Upload PDF</button>
-</form>
+  <form method="post" enctype="multipart/form-data">
+    <input type="file" name="pdf" accept="application/pdf" required>
+    <br><br>
+    <button type="submit">Upload PDF</button>
+  </form>
 
 <?php if ($pdfFile): ?>
 <hr>
@@ -115,7 +108,8 @@ const pageFlip = new St.PageFlip(flipbookEl, {
   height: 600,
   size: "stretch",
   showCover: true,
-  maxShadowOpacity: 0.4
+  maxShadowOpacity: 0.4,
+  mobileScrollSupport: false
 });
 
 pdfjsLib.getDocument(url).promise.then(async pdf => {
@@ -123,7 +117,7 @@ pdfjsLib.getDocument(url).promise.then(async pdf => {
 
   for (let i = 1; i <= pdf.numPages; i++) {
     const page = await pdf.getPage(i);
-    const viewport = page.getViewport({ scale: 1.5 });
+    const viewport = page.getViewport({ scale: 2 });
 
     const canvas = document.createElement("canvas");
     const ctx = canvas.getContext("2d");
@@ -133,9 +127,12 @@ pdfjsLib.getDocument(url).promise.then(async pdf => {
 
     await page.render({ canvasContext: ctx, viewport }).promise;
 
+    const img = document.createElement("img");
+    img.src = canvas.toDataURL("image/jpeg", 0.9);
+
     const pageDiv = document.createElement("div");
     pageDiv.className = "page";
-    pageDiv.appendChild(canvas);
+    pageDiv.appendChild(img);
 
     pages.push(pageDiv);
   }
