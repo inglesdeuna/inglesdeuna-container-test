@@ -1,20 +1,27 @@
 <?php
 $uploadDir = __DIR__ . "/uploads/";
 $webDir = "uploads/";
+$pdfFile = null;
 
 if (!file_exists($uploadDir)) {
   mkdir($uploadDir, 0777, true);
 }
 
-$pdfFile = null;
+/* 🔹 SI VIENE DESDE LA URL (ESTUDIANTES / PREVIEW) */
+if (isset($_GET["file"])) {
+  $pdfFile = $webDir . basename($_GET["file"]);
+}
 
+/* 🔹 SI SE SUBE UN PDF (ADMIN) */
 if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["pdf"])) {
   if ($_FILES["pdf"]["type"] === "application/pdf") {
     $name = time() . "_" . basename($_FILES["pdf"]["name"]);
     $target = $uploadDir . $name;
 
     if (move_uploaded_file($_FILES["pdf"]["tmp_name"], $target)) {
-      $pdfFile = $webDir . $name;
+      // redirige para que use el mismo flujo que estudiantes
+      header("Location: flipbook.php?file=" . $name);
+      exit;
     }
   }
 }
@@ -23,7 +30,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["pdf"])) {
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>PDF Preview</title>
+<title>PDF Viewer</title>
 
 <style>
 body{
