@@ -4,7 +4,6 @@ session_start();
 /* ---------- CONFIG ---------- */
 $data = json_decode(file_get_contents("words.json"), true);
 $words = $data["default"];
-
 $maxWrong = 7;
 
 /* ---------- INIT ---------- */
@@ -45,19 +44,20 @@ $img = "assets/hangman".$_SESSION['wrong'].".png";
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Hangman Kids</title>
+<title>Docente – Juegos y Flipbooks</title>
 
 <style>
 body{
   font-family:"Comic Sans MS", Arial;
   background:#eaf6ff;
-  text-align:center;
   margin:0;
+  padding:20px;
+  text-align:center;
 }
 
 h1{
   color:#4a90e2;
-  margin:20px 0 10px;
+  margin:10px 0;
 }
 
 .stage{
@@ -69,12 +69,10 @@ h1{
 
 #hangman{
   max-height:300px;
-  transition:transform .15s ease;
 }
 
 .hint{
   font-size:18px;
-  margin:8px 0;
 }
 
 .word{
@@ -95,44 +93,35 @@ h1{
   opacity:.4;
 }
 
-.win{
-  color:#2ecc71;
-  font-size:30px;
-  animation:pop .6s infinite alternate;
-}
+.win{ color:#2ecc71; font-size:28px; }
+.lose{ color:#e74c3c; font-size:24px; }
 
-.lose{
-  color:#e74c3c;
-  font-size:26px;
+section{
+  max-width:1000px;
+  margin:40px auto;
+  background:white;
+  padding:30px;
+  border-radius:16px;
+  box-shadow:0 8px 18px rgba(0,0,0,.15);
 }
-
-@keyframes pop{
-  from{transform:scale(1);}
-  to{transform:scale(1.12);}
-}
-
-.bounce{ transform:scale(1.05); }
-.shake{ transform:translateX(-6px); }
 </style>
 </head>
 
 <body>
 
-<h1>🎯 Hangman Kids</h1>
+<h1>🎯 Hangman – Docente</h1>
 
 <div class="stage">
-  <img id="hangman" src="<?php echo $img; ?>" alt="hangman">
+  <img id="hangman" src="<?php echo $img; ?>">
 </div>
 
 <p class="hint"><strong>Hint:</strong> <?php echo $_SESSION['hint']; ?></p>
-
 <p class="word"><?php echo $display; ?></p>
 
 <?php if ($won): ?>
-  <div class="win">🎉 CONGRATULATIONS! 🎉</div>
+  <div class="win">🎉 CONGRATULATIONS 🎉</div>
 <?php elseif ($lost): ?>
-  <div class="lose">❌ Game Over</div>
-  <p>The word was: <strong><?php echo $_SESSION['word']; ?></strong></p>
+  <div class="lose">❌ Game Over – <?php echo $_SESSION['word']; ?></div>
 <?php else: ?>
 <form method="post" class="letters">
 <?php foreach (range('A','Z') as $l): ?>
@@ -148,47 +137,26 @@ h1{
   <button name="reset">🔄 Try Again</button>
 </form>
 
-<!-- AUDIO -->
-<audio id="sndCorrect" src="assets/correct.wav" preload="auto"></audio>
-<audio id="sndWrong"   src="assets/wrong.wav"   preload="auto"></audio>
-<audio id="sndWin"     src="assets/win.mp3"     preload="auto"></audio>
-<audio id="sndLose"    src="assets/lose.mp3"    preload="auto"></audio>
+<!-- ================= FLIPBOOK DOCENTE ================= -->
 
-<script>
-/* volumes */
-sndCorrect.volume = 0.3;
-sndWrong.volume   = 0.4;
-sndWin.volume     = 0.6;
-sndLose.volume    = 0.6;
+<section>
+  <h2 style="color:#2a6edb;">📘 Flipbook – Editor Docente</h2>
+  <p>
+    Aquí puedes subir un PDF, editar el nombre de la lección y generar el flipbook
+    que verán los estudiantes.
+  </p>
 
-/* preload images (anti-flash) */
-for(let i=0;i<=7;i++){
-  const im=new Image();
-  im.src=`assets/hangman${i}.png`;
-}
-
-const img=document.getElementById("hangman");
-
-/* play feedback */
-<?php if (isset($_POST['letter'])): ?>
-<?php if (strpos($_SESSION['word'], $_POST['letter']) !== false): ?>
-  sndCorrect.currentTime=0; sndCorrect.play();
-  img.classList.add("bounce");
-<?php else: ?>
-  sndWrong.currentTime=0; sndWrong.play();
-  img.classList.add("shake");
-<?php endif; ?>
-setTimeout(()=>img.className="",200);
-<?php endif; ?>
-
-<?php if ($won): ?>
-  sndWin.currentTime=0; sndWin.play();
-<?php endif; ?>
-
-<?php if ($lost): ?>
-  sndLose.currentTime=0; sndLose.play();
-<?php endif; ?>
-</script>
+  <iframe
+    src="../flipbook.php"
+    style="
+      width:100%;
+      height:780px;
+      border:none;
+      border-radius:12px;
+      background:#f9f9f9;
+    ">
+  </iframe>
+</section>
 
 </body>
 </html>
