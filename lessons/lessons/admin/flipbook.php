@@ -7,40 +7,20 @@ if (!file_exists($uploadDir)) {
   mkdir($uploadDir, 0777, true);
 }
 
-// 🔹 Si viene desde la URL
+// 👉 Leer PDF desde URL
 if (isset($_GET["file"])) {
   $pdfFile = $webDir . basename($_GET["file"]);
 }
 
-// 🔹 Si se sube un PDF
+// 👉 Subida de PDF
 if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["pdf"])) {
   if ($_FILES["pdf"]["type"] === "application/pdf") {
     $name = time() . "_" . basename($_FILES["pdf"]["name"]);
     $target = $uploadDir . $name;
 
     if (move_uploaded_file($_FILES["pdf"]["tmp_name"], $target)) {
-      // 🔴 REDIRECCIÓN (ESTA ES LA CLAVE)
       header("Location: flipbook.php?file=" . $name);
       exit;
-    }
-  }
-}
-?>
-<?php
-$uploadDir = __DIR__ . "/uploads/";
-$webDir = "uploads/";
-$pdfFile = null;
-
-if (!file_exists($uploadDir)) {
-  mkdir($uploadDir, 0777, true);
-}
-
-if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["pdf"])) {
-  if ($_FILES["pdf"]["type"] === "application/pdf") {
-    $name = time() . "_" . basename($_FILES["pdf"]["name"]);
-    $target = $uploadDir . $name;
-    if (move_uploaded_file($_FILES["pdf"]["tmp_name"], $target)) {
-      $pdfFile = $webDir . $name;
     }
   }
 }
@@ -51,10 +31,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["pdf"])) {
 <meta charset="UTF-8">
 <title>PDF Flipbook</title>
 
-<!-- PDF.js -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-
-<!-- PageFlip -->
 <script src="https://unpkg.com/page-flip/dist/page-flip.browser.js"></script>
 <link rel="stylesheet" href="https://unpkg.com/page-flip/dist/page-flip.css">
 
@@ -64,7 +41,6 @@ body{
   background:#f2f7ff;
   padding:40px;
 }
-
 .container{
   max-width:1000px;
   margin:auto;
@@ -73,23 +49,19 @@ body{
   border-radius:14px;
   box-shadow:0 10px 20px rgba(0,0,0,.15);
 }
-
 #flipbook{
   width:900px;
   height:600px;
   margin:30px auto;
 }
-
 .page{
   background:white;
   display:flex;
-  align-items:center;
   justify-content:center;
+  align-items:center;
 }
-
 .page canvas{
   max-width:100%;
-  height:auto;
 }
 button{
   padding:8px 16px;
@@ -97,7 +69,6 @@ button{
   border-radius:10px;
   background:#2a6edb;
   color:white;
-  cursor:pointer;
 }
 </style>
 </head>
@@ -119,7 +90,6 @@ button{
 <div id="flipbook"></div>
 
 <script>
-// 🔴 MUY IMPORTANTE: worker de pdf.js
 pdfjsLib.GlobalWorkerOptions.workerSrc =
   "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
 
@@ -130,9 +100,8 @@ const pageFlip = new St.PageFlip(flipbookEl, {
   width: 450,
   height: 600,
   size: "stretch",
-  maxShadowOpacity: 0.4,
   showCover: true,
-  mobileScrollSupport: false
+  maxShadowOpacity: 0.4
 });
 
 pdfjsLib.getDocument(url).promise.then(async pdf => {
@@ -144,14 +113,10 @@ pdfjsLib.getDocument(url).promise.then(async pdf => {
 
     const canvas = document.createElement("canvas");
     const ctx = canvas.getContext("2d");
-
     canvas.width = viewport.width;
     canvas.height = viewport.height;
 
-    await page.render({
-      canvasContext: ctx,
-      viewport: viewport
-    }).promise;
+    await page.render({ canvasContext: ctx, viewport }).promise;
 
     const pageDiv = document.createElement("div");
     pageDiv.className = "page";
@@ -163,7 +128,6 @@ pdfjsLib.getDocument(url).promise.then(async pdf => {
   pageFlip.loadFromHTML(pages);
 });
 </script>
-
 <?php endif; ?>
 
 </div>
