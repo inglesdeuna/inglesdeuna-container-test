@@ -150,8 +150,16 @@ iframe{
   <h2>📘 Flipbook – Editor Docente</h2>
 
   <iframe
-    src="/lessons/lessons/admin/flipbook.php">
-  </iframe>
+  src="../admin/flipbook.php"
+  style="
+    width:100%;
+    height:820px;
+    border:none;
+    border-radius:14px;
+    background:#f9f9f9;
+  ">
+</iframe>
+
 </div>
 
 </body>
