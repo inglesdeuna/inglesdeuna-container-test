@@ -70,6 +70,14 @@ button{
   <h2>📄 Subir y ver PDF</h2>
 
   <form method="post" enctype="multipart/form-data">
+    <label><strong>Nombre de la lección</strong></label><br>
+<input
+  type="text"
+  name="lesson_title"
+  placeholder="Ej: Animals – Vocabulary"
+  style="width:100%;padding:10px;margin:8px 0"
+  required
+>
     <input type="file" name="pdf" accept="application/pdf" required>
     <br><br>
     <button type="submit">Subir PDF</button>
