@@ -79,51 +79,47 @@ button{
 <hr>
 <h3>📖 Flipbook Preview</h3>
 
-<canvas id="pdfCanvas"></canvas>
-
-<div class="controls">
-  <button onclick="prevPage()">⬅ Prev</button>
-  <span id="pageInfo"></span>
-  <button onclick="nextPage()">Next ➡</button>
-</div>
+<div id="flipbook" style="width:800px;height:600px;margin:auto;"></div>
 
 <script>
 const url = "<?= $pdfFile ?>";
 
-let pdfDoc = null,
-    pageNum = 1,
-    canvas = document.getElementById('pdfCanvas'),
-    ctx = canvas.getContext('2d');
+const flipbook = document.getElementById("flipbook");
 
-pdfjsLib.getDocument(url).promise.then(pdf => {
-  pdfDoc = pdf;
-  renderPage(pageNum);
+const pageFlip = new St.PageFlip(flipbook, {
+  width: 400,
+  height: 600,
+  size: "stretch",
+  maxShadowOpacity: 0.5,
+  showCover: true,
+  mobileScrollSupport: false
 });
 
-function renderPage(num) {
-  pdfDoc.getPage(num).then(page => {
-    const viewport = page.getViewport({ scale: 1.4 });
-    canvas.height = viewport.height;
+pdfjsLib.getDocument(url).promise.then(async pdf => {
+  const pages = [];
+
+  for (let i = 1; i <= pdf.numPages; i++) {
+    const page = await pdf.getPage(i);
+    const viewport = page.getViewport({ scale: 1.5 });
+
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
+
     canvas.width = viewport.width;
+    canvas.height = viewport.height;
 
-    page.render({ canvasContext: ctx, viewport: viewport });
-    document.getElementById("pageInfo").innerText =
-      "Page " + num + " / " + pdfDoc.numPages;
-  });
-}
+    await page.render({
+      canvasContext: ctx,
+      viewport: viewport
+    }).promise;
 
-function prevPage(){
-  if (pageNum <= 1) return;
-  pageNum--;
-  renderPage(pageNum);
-}
+    pages.push(canvas);
+  }
 
-function nextPage(){
-  if (pageNum >= pdfDoc.numPages) return;
-  pageNum++;
-  renderPage(pageNum);
-}
+  pageFlip.loadFromHTML(pages);
+});
 </script>
+
 <?php endif; ?>
 
 </div>
