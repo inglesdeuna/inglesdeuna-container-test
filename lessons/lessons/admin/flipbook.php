@@ -1,40 +1,29 @@
 <?php
 $uploadDir = __DIR__ . "/uploads/";
 $webDir = "uploads/";
-$pdfFile = null;
 
 if (!file_exists($uploadDir)) {
   mkdir($uploadDir, 0777, true);
 }
 
+$pdfFile = null;
+
 if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["pdf"])) {
   if ($_FILES["pdf"]["type"] === "application/pdf") {
-    $name = time() . "_" . preg_replace("/[^a-zA-Z0-9._-]/", "", $_FILES["pdf"]["name"]);
+    $name = time() . "_" . basename($_FILES["pdf"]["name"]);
     $target = $uploadDir . $name;
 
     if (move_uploaded_file($_FILES["pdf"]["tmp_name"], $target)) {
-      header("Location: flipbook.php?file=" . urlencode($name));
-      exit;
+      $pdfFile = $webDir . $name;
     }
   }
-}
-
-if (isset($_GET["file"])) {
-  $pdfFile = $webDir . basename($_GET["file"]);
 }
 ?>
 <!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>PDF Flipbook</title>
-
-<!-- PDF.js -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-
-<!-- PageFlip -->
-<script src="https://unpkg.com/page-flip/dist/page-flip.browser.js"></script>
-<link rel="stylesheet" href="https://unpkg.com/page-flip/dist/page-flip.css">
+<title>PDF Preview</title>
 
 <style>
 body{
@@ -44,35 +33,24 @@ body{
 }
 
 .container{
-  max-width:1100px;
+  max-width:1000px;
   margin:auto;
   background:white;
   padding:30px;
-  border-radius:14px;
-  box-shadow:0 10px 20px rgba(0,0,0,.15);
+  border-radius:12px;
 }
 
-#flipbook{
-  width:900px;
-  height:600px;
-  margin:40px auto;
-}
-
-.page{
-  background:white;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-}
-
-.page img{
+iframe{
   width:100%;
-  height:auto;
+  height:600px;
+  border:1px solid #ccc;
+  border-radius:8px;
 }
+
 button{
-  padding:10px 20px;
+  padding:8px 16px;
   border:none;
-  border-radius:10px;
+  border-radius:8px;
   background:#2a6edb;
   color:white;
   cursor:pointer;
@@ -82,64 +60,20 @@ button{
 
 <body>
 <div class="container">
-  <h2>📘 PDF Flipbook</h2>
+  <h2>📄 Subir y ver PDF</h2>
 
   <form method="post" enctype="multipart/form-data">
     <input type="file" name="pdf" accept="application/pdf" required>
     <br><br>
-    <button type="submit">Upload PDF</button>
+    <button type="submit">Subir PDF</button>
   </form>
 
 <?php if ($pdfFile): ?>
 <hr>
-<h3>📖 Flipbook Preview</h3>
+<h3>Vista previa</h3>
 
-<div id="flipbook"></div>
+<iframe src="<?= htmlspecialchars($pdfFile) ?>"></iframe>
 
-<script>
-pdfjsLib.GlobalWorkerOptions.workerSrc =
-  "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
-
-const url = "<?= $pdfFile ?>";
-const flipbookEl = document.getElementById("flipbook");
-
-const pageFlip = new St.PageFlip(flipbookEl, {
-  width: 450,
-  height: 600,
-  size: "stretch",
-  showCover: true,
-  maxShadowOpacity: 0.4,
-  mobileScrollSupport: false
-});
-
-pdfjsLib.getDocument(url).promise.then(async pdf => {
-  const pages = [];
-
-  for (let i = 1; i <= pdf.numPages; i++) {
-    const page = await pdf.getPage(i);
-    const viewport = page.getViewport({ scale: 2 });
-
-    const canvas = document.createElement("canvas");
-    const ctx = canvas.getContext("2d");
-
-    canvas.width = viewport.width;
-    canvas.height = viewport.height;
-
-    await page.render({ canvasContext: ctx, viewport }).promise;
-
-    const img = document.createElement("img");
-    img.src = canvas.toDataURL("image/jpeg", 0.9);
-
-    const pageDiv = document.createElement("div");
-    pageDiv.className = "page";
-    pageDiv.appendChild(img);
-
-    pages.push(pageDiv);
-  }
-
-  pageFlip.loadFromHTML(pages);
-});
-</script>
 <?php endif; ?>
 
 </div>
