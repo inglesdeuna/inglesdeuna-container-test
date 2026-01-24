@@ -24,6 +24,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["pdf"])) {
 <title>PDF Flipbook</title>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://unpkg.com/page-flip/dist/page-flip.browser.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/page-flip/dist/page-flip.css">
 
 <style>
 body{
