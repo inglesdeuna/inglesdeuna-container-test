@@ -1,12 +1,13 @@
 <?php
 session_start();
 
-/* ---------- CONFIG ---------- */
+/* ==============================
+   HANGMAN CONFIG
+================================ */
 $data = json_decode(file_get_contents("words.json"), true);
 $words = $data["default"];
 $maxWrong = 7;
 
-/* ---------- INIT ---------- */
 if (!isset($_SESSION['word']) || isset($_POST['reset'])) {
   $pick = $words[array_rand($words)];
   $_SESSION['word'] = $pick['word'];
@@ -15,7 +16,6 @@ if (!isset($_SESSION['word']) || isset($_POST['reset'])) {
   $_SESSION['wrong'] = 0;
 }
 
-/* ---------- INPUT ---------- */
 if (isset($_POST['letter'])) {
   $l = $_POST['letter'];
   if (!in_array($l, $_SESSION['guessed'])) {
@@ -26,7 +26,6 @@ if (isset($_POST['letter'])) {
   }
 }
 
-/* ---------- STATE ---------- */
 $display = "";
 $won = true;
 foreach (str_split($_SESSION['word']) as $c) {
@@ -40,26 +39,33 @@ foreach (str_split($_SESSION['word']) as $c) {
 $lost = $_SESSION['wrong'] >= $maxWrong;
 $img = "assets/hangman".$_SESSION['wrong'].".png";
 ?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Docente – Juegos y Flipbooks</title>
+<title>LET'S – Contenedor de Juegos</title>
 
 <style>
 body{
-  font-family:"Comic Sans MS", Arial;
-  background:#eaf6ff;
+  font-family:Arial, sans-serif;
+  background:#f2f7ff;
   margin:0;
-  padding:20px;
-  text-align:center;
+  padding:30px;
 }
 
-h1{
-  color:#4a90e2;
-  margin:10px 0;
+h1{ color:#2a6edb; }
+h2{ margin-top:40px; }
+
+.section{
+  background:white;
+  border-radius:16px;
+  padding:25px;
+  margin-bottom:40px;
+  box-shadow:0 10px 20px rgba(0,0,0,.15);
 }
 
+/* ---------- HANGMAN ---------- */
 .stage{
   height:320px;
   display:flex;
@@ -69,6 +75,7 @@ h1{
 
 #hangman{
   max-height:300px;
+  transition:transform .15s ease;
 }
 
 .hint{
@@ -78,50 +85,48 @@ h1{
 .word{
   font-size:36px;
   letter-spacing:10px;
-  margin:18px 0;
 }
 
 .letters button{
   padding:8px 12px;
   margin:3px;
   border-radius:10px;
-  border:1px solid #aaa;
-  cursor:pointer;
-}
-
-.letters button:disabled{
-  opacity:.4;
 }
 
 .win{ color:#2ecc71; font-size:28px; }
-.lose{ color:#e74c3c; font-size:24px; }
+.lose{ color:#e74c3c; font-size:26px; }
 
-section{
-  max-width:1000px;
-  margin:40px auto;
-  background:white;
-  padding:30px;
-  border-radius:16px;
-  box-shadow:0 8px 18px rgba(0,0,0,.15);
+iframe{
+  width:100%;
+  height:820px;
+  border:none;
+  border-radius:14px;
+  background:#f9f9f9;
 }
 </style>
 </head>
 
 <body>
 
-<h1>🎯 Hangman – Docente</h1>
+<h1>🎮 Contenedor General de Juegos – LET’S</h1>
 
-<div class="stage">
-  <img id="hangman" src="<?php echo $img; ?>">
-</div>
+<!-- =======================
+     HANGMAN – EDITOR
+======================= -->
+<div class="section">
+  <h2>🎯 Hangman – Editor / Preview</h2>
 
-<p class="hint"><strong>Hint:</strong> <?php echo $_SESSION['hint']; ?></p>
-<p class="word"><?php echo $display; ?></p>
+  <div class="stage">
+    <img id="hangman" src="<?php echo $img; ?>">
+  </div>
+
+  <p class="hint"><strong>Hint:</strong> <?php echo $_SESSION['hint']; ?></p>
+  <p class="word"><?php echo $display; ?></p>
 
 <?php if ($won): ?>
-  <div class="win">🎉 CONGRATULATIONS 🎉</div>
+  <div class="win">🎉 CONGRATULATIONS!</div>
 <?php elseif ($lost): ?>
-  <div class="lose">❌ Game Over – <?php echo $_SESSION['word']; ?></div>
+  <div class="lose">❌ Game Over</div>
 <?php else: ?>
 <form method="post" class="letters">
 <?php foreach (range('A','Z') as $l): ?>
@@ -136,27 +141,18 @@ section{
 <form method="post">
   <button name="reset">🔄 Try Again</button>
 </form>
+</div>
 
-<!-- ================= FLIPBOOK DOCENTE ================= -->
-
-<section>
-  <h2 style="color:#2a6edb;">📘 Flipbook – Editor Docente</h2>
-  <p>
-    Aquí puedes subir un PDF, editar el nombre de la lección y generar el flipbook
-    que verán los estudiantes.
-  </p>
+<!-- =======================
+     FLIPBOOK – EDITOR
+======================= -->
+<div class="section">
+  <h2>📘 Flipbook – Editor Docente</h2>
 
   <iframe
-    src="../flipbook.php"
-    style="
-      width:100%;
-      height:780px;
-      border:none;
-      border-radius:12px;
-      background:#f9f9f9;
-    ">
+    src="/lessons/lessons/admin/flipbook.php">
   </iframe>
-</section>
+</div>
 
 </body>
 </html>
