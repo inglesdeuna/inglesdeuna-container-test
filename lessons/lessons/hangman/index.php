@@ -63,7 +63,15 @@ h1{
     <h2>📘 Flipbooks</h2>
     <p>Subir PDFs, nombrar lecciones y previsualizar.</p>
     <a href="../admin/flipbook.php">✏️ Editar Flipbooks</a>
+    
   </div>
+<div class="card">
+  <h2>🌐 Actividad Externa</h2>
+  <p>Juego o actividad creada en otra plataforma.</p>
+  <a href="https://wordwall.net" target="_blank">
+    🚀 Abrir actividad
+  </a>
+</div>
 
 </div>
 
