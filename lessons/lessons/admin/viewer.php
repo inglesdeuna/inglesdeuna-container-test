@@ -1,69 +1,116 @@
 <?php
-if (!isset($_GET["file"])) {
-    die("PDF no especificado");
+$flipbooksFile = __DIR__ . "/flipbooks.json";
+$file = $_GET["file"] ?? null;
+$title = "Lección";
+
+if ($file && file_exists($flipbooksFile)) {
+  $data = json_decode(file_get_contents($flipbooksFile), true);
+  foreach ($data as $item) {
+    if ($item["file"] === basename($file)) {
+      $title = $item["title"];
+      break;
+    }
+  }
 }
 
-$file = basename($_GET["file"]);
-$pdfPath = "uploads/" . $file;
-
-if (!file_exists(__DIR__ . "/uploads/" . $file)) {
-    die("Archivo no encontrado");
-}
+$pdfPath = "uploads/" . basename($file);
 ?>
 <!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Ver PDF</title>
+<title><?php echo htmlspecialchars($title); ?></title>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 
 <style>
-body {
+body{
   font-family: Arial, sans-serif;
   background:#f2f7ff;
-  padding:30px;
+  padding:40px;
 }
-#viewer {
-  width:100%;
-  max-width:900px;
+.container{
+  max-width:1000px;
   margin:auto;
+  background:white;
+  padding:30px;
+  border-radius:14px;
 }
-canvas {
-  width:100%;
-  margin-bottom:20px;
-  box-shadow:0 4px 10px rgba(0,0,0,.2);
+h1{
+  text-align:center;
+  color:#2a6edb;
+}
+canvas{
+  display:block;
+  margin:20px auto;
+  box-shadow:0 6px 14px rgba(0,0,0,.2);
+}
+.controls{
+  text-align:center;
+}
+button{
+  padding:8px 16px;
+  margin:0 10px;
+  border:none;
+  border-radius:10px;
+  background:#2a6edb;
+  color:white;
+  cursor:pointer;
 }
 </style>
 </head>
+
 <body>
+<div class="container">
+  <h1><?php echo htmlspecialchars($title); ?></h1>
 
-<h2>📄 Vista del PDF</h2>
+  <canvas id="pdfCanvas"></canvas>
 
-<div id="viewer"></div>
+  <div class="controls">
+    <button onclick="prevPage()">⬅ Anterior</button>
+    <span id="pageInfo"></span>
+    <button onclick="nextPage()">Siguiente ➡</button>
+  </div>
+</div>
 
 <script>
 pdfjsLib.GlobalWorkerOptions.workerSrc =
   "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
 
-const url = "<?= $pdfPath ?>";
-const container = document.getElementById("viewer");
+const url = "<?php echo $pdfPath; ?>";
 
-pdfjsLib.getDocument(url).promise.then(async pdf => {
-  for (let i = 1; i <= pdf.numPages; i++) {
-    const page = await pdf.getPage(i);
-    const viewport = page.getViewport({ scale: 1.3 });
+let pdfDoc = null,
+    pageNum = 1,
+    canvas = document.getElementById('pdfCanvas'),
+    ctx = canvas.getContext('2d');
 
-    const canvas = document.createElement("canvas");
-    const ctx = canvas.getContext("2d");
-
-    canvas.width = viewport.width;
-    canvas.height = viewport.height;
-
-    await page.render({ canvasContext: ctx, viewport }).promise;
-    container.appendChild(canvas);
-  }
+pdfjsLib.getDocument(url).promise.then(pdf => {
+  pdfDoc = pdf;
+  renderPage(pageNum);
 });
+
+function renderPage(num) {
+  pdfDoc.getPage(num).then(page => {
+    const viewport = page.getViewport({ scale: 1.4 });
+    canvas.height = viewport.height;
+    canvas.width = viewport.width;
+    page.render({ canvasContext: ctx, viewport });
+    document.getElementById("pageInfo").innerText =
+      "Página " + num + " / " + pdfDoc.numPages;
+  });
+}
+
+function prevPage(){
+  if (pageNum <= 1) return;
+  pageNum--;
+  renderPage(pageNum);
+}
+
+function nextPage(){
+  if (pageNum >= pdfDoc.numPages) return;
+  pageNum++;
+  renderPage(pageNum);
+}
 </script>
 
 </body>
