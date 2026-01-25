@@ -6,6 +6,10 @@ if (!file_exists($file)) {
 }
 
 $data = json_decode(file_get_contents($file), true);
+
+if (!$data || empty($data["url"])) {
+  die("Actividad no configurada");
+}
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -15,23 +19,28 @@ $data = json_decode(file_get_contents($file), true);
 <style>
 body{
   margin:0;
-  font-family:Arial;
+  font-family:Arial, sans-serif;
   background:#eef3ff;
 }
-h1{
+.header{
   text-align:center;
   padding:15px;
+  background:#2563eb;
+  color:white;
+  font-size:22px;
 }
 iframe{
   width:100%;
-  height:calc(100vh - 70px);
+  height:calc(100vh - 60px);
   border:none;
 }
 </style>
 </head>
 <body>
 
-<h1><?= htmlspecialchars($data["title"]) ?></h1>
+<div class="header">
+  <?= htmlspecialchars($data["title"]) ?>
+</div>
 
 <iframe src="<?= htmlspecialchars($data["url"]) ?>"></iframe>
 
