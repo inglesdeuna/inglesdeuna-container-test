@@ -66,10 +66,11 @@ h1{
     
   </div>
 <div class="card">
-  <h2>🌐 Actividad Externa</h2>
-  <p>Juego o actividad creada en otra plataforma.</p>
-  <a href="https://wordwall.net" target="_blank">
-    🚀 Abrir actividad
+  <h2>🌐 Actividades Externas</h2>
+  <p>Wordwall, Liveworksheets, Genially, etc.</p>
+  <a href="../admin/external_links.php">✏️ Editar actividades</a>
+</div>
+
   </a>
 </div>
 
