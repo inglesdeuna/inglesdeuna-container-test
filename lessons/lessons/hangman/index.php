@@ -148,6 +148,28 @@ iframe{
 ======================= -->
 <div class="section">
   <h2>📘 Flipbook – Editor Docente</h2>
+<?php
+$flipbooksFile = __DIR__ . "/../admin/flipbooks.json";
+if (file_exists($flipbooksFile)):
+  $flipbooks = json_decode(file_get_contents($flipbooksFile), true);
+?>
+<div style="margin:20px 0; text-align:left;">
+  <h3>📚 Flipbooks creados</h3>
+
+  <?php foreach ($flipbooks as $fb): ?>
+    <div style="padding:10px; border-bottom:1px solid #ddd;">
+      <strong><?php echo htmlspecialchars($fb["title"]); ?></strong><br>
+      <a
+        href="/lessons/lessons/admin/viewer.php?file=<?php echo urlencode($fb["file"]); ?>"
+        target="_blank"
+        style="color:#2a6edb;"
+      >
+        👉 Abrir visor del estudiante
+      </a>
+    </div>
+  <?php endforeach; ?>
+</div>
+<?php endif; ?>
 
   <iframe
   src="../admin/flipbook.php"
