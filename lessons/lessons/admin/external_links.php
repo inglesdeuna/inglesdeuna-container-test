@@ -1,56 +1,56 @@
 <?php
 $file = __DIR__ . "/external_links.json";
-$links = file_exists($file) ? json_decode(file_get_contents($file), true) : [];
+
+$data = [
+  "title" => "",
+  "url" => ""
+];
+
+if (file_exists($file)) {
+  $data = json_decode(file_get_contents($file), true);
+}
 
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
-  $links[] = [
-    "title" => $_POST["title"],
-    "url"   => $_POST["url"]
-  ];
-  file_put_contents($file, json_encode($links, JSON_PRETTY_PRINT));
+  $data["title"] = trim($_POST["title"]);
+  $data["url"]   = trim($_POST["url"]);
+
+  file_put_contents(
+    $file,
+    json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)
+  );
+
   header("Location: external_links.php");
   exit;
 }
 ?>
+
 <!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Actividades Externas</title>
+<title>Actividad Externa (Docente)</title>
 <style>
-body{font-family:Arial;background:#f2f7ff;padding:30px}
-.container{background:#fff;padding:25px;border-radius:14px;max-width:900px;margin:auto}
-input{width:100%;padding:10px;margin:8px 0}
-button{padding:10px 16px;background:#2a6edb;color:#fff;border:none;border-radius:8px}
-.card{margin:10px 0;padding:12px;background:#eef3ff;border-radius:10px}
+body{font-family:Arial;background:#f4f7fb;padding:40px}
+.card{background:#fff;max-width:600px;margin:auto;padding:30px;border-radius:12px}
+input,button{width:100%;padding:12px;margin-top:10px}
+button{background:#2563eb;color:#fff;border:none;border-radius:8px}
 </style>
 </head>
 <body>
 
-<div class="container">
-<h2>🌐 Actividades Externas (Docente)</h2>
+<div class="card">
+<h2>Actividad Externa (Docente)</h2>
 
 <form method="post">
-  <label>Nombre de la actividad</label>
-  <input type="text" name="title" required>
+<label>Título</label>
+<input type="text" name="title" value="<?= htmlspecialchars($data["title"]) ?>">
 
-  <label>URL (Wordwall, Liveworksheets, etc.)</label>
-  <input type="url" name="url" required>
+<label>URL (embed)</label>
+<input type="text" name="url" value="<?= htmlspecialchars($data["url"]) ?>">
 
-  <button>Guardar actividad</button>
+<button type="submit">Guardar actividad</button>
 </form>
-
-<hr>
-
-<h3>📋 Actividades guardadas</h3>
-
-<?php foreach ($links as $l): ?>
-  <div class="card">
-    <strong><?= htmlspecialchars($l["title"]) ?></strong><br>
-    <?= htmlspecialchars($l["url"]) ?>
-  </div>
-<?php endforeach; ?>
-
 </div>
+
 </body>
 </html>
