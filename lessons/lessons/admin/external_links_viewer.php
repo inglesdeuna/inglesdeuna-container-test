@@ -1,11 +1,13 @@
 <?php
-// === CARGAR DATOS GUARDADOS ===
 $file = __DIR__ . "/external_links.json";
-$data = file_exists($file)
-    ? json_decode(file_get_contents($file), true)
-    : [];
 
-// Tomamos SOLO titulo y url
+if (!file_exists($file)) {
+    $data = null;
+} else {
+    $json = file_get_contents($file);
+    $data = json_decode($json, true);
+}
+
 $title = $data['title'] ?? '';
 $url   = $data['url'] ?? '';
 ?>
@@ -13,38 +15,37 @@ $url   = $data['url'] ?? '';
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Actividad Externa</title>
+<title><?php echo htmlspecialchars($title ?: 'Actividad Externa'); ?></title>
 
 <style>
-body{
-  font-family: Arial, sans-serif;
-  background:#f2f7ff;
-  margin:0;
-  padding:40px;
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background: #f4f7fb;
 }
-.container{
-  max-width:900px;
-  margin:auto;
-  background:#fff;
-  padding:30px;
-  border-radius:12px;
-  box-shadow:0 10px 30px rgba(0,0,0,.08);
+.container {
+    max-width: 1100px;
+    margin: 40px auto;
+    background: white;
+    padding: 20px;
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0,0,0,.1);
 }
-h1{
-  color:#2563eb;
-  margin-bottom:20px;
+h1 {
+    color: #2563eb;
+    margin-bottom: 20px;
 }
-iframe{
-  width:100%;
-  height:500px;
-  border:none;
-  border-radius:10px;
-  background:#e5e5e5;
+iframe {
+    width: 100%;
+    height: 600px;
+    border: none;
+    border-radius: 10px;
+    background: #eee;
 }
-.empty{
-  color:#999;
-  text-align:center;
-  padding:80px 0;
+.empty {
+    text-align: center;
+    color: #999;
+    padding: 100px 0;
 }
 </style>
 </head>
@@ -52,19 +53,14 @@ iframe{
 <body>
 <div class="container">
 
-  <h1><?php echo htmlspecialchars($title); ?></h1>
-
-  <?php if (!empty($url)): ?>
-    <iframe
-      src="<?php echo htmlspecialchars($url); ?>"
-      allowfullscreen
-      loading="lazy">
-    </iframe>
-  <?php else: ?>
+<?php if (!$url): ?>
     <div class="empty">
-      Actividad no configurada
+        Actividad no configurada
     </div>
-  <?php endif; ?>
+<?php else: ?>
+    <h1><?php echo htmlspecialchars($title); ?></h1>
+    <iframe src="<?php echo htmlspecialchars($url); ?>"></iframe>
+<?php endif; ?>
 
 </div>
 </body>
