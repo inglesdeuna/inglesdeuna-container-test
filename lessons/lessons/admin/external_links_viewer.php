@@ -53,6 +53,14 @@ iframe{
   <h1><?php echo htmlspecialchars($title); ?></h1>
 
   <?php if ($url): ?>
+  <?php
+$file = __DIR__ . "/external_links.json";
+$data = file_exists($file) ? json_decode(file_get_contents($file), true) : [];
+
+$title = $data['title'] ?? '';
+$url   = $data['url'] ?? '';
+?>
+
     <iframe src="<?php echo htmlspecialchars($url); ?>"></iframe>
   <?php else: ?>
     <p>URL no configurada.</p>
