@@ -12,7 +12,23 @@ if (file_exists($file)) {
 
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
   $data["title"] = trim($_POST["title"]);
-  $data["url"]   = trim($_POST["url"]);
+ $url = trim($_POST["url"]);
+
+/* --- AUTO CONVERTIR YOUTUBE A EMBED --- */
+if (strpos($url, 'youtube.com/watch') !== false) {
+    parse_str(parse_url($url, PHP_URL_QUERY), $params);
+    if (!empty($params['v'])) {
+        $url = 'https://www.youtube.com/embed/' . $params['v'];
+    }
+}
+
+if (strpos($url, 'youtu.be/') !== false) {
+    $videoId = trim(parse_url($url, PHP_URL_PATH), '/');
+    $url = 'https://www.youtube.com/embed/' . $videoId;
+}
+
+$data["url"] = $url;
+
 
   file_put_contents(
     $file,
