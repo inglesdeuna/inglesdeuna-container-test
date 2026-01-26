@@ -7,12 +7,24 @@ $data = [
 ];
 
 if (file_exists($file)) {
-  $data = json_decode(file_get_contents($file), true);
+ $data = [
+  "title" => "",
+  "url"   => ""
+];
+
+if (file_exists($file)) {
+  $json = json_decode(file_get_contents($file), true);
+  if (is_array($json)) {
+    $data = array_merge($data, $json);
+  }
+}
+
 }
 
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
-  $data["title"] = trim($_POST["title"]);
- $url = trim($_POST["url"]);
+  $data["title"] = trim($_POST["title"] ?? "");
+  $data["url"]   = trim($_POST["url"] ?? "");
+
 
 /* --- AUTO CONVERTIR YOUTUBE A EMBED --- */
 if (strpos($url, 'youtube.com/watch') !== false) {
