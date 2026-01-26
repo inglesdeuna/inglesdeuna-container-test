@@ -1,90 +1,62 @@
 <?php
 $file = __DIR__ . "/external_links.json";
 
-/* ---------- GUARDAR ---------- */
-if ($_SERVER["REQUEST_METHOD"] === "POST") {
-
-  $title = trim($_POST["title"] ?? "");
-  $url   = trim($_POST["url"] ?? "");
-
-  if ($title !== "" && $url !== "") {
-    $data = [
-      "title" => $title,
-      "url"   => $url
-    ];
-    file_put_contents($file, json_encode($data, JSON_PRETTY_PRINT));
-  }
-
-  header("Location: external_links.php?saved=1");
-  exit;
+if (!file_exists($file)) {
+  die("Actividad no configurada");
 }
 
-/* ---------- LEER ---------- */
-$data = file_exists($file)
-  ? json_decode(file_get_contents($file), true)
-  : ["title"=>"", "url"=>""];
+$links = json_decode(file_get_contents($file), true);
+
+if (!$links || !is_array($links) || count($links) === 0) {
+  die("Actividad no configurada");
+}
+
+/* Por ahora mostramos la ÚLTIMA actividad guardada */
+$activity = $links[count($links) - 1];
+
+$title = $activity['title'] ?? 'Actividad';
+$url   = $activity['url']   ?? '';
 ?>
 <!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Actividad Externa</title>
+<title><?php echo htmlspecialchars($title); ?></title>
 <style>
 body{
-  font-family:Arial;
-  background:#f4f7ff;
-  padding:30px;
+  font-family: Arial, sans-serif;
+  background:#f2f7ff;
+  padding:40px;
 }
 .container{
-  max-width:600px;
+  max-width:900px;
   margin:auto;
-  background:white;
+  background:#fff;
   padding:25px;
-  border-radius:10px;
+  border-radius:12px;
+  box-shadow:0 8px 25px rgba(0,0,0,.08);
 }
-label{font-weight:bold}
-input{
+h1{
+  color:#2563eb;
+}
+iframe{
   width:100%;
-  padding:10px;
-  margin:8px 0 15px;
-}
-button{
-  background:#2563eb;
-  color:white;
+  height:500px;
   border:none;
-  padding:12px 20px;
-  border-radius:8px;
-  cursor:pointer;
-}
-.success{
-  background:#d1fae5;
-  padding:10px;
-  border-radius:6px;
-  margin-bottom:15px;
+  border-radius:10px;
 }
 </style>
 </head>
+
 <body>
-
 <div class="container">
-  <h2>🌐 Actividad Externa</h2>
+  <h1><?php echo htmlspecialchars($title); ?></h1>
 
-  <?php if (isset($_GET["saved"])): ?>
-    <div class="success">✅ Actividad guardada correctamente</div>
+  <?php if ($url): ?>
+    <iframe src="<?php echo htmlspecialchars($url); ?>"></iframe>
+  <?php else: ?>
+    <p>URL no configurada.</p>
   <?php endif; ?>
-
-  <form method="post">
-    <label>Título</label>
-    <input type="text" name="title" required
-      value="<?= htmlspecialchars($data["title"]) ?>">
-
-    <label>URL</label>
-    <input type="url" name="url" required
-      value="<?= htmlspecialchars($data["url"]) ?>">
-
-    <button type="submit">💾 Guardar</button>
-  </form>
 </div>
-
 </body>
 </html>
