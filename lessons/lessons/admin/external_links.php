@@ -1,25 +1,45 @@
 <?php
 $file = __DIR__ . "/external_links.json";
-$activities = file_exists($file) ? json_decode(file_get_contents($file), true) : [];
+$data = file_exists($file) ? json_decode(file_get_contents($file), true) : [];
 
-if (!is_array($activities)) {
-  $activities = [];
+/* ======================
+   EDIT MODE
+====================== */
+$editIndex = isset($_GET["edit"]) ? (int)$_GET["edit"] : null;
+$editing = $editIndex !== null && isset($data[$editIndex]);
+
+/* ======================
+   DELETE
+====================== */
+if (isset($_GET["delete"])) {
+    $i = (int)$_GET["delete"];
+    if (isset($data[$i])) {
+        array_splice($data, $i, 1);
+        file_put_contents($file, json_encode($data, JSON_PRETTY_PRINT));
+    }
+    header("Location: external_links.php");
+    exit;
 }
 
+/* ======================
+   SAVE
+====================== */
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
-  $title = trim($_POST["title"] ?? "");
-  $url   = trim($_POST["url"] ?? "");
-
-  if ($title && $url) {
-    $activities[] = [
-      "title" => $title,
-      "url"   => $url
+    $item = [
+        "title" => trim($_POST["title"]),
+        "url"   => trim($_POST["url"]),
+        "type"  => $_POST["type"]
     ];
-    file_put_contents($file, json_encode($activities, JSON_PRETTY_PRINT));
-  }
 
-  header("Location: external_links.php");
-  exit;
+    if (isset($_POST["edit"])) {
+        $data[(int)$_POST["edit"]] = $item;
+    } else {
+        $data[] = $item;
+    }
+
+    file_put_contents($file, json_encode($data, JSON_PRETTY_PRINT));
+    header("Location: external_links.php");
+    exit;
 }
 ?>
 
@@ -27,42 +47,62 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Actividades Externas (Docente)</title>
+<title>Actividad Externa (Docente)</title>
 <style>
-body{font-family:Arial;background:#f4f6fb;padding:30px}
-.container{max-width:700px;margin:auto;background:#fff;padding:25px;border-radius:12px}
-input,button{width:100%;padding:10px;margin-top:10px}
+body{font-family:Arial;background:#f5f7fb}
+.card{background:#fff;padding:20px;border-radius:10px;max-width:600px;margin:40px auto}
+input,select,button{width:100%;padding:10px;margin-top:10px}
 button{background:#2563eb;color:#fff;border:none;border-radius:6px}
-.item{background:#eef2ff;padding:10px;margin-top:10px;border-radius:6px}
+.list{max-width:800px;margin:20px auto}
+.item{background:#fff;padding:15px;border-radius:10px;margin-bottom:10px}
+.actions a{margin-right:10px}
 </style>
 </head>
 
 <body>
-<div class="container">
-<h2>Actividad Externa (Docente)</h2>
 
-<form method="POST">
-  <label>Título</label>
-  <input name="title" required>
+<div class="card">
+<h2><?= $editing ? "✏️ Editar actividad" : "➕ Nueva actividad" ?></h2>
 
-  <label>URL (embed)</label>
-  <input name="url" required>
+<form method="post">
+<input type="text" name="title" placeholder="Título"
+       value="<?= $editing ? htmlspecialchars($data[$editIndex]["title"]) : "" ?>" required>
 
-  <button>Guardar actividad</button>
+<input type="url" name="url" placeholder="URL o Embed"
+       value="<?= $editing ? htmlspecialchars($data[$editIndex]["url"]) : "" ?>" required>
+
+<select name="type">
+  <option value="link" <?= $editing && $data[$editIndex]["type"]==="link"?"selected":"" ?>>
+    🔗 Enlace externo
+  </option>
+  <option value="embed" <?= $editing && $data[$editIndex]["type"]==="embed"?"selected":"" ?>>
+    ▶️ Integrado (iframe)
+  </option>
+</select>
+
+<?php if ($editing): ?>
+<input type="hidden" name="edit" value="<?= $editIndex ?>">
+<?php endif; ?>
+
+<button>Guardar actividad</button>
 </form>
-
-<hr>
-
-<h3>Actividades guardadas</h3>
-
-<?php foreach ($activities as $a): ?>
-  <div class="item">
-    <strong><?= htmlspecialchars($a["title"]) ?></strong><br>
-    <?= htmlspecialchars($a["url"]) ?>
-  </div>
-<?php endforeach; ?>
-
 </div>
+
+<div class="list">
+<h3>📚 Actividades guardadas</h3>
+
+<?php foreach ($data as $i => $a): ?>
+<div class="item">
+<strong><?= htmlspecialchars($a["title"]) ?></strong><br>
+<small><?= htmlspecialchars($a["url"]) ?></small>
+
+<div class="actions">
+<a href="external_links.php?edit=<?= $i ?>">✏️ Editar</a>
+<a href="external_links.php?delete=<?= $i ?>" onclick="return confirm('¿Eliminar actividad?')">🗑 Eliminar</a>
+</div>
+</div>
+<?php endforeach; ?>
+</div>
+
 </body>
 </html>
-
