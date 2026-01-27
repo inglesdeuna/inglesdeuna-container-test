@@ -1,84 +1,34 @@
 <?php
 $file = __DIR__ . "/external_links.json";
-
-$data = [
-  "title" => "",
-  "url"   => ""
-];
-
-if (file_exists($file)) {
-  $json = json_decode(file_get_contents($file), true);
-  if (is_array($json)) {
-    $data = array_merge($data, $json);
-  }
-}
-
-$title = trim($data["title"]);
-$url   = trim($data["url"]);
+$activities = file_exists($file) ? json_decode(file_get_contents($file), true) : [];
 ?>
+
 <!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title><?php echo htmlspecialchars($title ?: "Actividad externa"); ?></title>
-
+<title>Actividad Externa</title>
 <style>
-body{
-  margin:0;
-  background:#f2f7ff;
-  font-family:Arial, sans-serif;
-}
-.container{
-  max-width:1000px;
-  margin:40px auto;
-  background:#fff;
-  padding:30px;
-  border-radius:16px;
-  box-shadow:0 10px 30px rgba(0,0,0,.1);
-}
-h1{
-  margin:0 0 20px;
-  color:#1e40af;
-}
-.frame-wrap{
-  position:relative;
-  padding-top:56.25%;
-  background:#ddd;
-  border-radius:12px;
-  overflow:hidden;
-}
-iframe{
-  position:absolute;
-  inset:0;
-  width:100%;
-  height:100%;
-  border:0;
-}
-.empty{
-  text-align:center;
-  color:#888;
-  padding:60px 0;
-}
+body{font-family:Arial;background:#f4f6fb;padding:30px}
+.container{max-width:900px;margin:auto}
+.card{background:#fff;padding:20px;margin-bottom:30px;border-radius:12px}
+iframe{width:100%;height:420px;border:none;border-radius:10px}
 </style>
 </head>
 
 <body>
 <div class="container">
 
-<h1><?php echo htmlspecialchars($title ?: "Actividad externa"); ?></h1>
-
-<?php if ($url): ?>
-  <div class="frame-wrap">
-    <iframe
-      src="<?php echo htmlspecialchars($url); ?>"
-      allow="autoplay; fullscreen; picture-in-picture"
-      allowfullscreen
-      loading="lazy">
-    </iframe>
-  </div>
-<?php else: ?>
-  <div class="empty">Actividad no configurada</div>
+<?php if (!$activities): ?>
+  <p>Actividad no configurada</p>
 <?php endif; ?>
+
+<?php foreach ($activities as $a): ?>
+  <div class="card">
+    <h2><?= htmlspecialchars($a["title"]) ?></h2>
+    <iframe src="<?= htmlspecialchars($a["url"]) ?>"></iframe>
+  </div>
+<?php endforeach; ?>
 
 </div>
 </body>
