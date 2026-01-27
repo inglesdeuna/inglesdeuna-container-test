@@ -92,7 +92,7 @@ button{background:#2563eb;color:#fff;border:none;border-radius:6px}
 <h3>📚 Actividades guardadas</h3>
 
 <?php foreach ($data as $i => $a): ?>
-<div class="item">
+<div class="item" draggable="true" data-index="<?= $i ?>">
 <strong><?= htmlspecialchars($a["title"]) ?></strong><br>
 <small><?= htmlspecialchars($a["url"]) ?></small>
 
