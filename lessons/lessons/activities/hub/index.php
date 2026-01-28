@@ -1,4 +1,6 @@
 <?php
+echo "<!-- HUB VERSION 4 ACTIVITIES -->";
+
 $activities = [
   [
     "title" => "Multiple Choice",
