@@ -70,6 +70,14 @@ h1{
   <p>Wordwall, Liveworksheets, Genially, etc.</p>
   <a href="../admin/external_links.php">✏️ Editar actividades</a>
 </div>
+  <div class="card">
+  <h3>📝 Multiple Choice</h3>
+  <p>Crear y editar preguntas de selección múltiple con texto, imágenes y audio.</p>
+  <a href="../activities/multiple_choice/viewer.php" class="btn">
+    ✏️ Editar Multiple Choice
+  </a>
+</div>
+
 
   </a>
 </div>
