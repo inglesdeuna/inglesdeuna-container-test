@@ -43,6 +43,17 @@ h1{
   text-decoration:none;
   border-radius:10px;
   font-weight:bold;
+
+  .card {
+  width: 100%;
+  max-width: 360px;
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 24px;
+
 }
 </style>
 </head>
