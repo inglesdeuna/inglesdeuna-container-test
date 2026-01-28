@@ -103,17 +103,18 @@ h1{
   </div>
 
   <div class="card">
-    <div class="card-header">
-      <span class="icon">📝</span>
-      <h2>Multiple Choice</h2>
-    </div>
-    <p>Crear y editar preguntas de selección múltiple con texto, imágenes y audio.</p>
-    <a href="../activities/multiple_choice/viewer.php">
-      ✏️ Editar Multiple Choice
-    </a>
+  <div class="card-header">
+    <span class="icon">📝</span>
+    <h3>Multiple Choice</h3>
   </div>
 
+  <p>Crear y editar preguntas de selección múltiple con texto, imágenes y audio.</p>
+
+  <a href="../activities/multiple_choice/editor.php" class="btn">
+    ✏️ Editar Multiple Choice
+  </a>
 </div>
+
 
 </body>
 </html>
