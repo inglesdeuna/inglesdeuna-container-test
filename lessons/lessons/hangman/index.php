@@ -71,11 +71,15 @@ h1{
   <a href="../admin/external_links.php">✏️ Editar actividades</a>
 
 </div>
- <div class="card">
-  <h3>Multiple Choice</h3>
+<div class="card">
+  <div class="card-header">
+    <span class="icon">📝</span>
+    <h3>Multiple Choice</h3>
+  </div>
   <p>Crear y editar preguntas de selección múltiple con texto, imágenes y audio.</p>
   <a href="../activities/multiple_choice/viewer.php" class="btn">
     ✏️ Editar Multiple Choice
+  
   </a>
 </div>
 
