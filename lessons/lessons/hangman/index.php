@@ -15,15 +15,17 @@ body{
 h1{
   color:#2563eb;
   margin-bottom:30px;
+  display:flex;
+  align-items:center;
+  gap:10px;
 }
 
 .grid{
   display:grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap:20px;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap:24px;
 }
 
-/* CARD */
 .card{
   background:white;
   border-radius:14px;
@@ -31,9 +33,9 @@ h1{
   box-shadow:0 10px 25px rgba(0,0,0,.08);
   display:flex;
   flex-direction:column;
+  justify-content:space-between;
 }
 
-/* HEADER ICON + TITLE */
 .card-header{
   display:flex;
   align-items:center;
@@ -41,8 +43,8 @@ h1{
   margin-bottom:10px;
 }
 
-.card-header h3{
-  font-size:18px;
+.card-header h2{
+  font-size:20px;
   margin:0;
 }
 
@@ -50,17 +52,19 @@ h1{
   font-size:22px;
 }
 
-/* BUTTON */
+.card p{
+  margin:10px 0 20px 0;
+  color:#333;
+}
+
 .card a{
-  margin-top:auto;
-  display:inline-block;
+  align-self:flex-start;
   padding:12px 18px;
   background:#2563eb;
   color:white;
   text-decoration:none;
   border-radius:10px;
   font-weight:bold;
-  width:fit-content;
 }
 </style>
 </head>
@@ -71,44 +75,42 @@ h1{
 
 <div class="grid">
 
-  <!-- HANGMAN -->
   <div class="card">
     <div class="card-header">
       <span class="icon">🎯</span>
-      <h3>Hangman</h3>
+      <h2>Hangman</h2>
     </div>
     <p>Editar palabras, pistas y probar el juego.</p>
-    <a href="admin.php">✏️ Editar Hangman</a>
+    <a href="../hangman/admin.php">✏️ Editar Hangman</a>
   </div>
 
-  <!-- FLIPBOOKS -->
   <div class="card">
     <div class="card-header">
       <span class="icon">📘</span>
-      <h3>Flipbooks</h3>
+      <h2>Flipbooks</h2>
     </div>
     <p>Subir PDFs, nombrar lecciones y previsualizar.</p>
     <a href="../admin/flipbook.php">✏️ Editar Flipbooks</a>
   </div>
 
-  <!-- EXTERNAL -->
   <div class="card">
     <div class="card-header">
       <span class="icon">🌐</span>
-      <h3>Actividades Externas</h3>
+      <h2>Actividades Externas</h2>
     </div>
     <p>Wordwall, Liveworksheets, Genially, etc.</p>
     <a href="../admin/external_links.php">✏️ Editar actividades</a>
   </div>
 
-  <!-- MULTIPLE CHOICE -->
   <div class="card">
     <div class="card-header">
       <span class="icon">📝</span>
-      <h3>Multiple Choice</h3>
+      <h2>Multiple Choice</h2>
     </div>
     <p>Crear y editar preguntas de selección múltiple con texto, imágenes y audio.</p>
-    <a href="../activities/multiple_choice/viewer.php">✏️ Editar Multiple Choice</a>
+    <a href="../activities/multiple_choice/viewer.php">
+      ✏️ Editar Multiple Choice
+    </a>
   </div>
 
 </div>
