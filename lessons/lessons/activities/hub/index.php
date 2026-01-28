@@ -1,5 +1,6 @@
 <?php
 $activities = [
+  $activities = [
   [
     "title" => "Multiple Choice",
     "path"  => "../multiple_choice/viewer.php",
@@ -7,10 +8,21 @@ $activities = [
   ],
   [
     "title" => "Hangman",
-    "path"  => "../hangman/index.php",
+    "path"  => "../../hangman/index.php",
     "icon"  => "🎯"
+  ],
+  [
+    "title" => "External Activities",
+    "path"  => "../../admin/external_links_viewer.php",
+    "icon"  => "🔗"
+  ],
+  [
+    "title" => "Flipbooks",
+    "path"  => "../../admin/flipbook.php",
+    "icon"  => "📘"
   ]
 ];
+
 ?>
 <!DOCTYPE html>
 <html lang="es">
