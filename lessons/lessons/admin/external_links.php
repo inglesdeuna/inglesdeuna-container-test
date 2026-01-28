@@ -107,6 +107,46 @@ button{background:#2563eb;color:#fff;border:none;border-radius:6px}
 <button id="saveOrder" style="margin:20px auto;display:block;">
 💾 Guardar orden
 </button>
+<script>
+let dragged = null;
+
+document.querySelectorAll(".item").forEach(item => {
+
+  item.addEventListener("dragstart", () => {
+    dragged = item;
+    item.style.opacity = "0.5";
+  });
+
+  item.addEventListener("dragend", () => {
+    item.style.opacity = "";
+  });
+
+  item.addEventListener("dragover", e => {
+    e.preventDefault();
+  });
+
+  item.addEventListener("drop", e => {
+    e.preventDefault();
+    if (dragged && dragged !== item) {
+      item.parentNode.insertBefore(dragged, item);
+    }
+  });
+
+});
+
+document.getElementById("saveOrder").addEventListener("click", () => {
+  const order = [];
+  document.querySelectorAll(".item").forEach(el => {
+    order.push(el.dataset.index);
+  });
+
+  fetch("save_order.php", {
+    method: "POST",
+    headers: {"Content-Type":"application/json"},
+    body: JSON.stringify(order)
+  }).then(() => location.reload());
+});
+</script>
 
 </body>
 </html>
