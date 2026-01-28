@@ -103,6 +103,10 @@ button{background:#2563eb;color:#fff;border:none;border-radius:6px}
 </div>
 <?php endforeach; ?>
 </div>
+   
+<button id="saveOrder" style="margin:20px auto;display:block;">
+💾 Guardar orden
+</button>
 
 </body>
 </html>
