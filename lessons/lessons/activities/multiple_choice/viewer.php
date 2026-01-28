@@ -1,85 +1,133 @@
+<?php
+$file = __DIR__ . "/questions.json";
+$questions = file_exists($file) ? json_decode(file_get_contents($file), true) : [];
+
+if (!$questions || count($questions) === 0) {
+    die("No hay preguntas configuradas.");
+}
+?>
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
 <meta charset="UTF-8">
 <title>Multiple Choice</title>
-
 <style>
 body{
-  font-family: Arial, sans-serif;
+  font-family:Arial;
   background:#f5f7fb;
   padding:20px;
 }
 .card{
   background:#fff;
-  max-width:700px;
-  margin:40px auto;
   padding:25px;
-  border-radius:12px;
-  box-shadow:0 10px 30px rgba(0,0,0,.08);
+  border-radius:14px;
+  max-width:800px;
+  margin:auto;
 }
-.question{
-  font-size:20px;
-  margin-bottom:15px;
-}
-.media img{
-  max-width:100%;
-  border-radius:10px;
-  margin:10px 0;
-}
-.media audio{
-  width:100%;
-  margin:10px 0;
-}
-.options button{
-  display:block;
-  width:100%;
-  margin:10px 0;
+h2{margin-bottom:10px}
+.option{
+  background:#f1f5f9;
   padding:12px;
   border-radius:8px;
-  border:1px solid #ddd;
-  background:#f9fafb;
+  margin:8px 0;
   cursor:pointer;
-  font-size:16px;
 }
-.options button:hover{
-  background:#eef2ff;
+.option:hover{background:#e2e8f0}
+.correct{background:#bbf7d0}
+.wrong{background:#fecaca}
+button{
+  margin-top:15px;
+  padding:10px 20px;
+  border:none;
+  background:#2563eb;
+  color:#fff;
+  border-radius:6px;
+  cursor:pointer;
 }
-.correct{background:#dcfce7;border-color:#22c55e}
-.wrong{background:#fee2e2;border-color:#ef4444}
+img{max-width:100%;border-radius:10px;margin:10px 0}
+audio{margin:10px 0;width:100%}
+.hidden{display:none}
 </style>
 </head>
 
 <body>
 
 <div class="card">
-  <div class="question">
-    What animal is this?
-  </div>
+<h2 id="question"></h2>
 
-  <!-- MEDIA (puede haber ninguno, uno o ambos) -->
-  <div class="media">
-    <!-- imagen opcional -->
-    <img src="https://images.unsplash.com/photo-1552410260-0fd9b577afa6?w=800" alt="">
-    
-    <!-- audio opcional -->
-    <audio controls>
-      <source src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3">
-    </audio>
-  </div>
+<img id="image" class="hidden">
+<audio id="audio" class="hidden" controls></audio>
 
-  <div class="options">
-    <button onclick="check(this,false)">Cat</button>
-    <button onclick="check(this,true)">Dog</button>
-    <button onclick="check(this,false)">Bird</button>
-  </div>
+<div id="options"></div>
+
+<button id="next" class="hidden">Siguiente</button>
 </div>
 
 <script>
-function check(btn, correct){
-  document.querySelectorAll("button").forEach(b=>b.disabled=true);
-  btn.classList.add(correct ? "correct" : "wrong");
+const questions = <?= json_encode($questions) ?>;
+let current = 0;
+
+const qEl = document.getElementById("question");
+const imgEl = document.getElementById("image");
+const audioEl = document.getElementById("audio");
+const optEl = document.getElementById("options");
+const nextBtn = document.getElementById("next");
+
+function loadQuestion(){
+  nextBtn.classList.add("hidden");
+  optEl.innerHTML = "";
+
+  const q = questions[current];
+  qEl.textContent = q.question;
+
+  // Image
+  if(q.image){
+    imgEl.src = q.image;
+    imgEl.classList.remove("hidden");
+  } else imgEl.classList.add("hidden");
+
+  // Audio
+  if(q.audio){
+    audioEl.src = q.audio;
+    audioEl.classList.remove("hidden");
+  } else audioEl.classList.add("hidden");
+
+  q.options.forEach((opt, i)=>{
+    const div = document.createElement("div");
+    div.className = "option";
+    div.textContent = opt;
+    div.onclick = ()=>checkAnswer(div, i);
+    optEl.appendChild(div);
+  });
 }
+
+function checkAnswer(el, i){
+  const q = questions[current];
+  document.querySelectorAll(".option").forEach(o=>o.onclick=null);
+
+  if(i === q.answer){
+    el.classList.add("correct");
+  } else {
+    el.classList.add("wrong");
+    optEl.children[q.answer].classList.add("correct");
+  }
+  nextBtn.classList.remove("hidden");
+}
+
+nextBtn.onclick = ()=>{
+  current++;
+  if(current < questions.length){
+    loadQuestion();
+  } else {
+    qEl.textContent = "🎉 ¡Actividad completada!";
+    optEl.innerHTML = "";
+    nextBtn.classList.add("hidden");
+    imgEl.classList.add("hidden");
+    audioEl.classList.add("hidden");
+  }
+};
+
+loadQuestion();
 </script>
 
 </body>
