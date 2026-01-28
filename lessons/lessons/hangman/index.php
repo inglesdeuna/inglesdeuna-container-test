@@ -54,7 +54,21 @@ h1{
   grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
   gap: 24px;
 
+  .card-header{
+  display:flex;
+  align-items:center;
+  gap:10px;
 }
+
+.card-header h3{
+  font-size:18px;
+  margin:0;
+}
+
+.icon{
+  font-size:22px;
+}
+
 </style>
 </head>
 
@@ -87,13 +101,12 @@ h1{
     <span class="icon">📝</span>
     <h3>Multiple Choice</h3>
   </div>
+
   <p>Crear y editar preguntas de selección múltiple con texto, imágenes y audio.</p>
+
   <a href="../activities/multiple_choice/viewer.php" class="btn">
     ✏️ Editar Multiple Choice
   
-  </a>
-</div>
-
   </a>
 </div>
 
