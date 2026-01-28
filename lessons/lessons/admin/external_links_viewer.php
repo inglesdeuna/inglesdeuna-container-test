@@ -42,10 +42,18 @@ iframe{width:100%;height:450px;border:none;border-radius:10px}
 
 <div class="container">
 
-<?php foreach ($data as $a): ?>
+<?php foreach ($data as $a):
+
+  // Compatibilidad con actividades antiguas
+  $type = $a["type"] ?? "link";
+  $title = $a["title"] ?? "Actividad";
+  $url = $a["url"] ?? "";
+
+?>
+
 <div class="card">
   <div class="title">
-    <?php if ($a["type"] === "embed"): ?>
+    <?php if ($type === "embed"): ?>
       ▶️ <?= htmlspecialchars($a["title"]) ?>
     <?php else: ?>
       🔗 <?= htmlspecialchars($a["title"]) ?>
