@@ -1,6 +1,5 @@
 <?php
 $activities = [
-  $activities = [
   [
     "title" => "Multiple Choice",
     "path"  => "../multiple_choice/viewer.php",
