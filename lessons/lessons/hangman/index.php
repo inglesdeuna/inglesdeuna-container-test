@@ -112,7 +112,7 @@ h1{
 
   <a href="../activities/multiple_choice/editor.php" class="btn">
     ✏️ Editar Multiple Choice
-  </a>
+  
 </div>
 <div class="card">
   <div class="card-header">
