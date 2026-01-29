@@ -114,6 +114,18 @@ h1{
     ✏️ Editar Multiple Choice
   </a>
 </div>
+<div class="card">
+  <div class="card-header">
+    <span class="icon">🃏</span>
+    <h3>Flashcards</h3>
+  </div>
+
+  <p>Crear flashcards con texto, imágenes y audio (frente y reverso).</p>
+
+  <a href="../activities/flashcards/editor.php" class="btn">
+    ✏️ Editar Flashcards
+  </a>
+</div>
 
 
 </body>
