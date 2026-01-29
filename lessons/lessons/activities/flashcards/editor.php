@@ -92,6 +92,19 @@ hr{margin:30px 0}
 </head>
 
 <body>
+<script>
+function speak(text, lang){
+  if(!text) return;
+
+  const msg = new SpeechSynthesisUtterance(text);
+  msg.lang = lang === "en" ? "en-US" : "es-ES";
+  msg.rate = 0.9;
+  msg.pitch = 1;
+
+  window.speechSynthesis.cancel();
+  window.speechSynthesis.speak(msg);
+}
+</script>
 
 <div class="card">
 <h2>🃏 Nueva Flashcard</h2>
