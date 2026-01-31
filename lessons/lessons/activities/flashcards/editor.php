@@ -1,4 +1,3 @@
-<!-- EDITOR NUEVO 31 ENERO -->
 <?php
 $file = __DIR__ . "/flashcards.json";
 $data = file_exists($file) ? json_decode(file_get_contents($file), true) : [];
@@ -6,13 +5,13 @@ $data = file_exists($file) ? json_decode(file_get_contents($file), true) : [];
 /* ===== SAVE ===== */
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
   $data[] = [
-    "front_text"  => trim($_POST["front_text"]),
-    "front_image" => trim($_POST["front_image"]),
-    "back_text"   => trim($_POST["back_text"]),
-    "audio"       => trim($_POST["audio"])
+    "front_text"  => trim($_POST["front_text"] ?? ""),
+    "front_image" => trim($_POST["front_image"] ?? ""),
+    "back_text"   => trim($_POST["back_text"] ?? ""),
+    "audio"       => trim($_POST["audio"] ?? "")
   ];
 
-  file_put_contents($file, json_encode($data, JSON_PRETTY_PRINT));
+  file_put_contents($file, json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
   header("Location: editor.php");
   exit;
 }
@@ -33,15 +32,14 @@ button{background:#2563eb;color:#fff;border:none;border-radius:8px}
 <body>
 
 <div class="card">
-<h2>➕ Nueva Flashcard</h2>
-
-<form method="post">
-  <input type="text" name="front_text" placeholder="Texto frontal (obligatorio)" required>
-  <input type="url" name="front_image" placeholder="URL de imagen (opcional)">
-  <input type="text" name="back_text" placeholder="Texto reverso (opcional)">
-  <input type="url" name="audio" placeholder="URL de audio en inglés (opcional)">
-  <button>Guardar flashcard</button>
-</form>
+  <h2>➕ Nueva Flashcard</h2>
+  <form method="post" action="editor.php">
+    <input type="text" name="front_text" placeholder="Texto frontal (obligatorio)" required>
+    <input type="url" name="front_image" placeholder="URL de imagen (opcional)">
+    <input type="text" name="back_text" placeholder="Texto reverso (opcional)">
+    <input type="url" name="audio" placeholder="URL de audio en inglés (opcional)">
+    <button type="submit">Guardar flashcard</button>
+  </form>
 </div>
 
 <?php foreach ($data as $c): ?>
