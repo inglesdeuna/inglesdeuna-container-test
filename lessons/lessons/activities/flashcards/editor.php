@@ -1,3 +1,4 @@
+<!-- EDITOR NUEVO 31 ENERO -->
 <?php
 $file = __DIR__ . "/flashcards.json";
 $data = file_exists($file) ? json_decode(file_get_contents($file), true) : [];
