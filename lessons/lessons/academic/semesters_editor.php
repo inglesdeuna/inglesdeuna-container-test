@@ -1,15 +1,14 @@
 <?php
-echo "<pre>";
-print_r($programs);
-echo "</pre>";
-exit;
 $programsFile = __DIR__ . "/programs.json";
 $semestersFile = __DIR__ . "/semesters.json";
 
 $programs = file_exists($programsFile)
   ? json_decode(file_get_contents($programsFile), true)
   : [];
-
+echo "<pre>";
+print_r($programs);
+echo "</pre>";
+exit;
 $semesters = file_exists($semestersFile)
   ? json_decode(file_get_contents($semestersFile), true)
   : [];
