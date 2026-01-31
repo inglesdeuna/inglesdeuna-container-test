@@ -1,192 +1,39 @@
 <?php
 $file = __DIR__ . "/flashcards.json";
-$cards = file_exists($file) ? json_decode(file_get_contents($file), true) : [];
 
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
-    // 🔹 PRUEBA: guardar flashcard SOLO TEXTO
-$frontText = trim($_POST['front_text'] ?? '');
-$backText  = trim($_POST['back_text'] ?? '');
 
-if ($frontText !== '' && $backText !== '') {
+    $front = $_POST["front"] ?? "";
+    $back  = $_POST["back"] ?? "";
 
-    $cards = [];
-    if (file_exists('flashcards.json')) {
-        $cards = json_decode(file_get_contents('flashcards.json'), true) ?? [];
+    $data = [];
+    if (file_exists($file)) {
+        $data = json_decode(file_get_contents($file), true) ?? [];
     }
 
-    $cards[] = [
-        "front" => [
-            "text" => $frontText
-        ],
-        "back" => [
-            "text" => $backText
-        ]
-    ];
-
-    file_put_contents(
-        'flashcards.json',
-        json_encode($cards, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)
-    );
-}
-
-    $front = [
-        "text" => trim($_POST["front_text"]),
-        "image" => "",
-        "audio_lang" => $_POST["front_audio_lang"] ?? ""
-    ];
-
-    $back = [
-        "text" => trim($_POST["back_text"]),
-        "image" => "",
-        "audio_lang" => $_POST["back_audio_lang"] ?? ""
-    ];
-    
-// 📁 Asegurar carpeta de imágenes
-$uploadDir = __DIR__ . "/uploads/images/";
-if (!is_dir($uploadDir)) {
-    mkdir($uploadDir, 0777, true);
-}
-
-    // IMAGEN FRENTE
-    if (!empty($_FILES["front_image"]["name"])) {
-        $name = time() . "_front_" . basename($_FILES["front_image"]["name"]);
-        $path = "uploads/images/" . $name;
-        move_uploaded_file($_FILES["front_image"]["tmp_name"], __DIR__ . "/" . $path);
-        $front["image"] = $path;
-    }
-
-    // IMAGEN REVERSO
-    if (!empty($_FILES["back_image"]["name"])) {
-        $name = time() . "_back_" . basename($_FILES["back_image"]["name"]);
-        $path = "uploads/images/" . $name;
-        move_uploaded_file($_FILES["back_image"]["tmp_name"], __DIR__ . "/" . $path);
-        $back["image"] = $path;
-    }
-
-    $cards[] = [
+    $data[] = [
         "front" => $front,
-        "back" => $back
+        "back"  => $back
     ];
 
-    file_put_contents($file, json_encode($cards, JSON_PRETTY_PRINT));
-    header("Location: editor.php");
-    exit;
+    file_put_contents($file, json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
 }
 ?>
-
 <!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Editor de Flashcards</title>
-
-<style>
-body{
-  font-family:Arial;
-  background:#f5f7fb;
-  padding:40px;
-}
-.card{
-  background:#fff;
-  padding:25px;
-  border-radius:14px;
-  max-width:800px;
-  margin:auto;
-  box-shadow:0 10px 25px rgba(0,0,0,.08);
-}
-h2{margin-top:0}
-.section{
-  margin-bottom:20px;
-}
-input, select, textarea, button{
-  width:100%;
-  padding:10px;
-  margin-top:8px;
-}
-button{
-  background:#2563eb;
-  color:white;
-  border:none;
-  border-radius:8px;
-  font-weight:bold;
-}
-hr{margin:30px 0}
-.list{
-  margin-top:30px;
-}
-.item{
-  background:#eef2ff;
-  padding:15px;
-  border-radius:10px;
-  margin-bottom:10px;
-}
-</style>
+<title>Flashcards Editor – TEST</title>
 </head>
-
 <body>
-<script>
-function speak(text, lang){
-  if(!text) return;
 
-  const msg = new SpeechSynthesisUtterance(text);
-  msg.lang = lang === "en" ? "en-US" : "es-ES";
-  msg.rate = 0.9;
-  msg.pitch = 1;
+<h2>TEST Flashcards</h2>
 
-  window.speechSynthesis.cancel();
-  window.speechSynthesis.speak(msg);
-}
-</script>
-
-<div class="card">
-<h2>🃏 Nueva Flashcard</h2>
-
-<form method="post" enctype="multipart/form-data">
-
-<div class="section">
-  <h3>Frente</h3>
-  <textarea name="front_text" placeholder="Texto frente" required></textarea>
-  <input type="file" name="front_image">
-  <select name="front_audio_lang">
-    <option value="">Sin audio</option>
-    <option value="en">Audio en inglés</option>
-    <option value="es">Audio en español</option>
-  </select>
-</div>
-
-<hr>
-
-<div class="section">
-  <h3>Reverso</h3>
-  <textarea name="back_text" placeholder="Texto reverso" required></textarea>
-  <input type="file" name="back_image">
-  <select name="back_audio_lang">
-    <option value="">Sin audio</option>
-    <option value="en">Audio en inglés</option>
-    <option value="es">Audio en español</option>
-  </select>
-</div>
-
-<button>Guardar flashcard</button>
+<form method="post">
+  <input type="text" name="front" placeholder="Front text" required><br><br>
+  <input type="text" name="back" placeholder="Back text" required><br><br>
+  <button type="submit">Guardar</button>
 </form>
-
-<div class="list">
-<h3>📚 Flashcards guardadas</h3>
-
-<?php if (empty($cards)): ?>
-<p>No hay flashcards aún.</p>
-<?php endif; ?>
-
-<?php foreach ($cards as $i => $c): ?>
-<div class="item">
-<strong>#<?= $i + 1 ?></strong><br>
-Frente: <?= htmlspecialchars($c["front"]["text"]) ?><br>
-Reverso: <?= htmlspecialchars($c["back"]["text"]) ?>
-</div>
-<?php endforeach; ?>
-</div>
-
-</div>
 
 </body>
 </html>
