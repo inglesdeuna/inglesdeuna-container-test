@@ -174,6 +174,24 @@ h1{
       👀 Ver Pronunciation
     </a>
   </div>
+  
+<!-- Unscramble -->
+<div class="card">
+  <div class="card-header">
+    <span class="icon">🧩</span>
+    <h2>Unscramble</h2>
+  </div>
+
+  <p>Ordena palabras u oraciones escuchando o leyendo.</p>
+
+  <a href="../activities/unscramble/editor.php">
+    ✏️ Editar Unscramble
+  </a>
+
+  <a href="../activities/unscramble/viewer.php">
+    👀 Ver Unscramble
+  </a>
+</div>
 
 </div>
 
