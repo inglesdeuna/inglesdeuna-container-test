@@ -56,13 +56,17 @@ img{
   border-radius:10px;
   margin-top:10px
 }
+
+button{
+  margin-top:10px;
+}
 </style>
 </head>
 
 <body>
 
 <?php if (empty($data)): ?>
-<p>No hay flashcards disponibles.</p>
+  <p>No hay flashcards disponibles.</p>
 <?php else: ?>
 <?php $c = $data[0]; ?>
 
@@ -72,15 +76,13 @@ img{
     <!-- FRONT -->
     <div class="face front">
       <h2><?= htmlspecialchars($c["front_text"]) ?></h2>
-      <button onclick="event.stopPropagation(); speak('<?= htmlspecialchars($c["front_text"]) ?>')">🔊 Audio</button>
-<?php if (!empty($c["front_image"])): ?><img src="<?= htmlspecialchars($c["front_image"]) ?>"><?php endif; ?>
 
-      <?php if ($c["front_image"]): ?>
+      <button onclick="event.stopPropagation(); speak('<?= htmlspecialchars($c["front_text"]) ?>')">
+        🔊 Audio
+      </button>
+
+      <?php if (!empty($c["front_image"])): ?>
         <img src="<?= htmlspecialchars($c["front_image"]) ?>">
-      <?php endif; ?>
-
-      <?php if ($c["audio"]): ?>
-        <audio controls src="<?= htmlspecialchars($c["audio"]) ?>"></audio>
       <?php endif; ?>
 
       <p><em>Click para ver el reverso</em></p>
@@ -96,6 +98,7 @@ img{
 </div>
 
 <?php endif; ?>
+
 <script>
 function speak(text){
   const u = new SpeechSynthesisUtterance(text);
