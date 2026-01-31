@@ -122,9 +122,17 @@ h1{
 
   <p>Crear flashcards con texto, imágenes y audio (frente y reverso).</p>
 
-  <a href="../activities/flashcards/editor.php" class="btn">
-    ✏️ Editar Flashcards
-  </a>
+<a href="../activities/flashcards/editor.php" class="btn">
+  ✏️ Editar Flashcards
+</a>
+
+<br><br>
+
+<a href="../activities/flashcards/viewer.php" class="btn">
+  👀 Ver Flashcards
+</a>
+
+    
 </div>
 
 
