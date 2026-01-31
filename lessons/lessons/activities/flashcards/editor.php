@@ -14,6 +14,12 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         "image" => "",
         "audio_lang" => $_POST["back_audio_lang"] ?? ""
     ];
+    
+// 📁 Asegurar carpeta de imágenes
+$uploadDir = __DIR__ . "/uploads/images/";
+if (!is_dir($uploadDir)) {
+    mkdir($uploadDir, 0777, true);
+}
 
     // IMAGEN FRENTE
     if (!empty($_FILES["front_image"]["name"])) {
