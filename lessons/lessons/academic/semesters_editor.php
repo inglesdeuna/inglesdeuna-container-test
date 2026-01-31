@@ -1,4 +1,8 @@
 <?php
+echo "<pre>";
+print_r($programs);
+echo "</pre>";
+exit;
 $programsFile = __DIR__ . "/programs.json";
 $semestersFile = __DIR__ . "/semesters.json";
 
