@@ -3,6 +3,32 @@ $file = __DIR__ . "/flashcards.json";
 $cards = file_exists($file) ? json_decode(file_get_contents($file), true) : [];
 
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
+    // 🔹 PRUEBA: guardar flashcard SOLO TEXTO
+$frontText = trim($_POST['front_text'] ?? '');
+$backText  = trim($_POST['back_text'] ?? '');
+
+if ($frontText !== '' && $backText !== '') {
+
+    $cards = [];
+    if (file_exists('flashcards.json')) {
+        $cards = json_decode(file_get_contents('flashcards.json'), true) ?? [];
+    }
+
+    $cards[] = [
+        "front" => [
+            "text" => $frontText
+        ],
+        "back" => [
+            "text" => $backText
+        ]
+    ];
+
+    file_put_contents(
+        'flashcards.json',
+        json_encode($cards, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)
+    );
+}
+
     $front = [
         "text" => trim($_POST["front_text"]),
         "image" => "",
