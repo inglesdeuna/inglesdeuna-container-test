@@ -186,6 +186,23 @@ h1{
     👀 Ver Listen & Order
   </a>
 </div>
+<!-- Match -->
+<div class="card">
+  <div class="card-header">
+    <span class="icon">🧩</span>
+    <h2>Match</h2>
+  </div>
+
+  <p>Relaciona imágenes con palabras u oraciones.</p>
+
+  <a href="../activities/match/editor.php">
+    ✏️ Editar Match
+  </a>
+
+  <a href="../activities/match/viewer.php">
+    👀 Ver Match
+  </a>
+</div>
 
 </div>
 
