@@ -68,7 +68,7 @@ h1{
   line-height:1.4;
 }
 
-/* ===== BOTONES (UNIFICADOS) ===== */
+/* ===== BOTONES ===== */
 .card a{
   display:inline-block;
   padding:12px 18px;
@@ -156,22 +156,24 @@ h1{
       👀 Ver Flashcards
     </a>
   </div>
-<div class="card">
-  <div class="card-header">
-    <span class="icon">🎧</span>
-    <h2>Pronunciation</h2>
+
+  <!-- Pronunciation -->
+  <div class="card">
+    <div class="card-header">
+      <span class="icon">🎧</span>
+      <h2>Pronunciation</h2>
+    </div>
+
+    <p>Practicar pronunciación con audio AI y reconocimiento de voz.</p>
+
+    <a href="../activities/pronunciation/editor.php">
+      ✏️ Editar Pronunciation
+    </a>
+
+    <a href="../activities/pronunciation/viewer.php">
+      👀 Ver Pronunciation
+    </a>
   </div>
-
-  <p>Practicar pronunciación con audio AI y reconocimiento de voz.</p>
-
-  <a href="../activities/pronunciation/editor.php">
-    ✏️ Editar Pronunciation
-  </a>
-
-  <a href="../activities/pronunciation/viewer.php">
-    👀 Ver Pronunciation
-  </a>
-</div>
 
 </div>
 
