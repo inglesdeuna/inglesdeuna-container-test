@@ -5,11 +5,13 @@
 <title>Contenedor General de Juegos – LET’S</title>
 
 <style>
+/* ===== ESTILO GLOBAL ===== */
 body{
-  font-family: Arial, sans-serif;
+  font-family: Arial, Helvetica, sans-serif;
   background:#f4f8ff;
   margin:0;
   padding:40px;
+  color:#111;
 }
 
 h1{
@@ -18,16 +20,19 @@ h1{
   display:flex;
   align-items:center;
   gap:10px;
+  font-size:28px;
 }
 
+/* ===== GRID ===== */
 .grid{
   display:grid;
   grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
   gap:24px;
 }
 
+/* ===== CARD ===== */
 .card{
-  background:white;
+  background:#ffffff;
   border-radius:14px;
   padding:25px;
   box-shadow:0 10px 25px rgba(0,0,0,.08);
@@ -36,6 +41,7 @@ h1{
   justify-content:space-between;
 }
 
+/* ===== CARD HEADER ===== */
 .card-header{
   display:flex;
   align-items:center;
@@ -46,25 +52,42 @@ h1{
 .card-header h2{
   font-size:20px;
   margin:0;
+  font-weight:700;
+  color:#111;
 }
 
 .icon{
   font-size:22px;
 }
 
+/* ===== TEXTO ===== */
 .card p{
   margin:10px 0 20px 0;
   color:#333;
+  font-size:15px;
+  line-height:1.4;
 }
 
+/* ===== BOTONES (UNIFICADOS) ===== */
 .card a{
-  align-self:flex-start;
+  display:inline-block;
   padding:12px 18px;
   background:#2563eb;
-  color:white;
+  color:#ffffff;
   text-decoration:none;
   border-radius:10px;
-  font-weight:bold;
+  font-weight:700;
+  font-size:14px;
+  transition:background .2s ease;
+}
+
+.card a:hover{
+  background:#1e4ed8;
+}
+
+/* separación entre múltiples botones */
+.card a + a{
+  margin-top:12px;
 }
 </style>
 </head>
@@ -75,6 +98,7 @@ h1{
 
 <div class="grid">
 
+  <!-- Hangman -->
   <div class="card">
     <div class="card-header">
       <span class="icon">🎯</span>
@@ -84,6 +108,7 @@ h1{
     <a href="../hangman/admin.php">✏️ Editar Hangman</a>
   </div>
 
+  <!-- Flipbooks -->
   <div class="card">
     <div class="card-header">
       <span class="icon">📘</span>
@@ -93,6 +118,7 @@ h1{
     <a href="../admin/flipbook.php">✏️ Editar Flipbooks</a>
   </div>
 
+  <!-- Actividades Externas -->
   <div class="card">
     <div class="card-header">
       <span class="icon">🌐</span>
@@ -102,39 +128,36 @@ h1{
     <a href="../admin/external_links.php">✏️ Editar actividades</a>
   </div>
 
+  <!-- Multiple Choice -->
   <div class="card">
-  <div class="card-header">
-    <span class="icon">📝</span>
-    <h3>Multiple Choice</h3>
+    <div class="card-header">
+      <span class="icon">📝</span>
+      <h2>Multiple Choice</h2>
+    </div>
+    <p>Crear y editar preguntas de selección múltiple con texto, imágenes y audio.</p>
+    <a href="../activities/multiple_choice/editor.php">
+      ✏️ Editar Multiple Choice
+    </a>
   </div>
 
-  <p>Crear y editar preguntas de selección múltiple con texto, imágenes y audio.</p>
+  <!-- Flashcards -->
+  <div class="card">
+    <div class="card-header">
+      <span class="icon">🃏</span>
+      <h2>Flashcards</h2>
+    </div>
+    <p>Crear flashcards con texto, imágenes y audio (frente y reverso).</p>
 
-  <a href="../activities/multiple_choice/editor.php" class="btn">
-    ✏️ Editar Multiple Choice
-  
-</div>
-<div class="card">
-  <div class="card-header">
-    <span class="icon">🃏</span>
-    <h3>Flashcards</h3>
+    <a href="../activities/flashcards/editor.php">
+      ✏️ Editar Flashcards
+    </a>
+
+    <a href="../activities/flashcards/viewer.php">
+      👀 Ver Flashcards
+    </a>
   </div>
 
-  <p>Crear flashcards con texto, imágenes y audio (frente y reverso).</p>
-
-<a href="../activities/flashcards/editor.php" class="btn">
-  ✏️ Editar Flashcards
-</a>
-
-<br><br>
-
-<a href="../activities/flashcards/viewer.php" class="btn">
-  👀 Ver Flashcards
-</a>
-
-    
 </div>
-
 
 </body>
 </html>
