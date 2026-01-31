@@ -1,0 +1,14 @@
+[
+  {
+    "en": "Stand up",
+    "ph": "stánd ap",
+    "es": "Levántate",
+    "image": "upload/images/standup.png"
+  },
+  {
+    "en": "Sit down",
+    "ph": "sit dáun",
+    "es": "Siéntate",
+    "image": "https://example.com/sit.png"
+  }
+]
