@@ -6,10 +6,24 @@ $data = file_exists($file) ? json_decode(file_get_contents($file), true) : [];
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
   $data[] = [
     "front_text"  => trim($_POST["front_text"] ?? ""),
-    "front_image" => trim($_POST["front_image"] ?? ""),
+   "front_image" => $imagePath,
     "back_text"   => trim($_POST["back_text"] ?? ""),
     "audio"       => trim($_POST["audio"] ?? "")
   ];
+$imagePath = "";
+
+if (!empty($_FILES["front_image_file"]["name"])) {
+  $dir = __DIR__ . "/upload/images/";
+  if (!is_dir($dir)) mkdir($dir, 0777, true);
+
+  $ext = pathinfo($_FILES["front_image_file"]["name"], PATHINFO_EXTENSION);
+  $name = uniqid("img_") . "." . $ext;
+  $target = $dir . $name;
+
+  if (move_uploaded_file($_FILES["front_image_file"]["tmp_name"], $target)) {
+    $imagePath = "upload/images/" . $name;
+  }
+}
 
   file_put_contents($file, json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
   header("Location: editor.php");
@@ -36,6 +50,7 @@ button{background:#2563eb;color:#fff;border:none;border-radius:8px}
   <form method="post" action="editor.php" enctype="multipart/form-data">
 
     <input type="text" name="front_text" placeholder="Texto frontal (obligatorio)" required>
+  <input type="file" name="front_image_file" accept="image/*">
     <input type="url" name="front_image" placeholder="URL de imagen (opcional)">
     <input type="text" name="back_text" placeholder="Texto reverso (opcional)">
     <input type="url" name="audio" placeholder="URL de audio en inglés (opcional)">
