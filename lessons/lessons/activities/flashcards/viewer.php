@@ -95,6 +95,15 @@ img{
 </div>
 
 <?php endif; ?>
+<script>
+function speak(text){
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = "en-US";
+  u.rate = 0.9;
+  speechSynthesis.cancel();
+  speechSynthesis.speak(u);
+}
+</script>
 
 </body>
 </html>
