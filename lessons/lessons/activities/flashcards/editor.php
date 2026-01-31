@@ -1,5 +1,5 @@
 <?php
-$file = __DIR__ . "/flashcards.json";
+$file = __DIR__ . "/../../admin/flashcards.json";
 $data = file_exists($file) ? json_decode(file_get_contents($file), true) : [];
 
 /* ===== SAVE ===== */
