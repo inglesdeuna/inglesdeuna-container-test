@@ -5,7 +5,6 @@
 <title>Contenedor General de Juegos – LET’S</title>
 
 <style>
-/* ===== ESTILO GLOBAL ===== */
 body{
   font-family: Arial, Helvetica, sans-serif;
   background:#f4f8ff;
@@ -23,14 +22,12 @@ h1{
   font-size:28px;
 }
 
-/* ===== GRID ===== */
 .grid{
   display:grid;
   grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
   gap:24px;
 }
 
-/* ===== CARD ===== */
 .card{
   background:#ffffff;
   border-radius:14px;
@@ -38,10 +35,8 @@ h1{
   box-shadow:0 10px 25px rgba(0,0,0,.08);
   display:flex;
   flex-direction:column;
-  justify-content:space-between;
 }
 
-/* ===== CARD HEADER ===== */
 .card-header{
   display:flex;
   align-items:center;
@@ -53,22 +48,18 @@ h1{
   font-size:20px;
   margin:0;
   font-weight:700;
-  color:#111;
 }
 
 .icon{
   font-size:22px;
 }
 
-/* ===== TEXTO ===== */
 .card p{
   margin:10px 0 20px 0;
   color:#333;
   font-size:15px;
-  line-height:1.4;
 }
 
-/* ===== BOTONES ===== */
 .card a{
   display:inline-block;
   padding:12px 18px;
@@ -78,16 +69,11 @@ h1{
   border-radius:10px;
   font-weight:700;
   font-size:14px;
-  transition:background .2s ease;
+  margin-top:10px;
 }
 
 .card a:hover{
   background:#1e4ed8;
-}
-
-/* separación entre múltiples botones */
-.card a + a{
-  margin-top:12px;
 }
 </style>
 </head>
@@ -118,7 +104,7 @@ h1{
     <a href="../admin/flipbook.php">✏️ Editar Flipbooks</a>
   </div>
 
-  <!-- Actividades Externas -->
+  <!-- Actividades externas -->
   <div class="card">
     <div class="card-header">
       <span class="icon">🌐</span>
@@ -134,10 +120,8 @@ h1{
       <span class="icon">📝</span>
       <h2>Multiple Choice</h2>
     </div>
-    <p>Crear y editar preguntas de selección múltiple con texto, imágenes y audio.</p>
-    <a href="../activities/multiple_choice/editor.php">
-      ✏️ Editar Multiple Choice
-    </a>
+    <p>Crear y editar preguntas de selección múltiple.</p>
+    <a href="../activities/multiple_choice/editor.php">✏️ Editar Multiple Choice</a>
   </div>
 
   <!-- Flashcards -->
@@ -146,15 +130,9 @@ h1{
       <span class="icon">🃏</span>
       <h2>Flashcards</h2>
     </div>
-    <p>Crear flashcards con texto, imágenes y audio (frente y reverso).</p>
-
-    <a href="../activities/flashcards/editor.php">
-      ✏️ Editar Flashcards
-    </a>
-
-    <a href="../activities/flashcards/viewer.php">
-      👀 Ver Flashcards
-    </a>
+    <p>Crear flashcards con texto, imágenes y audio.</p>
+    <a href="../activities/flashcards/editor.php">✏️ Editar Flashcards</a>
+    <a href="../activities/flashcards/viewer.php">👀 Ver Flashcards</a>
   </div>
 
   <!-- Pronunciation -->
@@ -163,37 +141,24 @@ h1{
       <span class="icon">🎧</span>
       <h2>Pronunciation</h2>
     </div>
-
-    <p>Practicar pronunciación con audio AI y reconocimiento de voz.</p>
-
-    <a href="../activities/pronunciation/editor.php">
-      ✏️ Editar Pronunciation
-    </a>
-
-    <a href="../activities/pronunciation/viewer.php">
-      👀 Ver Pronunciation
-    </a>
-  </div>
-  
-<!-- Unscramble -->
-<div class="card">
-  <div class="card-header">
-    <span class="icon">🧩</span>
-    <h2>Unscramble</h2>
+    <p>Practicar pronunciación con audio AI.</p>
+    <a href="../activities/pronunciation/editor.php">✏️ Editar Pronunciation</a>
+    <a href="../activities/pronunciation/viewer.php">👀 Ver Pronunciation</a>
   </div>
 
-  <p>Ordena palabras u oraciones escuchando o leyendo.</p>
-
-  <a href="../activities/unscramble/editor.php">
-    ✏️ Editar Unscramble
-  </a>
-
-  <a href="../activities/unscramble/viewer.php">
-    👀 Ver Unscramble
-  </a>
-</div>
+  <!-- Unscramble -->
+  <div class="card">
+    <div class="card-header">
+      <span class="icon">🧩</span>
+      <h2>Unscramble</h2>
+    </div>
+    <p>Ordena palabras u oraciones leyendo o escuchando.</p>
+    <a href="../activities/unscramble/editor.php">✏️ Editar Unscramble</a>
+    <a href="../activities/unscramble/viewer.php">👀 Ver Unscramble</a>
+  </div>
 
 </div>
 
 </body>
 </html>
+
