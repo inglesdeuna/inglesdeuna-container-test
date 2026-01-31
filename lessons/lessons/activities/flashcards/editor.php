@@ -1,6 +1,7 @@
 <?php
 $file = __DIR__ . "/flashcards.json";
 $data = file_exists($file) ? json_decode(file_get_contents($file), true) : [];
+$imagePath = "";
 
 /* ===== SAVE ===== */
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
