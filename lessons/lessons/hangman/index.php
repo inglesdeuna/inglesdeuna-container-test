@@ -169,6 +169,23 @@ h1{
     <a href="../activities/drag_drop/editor.php">✏️ Editar Drag & Drop</a>
     <a href="../activities/drag_drop/viewer.php">👀 Ver Drag & Drop</a>
   </div>
+<!-- Listen & Order -->
+<div class="card">
+  <div class="card-header">
+    <span class="icon">🎧</span>
+    <h2>Listen & Order</h2>
+  </div>
+
+  <p>Escucha y construye la oración en el orden correcto.</p>
+
+  <a href="../activities/listen_order/editor.php">
+    ✏️ Editar Listen & Order
+  </a>
+
+  <a href="../activities/listen_order/viewer.php">
+    👀 Ver Listen & Order
+  </a>
+</div>
 
 </div>
 
