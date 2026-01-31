@@ -10,6 +10,11 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     "back_text"   => trim($_POST["back_text"]),
     "audio"       => trim($_POST["audio"])
   ];
+echo "<pre>";
+echo $file . "\n";
+var_dump(is_writable($file));
+var_dump($data);
+exit;
 
   file_put_contents($file, json_encode($data, JSON_PRETTY_PRINT));
   header("Location: editor.php");
