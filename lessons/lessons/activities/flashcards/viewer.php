@@ -1,6 +1,9 @@
 <?php
 $file = __DIR__ . "/flashcards.json";
 $data = file_exists($file) ? json_decode(file_get_contents($file), true) : [];
+
+$index = isset($_GET["i"]) ? (int)$_GET["i"] : 0;
+$c = $data[$index] ?? null;
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -60,15 +63,22 @@ img{
 button{
   margin-top:10px;
 }
+.nav{
+  margin-top:20px;
+}
+.nav a{
+  margin:0 15px;
+  text-decoration:none;
+  font-weight:bold;
+}
 </style>
 </head>
 
 <body>
 
-<?php if (empty($data)): ?>
+<?php if (empty($data) || !$c): ?>
   <p>No hay flashcards disponibles.</p>
 <?php else: ?>
-<?php $c = $data[0]; ?>
 
 <div class="scene">
   <div class="card" onclick="this.classList.toggle('is-flipped')">
@@ -95,6 +105,17 @@ button{
     </div>
 
   </div>
+</div>
+
+<!-- 🔁 NAVEGACIÓN -->
+<div class="nav">
+  <?php if ($index > 0): ?>
+    <a href="?i=<?= $index - 1 ?>">⬅️ Anterior</a>
+  <?php endif; ?>
+
+  <?php if ($index < count($data) - 1): ?>
+    <a href="?i=<?= $index + 1 ?>">Siguiente ➡️</a>
+  <?php endif; ?>
 </div>
 
 <?php endif; ?>
