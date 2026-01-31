@@ -156,6 +156,22 @@ h1{
     <a href="../activities/unscramble/editor.php">✏️ Editar Unscramble</a>
     <a href="../activities/unscramble/viewer.php">👀 Ver Unscramble</a>
   </div>
+<div class="card">
+  <div class="card-header">
+    <span class="icon">🧩</span>
+    <h2>Drag & Drop</h2>
+  </div>
+
+  <p>Completa oraciones arrastrando palabras.</p>
+
+  <a href="../activities/drag_drop/editor.php">
+    ✏️ Editar Drag & Drop
+  </a>
+
+  <a href="../activities/drag_drop/viewer.php">
+    👀 Ver Drag & Drop
+  </a>
+</div>
 
 </div>
 
