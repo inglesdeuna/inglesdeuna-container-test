@@ -56,14 +56,14 @@ h1{color:#2563eb;}
 
 <div class="grid">
 
-  <div class="card">
-    <h2>📘 Académico</h2>
-    <a href="../lessons/lessons/academic/programs_editor.php">Programas</a><br><br>
-    <a href="../lessons/lessons/academic/semesters_editor.php">Semestres</a><br><br>
-    <a href="../lessons/lessons/academic/modules_editor.php">Módulos</a><br><br>
-    <a href="../lessons/lessons/academic/units_editor.php">Unidades</a><br><br>
-    <a href="../lessons/lessons/academic/assignments_editor.php">Asignaciones</a>
-  </div>
+ <div class="card">
+  <h2>📘 Académico</h2>
+  <a href="/lessons/lessons/academic/programs_editor.php">Programas</a><br><br>
+  <a href="/lessons/lessons/academic/semesters_editor.php">Semestres</a><br><br>
+  <a href="/lessons/lessons/academic/modules_editor.php">Módulos</a><br><br>
+  <a href="/lessons/lessons/academic/units_editor.php">Unidades</a><br><br>
+  <a href="/lessons/lessons/academic/assignments_editor.php">Asignaciones</a>
+</div>
 
   <div class="card">
     <h2>👩‍🏫 Docentes</h2>
