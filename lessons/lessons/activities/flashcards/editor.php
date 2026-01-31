@@ -33,7 +33,8 @@ button{background:#2563eb;color:#fff;border:none;border-radius:8px}
 
 <div class="card">
   <h2>➕ Nueva Flashcard</h2>
-  <form method="post" action="editor.php">
+  <form method="post" action="editor.php" enctype="multipart/form-data">
+
     <input type="text" name="front_text" placeholder="Texto frontal (obligatorio)" required>
     <input type="url" name="front_image" placeholder="URL de imagen (opcional)">
     <input type="text" name="back_text" placeholder="Texto reverso (opcional)">
