@@ -72,6 +72,7 @@ img{
     <!-- FRONT -->
     <div class="face front">
       <h2><?= htmlspecialchars($c["front_text"]) ?></h2>
+      <button onclick="event.stopPropagation(); speak('<?= htmlspecialchars($c["front_text"]) ?>')">🔊 Audio</button>
 <?php if (!empty($c["front_image"])): ?><img src="<?= htmlspecialchars($c["front_image"]) ?>"><?php endif; ?>
 
       <?php if ($c["front_image"]): ?>
