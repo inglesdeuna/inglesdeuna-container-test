@@ -1,5 +1,5 @@
 <?php
-$baseDir = "/var/www/html/lessons/data";
+$baseDir = "/var/www/html/lessons/lessons/data";
 
 $unitsFile       = $baseDir . "/units.json";
 $assignmentsFile = $baseDir . "/assignments.json";
