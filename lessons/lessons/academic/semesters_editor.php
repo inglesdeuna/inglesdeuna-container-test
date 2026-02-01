@@ -1,38 +1,40 @@
 <?php
-/* ===== RUTAS SEGURAS ===== */
+/* ===== RUTA SEGURA ===== */
 $baseDir = "/var/www/html/lessons/data";
-$programsFile  = $baseDir . "/programs.json";
-$semestersFile = $baseDir . "/semesters.json";
+$file = $baseDir . "/semesters.json";
+$programsFile = $baseDir . "/programs.json";
 
-/* ===== ASEGURAR ARCHIVOS ===== */
+/* ===== ASEGURAR DATA ===== */
 if (!is_dir($baseDir)) {
   mkdir($baseDir, 0777, true);
+}
+
+if (!file_exists($file)) {
+  file_put_contents($file, "[]");
 }
 if (!file_exists($programsFile)) {
   file_put_contents($programsFile, "[]");
 }
-if (!file_exists($semestersFile)) {
-  file_put_contents($semestersFile, "[]");
-}
 
-/* ===== CARGAR DATOS ===== */
+/* ===== CARGAR ===== */
+$semesters = json_decode(file_get_contents($file), true) ?? [];
 $programs  = json_decode(file_get_contents($programsFile), true) ?? [];
-$semesters = json_decode(file_get_contents($semestersFile), true) ?? [];
 
 /* ===== GUARDAR ===== */
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
+
   $program_id = $_POST["program_id"] ?? "";
-  $name       = trim($_POST["name"] ?? "");
+  $name = trim($_POST["name"] ?? "");
 
   if ($program_id && $name !== "") {
     $semesters[] = [
-      "id"         => uniqid("sem_"),
-      "program_id"=> $program_id,
-      "name"       => $name
+      "id" => uniqid("sem_"),
+      "program_id" => $program_id,
+      "name" => $name
     ];
 
     file_put_contents(
-      $semestersFile,
+      $file,
       json_encode($semesters, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)
     );
   }
@@ -53,9 +55,7 @@ body{
   background:#f4f8ff;
   padding:40px;
 }
-
-h1{ color:#2563eb; }
-
+h1{color:#2563eb;}
 .card{
   background:white;
   padding:20px;
@@ -63,13 +63,11 @@ h1{ color:#2563eb; }
   max-width:600px;
   box-shadow:0 10px 25px rgba(0,0,0,.08);
 }
-
 input, select{
   width:100%;
   padding:10px;
   margin-top:10px;
 }
-
 button{
   margin-top:15px;
   padding:12px 18px;
@@ -78,14 +76,11 @@ button{
   background:#2563eb;
   color:white;
   font-weight:bold;
-  cursor:pointer;
 }
-
 .list{
   margin-top:30px;
   max-width:600px;
 }
-
 .item{
   background:#fff;
   padding:12px;
@@ -116,6 +111,7 @@ button{
       placeholder="Nombre del semestre (ej: A, B, 1, 2)" required>
 
     <button>➕ Crear Semestre</button>
+
   </form>
 </div>
 
@@ -127,7 +123,6 @@ button{
       <strong>Semestre <?= htmlspecialchars($s["name"]) ?></strong>
     </div>
   <?php endforeach; ?>
-
 </div>
 
 </body>
