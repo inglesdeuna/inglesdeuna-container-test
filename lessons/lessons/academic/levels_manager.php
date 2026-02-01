@@ -4,11 +4,6 @@ $programsFile = __DIR__ . "/programs.json";
 $programs = file_exists($programsFile)
   ? json_decode(file_get_contents($programsFile), true)
   : [];
-echo "<pre>";
-echo "Ruta: " . $programsFile . "\n";
-var_dump($programs);
-echo "</pre>";
-exit;
 
 ?>
 <!DOCTYPE html>
