@@ -1,10 +1,22 @@
 <?php
-$file = "/var/www/html/lessons/data/programs.json";
+/* ===== RUTA REAL Y SEGURA ===== */
+$baseDir = "/var/www/html/lessons/data";
+$file = $baseDir . "/programs.json";
 
-$data = file_exists($file)
-  ? json_decode(file_get_contents($file), true)
-  : [];
+/* ===== ASEGURAR QUE EXISTE LA CARPETA ===== */
+if (!is_dir($baseDir)) {
+  mkdir($baseDir, 0777, true);
+}
 
+/* ===== ASEGURAR QUE EXISTE EL ARCHIVO ===== */
+if (!file_exists($file)) {
+  file_put_contents($file, "[]");
+}
+
+/* ===== CARGAR DATOS ===== */
+$data = json_decode(file_get_contents($file), true) ?? [];
+
+/* ===== GUARDAR ===== */
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
   $name = trim($_POST["name"] ?? "");
