@@ -1,5 +1,4 @@
 <?php
-<?php
 $baseDir = "/var/www/html/lessons/lessons/data";
 
 $unitsFile       = $baseDir . "/units.json";
@@ -16,9 +15,9 @@ if (!file_exists($assignmentsFile)) {
   file_put_contents($assignmentsFile, "[]");
 }
 
-/* ===== CARGAR DATA ===== */
-$units       = json_decode(file_get_contents($unitsFile), true) ?? [];
-$assignments = json_decode(file_get_contents($assignmentsFile), true) ?? [];
+/* ===== CARGAR ===== */
+$units       = json_decode(file_get_contents($unitsFile), true);
+$assignments = json_decode(file_get_contents($assignmentsFile), true);
 
 $unit_id = $_GET["unit"] ?? "";
 
@@ -32,10 +31,11 @@ foreach ($units as $u) {
 }
 
 if (!$unit) {
-  die("Unidad no encontrada");
+  echo "Unidad no encontrada";
+  exit;
 }
 
-/* ===== MAPA DE ACTIVIDADES ===== */
+/* ===== MAPA ACTIVIDADES ===== */
 $activityMap = [
   "flashcards"     => ["Flashcards",     "../activities/flashcards/"],
   "pronunciation" => ["Pronunciation",  "../activities/pronunciation/"],
@@ -44,7 +44,7 @@ $activityMap = [
   "listen_order"  => ["Listen & Order", "../activities/listen_order/"],
   "match"         => ["Match",          "../activities/match/"]
 ];
-
+?>
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -72,10 +72,6 @@ h1{color:#2563eb;}
   box-shadow:0 10px 25px rgba(0,0,0,.08);
 }
 
-.card h3{
-  margin-top:0;
-}
-
 .card a{
   display:inline-block;
   margin-top:10px;
@@ -85,11 +81,6 @@ h1{color:#2563eb;}
   color:#fff;
   text-decoration:none;
   font-weight:bold;
-  font-size:14px;
-}
-
-.card a + a{
-  margin-left:8px;
 }
 </style>
 </head>
@@ -103,34 +94,25 @@ h1{color:#2563eb;}
 <?php
 $has = false;
 
-foreach ($assignments as $a):
-  if ($a["unit_id"] === $unit_id):
-    $has = true;
-    $type = $a["activity_type"];
-
+foreach ($assignments as $a) {
+  if (($a["unit_id"] ?? "") === $unit_id) {
+    $type = $a["activity_type"] ?? "";
     if (!isset($activityMap[$type])) continue;
 
+    $has = true;
     [$label, $path] = $activityMap[$type];
+    echo "<div class='card'>
+            <h3>$label</h3>
+            <a href='{$path}viewer.php' target='_blank'>👀 Preview</a>
+            <a href='{$path}editor.php' target='_blank'>✏️ Editar</a>
+          </div>";
+  }
+}
+
+if (!$has) {
+  echo "<p>No hay actividades asignadas a esta unidad.</p>";
+}
 ?>
-  <div class="card">
-    <h3><?= $label ?></h3>
-
-    <a href="<?= $path ?>viewer.php" target="_blank">
-      👀 Preview
-    </a>
-
-    <a href="<?= $path ?>editor.php" target="_blank">
-      ✏️ Editar
-    </a>
-  </div>
-<?php
-  endif;
-endforeach;
-
-if (!$has):
-?>
-  <p>No hay actividades asignadas a esta unidad.</p>
-<?php endif; ?>
 
 </div>
 
