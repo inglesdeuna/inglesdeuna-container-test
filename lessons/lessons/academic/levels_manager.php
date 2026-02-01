@@ -1,5 +1,5 @@
 <?php
-$programsFile  = __DIR__ . "/programs.json";
+$programsFile = "/var/www/html/lessons/data/programs.json";
 $semestersFile = __DIR__ . "/semesters.json";
 
 $programs = file_exists($programsFile)
