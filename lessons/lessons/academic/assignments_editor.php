@@ -1,36 +1,45 @@
 <?php
-$unitsFile = __DIR__ . "/units.json";
-$assignmentsFile = __DIR__ . "/assignments.json";
+/* ===== RUTAS SEGURAS ===== */
+$baseDir = "/var/www/html/lessons/data";
+$unitsFile       = $baseDir . "/units.json";
+$assignmentsFile = $baseDir . "/assignments.json";
 
-$units = file_exists($unitsFile)
-  ? json_decode(file_get_contents($unitsFile), true)
-  : [];
+/* ===== ASEGURAR DATA ===== */
+if (!is_dir($baseDir)) {
+  mkdir($baseDir, 0777, true);
+}
+foreach ([$unitsFile, $assignmentsFile] as $f) {
+  if (!file_exists($f)) file_put_contents($f, "[]");
+}
 
-$assignments = file_exists($assignmentsFile)
-  ? json_decode(file_get_contents($assignmentsFile), true)
-  : [];
+/* ===== CARGAR DATOS ===== */
+$units       = json_decode(file_get_contents($unitsFile), true) ?? [];
+$assignments = json_decode(file_get_contents($assignmentsFile), true) ?? [];
 
-$activities = [
-  "flashcards"     => "../activities/flashcards/viewer.php",
-  "multiple_choice"=> "../activities/multiple_choice/viewer.php",
-  "pronunciation"  => "../activities/pronunciation/viewer.php",
-  "unscramble"     => "../activities/unscramble/viewer.php",
-  "drag_drop"      => "../activities/drag_drop/viewer.php",
-  "listen_order"   => "../activities/listen_order/viewer.php",
-  "match"          => "../activities/match/viewer.php"
+/* ===== TIPOS DE ACTIVIDAD ===== */
+$activityTypes = [
+  "flashcards"     => "Flashcards",
+  "pronunciation" => "Pronunciation",
+  "unscramble"    => "Unscramble",
+  "drag_drop"     => "Drag & Drop",
+  "listen_order"  => "Listen & Order",
+  "match"         => "Match"
 ];
 
+/* ===== GUARDAR ===== */
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
-
   $unit_id = $_POST["unit_id"] ?? "";
-  $activity = $_POST["activity"] ?? "";
+  $type    = $_POST["type"] ?? "";
+  $title   = trim($_POST["title"] ?? "");
+  $url     = trim($_POST["url"] ?? "");
 
-  if ($unit_id && isset($activities[$activity])) {
+  if ($unit_id && $type && $title && $url) {
     $assignments[] = [
-      "id" => uniqid("asg_"),
-      "unit_id" => $unit_id,
-      "activity" => $activity,
-      "path" => $activities[$activity]
+      "id"       => uniqid("asg_"),
+      "unit_id"  => $unit_id,
+      "type"     => $type,
+      "title"    => $title,
+      "url"      => $url
     ];
 
     file_put_contents(
@@ -47,31 +56,27 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Asignar Actividades</title>
+<title>Asignaciones</title>
 
 <style>
 body{
-  font-family:Arial, Helvetica, sans-serif;
+  font-family: Arial, Helvetica, sans-serif;
   background:#f4f8ff;
   padding:40px;
 }
-
 h1{color:#2563eb;}
-
 .card{
   background:white;
   padding:20px;
   border-radius:14px;
-  max-width:700px;
+  max-width:650px;
   box-shadow:0 10px 25px rgba(0,0,0,.08);
 }
-
-select{
+input, select{
   width:100%;
   padding:10px;
   margin-top:10px;
 }
-
 button{
   margin-top:15px;
   padding:12px 18px;
@@ -81,26 +86,24 @@ button{
   color:white;
   font-weight:bold;
 }
-
 .list{
   margin-top:30px;
-  max-width:700px;
+  max-width:650px;
 }
-
 .item{
   background:#fff;
   padding:12px;
   border-radius:10px;
   margin-bottom:10px;
   box-shadow:0 4px 8px rgba(0,0,0,.08);
-  font-size:14px;
 }
+small{color:#555;}
 </style>
 </head>
 
 <body>
 
-<h1>🎯 Asignar Actividades a Unidades</h1>
+<h1>📝 Asignaciones</h1>
 
 <div class="card">
   <form method="post">
@@ -108,42 +111,37 @@ button{
     <select name="unit_id" required>
       <option value="">Seleccionar unidad</option>
       <?php foreach ($units as $u): ?>
-        <option value="<?= $u["id"] ?>">
+        <option value="<?= htmlspecialchars($u["id"]) ?>">
           <?= htmlspecialchars($u["name"]) ?>
         </option>
       <?php endforeach; ?>
     </select>
 
-    <select name="activity" required>
-      <option value="">Seleccionar actividad</option>
-      <?php foreach ($activities as $k => $v): ?>
-        <option value="<?= $k ?>">
-          <?= ucfirst(str_replace("_"," ",$k)) ?>
-        </option>
+    <select name="type" required>
+      <option value="">Tipo de actividad</option>
+      <?php foreach ($activityTypes as $k => $v): ?>
+        <option value="<?= $k ?>"><?= $v ?></option>
       <?php endforeach; ?>
     </select>
 
-    <button>➕ Asignar Actividad</button>
+    <input type="text" name="title"
+      placeholder="Título de la actividad (ej: Basic Commands – Flashcards)" required>
+
+    <input type="url" name="url"
+      placeholder="URL del viewer de la actividad" required>
+
+    <button>➕ Crear Asignación</button>
 
   </form>
 </div>
 
 <div class="list">
-  <h2>📋 Actividades asignadas</h2>
+  <h2>📋 Asignaciones creadas</h2>
 
   <?php foreach ($assignments as $a): ?>
-    <?php
-      $unitName = "";
-      foreach ($units as $u) {
-        if ($u["id"] === $a["unit_id"]) {
-          $unitName = $u["name"];
-          break;
-        }
-      }
-    ?>
     <div class="item">
-      <strong><?= htmlspecialchars($unitName) ?></strong> →
-      <?= ucfirst(str_replace("_"," ",$a["activity"])) ?>
+      <strong><?= htmlspecialchars($a["title"]) ?></strong><br>
+      <small><?= htmlspecialchars($activityTypes[$a["type"]] ?? $a["type"]) ?></small>
     </div>
   <?php endforeach; ?>
 </div>
