@@ -1,5 +1,5 @@
 <?php
-$file = "/var/www/html/data/programs.json";
+$file = "/var/www/html/lessons/data/programs.json";
 
 $data = file_exists($file)
   ? json_decode(file_get_contents($file), true)
