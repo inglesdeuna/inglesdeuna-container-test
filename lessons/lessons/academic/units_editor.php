@@ -1,31 +1,27 @@
 <?php
-$programsFile = __DIR__ . "/programs.json";
-$semestersFile = __DIR__ . "/semesters.json";
-$modulesFile = __DIR__ . "/modules.json";
-$unitsFile = __DIR__ . "/units.json";
+/* ===== RUTAS SEGURAS ===== */
+$baseDir = "/var/www/html/lessons/data";
+$modulesFile = $baseDir . "/modules.json";
+$unitsFile   = $baseDir . "/units.json";
 
-$programs = file_exists($programsFile)
-  ? json_decode(file_get_contents($programsFile), true)
-  : [];
+/* ===== ASEGURAR DATA ===== */
+if (!is_dir($baseDir)) {
+  mkdir($baseDir, 0777, true);
+}
+foreach ([$modulesFile, $unitsFile] as $f) {
+  if (!file_exists($f)) file_put_contents($f, "[]");
+}
 
-$semesters = file_exists($semestersFile)
-  ? json_decode(file_get_contents($semestersFile), true)
-  : [];
+/* ===== CARGAR DATOS ===== */
+$modules = json_decode(file_get_contents($modulesFile), true) ?? [];
+$units   = json_decode(file_get_contents($unitsFile), true) ?? [];
 
-$modules = file_exists($modulesFile)
-  ? json_decode(file_get_contents($modulesFile), true)
-  : [];
-
-$units = file_exists($unitsFile)
-  ? json_decode(file_get_contents($unitsFile), true)
-  : [];
-
+/* ===== GUARDAR ===== */
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
-
   $module_id = $_POST["module_id"] ?? "";
   $name = trim($_POST["name"] ?? "");
 
-  if ($module_id && $name) {
+  if ($module_id && $name !== "") {
     $units[] = [
       "id" => uniqid("unit_"),
       "module_id" => $module_id,
@@ -50,27 +46,23 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
 <style>
 body{
-  font-family:Arial, Helvetica, sans-serif;
+  font-family: Arial, Helvetica, sans-serif;
   background:#f4f8ff;
   padding:40px;
 }
-
 h1{color:#2563eb;}
-
 .card{
   background:white;
   padding:20px;
   border-radius:14px;
-  max-width:650px;
+  max-width:600px;
   box-shadow:0 10px 25px rgba(0,0,0,.08);
 }
-
-select, input{
+input, select{
   width:100%;
   padding:10px;
   margin-top:10px;
 }
-
 button{
   margin-top:15px;
   padding:12px 18px;
@@ -80,12 +72,10 @@ button{
   color:white;
   font-weight:bold;
 }
-
 .list{
   margin-top:30px;
-  max-width:650px;
+  max-width:600px;
 }
-
 .item{
   background:#fff;
   padding:12px;
@@ -93,51 +83,27 @@ button{
   margin-bottom:10px;
   box-shadow:0 4px 8px rgba(0,0,0,.08);
 }
-.small{
-  font-size:13px;
-  color:#555;
-}
 </style>
 </head>
 
 <body>
 
-<h1>📗 Unidades</h1>
+<h1>📚 Unidades</h1>
 
 <div class="card">
   <form method="post">
 
     <select name="module_id" required>
       <option value="">Seleccionar módulo</option>
-
       <?php foreach ($modules as $m): ?>
-        <?php
-          $semesterName = "";
-          $programName = "";
-
-          foreach ($semesters as $s) {
-            if ($s["id"] === $m["semester_id"]) {
-              $semesterName = $s["name"];
-              foreach ($programs as $p) {
-                if ($p["id"] === $s["program_id"]) {
-                  $programName = $p["name"];
-                  break;
-                }
-              }
-              break;
-            }
-          }
-        ?>
-        <option value="<?= $m["id"] ?>">
-          <?= htmlspecialchars($programName) ?> — Sem <?= htmlspecialchars($semesterName) ?> — <?= htmlspecialchars($m["name"]) ?>
+        <option value="<?= htmlspecialchars($m["id"]) ?>">
+          <?= htmlspecialchars($m["name"]) ?>
         </option>
       <?php endforeach; ?>
-
     </select>
 
     <input type="text" name="name"
-      placeholder="Nombre de la unidad (Unit 1, Classroom Commands, etc.)"
-      required>
+      placeholder="Nombre de la unidad (ej: Unit 1 – Commands)" required>
 
     <button>➕ Crear Unidad</button>
 
@@ -148,35 +114,8 @@ button{
   <h2>📋 Unidades creadas</h2>
 
   <?php foreach ($units as $u): ?>
-    <?php
-      $moduleName = "";
-      $semesterName = "";
-      $programName = "";
-
-      foreach ($modules as $m) {
-        if ($m["id"] === $u["module_id"]) {
-          $moduleName = $m["name"];
-          foreach ($semesters as $s) {
-            if ($s["id"] === $m["semester_id"]) {
-              $semesterName = $s["name"];
-              foreach ($programs as $p) {
-                if ($p["id"] === $s["program_id"]) {
-                  $programName = $p["name"];
-                  break;
-                }
-              }
-              break;
-            }
-          }
-          break;
-        }
-      }
-    ?>
     <div class="item">
       <strong><?= htmlspecialchars($u["name"]) ?></strong>
-      <div class="small">
-        <?= htmlspecialchars($programName) ?> — Sem <?= htmlspecialchars($semesterName) ?> — <?= htmlspecialchars($moduleName) ?>
-      </div>
     </div>
   <?php endforeach; ?>
 </div>
