@@ -1,28 +1,34 @@
 <?php
-$programsFile = __DIR__ . "/programs.json";
-$semestersFile = __DIR__ . "/semesters.json";
+/* ===== RUTAS SEGURAS ===== */
+$baseDir = "/var/www/html/lessons/data";
+$programsFile  = $baseDir . "/programs.json";
+$semestersFile = $baseDir . "/semesters.json";
 
-$programs = file_exists($programsFile)
-  ? json_decode(file_get_contents($programsFile), true)
-  : [];
-echo "<pre>";
-print_r($programs);
-echo "</pre>";
-exit;
-$semesters = file_exists($semestersFile)
-  ? json_decode(file_get_contents($semestersFile), true)
-  : [];
+/* ===== ASEGURAR ARCHIVOS ===== */
+if (!is_dir($baseDir)) {
+  mkdir($baseDir, 0777, true);
+}
+if (!file_exists($programsFile)) {
+  file_put_contents($programsFile, "[]");
+}
+if (!file_exists($semestersFile)) {
+  file_put_contents($semestersFile, "[]");
+}
 
+/* ===== CARGAR DATOS ===== */
+$programs  = json_decode(file_get_contents($programsFile), true) ?? [];
+$semesters = json_decode(file_get_contents($semestersFile), true) ?? [];
+
+/* ===== GUARDAR ===== */
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
-
   $program_id = $_POST["program_id"] ?? "";
-  $name = trim($_POST["name"] ?? "");
+  $name       = trim($_POST["name"] ?? "");
 
-  if ($program_id && $name) {
+  if ($program_id && $name !== "") {
     $semesters[] = [
-      "id" => uniqid("sem_"),
-      "program_id" => $program_id,
-      "name" => $name
+      "id"         => uniqid("sem_"),
+      "program_id"=> $program_id,
+      "name"       => $name
     ];
 
     file_put_contents(
@@ -43,12 +49,12 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
 <style>
 body{
-  font-family:Arial, Helvetica, sans-serif;
+  font-family: Arial, Helvetica, sans-serif;
   background:#f4f8ff;
   padding:40px;
 }
 
-h1{color:#2563eb;}
+h1{ color:#2563eb; }
 
 .card{
   background:white;
@@ -58,7 +64,7 @@ h1{color:#2563eb;}
   box-shadow:0 10px 25px rgba(0,0,0,.08);
 }
 
-select, input{
+input, select{
   width:100%;
   padding:10px;
   margin-top:10px;
@@ -72,6 +78,7 @@ button{
   background:#2563eb;
   color:white;
   font-weight:bold;
+  cursor:pointer;
 }
 
 .list{
@@ -86,16 +93,12 @@ button{
   margin-bottom:10px;
   box-shadow:0 4px 8px rgba(0,0,0,.08);
 }
-.small{
-  font-size:13px;
-  color:#555;
-}
 </style>
 </head>
 
 <body>
 
-<h1>📚 Semestres</h1>
+<h1>📂 Semestres</h1>
 
 <div class="card">
   <form method="post">
@@ -103,18 +106,16 @@ button{
     <select name="program_id" required>
       <option value="">Seleccionar programa</option>
       <?php foreach ($programs as $p): ?>
-        <option value="<?= $p["id"] ?>">
+        <option value="<?= htmlspecialchars($p["id"]) ?>">
           <?= htmlspecialchars($p["name"]) ?>
         </option>
       <?php endforeach; ?>
     </select>
 
     <input type="text" name="name"
-      placeholder="Nombre del semestre (A, B, 1, 2, etc.)"
-      required>
+      placeholder="Nombre del semestre (ej: A, B, 1, 2)" required>
 
     <button>➕ Crear Semestre</button>
-
   </form>
 </div>
 
@@ -122,22 +123,11 @@ button{
   <h2>📋 Semestres creados</h2>
 
   <?php foreach ($semesters as $s): ?>
-    <?php
-      $progName = "";
-      foreach ($programs as $p) {
-        if ($p["id"] === $s["program_id"]) {
-          $progName = $p["name"];
-          break;
-        }
-      }
-    ?>
     <div class="item">
-      <strong><?= htmlspecialchars($s["name"]) ?></strong>
-      <div class="small">
-        Programa: <?= htmlspecialchars($progName) ?>
-      </div>
+      <strong>Semestre <?= htmlspecialchars($s["name"]) ?></strong>
     </div>
   <?php endforeach; ?>
+
 </div>
 
 </body>
