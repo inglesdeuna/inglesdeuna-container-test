@@ -2,6 +2,10 @@
 $file = "/var/www/html/data/programs.json";
 $data = file_exists($file) ? json_decode(file_get_contents($file), true) : [];
 
+echo "<pre>";
+var_dump($data);
+exit;
+
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
   $name = trim($_POST["name"] ?? "");
