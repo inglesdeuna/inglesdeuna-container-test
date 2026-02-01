@@ -1,7 +1,9 @@
 <?php
-$programsFile = "/var/www/html/lessons/data/programs.json";
-$semestersFile = __DIR__ . "/semesters.json";
+/* ===== RUTAS CORRECTAS A DATA PERSISTENTE ===== */
+$programsFile  = "/var/www/html/lessons/data/programs.json";
+$semestersFile = "/var/www/html/lessons/data/semesters.json";
 
+/* ===== CARGA DE DATOS ===== */
 $programs = file_exists($programsFile)
   ? json_decode(file_get_contents($programsFile), true)
   : [];
@@ -25,7 +27,10 @@ body{
   padding:40px;
 }
 
-h1{ color:#2563eb; }
+h1{
+  color:#2563eb;
+  margin-bottom:25px;
+}
 
 .card{
   background:#ffffff;
@@ -60,7 +65,7 @@ select{
 
 <h1>📘 Levels Manager</h1>
 
-<!-- SELECT PROGRAMA -->
+<!-- ===== SELECTOR DE PROGRAMA ===== -->
 <div class="card">
   <form method="get">
     <label><strong>Programa</strong></label>
@@ -68,7 +73,7 @@ select{
       <option value="">Seleccionar programa</option>
 
       <?php foreach ($programs as $p): ?>
-        <option value="<?= $p["id"] ?>"
+        <option value="<?= htmlspecialchars($p["id"]) ?>"
           <?= $program_id === $p["id"] ? "selected" : "" ?>>
           <?= htmlspecialchars($p["name"]) ?>
         </option>
@@ -78,7 +83,7 @@ select{
   </form>
 </div>
 
-<!-- LISTA DE SEMESTRES -->
+<!-- ===== LISTA DE SEMESTRES ===== -->
 <?php if ($program_id): ?>
   <div class="list">
     <h2>📂 Semestres</h2>
@@ -86,7 +91,7 @@ select{
     <?php
     $has = false;
     foreach ($semesters as $s):
-      if ($s["program_id"] === $program_id):
+      if (($s["program_id"] ?? "") === $program_id):
         $has = true;
     ?>
       <div class="item">
