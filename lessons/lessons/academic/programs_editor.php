@@ -1,12 +1,9 @@
 <?php
 $file = "/var/www/html/data/programs.json";
-$data = file_exists($file) ? json_decode(file_get_contents($file), true) : [];
 
-echo "<pre>";
-echo "Archivo: $file\n";
-var_dump(is_writable($file));
-var_dump(file_exists($file));
-exit;
+$data = file_exists($file)
+  ? json_decode(file_get_contents($file), true)
+  : [];
 
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
@@ -38,14 +35,12 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
 <style>
 body{
-  font-family:Arial, Helvetica, sans-serif;
+  font-family: Arial, Helvetica, sans-serif;
   background:#f4f8ff;
   padding:40px;
 }
 
-h1{
-  color:#2563eb;
-}
+h1{ color:#2563eb; }
 
 .card{
   background:white;
@@ -114,13 +109,12 @@ button{
   <?php foreach ($data as $p): ?>
     <div class="item">
       <strong><?= htmlspecialchars($p["name"]) ?></strong>
-      <?php if (!empty($p["type"])): ?>
-        <div style="font-size:13px;color:#555;">
-          Tipo: <?= htmlspecialchars($p["type"]) ?>
-        </div>
-      <?php endif; ?>
+      <div style="font-size:13px;color:#555;">
+        Tipo: <?= htmlspecialchars($p["type"]) ?>
+      </div>
     </div>
   <?php endforeach; ?>
+
 </div>
 
 </body>
