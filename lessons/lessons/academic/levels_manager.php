@@ -1,16 +1,24 @@
 <?php
-/* ===== RUTAS CORRECTAS A DATA PERSISTENTE ===== */
-$programsFile  = "/var/www/html/lessons/data/programs.json";
-$semestersFile = "/var/www/html/lessons/data/semesters.json";
+/* ===== RUTAS SEGURAS ===== */
+$baseDir = "/var/www/html/lessons/data";
+$programsFile  = $baseDir . "/programs.json";
+$semestersFile = $baseDir . "/semesters.json";
 
-/* ===== CARGA DE DATOS ===== */
-$programs = file_exists($programsFile)
-  ? json_decode(file_get_contents($programsFile), true)
-  : [];
+/* ===== ASEGURAR ARCHIVOS ===== */
+if (!is_dir($baseDir)) {
+  mkdir($baseDir, 0777, true);
+}
 
-$semesters = file_exists($semestersFile)
-  ? json_decode(file_get_contents($semestersFile), true)
-  : [];
+if (!file_exists($programsFile)) {
+  file_put_contents($programsFile, "[]");
+}
+if (!file_exists($semestersFile)) {
+  file_put_contents($semestersFile, "[]");
+}
+
+/* ===== CARGAR DATOS ===== */
+$programs  = json_decode(file_get_contents($programsFile), true) ?? [];
+$semesters = json_decode(file_get_contents($semestersFile), true) ?? [];
 
 $program_id = $_GET["program"] ?? "";
 ?>
@@ -65,7 +73,7 @@ select{
 
 <h1>📘 Levels Manager</h1>
 
-<!-- ===== SELECTOR DE PROGRAMA ===== -->
+<!-- ===== PROGRAMA ===== -->
 <div class="card">
   <form method="get">
     <label><strong>Programa</strong></label>
@@ -83,7 +91,7 @@ select{
   </form>
 </div>
 
-<!-- ===== LISTA DE SEMESTRES ===== -->
+<!-- ===== SEMESTRES ===== -->
 <?php if ($program_id): ?>
   <div class="list">
     <h2>📂 Semestres</h2>
