@@ -130,13 +130,10 @@ foreach ($assignments as $a):
   <div class="card">
     <h3><?= $label ?></h3>
 
-    <a href="<?= $path ?>viewer.php" target="_blank">
-      👀 Preview
-    </a>
+    <a href="<?= $path ?>&unit=<?= urlencode($unit_id) ?>" target="_blank">
+  ▶️ Abrir actividad
+</a>
 
-    <a href="<?= $path ?>editor.php" target="_blank">
-      ✏️ Editar
-    </a>
   </div>
 <?php
   endif;
