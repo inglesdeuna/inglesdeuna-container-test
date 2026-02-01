@@ -37,13 +37,14 @@ if (!$unit) {
 
 /* MAPA DE ACTIVIDADES DISPONIBLES */
 $activityMap = [
-  "flashcards"     => ["Flashcards",     "../../activities/flashcards/"],
-  "pronunciation" => ["Pronunciation",  "../../activities/pronunciation/"],
-  "unscramble"    => ["Unscramble",     "../../activities/unscramble/"],
-  "drag_drop"     => ["Drag & Drop",    "../../activities/drag_drop/"],
-  "listen_order"  => ["Listen & Order", "../../activities/listen_order/"],
-  "match"         => ["Match",          "../../activities/match/"]
+  "flashcards"     => ["Flashcards",     "/lessons/lessons/hangman/index.php?activity=flashcards"],
+  "pronunciation" => ["Pronunciation",  "/lessons/lessons/hangman/index.php?activity=pronunciation"],
+  "unscramble"    => ["Unscramble",     "/lessons/lessons/hangman/index.php?activity=unscramble"],
+  "drag_drop"     => ["Drag & Drop",    "/lessons/lessons/hangman/index.php?activity=drag_drop"],
+  "listen_order"  => ["Listen & Order", "/lessons/lessons/hangman/index.php?activity=listen_order"],
+  "match"         => ["Match",          "/lessons/lessons/hangman/index.php?activity=match"]
 ];
+
 
 ?>
 <!DOCTYPE html>
