@@ -25,7 +25,7 @@ $unit_id = $_GET["unit"] ?? "";
 /* BUSCAR UNIDAD */
 $unit = null;
 foreach ($units as $u) {
-  if (isset($u["id"]) && $u["id"] === $unit_id) {
+  if (isset($u["id"]) && (string)$u["id"] === (string)$unit_id) {
     $unit = $u;
     break;
   }
