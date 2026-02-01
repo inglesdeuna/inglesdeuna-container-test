@@ -37,13 +37,14 @@ if (!$unit) {
 
 /* MAPA DE ACTIVIDADES DISPONIBLES */
 $activityMap = [
-  "flashcards"     => ["Flashcards",     "../activities/flashcards/"],
-  "pronunciation" => ["Pronunciation",  "../activities/pronunciation/"],
-  "unscramble"    => ["Unscramble",     "../activities/unscramble/"],
-  "drag_drop"     => ["Drag & Drop",    "../activities/drag_drop/"],
-  "listen_order"  => ["Listen & Order", "../activities/listen_order/"],
-  "match"         => ["Match",          "../activities/match/"]
+  "flashcards"     => ["Flashcards",     "../../activities/flashcards/"],
+  "pronunciation" => ["Pronunciation",  "../../activities/pronunciation/"],
+  "unscramble"    => ["Unscramble",     "../../activities/unscramble/"],
+  "drag_drop"     => ["Drag & Drop",    "../../activities/drag_drop/"],
+  "listen_order"  => ["Listen & Order", "../../activities/listen_order/"],
+  "match"         => ["Match",          "../../activities/match/"]
 ];
+
 ?>
 <!DOCTYPE html>
 <html lang="es">
