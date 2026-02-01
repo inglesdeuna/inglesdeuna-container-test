@@ -3,7 +3,9 @@ $file = "/var/www/html/data/programs.json";
 $data = file_exists($file) ? json_decode(file_get_contents($file), true) : [];
 
 echo "<pre>";
-var_dump($data);
+echo "Archivo: $file\n";
+var_dump(is_writable($file));
+var_dump(file_exists($file));
 exit;
 
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
