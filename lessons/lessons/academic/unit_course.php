@@ -1,9 +1,22 @@
 <?php
+<?php
 $baseDir = "/var/www/html/lessons/lessons/data";
 
 $unitsFile       = $baseDir . "/units.json";
 $assignmentsFile = $baseDir . "/assignments.json";
 
+/* ===== ASEGURAR DATA ===== */
+if (!is_dir($baseDir)) {
+  mkdir($baseDir, 0777, true);
+}
+if (!file_exists($unitsFile)) {
+  file_put_contents($unitsFile, "[]");
+}
+if (!file_exists($assignmentsFile)) {
+  file_put_contents($assignmentsFile, "[]");
+}
+
+/* ===== CARGAR DATA ===== */
 $units       = json_decode(file_get_contents($unitsFile), true) ?? [];
 $assignments = json_decode(file_get_contents($assignmentsFile), true) ?? [];
 
@@ -12,7 +25,7 @@ $unit_id = $_GET["unit"] ?? "";
 /* ===== BUSCAR UNIDAD ===== */
 $unit = null;
 foreach ($units as $u) {
-  if ($u["id"] === $unit_id) {
+  if (($u["id"] ?? "") === $unit_id) {
     $unit = $u;
     break;
   }
@@ -22,7 +35,7 @@ if (!$unit) {
   die("Unidad no encontrada");
 }
 
-/* ===== ACTIVIDADES DISPONIBLES ===== */
+/* ===== MAPA DE ACTIVIDADES ===== */
 $activityMap = [
   "flashcards"     => ["Flashcards",     "../activities/flashcards/"],
   "pronunciation" => ["Pronunciation",  "../activities/pronunciation/"],
@@ -31,7 +44,7 @@ $activityMap = [
   "listen_order"  => ["Listen & Order", "../activities/listen_order/"],
   "match"         => ["Match",          "../activities/match/"]
 ];
-?>
+
 <!DOCTYPE html>
 <html lang="es">
 <head>
