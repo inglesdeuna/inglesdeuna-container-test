@@ -5,6 +5,8 @@ if (!is_dir($base)) {
   mkdir($base, 0777, true);
 }
 
+chmod($base, 0777);
+
 $files = [
   "programs.json",
   "semesters.json",
@@ -18,6 +20,7 @@ foreach ($files as $f) {
   if (!file_exists($path)) {
     file_put_contents($path, "[]");
   }
+  chmod($path, 0666);
 }
 
 echo "OK";
