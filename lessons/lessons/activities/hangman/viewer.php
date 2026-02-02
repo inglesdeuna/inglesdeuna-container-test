@@ -1,210 +1,175 @@
+<?php
+/* ===============================
+   HANGMAN – VIEWER (ESTUDIANTE)
+   =============================== */
+
+$unit = $_GET['unit'] ?? null;
+
+$file = __DIR__ . "/hangman.json";
+$data = file_exists($file) ? json_decode(file_get_contents($file), true) : [];
+
+$activity = null;
+
+// Por ahora: toma la primera actividad
+// (luego filtramos por unit)
+if (!empty($data)) {
+  $activity = $data[0];
+}
+
+if (!$activity) {
+  die("No hangman activity available.");
+}
+
+$word = strtoupper($activity['word'] ?? '');
+$hint = $activity['hint'] ?? '';
+?>
 <!DOCTYPE html>
-<html lang="es">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Contenedor General de Juegos – LET’S</title>
+<title>Hangman</title>
 
 <style>
 body{
-  font-family: Arial, Helvetica, sans-serif;
-  background:#f4f8ff;
-  margin:0;
-  padding:40px;
-  color:#111;
+  font-family:Arial, sans-serif;
+  background:#eef6ff;
+  padding:30px;
+  text-align:center;
 }
 
-h1{
-  color:#2563eb;
-  margin-bottom:30px;
+h1{color:#2563eb;}
+
+.hangman-img{
+  max-width:220px;
+  margin:20px auto;
+}
+
+.word{
+  font-size:32px;
+  letter-spacing:10px;
+  margin:20px 0;
+}
+
+.letters{
   display:flex;
-  align-items:center;
+  flex-wrap:wrap;
+  justify-content:center;
   gap:10px;
-  font-size:28px;
 }
 
-.grid{
-  display:grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap:24px;
-}
-
-.card{
-  background:#ffffff;
-  border-radius:14px;
-  padding:25px;
-  box-shadow:0 10px 25px rgba(0,0,0,.08);
-  display:flex;
-  flex-direction:column;
-}
-
-.card-header{
-  display:flex;
-  align-items:center;
-  gap:10px;
-  margin-bottom:10px;
-}
-
-.card-header h2{
-  font-size:20px;
-  margin:0;
-  font-weight:700;
-}
-
-.icon{
-  font-size:22px;
-}
-
-.card p{
-  margin:10px 0 20px 0;
-  color:#333;
-  font-size:15px;
-}
-
-.card a{
-  display:inline-block;
-  padding:12px 18px;
+.letters button{
+  padding:10px 14px;
+  border:none;
+  border-radius:8px;
   background:#2563eb;
-  color:#ffffff;
-  text-decoration:none;
-  border-radius:10px;
-  font-weight:700;
-  font-size:14px;
-  margin-top:10px;
+  color:white;
+  font-weight:bold;
+  cursor:pointer;
 }
 
-.card a:hover{
-  background:#1e4ed8;
+.letters button:disabled{
+  background:#ccc;
+  cursor:not-allowed;
+}
+
+.result{
+  margin-top:20px;
+  font-size:22px;
+  font-weight:bold;
 }
 </style>
 </head>
 
 <body>
 
-<h1>🎮 Contenedor General de Juegos – LET’S</h1>
+<h1>🎯 Hangman</h1>
 
-<div class="grid">
+<?php if ($hint): ?>
+<p><strong>Hint:</strong> <?= htmlspecialchars($hint) ?></p>
+<?php endif; ?>
 
-  <!-- Hangman -->
-  <div class="card">
-    <div class="card-header">
-      <span class="icon">🎯</span>
-      <h2>Hangman</h2>
-    </div>
-    <p>Editar palabras, pistas y probar el juego.</p>
-    <a href="../hangman/admin.php">✏️ Editar Hangman</a>
-  </div>
+<img id="hangmanImg" class="hangman-img"
+     src="assets/hangman0.png" alt="Hangman">
 
-  <!-- Flipbooks -->
-  <div class="card">
-    <div class="card-header">
-      <span class="icon">📘</span>
-      <h2>Flipbooks</h2>
-    </div>
-    <p>Subir PDFs, nombrar lecciones y previsualizar.</p>
-    <a href="../admin/flipbook.php">✏️ Editar Flipbooks</a>
-  </div>
+<div class="word" id="word"></div>
+<div class="letters" id="letters"></div>
+<div id="result" class="result"></div>
 
-  <!-- Actividades externas -->
-  <div class="card">
-    <div class="card-header">
-      <span class="icon">🌐</span>
-      <h2>Actividades Externas</h2>
-    </div>
-    <p>Wordwall, Liveworksheets, Genially, etc.</p>
-    <a href="../admin/external_links.php">✏️ Editar actividades</a>
-  </div>
+<audio id="soundCorrect" src="assets/correct.wav"></audio>
+<audio id="soundWin" src="assets/win.mp3"></audio>
+<audio id="soundLose" src="assets/lose.mp3"></audio>
 
-  <!-- Multiple Choice -->
-  <div class="card">
-    <div class="card-header">
-      <span class="icon">📝</span>
-      <h2>Multiple Choice</h2>
-    </div>
-    <p>Crear y editar preguntas de selección múltiple.</p>
-    <a href="../activities/multiple_choice/editor.php">✏️ Editar Multiple Choice</a>
-  </div>
+<script>
+const word = "<?= $word ?>";
+const maxErrors = 7;
 
-  <!-- Flashcards -->
-  <div class="card">
-    <div class="card-header">
-      <span class="icon">🃏</span>
-      <h2>Flashcards</h2>
-    </div>
-    <p>Crear flashcards con texto, imágenes y audio.</p>
-    <a href="../activities/flashcards/editor.php">✏️ Editar Flashcards</a>
-    <a href="../activities/flashcards/viewer.php">👀 Ver Flashcards</a>
-  </div>
+let guessed = [];
+let errors = 0;
 
-  <!-- Pronunciation -->
-  <div class="card">
-    <div class="card-header">
-      <span class="icon">🎧</span>
-      <h2>Pronunciation</h2>
-    </div>
-    <p>Practicar pronunciación con audio AI.</p>
-    <a href="../activities/pronunciation/editor.php">✏️ Editar Pronunciation</a>
-    <a href="../activities/pronunciation/viewer.php">👀 Ver Pronunciation</a>
-  </div>
+const wordDiv = document.getElementById("word");
+const lettersDiv = document.getElementById("letters");
+const img = document.getElementById("hangmanImg");
+const result = document.getElementById("result");
 
-   <!-- Unscramble -->
-  <div class="card">
-    <div class="card-header">
-      <span class="icon">🧩</span>
-      <h2>Unscramble</h2>
-    </div>
-    <p>Ordena palabras u oraciones leyendo o escuchando.</p>
-    <a href="../activities/unscramble/editor.php">✏️ Editar Unscramble</a>
-    <a href="../activities/unscramble/viewer.php">👀 Ver Unscramble</a>
-  </div>
+const soundCorrect = document.getElementById("soundCorrect");
+const soundWin = document.getElementById("soundWin");
+const soundLose = document.getElementById("soundLose");
 
-  <!-- Drag & Drop -->
-  <div class="card">
-    <div class="card-header">
-      <span class="icon">🧲</span>
-      <h2>Drag & Drop</h2>
-    </div>
+function renderWord(){
+  let display = "";
+  let completed = true;
 
-    <p>Completa oraciones arrastrando palabras.</p>
+  for(const c of word){
+    if(guessed.includes(c)){
+      display += c + " ";
+    }else{
+      display += "_ ";
+      completed = false;
+    }
+  }
 
-    <a href="../activities/drag_drop/editor.php">✏️ Editar Drag & Drop</a>
-    <a href="../activities/drag_drop/viewer.php">👀 Ver Drag & Drop</a>
-  </div>
-<!-- Listen & Order -->
-<div class="card">
-  <div class="card-header">
-    <span class="icon">🎧</span>
-    <h2>Listen & Order</h2>
-  </div>
+  wordDiv.textContent = display.trim();
 
-  <p>Escucha y construye la oración en el orden correcto.</p>
+  if(completed){
+    result.textContent = "🌟 You win!";
+    soundWin.play();
+    disableAll();
+  }
+}
 
-  <a href="../activities/listen_order/editor.php">
-    ✏️ Editar Listen & Order
-  </a>
+function disableAll(){
+  document.querySelectorAll(".letters button")
+    .forEach(b => b.disabled = true);
+}
 
-  <a href="../activities/listen_order/viewer.php">
-    👀 Ver Listen & Order
-  </a>
-</div>
-<!-- Match -->
-<div class="card">
-  <div class="card-header">
-    <span class="icon">🧩</span>
-    <h2>Match</h2>
-  </div>
+"ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("").forEach(l=>{
+  const btn = document.createElement("button");
+  btn.textContent = l;
 
-  <p>Relaciona imágenes con palabras u oraciones.</p>
+  btn.onclick = ()=>{
+    btn.disabled = true;
 
-  <a href="../activities/match/editor.php">
-    ✏️ Editar Match
-  </a>
+    if(word.includes(l)){
+      guessed.push(l);
+      soundCorrect.play();
+      renderWord();
+    }else{
+      errors++;
+      img.src = "assets/hangman" + errors + ".png";
 
-  <a href="../activities/match/viewer.php">
-    👀 Ver Match
-  </a>
-</div>
+      if(errors >= maxErrors){
+        result.textContent = "❌ You lost!";
+        soundLose.play();
+        disableAll();
+      }
+    }
+  };
 
-</div>
+  lettersDiv.appendChild(btn);
+});
+
+renderWord();
+</script>
 
 </body>
 </html>
