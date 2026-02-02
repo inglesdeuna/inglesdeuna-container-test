@@ -1,9 +1,6 @@
-{
-  "default": [
-    { "word": "DOG", "hint": "A friendly animal 🐶" },
-    { "word": "CAT", "hint": "A small pet 🐱" },
-    { "word": "APPLE", "hint": "A red fruit 🍎" },
-    { "word": "TEACHER", "hint": "Works at a school 👩‍🏫" }
-  ]
-}
-
+[
+  {
+    "word": "apple",
+    "hint": "A fruit"
+  }
+]
