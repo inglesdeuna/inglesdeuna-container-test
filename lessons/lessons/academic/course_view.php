@@ -227,14 +227,18 @@ select,button{padding:10px;font-size:14px}
 
   if (!isset($studentMap[$sid])) continue;
 ?>
-       <li>
+      <li>
   <?= htmlspecialchars($studentMap[$sid]["name"]) ?>
-  <small style="color:#666">
-    (<?= htmlspecialchars($s["permission"] ?? "viewer") ?>)
-  </small>
+
+  <select disabled>
+    <option>viewer</option>
+    <option>editor</option>
+  </select>
+
   <a class="remove"
      href="?course=<?= urlencode($courseId) ?>&remove_student=<?= urlencode($sid) ?>">❌</a>
 </li>
+
 
       <?php endforeach; ?>
     </ul>
