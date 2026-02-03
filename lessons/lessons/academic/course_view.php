@@ -42,6 +42,21 @@ if (!$course) die("Curso no encontrado");
 if (!isset($courses[$courseIndex]["units"]))    $courses[$courseIndex]["units"] = [];
 if (!isset($courses[$courseIndex]["teacher"]))  $courses[$courseIndex]["teacher"] = null;
 if (!isset($courses[$courseIndex]["students"])) $courses[$courseIndex]["students"] = [];
+/* NORMALIZAR STUDENTS (strings → objetos) */
+$normalized = [];
+foreach ($courses[$courseIndex]["students"] as $s) {
+  if (is_string($s)) {
+    $normalized[] = ["id" => $s, "permission" => "viewer"];
+  } elseif (is_array($s) && isset($s["id"])) {
+    $normalized[] = [
+      "id" => $s["id"],
+      "permission" => $s["permission"] ?? "viewer"
+    ];
+  }
+}
+$courses[$courseIndex]["students"] = $normalized;
+file_put_contents($coursesFile, json_encode($courses, JSON_PRETTY_PRINT));
+
 
 /* GUARDAR NORMALIZACIÓN */
 file_put_contents($coursesFile, json_encode($courses, JSON_PRETTY_PRINT));
