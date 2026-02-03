@@ -119,6 +119,25 @@ select,button{
 <body>
 
 <h1>📘 Curso: <?= htmlspecialchars($course["name"]) ?></h1>
+   <?php
+/* DOCENTES */
+$teachersFile = __DIR__ . "/teachers.json";
+$teachers = file_exists($teachersFile)
+  ? json_decode(file_get_contents($teachersFile), true)
+  : [];
+
+/* ASIGNAR DOCENTE */
+if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["assign_teacher"])) {
+  $teacherId = $_POST["teacher_id"] ?? null;
+  if ($teacherId) {
+    $courses[$courseIndex]["teacher"] = $teacherId;
+    file_put_contents($coursesFile, json_encode($courses, JSON_PRETTY_PRINT));
+    header("Location: course_view.php?course=" . urlencode($courseId));
+    exit;
+  }
+}
+?>
+
 
 <!-- AGREGAR UNIDAD -->
 <div class="section">
