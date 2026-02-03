@@ -1,1 +1,13 @@
-[]
+[
+  {
+    "id": "course_1770131705",
+    "name": "Basic 1",
+    "units": ["unit1"],
+    "teachers": [
+      { "id": "t1", "permission": "editor" }
+    ],
+    "students": [
+      { "id": "s1", "permission": "viewer" }
+    ]
+  }
+]
