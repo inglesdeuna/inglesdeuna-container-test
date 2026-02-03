@@ -124,6 +124,22 @@ button{
     </div>
   <?php endforeach; ?>
 </div>
+<hr style="margin:40px 0">
+
+<div style="text-align:right">
+  <a href="modules_editor.php"
+     style="
+       padding:14px 24px;
+       background:#2563eb;
+       color:#fff;
+       text-decoration:none;
+       border-radius:10px;
+       font-weight:700;
+       font-size:16px;
+     ">
+    ➡️ Siguiente: Módulos
+  </a>
+</div>
 
 </body>
 </html>
