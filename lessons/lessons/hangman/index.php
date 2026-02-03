@@ -90,8 +90,9 @@ h1{
       <span class="icon">🎯</span>
       <h2>Hangman</h2>
     </div>
-    <p>Editar palabras, pistas y probar el juego.</p>
-    <a href="../hangman/admin.php">✏️ Editar Hangman</a>
+    <p>Editar palabras, pistas y jugar Hangman.</p>
+    <a href="../activities/hangman/editor.php">✏️ Editar Hangman</a>
+    <a href="../activities/hangman/viewer.php">👀 Ver Hangman</a>
   </div>
 
   <!-- Flipbooks -->
@@ -100,8 +101,9 @@ h1{
       <span class="icon">📘</span>
       <h2>Flipbooks</h2>
     </div>
-    <p>Subir PDFs, nombrar lecciones y previsualizar.</p>
+    <p>Subir PDFs, nombrar lecciones y visualizarlas.</p>
     <a href="../admin/flipbook.php">✏️ Editar Flipbooks</a>
+    <a href="../activities/flipbooks/viewer.php">👀 Ver Flipbooks</a>
   </div>
 
   <!-- Actividades externas -->
@@ -112,6 +114,7 @@ h1{
     </div>
     <p>Wordwall, Liveworksheets, Genially, etc.</p>
     <a href="../admin/external_links.php">✏️ Editar actividades</a>
+    <a href="../activities/external/viewer.php">👀 Ver actividades</a>
   </div>
 
   <!-- Multiple Choice -->
@@ -120,8 +123,9 @@ h1{
       <span class="icon">📝</span>
       <h2>Multiple Choice</h2>
     </div>
-    <p>Crear y editar preguntas de selección múltiple.</p>
+    <p>Crear y responder preguntas de selección múltiple.</p>
     <a href="../activities/multiple_choice/editor.php">✏️ Editar Multiple Choice</a>
+    <a href="../activities/multiple_choice/viewer.php">👀 Ver Multiple Choice</a>
   </div>
 
   <!-- Flashcards -->
@@ -141,18 +145,18 @@ h1{
       <span class="icon">🎧</span>
       <h2>Pronunciation</h2>
     </div>
-    <p>Practicar pronunciación con audio AI.</p>
+    <p>Practicar pronunciación con audio.</p>
     <a href="../activities/pronunciation/editor.php">✏️ Editar Pronunciation</a>
     <a href="../activities/pronunciation/viewer.php">👀 Ver Pronunciation</a>
   </div>
 
-   <!-- Unscramble -->
+  <!-- Unscramble -->
   <div class="card">
     <div class="card-header">
       <span class="icon">🧩</span>
       <h2>Unscramble</h2>
     </div>
-    <p>Ordena palabras u oraciones leyendo o escuchando.</p>
+    <p>Ordena palabras u oraciones.</p>
     <a href="../activities/unscramble/editor.php">✏️ Editar Unscramble</a>
     <a href="../activities/unscramble/viewer.php">👀 Ver Unscramble</a>
   </div>
@@ -163,49 +167,34 @@ h1{
       <span class="icon">🧲</span>
       <h2>Drag & Drop</h2>
     </div>
-
     <p>Completa oraciones arrastrando palabras.</p>
-
     <a href="../activities/drag_drop/editor.php">✏️ Editar Drag & Drop</a>
     <a href="../activities/drag_drop/viewer.php">👀 Ver Drag & Drop</a>
   </div>
-<!-- Listen & Order -->
-<div class="card">
-  <div class="card-header">
-    <span class="icon">🎧</span>
-    <h2>Listen & Order</h2>
+
+  <!-- Listen & Order -->
+  <div class="card">
+    <div class="card-header">
+      <span class="icon">🎧</span>
+      <h2>Listen & Order</h2>
+    </div>
+    <p>Escucha y ordena la oración correctamente.</p>
+    <a href="../activities/listen_order/editor.php">✏️ Editar Listen & Order</a>
+    <a href="../activities/listen_order/viewer.php">👀 Ver Listen & Order</a>
   </div>
 
-  <p>Escucha y construye la oración en el orden correcto.</p>
-
-  <a href="../activities/listen_order/editor.php">
-    ✏️ Editar Listen & Order
-  </a>
-
-  <a href="../activities/listen_order/viewer.php">
-    👀 Ver Listen & Order
-  </a>
-</div>
-<!-- Match -->
-<div class="card">
-  <div class="card-header">
-    <span class="icon">🧩</span>
-    <h2>Match</h2>
+  <!-- Match -->
+  <div class="card">
+    <div class="card-header">
+      <span class="icon">🧩</span>
+      <h2>Match</h2>
+    </div>
+    <p>Relaciona imágenes con palabras.</p>
+    <a href="../activities/match/editor.php">✏️ Editar Match</a>
+    <a href="../activities/match/viewer.php">👀 Ver Match</a>
   </div>
-
-  <p>Relaciona imágenes con palabras u oraciones.</p>
-
-  <a href="../activities/match/editor.php">
-    ✏️ Editar Match
-  </a>
-
-  <a href="../activities/match/viewer.php">
-    👀 Ver Match
-  </a>
-</div>
 
 </div>
 
 </body>
 </html>
-
