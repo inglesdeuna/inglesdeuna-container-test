@@ -229,7 +229,9 @@ select,button{padding:10px;font-size:14px}
 ?>
        <li>
   <?= htmlspecialchars($studentMap[$sid]["name"]) ?>
-  <small>(<?= htmlspecialchars($s["permission"]) ?>)</small>
+  <small style="color:#666">
+    (<?= htmlspecialchars($s["permission"] ?? "viewer") ?>)
+  </small>
   <a class="remove"
      href="?course=<?= urlencode($courseId) ?>&remove_student=<?= urlencode($sid) ?>">❌</a>
 </li>
