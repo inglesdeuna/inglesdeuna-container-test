@@ -1,6 +1,7 @@
 <?php
 /* =====================================================
    COURSE VIEW – TEACHERS PANEL (ACADEMIC)
+   MODELO DRIVE / STUDENTS CON PERMISSION
    ===================================================== */
 
 /* VALIDAR CURSO */
@@ -17,7 +18,7 @@ $studentsFile = __DIR__ . "/students.json";
 $courses = [];
 if (file_exists($coursesFile)) {
   $raw = file_get_contents($coursesFile);
-  $raw = preg_replace('/^\xEF\xBB\xBF/', '', $raw); // eliminar BOM
+  $raw = preg_replace('/^\xEF\xBB\xBF/', '', $raw);
   $courses = json_decode($raw, true) ?? [];
 }
 
@@ -29,7 +30,7 @@ $students = file_exists($studentsFile) ? json_decode(file_get_contents($students
 $courseIndex = null;
 $course = null;
 foreach ($courses as $i => $c) {
-  if ($c["id"] === $courseId) {
+  if (($c["id"] ?? null) === $courseId) {
     $courseIndex = $i;
     $course = $c;
     break;
@@ -42,7 +43,7 @@ if (!isset($courses[$courseIndex]["units"]))    $courses[$courseIndex]["units"] 
 if (!isset($courses[$courseIndex]["teacher"]))  $courses[$courseIndex]["teacher"] = null;
 if (!isset($courses[$courseIndex]["students"])) $courses[$courseIndex]["students"] = [];
 
-/* GUARDAR SI SE CREÓ ALGO */
+/* GUARDAR NORMALIZACIÓN */
 file_put_contents($coursesFile, json_encode($courses, JSON_PRETTY_PRINT));
 
 /* MAPAS */
@@ -74,7 +75,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["assign_teacher"])) {
    ===================== */
 if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["add_unit"])) {
   $unitId = $_POST["unit_id"] ?? null;
-  if ($unitId && !in_array($unitId, $courses[$courseIndex]["units"])) {
+  if ($unitId && !in_array($unitId, $courses[$courseIndex]["units"], true)) {
     $courses[$courseIndex]["units"][] = $unitId;
     file_put_contents($coursesFile, json_encode($courses, JSON_PRETTY_PRINT));
   }
@@ -85,31 +86,56 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["add_unit"])) {
 /* QUITAR UNIDAD */
 if (isset($_GET["remove_unit"])) {
   $remove = $_GET["remove_unit"];
-  $courses[$courseIndex]["units"] =
-    array_values(array_diff($courses[$courseIndex]["units"], [$remove]));
+  $courses[$courseIndex]["units"] = array_values(
+    array_filter(
+      $courses[$courseIndex]["units"],
+      fn($u) => $u !== $remove
+    )
+  );
   file_put_contents($coursesFile, json_encode($courses, JSON_PRETTY_PRINT));
   header("Location: course_view.php?course=" . urlencode($courseId));
   exit;
 }
 
 /* =====================
-   AGREGAR ESTUDIANTE
+   AGREGAR ESTUDIANTE (MODELO NUEVO)
    ===================== */
 if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["add_student"])) {
   $sid = $_POST["student_id"] ?? null;
-  if ($sid && !in_array($sid, $courses[$courseIndex]["students"])) {
-    $courses[$courseIndex]["students"][] = $sid;
-    file_put_contents($coursesFile, json_encode($courses, JSON_PRETTY_PRINT));
+
+  if ($sid) {
+    $exists = false;
+    foreach ($courses[$courseIndex]["students"] as $s) {
+      if (($s["id"] ?? null) === $sid) {
+        $exists = true;
+        break;
+      }
+    }
+
+    if (!$exists) {
+      $courses[$courseIndex]["students"][] = [
+        "id" => $sid,
+        "permission" => "viewer"
+      ];
+      file_put_contents($coursesFile, json_encode($courses, JSON_PRETTY_PRINT));
+    }
   }
+
   header("Location: course_view.php?course=" . urlencode($courseId));
   exit;
 }
 
-/* QUITAR ESTUDIANTE */
+/* QUITAR ESTUDIANTE (MODELO NUEVO) */
 if (isset($_GET["remove_student"])) {
   $remove = $_GET["remove_student"];
-  $courses[$courseIndex]["students"] =
-    array_values(array_diff($courses[$courseIndex]["students"], [$remove]));
+
+  $courses[$courseIndex]["students"] = array_values(
+    array_filter(
+      $courses[$courseIndex]["students"],
+      fn($s) => ($s["id"] ?? null) !== $remove
+    )
+  );
+
   file_put_contents($coursesFile, json_encode($courses, JSON_PRETTY_PRINT));
   header("Location: course_view.php?course=" . urlencode($courseId));
   exit;
@@ -118,7 +144,7 @@ if (isset($_GET["remove_student"])) {
 /* NOMBRE DOCENTE */
 $teacherName = "";
 foreach ($teachers as $t) {
-  if ($t["id"] === $courses[$courseIndex]["teacher"]) {
+  if (($t["id"] ?? null) === $courses[$courseIndex]["teacher"]) {
     $teacherName = $t["name"];
     break;
   }
@@ -131,48 +157,17 @@ foreach ($teachers as $t) {
 <title><?= htmlspecialchars($course["name"]) ?></title>
 
 <style>
-body{
-  font-family: Arial, Helvetica, sans-serif;
-  background:#f4f8ff;
-  padding:40px;
-}
-
+body{font-family:Arial,Helvetica,sans-serif;background:#f4f8ff;padding:40px}
 h1{color:#2563eb}
-
-.section{
-  background:#fff;
-  padding:25px;
-  border-radius:14px;
-  box-shadow:0 10px 25px rgba(0,0,0,.08);
-  margin-bottom:30px;
-}
-
-table{
-  width:100%;
-  border-collapse:collapse;
-}
-
-th,td{
-  padding:14px;
-  border-bottom:1px solid #eee;
-}
-
+.section{background:#fff;padding:25px;border-radius:14px;box-shadow:0 10px 25px rgba(0,0,0,.08);margin-bottom:30px}
+table{width:100%;border-collapse:collapse}
+th,td{padding:14px;border-bottom:1px solid #eee}
 th{background:#f1f5ff;text-align:left}
-
-.actions a{
-  margin-right:10px;
-  font-weight:700;
-  text-decoration:none;
-}
-
+.actions a{margin-right:10px;font-weight:700;text-decoration:none}
 .preview{color:#2563eb}
 .edit{color:#16a34a}
 .remove{color:#dc2626}
-
-select,button{
-  padding:10px;
-  font-size:14px;
-}
+select,button{padding:10px;font-size:14px}
 </style>
 </head>
 
@@ -211,14 +206,11 @@ select,button{
     <p>No hay estudiantes asignados.</p>
   <?php else: ?>
     <ul>
-      
-   <?php foreach ($courses[$courseIndex]["students"] as $s):
-  if (!isset($s["id"])) continue;
-  $sid = $s["id"];
-
-  if (!isset($studentMap[$sid])) continue;
-?>
-
+      <?php foreach ($courses[$courseIndex]["students"] as $s):
+        if (!isset($s["id"])) continue;
+        $sid = $s["id"];
+        if (!isset($studentMap[$sid])) continue;
+      ?>
         <li>
           <?= htmlspecialchars($studentMap[$sid]["name"]) ?>
           <a class="remove"
