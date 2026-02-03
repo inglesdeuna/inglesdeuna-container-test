@@ -1,16 +1,21 @@
 <?php
-/* ===============================
-   COURSE VIEW – ACADEMIC
-   =============================== */
+/* =====================================================
+   COURSE VIEW – TEACHERS PANEL (ACADEMIC)
+   ===================================================== */
 
+/* VALIDAR CURSO */
 $courseId = $_GET["course"] ?? null;
 if (!$courseId) die("Curso no especificado");
 
-/* CURSOS */
-$coursesFile = __DIR__ . "/courses.json";
-$courses = file_exists($coursesFile)
-  ? json_decode(file_get_contents($coursesFile), true)
-  : [];
+/* ARCHIVOS */
+$coursesFile  = __DIR__ . "/courses.json";
+$unitsFile    = __DIR__ . "/units.json";
+$teachersFile = __DIR__ . "/teachers.json";
+
+/* CARGAR DATOS */
+$courses  = file_exists($coursesFile)  ? json_decode(file_get_contents($coursesFile), true)  : [];
+$units    = file_exists($unitsFile)    ? json_decode(file_get_contents($unitsFile), true)    : [];
+$teachers = file_exists($teachersFile) ? json_decode(file_get_contents($teachersFile), true) : [];
 
 /* BUSCAR CURSO */
 $courseIndex = null;
@@ -24,19 +29,35 @@ foreach ($courses as $i => $c) {
 }
 if (!$course) die("Curso no encontrado");
 
-/* ASEGURAR UNIDADES */
-if (!isset($courses[$courseIndex]["units"])) {
-  $courses[$courseIndex]["units"] = [];
-  file_put_contents($coursesFile, json_encode($courses, JSON_PRETTY_PRINT));
+/* ASEGURAR CAMPOS */
+if (!isset($courses[$courseIndex]["units"]))   $courses[$courseIndex]["units"] = [];
+if (!isset($courses[$courseIndex]["teacher"])) $courses[$courseIndex]["teacher"] = null;
+
+/* GUARDAR SI SE CREÓ ALGO */
+file_put_contents($coursesFile, json_encode($courses, JSON_PRETTY_PRINT));
+
+/* MAPA DE UNIDADES */
+$unitMap = [];
+foreach ($units as $u) {
+  if (isset($u["id"])) $unitMap[$u["id"]] = $u;
 }
 
-/* TODAS LAS UNIDADES */
-$unitsFile = __DIR__ . "/units.json";
-$allUnits = file_exists($unitsFile)
-  ? json_decode(file_get_contents($unitsFile), true)
-  : [];
+/* =====================
+   ASIGNAR DOCENTE
+   ===================== */
+if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["assign_teacher"])) {
+  $teacherId = $_POST["teacher_id"] ?? null;
+  if ($teacherId) {
+    $courses[$courseIndex]["teacher"] = $teacherId;
+    file_put_contents($coursesFile, json_encode($courses, JSON_PRETTY_PRINT));
+  }
+  header("Location: course_view.php?course=" . urlencode($courseId));
+  exit;
+}
 
-/* AGREGAR UNIDAD */
+/* =====================
+   AGREGAR UNIDAD
+   ===================== */
 if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["add_unit"])) {
   $unitId = $_POST["unit_id"] ?? null;
   if ($unitId && !in_array($unitId, $courses[$courseIndex]["units"])) {
@@ -47,7 +68,9 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["add_unit"])) {
   exit;
 }
 
-/* QUITAR UNIDAD */
+/* =====================
+   QUITAR UNIDAD
+   ===================== */
 if (isset($_GET["remove_unit"])) {
   $remove = $_GET["remove_unit"];
   $courses[$courseIndex]["units"] =
@@ -57,10 +80,13 @@ if (isset($_GET["remove_unit"])) {
   exit;
 }
 
-/* MAPA DE UNIDADES */
-$unitMap = [];
-foreach ($allUnits as $u) {
-  if (isset($u["id"])) $unitMap[$u["id"]] = $u;
+/* OBTENER NOMBRE DOCENTE */
+$teacherName = "";
+foreach ($teachers as $t) {
+  if ($t["id"] === $courses[$courseIndex]["teacher"]) {
+    $teacherName = $t["name"];
+    break;
+  }
 }
 ?>
 <!DOCTYPE html>
@@ -94,13 +120,12 @@ table{
 th,td{
   padding:14px;
   border-bottom:1px solid #eee;
-  text-align:left;
 }
 
-th{background:#f1f5ff}
+th{background:#f1f5ff;text-align:left}
 
 .actions a{
-  margin-right:8px;
+  margin-right:10px;
   font-weight:700;
   text-decoration:none;
 }
@@ -119,33 +144,38 @@ select,button{
 <body>
 
 <h1>📘 Curso: <?= htmlspecialchars($course["name"]) ?></h1>
-   <?php
-/* DOCENTES */
-$teachersFile = __DIR__ . "/teachers.json";
-$teachers = file_exists($teachersFile)
-  ? json_decode(file_get_contents($teachersFile), true)
-  : [];
 
-/* ASIGNAR DOCENTE */
-if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["assign_teacher"])) {
-  $teacherId = $_POST["teacher_id"] ?? null;
-  if ($teacherId) {
-    $courses[$courseIndex]["teacher"] = $teacherId;
-    file_put_contents($coursesFile, json_encode($courses, JSON_PRETTY_PRINT));
-    header("Location: course_view.php?course=" . urlencode($courseId));
-    exit;
-  }
-}
-?>
+<!-- DOCENTE -->
+<div class="section">
+  <h2>👩‍🏫 Docente del curso</h2>
 
+  <?php if ($teacherName): ?>
+    <p><strong>Docente asignado:</strong> <?= htmlspecialchars($teacherName) ?></p>
+  <?php else: ?>
+    <p>No hay docente asignado.</p>
+  <?php endif; ?>
+
+  <form method="post">
+    <select name="teacher_id" required>
+      <option value="">Seleccionar docente</option>
+      <?php foreach ($teachers as $t): ?>
+        <option value="<?= htmlspecialchars($t["id"]) ?>">
+          <?= htmlspecialchars($t["name"]) ?>
+        </option>
+      <?php endforeach; ?>
+    </select>
+    <button type="submit" name="assign_teacher">Asignar docente</button>
+  </form>
+</div>
 
 <!-- AGREGAR UNIDAD -->
 <div class="section">
   <h2>➕ Agregar unidad al curso</h2>
+
   <form method="post">
     <select name="unit_id" required>
-      <option value="">Seleccione una unidad</option>
-      <?php foreach ($allUnits as $u): ?>
+      <option value="">Seleccionar unidad</option>
+      <?php foreach ($units as $u): ?>
         <option value="<?= htmlspecialchars($u["id"]) ?>">
           <?= htmlspecialchars($u["name"] ?? $u["title"] ?? "Unidad") ?>
         </option>
@@ -160,7 +190,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["assign_teacher"])) {
   <h2>📚 Unidades del curso</h2>
 
   <?php if (empty($courses[$courseIndex]["units"])): ?>
-    <p>No hay unidades asignadas a este curso.</p>
+    <p>No hay unidades asignadas.</p>
   <?php else: ?>
     <table>
       <tr>
@@ -168,7 +198,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["assign_teacher"])) {
         <th>Acciones</th>
       </tr>
 
-      <?php foreach ($courses[$courseIndex]["units"] as $uid): 
+      <?php foreach ($courses[$courseIndex]["units"] as $uid):
         if (!isset($unitMap[$uid])) continue;
         $u = $unitMap[$uid];
       ?>
@@ -196,3 +226,4 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["assign_teacher"])) {
 
 </body>
 </html>
+
