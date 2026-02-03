@@ -211,9 +211,14 @@ select,button{
     <p>No hay estudiantes asignados.</p>
   <?php else: ?>
     <ul>
-      <?php foreach ($courses[$courseIndex]["students"] as $sid):
-        if (!isset($studentMap[$sid])) continue;
-      ?>
+      
+   <?php foreach ($courses[$courseIndex]["students"] as $s):
+  if (!isset($s["id"])) continue;
+  $sid = $s["id"];
+
+  if (!isset($studentMap[$sid])) continue;
+?>
+
         <li>
           <?= htmlspecialchars($studentMap[$sid]["name"]) ?>
           <a class="remove"
