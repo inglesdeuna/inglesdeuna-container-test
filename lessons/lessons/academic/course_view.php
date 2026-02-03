@@ -15,12 +15,9 @@ $teachersFile = __DIR__ . "/teachers.json";
 $studentsFile = __DIR__ . "/students.json";
 
 /* CARGAR DATOS */
-$courses = [];
-if (file_exists($coursesFile)) {
-  $raw = file_get_contents($coursesFile);
-  $raw = preg_replace('/^\xEF\xBB\xBF/', '', $raw);
-  $courses = json_decode($raw, true) ?? [];
-}
+$courses = file_exists($coursesFile)
+  ? json_decode(preg_replace('/^\xEF\xBB\xBF/', '', file_get_contents($coursesFile)), true) ?? []
+  : [];
 
 $units    = file_exists($unitsFile)    ? json_decode(file_get_contents($unitsFile), true)    : [];
 $teachers = file_exists($teachersFile) ? json_decode(file_get_contents($teachersFile), true) : [];
@@ -39,10 +36,11 @@ foreach ($courses as $i => $c) {
 if (!$course) die("Curso no encontrado");
 
 /* ASEGURAR CAMPOS */
-if (!isset($courses[$courseIndex]["units"]))    $courses[$courseIndex]["units"] = [];
-if (!isset($courses[$courseIndex]["teacher"]))  $courses[$courseIndex]["teacher"] = null;
-if (!isset($courses[$courseIndex]["students"])) $courses[$courseIndex]["students"] = [];
-/* NORMALIZAR STUDENTS (strings → objetos) */
+$courses[$courseIndex]["units"]    = $courses[$courseIndex]["units"]    ?? [];
+$courses[$courseIndex]["teacher"]  = $courses[$courseIndex]["teacher"]  ?? null;
+$courses[$courseIndex]["students"] = $courses[$courseIndex]["students"] ?? [];
+
+/* NORMALIZAR STUDENTS */
 $normalized = [];
 foreach ($courses[$courseIndex]["students"] as $s) {
   if (is_string($s)) {
@@ -57,243 +55,135 @@ foreach ($courses[$courseIndex]["students"] as $s) {
 $courses[$courseIndex]["students"] = $normalized;
 file_put_contents($coursesFile, json_encode($courses, JSON_PRETTY_PRINT));
 
-
-/* GUARDAR NORMALIZACIÓN */
-file_put_contents($coursesFile, json_encode($courses, JSON_PRETTY_PRINT));
-
 /* MAPAS */
 $unitMap = [];
-foreach ($units as $u) {
-  if (isset($u["id"])) $unitMap[$u["id"]] = $u;
-}
+foreach ($units as $u) if (isset($u["id"])) $unitMap[$u["id"]] = $u;
 
 $studentMap = [];
-foreach ($students as $s) {
-  if (isset($s["id"])) $studentMap[$s["id"]] = $s;
-}
+foreach ($students as $s) if (isset($s["id"])) $studentMap[$s["id"]] = $s;
 
 /* =====================
-   ASIGNAR DOCENTE
+   POST: ASIGNAR DOCENTE
    ===================== */
 if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["assign_teacher"])) {
-  $teacherId = $_POST["teacher_id"] ?? null;
-  if ($teacherId) {
-    $courses[$courseIndex]["teacher"] = $teacherId;
-    file_put_contents($coursesFile, json_encode($courses, JSON_PRETTY_PRINT));
-  }
-  header("Location: course_view.php?course=" . urlencode($courseId));
-  exit;
+  $courses[$courseIndex]["teacher"] = $_POST["teacher_id"] ?? null;
+  file_put_contents($coursesFile, json_encode($courses, JSON_PRETTY_PRINT));
+  header("Location: course_view.php?course=$courseId"); exit;
 }
 
 /* =====================
-   AGREGAR UNIDAD
+   POST: AGREGAR UNIDAD
    ===================== */
 if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["add_unit"])) {
-  $unitId = $_POST["unit_id"] ?? null;
-  if ($unitId && !in_array($unitId, $courses[$courseIndex]["units"], true)) {
-    $courses[$courseIndex]["units"][] = $unitId;
+  $uid = $_POST["unit_id"] ?? null;
+  if ($uid && !in_array($uid, $courses[$courseIndex]["units"], true)) {
+    $courses[$courseIndex]["units"][] = $uid;
     file_put_contents($coursesFile, json_encode($courses, JSON_PRETTY_PRINT));
   }
-  header("Location: course_view.php?course=" . urlencode($courseId));
-  exit;
+  header("Location: course_view.php?course=$courseId"); exit;
 }
 
 /* QUITAR UNIDAD */
 if (isset($_GET["remove_unit"])) {
-  $remove = $_GET["remove_unit"];
   $courses[$courseIndex]["units"] = array_values(
-    array_filter(
-      $courses[$courseIndex]["units"],
-      fn($u) => $u !== $remove
-    )
+    array_filter($courses[$courseIndex]["units"], fn($u) => $u !== $_GET["remove_unit"])
   );
   file_put_contents($coursesFile, json_encode($courses, JSON_PRETTY_PRINT));
-  header("Location: course_view.php?course=" . urlencode($courseId));
-  exit;
+  header("Location: course_view.php?course=$courseId"); exit;
 }
 
 /* =====================
-   AGREGAR ESTUDIANTE (MODELO NUEVO)
+   POST: AGREGAR ESTUDIANTE
    ===================== */
 if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["add_student"])) {
   $sid = $_POST["student_id"] ?? null;
-
   if ($sid) {
-    $exists = false;
-    foreach ($courses[$courseIndex]["students"] as $s) {
-      if (($s["id"] ?? null) === $sid) {
-        $exists = true;
-        break;
-      }
-    }
+    foreach ($courses[$courseIndex]["students"] as $s)
+      if (($s["id"] ?? null) === $sid) { header("Location: course_view.php?course=$courseId"); exit; }
 
-    if (!$exists) {
-      $courses[$courseIndex]["students"][] = [
-        "id" => $sid,
-        "permission" => "viewer"
-      ];
-      file_put_contents($coursesFile, json_encode($courses, JSON_PRETTY_PRINT));
-    }
+    $courses[$courseIndex]["students"][] = ["id" => $sid, "permission" => "viewer"];
+    file_put_contents($coursesFile, json_encode($courses, JSON_PRETTY_PRINT));
   }
-
-  header("Location: course_view.php?course=" . urlencode($courseId));
-  exit;
+  header("Location: course_view.php?course=$courseId"); exit;
 }
 
-/* QUITAR ESTUDIANTE (MODELO NUEVO) */
-if (isset($_GET["remove_student"])) {
-  $remove = $_GET["remove_student"];
+/* =====================
+   POST: CAMBIAR PERMISSION
+   ===================== */
+if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["update_permission"])) {
+  $sid  = $_POST["student_id"] ?? null;
+  $perm = $_POST["permission"] ?? "viewer";
 
+  foreach ($courses[$courseIndex]["students"] as &$s) {
+    if (($s["id"] ?? null) === $sid) {
+      $s["permission"] = $perm;
+      break;
+    }
+  }
+  unset($s);
+
+  file_put_contents($coursesFile, json_encode($courses, JSON_PRETTY_PRINT));
+  header("Location: course_view.php?course=$courseId"); exit;
+}
+
+/* QUITAR ESTUDIANTE */
+if (isset($_GET["remove_student"])) {
   $courses[$courseIndex]["students"] = array_values(
     array_filter(
       $courses[$courseIndex]["students"],
-      fn($s) => ($s["id"] ?? null) !== $remove
+      fn($s) => ($s["id"] ?? null) !== $_GET["remove_student"]
     )
   );
-
   file_put_contents($coursesFile, json_encode($courses, JSON_PRETTY_PRINT));
-  header("Location: course_view.php?course=" . urlencode($courseId));
-  exit;
+  header("Location: course_view.php?course=$courseId"); exit;
 }
 
 /* NOMBRE DOCENTE */
 $teacherName = "";
-foreach ($teachers as $t) {
-  if (($t["id"] ?? null) === $courses[$courseIndex]["teacher"]) {
-    $teacherName = $t["name"];
-    break;
-  }
-}
+foreach ($teachers as $t)
+  if (($t["id"] ?? null) === $courses[$courseIndex]["teacher"]) $teacherName = $t["name"];
 ?>
 <!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
 <title><?= htmlspecialchars($course["name"]) ?></title>
-
 <style>
-body{font-family:Arial,Helvetica,sans-serif;background:#f4f8ff;padding:40px}
-h1{color:#2563eb}
-.section{background:#fff;padding:25px;border-radius:14px;box-shadow:0 10px 25px rgba(0,0,0,.08);margin-bottom:30px}
-table{width:100%;border-collapse:collapse}
-th,td{padding:14px;border-bottom:1px solid #eee}
-th{background:#f1f5ff;text-align:left}
-.actions a{margin-right:10px;font-weight:700;text-decoration:none}
-.preview{color:#2563eb}
-.edit{color:#16a34a}
-.remove{color:#dc2626}
-select,button{padding:10px;font-size:14px}
+body{font-family:Arial;background:#f4f8ff;padding:40px}
+.section{background:#fff;padding:25px;border-radius:14px;margin-bottom:30px}
+.remove{color:#dc2626;text-decoration:none}
 </style>
 </head>
-
 <body>
 
 <h1>📘 Curso: <?= htmlspecialchars($course["name"]) ?></h1>
 
-<!-- DOCENTE -->
-<div class="section">
-  <h2>👩‍🏫 Docente</h2>
-
-  <?php if ($teacherName): ?>
-    <p><strong><?= htmlspecialchars($teacherName) ?></strong></p>
-  <?php else: ?>
-    <p>No hay docente asignado.</p>
-  <?php endif; ?>
-
-  <form method="post">
-    <select name="teacher_id" required>
-      <option value="">Seleccionar docente</option>
-      <?php foreach ($teachers as $t): ?>
-        <option value="<?= htmlspecialchars($t["id"]) ?>">
-          <?= htmlspecialchars($t["name"]) ?>
-        </option>
-      <?php endforeach; ?>
-    </select>
-    <button type="submit" name="assign_teacher">Asignar</button>
-  </form>
-</div>
-
 <!-- ESTUDIANTES -->
 <div class="section">
-  <h2>👨‍🎓 Estudiantes</h2>
+<h2>👨‍🎓 Estudiantes</h2>
 
-  <?php if (empty($courses[$courseIndex]["students"])): ?>
-    <p>No hay estudiantes asignados.</p>
-  <?php else: ?>
-    <ul>
-      <?php foreach ($courses[$courseIndex]["students"] as $s):
-  if (!is_array($s) || !isset($s["id"]) || !is_string($s["id"])) continue;
+<ul>
+<?php foreach ($courses[$courseIndex]["students"] as $s):
   $sid = $s["id"];
-
   if (!isset($studentMap[$sid])) continue;
 ?>
-      <li>
+<li>
   <?= htmlspecialchars($studentMap[$sid]["name"]) ?>
 
-  <select disabled>
-    <option>viewer</option>
-    <option>editor</option>
-  </select>
+  <form method="post" style="display:inline">
+    <input type="hidden" name="student_id" value="<?= htmlspecialchars($sid) ?>">
+    <select name="permission" onchange="this.form.submit()">
+      <option value="viewer" <?= ($s["permission"]==="viewer")?"selected":"" ?>>viewer</option>
+      <option value="editor" <?= ($s["permission"]==="editor")?"selected":"" ?>>editor</option>
+    </select>
+    <input type="hidden" name="update_permission" value="1">
+  </form>
 
-  <a class="remove"
-     href="?course=<?= urlencode($courseId) ?>&remove_student=<?= urlencode($sid) ?>">❌</a>
+  <a class="remove" href="?course=<?= $courseId ?>&remove_student=<?= $sid ?>">❌</a>
 </li>
+<?php endforeach; ?>
+</ul>
 
-
-      <?php endforeach; ?>
-    </ul>
-  <?php endif; ?>
-
-  <form method="post">
-    <select name="student_id" required>
-      <option value="">Agregar estudiante</option>
-      <?php foreach ($students as $s): ?>
-        <option value="<?= htmlspecialchars($s["id"]) ?>">
-          <?= htmlspecialchars($s["name"]) ?>
-        </option>
-      <?php endforeach; ?>
-    </select>
-    <button type="submit" name="add_student">Agregar</button>
-  </form>
 </div>
-
-<!-- UNIDADES -->
-<div class="section">
-  <h2>📚 Unidades</h2>
-
-  <form method="post">
-    <select name="unit_id" required>
-      <option value="">Agregar unidad</option>
-      <?php foreach ($units as $u): ?>
-        <option value="<?= htmlspecialchars($u["id"]) ?>">
-          <?= htmlspecialchars($u["name"] ?? $u["title"] ?? "Unidad") ?>
-        </option>
-      <?php endforeach; ?>
-    </select>
-    <button type="submit" name="add_unit">Agregar</button>
-  </form>
-
-  <?php if (!empty($courses[$courseIndex]["units"])): ?>
-    <table>
-      <tr>
-        <th>Unidad</th>
-        <th>Acciones</th>
-      </tr>
-      <?php foreach ($courses[$courseIndex]["units"] as $uid):
-        if (!isset($unitMap[$uid])) continue;
-      ?>
-      <tr>
-        <td><?= htmlspecialchars($unitMap[$uid]["name"] ?? "Unidad") ?></td>
-        <td class="actions">
-          <a class="preview" href="unit_course.php?unit=<?= urlencode($uid) ?>" target="_blank">👀 Ver</a>
-          <a class="edit" href="units_editor.php" target="_blank">✏️ Editar</a>
-          <a class="remove" href="?course=<?= urlencode($courseId) ?>&remove_unit=<?= urlencode($uid) ?>">❌</a>
-        </td>
-      </tr>
-      <?php endforeach; ?>
-    </table>
-  <?php endif; ?>
-</div>
-
 </body>
 </html>
