@@ -9,9 +9,9 @@ $studentId = $_GET["student"] ?? null;
 if (!$studentId) die("Estudiante no especificado");
 
 /* ARCHIVOS */
-$coursesFile  = __DIR__ . "/../academic/courses.json";
-$studentsFile = __DIR__ . "/../academic/students.json";
-$unitsFile    = __DIR__ . "/../academic/units.json";
+$coursesFile  = __DIR__ . "/../courses.json";
+$studentsFile = __DIR__ . "/../students.json";
+$unitsFile    = __DIR__ . "/../units.json";
 
 /* CARGAR DATOS */
 $courses  = file_exists($coursesFile)  ? json_decode(file_get_contents($coursesFile), true)  : [];
