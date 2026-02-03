@@ -227,11 +227,13 @@ select,button{padding:10px;font-size:14px}
 
   if (!isset($studentMap[$sid])) continue;
 ?>
-        <li>
-          <?= htmlspecialchars($studentMap[$sid]["name"]) ?>
-          <a class="remove"
-             href="?course=<?= urlencode($courseId) ?>&remove_student=<?= urlencode($sid) ?>">❌</a>
-        </li>
+       <li>
+  <?= htmlspecialchars($studentMap[$sid]["name"]) ?>
+  <small>(<?= htmlspecialchars($s["permission"]) ?>)</small>
+  <a class="remove"
+     href="?course=<?= urlencode($courseId) ?>&remove_student=<?= urlencode($sid) ?>">❌</a>
+</li>
+
       <?php endforeach; ?>
     </ul>
   <?php endif; ?>
