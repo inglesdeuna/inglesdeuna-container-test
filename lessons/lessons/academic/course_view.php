@@ -14,7 +14,13 @@ $teachersFile = __DIR__ . "/teachers.json";
 $studentsFile = __DIR__ . "/students.json";
 
 /* CARGAR DATOS */
-$courses  = file_exists($coursesFile)  ? json_decode(file_get_contents($coursesFile), true)  : [];
+$courses = [];
+if (file_exists($coursesFile)) {
+  $raw = file_get_contents($coursesFile);
+  $raw = preg_replace('/^\xEF\xBB\xBF/', '', $raw); // eliminar BOM
+  $courses = json_decode($raw, true) ?? [];
+}
+
 $units    = file_exists($unitsFile)    ? json_decode(file_get_contents($unitsFile), true)    : [];
 $teachers = file_exists($teachersFile) ? json_decode(file_get_contents($teachersFile), true) : [];
 $students = file_exists($studentsFile) ? json_decode(file_get_contents($studentsFile), true) : [];
