@@ -4,9 +4,7 @@
    =============================== */
 
 $courseId = $_GET["course"] ?? null;
-if (!$courseId) {
-  die("Curso no especificado");
-}
+if (!$courseId) die("Curso no especificado");
 
 /* CURSOS */
 $coursesFile = __DIR__ . "/courses.json";
@@ -15,23 +13,55 @@ $courses = file_exists($coursesFile)
   : [];
 
 /* BUSCAR CURSO */
+$courseIndex = null;
 $course = null;
-foreach ($courses as $c) {
+foreach ($courses as $i => $c) {
   if ($c["id"] === $courseId) {
+    $courseIndex = $i;
     $course = $c;
     break;
   }
 }
+if (!$course) die("Curso no encontrado");
 
-if (!$course) {
-  die("Curso no encontrado");
+/* ASEGURAR UNIDADES */
+if (!isset($courses[$courseIndex]["units"])) {
+  $courses[$courseIndex]["units"] = [];
+  file_put_contents($coursesFile, json_encode($courses, JSON_PRETTY_PRINT));
 }
 
-/* UNIDADES */
+/* TODAS LAS UNIDADES */
 $unitsFile = __DIR__ . "/units.json";
-$units = file_exists($unitsFile)
+$allUnits = file_exists($unitsFile)
   ? json_decode(file_get_contents($unitsFile), true)
   : [];
+
+/* AGREGAR UNIDAD */
+if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["add_unit"])) {
+  $unitId = $_POST["unit_id"] ?? null;
+  if ($unitId && !in_array($unitId, $courses[$courseIndex]["units"])) {
+    $courses[$courseIndex]["units"][] = $unitId;
+    file_put_contents($coursesFile, json_encode($courses, JSON_PRETTY_PRINT));
+  }
+  header("Location: course_view.php?course=" . urlencode($courseId));
+  exit;
+}
+
+/* QUITAR UNIDAD */
+if (isset($_GET["remove_unit"])) {
+  $remove = $_GET["remove_unit"];
+  $courses[$courseIndex]["units"] =
+    array_values(array_diff($courses[$courseIndex]["units"], [$remove]));
+  file_put_contents($coursesFile, json_encode($courses, JSON_PRETTY_PRINT));
+  header("Location: course_view.php?course=" . urlencode($courseId));
+  exit;
+}
+
+/* MAPA DE UNIDADES */
+$unitMap = [];
+foreach ($allUnits as $u) {
+  if (isset($u["id"])) $unitMap[$u["id"]] = $u;
+}
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -46,53 +76,42 @@ body{
   padding:40px;
 }
 
-h1{
-  color:#2563eb;
+h1{color:#2563eb}
+
+.section{
+  background:#fff;
+  padding:25px;
+  border-radius:14px;
+  box-shadow:0 10px 25px rgba(0,0,0,.08);
   margin-bottom:30px;
 }
 
-.table{
-  background:#fff;
-  border-radius:14px;
-  box-shadow:0 10px 25px rgba(0,0,0,.08);
-  overflow:hidden;
+table{
+  width:100%;
+  border-collapse:collapse;
 }
 
-.row{
-  display:grid;
-  grid-template-columns: 1fr 160px 160px;
-  padding:18px 24px;
+th,td{
+  padding:14px;
   border-bottom:1px solid #eee;
-  align-items:center;
+  text-align:left;
 }
 
-.row.header{
-  background:#f1f5ff;
-  font-weight:700;
-}
-
-.row:last-child{
-  border-bottom:none;
-}
+th{background:#f1f5ff}
 
 .actions a{
-  display:inline-block;
-  padding:8px 14px;
-  border-radius:8px;
+  margin-right:8px;
   font-weight:700;
   text-decoration:none;
+}
+
+.preview{color:#2563eb}
+.edit{color:#16a34a}
+.remove{color:#dc2626}
+
+select,button{
+  padding:10px;
   font-size:14px;
-  margin-right:6px;
-}
-
-.preview{
-  background:#2563eb;
-  color:#fff;
-}
-
-.edit{
-  background:#16a34a;
-  color:#fff;
 }
 </style>
 </head>
@@ -101,41 +120,60 @@ h1{
 
 <h1>📘 Curso: <?= htmlspecialchars($course["name"]) ?></h1>
 
-<?php if (empty($units)): ?>
-  <p>No hay unidades creadas todavía.</p>
-<?php else: ?>
-
-<div class="table">
-  <div class="row header">
-    <div>Unidad</div>
-    <div>Preview</div>
-    <div>Editar</div>
-  </div>
-
-  <?php foreach ($units as $u): ?>
-    <div class="row">
-      <div><?= htmlspecialchars($u["name"] ?? $u["title"] ?? "Unidad") ?></div>
-
-      <div class="actions">
-        <a class="preview"
-           href="unit_course.php?unit=<?= urlencode($u["id"]) ?>"
-           target="_blank">
-          👀 Ver
-        </a>
-      </div>
-
-      <div class="actions">
-        <a class="edit"
-           href="units_editor.php"
-           target="_blank">
-          ✏️ Editar
-        </a>
-      </div>
-    </div>
-  <?php endforeach; ?>
+<!-- AGREGAR UNIDAD -->
+<div class="section">
+  <h2>➕ Agregar unidad al curso</h2>
+  <form method="post">
+    <select name="unit_id" required>
+      <option value="">Seleccione una unidad</option>
+      <?php foreach ($allUnits as $u): ?>
+        <option value="<?= htmlspecialchars($u["id"]) ?>">
+          <?= htmlspecialchars($u["name"] ?? $u["title"] ?? "Unidad") ?>
+        </option>
+      <?php endforeach; ?>
+    </select>
+    <button type="submit" name="add_unit">Agregar</button>
+  </form>
 </div>
 
-<?php endif; ?>
+<!-- UNIDADES DEL CURSO -->
+<div class="section">
+  <h2>📚 Unidades del curso</h2>
+
+  <?php if (empty($courses[$courseIndex]["units"])): ?>
+    <p>No hay unidades asignadas a este curso.</p>
+  <?php else: ?>
+    <table>
+      <tr>
+        <th>Unidad</th>
+        <th>Acciones</th>
+      </tr>
+
+      <?php foreach ($courses[$courseIndex]["units"] as $uid): 
+        if (!isset($unitMap[$uid])) continue;
+        $u = $unitMap[$uid];
+      ?>
+      <tr>
+        <td><?= htmlspecialchars($u["name"] ?? $u["title"] ?? "Unidad") ?></td>
+        <td class="actions">
+          <a class="preview"
+             href="unit_course.php?unit=<?= urlencode($uid) ?>"
+             target="_blank">👀 Preview</a>
+
+          <a class="edit"
+             href="units_editor.php"
+             target="_blank">✏️ Editar</a>
+
+          <a class="remove"
+             href="?course=<?= urlencode($courseId) ?>&remove_unit=<?= urlencode($uid) ?>">
+             ❌ Quitar
+          </a>
+        </td>
+      </tr>
+      <?php endforeach; ?>
+    </table>
+  <?php endif; ?>
+</div>
 
 </body>
 </html>
