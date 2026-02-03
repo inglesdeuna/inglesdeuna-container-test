@@ -207,10 +207,11 @@ select,button{padding:10px;font-size:14px}
   <?php else: ?>
     <ul>
       <?php foreach ($courses[$courseIndex]["students"] as $s):
-        if (!isset($s["id"])) continue;
-        $sid = $s["id"];
-        if (!isset($studentMap[$sid])) continue;
-      ?>
+  if (!is_array($s) || !isset($s["id"]) || !is_string($s["id"])) continue;
+  $sid = $s["id"];
+
+  if (!isset($studentMap[$sid])) continue;
+?>
         <li>
           <?= htmlspecialchars($studentMap[$sid]["name"]) ?>
           <a class="remove"
