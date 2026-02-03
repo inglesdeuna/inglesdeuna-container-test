@@ -1,3 +1,6 @@
 [
-  { "id": "s1", "name": "Laura Gómez" }
+  {
+    "id": "s1",
+    "name": "Estudiante Prueba"
+  }
 ]
