@@ -60,11 +60,17 @@ foreach ($students as $s) {
    ASIGNAR DOCENTE
    ===================== */
 if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["assign_teacher"])) {
-  $courses[$courseIndex]["teacher"] = $_POST["teacher_id"] ?? null;
-  file_put_contents($coursesFile, json_encode($courses, JSON_PRETTY_PRINT));
-  header("Location: course_view.php?course=$courseParam");
-  exit;
+  $tid = $_POST["teacher_id"] ?? null;
+  if ($tid) {
+    $courses[$courseIndex]["teacher"] = [
+      "id" => $tid,
+      "permission" => "editor"
+    ];
+    file_put_contents($coursesFile, json_encode($courses, JSON_PRETTY_PRINT));
+  }
+  header("Location: course_view.php?course=$courseParam"); exit;
 }
+
 
 /* =====================
    AGREGAR ESTUDIANTE
@@ -122,8 +128,13 @@ body{font-family:Arial;background:#f4f8ff;padding:40px}
 <div class="section">
 <h2>👩‍🏫 Docente</h2>
 
-<?php if ($teacherName): ?>
-  <p><strong><?= htmlspecialchars($teacherName) ?></strong></p>
+<?php if ($courses[$courseIndex]["teacher"]): ?>
+  <p>
+    <strong><?= htmlspecialchars($teacherName) ?></strong>
+    <small style="color:#666">
+      (<?= htmlspecialchars($courses[$courseIndex]["teacher"]["permission"]) ?>)
+    </small>
+  </p>
 <?php else: ?>
   <p>No asignado</p>
 <?php endif; ?>
