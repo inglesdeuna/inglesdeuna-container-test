@@ -82,6 +82,18 @@ $canEdit = (
   $courses[$courseIndex]["teacher"]["id"] === $loggedTeacherId &&
   $courses[$courseIndex]["teacher"]["permission"] === "editor"
 );
+/*
+  SEGURIDAD:
+  Si hay intento de edición y NO puede editar → bloquear
+*/
+if (
+  ($_SERVER["REQUEST_METHOD"] === "POST" || isset($_GET["remove_student"])) &&
+  !$canEdit
+) {
+  // No permitido editar este curso
+  header("Location: course_view.php?course=$courseParam");
+  exit;
+}
 
 
 /* MAPA ESTUDIANTES */
