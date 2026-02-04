@@ -20,6 +20,9 @@ $courseId = $_GET["course"] ?? null;
 if (!$courseId) die("Curso no especificado");
 $courseParam = urlencode($courseId);
 
+// Recordar último curso visitado
+$_SESSION["last_course_id"] = $courseId;
+
 /* ARCHIVOS */
 $coursesFile  = __DIR__ . "/courses.json";
 $teachersFile = __DIR__ . "/teachers.json";
