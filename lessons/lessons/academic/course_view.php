@@ -66,6 +66,18 @@ if (is_string($courses[$courseIndex]["teacher"])) {
 } elseif (!is_array($courses[$courseIndex]["teacher"])) {
   $courses[$courseIndex]["teacher"] = null;
 }
+/* ASIGNAR DOCENTE LOGUEADO SI NO HAY */
+if (
+  !$courses[$courseIndex]["teacher"] &&
+  isset($_SESSION["teacher_id"])
+) {
+  $courses[$courseIndex]["teacher"] = [
+    "id" => $_SESSION["teacher_id"],
+    "permission" => "editor"
+  ];
+  file_put_contents($coursesFile, json_encode($courses, JSON_PRETTY_PRINT));
+}
+
 
 /* GUARDAR NORMALIZACIÓN */
 file_put_contents($coursesFile, json_encode($courses, JSON_PRETTY_PRINT));
