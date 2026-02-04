@@ -2,11 +2,12 @@
 session_start();
 
 /*
-  LOGIN SIMULADO (TEMPORAL)
-  En el siguiente paso esto vendrá de un login real
+  LOGIN REAL (REQUERIDO)
 */
 if (!isset($_SESSION["teacher_id"])) {
-  $_SESSION["teacher_id"] = "teacher_1"; // ID existente en teachers.json
+  // No está logueado → enviar a login
+  header("Location: login.php");
+  exit;
 }
 
 /* =====================================================
