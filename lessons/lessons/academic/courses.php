@@ -29,13 +29,15 @@ foreach ($teachers as $t) {
 /* FILTRAR CURSOS DEL DOCENTE */
 $myCourses = [];
 foreach ($courses as $c) {
+  // Cursos del docente o cursos sin docente asignado
   if (
-    isset($c["teacher"]["id"]) &&
-    $c["teacher"]["id"] === $teacherId
+    !isset($c["teacher"]) ||
+    (isset($c["teacher"]["id"]) && $c["teacher"]["id"] === $teacherId)
   ) {
     $myCourses[] = $c;
   }
 }
+
 ?>
 <!DOCTYPE html>
 <html lang="es">
