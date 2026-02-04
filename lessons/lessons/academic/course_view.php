@@ -1,4 +1,14 @@
 <?php
+session_start();
+
+/*
+  LOGIN SIMULADO (TEMPORAL)
+  En el siguiente paso esto vendrá de un login real
+*/
+if (!isset($_SESSION["teacher_id"])) {
+  $_SESSION["teacher_id"] = "teacher_1"; // ID existente en teachers.json
+}
+
 /* =====================================================
    COURSE VIEW – TEACHERS PANEL (ACADEMIC)
    VERSION FINAL ESTABLE (SIN FATAL ERRORS)
