@@ -177,6 +177,9 @@ select,button{padding:6px}
 <body>
 
 <h1>📘 Curso: <?= htmlspecialchars($course["name"]) ?></h1>
+  <p>
+  <a href="logout.php">🚪 Cerrar sesión</a>
+</p>
 
 <!-- DOCENTE -->
 <div class="section">
