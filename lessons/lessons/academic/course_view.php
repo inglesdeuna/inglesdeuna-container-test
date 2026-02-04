@@ -121,8 +121,26 @@ body{font-family:Arial;background:#f4f8ff;padding:40px}
 <!-- DOCENTE -->
 <div class="section">
 <h2>👩‍🏫 Docente</h2>
-<?= $teacherName ? htmlspecialchars($teacherName) : "No asignado" ?>
+
+<?php if ($teacherName): ?>
+  <p><strong><?= htmlspecialchars($teacherName) ?></strong></p>
+<?php else: ?>
+  <p>No asignado</p>
+<?php endif; ?>
+
+<form method="post">
+  <select name="teacher_id" required>
+    <option value="">Seleccionar docente</option>
+    <?php foreach ($teachers as $t): ?>
+      <option value="<?= htmlspecialchars($t["id"]) ?>">
+        <?= htmlspecialchars($t["name"]) ?>
+      </option>
+    <?php endforeach; ?>
+  </select>
+  <button type="submit" name="assign_teacher">Asignar</button>
+</form>
 </div>
+
 
 <!-- ESTUDIANTES -->
 <div class="section">
