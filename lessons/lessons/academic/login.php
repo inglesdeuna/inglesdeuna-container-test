@@ -9,7 +9,11 @@ $teachers = file_exists($teachersFile)
   ? json_decode(file_get_contents($teachersFile), true)
   : [];
 
-/* SI YA ESTÁ LOGUEADO → REDIRIGIR */
+/*
+  SI YA ESTÁ LOGUEADO
+  → ir al último curso si existe
+  → si no, ir a Mis cursos
+*/
 if (isset($_SESSION["teacher_id"])) {
   if (isset($_SESSION["last_course_id"])) {
     header("Location: course_view.php?course=" . urlencode($_SESSION["last_course_id"]));
@@ -18,7 +22,6 @@ if (isset($_SESSION["teacher_id"])) {
   }
   exit;
 }
-
 
 $error = "";
 
@@ -29,10 +32,16 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
   if ($teacherId) {
     foreach ($teachers as $t) {
       if (($t["id"] ?? null) === $teacherId) {
+
         // LOGIN OK
         $_SESSION["teacher_id"] = $teacherId;
-        header("Location: course_view.php?course=course_1770131705");
- // o al curso que desees
+
+        // REDIRECCIÓN POST-LOGIN
+        if (isset($_SESSION["last_course_id"])) {
+          header("Location: course_view.php?course=" . urlencode($_SESSION["last_course_id"]));
+        } else {
+          header("Location: courses.php");
+        }
         exit;
       }
     }
