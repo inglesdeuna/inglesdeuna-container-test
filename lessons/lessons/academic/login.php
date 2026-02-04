@@ -11,7 +11,8 @@ $teachers = file_exists($teachersFile)
 
 /* SI YA ESTÁ LOGUEADO → REDIRIGIR */
 if (isset($_SESSION["teacher_id"])) {
-  header("Location: courses.php"); // ajusta si usas otra vista
+  header("Location: course_view.php?course=course_1770131705");
+ // ajusta si usas otra vista
   exit;
 }
 
@@ -26,7 +27,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
       if (($t["id"] ?? null) === $teacherId) {
         // LOGIN OK
         $_SESSION["teacher_id"] = $teacherId;
-        header("Location: courses.php"); // o al curso que desees
+        header("Location: course_view.php?course=course_1770131705");
+ // o al curso que desees
         exit;
       }
     }
