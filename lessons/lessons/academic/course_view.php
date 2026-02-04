@@ -7,6 +7,7 @@
 /* VALIDAR CURSO */
 $courseId = $_GET["course"] ?? null;
 if (!$courseId) die("Curso no especificado");
+$courseParam = urlencode($courseId);
 
 /* ARCHIVOS */
 $coursesFile  = __DIR__ . "/courses.json";
@@ -68,7 +69,7 @@ foreach ($students as $s) if (isset($s["id"])) $studentMap[$s["id"]] = $s;
 if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["assign_teacher"])) {
   $courses[$courseIndex]["teacher"] = $_POST["teacher_id"] ?? null;
   file_put_contents($coursesFile, json_encode($courses, JSON_PRETTY_PRINT));
-  header("Location: course_view.php?course=$courseId"); exit;
+  header("Location: course_view.php?course=$courseParam"); exit;
 }
 
 /* =====================
@@ -80,7 +81,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["add_unit"])) {
     $courses[$courseIndex]["units"][] = $uid;
     file_put_contents($coursesFile, json_encode($courses, JSON_PRETTY_PRINT));
   }
-  header("Location: course_view.php?course=$courseId"); exit;
+  header("Location: course_view.php?course=$courseParam"); exit;
 }
 
 /* QUITAR UNIDAD */
@@ -89,7 +90,7 @@ if (isset($_GET["remove_unit"])) {
     array_filter($courses[$courseIndex]["units"], fn($u) => $u !== $_GET["remove_unit"])
   );
   file_put_contents($coursesFile, json_encode($courses, JSON_PRETTY_PRINT));
-  header("Location: course_view.php?course=$courseId"); exit;
+  header("Location: course_view.php?course=$courseParam"); exit;
 }
 
 /* =====================
@@ -99,12 +100,15 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["add_student"])) {
   $sid = $_POST["student_id"] ?? null;
   if ($sid) {
     foreach ($courses[$courseIndex]["students"] as $s)
-      if (($s["id"] ?? null) === $sid) { header("Location: course_view.php?course=$courseId"); exit; }
-
+      if (($s["id"] ?? null) === $sid) { if (($s["id"] ?? null) === $sid) { 
+  header("Location: course_view.php?course=$courseParam"); 
+  exit; 
+}
+ 
     $courses[$courseIndex]["students"][] = ["id" => $sid, "permission" => "viewer"];
     file_put_contents($coursesFile, json_encode($courses, JSON_PRETTY_PRINT));
   }
-  header("Location: course_view.php?course=$courseId"); exit;
+  header("Location: course_view.php?course=$courseParam"); exit;
 }
 
 /* =====================
@@ -123,7 +127,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["update_permission"]))
   unset($s);
 
   file_put_contents($coursesFile, json_encode($courses, JSON_PRETTY_PRINT));
-  header("Location: course_view.php?course=$courseId"); exit;
+  header("Location: course_view.php?course=$courseParam"); exit;
 }
 
 /* QUITAR ESTUDIANTE */
@@ -135,7 +139,7 @@ if (isset($_GET["remove_student"])) {
     )
   );
   file_put_contents($coursesFile, json_encode($courses, JSON_PRETTY_PRINT));
-  header("Location: course_view.php?course=$courseId"); exit;
+  header("Location: course_view.php?course=$courseParam"); exit;
 }
 
 /* NOMBRE DOCENTE */
