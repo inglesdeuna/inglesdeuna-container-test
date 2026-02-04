@@ -70,10 +70,19 @@ if (is_string($courses[$courseIndex]["teacher"])) {
 file_put_contents($coursesFile, json_encode($courses, JSON_PRETTY_PRINT));
 
 /* DEFINIR PERMISO */
+$loggedTeacherId = $_SESSION["teacher_id"] ?? null;
+
+/*
+  Todavía NO usamos permisos.
+  Solo identificamos al docente logueado.
+*/
 $canEdit = (
-  isset($courses[$courseIndex]["teacher"]["permission"]) &&
+  $loggedTeacherId &&
+  isset($courses[$courseIndex]["teacher"]["id"]) &&
+  $courses[$courseIndex]["teacher"]["id"] === $loggedTeacherId &&
   $courses[$courseIndex]["teacher"]["permission"] === "editor"
 );
+
 
 /* MAPA ESTUDIANTES */
 $studentMap = [];
