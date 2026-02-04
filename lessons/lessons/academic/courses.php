@@ -20,7 +20,7 @@ $teachersFile = __DIR__ . "/teachers.json";
 /* =====================
    CARGAR DATOS
    ===================== */
-$courses  = file_exists($coursesFile)
+$courses = file_exists($coursesFile)
   ? json_decode(file_get_contents($coursesFile), true)
   : [];
 
@@ -40,41 +40,13 @@ foreach ($teachers as $t) {
 }
 
 /* =====================
-   CREAR CURSO NUEVO (REAL)
-   ===================== */
-if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["create_course"])) {
-  $name = trim($_POST["course_name"] ?? "");
-
-  if ($name !== "") {
-    $newCourse = [
-      "id" => "course_" . time(),
-      "name" => $name,
-      "teacher" => [
-        "id" => $teacherId,
-        "permission" => "editor"
-      ],
-      "students" => []
-    ];
-
-    $courses[] = $newCourse;
-
-    file_put_contents($coursesFile, json_encode($courses, JSON_PRETTY_PRINT));
-
-    // Ir directo al curso recién creado
-    header("Location: course_view.php?course=" . urlencode($newCourse["id"]));
-    exit;
-  }
-}
-
-/* =====================
-   FILTRAR CURSOS VISIBLES
+   FILTRAR CURSOS ASIGNADOS AL DOCENTE
    ===================== */
 $myCourses = [];
 foreach ($courses as $c) {
-  // Cursos del docente o cursos sin docente asignado
   if (
-    !isset($c["teacher"]) ||
-    (isset($c["teacher"]["id"]) && $c["teacher"]["id"] === $teacherId)
+    isset($c["teacher"]["id"]) &&
+    $c["teacher"]["id"] === $teacherId
   ) {
     $myCourses[] = $c;
   }
@@ -111,10 +83,6 @@ a.course{
 a.course:hover{
   background:#e0e7ff;
 }
-input,button{
-  padding:10px;
-  font-size:14px;
-}
 </style>
 </head>
 
@@ -122,21 +90,6 @@ input,button{
 
 <div class="section">
   <h1>📚 Mis cursos</h1>
-
-  <!-- CREAR CURSO -->
-  <form method="post" style="margin-bottom:20px">
-    <input type="text"
-           name="course_name"
-           placeholder="Nombre del nuevo curso"
-           required
-           style="width:100%;max-width:400px">
-
-    <button type="submit"
-            name="create_course"
-            style="margin-top:10px">
-      ➕ Crear curso
-    </button>
-  </form>
 
   <p>
     Docente:
