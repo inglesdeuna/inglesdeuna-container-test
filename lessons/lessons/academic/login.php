@@ -11,10 +11,14 @@ $teachers = file_exists($teachersFile)
 
 /* SI YA ESTÁ LOGUEADO → REDIRIGIR */
 if (isset($_SESSION["teacher_id"])) {
-  header("Location: course_view.php?course=course_1770131705");
- // ajusta si usas otra vista
+  if (isset($_SESSION["last_course_id"])) {
+    header("Location: course_view.php?course=" . urlencode($_SESSION["last_course_id"]));
+  } else {
+    header("Location: courses.php");
+  }
   exit;
 }
+
 
 $error = "";
 
