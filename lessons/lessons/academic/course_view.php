@@ -1,7 +1,7 @@
 <?php
 /* =====================================================
    COURSE VIEW – TEACHERS PANEL (ACADEMIC)
-   VERSION FINAL – CONTROL POR PERMISSION (DOCENTE)
+   VERSION FINAL ESTABLE (SIN FATAL ERRORS)
    ===================================================== */
 
 /* VALIDAR CURSO */
@@ -23,7 +23,7 @@ $students = file_exists($studentsFile) ? json_decode(file_get_contents($students
 $courseIndex = null;
 $course = null;
 foreach ($courses as $i => $c) {
-  if (($c["id"] ?? null) === $courseId) {
+  if (isset($c["id"]) && $c["id"] === $courseId) {
     $courseIndex = $i;
     $course = $c;
     break;
@@ -35,6 +35,17 @@ if ($courseIndex === null) die("Curso no encontrado");
 $courses[$courseIndex]["students"] = $courses[$courseIndex]["students"] ?? [];
 $courses[$courseIndex]["teacher"]  = $courses[$courseIndex]["teacher"]  ?? null;
 
+/* 🔐 NORMALIZAR STUDENTS → SOLO STRINGS */
+$cleanStudents = [];
+foreach ($courses[$courseIndex]["students"] as $s) {
+  if (is_string($s)) {
+    $cleanStudents[] = $s;
+  } elseif (is_array($s) && isset($s["id"]) && is_string($s["id"])) {
+    $cleanStudents[] = $s["id"];
+  }
+}
+$courses[$courseIndex]["students"] = array_values(array_unique($cleanStudents));
+
 /* NORMALIZAR DOCENTE */
 if (is_string($courses[$courseIndex]["teacher"])) {
   $courses[$courseIndex]["teacher"] = [
@@ -44,6 +55,9 @@ if (is_string($courses[$courseIndex]["teacher"])) {
 } elseif (!is_array($courses[$courseIndex]["teacher"])) {
   $courses[$courseIndex]["teacher"] = null;
 }
+
+/* GUARDAR NORMALIZACIÓN */
+file_put_contents($coursesFile, json_encode($courses, JSON_PRETTY_PRINT));
 
 /* DEFINIR PERMISO */
 $canEdit = (
@@ -78,8 +92,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["assign_teacher"]) && 
    CAMBIAR PERMISSION DOCENTE
    ===================== */
 if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["update_teacher_permission"]) && $canEdit) {
-  $perm = $_POST["permission"] ?? "viewer";
-  $courses[$courseIndex]["teacher"]["permission"] = $perm;
+  $courses[$courseIndex]["teacher"]["permission"] = $_POST["permission"] ?? "viewer";
   file_put_contents($coursesFile, json_encode($courses, JSON_PRETTY_PRINT));
   header("Location: course_view.php?course=$courseParam"); exit;
 }
@@ -110,7 +123,8 @@ if (isset($_GET["remove_student"]) && $canEdit) {
 /* NOMBRE DOCENTE */
 $teacherName = "";
 foreach ($teachers as $t) {
-  if (($t["id"] ?? null) === ($courses[$courseIndex]["teacher"]["id"] ?? null)) {
+  if (isset($courses[$courseIndex]["teacher"]["id"]) &&
+      $t["id"] === $courses[$courseIndex]["teacher"]["id"]) {
     $teacherName = $t["name"];
     break;
   }
@@ -180,7 +194,7 @@ select,button{padding:6px}
 <?php else: ?>
 <ul>
 <?php foreach ($courses[$courseIndex]["students"] as $sid):
-  if (!isset($studentMap[$sid])) continue;
+  if (!is_string($sid) || !isset($studentMap[$sid])) continue;
 ?>
   <li>
     <?= htmlspecialchars($studentMap[$sid]["name"]) ?>
