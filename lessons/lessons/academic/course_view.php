@@ -177,46 +177,24 @@ foreach ($teachers as $t) {
   }
 }
 ?>
-<!DOCTYPE html>
-<html lang="es">
-<head>
-<meta charset="UTF-8">
-<title><?= htmlspecialchars($course["name"]) ?></title>
-<style>
-body{font-family:Arial;background:#f4f8ff;padding:40px}
-.section{background:#fff;padding:25px;border-radius:14px;margin-bottom:30px}
-.remove{color:#dc2626;text-decoration:none;margin-left:10px}
-select,button{padding:6px}
-</style>
-</head>
-<body>
-
-<h1>📘 Curso: <?= htmlspecialchars($course["name"]) ?></h1>
-  <p>
-  <a href="logout.php">🚪 Cerrar sesión</a>
-</p>
-
-<!-- DOCENTE -->
-<div class="section">
-<h2>👩‍🏫 Docente</h2>
-
-<?php if ($courses[$courseIndex]["teacher"]): ?>
+<?php if (!empty($course["teacher"])): ?>
   <p><strong><?= htmlspecialchars($teacherName) ?></strong></p>
 
   <?php if ($canEdit): ?>
-  <form method="post" style="display:inline">
-    <select name="permission" onchange="this.form.submit()">
-      <option value="viewer" <?= $courses[$courseIndex]["teacher"]["permission"]==="viewer"?"selected":"" ?>>viewer</option>
-      <option value="editor" <?= $courses[$courseIndex]["teacher"]["permission"]==="editor"?"selected":"" ?>>editor</option>
-    </select>
-    <input type="hidden" name="update_teacher_permission" value="1">
-  </form>
+    <form method="post" style="display:inline">
+      <select name="permission" onchange="this.form.submit()">
+        <option value="viewer" <?= ($course["teacher"]["permission"] ?? "") === "viewer" ? "selected" : "" ?>>viewer</option>
+        <option value="editor" <?= ($course["teacher"]["permission"] ?? "") === "editor" ? "selected" : "" ?>>editor</option>
+      </select>
+      <input type="hidden" name="update_teacher_permission" value="1">
+    </form>
   <?php else: ?>
-    <small>(<?= htmlspecialchars($courses[$courseIndex]["teacher"]["permission"]) ?>)</small>
+    <small>(<?= htmlspecialchars($course["teacher"]["permission"] ?? "") ?>)</small>
   <?php endif; ?>
 
 <?php else: ?>
   <p>No asignado</p>
+<?php endif; ?>
 
   <?php if ($canEdit): ?>
   <form method="post">
