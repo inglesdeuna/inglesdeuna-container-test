@@ -1,5 +1,7 @@
-{
-  "id": "teacher_1",
-  "name": "Docente Prueba",
-  "role": "admin"
-}
+[
+  {
+    "id": "teacher_1",
+    "name": "Docente Prueba",
+    "role": "admin"
+  }
+]
