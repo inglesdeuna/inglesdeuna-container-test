@@ -19,14 +19,21 @@ $courses = file_exists($file) ? json_decode(file_get_contents($file), true) : []
 
 /* CREAR CURSO */
 if ($_SERVER["REQUEST_METHOD"] === "POST" && !empty($_POST["course_name"])) {
-  $courses[] = [
-    "id" => "course_" . time(),
-    "name" => trim($_POST["course_name"])
-  ];
+ $courseId = "course_" . time();
 
-  file_put_contents($file, json_encode($courses, JSON_PRETTY_PRINT));
-  header("Location: courses_manager.php");
-  exit;
+$courses[] = [
+  "id" => $courseId,
+  "name" => trim($_POST["course_name"]),
+  "students" => [],
+  "teacher" => null,
+  "activities" => []
+];
+
+file_put_contents($file, json_encode($courses, JSON_PRETTY_PRINT));
+
+/* 👉 IR AL CONTENEDOR DE ACTIVIDADES */
+header("Location: ../hangman/index.php?course=" . urlencode($courseId));
+exit;
 }
 ?>
 <!DOCTYPE html>
