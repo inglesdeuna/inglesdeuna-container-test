@@ -2,12 +2,12 @@
 session_start();
 
 /* =====================================================
-   LOGIN GENERAL
+   ACCESO A CREAR CURSOS
+   Solo ADMIN o TEACHER
    ===================================================== */
 if (
   !isset($_SESSION["admin_id"]) &&
-  !isset($_SESSION["teacher_id"]) &&
-  !isset($_SESSION["student_id"])
+  !isset($_SESSION["teacher_id"])
 ) {
   header("Location: login.php");
   exit;
