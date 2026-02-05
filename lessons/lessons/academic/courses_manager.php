@@ -1,5 +1,8 @@
 <?php
 session_start();
+echo "<pre>";
+var_dump($_SESSION);
+exit;
 
 /* Solo ADMIN o TEACHER pueden crear cursos */
 if (
