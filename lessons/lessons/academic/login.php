@@ -2,58 +2,59 @@
 session_start();
 
 /* =====================
-   CARGAR DOCENTES (ROBUSTO)
+   CARGAR DOCENTES
    ===================== */
 $teachersFile = __DIR__ . "/teachers.json";
 $teachers = [];
 
 if (file_exists($teachersFile)) {
   $raw = file_get_contents($teachersFile);
-
-  // eliminar BOM si existe
   $raw = preg_replace('/^\xEF\xBB\xBF/', '', $raw);
-
   $decoded = json_decode($raw, true);
-
   if (is_array($decoded)) {
     $teachers = $decoded;
   }
 }
 
-/*
-  SI YA ESTÁ LOGUEADO
-  → ir al último curso si existe
-  → si no, ir a Mis cursos
-*/
+/* =====================
+   SI YA ESTA LOGUEADO
+   ===================== */
 if (isset($_SESSION["teacher_id"])) {
-  if (isset($_SESSION["last_course_id"])) {
-    header("Location: course_view.php?course=" . urlencode($_SESSION["last_course_id"]));
-  } else {
-    header("Location: courses.php");
+
+  if (isset($_SESSION["redirect_after_login"])) {
+    $go = $_SESSION["redirect_after_login"];
+    unset($_SESSION["redirect_after_login"]);
+    header("Location: $go");
+    exit;
   }
+
+  header("Location: courses_manager.php");
   exit;
 }
 
-
 $error = "";
 
-/* PROCESAR LOGIN */
+/* =====================
+   PROCESAR LOGIN
+   ===================== */
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
+
   $teacherId = $_POST["teacher_id"] ?? null;
 
   if ($teacherId) {
     foreach ($teachers as $t) {
       if (($t["id"] ?? null) === $teacherId) {
 
-        // LOGIN OK
         $_SESSION["teacher_id"] = $teacherId;
 
-        // REDIRECCIÓN POST-LOGIN
-        if (isset($_SESSION["last_course_id"])) {
-          header("Location: course_view.php?course=" . urlencode($_SESSION["last_course_id"]));
-        } else {
-          header("Location: courses.php");
+        if (isset($_SESSION["redirect_after_login"])) {
+          $go = $_SESSION["redirect_after_login"];
+          unset($_SESSION["redirect_after_login"]);
+          header("Location: $go");
+          exit;
         }
+
+        header("Location: courses_manager.php");
         exit;
       }
     }
