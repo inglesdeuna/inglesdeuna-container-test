@@ -40,16 +40,36 @@ foreach ($courses as $i => $c) {
   }
 }
 
-if ($course === null) {
+if ($courseIndex === null) {
   die("Curso no encontrado");
 }
 
 /* =====================
-   ASEGURAR ESTRUCTURA
+   NORMALIZAR ESTRUCTURA
    ===================== */
-$courses[$courseIndex]["units"] = $courses[$courseIndex]["units"] ?? [];
 $courses[$courseIndex]["students"] = $courses[$courseIndex]["students"] ?? [];
+$courses[$courseIndex]["units"]    = $courses[$courseIndex]["units"] ?? [];
 $courses[$courseIndex]["teacher"]  = $courses[$courseIndex]["teacher"] ?? null;
+
+/* normalizar teacher */
+if (is_string($courses[$courseIndex]["teacher"])) {
+  $courses[$courseIndex]["teacher"] = [
+    "id" => $courses[$courseIndex]["teacher"],
+    "permission" => "editor"
+  ];
+}
+
+if (!is_array($courses[$courseIndex]["teacher"])) {
+  $courses[$courseIndex]["teacher"] = null;
+}
+
+/* guardar normalización */
+file_put_contents(
+  $coursesFile,
+  json_encode($courses, JSON_PRETTY_PRINT)
+);
+
+$course = $courses[$courseIndex];
 
 /* =====================
    PERMISOS
@@ -94,8 +114,6 @@ if (
   header("Location: course_view.php?course=" . urlencode($courseId));
   exit;
 }
-
-$course = $courses[$courseIndex];
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -113,7 +131,6 @@ a{margin-left:10px;text-decoration:none;color:#2563eb}
 
 <h1>📘 Curso: <?= htmlspecialchars($course["name"]) ?></h1>
 
-<!-- UNIDADES -->
 <div class="section">
 <h2>📚 Unidades</h2>
 
