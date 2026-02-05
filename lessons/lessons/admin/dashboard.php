@@ -1,104 +1,109 @@
 <?php
 session_start();
-if (!isset($_SESSION["user"]) || $_SESSION["user"]["role"] !== "admin") {
-  header("Location: login.php");
+
+/* ==========================
+   SEGURIDAD
+   ========================== */
+if (
+  !isset($_SESSION["admin_id"]) &&
+  !isset($_SESSION["teacher_id"])
+) {
+  header("Location: ../academic/login.php");
   exit;
 }
-$user = $_SESSION["user"];
+
+/* Identidad */
+$role = isset($_SESSION["admin_id"]) ? "admin" : "teacher";
 ?>
 <!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Admin Dashboard</title>
-
+<title>Panel Administrador</title>
 <style>
 body{
-  font-family:Arial, sans-serif;
+  font-family:Arial;
   background:#f4f8ff;
-  padding:40px;
+  padding:40px
 }
-
-h1{color:#2563eb;}
-
+h1{margin-bottom:30px}
 .grid{
   display:grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px,1fr));
-  gap:24px;
+  grid-template-columns:repeat(auto-fit,minmax(260px,1fr));
+  gap:30px
 }
-
 .card{
-  background:white;
+  background:#fff;
   padding:25px;
   border-radius:16px;
-  box-shadow:0 10px 25px rgba(0,0,0,.08);
+  box-shadow:0 10px 25px rgba(0,0,0,.08)
 }
-
-.card h2{margin-top:0;}
-
+.card h2{margin-top:0}
+.card p{color:#555}
 .card a{
   display:inline-block;
-  margin-top:10px;
-  padding:10px 16px;
+  margin-top:15px;
+  padding:10px 18px;
   background:#2563eb;
-  color:white;
-  border-radius:10px;
+  color:#fff;
   text-decoration:none;
-  font-weight:bold;
+  border-radius:8px
+}
+.card a.secondary{
+  background:#16a34a
+}
+.card a.warning{
+  background:#d97706
+}
+.topbar{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  margin-bottom:40px
 }
 </style>
 </head>
-
 <body>
 
-<h1>🎓 Panel Administrador</h1>
-<p>Bienvenido, <strong><?= htmlspecialchars($user["name"]) ?></strong></p>
+<div class="topbar">
+  <h1>🎛️ Panel Administrador Académico</h1>
+  <a href="../academic/logout.php">🚪 Cerrar sesión</a>
+</div>
 
 <div class="grid">
 
+  <!-- CREAR -->
   <div class="card">
-  <h2>📘 Académico</h2>
-
-  <a href="/lessons/lessons/academic/programs_editor.php">
-    Programas
-  </a><br><br>
-
-  <a href="/lessons/lessons/academic/semesters_editor.php">
-    Semestres
-  </a><br><br>
-
-  <a href="/lessons/lessons/academic/modules_editor.php">
-    Módulos
-  </a><br><br>
-
-  <a href="/lessons/lessons/academic/units_editor.php">
-    Unidades
-  </a><br><br>
-
-  <a href="/lessons/lessons/academic/assignments_editor.php">
-    Asignaciones
-  </a>
-</div>
-
-  <div class="card">
-    <h2>👩‍🏫 Docentes</h2>
-    <p>Crear y asignar docentes.</p>
-    <!-- siguiente paso -->
+    <h2>🧱 CREAR</h2>
+    <p>
+      Define la <strong>estructura académica</strong> del instituto:
+      programas, semestres, módulos, unidades y asignaciones.
+    </p>
+    <a href="../academic/programs_manager.php">Ir a estructura</a>
   </div>
 
+  <!-- CURSOS -->
   <div class="card">
-    <h2>👧🧒 Estudiantes</h2>
-    <p>Crear estudiantes y asignar niveles.</p>
-    <!-- siguiente paso -->
+    <h2>📘 CURSOS</h2>
+    <p>
+      Gestiona los <strong>cursos reales</strong>:
+      ver, editar y acceder a cada clase activa.
+    </p>
+    <a class="secondary" href="../academic/courses_manager.php">Gestionar cursos</a>
   </div>
 
+  <!-- ASIGNAR -->
   <div class="card">
-    <h2>📊 Reportes</h2>
-    <p>Notas y progreso.</p>
-    <!-- siguiente paso -->
+    <h2>👥 ASIGNAR</h2>
+    <p>
+      Vincula <strong>docentes y estudiantes</strong> a los cursos.
+      Controla matrículas y responsables.
+    </p>
+    <a class="warning" href="../academic/assignments_users.php">Asignar usuarios</a>
   </div>
 
 </div>
 
 </body>
 </html>
+
