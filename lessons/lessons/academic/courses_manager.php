@@ -1,14 +1,12 @@
 <?php
 session_start();
-echo "<pre>";
-var_dump($_SESSION);
-exit;
 
 /* Solo ADMIN o TEACHER pueden crear cursos */
 if (
   !isset($_SESSION["admin_id"]) &&
   !isset($_SESSION["teacher_id"])
 ) {
+  $_SESSION["redirect_after_login"] = "courses_manager.php";
   header("Location: login.php");
   exit;
 }
