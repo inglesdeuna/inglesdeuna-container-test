@@ -2,10 +2,13 @@
 session_start();
 
 /*
-  LOGIN REAL (REQUERIDO)
+  LOGIN GENERAL
 */
-if (!isset($_SESSION["teacher_id"])) {
-  // No está logueado → enviar a login
+if (
+  !isset($_SESSION["admin_id"]) &&
+  !isset($_SESSION["teacher_id"]) &&
+  !isset($_SESSION["student_id"])
+) {
   header("Location: login.php");
   exit;
 }
