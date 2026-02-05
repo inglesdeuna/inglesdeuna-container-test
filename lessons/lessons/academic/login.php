@@ -1,13 +1,24 @@
 <?php
 session_start();
 
-/* ARCHIVO DOCENTES */
+/* =====================
+   CARGAR DOCENTES (ROBUSTO)
+   ===================== */
 $teachersFile = __DIR__ . "/teachers.json";
+$teachers = [];
 
-/* CARGAR DOCENTES */
-$teachers = file_exists($teachersFile)
-  ? json_decode(file_get_contents($teachersFile), true)
-  : [];
+if (file_exists($teachersFile)) {
+  $raw = file_get_contents($teachersFile);
+
+  // eliminar BOM si existe
+  $raw = preg_replace('/^\xEF\xBB\xBF/', '', $raw);
+
+  $decoded = json_decode($raw, true);
+
+  if (is_array($decoded)) {
+    $teachers = $decoded;
+  }
+}
 
 /*
   SI YA ESTÁ LOGUEADO
@@ -22,6 +33,7 @@ if (isset($_SESSION["teacher_id"])) {
   }
   exit;
 }
+
 
 $error = "";
 
