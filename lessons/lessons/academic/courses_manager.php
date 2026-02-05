@@ -1,4 +1,15 @@
 <?php
+session_start();
+
+/* Solo ADMIN o TEACHER pueden crear cursos */
+if (
+  !isset($_SESSION["admin_id"]) &&
+  !isset($_SESSION["teacher_id"])
+) {
+  header("Location: login.php");
+  exit;
+}
+
 /* ===============================
    COURSES MANAGER – ACADEMIC
    =============================== */
