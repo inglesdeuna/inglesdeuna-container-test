@@ -8,9 +8,11 @@ if (
   !isset($_SESSION["admin_id"]) &&
   !isset($_SESSION["teacher_id"])
 ) {
+  $_SESSION["redirect_after_login"] = "dashboard.php";
   header("Location: login.php");
   exit;
 }
+
 ?>
 <!DOCTYPE html>
 <html lang="es">
