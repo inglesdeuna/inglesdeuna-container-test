@@ -1,7 +1,9 @@
 <?php
 session_start();
 
-/* Solo ADMIN o TEACHER pueden crear cursos */
+/* ===============================
+   ACCESO: SOLO ADMIN O TEACHER
+   =============================== */
 if (
   !isset($_SESSION["admin_id"]) &&
   !isset($_SESSION["teacher_id"])
@@ -12,13 +14,16 @@ if (
 }
 
 /* ===============================
-   COURSES MANAGER – ACADEMIC
+   ARCHIVO DE CURSOS
    =============================== */
-
 $file = __DIR__ . "/courses.json";
-$courses = file_exists($file) ? json_decode(file_get_contents($file), true) : [];
+$courses = file_exists($file)
+  ? json_decode(file_get_contents($file), true)
+  : [];
 
-/* CREAR CURSO */
+/* ===============================
+   CREAR CURSO
+   =============================== */
 if ($_SERVER["REQUEST_METHOD"] === "POST" && !empty($_POST["course_name"])) {
 
   $courseId = "course_" . time();
@@ -31,17 +36,12 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !empty($_POST["course_name"])) {
     "units" => []
   ];
 
+  // Guardar UNA sola vez
   file_put_contents($file, json_encode($courses, JSON_PRETTY_PRINT));
 
-  /* 👉 IR AL MANAGER DEL CURSO */
+  // Ir al manager del curso
   header("Location: course_view.php?course=" . urlencode($courseId));
   exit;
-}
-
-/* 👉 IR AL MANAGER DEL CURSO */
-header("Location: course_view.php?course=" . urlencode($courseId));
-exit;
-
 }
 ?>
 <!DOCTYPE html>
@@ -144,4 +144,3 @@ button{
 
 </body>
 </html>
-
