@@ -55,6 +55,10 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !empty($_POST["unit_name"])) {
 
 <h1>📘 Curso: <?= htmlspecialchars($course["name"]) ?></h1>
 
+  <a href="roles.php?course=<?= urlencode($courseId) ?>">
+  👥 Roles
+</a>
+
 <h2>📚 Unidades</h2>
 
 <?php if (empty($course["units"])): ?>
