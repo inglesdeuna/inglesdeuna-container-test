@@ -63,9 +63,19 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !empty($_POST["unit_name"])) {
   <?php foreach ($course["units"] as $u): ?>
     <div>
       <?= htmlspecialchars($u["name"]) ?>
+
       <a href="unit_view.php?course=<?= urlencode($courseId) ?>&unit=<?= urlencode($u["id"]) ?>">
-  ✏️ Editor
-</a>
+        ✏️ Editor
+      </a>
+
+      <a href="unit_viewer.php?course=<?= urlencode($courseId) ?>&unit=<?= urlencode($u["id"]) ?>">
+        👀 Ver
+      </a>
+
+    </div>
+  <?php endforeach; ?>
+<?php endif; ?>
+
 
     </div>
   <?php endforeach; ?>
