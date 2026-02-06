@@ -6,8 +6,10 @@ function getUserRole($course, $session) {
   }
 
   if (isset($session["teacher_id"])) {
-    if (isset($course["teacher"]["id"]) &&
-        $course["teacher"]["id"] === $session["teacher_id"]) {
+    if (
+      isset($course["teacher"]["id"]) &&
+      $course["teacher"]["id"] === $session["teacher_id"]
+    ) {
       return "editor";
     }
     return "viewer";
