@@ -42,9 +42,13 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !empty($_POST["word"])) {
     ]
   ];
 
-  file_put_contents($file, json_encode($courses, JSON_PRETTY_PRINT));
-  header("Location: index.php?course=" . urlencode($courseId) . "&unit=" . urlencode($unitId));
-  exit;
+ file_put_contents($file, json_encode($courses, JSON_PRETTY_PRINT));
+
+header(
+  "Location: ../academic/course_view.php?course=" . urlencode($courseId)
+);
+exit;
+
 }
 ?>
 <!DOCTYPE html>
