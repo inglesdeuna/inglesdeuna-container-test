@@ -30,12 +30,10 @@ if (!$courseId) {
 }
 
 $courseIndex = null;
-$course = null;
 
 foreach ($courses as $i => $c) {
-  if (($c["id"] ?? "") === $courseId) {
+  if (isset($c["id"]) && $c["id"] === $courseId) {
     $courseIndex = $i;
-    $course = $c;
     break;
   }
 }
@@ -45,7 +43,7 @@ if ($courseIndex === null) {
 }
 
 /* =====================
-   NORMALIZAR ESTRUCTURA
+   NORMALIZAR CURSO
    ===================== */
 $courses[$courseIndex]["students"] = $courses[$courseIndex]["students"] ?? [];
 $courses[$courseIndex]["units"]    = $courses[$courseIndex]["units"] ?? [];
@@ -69,6 +67,7 @@ file_put_contents(
   json_encode($courses, JSON_PRETTY_PRINT)
 );
 
+/* curso FINAL y único */
 $course = $courses[$courseIndex];
 
 /* =====================
