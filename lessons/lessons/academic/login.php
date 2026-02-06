@@ -19,7 +19,7 @@ if (file_exists($teachersFile)) {
 /* =====================
    SI YA ESTA LOGUEADO
    ===================== */
-if (isset($_SESSION["teacher_id"])) {
+if (isset($_SESSION["admin_id"]) || isset($_SESSION["teacher_id"])) {
 
   if (isset($_SESSION["redirect_after_login"])) {
     $go = $_SESSION["redirect_after_login"];
@@ -28,7 +28,12 @@ if (isset($_SESSION["teacher_id"])) {
     exit;
   }
 
-  header("Location: courses_manager.php");
+  // fallback
+  if (isset($_SESSION["admin_id"])) {
+    header("Location: ../admin/dashboard.php");
+  } else {
+    header("Location: dashboard.php");
+  }
   exit;
 }
 
@@ -41,7 +46,26 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
   $teacherId = $_POST["teacher_id"] ?? null;
 
-  if ($teacherId) {
+  if (!$teacherId) {
+    $error = "Seleccione un usuario";
+  } else {
+
+    /* ===== ADMIN ===== */
+    if ($teacherId === "admin") {
+      $_SESSION["admin_id"] = "admin";
+
+      if (isset($_SESSION["redirect_after_login"])) {
+        $go = $_SESSION["redirect_after_login"];
+        unset($_SESSION["redirect_after_login"]);
+        header("Location: $go");
+        exit;
+      }
+
+      header("Location: ../admin/dashboard.php");
+      exit;
+    }
+
+    /* ===== DOCENTE ===== */
     foreach ($teachers as $t) {
       if (($t["id"] ?? null) === $teacherId) {
 
@@ -54,13 +78,12 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
           exit;
         }
 
-        header("Location: courses_manager.php");
+        header("Location: dashboard.php");
         exit;
       }
     }
-    $error = "Docente no válido";
-  } else {
-    $error = "Seleccione un docente";
+
+    $error = "Usuario no válido";
   }
 }
 ?>
@@ -68,7 +91,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Login Docente</title>
+<title>Login Académico</title>
 <style>
 body{font-family:Arial;background:#f4f8ff;padding:40px}
 .box{background:#fff;padding:30px;border-radius:14px;max-width:400px;margin:auto}
@@ -79,7 +102,7 @@ button,select{padding:10px;width:100%;margin-top:10px}
 <body>
 
 <div class="box">
-  <h2>👩‍🏫 Login Docente</h2>
+  <h2>🔐 Login Académico</h2>
 
   <?php if ($error): ?>
     <div class="error"><?= htmlspecialchars($error) ?></div>
@@ -87,7 +110,12 @@ button,select{padding:10px;width:100%;margin-top:10px}
 
   <form method="post">
     <select name="teacher_id" required>
-      <option value="">Seleccione su nombre</option>
+      <option value="">Seleccione usuario</option>
+
+      <!-- ADMIN -->
+      <option value="admin">Administrador</option>
+
+      <!-- DOCENTES -->
       <?php foreach ($teachers as $t): ?>
         <option value="<?= htmlspecialchars($t["id"]) ?>">
           <?= htmlspecialchars($t["name"]) ?>
@@ -101,4 +129,3 @@ button,select{padding:10px;width:100%;margin-top:10px}
 
 </body>
 </html>
-
