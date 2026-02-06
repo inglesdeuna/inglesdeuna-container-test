@@ -1,19 +1,24 @@
 <?php
 function getUserRole($course, $session) {
 
-  // ADMIN siempre editor
   if (isset($session["admin_id"])) {
     return "editor";
   }
 
-  // CUALQUIER DOCENTE LOGUEADO = editor
   if (isset($session["teacher_id"])) {
-    return "editor";
+    if (isset($course["teacher"]["id"]) &&
+        $course["teacher"]["id"] === $session["teacher_id"]) {
+      return "editor";
+    }
+    return "viewer";
   }
 
-  // ESTUDIANTE
   if (isset($session["student_id"])) {
-    return "viewer";
+    foreach ($course["students"] ?? [] as $s) {
+      if ($s["id"] === $session["student_id"]) {
+        return "viewer";
+      }
+    }
   }
 
   return "viewer";
