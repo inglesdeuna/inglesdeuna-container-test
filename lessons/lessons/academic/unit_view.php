@@ -86,6 +86,17 @@ a{color:#2563eb;text-decoration:none;font-weight:700}
       <?php endif; ?>
     <?php endforeach; ?>
   <?php endif; ?>
+<?php if ($canEdit): ?>
+
+  <hr>
+
+  <h3>➕ Agregar actividad</h3>
+
+  <a class="btn" href="../hangman/index.php?course=<?= urlencode($courseId) ?>&unit=<?= urlencode($unitId) ?>">
+    🎯 Crear Hangman
+  </a>
+
+<?php endif; ?>
 
   <hr>
 
