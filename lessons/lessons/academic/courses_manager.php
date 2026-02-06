@@ -33,7 +33,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !empty($_POST["course_name"])) {
 
   file_put_contents($file, json_encode($courses, JSON_PRETTY_PRINT));
 
-  /* 👉 IR AL MANAGER DEL CURSO (NO A HANGMAN) */
+  /* 👉 IR AL MANAGER DEL CURSO */
   header("Location: course_view.php?course=" . urlencode($courseId));
   exit;
 }
