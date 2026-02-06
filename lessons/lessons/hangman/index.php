@@ -1,5 +1,19 @@
 <?php
 session_start();
+echo "<pre>";
+echo "ARCHIVO HANGMAN: " . __FILE__ . "\n";
+
+$file = dirname(__DIR__, 2) . "/academic/courses.json";
+echo "LEYENDO JSON: " . $file . "\n";
+
+if (file_exists($file)) {
+  echo "JSON EXISTE\n";
+  echo file_get_contents($file);
+} else {
+  echo "JSON NO EXISTE";
+}
+exit;
+
 
 /* =====================
    VALIDAR PARAMETROS
