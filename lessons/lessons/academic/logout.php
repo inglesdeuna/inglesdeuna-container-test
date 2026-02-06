@@ -1,10 +1,8 @@
 <?php
 session_start();
 
-/* DESTRUIR SESIÓN */
-$_SESSION = [];
+session_unset();
 session_destroy();
 
-/* REDIRIGIR A LOGIN */
-header("Location: login.php");
+header("Location: login_student.php");
 exit;
