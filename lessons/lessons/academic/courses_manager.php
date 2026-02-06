@@ -1,5 +1,11 @@
-<?php
-session_start();
+$file = __DIR__ . "/courses.json";
+
+$result = file_put_contents($file, json_encode(["test" => time()], JSON_PRETTY_PRINT));
+
+echo "<pre>";
+var_dump($result);
+var_dump(error_get_last());
+exit;
 
 /* ===============================
    ACCESO: SOLO ADMIN O TEACHER
