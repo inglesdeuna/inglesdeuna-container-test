@@ -89,11 +89,20 @@ body{font-family:Arial;background:#f4f8ff;padding:40px}
 <?php if (empty($course["units"])): ?>
   <p>No hay unidades creadas.</p>
 <?php else: ?>
-  <?php foreach ($course["units"] as $u): ?>
-    <div class="unit">
-      <?= htmlspecialchars($u["name"]) ?>
-    </div>
-  <?php endforeach; ?>
+ <?php foreach ($course["units"] as $u): ?>
+  <?php if (!is_array($u)) continue; ?>
+
+  <div class="unit">
+    <strong><?= htmlspecialchars($u["name"]) ?></strong>
+
+    <a
+      href="../hangman/index.php?course=<?= urlencode($courseId) ?>&unit=<?= urlencode($u["id"]) ?>"
+      style="margin-left:12px; color:#2563eb; text-decoration:none; font-weight:bold;"
+    >
+      ✏️ Editor
+    </a>
+  </div>
+<?php endforeach; ?>
 <?php endif; ?>
 </div>
 
