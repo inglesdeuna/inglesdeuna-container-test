@@ -1,38 +1,21 @@
 <?php
 session_start();
 
-/* ACCESO: cualquiera logueado */
-if (
-  !isset($_SESSION["admin_id"]) &&
-  !isset($_SESSION["teacher_id"]) &&
-  !isset($_SESSION["student_id"])
-) {
-  header("Location: login.php");
-  exit;
-}
-
-/* PARAMETROS */
 $courseId = $_GET["course"] ?? null;
 $unitId   = $_GET["unit"] ?? null;
+if (!$courseId || !$unitId) die("Parámetros faltantes");
 
-if (!$courseId || !$unitId) {
-  die("Curso o unidad no especificados");
-}
-
-/* ARCHIVO */
 $file = dirname(__DIR__) . "/academic/courses.json";
-$courses = file_exists($file) ? json_decode(file_get_contents($file), true) : [];
+$courses = json_decode(file_get_contents($file), true);
 if (!is_array($courses)) $courses = [];
 
-/* BUSCAR CURSO Y UNIDAD */
-$courseIndex = null;
-$unitIndex   = null;
+$courseIndex = $unitIndex = null;
 
 foreach ($courses as $ci => $c) {
-  if (($c["id"] ?? null) === $courseId) {
+  if ($c["id"] === $courseId) {
     $courseIndex = $ci;
-    foreach ($c["units"] ?? [] as $ui => $u) {
-      if (($u["id"] ?? null) === $unitId) {
+    foreach ($c["units"] as $ui => $u) {
+      if ($u["id"] === $unitId) {
         $unitIndex = $ui;
         break;
       }
@@ -41,69 +24,46 @@ foreach ($courses as $ci => $c) {
   }
 }
 
-if ($courseIndex === null || $unitIndex === null) {
-  die("Unidad no encontrada");
-}
+if ($courseIndex === null || $unitIndex === null) die("No encontrado");
 
 $course = $courses[$courseIndex];
 $unit   = $course["units"][$unitIndex];
-$activities = $unit["activities"] ?? [];
+
 require_once __DIR__ . "/helpers.php";
 $userRole = getUserRole($course, $_SESSION);
-$canEdit  = ($userRole === "editor");
+if ($userRole !== "editor") {
+  header("Location: unit_viewer.php?course=$courseId&unit=$unitId");
+  exit;
+}
 
+$activities = $unit["activities"] ?? [];
 ?>
 <!DOCTYPE html>
-<html lang="es">
-<head>
-<meta charset="UTF-8">
-<title><?= htmlspecialchars($unit["name"]) ?></title>
-<style>
-body{font-family:Arial;background:#f4f8ff;padding:40px}
-.box{background:#fff;padding:25px;border-radius:14px;max-width:700px}
-.item{margin-top:10px;padding:12px;background:#eef2ff;border-radius:8px}
-a{color:#2563eb;text-decoration:none;font-weight:700}
-</style>
-</head>
+<html>
+<head><meta charset="UTF-8"><title>Unidad</title></head>
 <body>
 
-<div class="box">
-  <h2>📘 <?= htmlspecialchars($course["name"]) ?></h2>
-  <h3>📦 <?= htmlspecialchars($unit["name"]) ?></h3>
+<h2>📘 <?= htmlspecialchars($course["name"]) ?></h2>
+<h3>📦 <?= htmlspecialchars($unit["name"]) ?></h3>
 
-  <hr>
+<h3>🎮 Actividades</h3>
 
-  <h3>🎮 Actividades</h3>
-
-  <?php if (empty($activities)): ?>
-    <p>No hay actividades.</p>
-  <?php else: ?>
-    <?php foreach ($activities as $a): ?>
-      <?php if (($a["type"] ?? "") === "hangman"): ?>
-        <div class="item">
-          🎯 Hangman — <?= htmlspecialchars($a["data"]["word"] ?? "") ?>
-        </div>
-      <?php endif; ?>
-    <?php endforeach; ?>
-  <?php endif; ?>
-<?php if ($canEdit): ?>
-
-  <hr>
-
-  <h3>➕ Agregar actividad</h3>
-
-  <a class="btn" href="../hangman/index.php?course=<?= urlencode($courseId) ?>&unit=<?= urlencode($unitId) ?>">
-    🎯 Crear Hangman
-  </a>
-
+<?php if (empty($activities)): ?>
+  <p>No hay actividades.</p>
+<?php else: ?>
+  <?php foreach ($activities as $a): ?>
+    <div>🎯 Hangman — <?= htmlspecialchars($a["data"]["word"] ?? "") ?></div>
+  <?php endforeach; ?>
 <?php endif; ?>
 
-  <hr>
+<h3>➕ Agregar actividad</h3>
 
-  <a href="course_view.php?course=<?= urlencode($courseId) ?>">
-    ← Volver al curso
-  </a>
-</div>
+<a href="../hangman/index.php?course=<?= urlencode($courseId) ?>&unit=<?= urlencode($unitId) ?>">
+  🎯 Crear Hangman
+</a>
+
+<br><br>
+<a href="course_view.php?course=<?= urlencode($courseId) ?>">← Volver</a>
 
 </body>
 </html>
