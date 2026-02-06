@@ -1,13 +1,6 @@
 <?php
 session_start();
 
-echo "<pre>";
-echo "ARCHIVO EJECUTADO: " . __FILE__ . "\n\n";
-echo "_GET:\n";
-var_dump($_GET);
-exit;
-
-
 /* =====================
    LOGIN GENERAL
    ===================== */
