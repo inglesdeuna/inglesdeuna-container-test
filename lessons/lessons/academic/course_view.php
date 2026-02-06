@@ -14,12 +14,16 @@ if (
 }
 
 /* =====================
-   ARCHIVOS
+   ARCHIVO
    ===================== */
-$coursesFile = __DIR__ . "/courses.json";
-$courses = file_exists($coursesFile)
-  ? json_decode(file_get_contents($coursesFile), true)
+$file = __DIR__ . "/courses.json";
+$courses = file_exists($file)
+  ? json_decode(file_get_contents($file), true)
   : [];
+
+if (!is_array($courses)) {
+  $courses = [];
+}
 
 /* =====================
    VALIDAR CURSO
@@ -32,7 +36,7 @@ if (!$courseId) {
 $courseIndex = null;
 
 foreach ($courses as $i => $c) {
-  if (isset($c["id"]) && $c["id"] === $courseId) {
+  if (is_array($c) && ($c["id"] ?? null) === $courseId) {
     $courseIndex = $i;
     break;
   }
@@ -43,58 +47,24 @@ if ($courseIndex === null) {
 }
 
 /* =====================
-   NORMALIZAR CURSO
+   CURSO SEGURO
    ===================== */
-$courses[$courseIndex]["students"] = $courses[$courseIndex]["students"] ?? [];
-$courses[$courseIndex]["units"]    = $courses[$courseIndex]["units"] ?? [];
-$courses[$courseIndex]["teacher"]  = $courses[$courseIndex]["teacher"] ?? null;
-
-/* normalizar teacher */
-if (is_string($courses[$courseIndex]["teacher"])) {
-  $courses[$courseIndex]["teacher"] = [
-    "id" => $courses[$courseIndex]["teacher"],
-    "permission" => "editor"
-  ];
-}
-
-if (!is_array($courses[$courseIndex]["teacher"])) {
-  $courses[$courseIndex]["teacher"] = null;
-}
-
-/* guardar normalización */
-file_put_contents(
-  $coursesFile,
-  json_encode($courses, JSON_PRETTY_PRINT)
-);
-
-/* curso FINAL y único */
 $course = $courses[$courseIndex];
+
+$course["units"] = is_array($course["units"] ?? null) ? $course["units"] : [];
+$course["students"] = is_array($course["students"] ?? null) ? $course["students"] : [];
+$course["teacher"] = is_array($course["teacher"] ?? null) ? $course["teacher"] : null;
 
 /* =====================
    PERMISOS
    ===================== */
-$canEdit = false;
-
-if (isset($_SESSION["admin_id"])) {
-  $canEdit = true;
-}
-
-if (
-  isset($_SESSION["teacher_id"]) &&
-  is_array($course["teacher"]) &&
-  ($course["teacher"]["id"] ?? null) === $_SESSION["teacher_id"]
-) {
-  $canEdit = true;
-}
+$canEdit = isset($_SESSION["admin_id"]) || isset($_SESSION["teacher_id"]);
 
 /* =====================
-   CREAR UNIDAD
+   CREAR UNIDAD (POST)
    ===================== */
-if (
-  $_SERVER["REQUEST_METHOD"] === "POST" &&
-  isset($_POST["add_unit"]) &&
-  $canEdit
-) {
+if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["add_unit"]) && $canEdit) {
+
   $unitName = trim($_POST["unit_name"]);
 
   if ($unitName !== "") {
@@ -104,10 +74,7 @@ if (
       "activities" => []
     ];
 
-    file_put_contents(
-      $coursesFile,
-      json_encode($courses, JSON_PRETTY_PRINT)
-    );
+    file_put_contents($file, json_encode($courses, JSON_PRETTY_PRINT));
   }
 
   header("Location: course_view.php?course=" . urlencode($courseId));
@@ -121,47 +88,42 @@ if (
 <title><?= htmlspecialchars($course["name"]) ?></title>
 <style>
 body{font-family:Arial;background:#f4f8ff;padding:40px}
-.section{background:#fff;padding:25px;border-radius:14px;margin-bottom:30px}
-.unit{padding:12px;border-bottom:1px solid #e5e7eb}
-a{margin-left:10px;text-decoration:none;color:#2563eb}
+.card{background:#fff;padding:25px;border-radius:12px;margin-bottom:20px}
+.unit{padding:10px;border-bottom:1px solid #e5e7eb}
+a{margin-left:10px;color:#2563eb;text-decoration:none}
 </style>
 </head>
 <body>
 
 <h1>📘 Curso: <?= htmlspecialchars($course["name"]) ?></h1>
 
-<div class="section">
+<div class="card">
 <h2>📚 Unidades</h2>
 
 <?php if (empty($course["units"])): ?>
   <p>No hay unidades creadas.</p>
 <?php else: ?>
   <?php foreach ($course["units"] as $u): ?>
+    <?php if (!is_array($u)) continue; ?>
     <div class="unit">
       <strong><?= htmlspecialchars($u["name"]) ?></strong>
-
-      <a href="unit_view.php?course=<?= urlencode($courseId) ?>&unit=<?= urlencode($u["id"]) ?>">
-        👁 Ver
+      <a href="../hangman/index.php?course=<?= urlencode($courseId) ?>&unit=<?= urlencode($u["id"]) ?>">
+        ✏️ Editor
       </a>
-
-      <?php if ($canEdit): ?>
-        <a href="../hangman/index.php?course=<?= urlencode($courseId) ?>&unit=<?= urlencode($u["id"]) ?>">
-          ✏️ Editor
-        </a>
-      <?php endif; ?>
     </div>
   <?php endforeach; ?>
 <?php endif; ?>
+</div>
 
 <?php if ($canEdit): ?>
-<hr>
-<form method="post">
-  <input type="text" name="unit_name" placeholder="Nombre de la unidad" required>
-  <button name="add_unit">Agregar unidad</button>
-</form>
-<?php endif; ?>
-
+<div class="card">
+  <h3>➕ Crear unidad</h3>
+  <form method="post">
+    <input type="text" name="unit_name" required>
+    <button name="add_unit">Agregar</button>
+  </form>
 </div>
+<?php endif; ?>
 
 </body>
 </html>
