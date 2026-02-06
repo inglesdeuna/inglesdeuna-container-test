@@ -48,6 +48,10 @@ if ($courseIndex === null || $unitIndex === null) {
 $course = $courses[$courseIndex];
 $unit   = $course["units"][$unitIndex];
 $activities = $unit["activities"] ?? [];
+require_once __DIR__ . "/helpers.php";
+$userRole = getUserRole($course, $_SESSION);
+$canEdit  = ($userRole === "editor");
+
 ?>
 <!DOCTYPE html>
 <html lang="es">
