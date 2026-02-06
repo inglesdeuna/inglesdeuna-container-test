@@ -1,73 +1,103 @@
+<?php
+session_start();
+
+/* =====================
+   ACCESO DOCENTE / ADMIN
+   ===================== */
+if (
+  !isset($_SESSION["admin_id"]) &&
+  !isset($_SESSION["teacher_id"])
+) {
+  header("Location: login.php");
+  exit;
+}
+?>
 <!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Academic Dashboard – LET’S</title>
-
+<title>Panel Académico</title>
 <style>
 body{
   font-family: Arial, Helvetica, sans-serif;
   background:#f4f8ff;
-  margin:0;
-  padding:60px;
-  display:flex;
-  justify-content:center;
-  align-items:center;
-  height:100vh;
-}
-
-.container{
-  background:#ffffff;
-  padding:50px;
-  border-radius:18px;
-  box-shadow:0 15px 35px rgba(0,0,0,.1);
-  text-align:center;
-  max-width:500px;
-  width:100%;
+  padding:40px;
 }
 
 h1{
+  margin-bottom:30px;
+  color:#1f2937;
+}
+
+.grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+  gap:20px;
+  max-width:700px;
+}
+
+.card{
+  background:#ffffff;
+  border-radius:16px;
+  padding:30px;
+  text-align:center;
+  box-shadow:0 10px 25px rgba(0,0,0,.08);
+  cursor:pointer;
+  transition:transform .2s, box-shadow .2s;
+}
+
+.card:hover{
+  transform:translateY(-4px);
+  box-shadow:0 18px 35px rgba(0,0,0,.12);
+}
+
+.card h2{
+  margin:0;
+  font-size:20px;
   color:#2563eb;
-  margin-bottom:20px;
-  font-size:28px;
 }
 
-p{
-  color:#444;
-  font-size:16px;
-  margin-bottom:35px;
+.card p{
+  margin-top:10px;
+  color:#6b7280;
+  font-size:14px;
 }
 
-.button{
-  display:inline-block;
-  padding:18px 30px;
-  background:#2563eb;
-  color:#ffffff;
+a{
   text-decoration:none;
-  border-radius:14px;
-  font-size:18px;
-  font-weight:700;
-}
-
-.button:hover{
-  background:#1e4ed8;
 }
 </style>
 </head>
-
 <body>
 
-<div class="container">
-  <h1>🎓 Academic Dashboard</h1>
+<h1>🎓 Panel Académico</h1>
 
-  <p>
-    Desde aquí inicia la creación y organización de cursos,
-    programas y unidades académicas.
-  </p>
+<div class="grid">
 
-  <a class="button" href="programs_editor.php">
-    ➕ Crear Curso
+  <!-- CREAR CURSO -->
+  <a href="courses_manager.php">
+    <div class="card">
+      <h2>➕ Crear curso</h2>
+      <p>Inicia un nuevo curso académico</p>
+    </div>
   </a>
+
+  <!-- CURSOS -->
+  <a href="courses_manager.php">
+    <div class="card">
+      <h2>📚 Cursos</h2>
+      <p>Ver y editar cursos existentes</p>
+    </div>
+  </a>
+
+  <!-- ROLES -->
+  <a href="#">
+    <div class="card">
+      <h2>👥 Roles</h2>
+      <p>Asignar docentes y estudiantes</p>
+    </div>
+  </a>
+
 </div>
 
 </body>
