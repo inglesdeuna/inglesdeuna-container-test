@@ -1,52 +1,23 @@
 <?php
 session_start();
-echo "<pre>";
-echo "ARCHIVO HANGMAN: " . __FILE__ . "\n";
 
-$file = dirname(__DIR__, 2) . "/academic/courses.json";
-echo "LEYENDO JSON: " . $file . "\n";
-
-if (file_exists($file)) {
-  echo "JSON EXISTE\n";
-  echo file_get_contents($file);
-} else {
-  echo "JSON NO EXISTE";
-}
-exit;
-
-
-/* =====================
-   VALIDAR PARAMETROS
-   ===================== */
+/* PARAMETROS */
 $courseId = $_GET["course"] ?? null;
 $unitId   = $_GET["unit"] ?? null;
+if (!$courseId || !$unitId) die("Curso o unidad no especificados");
 
-if (!$courseId || !$unitId) {
-  die("Curso o unidad no especificados");
-}
+/* ARCHIVO CORRECTO */
+$file = dirname(__DIR__) . "/academic/courses.json";
+$courses = file_exists($file) ? json_decode(file_get_contents($file), true) : [];
+if (!is_array($courses)) $courses = [];
 
-/* =====================
-   ARCHIVO DE CURSOS
-   ===================== */
-$file = dirname(__DIR__, 2) . "/academic/courses.json";
-$courses = file_exists($file)
-  ? json_decode(file_get_contents($file), true)
-  : [];
-
-if (!is_array($courses)) {
-  $courses = [];
-}
-
-/* =====================
-   BUSCAR CURSO Y UNIDAD
-   ===================== */
+/* BUSCAR CURSO Y UNIDAD */
 $courseIndex = null;
 $unitIndex = null;
 
 foreach ($courses as $ci => $c) {
   if (($c["id"] ?? null) === $courseId) {
     $courseIndex = $ci;
-
     foreach ($c["units"] as $ui => $u) {
       if (($u["id"] ?? null) === $unitId) {
         $unitIndex = $ui;
@@ -58,27 +29,20 @@ foreach ($courses as $ci => $c) {
 }
 
 if ($courseIndex === null || $unitIndex === null) {
-  die("Curso o unidad no encontrados");
+  die("Curso no encontrado");
 }
 
-/* =====================
-   GUARDAR ACTIVIDAD
-   ===================== */
-if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["save_hangman"])) {
+/* GUARDAR ACTIVIDAD */
+if ($_SERVER["REQUEST_METHOD"] === "POST" && !empty($_POST["word"])) {
 
-  $word = trim($_POST["word"] ?? "");
+  $courses[$courseIndex]["units"][$unitIndex]["activities"][] = [
+    "type" => "hangman",
+    "data" => [
+      "word" => trim($_POST["word"])
+    ]
+  ];
 
-  if ($word !== "") {
-    $courses[$courseIndex]["units"][$unitIndex]["activities"][] = [
-      "type" => "hangman",
-      "data" => [
-        "word" => $word
-      ]
-    ];
-
-    file_put_contents($file, json_encode($courses, JSON_PRETTY_PRINT));
-  }
-
+  file_put_contents($file, json_encode($courses, JSON_PRETTY_PRINT));
   header("Location: index.php?course=" . urlencode($courseId) . "&unit=" . urlencode($unitId));
   exit;
 }
@@ -88,22 +52,15 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["save_hangman"])) {
 <head>
 <meta charset="UTF-8">
 <title>Hangman Editor</title>
-<style>
-body{font-family:Arial;background:#f4f8ff;padding:40px}
-.card{background:#fff;padding:25px;border-radius:12px;max-width:500px}
-input,button{padding:10px;width:100%;margin-top:10px}
-</style>
 </head>
 <body>
 
-<div class="card">
-  <h2>🎯 Hangman – Editor</h2>
+<h2>🎯 Hangman – Editor</h2>
 
-  <form method="post">
-    <input type="text" name="word" placeholder="Palabra" required>
-    <button name="save_hangman">Guardar actividad</button>
-  </form>
-</div>
+<form method="post">
+  <input type="text" name="word" required placeholder="Palabra">
+  <button>Guardar actividad</button>
+</form>
 
 </body>
 </html>
