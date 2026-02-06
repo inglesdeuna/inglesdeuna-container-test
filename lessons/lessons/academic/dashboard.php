@@ -3,9 +3,11 @@ session_start();
 
 /* SOLO ADMIN */
 if (!isset($_SESSION["admin_id"])) {
-  header("Location: login.php");
+  $_SESSION["redirect_after_login"] = "../admin/dashboard.php";
+  header("Location: ../academic/login.php");
   exit;
 }
+
 ?>
 <!DOCTYPE html>
 <html lang="es">
