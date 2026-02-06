@@ -1,11 +1,5 @@
-$file = __DIR__ . "/courses.json";
-
-$result = file_put_contents($file, json_encode(["test" => time()], JSON_PRETTY_PRINT));
-
-echo "<pre>";
-var_dump($result);
-var_dump(error_get_last());
-exit;
+<?php
+session_start();
 
 /* ===============================
    ACCESO: SOLO ADMIN O TEACHER
@@ -32,7 +26,7 @@ if (!is_array($courses)) {
 }
 
 /* ===============================
-   CREAR CURSO
+   CREAR CURSO (ÚNICO LUGAR DONDE SE CREAN)
    =============================== */
 if ($_SERVER["REQUEST_METHOD"] === "POST" && !empty($_POST["course_name"])) {
 
