@@ -14,7 +14,7 @@ if (!$courseId || !$unitId) {
 /* =====================
    ARCHIVO DE CURSOS
    ===================== */
-$file = dirname(__DIR__) . "/academic/courses.json";
+$file = dirname(__DIR__, 2) . "/academic/courses.json";
 $courses = file_exists($file)
   ? json_decode(file_get_contents($file), true)
   : [];
