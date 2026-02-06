@@ -21,6 +21,10 @@ $courses = file_exists($file)
   ? json_decode(file_get_contents($file), true)
   : [];
 
+if (!is_array($courses)) {
+  $courses = [];
+}
+
 /* ===============================
    CREAR CURSO
    =============================== */
@@ -31,15 +35,13 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !empty($_POST["course_name"])) {
   $courses[] = [
     "id" => $courseId,
     "name" => trim($_POST["course_name"]),
-    "students" => [],
+    "units" => [],
     "teacher" => null,
-    "units" => []
+    "students" => []
   ];
 
-  // Guardar UNA sola vez
   file_put_contents($file, json_encode($courses, JSON_PRETTY_PRINT));
 
-  // Ir al manager del curso
   header("Location: course_view.php?course=" . urlencode($courseId));
   exit;
 }
@@ -49,94 +51,36 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !empty($_POST["course_name"])) {
 <head>
 <meta charset="UTF-8">
 <title>Courses Manager</title>
-
 <style>
-body{
-  font-family: Arial, Helvetica, sans-serif;
-  background:#f4f8ff;
-  padding:40px;
-}
-
-h1{
-  color:#2563eb;
-}
-
-.card{
-  background:#fff;
-  padding:30px;
-  border-radius:14px;
-  box-shadow:0 10px 25px rgba(0,0,0,.08);
-  max-width:600px;
-  margin-bottom:30px;
-}
-
-input{
-  width:100%;
-  padding:12px;
-  border-radius:8px;
-  border:1px solid #ccc;
-  margin-bottom:12px;
-  font-size:16px;
-}
-
-button{
-  padding:12px 20px;
-  background:#2563eb;
-  color:#fff;
-  border:none;
-  border-radius:10px;
-  font-size:16px;
-  font-weight:700;
-  cursor:pointer;
-}
-
-.list{
-  max-width:800px;
-}
-
-.course{
-  background:#fff;
-  padding:20px;
-  border-radius:12px;
-  box-shadow:0 6px 18px rgba(0,0,0,.08);
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-  margin-bottom:12px;
-}
-
-.course a{
-  text-decoration:none;
-  font-weight:700;
-  color:#2563eb;
-}
+body{font-family:Arial;background:#f4f8ff;padding:40px}
+.card{background:#fff;padding:25px;border-radius:12px;margin-bottom:20px}
+.course{background:#fff;padding:15px;border-radius:10px;margin-bottom:10px;display:flex;justify-content:space-between}
+a{text-decoration:none;color:#2563eb;font-weight:bold}
 </style>
 </head>
-
 <body>
 
 <h1>🎓 Courses</h1>
 
 <div class="card">
-  <h2>➕ Crear Curso</h2>
+  <h2>➕ Crear curso</h2>
   <form method="post">
-    <input type="text" name="course_name" placeholder="Ej: Basic 1" required>
-    <button type="submit">Crear curso</button>
+    <input type="text" name="course_name" required placeholder="Ej: Intermediate 3">
+    <button type="submit">Crear</button>
   </form>
 </div>
 
-<div class="list">
+<div class="card">
   <h2>Cursos creados</h2>
 
   <?php if (empty($courses)): ?>
     <p>No hay cursos creados.</p>
   <?php else: ?>
     <?php foreach ($courses as $c): ?>
+      <?php if (!is_array($c)) continue; ?>
       <div class="course">
         <strong><?= htmlspecialchars($c["name"]) ?></strong>
-        <a href="course_view.php?course=<?= urlencode($c["id"]) ?>">
-          Abrir →
-        </a>
+        <a href="course_view.php?course=<?= urlencode($c["id"]) ?>">Abrir →</a>
       </div>
     <?php endforeach; ?>
   <?php endif; ?>
