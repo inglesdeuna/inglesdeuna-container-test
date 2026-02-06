@@ -11,7 +11,7 @@ if (
 }
 
 /* ARCHIVOS */
-$coursesFile  = __DIR__ . "/courses.json";
+$coursesFile = dirname(__DIR__) . "/academic/courses.json";
 $teachersFile = __DIR__ . "/teachers.json";
 $studentsFile = __DIR__ . "/students.json";
 
