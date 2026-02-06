@@ -1,9 +1,7 @@
 <?php
 session_start();
 
-/* =====================
-   LOGIN
-   ===================== */
+/* LOGIN */
 if (
   !isset($_SESSION["admin_id"]) &&
   !isset($_SESSION["teacher_id"])
@@ -12,58 +10,37 @@ if (
   exit;
 }
 
-/* =====================
-   ARCHIVO
-   ===================== */
+/* ARCHIVO */
 $file = __DIR__ . "/courses.json";
-$courses = file_exists($file)
-  ? json_decode(file_get_contents($file), true)
-  : [];
+$courses = file_exists($file) ? json_decode(file_get_contents($file), true) : [];
+if (!is_array($courses)) $courses = [];
 
-if (!is_array($courses)) {
-  $courses = [];
-}
-
-/* =====================
-   VALIDAR CURSO
-   ===================== */
+/* VALIDAR CURSO */
 $courseId = $_GET["course"] ?? null;
-if (!$courseId) {
-  die("Curso no especificado");
-}
+if (!$courseId) die("Curso no especificado");
 
 $courseIndex = null;
 foreach ($courses as $i => $c) {
-  if (is_array($c) && ($c["id"] ?? null) === $courseId) {
+  if (($c["id"] ?? null) === $courseId) {
     $courseIndex = $i;
     break;
   }
 }
-
-if ($courseIndex === null) {
-  die("Curso no encontrado");
-}
+if ($courseIndex === null) die("Curso no encontrado");
 
 $course = $courses[$courseIndex];
-$course["units"] = is_array($course["units"] ?? null) ? $course["units"] : [];
+$course["units"] = is_array($course["units"]) ? $course["units"] : [];
 
-/* =====================
-   CREAR UNIDAD
-   ===================== */
-if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["add_unit"])) {
+/* CREAR UNIDAD */
+if ($_SERVER["REQUEST_METHOD"] === "POST" && !empty($_POST["unit_name"])) {
 
-  $unitName = trim($_POST["unit_name"]);
+  $courses[$courseIndex]["units"][] = [
+    "id" => "unit_" . time(),
+    "name" => trim($_POST["unit_name"]),
+    "activities" => []
+  ];
 
-  if ($unitName !== "") {
-    $courses[$courseIndex]["units"][] = [
-      "id" => "unit_" . time(),
-      "name" => $unitName,
-      "activities" => []
-    ];
-
-    file_put_contents($file, json_encode($courses, JSON_PRETTY_PRINT));
-  }
-
+  file_put_contents($file, json_encode($courses, JSON_PRETTY_PRINT));
   header("Location: course_view.php?course=" . urlencode($courseId));
   exit;
 }
@@ -73,46 +50,32 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["add_unit"])) {
 <head>
 <meta charset="UTF-8">
 <title><?= htmlspecialchars($course["name"]) ?></title>
-<style>
-body{font-family:Arial;background:#f4f8ff;padding:40px}
-.card{background:#fff;padding:25px;border-radius:12px;margin-bottom:20px}
-.unit{padding:10px;border-bottom:1px solid #e5e7eb}
-</style>
 </head>
 <body>
 
 <h1>📘 Curso: <?= htmlspecialchars($course["name"]) ?></h1>
 
-<div class="card">
 <h2>📚 Unidades</h2>
 
 <?php if (empty($course["units"])): ?>
   <p>No hay unidades creadas.</p>
 <?php else: ?>
- <?php foreach ($course["units"] as $u): ?>
-  <?php if (!is_array($u)) continue; ?>
-
-  <div class="unit">
-    <strong><?= htmlspecialchars($u["name"]) ?></strong>
-
-    <a
-      href="../hangman/index.php?course=<?= urlencode($courseId) ?>&unit=<?= urlencode($u["id"]) ?>"
-      style="margin-left:12px; color:#2563eb; text-decoration:none; font-weight:bold;"
-    >
-      ✏️ Editor
-    </a>
-  </div>
-<?php endforeach; ?>
+  <?php foreach ($course["units"] as $u): ?>
+    <div>
+      <?= htmlspecialchars($u["name"]) ?>
+      <a href="../hangman/index.php?course=<?= urlencode($courseId) ?>&unit=<?= urlencode($u["id"]) ?>">
+        ✏️ Editor
+      </a>
+    </div>
+  <?php endforeach; ?>
 <?php endif; ?>
-</div>
 
-<div class="card">
 <h3>➕ Crear unidad</h3>
 <form method="post">
   <input type="text" name="unit_name" required>
-  <button name="add_unit">Agregar</button>
+  <button>Agregar</button>
 </form>
-</div>
 
 </body>
 </html>
+
