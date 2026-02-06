@@ -4,10 +4,8 @@ session_start();
 /* ==========================
    SEGURIDAD
    ========================== */
-if (
-  !isset($_SESSION["admin_id"]) &&
-  !isset($_SESSION["teacher_id"])
-) {
+if (!isset($_SESSION["admin_id"])) {
+  $_SESSION["redirect_after_login"] = "../admin/dashboard.php";
   header("Location: ../academic/login.php");
   exit;
 }
