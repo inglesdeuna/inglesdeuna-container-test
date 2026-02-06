@@ -1,23 +1,21 @@
 <?php
 session_start();
 
-/* LOGIN */
 if (
   !isset($_SESSION["admin_id"]) &&
-  !isset($_SESSION["teacher_id"])
+  !isset($_SESSION["teacher_id"]) &&
+  !isset($_SESSION["student_id"])
 ) {
   header("Location: login.php");
   exit;
 }
 
-/* ARCHIVO */
+$courseId = $_GET["course"] ?? null;
+if (!$courseId) die("Curso no especificado");
+
 $file = dirname(__DIR__) . "/academic/courses.json";
 $courses = file_exists($file) ? json_decode(file_get_contents($file), true) : [];
 if (!is_array($courses)) $courses = [];
-
-/* VALIDAR CURSO */
-$courseId = $_GET["course"] ?? null;
-if (!$courseId) die("Curso no especificado");
 
 $courseIndex = null;
 foreach ($courses as $i => $c) {
@@ -29,17 +27,20 @@ foreach ($courses as $i => $c) {
 if ($courseIndex === null) die("Curso no encontrado");
 
 $course = $courses[$courseIndex];
-$course["units"] = is_array($course["units"]) ? $course["units"] : [];
+$course["units"] = $course["units"] ?? [];
+
+require_once __DIR__ . "/helpers.php";
+$userRole = getUserRole($course, $_SESSION);
+$canEdit  = ($userRole === "editor");
 
 /* CREAR UNIDAD */
-if ($_SERVER["REQUEST_METHOD"] === "POST" && !empty($_POST["unit_name"])) {
-
-  $courses[$courseIndex]["units"][] = [
+if ($canEdit && $_SERVER["REQUEST_METHOD"] === "POST" && !empty($_POST["unit_name"])) {
+  $course["units"][] = [
     "id" => "unit_" . time(),
     "name" => trim($_POST["unit_name"]),
     "activities" => []
   ];
-
+  $courses[$courseIndex] = $course;
   file_put_contents($file, json_encode($courses, JSON_PRETTY_PRINT));
   header("Location: course_view.php?course=" . urlencode($courseId));
   exit;
@@ -55,9 +56,9 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !empty($_POST["unit_name"])) {
 
 <h1>📘 Curso: <?= htmlspecialchars($course["name"]) ?></h1>
 
-  <a href="roles.php?course=<?= urlencode($courseId) ?>">
-  👥 Roles
-</a>
+<?php if ($canEdit): ?>
+  <a href="roles.php?course=<?= urlencode($courseId) ?>">👥 Roles</a>
+<?php endif; ?>
 
 <h2>📚 Unidades</h2>
 
@@ -68,23 +69,25 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !empty($_POST["unit_name"])) {
     <div>
       <?= htmlspecialchars($u["name"]) ?>
 
-      <a href="unit_view.php?course=<?= urlencode($courseId) ?>&unit=<?= urlencode($u["id"]) ?>">
-        ✏️ Editor
-      </a>
-
       <a href="unit_viewer.php?course=<?= urlencode($courseId) ?>&unit=<?= urlencode($u["id"]) ?>">
         👀 Ver
       </a>
+
+      <?php if ($canEdit): ?>
+        <a href="unit_view.php?course=<?= urlencode($courseId) ?>&unit=<?= urlencode($u["id"]) ?>">
+          ✏️ Editor
+        </a>
+      <?php endif; ?>
     </div>
   <?php endforeach; ?>
 <?php endif; ?>
 
-<h3>➕ Crear unidad</h3>
-<form method="post">
-  <input type="text" name="unit_name" required>
-  <button>Agregar</button>
-</form>
+<?php if ($canEdit): ?>
+  <form method="post">
+    <input name="unit_name" placeholder="Nueva unidad" required>
+    <button>Agregar</button>
+  </form>
+<?php endif; ?>
 
 </body>
 </html>
-
