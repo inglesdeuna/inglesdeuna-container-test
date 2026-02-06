@@ -1,102 +1,82 @@
 <?php
 session_start();
 
-/* SOLO ADMIN */
-if (!isset($_SESSION["admin_id"])) {
-  $_SESSION["redirect_after_login"] = "../admin/dashboard.php";
-  header("Location: ../academic/login.php");
+/* SOLO DOCENTE */
+if (!isset($_SESSION["teacher_id"])) {
+  header("Location: login_teacher.php");
   exit;
 }
 
+/* ARCHIVO DE CURSOS */
+$file = __DIR__ . "/courses.json";
+$courses = file_exists($file) ? json_decode(file_get_contents($file), true) : [];
+if (!is_array($courses)) $courses = [];
+
+$teacherId = $_SESSION["teacher_id"];
+
+/* FILTRAR CURSOS DEL DOCENTE */
+$myCourses = [];
+
+foreach ($courses as $c) {
+  if (
+    isset($c["teacher"]["id"]) &&
+    $c["teacher"]["id"] === $teacherId
+  ) {
+    $myCourses[] = $c;
+  }
+}
 ?>
 <!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Panel Académico – Admin</title>
+<title>Panel Docente</title>
 <style>
 body{
   font-family: Arial, Helvetica, sans-serif;
   background:#f4f8ff;
   padding:40px;
 }
-
-h1{
-  color:#1f2937;
+h1{margin-bottom:30px}
+.course{
+  background:#fff;
+  padding:20px;
+  border-radius:14px;
+  box-shadow:0 6px 18px rgba(0,0,0,.08);
+  margin-bottom:15px;
+}
+.course a{
+  color:#2563eb;
+  font-weight:700;
+  text-decoration:none;
+}
+.topbar{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
   margin-bottom:30px;
 }
-
-.grid{
-  display:grid;
-  grid-template-columns:repeat(auto-fit,minmax(240px,1fr));
-  gap:20px;
-  max-width:900px;
-}
-
-.card{
-  background:#ffffff;
-  border-radius:16px;
-  padding:30px;
-  box-shadow:0 10px 25px rgba(0,0,0,.08);
-  cursor:pointer;
-  transition:.2s;
-}
-
-.card:hover{
-  transform:translateY(-4px);
-  box-shadow:0 18px 35px rgba(0,0,0,.12);
-}
-
-.card h2{
-  margin:0;
-  font-size:20px;
-  color:#2563eb;
-}
-
-.card p{
-  margin-top:10px;
-  color:#6b7280;
-  font-size:14px;
-}
-
-a{text-decoration:none}
 </style>
 </head>
 <body>
 
-<h1>🛠️ Panel Académico – Administrador</h1>
-
-<div class="grid">
-
-  <a href="courses_manager.php">
-    <div class="card">
-      <h2>📚 Cursos</h2>
-      <p>Crear y administrar cursos</p>
-    </div>
-  </a>
-
-  <a href="roles.php">
-    <div class="card">
-      <h2>👥 Asignaciones</h2>
-      <p>Docentes y estudiantes por curso</p>
-    </div>
-  </a>
-
-  <a href="dashboard.php">
-    <div class="card">
-      <h2>🎓 Panel Docente</h2>
-      <p>Ver experiencia del docente</p>
-    </div>
-  </a>
-
-  <a href="../hangman/index.php">
-    <div class="card">
-      <h2>🎮 Actividades</h2>
-      <p>Contenedores de actividades</p>
-    </div>
-  </a>
-
+<div class="topbar">
+  <h1>👩‍🏫 Panel Docente</h1>
+  <a href="logout.php">🚪 Cerrar sesión</a>
 </div>
+
+<?php if (empty($myCourses)): ?>
+  <p>No tienes cursos asignados.</p>
+<?php else: ?>
+  <?php foreach ($myCourses as $c): ?>
+    <div class="course">
+      <strong><?= htmlspecialchars($c["name"]) ?></strong><br><br>
+      <a href="course_view.php?course=<?= urlencode($c["id"]) ?>">
+        Abrir curso →
+      </a>
+    </div>
+  <?php endforeach; ?>
+<?php endif; ?>
 
 </body>
 </html>
