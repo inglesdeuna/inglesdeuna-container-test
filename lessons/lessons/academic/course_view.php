@@ -2,12 +2,11 @@
 session_start();
 
 /* =====================
-   LOGIN GENERAL
+   LOGIN
    ===================== */
 if (
   !isset($_SESSION["admin_id"]) &&
-  !isset($_SESSION["teacher_id"]) &&
-  !isset($_SESSION["student_id"])
+  !isset($_SESSION["teacher_id"])
 ) {
   header("Location: login.php");
   exit;
@@ -34,7 +33,6 @@ if (!$courseId) {
 }
 
 $courseIndex = null;
-
 foreach ($courses as $i => $c) {
   if (is_array($c) && ($c["id"] ?? null) === $courseId) {
     $courseIndex = $i;
@@ -46,24 +44,13 @@ if ($courseIndex === null) {
   die("Curso no encontrado");
 }
 
-/* =====================
-   CURSO SEGURO
-   ===================== */
 $course = $courses[$courseIndex];
-
 $course["units"] = is_array($course["units"] ?? null) ? $course["units"] : [];
-$course["students"] = is_array($course["students"] ?? null) ? $course["students"] : [];
-$course["teacher"] = is_array($course["teacher"] ?? null) ? $course["teacher"] : null;
 
 /* =====================
-   PERMISOS
+   CREAR UNIDAD
    ===================== */
-$canEdit = isset($_SESSION["admin_id"]) || isset($_SESSION["teacher_id"]);
-
-/* =====================
-   CREAR UNIDAD (POST)
-   ===================== */
-if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["add_unit"]) && $canEdit) {
+if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["add_unit"])) {
 
   $unitName = trim($_POST["unit_name"]);
 
@@ -90,7 +77,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["add_unit"]) && $canEd
 body{font-family:Arial;background:#f4f8ff;padding:40px}
 .card{background:#fff;padding:25px;border-radius:12px;margin-bottom:20px}
 .unit{padding:10px;border-bottom:1px solid #e5e7eb}
-a{margin-left:10px;color:#2563eb;text-decoration:none}
 </style>
 </head>
 <body>
@@ -104,26 +90,20 @@ a{margin-left:10px;color:#2563eb;text-decoration:none}
   <p>No hay unidades creadas.</p>
 <?php else: ?>
   <?php foreach ($course["units"] as $u): ?>
-    <?php if (!is_array($u)) continue; ?>
     <div class="unit">
-      <strong><?= htmlspecialchars($u["name"]) ?></strong>
-      <a href="../hangman/index.php?course=<?= urlencode($courseId) ?>&unit=<?= urlencode($u["id"]) ?>">
-        ✏️ Editor
-      </a>
+      <?= htmlspecialchars($u["name"]) ?>
     </div>
   <?php endforeach; ?>
 <?php endif; ?>
 </div>
 
-<?php if ($canEdit): ?>
 <div class="card">
-  <h3>➕ Crear unidad</h3>
-  <form method="post">
-    <input type="text" name="unit_name" required>
-    <button name="add_unit">Agregar</button>
-  </form>
+<h3>➕ Crear unidad</h3>
+<form method="post">
+  <input type="text" name="unit_name" required>
+  <button name="add_unit">Agregar</button>
+</form>
 </div>
-<?php endif; ?>
 
 </body>
 </html>
