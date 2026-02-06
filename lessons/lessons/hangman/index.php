@@ -1,199 +1,94 @@
+<?php
+session_start();
+
+/* =====================
+   VALIDAR PARAMETROS
+   ===================== */
+$courseId = $_GET["course"] ?? null;
+$unitId   = $_GET["unit"] ?? null;
+
+if (!$courseId || !$unitId) {
+  die("Curso o unidad no especificados");
+}
+
+/* =====================
+   ARCHIVO DE CURSOS
+   ===================== */
+$file = dirname(__DIR__) . "/academic/courses.json";
+$courses = file_exists($file)
+  ? json_decode(file_get_contents($file), true)
+  : [];
+
+if (!is_array($courses)) {
+  $courses = [];
+}
+
+/* =====================
+   BUSCAR CURSO Y UNIDAD
+   ===================== */
+$courseIndex = null;
+$unitIndex = null;
+
+foreach ($courses as $ci => $c) {
+  if (($c["id"] ?? null) === $courseId) {
+    $courseIndex = $ci;
+
+    foreach ($c["units"] as $ui => $u) {
+      if (($u["id"] ?? null) === $unitId) {
+        $unitIndex = $ui;
+        break;
+      }
+    }
+    break;
+  }
+}
+
+if ($courseIndex === null || $unitIndex === null) {
+  die("Curso o unidad no encontrados");
+}
+
+/* =====================
+   GUARDAR ACTIVIDAD
+   ===================== */
+if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["save_hangman"])) {
+
+  $word = trim($_POST["word"] ?? "");
+
+  if ($word !== "") {
+    $courses[$courseIndex]["units"][$unitIndex]["activities"][] = [
+      "type" => "hangman",
+      "data" => [
+        "word" => $word
+      ]
+    ];
+
+    file_put_contents($file, json_encode($courses, JSON_PRETTY_PRINT));
+  }
+
+  header("Location: index.php?course=" . urlencode($courseId) . "&unit=" . urlencode($unitId));
+  exit;
+}
+?>
 <!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Contenedor General de Juegos – LET’S</title>
-
+<title>Hangman Editor</title>
 <style>
-body{
-  font-family: Arial, Helvetica, sans-serif;
-  background:#f4f8ff;
-  margin:0;
-  padding:40px;
-  color:#111;
-}
-
-h1{
-  color:#2563eb;
-  margin-bottom:30px;
-  display:flex;
-  align-items:center;
-  gap:10px;
-  font-size:28px;
-}
-
-.grid{
-  display:grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap:24px;
-}
-
-.card{
-  background:#ffffff;
-  border-radius:14px;
-  padding:25px;
-  box-shadow:0 10px 25px rgba(0,0,0,.08);
-  display:flex;
-  flex-direction:column;
-}
-
-.card-header{
-  display:flex;
-  align-items:center;
-  gap:10px;
-  margin-bottom:10px;
-}
-
-.card-header h2{
-  font-size:20px;
-  margin:0;
-  font-weight:700;
-}
-
-.icon{
-  font-size:22px;
-}
-
-.card p{
-  margin:10px 0 20px 0;
-  color:#333;
-  font-size:15px;
-}
-
-.card a{
-  display:inline-block;
-  padding:12px 18px;
-  background:#2563eb;
-  color:#ffffff;
-  text-decoration:none;
-  border-radius:10px;
-  font-weight:700;
-  font-size:14px;
-  margin-top:10px;
-}
-
-.card a:hover{
-  background:#1e4ed8;
-}
+body{font-family:Arial;background:#f4f8ff;padding:40px}
+.card{background:#fff;padding:25px;border-radius:12px;max-width:500px}
+input,button{padding:10px;width:100%;margin-top:10px}
 </style>
 </head>
-
 <body>
 
-<h1>🎮 Contenedor General de Juegos – LET’S</h1>
+<div class="card">
+  <h2>🎯 Hangman – Editor</h2>
 
-<div class="grid">
-
-  <!-- Hangman -->
-  <div class="card">
-    <div class="card-header">
-      <span class="icon">🎯</span>
-      <h2>Hangman</h2>
-    </div>
-    <p>Editar palabras, pistas y jugar Hangman.</p>
-    <a href="../activities/hangman/editor.php">✏️ Editar Hangman</a>
-    <a href="../activities/hangman/viewer.php">👀 Ver Hangman</a>
-  </div>
-
-  <!-- Flipbooks -->
-  <div class="card">
-    <div class="card-header">
-      <span class="icon">📘</span>
-      <h2>Flipbooks</h2>
-    </div>
-    <p>Subir PDFs, nombrar lecciones y visualizarlas.</p>
-    <a href="../admin/flipbook.php">✏️ Editar Flipbooks</a>
-    <a href="../activities/flipbooks/viewer.php">👀 Ver Flipbooks</a>
-  </div>
-
-  <!-- Actividades externas -->
-  <div class="card">
-    <div class="card-header">
-      <span class="icon">🌐</span>
-      <h2>Actividades Externas</h2>
-    </div>
-    <p>Wordwall, Liveworksheets, Genially, etc.</p>
-    <a href="../admin/external_links.php">✏️ Editar actividades</a>
-    <a href="../activities/external/viewer.php">👀 Ver actividades</a>
-  </div>
-
-  <!-- Multiple Choice -->
-  <div class="card">
-    <div class="card-header">
-      <span class="icon">📝</span>
-      <h2>Multiple Choice</h2>
-    </div>
-    <p>Crear y responder preguntas de selección múltiple.</p>
-    <a href="../activities/multiple_choice/editor.php">✏️ Editar Multiple Choice</a>
-    <a href="../activities/multiple_choice/viewer.php">👀 Ver Multiple Choice</a>
-  </div>
-
-  <!-- Flashcards -->
-  <div class="card">
-    <div class="card-header">
-      <span class="icon">🃏</span>
-      <h2>Flashcards</h2>
-    </div>
-    <p>Crear flashcards con texto, imágenes y audio.</p>
-    <a href="../activities/flashcards/editor.php">✏️ Editar Flashcards</a>
-    <a href="../activities/flashcards/viewer.php">👀 Ver Flashcards</a>
-  </div>
-
-  <!-- Pronunciation -->
-  <div class="card">
-    <div class="card-header">
-      <span class="icon">🎧</span>
-      <h2>Pronunciation</h2>
-    </div>
-    <p>Practicar pronunciación con audio.</p>
-    <a href="../activities/pronunciation/editor.php">✏️ Editar Pronunciation</a>
-    <a href="../activities/pronunciation/viewer.php">👀 Ver Pronunciation</a>
-  </div>
-
-  <!-- Unscramble -->
-  <div class="card">
-    <div class="card-header">
-      <span class="icon">🧩</span>
-      <h2>Unscramble</h2>
-    </div>
-    <p>Ordena palabras u oraciones.</p>
-    <a href="../activities/unscramble/editor.php">✏️ Editar Unscramble</a>
-    <a href="../activities/unscramble/viewer.php">👀 Ver Unscramble</a>
-  </div>
-
-  <!-- Drag & Drop -->
-  <div class="card">
-    <div class="card-header">
-      <span class="icon">🧲</span>
-      <h2>Drag & Drop</h2>
-    </div>
-    <p>Completa oraciones arrastrando palabras.</p>
-    <a href="../activities/drag_drop/editor.php">✏️ Editar Drag & Drop</a>
-    <a href="../activities/drag_drop/viewer.php">👀 Ver Drag & Drop</a>
-  </div>
-
-  <!-- Listen & Order -->
-  <div class="card">
-    <div class="card-header">
-      <span class="icon">🎧</span>
-      <h2>Listen & Order</h2>
-    </div>
-    <p>Escucha y ordena la oración correctamente.</p>
-    <a href="../activities/listen_order/editor.php">✏️ Editar Listen & Order</a>
-    <a href="../activities/listen_order/viewer.php">👀 Ver Listen & Order</a>
-  </div>
-
-  <!-- Match -->
-  <div class="card">
-    <div class="card-header">
-      <span class="icon">🧩</span>
-      <h2>Match</h2>
-    </div>
-    <p>Relaciona imágenes con palabras.</p>
-    <a href="../activities/match/editor.php">✏️ Editar Match</a>
-    <a href="../activities/match/viewer.php">👀 Ver Match</a>
-  </div>
-
+  <form method="post">
+    <input type="text" name="word" placeholder="Palabra" required>
+    <button name="save_hangman">Guardar actividad</button>
+  </form>
 </div>
 
 </body>
