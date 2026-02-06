@@ -71,12 +71,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !empty($_POST["unit_name"])) {
       <a href="unit_viewer.php?course=<?= urlencode($courseId) ?>&unit=<?= urlencode($u["id"]) ?>">
         👀 Ver
       </a>
-
-    </div>
-  <?php endforeach; ?>
-<?php endif; ?>
-
-
     </div>
   <?php endforeach; ?>
 <?php endif; ?>
