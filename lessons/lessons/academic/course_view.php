@@ -63,9 +63,10 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !empty($_POST["unit_name"])) {
   <?php foreach ($course["units"] as $u): ?>
     <div>
       <?= htmlspecialchars($u["name"]) ?>
-      <a href="../hangman/index.php?course=<?= urlencode($courseId) ?>&unit=<?= urlencode($u["id"]) ?>">
-        ✏️ Editor
-      </a>
+      <a href="unit_view.php?course=<?= urlencode($courseId) ?>&unit=<?= urlencode($u["id"]) ?>">
+  ✏️ Editor
+</a>
+
     </div>
   <?php endforeach; ?>
 <?php endif; ?>
