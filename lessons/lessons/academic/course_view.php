@@ -11,7 +11,7 @@ if (
 }
 
 /* ARCHIVO */
-$file = __DIR__ . "/courses.json";
+$file = dirname(__DIR__) . "/academic/courses.json";
 $courses = file_exists($file) ? json_decode(file_get_contents($file), true) : [];
 if (!is_array($courses)) $courses = [];
 
