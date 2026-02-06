@@ -28,14 +28,6 @@ if ($courseIndex === null || $unitIndex === null) die("No encontrado");
 
 $course = $courses[$courseIndex];
 $unit   = $course["units"][$unitIndex];
-
-require_once __DIR__ . "/helpers.php";
-$userRole = getUserRole($course, $_SESSION);
-if ($userRole !== "editor") {
-  header("Location: unit_viewer.php?course=$courseId&unit=$unitId");
-  exit;
-}
-
 $activities = $unit["activities"] ?? [];
 ?>
 <!DOCTYPE html>
@@ -56,13 +48,7 @@ $activities = $unit["activities"] ?? [];
   <?php endforeach; ?>
 <?php endif; ?>
 
-<h3>➕ Agregar actividad</h3>
-
-<a href="../hangman/index.php?course=<?= urlencode($courseId) ?>&unit=<?= urlencode($unitId) ?>">
-  🎯 Crear Hangman
-</a>
-
-<br><br>
+<br>
 <a href="course_view.php?course=<?= urlencode($courseId) ?>">← Volver</a>
 
 </body>
