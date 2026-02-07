@@ -2,46 +2,44 @@
 session_start();
 
 /**
- * ACADEMIC LOGIN (DOCENTES)
- * Acceso exclusivo para docentes
+ * ACADEMIC LOGIN (DOCENTE)
+ * Login temporal sin password
  */
 
-// Si ya hay docente logueado, ir directo al dashboard
+// Si ya está logueado
 if (isset($_SESSION['academic_logged']) && $_SESSION['academic_logged'] === true) {
     header("Location: dashboard.php");
     exit;
 }
 
-// Cargar docentes (ajusta la ruta si usas otra fuente)
-$file = __DIR__ . "/data/teachers.json";
+// Cargar docentes
+$file = __DIR__ . "/data/teacher.json";
 $teachers = file_exists($file) ? json_decode(file_get_contents($file), true) : [];
 
 $error = "";
 
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
-    // 🔥 LIMPIAR SESIÓN ANTES DE LOGIN
+    // Limpiar sesión
     session_unset();
     session_destroy();
     session_start();
 
-    $email = trim($_POST["email"] ?? "");
-    $pass  = trim($_POST["password"] ?? "");
+    $teacher_id = $_POST["teacher_id"] ?? "";
 
     foreach ($teachers as $t) {
-        if ($t["email"] === $email && $t["password"] === $pass) {
+        if ($t["id"] === $teacher_id) {
 
-            // ✅ SESIÓN EXCLUSIVA ACADEMIC
             $_SESSION["academic_logged"] = true;
-            $_SESSION["academic_id"]     = $t["id"] ?? null;
-            $_SESSION["academic_email"]  = $t["email"];
+            $_SESSION["academic_id"]     = $t["id"];
+            $_SESSION["academic_name"]   = $t["name"];
 
             header("Location: dashboard.php");
             exit;
         }
     }
 
-    $error = "Credenciales incorrectas";
+    $error = "Docente no válido";
 }
 ?>
 <!DOCTYPE html>
@@ -63,18 +61,18 @@ body{
   background:white;
   padding:30px;
   border-radius:16px;
-  width:320px;
+  width:340px;
   box-shadow:0 10px 25px rgba(0,0,0,.15);
 }
 h2{text-align:center;color:#16a34a;}
-input{
+select{
   width:100%;
   padding:10px;
-  margin-top:10px;
+  margin-top:15px;
 }
 button{
   width:100%;
-  margin-top:15px;
+  margin-top:20px;
   padding:12px;
   border:none;
   border-radius:10px;
@@ -94,11 +92,18 @@ button{
 <body>
 
 <div class="card">
-  <h2>👩‍🏫 Login Docente</h2>
+  <h2>👩‍🏫 Acceso Docente</h2>
 
   <form method="post">
-    <input type="email" name="email" placeholder="Email" required>
-    <input type="password" name="password" placeholder="Password" required>
+    <select name="teacher_id" required>
+      <option value="">Seleccione docente</option>
+      <?php foreach ($teachers as $t): ?>
+        <option value="<?= htmlspecialchars($t['id']) ?>">
+          <?= htmlspecialchars($t['name']) ?>
+        </option>
+      <?php endforeach; ?>
+    </select>
+
     <button>Ingresar</button>
   </form>
 
