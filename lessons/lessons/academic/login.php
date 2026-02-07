@@ -1,130 +1,110 @@
 <?php
 session_start();
 
-/* =====================
-   CARGAR DOCENTES
-   ===================== */
-$teachersFile = __DIR__ . "/teachers.json";
-$teachers = [];
+/**
+ * ACADEMIC LOGIN (DOCENTES)
+ * Acceso exclusivo para docentes
+ */
 
-if (file_exists($teachersFile)) {
-  $raw = file_get_contents($teachersFile);
-  $raw = preg_replace('/^\xEF\xBB\xBF/', '', $raw);
-  $decoded = json_decode($raw, true);
-  if (is_array($decoded)) {
-    $teachers = $decoded;
-  }
-}
-
-/* =====================
-   SI YA ESTA LOGUEADO
-   ===================== */
-if (isset($_SESSION["admin_id"]) || isset($_SESSION["teacher_id"])) {
-
-  if (isset($_SESSION["redirect_after_login"])) {
-    $go = $_SESSION["redirect_after_login"];
-    unset($_SESSION["redirect_after_login"]);
-    header("Location: $go");
-    exit;
-  }
-
-  // fallback
-  if (isset($_SESSION["admin_id"])) {
-    header("Location: ../admin/dashboard.php");
-  } else {
+// Si ya hay docente logueado, ir directo al dashboard
+if (isset($_SESSION['academic_logged']) && $_SESSION['academic_logged'] === true) {
     header("Location: dashboard.php");
-  }
-  exit;
+    exit;
 }
+
+// Cargar docentes (ajusta la ruta si usas otra fuente)
+$file = __DIR__ . "/data/teachers.json";
+$teachers = file_exists($file) ? json_decode(file_get_contents($file), true) : [];
 
 $error = "";
 
-/* =====================
-   PROCESAR LOGIN
-   ===================== */
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
-  $teacherId = $_POST["teacher_id"] ?? null;
+    // 🔥 LIMPIAR SESIÓN ANTES DE LOGIN
+    session_unset();
+    session_destroy();
+    session_start();
 
-  if (!$teacherId) {
-    $error = "Seleccione un usuario";
-  } else {
+    $email = trim($_POST["email"] ?? "");
+    $pass  = trim($_POST["password"] ?? "");
 
-    /* ===== ADMIN ===== */
-    if ($teacherId === "admin") {
-      $_SESSION["admin_id"] = "admin";
-
-      if (isset($_SESSION["redirect_after_login"])) {
-        $go = $_SESSION["redirect_after_login"];
-        unset($_SESSION["redirect_after_login"]);
-        header("Location: $go");
-        exit;
-      }
-
-      header("Location: ../admin/dashboard.php");
-      exit;
-    }
-
-    /* ===== DOCENTE ===== */
     foreach ($teachers as $t) {
-      if (($t["id"] ?? null) === $teacherId) {
+        if ($t["email"] === $email && $t["password"] === $pass) {
 
-        $_SESSION["teacher_id"] = $teacherId;
+            // ✅ SESIÓN EXCLUSIVA ACADEMIC
+            $_SESSION["academic_logged"] = true;
+            $_SESSION["academic_id"]     = $t["id"] ?? null;
+            $_SESSION["academic_email"]  = $t["email"];
 
-        if (isset($_SESSION["redirect_after_login"])) {
-          $go = $_SESSION["redirect_after_login"];
-          unset($_SESSION["redirect_after_login"]);
-          header("Location: $go");
-          exit;
+            header("Location: dashboard.php");
+            exit;
         }
-
-        header("Location: dashboard.php");
-        exit;
-      }
     }
 
-    $error = "Usuario no válido";
-  }
+    $error = "Credenciales incorrectas";
 }
 ?>
 <!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Login Académico</title>
+<title>Login Docente</title>
+
 <style>
-body{font-family:Arial;background:#f4f8ff;padding:40px}
-.box{background:#fff;padding:30px;border-radius:14px;max-width:400px;margin:auto}
-button,select{padding:10px;width:100%;margin-top:10px}
-.error{color:#dc2626;margin-bottom:10px}
+body{
+  font-family:Arial, sans-serif;
+  background:#f0fdf4;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  height:100vh;
+}
+.card{
+  background:white;
+  padding:30px;
+  border-radius:16px;
+  width:320px;
+  box-shadow:0 10px 25px rgba(0,0,0,.15);
+}
+h2{text-align:center;color:#16a34a;}
+input{
+  width:100%;
+  padding:10px;
+  margin-top:10px;
+}
+button{
+  width:100%;
+  margin-top:15px;
+  padding:12px;
+  border:none;
+  border-radius:10px;
+  background:#16a34a;
+  color:white;
+  font-weight:bold;
+}
+.error{
+  color:red;
+  font-size:14px;
+  margin-top:10px;
+  text-align:center;
+}
 </style>
 </head>
+
 <body>
 
-<div class="box">
-  <h2>🔐 Login Académico</h2>
+<div class="card">
+  <h2>👩‍🏫 Login Docente</h2>
+
+  <form method="post">
+    <input type="email" name="email" placeholder="Email" required>
+    <input type="password" name="password" placeholder="Password" required>
+    <button>Ingresar</button>
+  </form>
 
   <?php if ($error): ?>
     <div class="error"><?= htmlspecialchars($error) ?></div>
   <?php endif; ?>
-
-  <form method="post">
-    <select name="teacher_id" required>
-      <option value="">Seleccione usuario</option>
-
-      <!-- ADMIN -->
-      <option value="admin">Administrador</option>
-
-      <!-- DOCENTES -->
-      <?php foreach ($teachers as $t): ?>
-        <option value="<?= htmlspecialchars($t["id"]) ?>">
-          <?= htmlspecialchars($t["name"]) ?>
-        </option>
-      <?php endforeach; ?>
-    </select>
-
-    <button type="submit">Ingresar</button>
-  </form>
 </div>
 
 </body>
