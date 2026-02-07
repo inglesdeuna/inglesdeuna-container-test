@@ -1,54 +1,27 @@
 <?php
 session_start();
 
-/* SOLO DOCENTE */
-if (!isset($_SESSION["teacher_id"])) {
-  header("Location: login_teacher.php");
-  exit;
-}
+/**
+ * ACADEMIC DASHBOARD
+ * Acceso exclusivo para docentes logueados
+ */
 
-/* ARCHIVO DE CURSOS */
-$file = __DIR__ . "/courses.json";
-$courses = file_exists($file) ? json_decode(file_get_contents($file), true) : [];
-if (!is_array($courses)) $courses = [];
-
-$teacherId = $_SESSION["teacher_id"];
-
-/* FILTRAR CURSOS DEL DOCENTE */
-$myCourses = [];
-
-foreach ($courses as $c) {
-  if (
-    isset($c["teacher"]["id"]) &&
-    $c["teacher"]["id"] === $teacherId
-  ) {
-    $myCourses[] = $c;
-  }
+// 🔐 VALIDACIÓN CORRECTA (coincide con academic/login.php)
+if (!isset($_SESSION['academic_logged']) || $_SESSION['academic_logged'] !== true) {
+    header("Location: login.php");
+    exit;
 }
 ?>
 <!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Panel Docente</title>
+<title>Dashboard Docente</title>
 <style>
 body{
-  font-family: Arial, Helvetica, sans-serif;
-  background:#f4f8ff;
+  font-family:Arial, sans-serif;
+  background:#f0fdf4;
   padding:40px;
-}
-h1{margin-bottom:30px}
-.course{
-  background:#fff;
-  padding:20px;
-  border-radius:14px;
-  box-shadow:0 6px 18px rgba(0,0,0,.08);
-  margin-bottom:15px;
-}
-.course a{
-  color:#2563eb;
-  font-weight:700;
-  text-decoration:none;
 }
 .topbar{
   display:flex;
@@ -56,27 +29,27 @@ h1{margin-bottom:30px}
   align-items:center;
   margin-bottom:30px;
 }
+a.logout{
+  color:#dc2626;
+  text-decoration:none;
+  font-weight:bold;
+}
 </style>
 </head>
 <body>
 
 <div class="topbar">
   <h1>👩‍🏫 Panel Docente</h1>
-  <a href="logout.php">🚪 Cerrar sesión</a>
+  <a class="logout" href="logout.php">🚪 Cerrar sesión</a>
 </div>
 
-<?php if (empty($myCourses)): ?>
-  <p>No tienes cursos asignados.</p>
-<?php else: ?>
-  <?php foreach ($myCourses as $c): ?>
-    <div class="course">
-      <strong><?= htmlspecialchars($c["name"]) ?></strong><br><br>
-      <a href="course_view.php?course=<?= urlencode($c["id"]) ?>">
-        Abrir curso →
-      </a>
-    </div>
-  <?php endforeach; ?>
-<?php endif; ?>
+<p>
+  Bienvenido,
+  <strong><?= htmlspecialchars($_SESSION['academic_name'] ?? 'Docente') ?></strong>
+</p>
+
+<p>Dashboard académico funcionando correctamente ✅</p>
 
 </body>
 </html>
+
