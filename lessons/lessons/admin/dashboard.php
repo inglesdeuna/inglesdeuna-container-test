@@ -78,7 +78,7 @@ h1{margin-bottom:30px}
       Define la <strong>estructura académica</strong> del instituto:
       programas, semestres, módulos y unidades.
     </p>
-    <a href="../academic/programs_manager.php">Gestionar estructura</a>
+    <a href="../academic/programs_editor.php">Gestionar estructura</a>
   </div>
 
   <div class="card">
