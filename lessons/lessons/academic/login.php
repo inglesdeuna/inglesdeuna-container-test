@@ -2,25 +2,28 @@
 session_start();
 
 /**
- * ACADEMIC LOGIN (DOCENTE)
- * Login temporal sin password
+ * ACADEMIC LOGIN (DOCENTES)
+ * Usa teacher.json ubicado fuera de academic
  */
 
-// Si ya está logueado
+// Si ya hay docente logueado
 if (isset($_SESSION['academic_logged']) && $_SESSION['academic_logged'] === true) {
     header("Location: dashboard.php");
     exit;
 }
 
-// Cargar docentes
+/* ===== CARGAR DOCENTES ===== */
 $file = $_SERVER['DOCUMENT_ROOT'] . "/lessons/lessons/teacher.json";
-$teachers = file_exists($file) ? json_decode(file_get_contents($file), true) : [];
+$teachers = file_exists($file)
+    ? json_decode(file_get_contents($file), true)
+    : [];
 
 $error = "";
 
+/* ===== LOGIN ===== */
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
-    // Limpiar sesión
+    // Limpiar sesión previa (admin, student, etc.)
     session_unset();
     session_destroy();
     session_start();
@@ -30,6 +33,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     foreach ($teachers as $t) {
         if ($t["id"] === $teacher_id) {
 
+            // Sesión exclusiva docente
             $_SESSION["academic_logged"] = true;
             $_SESSION["academic_id"]     = $t["id"];
             $_SESSION["academic_name"]   = $t["name"];
@@ -64,7 +68,10 @@ body{
   width:340px;
   box-shadow:0 10px 25px rgba(0,0,0,.15);
 }
-h2{text-align:center;color:#16a34a;}
+h2{
+  text-align:center;
+  color:#16a34a;
+}
 select{
   width:100%;
   padding:10px;
@@ -97,11 +104,13 @@ button{
   <form method="post">
     <select name="teacher_id" required>
       <option value="">Seleccione docente</option>
+
       <?php foreach ($teachers as $t): ?>
         <option value="<?= htmlspecialchars($t['id']) ?>">
           <?= htmlspecialchars($t['name']) ?>
         </option>
       <?php endforeach; ?>
+
     </select>
 
     <button>Ingresar</button>
