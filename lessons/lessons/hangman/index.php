@@ -2,93 +2,91 @@
 session_start();
 
 /* =====================
-   VALIDAR PARÁMETROS
+   VALIDAR PARÁMETRO
    ===================== */
-$courseId = $_GET["course"] ?? null;
-$unitId   = $_GET["unit"] ?? null;
+$unitId = $_GET["unit"] ?? null;
 
-if (!$courseId || !$unitId) {
-  die("Curso o unidad no especificados");
+if (!$unitId) {
+  die("Unidad no especificada");
 }
 
 /* =====================
-   ARCHIVO DE CURSOS (ÚNICO)
+   ARCHIVO DE UNIDADES
    ===================== */
-$file = dirname(__DIR__) . "/academic/courses.json";
+$baseDir = "/var/www/html/lessons/data";
+$file = $baseDir . "/units.json";
 
-$courses = file_exists($file)
-  ? json_decode(file_get_contents($file), true)
-  : [];
+if (!file_exists($file)) {
+  die("Archivo de unidades no encontrado");
+}
 
-if (!is_array($courses)) {
-  $courses = [];
+$units = json_decode(file_get_contents($file), true) ?? [];
+if (!is_array($units)) {
+  $units = [];
 }
 
 /* =====================
-   BUSCAR CURSO Y UNIDAD
+   BUSCAR UNIDAD
    ===================== */
-$courseIndex = null;
-$unitIndex   = null;
+$unitIndex = null;
 
-foreach ($courses as $ci => $course) {
-  if (($course["id"] ?? null) === $courseId) {
-    $courseIndex = $ci;
-
-    if (isset($course["units"]) && is_array($course["units"])) {
-      foreach ($course["units"] as $ui => $unit) {
-        if (($unit["id"] ?? null) === $unitId) {
-          $unitIndex = $ui;
-          break;
-        }
-      }
-    }
+foreach ($units as $i => $u) {
+  if (($u["id"] ?? null) === $unitId) {
+    $unitIndex = $i;
     break;
   }
 }
 
-if ($courseIndex === null || $unitIndex === null) {
-  die("Curso o unidad no encontrados");
+if ($unitIndex === null) {
+  die("Unidad no encontrada");
 }
 
 /* =====================
-   ASEGURAR ACTIVITIES
+   ASEGURAR ACTIVIDADES
    ===================== */
 if (
-  !isset($courses[$courseIndex]["units"][$unitIndex]["activities"]) ||
-  !is_array($courses[$courseIndex]["units"][$unitIndex]["activities"])
+  !isset($units[$unitIndex]["activities"]) ||
+  !is_array($units[$unitIndex]["activities"])
 ) {
-  $courses[$courseIndex]["units"][$unitIndex]["activities"] = [];
+  $units[$unitIndex]["activities"] = [];
 }
 
 /* =====================
    GUARDAR ACTIVIDAD
    ===================== */
-if ($_SERVER["REQUEST_METHOD"] === "POST" && !empty($_POST["word"])) {
+if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
-  $courses[$courseIndex]["units"][$unitIndex]["activities"][] = [
-    "type" => "hangman",
-    "data" => [
-      "word" => trim($_POST["word"])
-    ]
-  ];
+  $word = trim($_POST["word"] ?? "");
 
-  file_put_contents($file, json_encode($courses, JSON_PRETTY_PRINT));
+  if ($word !== "") {
+    $units[$unitIndex]["activities"][] = [
+      "id"   => uniqid("act_"),
+      "type" => "hangman",
+      "data" => [
+        "word" => $word
+      ]
+    ];
 
-  // volver al editor (para ver la lista actualizada)
-  header("Location: index.php?course=" . urlencode($courseId) . "&unit=" . urlencode($unitId));
+    file_put_contents(
+      $file,
+      json_encode($units, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)
+    );
+  }
+
+  header("Location: index.php?unit=" . urlencode($unitId));
   exit;
 }
 
 /* =====================
    ACTIVIDADES EXISTENTES
    ===================== */
-$activities = $courses[$courseIndex]["units"][$unitIndex]["activities"];
+$activities = $units[$unitIndex]["activities"];
 ?>
 <!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Hangman Editor</title>
+<title>Hangman – Editor</title>
 <style>
 body{font-family:Arial;background:#f4f8ff;padding:40px}
 .box{background:#fff;padding:25px;border-radius:14px;max-width:500px}
@@ -121,11 +119,6 @@ body{font-family:Arial;background:#f4f8ff;padding:40px}
     <?php endforeach; ?>
   <?php endif; ?>
 
-  <hr>
-
-  <a href="../academic/course_view.php?course=<?= urlencode($courseId) ?>">
-    ← Volver al curso
-  </a>
 </div>
 
 </body>
