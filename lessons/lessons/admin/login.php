@@ -1,6 +1,13 @@
 <?php
 session_start();
 
+// 🔥 LIMPIAR CUALQUIER SESIÓN PREVIA (docente, student, lo que sea)
+session_unset();
+session_destroy();
+
+// 🔄 INICIAR SESIÓN LIMPIA SOLO PARA ADMIN
+session_start();
+
 $file = __DIR__ . "/data/users.json";
 $users = file_exists($file) ? json_decode(file_get_contents($file), true) : [];
 
