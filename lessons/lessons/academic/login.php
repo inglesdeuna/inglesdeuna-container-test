@@ -13,7 +13,7 @@ if (isset($_SESSION['academic_logged']) && $_SESSION['academic_logged'] === true
 }
 
 // Cargar docentes
-$file = __DIR__ . "/data/teacher.json";
+$file = $_SERVER['DOCUMENT_ROOT'] . "/lessons/lessons/teacher.json";
 $teachers = file_exists($file) ? json_decode(file_get_contents($file), true) : [];
 
 $error = "";
