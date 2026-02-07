@@ -3,17 +3,17 @@ session_start();
 
 /**
  * ACADEMIC LOGIN (DOCENTES)
- * Usa teacher.json ubicado fuera de academic
  */
 
-// Si ya hay docente logueado
+// Si ya está logueado, ir al dashboard
 if (isset($_SESSION['academic_logged']) && $_SESSION['academic_logged'] === true) {
     header("Location: dashboard.php");
     exit;
 }
 
 /* ===== CARGAR DOCENTES ===== */
-$file = $_SERVER['DOCUMENT_ROOT'] . "/lessons/lessons/teacher.json";
+$file = $_SERVER['DOCUMENT_ROOT'] . "/lessons/lessons/academic/teachers.json";
+
 $teachers = file_exists($file)
     ? json_decode(file_get_contents($file), true)
     : [];
@@ -23,7 +23,7 @@ $error = "";
 /* ===== LOGIN ===== */
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
-    // Limpiar sesión previa (admin, student, etc.)
+    // Limpiar cualquier sesión previa
     session_unset();
     session_destroy();
     session_start();
@@ -33,7 +33,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     foreach ($teachers as $t) {
         if ($t["id"] === $teacher_id) {
 
-            // Sesión exclusiva docente
             $_SESSION["academic_logged"] = true;
             $_SESSION["academic_id"]     = $t["id"];
             $_SESSION["academic_name"]   = $t["name"];
