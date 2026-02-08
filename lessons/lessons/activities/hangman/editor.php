@@ -1,13 +1,23 @@
 <?php
 /* ==========================
-   HANGMAN – EDITOR DOCENTE
-   Guarda palabras por UNIDAD
+   HANGMAN – EDITOR
+   Admin crea | Docente edita / ve
    ========================== */
+
+session_start();
 
 /* Validar unidad */
 $unit = $_GET['unit'] ?? null;
 if (!$unit) {
   die("Unidad no especificada");
+}
+
+/* Validar rol */
+$isAdmin   = isset($_SESSION['admin_logged']) && $_SESSION['admin_logged'] === true;
+$isTeacher = isset($_SESSION['academic_logged']) && $_SESSION['academic_logged'] === true;
+
+if (!$isAdmin && !$isTeacher) {
+  die("Acceso no autorizado");
 }
 
 /* Archivo de datos */
@@ -27,8 +37,8 @@ if (!isset($data[$unit])) {
   $data[$unit] = [];
 }
 
-/* Guardar palabra */
-if ($_SERVER["REQUEST_METHOD"] === "POST") {
+/* Guardar palabra (SOLO ADMIN) */
+if ($isAdmin && $_SERVER["REQUEST_METHOD"] === "POST") {
   $word = trim($_POST["word"] ?? "");
   $hint = trim($_POST["hint"] ?? "");
 
@@ -51,22 +61,9 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 <meta charset="UTF-8">
 <title>Hangman – Editor</title>
 <style>
-body{
-  font-family: Arial;
-  background:#eef6ff;
-  padding:40px;
-}
-.panel{
-  max-width:420px;
-  background:white;
-  padding:20px;
-  border-radius:12px;
-}
-input, button{
-  width:100%;
-  padding:10px;
-  margin:8px 0;
-}
+body{font-family:Arial;background:#eef6ff;padding:40px}
+.panel{max-width:420px;background:#fff;padding:20px;border-radius:12px}
+input,button{width:100%;padding:10px;margin:8px 0}
 button.save{
   background:#16a34a;
   color:white;
@@ -87,22 +84,34 @@ a.back{
 }
 ul{padding-left:18px}
 li{margin-bottom:10px}
+.note{
+  background:#fef3c7;
+  padding:10px;
+  border-radius:8px;
+  font-size:14px;
+}
 </style>
 </head>
 
 <body>
 
 <div class="panel">
-<h2>🎓 Hangman – Editor</h2>
+<h2>🎓 Hangman</h2>
 
-<!-- FORMULARIO DE GUARDADO -->
-<form method="post">
-  <input name="word" placeholder="WORD (example: CAT)" required>
-  <input name="hint" placeholder="Hint (example: A pet 🐱)" required>
-  <button type="submit" class="save">💾 Guardar palabra</button>
-</form>
-
-<hr>
+<?php if ($isAdmin): ?>
+  <!-- FORM SOLO ADMIN -->
+  <form method="post">
+    <input name="word" placeholder="WORD (example: CAT)" required>
+    <input name="hint" placeholder="Hint (example: A pet 🐱)" required>
+    <button type="submit" class="save">💾 Guardar palabra</button>
+  </form>
+  <hr>
+<?php else: ?>
+  <div class="note">
+    👩‍🏫 El docente puede ver y usar esta actividad, pero no crear nuevas palabras.
+  </div>
+  <hr>
+<?php endif; ?>
 
 <h3>📚 Words in this unit</h3>
 
@@ -119,7 +128,6 @@ li{margin-bottom:10px}
 </ul>
 <?php endif; ?>
 
-<!-- VOLVER AL HUB -->
 <a class="back" href="../hub/index.php?unit=<?= urlencode($unit) ?>">
   ← Volver al Hub
 </a>
@@ -128,4 +136,3 @@ li{margin-bottom:10px}
 
 </body>
 </html>
-
