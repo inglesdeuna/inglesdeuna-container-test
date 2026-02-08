@@ -114,11 +114,18 @@ button{margin-top:15px;padding:12px 18px;background:#2563eb;color:#fff;border:no
 <?php if (empty($courseUnits)): ?>
   <p>No hay unidades creadas.</p>
 <?php else: ?>
-  <?php foreach ($courseUnits as $u): ?>
-    <div class="item">
-      <?= htmlspecialchars($u["name"]) ?>
-    </div>
-  <?php endforeach; ?>
+  
+<?php foreach ($courseUnits as $u): ?>
+  <div class="item" style="display:flex;justify-content:space-between;align-items:center">
+    <strong><?= htmlspecialchars($u["name"]) ?></strong>
+    <a href="unit_view.php?unit=<?= urlencode($u["id"]) ?>"
+       style="color:#2563eb;font-weight:bold;text-decoration:none">
+       Abrir →
+    </a>
+  </div>
+<?php endforeach; ?>
+
+    
 <?php endif; ?>
 
 </body>
