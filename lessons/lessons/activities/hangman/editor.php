@@ -87,6 +87,23 @@ ul{padding-left:18px}
 </ul>
 <?php endif; ?>
 
+   <hr>
+
+<a href="../hub/index.php?unit=<?= urlencode($unit) ?>"
+   style="
+     display:block;
+     text-align:center;
+     margin-top:15px;
+     padding:10px;
+     background:#2563eb;
+     color:#fff;
+     text-decoration:none;
+     border-radius:8px;
+     font-weight:bold;
+   ">
+  💾 Volver al Hub
+</a>
+
 </div>
 
 </body>
