@@ -11,16 +11,35 @@ if (!$unitId) {
 }
 
 /* =====================
-   ARCHIVO DE UNIDADES
+   RUTA REAL A DATA
    ===================== */
-$baseDir = "/var/www/html/lessons/data";
-$file = $baseDir . "/units.json";
+/*
+ Estructura confirmada del proyecto:
 
-if (!file_exists($file)) {
+ lessons/
+   lessons/
+     academic/
+     hangman/
+     data/
+       units.json
+       modules.json
+*/
+
+$baseDir   = dirname(__DIR__) . "/data";
+$unitsFile = $baseDir . "/units.json";
+
+/* =====================
+   VALIDAR ARCHIVO
+   ===================== */
+if (!file_exists($unitsFile)) {
   die("Archivo de unidades no encontrado");
 }
 
-$units = json_decode(file_get_contents($file), true) ?? [];
+/* =====================
+   CARGAR UNIDADES
+   ===================== */
+$units = json_decode(file_get_contents($unitsFile), true);
+
 if (!is_array($units)) {
   $units = [];
 }
@@ -68,7 +87,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     ];
 
     file_put_contents(
-      $file,
+      $unitsFile,
       json_encode($units, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)
     );
   }
@@ -88,9 +107,35 @@ $activities = $units[$unitIndex]["activities"];
 <meta charset="UTF-8">
 <title>Hangman – Editor</title>
 <style>
-body{font-family:Arial;background:#f4f8ff;padding:40px}
-.box{background:#fff;padding:25px;border-radius:14px;max-width:500px}
-.item{margin-top:8px;padding:8px;background:#eef2ff;border-radius:6px}
+body{
+  font-family:Arial, sans-serif;
+  background:#f4f8ff;
+  padding:40px;
+}
+.box{
+  background:#fff;
+  padding:25px;
+  border-radius:14px;
+  max-width:500px;
+  box-shadow:0 10px 25px rgba(0,0,0,.1);
+}
+.item{
+  margin-top:8px;
+  padding:8px;
+  background:#eef2ff;
+  border-radius:6px;
+}
+input, button{
+  padding:10px;
+  margin-top:8px;
+}
+button{
+  background:#2563eb;
+  color:#fff;
+  border:none;
+  border-radius:6px;
+  cursor:pointer;
+}
 </style>
 </head>
 <body>
@@ -100,6 +145,7 @@ body{font-family:Arial;background:#f4f8ff;padding:40px}
 
   <form method="post">
     <input type="text" name="word" placeholder="Palabra" required>
+    <br>
     <button type="submit">Guardar actividad</button>
   </form>
 
