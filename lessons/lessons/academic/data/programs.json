@@ -1,1 +1,10 @@
-[]
+[
+  {
+    "id": "prog_english_courses",
+    "name": "Cursos de Inglés"
+  },
+  {
+    "id": "prog_technical",
+    "name": "Programa Técnico"
+  }
+]
