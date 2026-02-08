@@ -1,6 +1,6 @@
 <?php
 /* ===== RUTAS SEGURAS ===== */
-$baseDir = "/var/www/html/lessons/data";
+$baseDir = dirname(__DIR__) . "/data";
 $modulesFile = $baseDir . "/modules.json";
 $unitsFile   = $baseDir . "/units.json";
 
