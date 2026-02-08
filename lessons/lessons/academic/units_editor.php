@@ -122,7 +122,7 @@ button{
 <hr style="margin:40px 0">
 
 <div style="text-align:right">
-  <a href="assignments_editor.php"
+<a href="/lessons/lessons/hangman/index.php?unit=<?= urlencode($u['id']) ?>">
      style="
        padding:14px 24px;
        background:#2563eb;
