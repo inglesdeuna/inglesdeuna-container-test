@@ -1,12 +1,14 @@
 <?php
-echo "<!-- HUB VERSION DINÁMICA ACTIVITIES -->";
-
-$unit = $_GET['unit'] ?? null;
-
 /* ==========================
-   ESCANEAR ACTIVIDADES
+   ACTIVITIES HUB – CENTRAL
    ========================== */
 
+$unit = $_GET['unit'] ?? null;
+if (!$unit) {
+  die("Unidad no especificada");
+}
+
+/* Escanear carpeta de actividades */
 $baseDir = dirname(__DIR__); // /activities
 $dirs = scandir($baseDir);
 
@@ -18,26 +20,22 @@ foreach ($dirs as $dir) {
   $path = $baseDir . '/' . $dir;
   if (!is_dir($path)) continue;
 
-  // detectar entry point
-  $entry = null;
+  $editor = null;
+  $viewer = null;
 
   if (file_exists($path . '/editor.php')) {
-    $entry = "../$dir/editor.php";
-  } elseif (file_exists($path . '/create_editor.php')) {
-    $entry = "../$dir/create_editor.php";
-  } elseif (file_exists($path . '/viewer.php')) {
-    $entry = "../$dir/viewer.php";
+    $editor = "../$dir/editor.php?unit=" . urlencode($unit);
   }
 
-  if ($entry) {
-    if ($unit) {
-      $entry .= "?unit=" . urlencode($unit);
-    }
+  if (file_exists($path . '/viewer.php')) {
+    $viewer = "../$dir/viewer.php?unit=" . urlencode($unit);
+  }
 
+  if ($editor || $viewer) {
     $activities[] = [
-      'title' => ucwords(str_replace('_', ' ', $dir)),
-      'path'  => $entry,
-      'icon'  => '🧩'
+      'name'   => ucwords(str_replace('_', ' ', $dir)),
+      'editor' => $editor,
+      'viewer' => $viewer
     ];
   }
 }
@@ -48,8 +46,15 @@ foreach ($dirs as $dir) {
 <meta charset="UTF-8">
 <title>Activities Hub</title>
 <style>
-body{font-family:Arial;background:#f5f7fb;margin:0}
-.container{max-width:900px;margin:40px auto}
+body{
+  font-family:Arial;
+  background:#f5f7fb;
+  margin:0;
+}
+.container{
+  max-width:900px;
+  margin:40px auto;
+}
 .card{
   background:#fff;
   padding:20px;
@@ -59,17 +64,43 @@ body{font-family:Arial;background:#f5f7fb;margin:0}
   align-items:center;
   justify-content:space-between;
 }
-.card a{
+.title{
+  font-size:18px;
+  font-weight:bold;
+}
+.actions a{
+  margin-left:10px;
+  padding:8px 14px;
+  border-radius:6px;
+  text-decoration:none;
+  font-weight:bold;
+}
+.edit{
+  background:#2563eb;
+  color:white;
+}
+.view{
+  background:#16a34a;
+  color:white;
+}
+.back{
+  display:inline-block;
+  margin-bottom:20px;
   text-decoration:none;
   color:#2563eb;
   font-weight:bold;
 }
-.icon{font-size:26px;margin-right:10px}
 </style>
 </head>
+
 <body>
 
 <div class="container">
+
+<a class="back" href="../../academic/units_editor.php?unit=<?= urlencode($unit) ?>">
+← Volver a la unidad
+</a>
+
 <h1>🧩 Activities Hub</h1>
 
 <?php if (empty($activities)): ?>
@@ -78,14 +109,21 @@ body{font-family:Arial;background:#f5f7fb;margin:0}
 
 <?php foreach ($activities as $a): ?>
   <div class="card">
-    <div>
-      <span class="icon"><?= $a["icon"] ?></span>
-      <?= htmlspecialchars($a["title"]) ?>
+    <div class="title">
+      <?= htmlspecialchars($a['name']) ?>
     </div>
-  <a href="<?= htmlspecialchars($a["path"]) ?>">Abrir</a>
+    <div class="actions">
+      <?php if ($a['editor']): ?>
+        <a class="edit" href="<?= htmlspecialchars($a['editor']) ?>">Editar</a>
+      <?php endif; ?>
+      <?php if ($a['viewer']): ?>
+        <a class="view" href="<?= htmlspecialchars($a['viewer']) ?>">Ver</a>
+      <?php endif; ?>
+    </div>
   </div>
 <?php endforeach; ?>
 
 </div>
+
 </body>
 </html>
