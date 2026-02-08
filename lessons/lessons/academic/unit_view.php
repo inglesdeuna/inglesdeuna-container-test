@@ -2,92 +2,76 @@
 session_start();
 
 /**
- * UNITS EDITOR
- * Crear unidades asociadas a un curso
+ * UNIT VIEW
+ * Vista de una unidad y acceso a actividades
  */
 
-// 🔐 SOLO ADMIN
-if (!isset($_SESSION['admin_logged']) || $_SESSION['admin_logged'] !== true) {
-    header("Location: ../admin/login.php");
-    exit;
+// 🔐 ADMIN o DOCENTE
+if (
+  !isset($_SESSION["admin_logged"]) &&
+  !isset($_SESSION["academic_logged"])
+) {
+  header("Location: login.php");
+  exit;
 }
 
 /* ==========================
-   VALIDAR CURSO
+   VALIDAR UNIDAD
    ========================== */
-$courseId = $_GET["course"] ?? null;
-if (!$courseId) {
-    die("Curso no especificado");
+$unitId = $_GET["unit"] ?? null;
+if (!$unitId) {
+  die("Unidad no especificada");
 }
 
 /* ==========================
    DATA
    ========================== */
 $baseDir = __DIR__ . "/data";
-
-$coursesFile = $baseDir . "/courses.json";
 $unitsFile   = $baseDir . "/units.json";
+$coursesFile = $baseDir . "/courses.json";
 
 if (!file_exists($unitsFile)) {
-    file_put_contents($unitsFile, "[]");
+  die("Archivo de unidades no encontrado");
 }
 
-$courses = json_decode(file_get_contents($coursesFile), true) ?? [];
 $units   = json_decode(file_get_contents($unitsFile), true) ?? [];
+$courses = file_exists($coursesFile)
+  ? json_decode(file_get_contents($coursesFile), true)
+  : [];
 
-$courses = is_array($courses) ? $courses : [];
 $units   = is_array($units)   ? $units   : [];
+$courses = is_array($courses) ? $courses : [];
+
+/* ==========================
+   BUSCAR UNIDAD
+   ========================== */
+$unit = null;
+foreach ($units as $u) {
+  if (($u["id"] ?? null) === $unitId) {
+    $unit = $u;
+    break;
+  }
+}
+if (!$unit) {
+  die("Unidad no encontrada");
+}
 
 /* ==========================
    BUSCAR CURSO
    ========================== */
-$course = null;
+$courseName = "";
 foreach ($courses as $c) {
-    if (($c["id"] ?? null) === $courseId) {
-        $course = $c;
-        break;
-    }
+  if (($c["id"] ?? null) === ($unit["course_id"] ?? null)) {
+    $courseName = $c["name"];
+    break;
+  }
 }
-if (!$course) {
-    die("Curso no encontrado");
-}
-
-/* ==========================
-   GUARDAR UNIDAD
-   ========================== */
-if ($_SERVER["REQUEST_METHOD"] === "POST") {
-    $name = trim($_POST["name"] ?? "");
-
-    if ($name !== "") {
-        $units[] = [
-            "id"        => uniqid("unit_"),
-            "course_id"=> $courseId,
-            "name"      => $name,
-            "activities"=> []
-        ];
-
-        file_put_contents(
-            $unitsFile,
-            json_encode($units, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)
-        );
-
-        header("Location: units_editor.php?course=" . urlencode($courseId));
-        exit;
-    }
-}
-
-/* ==========================
-   UNIDADES DEL CURSO
-   ========================== */
-$courseUnits = array_filter($units, function ($u) use ($courseId) {
-    return ($u["course_id"] ?? null) === $courseId;
-});
 ?>
 <!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Unidades</title>
+<title><?= htmlspecialchars($unit["name"]) ?></title>
 
 <style>
 body{
@@ -95,43 +79,28 @@ body{
   background:#f4f8ff;
   padding:40px;
 }
-h1{color:#2563eb;}
 .card{
   background:#fff;
-  padding:25px;
+  padding:30px;
   border-radius:16px;
-  max-width:600px;
+  max-width:700px;
   box-shadow:0 10px 25px rgba(0,0,0,.08);
 }
-input{
-  width:100%;
-  padding:12px;
-  margin-top:10px;
-  font-size:16px;
-}
-button{
-  margin-top:15px;
-  padding:12px 18px;
-  background:#2563eb;
+h1{color:#2563eb;}
+.btn{
+  display:inline-block;
+  margin-top:20px;
+  padding:14px 22px;
+  background:#16a34a;
   color:#fff;
-  border:none;
   border-radius:10px;
+  text-decoration:none;
   font-weight:700;
 }
-.list{
-  margin-top:30px;
-  max-width:600px;
-}
-.item{
-  background:#fff;
-  padding:12px;
-  border-radius:10px;
-  margin-bottom:10px;
-  box-shadow:0 4px 8px rgba(0,0,0,.08);
-  display:flex;
-  justify-content:space-between;
-}
-a{
+.back{
+  display:inline-block;
+  margin-top:20px;
+  margin-left:15px;
   color:#2563eb;
   text-decoration:none;
   font-weight:bold;
@@ -141,28 +110,22 @@ a{
 
 <body>
 
-<h1>📚 Unidades — <?= htmlspecialchars($course["name"]) ?></h1>
-
 <div class="card">
-  <form method="post">
-    <input type="text" name="name" placeholder="Nombre de la unidad (ej: Unit 1)" required>
-    <button>➕ Crear Unidad</button>
-  </form>
-</div>
+  <h1>📘 <?= htmlspecialchars($unit["name"]) ?></h1>
 
-<div class="list">
-  <h2>📋 Unidades creadas</h2>
-
-  <?php if (empty($courseUnits)): ?>
-    <p>No hay unidades creadas.</p>
-  <?php else: ?>
-    <?php foreach ($courseUnits as $u): ?>
-      <div class="item">
-        <strong><?= htmlspecialchars($u["name"]) ?></strong>
-        <a href="unit_view.php?unit=<?= urlencode($u["id"]) ?>">Abrir →</a>
-      </div>
-    <?php endforeach; ?>
+  <?php if ($courseName): ?>
+    <p><strong>Curso:</strong> <?= htmlspecialchars($courseName) ?></p>
   <?php endif; ?>
+
+  <a class="btn"
+     href="/lessons/lessons/activities/hub/index.php?unit=<?= urlencode($unitId) ?>">
+    📦 Abrir actividades
+  </a>
+
+  <a class="back"
+     href="course_view.php?course=<?= urlencode($unit["course_id"]) ?>">
+    ← Volver al curso
+  </a>
 </div>
 
 </body>
