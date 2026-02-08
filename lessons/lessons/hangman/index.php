@@ -14,18 +14,10 @@ if (!$unitId) {
    RUTA REAL A DATA
    ===================== */
 /*
- Estructura confirmada del proyecto:
-
- lessons/
-   lessons/
-     academic/
-     hangman/
-     data/
-       units.json
-       modules.json
+ data REAL está en:
+ lessons/lessons/admin/data
 */
-
-$baseDir   = dirname(__DIR__) . "/data";
+$baseDir   = dirname(__DIR__) . "/admin/data";
 $unitsFile = $baseDir . "/units.json";
 
 /* =====================
@@ -39,7 +31,6 @@ if (!file_exists($unitsFile)) {
    CARGAR UNIDADES
    ===================== */
 $units = json_decode(file_get_contents($unitsFile), true);
-
 if (!is_array($units)) {
   $units = [];
 }
