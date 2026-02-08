@@ -1,116 +1,151 @@
 <?php
 session_start();
 
-/* =====================
-   REQUIERE LOGIN
-   ===================== */
-if (!isset($_SESSION["teacher_id"])) {
-  header("Location: login.php");
-  exit;
+/**
+ * CURSO DOCENTE
+ * Vista de unidades y acceso a actividades
+ */
+
+// 🔐 VALIDACIÓN DOCENTE
+if (!isset($_SESSION['academic_logged']) || $_SESSION['academic_logged'] !== true) {
+    header("Location: login.php");
+    exit;
 }
 
-$teacherId = $_SESSION["teacher_id"];
+$assignmentId = $_GET['assignment'] ?? null;
+if (!$assignmentId) {
+    die("Asignación no especificada");
+}
 
-/* =====================
-   ARCHIVOS
-   ===================== */
-$coursesFile  = __DIR__ . "/courses.json";
-$teachersFile = __DIR__ . "/teachers.json";
+/* ==========================
+   DATA
+   ========================== */
+$baseDir = dirname(__DIR__) . "/admin/data";
 
-/* =====================
-   CARGAR DATOS
-   ===================== */
+$assignmentsFile = $baseDir . "/assignments.json";
+$coursesFile     = $baseDir . "/courses.json";
+$unitsFile       = $baseDir . "/units.json";
+
+$assignments = file_exists($assignmentsFile)
+  ? json_decode(file_get_contents($assignmentsFile), true)
+  : [];
+
 $courses = file_exists($coursesFile)
   ? json_decode(file_get_contents($coursesFile), true)
   : [];
 
-$teachers = file_exists($teachersFile)
-  ? json_decode(file_get_contents($teachersFile), true)
+$units = file_exists($unitsFile)
+  ? json_decode(file_get_contents($unitsFile), true)
   : [];
 
-/* =====================
-   NOMBRE DEL DOCENTE
-   ===================== */
-$teacherName = "";
-foreach ($teachers as $t) {
-  if (($t["id"] ?? null) === $teacherId) {
-    $teacherName = $t["name"];
-    break;
-  }
+/* ==========================
+   ASIGNACIÓN
+   ========================== */
+$assignment = null;
+foreach ($assignments as $a) {
+    if (($a['id'] ?? null) === $assignmentId) {
+        $assignment = $a;
+        break;
+    }
+}
+if (!$assignment) {
+    die("Asignación no encontrada");
 }
 
-/* =====================
-   FILTRAR CURSOS ASIGNADOS AL DOCENTE
-   ===================== */
-$myCourses = [];
+/* ==========================
+   CURSO
+   ========================== */
+$course = null;
 foreach ($courses as $c) {
-  if (
-    isset($c["teacher"]["id"]) &&
-    $c["teacher"]["id"] === $teacherId
-  ) {
-    $myCourses[] = $c;
-  }
+    if (($c['id'] ?? null) === $assignment['course_id']) {
+        $course = $c;
+        break;
+    }
 }
+if (!$course) {
+    die("Curso no encontrado");
+}
+
+/* ==========================
+   UNIDADES DEL CURSO
+   ========================== */
+$courseUnits = array_filter($units, function ($u) use ($course) {
+    return ($u['course_id'] ?? null) === $course['id'];
+});
 ?>
 <!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Mis cursos</title>
+<title><?= htmlspecialchars($course['name']) ?></title>
 
 <style>
 body{
-  font-family: Arial, Helvetica, sans-serif;
-  background:#f4f8ff;
+  font-family:Arial, sans-serif;
+  background:#f0fdf4;
   padding:40px;
 }
-.section{
-  background:#fff;
-  padding:25px;
-  border-radius:14px;
-  max-width:600px;
-  margin:auto;
+.topbar{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  margin-bottom:30px;
 }
-a.course{
-  display:block;
-  padding:12px;
-  margin:10px 0;
-  background:#eef2ff;
-  border-radius:10px;
+a.back{
   text-decoration:none;
-  color:#111;
+  color:#2563eb;
+  font-weight:bold;
 }
-a.course:hover{
-  background:#e0e7ff;
+.unit{
+  background:#fff;
+  padding:20px;
+  border-radius:14px;
+  margin-bottom:15px;
+  box-shadow:0 4px 8px rgba(0,0,0,.08);
+}
+.unit h3{margin-top:0}
+.unit a{
+  display:inline-block;
+  margin-top:10px;
+  padding:8px 14px;
+  background:#16a34a;
+  color:#fff;
+  border-radius:6px;
+  text-decoration:none;
+  font-size:14px;
 }
 </style>
 </head>
 
 <body>
 
-<div class="section">
-  <h1>📚 Mis cursos</h1>
-
-  <p>
-    Docente:
-    <strong><?= htmlspecialchars($teacherName) ?></strong>
-  </p>
-
-  <?php if (empty($myCourses)): ?>
-    <p>No tienes cursos asignados.</p>
-  <?php else: ?>
-    <?php foreach ($myCourses as $c): ?>
-      <a class="course"
-         href="course_view.php?course=<?= urlencode($c["id"]) ?>">
-        <?= htmlspecialchars($c["name"]) ?>
-      </a>
-    <?php endforeach; ?>
-  <?php endif; ?>
-
-  <p style="margin-top:20px">
-    <a href="logout.php">🚪 Cerrar sesión</a>
-  </p>
+<div class="topbar">
+  <h1><?= htmlspecialchars($course['name']) ?></h1>
+  <a class="back" href="dashboard.php">⬅ Volver al panel</a>
 </div>
+
+<p>
+  Periodo:
+  <strong><?= htmlspecialchars($assignment['period']) ?></strong>
+</p>
+
+<h2>📚 Unidades</h2>
+
+<?php if (empty($courseUnits)): ?>
+  <p>No hay unidades creadas para este curso.</p>
+<?php else: ?>
+
+<?php foreach ($courseUnits as $u): ?>
+  <div class="unit">
+    <h3><?= htmlspecialchars($u['name']) ?></h3>
+
+    <a href="/lessons/lessons/activities/hub/index.php?unit=<?= urlencode($u['id']) ?>">
+      📦 Abrir actividades
+    </a>
+  </div>
+<?php endforeach; ?>
+
+<?php endif; ?>
 
 </body>
 </html>
