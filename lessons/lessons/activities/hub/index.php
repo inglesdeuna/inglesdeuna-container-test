@@ -82,7 +82,7 @@ body{font-family:Arial;background:#f5f7fb;margin:0}
       <span class="icon"><?= $a["icon"] ?></span>
       <?= htmlspecialchars($a["title"]) ?>
     </div>
-    <a href="<?= htmlspecialchars($a["path"]) ?>">Abrir</a>
+   <a href="<?= htmlspecialchars($a["path"]) ?>?unit=<?= urlencode($_GET['unit'] ?? '') ?>">Abrir</a>
   </div>
 <?php endforeach; ?>
 
