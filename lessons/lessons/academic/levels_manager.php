@@ -1,137 +1,133 @@
 <?php
-/* ===== RUTAS SEGURAS ===== */
-$baseDir = "/var/www/html/lessons/data";
-$programsFile  = $baseDir . "/programs.json";
-$semestersFile = $baseDir . "/semesters.json";
+/* ==========================
+   CARGAR PROGRAMA SELECCIONADO
+   ========================== */
+$programId = $_GET['program'] ?? null;
 
-/* ===== ASEGURAR ARCHIVOS ===== */
-if (!is_dir($baseDir)) {
-  mkdir($baseDir, 0777, true);
+if (!$programId) {
+  die("Programa no especificado");
 }
 
-if (!file_exists($programsFile)) {
-  file_put_contents($programsFile, "[]");
-}
-if (!file_exists($semestersFile)) {
-  file_put_contents($semestersFile, "[]");
+/* ==========================
+   DATA
+   ========================== */
+$baseDir = dirname(__DIR__) . "/admin/data";
+$programsFile = $baseDir . "/programs.json";
+$coursesFile  = $baseDir . "/courses.json";
+
+if (!file_exists($coursesFile)) {
+  file_put_contents($coursesFile, "[]");
 }
 
-/* ===== CARGAR DATOS ===== */
-$programs  = json_decode(file_get_contents($programsFile), true) ?? [];
-$semesters = json_decode(file_get_contents($semestersFile), true) ?? [];
+$courses = json_decode(file_get_contents($coursesFile), true) ?? [];
 
-$program_id = $_GET["program"] ?? "";
+/* ==========================
+   CARGAR PROGRAMA
+   ========================== */
+$programs = json_decode(file_get_contents($programsFile), true) ?? [];
+$program = null;
+
+foreach ($programs as $p) {
+  if (($p['id'] ?? null) === $programId) {
+    $program = $p;
+    break;
+  }
+}
+
+if (!$program) {
+  die("Programa no encontrado");
+}
+
+/* ==========================
+   CATÁLOGOS
+   ========================== */
+$catalogInstitute = [
+  "Basic 1", "Basic 2", "Basic 3",
+  "Intermediate 1", "Intermediate 2",
+  "Advanced 1", "Advanced 2"
+];
+
+$catalogTechnical = [
+  "Semestre 1",
+  "Semestre 2",
+  "Semestre 3",
+  "Semestre 4",
+  "Práctica"
+];
+
+/* ==========================
+   GUARDAR CURSOS
+   ========================== */
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+
+  $selected = $_POST['courses'] ?? [];
+
+  foreach ($selected as $name) {
+
+    // evitar duplicados
+    $exists = false;
+    foreach ($courses as $c) {
+      if ($c['name'] === $name && $c['program_id'] === $programId) {
+        $exists = true;
+        break;
+      }
+    }
+
+    if (!$exists) {
+      $courses[] = [
+        "id"         => uniqid("course_"),
+        "program_id"=> $programId,
+        "name"       => $name,
+        "active"     => true
+      ];
+    }
+  }
+
+  file_put_contents(
+    $coursesFile,
+    json_encode($courses, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)
+  );
+
+  header("Location: semesters_editor.php?program=" . urlencode($programId));
+  exit;
+}
+
+/* ==========================
+   CATÁLOGO A USAR
+   ========================== */
+$catalog = ($program['type'] === 'technical')
+  ? $catalogTechnical
+  : $catalogInstitute;
 ?>
 <!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
 <title>Levels Manager</title>
-
 <style>
-body{
-  font-family: Arial, Helvetica, sans-serif;
-  background:#f4f8ff;
-  padding:40px;
-}
-
-h1{
-  color:#2563eb;
-  margin-bottom:25px;
-}
-
-.card{
-  background:#ffffff;
-  padding:20px;
-  border-radius:14px;
-  max-width:600px;
-  box-shadow:0 10px 25px rgba(0,0,0,.08);
-  margin-bottom:20px;
-}
-
-select{
-  width:100%;
-  padding:12px;
-  font-size:15px;
-}
-
-.list{
-  max-width:600px;
-}
-
-.item{
-  background:#fff;
-  padding:12px;
-  border-radius:10px;
-  margin-bottom:10px;
-  box-shadow:0 4px 8px rgba(0,0,0,.08);
-}
+body{font-family:Arial;background:#f4f8ff;padding:40px}
+.card{background:#fff;padding:25px;border-radius:14px;max-width:600px}
+label{display:block;margin:8px 0}
+button{margin-top:20px;padding:12px 18px;background:#2563eb;color:#fff;border:none;border-radius:8px;font-weight:700}
 </style>
 </head>
-
 <body>
 
 <h1>📘 Levels Manager</h1>
+<p><strong>Programa:</strong> <?= htmlspecialchars($program['name']) ?></p>
 
-<!-- ===== PROGRAMA ===== -->
 <div class="card">
-  <form method="get">
-    <label><strong>Programa</strong></label>
-    <select name="program" onchange="this.form.submit()">
-      <option value="">Seleccionar programa</option>
+<form method="post">
 
-      <?php foreach ($programs as $p): ?>
-        <option value="<?= htmlspecialchars($p["id"]) ?>"
-          <?= $program_id === $p["id"] ? "selected" : "" ?>>
-          <?= htmlspecialchars($p["name"]) ?>
-        </option>
-      <?php endforeach; ?>
+  <?php foreach ($catalog as $item): ?>
+    <label>
+      <input type="checkbox" name="courses[]" value="<?= htmlspecialchars($item) ?>">
+      <?= htmlspecialchars($item) ?>
+    </label>
+  <?php endforeach; ?>
 
-    </select>
-  </form>
-</div>
-
-<!-- ===== SEMESTRES ===== -->
-<?php if ($program_id): ?>
-  <div class="list">
-    <h2>📂 Semestres</h2>
-
-    <?php
-    $has = false;
-    foreach ($semesters as $s):
-      if (($s["program_id"] ?? "") === $program_id):
-        $has = true;
-    ?>
-      <div class="item">
-        <strong>Semestre <?= htmlspecialchars($s["name"]) ?></strong>
-      </div>
-    <?php
-      endif;
-    endforeach;
-
-    if (!$has):
-    ?>
-      <p>No hay semestres para este programa.</p>
-    <?php endif; ?>
-
-  </div>
-<?php endif; ?>
-<hr style="margin:40px 0">
-
-<div style="text-align:right">
-  <a href="semesters_editor.php"
-     style="
-       padding:14px 24px;
-       background:#2563eb;
-       color:#fff;
-       text-decoration:none;
-       border-radius:10px;
-       font-weight:700;
-       font-size:16px;
-     ">
-    ➡️ Siguiente: Semestres
- 
-  </a>
+  <button>Guardar cursos</button>
+</form>
 </div>
 
 </body>
