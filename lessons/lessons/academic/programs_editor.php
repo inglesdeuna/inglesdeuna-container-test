@@ -32,7 +32,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $programId = $_POST["program_id"] ?? "";
 
     if ($programId) {
-        header("Location: courses_editor.php?program=" . urlencode($programId));
+       header("Location: courses_manager.php?program=" . urlencode($programId));
         exit;
     }
 }
