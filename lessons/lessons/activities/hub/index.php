@@ -1,29 +1,46 @@
 <?php
-echo "<!-- HUB VERSION 4 ACTIVITIES -->";
+echo "<!-- HUB VERSION DINÁMICA ACTIVITIES -->";
 
-$activities = [
-  [
-    "title" => "Multiple Choice",
-    "path"  => "../multiple_choice/viewer.php",
-    "icon"  => "📝"
-  ],
-  [
-    "title" => "Hangman",
-    "path"  => "../../hangman/index.php",
-    "icon"  => "🎯"
-  ],
-  [
-    "title" => "External Activities",
-    "path"  => "../../admin/external_links_viewer.php",
-    "icon"  => "🔗"
-  ],
-  [
-    "title" => "Flipbooks",
-    "path"  => "../../admin/flipbook.php",
-    "icon"  => "📘"
-  ]
-];
+$unit = $_GET['unit'] ?? null;
 
+/* ==========================
+   ESCANEAR ACTIVIDADES
+   ========================== */
+
+$baseDir = dirname(__DIR__); // /activities
+$dirs = scandir($baseDir);
+
+$activities = [];
+
+foreach ($dirs as $dir) {
+  if ($dir === '.' || $dir === '..' || $dir === 'hub') continue;
+
+  $path = $baseDir . '/' . $dir;
+  if (!is_dir($path)) continue;
+
+  // detectar entry point
+  $entry = null;
+
+  if (file_exists($path . '/editor.php')) {
+    $entry = "../$dir/editor.php";
+  } elseif (file_exists($path . '/create_editor.php')) {
+    $entry = "../$dir/create_editor.php";
+  } elseif (file_exists($path . '/viewer.php')) {
+    $entry = "../$dir/viewer.php";
+  }
+
+  if ($entry) {
+    if ($unit) {
+      $entry .= "?unit=" . urlencode($unit);
+    }
+
+    $activities[] = [
+      'title' => ucwords(str_replace('_', ' ', $dir)),
+      'path'  => $entry,
+      'icon'  => '🧩'
+    ];
+  }
+}
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -55,13 +72,17 @@ body{font-family:Arial;background:#f5f7fb;margin:0}
 <div class="container">
 <h1>🧩 Activities Hub</h1>
 
+<?php if (empty($activities)): ?>
+  <p>No hay actividades disponibles.</p>
+<?php endif; ?>
+
 <?php foreach ($activities as $a): ?>
   <div class="card">
     <div>
       <span class="icon"><?= $a["icon"] ?></span>
       <?= htmlspecialchars($a["title"]) ?>
     </div>
-    <a href="<?= $a["path"] ?>">Abrir</a>
+    <a href="<?= htmlspecialchars($a["path"]) ?>">Abrir</a>
   </div>
 <?php endforeach; ?>
 
