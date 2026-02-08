@@ -1,8 +1,21 @@
 <?php
+session_start();
+
+/**
+ * ASIGNACIONES ACADÉMICAS
+ * Curso + Periodo + Docente + Estudiantes
+ */
+
+// 🔐 SOLO ADMIN
+if (!isset($_SESSION['admin_logged']) || $_SESSION['admin_logged'] !== true) {
+    header("Location: ../admin/login.php");
+    exit;
+}
+
 /* ==========================
    DATA
    ========================== */
-$baseDir = dirname(__DIR__) . "/admin/data";
+$baseDir = __DIR__ . "/data";
 
 $coursesFile     = $baseDir . "/courses.json";
 $teachersFile    = $baseDir . "/teachers.json";
@@ -10,7 +23,7 @@ $studentsFile    = $baseDir . "/students.json";
 $assignmentsFile = $baseDir . "/assignments.json";
 
 foreach ([$assignmentsFile] as $f) {
-  if (!file_exists($f)) file_put_contents($f, "[]");
+    if (!file_exists($f)) file_put_contents($f, "[]");
 }
 
 $courses     = json_decode(file_get_contents($coursesFile), true) ?? [];
@@ -19,7 +32,7 @@ $students    = json_decode(file_get_contents($studentsFile), true) ?? [];
 $assignments = json_decode(file_get_contents($assignmentsFile), true) ?? [];
 
 /* ==========================
-   CATÁLOGOS
+   CATÁLOGO DE PERIODOS
    ========================== */
 $periods = ["A", "B"];
 
@@ -28,29 +41,29 @@ $periods = ["A", "B"];
    ========================== */
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
-  $courseId  = $_POST["course_id"] ?? "";
-  $period    = $_POST["period"] ?? "";
-  $teacherId = $_POST["teacher_id"] ?? "";
-  $studentIds = $_POST["students"] ?? [];
+    $courseId   = $_POST["course_id"] ?? "";
+    $period     = $_POST["period"] ?? "";
+    $teacherId  = $_POST["teacher_id"] ?? "";
+    $studentIds = $_POST["students"] ?? [];
 
-  if ($courseId && $period && $teacherId) {
+    if ($courseId && $period && $teacherId) {
 
-    $assignments[] = [
-      "id"         => uniqid("assign_"),
-      "course_id"  => $courseId,
-      "period"     => $period,
-      "teacher_id" => $teacherId,
-      "students"   => $studentIds
-    ];
+        $assignments[] = [
+            "id"         => uniqid("assign_"),
+            "course_id"  => $courseId,
+            "period"     => $period,
+            "teacher_id" => $teacherId,
+            "students"   => $studentIds
+        ];
 
-    file_put_contents(
-      $assignmentsFile,
-      json_encode($assignments, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)
-    );
+        file_put_contents(
+            $assignmentsFile,
+            json_encode($assignments, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)
+        );
 
-    header("Location: ../admin/dashboard.php");
-    exit;
-  }
+        header("Location: ../admin/dashboard.php");
+        exit;
+    }
 }
 ?>
 <!DOCTYPE html>
@@ -58,14 +71,43 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 <head>
 <meta charset="UTF-8">
 <title>Asignar Curso</title>
+
 <style>
-body{font-family:Arial;background:#f4f8ff;padding:40px}
-.card{background:#fff;padding:25px;border-radius:14px;max-width:700px}
-label{display:block;margin-top:12px}
-select{width:100%;padding:10px;margin-top:6px}
-button{margin-top:20px;padding:12px 18px;background:#2563eb;color:#fff;border:none;border-radius:8px;font-weight:700}
+body{
+  font-family:Arial, sans-serif;
+  background:#f4f8ff;
+  padding:40px;
+}
+.card{
+  background:#fff;
+  padding:25px;
+  border-radius:16px;
+  max-width:700px;
+  box-shadow:0 10px 25px rgba(0,0,0,.08);
+}
+label{
+  display:block;
+  margin-top:15px;
+  font-weight:bold;
+}
+select{
+  width:100%;
+  padding:10px;
+  margin-top:6px;
+}
+button{
+  margin-top:25px;
+  padding:12px 18px;
+  background:#2563eb;
+  color:#fff;
+  border:none;
+  border-radius:8px;
+  font-weight:700;
+  cursor:pointer;
+}
 </style>
 </head>
+
 <body>
 
 <h1>👥 Asignar Curso</h1>
@@ -111,6 +153,7 @@ button{margin-top:20px;padding:12px 18px;background:#2563eb;color:#fff;border:no
   </select>
 
   <button>Guardar asignación</button>
+
 </form>
 </div>
 
