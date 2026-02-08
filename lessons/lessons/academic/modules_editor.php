@@ -1,40 +1,100 @@
 <?php
-/* ===== RUTAS SEGURAS ===== */
-$baseDir = "/var/www/html/lessons/data";
-$programsFile = $baseDir . "/programs.json";
-$semestersFile = $baseDir . "/semesters.json";
-$modulesFile   = $baseDir . "/modules.json";
-
-/* ===== ASEGURAR DATA ===== */
-if (!is_dir($baseDir)) {
-  mkdir($baseDir, 0777, true);
+/* ==========================
+   CONTEXTO: CURSO
+   ========================== */
+$courseId = $_GET['course'] ?? null;
+if (!$courseId) {
+  die("Curso no especificado");
 }
-foreach ([$programsFile, $semestersFile, $modulesFile] as $f) {
+
+/* ==========================
+   DATA
+   ========================== */
+$baseDir = dirname(__DIR__) . "/admin/data";
+$coursesFile = $baseDir . "/courses.json";
+$programsFile = $baseDir . "/programs.json";
+$modulesFile  = $baseDir . "/modules.json";
+
+foreach ([$modulesFile] as $f) {
   if (!file_exists($f)) file_put_contents($f, "[]");
 }
 
-/* ===== CARGAR DATOS ===== */
-$programs  = json_decode(file_get_contents($programsFile), true) ?? [];
-$semesters = json_decode(file_get_contents($semestersFile), true) ?? [];
-$modules   = json_decode(file_get_contents($modulesFile), true) ?? [];
+$courses  = json_decode(file_get_contents($coursesFile), true) ?? [];
+$programs = json_decode(file_get_contents($programsFile), true) ?? [];
+$modules  = json_decode(file_get_contents($modulesFile), true) ?? [];
 
-/* ===== GUARDAR ===== */
-if ($_SERVER["REQUEST_METHOD"] === "POST") {
-  $semester_id = $_POST["semester_id"] ?? "";
-  $name = trim($_POST["name"] ?? "");
-
-  if ($semester_id && $name !== "") {
-    $modules[] = [
-      "id" => uniqid("mod_"),
-      "semester_id" => $semester_id,
-      "name" => $name
-    ];
-    file_put_contents(
-      $modulesFile,
-      json_encode($modules, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)
-    );
+/* ==========================
+   CURSO Y PROGRAMA
+   ========================== */
+$course = null;
+foreach ($courses as $c) {
+  if ($c['id'] === $courseId) {
+    $course = $c;
+    break;
   }
-  header("Location: modules_editor.php");
+}
+if (!$course) die("Curso no encontrado");
+
+$program = null;
+foreach ($programs as $p) {
+  if ($p['id'] === $course['program_id']) {
+    $program = $p;
+    break;
+  }
+}
+if (!$program) die("Programa no encontrado");
+
+/* ==========================
+   CATÁLOGOS
+   ========================== */
+$mcrLevels = ["A1", "A2", "B1", "B2", "C1"];
+
+/* ==========================
+   GUARDAR
+   ========================== */
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+
+  if ($program['type'] === 'technical') {
+    $name = trim($_POST['name'] ?? '');
+    if ($name !== '') {
+      $modules[] = [
+        "id"        => uniqid("module_"),
+        "course_id"=> $courseId,
+        "name"      => $name
+      ];
+    }
+  } else {
+    $selected = $_POST['levels'] ?? [];
+    foreach ($selected as $lvl) {
+
+      // evitar duplicados
+      $exists = false;
+      foreach ($modules as $m) {
+        if (
+          $m['course_id'] === $courseId &&
+          $m['name'] === $lvl
+        ) {
+          $exists = true;
+          break;
+        }
+      }
+
+      if (!$exists) {
+        $modules[] = [
+          "id"        => uniqid("module_"),
+          "course_id"=> $courseId,
+          "name"      => $lvl
+        ];
+      }
+    }
+  }
+
+  file_put_contents(
+    $modulesFile,
+    json_encode($modules, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)
+  );
+
+  header("Location: units_editor.php?course=" . urlencode($courseId));
   exit;
 }
 ?>
@@ -43,96 +103,39 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 <head>
 <meta charset="UTF-8">
 <title>Módulos</title>
-
 <style>
-body{
-  font-family: Arial, Helvetica, sans-serif;
-  background:#f4f8ff;
-  padding:40px;
-}
-h1{color:#2563eb;}
-.card{
-  background:white;
-  padding:20px;
-  border-radius:14px;
-  max-width:600px;
-  box-shadow:0 10px 25px rgba(0,0,0,.08);
-}
-input, select{
-  width:100%;
-  padding:10px;
-  margin-top:10px;
-}
-button{
-  margin-top:15px;
-  padding:12px 18px;
-  border:none;
-  border-radius:10px;
-  background:#2563eb;
-  color:white;
-  font-weight:bold;
-}
-.list{
-  margin-top:30px;
-  max-width:600px;
-}
-.item{
-  background:#fff;
-  padding:12px;
-  border-radius:10px;
-  margin-bottom:10px;
-  box-shadow:0 4px 8px rgba(0,0,0,.08);
-}
+body{font-family:Arial;background:#f4f8ff;padding:40px}
+.card{background:#fff;padding:25px;border-radius:14px;max-width:600px}
+label{display:block;margin:8px 0}
+button{margin-top:20px;padding:12px 18px;background:#2563eb;color:#fff;border:none;border-radius:8px;font-weight:700}
 </style>
 </head>
-
 <body>
 
 <h1>📦 Módulos</h1>
+<p><strong>Curso:</strong> <?= htmlspecialchars($course['name']) ?></p>
 
 <div class="card">
-  <form method="post">
+<form method="post">
 
-    <select name="semester_id" required>
-      <option value="">Seleccionar semestre</option>
-      <?php foreach ($semesters as $s): ?>
-        <option value="<?= htmlspecialchars($s["id"]) ?>">
-          <?= htmlspecialchars($s["name"]) ?>
-        </option>
-      <?php endforeach; ?>
-    </select>
+<?php if ($program['type'] === 'technical'): ?>
 
-    <input type="text" name="name"
-      placeholder="Nombre del módulo (ej: Inglés Técnico, Grammar)" required>
+  <input type="text" name="name"
+    placeholder="Nombre del módulo (ej: Didáctica para preescolar)" required>
 
-    <button>➕ Crear Módulo</button>
-  </form>
-</div>
+<?php else: ?>
 
-<div class="list">
-  <h2>📋 Módulos creados</h2>
-
-  <?php foreach ($modules as $m): ?>
-    <div class="item">
-      <strong><?= htmlspecialchars($m["name"]) ?></strong>
-    </div>
+  <?php foreach ($mcrLevels as $lvl): ?>
+    <label>
+      <input type="checkbox" name="levels[]" value="<?= $lvl ?>">
+      Nivel <?= $lvl ?>
+    </label>
   <?php endforeach; ?>
-</div>
-<hr style="margin:40px 0">
 
-<div style="text-align:right">
-  <a href="units_editor.php"
-     style="
-       padding:14px 24px;
-       background:#2563eb;
-       color:#fff;
-       text-decoration:none;
-       border-radius:10px;
-       font-weight:700;
-       font-size:16px;
-     ">
-    ➡️ Siguiente: Unidades
-  </a>
+<?php endif; ?>
+
+  <button>Guardar</button>
+</form>
 </div>
 
 </body>
