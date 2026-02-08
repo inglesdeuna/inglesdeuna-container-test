@@ -1,45 +1,81 @@
 <?php
-/* ===== RUTA SEGURA ===== */
-$baseDir = "/var/www/html/lessons/data";
-$file = $baseDir . "/semesters.json";
-$programsFile = $baseDir . "/programs.json";
-
-/* ===== ASEGURAR DATA ===== */
-if (!is_dir($baseDir)) {
-  mkdir($baseDir, 0777, true);
+/* ==========================
+   CONTEXTO: CURSO
+   ========================== */
+$courseId = $_GET['course'] ?? null;
+if (!$courseId) {
+  die("Curso no especificado");
 }
 
-if (!file_exists($file)) {
-  file_put_contents($file, "[]");
+/* ==========================
+   DATA
+   ========================== */
+$baseDir = dirname(__DIR__) . "/admin/data";
+$coursesFile   = $baseDir . "/courses.json";
+$periodsFile   = $baseDir . "/course_periods.json";
+
+if (!file_exists($periodsFile)) {
+  file_put_contents($periodsFile, "[]");
 }
-if (!file_exists($programsFile)) {
-  file_put_contents($programsFile, "[]");
+
+$courses = json_decode(file_get_contents($coursesFile), true) ?? [];
+$periods = json_decode(file_get_contents($periodsFile), true) ?? [];
+
+/* ==========================
+   CURSO
+   ========================== */
+$course = null;
+foreach ($courses as $c) {
+  if (($c['id'] ?? null) === $courseId) {
+    $course = $c;
+    break;
+  }
 }
+if (!$course) die("Curso no encontrado");
 
-/* ===== CARGAR ===== */
-$semesters = json_decode(file_get_contents($file), true) ?? [];
-$programs  = json_decode(file_get_contents($programsFile), true) ?? [];
+/* ==========================
+   CATÁLOGO DE PERIODOS
+   ========================== */
+$catalog = [
+  "A", "B"
+];
 
-/* ===== GUARDAR ===== */
-if ($_SERVER["REQUEST_METHOD"] === "POST") {
+/* ==========================
+   GUARDAR
+   ========================== */
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
-  $program_id = $_POST["program_id"] ?? "";
-  $name = trim($_POST["name"] ?? "");
+  $selected = $_POST['periods'] ?? [];
 
-  if ($program_id && $name !== "") {
-    $semesters[] = [
-      "id" => uniqid("sem_"),
-      "program_id" => $program_id,
-      "name" => $name
-    ];
+  foreach ($selected as $p) {
 
-    file_put_contents(
-      $file,
-      json_encode($semesters, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)
-    );
+    // evitar duplicados
+    $exists = false;
+    foreach ($periods as $cp) {
+      if (
+        $cp['course_id'] === $courseId &&
+        $cp['period'] === $p
+      ) {
+        $exists = true;
+        break;
+      }
+    }
+
+    if (!$exists) {
+      $periods[] = [
+        "id"        => uniqid("period_"),
+        "course_id"=> $courseId,
+        "period"   => $p
+      ];
+    }
   }
 
-  header("Location: semesters_editor.php");
+  file_put_contents(
+    $periodsFile,
+    json_encode($periods, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)
+  );
+
+  header("Location: ../admin/dashboard.php");
   exit;
 }
 ?>
@@ -47,98 +83,31 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Semestres</title>
-
+<title>Asignar Periodos</title>
 <style>
-body{
-  font-family: Arial, Helvetica, sans-serif;
-  background:#f4f8ff;
-  padding:40px;
-}
-h1{color:#2563eb;}
-.card{
-  background:white;
-  padding:20px;
-  border-radius:14px;
-  max-width:600px;
-  box-shadow:0 10px 25px rgba(0,0,0,.08);
-}
-input, select{
-  width:100%;
-  padding:10px;
-  margin-top:10px;
-}
-button{
-  margin-top:15px;
-  padding:12px 18px;
-  border:none;
-  border-radius:10px;
-  background:#2563eb;
-  color:white;
-  font-weight:bold;
-}
-.list{
-  margin-top:30px;
-  max-width:600px;
-}
-.item{
-  background:#fff;
-  padding:12px;
-  border-radius:10px;
-  margin-bottom:10px;
-  box-shadow:0 4px 8px rgba(0,0,0,.08);
-}
+body{font-family:Arial;background:#f4f8ff;padding:40px}
+.card{background:#fff;padding:25px;border-radius:14px;max-width:500px}
+label{display:block;margin:10px 0}
+button{margin-top:20px;padding:12px 18px;background:#16a34a;color:#fff;border:none;border-radius:8px;font-weight:700}
 </style>
 </head>
-
 <body>
 
-<h1>📂 Semestres</h1>
+<h1>🗓️ Periodos del curso</h1>
+<p><strong>Curso:</strong> <?= htmlspecialchars($course['name']) ?></p>
 
 <div class="card">
-  <form method="post">
+<form method="post">
 
-    <select name="program_id" required>
-      <option value="">Seleccionar programa</option>
-      <?php foreach ($programs as $p): ?>
-        <option value="<?= htmlspecialchars($p["id"]) ?>">
-          <?= htmlspecialchars($p["name"]) ?>
-        </option>
-      <?php endforeach; ?>
-    </select>
-
-    <input type="text" name="name"
-      placeholder="Nombre del semestre (ej: A, B, 1, 2)" required>
-
-    <button>➕ Crear Semestre</button>
-
-  </form>
-</div>
-
-<div class="list">
-  <h2>📋 Semestres creados</h2>
-
-  <?php foreach ($semesters as $s): ?>
-    <div class="item">
-      <strong>Semestre <?= htmlspecialchars($s["name"]) ?></strong>
-    </div>
+  <?php foreach ($catalog as $p): ?>
+    <label>
+      <input type="checkbox" name="periods[]" value="<?= $p ?>">
+      Periodo <?= $p ?>
+    </label>
   <?php endforeach; ?>
-</div>
-<hr style="margin:40px 0">
 
-<div style="text-align:right">
-  <a href="modules_editor.php"
-     style="
-       padding:14px 24px;
-       background:#2563eb;
-       color:#fff;
-       text-decoration:none;
-       border-radius:10px;
-       font-weight:700;
-       font-size:16px;
-     ">
-    ➡️ Siguiente: Módulos
-  </a>
+  <button>Guardar periodos</button>
+</form>
 </div>
 
 </body>
