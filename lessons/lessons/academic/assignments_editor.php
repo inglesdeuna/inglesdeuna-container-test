@@ -3,7 +3,7 @@ session_start();
 
 /**
  * ASIGNACIONES ACADÉMICAS
- * Curso + Periodo + Docente + Estudiantes
+ * Curso + Periodo (A/B) + Docente + Estudiantes
  */
 
 // 🔐 SOLO ADMIN
@@ -13,26 +13,40 @@ if (!isset($_SESSION['admin_logged']) || $_SESSION['admin_logged'] !== true) {
 }
 
 /* ==========================
-   DATA
+   DATA (ACADEMIC ES EL DUEÑO)
    ========================== */
 $baseDir = __DIR__ . "/data";
 
+// Archivos
 $coursesFile     = $baseDir . "/courses.json";
 $teachersFile    = $baseDir . "/teachers.json";
 $studentsFile    = $baseDir . "/students.json";
 $assignmentsFile = $baseDir . "/assignments.json";
 
-foreach ([$assignmentsFile] as $f) {
-    if (!file_exists($f)) file_put_contents($f, "[]");
+/* ==========================
+   ASEGURAR ARCHIVOS
+   ========================== */
+foreach ([$coursesFile, $teachersFile, $studentsFile, $assignmentsFile] as $file) {
+    if (!file_exists($file)) {
+        file_put_contents($file, "[]");
+    }
 }
 
-$courses     = json_decode(file_get_contents($coursesFile), true) ?? [];
-$teachers    = json_decode(file_get_contents($teachersFile), true) ?? [];
-$students    = json_decode(file_get_contents($studentsFile), true) ?? [];
-$assignments = json_decode(file_get_contents($assignmentsFile), true) ?? [];
+/* ==========================
+   CARGAR DATA
+   ========================== */
+$courses     = json_decode(file_get_contents($coursesFile), true);
+$teachers    = json_decode(file_get_contents($teachersFile), true);
+$students    = json_decode(file_get_contents($studentsFile), true);
+$assignments = json_decode(file_get_contents($assignmentsFile), true);
+
+$courses     = is_array($courses) ? $courses : [];
+$teachers    = is_array($teachers) ? $teachers : [];
+$students    = is_array($students) ? $students : [];
+$assignments = is_array($assignments) ? $assignments : [];
 
 /* ==========================
-   CATÁLOGO DE PERIODOS
+   PERIODOS (OPERATIVO)
    ========================== */
 $periods = ["A", "B"];
 
@@ -41,10 +55,10 @@ $periods = ["A", "B"];
    ========================== */
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
-    $courseId   = $_POST["course_id"] ?? "";
-    $period     = $_POST["period"] ?? "";
+    $courseId   = $_POST["course_id"]  ?? "";
+    $period     = $_POST["period"]     ?? "";
     $teacherId  = $_POST["teacher_id"] ?? "";
-    $studentIds = $_POST["students"] ?? [];
+    $studentIds = $_POST["students"]   ?? [];
 
     if ($courseId && $period && $teacherId) {
 
@@ -119,7 +133,7 @@ button{
   <select name="course_id" required>
     <option value="">Seleccionar curso</option>
     <?php foreach ($courses as $c): ?>
-      <option value="<?= $c['id'] ?>">
+      <option value="<?= htmlspecialchars($c['id']) ?>">
         <?= htmlspecialchars($c['name']) ?>
       </option>
     <?php endforeach; ?>
@@ -137,7 +151,7 @@ button{
   <select name="teacher_id" required>
     <option value="">Seleccionar docente</option>
     <?php foreach ($teachers as $t): ?>
-      <option value="<?= $t['id'] ?>">
+      <option value="<?= htmlspecialchars($t['id']) ?>">
         <?= htmlspecialchars($t['name']) ?>
       </option>
     <?php endforeach; ?>
@@ -146,7 +160,7 @@ button{
   <label>Estudiantes</label>
   <select name="students[]" multiple size="6">
     <?php foreach ($students as $s): ?>
-      <option value="<?= $s['id'] ?>">
+      <option value="<?= htmlspecialchars($s['id']) ?>">
         <?= htmlspecialchars($s['name']) ?>
       </option>
     <?php endforeach; ?>
