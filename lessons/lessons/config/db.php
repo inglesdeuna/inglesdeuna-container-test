@@ -1,26 +1,14 @@
 <?php
 
-/* =========================
-   DATABASE CONFIG (POSTGRES RENDER)
-========================= */
-
 $DATABASE_URL = "postgresql://inglesdeuna_db_user:9ZHdDdsGhP31Kfx6XEFZ1ku3iiOvbmEO@dpg-d653o1dum26s73bjj5o0-a.oregon-postgres.render.com/inglesdeuna_db";
-
-/* =========================
-   PARSE DATABASE URL
-========================= */
 
 $dbParts = parse_url($DATABASE_URL);
 
 $dbHost = $dbParts['host'];
-$dbPort = $dbParts['port'];
+$dbPort = $dbParts['port'] ?? 5432; // ← FIX
 $dbName = ltrim($dbParts['path'], '/');
 $dbUser = $dbParts['user'];
 $dbPass = $dbParts['pass'];
-
-/* =========================
-   PDO CONNECTION
-========================= */
 
 try {
 
