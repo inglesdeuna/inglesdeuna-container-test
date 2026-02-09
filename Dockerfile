@@ -1,14 +1,26 @@
 FROM php:8.2-apache
 
-# Instalar extensiones necesarias
-RUN docker-php-ext-install mysqli pdo pdo_mysql
+# =============================
+# INSTALAR DEPENDENCIAS POSTGRES
+# =============================
+RUN apt-get update && apt-get install -y \
+    libpq-dev \
+    && docker-php-ext-install pdo pdo_pgsql pgsql
 
-# Copiar el proyecto al document root de Apache
+# =============================
+# (Opcional) Mantener MySQL si quieres compatibilidad
+# =============================
+RUN docker-php-ext-install mysqli pdo_mysql
+
+# =============================
+# COPIAR PROYECTO
+# =============================
 COPY . /var/www/html/
 
-# Permisos correctos para Apache
+# =============================
+# PERMISOS
+# =============================
 RUN chown -R www-data:www-data /var/www/html \
     && chmod -R 755 /var/www/html
 
 EXPOSE 80
-
