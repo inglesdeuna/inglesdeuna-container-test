@@ -22,18 +22,12 @@ $data = file_exists($jsonFile)
     ? json_decode(file_get_contents($jsonFile), true)
     : [];
 
-$words = $data[$unit] ?? [];
-
-if (empty($words)) {
-    die("No hay palabras para esta unidad");
+if (!isset($data[$unit]) || empty($data[$unit])) {
+    $randomWord = "TEST";
+} else {
+    $words = $data[$unit];
+    $randomWord = $words[array_rand($words)]["word"] ?? "TEST";
 }
-
-/* =========================
-   ELEGIR PALABRA RANDOM
-========================= */
-
-$randomWord = $words[array_rand($words)]["word"];
-?>
 
 <!DOCTYPE html>
 <html lang="es">
