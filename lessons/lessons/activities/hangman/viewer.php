@@ -1,59 +1,79 @@
 <?php
-$unit = $_GET["unit"] ?? null;
-if (!$unit) die("Unit missing");
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
 
+/* =========================
+   VALIDAR UNIT
+========================= */
+$unit = $_GET["unit"] ?? null;
+if (!$unit) {
+    die("Unit no especificada");
+}
+
+/* =========================
+   RUTA JSON
+========================= */
 $jsonFile = __DIR__ . "/hangman.json";
 
-$data = file_exists($jsonFile)
-    ? json_decode(file_get_contents($jsonFile), true)
-    : [];
+/* =========================
+   LEER JSON
+========================= */
+$data = [];
+if (file_exists($jsonFile)) {
+    $decoded = json_decode(file_get_contents($jsonFile), true);
+    if (is_array($decoded)) {
+        $data = $decoded;
+    }
+}
 
+/* =========================
+   OBTENER PALABRA
+========================= */
 if (!isset($data[$unit]) || empty($data[$unit])) {
-    $word = "TEST";
+    $randomWord = "TEST";
 } else {
     $words = $data[$unit];
-    $word = strtoupper($words[array_rand($words)]["word"] ?? "TEST");
+    $randomWord = strtoupper($words[array_rand($words)]["word"] ?? "TEST");
 }
 ?>
-
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
 <meta charset="UTF-8">
 <title>Hangman</title>
 
 <style>
 body{
-    font-family:Arial;
+    font-family: Arial;
     background:#eef4ff;
     text-align:center;
     padding:40px;
 }
-
-#hangmanImg{
-    width:220px;
-    margin:20px;
-}
-
 .word{
-    font-size:32px;
-    letter-spacing:10px;
-    margin:20px;
+    font-size:34px;
+    letter-spacing:12px;
+    margin:25px;
 }
-
 .keyboard button{
     padding:10px;
     margin:4px;
+    font-size:16px;
     cursor:pointer;
 }
+img{
+    margin-top:20px;
+}
+.hidden{
+    display:none;
+}
 </style>
-</head>
 
+</head>
 <body>
 
 <h2>🎯 Hangman</h2>
 
-<img id="hangmanImg" src="assets.keep/hangman0.png">
+<img id="hangmanImg" src="assets/hangman0.png" width="220">
 
 <div id="word" class="word"></div>
 
@@ -61,47 +81,54 @@ body{
 
 <br>
 
-<button id="nextBtn" style="display:none">Next ➜</button>
-<button id="retryBtn" style="display:none">Try Again</button>
+<button id="nextBtn" class="hidden"
+onclick="window.location.reload()">➡ Siguiente</button>
+
+<button id="retryBtn" class="hidden"
+onclick="window.location.reload()">🔁 Try Again</button>
+
+<br><br>
 
 <a href="../hub/index.php?unit=<?= urlencode($unit) ?>">
 <button>⬅ Volver al Hub</button>
 </a>
 
-<!-- SOUNDS -->
-<audio id="soundCorrect" src="assets.keep/correct.mp3"></audio>
-<audio id="soundWrong" src="assets.keep/wrong.mp3"></audio>
-<audio id="soundWin" src="assets.keep/win.mp3"></audio>
-<audio id="soundLose" src="assets.keep/lose.mp3"></audio>
+<!-- SONIDOS -->
+<audio id="correctSound" src="assets/correct.wav"></audio>
+<audio id="wrongSound" src="assets/wrong.wav"></audio>
+<audio id="winSound" src="assets/win.mp3"></audio>
+<audio id="loseSound" src="assets/lose.mp3"></audio>
 
 <script>
 
-let word = <?= json_encode($word) ?>;
+let word = <?= json_encode($randomWord) ?>;
 let guessed = [];
 let mistakes = 0;
-let maxMistakes = 6;
+let maxMistakes = 7;
 
+/* =========================
+   RENDER PALABRA
+========================= */
 function renderWord(){
-    let display="";
-    let win=true;
 
-    for(let l of word){
-        if(guessed.includes(l)){
-            display += l + " ";
+    let display = "";
+
+    for(let letter of word){
+        if(guessed.includes(letter)){
+            display += letter + " ";
         }else{
             display += "_ ";
-            win=false;
         }
     }
 
-    document.getElementById("word").innerText=display;
+    document.getElementById("word").innerText = display;
 
-    if(win){
-        document.getElementById("soundWin").play();
-        document.getElementById("nextBtn").style.display="inline-block";
-    }
+    checkWin();
 }
 
+/* =========================
+   GUESS
+========================= */
 function guess(letter){
 
     if(guessed.includes(letter)) return;
@@ -109,37 +136,89 @@ function guess(letter){
     guessed.push(letter);
 
     if(word.includes(letter)){
-        document.getElementById("soundCorrect").play();
+        play("correctSound");
     }else{
         mistakes++;
-        document.getElementById("soundWrong").play();
-
-        document.getElementById("hangmanImg").src =
-        "assets.keep/hangman"+mistakes+".png";
-
-        if(mistakes>=maxMistakes){
-            document.getElementById("soundLose").play();
-            document.getElementById("retryBtn").style.display="inline-block";
-        }
+        play("wrongSound");
+        updateHangman();
     }
 
     renderWord();
+    checkLose();
 }
 
-function buildKeyboard(){
-    let letters="ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-    let html="";
+/* =========================
+   CAMBIAR IMAGEN
+========================= */
+function updateHangman(){
+    document.getElementById("hangmanImg").src =
+        "assets/hangman" + mistakes + ".png";
+}
 
-    for(let l of letters){
-        html+=`<button onclick="guess('${l}')">${l}</button>`;
+/* =========================
+   WIN
+========================= */
+function checkWin(){
+
+    let win = true;
+
+    for(let l of word){
+        if(!guessed.includes(l)){
+            win = false;
+        }
     }
 
-    document.getElementById("keyboard").innerHTML=html;
+    if(win){
+        play("winSound");
+        disableKeyboard();
+        document.getElementById("nextBtn").classList.remove("hidden");
+    }
 }
 
-document.getElementById("retryBtn").onclick=()=>location.reload();
-document.getElementById("nextBtn").onclick=()=>location.reload();
+/* =========================
+   LOSE
+========================= */
+function checkLose(){
 
+    if(mistakes >= maxMistakes){
+        play("loseSound");
+        disableKeyboard();
+        document.getElementById("retryBtn").classList.remove("hidden");
+    }
+}
+
+/* =========================
+   TECLADO
+========================= */
+function buildKeyboard(){
+
+    let letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    let html = "";
+
+    for(let l of letters){
+        html += `<button onclick="guess('${l}')">${l}</button>`;
+    }
+
+    document.getElementById("keyboard").innerHTML = html;
+}
+
+/* =========================
+   DISABLE KEYBOARD
+========================= */
+function disableKeyboard(){
+    document.querySelectorAll(".keyboard button")
+    .forEach(btn => btn.disabled = true);
+}
+
+/* =========================
+   PLAY SOUND
+========================= */
+function play(id){
+    document.getElementById(id).currentTime = 0;
+    document.getElementById(id).play();
+}
+
+/* INIT */
 renderWord();
 buildKeyboard();
 
@@ -147,4 +226,3 @@ buildKeyboard();
 
 </body>
 </html>
-
