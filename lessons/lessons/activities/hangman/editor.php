@@ -3,23 +3,43 @@
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
-// =======================
-// VALIDAR PARAMETRO UNIT
-// =======================
+/* =========================
+   CONEXION DB DIRECTA
+========================= */
+
+$host = "localhost";
+$db   = "DB_NAME";
+$user = "DB_USER";
+$pass = "DB_PASS";
+$charset = "utf8mb4";
+
+$dsn = "mysql:host=$host;dbname=$db;charset=$charset";
+
+try {
+    $conn = new PDO($dsn, $user, $pass);
+    $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    echo "✅ DB conectada<br>";
+} catch (PDOException $e) {
+    die("❌ Error DB: " . $e->getMessage());
+}
+
+
+/* =========================
+   VALIDAR UNIT
+========================= */
 
 if (!isset($_GET['unit']) || empty($_GET['unit'])) {
-    die("❌ ERROR: No se recibió parámetro UNIT");
+    die("❌ No se recibió UNIT");
 }
 
 $unit_id = $_GET['unit'];
 
-echo "<pre>";
-echo "✅ UNIT RECIBIDA: " . $unit_id . "\n";
+echo "✅ UNIT RECIBIDA: " . $unit_id . "<br>";
 
 
-// =======================
-// BUSCAR UNIT EN DB
-// =======================
+/* =========================
+   BUSCAR UNIT EN DB
+========================= */
 
 try {
 
@@ -30,17 +50,18 @@ try {
 
     $unitData = $stmt->fetch(PDO::FETCH_ASSOC);
 
+    echo "<pre>";
     echo "📦 RESULTADO DB:\n";
     var_dump($unitData);
 
     if (!$unitData) {
-        die("❌ ERROR: Unidad no encontrada en DB");
+        die("❌ Unidad no encontrada en DB");
     }
 
-    echo "✅ Unidad encontrada correctamente\n";
+    echo "✅ Unidad encontrada correctamente";
 
 } catch (Exception $e) {
-    die("❌ ERROR DB: " . $e->getMessage());
+    die("❌ Error Query: " . $e->getMessage());
 }
 
 ?>
