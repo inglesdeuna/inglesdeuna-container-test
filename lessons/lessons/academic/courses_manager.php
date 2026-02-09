@@ -2,7 +2,7 @@
 session_start();
 
 /**
- * COURSES MANAGER
+ * COURSES MANAGER (POSTGRES VERSION)
  * Creación y gestión de cursos (SOLO ADMIN)
  */
 
@@ -13,6 +13,11 @@ if (!isset($_SESSION["admin_logged"]) || $_SESSION["admin_logged"] !== true) {
 }
 
 /* ===============================
+   DB CONNECTION
+   =============================== */
+require __DIR__ . "/../config/db.php";
+
+/* ===============================
    VALIDAR PROGRAMA
    =============================== */
 $programId = $_GET["program"] ?? null;
@@ -21,23 +26,15 @@ if (!$programId) {
 }
 
 /* ===============================
-   DATA
+   OBTENER PROGRAMA DESDE JSON
+   (Lo dejamos así por ahora)
    =============================== */
-$baseDir = __DIR__ . "/data";
+$programsFile = __DIR__ . "/data/programs.json";
 
-$programsFile = $baseDir . "/programs.json";
-$coursesFile  = $baseDir . "/courses.json";
+$programs = file_exists($programsFile)
+  ? json_decode(file_get_contents($programsFile), true)
+  : [];
 
-if (!file_exists($coursesFile)) {
-  file_put_contents($coursesFile, "[]");
-}
-
-$programs = json_decode(file_get_contents($programsFile), true) ?? [];
-$courses  = json_decode(file_get_contents($coursesFile), true) ?? [];
-
-/* ===============================
-   OBTENER PROGRAMA
-   =============================== */
 $programName = null;
 foreach ($programs as $p) {
   if ($p["id"] === $programId) {
@@ -45,39 +42,48 @@ foreach ($programs as $p) {
     break;
   }
 }
+
 if (!$programName) {
   die("Programa inválido");
 }
 
 /* ===============================
-   CREAR CURSO
+   CREAR CURSO → POSTGRES
    =============================== */
 if ($_SERVER["REQUEST_METHOD"] === "POST" && !empty($_POST["course_name"])) {
 
   $courseId = uniqid("course_");
 
-  $courses[] = [
-    "id"         => $courseId,
-    "program_id" => $programId,
-    "name"       => trim($_POST["course_name"]),
-    "units"      => []
-  ];
+  $stmt = $pdo->prepare("
+      INSERT INTO courses (id, program_id, name)
+      VALUES (:id, :program_id, :name)
+  ");
 
-  file_put_contents(
-    $coursesFile,
-    json_encode($courses, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)
-  );
+  $stmt->execute([
+      "id" => $courseId,
+      "program_id" => $programId,
+      "name" => trim($_POST["course_name"])
+  ]);
 
   header("Location: courses_manager.php?program=" . urlencode($programId));
   exit;
 }
 
 /* ===============================
-   CURSOS DEL PROGRAMA
+   LISTAR CURSOS → POSTGRES
    =============================== */
-$programCourses = array_filter($courses, function ($c) use ($programId) {
-  return ($c["program_id"] ?? null) === $programId;
-});
+$stmt = $pdo->prepare("
+  SELECT * FROM courses
+  WHERE program_id = :program
+  ORDER BY created_at DESC
+");
+
+$stmt->execute([
+  "program" => $programId
+]);
+
+$programCourses = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -119,6 +125,7 @@ button{margin-top:15px;padding:12px 18px;background:#2563eb;color:#fff;border:no
       </div>
     <?php endforeach; ?>
   <?php endif; ?>
+
 </div>
 
 </body>
