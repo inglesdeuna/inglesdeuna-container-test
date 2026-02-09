@@ -1,131 +1,109 @@
 <?php
 session_start();
 
-/**
- * UNIT VIEW
- * Vista de una unidad y acceso a actividades
- */
-
-// 🔐 ADMIN o DOCENTE
-if (
-  !isset($_SESSION["admin_logged"]) &&
-  !isset($_SESSION["academic_logged"])
-) {
-  header("Location: login.php");
-  exit;
+/* ===============================
+   SEGURIDAD
+=============================== */
+if (!isset($_SESSION["admin_logged"])) {
+    header("Location: ../admin/login.php");
+    exit;
 }
 
-/* ==========================
-   VALIDAR UNIDAD
-   ========================== */
+/* ===============================
+   DB
+=============================== */
+require_once __DIR__ . "/../config/db.php";
+
+/* ===============================
+   VALIDAR UNIT
+=============================== */
 $unitId = $_GET["unit"] ?? null;
+
 if (!$unitId) {
-  die("Unidad no especificada");
+    die("Unit no especificada");
 }
 
-/* ==========================
-   DATA
-   ========================== */
-$baseDir = __DIR__ . "/data";
-$unitsFile   = $baseDir . "/units.json";
-$coursesFile = $baseDir . "/courses.json";
+/* ===============================
+   BUSCAR UNIT
+=============================== */
+$stmt = $pdo->prepare("
+    SELECT u.*, c.name AS course_name
+    FROM units u
+    JOIN courses c ON c.id = u.course_id
+    WHERE u.id = :id
+    LIMIT 1
+");
 
-if (!file_exists($unitsFile)) {
-  die("Archivo de unidades no encontrado");
-}
+$stmt->execute([
+    "id" => $unitId
+]);
 
-$units   = json_decode(file_get_contents($unitsFile), true) ?? [];
-$courses = file_exists($coursesFile)
-  ? json_decode(file_get_contents($coursesFile), true)
-  : [];
+$unit = $stmt->fetch(PDO::FETCH_ASSOC);
 
-$units   = is_array($units)   ? $units   : [];
-$courses = is_array($courses) ? $courses : [];
-
-/* ==========================
-   BUSCAR UNIDAD
-   ========================== */
-$unit = null;
-foreach ($units as $u) {
-  if (($u["id"] ?? null) === $unitId) {
-    $unit = $u;
-    break;
-  }
-}
 if (!$unit) {
-  die("Unidad no encontrada");
+    die("Unidad no encontrada");
 }
 
-/* ==========================
-   BUSCAR CURSO
-   ========================== */
-$courseName = "";
-foreach ($courses as $c) {
-  if (($c["id"] ?? null) === ($unit["course_id"] ?? null)) {
-    $courseName = $c["name"];
-    break;
-  }
-}
 ?>
 <!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title><?= htmlspecialchars($unit["name"]) ?></title>
+<title>Unit</title>
 
 <style>
 body{
-  font-family:Arial, sans-serif;
-  background:#f4f8ff;
-  padding:40px;
+    font-family: Arial;
+    background:#f4f8ff;
+    padding:40px;
 }
 .card{
-  background:#fff;
-  padding:30px;
-  border-radius:16px;
-  max-width:700px;
-  box-shadow:0 10px 25px rgba(0,0,0,.08);
+    background:#fff;
+    padding:25px;
+    border-radius:14px;
+    margin-bottom:25px;
+    max-width:700px;
 }
-h1{color:#2563eb;}
-.btn{
-  display:inline-block;
-  margin-top:20px;
-  padding:14px 22px;
-  background:#16a34a;
-  color:#fff;
-  border-radius:10px;
-  text-decoration:none;
-  font-weight:700;
-}
-.back{
-  display:inline-block;
-  margin-top:20px;
-  margin-left:15px;
-  color:#2563eb;
-  text-decoration:none;
-  font-weight:bold;
+button{
+    padding:10px 16px;
+    border:none;
+    border-radius:8px;
+    background:#2563eb;
+    color:white;
+    font-weight:bold;
 }
 </style>
-</head>
 
+</head>
 <body>
 
+<h1>📚 <?= htmlspecialchars($unit["name"]) ?></h1>
+
 <div class="card">
-  <h1>📘 <?= htmlspecialchars($unit["name"]) ?></h1>
+<p><strong>ID:</strong> <?= htmlspecialchars($unit["id"]) ?></p>
+<p><strong>Curso:</strong> <?= htmlspecialchars($unit["course_name"]) ?></p>
+<p><strong>Posición:</strong> <?= htmlspecialchars($unit["position"]) ?></p>
+</div>
 
-  <?php if ($courseName): ?>
-    <p><strong>Curso:</strong> <?= htmlspecialchars($courseName) ?></p>
-  <?php endif; ?>
+<div class="card">
+<h2>🎮 Actividades</h2>
 
-  <a class="btn"
-     href="/lessons/lessons/activities/hub/index.php?unit=<?= urlencode($unitId) ?>">
-    📦 Abrir actividades
-  </a>
+<a href="../activities/hangman/editor.php?unit=<?= urlencode($unitId) ?>">
+<button>➕ Hangman</button>
+</a>
 
-  <a class="back"
-     href="course_view.php?course=<?= urlencode($unit["course_id"]) ?>">
-    ← Volver al curso
-  </a>
+<br><br>
+
+<a href="../activities/drag_drop/editor.php?unit=<?= urlencode($unitId) ?>">
+<button>➕ Drag & Drop</button>
+</a>
+
+</div>
+
+<div class="card">
+<a href="course_view.php?course=<?= urlencode($unit["course_id"]) ?>">
+<button>⬅ Volver al curso</button>
+</a>
 </div>
 
 </body>
