@@ -1,24 +1,29 @@
 <?php
 
-$DATABASE_URL = "postgresql://inglesdeuna_db_user:9ZHdDdsGhP31Kfx6XEFZ1ku3iiOvbmEO@dpg-d653o1dum26s73bjj5o0-a.oregon-postgres.render.com/inglesdeuna_db";
+$DATABASE_URL = getenv("DATABASE_URL");
 
-$dbParts = parse_url($DATABASE_URL);
+if (!$DATABASE_URL) {
+    die("DATABASE_URL no encontrada");
+}
 
-$dbHost = $dbParts['host'];
-$dbPort = $dbParts['port'] ?? 5432; // ← FIX
-$dbName = ltrim($dbParts['path'], '/');
-$dbUser = $dbParts['user'];
-$dbPass = $dbParts['pass'];
+$db = parse_url($DATABASE_URL);
+
+$host = $db["host"];
+$port = $db["port"] ?? 5432;
+$user = $db["user"];
+$pass = $db["pass"];
+$dbname = ltrim($db["path"], "/");
 
 try {
 
-    $conn = new PDO(
-        "pgsql:host=$dbHost;port=$dbPort;dbname=$dbName",
-        $dbUser,
-        $dbPass
+    $pdo = new PDO(
+        "pgsql:host=$host;port=$port;dbname=$dbname",
+        $user,
+        $pass,
+        [
+            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION
+        ]
     );
-
-    $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
 } catch (PDOException $e) {
     die("DB Connection Failed: " . $e->getMessage());
