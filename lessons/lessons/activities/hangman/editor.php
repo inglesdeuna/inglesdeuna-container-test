@@ -1,4 +1,8 @@
 <?php
+echo "<pre>";
+var_dump($_GET);
+exit;
+
 session_start();
 
 $unitId = $_GET['unit'] ?? null;
