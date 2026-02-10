@@ -1,9 +1,12 @@
 <?php
-require_once __DIR__ . "/../../config/db.php";
+require_once __DIR__."/../../config/db.php";
 
 $unit = $_GET["unit"] ?? null;
-if(!$unit) die("Unit no especificada");
+if(!$unit) die("Unit missing");
 
+/* =====================
+CARGAR DATA
+===================== */
 $stmt = $pdo->prepare("
 SELECT data FROM activities
 WHERE unit_id=:unit AND type='match'
@@ -11,13 +14,10 @@ WHERE unit_id=:unit AND type='match'
 $stmt->execute(["unit"=>$unit]);
 
 $row = $stmt->fetch(PDO::FETCH_ASSOC);
+$data = json_decode($row["data"] ?? "[]", true);
 
-$data=[];
-if($row && $row["data"]){
-$data=json_decode($row["data"],true)??[];
-}
+if(!$data) echo "<p>No match data yet</p>";
 ?>
-
 <!DOCTYPE html>
 <html>
 <head>
@@ -25,53 +25,95 @@ $data=json_decode($row["data"],true)??[];
 <title>Match Activity</title>
 
 <style>
-body{font-family:Arial;background:#eef6ff;padding:20px;}
-.container{display:grid;grid-template-columns:1fr 1fr;gap:24px;}
+
+body{
+font-family: Arial;
+background:#eef6ff;
+padding:20px;
+}
+
+h1{
+text-align:center;
+color:#0b5ed7;
+}
+
+.container{
+display:grid;
+grid-template-columns:1fr 1fr;
+gap:25px;
+}
+
+/* GRID */
 .images, .words{
 display:grid;
-grid-template-columns: repeat(6, 1fr);
+grid-template-columns:repeat(6,1fr);
 gap:16px;
 }
-.card{background:white;border-radius:16px;padding:10px;text-align:center;box-shadow:0 4px 8px rgba(0,0,0,0.1);}
-.image{width:100%;height:80px;object-fit:contain;cursor:grab;}
-.word{
-padding:18px;
-background:#fff;
-border:2px dashed #0b5ed7;
+
+@media(max-width:1200px){
+.images,.words{ grid-template-columns:repeat(4,1fr); }
+}
+
+@media(max-width:700px){
+.images,.words{ grid-template-columns:repeat(2,1fr); }
+}
+
+.card{
+background:white;
+padding:10px;
 border-radius:14px;
+box-shadow:0 4px 8px rgba(0,0,0,0.1);
+}
+
+.image{
+width:100%;
+height:110px;
+object-fit:contain;
+cursor:grab;
+}
+
+.word{
+height:110px;
 display:flex;
 align-items:center;
 justify-content:center;
-min-height:80px;
+background:white;
+border:2px dashed #0b5ed7;
+border-radius:14px;
 font-weight:bold;
 }
-.correct{background:#d4edda;border-color:green;}
-.wrong{background:#f8d7da;border-color:red;}
 
-.top-bar{
-display:flex;
-justify-content:space-between;
-margin-bottom:20px;
+.correct{
+background:#d4edda;
+border-color:green;
 }
 
-.hub-btn{
+.wrong{
+background:#f8d7da;
+border-color:red;
+}
+
+.hub{
+position:fixed;
+right:20px;
+top:20px;
 background:#28a745;
 color:white;
 padding:10px 18px;
 border-radius:10px;
 text-decoration:none;
 }
+
 </style>
 </head>
 
 <body>
 
-<div class="top-bar">
-<h2>🧩 Match Activity</h2>
-<a class="hub-btn" href="/lessons/lessons/activities/hub/index.php?unit=<?=$unit?>">
-⬅ Volver al Hub
+<a class="hub" href="../hub/index.php?unit=<?=$unit?>">
+← Volver al Hub
 </a>
-</div>
+
+<h1>🧩 Match Activity</h1>
 
 <div class="container">
 <div class="images" id="images"></div>
@@ -81,32 +123,26 @@ text-decoration:none;
 <script>
 
 const data = <?= json_encode($data) ?>;
-const unitId="<?= $unit ?>";
 
-const loseSound=new Audio('/lessons/lessons/activities/hangman/assets/lose.mp3');
-const winSound=new Audio('/lessons/lessons/activities/hangman/assets/win.mp3');
+const shuffle = arr => arr.sort(()=>Math.random()-0.5);
 
-let attempts=data.length+4;
-let correctCount=0;
+const imagesDiv = document.getElementById("images");
+const wordsDiv = document.getElementById("words");
 
-const shuffle=arr=>arr.sort(()=>Math.random()-0.5);
-
-const imagesDiv=document.getElementById("images");
-const wordsDiv=document.getElementById("words");
-
+/* IMAGENES */
 shuffle([...data]).forEach(item=>{
-imagesDiv.innerHTML+=`
+imagesDiv.innerHTML += `
 <div class="card">
-<img src="/lessons/lessons/${item.image}"
-class="image"
+<img src="../../${item.image}" class="image"
 draggable="true"
 ondragstart="drag(event)"
 id="${item.id}">
 </div>`;
 });
 
+/* TEXTOS */
 shuffle([...data]).forEach(item=>{
-wordsDiv.innerHTML+=`
+wordsDiv.innerHTML += `
 <div class="word"
 data-id="${item.id}"
 ondragover="allowDrop(event)"
@@ -115,43 +151,31 @@ ${item.text}
 </div>`;
 });
 
-function allowDrop(ev){ev.preventDefault();}
-function drag(ev){ev.dataTransfer.setData("text",ev.target.id);}
+function allowDrop(e){ e.preventDefault(); }
 
-function drop(ev){
-ev.preventDefault();
-
-const draggedId=ev.dataTransfer.getData("text");
-const targetId=ev.target.dataset.id;
-
-if(draggedId===targetId){
-
-ev.target.classList.add("correct");
-document.getElementById(draggedId).style.opacity="0.3";
-
-correctCount++;
-
-if(correctCount===data.length){
-winSound.play();
-setTimeout(()=>alert("Great Job!"),500);
+function drag(e){
+e.dataTransfer.setData("text", e.target.id);
 }
 
+let correct = 0;
+
+function drop(e){
+e.preventDefault();
+
+let dragId = e.dataTransfer.getData("text");
+let targetId = e.target.dataset.id;
+
+if(dragId === targetId){
+e.target.classList.add("correct");
+document.getElementById(dragId).style.opacity="0.3";
+correct++;
 }else{
-
-attempts--;
-loseSound.play();
-
-ev.target.classList.add("wrong");
-setTimeout(()=>ev.target.classList.remove("wrong"),800);
-
-if(attempts<=0){
-alert("No more attempts");
-location.reload();
+e.target.classList.add("wrong");
+setTimeout(()=>e.target.classList.remove("wrong"),700);
 }
 }
-}
+
 </script>
 
 </body>
 </html>
-
