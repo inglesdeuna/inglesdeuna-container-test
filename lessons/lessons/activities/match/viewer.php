@@ -5,7 +5,123 @@ $unit = $_GET["unit"] ?? null;
 if(!$unit) die("Unit no especificada");
 
 /* =========================
-CARGAR DATA
+UPLOAD DIR
+========================= */
+$uploadDir = __DIR__ . "/uploads/" . $unit;
+if(!is_dir($uploadDir)){
+    mkdir($uploadDir, 0777, true);
+}
+
+/* =========================
+DELETE PAR
+========================= */
+if(isset($_GET["delete"])){
+
+    $deleteId = $_GET["delete"];
+
+    $stmtOld = $pdo->prepare("
+        SELECT data FROM activities
+        WHERE unit_id=:unit AND type='match'
+    ");
+    $stmtOld->execute(["unit"=>$unit]);
+
+    $rowOld = $stmtOld->fetch(PDO::FETCH_ASSOC);
+
+    if($rowOld && $rowOld["data"]){
+
+        $pairs = json_decode($rowOld["data"], true) ?? [];
+
+        $pairs = array_filter($pairs, function($p) use ($deleteId){
+            return $p["id"] !== $deleteId;
+        });
+
+        $json = json_encode(array_values($pairs), JSON_UNESCAPED_UNICODE);
+
+        $stmt = $pdo->prepare("
+            UPDATE activities
+            SET data = :json::jsonb
+            WHERE unit_id=:unit AND type='match'
+        ");
+
+        $stmt->execute([
+            "unit"=>$unit,
+            "json"=>$json
+        ]);
+    }
+
+    header("Location: editor.php?unit=".$unit);
+    exit;
+}
+
+/* =========================
+GUARDAR (SUMANDO)
+========================= */
+if($_SERVER["REQUEST_METHOD"] == "POST"){
+
+    $stmtOld = $pdo->prepare("
+        SELECT data FROM activities
+        WHERE unit_id=:unit AND type='match'
+    ");
+    $stmtOld->execute(["unit"=>$unit]);
+
+    $oldRow = $stmtOld->fetch(PDO::FETCH_ASSOC);
+
+    $pairs = [];
+
+    if($oldRow && $oldRow["data"]){
+        $pairs = json_decode($oldRow["data"], true) ?? [];
+    }
+
+    if(isset($_POST["text"])){
+
+        foreach($_POST["text"] as $i => $text){
+
+            if(trim($text) == "") continue;
+
+            $imgPath = "";
+
+            if(isset($_FILES["image"]["name"][$i]) &&
+               $_FILES["image"]["name"][$i] != ""){
+
+                $tmp = $_FILES["image"]["tmp_name"][$i];
+                $name = uniqid()."_".basename($_FILES["image"]["name"][$i]);
+
+                move_uploaded_file($tmp, $uploadDir."/".$name);
+
+                $imgPath = "activities/match/uploads/".$unit."/".$name;
+            }
+
+            if(!$imgPath) continue;
+
+            $pairs[] = [
+                "id" => uniqid(),
+                "text" => $text,
+                "image" => $imgPath
+            ];
+        }
+    }
+
+    $json = json_encode($pairs, JSON_UNESCAPED_UNICODE);
+
+    $stmt = $pdo->prepare("
+        INSERT INTO activities (id, unit_id, type, data)
+        VALUES (:id, :unit,'match',:json::jsonb)
+        ON CONFLICT (unit_id,type)
+        DO UPDATE SET data = EXCLUDED.data
+    ");
+
+    $stmt->execute([
+        "id"=>uniqid("act_"),
+        "unit"=>$unit,
+        "json"=>$json
+    ]);
+
+    header("Location: editor.php?unit=".$unit."&saved=1");
+    exit;
+}
+
+/* =========================
+LOAD DATA
 ========================= */
 $stmt = $pdo->prepare("
 SELECT data FROM activities
@@ -25,230 +141,122 @@ if($row && $row["data"]){
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Match Activity</title>
+<title>Match Editor</title>
 
 <style>
+body{background:#e8f1ff;font-family:Arial;}
 
-body{
-font-family: Arial, sans-serif;
-background:#eef6ff;
-padding:20px;
-}
-
-h1{
-text-align:center;
-color:#0b5ed7;
-margin-bottom:20px;
-}
-
-.container{
-display:grid;
-grid-template-columns:1fr 1fr;
-gap:24px;
-}
-
-.images, .words{
-display:grid;
-grid-template-columns: repeat(auto-fit, minmax(120px,1fr));
-gap:16px;
-}
-
-.card{
+.editor-card{
 background:white;
-border-radius:16px;
-padding:10px;
-text-align:center;
-box-shadow:0 4px 8px rgba(0,0,0,0.1);
-}
-
-.image{
-width:100%;
-height:80px;
-object-fit:contain;
-cursor:grab;
-}
-
-.word{
-padding:18px;
-background:#ffffff;
-border:2px dashed #0b5ed7;
+max-width:650px;
+margin:40px auto;
+padding:30px;
 border-radius:14px;
-font-size:17px;
+box-shadow:0 8px 20px rgba(0,0,0,.1);
+}
+
+.pair-row{display:flex;gap:10px;margin-bottom:12px;}
+
+.saved-item{
+display:flex;
+align-items:center;
+gap:10px;
+margin:6px 0;
+}
+
+.saved-item img{height:40px;border-radius:6px;}
+
+.delete-x{
+margin-left:auto;
+color:red;
 font-weight:bold;
-display:flex;
-align-items:center;
-justify-content:center;
-min-height:80px;
-}
-
-.correct{
-background:#d4edda;
-border-color:green;
-}
-
-.wrong{
-background:#f8d7da;
-border-color:red;
-}
-
-.win-screen{
-position:fixed;
-top:0;
-left:0;
-width:100%;
-height:100%;
-background:rgba(0,0,0,0.7);
-display:flex;
-flex-direction:column;
-align-items:center;
-justify-content:center;
-color:white;
-font-size:28px;
-}
-
-.win-screen button{
-margin-top:20px;
-padding:14px 28px;
-background:#28a745;
-border:none;
-border-radius:12px;
-color:white;
+text-decoration:none;
 font-size:18px;
+}
+
+.btn-add{
+background:#ddd;
+padding:10px 18px;
+border:none;
+border-radius:8px;
+margin-top:10px;
 cursor:pointer;
 }
 
+.btn-save{
+background:#2f5fe3;
+color:white;
+padding:12px;
+border:none;
+border-radius:10px;
+width:100%;
+margin-top:15px;
+font-weight:bold;
+}
+
+.btn-back{
+display:block;
+background:#1f9d4c;
+color:white;
+text-align:center;
+padding:12px;
+border-radius:10px;
+margin-top:20px;
+text-decoration:none;
+}
 </style>
 </head>
 
 <body>
 
-<h1>🧩 Match Activity</h1>
+<div class="editor-card">
 
-<div class="container">
-  <div class="images" id="images"></div>
-  <div class="words" id="words"></div>
+<h2>🧩 Match – Editor</h2>
+
+<?php if(isset($_GET["saved"])): ?>
+<div style="background:#d4edda;padding:10px;border-radius:8px;margin-bottom:10px;">
+✅ Guardado
+</div>
+<?php endif; ?>
+
+<form method="post" enctype="multipart/form-data">
+
+<div id="pairs"></div>
+
+<button type="button" class="btn-add" onclick="addPair()">+ Agregar Par</button>
+<button class="btn-save">💾 Guardar Match</button>
+
+</form>
+
+<hr>
+
+<h3>📦 Pares guardados</h3>
+
+<?php foreach($data as $p): ?>
+<div class="saved-item">
+<img src="/lessons/lessons/<?= $p["image"] ?>">
+<span><?= htmlspecialchars($p["text"]) ?></span>
+<a class="delete-x"
+href="editor.php?unit=<?=$unit?>&delete=<?=$p["id"]?>"
+onclick="return confirm('Delete this pair?')">❌</a>
+</div>
+<?php endforeach; ?>
+
+<a class="btn-back" href="../hub/index.php?unit=<?=$unit?>">
+↩ Volver al Hub
+</a>
+
 </div>
 
 <script>
-
-/* =========================
-DATA FROM PHP
-========================= */
-const data = <?= json_encode($data) ?>;
-const unitId = "<?= $unit ?>";
-
-/* =========================
-SOUNDS
-========================= */
-const loseSound = new Audio('/lessons/lessons/activities/hangman/assets/lose.mp3');
-const winSound = new Audio('/lessons/lessons/activities/hangman/assets/win.mp3');
-
-/* =========================
-GAME STATE
-========================= */
-let attempts = data.length + 4;
-let correctCount = 0;
-
-/* =========================
-HELPERS
-========================= */
-const shuffle = arr => arr.sort(() => Math.random() - 0.5);
-
-const imagesDiv = document.getElementById("images");
-const wordsDiv = document.getElementById("words");
-
-/* =========================
-RENDER IMAGES
-========================= */
-shuffle([...data]).forEach(item=>{
-  imagesDiv.innerHTML += `
-    <div class="card">
-      <img src="/lessons/lessons/${item.image}"
-           class="image"
-           draggable="true"
-           ondragstart="drag(event)"
-           id="${item.id}">
-    </div>
-  `;
-});
-
-/* =========================
-RENDER WORDS
-========================= */
-shuffle([...data]).forEach(item=>{
-  wordsDiv.innerHTML += `
-    <div class="word"
-         data-id="${item.id}"
-         ondragover="allowDrop(event)"
-         ondrop="drop(event)">
-      ${item.text}
-    </div>
-  `;
-});
-
-/* =========================
-DRAG DROP
-========================= */
-function allowDrop(ev){
-  ev.preventDefault();
+function addPair(){
+document.getElementById("pairs").innerHTML += `
+<div class="pair-row">
+<input type="file" name="image[]" required>
+<input type="text" name="text[]" placeholder="Texto" required>
+</div>`;
 }
-
-function drag(ev){
-  ev.dataTransfer.setData("text", ev.target.id);
-}
-
-function drop(ev){
-  ev.preventDefault();
-
-  const draggedId = ev.dataTransfer.getData("text");
-  const targetId = ev.target.dataset.id;
-
-  if(draggedId === targetId){
-
-    ev.target.classList.add("correct");
-    ev.target.innerHTML += " ✅";
-
-    document.getElementById(draggedId).style.opacity="0.3";
-
-    correctCount++;
-
-    if(correctCount === data.length){
-        winSound.play();
-        showWin();
-    }
-
-  }else{
-
-    attempts--;
-    loseSound.play();
-
-    ev.target.classList.add("wrong");
-    setTimeout(()=>ev.target.classList.remove("wrong"),800);
-
-    if(attempts <= 0){
-        alert("No more attempts");
-        location.reload();
-    }
-  }
-}
-
-/* =========================
-WIN SCREEN
-========================= */
-function showWin(){
-  document.body.innerHTML += `
-  <div class="win-screen">
-    <h2>🎉 Great Job!</h2>
-    <button onclick="goHub()">Volver al Hub</button>
-  </div>`;
-}
-
-function goHub(){
-  window.location.href = "/lessons/lessons/activities/hub/index.php?unit="+unitId;
-}
-
 </script>
 
 </body>
 </html>
-
