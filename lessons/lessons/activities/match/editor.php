@@ -28,9 +28,29 @@ $items=json_decode($rowOld["data"],true) ?? [];
 }
 
 /* Agregar nuevos */
+if(isset($_POST["text"]) && is_array($_POST["text"])){
+
 foreach($_POST["text"] as $i=>$text){
 
 if(trim($text)=="") continue;
+if(empty($_FILES["image"]["name"][$i])) continue;
+
+$tmp=$_FILES["image"]["tmp_name"][$i];
+$name=uniqid()."_".basename($_FILES["image"]["name"][$i]);
+
+move_uploaded_file($tmp,$uploadDir."/".$name);
+
+$items[]=[
+"id"=>uniqid(),
+"text"=>$text,
+"image"=>"activities/match/uploads/".$unit."/".$name
+];
+
+}
+  
+}
+
+  if(trim($text)=="") continue;
 if(empty($_FILES["image"]["name"][$i])) continue;
 
 $tmp=$_FILES["image"]["tmp_name"][$i];
