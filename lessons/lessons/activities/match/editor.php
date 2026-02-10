@@ -60,7 +60,7 @@ VALUES (:id, :unit,'match',:json::jsonb)
     "json"=>$json
 ]);
 
-    header("Location: ../../academic/unit_view.php?unit=".$unit);
+    header("Location: ../hub/index.php?unit=".$unit);
     exit;
 }
 
