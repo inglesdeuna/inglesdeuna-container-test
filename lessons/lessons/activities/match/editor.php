@@ -1,93 +1,65 @@
 <?php
-$file = __DIR__ . "/match.json";
-$data = file_exists($file) ? json_decode(file_get_contents($file), true) : [];
+require_once __DIR__ . "/../../config/db.php";
 
+/* =========================
+   UNIT
+========================= */
+$unit = $_GET["unit"] ?? null;
+
+if (!$unit) {
+    die("Unit no especificada");
+}
+
+/* =========================
+   GUARDAR
+========================= */
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
-  $items = [];
+    $json = $_POST["json"] ?? "[]";
 
-  foreach ($_POST["id"] as $i => $id) {
-    $items[] = [
-      "id"   => trim($id),
-      "text" => trim($_POST["text"][$i]),
-      "img"  => trim($_POST["img"][$i])
-    ];
-  }
+    $stmt = $pdo->prepare("
+        INSERT INTO activities (unit_id, type, content_json)
+        VALUES (:unit, 'match', :json)
+        ON CONFLICT (unit_id, type)
+        DO UPDATE SET content_json = :json
+    ");
 
-  $data[] = ["items" => $items];
+    $stmt->execute([
+        "unit" => $unit,
+        "json" => $json
+    ]);
 
-  file_put_contents(
-    $file,
-    json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)
-  );
-
-  exit;
+    echo "<h2>✅ Match guardado</h2>";
 }
+
+/* =========================
+   CARGAR EXISTENTE
+========================= */
+$stmt = $pdo->prepare("
+    SELECT content_json
+    FROM activities
+    WHERE unit_id = :unit
+    AND type = 'match'
+    LIMIT 1
+");
+
+$stmt->execute(["unit"=>$unit]);
+
+$row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+$existing = $row["content_json"] ?? "[]";
 ?>
-<!DOCTYPE html>
-<html lang="es">
-<head>
-<meta charset="UTF-8">
-<title>Match – Editor</title>
 
-<style>
-body{
-  font-family:Arial, sans-serif;
-  background:#f5f7fb;
-  padding:30px;
-}
-h1{color:#2563eb;}
+<h1>Match Editor</h1>
 
-.form{
-  background:#fff;
-  padding:20px;
-  border-radius:14px;
-  max-width:700px;
-}
-
-input{
-  width:100%;
-  margin-top:8px;
-  padding:8px;
-}
-
-.row{
-  margin-bottom:12px;
-}
-
-button{
-  margin-top:15px;
-  padding:12px 18px;
-  border:none;
-  border-radius:10px;
-  background:#2563eb;
-  color:white;
-  font-weight:bold;
-}
-</style>
-</head>
-
-<body>
-
-<h1>🧩 Match – Editor</h1>
-
-<div class="form">
 <form method="post">
 
-  <p><strong>Each row = one match</strong></p>
+<textarea name="json" style="width:100%;height:300px;">
+<?= htmlspecialchars($existing) ?>
+</textarea>
 
-  <?php for($i=0;$i<6;$i++): ?>
-  <div class="row">
-    <input name="id[]" placeholder="ID (same for image & text)">
-    <input name="text[]" placeholder="Text / word / sentence">
-    <input name="img[]" placeholder="Image URL">
-  </div>
-  <?php endfor; ?>
+<br><br>
 
-  <button>➕ Save Activity</button>
+<button>Guardar Match</button>
 
 </form>
-</div>
-
-</body>
-</html>
