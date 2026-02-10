@@ -48,16 +48,17 @@ if($_SERVER["REQUEST_METHOD"] === "POST"){
     $json = json_encode($pairs, JSON_UNESCAPED_UNICODE);
 
     $stmt = $pdo->prepare("
-    INSERT INTO activities (unit_id, type, data)
-    VALUES (:unit,'match',:json::jsonb)
+    INSERT INTO activities (id, unit_id, type, data)
+VALUES (:id, :unit,'match',:json::jsonb)
     ON CONFLICT (unit_id,type)
     DO UPDATE SET data = EXCLUDED.data
     ");
 
-    $stmt->execute([
-        "unit"=>$unit,
-        "json"=>$json
-    ]);
+   $stmt->execute([
+    "id"=>uniqid(),
+    "unit"=>$unit,
+    "json"=>$json
+]);
 
     header("Location: ../../academic/unit_view.php?unit=".$unit);
     exit;
