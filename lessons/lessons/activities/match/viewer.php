@@ -1,168 +1,82 @@
 <?php
 require_once __DIR__ . "/../../config/db.php";
 
-/* =========================
-   VALIDAR UNIT
-========================= */
 $unit = $_GET["unit"] ?? null;
+if(!$unit) die("Unit no especificada");
 
-if (!$unit) {
-    die("Unit no especificada");
+/* =========================
+UPLOAD DIR
+========================= */
+$uploadDir = __DIR__ . "/uploads/" . $unit;
+if(!is_dir($uploadDir)){
+    mkdir($uploadDir, 0777, true);
 }
 
 /* =========================
-   OBTENER DATA MATCH
+GUARDAR
 ========================= */
+if($_SERVER["REQUEST_METHOD"] === "POST"){
 
+    $items = [];
+
+    if(isset($_POST["text"])){
+
+        foreach($_POST["text"] as $i => $text){
+
+            if(trim($text) == "") continue;
+
+            $imgPath = $_POST["existing_image"][$i] ?? "";
+
+            if(
+                isset($_FILES["image"]["name"][$i]) &&
+                $_FILES["image"]["name"][$i] != ""
+            ){
+
+                $tmp = $_FILES["image"]["tmp_name"][$i];
+                $name = uniqid()."_".basename($_FILES["image"]["name"][$i]);
+
+                move_uploaded_file($tmp, $uploadDir."/".$name);
+
+                $imgPath = "activities/match/uploads/".$unit."/".$name;
+            }
+
+            $items[] = [
+                "id" => uniqid("m_"),
+                "text" => trim($text),
+                "image" => $imgPath
+            ];
+        }
+    }
+
+    $json = json_encode($items, JSON_UNESCAPED_UNICODE);
+
+    $stmt = $pdo->prepare("
+    INSERT INTO activities (unit_id, type, data)
+    VALUES (:unit,'match',:json)
+
+    ON CONFLICT (unit_id,type)
+    DO UPDATE SET data = EXCLUDED.data
+    ");
+
+    $stmt->execute([
+        "unit"=>$unit,
+        "json"=>$json
+    ]);
+
+    header("Location: ../hub/index.php?unit=".$unit);
+    exit;
+}
+
+/* =========================
+CARGAR EXISTENTE
+========================= */
 $stmt = $pdo->prepare("
-    SELECT content_json
-    FROM activities
-    WHERE unit_id = :unit
-    AND type = 'match'
-    LIMIT 1
+SELECT data FROM activities
+WHERE unit_id=:unit AND type='match'
 ");
 
-$stmt->execute([
-    "unit" => $unit
-]);
+$stmt->execute(["unit"=>$unit]);
 
 $row = $stmt->fetch(PDO::FETCH_ASSOC);
-
-$data = [];
-
-if ($row && !empty($row["content_json"])) {
-    $data = json_decode($row["content_json"], true);
-}
+$data = json_decode($row["data"] ?? "[]", true);
 ?>
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<title>Match</title>
-
-<style>
-body{
-  font-family: Arial, sans-serif;
-  background:#eef6ff;
-  padding:20px;
-}
-h1{
-  text-align:center;
-  color:#0b5ed7;
-  margin-bottom:20px;
-}
-
-.container{
-  display:grid;
-  grid-template-columns:1fr 1fr;
-  gap:24px;
-}
-
-.images, .words{
-  display:grid;
-  grid-template-columns: repeat(auto-fit, minmax(120px,1fr));
-  gap:16px;
-}
-
-.card{
-  background:white;
-  border-radius:16px;
-  padding:10px;
-  text-align:center;
-  box-shadow:0 4px 8px rgba(0,0,0,0.1);
-}
-
-.image{
-  width:100%;
-  height:100px;
-  object-fit:contain;
-  cursor:grab;
-}
-
-.word{
-  padding:18px;
-  background:#fff;
-  border:2px dashed #0b5ed7;
-  border-radius:14px;
-  font-size:17px;
-  font-weight:bold;
-  text-align:center;
-}
-
-.correct{
-  background:#d4edda;
-  border-color:green;
-}
-.wrong{
-  background:#f8d7da;
-  border-color:red;
-}
-</style>
-</head>
-
-<body>
-
-<h1>🧩 Match</h1>
-
-<div class="container">
-  <div class="images" id="images"></div>
-  <div class="words" id="words"></div>
-</div>
-
-<script>
-const data = <?= json_encode($data ?: []) ?>;
-
-const shuffle = arr => arr.sort(() => Math.random() - 0.5);
-
-const imagesDiv = document.getElementById("images");
-const wordsDiv = document.getElementById("words");
-
-shuffle([...data]).forEach(item=>{
-  imagesDiv.innerHTML += `
-    <div class="card">
-      <img src="${item.img}" class="image"
-        draggable="true"
-        ondragstart="drag(event)"
-        id="${item.id}">
-    </div>
-  `;
-});
-
-shuffle([...data]).forEach(item=>{
-  wordsDiv.innerHTML += `
-    <div class="word"
-      data-id="${item.id}"
-      ondragover="allowDrop(event)"
-      ondrop="drop(event)">
-      ${item.text}
-    </div>
-  `;
-});
-
-function allowDrop(ev){
-  ev.preventDefault();
-}
-
-function drag(ev){
-  ev.dataTransfer.setData("text", ev.target.id);
-}
-
-function drop(ev){
-  ev.preventDefault();
-
-  const draggedId = ev.dataTransfer.getData("text");
-  const targetId = ev.target.dataset.id;
-
-  if(draggedId === targetId){
-    ev.target.classList.add("correct");
-    ev.target.innerHTML += " ✅";
-    document.getElementById(draggedId).style.opacity="0.3";
-  }else{
-    ev.target.classList.add("wrong");
-    setTimeout(()=>ev.target.classList.remove("wrong"),800);
-  }
-}
-</script>
-
-</body>
-</html>
