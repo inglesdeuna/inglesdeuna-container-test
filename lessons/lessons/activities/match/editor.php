@@ -46,11 +46,11 @@ if($_SERVER["REQUEST_METHOD"] === "POST"){
     $json = json_encode($items, JSON_UNESCAPED_UNICODE);
 
     $stmt = $pdo->prepare("
-    INSERT INTO activities (unit_id, type, content_json)
-    VALUES (:unit,'match',:json)
+    INSERT INTO activities (unit_id, type, data)
+    VALUES (:unit,'match',:json::jsonb)
 
     ON CONFLICT (unit_id,type)
-    DO UPDATE SET content_json = EXCLUDED.content_json
+    DO UPDATE SET data = EXCLUDED.data
     ");
 
     $stmt->execute([
@@ -66,51 +66,12 @@ if($_SERVER["REQUEST_METHOD"] === "POST"){
    CARGAR EXISTENTE
 ========================= */
 $stmt = $pdo->prepare("
-SELECT content_json FROM activities
+SELECT data FROM activities
 WHERE unit_id=:unit AND type='match'
 ");
 
 $stmt->execute(["unit"=>$unit]);
 
 $row = $stmt->fetch(PDO::FETCH_ASSOC);
-$data = json_decode($row["content_json"] ?? "[]", true);
+$data = json_decode($row["data"] ?? "[]", true);
 ?>
-<h2>🧩 Match Editor</h2>
-
-<form method="post" enctype="multipart/form-data">
-
-<div id="rows">
-
-<?php foreach($data as $d): ?>
-<div class="row">
-<input type="text" name="text[]" value="<?=htmlspecialchars($d["text"])?>" placeholder="Texto">
-<input type="file" name="image[]">
-</div>
-<?php endforeach; ?>
-
-</div>
-
-<br>
-
-<button type="button" onclick="addRow()">+ Agregar</button>
-<button>💾 Guardar</button>
-
-</form>
-
-<script>
-function addRow(){
-    document.getElementById("rows").innerHTML += `
-    <div class="row">
-        <input type="text" name="text[]" placeholder="Texto">
-        <input type="file" name="image[]">
-    </div>`;
-}
-</script>
-
-<style>
-.row{
-display:flex;
-gap:10px;
-margin-bottom:10px;
-}
-</style>
