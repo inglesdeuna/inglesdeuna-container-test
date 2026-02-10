@@ -25,6 +25,25 @@ CREATE TABLE IF NOT EXISTS units (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+/* ===============================
+   UNIQUE activities (unit + type)
+   =============================== */
+
+try {
+
+    $pdo->exec("
+        ALTER TABLE activities
+        ADD CONSTRAINT activities_unit_type_unique
+        UNIQUE (unit_id, type);
+    ");
+
+    echo "✅ UNIQUE activities constraint OK<br>";
+
+} catch (Exception $e) {
+    echo "⚠ UNIQUE activities ya existe<br>";
+}
+
+
 CREATE TABLE IF NOT EXISTS activities (
     id TEXT PRIMARY KEY,
     unit_id TEXT REFERENCES units(id) ON DELETE CASCADE,
