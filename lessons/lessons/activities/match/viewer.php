@@ -27,7 +27,11 @@ $data=json_decode($row["data"],true)??[];
 <style>
 body{font-family:Arial;background:#eef6ff;padding:20px;}
 .container{display:grid;grid-template-columns:1fr 1fr;gap:24px;}
-.images,.words{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:16px;}
+.images, .words{
+display:grid;
+grid-template-columns: repeat(6, 1fr);
+gap:16px;
+}
 .card{background:white;border-radius:16px;padding:10px;text-align:center;box-shadow:0 4px 8px rgba(0,0,0,0.1);}
 .image{width:100%;height:80px;object-fit:contain;cursor:grab;}
 .word{
