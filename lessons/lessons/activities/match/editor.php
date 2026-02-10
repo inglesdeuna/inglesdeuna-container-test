@@ -88,7 +88,7 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
 
                 move_uploaded_file($tmp, $uploadDir."/".$name);
 
-                $imgPath = "activities/match/uploads/".$unit."/".$name;
+                $imgPath = "/lessons/lessons/activities/match/uploads/".$unit."/".$name;
             }
 
             if(!$imgPath) continue;
