@@ -78,8 +78,8 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
         "json"=>$json
     ]);
 
-    header("Location: ../hub/index.php?unit=".$unit);
-    exit;
+   header("Location: editor.php?unit=".$unit."&saved=1");
+exit;
 }
 
 /* =========================
