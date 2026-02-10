@@ -118,9 +118,6 @@ text-decoration:none;
 
 <h1>🧩 Match Activity</h1>
 
-
-<h1>🧩 Match Activity</h1>
-
 <div class="container">
 <div class="images" id="images"></div>
 <div class="words" id="words"></div>
