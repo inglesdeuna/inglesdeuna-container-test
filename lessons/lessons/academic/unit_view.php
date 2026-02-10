@@ -98,6 +98,12 @@ button{
 <button>➕ Drag & Drop</button>
 </a>
 
+<br><br>
+
+<a href="../activities/match/viewer.php?unit=<?= urlencode($unitId) ?>">
+<button>🧩 Match</button>
+</a>
+
 </div>
 
 <div class="card">
@@ -105,6 +111,7 @@ button{
 <button>⬅ Volver al curso</button>
 </a>
 </div>
+
 
 </body>
 </html>
