@@ -1,125 +1,116 @@
 <?php
 require_once __DIR__ . "/../../config/db.php";
 
-/* =========================
-   VALIDAR UNIT
-========================= */
 $unit = $_GET["unit"] ?? null;
+if(!$unit) die("Unit no especificada");
 
-if (!$unit) {
-    die("Unit no especificada");
+/* =========================
+   UPLOAD DIR
+========================= */
+$uploadDir = __DIR__ . "/uploads/" . $unit;
+if(!is_dir($uploadDir)){
+    mkdir($uploadDir, 0777, true);
 }
 
 /* =========================
-   GUARDAR MATCH
+   GUARDAR
 ========================= */
-if ($_SERVER["REQUEST_METHOD"] === "POST") {
+if($_SERVER["REQUEST_METHOD"] === "POST"){
 
-    $json = $_POST["json"] ?? "[]";
+    $items = [];
+
+    foreach($_POST["text"] as $i => $text){
+
+        if(trim($text) == "") continue;
+
+        $imgPath = "";
+
+        if(isset($_FILES["image"]["name"][$i]) &&
+           $_FILES["image"]["name"][$i] != ""){
+
+            $tmp = $_FILES["image"]["tmp_name"][$i];
+            $name = uniqid()."_".basename($_FILES["image"]["name"][$i]);
+
+            move_uploaded_file($tmp, $uploadDir."/".$name);
+
+            $imgPath = "activities/match/uploads/".$unit."/".$name;
+        }
+
+        $items[] = [
+            "id" => uniqid(),
+            "text" => $text,
+            "image" => $imgPath
+        ];
+    }
+
+    $json = json_encode($items, JSON_UNESCAPED_UNICODE);
 
     $stmt = $pdo->prepare("
-        INSERT INTO activities (unit_id, type, data)
-        VALUES (:unit, 'match', :json)
-        ON CONFLICT (unit_id, type)
-DO UPDATE SET content_json = EXCLUDED.content_json
+    INSERT INTO activities (unit_id, type, content_json)
+    VALUES (:unit,'match',:json)
+
+    ON CONFLICT (unit_id,type)
+    DO UPDATE SET content_json = EXCLUDED.content_json
     ");
 
     $stmt->execute([
-        "unit" => $unit,
-        "json" => $json
+        "unit"=>$unit,
+        "json"=>$json
     ]);
 
-    echo "<h2>✅ Match guardado correctamente</h2>";
+    header("Location: ../hub/index.php?unit=".$unit);
+    exit;
 }
 
 /* =========================
-   CARGAR MATCH EXISTENTE
+   CARGAR EXISTENTE
 ========================= */
 $stmt = $pdo->prepare("
-    SELECT data
-    FROM activities
-    WHERE unit_id = :unit
-    AND type = 'match'
-    LIMIT 1
+SELECT content_json FROM activities
+WHERE unit_id=:unit AND type='match'
 ");
 
-$stmt->execute([
-    "unit" => $unit
-]);
+$stmt->execute(["unit"=>$unit]);
 
 $row = $stmt->fetch(PDO::FETCH_ASSOC);
-
-$existing = $row["data"] ?? "[]";
-
+$data = json_decode($row["content_json"] ?? "[]", true);
 ?>
+<h2>🧩 Match Editor</h2>
 
-<!DOCTYPE html>
-<html lang="es">
-<head>
-<meta charset="UTF-8">
-<title>Match Editor</title>
+<form method="post" enctype="multipart/form-data">
 
-<style>
-body{
-    font-family: Arial;
-    background:#eef6ff;
-    padding:40px;
-}
+<div id="rows">
 
-.box{
-    max-width:900px;
-    margin:auto;
-    background:white;
-    padding:30px;
-    border-radius:16px;
-    box-shadow:0 8px 20px rgba(0,0,0,0.1);
-}
-
-textarea{
-    width:100%;
-    height:350px;
-    padding:15px;
-    font-family: monospace;
-    border-radius:10px;
-    border:1px solid #ccc;
-}
-
-button{
-    margin-top:20px;
-    padding:14px 20px;
-    border:none;
-    background:#0b5ed7;
-    color:white;
-    font-size:16px;
-    border-radius:10px;
-    cursor:pointer;
-}
-
-button:hover{
-    background:#094db5;
-}
-</style>
-
-</head>
-<body>
-
-<div class="box">
-
-<h1>🧩 Match Editor</h1>
-
-<form method="POST">
-
-<textarea name="json">
-<?= htmlspecialchars($existing) ?>
-</textarea>
-
-<br>
-
-<button type="submit">Guardar Match</button>
-
-</form>
+<?php foreach($data as $d): ?>
+<div class="row">
+<input type="text" name="text[]" value="<?=htmlspecialchars($d["text"])?>" placeholder="Texto">
+<input type="file" name="image[]">
+</div>
+<?php endforeach; ?>
 
 </div>
 
-</body>
-</html>
+<br>
+
+<button type="button" onclick="addRow()">+ Agregar</button>
+<button>💾 Guardar</button>
+
+</form>
+
+<script>
+function addRow(){
+    document.getElementById("rows").innerHTML += `
+    <div class="row">
+        <input type="text" name="text[]" placeholder="Texto">
+        <input type="file" name="image[]">
+    </div>`;
+}
+</script>
+
+<style>
+.row{
+display:flex;
+gap:10px;
+margin-bottom:10px;
+}
+</style>
