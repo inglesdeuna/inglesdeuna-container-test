@@ -112,6 +112,12 @@ text-decoration:none;
 <a class="hub" href="../hub/index.php?unit=<?=$unit?>">
 ← Volver al Hub
 </a>
+  <a class="hub" href="../hub/index.php?unit=<?=$unit?>">
+← Volver al Hub
+</a>
+
+<h1>🧩 Match Activity</h1>
+
 
 <h1>🧩 Match Activity</h1>
 
