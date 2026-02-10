@@ -21,7 +21,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         INSERT INTO activities (unit_id, type, data)
         VALUES (:unit, 'match', :json)
         ON CONFLICT (unit_id, type)
-        DO UPDATE SET data = :json
+DO UPDATE SET content_json = EXCLUDED.content_json
     ");
 
     $stmt->execute([
