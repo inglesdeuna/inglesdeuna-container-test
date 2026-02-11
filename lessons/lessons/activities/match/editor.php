@@ -18,6 +18,60 @@ SAVE MATCH
 ====================== */
 if($_SERVER["REQUEST_METHOD"]==="POST"){
 
+    /* ===== 1. Cargar existentes ===== */
+    $stmtOld=$pdo->prepare("
+        SELECT data FROM activities
+        WHERE unit_id=:unit AND type='match'
+    ");
+    $stmtOld->execute(["unit"=>$unit]);
+
+    $rowOld=$stmtOld->fetch(PDO::FETCH_ASSOC);
+
+    $items=[];
+
+    if($rowOld && $rowOld["data"]){
+        $items=json_decode($rowOld["data"],true) ?? [];
+    }
+
+    /* ===== 2. Agregar nuevos ===== */
+    if(isset($_POST["text"]) && is_array($_POST["text"])){
+
+        foreach($_POST["text"] as $i=>$text){
+
+            if(trim($text)=="") continue;
+            if(empty($_FILES["image"]["name"][$i])) continue;
+
+            $tmp=$_FILES["image"]["tmp_name"][$i];
+            $name=uniqid()."_".basename($_FILES["image"]["name"][$i]);
+
+            move_uploaded_file($tmp,$uploadDir."/".$name);
+
+            $items[]=[
+                "id"=>uniqid(),
+                "text"=>$text,
+                "image"=>"activities/match/uploads/".$unit."/".$name
+            ];
+        }
+    }
+
+    /* ===== 3. Guardar TODO ===== */
+    $json=json_encode($items,JSON_UNESCAPED_UNICODE);
+
+    $stmt=$pdo->prepare("
+        INSERT INTO activities (id,unit_id,type,data)
+        VALUES (gen_random_uuid(),:unit,'match',:data)
+        ON CONFLICT (unit_id,type)
+        DO UPDATE SET data=EXCLUDED.data
+    ");
+
+    $stmt->execute([
+        "unit"=>$unit,
+        "data"=>$json
+    ]);
+
+}
+
+
     $items=[];
 
     /* Cargar existente */
