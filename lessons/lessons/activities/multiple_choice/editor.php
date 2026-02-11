@@ -1,66 +1,207 @@
 <?php
-$file = __DIR__ . "/questions.json";
-$data = file_exists($file) ? json_decode(file_get_contents($file), true) : [];
+require_once __DIR__."/../../config/db.php";
 
-if ($_SERVER["REQUEST_METHOD"] === "POST") {
-    $data[] = [
-        "question" => trim($_POST["question"]),
-        "image"    => trim($_POST["image"]),
-        "audio"    => trim($_POST["audio"]),
-        "options"  => $_POST["options"],
-        "answer"   => (int)$_POST["answer"]
-    ];
+$unit=$_GET["unit"] ?? null;
+if(!$unit) die("Unit missing");
 
-    file_put_contents($file, json_encode($data, JSON_PRETTY_PRINT));
+/* UPLOAD DIR */
+
+$uploadDir=__DIR__."/uploads/".$unit;
+
+if(!is_dir($uploadDir)){
+mkdir($uploadDir,0777,true);
+}
+
+/* LOAD EXISTING */
+
+$stmt=$pdo->prepare("
+SELECT data FROM activities
+WHERE unit_id=:unit AND type='multiple_choice'
+");
+
+$stmt->execute(["unit"=>$unit]);
+$row=$stmt->fetch(PDO::FETCH_ASSOC);
+
+$data=json_decode($row["data"] ?? "[]",true);
+
+/* DELETE */
+
+if(isset($_GET["delete"])){
+
+$i=intval($_GET["delete"]);
+
+if(isset($data[$i])){
+array_splice($data,$i,1);
+}
+
+$json=json_encode($data,JSON_UNESCAPED_UNICODE);
+
+$stmt=$pdo->prepare("
+UPDATE activities
+SET data=:json
+WHERE unit_id=:unit AND type='multiple_choice'
+");
+
+$stmt->execute([
+"json"=>$json,
+"unit"=>$unit
+]);
+
+header("Location: editor.php?unit=".$unit);
+exit;
+}
+
+/* SAVE */
+
+if($_SERVER["REQUEST_METHOD"]==="POST"){
+
+$newData=$data;
+
+$q=trim($_POST["question"]);
+$o1=trim($_POST["opt1"]);
+$o2=trim($_POST["opt2"]);
+$o3=trim($_POST["opt3"]);
+$c=intval($_POST["correct"]);
+
+if($q!=""){
+
+$img="";
+
+if(!empty($_FILES["img"]["name"])){
+
+$tmp=$_FILES["img"]["tmp_name"];
+$name=uniqid()."_".basename($_FILES["img"]["name"]);
+
+move_uploaded_file($tmp,$uploadDir."/".$name);
+
+$img="activities/multiple_choice/uploads/".$unit."/".$name;
+}
+
+$newData[]=[
+"question"=>$q,
+"img"=>$img,
+"options"=>[$o1,$o2,$o3],
+"correct"=>$c
+];
+}
+
+$json=json_encode($newData,JSON_UNESCAPED_UNICODE);
+
+$stmt=$pdo->prepare("
+INSERT INTO activities(id,unit_id,type,data)
+VALUES(:id,:unit,'multiple_choice',:json)
+ON CONFLICT(unit_id,type)
+DO UPDATE SET data=EXCLUDED.data
+");
+
+$stmt->execute([
+"id"=>uniqid("act_"),
+"unit"=>$unit,
+"json"=>$json
+]);
+
+header("Location: editor.php?unit=".$unit."&saved=1");
+exit;
 }
 ?>
+
 <!DOCTYPE html>
-<html lang="es">
+<html>
 <head>
 <meta charset="UTF-8">
-<title>Multiple Choice – Docente</title>
+<title>Multiple Choice Editor</title>
+
 <style>
-body{font-family:Arial;background:#f5f7fb;padding:20px}
-.card{background:#fff;padding:25px;border-radius:12px;max-width:800px;margin:auto}
-input,button{width:100%;padding:10px;margin:8px 0}
-.option{display:flex;gap:10px}
-.option input{flex:1}
-button{background:#2563eb;color:#fff;border:none;border-radius:6px}
-.list{margin-top:30px}
-.item{background:#f9fafb;padding:15px;border-radius:8px;margin-bottom:10px}
+body{font-family:Arial;background:#eef6ff;padding:20px;}
+
+.box{
+max-width:900px;
+margin:auto;
+background:white;
+padding:20px;
+border-radius:16px;
+box-shadow:0 4px 10px rgba(0,0,0,.1);
+}
+
+input{padding:10px;border-radius:8px;border:1px solid #ccc;width:100%;}
+
+.btn{
+padding:10px 18px;
+border:none;
+border-radius:10px;
+cursor:pointer;
+font-weight:bold;
+margin-top:10px;
+}
+
+.save{background:#2f6fed;color:white;}
+.hub{background:#28a745;color:white;}
+
+.saved{
+background:#f7f7f7;
+padding:10px;
+border-radius:12px;
+margin-top:10px;
+display:flex;
+align-items:center;
+gap:10px;
+}
+
+.del{margin-left:auto;color:red;text-decoration:none;font-size:20px;}
+.mini{width:60px;height:60px;object-fit:contain;}
 </style>
 </head>
 
 <body>
 
-<div class="card">
-<h2>➕ Nueva pregunta</h2>
+<div class="box">
 
-<form method="post">
-<input name="question" placeholder="Pregunta" required>
+<h2>🧠 Multiple Choice Editor</h2>
 
-<input name="image" placeholder="URL de imagen (opcional)">
-<input name="audio" placeholder="URL de audio (opcional)">
+<form method="post" enctype="multipart/form-data">
 
-<h4>Opciones</h4>
-<?php for($i=0;$i<4;$i++): ?>
-<div class="option">
-  <input name="options[]" placeholder="Opción <?= $i+1 ?>" required>
-  <input type="radio" name="answer" value="<?= $i ?>" required> ✔
-</div>
-<?php endfor; ?>
+<input name="question" placeholder="Pregunta"><br><br>
+<input name="opt1" placeholder="Opción 1"><br><br>
+<input name="opt2" placeholder="Opción 2"><br><br>
+<input name="opt3" placeholder="Opción 3"><br><br>
 
-<button>Guardar pregunta</button>
+Correcta:
+<select name="correct">
+<option value="0">Opción 1</option>
+<option value="1">Opción 2</option>
+<option value="2">Opción 3</option>
+</select><br><br>
+
+Imagen opcional:
+<input type="file" name="img"><br><br>
+
+<button class="btn save">💾 Guardar</button>
+
+<a href="../hub/index.php?unit=<?=$unit?>" class="btn hub">← Volver Hub</a>
+
 </form>
+
+<hr>
+
+<h3>📦 Guardadas</h3>
+
+<?php foreach($data as $i=>$q): ?>
+<div class="saved">
+
+<?php if(!empty($q["img"])): ?>
+<img src="/lessons/lessons/<?=$q["img"]?>" class="mini">
+<?php endif; ?>
+
+<div>
+<b><?=$q["question"]?></b><br>
+<?=$q["options"][$q["correct"]]?>
 </div>
 
-<div class="card list">
-<h3>📚 Preguntas guardadas</h3>
-<?php foreach ($data as $q): ?>
-<div class="item">
-<strong><?= htmlspecialchars($q["question"]) ?></strong>
+<a class="del" href="?unit=<?=$unit?>&delete=<?=$i?>">❌</a>
+
 </div>
 <?php endforeach; ?>
+
 </div>
 
 </body>
