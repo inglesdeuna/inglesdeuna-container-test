@@ -27,14 +27,76 @@ if(!is_array($data)) $data=[];
 <title>Listen & Order</title>
 
 <style>
-body{font-family:Arial;background:#eef6ff;padding:30px;}
-.box{background:white;padding:25px;border-radius:16px;max-width:900px;margin:auto;box-shadow:0 4px 10px rgba(0,0,0,.1);text-align:center;}
-.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:15px;margin-top:20px;}
-.img{width:100%;height:110px;object-fit:contain;background:#f8f9fa;padding:10px;border-radius:12px;cursor:pointer;border:3px solid transparent;}
-.selected{border:3px solid #0b5ed7;background:#dbe9ff;}
-button{background:#0b5ed7;color:white;border:none;padding:10px 16px;border-radius:10px;cursor:pointer;margin:6px;}
+body{
+font-family:Arial;
+background:#eef6ff;
+padding:30px;
+}
+
+.box{
+background:white;
+padding:25px;
+border-radius:16px;
+max-width:950px;
+margin:auto;
+box-shadow:0 4px 10px rgba(0,0,0,.1);
+text-align:center;
+}
+
+.bank, .slots{
+display:flex;
+flex-wrap:wrap;
+justify-content:center;
+gap:15px;
+margin-top:20px;
+min-height:120px;
+}
+
+.img{
+width:120px;
+height:110px;
+object-fit:contain;
+background:#f8f9fa;
+padding:10px;
+border-radius:12px;
+cursor:grab;
+border:3px solid transparent;
+}
+
+.slot{
+width:120px;
+height:110px;
+border-radius:12px;
+border:3px dashed #0b5ed7;
+display:flex;
+align-items:center;
+justify-content:center;
+background:#f1f6ff;
+}
+
+.slot img{
+width:100%;
+height:100%;
+object-fit:contain;
+}
+
+button{
+background:#0b5ed7;
+color:white;
+border:none;
+padding:10px 16px;
+border-radius:10px;
+cursor:pointer;
+margin:6px;
+}
+
 .green{background:#28a745;}
-.feedback{font-weight:bold;margin-top:15px;}
+
+.feedback{
+font-weight:bold;
+margin-top:15px;
+}
+
 .good{color:green;}
 .bad{color:red;}
 </style>
@@ -48,7 +110,11 @@ button{background:#0b5ed7;color:white;border:none;padding:10px 16px;border-radiu
 
 <button onclick="speak()">🔊 Listen</button>
 
-<div id="grid" class="grid"></div>
+<h3>🖼 Drag Images</h3>
+<div id="bank" class="bank"></div>
+
+<h3>📥 Order Here</h3>
+<div id="slots" class="slots"></div>
 
 <div>
 <button onclick="check()">✅ Check</button>
@@ -67,45 +133,93 @@ button{background:#0b5ed7;color:white;border:none;padding:10px 16px;border-radiu
 
 <script>
 
-const blocks=<?=json_encode($data)?>;
+const blocks = <?=json_encode($data)?>;
 
-let current=0;
-let correct=[];
-let mix=[];
-let chosen=[];
+let current = 0;
+let correct = [];
+let mix = [];
+let slots = [];
+
+function shuffle(arr){
+return [...arr].sort(()=>Math.random()-0.5);
+}
 
 function load(){
 
 if(!blocks[current]) return;
 
-correct=[...blocks[current].images];
-mix=[...blocks[current].images].sort(()=>Math.random()-0.5);
+const b = blocks[current;
 
-chosen=[];
+correct = [...b.images];
+mix = shuffle(b.images);
+slots = new Array(correct.length).fill(null);
+
 draw();
 document.getElementById("fb").innerHTML="";
 }
 
 function draw(){
 
-const g=document.getElementById("grid");
-g.innerHTML="";
+const bankDiv=document.getElementById("bank");
+const slotDiv=document.getElementById("slots");
+
+bankDiv.innerHTML="";
+slotDiv.innerHTML="";
 
 mix.forEach(img=>{
 
 const el=document.createElement("img");
 el.src="../../"+img;
 el.className="img";
+el.draggable=true;
 
-el.onclick=()=>{
-if(chosen.includes(img)) return;
-chosen.push(img);
-el.classList.add("selected");
+el.ondragstart=e=>{
+e.dataTransfer.setData("img",img);
 };
 
-g.appendChild(el);
+bankDiv.appendChild(el);
 
 });
+
+slots.forEach((val,i)=>{
+
+const s=document.createElement("div");
+s.className="slot";
+
+s.ondragover=e=>e.preventDefault();
+
+s.ondrop=e=>{
+e.preventDefault();
+const img=e.dataTransfer.getData("img");
+slots[i]=img;
+renderSlots();
+};
+
+slotDiv.appendChild(s);
+
+});
+
+renderSlots();
+}
+
+function renderSlots(){
+
+const slotDiv=document.getElementById("slots");
+
+[...slotDiv.children].forEach((slot,i)=>{
+
+slot.innerHTML="";
+
+if(slots[i]){
+
+const img=document.createElement("img");
+img.src="../../"+slots[i];
+slot.appendChild(img);
+
+}
+
+});
+
 }
 
 function speak(){
@@ -119,28 +233,16 @@ function check(){
 
 const fb=document.getElementById("fb");
 
-if(chosen.length!==correct.length){
-fb.innerHTML="Try again";
+for(let i=0;i<correct.length;i++){
+if(slots[i]!==correct[i]){
+fb.innerHTML="❌ Try again";
 fb.className="feedback bad";
 return;
 }
-
-let ok=true;
-
-for(let i=0;i<correct.length;i++){
-if(chosen[i]!==correct[i]){
-ok=false;
-break;
-}
 }
 
-if(ok){
-fb.innerHTML="Correct!";
+fb.innerHTML="✅ Correct!";
 fb.className="feedback good";
-}else{
-fb.innerHTML="Try again";
-fb.className="feedback bad";
-}
 }
 
 function next(){
