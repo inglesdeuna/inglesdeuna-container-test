@@ -1,4 +1,7 @@
 <?php
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+
 require_once __DIR__."/../../config/db.php";
 
 $unit = $_GET["unit"] ?? "";
@@ -45,13 +48,12 @@ cursor:pointer;
 <script>
 
 let data = <?=json_encode($data)?>;
+
 let words = [];
-let correct = [];
 
 data.forEach(item=>{
-let sentence = item.text || "";
-let parts = sentence.split(" ");
-correct.push(parts);
+let text = item.text || "";
+let parts = text.split(" ");
 words = words.concat(parts);
 });
 
@@ -68,7 +70,7 @@ container.appendChild(d);
 });
 
 function check(){
-alert("Check manual logic placeholder");
+alert("OK");
 }
 
 </script>
