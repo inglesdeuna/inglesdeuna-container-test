@@ -1,134 +1,153 @@
 <?php
-$file = __DIR__ . "/pronunciation.json";
-$data = file_exists($file) ? json_decode(file_get_contents($file), true) : [];
+require_once __DIR__."/../../config/db.php";
 
-/* ===== SAVE ===== */
-if ($_SERVER["REQUEST_METHOD"] === "POST") {
+$unit = $_GET["unit"] ?? null;
+if(!$unit) die("Unit no especificada");
 
-  $imagePath = "";
+$uploadDir = __DIR__."/uploads/".$unit;
+if(!is_dir($uploadDir)){
+    mkdir($uploadDir,0777,true);
+}
 
-  // 1️⃣ Imagen subida
-  if (!empty($_FILES["image_file"]["name"])) {
-    $dir = __DIR__ . "/upload/images/";
-    if (!is_dir($dir)) {
-      mkdir($dir, 0777, true);
+/* ======================
+LOAD EXISTING
+====================== */
+$stmt = $pdo->prepare("
+SELECT data FROM activities
+WHERE unit_id=:u AND type='pronunciation'
+");
+$stmt->execute(["u"=>$unit]);
+
+$row = $stmt->fetch(PDO::FETCH_ASSOC);
+$existing = json_decode($row["data"] ?? "[]", true);
+
+/* ======================
+SAVE
+====================== */
+if($_SERVER["REQUEST_METHOD"]==="POST"){
+
+    $items = $existing ?? [];
+
+    if(isset($_POST["en"]) && is_array($_POST["en"])){
+
+        foreach($_POST["en"] as $i=>$en){
+
+            $en = trim($en);
+            $ph = trim($_POST["ph"][$i] ?? "");
+            $es = trim($_POST["es"][$i] ?? "");
+
+            if(!$en) continue;
+
+            $imgPath="";
+
+            if(!empty($_FILES["img"]["name"][$i])){
+
+                $tmp = $_FILES["img"]["tmp_name"][$i];
+                $name = uniqid()."_".basename($_FILES["img"]["name"][$i]);
+
+                move_uploaded_file($tmp,$uploadDir."/".$name);
+
+                $imgPath="activities/pronunciation/uploads/".$unit."/".$name;
+            }
+
+            $items[]=[
+                "id"=>uniqid(),
+                "en"=>$en,
+                "ph"=>$ph,
+                "es"=>$es,
+                "img"=>$imgPath
+            ];
+        }
     }
 
-    $ext = pathinfo($_FILES["image_file"]["name"], PATHINFO_EXTENSION);
-    $name = uniqid("img_") . "." . $ext;
-    $target = $dir . $name;
+    $json=json_encode($items,JSON_UNESCAPED_UNICODE);
 
-    if (move_uploaded_file($_FILES["image_file"]["tmp_name"], $target)) {
-      $imagePath = "upload/images/" . $name;
-    }
-  }
+    $stmt=$pdo->prepare("
+    INSERT INTO activities(id,unit_id,type,data)
+    VALUES(gen_random_uuid(),:u,'pronunciation',:d)
+    ON CONFLICT(unit_id,type)
+    DO UPDATE SET data=EXCLUDED.data
+    ");
 
-  // 2️⃣ Si no hay archivo, usar URL
-  if ($imagePath === "" && !empty($_POST["image_url"])) {
-    $imagePath = trim($_POST["image_url"]);
-  }
+    $stmt->execute([
+        "u"=>$unit,
+        "d"=>$json
+    ]);
 
-  // Guardar ítem de pronunciación
-  $data[] = [
-    "en"    => trim($_POST["en"] ?? ""),
-    "ph"    => trim($_POST["ph"] ?? ""),
-    "es"    => trim($_POST["es"] ?? ""),
-    "image" => $imagePath
-  ];
-
-  file_put_contents(
-    $file,
-    json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)
-  );
-
-  exit; // permite agregar varios seguidos
+    header("Location: editor.php?unit=".$unit."&saved=1");
+    exit;
 }
 ?>
-<!DOCTYPE html>
-<html lang="es">
-<head>
-<meta charset="UTF-8">
-<title>Pronunciation – Editor Docente</title>
 
-<style>
-body{
-  font-family:Arial, sans-serif;
-  background:#f5f7fb;
-  padding:30px;
-}
+<h2>🎧 Pronunciation Editor</h2>
 
-h1{
-  color:#2563eb;
-  margin-bottom:20px;
-}
+<?php if(isset($_GET["saved"])): ?>
+<div style="color:green;font-weight:bold;">✔ Guardado</div>
+<?php endif; ?>
 
-.form{
-  background:#fff;
-  padding:20px;
-  border-radius:14px;
-  max-width:520px;
-  box-shadow:0 8px 20px rgba(0,0,0,.08);
-}
-
-input{
-  width:100%;
-  padding:10px;
-  margin-top:10px;
-}
-
-button{
-  margin-top:15px;
-  padding:12px 18px;
-  border:none;
-  border-radius:10px;
-  background:#2563eb;
-  color:white;
-  font-weight:bold;
-  cursor:pointer;
-}
-
-.list{
-  margin-top:30px;
-  max-width:520px;
-}
-
-.item{
-  background:#fff;
-  padding:12px;
-  border-radius:10px;
-  margin-bottom:10px;
-  box-shadow:0 4px 10px rgba(0,0,0,.06);
-}
-</style>
-</head>
-
-<body>
-
-<h1>🎧 Pronunciation – Editor</h1>
-
-<div class="form">
 <form method="post" enctype="multipart/form-data">
 
-  <input type="text" name="en" placeholder="Texto en inglés (ej: Stand up)" required>
-  <input type="text" name="ph" placeholder="Fonética (ej: stánd ap)">
-  <input type="text" name="es" placeholder="Traducción al español">
+<div id="rows">
 
-  <input type="file" name="image_file" accept="image/*">
-  <input type="url" name="image_url" placeholder="O URL de imagen (opcional)">
+<div class="row">
+<input name="en[]" placeholder="English">
+<input name="ph[]" placeholder="Phonetic">
+<input name="es[]" placeholder="Spanish">
+<input type="file" name="img[]">
+</div>
 
-  <button type="submit">➕ Agregar pronunciación</button>
+</div>
+
+<br>
+
+<button type="button" onclick="addRow()">➕ Add</button>
+<button>💾 Guardar Todo</button>
 
 </form>
-</div>
 
-<div class="list">
-<?php foreach ($data as $item): ?>
-  <div class="item">
-    <strong><?= htmlspecialchars($item["en"]) ?></strong><br>
-    <small><?= htmlspecialchars($item["es"]) ?></small>
-  </div>
+<hr>
+
+<h3>📋 Guardados</h3>
+
+<?php foreach($existing as $e): ?>
+<div class="saved">
+<?php if($e["img"]): ?>
+<img src="/lessons/lessons/<?=$e["img"]?>">
+<?php endif; ?>
+<b><?=$e["en"]?></b> — <?=$e["ph"]?> — <?=$e["es"]?>
+</div>
 <?php endforeach; ?>
-</div>
 
-</body>
-</html>
+<script>
+function addRow(){
+document.getElementById("rows").innerHTML+=`
+<div class="row">
+<input name="en[]" placeholder="English">
+<input name="ph[]" placeholder="Phonetic">
+<input name="es[]" placeholder="Spanish">
+<input type="file" name="img[]">
+</div>`;
+}
+</script>
+
+<style>
+.row{
+display:grid;
+grid-template-columns:repeat(4,1fr);
+gap:10px;
+margin-bottom:10px;
+}
+
+.saved{
+background:#fff;
+padding:10px;
+border-radius:10px;
+margin-bottom:10px;
+}
+
+.saved img{
+width:60px;
+display:block;
+margin-bottom:5px;
+}
+</style>
