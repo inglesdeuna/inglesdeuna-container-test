@@ -1,18 +1,25 @@
 <?php
 require_once __DIR__."/../../config/db.php";
 
-$unit=$_GET["unit"]??null;
+$unit=$_GET["unit"] ?? null;
 if(!$unit) die("Unit missing");
 
 $stmt=$pdo->prepare("
 SELECT data FROM activities
 WHERE unit_id=:unit AND type='pronunciation'
 ");
-$stmt->execute(["unit"=>$unit]);
 
+$stmt->execute(["unit"=>$unit]);
 $row=$stmt->fetch(PDO::FETCH_ASSOC);
-$data=json_decode($row["data"]??"[]",true);
+
+$data=json_decode($row["data"] ?? "[]",true);
 ?>
+
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Pronunciation</title>
 
 <style>
 body{
@@ -21,59 +28,89 @@ background:#eef6ff;
 padding:20px;
 }
 
-h1{text-align:center;color:#0b5ed7;}
+h1{
+text-align:center;
+color:#0b5ed7;
+}
 
 .grid{
 display:grid;
 grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
-gap:16px;
+gap:18px;
 }
 
 .card{
 background:white;
 padding:14px;
 border-radius:18px;
-box-shadow:0 4px 8px rgba(0,0,0,.1);
 text-align:center;
+box-shadow:0 4px 10px rgba(0,0,0,.1);
 }
 
 .image{
 width:100%;
 height:130px;
 object-fit:contain;
-margin-bottom:6px;
+}
+
+.command{
+font-size:18px;
+font-weight:bold;
+}
+
+.phonetic{
+font-size:13px;
+color:#666;
+}
+
+.spanish{
+font-size:15px;
+font-weight:600;
 }
 
 button{
-margin:4px;
-padding:7px 12px;
+padding:8px 14px;
 border:none;
 border-radius:10px;
-background:#0b5ed7;
+background:#2f6fed;
 color:white;
 cursor:pointer;
+margin:4px;
+}
+
+.hub{
+position:fixed;
+left:20px;
+top:20px;
+background:#28a745;
+color:white;
+padding:10px 18px;
+border-radius:10px;
+text-decoration:none;
+font-weight:bold;
 }
 </style>
+</head>
+
+<body>
+
+<a class="hub" href="../hub/index.php?unit=<?=$unit?>">← Volver Hub</a>
 
 <h1>🎧 Pronunciation</h1>
 
-<a href="../hub/index.php?unit=<?=$unit?>">⬅ Volver Hub</a>
-
 <div class="grid">
 
-<?php foreach($data as $i=>$d): ?>
+<?php foreach($data as $i=>$item): ?>
 
 <div class="card">
 
-<?php if(!empty($d["image"])): ?>
-<img class="image" src="/lessons/lessons/<?=$d["image"]?>">
-<?php endif; ?>
+<img class="image" src="/lessons/lessons/<?=$item["img"]?>">
 
-<div><b><?=$d["en"]?></b></div>
-<div><?=$d["ph"]?></div>
-<div><?=$d["es"]?></div>
+<div class="command"><?=$item["en"]?></div>
+<div class="phonetic"><?=$item["ph"]?></div>
+<div class="spanish"><?=$item["es"]?></div>
 
-<button onclick="speak('<?=$d["en"]?>')">🔊 Listen</button>
+<button onclick="speak('<?=$item["en"]?>')">🔊 Listen</button>
 <button onclick="record(<?=$i?>)">🎤 Speak</button>
 
 <div id="f<?=$i?>"></div>
@@ -85,7 +122,6 @@ cursor:pointer;
 </div>
 
 <script>
-
 function speak(text){
 let u=new SpeechSynthesisUtterance(text);
 u.lang="en-US";
@@ -102,9 +138,19 @@ function record(i){
 recognition.start();
 recognition.onresult=e=>{
 let said=e.results[0][0].transcript.toLowerCase();
-document.getElementById("f"+i).innerHTML=
-said;
+let correct=document.querySelectorAll(".command")[i].innerText.toLowerCase();
+let fb=document.getElementById("f"+i);
+
+if(said.includes(correct.split(" ")[0])){
+fb.innerHTML="🌟 Good!";
+fb.style.color="green";
+}else{
+fb.innerHTML="🔁 Try again";
+fb.style.color="orange";
+}
 };
 }
-
 </script>
+
+</body>
+</html>
