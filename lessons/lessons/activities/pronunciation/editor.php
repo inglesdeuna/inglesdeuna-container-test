@@ -1,247 +1,158 @@
 <?php
 require_once __DIR__."/../../config/db.php";
 
-$unit=$_GET["unit"] ?? null;
+$unit = $_GET["unit"] ?? null;
 if(!$unit) die("Unit missing");
 
-/* ========================
-UPLOAD DIR
-======================== */
-$uploadDir=__DIR__."/uploads/".$unit;
+/* =========================
+UPLOAD FOLDER SAFE
+========================= */
+
+$uploadDir = __DIR__."/uploads/".$unit;
+
 if(!is_dir($uploadDir)){
-mkdir($uploadDir,0777,true);
+    mkdir($uploadDir,0777,true);
 }
 
-/* ========================
-CARGAR EXISTENTE
-======================== */
+/* =========================
+LOAD EXISTING
+========================= */
+
 $stmt=$pdo->prepare("
 SELECT data FROM activities
-WHERE unit_id=:u AND type='pronunciation'
+WHERE unit_id=:unit AND type='pronunciation'
 ");
-$stmt->execute(["u"=>$unit]);
+$stmt->execute(["unit"=>$unit]);
 
 $row=$stmt->fetch(PDO::FETCH_ASSOC);
-$existing=json_decode($row["data"] ?? "[]",true);
+$items=json_decode($row["data"]??"[]",true);
 
-/* ========================
-GUARDAR
-======================== */
+/* =========================
+SAVE
+========================= */
+
 if($_SERVER["REQUEST_METHOD"]==="POST"){
 
-$newItems=[];
+    if(!isset($_POST["items"])) exit;
 
-if(isset($_POST["en"])){
+    $items=json_decode($_POST["items"],true);
 
-foreach($_POST["en"] as $i=>$en){
+    foreach($items as &$it){
 
-$en=trim($en);
-$ph=trim($_POST["ph"][$i] ?? "");
-$es=trim($_POST["es"][$i] ?? "");
+        if(isset($_FILES["image"]["name"][$it["temp"]]) &&
+           $_FILES["image"]["name"][$it["temp"]]!=""){
 
-if($en==="") continue;
+            $tmp=$_FILES["image"]["tmp_name"][$it["temp"]];
+            $name=uniqid()."_".basename($_FILES["image"]["name"][$it["temp"]]);
 
-$imgPath="";
+            move_uploaded_file($tmp,$uploadDir."/".$name);
 
-/* IMAGE UPLOAD */
-if(!empty($_FILES["img"]["name"][$i])){
+            $it["image"]="activities/pronunciation/uploads/".$unit."/".$name;
+        }
 
-$tmp=$_FILES["img"]["tmp_name"][$i];
-$name=uniqid()."_".basename($_FILES["img"]["name"][$i]);
+        unset($it["temp"]);
+    }
 
-move_uploaded_file($tmp,$uploadDir."/".$name);
+    $json=json_encode($items,JSON_UNESCAPED_UNICODE);
 
-$imgPath="activities/pronunciation/uploads/".$unit."/".$name;
-}
+    $stmt=$pdo->prepare("
+    INSERT INTO activities(unit_id,type,data,created_at)
+    VALUES(:unit,'pronunciation',:json,NOW())
+    ON CONFLICT(unit_id,type)
+    DO UPDATE SET data=:json
+    ");
 
-$newItems[]=[
-"id"=>uniqid(),
-"en"=>$en,
-"ph"=>$ph,
-"es"=>$es,
-"img"=>$imgPath
-];
+    $stmt->execute([
+        "unit"=>$unit,
+        "json"=>$json
+    ]);
 
-}
-
-}
-
-/* MERGE CON EXISTENTES */
-$final=array_merge($existing,$newItems);
-
-$json=json_encode($final,JSON_UNESCAPED_UNICODE);
-
-/* UPSERT */
-$stmt=$pdo->prepare("
-INSERT INTO activities(id,unit_id,type,data)
-VALUES(:id,:u,'pronunciation',:d)
-ON CONFLICT (unit_id,type)
-DO UPDATE SET data=EXCLUDED.data
-");
-
-$stmt->execute([
-"id"=>uniqid(),
-"u"=>$unit,
-"d"=>$json
-]);
-
-header("Location: editor.php?unit=".$unit."&saved=1");
-exit;
+    header("Location: editor.php?unit=".$unit."&saved=1");
+    exit;
 }
 ?>
 
-<!DOCTYPE html>
-<html>
-<head>
-<meta charset="UTF-8">
-<title>Pronunciation Editor</title>
+<h2>🎧 Pronunciation Editor</h2>
 
-<style>
+<?php if(isset($_GET["saved"])) echo "✅ Guardado<br><br>"; ?>
 
-body{
-font-family:Arial;
-background:#eef6ff;
-padding:30px;
-}
+<form method="POST" enctype="multipart/form-data" onsubmit="prepareSave()">
 
-.box{
-background:white;
-max-width:950px;
-margin:auto;
-padding:25px;
-border-radius:18px;
-box-shadow:0 6px 16px rgba(0,0,0,0.1);
-}
+<div id="rows"></div>
 
-.row{
-display:grid;
-grid-template-columns:2fr 1.5fr 2fr 2fr;
-gap:10px;
-margin-bottom:12px;
-}
-
-input{
-padding:10px;
-border-radius:10px;
-border:1px solid #ccc;
-}
-
-button{
-background:#0b5ed7;
-color:white;
-border:none;
-padding:10px 16px;
-border-radius:10px;
-cursor:pointer;
-font-weight:bold;
-}
-
-.hub{
-display:inline-block;
-background:#28a745;
-color:white;
-padding:10px 16px;
-border-radius:10px;
-text-decoration:none;
-margin-top:15px;
-}
-
-.saved{
-background:#f8fbff;
-padding:12px;
-border-radius:12px;
-margin-bottom:10px;
-display:flex;
-justify-content:space-between;
-align-items:center;
-}
-
-.delete{
-color:red;
-font-size:22px;
-text-decoration:none;
-}
-
-</style>
-</head>
-
-<body>
-
-<h2 style="text-align:center;">🎧 Pronunciation Editor</h2>
-
-<div class="box">
-
-<?php if(isset($_GET["saved"])): ?>
-<div style="color:green;font-weight:bold;">✔ Guardado</div>
-<?php endif; ?>
-
-<form method="POST" enctype="multipart/form-data">
-
-<div id="rows">
-
-<div class="row">
-<input name="en[]" placeholder="English">
-<input name="ph[]" placeholder="Phonetic">
-<input name="es[]" placeholder="Spanish">
-<input type="file" name="img[]">
-</div>
-
-</div>
+<input type="hidden" name="items" id="itemsInput">
 
 <br>
 
-<button type="button" onclick="addRow()">＋ Add</button>
+<button type="button" onclick="addRow()">+ Add</button>
 <button>💾 Guardar Todo</button>
 
 </form>
 
-<br>
-
-<a class="hub" href="../hub/index.php?unit=<?=$unit?>">
-⬅ Volver Hub
-</a>
-
 <hr>
 
-<h3>📋 Guardados</h3>
+<h3>📦 Guardados</h3>
 
-<?php foreach($existing as $i=>$e): ?>
-<div class="saved">
-
-<div style="display:flex;gap:10px;align-items:center;">
-
-<?php if(!empty($e["img"])): ?>
-<img src="/lessons/lessons/<?=$e["img"]?>" width="60">
-<?php endif; ?>
-
+<?php foreach($items as $it): ?>
 <div>
-<b><?=$e["en"]?></b><br>
-<?=$e["ph"]?><br>
-<?=$e["es"]?>
+<?php if(!empty($it["image"])): ?>
+<img src="/lessons/lessons/<?=$it["image"]?>" height="60">
+<?php endif; ?>
+<b><?=$it["en"]?></b><br>
+<?=$it["ph"]?><br>
+<?=$it["es"]?>
 </div>
-
-</div>
-
-<a class="delete"
-href="delete.php?unit=<?=$unit?>&i=<?=$i?>">✖</a>
-
-</div>
+<hr>
 <?php endforeach; ?>
 
-</div>
-
 <script>
+
+let rows=[];
+
 function addRow(){
-document.getElementById("rows").innerHTML+=`
-<div class="row">
-<input name="en[]" placeholder="English">
-<input name="ph[]" placeholder="Phonetic">
-<input name="es[]" placeholder="Spanish">
-<input type="file" name="img[]">
+
+let id=Date.now();
+
+rows.push({
+temp:id,
+en:"",
+ph:"",
+es:"",
+image:""
+});
+
+render();
+}
+
+function render(){
+
+let html="";
+
+rows.forEach((r,i)=>{
+
+html+=`
+<div style="margin-bottom:10px">
+<input placeholder="English"
+oninput="rows[${i}].en=this.value">
+
+<input placeholder="Phonetic"
+oninput="rows[${i}].ph=this.value">
+
+<input placeholder="Spanish"
+oninput="rows[${i}].es=this.value">
+
+<input type="file" name="image[${r.temp}]">
+
 </div>
 `;
-}
-</script>
 
-</body>
-</html>
+});
+
+document.getElementById("rows").innerHTML=html;
+}
+
+function prepareSave(){
+document.getElementById("itemsInput").value=JSON.stringify(rows);
+}
+
+</script>
