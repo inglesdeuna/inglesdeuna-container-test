@@ -1,20 +1,19 @@
 <?php
-require_once __DIR__ . "/../../config/db.php";
+require_once __DIR__."/../../config/db.php";
 
-$unit = $_GET["unit"] ?? null;
-if(!$unit) die("Unit missing");
+$unit=$_GET["unit"] ?? null;
+if(!$unit) die("No unit");
 
-/* LOAD DATA */
-$stmt = $pdo->prepare("
+$stmt=$pdo->prepare("
 SELECT data FROM activities
-WHERE unit_id=:unit AND type='listen_order'
-LIMIT 1
+WHERE unit_id=:u AND type='listen_order'
 ");
+$stmt->execute(["u"=>$unit]);
 
-$stmt->execute(["unit"=>$unit]);
-$row = $stmt->fetch(PDO::FETCH_ASSOC);
+$row=$stmt->fetch(PDO::FETCH_ASSOC);
+$data=json_decode($row["data"] ?? "[]", true);
 
-$items = json_decode($row["data"] ?? "[]", true);
+if(!$data) die("No data");
 ?>
 
 <!DOCTYPE html>
@@ -28,169 +27,156 @@ body{
 font-family:Arial;
 background:#eef6ff;
 padding:20px;
-}
-
-h1{
 text-align:center;
-color:#0b5ed7;
 }
 
-.wrap{
-max-width:900px;
-margin:auto;
-}
-
-.card{
-background:white;
-padding:20px;
-border-radius:16px;
-box-shadow:0 4px 8px rgba(0,0,0,0.1);
-margin-bottom:20px;
-}
-
-.image{
-width:100%;
-max-height:200px;
-object-fit:contain;
-margin-bottom:10px;
-}
-
-.words{
+.images{
 display:flex;
+gap:15px;
+justify-content:center;
 flex-wrap:wrap;
-gap:10px;
-margin-top:10px;
+margin:25px 0;
 }
 
-.word{
+.img{
+width:140px;
+height:140px;
 background:white;
+border-radius:15px;
+box-shadow:0 4px 8px rgba(0,0,0,0.1);
+cursor:grab;
+display:flex;
+align-items:center;
+justify-content:center;
+}
+
+.img img{
+max-width:100%;
+max-height:100%;
+}
+
+.drop{
 border:2px dashed #0b5ed7;
-padding:10px 16px;
-border-radius:12px;
-cursor:pointer;
-font-weight:bold;
+padding:20px;
+min-height:160px;
+border-radius:15px;
+display:flex;
+gap:15px;
+justify-content:center;
+flex-wrap:wrap;
 }
 
-.selected{
-background:#d4edda;
-border-color:green;
-}
-
-.btn{
+button{
+padding:10px 18px;
+border:none;
+border-radius:10px;
 background:#0b5ed7;
 color:white;
-border:none;
-padding:12px 20px;
-border-radius:10px;
+margin:10px;
 cursor:pointer;
-}
-
-.next{
-background:#28a745;
 }
 
 .hub{
-position:fixed;
-top:20px;
-right:20px;
 background:#28a745;
-color:white;
-padding:10px 18px;
-border-radius:10px;
-text-decoration:none;
 }
 </style>
 </head>
 
 <body>
 
-<a class="hub" href="../hub/index.php?unit=<?=$unit?>">← Hub</a>
-
 <h1>🎧 Listen & Order</h1>
 
-<div class="wrap" id="game"></div>
+<button onclick="play()">🔊 Listen</button>
+
+<div class="images" id="pool"></div>
+
+<h3>Your Order</h3>
+<div class="drop" id="drop"
+ondragover="allow(event)"
+ondrop="drop(event)">
+</div>
+
+<br>
+
+<button onclick="check()">✔ Check</button>
+<button onclick="reset()">🔄 Reset</button>
+
+<br>
+
+<a href="../hub/index.php?unit=<?=$unit?>">
+<button class="hub">← Volver Hub</button>
+</a>
+
+<audio id="audio" src="<?= $data["audio"] ?>"></audio>
 
 <script>
+const data = <?= json_encode($data) ?>;
+const correct = data.order;
+const images = data.images;
 
-const data = <?=json_encode($items)?>;
+let placed=[];
 
-let index = 0;
-let selected = [];
-
-function shuffle(a){
- return a.sort(()=>Math.random()-0.5);
+function play(){
+document.getElementById("audio").play();
 }
 
-function render(){
-
- selected=[];
-
- const item = data[index];
- if(!item) return;
-
- let words = shuffle(item.text.split(" "));
-
- document.getElementById("game").innerHTML = `
- <div class="card">
-
- ${item.image ? `<img class="image" src="/${item.image}">` : ""}
-
- <button class="btn" onclick="playAudio('${item.audio}')">🔊 Listen</button>
-
- <div class="words" id="words">
- ${words.map(w=>`<div class="word" onclick="pick(this,'${w}')">${w}</div>`).join("")}
- </div>
-
- <br>
- <button class="btn" onclick="check()">Check</button>
-
- <div id="msg"></div>
-
- </div>
- `;
+function allow(e){
+e.preventDefault();
 }
 
-function pick(el,w){
- if(el.classList.contains("selected")) return;
- el.classList.add("selected");
- selected.push(w);
+function drop(e){
+e.preventDefault();
+let id=e.dataTransfer.getData("id");
+
+if(!placed.includes(id)){
+placed.push(id);
+renderDrop();
+}
+}
+
+function drag(e,id){
+e.dataTransfer.setData("id",id);
+}
+
+function renderPool(){
+let html="";
+images.forEach(img=>{
+if(!placed.includes(img.id)){
+html+=`
+<div class="img" draggable="true"
+ondragstart="drag(event,'${img.id}')">
+<img src="${img.src}">
+</div>`;
+}
+});
+document.getElementById("pool").innerHTML=html;
+}
+
+function renderDrop(){
+let html="";
+placed.forEach(id=>{
+let img=images.find(i=>i.id==id);
+html+=`<div class="img"><img src="${img.src}"></div>`;
+});
+document.getElementById("drop").innerHTML=html;
+renderPool();
 }
 
 function check(){
-
- const correct = data[index].text.trim();
- const user = selected.join(" ").trim();
-
- if(user === correct){
-
- document.getElementById("msg").innerHTML =
- "<br><b style='color:green'>Good!</b>";
-
- setTimeout(()=>{
- index++;
- if(index < data.length){
- render();
- }else{
- document.getElementById("game").innerHTML =
- "<h2>🌟 Finished!</h2>";
- }
- },1000);
-
- }else{
- document.getElementById("msg").innerHTML =
- "<br><b style='color:red'>Try again</b>";
- selected=[];
- document.querySelectorAll(".word").forEach(w=>w.classList.remove("selected"));
- }
+if(JSON.stringify(placed)==JSON.stringify(correct)){
+alert("⭐ Correct!");
+location.reload();
+}else{
+alert("Try again");
+}
 }
 
-function playAudio(src){
- let a = new Audio("/"+src);
- a.play();
+function reset(){
+placed=[];
+renderDrop();
 }
 
-render();
-
+renderPool();
 </script>
 
 </body>
