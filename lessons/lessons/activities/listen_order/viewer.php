@@ -1,14 +1,20 @@
 <?php
-require_once __DIR__."/../../config/db.php";
+require_once __DIR__ . "/../../config/db.php";
 
-$unit=$_GET["unit"] ?? null;
+$unit = $_GET["unit"] ?? null;
 if(!$unit) die("Unit missing");
 
-$stmt=$pdo->prepare("SELECT data FROM activities WHERE unit_id=? AND type='listen_order'");
-$stmt->execute([$unit]);
-$row=$stmt->fetch(PDO::FETCH_ASSOC);
+/* LOAD DATA */
+$stmt = $pdo->prepare("
+SELECT data FROM activities
+WHERE unit_id=:unit AND type='listen_order'
+LIMIT 1
+");
 
-$data=json_decode($row["data"] ?? "[]",true);
+$stmt->execute(["unit"=>$unit]);
+$row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+$items = json_decode($row["data"] ?? "[]", true);
 ?>
 
 <!DOCTYPE html>
@@ -18,38 +24,69 @@ $data=json_decode($row["data"] ?? "[]",true);
 <title>Listen & Order</title>
 
 <style>
-body{font-family:Arial;background:#eef6ff;padding:20px;}
-h1{text-align:center;color:#0b5ed7;}
+body{
+font-family:Arial;
+background:#eef6ff;
+padding:20px;
+}
 
-.grid{
-display:grid;
-grid-template-columns:repeat(4,1fr);
-gap:16px;
-margin-top:20px;
+h1{
+text-align:center;
+color:#0b5ed7;
+}
+
+.wrap{
+max-width:900px;
+margin:auto;
 }
 
 .card{
 background:white;
-padding:10px;
-border-radius:14px;
-text-align:center;
-cursor:grab;
-box-shadow:0 4px 8px rgba(0,0,0,.1);
-}
-
-.img{
-width:100%;
-height:100px;
-object-fit:contain;
-}
-
-.drop{
-margin-top:25px;
 padding:20px;
-border:2px dashed #0b5ed7;
-border-radius:12px;
-text-align:center;
+border-radius:16px;
+box-shadow:0 4px 8px rgba(0,0,0,0.1);
+margin-bottom:20px;
+}
+
+.image{
+width:100%;
+max-height:200px;
+object-fit:contain;
+margin-bottom:10px;
+}
+
+.words{
+display:flex;
+flex-wrap:wrap;
+gap:10px;
+margin-top:10px;
+}
+
+.word{
 background:white;
+border:2px dashed #0b5ed7;
+padding:10px 16px;
+border-radius:12px;
+cursor:pointer;
+font-weight:bold;
+}
+
+.selected{
+background:#d4edda;
+border-color:green;
+}
+
+.btn{
+background:#0b5ed7;
+color:white;
+border:none;
+padding:12px 20px;
+border-radius:10px;
+cursor:pointer;
+}
+
+.next{
+background:#28a745;
 }
 
 .hub{
@@ -58,125 +95,103 @@ top:20px;
 right:20px;
 background:#28a745;
 color:white;
-padding:10px 16px;
+padding:10px 18px;
 border-radius:10px;
 text-decoration:none;
 }
 </style>
-
 </head>
 
 <body>
 
-<h1>🎧 Listen & Order</h1>
-
 <a class="hub" href="../hub/index.php?unit=<?=$unit?>">← Hub</a>
 
-<div id="game"></div>
+<h1>🎧 Listen & Order</h1>
+
+<div class="wrap" id="game"></div>
 
 <script>
 
-const activities=<?=json_encode($data)?>;
-let current=0;
+const data = <?=json_encode($items)?>;
 
-function speak(text){
-const u=new SpeechSynthesisUtterance(text);
-u.lang="en-US";
-speechSynthesis.speak(u);
+let index = 0;
+let selected = [];
+
+function shuffle(a){
+ return a.sort(()=>Math.random()-0.5);
 }
 
-function loadGame(){
+function render(){
 
-if(!activities[current]){
-document.getElementById("game").innerHTML="<h2>🏆 Completed!</h2>";
-return;
+ selected=[];
+
+ const item = data[index];
+ if(!item) return;
+
+ let words = shuffle(item.text.split(" "));
+
+ document.getElementById("game").innerHTML = `
+ <div class="card">
+
+ ${item.image ? `<img class="image" src="/${item.image}">` : ""}
+
+ <button class="btn" onclick="playAudio('${item.audio}')">🔊 Listen</button>
+
+ <div class="words" id="words">
+ ${words.map(w=>`<div class="word" onclick="pick(this,'${w}')">${w}</div>`).join("")}
+ </div>
+
+ <br>
+ <button class="btn" onclick="check()">Check</button>
+
+ <div id="msg"></div>
+
+ </div>
+ `;
 }
 
-const a=activities[current];
-
-speak(a.sentence);
-
-let shuffled=[...a.parts].sort(()=>Math.random()-0.5);
-
-let html="<div class='grid'>";
-
-shuffled.forEach((p,i)=>{
-
-html+=`
-<div class="card"
-draggable="true"
-ondragstart="drag(event)"
-id="drag_${i}"
-data-word="${p.text}">
-${p.img ? `<img src="../../${p.img}" class="img">` : ""}
-<div>${p.text}</div>
-</div>
-`;
-
-});
-
-html+="</div>";
-
-html+=`
-<div class="drop"
-ondrop="drop(event)"
-ondragover="allowDrop(event)">
-Drop words in order here
-</div>
-`;
-
-document.getElementById("game").innerHTML=html;
-
-}
-
-function allowDrop(e){e.preventDefault();}
-function drag(e){e.dataTransfer.setData("text",e.target.id);}
-
-let result=[];
-
-function drop(e){
-
-e.preventDefault();
-
-const id=e.dataTransfer.getData("text");
-const el=document.getElementById(id);
-
-result.push(el.dataset.word);
-
-el.style.opacity=.3;
-
-check();
-
+function pick(el,w){
+ if(el.classList.contains("selected")) return;
+ el.classList.add("selected");
+ selected.push(w);
 }
 
 function check(){
 
-const correct=activities[current].parts.map(p=>p.text);
+ const correct = data[index].text.trim();
+ const user = selected.join(" ").trim();
 
-if(result.length===correct.length){
+ if(user === correct){
 
-if(JSON.stringify(result)===JSON.stringify(correct)){
+ document.getElementById("msg").innerHTML =
+ "<br><b style='color:green'>Good!</b>";
 
-setTimeout(()=>{
-current++;
-result=[];
-loadGame();
-},800);
+ setTimeout(()=>{
+ index++;
+ if(index < data.length){
+ render();
+ }else{
+ document.getElementById("game").innerHTML =
+ "<h2>🌟 Finished!</h2>";
+ }
+ },1000);
 
-}else{
-alert("Try again!");
-result=[];
-loadGame();
+ }else{
+ document.getElementById("msg").innerHTML =
+ "<br><b style='color:red'>Try again</b>";
+ selected=[];
+ document.querySelectorAll(".word").forEach(w=>w.classList.remove("selected"));
+ }
 }
 
+function playAudio(src){
+ let a = new Audio("/"+src);
+ a.play();
 }
 
-}
-
-loadGame();
+render();
 
 </script>
 
 </body>
 </html>
-
