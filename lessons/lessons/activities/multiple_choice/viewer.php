@@ -1,133 +1,112 @@
 <?php
-$file = __DIR__ . "/questions.json";
-$questions = file_exists($file) ? json_decode(file_get_contents($file), true) : [];
+require_once __DIR__."/../../config/db.php";
 
-if (!$questions || count($questions) === 0) {
-    die("No hay preguntas configuradas.");
-}
+$unit=$_GET["unit"] ?? null;
+if(!$unit) die("Unit missing");
+
+$stmt=$pdo->prepare("
+SELECT data FROM activities
+WHERE unit_id=:unit AND type='multiple_choice'
+");
+
+$stmt->execute(["unit"=>$unit]);
+$row=$stmt->fetch(PDO::FETCH_ASSOC);
+
+$data=json_decode($row["data"] ?? "[]",true);
 ?>
+
 <!DOCTYPE html>
-<html lang="es">
+<html>
 <head>
 <meta charset="UTF-8">
 <title>Multiple Choice</title>
+
 <style>
-body{
-  font-family:Arial;
-  background:#f5f7fb;
-  padding:20px;
-}
+body{font-family:Arial;background:#eef6ff;padding:20px;}
+h1{text-align:center;color:#0b5ed7;}
+
 .card{
-  background:#fff;
-  padding:25px;
-  border-radius:14px;
-  max-width:800px;
-  margin:auto;
+background:white;
+padding:20px;
+border-radius:16px;
+box-shadow:0 4px 10px rgba(0,0,0,.1);
+margin-bottom:20px;
 }
-h2{margin-bottom:10px}
-.option{
-  background:#f1f5f9;
-  padding:12px;
-  border-radius:8px;
-  margin:8px 0;
-  cursor:pointer;
-}
-.option:hover{background:#e2e8f0}
-.correct{background:#bbf7d0}
-.wrong{background:#fecaca}
+
+img{max-width:200px;margin-bottom:10px;}
+
 button{
-  margin-top:15px;
-  padding:10px 20px;
-  border:none;
-  background:#2563eb;
-  color:#fff;
-  border-radius:6px;
-  cursor:pointer;
+padding:8px 16px;
+border:none;
+border-radius:10px;
+background:#2f6fed;
+color:white;
+margin:5px;
+cursor:pointer;
 }
-img{max-width:100%;border-radius:10px;margin:10px 0}
-audio{margin:10px 0;width:100%}
-.hidden{display:none}
+
+.hub{
+position:fixed;
+top:20px;
+left:20px;
+background:#28a745;
+color:white;
+padding:10px 18px;
+border-radius:10px;
+text-decoration:none;
+}
 </style>
 </head>
 
 <body>
 
+<a class="hub" href="../hub/index.php?unit=<?=$unit?>">← Hub</a>
+
+<h1>🧠 Multiple Choice</h1>
+
+<?php foreach($data as $i=>$q): ?>
+
 <div class="card">
-<h2 id="question"></h2>
 
-<img id="image" class="hidden">
-<audio id="audio" class="hidden" controls></audio>
+<?php if(!empty($q["img"])): ?>
+<img src="/lessons/lessons/<?=$q["img"]?>">
+<?php endif; ?>
 
-<div id="options"></div>
+<h3><?=$q["question"]?></h3>
 
-<button id="next" class="hidden">Siguiente</button>
+<?php foreach($q["options"] as $k=>$opt): ?>
+<button onclick="check(<?=$i?>,<?=$k?>)"><?=$opt?></button>
+<?php endforeach; ?>
+
+<div id="f<?=$i?>"></div>
+
 </div>
 
+<?php endforeach; ?>
+
 <script>
-const questions = <?= json_encode($questions) ?>;
-let current = 0;
 
-const qEl = document.getElementById("question");
-const imgEl = document.getElementById("image");
-const audioEl = document.getElementById("audio");
-const optEl = document.getElementById("options");
-const nextBtn = document.getElementById("next");
+const data=<?=json_encode($data)?>;
 
-function loadQuestion(){
-  nextBtn.classList.add("hidden");
-  optEl.innerHTML = "";
-
-  const q = questions[current];
-  qEl.textContent = q.question;
-
-  // Image
-  if(q.image){
-    imgEl.src = q.image;
-    imgEl.classList.remove("hidden");
-  } else imgEl.classList.add("hidden");
-
-  // Audio
-  if(q.audio){
-    audioEl.src = q.audio;
-    audioEl.classList.remove("hidden");
-  } else audioEl.classList.add("hidden");
-
-  q.options.forEach((opt, i)=>{
-    const div = document.createElement("div");
-    div.className = "option";
-    div.textContent = opt;
-    div.onclick = ()=>checkAnswer(div, i);
-    optEl.appendChild(div);
-  });
+function speak(t){
+let u=new SpeechSynthesisUtterance(t);
+u.lang="en-US";
+speechSynthesis.speak(u);
 }
 
-function checkAnswer(el, i){
-  const q = questions[current];
-  document.querySelectorAll(".option").forEach(o=>o.onclick=null);
+function check(i,k){
+let fb=document.getElementById("f"+i);
 
-  if(i === q.answer){
-    el.classList.add("correct");
-  } else {
-    el.classList.add("wrong");
-    optEl.children[q.answer].classList.add("correct");
-  }
-  nextBtn.classList.remove("hidden");
+if(k===data[i].correct){
+fb.innerHTML="✅ Correct";
+fb.style.color="green";
+speak("Correct");
+}else{
+fb.innerHTML="❌ Try again";
+fb.style.color="red";
+speak("Try again");
 }
-
-nextBtn.onclick = ()=>{
-  current++;
-  if(current < questions.length){
-    loadQuestion();
-  } else {
-    qEl.textContent = "🎉 ¡Actividad completada!";
-    optEl.innerHTML = "";
-    nextBtn.classList.add("hidden");
-    imgEl.classList.add("hidden");
-    audioEl.classList.add("hidden");
-  }
-};
-
-loadQuestion();
+}
 </script>
 
 </body>
