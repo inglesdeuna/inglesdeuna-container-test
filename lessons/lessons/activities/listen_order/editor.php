@@ -21,50 +21,60 @@ WHERE unit_id=:u AND type='listen_order'
 ");
 $stmt->execute(["u"=>$unit]);
 $row=$stmt->fetch(PDO::FETCH_ASSOC);
-$data=json_decode($row["data"]??"[]",true);
+
+$data=json_decode($row["data"] ?? "[]", true);
 
 /* =========================
 SAVE
 ========================= */
 if($_SERVER["REQUEST_METHOD"]==="POST"){
 
-    $items=[];
+    $activities=[];
 
     if(isset($_FILES["images"]["name"])){
 
-        foreach($_FILES["images"]["name"] as $i=>$name){
+        foreach($_FILES["images"]["name"] as $block=>$imgs){
 
-            if(!$name) continue;
+            $blockImages=[];
 
-            $tmp=$_FILES["images"]["tmp_name"][$i];
-            $new=uniqid()."_".basename($name);
+            foreach($imgs as $i=>$name){
 
-            move_uploaded_file($tmp,$uploadDir."/".$new);
+                if(!$name) continue;
 
-            $items[]=[
-                "img"=>"activities/listen_order/uploads/".$unit."/".$new
+                $tmp=$_FILES["images"]["tmp_name"][$block][$i];
+                $new=uniqid()."_".basename($name);
+
+                move_uploaded_file($tmp,$uploadDir."/".$new);
+
+                $blockImages[]=
+                "activities/listen_order/uploads/".$unit."/".$new;
+            }
+
+            $activities[]=[
+                "audio"=>"",
+                "images"=>$blockImages
             ];
         }
     }
 
-    $audioPath=$data["audio"]??"";
+    /* AUDIO */
+    if(isset($_FILES["audio"]["name"])){
 
-    if(!empty($_FILES["audio"]["name"])){
+        foreach($_FILES["audio"]["name"] as $i=>$name){
 
-        $tmp=$_FILES["audio"]["tmp_name"];
-        $new=uniqid()."_".basename($_FILES["audio"]["name"]);
+            if(!$name) continue;
 
-        move_uploaded_file($tmp,$uploadDir."/".$new);
+            $tmp=$_FILES["audio"]["tmp_name"][$i];
+            $new=uniqid()."_".basename($name);
 
-        $audioPath="activities/listen_order/uploads/".$unit."/".$new;
+            move_uploaded_file($tmp,$uploadDir."/".$new);
+
+            $activities[$i]["audio"]=
+            "activities/listen_order/uploads/".$unit."/".$new;
+        }
     }
 
-    $final=[
-        "audio"=>$audioPath,
-        "items"=>$items
-    ];
-
-    $json=json_encode($final,JSON_UNESCAPED_UNICODE);
+    $json=json_encode($activities,JSON_UNESCAPED_UNICODE);
 
     $stmt=$pdo->prepare("
     INSERT INTO activities(id,unit_id,type,data)
@@ -100,27 +110,33 @@ padding:30px;
 background:white;
 padding:25px;
 border-radius:16px;
-max-width:900px;
+max-width:1000px;
 margin:auto;
 box-shadow:0 4px 10px rgba(0,0,0,.1);
 }
 
-input[type=file]{
-margin:8px 0;
+.block{
+border:1px solid #ddd;
+padding:15px;
+border-radius:12px;
+margin-bottom:15px;
+background:#fafafa;
 }
 
 button{
 background:#0b5ed7;
 color:white;
 border:none;
-padding:10px 18px;
+padding:10px 16px;
 border-radius:10px;
-margin-top:10px;
 cursor:pointer;
+margin:5px;
 }
 
-.green{
-background:#28a745;
+.green{ background:#28a745; }
+
+.remove{
+background:red;
 }
 </style>
 </head>
@@ -131,18 +147,14 @@ background:#28a745;
 
 <h2>🎧 Listen & Order — Editor</h2>
 
-<?php if(isset($_GET["saved"])) echo "<p style='color:green'>Saved</p>"; ?>
+<?php if(isset($_GET["saved"])) echo "<p style='color:green'>Guardado</p>"; ?>
 
 <form method="post" enctype="multipart/form-data">
 
-<h4>Audio (auto play in viewer)</h4>
-<input type="file" name="audio" accept="audio/*">
+<div id="blocks"></div>
 
-<h4>Upload Images (order = correct order)</h4>
-<input type="file" name="images[]" multiple accept="image/*">
-
-<br>
-<button>💾 Save Activity</button>
+<button type="button" onclick="addBlock()">+ Add</button>
+<button>💾 Guardar Todo</button>
 
 </form>
 
@@ -153,6 +165,36 @@ background:#28a745;
 </a>
 
 </div>
+
+<script>
+
+let container=document.getElementById("blocks");
+let index=0;
+
+function addBlock(){
+
+let div=document.createElement("div");
+div.className="block";
+
+div.innerHTML=`
+<h4>Actividad</h4>
+
+Audio:
+<input type="file" name="audio[]" accept="audio/*">
+
+<br><br>
+Images:
+<input type="file" name="images[${index}][]" multiple accept="image/*">
+
+<br>
+<button type="button" class="remove" onclick="this.parentElement.remove()">X</button>
+`;
+
+container.appendChild(div);
+index++;
+}
+
+</script>
 
 </body>
 </html>
