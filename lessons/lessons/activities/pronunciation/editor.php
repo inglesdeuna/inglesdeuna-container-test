@@ -55,11 +55,12 @@ $newItems[$i]["image"] =
 $json = json_encode($newItems,JSON_UNESCAPED_UNICODE);
 
 $pdo->prepare("
-INSERT INTO activities(unit_id,type,data)
-VALUES(:u,'pronunciation',:d)
+INSERT INTO activities(id,unit_id,type,data)
+VALUES(:id,:u,'pronunciation',:d)
 ON CONFLICT(unit_id,type)
 DO UPDATE SET data=EXCLUDED.data
-")->execute([
+])->execute([
+"id"=>"act_".uniqid(),
 "u"=>$unit,
 "d"=>$json
 ]);
