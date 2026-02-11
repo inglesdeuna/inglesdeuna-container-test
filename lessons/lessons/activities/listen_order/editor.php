@@ -1,51 +1,32 @@
 <?php
-require_once __DIR__ . "/../../config/db.php";
+require_once __DIR__."/../../config/db.php";
 
-$unit = $_GET["unit"] ?? null;
+$unit=$_GET["unit"] ?? null;
 if(!$unit) die("Unit missing");
 
-/* ======================
-UPLOAD DIR
-====================== */
-$uploadDir = __DIR__."/uploads/".$unit;
+/* ===== UPLOAD DIR ===== */
+$uploadDir=__DIR__."/uploads/".$unit;
 if(!is_dir($uploadDir)){
     mkdir($uploadDir,0777,true);
 }
 
-/* ======================
-LOAD EXISTING FROM DB
-====================== */
+/* ===== LOAD ===== */
 $stmt=$pdo->prepare("
 SELECT data FROM activities
 WHERE unit_id=:u AND type='listen_order'
 ");
 $stmt->execute(["u"=>$unit]);
 $row=$stmt->fetch(PDO::FETCH_ASSOC);
+$data=json_decode($row["data"] ?? "[]",true);
 
-$data=json_decode($row["data"] ?? "[]", true);
-if(!is_array($data)) $data=[];
-
-/* ======================
-SESSION WORK DATA (NO SAVE UNTIL GUARDAR)
-====================== */
-session_start();
-
-if(!isset($_SESSION["listen_order_".$unit])){
-    $_SESSION["listen_order_".$unit]=$data;
-}
-
-$work=&$_SESSION["listen_order_".$unit];
-
-/* ======================
-ADD BLOCK (TTS + MULTIPLE IMAGES)
-====================== */
+/* ===== ADD ===== */
 if(isset($_POST["add"])){
 
     $sentence=trim($_POST["sentence"] ?? "");
 
     if($sentence!=""){
 
-        $images=[];
+        $imgs=[];
 
         if(isset($_FILES["images"]["name"])){
 
@@ -54,71 +35,55 @@ if(isset($_POST["add"])){
                 if(!$name) continue;
 
                 $tmp=$_FILES["images"]["tmp_name"][$i];
-                if(!$tmp) continue;
-
                 $new=uniqid()."_".basename($name);
 
                 move_uploaded_file($tmp,$uploadDir."/".$new);
 
-                $images[]="activities/listen_order/uploads/".$unit."/".$new;
+                $imgs[]="activities/listen_order/uploads/".$unit."/".$new;
             }
         }
 
-        if(count($images)>0){
-
-            $work[]=[
+        if(count($imgs)>0){
+            $data[]=[
                 "text"=>$sentence,
-                "images"=>$images
+                "images"=>$imgs
             ];
         }
     }
 }
 
-/* ======================
-DELETE
-====================== */
+/* ===== DELETE ===== */
 if(isset($_GET["delete"])){
-
     $i=(int)$_GET["delete"];
-
-    if(isset($work[$i])){
-        array_splice($work,$i,1);
+    if(isset($data[$i])){
+        array_splice($data,$i,1);
     }
 }
 
-/* ======================
-SAVE DB ONLY WHEN GUARDAR
-====================== */
-if(isset($_POST["save"])){
+/* ===== SAVE DB ===== */
+$json=json_encode($data,JSON_UNESCAPED_UNICODE);
 
-    $json=json_encode($work,JSON_UNESCAPED_UNICODE);
+$stmt=$pdo->prepare("
+INSERT INTO activities(id,unit_id,type,data)
+VALUES(gen_random_uuid(),:u,'listen_order',:d)
+ON CONFLICT (unit_id,type)
+DO UPDATE SET data=EXCLUDED.data
+");
 
-    $stmt=$pdo->prepare("
-    INSERT INTO activities(id,unit_id,type,data)
-    VALUES(gen_random_uuid(),:u,'listen_order',:d)
-    ON CONFLICT (unit_id,type)
-    DO UPDATE SET data=EXCLUDED.data
-    ");
-
-    $stmt->execute([
-        "u"=>$unit,
-        "d"=>$json
-    ]);
-}
+$stmt->execute([
+"u"=>$unit,
+"d"=>$json
+]);
 ?>
 
 <!DOCTYPE html>
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Listen & Order Editor</title>
+<title>Listen Order Editor</title>
 
 <style>
-body{
-font-family:Arial;
-background:#eef6ff;
-padding:30px;
-}
+body{font-family:Arial;background:#eef6ff;padding:30px;}
 
 .box{
 background:white;
@@ -132,9 +97,9 @@ box-shadow:0 4px 10px rgba(0,0,0,.1);
 input[type=text]{
 width:100%;
 padding:10px;
-margin-bottom:10px;
 border-radius:8px;
 border:1px solid #ccc;
+margin-bottom:10px;
 }
 
 button{
@@ -147,21 +112,21 @@ cursor:pointer;
 margin:5px;
 }
 
-.green{ background:#28a745; }
+.green{background:#28a745;}
 
 .item{
 display:flex;
-align-items:center;
 justify-content:space-between;
+align-items:center;
 background:#f8f9fa;
-padding:12px;
+padding:10px;
 border-radius:12px;
 margin-bottom:10px;
 }
 
 .imgs img{
 height:60px;
-margin-right:6px;
+margin-right:5px;
 border-radius:8px;
 }
 
@@ -187,9 +152,7 @@ Images:
 <input type="file" name="images[]" multiple accept="image/*">
 
 <br>
-
 <button name="add">+ Add</button>
-<button name="save">💾 Guardar</button>
 
 </form>
 
@@ -197,24 +160,23 @@ Images:
 
 <h3>📦 Saved</h3>
 
-<?php foreach($work as $i=>$row): ?>
-
+<?php foreach($data as $i=>$row): ?>
 <div class="item">
 
 <div>
 <b><?=htmlspecialchars($row["text"])?></b>
 
 <div class="imgs">
-<?php foreach(($row["images"] ?? []) as $img): ?>
+<?php foreach($row["images"] as $img): ?>
 <img src="../../<?=$img?>">
 <?php endforeach; ?>
 </div>
+
 </div>
 
 <a class="delete" href="?unit=<?=$unit?>&delete=<?=$i?>">✖</a>
 
 </div>
-
 <?php endforeach; ?>
 
 <br>
@@ -224,7 +186,5 @@ Images:
 </a>
 
 </div>
-
 </body>
 </html>
-
