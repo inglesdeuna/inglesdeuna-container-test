@@ -108,7 +108,13 @@ button{
 
 <a href="../activities/pronunciation/viewer.php?unit=<?= urlencode($unitId) ?>">
 <button>🎧 Pronunciation</button>
+
+   <br><br>
+
+<a href="../activities/multiple_choice/viewer.php?unit=<?= urlencode($unitId) ?>">
+<button>🧠 Multiple Choice</button>
 </a>
+
  
 </body>
 </html>
