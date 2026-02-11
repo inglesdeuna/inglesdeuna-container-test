@@ -9,7 +9,7 @@ if(!$unit) die("Unit missing");
 /* ===== UPLOAD DIR ===== */
 $uploadDir=__DIR__."/uploads/".$unit;
 if(!is_dir($uploadDir)){
-    mkdir($uploadDir,0777,true);
+mkdir($uploadDir,0777,true);
 }
 
 /* ===== LOAD DB ===== */
@@ -26,7 +26,7 @@ $row=$stmt->fetch(PDO::FETCH_ASSOC);
 $data=json_decode($row["data"] ?? "[]",true);
 if(!is_array($data)) $data=[];
 
-/* ===== ADD ===== */
+/* ===== ADD BLOCK ===== */
 if(isset($_POST["add"])){
 
 $text=trim($_POST["text"] ?? "");
@@ -62,9 +62,11 @@ $data[]=[
 }
 }
 
-/* ===== DELETE ===== */
+/* ===== DELETE BLOCK ===== */
 if(isset($_GET["delete"])){
+
 $i=(int)$_GET["delete"];
+
 if(isset($data[$i])){
 array_splice($data,$i,1);
 }
@@ -91,17 +93,65 @@ $stmt->execute([
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Listen Order Editor</title>
+<title>Listen & Order Editor</title>
 
 <style>
-body{font-family:Arial;background:#eef6ff;padding:30px;}
-.box{background:white;padding:25px;border-radius:16px;max-width:900px;margin:auto;box-shadow:0 4px 10px rgba(0,0,0,.1);}
-input[type=text]{width:100%;padding:10px;border-radius:8px;border:1px solid #ccc;margin-bottom:10px;}
-button{background:#0b5ed7;color:white;border:none;padding:10px 16px;border-radius:10px;cursor:pointer;margin:5px;}
+body{
+font-family:Arial;
+background:#eef6ff;
+padding:30px;
+}
+
+.box{
+background:white;
+padding:25px;
+border-radius:16px;
+max-width:900px;
+margin:auto;
+box-shadow:0 4px 10px rgba(0,0,0,.1);
+}
+
+input[type=text]{
+width:100%;
+padding:10px;
+border-radius:8px;
+border:1px solid #ccc;
+margin-bottom:10px;
+}
+
+button{
+background:#0b5ed7;
+color:white;
+border:none;
+padding:10px 16px;
+border-radius:10px;
+cursor:pointer;
+margin:5px;
+}
+
 .green{background:#28a745;}
-.item{display:flex;justify-content:space-between;align-items:center;background:#f8f9fa;padding:10px;border-radius:12px;margin-bottom:10px;}
-.imgs img{height:60px;margin-right:5px;border-radius:8px;}
-.delete{color:red;font-size:22px;text-decoration:none;}
+
+.item{
+display:flex;
+justify-content:space-between;
+align-items:center;
+background:#f8f9fa;
+padding:12px;
+border-radius:12px;
+margin-bottom:10px;
+}
+
+.imgs img{
+height:60px;
+margin-right:6px;
+border-radius:8px;
+}
+
+.delete{
+color:red;
+font-size:22px;
+text-decoration:none;
+}
 </style>
 </head>
 
@@ -119,15 +169,16 @@ Images:
 <input type="file" name="images[]" multiple accept="image/*">
 
 <br>
-<button name="add">+ Add</button>
+<button name="add">+ Add Block</button>
 
 </form>
 
 <br>
 
-<h3>📦 Saved</h3>
+<h3>📦 Blocks Saved</h3>
 
 <?php foreach($data as $i=>$row): ?>
+
 <div class="item">
 
 <div>
@@ -144,6 +195,7 @@ Images:
 <a class="delete" href="?unit=<?=$unit?>&delete=<?=$i?>">✖</a>
 
 </div>
+
 <?php endforeach; ?>
 
 <br>
