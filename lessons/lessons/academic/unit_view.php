@@ -104,14 +104,12 @@ button{
 <button>🧩 Match</button>
 </a>
 
-</div>
+<br><br>
 
-<div class="card">
-<a href="course_view.php?course=<?= urlencode($unit["course_id"]) ?>">
-<button>⬅ Volver al curso</button>
+<a href="../activities/pronunciation/viewer.php?unit=<?= urlencode($unitId) ?>" class="btn">
+🎧 Pronunciation
 </a>
-</div>
 
-
+ 
 </body>
 </html>
