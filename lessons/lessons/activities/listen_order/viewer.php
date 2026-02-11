@@ -1,17 +1,23 @@
 <?php
 require_once __DIR__."/../../config/db.php";
 
+$type="listen_order";
+
 $unit=$_GET["unit"] ?? null;
 if(!$unit) die("Unit missing");
 
 $stmt=$pdo->prepare("
 SELECT data FROM activities
-WHERE unit_id=:u AND type='listen_order'
+WHERE unit_id=:u AND type=:t
 ");
-$stmt->execute(["u"=>$unit]);
-$row=$stmt->fetch(PDO::FETCH_ASSOC);
+$stmt->execute([
+"u"=>$unit,
+"t"=>$type
+]);
 
+$row=$stmt->fetch(PDO::FETCH_ASSOC);
 $data=json_decode($row["data"] ?? "[]",true);
+if(!is_array($data)) $data=[];
 ?>
 
 <!DOCTYPE html>
@@ -22,50 +28,11 @@ $data=json_decode($row["data"] ?? "[]",true);
 
 <style>
 body{font-family:Arial;background:#eef6ff;padding:30px;}
-
-.box{
-background:white;
-padding:25px;
-border-radius:16px;
-max-width:900px;
-margin:auto;
-box-shadow:0 4px 10px rgba(0,0,0,.1);
-text-align:center;
-}
-
-.grid{
-display:grid;
-grid-template-columns:repeat(auto-fit,minmax(120px,1fr));
-gap:15px;
-margin-top:20px;
-}
-
-.img{
-width:100%;
-height:110px;
-object-fit:contain;
-background:#f8f9fa;
-padding:10px;
-border-radius:12px;
-cursor:pointer;
-border:3px solid transparent;
-}
-
-.selected{
-border:3px solid #0b5ed7;
-background:#dbe9ff;
-}
-
-button{
-background:#0b5ed7;
-color:white;
-border:none;
-padding:10px 16px;
-border-radius:10px;
-cursor:pointer;
-margin:6px;
-}
-
+.box{background:white;padding:25px;border-radius:16px;max-width:900px;margin:auto;box-shadow:0 4px 10px rgba(0,0,0,.1);text-align:center;}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:15px;margin-top:20px;}
+.img{width:100%;height:110px;object-fit:contain;background:#f8f9fa;padding:10px;border-radius:12px;cursor:pointer;border:3px solid transparent;}
+.selected{border:3px solid #0b5ed7;background:#dbe9ff;}
+button{background:#0b5ed7;color:white;border:none;padding:10px 16px;border-radius:10px;cursor:pointer;margin:6px;}
 .green{background:#28a745;}
 .feedback{font-weight:bold;margin-top:15px;}
 .good{color:green;}
@@ -100,7 +67,7 @@ margin:6px;
 
 <script>
 
-const blocks = <?=json_encode($data)?>;
+const blocks=<?=json_encode($data)?>;
 
 let current=0;
 let correct=[];
@@ -115,7 +82,6 @@ correct=[...blocks[current].images];
 mix=[...blocks[current].images].sort(()=>Math.random()-0.5);
 
 chosen=[];
-
 draw();
 document.getElementById("fb").innerHTML="";
 }
@@ -140,7 +106,6 @@ el.classList.add("selected");
 g.appendChild(el);
 
 });
-
 }
 
 function speak(){
