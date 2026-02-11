@@ -180,10 +180,10 @@ Images:
 <div class="item">
 
 <div>
-<b><?=htmlspecialchars($row["text"])?></b>
+<b><?=htmlspecialchars($row["text"] ?? "")?></b>
 
 <div class="imgs">
-<?php foreach($row["images"] as $img): ?>
+<?php foreach(($row["images"] ?? []) as $img): ?>
 <img src="../../<?=$img?>">
 <?php endforeach; ?>
 </div>
