@@ -2,70 +2,76 @@
 require_once __DIR__."/../../config/db.php";
 
 $unit = $_GET["unit"] ?? "";
-$type = "listen_order";
+$activity_type = "listen_order";
 
 $stmt = $pdo->prepare("
-SELECT data FROM activities
-WHERE unit_id=? AND type=?
+SELECT content_json 
+FROM activities 
+WHERE unit_id=? AND activity_type=? 
 ORDER BY id DESC LIMIT 1
 ");
-$stmt->execute([$unit,$type]);
+
+$stmt->execute([$unit,$activity_type]);
 $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
-$data = json_decode($row["data"] ?? "[]", true);
-$item = $data[0] ?? ["audio"=>"","images"=>[],"correct"=>[]];
+$data = json_decode($row["content_json"] ?? "[]", true);
 ?>
+
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Listen & Order</title>
+
+<style>
+.word{
+display:inline-block;
+padding:10px;
+margin:5px;
+background:#eee;
+cursor:pointer;
+}
+</style>
+
+</head>
+<body>
 
 <h2>Listen & Order</h2>
 
-<audio controls src="../../<?=$item["audio"]?>"></audio>
-
-<br><br>
-
-<div id="images" style="display:flex; gap:10px;"></div>
-
-<br>
+<div id="words"></div>
 
 <button onclick="check()">Check</button>
 
 <script>
 
-let images = <?=json_encode($item["images"])?>;
-let correct = <?=json_encode($item["correct"])?>;
+let data = <?=json_encode($data)?>;
+let words = [];
+let correct = [];
 
-images.sort(()=>Math.random()-0.5);
+data.forEach(item=>{
+let sentence = item.text || "";
+let parts = sentence.split(" ");
+correct.push(parts);
+words = words.concat(parts);
+});
 
-let container = document.getElementById("images");
+words.sort(()=>Math.random()-0.5);
 
-images.forEach((src,i)=>{
-let img = document.createElement("img");
-img.src="../../"+src;
-img.width=120;
-img.draggable=true;
+let container = document.getElementById("words");
 
-img.ondragstart = e=>{
-e.dataTransfer.setData("text", i);
-};
-
-img.ondragover = e=> e.preventDefault();
-
-img.ondrop = e=>{
-e.preventDefault();
-let from = e.dataTransfer.getData("text");
-container.insertBefore(container.children[from], img);
-};
-
-container.appendChild(img);
+words.forEach(w=>{
+let d = document.createElement("div");
+d.className="word";
+d.innerText=w;
+d.onclick=()=>container.appendChild(d);
+container.appendChild(d);
 });
 
 function check(){
-let order=[];
-[...container.children].forEach(img=>{
-let file = img.src.split("/").pop();
-order.push(images.indexOf(file));
-});
-
-alert(JSON.stringify(order)==JSON.stringify(correct) ? "Correct!" : "Try again");
+alert("Check manual logic placeholder");
 }
 
 </script>
+
+</body>
+</html>
