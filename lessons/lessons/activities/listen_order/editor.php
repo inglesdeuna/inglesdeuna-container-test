@@ -1,76 +1,71 @@
 <?php
-$file = __DIR__ . "/listen_order.json";
-$data = file_exists($file) ? json_decode(file_get_contents($file), true) : [];
+require_once __DIR__."/../../config/db.php";
 
-if ($_SERVER["REQUEST_METHOD"] === "POST") {
+$unit=$_GET["unit"] ?? null;
+if(!$unit) die("Unit missing");
 
-  $sentence = trim($_POST["sentence"]);
+$uploadDir=__DIR__."/uploads/".$unit;
+if(!is_dir($uploadDir)) mkdir($uploadDir,0777,true);
 
-  $data[] = [
-    "sentence" => $sentence
-  ];
+/* LOAD EXISTING */
+$stmt=$pdo->prepare("SELECT data FROM activities WHERE unit_id=? AND type='listen_order'");
+$stmt->execute([$unit]);
+$row=$stmt->fetch(PDO::FETCH_ASSOC);
+$data=json_decode($row["data"] ?? "[]",true);
 
-  file_put_contents(
-    $file,
-    json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)
-  );
+/* SAVE */
+if($_SERVER["REQUEST_METHOD"]==="POST"){
 
-  exit;
+$data=[];
+
+if(isset($_POST["sentence"])){
+
+foreach($_POST["sentence"] as $q=>$sentence){
+
+if(trim($sentence)=="") continue;
+
+$parts=[];
+
+foreach($_POST["parts_text"][$q] as $i=>$text){
+
+if(trim($text)=="") continue;
+
+$img="";
+
+if(!empty($_FILES["parts_img"]["name"][$q][$i])){
+$name=uniqid()."_".basename($_FILES["parts_img"]["name"][$q][$i]);
+move_uploaded_file(
+$_FILES["parts_img"]["tmp_name"][$q][$i],
+$uploadDir."/".$name
+);
+$img="activities/listen_order/uploads/".$unit."/".$name;
+}
+
+$parts[]=["text"=>$text,"img"=>$img];
+
+}
+
+$data[]=[
+"id"=>uniqid(),
+"sentence"=>$sentence,
+"parts"=>$parts
+];
+
+}
+}
+
+/* UPSERT */
+$stmt=$pdo->prepare("
+INSERT INTO activities(id,unit_id,type,data)
+VALUES(gen_random_uuid(),?,?,?)
+ON CONFLICT(unit_id,type)
+DO UPDATE SET data=EXCLUDED.data
+");
+
+$stmt->execute([$unit,"listen_order",json_encode($data)]);
+
+header("Location: editor.php?unit=".$unit."&saved=1");
+exit;
+
 }
 ?>
-<!DOCTYPE html>
-<html lang="es">
-<head>
-<meta charset="UTF-8">
-<title>Listen & Order – Editor</title>
-
-<style>
-body{
-  font-family:Arial, sans-serif;
-  background:#f5f7fb;
-  padding:30px;
-}
-h1{color:#2563eb;}
-
-.form{
-  background:#fff;
-  padding:20px;
-  border-radius:14px;
-  max-width:600px;
-}
-
-input{
-  width:100%;
-  margin-top:10px;
-  padding:10px;
-}
-
-button{
-  margin-top:15px;
-  padding:12px 18px;
-  border:none;
-  border-radius:10px;
-  background:#2563eb;
-  color:white;
-  font-weight:bold;
-}
-</style>
-</head>
-
-<body>
-
-<h1>🎧 Listen & Order – Editor</h1>
-
-<div class="form">
-<form method="post">
-
-  <input type="text" name="sentence"
-    placeholder="Correct sentence (students will order it)" required>
-
-  <button>➕ Add Activity</button>
-
-</form>
-</div>
-
-</body>
-</html>
