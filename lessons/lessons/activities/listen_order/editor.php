@@ -1,84 +1,86 @@
 <?php
-ini_set('display_errors',1);
-error_reporting(E_ALL);
-
-require_once __DIR__."/../../config/db.php";
+require_once __DIR__ . "/../../config/db.php";
 
 $unit = $_GET["unit"] ?? null;
 if(!$unit) die("Unit missing");
 
-/* ================= UPLOAD DIR ================= */
-
+/* =========================
+UPLOAD DIR
+========================= */
 $uploadDir = __DIR__."/uploads/".$unit;
-
 if(!is_dir($uploadDir)){
     mkdir($uploadDir,0777,true);
 }
 
-/* ================= SAVE ================= */
+/* =========================
+LOAD EXISTING
+========================= */
+$stmt=$pdo->prepare("
+SELECT data FROM activities
+WHERE unit_id=:u AND type='listen_order'
+");
+$stmt->execute(["u"=>$unit]);
+$row=$stmt->fetch(PDO::FETCH_ASSOC);
+$data=json_decode($row["data"]??"[]",true);
 
+/* =========================
+SAVE
+========================= */
 if($_SERVER["REQUEST_METHOD"]==="POST"){
 
-    $items = [];
+    $items=[];
 
-    if(isset($_POST["sentence"])){
+    if(isset($_FILES["images"]["name"])){
 
-        foreach($_POST["sentence"] as $i=>$sentence){
+        foreach($_FILES["images"]["name"] as $i=>$name){
 
-            if(trim($sentence)=="") continue;
+            if(!$name) continue;
 
-            $imgPath = "";
+            $tmp=$_FILES["images"]["tmp_name"][$i];
+            $new=uniqid()."_".basename($name);
 
-            if(!empty($_FILES["image"]["name"][$i])){
-
-                $tmp  = $_FILES["image"]["tmp_name"][$i];
-                $name = uniqid()."_".basename($_FILES["image"]["name"][$i]);
-
-                move_uploaded_file($tmp,$uploadDir."/".$name);
-
-                $imgPath = "activities/listen_order/uploads/".$unit."/".$name;
-            }
+            move_uploaded_file($tmp,$uploadDir."/".$new);
 
             $items[]=[
-                "id"=>uniqid(),
-                "sentence"=>$sentence,
-                "image"=>$imgPath
+                "img"=>"activities/listen_order/uploads/".$unit."/".$new
             ];
         }
     }
 
-    $json = json_encode($items,JSON_UNESCAPED_UNICODE);
+    $audioPath=$data["audio"]??"";
 
-    $stmt = $pdo->prepare("
-        INSERT INTO activities (id,unit_id,type,data)
-        VALUES (:id,:unit,'listen_order',:json)
+    if(!empty($_FILES["audio"]["name"])){
 
-        ON CONFLICT (unit_id,type)
-        DO UPDATE SET data = EXCLUDED.data
+        $tmp=$_FILES["audio"]["tmp_name"];
+        $new=uniqid()."_".basename($_FILES["audio"]["name"]);
+
+        move_uploaded_file($tmp,$uploadDir."/".$new);
+
+        $audioPath="activities/listen_order/uploads/".$unit."/".$new;
+    }
+
+    $final=[
+        "audio"=>$audioPath,
+        "items"=>$items
+    ];
+
+    $json=json_encode($final,JSON_UNESCAPED_UNICODE);
+
+    $stmt=$pdo->prepare("
+    INSERT INTO activities(id,unit_id,type,data)
+    VALUES(gen_random_uuid(),:u,'listen_order',:d)
+    ON CONFLICT (unit_id,type)
+    DO UPDATE SET data=EXCLUDED.data
     ");
 
     $stmt->execute([
-        "id"=>uniqid(),
-        "unit"=>$unit,
-        "json"=>$json
+        "u"=>$unit,
+        "d"=>$json
     ]);
 
-    header("Location: editor.php?unit=".$unit."&saved=1");
+    header("Location:?unit=".$unit."&saved=1");
     exit;
 }
-
-/* ================= LOAD ================= */
-
-$stmt = $pdo->prepare("
-SELECT data FROM activities
-WHERE unit_id=:unit AND type='listen_order'
-");
-
-$stmt->execute(["unit"=>$unit]);
-
-$row = $stmt->fetch(PDO::FETCH_ASSOC);
-
-$data = json_decode($row["data"] ?? "[]",true);
 ?>
 
 <!DOCTYPE html>
@@ -94,102 +96,63 @@ background:#eef6ff;
 padding:30px;
 }
 
-h1{
-text-align:center;
-color:#0b5ed7;
-}
-
-.card{
-max-width:900px;
-margin:auto;
+.box{
 background:white;
 padding:25px;
 border-radius:16px;
-box-shadow:0 4px 10px rgba(0,0,0,0.1);
+max-width:900px;
+margin:auto;
+box-shadow:0 4px 10px rgba(0,0,0,.1);
 }
 
-.row{
-display:flex;
-gap:10px;
-margin-bottom:12px;
-}
-
-input[type=text]{
-flex:1;
-padding:10px;
-border-radius:8px;
-border:1px solid #ccc;
+input[type=file]{
+margin:8px 0;
 }
 
 button{
-padding:10px 18px;
-border:none;
-border-radius:10px;
 background:#0b5ed7;
 color:white;
+border:none;
+padding:10px 18px;
+border-radius:10px;
+margin-top:10px;
 cursor:pointer;
 }
 
-.save{ background:#0b5ed7; }
-.add{ background:#198754; }
-
-.hub{
+.green{
 background:#28a745;
-text-decoration:none;
-color:white;
-padding:10px 18px;
-border-radius:10px;
-display:inline-block;
-margin-top:15px;
 }
 </style>
 </head>
 
 <body>
 
-<h1>🎧 Listen & Order — Editor</h1>
+<div class="box">
 
-<div class="card">
+<h2>🎧 Listen & Order — Editor</h2>
 
-<?php if(isset($_GET["saved"])): ?>
-<div style="color:green;margin-bottom:10px;">✔ Guardado</div>
-<?php endif; ?>
+<?php if(isset($_GET["saved"])) echo "<p style='color:green'>Saved</p>"; ?>
 
-<form method="POST" enctype="multipart/form-data">
+<form method="post" enctype="multipart/form-data">
 
-<div id="rows">
+<h4>Audio (auto play in viewer)</h4>
+<input type="file" name="audio" accept="audio/*">
 
-<?php if($data): foreach($data as $d): ?>
-<div class="row">
-<input type="text" name="sentence[]" value="<?=htmlspecialchars($d["sentence"])?>">
-<input type="file" name="image[]">
-</div>
-<?php endforeach; endif; ?>
-
-</div>
+<h4>Upload Images (order = correct order)</h4>
+<input type="file" name="images[]" multiple accept="image/*">
 
 <br>
-
-<button type="button" class="add" onclick="addRow()">+ Add</button>
-<button class="save">💾 Guardar</button>
+<button>💾 Save Activity</button>
 
 </form>
 
 <br>
 
-<a class="hub" href="../hub/index.php?unit=<?=$unit?>">← Volver Hub</a>
+<a href="../hub/index.php?unit=<?=$unit?>">
+<button class="green">← Volver Hub</button>
+</a>
 
 </div>
-
-<script>
-function addRow(){
-document.getElementById("rows").innerHTML += `
-<div class="row">
-<input type="text" name="sentence[]" placeholder="Correct sentence">
-<input type="file" name="image[]">
-</div>`;
-}
-</script>
 
 </body>
 </html>
