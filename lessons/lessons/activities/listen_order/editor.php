@@ -1,121 +1,207 @@
 <?php
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
+require_once __DIR__ . "/../../config/db.php";
 
-require_once __DIR__."/../../config/db.php";
+$unit = $_GET["unit"] ?? null;
+if(!$unit) die("Unit missing");
 
-$unit = $_GET["unit"] ?? "";
-$type = "listen_order";
-
-session_start();
-
-$key = "draft_listen_order_".$unit;
-if(!isset($_SESSION[$key])) $_SESSION[$key] = [];
-
-if(isset($_GET["delete"])){
-    $i = intval($_GET["delete"]);
-    if(isset($_SESSION[$key][$i])){
-        array_splice($_SESSION[$key], $i, 1);
-    }
+/* ======================
+UPLOAD DIR
+====================== */
+$uploadDir = __DIR__."/uploads/".$unit;
+if(!is_dir($uploadDir)){
+    mkdir($uploadDir,0777,true);
 }
 
-if($_SERVER["REQUEST_METHOD"]=="POST"){
+/* ======================
+LOAD EXISTING
+====================== */
+$stmt=$pdo->prepare("
+SELECT data FROM activities
+WHERE unit_id=:u AND type='listen_order'
+");
+$stmt->execute(["u"=>$unit]);
+$row=$stmt->fetch(PDO::FETCH_ASSOC);
 
-    $action = $_POST["action"] ?? "";
+$data=json_decode($row["data"] ?? "[]", true);
 
-    if($action=="add"){
+/* ======================
+SAVE NEW BLOCK
+====================== */
+if(isset($_POST["sentence"])){
 
-        $audio = $_POST["audio"] ?? "";
+    $sentence=trim($_POST["sentence"]);
 
-        $images = [];
-        if(!empty($_POST["images"])){
-            $images = array_map("trim", explode(",", $_POST["images"]));
+    if($sentence!=""){
+
+        $images=[];
+
+        if(isset($_FILES["images"]["name"])){
+
+            foreach($_FILES["images"]["name"] as $i=>$name){
+
+                if(!$name) continue;
+
+                $tmp=$_FILES["images"]["tmp_name"][$i];
+                $new=uniqid()."_".basename($name);
+
+                move_uploaded_file($tmp,$uploadDir."/".$new);
+
+                $images[]=
+                "activities/listen_order/uploads/".$unit."/".$new;
+            }
         }
 
-        $correct = [];
-        if(!empty($_POST["correct"])){
-            $correct = array_map("intval", explode(",", $_POST["correct"]));
-        }
-
-        $_SESSION[$key][] = [
-            "audio"=>$audio,
-            "images"=>$images,
-            "correct"=>$correct
+        $data[]=[
+            "text"=>$sentence,
+            "images"=>$images
         ];
     }
+}
 
-    if($action=="save"){
-        if(!empty($_SESSION[$key])){
-            $stmt = $pdo->prepare("
-            INSERT INTO activities(unit_id, type, data)
-            VALUES(?,?,?)
-            ");
-            $stmt->execute([
-                $unit,
-                $type,
-                json_encode($_SESSION[$key], JSON_UNESCAPED_UNICODE)
-            ]);
-            $_SESSION[$key] = [];
-        }
+/* ======================
+DELETE
+====================== */
+if(isset($_GET["delete"])){
+
+    $i=(int)$_GET["delete"];
+    if(isset($data[$i])){
+        array_splice($data,$i,1);
     }
 }
 
-$draft = $_SESSION[$key];
+/* ======================
+SAVE DB
+====================== */
+$json=json_encode($data,JSON_UNESCAPED_UNICODE);
 
-$stmt = $pdo->prepare("
-SELECT data FROM activities
-WHERE unit_id=? AND type=?
-ORDER BY id DESC
+$stmt=$pdo->prepare("
+INSERT INTO activities(id,unit_id,type,data)
+VALUES(gen_random_uuid(),:u,'listen_order',:d)
+ON CONFLICT (unit_id,type)
+DO UPDATE SET data=EXCLUDED.data
 ");
-$stmt->execute([$unit,$type]);
-$saved = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+$stmt->execute([
+"u"=>$unit,
+"d"=>$json
+]);
 ?>
 
-<h2>Listen & Order Editor</h2>
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Listen & Order Editor</title>
 
-<form method="POST">
-<input type="hidden" name="action" value="add">
+<style>
+body{
+font-family:Arial;
+background:#eef6ff;
+padding:30px;
+}
 
-Audio URL:
-<input name="audio" placeholder="uploads/audio.mp3">
+.box{
+background:white;
+padding:25px;
+border-radius:16px;
+max-width:900px;
+margin:auto;
+box-shadow:0 4px 10px rgba(0,0,0,.1);
+}
 
-<br><br>
+input[type=text]{
+width:100%;
+padding:10px;
+margin-bottom:10px;
+border-radius:8px;
+border:1px solid #ccc;
+}
 
-Images (coma separadas):
-<input name="images" placeholder="img1.png,img2.png,img3.png">
+button{
+background:#0b5ed7;
+color:white;
+border:none;
+padding:10px 16px;
+border-radius:10px;
+cursor:pointer;
+margin:5px;
+}
 
-<br><br>
+.green{ background:#28a745; }
 
-Correct order (ej: 0,2,1):
-<input name="correct" placeholder="0,1,2">
+.item{
+display:flex;
+align-items:center;
+justify-content:space-between;
+background:#f8f9fa;
+padding:12px;
+border-radius:12px;
+margin-bottom:10px;
+}
 
-<br><br>
+.imgs img{
+height:60px;
+margin-right:6px;
+border-radius:8px;
+}
 
+.delete{
+color:red;
+font-size:22px;
+text-decoration:none;
+}
+</style>
+</head>
+
+<body>
+
+<div class="box">
+
+<h2>🎧 Listen & Order — Editor</h2>
+
+<form method="post" enctype="multipart/form-data">
+
+<input name="sentence" placeholder="Write sentence (TTS automatic)">
+
+Images:
+<input type="file" name="images[]" multiple accept="image/*">
+
+<br>
 <button>+ Add</button>
+
 </form>
 
-<h3>Draft</h3>
+<br>
 
-<?php foreach($draft as $i=>$row): ?>
+<h3>📦 Saved</h3>
+
+<?php foreach($data as $i=>$row): ?>
+
+<div class="item">
+
 <div>
-🎧 <?=$row["audio"]?><br>
-🖼 <?=implode(", ",$row["images"])?><br>
-✔ <?=implode(", ",$row["correct"])?>
+<b><?=htmlspecialchars($row["text"])?></b>
 
-<a href="?unit=<?=$unit?>&delete=<?=$i?>">❌</a>
+<div class="imgs">
+<?php foreach($row["images"] as $img): ?>
+<img src="../../<?=$img?>">
+<?php endforeach; ?>
 </div>
-<hr>
+</div>
+
+<a class="delete" href="?unit=<?=$unit?>&delete=<?=$i?>">✖</a>
+
+</div>
+
 <?php endforeach; ?>
 
-<form method="POST">
-<input type="hidden" name="action" value="save">
-<button>💾 Guardar Actividad</button>
-</form>
+<br>
 
-<h3>Saved</h3>
+<a href="../hub/index.php?unit=<?=$unit?>">
+<button class="green">← Volver Hub</button>
+</a>
 
-<?php foreach($saved as $row):
-$data = json_decode($row["data"],true);
-?>
-<pre><?php print_r($data); ?></pre>
-<?php endforeach; ?>
+</div>
+
+</body>
+</html>
