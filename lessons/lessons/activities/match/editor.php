@@ -4,135 +4,174 @@ require_once __DIR__."/../../config/db.php";
 $unit = $_GET["unit"] ?? null;
 if(!$unit) die("Unit missing");
 
-/* UPLOAD DIR */
+/* ======================
+UPLOAD DIR
+====================== */
 $uploadDir = __DIR__."/uploads/".$unit;
+
 if(!is_dir($uploadDir)){
-mkdir($uploadDir,0777,true);
+    mkdir($uploadDir,0777,true);
 }
 
-/* ================= SAVE ================= */
+/* ======================
+SAVE MATCH
+====================== */
 if($_SERVER["REQUEST_METHOD"]==="POST"){
 
-$items=[];
+    $items=[];
 
-/* Cargar existente */
-$stmtOld=$pdo->prepare("
-SELECT data FROM activities
-WHERE unit_id=:unit AND type='match'
-");
-$stmtOld->execute(["unit"=>$unit]);
+    /* Cargar existente */
+    $stmtOld=$pdo->prepare("
+        SELECT data FROM activities
+        WHERE unit_id=:unit AND type='match'
+    ");
+    $stmtOld->execute(["unit"=>$unit]);
 
-$rowOld=$stmtOld->fetch(PDO::FETCH_ASSOC);
-if($rowOld && $rowOld["data"]){
-$items=json_decode($rowOld["data"],true) ?? [];
+    $rowOld=$stmtOld->fetch(PDO::FETCH_ASSOC);
+
+    if($rowOld && $rowOld["data"]){
+        $items=json_decode($rowOld["data"],true) ?? [];
+    }
+
+    /* Agregar nuevos */
+    if(isset($_POST["text"]) && is_array($_POST["text"])){
+
+        foreach($_POST["text"] as $i=>$text){
+
+            if(trim($text)=="") continue;
+            if(empty($_FILES["image"]["name"][$i])) continue;
+
+            $tmp=$_FILES["image"]["tmp_name"][$i];
+            $name=uniqid()."_".basename($_FILES["image"]["name"][$i]);
+
+            move_uploaded_file($tmp,$uploadDir."/".$name);
+
+            $items[]=[
+                "id"=>uniqid(),
+                "text"=>$text,
+                "image"=>"activities/match/uploads/".$unit."/".$name
+            ];
+        }
+    }
+
+    /* Guardar */
+    $json=json_encode($items,JSON_UNESCAPED_UNICODE);
+
+    $stmt=$pdo->prepare("
+        INSERT INTO activities (id,unit_id,type,data)
+        VALUES (gen_random_uuid(),:unit,'match',:data)
+        ON CONFLICT (unit_id,type)
+        DO UPDATE SET data=EXCLUDED.data
+    ");
+
+    $stmt->execute([
+        "unit"=>$unit,
+        "data"=>$json
+    ]);
 }
 
-/* Agregar nuevos */
-if(isset($_POST["text"]) && is_array($_POST["text"])){
-
-foreach($_POST["text"] as $i=>$text){
-
-if(trim($text)=="") continue;
-if(empty($_FILES["image"]["name"][$i])) continue;
-
-$tmp=$_FILES["image"]["tmp_name"][$i];
-$name=uniqid()."_".basename($_FILES["image"]["name"][$i]);
-
-move_uploaded_file($tmp,$uploadDir."/".$name);
-
-$items[]=[
-"id"=>uniqid(),
-"text"=>$text,
-"image"=>"activities/match/uploads/".$unit."/".$name
-];
-
-}
-  
-}
-
-  if(trim($text)=="") continue;
-if(empty($_FILES["image"]["name"][$i])) continue;
-
-$tmp=$_FILES["image"]["tmp_name"][$i];
-$name=uniqid()."_".basename($_FILES["image"]["name"][$i]);
-
-move_uploaded_file($tmp,$uploadDir."/".$name);
-
-$items[]=[
-"id"=>uniqid(),
-"text"=>$text,
-"image"=>"activities/match/uploads/".$unit."/".$name
-];
-
-}
-
-/* Guardar */
-$json=json_encode($items,JSON_UNESCAPED_UNICODE);
-
-$stmt=$pdo->prepare("
-INSERT INTO activities (id,unit_id,type,data)
-VALUES (gen_random_uuid(),:unit,'match',:data)
-ON CONFLICT (unit_id,type)
-DO UPDATE SET data=EXCLUDED.data
-");
-
-$stmt->execute([
-"unit"=>$unit,
-"data"=>$json
-]);
-
-}
-
-/* ================= DELETE ================= */
+/* ======================
+DELETE PAIR
+====================== */
 if(isset($_GET["delete"])){
 
-$stmt=$pdo->prepare("
-SELECT data FROM activities
-WHERE unit_id=:unit AND type='match'
-");
-$stmt->execute(["unit"=>$unit]);
-$row=$stmt->fetch(PDO::FETCH_ASSOC);
+    $stmt=$pdo->prepare("
+        SELECT data FROM activities
+        WHERE unit_id=:unit AND type='match'
+    ");
+    $stmt->execute(["unit"=>$unit]);
+    $row=$stmt->fetch(PDO::FETCH_ASSOC);
 
-$data=json_decode($row["data"] ?? "[]",true);
+    $data=json_decode($row["data"] ?? "[]",true);
 
-$data=array_filter($data,function($d){
-return $d["id"]!=$_GET["delete"];
-});
+    $data=array_filter($data,function($d){
+        return $d["id"]!=$_GET["delete"];
+    });
 
-$json=json_encode(array_values($data));
+    $json=json_encode(array_values($data));
 
-$stmt=$pdo->prepare("
-UPDATE activities SET data=:data
-WHERE unit_id=:unit AND type='match'
-");
+    $stmt=$pdo->prepare("
+        UPDATE activities SET data=:data
+        WHERE unit_id=:unit AND type='match'
+    ");
 
-$stmt->execute([
-"data"=>$json,
-"unit"=>$unit
-]);
-
+    $stmt->execute([
+        "data"=>$json,
+        "unit"=>$unit
+    ]);
 }
 
-/* LOAD */
+/* ======================
+LOAD DATA
+====================== */
 $stmt=$pdo->prepare("
 SELECT data FROM activities
 WHERE unit_id=:unit AND type='match'
 ");
 $stmt->execute(["unit"=>$unit]);
-$row=$stmt->fetch(PDO::FETCH_ASSOC);
 
+$row=$stmt->fetch(PDO::FETCH_ASSOC);
 $data=json_decode($row["data"] ?? "[]",true);
 ?>
 
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Match Editor</title>
+
 <style>
-body{font-family:Arial;background:#eef6ff;padding:20px;}
-.card{background:white;padding:20px;border-radius:16px;max-width:700px;}
-.row{display:flex;gap:10px;margin-bottom:10px;}
-.pair{display:flex;justify-content:space-between;background:#f8f9fa;padding:10px;border-radius:10px;margin-bottom:6px;}
-.delete{color:red;text-decoration:none;font-weight:bold;}
-button{padding:10px 16px;border:none;border-radius:8px;background:#0b5ed7;color:white;}
-.hub{background:#28a745;margin-top:10px;}
+body{
+    font-family:Arial;
+    background:#eef6ff;
+    padding:20px;
+}
+
+.card{
+    background:white;
+    padding:20px;
+    border-radius:16px;
+    max-width:700px;
+}
+
+.row{
+    display:flex;
+    gap:10px;
+    margin-bottom:10px;
+}
+
+.pair{
+    display:flex;
+    justify-content:space-between;
+    background:#f8f9fa;
+    padding:10px;
+    border-radius:10px;
+    margin-bottom:6px;
+}
+
+.delete{
+    color:red;
+    text-decoration:none;
+    font-weight:bold;
+}
+
+button{
+    padding:10px 16px;
+    border:none;
+    border-radius:8px;
+    background:#0b5ed7;
+    color:white;
+    cursor:pointer;
+}
+
+.hub{
+    background:#28a745;
+    margin-top:10px;
+}
 </style>
+</head>
+
+<body>
 
 <div class="card">
 
@@ -151,8 +190,10 @@ button{padding:10px 16px;border:none;border-radius:8px;background:#0b5ed7;color:
 
 <?php foreach($data as $d): ?>
 <div class="pair">
-<span><?=$d["text"]?></span>
-<a class="delete" href="?unit=<?=$unit?>&delete=<?=$d["id"]?>">❌</a>
+    <span><?= htmlspecialchars($d["text"]) ?></span>
+    <a class="delete"
+       href="?unit=<?=$unit?>&delete=<?=$d["id"]?>"
+       onclick="return confirm('Delete this pair?')">❌</a>
 </div>
 <?php endforeach; ?>
 
@@ -172,3 +213,5 @@ document.getElementById("rows").innerHTML+=`
 }
 </script>
 
+</body>
+</html>
