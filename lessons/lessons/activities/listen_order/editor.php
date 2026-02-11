@@ -32,7 +32,7 @@ if($_SERVER["REQUEST_METHOD"]=="POST"){
     if($action=="save"){
         if(!empty($_SESSION[$key])){
             $stmt = $pdo->prepare("
-            INSERT INTO activities(unit_id, activity_type, content_json)
+            INSERT INTO activities(unit_id, type, data)
             VALUES(?,?,?)
             ");
             $stmt->execute([
@@ -48,9 +48,9 @@ if($_SERVER["REQUEST_METHOD"]=="POST"){
 $draft = $_SESSION[$key];
 
 $stmt = $pdo->prepare("
-SELECT content_json 
+SELECT data 
 FROM activities 
-WHERE unit_id=? AND activity_type=? 
+WHERE unit_id=? AND type=? 
 ORDER BY id DESC
 ");
 $stmt->execute([$unit,$activity_type]);
@@ -96,7 +96,7 @@ $saved = $stmt->fetchAll(PDO::FETCH_ASSOC);
 <h3>Saved</h3>
 
 <?php foreach($saved as $row): 
-$data = json_decode($row["content_json"],true);
+$data = json_decode($row["data"],true);
 ?>
 
 <div style="border:1px solid #ccc; padding:10px; margin:10px 0;">
