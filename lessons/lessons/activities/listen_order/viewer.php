@@ -8,16 +8,16 @@ $unit = $_GET["unit"] ?? "";
 $activity_type = "listen_order";
 
 $stmt = $pdo->prepare("
-SELECT content_json 
+SELECT data 
 FROM activities 
-WHERE unit_id=? AND activity_type=? 
+WHERE unit_id=? AND type=? 
 ORDER BY id DESC LIMIT 1
 ");
 
 $stmt->execute([$unit,$activity_type]);
 $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
-$data = json_decode($row["content_json"] ?? "[]", true);
+$data = json_decode($row["data"] ?? "[]", true);
 ?>
 
 <!DOCTYPE html>
