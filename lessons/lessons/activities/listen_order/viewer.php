@@ -4,22 +4,14 @@ require_once __DIR__ . "/../../config/db.php";
 $unit = $_GET["unit"] ?? null;
 if(!$unit) die("Unit missing");
 
-/* ======================
-LOAD DATA
-====================== */
-$stmt=$pdo->prepare("
+$stmt = $pdo->prepare("
 SELECT data FROM activities
 WHERE unit_id=:u AND type='listen_order'
 ");
 $stmt->execute(["u"=>$unit]);
-$row=$stmt->fetch(PDO::FETCH_ASSOC);
 
-$data=json_decode($row["data"] ?? "[]", true);
-if(!is_array($data)) $data=[];
-
-if(count($data)==0){
-    die("No activities created");
-}
+$row = $stmt->fetch(PDO::FETCH_ASSOC);
+$data = json_decode($row["data"] ?? "[]", true);
 ?>
 
 <!DOCTYPE html>
@@ -39,60 +31,62 @@ padding:30px;
 background:white;
 padding:25px;
 border-radius:16px;
-max-width:1100px;
+max-width:900px;
 margin:auto;
 box-shadow:0 4px 10px rgba(0,0,0,.1);
 text-align:center;
 }
 
-.images{
-display:flex;
-flex-wrap:wrap;
-justify-content:center;
-gap:20px;
-margin-top:25px;
+.grid{
+display:grid;
+grid-template-columns:repeat(auto-fit,minmax(120px,1fr));
+gap:15px;
+margin-top:20px;
 }
 
-.images img{
-height:140px;
-border-radius:14px;
+.img{
+width:100%;
+height:110px;
+object-fit:contain;
+background:#f8f9fa;
+padding:10px;
+border-radius:12px;
 cursor:pointer;
 border:3px solid transparent;
-background:white;
-padding:6px;
-box-shadow:0 2px 6px rgba(0,0,0,.1);
 }
 
-.images img.selected{
-border-color:#0b5ed7;
+.selected{
+border:3px solid #0b5ed7;
+background:#dbe9ff;
 }
 
-.images img.correct{
-border-color:#28a745;
+.correct{
+border:3px solid green;
+background:#d4edda;
 }
 
-.images img.wrong{
-border-color:#dc3545;
+.wrong{
+border:3px solid red;
+background:#f8d7da;
 }
 
 button{
 background:#0b5ed7;
 color:white;
 border:none;
-padding:12px 20px;
-border-radius:12px;
+padding:10px 16px;
+border-radius:10px;
 cursor:pointer;
-margin:10px;
-font-size:15px;
+margin:6px;
 }
 
 .green{ background:#28a745; }
 
 .feedback{
-font-size:18px;
 font-weight:bold;
 margin-top:15px;
 }
+
 .good{ color:green; }
 .bad{ color:red; }
 
@@ -107,12 +101,12 @@ margin-top:15px;
 
 <button onclick="speak()">🔊 Listen</button>
 
-<div id="images" class="images"></div>
+<div id="grid" class="grid"></div>
 
-<br>
-
+<div>
 <button onclick="check()">✅ Check</button>
 <button onclick="next()">➡ Next</button>
+</div>
 
 <div id="fb" class="feedback"></div>
 
@@ -126,110 +120,88 @@ margin-top:15px;
 
 <script>
 
-const data = <?=json_encode($data)?>;
+const blocks = <?=json_encode($data)?>;
 
-let index=0;
-let selected=[];
-let shuffled=[];
-
-function shuffle(a){
-  let arr=[...a];
-  for(let i=arr.length-1;i>0;i--){
-    const j=Math.floor(Math.random()*(i+1));
-    [arr[i],arr[j]]=[arr[j],arr[i]];
-  }
-  return arr;
-}
+let current = 0;
+let correctOrder = [];
+let shuffled = [];
+let selected = [];
 
 function load(){
 
-  selected=[];
-  document.getElementById("fb").innerHTML="";
+    if(!blocks[current]) return;
 
-  const block=data[index];
+    const b = blocks[current];
 
-  shuffled=shuffle(block.images);
+    correctOrder = [...b.images];
+    shuffled = [...b.images].sort(()=>Math.random()-0.5);
 
-  const div=document.getElementById("images");
-  div.innerHTML="";
+    selected = [];
 
-  shuffled.forEach((img,i)=>{
-    div.innerHTML+=`
-      <img src="../../${img}" onclick="select(this,'${img}')">
-    `;
-  });
-
+    draw();
+    document.getElementById("fb").innerHTML="";
 }
 
-function select(el,img){
+function draw(){
 
-  if(selected.includes(img)){
-    selected=selected.filter(x=>x!=img);
-    el.classList.remove("selected");
-  }else{
-    selected.push(img);
-    el.classList.add("selected");
-  }
+    const g = document.getElementById("grid");
+    g.innerHTML="";
 
+    shuffled.forEach(img=>{
+
+        const el = document.createElement("img");
+        el.src = "../../"+img;
+        el.className="img";
+
+        el.onclick = ()=>{
+            if(selected.includes(img)) return;
+
+            selected.push(img);
+            el.classList.add("selected");
+        };
+
+        g.appendChild(el);
+    });
 }
 
 function speak(){
-
-  const block=data[index];
-
-  const u=new SpeechSynthesisUtterance(block.text);
-  u.lang="en-US";
-  speechSynthesis.speak(u);
-
+    const t = blocks[current].text;
+    const u = new SpeechSynthesisUtterance(t);
+    u.lang="en-US";
+    speechSynthesis.speak(u);
 }
 
 function check(){
 
-  const correct=data[index].images;
+    const fb = document.getElementById("fb");
 
-  const imgs=document.querySelectorAll(".images img");
-
-  let ok=true;
-
-  imgs.forEach(el=>{
-    el.classList.remove("correct","wrong");
-
-    const src=el.getAttribute("src").replace("../../","");
-
-    if(selected.includes(src)){
-      if(correct[selected.indexOf(src)]===src){
-        el.classList.add("correct");
-      }else{
-        el.classList.add("wrong");
-        ok=false;
-      }
+    if(selected.length !== correctOrder.length){
+        fb.innerHTML="Try again";
+        fb.className="feedback bad";
+        return;
     }
-  });
 
-  if(selected.length!==correct.length) ok=false;
+    let ok = true;
 
-  const fb=document.getElementById("fb");
+    for(let i=0;i<correctOrder.length;i++){
+        if(selected[i] !== correctOrder[i]){
+            ok=false;
+            break;
+        }
+    }
 
-  if(ok){
-    fb.innerHTML="🌟 Correct!";
-    fb.className="feedback good";
-  }else{
-    fb.innerHTML="Try again";
-    fb.className="feedback bad";
-  }
-
+    if(ok){
+        fb.innerHTML="✅ Correct!";
+        fb.className="feedback good";
+    }else{
+        fb.innerHTML="❌ Try again";
+        fb.className="feedback bad";
+    }
 }
 
 function next(){
-
-  index++;
-
-  if(index>=data.length){
-    alert("Finished!");
-    index=0;
-  }
-
-  load();
+    current++;
+    load();
 }
 
 load();
