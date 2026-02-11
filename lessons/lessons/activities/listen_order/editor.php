@@ -26,9 +26,9 @@ $data=json_decode($row["data"] ?? "[]", true);
 if(!is_array($data)) $data=[];
 
 /* ======================
-ADD BLOCK (NO SAVE YET)
+ADD (NO SAVE DB)
 ====================== */
-if(isset($_POST["add_block"])){
+if(isset($_POST["add"])){
 
     $sentence=trim($_POST["sentence"] ?? "");
 
@@ -46,7 +46,6 @@ if(isset($_POST["add_block"])){
                 if(!$tmp) continue;
 
                 $new=uniqid()."_".basename($name);
-
                 move_uploaded_file($tmp,$uploadDir."/".$new);
 
                 $images[]="activities/listen_order/uploads/".$unit."/".$new;
@@ -63,10 +62,9 @@ if(isset($_POST["add_block"])){
 }
 
 /* ======================
-DELETE BLOCK
+DELETE
 ====================== */
 if(isset($_GET["delete"])){
-
     $i=(int)$_GET["delete"];
     if(isset($data[$i])){
         array_splice($data,$i,1);
@@ -74,9 +72,9 @@ if(isset($_GET["delete"])){
 }
 
 /* ======================
-SAVE DB ONLY WHEN CLICK SAVE
+SAVE BUTTON (SAVE DB)
 ====================== */
-if(isset($_POST["save_all"])){
+if(isset($_POST["save"])){
 
     $json=json_encode($data,JSON_UNESCAPED_UNICODE);
 
@@ -92,7 +90,7 @@ if(isset($_POST["save_all"])){
         "d"=>$json
     ]);
 
-    header("Location: editor.php?unit=".$unit."&saved=1");
+    header("Location:?unit=".$unit."&saved=1");
     exit;
 }
 ?>
@@ -170,7 +168,9 @@ text-decoration:none;
 <h2>🎧 Listen & Order — Editor</h2>
 
 <?php if(isset($_GET["saved"])): ?>
-<p style="color:green;font-weight:bold;">✔ Guardado</p>
+<div style="color:green;font-weight:bold;margin-bottom:10px;">
+✓ Guardado
+</div>
 <?php endif; ?>
 
 <form method="post" enctype="multipart/form-data">
@@ -181,8 +181,9 @@ Images:
 <input type="file" name="images[]" multiple accept="image/*">
 
 <br>
-<button name="add_block">+ Add</button>
-<button name="save_all">💾 Guardar</button>
+
+<button name="add">+ Add</button>
+<button name="save">💾 Guardar</button>
 
 </form>
 
@@ -198,13 +199,10 @@ Images:
 <b><?=htmlspecialchars($row["text"])?></b>
 
 <div class="imgs">
-<?php if(!empty($row["images"])): ?>
-<?php foreach($row["images"] as $img): ?>
-<img src="../../<?=htmlspecialchars($img)?>">
+<?php foreach(($row["images"] ?? []) as $img): ?>
+<img src="../../<?=$img?>">
 <?php endforeach; ?>
-<?php endif; ?>
 </div>
-
 </div>
 
 <a class="delete" href="?unit=<?=$unit?>&delete=<?=$i?>">✖</a>
@@ -223,4 +221,3 @@ Images:
 
 </body>
 </html>
-
