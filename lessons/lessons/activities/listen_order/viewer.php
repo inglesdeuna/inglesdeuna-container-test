@@ -1,79 +1,71 @@
 <?php
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
-
 require_once __DIR__."/../../config/db.php";
 
 $unit = $_GET["unit"] ?? "";
-$activity_type = "listen_order";
+$type = "listen_order";
 
 $stmt = $pdo->prepare("
-SELECT data 
-FROM activities 
-WHERE unit_id=? AND type=? 
+SELECT data FROM activities
+WHERE unit_id=? AND type=?
 ORDER BY id DESC LIMIT 1
 ");
-
-$stmt->execute([$unit,$activity_type]);
+$stmt->execute([$unit,$type]);
 $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
 $data = json_decode($row["data"] ?? "[]", true);
+$item = $data[0] ?? ["audio"=>"","images"=>[],"correct"=>[]];
 ?>
-
-<!DOCTYPE html>
-<html>
-<head>
-<meta charset="UTF-8">
-<title>Listen & Order</title>
-
-<style>
-.word{
-display:inline-block;
-padding:10px;
-margin:5px;
-background:#eee;
-cursor:pointer;
-}
-</style>
-
-</head>
-<body>
 
 <h2>Listen & Order</h2>
 
-<div id="words"></div>
+<audio controls src="../../<?=$item["audio"]?>"></audio>
+
+<br><br>
+
+<div id="images" style="display:flex; gap:10px;"></div>
+
+<br>
 
 <button onclick="check()">Check</button>
 
 <script>
 
-let data = <?=json_encode($data)?>;
+let images = <?=json_encode($item["images"])?>;
+let correct = <?=json_encode($item["correct"])?>;
 
-let words = [];
+images.sort(()=>Math.random()-0.5);
 
-data.forEach(item=>{
-let text = item.text || "";
-let parts = text.split(" ");
-words = words.concat(parts);
-});
+let container = document.getElementById("images");
 
-words.sort(()=>Math.random()-0.5);
+images.forEach((src,i)=>{
+let img = document.createElement("img");
+img.src="../../"+src;
+img.width=120;
+img.draggable=true;
 
-let container = document.getElementById("words");
+img.ondragstart = e=>{
+e.dataTransfer.setData("text", i);
+};
 
-words.forEach(w=>{
-let d = document.createElement("div");
-d.className="word";
-d.innerText=w;
-d.onclick=()=>container.appendChild(d);
-container.appendChild(d);
+img.ondragover = e=> e.preventDefault();
+
+img.ondrop = e=>{
+e.preventDefault();
+let from = e.dataTransfer.getData("text");
+container.insertBefore(container.children[from], img);
+};
+
+container.appendChild(img);
 });
 
 function check(){
-alert("OK");
+let order=[];
+[...container.children].forEach(img=>{
+let file = img.src.split("/").pop();
+order.push(images.indexOf(file));
+});
+
+alert(JSON.stringify(order)==JSON.stringify(correct) ? "Correct!" : "Try again");
 }
 
 </script>
-
-</body>
-</html>
