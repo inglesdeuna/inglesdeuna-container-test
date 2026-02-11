@@ -1,17 +1,17 @@
 <?php
-require_once __DIR__ . "/../../config/db.php";
+require_once __DIR__."/../../config/db.php";
 
-$unit = $_GET["unit"] ?? null;
+$unit=$_GET["unit"] ?? null;
 if(!$unit) die("Unit missing");
 
-$stmt = $pdo->prepare("
+$stmt=$pdo->prepare("
 SELECT data FROM activities
 WHERE unit_id=:u AND type='listen_order'
 ");
 $stmt->execute(["u"=>$unit]);
+$row=$stmt->fetch(PDO::FETCH_ASSOC);
 
-$row = $stmt->fetch(PDO::FETCH_ASSOC);
-$data = json_decode($row["data"] ?? "[]", true);
+$data=json_decode($row["data"] ?? "[]",true);
 ?>
 
 <!DOCTYPE html>
@@ -21,11 +21,7 @@ $data = json_decode($row["data"] ?? "[]", true);
 <title>Listen & Order</title>
 
 <style>
-body{
-font-family:Arial;
-background:#eef6ff;
-padding:30px;
-}
+body{font-family:Arial;background:#eef6ff;padding:30px;}
 
 .box{
 background:white;
@@ -60,16 +56,6 @@ border:3px solid #0b5ed7;
 background:#dbe9ff;
 }
 
-.correct{
-border:3px solid green;
-background:#d4edda;
-}
-
-.wrong{
-border:3px solid red;
-background:#f8d7da;
-}
-
 button{
 background:#0b5ed7;
 color:white;
@@ -80,16 +66,10 @@ cursor:pointer;
 margin:6px;
 }
 
-.green{ background:#28a745; }
-
-.feedback{
-font-weight:bold;
-margin-top:15px;
-}
-
-.good{ color:green; }
-.bad{ color:red; }
-
+.green{background:#28a745;}
+.feedback{font-weight:bold;margin-top:15px;}
+.good{color:green;}
+.bad{color:red;}
 </style>
 </head>
 
@@ -122,86 +102,85 @@ margin-top:15px;
 
 const blocks = <?=json_encode($data)?>;
 
-let current = 0;
-let correctOrder = [];
-let shuffled = [];
-let selected = [];
+let current=0;
+let correct=[];
+let mix=[];
+let chosen=[];
 
 function load(){
 
-    if(!blocks[current]) return;
+if(!blocks[current]) return;
 
-    const b = blocks[current];
+correct=[...blocks[current].images];
+mix=[...blocks[current].images].sort(()=>Math.random()-0.5);
 
-    correctOrder = [...b.images];
-    shuffled = [...b.images].sort(()=>Math.random()-0.5);
+chosen=[];
 
-    selected = [];
-
-    draw();
-    document.getElementById("fb").innerHTML="";
+draw();
+document.getElementById("fb").innerHTML="";
 }
 
 function draw(){
 
-    const g = document.getElementById("grid");
-    g.innerHTML="";
+const g=document.getElementById("grid");
+g.innerHTML="";
 
-    shuffled.forEach(img=>{
+mix.forEach(img=>{
 
-        const el = document.createElement("img");
-        el.src = "../../"+img;
-        el.className="img";
+const el=document.createElement("img");
+el.src="../../"+img;
+el.className="img";
 
-        el.onclick = ()=>{
-            if(selected.includes(img)) return;
+el.onclick=()=>{
+if(chosen.includes(img)) return;
+chosen.push(img);
+el.classList.add("selected");
+};
 
-            selected.push(img);
-            el.classList.add("selected");
-        };
+g.appendChild(el);
 
-        g.appendChild(el);
-    });
+});
+
 }
 
 function speak(){
-    const t = blocks[current].text;
-    const u = new SpeechSynthesisUtterance(t);
-    u.lang="en-US";
-    speechSynthesis.speak(u);
+const t=blocks[current].text;
+const u=new SpeechSynthesisUtterance(t);
+u.lang="en-US";
+speechSynthesis.speak(u);
 }
 
 function check(){
 
-    const fb = document.getElementById("fb");
+const fb=document.getElementById("fb");
 
-    if(selected.length !== correctOrder.length){
-        fb.innerHTML="Try again";
-        fb.className="feedback bad";
-        return;
-    }
+if(chosen.length!==correct.length){
+fb.innerHTML="Try again";
+fb.className="feedback bad";
+return;
+}
 
-    let ok = true;
+let ok=true;
 
-    for(let i=0;i<correctOrder.length;i++){
-        if(selected[i] !== correctOrder[i]){
-            ok=false;
-            break;
-        }
-    }
+for(let i=0;i<correct.length;i++){
+if(chosen[i]!==correct[i]){
+ok=false;
+break;
+}
+}
 
-    if(ok){
-        fb.innerHTML="✅ Correct!";
-        fb.className="feedback good";
-    }else{
-        fb.innerHTML="❌ Try again";
-        fb.className="feedback bad";
-    }
+if(ok){
+fb.innerHTML="Correct!";
+fb.className="feedback good";
+}else{
+fb.innerHTML="Try again";
+fb.className="feedback bad";
+}
 }
 
 function next(){
-    current++;
-    load();
+current++;
+load();
 }
 
 load();
