@@ -4,17 +4,17 @@ require_once __DIR__ . "/../../config/db.php";
 $unit = $_GET["unit"] ?? null;
 if(!$unit) die("Unit missing");
 
-/* =========================
+/* ======================
 UPLOAD DIR
-========================= */
+====================== */
 $uploadDir = __DIR__."/uploads/".$unit;
 if(!is_dir($uploadDir)){
     mkdir($uploadDir,0777,true);
 }
 
-/* =========================
+/* ======================
 LOAD EXISTING
-========================= */
+====================== */
 $stmt=$pdo->prepare("
 SELECT data FROM activities
 WHERE unit_id=:u AND type='listen_order'
@@ -24,73 +24,67 @@ $row=$stmt->fetch(PDO::FETCH_ASSOC);
 
 $data=json_decode($row["data"] ?? "[]", true);
 
-/* =========================
-SAVE
-========================= */
-if($_SERVER["REQUEST_METHOD"]==="POST"){
+/* ======================
+SAVE NEW BLOCK
+====================== */
+if(isset($_POST["sentence"])){
 
-    $activities=[];
+    $sentence=trim($_POST["sentence"]);
 
-    if(isset($_FILES["images"]["name"])){
+    if($sentence!=""){
 
-        foreach($_FILES["images"]["name"] as $block=>$imgs){
+        $images=[];
 
-            $blockImages=[];
+        if(isset($_FILES["images"]["name"])){
 
-            foreach($imgs as $i=>$name){
+            foreach($_FILES["images"]["name"] as $i=>$name){
 
                 if(!$name) continue;
 
-                $tmp=$_FILES["images"]["tmp_name"][$block][$i];
+                $tmp=$_FILES["images"]["tmp_name"][$i];
                 $new=uniqid()."_".basename($name);
 
                 move_uploaded_file($tmp,$uploadDir."/".$new);
 
-                $blockImages[]=
+                $images[]=
                 "activities/listen_order/uploads/".$unit."/".$new;
             }
-
-            $activities[]=[
-                "audio"=>"",
-                "images"=>$blockImages
-            ];
         }
+
+        $data[]=[
+            "text"=>$sentence,
+            "images"=>$images
+        ];
     }
-
-    /* AUDIO */
-    if(isset($_FILES["audio"]["name"])){
-
-        foreach($_FILES["audio"]["name"] as $i=>$name){
-
-            if(!$name) continue;
-
-            $tmp=$_FILES["audio"]["tmp_name"][$i];
-            $new=uniqid()."_".basename($name);
-
-            move_uploaded_file($tmp,$uploadDir."/".$new);
-
-            $activities[$i]["audio"]=
-            "activities/listen_order/uploads/".$unit."/".$new;
-        }
-    }
-
-    $json=json_encode($activities,JSON_UNESCAPED_UNICODE);
-
-    $stmt=$pdo->prepare("
-    INSERT INTO activities(id,unit_id,type,data)
-    VALUES(gen_random_uuid(),:u,'listen_order',:d)
-    ON CONFLICT (unit_id,type)
-    DO UPDATE SET data=EXCLUDED.data
-    ");
-
-    $stmt->execute([
-        "u"=>$unit,
-        "d"=>$json
-    ]);
-
-    header("Location:?unit=".$unit."&saved=1");
-    exit;
 }
+
+/* ======================
+DELETE
+====================== */
+if(isset($_GET["delete"])){
+
+    $i=(int)$_GET["delete"];
+    if(isset($data[$i])){
+        array_splice($data,$i,1);
+    }
+}
+
+/* ======================
+SAVE DB
+====================== */
+$json=json_encode($data,JSON_UNESCAPED_UNICODE);
+
+$stmt=$pdo->prepare("
+INSERT INTO activities(id,unit_id,type,data)
+VALUES(gen_random_uuid(),:u,'listen_order',:d)
+ON CONFLICT (unit_id,type)
+DO UPDATE SET data=EXCLUDED.data
+");
+
+$stmt->execute([
+"u"=>$unit,
+"d"=>$json
+]);
 ?>
 
 <!DOCTYPE html>
@@ -110,17 +104,17 @@ padding:30px;
 background:white;
 padding:25px;
 border-radius:16px;
-max-width:1000px;
+max-width:900px;
 margin:auto;
 box-shadow:0 4px 10px rgba(0,0,0,.1);
 }
 
-.block{
-border:1px solid #ddd;
-padding:15px;
-border-radius:12px;
-margin-bottom:15px;
-background:#fafafa;
+input[type=text]{
+width:100%;
+padding:10px;
+margin-bottom:10px;
+border-radius:8px;
+border:1px solid #ccc;
 }
 
 button{
@@ -135,8 +129,26 @@ margin:5px;
 
 .green{ background:#28a745; }
 
-.remove{
-background:red;
+.item{
+display:flex;
+align-items:center;
+justify-content:space-between;
+background:#f8f9fa;
+padding:12px;
+border-radius:12px;
+margin-bottom:10px;
+}
+
+.imgs img{
+height:60px;
+margin-right:6px;
+border-radius:8px;
+}
+
+.delete{
+color:red;
+font-size:22px;
+text-decoration:none;
 }
 </style>
 </head>
@@ -147,16 +159,41 @@ background:red;
 
 <h2>🎧 Listen & Order — Editor</h2>
 
-<?php if(isset($_GET["saved"])) echo "<p style='color:green'>Guardado</p>"; ?>
-
 <form method="post" enctype="multipart/form-data">
 
-<div id="blocks"></div>
+<input name="sentence" placeholder="Write sentence (TTS automatic)">
 
-<button type="button" onclick="addBlock()">+ Add</button>
-<button>💾 Guardar Todo</button>
+Images:
+<input type="file" name="images[]" multiple accept="image/*">
+
+<br>
+<button>+ Add</button>
 
 </form>
+
+<br>
+
+<h3>📦 Saved</h3>
+
+<?php foreach($data as $i=>$row): ?>
+
+<div class="item">
+
+<div>
+<b><?=htmlspecialchars($row["text"])?></b>
+
+<div class="imgs">
+<?php foreach($row["images"] as $img): ?>
+<img src="../../<?=$img?>">
+<?php endforeach; ?>
+</div>
+</div>
+
+<a class="delete" href="?unit=<?=$unit?>&delete=<?=$i?>">✖</a>
+
+</div>
+
+<?php endforeach; ?>
 
 <br>
 
@@ -165,36 +202,6 @@ background:red;
 </a>
 
 </div>
-
-<script>
-
-let container=document.getElementById("blocks");
-let index=0;
-
-function addBlock(){
-
-let div=document.createElement("div");
-div.className="block";
-
-div.innerHTML=`
-<h4>Actividad</h4>
-
-Audio:
-<input type="file" name="audio[]" accept="audio/*">
-
-<br><br>
-Images:
-<input type="file" name="images[${index}][]" multiple accept="image/*">
-
-<br>
-<button type="button" class="remove" onclick="this.parentElement.remove()">X</button>
-`;
-
-container.appendChild(div);
-index++;
-}
-
-</script>
 
 </body>
 </html>
