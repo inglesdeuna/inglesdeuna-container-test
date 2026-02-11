@@ -106,10 +106,9 @@ button{
 
 <br><br>
 
-<a href="../activities/pronunciation/viewer.php?unit=<?= urlencode($unitId) ?>" class="btn">
-🎧 Pronunciation
+<a href="../activities/pronunciation/viewer.php?unit=<?= urlencode($unitId) ?>">
+<button>🎧 Pronunciation</button>
 </a>
-
  
 </body>
 </html>
