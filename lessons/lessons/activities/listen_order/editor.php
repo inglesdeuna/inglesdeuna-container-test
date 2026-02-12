@@ -12,7 +12,7 @@ if(!is_dir($uploadDir)){
 mkdir($uploadDir,0777,true);
 }
 
-/* ===== LOAD DB ===== */
+/* ===== LOAD FROM DB ===== */
 $stmt=$pdo->prepare("
 SELECT data FROM activities
 WHERE unit_id=:u AND type=:t
@@ -26,7 +26,7 @@ $row=$stmt->fetch(PDO::FETCH_ASSOC);
 $data=json_decode($row["data"] ?? "[]",true);
 if(!is_array($data)) $data=[];
 
-/* ===== ADD BLOCK ===== */
+/* ===== ADD BLOCK (ONLY WHEN CLICK ADD) ===== */
 if(isset($_POST["add"])){
 
 $text=trim($_POST["text"] ?? "");
@@ -44,9 +44,11 @@ if(!$name) continue;
 $tmp=$_FILES["images"]["tmp_name"][$i];
 $new=uniqid()."_".basename($name);
 
-move_uploaded_file($tmp,$uploadDir."/".$new);
+if(move_uploaded_file($tmp,$uploadDir."/".$new)){
 
 $imgs[]="activities/listen_order/uploads/".$unit."/".$new;
+
+}
 
 }
 }
@@ -58,21 +60,7 @@ $data[]=[
 "images"=>$imgs
 ];
 
-}
-}
-}
-
-/* ===== DELETE BLOCK ===== */
-if(isset($_GET["delete"])){
-
-$i=(int)$_GET["delete"];
-
-if(isset($data[$i])){
-array_splice($data,$i,1);
-}
-}
-
-/* ===== SAVE DB ===== */
+/* ===== SAVE DB HERE ONLY ===== */
 $json=json_encode($data,JSON_UNESCAPED_UNICODE);
 
 $stmt=$pdo->prepare("
@@ -87,6 +75,37 @@ $stmt->execute([
 "t"=>$type,
 "d"=>$json
 ]);
+
+}
+}
+}
+
+/* ===== DELETE ===== */
+if(isset($_GET["delete"])){
+
+$i=(int)$_GET["delete"];
+
+if(isset($data[$i])){
+
+array_splice($data,$i,1);
+
+$json=json_encode($data,JSON_UNESCAPED_UNICODE);
+
+$stmt=$pdo->prepare("
+INSERT INTO activities(id,unit_id,type,data)
+VALUES(gen_random_uuid(),:u,:t,:d)
+ON CONFLICT (unit_id,type)
+DO UPDATE SET data=EXCLUDED.data
+");
+
+$stmt->execute([
+"u"=>$unit,
+"t"=>$type,
+"d"=>$json
+]);
+
+}
+}
 ?>
 
 <!DOCTYPE html>
@@ -96,62 +115,14 @@ $stmt->execute([
 <title>Listen & Order Editor</title>
 
 <style>
-body{
-font-family:Arial;
-background:#eef6ff;
-padding:30px;
-}
-
-.box{
-background:white;
-padding:25px;
-border-radius:16px;
-max-width:900px;
-margin:auto;
-box-shadow:0 4px 10px rgba(0,0,0,.1);
-}
-
-input[type=text]{
-width:100%;
-padding:10px;
-border-radius:8px;
-border:1px solid #ccc;
-margin-bottom:10px;
-}
-
-button{
-background:#0b5ed7;
-color:white;
-border:none;
-padding:10px 16px;
-border-radius:10px;
-cursor:pointer;
-margin:5px;
-}
-
+body{font-family:Arial;background:#eef6ff;padding:30px;}
+.box{background:white;padding:25px;border-radius:16px;max-width:900px;margin:auto;box-shadow:0 4px 10px rgba(0,0,0,.1);}
+input[type=text]{width:100%;padding:10px;border-radius:8px;border:1px solid #ccc;margin-bottom:10px;}
+button{background:#0b5ed7;color:white;border:none;padding:10px 16px;border-radius:10px;cursor:pointer;margin:5px;}
 .green{background:#28a745;}
-
-.item{
-display:flex;
-justify-content:space-between;
-align-items:center;
-background:#f8f9fa;
-padding:12px;
-border-radius:12px;
-margin-bottom:10px;
-}
-
-.imgs img{
-height:60px;
-margin-right:6px;
-border-radius:8px;
-}
-
-.delete{
-color:red;
-font-size:22px;
-text-decoration:none;
-}
+.item{display:flex;justify-content:space-between;align-items:center;background:#f8f9fa;padding:12px;border-radius:12px;margin-bottom:10px;}
+.imgs img{height:60px;margin-right:6px;border-radius:8px;}
+.delete{color:red;font-size:22px;text-decoration:none;}
 </style>
 </head>
 
@@ -175,10 +146,9 @@ Images:
 
 <br>
 
-<h3>📦 Blocks Saved</h3>
+<h3>📦 Blocks</h3>
 
 <?php foreach($data as $i=>$row): ?>
-
 <div class="item">
 
 <div>
@@ -195,7 +165,6 @@ Images:
 <a class="delete" href="?unit=<?=$unit?>&delete=<?=$i?>">✖</a>
 
 </div>
-
 <?php endforeach; ?>
 
 <br>
