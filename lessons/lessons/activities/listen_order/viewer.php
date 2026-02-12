@@ -1,17 +1,19 @@
 <?php
-require_once __DIR__."/../../config/db.php";
+require_once __DIR__ . "/../../config/db.php";
 
-$unit=$_GET["unit"]??die("Unit missing");
+$unit=$_GET["unit"] ?? null;
+if(!$unit) die("Unit missing");
 
 $stmt=$pdo->prepare("
 SELECT data FROM activities
 WHERE unit_id=:u AND type='listen_order'
 ");
 $stmt->execute(["u"=>$unit]);
-$row=$stmt->fetch(PDO::FETCH_ASSOC);
 
-$data=json_decode($row["data"]??"[]",true);
-if(!is_array($data)) $data=[];
+$row=$stmt->fetch(PDO::FETCH_ASSOC);
+$data=json_decode($row["data"] ?? "[]", true);
+
+if(!$data || !is_array($data)) $data=[];
 ?>
 
 <!DOCTYPE html>
@@ -21,29 +23,42 @@ if(!is_array($data)) $data=[];
 <title>Listen & Order</title>
 
 <style>
-body{font-family:Arial;background:#eef6ff;padding:30px;text-align:center;}
+body{
+font-family:Arial;
+background:#eef6ff;
+padding:30px;
+text-align:center;
+}
 .box{
-background:white;padding:25px;border-radius:16px;
-max-width:900px;margin:auto;box-shadow:0 4px 10px rgba(0,0,0,.1);
+background:white;
+padding:25px;
+border-radius:16px;
+max-width:900px;
+margin:auto;
+box-shadow:0 4px 10px rgba(0,0,0,.1);
+}
+.images{
+display:flex;
+flex-wrap:wrap;
+justify-content:center;
+margin-top:20px;
+}
+.images img{
+height:120px;
+margin:8px;
+cursor:pointer;
+border-radius:12px;
 }
 button{
-background:#0b5ed7;color:white;border:none;
-padding:10px 18px;border-radius:10px;margin:6px;cursor:pointer;
+background:#0b5ed7;
+color:white;
+border:none;
+padding:10px 16px;
+border-radius:10px;
+cursor:pointer;
+margin:5px;
 }
-.green{background:#28a745;}
-.images{display:flex;flex-wrap:wrap;justify-content:center;margin-top:20px;}
-.images img{
-width:120px;margin:8px;border-radius:12px;cursor:pointer;
-}
-.order{
-border:2px dashed #ccc;
-min-height:140px;
-margin-top:25px;
-padding:15px;
-border-radius:12px;
-confirm
-}
-.order img{width:120px;margin:6px;border-radius:10px;}
+.green{ background:#28a745; }
 </style>
 </head>
 
@@ -53,17 +68,14 @@ confirm
 
 <h2>🎧 Listen & Order</h2>
 
-<button onclick="speak()">🔊 Escuchar</button>
+<button onclick="listen()">🔊 Escuchar</button>
 
-<div class="images" id="pool"></div>
-
-<h3>📥 Orden aquí</h3>
-<div class="order" id="order"></div>
+<div id="imgs" class="images"></div>
 
 <br>
 
-<button onclick="check()">✅ Revisar</button>
-<button onclick="next()">➡ Siguiente</button>
+<button onclick="check()">✅ Check</button>
+<button onclick="next()">➡ Next</button>
 
 <br><br>
 
@@ -74,66 +86,62 @@ confirm
 </div>
 
 <script>
-
-let blocks = <?=json_encode($data,JSON_UNESCAPED_UNICODE)?>;
-let index=0;
-let correct=[];
+let blocks = <?=json_encode($data)?>;
+let index = 0;
+let order = [];
 
 function shuffle(a){
-    return a.sort(()=>Math.random()-0.5);
+return a.sort(()=>Math.random()-0.5);
 }
 
-function load(){
+function render(){
 
-    if(index>=blocks.length){
-        document.querySelector(".box").innerHTML="<h2>🎉 Completado</h2>";
-        return;
-    }
-
-    let b=blocks[index];
-
-    correct=[...b.images];
-
-    let mixed=shuffle([...b.images]);
-
-    let pool=document.getElementById("pool");
-    let order=document.getElementById("order");
-
-    pool.innerHTML="";
-    order.innerHTML="";
-
-    mixed.forEach(src=>{
-        let img=document.createElement("img");
-        img.src="../../"+src;
-        img.onclick=()=>order.appendChild(img);
-        pool.appendChild(img);
-    });
+if(index>=blocks.length){
+document.querySelector(".box").innerHTML="<h2>🎉 Completado</h2>";
+return;
 }
 
-function speak(){
-    let t=blocks[index].text;
-    let u=new SpeechSynthesisUtterance(t);
-    u.lang="en-US";
-    speechSynthesis.speak(u);
+let imgs = [...blocks[index].images];
+shuffle(imgs);
+
+order=[];
+
+let html="";
+imgs.forEach((src,i)=>{
+html+=`<img src="../../${src}" onclick="select('${src}',this)">`;
+});
+
+document.getElementById("imgs").innerHTML=html;
+}
+
+function select(src,el){
+order.push(src);
+el.style.opacity=0.3;
+}
+
+function listen(){
+let msg=new SpeechSynthesisUtterance(blocks[index].tts);
+speechSynthesis.speak(msg);
 }
 
 function check(){
 
-    let user=[...document.querySelectorAll("#order img")].map(i=>i.src.split("activities")[1]);
+let correct = blocks[index].images.join("|");
+let user = order.join("|");
 
-    let ok=JSON.stringify(user)==JSON.stringify(correct);
-
-    if(ok) alert("✅ Correcto");
-    else alert("❌ Intenta otra vez");
+if(correct===user){
+alert("✔ Correcto");
+}else{
+alert("❌ Try again");
+}
 }
 
 function next(){
-    index++;
-    load();
+index++;
+render();
 }
 
-load();
-
+render();
 </script>
 
 </body>
