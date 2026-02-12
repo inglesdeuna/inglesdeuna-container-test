@@ -2,19 +2,15 @@
 require_once __DIR__ . "/../../config/db.php";
 
 $unit = $_GET["unit"] ?? null;
-if(!$unit) die("Unidad faltante");
+if(!$unit) die("Unit missing");
 
-/* =========================
-UPLOAD DIR
-========================= */
+/* ================= UPLOAD DIR ================= */
 $uploadDir = __DIR__."/uploads/".$unit;
 if(!is_dir($uploadDir)){
     mkdir($uploadDir,0777,true);
 }
 
-/* =========================
-LOAD DB
-========================= */
+/* ================= LOAD ================= */
 $stmt=$pdo->prepare("
 SELECT data FROM activities
 WHERE unit_id=:u AND type='listen_order'
@@ -23,11 +19,10 @@ $stmt->execute(["u"=>$unit]);
 $row=$stmt->fetch(PDO::FETCH_ASSOC);
 
 $data=json_decode($row["data"] ?? "[]", true);
+if(!is_array($data)) $data=[];
 
-/* =========================
-AGREGAR BLOQUE
-========================= */
-if(isset($_POST["accion"]) && $_POST["accion"]=="agregar"){
+/* ================= SAVE ================= */
+if($_SERVER["REQUEST_METHOD"]==="POST"){
 
     $sentence=trim($_POST["sentence"] ?? "");
 
@@ -50,28 +45,15 @@ if(isset($_POST["accion"]) && $_POST["accion"]=="agregar"){
             }
         }
 
-        $data[]=[
-            "text"=>$sentence,
-            "images"=>$images
-        ];
+        if(count($images)>0){
+            $data[]=[
+                "tts"=>$sentence,
+                "images"=>$images
+            ];
+        }
     }
-}
 
-/* =========================
-DELETE
-========================= */
-if(isset($_GET["delete"])){
-    $i=(int)$_GET["delete"];
-    if(isset($data[$i])){
-        array_splice($data,$i,1);
-    }
-}
-
-/* =========================
-GUARDAR DB
-========================= */
-if(isset($_POST["accion"]) && $_POST["accion"]=="guardar"){
-
+    /* SAVE DB */
     $json=json_encode($data,JSON_UNESCAPED_UNICODE);
 
     $stmt=$pdo->prepare("
@@ -85,6 +67,34 @@ if(isset($_POST["accion"]) && $_POST["accion"]=="guardar"){
         "u"=>$unit,
         "d"=>$json
     ]);
+
+    header("Location: editor.php?unit=".$unit);
+    exit;
+}
+
+/* ================= DELETE ================= */
+if(isset($_GET["delete"])){
+
+    $i=(int)$_GET["delete"];
+
+    if(isset($data[$i])){
+        array_splice($data,$i,1);
+
+        $json=json_encode($data,JSON_UNESCAPED_UNICODE);
+
+        $stmt=$pdo->prepare("
+        UPDATE activities SET data=:d
+        WHERE unit_id=:u AND type='listen_order'
+        ");
+
+        $stmt->execute([
+            "d"=>$json,
+            "u"=>$unit
+        ]);
+    }
+
+    header("Location: editor.php?unit=".$unit);
+    exit;
 }
 ?>
 
@@ -100,7 +110,6 @@ font-family:Arial;
 background:#eef6ff;
 padding:30px;
 }
-
 .box{
 background:white;
 padding:25px;
@@ -109,7 +118,6 @@ max-width:900px;
 margin:auto;
 box-shadow:0 4px 10px rgba(0,0,0,.1);
 }
-
 input[type=text]{
 width:100%;
 padding:10px;
@@ -117,7 +125,6 @@ margin-bottom:10px;
 border-radius:8px;
 border:1px solid #ccc;
 }
-
 button{
 background:#0b5ed7;
 color:white;
@@ -125,27 +132,23 @@ border:none;
 padding:10px 16px;
 border-radius:10px;
 cursor:pointer;
-margin:5px;
+margin-top:10px;
 }
-
 .green{ background:#28a745; }
-
 .item{
-display:flex;
-align-items:center;
-justify-content:space-between;
 background:#f8f9fa;
 padding:12px;
 border-radius:12px;
-margin-bottom:10px;
+margin-bottom:12px;
+display:flex;
+justify-content:space-between;
+align-items:center;
 }
-
 .imgs img{
 height:60px;
 margin-right:6px;
 border-radius:8px;
 }
-
 .delete{
 color:red;
 font-size:22px;
@@ -162,20 +165,15 @@ text-decoration:none;
 
 <form method="post" enctype="multipart/form-data">
 
-<input name="sentence" placeholder="Oración (audio automático)">
+<input name="sentence" placeholder="Oración (audio automático TTS)">
 
-Imágenes:
 <input type="file" name="images[]" multiple accept="image/*">
 
-<br>
-
-<button name="accion" value="agregar">➕ Agregar Bloque</button>
-<button name="accion" value="guardar">💾 Guardar</button>
+<button>💾 Guardar</button>
 
 </form>
 
 <br>
-
 <h3>📦 Bloques</h3>
 
 <?php foreach($data as $i=>$row): ?>
@@ -183,13 +181,14 @@ Imágenes:
 <div class="item">
 
 <div>
-<b><?=htmlspecialchars($row["text"])?></b>
+<b><?=htmlspecialchars($row["tts"])?></b>
 
 <div class="imgs">
 <?php foreach($row["images"] as $img): ?>
 <img src="../../<?=$img?>">
 <?php endforeach; ?>
 </div>
+
 </div>
 
 <a class="delete" href="?unit=<?=$unit?>&delete=<?=$i?>">✖</a>
@@ -205,6 +204,5 @@ Imágenes:
 </a>
 
 </div>
-
 </body>
 </html>
