@@ -1,19 +1,20 @@
 <?php
 require_once __DIR__ . "/../../config/db.php";
 
-$unit=$_GET["unit"] ?? null;
+$unit = $_GET["unit"] ?? null;
 if(!$unit) die("Unit missing");
 
+/* ======================
+LOAD DATA
+====================== */
 $stmt=$pdo->prepare("
 SELECT data FROM activities
 WHERE unit_id=:u AND type='listen_order'
 ");
 $stmt->execute(["u"=>$unit]);
-
 $row=$stmt->fetch(PDO::FETCH_ASSOC);
-$data=json_decode($row["data"] ?? "[]", true);
 
-if(!$data || !is_array($data)) $data=[];
+$data=json_decode($row["data"] ?? "[]", true);
 ?>
 
 <!DOCTYPE html>
@@ -27,8 +28,8 @@ body{
 font-family:Arial;
 background:#eef6ff;
 padding:30px;
-text-align:center;
 }
+
 .box{
 background:white;
 padding:25px;
@@ -36,29 +37,61 @@ border-radius:16px;
 max-width:900px;
 margin:auto;
 box-shadow:0 4px 10px rgba(0,0,0,.1);
+text-align:center;
 }
-.images{
-display:flex;
-flex-wrap:wrap;
-justify-content:center;
-margin-top:20px;
-}
-.images img{
-height:120px;
-margin:8px;
-cursor:pointer;
-border-radius:12px;
-}
-button{
+
+.listenBtn{
 background:#0b5ed7;
 color:white;
-border:none;
-padding:10px 16px;
+padding:10px 20px;
 border-radius:10px;
+border:none;
 cursor:pointer;
-margin:5px;
 }
-.green{ background:#28a745; }
+
+.dragArea{
+margin-top:20px;
+display:flex;
+justify-content:center;
+flex-wrap:wrap;
+gap:10px;
+}
+
+.dragImg{
+width:120px;
+height:120px;
+object-fit:contain;
+background:#f8f9fa;
+border-radius:12px;
+padding:6px;
+cursor:grab;
+}
+
+.dropZone{
+margin-top:30px;
+min-height:140px;
+border:2px dashed #0b5ed7;
+border-radius:12px;
+padding:20px;
+display:flex;
+flex-wrap:wrap;
+gap:10px;
+justify-content:center;
+}
+
+.btn{
+background:#0b5ed7;
+color:white;
+padding:10px 16px;
+border:none;
+border-radius:10px;
+margin:10px;
+cursor:pointer;
+}
+
+.green{
+background:#28a745;
+}
 </style>
 </head>
 
@@ -68,80 +101,121 @@ margin:5px;
 
 <h2>🎧 Listen & Order</h2>
 
-<button onclick="listen()">🔊 Escuchar</button>
+<button class="listenBtn" onclick="speak()">🔊 Listen</button>
 
-<div id="imgs" class="images"></div>
+<div class="dragArea" id="dragArea"></div>
 
-<br>
+<div class="dropZone" id="dropZone"></div>
 
-<button onclick="check()">✅ Check</button>
-<button onclick="next()">➡ Next</button>
+<button class="btn" onclick="check()">✔ Check</button>
+<button class="btn" onclick="next()">➡ Next</button>
 
 <br><br>
 
 <a href="../hub/index.php?unit=<?=$unit?>">
-<button class="green">← Volver Hub</button>
+<button class="btn green">← Volver al Hub</button>
 </a>
 
 </div>
 
 <script>
+
 let blocks = <?=json_encode($data)?>;
 let index = 0;
-let order = [];
+let correct = [];
 
-function shuffle(a){
-return a.sort(()=>Math.random()-0.5);
+function shuffle(arr){
+return arr.sort(()=>Math.random()-0.5);
 }
 
-function render(){
+function load(){
 
 if(index>=blocks.length){
 document.querySelector(".box").innerHTML="<h2>🎉 Completado</h2>";
 return;
 }
 
-let imgs = [...blocks[index].images];
-shuffle(imgs);
+let b = blocks[index];
 
-order=[];
+correct = b.images;
 
-let html="";
-imgs.forEach((src,i)=>{
-html+=`<img src="../../${src}" onclick="select('${src}',this)">`;
+let shuffled = shuffle([...b.images]);
+
+let dragArea = document.getElementById("dragArea");
+let dropZone = document.getElementById("dropZone");
+
+dragArea.innerHTML="";
+dropZone.innerHTML="";
+
+shuffled.forEach((img,i)=>{
+
+let el=document.createElement("img");
+el.src="../../"+img;
+el.className="dragImg";
+el.draggable=true;
+
+el.ondragstart=e=>{
+e.dataTransfer.setData("text",img);
+};
+
+dragArea.appendChild(el);
+
 });
 
-document.getElementById("imgs").innerHTML=html;
+dropZone.ondragover=e=>e.preventDefault();
+
+dropZone.ondrop=e=>{
+e.preventDefault();
+
+let img=e.dataTransfer.getData("text");
+
+let el=document.createElement("img");
+el.src="../../"+img;
+el.className="dragImg";
+
+dropZone.appendChild(el);
+};
+
 }
 
-function select(src,el){
-order.push(src);
-el.style.opacity=0.3;
-}
+function speak(){
 
-function listen(){
-let msg=new SpeechSynthesisUtterance(blocks[index].tts);
+let txt = blocks[index].text;
+
+let msg = new SpeechSynthesisUtterance(txt);
+
+msg.lang="en-US";      // ✅ INGLES
+msg.rate=0.9;          // ✅ velocidad natural
+msg.pitch=1.1;         // ✅ voz un poco más natural
+
+let voices = speechSynthesis.getVoices();
+let enVoice = voices.find(v=>v.lang.includes("en"));
+
+if(enVoice) msg.voice=enVoice;
+
 speechSynthesis.speak(msg);
+
 }
 
 function check(){
 
-let correct = blocks[index].images.join("|");
-let user = order.join("|");
+let imgs = [...document.querySelectorAll("#dropZone img")].map(i=>i.src.split("../../")[1]);
 
-if(correct===user){
-alert("✔ Correcto");
+if(JSON.stringify(imgs)===JSON.stringify(correct)){
+alert("Excellent!");
 }else{
-alert("❌ Try again");
+alert("Try again");
 }
+
 }
 
 function next(){
 index++;
-render();
+load();
 }
 
-render();
+load();
+
 </script>
 
 </body>
