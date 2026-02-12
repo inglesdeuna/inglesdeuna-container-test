@@ -4,9 +4,6 @@ require_once __DIR__ . "/../../config/db.php";
 $unit = $_GET["unit"] ?? null;
 if(!$unit) die("Unit missing");
 
-/* ======================
-LOAD DATA
-====================== */
 $stmt=$pdo->prepare("
 SELECT data FROM activities
 WHERE unit_id=:u AND type='listen_order'
@@ -137,9 +134,9 @@ return;
 
 let b = blocks[index];
 
-correct = b.images;
+correct = b.images.map(i=>i.trim());
 
-let shuffled = shuffle([...b.images]);
+let shuffled = shuffle([...correct]);
 
 let dragArea = document.getElementById("dragArea");
 let dropZone = document.getElementById("dropZone");
@@ -147,7 +144,7 @@ let dropZone = document.getElementById("dropZone");
 dragArea.innerHTML="";
 dropZone.innerHTML="";
 
-shuffled.forEach((img,i)=>{
+shuffled.forEach(img=>{
 
 let el=document.createElement("img");
 el.src="../../"+img;
@@ -155,7 +152,7 @@ el.className="dragImg";
 el.draggable=true;
 
 el.ondragstart=e=>{
-e.dataTransfer.setData("text",img);
+e.dataTransfer.setData("img",img);
 };
 
 dragArea.appendChild(el);
@@ -167,11 +164,16 @@ dropZone.ondragover=e=>e.preventDefault();
 dropZone.ondrop=e=>{
 e.preventDefault();
 
-let img=e.dataTransfer.getData("text");
+let img=e.dataTransfer.getData("img");
 
 let el=document.createElement("img");
 el.src="../../"+img;
 el.className="dragImg";
+el.draggable=true;
+
+el.ondragstart=e=>{
+e.dataTransfer.setData("img",img);
+};
 
 dropZone.appendChild(el);
 };
@@ -180,16 +182,20 @@ dropZone.appendChild(el);
 
 function speak(){
 
+if(!blocks[index]) return;
+
 let txt = blocks[index].text;
+
+speechSynthesis.cancel();
 
 let msg = new SpeechSynthesisUtterance(txt);
 
-msg.lang="en-US";      // ✅ INGLES
-msg.rate=0.9;          // ✅ velocidad natural
-msg.pitch=1.1;         // ✅ voz un poco más natural
+msg.lang="en-US";
+msg.rate=0.85;
+msg.pitch=1.1;
 
 let voices = speechSynthesis.getVoices();
-let enVoice = voices.find(v=>v.lang.includes("en"));
+let enVoice = voices.find(v=>v.lang && v.lang.startsWith("en"));
 
 if(enVoice) msg.voice=enVoice;
 
@@ -199,9 +205,15 @@ speechSynthesis.speak(msg);
 
 function check(){
 
-let imgs = [...document.querySelectorAll("#dropZone img")].map(i=>i.src.split("../../")[1]);
+let imgs = [...document.querySelectorAll("#dropZone img")]
+.map(i=>{
+let src=i.src;
+return src.substring(src.indexOf("activities/"));
+});
 
-if(JSON.stringify(imgs)===JSON.stringify(correct)){
+let ok = JSON.stringify(imgs) === JSON.stringify(correct);
+
+if(ok){
 alert("Excellent!");
 }else{
 alert("Try again");
@@ -213,6 +225,9 @@ function next(){
 index++;
 load();
 }
+
+/* IMPORTANTE PARA QUE SPEECH FUNCIONE */
+speechSynthesis.onvoiceschanged = () => {};
 
 load();
 
