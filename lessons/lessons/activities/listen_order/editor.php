@@ -1,20 +1,15 @@
 <?php
-require_once __DIR__ . "/../../config/db.php";
+require_once __DIR__."/../../config/db.php";
 
-$unit = $_GET["unit"] ?? null;
-if(!$unit) die("Unit missing");
+$unit=$_GET["unit"]??die("Unit missing");
 
-/* ======================
-UPLOAD DIR
-====================== */
-$uploadDir = __DIR__."/uploads/".$unit;
+/* ================= UPLOAD DIR ================= */
+$uploadDir=__DIR__."/uploads/".$unit;
 if(!is_dir($uploadDir)){
     mkdir($uploadDir,0777,true);
 }
 
-/* ======================
-LOAD EXISTING
-====================== */
+/* ================= LOAD DATA ================= */
 $stmt=$pdo->prepare("
 SELECT data FROM activities
 WHERE unit_id=:u AND type='listen_order'
@@ -22,46 +17,38 @@ WHERE unit_id=:u AND type='listen_order'
 $stmt->execute(["u"=>$unit]);
 $row=$stmt->fetch(PDO::FETCH_ASSOC);
 
-$data=json_decode($row["data"] ?? "[]", true);
+$data=json_decode($row["data"]??"[]",true);
+if(!is_array($data)) $data=[];
 
-/* ======================
-ADD BLOCK (SIN GUARDAR DB)
-====================== */
-if(isset($_POST["agregar"])){
+/* ================= ADD BLOCK (MEMORY ONLY) ================= */
+if(isset($_POST["add_block"])){
 
-    $sentence=trim($_POST["sentence"] ?? "");
+    $sentence=trim($_POST["sentence"]??"");
+    $images=[];
 
-    if($sentence!=""){
+    if(isset($_FILES["images"]["name"])){
+        foreach($_FILES["images"]["name"] as $i=>$name){
 
-        $imgs=[];
+            if(!$name) continue;
 
-        if(isset($_FILES["images"]["name"])){
+            $tmp=$_FILES["images"]["tmp_name"][$i];
+            $new=uniqid()."_".basename($name);
 
-            foreach($_FILES["images"]["name"] as $i=>$name){
+            move_uploaded_file($tmp,$uploadDir."/".$new);
 
-                if(!$name) continue;
-
-                $tmp=$_FILES["images"]["tmp_name"][$i];
-                $new=uniqid()."_".basename($name);
-
-                move_uploaded_file($tmp,$uploadDir."/".$new);
-
-                $imgs[]="activities/listen_order/uploads/".$unit."/".$new;
-            }
+            $images[]="activities/listen_order/uploads/".$unit."/".$new;
         }
+    }
 
-        if(count($imgs)>0){
-            $data[]=[
-                "text"=>$sentence,
-                "images"=>$imgs
-            ];
-        }
+    if($sentence!="" && count($images)>0){
+        $data[]=[
+            "text"=>$sentence,
+            "images"=>$images
+        ];
     }
 }
 
-/* ======================
-DELETE BLOCK
-====================== */
+/* ================= DELETE ================= */
 if(isset($_GET["delete"])){
     $i=(int)$_GET["delete"];
     if(isset($data[$i])){
@@ -69,10 +56,8 @@ if(isset($_GET["delete"])){
     }
 }
 
-/* ======================
-GUARDAR EN DB
-====================== */
-if(isset($_POST["guardar"])){
+/* ================= SAVE DB ================= */
+if(isset($_POST["guardar_db"])){
 
     $json=json_encode($data,JSON_UNESCAPED_UNICODE);
 
@@ -87,21 +72,20 @@ if(isset($_POST["guardar"])){
         "u"=>$unit,
         "d"=>$json
     ]);
+
+    header("Location:?unit=".$unit);
+    exit;
 }
 ?>
+
 <!DOCTYPE html>
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Listen Order Editor</title>
+<title>Listen & Order Editor</title>
 
 <style>
-body{
-font-family:Arial;
-background:#eef6ff;
-padding:30px;
-}
-
+body{font-family:Arial;background:#eef6ff;padding:30px;}
 .box{
 background:white;
 padding:25px;
@@ -110,48 +94,18 @@ max-width:900px;
 margin:auto;
 box-shadow:0 4px 10px rgba(0,0,0,.1);
 }
-
-input[type=text]{
-width:100%;
-padding:10px;
-margin-bottom:10px;
-border-radius:8px;
-border:1px solid #ccc;
-}
-
+input[type=text]{width:100%;padding:10px;margin-bottom:10px;border-radius:8px;border:1px solid #ccc;}
 button{
-background:#0b5ed7;
-color:white;
-border:none;
-padding:10px 16px;
-border-radius:10px;
-cursor:pointer;
-margin:5px;
+background:#0b5ed7;color:white;border:none;
+padding:10px 16px;border-radius:10px;cursor:pointer;margin:5px;
 }
-
-.green{ background:#28a745; }
-
+.green{background:#28a745;}
 .item{
-display:flex;
-justify-content:space-between;
-align-items:center;
-background:#f8f9fa;
-padding:12px;
-border-radius:12px;
-margin-bottom:10px;
+display:flex;justify-content:space-between;align-items:center;
+background:#f8f9fa;padding:12px;border-radius:12px;margin-bottom:10px;
 }
-
-.imgs img{
-height:60px;
-margin-right:6px;
-border-radius:8px;
-}
-
-.delete{
-color:red;
-font-size:22px;
-text-decoration:none;
-}
+.imgs img{height:60px;margin-right:6px;border-radius:8px;}
+.delete{color:red;font-size:22px;text-decoration:none;}
 </style>
 </head>
 
@@ -170,17 +124,15 @@ Imágenes:
 
 <br>
 
-<button name="agregar">➕ Agregar bloque</button>
-<button name="guardar">💾 Guardar</button>
+<button name="add_block">➕ Agregar bloque</button>
+<button name="guardar_db">💾 Guardar</button>
 
 </form>
 
 <br>
-
 <h3>📦 Bloques</h3>
 
 <?php foreach($data as $i=>$row): ?>
-
 <div class="item">
 
 <div>
@@ -191,23 +143,19 @@ Imágenes:
 <img src="../../<?=$img?>">
 <?php endforeach; ?>
 </div>
-
 </div>
 
 <a class="delete" href="?unit=<?=$unit?>&delete=<?=$i?>">✖</a>
 
 </div>
-
 <?php endforeach; ?>
 
 <br>
 
 <a href="../hub/index.php?unit=<?=$unit?>">
-<button class="green">← Volver al Hub</button>
+<button class="green">← Volver Hub</button>
 </a>
 
 </div>
-
 </body>
 </html>
-
