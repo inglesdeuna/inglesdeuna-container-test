@@ -1,109 +1,205 @@
 <?php
-$unit=$_GET["unit"] ?? null;
-if(!$unit) die("Unit missing");
+$unit = $_GET['unit'] ?? null;
+if (!$unit) die("Unidad no especificada");
 
-$file=__DIR__."/listen_order.json";
-$data=file_exists($file)
- ? json_decode(file_get_contents($file),true)
- : [];
+$file = __DIR__ . "/listen_order.json";
+$data = file_exists($file)
+  ? json_decode(file_get_contents($file), true)
+  : [];
 
-$list=$data[$unit] ?? [];
-if(!$list) die("No hay actividades");
+if (!isset($data[$unit]) || empty($data[$unit])) {
+  die("No hay actividades para esta unidad");
+}
+
+$blocks = $data[$unit];
 ?>
-
 <!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
 <meta charset="UTF-8">
 <title>Listen & Order</title>
 
 <style>
-body{font-family:Arial;background:#eef6ff;text-align:center;padding:30px}
-.box{background:white;padding:25px;border-radius:15px;max-width:800px;margin:auto}
-.images{display:flex;flex-wrap:wrap;gap:15px;justify-content:center}
-.images img{height:100px;border-radius:12px;background:white;padding:10px;cursor:grab}
-.drop{border:2px dashed #0b5ed7;border-radius:15px;padding:20px;margin-top:20px;min-height:120px;display:flex;gap:15px;justify-content:center;flex-wrap:wrap}
-button{padding:10px 20px;border:none;border-radius:12px;background:#0b5ed7;color:white;margin:5px;cursor:pointer}
+body{
+  font-family: Arial;
+  background:#eef6ff;
+  text-align:center;
+  padding:20px;
+}
+
+h1{ color:#0b5ed7; }
+
+#sentenceBox{
+  margin:20px auto;
+  padding:15px;
+  background:white;
+  border-radius:15px;
+  max-width:700px;
+}
+
+#images, #answer{
+  display:flex;
+  flex-wrap:wrap;
+  justify-content:center;
+  gap:12px;
+  margin:15px 0;
+}
+
+.imgCard{
+  background:white;
+  padding:8px;
+  border-radius:12px;
+  cursor:grab;
+  box-shadow:0 2px 6px rgba(0,0,0,0.1);
+}
+
+.imgCard img{
+  height:90px;
+}
+
+.drop-zone{
+  background:white;
+  border:2px dashed #0b5ed7;
+  border-radius:14px;
+  padding:18px;
+  min-height:110px;
+}
+
+button{
+  padding:10px 18px;
+  border:none;
+  border-radius:12px;
+  background:#0b5ed7;
+  color:white;
+  cursor:pointer;
+  margin:6px;
+}
+
+#feedback{
+  font-size:18px;
+  font-weight:bold;
+}
+
+.good{ color:green; }
+.bad{ color:crimson; }
+
+.back{
+  display:inline-block;
+  margin-top:20px;
+  background:#16a34a;
+  color:white;
+  padding:10px 18px;
+  border-radius:12px;
+  text-decoration:none;
+  font-weight:bold;
+}
 </style>
 </head>
 
 <body>
 
-<div class="box">
+<h1>🎧 Listen & Order</h1>
 
-<h2>🎧 Listen & Order</h2>
-
-<button onclick="play()">🔊 Listen</button>
-
-<div class="images" id="imgs"></div>
-
-<div class="drop" id="drop"></div>
-
-<br>
-<button onclick="check()">Check</button>
-<button onclick="next()">Next</button>
-
-<p id="msg"></p>
-
+<div id="sentenceBox">
+  <button onclick="playAudio()">🔊 Listen</button>
 </div>
+
+<div id="images"></div>
+
+<div id="answer" class="drop-zone"></div>
+
+<div>
+  <button onclick="check()">✅ Check</button>
+  <button onclick="next()">➡️</button>
+</div>
+
+<div id="feedback"></div>
+
+<a class="back" href="../hub/index.php?unit=<?= urlencode($unit) ?>">
+↩ Volver al Hub
+</a>
 
 <script>
 
-const data = <?= json_encode($list) ?>;
-let index=0;
-let correct=[];
-let dragged=null;
+const blocks = <?= json_encode($blocks) ?>;
 
-const imgs=document.getElementById("imgs");
-const drop=document.getElementById("drop");
-const msg=document.getElementById("msg");
+let index = 0;
+let correctOrder = [];
+let dragged = null;
 
-function load(){
+const imagesDiv = document.getElementById("images");
+const answerDiv = document.getElementById("answer");
+const feedback = document.getElementById("feedback");
 
- imgs.innerHTML="";
- drop.innerHTML="";
- msg.textContent="";
+function loadBlock(){
 
- const block=data[index];
- correct=[...block.images];
+  feedback.textContent="";
+  feedback.className="";
 
- let shuffled=[...correct].sort(()=>Math.random()-0.5);
+  imagesDiv.innerHTML="";
+  answerDiv.innerHTML="";
 
- shuffled.forEach(src=>{
-  let img=document.createElement("img");
-  img.src="../../"+src;
-  img.draggable=true;
-  img.dataset.src=src;
-  img.ondragstart=()=>dragged=img;
-  imgs.appendChild(img);
- });
+  const block = blocks[index];
+
+  correctOrder = [...block.images];
+
+  let shuffled = [...correctOrder].sort(()=>Math.random()-0.5);
+
+  shuffled.forEach(src=>{
+    const card = document.createElement("div");
+    card.className="imgCard";
+    card.draggable=true;
+    card.dataset.src=src;
+
+    const img=document.createElement("img");
+    img.src="../../"+src;
+
+    card.appendChild(img);
+
+    card.addEventListener("dragstart",()=>dragged=card);
+
+    imagesDiv.appendChild(card);
+  });
 }
 
-drop.ondragover=e=>e.preventDefault();
-drop.ondrop=()=>{ if(dragged) drop.appendChild(dragged); };
+answerDiv.addEventListener("dragover", e=>e.preventDefault());
+
+answerDiv.addEventListener("drop", ()=>{
+  if(dragged) answerDiv.appendChild(dragged);
+});
 
 function check(){
- let user=[...drop.children].map(i=>i.dataset.src);
- msg.textContent = JSON.stringify(user)==JSON.stringify(correct)
-  ? "✔ Correct"
-  : "Try again";
+
+  const built = [...answerDiv.children].map(x=>x.dataset.src);
+
+  if(JSON.stringify(built) === JSON.stringify(correctOrder)){
+    feedback.textContent="🌟 Excellent!";
+    feedback.className="good";
+  }else{
+    feedback.textContent="🔁 Try again!";
+    feedback.className="bad";
+  }
 }
 
 function next(){
- index++;
- if(index>=data.length){
-  msg.textContent="Completed!";
-  return;
- }
- load();
+
+  index++;
+
+  if(index >= blocks.length){
+    feedback.textContent="🏆 Completado!";
+    feedback.className="good";
+    return;
+  }
+
+  loadBlock();
 }
 
-function play(){
- let a=new Audio("../../"+data[index].audio);
- a.play();
+function playAudio(){
+  const audio = new Audio("../../"+blocks[index].audio);
+  audio.play();
 }
 
-load();
+loadBlock();
 
 </script>
 
