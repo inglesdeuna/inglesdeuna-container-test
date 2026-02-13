@@ -3,9 +3,6 @@
 $unit = $_GET['unit'] ?? null;
 if (!$unit) die("Unidad no especificada");
 
-/* =========================
-JSON PATH
-========================= */
 $jsonFile = __DIR__ . "/external.json";
 
 if (!file_exists($jsonFile)) die("No config");
@@ -29,11 +26,13 @@ if (!$url) die("No URL configurada");
 
 <script>
 
-/* Abre en nueva pestaña */
+/* Abrir URL en nueva pestaña */
 window.open("<?= htmlspecialchars($url) ?>", "_blank");
 
-/* Redirige Hub */
-window.location.href = "../hub/index.php?unit=<?= urlencode($unit) ?>";
+/* Regresar al HUB */
+setTimeout(()=>{
+    window.location.href = "../hub/index.php?unit=<?= urlencode($unit) ?>";
+}, 500);
 
 </script>
 
