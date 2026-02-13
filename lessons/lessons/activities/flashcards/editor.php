@@ -8,6 +8,13 @@ require_once __DIR__."/../../core/_activity_editor_template.php";
 
 <h2>Flashcards Editor</h2>
 
+<br>
+<a href="viewer.php?unit=<?php echo $unit; ?>">
+    👉 Ir al Viewer
+</a>
+<hr>
+
+
 <form method="POST" enctype="multipart/form-data">
 
     <label>Texto:</label><br>
