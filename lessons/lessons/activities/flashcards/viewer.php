@@ -1,133 +1,151 @@
 <?php
-$file = __DIR__ . "/flashcards.json";
-$data = file_exists($file) ? json_decode(file_get_contents($file), true) : [];
+$unit = $_GET['unit'] ?? null;
+if (!$unit) die("Unidad no especificada");
 
-$index = isset($_GET["i"]) ? (int)$_GET["i"] : 0;
-$c = $data[$index] ?? null;
+$jsonFile = __DIR__."/flashcards.json";
+$data = file_exists($jsonFile) ? json_decode(file_get_contents($jsonFile), true) : [];
+
+if(!isset($data[$unit]) || empty($data[$unit])){
+ die("No hay tarjetas");
+}
+
+$cards = $data[$unit];
 ?>
+
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
 <meta charset="UTF-8">
 <title>Flashcards</title>
 
 <style>
 body{
-  font-family:Arial;
-  background:#eaf2ff;
-  text-align:center
-}
-
-.scene{
-  width:420px;
-  height:300px;
-  margin:60px auto;
-  perspective:1000px;
+font-family:Arial;
+background:#eef6ff;
+text-align:center;
+padding:40px;
 }
 
 .card{
-  width:100%;
-  height:100%;
-  position:relative;
-  transform-style:preserve-3d;
-  transition:transform .6s;
-  cursor:pointer;
+width:260px;
+height:320px;
+margin:auto;
+perspective:1000px;
 }
 
-.card.is-flipped{
-  transform:rotateY(180deg);
+.inner{
+position:relative;
+width:100%;
+height:100%;
+transition:transform .6s;
+transform-style:preserve-3d;
+cursor:pointer;
 }
 
-.face{
-  position:absolute;
-  width:100%;
-  height:100%;
-  backface-visibility:hidden;
-  background:#fff;
-  border-radius:16px;
-  padding:25px;
-  box-shadow:0 10px 25px rgba(0,0,0,.15);
+.card.flip .inner{
+transform:rotateY(180deg);
+}
+
+.front,.back{
+position:absolute;
+width:100%;
+height:100%;
+border-radius:18px;
+box-shadow:0 6px 18px rgba(0,0,0,.2);
+display:flex;
+align-items:center;
+justify-content:center;
+backface-visibility:hidden;
+}
+
+.front{
+background:white;
+border:4px solid #60a5fa;
+}
+
+.front img{
+max-width:80%;
+max-height:80%;
 }
 
 .back{
-  transform:rotateY(180deg);
-  background:#f9fafb;
-}
-
-img{
-  max-width:100%;
-  border-radius:10px;
-  margin-top:10px
+background:#fef3c7;
+transform:rotateY(180deg);
+font-size:32px;
+font-family:'Comic Sans MS';
+color:#d97706;
 }
 
 button{
-  margin-top:10px;
+margin-top:20px;
+padding:12px 22px;
+border:none;
+border-radius:14px;
+background:#2563eb;
+color:white;
+font-weight:bold;
+cursor:pointer;
 }
-.nav{
-  margin-top:20px;
-}
-.nav a{
-  margin:0 15px;
-  text-decoration:none;
-  font-weight:bold;
+
+.next{
+background:#16a34a;
 }
 </style>
 </head>
 
 <body>
 
-<?php if (empty($data) || !$c): ?>
-  <p>No hay flashcards disponibles.</p>
-<?php else: ?>
+<h2>🧠 Flashcards</h2>
 
-<div class="scene">
-  <div class="card" onclick="this.classList.toggle('is-flipped')">
+<div class="card" id="card">
+<div class="inner">
 
-    <!-- FRONT -->
-    <div class="face front">
-      <h2><?= htmlspecialchars($c["front_text"]) ?></h2>
-
-      <button onclick="event.stopPropagation(); speak('<?= htmlspecialchars($c["front_text"]) ?>')">
-        🔊 Audio
-      </button>
-
-      <?php if (!empty($c["front_image"])): ?>
-        <img src="<?= htmlspecialchars($c["front_image"]) ?>">
-      <?php endif; ?>
-
-      <p><em>Click para ver el reverso</em></p>
-    </div>
-
-    <!-- BACK -->
-    <div class="face back">
-      <h2><?= htmlspecialchars($c["back_text"]) ?></h2>
-      <p><em>Click para volver</em></p>
-    </div>
-
-  </div>
+<div class="front">
+<img id="img">
 </div>
 
-<!-- 🔁 NAVEGACIÓN -->
-<div class="nav">
-  <?php if ($index > 0): ?>
-    <a href="?i=<?= $index - 1 ?>">⬅️ Anterior</a>
-  <?php endif; ?>
+<div class="back" id="text"></div>
 
-  <?php if ($index < count($data) - 1): ?>
-    <a href="?i=<?= $index + 1 ?>">Siguiente ➡️</a>
-  <?php endif; ?>
+</div>
 </div>
 
-<?php endif; ?>
+<br>
+
+<button onclick="speak()">🔊 Escuchar</button>
+<button class="next" onclick="next()">➡ Siguiente</button>
 
 <script>
-function speak(text){
-  const u = new SpeechSynthesisUtterance(text);
-  u.lang = "en-US";
-  u.rate = 0.9;
-  speechSynthesis.cancel();
-  speechSynthesis.speak(u);
+
+const cards = <?= json_encode($cards) ?>;
+let index = 0;
+
+const card = document.getElementById("card");
+const img = document.getElementById("img");
+const text = document.getElementById("text");
+
+function load(){
+ img.src = cards[index].image;
+ text.textContent = cards[index].text;
+ card.classList.remove("flip");
 }
+
+card.onclick = ()=> card.classList.toggle("flip");
+
+function speak(){
+ let msg = new SpeechSynthesisUtterance(cards[index].text);
+ msg.lang="en-US";
+ msg.rate=.9;
+ speechSynthesis.speak(msg);
+}
+
+function next(){
+ index++;
+ if(index>=cards.length) index=0;
+ load();
+}
+
+load();
+
 </script>
 
 </body>
