@@ -64,7 +64,7 @@ iframe{
 </div>
 
 <!-- VISOR PDF TIPO FLIP -->
-<iframe src="../../<?= htmlspecialchars($pdf) ?>"></iframe>
+<iframe src="<?= htmlspecialchars($pdf) ?>"></iframe>
 
 </body>
 </html>
