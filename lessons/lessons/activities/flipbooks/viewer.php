@@ -1,104 +1,70 @@
 <?php
-/* ===============================
-   FLIPBOOKS – VIEWER (ESTUDIANTE)
-   =============================== */
 
-$jsonFile = __DIR__ . "/../../admin/flipbooks.json";
-$data = file_exists($jsonFile) ? json_decode(file_get_contents($jsonFile), true) : [];
+$unit = $_GET['unit'] ?? null;
+if (!$unit) die("Unidad no especificada");
 
-$selectedFile = $_GET['file'] ?? null;
+$jsonFile = __DIR__ . "/flipbooks.json";
+
+if (!file_exists($jsonFile)) die("No config");
+
+$data = json_decode(file_get_contents($jsonFile), true);
+
+$pdf = $data[$unit]["pdf"] ?? null;
+
+if (!$pdf) die("No flipbook");
+
 ?>
+
 <!DOCTYPE html>
-<html lang="es">
+<html>
 <head>
 <meta charset="UTF-8">
-<title>Flipbooks</title>
+<title>Flipbook</title>
 
 <style>
 body{
-  font-family: Arial, sans-serif;
-  background:#f4f8ff;
-  padding:40px;
+    margin:0;
+    font-family:Arial;
+    background:#eef6ff;
 }
 
-h1{
-  color:#2563eb;
-  margin-bottom:30px;
-  text-align:center;
-}
-
-.grid{
-  display:grid;
-  grid-template-columns:repeat(auto-fit,minmax(260px,1fr));
-  gap:20px;
-}
-
-.card{
-  background:#fff;
-  padding:20px;
-  border-radius:14px;
-  box-shadow:0 10px 25px rgba(0,0,0,.08);
-  text-align:center;
-}
-
-.card h3{
-  margin-top:0;
-  font-size:18px;
-}
-
-.card a{
-  display:inline-block;
-  margin-top:12px;
-  padding:10px 16px;
-  border-radius:10px;
-  background:#2563eb;
-  color:#fff;
-  text-decoration:none;
-  font-weight:bold;
-  font-size:14px;
-}
-
-.viewer{
-  margin-top:30px;
+.header{
+    text-align:center;
+    padding:15px;
 }
 
 iframe{
-  width:100%;
-  height:650px;
-  border:1px solid #ccc;
-  border-radius:10px;
+    width:100%;
+    height:90vh;
+    border:none;
+}
+
+.back{
+    position:fixed;
+    top:20px;
+    right:20px;
+    background:#28a745;
+    color:white;
+    padding:10px 18px;
+    border-radius:10px;
+    text-decoration:none;
 }
 </style>
+
 </head>
 
 <body>
 
-<h1>📘 Flipbooks</h1>
+<a class="back" href="../hub/index.php?unit=<?= urlencode($unit) ?>">
+← Volver Hub
+</a>
 
-<?php if (empty($data)): ?>
-  <p>No hay flipbooks configurados.</p>
-<?php else: ?>
-
-<div class="grid">
-<?php foreach ($data as $item): ?>
-  <?php if (empty($item['file'])) continue; ?>
-  <div class="card">
-    <h3><?= htmlspecialchars($item['title'] ?? 'Flipbook') ?></h3>
-    <a href="?file=<?= urlencode($item['file']) ?>">
-      ▶️ Ver flipbook
-    </a>
-  </div>
-<?php endforeach; ?>
+<div class="header">
+<h2>📖 Flipbook</h2>
 </div>
 
-<?php endif; ?>
-
-<?php if ($selectedFile): ?>
-  <div class="viewer">
-    <h2>Vista del flipbook</h2>
-    <iframe src="../../admin/uploads/<?= htmlspecialchars($selectedFile) ?>"></iframe>
-  </div>
-<?php endif; ?>
+<!-- VISOR PDF TIPO FLIP -->
+<iframe src="../../<?= htmlspecialchars($pdf) ?>"></iframe>
 
 </body>
 </html>
