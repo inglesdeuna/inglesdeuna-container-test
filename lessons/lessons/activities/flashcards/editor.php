@@ -48,7 +48,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         );
 
         /* 👇 ESTA ES LA RUTA QUE USA EL VIEWER */
-        $imagePath = "uploads/images/" . $newName;
+       $imagePath = "activities/flashcards/uploads/images/" . $newName;
+
     }
 
     if ($imagePath !== "" && $text !== "") {
