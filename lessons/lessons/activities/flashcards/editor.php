@@ -1,82 +1,131 @@
 <?php
-$file = __DIR__ . "/flashcards.json";
-$data = file_exists($file) ? json_decode(file_get_contents($file), true) : [];
+$unit = $_GET['unit'] ?? null;
+if (!$unit) die("Unidad no especificada");
 
-/* ===== SAVE ===== */
-if ($_SERVER["REQUEST_METHOD"] === "POST") {
+$jsonFile = __DIR__."/flashcards.json";
+$data = file_exists($jsonFile) ? json_decode(file_get_contents($jsonFile), true) : [];
 
-  // Inicializar
-  $imagePath = "";
+if(!isset($data[$unit])) $data[$unit]=[];
 
-  // 1️⃣ PRIORIDAD: imagen subida como archivo
-  if (!empty($_FILES["front_image_file"]["name"])) {
-    $dir = __DIR__ . "/upload/images/";
-    if (!is_dir($dir)) {
-      mkdir($dir, 0777, true);
-    }
+$uploadDir = __DIR__."/uploads/images/".$unit;
+if(!is_dir($uploadDir)) mkdir($uploadDir,0777,true);
 
-    $ext = pathinfo($_FILES["front_image_file"]["name"], PATHINFO_EXTENSION);
-    $name = uniqid("img_") . "." . $ext;
-    $target = $dir . $name;
+/* GUARDAR */
+if($_SERVER["REQUEST_METHOD"]==="POST"){
 
-    if (move_uploaded_file($_FILES["front_image_file"]["tmp_name"], $target)) {
-      $imagePath = "upload/images/" . $name;
-    }
+  $text = trim($_POST["text"] ?? "");
+
+  if($text && isset($_FILES["image"]["tmp_name"])){
+
+    $name = uniqid()."_".basename($_FILES["image"]["name"]);
+    move_uploaded_file($_FILES["image"]["tmp_name"], $uploadDir."/".$name);
+
+    $data[$unit][] = [
+      "text"=>$text,
+      "image"=>"uploads/images/".$unit."/".$name
+    ];
+
+    file_put_contents($jsonFile, json_encode($data,JSON_PRETTY_PRINT|JSON_UNESCAPED_UNICODE));
   }
-
-  // 2️⃣ SI NO hay archivo, usar URL escrita
-  if ($imagePath === "" && !empty($_POST["front_image"])) {
-    $imagePath = trim($_POST["front_image"]);
-  }
-
-  // Guardar flashcard
-  $data[] = [
-    "front_text"  => trim($_POST["front_text"] ?? ""),
-    "front_image" => $imagePath,
-    "back_text"   => trim($_POST["back_text"] ?? ""),
-    "audio"       => "" // audio AI en viewer
-  ];
-
-  file_put_contents(
-    $file,
-    json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)
-  );
-
-  exit;
 }
 ?>
+
 <!DOCTYPE html>
-<html lang="es">
+<html>
 <head>
 <meta charset="UTF-8">
-<title>Flashcards – Editor Docente</title>
+<title>Flashcards Editor</title>
+
 <style>
-body{font-family:Arial;background:#f5f7fb}
-.card{background:#fff;padding:20px;border-radius:12px;max-width:600px;margin:40px auto}
-input,button{width:100%;padding:10px;margin-top:10px}
-button{background:#2563eb;color:#fff;border:none;border-radius:8px}
-.item{background:#fff;padding:15px;border-radius:10px;margin:10px auto;max-width:600px}
+body{
+font-family:Arial;
+background:#eef6ff;
+padding:30px;
+}
+
+.box{
+background:white;
+padding:25px;
+border-radius:18px;
+max-width:700px;
+margin:auto;
+box-shadow:0 4px 12px rgba(0,0,0,.1);
+}
+
+input,button{
+padding:10px;
+margin:6px 0;
+border-radius:10px;
+border:1px solid #ccc;
+}
+
+button{
+background:#2563eb;
+color:white;
+border:none;
+font-weight:bold;
+cursor:pointer;
+}
+
+.save{
+background:#2563eb;
+width:100%;
+}
+
+.cardPreview{
+display:flex;
+align-items:center;
+gap:10px;
+background:#f3f4f6;
+padding:10px;
+border-radius:12px;
+margin-top:8px;
+}
+
+.cardPreview img{
+height:60px;
+border-radius:10px;
+}
+
+.backBtn{
+background:#16a34a;
+color:white;
+padding:12px;
+border-radius:12px;
+display:block;
+text-align:center;
+margin-top:15px;
+text-decoration:none;
+font-weight:bold;
+}
 </style>
 </head>
+
 <body>
 
-<div class="card">
-  <h2>➕ Nueva Flashcard</h2>
+<div class="box">
 
-  <form method="post" action="editor.php" enctype="multipart/form-data">
-    <input type="text" name="front_text" placeholder="Texto frontal (obligatorio)" required>
-    <input type="file" name="front_image_file" accept="image/*">
-    <input type="url" name="front_image" placeholder="URL de imagen (opcional)">
-    <input type="text" name="back_text" placeholder="Texto reverso (opcional)">
-    <button type="submit">Guardar flashcard</button>
-  </form>
+<h2>🧠 Flashcards Editor</h2>
+
+<form method="POST" enctype="multipart/form-data">
+<input name="text" placeholder="Texto tarjeta">
+<input type="file" name="image" accept="image/*" required>
+<button class="save">💾 Guardar</button>
+</form>
+
+<h3>Tarjetas</h3>
+
+<?php foreach($data[$unit] as $card): ?>
+<div class="cardPreview">
+<img src="<?= $card["image"] ?>">
+<span><?= htmlspecialchars($card["text"]) ?></span>
 </div>
-
-<?php foreach ($data as $c): ?>
-  <div class="item">
-    <strong><?= htmlspecialchars($c["front_text"]) ?></strong>
-  </div>
 <?php endforeach; ?>
 
+<a class="backBtn" href="../hub/index.php?unit=<?=urlencode($unit)?>">
+← Volver al Hub
+</a>
+
+</div>
 </body>
 </html>
