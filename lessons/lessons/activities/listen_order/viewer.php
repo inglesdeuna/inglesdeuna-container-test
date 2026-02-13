@@ -1,232 +1,108 @@
 <?php
-$unit = $_GET['unit'] ?? null;
-if (!$unit) die("Unidad no especificada");
+$unit=$_GET["unit"] ?? null;
+if(!$unit) die("Unit missing");
 
-$file = __DIR__ . "/listen_order.json";
+$file=__DIR__."/listen_order.json";
+$data=file_exists($file)
+ ? json_decode(file_get_contents($file),true)
+ : [];
 
-$data = file_exists($file)
-  ? json_decode(file_get_contents($file), true)
-  : [];
-
-if (!isset($data[$unit]) || empty($data[$unit])) {
-  die("No hay actividades para esta unidad");
-}
-
-$blocks = $data[$unit];
+$list=$data[$unit] ?? [];
+if(!$list) die("No hay actividades");
 ?>
 
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
 <meta charset="UTF-8">
 <title>Listen & Order</title>
 
 <style>
-body{
-font-family: Arial, sans-serif;
-background:#eef6ff;
-text-align:center;
-padding:20px;
-}
-
-h1{color:#0b5ed7;}
-
-.images, .drop{
-display:flex;
-flex-wrap:wrap;
-justify-content:center;
-gap:12px;
-margin-top:20px;
-}
-
-.images img, .drop img{
-width:110px;
-height:110px;
-object-fit:contain;
-background:white;
-padding:8px;
-border-radius:14px;
-box-shadow:0 2px 6px rgba(0,0,0,.1);
-cursor:grab;
-}
-
-.drop{
-border:2px dashed #0b5ed7;
-min-height:130px;
-padding:20px;
-border-radius:14px;
-}
-
-button{
-padding:10px 18px;
-border:none;
-border-radius:12px;
-background:#0b5ed7;
-color:white;
-cursor:pointer;
-margin:6px;
-}
-
-#feedback{
-font-size:18px;
-font-weight:bold;
-margin-top:10px;
-}
-
-.good{color:green;}
-.bad{color:crimson;}
-
-.back{
-display:inline-block;
-margin-top:20px;
-background:#16a34a;
-color:#fff;
-padding:10px 18px;
-border-radius:12px;
-text-decoration:none;
-font-weight:bold;
-}
+body{font-family:Arial;background:#eef6ff;text-align:center;padding:30px}
+.box{background:white;padding:25px;border-radius:15px;max-width:800px;margin:auto}
+.images{display:flex;flex-wrap:wrap;gap:15px;justify-content:center}
+.images img{height:100px;border-radius:12px;background:white;padding:10px;cursor:grab}
+.drop{border:2px dashed #0b5ed7;border-radius:15px;padding:20px;margin-top:20px;min-height:120px;display:flex;gap:15px;justify-content:center;flex-wrap:wrap}
+button{padding:10px 20px;border:none;border-radius:12px;background:#0b5ed7;color:white;margin:5px;cursor:pointer}
 </style>
 </head>
 
 <body>
 
-<h1>🎧 Listen & Order</h1>
+<div class="box">
 
-<button onclick="speak()">🔊 Listen</button>
+<h2>🎧 Listen & Order</h2>
 
-<div id="images" class="images"></div>
+<button onclick="play()">🔊 Listen</button>
 
-<div id="drop" class="drop"></div>
+<div class="images" id="imgs"></div>
+
+<div class="drop" id="drop"></div>
 
 <br>
+<button onclick="check()">Check</button>
+<button onclick="next()">Next</button>
 
-<button onclick="check()">✅ Check</button>
-<button onclick="next()">➡ Next</button>
+<p id="msg"></p>
 
-<div id="feedback"></div>
-
-<a class="back" href="../hub/index.php?unit=<?= urlencode($unit) ?>">
-↩ Volver al Hub
-</a>
+</div>
 
 <script>
 
-const blocks = <?= json_encode($blocks) ?>;
+const data = <?= json_encode($list) ?>;
+let index=0;
+let correct=[];
+let dragged=null;
 
-let index = 0;
-let dragged = null;
-let correctOrder = [];
-let correctText = "";
-
-const imagesDiv = document.getElementById("images");
-const dropDiv = document.getElementById("drop");
-const feedback = document.getElementById("feedback");
-
-/* ================= LOAD ================= */
+const imgs=document.getElementById("imgs");
+const drop=document.getElementById("drop");
+const msg=document.getElementById("msg");
 
 function load(){
 
-feedback.textContent="";
-feedback.className="";
+ imgs.innerHTML="";
+ drop.innerHTML="";
+ msg.textContent="";
 
-imagesDiv.innerHTML="";
-dropDiv.innerHTML="";
+ const block=data[index];
+ correct=[...block.images];
 
-let block = blocks[index];
+ let shuffled=[...correct].sort(()=>Math.random()-0.5);
 
-/* TEXTO UNIVERSAL */
-correctText =
-block.sentence ||
-block.text ||
-block.tts ||
-"";
-
-correctOrder = block.images;
-
-/* shuffle images */
-let shuffled = [...correctOrder].sort(()=>Math.random()-0.5);
-
-shuffled.forEach(src=>{
-let img = document.createElement("img");
-img.src="../../"+src;
-img.draggable=true;
-img.addEventListener("dragstart",()=> dragged = img);
-imagesDiv.appendChild(img);
-});
-
+ shuffled.forEach(src=>{
+  let img=document.createElement("img");
+  img.src="../../"+src;
+  img.draggable=true;
+  img.dataset.src=src;
+  img.ondragstart=()=>dragged=img;
+  imgs.appendChild(img);
+ });
 }
 
-/* ================= DRAG ================= */
-
-dropDiv.addEventListener("dragover", e=>e.preventDefault());
-
-dropDiv.addEventListener("drop", ()=>{
-if(dragged){
-dropDiv.appendChild(dragged);
-dragged=null;
-}
-});
-
-/* ================= CHECK ================= */
+drop.ondragover=e=>e.preventDefault();
+drop.ondrop=()=>{ if(dragged) drop.appendChild(dragged); };
 
 function check(){
-
-let built = [...dropDiv.children].map(img =>
-img.src.split("/activities/")[1]
-);
-
-let ok = true;
-
-for(let i=0;i<correctOrder.length;i++){
-if(!built[i] || !built[i].includes(correctOrder[i])){
-ok=false;
-break;
+ let user=[...drop.children].map(i=>i.dataset.src);
+ msg.textContent = JSON.stringify(user)==JSON.stringify(correct)
+  ? "✔ Correct"
+  : "Try again";
 }
-}
-
-if(ok){
-feedback.textContent="🌟 Excellent!";
-feedback.className="good";
-}else{
-feedback.textContent="🔁 Try again!";
-feedback.className="bad";
-}
-
-}
-
-/* ================= NEXT ================= */
 
 function next(){
-
-index++;
-
-if(index >= blocks.length){
-feedback.textContent="🏆 Finished!";
-feedback.className="good";
-return;
+ index++;
+ if(index>=data.length){
+  msg.textContent="Completed!";
+  return;
+ }
+ load();
 }
 
-load();
-
+function play(){
+ let a=new Audio("../../"+data[index].audio);
+ a.play();
 }
 
-/* ================= TTS UNIVERSAL ================= */
-
-function speak(){
-
-if(!correctText) return;
-
-const msg = new SpeechSynthesisUtterance(correctText);
-msg.lang="en-US";
-msg.rate=0.9;
-msg.pitch=1;
-
-speechSynthesis.speak(msg);
-
-}
-
-/* START */
 load();
 
 </script>
