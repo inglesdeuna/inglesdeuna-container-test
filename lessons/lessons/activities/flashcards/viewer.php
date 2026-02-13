@@ -1,6 +1,5 @@
 <?php
-
-$unit = $_GET["unit"] ?? null;
+$unit = $_GET['unit'] ?? null;
 if(!$unit) die("Unidad no especificada");
 
 $file = __DIR__."/flashcards.json";
@@ -10,21 +9,18 @@ $data = file_exists($file)
  : [];
 
 if(!isset($data[$unit]) || empty($data[$unit])){
- die("No hay tarjetas para esta unidad");
+ die("No hay flashcards para esta unidad");
 }
 
 $cards = $data[$unit];
-
 ?>
-
 <!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
 <meta charset="UTF-8">
 <title>Flashcards</title>
 
 <style>
-
 body{
  font-family:Arial;
  background:#eef6ff;
@@ -36,73 +32,56 @@ h1{
  color:#0b5ed7;
 }
 
-.flashcards-container{
- display:flex;
- flex-wrap:wrap;
- justify-content:center;
- gap:25px;
- margin-top:30px;
+.cardWrap{
+ perspective:1000px;
+ width:240px;
+ height:320px;
+ margin:40px auto;
 }
 
-/* TARJETA */
-
-.flashcard{
- width:220px;
- height:280px;
- perspective:1000px;
+.card{
+ width:100%;
+ height:100%;
+ position:relative;
+ transform-style:preserve-3d;
+ transition:transform .6s;
  cursor:pointer;
 }
 
-.flashcard-inner{
- position:relative;
- width:100%;
- height:100%;
- transition:transform .6s;
- transform-style:preserve-3d;
-}
-
-.flashcard.flip .flashcard-inner{
+.card.flip{
  transform:rotateY(180deg);
 }
 
-.flashcard-face{
+.side{
  position:absolute;
  width:100%;
  height:100%;
- backface-visibility:hidden;
- border-radius:18px;
+ border-radius:20px;
+ box-shadow:0 6px 14px rgba(0,0,0,.2);
  display:flex;
  align-items:center;
  justify-content:center;
- padding:15px;
- box-shadow:0 4px 10px rgba(0,0,0,.15);
+ backface-visibility:hidden;
 }
 
-/* FRONT */
-
-.flashcard-front{
+.front{
  background:white;
  border:4px solid #4f46e5;
 }
 
-.flashcard-front img{
- max-width:90%;
- max-height:90%;
+.front img{
+ max-width:85%;
+ max-height:85%;
 }
 
-/* BACK */
-
-.flashcard-back{
- background:#4f46e5;
+.back{
+ background:linear-gradient(135deg,#4f46e5,#6366f1);
  color:white;
- transform:rotateY(180deg);
  font-size:28px;
  font-weight:bold;
- text-align:center;
+ transform:rotateY(180deg);
  padding:20px;
 }
-
-/* BOTONES */
 
 button{
  background:#0b5ed7;
@@ -110,21 +89,24 @@ button{
  border:none;
  padding:10px 18px;
  border-radius:12px;
- cursor:pointer;
  margin:6px;
+ cursor:pointer;
 }
 
-.back{
+.nextBtn{
+ background:#2563eb;
+}
+
+.backHub{
  display:inline-block;
  margin-top:25px;
  background:#16a34a;
  color:white;
- padding:10px 20px;
+ padding:10px 18px;
  border-radius:12px;
  text-decoration:none;
  font-weight:bold;
 }
-
 </style>
 </head>
 
@@ -132,57 +114,73 @@ button{
 
 <h1>🃏 Flashcards</h1>
 
-<button onclick="speakAll()">🔊 Listen</button>
+<button onclick="speak()">🔊 Listen</button>
 
-<div class="flashcards-container">
-
-<?php foreach($cards as $card): ?>
-
-<div class="flashcard" onclick="flipCard(this)">
- <div class="flashcard-inner">
-
-  <div class="flashcard-face flashcard-front">
-   <img src="../../<?= $card["image"] ?>">
+<div class="cardWrap">
+ <div id="card" class="card" onclick="flip()">
+  
+  <div class="side front">
+   <img id="img">
   </div>
 
-  <div class="flashcard-face flashcard-back">
-   <?= htmlspecialchars($card["text"]) ?>
+  <div class="side back">
+   <div id="text"></div>
   </div>
 
  </div>
 </div>
 
-<?php endforeach; ?>
+<button class="nextBtn" onclick="nextCard()">➡ Siguiente</button>
 
-</div>
+<br>
 
-<a class="back" href="../hub/index.php?unit=<?= urlencode($unit) ?>">
+<a class="backHub" href="../hub/index.php?unit=<?=urlencode($unit)?>">
 ↩ Volver al Hub
 </a>
 
 <script>
+const cards = <?=json_encode($cards)?>;
 
-const cards = <?= json_encode($cards) ?>;
+let index = 0;
+let flipped = false;
 
-/* FLIP TARJETA */
-function flipCard(card){
+const card = document.getElementById("card");
+const img = document.getElementById("img");
+const text = document.getElementById("text");
+
+function loadCard(){
+ flipped = false;
+ card.classList.remove("flip");
+
+ const c = cards[index];
+
+ img.src = "../../" + c.image;
+ text.textContent = c.text;
+}
+
+function flip(){
+ flipped = !flipped;
  card.classList.toggle("flip");
 }
 
-/* TTS */
-function speakAll(){
+function nextCard(){
+ index++;
 
- let text = cards.map(c => c.text).join(". ");
+ if(index >= cards.length){
+  alert("🎉 Terminaste!");
+  return;
+ }
 
- let msg = new SpeechSynthesisUtterance(text);
- msg.lang = "en-US";
- msg.rate = 0.9;
-
- speechSynthesis.cancel();
- speechSynthesis.speak(msg);
-
+ loadCard();
 }
 
+function speak(){
+ const msg = new SpeechSynthesisUtterance(cards[index].text);
+ msg.lang = "en-US";
+ speechSynthesis.speak(msg);
+}
+
+loadCard();
 </script>
 
 </body>
