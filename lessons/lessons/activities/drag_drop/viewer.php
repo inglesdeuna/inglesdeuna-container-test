@@ -1,246 +1,249 @@
 <?php
-require_once __DIR__ . "/../../config/db.php";
 
-$unit = $_GET["unit"] ?? null;
-if(!$unit) die("Unidad no especificada");
+$unit = $_GET['unit'] ?? null;
+if (!$unit) die("Unidad no especificada");
 
-/* ================= DB ================= */
-$stmt = $pdo->prepare("
-SELECT data FROM activities
-WHERE unit_id=:u AND type='listen_order'
-");
-$stmt->execute(["u"=>$unit]);
-$row = $stmt->fetch(PDO::FETCH_ASSOC);
+$file = __DIR__ . "/drag_drop.json";
 
-$blocks = json_decode($row["data"] ?? "[]", true);
+$data = file_exists($file)
+  ? json_decode(file_get_contents($file), true)
+  : [];
 
-if(!$blocks || count($blocks)==0){
-    die("No hay actividades");
+if (!isset($data[$unit]) || empty($data[$unit])) {
+  die("No hay oraciones para esta unidad");
 }
+
+/* EXTRAER SOLO LAS ORACIONES */
+$sentences = [];
+
+foreach ($data[$unit] as $item) {
+  if (isset($item["sentence"])) {
+    $sentences[] = $item["sentence"];
+  }
+}
+
 ?>
 
 <!DOCTYPE html>
-<html>
+<html lang="en">
+
 <head>
 <meta charset="UTF-8">
-<title>Listen & Order</title>
+<title>Build the Sentence</title>
 
 <style>
+
 body{
-font-family:Arial;
-background:#eef6ff;
-text-align:center;
-padding:30px;
+  font-family: Arial, sans-serif;
+  background:#eef6ff;
+  text-align:center;
+  padding:20px;
 }
 
-.box{
-background:white;
-max-width:900px;
-margin:auto;
-padding:30px;
-border-radius:18px;
-box-shadow:0 4px 14px rgba(0,0,0,.1);
+h1{
+  color:#0b5ed7;
 }
 
-h2{color:#0b5ed7;}
-
-.images{
-display:flex;
-justify-content:center;
-flex-wrap:wrap;
-gap:12px;
-margin-top:20px;
+#sentenceBox{
+  margin:20px auto;
+  padding:15px;
+  background:white;
+  border-radius:15px;
+  max-width:700px;
 }
 
-.images img{
-width:110px;
-height:110px;
-object-fit:contain;
-background:#fff;
-border-radius:14px;
-padding:10px;
-box-shadow:0 2px 6px rgba(0,0,0,.1);
-cursor:grab;
+#words, #answer{
+  display:flex;
+  flex-wrap:wrap;
+  justify-content:center;
+  gap:10px;
+  margin:15px 0;
 }
 
-.drop{
-margin-top:25px;
-border:2px dashed #0b5ed7;
-padding:20px;
-border-radius:14px;
-min-height:130px;
-display:flex;
-gap:12px;
-justify-content:center;
-flex-wrap:wrap;
+.word{
+  padding:8px 14px;
+  border-radius:10px;
+  color:white;
+  font-weight:bold;
+  cursor:grab;
+  background:#2563eb;
+}
+
+.drop-zone{
+  background:#fff;
+  border:2px dashed #0b5ed7;
+  border-radius:12px;
+  padding:15px;
+  min-height:60px;
 }
 
 button{
-background:#0b5ed7;
-color:white;
-border:none;
-padding:10px 18px;
-border-radius:12px;
-cursor:pointer;
-margin:8px;
+  padding:10px 18px;
+  border:none;
+  border-radius:12px;
+  background:#0b5ed7;
+  color:white;
+  cursor:pointer;
+  margin:6px;
 }
 
-.green{background:#16a34a;}
-
-.msg{
-font-weight:bold;
-margin-top:15px;
-font-size:18px;
+#feedback{
+  font-size:18px;
+  font-weight:bold;
 }
 
-.good{color:green;}
-.bad{color:red;}
+.good{
+  color:green;
+}
+
+.bad{
+  color:crimson;
+}
+
+.controls{
+  margin-top:15px;
+}
+
+a.back{
+  display:inline-block;
+  margin-top:20px;
+  background:#16a34a;
+  color:#fff;
+  padding:10px 18px;
+  border-radius:12px;
+  text-decoration:none;
+  font-weight:bold;
+}
+
 </style>
 </head>
 
 <body>
 
-<div class="box">
+<h1>🎯 Build the Sentence</h1>
+<p>Drag the words to build the sentence.</p>
 
-<h2>🎧 Listen & Order</h2>
-
-<button onclick="speak()">🔊 Listen</button>
-
-<div id="images" class="images"></div>
-
-<div id="drop" class="drop"></div>
-
-<br>
-
-<button onclick="check()">✅ Check</button>
-<button onclick="next()">➡️ Next</button>
-
-<div id="msg" class="msg"></div>
-
-<br>
-
-<a href="../hub/index.php?unit=<?=$unit?>">
-<button class="green">↩ Volver al Hub</button>
-</a>
-
+<div id="sentenceBox">
+  <button onclick="speak()">🔊 Listen</button>
 </div>
+
+<h3>Words</h3>
+<div id="words"></div>
+
+<h3>Your sentence</h3>
+<div id="answer" class="drop-zone"></div>
+
+<div class="controls">
+  <button onclick="checkSentence()">✅ Check</button>
+  <button onclick="nextSentence()">➡️</button>
+</div>
+
+<div id="feedback"></div>
+
+<a class="back" href="../hub/index.php?unit=<?= urlencode($unit) ?>">
+  ↩ Volver al Hub
+</a>
 
 <script>
 
-const blocks = <?= json_encode($blocks) ?>;
+const sentences = <?= json_encode($sentences) ?>;
 
 let index = 0;
-let correctSentence = "";
-let correctOrder = [];
+let correct = "";
 let dragged = null;
 
-const imagesDiv = document.getElementById("images");
-const dropDiv = document.getElementById("drop");
-const msg = document.getElementById("msg");
+const wordsDiv = document.getElementById("words");
+const answerDiv = document.getElementById("answer");
+const feedback = document.getElementById("feedback");
 
 /* ================= LOAD ================= */
 
-function load(){
+function loadSentence(){
 
-msg.innerHTML="";
-msg.className="msg";
+  dragged = null;
+  feedback.textContent = "";
+  feedback.className = "";
 
-imagesDiv.innerHTML="";
-dropDiv.innerHTML="";
+  wordsDiv.innerHTML = "";
+  answerDiv.innerHTML = "";
 
-const block = blocks[index];
+  correct = sentences[index];
 
-correctSentence = block.text;
-correctOrder = block.images;
+  let words = correct.split(" ").sort(()=>Math.random()-0.5);
 
-/* shuffle images */
-let shuffled = [...correctOrder].sort(()=>Math.random()-0.5);
+  words.forEach(w=>{
 
-shuffled.forEach(src=>{
-const img = document.createElement("img");
-img.src="../../"+src;
-img.draggable=true;
+    const span = document.createElement("span");
+    span.textContent = w;
+    span.className="word";
+    span.draggable=true;
 
-img.addEventListener("dragstart",()=> dragged = img);
+    span.addEventListener("dragstart",()=>dragged=span);
 
-imagesDiv.appendChild(img);
-});
+    wordsDiv.appendChild(span);
+
+  });
 
 }
 
 /* ================= DRAG ================= */
 
-dropDiv.addEventListener("dragover", e=>e.preventDefault());
+answerDiv.addEventListener("dragover", e=>e.preventDefault());
 
-dropDiv.addEventListener("drop", ()=>{
-if(dragged){
-dropDiv.appendChild(dragged);
-dragged=null;
-}
+answerDiv.addEventListener("drop", ()=>{
+  if(dragged) answerDiv.appendChild(dragged);
 });
 
 /* ================= CHECK ================= */
 
-function check(){
+function checkSentence(){
 
-const built = [...dropDiv.children].map(i=> i.src.split("/activities/")[1]);
+  const built = [...answerDiv.children]
+  .map(w=>w.textContent)
+  .join(" ");
 
-let ok = true;
-
-for(let i=0;i<correctOrder.length;i++){
-if(!built[i] || !built[i].includes(correctOrder[i])){
-ok=false;
-break;
-}
-}
-
-if(ok){
-msg.innerHTML="🌟 Excelente!";
-msg.className="msg good";
-}else{
-msg.innerHTML="🔁 Try again";
-msg.className="msg bad";
-}
+  if(built === correct){
+    feedback.textContent="🌟 Excellent!";
+    feedback.className="good";
+  }else{
+    feedback.textContent="🔁 Try again!";
+    feedback.className="bad";
+  }
 
 }
 
 /* ================= NEXT ================= */
 
-function next(){
+function nextSentence(){
 
-index++;
+  index++;
 
-if(index >= blocks.length){
-msg.innerHTML="🎉 Completado";
-msg.className="msg good";
-return;
+  if(index >= sentences.length){
+    feedback.textContent="🏆 You finished all sentences!";
+    feedback.className="good";
+    return;
+  }
+
+  loadSentence();
+
 }
 
-load();
-}
-
-/* ================= TTS (MISMO DRAG DROP) ================= */
+/* ================= TTS ================= */
 
 function speak(){
 
-if(!correctSentence) return;
+  const msg = new SpeechSynthesisUtterance(correct);
+  msg.lang="en-US";
 
-const msgVoice = new SpeechSynthesisUtterance(correctSentence);
-msgVoice.lang = "en-US";
-msgVoice.rate = 0.9;
-msgVoice.pitch = 1;
-msgVoice.volume = 1;
-
-speechSynthesis.cancel();
-speechSynthesis.speak(msgVoice);
+  speechSynthesis.speak(msg);
 
 }
 
-/* START */
-load();
+/* ================= START ================= */
+
+loadSentence();
 
 </script>
 
 </body>
 </html>
-
