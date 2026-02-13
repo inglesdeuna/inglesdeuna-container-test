@@ -1,15 +1,20 @@
 <?php
-$unit = $_GET['unit'] ?? null;
-if (!$unit) die("Unidad no especificada");
 
-$jsonFile = __DIR__."/flashcards.json";
-$data = file_exists($jsonFile) ? json_decode(file_get_contents($jsonFile), true) : [];
+$unit = $_GET["unit"] ?? null;
+if(!$unit) die("Unidad no especificada");
+
+$file = __DIR__."/flashcards.json";
+
+$data = file_exists($file)
+ ? json_decode(file_get_contents($file), true)
+ : [];
 
 if(!isset($data[$unit]) || empty($data[$unit])){
- die("No hay tarjetas");
+ die("No hay tarjetas para esta unidad");
 }
 
 $cards = $data[$unit];
+
 ?>
 
 <!DOCTYPE html>
@@ -19,132 +24,164 @@ $cards = $data[$unit];
 <title>Flashcards</title>
 
 <style>
+
 body{
-font-family:Arial;
-background:#eef6ff;
-text-align:center;
-padding:40px;
+ font-family:Arial;
+ background:#eef6ff;
+ text-align:center;
+ padding:30px;
 }
 
-.card{
-width:260px;
-height:320px;
-margin:auto;
-perspective:1000px;
+h1{
+ color:#0b5ed7;
 }
 
-.inner{
-position:relative;
-width:100%;
-height:100%;
-transition:transform .6s;
-transform-style:preserve-3d;
-cursor:pointer;
+.flashcards-container{
+ display:flex;
+ flex-wrap:wrap;
+ justify-content:center;
+ gap:25px;
+ margin-top:30px;
 }
 
-.card.flip .inner{
-transform:rotateY(180deg);
+/* TARJETA */
+
+.flashcard{
+ width:220px;
+ height:280px;
+ perspective:1000px;
+ cursor:pointer;
 }
 
-.front,.back{
-position:absolute;
-width:100%;
-height:100%;
-border-radius:18px;
-box-shadow:0 6px 18px rgba(0,0,0,.2);
-display:flex;
-align-items:center;
-justify-content:center;
-backface-visibility:hidden;
+.flashcard-inner{
+ position:relative;
+ width:100%;
+ height:100%;
+ transition:transform .6s;
+ transform-style:preserve-3d;
 }
 
-.front{
-background:white;
-border:4px solid #60a5fa;
+.flashcard.flip .flashcard-inner{
+ transform:rotateY(180deg);
 }
 
-.front img{
-max-width:80%;
-max-height:80%;
+.flashcard-face{
+ position:absolute;
+ width:100%;
+ height:100%;
+ backface-visibility:hidden;
+ border-radius:18px;
+ display:flex;
+ align-items:center;
+ justify-content:center;
+ padding:15px;
+ box-shadow:0 4px 10px rgba(0,0,0,.15);
+}
+
+/* FRONT */
+
+.flashcard-front{
+ background:white;
+ border:4px solid #4f46e5;
+}
+
+.flashcard-front img{
+ max-width:90%;
+ max-height:90%;
+}
+
+/* BACK */
+
+.flashcard-back{
+ background:#4f46e5;
+ color:white;
+ transform:rotateY(180deg);
+ font-size:28px;
+ font-weight:bold;
+ text-align:center;
+ padding:20px;
+}
+
+/* BOTONES */
+
+button{
+ background:#0b5ed7;
+ color:white;
+ border:none;
+ padding:10px 18px;
+ border-radius:12px;
+ cursor:pointer;
+ margin:6px;
 }
 
 .back{
-background:#fef3c7;
-transform:rotateY(180deg);
-font-size:32px;
-font-family:'Comic Sans MS';
-color:#d97706;
+ display:inline-block;
+ margin-top:25px;
+ background:#16a34a;
+ color:white;
+ padding:10px 20px;
+ border-radius:12px;
+ text-decoration:none;
+ font-weight:bold;
 }
 
-button{
-margin-top:20px;
-padding:12px 22px;
-border:none;
-border-radius:14px;
-background:#2563eb;
-color:white;
-font-weight:bold;
-cursor:pointer;
-}
-
-.next{
-background:#16a34a;
-}
 </style>
 </head>
 
 <body>
 
-<h2>🧠 Flashcards</h2>
+<h1>🃏 Flashcards</h1>
 
-<div class="card" id="card">
-<div class="inner">
+<button onclick="speakAll()">🔊 Listen</button>
 
-<div class="front">
-<img id="img">
+<div class="flashcards-container">
+
+<?php foreach($cards as $card): ?>
+
+<div class="flashcard" onclick="flipCard(this)">
+ <div class="flashcard-inner">
+
+  <div class="flashcard-face flashcard-front">
+   <img src="../../<?= $card["image"] ?>">
+  </div>
+
+  <div class="flashcard-face flashcard-back">
+   <?= htmlspecialchars($card["text"]) ?>
+  </div>
+
+ </div>
 </div>
 
-<div class="back" id="text"></div>
+<?php endforeach; ?>
 
 </div>
-</div>
 
-<br>
-
-<button onclick="speak()">🔊 Escuchar</button>
-<button class="next" onclick="next()">➡ Siguiente</button>
+<a class="back" href="../hub/index.php?unit=<?= urlencode($unit) ?>">
+↩ Volver al Hub
+</a>
 
 <script>
 
 const cards = <?= json_encode($cards) ?>;
-let index = 0;
 
-const card = document.getElementById("card");
-const img = document.getElementById("img");
-const text = document.getElementById("text");
-
-function load(){
- img.src = cards[index].image;
- text.textContent = cards[index].text;
- card.classList.remove("flip");
+/* FLIP TARJETA */
+function flipCard(card){
+ card.classList.toggle("flip");
 }
 
-card.onclick = ()=> card.classList.toggle("flip");
+/* TTS */
+function speakAll(){
 
-function speak(){
- let msg = new SpeechSynthesisUtterance(cards[index].text);
- msg.lang="en-US";
- msg.rate=.9;
+ let text = cards.map(c => c.text).join(". ");
+
+ let msg = new SpeechSynthesisUtterance(text);
+ msg.lang = "en-US";
+ msg.rate = 0.9;
+
+ speechSynthesis.cancel();
  speechSynthesis.speak(msg);
-}
 
-function next(){
- index++;
- if(index>=cards.length) index=0;
- load();
 }
-
-load();
 
 </script>
 
