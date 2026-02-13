@@ -1,116 +1,221 @@
 <?php
-$unit = $_GET["unit"] ?? null;
-if(!$unit) die("Unidad missing");
+$unit = $_GET['unit'] ?? null;
+if (!$unit) die("Unidad no especificada");
 
-$jsonFile = __DIR__."/listen_order.json";
+$jsonFile = __DIR__ . "/listen_order.json";
+
 $data = file_exists($jsonFile)
-  ? json_decode(file_get_contents($jsonFile), true)
-  : [];
+    ? json_decode(file_get_contents($jsonFile), true)
+    : [];
 
-$uploadDir = __DIR__."/uploads/".$unit;
-if(!is_dir($uploadDir)) mkdir($uploadDir,0777,true);
+if (!isset($data[$unit])) {
+    $data[$unit] = [];
+}
 
-if($_SERVER["REQUEST_METHOD"]==="POST"){
+/* ========= UPLOAD DIR ========= */
+$uploadDir = __DIR__ . "/uploads/" . $unit;
+if (!is_dir($uploadDir)) mkdir($uploadDir, 0777, true);
 
-  if(!isset($data[$unit])) $data[$unit]=[];
+/* ========= GUARDAR ========= */
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
-  /* AUDIO */
-  $audioPath=null;
-  if(!empty($_FILES["audio"]["name"])){
-    $aName=uniqid()."_".basename($_FILES["audio"]["name"]);
-    move_uploaded_file(
-      $_FILES["audio"]["tmp_name"],
-      $uploadDir."/".$aName
-    );
-    $audioPath="activities/listen_order/uploads/".$unit."/".$aName;
-  }
+    $images = [];
+    $audioPath = null;
 
-  /* IMAGES */
-  $imgs=[];
-  if(isset($_FILES["images"]["name"])){
-    foreach($_FILES["images"]["name"] as $i=>$n){
-      if(!$n) continue;
+    /* AUDIO */
+    if (!empty($_FILES['audio']['name'])) {
 
-      $new=uniqid()."_".basename($n);
-      move_uploaded_file(
-        $_FILES["images"]["tmp_name"][$i],
-        $uploadDir."/".$new
-      );
+        $audioName = time() . "_" . basename($_FILES['audio']['name']);
+        move_uploaded_file(
+            $_FILES['audio']['tmp_name'],
+            $uploadDir . "/" . $audioName
+        );
 
-      $imgs[]="activities/listen_order/uploads/".$unit."/".$new;
+        $audioPath = "activities/listen_order/uploads/$unit/$audioName";
     }
-  }
 
-  if($audioPath && count($imgs)){
-    $data[$unit][]=[
-      "audio"=>$audioPath,
-      "images"=>$imgs
-    ];
-  }
+    /* IMAGENES */
+    if (!empty($_FILES['images']['name'][0])) {
 
-  file_put_contents($jsonFile,json_encode($data,JSON_PRETTY_PRINT));
-  header("Location:?unit=".$unit);
-  exit;
+        foreach ($_FILES['images']['name'] as $i => $name) {
+
+            if (!$name) continue;
+
+            $imgName = time() . "_" . basename($name);
+
+            move_uploaded_file(
+                $_FILES['images']['tmp_name'][$i],
+                $uploadDir . "/" . $imgName
+            );
+
+            $images[] = "activities/listen_order/uploads/$unit/$imgName";
+        }
+    }
+
+    if ($audioPath && count($images) > 0) {
+
+        $data[$unit][] = [
+            "audio" => $audioPath,
+            "images" => $images
+        ];
+
+        file_put_contents(
+            $jsonFile,
+            json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)
+        );
+    }
 }
 
-/* DELETE */
-if(isset($_GET["delete"])){
-  unset($data[$unit][$_GET["delete"]]);
-  $data[$unit]=array_values($data[$unit]);
-  file_put_contents($jsonFile,json_encode($data,JSON_PRETTY_PRINT));
-  header("Location:?unit=".$unit);
-  exit;
-}
+/* ========= DELETE ========= */
+if (isset($_GET['delete'])) {
 
-$list=$data[$unit] ?? [];
+    $i = (int)$_GET['delete'];
+
+    if (isset($data[$unit][$i])) {
+        array_splice($data[$unit], $i, 1);
+
+        file_put_contents(
+            $jsonFile,
+            json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)
+        );
+    }
+}
 ?>
 
 <!DOCTYPE html>
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Listen Order Editor</title>
+<title>Listen & Order Editor</title>
+
+<style>
+body{
+    font-family: Arial;
+    background:#eef6ff;
+    padding:30px;
+}
+
+.box{
+    background:white;
+    padding:25px;
+    border-radius:16px;
+    max-width:900px;
+    margin:auto;
+    box-shadow:0 4px 10px rgba(0,0,0,.1);
+}
+
+h2{
+    color:#0b5ed7;
+    margin-bottom:20px;
+}
+
+label{
+    font-weight:bold;
+}
+
+input[type=file]{
+    margin-top:6px;
+    margin-bottom:15px;
+}
+
+button{
+    background:#0b5ed7;
+    color:white;
+    border:none;
+    padding:10px 18px;
+    border-radius:10px;
+    cursor:pointer;
+    margin-top:5px;
+}
+
+button:hover{
+    opacity:.9;
+}
+
+.green{
+    background:#16a34a;
+}
+
+.block{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    background:#f8f9fa;
+    padding:12px;
+    border-radius:12px;
+    margin-bottom:10px;
+}
+
+.imgs img{
+    height:60px;
+    margin-right:6px;
+    border-radius:8px;
+}
+
+.delete{
+    color:red;
+    font-size:22px;
+    text-decoration:none;
+    font-weight:bold;
+}
+</style>
+
 </head>
+<body>
 
-<body style="font-family:Arial;background:#eef6ff;padding:30px">
+<div class="box">
 
-<div style="background:white;padding:20px;border-radius:15px;max-width:700px;margin:auto">
+<h2>🎧 Listen & Order — Editor</h2>
 
-<h2>🎧 Listen & Order Editor</h2>
+<form method="post" enctype="multipart/form-data">
 
-<form method="POST" enctype="multipart/form-data">
+<label>Audio MP3</label><br>
+<input type="file" name="audio" accept="audio/mp3,audio/mpeg" required>
 
-Audio MP3:<br>
-<input type="file" name="audio" accept="audio/mp3" required><br><br>
+<br>
 
-Imágenes:<br>
-<input type="file" name="images[]" multiple accept="image/*" required><br><br>
+<label>Imágenes</label><br>
+<input type="file" name="images[]" multiple accept="image/*" required>
 
-<button>Guardar</button>
+<br>
+
+<button type="submit">💾 Guardar</button>
 
 </form>
 
 <hr>
 
-<h3>Bloques</h3>
+<h3>📦 Bloques</h3>
 
-<?php foreach($list as $i=>$b): ?>
-<div style="margin:10px 0;padding:10px;background:#f3f4f6;border-radius:10px">
-Audio ✔<br>
+<?php foreach($data[$unit] as $i=>$b): ?>
 
+<div class="block">
+
+<div>
+
+<div>🎧 Audio ✓</div>
+
+<div class="imgs">
 <?php foreach($b["images"] as $img): ?>
-<img src="../../<?= $img ?>" height="60">
+<img src="../../<?= $img ?>">
 <?php endforeach; ?>
-
-<a href="?unit=<?=$unit?>&delete=<?=$i?>" style="color:red">✖</a>
 </div>
+
+</div>
+
+<a class="delete" href="?unit=<?= $unit ?>&delete=<?= $i ?>">✖</a>
+
+</div>
+
 <?php endforeach; ?>
 
 <br>
-<a href="../hub/index.php?unit=<?=$unit?>">
-<button>Volver Hub</button>
+
+<a href="../hub/index.php?unit=<?= $unit ?>">
+<button class="green">↩ Volver al Hub</button>
 </a>
 
 </div>
+
 </body>
 </html>
