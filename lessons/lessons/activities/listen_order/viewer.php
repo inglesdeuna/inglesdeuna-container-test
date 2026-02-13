@@ -3,6 +3,7 @@ $unit = $_GET['unit'] ?? null;
 if (!$unit) die("Unidad no especificada");
 
 $file = __DIR__ . "/listen_order.json";
+
 $data = file_exists($file)
   ? json_decode(file_get_contents($file), true)
   : [];
@@ -13,6 +14,7 @@ if (!isset($data[$unit]) || empty($data[$unit])) {
 
 $blocks = $data[$unit];
 ?>
+
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -21,13 +23,13 @@ $blocks = $data[$unit];
 
 <style>
 body{
-  font-family: Arial;
+  font-family: Arial, sans-serif;
   background:#eef6ff;
   text-align:center;
   padding:20px;
 }
 
-h1{ color:#0b5ed7; }
+h1{color:#0b5ed7;}
 
 #sentenceBox{
   margin:20px auto;
@@ -37,32 +39,34 @@ h1{ color:#0b5ed7; }
   max-width:700px;
 }
 
-#images, #answer{
+#words, #answer{
   display:flex;
   flex-wrap:wrap;
   justify-content:center;
-  gap:12px;
+  gap:10px;
   margin:15px 0;
 }
 
-.imgCard{
-  background:white;
-  padding:8px;
+.word{
+  padding:6px;
   border-radius:12px;
+  background:white;
   cursor:grab;
-  box-shadow:0 2px 6px rgba(0,0,0,0.1);
+  box-shadow:0 2px 6px rgba(0,0,0,.15);
 }
 
-.imgCard img{
-  height:90px;
+.word img{
+  height:80px;
+  width:auto;
+  display:block;
 }
 
 .drop-zone{
-  background:white;
+  background:#fff;
   border:2px dashed #0b5ed7;
-  border-radius:14px;
-  padding:18px;
-  min-height:110px;
+  border-radius:12px;
+  padding:15px;
+  min-height:100px;
 }
 
 button{
@@ -80,14 +84,14 @@ button{
   font-weight:bold;
 }
 
-.good{ color:green; }
-.bad{ color:crimson; }
+.good{color:green;}
+.bad{color:crimson;}
 
-.back{
+a.back{
   display:inline-block;
   margin-top:20px;
   background:#16a34a;
-  color:white;
+  color:#fff;
   padding:10px 18px;
   border-radius:12px;
   text-decoration:none;
@@ -104,13 +108,13 @@ button{
   <button onclick="playAudio()">🔊 Listen</button>
 </div>
 
-<div id="images"></div>
+<div id="words"></div>
 
 <div id="answer" class="drop-zone"></div>
 
 <div>
-  <button onclick="check()">✅ Check</button>
-  <button onclick="next()">➡️</button>
+  <button onclick="checkOrder()">✅ Check</button>
+  <button onclick="nextBlock()">➡️</button>
 </div>
 
 <div id="feedback"></div>
@@ -124,41 +128,42 @@ button{
 const blocks = <?= json_encode($blocks) ?>;
 
 let index = 0;
-let correctOrder = [];
+let correct = [];
 let dragged = null;
 
-const imagesDiv = document.getElementById("images");
+const wordsDiv = document.getElementById("words");
 const answerDiv = document.getElementById("answer");
 const feedback = document.getElementById("feedback");
 
 function loadBlock(){
 
+  dragged=null;
   feedback.textContent="";
   feedback.className="";
 
-  imagesDiv.innerHTML="";
+  wordsDiv.innerHTML="";
   answerDiv.innerHTML="";
 
   const block = blocks[index];
 
-  correctOrder = [...block.images];
+  correct = [...block.images];
 
-  let shuffled = [...correctOrder].sort(()=>Math.random()-0.5);
+  let shuffled = [...correct].sort(()=>Math.random()-0.5);
 
   shuffled.forEach(src=>{
-    const card = document.createElement("div");
-    card.className="imgCard";
-    card.draggable=true;
-    card.dataset.src=src;
+    const div=document.createElement("div");
+    div.className="word";
+    div.draggable=true;
+    div.dataset.src=src;
 
     const img=document.createElement("img");
     img.src="../../"+src;
 
-    card.appendChild(img);
+    div.appendChild(img);
 
-    card.addEventListener("dragstart",()=>dragged=card);
+    div.addEventListener("dragstart",()=>dragged=div);
 
-    imagesDiv.appendChild(card);
+    wordsDiv.appendChild(div);
   });
 }
 
@@ -168,11 +173,11 @@ answerDiv.addEventListener("drop", ()=>{
   if(dragged) answerDiv.appendChild(dragged);
 });
 
-function check(){
+function checkOrder(){
 
-  const built = [...answerDiv.children].map(x=>x.dataset.src);
+  const built=[...answerDiv.children].map(x=>x.dataset.src);
 
-  if(JSON.stringify(built) === JSON.stringify(correctOrder)){
+  if(JSON.stringify(built)===JSON.stringify(correct)){
     feedback.textContent="🌟 Excellent!";
     feedback.className="good";
   }else{
@@ -181,11 +186,11 @@ function check(){
   }
 }
 
-function next(){
+function nextBlock(){
 
   index++;
 
-  if(index >= blocks.length){
+  if(index>=blocks.length){
     feedback.textContent="🏆 Completado!";
     feedback.className="good";
     return;
@@ -195,7 +200,7 @@ function next(){
 }
 
 function playAudio(){
-  const audio = new Audio("../../"+blocks[index].audio);
+  const audio=new Audio("../../"+blocks[index].audio);
   audio.play();
 }
 
