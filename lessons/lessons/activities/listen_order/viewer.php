@@ -1,24 +1,21 @@
 <?php
 require_once __DIR__ . "/../../config/db.php";
 
-$unit=$_GET["unit"]??null;
-if(!$unit) die("Unit missing");
+$unit = $_GET["unit"] ?? null;
+if(!$unit) die("Unidad no especificada");
 
-/* =====================
-LOAD DATA
-===================== */
-$stmt=$pdo->prepare("
+/* ================= DB ================= */
+$stmt = $pdo->prepare("
 SELECT data FROM activities
 WHERE unit_id=:u AND type='listen_order'
 ");
 $stmt->execute(["u"=>$unit]);
-$row=$stmt->fetch(PDO::FETCH_ASSOC);
+$row = $stmt->fetch(PDO::FETCH_ASSOC);
 
-$blocks=json_decode($row["data"]??"[]",true);
+$blocks = json_decode($row["data"] ?? "[]", true);
 
 if(!$blocks || count($blocks)==0){
-echo "<h2 style='text-align:center;margin-top:40px'>No activity yet</h2>";
-exit;
+    die("No hay actividades");
 }
 ?>
 
@@ -32,67 +29,72 @@ exit;
 body{
 font-family:Arial;
 background:#eef6ff;
+text-align:center;
 padding:30px;
 }
 
 .box{
 background:white;
-padding:30px;
-border-radius:18px;
 max-width:900px;
 margin:auto;
-box-shadow:0 4px 12px rgba(0,0,0,.12);
-text-align:center;
+padding:30px;
+border-radius:18px;
+box-shadow:0 4px 14px rgba(0,0,0,.1);
 }
 
-.imgRow{
+h2{color:#0b5ed7;}
+
+.images{
 display:flex;
-gap:20px;
-flex-wrap:wrap;
 justify-content:center;
-margin:25px 0;
-}
-
-.imgCard{
-background:#f1f4f8;
-padding:10px;
-border-radius:14px;
-cursor:grab;
-}
-
-.imgCard img{
-height:90px;
-}
-
-.drop{
-border:2px dashed #2c6bed;
-padding:20px;
-border-radius:14px;
-min-height:120px;
-display:flex;
-gap:20px;
 flex-wrap:wrap;
-justify-content:center;
+gap:12px;
 margin-top:20px;
 }
 
+.images img{
+width:110px;
+height:110px;
+object-fit:contain;
+background:#fff;
+border-radius:14px;
+padding:10px;
+box-shadow:0 2px 6px rgba(0,0,0,.1);
+cursor:grab;
+}
+
+.drop{
+margin-top:25px;
+border:2px dashed #0b5ed7;
+padding:20px;
+border-radius:14px;
+min-height:130px;
+display:flex;
+gap:12px;
+justify-content:center;
+flex-wrap:wrap;
+}
+
 button{
-background:#2c6bed;
+background:#0b5ed7;
 color:white;
 border:none;
 padding:10px 18px;
-border-radius:10px;
+border-radius:12px;
 cursor:pointer;
-margin:6px;
-font-size:16px;
+margin:8px;
 }
 
-.green{ background:#2e9d4d; }
+.green{background:#16a34a;}
 
 .msg{
-margin-top:15px;
 font-weight:bold;
+margin-top:15px;
+font-size:18px;
 }
+
+.good{color:green;}
+.bad{color:red;}
 </style>
 </head>
 
@@ -102,152 +104,140 @@ font-weight:bold;
 
 <h2>🎧 Listen & Order</h2>
 
-<button onclick="playTTS()">🔊 Listen</button>
+<button onclick="speak()">🔊 Listen</button>
 
-<div id="imgPool" class="imgRow"></div>
+<div id="images" class="images"></div>
 
-<div class="drop" id="dropZone"></div>
+<div id="drop" class="drop"></div>
 
 <br>
 
-<button onclick="check()">✔ Check</button>
-<button onclick="next()">➡ Next</button>
+<button onclick="check()">✅ Check</button>
+<button onclick="next()">➡️ Next</button>
 
 <div id="msg" class="msg"></div>
 
 <br>
+
 <a href="../hub/index.php?unit=<?=$unit?>">
-<button class="green">← Volver al Hub</button>
+<button class="green">↩ Volver al Hub</button>
 </a>
 
 </div>
 
 <script>
 
-let blocks = <?=json_encode($blocks)?>;
-let index=0;
+const blocks = <?= json_encode($blocks) ?>;
 
-/* =====================
-TTS — MISMA VOZ DRAG DROP
-===================== */
-function playTTS(){
+let index = 0;
+let correctSentence = "";
+let correctOrder = [];
+let dragged = null;
 
-let txt = blocks[index].sentence || blocks[index].text;
+const imagesDiv = document.getElementById("images");
+const dropDiv = document.getElementById("drop");
+const msg = document.getElementById("msg");
 
-let speech=new SpeechSynthesisUtterance(txt);
-speech.lang="en-US";
-speech.rate=0.85;
-speech.pitch=1;
+/* ================= LOAD ================= */
 
-let voices=speechSynthesis.getVoices();
+function load(){
 
-let enVoice=voices.find(v=>v.lang.includes("en"));
+msg.innerHTML="";
+msg.className="msg";
 
-if(enVoice) speech.voice=enVoice;
+imagesDiv.innerHTML="";
+dropDiv.innerHTML="";
 
-speechSynthesis.cancel();
-speechSynthesis.speak(speech);
+const block = blocks[index];
 
-}
+correctSentence = block.text;
+correctOrder = block.images;
 
-/* =====================
-RENDER
-===================== */
-function render(){
+/* shuffle images */
+let shuffled = [...correctOrder].sort(()=>Math.random()-0.5);
 
-document.getElementById("msg").innerHTML="";
+shuffled.forEach(src=>{
+const img = document.createElement("img");
+img.src="../../"+src;
+img.draggable=true;
 
-let pool=document.getElementById("imgPool");
-let drop=document.getElementById("dropZone");
+img.addEventListener("dragstart",()=> dragged = img);
 
-pool.innerHTML="";
-drop.innerHTML="";
-
-let imgs=[...blocks[index].images];
-
-imgs.sort(()=>Math.random()-0.5);
-
-imgs.forEach((src,i)=>{
-
-let div=document.createElement("div");
-div.className="imgCard";
-div.draggable=true;
-div.dataset.index=i;
-
-div.innerHTML=`<img src="../../${src}">`;
-
-div.ondragstart=e=>{
-e.dataTransfer.setData("src",src);
-};
-
-pool.appendChild(div);
-
+imagesDiv.appendChild(img);
 });
 
 }
 
-/* =====================
-DROP
-===================== */
-let dropZone=document.getElementById("dropZone");
+/* ================= DRAG ================= */
 
-dropZone.ondragover=e=>e.preventDefault();
+dropDiv.addEventListener("dragover", e=>e.preventDefault());
 
-dropZone.ondrop=e=>{
-e.preventDefault();
+dropDiv.addEventListener("drop", ()=>{
+if(dragged){
+dropDiv.appendChild(dragged);
+dragged=null;
+}
+});
 
-let src=e.dataTransfer.getData("src");
+/* ================= CHECK ================= */
 
-let div=document.createElement("div");
-div.className="imgCard";
-
-div.innerHTML=`<img src="../../${src}">`;
-
-dropZone.appendChild(div);
-};
-
-/* =====================
-CHECK CORRECT ORDER
-===================== */
 function check(){
 
-let dropImgs=[...dropZone.querySelectorAll("img")].map(i=>{
-return i.src.split("activities/")[1];
-});
+const built = [...dropDiv.children].map(i=> i.src.split("/activities/")[1]);
 
-let correct = blocks[index].images.map(i=>i);
+let ok = true;
 
-if(JSON.stringify(dropImgs)==JSON.stringify(correct)){
+for(let i=0;i<correctOrder.length;i++){
+if(!built[i] || !built[i].includes(correctOrder[i])){
+ok=false;
+break;
+}
+}
 
-document.getElementById("msg").innerHTML="✨ Excellent!";
-document.getElementById("msg").style.color="green";
-
+if(ok){
+msg.innerHTML="🌟 Excelente!";
+msg.className="msg good";
 }else{
-
-document.getElementById("msg").innerHTML="Try again";
-document.getElementById("msg").style.color="red";
-
+msg.innerHTML="🔁 Try again";
+msg.className="msg bad";
 }
 
 }
 
-/* =====================
-NEXT
-===================== */
+/* ================= NEXT ================= */
+
 function next(){
 
 index++;
 
-if(index>=blocks.length){
-document.querySelector(".box").innerHTML="<h2>🎉 Completado</h2>";
+if(index >= blocks.length){
+msg.innerHTML="🎉 Completado";
+msg.className="msg good";
 return;
 }
 
-render();
+load();
+}
+
+/* ================= TTS (MISMO DRAG DROP) ================= */
+
+function speak(){
+
+if(!correctSentence) return;
+
+const msgVoice = new SpeechSynthesisUtterance(correctSentence);
+msgVoice.lang = "en-US";
+msgVoice.rate = 0.9;
+msgVoice.pitch = 1;
+msgVoice.volume = 1;
+
+speechSynthesis.cancel();
+speechSynthesis.speak(msgVoice);
 
 }
 
-render();
+/* START */
+load();
 
 </script>
 
