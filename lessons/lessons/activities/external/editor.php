@@ -16,7 +16,7 @@ $data = json_decode(file_get_contents($jsonFile), true);
 if (!$data) $data = [];
 
 /* =========================
-SAVE URL
+POST GUARDAR URL
 ========================= */
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
@@ -32,12 +32,12 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             $jsonFile,
             json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)
         );
-
-        header("Location: ../hub/index.php?unit=" . urlencode($unit));
-        exit;
     }
 }
 
+/* =========================
+URL ACTUAL
+========================= */
 $currentUrl = $data[$unit]["url"] ?? "";
 
 ?>
@@ -81,7 +81,9 @@ button{
     margin-top:10px;
 }
 
-.green{ background:#28a745; }
+.green{
+    background:#28a745;
+}
 </style>
 </head>
 
@@ -94,9 +96,12 @@ button{
 <form method="post">
 
 URL externa:
-<input name="url" required
-value="<?= htmlspecialchars($currentUrl) ?>"
-placeholder="https://">
+<input
+    name="url"
+    required
+    value="<?= htmlspecialchars($currentUrl) ?>"
+    placeholder="https://"
+/>
 
 <button>💾 Guardar</button>
 
