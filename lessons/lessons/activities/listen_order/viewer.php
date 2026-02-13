@@ -231,8 +231,7 @@ msgVoice.rate = 0.9;
 msgVoice.pitch = 1;
 msgVoice.volume = 1;
 
-speechSynthesis.cancel();
-speechSynthesis.speak(msgVoice);
+speechSynthesis.speak(msg);
 
 }
 
