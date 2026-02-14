@@ -1,10 +1,97 @@
 <?php
-require_once __DIR__."/../../config/init_db.php";
+require_once __DIR__."/../../config/db.php";
 
-$type = "flashcards";
-require_once __DIR__."/../../core/_activity_editor_template.php";
+$unit = $_GET["unit"] ?? null;
+if(!$unit) die("Unit missing");
 
-$data = $data ?? [];
+/* ========= LOAD ========= */
+
+$stmt = $pdo->prepare("
+    SELECT data FROM activities
+    WHERE unit_id = :u AND type = 'flashcards'
+");
+$stmt->execute(["u"=>$unit]);
+
+$row = $stmt->fetch(PDO::FETCH_ASSOC);
+$data = json_decode($row["data"] ?? "[]", true);
+
+/* ========= DELETE ========= */
+
+if(isset($_GET["delete"])){
+
+    $i = intval($_GET["delete"]);
+
+    if(isset($data[$i])){
+        array_splice($data,$i,1);
+    }
+
+    $json = json_encode($data,JSON_UNESCAPED_UNICODE);
+
+    $stmt = $pdo->prepare("
+        INSERT INTO activities(id,unit_id,type,data)
+        VALUES(gen_random_uuid(),:u,'flashcards',:d)
+        ON CONFLICT (unit_id,type)
+        DO UPDATE SET data = EXCLUDED.data
+    ");
+
+    $stmt->execute([
+        "u"=>$unit,
+        "d"=>$json
+    ]);
+
+    header("Location: editor.php?unit=".$unit);
+    exit;
+}
+
+/* ========= SAVE ========= */
+
+if($_SERVER["REQUEST_METHOD"]==="POST"){
+
+    $text = trim($_POST["text"] ?? "");
+
+    if($text != ""){
+
+        $uploadDir = __DIR__."/uploads/".$unit;
+
+        if(!is_dir($uploadDir)){
+            mkdir($uploadDir,0777,true);
+        }
+
+        $imgPath = "";
+
+        if(!empty($_FILES["image"]["name"])){
+
+            $tmp  = $_FILES["image"]["tmp_name"];
+            $name = uniqid()."_".basename($_FILES["image"]["name"]);
+
+            move_uploaded_file($tmp,$uploadDir."/".$name);
+
+            $imgPath = "activities/flashcards/uploads/".$unit."/".$name;
+        }
+
+        $data[] = [
+            "text"=>$text,
+            "image"=>$imgPath
+        ];
+
+        $json = json_encode($data,JSON_UNESCAPED_UNICODE);
+
+        $stmt = $pdo->prepare("
+            INSERT INTO activities(id,unit_id,type,data)
+            VALUES(gen_random_uuid(),:u,'flashcards',:d)
+            ON CONFLICT (unit_id,type)
+            DO UPDATE SET data = EXCLUDED.data
+        ");
+
+        $stmt->execute([
+            "u"=>$unit,
+            "d"=>$json
+        ]);
+    }
+
+    header("Location: editor.php?unit=".$unit);
+    exit;
+}
 ?>
 
 <!DOCTYPE html>
@@ -16,123 +103,144 @@ $data = $data ?? [];
 <style>
 body{
     font-family:Arial;
-    background:#e9f2fb;
-    padding:30px;
+    background:#eef6ff;
+    padding:40px;
 }
 
-.box{
-    max-width:900px;
-    margin:auto;
+/* CONTENEDOR IGUAL A DRAG & DROP */
+.container{
+    max-width:700px;
     background:white;
     padding:25px;
-    border-radius:20px;
-    box-shadow:0 6px 20px rgba(0,0,0,.08);
+    border-radius:16px;
+    box-shadow:0 4px 12px rgba(0,0,0,.1);
 }
 
+/* TITULO */
 h2{
-    color:#0b5ed7;
-    margin-bottom:20px;
-}
-
-input[type="text"],
-input[type="file"]{
-    padding:10px;
-    border-radius:10px;
-    border:1px solid #ccc;
-    width:100%;
-}
-
-.row{
-    display:grid;
-    grid-template-columns:2fr 2fr auto;
+    display:flex;
+    align-items:center;
     gap:10px;
+}
+
+/* INPUT GRANDE */
+.input{
+    width:100%;
+    padding:12px;
+    border-radius:8px;
+    border:1px solid #ccc;
+    margin-bottom:15px;
+}
+
+/* BOTON GUARDAR IGUAL */
+.save{
+    width:100%;
+    padding:12px;
+    border:none;
+    border-radius:8px;
+    background:#2f6fed;
+    color:white;
+    font-weight:bold;
+    cursor:pointer;
+}
+
+/* LISTA */
+.list{
+    margin-top:20px;
+}
+
+.item{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    background:#f7f7f7;
+    padding:12px;
+    border-radius:12px;
     margin-bottom:10px;
 }
 
-button{
-    padding:10px 18px;
-    border:none;
-    border-radius:10px;
-    cursor:pointer;
-    font-weight:bold;
+.item img{
+    width:50px;
+    height:50px;
+    object-fit:contain;
+    margin-right:10px;
 }
 
-.save{
-    background:#2f6fed;
-    color:white;
-}
-
-.hub{
-    background:#28a745;
-    color:white;
+.left{
+    display:flex;
+    align-items:center;
+    gap:10px;
 }
 
 .delete{
     color:red;
-    text-decoration:none;
-    font-size:20px;
     font-weight:bold;
+    text-decoration:none;
 }
 
-.savedCard{
-    display:flex;
-    align-items:center;
-    gap:15px;
-    background:#f8f9fa;
+/* HUB BUTTON IGUAL */
+.hub{
+    margin-top:20px;
+    width:100%;
     padding:12px;
-    border-radius:14px;
-    margin-bottom:10px;
-}
-
-.mini{
-    width:60px;
-    height:60px;
-    object-fit:contain;
+    border:none;
+    border-radius:10px;
+    background:#28a745;
+    color:white;
+    font-weight:bold;
+    cursor:pointer;
 }
 </style>
 </head>
 
 <body>
 
-<div class="box">
+<div class="container">
 
-<h2>🧸 Flashcards Editor</h2>
+<h2>🧩 Flashcards – Editor</h2>
 
-<form method="POST" enctype="multipart/form-data">
+<form method="post" enctype="multipart/form-data">
 
-<div class="row">
-    <input type="text" name="text" placeholder="Word">
-    <input type="file" name="image">
-    <button class="save" name="add">💾 Guardar</button>
-</div>
+<input class="input" name="text" placeholder="Write the word">
+
+<input type="file" name="image" class="input">
+
+<button class="save">💾 Guardar</button>
 
 </form>
 
-<a href="../hub/index.php?unit=<?=$unit?>">
-    <button class="hub">← Volver al Hub</button>
-</a>
+<div class="list">
 
-<hr>
+<h3>📚 Flashcards</h3>
 
-<h3>📦 Guardados</h3>
+<?php if(empty($data)): ?>
+<p>No flashcards yet.</p>
+<?php endif; ?>
 
 <?php foreach($data as $i=>$item): ?>
+<div class="item">
 
-<div class="savedCard">
-
-    <?php if(!empty($item["image"])): ?>
-        <img src="/lessons/lessons/<?=$item["image"]?>" class="mini">
-    <?php endif; ?>
-
-    <div>
-        <b><?=htmlspecialchars($item["text"] ?? "")?></b>
+    <div class="left">
+        <?php if(!empty($item["image"])): ?>
+            <img src="/lessons/lessons/<?=$item["image"]?>">
+        <?php endif; ?>
+        <strong><?=$item["text"]?></strong>
     </div>
 
-    <a class="delete" href="?unit=<?=$unit?>&delete=<?=$i?>">❌</a>
+    <a class="delete"
+       href="?unit=<?=$unit?>&delete=<?=$i?>"
+       onclick="return confirm('Delete flashcard?')">
+       ❌
+    </a>
+
+</div>
+<?php endforeach; ?>
 
 </div>
 
-<?php endforeach; ?>
+<a href="../hub/index.php?unit=<?=$unit?>">
+<button class="hub">↩ Volver al Hub</button>
+</a>
 
 </div>
 
