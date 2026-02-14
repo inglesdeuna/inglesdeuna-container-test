@@ -18,12 +18,20 @@ if(!$data || count($data)==0){
     exit;
 }
 ?>
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Flashcards</title>
 
 <style>
-.flash-wrapper{
+body{
+    font-family:Arial;
+    background:#eef6ff;
     display:flex;
     justify-content:center;
-    margin-top:40px;
+    align-items:center;
+    height:100vh;
 }
 
 .card-container{
@@ -57,7 +65,9 @@ if(!$data || count($data)==0){
     padding:20px;
 }
 
-.front{ background:white; }
+.front{
+    background:white;
+}
 
 .back{
     background:#2f6fed;
@@ -90,33 +100,15 @@ button{
 
 .next{ background:#28a745; color:white;}
 .listen{ background:#0b5ed7; color:white;}
-
-.hub-btn{
-    margin-top:30px;
-    background:#28a745;
-    color:white;
-    padding:10px 18px;
-    border:none;
-    border-radius:8px;
-    cursor:pointer;
-}
 </style>
+</head>
+<body>
 
-<h2 style="text-align:center;">Flashcards</h2>
-
-<div class="flash-wrapper">
-    <div class="card-container">
-        <div class="card" id="card">
-            <div class="side front" id="front"></div>
-            <div class="side back" id="back"></div>
-        </div>
+<div class="card-container">
+    <div class="card" id="card">
+        <div class="side front" id="front"></div>
+        <div class="side back" id="back"></div>
     </div>
-</div>
-
-<div style="text-align:center;">
-    <a href="../hub/index.php?unit=<?=$unit?>">
-        <button class="hub-btn">← Volver al Hub</button>
-    </a>
 </div>
 
 <script>
@@ -163,3 +155,6 @@ card.addEventListener("click", ()=>{
 
 loadCard();
 </script>
+
+</body>
+</html>
