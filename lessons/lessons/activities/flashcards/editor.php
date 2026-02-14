@@ -1,46 +1,140 @@
 <?php
-require_once __DIR__."/../../config/db.php";
+require_once __DIR__."/../../config/init_db.php";
 
 $type = "flashcards";
-
 require_once __DIR__."/../../core/_activity_editor_template.php";
 
 $data = $data ?? [];
 ?>
 
-<h2>Flashcards Editor</h2>
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Flashcards Editor</title>
 
-<a href="viewer.php?unit=<?php echo $unit; ?>">👉 Ir al Viewer</a>
+<style>
+body{
+    font-family:Arial;
+    background:#e9f2fb;
+    padding:30px;
+}
 
-<form method="POST" enctype="multipart/form-data" style="margin-top:20px;">
+.box{
+    max-width:900px;
+    margin:auto;
+    background:white;
+    padding:25px;
+    border-radius:20px;
+    box-shadow:0 6px 20px rgba(0,0,0,.08);
+}
 
-    <label>Texto:</label><br>
-    <input type="text" name="text"><br><br>
+h2{
+    color:#0b5ed7;
+    margin-bottom:20px;
+}
 
-    <label>Imagen:</label><br>
-    <input type="file" name="image"><br><br>
+input[type="text"],
+input[type="file"]{
+    padding:10px;
+    border-radius:10px;
+    border:1px solid #ccc;
+    width:100%;
+}
 
-    <button type="submit" name="add">Guardar Flashcard</button>
+.row{
+    display:grid;
+    grid-template-columns:2fr 2fr auto;
+    gap:10px;
+    margin-bottom:10px;
+}
+
+button{
+    padding:10px 18px;
+    border:none;
+    border-radius:10px;
+    cursor:pointer;
+    font-weight:bold;
+}
+
+.save{
+    background:#2f6fed;
+    color:white;
+}
+
+.hub{
+    background:#28a745;
+    color:white;
+}
+
+.delete{
+    color:red;
+    text-decoration:none;
+    font-size:20px;
+    font-weight:bold;
+}
+
+.savedCard{
+    display:flex;
+    align-items:center;
+    gap:15px;
+    background:#f8f9fa;
+    padding:12px;
+    border-radius:14px;
+    margin-bottom:10px;
+}
+
+.mini{
+    width:60px;
+    height:60px;
+    object-fit:contain;
+}
+</style>
+</head>
+
+<body>
+
+<div class="box">
+
+<h2>🧸 Flashcards Editor</h2>
+
+<form method="POST" enctype="multipart/form-data">
+
+<div class="row">
+    <input type="text" name="text" placeholder="Word">
+    <input type="file" name="image">
+    <button class="save" name="add">💾 Guardar</button>
+</div>
 
 </form>
 
+<a href="../hub/index.php?unit=<?=$unit?>">
+    <button class="hub">← Volver al Hub</button>
+</a>
+
 <hr>
 
-<h3>Guardados</h3>
+<h3>📦 Guardados</h3>
 
 <?php foreach($data as $i=>$item): ?>
 
-<div style="border:1px solid #ccc; padding:10px; margin:10px 0">
-
-    <strong><?php echo htmlspecialchars($item["text"] ?? ""); ?></strong><br>
+<div class="savedCard">
 
     <?php if(!empty($item["image"])): ?>
-        <img src="/<?php echo $item["image"]; ?>" width="150">
+        <img src="/lessons/lessons/<?=$item["image"]?>" class="mini">
     <?php endif; ?>
 
-    <br>
-    <a href="?unit=<?php echo $unit ?>&delete=<?php echo $i ?>">Eliminar</a>
+    <div>
+        <b><?=htmlspecialchars($item["text"] ?? "")?></b>
+    </div>
+
+    <a class="delete" href="?unit=<?=$unit?>&delete=<?=$i?>">❌</a>
 
 </div>
 
 <?php endforeach; ?>
+
+</div>
+
+</body>
+</html>
