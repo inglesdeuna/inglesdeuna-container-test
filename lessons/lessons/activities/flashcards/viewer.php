@@ -27,11 +27,22 @@ if(!$data || count($data)==0){
 <style>
 body{
     font-family:Arial;
-    background:#eef6ff;
+    background:#e9f2fb;
+    padding:40px;
+    text-align:center;
+}
+
+.title{
+    font-size:28px;
+    font-weight:bold;
+    color:#0b5ed7;
+    margin-bottom:30px;
+}
+
+.card-wrapper{
     display:flex;
     justify-content:center;
     align-items:center;
-    height:100vh;
 }
 
 .card-container{
@@ -39,8 +50,8 @@ body{
 }
 
 .card{
-    width:350px;
-    height:400px;
+    width:380px;
+    height:420px;
     position:relative;
     transform-style:preserve-3d;
     transition:transform .6s;
@@ -57,12 +68,12 @@ body{
     height:100%;
     backface-visibility:hidden;
     border-radius:20px;
-    box-shadow:0 10px 25px rgba(0,0,0,.2);
+    box-shadow:0 10px 25px rgba(0,0,0,.15);
     display:flex;
     flex-direction:column;
     justify-content:center;
     align-items:center;
-    padding:20px;
+    padding:25px;
 }
 
 .front{
@@ -73,13 +84,13 @@ body{
     background:#2f6fed;
     color:white;
     transform:rotateY(180deg);
-    font-size:28px;
+    font-size:30px;
     font-weight:bold;
 }
 
 img{
-    max-width:250px;
-    max-height:250px;
+    max-width:260px;
+    max-height:260px;
     object-fit:contain;
 }
 
@@ -93,23 +104,37 @@ img{
 button{
     padding:8px 14px;
     border:none;
-    border-radius:8px;
+    border-radius:10px;
     cursor:pointer;
     font-weight:bold;
 }
 
-.next{ background:#28a745; color:white;}
 .listen{ background:#0b5ed7; color:white;}
+.next{ background:#28a745; color:white;}
+.hub{
+    margin-top:30px;
+    background:#28a745;
+    color:white;
+}
 </style>
 </head>
+
 <body>
 
-<div class="card-container">
-    <div class="card" id="card">
-        <div class="side front" id="front"></div>
-        <div class="side back" id="back"></div>
+<div class="title">🎴 Flashcards</div>
+
+<div class="card-wrapper">
+    <div class="card-container">
+        <div class="card" id="card">
+            <div class="side front" id="front"></div>
+            <div class="side back" id="back"></div>
+        </div>
     </div>
 </div>
+
+<button class="hub" onclick="window.location.href='../hub/index.php?unit=<?=$unit?>'">
+← Volver al Hub
+</button>
 
 <script>
 const data = <?=json_encode($data, JSON_UNESCAPED_UNICODE)?>;
