@@ -39,6 +39,10 @@ $stmt->execute([
 $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
 $data = json_decode($row["data"] ?? "[]", true);
+echo "<pre>";
+print_r($data);
+echo "</pre>";
+
 if (!is_array($data)) $data = [];
 
 /* ===== FLAGS ===== */
