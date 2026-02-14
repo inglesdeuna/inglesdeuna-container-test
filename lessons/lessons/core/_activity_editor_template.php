@@ -26,6 +26,12 @@ if (!is_dir($uploadDir)) {
 }
 
 /* ===== LOAD EXISTING DATA ===== */
+echo "<pre>";
+echo "UNIT: " . $unit . "\n";
+echo "TYPE: " . $type . "\n";
+echo "</pre>";
+
+
 $stmt = $pdo->prepare("
 SELECT data FROM activities
 WHERE unit_id = :u AND type = :t
