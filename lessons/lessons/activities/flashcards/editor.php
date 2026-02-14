@@ -1,11 +1,11 @@
 <?php
-require_once __DIR__."/../../config/init_db.php";
+require_once __DIR__."/../../config/db.php";
 
 $type = "flashcards";
 
 require_once __DIR__."/../../core/_activity_editor_template.php";
-$data = $data ?? [];
 
+$data = $data ?? [];
 ?>
 
 <h2>Flashcards Editor</h2>
@@ -35,7 +35,7 @@ $data = $data ?? [];
     <strong><?php echo htmlspecialchars($item["text"] ?? ""); ?></strong><br>
 
     <?php if(!empty($item["image"])): ?>
-        <img src="/lessons/lessons/<?php echo $item["image"]; ?>" width="150">
+        <img src="/<?php echo $item["image"]; ?>" width="150">
     <?php endif; ?>
 
     <br>
