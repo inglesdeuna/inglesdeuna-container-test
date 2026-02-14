@@ -1,29 +1,160 @@
 <?php
-require_once __DIR__."/../../config/init_db.php";
+require_once __DIR__."/../../config/db.php";
 
-$type = "flashcards";
+$unit = $_GET["unit"] ?? null;
+if(!$unit) die("Unit missing");
 
-require_once __DIR__."/../../core/_activity_viewer_template.php";
+$stmt = $pdo->prepare("
+    SELECT data FROM activities
+    WHERE unit_id = :u AND type = 'flashcards'
+");
+$stmt->execute(["u"=>$unit]);
+
+$row = $stmt->fetch(PDO::FETCH_ASSOC);
+$data = json_decode($row["data"] ?? "[]", true);
+
+if(!$data || count($data)==0){
+    echo "<h3>No hay flashcards para esta unidad</h3>";
+    exit;
+}
 ?>
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Flashcards</title>
 
-<h2>Flashcards Viewer</h2>
+<style>
+body{
+    font-family:Arial;
+    background:#eef6ff;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    height:100vh;
+}
 
-<?php if(empty($data)): ?>
-    <p>No hay flashcards para esta unidad.</p>
-<?php else: ?>
+.card-container{
+    perspective:1000px;
+}
 
-    <?php foreach($data as $item): ?>
+.card{
+    width:350px;
+    height:400px;
+    position:relative;
+    transform-style:preserve-3d;
+    transition:transform .6s;
+    cursor:pointer;
+}
 
-        <div style="border:1px solid #ccc; padding:10px; margin:10px 0">
+.card.flip{
+    transform:rotateY(180deg);
+}
 
-            <strong><?php echo htmlspecialchars($item["text"] ?? ""); ?></strong><br>
+.side{
+    position:absolute;
+    width:100%;
+    height:100%;
+    backface-visibility:hidden;
+    border-radius:20px;
+    box-shadow:0 10px 25px rgba(0,0,0,.2);
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+    align-items:center;
+    padding:20px;
+}
 
-            <?php if(!empty($item["image"])): ?>
-                <img src="/lessons/lessons/<?php echo $item["image"]; ?>" width="200">
-            <?php endif; ?>
+.front{
+    background:white;
+}
 
+.back{
+    background:#2f6fed;
+    color:white;
+    transform:rotateY(180deg);
+    font-size:28px;
+    font-weight:bold;
+}
+
+img{
+    max-width:250px;
+    max-height:250px;
+    object-fit:contain;
+}
+
+.buttons{
+    position:absolute;
+    bottom:20px;
+    display:flex;
+    gap:10px;
+}
+
+button{
+    padding:8px 14px;
+    border:none;
+    border-radius:8px;
+    cursor:pointer;
+    font-weight:bold;
+}
+
+.next{ background:#28a745; color:white;}
+.listen{ background:#0b5ed7; color:white;}
+</style>
+</head>
+<body>
+
+<div class="card-container">
+    <div class="card" id="card">
+        <div class="side front" id="front"></div>
+        <div class="side back" id="back"></div>
+    </div>
+</div>
+
+<script>
+const data = <?=json_encode($data, JSON_UNESCAPED_UNICODE)?>;
+
+let index = 0;
+
+const front = document.getElementById("front");
+const back = document.getElementById("back");
+const card = document.getElementById("card");
+
+function loadCard(){
+    const item = data[index];
+
+    front.innerHTML = `
+        <img src="/lessons/lessons/${item.image}">
+        <div class="buttons">
+            <button class="listen" onclick="speak(event)">🔊 Listen</button>
+            <button class="next" onclick="nextCard(event)">Next ➜</button>
         </div>
+    `;
 
-    <?php endforeach; ?>
+    back.innerHTML = item.text;
+}
 
-<?php endif; ?>
+function speak(e){
+    e.stopPropagation();
+    const utter = new SpeechSynthesisUtterance(data[index].text);
+    utter.lang = "en-US";
+    speechSynthesis.speak(utter);
+}
+
+function nextCard(e){
+    e.stopPropagation();
+    card.classList.remove("flip");
+    index++;
+    if(index >= data.length) index = 0;
+    loadCard();
+}
+
+card.addEventListener("click", ()=>{
+    card.classList.toggle("flip");
+});
+
+loadCard();
+</script>
+
+</body>
+</html>
