@@ -30,23 +30,52 @@ body{
     background:#e9f2fb;
     padding:40px;
     text-align:center;
+    position:relative;
 }
 
+/* BOTÓN VOLVER */
+.back-btn{
+    position:absolute;
+    top:20px;
+    left:20px;
+    background:#28a745;
+    color:white;
+    padding:8px 16px;
+    border:none;
+    border-radius:10px;
+    font-weight:bold;
+    cursor:pointer;
+}
+
+/* TÍTULO */
 .title{
     font-size:28px;
     font-weight:bold;
     color:#0b5ed7;
-    margin-bottom:30px;
+    margin-bottom:25px;
 }
 
-.card-wrapper{
-    display:flex;
-    justify-content:center;
-    align-items:center;
+/* LISTEN FUERA DEL CARD */
+.listen-wrapper{
+    margin-bottom:15px;
 }
 
+button{
+    padding:8px 16px;
+    border:none;
+    border-radius:10px;
+    cursor:pointer;
+    font-weight:bold;
+}
+
+.listen{ background:#0b5ed7; color:white;}
+.next{ background:#28a745; color:white;}
+
+/* CARD */
 .card-container{
     perspective:1000px;
+    display:flex;
+    justify-content:center;
 }
 
 .card{
@@ -94,47 +123,32 @@ img{
     object-fit:contain;
 }
 
-.buttons{
+/* NEXT dentro del card */
+.next-wrapper{
     position:absolute;
     bottom:20px;
-    display:flex;
-    gap:10px;
-}
-
-button{
-    padding:8px 14px;
-    border:none;
-    border-radius:10px;
-    cursor:pointer;
-    font-weight:bold;
-}
-
-.listen{ background:#0b5ed7; color:white;}
-.next{ background:#28a745; color:white;}
-.hub{
-    margin-top:30px;
-    background:#28a745;
-    color:white;
 }
 </style>
 </head>
 
 <body>
 
-<div class="title">🎴 Flashcards</div>
+<button class="back-btn" onclick="window.location.href='../hub/index.php?unit=<?=$unit?>'">
+← Volver
+</button>
 
-<div class="card-wrapper">
-    <div class="card-container">
-        <div class="card" id="card">
-            <div class="side front" id="front"></div>
-            <div class="side back" id="back"></div>
-        </div>
-    </div>
+<div class="title">🧸 Flashcards</div>
+
+<div class="listen-wrapper">
+    <button class="listen" onclick="speak(event)">🔊 Listen</button>
 </div>
 
-<button class="hub" onclick="window.location.href='../hub/index.php?unit=<?=$unit?>'">
-← Volver al Hub
-</button>
+<div class="card-container">
+    <div class="card" id="card">
+        <div class="side front" id="front"></div>
+        <div class="side back" id="back"></div>
+    </div>
+</div>
 
 <script>
 const data = <?=json_encode($data, JSON_UNESCAPED_UNICODE)?>;
@@ -150,8 +164,7 @@ function loadCard(){
 
     front.innerHTML = `
         <img src="/lessons/lessons/${item.image}">
-        <div class="buttons">
-            <button class="listen" onclick="speak(event)">🔊 Listen</button>
+        <div class="next-wrapper">
             <button class="next" onclick="nextCard(event)">Next ➜</button>
         </div>
     `;
