@@ -45,7 +45,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             $uploadDir . $newName
         );
 
-        $pdfPath = "uploads/pdfs/" . $newName;
+        $pdfPath = "uploads/" . $newName;
     }
 
     if ($pdfPath !== "") {
