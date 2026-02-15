@@ -23,6 +23,7 @@ if(!$data || count($data)==0){
 <head>
 <meta charset="UTF-8">
 <title>Flashcards</title>
+<link rel="stylesheet" href="../../assets/css/ui.css">
 
 <style>
 body{
