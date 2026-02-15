@@ -149,9 +149,24 @@ if (!empty($data)) {
 </form>
 </div>
 
-<a href="../hub/index.php?unit=<?= urlencode($unit) ?>">
+<br><br>
+
+<button 
+    type="button" 
+    onclick="window.location.href='../hub/index.php?unit=<?= urlencode($unit) ?>'"
+    style="
+        background:#16a34a;
+        padding:10px 18px;
+        border:none;
+        border-radius:10px;
+        color:white;
+        cursor:pointer;
+        font-weight:bold;
+    "
+>
 ↩ Volver al Hub
-</a>
+</button>
+
 
 <script>
 function addSentence(){
