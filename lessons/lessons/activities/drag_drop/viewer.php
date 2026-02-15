@@ -135,7 +135,7 @@ a.back{
 <div id="feedback"></div>
 
 <a class="back" href="../hub/index.php?unit=<?= urlencode($unit) ?>">
-  ↩ Volver al Hub
+  ↩ Back
 </a>
 
 <script>
