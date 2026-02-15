@@ -141,9 +141,10 @@ img{
 
 <body>
 
-<button class="back-btn" onclick="window.location.href='../hub/index.php?unit=<?=$unit?>'">
-← Volver
+<button class="back-btn" onclick="window.location.href='../hub/index.php?unit=<?= urlencode($unit) ?>'">
+↩ Back
 </button>
+
 
 <div class="title">🧸 Flashcards</div>
 
