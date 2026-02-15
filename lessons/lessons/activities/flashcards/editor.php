@@ -166,7 +166,7 @@ if($_SERVER["REQUEST_METHOD"]==="POST"){
 <?php endif; ?>
 
 <?php foreach($data as $i=>$item): ?>
-<div class="item">
+<div class="item <?= $i === count($data)-1 ? 'completed' : '' ?>">
 
     <div class="left">
         <?php if(!empty($item["image"])): ?>
