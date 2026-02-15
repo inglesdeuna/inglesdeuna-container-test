@@ -37,6 +37,9 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
     if (!empty($_FILES["pdf"]["name"])) {
 
+        if ($_FILES["pdf"]["size"] > 20 * 1024 * 1024) {
+    die("El PDF es demasiado grande. Máximo 20MB.");
+}
         $ext = strtolower(pathinfo($_FILES["pdf"]["name"], PATHINFO_EXTENSION));
         $newName = "pdf_" . time() . "_" . rand(100,999) . "." . $ext;
 
