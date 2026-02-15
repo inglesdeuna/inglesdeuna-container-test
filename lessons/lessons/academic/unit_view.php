@@ -100,6 +100,25 @@ button{
 
 <br><br>
 
+<a href="../activities/flashcards/editor.php?unit=<?= urlencode($unitId) ?>">
+<button>🃏 Flashcards</button>
+</a>
+
+<br><br>
+
+<a href="../activities/flipbook/editor.php?unit=<?= urlencode($unitId) ?>">
+<button>📖 Flipbook</button>
+</a>
+
+<br><br>
+
+<a href="../activities/external/editor.php?unit=<?= urlencode($unitId) ?>">
+<button>🌐 External Resource</button>
+</a>
+
+<br><br>
+
+
 <a href="../activities/match/viewer.php?unit=<?= urlencode($unitId) ?>">
 <button>🧩 Match</button>
 </a>
