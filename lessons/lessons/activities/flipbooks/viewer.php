@@ -1,23 +1,10 @@
 <?php
-
 $unit = $_GET['unit'] ?? null;
 if (!$unit) die("Unidad no especificada");
 
-/* =========================
-JSON PATH
-========================= */
 $jsonFile = __DIR__ . "/flipbooks.json";
-
-if (!file_exists($jsonFile)) {
-    die("No hay flipbooks guardados");
-}
-
 $data = json_decode(file_get_contents($jsonFile), true);
-
-$pdf = $data[$unit]["pdf"] ?? "";
-
-if (!$pdf) die("No hay PDF para esta unidad");
-
+$currentPdf = $data[$unit]["pdf"] ?? "";
 ?>
 
 <!DOCTYPE html>
@@ -26,37 +13,129 @@ if (!$pdf) die("No hay PDF para esta unidad");
 <meta charset="UTF-8">
 <title>Flipbook</title>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+
 <style>
 body{
-margin:0;
-background:#eef6ff;
-font-family:Arial;
-text-align:center;
-}
-<iframe src="/lessons/lessons/<?=$currentPdf?>" width="100%" height="600"></iframe>
+    margin:0;
+    background:#f4f6fa;
+    font-family:Arial;
+    text-align:center;
 }
 
-.hub{
-position:fixed;
-right:20px;
-top:20px;
-background:#28a745;
-color:white;
-padding:10px 18px;
-border-radius:10px;
-text-decoration:none;
-font-weight:bold;
+.viewer-container{
+    max-width:900px;
+    margin:40px auto;
+    background:white;
+    padding:20px;
+    border-radius:16px;
+    box-shadow:0 4px 20px rgba(0,0,0,.1);
+}
+
+canvas{
+    border-radius:10px;
+    box-shadow:0 4px 15px rgba(0,0,0,.2);
+}
+
+.controls{
+    margin:15px 0;
+}
+
+button{
+    padding:8px 15px;
+    margin:5px;
+    border:none;
+    border-radius:8px;
+    background:#0b5ed7;
+    color:white;
+    cursor:pointer;
 }
 </style>
-
 </head>
+
 <body>
 
-<a class="hub" href="../hub/index.php?unit=<?= urlencode($unit) ?>">
-← Volver Hub
-</a>
+<div class="viewer-container">
 
-<iframe src="../../<?= $pdf ?>"></iframe>
+<h2>📖 Flipbook</h2>
+
+<div class="controls">
+<button onclick="prevPage()">◀ Prev</button>
+<span>Page: <span id="page_num"></span> / <span id="page_count"></span></span>
+<button onclick="nextPage()">Next ▶</button>
+</div>
+
+<canvas id="pdf-render"></canvas>
+
+<br><br>
+
+<a href="../hub/index.php?unit=<?= urlencode($unit) ?>">← Volver Hub</a>
+
+</div>
+
+<script>
+const url = "/lessons/lessons/<?= $currentPdf ?>";
+
+let pdfDoc = null,
+    pageNum = 1,
+    pageIsRendering = false,
+    pageNumIsPending = null,
+    scale = 1.2,
+    canvas = document.getElementById('pdf-render'),
+    ctx = canvas.getContext('2d');
+
+pdfjsLib.getDocument(url).promise.then(pdfDoc_ => {
+    pdfDoc = pdfDoc_;
+    document.getElementById('page_count').textContent = pdfDoc.numPages;
+    renderPage(pageNum);
+});
+
+function renderPage(num){
+    pageIsRendering = true;
+
+    pdfDoc.getPage(num).then(page => {
+        const viewport = page.getViewport({scale});
+        canvas.height = viewport.height;
+        canvas.width = viewport.width;
+
+        const renderCtx = {
+            canvasContext: ctx,
+            viewport
+        };
+
+        page.render(renderCtx).promise.then(() => {
+            pageIsRendering = false;
+
+            if(pageNumIsPending !== null){
+                renderPage(pageNumIsPending);
+                pageNumIsPending = null;
+            }
+        });
+
+        document.getElementById('page_num').textContent = num;
+    });
+}
+
+function queueRenderPage(num){
+    if(pageIsRendering){
+        pageNumIsPending = num;
+    } else {
+        renderPage(num);
+    }
+}
+
+function prevPage(){
+    if(pageNum <= 1) return;
+    pageNum--;
+    queueRenderPage(pageNum);
+}
+
+function nextPage(){
+    if(pageNum >= pdfDoc.numPages) return;
+    pageNum++;
+    queueRenderPage(pageNum);
+}
+</script>
 
 </body>
 </html>
