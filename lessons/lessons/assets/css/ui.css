@@ -1,0 +1,70 @@
+/* Base Layout */
+body{
+    font-family: Arial, sans-serif;
+    background:#eef6ff;
+}
+
+/* Title */
+.title{
+    color:#0b5ed7;
+    font-size:28px;
+    font-weight:bold;
+    margin-bottom:12px;
+    text-align:center;
+}
+
+/* Container Box */
+.box{
+    background:white;
+    padding:30px;
+    border-radius:18px;
+    max-width:600px;
+    margin:20px auto;
+    box-shadow:0 4px 10px rgba(0,0,0,.1);
+    text-align:center;
+}
+
+/* Primary Button */
+.primary-btn{
+    background:#0b5ed7;
+    color:white;
+    border:none;
+    padding:12px 26px;
+    border-radius:16px;
+    font-weight:bold;
+    cursor:pointer;
+    font-size:15px;
+    transition:0.2s ease;
+}
+
+.primary-btn:hover{
+    background:#084298;
+}
+
+/* Back Button */
+.back-btn{
+    background:#16a34a;
+    color:white;
+    border:none;
+    padding:12px 28px;
+    border-radius:16px;
+    font-weight:bold;
+    cursor:pointer;
+    font-size:15px;
+    min-width:120px;
+    transition:0.2s ease;
+}
+
+.back-btn:hover{
+    background:#15803d;
+}
+
+/* Input */
+input{
+    width:100%;
+    padding:12px;
+    border-radius:12px;
+    border:1px solid #ccc;
+    margin-top:10px;
+    font-size:14px;
+}
