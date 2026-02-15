@@ -62,6 +62,30 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 }
 
 $currentPdf = $data[$unit]["pdf"] ?? "";
+/* =========================
+ELIMINAR PDF
+========================= */
+if (isset($_GET["delete"])) {
+
+    if (!empty($currentPdf)) {
+
+        $filePath = __DIR__ . "/../../" . $currentPdf;
+
+        if (file_exists($filePath)) {
+            unlink($filePath);
+        }
+
+        unset($data[$unit]);
+
+        file_put_contents(
+            $jsonFile,
+            json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)
+        );
+    }
+
+    header("Location: editor.php?unit=" . $unit);
+    exit;
+}
 
 ?>
 
@@ -118,7 +142,13 @@ PDF:
 </form>
 
 <?php if($currentPdf): ?>
-<p>PDF guardado ✔</p>
+<p>
+PDF guardado ✔ 
+<a href="?unit=<?= $unit ?>&delete=1" 
+   style="color:red; font-weight:bold; text-decoration:none; margin-left:10px;">
+   ✖
+</a>
+</p>
 <?php endif; ?>
 
 <br>
