@@ -22,7 +22,7 @@ if (!isset($data[$unit])) {
 /* =========================
 UPLOAD PATH
 ========================= */
-$uploadDir = __DIR__ . "/uploads/pdfs/";
+$uploadDir = __DIR__ . "/../../uploads/";
 
 if (!is_dir($uploadDir)) {
     mkdir($uploadDir, 0777, true);
