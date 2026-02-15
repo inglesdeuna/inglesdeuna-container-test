@@ -4,6 +4,8 @@ require_once __DIR__."/../../config/db.php";
 $unit = $_GET["unit"] ?? null;
 if(!$unit) die("Unit missing");
 
+/* LOAD DATA */
+
 $stmt = $pdo->prepare("
     SELECT data FROM activities
     WHERE unit_id = :u AND type = 'flashcards'
@@ -13,11 +15,11 @@ $stmt->execute(["u"=>$unit]);
 $row = $stmt->fetch(PDO::FETCH_ASSOC);
 $data = json_decode($row["data"] ?? "[]", true);
 
-if(!$data || count($data)==0){
-    echo "<h3>No hay flashcards para esta unidad</h3>";
-    exit;
+if(empty($data)){
+    die("No flashcards available");
 }
 ?>
+
 <!DOCTYPE html>
 <html>
 <head>
@@ -26,65 +28,21 @@ if(!$data || count($data)==0){
 <link rel="stylesheet" href="../../assets/css/ui.css">
 
 <style>
-body{
-    font-family:Arial;
-    background:#e9f2fb;
-    padding:40px;
-    text-align:center;
-    position:relative;
-}
 
-/* BOTÓN VOLVER */
-.back-btn{
-    position:absolute;
-    top:20px;
-    left:20px;
-    background:#28a745;
-    color:white;
-    padding:8px 16px;
-    border:none;
-    border-radius:10px;
-    font-weight:bold;
-    cursor:pointer;
-}
+/* Flashcard specific styling */
 
-/* TÍTULO */
-.title{
-    font-size:28px;
-    font-weight:bold;
-    color:#0b5ed7;
-    margin-bottom:25px;
-}
-
-/* LISTEN FUERA DEL CARD */
-.listen-wrapper{
-    margin-bottom:15px;
-}
-
-button{
-    padding:8px 16px;
-    border:none;
-    border-radius:10px;
-    cursor:pointer;
-    font-weight:bold;
-}
-
-.listen{ background:#0b5ed7; color:white;}
-.next{ background:#28a745; color:white;}
-
-/* CARD */
 .card-container{
     perspective:1000px;
-    display:flex;
-    justify-content:center;
+    margin-top:20px;
 }
 
 .card{
-    width:380px;
-    height:420px;
+    width:300px;
+    height:200px;
+    margin:auto;
     position:relative;
     transform-style:preserve-3d;
-    transition:transform .6s;
+    transition:0.6s;
     cursor:pointer;
 }
 
@@ -92,107 +50,135 @@ button{
     transform:rotateY(180deg);
 }
 
-.side{
+.card-side{
     position:absolute;
     width:100%;
     height:100%;
     backface-visibility:hidden;
-    border-radius:20px;
-    box-shadow:0 10px 25px rgba(0,0,0,.15);
-    display:flex;
-    flex-direction:column;
-    justify-content:center;
-    align-items:center;
-    padding:25px;
-}
-
-.front{
     background:white;
+    border-radius:16px;
+    box-shadow:0 4px 12px rgba(0,0,0,.1);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    flex-direction:column;
+    padding:15px;
+    text-align:center;
 }
 
-.back{
-    background:#2f6fed;
-    color:white;
+.card-back{
     transform:rotateY(180deg);
-    font-size:30px;
-    font-weight:bold;
 }
 
-img{
-    max-width:260px;
-    max-height:260px;
+.card img{
+    max-width:120px;
+    max-height:100px;
     object-fit:contain;
 }
 
-/* NEXT dentro del card */
-.next-wrapper{
-    position:absolute;
-    bottom:20px;
+.controls{
+    margin-top:20px;
 }
+
+.secondary-btn{
+    background:#6c757d;
+    color:white;
+    border:none;
+    padding:12px 26px;
+    border-radius:16px;
+    font-weight:bold;
+    cursor:pointer;
+    font-size:15px;
+    transition:0.2s ease;
+}
+
+.secondary-btn:hover{
+    background:#565e64;
+}
+
 </style>
 </head>
 
 <body>
 
-<button class="back-btn" onclick="window.location.href='../hub/index.php?unit=<?=$unit?>'">
-← Volver
-</button>
+<div class="box">
 
-<div class="title">🧸 Flashcards</div>
-
-<div class="listen-wrapper">
-    <button class="listen" onclick="speak(event)">🔊 Listen</button>
-</div>
+<h1 class="title">🃏 Flashcards</h1>
 
 <div class="card-container">
-    <div class="card" id="card">
-        <div class="side front" id="front"></div>
-        <div class="side back" id="back"></div>
-    </div>
+
+<div class="card" id="card" onclick="flipCard()">
+
+    <div class="card-side card-front" id="front"></div>
+
+    <div class="card-side card-back" id="back"></div>
+
+</div>
+
+</div>
+
+<div class="controls">
+
+<button class="secondary-btn" onclick="prevCard()">⬅ Previous</button>
+<button class="secondary-btn" onclick="nextCard()">Next ➡</button>
+
+</div>
+
+<br>
+
+<button 
+class="back-btn"
+onclick="window.location.href='../hub/index.php?unit=<?= urlencode($unit) ?>'">
+↩ Back
+</button>
+
 </div>
 
 <script>
-const data = <?=json_encode($data, JSON_UNESCAPED_UNICODE)?>;
 
+const flashcards = <?= json_encode($data) ?>;
 let index = 0;
 
 const front = document.getElementById("front");
-const back = document.getElementById("back");
-const card = document.getElementById("card");
+const back  = document.getElementById("back");
+const card  = document.getElementById("card");
 
 function loadCard(){
-    const item = data[index];
+    const item = flashcards[index];
 
-    front.innerHTML = `
-        <img src="/lessons/lessons/${item.image}">
-        <div class="next-wrapper">
-            <button class="next" onclick="nextCard(event)">Next ➜</button>
-        </div>
-    `;
+    front.innerHTML = `<strong>${item.text}</strong>`;
 
-    back.innerHTML = item.text;
-}
+    if(item.image){
+        back.innerHTML = `<img src="/lessons/lessons/${item.image}">`;
+    } else {
+        back.innerHTML = `<em>No image</em>`;
+    }
 
-function speak(e){
-    e.stopPropagation();
-    const utter = new SpeechSynthesisUtterance(data[index].text);
-    utter.lang = "en-US";
-    speechSynthesis.speak(utter);
-}
-
-function nextCard(e){
-    e.stopPropagation();
     card.classList.remove("flip");
+}
+
+function flipCard(){
+    card.classList.toggle("flip");
+}
+
+function nextCard(){
     index++;
-    if(index >= data.length) index = 0;
+    if(index >= flashcards.length){
+        index = 0;
+    }
     loadCard();
 }
 
-card.addEventListener("click", ()=>{
-    card.classList.toggle("flip");
-});
+function prevCard(){
+    index--;
+    if(index < 0){
+        index = flashcards.length - 1;
+    }
+    loadCard();
+}
 
 loadCard();
+
 </script>
 
 </body>
