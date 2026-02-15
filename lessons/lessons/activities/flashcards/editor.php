@@ -99,52 +99,12 @@ if($_SERVER["REQUEST_METHOD"]==="POST"){
 <head>
 <meta charset="UTF-8">
 <title>Flashcards Editor</title>
+<link rel="stylesheet" href="../../assets/css/ui.css">
 
 <style>
-body{
-    font-family:Arial;
-    background:#eef6ff;
-    padding:40px;
-}
 
-/* CONTENEDOR IGUAL A DRAG & DROP */
-.container{
-    max-width:700px;
-    background:white;
-    padding:25px;
-    border-radius:16px;
-    box-shadow:0 4px 12px rgba(0,0,0,.1);
-}
+/* Layout adjustments specific to flashcards */
 
-/* TITULO */
-h2{
-    display:flex;
-    align-items:center;
-    gap:10px;
-}
-
-/* INPUT GRANDE */
-.input{
-    width:100%;
-    padding:12px;
-    border-radius:8px;
-    border:1px solid #ccc;
-    margin-bottom:15px;
-}
-
-/* BOTON GUARDAR IGUAL */
-.save{
-    width:100%;
-    padding:12px;
-    border:none;
-    border-radius:8px;
-    background:#2f6fed;
-    color:white;
-    font-weight:bold;
-    cursor:pointer;
-}
-
-/* LISTA */
 .list{
     margin-top:20px;
 }
@@ -178,34 +138,22 @@ h2{
     text-decoration:none;
 }
 
-/* HUB BUTTON IGUAL */
-.hub{
-    margin-top:20px;
-    width:100%;
-    padding:12px;
-    border:none;
-    border-radius:10px;
-    background:#28a745;
-    color:white;
-    font-weight:bold;
-    cursor:pointer;
-}
 </style>
 </head>
 
 <body>
 
-<div class="container">
+<div class="box">
 
-<h2>🧩 Flashcards – Editor</h2>
+<h1 class="title">🃏 Flashcards Editor</h1>
 
 <form method="post" enctype="multipart/form-data">
 
-<input class="input" name="text" placeholder="Write the word">
+<input name="text" placeholder="Write the word">
 
-<input type="file" name="image" class="input">
+<input type="file" name="image">
 
-<button class="save">💾 Guardar</button>
+<button type="submit" class="primary-btn">💾 Save</button>
 
 </form>
 
@@ -238,9 +186,11 @@ h2{
 
 </div>
 
-<a href="../hub/index.php?unit=<?=$unit?>">
-<button class="hub">↩ Volver al Hub</button>
-</a>
+<button 
+class="back-btn"
+onclick="window.location.href='../hub/index.php?unit=<?= urlencode($unit) ?>'">
+↩ Back
+</button>
 
 </div>
 
