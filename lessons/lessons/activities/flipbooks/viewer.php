@@ -18,18 +18,39 @@ $currentPdf = $data[$unit]["pdf"] ?? "";
 <style>
 body{
     margin:0;
-    background:#f4f6fa;
+    background:#eef6ff;
     font-family:Arial;
+}
+
+/* Back button */
+.back-btn{
+    position:absolute;
+    top:20px;
+    left:20px;
+    background:#16a34a;
+    padding:8px 14px;
+    border:none;
+    border-radius:10px;
+    color:white;
+    cursor:pointer;
+    font-weight:bold;
+}
+
+/* Main container */
+.viewer-container{
+    max-width:900px;
+    margin:80px auto 40px auto;
+    background:white;
+    padding:25px;
+    border-radius:16px;
+    box-shadow:0 4px 20px rgba(0,0,0,.1);
     text-align:center;
 }
 
-.viewer-container{
-    max-width:900px;
-    margin:40px auto;
-    background:white;
-    padding:20px;
-    border-radius:16px;
-    box-shadow:0 4px 20px rgba(0,0,0,.1);
+h1{
+    color:#0b5ed7;
+    font-size:28px;
+    margin-bottom:20px;
 }
 
 canvas{
@@ -41,7 +62,7 @@ canvas{
     margin:15px 0;
 }
 
-button{
+.controls button{
     padding:8px 15px;
     margin:5px;
     border:none;
@@ -55,9 +76,15 @@ button{
 
 <body>
 
+<button 
+class="back-btn"
+onclick="window.location.href='../hub/index.php?unit=<?= urlencode($unit) ?>'">
+↩ Back
+</button>
+
 <div class="viewer-container">
 
-<h2>📖 Flipbook</h2>
+<h1>📖 Flipbook</h1>
 
 <div class="controls">
 <button onclick="prevPage()">◀ Prev</button>
@@ -66,10 +93,6 @@ button{
 </div>
 
 <canvas id="pdf-render"></canvas>
-
-<br><br>
-
-<a href="../hub/index.php?unit=<?= urlencode($unit) ?>">← Volver Hub</a>
 
 </div>
 
