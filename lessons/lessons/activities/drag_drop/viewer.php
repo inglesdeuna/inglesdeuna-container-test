@@ -1,38 +1,42 @@
 <?php
+require_once __DIR__."/../../config/db.php";
 
 $unit = $_GET['unit'] ?? null;
 if (!$unit) die("Unidad no especificada");
 
-$file = __DIR__ . "/drag_drop.json";
+$stmt = $pdo->prepare("
+    SELECT data
+    FROM activities
+    WHERE unit_id = :unit
+    AND type = 'drag_drop'
+");
 
-$data = file_exists($file)
-  ? json_decode(file_get_contents($file), true)
-  : [];
+$stmt->execute(["unit"=>$unit]);
+$row = $stmt->fetch(PDO::FETCH_ASSOC);
 
-if (!isset($data[$unit]) || empty($data[$unit])) {
-  die("No hay oraciones para esta unidad");
+$data = json_decode($row["data"] ?? "[]", true);
+
+if (empty($data)) {
+    die("No hay oraciones para esta unidad");
 }
 
 /* EXTRAER SOLO LAS ORACIONES */
 $sentences = [];
 
-foreach ($data[$unit] as $item) {
-  if (isset($item["sentence"])) {
-    $sentences[] = $item["sentence"];
-  }
+foreach ($data as $item) {
+    if (isset($item["sentence"])) {
+        $sentences[] = $item["sentence"];
+    }
 }
-
 ?>
 
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
 <meta charset="UTF-8">
 <title>Build the Sentence</title>
 
 <style>
-
 body{
   font-family: Arial, sans-serif;
   background:#eef6ff;
@@ -40,9 +44,7 @@ body{
   padding:20px;
 }
 
-h1{
-  color:#0b5ed7;
-}
+h1{ color:#0b5ed7; }
 
 #sentenceBox{
   margin:20px auto;
@@ -92,17 +94,10 @@ button{
   font-weight:bold;
 }
 
-.good{
-  color:green;
-}
+.good{ color:green; }
+.bad{ color:crimson; }
 
-.bad{
-  color:crimson;
-}
-
-.controls{
-  margin-top:15px;
-}
+.controls{ margin-top:15px; }
 
 a.back{
   display:inline-block;
@@ -114,7 +109,6 @@ a.back{
   text-decoration:none;
   font-weight:bold;
 }
-
 </style>
 </head>
 
@@ -156,8 +150,7 @@ const wordsDiv = document.getElementById("words");
 const answerDiv = document.getElementById("answer");
 const feedback = document.getElementById("feedback");
 
-/* ================= LOAD ================= */
-
+/* LOAD SENTENCE */
 function loadSentence(){
 
   dragged = null;
@@ -172,35 +165,26 @@ function loadSentence(){
   let words = correct.split(" ").sort(()=>Math.random()-0.5);
 
   words.forEach(w=>{
-
     const span = document.createElement("span");
     span.textContent = w;
     span.className="word";
     span.draggable=true;
-
     span.addEventListener("dragstart",()=>dragged=span);
-
     wordsDiv.appendChild(span);
-
   });
-
 }
 
-/* ================= DRAG ================= */
-
+/* DRAG */
 answerDiv.addEventListener("dragover", e=>e.preventDefault());
-
 answerDiv.addEventListener("drop", ()=>{
   if(dragged) answerDiv.appendChild(dragged);
 });
 
-/* ================= CHECK ================= */
-
+/* CHECK */
 function checkSentence(){
-
   const built = [...answerDiv.children]
-  .map(w=>w.textContent)
-  .join(" ");
+    .map(w=>w.textContent)
+    .join(" ");
 
   if(built === correct){
     feedback.textContent="🌟 Excellent!";
@@ -209,38 +193,27 @@ function checkSentence(){
     feedback.textContent="🔁 Try again!";
     feedback.className="bad";
   }
-
 }
 
-/* ================= NEXT ================= */
-
+/* NEXT */
 function nextSentence(){
-
   index++;
-
   if(index >= sentences.length){
     feedback.textContent="🏆 You finished all sentences!";
     feedback.className="good";
     return;
   }
-
   loadSentence();
-
 }
 
-/* ================= TTS ================= */
-
+/* TEXT TO SPEECH */
 function speak(){
-
   const msg = new SpeechSynthesisUtterance(correct);
   msg.lang="en-US";
-
   speechSynthesis.speak(msg);
-
 }
 
-/* ================= START ================= */
-
+/* START */
 loadSentence();
 
 </script>
