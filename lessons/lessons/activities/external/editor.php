@@ -1,117 +1,183 @@
 <?php
+require_once __DIR__."/../../config/db.php";
 
 $unit = $_GET['unit'] ?? null;
-if (!$unit) die("Unidad no especificada");
+if (!$unit) die("Unit not specified");
 
-/* =========================
-JSON PATH
-========================= */
-$jsonFile = __DIR__ . "/external.json";
-
-if (!file_exists($jsonFile)) {
-    file_put_contents($jsonFile, "{}");
-}
-
-$data = json_decode(file_get_contents($jsonFile), true);
-if (!$data) $data = [];
-
-/* =========================
-POST GUARDAR URL
-========================= */
+/* SAVE */
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
     $url = trim($_POST["url"] ?? "");
 
     if ($url !== "") {
 
-        $data[$unit] = [
-            "url" => $url
-        ];
+        $json = json_encode(["url"=>$url]);
 
-        file_put_contents(
-            $jsonFile,
-            json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)
-        );
+        // Check if exists
+        $check = $pdo->prepare("
+            SELECT id FROM activities
+            WHERE unit_id = :unit
+            AND type = 'external'
+        ");
+        $check->execute(["unit"=>$unit]);
+
+        if ($check->fetch()) {
+            // UPDATE
+            $stmt = $pdo->prepare("
+                UPDATE activities
+                SET data = :data
+                WHERE unit_id = :unit
+                AND type = 'external'
+            ");
+            $stmt->execute([
+                "data"=>$json,
+                "unit"=>$unit
+            ]);
+        } else {
+            // INSERT
+            $stmt = $pdo->prepare("
+                INSERT INTO activities (id, unit_id, type, data)
+                VALUES (:id, :unit, 'external', :data)
+            ");
+            $stmt->execute([
+                "id"=>md5(random_bytes(16)),
+                "unit"=>$unit,
+                "data"=>$json
+            ]);
+        }
     }
+
+    header("Location: editor.php?unit=".$unit."&saved=1");
+    exit;
 }
 
-/* =========================
-URL ACTUAL
-========================= */
-$currentUrl = $data[$unit]["url"] ?? "";
+/* LOAD */
+$stmt = $pdo->prepare("
+    SELECT data
+    FROM activities
+    WHERE unit_id = :unit
+    AND type = 'external'
+");
+$stmt->execute(["unit"=>$unit]);
+$row = $stmt->fetch(PDO::FETCH_ASSOC);
 
+$data = json_decode($row["data"] ?? "{}", true);
+$currentUrl = $data["url"] ?? "";
 ?>
 
 <!DOCTYPE html>
 <html>
 <head>
 <meta charset="UTF-8">
-<title>External Link Editor</title>
+<title>External Resource Editor</title>
 
 <style>
 body{
-    font-family:Arial;
+    font-family: Arial, sans-serif;
     background:#eef6ff;
-    padding:30px;
+    padding:40px 20px;
+    text-align:center;
 }
 
+/* Title unified */
+.title{
+    color:#0b5ed7;
+    font-size:28px;
+    font-weight:bold;
+    margin-bottom:12px;
+}
+
+/* Container */
 .box{
     background:white;
-    padding:25px;
-    border-radius:16px;
-    max-width:900px;
-    margin:auto;
+    padding:30px;
+    border-radius:18px;
+    max-width:600px;
+    margin:20px auto;
     box-shadow:0 4px 10px rgba(0,0,0,.1);
 }
 
+/* Input */
 input{
     width:100%;
     padding:12px;
-    border-radius:10px;
+    border-radius:12px;
     border:1px solid #ccc;
+    margin-top:10px;
+    font-size:14px;
 }
 
-button{
+/* Primary button */
+.primary-btn{
     background:#0b5ed7;
     color:white;
     border:none;
-    padding:12px 20px;
-    border-radius:12px;
+    padding:12px 26px;
+    border-radius:16px;
+    font-weight:bold;
     cursor:pointer;
-    margin-top:10px;
+    font-size:15px;
+    transition:0.2s ease;
+    margin-top:20px;
 }
 
-.green{
-    background:#28a745;
+.primary-btn:hover{
+    background:#084298;
+}
+
+/* Back button - same as viewer */
+.back-btn{
+    background:#16a34a;
+    color:white;
+    border:none;
+    padding:12px 28px;
+    border-radius:16px;
+    font-weight:bold;
+    cursor:pointer;
+    font-size:15px;
+    min-width:120px;
+    transition:0.2s ease;
+    margin-top:15px;
+}
+
+.back-btn:hover{
+    background:#15803d;
+}
+
+.success{
+    color:green;
+    font-weight:bold;
+    margin-bottom:10px;
 }
 </style>
 </head>
 
 <body>
 
+<h1 class="title">🌐 External Resource Editor</h1>
+
 <div class="box">
 
-<h2>🌐 External Link — Editor</h2>
+<?php if(isset($_GET["saved"])): ?>
+<p class="success">✔ Saved successfully</p>
+<?php endif; ?>
 
-<form method="post">
+<form method="POST">
 
-URL externa:
-<input
-    name="url"
-    required
-    value="<?= htmlspecialchars($currentUrl) ?>"
-    placeholder="https://"
-/>
+<label><strong>Resource URL</strong></label>
+<input type="text" name="url" value="<?= htmlspecialchars($currentUrl) ?>" placeholder="https://example.com">
 
-<button>💾 Guardar</button>
+<button type="submit" class="primary-btn">
+💾 Save
+</button>
 
 </form>
 
-<br>
-
-<a href="../hub/index.php?unit=<?= urlencode($unit) ?>">
-<button class="green">← Volver Hub</button>
-</a>
+<button 
+class="back-btn"
+onclick="window.location.href='../hub/index.php?unit=<?= urlencode($unit) ?>'">
+↩ Back
+</button>
 
 </div>
 
