@@ -34,10 +34,8 @@ font-family:Arial;
 text-align:center;
 }
 
-iframe{
-width:100%;
-height:95vh;
-border:none;
+<iframe src="/lessons/lessons/activities/flipbooks/<?=$currentPdf?>" width="100%" height="600"></iframe>
+
 }
 
 .hub{
