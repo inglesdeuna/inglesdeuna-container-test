@@ -176,10 +176,10 @@ if($_SERVER["REQUEST_METHOD"]==="POST"){
     </div>
 
     <a class="delete"
-       href="?unit=<?=$unit?>&delete=<?=$i?>"
-       onclick="return confirm('Delete flashcard?')">
-       ❌
-    </a>
+   href="?unit=<?=$unit?>&delete=<?=$i?>">
+   ❌
+</a>
+
 
 </div>
 <?php endforeach; ?>
