@@ -164,7 +164,7 @@ if (!empty($data)) {
         font-weight:bold;
     "
 >
-↩ Volver al Hub
+↩ Back
 </button>
 
 
