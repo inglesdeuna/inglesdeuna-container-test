@@ -34,7 +34,7 @@ font-family:Arial;
 text-align:center;
 }
 
-<iframe src="/lessons/lessons/activities/flipbooks/<?=$currentPdf?>" width="100%" height="600"></iframe>
+<iframe src="/lessons/lessons/activities/flipbooks/uploads/pdfs/<?= basename($currentPdf) ?>" width="100%" height="600"></iframe>
 
 }
 
