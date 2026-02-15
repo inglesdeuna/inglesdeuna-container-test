@@ -170,7 +170,7 @@ if($_SERVER["REQUEST_METHOD"]==="POST"){
 
     <div class="left">
         <?php if(!empty($item["image"])): ?>
-            <img src="/lessons/lessons/<?=$item["image"]?>">
+           <img src="/<?=$item["image"]?>">
         <?php endif; ?>
         <strong><?=$item["text"]?></strong>
     </div>
