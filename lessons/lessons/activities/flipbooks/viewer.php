@@ -36,7 +36,7 @@ body{
     font-weight:bold;
 }
 
-/* Rectángulo blanco */
+/* Contenedor */
 .viewer-container{
     max-width:1100px;
     margin:80px auto 40px auto;
@@ -48,31 +48,17 @@ body{
 }
 
 h1{
-    .subtitle{
-    margin-top:-10px;
-    margin-bottom:20px;
+    color:#0b5ed7;
+    font-size:28px;
+    margin-bottom:10px;
+}
+
+.subtitle{
+    margin-top:-5px;
+    margin-bottom:25px;
     font-size:16px;
     color:#555;
     font-weight:500;
-}
-
-    color:#0b5ed7;
-    font-size:28px;
-    margin-bottom:20px;
-}
-
-.controls{
-    margin:15px 0;
-}
-
-.controls button{
-    padding:8px 15px;
-    margin:5px;
-    border:none;
-    border-radius:8px;
-    background:#0b5ed7;
-    color:white;
-    cursor:pointer;
 }
 
 /* ===== FLIPBOOK ===== */
@@ -95,6 +81,10 @@ h1{
     transition:transform .35s ease;
 }
 
+#left-page{
+    background:#f3f3f3;
+}
+
 .book-spine{
     position:absolute;
     width:4px;
@@ -105,7 +95,7 @@ h1{
     z-index:2;
 }
 
-/* Flechas estilo esquina */
+/* Flechas inferiores */
 .corner{
     position:absolute;
     bottom:15px;
@@ -147,7 +137,6 @@ onclick="window.location.href='../hub/index.php?unit=<?= urlencode($unit) ?>'">
 <div class="viewer-container">
 
 <h1>📖 Flipbook</h1>
-
 <p class="subtitle">Let’s read together and explore a new story.</p>
 
 <div class="book-wrapper">
@@ -166,7 +155,7 @@ onclick="window.location.href='../hub/index.php?unit=<?= urlencode($unit) ?>'">
 
 const url = "/lessons/lessons/<?= $currentPdf ?>";
 
-/* Sonido real */
+/* Sonido */
 const soundPath = encodeURI("/lessons/lessons/activities/hangman/assets/freesound_community-pasando-por-las-paginas-43453 (1).mp3");
 const pageSound = new Audio(soundPath);
 
@@ -189,36 +178,12 @@ function renderPage(num){
     const containerWidth = container.clientWidth - 60;
     const singleWidth = containerWidth / 2;
 
-    // PORTADA SOLA
     if(num === 1){
 
-    // Simular tapa izquierda (libro cerrado)
-    leftCanvas.width = singleWidth;
-    leftCanvas.height = 600;
-    leftCtx.fillStyle = "#f3f3f3";
-    leftCtx.fillRect(0,0,leftCanvas.width,leftCanvas.height);
-
-    leftCtx.fillStyle = "#e0e0e0";
-    leftCtx.fillRect(leftCanvas.width - 20, 0, 20, leftCanvas.height);
-
-    // Render portada en derecha
-    pdfDoc.getPage(1).then(function(page){
-
-        const viewport = page.getViewport({scale:1});
-        const scale = singleWidth / viewport.width;
-        const scaledViewport = page.getViewport({scale:scale});
-
-        rightCanvas.height = scaledViewport.height;
-        rightCanvas.width = scaledViewport.width;
-
-        page.render({
-            canvasContext: rightCtx,
-            viewport: scaledViewport
-        });
-
-    });
-}
-
+        // Simular tapa izquierda
+        leftCanvas.width = singleWidth;
+        leftCanvas.height = 1;
+        leftCtx.clearRect(0,0,leftCanvas.width,leftCanvas.height);
 
         pdfDoc.getPage(1).then(function(page){
 
@@ -228,8 +193,6 @@ function renderPage(num){
 
             rightCanvas.height = scaledViewport.height;
             rightCanvas.width = scaledViewport.width;
-
-            leftCanvas.width = 0;
 
             page.render({
                 canvasContext: rightCtx,
@@ -276,9 +239,6 @@ function renderPage(num){
             });
         }
     }
-
-    document.getElementById('page_num').textContent = num;
-    document.getElementById('page_count').textContent = pdfDoc.numPages;
 }
 
 function nextPage(){
