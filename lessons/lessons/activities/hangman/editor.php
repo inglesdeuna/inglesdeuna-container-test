@@ -154,8 +154,8 @@ button:hover{
 
 <body>
 
-<a class="back-top" href="../hub/index.php?unit=<?= urlencode($unit) ?>">
-← Back
+<a class="back" href="../hub/index.php?unit=<?= urlencode($unit) ?>">
+  ↩ Back
 </a>
 
 <div class="box">
