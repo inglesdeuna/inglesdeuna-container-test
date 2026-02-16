@@ -53,13 +53,6 @@ h1{
     margin-bottom:20px;
 }
 
-canvas{
-    max-width:100%;
-    height:auto;
-    border-radius:10px;
-    box-shadow:0 4px 15px rgba(0,0,0,.2);
-}
-
 .controls{
     margin:15px 0;
 }
@@ -72,6 +65,65 @@ canvas{
     background:#0b5ed7;
     color:white;
     cursor:pointer;
+}
+
+/* ===== FLIPBOOK ===== */
+
+.book-wrapper{
+    position:relative;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    perspective:2000px;
+}
+
+#left-page,
+#right-page{
+    width:48%;
+    margin:0 1%;
+    border-radius:8px;
+    box-shadow:0 10px 25px rgba(0,0,0,.25);
+    background:white;
+    transition:transform .35s ease;
+}
+
+.book-spine{
+    position:absolute;
+    width:4px;
+    height:100%;
+    background:linear-gradient(to right,#bbb,#eee,#bbb);
+    left:50%;
+    transform:translateX(-50%);
+    z-index:2;
+}
+
+/* Flechas estilo esquina */
+.corner{
+    position:absolute;
+    bottom:15px;
+    width:45px;
+    height:45px;
+    background:white;
+    border-radius:50%;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:22px;
+    cursor:pointer;
+    box-shadow:0 4px 12px rgba(0,0,0,.25);
+    transition:.2s;
+}
+
+.corner:hover{
+    transform:scale(1.1);
+}
+
+.left-corner{
+    left:20px;
+}
+
+.right-corner{
+    right:20px;
 }
 </style>
 </head>
@@ -94,18 +146,26 @@ onclick="window.location.href='../hub/index.php?unit=<?= urlencode($unit) ?>'">
 <button onclick="nextPage()">Next ▶</button>
 </div>
 
-<canvas id="pdf-render"></canvas>
+<div class="book-wrapper">
+    <div class="book-spine"></div>
+
+    <canvas id="left-page"></canvas>
+    <canvas id="right-page"></canvas>
+
+    <div class="corner left-corner" onclick="prevPage()">❮</div>
+    <div class="corner right-corner" onclick="nextPage()">❯</div>
+</div>
 
 </div>
 
 <script>
+
 const url = "/lessons/lessons/<?= $currentPdf ?>";
 
 /* Sonido real */
 const soundPath = encodeURI("/lessons/lessons/activities/hangman/assets/freesound_community-pasando-por-las-paginas-43453 (1).mp3");
 const pageSound = new Audio(soundPath);
 
-/* Activar sonido tras primer click */
 document.addEventListener("click", function initSound(){
     pageSound.load();
     document.removeEventListener("click", initSound);
@@ -113,79 +173,117 @@ document.addEventListener("click", function initSound(){
 
 let pdfDoc = null;
 let pageNum = 1;
-let pageIsRendering = false;
-let pageNumIsPending = null;
 
-const canvas = document.getElementById('pdf-render');
-const ctx = canvas.getContext('2d');
+const leftCanvas = document.getElementById('left-page');
+const rightCanvas = document.getElementById('right-page');
+const leftCtx = leftCanvas.getContext('2d');
+const rightCtx = rightCanvas.getContext('2d');
 
 function renderPage(num){
-    pageIsRendering = true;
 
-    pdfDoc.getPage(num).then(function(page){
+    const container = document.querySelector('.viewer-container');
+    const containerWidth = container.clientWidth - 60;
+    const singleWidth = containerWidth / 2;
 
-        const container = document.querySelector('.viewer-container');
-        const containerWidth = container.clientWidth - 40;
+    // PORTADA SOLA
+    if(num === 1){
 
-        const viewport = page.getViewport({scale:1});
-        const scale = containerWidth / viewport.width;
+        pdfDoc.getPage(1).then(function(page){
 
-        const scaledViewport = page.getViewport({scale:scale});
+            const viewport = page.getViewport({scale:1});
+            const scale = singleWidth / viewport.width;
+            const scaledViewport = page.getViewport({scale:scale});
 
-        canvas.height = scaledViewport.height;
-        canvas.width = scaledViewport.width;
+            rightCanvas.height = scaledViewport.height;
+            rightCanvas.width = scaledViewport.width;
 
-        const renderCtx = {
-            canvasContext: ctx,
-            viewport: scaledViewport
-        };
+            leftCanvas.width = 0;
 
-        page.render(renderCtx).promise.then(function(){
-            pageIsRendering = false;
+            page.render({
+                canvasContext: rightCtx,
+                viewport: scaledViewport
+            });
 
-            if(pageNumIsPending !== null){
-                renderPage(pageNumIsPending);
-                pageNumIsPending = null;
-            }
         });
 
-        document.getElementById('page_num').textContent = num;
-        document.getElementById('page_count').textContent = pdfDoc.numPages;
-    });
-}
-
-function queueRenderPage(num){
-    if(pageIsRendering){
-        pageNumIsPending = num;
     } else {
-        renderPage(num);
+
+        // Página izquierda
+        pdfDoc.getPage(num).then(function(page){
+
+            const viewport = page.getViewport({scale:1});
+            const scale = singleWidth / viewport.width;
+            const scaledViewport = page.getViewport({scale:scale});
+
+            leftCanvas.height = scaledViewport.height;
+            leftCanvas.width = scaledViewport.width;
+
+            page.render({
+                canvasContext: leftCtx,
+                viewport: scaledViewport
+            });
+
+        });
+
+        // Página derecha
+        if(num + 1 <= pdfDoc.numPages){
+            pdfDoc.getPage(num + 1).then(function(page){
+
+                const viewport = page.getViewport({scale:1});
+                const scale = singleWidth / viewport.width;
+                const scaledViewport = page.getViewport({scale:scale});
+
+                rightCanvas.height = scaledViewport.height;
+                rightCanvas.width = scaledViewport.width;
+
+                page.render({
+                    canvasContext: rightCtx,
+                    viewport: scaledViewport
+                });
+
+            });
+        }
     }
-}
 
-function animateFlip(){
-    canvas.style.transition = "transform 0.25s ease";
-    canvas.style.transform = "rotateY(15deg)";
-    setTimeout(function(){
-        canvas.style.transform = "rotateY(0deg)";
-    },150);
-}
-
-function prevPage(){
-    if(pageNum <= 1) return;
-    pageNum--;
-    pageSound.currentTime = 0;
-    pageSound.play();
-    animateFlip();
-    queueRenderPage(pageNum);
+    document.getElementById('page_num').textContent = num;
+    document.getElementById('page_count').textContent = pdfDoc.numPages;
 }
 
 function nextPage(){
-    if(pageNum >= pdfDoc.numPages) return;
-    pageNum++;
+
+    if(pageNum === 1){
+        pageNum = 2;
+    } else {
+        if(pageNum + 2 > pdfDoc.numPages) return;
+        pageNum += 2;
+    }
+
     pageSound.currentTime = 0;
     pageSound.play();
-    animateFlip();
-    queueRenderPage(pageNum);
+
+    rightCanvas.style.transform = "rotateY(-15deg)";
+    setTimeout(()=>{ rightCanvas.style.transform="rotateY(0deg)"; },200);
+
+    renderPage(pageNum);
+}
+
+function prevPage(){
+
+    if(pageNum <= 1) return;
+
+    if(pageNum === 2){
+        pageNum = 1;
+    } else {
+        pageNum -= 2;
+    }
+
+    pageSound.currentTime = 0;
+    pageSound.play();
+
+    leftCanvas.style.transform = "rotateY(15deg)";
+    setTimeout(()=>{ leftCanvas.style.transform="rotateY(0deg)"; },200);
+
+    renderPage(pageNum);
 }
 
 /* Cargar PDF */
@@ -194,10 +292,10 @@ pdfjsLib.getDocument(url).promise.then(function(pdfDoc_){
     renderPage(pageNum);
 });
 
-/* Ajustar si cambia tamaño pantalla */
 window.addEventListener("resize", function(){
     renderPage(pageNum);
 });
+
 </script>
 
 </body>
