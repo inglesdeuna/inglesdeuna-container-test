@@ -1,63 +1,83 @@
 <?php
-$file = "words.json";
-$data = file_exists($file)
-  ? json_decode(file_get_contents($file), true)
-  : ["default" => []];
+session_start();
+
+if (!isset($_SESSION["admin_logged"])) {
+    header("Location: ../../admin/login.php");
+    exit;
+}
 ?>
 
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Hangman – Teacher Panel</title>
+<title>Hangman Editor</title>
+
+<link rel="stylesheet" href="../../assets/css/editor.css">
+
 <style>
-body{
-  font-family: Arial;
-  background:#eef6ff;
-  padding:40px;
+.editor-wrapper{
+    max-width:1100px;
+    margin:auto;
+    padding:30px;
 }
-.panel{
-  max-width:400px;
-  background:white;
-  padding:20px;
-  border-radius:12px;
+
+.top-bar{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:20px;
 }
-input, button{
-  width:100%;
-  padding:10px;
-  margin:8px 0;
+
+.back-btn{
+    text-decoration:none;
+    font-size:14px;
+    font-weight:600;
+    color:#0d6efd;
+}
+
+.editor-title{
+    font-size:26px;
+    font-weight:700;
+    color:#1f2937;
+    margin-bottom:5px;
+}
+
+.editor-subtitle{
+    font-size:14px;
+    color:#6b7280;
+    margin-bottom:25px;
+}
+
+.save-btn{
+    padding:10px 20px;
+    border-radius:8px;
+    border:none;
+    font-weight:600;
+    background:#16a34a;
+    color:white;
+    cursor:pointer;
 }
 </style>
 </head>
 
 <body>
 
-<div class="panel">
-<h2>🎓 Teacher Panel – Hangman</h2>
+<div class="editor-wrapper">
 
-<form method="post" action="save_word.php">
-  <input name="word" placeholder="WORD (example: CAT)" required>
-  <input name="hint" placeholder="Hint (example: A pet 🐱)" required>
-  <button type="submit">➕ Add word</button>
-</form>
-
-<hr>
-
-<h3>📚 Current words</h3>
-<ul>
-<?php foreach($data["default"] as $w): ?>
-  <li>
-  <strong><?= $w["word"] ?></strong><br>
-  <small><?= $w["hint"] ?></small><br>
-  <span style="letter-spacing:8px;font-size:18px;">
-   <?= str_repeat("_ ", strlen($w["word"])) ?>
-  </span>
-</li>
-
-<?php endforeach; ?>
-</ul>
-
+<div class="top-bar">
+    <a href="../activities.php" class="back-btn">← Back</a>
 </div>
 
+<div class="editor-title">
+    Hangman Editor
+</div>
+
+<div class="editor-subtitle">
+    Manage words and audio for this activity.
+</div>
+<button class="save-btn">Save Changes</button>
+
+</div>
 </body>
 </html>
