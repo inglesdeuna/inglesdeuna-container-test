@@ -1,19 +1,11 @@
 <?php
 require_once __DIR__ . "/../../config/db.php";
 
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
-
-/* =========================
-   VALIDAR UNIT
-========================= */
 $unit = $_GET["unit"] ?? null;
-if (!$unit) {
-    die("Unidad no especificada");
-}
+if (!$unit) die("Unidad no especificada");
 
 /* =========================
-   OBTENER DATOS EXISTENTES
+   OBTENER DATOS
 ========================= */
 $stmt = $pdo->prepare("
     SELECT data
@@ -21,57 +13,68 @@ $stmt = $pdo->prepare("
     WHERE unit_id = :unit
     AND type = 'hangman'
 ");
-
 $stmt->execute(["unit"=>$unit]);
 $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
 $data = json_decode($row["data"] ?? "[]", true);
-
-if (!is_array($data)) {
-    $data = [];
-}
+if (!is_array($data)) $data = [];
 
 /* =========================
-   GUARDAR PALABRA
+   AGREGAR PALABRA
 ========================= */
-if ($_SERVER["REQUEST_METHOD"] === "POST") {
+if (isset($_POST["add"])) {
 
     $word = trim($_POST["word"] ?? "");
 
     if ($word !== "") {
+        $data[] = ["word"=>strtoupper($word)];
+    }
 
-        $data[] = [
-            "word" => strtoupper($word)
-        ];
+    saveData($pdo, $unit, $data, $row);
+}
 
-        $json = json_encode($data, JSON_UNESCAPED_UNICODE);
+/* =========================
+   ELIMINAR PALABRA
+========================= */
+if (isset($_POST["delete"])) {
 
-        if ($row) {
-            // UPDATE
-            $update = $pdo->prepare("
-                UPDATE activities
-                SET data = :data
-                WHERE unit_id = :unit
-                AND type = 'hangman'
-            ");
+    $index = intval($_POST["delete"]);
 
-            $update->execute([
-                "data"=>$json,
-                "unit"=>$unit
-            ]);
+    if (isset($data[$index])) {
+        unset($data[$index]);
+        $data = array_values($data);
+    }
 
-        } else {
-            // INSERT
-            $insert = $pdo->prepare("
-                INSERT INTO activities (unit_id, type, data)
-                VALUES (:unit, 'hangman', :data)
-            ");
+    saveData($pdo, $unit, $data, $row);
+}
 
-            $insert->execute([
-                "unit"=>$unit,
-                "data"=>$json
-            ]);
-        }
+/* =========================
+   FUNCION GUARDAR
+========================= */
+function saveData($pdo, $unit, $data, $row){
+
+    $json = json_encode($data, JSON_UNESCAPED_UNICODE);
+
+    if ($row) {
+        $update = $pdo->prepare("
+            UPDATE activities
+            SET data = :data
+            WHERE unit_id = :unit
+            AND type = 'hangman'
+        ");
+        $update->execute([
+            "data"=>$json,
+            "unit"=>$unit
+        ]);
+    } else {
+        $insert = $pdo->prepare("
+            INSERT INTO activities (unit_id, type, data)
+            VALUES (:unit, 'hangman', :data)
+        ");
+        $insert->execute([
+            "unit"=>$unit,
+            "data"=>$json
+        ]);
     }
 
     header("Location: editor.php?unit=" . urlencode($unit));
@@ -80,7 +83,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 ?>
 
 <!DOCTYPE html>
-<html lang="es">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <title>Hangman Editor</title>
@@ -90,15 +93,7 @@ body{
     font-family: Arial, sans-serif;
     background:#eef6ff;
     padding:40px;
-}
-
-.back-top{
-    position:absolute;
-    top:25px;
-    left:25px;
-    text-decoration:none;
-    font-weight:bold;
-    color:#16a34a;
+    text-align:center;
 }
 
 .box{
@@ -106,8 +101,7 @@ body{
     padding:30px;
     border-radius:15px;
     max-width:600px;
-    margin:60px auto;
-    box-shadow:0 5px 20px rgba(0,0,0,0.08);
+    margin:20px auto;
 }
 
 h2{
@@ -116,8 +110,7 @@ h2{
 }
 
 .subtitle{
-    font-size:14px;
-    color:#6b7280;
+    color:#444;
     margin-bottom:20px;
 }
 
@@ -131,7 +124,7 @@ input{
 button{
     padding:10px 18px;
     border:none;
-    border-radius:10px;
+    border-radius:12px;
     background:#2563eb;
     color:white;
     font-weight:bold;
@@ -144,28 +137,50 @@ button:hover{
 }
 
 .word{
-    padding:10px;
     background:#eef2ff;
-    margin-top:8px;
+    padding:10px;
     border-radius:8px;
+    margin-top:8px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+}
+
+.delete-btn{
+    background:#dc2626;
+    padding:5px 10px;
+    border-radius:8px;
+    font-size:12px;
+    cursor:pointer;
+}
+
+.delete-btn:hover{
+    background:#b91c1c;
+}
+
+.back-btn{
+    display:inline-block;
+    margin-top:20px;
+    background:#16a34a;
+    color:white;
+    padding:10px 18px;
+    border-radius:12px;
+    font-weight:bold;
+    text-decoration:none;
 }
 </style>
 </head>
 
 <body>
 
-<a class="back" href="../hub/index.php?unit=<?= urlencode($unit) ?>">
-  ↩ Back
-</a>
-
 <div class="box">
 
 <h2>🎯 Hangman Editor</h2>
-<div class="subtitle">Add words for this unit.</div>
+<p class="subtitle">Add words for this unit.</p>
 
 <form method="post">
     <input name="word" placeholder="Enter word" required>
-    <button type="submit">Guardar</button>
+    <button type="submit" name="add">Guardar</button>
 </form>
 
 <hr>
@@ -175,14 +190,23 @@ button:hover{
 <?php if(empty($data)): ?>
 <p>No words yet</p>
 <?php else: ?>
-<?php foreach($data as $w): ?>
+<?php foreach($data as $i=>$w): ?>
 <div class="word">
-<?= htmlspecialchars($w["word"]) ?>
+    <?= htmlspecialchars($w["word"]) ?>
+    <form method="post" style="margin:0;">
+        <input type="hidden" name="delete" value="<?= $i ?>">
+        <button type="submit" class="delete-btn">✕</button>
+    </form>
 </div>
 <?php endforeach; ?>
 <?php endif; ?>
 
 </div>
+
+<!-- BOTÓN VERDE REAL -->
+<a class="back-btn" href="../hub/index.php?unit=<?= urlencode($unit) ?>">
+  ↩ Back
+</a>
 
 </body>
 </html>
