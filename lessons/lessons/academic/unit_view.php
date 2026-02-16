@@ -106,7 +106,7 @@ button{
 
 <br><br>
 
-<a href="../activities/flipbook/editor.php?unit=<?= urlencode($unitId) ?>">
+<a href="../activities/flipbooks/editor.php?unit=<?= urlencode($unitId) ?>">
 <button>📖 Flipbook</button>
 </a>
 
