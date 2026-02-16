@@ -48,6 +48,14 @@ body{
 }
 
 h1{
+    .subtitle{
+    margin-top:-10px;
+    margin-bottom:20px;
+    font-size:16px;
+    color:#555;
+    font-weight:500;
+}
+
     color:#0b5ed7;
     font-size:28px;
     margin-bottom:20px;
@@ -140,11 +148,7 @@ onclick="window.location.href='../hub/index.php?unit=<?= urlencode($unit) ?>'">
 
 <h1>📖 Flipbook</h1>
 
-<div class="controls">
-<button onclick="prevPage()">◀ Prev</button>
-<span>Page: <span id="page_num"></span> / <span id="page_count"></span></span>
-<button onclick="nextPage()">Next ▶</button>
-</div>
+<p class="subtitle">Let’s read together and explore a new story.</p>
 
 <div class="book-wrapper">
     <div class="book-spine"></div>
@@ -187,6 +191,34 @@ function renderPage(num){
 
     // PORTADA SOLA
     if(num === 1){
+
+    // Simular tapa izquierda (libro cerrado)
+    leftCanvas.width = singleWidth;
+    leftCanvas.height = 600;
+    leftCtx.fillStyle = "#f3f3f3";
+    leftCtx.fillRect(0,0,leftCanvas.width,leftCanvas.height);
+
+    leftCtx.fillStyle = "#e0e0e0";
+    leftCtx.fillRect(leftCanvas.width - 20, 0, 20, leftCanvas.height);
+
+    // Render portada en derecha
+    pdfDoc.getPage(1).then(function(page){
+
+        const viewport = page.getViewport({scale:1});
+        const scale = singleWidth / viewport.width;
+        const scaledViewport = page.getViewport({scale:scale});
+
+        rightCanvas.height = scaledViewport.height;
+        rightCanvas.width = scaledViewport.width;
+
+        page.render({
+            canvasContext: rightCtx,
+            viewport: scaledViewport
+        });
+
+    });
+}
+
 
         pdfDoc.getPage(1).then(function(page){
 
