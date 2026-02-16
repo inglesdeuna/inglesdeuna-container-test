@@ -1,95 +1,51 @@
 <?php
+session_start();
+
+if (!isset($_SESSION["admin_logged"])) {
+    header("Location: ../admin/login.php");
+    exit;
+}
 
 $unit = $_GET['unit'] ?? null;
 if (!$unit) die("Unidad no especificada");
 
-/* =========================
-JSON PATH
-========================= */
 $jsonFile = __DIR__ . "/flipbooks.json";
 
 if (!file_exists($jsonFile)) {
-    file_put_contents($jsonFile, "{}");
+    file_put_contents($jsonFile, json_encode([]));
 }
 
 $data = json_decode(file_get_contents($jsonFile), true);
-if (!$data) $data = [];
 
 if (!isset($data[$unit])) {
-    $data[$unit] = [];
+    $data[$unit] = ["pdf" => ""];
 }
 
-/* =========================
-UPLOAD PATH
-========================= */
-$uploadDir = __DIR__ . "/../../uploads/";
-
-if (!is_dir($uploadDir)) {
-    mkdir($uploadDir, 0777, true);
-}
-
-/* =========================
-GUARDAR PDF
-========================= */
+/* ===== GUARDAR PDF ===== */
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
-    $pdfPath = "";
+    if (isset($_FILES["pdf"]) && $_FILES["pdf"]["error"] === 0) {
 
-    if (!empty($_FILES["pdf"]["name"])) {
+        $uploadDir = __DIR__ . "/uploads/";
+        if (!is_dir($uploadDir)) {
+            mkdir($uploadDir, 0777, true);
+        }
 
-        if ($_FILES["pdf"]["size"] > 20 * 1024 * 1024) {
-    die("El PDF es demasiado grande. Máximo 20MB.");
-}
-        $ext = strtolower(pathinfo($_FILES["pdf"]["name"], PATHINFO_EXTENSION));
-        $newName = "pdf_" . time() . "_" . rand(100,999) . "." . $ext;
+        $filename = time() . "_" . basename($_FILES["pdf"]["name"]);
+        $targetPath = $uploadDir . $filename;
 
-        move_uploaded_file(
-            $_FILES["pdf"]["tmp_name"],
-            $uploadDir . $newName
-        );
+        move_uploaded_file($_FILES["pdf"]["tmp_name"], $targetPath);
 
-        $pdfPath = "uploads/" . $newName;
-    }
+        $data[$unit]["pdf"] = "activities/flipbooks/uploads/" . $filename;
 
-    if ($pdfPath !== "") {
+        file_put_contents($jsonFile, json_encode($data, JSON_PRETTY_PRINT));
 
-        $data[$unit] = [
-            "pdf" => $pdfPath
-        ];
-
-        file_put_contents(
-            $jsonFile,
-            json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)
-        );
+        header("Location: editor.php?unit=" . urlencode($unit));
+        exit;
     }
 }
 
 $currentPdf = $data[$unit]["pdf"] ?? "";
-/* =========================
-ELIMINAR PDF
-========================= */
-if (isset($_GET["delete"])) {
-
-    if (!empty($currentPdf)) {
-
-        $filePath = __DIR__ . "/../../" . $currentPdf;
-
-        if (file_exists($filePath)) {
-            unlink($filePath);
-        }
-
-        unset($data[$unit]);
-
-        file_put_contents(
-            $jsonFile,
-            json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)
-        );
-    }
-
-    header("Location: editor.php?unit=" . $unit);
-    exit;
-}
-
 ?>
 
 <!DOCTYPE html>
@@ -100,65 +56,85 @@ if (isset($_GET["delete"])) {
 
 <style>
 body{
-font-family:Arial;
-background:#eef6ff;
-padding:30px;
+    margin:0;
+    background:#eef6ff;
+    font-family:Arial;
 }
 
-.box{
-background:white;
-padding:25px;
-border-radius:16px;
-max-width:900px;
-margin:auto;
-box-shadow:0 4px 10px rgba(0,0,0,.1);
+.back-btn{
+    position:absolute;
+    top:20px;
+    left:20px;
+    background:#16a34a;
+    padding:8px 14px;
+    border:none;
+    border-radius:10px;
+    color:white;
+    cursor:pointer;
+    font-weight:bold;
 }
 
-button{
-background:#0b5ed7;
-color:white;
-border:none;
-padding:10px 16px;
-border-radius:10px;
-cursor:pointer;
-margin:5px;
+.editor-container{
+    max-width:900px;
+    margin:100px auto 40px auto;
+    background:white;
+    padding:30px;
+    border-radius:16px;
+    box-shadow:0 4px 20px rgba(0,0,0,.1);
+    text-align:center;
 }
 
-.green{ background:#28a745; }
+h1{
+    color:#0b5ed7;
+    margin-bottom:25px;
+}
+
+input[type="file"]{
+    margin:20px 0;
+}
+
+button.save-btn{
+    padding:10px 20px;
+    background:#0b5ed7;
+    border:none;
+    border-radius:8px;
+    color:white;
+    cursor:pointer;
+    font-weight:bold;
+}
+
+.current-file{
+    margin-top:20px;
+    font-size:14px;
+    color:#444;
+}
 </style>
-
 </head>
+
 <body>
 
-<div class="box">
+<button 
+class="back-btn"
+onclick="window.location.href='../hub/index.php?unit=<?= urlencode($unit) ?>'">
+↩ Back
+</button>
 
-<h2>📖 Flipbook — Editor</h2>
+<div class="editor-container">
 
-<form method="post" enctype="multipart/form-data">
+<h1>📖 Flipbook Editor</h1>
 
-PDF:
-<input type="file" name="pdf" accept="application/pdf" required>
-
-<br><br>
-<button>💾 Guardar</button>
-
+<form method="POST" enctype="multipart/form-data">
+    <input type="file" name="pdf" accept="application/pdf" required>
+    <br>
+    <button type="submit" class="save-btn">💾 Save PDF</button>
 </form>
 
 <?php if($currentPdf): ?>
-<p>
-PDF guardado ✔ 
-<a href="?unit=<?= $unit ?>&delete=1" 
-   style="color:red; font-weight:bold; text-decoration:none; margin-left:10px;">
-   ✖
-</a>
-</p>
+    <div class="current-file">
+        Current PDF saved:<br>
+        <strong><?= htmlspecialchars(basename($currentPdf)) ?></strong>
+    </div>
 <?php endif; ?>
-
-<br>
-
-<a href="../hub/index.php?unit=<?= urlencode($unit) ?>">
-<button class="green">← Volver Hub</button>
-</a>
 
 </div>
 
