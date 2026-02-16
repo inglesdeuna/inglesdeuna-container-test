@@ -1,162 +1,88 @@
 <?php
 session_start();
-
-/* =====================
-   VALIDAR PARÁMETRO
-   ===================== */
-$unitId = $_GET["unit"] ?? null;
-
-if (!$unitId) {
-  die("Unidad no especificada");
-}
-
-/* =====================
-   RUTA REAL A DATA
-   ===================== */
-/*
- data REAL está en:
- lessons/lessons/admin/data
-*/
-$baseDir   = dirname(__DIR__) . "/admin/data";
-$unitsFile = $baseDir . "/units.json";
-
-/* =====================
-   VALIDAR ARCHIVO
-   ===================== */
-if (!file_exists($unitsFile)) {
-  die("Archivo de unidades no encontrado");
-}
-
-/* =====================
-   CARGAR UNIDADES
-   ===================== */
-$units = json_decode(file_get_contents($unitsFile), true);
-if (!is_array($units)) {
-  $units = [];
-}
-
-/* =====================
-   BUSCAR UNIDAD
-   ===================== */
-$unitIndex = null;
-
-foreach ($units as $i => $u) {
-  if (($u["id"] ?? null) === $unitId) {
-    $unitIndex = $i;
-    break;
-  }
-}
-
-if ($unitIndex === null) {
-  die("Unidad no encontrada");
-}
-
-/* =====================
-   ASEGURAR ACTIVIDADES
-   ===================== */
-if (
-  !isset($units[$unitIndex]["activities"]) ||
-  !is_array($units[$unitIndex]["activities"])
-) {
-  $units[$unitIndex]["activities"] = [];
-}
-
-/* =====================
-   GUARDAR ACTIVIDAD
-   ===================== */
-if ($_SERVER["REQUEST_METHOD"] === "POST") {
-
-  $word = trim($_POST["word"] ?? "");
-
-  if ($word !== "") {
-    $units[$unitIndex]["activities"][] = [
-      "id"   => uniqid("act_"),
-      "type" => "hangman",
-      "data" => [
-        "word" => $word
-      ]
-    ];
-
-    file_put_contents(
-      $unitsFile,
-      json_encode($units, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)
-    );
-  }
-
-  header("Location: index.php?unit=" . urlencode($unitId));
-  exit;
-}
-
-/* =====================
-   ACTIVIDADES EXISTENTES
-   ===================== */
-$activities = $units[$unitIndex]["activities"];
 ?>
+
 <!DOCTYPE html>
-<html lang="es">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Hangman – Editor</title>
+<title>Hangman</title>
+
+<link rel="stylesheet" href="../../assets/css/editor.css">
+
 <style>
-body{
-  font-family:Arial, sans-serif;
-  background:#f4f8ff;
-  padding:40px;
+.page-wrapper{
+    max-width:1100px;
+    margin:auto;
+    padding:30px;
 }
-.box{
-  background:#fff;
-  padding:25px;
-  border-radius:14px;
-  max-width:500px;
-  box-shadow:0 10px 25px rgba(0,0,0,.1);
+
+.top-bar{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    margin-bottom:20px;
 }
-.item{
-  margin-top:8px;
-  padding:8px;
-  background:#eef2ff;
-  border-radius:6px;
+
+.back-btn{
+    text-decoration:none;
+    font-size:14px;
+    font-weight:600;
+    color:#0d6efd;
 }
-input, button{
-  padding:10px;
-  margin-top:8px;
+
+.activity-title{
+    font-size:26px;
+    font-weight:700;
+    color:#1f2937;
+    margin-bottom:5px;
 }
-button{
-  background:#2563eb;
-  color:#fff;
-  border:none;
-  border-radius:6px;
-  cursor:pointer;
+
+.activity-subtitle{
+    font-size:14px;
+    color:#6b7280;
+    margin-bottom:25px;
+}
+
+.nav-buttons{
+    display:flex;
+    justify-content:space-between;
+    margin-top:30px;
+}
+
+.nav-btn{
+    padding:10px 20px;
+    border-radius:8px;
+    border:none;
+    font-weight:600;
+    cursor:pointer;
+    background:#0d6efd;
+    color:white;
 }
 </style>
 </head>
+
 <body>
 
-<div class="box">
-  <h2>🎯 Hangman – Editor</h2>
+<div class="page-wrapper">
 
-  <form method="post">
-    <input type="text" name="word" placeholder="Palabra" required>
-    <br>
-    <button type="submit">Guardar actividad</button>
-  </form>
-
-  <hr>
-
-  <h3>Actividades guardadas</h3>
-
-  <?php if (empty($activities)): ?>
-    <p>No hay actividades aún.</p>
-  <?php else: ?>
-    <?php foreach ($activities as $a): ?>
-      <?php if (($a["type"] ?? "") === "hangman"): ?>
-        <div class="item">
-          <?= htmlspecialchars($a["data"]["word"] ?? "") ?>
-        </div>
-      <?php endif; ?>
-    <?php endforeach; ?>
-  <?php endif; ?>
-
+<div class="top-bar">
+    <a href="../activities.php" class="back-btn">← Back</a>
 </div>
 
+<div class="activity-title">
+    Hangman
+</div>
+
+<div class="activity-subtitle">
+    Listen and guess the correct word.
+</div>
+   <div class="nav-buttons">
+    <button class="nav-btn">← Previous</button>
+    <button class="nav-btn">Next →</button>
+</div>
+
+</div>
 </body>
 </html>
+
