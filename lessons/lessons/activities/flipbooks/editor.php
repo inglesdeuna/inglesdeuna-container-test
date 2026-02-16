@@ -24,6 +24,45 @@ if (!isset($data[$unit])) {
 /* ===== GUARDAR PDF ===== */
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
+    // Eliminar PDF
+    if (isset($_POST["delete_pdf"]) && $currentPdf) {
+
+        $filePath = __DIR__ . "/" . basename($currentPdf);
+
+        if (file_exists(__DIR__ . "/uploads/" . basename($currentPdf))) {
+            unlink(__DIR__ . "/uploads/" . basename($currentPdf));
+        }
+
+        $data[$unit]["pdf"] = "";
+        file_put_contents($jsonFile, json_encode($data, JSON_PRETTY_PRINT));
+
+        header("Location: editor.php?unit=" . urlencode($unit));
+        exit;
+    }
+
+    // Guardar PDF nuevo
+    if (isset($_FILES["pdf"]) && $_FILES["pdf"]["error"] === 0) {
+
+        $uploadDir = __DIR__ . "/uploads/";
+        if (!is_dir($uploadDir)) {
+            mkdir($uploadDir, 0777, true);
+        }
+
+        $filename = time() . "_" . basename($_FILES["pdf"]["name"]);
+        $targetPath = $uploadDir . $filename;
+
+        move_uploaded_file($_FILES["pdf"]["tmp_name"], $targetPath);
+
+        $data[$unit]["pdf"] = "activities/flipbooks/uploads/" . $filename;
+
+        file_put_contents($jsonFile, json_encode($data, JSON_PRETTY_PRINT));
+
+        header("Location: editor.php?unit=" . urlencode($unit));
+        exit;
+    }
+}
+
+
     if (isset($_FILES["pdf"]) && $_FILES["pdf"]["error"] === 0) {
 
         $uploadDir = __DIR__ . "/uploads/";
@@ -55,6 +94,37 @@ $currentPdf = $data[$unit]["pdf"] ?? "";
 <title>Flipbook Editor</title>
 
 <style>
+
+    .saved-row{
+    margin-top:25px;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    gap:15px;
+    font-size:14px;
+}
+
+.file-name{
+    background:#f3f4f6;
+    padding:8px 12px;
+    border-radius:8px;
+}
+
+.delete-btn{
+    background:#ef4444;
+    border:none;
+    color:white;
+    border-radius:50%;
+    width:28px;
+    height:28px;
+    cursor:pointer;
+    font-weight:bold;
+}
+
+.delete-btn:hover{
+    background:#dc2626;
+}
+
 body{
     margin:0;
     background:#eef6ff;
@@ -130,11 +200,18 @@ onclick="window.location.href='../hub/index.php?unit=<?= urlencode($unit) ?>'">
 </form>
 
 <?php if($currentPdf): ?>
-    <div class="current-file">
-        Current PDF saved:<br>
-        <strong><?= htmlspecialchars(basename($currentPdf)) ?></strong>
+    <div class="saved-row">
+        <span class="file-name">
+            <?= htmlspecialchars(basename($currentPdf)) ?>
+        </span>
+
+        <form method="POST" style="display:inline;">
+            <input type="hidden" name="delete_pdf" value="1">
+            <button type="submit" class="delete-btn">✖</button>
+        </form>
     </div>
 <?php endif; ?>
+
 
 </div>
 
