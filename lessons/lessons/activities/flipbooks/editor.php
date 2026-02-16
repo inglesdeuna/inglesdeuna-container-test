@@ -21,16 +21,19 @@ if (!isset($data[$unit])) {
     $data[$unit] = ["pdf" => ""];
 }
 
-/* ===== GUARDAR PDF ===== */
+$currentPdf = $data[$unit]["pdf"] ?? "";
+
+/* ===== PROCESAR POST ===== */
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
-    // Eliminar PDF
+    // ELIMINAR PDF
     if (isset($_POST["delete_pdf"]) && $currentPdf) {
 
-        $filePath = __DIR__ . "/" . basename($currentPdf);
+        $fileName = basename($currentPdf);
+        $filePath = __DIR__ . "/uploads/" . $fileName;
 
-        if (file_exists(__DIR__ . "/uploads/" . basename($currentPdf))) {
-            unlink(__DIR__ . "/uploads/" . basename($currentPdf));
+        if (file_exists($filePath)) {
+            unlink($filePath);
         }
 
         $data[$unit]["pdf"] = "";
@@ -40,7 +43,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         exit;
     }
 
-    // Guardar PDF nuevo
+    // GUARDAR PDF NUEVO
     if (isset($_FILES["pdf"]) && $_FILES["pdf"]["error"] === 0) {
 
         $uploadDir = __DIR__ . "/uploads/";
@@ -61,30 +64,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         exit;
     }
 }
-
-
-    if (isset($_FILES["pdf"]) && $_FILES["pdf"]["error"] === 0) {
-
-        $uploadDir = __DIR__ . "/uploads/";
-        if (!is_dir($uploadDir)) {
-            mkdir($uploadDir, 0777, true);
-        }
-
-        $filename = time() . "_" . basename($_FILES["pdf"]["name"]);
-        $targetPath = $uploadDir . $filename;
-
-        move_uploaded_file($_FILES["pdf"]["tmp_name"], $targetPath);
-
-        $data[$unit]["pdf"] = "activities/flipbooks/uploads/" . $filename;
-
-        file_put_contents($jsonFile, json_encode($data, JSON_PRETTY_PRINT));
-
-        header("Location: editor.php?unit=" . urlencode($unit));
-        exit;
-    }
-}
-
-$currentPdf = $data[$unit]["pdf"] ?? "";
 ?>
 
 <!DOCTYPE html>
@@ -94,37 +73,6 @@ $currentPdf = $data[$unit]["pdf"] ?? "";
 <title>Flipbook Editor</title>
 
 <style>
-
-    .saved-row{
-    margin-top:25px;
-    display:flex;
-    justify-content:center;
-    align-items:center;
-    gap:15px;
-    font-size:14px;
-}
-
-.file-name{
-    background:#f3f4f6;
-    padding:8px 12px;
-    border-radius:8px;
-}
-
-.delete-btn{
-    background:#ef4444;
-    border:none;
-    color:white;
-    border-radius:50%;
-    width:28px;
-    height:28px;
-    cursor:pointer;
-    font-weight:bold;
-}
-
-.delete-btn:hover{
-    background:#dc2626;
-}
-
 body{
     margin:0;
     background:#eef6ff;
@@ -173,10 +121,34 @@ button.save-btn{
     font-weight:bold;
 }
 
-.current-file{
-    margin-top:20px;
+.saved-row{
+    margin-top:25px;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    gap:15px;
     font-size:14px;
-    color:#444;
+}
+
+.file-name{
+    background:#f3f4f6;
+    padding:8px 12px;
+    border-radius:8px;
+}
+
+.delete-btn{
+    background:#ef4444;
+    border:none;
+    color:white;
+    border-radius:50%;
+    width:28px;
+    height:28px;
+    cursor:pointer;
+    font-weight:bold;
+}
+
+.delete-btn:hover{
+    background:#dc2626;
 }
 </style>
 </head>
@@ -211,7 +183,6 @@ onclick="window.location.href='../hub/index.php?unit=<?= urlencode($unit) ?>'">
         </form>
     </div>
 <?php endif; ?>
-
 
 </div>
 
