@@ -1,20 +1,9 @@
 <?php
 require_once __DIR__ . "/../../config/db.php";
 
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
+$unit = $_GET['unit'] ?? null;
+if (!$unit) die("Unidad no especificada");
 
-/* =========================
-   VALIDAR UNIT
-========================= */
-$unit = $_GET["unit"] ?? null;
-if (!$unit) {
-    die("Unidad no especificada");
-}
-
-/* =========================
-   OBTENER DATOS DESDE BD
-========================= */
 $stmt = $pdo->prepare("
     SELECT data
     FROM activities
@@ -22,21 +11,16 @@ $stmt = $pdo->prepare("
     AND type = 'hangman'
 ");
 
-$stmt->execute(["unit" => $unit]);
+$stmt->execute(["unit"=>$unit]);
 $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
 $data = json_decode($row["data"] ?? "[]", true);
 
-/* =========================
-   EXTRAER PALABRAS
-========================= */
 $words = [];
 
-if (!empty($data)) {
-    foreach ($data as $item) {
-        if (!empty($item["word"])) {
-            $words[] = strtoupper($item["word"]);
-        }
+foreach ($data as $item) {
+    if (!empty($item["word"])) {
+        $words[] = strtoupper($item["word"]);
     }
 }
 
@@ -44,132 +28,126 @@ if (empty($words)) {
     $words = ["TEST"];
 }
 ?>
+
 <!DOCTYPE html>
-<html lang="es">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <title>Hangman</title>
 
 <style>
 body{
-    font-family: Arial, sans-serif;
-    background:#eef6ff;
-    text-align:center;
-    padding:40px;
+  font-family: Arial, sans-serif;
+  background:#eef6ff;
+  text-align:center;
+  padding:20px;
 }
 
-h2{
-    color:#0b5ed7;
-    margin-bottom:5px;
+h1{
+  color:#0b5ed7;
+  font-size:26px;
+  margin-bottom:5px;
 }
 
 .subtitle{
-    color:#6b7280;
-    font-size:14px;
-    margin-bottom:25px;
+  color:#444;
+  margin-bottom:20px;
 }
 
 .game-box{
-    background:white;
-    padding:30px;
-    border-radius:15px;
-    max-width:750px;
-    margin:30px auto;
-    box-shadow:0 5px 20px rgba(0,0,0,0.08);
+  background:white;
+  border-radius:15px;
+  padding:25px;
+  max-width:750px;
+  margin:20px auto;
 }
 
 .word{
-    font-size:34px;
-    letter-spacing:12px;
-    margin:25px 0;
+  font-size:32px;
+  letter-spacing:10px;
+  margin:20px 0;
+}
+
+.keyboard{
+  margin-top:15px;
 }
 
 .keyboard button{
-    padding:10px 14px;
-    margin:5px;
-    font-size:15px;
-    border:none;
-    border-radius:10px;
-    background:#2563eb;
-    color:white;
-    font-weight:bold;
-    cursor:pointer;
-    transition:0.2s;
-}
-
-.keyboard button:hover{
-    background:#1e40af;
+  padding:8px 14px;
+  margin:4px;
+  border:none;
+  border-radius:10px;
+  background:#2563eb;
+  color:white;
+  font-weight:bold;
+  cursor:pointer;
 }
 
 .keyboard button:disabled{
-    background:#9ca3af;
-    cursor:not-allowed;
+  background:#9ca3af;
 }
 
-img{
-    margin-top:15px;
+.controls{
+  margin-top:15px;
 }
 
 button{
-    padding:10px 18px;
-    border:none;
-    border-radius:12px;
-    background:#0b5ed7;
-    color:white;
-    cursor:pointer;
-    margin:6px;
-    font-weight:bold;
+  padding:10px 18px;
+  border:none;
+  border-radius:12px;
+  background:#0b5ed7;
+  color:white;
+  cursor:pointer;
+  margin:6px;
 }
 
-button:hover{
-    background:#084298;
+#feedback{
+  font-size:18px;
+  font-weight:bold;
+  margin-top:10px;
 }
 
-.hidden{
-    display:none;
-}
+.good{ color:green; }
+.bad{ color:crimson; }
 
-.back-top{
-    position:absolute;
-    top:25px;
-    left:25px;
-    text-decoration:none;
-    font-weight:bold;
-    color:#2563eb;
-}
-
-.back-top:hover{
-    text-decoration:underline;
+a.back{
+  display:inline-block;
+  margin-top:20px;
+  background:#16a34a;
+  color:#fff;
+  padding:10px 18px;
+  border-radius:12px;
+  text-decoration:none;
+  font-weight:bold;
 }
 </style>
-
 </head>
+
 <body>
 
-<a class="back-top" href="../hub/index.php?unit=<?= urlencode($unit) ?>">
-← Volver al Hub
-</a>
-
-<h2>🎯 Hangman</h2>
-<div class="subtitle">Listen and guess the correct word.</div>
+<h1>🎯 Hangman</h1>
+<p class="subtitle">Listen and guess the correct word.</p>
 
 <div class="game-box">
 
-    <img id="hangmanImg" src="../../hangman/assets/hangman0.png" width="220">
+  <img id="hangmanImg" src="../../hangman/assets/hangman0.png" width="200">
 
-    <div id="word" class="word"></div>
+  <div id="word" class="word"></div>
 
-    <div id="keyboard" class="keyboard"></div>
+  <div id="keyboard" class="keyboard"></div>
 
-    <br>
+  <div class="controls">
+    <button onclick="checkGame()">✅ Check</button>
+    <button onclick="nextWord()">➡️</button>
+  </div>
 
-    <button id="nextBtn" class="hidden"
-    onclick="nextWord()">➡ Next</button>
-
-    <button id="retryBtn" class="hidden"
-    onclick="resetGame()">🔁 Try Again</button>
+  <div id="feedback"></div>
 
 </div>
+
+<a class="back" href="../hub/index.php?unit=<?= urlencode($unit) ?>">
+  ↩ Back
+</a>
 
 <!-- SONIDOS -->
 <audio id="correctSound" src="../../hangman/assets/correct.wav"></audio>
@@ -181,137 +159,98 @@ button:hover{
 
 const words = <?= json_encode($words) ?>;
 
-let currentIndex = 0;
-let word = words[currentIndex];
+let index = 0;
+let word = words[index];
 let guessed = [];
 let mistakes = 0;
 let maxMistakes = 7;
 
-/* =========================
-   INICIAR PALABRA
-========================= */
-function startWord(){
-    guessed = [];
-    mistakes = 0;
-    word = words[currentIndex];
+const feedback = document.getElementById("feedback");
 
-    document.getElementById("hangmanImg").src =
-        "../../hangman/assets/hangman0.png";
+/* LOAD WORD */
+function loadWord(){
+  guessed = [];
+  mistakes = 0;
+  word = words[index];
+  feedback.textContent="";
+  feedback.className="";
 
-    document.getElementById("nextBtn").classList.add("hidden");
-    document.getElementById("retryBtn").classList.add("hidden");
+  document.getElementById("hangmanImg").src =
+    "../../hangman/assets/hangman0.png";
 
-    buildKeyboard();
-    renderWord();
+  buildKeyboard();
+  renderWord();
 }
 
-/* =========================
-   RENDER
-========================= */
+/* RENDER */
 function renderWord(){
-    let display = "";
-    for(let letter of word){
-        display += guessed.includes(letter) ? letter + " " : "_ ";
-    }
-    document.getElementById("word").innerText = display;
-    checkWin();
+  let display = "";
+  for(let l of word){
+    display += guessed.includes(l) ? l+" " : "_ ";
+  }
+  document.getElementById("word").innerText = display;
 }
 
-/* =========================
-   GUESS
-========================= */
+/* GUESS */
 function guess(letter){
+  if(guessed.includes(letter)) return;
 
-    if(guessed.includes(letter)) return;
+  guessed.push(letter);
 
-    guessed.push(letter);
-
-    if(word.includes(letter)){
-        play("correctSound");
-    }else{
-        mistakes++;
-        play("wrongSound");
-        updateHangman();
-    }
-
-    renderWord();
-    checkLose();
-}
-
-/* =========================
-   IMAGEN
-========================= */
-function updateHangman(){
+  if(word.includes(letter)){
+    document.getElementById("correctSound").play();
+  }else{
+    mistakes++;
+    document.getElementById("wrongSound").play();
     document.getElementById("hangmanImg").src =
-        "../../hangman/assets/hangman" + mistakes + ".png";
+      "../../hangman/assets/hangman"+mistakes+".png";
+  }
+
+  renderWord();
 }
 
-/* =========================
-   WIN
-========================= */
-function checkWin(){
-    let win = word.split("").every(l => guessed.includes(l));
-    if(win){
-        play("winSound");
-        disableKeyboard();
-        document.getElementById("nextBtn").classList.remove("hidden");
-    }
+/* CHECK */
+function checkGame(){
+
+  let current = word.split("").every(l => guessed.includes(l));
+
+  if(current){
+    feedback.textContent="🌟 Excellent!";
+    feedback.className="good";
+    document.getElementById("winSound").play();
+  }else if(mistakes >= maxMistakes){
+    feedback.textContent="❌ You lost!";
+    feedback.className="bad";
+    document.getElementById("loseSound").play();
+  }else{
+    feedback.textContent="🔁 Try again!";
+    feedback.className="bad";
+  }
 }
 
-/* =========================
-   LOSE
-========================= */
-function checkLose(){
-    if(mistakes >= maxMistakes){
-        play("loseSound");
-        disableKeyboard();
-        document.getElementById("retryBtn").classList.remove("hidden");
-    }
-}
-
-/* =========================
-   NEXT SIN RECARGAR
-========================= */
+/* NEXT */
 function nextWord(){
-    currentIndex++;
-    if(currentIndex >= words.length){
-        currentIndex = 0;
-    }
-    startWord();
+  index++;
+  if(index >= words.length){
+    feedback.textContent="🏆 You finished all words!";
+    feedback.className="good";
+    return;
+  }
+  loadWord();
 }
 
-/* =========================
-   RESTART
-========================= */
-function resetGame(){
-    startWord();
-}
-
-/* =========================
-   TECLADO
-========================= */
+/* KEYBOARD */
 function buildKeyboard(){
-    let letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-    let html = "";
-    for(let l of letters){
-        html += `<button onclick="guess('${l}')">${l}</button>`;
-    }
-    document.getElementById("keyboard").innerHTML = html;
+  let letters="ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  let html="";
+  for(let l of letters){
+    html += `<button onclick="guess('${l}')">${l}</button>`;
+  }
+  document.getElementById("keyboard").innerHTML=html;
 }
 
-function disableKeyboard(){
-    document.querySelectorAll(".keyboard button")
-    .forEach(btn => btn.disabled = true);
-}
-
-function play(id){
-    const audio = document.getElementById(id);
-    audio.currentTime = 0;
-    audio.play().catch(()=>{});
-}
-
-/* INIT */
-startWord();
+/* START */
+loadWord();
 
 </script>
 
