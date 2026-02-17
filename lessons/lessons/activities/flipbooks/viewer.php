@@ -30,18 +30,52 @@ ob_start();
 
 <?php if ($pdfPath): ?>
 
-    <iframe 
-        src="/lessons/lessons/<?= htmlspecialchars($pdfPath) ?>" 
-        style="width:100%; height:700px; border:none; border-radius:12px;">
-    </iframe>
+<div id="flipbook" style="margin:auto; width:900px; height:600px;"></div>
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/turn.js/4.1.0/turn.min.css" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/turn.js/4.1.0/turn.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+
+<script>
+const pdfUrl = "/lessons/lessons/<?= htmlspecialchars($pdfPath) ?>";
+
+pdfjsLib.getDocument(pdfUrl).promise.then(function(pdf) {
+
+    const flipbook = document.getElementById("flipbook");
+
+    for (let i = 1; i <= pdf.numPages; i++) {
+        const pageDiv = document.createElement("div");
+        pageDiv.style.width = "450px";
+        pageDiv.style.height = "600px";
+
+        const canvas = document.createElement("canvas");
+        pageDiv.appendChild(canvas);
+        flipbook.appendChild(pageDiv);
+
+        pdf.getPage(i).then(function(page) {
+            const viewport = page.getViewport({scale: 1});
+            canvas.width = viewport.width;
+            canvas.height = viewport.height;
+
+            page.render({
+                canvasContext: canvas.getContext("2d"),
+                viewport: viewport
+            });
+        });
+    }
+
+    $("#flipbook").turn({
+        width: 900,
+        height: 600,
+        autoCenter: true
+    });
+
+});
+</script>
 
 <?php else: ?>
 
-    <p style="color:#dc2626; font-weight:600;">
-        No PDF uploaded for this unit.
-    </p>
-
-<?php endif; ?>
 
 <?php
 $activityContent = ob_get_clean();
