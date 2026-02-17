@@ -1,112 +1,116 @@
 <?php
-if (!isset($unit)) {
-    $unit = $_GET['unit'] ?? null;
-}
 
-if (!$unit) {
-    die("Unit not specified");
-}
+function render_activity_editor($title, $icon, $content) {
 ?>
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title><?= htmlspecialchars($title) ?></title>
 
 <style>
 body{
-    font-family: Arial, sans-serif;
-    background:#eef6ff;
     margin:0;
-    padding:40px 20px;
+    background:#eef6ff;
+    font-family:Arial;
 }
 
-/* BACK BUTTON (EXACTO IGUAL EN TODOS) */
 .back-btn{
     position:absolute;
     top:20px;
     left:20px;
     background:#16a34a;
-    color:#fff;
-    padding:10px 18px;
-    border-radius:12px;
-    text-decoration:none;
-    font-weight:bold;
-    font-size:14px;
-}
-
-/* CENTER BOX */
-.editor-wrapper{
-    max-width:720px;
-    margin:0 auto;
-}
-
-.editor-card{
-    background:#fff;
-    padding:30px;
-    border-radius:18px;
-    box-shadow:0 8px 20px rgba(0,0,0,0.08);
-}
-
-.editor-card h1{
-    text-align:center;
-    color:#0b5ed7;
-    margin-bottom:5px;
-}
-
-.editor-subtitle{
-    text-align:center;
-    color:#555;
-    font-size:14px;
-    margin-bottom:25px;
-}
-
-/* BUTTONS */
-.btn{
-    padding:10px 18px;
+    padding:8px 14px;
     border:none;
-    border-radius:12px;
-    background:#0b5ed7;
+    border-radius:10px;
     color:white;
     cursor:pointer;
     font-weight:bold;
-    margin-right:8px;
 }
 
-.btn-green{
-    background:#16a34a;
+.editor-container{
+    max-width:900px;
+    margin:100px auto 40px auto;
+    background:white;
+    padding:30px;
+    border-radius:16px;
+    box-shadow:0 4px 20px rgba(0,0,0,.1);
+    text-align:center;
 }
 
-.saved-list{
+h1{
+    color:#0b5ed7;
+    margin-bottom:25px;
+}
+
+input[type="file"]{
+    margin:20px 0;
+}
+
+button.save-btn{
+    padding:10px 20px;
+    background:#0b5ed7;
+    border:none;
+    border-radius:8px;
+    color:white;
+    cursor:pointer;
+    font-weight:bold;
+}
+
+.saved-row{
     margin-top:25px;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    gap:15px;
+    font-size:14px;
 }
 
-.saved-item{
-    background:#f1f5f9;
-    padding:12px 15px;
-    border-radius:10px;
-    margin-bottom:10px;
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
+.file-name{
+    background:#f3f4f6;
+    padding:8px 12px;
+    border-radius:8px;
 }
 
 .delete-btn{
-    color:red;
+    background:#ef4444;
+    border:none;
+    color:white;
+    border-radius:50%;
+    width:28px;
+    height:28px;
+    cursor:pointer;
     font-weight:bold;
-    text-decoration:none;
-    font-size:16px;
+}
+
+.delete-btn:hover{
+    background:#dc2626;
 }
 </style>
+</head>
 
-<a href="../hub/index.php?unit=<?= urlencode($unit) ?>" class="back-btn">
-    ↩ Back
-</a>
+<body>
 
-<div class="editor-wrapper">
-    <div class="editor-card">
+<?php
+$unit = $_GET['unit'] ?? '';
+?>
 
-        <h1><?= $pageTitle ?? "Activity Editor" ?></h1>
-        <div class="editor-subtitle">
-            <?= $pageSubtitle ?? "" ?>
-        </div>
+<button 
+class="back-btn"
+onclick="window.location.href='../hub/index.php?unit=<?= urlencode($unit) ?>'">
+↩ Back
+</button>
 
-        <?= $editorContent ?? "" ?>
+<div class="editor-container">
 
-    </div>
+<h1><?= htmlspecialchars($title) ?></h1>
+
+<?= $content ?>
+
 </div>
+
+</body>
+</html>
+<?php
+}
+?>
