@@ -126,9 +126,10 @@ h1{
 </head>
 <body>
 
-<a class="back-btn" href="../hub/index.php?unit=<?= urlencode($unit) ?>">
-    ← Volver al Hub
+<a href="../hub/index.php?unit=<?= urlencode($unit) ?>" class="back-btn">
+    ↩ Back
 </a>
+
 
 <h1>Pronunciation Practice</h1>
 <div class="subtitle">Listen and speak the correct word.</div>
