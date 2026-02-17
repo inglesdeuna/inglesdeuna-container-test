@@ -1,18 +1,27 @@
 <?php
 require_once __DIR__."/../../config/db.php";
 
-$unit=$_GET["unit"] ?? null;
-if(!$unit) die("Unit missing");
+$unit = $_GET['unit'] ?? null;
+if (!$unit) die("Unidad no especificada");
 
-$stmt=$pdo->prepare("
-SELECT data FROM activities
-WHERE unit_id=:unit AND type='pronunciation'
+/* =========================
+   OBTENER ACTIVIDAD
+========================= */
+
+$stmt = $pdo->prepare("
+    SELECT data
+    FROM activities
+    WHERE unit_id = :unit
+    AND type = 'pronunciation'
 ");
-
 $stmt->execute(["unit"=>$unit]);
-$row=$stmt->fetch(PDO::FETCH_ASSOC);
+$row = $stmt->fetch(PDO::FETCH_ASSOC);
 
-$data=json_decode($row["data"] ?? "[]",true);
+$data = json_decode($row["data"] ?? "[]", true);
+
+if(empty($data)){
+    die("No hay palabras para esta unidad");
+}
 ?>
 
 <!DOCTYPE html>
@@ -23,133 +32,146 @@ $data=json_decode($row["data"] ?? "[]",true);
 
 <style>
 body{
-font-family:Arial;
-background:#eef6ff;
-padding:20px;
+    font-family:Arial;
+    background:#eef6ff;
+    padding:30px;
+    text-align:center;
+    position:relative;
+}
+
+/* BACK UNIFICADO */
+.back-btn{
+    position:absolute;
+    top:20px;
+    left:20px;
+    background:#16a34a;
+    color:white;
+    padding:10px 18px;
+    border-radius:12px;
+    text-decoration:none;
+    font-weight:bold;
 }
 
 h1{
-text-align:center;
-color:#0b5ed7;
+    color:#0b5ed7;
+    margin-bottom:5px;
 }
 
-.grid{
-display:grid;
-grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
-gap:18px;
+.subtitle{
+    margin-bottom:25px;
+    color:#444;
 }
 
 .card{
-background:white;
-padding:14px;
-border-radius:18px;
-text-align:center;
-box-shadow:0 4px 10px rgba(0,0,0,.1);
+    background:white;
+    max-width:700px;
+    margin:0 auto;
+    padding:30px;
+    border-radius:20px;
+    box-shadow:0 10px 30px rgba(0,0,0,0.05);
 }
 
-.image{
-width:100%;
-height:130px;
-object-fit:contain;
+.card img{
+    width:150px;
+    margin-bottom:20px;
+    border-radius:15px;
 }
 
-.command{
-font-size:18px;
-font-weight:bold;
+.word{
+    font-size:28px;
+    font-weight:bold;
 }
 
 .phonetic{
-font-size:13px;
-color:#666;
+    font-size:18px;
+    color:#666;
 }
 
-.spanish{
-font-size:15px;
-font-weight:600;
+.translation{
+    margin-top:8px;
+    font-size:16px;
 }
 
 button{
-padding:8px 14px;
-border:none;
-border-radius:10px;
-background:#2f6fed;
-color:white;
-cursor:pointer;
-margin:4px;
-}
-
-.hub{
-position:fixed;
-left:20px;
-top:20px;
-background:#28a745;
-color:white;
-padding:10px 18px;
-border-radius:10px;
-text-decoration:none;
-font-weight:bold;
+    margin:10px;
+    padding:10px 20px;
+    border:none;
+    border-radius:12px;
+    background:#2563eb;
+    color:white;
+    cursor:pointer;
+    font-weight:bold;
 }
 </style>
 </head>
-
 <body>
 
-<a class="hub" href="../hub/index.php?unit=<?=$unit?>">← Volver Hub</a>
+<a class="back-btn" href="../hub/index.php?unit=<?= urlencode($unit) ?>">
+    ↩ Volver al Hub
+</a>
 
 <h1>🎧 Pronunciation</h1>
-
-<div class="grid">
-
-<?php foreach($data as $i=>$item): ?>
+<p class="subtitle">Listen and practice pronunciation.</p>
 
 <div class="card">
 
-<img class="image" src="/lessons/lessons/<?=$item["img"]?>">
+    <img id="image">
 
-<div class="command"><?=$item["en"]?></div>
-<div class="phonetic"><?=$item["ph"]?></div>
-<div class="spanish"><?=$item["es"]?></div>
+    <div class="word" id="word"></div>
+    <div class="phonetic" id="phonetic"></div>
+    <div class="translation" id="translation"></div>
 
-<button onclick="speak('<?=$item["en"]?>')">🔊 Listen</button>
-<button onclick="record(<?=$i?>)">🎤 Speak</button>
-
-<div id="f<?=$i?>"></div>
-
-</div>
-
-<?php endforeach; ?>
+    <div>
+        <button onclick="listen()">🔊 Listen</button>
+        <button onclick="speak()">🎤 Speak</button>
+        <button onclick="next()">➡</button>
+    </div>
 
 </div>
 
 <script>
-function speak(text){
-let u=new SpeechSynthesisUtterance(text);
-u.lang="en-US";
-speechSynthesis.speak(u);
+
+const words = <?= json_encode($data) ?>;
+
+let index = 0;
+
+function loadWord(){
+    const w = words[index];
+
+    document.getElementById("word").textContent = w.word;
+    document.getElementById("phonetic").textContent = w.phonetic || "";
+    document.getElementById("translation").textContent = w.translation || "";
+
+    const img = document.getElementById("image");
+    if(w.image){
+        img.src = w.image;
+        img.style.display = "block";
+    }else{
+        img.style.display = "none";
+    }
 }
 
-let recognition;
-if('webkitSpeechRecognition' in window){
-recognition=new webkitSpeechRecognition();
-recognition.lang="en-US";
+function listen(){
+    const msg = new SpeechSynthesisUtterance(words[index].word);
+    msg.lang = "en-US";
+    speechSynthesis.speak(msg);
 }
 
-function record(i){
-recognition.start();
-recognition.onresult=e=>{
-let said=e.results[0][0].transcript.toLowerCase();
-let correct=document.querySelectorAll(".command")[i].innerText.toLowerCase();
-let fb=document.getElementById("f"+i);
+function speak(){
+    alert("Use microphone feature here if needed");
+}
 
-if(said.includes(correct.split(" ")[0])){
-fb.innerHTML="🌟 Good!";
-fb.style.color="green";
-}else{
-fb.innerHTML="🔁 Try again";
-fb.style.color="orange";
+function next(){
+    index++;
+    if(index >= words.length){
+        alert("🎉 You finished!");
+        index = 0;
+    }
+    loadWord();
 }
-};
-}
+
+loadWord();
+
 </script>
 
 </body>
