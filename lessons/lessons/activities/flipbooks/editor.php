@@ -65,7 +65,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
         move_uploaded_file($_FILES["pdf"]["tmp_name"], $targetPath);
 
-        $relativePath = "lessons/lessons/activities/flipbooks/uploads/" . $filename;
+       $relativePath = "activities/flipbooks/uploads/" . $filename;
 
         $stmt = $pdo->prepare("
             INSERT INTO activities (unit_id, type, data, created_at)
