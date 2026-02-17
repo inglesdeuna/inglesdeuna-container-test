@@ -1,110 +1,91 @@
 <?php
+if (!isset($unit)) {
+    die("Unit not specified");
+}
+?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title><?= $activityTitle ?? 'Editor' ?></title>
+<link rel="stylesheet" href="../../assets/css/ui.css">
 
-require_once __DIR__ . "/../config/db.php";
-
-$unit = $_GET["unit"] ?? null;
-if (!$unit) {
-    die("Unit missing");
+<style>
+body{
+    margin:0;
+    font-family: Arial, Helvetica, sans-serif;
+    background:#c7d2fe;
+    min-height:100vh;
 }
 
-/* ===== LOAD EXISTING ===== */
-
-$stmt = $pdo->prepare("
-    SELECT data FROM activities
-    WHERE unit_id = :u AND type = :t
-");
-$stmt->execute([
-    "u" => $unit,
-    "t" => $type
-]);
-
-$row = $stmt->fetch(PDO::FETCH_ASSOC);
-
-$data = [];
-
-if ($row && !empty($row["data"])) {
-    $data = json_decode($row["data"], true);
-    if (!is_array($data)) {
-        $data = [];
-    }
+.back-btn{
+    position:absolute;
+    top:30px;
+    left:30px;
+    background:#16a34a;
+    color:white;
+    padding:10px 18px;
+    border-radius:10px;
+    font-weight:600;
+    text-decoration:none;
+    box-shadow:0 4px 10px rgba(0,0,0,0.1);
+    transition:0.2s;
 }
 
-/* ===== DELETE ===== */
-
-if (isset($_GET["delete"])) {
-
-    $i = (int)$_GET["delete"];
-
-    if (isset($data[$i])) {
-        array_splice($data, $i, 1);
-
-        $json = json_encode($data, JSON_UNESCAPED_UNICODE);
-
-        $stmt = $pdo->prepare("
-            UPDATE activities
-            SET data = :d
-            WHERE unit_id = :u AND type = :t
-        ");
-
-        $stmt->execute([
-            "u" => $unit,
-            "t" => $type,
-            "d" => $json
-        ]);
-    }
-
-    header("Location: editor.php?unit=" . $unit);
-    exit;
+.back-btn:hover{
+    background:#15803d;
 }
 
-/* ===== ADD ITEM ===== */
-
-if (isset($_POST["add"])) {
-
-    $text = trim($_POST["text"] ?? "");
-    $imagePath = "";
-
-    if (!empty($_FILES["image"]["name"])) {
-
-        $uploadDir = __DIR__ . "/../activities/" . $type . "/uploads/" . $unit;
-
-        if (!is_dir($uploadDir)) {
-            mkdir($uploadDir, 0777, true);
-        }
-
-        $newName = uniqid() . "_" . basename($_FILES["image"]["name"]);
-
-        move_uploaded_file(
-            $_FILES["image"]["tmp_name"],
-            $uploadDir . "/" . $newName
-        );
-
-        $imagePath = "activities/" . $type . "/uploads/" . $unit . "/" . $newName;
-    }
-
-    if ($text !== "") {
-
-        $data[] = [
-            "text" => $text,
-            "image" => $imagePath
-        ];
-
-        $json = json_encode($data, JSON_UNESCAPED_UNICODE);
-
-        $stmt = $pdo->prepare("
-            INSERT INTO activities (unit_id, type, data)
-            VALUES (:u, :t, :d)
-            ON CONFLICT (unit_id, type)
-            DO UPDATE SET data = EXCLUDED.data
-        ");
-
-        $stmt->execute([
-            "u" => $unit,
-            "t" => $type,
-            "d" => $json
-        ]);
-    }
-
-    header("Location: editor.php?unit=" . $unit);
-    exit;
+.editor-header{
+    text-align:center;
+    margin-top:80px;
+    margin-bottom:30px;
 }
+
+.editor-title{
+    font-size:28px;
+    font-weight:700;
+    color:#1d4ed8;
+    margin-bottom:8px;
+}
+
+.editor-subtitle{
+    font-size:14px;
+    color:#475569;
+}
+
+.editor-container{
+    max-width:900px;
+    margin:0 auto 60px auto;
+    padding:25px;
+    background:white;
+    border-radius:18px;
+    box-shadow:0 8px 25px rgba(0,0,0,0.08);
+}
+</style>
+</head>
+
+<body>
+
+<a href="../hub/index.php?unit=<?= urlencode($unit) ?>" class="back-btn">
+    ↩ Back
+</a>
+
+<div class="editor-header">
+    <div class="editor-title">
+        <?= $activityTitle ?? 'Activity Editor' ?>
+    </div>
+
+    <?php if(!empty($activitySubtitle)): ?>
+        <div class="editor-subtitle">
+            <?= $activitySubtitle ?>
+        </div>
+    <?php endif; ?>
+</div>
+
+<div class="editor-container">
+    <?= $editorContent ?? '' ?>
+</div>
+
+</body>
+</html>
