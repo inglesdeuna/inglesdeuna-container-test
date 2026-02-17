@@ -1,113 +1,78 @@
 <?php
-require_once __DIR__."/../../config/db.php";
+$unit = $_GET['unit'] ?? null;
+if(!$unit){ die("Unit not specified"); }
 
-$unit=$_GET["unit"] ?? null;
-if(!$unit) die("Unit missing");
+$jsonFile = __DIR__ . "/multiple_choice.json";
+$data = file_exists($jsonFile)
+    ? json_decode(file_get_contents($jsonFile), true)
+    : [];
 
-$stmt=$pdo->prepare("
-SELECT data FROM activities
-WHERE unit_id=:unit AND type='multiple_choice'
-");
+$questions = $data[$unit] ?? [];
 
-$stmt->execute(["unit"=>$unit]);
-$row=$stmt->fetch(PDO::FETCH_ASSOC);
+$activityTitle = "Multiple Choice";
+$activitySubtitle = "Choose the correct answer.";
 
-$data=json_decode($row["data"] ?? "[]",true);
+ob_start();
 ?>
 
-<!DOCTYPE html>
-<html>
-<head>
-<meta charset="UTF-8">
-<title>Multiple Choice</title>
+<div style="display:flex;flex-direction:column;gap:25px;">
 
-<style>
-body{font-family:Arial;background:#eef6ff;padding:20px;}
-h1{text-align:center;color:#0b5ed7;}
+<?php foreach($questions as $index => $q): ?>
 
-.card{
-background:white;
-padding:20px;
-border-radius:16px;
-box-shadow:0 4px 10px rgba(0,0,0,.1);
-margin-bottom:20px;
-}
+<div style="background:white;padding:25px;border-radius:20px;box-shadow:0 8px 20px rgba(0,0,0,0.05);">
 
-img{max-width:200px;margin-bottom:10px;}
+<h3><?= htmlspecialchars($q['question']) ?></h3>
 
-button{
-padding:8px 16px;
-border:none;
-border-radius:10px;
-background:#2f6fed;
-color:white;
-margin:5px;
-cursor:pointer;
-}
-
-.hub{
-position:fixed;
-top:20px;
-left:20px;
-background:#28a745;
-color:white;
-padding:10px 18px;
-border-radius:10px;
-text-decoration:none;
-}
-</style>
-</head>
-
-<body>
-
-<a class="hub" href="../hub/index.php?unit=<?=$unit?>">← Hub</a>
-
-<h1>🧠 Multiple Choice</h1>
-
-<?php foreach($data as $i=>$q): ?>
-
-<div class="card">
-
-<?php if(!empty($q["img"])): ?>
-<img src="/lessons/lessons/<?=$q["img"]?>">
+<?php if(!empty($q['image'])): ?>
+<img src="<?= $q['image'] ?>" style="width:180px;margin:15px 0;">
 <?php endif; ?>
 
-<h3><?=$q["question"]?></h3>
-
-<?php foreach($q["options"] as $k=>$opt): ?>
-<button onclick="check(<?=$i?>,<?=$k?>)"><?=$opt?></button>
+<div style="display:flex;gap:10px;flex-wrap:wrap;">
+<?php foreach($q['options'] as $i=>$opt): ?>
+<button class="option-btn" onclick="checkAnswer(<?= $index ?>, <?= $i ?>)">
+<?= htmlspecialchars($opt) ?>
+</button>
 <?php endforeach; ?>
+</div>
 
-<div id="f<?=$i?>"></div>
+<div id="feedback-<?= $index ?>" class="feedback"></div>
 
 </div>
 
 <?php endforeach; ?>
 
+</div>
+
+<style>
+.option-btn{
+    background:#2563eb;
+    color:white;
+    border:none;
+    padding:8px 15px;
+    border-radius:8px;
+    cursor:pointer;
+}
+.option-btn:hover{
+    background:#1e40af;
+}
+</style>
+
 <script>
+const questions = <?= json_encode($questions) ?>;
 
-const data=<?=json_encode($data)?>;
+function checkAnswer(qIndex, selected){
+    const feedback = document.getElementById("feedback-"+qIndex);
 
-function speak(t){
-let u=new SpeechSynthesisUtterance(t);
-u.lang="en-US";
-speechSynthesis.speak(u);
-}
-
-function check(i,k){
-let fb=document.getElementById("f"+i);
-
-if(k===data[i].correct){
-fb.innerHTML="✅ Correct";
-fb.style.color="green";
-speak("Correct");
-}else{
-fb.innerHTML="❌ Try again";
-fb.style.color="red";
-speak("Try again");
-}
+    if(selected === questions[qIndex].correct){
+        feedback.className = "feedback correct";
+        feedback.innerHTML = "⭐ Correct!";
+    }else{
+        feedback.className = "feedback wrong";
+        feedback.innerHTML = "❌ Try Again";
+    }
 }
 </script>
 
-</body>
-</html>
+<?php
+$activityContent = ob_get_clean();
+include "../../core/_activity_viewer_template.php";
