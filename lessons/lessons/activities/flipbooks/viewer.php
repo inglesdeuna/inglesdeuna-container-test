@@ -30,7 +30,12 @@ ob_start();
 
 <?php if ($pdfPath): ?>
 
-<div id="flipbook" style="margin:auto; width:900px; height:600px;"></div>
+<div style="position:relative; width:900px; margin:auto;">
+    <div id="flipbook" style="width:900px; height:600px;"></div>
+
+    <div id="prevBtn" style="position:absolute; bottom:15px; left:10px; cursor:pointer; font-size:28px;">⬅</div>
+    <div id="nextBtn" style="position:absolute; bottom:15px; right:10px; cursor:pointer; font-size:28px;">➡</div>
+</div>
 
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/turn.js/4.1.0/turn.min.css" />
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
@@ -43,40 +48,77 @@ const pdfUrl = "/lessons/lessons/<?= htmlspecialchars($pdfPath) ?>";
 pdfjsLib.getDocument(pdfUrl).promise.then(function(pdf) {
 
     const flipbook = document.getElementById("flipbook");
+    const totalPages = pdf.numPages;
+    let renderedPages = 0;
 
-    for (let i = 1; i <= pdf.numPages; i++) {
+    for (let i = 1; i <= totalPages; i++) {
+
         const pageDiv = document.createElement("div");
         pageDiv.style.width = "450px";
         pageDiv.style.height = "600px";
+        pageDiv.style.background = "#fff";
 
         const canvas = document.createElement("canvas");
         pageDiv.appendChild(canvas);
         flipbook.appendChild(pageDiv);
 
         pdf.getPage(i).then(function(page) {
-            const viewport = page.getViewport({scale: 1});
+
+            const viewport = page.getViewport({scale: 1.3});
             canvas.width = viewport.width;
             canvas.height = viewport.height;
 
             page.render({
                 canvasContext: canvas.getContext("2d"),
                 viewport: viewport
-            });
-        });
-    }
+            }).promise.then(function() {
 
-    $("#flipbook").turn({
-        width: 900,
-        height: 600,
-        autoCenter: true
-    });
+                renderedPages++;
+
+                // Inicializar turn.js SOLO cuando todas las páginas estén listas
+                if (renderedPages === totalPages) {
+
+                    $("#flipbook").turn({
+                        width: 900,
+                        height: 600,
+                        autoCenter: true,
+                        display: "single", // empieza como carátula
+                        elevation: 50,
+                        gradients: true,
+                        when: {
+                            turning: function(event, page) {
+                                if (page === 1) {
+                                    $(this).turn("display", "single");
+                                } else {
+                                    $(this).turn("display", "double");
+                                }
+                            }
+                        }
+                    });
+
+                    // Flechas
+                    document.getElementById("prevBtn").onclick = function() {
+                        $("#flipbook").turn("previous");
+                    };
+
+                    document.getElementById("nextBtn").onclick = function() {
+                        $("#flipbook").turn("next");
+                    };
+
+                }
+
+            });
+
+        });
+
+    }
 
 });
 </script>
 
 <?php else: ?>
 
-<p style="color:#dc2626; font-weight:600;">
+<p style="color:#dc2626; font-weight:600; text-align:center;">
     No PDF uploaded for this unit.
 </p>
 
@@ -84,6 +126,7 @@ pdfjsLib.getDocument(pdfUrl).promise.then(function(pdf) {
 
 <?php
 $activityContent = ob_get_clean();
+
 
 /* 4️⃣ VARIABLES PARA TEMPLATE */
 $activityTitle = "📖 Flipbooks";
