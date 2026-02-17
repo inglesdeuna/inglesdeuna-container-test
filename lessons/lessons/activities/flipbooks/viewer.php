@@ -1,6 +1,9 @@
 <?php
 session_start();
 
+require_once __DIR__ . "/../../core/db.php";
+require_once __DIR__ . "/../../core/_activity_viewer_template.php";
+
 /* ===========================
    VALIDAR UNIT
 =========================== */
@@ -10,64 +13,55 @@ if (!$unit) {
 }
 
 /* ===========================
-   DB
-=========================== */
-require_once __DIR__ . "/../../core/db.php";
-
-/* ===========================
-   OBTENER PDF DESDE DB
+   OBTENER DESDE DB
 =========================== */
 $stmt = $pdo->prepare("
-    SELECT data 
-    FROM activities 
-    WHERE unit_id = :unit 
+    SELECT data
+    FROM activities
+    WHERE unit_id = :unit
     AND type = 'flipbooks'
     LIMIT 1
 ");
-$stmt->execute(['unit' => $unit]);
-$row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+$stmt->execute([':unit' => $unit]);
+$row = $stmt->fetchColumn();
 
 $pdfPath = "";
 
 if ($row) {
-    $decoded = json_decode($row['data'], true);
+    $decoded = json_decode($row, true);
     $pdfPath = $decoded['pdf'] ?? "";
 }
 
 /* ===========================
-   VERIFICAR ARCHIVO
+   GENERAR CONTENIDO
 =========================== */
-$absolutePath = __DIR__ . "/../../" . $pdfPath;
-$fileExists = $pdfPath && file_exists($absolutePath);
-
-/* ===========================
-   CONTENIDO PARA TEMPLATE
-=========================== */
-$activityTitle = "📖 Flipbooks";
-$activitySubtitle = "Let's read together and explore a new story.";
-
 ob_start();
-?>
 
-<?php if ($fileExists): ?>
-
+if ($pdfPath) {
+    ?>
     <iframe 
-        src="/lessons/lessons/<?= htmlspecialchars($pdfPath) ?>" 
-        style="width:100%; height:650px; border:none; border-radius:12px;">
+        src="/<?= htmlspecialchars($pdfPath) ?>" 
+        style="width:100%; height:700px; border:none; border-radius:12px;">
     </iframe>
-
-<?php else: ?>
-
-    <p style="color:#dc2626; font-weight:bold;">
+    <?php
+} else {
+    ?>
+    <p style="color:#ef4444; font-weight:bold;">
         No PDF uploaded for this unit.
     </p>
+    <?php
+}
 
-<?php endif; ?>
-
-<?php
-$activityContent = ob_get_clean();
+$content = ob_get_clean();
 
 /* ===========================
-   CARGAR TEMPLATE (AL FINAL)
+   RENDER TEMPLATE
 =========================== */
-require_once __DIR__ . "/../../core/_activity_viewer_template.php";
+render_activity_viewer(
+    "📖 Flipbooks",
+    "📖",
+    "Let's read together and explore a new story.",
+    $content,
+    $unit
+);
