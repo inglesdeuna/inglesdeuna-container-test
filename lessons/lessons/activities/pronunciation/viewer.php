@@ -27,7 +27,7 @@ if(empty($data)){
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Pronunciation</title>
+<title>Pronunciation Practice</title>
 
 <style>
 body{
@@ -36,7 +36,6 @@ body{
     padding:30px;
 }
 
-/* BACK BUTTON */
 .back-btn{
     display:inline-block;
     background:#16a34a;
@@ -48,21 +47,24 @@ body{
     margin-bottom:20px;
 }
 
-/* TITLE */
 h1{
     text-align:center;
     color:#0b5ed7;
+    margin-bottom:5px;
+}
+
+.subtitle{
+    text-align:center;
+    color:#666;
     margin-bottom:30px;
 }
 
-/* GRID */
 .grid{
     display:grid;
     grid-template-columns: repeat(auto-fill, minmax(220px,1fr));
     gap:20px;
 }
 
-/* CARD */
 .card{
     background:white;
     border-radius:18px;
@@ -104,7 +106,6 @@ h1{
     font-size:13px;
 }
 
-/* FEEDBACK */
 .feedback{
     margin-top:10px;
     font-weight:bold;
@@ -129,11 +130,12 @@ h1{
     ← Volver al Hub
 </a>
 
-<h1>📘 Basic Commands – Listen & Speak</h1>
+<h1>Pronunciation Practice</h1>
+<div class="subtitle">Listen and speak the correct word.</div>
 
 <div class="grid">
 
-<?php foreach($data as $index => $item): ?>
+<?php foreach($data as $item): ?>
 
 <div class="card">
 
@@ -152,11 +154,11 @@ h1{
     <?php endif; ?>
 
     <div>
-        <button class="btn" onclick="listen('<?= htmlspecialchars($item["word"]) ?>')">
+        <button class="btn" onclick="listenWord('<?= htmlspecialchars($item["word"]) ?>')">
             🔊 Listen
         </button>
-        <button class="btn" onclick="markCorrect(this)">
-            ✔ Check
+        <button class="btn" onclick="speakWord(this,'<?= strtolower(htmlspecialchars($item["word"])) ?>')">
+            🎤 Speak
         </button>
     </div>
 
@@ -175,33 +177,47 @@ h1{
 let completed = 0;
 const total = document.querySelectorAll(".card").length;
 
-function listen(word){
+/* LISTEN */
+function listenWord(word){
     const msg = new SpeechSynthesisUtterance(word);
     msg.lang = "en-US";
     speechSynthesis.speak(msg);
 }
 
-/* SIMULA CHECK COMO EN OTRAS ACTIVIDADES */
-function markCorrect(button){
+/* SPEAK + VALIDAR */
+function speakWord(button, correctWord){
+
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+    if(!SpeechRecognition){
+        return;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.lang = "en-US";
+    recognition.start();
 
     const card = button.closest(".card");
     const feedback = card.querySelector(".feedback");
 
-    // ejemplo simple: alterna estado
-    if(feedback.classList.contains("good")){
-        feedback.textContent = "🔁 Try again!";
-        feedback.className = "feedback bad";
-    }else{
-        feedback.textContent = "🌟 Excellent!";
-        feedback.className = "feedback good";
+    recognition.onresult = function(event){
+        let spoken = event.results[0][0].transcript.toLowerCase().trim();
 
-        completed++;
+        if(spoken === correctWord){
+            feedback.textContent = "🌟 Excellent!";
+            feedback.className = "feedback good";
 
-        if(completed >= total){
-            document.getElementById("finishMessage")
-                .textContent = "🏆 You finished all words!";
+            completed++;
+            if(completed >= total){
+                document.getElementById("finishMessage")
+                    .textContent = "🏆 You finished all words!";
+            }
+
+        }else{
+            feedback.textContent = "🔁 Try again!";
+            feedback.className = "feedback bad";
         }
-    }
+    };
 }
 
 </script>
