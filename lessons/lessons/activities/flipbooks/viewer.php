@@ -3,25 +3,38 @@ session_start();
 
 require_once __DIR__ . "/../../core/db.php";
 
+/* ===========================
+   VALIDAR UNIT
+=========================== */
 $unit = $_GET['unit'] ?? null;
 if (!$unit) die("Unidad no especificada");
 
-/* ===== CARGAR DESDE DB ===== */
+/* ===========================
+   OBTENER DESDE DB
+=========================== */
 $stmt = $pdo->prepare("
-    SELECT data
-    FROM activities
-    WHERE unit_id = :unit AND type = 'flipbooks'
+    SELECT data 
+    FROM activities 
+    WHERE unit_id = :unit 
+    AND type = 'flipbooks'
     LIMIT 1
 ");
-$stmt->execute([":unit" => $unit]);
-$row = $stmt->fetchColumn();
+$stmt->execute(['unit' => $unit]);
+$row = $stmt->fetch(PDO::FETCH_ASSOC);
 
 $pdfPath = "";
 
 if ($row) {
-    $decoded = json_decode($row, true);
-    $pdfPath = $decoded["pdf"] ?? "";
+    $content = json_decode($row['data'], true);
+    $pdfPath = $content['pdf'] ?? "";
 }
+
+/* ===========================
+   VERIFICAR ARCHIVO FISICO
+=========================== */
+$absoluteFilePath = __DIR__ . "/../../" . $pdfPath;
+
+$fileExists = $pdfPath && file_exists($absoluteFilePath);
 ?>
 
 <!DOCTYPE html>
@@ -51,7 +64,7 @@ body{
 }
 
 .viewer-container{
-    max-width:1000px;
+    max-width:1100px;
     margin:100px auto 40px auto;
     background:white;
     padding:30px;
@@ -66,13 +79,13 @@ h1{
 }
 
 .subtitle{
-    color:#666;
-    margin-bottom:30px;
+    color:#6b7280;
+    margin-bottom:25px;
 }
 
 .pdf-frame{
     width:100%;
-    height:600px;
+    height:650px;
     border:none;
     border-radius:12px;
 }
@@ -90,15 +103,21 @@ onclick="window.location.href='../hub/index.php?unit=<?= urlencode($unit) ?>'">
 <div class="viewer-container">
 
 <h1>📖 Flipbooks</h1>
-<p class="subtitle">Let's read together and explore a new story.</p>
+<div class="subtitle">Let's read together and explore a new story.</div>
 
-<?php if ($pdfPath): ?>
+<?php if($fileExists): ?>
+
     <iframe 
-        src="/<?= htmlspecialchars($pdfPath) ?>" 
+        src="/lessons/lessons/<?= htmlspecialchars($pdfPath) ?>" 
         class="pdf-frame">
     </iframe>
+
 <?php else: ?>
-    <p>No flipbook uploaded yet.</p>
+
+    <p style="color:#ef4444; font-weight:bold;">
+        No PDF uploaded for this unit.
+    </p>
+
 <?php endif; ?>
 
 </div>
