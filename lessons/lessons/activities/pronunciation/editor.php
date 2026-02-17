@@ -132,6 +132,8 @@ exit;
 }
 
 body{
+
+  position:relative;
   
 font-family:Arial;
 background:#eef6ff;
