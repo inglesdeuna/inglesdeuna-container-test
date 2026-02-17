@@ -1,85 +1,99 @@
 <?php
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
+require_once __DIR__ . "/../../config/db.php";
 
 $unit = $_GET['unit'] ?? null;
-if(!$unit){ die("Unit not specified"); }
+if (!$unit) die("Unit not specified");
 
-$jsonFile = __DIR__ . "/multiple_choice.json";
-$uploadDir = __DIR__ . "/../../uploads/";
+/* ===============================
+   GUARDAR
+=============================== */
+if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
-if(!file_exists($uploadDir)){
-    mkdir($uploadDir, 0777, true);
-}
+    $question = $_POST["question"] ?? "";
+    $options  = $_POST["options"] ?? [];
+    $correct  = $_POST["correct"] ?? 0;
 
-$data = file_exists($jsonFile)
-    ? json_decode(file_get_contents($jsonFile), true)
-    : [];
+    if ($question && count($options) >= 3) {
 
-if(!isset($data[$unit])){
-    $data[$unit] = [];
-}
+        $stmt = $pdo->prepare("
+            SELECT data FROM activities
+            WHERE unit_id = :unit
+            AND type = 'multiple_choice'
+        ");
+        $stmt->execute(["unit"=>$unit]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
-/* =========================
-   SAVE QUESTION
-========================= */
+        $data = json_decode($row["data"] ?? "[]", true);
 
-if($_SERVER['REQUEST_METHOD'] === 'POST'){
+        $data[] = [
+            "question" => $question,
+            "options"  => $options,
+            "answer"   => $options[$correct] ?? ""
+        ];
 
-    $question = trim($_POST['question']);
-    $options  = $_POST['options'] ?? [];
-    $correct  = $_POST['correct'] ?? 0;
-
-    $imagePath = null;
-
-    if(!empty($_FILES['image']['name'])){
-        $filename = time() . "_" . basename($_FILES['image']['name']);
-        $targetPath = $uploadDir . $filename;
-
-        if(move_uploaded_file($_FILES['image']['tmp_name'], $targetPath)){
-            $imagePath = "../../uploads/" . $filename;
+        if ($row) {
+            $update = $pdo->prepare("
+                UPDATE activities
+                SET data = :data
+                WHERE unit_id = :unit
+                AND type = 'multiple_choice'
+            ");
+            $update->execute([
+                "data"=>json_encode($data),
+                "unit"=>$unit
+            ]);
+        } else {
+            $insert = $pdo->prepare("
+                INSERT INTO activities (unit_id, type, data)
+                VALUES (:unit,'multiple_choice',:data)
+            ");
+            $insert->execute([
+                "unit"=>$unit,
+                "data"=>json_encode($data)
+            ]);
         }
+
+        header("Location: editor.php?unit=".$unit);
+        exit;
     }
-
-    $data[$unit][] = [
-        "question" => $question,
-        "options"  => $options,
-        "correct"  => (int)$correct,
-        "image"    => $imagePath
-    ];
-
-    file_put_contents($jsonFile, json_encode($data, JSON_PRETTY_PRINT));
-
-    header("Location: editor.php?unit=" . urlencode($unit));
-    exit;
 }
 
-$questions = $data[$unit];
+/* ===============================
+   OBTENER DATA
+=============================== */
+$stmt = $pdo->prepare("
+    SELECT data FROM activities
+    WHERE unit_id = :unit
+    AND type = 'multiple_choice'
+");
+$stmt->execute(["unit"=>$unit]);
+$row = $stmt->fetch(PDO::FETCH_ASSOC);
+$data = json_decode($row["data"] ?? "[]", true);
 
-/* =========================
-   TEMPLATE VARIABLES
-========================= */
+/* ===============================
+   TEMPLATE CONFIG
+=============================== */
+$activityTitle = "🧠 Multiple Choice Editor";
+$activitySubtitle = "Add questions for this unit.";
 
-$activityTitle = "Multiple Choice Editor";
-$activitySubtitle = "Add questions and images for this unit.";
-
+/* ===============================
+   CONTENIDO
+=============================== */
 ob_start();
 ?>
 
-<form method="post" enctype="multipart/form-data">
+<form method="POST">
 
-<input type="text" name="question" placeholder="Enter question" required>
+    <input type="text" name="question" placeholder="Enter question" required>
 
-<input type="file" name="image">
+    <input type="text" name="options[]" placeholder="Option 1" required>
+    <input type="text" name="options[]" placeholder="Option 2" required>
+    <input type="text" name="options[]" placeholder="Option 3" required>
 
-<?php for($i=0;$i<3;$i++): ?>
-<input type="text" name="options[]" placeholder="Option <?= $i+1 ?>" required>
-<?php endfor; ?>
+    <label>Correct answer index (0, 1 or 2)</label>
+    <input type="number" name="correct" min="0" max="2" required>
 
-<label>Correct answer index (0, 1 or 2)</label>
-<input type="number" name="correct" min="0" max="2" required>
-
-<button type="submit">Save</button>
+    <button type="submit" class="primary-btn">💾 Save</button>
 
 </form>
 
@@ -87,19 +101,20 @@ ob_start();
 
 <h3>Saved Questions</h3>
 
-<?php if(empty($questions)): ?>
-<p>No questions yet.</p>
+<?php if(empty($data)): ?>
+    <p>No questions yet.</p>
 <?php else: ?>
-<?php foreach($questions as $q): ?>
-<div class="saved-item">
-<strong><?= htmlspecialchars($q['question']) ?></strong>
+    <?php foreach($data as $index=>$q): ?>
+        <div class="saved-item">
+            <strong><?= htmlspecialchars($q["question"]) ?></strong>
 
-<?php if(!empty($q['image'])): ?>
-<br><img src="<?= $q['image'] ?>" width="120">
-<?php endif; ?>
-
-</div>
-<?php endforeach; ?>
+            <form method="POST" action="delete.php" style="display:inline;">
+                <input type="hidden" name="index" value="<?= $index ?>">
+                <input type="hidden" name="unit" value="<?= $unit ?>">
+                <button type="submit" class="delete-btn">✖</button>
+            </form>
+        </div>
+    <?php endforeach; ?>
 <?php endif; ?>
 
 <?php
