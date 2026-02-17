@@ -76,6 +76,11 @@ pdfjsLib.getDocument(pdfUrl).promise.then(function(pdf) {
 
 <?php else: ?>
 
+<p style="color:#dc2626; font-weight:600;">
+    No PDF uploaded for this unit.
+</p>
+
+<?php endif; ?>
 
 <?php
 $activityContent = ob_get_clean();
