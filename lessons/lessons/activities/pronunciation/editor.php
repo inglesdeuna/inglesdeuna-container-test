@@ -118,7 +118,21 @@ exit;
 <title>Pronunciation Editor</title>
 
 <style>
+  .back-btn{
+    position:absolute;
+    top:20px;
+    left:20px;
+    background:#16a34a;
+    color:white;
+    padding:10px 18px;
+    border-radius:12px;
+    text-decoration:none;
+    font-weight:bold;
+    display:inline-block;
+}
+
 body{
+  
 font-family:Arial;
 background:#eef6ff;
 padding:20px;
@@ -189,6 +203,10 @@ text-decoration:none;
 </head>
 
 <body>
+  <a class="back-btn" href="../hub/index.php?unit=<?= urlencode($unit) ?>">
+    ← Volver al Hub
+</a>
+
 
 <div class="box">
 
