@@ -21,14 +21,14 @@ if(!isset($data[$unit])){
 }
 
 /* =========================
-   GUARDAR
+   SAVE QUESTION
 ========================= */
 
 if($_SERVER['REQUEST_METHOD'] === 'POST'){
 
     $question = trim($_POST['question']);
-    $options = $_POST['options'] ?? [];
-    $correct = $_POST['correct'] ?? 0;
+    $options  = $_POST['options'] ?? [];
+    $correct  = $_POST['correct'] ?? 0;
 
     $imagePath = null;
 
@@ -43,9 +43,9 @@ if($_SERVER['REQUEST_METHOD'] === 'POST'){
 
     $data[$unit][] = [
         "question" => $question,
-        "options" => $options,
-        "correct" => (int)$correct,
-        "image" => $imagePath
+        "options"  => $options,
+        "correct"  => (int)$correct,
+        "image"    => $imagePath
     ];
 
     file_put_contents($jsonFile, json_encode($data, JSON_PRETTY_PRINT));
@@ -55,28 +55,31 @@ if($_SERVER['REQUEST_METHOD'] === 'POST'){
 }
 
 $questions = $data[$unit];
-?>
 
-<?php
+/* =========================
+   TEMPLATE VARIABLES
+========================= */
+
 $activityTitle = "Multiple Choice Editor";
-$activitySubtitle = "Add questions and images.";
+$activitySubtitle = "Add questions and images for this unit.";
+
 ob_start();
 ?>
 
 <form method="post" enctype="multipart/form-data">
 
-<input type="text" name="question" placeholder="Question" required style="width:100%;padding:10px;margin-bottom:10px;">
+<input type="text" name="question" placeholder="Enter question" required>
 
-<input type="file" name="image" style="margin-bottom:15px;">
+<input type="file" name="image">
 
 <?php for($i=0;$i<3;$i++): ?>
-<input type="text" name="options[]" placeholder="Option <?= $i+1 ?>" required style="width:100%;padding:10px;margin-bottom:8px;">
+<input type="text" name="options[]" placeholder="Option <?= $i+1 ?>" required>
 <?php endfor; ?>
 
-<label>Correct answer (0,1,2)</label>
-<input type="number" name="correct" min="0" max="2" required style="width:100%;padding:10px;margin-bottom:15px;">
+<label>Correct answer index (0, 1 or 2)</label>
+<input type="number" name="correct" min="0" max="2" required>
 
-<button type="submit" class="btn-primary">Save Question</button>
+<button type="submit">Save</button>
 
 </form>
 
@@ -84,16 +87,21 @@ ob_start();
 
 <h3>Saved Questions</h3>
 
+<?php if(empty($questions)): ?>
+<p>No questions yet.</p>
+<?php else: ?>
 <?php foreach($questions as $q): ?>
-<div style="background:#f1f5f9;padding:15px;border-radius:12px;margin-bottom:10px;">
+<div class="saved-item">
 <strong><?= htmlspecialchars($q['question']) ?></strong>
+
 <?php if(!empty($q['image'])): ?>
-<br><img src="<?= $q['image'] ?>" style="width:120px;margin-top:8px;">
+<br><img src="<?= $q['image'] ?>" width="120">
 <?php endif; ?>
+
 </div>
 <?php endforeach; ?>
+<?php endif; ?>
 
 <?php
 $editorContent = ob_get_clean();
 include "../../core/_activity_editor_template.php";
-
