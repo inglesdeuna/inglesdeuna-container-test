@@ -2,17 +2,12 @@
 session_start();
 
 require_once __DIR__ . "/../../core/db.php";
-require_once __DIR__ . "/../../core/_activity_viewer_template.php";
 
-/* ===========================
-   VALIDAR UNIT  (ESTO YA FUNCIONABA)
-=========================== */
+/* 1️⃣ DEFINIR UNIT */
 $unit = $_GET['unit'] ?? null;
 if (!$unit) die("Unidad no especificada");
 
-/* ===========================
-   OBTENER DESDE DB (ESTO YA FUNCIONABA)
-=========================== */
+/* 2️⃣ CONSULTA DB */
 $stmt = $pdo->prepare("
     SELECT data 
     FROM activities 
@@ -24,24 +19,19 @@ $stmt->execute(['unit' => $unit]);
 $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
 $pdfPath = "";
-
 if ($row) {
     $decoded = json_decode($row['data'], true);
     $pdfPath = $decoded['pdf'] ?? "";
 }
 
-/* ===========================
-   CONTENIDO DEL FLIPBOOK
-   SOLO ESTA PARTE ES DIFERENTE
-=========================== */
-
+/* 3️⃣ GENERAR CONTENIDO */
 ob_start();
 ?>
 
 <?php if ($pdfPath): ?>
 
     <iframe 
-        src="/<?= htmlspecialchars($pdfPath) ?>" 
+        src="/lessons/lessons/<?= htmlspecialchars($pdfPath) ?>" 
         style="width:100%; height:700px; border:none; border-radius:12px;">
     </iframe>
 
@@ -54,21 +44,11 @@ ob_start();
 <?php endif; ?>
 
 <?php
-$content = ob_get_clean();
+$activityContent = ob_get_clean();
 
-/* ===========================
-   VARIABLES PARA TEMPLATE
-=========================== */
+/* 4️⃣ VARIABLES PARA TEMPLATE */
 $activityTitle = "📖 Flipbooks";
 $activitySubtitle = "Let's read together and explore a new story.";
-$activityContent = $content;
 
-/* ===========================
-   RENDER TEMPLATE (ESTO YA FUNCIONABA)
-=========================== */
-render_activity_viewer(
-    $activityTitle,
-    "📖",
-    $activityContent,
-    $activitySubtitle
-);
+/* 5️⃣ REQUIERE TEMPLATE AL FINAL */
+require_once __DIR__ . "/../../core/_activity_viewer_template.php";
