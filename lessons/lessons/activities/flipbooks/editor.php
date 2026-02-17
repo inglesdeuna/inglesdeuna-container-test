@@ -6,38 +6,47 @@ if (!isset($_SESSION["admin_logged"])) {
     exit;
 }
 
+require_once __DIR__ . "/../../core/db.php";
+require_once __DIR__ . "/../../core/_activity_editor_template.php";
+
 $unit = $_GET['unit'] ?? null;
 if (!$unit) die("Unidad no especificada");
 
-$jsonFile = __DIR__ . "/flipbooks.json";
+/* ===== CARGAR DESDE DB ===== */
+$stmt = $pdo->prepare("
+    SELECT data
+    FROM activities
+    WHERE unit_id = :unit AND type = 'flipbooks'
+    LIMIT 1
+");
+$stmt->execute([":unit" => $unit]);
+$row = $stmt->fetchColumn();
 
-if (!file_exists($jsonFile)) {
-    file_put_contents($jsonFile, json_encode([]));
+$currentPdf = "";
+if ($row) {
+    $decoded = json_decode($row, true);
+    $currentPdf = $decoded["pdf"] ?? "";
 }
-
-$data = json_decode(file_get_contents($jsonFile), true);
-
-if (!isset($data[$unit])) {
-    $data[$unit] = ["pdf" => ""];
-}
-
-$currentPdf = $data[$unit]["pdf"] ?? "";
 
 /* ===== PROCESAR POST ===== */
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
     // ELIMINAR PDF
-    if (isset($_POST["delete_pdf"]) && $currentPdf) {
+    if (isset($_POST["delete_pdf"])) {
 
-        $fileName = basename($currentPdf);
-        $filePath = __DIR__ . "/uploads/" . $fileName;
+        $stmt = $pdo->prepare("
+            INSERT INTO activities (unit_id, type, data, created_at)
+            VALUES (:unit, 'flipbooks', :data, NOW())
+            ON CONFLICT (unit_id, type)
+            DO UPDATE SET
+                data = EXCLUDED.data,
+                created_at = NOW()
+        ");
 
-        if (file_exists($filePath)) {
-            unlink($filePath);
-        }
-
-        $data[$unit]["pdf"] = "";
-        file_put_contents($jsonFile, json_encode($data, JSON_PRETTY_PRINT));
+        $stmt->execute([
+            ":unit" => $unit,
+            ":data" => json_encode(["pdf" => ""])
+        ]);
 
         header("Location: editor.php?unit=" . urlencode($unit));
         exit;
@@ -56,122 +65,38 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
         move_uploaded_file($_FILES["pdf"]["tmp_name"], $targetPath);
 
-        $data[$unit]["pdf"] = "activities/flipbooks/uploads/" . $filename;
+        $relativePath = "lessons/lessons/activities/flipbooks/uploads/" . $filename;
 
-        file_put_contents($jsonFile, json_encode($data, JSON_PRETTY_PRINT));
+        $stmt = $pdo->prepare("
+            INSERT INTO activities (unit_id, type, data, created_at)
+            VALUES (:unit, 'flipbooks', :data, NOW())
+            ON CONFLICT (unit_id, type)
+            DO UPDATE SET
+                data = EXCLUDED.data,
+                created_at = NOW()
+        ");
+
+        $stmt->execute([
+            ":unit" => $unit,
+            ":data" => json_encode(["pdf" => $relativePath])
+        ]);
 
         header("Location: editor.php?unit=" . urlencode($unit));
         exit;
     }
 }
+
+/* ===== CONTENIDO PARA TEMPLATE ===== */
+ob_start();
 ?>
 
-<!DOCTYPE html>
-<html>
-<head>
-<meta charset="UTF-8">
-<title>Flipbook Editor</title>
-
-<style>
-body{
-    margin:0;
-    background:#eef6ff;
-    font-family:Arial;
-}
-
-.back-btn{
-    position:absolute;
-    top:20px;
-    left:20px;
-    background:#16a34a;
-    padding:8px 14px;
-    border:none;
-    border-radius:10px;
-    color:white;
-    cursor:pointer;
-    font-weight:bold;
-}
-
-.editor-container{
-    max-width:900px;
-    margin:100px auto 40px auto;
-    background:white;
-    padding:30px;
-    border-radius:16px;
-    box-shadow:0 4px 20px rgba(0,0,0,.1);
-    text-align:center;
-}
-
-h1{
-    color:#0b5ed7;
-    margin-bottom:25px;
-}
-
-input[type="file"]{
-    margin:20px 0;
-}
-
-button.save-btn{
-    padding:10px 20px;
-    background:#0b5ed7;
-    border:none;
-    border-radius:8px;
-    color:white;
-    cursor:pointer;
-    font-weight:bold;
-}
-
-.saved-row{
-    margin-top:25px;
-    display:flex;
-    justify-content:center;
-    align-items:center;
-    gap:15px;
-    font-size:14px;
-}
-
-.file-name{
-    background:#f3f4f6;
-    padding:8px 12px;
-    border-radius:8px;
-}
-
-.delete-btn{
-    background:#ef4444;
-    border:none;
-    color:white;
-    border-radius:50%;
-    width:28px;
-    height:28px;
-    cursor:pointer;
-    font-weight:bold;
-}
-
-.delete-btn:hover{
-    background:#dc2626;
-}
-</style>
-</head>
-
-<body>
-
-<button 
-class="back-btn"
-onclick="window.location.href='../hub/index.php?unit=<?= urlencode($unit) ?>'">
-↩ Back
-</button>
-
-<div class="editor-container">
-
-<h1>📖 Flipbook Editor</h1>
-
-<form method="POST" enctype="multipart/form-data">
+<form method="POST" enctype="multipart/form-data" style="text-align:center;">
     <input type="file" name="pdf" accept="application/pdf" required>
-    <br>
+    <br><br>
     <button type="submit" class="save-btn">💾 Save PDF</button>
 </form>
 
-<?php if($currentPdf): ?>
+<?php if ($currentPdf): ?>
     <div class="saved-row">
         <span class="file-name">
             <?= htmlspecialchars(basename($currentPdf)) ?>
@@ -184,7 +109,7 @@ onclick="window.location.href='../hub/index.php?unit=<?= urlencode($unit) ?>'">
     </div>
 <?php endif; ?>
 
-</div>
+<?php
+$content = ob_get_clean();
 
-</body>
-</html>
+render_activity_editor("📖 Flipbook Editor", "📖", $content);
