@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__."/../../config/db.php";
+require_once __DIR__."/../../core/cloudinary_upload.php";
 
 $unit = $_GET["unit"] ?? null;
 if(!$unit) die("Unit missing");
@@ -66,16 +67,17 @@ if($_SERVER["REQUEST_METHOD"]==="POST"){
             if(trim($text)=="") continue;
             if(empty($_FILES["image"]["name"][$i])) continue;
 
-            $tmp=$_FILES["image"]["tmp_name"][$i];
-            $name=uniqid()."_".basename($_FILES["image"]["name"][$i]);
+            $tmp = $_FILES["image"]["tmp_name"][$i];
 
-            move_uploaded_file($tmp,$uploadDir."/".$name);
+$imageUrl = uploadImageToCloudinary($tmp);
 
-            $items[]=[
-                "id"=>uniqid(),
-                "text"=>$text,
-                "image"=>"activities/match/uploads/".$unit."/".$name
-            ];
+if(!$imageUrl) continue;
+
+$items[] = [
+    "id" => uniqid(),
+    "text" => $text,
+    "image" => $imageUrl
+];
         }
 
     }
