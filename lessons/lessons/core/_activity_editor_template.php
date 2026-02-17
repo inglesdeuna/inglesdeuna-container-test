@@ -1,91 +1,112 @@
 <?php
 if (!isset($unit)) {
+    $unit = $_GET['unit'] ?? null;
+}
+
+if (!$unit) {
     die("Unit not specified");
 }
 ?>
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<title><?= $activityTitle ?? 'Editor' ?></title>
-<link rel="stylesheet" href="../../assets/css/ui.css">
 
 <style>
 body{
+    font-family: Arial, sans-serif;
+    background:#eef6ff;
     margin:0;
-    font-family: Arial, Helvetica, sans-serif;
-    background:#c7d2fe;
-    min-height:100vh;
+    padding:40px 20px;
 }
 
+/* BACK BUTTON (EXACTO IGUAL EN TODOS) */
 .back-btn{
     position:absolute;
-    top:30px;
-    left:30px;
+    top:20px;
+    left:20px;
     background:#16a34a;
-    color:white;
+    color:#fff;
     padding:10px 18px;
-    border-radius:10px;
-    font-weight:600;
+    border-radius:12px;
     text-decoration:none;
-    box-shadow:0 4px 10px rgba(0,0,0,0.1);
-    transition:0.2s;
+    font-weight:bold;
+    font-size:14px;
 }
 
-.back-btn:hover{
-    background:#15803d;
+/* CENTER BOX */
+.editor-wrapper{
+    max-width:720px;
+    margin:0 auto;
 }
 
-.editor-header{
+.editor-card{
+    background:#fff;
+    padding:30px;
+    border-radius:18px;
+    box-shadow:0 8px 20px rgba(0,0,0,0.08);
+}
+
+.editor-card h1{
     text-align:center;
-    margin-top:80px;
-    margin-bottom:30px;
-}
-
-.editor-title{
-    font-size:28px;
-    font-weight:700;
-    color:#1d4ed8;
-    margin-bottom:8px;
+    color:#0b5ed7;
+    margin-bottom:5px;
 }
 
 .editor-subtitle{
+    text-align:center;
+    color:#555;
     font-size:14px;
-    color:#475569;
+    margin-bottom:25px;
 }
 
-.editor-container{
-    max-width:900px;
-    margin:0 auto 60px auto;
-    padding:25px;
-    background:white;
-    border-radius:18px;
-    box-shadow:0 8px 25px rgba(0,0,0,0.08);
+/* BUTTONS */
+.btn{
+    padding:10px 18px;
+    border:none;
+    border-radius:12px;
+    background:#0b5ed7;
+    color:white;
+    cursor:pointer;
+    font-weight:bold;
+    margin-right:8px;
+}
+
+.btn-green{
+    background:#16a34a;
+}
+
+.saved-list{
+    margin-top:25px;
+}
+
+.saved-item{
+    background:#f1f5f9;
+    padding:12px 15px;
+    border-radius:10px;
+    margin-bottom:10px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+}
+
+.delete-btn{
+    color:red;
+    font-weight:bold;
+    text-decoration:none;
+    font-size:16px;
 }
 </style>
-</head>
-
-<body>
 
 <a href="../hub/index.php?unit=<?= urlencode($unit) ?>" class="back-btn">
     ↩ Back
 </a>
 
-<div class="editor-header">
-    <div class="editor-title">
-        <?= $activityTitle ?? 'Activity Editor' ?>
-    </div>
+<div class="editor-wrapper">
+    <div class="editor-card">
 
-    <?php if(!empty($activitySubtitle)): ?>
+        <h1><?= $pageTitle ?? "Activity Editor" ?></h1>
         <div class="editor-subtitle">
-            <?= $activitySubtitle ?>
+            <?= $pageSubtitle ?? "" ?>
         </div>
-    <?php endif; ?>
-</div>
 
-<div class="editor-container">
-    <?= $editorContent ?? '' ?>
-</div>
+        <?= $editorContent ?? "" ?>
 
-</body>
-</html>
+    </div>
+</div>
