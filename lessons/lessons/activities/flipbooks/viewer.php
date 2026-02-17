@@ -1,10 +1,27 @@
 <?php
+session_start();
+
+require_once __DIR__ . "/../../core/db.php";
+
 $unit = $_GET['unit'] ?? null;
 if (!$unit) die("Unidad no especificada");
 
-$jsonFile = __DIR__ . "/flipbooks.json";
-$data = json_decode(file_get_contents($jsonFile), true);
-$currentPdf = $data[$unit]["pdf"] ?? "";
+/* ===== CARGAR DESDE DB ===== */
+$stmt = $pdo->prepare("
+    SELECT data
+    FROM activities
+    WHERE unit_id = :unit AND type = 'flipbooks'
+    LIMIT 1
+");
+$stmt->execute([":unit" => $unit]);
+$row = $stmt->fetchColumn();
+
+$pdfPath = "";
+
+if ($row) {
+    $decoded = json_decode($row, true);
+    $pdfPath = $decoded["pdf"] ?? "";
+}
 ?>
 
 <!DOCTYPE html>
@@ -13,8 +30,6 @@ $currentPdf = $data[$unit]["pdf"] ?? "";
 <meta charset="UTF-8">
 <title>Flipbooks</title>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
-
 <style>
 body{
     margin:0;
@@ -22,7 +37,6 @@ body{
     font-family:Arial;
 }
 
-/* Botón Back */
 .back-btn{
     position:absolute;
     top:20px;
@@ -36,12 +50,11 @@ body{
     font-weight:bold;
 }
 
-/* Contenedor */
 .viewer-container{
-    max-width:1100px;
-    margin:80px auto 40px auto;
+    max-width:1000px;
+    margin:100px auto 40px auto;
     background:white;
-    padding:25px;
+    padding:30px;
     border-radius:16px;
     box-shadow:0 4px 20px rgba(0,0,0,.1);
     text-align:center;
@@ -49,79 +62,19 @@ body{
 
 h1{
     color:#0b5ed7;
-    font-size:28px;
     margin-bottom:10px;
 }
 
 .subtitle{
-    margin-top:-5px;
-    margin-bottom:25px;
-    font-size:16px;
-    color:#555;
-    font-weight:500;
+    color:#666;
+    margin-bottom:30px;
 }
 
-/* ===== FLIPBOOK ===== */
-
-.book-wrapper{
-    position:relative;
-    display:flex;
-    justify-content:center;
-    align-items:center;
-    perspective:2000px;
-}
-
-#left-page,
-#right-page{
-    width:48%;
-    margin:0 1%;
-    border-radius:8px;
-    box-shadow:0 10px 25px rgba(0,0,0,.25);
-    background:white;
-    transition:transform .35s ease;
-}
-
-#left-page{
-    background:#f3f3f3;
-}
-
-.book-spine{
-    position:absolute;
-    width:4px;
-    height:100%;
-    background:linear-gradient(to right,#bbb,#eee,#bbb);
-    left:50%;
-    transform:translateX(-50%);
-    z-index:2;
-}
-
-/* Flechas inferiores */
-.corner{
-    position:absolute;
-    bottom:15px;
-    width:45px;
-    height:45px;
-    background:white;
-    border-radius:50%;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    font-size:22px;
-    cursor:pointer;
-    box-shadow:0 4px 12px rgba(0,0,0,.25);
-    transition:.2s;
-}
-
-.corner:hover{
-    transform:scale(1.1);
-}
-
-.left-corner{
-    left:20px;
-}
-
-.right-corner{
-    right:20px;
+.pdf-frame{
+    width:100%;
+    height:600px;
+    border:none;
+    border-radius:12px;
 }
 </style>
 </head>
@@ -137,158 +90,18 @@ onclick="window.location.href='../hub/index.php?unit=<?= urlencode($unit) ?>'">
 <div class="viewer-container">
 
 <h1>📖 Flipbooks</h1>
-<p class="subtitle">Let’s read together and explore a new story.</p>
+<p class="subtitle">Let's read together and explore a new story.</p>
 
-<div class="book-wrapper">
-    <div class="book-spine"></div>
+<?php if ($pdfPath): ?>
+    <iframe 
+        src="/<?= htmlspecialchars($pdfPath) ?>" 
+        class="pdf-frame">
+    </iframe>
+<?php else: ?>
+    <p>No flipbook uploaded yet.</p>
+<?php endif; ?>
 
-    <canvas id="left-page"></canvas>
-    <canvas id="right-page"></canvas>
-
-    <div class="corner left-corner" onclick="prevPage()">❮</div>
-    <div class="corner right-corner" onclick="nextPage()">❯</div>
 </div>
-
-</div>
-
-<script>
-
-const url = "/lessons/lessons/<?= $currentPdf ?>";
-
-/* Sonido */
-const soundPath = encodeURI("/lessons/lessons/activities/hangman/assets/freesound_community-pasando-por-las-paginas-43453 (1).mp3");
-const pageSound = new Audio(soundPath);
-
-document.addEventListener("click", function initSound(){
-    pageSound.load();
-    document.removeEventListener("click", initSound);
-});
-
-let pdfDoc = null;
-let pageNum = 1;
-
-const leftCanvas = document.getElementById('left-page');
-const rightCanvas = document.getElementById('right-page');
-const leftCtx = leftCanvas.getContext('2d');
-const rightCtx = rightCanvas.getContext('2d');
-
-function renderPage(num){
-
-    const container = document.querySelector('.viewer-container');
-    const containerWidth = container.clientWidth - 60;
-    const singleWidth = containerWidth / 2;
-
-    if(num === 1){
-
-        // Simular tapa izquierda
-        leftCanvas.width = singleWidth;
-        leftCanvas.height = 1;
-        leftCtx.clearRect(0,0,leftCanvas.width,leftCanvas.height);
-
-        pdfDoc.getPage(1).then(function(page){
-
-            const viewport = page.getViewport({scale:1});
-            const scale = singleWidth / viewport.width;
-            const scaledViewport = page.getViewport({scale:scale});
-
-            rightCanvas.height = scaledViewport.height;
-            rightCanvas.width = scaledViewport.width;
-
-            page.render({
-                canvasContext: rightCtx,
-                viewport: scaledViewport
-            });
-
-        });
-
-    } else {
-
-        // Página izquierda
-        pdfDoc.getPage(num).then(function(page){
-
-            const viewport = page.getViewport({scale:1});
-            const scale = singleWidth / viewport.width;
-            const scaledViewport = page.getViewport({scale:scale});
-
-            leftCanvas.height = scaledViewport.height;
-            leftCanvas.width = scaledViewport.width;
-
-            page.render({
-                canvasContext: leftCtx,
-                viewport: scaledViewport
-            });
-
-        });
-
-        // Página derecha
-        if(num + 1 <= pdfDoc.numPages){
-            pdfDoc.getPage(num + 1).then(function(page){
-
-                const viewport = page.getViewport({scale:1});
-                const scale = singleWidth / viewport.width;
-                const scaledViewport = page.getViewport({scale:scale});
-
-                rightCanvas.height = scaledViewport.height;
-                rightCanvas.width = scaledViewport.width;
-
-                page.render({
-                    canvasContext: rightCtx,
-                    viewport: scaledViewport
-                });
-
-            });
-        }
-    }
-}
-
-function nextPage(){
-
-    if(pageNum === 1){
-        pageNum = 2;
-    } else {
-        if(pageNum + 2 > pdfDoc.numPages) return;
-        pageNum += 2;
-    }
-
-    pageSound.currentTime = 0;
-    pageSound.play();
-
-    rightCanvas.style.transform = "rotateY(-15deg)";
-    setTimeout(()=>{ rightCanvas.style.transform="rotateY(0deg)"; },200);
-
-    renderPage(pageNum);
-}
-
-function prevPage(){
-
-    if(pageNum <= 1) return;
-
-    if(pageNum === 2){
-        pageNum = 1;
-    } else {
-        pageNum -= 2;
-    }
-
-    pageSound.currentTime = 0;
-    pageSound.play();
-
-    leftCanvas.style.transform = "rotateY(15deg)";
-    setTimeout(()=>{ leftCanvas.style.transform="rotateY(0deg)"; },200);
-
-    renderPage(pageNum);
-}
-
-/* Cargar PDF */
-pdfjsLib.getDocument(url).promise.then(function(pdfDoc_){
-    pdfDoc = pdfDoc_;
-    renderPage(pageNum);
-});
-
-window.addEventListener("resize", function(){
-    renderPage(pageNum);
-});
-
-</script>
 
 </body>
 </html>
