@@ -11,7 +11,7 @@ $currentPdf = $data[$unit]["pdf"] ?? "";
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Flipbook</title>
+<title>Flipbooks</title>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
 
@@ -136,7 +136,7 @@ onclick="window.location.href='../hub/index.php?unit=<?= urlencode($unit) ?>'">
 
 <div class="viewer-container">
 
-<h1>📖 Flipbook</h1>
+<h1>📖 Flipbooks</h1>
 <p class="subtitle">Let’s read together and explore a new story.</p>
 
 <div class="book-wrapper">
