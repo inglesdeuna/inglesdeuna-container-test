@@ -1,208 +1,99 @@
 <?php
-require_once __DIR__."/../../config/db.php";
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
 
-$unit=$_GET["unit"] ?? null;
-if(!$unit) die("Unit missing");
+$unit = $_GET['unit'] ?? null;
+if(!$unit){ die("Unit not specified"); }
 
-/* UPLOAD DIR */
+$jsonFile = __DIR__ . "/multiple_choice.json";
+$uploadDir = __DIR__ . "/../../uploads/";
 
-$uploadDir=__DIR__."/uploads/".$unit;
-
-if(!is_dir($uploadDir)){
-mkdir($uploadDir,0777,true);
+if(!file_exists($uploadDir)){
+    mkdir($uploadDir, 0777, true);
 }
 
-/* LOAD EXISTING */
+$data = file_exists($jsonFile)
+    ? json_decode(file_get_contents($jsonFile), true)
+    : [];
 
-$stmt=$pdo->prepare("
-SELECT data FROM activities
-WHERE unit_id=:unit AND type='multiple_choice'
-");
-
-$stmt->execute(["unit"=>$unit]);
-$row=$stmt->fetch(PDO::FETCH_ASSOC);
-
-$data=json_decode($row["data"] ?? "[]",true);
-
-/* DELETE */
-
-if(isset($_GET["delete"])){
-
-$i=intval($_GET["delete"]);
-
-if(isset($data[$i])){
-array_splice($data,$i,1);
+if(!isset($data[$unit])){
+    $data[$unit] = [];
 }
 
-$json=json_encode($data,JSON_UNESCAPED_UNICODE);
+/* =========================
+   GUARDAR
+========================= */
 
-$stmt=$pdo->prepare("
-UPDATE activities
-SET data=:json
-WHERE unit_id=:unit AND type='multiple_choice'
-");
+if($_SERVER['REQUEST_METHOD'] === 'POST'){
 
-$stmt->execute([
-"json"=>$json,
-"unit"=>$unit
-]);
+    $question = trim($_POST['question']);
+    $options = $_POST['options'] ?? [];
+    $correct = $_POST['correct'] ?? 0;
 
-header("Location: editor.php?unit=".$unit);
-exit;
+    $imagePath = null;
+
+    if(!empty($_FILES['image']['name'])){
+        $filename = time() . "_" . basename($_FILES['image']['name']);
+        $targetPath = $uploadDir . $filename;
+
+        if(move_uploaded_file($_FILES['image']['tmp_name'], $targetPath)){
+            $imagePath = "../../uploads/" . $filename;
+        }
+    }
+
+    $data[$unit][] = [
+        "question" => $question,
+        "options" => $options,
+        "correct" => (int)$correct,
+        "image" => $imagePath
+    ];
+
+    file_put_contents($jsonFile, json_encode($data, JSON_PRETTY_PRINT));
+
+    header("Location: editor.php?unit=" . urlencode($unit));
+    exit;
 }
 
-/* SAVE */
-
-if($_SERVER["REQUEST_METHOD"]==="POST"){
-
-$newData=$data;
-
-$q=trim($_POST["question"]);
-$o1=trim($_POST["opt1"]);
-$o2=trim($_POST["opt2"]);
-$o3=trim($_POST["opt3"]);
-$c=intval($_POST["correct"]);
-
-if($q!=""){
-
-$img="";
-
-if(!empty($_FILES["img"]["name"])){
-
-$tmp=$_FILES["img"]["tmp_name"];
-$name=uniqid()."_".basename($_FILES["img"]["name"]);
-
-move_uploaded_file($tmp,$uploadDir."/".$name);
-
-$img="activities/multiple_choice/uploads/".$unit."/".$name;
-}
-
-$newData[]=[
-"question"=>$q,
-"img"=>$img,
-"options"=>[$o1,$o2,$o3],
-"correct"=>$c
-];
-}
-
-$json=json_encode($newData,JSON_UNESCAPED_UNICODE);
-
-$stmt=$pdo->prepare("
-INSERT INTO activities(id,unit_id,type,data)
-VALUES(:id,:unit,'multiple_choice',:json)
-ON CONFLICT(unit_id,type)
-DO UPDATE SET data=EXCLUDED.data
-");
-
-$stmt->execute([
-"id"=>uniqid("act_"),
-"unit"=>$unit,
-"json"=>$json
-]);
-
-header("Location: editor.php?unit=".$unit."&saved=1");
-exit;
-}
+$questions = $data[$unit];
 ?>
 
-<!DOCTYPE html>
-<html>
-<head>
-<meta charset="UTF-8">
-<title>Multiple Choice Editor</title>
-
-<style>
-body{font-family:Arial;background:#eef6ff;padding:20px;}
-
-.box{
-max-width:900px;
-margin:auto;
-background:white;
-padding:20px;
-border-radius:16px;
-box-shadow:0 4px 10px rgba(0,0,0,.1);
-}
-
-input{padding:10px;border-radius:8px;border:1px solid #ccc;width:100%;}
-
-.btn{
-padding:10px 18px;
-border:none;
-border-radius:10px;
-cursor:pointer;
-font-weight:bold;
-margin-top:10px;
-}
-
-.save{background:#2f6fed;color:white;}
-.hub{background:#28a745;color:white;}
-
-.saved{
-background:#f7f7f7;
-padding:10px;
-border-radius:12px;
-margin-top:10px;
-display:flex;
-align-items:center;
-gap:10px;
-}
-
-.del{margin-left:auto;color:red;text-decoration:none;font-size:20px;}
-.mini{width:60px;height:60px;object-fit:contain;}
-</style>
-</head>
-
-<body>
-
-<div class="box">
-
-<h2>🧠 Multiple Choice Editor</h2>
+<?php
+$activityTitle = "Multiple Choice Editor";
+$activitySubtitle = "Add questions and images.";
+ob_start();
+?>
 
 <form method="post" enctype="multipart/form-data">
 
-<input name="question" placeholder="Pregunta"><br><br>
-<input name="opt1" placeholder="Opción 1"><br><br>
-<input name="opt2" placeholder="Opción 2"><br><br>
-<input name="opt3" placeholder="Opción 3"><br><br>
+<input type="text" name="question" placeholder="Question" required style="width:100%;padding:10px;margin-bottom:10px;">
 
-Correcta:
-<select name="correct">
-<option value="0">Opción 1</option>
-<option value="1">Opción 2</option>
-<option value="2">Opción 3</option>
-</select><br><br>
+<input type="file" name="image" style="margin-bottom:15px;">
 
-Imagen opcional:
-<input type="file" name="img"><br><br>
+<?php for($i=0;$i<3;$i++): ?>
+<input type="text" name="options[]" placeholder="Option <?= $i+1 ?>" required style="width:100%;padding:10px;margin-bottom:8px;">
+<?php endfor; ?>
 
-<button class="btn save">💾 Guardar</button>
+<label>Correct answer (0,1,2)</label>
+<input type="number" name="correct" min="0" max="2" required style="width:100%;padding:10px;margin-bottom:15px;">
 
-<a href="../hub/index.php?unit=<?=$unit?>" class="btn hub">← Volver Hub</a>
+<button type="submit" class="btn-primary">Save Question</button>
 
 </form>
 
 <hr>
 
-<h3>📦 Guardadas</h3>
+<h3>Saved Questions</h3>
 
-<?php foreach($data as $i=>$q): ?>
-<div class="saved">
-
-<?php if(!empty($q["img"])): ?>
-<img src="/lessons/lessons/<?=$q["img"]?>" class="mini">
+<?php foreach($questions as $q): ?>
+<div style="background:#f1f5f9;padding:15px;border-radius:12px;margin-bottom:10px;">
+<strong><?= htmlspecialchars($q['question']) ?></strong>
+<?php if(!empty($q['image'])): ?>
+<br><img src="<?= $q['image'] ?>" style="width:120px;margin-top:8px;">
 <?php endif; ?>
-
-<div>
-<b><?=$q["question"]?></b><br>
-<?=$q["options"][$q["correct"]]?>
-</div>
-
-<a class="del" href="?unit=<?=$unit?>&delete=<?=$i?>">❌</a>
-
 </div>
 <?php endforeach; ?>
 
-</div>
+<?php
+$editorContent = ob_get_clean();
+include "../../core/_activity_editor_template.php";
 
-</body>
-</html>
