@@ -1,6 +1,5 @@
 <?php
 require_once __DIR__."/../../config/db.php";
-require_once __DIR__."/../../config/cloudinary.php";
 
 $unit = $_GET["unit"] ?? null;
 if(!$unit) die("Unit missing");
@@ -54,15 +53,30 @@ if($_SERVER["REQUEST_METHOD"]==="POST"){
 
         $imgPath = "";
 
-        if(!empty($_FILES["image"]["name"])){
+        if(!empty($_FILES["image"]["tmp_name"])){
 
-            $tmp = $_FILES["image"]["tmp_name"];
+            $cloud = $_ENV["CLOUDINARY_CLOUD_NAME"];
+            $key = $_ENV["CLOUDINARY_API_KEY"];
+            $secret = $_ENV["CLOUDINARY_API_SECRET"];
 
-            $result = $cloudinary->uploadApi()->upload($tmp, [
-                "folder" => "inglesdeuna/flashcards/".$unit
+            $timestamp = time();
+            $signature = sha1("timestamp=$timestamp$secret");
+
+            $ch = curl_init();
+            curl_setopt($ch, CURLOPT_URL, "https://api.cloudinary.com/v1_1/$cloud/image/upload");
+            curl_setopt($ch, CURLOPT_POST, 1);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_POSTFIELDS, [
+                "file" => new CURLFile($_FILES["image"]["tmp_name"]),
+                "api_key"=>$key,
+                "timestamp"=>$timestamp,
+                "signature"=>$signature
             ]);
 
-            $imgPath = $result["secure_url"];
+            $response = json_decode(curl_exec($ch), true);
+            curl_close($ch);
+
+            $imgPath = $response["secure_url"] ?? "";
         }
 
         $data[] = [
@@ -98,9 +112,7 @@ if($_SERVER["REQUEST_METHOD"]==="POST"){
 <link rel="stylesheet" href="../../assets/css/ui.css">
 
 <style>
-.list{
-    margin-top:20px;
-}
+.list{ margin-top:20px; }
 
 .item{
     display:flex;
@@ -140,13 +152,9 @@ if($_SERVER["REQUEST_METHOD"]==="POST"){
 <h1 class="title">🃏 Flashcards Editor</h1>
 
 <form method="post" enctype="multipart/form-data">
-
 <input name="text" placeholder="Write the word" required>
-
 <input type="file" name="image">
-
 <button type="submit" class="primary-btn">💾 Save</button>
-
 </form>
 
 <div class="list">
@@ -159,19 +167,17 @@ if($_SERVER["REQUEST_METHOD"]==="POST"){
 
 <?php foreach($data as $i=>$item): ?>
 <div class="item">
-
     <div class="left">
         <?php if(!empty($item["image"])): ?>
-          <img src="<?=$item["image"]?>">
+            <img src="<?= $item["image"] ?>">
         <?php endif; ?>
-        <strong><?=htmlspecialchars($item["text"])?></strong>
+        <strong><?= htmlspecialchars($item["text"]) ?></strong>
     </div>
 
     <a class="delete"
-       href="?unit=<?=$unit?>&delete=<?=$i?>">
+       href="?unit=<?= urlencode($unit) ?>&delete=<?= $i ?>">
        ❌
     </a>
-
 </div>
 <?php endforeach; ?>
 
