@@ -64,16 +64,33 @@ pdfjsLib.getDocument(pdfUrl).promise.then(function(pdf) {
 
         pdf.getPage(i).then(function(page) {
 
-            const viewport = page.getViewport({scale: 1.3});
-            canvas.width = viewport.width;
-            canvas.height = viewport.height;
+            const viewport = page.getViewport({ scale: 1 });
 
-            page.render({
-                canvasContext: canvas.getContext("2d"),
-                viewport: viewport
-            }).promise.then(function() {
+const scale = 450 / viewport.width; // forzar ancho exacto de media página
+const scaledViewport = page.getViewport({ scale: scale });
 
-                renderedPages++;
+canvas.width = scaledViewport.width;
+canvas.height = scaledViewport.height;
+
+page.render({
+    canvasContext: canvas.getContext("2d"),
+    viewport: scaledViewport
+});
+
+
+          const viewport = page.getViewport({ scale: 1 });
+
+const scale = 450 / viewport.width;
+const scaledViewport = page.getViewport({ scale: scale });
+
+canvas.width = scaledViewport.width;
+canvas.height = scaledViewport.height;
+
+page.render({
+    canvasContext: canvas.getContext("2d"),
+    viewport: scaledViewport
+});
+
 
                 // Inicializar turn.js SOLO cuando todas las páginas estén listas
                 if (renderedPages === totalPages) {
