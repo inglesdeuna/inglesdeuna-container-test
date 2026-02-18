@@ -4,7 +4,9 @@ require_once __DIR__."/../../config/db.php";
 $unit = $_GET['unit'] ?? null;
 if (!$unit) die("Unidad no especificada");
 
-/* GUARDAR */
+/* ==============================
+   GUARDAR
+============================== */
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
     $sentences = $_POST["sentences"] ?? [];
@@ -18,7 +20,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
     $json = json_encode($data);
 
-    // Verificar si ya existe
     $check = $pdo->prepare("
         SELECT id FROM activities
         WHERE unit_id = :unit
@@ -27,23 +28,26 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $check->execute(["unit"=>$unit]);
 
     if ($check->fetch()) {
-        // UPDATE
+
         $stmt = $pdo->prepare("
             UPDATE activities
             SET data = :data
             WHERE unit_id = :unit
             AND type = 'drag_drop'
         ");
+
         $stmt->execute([
             "data"=>$json,
             "unit"=>$unit
         ]);
+
     } else {
-        // INSERT
+
         $stmt = $pdo->prepare("
             INSERT INTO activities (id, unit_id, type, data)
             VALUES (:id, :unit, 'drag_drop', :data)
         ");
+
         $stmt->execute([
             "id"=>md5(random_bytes(16)),
             "unit"=>$unit,
@@ -55,7 +59,9 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     exit;
 }
 
-/* CARGAR DATOS EXISTENTES */
+/* ==============================
+   CARGAR DATOS
+============================== */
 $stmt = $pdo->prepare("
     SELECT data FROM activities
     WHERE unit_id = :unit
@@ -65,47 +71,92 @@ $stmt->execute(["unit"=>$unit]);
 $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
 $data = json_decode($row["data"] ?? "[]", true);
-?>
 
-<?php
+/* ==============================
+   TEMPLATE EDITOR
+============================== */
 require_once __DIR__ . "/../../core/_activity_editor_template.php";
 
-/* 3️⃣ GENERAR CONTENIDO */
 ob_start();
 ?>
 
 <?php if(isset($_GET["saved"])): ?>
-<p style="color:green;font-weight:bold;">✔ Guardado correctamente</p>
+    <p style="color:green;font-weight:bold;margin-bottom:15px;">
+        ✔ Guardado correctamente
+    </p>
 <?php endif; ?>
 
-<div class="card">
-<form method="POST">
+<form method="POST" style="text-align:center;">
 
-<div id="sentences">
+    <div id="sentences" style="margin-bottom:25px;">
 
-<?php
-if (!empty($data)) {
-    foreach ($data as $item) {
-        echo '<input type="text" name="sentences[]" value="'.htmlspecialchars($item["sentence"]).'">';
-    }
-}
-?>
+        <?php
+        if (!empty($data)) {
+            foreach ($data as $item) {
+                echo '<input 
+                        type="text" 
+                        name="sentences[]" 
+                        value="'.htmlspecialchars($item["sentence"]).'" 
+                        style="
+                            padding:10px;
+                            margin:8px;
+                            border-radius:10px;
+                            border:1px solid #ccc;
+                            width:260px;
+                        "
+                      >';
+            }
+        }
+        ?>
 
-</div>
+    </div>
 
-<button type="button" onclick="addSentence()">+ Add Sentence</button>
-<br>
-<button type="submit">💾 Save</button>
+    <button 
+        type="button" 
+        onclick="addSentence()" 
+        style="
+            background:#16a34a;
+            padding:10px 16px;
+            border:none;
+            border-radius:10px;
+            color:white;
+            cursor:pointer;
+            margin-right:10px;
+        "
+    >
+        + Add Sentence
+    </button>
+
+    <button 
+        type="submit"
+        style="
+            background:#0b5ed7;
+            padding:10px 16px;
+            border:none;
+            border-radius:10px;
+            color:white;
+            cursor:pointer;
+        "
+    >
+        💾 Save
+    </button>
 
 </form>
-</div>
 
 <script>
 function addSentence(){
     const div = document.getElementById("sentences");
+
     const input = document.createElement("input");
     input.type = "text";
     input.name = "sentences[]";
+
+    input.style.padding = "10px";
+    input.style.margin = "8px";
+    input.style.borderRadius = "10px";
+    input.style.border = "1px solid #ccc";
+    input.style.width = "260px";
+
     div.appendChild(input);
 }
 </script>
@@ -114,5 +165,3 @@ function addSentence(){
 $content = ob_get_clean();
 
 render_activity_editor("✏ Drag & Drop Editor", "✏", $content);
-
-
