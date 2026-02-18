@@ -65,16 +65,17 @@ pdfjsLib.getDocument(pdfUrl).promise.then(function(pdf) {
         pdf.getPage(i).then(function(page) {
 
             const viewport = page.getViewport({ scale: 1 });
-            const scale = 450 / viewport.width;
-            const scaledViewport = page.getViewport({ scale: scale });
 
-            canvas.width = scaledViewport.width;
-            canvas.height = scaledViewport.height;
+const scale = 450 / viewport.width;
+const scaledViewport = page.getViewport({ scale: scale });
 
-            page.render({
-                canvasContext: canvas.getContext("2d"),
-                viewport: scaledViewport
-            }).promise.then(function() {
+canvas.width = 450;        // FORZAR EXACTO
+canvas.height = 600;       // mismo alto que el flipbook
+
+page.render({
+    canvasContext: canvas.getContext("2d"),
+    viewport: scaledViewport
+}).promise.then(function() {
 
                 renderedPages++;
 
