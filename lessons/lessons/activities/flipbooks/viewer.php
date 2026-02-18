@@ -65,41 +65,26 @@ pdfjsLib.getDocument(pdfUrl).promise.then(function(pdf) {
         pdf.getPage(i).then(function(page) {
 
             const viewport = page.getViewport({ scale: 1 });
+            const scale = 450 / viewport.width;
+            const scaledViewport = page.getViewport({ scale: scale });
 
-const scale = 450 / viewport.width; // forzar ancho exacto de media página
-const scaledViewport = page.getViewport({ scale: scale });
+            canvas.width = scaledViewport.width;
+            canvas.height = scaledViewport.height;
 
-canvas.width = scaledViewport.width;
-canvas.height = scaledViewport.height;
+            page.render({
+                canvasContext: canvas.getContext("2d"),
+                viewport: scaledViewport
+            }).promise.then(function() {
 
-page.render({
-    canvasContext: canvas.getContext("2d"),
-    viewport: scaledViewport
-});
+                renderedPages++;
 
-
-          const viewport = page.getViewport({ scale: 1 });
-
-const scale = 450 / viewport.width;
-const scaledViewport = page.getViewport({ scale: scale });
-
-canvas.width = scaledViewport.width;
-canvas.height = scaledViewport.height;
-
-page.render({
-    canvasContext: canvas.getContext("2d"),
-    viewport: scaledViewport
-});
-
-
-                // Inicializar turn.js SOLO cuando todas las páginas estén listas
                 if (renderedPages === totalPages) {
 
                     $("#flipbook").turn({
                         width: 900,
                         height: 600,
                         autoCenter: true,
-                        display: "single", // empieza como carátula
+                        display: "single",
                         elevation: 50,
                         gradients: true,
                         when: {
@@ -113,7 +98,6 @@ page.render({
                         }
                     });
 
-                    // Flechas
                     document.getElementById("prevBtn").onclick = function() {
                         $("#flipbook").turn("previous");
                     };
@@ -144,10 +128,9 @@ page.render({
 <?php
 $activityContent = ob_get_clean();
 
-
 /* 4️⃣ VARIABLES PARA TEMPLATE */
 $activityTitle = "📖 Flipbooks";
 $activitySubtitle = "Let's read together and explore a new story.";
 
-/* 5️⃣ REQUIERE TEMPLATE AL FINAL */
+/* 5️⃣ TEMPLATE */
 require_once __DIR__ . "/../../core/_activity_viewer_template.php";
