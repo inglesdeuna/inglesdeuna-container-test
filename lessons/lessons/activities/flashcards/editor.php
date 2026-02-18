@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__."/../../config/db.php";
+require_once __DIR__."/../../config/cloudinary.php";
 
 $unit = $_GET["unit"] ?? null;
 if(!$unit) die("Unit missing");
@@ -25,7 +26,7 @@ if(isset($_GET["delete"])){
         array_splice($data,$i,1);
     }
 
-    $json = json_encode($data,JSON_UNESCAPED_UNICODE);
+    $json = json_encode($data, JSON_UNESCAPED_UNICODE);
 
     $stmt = $pdo->prepare("
         INSERT INTO activities(id,unit_id,type,data)
@@ -51,22 +52,17 @@ if($_SERVER["REQUEST_METHOD"]==="POST"){
 
     if($text != ""){
 
-        $uploadDir = __DIR__."/uploads/".$unit;
-
-        if(!is_dir($uploadDir)){
-            mkdir($uploadDir,0777,true);
-        }
-
         $imgPath = "";
 
         if(!empty($_FILES["image"]["name"])){
 
-            $tmp  = $_FILES["image"]["tmp_name"];
-            $name = uniqid()."_".basename($_FILES["image"]["name"]);
+            $tmp = $_FILES["image"]["tmp_name"];
 
-            move_uploaded_file($tmp,$uploadDir."/".$name);
+            $result = $cloudinary->uploadApi()->upload($tmp, [
+                "folder" => "inglesdeuna/flashcards/".$unit
+            ]);
 
-            $imgPath = "activities/flashcards/uploads/".$unit."/".$name;
+            $imgPath = $result["secure_url"];
         }
 
         $data[] = [
@@ -74,7 +70,7 @@ if($_SERVER["REQUEST_METHOD"]==="POST"){
             "image"=>$imgPath
         ];
 
-        $json = json_encode($data,JSON_UNESCAPED_UNICODE);
+        $json = json_encode($data, JSON_UNESCAPED_UNICODE);
 
         $stmt = $pdo->prepare("
             INSERT INTO activities(id,unit_id,type,data)
@@ -102,9 +98,6 @@ if($_SERVER["REQUEST_METHOD"]==="POST"){
 <link rel="stylesheet" href="../../assets/css/ui.css">
 
 <style>
-
-/* Layout adjustments specific to flashcards */
-
 .list{
     margin-top:20px;
 }
@@ -137,7 +130,6 @@ if($_SERVER["REQUEST_METHOD"]==="POST"){
     font-weight:bold;
     text-decoration:none;
 }
-
 </style>
 </head>
 
@@ -149,7 +141,7 @@ if($_SERVER["REQUEST_METHOD"]==="POST"){
 
 <form method="post" enctype="multipart/form-data">
 
-<input name="text" placeholder="Write the word">
+<input name="text" placeholder="Write the word" required>
 
 <input type="file" name="image">
 
@@ -170,16 +162,15 @@ if($_SERVER["REQUEST_METHOD"]==="POST"){
 
     <div class="left">
         <?php if(!empty($item["image"])): ?>
-          <img src="/lessons/lessons/<?=$item["image"]?>">
+          <img src="<?=$item["image"]?>">
         <?php endif; ?>
-        <strong><?=$item["text"]?></strong>
+        <strong><?=htmlspecialchars($item["text"])?></strong>
     </div>
 
     <a class="delete"
-   href="?unit=<?=$unit?>&delete=<?=$i?>">
-   ❌
-</a>
-
+       href="?unit=<?=$unit?>&delete=<?=$i?>">
+       ❌
+    </a>
 
 </div>
 <?php endforeach; ?>
