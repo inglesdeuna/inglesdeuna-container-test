@@ -67,64 +67,15 @@ $row = $stmt->fetch(PDO::FETCH_ASSOC);
 $data = json_decode($row["data"] ?? "[]", true);
 ?>
 
-<!DOCTYPE html>
-<html>
-<head>
-<meta charset="UTF-8">
-<title>Drag & Drop Editor</title>
+<?php
+require_once __DIR__ . "/../../core/_activity_editor_template.php";
 
-<style>
-body{
-    font-family: Arial;
-    background:#eef6ff;
-    padding:20px;
-}
-
-h1{ color:#0b5ed7; }
-
-.card{
-    background:white;
-    padding:20px;
-    border-radius:15px;
-    box-shadow:0 4px 10px rgba(0,0,0,.1);
-    margin-bottom:20px;
-}
-
-input{
-    width:100%;
-    padding:10px;
-    margin:8px 0;
-    border-radius:10px;
-    border:1px solid #ccc;
-}
-
-button{
-    padding:10px 18px;
-    border:none;
-    border-radius:10px;
-    background:#0b5ed7;
-    color:white;
-    cursor:pointer;
-    margin-top:10px;
-}
-
-.add{
-    background:#16a34a;
-}
-
-.success{
-    color:green;
-    font-weight:bold;
-}
-</style>
-</head>
-
-<body>
-
-<h1>✏ Drag & Drop Editor</h1>
+/* 3️⃣ GENERAR CONTENIDO */
+ob_start();
+?>
 
 <?php if(isset($_GET["saved"])): ?>
-<p class="success">✔ Guardado correctamente</p>
+<p style="color:green;font-weight:bold;">✔ Guardado correctamente</p>
 <?php endif; ?>
 
 <div class="card">
@@ -142,31 +93,12 @@ if (!empty($data)) {
 
 </div>
 
-<button type="button" class="add" onclick="addSentence()">+ Add Sentence</button>
+<button type="button" onclick="addSentence()">+ Add Sentence</button>
 <br>
 <button type="submit">💾 Save</button>
 
 </form>
 </div>
-
-<br><br>
-
-<button 
-    type="button" 
-    onclick="window.location.href='../hub/index.php?unit=<?= urlencode($unit) ?>'"
-    style="
-        background:#16a34a;
-        padding:10px 18px;
-        border:none;
-        border-radius:10px;
-        color:white;
-        cursor:pointer;
-        font-weight:bold;
-    "
->
-↩ Back
-</button>
-
 
 <script>
 function addSentence(){
@@ -178,5 +110,9 @@ function addSentence(){
 }
 </script>
 
-</body>
-</html>
+<?php
+$content = ob_get_clean();
+
+render_activity_editor("✏ Drag & Drop Editor", "✏", $content);
+
+
