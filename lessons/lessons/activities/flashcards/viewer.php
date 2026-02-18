@@ -34,7 +34,7 @@ body{
     position:relative;
 }
 
-/* BOTÓN BACK UNIFICADO */
+/* BOTÓN BACK */
 .back-btn{
     position:absolute;
     top:20px;
@@ -54,7 +54,6 @@ body{
     background:#15803d;
 }
 
-
 /* TÍTULO */
 .title{
     font-size:28px;
@@ -63,7 +62,7 @@ body{
     margin-bottom:25px;
 }
 
-/* LISTEN FUERA DEL CARD */
+/* LISTEN */
 .listen-wrapper{
     margin-bottom:15px;
 }
@@ -125,10 +124,12 @@ button{
     font-weight:bold;
 }
 
-img{
+/* IMAGEN PERFECTAMENTE CENTRADA */
+.front img{
     max-width:260px;
     max-height:260px;
     object-fit:contain;
+    margin-bottom:20px;
 }
 
 /* NEXT dentro del card */
@@ -144,7 +145,6 @@ img{
 <button class="back-btn" onclick="window.location.href='../hub/index.php?unit=<?= urlencode($unit) ?>'">
 ↩ Back
 </button>
-
 
 <div class="title">🧸 Flashcards</div>
 
@@ -172,7 +172,7 @@ function loadCard(){
     const item = data[index];
 
     front.innerHTML = `
-        <img src="/lessons/lessons/${item.image}">
+        ${item.image ? `<img src="${item.image}" alt="">` : ""}
         <div class="next-wrapper">
             <button class="next" onclick="nextCard(event)">Next ➜</button>
         </div>
