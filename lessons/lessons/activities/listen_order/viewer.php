@@ -203,45 +203,16 @@ function nextBlock(){
   loadBlock();
 }
 
-let utter = null;
-let isPaused = false;
-let isSpeaking = false;
-
 function playAudio(){
 
-  // Si está hablando → pausar
-  if (isSpeaking && !isPaused) {
-    speechSynthesis.pause();
-    isPaused = true;
-    return;
-  }
+  speechSynthesis.cancel(); // limpiar cualquier audio anterior
 
-  // Si está pausado → continuar
-  if (isPaused) {
-    speechSynthesis.resume();
-    isPaused = false;
-    return;
-  }
+  const msg = new SpeechSynthesisUtterance(blocks[index].sentence);
+  msg.lang = "en-US";
+  msg.rate = 0.7; // más lento
 
-  // Si no ha iniciado → comenzar
-  utter = new SpeechSynthesisUtterance(blocks[index].sentence);
+  speechSynthesis.speak(msg);
 
-  utter.lang = "en-US";
-  utter.rate = 0.7;   // 🔥 velocidad más lenta
-  utter.pitch = 1;
-  utter.volume = 1;
-
-  utter.onstart = () => {
-    isSpeaking = true;
-    isPaused = false;
-  };
-
-  utter.onend = () => {
-    isSpeaking = false;
-    isPaused = false;
-  };
-
-  speechSynthesis.speak(utter);
 }
 
 
