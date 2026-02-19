@@ -1,25 +1,22 @@
 <?php
 require_once __DIR__."/../../config/db.php";
 
-$unit = $_GET['unit'] ?? null;
-if (!$unit) die("Unidad no especificada");
+$unit = $_GET["unit"] ?? null;
+if(!$unit) die("Unit missing");
 
-/* =========================
-   OBTENER ACTIVIDAD
-========================= */
+/* ========= LOAD FROM DB ========= */
+
 $stmt = $pdo->prepare("
-    SELECT data
-    FROM activities
-    WHERE unit_id = :unit
-    AND type = 'pronunciation'
+    SELECT data FROM activities
+    WHERE unit_id = :u AND type = 'listen_order'
 ");
-$stmt->execute(["unit"=>$unit]);
+$stmt->execute(["u"=>$unit]);
+
 $row = $stmt->fetch(PDO::FETCH_ASSOC);
+$blocks = json_decode($row["data"] ?? "[]", true);
 
-$data = json_decode($row["data"] ?? "[]", true);
-
-if(empty($data)){
-    die("No hay palabras para esta unidad");
+if(!$blocks || count($blocks) == 0){
+    die("No activities for this unit");
 }
 ?>
 
@@ -27,199 +24,231 @@ if(empty($data)){
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Pronunciation Practice</title>
+<title>Listen & Order</title>
 
 <style>
 body{
-    font-family: Arial;
-    background:#eef6ff;
-    padding:30px;
+  font-family: Arial;
+  background:#eef6ff;
+  text-align:center;
+  padding:20px;
 }
 
-.back-btn{
-    display:inline-block;
-    background:#16a34a;
-    color:white;
-    padding:10px 18px;
-    border-radius:12px;
-    text-decoration:none;
-    font-weight:bold;
-    margin-bottom:20px;
+h1{color:#0b5ed7;}
+
+#sentenceBox{
+  margin:20px auto;
+  padding:15px;
+  background:white;
+  border-radius:15px;
+  max-width:700px;
 }
 
-h1{
-    text-align:center;
-    color:#0b5ed7;
-    margin-bottom:5px;
-}
-
-.subtitle{
-    text-align:center;
-    color:#666;
-    margin-bottom:30px;
-}
-
-.grid{
-    display:grid;
-    grid-template-columns: repeat(auto-fill, minmax(220px,1fr));
-    gap:20px;
-}
-
-.card{
-    background:white;
-    border-radius:18px;
-    padding:20px;
-    text-align:center;
-    box-shadow:0 8px 20px rgba(0,0,0,0.05);
-}
-
-.card img{
-    width:90px;
-    height:90px;
-    object-fit:contain;
-    margin-bottom:15px;
+#words, #answer{
+  display:flex;
+  flex-wrap:wrap;
+  justify-content:center;
+  gap:10px;
+  margin:15px 0;
 }
 
 .word{
-    font-size:18px;
-    font-weight:bold;
+  padding:6px;
+  border-radius:12px;
+  background:white;
+  cursor:grab;
+  box-shadow:0 2px 6px rgba(0,0,0,.15);
 }
 
-.phonetic{
-    font-size:14px;
-    color:#666;
+.word img{
+  height:80px;
+  width:auto;
+  display:block;
+  object-fit:contain;
 }
 
-.translation{
-    font-size:14px;
-    margin-top:6px;
+.drop-zone{
+  background:#fff;
+  border:2px dashed #0b5ed7;
+  border-radius:12px;
+  padding:15px;
+  min-height:100px;
 }
 
-.btn{
-    margin:6px 4px;
-    padding:8px 14px;
-    border:none;
-    border-radius:10px;
-    background:#2563eb;
-    color:white;
-    cursor:pointer;
-    font-size:13px;
+button{
+  padding:10px 18px;
+  border:none;
+  border-radius:12px;
+  background:#0b5ed7;
+  color:white;
+  cursor:pointer;
+  margin:6px;
 }
 
-.feedback{
-    margin-top:10px;
-    font-weight:bold;
-    font-size:14px;
+#feedback{
+  font-size:18px;
+  font-weight:bold;
 }
 
-.good{ color:green; }
-.bad{ color:crimson; }
+.good{color:green;}
+.bad{color:crimson;}
 
-.finish{
-    text-align:center;
-    margin-top:30px;
-    font-size:18px;
-    font-weight:bold;
-    color:green;
+.back{
+  display:inline-block;
+  margin-top:20px;
+  background:#16a34a;
+  color:white;
+  padding:10px 18px;
+  border-radius:12px;
+  text-decoration:none;
+  font-weight:bold;
 }
 </style>
 </head>
+
 <body>
 
-<a href="../hub/index.php?unit=<?= urlencode($unit) ?>" class="back-btn">
-    ↩ Back
+<h1>🎧 Listen & Order</h1>
+
+<div id="sentenceBox">
+  <button onclick="playAudio()">🔊 Listen</button>
+</div>
+
+<div id="words"></div>
+<div id="answer" class="drop-zone"></div>
+
+<div>
+  <button onclick="checkOrder()">✅ Check</button>
+  <button onclick="nextBlock()">➡️</button>
+</div>
+
+<div id="feedback"></div>
+
+<a class="back" href="../hub/index.php?unit=<?= urlencode($unit) ?>">
+↩ Back
 </a>
-
-
-<h1>Pronunciation Practice</h1>
-<div class="subtitle">Listen and speak the correct word.</div>
-
-<div class="grid">
-
-<?php foreach($data as $item): ?>
-
-<div class="card">
-
-    <?php if(!empty($item["image"])): ?>
-        <img src="<?= htmlspecialchars($item["image"]) ?>">
-    <?php endif; ?>
-
-    <div class="word"><?= htmlspecialchars($item["word"]) ?></div>
-
-    <?php if(!empty($item["phonetic"])): ?>
-        <div class="phonetic">/<?= htmlspecialchars($item["phonetic"]) ?>/</div>
-    <?php endif; ?>
-
-    <?php if(!empty($item["translation"])): ?>
-        <div class="translation"><?= htmlspecialchars($item["translation"]) ?></div>
-    <?php endif; ?>
-
-    <div>
-        <button class="btn" onclick="listenWord('<?= htmlspecialchars($item["word"]) ?>')">
-            🔊 Listen
-        </button>
-        <button class="btn" onclick="speakWord(this,'<?= strtolower(htmlspecialchars($item["word"])) ?>')">
-            🎤 Speak
-        </button>
-    </div>
-
-    <div class="feedback"></div>
-
-</div>
-
-<?php endforeach; ?>
-
-</div>
-
-<div id="finishMessage" class="finish"></div>
 
 <script>
 
-let completed = 0;
-const total = document.querySelectorAll(".card").length;
+const blocks = <?= json_encode($blocks, JSON_UNESCAPED_UNICODE) ?>;
 
-/* LISTEN */
-function listenWord(word){
-    const msg = new SpeechSynthesisUtterance(word);
-    msg.lang = "en-US";
-    speechSynthesis.speak(msg);
+let index = 0;
+let correct = [];
+let dragged = null;
+
+/* ===== TTS CONTROL ===== */
+
+let utter = null;
+let isPaused = false;
+let isSpeaking = false;
+
+function playAudio(){
+
+  if (isSpeaking && !isPaused) {
+    speechSynthesis.pause();
+    isPaused = true;
+    return;
+  }
+
+  if (isPaused) {
+    speechSynthesis.resume();
+    isPaused = false;
+    return;
+  }
+
+  utter = new SpeechSynthesisUtterance(blocks[index].sentence);
+
+  utter.lang = "en-US";
+  utter.rate = 0.7;
+  utter.pitch = 1;
+  utter.volume = 1;
+
+  utter.onstart = () => {
+    isSpeaking = true;
+    isPaused = false;
+  };
+
+  utter.onend = () => {
+    isSpeaking = false;
+    isPaused = false;
+  };
+
+  speechSynthesis.speak(utter);
 }
 
-/* SPEAK + VALIDAR */
-function speakWord(button, correctWord){
+/* ===== GAME LOGIC ===== */
 
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+const wordsDiv = document.getElementById("words");
+const answerDiv = document.getElementById("answer");
+const feedback = document.getElementById("feedback");
 
-    if(!SpeechRecognition){
-        return;
-    }
+function loadBlock(){
 
-    const recognition = new SpeechRecognition();
-    recognition.lang = "en-US";
-    recognition.start();
+  speechSynthesis.cancel();
+  isSpeaking = false;
+  isPaused = false;
 
-    const card = button.closest(".card");
-    const feedback = card.querySelector(".feedback");
+  dragged = null;
+  feedback.textContent="";
+  feedback.className="";
 
-    recognition.onresult = function(event){
-        let spoken = event.results[0][0].transcript.toLowerCase().trim();
+  wordsDiv.innerHTML="";
+  answerDiv.innerHTML="";
 
-        if(spoken === correctWord){
-            feedback.textContent = "🌟 Excellent!";
-            feedback.className = "feedback good";
+  const block = blocks[index];
+  correct = [...block.images];
 
-            completed++;
-            if(completed >= total){
-                document.getElementById("finishMessage")
-                    .textContent = "🏆 You finished all words!";
-            }
+  let shuffled = [...correct].sort(()=>Math.random()-0.5);
 
-        }else{
-            feedback.textContent = "🔁 Try again!";
-            feedback.className = "feedback bad";
-        }
-    };
+  shuffled.forEach(src=>{
+    const div=document.createElement("div");
+    div.className="word";
+    div.draggable=true;
+    div.dataset.src=src;
+
+    const img=document.createElement("img");
+    img.src=src; // 🔥 Cloudinary URL directa
+
+    div.appendChild(img);
+
+    div.addEventListener("dragstart",()=>dragged=div);
+    wordsDiv.appendChild(div);
+  });
 }
+
+answerDiv.addEventListener("dragover", e=>e.preventDefault());
+
+answerDiv.addEventListener("drop", ()=>{
+  if(dragged) answerDiv.appendChild(dragged);
+});
+
+function checkOrder(){
+
+  const built=[...answerDiv.children].map(x=>x.dataset.src);
+
+  if(JSON.stringify(built)===JSON.stringify(correct)){
+    feedback.textContent="🌟 Excellent!";
+    feedback.className="good";
+  }else{
+    feedback.textContent="🔁 Try again!";
+    feedback.className="bad";
+  }
+}
+
+function nextBlock(){
+
+  index++;
+
+  if(index>=blocks.length){
+    feedback.textContent="🏆 Completed!";
+    feedback.className="good";
+    return;
+  }
+
+  loadBlock();
+}
+
+loadBlock();
 
 </script>
 
