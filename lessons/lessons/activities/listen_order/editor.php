@@ -215,8 +215,8 @@ button:hover{
 
 <br>
 
-<a href="../hub/index.php?unit=<?= $unit ?>">
-<button class="green">↩ Volver al Hub</button>
+<a href="../hub/index.php?unit=<?= urlencode($unit) ?>">
+<button class="green">↩ Back</button>
 </a>
 
 </div>
