@@ -14,6 +14,8 @@ if (!isset($data[$unit])) {
 
 /* ========= UPLOAD DIR ========= */
 $uploadDir = __DIR__ . "/uploads/" . $unit;
+$publicPath = "activities/listen_order/uploads/" . $unit;
+
 if (!is_dir($uploadDir)) mkdir($uploadDir, 0777, true);
 
 /* ========= GUARDAR ========= */
@@ -26,12 +28,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!empty($_FILES['audio']['name'])) {
 
         $audioName = time() . "_" . basename($_FILES['audio']['name']);
+
         move_uploaded_file(
             $_FILES['audio']['tmp_name'],
             $uploadDir . "/" . $audioName
         );
 
-        $audioPath = "activities/listen_order/uploads/$unit/$audioName";
+        $audioPath = $publicPath . "/" . $audioName;
     }
 
     /* IMAGENES */
@@ -48,7 +51,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $uploadDir . "/" . $imgName
             );
 
-            $images[] = "activities/listen_order/uploads/$unit/$imgName";
+            $images[] = $publicPath . "/" . $imgName;
         }
     }
 
@@ -150,6 +153,7 @@ button:hover{
     height:60px;
     margin-right:6px;
     border-radius:8px;
+    object-fit:contain;
 }
 
 .delete{
@@ -197,7 +201,7 @@ button:hover{
 
 <div class="imgs">
 <?php foreach($b["images"] as $img): ?>
-<img src="../../<?= $img ?>">
+<img src="../../<?= htmlspecialchars($img) ?>">
 <?php endforeach; ?>
 </div>
 
