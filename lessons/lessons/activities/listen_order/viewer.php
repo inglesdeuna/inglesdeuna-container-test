@@ -59,6 +59,7 @@ h1{color:#0b5ed7;}
   height:80px;
   width:auto;
   display:block;
+  object-fit:contain;
 }
 
 .drop-zone{
@@ -125,7 +126,7 @@ a.back{
 
 <script>
 
-const blocks = <?= json_encode($blocks) ?>;
+const blocks = <?= json_encode($blocks, JSON_UNESCAPED_UNICODE) ?>;
 
 let index = 0;
 let correct = [];
@@ -157,7 +158,7 @@ function loadBlock(){
     div.dataset.src=src;
 
     const img=document.createElement("img");
-    img.src="../../"+src;
+    img.src=src;   // ✅ CORREGIDO (sin ../../)
 
     div.appendChild(img);
 
@@ -200,7 +201,7 @@ function nextBlock(){
 }
 
 function playAudio(){
-  const audio=new Audio("../../"+blocks[index].audio);
+  const audio=new Audio(blocks[index].audio); // ✅ CORREGIDO
   audio.play();
 }
 
