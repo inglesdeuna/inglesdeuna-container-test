@@ -136,6 +136,11 @@ const wordsDiv = document.getElementById("words");
 const answerDiv = document.getElementById("answer");
 const feedback = document.getElementById("feedback");
 
+/* 🔥 BASE PATH AUTOMÁTICO */
+const BASE_PATH = "/lessons/lessons/";
+
+/* ====================== */
+
 function loadBlock(){
 
   dragged=null;
@@ -158,7 +163,9 @@ function loadBlock(){
     div.dataset.src=src;
 
     const img=document.createElement("img");
-    img.src=src;   // ✅ CORREGIDO (sin ../../)
+
+    /* 🔥 CORRECCIÓN AQUÍ */
+    img.src = BASE_PATH + src;
 
     div.appendChild(img);
 
@@ -201,7 +208,9 @@ function nextBlock(){
 }
 
 function playAudio(){
-  const audio=new Audio(blocks[index].audio); // ✅ CORREGIDO
+
+  /* 🔥 CORRECCIÓN AQUÍ */
+  const audio=new Audio(BASE_PATH + blocks[index].audio);
   audio.play();
 }
 
