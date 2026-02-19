@@ -204,8 +204,10 @@ function nextBlock(){
 }
 
 function playAudio(){
-  const audio=new Audio(BASE_PATH + blocks[index].audio);
-  audio.play();
+  const utter = new SpeechSynthesisUtterance(blocks[index].sentence);
+  utter.lang = "en-US";
+  speechSynthesis.speak(utter);
+
 }
 
 loadBlock();
