@@ -1,6 +1,5 @@
 <?php
 require_once __DIR__."/../../config/db.php";
-require_once __DIR__."/../../core/cloudinary_upload.php";
 
 $unit = $_GET["unit"] ?? null;
 if(!$unit) die("Unit missing");
@@ -9,12 +8,16 @@ if(!$unit) die("Unit missing");
 
 $stmt = $pdo->prepare("
     SELECT data FROM activities
-    WHERE unit_id = :unit AND type = 'match'
+    WHERE unit_id = :u AND type = 'match'
 ");
-$stmt->execute(["unit"=>$unit]);
+$stmt->execute(["u"=>$unit]);
 
 $row = $stmt->fetch(PDO::FETCH_ASSOC);
-$data = json_decode($row["data"] ?? "[]", true);
+$data = [];
+
+if($row && !empty($row["data"])){
+    $data = json_decode($row["data"], true) ?? [];
+}
 
 /* ================= DELETE ================= */
 
@@ -30,14 +33,14 @@ if(isset($_GET["delete"])){
 
     $stmt = $pdo->prepare("
         INSERT INTO activities (id,unit_id,type,data)
-        VALUES (gen_random_uuid(),:unit,'match',:data)
+        VALUES (gen_random_uuid(),:u,'match',:d)
         ON CONFLICT (unit_id,type)
         DO UPDATE SET data = EXCLUDED.data
     ");
 
     $stmt->execute([
-        "unit"=>$unit,
-        "data"=>$json
+        "u"=>$unit,
+        "d"=>$json
     ]);
 
     header("Location: editor.php?unit=".$unit);
@@ -56,7 +59,30 @@ if($_SERVER["REQUEST_METHOD"]==="POST"){
             if($text=="") continue;
             if(empty($_FILES["image"]["tmp_name"][$i])) continue;
 
-            $imageUrl = uploadImageToCloudinary($_FILES["image"]["tmp_name"][$i]);
+            /* ===== Cloudinary Upload (inline como Flashcards) ===== */
+
+            $cloud = $_ENV["CLOUDINARY_CLOUD_NAME"];
+            $key = $_ENV["CLOUDINARY_API_KEY"];
+            $secret = $_ENV["CLOUDINARY_API_SECRET"];
+
+            $timestamp = time();
+            $signature = sha1("timestamp=$timestamp$secret");
+
+            $ch = curl_init();
+            curl_setopt($ch, CURLOPT_URL, "https://api.cloudinary.com/v1_1/$cloud/image/upload");
+            curl_setopt($ch, CURLOPT_POST, 1);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_POSTFIELDS, [
+                "file" => new CURLFile($_FILES["image"]["tmp_name"][$i]),
+                "api_key"=>$key,
+                "timestamp"=>$timestamp,
+                "signature"=>$signature
+            ]);
+
+            $response = json_decode(curl_exec($ch), true);
+            curl_close($ch);
+
+            $imageUrl = $response["secure_url"] ?? "";
             if(!$imageUrl) continue;
 
             $data[] = [
@@ -70,14 +96,14 @@ if($_SERVER["REQUEST_METHOD"]==="POST"){
 
         $stmt = $pdo->prepare("
             INSERT INTO activities (id,unit_id,type,data)
-            VALUES (gen_random_uuid(),:unit,'match',:data)
+            VALUES (gen_random_uuid(),:u,'match',:d)
             ON CONFLICT (unit_id,type)
             DO UPDATE SET data = EXCLUDED.data
         ");
 
         $stmt->execute([
-            "unit"=>$unit,
-            "data"=>$json
+            "u"=>$unit,
+            "d"=>$json
         ]);
     }
 
