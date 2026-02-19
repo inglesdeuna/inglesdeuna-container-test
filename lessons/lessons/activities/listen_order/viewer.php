@@ -203,12 +203,47 @@ function nextBlock(){
   loadBlock();
 }
 
-function playAudio(){
-  const utter = new SpeechSynthesisUtterance(blocks[index].sentence);
-  utter.lang = "en-US";
-  speechSynthesis.speak(utter);
+let utter = null;
+let isPaused = false;
+let isSpeaking = false;
 
+function playAudio(){
+
+  // Si está hablando → pausar
+  if (isSpeaking && !isPaused) {
+    speechSynthesis.pause();
+    isPaused = true;
+    return;
+  }
+
+  // Si está pausado → continuar
+  if (isPaused) {
+    speechSynthesis.resume();
+    isPaused = false;
+    return;
+  }
+
+  // Si no ha iniciado → comenzar
+  utter = new SpeechSynthesisUtterance(blocks[index].sentence);
+
+  utter.lang = "en-US";
+  utter.rate = 0.7;   // 🔥 velocidad más lenta
+  utter.pitch = 1;
+  utter.volume = 1;
+
+  utter.onstart = () => {
+    isSpeaking = true;
+    isPaused = false;
+  };
+
+  utter.onend = () => {
+    isSpeaking = false;
+    isPaused = false;
+  };
+
+  speechSynthesis.speak(utter);
 }
+
 
 loadBlock();
 
