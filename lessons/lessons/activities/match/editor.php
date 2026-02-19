@@ -4,29 +4,21 @@ require_once __DIR__."/../../config/db.php";
 $unit = $_GET["unit"] ?? null;
 if(!$unit) die("Unit missing");
 
-/* ================= LOAD ================= */
-
-$stmt = $pdo->prepare("
-    SELECT data FROM activities
-    WHERE unit_id = :u AND type = 'match'
-");
-$stmt->execute(["u"=>$unit]);
-
-$row = $stmt->fetch(PDO::FETCH_ASSOC);
-$data = [];
-
-if($row && !empty($row["data"])){
-    $data = json_decode($row["data"], true) ?? [];
-}
-
-/* ================= DELETE ================= */
+/* ================= HANDLE DELETE ================= */
 
 if(isset($_GET["delete"])){
 
-    $id = $_GET["delete"];
+    $stmt = $pdo->prepare("
+        SELECT data FROM activities
+        WHERE unit_id = :u AND type = 'match'
+    ");
+    $stmt->execute(["u"=>$unit]);
 
-    $data = array_filter($data, function($p) use ($id){
-        return $p["id"] !== $id;
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+    $data = json_decode($row["data"] ?? "[]", true);
+
+    $data = array_filter($data, function($p){
+        return $p["id"] !== $_GET["delete"];
     });
 
     $json = json_encode(array_values($data), JSON_UNESCAPED_UNICODE);
@@ -47,19 +39,24 @@ if(isset($_GET["delete"])){
     exit;
 }
 
-/* ================= SAVE ================= */
+/* ================= HANDLE SAVE ================= */
 
 if($_SERVER["REQUEST_METHOD"]==="POST"){
 
-    if(isset($_POST["text"]) && is_array($_POST["text"])){
+    $stmt = $pdo->prepare("
+        SELECT data FROM activities
+        WHERE unit_id = :u AND type = 'match'
+    ");
+    $stmt->execute(["u"=>$unit]);
+
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+    $data = json_decode($row["data"] ?? "[]", true);
+
+    if(isset($_POST["text"])){
 
         foreach($_POST["text"] as $i=>$text){
 
-            $text = trim($text);
-            if($text=="") continue;
-            if(empty($_FILES["image"]["tmp_name"][$i])) continue;
-
-            /* ===== Cloudinary Upload (inline como Flashcards) ===== */
+            if(trim($text)=="" || empty($_FILES["image"]["tmp_name"][$i])) continue;
 
             $cloud = $_ENV["CLOUDINARY_CLOUD_NAME"];
             $key = $_ENV["CLOUDINARY_API_KEY"];
@@ -86,9 +83,9 @@ if($_SERVER["REQUEST_METHOD"]==="POST"){
             if(!$imageUrl) continue;
 
             $data[] = [
-                "id" => uniqid(),
-                "text" => $text,
-                "image" => $imageUrl
+                "id"=>uniqid(),
+                "text"=>$text,
+                "image"=>$imageUrl
             ];
         }
 
@@ -110,4 +107,15 @@ if($_SERVER["REQUEST_METHOD"]==="POST"){
     header("Location: editor.php?unit=".$unit);
     exit;
 }
+
+/* ================= LOAD FOR DISPLAY ================= */
+
+$stmt = $pdo->prepare("
+    SELECT data FROM activities
+    WHERE unit_id = :u AND type = 'match'
+");
+$stmt->execute(["u"=>$unit]);
+
+$row = $stmt->fetch(PDO::FETCH_ASSOC);
+$data = json_decode($row["data"] ?? "[]", true);
 ?>
