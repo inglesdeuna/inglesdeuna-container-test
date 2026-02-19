@@ -8,7 +8,7 @@ if(!$unit) die("Unit missing");
 
 $stmt = $pdo->prepare("
     SELECT data FROM activities
-    WHERE unit_id = :u AND type = 'flashcards'
+    WHERE unit_id = :u AND type = 'listen_order'
 ");
 $stmt->execute(["u"=>$unit]);
 
@@ -29,7 +29,7 @@ if(isset($_GET["delete"])){
 
     $stmt = $pdo->prepare("
         INSERT INTO activities(id,unit_id,type,data)
-        VALUES(gen_random_uuid(),:u,'flashcards',:d)
+        VALUES(gen_random_uuid(),:u,'listen_order',:d)
         ON CONFLICT (unit_id,type)
         DO UPDATE SET data = EXCLUDED.data
     ");
@@ -47,149 +47,68 @@ if(isset($_GET["delete"])){
 
 if($_SERVER["REQUEST_METHOD"]==="POST"){
 
-    $text = trim($_POST["text"] ?? "");
+    $sentence = trim($_POST["sentence"] ?? "");
+    $images = [];
 
-    if($text != ""){
+    if($sentence != ""){
 
-        $imgPath = "";
+        if(!empty($_FILES["images"]["tmp_name"][0])){
 
-        if(!empty($_FILES["image"]["tmp_name"])){
+            foreach($_FILES["images"]["tmp_name"] as $i=>$tmp){
 
-            $cloud = $_ENV["CLOUDINARY_CLOUD_NAME"];
-            $key = $_ENV["CLOUDINARY_API_KEY"];
-            $secret = $_ENV["CLOUDINARY_API_SECRET"];
+                if(!$tmp) continue;
 
-            $timestamp = time();
-            $signature = sha1("timestamp=$timestamp$secret");
+                $cloud = $_ENV["CLOUDINARY_CLOUD_NAME"];
+                $key = $_ENV["CLOUDINARY_API_KEY"];
+                $secret = $_ENV["CLOUDINARY_API_SECRET"];
 
-            $ch = curl_init();
-            curl_setopt($ch, CURLOPT_URL, "https://api.cloudinary.com/v1_1/$cloud/image/upload");
-            curl_setopt($ch, CURLOPT_POST, 1);
-            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-            curl_setopt($ch, CURLOPT_POSTFIELDS, [
-                "file" => new CURLFile($_FILES["image"]["tmp_name"]),
-                "api_key"=>$key,
-                "timestamp"=>$timestamp,
-                "signature"=>$signature
-            ]);
+                $timestamp = time();
+                $signature = sha1("timestamp=$timestamp$secret");
 
-            $response = json_decode(curl_exec($ch), true);
-            curl_close($ch);
+                $ch = curl_init();
+                curl_setopt($ch, CURLOPT_URL, "https://api.cloudinary.com/v1_1/$cloud/image/upload");
+                curl_setopt($ch, CURLOPT_POST, 1);
+                curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+                curl_setopt($ch, CURLOPT_POSTFIELDS, [
+                    "file" => new CURLFile($tmp),
+                    "api_key"=>$key,
+                    "timestamp"=>$timestamp,
+                    "signature"=>$signature
+                ]);
 
-            $imgPath = $response["secure_url"] ?? "";
+                $response = json_decode(curl_exec($ch), true);
+                curl_close($ch);
+
+                if(!empty($response["secure_url"])){
+                    $images[] = $response["secure_url"];
+                }
+            }
         }
 
-        $data[] = [
-            "text"=>$text,
-            "image"=>$imgPath
-        ];
+        if(count($images) > 0){
 
-        $json = json_encode($data, JSON_UNESCAPED_UNICODE);
+            $data[] = [
+                "sentence"=>$sentence,
+                "images"=>$images
+            ];
 
-        $stmt = $pdo->prepare("
-            INSERT INTO activities(id,unit_id,type,data)
-            VALUES(gen_random_uuid(),:u,'flashcards',:d)
-            ON CONFLICT (unit_id,type)
-            DO UPDATE SET data = EXCLUDED.data
-        ");
+            $json = json_encode($data, JSON_UNESCAPED_UNICODE);
 
-        $stmt->execute([
-            "u"=>$unit,
-            "d"=>$json
-        ]);
+            $stmt = $pdo->prepare("
+                INSERT INTO activities(id,unit_id,type,data)
+                VALUES(gen_random_uuid(),:u,'listen_order',:d)
+                ON CONFLICT (unit_id,type)
+                DO UPDATE SET data = EXCLUDED.data
+            ");
+
+            $stmt->execute([
+                "u"=>$unit,
+                "d"=>$json
+            ]);
+        }
     }
 
     header("Location: editor.php?unit=".$unit);
     exit;
 }
 ?>
-
-<!DOCTYPE html>
-<html>
-<head>
-<meta charset="UTF-8">
-<title>Flashcards Editor</title>
-<link rel="stylesheet" href="../../assets/css/ui.css">
-
-<style>
-.list{ margin-top:20px; }
-
-.item{
-    display:flex;
-    align-items:center;
-    justify-content:space-between;
-    background:#f7f7f7;
-    padding:12px;
-    border-radius:12px;
-    margin-bottom:10px;
-}
-
-.item img{
-    width:50px;
-    height:50px;
-    object-fit:contain;
-    margin-right:10px;
-}
-
-.left{
-    display:flex;
-    align-items:center;
-    gap:10px;
-}
-
-.delete{
-    color:red;
-    font-weight:bold;
-    text-decoration:none;
-}
-</style>
-</head>
-
-<body>
-
-<div class="box">
-
-<h1 class="title">🃏 Flashcards Editor</h1>
-
-<form method="post" enctype="multipart/form-data">
-<input name="text" placeholder="Write the word" required>
-<input type="file" name="image">
-<button type="submit" class="primary-btn">💾 Save</button>
-</form>
-
-<div class="list">
-
-<h3>📚 Flashcards</h3>
-
-<?php if(empty($data)): ?>
-<p>No flashcards yet.</p>
-<?php endif; ?>
-
-<?php foreach($data as $i=>$item): ?>
-<div class="item">
-    <div class="left">
-        <?php if(!empty($item["image"])): ?>
-            <img src="<?= $item["image"] ?>">
-        <?php endif; ?>
-        <strong><?= htmlspecialchars($item["text"]) ?></strong>
-    </div>
-
-    <a class="delete"
-       href="?unit=<?= urlencode($unit) ?>&delete=<?= $i ?>">
-       ❌
-    </a>
-</div>
-<?php endforeach; ?>
-
-</div>
-
-<button 
-class="back-btn"
-onclick="window.location.href='../hub/index.php?unit=<?= urlencode($unit) ?>'">
-↩ Back
-</button>
-
-</div>
-
-</body>
-</html>
