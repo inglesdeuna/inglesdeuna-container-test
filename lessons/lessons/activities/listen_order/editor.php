@@ -21,23 +21,9 @@ if (!is_dir($uploadDir)) mkdir($uploadDir, 0777, true);
 /* ========= GUARDAR ========= */
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
+    $sentence = trim($_POST['sentence'] ?? "");
     $images = [];
-    $audioPath = null;
 
-    /* AUDIO */
-    if (!empty($_FILES['audio']['name'])) {
-
-        $audioName = time() . "_" . basename($_FILES['audio']['name']);
-
-        move_uploaded_file(
-            $_FILES['audio']['tmp_name'],
-            $uploadDir . "/" . $audioName
-        );
-
-        $audioPath = $publicPath . "/" . $audioName;
-    }
-
-    /* IMAGENES */
     if (!empty($_FILES['images']['name'][0])) {
 
         foreach ($_FILES['images']['name'] as $i => $name) {
@@ -55,10 +41,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    if ($audioPath && count($images) > 0) {
+    if ($sentence && count($images) > 0) {
 
         $data[$unit][] = [
-            "audio" => $audioPath,
+            "sentence" => $sentence,
             "images" => $images
         ];
 
@@ -112,11 +98,9 @@ h2{
     margin-bottom:20px;
 }
 
-label{
-    font-weight:bold;
-}
-
-input[type=file]{
+input[type=text], input[type=file]{
+    width:100%;
+    padding:8px;
     margin-top:6px;
     margin-bottom:15px;
 }
@@ -128,11 +112,6 @@ button{
     padding:10px 18px;
     border-radius:10px;
     cursor:pointer;
-    margin-top:5px;
-}
-
-button:hover{
-    opacity:.9;
 }
 
 .green{
@@ -163,7 +142,6 @@ button:hover{
     font-weight:bold;
 }
 </style>
-
 </head>
 <body>
 
@@ -173,31 +151,26 @@ button:hover{
 
 <form method="post" enctype="multipart/form-data">
 
-<label>Audio MP3</label><br>
-<input type="file" name="audio" accept="audio/mp3,audio/mpeg" required>
+<label>Sentence (what the system will read)</label>
+<input type="text" name="sentence" required>
 
-<br>
-
-<label>Imágenes</label><br>
+<label>Images</label>
 <input type="file" name="images[]" multiple accept="image/*" required>
 
-<br>
-
-<button type="submit">💾 Guardar</button>
+<button type="submit">💾 Save</button>
 
 </form>
 
 <hr>
 
-<h3>📦 Bloques</h3>
+<h3>📦 Blocks</h3>
 
 <?php foreach($data[$unit] as $i=>$b): ?>
 
 <div class="block">
 
 <div>
-
-<div>🎧 Audio ✓</div>
+<div>📝 <?= htmlspecialchars($b["sentence"]) ?></div>
 
 <div class="imgs">
 <?php foreach($b["images"] as $img): ?>
