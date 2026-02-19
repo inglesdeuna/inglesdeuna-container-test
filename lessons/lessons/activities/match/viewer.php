@@ -4,178 +4,183 @@ require_once __DIR__."/../../config/db.php";
 $unit = $_GET["unit"] ?? null;
 if(!$unit) die("Unit missing");
 
-/* =====================
-CARGAR DATA
-===================== */
+/* ================= LOAD ================= */
+
 $stmt = $pdo->prepare("
-SELECT data FROM activities
-WHERE unit_id=:unit AND type='match'
+    SELECT data FROM activities
+    WHERE unit_id = :unit AND type = 'match'
 ");
 $stmt->execute(["unit"=>$unit]);
 
 $row = $stmt->fetch(PDO::FETCH_ASSOC);
 $data = json_decode($row["data"] ?? "[]", true);
 
-if(!$data) echo "<p>No match data yet</p>";
+if(empty($data)){
+    die("No pairs for this unit");
+}
 ?>
+
 <!DOCTYPE html>
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Match Activity</title>
+<title>Match Game</title>
 
 <style>
-
 body{
-font-family: Arial;
-background:#eef6ff;
-padding:20px;
+  font-family:Arial;
+  background:#eef6ff;
+  text-align:center;
+  padding:20px;
 }
 
 h1{
-text-align:center;
-color:#0b5ed7;
+  color:#0b5ed7;
 }
 
-.container{
-display:grid;
-grid-template-columns:1fr 1fr;
-gap:25px;
-}
-
-/* GRID */
-.images, .words{
-display:grid;
-grid-template-columns:repeat(6,1fr);
-gap:16px;
-}
-
-@media(max-width:1200px){
-.images,.words{ grid-template-columns:repeat(4,1fr); }
-}
-
-@media(max-width:700px){
-.images,.words{ grid-template-columns:repeat(2,1fr); }
+.grid{
+  display:grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px,1fr));
+  gap:15px;
+  max-width:800px;
+  margin:20px auto;
 }
 
 .card{
-background:white;
-padding:10px;
-border-radius:14px;
-box-shadow:0 4px 8px rgba(0,0,0,0.1);
+  background:white;
+  padding:15px;
+  border-radius:12px;
+  cursor:pointer;
+  box-shadow:0 4px 10px rgba(0,0,0,.1);
 }
 
-.image{
-width:100%;
-height:110px;
-object-fit:contain;
-cursor:grab;
+.card img{
+  max-width:100%;
+  height:100px;
+  object-fit:contain;
 }
 
-.word{
-height:110px;
-display:flex;
-align-items:center;
-justify-content:center;
-background:white;
-border:2px dashed #0b5ed7;
-border-radius:14px;
-font-weight:bold;
+.card.selected{
+  border:3px solid #0b5ed7;
 }
 
-.correct{
-background:#d4edda;
-border-color:green;
+#feedback{
+  font-weight:bold;
+  margin-top:15px;
 }
 
-.wrong{
-background:#f8d7da;
-border-color:red;
-}
+.good{ color:green; }
+.bad{ color:crimson; }
 
-.hub{
-position:fixed;
-right:20px;
-top:20px;
-background:#28a745;
-color:white;
-padding:10px 18px;
-border-radius:10px;
-text-decoration:none;
+.back{
+  display:inline-block;
+  margin-top:20px;
+  background:#16a34a;
+  color:white;
+  padding:10px 18px;
+  border-radius:12px;
+  text-decoration:none;
+  font-weight:bold;
 }
-
 </style>
 </head>
 
 <body>
 
-<a class="hub" href="../hub/index.php?unit=<?=$unit?>">
-← Volver al Hub
-</a>
-  <a class="hub" href="../hub/index.php?unit=<?=$unit?>">
-← Volver al Hub
-</a>
+<h1>🧩 Match</h1>
 
-<h1>🧩 Match Activity</h1>
+<div class="grid" id="grid"></div>
 
-<div class="container">
-<div class="images" id="images"></div>
-<div class="words" id="words"></div>
-</div>
+<div id="feedback"></div>
+
+<a class="back" href="../hub/index.php?unit=<?= urlencode($unit) ?>">
+↩ Back
+</a>
 
 <script>
 
-const data = <?= json_encode($data) ?>;
+const pairs = <?= json_encode($data, JSON_UNESCAPED_UNICODE) ?>;
 
-const shuffle = arr => arr.sort(()=>Math.random()-0.5);
+let selected = null;
+let matches = 0;
 
-const imagesDiv = document.getElementById("images");
-const wordsDiv = document.getElementById("words");
+const grid = document.getElementById("grid");
+const feedback = document.getElementById("feedback");
 
-/* IMAGENES */
-shuffle([...data]).forEach(item=>{
-imagesDiv.innerHTML += `
-<div class="card">
-<img src="../../${item.image}" class="image"
-draggable="true"
-ondragstart="drag(event)"
-id="${item.id}">
-</div>`;
+/* ================= BUILD CARDS ================= */
+
+let cards = [];
+
+pairs.forEach(p=>{
+  cards.push({type:"text", value:p.text, id:p.id});
+  cards.push({type:"image", value:p.image, id:p.id});
 });
 
-/* TEXTOS */
-shuffle([...data]).forEach(item=>{
-wordsDiv.innerHTML += `
-<div class="word"
-data-id="${item.id}"
-ondragover="allowDrop(event)"
-ondrop="drop(event)">
-${item.text}
-</div>`;
+cards.sort(()=>Math.random()-0.5);
+
+cards.forEach(c=>{
+  const div = document.createElement("div");
+  div.className="card";
+  div.dataset.id=c.id;
+
+  if(c.type==="text"){
+    div.textContent=c.value;
+  }else{
+    const img=document.createElement("img");
+    img.src=c.value; // 🔥 Cloudinary URL directa
+    div.appendChild(img);
+  }
+
+  div.addEventListener("click",()=>selectCard(div,c));
+  grid.appendChild(div);
 });
 
-function allowDrop(e){ e.preventDefault(); }
+/* ================= SELECT ================= */
 
-function drag(e){
-e.dataTransfer.setData("text", e.target.id);
+function selectCard(div,card){
+
+  if(div.classList.contains("matched")) return;
+
+  if(!selected){
+    selected = {div,card};
+    div.classList.add("selected");
+    return;
+  }
+
+  if(selected.card.id === card.id &&
+     selected.card.type !== card.type){
+
+      selected.div.classList.remove("selected");
+      selected.div.classList.add("matched");
+      div.classList.add("matched");
+
+      matches++;
+
+      if(matches === pairs.length){
+        feedback.textContent="🏆 Completed!";
+        feedback.className="good";
+      }
+
+  }else{
+      feedback.textContent="❌ Try again!";
+      feedback.className="bad";
+  }
+
+  selected.div.classList.remove("selected");
+  selected=null;
 }
 
-let correct = 0;
+/* ================= TTS ================= */
 
-function drop(e){
-e.preventDefault();
+function speak(text){
 
-let dragId = e.dataTransfer.getData("text");
-let targetId = e.target.dataset.id;
+  speechSynthesis.cancel();
 
-if(dragId === targetId){
-e.target.classList.add("correct");
-document.getElementById(dragId).style.opacity="0.3";
-correct++;
-}else{
-e.target.classList.add("wrong");
-setTimeout(()=>e.target.classList.remove("wrong"),700);
-}
+  const msg = new SpeechSynthesisUtterance(text);
+  msg.lang="en-US";
+  msg.rate=0.7;
+
+  speechSynthesis.speak(msg);
 }
 
 </script>
