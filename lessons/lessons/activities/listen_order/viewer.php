@@ -88,7 +88,7 @@ button{
 .good{color:green;}
 .bad{color:crimson;}
 
-a.back{
+.back{
   display:inline-block;
   margin-top:20px;
   background:#16a34a;
@@ -121,7 +121,7 @@ a.back{
 <div id="feedback"></div>
 
 <a class="back" href="../hub/index.php?unit=<?= urlencode($unit) ?>">
-↩ Volver al Hub
+↩ Back
 </a>
 
 <script>
@@ -136,10 +136,8 @@ const wordsDiv = document.getElementById("words");
 const answerDiv = document.getElementById("answer");
 const feedback = document.getElementById("feedback");
 
-/* 🔥 BASE PATH AUTOMÁTICO */
+/* 🔥 BASE PATH PARA PRODUCCIÓN */
 const BASE_PATH = "/lessons/lessons/";
-
-/* ====================== */
 
 function loadBlock(){
 
@@ -163,8 +161,6 @@ function loadBlock(){
     div.dataset.src=src;
 
     const img=document.createElement("img");
-
-    /* 🔥 CORRECCIÓN AQUÍ */
     img.src = BASE_PATH + src;
 
     div.appendChild(img);
@@ -199,7 +195,7 @@ function nextBlock(){
   index++;
 
   if(index>=blocks.length){
-    feedback.textContent="🏆 Completado!";
+    feedback.textContent="🏆 Completed!";
     feedback.className="good";
     return;
   }
@@ -208,8 +204,6 @@ function nextBlock(){
 }
 
 function playAudio(){
-
-  /* 🔥 CORRECCIÓN AQUÍ */
   const audio=new Audio(BASE_PATH + blocks[index].audio);
   audio.play();
 }
