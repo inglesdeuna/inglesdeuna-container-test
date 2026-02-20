@@ -1,61 +1,58 @@
-document.addEventListener("DOMContentLoaded", function () {
+document.addEventListener("DOMContentLoaded", () => {
 
   const shuffle = arr => arr.sort(() => Math.random() - 0.5);
-
-  if (typeof MATCH_DATA === "undefined") return;
 
   const imagesDiv = document.getElementById("match-images");
   const wordsDiv  = document.getElementById("match-words");
 
-  if (!imagesDiv || !wordsDiv) return;
-
   imagesDiv.innerHTML = "";
-  wordsDiv.innerHTML  = "";
+  wordsDiv.innerHTML = "";
 
-  shuffle([...MATCH_DATA]).forEach(item => {
+  // IMAGES
+  shuffle([...MATCH_DATA]).forEach(item=>{
     imagesDiv.innerHTML += `
-      <div class="match-card">
+      <div class="card">
         <img src="${item.image}"
              draggable="true"
              data-id="${item.id}"
-             class="match-img">
+             class="image">
       </div>
     `;
   });
 
-  shuffle([...MATCH_DATA]).forEach(item => {
+  // WORDS
+  shuffle([...MATCH_DATA]).forEach(item=>{
     wordsDiv.innerHTML += `
-      <div class="match-word"
+      <div class="word"
            data-id="${item.id}">
         ${item.text}
       </div>
     `;
   });
 
-  document.addEventListener("dragstart", function (e) {
-    if (e.target.classList.contains("match-img")) {
+  document.addEventListener("dragstart", e=>{
+    if(e.target.classList.contains("image")){
       e.dataTransfer.setData("id", e.target.dataset.id);
     }
   });
 
-  document.addEventListener("dragover", function (e) {
-    if (e.target.classList.contains("match-word")) {
+  document.addEventListener("dragover", e=>{
+    if(e.target.classList.contains("word")){
       e.preventDefault();
     }
   });
 
-  document.addEventListener("drop", function (e) {
-    if (e.target.classList.contains("match-word")) {
+  document.addEventListener("drop", e=>{
+    if(e.target.classList.contains("word")){
       e.preventDefault();
-
       const draggedId = e.dataTransfer.getData("id");
-      const targetId  = e.target.dataset.id;
+      const targetId = e.target.dataset.id;
 
-      if (draggedId === targetId) {
+      if(draggedId === targetId){
         e.target.classList.add("correct");
-      } else {
+      }else{
         e.target.classList.add("wrong");
-        setTimeout(() => e.target.classList.remove("wrong"), 800);
+        setTimeout(()=>e.target.classList.remove("wrong"),800);
       }
     }
   });
