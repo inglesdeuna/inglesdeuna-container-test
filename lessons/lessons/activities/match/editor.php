@@ -108,20 +108,37 @@ ob_start();
         <?php
         if (!empty($data)) {
             foreach ($data as $item) {
-                echo '
-                <div style="margin-bottom:12px;">
-                    <input 
-    type="file" 
-    name="image_file[]" 
-    accept="image/*"
-    style="padding:10px;margin:8px;border-radius:10px;border:1px solid #ccc;width:260px;"
->
+               echo '
+<div style="margin-bottom:12px;">
 
-<input 
-    type="hidden" 
-    name="image[]" 
-    value="'.htmlspecialchars($item["image"]).'"
->
+    <input 
+        type="text" 
+        name="text[]" 
+        value="'.htmlspecialchars($item["text"]).'" 
+        placeholder="Text"
+        style="padding:10px;margin:8px;border-radius:10px;border:1px solid #ccc;width:260px;"
+    >
+
+    <input 
+        type="file" 
+        name="image_file[]" 
+        accept="image/*"
+        style="padding:10px;margin:8px;border-radius:10px;border:1px solid #ccc;width:260px;"
+    >
+
+    <input 
+        type="hidden" 
+        name="image[]" 
+        value="'.htmlspecialchars($item["image"]).'"
+    >
+
+    <button 
+        type="button" 
+        onclick="removeItem(this)"
+        style="padding:8px 12px;border:none;border-radius:8px;cursor:pointer;"
+    >✖</button>
+
+</div>';
 
                     <input type="file" name="image_file[]" accept="image/*"
     style="padding:10px;margin:8px;border-radius:10px;border:1px solid #ccc;width:260px;">
