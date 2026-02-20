@@ -82,47 +82,98 @@ $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
 $data = json_decode($row["data"] ?? "[]", true);
 
-/* ==============================
-   TEMPLATE
-============================== */
 require_once __DIR__ . "/../../core/_activity_editor_template.php";
 
 ob_start();
 ?>
 
 <?php if(isset($_GET["saved"])): ?>
-    <p class="success-msg">✔ Guardado correctamente</p>
+    <p style="color:green;font-weight:bold;margin-bottom:15px;">
+        ✔ Guardado correctamente
+    </p>
 <?php endif; ?>
 
-<form method="POST" class="match-editor-form">
+<form method="POST" style="text-align:center;">
 
-    <div id="items-container">
+    <div id="items" style="margin-bottom:25px;">
 
-        <?php if (!empty($data)): ?>
-            <?php foreach ($data as $item): ?>
-                <div class="match-item">
-                    <input type="text"
-                           name="text[]"
-                           value="<?= htmlspecialchars($item["text"]) ?>"
-                           placeholder="Text">
+        <?php
+        if (!empty($data)) {
+            foreach ($data as $item) {
+                echo '
+                <div style="margin-bottom:12px;">
+                    <input 
+                        type="text" 
+                        name="text[]" 
+                        value="'.htmlspecialchars($item["text"]).'" 
+                        placeholder="Text"
+                        style="
+                            padding:10px;
+                            margin:8px;
+                            border-radius:10px;
+                            border:1px solid #ccc;
+                            width:260px;
+                        "
+                    >
 
-                    <input type="text"
-                           name="image[]"
-                           value="<?= htmlspecialchars($item["image"]) ?>"
-                           placeholder="Image URL (Cloudinary)">
+                    <input 
+                        type="text" 
+                        name="image[]" 
+                        value="'.htmlspecialchars($item["image"]).'" 
+                        placeholder="Image URL (Cloudinary)"
+                        style="
+                            padding:10px;
+                            margin:8px;
+                            border-radius:10px;
+                            border:1px solid #ccc;
+                            width:260px;
+                        "
+                    >
 
-                    <button type="button" onclick="removeItem(this)">✖</button>
-                </div>
-            <?php endforeach; ?>
-        <?php endif; ?>
+                    <button 
+                        type="button" 
+                        onclick="removeItem(this)"
+                        style="
+                            padding:8px 12px;
+                            border:none;
+                            border-radius:8px;
+                            cursor:pointer;
+                        "
+                    >✖</button>
+                </div>';
+            }
+        }
+        ?>
 
     </div>
 
-    <button type="button" onclick="addItem()" class="btn-add">
+    <button 
+        type="button" 
+        onclick="addItem()" 
+        style="
+            background:#16a34a;
+            padding:10px 16px;
+            border:none;
+            border-radius:10px;
+            color:white;
+            cursor:pointer;
+            margin-right:10px;
+        "
+    >
         + Add Item
     </button>
 
-    <button type="submit" class="btn-save">
+    <button 
+        type="submit"
+        style="
+            background:#0b5ed7;
+            padding:10px 16px;
+            border:none;
+            border-radius:10px;
+            color:white;
+            cursor:pointer;
+        "
+    >
         💾 Save
     </button>
 
@@ -130,18 +181,25 @@ ob_start();
 
 <script>
 function addItem(){
-    const container = document.getElementById("items-container");
+    const div = document.getElementById("items");
 
-    const div = document.createElement("div");
-    div.className = "match-item";
+    const wrapper = document.createElement("div");
+    wrapper.style.marginBottom = "12px";
 
-    div.innerHTML = `
-        <input type="text" name="text[]" placeholder="Text">
-        <input type="text" name="image[]" placeholder="Image URL (Cloudinary)">
-        <button type="button" onclick="removeItem(this)">✖</button>
+    wrapper.innerHTML = `
+        <input type="text" name="text[]" placeholder="Text"
+            style="padding:10px;margin:8px;border-radius:10px;border:1px solid #ccc;width:260px;">
+
+        <input type="text" name="image[]" placeholder="Image URL (Cloudinary)"
+            style="padding:10px;margin:8px;border-radius:10px;border:1px solid #ccc;width:260px;">
+
+        <button type="button" onclick="removeItem(this)"
+            style="padding:8px 12px;border:none;border-radius:8px;cursor:pointer;">
+            ✖
+        </button>
     `;
 
-    container.appendChild(div);
+    div.appendChild(wrapper);
 }
 
 function removeItem(button){
