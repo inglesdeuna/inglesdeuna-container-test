@@ -18,9 +18,15 @@ $data = json_decode($row["data"] ?? "[]", true);
 ob_start();
 ?>
 
-<div class="container">
-    <div class="images" id="match-images"></div>
-    <div class="words" id="match-words"></div>
+<div class="match-wrapper">
+
+    <h1>🧩 Drag & Drop – Basic Commands</h1>
+
+    <div class="container">
+        <div class="images" id="match-images"></div>
+        <div class="words" id="match-words"></div>
+    </div>
+
 </div>
 
 <link rel="stylesheet" href="match.css">
@@ -30,6 +36,7 @@ const MATCH_DATA = <?= json_encode($data ?? []) ?>;
 </script>
 
 <script src="match.js"></script>
+
 <?php
 $content = ob_get_clean();
 render_activity_viewer("🧩 Match", "🧩", $content);
