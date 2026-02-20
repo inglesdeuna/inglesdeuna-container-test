@@ -1,0 +1,39 @@
+.mc-wrapper{
+  max-width:900px;
+  margin:40px auto;
+}
+
+.mc-question{
+  background:white;
+  padding:20px;
+  border-radius:16px;
+  box-shadow:0 4px 8px rgba(0,0,0,0.1);
+  margin-bottom:20px;
+}
+
+.mc-options{
+  margin-top:15px;
+}
+
+.mc-option{
+  padding:12px;
+  border:2px solid #d1d5db;
+  border-radius:12px;
+  margin-bottom:10px;
+  cursor:pointer;
+  transition:0.2s;
+}
+
+.mc-option:hover{
+  background:#f3f4f6;
+}
+
+.mc-correct{
+  border-color:green;
+  background:#d4edda;
+}
+
+.mc-wrong{
+  border-color:red;
+  background:#f8d7da;
+}
