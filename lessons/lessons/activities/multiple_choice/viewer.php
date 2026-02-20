@@ -1,78 +1,35 @@
 <?php
+require_once __DIR__."/../../config/db.php";
+require_once __DIR__."/../../core/_activity_viewer_template.php";
+
 $unit = $_GET['unit'] ?? null;
-if(!$unit){ die("Unit not specified"); }
+if (!$unit) die("Unidad no especificada");
 
-$jsonFile = __DIR__ . "/multiple_choice.json";
-$data = file_exists($jsonFile)
-    ? json_decode(file_get_contents($jsonFile), true)
-    : [];
+$stmt = $pdo->prepare("
+    SELECT data FROM activities
+    WHERE unit_id = :unit
+    AND type = 'multiple_choice'
+");
+$stmt->execute(["unit"=>$unit]);
+$row = $stmt->fetch(PDO::FETCH_ASSOC);
 
-$questions = $data[$unit] ?? [];
-
-$activityTitle = "Multiple Choice";
-$activitySubtitle = "Choose the correct answer.";
+$data = json_decode($row["data"] ?? "[]", true);
 
 ob_start();
 ?>
 
-<div style="display:flex;flex-direction:column;gap:25px;">
-
-<?php foreach($questions as $index => $q): ?>
-
-<div style="background:white;padding:25px;border-radius:20px;box-shadow:0 8px 20px rgba(0,0,0,0.05);">
-
-<h3><?= htmlspecialchars($q['question']) ?></h3>
-
-<?php if(!empty($q['image'])): ?>
-<img src="<?= $q['image'] ?>" style="width:180px;margin:15px 0;">
-<?php endif; ?>
-
-<div style="display:flex;gap:10px;flex-wrap:wrap;">
-<?php foreach($q['options'] as $i=>$opt): ?>
-<button class="option-btn" onclick="checkAnswer(<?= $index ?>, <?= $i ?>)">
-<?= htmlspecialchars($opt) ?>
-</button>
-<?php endforeach; ?>
+<div class="mc-wrapper">
+    <div id="mc-container"></div>
 </div>
 
-<div id="feedback-<?= $index ?>" class="feedback"></div>
-
-</div>
-
-<?php endforeach; ?>
-
-</div>
-
-<style>
-.option-btn{
-    background:#2563eb;
-    color:white;
-    border:none;
-    padding:8px 15px;
-    border-radius:8px;
-    cursor:pointer;
-}
-.option-btn:hover{
-    background:#1e40af;
-}
-</style>
+<link rel="stylesheet" href="multiple_choice.css">
 
 <script>
-const questions = <?= json_encode($questions) ?>;
-
-function checkAnswer(qIndex, selected){
-    const feedback = document.getElementById("feedback-"+qIndex);
-
-    if(selected === questions[qIndex].correct){
-        feedback.className = "feedback correct";
-        feedback.innerHTML = "⭐ Correct!";
-    }else{
-        feedback.className = "feedback wrong";
-        feedback.innerHTML = "❌ Try Again";
-    }
-}
+const MC_DATA = <?= json_encode($data ?? []) ?>;
 </script>
 
+<script src="multiple_choice.js"></script>
+
 <?php
-$activityContent = ob_get_clean();
-include "../../core/_activity_viewer_template.php";
+$content = ob_get_clean();
+render_activity_viewer("📝 Multiple Choice", "📝", $content);
