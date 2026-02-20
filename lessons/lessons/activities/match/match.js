@@ -1,19 +1,13 @@
 document.addEventListener("DOMContentLoaded", function () {
 
-  if (typeof MATCH_DATA === "undefined") {
-    console.error("MATCH_DATA no está definido");
-    return;
-  }
-
   const shuffle = arr => arr.sort(() => Math.random() - 0.5);
+
+  if (typeof MATCH_DATA === "undefined") return;
 
   const imagesDiv = document.getElementById("match-images");
   const wordsDiv  = document.getElementById("match-words");
 
-  if (!imagesDiv || !wordsDiv) {
-    console.error("Contenedores match-images o match-words no encontrados");
-    return;
-  }
+  if (!imagesDiv || !wordsDiv) return;
 
   imagesDiv.innerHTML = "";
   wordsDiv.innerHTML  = "";
