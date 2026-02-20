@@ -2,6 +2,7 @@
 require_once __DIR__."/../../config/db.php";
 
 $unit = $_GET['unit'] ?? null;
+if (!$unit) die("Unidad no especificada");
 
 $stmt = $pdo->prepare("
   SELECT data FROM activities
@@ -24,11 +25,14 @@ ob_start();
 </div>
 
 <link rel="stylesheet" href="match.css">
+
 <script>
-const MATCH_DATA = <?= json_encode($data) ?>;
+const MATCH_DATA = <?= json_encode($data ?? []) ?>;
 </script>
+
 <script src="match.js"></script>
 
 <?php
 $content = ob_get_clean();
+
 render_activity_viewer("🧩 Match", "🧩", $content);
