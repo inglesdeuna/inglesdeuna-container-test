@@ -9,31 +9,32 @@ if (!$unit) die("Unidad no especificada");
 ============================== */
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
-    $texts  = $_POST["text"] ?? [];
+    $texts      = $_POST["text"] ?? [];
+    $images     = $_POST["image"] ?? [];
     $imageFiles = $_FILES["image_file"] ?? null;
 
     $data = [];
 
     for ($i = 0; $i < count($texts); $i++) {
 
-        $text  = trim($texts[$i]);
-       $imageUrl = $images[$i] ?? "";
+        $text     = trim($texts[$i]);
+        $imageUrl = $images[$i] ?? "";
 
-/* Si el usuario subió una nueva imagen */
-if (!empty($imageFiles["name"][$i])) {
+        // Si el usuario subió una nueva imagen
+        if (!empty($imageFiles["name"][$i])) {
 
-    require_once __DIR__."/../../core/cloudinary_upload.php";
+            require_once __DIR__."/../../core/cloudinary_upload.php";
 
-    $imageUrl = upload_to_cloudinary($imageFiles["tmp_name"][$i]);
-}
+            $imageUrl = upload_to_cloudinary($imageFiles["tmp_name"][$i]);
+        }
 
-       if ($text !== "" && $imageUrl !== "") {
-    $data[] = [
-        "id"    => uniqid(),
-        "text"  => $text,
-        "image" => $imageUrl
-    ];
-}
+        if ($text !== "" && $imageUrl !== "") {
+            $data[] = [
+                "id"    => uniqid(),
+                "text"  => $text,
+                "image" => $imageUrl
+            ];
+        }
     }
 
     $json = json_encode($data);
@@ -105,69 +106,40 @@ ob_start();
 
     <div id="items" style="margin-bottom:25px;">
 
-        <?php
-        if (!empty($data)) {
-            foreach ($data as $item) {
-               echo '
-<div style="margin-bottom:12px;">
+        <?php if (!empty($data)): ?>
+            <?php foreach ($data as $item): ?>
+                <div style="margin-bottom:12px;">
 
-    <input 
-        type="text" 
-        name="text[]" 
-        value="'.htmlspecialchars($item["text"]).'" 
-        placeholder="Text"
-        style="padding:10px;margin:8px;border-radius:10px;border:1px solid #ccc;width:260px;"
-    >
+                    <input 
+                        type="text" 
+                        name="text[]" 
+                        value="<?= htmlspecialchars($item['text']) ?>" 
+                        placeholder="Text"
+                        style="padding:10px;margin:8px;border-radius:10px;border:1px solid #ccc;width:260px;"
+                    >
 
-    <input 
-        type="file" 
-        name="image_file[]" 
-        accept="image/*"
-        style="padding:10px;margin:8px;border-radius:10px;border:1px solid #ccc;width:260px;"
-    >
+                    <input 
+                        type="file" 
+                        name="image_file[]" 
+                        accept="image/*"
+                        style="padding:10px;margin:8px;border-radius:10px;border:1px solid #ccc;width:260px;"
+                    >
 
-    <input 
-        type="hidden" 
-        name="image[]" 
-        value="'.htmlspecialchars($item["image"]).'"
-    >
-
-    <button 
-        type="button" 
-        onclick="removeItem(this)"
-        style="padding:8px 12px;border:none;border-radius:8px;cursor:pointer;"
-    >✖</button>
-
-</div>';
-
-                    <input type="file" name="image_file[]" accept="image/*"
-    style="padding:10px;margin:8px;border-radius:10px;border:1px solid #ccc;width:260px;">
-
-<input type="hidden" name="image[]" value="">
-
-                        style="
-                            padding:10px;
-                            margin:8px;
-                            border-radius:10px;
-                            border:1px solid #ccc;
-                            width:260px;
-                        "
+                    <input 
+                        type="hidden" 
+                        name="image[]" 
+                        value="<?= htmlspecialchars($item['image']) ?>"
                     >
 
                     <button 
                         type="button" 
                         onclick="removeItem(this)"
-                        style="
-                            padding:8px 12px;
-                            border:none;
-                            border-radius:8px;
-                            cursor:pointer;
-                        "
+                        style="padding:8px 12px;border:none;border-radius:8px;cursor:pointer;"
                     >✖</button>
-                </div>';
-            }
-        }
-        ?>
+
+                </div>
+            <?php endforeach; ?>
+        <?php endif; ?>
 
     </div>
 
@@ -214,8 +186,10 @@ function addItem(){
         <input type="text" name="text[]" placeholder="Text"
             style="padding:10px;margin:8px;border-radius:10px;border:1px solid #ccc;width:260px;">
 
-        <input type="text" name="image[]" placeholder="Image URL (Cloudinary)"
+        <input type="file" name="image_file[]" accept="image/*"
             style="padding:10px;margin:8px;border-radius:10px;border:1px solid #ccc;width:260px;">
+
+        <input type="hidden" name="image[]" value="">
 
         <button type="button" onclick="removeItem(this)"
             style="padding:8px 12px;border:none;border-radius:8px;cursor:pointer;">
@@ -233,5 +207,4 @@ function removeItem(button){
 
 <?php
 $content = ob_get_clean();
-
 render_activity_editor("🧩 Match Editor", "🧩", $content);
