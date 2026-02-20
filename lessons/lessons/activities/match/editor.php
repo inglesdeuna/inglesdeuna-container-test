@@ -1,109 +1,155 @@
 <?php
 require_once __DIR__."/../../config/db.php";
 
-$unit = $_GET["unit"] ?? null;
-if(!$unit) die("Unit missing");
+$unit = $_GET['unit'] ?? null;
+if (!$unit) die("Unidad no especificada");
 
-/* ================= LOAD ================= */
+/* ==============================
+   GUARDAR
+============================== */
+if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
-$stmt = $pdo->prepare("
-    SELECT data FROM activities
-    WHERE unit_id = :u AND type = 'match'
-");
-$stmt->execute(["u"=>$unit]);
+    $texts  = $_POST["text"] ?? [];
+    $images = $_POST["image"] ?? [];
 
-$row = $stmt->fetch(PDO::FETCH_ASSOC);
-$data = json_decode($row["data"] ?? "[]", true);
+    $data = [];
 
-/* ================= DELETE ================= */
+    for ($i = 0; $i < count($texts); $i++) {
 
-if(isset($_GET["delete"])){
+        $text  = trim($texts[$i]);
+        $image = trim($images[$i]);
 
-    $id = $_GET["delete"];
-
-    $data = array_filter($data, function($p) use ($id){
-        return $p["id"] !== $id;
-    });
-
-    $json = json_encode(array_values($data), JSON_UNESCAPED_UNICODE);
-
-    $stmt = $pdo->prepare("
-        INSERT INTO activities(id,unit_id,type,data)
-        VALUES(gen_random_uuid(),:u,'match',:d)
-        ON CONFLICT (unit_id,type)
-        DO UPDATE SET data = EXCLUDED.data
-    ");
-
-    $stmt->execute([
-        "u"=>$unit,
-        "d"=>$json
-    ]);
-
-    header("Location: editor.php?unit=".$unit);
-    exit;
-}
-
-/* ================= SAVE ================= */
-
-if($_SERVER["REQUEST_METHOD"]==="POST"){
-
-    if(isset($_POST["text"]) && is_array($_POST["text"])){
-
-        foreach($_POST["text"] as $i=>$text){
-
-            $text = trim($text);
-            if($text=="") continue;
-            if(empty($_FILES["image"]["tmp_name"][$i])) continue;
-
-            /* ===== Cloudinary inline (igual Flashcards) ===== */
-
-            $cloud = $_ENV["CLOUDINARY_CLOUD_NAME"];
-            $key = $_ENV["CLOUDINARY_API_KEY"];
-            $secret = $_ENV["CLOUDINARY_API_SECRET"];
-
-            $timestamp = time();
-            $signature = sha1("timestamp=$timestamp$secret");
-
-            $ch = curl_init();
-            curl_setopt($ch, CURLOPT_URL, "https://api.cloudinary.com/v1_1/$cloud/image/upload");
-            curl_setopt($ch, CURLOPT_POST, 1);
-            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-            curl_setopt($ch, CURLOPT_POSTFIELDS, [
-                "file" => new CURLFile($_FILES["image"]["tmp_name"][$i]),
-                "api_key"=>$key,
-                "timestamp"=>$timestamp,
-                "signature"=>$signature
-            ]);
-
-            $response = json_decode(curl_exec($ch), true);
-            curl_close($ch);
-
-            $imageUrl = $response["secure_url"] ?? "";
-            if(!$imageUrl) continue;
-
+        if ($text !== "" && $image !== "") {
             $data[] = [
-                "id" => uniqid(),
-                "text" => $text,
-                "image" => $imageUrl
+                "id"    => uniqid(),
+                "text"  => $text,
+                "image" => $image
             ];
         }
+    }
 
-        $json = json_encode($data, JSON_UNESCAPED_UNICODE);
+    $json = json_encode($data);
+
+    $check = $pdo->prepare("
+        SELECT id FROM activities
+        WHERE unit_id = :unit
+        AND type = 'match'
+    ");
+    $check->execute(["unit"=>$unit]);
+
+    if ($check->fetch()) {
 
         $stmt = $pdo->prepare("
-            INSERT INTO activities(id,unit_id,type,data)
-            VALUES(gen_random_uuid(),:u,'match',:d)
-            ON CONFLICT (unit_id,type)
-            DO UPDATE SET data = EXCLUDED.data
+            UPDATE activities
+            SET data = :data
+            WHERE unit_id = :unit
+            AND type = 'match'
         ");
 
         $stmt->execute([
-            "u"=>$unit,
-            "d"=>$json
+            "data"=>$json,
+            "unit"=>$unit
+        ]);
+
+    } else {
+
+        $stmt = $pdo->prepare("
+            INSERT INTO activities (id, unit_id, type, data)
+            VALUES (:id, :unit, 'match', :data)
+        ");
+
+        $stmt->execute([
+            "id"=>md5(random_bytes(16)),
+            "unit"=>$unit,
+            "data"=>$json
         ]);
     }
 
-    header("Location: editor.php?unit=".$unit);
+    header("Location: editor.php?unit=".$unit."&saved=1");
     exit;
 }
+
+/* ==============================
+   CARGAR DATOS
+============================== */
+$stmt = $pdo->prepare("
+    SELECT data FROM activities
+    WHERE unit_id = :unit
+    AND type = 'match'
+");
+$stmt->execute(["unit"=>$unit]);
+$row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+$data = json_decode($row["data"] ?? "[]", true);
+
+/* ==============================
+   TEMPLATE
+============================== */
+require_once __DIR__ . "/../../core/_activity_editor_template.php";
+
+ob_start();
 ?>
+
+<?php if(isset($_GET["saved"])): ?>
+    <p class="success-msg">✔ Guardado correctamente</p>
+<?php endif; ?>
+
+<form method="POST" class="match-editor-form">
+
+    <div id="items-container">
+
+        <?php if (!empty($data)): ?>
+            <?php foreach ($data as $item): ?>
+                <div class="match-item">
+                    <input type="text"
+                           name="text[]"
+                           value="<?= htmlspecialchars($item["text"]) ?>"
+                           placeholder="Text">
+
+                    <input type="text"
+                           name="image[]"
+                           value="<?= htmlspecialchars($item["image"]) ?>"
+                           placeholder="Image URL (Cloudinary)">
+
+                    <button type="button" onclick="removeItem(this)">✖</button>
+                </div>
+            <?php endforeach; ?>
+        <?php endif; ?>
+
+    </div>
+
+    <button type="button" onclick="addItem()" class="btn-add">
+        + Add Item
+    </button>
+
+    <button type="submit" class="btn-save">
+        💾 Save
+    </button>
+
+</form>
+
+<script>
+function addItem(){
+    const container = document.getElementById("items-container");
+
+    const div = document.createElement("div");
+    div.className = "match-item";
+
+    div.innerHTML = `
+        <input type="text" name="text[]" placeholder="Text">
+        <input type="text" name="image[]" placeholder="Image URL (Cloudinary)">
+        <button type="button" onclick="removeItem(this)">✖</button>
+    `;
+
+    container.appendChild(div);
+}
+
+function removeItem(button){
+    button.parentElement.remove();
+}
+</script>
+
+<?php
+$content = ob_get_clean();
+
+render_activity_editor("🧩 Match Editor", "🧩", $content);
