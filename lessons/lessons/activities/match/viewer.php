@@ -18,15 +18,9 @@ $data = json_decode($row["data"] ?? "[]", true);
 ob_start();
 ?>
 
-<div class="match-wrapper">
-
-    <h1>🧩 Drag & Drop – Basic Commands</h1>
-
-    <div class="container">
-        <div class="images" id="match-images"></div>
-        <div class="words" id="match-words"></div>
-    </div>
-
+<div class="container">
+    <div class="images" id="match-images"></div>
+    <div class="words" id="match-words"></div>
 </div>
 
 <link rel="stylesheet" href="match.css">
