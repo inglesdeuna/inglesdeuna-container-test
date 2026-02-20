@@ -10,22 +10,30 @@ if (!$unit) die("Unidad no especificada");
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
     $texts  = $_POST["text"] ?? [];
-    $images = $_POST["image"] ?? [];
+    $imageFiles = $_FILES["image_file"] ?? null;
 
     $data = [];
 
     for ($i = 0; $i < count($texts); $i++) {
 
         $text  = trim($texts[$i]);
-        $image = trim($images[$i]);
+       $imageUrl = $images[$i] ?? "";
 
-        if ($text !== "" && $image !== "") {
-            $data[] = [
-                "id"    => uniqid(),
-                "text"  => $text,
-                "image" => $image
-            ];
-        }
+/* Si el usuario subió una nueva imagen */
+if (!empty($imageFiles["name"][$i])) {
+
+    require_once __DIR__."/../../core/cloudinary_upload.php";
+
+    $imageUrl = upload_to_cloudinary($imageFiles["tmp_name"][$i]);
+}
+
+       if ($text !== "" && $imageUrl !== "") {
+    $data[] = [
+        "id"    => uniqid(),
+        "text"  => $text,
+        "image" => $imageUrl
+    ];
+}
     }
 
     $json = json_encode($data);
@@ -93,7 +101,7 @@ ob_start();
     </p>
 <?php endif; ?>
 
-<form method="POST" style="text-align:center;">
+<form method="POST" enctype="multipart/form-data" style="text-align:center;">
 
     <div id="items" style="margin-bottom:25px;">
 
@@ -103,24 +111,23 @@ ob_start();
                 echo '
                 <div style="margin-bottom:12px;">
                     <input 
-                        type="text" 
-                        name="text[]" 
-                        value="'.htmlspecialchars($item["text"]).'" 
-                        placeholder="Text"
-                        style="
-                            padding:10px;
-                            margin:8px;
-                            border-radius:10px;
-                            border:1px solid #ccc;
-                            width:260px;
-                        "
-                    >
+    type="file" 
+    name="image_file[]" 
+    accept="image/*"
+    style="padding:10px;margin:8px;border-radius:10px;border:1px solid #ccc;width:260px;"
+>
 
-                    <input 
-                        type="text" 
-                        name="image[]" 
-                        value="'.htmlspecialchars($item["image"]).'" 
-                        placeholder="Image URL (Cloudinary)"
+<input 
+    type="hidden" 
+    name="image[]" 
+    value="'.htmlspecialchars($item["image"]).'"
+>
+
+                    <input type="file" name="image_file[]" accept="image/*"
+    style="padding:10px;margin:8px;border-radius:10px;border:1px solid #ccc;width:260px;">
+
+<input type="hidden" name="image[]" value="">
+
                         style="
                             padding:10px;
                             margin:8px;
