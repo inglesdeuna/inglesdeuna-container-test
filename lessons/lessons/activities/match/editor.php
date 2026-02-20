@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__."/../../config/db.php";
+require_once __DIR__."/../../core/cloudinary_upload.php";
 
 $unit = $_GET['unit'] ?? null;
 if (!$unit) die("Unidad no especificada");
@@ -20,11 +21,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         $text     = trim($texts[$i]);
         $imageUrl = $images[$i] ?? "";
 
-        // Si el usuario subió una nueva imagen
         if (!empty($imageFiles["name"][$i])) {
-
-            require_once __DIR__."/../../core/cloudinary_upload.php";
-
             $imageUrl = upload_to_cloudinary($imageFiles["tmp_name"][$i]);
         }
 
