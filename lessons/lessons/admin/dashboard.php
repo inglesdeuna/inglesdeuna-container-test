@@ -26,6 +26,11 @@ $assignments = file_exists($assignmentsFile) ? json_decode(file_get_contents($as
 $programs    = file_exists($programsFile) ? json_decode(file_get_contents($programsFile), true) : [];
 
 /* ==========================
+   FILTRO POR CATEGORÍA
+   ========================== */
+$filter = $_GET['filter'] ?? null;
+
+/* ==========================
    HELPERS
    ========================== */
 function getCourseAssignments($courseId, $assignments) {
@@ -50,60 +55,24 @@ function getProgramName($programId, $programs) {
 <title>Panel Administrador</title>
 
 <style>
-body{
-  font-family:Arial, sans-serif;
-  background:#f4f8ff;
-  padding:40px;
-}
+body{font-family:Arial,sans-serif;background:#f4f8ff;padding:40px;}
 h1{margin-bottom:30px}
-.grid{
-  display:grid;
-  grid-template-columns:repeat(auto-fit,minmax(260px,1fr));
-  gap:30px;
-}
-.card{
-  background:#fff;
-  padding:25px;
-  border-radius:16px;
-  box-shadow:0 10px 25px rgba(0,0,0,.08);
-}
-.card h2, .card h3{margin-top:0}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:30px;}
+.card{background:#fff;padding:25px;border-radius:16px;box-shadow:0 10px 25px rgba(0,0,0,.08);}
+.card h2,.card h3{margin-top:0}
 .card p{color:#555}
-.card a, .card button{
-  display:inline-block;
-  margin-top:12px;
-  padding:10px 18px;
-  background:#2563eb;
-  color:#fff;
-  text-decoration:none;
-  border-radius:8px;
-  font-size:14px;
-  border:none;
-  cursor:pointer;
+.card a,.card button{
+  display:inline-block;margin-top:12px;padding:10px 18px;
+  background:#2563eb;color:#fff;text-decoration:none;
+  border-radius:8px;font-size:14px;border:none;cursor:pointer;
 }
-.card button.secondary{background:#16a34a}
-.card button.warning{background:#d97706}
-.card button.gray{background:#6b7280}
 .card a.secondary{background:#16a34a}
 .card a.warning{background:#d97706}
-.card a.gray{background:#6b7280}
-.topbar{
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-  margin-bottom:40px;
-}
-.topbar a{
-  color:#dc2626;
-  text-decoration:none;
-  font-weight:bold;
-}
+.topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:40px;}
+.topbar a{color:#dc2626;text-decoration:none;font-weight:bold;}
 .status-active{color:#16a34a;font-weight:700}
 .status-inactive{color:#dc2626;font-weight:700}
-
-.hidden{
-  display:none;
-}
+.hidden{display:none;}
 </style>
 
 <script>
@@ -112,7 +81,6 @@ function toggleCursos(){
   container.classList.toggle("hidden");
 }
 </script>
-
 </head>
 <body>
 
@@ -128,63 +96,45 @@ function toggleCursos(){
 
   <div class="card">
     <h2>🧱 Estructura Académica</h2>
-    <p>
-      Define la <strong>estructura académica</strong>:
-      programas, cursos, niveles, unidades y actividades.
-    </p>
-    <a href="../academic/programs_editor.php">
-      Gestionar estructura
-    </a>
+    <p>Define programas, cursos, niveles, unidades y actividades.</p>
+    <a href="../academic/programs_editor.php">Gestionar estructura</a>
   </div>
 
   <div class="card">
     <h2>👥 Asignaciones</h2>
-    <p>
-      Ofrece los cursos por periodo (A / B) y asigna
-      <strong>docentes y estudiantes</strong>.
-    </p>
+    <p>Ofrece los cursos por periodo y asigna docentes y estudiantes.</p>
     <a class="warning" href="../academic/assignments_editor.php">
       Asignar cursos
     </a>
   </div>
 
-  <!-- NUEVO BLOQUE CURSOS -->
   <div class="card">
     <h2>📚 Cursos</h2>
-    <p>
-      Visualiza cursos por categoría académica.
-    </p>
-    <button onclick="toggleCursos()">
-      Ver categorías
-    </button>
+    <p>Visualiza cursos por categoría académica.</p>
+    <button onclick="toggleCursos()">Ver categorías</button>
   </div>
 
 </div>
 
 <!-- ======================
-     CONTENEDOR CURSOS
+     CONTENEDOR CATEGORÍAS
      ====================== -->
 <div id="cursosContainer" class="hidden" style="margin-top:40px;">
-
   <div class="grid">
 
-    <!-- INGLES -->
     <div class="card">
       <h3>🇺🇸 Cursos de Inglés</h3>
-
-      <button>Phase 1</button>
-      <button>Phase 2</button>
-      <button>Phase 3</button>
+      <a href="dashboard.php?filter=phase1">Phase 1</a>
+      <a href="dashboard.php?filter=phase2">Phase 2</a>
+      <a href="dashboard.php?filter=phase3">Phase 3</a>
     </div>
 
-    <!-- TECNICOS -->
     <div class="card">
       <h3>💻 Programas Técnicos</h3>
-
-      <button class="secondary">Semestre 1</button>
-      <button class="secondary">Semestre 2</button>
-      <button class="secondary">Semestre 3</button>
-      <button class="secondary">Semestre 4</button>
+      <a class="secondary" href="dashboard.php?filter=sem1">Semestre 1</a>
+      <a class="secondary" href="dashboard.php?filter=sem2">Semestre 2</a>
+      <a class="secondary" href="dashboard.php?filter=sem3">Semestre 3</a>
+      <a class="secondary" href="dashboard.php?filter=sem4">Semestre 4</a>
     </div>
 
   </div>
@@ -195,8 +145,16 @@ function toggleCursos(){
      ====================== -->
 <h2 style="margin-top:60px">📘 Cursos</h2>
 
+<?php
+if ($filter) {
+    $courses = array_filter($courses, function($c) use ($filter) {
+        return ($c['category'] ?? '') === $filter;
+    });
+}
+?>
+
 <?php if (empty($courses)): ?>
-  <p>No hay cursos creados aún.</p>
+  <p>No hay cursos en esta categoría.</p>
 <?php else: ?>
 
 <div class="grid">
@@ -212,9 +170,7 @@ function toggleCursos(){
   <div class="card">
     <h3><?= htmlspecialchars($c['name']) ?></h3>
 
-    <p>
-      Programa: <strong><?= htmlspecialchars($programName) ?></strong>
-    </p>
+    <p>Programa: <strong><?= htmlspecialchars($programName) ?></strong></p>
 
     <?php if ($isActive): ?>
       <p class="status-active">🟢 Activo</p>
@@ -228,9 +184,7 @@ function toggleCursos(){
     <a href="../academic/modules_editor.php?course=<?= urlencode($c['id']) ?>">
       ✏️ Editar estructura
     </a>
-
     <br>
-
     <a class="secondary" href="../academic/assignments_editor.php">
       👥 Asignar curso
     </a>
