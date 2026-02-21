@@ -12,7 +12,6 @@ $stmt = $pdo->prepare("
 ");
 $stmt->execute(["unit"=>$unit]);
 $row = $stmt->fetch(PDO::FETCH_ASSOC);
-
 $data = json_decode($row["data"] ?? "[]", true);
 
 ob_start();
@@ -20,108 +19,85 @@ ob_start();
 
 <style>
 
-/* ===== CONTENEDOR BLANCO ===== */
-.mc-wrapper{
-    background:#f3f3f3;
-    max-width:900px;
-    margin:0 auto;
-    padding:40px;
-    border-radius:22px;
+body{
+    font-family: Arial, sans-serif;
+    background:#eef6ff;
+    padding:40px 20px;
+    text-align:center;
 }
 
-/* ===== GRID DOS COLUMNAS ===== */
-.mc-grid{
-    display:grid;
-    grid-template-columns: 2fr 1fr;
-    align-items:center;
-    gap:40px;
+/* White box */
+.box{
+    background:white;
+    padding:30px;
+    border-radius:18px;
+    max-width:600px;
+    margin:20px auto;
+    box-shadow:0 4px 10px rgba(0,0,0,.1);
 }
 
-/* ===== PREGUNTA ===== */
-.mc-question{
-    font-size:20px;
-    font-weight:600;
-    margin-bottom:25px;
+/* Question */
+.question{
+    font-size:18px;
+    font-weight:bold;
+    margin-bottom:20px;
 }
 
-/* ===== OPCIONES EN FILA ===== */
-.mc-options{
+/* Options vertical */
+.options{
     display:flex;
-    gap:20px;
-    flex-wrap:wrap;
+    flex-direction:column;
+    gap:12px;
+    margin-bottom:20px;
 }
 
-.mc-option{
-    background:#2f63c6;
+.option-btn{
+    background:#0b5ed7;
     color:white;
     border:none;
-    padding:14px 22px;
-    border-radius:14px;
-    font-size:15px;
-    font-weight:600;
+    padding:12px 20px;
+    border-radius:16px;
+    font-weight:bold;
     cursor:pointer;
+    font-size:15px;
     transition:0.2s;
 }
 
-.mc-option:hover{
-    background:#1f5fbf;
+.option-btn:hover{
+    background:#084298;
 }
 
-.mc-option.selected{
-    outline:3px solid #174a94;
+.option-btn.selected{
+    outline:3px solid #084298;
 }
 
-/* ===== IMAGEN ===== */
-.mc-image img{
-    width:100%;
-    max-width:220px;
-    object-fit:contain;
-}
-
-/* ===== BOTONES (IGUAL DRAG & DROP) ===== */
-.mc-actions{
-    margin-top:30px;
+/* Controls EXACT like requested */
+.controls{
     display:flex;
-    gap:18px;
-}
-
-.btn-check{
-    background:#1f5fbf;
-    color:white;
-    border:none;
-    padding:12px 22px;
-    border-radius:14px;
-    font-weight:600;
-    font-size:15px;
-    cursor:pointer;
-}
-
-.btn-check:hover{
-    background:#174a94;
-}
-
-.btn-next{
-    width:52px;
-    height:44px;
-    background:#1f5fbf;
-    color:white;
-    border:none;
-    border-radius:14px;
-    font-size:18px;
-    display:flex;
-    align-items:center;
     justify-content:center;
+    gap:15px;
+    margin-top:10px;
+}
+
+.controls button{
+    background:#0b5ed7;
+    color:white;
+    border:none;
+    padding:12px 26px;
+    border-radius:16px;
+    font-weight:bold;
     cursor:pointer;
+    font-size:15px;
+    transition:0.2s ease;
 }
 
-.btn-next:hover{
-    background:#174a94;
+.controls button:hover{
+    background:#084298;
 }
 
-/* ===== FEEDBACK ===== */
-.mc-feedback{
-    margin-top:20px;
-    font-weight:600;
+.feedback{
+    margin-top:15px;
+    font-weight:bold;
 }
 
 .correct{
@@ -134,7 +110,7 @@ ob_start();
 
 </style>
 
-<div class="mc-wrapper" id="mc-app"></div>
+<div class="box" id="mc-app"></div>
 
 <script>
 
@@ -146,49 +122,37 @@ let selected = null;
 function renderQuestion(){
 
     const q = QUESTIONS[current];
-    const container = document.getElementById("mc-app");
 
-    container.innerHTML = `
-        <div class="mc-grid">
-
-            <div>
-                <div class="mc-question">
-                    ${current+1}. ${q.question}
-                </div>
-
-                <div class="mc-options">
-                    ${q.options.map((opt,i)=>`
-                        <button class="mc-option"
-                            onclick="selectOption(${i})">
-                            ${opt}
-                        </button>
-                    `).join("")}
-                </div>
-
-                <div class="mc-actions">
-                    <button class="btn-check" onclick="checkAnswer()">✓ Check</button>
-                    <button class="btn-next" onclick="nextQuestion()">→</button>
-                </div>
-
-                <div id="feedback" class="mc-feedback"></div>
-            </div>
-
-            <div class="mc-image">
-                ${q.image ? `<img src="${q.image}">` : ""}
-            </div>
-
+    document.getElementById("mc-app").innerHTML = `
+        <div class="question">
+            ${current+1}. ${q.question}
         </div>
+
+        ${q.image ? `<img src="${q.image}" style="max-width:200px;margin-bottom:20px;">` : ""}
+
+        <div class="options">
+            ${q.options.map((opt,i)=>`
+                <button class="option-btn" onclick="selectOption(${i})">
+                    ${opt}
+                </button>
+            `).join("")}
+        </div>
+
+        <div class="controls">
+            <button onclick="checkAnswer()">✅ Check</button>
+            <button onclick="nextQuestion()">➡️</button>
+        </div>
+
+        <div id="feedback" class="feedback"></div>
     `;
 }
 
 function selectOption(i){
     selected = i;
-
-    document.querySelectorAll(".mc-option").forEach(btn=>{
+    document.querySelectorAll(".option-btn").forEach(btn=>{
         btn.classList.remove("selected");
     });
-
-    document.querySelectorAll(".mc-option")[i].classList.add("selected");
+    document.querySelectorAll(".option-btn")[i].classList.add("selected");
 }
 
 function checkAnswer(){
@@ -198,16 +162,16 @@ function checkAnswer(){
 
     if(selected === null){
         feedback.innerHTML = "Select an option.";
-        feedback.className = "mc-feedback";
+        feedback.className = "feedback";
         return;
     }
 
     if(selected == q.correct){
         feedback.innerHTML = "Excellent!";
-        feedback.className = "mc-feedback correct";
+        feedback.className = "feedback correct";
     }else{
         feedback.innerHTML = "Try again.";
-        feedback.className = "mc-feedback wrong";
+        feedback.className = "feedback wrong";
     }
 }
 
@@ -219,9 +183,7 @@ function nextQuestion(){
         renderQuestion();
     }else{
         document.getElementById("mc-app").innerHTML =
-        `<div class="mc-wrapper">
-            <h2 style="text-align:center;">🎉 Completed!</h2>
-        </div>`;
+        `<h3>🎉 Completed!</h3>`;
     }
 }
 
@@ -231,4 +193,4 @@ renderQuestion();
 
 <?php
 $content = ob_get_clean();
-render_activity_viewer("📝 Multiple Choice", "📝", $content);
+render_activity_viewer("Multiple Choice", "📝", $content);
