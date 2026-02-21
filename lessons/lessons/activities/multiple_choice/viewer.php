@@ -19,170 +19,214 @@ ob_start();
 ?>
 
 <style>
+
+/* ===== CONTENEDOR BLANCO ===== */
 .mc-wrapper{
-    max-width:1000px;
+    background:#f3f3f3;
+    max-width:900px;
     margin:0 auto;
-}
-
-.mc-card{
-    background:white;
-    border-radius:20px;
     padding:40px;
-    box-shadow:0 6px 18px rgba(0,0,0,0.08);
+    border-radius:22px;
 }
 
+/* ===== GRID DOS COLUMNAS ===== */
 .mc-grid{
     display:grid;
-    grid-template-columns: 1fr 350px;
-    gap:40px;
+    grid-template-columns: 2fr 1fr;
     align-items:center;
+    gap:40px;
 }
 
+/* ===== PREGUNTA ===== */
 .mc-question{
-    font-size:22px;
+    font-size:20px;
     font-weight:600;
     margin-bottom:25px;
 }
 
+/* ===== OPCIONES EN FILA ===== */
 .mc-options{
     display:flex;
     gap:20px;
+    flex-wrap:wrap;
 }
 
 .mc-option{
-    flex:1;
-    background:#1f5fc4;
+    background:#2f63c6;
     color:white;
     border:none;
-    padding:14px;
-    border-radius:12px;
-    font-size:16px;
+    padding:14px 22px;
+    border-radius:14px;
+    font-size:15px;
     font-weight:600;
     cursor:pointer;
     transition:0.2s;
 }
 
 .mc-option:hover{
-    opacity:0.9;
+    background:#1f5fbf;
 }
 
 .mc-option.selected{
-    background:#0b3d91;
+    outline:3px solid #174a94;
 }
 
+/* ===== IMAGEN ===== */
 .mc-image img{
     width:100%;
-    max-height:260px;
+    max-width:220px;
     object-fit:contain;
 }
 
-.mc-buttons{
+/* ===== BOTONES (IGUAL DRAG & DROP) ===== */
+.mc-actions{
     margin-top:30px;
     display:flex;
-    gap:20px;
+    gap:18px;
 }
 
+.btn-check{
+    background:#1f5fbf;
+    color:white;
+    border:none;
+    padding:12px 22px;
+    border-radius:14px;
+    font-weight:600;
+    font-size:15px;
+    cursor:pointer;
+}
+
+.btn-check:hover{
+    background:#174a94;
+}
+
+.btn-next{
+    width:52px;
+    height:44px;
+    background:#1f5fbf;
+    color:white;
+    border:none;
+    border-radius:14px;
+    font-size:18px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    cursor:pointer;
+}
+
+.btn-next:hover{
+    background:#174a94;
+}
+
+/* ===== FEEDBACK ===== */
 .mc-feedback{
     margin-top:20px;
     font-weight:600;
 }
-.correct-msg{ color:green; }
-.wrong-msg{ color:#d9534f; }
+
+.correct{
+    color:#16a34a;
+}
+
+.wrong{
+    color:#dc2626;
+}
+
 </style>
 
-<div class="mc-wrapper">
-<div class="mc-card">
-
-<div id="mc-container"></div>
-
-</div>
-</div>
+<div class="mc-wrapper" id="mc-app"></div>
 
 <script>
-const DATA = <?= json_encode($data ?? []) ?>;
+
+const QUESTIONS = <?= json_encode($data ?? []) ?>;
+
 let current = 0;
 let selected = null;
 
 function renderQuestion(){
 
-    const item = DATA[current];
+    const q = QUESTIONS[current];
+    const container = document.getElementById("mc-app");
 
-    let imageHtml = '';
-    if(item.image){
-        imageHtml = `
-        <div class="mc-image">
-            <img src="${item.image}">
-        </div>`;
-    }
-
-    document.getElementById("mc-container").innerHTML = `
+    container.innerHTML = `
         <div class="mc-grid">
 
             <div>
                 <div class="mc-question">
-                    ${current+1}. ${item.question}
+                    ${current+1}. ${q.question}
                 </div>
 
                 <div class="mc-options">
-                    ${item.options.map((opt,i)=>`
+                    ${q.options.map((opt,i)=>`
                         <button class="mc-option"
-                            onclick="selectOption(${i},this)">
+                            onclick="selectOption(${i})">
                             ${opt}
                         </button>
-                    `).join('')}
+                    `).join("")}
                 </div>
 
-                <div class="mc-buttons">
-                    <button class="btn-primary" onclick="checkAnswer()">✔ Check</button>
-                    <button class="btn-primary" onclick="nextQuestion()">➡</button>
+                <div class="mc-actions">
+                    <button class="btn-check" onclick="checkAnswer()">✓ Check</button>
+                    <button class="btn-next" onclick="nextQuestion()">→</button>
                 </div>
 
                 <div id="feedback" class="mc-feedback"></div>
             </div>
 
-            ${imageHtml}
+            <div class="mc-image">
+                ${q.image ? `<img src="${q.image}">` : ""}
+            </div>
 
         </div>
     `;
 }
 
-function selectOption(index,el){
-    selected = index;
-    document.querySelectorAll(".mc-option").forEach(b=>b.classList.remove("selected"));
-    el.classList.add("selected");
+function selectOption(i){
+    selected = i;
+
+    document.querySelectorAll(".mc-option").forEach(btn=>{
+        btn.classList.remove("selected");
+    });
+
+    document.querySelectorAll(".mc-option")[i].classList.add("selected");
 }
 
 function checkAnswer(){
-    const item = DATA[current];
+
+    const q = QUESTIONS[current];
     const feedback = document.getElementById("feedback");
 
     if(selected === null){
-        feedback.innerHTML = "Select an option";
-        feedback.className="mc-feedback wrong-msg";
+        feedback.innerHTML = "Select an option.";
+        feedback.className = "mc-feedback";
         return;
     }
 
-    if(selected === item.correct){
+    if(selected == q.correct){
         feedback.innerHTML = "Excellent!";
-        feedback.className="mc-feedback correct-msg";
+        feedback.className = "mc-feedback correct";
     }else{
-        feedback.innerHTML = "Try again";
-        feedback.className="mc-feedback wrong-msg";
+        feedback.innerHTML = "Try again.";
+        feedback.className = "mc-feedback wrong";
     }
 }
 
 function nextQuestion(){
-    if(current < DATA.length-1){
+    selected = null;
+
+    if(current < QUESTIONS.length - 1){
         current++;
-        selected = null;
         renderQuestion();
     }else{
-        document.getElementById("mc-container").innerHTML =
-            "<h3 style='text-align:center;color:green;'>Completed 🎉</h3>";
+        document.getElementById("mc-app").innerHTML =
+        `<div class="mc-wrapper">
+            <h2 style="text-align:center;">🎉 Completed!</h2>
+        </div>`;
     }
 }
 
 renderQuestion();
+
 </script>
 
 <?php
