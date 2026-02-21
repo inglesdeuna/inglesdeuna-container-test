@@ -147,8 +147,28 @@ function toggleCursos(){
 
 <?php
 if ($filter) {
-    $courses = array_filter($courses, function($c) use ($filter) {
-        return ($c['category'] ?? '') === $filter;
+    $courses = array_filter($courses, function($c) use ($filter, $programs) {
+
+        $programName = '';
+
+        foreach ($programs as $p) {
+            if (($p['id'] ?? null) === ($c['program_id'] ?? null)) {
+                $programName = strtolower($p['name']);
+                break;
+            }
+        }
+
+        // Filtros Inglés
+        if (in_array($filter, ['phase1','phase2','phase3'])) {
+            return str_contains($programName, 'phase ' . substr($filter, -1));
+        }
+
+        // Filtros Técnicos
+        if (in_array($filter, ['sem1','sem2','sem3','sem4'])) {
+            return str_contains($programName, 'semestre ' . substr($filter, -1));
+        }
+
+        return true;
     });
 }
 ?>
