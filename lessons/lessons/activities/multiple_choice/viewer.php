@@ -124,10 +124,8 @@ body{
 </style>
 
 <div class="top-back">
-    <button class="back-btn" onclick="history.back()">↩ Back</button>
+    
 </div>
-
-<div class="title">📝 Multiple Choice</div>
 
 <div class="box">
 
