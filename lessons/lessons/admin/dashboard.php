@@ -69,7 +69,7 @@ h1{margin-bottom:30px}
 }
 .card h2, .card h3{margin-top:0}
 .card p{color:#555}
-.card a{
+.card a, .card button{
   display:inline-block;
   margin-top:12px;
   padding:10px 18px;
@@ -78,7 +78,12 @@ h1{margin-bottom:30px}
   text-decoration:none;
   border-radius:8px;
   font-size:14px;
+  border:none;
+  cursor:pointer;
 }
+.card button.secondary{background:#16a34a}
+.card button.warning{background:#d97706}
+.card button.gray{background:#6b7280}
 .card a.secondary{background:#16a34a}
 .card a.warning{background:#d97706}
 .card a.gray{background:#6b7280}
@@ -95,9 +100,20 @@ h1{margin-bottom:30px}
 }
 .status-active{color:#16a34a;font-weight:700}
 .status-inactive{color:#dc2626;font-weight:700}
-</style>
-</head>
 
+.hidden{
+  display:none;
+}
+</style>
+
+<script>
+function toggleCursos(){
+  const container = document.getElementById("cursosContainer");
+  container.classList.toggle("hidden");
+}
+</script>
+
+</head>
 <body>
 
 <div class="topbar">
@@ -132,6 +148,46 @@ h1{margin-bottom:30px}
     </a>
   </div>
 
+  <!-- NUEVO BLOQUE CURSOS -->
+  <div class="card">
+    <h2>📚 Cursos</h2>
+    <p>
+      Visualiza cursos por categoría académica.
+    </p>
+    <button onclick="toggleCursos()">
+      Ver categorías
+    </button>
+  </div>
+
+</div>
+
+<!-- ======================
+     CONTENEDOR CURSOS
+     ====================== -->
+<div id="cursosContainer" class="hidden" style="margin-top:40px;">
+
+  <div class="grid">
+
+    <!-- INGLES -->
+    <div class="card">
+      <h3>🇺🇸 Cursos de Inglés</h3>
+
+      <button>Phase 1</button>
+      <button>Phase 2</button>
+      <button>Phase 3</button>
+    </div>
+
+    <!-- TECNICOS -->
+    <div class="card">
+      <h3>💻 Programas Técnicos</h3>
+
+      <button class="secondary">Semestre 1</button>
+      <button class="secondary">Semestre 2</button>
+      <button class="secondary">Semestre 3</button>
+      <button class="secondary">Semestre 4</button>
+    </div>
+
+  </div>
 </div>
 
 <!-- ======================
