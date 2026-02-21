@@ -18,179 +18,168 @@ ob_start();
 ?>
 
 <style>
-
 body{
     font-family: Arial, sans-serif;
     background:#eef6ff;
     padding:40px 20px;
-    text-align:center;
 }
 
-/* White box */
+/* BACK BUTTON TOP LEFT */
+.top-back{
+    position:absolute;
+    top:30px;
+    left:40px;
+}
+
+.back-btn{
+    background:#16a34a;
+    color:white;
+    border:none;
+    padding:12px 28px;
+    border-radius:16px;
+    font-weight:bold;
+    cursor:pointer;
+    font-size:15px;
+    min-width:120px;
+    transition:0.2s ease;
+}
+
+.back-btn:hover{
+    background:#15803d;
+}
+
+/* TITLE */
+.title{
+    text-align:center;
+    color:#0b5ed7;
+    font-size:28px;
+    font-weight:bold;
+    margin-bottom:30px;
+}
+
+/* MAIN BOX */
 .box{
     background:white;
     padding:30px;
     border-radius:18px;
     max-width:600px;
-    margin:20px auto;
+    margin:0 auto;
     box-shadow:0 4px 10px rgba(0,0,0,.1);
+    text-align:center;
 }
 
-/* Question */
+/* QUESTION */
 .question{
     font-size:18px;
     font-weight:bold;
     margin-bottom:20px;
 }
 
-/* Options vertical */
-.options{
-    display:flex;
-    flex-direction:column;
-    gap:12px;
+/* IMAGE SMALLER */
+.question-image{
+    width:140px;
+    height:auto;
     margin-bottom:20px;
 }
 
-.option-btn{
-    background:#0b5ed7;
+/* OPTIONS */
+.option{
+    background:#1e5dc8;
     color:white;
     border:none;
-    padding:12px 20px;
-    border-radius:16px;
+    padding:12px;
+    border-radius:14px;
+    font-size:14px;
     font-weight:bold;
     cursor:pointer;
-    font-size:15px;
+    margin-bottom:10px;
+    width:100%;
     transition:0.2s;
 }
 
-.option-btn:hover{
-    background:#084298;
+.option:hover{
+    background:#174ea6;
 }
 
-.option-btn.selected{
-    outline:3px solid #084298;
-}
-
-/* Controls EXACT like requested */
+/* CONTROLS (exact drag & drop style) */
 .controls{
-    display:flex;
-    justify-content:center;
-    gap:15px;
-    margin-top:10px;
+    margin-top:15px;
 }
 
 .controls button{
     background:#0b5ed7;
     color:white;
     border:none;
-    padding:12px 26px;
-    border-radius:16px;
+    padding:10px 22px;
+    border-radius:14px;
     font-weight:bold;
     cursor:pointer;
-    font-size:15px;
-    transition:0.2s ease;
+    font-size:14px;
+    margin:0 5px;
 }
 
 .controls button:hover{
     background:#084298;
 }
-
-.feedback{
-    margin-top:15px;
-    font-weight:bold;
-}
-
-.correct{
-    color:#16a34a;
-}
-
-.wrong{
-    color:#dc2626;
-}
-
 </style>
 
-<div class="box" id="mc-app"></div>
+<div class="top-back">
+    <button class="back-btn" onclick="history.back()">↩ Back</button>
+</div>
+
+<div class="title">📝 Multiple Choice</div>
+
+<div class="box">
+
+<?php if(!empty($data)): ?>
+<?php $item = $data[0]; ?>
+
+<div class="question">
+    1. <?= htmlspecialchars($item['question']) ?>
+</div>
+
+<?php if(!empty($item['image'])): ?>
+<img src="<?= htmlspecialchars($item['image']) ?>" class="question-image">
+<?php endif; ?>
+
+<?php foreach($item['options'] as $index => $opt): ?>
+<button class="option" onclick="selectOption(<?= $index ?>)">
+    <?= htmlspecialchars($opt) ?>
+</button>
+<?php endforeach; ?>
+
+<div class="controls">
+    <button onclick="checkAnswer()">✅ Check</button>
+    <button onclick="nextQuestion()">➡️</button>
+</div>
+
+<?php endif; ?>
+
+</div>
 
 <script>
-
-const QUESTIONS = <?= json_encode($data ?? []) ?>;
-
-let current = 0;
 let selected = null;
+const correct = <?= $item['correct'] ?? 0 ?>;
 
-function renderQuestion(){
-
-    const q = QUESTIONS[current];
-
-    document.getElementById("mc-app").innerHTML = `
-        <div class="question">
-            ${current+1}. ${q.question}
-        </div>
-
-        ${q.image ? `<img src="${q.image}" style="max-width:200px;margin-bottom:20px;">` : ""}
-
-        <div class="options">
-            ${q.options.map((opt,i)=>`
-                <button class="option-btn" onclick="selectOption(${i})">
-                    ${opt}
-                </button>
-            `).join("")}
-        </div>
-
-        <div class="controls">
-            <button onclick="checkAnswer()">✅ Check</button>
-            <button onclick="nextQuestion()">➡️</button>
-        </div>
-
-        <div id="feedback" class="feedback"></div>
-    `;
-}
-
-function selectOption(i){
-    selected = i;
-    document.querySelectorAll(".option-btn").forEach(btn=>{
-        btn.classList.remove("selected");
-    });
-    document.querySelectorAll(".option-btn")[i].classList.add("selected");
+function selectOption(index){
+    selected = index;
 }
 
 function checkAnswer(){
+    if(selected === null) return;
 
-    const q = QUESTIONS[current];
-    const feedback = document.getElementById("feedback");
-
-    if(selected === null){
-        feedback.innerHTML = "Select an option.";
-        feedback.className = "feedback";
-        return;
-    }
-
-    if(selected == q.correct){
-        feedback.innerHTML = "Excellent!";
-        feedback.className = "feedback correct";
-    }else{
-        feedback.innerHTML = "Try again.";
-        feedback.className = "feedback wrong";
+    if(selected === correct){
+        alert("Excellent!");
+    } else {
+        alert("Try Again");
     }
 }
 
 function nextQuestion(){
-    selected = null;
-
-    if(current < QUESTIONS.length - 1){
-        current++;
-        renderQuestion();
-    }else{
-        document.getElementById("mc-app").innerHTML =
-        `<h3>🎉 Completed!</h3>`;
-    }
+    location.reload();
 }
-
-renderQuestion();
-
 </script>
 
 <?php
 $content = ob_get_clean();
-render_activity_viewer("Multiple Choice", "📝", $content);
+render_activity_viewer("📝 Multiple Choice", "📝", $content);
