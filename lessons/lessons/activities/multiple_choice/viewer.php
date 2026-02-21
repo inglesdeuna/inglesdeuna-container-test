@@ -12,7 +12,6 @@ $stmt = $pdo->prepare("
 ");
 $stmt->execute(["unit"=>$unit]);
 $row = $stmt->fetch(PDO::FETCH_ASSOC);
-
 $data = json_decode($row["data"] ?? "[]", true);
 
 ob_start();
@@ -20,171 +19,171 @@ ob_start();
 
 <style>
 .mc-wrapper{
-    max-width:900px;
-    margin:40px auto;
-    background:white;
-    padding:40px;
-    border-radius:20px;
-    box-shadow:0 10px 25px rgba(0,0,0,0.08);
+    max-width:1000px;
+    margin:0 auto;
 }
 
-.mc-question{
-    font-size:22px;
-    font-weight:600;
-    margin-bottom:20px;
+.mc-card{
+    background:white;
+    border-radius:18px;
+    padding:30px 40px;
+    box-shadow:0 8px 20px rgba(0,0,0,0.08);
 }
 
 .mc-grid{
     display:grid;
-    grid-template-columns:1fr 1fr;
-    gap:20px;
+    grid-template-columns: 1.2fr 0.8fr;
+    gap:30px;
+    align-items:center;
+}
+
+.mc-question{
+    font-size:20px;
+    font-weight:600;
+    margin-bottom:20px;
+}
+
+.mc-options{
+    display:flex;
+    gap:14px;
 }
 
 .mc-option{
-    background:#0b5ed7;
+    flex:1;
+    padding:14px;
+    background:#1f5cc4;
     color:white;
-    padding:18px;
-    border-radius:12px;
-    cursor:pointer;
-    text-align:center;
+    border:none;
+    border-radius:10px;
     font-weight:600;
+    cursor:pointer;
     transition:0.2s;
 }
 
 .mc-option:hover{
-    background:#084298;
+    background:#184ca4;
 }
 
 .mc-option.selected{
-    outline:4px solid #ffc107;
+    outline:3px solid #0b5ed7;
 }
 
-.mc-option.correct{
-    background:#198754;
-}
-
-.mc-option.wrong{
-    background:#dc3545;
+.mc-image{
+    width:100%;
+    max-height:180px;
+    object-fit:contain;
 }
 
 .mc-buttons{
-    margin-top:30px;
-    text-align:center;
+    margin-top:25px;
+    display:flex;
+    gap:12px;
 }
 
-.mc-btn{
-    padding:12px 22px;
-    border:none;
-    border-radius:10px;
-    font-weight:bold;
-    cursor:pointer;
-    margin:5px;
-}
-
-.check-btn{
+.mc-check{
     background:#0b5ed7;
     color:white;
+    border:none;
+    padding:10px 18px;
+    border-radius:8px;
+    cursor:pointer;
 }
 
-.try-btn{
+.mc-try{
     background:#6c757d;
     color:white;
+    border:none;
+    padding:10px 18px;
+    border-radius:8px;
+    cursor:pointer;
 }
 
 .mc-message{
-    margin-top:20px;
-    font-size:18px;
-    font-weight:bold;
-    text-align:center;
+    margin-top:15px;
+    font-weight:600;
 }
+
+.correct-msg{ color:#16a34a; }
+.wrong-msg{ color:#dc2626; }
 </style>
 
 <div class="mc-wrapper">
+<?php if(!empty($data)): ?>
+<?php $q = $data[0]; ?>
 
-    <div id="mc-container"></div>
+<div class="mc-card">
 
-    <div class="mc-buttons">
-        <button class="mc-btn check-btn" onclick="checkAnswer()">Check</button>
-        <button class="mc-btn try-btn" onclick="nextQuestion()">Try Again</button>
+    <div class="mc-question">
+        <?= htmlspecialchars($q["question"]) ?>
     </div>
 
-    <div class="mc-message" id="mc-message"></div>
+    <div class="mc-grid">
+
+        <div>
+            <div class="mc-options">
+                <?php foreach($q["options"] as $index=>$opt): ?>
+                <button class="mc-option"
+                        onclick="selectOption(this, <?= $index ?>)">
+                    <?= htmlspecialchars($opt) ?>
+                </button>
+                <?php endforeach; ?>
+            </div>
+
+            <div class="mc-buttons">
+                <button class="mc-check" onclick="checkAnswer()">Check</button>
+                <button class="mc-try" onclick="resetOptions()">Try Again</button>
+            </div>
+
+            <div id="mc-message" class="mc-message"></div>
+        </div>
+
+        <div>
+            <?php if(!empty($q["image"])): ?>
+                <img src="<?= htmlspecialchars($q["image"]) ?>" class="mc-image">
+            <?php endif; ?>
+        </div>
+
+    </div>
 
 </div>
 
 <script>
-const MC_DATA = <?= json_encode($data ?? []) ?>;
-
-let current = 0;
 let selected = null;
+const correct = <?= (int)$q["correct"] ?>;
 
-function renderQuestion(){
-
-    if(current >= MC_DATA.length){
-        document.getElementById("mc-container").innerHTML = 
-        "<h2 style='text-align:center;color:#198754;'>🎉 Completed!</h2>";
-        document.querySelector(".mc-buttons").style.display="none";
-        return;
-    }
-
-    const q = MC_DATA[current];
-
-    let html = `
-        <div class="mc-question">${q.question}</div>
-    `;
-
-    if(q.image){
-        html += `<div style="text-align:center;margin-bottom:20px;">
-                    <img src="${q.image}" style="max-width:300px;border-radius:12px;">
-                 </div>`;
-    }
-
-    html += `<div class="mc-grid">`;
-
-    q.options.forEach((opt,index)=>{
-        html += `
-            <div class="mc-option" onclick="selectOption(this,${index})">
-                ${opt}
-            </div>
-        `;
-    });
-
-    html += `</div>`;
-
-    document.getElementById("mc-container").innerHTML = html;
-    document.getElementById("mc-message").innerHTML = "";
-    selected = null;
-}
-
-function selectOption(el,index){
-    document.querySelectorAll(".mc-option").forEach(o=>o.classList.remove("selected"));
-    el.classList.add("selected");
+function selectOption(btn, index){
+    document.querySelectorAll(".mc-option").forEach(b=>b.classList.remove("selected"));
+    btn.classList.add("selected");
     selected = index;
 }
 
 function checkAnswer(){
-    if(selected === null) return;
-
-    const correct = MC_DATA[current].correct;
-    const options = document.querySelectorAll(".mc-option");
+    const msg = document.getElementById("mc-message");
+    if(selected === null){
+        msg.innerHTML = "Select an option.";
+        msg.className = "mc-message wrong-msg";
+        return;
+    }
 
     if(selected === correct){
-        options[selected].classList.add("correct");
-        document.getElementById("mc-message").innerHTML = "Excellent! 🎉";
-        setTimeout(()=>{ current++; renderQuestion(); },1500);
+        msg.innerHTML = "✅ Excellent! Completed.";
+        msg.className = "mc-message correct-msg";
     }else{
-        options[selected].classList.add("wrong");
-        document.getElementById("mc-message").innerHTML = "Try again!";
+        msg.innerHTML = "❌ Try Again.";
+        msg.className = "mc-message wrong-msg";
     }
 }
 
-function nextQuestion(){
-    renderQuestion();
+function resetOptions(){
+    document.querySelectorAll(".mc-option").forEach(b=>b.classList.remove("selected"));
+    document.getElementById("mc-message").innerHTML = "";
+    selected = null;
 }
-
-renderQuestion();
 </script>
+
+<?php endif; ?>
+</div>
 
 <?php
 $content = ob_get_clean();
-render_activity_viewer("📝 Multiple Choice", "📝", $content);
+render_activity_viewer("Multiple Choice", "📝", $content);
