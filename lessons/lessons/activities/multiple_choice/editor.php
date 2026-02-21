@@ -26,7 +26,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
             $imageUrl = $existingImages[$i] ?? "";
 
-            /* Si se sube nueva imagen */
             if (!empty($imageFiles["name"][$i])) {
                 require_once __DIR__."/../../core/cloudinary_upload.php";
                 $imageUrl = upload_to_cloudinary($imageFiles["tmp_name"][$i]);
@@ -55,26 +54,18 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $check->execute(["unit"=>$unit]);
 
     if ($check->fetch()) {
-
         $stmt = $pdo->prepare("
             UPDATE activities
             SET data = :data
             WHERE unit_id = :unit
             AND type = 'multiple_choice'
         ");
-
-        $stmt->execute([
-            "data"=>$json,
-            "unit"=>$unit
-        ]);
-
+        $stmt->execute(["data"=>$json,"unit"=>$unit]);
     } else {
-
         $stmt = $pdo->prepare("
             INSERT INTO activities (id, unit_id, type, data)
             VALUES (:id, :unit, 'multiple_choice', :data)
         ");
-
         $stmt->execute([
             "id"=>md5(random_bytes(16)),
             "unit"=>$unit,
@@ -96,7 +87,6 @@ $stmt = $pdo->prepare("
 ");
 $stmt->execute(["unit"=>$unit]);
 $row = $stmt->fetch(PDO::FETCH_ASSOC);
-
 $data = json_decode($row["data"] ?? "[]", true);
 
 require_once __DIR__ . "/../../core/_activity_editor_template.php";
@@ -116,37 +106,34 @@ ob_start();
 
 <?php if(!empty($data)): ?>
 <?php foreach($data as $i => $item): ?>
-<div style="margin-bottom:30px;border-bottom:1px solid #ddd;padding-bottom:20px;">
+<div class="mc-block">
 
-<label>Question</label>
 <input type="text" name="question[]" 
 value="<?= htmlspecialchars($item['question']) ?>" 
-style="width:100%;padding:12px;margin-bottom:10px;border-radius:8px;border:1px solid #ccc;">
+placeholder="Question">
 
-<label>Image</label>
 <input type="file" name="image_file[]" accept="image/*">
 <input type="hidden" name="image[]" value="<?= htmlspecialchars($item['image'] ?? '') ?>">
 
-<label>Option A</label>
 <input type="text" name="option_a[]" 
 value="<?= htmlspecialchars($item['options'][0]) ?>" 
-style="width:100%;padding:10px;margin-bottom:8px;border-radius:8px;border:1px solid #ccc;">
+placeholder="Option A">
 
-<label>Option B</label>
 <input type="text" name="option_b[]" 
 value="<?= htmlspecialchars($item['options'][1]) ?>" 
-style="width:100%;padding:10px;margin-bottom:8px;border-radius:8px;border:1px solid #ccc;">
+placeholder="Option B">
 
-<label>Option C</label>
 <input type="text" name="option_c[]" 
 value="<?= htmlspecialchars($item['options'][2]) ?>" 
-style="width:100%;padding:10px;margin-bottom:8px;border-radius:8px;border:1px solid #ccc;">
+placeholder="Option C">
 
-<select name="correct[]" style="margin-top:10px;">
+<select name="correct[]">
 <option value="0" <?= $item['correct']==0?'selected':'' ?>>Correct: A</option>
 <option value="1" <?= $item['correct']==1?'selected':'' ?>>Correct: B</option>
 <option value="2" <?= $item['correct']==2?'selected':'' ?>>Correct: C</option>
 </select>
+
+<button type="button" onclick="removeQuestion(this)" class="btn-remove">✖</button>
 
 </div>
 <?php endforeach; ?>
@@ -154,12 +141,95 @@ style="width:100%;padding:10px;margin-bottom:8px;border-radius:8px;border:1px so
 
 </div>
 
-<button type="submit" 
-style="background:#0b5ed7;color:white;padding:10px 18px;border:none;border-radius:8px;cursor:pointer;">
+<button type="button" onclick="addQuestion()" class="btn-add">
++ Add Question
+</button>
+
+<button type="submit" class="btn-save">
 💾 Save
 </button>
 
 </form>
+
+<style>
+.mc-block{
+    background:#f9fafb;
+    padding:16px;
+    margin-bottom:18px;
+    border-radius:12px;
+    border:1px solid #e5e7eb;
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+}
+
+.mc-block input,
+.mc-block select{
+    padding:8px 10px;
+    border-radius:8px;
+    border:1px solid #ccc;
+    font-size:14px;
+}
+
+.btn-add{
+    background:#16a34a;
+    color:white;
+    padding:8px 14px;
+    border:none;
+    border-radius:8px;
+    cursor:pointer;
+    margin-right:10px;
+}
+
+.btn-save{
+    background:#0b5ed7;
+    color:white;
+    padding:8px 14px;
+    border:none;
+    border-radius:8px;
+    cursor:pointer;
+}
+
+.btn-remove{
+    background:#ef4444;
+    color:white;
+    border:none;
+    padding:6px 10px;
+    border-radius:6px;
+    cursor:pointer;
+    align-self:flex-end;
+}
+</style>
+
+<script>
+function addQuestion(){
+    const container = document.getElementById("questions");
+
+    const div = document.createElement("div");
+    div.className = "mc-block";
+
+    div.innerHTML = `
+        <input type="text" name="question[]" placeholder="Question">
+        <input type="file" name="image_file[]" accept="image/*">
+        <input type="hidden" name="image[]" value="">
+        <input type="text" name="option_a[]" placeholder="Option A">
+        <input type="text" name="option_b[]" placeholder="Option B">
+        <input type="text" name="option_c[]" placeholder="Option C">
+        <select name="correct[]">
+            <option value="0">Correct: A</option>
+            <option value="1">Correct: B</option>
+            <option value="2">Correct: C</option>
+        </select>
+        <button type="button" onclick="removeQuestion(this)" class="btn-remove">✖</button>
+    `;
+
+    container.appendChild(div);
+}
+
+function removeQuestion(btn){
+    btn.parentElement.remove();
+}
+</script>
 
 <?php
 $content = ob_get_clean();
