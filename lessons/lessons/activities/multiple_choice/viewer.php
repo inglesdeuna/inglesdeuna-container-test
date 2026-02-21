@@ -180,4 +180,4 @@ function nextQuestion(){
 
 <?php
 $content = ob_get_clean();
-render_activity_viewer("📝 Multiple Choice", "📝", $content);
+render_activity_viewer("Multiple Choice", "📝", $content);
