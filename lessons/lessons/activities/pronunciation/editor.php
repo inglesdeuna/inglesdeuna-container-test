@@ -1,207 +1,207 @@
 <?php
-session_start();
-
-if (!isset($_SESSION["admin_logged"])) {
-    header("Location: ../admin/login.php");
-    exit;
-}
+require_once __DIR__."/../../config/db.php";
 
 $unit = $_GET['unit'] ?? null;
 if (!$unit) die("Unidad no especificada");
 
-$jsonFile = __DIR__ . "/pronunciation.json";
-
-if (!file_exists($jsonFile)) {
-    file_put_contents($jsonFile, json_encode([]));
-}
-
-$data = json_decode(file_get_contents($jsonFile), true);
-
-if (!isset($data[$unit])) {
-    $data[$unit] = [
-        "word" => "",
-        "audio" => ""
-    ];
-}
-
-$currentWord = $data[$unit]["word"];
-$currentAudio = $data[$unit]["audio"];
-
-/* ===== PROCESAR POST ===== */
+/* ==============================
+   SAVE
+============================== */
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
-    // ELIMINAR
-    if (isset($_POST["delete_item"])) {
+    $words = $_POST["word"] ?? [];
+    $existingAudio = $_POST["audio"] ?? [];
+    $audioFiles = $_FILES["audio_file"] ?? null;
 
-        if ($currentAudio) {
-            $filePath = __DIR__ . "/uploads/" . basename($currentAudio);
-            if (file_exists($filePath)) {
-                unlink($filePath);
+    $data = [];
+
+    for ($i = 0; $i < count($words); $i++) {
+
+        if (trim($words[$i]) !== "") {
+
+            $audioUrl = $existingAudio[$i] ?? "";
+
+            if (!empty($audioFiles["name"][$i])) {
+                require_once __DIR__."/../../core/cloudinary_upload.php";
+                $audioUrl = upload_to_cloudinary($audioFiles["tmp_name"][$i]);
             }
+
+            $data[] = [
+                "word"  => trim($words[$i]),
+                "audio" => $audioUrl
+            ];
         }
-
-        $data[$unit] = ["word" => "", "audio" => ""];
-        file_put_contents($jsonFile, json_encode($data, JSON_PRETTY_PRINT));
-
-        header("Location: editor.php?unit=" . urlencode($unit));
-        exit;
     }
 
-    // GUARDAR NUEVO
-    if (!empty($_POST["word"]) && isset($_FILES["audio"]) && $_FILES["audio"]["error"] === 0) {
+    $json = json_encode($data);
 
-        $uploadDir = __DIR__ . "/uploads/";
-        if (!is_dir($uploadDir)) {
-            mkdir($uploadDir, 0777, true);
-        }
+    $check = $pdo->prepare("
+        SELECT id FROM activities
+        WHERE unit_id = :unit
+        AND type = 'pronunciation'
+    ");
+    $check->execute(["unit"=>$unit]);
 
-        $filename = time() . "_" . basename($_FILES["audio"]["name"]);
-        $targetPath = $uploadDir . $filename;
+    if ($check->fetch()) {
 
-        move_uploaded_file($_FILES["audio"]["tmp_name"], $targetPath);
+        $stmt = $pdo->prepare("
+            UPDATE activities
+            SET data = :data
+            WHERE unit_id = :unit
+            AND type = 'pronunciation'
+        ");
 
-        $data[$unit]["word"] = trim($_POST["word"]);
-        $data[$unit]["audio"] = "activities/pronunciation/uploads/" . $filename;
+        $stmt->execute([
+            "data"=>$json,
+            "unit"=>$unit
+        ]);
 
-        file_put_contents($jsonFile, json_encode($data, JSON_PRETTY_PRINT));
+    } else {
 
-        header("Location: editor.php?unit=" . urlencode($unit));
-        exit;
+        $stmt = $pdo->prepare("
+            INSERT INTO activities (id, unit_id, type, data)
+            VALUES (:id, :unit, 'pronunciation', :data)
+        ");
+
+        $stmt->execute([
+            "id"=>md5(random_bytes(16)),
+            "unit"=>$unit,
+            "data"=>$json
+        ]);
     }
+
+    header("Location: editor.php?unit=".$unit."&saved=1");
+    exit;
 }
+
+/* ==============================
+   LOAD DATA
+============================== */
+$stmt = $pdo->prepare("
+    SELECT data FROM activities
+    WHERE unit_id = :unit
+    AND type = 'pronunciation'
+");
+$stmt->execute(["unit"=>$unit]);
+$row = $stmt->fetch(PDO::FETCH_ASSOC);
+$data = json_decode($row["data"] ?? "[]", true);
+
+require_once __DIR__ . "/../../core/_activity_editor_template.php";
+
+ob_start();
 ?>
 
-<!DOCTYPE html>
-<html>
-<head>
-<meta charset="UTF-8">
-<title>Pronunciation Editor</title>
-
-<style>
-body{
-    margin:0;
-    background:#eef6ff;
-    font-family:Arial;
-}
-
-.back-btn{
-    position:absolute;
-    top:20px;
-    left:20px;
-    background:#16a34a;
-    padding:8px 14px;
-    border:none;
-    border-radius:10px;
-    color:white;
-    cursor:pointer;
-    font-weight:bold;
-}
-
-.editor-container{
-    max-width:900px;
-    margin:100px auto 40px auto;
-    background:white;
-    padding:30px;
-    border-radius:16px;
-    box-shadow:0 4px 20px rgba(0,0,0,.1);
-    text-align:center;
-}
-
-h1{
-    color:#0b5ed7;
-    margin-bottom:25px;
-}
-
-input[type="text"]{
-    width:60%;
-    padding:8px;
-    border-radius:6px;
-    border:1px solid #ccc;
-}
-
-input[type="file"]{
-    margin:20px 0;
-}
-
-.save-btn{
-    padding:10px 20px;
-    background:#0b5ed7;
-    border:none;
-    border-radius:8px;
-    color:white;
-    cursor:pointer;
-    font-weight:bold;
-}
-
-.saved-row{
-    margin-top:30px;
-    display:flex;
-    justify-content:center;
-    align-items:center;
-    gap:20px;
-}
-
-.word-box{
-    background:#f3f4f6;
-    padding:10px 15px;
-    border-radius:8px;
-}
-
-.delete-btn{
-    background:#ef4444;
-    border:none;
-    color:white;
-    border-radius:50%;
-    width:30px;
-    height:30px;
-    cursor:pointer;
-    font-weight:bold;
-}
-
-.delete-btn:hover{
-    background:#dc2626;
-}
-</style>
-</head>
-
-<body>
-
-<button 
-class="back-btn"
-onclick="window.location.href='../hub/index.php?unit=<?= urlencode($unit) ?>'">
-↩ Back
-</button>
-
-<div class="editor-container">
-
-<h1>🔊 Pronunciation Editor</h1>
-
 <form method="POST" enctype="multipart/form-data">
-    <input type="text" name="word" placeholder="Enter word..." required>
-    <br>
-    <input type="file" name="audio" accept="audio/*" required>
-    <br>
-    <button type="submit" class="save-btn">💾 Save</button>
-</form>
 
-<?php if($currentWord && $currentAudio): ?>
-    <div class="saved-row">
-        <div class="word-box">
-            <?= htmlspecialchars($currentWord) ?>
-        </div>
+<?php if(isset($_GET["saved"])): ?>
+<p style="color:green;font-weight:bold;margin-bottom:15px;">
+✔ Guardado correctamente
+</p>
+<?php endif; ?>
 
-        <audio controls>
-            <source src="/lessons/lessons/<?= $currentAudio ?>">
-        </audio>
+<div id="items">
 
-        <form method="POST">
-            <input type="hidden" name="delete_item" value="1">
-            <button type="submit" class="delete-btn">✖</button>
-        </form>
-    </div>
+<?php if(!empty($data)): ?>
+<?php foreach($data as $i => $item): ?>
+<div class="pron-block">
+
+<input type="text" name="word[]" 
+value="<?= htmlspecialchars($item['word']) ?>" 
+placeholder="Word">
+
+<input type="file" name="audio_file[]" accept="audio/*">
+
+<input type="hidden" name="audio[]" value="<?= htmlspecialchars($item['audio'] ?? '') ?>">
+
+<button type="button" onclick="removeItem(this)" class="btn-remove">✖</button>
+
+</div>
+<?php endforeach; ?>
 <?php endif; ?>
 
 </div>
 
-</body>
-</html>
+<button type="button" onclick="addItem()" class="btn-add">
++ Add Word
+</button>
+
+<button type="submit" class="btn-save">
+💾 Save
+</button>
+
+</form>
+
+<style>
+.pron-block{
+    background:#f9fafb;
+    padding:14px;
+    margin-bottom:15px;
+    border-radius:12px;
+    border:1px solid #e5e7eb;
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+}
+
+.pron-block input{
+    padding:8px 10px;
+    border-radius:8px;
+    border:1px solid #ccc;
+    font-size:14px;
+}
+
+.btn-add{
+    background:#16a34a;
+    color:white;
+    padding:8px 14px;
+    border:none;
+    border-radius:8px;
+    cursor:pointer;
+    margin-right:10px;
+}
+
+.btn-save{
+    background:#0b5ed7;
+    color:white;
+    padding:8px 14px;
+    border:none;
+    border-radius:8px;
+    cursor:pointer;
+}
+
+.btn-remove{
+    background:#ef4444;
+    color:white;
+    border:none;
+    padding:6px 10px;
+    border-radius:6px;
+    cursor:pointer;
+    align-self:flex-end;
+}
+</style>
+
+<script>
+function addItem(){
+    const container = document.getElementById("items");
+
+    const div = document.createElement("div");
+    div.className = "pron-block";
+
+    div.innerHTML = `
+        <input type="text" name="word[]" placeholder="Word">
+        <input type="file" name="audio_file[]" accept="audio/*">
+        <input type="hidden" name="audio[]" value="">
+        <button type="button" onclick="removeItem(this)" class="btn-remove">✖</button>
+    `;
+
+    container.appendChild(div);
+}
+
+function removeItem(btn){
+    btn.parentElement.remove();
+}
+</script>
+
+<?php
+$content = ob_get_clean();
+render_activity_editor("Pronunciation Editor", "🔊", $content);
