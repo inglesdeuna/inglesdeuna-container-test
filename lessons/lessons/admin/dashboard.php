@@ -15,7 +15,7 @@ if (!isset($_SESSION['admin_logged']) || $_SESSION['admin_logged'] !== true) {
 /* ==========================
    CONEXIÓN A BASE DE DATOS
    ========================== */
-require_once "../academic/db_connection.php";
+require_once "../config/db.php";
 
 /* ==========================
    OBTENER CURSOS DESDE DB
