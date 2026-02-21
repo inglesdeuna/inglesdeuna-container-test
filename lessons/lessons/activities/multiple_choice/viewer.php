@@ -129,10 +129,15 @@ ob_start();
                 <?php endforeach; ?>
             </div>
 
-            <div class="mc-buttons">
-                <button class="mc-check" onclick="checkAnswer()">Check</button>
-                <button class="mc-try" onclick="resetOptions()">Try Again</button>
-            </div>
+           <div class="mc-buttons">
+    <button id="checkBtn" class="btn-check">
+        ✔ Check
+    </button>
+
+    <button id="nextBtn" class="btn-next">
+        ➜
+    </button>
+</div>
 
             <div id="mc-message" class="mc-message"></div>
         </div>
