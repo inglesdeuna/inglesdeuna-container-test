@@ -18,93 +18,31 @@ ob_start();
 ?>
 
 <style>
-.mc-wrapper{
-    max-width:1000px;
-    margin:0 auto;
+.btn-check,
+.btn-next {
+    background: #1f5cc4;
+    color: white;
+    border: none;
+    padding: 12px 28px;
+    border-radius: 12px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    min-width: 130px;
+    transition: 0.2s ease;
 }
 
-.mc-card{
-    background:white;
-    border-radius:18px;
-    padding:30px 40px;
-    box-shadow:0 8px 20px rgba(0,0,0,0.08);
+.btn-check:hover,
+.btn-next:hover {
+    background: #1749a0;
 }
 
-.mc-grid{
-    display:grid;
-    grid-template-columns: 1.2fr 0.8fr;
-    gap:30px;
-    align-items:center;
+.btn-next {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
 }
-
-.mc-question{
-    font-size:20px;
-    font-weight:600;
-    margin-bottom:20px;
-}
-
-.mc-options{
-    display:flex;
-    gap:14px;
-}
-
-.mc-option{
-    flex:1;
-    padding:14px;
-    background:#1f5cc4;
-    color:white;
-    border:none;
-    border-radius:10px;
-    font-weight:600;
-    cursor:pointer;
-    transition:0.2s;
-}
-
-.mc-option:hover{
-    background:#184ca4;
-}
-
-.mc-option.selected{
-    outline:3px solid #0b5ed7;
-}
-
-.mc-image{
-    width:100%;
-    max-height:180px;
-    object-fit:contain;
-}
-
-.mc-buttons{
-    margin-top:25px;
-    display:flex;
-    gap:12px;
-}
-
-.mc-check{
-    background:#0b5ed7;
-    color:white;
-    border:none;
-    padding:10px 18px;
-    border-radius:8px;
-    cursor:pointer;
-}
-
-.mc-try{
-    background:#6c757d;
-    color:white;
-    border:none;
-    padding:10px 18px;
-    border-radius:8px;
-    cursor:pointer;
-}
-
-.mc-message{
-    margin-top:15px;
-    font-weight:600;
-}
-
-.correct-msg{ color:#16a34a; }
-.wrong-msg{ color:#dc2626; }
 </style>
 
 <div class="mc-wrapper">
