@@ -12,121 +12,179 @@ $stmt = $pdo->prepare("
 ");
 $stmt->execute(["unit"=>$unit]);
 $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
 $data = json_decode($row["data"] ?? "[]", true);
 
 ob_start();
 ?>
 
 <style>
-.btn-check,
-.btn-next {
-    background: #1f5cc4;
-    color: white;
-    border: none;
-    padding: 12px 28px;
-    border-radius: 12px;
-    font-size: 16px;
-    font-weight: 600;
-    cursor: pointer;
-    min-width: 130px;
-    transition: 0.2s ease;
+.mc-wrapper{
+    max-width:1000px;
+    margin:0 auto;
 }
 
-.btn-check:hover,
-.btn-next:hover {
-    background: #1749a0;
+.mc-card{
+    background:white;
+    border-radius:20px;
+    padding:40px;
+    box-shadow:0 6px 18px rgba(0,0,0,0.08);
 }
 
-.btn-next {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 18px;
+.mc-grid{
+    display:grid;
+    grid-template-columns: 1fr 350px;
+    gap:40px;
+    align-items:center;
 }
+
+.mc-question{
+    font-size:22px;
+    font-weight:600;
+    margin-bottom:25px;
+}
+
+.mc-options{
+    display:flex;
+    gap:20px;
+}
+
+.mc-option{
+    flex:1;
+    background:#1f5fc4;
+    color:white;
+    border:none;
+    padding:14px;
+    border-radius:12px;
+    font-size:16px;
+    font-weight:600;
+    cursor:pointer;
+    transition:0.2s;
+}
+
+.mc-option:hover{
+    opacity:0.9;
+}
+
+.mc-option.selected{
+    background:#0b3d91;
+}
+
+.mc-image img{
+    width:100%;
+    max-height:260px;
+    object-fit:contain;
+}
+
+.mc-buttons{
+    margin-top:30px;
+    display:flex;
+    gap:20px;
+}
+
+.mc-feedback{
+    margin-top:20px;
+    font-weight:600;
+}
+.correct-msg{ color:green; }
+.wrong-msg{ color:#d9534f; }
 </style>
 
 <div class="mc-wrapper">
-<?php if(!empty($data)): ?>
-<?php $q = $data[0]; ?>
-
 <div class="mc-card">
 
-    <div class="mc-question">
-        <?= htmlspecialchars($q["question"]) ?>
-    </div>
+<div id="mc-container"></div>
 
-    <div class="mc-grid">
-
-        <div>
-            <div class="mc-options">
-                <?php foreach($q["options"] as $index=>$opt): ?>
-                <button class="mc-option"
-                        onclick="selectOption(this, <?= $index ?>)">
-                    <?= htmlspecialchars($opt) ?>
-                </button>
-                <?php endforeach; ?>
-            </div>
-
-           <div class="mc-buttons">
-    <button id="checkBtn" class="btn-check">
-        ✔ Check
-    </button>
-
-    <button id="nextBtn" class="btn-next">
-        ➜
-    </button>
 </div>
-
-            <div id="mc-message" class="mc-message"></div>
-        </div>
-
-        <div>
-            <?php if(!empty($q["image"])): ?>
-                <img src="<?= htmlspecialchars($q["image"]) ?>" class="mc-image">
-            <?php endif; ?>
-        </div>
-
-    </div>
-
 </div>
 
 <script>
+const DATA = <?= json_encode($data ?? []) ?>;
+let current = 0;
 let selected = null;
-const correct = <?= (int)$q["correct"] ?>;
 
-function selectOption(btn, index){
-    document.querySelectorAll(".mc-option").forEach(b=>b.classList.remove("selected"));
-    btn.classList.add("selected");
+function renderQuestion(){
+
+    const item = DATA[current];
+
+    let imageHtml = '';
+    if(item.image){
+        imageHtml = `
+        <div class="mc-image">
+            <img src="${item.image}">
+        </div>`;
+    }
+
+    document.getElementById("mc-container").innerHTML = `
+        <div class="mc-grid">
+
+            <div>
+                <div class="mc-question">
+                    ${current+1}. ${item.question}
+                </div>
+
+                <div class="mc-options">
+                    ${item.options.map((opt,i)=>`
+                        <button class="mc-option"
+                            onclick="selectOption(${i},this)">
+                            ${opt}
+                        </button>
+                    `).join('')}
+                </div>
+
+                <div class="mc-buttons">
+                    <button class="btn-primary" onclick="checkAnswer()">✔ Check</button>
+                    <button class="btn-primary" onclick="nextQuestion()">➡</button>
+                </div>
+
+                <div id="feedback" class="mc-feedback"></div>
+            </div>
+
+            ${imageHtml}
+
+        </div>
+    `;
+}
+
+function selectOption(index,el){
     selected = index;
+    document.querySelectorAll(".mc-option").forEach(b=>b.classList.remove("selected"));
+    el.classList.add("selected");
 }
 
 function checkAnswer(){
-    const msg = document.getElementById("mc-message");
+    const item = DATA[current];
+    const feedback = document.getElementById("feedback");
+
     if(selected === null){
-        msg.innerHTML = "Select an option.";
-        msg.className = "mc-message wrong-msg";
+        feedback.innerHTML = "Select an option";
+        feedback.className="mc-feedback wrong-msg";
         return;
     }
 
-    if(selected === correct){
-        msg.innerHTML = "✅ Excellent! Completed.";
-        msg.className = "mc-message correct-msg";
+    if(selected === item.correct){
+        feedback.innerHTML = "Excellent!";
+        feedback.className="mc-feedback correct-msg";
     }else{
-        msg.innerHTML = "❌ Try Again.";
-        msg.className = "mc-message wrong-msg";
+        feedback.innerHTML = "Try again";
+        feedback.className="mc-feedback wrong-msg";
     }
 }
 
-function resetOptions(){
-    document.querySelectorAll(".mc-option").forEach(b=>b.classList.remove("selected"));
-    document.getElementById("mc-message").innerHTML = "";
-    selected = null;
+function nextQuestion(){
+    if(current < DATA.length-1){
+        current++;
+        selected = null;
+        renderQuestion();
+    }else{
+        document.getElementById("mc-container").innerHTML =
+            "<h3 style='text-align:center;color:green;'>Completed 🎉</h3>";
+    }
 }
-</script>
 
-<?php endif; ?>
-</div>
+renderQuestion();
+</script>
 
 <?php
 $content = ob_get_clean();
-render_activity_viewer("Multiple Choice", "📝", $content);
+render_activity_viewer("📝 Multiple Choice", "📝", $content);
