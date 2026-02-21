@@ -82,38 +82,52 @@ $data = json_decode($row["data"] ?? "[]", true);
 require_once __DIR__ . "/../../core/_activity_editor_template.php";
 
 ob_start();
-?>
-
-<form method="POST">
+<form method="POST" enctype="multipart/form-data">
 
 <?php if(isset($_GET["saved"])): ?>
-<p style="color:green;">✔ Guardado correctamente</p>
+<p style="color:green;font-weight:bold;">✔ Guardado correctamente</p>
 <?php endif; ?>
 
 <div id="questions">
 
 <?php if(!empty($data)): ?>
 <?php foreach($data as $i => $item): ?>
-<div style="margin-bottom:20px;">
-    <input type="text" name="question[]" value="<?= htmlspecialchars($item['question']) ?>" placeholder="Question"><br>
-    <input type="text" name="option_a[]" value="<?= htmlspecialchars($item['options'][0]) ?>" placeholder="Option A"><br>
-    <input type="text" name="option_b[]" value="<?= htmlspecialchars($item['options'][1]) ?>" placeholder="Option B"><br>
-    <input type="text" name="option_c[]" value="<?= htmlspecialchars($item['options'][2]) ?>" placeholder="Option C"><br>
-    <select name="correct[]">
-        <option value="0" <?= $item['correct']==0?'selected':'' ?>>A</option>
-        <option value="1" <?= $item['correct']==1?'selected':'' ?>>B</option>
-        <option value="2" <?= $item['correct']==2?'selected':'' ?>>C</option>
-    </select>
+<div style="margin-bottom:30px;border-bottom:1px solid #ddd;padding-bottom:20px;">
+
+<label>Question</label>
+<input type="text" name="question[]" 
+value="<?= htmlspecialchars($item['question']) ?>" 
+style="width:100%;padding:12px;margin-bottom:10px;border-radius:8px;border:1px solid #ccc;">
+
+<label>Image</label>
+<input type="file" name="image_file[]" accept="image/*">
+
+<input type="hidden" name="image[]" value="<?= htmlspecialchars($item['image'] ?? '') ?>">
+
+<label>Option A</label>
+<input type="text" name="option_a[]" value="<?= htmlspecialchars($item['options'][0]) ?>" class="mc-input">
+
+<label>Option B</label>
+<input type="text" name="option_b[]" value="<?= htmlspecialchars($item['options'][1]) ?>" class="mc-input">
+
+<label>Option C</label>
+<input type="text" name="option_c[]" value="<?= htmlspecialchars($item['options'][2]) ?>" class="mc-input">
+
+<select name="correct[]" style="margin-top:10px;">
+<option value="0" <?= $item['correct']==0?'selected':'' ?>>Correct: A</option>
+<option value="1" <?= $item['correct']==1?'selected':'' ?>>Correct: B</option>
+<option value="2" <?= $item['correct']==2?'selected':'' ?>>Correct: C</option>
+</select>
+
 </div>
 <?php endforeach; ?>
 <?php endif; ?>
 
 </div>
 
-<button type="submit">💾 Save</button>
+<button type="submit" class="btn-primary">💾 Save</button>
 
 </form>
-
 <?php
 $content = ob_get_clean();
 render_activity_editor("📝 Multiple Choice Editor", "📝", $content);
