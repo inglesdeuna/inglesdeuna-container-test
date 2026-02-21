@@ -4,6 +4,9 @@ require_once __DIR__."/../../config/db.php";
 $unit = $_GET['unit'] ?? null;
 if (!$unit) die("Unidad no especificada");
 
+/* ==============================
+   GUARDAR
+============================== */
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
     $questions = $_POST["question"] ?? [];
@@ -12,19 +15,32 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $optionsC  = $_POST["option_c"] ?? [];
     $corrects  = $_POST["correct"] ?? [];
 
+    $imageFiles     = $_FILES["image_file"] ?? null;
+    $existingImages = $_POST["image"] ?? [];
+
     $data = [];
 
     for ($i = 0; $i < count($questions); $i++) {
 
         if (trim($questions[$i]) !== "") {
+
+            $imageUrl = $existingImages[$i] ?? "";
+
+            /* Si se sube nueva imagen */
+            if (!empty($imageFiles["name"][$i])) {
+                require_once __DIR__."/../../core/cloudinary_upload.php";
+                $imageUrl = upload_to_cloudinary($imageFiles["tmp_name"][$i]);
+            }
+
             $data[] = [
                 "question" => trim($questions[$i]),
-                "options" => [
+                "image"    => $imageUrl,
+                "options"  => [
                     $optionsA[$i],
                     $optionsB[$i],
                     $optionsC[$i]
                 ],
-                "correct" => (int)$corrects[$i]
+                "correct"  => (int)$corrects[$i]
             ];
         }
     }
@@ -70,6 +86,9 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     exit;
 }
 
+/* ==============================
+   CARGAR DATOS
+============================== */
 $stmt = $pdo->prepare("
     SELECT data FROM activities
     WHERE unit_id = :unit
@@ -77,15 +96,20 @@ $stmt = $pdo->prepare("
 ");
 $stmt->execute(["unit"=>$unit]);
 $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
 $data = json_decode($row["data"] ?? "[]", true);
 
 require_once __DIR__ . "/../../core/_activity_editor_template.php";
 
 ob_start();
+?>
+
 <form method="POST" enctype="multipart/form-data">
 
 <?php if(isset($_GET["saved"])): ?>
-<p style="color:green;font-weight:bold;">✔ Guardado correctamente</p>
+<p style="color:green;font-weight:bold;margin-bottom:15px;">
+✔ Guardado correctamente
+</p>
 <?php endif; ?>
 
 <div id="questions">
@@ -101,17 +125,22 @@ style="width:100%;padding:12px;margin-bottom:10px;border-radius:8px;border:1px s
 
 <label>Image</label>
 <input type="file" name="image_file[]" accept="image/*">
-
 <input type="hidden" name="image[]" value="<?= htmlspecialchars($item['image'] ?? '') ?>">
 
 <label>Option A</label>
-<input type="text" name="option_a[]" value="<?= htmlspecialchars($item['options'][0]) ?>" class="mc-input">
+<input type="text" name="option_a[]" 
+value="<?= htmlspecialchars($item['options'][0]) ?>" 
+style="width:100%;padding:10px;margin-bottom:8px;border-radius:8px;border:1px solid #ccc;">
 
 <label>Option B</label>
-<input type="text" name="option_b[]" value="<?= htmlspecialchars($item['options'][1]) ?>" class="mc-input">
+<input type="text" name="option_b[]" 
+value="<?= htmlspecialchars($item['options'][1]) ?>" 
+style="width:100%;padding:10px;margin-bottom:8px;border-radius:8px;border:1px solid #ccc;">
 
 <label>Option C</label>
-<input type="text" name="option_c[]" value="<?= htmlspecialchars($item['options'][2]) ?>" class="mc-input">
+<input type="text" name="option_c[]" 
+value="<?= htmlspecialchars($item['options'][2]) ?>" 
+style="width:100%;padding:10px;margin-bottom:8px;border-radius:8px;border:1px solid #ccc;">
 
 <select name="correct[]" style="margin-top:10px;">
 <option value="0" <?= $item['correct']==0?'selected':'' ?>>Correct: A</option>
@@ -125,9 +154,13 @@ style="width:100%;padding:12px;margin-bottom:10px;border-radius:8px;border:1px s
 
 </div>
 
-<button type="submit" class="btn-primary">💾 Save</button>
+<button type="submit" 
+style="background:#0b5ed7;color:white;padding:10px 18px;border:none;border-radius:8px;cursor:pointer;">
+💾 Save
+</button>
 
 </form>
+
 <?php
 $content = ob_get_clean();
 render_activity_editor("📝 Multiple Choice Editor", "📝", $content);
