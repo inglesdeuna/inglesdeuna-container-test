@@ -1,256 +1,119 @@
 <?php
 require_once __DIR__."/../../config/db.php";
+require_once __DIR__."/../../core/_activity_viewer_template.php";
 
-$unit = $_GET["unit"] ?? null;
-if(!$unit) die("Unit missing");
+$unit = $_GET['unit'] ?? null;
+if (!$unit) die("Unidad no especificada");
 
-/* ========= LOAD FROM DB ========= */
-
+/* ==============================
+   LOAD DATA
+============================== */
 $stmt = $pdo->prepare("
     SELECT data FROM activities
-    WHERE unit_id = :u AND type = 'listen_order'
+    WHERE unit_id = :unit
+    AND type = 'pronunciation'
 ");
-$stmt->execute(["u"=>$unit]);
-
+$stmt->execute(["unit"=>$unit]);
 $row = $stmt->fetch(PDO::FETCH_ASSOC);
-$blocks = json_decode($row["data"] ?? "[]", true);
+$data = json_decode($row["data"] ?? "[]", true);
 
-if(!$blocks || count($blocks) == 0){
-    die("No activities for this unit");
-}
+ob_start();
 ?>
-
-<!DOCTYPE html>
-<html>
-<head>
-<meta charset="UTF-8">
-<title>Listen & Order</title>
 
 <style>
 body{
-  font-family: Arial;
-  background:#eef6ff;
-  text-align:center;
-  padding:20px;
+    font-family: Arial, sans-serif;
+    background:#eef6ff;
+    padding:40px 20px;
+    text-align:center;
 }
 
-h1{color:#0b5ed7;}
-
-#sentenceBox{
-  margin:20px auto;
-  padding:15px;
-  background:white;
-  border-radius:15px;
-  max-width:700px;
+/* White box */
+.box{
+    background:white;
+    padding:30px;
+    border-radius:18px;
+    max-width:600px;
+    margin:20px auto;
+    box-shadow:0 4px 10px rgba(0,0,0,.1);
 }
 
-#words, #answer{
-  display:flex;
-  flex-wrap:wrap;
-  justify-content:center;
-  gap:10px;
-  margin:15px 0;
-}
-
+/* Word */
 .word{
-  padding:6px;
-  border-radius:12px;
-  background:white;
-  cursor:grab;
-  box-shadow:0 2px 6px rgba(0,0,0,.15);
+    font-size:30px;
+    font-weight:bold;
+    margin:20px 0;
 }
 
-.word img{
-  height:80px;
-  width:auto;
-  display:block;
-  object-fit:contain;
+/* Primary button style (same as external) */
+.primary-btn{
+    background:#0b5ed7;
+    color:white;
+    border:none;
+    padding:12px 26px;
+    border-radius:16px;
+    font-weight:bold;
+    cursor:pointer;
+    font-size:15px;
+    transition:0.2s ease;
 }
 
-.drop-zone{
-  background:#fff;
-  border:2px dashed #0b5ed7;
-  border-radius:12px;
-  padding:15px;
-  min-height:100px;
+.primary-btn:hover{
+    background:#084298;
 }
 
-button{
-  padding:10px 18px;
-  border:none;
-  border-radius:12px;
-  background:#0b5ed7;
-  color:white;
-  cursor:pointer;
-  margin:6px;
-}
-
-#feedback{
-  font-size:18px;
-  font-weight:bold;
-}
-
-.good{color:green;}
-.bad{color:crimson;}
-
-.back{
-  display:inline-block;
-  margin-top:20px;
-  background:#16a34a;
-  color:white;
-  padding:10px 18px;
-  border-radius:12px;
-  text-decoration:none;
-  font-weight:bold;
+/* Controls */
+.controls{
+    margin-top:20px;
 }
 </style>
-</head>
 
-<body>
+<div class="box">
 
-<h1>🎧 Listen & Order</h1>
+<?php if(!empty($data)): ?>
 
-<div id="sentenceBox">
-  <button onclick="playAudio()">🔊 Listen</button>
+<div id="word" class="word"></div>
+
+<button class="primary-btn" onclick="playAudio()">🔊 Listen</button>
+
+<div class="controls">
+    <button class="primary-btn" onclick="nextWord()">➡️</button>
 </div>
 
-<div id="words"></div>
-<div id="answer" class="drop-zone"></div>
+<?php else: ?>
+<p>No pronunciation data available.</p>
+<?php endif; ?>
 
-<div>
-  <button onclick="checkOrder()">✅ Check</button>
-  <button onclick="nextBlock()">➡️</button>
 </div>
-
-<div id="feedback"></div>
-
-<a class="back" href="../hub/index.php?unit=<?= urlencode($unit) ?>">
-↩ Back
-</a>
 
 <script>
+const PRON_DATA = <?= json_encode($data ?? []) ?>;
 
-const blocks = <?= json_encode($blocks, JSON_UNESCAPED_UNICODE) ?>;
+let current = 0;
 
-let index = 0;
-let correct = [];
-let dragged = null;
-
-/* ===== TTS CONTROL ===== */
-
-let utter = null;
-let isPaused = false;
-let isSpeaking = false;
+function renderWord(){
+    if(PRON_DATA.length === 0) return;
+    document.getElementById("word").innerText = PRON_DATA[current].word;
+}
 
 function playAudio(){
-
-  if (isSpeaking && !isPaused) {
-    speechSynthesis.pause();
-    isPaused = true;
-    return;
-  }
-
-  if (isPaused) {
-    speechSynthesis.resume();
-    isPaused = false;
-    return;
-  }
-
-  utter = new SpeechSynthesisUtterance(blocks[index].sentence);
-
-  utter.lang = "en-US";
-  utter.rate = 0.7;
-  utter.pitch = 1;
-  utter.volume = 1;
-
-  utter.onstart = () => {
-    isSpeaking = true;
-    isPaused = false;
-  };
-
-  utter.onend = () => {
-    isSpeaking = false;
-    isPaused = false;
-  };
-
-  speechSynthesis.speak(utter);
+    if(PRON_DATA.length === 0) return;
+    const audio = new Audio(PRON_DATA[current].audio);
+    audio.play();
 }
 
-/* ===== GAME LOGIC ===== */
-
-const wordsDiv = document.getElementById("words");
-const answerDiv = document.getElementById("answer");
-const feedback = document.getElementById("feedback");
-
-function loadBlock(){
-
-  speechSynthesis.cancel();
-  isSpeaking = false;
-  isPaused = false;
-
-  dragged = null;
-  feedback.textContent="";
-  feedback.className="";
-
-  wordsDiv.innerHTML="";
-  answerDiv.innerHTML="";
-
-  const block = blocks[index];
-  correct = [...block.images];
-
-  let shuffled = [...correct].sort(()=>Math.random()-0.5);
-
-  shuffled.forEach(src=>{
-    const div=document.createElement("div");
-    div.className="word";
-    div.draggable=true;
-    div.dataset.src=src;
-
-    const img=document.createElement("img");
-    img.src=src; // 🔥 Cloudinary URL directa
-
-    div.appendChild(img);
-
-    div.addEventListener("dragstart",()=>dragged=div);
-    wordsDiv.appendChild(div);
-  });
+function nextWord(){
+    if(PRON_DATA.length === 0) return;
+    current++;
+    if(current >= PRON_DATA.length){
+        current = 0;
+    }
+    renderWord();
 }
 
-answerDiv.addEventListener("dragover", e=>e.preventDefault());
-
-answerDiv.addEventListener("drop", ()=>{
-  if(dragged) answerDiv.appendChild(dragged);
-});
-
-function checkOrder(){
-
-  const built=[...answerDiv.children].map(x=>x.dataset.src);
-
-  if(JSON.stringify(built)===JSON.stringify(correct)){
-    feedback.textContent="🌟 Excellent!";
-    feedback.className="good";
-  }else{
-    feedback.textContent="🔁 Try again!";
-    feedback.className="bad";
-  }
-}
-
-function nextBlock(){
-
-  index++;
-
-  if(index>=blocks.length){
-    feedback.textContent="🏆 Completed!";
-    feedback.className="good";
-    return;
-  }
-
-  loadBlock();
-}
-
-loadBlock();
-
+renderWord();
 </script>
 
-</body>
-</html>
+<?php
+$content = ob_get_clean();
+render_activity_viewer("Pronunciation", "🔊", $content);
