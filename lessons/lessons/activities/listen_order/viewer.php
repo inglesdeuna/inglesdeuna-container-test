@@ -1,29 +1,34 @@
 <?php
-$unit = $_GET['unit'] ?? null;
-if (!$unit) die("Unidad no especificada");
+require_once __DIR__."/../../config/db.php";
 
-$file = __DIR__ . "/listen_order.json";
+$unit = $_GET["unit"] ?? null;
+if(!$unit) die("Unit missing");
 
-$data = file_exists($file)
-  ? json_decode(file_get_contents($file), true)
-  : [];
+/* ========= LOAD FROM DB ========= */
 
-if (!isset($data[$unit]) || empty($data[$unit])) {
-  die("No hay actividades para esta unidad");
+$stmt = $pdo->prepare("
+    SELECT data FROM activities
+    WHERE unit_id = :u AND type = 'listen_order'
+");
+$stmt->execute(["u"=>$unit]);
+
+$row = $stmt->fetch(PDO::FETCH_ASSOC);
+$blocks = json_decode($row["data"] ?? "[]", true);
+
+if(!$blocks || count($blocks) == 0){
+    die("No activities for this unit");
 }
-
-$blocks = $data[$unit];
 ?>
 
 <!DOCTYPE html>
-<html lang="es">
+<html>
 <head>
 <meta charset="UTF-8">
 <title>Listen & Order</title>
 
 <style>
 body{
-  font-family: Arial, sans-serif;
+  font-family: Arial;
   background:#eef6ff;
   text-align:center;
   padding:20px;
@@ -92,7 +97,7 @@ button{
   display:inline-block;
   margin-top:20px;
   background:#16a34a;
-  color:#fff;
+  color:white;
   padding:10px 18px;
   border-radius:12px;
   text-decoration:none;
@@ -110,7 +115,6 @@ button{
 </div>
 
 <div id="words"></div>
-
 <div id="answer" class="drop-zone"></div>
 
 <div>
@@ -132,16 +136,59 @@ let index = 0;
 let correct = [];
 let dragged = null;
 
+/* ===== TTS CONTROL ===== */
+
+let utter = null;
+let isPaused = false;
+let isSpeaking = false;
+
+function playAudio(){
+
+  if (isSpeaking && !isPaused) {
+    speechSynthesis.pause();
+    isPaused = true;
+    return;
+  }
+
+  if (isPaused) {
+    speechSynthesis.resume();
+    isPaused = false;
+    return;
+  }
+
+  utter = new SpeechSynthesisUtterance(blocks[index].sentence);
+
+  utter.lang = "en-US";
+  utter.rate = 0.7;
+  utter.pitch = 1;
+  utter.volume = 1;
+
+  utter.onstart = () => {
+    isSpeaking = true;
+    isPaused = false;
+  };
+
+  utter.onend = () => {
+    isSpeaking = false;
+    isPaused = false;
+  };
+
+  speechSynthesis.speak(utter);
+}
+
+/* ===== GAME LOGIC ===== */
+
 const wordsDiv = document.getElementById("words");
 const answerDiv = document.getElementById("answer");
 const feedback = document.getElementById("feedback");
 
-/* 🔥 BASE PATH PARA PRODUCCIÓN */
-const BASE_PATH = "/lessons/lessons/";
-
 function loadBlock(){
 
-  dragged=null;
+  speechSynthesis.cancel();
+  isSpeaking = false;
+  isPaused = false;
+
+  dragged = null;
   feedback.textContent="";
   feedback.className="";
 
@@ -149,7 +196,6 @@ function loadBlock(){
   answerDiv.innerHTML="";
 
   const block = blocks[index];
-
   correct = [...block.images];
 
   let shuffled = [...correct].sort(()=>Math.random()-0.5);
@@ -161,12 +207,11 @@ function loadBlock(){
     div.dataset.src=src;
 
     const img=document.createElement("img");
-    img.src = BASE_PATH + src;
+    img.src=src; // 🔥 Cloudinary URL directa
 
     div.appendChild(img);
 
     div.addEventListener("dragstart",()=>dragged=div);
-
     wordsDiv.appendChild(div);
   });
 }
@@ -202,19 +247,6 @@ function nextBlock(){
 
   loadBlock();
 }
-
-function playAudio(){
-
-  speechSynthesis.cancel(); // limpiar cualquier audio anterior
-
-  const msg = new SpeechSynthesisUtterance(blocks[index].sentence);
-  msg.lang = "en-US";
-  msg.rate = 0.7; // más lento
-
-  speechSynthesis.speak(msg);
-
-}
-
 
 loadBlock();
 
