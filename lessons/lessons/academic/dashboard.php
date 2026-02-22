@@ -2,140 +2,159 @@
 session_start();
 
 /**
- * DASHBOARD DOCENTE
- * Acceso exclusivo para docentes logueados
+ * PANEL PRINCIPAL ADMIN
+ * Acceso exclusivo para administradores
  */
 
-// 🔐 VALIDACIÓN (NO SE CAMBIA)
-if (!isset($_SESSION['academic_logged']) || $_SESSION['academic_logged'] !== true) {
+if (!isset($_SESSION['admin_logged']) || $_SESSION['admin_logged'] !== true) {
     header("Location: login.php");
     exit;
 }
 
-$teacherId   = $_SESSION['academic_id']   ?? null;
-$teacherName = $_SESSION['academic_name'] ?? 'Docente';
+/* ==========================
+   CONEXIÓN A DB (PDO)
+   ========================== */
+require_once "../config/db.php";
 
 /* ==========================
-   DATA
+   OBTENER CURSOS DESDE DB
    ========================== */
-$baseDir = dirname(__DIR__) . "/admin/data";
 
-$assignmentsFile = $baseDir . "/assignments.json";
-$coursesFile     = $baseDir . "/courses.json";
+// Programas Técnicos
+$stmtTech = $pdo->prepare("
+    SELECT id, name 
+    FROM courses 
+    WHERE program_id = :program
+    ORDER BY name ASC
+");
+$stmtTech->execute(['program' => 'prog_technical']);
+$technicalCourses = $stmtTech->fetchAll(PDO::FETCH_ASSOC);
 
-$assignments = file_exists($assignmentsFile)
-  ? json_decode(file_get_contents($assignmentsFile), true)
-  : [];
+// Cursos de Inglés
+$stmtEng = $pdo->prepare("
+    SELECT id, name 
+    FROM courses 
+    WHERE program_id = :program
+    ORDER BY name ASC
+");
+$stmtEng->execute(['program' => 'prog_english']);
+$englishCourses = $stmtEng->fetchAll(PDO::FETCH_ASSOC);
 
-$courses = file_exists($coursesFile)
-  ? json_decode(file_get_contents($coursesFile), true)
-  : [];
-
-/* ==========================
-   CURSOS ASIGNADOS AL DOCENTE
-   ========================== */
-$myAssignments = array_filter($assignments, function ($a) use ($teacherId) {
-    return ($a['teacher_id'] ?? null) === $teacherId;
-});
-
-function getCourseName($courseId, $courses) {
-    foreach ($courses as $c) {
-        if (($c['id'] ?? null) === $courseId) {
-            return $c['name'];
-        }
-    }
-    return 'Curso';
-}
 ?>
 <!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Panel Docente</title>
+<title>Panel Administrador</title>
 
 <style>
-body{
-  font-family:Arial, sans-serif;
-  background:#f0fdf4;
-  padding:40px;
-}
-.topbar{
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-  margin-bottom:30px;
-}
-a.logout{
-  color:#dc2626;
-  text-decoration:none;
-  font-weight:bold;
-}
-.grid{
-  display:grid;
-  grid-template-columns:repeat(auto-fit,minmax(260px,1fr));
-  gap:30px;
-}
-.card{
-  background:#fff;
-  padding:25px;
-  border-radius:16px;
-  box-shadow:0 10px 25px rgba(0,0,0,.08);
-}
-.card h3{margin-top:0}
+body{font-family:Arial,sans-serif;background:#f4f8ff;padding:40px;}
+h1{margin-bottom:30px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:30px;}
+.card{background:#fff;padding:25px;border-radius:16px;box-shadow:0 10px 25px rgba(0,0,0,.08);}
+.card h2,.card h3{margin-top:0}
 .card p{color:#555}
-.card a{
-  display:inline-block;
-  margin-top:12px;
-  padding:10px 16px;
-  background:#16a34a;
-  color:#fff;
-  text-decoration:none;
-  border-radius:8px;
-  font-size:14px;
+.card a,.card button{
+  display:inline-block;margin-top:12px;padding:10px 18px;
+  background:#2563eb;color:#fff;text-decoration:none;
+  border-radius:8px;font-size:14px;border:none;cursor:pointer;
 }
-.status{
-  font-weight:700;
-  color:#16a34a;
+.card a.secondary{background:#16a34a}
+.card a.warning{background:#d97706}
+.topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:40px;}
+.topbar a{color:#dc2626;text-decoration:none;font-weight:bold;}
+.hidden{display:none;}
+.course-link{
+  display:block;
+  margin-bottom:10px;
+  background:#16a34a;
+  text-align:center;
+}
+.course-link.eng{
+  background:#2563eb;
 }
 </style>
-</head>
 
+<script>
+function toggleCursos(){
+  const container = document.getElementById("cursosContainer");
+  container.classList.toggle("hidden");
+}
+</script>
+</head>
 <body>
 
 <div class="topbar">
-  <h1>👩‍🏫 Panel Docente</h1>
-  <a class="logout" href="logout.php">🚪 Cerrar sesión</a>
+  <h1>🎛️ Panel Administrador</h1>
+  <a href="logout.php">🚪 Cerrar sesión</a>
 </div>
-
-<p>
-  Bienvenido,
-  <strong><?= htmlspecialchars($teacherName) ?></strong>
-</p>
-
-<h2 style="margin-top:40px">📘 Mis cursos</h2>
-
-<?php if (empty($myAssignments)): ?>
-  <p>No tienes cursos asignados actualmente.</p>
-<?php else: ?>
 
 <div class="grid">
-<?php foreach ($myAssignments as $a): ?>
+
   <div class="card">
-    <h3><?= htmlspecialchars(getCourseName($a['course_id'], $courses)) ?></h3>
+    <h2>🧱 Estructura Académica</h2>
+    <p>Define programas, cursos, niveles, unidades y actividades.</p>
+    <a href="../academic/programs_editor.php">Gestionar estructura</a>
+  </div>
 
-    <p>
-      Periodo:
-      <span class="status"><?= htmlspecialchars($a['period']) ?></span>
-    </p>
-
-    <a href="course.php?assignment=<?= urlencode($a['id']) ?>">
-      Entrar al curso
+  <div class="card">
+    <h2>👥 Asignaciones</h2>
+    <p>Ofrece los cursos por periodo y asigna docentes y estudiantes.</p>
+    <a class="warning" href="../academic/assignments_editor.php">
+      Asignar cursos
     </a>
   </div>
-<?php endforeach; ?>
+
+  <div class="card">
+    <h2>📚 Cursos</h2>
+    <p>Visualiza cursos por programa.</p>
+    <button onclick="toggleCursos()">Ver cursos</button>
+  </div>
+
 </div>
 
-<?php endif; ?>
+<!-- ======================
+     CONTENEDOR CURSOS
+     ====================== -->
+<div id="cursosContainer" class="hidden" style="margin-top:40px;">
+  <div class="grid">
+
+    <!-- ================== INGLÉS ================== -->
+    <div class="card">
+      <h3>🇺🇸 Cursos de Inglés</h3>
+
+      <?php if (empty($englishCourses)): ?>
+        <p>No hay cursos creados.</p>
+      <?php else: ?>
+        <?php foreach ($englishCourses as $course): ?>
+          <a class="course-link eng"
+             href="../academic/course_view.php?course=<?= htmlspecialchars($course['id']); ?>">
+             <?= htmlspecialchars($course['name']); ?>
+          </a>
+        <?php endforeach; ?>
+      <?php endif; ?>
+
+    </div>
+
+    <!-- ================== TÉCNICOS ================== -->
+    <div class="card">
+      <h3>💻 Programas Técnicos</h3>
+
+      <?php if (empty($technicalCourses)): ?>
+        <p>No hay cursos creados.</p>
+      <?php else: ?>
+        <?php foreach ($technicalCourses as $course): ?>
+          <a class="course-link"
+             href="../academic/course_view.php?course=<?= htmlspecialchars($course['id']); ?>">
+             <?= htmlspecialchars($course['name']); ?>
+          </a>
+        <?php endforeach; ?>
+      <?php endif; ?>
+
+    </div>
+
+  </div>
+</div>
 
 </body>
 </html>
