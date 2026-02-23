@@ -81,51 +81,62 @@ $activities = $stmtActivities->fetchAll(PDO::FETCH_ASSOC);
 
 <style>
 body{
-    font-family:Arial,sans-serif;
+    font-family: Arial, sans-serif;
     background:#f4f8ff;
     padding:40px;
 }
+
 .card{
-    background:#fff;
+    background:#ffffff;
     padding:25px;
     border-radius:16px;
     box-shadow:0 10px 25px rgba(0,0,0,.08);
     margin-bottom:20px;
 }
+
 .back{
     display:inline-block;
     background:#6b7280;
     margin-bottom:20px;
     padding:8px 14px;
     border-radius:8px;
-    color:#fff;
+    color:#ffffff;
     text-decoration:none;
+    font-weight:600;
 }
+
 .activity-box{
     background:#16a34a;
     border-radius:12px;
     padding:16px;
     margin-bottom:12px;
-    color:#fff;
+    color:#ffffff;
     display:flex;
     justify-content:space-between;
     align-items:center;
 }
+
 .activity-left{
     flex:1;
 }
+
 .activity-title{
     font-weight:bold;
     font-size:15px;
 }
+
 .activity-meta{
     font-size:12px;
     opacity:0.9;
+    margin-top:4px;
 }
+
 .activity-actions{
     display:flex;
     gap:8px;
+    align-items:center;
 }
+
 .btn{
     padding:8px 14px;
     border-radius:8px;
@@ -134,29 +145,39 @@ body{
     font-weight:600;
     color:#ffffff;
     display:inline-block;
-    min-width:70px;
+    min-width:75px;
     text-align:center;
+    transition:0.2s ease;
 }
 
 .btn-open{
     background:#14532d;
 }
 
+.btn-open:hover{
+    background:#166534;
+}
+
 .btn-edit{
     background:#1d4ed8;
+}
+
+.btn-edit:hover{
+    background:#2563eb;
 }
 
 .btn-delete{
     background:#dc2626;
 }
+
+.btn-delete:hover{
+    background:#ef4444;
 }
-.btn-open{ background:#15803d; }
-.btn-edit{ background:#2563eb; }
-.btn-delete{ background:#dc2626; }
 
 .draggable{
     cursor:grab;
 }
+
 .draggable:active{
     cursor:grabbing;
 }
