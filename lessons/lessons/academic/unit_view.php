@@ -1,144 +1,56 @@
 <?php
 session_start();
 
-/* ===============================
-   SEGURIDAD
-=============================== */
-if (!isset($_SESSION["admin_logged"])) {
-    header("Location: ../admin/login.php");
-    exit;
+require_once "../config/db.php";
+
+$unit_id = $_GET['unit'] ?? null;
+
+if (!$unit_id) {
+    die("Unidad no especificada.");
 }
 
-/* ===============================
-   DB
-=============================== */
-require_once __DIR__ . "/../config/db.php";
-
-/* ===============================
-   VALIDAR UNIT
-=============================== */
-$unitId = $_GET["unit"] ?? null;
-
-if (!$unitId) {
-    die("Unit no especificada");
-}
-
-/* ===============================
-   BUSCAR UNIT
-=============================== */
-$stmt = $pdo->prepare("
-    SELECT u.*, c.name AS course_name
-    FROM units u
-    JOIN courses c ON c.id = u.course_id
-    WHERE u.id = :id
-    LIMIT 1
-");
-
-$stmt->execute([
-    "id" => $unitId
-]);
-
+/* ==========================
+   OBTENER UNIT
+   ========================== */
+$stmt = $pdo->prepare("SELECT * FROM units WHERE id = :id");
+$stmt->execute(['id' => $unit_id]);
 $unit = $stmt->fetch(PDO::FETCH_ASSOC);
 
 if (!$unit) {
-    die("Unidad no encontrada");
+    die("Unidad no encontrada.");
 }
+
+/* ==========================
+   OBTENER CURSO
+   ========================== */
+$stmtCourse = $pdo->prepare("SELECT * FROM courses WHERE id = :id");
+$stmtCourse->execute(['id' => $unit['course_id']]);
+$course = $stmtCourse->fetch(PDO::FETCH_ASSOC);
 
 ?>
 <!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Unit</title>
-
+<title><?= htmlspecialchars($unit['title']); ?></title>
 <style>
-body{
-    font-family: Arial;
-    background:#f4f8ff;
-    padding:40px;
-}
-.card{
-    background:#fff;
-    padding:25px;
-    border-radius:14px;
-    margin-bottom:25px;
-    max-width:700px;
-}
-button{
-    padding:10px 16px;
-    border:none;
-    border-radius:8px;
-    background:#2563eb;
-    color:white;
-    font-weight:bold;
-}
+body{font-family:Arial,sans-serif;background:#f4f8ff;padding:40px;}
+.card{background:#fff;padding:25px;border-radius:16px;box-shadow:0 10px 25px rgba(0,0,0,.08);}
+a{display:inline-block;margin-bottom:20px;padding:8px 15px;background:#6b7280;color:#fff;text-decoration:none;border-radius:6px;}
+h2{margin-top:0;}
 </style>
-
 </head>
 <body>
 
-<h1>📚 <?= htmlspecialchars($unit["name"]) ?></h1>
+<a href="course_view.php?course=<?= htmlspecialchars($course['id']); ?>">
+← Volver al Curso
+</a>
 
 <div class="card">
-<p><strong>ID:</strong> <?= htmlspecialchars($unit["id"]) ?></p>
-<p><strong>Curso:</strong> <?= htmlspecialchars($unit["course_name"]) ?></p>
-<p><strong>Posición:</strong> <?= htmlspecialchars($unit["position"]) ?></p>
+    <h2><?= htmlspecialchars($unit['title']); ?></h2>
+    <p><strong>Curso:</strong> <?= htmlspecialchars($course['name']); ?></p>
+    <p><strong>ID:</strong> <?= htmlspecialchars($unit['id']); ?></p>
 </div>
 
-<div class="card">
-<h2>🎮 Actividades</h2>
-
-<a href="../activities/hangman/editor.php?unit=<?= urlencode($unitId) ?>">
-<button>➕ Hangman</button>
-</a>
-
-<br><br>
-
-<a href="../activities/drag_drop/editor.php?unit=<?= urlencode($unitId) ?>">
-<button>➕ Drag & Drop</button>
-</a>
-
-<br><br>
-
-<a href="../activities/flashcards/editor.php?unit=<?= urlencode($unitId) ?>">
-<button>🃏 Flashcards</button>
-</a>
-
-<br><br>
-
-<a href="../activities/flipbooks/editor.php?unit=<?= urlencode($unitId) ?>">
-<button>📖 Flipbook</button>
-</a>
-
-<br><br>
-
-<a href="../activities/external/editor.php?unit=<?= urlencode($unitId) ?>">
-<button>🌐 External Resource</button>
-</a>
-
-<br><br>
-
-
-<a href="../activities/match/viewer.php?unit=<?= urlencode($unitId) ?>">
-<button>🧩 Match</button>
-</a>
-
-<br><br>
-
-<a href="../activities/pronunciation/viewer.php?unit=<?= urlencode($unitId) ?>">
-<button>🎧 Pronunciation</button>
-
-   <br><br>
-
-<a href="../activities/multiple_choice/viewer.php?unit=<?= urlencode($unitId) ?>">
-<button>🧠 Multiple Choice</button>
-</a>
-
-   <br><br>
-
-<a href="../activities/listen_order/viewer.php?unit=<?= urlencode($unitId) ?>">
-<button>🎧 Listen & Order</button>
-</a>
- 
 </body>
 </html>
