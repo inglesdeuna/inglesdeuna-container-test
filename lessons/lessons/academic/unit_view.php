@@ -59,6 +59,12 @@ body{font-family:Arial,sans-serif;background:#f4f8ff;padding:40px;}
 .activity-title{font-weight:bold;font-size:15px;}
 .activity-type{font-size:12px;opacity:0.9;}
 small{display:block;font-size:11px;opacity:0.8;}
+   .draggable {
+    cursor: grab;
+}
+.draggable:active {
+    cursor: grabbing;
+}
 </style>
 </head>
 <body>
@@ -77,29 +83,63 @@ small{display:block;font-size:11px;opacity:0.8;}
 
     <div id="activityList">
 
-    <?php foreach ($activities as $activity): ?>
-        <?php
-        $typeRaw = $activity['type'];
-        $data = json_decode($activity['data'], true);
-        $activityTitle = $data['title'] ?? strtoupper(str_replace('_',' ',$typeRaw));
-        ?>
+   <?php foreach ($activities as $activity): ?>
 
-        <div class="activity-box" data-id="<?= $activity['id']; ?>">
-            <div class="activity-title">
-                <?= htmlspecialchars($activityTitle); ?>
-            </div>
+<?php
+$typeRaw = $activity['type'];
 
-            <div class="activity-type">
-                Tipo: <?= strtoupper(str_replace('_',' ',$typeRaw)); ?>
-            </div>
+$icons = [
+    'hangman' => '🎯',
+    'drag_drop' => '🧩',
+    'flashcards' => '🃏',
+    'match' => '🔗',
+    'multiple_choice' => '✅',
+    'listen_order' => '🎧',
+    'pronunciation' => '🎤',
+    'external' => '🌐',
+    'flipbooks' => '📖'
+];
 
-            <small>
-                Creado: <?= htmlspecialchars($activity['created_at']); ?>
-            </small>
-        </div>
+$icon = $icons[$typeRaw] ?? '📘';
 
-    <?php endforeach; ?>
+$data = json_decode($activity['data'], true);
+$activityTitle = $data['title'] ?? strtoupper(str_replace('_',' ',$typeRaw));
+?>
 
+<div class="activity-box draggable" draggable="true" data-id="<?= $activity['id']; ?>">
+
+    <div class="activity-title">
+        <?= $icon . " " . htmlspecialchars($activityTitle); ?>
+    </div>
+
+    <small>
+        Tipo: <?= strtoupper(str_replace('_',' ',$typeRaw)); ?><br>
+        Creado: <?= htmlspecialchars($activity['created_at']); ?>
+    </small>
+
+    <div style="margin-top:10px;">
+
+        <a class="btn btn-open"
+           href="../activities/<?= htmlspecialchars($typeRaw); ?>.php?id=<?= htmlspecialchars($activity['id']); ?>">
+           Abrir
+        </a>
+
+        <a class="btn btn-edit"
+           href="../activities/<?= htmlspecialchars($typeRaw); ?>_editor.php?id=<?= htmlspecialchars($activity['id']); ?>">
+           Editar
+        </a>
+
+        <a class="btn btn-delete"
+           href="unit_view.php?unit=<?= urlencode($unit_id); ?>&delete=<?= htmlspecialchars($activity['id']); ?>"
+           onclick="return confirm('¿Eliminar esta actividad?');">
+           Eliminar
+        </a>
+
+    </div>
+
+</div>
+
+<?php endforeach; ?>
     </div>
 
 </div>
