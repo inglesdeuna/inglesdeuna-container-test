@@ -45,12 +45,44 @@ $activities = $stmtActivities->fetchAll(PDO::FETCH_ASSOC);
 <meta charset="UTF-8">
 <title><?= htmlspecialchars($unit['name']); ?></title>
 <style>
-body{font-family:Arial,sans-serif;background:#f4f8ff;padding:40px;}
-.card{background:#fff;padding:25px;border-radius:16px;box-shadow:0 10px 25px rgba(0,0,0,.08);margin-bottom:20px;}
-a{display:block;margin-bottom:10px;padding:12px 18px;border-radius:8px;text-decoration:none;color:#fff;}
-.back{display:inline-block;background:#6b7280;margin-bottom:20px;}
-.activity{background:#16a34a;}
-small{display:block;font-size:12px;opacity:0.8;}
+body{
+    font-family:Arial,sans-serif;
+    background:#f4f8ff;
+    padding:40px;
+}
+.card{
+    background:#fff;
+    padding:25px;
+    border-radius:16px;
+    box-shadow:0 10px 25px rgba(0,0,0,.08);
+    margin-bottom:20px;
+}
+a{
+    display:block;
+    margin-bottom:12px;
+    padding:14px 18px;
+    border-radius:10px;
+    text-decoration:none;
+    color:#fff;
+    font-weight:600;
+}
+.back{
+    display:inline-block;
+    background:#6b7280;
+    margin-bottom:20px;
+}
+.activity{
+    background:#16a34a;
+}
+small{
+    display:block;
+    font-size:12px;
+    opacity:0.85;
+    margin-top:4px;
+}
+h2{
+    margin-top:0;
+}
 </style>
 </head>
 <body>
@@ -75,13 +107,29 @@ small{display:block;font-size:12px;opacity:0.8;}
         <?php foreach ($activities as $activity): ?>
 
             <?php
-            $type = strtoupper(str_replace('_', ' ', $activity['type']));
+            $typeRaw = $activity['type'];
+
+            $icons = [
+                'hangman' => '🎯',
+                'drag_drop' => '🧩',
+                'flashcards' => '🃏',
+                'match' => '🔗',
+                'multiple_choice' => '✅',
+                'listen_order' => '🎧',
+                'pronunciation' => '🎤',
+                'external' => '🌐',
+                'flipbooks' => '📖'
+            ];
+
+            $icon = $icons[$typeRaw] ?? '📘';
+
+            $type = strtoupper(str_replace('_', ' ', $typeRaw));
             ?>
 
             <a class="activity"
-               href="../activities/<?= htmlspecialchars($activity['type']); ?>.php?id=<?= htmlspecialchars($activity['id']); ?>">
+               href="../activities/<?= htmlspecialchars($typeRaw); ?>.php?id=<?= htmlspecialchars($activity['id']); ?>">
                
-               <?= $type; ?>
+               <?= $icon . " " . $type; ?>
                <small>Creado: <?= htmlspecialchars($activity['created_at']); ?></small>
 
             </a>
