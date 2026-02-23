@@ -188,7 +188,7 @@ button{
 
 <br>
 
-<a href="../hub/index.php?unit=<?= urlencode($unit) ?>">
+<a href="../../academic/unit_view.php?unit=<?= urlencode($unit) ?>">
 <button class="green">↩ Back</button>
 </a>
 
