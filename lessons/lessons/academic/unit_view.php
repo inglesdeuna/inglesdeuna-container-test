@@ -205,7 +205,7 @@ body{
                 </a>
 
                 <a class="btn btn-edit"
-                   href="../activities/<?= htmlspecialchars($typeRaw); ?>/editor.php?id=<?= htmlspecialchars($activity['id']); ?>">
+                   href="../activities/<?= htmlspecialchars($typeRaw); ?>/editor.php?id=<?= htmlspecialchars($activity['id']); ?>&unit=<?= urlencode($unit_id); ?>"
                    Editar
                 </a>
 
