@@ -33,6 +33,7 @@ $course = $stmtCourse->fetch(PDO::FETCH_ASSOC);
 $stmtActivities = $pdo->prepare("
     SELECT * FROM activities
     WHERE unit_id = :unit_id
+    ORDER BY created_at ASC
 ");
 $stmtActivities->execute(['unit_id' => $unit_id]);
 $activities = $stmtActivities->fetchAll(PDO::FETCH_ASSOC);
@@ -42,13 +43,14 @@ $activities = $stmtActivities->fetchAll(PDO::FETCH_ASSOC);
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title><?= htmlspecialchars($unit['name'] ?? 'Unidad'); ?></title>
+<title><?= htmlspecialchars($unit['name']); ?></title>
 <style>
 body{font-family:Arial,sans-serif;background:#f4f8ff;padding:40px;}
 .card{background:#fff;padding:25px;border-radius:16px;box-shadow:0 10px 25px rgba(0,0,0,.08);margin-bottom:20px;}
-a{display:block;margin-bottom:10px;padding:10px 15px;background:#2563eb;color:#fff;text-decoration:none;border-radius:8px;}
-.back{margin-bottom:20px;display:inline-block;background:#6b7280;}
+a{display:block;margin-bottom:10px;padding:12px 18px;border-radius:8px;text-decoration:none;color:#fff;}
+.back{display:inline-block;background:#6b7280;margin-bottom:20px;}
 .activity{background:#16a34a;}
+small{display:block;font-size:12px;opacity:0.8;}
 </style>
 </head>
 <body>
@@ -58,7 +60,7 @@ a{display:block;margin-bottom:10px;padding:10px 15px;background:#2563eb;color:#f
 </a>
 
 <div class="card">
-    <h2><?= htmlspecialchars($unit['name'] ?? 'Sin nombre'); ?></h2>
+    <h2><?= htmlspecialchars($unit['name']); ?></h2>
     <p><strong>Curso:</strong> <?= htmlspecialchars($course['name']); ?></p>
     <p><strong>ID:</strong> <?= htmlspecialchars($unit['id']); ?></p>
     <p><strong>Posición:</strong> <?= htmlspecialchars($unit['position']); ?></p>
@@ -71,10 +73,19 @@ a{display:block;margin-bottom:10px;padding:10px 15px;background:#2563eb;color:#f
         <p>No hay actividades en esta unidad.</p>
     <?php else: ?>
         <?php foreach ($activities as $activity): ?>
+
+            <?php
+            $type = strtoupper(str_replace('_', ' ', $activity['type']));
+            ?>
+
             <a class="activity"
-               href="../activities/editor.php?activity=<?= htmlspecialchars($activity['id']); ?>">
-                <?= htmlspecialchars($activity['name'] ?? 'Actividad'); ?>
+               href="../activities/<?= htmlspecialchars($activity['type']); ?>.php?id=<?= htmlspecialchars($activity['id']); ?>">
+               
+               <?= $type; ?>
+               <small>Creado: <?= htmlspecialchars($activity['created_at']); ?></small>
+
             </a>
+
         <?php endforeach; ?>
     <?php endif; ?>
 
