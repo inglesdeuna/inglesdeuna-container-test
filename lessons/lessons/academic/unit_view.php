@@ -10,6 +10,19 @@ if (!$unit_id) {
 }
 
 /* ==========================
+   ELIMINAR ACTIVIDAD
+   ========================== */
+if (isset($_GET['delete'])) {
+    $delete_id = $_GET['delete'];
+
+    $stmtDelete = $pdo->prepare("DELETE FROM activities WHERE id = :id");
+    $stmtDelete->execute(['id' => $delete_id]);
+
+    header("Location: unit_view.php?unit=" . urlencode($unit_id));
+    exit;
+}
+
+/* ==========================
    OBTENER UNIT
    ========================== */
 $stmt = $pdo->prepare("SELECT * FROM units WHERE id = :id");
@@ -57,21 +70,21 @@ body{
     box-shadow:0 10px 25px rgba(0,0,0,.08);
     margin-bottom:20px;
 }
-a{
-    display:block;
-    margin-bottom:12px;
-    padding:14px 18px;
-    border-radius:10px;
-    text-decoration:none;
-    color:#fff;
-}
 .back{
     display:inline-block;
     background:#6b7280;
     margin-bottom:20px;
+    padding:8px 14px;
+    border-radius:8px;
+    color:#fff;
+    text-decoration:none;
 }
-.activity{
+.activity-box{
     background:#16a34a;
+    border-radius:12px;
+    padding:16px;
+    margin-bottom:12px;
+    color:#fff;
 }
 .activity-title{
     font-weight:bold;
@@ -79,12 +92,35 @@ a{
 }
 .activity-type{
     font-size:12px;
-    opacity:0.85;
+    opacity:0.9;
+}
+.activity-actions{
+    margin-top:10px;
+}
+.btn{
+    display:inline-block;
+    padding:6px 12px;
+    border-radius:6px;
+    text-decoration:none;
+    font-size:12px;
+    margin-right:6px;
+}
+.btn-edit{
+    background:#2563eb;
+    color:#fff;
+}
+.btn-delete{
+    background:#dc2626;
+    color:#fff;
+}
+.btn-open{
+    background:#15803d;
+    color:#fff;
 }
 small{
     display:block;
     font-size:11px;
-    opacity:0.7;
+    opacity:0.8;
 }
 </style>
 </head>
@@ -97,8 +133,6 @@ small{
 <div class="card">
     <h2><?= htmlspecialchars($unit['name']); ?></h2>
     <p><strong>Curso:</strong> <?= htmlspecialchars($course['name']); ?></p>
-    <p><strong>ID:</strong> <?= htmlspecialchars($unit['id']); ?></p>
-    <p><strong>Posición:</strong> <?= htmlspecialchars($unit['position']); ?></p>
 </div>
 
 <div class="card">
@@ -126,14 +160,11 @@ small{
 
             $icon = $icons[$typeRaw] ?? '📘';
 
-            // Decodificar JSON
             $data = json_decode($activity['data'], true);
-
             $activityTitle = $data['title'] ?? strtoupper(str_replace('_',' ',$typeRaw));
             ?>
 
-            <a class="activity"
-               href="../activities/<?= htmlspecialchars($typeRaw); ?>.php?id=<?= htmlspecialchars($activity['id']); ?>">
+            <div class="activity-box">
 
                 <div class="activity-title">
                     <?= $icon . " " . htmlspecialchars($activityTitle); ?>
@@ -147,7 +178,27 @@ small{
                     Creado: <?= htmlspecialchars($activity['created_at']); ?>
                 </small>
 
-            </a>
+                <div class="activity-actions">
+
+                    <a class="btn btn-open"
+                       href="../activities/<?= htmlspecialchars($typeRaw); ?>.php?id=<?= htmlspecialchars($activity['id']); ?>">
+                       Abrir
+                    </a>
+
+                    <a class="btn btn-edit"
+                       href="../activities/<?= htmlspecialchars($typeRaw); ?>_editor.php?id=<?= htmlspecialchars($activity['id']); ?>">
+                       Editar
+                    </a>
+
+                    <a class="btn btn-delete"
+                       href="unit_view.php?unit=<?= urlencode($unit_id); ?>&delete=<?= htmlspecialchars($activity['id']); ?>"
+                       onclick="return confirm('¿Eliminar esta actividad?');">
+                       Eliminar
+                    </a>
+
+                </div>
+
+            </div>
 
         <?php endforeach; ?>
     <?php endif; ?>
