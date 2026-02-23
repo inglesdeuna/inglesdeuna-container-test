@@ -1,6 +1,8 @@
-<?php
 require_once __DIR__."/../../config/db.php";
 require_once __DIR__."/../../core/_activity_viewer_template.php";
+
+$activity_id = $_GET['id'] ?? null;
+if (!$activity_id) die("Actividad no especificada");
 
 $unit = $_GET['unit'] ?? null;
 if (!$unit) die("Unidad no especificada");
