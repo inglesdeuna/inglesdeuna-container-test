@@ -32,7 +32,7 @@ $course = $stmtCourse->fetch(PDO::FETCH_ASSOC);
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title><?= htmlspecialchars($unit['title']); ?></title>
+<title><?= htmlspecialchars($unit['name'] ?? 'Unidad'); ?></title>
 <style>
 body{font-family:Arial,sans-serif;background:#f4f8ff;padding:40px;}
 .card{background:#fff;padding:25px;border-radius:16px;box-shadow:0 10px 25px rgba(0,0,0,.08);}
@@ -47,9 +47,10 @@ h2{margin-top:0;}
 </a>
 
 <div class="card">
-    <h2><?= htmlspecialchars($unit['title']); ?></h2>
+    <h2><?= htmlspecialchars($unit['name'] ?? 'Sin nombre'); ?></h2>
     <p><strong>Curso:</strong> <?= htmlspecialchars($course['name']); ?></p>
     <p><strong>ID:</strong> <?= htmlspecialchars($unit['id']); ?></p>
+    <p><strong>Posición:</strong> <?= htmlspecialchars($unit['position']); ?></p>
 </div>
 
 </body>
