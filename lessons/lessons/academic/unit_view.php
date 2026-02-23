@@ -64,7 +64,6 @@ a{
     border-radius:10px;
     text-decoration:none;
     color:#fff;
-    font-weight:600;
 }
 .back{
     display:inline-block;
@@ -74,14 +73,18 @@ a{
 .activity{
     background:#16a34a;
 }
-small{
-    display:block;
+.activity-title{
+    font-weight:bold;
+    font-size:15px;
+}
+.activity-type{
     font-size:12px;
     opacity:0.85;
-    margin-top:4px;
 }
-h2{
-    margin-top:0;
+small{
+    display:block;
+    font-size:11px;
+    opacity:0.7;
 }
 </style>
 </head>
@@ -123,14 +126,26 @@ h2{
 
             $icon = $icons[$typeRaw] ?? '📘';
 
-            $type = strtoupper(str_replace('_', ' ', $typeRaw));
+            // Decodificar JSON
+            $data = json_decode($activity['data'], true);
+
+            $activityTitle = $data['title'] ?? strtoupper(str_replace('_',' ',$typeRaw));
             ?>
 
             <a class="activity"
                href="../activities/<?= htmlspecialchars($typeRaw); ?>.php?id=<?= htmlspecialchars($activity['id']); ?>">
-               
-               <?= $icon . " " . $type; ?>
-               <small>Creado: <?= htmlspecialchars($activity['created_at']); ?></small>
+
+                <div class="activity-title">
+                    <?= $icon . " " . htmlspecialchars($activityTitle); ?>
+                </div>
+
+                <div class="activity-type">
+                    Tipo: <?= strtoupper(str_replace('_',' ',$typeRaw)); ?>
+                </div>
+
+                <small>
+                    Creado: <?= htmlspecialchars($activity['created_at']); ?>
+                </small>
 
             </a>
 
