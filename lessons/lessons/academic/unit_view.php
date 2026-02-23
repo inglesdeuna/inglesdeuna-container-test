@@ -12,6 +12,7 @@ if (!$unit_id) {
    ELIMINAR ACTIVIDAD
 ========================== */
 if (isset($_GET['delete'])) {
+
     $delete_id = $_GET['delete'];
 
     $stmtDelete = $pdo->prepare("DELETE FROM activities WHERE id = :id");
@@ -108,8 +109,8 @@ body{
 .activity-box{
     background:#16a34a;
     border-radius:12px;
-    padding:16px;
-    margin-bottom:12px;
+    padding:18px;
+    margin-bottom:14px;
     color:#ffffff;
     display:flex;
     justify-content:space-between;
@@ -122,38 +123,48 @@ body{
 
 .activity-title{
     font-weight:bold;
-    font-size:15px;
+    font-size:16px;
 }
 
 .activity-meta{
-    font-size:12px;
+    font-size:13px;
     opacity:0.9;
-    margin-top:4px;
+    margin-top:6px;
 }
 
 .activity-actions{
     display:flex;
-    gap:8px;
+    gap:10px;
     align-items:center;
 }
 
 .btn{
-    padding:8px 14px;
+    padding:10px 16px;
     border-radius:8px;
     text-decoration:none;
-    font-size:13px;
+    font-size:14px;
     font-weight:600;
     color:#ffffff;
-    display:inline-block;
-    min-width:75px;
-    text-align:center;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    gap:6px;
+    min-width:110px;
+    height:40px;
+    box-sizing:border-box;
+    border:none;
     transition:0.2s ease;
+    cursor:pointer;
+}
+
+.btn svg{
+    width:16px;
+    height:16px;
 }
 
 .btn-open{
     background:#14532d;
 }
-
 .btn-open:hover{
     background:#166534;
 }
@@ -161,7 +172,6 @@ body{
 .btn-edit{
     background:#1d4ed8;
 }
-
 .btn-edit:hover{
     background:#2563eb;
 }
@@ -169,7 +179,6 @@ body{
 .btn-delete{
     background:#dc2626;
 }
-
 .btn-delete:hover{
     background:#ef4444;
 }
@@ -177,7 +186,6 @@ body{
 .draggable{
     cursor:grab;
 }
-
 .draggable:active{
     cursor:grabbing;
 }
@@ -238,19 +246,37 @@ body{
             <div class="activity-actions">
 
                 <a class="btn btn-open"
-                   href="../activities/<?= htmlspecialchars($typeRaw); ?>/viewer.php?id=<?= htmlspecialchars($activity['id']); ?>&unit=<?= urlencode($unit_id); ?>"
-                   Abrir
+                   href="../activities/<?= htmlspecialchars($typeRaw); ?>/viewer.php?id=<?= htmlspecialchars($activity['id']); ?>&unit=<?= urlencode($unit_id); ?>">
+                   
+                    <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z"/>
+                        <circle cx="12" cy="12" r="3"/>
+                    </svg>
+                    Abrir
                 </a>
 
                 <a class="btn btn-edit"
-                   href="../activities/<?= htmlspecialchars($typeRaw); ?>/editor.php?id=<?= htmlspecialchars($activity['id']); ?>&unit=<?= urlencode($unit_id); ?>"
-                   Editar
+                   href="../activities/<?= htmlspecialchars($typeRaw); ?>/editor.php?id=<?= htmlspecialchars($activity['id']); ?>&unit=<?= urlencode($unit_id); ?>">
+                   
+                    <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path d="M12 20h9"/>
+                        <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/>
+                    </svg>
+                    Editar
                 </a>
 
                 <a class="btn btn-delete"
                    href="unit_view.php?unit=<?= urlencode($unit_id); ?>&delete=<?= htmlspecialchars($activity['id']); ?>"
                    onclick="return confirm('¿Eliminar esta actividad?');">
-                   Eliminar
+                   
+                    <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <polyline points="3 6 5 6 21 6"/>
+                        <path d="M19 6l-2 14H7L5 6"/>
+                        <path d="M10 11v6"/>
+                        <path d="M14 11v6"/>
+                        <path d="M9 6V4h6v2"/>
+                    </svg>
+                    Eliminar
                 </a>
 
             </div>
