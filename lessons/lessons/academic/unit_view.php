@@ -200,7 +200,7 @@ body{
             <div class="activity-actions">
 
                 <a class="btn btn-open"
-                   href="../activities/<?= htmlspecialchars($typeRaw); ?>/viewer.php?id=<?= htmlspecialchars($activity['id']); ?>">
+                   href="../activities/<?= htmlspecialchars($typeRaw); ?>/viewer.php?id=<?= htmlspecialchars($activity['id']); ?>&unit=<?= urlencode($unit_id); ?>"
                    Abrir
                 </a>
 
