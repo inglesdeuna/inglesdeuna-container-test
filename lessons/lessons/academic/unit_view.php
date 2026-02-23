@@ -33,7 +33,6 @@ $course = $stmtCourse->fetch(PDO::FETCH_ASSOC);
 $stmtActivities = $pdo->prepare("
     SELECT * FROM activities
     WHERE unit_id = :unit_id
-    ORDER BY position ASC
 ");
 $stmtActivities->execute(['unit_id' => $unit_id]);
 $activities = $stmtActivities->fetchAll(PDO::FETCH_ASSOC);
