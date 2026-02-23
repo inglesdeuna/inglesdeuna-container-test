@@ -127,11 +127,28 @@ body{
     gap:8px;
 }
 .btn{
-    padding:6px 10px;
-    border-radius:6px;
+    padding:8px 14px;
+    border-radius:8px;
     text-decoration:none;
-    font-size:12px;
-    color:#fff;
+    font-size:13px;
+    font-weight:600;
+    color:#ffffff;
+    display:inline-block;
+    min-width:70px;
+    text-align:center;
+}
+
+.btn-open{
+    background:#14532d;
+}
+
+.btn-edit{
+    background:#1d4ed8;
+}
+
+.btn-delete{
+    background:#dc2626;
+}
 }
 .btn-open{ background:#15803d; }
 .btn-edit{ background:#2563eb; }
