@@ -185,7 +185,7 @@ if($_SERVER["REQUEST_METHOD"]==="POST"){
 
 <button 
 class="back-btn"
-onclick="window.location.href='../hub/index.php?unit=<?= urlencode($unit) ?>'">
+onclick="window.location.href='../../academic/unit_view.php?unit=<?= urlencode($unit) ?>'">
 ↩ Back
 </button>
 
