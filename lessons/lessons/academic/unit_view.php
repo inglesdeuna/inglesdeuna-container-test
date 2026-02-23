@@ -1,100 +1,17 @@
 <?php
 session_start();
-
 require_once "../config/db.php";
 
 $unit_id = $_GET['unit'] ?? null;
-
-if (!$unit_id) {
-    die("Unidad no especificada.");
-}
+if (!$unit_id) die("Unidad no especificada.");
 
 /* ==========================
    ELIMINAR ACTIVIDAD
    ========================== */
 if (isset($_GET['delete'])) {
-
     $delete_id = $_GET['delete'];
-
     $stmtDelete = $pdo->prepare("DELETE FROM activities WHERE id = :id");
     $stmtDelete->execute(['id' => $delete_id]);
-
-    header("Location: unit_view.php?unit=" . urlencode($unit_id));
-    exit;
-}
-
-/* ==========================
-   MOVER ACTIVIDAD
-   ========================== */
-if (isset($_GET['move']) && isset($_GET['direction'])) {
-
-    $activity_id = $_GET['move'];
-    $direction = $_GET['direction'];
-
-    // Obtener actividad actual
-    $stmtCurrent = $pdo->prepare("
-        SELECT id, position 
-        FROM activities 
-        WHERE id = :id
-    ");
-    $stmtCurrent->execute(['id' => $activity_id]);
-    $current = $stmtCurrent->fetch(PDO::FETCH_ASSOC);
-
-    if ($current) {
-
-        if ($direction === 'up') {
-
-            $stmtSwap = $pdo->prepare("
-                SELECT id, position 
-                FROM activities
-                WHERE unit_id = :unit_id
-                AND position < :position
-                ORDER BY position DESC
-                LIMIT 1
-            ");
-
-        } else {
-
-            $stmtSwap = $pdo->prepare("
-                SELECT id, position 
-                FROM activities
-                WHERE unit_id = :unit_id
-                AND position > :position
-                ORDER BY position ASC
-                LIMIT 1
-            ");
-        }
-
-        $stmtSwap->execute([
-            'unit_id' => $unit_id,
-            'position' => $current['position']
-        ]);
-
-        $swap = $stmtSwap->fetch(PDO::FETCH_ASSOC);
-
-        if ($swap) {
-
-            // Intercambiar posiciones
-            $pdo->prepare("
-                UPDATE activities 
-                SET position = :pos 
-                WHERE id = :id
-            ")->execute([
-                'pos' => $swap['position'],
-                'id' => $current['id']
-            ]);
-
-            $pdo->prepare("
-                UPDATE activities 
-                SET position = :pos 
-                WHERE id = :id
-            ")->execute([
-                'pos' => $current['position'],
-                'id' => $swap['id']
-            ]);
-        }
-    }
-
     header("Location: unit_view.php?unit=" . urlencode($unit_id));
     exit;
 }
@@ -105,10 +22,7 @@ if (isset($_GET['move']) && isset($_GET['direction'])) {
 $stmt = $pdo->prepare("SELECT * FROM units WHERE id = :id");
 $stmt->execute(['id' => $unit_id]);
 $unit = $stmt->fetch(PDO::FETCH_ASSOC);
-
-if (!$unit) {
-    die("Unidad no encontrada.");
-}
+if (!$unit) die("Unidad no encontrada.");
 
 /* ==========================
    OBTENER CURSO
@@ -127,73 +41,24 @@ $stmtActivities = $pdo->prepare("
 ");
 $stmtActivities->execute(['unit_id' => $unit_id]);
 $activities = $stmtActivities->fetchAll(PDO::FETCH_ASSOC);
-
 ?>
+
 <!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
 <title><?= htmlspecialchars($unit['name']); ?></title>
-<style>
-body{
-    font-family:Arial,sans-serif;
-    background:#f4f8ff;
-    padding:40px;
-}
-.card{
-    background:#fff;
-    padding:25px;
-    border-radius:16px;
-    box-shadow:0 10px 25px rgba(0,0,0,.08);
-    margin-bottom:20px;
-}
-.back{
-    display:inline-block;
-    background:#6b7280;
-    margin-bottom:20px;
-    padding:8px 14px;
-    border-radius:8px;
-    color:#fff;
-    text-decoration:none;
-}
-.activity-box{
-    background:#16a34a;
-    border-radius:12px;
-    padding:16px;
-    margin-bottom:12px;
-    color:#fff;
-}
-.activity-title{
-    font-weight:bold;
-    font-size:15px;
-}
-.activity-type{
-    font-size:12px;
-    opacity:0.9;
-}
-.activity-actions{
-    margin-top:10px;
-}
-.btn{
-    display:inline-block;
-    padding:6px 12px;
-    border-radius:6px;
-    text-decoration:none;
-    font-size:12px;
-    margin-right:6px;
-    color:#fff;
-}
-.btn-up{ background:#f59e0b; }
-.btn-down{ background:#0ea5e9; }
-.btn-open{ background:#15803d; }
-.btn-edit{ background:#2563eb; }
-.btn-delete{ background:#dc2626; }
 
-small{
-    display:block;
-    font-size:11px;
-    opacity:0.8;
-}
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+
+<style>
+body{font-family:Arial,sans-serif;background:#f4f8ff;padding:40px;}
+.card{background:#fff;padding:25px;border-radius:16px;box-shadow:0 10px 25px rgba(0,0,0,.08);margin-bottom:20px;}
+.back{display:inline-block;background:#6b7280;margin-bottom:20px;padding:8px 14px;border-radius:8px;color:#fff;text-decoration:none;}
+.activity-box{background:#16a34a;border-radius:12px;padding:16px;margin-bottom:12px;color:#fff;cursor:grab;}
+.activity-title{font-weight:bold;font-size:15px;}
+.activity-type{font-size:12px;opacity:0.9;}
+small{display:block;font-size:11px;opacity:0.8;}
 </style>
 </head>
 <body>
@@ -208,84 +73,55 @@ small{
 </div>
 
 <div class="card">
-    <h3>Actividades</h3>
+    <h3>Arrastra para ordenar</h3>
 
-    <?php if (empty($activities)): ?>
-        <p>No hay actividades en esta unidad.</p>
-    <?php else: ?>
-        <?php foreach ($activities as $activity): ?>
+    <div id="activityList">
 
-            <?php
-            $typeRaw = $activity['type'];
+    <?php foreach ($activities as $activity): ?>
+        <?php
+        $typeRaw = $activity['type'];
+        $data = json_decode($activity['data'], true);
+        $activityTitle = $data['title'] ?? strtoupper(str_replace('_',' ',$typeRaw));
+        ?>
 
-            $icons = [
-                'hangman' => '🎯',
-                'drag_drop' => '🧩',
-                'flashcards' => '🃏',
-                'match' => '🔗',
-                'multiple_choice' => '✅',
-                'listen_order' => '🎧',
-                'pronunciation' => '🎤',
-                'external' => '🌐',
-                'flipbooks' => '📖'
-            ];
-
-            $icon = $icons[$typeRaw] ?? '📘';
-
-            $data = json_decode($activity['data'], true);
-            $activityTitle = $data['title'] ?? strtoupper(str_replace('_',' ',$typeRaw));
-            ?>
-
-            <div class="activity-box">
-
-                <div class="activity-title">
-                    <?= $icon . " " . htmlspecialchars($activityTitle); ?>
-                </div>
-
-                <div class="activity-type">
-                    Tipo: <?= strtoupper(str_replace('_',' ',$typeRaw)); ?>
-                </div>
-
-                <small>
-                    Creado: <?= htmlspecialchars($activity['created_at']); ?>
-                </small>
-
-                <div class="activity-actions">
-
-                    <a class="btn btn-up"
-                       href="unit_view.php?unit=<?= urlencode($unit_id); ?>&move=<?= htmlspecialchars($activity['id']); ?>&direction=up">
-                       ↑
-                    </a>
-
-                    <a class="btn btn-down"
-                       href="unit_view.php?unit=<?= urlencode($unit_id); ?>&move=<?= htmlspecialchars($activity['id']); ?>&direction=down">
-                       ↓
-                    </a>
-
-                    <a class="btn btn-open"
-                       href="../activities/<?= htmlspecialchars($typeRaw); ?>.php?id=<?= htmlspecialchars($activity['id']); ?>">
-                       Abrir
-                    </a>
-
-                    <a class="btn btn-edit"
-                       href="../activities/<?= htmlspecialchars($typeRaw); ?>_editor.php?id=<?= htmlspecialchars($activity['id']); ?>">
-                       Editar
-                    </a>
-
-                    <a class="btn btn-delete"
-                       href="unit_view.php?unit=<?= urlencode($unit_id); ?>&delete=<?= htmlspecialchars($activity['id']); ?>"
-                       onclick="return confirm('¿Eliminar esta actividad?');">
-                       Eliminar
-                    </a>
-
-                </div>
-
+        <div class="activity-box" data-id="<?= $activity['id']; ?>">
+            <div class="activity-title">
+                <?= htmlspecialchars($activityTitle); ?>
             </div>
 
-        <?php endforeach; ?>
-    <?php endif; ?>
+            <div class="activity-type">
+                Tipo: <?= strtoupper(str_replace('_',' ',$typeRaw)); ?>
+            </div>
+
+            <small>
+                Creado: <?= htmlspecialchars($activity['created_at']); ?>
+            </small>
+        </div>
+
+    <?php endforeach; ?>
+
+    </div>
 
 </div>
+
+<script>
+var sortable = new Sortable(document.getElementById('activityList'), {
+    animation: 150,
+    onEnd: function () {
+
+        let order = [];
+        document.querySelectorAll('#activityList .activity-box').forEach(el => {
+            order.push(el.dataset.id);
+        });
+
+        fetch('update_activity_order.php', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: 'order[]=' + order.join('&order[]=')
+        });
+    }
+});
+</script>
 
 </body>
 </html>
