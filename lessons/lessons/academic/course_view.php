@@ -1,189 +1,113 @@
 <?php
 session_start();
 
-/* ===============================
-   SEGURIDAD ADMIN
-=============================== */
-if (!isset($_SESSION["admin_logged"]) || $_SESSION["admin_logged"] !== true) {
+if (!isset($_SESSION['admin_logged']) && !isset($_SESSION['teacher_logged'])) {
     header("Location: ../admin/login.php");
     exit;
 }
 
-/* ===============================
-   DB CONNECTION
-=============================== */
-require_once __DIR__ . "/../config/db.php";
+require_once "../config/db.php";
 
-/* ===============================
-   VALIDAR COURSE ID
-=============================== */
-$courseId = $_GET["course"] ?? null;
+$course_id = $_GET['course'] ?? null;
 
-if (!$courseId) {
-    die("Curso no especificado");
+if (!$course_id) {
+    die("Curso no especificado.");
 }
 
-/* ===============================
-   BUSCAR COURSE EN DB
-=============================== */
-$stmt = $pdo->prepare("
-    SELECT *
-    FROM courses
-    WHERE id = :id
-    LIMIT 1
-");
-
-$stmt->execute([
-    "id" => $courseId
-]);
-
+/* ==========================
+   OBTENER CURSO
+   ========================== */
+$stmt = $pdo->prepare("SELECT * FROM courses WHERE id = :id");
+$stmt->execute(['id' => $course_id]);
 $course = $stmt->fetch(PDO::FETCH_ASSOC);
 
 if (!$course) {
-    die("Curso no encontrado");
+    die("Curso no encontrado.");
 }
 
-/* ===============================
+/* ==========================
    CREAR UNIT
-=============================== */
-if ($_SERVER["REQUEST_METHOD"] === "POST") {
+   ========================== */
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['unit_title'])) {
 
-    $unitName = trim($_POST["unit_name"] ?? "");
+    $unit_id = uniqid('unit_');
+    $title = trim($_POST['unit_title']);
 
-    if ($unitName !== "") {
+    if ($title !== '') {
 
-        $unitId = uniqid("unit_");
-
-        // calcular posición automática
-        $stmtPos = $pdo->prepare("
-            SELECT COUNT(*) FROM units
-            WHERE course_id = :course
-        ");
-
-        $stmtPos->execute([
-            "course" => $courseId
-        ]);
-
-        $position = $stmtPos->fetchColumn() + 1;
-
-        // insertar unit
         $stmtInsert = $pdo->prepare("
-            INSERT INTO units (id, course_id, name, position)
-            VALUES (:id, :course, :name, :pos)
+            INSERT INTO units (id, course_id, title, position)
+            VALUES (:id, :course_id, :title,
+                COALESCE(
+                    (SELECT MAX(position) + 1 FROM units WHERE course_id = :course_id2),
+                    1
+                )
+            )
         ");
 
         $stmtInsert->execute([
-            "id" => $unitId,
-            "course" => $courseId,
-            "name" => $unitName,
-            "pos" => $position
+            'id' => $unit_id,
+            'course_id' => $course_id,
+            'course_id2' => $course_id,
+            'title' => $title
         ]);
-
-        header("Location: course_view.php?course=" . urlencode($courseId));
-        exit;
     }
+
+    header("Location: ../admin/dashboard.php");
+    exit;
 }
 
-/* ===============================
+/* ==========================
    OBTENER UNITS
-=============================== */
+   ========================== */
 $stmtUnits = $pdo->prepare("
-    SELECT *
-    FROM units
-    WHERE course_id = :course
+    SELECT * FROM units 
+    WHERE course_id = :course_id 
     ORDER BY position ASC
 ");
-
-$stmtUnits->execute([
-    "course" => $courseId
-]);
-
+$stmtUnits->execute(['course_id' => $course_id]);
 $units = $stmtUnits->fetchAll(PDO::FETCH_ASSOC);
-?>
 
+?>
 <!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Curso</title>
-
+<title><?= htmlspecialchars($course['name']); ?></title>
 <style>
-body{
-    font-family: Arial;
-    background:#f4f8ff;
-    padding:40px;
-}
-
-.card{
-    background:#fff;
-    padding:25px;
-    border-radius:14px;
-    margin-bottom:25px;
-    max-width:700px;
-}
-
-.unit{
-    background:#fff;
-    padding:14px;
-    border-radius:10px;
-    margin-bottom:10px;
-    display:flex;
-    justify-content:space-between;
-    box-shadow:0 3px 6px rgba(0,0,0,.08);
-}
-
-button{
-    padding:10px 16px;
-    border:none;
-    border-radius:8px;
-    background:#2563eb;
-    color:white;
-    font-weight:bold;
-}
-
-input{
-    width:100%;
-    padding:12px;
-    margin-top:10px;
-}
+body{font-family:Arial,sans-serif;background:#f4f8ff;padding:40px;}
+.card{background:#fff;padding:25px;border-radius:16px;box-shadow:0 10px 25px rgba(0,0,0,.08);margin-bottom:20px;}
+a{display:block;margin-bottom:10px;padding:10px 15px;background:#2563eb;color:#fff;text-decoration:none;border-radius:8px;}
+form input{padding:8px;width:70%;}
+form button{padding:8px 15px;background:#16a34a;color:#fff;border:none;border-radius:6px;cursor:pointer;}
+.back{margin-bottom:20px;display:inline-block;background:#6b7280;}
 </style>
-
 </head>
-
 <body>
 
-<h1>📘 <?= htmlspecialchars($course["name"]) ?></h1>
-<p>ID: <?= htmlspecialchars($course["id"]) ?></p>
+<a class="back" href="../admin/dashboard.php">← Volver al Dashboard</a>
 
 <div class="card">
-<h2>➕ Crear Unit</h2>
+    <h2><?= htmlspecialchars($course['name']); ?></h2>
 
-<form method="POST">
-<input type="text" name="unit_name" placeholder="Ej: Unit 1" required>
-<button>Crear Unit</button>
-</form>
-
+    <form method="POST">
+        <input type="text" name="unit_title" placeholder="Nombre del módulo" required>
+        <button type="submit">Crear Unit</button>
+    </form>
 </div>
 
 <div class="card">
-<h2>📚 Units del curso</h2>
+    <h3>Módulos</h3>
 
-<?php if (empty($units)): ?>
-<p>No hay units aún.</p>
-<?php else: ?>
-
-<?php foreach ($units as $u): ?>
-<div class="unit">
-<strong><?= htmlspecialchars($u["name"]) ?></strong>
-
-<a href="unit_view.php?unit=<?= urlencode($u["id"]) ?>">
-<button>Abrir →</button>
-</a>
-
-</div>
-<?php endforeach; ?>
-
-<?php endif; ?>
+    <?php if (empty($units)): ?>
+        <p>No hay módulos creados.</p>
+    <?php else: ?>
+        <?php foreach ($units as $unit): ?>
+            <a href="unit_view.php?unit=<?= htmlspecialchars($unit['id']); ?>">
+                <?= htmlspecialchars($unit['title']); ?>
+            </a>
+        <?php endforeach; ?>
+    <?php endif; ?>
 
 </div>
 
