@@ -13,10 +13,87 @@ if (!$unit_id) {
    ELIMINAR ACTIVIDAD
    ========================== */
 if (isset($_GET['delete'])) {
+
     $delete_id = $_GET['delete'];
 
     $stmtDelete = $pdo->prepare("DELETE FROM activities WHERE id = :id");
     $stmtDelete->execute(['id' => $delete_id]);
+
+    header("Location: unit_view.php?unit=" . urlencode($unit_id));
+    exit;
+}
+
+/* ==========================
+   MOVER ACTIVIDAD
+   ========================== */
+if (isset($_GET['move']) && isset($_GET['direction'])) {
+
+    $activity_id = $_GET['move'];
+    $direction = $_GET['direction'];
+
+    // Obtener actividad actual
+    $stmtCurrent = $pdo->prepare("
+        SELECT id, position 
+        FROM activities 
+        WHERE id = :id
+    ");
+    $stmtCurrent->execute(['id' => $activity_id]);
+    $current = $stmtCurrent->fetch(PDO::FETCH_ASSOC);
+
+    if ($current) {
+
+        if ($direction === 'up') {
+
+            $stmtSwap = $pdo->prepare("
+                SELECT id, position 
+                FROM activities
+                WHERE unit_id = :unit_id
+                AND position < :position
+                ORDER BY position DESC
+                LIMIT 1
+            ");
+
+        } else {
+
+            $stmtSwap = $pdo->prepare("
+                SELECT id, position 
+                FROM activities
+                WHERE unit_id = :unit_id
+                AND position > :position
+                ORDER BY position ASC
+                LIMIT 1
+            ");
+        }
+
+        $stmtSwap->execute([
+            'unit_id' => $unit_id,
+            'position' => $current['position']
+        ]);
+
+        $swap = $stmtSwap->fetch(PDO::FETCH_ASSOC);
+
+        if ($swap) {
+
+            // Intercambiar posiciones
+            $pdo->prepare("
+                UPDATE activities 
+                SET position = :pos 
+                WHERE id = :id
+            ")->execute([
+                'pos' => $swap['position'],
+                'id' => $current['id']
+            ]);
+
+            $pdo->prepare("
+                UPDATE activities 
+                SET position = :pos 
+                WHERE id = :id
+            ")->execute([
+                'pos' => $current['position'],
+                'id' => $swap['id']
+            ]);
+        }
+    }
 
     header("Location: unit_view.php?unit=" . urlencode($unit_id));
     exit;
@@ -104,19 +181,14 @@ body{
     text-decoration:none;
     font-size:12px;
     margin-right:6px;
-}
-.btn-edit{
-    background:#2563eb;
     color:#fff;
 }
-.btn-delete{
-    background:#dc2626;
-    color:#fff;
-}
-.btn-open{
-    background:#15803d;
-    color:#fff;
-}
+.btn-up{ background:#f59e0b; }
+.btn-down{ background:#0ea5e9; }
+.btn-open{ background:#15803d; }
+.btn-edit{ background:#2563eb; }
+.btn-delete{ background:#dc2626; }
+
 small{
     display:block;
     font-size:11px;
@@ -179,6 +251,16 @@ small{
                 </small>
 
                 <div class="activity-actions">
+
+                    <a class="btn btn-up"
+                       href="unit_view.php?unit=<?= urlencode($unit_id); ?>&move=<?= htmlspecialchars($activity['id']); ?>&direction=up">
+                       ↑
+                    </a>
+
+                    <a class="btn btn-down"
+                       href="unit_view.php?unit=<?= urlencode($unit_id); ?>&move=<?= htmlspecialchars($activity['id']); ?>&direction=down">
+                       ↓
+                    </a>
 
                     <a class="btn btn-open"
                        href="../activities/<?= htmlspecialchars($typeRaw); ?>.php?id=<?= htmlspecialchars($activity['id']); ?>">
