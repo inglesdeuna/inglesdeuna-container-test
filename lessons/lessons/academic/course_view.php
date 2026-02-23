@@ -1,11 +1,6 @@
 <?php
 session_start();
 
-if (!isset($_SESSION['admin_logged']) && !isset($_SESSION['teacher_logged'])) {
-    header("Location: ../admin/login.php");
-    exit;
-}
-
 require_once "../config/db.php";
 
 $course_id = $_GET['course'] ?? null;
@@ -28,16 +23,16 @@ if (!$course) {
 /* ==========================
    CREAR UNIT
    ========================== */
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['unit_title'])) {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['unit_name'])) {
 
     $unit_id = uniqid('unit_');
-    $title = trim($_POST['unit_title']);
+    $name = trim($_POST['unit_name']);
 
-    if ($title !== '') {
+    if ($name !== '') {
 
         $stmtInsert = $pdo->prepare("
-            INSERT INTO units (id, course_id, title, position)
-            VALUES (:id, :course_id, :title,
+            INSERT INTO units (id, course_id, name, position)
+            VALUES (:id, :course_id, :name,
                 COALESCE(
                     (SELECT MAX(position) + 1 FROM units WHERE course_id = :course_id2),
                     1
@@ -49,7 +44,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['unit_title'])) {
             'id' => $unit_id,
             'course_id' => $course_id,
             'course_id2' => $course_id,
-            'title' => $title
+            'name' => $name
         ]);
     }
 
@@ -91,7 +86,7 @@ form button{padding:8px 15px;background:#16a34a;color:#fff;border:none;border-ra
     <h2><?= htmlspecialchars($course['name']); ?></h2>
 
     <form method="POST">
-        <input type="text" name="unit_title" placeholder="Nombre del módulo" required>
+        <input type="text" name="unit_name" placeholder="Nombre del módulo" required>
         <button type="submit">Crear Unit</button>
     </form>
 </div>
@@ -104,7 +99,7 @@ form button{padding:8px 15px;background:#16a34a;color:#fff;border:none;border-ra
     <?php else: ?>
         <?php foreach ($units as $unit): ?>
             <a href="unit_view.php?unit=<?= htmlspecialchars($unit['id']); ?>">
-                <?= htmlspecialchars($unit['title']); ?>
+                <?= htmlspecialchars($unit['name'] ?? 'Sin nombre'); ?>
             </a>
         <?php endforeach; ?>
     <?php endif; ?>
