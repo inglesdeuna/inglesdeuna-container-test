@@ -145,7 +145,7 @@ a.back{
 
 </div>
 
-<a class="back" href="../hub/index.php?unit=<?= urlencode($unit) ?>">
+<a class="back" href="../../academic/unit_view.php?unit=<?= urlencode($unit) ?>">
   ↩ Back
 </a>
 
