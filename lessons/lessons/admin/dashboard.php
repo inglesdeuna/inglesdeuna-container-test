@@ -6,14 +6,13 @@ session_start();
  * Acceso exclusivo para administradores
  */
 
-// 🔐 VALIDACIÓN
 if (!isset($_SESSION['admin_logged']) || $_SESSION['admin_logged'] !== true) {
     header("Location: login.php");
     exit;
 }
 
 /* ==========================
-   CONEXIÓN A BASE DE DATOS
+   CONEXIÓN A DB (PDO)
    ========================== */
 require_once "../config/db.php";
 
@@ -21,27 +20,25 @@ require_once "../config/db.php";
    OBTENER CURSOS DESDE DB
    ========================== */
 
-// Programas Técnicos (Semestres)
-$stmtTech = $conn->prepare("
+// Programas Técnicos
+$stmtTech = $pdo->prepare("
     SELECT id, name 
     FROM courses 
-    WHERE program_id = 'prog_technical'
+    WHERE program_id = :program
     ORDER BY name ASC
 ");
-$stmtTech->execute();
-$resultTech = $stmtTech->get_result();
-$technicalCourses = $resultTech->fetch_all(MYSQLI_ASSOC);
+$stmtTech->execute(['program' => 'prog_technical']);
+$technicalCourses = $stmtTech->fetchAll(PDO::FETCH_ASSOC);
 
 // Cursos de Inglés
-$stmtEng = $conn->prepare("
+$stmtEng = $pdo->prepare("
     SELECT id, name 
     FROM courses 
-    WHERE program_id = 'prog_english'
+    WHERE program_id = :program
     ORDER BY name ASC
 ");
-$stmtEng->execute();
-$resultEng = $stmtEng->get_result();
-$englishCourses = $resultEng->fetch_all(MYSQLI_ASSOC);
+$stmtEng->execute(['program' => 'prog_english']);
+$englishCourses = $stmtEng->fetchAll(PDO::FETCH_ASSOC);
 
 ?>
 <!DOCTYPE html>
@@ -92,9 +89,6 @@ function toggleCursos(){
   <a href="logout.php">🚪 Cerrar sesión</a>
 </div>
 
-<!-- ======================
-     BLOQUE PRINCIPAL
-     ====================== -->
 <div class="grid">
 
   <div class="card">
@@ -134,7 +128,7 @@ function toggleCursos(){
       <?php else: ?>
         <?php foreach ($englishCourses as $course): ?>
           <a class="course-link eng"
-             href="../academic/course_view.php?course=<?= urlencode($course['id']); ?>">
+             href="../academic/course_view.php?course=<?= htmlspecialchars($course['id']); ?>">
              <?= htmlspecialchars($course['name']); ?>
           </a>
         <?php endforeach; ?>
@@ -151,7 +145,7 @@ function toggleCursos(){
       <?php else: ?>
         <?php foreach ($technicalCourses as $course): ?>
           <a class="course-link"
-             href="../academic/course_view.php?course=<?= urlencode($course['id']); ?>">
+             href="../academic/course_view.php?course=<?= htmlspecialchars($course['id']); ?>">
              <?= htmlspecialchars($course['name']); ?>
           </a>
         <?php endforeach; ?>
