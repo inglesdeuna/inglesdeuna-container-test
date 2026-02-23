@@ -45,7 +45,7 @@ function render_activity_viewer($title, $icon, $content)
 
 <div class="activity-wrapper">
 
-   <a href="../../academic/unit_view.php?unit=<?= urlencode($unit); ?>" class="back-btn">↩ Back</a>
+  <a href="javascript:history.back()" class="back-btn">↩ Back</a>
 
     <h1><?= $icon ?> <?= htmlspecialchars($title) ?></h1>
 
