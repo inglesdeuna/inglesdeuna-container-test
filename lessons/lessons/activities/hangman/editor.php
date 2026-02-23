@@ -204,7 +204,7 @@ button:hover{
 </div>
 
 <!-- BOTÓN VERDE REAL -->
-<a class="back-btn" href="../hub/index.php?unit=<?= urlencode($unit) ?>">
+<a class="back-btn" href="../../academic/unit_view.php?unit=<?= urlencode($unit) ?>">
   ↩ Back
 </a>
 
