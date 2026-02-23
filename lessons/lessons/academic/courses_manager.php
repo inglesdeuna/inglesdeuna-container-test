@@ -14,12 +14,12 @@ if (!isset($_SESSION["admin_logged"]) || $_SESSION["admin_logged"] !== true) {
 
 /* ===============================
    DB CONNECTION
-   =============================== */
+=============================== */
 require __DIR__ . "/../config/db.php";
 
 /* ===============================
    VALIDAR PROGRAMA
-   =============================== */
+=============================== */
 $programId = $_GET["program"] ?? null;
 if (!$programId) {
   die("Programa no especificado");
@@ -27,7 +27,7 @@ if (!$programId) {
 
 /* ===============================
    OBTENER PROGRAMA DESDE JSON
-   =============================== */
+=============================== */
 $programsFile = __DIR__ . "/data/programs.json";
 
 $programs = file_exists($programsFile)
@@ -48,7 +48,7 @@ if (!$programName) {
 
 /* ===============================
    CREAR CURSO → POSTGRES
-   =============================== */
+=============================== */
 if ($_SERVER["REQUEST_METHOD"] === "POST" && !empty($_POST["course_name"])) {
 
   $courseId = uniqid("course_");
@@ -70,7 +70,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !empty($_POST["course_name"])) {
 
 /* ===============================
    LISTAR CURSOS → POSTGRES
-   =============================== */
+=============================== */
 $stmt = $pdo->prepare("
   SELECT * FROM courses
   WHERE program_id = :program
