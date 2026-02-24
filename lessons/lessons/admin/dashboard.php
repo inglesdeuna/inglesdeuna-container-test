@@ -1,8 +1,7 @@
 <?php
 session_start();
 
-/* 🔐 SOLO ADMIN */
-if (!isset($_SESSION["admin_logged"]) || $_SESSION["admin_logged"] !== true) {
+if (!isset($_SESSION["admin_logged"])) {
     header("Location: login.php");
     exit;
 }
@@ -16,74 +15,145 @@ if (!isset($_SESSION["admin_logged"]) || $_SESSION["admin_logged"] !== true) {
 
 <style>
 body{
-  font-family:Arial, sans-serif;
-  background:#f4f8ff;
-  padding:40px;
+    font-family:Arial, sans-serif;
+    background:#f4f8ff;
+    padding:40px;
 }
-h1{margin-bottom:30px}
-.grid{
-  display:grid;
-  grid-template-columns:repeat(auto-fit,minmax(260px,1fr));
-  gap:30px;
+
+h1{
+    margin-bottom:40px;
 }
+
+.dashboard{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:40px;
+}
+
 .card{
-  background:#fff;
-  padding:25px;
-  border-radius:16px;
-  box-shadow:0 10px 25px rgba(0,0,0,.08);
+    background:#ffffff;
+    padding:30px;
+    border-radius:18px;
+    box-shadow:0 10px 25px rgba(0,0,0,.08);
 }
-.card h2{margin-top:0}
-.card p{color:#555}
-.card a{
-  display:block;
-  margin-top:12px;
-  padding:12px 18px;
-  background:#2563eb;
-  color:#fff;
-  text-decoration:none;
-  border-radius:8px;
-  font-size:14px;
-  text-align:center;
+
+.card h2{
+    margin-bottom:10px;
 }
-.card a.secondary{background:#16a34a}
-.topbar{
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-  margin-bottom:40px;
+
+.card p{
+    font-size:14px;
+    opacity:0.8;
+    margin-bottom:20px;
 }
-.topbar a{
-  color:#dc2626;
-  text-decoration:none;
-  font-weight:bold;
+
+.btn-group{
+    display:flex;
+    flex-direction:column;
+    gap:12px;
+}
+
+.btn{
+    padding:14px;
+    border-radius:10px;
+    text-decoration:none;
+    font-weight:600;
+    text-align:center;
+    color:#ffffff;
+}
+
+.btn-blue{
+    background:#2563eb;
+}
+
+.btn-blue:hover{
+    background:#1d4ed8;
+}
+
+.btn-green{
+    background:#16a34a;
+}
+
+.btn-green:hover{
+    background:#15803d;
+}
+
+.btn-orange{
+    background:#ea580c;
+}
+
+.btn-orange:hover{
+    background:#c2410c;
+}
+
+.logout{
+    position:absolute;
+    top:40px;
+    right:40px;
+    color:#dc2626;
+    font-weight:bold;
+    text-decoration:none;
 }
 </style>
 </head>
 
 <body>
 
-<div class="topbar">
-  <h1>🎛️ Panel Administrador</h1>
-  <a href="logout.php">🚪 Cerrar sesión</a>
-</div>
+<a class="logout" href="logout.php">Cerrar sesión</a>
 
-<div class="grid">
+<h1>⚙️ Panel Administrador</h1>
 
-  <div class="card">
-    <h2>🧱 Programas Técnicos</h2>
-    <p>Gestionar estructura técnica (Cursos → Units → Actividades).</p>
-    <a href="../academic/courses_manager.php?program=prog_technical">
-      Administrar Programa Técnico
-    </a>
-  </div>
+<div class="dashboard">
 
-  <div class="card">
-    <h2>🎓 Cursos de Inglés</h2>
-    <p>Gestionar estructura de Inglés (Phase → Level → Unit → Actividades).</p>
-    <a class="secondary" href="../academic/english_phases.php?program=prog_english_courses">
-      Administrar Cursos de Inglés
-    </a>
-  </div>
+    <!-- ========================= -->
+    <!-- PROGRAMA TÉCNICO -->
+    <!-- ========================= -->
+    <div class="card">
+        <h2>📘 Programas Técnicos</h2>
+        <p>Gestionar estructura técnica (Cursos → Units → Actividades).</p>
+
+        <div class="btn-group">
+            <a class="btn btn-blue" 
+               href="../academic/programs_editor.php?program=prog_technical">
+               Gestionar estructura
+            </a>
+
+            <a class="btn btn-orange" 
+               href="../academic/assignments.php?program=prog_technical">
+               Asignaciones (Docentes / Estudiantes)
+            </a>
+
+            <a class="btn btn-green" 
+               href="../academic/courses_manager.php?program=prog_technical">
+               Cursos creados
+            </a>
+        </div>
+    </div>
+
+    <!-- ========================= -->
+    <!-- CURSOS DE INGLÉS -->
+    <!-- ========================= -->
+    <div class="card">
+        <h2>🎓 Cursos de Inglés</h2>
+        <p>Gestionar estructura Inglés (Phase → Level → Unit → Actividades).</p>
+
+        <div class="btn-group">
+            <a class="btn btn-green" 
+               href="../academic/programs_editor.php?program=prog_english_courses">
+               Gestionar estructura
+            </a>
+
+            <a class="btn btn-orange" 
+               href="../academic/assignments.php?program=prog_english_courses">
+               Asignaciones (Docentes / Estudiantes)
+            </a>
+
+            <a class="btn btn-blue" 
+               href="../academic/courses_manager.php?program=prog_english_courses">
+               Cursos creados
+            </a>
+        </div>
+    </div>
 
 </div>
 
