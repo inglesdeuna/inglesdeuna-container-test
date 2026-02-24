@@ -111,7 +111,7 @@ button{margin-top:15px;padding:12px 18px;background:#2563eb;color:#fff;border:no
     <?php foreach ($units as $u): ?>
       <div class="item">
         <strong><?= htmlspecialchars($u["name"]) ?></strong>
-        <a href="../activities/unit_view.php?unit=<?= urlencode($u["id"]) ?>">
+        <a href="unit_view.php?unit=<?= urlencode($u['id']) ?>"
           Administrar →
         </a>
       </div>
