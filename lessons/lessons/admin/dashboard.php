@@ -78,7 +78,7 @@ h1{margin-bottom:30px}
   </div>
 
   <div class="card">
-    <h2>🇺🇸 Cursos de Inglés</h2>
+    <h2>🎓 Cursos de Inglés</h2>
     <p>Gestionar estructura de Inglés (Phase → Level → Unit → Actividades).</p>
     <a class="secondary" href="../academic/english_phases.php?program=prog_english_courses">
       Administrar Cursos de Inglés
