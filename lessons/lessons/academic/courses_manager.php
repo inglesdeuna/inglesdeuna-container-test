@@ -40,21 +40,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !empty($_POST["course_name"])) {
 }
 
 /* ===============================
-   LISTAR CURSOS
-=============================== */
-$stmt = $pdo->prepare("
-  SELECT * FROM courses
-  WHERE program_id = :program
-  ORDER BY name ASC
-");
-
-$stmt->execute([
-  "program" => $programId
-]);
-
-$courses = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-/* ===============================
    TÍTULO
 =============================== */
 $title = $programId === "prog_technical"
@@ -85,40 +70,6 @@ button{margin-top:15px;padding:12px 18px;background:#2563eb;color:#fff;border:no
 </a>
 
 <h1>📘 <?= htmlspecialchars($title) ?></h1>
-
-<div class="card">
-  <h2>➕ Crear <?= $programId === "prog_technical" ? "Semestre" : "Curso" ?></h2>
-  <form method="post">
-    <input type="text" name="course_name" required placeholder="<?= $programId === "prog_technical" ? "Ej: SEMESTRE 1" : "Ej: Phase 1" ?>">
-    <button>Crear</button>
-  </form>
-</div>
-
-<div class="card">
-  <h2>📋 <?= $programId === "prog_technical" ? "Semestres creados" : "Cursos creados" ?></h2>
-
-  <?php if (empty($courses)): ?>
-    <p>No hay registros creados.</p>
-  <?php else: ?>
-    <?php foreach ($courses as $c): ?>
-      <div class="item">
-        <strong><?= htmlspecialchars($c["name"]) ?></strong>
-
-        <?php if ($programId === "prog_technical"): ?>
-          <a href="technical_units.php?course=<?= urlencode($c["id"]) ?>">
-            Administrar →
-          </a>
-        <?php else: ?>
-          <a href="english_levels.php?phase=<?= urlencode($c["id"]) ?>">
-            Administrar →
-          </a>
-        <?php endif; ?>
-
-      </div>
-    <?php endforeach; ?>
-  <?php endif; ?>
-
-</div>
 
 </body>
 </html>
