@@ -12,8 +12,8 @@ $unitId = $_POST["unit"] ?? null;
 $types  = $_POST["types"] ?? [];
 
 if (!$unitId || empty($types)) {
-    header("Location: hub/index.php?unit=" . urlencode($unitId));
-    exit;
+   header("Location: ../academic/unit_view.php?unit=" . urlencode($unitId));
+exit;
 }
 
 $allowedTypes = [
@@ -86,9 +86,9 @@ if (count($createdIds) === 1) {
     $activity = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if ($activity) {
-        header("Location: " . $activity["type"] . "/editor.php?id=" . urlencode($createdIds[0]));
-        exit;
-    }
+        header("Location: ../activities/" . $activity["type"] . "/editor.php?id=" . urlencode($createdIds[0]) . "&unit=" . urlencode($unitId));
+exit;
+    
 }
 
 /* Si son varias → ir a la vista completa de la unidad */
