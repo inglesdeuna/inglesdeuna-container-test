@@ -1,34 +1,80 @@
 <?php
 session_start();
-require_once "../config/db.php";
 
-$courseParam = $_GET["course"] ?? null;
+if (!isset($_SESSION["admin_logged"]) || $_SESSION["admin_logged"] !== true) {
+    header("Location: ../admin/login.php");
+    exit;
+}
 
-if (!$courseParam) {
+require __DIR__ . "/../config/db.php";
+
+$courseId = $_GET["course"] ?? null;
+
+if (!$courseId) {
     die("Curso no especificado.");
 }
 
-/* =========================
+/* ===============================
    OBTENER CURSO
-========================= */
+=============================== */
 $stmt = $pdo->prepare("SELECT * FROM courses WHERE id = :id LIMIT 1");
-$stmt->execute(["id" => $courseParam]);
+$stmt->execute(["id" => $courseId]);
 $course = $stmt->fetch(PDO::FETCH_ASSOC);
 
 if (!$course) {
     die("Curso no encontrado.");
 }
 
-$courseId = $course["id"];
+/* ===============================
+   CREAR UNIDAD
+=============================== */
+if ($_SERVER["REQUEST_METHOD"] === "POST" && !empty($_POST["unit_name"])) {
 
-/* =========================
-   OBTENER UNIDADES
-========================= */
+    $unitName = strtoupper(trim($_POST["unit_name"]));
+
+    $check = $pdo->prepare("
+        SELECT id FROM units
+        WHERE course_id = :course_id
+        AND name = :name
+        LIMIT 1
+    ");
+
+    $check->execute([
+        "course_id" => $courseId,
+        "name" => $unitName
+    ]);
+
+    $existing = $check->fetch(PDO::FETCH_ASSOC);
+
+    if (!$existing) {
+
+        $unitId = uniqid("unit_");
+
+        $stmtInsert = $pdo->prepare("
+            INSERT INTO units (id, course_id, name)
+            VALUES (:id, :course_id, :name)
+        ");
+
+        $stmtInsert->execute([
+            "id" => $unitId,
+            "course_id" => $courseId,
+            "name" => $unitName
+        ]);
+    }
+
+    header("Location: technical_units.php?course=" . urlencode($courseId));
+    exit;
+}
+
+/* ===============================
+   LISTAR UNIDADES
+=============================== */
 $stmtUnits = $pdo->prepare("
     SELECT * FROM units
     WHERE course_id = :course_id
     ORDER BY created_at ASC
 ");
+
 $stmtUnits->execute(["course_id" => $courseId]);
 $units = $stmtUnits->fetchAll(PDO::FETCH_ASSOC);
 ?>
@@ -37,7 +83,7 @@ $units = $stmtUnits->fetchAll(PDO::FETCH_ASSOC);
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title><?= htmlspecialchars($course["name"]); ?> — Unidades</title>
+<title><?= htmlspecialchars($course["name"]) ?> — Gestionar Unidades</title>
 
 <style>
 body{
@@ -66,11 +112,30 @@ body{
     max-width:900px;
 }
 
+input{
+    width:100%;
+    padding:12px;
+    margin-top:10px;
+    border-radius:8px;
+    border:1px solid #ddd;
+}
+
+button{
+    margin-top:15px;
+    padding:10px 18px;
+    background:#2563eb;
+    color:#ffffff;
+    border:none;
+    border-radius:8px;
+    font-weight:600;
+    cursor:pointer;
+}
+
 .item{
-    background:#f1f5f9;
-    padding:18px;
+    background:#eef2ff;
+    padding:15px 18px;
     border-radius:12px;
-    margin-bottom:14px;
+    margin-bottom:12px;
     display:flex;
     justify-content:space-between;
     align-items:center;
@@ -79,42 +144,43 @@ body{
 .btn-blue{
     background:#2563eb;
     color:#ffffff;
-    padding:10px 18px;
+    padding:8px 16px;
     border-radius:8px;
     text-decoration:none;
     font-weight:600;
-    display:inline-block;
-    transition:0.2s ease;
-}
-
-.btn-blue:hover{
-    background:#1d4ed8;
 }
 </style>
 </head>
 
 <body>
 
-<a class="back" href="technical_created.php">
-← Volver a Cursos creados
+<a class="back" href="courses_manager.php?program=prog_technical">
+← Volver
 </a>
 
 <div class="card">
-    <h2><?= htmlspecialchars($course["name"]); ?> — Unidades</h2>
+    <h2>➕ Crear Unidad</h2>
+
+    <form method="POST">
+        <input type="text" name="unit_name" required placeholder="Ej: UNIDAD 1">
+        <button type="submit">Crear</button>
+    </form>
+</div>
+
+<div class="card">
+    <h2>📋 Unidades creadas</h2>
 
     <?php if (empty($units)): ?>
         <p>No hay unidades creadas.</p>
     <?php else: ?>
         <?php foreach ($units as $unit): ?>
             <div class="item">
-                <strong><?= htmlspecialchars($unit["name"]); ?></strong>
+                <strong><?= htmlspecialchars($unit["name"]) ?></strong>
 
-                <!-- AQUI VA AL CHECKLIST -->
                 <a class="btn-blue"
-                   href="../activities/hub/index.php?unit=<?= urlencode($unit["id"]); ?>">
-                    Crear / Administrar Actividades →
+                   href="../activities/hub/index.php?unit=<?= urlencode($unit["id"]) ?>">
+                    Crear →
                 </a>
-
             </div>
         <?php endforeach; ?>
     <?php endif; ?>
