@@ -69,8 +69,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !empty($_POST["unit_name"])) {
         ]);
     }
 
-    /* SIEMPRE REDIRIGE A ACTIVIDADES */
-    header("Location: ../activities/unit_view.php?unit=" . urlencode($unitId));
+    /* REDIRIGE AL HUB REAL */
+    header("Location: ../activities/hub/index.php?unit=" . urlencode($unitId));
     exit;
 }
 
@@ -91,7 +91,7 @@ $units = $stmt->fetchAll(PDO::FETCH_ASSOC);
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Units - <?= htmlspecialchars($course["name"]) ?></title>
+<title><?= htmlspecialchars($course["name"]) ?> - Units</title>
 
 <style>
 body{font-family:Arial;background:#f4f8ff;padding:40px}
@@ -131,7 +131,7 @@ button{margin-top:15px;padding:12px 18px;background:#2563eb;color:#fff;border:no
       <?php foreach ($units as $u): ?>
           <div class="item">
               <strong><?= htmlspecialchars($u["name"]) ?></strong>
-              <a href="../activities/unit_view.php?unit=<?= urlencode($u["id"]) ?>">
+              <a href="../activities/hub/index.php?unit=<?= urlencode($u["id"]) ?>">
                   Administrar →
               </a>
           </div>
