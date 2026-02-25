@@ -8,16 +8,14 @@ if (!isset($_SESSION["admin_logged"]) || $_SESSION["admin_logged"] !== true) {
 
 require __DIR__ . "/../config/db.php";
 
-$unitId = $_GET["unit"] ?? null;
-$type   = $_GET["type"] ?? null;
+$unitId = $_POST["unit"] ?? null;
+$types  = $_POST["types"] ?? [];
 
-if (!$unitId || !$type) {
-    die("Datos incompletos.");
+if (!$unitId || empty($types)) {
+    header("Location: hub/index.php?unit=" . urlencode($unitId));
+    exit;
 }
 
-/* ===============================
-   VALIDAR TIPO PERMITIDO
-=============================== */
 $allowedTypes = [
     "drag_drop",
     "external",
@@ -30,46 +28,42 @@ $allowedTypes = [
     "pronunciation"
 ];
 
-if (!in_array($type, $allowedTypes)) {
-    die("Tipo de actividad inválido.");
-}
+foreach ($types as $type) {
 
-/* ===============================
-   BUSCAR SI YA EXISTE
-=============================== */
-$stmt = $pdo->prepare("
-    SELECT id FROM activities
-    WHERE unit_id = :unit
-    AND type = :type
-    LIMIT 1
-");
-
-$stmt->execute([
-    "unit" => $unitId,
-    "type" => $type
-]);
-
-$existing = $stmt->fetch(PDO::FETCH_ASSOC);
-
-if ($existing) {
-    $activityId = $existing["id"];
-} else {
-    $activityId = uniqid("act_");
+    if (!in_array($type, $allowedTypes)) {
+        continue;
+    }
 
     $stmt = $pdo->prepare("
-        INSERT INTO activities (id, unit_id, type)
-        VALUES (:id, :unit, :type)
+        SELECT id FROM activities
+        WHERE unit_id = :unit
+        AND type = :type
+        LIMIT 1
     ");
 
     $stmt->execute([
-        "id"   => $activityId,
         "unit" => $unitId,
         "type" => $type
     ]);
+
+    $existing = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$existing) {
+        $activityId = uniqid("act_");
+
+        $stmt = $pdo->prepare("
+            INSERT INTO activities (id, unit_id, type)
+            VALUES (:id, :unit, :type)
+        ");
+
+        $stmt->execute([
+            "id"   => $activityId,
+            "unit" => $unitId,
+            "type" => $type
+        ]);
+    }
 }
 
-/* ===============================
-   REDIRECCIÓN AL EDITOR CORRECTO
-=============================== */
-header("Location: " . $type . "/editor.php?id=" . urlencode($activityId));
+/* Redirige nuevamente al HUB */
+header("Location: hub/index.php?unit=" . urlencode($unitId));
 exit;
