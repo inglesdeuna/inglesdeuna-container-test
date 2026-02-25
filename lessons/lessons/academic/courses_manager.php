@@ -8,19 +8,15 @@ if (!isset($_SESSION["admin_logged"]) || $_SESSION["admin_logged"] !== true) {
 
 require __DIR__ . "/../config/db.php";
 
-/* ===============================
-   VALIDAR PROGRAMA
-=============================== */
 $programId = $_GET["program"] ?? null;
 
 if (!$programId) {
   die("Programa no especificado");
 }
 
-/* ===============================
-   CREAR SEMESTRE (SOLO 1-4)
-=============================== */
 if ($_SERVER["REQUEST_METHOD"] === "POST" && !empty($_POST["course_name"])) {
+
+  $name = strtoupper(trim($_POST["course_name"]));
 
   $allowedSemesters = [
     "SEMESTRE 1",
@@ -29,18 +25,16 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !empty($_POST["course_name"])) {
     "SEMESTRE 4"
   ];
 
-  $name = strtoupper(trim($_POST["course_name"]));
-
-  /* Validar que sea uno permitido */
   if (!in_array($name, $allowedSemesters)) {
-    die("Solo se permiten: SEMESTRE 1, 2, 3 o 4.");
+    die("Semestre inválido.");
   }
 
-  /* Validar que no exista */
+  /* Buscar si ya existe */
   $check = $pdo->prepare("
-      SELECT COUNT(*) FROM courses
+      SELECT id FROM courses
       WHERE program_id = :program_id
       AND name = :name
+      LIMIT 1
   ");
 
   $check->execute([
@@ -48,99 +42,54 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !empty($_POST["course_name"])) {
       "name" => $name
   ]);
 
-  if ($check->fetchColumn() > 0) {
-      die("Ese semestre ya existe.");
+  $existing = $check->fetch(PDO::FETCH_ASSOC);
+
+  if ($existing) {
+      $courseId = $existing["id"];
+  } else {
+      $courseId = uniqid("course_");
+
+      $stmt = $pdo->prepare("
+          INSERT INTO courses (id, program_id, name)
+          VALUES (:id, :program_id, :name)
+      ");
+
+      $stmt->execute([
+          "id" => $courseId,
+          "program_id" => $programId,
+          "name" => $name
+      ]);
   }
 
-  $courseId = uniqid("course_");
-
-  $stmt = $pdo->prepare("
-      INSERT INTO courses (id, program_id, name)
-      VALUES (:id, :program_id, :name)
-  ");
-
-  $stmt->execute([
-      "id" => $courseId,
-      "program_id" => $programId,
-      "name" => $name
-  ]);
-
-  header("Location: courses_manager.php?program=" . urlencode($programId));
+  /* SIEMPRE REDIRIGE A CREAR UNITS */
+  header("Location: technical_units.php?course=" . urlencode($courseId));
   exit;
 }
-
-/* ===============================
-   TÍTULO
-=============================== */
-$title = $programId === "prog_technical"
-  ? "Programa Técnico"
-  : "Cursos de Inglés";
 ?>
-
 <!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title><?= htmlspecialchars($title) ?></title>
-
+<title>Programa Técnico</title>
 <style>
-body{
-  font-family:Arial;
-  background:#f4f8ff;
-  padding:40px
-}
-h1{
-  color:#2563eb;
-  margin-bottom:25px
-}
-.card{
-  background:#fff;
-  padding:25px;
-  border-radius:12px;
-  margin-bottom:25px;
-  max-width:800px
-}
-select{
-  width:100%;
-  padding:12px;
-  margin-top:10px
-}
-button{
-  margin-top:15px;
-  padding:12px 18px;
-  background:#2563eb;
-  color:#fff;
-  border:none;
-  border-radius:8px;
-  font-weight:700;
-  cursor:pointer
-}
-button:hover{
-  opacity:.9
-}
-.back{
-  display:inline-block;
-  margin-bottom:20px;
-  background:#6b7280;
-  color:#fff;
-  padding:10px 18px;
-  border-radius:8px;
-  text-decoration:none
-}
+body{font-family:Arial;background:#f4f8ff;padding:40px}
+h1{color:#2563eb;margin-bottom:25px}
+.card{background:#fff;padding:25px;border-radius:12px;max-width:800px}
+select{width:100%;padding:12px;margin-top:10px}
+button{margin-top:15px;padding:12px 18px;background:#2563eb;color:#fff;border:none;border-radius:8px;font-weight:700}
+.back{display:inline-block;margin-bottom:20px;background:#6b7280;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none}
 </style>
 </head>
-
 <body>
 
 <a class="back" href="../admin/dashboard.php">
   ← Volver al Dashboard
 </a>
 
-<h1>📘 <?= htmlspecialchars($title) ?></h1>
+<h1>📘 Programa Técnico</h1>
 
 <div class="card">
-  <h2>➕ Crear Semestre</h2>
-
+  <h2>➕ Crear / Acceder a Semestre</h2>
   <form method="post">
     <select name="course_name" required>
       <option value="">Seleccionar semestre</option>
@@ -149,8 +98,7 @@ button:hover{
       <option>SEMESTRE 3</option>
       <option>SEMESTRE 4</option>
     </select>
-
-    <button>Crear</button>
+    <button>Continuar</button>
   </form>
 </div>
 
