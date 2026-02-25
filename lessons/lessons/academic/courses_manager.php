@@ -2,8 +2,8 @@
 session_start();
 
 if (!isset($_SESSION["admin_logged"]) || $_SESSION["admin_logged"] !== true) {
-  header("Location: ../admin/login.php");
-  exit;
+    header("Location: ../admin/login.php");
+    exit;
 }
 
 require __DIR__ . "/../config/db.php";
@@ -11,96 +11,185 @@ require __DIR__ . "/../config/db.php";
 $programId = $_GET["program"] ?? null;
 
 if (!$programId) {
-  die("Programa no especificado");
+    die("Programa no especificado");
 }
 
-if ($_SERVER["REQUEST_METHOD"] === "POST" && !empty($_POST["course_name"])) {
-
-  $name = strtoupper(trim($_POST["course_name"]));
-
-  $allowedSemesters = [
+/* ===============================
+   SEMESTRES FIJOS
+=============================== */
+$semesters = [
     "SEMESTRE 1",
     "SEMESTRE 2",
     "SEMESTRE 3",
     "SEMESTRE 4"
-  ];
+];
 
-  if (!in_array($name, $allowedSemesters)) {
-    die("Semestre inválido.");
-  }
+/* ===============================
+   OBTENER SEMESTRES CREADOS
+=============================== */
+$stmt = $pdo->prepare("
+    SELECT id, name FROM courses
+    WHERE program_id = :program
+");
+$stmt->execute(["program" => $programId]);
+$createdCourses = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-  /* Buscar si ya existe */
-  $check = $pdo->prepare("
-      SELECT id FROM courses
-      WHERE program_id = :program_id
-      AND name = :name
-      LIMIT 1
-  ");
+$createdMap = [];
+foreach ($createdCourses as $c) {
+    $createdMap[$c["name"]] = $c["id"];
+}
 
-  $check->execute([
-      "program_id" => $programId,
-      "name" => $name
-  ]);
+/* ===============================
+   CREAR / ACCEDER
+=============================== */
+if ($_SERVER["REQUEST_METHOD"] === "POST" && !empty($_POST["semester"])) {
 
-  $existing = $check->fetch(PDO::FETCH_ASSOC);
+    $name = $_POST["semester"];
 
-  if ($existing) {
-      $courseId = $existing["id"];
-  } else {
-      $courseId = uniqid("course_");
+    if (isset($createdMap[$name])) {
+        $courseId = $createdMap[$name];
+    } else {
+        $courseId = uniqid("course_");
 
-      $stmt = $pdo->prepare("
-          INSERT INTO courses (id, program_id, name)
-          VALUES (:id, :program_id, :name)
-      ");
+        $stmt = $pdo->prepare("
+            INSERT INTO courses (id, program_id, name)
+            VALUES (:id, :program_id, :name)
+        ");
 
-      $stmt->execute([
-          "id" => $courseId,
-          "program_id" => $programId,
-          "name" => $name
-      ]);
-  }
+        $stmt->execute([
+            "id" => $courseId,
+            "program_id" => $programId,
+            "name" => $name
+        ]);
+    }
 
-  /* SIEMPRE REDIRIGE A CREAR UNITS */
-  header("Location: technical_units.php?course=" . urlencode($courseId));
-  exit;
+    header("Location: technical_units.php?course=" . urlencode($courseId));
+    exit;
 }
 ?>
+
 <!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
 <title>Programa Técnico</title>
+
 <style>
-body{font-family:Arial;background:#f4f8ff;padding:40px}
-h1{color:#2563eb;margin-bottom:25px}
-.card{background:#fff;padding:25px;border-radius:12px;max-width:800px}
-select{width:100%;padding:12px;margin-top:10px}
-button{margin-top:15px;padding:12px 18px;background:#2563eb;color:#fff;border:none;border-radius:8px;font-weight:700}
-.back{display:inline-block;margin-bottom:20px;background:#6b7280;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none}
+body{
+    font-family:Arial;
+    background:#f4f8ff;
+    padding:40px;
+}
+
+h1{
+    color:#2563eb;
+    margin-bottom:30px;
+}
+
+.grid{
+    display:grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap:25px;
+    max-width:900px;
+}
+
+.card{
+    background:#fff;
+    padding:30px;
+    border-radius:14px;
+    box-shadow:0 6px 14px rgba(0,0,0,.08);
+    text-align:center;
+    position:relative;
+}
+
+.card h2{
+    margin-bottom:15px;
+}
+
+.status{
+    font-size:14px;
+    margin-bottom:20px;
+    font-weight:bold;
+}
+
+.status.available{
+    color:#16a34a;
+}
+
+.status.created{
+    color:#2563eb;
+}
+
+button{
+    padding:12px 22px;
+    border:none;
+    border-radius:8px;
+    font-weight:bold;
+    cursor:pointer;
+}
+
+button.available{
+    background:#16a34a;
+    color:#fff;
+}
+
+button.created{
+    background:#2563eb;
+    color:#fff;
+}
+
+button:hover{
+    opacity:.9;
+}
+
+.back{
+    display:inline-block;
+    margin-bottom:25px;
+    background:#6b7280;
+    color:#fff;
+    padding:10px 18px;
+    border-radius:8px;
+    text-decoration:none;
+}
 </style>
 </head>
+
 <body>
 
 <a class="back" href="../admin/dashboard.php">
-  ← Volver al Dashboard
+    ← Volver al Dashboard
 </a>
 
 <h1>📘 Programa Técnico</h1>
 
+<form method="post">
+<div class="grid">
+
+<?php foreach ($semesters as $semester): 
+    $isCreated = isset($createdMap[$semester]);
+?>
+
 <div class="card">
-  <h2>➕ Crear / Acceder a Semestre</h2>
-  <form method="post">
-    <select name="course_name" required>
-      <option value="">Seleccionar semestre</option>
-      <option>SEMESTRE 1</option>
-      <option>SEMESTRE 2</option>
-      <option>SEMESTRE 3</option>
-      <option>SEMESTRE 4</option>
-    </select>
-    <button>Continuar</button>
-  </form>
+    <h2><?= $semester ?></h2>
+
+    <?php if ($isCreated): ?>
+        <div class="status created">Creado</div>
+        <button class="created" name="semester" value="<?= $semester ?>">
+            Continuar →
+        </button>
+    <?php else: ?>
+        <div class="status available">Disponible</div>
+        <button class="available" name="semester" value="<?= $semester ?>">
+            Crear →
+        </button>
+    <?php endif; ?>
+
 </div>
+
+<?php endforeach; ?>
+
+</div>
+</form>
 
 </body>
 </html>
