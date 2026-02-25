@@ -110,7 +110,7 @@ body{
                 <strong><?= htmlspecialchars($unit["name"]) ?></strong>
 
                 <a class="btn btn-open"
-                   href="../activities/hub/index.php?unit=<?= urlencode($unit["id"]) ?>">
+                   href="unit_view.php?unit=<?= urlencode($unit["id"]) ?>"
                    Ver Actividades →
                 </a>
             </div>
