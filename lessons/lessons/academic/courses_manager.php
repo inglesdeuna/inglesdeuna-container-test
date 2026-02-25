@@ -23,20 +23,19 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !empty($_POST["course_name"])) {
 
     $name = strtoupper(trim($_POST["course_name"]));
 
-    // Validar solo SEMESTRE 1 al 4
     $validSemesters = ["SEMESTRE 1", "SEMESTRE 2", "SEMESTRE 3", "SEMESTRE 4"];
 
     if (!in_array($name, $validSemesters)) {
         $error = "Solo se permiten SEMESTRE 1, 2, 3 o 4.";
     } else {
 
-        // Verificar si ya existe
         $check = $pdo->prepare("
             SELECT id FROM courses
             WHERE program_id = :program_id
             AND name = :name
             LIMIT 1
         ");
+
         $check->execute([
             "program_id" => $programId,
             "name" => $name
@@ -66,12 +65,12 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !empty($_POST["course_name"])) {
 }
 
 /* ===============================
-   LISTAR SEMESTRES (SIN DUPLICADOS)
+   LISTAR SEMESTRES
 =============================== */
 $stmt = $pdo->prepare("
-    SELECT * FROM courses
+    SELECT id, name
+    FROM courses
     WHERE program_id = :program
-    GROUP BY name
     ORDER BY name ASC
 ");
 
