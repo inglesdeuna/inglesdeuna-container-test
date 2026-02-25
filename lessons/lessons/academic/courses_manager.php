@@ -126,7 +126,22 @@ button{margin-top:15px;padding:12px 18px;background:#2563eb;color:#fff;border:no
 <h1>📘 Cursos — <?= $programName ?></h1>
 
 <div class="card">
+  <?php if ($programId !== 'prog_technical'): ?>
+<div class="card">
   <h2>➕ Crear curso</h2>
+
+  <form method="post">
+    <input type="text" 
+           name="course_name" 
+           placeholder="Ej: Phase 1" 
+           required>
+
+    <button type="submit" name="create_course">
+      Crear curso
+    </button>
+  </form>
+</div>
+<?php endif; ?>
   <form method="post">
     <input type="text" name="course_name" required placeholder="Ej: Phase 1">
     <button>Crear curso</button>
