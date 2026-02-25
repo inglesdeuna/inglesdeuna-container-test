@@ -18,9 +18,39 @@ if (!$programId) {
 }
 
 /* ===============================
-   CREAR CURSO / SEMESTRE
+   CREAR SEMESTRE (SOLO 1-4)
 =============================== */
 if ($_SERVER["REQUEST_METHOD"] === "POST" && !empty($_POST["course_name"])) {
+
+  $allowedSemesters = [
+    "SEMESTRE 1",
+    "SEMESTRE 2",
+    "SEMESTRE 3",
+    "SEMESTRE 4"
+  ];
+
+  $name = strtoupper(trim($_POST["course_name"]));
+
+  /* Validar que sea uno permitido */
+  if (!in_array($name, $allowedSemesters)) {
+    die("Solo se permiten: SEMESTRE 1, 2, 3 o 4.");
+  }
+
+  /* Validar que no exista */
+  $check = $pdo->prepare("
+      SELECT COUNT(*) FROM courses
+      WHERE program_id = :program_id
+      AND name = :name
+  ");
+
+  $check->execute([
+      "program_id" => $programId,
+      "name" => $name
+  ]);
+
+  if ($check->fetchColumn() > 0) {
+      die("Ese semestre ya existe.");
+  }
 
   $courseId = uniqid("course_");
 
@@ -32,7 +62,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !empty($_POST["course_name"])) {
   $stmt->execute([
       "id" => $courseId,
       "program_id" => $programId,
-      "name" => strtoupper(trim($_POST["course_name"]))
+      "name" => $name
   ]);
 
   header("Location: courses_manager.php?program=" . urlencode($programId));
@@ -70,7 +100,7 @@ h1{
   margin-bottom:25px;
   max-width:800px
 }
-input{
+select{
   width:100%;
   padding:12px;
   margin-top:10px
@@ -109,15 +139,16 @@ button:hover{
 <h1>📘 <?= htmlspecialchars($title) ?></h1>
 
 <div class="card">
-  <h2>➕ Crear <?= $programId === "prog_technical" ? "Semestre" : "Curso" ?></h2>
+  <h2>➕ Crear Semestre</h2>
 
   <form method="post">
-    <input 
-      type="text" 
-      name="course_name" 
-      required 
-      placeholder="<?= $programId === "prog_technical" ? "Ej: SEMESTRE 1" : "Ej: Phase 1" ?>"
-    >
+    <select name="course_name" required>
+      <option value="">Seleccionar semestre</option>
+      <option>SEMESTRE 1</option>
+      <option>SEMESTRE 2</option>
+      <option>SEMESTRE 3</option>
+      <option>SEMESTRE 4</option>
+    </select>
 
     <button>Crear</button>
   </form>
