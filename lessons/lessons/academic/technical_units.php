@@ -23,7 +23,7 @@ if (!$course) {
 
 $courseId = $course["id"];
 
-/* Obtener unidades del semestre */
+/* Obtener unidades */
 $stmtUnits = $pdo->prepare("
     SELECT * FROM units
     WHERE course_id = :course_id
@@ -110,7 +110,7 @@ body{
                 <strong><?= htmlspecialchars($unit["name"]) ?></strong>
 
                 <a class="btn btn-open"
-                   href="unit_view.php?unit=<?= urlencode($unit["id"]) ?>"
+                   href="unit_view.php?unit=<?= urlencode($unit["id"]) ?>">
                    Ver Actividades →
                 </a>
             </div>
