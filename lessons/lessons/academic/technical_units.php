@@ -109,10 +109,12 @@ body{
             <div class="item">
                 <strong><?= htmlspecialchars($unit["name"]); ?></strong>
 
+                <!-- AQUI VA AL CHECKLIST -->
                 <a class="btn-blue"
-                   href="unit_view.php?unit=<?= urlencode($unit["id"]); ?>">
-                    Administrar →
+                   href="../activities/hub/index.php?unit=<?= urlencode($unit["id"]); ?>">
+                    Crear / Administrar Actividades →
                 </a>
+
             </div>
         <?php endforeach; ?>
     <?php endif; ?>
