@@ -14,42 +14,58 @@ if (!$programId) {
     die("Programa no especificado");
 }
 
-/* CREAR SEMESTRE */
+$error = "";
+
+/* ===============================
+   CREAR SEMESTRE (SIN REPETIR 1-4)
+=============================== */
 if ($_SERVER["REQUEST_METHOD"] === "POST" && !empty($_POST["course_name"])) {
 
     $courseName = strtoupper(trim($_POST["course_name"]));
 
-    $check = $pdo->prepare("
-        SELECT id FROM courses
-        WHERE program_id = :program AND name = :name
-        LIMIT 1
-    ");
-    $check->execute([
-        "program" => $programId,
-        "name" => $courseName
-    ]);
+    $allowed = ["SEMESTRE 1", "SEMESTRE 2", "SEMESTRE 3", "SEMESTRE 4"];
 
-    $existing = $check->fetch(PDO::FETCH_ASSOC);
+    if (!in_array($courseName, $allowed)) {
+        $error = "Solo se permiten SEMESTRE 1, 2, 3 o 4.";
+    } else {
 
-    if (!$existing) {
-        $courseId = uniqid("course_");
-
-        $stmt = $pdo->prepare("
-            INSERT INTO courses (id, program_id, name)
-            VALUES (:id, :program, :name)
+        $check = $pdo->prepare("
+            SELECT id FROM courses
+            WHERE program_id = :program AND name = :name
+            LIMIT 1
         ");
-        $stmt->execute([
-            "id" => $courseId,
+        $check->execute([
             "program" => $programId,
             "name" => $courseName
         ]);
-    }
 
-    header("Location: courses_manager.php?program=" . urlencode($programId));
-    exit;
+        $existing = $check->fetch(PDO::FETCH_ASSOC);
+
+        if ($existing) {
+            $error = "Ese semestre ya existe.";
+        } else {
+
+            $courseId = uniqid("course_");
+
+            $stmt = $pdo->prepare("
+                INSERT INTO courses (id, program_id, name)
+                VALUES (:id, :program, :name)
+            ");
+            $stmt->execute([
+                "id" => $courseId,
+                "program" => $programId,
+                "name" => $courseName
+            ]);
+
+            header("Location: courses_manager.php?program=" . urlencode($programId));
+            exit;
+        }
+    }
 }
 
-/* LISTAR SEMESTRES */
+/* ===============================
+   LISTAR SEMESTRES
+=============================== */
 $stmt = $pdo->prepare("
     SELECT * FROM courses
     WHERE program_id = :program
@@ -75,6 +91,7 @@ input{width:100%;padding:12px;margin-top:10px;border-radius:8px;border:1px solid
 button{margin-top:15px;padding:12px 18px;background:#2563eb;color:#fff;border:none;border-radius:8px;font-weight:700}
 a{text-decoration:none;font-weight:bold;color:#2563eb}
 .back{display:inline-block;margin-bottom:20px;background:#6b7280;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none}
+.error{color:#dc2626;font-weight:bold;margin-top:10px}
 </style>
 </head>
 
@@ -89,9 +106,14 @@ a{text-decoration:none;font-weight:bold;color:#2563eb}
 
 <h3>➕ Crear Semestre</h3>
 <form method="post">
-<input type="text" name="course_name" required placeholder="Ej: SEMESTRE 1">
+<input type="text" name="course_name" required placeholder="SEMESTRE 1">
 <button>Crear</button>
 </form>
+
+<?php if ($error): ?>
+<div class="error"><?= htmlspecialchars($error) ?></div>
+<?php endif; ?>
+
 </div>
 
 <div class="card">
