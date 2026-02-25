@@ -52,17 +52,54 @@ $title = $programId === "prog_technical"
 <head>
 <meta charset="UTF-8">
 <title><?= htmlspecialchars($title) ?></title>
+
 <style>
-body{font-family:Arial;background:#f4f8ff;padding:40px}
-h1{color:#2563eb;margin-bottom:25px}
-.card{background:#fff;padding:25px;border-radius:12px;margin-bottom:25px;max-width:800px}
-.item{background:#fff;padding:15px;border-radius:10px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;box-shadow:0 4px 8px rgba(0,0,0,.08)}
-a{text-decoration:none;color:#2563eb;font-weight:bold}
-input{width:100%;padding:12px;margin-top:10px}
-button{margin-top:15px;padding:12px 18px;background:#2563eb;color:#fff;border:none;border-radius:8px;font-weight:700}
-.back{display:inline-block;margin-bottom:20px;background:#6b7280;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none}
+body{
+  font-family:Arial;
+  background:#f4f8ff;
+  padding:40px
+}
+h1{
+  color:#2563eb;
+  margin-bottom:25px
+}
+.card{
+  background:#fff;
+  padding:25px;
+  border-radius:12px;
+  margin-bottom:25px;
+  max-width:800px
+}
+input{
+  width:100%;
+  padding:12px;
+  margin-top:10px
+}
+button{
+  margin-top:15px;
+  padding:12px 18px;
+  background:#2563eb;
+  color:#fff;
+  border:none;
+  border-radius:8px;
+  font-weight:700;
+  cursor:pointer
+}
+button:hover{
+  opacity:.9
+}
+.back{
+  display:inline-block;
+  margin-bottom:20px;
+  background:#6b7280;
+  color:#fff;
+  padding:10px 18px;
+  border-radius:8px;
+  text-decoration:none
+}
 </style>
 </head>
+
 <body>
 
 <a class="back" href="../admin/dashboard.php">
@@ -70,6 +107,21 @@ button{margin-top:15px;padding:12px 18px;background:#2563eb;color:#fff;border:no
 </a>
 
 <h1>📘 <?= htmlspecialchars($title) ?></h1>
+
+<div class="card">
+  <h2>➕ Crear <?= $programId === "prog_technical" ? "Semestre" : "Curso" ?></h2>
+
+  <form method="post">
+    <input 
+      type="text" 
+      name="course_name" 
+      required 
+      placeholder="<?= $programId === "prog_technical" ? "Ej: SEMESTRE 1" : "Ej: Phase 1" ?>"
+    >
+
+    <button>Crear</button>
+  </form>
+</div>
 
 </body>
 </html>
