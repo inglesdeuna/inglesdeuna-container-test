@@ -1,40 +1,32 @@
-if ($_SERVER["REQUEST_METHOD"] === "POST" && !empty($_POST["unit_name"])) {
+$courseParam = $_GET["course"] ?? null;
 
-    $unitName = strtoupper(trim($_POST["unit_name"]));
+if (!$courseParam) {
+    die("Curso no especificado.");
+}
 
-    /* Buscar si ya existe */
-    $check = $pdo->prepare("
-        SELECT id FROM units
-        WHERE course_id = :course_id
-        AND name = :name
+/* Buscar curso por ID primero */
+$stmt = $pdo->prepare("
+    SELECT * FROM courses
+    WHERE id = :param
+    LIMIT 1
+");
+
+$stmt->execute(["param" => $courseParam]);
+$course = $stmt->fetch(PDO::FETCH_ASSOC);
+
+/* Si no lo encuentra, buscar por nombre (compatibilidad vieja) */
+if (!$course) {
+    $stmt = $pdo->prepare("
+        SELECT * FROM courses
+        WHERE name = :param
         LIMIT 1
     ");
-
-    $check->execute([
-        "course_id" => $courseId,
-        "name" => $unitName
-    ]);
-
-    $existing = $check->fetch(PDO::FETCH_ASSOC);
-
-    if ($existing) {
-        $unitId = $existing["id"];
-    } else {
-        $unitId = uniqid("unit_");
-
-        $stmt = $pdo->prepare("
-            INSERT INTO units (id, course_id, name)
-            VALUES (:id, :course_id, :name)
-        ");
-
-        $stmt->execute([
-            "id" => $unitId,
-            "course_id" => $courseId,
-            "name" => $unitName
-        ]);
-    }
-
-    /* SIEMPRE REDIRIGE */
-    header("Location: ../activities/unit_view.php?unit=" . urlencode($unitId));
-    exit;
+    $stmt->execute(["param" => strtoupper($courseParam)]);
+    $course = $stmt->fetch(PDO::FETCH_ASSOC);
 }
+
+if (!$course) {
+    die("Curso no encontrado.");
+}
+
+$courseId = $course["id"];
