@@ -8,8 +8,14 @@ if (!isset($_SESSION["admin_logged"]) || $_SESSION["admin_logged"] !== true) {
 
 require __DIR__ . "/../config/db.php";
 
+/* ===============================
+   PROGRAMA TÉCNICO FIJO
+=============================== */
 $programId = "prog_technical";
 
+/* ===============================
+   LISTAR SEMESTRES
+=============================== */
 $stmt = $pdo->prepare("
   SELECT * FROM courses
   WHERE program_id = :program
@@ -28,15 +34,50 @@ $courses = $stmt->fetchAll(PDO::FETCH_ASSOC);
 <head>
 <meta charset="UTF-8">
 <title>Semestres creados</title>
+
 <style>
-body{font-family:Arial;background:#f4f8ff;padding:40px}
-h1{color:#2563eb;margin-bottom:25px}
-.card{background:#fff;padding:25px;border-radius:12px;margin-bottom:25px;max-width:800px}
-.item{background:#fff;padding:15px;border-radius:10px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;box-shadow:0 4px 8px rgba(0,0,0,.08)}
-a{text-decoration:none;color:#2563eb;font-weight:bold}
-.back{display:inline-block;margin-bottom:20px;background:#6b7280;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none}
+body{
+  font-family:Arial;
+  background:#f4f8ff;
+  padding:40px
+}
+h1{
+  color:#2563eb;
+  margin-bottom:25px
+}
+.card{
+  background:#fff;
+  padding:25px;
+  border-radius:12px;
+  max-width:800px
+}
+.item{
+  background:#fff;
+  padding:15px;
+  border-radius:10px;
+  margin-bottom:12px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  box-shadow:0 4px 8px rgba(0,0,0,.08)
+}
+a{
+  text-decoration:none;
+  color:#2563eb;
+  font-weight:bold
+}
+.back{
+  display:inline-block;
+  margin-bottom:20px;
+  background:#6b7280;
+  color:#fff;
+  padding:10px 18px;
+  border-radius:8px;
+  text-decoration:none
+}
 </style>
 </head>
+
 <body>
 
 <a class="back" href="../admin/dashboard.php">
@@ -47,18 +88,20 @@ a{text-decoration:none;color:#2563eb;font-weight:bold}
 
 <div class="card">
 
-  <?php if (empty($courses)): ?>
-    <p>No hay semestres creados.</p>
-  <?php else: ?>
-    <?php foreach ($courses as $c): ?>
-      <div class="item">
-        <strong><?= htmlspecialchars($c["name"]) ?></strong>
-        <a href="technical_units.php?course=<?= urlencode($c["id"]) ?>">
-          Administrar →
-        </a>
-      </div>
-    <?php endforeach; ?>
-  <?php endif; ?>
+<?php if (empty($courses)): ?>
+  <p>No hay semestres creados.</p>
+<?php else: ?>
+
+  <?php foreach ($courses as $c): ?>
+    <div class="item">
+      <strong><?= htmlspecialchars($c["name"]) ?></strong>
+      <a href="technical_units.php?course=<?= urlencode($c["id"]) ?>">
+        Administrar →
+      </a>
+    </div>
+  <?php endforeach; ?>
+
+<?php endif; ?>
 
 </div>
 
