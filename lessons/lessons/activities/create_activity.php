@@ -28,6 +28,8 @@ $allowedTypes = [
     "pronunciation"
 ];
 
+$createdIds = [];
+
 foreach ($types as $type) {
 
     if (!in_array($type, $allowedTypes)) {
@@ -48,7 +50,9 @@ foreach ($types as $type) {
 
     $existing = $stmt->fetch(PDO::FETCH_ASSOC);
 
-    if (!$existing) {
+    if ($existing) {
+        $createdIds[] = $existing["id"];
+    } else {
         $activityId = uniqid("act_");
 
         $stmt = $pdo->prepare("
@@ -61,9 +65,32 @@ foreach ($types as $type) {
             "unit" => $unitId,
             "type" => $type
         ]);
+
+        $createdIds[] = $activityId;
     }
 }
 
-/* Redirige nuevamente al HUB */
-header("Location: hub/index.php?unit=" . urlencode($unitId));
+/* ===============================
+   REDIRECCIÓN INTELIGENTE
+=============================== */
+
+if (count($createdIds) === 1) {
+
+    // Si solo es una actividad, abrir su editor
+    $stmt = $pdo->prepare("
+        SELECT type FROM activities
+        WHERE id = :id
+        LIMIT 1
+    ");
+    $stmt->execute(["id" => $createdIds[0]]);
+    $activity = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if ($activity) {
+        header("Location: " . $activity["type"] . "/editor.php?id=" . urlencode($createdIds[0]));
+        exit;
+    }
+}
+
+/* Si son varias → ir a la vista completa de la unidad */
+header("Location: unit_view.php?unit=" . urlencode($unitId));
 exit;
