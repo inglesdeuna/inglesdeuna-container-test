@@ -1,34 +1,36 @@
 <?php
 session_start();
+require_once "../config/db.php";
 
-if (!isset($_SESSION["admin_logged"]) || $_SESSION["admin_logged"] !== true) {
-    header("Location: ../admin/login.php");
-    exit;
-}
-
-require __DIR__ . "/../config/db.php";
+/* ==========================
+   VALIDAR PROGRAMA TÉCNICO
+========================== */
 
 $programId = "prog_technical";
 
-/* ===============================
-   OBTENER SEMESTRES
-=============================== */
+/* ==========================
+   OBTENER SOLO 4 SEMESTRES
+========================== */
+
 $stmt = $pdo->prepare("
-    SELECT *
-    FROM courses
+    SELECT * FROM courses
     WHERE program_id = :program
     ORDER BY name ASC
+    LIMIT 4
 ");
 
-$stmt->execute(["program" => $programId]);
-$courses = $stmt->fetchAll(PDO::FETCH_ASSOC);
+$stmt->execute([
+    "program" => $programId
+]);
+
+$semesters = $stmt->fetchAll(PDO::FETCH_ASSOC);
 ?>
 
 <!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Programa Técnico - Cursos creados</title>
+<title>Programa Técnico — Cursos creados</title>
 
 <style>
 body{
@@ -37,67 +39,53 @@ body{
     padding:40px;
 }
 
-.back{
-    display:inline-block;
-    margin-bottom:25px;
-    background:#6b7280;
-    color:#fff;
-    padding:10px 18px;
-    border-radius:8px;
-    text-decoration:none;
-    font-weight:600;
-}
-
-h1{
-    color:#2563eb;
-    margin-bottom:30px;
-}
-
-.semester-card{
-    background:#ffffff;
+.card{
+    background:#fff;
     padding:25px;
-    border-radius:16px;
+    border-radius:14px;
+    margin-bottom:20px;
     box-shadow:0 10px 25px rgba(0,0,0,.08);
-    margin-bottom:25px;
 }
 
-.semester-title{
-    font-size:18px;
-    font-weight:bold;
-    margin-bottom:15px;
-}
-
-.unit-item{
-    background:#eef2ff;
-    padding:12px 15px;
+.semester-box{
+    background:#e5e7eb;
+    padding:18px;
     border-radius:10px;
-    margin-bottom:10px;
+    margin-bottom:14px;
     display:flex;
     justify-content:space-between;
     align-items:center;
 }
 
-.unit-name{
-    font-weight:600;
+.semester-title{
+    font-weight:bold;
+    font-size:16px;
 }
 
 .btn{
-    background:#2563eb;
-    color:#fff;
-    padding:8px 14px;
+    padding:10px 16px;
     border-radius:8px;
     text-decoration:none;
     font-size:14px;
     font-weight:600;
+    color:#fff;
 }
 
-.btn-secondary{
-    background:#16a34a;
+.btn-open{
+    background:#2563eb;
+}
+.btn-open:hover{
+    background:#1d4ed8;
 }
 
-.empty{
-    color:#6b7280;
-    font-size:14px;
+.back{
+    display:inline-block;
+    margin-bottom:20px;
+    background:#6b7280;
+    color:#fff;
+    padding:10px 18px;
+    border-radius:8px;
+    text-decoration:none;
 }
 </style>
 </head>
@@ -108,71 +96,33 @@ h1{
 ← Volver al Dashboard
 </a>
 
-<h1>📘 Programa Técnico — Cursos creados</h1>
+<div class="card">
+    <h2>📘 Programa Técnico — Cursos creados</h2>
 
-<?php if (empty($courses)): ?>
+    <?php if(empty($semesters)): ?>
+        <p>No hay semestres creados.</p>
+    <?php else: ?>
 
-    <p>No hay semestres creados.</p>
+        <?php foreach($semesters as $semester): ?>
 
-<?php else: ?>
+            <div class="semester-box">
 
-<?php foreach ($courses as $course): ?>
-
-    <div class="semester-card">
-
-        <div class="semester-title">
-            <?= htmlspecialchars($course["name"]); ?>
-        </div>
-
-        <?php
-        /* ===============================
-           OBTENER UNIDADES DEL SEMESTRE
-        =============================== */
-        $stmtUnits = $pdo->prepare("
-            SELECT *
-            FROM units
-            WHERE course_id = :course
-            ORDER BY name ASC
-        ");
-        $stmtUnits->execute(["course" => $course["id"]]);
-        $units = $stmtUnits->fetchAll(PDO::FETCH_ASSOC);
-        ?>
-
-        <?php if (empty($units)): ?>
-
-            <div class="empty">Sin unidades creadas.</div>
-
-        <?php else: ?>
-
-            <?php foreach ($units as $unit): ?>
-
-                <div class="unit-item">
-
-                    <div class="unit-name">
-                        <?= htmlspecialchars($unit["name"]); ?>
-                    </div>
-
-                    <a class="btn"
-                       href="../academic/unit_view.php?unit=<?= urlencode($unit["id"]); ?>">
-                        Ver actividades →
-                    </a>
-
+                <div class="semester-title">
+                    <?= htmlspecialchars($semester["name"]); ?>
                 </div>
 
-            <?php endforeach; ?>
+                <a class="btn btn-open"
+                   href="technical_units.php?course=<?= urlencode($semester["id"]); ?>">
+                   Ver Unidades →
+                </a>
 
-        <?php endif; ?>
+            </div>
 
-        <a class="btn btn-secondary"
-           href="technical_units.php?course=<?= urlencode($course["id"]); ?>">
-            Gestionar unidades →
-        </a>
+        <?php endforeach; ?>
 
-    </div>
+    <?php endif; ?>
 
-<?php endforeach; ?>
-
-<?php endif; ?>
+</div>
 
 </body>
 </html>
