@@ -57,7 +57,8 @@ if ($programId === "prog_technical") {
     <?php foreach ($semesters as $s): ?>
       <div class="course">
         <strong><?= $s["name"] ?></strong>
-        <a href="course_view.php?course=<?= $s["id"] ?>">Abrir →</a>
+        <a class="course-item"
+   href="units_manager.php?course=<?= urlencode($course['id']); ?>">
       </div>
     <?php endforeach; ?>
 
