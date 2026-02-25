@@ -1,129 +1,89 @@
 <?php
-/* ==========================
-   ACTIVITIES HUB – CENTRAL
-   ========================== */
+session_start();
 
-$unit = $_GET['unit'] ?? null;
+if (!isset($_SESSION["admin_logged"]) || $_SESSION["admin_logged"] !== true) {
+    header("Location: ../../admin/login.php");
+    exit;
+}
+
+require __DIR__ . "/../../config/db.php";
+
+$unitId = $_GET["unit"] ?? null;
+
+if (!$unitId) {
+    die("Unidad no especificada.");
+}
+
+/* ===============================
+   OBTENER UNIDAD
+=============================== */
+$stmt = $pdo->prepare("
+    SELECT u.*, c.name AS course_name, c.program_id
+    FROM units u
+    JOIN courses c ON u.course_id = c.id
+    WHERE u.id = :unit
+    LIMIT 1
+");
+
+$stmt->execute(["unit" => $unitId]);
+$unit = $stmt->fetch(PDO::FETCH_ASSOC);
+
 if (!$unit) {
-  die("Unidad no especificada");
+    die("Unidad no válida.");
 }
 
-/* Escanear carpeta de actividades */
-$baseDir = dirname(__DIR__); // /activities
-$dirs = scandir($baseDir);
-
-$activities = [];
-
-foreach ($dirs as $dir) {
-  if ($dir === '.' || $dir === '..' || $dir === 'hub') continue;
-
-  $path = $baseDir . '/' . $dir;
-  if (!is_dir($path)) continue;
-
-  $editor = null;
-  $viewer = null;
-
-  if (file_exists($path . '/editor.php')) {
-    $editor = "../$dir/editor.php?unit=" . urlencode($unit);
-  }
-
-  if (file_exists($path . '/viewer.php')) {
-    $viewer = "../$dir/viewer.php?unit=" . urlencode($unit);
-  }
-
-  if ($editor || $viewer) {
-    $activities[] = [
-      'name'   => ucwords(str_replace('_', ' ', $dir)),
-      'editor' => $editor,
-      'viewer' => $viewer
-    ];
-  }
-}
+$programLabel = $unit["program_id"] === "prog_technical"
+    ? "Programa Técnico"
+    : "Programa Inglés";
 ?>
+
 <!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Activities Hub</title>
+<title>HUB Actividades</title>
+
 <style>
-body{
-  font-family:Arial;
-  background:#f5f7fb;
-  margin:0;
+body{font-family:Arial;background:#f4f8ff;padding:30px}
+.header-box{
+    background:#fff;
+    padding:20px 25px;
+    border-radius:12px;
+    margin-bottom:25px;
+    box-shadow:0 6px 14px rgba(0,0,0,.08)
 }
-.container{
-  max-width:900px;
-  margin:40px auto;
+.header-box h2{
+    margin-bottom:8px;
 }
-.card{
-  background:#fff;
-  padding:20px;
-  border-radius:12px;
-  margin-bottom:15px;
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-}
-.title{
-  font-size:18px;
-  font-weight:bold;
-}
-.actions a{
-  margin-left:10px;
-  padding:8px 14px;
-  border-radius:6px;
-  text-decoration:none;
-  font-weight:bold;
-}
-.edit{
-  background:#2563eb;
-  color:white;
-}
-.view{
-  background:#16a34a;
-  color:white;
+.meta{
+    font-size:14px;
+    color:#6b7280;
 }
 .back{
-  display:inline-block;
-  margin-bottom:20px;
-  text-decoration:none;
-  color:#2563eb;
-  font-weight:bold;
+    display:inline-block;
+    margin-bottom:20px;
+    background:#6b7280;
+    color:#fff;
+    padding:8px 14px;
+    border-radius:8px;
+    text-decoration:none
 }
 </style>
 </head>
 
 <body>
 
-<div class="container">
-
-<a class="back" href="../../academic/units_editor.php?unit=<?= urlencode($unit) ?>">
-← Volver a la unidad
+<a class="back" href="../../academic/technical_created.php">
+  ← Volver a Cursos
 </a>
 
-<h1>🧩 Activities Hub</h1>
-
-<?php if (empty($activities)): ?>
-  <p>No hay actividades disponibles.</p>
-<?php endif; ?>
-
-<?php foreach ($activities as $a): ?>
-  <div class="card">
-    <div class="title">
-      <?= htmlspecialchars($a['name']) ?>
+<div class="header-box">
+    <h2><?= htmlspecialchars($unit["name"]) ?></h2>
+    <div class="meta">
+        <?= htmlspecialchars($programLabel) ?> |
+        <?= htmlspecialchars($unit["course_name"]) ?> |
+        ID Unidad: <?= htmlspecialchars($unitId) ?>
     </div>
-    <div class="actions">
-      <?php if ($a['editor']): ?>
-        <a class="edit" href="<?= htmlspecialchars($a['editor']) ?>">Editar</a>
-      <?php endif; ?>
-      <?php if ($a['viewer']): ?>
-        <a class="view" href="<?= htmlspecialchars($a['viewer']) ?>">Ver</a>
-      <?php endif; ?>
-    </div>
-  </div>
-<?php endforeach; ?>
-
 </div>
 
-</body>
-</html>
+<!-- AQUI CONTINÚA TU HUB ACTUAL -->
