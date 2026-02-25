@@ -1,0 +1,75 @@
+<?php
+session_start();
+
+if (!isset($_SESSION["admin_logged"]) || $_SESSION["admin_logged"] !== true) {
+    header("Location: ../admin/login.php");
+    exit;
+}
+
+require __DIR__ . "/../config/db.php";
+
+$unitId = $_GET["unit"] ?? null;
+$type   = $_GET["type"] ?? null;
+
+if (!$unitId || !$type) {
+    die("Datos incompletos.");
+}
+
+/* ===============================
+   VALIDAR TIPO PERMITIDO
+=============================== */
+$allowedTypes = [
+    "drag_drop",
+    "external",
+    "flashcards",
+    "flipbooks",
+    "hangman",
+    "listen_order",
+    "match",
+    "multiple_choice",
+    "pronunciation"
+];
+
+if (!in_array($type, $allowedTypes)) {
+    die("Tipo de actividad inválido.");
+}
+
+/* ===============================
+   BUSCAR SI YA EXISTE
+=============================== */
+$stmt = $pdo->prepare("
+    SELECT id FROM activities
+    WHERE unit_id = :unit
+    AND type = :type
+    LIMIT 1
+");
+
+$stmt->execute([
+    "unit" => $unitId,
+    "type" => $type
+]);
+
+$existing = $stmt->fetch(PDO::FETCH_ASSOC);
+
+if ($existing) {
+    $activityId = $existing["id"];
+} else {
+    $activityId = uniqid("act_");
+
+    $stmt = $pdo->prepare("
+        INSERT INTO activities (id, unit_id, type)
+        VALUES (:id, :unit, :type)
+    ");
+
+    $stmt->execute([
+        "id"   => $activityId,
+        "unit" => $unitId,
+        "type" => $type
+    ]);
+}
+
+/* ===============================
+   REDIRECCIÓN AL EDITOR CORRECTO
+=============================== */
+header("Location: " . $type . "/editor.php?id=" . urlencode($activityId));
+exit;
