@@ -14,47 +14,49 @@ if (!$programId) {
     die("Programa no especificado");
 }
 
+/* ===============================
+   CREAR SEMESTRE (SIN REPETIR)
+=============================== */
 $error = "";
 
-/* ===============================
-   CREAR SEMESTRE (SIN REPETIR 1-4)
-=============================== */
 if ($_SERVER["REQUEST_METHOD"] === "POST" && !empty($_POST["course_name"])) {
 
-    $courseName = strtoupper(trim($_POST["course_name"]));
+    $name = strtoupper(trim($_POST["course_name"]));
 
-    $allowed = ["SEMESTRE 1", "SEMESTRE 2", "SEMESTRE 3", "SEMESTRE 4"];
+    // Validar solo SEMESTRE 1 al 4
+    $validSemesters = ["SEMESTRE 1", "SEMESTRE 2", "SEMESTRE 3", "SEMESTRE 4"];
 
-    if (!in_array($courseName, $allowed)) {
+    if (!in_array($name, $validSemesters)) {
         $error = "Solo se permiten SEMESTRE 1, 2, 3 o 4.";
     } else {
 
+        // Verificar si ya existe
         $check = $pdo->prepare("
             SELECT id FROM courses
-            WHERE program_id = :program AND name = :name
+            WHERE program_id = :program_id
+            AND name = :name
             LIMIT 1
         ");
         $check->execute([
-            "program" => $programId,
-            "name" => $courseName
+            "program_id" => $programId,
+            "name" => $name
         ]);
 
-        $existing = $check->fetch(PDO::FETCH_ASSOC);
-
-        if ($existing) {
+        if ($check->fetch()) {
             $error = "Ese semestre ya existe.";
         } else {
 
-            $courseId = uniqid("course_");
+            $courseId = uniqid("tech_sem");
 
             $stmt = $pdo->prepare("
                 INSERT INTO courses (id, program_id, name)
-                VALUES (:id, :program, :name)
+                VALUES (:id, :program_id, :name)
             ");
+
             $stmt->execute([
                 "id" => $courseId,
-                "program" => $programId,
-                "name" => $courseName
+                "program_id" => $programId,
+                "name" => $name
             ]);
 
             header("Location: courses_manager.php?program=" . urlencode($programId));
@@ -64,69 +66,74 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !empty($_POST["course_name"])) {
 }
 
 /* ===============================
-   LISTAR SEMESTRES
+   LISTAR SEMESTRES (SIN DUPLICADOS)
 =============================== */
 $stmt = $pdo->prepare("
     SELECT * FROM courses
     WHERE program_id = :program
+    GROUP BY name
     ORDER BY name ASC
 ");
-$stmt->execute(["program" => $programId]);
-$courses = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-$title = "Programa Técnico";
+$stmt->execute([
+    "program" => $programId
+]);
+
+$courses = $stmt->fetchAll(PDO::FETCH_ASSOC);
 ?>
 
 <!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title><?= htmlspecialchars($title) ?></title>
-
+<title>Programa Técnico</title>
 <style>
 body{font-family:Arial;background:#f4f8ff;padding:40px}
-.card{background:#fff;padding:25px;border-radius:14px;margin-bottom:25px;max-width:900px;box-shadow:0 10px 25px rgba(0,0,0,.08)}
-.item{background:#eef2ff;padding:15px;border-radius:10px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center}
-input{width:100%;padding:12px;margin-top:10px;border-radius:8px;border:1px solid #ddd}
+h1{color:#2563eb;margin-bottom:25px}
+.card{background:#fff;padding:25px;border-radius:12px;margin-bottom:25px;max-width:800px}
+.item{background:#f1f5f9;padding:15px;border-radius:10px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center}
+a{text-decoration:none;color:#2563eb;font-weight:bold}
+input{width:100%;padding:12px;margin-top:10px}
 button{margin-top:15px;padding:12px 18px;background:#2563eb;color:#fff;border:none;border-radius:8px;font-weight:700}
-a{text-decoration:none;font-weight:bold;color:#2563eb}
 .back{display:inline-block;margin-bottom:20px;background:#6b7280;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none}
 .error{color:#dc2626;font-weight:bold;margin-top:10px}
 </style>
 </head>
-
 <body>
 
 <a class="back" href="../admin/dashboard.php">
 ← Volver al Dashboard
 </a>
 
+<h1>📘 Programa Técnico</h1>
+
 <div class="card">
-<h2>📘 <?= htmlspecialchars($title) ?></h2>
+  <h2>➕ Crear Semestre</h2>
+  <form method="post">
+    <input type="text" name="course_name" required placeholder="SEMESTRE 1">
+    <button>Crear</button>
+  </form>
 
-<h3>➕ Crear Semestre</h3>
-<form method="post">
-<input type="text" name="course_name" required placeholder="SEMESTRE 1">
-<button>Crear</button>
-</form>
-
-<?php if ($error): ?>
-<div class="error"><?= htmlspecialchars($error) ?></div>
-<?php endif; ?>
-
+  <?php if ($error): ?>
+    <div class="error"><?= htmlspecialchars($error) ?></div>
+  <?php endif; ?>
 </div>
 
 <div class="card">
-<h3>📋 Semestres creados</h3>
+  <h2>📋 Semestres creados</h2>
 
-<?php foreach ($courses as $c): ?>
-<div class="item">
-<strong><?= htmlspecialchars($c["name"]) ?></strong>
-<a href="technical_units.php?course=<?= urlencode($c["id"]) ?>">
-Administrar →
-</a>
-</div>
-<?php endforeach; ?>
+  <?php if (empty($courses)): ?>
+    <p>No hay semestres creados.</p>
+  <?php else: ?>
+    <?php foreach ($courses as $c): ?>
+      <div class="item">
+        <strong><?= htmlspecialchars($c["name"]) ?></strong>
+        <a href="technical_units.php?course=<?= urlencode($c["id"]) ?>">
+          Administrar →
+        </a>
+      </div>
+    <?php endforeach; ?>
+  <?php endif; ?>
 
 </div>
 
