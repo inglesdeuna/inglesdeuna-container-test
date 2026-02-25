@@ -2,46 +2,65 @@
 session_start();
 require_once "../config/db.php";
 
-$courseParam = $_GET["course"] ?? null;
+$unit_id = $_GET['unit'] ?? null;
 
-if (!$courseParam) {
-    die("Curso no especificado.");
+if (!$unit_id) {
+    die("Unidad no especificada.");
+}
+
+/* ==========================
+   OBTENER UNIT
+========================== */
+$stmt = $pdo->prepare("SELECT * FROM units WHERE id = :id");
+$stmt->execute(['id' => $unit_id]);
+$unit = $stmt->fetch(PDO::FETCH_ASSOC);
+
+if (!$unit) {
+    die("Unidad no encontrada.");
 }
 
 /* ==========================
    OBTENER CURSO
 ========================== */
-$stmt = $pdo->prepare("
-    SELECT * FROM courses 
-    WHERE id = :id 
-    LIMIT 1
-");
-$stmt->execute(["id" => $courseParam]);
-$course = $stmt->fetch(PDO::FETCH_ASSOC);
+$stmtCourse = $pdo->prepare("SELECT * FROM courses WHERE id = :id");
+$stmtCourse->execute(['id' => $unit['course_id']]);
+$course = $stmtCourse->fetch(PDO::FETCH_ASSOC);
 
 if (!$course) {
     die("Curso no encontrado.");
 }
 
-$courseId = $course["id"];
+/* ==========================
+   ELIMINAR ACTIVIDAD
+========================== */
+if (isset($_GET['delete'])) {
+
+    $delete_id = $_GET['delete'];
+
+    $stmtDelete = $pdo->prepare("DELETE FROM activities WHERE id = :id");
+    $stmtDelete->execute(['id' => $delete_id]);
+
+    header("Location: unit_view.php?unit=" . urlencode($unit_id));
+    exit;
+}
 
 /* ==========================
-   OBTENER UNIDADES (SOLO LISTAR)
+   OBTENER ACTIVIDADES
 ========================== */
-$stmtUnits = $pdo->prepare("
-    SELECT * FROM units
-    WHERE course_id = :course_id
-    ORDER BY created_at ASC
+$stmtActivities = $pdo->prepare("
+    SELECT * FROM activities
+    WHERE unit_id = :unit_id
+    ORDER BY position ASC
 ");
-$stmtUnits->execute(["course_id" => $courseId]);
-$units = $stmtUnits->fetchAll(PDO::FETCH_ASSOC);
+$stmtActivities->execute(['unit_id' => $unit_id]);
+$activities = $stmtActivities->fetchAll(PDO::FETCH_ASSOC);
 ?>
 
 <!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title><?= htmlspecialchars($course["name"]) ?> — Unidades</title>
+<title><?= htmlspecialchars($unit['name']); ?></title>
 
 <style>
 body{
@@ -56,68 +75,93 @@ body{
     border-radius:16px;
     box-shadow:0 10px 25px rgba(0,0,0,.08);
     margin-bottom:20px;
-    max-width:800px;
 }
 
 .back{
     display:inline-block;
     background:#6b7280;
     margin-bottom:20px;
-    padding:8px 14px;
+    padding:10px 18px;
     border-radius:8px;
     color:#ffffff;
     text-decoration:none;
     font-weight:600;
 }
 
-.unit-row{
-    background:#f1f5f9;
-    padding:16px 18px;
+.activity-box{
+    background:#16a34a;
     border-radius:12px;
-    margin-bottom:12px;
+    padding:18px;
+    margin-bottom:14px;
+    color:#ffffff;
     display:flex;
     justify-content:space-between;
     align-items:center;
 }
 
-.btn-blue{
-    background:#2563eb;
-    color:#ffffff;
-    padding:10px 16px;
+.btn{
+    padding:8px 14px;
     border-radius:8px;
     text-decoration:none;
+    font-size:14px;
     font-weight:600;
-    display:inline-block;
+    color:#ffffff;
+    margin-left:8px;
 }
-.btn-blue:hover{
-    background:#1d4ed8;
-}
+
+.btn-open{ background:#14532d; }
+.btn-edit{ background:#1d4ed8; }
+.btn-delete{ background:#dc2626; }
 </style>
 </head>
 
 <body>
 
-<a class="back" href="technical_created.php">
-← Volver a Cursos creados
+<a class="back" href="technical_units_view.php?course=<?= urlencode($course['id']); ?>">
+← Volver a Semestres
 </a>
 
 <div class="card">
-    <h2><?= htmlspecialchars($course["name"]) ?> — Unidades</h2>
+    <h2><?= htmlspecialchars($unit['name']); ?></h2>
+    <p><strong>Semestre:</strong> <?= htmlspecialchars($course['name']); ?></p>
+</div>
 
-    <?php if (empty($units)): ?>
-        <p>No hay unidades creadas.</p>
-    <?php else: ?>
-        <?php foreach ($units as $unit): ?>
-            <div class="unit-row">
-                <strong><?= htmlspecialchars($unit["name"]) ?></strong>
+<div class="card">
 
-                <a class="btn-blue"
-                   href="unit_view.php?unit=<?= urlencode($unit["id"]) ?>">
-                   Ver actividades →
+<?php if (empty($activities)): ?>
+    <p>No hay actividades creadas.</p>
+<?php else: ?>
+    <?php foreach ($activities as $activity): ?>
+
+        <div class="activity-box">
+
+            <div>
+                <strong><?= strtoupper(str_replace('_',' ', $activity['type'])); ?></strong><br>
+                <?= htmlspecialchars($activity['created_at']); ?>
+            </div>
+
+            <div>
+                <a class="btn btn-open"
+                   href="../activities/<?= htmlspecialchars($activity['type']); ?>/viewer.php?id=<?= htmlspecialchars($activity['id']); ?>&unit=<?= urlencode($unit_id); ?>">
+                   Abrir
+                </a>
+
+                <a class="btn btn-edit"
+                   href="../activities/<?= htmlspecialchars($activity['type']); ?>/editor.php?id=<?= htmlspecialchars($activity['id']); ?>&unit=<?= urlencode($unit_id); ?>">
+                   Editar
+                </a>
+
+                <a class="btn btn-delete"
+                   href="unit_view.php?unit=<?= urlencode($unit_id); ?>&delete=<?= htmlspecialchars($activity['id']); ?>"
+                   onclick="return confirm('¿Eliminar esta actividad?');">
+                   Eliminar
                 </a>
             </div>
-        <?php endforeach; ?>
-    <?php endif; ?>
+
+        </div>
+
+    <?php endforeach; ?>
+<?php endif; ?>
 
 </div>
 
