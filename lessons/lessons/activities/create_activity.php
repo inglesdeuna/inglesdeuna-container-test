@@ -12,8 +12,8 @@ $unitId = $_POST["unit"] ?? null;
 $types  = $_POST["types"] ?? [];
 
 if (!$unitId || empty($types)) {
-   header("Location: ../academic/unit_view.php?unit=" . urlencode($unitId));
-exit;
+    header("Location: hub/index.php?unit=" . urlencode($unitId));
+    exit;
 }
 
 $allowedTypes = [
@@ -53,14 +53,15 @@ foreach ($types as $type) {
     if ($existing) {
         $createdIds[] = $existing["id"];
     } else {
+
         $activityId = uniqid("act_");
 
-        $stmt = $pdo->prepare("
+        $stmtInsert = $pdo->prepare("
             INSERT INTO activities (id, unit_id, type)
             VALUES (:id, :unit, :type)
         ");
 
-        $stmt->execute([
+        $stmtInsert->execute([
             "id"   => $activityId,
             "unit" => $unitId,
             "type" => $type
@@ -71,26 +72,26 @@ foreach ($types as $type) {
 }
 
 /* ===============================
-   REDIRECCIÓN INTELIGENTE
+   REDIRECCIÓN
 =============================== */
 
 if (count($createdIds) === 1) {
 
-    // Si solo es una actividad, abrir su editor
     $stmt = $pdo->prepare("
         SELECT type FROM activities
         WHERE id = :id
         LIMIT 1
     ");
+
     $stmt->execute(["id" => $createdIds[0]]);
     $activity = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if ($activity) {
         header("Location: ../activities/" . $activity["type"] . "/editor.php?id=" . urlencode($createdIds[0]) . "&unit=" . urlencode($unitId));
-exit;
-    
+        exit;
+    }
 }
 
-/* Si son varias → ir a la vista completa de la unidad */
-header("Location: unit_view.php?unit=" . urlencode($unitId));
+/* Si son varias → ir a vista académica */
+header("Location: ../academic/unit_view.php?unit=" . urlencode($unitId));
 exit;
