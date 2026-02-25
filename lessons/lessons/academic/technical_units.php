@@ -1,108 +1,121 @@
 <?php
 session_start();
+require_once "../config/db.php";
 
-if (!isset($_SESSION["admin_logged"]) || $_SESSION["admin_logged"] !== true) {
-    header("Location: ../admin/login.php");
-    exit;
-}
+$courseParam = $_GET["course"] ?? null;
 
-require __DIR__ . "/../config/db.php";
-
-$courseId = $_GET["course"] ?? null;
-
-if (!$courseId) {
+if (!$courseParam) {
     die("Curso no especificado.");
 }
 
-/* CREAR UNIDAD */
-if ($_SERVER["REQUEST_METHOD"] === "POST" && !empty($_POST["unit_name"])) {
+/* =========================
+   OBTENER CURSO
+========================= */
+$stmt = $pdo->prepare("SELECT * FROM courses WHERE id = :id LIMIT 1");
+$stmt->execute(["id" => $courseParam]);
+$course = $stmt->fetch(PDO::FETCH_ASSOC);
 
-    $unitName = strtoupper(trim($_POST["unit_name"]));
-
-    $check = $pdo->prepare("
-        SELECT id FROM units
-        WHERE course_id = :course AND name = :name
-        LIMIT 1
-    ");
-    $check->execute([
-        "course" => $courseId,
-        "name" => $unitName
-    ]);
-
-    $existing = $check->fetch(PDO::FETCH_ASSOC);
-
-    if ($existing) {
-        $unitId = $existing["id"];
-    } else {
-        $unitId = uniqid("unit_");
-
-        $stmt = $pdo->prepare("
-            INSERT INTO units (id, course_id, name)
-            VALUES (:id, :course, :name)
-        ");
-        $stmt->execute([
-            "id" => $unitId,
-            "course" => $courseId,
-            "name" => $unitName
-        ]);
-    }
-
-    header("Location: ../activities/hub/index.php?unit=" . urlencode($unitId));
-    exit;
+if (!$course) {
+    die("Curso no encontrado.");
 }
 
-/* LISTAR UNIDADES */
-$stmt = $pdo->prepare("
+$courseId = $course["id"];
+
+/* =========================
+   OBTENER UNIDADES
+========================= */
+$stmtUnits = $pdo->prepare("
     SELECT * FROM units
-    WHERE course_id = :course
+    WHERE course_id = :course_id
     ORDER BY created_at ASC
 ");
-$stmt->execute(["course" => $courseId]);
-$units = $stmt->fetchAll(PDO::FETCH_ASSOC);
+$stmtUnits->execute(["course_id" => $courseId]);
+$units = $stmtUnits->fetchAll(PDO::FETCH_ASSOC);
 ?>
 
 <!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Unidades</title>
+<title><?= htmlspecialchars($course["name"]); ?> — Unidades</title>
 
 <style>
-body{font-family:Arial;background:#f4f8ff;padding:40px}
-.card{background:#fff;padding:25px;border-radius:14px;margin-bottom:25px;max-width:900px;box-shadow:0 10px 25px rgba(0,0,0,.08)}
-.item{background:#eef2ff;padding:15px;border-radius:10px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center}
-input{width:100%;padding:12px;margin-top:10px;border-radius:8px;border:1px solid #ddd}
-button{margin-top:15px;padding:12px 18px;background:#2563eb;color:#fff;border:none;border-radius:8px;font-weight:700}
-.back{display:inline-block;margin-bottom:20px;background:#6b7280;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none}
+body{
+    font-family: Arial, sans-serif;
+    background:#f4f8ff;
+    padding:40px;
+}
+
+.back{
+    display:inline-block;
+    margin-bottom:25px;
+    background:#6b7280;
+    color:#ffffff;
+    padding:10px 18px;
+    border-radius:8px;
+    text-decoration:none;
+    font-weight:600;
+}
+
+.card{
+    background:#ffffff;
+    padding:25px;
+    border-radius:16px;
+    box-shadow:0 10px 25px rgba(0,0,0,.08);
+    margin-bottom:25px;
+    max-width:900px;
+}
+
+.item{
+    background:#f1f5f9;
+    padding:18px;
+    border-radius:12px;
+    margin-bottom:14px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+}
+
+.btn-blue{
+    background:#2563eb;
+    color:#ffffff;
+    padding:10px 18px;
+    border-radius:8px;
+    text-decoration:none;
+    font-weight:600;
+    display:inline-block;
+    transition:0.2s ease;
+}
+
+.btn-blue:hover{
+    background:#1d4ed8;
+}
 </style>
 </head>
 
 <body>
 
-<a class="back" href="courses_manager.php?program=prog_technical">
-← Volver
+<a class="back" href="technical_created.php">
+← Volver a Cursos creados
 </a>
 
 <div class="card">
-<h2>➕ Crear Unidad</h2>
-<form method="post">
-<input type="text" name="unit_name" required placeholder="Ej: UNIDAD 1">
-<button>Crear</button>
-</form>
-</div>
+    <h2><?= htmlspecialchars($course["name"]); ?> — Unidades</h2>
 
-<div class="card">
-<h3>📋 Unidades creadas</h3>
+    <?php if (empty($units)): ?>
+        <p>No hay unidades creadas.</p>
+    <?php else: ?>
+        <?php foreach ($units as $unit): ?>
+            <div class="item">
+                <strong><?= htmlspecialchars($unit["name"]); ?></strong>
 
-<?php foreach ($units as $unit): ?>
-<div class="item">
-<strong><?= htmlspecialchars($unit["name"]) ?></strong>
-<a href="../activities/hub/index.php?unit=<?= urlencode($unit["id"]) ?>">
-Administrar →
-</a>
-</div>
-<?php endforeach; ?>
-
+                <a class="btn-blue"
+                   href="unit_view.php?unit=<?= urlencode($unit["id"]); ?>">
+                    Administrar →
+                </a>
+            </div>
+        <?php endforeach; ?>
+    <?php endif; ?>
 </div>
 
 </body>
