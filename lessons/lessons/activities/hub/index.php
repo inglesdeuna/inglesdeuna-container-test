@@ -14,9 +14,6 @@ if (!$unitId) {
     die("Unidad no especificada.");
 }
 
-/* ===============================
-   OBTENER UNIDAD + CURSO
-=============================== */
 $stmt = $pdo->prepare("
     SELECT u.*, c.name AS course_name, c.program_id
     FROM units u
@@ -36,9 +33,7 @@ $programLabel = $unit["program_id"] === "prog_technical"
     ? "Programa Técnico"
     : "Programa Inglés";
 
-/* ===============================
-   TIPOS DE ACTIVIDAD
-=============================== */
+/* TIPOS */
 $activityTypes = [
     "drag_drop" => "Drag & Drop",
     "external" => "External",
@@ -51,9 +46,7 @@ $activityTypes = [
     "pronunciation" => "Pronunciation"
 ];
 
-/* ===============================
-   ACTIVIDADES YA CREADAS
-=============================== */
+/* YA CREADAS */
 $stmt = $pdo->prepare("
     SELECT type FROM activities
     WHERE unit_id = :unit
@@ -69,11 +62,7 @@ $created = $stmt->fetchAll(PDO::FETCH_COLUMN);
 <title>Activities Hub</title>
 
 <style>
-body{
-    font-family:Arial;
-    background:#f4f8ff;
-    padding:40px;
-}
+body{font-family:Arial;background:#f4f8ff;padding:40px}
 
 .back{
     display:inline-block;
@@ -93,14 +82,7 @@ body{
     box-shadow:0 6px 14px rgba(0,0,0,.08);
 }
 
-.header-box h2{
-    margin-bottom:8px;
-}
-
-.meta{
-    font-size:14px;
-    color:#6b7280;
-}
+.meta{font-size:14px;color:#6b7280}
 
 .hub-card{
     background:#fff;
@@ -116,10 +98,6 @@ body{
     align-items:center;
     padding:12px 0;
     border-bottom:1px solid #eee;
-}
-
-.hub-item label{
-    cursor:pointer;
 }
 
 .status{
@@ -139,31 +117,27 @@ body{
     font-weight:bold;
     cursor:pointer;
 }
-
-.create-btn:hover{
-    opacity:.9;
-}
 </style>
 </head>
 
 <body>
 
 <a class="back" href="../../academic/technical_created.php">
-  ← Volver a Cursos
+← Volver a Cursos
 </a>
 
 <div class="header-box">
-    <h2><?= htmlspecialchars($unit["name"]) ?></h2>
-    <div class="meta">
-        <?= htmlspecialchars($programLabel) ?> |
-        <?= htmlspecialchars($unit["course_name"]) ?> |
-        ID Unidad: <?= htmlspecialchars($unitId) ?>
-    </div>
+<h2><?= htmlspecialchars($unit["name"]) ?></h2>
+<div class="meta">
+<?= htmlspecialchars($programLabel) ?> |
+<?= htmlspecialchars($unit["course_name"]) ?> |
+ID Unidad: <?= htmlspecialchars($unitId) ?>
+</div>
 </div>
 
 <div class="hub-card">
 
-<form method="get" action="../create_activity.php">
+<form method="post" action="../create_activity.php">
 
 <input type="hidden" name="unit" value="<?= htmlspecialchars($unitId) ?>">
 
@@ -172,19 +146,20 @@ body{
 ?>
 
 <div class="hub-item">
-    <label>
-        <input type="radio" name="type" value="<?= $key ?>" required>
-        <?= $label ?>
-    </label>
+<label>
+<input type="checkbox" name="types[]" value="<?= $key ?>">
+<?= $label ?>
+</label>
 
-    <?php if ($isCreated): ?>
-        <span class="status">✔ Creada</span>
-    <?php endif; ?>
+<?php if ($isCreated): ?>
+<span class="status">✔ Creada</span>
+<?php endif; ?>
+
 </div>
 
 <?php endforeach; ?>
 
-<button class="create-btn">CREAR</button>
+<button class="create-btn">CREAR ACTIVIDADES</button>
 
 </form>
 
