@@ -169,7 +169,7 @@ body{
 
 <body>
 
-<a class="back" href="https://inglesdeuna-container-test.onrender.com/lessons/lessons/academic/technical_units_view.php?course=tech_sem1">
+<a class="back" href="technical_units_view.php?course=<?= urlencode($course['id']); ?>">
 Volver
 </a>
 
