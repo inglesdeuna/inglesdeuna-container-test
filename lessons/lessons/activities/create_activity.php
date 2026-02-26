@@ -14,9 +14,8 @@ if (!$unitId || empty($types)) {
 $stmtUnit = $pdo->prepare("SELECT * FROM units WHERE id = :id");
 $stmtUnit->execute(["id" => $unitId]);
 $unit = $stmtUnit->fetch(PDO::FETCH_ASSOC);
+if (!$unit) die("Unidad no encontrada.");
 
-if (!$unit) {
-    die("Unidad no encontrada.");
 }
 
 // Crear actividades seleccionadas
