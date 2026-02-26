@@ -131,8 +131,7 @@ body{
 
 <body>
 
-<a class="back" 
-   href="technical_units_view.php?course=<?= urlencode($course['id']); ?>">
+<a class="back" href="technical_units_view.php?course=<?= urlencode($unit['course_id']); ?>">
 ← Volver a Semestres
 </a>
 
