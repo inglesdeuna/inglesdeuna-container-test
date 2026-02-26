@@ -12,7 +12,6 @@ if (!$unit_id) {
    ELIMINAR ACTIVIDAD
 ========================== */
 if (isset($_GET['delete'])) {
-
     $delete_id = $_GET['delete'];
 
     $stmtDelete = $pdo->prepare("DELETE FROM activities WHERE id = :id");
@@ -26,7 +25,6 @@ if (isset($_GET['delete'])) {
    ACTUALIZAR ORDEN (DRAG)
 ========================== */
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['order'])) {
-
     $order = $_POST['order'];
 
     foreach ($order as $position => $id) {
@@ -171,8 +169,8 @@ body{
 
 <body>
 
-<a class="back" href="course_view.php?course=<?= htmlspecialchars($course['id']); ?>">
-← Volver al Curso
+<a class="back" href="https://inglesdeuna-container-test.onrender.com/lessons/lessons/academic/technical_units_view.php?course=tech_sem1">
+Volver
 </a>
 
 <div class="card">
@@ -185,7 +183,6 @@ body{
     <div id="activityContainer">
 
     <?php foreach ($activities as $activity): ?>
-
         <?php
         $typeRaw = $activity['type'];
 
@@ -203,7 +200,6 @@ body{
 
         $icon = $icons[$typeRaw] ?? '📘';
 
-        // FIX DEFINITIVO json_decode
         $data = [];
         if (!empty($activity['data']) && is_string($activity['data'])) {
             $decoded = json_decode($activity['data'], true);
@@ -216,7 +212,6 @@ body{
         ?>
 
         <div class="activity-box draggable" draggable="true" data-id="<?= $activity['id']; ?>">
-
             <div class="activity-left">
                 <div class="activity-title">
                     <?= $icon . " " . htmlspecialchars($activityTitle); ?>
@@ -228,7 +223,6 @@ body{
             </div>
 
             <div class="activity-actions">
-
                 <a class="btn btn-open"
                    href="../activities/<?= htmlspecialchars($typeRaw); ?>/viewer.php?id=<?= htmlspecialchars($activity['id']); ?>&unit=<?= urlencode($unit_id); ?>">
                     Abrir
@@ -244,11 +238,8 @@ body{
                    onclick="return confirm('¿Eliminar esta actividad?');">
                     Eliminar
                 </a>
-
             </div>
-
         </div>
-
     <?php endforeach; ?>
 
     </div>
@@ -273,7 +264,6 @@ container.addEventListener('dragover', e => {
 });
 
 container.addEventListener('drop', () => {
-
     const items = document.querySelectorAll('.draggable');
     let order = [];
 
