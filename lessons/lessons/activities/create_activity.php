@@ -1,36 +1,40 @@
 <?php
-include("db_connect.php");
+session_start();
+require_once "../../config/db.php";
 
-// Datos recibidos del formulario
-$name      = $_POST['name'];
-$semester  = $_POST['semester'];
+// Validar datos recibidos
+$unitId = $_POST['unit'] ?? null;
+$types  = $_POST['types'] ?? [];
 
-// Determinar el course_id dinámicamente según el semestre
-switch ($semester) {
-    case 1:
-        $course_id = 'tech_sem1';
-        break;
-    case 2:
-        $course_id = 'tech_sem2';
-        break;
-    case 3:
-        $course_id = 'tech_sem3';
-        break;
-    case 4:
-        $course_id = 'tech_sem4';
-        break;
-    default:
-        $course_id = 'tech_sem1'; // fallback por si acaso
+if (!$unitId || empty($types)) {
+    die("Unidad o tipos de actividades no especificados.");
 }
 
-// Insertar nueva unidad
-$query = "INSERT INTO units (name, semester, course_id) VALUES ('$name', '$semester', '$course_id')";
-mysqli_query($conn, $query);
+// Verificar que la unidad existe
+$stmtUnit = $pdo->prepare("SELECT * FROM units WHERE id = :id");
+$stmtUnit->execute(["id" => $unitId]);
+$unit = $stmtUnit->fetch(PDO::FETCH_ASSOC);
 
-// Obtener ID recién creado
-$unit_id = mysqli_insert_id($conn);
+if (!$unit) {
+    die("Unidad no encontrada.");
+}
 
-// Redirigir a la vista de la unidad creada con su course correcto
-header("Location: unit_view.php?unit=unit_$unit_id&course=$course_id");
+// Crear actividades seleccionadas
+foreach ($types as $type) {
+    $stmt = $pdo->prepare("
+        INSERT INTO activities (unit_id, type, created_at, position) 
+        VALUES (:unit_id, :type, NOW(), 
+            (SELECT COALESCE(MAX(position),0)+1 FROM activities WHERE unit_id = :unit_id2)
+        )
+    ");
+    $stmt->execute([
+        "unit_id"  => $unitId,
+        "unit_id2" => $unitId,
+        "type"     => $type
+    ]);
+}
+
+// Redirigir a la vista de la unidad
+header("Location: ../academic/unit_view.php?unit=" . urlencode($unitId));
 exit;
 ?>
