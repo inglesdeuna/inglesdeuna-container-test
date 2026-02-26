@@ -170,6 +170,9 @@ body{
 <body>
 
 <a class="back" href="technical_units_view.php?course=<?= urlencode($course['id']); ?>">
+    Volver
+</a>
+
 Volver
 </a>
 
