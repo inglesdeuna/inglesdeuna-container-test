@@ -29,47 +29,98 @@ $created = $stmt->fetchAll(PDO::FETCH_COLUMN);
 <title>Escoger Actividades</title>
 
 <style>
-body{font-family:Arial;background:#f4f8ff;padding:40px}
-.card{background:#fff;padding:25px;border-radius:14px;max-width:700px;box-shadow:0 10px 25px rgba(0,0,0,.08);margin:0 auto}
-.item{display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid #eee}
-button{margin-top:20px;width:100%;padding:12px;background:#2563eb;color:#fff;border:none;border-radius:8px;font-weight:bold;cursor:pointer}
-.status{color:#16a34a;font-weight:bold}
-.actions{display:flex;gap:15px;margin-bottom:25px}
-.actions a{flex:1;text-align:center;padding:12px;background:#6b7280;color:#fff;text-decoration:none;border-radius:8px;font-weight:bold}
-.actions a.create{background:#2563eb}
-h2{text-align:center;margin-bottom:20px}
+body {
+    font-family: Arial;
+    background: #f4f8ff;
+    padding: 40px;
+    position: relative;
+}
+.card {
+    background: #fff;
+    padding: 25px;
+    border-radius: 14px;
+    max-width: 700px;
+    box-shadow: 0 10px 25px rgba(0,0,0,.08);
+    margin: 0 auto;
+}
+.item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 0;
+    border-bottom: 1px solid #eee;
+}
+button {
+    margin-top: 20px;
+    width: 100%;
+    padding: 12px;
+    background: #2563eb;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-weight: bold;
+    cursor: pointer;
+}
+.status {
+    color: #16a34a;
+    font-weight: bold;
+}
+.volver {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    padding: 10px 15px;
+    background: #6b7280;
+    color: #fff;
+    text-decoration: none;
+    border-radius: 8px;
+    font-weight: bold;
+}
+.crear {
+    display: block;
+    max-width: 700px;
+    margin: 25px auto 0;
+    text-align: center;
+    padding: 12px;
+    background: #2563eb;
+    color: #fff;
+    text-decoration: none;
+    border-radius: 8px;
+    font-weight: bold;
+}
+h2 {
+    text-align: center;
+    margin-bottom: 20px;
+}
 </style>
 </head>
 
 <body>
 
-<div class="actions">
-<a href="https://inglesdeuna-container-test.onrender.com/lessons/lessons/academic/technical_units.php?course=tech_sem1">← VOLVER</a>
-<a class="create" href="https://inglesdeuna-container-test.onrender.com/lessons/lessons/academic/unit_view.php?unit=unit_699e465f8180e">CREAR ACTIVIDADES →</a>
-</div>
+<a class="volver" href="https://inglesdeuna-container-test.onrender.com/lessons/lessons/academic/technical_units.php?course=tech_sem1">← VOLVER</a>
 
 <div class="card">
-<h2>Escoger Actividades</h2>
+    <h2>Escoger Actividades</h2>
 
-<form method="post" action="../create_activity.php">
-<input type="hidden" name="unit" value="<?= htmlspecialchars($unitId) ?>">
+    <form method="post" action="../create_activity.php">
+        <input type="hidden" name="unit" value="<?= htmlspecialchars($unitId) ?>">
 
-<?php foreach ($activityTypes as $key => $label): ?>
-<div class="item">
-<label>
-<input type="checkbox" name="types[]" value="<?= $key ?>">
-<?= $label ?>
-</label>
+        <?php foreach ($activityTypes as $key => $label): ?>
+        <div class="item">
+            <label>
+                <input type="checkbox" name="types[]" value="<?= $key ?>">
+                <?= $label ?>
+            </label>
 
-<?php if (in_array($key, $created)): ?>
-<span class="status">✔ Creada</span>
-<?php endif; ?>
+            <?php if (in_array($key, $created)): ?>
+            <span class="status">✔ Creada</span>
+            <?php endif; ?>
+        </div>
+        <?php endforeach; ?>
+    </form>
 </div>
-<?php endforeach; ?>
 
-</form>
-
-</div>
+<a class="crear" href="https://inglesdeuna-container-test.onrender.com/lessons/lessons/academic/unit_view.php?unit=unit_699e465f8180e">CREAR ACTIVIDADES →</a>
 
 </body>
 </html>
