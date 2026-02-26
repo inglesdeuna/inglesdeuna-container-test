@@ -129,7 +129,7 @@ h2 {
     </form>
 </div>
 
-<a class="crear" href="../academic/unit_view.php?unit=<?= urlencode($unitId); ?>">CREAR ACTIVIDADES →</a>
+<a class="crear" href="../academic/unit_view.php?unit=<?= urlencode($unitId); ?>"> CREAR ACTIVIDADES → </a>
 
 </body>
 </html>
