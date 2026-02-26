@@ -1,97 +1,36 @@
 <?php
-session_start();
+include("db_connect.php");
 
-if (!isset($_SESSION["admin_logged"]) || $_SESSION["admin_logged"] !== true) {
-    header("Location: ../admin/login.php");
-    exit;
+// Datos recibidos del formulario
+$name      = $_POST['name'];
+$semester  = $_POST['semester'];
+
+// Determinar el course_id dinámicamente según el semestre
+switch ($semester) {
+    case 1:
+        $course_id = 'tech_sem1';
+        break;
+    case 2:
+        $course_id = 'tech_sem2';
+        break;
+    case 3:
+        $course_id = 'tech_sem3';
+        break;
+    case 4:
+        $course_id = 'tech_sem4';
+        break;
+    default:
+        $course_id = 'tech_sem1'; // fallback por si acaso
 }
 
-require __DIR__ . "/../config/db.php";
+// Insertar nueva unidad
+$query = "INSERT INTO units (name, semester, course_id) VALUES ('$name', '$semester', '$course_id')";
+mysqli_query($conn, $query);
 
-$unitId = $_POST["unit"] ?? null;
-$types  = $_POST["types"] ?? [];
+// Obtener ID recién creado
+$unit_id = mysqli_insert_id($conn);
 
-if (!$unitId || empty($types)) {
-    header("Location: hub/index.php?unit=" . urlencode($unitId));
-    exit;
-}
-
-$allowedTypes = [
-    "drag_drop",
-    "external",
-    "flashcards",
-    "flipbooks",
-    "hangman",
-    "listen_order",
-    "match",
-    "multiple_choice",
-    "pronunciation"
-];
-
-$createdIds = [];
-
-foreach ($types as $type) {
-
-    if (!in_array($type, $allowedTypes)) {
-        continue;
-    }
-
-    $stmt = $pdo->prepare("
-        SELECT id FROM activities
-        WHERE unit_id = :unit
-        AND type = :type
-        LIMIT 1
-    ");
-
-    $stmt->execute([
-        "unit" => $unitId,
-        "type" => $type
-    ]);
-
-    $existing = $stmt->fetch(PDO::FETCH_ASSOC);
-
-    if ($existing) {
-        $createdIds[] = $existing["id"];
-    } else {
-
-        $activityId = uniqid("act_");
-
-        $stmtInsert = $pdo->prepare("
-            INSERT INTO activities (id, unit_id, type)
-            VALUES (:id, :unit, :type)
-        ");
-
-        $stmtInsert->execute([
-            "id"   => $activityId,
-            "unit" => $unitId,
-            "type" => $type
-        ]);
-
-        $createdIds[] = $activityId;
-    }
-}
-
-/* ===============================
-   REDIRECCIÓN
-=============================== */
-
-if (count($createdIds) === 1) {
-
-    $stmt = $pdo->prepare("
-        SELECT type FROM activities
-        WHERE id = :id
-        LIMIT 1
-    ");
-
-    $stmt->execute(["id" => $createdIds[0]]);
-    $activity = $stmt->fetch(PDO::FETCH_ASSOC);
-
-    if ($activity) {
-        header("Location: ../activities/" . $activity["type"] . "/editor.php?id=" . urlencode($createdIds[0]) . "&unit=" . urlencode($unitId));
-        exit;
-    }
-}
-
-/* Si son varias → ir a vista académica */
-header("Location: ../academic/unit_view.php?unit=" . urlencode($unitId));
+// Redirigir a la vista de la unidad creada con su course correcto
+header("Location: unit_view.php?unit=unit_$unit_id&course=$course_id");
 exit;
+?>
