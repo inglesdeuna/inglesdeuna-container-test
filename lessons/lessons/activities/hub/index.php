@@ -17,17 +17,27 @@ $activityTypes = [
     "flipbooks" => "Flipbooks"
 ];
 
+// Actividades ya creadas
 $stmt = $pdo->prepare("SELECT type FROM activities WHERE unit_id = :unit");
 $stmt->execute(["unit" => $unitId]);
 $created = $stmt->fetchAll(PDO::FETCH_COLUMN);
-?>
 
+// Obtener curso de la unidad
+$stmtUnit = $pdo->prepare("SELECT * FROM units WHERE id = :id");
+$stmtUnit->execute(["id" => $unitId]);
+$unit = $stmtUnit->fetch(PDO::FETCH_ASSOC);
+
+if (!$unit) die("Unidad no encontrada.");
+
+$stmtCourse = $pdo->prepare("SELECT * FROM courses WHERE id = :id");
+$stmtCourse->execute(["id" => $unit['course_id']]);
+$course = $stmtCourse->fetch(PDO::FETCH_ASSOC);
+?>
 <!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
 <title>Escoger Actividades</title>
-
 <style>
 body {
     font-family: Arial;
@@ -94,10 +104,9 @@ h2 {
 }
 </style>
 </head>
-
 <body>
 
-<a class="volver" href="https://inglesdeuna-container-test.onrender.com/lessons/lessons/academic/technical_units.php?course=tech_sem1">← VOLVER</a>
+<a class="volver" href="../academic/technical_units_view.php?course=<?= urlencode($course['id']); ?>">← VOLVER</a>
 
 <div class="card">
     <h2>Escoger Actividades</h2>
@@ -120,7 +129,7 @@ h2 {
     </form>
 </div>
 
-<a class="crear" href="https://inglesdeuna-container-test.onrender.com/lessons/lessons/academic/unit_view.php?unit=unit_699e465f8180e">CREAR ACTIVIDADES →</a>
+<a class="crear" href="../academic/unit_view.php?unit=<?= urlencode($unitId); ?>">CREAR ACTIVIDADES →</a>
 
 </body>
 </html>
