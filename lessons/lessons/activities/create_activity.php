@@ -34,8 +34,7 @@ foreach ($types as $type) {
     ]);
 }
 
-// Redirigir a la vista de la unidad creada
+// Redirigir a la vista de la unidad
 header("Location: ../academic/unit_view.php?unit=" . urlencode($unitId));
 exit;
 ?>
-
