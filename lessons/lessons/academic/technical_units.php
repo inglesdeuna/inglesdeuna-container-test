@@ -8,25 +8,30 @@ if (!isset($_SESSION["admin_logged"]) || $_SESSION["admin_logged"] !== true) {
 
 require __DIR__ . "/../config/db.php";
 
-$courseSlug = $_GET["course"] ?? null;
+/* ===============================
+   RECIBIR CURSO (ID INTEGER)
+=============================== */
+$courseId = $_GET["course"] ?? null;
 
-if (!$courseSlug) {
-    die("Curso no especificado.");
+if (!$courseId || !ctype_digit($courseId)) {
+    die("Curso no válido.");
 }
 
 /* ===============================
-   OBTENER CURSO POR SLUG (id textual)
+   OBTENER CURSO
 =============================== */
-$stmt = $pdo->prepare("SELECT * FROM courses WHERE id = :id LIMIT 1");
-$stmt->execute(["id" => $courseSlug]);
+$stmt = $pdo->prepare("
+    SELECT *
+    FROM courses
+    WHERE id = :id
+    LIMIT 1
+");
+$stmt->execute(["id" => $courseId]);
 $course = $stmt->fetch(PDO::FETCH_ASSOC);
 
 if (!$course) {
     die("Curso no encontrado.");
 }
-
-// Usar directamente el slug como courseId
-$courseId = $course["id"];
 
 /* ===============================
    CREAR UNIDAD
@@ -35,6 +40,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !empty($_POST["unit_name"])) {
 
     $unitName = strtoupper(trim($_POST["unit_name"]));
 
+    // Verificar duplicado
     $check = $pdo->prepare("
         SELECT id FROM units
         WHERE course_id = :course_id
@@ -44,24 +50,20 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !empty($_POST["unit_name"])) {
 
     $check->execute([
         "course_id" => $courseId,
-        "name" => $unitName
+        "name"      => $unitName
     ]);
 
-    $existing = $check->fetch(PDO::FETCH_ASSOC);
+    if (!$check->fetch()) {
 
-    if (!$existing) {
-
-        $unitId = uniqid("unit_");
-
+        // 🔥 IMPORTANTE: NO insertar ID manualmente
         $stmtInsert = $pdo->prepare("
-            INSERT INTO units (id, course_id, name)
-            VALUES (:id, :course_id, :name)
+            INSERT INTO units (course_id, name, created_at)
+            VALUES (:course_id, :name, NOW())
         ");
 
         $stmtInsert->execute([
-            "id" => $unitId,
             "course_id" => $courseId,
-            "name" => $unitName
+            "name"      => $unitName
         ]);
     }
 
@@ -73,7 +75,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !empty($_POST["unit_name"])) {
    LISTAR UNIDADES
 =============================== */
 $stmtUnits = $pdo->prepare("
-    SELECT * FROM units
+    SELECT *
+    FROM units
     WHERE course_id = :course_id
     ORDER BY created_at ASC
 ");
