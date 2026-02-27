@@ -5,10 +5,10 @@ error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
 // Conexión directa a la base de datos
-$servername = "localhost";      // Cambia si tu servidor no es local
-$username   = "root";           // Usuario de tu base de datos
-$password   = "";               // Contraseña de tu base de datos
-$database   = "nombre_de_tu_bd"; // Nombre de tu base de datos
+$servername = "localhost";        // Servidor de tu BD
+$username   = "root";             // Usuario de tu BD
+$password   = "";                 // Contraseña de tu BD
+$database   = "academic_platform"; // Nombre de tu base de datos (ajústalo al real)
 
 $conn = new mysqli($servername, $username, $password, $database);
 
@@ -25,6 +25,7 @@ if (!isset($_GET['program'])) {
 $program = $_GET['program'];
 
 // Consulta de cursos creados
+// Ajusta "courses" al nombre real de tu tabla de cursos ya creada
 $query = "SELECT id, name, description FROM courses WHERE program = ?";
 $stmt = $conn->prepare($query);
 $stmt->bind_param("s", $program);
