@@ -106,31 +106,34 @@ h1{
 <div class="dashboard">
 
     <!-- ========================= -->
-    <!-- PROGRAMA TÉCNICO -->
-    <!-- ========================= -->
-    <div class="card">
-        <h2>📘 Programas Técnicos</h2>
-        <p>Gestionar estructura técnica (Cursos → Units → Actividades).</p>
+<!-- PROGRAMA TÉCNICO -->
+<!-- ========================= -->
+<div class="card">
+    <h2>📘 Programas Técnicos</h2>
+    <p>Gestionar estructura técnica (Cursos → Units → Actividades).</p>
 
-        <div class="btn-group">
-            <a class="btn btn-blue" 
-               href="../academic/programs_editor.php?program=prog_technical">
-               Gestionar estructura
-            </a>
+    <div class="btn-group">
 
-            <a class="btn btn-orange" 
-               href="../academic/assignments.php?program=prog_technical">
-               Asignaciones (Docentes / Estudiantes)
-            </a>
+        <!-- GESTIONAR ESTRUCTURA -->
+        <a class="btn btn-blue" 
+           href="../academic/programs_editor.php?program=prog_technical">
+           Gestionar estructura
+        </a>
 
-            <a class="btn btn-green" 
-             <a href="../academic/courses_manager.php?program=prog_technical" class="btn btn-primary">
-    Gestionar estructura
+        <!-- ASIGNACIONES -->
+        <a class="btn btn-orange" 
+           href="../academic/assignments.php?program=prog_technical">
+           Asignaciones (Docentes / Estudiantes)
+        </a>
 
-</a>
-             
-        </div>
+        <!-- CURSOS CREADOS (SEPARADO) -->
+        <a class="btn btn-green" 
+           href="../academic/technical_created.php">
+           Cursos creados
+        </a>
+
     </div>
+</div>
 
     <!-- ========================= -->
     <!-- CURSOS DE INGLÉS -->
