@@ -13,8 +13,8 @@ require __DIR__ . "/../config/db.php";
 =============================== */
 $courseId = $_GET["course"] ?? null;
 
-if (!$courseId) {
-    die("Curso no especificado.");
+if (!$courseId || !ctype_digit($courseId)) {
+    die("Curso no válido.");
 }
 
 /* ===============================
@@ -32,6 +32,42 @@ $course = $stmtCourse->fetch(PDO::FETCH_ASSOC);
 
 if (!$course) {
     die("Semestre no encontrado.");
+}
+
+/* ===============================
+   CREAR NUEVA UNIDAD
+=============================== */
+$error = "";
+
+if ($_SERVER["REQUEST_METHOD"] === "POST" && !empty($_POST["unit_name"])) {
+    $unitName = trim($_POST["unit_name"]);
+
+    // Validar duplicados
+    $check = $pdo->prepare("
+        SELECT id FROM units
+        WHERE course_id = :course_id AND name = :name
+        LIMIT 1
+    ");
+    $check->execute([
+        "course_id" => $courseId,
+        "name" => $unitName
+    ]);
+
+    if ($check->fetch()) {
+        $error = "Ya existe una unidad con ese nombre.";
+    } else {
+        $stmt = $pdo->prepare("
+            INSERT INTO units (course_id, name, created_at)
+            VALUES (:course_id, :name, NOW())
+        ");
+        $stmt->execute([
+            "course_id" => $courseId,
+            "name" => $unitName
+        ]);
+
+        header("Location: technical_units.php?course=" . urlencode($courseId));
+        exit;
+    }
 }
 
 /* ===============================
@@ -61,7 +97,6 @@ body{
     background:#f4f8ff;
     padding:40px;
 }
-
 .card{
     background:#ffffff;
     padding:25px;
@@ -70,7 +105,6 @@ body{
     margin-bottom:25px;
     max-width:900px;
 }
-
 .back{
     display:inline-block;
     margin-bottom:20px;
@@ -81,7 +115,6 @@ body{
     text-decoration:none;
     font-weight:600;
 }
-
 .unit-item{
     background:#e2e8f0;
     padding:18px;
@@ -91,7 +124,6 @@ body{
     justify-content:space-between;
     align-items:center;
 }
-
 .btn{
     background:#2563eb;
     color:#ffffff;
@@ -101,6 +133,25 @@ body{
     font-weight:600;
     font-size:14px;
     display:inline-block;
+}
+.error{
+    color:#dc2626;
+    font-weight:bold;
+    margin-top:10px;
+}
+input{
+    width:100%;
+    padding:12px;
+    margin-top:10px;
+}
+button{
+    margin-top:15px;
+    padding:12px 18px;
+    background:#2563eb;
+    color:#fff;
+    border:none;
+    border-radius:8px;
+    font-weight:700;
 }
 </style>
 </head>
@@ -116,6 +167,18 @@ body{
 </div>
 
 <div class="card">
+    <h3>➕ Crear nueva unidad</h3>
+    <form method="post">
+        <input type="text" name="unit_name" required placeholder="Nombre de la unidad">
+        <button>Crear</button>
+    </form>
+
+    <?php if ($error): ?>
+        <div class="error"><?= htmlspecialchars($error) ?></div>
+    <?php endif; ?>
+</div>
+
+<div class="card">
     <h3>📋 Unidades creadas</h3>
 
     <?php if (empty($units)): ?>
@@ -124,15 +187,12 @@ body{
         <?php foreach ($units as $unit): ?>
             <div class="unit-item">
                 <strong><?= htmlspecialchars($unit["name"]) ?></strong>
-
-                <a class="btn"
-                   href="unit_view.php?unit=<?= urlencode($unit["id"]) ?>">
+                <a class="btn" href="unit_view.php?unit=<?= urlencode($unit["id"]) ?>">
                    Ver Actividades →
                 </a>
             </div>
         <?php endforeach; ?>
     <?php endif; ?>
-
 </div>
 
 </body>
