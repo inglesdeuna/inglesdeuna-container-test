@@ -15,17 +15,17 @@ if (!$courseSlug) {
 }
 
 /* ===============================
-   OBTENER CURSO POR SLUG
+   OBTENER CURSO POR SLUG (id textual)
 =============================== */
-$stmt = $pdo->prepare("SELECT * FROM courses WHERE slug = :slug LIMIT 1");
-$stmt->execute(["slug" => $courseSlug]);
+$stmt = $pdo->prepare("SELECT * FROM courses WHERE id = :id LIMIT 1");
+$stmt->execute(["id" => $courseSlug]);
 $course = $stmt->fetch(PDO::FETCH_ASSOC);
 
 if (!$course) {
     die("Curso no encontrado.");
 }
 
-// Usar el id real del curso para el resto de operaciones
+// Usar directamente el slug como courseId
 $courseId = $course["id"];
 
 /* ===============================
@@ -65,7 +65,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !empty($_POST["unit_name"])) {
         ]);
     }
 
-    header("Location: technical_units.php?course=" . urlencode($courseSlug));
+    header("Location: technical_units.php?course=" . urlencode($courseId));
     exit;
 }
 
