@@ -7,12 +7,8 @@ RUN apt-get update && apt-get install -y \
     git \
     unzip \
     libpq-dev \
-    && docker-php-ext-install pdo pdo_pgsql pgsql
-
-# =============================
-# MYSQL OPCIONAL
-# =============================
-RUN docker-php-ext-install mysqli pdo_mysql
+    && docker-php-ext-install pdo_pgsql \
+    && docker-php-ext-enable pdo_pgsql
 
 # =============================
 # INSTALAR COMPOSER
@@ -28,7 +24,6 @@ RUN a2enmod rewrite
 # COPIAR PROYECTO
 # =============================
 COPY . /var/www/html/
-
 WORKDIR /var/www/html
 
 # =============================
