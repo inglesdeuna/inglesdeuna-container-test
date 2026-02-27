@@ -13,8 +13,8 @@ require __DIR__ . "/../config/db.php";
 =============================== */
 $courseId = $_GET["course"] ?? null;
 
-if (!$courseId || !ctype_digit($courseId)) {
-    die("Curso no válido.");
+if (!$courseId) {
+    die("Curso no especificado.");
 }
 
 /* ===============================
