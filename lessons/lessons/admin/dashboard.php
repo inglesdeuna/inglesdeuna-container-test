@@ -20,106 +20,129 @@ body{
     padding:40px;
 }
 
+h1{
+    margin-bottom:40px;
+}
+
+.container{
+    display:flex;
+    gap:40px;
+}
+
 .card{
     background:#ffffff;
-    padding:25px;
+    padding:30px;
     border-radius:16px;
     box-shadow:0 10px 25px rgba(0,0,0,.08);
-    margin-bottom:30px;
-    max-width:800px;
+    width:420px;
 }
 
-.card-technical{
-    border-left:6px solid #2563eb;
+.card h2{
+    margin-bottom:10px;
 }
 
-.card-english{
-    border-left:6px solid #16a34a;
-}
-
-h2{
-    margin-top:0;
+.card p{
+    margin-bottom:25px;
+    color:#555;
 }
 
 .btn{
-    display:inline-block;
-    padding:10px 18px;
-    border-radius:8px;
+    display:block;
+    width:100%;
+    text-align:center;
+    padding:12px;
+    border-radius:10px;
     text-decoration:none;
     font-weight:600;
-    margin-right:10px;
-    margin-top:10px;
+    margin-bottom:12px;
 }
 
 .btn-blue{
     background:#2563eb;
-    color:#ffffff;
+    color:#fff;
 }
 
 .btn-green{
     background:#16a34a;
-    color:#ffffff;
+    color:#fff;
 }
 
 .btn-orange{
     background:#ea580c;
-    color:#ffffff;
+    color:#fff;
+}
+
+.logout{
+    position:absolute;
+    top:40px;
+    right:40px;
+    color:red;
+    text-decoration:none;
+    font-weight:bold;
 }
 </style>
-
 </head>
+
 <body>
 
-<h1>Panel Administrador</h1>
+<a class="logout" href="logout.php">Cerrar sesión</a>
 
-<!-- ============================= -->
-<!-- PROGRAMA TÉCNICO -->
-<!-- ============================= -->
-<div class="card card-technical">
+<h1>⚙ Panel Administrador</h1>
 
-    <h2>📘 Programa Técnico</h2>
-    <p>Gestionar semestres y unidades técnicas.</p>
+<div class="container">
 
-    <a class="btn btn-blue"
-       href="../academic/programs_editor.php?program=prog_technical">
-       Gestionar estructura
-    </a>
+    <!-- ========================= -->
+    <!-- PROGRAMA TÉCNICO -->
+    <!-- ========================= -->
+    <div class="card">
+        <h2>📘 Programas Técnicos</h2>
+        <p>Gestionar estructura técnica (Semestres → Units → Actividades).</p>
 
-    <a class="btn btn-green"
-       href="../academic/courses_manager.php?program=prog_technical">
-       Cursos creados
-    </a>
+        <!-- 1. GESTIONAR -->
+        <a class="btn btn-blue"
+           href="../academic/programs_editor.php?program=prog_technical">
+           Gestionar estructura
+        </a>
 
-    <a class="btn btn-orange"
-       href="../academic/create_course.php?program=prog_technical">
-       Crear curso
-    </a>
+        <!-- 2. CURSOS CREADOS -->
+        <a class="btn btn-green"
+           href="../academic/courses_manager.php?program=prog_technical">
+           Cursos creados
+        </a>
 
-</div>
+        <!-- 3. ASIGNACIONES -->
+        <a class="btn btn-orange"
+           href="../academic/assignments.php?program=prog_technical">
+           Asignaciones (Docentes / Estudiantes)
+        </a>
+    </div>
 
 
-<!-- ============================= -->
-<!-- CURSOS DE INGLÉS -->
-<!-- ============================= -->
-<div class="card card-english">
+    <!-- ========================= -->
+    <!-- CURSOS DE INGLÉS -->
+    <!-- ========================= -->
+    <div class="card">
+        <h2>🎓 Cursos de Inglés</h2>
+        <p>Gestionar estructura inglés (Cursos → Units → Actividades).</p>
 
-    <h2>🎓 Cursos de Inglés</h2>
-    <p>Gestionar niveles y unidades de inglés.</p>
+        <!-- 1. GESTIONAR -->
+        <a class="btn btn-blue"
+           href="../academic/programs_editor.php?program=prog_english_courses">
+           Gestionar estructura
+        </a>
 
-    <a class="btn btn-blue"
-       href="../academic/programs_editor.php?program=prog_english_courses">
-       Gestionar estructura
-    </a>
+        <!-- 2. CURSOS CREADOS -->
+        <a class="btn btn-green"
+           href="../academic/courses_manager.php?program=prog_english_courses">
+           Cursos creados
+        </a>
 
-    <a class="btn btn-green"
-       href="../academic/courses_manager.php?program=prog_english_courses">
-       Cursos creados
-    </a>
-
-    <a class="btn btn-orange"
-       href="../academic/create_course.php?program=prog_english_courses">
-       Crear curso
-    </a>
+        <!-- 3. ASIGNACIONES -->
+        <a class="btn btn-orange"
+           href="../academic/assignments.php?program=prog_english_courses">
+           Asignaciones (Docentes / Estudiantes)
+        </a>
+    </div>
 
 </div>
 
