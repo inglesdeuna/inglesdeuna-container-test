@@ -1,21 +1,20 @@
 <?php
 
-$host = "localhost";
+$host = "TU_HOST_REAL_DE_RENDER";
 $port = "5432";
-$db   = "inglesdeuna_db";
-$user = "TU_USUARIO_REAL";
-$pass = "TU_PASSWORD_REAL";
+$db   = "TU_DB_NAME";
+$user = "TU_DB_USER";
+$pass = "TU_DB_PASSWORD";
 
 try {
 
     $dsn = "pgsql:host=$host;port=$port;dbname=$db;";
     $pdo = new PDO($dsn, $user, $pass, [
-        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC
+        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION
     ]);
 
 } catch (PDOException $e) {
 
-    die("Error de conexión a la base de datos.");
+    die($e->getMessage());
 
 }
