@@ -4,35 +4,30 @@
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
-// Conexión directa a la base de datos
-$servername = "localhost";        // Servidor de tu BD
-$username   = "root";             // Usuario de tu BD
-$password   = "";                 // Contraseña de tu BD
-$database   = "academic_platform"; // Nombre de tu base de datos (ajústalo al real)
+// Conexión a PostgreSQL
+$host     = "localhost";        // Servidor
+$port     = "5432";             // Puerto por defecto de PostgreSQL
+$dbname   = "inglesdeuna_db";   // Nombre de tu base
+$user     = "TU_USUARIO";       // Usuario de la BD
+$password = "TU_PASSWORD";      // Contraseña de la BD
 
-$conn = new mysqli($servername, $username, $password, $database);
+$conn = pg_connect("host=$host port=$port dbname=$dbname user=$user password=$password");
 
-// Verificar conexión
-if ($conn->connect_error) {
-    die("Error de conexión: " . $conn->connect_error);
+if (!$conn) {
+    die("Error de conexión a la base de datos.");
 }
 
-// Verificar que el parámetro "program" llega
+// Verificar parámetro
 if (!isset($_GET['program'])) {
     die("ERROR: Falta el parámetro 'program'.");
 }
 
 $program = $_GET['program'];
 
-// Consulta de cursos creados
-// Ajusta "courses" al nombre real de tu tabla de cursos ya creada
-$query = "SELECT id, name, description FROM courses WHERE program = ?";
-$stmt = $conn->prepare($query);
-$stmt->bind_param("s", $program);
-$stmt->execute();
-$result = $stmt->get_result();
+// Consulta de cursos creados en la tabla "courses"
+$query = "SELECT id, name, description FROM courses WHERE program = $1";
+$result = pg_query_params($conn, $query, array($program));
 ?>
-
 
 // Layout con estilos y botones
 ?>
