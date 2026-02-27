@@ -143,7 +143,7 @@ h2 {
 <div class="card">
     <h2>Escoger Actividades</h2>
 
-  <form method="post" action="create_activity.php">
+ <form method="post" action="../create_activity.php">
         <?php foreach ($activityTypes as $key => $label): ?>
         <div class="item">
             <label>
