@@ -118,8 +118,9 @@ button {
     font-weight: bold;
 }
 .volver {
-    display:inline-block;
-    margin-bottom:20px;
+    position: absolute;
+    top: 20px;
+    left: 20px;
     padding: 10px 15px;
     background: #6b7280;
     color: #fff;
@@ -135,14 +136,14 @@ h2 {
 </head>
 <body>
 
-<a class="back" href="technical_units.php?course=<?= urlencode($course['id']); ?>">
-← Volver a Unidades
+<a class="volver" href="../academic/technical_units_view.php?course=<?= urlencode($course['id']); ?>">
+← Volver
 </a>
 
 <div class="card">
     <h2>Escoger Actividades</h2>
 
-    <form method="post">
+  <form method="post" action="create_activity.php">
         <?php foreach ($activityTypes as $key => $label): ?>
         <div class="item">
             <label>
