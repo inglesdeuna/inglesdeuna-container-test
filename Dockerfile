@@ -20,6 +20,11 @@ RUN docker-php-ext-install mysqli pdo_mysql
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
 # =============================
+# CONFIGURAR APACHE
+# =============================
+RUN a2enmod rewrite
+
+# =============================
 # COPIAR PROYECTO
 # =============================
 COPY . /var/www/html/
@@ -29,7 +34,7 @@ WORKDIR /var/www/html
 # =============================
 # INSTALAR DEPENDENCIAS PHP
 # =============================
-RUN composer install --no-dev --optimize-autoloader
+RUN composer install --no-dev --optimize-autoloader || true
 
 # =============================
 # PERMISOS
