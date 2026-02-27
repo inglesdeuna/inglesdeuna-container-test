@@ -14,72 +14,75 @@ if (!isset($_SESSION["admin_logged"]) || $_SESSION["admin_logged"] !== true) {
 <title>Panel Administrador</title>
 
 <style>
+<style>
 body{
     font-family: Arial, sans-serif;
     background:#f4f8ff;
-    padding:40px;
+    margin:0;
 }
 
-h1{
-    margin-bottom:40px;
-}
-
+/* CONTENEDOR CENTRAL */
 .container{
-    display:flex;
+    max-width:1200px;
+    margin:60px auto;
+    padding:0 20px;
+}
+
+/* GRID DE TARJETAS */
+.grid{
+    display:grid;
+    grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
     gap:40px;
 }
 
+/* TARJETAS */
 .card{
     background:#ffffff;
-    padding:30px;
-    border-radius:16px;
-    box-shadow:0 10px 25px rgba(0,0,0,.08);
-    width:420px;
+    padding:35px;
+    border-radius:18px;
+    box-shadow:0 15px 35px rgba(0,0,0,.08);
 }
 
-.card h2{
-    margin-bottom:10px;
+/* TITULOS */
+h1{
+    margin-bottom:40px;
+    text-align:center;
 }
 
-.card p{
-    margin-bottom:25px;
-    color:#555;
+h2{
+    margin-top:0;
 }
 
+/* BOTONES */
 .btn{
     display:block;
     width:100%;
     text-align:center;
-    padding:12px;
+    padding:14px;
+    margin-top:15px;
     border-radius:10px;
+    font-weight:bold;
     text-decoration:none;
-    font-weight:600;
-    margin-bottom:12px;
+    color:#ffffff;
+    transition:.2s;
 }
 
 .btn-blue{
     background:#2563eb;
-    color:#fff;
 }
 
 .btn-green{
     background:#16a34a;
-    color:#fff;
 }
 
 .btn-orange{
     background:#ea580c;
-    color:#fff;
 }
 
-.logout{
-    position:absolute;
-    top:40px;
-    right:40px;
-    color:red;
-    text-decoration:none;
-    font-weight:bold;
+.btn:hover{
+    opacity:.9;
 }
+</style>
 </style>
 </head>
 
