@@ -1,10 +1,10 @@
 <?php
 
-$host = getenv("DB_HOST");
-$port = getenv("DB_PORT");
-$db   = getenv("DB_NAME");
-$user = getenv("DB_USER");
-$pass = getenv("DB_PASSWORD");
+$host = "localhost";
+$port = "5432";
+$db   = "inglesdeuna_db";
+$user = "TU_USUARIO_REAL";
+$pass = "TU_PASSWORD_REAL";
 
 try {
 
