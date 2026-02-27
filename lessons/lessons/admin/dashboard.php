@@ -21,7 +21,9 @@
            href="../academic/courses_manager_technical.php">
            Cursos creados
         </a>
-
+        .card-technical {
+    border-left: 6px solid #2563eb;
+}
     </div>
 </div>
 
@@ -49,6 +51,8 @@
            href="../academic/courses_manager_english.php">
            Cursos creados
         </a>
-
+.card-english {
+    border-left: 6px solid #16a34a;
+}
     </div>
 </div>
