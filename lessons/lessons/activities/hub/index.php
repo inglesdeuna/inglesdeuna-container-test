@@ -22,17 +22,19 @@ $stmt = $pdo->prepare("SELECT type FROM activities WHERE unit_id = :unit");
 $stmt->execute(["unit" => $unitId]);
 $created = $stmt->fetchAll(PDO::FETCH_COLUMN);
 
-// Obtener curso de la unidad
+// Obtener unidad
 $stmtUnit = $pdo->prepare("SELECT * FROM units WHERE id = :id");
 $stmtUnit->execute(["id" => $unitId]);
 $unit = $stmtUnit->fetch(PDO::FETCH_ASSOC);
 
 if (!$unit) die("Unidad no encontrada.");
 
+// Obtener curso
 $stmtCourse = $pdo->prepare("SELECT * FROM courses WHERE id = :id");
 $stmtCourse->execute(["id" => $unit['course_id']]);
 $course = $stmtCourse->fetch(PDO::FETCH_ASSOC);
 ?>
+
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -59,17 +61,6 @@ body {
     align-items: center;
     padding: 12px 0;
     border-bottom: 1px solid #eee;
-}
-button {
-    margin-top: 20px;
-    width: 100%;
-    padding: 12px;
-    background: #2563eb;
-    color: #fff;
-    border: none;
-    border-radius: 8px;
-    font-weight: bold;
-    cursor: pointer;
 }
 .status {
     color: #16a34a;
@@ -106,30 +97,28 @@ h2 {
 </head>
 <body>
 
-<a class="volver" href="../academic/technical_units_view.php?course=<?= urlencode($course['id']); ?>">← VOLVER</a>
+<a class="volver" href="../../academic/technical_units_view.php?course=<?= urlencode($course['id']); ?>">
+← VOLVER
+</a>
 
 <div class="card">
     <h2>Escoger Actividades</h2>
 
-    <form method="post" action="../create_activity.php">
-        <input type="hidden" name="unit" value="<?= htmlspecialchars($unitId) ?>">
-
-        <?php foreach ($activityTypes as $key => $label): ?>
+    <?php foreach ($activityTypes as $key => $label): ?>
         <div class="item">
-            <label>
-                <input type="checkbox" name="types[]" value="<?= $key ?>">
-                <?= $label ?>
-            </label>
+            <span><?= $label ?></span>
 
             <?php if (in_array($key, $created)): ?>
-            <span class="status">✔ Creada</span>
+                <span class="status">✔ Creada</span>
             <?php endif; ?>
         </div>
-        <?php endforeach; ?>
-    </form>
+    <?php endforeach; ?>
+
 </div>
 
-<a class="crear" href="../academic/unit_view.php?unit=<?= urlencode($unitId); ?>"> CREAR ACTIVIDADES → </a>
+<a class="crear" href="../../academic/unit_view.php?unit=<?= urlencode($unitId); ?>">
+CREAR ACTIVIDADES →
+</a>
 
 </body>
 </html>
