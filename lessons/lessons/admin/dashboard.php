@@ -124,8 +124,9 @@ h1{
             </a>
 
             <a class="btn btn-green" 
-              <a href="../academic/technical_created.php">
-    Cursos creados
+             <a href="../academic/courses_manager.php?program=prog_technical" class="btn btn-primary">
+    Gestionar estructura
+
 </a>
              
         </div>
