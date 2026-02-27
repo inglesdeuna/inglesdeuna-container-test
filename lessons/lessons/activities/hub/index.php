@@ -53,8 +53,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !empty($_POST["types"])) {
         }
     }
 
-    header("Location: ../academic/unit_view.php?unit=" . urlencode($unitId));
-    exit;
+    header("Location: ../../academic/unit_view.php?unit=" . urlencode($unitId));
+exit;
 }
 
 /* ==========================
@@ -135,8 +135,8 @@ h2 {
 </head>
 <body>
 
-<a class="volver" href="../academic/technical_units.php?course=<?= urlencode($course['id']); ?>">
-← VOLVER
+<a class="back" href="technical_units.php?course=<?= urlencode($course['id']); ?>">
+← Volver a Unidades
 </a>
 
 <div class="card">
