@@ -151,8 +151,8 @@ h1{
             </a>
 
             <a class="btn btn-blue" 
-               href="../academic/courses_manager.php?program=prog_english_courses">
-               Cursos creados
+   href="../academic/courses_manager.php?program=prog_technical">
+   Cursos creados
             </a>
         </div>
     </div>
