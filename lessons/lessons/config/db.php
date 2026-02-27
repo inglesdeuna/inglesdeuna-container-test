@@ -1,30 +1,21 @@
 <?php
 
-$DATABASE_URL = getenv("DATABASE_URL");
-
-if (!$DATABASE_URL) {
-    die("DATABASE_URL no encontrada");
-}
-
-$db = parse_url($DATABASE_URL);
-
-$host = $db["host"];
-$port = $db["port"] ?? 5432;
-$user = $db["user"];
-$pass = $db["pass"];
-$dbname = ltrim($db["path"], "/");
+$host = getenv("DB_HOST");
+$port = getenv("DB_PORT");
+$db   = getenv("DB_NAME");
+$user = getenv("DB_USER");
+$pass = getenv("DB_PASSWORD");
 
 try {
 
-    $pdo = new PDO(
-        "pgsql:host=$host;port=$port;dbname=$dbname",
-        $user,
-        $pass,
-        [
-            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION
-        ]
-    );
+    $dsn = "pgsql:host=$host;port=$port;dbname=$db;";
+    $pdo = new PDO($dsn, $user, $pass, [
+        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC
+    ]);
 
 } catch (PDOException $e) {
-    die("DB Connection Failed: " . $e->getMessage());
+
+    die("Error de conexión a la base de datos.");
+
 }
