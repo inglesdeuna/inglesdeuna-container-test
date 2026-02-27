@@ -1,77 +1,73 @@
 <?php
-// DEPURACIÓN DE CURSOS MANAGER
+session_start();
 
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
-
-// Conexión a PostgreSQL
-$host     = "localhost";        // Servidor
-$port     = "5432";             // Puerto por defecto de PostgreSQL
-$dbname   = "inglesdeuna_db";   // Nombre de tu base
-$user     = "TU_USUARIO";       // Usuario de la BD
-$password = "TU_PASSWORD";      // Contraseña de la BD
-
-$conn = pg_connect("host=$host port=$port dbname=$dbname user=$user password=$password");
-
-if (!$conn) {
-    die("Error de conexión a la base de datos.");
+if (!isset($_SESSION["admin_logged"]) || $_SESSION["admin_logged"] !== true) {
+    header("Location: ../admin/login.php");
+    exit;
 }
 
-// Verificar parámetro
-if (!isset($_GET['program'])) {
-    die("ERROR: Falta el parámetro 'program'.");
+require __DIR__ . "/../config/db.php";
+
+$programId = $_GET["program"] ?? null;
+
+if (!$programId) {
+    die("Programa no especificado");
 }
 
-$program = $_GET['program'];
+/* ===============================
+   LISTAR CURSOS DEL PROGRAMA
+=============================== */
+$stmt = $pdo->prepare("
+    SELECT id, name
+    FROM courses
+    WHERE program_id = :program
+    ORDER BY name ASC
+");
 
-// Consulta de cursos creados en la tabla "courses"
-$query = "SELECT id, name, description FROM courses WHERE program = $1";
-$result = pg_query_params($conn, $query, array($program));
+$stmt->execute([
+    "program" => $programId
+]);
+
+$courses = $stmt->fetchAll();
 ?>
 
-// Layout con estilos y botones
-?>
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <title>Cursos creados</title>
-    <link rel="stylesheet" href="../assets/css/bootstrap.min.css"> <!-- Mantiene diseño -->
+<meta charset="UTF-8">
+<title>Semestres creados</title>
+<style>
+body{font-family:Arial;background:#f4f8ff;padding:40px}
+.card{background:#fff;padding:25px;border-radius:16px;max-width:900px;box-shadow:0 10px 25px rgba(0,0,0,.08)}
+.item{background:#f1f5f9;padding:18px;border-radius:12px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center}
+.btn{background:#2563eb;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none;font-weight:600}
+.back{display:inline-block;margin-bottom:20px;background:#6b7280;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none}
+</style>
 </head>
-<body class="container mt-4">
-    <h2 class="mb-4">Cursos creados - <?php echo htmlspecialchars($program); ?></h2>
+<body>
 
-    <table class="table table-bordered table-striped">
-        <thead class="table-dark">
-            <tr>
-                <th>ID</th>
-                <th>Nombre</th>
-                <th>Descripción</th>
-                <th>Acciones</th>
-            </tr>
-        </thead>
-        <tbody>
-            <?php if ($result->num_rows > 0): ?>
-                <?php while ($row = $result->fetch_assoc()): ?>
-                    <tr>
-                        <td><?php echo $row['id']; ?></td>
-                        <td><?php echo htmlspecialchars($row['name']); ?></td>
-                        <td><?php echo htmlspecialchars($row['description']); ?></td>
-                        <td>
-                            <a href="edit_course.php?id=<?php echo $row['id']; ?>" class="btn btn-sm btn-warning">Editar</a>
-                            <a href="view_course.php?id=<?php echo $row['id']; ?>" class="btn btn-sm btn-info">Ver</a>
-                            <a href="delete_course.php?id=<?php echo $row['id']; ?>" class="btn btn-sm btn-danger">Eliminar</a>
-                        </td>
-                    </tr>
-                <?php endwhile; ?>
-            <?php else: ?>
-                <tr>
-                    <td colspan="4" class="text-center">No hay cursos creados para este programa.</td>
-                </tr>
-            <?php endif; ?>
-        </tbody>
-    </table>
+<a class="back" href="../admin/dashboard.php">
+← Volver al Dashboard
+</a>
 
-    <a href="../admin/dashboard.php" class="btn btn-secondary">Volver al Dashboard</a>
+<div class="card">
+<h2>Programa Técnico</h2>
+
+<?php if (empty($courses)): ?>
+    <p>No hay semestres creados.</p>
+<?php else: ?>
+    <?php foreach ($courses as $c): ?>
+        <div class="item">
+            <strong><?= htmlspecialchars($c["name"]) ?></strong>
+            <a class="btn"
+               href="technical_units.php?course=<?= urlencode($c["id"]) ?>">
+               Administrar →
+            </a>
+        </div>
+    <?php endforeach; ?>
+<?php endif; ?>
+
+</div>
+
 </body>
 </html>
