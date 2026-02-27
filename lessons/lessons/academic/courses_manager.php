@@ -1,12 +1,21 @@
 <?php
 // DEPURACIÓN DE CURSOS MANAGER
 
-// Mostrar errores en pantalla (solo mientras depuras)
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
-// Conexión a la base de datos
-include_once("../config/db.php"); // Ajusta la ruta si tu archivo de conexión está en otro lugar
+// Conexión directa a la base de datos
+$servername = "localhost";      // Cambia si tu servidor no es local
+$username   = "root";           // Usuario de tu base de datos
+$password   = "";               // Contraseña de tu base de datos
+$database   = "nombre_de_tu_bd"; // Nombre de tu base de datos
+
+$conn = new mysqli($servername, $username, $password, $database);
+
+// Verificar conexión
+if ($conn->connect_error) {
+    die("Error de conexión: " . $conn->connect_error);
+}
 
 // Verificar que el parámetro "program" llega
 if (!isset($_GET['program'])) {
@@ -21,6 +30,8 @@ $stmt = $conn->prepare($query);
 $stmt->bind_param("s", $program);
 $stmt->execute();
 $result = $stmt->get_result();
+?>
+
 
 // Layout con estilos y botones
 ?>
