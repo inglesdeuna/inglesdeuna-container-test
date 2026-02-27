@@ -8,22 +8,25 @@ if (!isset($_SESSION["admin_logged"]) || $_SESSION["admin_logged"] !== true) {
 
 require __DIR__ . "/../config/db.php";
 
-$courseId = $_GET["course"] ?? null;
+$courseSlug = $_GET["course"] ?? null;
 
-if (!$courseId) {
+if (!$courseSlug) {
     die("Curso no especificado.");
 }
 
 /* ===============================
-   OBTENER CURSO
+   OBTENER CURSO POR SLUG
 =============================== */
-$stmt = $pdo->prepare("SELECT * FROM courses WHERE id = :id LIMIT 1");
-$stmt->execute(["id" => $courseId]);
+$stmt = $pdo->prepare("SELECT * FROM courses WHERE slug = :slug LIMIT 1");
+$stmt->execute(["slug" => $courseSlug]);
 $course = $stmt->fetch(PDO::FETCH_ASSOC);
 
 if (!$course) {
     die("Curso no encontrado.");
 }
+
+// Usar el id real del curso para el resto de operaciones
+$courseId = $course["id"];
 
 /* ===============================
    CREAR UNIDAD
@@ -62,7 +65,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !empty($_POST["unit_name"])) {
         ]);
     }
 
-    header("Location: technical_units.php?course=" . urlencode($courseId));
+    header("Location: technical_units.php?course=" . urlencode($courseSlug));
     exit;
 }
 
