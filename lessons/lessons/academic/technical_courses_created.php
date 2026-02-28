@@ -11,8 +11,9 @@ require __DIR__ . "/../config/db.php";
 /* ===============================
    OBTENER PROGRAMA TÉCNICO
 =============================== */
+
 $stmtProgram = $pdo->prepare("
-    SELECT * FROM programs
+    SELECT id FROM programs
     WHERE slug = 'prog_technical'
     LIMIT 1
 ");
@@ -23,17 +24,21 @@ if (!$program) {
     die("Programa técnico no encontrado.");
 }
 
+$programId = $program["id"];
+
 /* ===============================
-   OBTENER SEMESTRES
+   LISTAR SEMESTRES
 =============================== */
+
 $stmt = $pdo->prepare("
-    SELECT *
+    SELECT id, name
     FROM courses
     WHERE program_id = :program_id
     ORDER BY id ASC
 ");
-$stmt->execute(["program_id" => $program["id"]]);
-$semestres = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+$stmt->execute(["program_id" => $programId]);
+$semesters = $stmt->fetchAll(PDO::FETCH_ASSOC);
 ?>
 
 <!DOCTYPE html>
@@ -43,54 +48,56 @@ $semestres = $stmt->fetchAll(PDO::FETCH_ASSOC);
 <title>Semestres creados</title>
 
 <style>
-body{
-    font-family: Arial, sans-serif;
-    background:#f4f8ff;
-    margin:0;
-    padding:40px;
+body {
+    font-family: Arial;
+    background: #f4f8ff;
+    padding: 40px;
 }
 
-.container{
-    max-width:1100px;
-    margin:0 auto;
+.container {
+    max-width: 900px;
+    margin: auto;
 }
 
-h1{
-    margin-bottom:30px;
+.back {
+    display: inline-block;
+    margin-bottom: 25px;
+    background: #6b7280;
+    color: #fff;
+    padding: 10px 16px;
+    border-radius: 8px;
+    text-decoration: none;
+    font-weight: bold;
 }
 
-.card{
-    background:#ffffff;
-    padding:30px;
-    border-radius:18px;
-    box-shadow:0 10px 30px rgba(0,0,0,.08);
-    margin-bottom:25px;
+.card {
+    background: #fff;
+    padding: 30px;
+    border-radius: 16px;
+    box-shadow: 0 10px 25px rgba(0,0,0,.08);
 }
 
-.item{
-    background:#eef2ff;
-    padding:18px 20px;
-    border-radius:12px;
-    margin-bottom:15px;
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
+.item {
+    background: #eef2ff;
+    padding: 16px;
+    border-radius: 12px;
+    margin-bottom: 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
 }
 
-.btn{
-    padding:10px 20px;
-    border-radius:10px;
-    text-decoration:none;
-    font-weight:bold;
-    color:#fff;
+.btn {
+    background: #2563eb;
+    color: #fff;
+    padding: 8px 16px;
+    border-radius: 8px;
+    text-decoration: none;
+    font-weight: bold;
 }
 
-.btn-blue{ background:#2563eb; }
-.btn-red{ background:#dc2626; }
-.btn-gray{
-    background:#6b7280;
-    display:inline-block;
-    margin-bottom:25px;
+.btn-delete {
+    background: #dc2626;
 }
 </style>
 </head>
@@ -99,38 +106,29 @@ h1{
 
 <div class="container">
 
-    <a class="btn btn-gray" href="../admin/dashboard.php">
-        ← Volver
-    </a>
+<a class="back" href="../admin/dashboard.php">← Volver</a>
 
-    <h1>📘 Semestres creados</h1>
+<div class="card">
+    <h2>📘 Semestres creados</h2>
 
-    <div class="card">
+    <?php if (empty($semesters)): ?>
+        <p>No hay semestres creados.</p>
+    <?php else: ?>
+        <?php foreach ($semesters as $semester): ?>
+            <div class="item">
+                <strong><?= htmlspecialchars($semester["name"]) ?></strong>
 
-        <?php if (empty($semestres)): ?>
-            <p>No hay semestres creados.</p>
-        <?php else: ?>
-            <?php foreach ($semestres as $semestre): ?>
-                <div class="item">
-                    <strong><?= htmlspecialchars($semestre["name"]) ?></strong>
-
-                    <div>
-                        <a class="btn btn-blue"
-                           href="technical_units_view.php?course=<?= urlencode($course["id"]) ?>"
-                           Ver →
-                        </a>
-
-                        <a class="btn btn-red"
-                           href="delete_course.php?id=<?= urlencode($semestre["id"]) ?>"
-                           onclick="return confirm('¿Eliminar semestre?');">
-                           Eliminar
-                        </a>
-                    </div>
+                <div>
+                    <a class="btn"
+                       href="technical_units.php?course=<?= urlencode($semester["id"]) ?>">
+                        Ver →
+                    </a>
                 </div>
-            <?php endforeach; ?>
-        <?php endif; ?>
+            </div>
+        <?php endforeach; ?>
+    <?php endif; ?>
 
-    </div>
+</div>
 
 </div>
 
