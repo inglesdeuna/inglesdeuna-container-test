@@ -201,10 +201,17 @@ button {
             <div class="item">
                 <strong><?= htmlspecialchars($course["name"]) ?></strong>
 
-                <a class="btn"
-                   href="technical_units.php?course=<?= urlencode($course["id"]) ?>">
-                    Administrar →
-                </a>
+                <?php
+if ($programSlug === "prog_technical") {
+    $adminLink = "technical_units.php?course=" . urlencode($course["id"]);
+} else {
+    $adminLink = "english_units.php?course=" . urlencode($course["id"]);
+}
+?>
+
+<a class="btn" href="<?= $adminLink ?>">
+    Administrar →
+</a>
             </div>
         <?php endforeach; ?>
     <?php endif; ?>
