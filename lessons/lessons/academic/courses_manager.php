@@ -33,22 +33,31 @@ if (!$program) {
 $programId = $program["id"];
 
 /* ===============================
-   DEFINIR TEXTOS SEGÚN PROGRAMA
+   DEFINIR CONFIGURACIÓN SEGÚN PROGRAMA
 =============================== */
+
+$allowCreate = false;
+
 if ($programSlug === "prog_technical") {
     $tituloCrear = "Crear Semestre";
     $tituloLista = "Semestres creados";
     $placeholder = "Ej: SEMESTRE 1";
-} else {
+    $allowCreate = true; // SOLO técnico puede crear
+} 
+elseif ($programSlug === "prog_english_courses") {
     $tituloCrear = "Crear Curso";
     $tituloLista = "Cursos creados";
-    $placeholder = "Ej: INGLÉS BÁSICO 1";
+    $placeholder = "";
+    $allowCreate = false; // Inglés NO crea aquí
+} 
+else {
+    die("Programa inválido.");
 }
 
 /* ===============================
-   CREAR CURSO / SEMESTRE
+   CREAR (SOLO SI ESTÁ PERMITIDO)
 =============================== */
-if ($_SERVER["REQUEST_METHOD"] === "POST" && !empty($_POST["name"])) {
+if ($allowCreate && $_SERVER["REQUEST_METHOD"] === "POST" && !empty($_POST["name"])) {
 
     $name = strtoupper(trim($_POST["name"]));
 
@@ -82,7 +91,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !empty($_POST["name"])) {
 }
 
 /* ===============================
-   LISTAR CURSOS / SEMESTRES
+   LISTAR
 =============================== */
 $stmtCourses = $pdo->prepare("
     SELECT * FROM courses
@@ -171,6 +180,7 @@ button {
 
 <a class="back" href="../admin/dashboard.php">Volver</a>
 
+<?php if ($allowCreate): ?>
 <div class="card">
     <h2>➕ <?= $tituloCrear ?></h2>
 
@@ -179,6 +189,7 @@ button {
         <button type="submit">Crear</button>
     </form>
 </div>
+<?php endif; ?>
 
 <div class="card">
     <h2>📋 <?= $tituloLista ?></h2>
