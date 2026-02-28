@@ -11,7 +11,6 @@ require __DIR__ . "/../config/db.php";
 /* ===============================
    OBTENER PROGRAMA TÉCNICO
 =============================== */
-
 $stmtProgram = $pdo->prepare("
     SELECT id FROM programs
     WHERE slug = 'prog_technical'
@@ -27,18 +26,16 @@ if (!$program) {
 $programId = $program["id"];
 
 /* ===============================
-   LISTAR SEMESTRES
+   OBTENER SEMESTRES
 =============================== */
-
 $stmt = $pdo->prepare("
     SELECT id, name
     FROM courses
     WHERE program_id = :program_id
     ORDER BY id ASC
 ");
-
 $stmt->execute(["program_id" => $programId]);
-$semesters = $stmt->fetchAll(PDO::FETCH_ASSOC);
+$semestres = $stmt->fetchAll(PDO::FETCH_ASSOC);
 ?>
 
 <!DOCTYPE html>
@@ -49,55 +46,81 @@ $semesters = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 <style>
 body {
-    font-family: Arial;
-    background: #f4f8ff;
+    font-family: 'Segoe UI', sans-serif;
+    background: #eef2f7;
     padding: 40px;
 }
 
+/* CONTENEDOR CENTRAL */
 .container {
-    max-width: 900px;
-    margin: auto;
+    max-width: 850px;
+    margin: 0 auto;
 }
 
+/* BOTÓN VOLVER */
 .back {
     display: inline-block;
     margin-bottom: 25px;
     background: #6b7280;
-    color: #fff;
-    padding: 10px 16px;
+    color: white;
+    padding: 10px 18px;
     border-radius: 8px;
     text-decoration: none;
-    font-weight: bold;
+    font-weight: 600;
 }
 
+/* CARD */
 .card {
-    background: #fff;
+    background: white;
     padding: 30px;
-    border-radius: 16px;
-    box-shadow: 0 10px 25px rgba(0,0,0,.08);
+    border-radius: 18px;
+    box-shadow: 0 15px 35px rgba(0,0,0,.08);
 }
 
-.item {
-    background: #eef2ff;
-    padding: 16px;
+/* TÍTULO */
+.card h2 {
+    margin-bottom: 25px;
+}
+
+/* ITEM FILA */
+.row {
+    background: #f4f6fb;
+    padding: 15px 20px;
     border-radius: 12px;
-    margin-bottom: 12px;
+    margin-bottom: 15px;
     display: flex;
     justify-content: space-between;
     align-items: center;
 }
 
-.btn {
+/* NOMBRE */
+.row strong {
+    font-size: 15px;
+}
+
+/* BOTONES */
+.actions {
+    display: flex;
+    gap: 10px;
+}
+
+.btn-view {
     background: #2563eb;
-    color: #fff;
-    padding: 8px 16px;
+    color: white;
+    padding: 8px 14px;
     border-radius: 8px;
     text-decoration: none;
-    font-weight: bold;
+    font-weight: 600;
 }
 
 .btn-delete {
     background: #dc2626;
+    color: white;
+    padding: 8px 14px;
+    border-radius: 8px;
+    border: none;
+    font-weight: 600;
+    cursor: pointer;
 }
 </style>
 </head>
@@ -111,23 +134,28 @@ body {
 <div class="card">
     <h2>📘 Semestres creados</h2>
 
-    <?php if (empty($semesters)): ?>
+    <?php if (empty($semestres)): ?>
         <p>No hay semestres creados.</p>
     <?php else: ?>
-        <?php foreach ($semesters as $semester): ?>
-            <div class="item">
-                <strong><?= htmlspecialchars($semester["name"]) ?></strong>
+        <?php foreach ($semestres as $sem): ?>
+            <div class="row">
+                <strong><?= htmlspecialchars($sem["name"]) ?></strong>
 
-                <div>
-                    <a class="btn"
-                       href="technical_units_view.php?course=<?= urlencode($semester["id"]) ?>"
+                <div class="actions">
+                    <a class="btn-view"
+                       href="technical_units_view.php?course=<?= $sem["id"] ?>">
                         Ver →
                     </a>
+
+                    <form method="POST" action="delete_course.php"
+                          onsubmit="return confirm('¿Eliminar semestre?');">
+                        <input type="hidden" name="id" value="<?= $sem["id"] ?>">
+                        <button class="btn-delete">Eliminar</button>
+                    </form>
                 </div>
             </div>
         <?php endforeach; ?>
     <?php endif; ?>
-
 </div>
 
 </div>
