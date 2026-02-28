@@ -11,33 +11,30 @@ require __DIR__ . "/../config/db.php";
 $courseId = $_GET["course"] ?? null;
 
 if (!$courseId) {
-    die("Semestre no especificado.");
+    die("Curso no especificado.");
 }
 
 /* ===============================
-   OBTENER SEMESTRE
+   OBTENER CURSO
 =============================== */
-
-$stmt = $pdo->prepare("
-    SELECT name FROM courses
+$stmtCourse = $pdo->prepare("
+    SELECT * FROM courses
     WHERE id = :id
     LIMIT 1
 ");
 
-$stmt->execute(["id" => $courseId]);
-$semester = $stmt->fetch(PDO::FETCH_ASSOC);
+$stmtCourse->execute(["id" => $courseId]);
+$course = $stmtCourse->fetch(PDO::FETCH_ASSOC);
 
-if (!$semester) {
-    die("Semestre no encontrado.");
+if (!$course) {
+    die("Curso no encontrado.");
 }
 
 /* ===============================
    LISTAR UNIDADES
 =============================== */
-
 $stmtUnits = $pdo->prepare("
-    SELECT id, name
-    FROM units
+    SELECT * FROM units
     WHERE course_id = :course_id
     ORDER BY id ASC
 ");
@@ -50,59 +47,54 @@ $units = $stmtUnits->fetchAll(PDO::FETCH_ASSOC);
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title><?= htmlspecialchars($semester["name"]) ?></title>
+<title><?= htmlspecialchars($course["name"]) ?> - Unidades</title>
 
 <style>
-body {
-    font-family: Arial;
-    background: #f4f8ff;
-    padding: 40px;
+body{
+    font-family: Arial, sans-serif;
+    background:#f4f8ff;
+    padding:40px;
 }
 
-.container {
-    max-width: 900px;
-    margin: auto;
+.container{
+    max-width:900px;
+    margin:auto;
 }
 
-.back {
-    display: inline-block;
-    margin-bottom: 25px;
-    background: #6b7280;
-    color: #fff;
-    padding: 10px 16px;
-    border-radius: 8px;
-    text-decoration: none;
-    font-weight: bold;
+.card{
+    background:#ffffff;
+    padding:25px;
+    border-radius:16px;
+    box-shadow:0 10px 25px rgba(0,0,0,.08);
 }
 
-.card {
-    background: #fff;
-    padding: 30px;
-    border-radius: 16px;
-    box-shadow: 0 10px 25px rgba(0,0,0,.08);
+.item{
+    background:#eef2ff;
+    padding:15px 18px;
+    border-radius:12px;
+    margin-bottom:12px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
 }
 
-.item {
-    background: #eef2ff;
-    padding: 16px;
-    border-radius: 12px;
-    margin-bottom: 12px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
+.btn{
+    background:#2563eb;
+    color:#ffffff;
+    padding:8px 16px;
+    border-radius:8px;
+    text-decoration:none;
+    font-weight:600;
 }
 
-.btn {
-    background: #2563eb;
-    color: #fff;
-    padding: 8px 16px;
-    border-radius: 8px;
-    text-decoration: none;
-    font-weight: bold;
-}
-
-.btn-delete {
-    background: #dc2626;
+.back{
+    display:inline-block;
+    margin-bottom:20px;
+    background:#6b7280;
+    color:#ffffff;
+    padding:8px 14px;
+    border-radius:8px;
+    text-decoration:none;
 }
 </style>
 </head>
@@ -114,7 +106,7 @@ body {
 <a class="back" href="technical_courses_created.php">← Volver</a>
 
 <div class="card">
-    <h2>📘 <?= htmlspecialchars($semester["name"]) ?> - Unidades</h2>
+    <h2>📘 <?= htmlspecialchars($course["name"]) ?> - Unidades</h2>
 
     <?php if (empty($units)): ?>
         <p>No hay unidades creadas.</p>
@@ -123,12 +115,10 @@ body {
             <div class="item">
                 <strong><?= htmlspecialchars($unit["name"]) ?></strong>
 
-                <div>
-                    <a class="btn"
-                       href="technical_activities_view.php?unit=<?= urlencode($unit["id"]) ?>">
-                        Ver actividades →
-                    </a>
-                </div>
+                <a class="btn"
+                   href="technical_activities_view.php?unit=<?= urlencode($unit["id"]) ?>">
+                    Actividades →
+                </a>
             </div>
         <?php endforeach; ?>
     <?php endif; ?>
