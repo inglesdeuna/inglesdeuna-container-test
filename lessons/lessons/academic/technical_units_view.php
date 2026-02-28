@@ -18,8 +18,11 @@ if (!$courseId) {
    OBTENER CURSO
 =============================== */
 $stmtCourse = $pdo->prepare("
-    SELECT * FROM courses WHERE id = :id LIMIT 1
+    SELECT * FROM courses
+    WHERE id = :id
+    LIMIT 1
 ");
+
 $stmtCourse->execute(["id" => $courseId]);
 $course = $stmtCourse->fetch(PDO::FETCH_ASSOC);
 
@@ -28,17 +31,15 @@ if (!$course) {
 }
 
 /* ===============================
-   OBTENER UNIDADES
+   LISTAR UNITS
 =============================== */
 $stmtUnits = $pdo->prepare("
     SELECT * FROM units
     WHERE course_id = :course_id
-    ORDER BY created_at ASC
+    ORDER BY id ASC
 ");
-$stmtUnits->execute([
-    "course_id" => $courseId
-]);
 
+$stmtUnits->execute(["course_id" => $courseId]);
 $units = $stmtUnits->fetchAll(PDO::FETCH_ASSOC);
 ?>
 
@@ -47,57 +48,77 @@ $units = $stmtUnits->fetchAll(PDO::FETCH_ASSOC);
 <head>
 <meta charset="UTF-8">
 <title><?= htmlspecialchars($course["name"]) ?> — Unidades</title>
+
 <style>
-body{
+body {
     font-family: Arial;
-    background:#f4f8ff;
-    padding:40px;
+    background: #f4f8ff;
+    padding: 40px;
 }
 
-.card{
-    background:#fff;
-    padding:25px;
-    border-radius:16px;
-    max-width:900px;
-    margin:auto;
+.card {
+    background: #fff;
+    padding: 25px;
+    border-radius: 14px;
+    max-width: 900px;
+    box-shadow: 0 10px 25px rgba(0,0,0,.08);
+    margin-bottom: 25px;
 }
 
-.item{
-    display:flex;
-    justify-content:space-between;
-    padding:12px 0;
-    border-bottom:1px solid #eee;
+.item {
+    background: #eef2ff;
+    padding: 15px 20px;
+    border-radius: 10px;
+    margin-bottom: 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
 }
 
-.btn{
-    background:#2563eb;
-    color:#fff;
-    padding:6px 14px;
-    border-radius:6px;
-    text-decoration:none;
+.btn {
+    background: #2563eb;
+    color: #fff;
+    padding: 8px 14px;
+    border-radius: 8px;
+    text-decoration: none;
+    font-weight: bold;
+}
+
+.back {
+    display: inline-block;
+    margin-bottom: 25px;
+    background: #6b7280;
+    color: #fff;
+    padding: 10px 16px;
+    border-radius: 8px;
+    text-decoration: none;
+    font-weight: bold;
 }
 </style>
 </head>
 
 <body>
 
+<a class="back" href="technical_courses_created.php">Volver</a>
+
 <div class="card">
-<h2>📚 Unidades — <?= htmlspecialchars($course["name"]) ?></h2>
+    <h2>📘 <?= htmlspecialchars($course["name"]) ?></h2>
+    <h3>Unidades creadas</h3>
 
-<?php if(empty($units)): ?>
-<p>No hay unidades creadas.</p>
-<?php else: ?>
-<?php foreach($units as $unit): ?>
-<div class="item">
-    <strong><?= htmlspecialchars($unit["name"]) ?></strong>
-    <a class="btn"
-       href="unit_view.php?unit=<?= urlencode($unit["id"]) ?>">
-       Ver →
-    </a>
-</div>
-<?php endforeach; ?>
-<?php endif; ?>
+    <?php if (empty($units)): ?>
+        <p>No hay unidades creadas.</p>
+    <?php else: ?>
+        <?php foreach ($units as $unit): ?>
+            <div class="item">
+                <strong><?= htmlspecialchars($unit["name"]) ?></strong>
 
+                <a class="btn"
+                   href="../academic/unit_view.php?unit=<?= urlencode($unit["id"]) ?>">
+                    Ver actividades →
+                </a>
+            </div>
+        <?php endforeach; ?>
+    <?php endif; ?>
 </div>
 
 </body>
