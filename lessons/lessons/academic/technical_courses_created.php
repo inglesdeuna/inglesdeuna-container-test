@@ -120,7 +120,7 @@ body {
 
                 <div>
                     <a class="btn"
-                       href="technical_units.php?course=<?= urlencode($semester["id"]) ?>">
+                       href="technical_units_view.php?course=<?= urlencode($semester["id"]) ?>"
                         Ver →
                     </a>
                 </div>
