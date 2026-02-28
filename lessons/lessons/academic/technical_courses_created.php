@@ -116,7 +116,7 @@ h1{
 
                     <div>
                         <a class="btn btn-blue"
-                           href="technical_units.php?course=<?= urlencode($semestre["id"]) ?>">
+                           href="technical_units_view.php?course=<?= urlencode($course["id"]) ?>"
                            Ver →
                         </a>
 
