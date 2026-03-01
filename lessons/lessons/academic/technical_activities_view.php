@@ -1,15 +1,5 @@
 <?php
-
-$host = "TU_HOST";
-$user = "TU_USER";
-$password = "TU_PASSWORD";
-$database = "TU_DATABASE";
-
-$conn = new mysqli($host, $user, $password, $database);
-
-if ($conn->connect_error) {
-    die("Error de conexión: " . $conn->connect_error);
-}
+require_once("../../config/database.php"); // ajusta si cambia la ruta
 
 if (!isset($_GET['unit']) || empty($_GET['unit'])) {
     die("Unidad no especificada.");
@@ -17,12 +7,12 @@ if (!isset($_GET['unit']) || empty($_GET['unit'])) {
 
 $unit_id = intval($_GET['unit']);
 
+// Obtener actividades
 $sql = "SELECT id, title, type FROM activities WHERE unit_id = ?";
 $stmt = $conn->prepare($sql);
 $stmt->bind_param("i", $unit_id);
 $stmt->execute();
 $result = $stmt->get_result();
-
 ?>
 
 <!DOCTYPE html>
@@ -32,7 +22,7 @@ $result = $stmt->get_result();
 </head>
 <body>
 
-<h2>Actividades</h2>
+<h2>Actividades de la Unidad</h2>
 
 <table border="1" cellpadding="10">
 <tr>
@@ -42,7 +32,6 @@ $result = $stmt->get_result();
 </tr>
 
 <?php
-
 if ($result->num_rows > 0) {
 
     while ($row = $result->fetch_assoc()) {
@@ -51,30 +40,35 @@ if ($result->num_rows > 0) {
         $type = strtolower(trim($row['type']));
         $title = htmlspecialchars($row['title']);
 
+        // Seguridad básica
+        $allowed_types = ['quiz','assignment','exam'];
+
+        if (!in_array($type, $allowed_types)) {
+            continue;
+        }
+
         $viewer_url = "/lessons/lessons/activities/$type/viewer.php?id=$activity_id";
         $editor_url = "/lessons/lessons/activities/$type/editor.php?id=$activity_id";
         $delete_url = "technical_activities_view.php?unit=$unit_id&delete=$activity_id";
-
 ?>
 <tr>
     <td><?php echo $title; ?></td>
     <td><?php echo $type; ?></td>
     <td>
-        <a href="<?php echo $viewer_url; ?>">Ver</a> |
-        <a href="<?php echo $editor_url; ?>">Editar</a> |
-        <a href="<?php echo $delete_url; ?>"
+        <a href="<?php echo $viewer_url; ?>">👁 Ver</a> |
+        <a href="<?php echo $editor_url; ?>">✏️ Editar</a> |
+        <a href="<?php echo $delete_url; ?>" 
            onclick="return confirm('¿Eliminar esta actividad?')">
-           Eliminar
+           🗑 Eliminar
         </a>
     </td>
 </tr>
 <?php
-    } // CIERRA while
+    }
 
 } else {
-    echo "<tr><td colspan='3'>No hay actividades</td></tr>";
+    echo "<tr><td colspan='3'>No hay actividades.</td></tr>";
 }
-
 ?>
 
 </table>
@@ -83,8 +77,7 @@ if ($result->num_rows > 0) {
 </html>
 
 <?php
-
-// ELIMINAR
+// Eliminar
 if (isset($_GET['delete'])) {
 
     $delete_id = intval($_GET['delete']);
@@ -97,5 +90,4 @@ if (isset($_GET['delete'])) {
     header("Location: technical_activities_view.php?unit=$unit_id");
     exit();
 }
-
 ?>
