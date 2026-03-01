@@ -127,13 +127,15 @@ body{
                 <strong><?= htmlspecialchars($activity["type"]) ?></strong>
                 <div>
                     <a class="btn btn-view"
-                       href="../activities/<?= htmlspecialchars($activity["type"]) ?>/viewer.php?id=<?= $activity["id"] ?>">
-                        Ver
-                    </a>
-                    <a class="btn btn-edit"
-                       href="../activities/<?= htmlspecialchars($activity["type"]) ?>/editor.php?id=<?= $activity["id"] ?>">
-                        Editar
-                    </a>
+   href="../activities/<?= htmlspecialchars($activity["type"]) ?>/viewer.php?id=<?= $activity["id"] ?>&unit=<?= $unitId ?>">
+   Ver
+</a>
+
+<a class="btn btn-edit"
+   href="../activities/<?= htmlspecialchars($activity["type"]) ?>/editor.php?id=<?= $activity["id"] ?>&unit=<?= $unitId ?>">
+   Editar
+</a>
+
                     <a class="btn btn-delete"
                        href="technical_activities_view.php?unit=<?= $unitId ?>&delete=<?= $activity["id"] ?>"
                        onclick="return confirm('¿Eliminar actividad?')">
