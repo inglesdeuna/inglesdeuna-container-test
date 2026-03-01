@@ -8,8 +8,13 @@ require_once __DIR__ . "/../config/db.php";
 $unitId = $_POST['unit'] ?? null;
 $types  = $_POST['types'] ?? [];
 
-if (!$unitId || empty($types)) {
-    die("Unidad o tipos de actividades no especificados.");
+if (!$unitId) {
+    die("Unidad no especificada.");
+}
+
+if (empty($types)) {
+    header("Location: /lessons/lessons/academic/unit_view.php?unit=" . urlencode($unitId));
+    exit;
 }
 
 /* ===============================
