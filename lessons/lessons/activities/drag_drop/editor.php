@@ -44,18 +44,28 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     } else {
 
         $stmt = $pdo->prepare("
-            INSERT INTO activities (id, unit_id, type, data)
-            VALUES (:id, :unit, 'drag_drop', :data)
+            INSERT INTO activities (unit_id, type, data, created_at, position)
+            VALUES (
+                :unit,
+                'drag_drop',
+                :data,
+                NOW(),
+                (
+                    SELECT COALESCE(MAX(position),0)+1
+                    FROM activities
+                    WHERE unit_id = :unit_position
+                )
+            )
         ");
 
         $stmt->execute([
-            "id"=>md5(random_bytes(16)),
             "unit"=>$unit,
+            "unit_position"=>$unit,
             "data"=>$json
         ]);
     }
 
-    header("Location: editor.php?unit=".$unit."&saved=1");
+    header("Location: editor.php?unit=" . urlencode((string) $unit) . "&saved=1");
     exit;
 }
 
