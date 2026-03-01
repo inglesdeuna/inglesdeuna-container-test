@@ -76,5 +76,5 @@ foreach ($types as $type) {
 /* ===============================
    REDIRECCIÓN CORRECTA
 =============================== */
-header("Location: /lessons/lessons/academic/unit_view.php?unit=" . urlencode($unitId));
+header("Location: /lessons/lessons/academic/technical_activities_view.php?unit=" . urlencode($unitId));
 exit;
