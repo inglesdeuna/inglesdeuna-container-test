@@ -173,9 +173,6 @@ body{
     Volver
 </a>
 
-Volver
-</a>
-
 <div class="card">
     <h2><?= htmlspecialchars($unit['name']); ?></h2>
     <p><strong>Curso:</strong> <?= htmlspecialchars($course['name']); ?></p>
