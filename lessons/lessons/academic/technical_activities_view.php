@@ -1,93 +1,164 @@
 <?php
-require_once("../../config/database.php"); // ajusta si cambia la ruta
+session_start();
 
-if (!isset($_GET['unit']) || empty($_GET['unit'])) {
+if (!isset($_SESSION["admin_logged"]) || $_SESSION["admin_logged"] !== true) {
+    header("Location: ../admin/login.php");
+    exit;
+}
+
+require __DIR__ . "/../config/db.php";
+
+$unitId = $_GET["unit"] ?? null;
+
+if (!$unitId) {
     die("Unidad no especificada.");
 }
 
-$unit_id = intval($_GET['unit']);
+/* ===============================
+   OBTENER UNIDAD
+=============================== */
+$stmtUnit = $pdo->prepare("
+    SELECT * FROM units
+    WHERE id = :id
+    LIMIT 1
+");
 
-// Obtener actividades
-$sql = "SELECT id, title, type FROM activities WHERE unit_id = ?";
-$stmt = $conn->prepare($sql);
-$stmt->bind_param("i", $unit_id);
-$stmt->execute();
-$result = $stmt->get_result();
+$stmtUnit->execute(["id" => $unitId]);
+$unit = $stmtUnit->fetch(PDO::FETCH_ASSOC);
+
+if (!$unit) {
+    die("Unidad no encontrada.");
+}
+
+/* ===============================
+   ELIMINAR ACTIVIDAD
+=============================== */
+if (isset($_GET["delete"])) {
+    $deleteId = (int) $_GET["delete"];
+
+    $stmtDelete = $pdo->prepare("
+        DELETE FROM activities
+        WHERE id = :id
+    ");
+
+    $stmtDelete->execute(["id" => $deleteId]);
+
+    header("Location: technical_activities_view.php?unit=" . urlencode($unitId));
+    exit;
+}
+
+/* ===============================
+   LISTAR ACTIVIDADES
+=============================== */
+$stmtActivities = $pdo->prepare("
+    SELECT * FROM activities
+    WHERE unit_id = :unit_id
+    ORDER BY id ASC
+");
+
+$stmtActivities->execute(["unit_id" => $unitId]);
+$activities = $stmtActivities->fetchAll(PDO::FETCH_ASSOC);
 ?>
 
 <!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
-    <title>Actividades de la Unidad</title>
+<meta charset="UTF-8">
+<title>Actividades - <?= htmlspecialchars($unit["name"]) ?></title>
+
+<style>
+body{
+    font-family: Arial, sans-serif;
+    background:#f4f8ff;
+    padding:40px;
+}
+
+.container{
+    max-width:900px;
+    margin:auto;
+}
+
+.card{
+    background:#ffffff;
+    padding:25px;
+    border-radius:16px;
+    box-shadow:0 10px 25px rgba(0,0,0,.08);
+}
+
+.item{
+    background:#eef2ff;
+    padding:15px 18px;
+    border-radius:12px;
+    margin-bottom:12px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+}
+
+.btn{
+    padding:6px 12px;
+    border-radius:8px;
+    text-decoration:none;
+    font-weight:600;
+    margin-left:5px;
+}
+
+.btn-view{ background:#2563eb; color:#fff; }
+.btn-edit{ background:#16a34a; color:#fff; }
+.btn-delete{ background:#dc2626; color:#fff; }
+
+.back{
+    display:inline-block;
+    margin-bottom:20px;
+    background:#6b7280;
+    color:#ffffff;
+    padding:8px 14px;
+    border-radius:8px;
+    text-decoration:none;
+}
+</style>
 </head>
+
 <body>
 
-<h2>Actividades de la Unidad</h2>
+<div class="container">
 
-<table border="1" cellpadding="10">
-<tr>
-    <th>Título</th>
-    <th>Tipo</th>
-    <th>Acciones</th>
-</tr>
+<a class="back" href="technical_units_view.php?course=<?= urlencode($unit["course_id"]) ?>">← Volver</a>
 
-<?php
-if ($result->num_rows > 0) {
+<div class="card">
+    <h2>📘 <?= htmlspecialchars($unit["name"]) ?> - Actividades</h2>
 
-    while ($row = $result->fetch_assoc()) {
+    <?php if (empty($activities)): ?>
+        <p>No hay actividades creadas.</p>
+    <?php else: ?>
+        <?php foreach ($activities as $activity): ?>
+            <div class="item">
+                <strong><?= htmlspecialchars($activity["type"]) ?></strong>
 
-        $activity_id = $row['id'];
-        $type = strtolower(trim($row['type']));
-        $title = htmlspecialchars($row['title']);
+                <div>
+                    <a class="btn btn-view"
+                       href="../activities/view_activity.php?id=<?= $activity["id"] ?>">
+                        Ver
+                    </a>
 
-        // Seguridad básica
-        $allowed_types = ['quiz','assignment','exam'];
+                    <a class="btn btn-edit"
+                       href="../activities/edit_activity.php?id=<?= $activity["id"] ?>">
+                        Editar
+                    </a>
 
-        if (!in_array($type, $allowed_types)) {
-            continue;
-        }
+                    <a class="btn btn-delete"
+                       href="technical_activities_view.php?unit=<?= $unitId ?>&delete=<?= $activity["id"] ?>"
+                       onclick="return confirm('¿Eliminar actividad?')">
+                        Eliminar
+                    </a>
+                </div>
+            </div>
+        <?php endforeach; ?>
+    <?php endif; ?>
 
-        $viewer_url = "/lessons/lessons/activities/$type/viewer.php?id=$activity_id";
-        $editor_url = "/lessons/lessons/activities/$type/editor.php?id=$activity_id";
-        $delete_url = "technical_activities_view.php?unit=$unit_id&delete=$activity_id";
-?>
-<tr>
-    <td><?php echo $title; ?></td>
-    <td><?php echo $type; ?></td>
-    <td>
-        <a href="<?php echo $viewer_url; ?>">👁 Ver</a> |
-        <a href="<?php echo $editor_url; ?>">✏️ Editar</a> |
-        <a href="<?php echo $delete_url; ?>" 
-           onclick="return confirm('¿Eliminar esta actividad?')">
-           🗑 Eliminar
-        </a>
-    </td>
-</tr>
-<?php
-    }
+</div>
 
-} else {
-    echo "<tr><td colspan='3'>No hay actividades.</td></tr>";
-}
-?>
-
-</table>
+</div>
 
 </body>
 </html>
-
-<?php
-// Eliminar
-if (isset($_GET['delete'])) {
-
-    $delete_id = intval($_GET['delete']);
-
-    $delete_sql = "DELETE FROM activities WHERE id = ?";
-    $delete_stmt = $conn->prepare($delete_sql);
-    $delete_stmt->bind_param("i", $delete_id);
-    $delete_stmt->execute();
-
-    header("Location: technical_activities_view.php?unit=$unit_id");
-    exit();
-}
-?>
