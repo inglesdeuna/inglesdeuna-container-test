@@ -106,8 +106,8 @@ Volver
         <?php foreach ($activityTypes as $key => $label): ?>
         <div class="item">
             <label>
-                <input type="checkbox" name="types[]" value="<?= $key ?>"
-                    <?= in_array($key, $created) ? "checked disabled" : "" ?>>
+               <input type="checkbox" name="types[]" value="<?= $key ?>"
+    <?= in_array($key, $created) ? "checked" : "" ?>>
                 <?= $label ?>
             </label>
 
