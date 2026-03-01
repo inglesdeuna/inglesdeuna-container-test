@@ -1,8 +1,23 @@
 <?php
 require_once __DIR__."/../../config/db.php";
 
-$unit = $_GET['unit'] ?? null;
-if (!$unit) die("Unidad no especificada");
+$activityId = $_GET['id'] ?? null;
+if (!$activityId) die("Actividad no especificada");
+
+$stmt = $pdo->prepare("
+    SELECT unit_id, data
+    FROM activities
+    WHERE id = :id
+    LIMIT 1
+");
+$stmt->execute(["id"=>$activityId]);
+$row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+if (!$row) die("Actividad no encontrada");
+
+$unit = $row["unit_id"];
+$data = json_decode($row["data"] ?? "[]", true);
+
 
 /* ==============================
    GUARDAR
