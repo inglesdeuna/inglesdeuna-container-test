@@ -13,14 +13,13 @@ if ($_SERVER["REQUEST_METHOD"] !== "POST") {
     exit;
 }
 
-$courseId = isset($_POST["id"]) ? (int) $_POST["id"] : 0;
+$courseId = trim($_POST["id"] ?? "");
 $returnTo = $_POST["return_to"] ?? "courses_manager.php?program=prog_technical";
 
-if ($courseId <= 0) {
+if ($courseId === "") {
     header("Location: " . $returnTo);
     exit;
 }
-
 try {
     $pdo->beginTransaction();
 
