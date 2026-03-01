@@ -174,7 +174,7 @@ body{
 </a>
 
 <div class="card">
-    <h2><?= htmlspecialchars($unit['name']); ?></h2>
+   <h2><?= htmlspecialchars(mb_strtoupper($unit['name'], 'UTF-8')); ?></h2>
     <p><strong>Curso:</strong> <?= htmlspecialchars($course['name']); ?></p>
 </div>
 
