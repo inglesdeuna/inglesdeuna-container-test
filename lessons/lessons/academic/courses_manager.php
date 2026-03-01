@@ -65,7 +65,7 @@ if ($allowCreate && $_SERVER["REQUEST_METHOD"] === "POST" && !empty($_POST["name
         SELECT id FROM courses
         WHERE program_id = :program_id
         AND name = :name
-        LIMIT 1
+      LIMIT 1
     ");
 
     $check->execute([
@@ -84,6 +84,51 @@ if ($allowCreate && $_SERVER["REQUEST_METHOD"] === "POST" && !empty($_POST["name
             "program_id" => $programId,
             "name" => $name
         ]);
+    }
+
+    header("Location: courses_manager.php?program=" . urlencode($programSlug));
+    exit;
+}
+
+/* ===============================
+   ELIMINAR CURSO / SEMESTRE
+=============================== */
+if ($allowCreate && $_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["delete_course_id"])) {
+
+    $courseIdToDelete = (int) $_POST["delete_course_id"];
+
+    $pdo->beginTransaction();
+
+    try {
+        $stmtUnitIds = $pdo->prepare("\n            SELECT id FROM units\n            WHERE course_id = :course_id\n        ");
+
+        $stmtUnitIds->execute(["course_id" => $courseIdToDelete]);
+        $unitIds = $stmtUnitIds->fetchAll(PDO::FETCH_COLUMN);
+
+        if (!empty($unitIds)) {
+            $placeholders = implode(",", array_fill(0, count($unitIds), "?"));
+            $stmtDeleteActivities = $pdo->prepare("DELETE FROM activities WHERE unit_id IN ($placeholders)");
+            $stmtDeleteActivities->execute($unitIds);
+
+            $stmtDeleteUnits = $pdo->prepare("DELETE FROM units WHERE id IN ($placeholders)");
+            $stmtDeleteUnits->execute($unitIds);
+        }
+
+        $stmtDeleteLevels = $pdo->prepare("DELETE FROM levels WHERE course_id = :course_id");
+        $stmtDeleteLevels->execute(["course_id" => $courseIdToDelete]);
+
+        $stmtDeleteCourse = $pdo->prepare("\n            DELETE FROM courses\n            WHERE id = :course_id AND program_id = :program_id\n        ");
+
+        $stmtDeleteCourse->execute([
+            "course_id" => $courseIdToDelete,
+            "program_id" => $programId,
+        ]);
+
+        $pdo->commit();
+    } catch (Throwable $e) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
     }
 
     header("Location: courses_manager.php?program=" . urlencode($programSlug));
@@ -115,29 +160,7 @@ body {
     background: #f4f8ff;
     padding: 40px;
 }
-
-.card {
-    background: #fff;
-    padding: 25px;
-    border-radius: 14px;
-    max-width: 800px;
-    box-shadow: 0 10px 25px rgba(0,0,0,.08);
-    margin-bottom: 25px;
-}
-
-input {
-    width: 100%;
-    padding: 12px;
-    margin-top: 10px;
-    border-radius: 8px;
-    border: 1px solid #ddd;
-}
-
-button {
-    margin-top: 15px;
-    padding: 10px 18px;
-    background: #2563eb;
-    color: #fff;
+@@ -141,81 +186,108 @@ button {
     border: none;
     border-radius: 8px;
     font-weight: bold;
@@ -161,6 +184,24 @@ button {
     border-radius: 8px;
     text-decoration: none;
     font-weight: bold;
+}
+
+.btn-danger {
+    background: #dc2626;
+}
+
+.actions {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.inline-form {
+    margin: 0;
+}
+
+.inline-form button {
+    margin-top: 0;
 }
 
 .back {
@@ -212,6 +253,18 @@ if ($programSlug === "prog_technical") {
 <a class="btn" href="<?= $adminLink ?>">
     Administrar →
 </a>
+<div class="actions">
+    <a class="btn" href="<?= $adminLink ?>">
+        Administrar →
+    </a>
+
+    <?php if ($allowCreate): ?>
+        <form class="inline-form" method="POST" onsubmit="return confirm('¿Eliminar este semestre?');">
+            <input type="hidden" name="delete_course_id" value="<?= (int) $course["id"] ?>">
+            <button type="submit" class="btn btn-danger">Eliminar</button>
+        </form>
+    <?php endif; ?>
+</div>
             </div>
         <?php endforeach; ?>
     <?php endif; ?>
