@@ -53,21 +53,29 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !empty($_POST["unit_name"])) {
         "name"      => $unitName
     ]);
 
-    if (!$check->fetch()) {
+    $existingUnit = $check->fetch(PDO::FETCH_ASSOC);
 
-        // 🔥 IMPORTANTE: NO insertar ID manualmente
-        $stmtInsert = $pdo->prepare("
-            INSERT INTO units (course_id, name, created_at)
-            VALUES (:course_id, :name, NOW())
-        ");
-
-        $stmtInsert->execute([
-            "course_id" => $courseId,
-            "name"      => $unitName
-        ]);
+    if ($existingUnit) {
+        // Si ya existe, redirigir a esa unidad
+        header("Location: unit_view.php?unit=" . urlencode($existingUnit["id"]));
+        exit;
     }
 
-    header("Location: technical_units.php?course=" . urlencode($courseId));
+    // Crear unidad nueva (ID autoincremental)
+    $stmtInsert = $pdo->prepare("
+        INSERT INTO units (course_id, name, created_at)
+        VALUES (:course_id, :name, NOW())
+    ");
+
+    $stmtInsert->execute([
+        "course_id" => $courseId,
+        "name"      => $unitName
+    ]);
+
+    $newUnitId = $pdo->lastInsertId();
+
+    // Redirigir directamente a la vista de la unidad creada
+    header("Location: unit_view.php?unit=" . urlencode($newUnitId));
     exit;
 }
 
