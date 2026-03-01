@@ -102,6 +102,7 @@ body {
 .actions {
     display: flex;
     gap: 10px;
+    align-items: center;
 }
 
 .btn-view {
@@ -113,14 +114,21 @@ body {
     font-weight: 600;
 }
 
-.btn-delete {
-    background: #dc2626;
-    color: white;
-    padding: 8px 14px;
+.inline-form {
+    margin: 0;
+}
+
+.btn-delete-x {
+    width: 32px;
+    height: 32px;
     border-radius: 8px;
     border: none;
-    font-weight: 600;
+    background: #dc2626;
+    color: white;
+    font-size: 20px;
+    font-weight: 700;
     cursor: pointer;
+    line-height: 1;
 }
 </style>
 </head>
@@ -143,14 +151,15 @@ body {
 
                 <div class="actions">
                     <a class="btn-view"
-                       href="technical_units_view.php?course=<?= $sem["id"] ?>">
+                       href="technical_units_view.php?course=<?= urlencode($sem["id"]) ?>">
                         Ver →
                     </a>
 
-                    <form method="POST" action="delete_course.php"
+                    <form class="inline-form" method="POST" action="delete_course.php"
                           onsubmit="return confirm('¿Eliminar semestre?');">
-                        <input type="hidden" name="id" value="<?= $sem["id"] ?>">
-                        <button class="btn-delete">Eliminar</button>
+                        <input type="hidden" name="id" value="<?= (int) $sem["id"] ?>">
+                        <input type="hidden" name="return_to" value="technical_courses_created.php">
+                        <button type="submit" class="btn-delete-x" aria-label="Eliminar">×</button>
                     </form>
                 </div>
             </div>
