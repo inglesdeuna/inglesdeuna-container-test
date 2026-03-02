@@ -219,6 +219,10 @@ button {
     <?php if (empty($courses)): ?>
         <p>No hay registros creados.</p>
     <?php else: ?>
+    echo "<pre>"; 
+var_dump($courses); 
+echo "</pre>";
+
         <?php foreach ($courses as $course): ?>
             <div class="item">
                 <strong><?= htmlspecialchars($course["name"]) ?></strong>
