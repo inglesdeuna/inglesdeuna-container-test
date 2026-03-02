@@ -155,12 +155,6 @@ body {
                         Ver →
                     </a>
 
-                    <form class="inline-form" method="POST" action="delete_course.php"
-                          onsubmit="return confirm('¿Eliminar semestre?');">
-                        <input type="hidden" name="id" value="<?= (int) $sem["id"] ?>">
-                        <input type="hidden" name="return_to" value="technical_courses_created.php">
-                        <button type="submit" class="btn-delete-x" aria-label="Eliminar">×</button>
-                    </form>
                 </div>
             </div>
         <?php endforeach; ?>
