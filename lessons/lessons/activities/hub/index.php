@@ -2,9 +2,44 @@
 session_start();
 require_once "../../config/db.php";
 
-$unitId = $_GET["unit"] ?? null;
-if (!$unitId) die("Unidad no especificada.");
+$unit_id = $_GET['unit'] ?? null;
 
+if (!$unit_id) {
+    die("Unidad no especificada.");
+}
+
+/* ===============================
+   OBTENER UNIT
+=============================== */
+$stmt = $pdo->prepare("SELECT course_id, phase_id FROM units WHERE id = :id");
+$stmt->execute(['id' => $unit_id]);
+$unit = $stmt->fetch(PDO::FETCH_ASSOC);
+
+if (!$unit) {
+    die("Unidad no encontrada.");
+}
+
+/* ===============================
+   DETECTAR CONTEXTO
+=============================== */
+if (!empty($unit['course_id'])) {
+
+    // 🔵 Programa Técnico
+    $backUrl = "../../academic/technical_units.php?course=" . urlencode($unit['course_id']);
+
+} elseif (!empty($unit['phase_id'])) {
+
+    // 🟢 English
+    $backUrl = "../../academic/english_structure_units.php?phase=" . urlencode($unit['phase_id']);
+
+} else {
+
+    $backUrl = "../../admin/dashboard.php";
+}
+
+/* ===============================
+   TIPOS DE ACTIVIDADES
+=============================== */
 $activityTypes = [
     "drag_drop" => "Drag & Drop",
     "flashcards" => "Flashcards",
@@ -17,21 +52,16 @@ $activityTypes = [
     "flipbooks" => "Flipbooks"
 ];
 
-// Actividades ya creadas
-$stmt = $pdo->prepare("SELECT type FROM activities WHERE unit_id = :unit");
-$stmt->execute(["unit" => $unitId]);
-$created = $stmt->fetchAll(PDO::FETCH_COLUMN);
-
-// Obtener curso de la unidad
-$stmtUnit = $pdo->prepare("SELECT * FROM units WHERE id = :id");
-$stmtUnit->execute(["id" => $unitId]);
-$unit = $stmtUnit->fetch(PDO::FETCH_ASSOC);
-
-if (!$unit) die("Unidad no encontrada.");
-
-$stmtCourse = $pdo->prepare("SELECT * FROM courses WHERE id = :id");
-$stmtCourse->execute(["id" => $unit['course_id']]);
-$course = $stmtCourse->fetch(PDO::FETCH_ASSOC);
+/* ===============================
+   ACTIVIDADES YA CREADAS
+=============================== */
+$stmtActivities = $pdo->prepare("
+    SELECT DISTINCT type 
+    FROM activities 
+    WHERE unit_id = :unit_id
+");
+$stmtActivities->execute(['unit_id' => $unit_id]);
+$createdTypes = $stmtActivities->fetchAll(PDO::FETCH_COLUMN);
 ?>
 
 <!DOCTYPE html>
@@ -39,87 +69,107 @@ $course = $stmtCourse->fetch(PDO::FETCH_ASSOC);
 <head>
 <meta charset="UTF-8">
 <title>Escoger Actividades</title>
+
 <style>
-body {
-    font-family: Arial;
-    background: #f4f8ff;
-    padding: 40px;
+body{
+    font-family: Arial, sans-serif;
+    background:#eef2f7;
+    padding:40px;
 }
-.card {
-    background: #fff;
-    padding: 25px;
-    border-radius: 14px;
-    max-width: 700px;
-    box-shadow: 0 10px 25px rgba(0,0,0,.08);
-    margin: 0 auto;
-}
-.item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 12px 0;
-    border-bottom: 1px solid #eee;
-}
-.btn- {
+
+.btn-volver{
     display:inline-block;
-    margin-bottom:20px;
     background:#6b7280;
     color:#fff;
-    padding:10px 18px;
+    padding:10px 16px;
     border-radius:8px;
     text-decoration:none;
+    font-weight:600;
+    margin-bottom:25px;
+}
+
+.card{
+    max-width:600px;
+    margin:0 auto;
+    background:#ffffff;
+    padding:30px;
+    border-radius:18px;
+    box-shadow:0 15px 35px rgba(0,0,0,.08);
+}
+
+.card h2{
+    text-align:center;
+    margin-bottom:25px;
+}
+
+.list{
+    list-style:none;
+    padding:0;
+    margin:0 0 25px 0;
+}
+
+.list li{
+    padding:12px 0;
+    border-bottom:1px solid #eee;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+}
+
+.created{
+    color:#16a34a;
     font-weight:bold;
 }
-button {
-    margin-top: 20px;
-    width: 100%;
-    padding: 12px;
-    background: #2563eb;
-    color: #fff;
-    border: none;
-    border-radius: 8px;
-    font-weight: bold;
-    cursor: pointer;
-}
-.status {
-    color: #16a34a;
-    font-weight: bold;
-}
-h2 {
-    text-align: center;
-    margin-bottom: 20px;
+
+.btn-submit{
+    width:100%;
+    background:#2563eb;
+    color:#fff;
+    padding:14px;
+    border:none;
+    border-radius:10px;
+    font-weight:bold;
+    cursor:pointer;
 }
 </style>
 </head>
+
 <body>
 
-<a class="btn-volver" href="../../academic/unit_view.php?unit=<?= urlencode($unit_id); ?>">
+<a class="btn-volver" href="<?= $backUrl; ?>">
     ← Volver
-
 </a>
 
 <div class="card">
+
     <h2>Escoger Actividades</h2>
 
-    <form method="post" action="../create_activity.php">
-        <input type="hidden" name="unit" value="<?= htmlspecialchars($unitId) ?>">
+    <form method="POST" action="create.php">
 
-        <?php foreach ($activityTypes as $key => $label): ?>
-        <div class="item">
-            <label>
-               <input type="checkbox" name="types[]" value="<?= $key ?>"
-    <?= in_array($key, $created) ? "checked" : "" ?>>
-                <?= $label ?>
-            </label>
+        <input type="hidden" name="unit_id" value="<?= htmlspecialchars($unit_id); ?>">
 
-            <?php if (in_array($key, $created)): ?>
-                <span class="status">✔ Creada</span>
-            <?php endif; ?>
-        </div>
-        <?php endforeach; ?>
+        <ul class="list">
+            <?php foreach ($activityTypes as $type => $label): ?>
+                <li>
+                    <label>
+                        <input type="checkbox" name="types[]" value="<?= $type; ?>"
+                        <?= in_array($type, $createdTypes) ? 'checked disabled' : ''; ?>>
+                        <?= htmlspecialchars($label); ?>
+                    </label>
 
-        <button type="submit">CREAR ACTIVIDADES →</button>
+                    <?php if (in_array($type, $createdTypes)): ?>
+                        <span class="created">✓ Creada</span>
+                    <?php endif; ?>
+                </li>
+            <?php endforeach; ?>
+        </ul>
+
+        <button type="submit" class="btn-submit">
+            CREAR ACTIVIDADES →
+        </button>
+
     </form>
+
 </div>
 
 </body>
