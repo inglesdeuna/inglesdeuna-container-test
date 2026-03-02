@@ -241,13 +241,6 @@ if ($programSlug === "prog_technical") {
         Administrar →
     </a>
 
-    <?php if ($allowCreate): ?>
-        <form class="inline-form" method="POST" action="delete_course.php" onsubmit="return confirm('¿Eliminar este semestre?');">
-            <input type="hidden" name="id" value="<?= (int) $course["id"] ?>">
-            <input type="hidden" name="return_to" value="courses_manager.php?program=<?= urlencode($programSlug) ?>">
-            <button type="submit" class="btn-delete-x" aria-label="Eliminar">×</button>
-        </form>
-    <?php endif; ?>
 </div>
             </div>
         <?php endforeach; ?>
