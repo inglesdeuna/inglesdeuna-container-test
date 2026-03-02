@@ -131,9 +131,9 @@ body{
         <p>Gestionar estructura inglés (Cursos → Units → Actividades).</p>
 
         <a class="btn btn-blue"
-           href="../academic/courses_manager.php?program=prog_english_courses">
+           
            Gestionar estructura
-        </a>
+        </a>href="../academic/english_structure_levels.php"
 
         <a class="btn btn-green"
            href="../academic/english_courses_created.php">
