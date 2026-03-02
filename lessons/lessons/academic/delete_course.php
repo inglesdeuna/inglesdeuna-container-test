@@ -45,6 +45,7 @@ try {
 
     $unitIds = [];
 
+    // 1. Eliminar actividades ligadas a unidades
     if (tableExists($pdo, "units")) {
         $stmtUnits = $pdo->prepare("SELECT id FROM units WHERE course_id = :course_id");
         $stmtUnits->execute(["course_id" => $courseId]);
@@ -57,16 +58,25 @@ try {
         $stmtDeleteActivities->execute($unitIds);
     }
 
+    // 2. Eliminar unidades
     if (tableExists($pdo, "units")) {
         $stmtDeleteUnits = $pdo->prepare("DELETE FROM units WHERE course_id = :course_id");
         $stmtDeleteUnits->execute(["course_id" => $courseId]);
     }
 
+    // 3. Eliminar niveles
     if (tableExists($pdo, "levels")) {
         $stmtDeleteLevels = $pdo->prepare("DELETE FROM levels WHERE course_id = :course_id");
         $stmtDeleteLevels->execute(["course_id" => $courseId]);
     }
 
+    // 4. Eliminar semestres
+    if (tableExists($pdo, "semesters")) {
+        $stmtDeleteSemesters = $pdo->prepare("DELETE FROM semesters WHERE course_id = :course_id");
+        $stmtDeleteSemesters->execute(["course_id" => $courseId]);
+    }
+
+    // 5. Finalmente eliminar el curso
     $stmtDeleteCourse = $pdo->prepare("DELETE FROM courses WHERE id = :course_id");
     $stmtDeleteCourse->execute(["course_id" => $courseId]);
 
