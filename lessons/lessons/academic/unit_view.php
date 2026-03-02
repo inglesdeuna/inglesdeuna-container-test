@@ -54,11 +54,45 @@ if (!$unit) {
 }
 
 /* ==========================
-   OBTENER CURSO
+   DETECTAR CONTEXTO
 ========================== */
-$stmtCourse = $pdo->prepare("SELECT * FROM courses WHERE id = :id");
-$stmtCourse->execute(['id' => $unit['course_id']]);
-$course = $stmtCourse->fetch(PDO::FETCH_ASSOC);
+
+$courseName = "—";
+$backUrl = "../admin/dashboard.php";
+
+if (!empty($unit['course_id'])) {
+
+    // 🔵 Técnico
+    $stmtCourse = $pdo->prepare("SELECT * FROM courses WHERE id = :id");
+    $stmtCourse->execute(['id' => $unit['course_id']]);
+    $course = $stmtCourse->fetch(PDO::FETCH_ASSOC);
+
+    if ($course) {
+        $courseName = $course['name'];
+        $backUrl = "technical_units_view.php?course=" . urlencode($course['id']);
+    }
+
+} elseif (!empty($unit['phase_id'])) {
+
+    // 🟢 English
+    $stmtPhase = $pdo->prepare("
+        SELECT p.name AS phase_name, 
+               l.name AS level_name, 
+               l.id AS level_id
+        FROM english_phases p
+        JOIN english_levels l ON p.level_id = l.id
+        WHERE p.id = :id
+        LIMIT 1
+    ");
+
+    $stmtPhase->execute(['id' => $unit['phase_id']]);
+    $context = $stmtPhase->fetch(PDO::FETCH_ASSOC);
+
+    if ($context) {
+        $courseName = $context['level_name'] . " - " . $context['phase_name'];
+        $backUrl = "english_structure_units.php?phase=" . urlencode($unit['phase_id']);
+    }
+}
 
 /* ==========================
    OBTENER ACTIVIDADES
@@ -141,26 +175,13 @@ body{
     font-size:14px;
     font-weight:600;
     color:#ffffff;
-    display:inline-flex;
-    align-items:center;
-    justify-content:center;
-    gap:6px;
-    min-width:110px;
-    height:40px;
-    box-sizing:border-box;
     border:none;
-    transition:0.2s ease;
     cursor:pointer;
 }
 
 .btn-open{ background:#14532d; }
-.btn-open:hover{ background:#166534; }
-
 .btn-edit{ background:#1d4ed8; }
-.btn-edit:hover{ background:#2563eb; }
-
 .btn-delete{ background:#dc2626; }
-.btn-delete:hover{ background:#ef4444; }
 
 .draggable{ cursor:grab; }
 .draggable:active{ cursor:grabbing; }
@@ -169,13 +190,13 @@ body{
 
 <body>
 
-<a class="back" href="technical_units_view.php?course=<?= urlencode($course['id']); ?>">
-    Volver
+<a class="back" href="<?= htmlspecialchars($backUrl); ?>">
+    ← Volver
 </a>
 
 <div class="card">
-   <h2><?= htmlspecialchars(mb_strtoupper($unit['name'], 'UTF-8')); ?></h2>
-    <p><strong>Curso:</strong> <?= htmlspecialchars($course['name']); ?></p>
+    <h2><?= htmlspecialchars($unit['name']); ?></h2>
+    <p><strong>Curso:</strong> <?= htmlspecialchars($courseName); ?></p>
 </div>
 
 <div class="card">
@@ -183,6 +204,7 @@ body{
     <div id="activityContainer">
 
     <?php foreach ($activities as $activity): ?>
+
         <?php
         $typeRaw = $activity['type'];
 
@@ -199,22 +221,12 @@ body{
         ];
 
         $icon = $icons[$typeRaw] ?? '📘';
-
-        $data = [];
-        if (!empty($activity['data']) && is_string($activity['data'])) {
-            $decoded = json_decode($activity['data'], true);
-            if (is_array($decoded)) {
-                $data = $decoded;
-            }
-        }
-
-        $activityTitle = $data['title'] ?? strtoupper(str_replace('_',' ',$typeRaw));
         ?>
 
         <div class="activity-box draggable" draggable="true" data-id="<?= $activity['id']; ?>">
             <div class="activity-left">
                 <div class="activity-title">
-                    <?= $icon . " " . htmlspecialchars($activityTitle); ?>
+                    <?= $icon . " " . strtoupper(str_replace('_',' ',$typeRaw)); ?>
                 </div>
                 <div class="activity-meta">
                     Tipo: <?= strtoupper(str_replace('_',' ',$typeRaw)); ?><br>
@@ -240,6 +252,7 @@ body{
                 </a>
             </div>
         </div>
+
     <?php endforeach; ?>
 
     </div>
