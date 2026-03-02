@@ -32,6 +32,27 @@ if (!$phase) {
 }
 
 /* ===============================
+   CREAR UNIT
+=============================== */
+if ($_SERVER["REQUEST_METHOD"] === "POST" && !empty($_POST["unit_name"])) {
+
+    $unitName = strtoupper(trim($_POST["unit_name"]));
+
+    $stmtInsert = $pdo->prepare("
+        INSERT INTO units (name, phase_id, created_at, active, position)
+        VALUES (:name, :phase_id, NOW(), true, 0)
+    ");
+
+    $stmtInsert->execute([
+        "name" => $unitName,
+        "phase_id" => $phase_id
+    ]);
+
+    header("Location: english_structure_units.php?phase=" . urlencode($phase_id));
+    exit;
+}
+
+/* ===============================
    OBTENER UNITS
 =============================== */
 $stmtUnits = $pdo->prepare("
@@ -49,19 +70,13 @@ $units = $stmtUnits->fetchAll(PDO::FETCH_ASSOC);
 <head>
 <meta charset="UTF-8">
 <title>Units - English</title>
-
 <style>
 body{
     font-family: Arial, sans-serif;
     background:#eef2f7;
     padding:40px;
 }
-
-.container{
-    max-width:1000px;
-    margin:0 auto;
-}
-
+.container{ max-width:1000px; margin:0 auto; }
 .back{
     display:inline-block;
     margin-bottom:25px;
@@ -72,14 +87,29 @@ body{
     text-decoration:none;
     font-weight:600;
 }
-
 .card{
     background:#ffffff;
     padding:30px;
     border-radius:18px;
     box-shadow:0 15px 35px rgba(0,0,0,.08);
+    margin-bottom:25px;
 }
-
+input{
+    width:100%;
+    padding:12px;
+    border-radius:8px;
+    border:1px solid #ddd;
+}
+button{
+    margin-top:15px;
+    padding:10px 18px;
+    background:#2563eb;
+    color:#fff;
+    border:none;
+    border-radius:8px;
+    font-weight:600;
+    cursor:pointer;
+}
 .unit-item{
     background:#eef2ff;
     padding:15px 18px;
@@ -89,7 +119,6 @@ body{
     justify-content:space-between;
     align-items:center;
 }
-
 .btn{
     background:#2563eb;
     color:#fff;
@@ -105,36 +134,41 @@ body{
 
 <div class="container">
 
-    <a class="back" href="english_courses_created.php">
-        ← Volver
-    </a>
+<a class="back" href="english_structure_phases.php?level=<?= urlencode($phase_id); ?>">
+← Volver
+</a>
 
-    <div class="card">
-        <h2>
-            <?= htmlspecialchars($phase["level_name"]); ?> - 
-            <?= htmlspecialchars($phase["phase_name"]); ?>
-        </h2>
+<div class="card">
+    <h2>➕ Crear Unit (<?= htmlspecialchars($phase["phase_name"]); ?>)</h2>
 
-        <?php if (empty($units)): ?>
-            <p>No hay unidades creadas.</p>
-        <?php else: ?>
+    <form method="POST">
+        <input type="text" name="unit_name" required placeholder="Ej: UNIT 1">
+        <button type="submit">Crear</button>
+    </form>
+</div>
 
-            <?php foreach ($units as $unit): ?>
-                <div class="unit-item">
-                    <strong><?= htmlspecialchars($unit["name"]); ?></strong>
+<div class="card">
+    <h2>📋 Units creadas</h2>
 
-                    <a class="btn"
-                       href="unit_view.php?unit=<?= urlencode($unit["id"]); ?>">
-                       Administrar →
-                    </a>
-                </div>
-            <?php endforeach; ?>
+    <?php if (empty($units)): ?>
+        <p>No hay unidades creadas.</p>
+    <?php else: ?>
 
-        <?php endif; ?>
+        <?php foreach ($units as $unit): ?>
+            <div class="unit-item">
+                <strong><?= htmlspecialchars($unit["name"]); ?></strong>
 
-    </div>
+                <a class="btn"
+                   href="unit_view.php?unit=<?= urlencode($unit["id"]); ?>">
+                   Administrar →
+                </a>
+            </div>
+        <?php endforeach; ?>
+
+    <?php endif; ?>
 
 </div>
 
+</div>
 </body>
 </html>
