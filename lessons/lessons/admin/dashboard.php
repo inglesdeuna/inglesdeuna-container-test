@@ -128,12 +128,13 @@ body{
     <!-- ========================= -->
     <div class="card">
         <h2>🎓 Cursos de Inglés</h2>
-        <p>Gestionar estructura inglés (Cursos → Units → Actividades).</p>
+        <p>Gestionar estructura inglés (Levels → Phases → Units → Actividades).</p>
 
+        <!-- 🔥 BOTÓN CORREGIDO -->
         <a class="btn btn-blue"
-           
+           href="../academic/english_structure_levels.php">
            Gestionar estructura
-        </a>href="../academic/english_structure_levels.php"
+        </a>
 
         <a class="btn btn-green"
            href="../academic/english_courses_created.php">
