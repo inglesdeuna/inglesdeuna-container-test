@@ -60,7 +60,7 @@ body {
     padding: 12px 0;
     border-bottom: 1px solid #eee;
 }
-.btn-volver {
+.btn- {
     display:inline-block;
     margin-bottom:20px;
     background:#6b7280;
@@ -93,8 +93,9 @@ h2 {
 </head>
 <body>
 
-<a class="btn-volver" href="../../academic/technical_units_view.php?course=<?= urlencode($course['id']); ?>">
-Volver
+<a class="btn-volver" href="../../academic/unit_view.php?unit=<?= urlencode($unit_id); ?>">
+    ← Volver
+
 </a>
 
 <div class="card">
