@@ -34,7 +34,6 @@ if (!$phase) {
 /* ===============================
    CREAR UNIT
 =============================== */
-
 if ($_SERVER["REQUEST_METHOD"] === "POST" && !empty($_POST["unit_name"])) {
 
     $unitName = strtoupper(trim($_POST["unit_name"]));
@@ -52,8 +51,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !empty($_POST["unit_name"])) {
 
     $newUnitId = $stmtInsert->fetchColumn();
 
-    // 🔥 REDIRECCIÓN CORRECTA
-    header("Location: ../activities/hub/index.php?unit=" . urlencode($newUnitId));
+    // 🔥 REDIRECCIÓN AL HUB ENGLISH
+    header("Location: ../activities/hub/index_english.php?unit=" . urlencode($newUnitId));
     exit;
 }
 
@@ -164,7 +163,7 @@ button{
                 <strong><?= htmlspecialchars($unit["name"]); ?></strong>
 
                 <a class="btn"
-                   href="unit_view.php?unit=<?= urlencode($unit["id"]); ?>">
+                   href="../activities/hub/index_english.php?unit=<?= urlencode($unit["id"]); ?>">
                    Administrar →
                 </a>
             </div>
