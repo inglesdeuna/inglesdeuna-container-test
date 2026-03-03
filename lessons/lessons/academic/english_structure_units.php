@@ -34,6 +34,7 @@ if (!$phase) {
 /* ===============================
    CREAR UNIT
 =============================== */
+
 if ($_SERVER["REQUEST_METHOD"] === "POST" && !empty($_POST["unit_name"])) {
 
     $unitName = strtoupper(trim($_POST["unit_name"]));
@@ -41,6 +42,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !empty($_POST["unit_name"])) {
     $stmtInsert = $pdo->prepare("
         INSERT INTO units (name, phase_id, created_at, active, position)
         VALUES (:name, :phase_id, NOW(), true, 0)
+        RETURNING id
     ");
 
     $stmtInsert->execute([
@@ -48,7 +50,10 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !empty($_POST["unit_name"])) {
         "phase_id" => $phase_id
     ]);
 
-    header("Location: english_structure_units.php?phase=" . urlencode($phase_id));
+    $newUnitId = $stmtInsert->fetchColumn();
+
+    // 🔥 REDIRECCIÓN CORRECTA
+    header("Location: ../activities/hub/index.php?unit=" . urlencode($newUnitId));
     exit;
 }
 
