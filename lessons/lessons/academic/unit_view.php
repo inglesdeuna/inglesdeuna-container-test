@@ -8,10 +8,10 @@ if (!isset($_SESSION["admin_logged"]) || $_SESSION["admin_logged"] !== true) {
 
 require_once __DIR__ . "/../config/db.php";
 
-$unit_id = $_GET['unit'] ?? null;
+$unit_id = $_GET['unit'] ?? '';
 $source  = $_GET['source'] ?? '';
 
-if (!$unit_id) {
+if (empty($unit_id)) {
     die("Unidad no especificada.");
 }
 
@@ -19,12 +19,15 @@ if (!$unit_id) {
    ELIMINAR ACTIVIDAD
 ========================== */
 if (isset($_GET['delete'])) {
-    $delete_id = $_GET['delete'];
 
-    $stmtDelete = $pdo->prepare("DELETE FROM activities WHERE id = :id");
-    $stmtDelete->execute(['id' => $delete_id]);
+    $delete_id = $_GET['delete'] ?? '';
 
-    header("Location: unit_view.php?unit=" . urlencode($unit_id) . "&source=" . urlencode($source));
+    if (!empty($delete_id)) {
+        $stmtDelete = $pdo->prepare("DELETE FROM activities WHERE id = :id");
+        $stmtDelete->execute(['id' => $delete_id]);
+    }
+
+    header("Location: unit_view.php?unit=" . urlencode($unit_id) . (!empty($source) ? "&source=" . urlencode($source) : ""));
     exit;
 }
 
@@ -53,9 +56,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['order'])) {
 =============================== */
 $stmt = $pdo->prepare("
     SELECT u.*, 
+           c.name AS course_name,
            p.name AS phase_name,
            l.name AS level_name
     FROM units u
+    LEFT JOIN courses c ON u.course_id = c.id
     LEFT JOIN english_phases p ON u.phase_id = p.id
     LEFT JOIN english_levels l ON p.level_id = l.id
     WHERE u.id = :id
@@ -70,13 +75,25 @@ if (!$unit) {
 }
 
 /* ===============================
-   BOTÓN VOLVER CORRECTO
+   BOTÓN VOLVER INTELIGENTE
 =============================== */
 
-if ($source === "created") {
-    $backUrl = "english_units_view.php?phase=" . urlencode($unit['phase_id']);
+if (!empty($unit['course_id'])) {
+
+    // 🔵 Técnico
+    $backUrl = "technical_units_view.php?course=" . urlencode($unit['course_id'] ?? '');
+
+} elseif (!empty($unit['phase_id'])) {
+
+    // 🟢 English
+    if ($source === "created") {
+        $backUrl = "english_units_view.php?phase=" . urlencode($unit['phase_id'] ?? '');
+    } else {
+        $backUrl = "english_structure_units.php?phase=" . urlencode($unit['phase_id'] ?? '');
+    }
+
 } else {
-    $backUrl = "english_structure_units.php?phase=" . urlencode($unit['phase_id']);
+    $backUrl = "../admin/dashboard.php";
 }
 
 /* ===============================
@@ -97,7 +114,7 @@ $activities = $stmtActivities->fetchAll(PDO::FETCH_ASSOC);
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title><?= htmlspecialchars($unit['name']); ?></title>
+<title><?= htmlspecialchars($unit['name'] ?? 'Unidad'); ?></title>
 
 <style>
 body{ font-family: Arial, sans-serif; background:#f4f8ff; padding:40px; }
@@ -118,36 +135,47 @@ body{ font-family: Arial, sans-serif; background:#f4f8ff; padding:40px; }
 <a class="back" href="<?= $backUrl; ?>">← Volver</a>
 
 <div class="card">
-    <h2><?= htmlspecialchars($unit['name']); ?></h2>
-    <p><strong>Level:</strong> <?= htmlspecialchars($unit['level_name']); ?></p>
-    <p><strong>Phase:</strong> <?= htmlspecialchars($unit['phase_name']); ?></p>
+    <h2><?= htmlspecialchars($unit['name'] ?? ''); ?></h2>
+
+    <?php if (!empty($unit['course_name'])): ?>
+        <p><strong>Curso:</strong> <?= htmlspecialchars($unit['course_name']); ?></p>
+    <?php endif; ?>
+
+    <?php if (!empty($unit['level_name'])): ?>
+        <p><strong>Level:</strong> <?= htmlspecialchars($unit['level_name']); ?></p>
+    <?php endif; ?>
+
+    <?php if (!empty($unit['phase_name'])): ?>
+        <p><strong>Phase:</strong> <?= htmlspecialchars($unit['phase_name']); ?></p>
+    <?php endif; ?>
 </div>
 
 <div class="card">
     <h3>Arrastra para ordenar</h3>
+
     <div id="activityContainer">
 
     <?php foreach ($activities as $activity): ?>
         <div class="activity-box draggable" draggable="true" data-id="<?= $activity['id']; ?>">
             <div>
-                <strong><?= strtoupper(htmlspecialchars($activity['type'])); ?></strong><br>
-                Creado: <?= htmlspecialchars($activity['created_at']); ?>
+                <strong><?= strtoupper(htmlspecialchars($activity['type'] ?? '')); ?></strong><br>
+                Creado: <?= htmlspecialchars($activity['created_at'] ?? ''); ?>
             </div>
 
             <div class="activity-actions">
 
                 <a class="btn btn-open"
-                   href="../activities/<?= htmlspecialchars($activity['type']); ?>/viewer.php?id=<?= $activity['id']; ?>&unit=<?= $unit_id; ?>&source=<?= urlencode($source); ?>">
+                   href="../activities/<?= htmlspecialchars($activity['type']); ?>/viewer.php?id=<?= urlencode($activity['id']); ?>&unit=<?= urlencode($unit_id); ?>&source=<?= urlencode($source); ?>">
                     Abrir
                 </a>
 
                 <a class="btn btn-edit"
-                   href="../activities/<?= htmlspecialchars($activity['type']); ?>/editor.php?id=<?= $activity['id']; ?>&unit=<?= $unit_id; ?>&source=<?= urlencode($source); ?>">
+                   href="../activities/<?= htmlspecialchars($activity['type']); ?>/editor.php?id=<?= urlencode($activity['id']); ?>&unit=<?= urlencode($unit_id); ?>&source=<?= urlencode($source); ?>">
                     Editar
                 </a>
 
                 <a class="btn btn-delete"
-                   href="unit_view.php?unit=<?= $unit_id; ?>&delete=<?= $activity['id']; ?>&source=<?= urlencode($source); ?>"
+                   href="unit_view.php?unit=<?= urlencode($unit_id); ?>&delete=<?= urlencode($activity['id']); ?>&source=<?= urlencode($source); ?>"
                    onclick="return confirm('¿Eliminar esta actividad?');">
                     Eliminar
                 </a>
@@ -158,6 +186,49 @@ body{ font-family: Arial, sans-serif; background:#f4f8ff; padding:40px; }
 
     </div>
 </div>
+
+<script>
+const container = document.getElementById('activityContainer');
+let dragged;
+
+container.addEventListener('dragstart', e => dragged = e.target);
+
+container.addEventListener('dragover', e => {
+    e.preventDefault();
+    const afterElement = getDragAfterElement(container, e.clientY);
+    if (afterElement == null) {
+        container.appendChild(dragged);
+    } else {
+        container.insertBefore(dragged, afterElement);
+    }
+});
+
+container.addEventListener('drop', () => {
+    const items = document.querySelectorAll('.draggable');
+    let order = [];
+
+    items.forEach(item => order.push(item.dataset.id));
+
+    fetch("unit_view.php?unit=<?= urlencode($unit_id); ?>", {
+        method: "POST",
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: new URLSearchParams({order: order})
+    });
+});
+
+function getDragAfterElement(container, y) {
+    const draggableElements = [...container.querySelectorAll('.draggable:not(.dragging)')];
+    return draggableElements.reduce((closest, child) => {
+        const box = child.getBoundingClientRect();
+        const offset = y - box.top - box.height / 2;
+        if (offset < 0 && offset > closest.offset) {
+            return { offset: offset, element: child };
+        } else {
+            return closest;
+        }
+    }, { offset: Number.NEGATIVE_INFINITY }).element;
+}
+</script>
 
 </body>
 </html>
