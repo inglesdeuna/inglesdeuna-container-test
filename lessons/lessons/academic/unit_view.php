@@ -52,15 +52,12 @@ if (!empty($unit["course_id"])) {
 
     // 🟢 English
     if ($source === "created") {
-        // Desde cursos creados
         $backUrl = "english_units_view.php?phase=" . urlencode($unit["phase_id"]);
     } else {
-        // Desde gestionar estructura
         $backUrl = "english_structure_units.php?phase=" . urlencode($unit["phase_id"]);
     }
 
 } else {
-
     $backUrl = "../admin/dashboard.php";
 }
 
@@ -154,7 +151,7 @@ body{
 </div>
 
 <div class="card">
-    <h3>Arrastra para ordenar</h3>
+    <h3>Actividades</h3>
 
     <?php if (empty($activities)): ?>
         <p>No hay actividades creadas.</p>
@@ -169,24 +166,24 @@ body{
                 </div>
 
                 <div>
+                    <!-- VIEWER -->
                     <a class="btn btn-dark"
                        href="../activities/<?= urlencode($activity["type"]); ?>/index.php?activity=<?= urlencode($activity["id"]); ?>">
                        Abrir
                     </a>
 
-                    <?php if ($source !== "created"): ?>
-                        <!-- Solo permitir editar/eliminar en modo estructura -->
-                        <a class="btn btn-blue"
-                           href="../activities/<?= urlencode($activity["type"]); ?>/edit.php?activity=<?= urlencode($activity["id"]); ?>">
-                           Editar
-                        </a>
+                    <!-- EDITOR -->
+                    <a class="btn btn-blue"
+                       href="../activities/<?= urlencode($activity["type"]); ?>/edit.php?activity=<?= urlencode($activity["id"]); ?>">
+                       Editar
+                    </a>
 
-                        <a class="btn btn-red"
-                           href="../activities/delete.php?id=<?= urlencode($activity["id"]); ?>&unit=<?= urlencode($unit_id); ?>"
-                           onclick="return confirm('¿Eliminar actividad?');">
-                           Eliminar
-                        </a>
-                    <?php endif; ?>
+                    <!-- DELETE -->
+                    <a class="btn btn-red"
+                       href="../activities/delete.php?id=<?= urlencode($activity["id"]); ?>&unit=<?= urlencode($unit_id); ?>"
+                       onclick="return confirm('¿Eliminar actividad?');">
+                       Eliminar
+                    </a>
                 </div>
             </div>
         <?php endforeach; ?>
