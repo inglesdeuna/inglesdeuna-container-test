@@ -48,7 +48,16 @@ if (!empty($unit["course_id"])) {
 } elseif (!empty($unit["phase_id"])) {
 
     // 🟢 English
-    $backUrl = "english_structure_units.php?phase=" . urlencode($unit["phase_id"]);
+   } elseif (!empty($unit["phase_id"])) {
+
+    // 🟢 English
+    $source = $_GET["source"] ?? "";
+
+    if ($source === "created") {
+        $backUrl = "english_units_view.php?phase=" . urlencode($unit["phase_id"]);
+    } else {
+        $backUrl = "english_structure_units.php?phase=" . urlencode($unit["phase_id"]);
+    }
 
 } else {
 
