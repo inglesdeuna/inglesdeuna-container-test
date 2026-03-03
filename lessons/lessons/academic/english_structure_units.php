@@ -18,12 +18,13 @@ if (!$phase_id) {
    OBTENER PHASE
 =============================== */
 $stmtPhase = $pdo->prepare("
-    SELECT p.name AS phase_name, l.name AS level_name
+    SELECT p.name AS phase_name, l.id AS level_id, l.name AS level_name
     FROM english_phases p
     JOIN english_levels l ON p.level_id = l.id
     WHERE p.id = :id
     LIMIT 1
 ");
+
 $stmtPhase->execute(["id" => $phase_id]);
 $phase = $stmtPhase->fetch(PDO::FETCH_ASSOC);
 
@@ -138,7 +139,7 @@ button{
 
 <div class="container">
 
-<a class="back" href="english_structure_phases.php?level=<?= urlencode($phase_id); ?>">
+<a class="back" href="english_structure_phases.php?level=<?= urlencode($phase["level_id"]); ?>">
 ← Volver
 </a>
 
