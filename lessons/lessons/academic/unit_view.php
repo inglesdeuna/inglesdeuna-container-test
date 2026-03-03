@@ -40,6 +40,9 @@ if (!$unit) {
 /* ===============================
    DETECTAR BOTÓN VOLVER
 =============================== */
+
+$source = $_GET["source"] ?? "";
+
 if (!empty($unit["course_id"])) {
 
     // 🔵 Programa Técnico
@@ -48,14 +51,11 @@ if (!empty($unit["course_id"])) {
 } elseif (!empty($unit["phase_id"])) {
 
     // 🟢 English
-   } elseif (!empty($unit["phase_id"])) {
-
-    // 🟢 English
-    $source = $_GET["source"] ?? "";
-
     if ($source === "created") {
+        // Desde cursos creados
         $backUrl = "english_units_view.php?phase=" . urlencode($unit["phase_id"]);
     } else {
+        // Desde gestionar estructura
         $backUrl = "english_structure_units.php?phase=" . urlencode($unit["phase_id"]);
     }
 
@@ -174,16 +174,19 @@ body{
                        Abrir
                     </a>
 
-                    <a class="btn btn-blue"
-                       href="../activities/<?= urlencode($activity["type"]); ?>/edit.php?activity=<?= urlencode($activity["id"]); ?>">
-                       Editar
-                    </a>
+                    <?php if ($source !== "created"): ?>
+                        <!-- Solo permitir editar/eliminar en modo estructura -->
+                        <a class="btn btn-blue"
+                           href="../activities/<?= urlencode($activity["type"]); ?>/edit.php?activity=<?= urlencode($activity["id"]); ?>">
+                           Editar
+                        </a>
 
-                    <a class="btn btn-red"
-                       href="../activities/delete.php?id=<?= urlencode($activity["id"]); ?>&unit=<?= urlencode($unit_id); ?>"
-                       onclick="return confirm('¿Eliminar actividad?');">
-                       Eliminar
-                    </a>
+                        <a class="btn btn-red"
+                           href="../activities/delete.php?id=<?= urlencode($activity["id"]); ?>&unit=<?= urlencode($unit_id); ?>"
+                           onclick="return confirm('¿Eliminar actividad?');">
+                           Eliminar
+                        </a>
+                    <?php endif; ?>
                 </div>
             </div>
         <?php endforeach; ?>
