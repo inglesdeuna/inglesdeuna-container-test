@@ -144,9 +144,9 @@ body{
 
     <h2>Escoger Actividades</h2>
 
-    <form method="POST" action="create.php">
+    <form method="POST" action="../create_activity.php">
 
-        <input type="hidden" name="unit_id" value="<?= htmlspecialchars($unit_id); ?>">
+        <input type="hidden" name="unit" value="<?= htmlspecialchars($unit_id); ?>">
 
         <ul class="list">
             <?php foreach ($activityTypes as $type => $label): ?>
