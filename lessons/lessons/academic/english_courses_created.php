@@ -141,10 +141,10 @@ body{
                             <div class="phase-item">
                                 <strong><?= htmlspecialchars($phase['name']); ?></strong>
 
-                                <a class="btn"
-                                   href="english_structure_units.php?phase=<?= urlencode($phase['id']); ?>">
-                                   Ver →
-                                </a>
+                               <a class="btn"
+   href="english_units_view.php?phase=<?= urlencode($phase['id']); ?>">
+   Ver →
+</a>
                             </div>
                         <?php endforeach; ?>
 
