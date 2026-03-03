@@ -14,6 +14,6 @@ $units=$stmt->fetchAll(PDO::FETCH_ASSOC);
 <?php foreach($units as $u): ?>
 <div>
 <?= htmlspecialchars($u["name"]) ?>
-<a href="unit_view.php?unit=<?= $u["id"] ?>">Ver actividades →</a>
+<a href="unit_view.php?unit=<?= urlencode($u["id"]) ?>&source=created">Ver actividades →</a>
 </div>
 <?php endforeach; ?>
