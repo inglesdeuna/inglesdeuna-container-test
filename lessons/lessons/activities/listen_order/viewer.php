@@ -113,8 +113,6 @@ button{
 </head>
 <body>
 
-<h1>🎧 Listen &amp; Order</h1>
-
 <div id="sentenceBox">
   <button onclick="playAudio()">🔊 Listen</button>
 </div>
