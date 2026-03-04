@@ -1,68 +1,37 @@
 <?php
-require_once __DIR__."/../../config/db.php";
+require_once __DIR__ . '/../../config/db.php';
+require_once __DIR__ . '/../../core/_activity_viewer_template.php';
 
-$unit = $_GET["unit"] ?? null;
-if(!$unit) die("Unit missing");
+$unit = isset($_GET['unit']) ? $_GET['unit'] : null;
+if (!$unit) {
+    die('Unit missing');
+}
 
-$stmt = $pdo->prepare("
-    SELECT data FROM activities
-    WHERE unit_id = :u AND type = 'flashcards'
-");
-$stmt->execute(["u"=>$unit]);
+$stmt = $pdo->prepare(
+    "SELECT data
+     FROM activities
+     WHERE unit_id = :unit
+       AND type = 'flashcards'
+     LIMIT 1"
+);
+$stmt->execute(array('unit' => $unit));
 
 $row = $stmt->fetch(PDO::FETCH_ASSOC);
-$data = json_decode($row["data"] ?? "[]", true);
+$raw = isset($row['data']) ? $row['data'] : '[]';
+$decoded = json_decode($raw, true);
+$data = is_array($decoded) ? $decoded : array();
 
-if(!$data || count($data)==0){
-    echo "<h3>No hay flashcards para esta unidad</h3>";
-    exit;
+if (count($data) === 0) {
+    die('No hay flashcards para esta unidad');
 }
+
+ob_start();
 ?>
-<!DOCTYPE html>
-<html>
-<head>
-<meta charset="UTF-8">
-<title>Flashcards</title>
-<link rel="stylesheet" href="../../assets/css/ui.css">
-
 <style>
-body{
-    font-family:Arial;
-    background:#e9f2fb;
-    padding:40px;
+.flashcards-wrap{
     text-align:center;
-    position:relative;
 }
 
-/* BOTÓN BACK */
-.back-btn{
-    position:absolute;
-    top:20px;
-    left:20px;
-    background:#16a34a;
-    color:white;
-    padding:12px 28px;
-    border:none;
-    border-radius:16px;
-    font-weight:bold;
-    cursor:pointer;
-    font-size:15px;
-    transition:0.2s ease;
-}
-
-.back-btn:hover{
-    background:#15803d;
-}
-
-/* TÍTULO */
-.title{
-    font-size:28px;
-    font-weight:bold;
-    color:#0b5ed7;
-    margin-bottom:25px;
-}
-
-/* LISTEN */
 .listen-wrapper{
     margin-bottom:15px;
 }
@@ -78,7 +47,6 @@ button{
 .listen{ background:#0b5ed7; color:white;}
 .next{ background:#28a745; color:white;}
 
-/* CARD */
 .card-container{
     perspective:1000px;
     display:flex;
@@ -112,9 +80,7 @@ button{
     padding:25px;
 }
 
-.front{
-    background:white;
-}
+.front{ background:white; }
 
 .back{
     background:#2f6fed;
@@ -122,9 +88,10 @@ button{
     transform:rotateY(180deg);
     font-size:30px;
     font-weight:bold;
+    text-align:center;
+    word-break:break-word;
 }
 
-/* IMAGEN PERFECTAMENTE CENTRADA */
 .front img{
     max-width:260px;
     max-height:260px;
@@ -132,77 +99,92 @@ button{
     margin-bottom:20px;
 }
 
-/* NEXT dentro del card */
 .next-wrapper{
     position:absolute;
     bottom:20px;
 }
 </style>
-</head>
 
-<body>
+<div class="flashcards-wrap">
+    <div class="listen-wrapper">
+        <button class="listen" id="listenBtn" onclick="speak(event)">🔊 Listen</button>
+    </div>
 
-<button class="back-btn" 
-onclick="window.location.href='../../academic/unit_view.php?unit=<?= urlencode($unit) ?>'">
-↩ Back
-</button>
-
-<div class="title">🧸 Flashcards</div>
-
-<div class="listen-wrapper">
-    <button class="listen" onclick="speak(event)">🔊 Listen</button>
-</div>
-
-<div class="card-container">
-    <div class="card" id="card">
-        <div class="side front" id="front"></div>
-        <div class="side back" id="back"></div>
+    <div class="card-container">
+        <div class="card" id="card">
+            <div class="side front" id="front"></div>
+            <div class="side back" id="back"></div>
+        </div>
     </div>
 </div>
 
 <script>
-const data = <?=json_encode($data, JSON_UNESCAPED_UNICODE)?>;
+const data = <?= json_encode($data, JSON_UNESCAPED_UNICODE) ?>;
 
 let index = 0;
 
-const front = document.getElementById("front");
-const back = document.getElementById("back");
-const card = document.getElementById("card");
+const front = document.getElementById('front');
+const back = document.getElementById('back');
+const card = document.getElementById('card');
 
-function loadCard(){
-    const item = data[index];
+function getText(item) {
+    return item && typeof item.text === 'string' ? item.text : '';
+}
+
+function getImage(item) {
+    return item && typeof item.image === 'string' ? item.image : '';
+}
+
+function loadCard() {
+    const item = data[index] || {};
+    const image = getImage(item);
+    const text = getText(item);
 
     front.innerHTML = `
-        ${item.image ? `<img src="${item.image}" alt="">` : ""}
+        ${image ? `<img src="${image}" alt="flashcard-image">` : ''}
         <div class="next-wrapper">
             <button class="next" onclick="nextCard(event)">Next ➜</button>
         </div>
     `;
 
-    back.innerHTML = item.text;
+    back.textContent = text;
 }
 
-function speak(e){
-    e.stopPropagation();
-    const utter = new SpeechSynthesisUtterance(data[index].text);
-    utter.lang = "en-US";
+function speak(event) {
+    event.stopPropagation();
+
+    speechSynthesis.cancel();
+
+    const item = data[index] || {};
+    const text = getText(item);
+
+    if (!text) {
+        return;
+    }
+
+    const utter = new SpeechSynthesisUtterance(text);
+    utter.lang = 'en-US';
     speechSynthesis.speak(utter);
 }
 
-function nextCard(e){
-    e.stopPropagation();
-    card.classList.remove("flip");
-    index++;
-    if(index >= data.length) index = 0;
+function nextCard(event) {
+    event.stopPropagation();
+    card.classList.remove('flip');
+    index += 1;
+
+    if (index >= data.length) {
+        index = 0;
+    }
+
     loadCard();
 }
 
-card.addEventListener("click", ()=>{
-    card.classList.toggle("flip");
+card.addEventListener('click', function () {
+    card.classList.toggle('flip');
 });
 
 loadCard();
 </script>
-
-</body>
-</html>
+<?php
+$content = ob_get_clean();
+render_activity_viewer('Flashcards', '🧸', $content);
