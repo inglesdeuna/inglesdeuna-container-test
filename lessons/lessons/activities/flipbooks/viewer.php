@@ -33,6 +33,11 @@ if (isset($flipbook['pdf_url']) && trim((string) $flipbook['pdf_url']) !== '') {
     }
 }
 
+$pdfProxyUrl = '';
+if ($pdfUrl !== '' && preg_match('/^https?:\/\//i', $pdfUrl)) {
+    $pdfProxyUrl = './pdf_proxy.php?url=' . urlencode($pdfUrl);
+}
+
 $language = isset($flipbook['language']) && trim((string) $flipbook['language']) !== ''
     ? trim((string) $flipbook['language'])
     : 'en-US';
@@ -125,6 +130,7 @@ ob_start();
 
 <script>
 const pdfUrl = <?= json_encode($pdfUrl, JSON_UNESCAPED_UNICODE) ?>;
+const pdfProxyUrl = <?= json_encode($pdfProxyUrl, JSON_UNESCAPED_UNICODE) ?>;
 const pageTexts = <?= json_encode($pageTexts, JSON_UNESCAPED_UNICODE) ?>;
 const listenEnabledGlobal = <?= $listenEnabled ? 'true' : 'false' ?>;
 const speechLang = <?= json_encode($language, JSON_UNESCAPED_UNICODE) ?>;
@@ -266,7 +272,35 @@ if (listenEnabledGlobal) {
   });
 }
 
-pdfjsLib.getDocument({ url: pdfUrl, withCredentials: false }).promise
+function loadPdfWithFallback() {
+  const candidates = [];
+
+  if (pdfProxyUrl) {
+    candidates.push({ url: pdfProxyUrl, label: 'compatibilidad' });
+  }
+
+  candidates.push({ url: pdfUrl, label: 'directo' });
+
+  let chain = Promise.reject(new Error('init'));
+
+  candidates.forEach(function (candidate, index) {
+    chain = chain.catch(function () {
+      if (index > 0) {
+        statusEl.className = 'loading';
+        statusEl.textContent = 'Reintentando carga directa del PDF...';
+      } else if (candidate.label === 'compatibilidad') {
+        statusEl.className = 'loading';
+        statusEl.textContent = 'Cargando en modo compatibilidad...';
+      }
+
+      return pdfjsLib.getDocument({ url: candidate.url, withCredentials: false }).promise;
+    });
+  });
+
+  return chain;
+}
+
+loadPdfWithFallback()
   .then(function (pdf) {
     return renderPdfPages(pdf);
   })
@@ -282,7 +316,7 @@ pdfjsLib.getDocument({ url: pdfUrl, withCredentials: false }).promise
   .catch(function (error) {
     statusEl.className = 'error';
     statusEl.textContent = 'No se pudo cargar el flipbook PDF.';
-    console.error(error);
+    console.error('Flipbook PDF load error:', error);
   });
 </script>
 <?php
