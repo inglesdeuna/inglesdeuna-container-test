@@ -75,7 +75,7 @@ function upload_pdf_to_cloudinary($tmpPath, $originalName)
     $timestamp = time();
     $publicId = 'unit_' . preg_replace('/[^a-zA-Z0-9_-]/', '_', (string) ($_GET['unit'] ?? '')) . '_' . $timestamp;
 
-    // Cloudinary signature must include the exact upload params (except file/api_key/signature/resource_type).
+    // Cloudinary signature must include the exact upload params (except file/api_key/signature).
     $signatureParams = array(
         'folder' => 'flipbooks',
         'public_id' => $publicId,
@@ -99,7 +99,6 @@ function upload_pdf_to_cloudinary($tmpPath, $originalName)
         'api_key' => $key,
         'timestamp' => $timestamp,
         'signature' => $signature,
-        'resource_type' => 'raw',
         'public_id' => $publicId,
         'folder' => 'flipbooks',
         'use_filename' => 'true',
@@ -107,7 +106,8 @@ function upload_pdf_to_cloudinary($tmpPath, $originalName)
     );
 
     $ch = curl_init();
-    curl_setopt($ch, CURLOPT_URL, 'https://api.cloudinary.com/v1_1/' . $cloud . '/raw/upload');
+    // Upload PDF as IMAGE resource so Cloudinary serves it publicly without raw delivery restrictions.
+    curl_setopt($ch, CURLOPT_URL, 'https://api.cloudinary.com/v1_1/' . $cloud . '/image/upload');
     curl_setopt($ch, CURLOPT_POST, 1);
     curl_setopt($ch, CURLOPT_POSTFIELDS, $post);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -247,7 +247,7 @@ ob_start();
     <div class="row">
         <label style="font-weight:bold;">Subir PDF (puede reemplazar el actual)</label>
         <input type="file" name="pdf" accept="application/pdf">
-        <small style="color:#6b7280;">Se sube a Cloudinary como archivo RAW (recomendado para PDFs pesados).</small>
+        <small style="color:#6b7280;">Se sube a Cloudinary como image/pdf para entrega pública directa (compatible con viewer).</small>
     </div>
 
     <div class="row">
