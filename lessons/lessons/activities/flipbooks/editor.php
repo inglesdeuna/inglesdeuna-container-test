@@ -64,9 +64,13 @@ function save_flipbook_data($pdo, $unit, $payload)
 
 function upload_pdf_to_cloudinary($tmpPath, $originalName)
 {
-    $cloud = isset($_ENV['CLOUDINARY_CLOUD_NAME']) ? $_ENV['CLOUDINARY_CLOUD_NAME'] : '';
-    $key = isset($_ENV['CLOUDINARY_API_KEY']) ? $_ENV['CLOUDINARY_API_KEY'] : '';
-    $secret = isset($_ENV['CLOUDINARY_API_SECRET']) ? $_ENV['CLOUDINARY_API_SECRET'] : '';
+    $cloud = getenv('CLOUDINARY_CLOUD_NAME');
+    $key = getenv('CLOUDINARY_API_KEY');
+    $secret = getenv('CLOUDINARY_API_SECRET');
+
+    $cloud = $cloud !== false ? trim((string) $cloud) : '';
+    $key = $key !== false ? trim((string) $key) : '';
+    $secret = $secret !== false ? trim((string) $secret) : '';
 
     if ($cloud === '' || $key === '' || $secret === '') {
         return array('error' => 'Cloudinary no está configurado en el entorno.');
@@ -101,6 +105,7 @@ function upload_pdf_to_cloudinary($tmpPath, $originalName)
         'signature' => $signature,
         'public_id' => $publicId,
         'folder' => 'flipbooks',
+        'resource_type' => 'image',
         'use_filename' => 'true',
         'unique_filename' => 'true',
     );
@@ -113,9 +118,11 @@ function upload_pdf_to_cloudinary($tmpPath, $originalName)
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_TIMEOUT, 600);
     curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 30);
+    curl_setopt($ch, CURLOPT_FAILONERROR, false);
 
     $result = curl_exec($ch);
     $curlError = curl_error($ch);
+    $httpCode = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
     curl_close($ch);
 
     if ($result === false) {
@@ -124,6 +131,13 @@ function upload_pdf_to_cloudinary($tmpPath, $originalName)
 
     $response = json_decode($result, true);
 
+    if ($httpCode >= 400) {
+        $message = is_array($response) && isset($response['error']['message'])
+            ? $response['error']['message']
+            : 'Error HTTP ' . $httpCode . ' en Cloudinary';
+        return array('error' => $message);
+    }
+
     if (!is_array($response) || isset($response['error'])) {
         $message = is_array($response) && isset($response['error']['message'])
             ? $response['error']['message']
@@ -131,11 +145,32 @@ function upload_pdf_to_cloudinary($tmpPath, $originalName)
         return array('error' => $message);
     }
 
+    $secureUrl = isset($response['secure_url']) ? (string) $response['secure_url'] : '';
+    $format = isset($response['format']) ? (string) $response['format'] : '';
+    if ($secureUrl !== '' && $format === 'pdf' && !preg_match('/\.pdf(\?|$)/i', $secureUrl)) {
+        $secureUrl .= '.pdf';
+    }
+
     return array(
-        'secure_url' => isset($response['secure_url']) ? $response['secure_url'] : '',
+        'secure_url' => $secureUrl,
         'public_id' => isset($response['public_id']) ? $response['public_id'] : '',
         'bytes' => isset($response['bytes']) ? (int) $response['bytes'] : 0,
     );
+}
+
+function get_upload_error_message($code)
+{
+    $messages = array(
+        UPLOAD_ERR_INI_SIZE => 'El archivo excede upload_max_filesize en el servidor.',
+        UPLOAD_ERR_FORM_SIZE => 'El archivo excede el tamaño permitido por el formulario.',
+        UPLOAD_ERR_PARTIAL => 'El archivo se subió parcialmente.',
+        UPLOAD_ERR_NO_FILE => 'No se seleccionó ningún PDF.',
+        UPLOAD_ERR_NO_TMP_DIR => 'Falta la carpeta temporal del servidor.',
+        UPLOAD_ERR_CANT_WRITE => 'No se pudo escribir el archivo en disco.',
+        UPLOAD_ERR_EXTENSION => 'Una extensión de PHP detuvo la subida.',
+    );
+
+    return isset($messages[$code]) ? $messages[$code] : 'Error desconocido de subida (' . (int) $code . ').';
 }
 
 function parse_page_texts($raw)
@@ -177,15 +212,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $flipbook['listen_enabled'] = $listenEnabled;
     $flipbook['page_texts'] = $pageTexts;
 
-    if (isset($_FILES['pdf']) && isset($_FILES['pdf']['error']) && $_FILES['pdf']['error'] === UPLOAD_ERR_OK) {
-        $upload = upload_pdf_to_cloudinary($_FILES['pdf']['tmp_name'], $_FILES['pdf']['name']);
+    if (isset($_FILES['pdf']) && isset($_FILES['pdf']['error'])) {
+        $pdfError = (int) $_FILES['pdf']['error'];
 
-        if (isset($upload['error'])) {
-            $errorMsg = $upload['error'];
-        } else {
-            $flipbook['pdf_url'] = $upload['secure_url'];
-            $flipbook['pdf_public_id'] = $upload['public_id'];
-            $flipbook['pdf_bytes'] = $upload['bytes'];
+        if ($pdfError === UPLOAD_ERR_OK) {
+            $extension = strtolower(pathinfo((string) $_FILES['pdf']['name'], PATHINFO_EXTENSION));
+            if ($extension !== 'pdf') {
+                $errorMsg = 'Solo se permite subir archivos PDF.';
+            } else {
+                $upload = upload_pdf_to_cloudinary($_FILES['pdf']['tmp_name'], $_FILES['pdf']['name']);
+
+                if (isset($upload['error'])) {
+                    $errorMsg = $upload['error'];
+                } else {
+                    $flipbook['pdf_url'] = $upload['secure_url'];
+                    $flipbook['pdf_public_id'] = $upload['public_id'];
+                    $flipbook['pdf_bytes'] = $upload['bytes'];
+                    $flipbook['pdf'] = $upload['secure_url'];
+                }
+            }
+        } elseif ($pdfError !== UPLOAD_ERR_NO_FILE) {
+            $errorMsg = get_upload_error_message($pdfError);
         }
     }
 
