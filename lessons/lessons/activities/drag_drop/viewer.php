@@ -1,65 +1,91 @@
 <?php
-require_once __DIR__."/../../config/db.php";
+require_once __DIR__ . '/../../config/db.php';
+require_once __DIR__ . '/../../core/_activity_viewer_template.php';
 
-$activityId = $_GET['id'] ?? null;
-if (!$activityId) die("Actividad no especificada");
+$activityId = isset($_GET['id']) ? $_GET['id'] : null;
+$unit = isset($_GET['unit']) ? $_GET['unit'] : null;
 
-$stmt = $pdo->prepare("
-    SELECT unit_id, data
-    FROM activities
-    WHERE id = :id
-    LIMIT 1
-");
-$stmt->execute(["id"=>$activityId]);
+if ($activityId && !$unit) {
+    $stmt = $pdo->prepare(
+        "SELECT unit_id
+         FROM activities
+         WHERE id = :id
+         LIMIT 1"
+    );
+    $stmt->execute(array('id' => $activityId));
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$row) {
+        die('Actividad no encontrada');
+    }
+
+    $unit = $row['unit_id'];
+}
+
+if (!$unit) {
+    die('Unidad no especificada');
+}
+
+$stmt = $pdo->prepare(
+    "SELECT data
+     FROM activities
+     WHERE unit_id = :unit
+       AND type = 'drag_drop'
+     LIMIT 1"
+);
+$stmt->execute(array('unit' => $unit));
 $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
-if (!$row) die("Actividad no encontrada");
+$raw = isset($row['data']) ? $row['data'] : '[]';
+$decoded = json_decode($raw, true);
+$blocks = is_array($decoded) ? $decoded : array();
 
-$unit = $row["unit_id"];
-$data = json_decode($row["data"] ?? "[]", true);
-
-
-$data = json_decode($row["data"] ?? "[]", true);
-
-if (empty($data)) {
-    die("No hay oraciones para esta unidad");
+if (count($blocks) === 0) {
+    die('No hay oraciones para esta unidad');
 }
 
-/* EXTRAER SOLO LAS ORACIONES */
-$sentences = [];
-
-foreach ($data as $item) {
-    if (isset($item["sentence"])) {
-        $sentences[] = $item["sentence"];
-    }
-}
+ob_start();
 ?>
-
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<title>Build the Sentence</title>
-
 <style>
-body{
-  font-family: Arial, sans-serif;
-  background:#eef6ff;
+.instructions{
+  margin:0 0 16px 0;
   text-align:center;
-  padding:20px;
+  color:#334155;
 }
-
-h1{ color:#0b5ed7; }
 
 #sentenceBox{
   margin:20px auto;
   padding:15px;
   background:white;
   border-radius:15px;
-  max-width:700px;
+  max-width:900px;
 }
 
-#words, #answer{
+#promptText{
+  line-height:2;
+  font-size:20px;
+}
+
+.blank{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-width:100px;
+  min-height:42px;
+  padding:4px 8px;
+  margin:0 5px;
+  border:2px dashed #0b5ed7;
+  border-radius:10px;
+  background:#f8fbff;
+  vertical-align:middle;
+}
+
+.blank.filled{
+  border-style:solid;
+  background:#e8f1ff;
+}
+
+#wordBank{
   display:flex;
   flex-wrap:wrap;
   justify-content:center;
@@ -74,14 +100,7 @@ h1{ color:#0b5ed7; }
   font-weight:bold;
   cursor:grab;
   background:#2563eb;
-}
-
-.drop-zone{
-  background:#fff;
-  border:2px dashed #0b5ed7;
-  border-radius:12px;
-  padding:15px;
-  min-height:60px;
+  user-select:none;
 }
 
 button{
@@ -95,133 +114,218 @@ button{
 }
 
 #feedback{
+  text-align:center;
   font-size:18px;
   font-weight:bold;
+  min-height:28px;
 }
 
 .good{ color:green; }
 .bad{ color:crimson; }
 
-.controls{ margin-top:15px; }
-
-a.back{
-  display:inline-block;
-  margin-top:20px;
-  background:#16a34a;
-  color:#fff;
-  padding:10px 18px;
-  border-radius:12px;
-  text-decoration:none;
-  font-weight:bold;
-}
+.controls{ margin-top:15px; text-align:center; }
 </style>
-</head>
 
-<body>
-
-<h1>🎯 Build the Sentence</h1>
-<p>Drag the words to build the sentence.</p>
+<p class="instructions">Completa los espacios arrastrando las palabras correctas.</p>
 
 <div id="sentenceBox">
   <button onclick="speak()">🔊 Listen</button>
+  <div id="promptText"></div>
 </div>
 
-<h3>Words</h3>
-<div id="words"></div>
-
-<h3>Your sentence</h3>
-<div id="answer" class="drop-zone"></div>
+<div id="wordBank"></div>
 
 <div class="controls">
   <button onclick="checkSentence()">✅ Check</button>
-  <button onclick="nextSentence()">➡️</button>
+  <button onclick="nextSentence()">➡️ Next</button>
 </div>
 
 <div id="feedback"></div>
 
-<a class="back" href="../../academic/unit_view.php?unit=<?= urlencode($unit) ?>">
-  ↩ Back
-</a>
-
 <script>
-
-const sentences = <?= json_encode($sentences) ?>;
+const blocks = <?= json_encode($blocks, JSON_UNESCAPED_UNICODE) ?>;
 
 let index = 0;
-let correct = "";
 let dragged = null;
+let currentText = '';
+let currentAnswers = [];
 
-const wordsDiv = document.getElementById("words");
-const answerDiv = document.getElementById("answer");
-const feedback = document.getElementById("feedback");
+const promptText = document.getElementById('promptText');
+const wordBank = document.getElementById('wordBank');
+const feedback = document.getElementById('feedback');
 
-/* LOAD SENTENCE */
-function loadSentence(){
+function normalizeBlock(block) {
+  const text = (block && typeof block.text === 'string' && block.text.trim() !== '')
+    ? block.text.trim()
+    : ((block && typeof block.sentence === 'string') ? block.sentence.trim() : '');
 
-  dragged = null;
-  feedback.textContent = "";
-  feedback.className = "";
+  let missing = [];
+  if (block && Array.isArray(block.missing_words)) {
+    missing = block.missing_words
+      .map(function (w) { return String(w).trim(); })
+      .filter(function (w) { return w.length > 0; });
+  }
 
-  wordsDiv.innerHTML = "";
-  answerDiv.innerHTML = "";
+  return { text: text, missing_words: missing };
+}
 
-  correct = sentences[index];
-
-  let words = correct.split(" ").sort(()=>Math.random()-0.5);
-
-  words.forEach(w=>{
-    const span = document.createElement("span");
-    span.textContent = w;
-    span.className="word";
-    span.draggable=true;
-    span.addEventListener("dragstart",()=>dragged=span);
-    wordsDiv.appendChild(span);
+function shuffle(list) {
+  return list.slice().sort(function () {
+    return Math.random() - 0.5;
   });
 }
 
-/* DRAG */
-answerDiv.addEventListener("dragover", e=>e.preventDefault());
-answerDiv.addEventListener("drop", ()=>{
-  if(dragged) answerDiv.appendChild(dragged);
-});
+function createWordChip(word) {
+  const chip = document.createElement('span');
+  chip.textContent = word;
+  chip.className = 'word';
+  chip.draggable = true;
+  chip.dataset.word = word;
 
-/* CHECK */
-function checkSentence(){
-  const built = [...answerDiv.children]
-    .map(w=>w.textContent)
-    .join(" ");
+  chip.addEventListener('dragstart', function () {
+    dragged = chip;
+  });
 
-  if(built === correct){
-    feedback.textContent="🌟 Excellent!";
-    feedback.className="good";
-  }else{
-    feedback.textContent="🔁 Try again!";
-    feedback.className="bad";
+  return chip;
+}
+
+function createBlank(indexBlank) {
+  const blank = document.createElement('span');
+  blank.className = 'blank';
+  blank.dataset.index = String(indexBlank);
+  blank.textContent = '____';
+
+  blank.addEventListener('dragover', function (event) {
+    event.preventDefault();
+  });
+
+  blank.addEventListener('drop', function (event) {
+    event.preventDefault();
+    if (!dragged) {
+      return;
+    }
+
+    const draggedWord = dragged.dataset.word || '';
+    const oldWord = blank.dataset.word || '';
+
+    if (oldWord) {
+      wordBank.appendChild(createWordChip(oldWord));
+    }
+
+    blank.dataset.word = draggedWord;
+    blank.textContent = draggedWord;
+    blank.classList.add('filled');
+
+    dragged.remove();
+    dragged = null;
+  });
+
+  blank.addEventListener('click', function () {
+    const existing = blank.dataset.word || '';
+    if (!existing) {
+      return;
+    }
+
+    wordBank.appendChild(createWordChip(existing));
+    blank.dataset.word = '';
+    blank.textContent = '____';
+    blank.classList.remove('filled');
+  });
+
+  return blank;
+}
+
+function loadSentence() {
+  dragged = null;
+  feedback.textContent = '';
+  feedback.className = '';
+
+  promptText.innerHTML = '';
+  wordBank.innerHTML = '';
+
+  const block = normalizeBlock(blocks[index] || {});
+  currentText = block.text;
+  currentAnswers = block.missing_words.slice();
+
+  if (!currentText) {
+    feedback.textContent = '⚠ Bloque vacío';
+    feedback.className = 'bad';
+    return;
+  }
+
+  if (currentAnswers.length === 0) {
+    currentAnswers = currentText.split(/\s+/).filter(function (w) { return w.length > 0; });
+  }
+
+  let renderedText = currentText;
+  currentAnswers.forEach(function (word) {
+    const escaped = word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regex = new RegExp('\\b' + escaped + '\\b', 'i');
+    renderedText = renderedText.replace(regex, '[[BLANK]]');
+  });
+
+  const parts = renderedText.split('[[BLANK]]');
+
+  parts.forEach(function (part, i) {
+    promptText.appendChild(document.createTextNode(part));
+    if (i < currentAnswers.length) {
+      promptText.appendChild(createBlank(i));
+    }
+  });
+
+  shuffle(currentAnswers).forEach(function (word) {
+    wordBank.appendChild(createWordChip(word));
+  });
+}
+
+function getBuiltAnswers() {
+  const blanks = Array.prototype.slice.call(promptText.querySelectorAll('.blank'));
+  return blanks.map(function (blank) {
+    return blank.dataset.word || '';
+  });
+}
+
+function checkSentence() {
+  const built = getBuiltAnswers();
+
+  if (built.includes('')) {
+    feedback.textContent = '⚠ Complete all blanks.';
+    feedback.className = 'bad';
+    return;
+  }
+
+  if (JSON.stringify(built) === JSON.stringify(currentAnswers)) {
+    feedback.textContent = '🌟 Excellent!';
+    feedback.className = 'good';
+  } else {
+    feedback.textContent = '🔁 Try again!';
+    feedback.className = 'bad';
   }
 }
 
-/* NEXT */
-function nextSentence(){
-  index++;
-  if(index >= sentences.length){
-    feedback.textContent="🏆 You finished all sentences!";
-    feedback.className="good";
+function nextSentence() {
+  index += 1;
+
+  if (index >= blocks.length) {
+    feedback.textContent = '🏆 You finished all sentences!';
+    feedback.className = 'good';
+    index = blocks.length - 1;
     return;
   }
+
   loadSentence();
 }
 
-/* TEXT TO SPEECH */
-function speak(){
-  const msg = new SpeechSynthesisUtterance(correct);
-  msg.lang="en-US";
+function speak() {
+  speechSynthesis.cancel();
+  const msg = new SpeechSynthesisUtterance(currentText || '');
+  msg.lang = 'en-US';
+  msg.rate = 0.9;
   speechSynthesis.speak(msg);
 }
 
-/* START */
 loadSentence();
-
 </script>
-
-</body>
-</html>
+<?php
+$content = ob_get_clean();
+render_activity_viewer('Build the Sentence', '🎯', $content);
