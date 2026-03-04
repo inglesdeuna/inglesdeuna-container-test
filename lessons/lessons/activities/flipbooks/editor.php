@@ -1,115 +1,261 @@
 <?php
-session_start();
+require_once __DIR__ . '/../../config/db.php';
+require_once __DIR__ . '/../../core/_activity_editor_template.php';
 
-if (!isset($_SESSION["admin_logged"])) {
-    header("Location: /lessons/lessons/admin/login.php");
-    exit;
+$unit = isset($_GET['unit']) ? $_GET['unit'] : null;
+if (!$unit) {
+    die('Unidad no especificada');
 }
 
-require_once __DIR__ . "/../../core/db.php";
-require_once __DIR__ . "/../../core/_activity_editor_template.php";
+function load_flipbook_data($pdo, $unit)
+{
+    $stmt = $pdo->prepare(
+        "SELECT data
+         FROM activities
+         WHERE unit_id = :unit
+           AND type = 'flipbooks'
+         LIMIT 1"
+    );
+    $stmt->execute(array('unit' => $unit));
 
-$unit = $_GET['unit'] ?? null;
-if (!$unit) die("Unidad no especificada");
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+    $raw = isset($row['data']) ? $row['data'] : '{}';
+    $decoded = json_decode($raw, true);
 
-/* ===== CARGAR DESDE DB ===== */
-$stmt = $pdo->prepare("
-    SELECT data
-    FROM activities
-    WHERE unit_id = :unit AND type = 'flipbooks'
-    LIMIT 1
-");
-$stmt->execute([":unit" => $unit]);
-$row = $stmt->fetchColumn();
-
-$currentPdf = "";
-if ($row) {
-    $decoded = json_decode($row, true);
-    $currentPdf = $decoded["pdf"] ?? "";
+    return is_array($decoded) ? $decoded : array();
 }
 
-/* ===== PROCESAR POST ===== */
-if ($_SERVER["REQUEST_METHOD"] === "POST") {
+function save_flipbook_data($pdo, $unit, $payload)
+{
+    $json = json_encode($payload, JSON_UNESCAPED_UNICODE);
 
-    // ELIMINAR PDF
-    if (isset($_POST["delete_pdf"])) {
+    $check = $pdo->prepare(
+        "SELECT id
+         FROM activities
+         WHERE unit_id = :unit
+           AND type = 'flipbooks'
+         LIMIT 1"
+    );
+    $check->execute(array('unit' => $unit));
 
-        $stmt = $pdo->prepare("
-            INSERT INTO activities (unit_id, type, data, created_at)
-            VALUES (:unit, 'flipbooks', :data, NOW())
-            ON CONFLICT (unit_id, type)
-            DO UPDATE SET
-                data = EXCLUDED.data,
-                created_at = NOW()
-        ");
+    if ($check->fetch()) {
+        $stmt = $pdo->prepare(
+            "UPDATE activities
+             SET data = :data
+             WHERE unit_id = :unit
+               AND type = 'flipbooks'"
+        );
+        $stmt->execute(array(
+            'data' => $json,
+            'unit' => $unit,
+        ));
+    } else {
+        $stmt = $pdo->prepare(
+            "INSERT INTO activities (id, unit_id, type, data)
+             VALUES (:id, :unit, 'flipbooks', :data)"
+        );
+        $stmt->execute(array(
+            'id' => md5(random_bytes(16)),
+            'unit' => $unit,
+            'data' => $json,
+        ));
+    }
+}
 
-        $stmt->execute([
-            ":unit" => $unit,
-            ":data" => json_encode(["pdf" => ""])
-        ]);
+function upload_pdf_to_cloudinary($tmpPath, $originalName)
+{
+    $cloud = isset($_ENV['CLOUDINARY_CLOUD_NAME']) ? $_ENV['CLOUDINARY_CLOUD_NAME'] : '';
+    $key = isset($_ENV['CLOUDINARY_API_KEY']) ? $_ENV['CLOUDINARY_API_KEY'] : '';
+    $secret = isset($_ENV['CLOUDINARY_API_SECRET']) ? $_ENV['CLOUDINARY_API_SECRET'] : '';
 
-        header("Location: editor.php?unit=" . urlencode($unit));
-        exit;
+    if ($cloud === '' || $key === '' || $secret === '') {
+        return array('error' => 'Cloudinary no está configurado en el entorno.');
     }
 
-    // GUARDAR PDF NUEVO
-    if (isset($_FILES["pdf"]) && $_FILES["pdf"]["error"] === 0) {
+    $timestamp = time();
+    $publicId = 'flipbooks/unit_' . preg_replace('/[^a-zA-Z0-9_-]/', '_', (string) ($_GET['unit'] ?? '')) . '_' . $timestamp;
 
-        $uploadDir = __DIR__ . "/uploads/";
-        if (!is_dir($uploadDir)) {
-            mkdir($uploadDir, 0777, true);
+    $signatureBase = 'public_id=' . $publicId . '&resource_type=raw&timestamp=' . $timestamp . $secret;
+    $signature = sha1($signatureBase);
+
+    $post = array(
+        'file' => new CURLFile($tmpPath, 'application/pdf', $originalName),
+        'api_key' => $key,
+        'timestamp' => $timestamp,
+        'signature' => $signature,
+        'resource_type' => 'raw',
+        'public_id' => $publicId,
+        'folder' => 'flipbooks',
+        'use_filename' => 'true',
+        'unique_filename' => 'true',
+    );
+
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_URL, 'https://api.cloudinary.com/v1_1/' . $cloud . '/raw/upload');
+    curl_setopt($ch, CURLOPT_POST, 1);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, $post);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 600);
+    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 30);
+
+    $result = curl_exec($ch);
+    $curlError = curl_error($ch);
+    curl_close($ch);
+
+    if ($result === false) {
+        return array('error' => 'Error al subir PDF: ' . $curlError);
+    }
+
+    $response = json_decode($result, true);
+
+    if (!is_array($response) || isset($response['error'])) {
+        $message = is_array($response) && isset($response['error']['message'])
+            ? $response['error']['message']
+            : 'Error desconocido subiendo PDF';
+        return array('error' => $message);
+    }
+
+    return array(
+        'secure_url' => isset($response['secure_url']) ? $response['secure_url'] : '',
+        'public_id' => isset($response['public_id']) ? $response['public_id'] : '',
+        'bytes' => isset($response['bytes']) ? (int) $response['bytes'] : 0,
+    );
+}
+
+function parse_page_texts($raw)
+{
+    $lines = preg_split('/\r\n|\r|\n/', (string) $raw);
+    $texts = array();
+
+    foreach ($lines as $line) {
+        $trimmed = trim($line);
+        if ($trimmed !== '') {
+            $texts[] = $trimmed;
         }
+    }
 
-        $filename = time() . "_" . basename($_FILES["pdf"]["name"]);
-        $targetPath = $uploadDir . $filename;
+    return $texts;
+}
 
-        move_uploaded_file($_FILES["pdf"]["tmp_name"], $targetPath);
+$flipbook = load_flipbook_data($pdo, $unit);
+$errorMsg = '';
 
-       $relativePath = "activities/flipbooks/uploads/" . $filename;
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (isset($_POST['delete_pdf'])) {
+        $flipbook['pdf_url'] = '';
+        $flipbook['pdf_public_id'] = '';
+        $flipbook['pdf_bytes'] = 0;
+        save_flipbook_data($pdo, $unit, $flipbook);
 
-        $stmt = $pdo->prepare("
-            INSERT INTO activities (unit_id, type, data, created_at)
-            VALUES (:unit, 'flipbooks', :data, NOW())
-            ON CONFLICT (unit_id, type)
-            DO UPDATE SET
-                data = EXCLUDED.data,
-                created_at = NOW()
-        ");
+        header('Location: editor.php?unit=' . urlencode((string) $unit) . '&saved=1');
+        exit;
+    }
 
-        $stmt->execute([
-            ":unit" => $unit,
-            ":data" => json_encode(["pdf" => $relativePath])
-        ]);
+    $title = isset($_POST['title']) ? trim($_POST['title']) : '';
+    $language = isset($_POST['language']) ? trim($_POST['language']) : 'en-US';
+    $listenEnabled = isset($_POST['listen_enabled']) && $_POST['listen_enabled'] === '1';
+    $pageTexts = parse_page_texts(isset($_POST['page_texts']) ? $_POST['page_texts'] : '');
 
-        header("Location: editor.php?unit=" . urlencode($unit));
+    $flipbook['title'] = $title !== '' ? $title : 'My Flipbook';
+    $flipbook['language'] = $language !== '' ? $language : 'en-US';
+    $flipbook['listen_enabled'] = $listenEnabled;
+    $flipbook['page_texts'] = $pageTexts;
+
+    if (isset($_FILES['pdf']) && isset($_FILES['pdf']['error']) && $_FILES['pdf']['error'] === UPLOAD_ERR_OK) {
+        $upload = upload_pdf_to_cloudinary($_FILES['pdf']['tmp_name'], $_FILES['pdf']['name']);
+
+        if (isset($upload['error'])) {
+            $errorMsg = $upload['error'];
+        } else {
+            $flipbook['pdf_url'] = $upload['secure_url'];
+            $flipbook['pdf_public_id'] = $upload['public_id'];
+            $flipbook['pdf_bytes'] = $upload['bytes'];
+        }
+    }
+
+    if ($errorMsg === '') {
+        save_flipbook_data($pdo, $unit, $flipbook);
+        header('Location: editor.php?unit=' . urlencode((string) $unit) . '&saved=1');
         exit;
     }
 }
 
-/* ===== CONTENIDO PARA TEMPLATE ===== */
+$currentPdf = isset($flipbook['pdf_url']) ? $flipbook['pdf_url'] : '';
+$currentTitle = isset($flipbook['title']) ? $flipbook['title'] : 'My Flipbook';
+$currentLanguage = isset($flipbook['language']) ? $flipbook['language'] : 'en-US';
+$currentListen = isset($flipbook['listen_enabled']) ? (bool) $flipbook['listen_enabled'] : true;
+$currentPageTexts = isset($flipbook['page_texts']) && is_array($flipbook['page_texts']) ? $flipbook['page_texts'] : array();
+
 ob_start();
 ?>
+<style>
+.flipbook-form{max-width:800px;margin:0 auto;text-align:left;}
+.flipbook-form input[type="text"],
+.flipbook-form input[type="file"],
+.flipbook-form select,
+.flipbook-form textarea{width:100%;padding:10px;border:1px solid #d1d5db;border-radius:8px;box-sizing:border-box;margin-top:6px;}
+.flipbook-form .row{margin-bottom:14px;}
+.file-box{margin-top:18px;background:#f3f4f6;border:1px solid #e5e7eb;padding:12px;border-radius:10px;}
+</style>
 
-<form method="POST" enctype="multipart/form-data" style="text-align:center;">
-    <input type="file" name="pdf" accept="application/pdf" required>
-    <br><br>
-    <button type="submit" class="save-btn">💾 Save PDF</button>
+<?php if (isset($_GET['saved'])) { ?>
+    <p style="color:green;font-weight:bold;margin-bottom:15px;">✔ Guardado correctamente</p>
+<?php } ?>
+
+<?php if ($errorMsg !== '') { ?>
+    <p style="color:#dc2626;font-weight:bold;margin-bottom:15px;">❌ <?= htmlspecialchars($errorMsg) ?></p>
+<?php } ?>
+
+<form class="flipbook-form" method="post" enctype="multipart/form-data">
+    <div class="row">
+        <label style="font-weight:bold;">Título del flipbook</label>
+        <input type="text" name="title" value="<?= htmlspecialchars($currentTitle) ?>" placeholder="Ej: My Story Book">
+    </div>
+
+    <div class="row">
+        <label style="font-weight:bold;">Idioma de lectura (Listen)</label>
+        <select name="language">
+            <option value="en-US" <?= $currentLanguage === 'en-US' ? 'selected' : '' ?>>English (en-US)</option>
+            <option value="es-ES" <?= $currentLanguage === 'es-ES' ? 'selected' : '' ?>>Español (es-ES)</option>
+        </select>
+    </div>
+
+    <div class="row">
+        <label style="display:flex;align-items:center;gap:8px;font-weight:bold;">
+            <input type="hidden" name="listen_enabled" value="0">
+            <input type="checkbox" name="listen_enabled" value="1" <?= $currentListen ? 'checked' : '' ?>>
+            Activar botón Listen en el viewer
+        </label>
+    </div>
+
+    <div class="row">
+        <label style="font-weight:bold;">Subir PDF (puede reemplazar el actual)</label>
+        <input type="file" name="pdf" accept="application/pdf">
+        <small style="color:#6b7280;">Se sube a Cloudinary como archivo RAW (recomendado para PDFs pesados).</small>
+    </div>
+
+    <div class="row">
+        <label style="font-weight:bold;">Texto por página para Listen (1 línea = 1 página)</label>
+        <textarea name="page_texts" rows="8" placeholder="Page 1 text...&#10;Page 2 text..."><?= htmlspecialchars(implode("\n", $currentPageTexts)) ?></textarea>
+    </div>
+
+    <button type="submit" class="save-btn">💾 Guardar flipbook</button>
 </form>
 
-<?php if ($currentPdf): ?>
-    <div class="saved-row">
-        <span class="file-name">
-            <?= htmlspecialchars(basename($currentPdf)) ?>
-        </span>
+<?php if ($currentPdf !== '') { ?>
+    <div class="file-box">
+        <div><strong>PDF actual:</strong> <a href="<?= htmlspecialchars($currentPdf) ?>" target="_blank">Abrir PDF</a></div>
+        <?php if (!empty($flipbook['pdf_bytes'])) { ?>
+            <div style="margin-top:6px;color:#6b7280;">Tamaño: <?= number_format(((int) $flipbook['pdf_bytes']) / 1024 / 1024, 2) ?> MB</div>
+        <?php } ?>
 
-        <form method="POST" style="display:inline;">
+        <form method="post" style="margin-top:10px;">
             <input type="hidden" name="delete_pdf" value="1">
-            <button type="submit" class="delete-btn">✖</button>
+            <button type="submit" class="delete-btn">✖ Quitar PDF</button>
         </form>
     </div>
-<?php endif; ?>
+<?php } ?>
 
 <?php
 $content = ob_get_clean();
-
-render_activity_editor("📖 Flipbook Editor", "📖", $content);
+render_activity_editor('📖 Flipbook Editor', '📖', $content);
