@@ -127,8 +127,6 @@ button{
 
 <div id="feedback"></div>
 
-<a class="back" href="../../academic/unit_view.php?unit=<?= urlencode($unit) ?>">↩ Back</a>
-
 <script>
 const blocks = <?= json_encode($blocks, JSON_UNESCAPED_UNICODE) ?>;
 
