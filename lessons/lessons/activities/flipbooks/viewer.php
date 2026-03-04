@@ -38,6 +38,11 @@ if ($pdfUrl !== '' && preg_match('/^https?:\/\//i', $pdfUrl)) {
     $pdfProxyUrl = './pdf_proxy.php?url=' . urlencode($pdfUrl);
 }
 
+$pdfRawUrl = '';
+if ($pdfUrl !== '' && strpos($pdfUrl, '/image/upload/') !== false && preg_match('/\.pdf(\?|$)/i', $pdfUrl)) {
+    $pdfRawUrl = str_replace('/image/upload/', '/raw/upload/', $pdfUrl);
+}
+
 $language = isset($flipbook['language']) && trim((string) $flipbook['language']) !== ''
     ? trim((string) $flipbook['language'])
     : 'en-US';
@@ -131,6 +136,7 @@ ob_start();
 <script>
 const pdfUrl = <?= json_encode($pdfUrl, JSON_UNESCAPED_UNICODE) ?>;
 const pdfProxyUrl = <?= json_encode($pdfProxyUrl, JSON_UNESCAPED_UNICODE) ?>;
+const pdfRawUrl = <?= json_encode($pdfRawUrl, JSON_UNESCAPED_UNICODE) ?>;
 const pageTexts = <?= json_encode($pageTexts, JSON_UNESCAPED_UNICODE) ?>;
 const listenEnabledGlobal = <?= $listenEnabled ? 'true' : 'false' ?>;
 const speechLang = <?= json_encode($language, JSON_UNESCAPED_UNICODE) ?>;
@@ -277,6 +283,10 @@ function loadPdfWithFallback() {
 
   if (pdfProxyUrl) {
     candidates.push({ url: pdfProxyUrl, label: 'compatibilidad' });
+  }
+
+  if (pdfRawUrl && pdfRawUrl !== pdfUrl) {
+    candidates.push({ url: pdfRawUrl, label: 'raw' });
   }
 
   candidates.push({ url: pdfUrl, label: 'directo' });
