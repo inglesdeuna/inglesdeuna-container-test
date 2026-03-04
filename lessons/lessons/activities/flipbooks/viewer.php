@@ -1,389 +1,277 @@
 <?php
-session_start();
-
-require_once __DIR__ . "/../../core/db.php";
-
-/* 1️⃣ DEFINIR UNIT */
-$unit = $_GET['unit'] ?? null;
-if (!$unit) die("Unidad no especificada");
-
-/* 2️⃣ CONSULTA DB */
-$stmt = $pdo->prepare("
-    SELECT data 
-    FROM activities 
-    WHERE unit_id = :unit 
-    AND type = 'flipbooks'
-    LIMIT 1
-");
-$stmt->execute(['unit' => $unit]);
 require_once __DIR__ . '/../../config/db.php';
-require_once __DIR__ . '/../../core/_activity_viewer_template.php';
+require_once __DIR__ . '/../../core/_activity_editor_template.php';
 
 $unit = isset($_GET['unit']) ? $_GET['unit'] : null;
 if (!$unit) {
     die('Unidad no especificada');
 }
 
-$stmt = $pdo->prepare(
-    "SELECT data
-     FROM activities
-     WHERE unit_id = :unit
-       AND type = 'flipbooks'
-     LIMIT 1"
-);
-$stmt->execute(array('unit' => $unit));
-$row = $stmt->fetch(PDO::FETCH_ASSOC);
+function load_flipbook_data($pdo, $unit)
+{
+    $stmt = $pdo->prepare(
+        "SELECT data
+         FROM activities
+         WHERE unit_id = :unit
+           AND type = 'flipbooks'
+         LIMIT 1"
+    );
+    $stmt->execute(array('unit' => $unit));
 
-$pdfPath = "";
-if ($row) {
-    $decoded = json_decode($row['data'], true);
-    $pdfPath = $decoded['pdf'] ?? "";
-$raw = isset($row['data']) ? $row['data'] : '{}';
-$decoded = json_decode($raw, true);
-$flipbook = is_array($decoded) ? $decoded : array();
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+    $raw = isset($row['data']) ? $row['data'] : '{}';
+    $decoded = json_decode($raw, true);
 
-$pdfUrl = '';
-if (isset($flipbook['pdf_url']) && trim((string) $flipbook['pdf_url']) !== '') {
-    $pdfUrl = trim((string) $flipbook['pdf_url']);
-} elseif (isset($flipbook['pdf']) && trim((string) $flipbook['pdf']) !== '') {
-    $legacyPdf = trim((string) $flipbook['pdf']);
-    if (preg_match('/^https?:\/\//i', $legacyPdf)) {
-        $pdfUrl = $legacyPdf;
+    return is_array($decoded) ? $decoded : array();
+}
+
+function save_flipbook_data($pdo, $unit, $payload)
+{
+    $json = json_encode($payload, JSON_UNESCAPED_UNICODE);
+
+    $check = $pdo->prepare(
+        "SELECT id
+         FROM activities
+         WHERE unit_id = :unit
+           AND type = 'flipbooks'
+         LIMIT 1"
+    );
+    $check->execute(array('unit' => $unit));
+
+    if ($check->fetch()) {
+        $stmt = $pdo->prepare(
+            "UPDATE activities
+             SET data = :data
+             WHERE unit_id = :unit
+               AND type = 'flipbooks'"
+        );
+        $stmt->execute(array(
+            'data' => $json,
+            'unit' => $unit,
+        ));
     } else {
-        $pdfUrl = '/lessons/lessons/' . ltrim($legacyPdf, '/');
+        $stmt = $pdo->prepare(
+            "INSERT INTO activities (id, unit_id, type, data)
+             VALUES (:id, :unit, 'flipbooks', :data)"
+        );
+        $stmt->execute(array(
+            'id' => md5(random_bytes(16)),
+            'unit' => $unit,
+            'data' => $json,
+        ));
     }
 }
 
-$language = isset($flipbook['language']) && trim((string) $flipbook['language']) !== ''
-    ? trim((string) $flipbook['language'])
-    : 'en-US';
-$listenEnabled = !isset($flipbook['listen_enabled']) || (bool) $flipbook['listen_enabled'];
-$pageTexts = isset($flipbook['page_texts']) && is_array($flipbook['page_texts']) ? $flipbook['page_texts'] : array();
+function upload_pdf_to_cloudinary($tmpPath, $originalName)
+{
+    $cloud = isset($_ENV['CLOUDINARY_CLOUD_NAME']) ? $_ENV['CLOUDINARY_CLOUD_NAME'] : '';
+    $key = isset($_ENV['CLOUDINARY_API_KEY']) ? $_ENV['CLOUDINARY_API_KEY'] : '';
+    $secret = isset($_ENV['CLOUDINARY_API_SECRET']) ? $_ENV['CLOUDINARY_API_SECRET'] : '';
 
-if ($pdfUrl === '') {
-    die('No hay flipbook para esta unidad');
+    if ($cloud === '' || $key === '' || $secret === '') {
+        return array('error' => 'Cloudinary no está configurado en el entorno.');
+    }
+
+    $timestamp = time();
+    $publicId = 'unit_' . preg_replace('/[^a-zA-Z0-9_-]/', '_', (string) ($_GET['unit'] ?? '')) . '_' . $timestamp;
+
+    // Cloudinary signature must include the exact upload params (except file/api_key/signature).
+    $signatureParams = array(
+        'folder' => 'flipbooks',
+        'public_id' => $publicId,
+        'timestamp' => $timestamp,
+        'unique_filename' => 'true',
+        'use_filename' => 'true',
+    );
+
+    ksort($signatureParams);
+
+    $signatureStringParts = array();
+    foreach ($signatureParams as $keyParam => $valueParam) {
+        $signatureStringParts[] = $keyParam . '=' . $valueParam;
+    }
+
+    $signatureBase = implode('&', $signatureStringParts) . $secret;
+    $signature = sha1($signatureBase);
+
+    $post = array(
+        'file' => new CURLFile($tmpPath, 'application/pdf', $originalName),
+        'api_key' => $key,
+        'timestamp' => $timestamp,
+        'signature' => $signature,
+        'public_id' => $publicId,
+        'folder' => 'flipbooks',
+        'use_filename' => 'true',
+        'unique_filename' => 'true',
+    );
+
+    $ch = curl_init();
+    // Upload PDF as IMAGE resource so Cloudinary serves it publicly without raw delivery restrictions.
+    curl_setopt($ch, CURLOPT_URL, 'https://api.cloudinary.com/v1_1/' . $cloud . '/image/upload');
+    curl_setopt($ch, CURLOPT_POST, 1);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, $post);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 600);
+    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 30);
+
+    $result = curl_exec($ch);
+    $curlError = curl_error($ch);
+    curl_close($ch);
+
+    if ($result === false) {
+        return array('error' => 'Error al subir PDF: ' . $curlError);
+    }
+
+    $response = json_decode($result, true);
+
+    if (!is_array($response) || isset($response['error'])) {
+        $message = is_array($response) && isset($response['error']['message'])
+            ? $response['error']['message']
+            : 'Error desconocido subiendo PDF';
+        return array('error' => $message);
+    }
+
+    return array(
+        'secure_url' => isset($response['secure_url']) ? $response['secure_url'] : '',
+        'public_id' => isset($response['public_id']) ? $response['public_id'] : '',
+        'bytes' => isset($response['bytes']) ? (int) $response['bytes'] : 0,
+    );
 }
 
-/* 3️⃣ GENERAR CONTENIDO */
+function parse_page_texts($raw)
+{
+    $lines = preg_split('/\r\n|\r|\n/', (string) $raw);
+    $texts = array();
+
+    foreach ($lines as $line) {
+        $trimmed = trim($line);
+        if ($trimmed !== '') {
+            $texts[] = $trimmed;
+        }
+    }
+
+    return $texts;
+}
+
+$flipbook = load_flipbook_data($pdo, $unit);
+$errorMsg = '';
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (isset($_POST['delete_pdf'])) {
+        $flipbook['pdf_url'] = '';
+        $flipbook['pdf_public_id'] = '';
+        $flipbook['pdf_bytes'] = 0;
+        save_flipbook_data($pdo, $unit, $flipbook);
+
+        header('Location: editor.php?unit=' . urlencode((string) $unit) . '&saved=1');
+        exit;
+    }
+
+    $title = isset($_POST['title']) ? trim($_POST['title']) : '';
+    $language = isset($_POST['language']) ? trim($_POST['language']) : 'en-US';
+    $listenEnabled = isset($_POST['listen_enabled']) && $_POST['listen_enabled'] === '1';
+    $pageTexts = parse_page_texts(isset($_POST['page_texts']) ? $_POST['page_texts'] : '');
+
+    $flipbook['title'] = $title !== '' ? $title : 'My Flipbook';
+    $flipbook['language'] = $language !== '' ? $language : 'en-US';
+    $flipbook['listen_enabled'] = $listenEnabled;
+    $flipbook['page_texts'] = $pageTexts;
+
+    if (isset($_FILES['pdf']) && isset($_FILES['pdf']['error']) && $_FILES['pdf']['error'] === UPLOAD_ERR_OK) {
+        $upload = upload_pdf_to_cloudinary($_FILES['pdf']['tmp_name'], $_FILES['pdf']['name']);
+
+        if (isset($upload['error'])) {
+            $errorMsg = $upload['error'];
+        } else {
+            $flipbook['pdf_url'] = $upload['secure_url'];
+            $flipbook['pdf_public_id'] = $upload['public_id'];
+            $flipbook['pdf_bytes'] = $upload['bytes'];
+        }
+    }
+
+    if ($errorMsg === '') {
+        save_flipbook_data($pdo, $unit, $flipbook);
+        header('Location: editor.php?unit=' . urlencode((string) $unit) . '&saved=1');
+        exit;
+    }
+}
+
+$currentPdf = isset($flipbook['pdf_url']) ? $flipbook['pdf_url'] : '';
+$currentTitle = isset($flipbook['title']) ? $flipbook['title'] : 'My Flipbook';
+$currentLanguage = isset($flipbook['language']) ? $flipbook['language'] : 'en-US';
+$currentListen = isset($flipbook['listen_enabled']) ? (bool) $flipbook['listen_enabled'] : true;
+$currentPageTexts = isset($flipbook['page_texts']) && is_array($flipbook['page_texts']) ? $flipbook['page_texts'] : array();
+
 ob_start();
 ?>
 <style>
-.flipbook-wrap{ max-width:1100px; margin:0 auto; text-align:center; }
-.page-indicator{ color:#475569; font-size:14px; margin-bottom:12px; }
-
-.toolbar{
-  display:flex;
-  justify-content:center;
-  align-items:center;
-  gap:10px;
-  flex-wrap:wrap;
-  margin-bottom:14px;
-}
-
-<?php if ($pdfPath): ?>
-.toolbar button{
-  border:none;
-  border-radius:10px;
-  padding:10px 14px;
-  font-weight:bold;
-  cursor:pointer;
-  color:white;
-}
-
-<div style="position:relative; width:900px; margin:auto;">
-    <div id="flipbook" style="width:900px; height:600px;"></div>
-.btn-nav{ background:#0b5ed7; }
-.btn-listen{ background:#16a34a; }
-.btn-listen.disabled{ background:#94a3b8; cursor:not-allowed; }
-
-    <div id="prevBtn" style="position:absolute; bottom:15px; left:10px; cursor:pointer; font-size:28px;">⬅</div>
-    <div id="nextBtn" style="position:absolute; bottom:15px; right:10px; cursor:pointer; font-size:28px;">➡</div>
-</div>
-#book-shell{ position:relative; margin:0 auto; width:980px; max-width:100%; }
-
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/turn.js/4.1.0/turn.min.css" />
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/turn.js/4.1.0/turn.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
-#flipbook{
-  width:980px;
-  height:680px;
-  margin:0 auto;
-  box-shadow:0 10px 30px rgba(0,0,0,.2);
-  background:white;
-}
-
-<script>
-const pdfUrl = "/lessons/lessons/<?= htmlspecialchars($pdfPath) ?>";
-.flip-page{
-  width:490px;
-  height:680px;
-  background:#fff;
-  overflow:hidden;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-}
-
-pdfjsLib.getDocument(pdfUrl).promise.then(function(pdf) {
-.flip-page canvas{ width:100%; height:100%; display:block; }
-
-    const flipbook = document.getElementById("flipbook");
-    const totalPages = pdf.numPages;
-    let renderedPages = 0;
-.loading{ color:#334155; font-weight:bold; padding:30px 0; }
-.error{ color:#dc2626; font-weight:bold; padding:20px 0; }
-
-    for (let i = 1; i <= totalPages; i++) {
-@media (max-width: 1024px){
-  #flipbook{ width:100%; height:560px; }
-  .flip-page{ width:100%; height:560px; }
-}
+.flipbook-form{max-width:800px;margin:0 auto;text-align:left;}
+.flipbook-form input[type="text"],
+.flipbook-form input[type="file"],
+.flipbook-form select,
+.flipbook-form textarea{width:100%;padding:10px;border:1px solid #d1d5db;border-radius:8px;box-sizing:border-box;margin-top:6px;}
+.flipbook-form .row{margin-bottom:14px;}
+.file-box{margin-top:18px;background:#f3f4f6;border:1px solid #e5e7eb;padding:12px;border-radius:10px;}
 </style>
 
-        const pageDiv = document.createElement("div");
-        pageDiv.style.width = "450px";
-        pageDiv.style.height = "600px";
-        pageDiv.style.background = "#fff";
-<div class="flipbook-wrap">
-  <div class="page-indicator" id="pageIndicator">Page 1</div>
+<?php if (isset($_GET['saved'])) { ?>
+    <p style="color:green;font-weight:bold;margin-bottom:15px;">✔ Guardado correctamente</p>
+<?php } ?>
 
-        const canvas = document.createElement("canvas");
-        pageDiv.appendChild(canvas);
-        flipbook.appendChild(pageDiv);
-  <div class="toolbar">
-    <button class="btn-nav" id="prevBtn">⬅ Prev</button>
-    <button class="btn-listen <?= $listenEnabled ? '' : 'disabled' ?>" id="listenBtn" <?= $listenEnabled ? '' : 'disabled' ?>>🔊 Listen</button>
-    <button class="btn-nav" id="nextBtn">Next ➡</button>
-  </div>
+<?php if ($errorMsg !== '') { ?>
+    <p style="color:#dc2626;font-weight:bold;margin-bottom:15px;">❌ <?= htmlspecialchars($errorMsg) ?></p>
+<?php } ?>
 
-        pdf.getPage(i).then(function(page) {
-  <div id="book-shell">
-    <div id="flipbook"></div>
-    <div id="status" class="loading">Loading book...</div>
-  </div>
-</div>
+<form class="flipbook-form" method="post" enctype="multipart/form-data">
+    <div class="row">
+        <label style="font-weight:bold;">Título del flipbook</label>
+        <input type="text" name="title" value="<?= htmlspecialchars($currentTitle) ?>" placeholder="Ej: My Story Book">
+    </div>
 
-            const viewport = page.getViewport({ scale: 1 });
-<audio id="pageFlipSound" preload="auto" src="./sounds/page-flip.mp3"></audio>
+    <div class="row">
+        <label style="font-weight:bold;">Idioma de lectura (Listen)</label>
+        <select name="language">
+            <option value="en-US" <?= $currentLanguage === 'en-US' ? 'selected' : '' ?>>English (en-US)</option>
+            <option value="es-ES" <?= $currentLanguage === 'es-ES' ? 'selected' : '' ?>>Español (es-ES)</option>
+        </select>
+    </div>
 
-const scale = 450 / viewport.width;
-const scaledViewport = page.getViewport({ scale: scale });
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/turn.js/4.1.0/turn.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+    <div class="row">
+        <label style="display:flex;align-items:center;gap:8px;font-weight:bold;">
+            <input type="hidden" name="listen_enabled" value="0">
+            <input type="checkbox" name="listen_enabled" value="1" <?= $currentListen ? 'checked' : '' ?>>
+            Activar botón Listen en el viewer
+        </label>
+    </div>
 
-canvas.width = 450;        // FORZAR EXACTO
-canvas.height = 600;       // mismo alto que el flipbook
-<script>
-const pdfUrl = <?= json_encode($pdfUrl, JSON_UNESCAPED_UNICODE) ?>;
-const pageTexts = <?= json_encode($pageTexts, JSON_UNESCAPED_UNICODE) ?>;
-const listenEnabledGlobal = <?= $listenEnabled ? 'true' : 'false' ?>;
-const speechLang = <?= json_encode($language, JSON_UNESCAPED_UNICODE) ?>;
+    <div class="row">
+        <label style="font-weight:bold;">Subir PDF (puede reemplazar el actual)</label>
+        <input type="file" name="pdf" accept="application/pdf">
+        <small style="color:#6b7280;">Se sube a Cloudinary como image/pdf para entrega pública directa (compatible con viewer).</small>
+    </div>
 
-pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
+    <div class="row">
+        <label style="font-weight:bold;">Texto por página para Listen (1 línea = 1 página)</label>
+        <textarea name="page_texts" rows="8" placeholder="Page 1 text...&#10;Page 2 text..."><?= htmlspecialchars(implode("\n", $currentPageTexts)) ?></textarea>
+    </div>
 
-const statusEl = document.getElementById('status');
-const pageIndicator = document.getElementById('pageIndicator');
-const listenBtn = document.getElementById('listenBtn');
-const flipSound = document.getElementById('pageFlipSound');
-const flipbookEl = document.getElementById('flipbook');
+    <button type="submit" class="save-btn">💾 Guardar flipbook</button>
+</form>
 
-let totalPages = 0;
-let currentPage = 1;
-let simpleMode = false;
+<?php if ($currentPdf !== '') { ?>
+    <div class="file-box">
+        <div><strong>PDF actual:</strong> <a href="<?= htmlspecialchars($currentPdf) ?>" target="_blank">Abrir PDF</a></div>
+        <?php if (!empty($flipbook['pdf_bytes'])) { ?>
+            <div style="margin-top:6px;color:#6b7280;">Tamaño: <?= number_format(((int) $flipbook['pdf_bytes']) / 1024 / 1024, 2) ?> MB</div>
+        <?php } ?>
 
-function updatePageIndicator(page) {
-  currentPage = page;
-  pageIndicator.textContent = 'Page ' + page + ' / ' + totalPages;
-}
+        <form method="post" style="margin-top:10px;">
+            <input type="hidden" name="delete_pdf" value="1">
+            <button type="submit" class="delete-btn">✖ Quitar PDF</button>
+        </form>
+    </div>
+<?php } ?>
 
-page.render({
-    canvasContext: canvas.getContext("2d"),
-    viewport: scaledViewport
-}).promise.then(function() {
-function getTextForPage(page) {
-  const idx = page - 1;
-  if (idx >= 0 && idx < pageTexts.length && pageTexts[idx]) {
-    return String(pageTexts[idx]);
-  }
-  return 'Page ' + page;
-}
-
-                renderedPages++;
-function safePlayFlipSound() {
-  if (!flipSound) return;
-  try {
-    flipSound.currentTime = 0;
-    flipSound.play().catch(function () {});
-  } catch (e) {}
-}
-
-                if (renderedPages === totalPages) {
-function initTurnBook() {
-  const $book = $('#flipbook');
-
-  $book.turn({
-    width: 980,
-    height: 680,
-    autoCenter: true,
-    elevation: 50,
-    gradients: true,
-    display: 'double',
-    when: {
-      turned: function (event, page) {
-        updatePageIndicator(page);
-      },
-      turning: function () {
-        safePlayFlipSound();
-      }
-    }
-  });
-
-                    $("#flipbook").turn({
-                        width: 900,
-                        height: 600,
-                        autoCenter: true,
-                        display: "single",
-                        elevation: 50,
-                        gradients: true,
-                        when: {
-                            turning: function(event, page) {
-                                if (page === 1) {
-                                    $(this).turn("display", "single");
-                                } else {
-                                    $(this).turn("display", "double");
-                                }
-                            }
-                        }
-                    });
-  document.getElementById('prevBtn').addEventListener('click', function () {
-    $book.turn('previous');
-  });
-
-                    document.getElementById("prevBtn").onclick = function() {
-                        $("#flipbook").turn("previous");
-                    };
-  document.getElementById('nextBtn').addEventListener('click', function () {
-    $book.turn('next');
-  });
-
-                    document.getElementById("nextBtn").onclick = function() {
-                        $("#flipbook").turn("next");
-                    };
-  updatePageIndicator(1);
-}
-
-                }
-function initSimpleFallback() {
-  simpleMode = true;
-  const pages = Array.prototype.slice.call(flipbookEl.querySelectorAll('.flip-page'));
-
-  pages.forEach(function (p, i) {
-    p.style.display = i === 0 ? 'flex' : 'none';
-    p.style.width = '100%';
-  });
-
-  document.getElementById('prevBtn').addEventListener('click', function () {
-    pages[currentPage - 1].style.display = 'none';
-    currentPage = currentPage <= 1 ? totalPages : currentPage - 1;
-    pages[currentPage - 1].style.display = 'flex';
-    safePlayFlipSound();
-    updatePageIndicator(currentPage);
-  });
-
-  document.getElementById('nextBtn').addEventListener('click', function () {
-    pages[currentPage - 1].style.display = 'none';
-    currentPage = currentPage >= totalPages ? 1 : currentPage + 1;
-    pages[currentPage - 1].style.display = 'flex';
-    safePlayFlipSound();
-    updatePageIndicator(currentPage);
-  });
-
-  updatePageIndicator(1);
-}
-
-            });
-function renderPdfPages(pdf) {
-  totalPages = pdf.numPages;
-  const pagePromises = [];
-
-        });
-  for (let pageNum = 1; pageNum <= totalPages; pageNum += 1) {
-    const promise = pdf.getPage(pageNum).then(function (page) {
-      const pageDiv = document.createElement('div');
-      pageDiv.className = 'flip-page';
-
-    }
-      const canvas = document.createElement('canvas');
-      pageDiv.appendChild(canvas);
-      flipbookEl.appendChild(pageDiv);
-
-});
-</script>
-      const baseViewport = page.getViewport({ scale: 1 });
-      const targetWidth = 490;
-      const targetHeight = 680;
-      const scale = Math.min(targetWidth / baseViewport.width, targetHeight / baseViewport.height);
-      const viewport = page.getViewport({ scale: scale });
-
-<?php else: ?>
-      const ctx = canvas.getContext('2d');
-      canvas.width = viewport.width;
-      canvas.height = viewport.height;
-
-<p style="color:#dc2626; font-weight:600; text-align:center;">
-    No PDF uploaded for this unit.
-</p>
-      return page.render({ canvasContext: ctx, viewport: viewport }).promise;
-    });
-
-<?php endif; ?>
-    pagePromises.push(promise);
-  }
-
-<?php
-$activityContent = ob_get_clean();
-  return Promise.all(pagePromises);
-}
-
-/* 4️⃣ VARIABLES PARA TEMPLATE */
-$activityTitle = "📖 Flipbooks";
-$activitySubtitle = "Let's read together and explore a new story.";
-if (listenEnabledGlobal) {
-  listenBtn.addEventListener('click', function () {
-    speechSynthesis.cancel();
-    const text = getTextForPage(currentPage);
-    if (!text) return;
-
-    const utter = new SpeechSynthesisUtterance(text);
-    utter.lang = speechLang || 'en-US';
-    utter.rate = 0.9;
-    speechSynthesis.speak(utter);
-  });
-}
-
-/* 5️⃣ TEMPLATE */
-require_once __DIR__ . "/../../core/_activity_viewer_template.php";
-pdfjsLib.getDocument({ url: pdfUrl, withCredentials: false }).promise
-  .then(function (pdf) {
-    return renderPdfPages(pdf);
-  })
-  .then(function () {
-    statusEl.style.display = 'none';
-
-    if (window.jQuery && typeof window.jQuery.fn.turn === 'function') {
-      initTurnBook();
-    } else {
-      initSimpleFallback();
-    }
-  })
-  .catch(function (error) {
-    statusEl.className = 'error';
-    statusEl.textContent = 'No se pudo cargar el flipbook PDF.';
-    console.error(error);
-  });
-</script>
 <?php
 $content = ob_get_clean();
-render_activity_viewer('Flipbook', '📖', $content);
+render_activity_editor('📖 Flipbook Editor', '📖', $content);
