@@ -2,26 +2,7 @@
 require_once __DIR__ . '/../../config/db.php';
 require_once __DIR__ . '/../../core/_activity_viewer_template.php';
 
-$activityId = isset($_GET['id']) ? $_GET['id'] : null;
 $unit = isset($_GET['unit']) ? $_GET['unit'] : null;
-
-if ($activityId && !$unit) {
-    $stmt = $pdo->prepare(
-        "SELECT unit_id
-         FROM activities
-         WHERE id = :id
-         LIMIT 1"
-    );
-    $stmt->execute(array('id' => $activityId));
-    $row = $stmt->fetch(PDO::FETCH_ASSOC);
-
-    if (!$row) {
-        die('Actividad no encontrada');
-    }
-
-    $unit = $row['unit_id'];
-}
-
 if (!$unit) {
     die('Unidad no especificada');
 }
@@ -30,62 +11,51 @@ $stmt = $pdo->prepare(
     "SELECT data
      FROM activities
      WHERE unit_id = :unit
-       AND type = 'drag_drop'
+       AND type = 'listen_order'
      LIMIT 1"
 );
 $stmt->execute(array('unit' => $unit));
-$row = $stmt->fetch(PDO::FETCH_ASSOC);
 
+$row = $stmt->fetch(PDO::FETCH_ASSOC);
 $raw = isset($row['data']) ? $row['data'] : '[]';
 $decoded = json_decode($raw, true);
 $blocks = is_array($decoded) ? $decoded : array();
 
 if (count($blocks) === 0) {
-    die('No hay oraciones para esta unidad');
+    die('No activities for this unit');
 }
 
 ob_start();
 ?>
 <style>
-.instructions{
-  margin:0 0 16px 0;
-  text-align:center;
-  color:#334155;
-}
-
 #sentenceBox{
   margin:20px auto;
   padding:15px;
   background:white;
   border-radius:15px;
-  max-width:900px;
+  max-width:760px;
 }
 
-#promptText{
-  line-height:2;
-  font-size:20px;
-}
-
-.blank{
-  display:inline-flex;
-  align-items:center;
+#controls{
+  display:flex;
+  gap:12px;
   justify-content:center;
-  min-width:100px;
-  min-height:42px;
-  padding:4px 8px;
-  margin:0 5px;
-  border:2px dashed #0b5ed7;
-  border-radius:10px;
-  background:#f8fbff;
-  vertical-align:middle;
+  align-items:center;
+  flex-wrap:wrap;
+  margin-bottom:8px;
 }
 
-.blank.filled{
-  border-style:solid;
-  background:#e8f1ff;
+#controls label{
+  font-size:14px;
+  color:#334155;
+  font-weight:bold;
 }
 
-#wordBank{
+#controls select, #controls input[type="checkbox"]{
+  margin-left:6px;
+}
+
+#words, #answer{
   display:flex;
   flex-wrap:wrap;
   justify-content:center;
@@ -94,13 +64,26 @@ ob_start();
 }
 
 .word{
-  padding:8px 14px;
-  border-radius:10px;
-  color:white;
-  font-weight:bold;
+  padding:6px;
+  border-radius:12px;
+  background:white;
   cursor:grab;
-  background:#2563eb;
-  user-select:none;
+  box-shadow:0 2px 6px rgba(0,0,0,.15);
+}
+
+.word img{
+  height:80px;
+  width:auto;
+  display:block;
+  object-fit:contain;
+}
+
+.drop-zone{
+  background:#fff;
+  border:2px dashed #0b5ed7;
+  border-radius:12px;
+  padding:15px;
+  min-height:100px;
 }
 
 button{
@@ -113,31 +96,44 @@ button{
   margin:6px;
 }
 
+#listenBtn.hidden{ display:none; }
+
 #feedback{
-  text-align:center;
   font-size:18px;
   font-weight:bold;
-  min-height:28px;
 }
 
-.good{ color:green; }
-.bad{ color:crimson; }
+.good{color:green;}
+.bad{color:crimson;}
 
-.controls{ margin-top:15px; text-align:center; }
+.actions{ text-align:center; }
 </style>
 
-<p class="instructions">Completa los espacios arrastrando las palabras correctas.</p>
-
 <div id="sentenceBox">
-  <button onclick="speak()">🔊 Listen</button>
-  <div id="promptText"></div>
+  <div id="controls">
+    <label>
+      Language:
+      <select id="langSelect">
+        <option value="en">English</option>
+        <option value="es">Español</option>
+      </select>
+    </label>
+
+    <label>
+      <input type="checkbox" id="listenToggle" checked>
+      Listen enabled
+    </label>
+  </div>
+
+  <button id="listenBtn" onclick="playAudio()">🔊 Listen</button>
 </div>
 
-<div id="wordBank"></div>
+<div id="words"></div>
+<div id="answer" class="drop-zone"></div>
 
-<div class="controls">
-  <button onclick="checkSentence()">✅ Check</button>
-  <button onclick="nextSentence()">➡️ Next</button>
+<div class="actions">
+  <button onclick="checkOrder()">✅ Check</button>
+  <button onclick="nextBlock()">➡️ Next</button>
 </div>
 
 <div id="feedback"></div>
@@ -146,155 +142,174 @@ button{
 const blocks = <?= json_encode($blocks, JSON_UNESCAPED_UNICODE) ?>;
 
 let index = 0;
+let correct = [];
 let dragged = null;
-let currentText = '';
-let currentAnswers = [];
 
-const promptText = document.getElementById('promptText');
-const wordBank = document.getElementById('wordBank');
+let utter = null;
+let isPaused = false;
+let isSpeaking = false;
+
+const wordsDiv = document.getElementById('words');
+const answerDiv = document.getElementById('answer');
 const feedback = document.getElementById('feedback');
+const langSelect = document.getElementById('langSelect');
+const listenToggle = document.getElementById('listenToggle');
+const listenBtn = document.getElementById('listenBtn');
 
-function normalizeBlock(block) {
-  const text = (block && typeof block.text === 'string' && block.text.trim() !== '')
-    ? block.text.trim()
-    : ((block && typeof block.sentence === 'string') ? block.sentence.trim() : '');
+function getCurrentBlock() {
+  return blocks[index] || {};
+}
 
-  let missing = [];
-  if (block && Array.isArray(block.missing_words)) {
-    missing = block.missing_words
-      .map(function (w) { return String(w).trim(); })
-      .filter(function (w) { return w.length > 0; });
+function getSentenceForLanguage(block, lang) {
+  const en = typeof block.sentence_en === 'string' ? block.sentence_en.trim() : '';
+  const es = typeof block.sentence_es === 'string' ? block.sentence_es.trim() : '';
+  const generic = typeof block.sentence === 'string' ? block.sentence.trim() : '';
+
+  if (lang === 'es') {
+    return es || generic || en;
   }
 
-  return { text: text, missing_words: missing };
+  return en || generic || es;
 }
 
-function shuffle(list) {
-  return list.slice().sort(function () {
-    return Math.random() - 0.5;
-  });
+function shouldAllowListen(block) {
+  if (typeof block.listen_enabled === 'boolean') {
+    return block.listen_enabled;
+  }
+
+  if (typeof block.listen === 'boolean') {
+    return block.listen;
+  }
+
+  return true;
 }
 
-function createWordChip(word) {
-  const chip = document.createElement('span');
-  chip.textContent = word;
-  chip.className = 'word';
-  chip.draggable = true;
-  chip.dataset.word = word;
+function updateListenAvailability() {
+  const block = getCurrentBlock();
+  const enabledByBlock = shouldAllowListen(block);
+  const enabledByUser = listenToggle.checked;
+  const enabled = enabledByBlock && enabledByUser;
 
-  chip.addEventListener('dragstart', function () {
-    dragged = chip;
-  });
-
-  return chip;
+  if (enabled) {
+    listenBtn.classList.remove('hidden');
+  } else {
+    listenBtn.classList.add('hidden');
+    speechSynthesis.cancel();
+    isSpeaking = false;
+    isPaused = false;
+  }
 }
 
-function createBlank(indexBlank) {
-  const blank = document.createElement('span');
-  blank.className = 'blank';
-  blank.dataset.index = String(indexBlank);
-  blank.textContent = '____';
-
-  blank.addEventListener('dragover', function (event) {
-    event.preventDefault();
-  });
-
-  blank.addEventListener('drop', function (event) {
-    event.preventDefault();
-    if (!dragged) {
-      return;
-    }
-
-    const draggedWord = dragged.dataset.word || '';
-    const oldWord = blank.dataset.word || '';
-
-    if (oldWord) {
-      wordBank.appendChild(createWordChip(oldWord));
-    }
-
-    blank.dataset.word = draggedWord;
-    blank.textContent = draggedWord;
-    blank.classList.add('filled');
-
-    dragged.remove();
-    dragged = null;
-  });
-
-  blank.addEventListener('click', function () {
-    const existing = blank.dataset.word || '';
-    if (!existing) {
-      return;
-    }
-
-    wordBank.appendChild(createWordChip(existing));
-    blank.dataset.word = '';
-    blank.textContent = '____';
-    blank.classList.remove('filled');
-  });
-
-  return blank;
+function getSpeechLang() {
+  return langSelect.value === 'es' ? 'es-ES' : 'en-US';
 }
 
-function loadSentence() {
+function playAudio() {
+  if (listenBtn.classList.contains('hidden')) {
+    return;
+  }
+
+  if (isSpeaking && !isPaused) {
+    speechSynthesis.pause();
+    isPaused = true;
+    return;
+  }
+
+  if (isPaused) {
+    speechSynthesis.resume();
+    isPaused = false;
+    return;
+  }
+
+  const block = getCurrentBlock();
+  const sentence = getSentenceForLanguage(block, langSelect.value);
+
+  speechSynthesis.cancel();
+  utter = new SpeechSynthesisUtterance(sentence || '');
+  utter.lang = getSpeechLang();
+  utter.rate = 0.8;
+  utter.pitch = 1;
+  utter.volume = 1;
+
+  utter.onstart = function () {
+    isSpeaking = true;
+    isPaused = false;
+  };
+
+  utter.onend = function () {
+    isSpeaking = false;
+    isPaused = false;
+  };
+
+  speechSynthesis.speak(utter);
+}
+
+function loadBlock() {
+  speechSynthesis.cancel();
+  isSpeaking = false;
+  isPaused = false;
+
   dragged = null;
   feedback.textContent = '';
   feedback.className = '';
 
-  promptText.innerHTML = '';
-  wordBank.innerHTML = '';
+  wordsDiv.innerHTML = '';
+  answerDiv.innerHTML = '';
 
-  const block = normalizeBlock(blocks[index] || {});
-  currentText = block.text;
-  currentAnswers = block.missing_words.slice();
+  const block = getCurrentBlock();
+  correct = Array.isArray(block.images) ? block.images.slice() : [];
 
-  if (!currentText) {
-    feedback.textContent = '⚠ Bloque vacío';
-    feedback.className = 'bad';
-    return;
-  }
-
-  if (currentAnswers.length === 0) {
-    currentAnswers = currentText.split(/\s+/).filter(function (w) { return w.length > 0; });
-  }
-
-  let renderedText = currentText;
-  currentAnswers.forEach(function (word) {
-    const escaped = word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const regex = new RegExp('\\b' + escaped + '\\b', 'i');
-    renderedText = renderedText.replace(regex, '[[BLANK]]');
+  const shuffled = correct.slice().sort(function () {
+    return Math.random() - 0.5;
   });
 
-  const parts = renderedText.split('[[BLANK]]');
+  shuffled.forEach(function (src) {
+    const div = document.createElement('div');
+    div.className = 'word';
+    div.draggable = true;
+    div.dataset.src = src;
 
-  parts.forEach(function (part, i) {
-    promptText.appendChild(document.createTextNode(part));
-    if (i < currentAnswers.length) {
-      promptText.appendChild(createBlank(i));
-    }
+    const img = document.createElement('img');
+    img.src = src;
+    img.alt = 'word-image';
+
+    div.appendChild(img);
+    div.addEventListener('dragstart', function () {
+      dragged = div;
+    });
+
+    wordsDiv.appendChild(div);
   });
 
-  shuffle(currentAnswers).forEach(function (word) {
-    wordBank.appendChild(createWordChip(word));
-  });
+  updateListenAvailability();
 }
 
-function getBuiltAnswers() {
-  const blanks = Array.prototype.slice.call(promptText.querySelectorAll('.blank'));
-  return blanks.map(function (blank) {
-    return blank.dataset.word || '';
-  });
-}
+answerDiv.addEventListener('dragover', function (event) {
+  event.preventDefault();
+});
 
-function checkSentence() {
-  const built = getBuiltAnswers();
-
-  if (built.includes('')) {
-    feedback.textContent = '⚠ Complete all blanks.';
-    feedback.className = 'bad';
-    return;
+answerDiv.addEventListener('drop', function () {
+  if (dragged) {
+    answerDiv.appendChild(dragged);
   }
+});
 
-  if (JSON.stringify(built) === JSON.stringify(currentAnswers)) {
+langSelect.addEventListener('change', function () {
+  speechSynthesis.cancel();
+  isSpeaking = false;
+  isPaused = false;
+});
+
+listenToggle.addEventListener('change', function () {
+  updateListenAvailability();
+});
+
+function checkOrder() {
+  const built = Array.prototype.slice.call(answerDiv.children).map(function (node) {
+    return node.dataset.src;
+  });
+
+  if (JSON.stringify(built) === JSON.stringify(correct)) {
     feedback.textContent = '🌟 Excellent!';
     feedback.className = 'good';
   } else {
@@ -303,29 +318,22 @@ function checkSentence() {
   }
 }
 
-function nextSentence() {
+function nextBlock() {
   index += 1;
 
   if (index >= blocks.length) {
-    feedback.textContent = '🏆 You finished all sentences!';
+    feedback.textContent = '🏆 Completed!';
     feedback.className = 'good';
     index = blocks.length - 1;
+    updateListenAvailability();
     return;
   }
 
-  loadSentence();
+  loadBlock();
 }
 
-function speak() {
-  speechSynthesis.cancel();
-  const msg = new SpeechSynthesisUtterance(currentText || '');
-  msg.lang = 'en-US';
-  msg.rate = 0.9;
-  speechSynthesis.speak(msg);
-}
-
-loadSentence();
+loadBlock();
 </script>
 <?php
 $content = ob_get_clean();
-render_activity_viewer('Build the Sentence', '🎯', $content);
+render_activity_viewer('Listen & Order', '🎧', $content);
