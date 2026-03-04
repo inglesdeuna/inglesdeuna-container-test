@@ -21,10 +21,18 @@ $raw = isset($row['data']) ? $row['data'] : '{}';
 $decoded = json_decode($raw, true);
 $flipbook = is_array($decoded) ? $decoded : array();
 
-$pdfUrl = isset($flipbook['pdf_url']) ? trim((string) $flipbook['pdf_url']) : '';
-$title = isset($flipbook['title']) && trim((string) $flipbook['title']) !== ''
-    ? trim((string) $flipbook['title'])
-    : 'Flipbook';
+$pdfUrl = '';
+if (isset($flipbook['pdf_url']) && trim((string) $flipbook['pdf_url']) !== '') {
+    $pdfUrl = trim((string) $flipbook['pdf_url']);
+} elseif (isset($flipbook['pdf']) && trim((string) $flipbook['pdf']) !== '') {
+    $legacyPdf = trim((string) $flipbook['pdf']);
+    if (preg_match('/^https?:\/\//i', $legacyPdf)) {
+        $pdfUrl = $legacyPdf;
+    } else {
+        $pdfUrl = '/lessons/lessons/' . ltrim($legacyPdf, '/');
+    }
+}
+
 $language = isset($flipbook['language']) && trim((string) $flipbook['language']) !== ''
     ? trim((string) $flipbook['language'])
     : 'en-US';
@@ -39,10 +47,7 @@ ob_start();
 ?>
 <style>
 .flipbook-wrap{ max-width:1100px; margin:0 auto; text-align:center; }
-
-.book-header{ margin-bottom:14px; }
-.book-title{ font-size:24px; color:#1d4ed8; font-weight:bold; margin:0 0 8px 0; }
-.page-indicator{ color:#475569; font-size:14px; }
+.page-indicator{ color:#475569; font-size:14px; margin-bottom:12px; }
 
 .toolbar{
   display:flex;
@@ -66,52 +71,39 @@ ob_start();
 .btn-listen{ background:#16a34a; }
 .btn-listen.disabled{ background:#94a3b8; cursor:not-allowed; }
 
-#book-shell{
-  position:relative;
-  margin:0 auto;
-  width:980px;
-  max-width:100%;
-}
+#book-shell{ position:relative; margin:0 auto; width:980px; max-width:100%; }
 
 #flipbook{
   width:980px;
   height:680px;
   margin:0 auto;
+  box-shadow:0 10px 30px rgba(0,0,0,.2);
+  background:white;
 }
 
 .flip-page{
+  width:490px;
+  height:680px;
   background:#fff;
   overflow:hidden;
+  display:flex;
+  align-items:center;
+  justify-content:center;
 }
 
-.flip-page canvas{
-  width:100%;
-  height:100%;
-  display:block;
-}
+.flip-page canvas{ width:100%; height:100%; display:block; }
 
-.loading{
-  color:#334155;
-  font-weight:bold;
-  padding:30px 0;
-}
-
-.error{
-  color:#dc2626;
-  font-weight:bold;
-  padding:20px 0;
-}
+.loading{ color:#334155; font-weight:bold; padding:30px 0; }
+.error{ color:#dc2626; font-weight:bold; padding:20px 0; }
 
 @media (max-width: 1024px){
-  #flipbook{ height:560px; }
+  #flipbook{ width:100%; height:560px; }
+  .flip-page{ width:100%; height:560px; }
 }
 </style>
 
 <div class="flipbook-wrap">
-  <div class="book-header">
-    <p class="book-title">📖 <?= htmlspecialchars($title) ?></p>
-    <div class="page-indicator" id="pageIndicator">Page 1</div>
-  </div>
+  <div class="page-indicator" id="pageIndicator">Page 1</div>
 
   <div class="toolbar">
     <button class="btn-nav" id="prevBtn">⬅ Prev</button>
@@ -137,13 +129,17 @@ const pageTexts = <?= json_encode($pageTexts, JSON_UNESCAPED_UNICODE) ?>;
 const listenEnabledGlobal = <?= $listenEnabled ? 'true' : 'false' ?>;
 const speechLang = <?= json_encode($language, JSON_UNESCAPED_UNICODE) ?>;
 
+pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
+
 const statusEl = document.getElementById('status');
 const pageIndicator = document.getElementById('pageIndicator');
 const listenBtn = document.getElementById('listenBtn');
 const flipSound = document.getElementById('pageFlipSound');
+const flipbookEl = document.getElementById('flipbook');
 
 let totalPages = 0;
 let currentPage = 1;
+let simpleMode = false;
 
 function updatePageIndicator(page) {
   currentPage = page;
@@ -197,10 +193,36 @@ function initTurnBook() {
   updatePageIndicator(1);
 }
 
+function initSimpleFallback() {
+  simpleMode = true;
+  const pages = Array.prototype.slice.call(flipbookEl.querySelectorAll('.flip-page'));
+
+  pages.forEach(function (p, i) {
+    p.style.display = i === 0 ? 'flex' : 'none';
+    p.style.width = '100%';
+  });
+
+  document.getElementById('prevBtn').addEventListener('click', function () {
+    pages[currentPage - 1].style.display = 'none';
+    currentPage = currentPage <= 1 ? totalPages : currentPage - 1;
+    pages[currentPage - 1].style.display = 'flex';
+    safePlayFlipSound();
+    updatePageIndicator(currentPage);
+  });
+
+  document.getElementById('nextBtn').addEventListener('click', function () {
+    pages[currentPage - 1].style.display = 'none';
+    currentPage = currentPage >= totalPages ? 1 : currentPage + 1;
+    pages[currentPage - 1].style.display = 'flex';
+    safePlayFlipSound();
+    updatePageIndicator(currentPage);
+  });
+
+  updatePageIndicator(1);
+}
+
 function renderPdfPages(pdf) {
   totalPages = pdf.numPages;
-  const flipbook = document.getElementById('flipbook');
-
   const pagePromises = [];
 
   for (let pageNum = 1; pageNum <= totalPages; pageNum += 1) {
@@ -210,7 +232,7 @@ function renderPdfPages(pdf) {
 
       const canvas = document.createElement('canvas');
       pageDiv.appendChild(canvas);
-      flipbook.appendChild(pageDiv);
+      flipbookEl.appendChild(pageDiv);
 
       const baseViewport = page.getViewport({ scale: 1 });
       const targetWidth = 490;
@@ -222,12 +244,7 @@ function renderPdfPages(pdf) {
       canvas.width = viewport.width;
       canvas.height = viewport.height;
 
-      const renderTask = page.render({
-        canvasContext: ctx,
-        viewport: viewport,
-      });
-
-      return renderTask.promise;
+      return page.render({ canvasContext: ctx, viewport: viewport }).promise;
     });
 
     pagePromises.push(promise);
@@ -249,13 +266,18 @@ if (listenEnabledGlobal) {
   });
 }
 
-pdfjsLib.getDocument(pdfUrl).promise
+pdfjsLib.getDocument({ url: pdfUrl, withCredentials: false }).promise
   .then(function (pdf) {
     return renderPdfPages(pdf);
   })
   .then(function () {
     statusEl.style.display = 'none';
-    initTurnBook();
+
+    if (window.jQuery && typeof window.jQuery.fn.turn === 'function') {
+      initTurnBook();
+    } else {
+      initSimpleFallback();
+    }
   })
   .catch(function (error) {
     statusEl.className = 'error';
