@@ -96,6 +96,19 @@ function normalize_words($rawWords)
     return array_values(array_unique($clean));
 }
 
+function block_listen_enabled($block)
+{
+    if (isset($block['listen_enabled']) && is_bool($block['listen_enabled'])) {
+        return $block['listen_enabled'];
+    }
+
+    if (isset($block['listen']) && is_bool($block['listen'])) {
+        return $block['listen'];
+    }
+
+    return true;
+}
+
 $blocks = load_drag_drop_blocks($pdo, $unit);
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -114,12 +127,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $text = isset($_POST['text']) ? trim($_POST['text']) : '';
     $missingWordsRaw = isset($_POST['missing_words']) ? trim($_POST['missing_words']) : '';
     $missingWords = normalize_words($missingWordsRaw);
+    $listenEnabled = isset($_POST['listen_enabled']) && $_POST['listen_enabled'] === '1';
 
     if ($text !== '' && count($missingWords) > 0) {
         $blocks[] = array(
             'id' => uniqid('drag_drop_'),
             'text' => $text,
             'missing_words' => $missingWords,
+            'listen_enabled' => $listenEnabled,
         );
 
         save_drag_drop_blocks($pdo, $unit, $blocks);
@@ -156,8 +171,14 @@ if (isset($_GET['saved'])) {
         style="width:100%;padding:10px;margin:0 0 10px 0;border:1px solid #ccc;border-radius:8px;"
     >
 
+    <label style="display:flex;align-items:center;gap:8px;margin:0 0 14px 0;font-weight:bold;">
+        <input type="hidden" name="listen_enabled" value="0">
+        <input type="checkbox" name="listen_enabled" value="1" checked>
+        Activar botón Listen en este bloque
+    </label>
+
     <p style="margin:0 0 16px 0;color:#6b7280;font-size:14px;">
-        El viewer puede usar este texto para mostrar espacios en blanco y este banco de palabras para el drag &amp; drop.
+        Si desactivas Listen, en el viewer no se mostrará el botón de audio para este bloque.
     </p>
 
     <button type="submit" style="background:#0b5ed7;color:#fff;border:none;padding:10px 16px;border-radius:8px;cursor:pointer;">
@@ -186,9 +207,14 @@ if (isset($_GET['saved'])) {
             if (isset($block['missing_words']) && is_array($block['missing_words'])) {
                 $wordsValue = $block['missing_words'];
             }
+
+            $listenStatus = block_listen_enabled($block);
             ?>
             <div style="border:1px solid #e5e7eb;border-radius:12px;padding:12px;margin-bottom:12px;background:#f9fafb;">
                 <div style="font-weight:bold; margin-bottom:8px;">📝 <?php echo htmlspecialchars($textValue); ?></div>
+                <div style="margin-bottom:8px;font-size:13px;color:<?php echo $listenStatus ? '#166534' : '#b91c1c'; ?>;font-weight:bold;">
+                    <?php echo $listenStatus ? '🔊 Listen: activado' : '🔇 Listen: desactivado'; ?>
+                </div>
 
                 <div style="margin-bottom:10px;">
                     <span style="font-size:13px;color:#6b7280;font-weight:bold;">Palabras drag:</span>
