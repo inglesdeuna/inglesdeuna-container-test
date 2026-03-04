@@ -113,6 +113,8 @@ button{
   margin:6px;
 }
 
+#listenBtn.hidden{ display:none; }
+
 #feedback{
   text-align:center;
   font-size:18px;
@@ -129,7 +131,7 @@ button{
 <p class="instructions">Completa los espacios arrastrando las palabras correctas.</p>
 
 <div id="sentenceBox">
-  <button onclick="speak()">🔊 Listen</button>
+  <button id="listenBtn" onclick="speak()">🔊 Listen</button>
   <div id="promptText"></div>
 </div>
 
@@ -149,10 +151,35 @@ let index = 0;
 let dragged = null;
 let currentText = '';
 let currentAnswers = [];
+let listenEnabled = true;
 
 const promptText = document.getElementById('promptText');
 const wordBank = document.getElementById('wordBank');
 const feedback = document.getElementById('feedback');
+const listenBtn = document.getElementById('listenBtn');
+
+function parseListenValue(raw) {
+  if (typeof raw === 'boolean') {
+    return raw;
+  }
+
+  if (typeof raw === 'number') {
+    return raw === 1;
+  }
+
+  if (typeof raw === 'string') {
+    const value = raw.trim().toLowerCase();
+    if (value === '1' || value === 'true' || value === 'yes' || value === 'on') {
+      return true;
+    }
+
+    if (value === '0' || value === 'false' || value === 'no' || value === 'off') {
+      return false;
+    }
+  }
+
+  return true;
+}
 
 function normalizeBlock(block) {
   const text = (block && typeof block.text === 'string' && block.text.trim() !== '')
@@ -166,7 +193,22 @@ function normalizeBlock(block) {
       .filter(function (w) { return w.length > 0; });
   }
 
-  return { text: text, missing_words: missing };
+  const rawListen = block && Object.prototype.hasOwnProperty.call(block, 'listen_enabled')
+    ? block.listen_enabled
+    : (block ? block.listen : true);
+
+  const listen = parseListenValue(rawListen);
+
+  return { text: text, missing_words: missing, listen_enabled: listen };
+}
+
+function setListenVisible(visible) {
+  if (visible) {
+    listenBtn.classList.remove('hidden');
+  } else {
+    listenBtn.classList.add('hidden');
+    speechSynthesis.cancel();
+  }
 }
 
 function shuffle(list) {
@@ -246,6 +288,9 @@ function loadSentence() {
   const block = normalizeBlock(blocks[index] || {});
   currentText = block.text;
   currentAnswers = block.missing_words.slice();
+  listenEnabled = block.listen_enabled;
+
+  setListenVisible(listenEnabled);
 
   if (!currentText) {
     feedback.textContent = '⚠ Bloque vacío';
@@ -317,6 +362,10 @@ function nextSentence() {
 }
 
 function speak() {
+  if (!listenEnabled) {
+    return;
+  }
+
   speechSynthesis.cancel();
   const msg = new SpeechSynthesisUtterance(currentText || '');
   msg.lang = 'en-US';
