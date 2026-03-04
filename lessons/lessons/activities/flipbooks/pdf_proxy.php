@@ -75,6 +75,44 @@ $httpCode = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
 $contentType = (string) curl_getinfo($ch, CURLINFO_CONTENT_TYPE);
 curl_close($ch);
 
+if (($body === false || $httpCode >= 400) && $httpCode === 401 && strpos($url, '/image/upload/') !== false) {
+    $retryUrl = str_replace('/image/upload/', '/raw/upload/', $url);
+    $responseHeaders = array();
+
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_URL, $retryUrl);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 15);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 120);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, array(
+        'Accept: application/pdf,*/*;q=0.8',
+        'User-Agent: FlipbookProxy/1.0',
+    ));
+    if ($clientRange !== '') {
+        curl_setopt($ch, CURLOPT_RANGE, preg_replace('/^bytes=/', '', $clientRange));
+    }
+    curl_setopt($ch, CURLOPT_HEADERFUNCTION, function ($ch, $headerLine) use (&$responseHeaders) {
+        $len = strlen($headerLine);
+        $line = trim($headerLine);
+
+        if ($line !== '' && strpos($line, ':') !== false) {
+            list($name, $value) = explode(':', $line, 2);
+            $name = strtolower(trim($name));
+            $value = trim($value);
+            $responseHeaders[$name] = $value;
+        }
+
+        return $len;
+    });
+
+    $body = curl_exec($ch);
+    $curlError = curl_error($ch);
+    $httpCode = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $contentType = (string) curl_getinfo($ch, CURLINFO_CONTENT_TYPE);
+    curl_close($ch);
+}
+
 if ($body === false || $httpCode >= 400) {
     http_response_code(502);
     header('Content-Type: text/plain; charset=utf-8');
