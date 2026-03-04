@@ -1,118 +1,128 @@
 <?php
-require_once __DIR__."/../../config/db.php";
+require_once __DIR__ . '/../../config/db.php';
+require_once __DIR__ . '/../../core/cloudinary_upload.php';
+require_once __DIR__ . '/../../core/_activity_editor_template.php';
 
-$unit = $_GET["unit"] ?? null;
-if(!$unit) die("Unit missing");
+$unit = isset($_GET['unit']) ? $_GET['unit'] : null;
+if (!$unit) {
+    die('Unit missing');
+}
 
-/* ========= LOAD ========= */
+function load_flashcards($pdo, $unit)
+{
+    $stmt = $pdo->prepare(
+        "SELECT data
+         FROM activities
+         WHERE unit_id = :unit
+           AND type = 'flashcards'
+         LIMIT 1"
+    );
+    $stmt->execute(array('unit' => $unit));
 
-$stmt = $pdo->prepare("
-    SELECT data FROM activities
-    WHERE unit_id = :u AND type = 'flashcards'
-");
-$stmt->execute(["u"=>$unit]);
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+    $raw = isset($row['data']) ? $row['data'] : '[]';
+    $decoded = json_decode($raw, true);
 
-$row = $stmt->fetch(PDO::FETCH_ASSOC);
-$data = json_decode($row["data"] ?? "[]", true);
+    return is_array($decoded) ? $decoded : array();
+}
 
-/* ========= DELETE ========= */
+function save_flashcards($pdo, $unit, $cards)
+{
+    $json = json_encode($cards, JSON_UNESCAPED_UNICODE);
 
-if(isset($_GET["delete"])){
+    $check = $pdo->prepare(
+        "SELECT id
+         FROM activities
+         WHERE unit_id = :unit
+           AND type = 'flashcards'
+         LIMIT 1"
+    );
+    $check->execute(array('unit' => $unit));
 
-    $i = intval($_GET["delete"]);
+    if ($check->fetch()) {
+        $stmt = $pdo->prepare(
+            "UPDATE activities
+             SET data = :data
+             WHERE unit_id = :unit
+               AND type = 'flashcards'"
+        );
+        $stmt->execute(array(
+            'data' => $json,
+            'unit' => $unit,
+        ));
+    } else {
+        $stmt = $pdo->prepare(
+            "INSERT INTO activities (id, unit_id, type, data)
+             VALUES (:id, :unit, 'flashcards', :data)"
+        );
+        $stmt->execute(array(
+            'id' => md5(random_bytes(16)),
+            'unit' => $unit,
+            'data' => $json,
+        ));
+    }
+}
 
-    if(isset($data[$i])){
-        array_splice($data,$i,1);
+$data = load_flashcards($pdo, $unit);
+
+if (isset($_GET['delete'])) {
+    $i = (int) $_GET['delete'];
+
+    if (isset($data[$i])) {
+        array_splice($data, $i, 1);
+        save_flashcards($pdo, $unit, $data);
     }
 
-    $json = json_encode($data, JSON_UNESCAPED_UNICODE);
-
-    $stmt = $pdo->prepare("
-        INSERT INTO activities(id,unit_id,type,data)
-        VALUES(gen_random_uuid(),:u,'flashcards',:d)
-        ON CONFLICT (unit_id,type)
-        DO UPDATE SET data = EXCLUDED.data
-    ");
-
-    $stmt->execute([
-        "u"=>$unit,
-        "d"=>$json
-    ]);
-
-    header("Location: editor.php?unit=".$unit);
+    header('Location: editor.php?unit=' . urlencode((string) $unit) . '&saved=1');
     exit;
 }
 
-/* ========= SAVE ========= */
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $text = isset($_POST['text']) ? trim($_POST['text']) : '';
 
-if($_SERVER["REQUEST_METHOD"]==="POST"){
+    if ($text !== '') {
+        $imgPath = '';
 
-    $text = trim($_POST["text"] ?? "");
-
-    if($text != ""){
-
-        $imgPath = "";
-
-        if(!empty($_FILES["image"]["tmp_name"])){
-
-            $cloud = $_ENV["CLOUDINARY_CLOUD_NAME"];
-            $key = $_ENV["CLOUDINARY_API_KEY"];
-            $secret = $_ENV["CLOUDINARY_API_SECRET"];
-
-            $timestamp = time();
-            $signature = sha1("timestamp=$timestamp$secret");
-
-            $ch = curl_init();
-            curl_setopt($ch, CURLOPT_URL, "https://api.cloudinary.com/v1_1/$cloud/image/upload");
-            curl_setopt($ch, CURLOPT_POST, 1);
-            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-            curl_setopt($ch, CURLOPT_POSTFIELDS, [
-                "file" => new CURLFile($_FILES["image"]["tmp_name"]),
-                "api_key"=>$key,
-                "timestamp"=>$timestamp,
-                "signature"=>$signature
-            ]);
-
-            $response = json_decode(curl_exec($ch), true);
-            curl_close($ch);
-
-            $imgPath = $response["secure_url"] ?? "";
+        if (isset($_FILES['image']) && !empty($_FILES['image']['tmp_name'])) {
+            $url = upload_to_cloudinary($_FILES['image']['tmp_name']);
+            if ($url) {
+                $imgPath = $url;
+            }
         }
 
-        $data[] = [
-            "text"=>$text,
-            "image"=>$imgPath
-        ];
+        $data[] = array(
+            'id' => uniqid('flashcard_'),
+            'text' => $text,
+            'image' => $imgPath,
+        );
 
-        $json = json_encode($data, JSON_UNESCAPED_UNICODE);
-
-        $stmt = $pdo->prepare("
-            INSERT INTO activities(id,unit_id,type,data)
-            VALUES(gen_random_uuid(),:u,'flashcards',:d)
-            ON CONFLICT (unit_id,type)
-            DO UPDATE SET data = EXCLUDED.data
-        ");
-
-        $stmt->execute([
-            "u"=>$unit,
-            "d"=>$json
-        ]);
+        save_flashcards($pdo, $unit, $data);
     }
 
-    header("Location: editor.php?unit=".$unit);
+    header('Location: editor.php?unit=' . urlencode((string) $unit) . '&saved=1');
     exit;
 }
+
+ob_start();
 ?>
-
-<!DOCTYPE html>
-<html>
-<head>
-<meta charset="UTF-8">
-<title>Flashcards Editor</title>
-<link rel="stylesheet" href="../../assets/css/ui.css">
-
 <style>
-.list{ margin-top:20px; }
+.flashcards-form{
+    max-width:760px;
+    margin:0 auto;
+    text-align:left;
+}
+
+.flashcards-form input[type="text"],
+.flashcards-form input[type="file"]{
+    width:100%;
+    padding:10px;
+    border:1px solid #d1d5db;
+    border-radius:8px;
+    margin:6px 0 12px 0;
+    box-sizing:border-box;
+}
+
+.list{ margin-top:20px; max-width:760px; margin-left:auto; margin-right:auto; text-align:left; }
 
 .item{
     display:flex;
@@ -122,13 +132,15 @@ if($_SERVER["REQUEST_METHOD"]==="POST"){
     padding:12px;
     border-radius:12px;
     margin-bottom:10px;
+    border:1px solid #e5e7eb;
 }
 
 .item img{
-    width:50px;
-    height:50px;
+    width:56px;
+    height:56px;
     object-fit:contain;
-    margin-right:10px;
+    border-radius:8px;
+    background:white;
 }
 
 .left{
@@ -138,58 +150,48 @@ if($_SERVER["REQUEST_METHOD"]==="POST"){
 }
 
 .delete{
-    color:red;
+    color:#dc2626;
     font-weight:bold;
     text-decoration:none;
+    font-size:18px;
 }
 </style>
-</head>
 
-<body>
+<?php if (isset($_GET['saved'])) { ?>
+    <p style="color:green;font-weight:bold;margin-bottom:15px;">✔ Guardado correctamente</p>
+<?php } ?>
 
-<div class="box">
+<form class="flashcards-form" method="post" enctype="multipart/form-data">
+    <label style="font-weight:bold;display:block;">Word / text</label>
+    <input name="text" placeholder="Write the word" required>
 
-<h1 class="title">🃏 Flashcards Editor</h1>
+    <label style="font-weight:bold;display:block;">Image (optional)</label>
+    <input type="file" name="image" accept="image/*">
 
-<form method="post" enctype="multipart/form-data">
-<input name="text" placeholder="Write the word" required>
-<input type="file" name="image">
-<button type="submit" class="primary-btn">💾 Save</button>
+    <button type="submit" class="save-btn">💾 Save</button>
 </form>
 
 <div class="list">
+    <h3>📚 Flashcards</h3>
 
-<h3>📚 Flashcards</h3>
+    <?php if (empty($data)) { ?>
+        <p>No flashcards yet.</p>
+    <?php } ?>
 
-<?php if(empty($data)): ?>
-<p>No flashcards yet.</p>
-<?php endif; ?>
+    <?php foreach ($data as $i => $item) { ?>
+        <div class="item">
+            <div class="left">
+                <?php if (!empty($item['image'])) { ?>
+                    <img src="<?= htmlspecialchars($item['image']) ?>" alt="flashcard-image">
+                <?php } ?>
+                <strong><?= htmlspecialchars(isset($item['text']) ? $item['text'] : '') ?></strong>
+            </div>
 
-<?php foreach($data as $i=>$item): ?>
-<div class="item">
-    <div class="left">
-        <?php if(!empty($item["image"])): ?>
-            <img src="<?= $item["image"] ?>">
-        <?php endif; ?>
-        <strong><?= htmlspecialchars($item["text"]) ?></strong>
-    </div>
-
-    <a class="delete"
-       href="?unit=<?= urlencode($unit) ?>&delete=<?= $i ?>">
-       ❌
-    </a>
-</div>
-<?php endforeach; ?>
-
+            <a class="delete" href="?unit=<?= urlencode((string) $unit) ?>&delete=<?= $i ?>">❌</a>
+        </div>
+    <?php } ?>
 </div>
 
-<button 
-class="back-btn"
-onclick="window.location.href='../../academic/unit_view.php?unit=<?= urlencode($unit) ?>'">
-↩ Back
-</button>
-
-</div>
-
-</body>
-</html>
+<?php
+$content = ob_get_clean();
+render_activity_editor('🃏 Flashcards Editor', '🃏', $content);
