@@ -23,11 +23,14 @@ $stmt = $pdo->prepare("
 ");
 $stmt->execute(["u"=>$unit]);
 $stmt->execute(["unit" => $unit]);
+$stmt = $pdo->prepare("\n    SELECT data\n    FROM activities\n    WHERE unit_id = :unit\n    AND type = 'listen_order'\n    LIMIT 1\n");
+$stmt->execute(array("unit" => $unit));
 
 $row = $stmt->fetch(PDO::FETCH_ASSOC);
 $blocks = json_decode($row["data"] ?? "[]", true);
 $blocks = json_decode($row['data'] ?? '[]', true);
 $blocks = is_array($blocks) ? $blocks : [];
+$blocks = is_array($blocks) ? $blocks : array();
 
 if(!$blocks || count($blocks) == 0){
     die("No activities for this unit");
@@ -165,8 +168,10 @@ function playAudio(){
     return;
   }
 <?php if (empty($blocks)): ?>
+<?php if (empty($blocks)) { ?>
     <p style="text-align:center;color:#dc2626;font-weight:bold;">No activities for this unit.</p>
 <?php else: ?>
+<?php } else { ?>
     <style>
         #sentenceBox{
             margin:20px auto;
@@ -192,25 +197,7 @@ function playAudio(){
             background:white;
             cursor:grab;
             box-shadow:0 2px 6px rgba(0,0,0,.15);
-        }
-
-        .card img{
-            height:90px;
-            width:auto;
-            display:block;
-            object-fit:contain;
-            border-radius:8px;
-        }
-
-        .drop-zone{
-            background:#fff;
-            border:2px dashed #0b5ed7;
-            border-radius:12px;
-            padding:15px;
-            min-height:120px;
-        }
-
-        .actions{
+@@ -214,125 +67,125 @@ function playAudio(){
             text-align:center;
             margin-top:10px;
         }
@@ -280,6 +267,8 @@ function playAudio(){
             }
 
             const utter = new SpeechSynthesisUtterance(blocks[index].sentence || "");
+            const sentence = (blocks[index] && blocks[index].sentence) ? blocks[index].sentence : "";
+            const utter = new SpeechSynthesisUtterance(sentence);
             utter.lang = "en-US";
             utter.rate = 0.7;
 
@@ -311,6 +300,11 @@ function playAudio(){
             const block = blocks[index];
             correct = Array.isArray(block.images) ? [...block.images] : [];
             const shuffled = [...correct].sort(() => Math.random() - 0.5);
+            const block = blocks[index] || {};
+            correct = Array.isArray(block.images) ? block.images.slice() : [];
+            const shuffled = correct.slice().sort(function () {
+                return Math.random() - 0.5;
+            });
 
             shuffled.forEach(function (src) {
                 const div = document.createElement("div");
@@ -336,14 +330,7 @@ function playAudio(){
 
         answerDiv.addEventListener("drop", function () {
             if (dragged) {
-                answerDiv.appendChild(dragged);
-            }
-        });
-
-        function checkOrder() {
-            const built = Array.from(answerDiv.children).map(function (el) {
-                return el.dataset.src;
-            });
+@@ -347,134 +200,30 @@ function playAudio(){
 
             if (JSON.stringify(built) === JSON.stringify(correct)) {
                 feedback.textContent = "🌟 Excellent!";
@@ -472,6 +459,7 @@ function nextBlock(){
 loadBlock();
 
 </script>
+<?php } ?>
 
 </body>
 </html>
