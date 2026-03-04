@@ -105,14 +105,14 @@ function upload_pdf_to_cloudinary($tmpPath, $originalName)
         'signature' => $signature,
         'public_id' => $publicId,
         'folder' => 'flipbooks',
-        'resource_type' => 'image',
+        'resource_type' => 'raw',
         'use_filename' => 'true',
         'unique_filename' => 'true',
     );
 
     $ch = curl_init();
-    // Upload PDF as IMAGE resource so Cloudinary serves it publicly without raw delivery restrictions.
-    curl_setopt($ch, CURLOPT_URL, 'https://api.cloudinary.com/v1_1/' . $cloud . '/image/upload');
+    // Upload PDF as RAW resource to avoid Cloudinary image/pdf delivery restrictions (401 in viewer).
+    curl_setopt($ch, CURLOPT_URL, 'https://api.cloudinary.com/v1_1/' . $cloud . '/raw/upload');
     curl_setopt($ch, CURLOPT_POST, 1);
     curl_setopt($ch, CURLOPT_POSTFIELDS, $post);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -294,7 +294,7 @@ ob_start();
     <div class="row">
         <label style="font-weight:bold;">Subir PDF (puede reemplazar el actual)</label>
         <input type="file" name="pdf" accept="application/pdf">
-        <small style="color:#6b7280;">Se sube a Cloudinary como image/pdf para entrega pública directa (compatible con viewer).</small>
+        <small style="color:#6b7280;">Se sube a Cloudinary como raw/pdf para evitar bloqueos de entrega PDF (401) en el viewer.</small>
     </div>
 
     <div class="row">
