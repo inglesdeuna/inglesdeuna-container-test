@@ -73,9 +73,25 @@ function upload_pdf_to_cloudinary($tmpPath, $originalName)
     }
 
     $timestamp = time();
-    $publicId = 'flipbooks/unit_' . preg_replace('/[^a-zA-Z0-9_-]/', '_', (string) ($_GET['unit'] ?? '')) . '_' . $timestamp;
+    $publicId = 'unit_' . preg_replace('/[^a-zA-Z0-9_-]/', '_', (string) ($_GET['unit'] ?? '')) . '_' . $timestamp;
 
-    $signatureBase = 'public_id=' . $publicId . '&resource_type=raw&timestamp=' . $timestamp . $secret;
+    // Cloudinary signature must include the exact upload params (except file/api_key/signature/resource_type).
+    $signatureParams = array(
+        'folder' => 'flipbooks',
+        'public_id' => $publicId,
+        'timestamp' => $timestamp,
+        'unique_filename' => 'true',
+        'use_filename' => 'true',
+    );
+
+    ksort($signatureParams);
+
+    $signatureStringParts = array();
+    foreach ($signatureParams as $keyParam => $valueParam) {
+        $signatureStringParts[] = $keyParam . '=' . $valueParam;
+    }
+
+    $signatureBase = implode('&', $signatureStringParts) . $secret;
     $signature = sha1($signatureBase);
 
     $post = array(
