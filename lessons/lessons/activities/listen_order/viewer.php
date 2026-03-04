@@ -8,6 +8,7 @@ if(!$unit) die("Unit missing");
 
 /* ========= LOAD FROM DB ========= */
 $unit = $_GET['unit'] ?? null;
+$unit = isset($_GET['unit']) ? $_GET['unit'] : null;
 if (!$unit) {
     die("Unidad no especificada");
 }
@@ -30,7 +31,9 @@ $row = $stmt->fetch(PDO::FETCH_ASSOC);
 $blocks = json_decode($row["data"] ?? "[]", true);
 $blocks = json_decode($row['data'] ?? '[]', true);
 $blocks = is_array($blocks) ? $blocks : [];
-$blocks = is_array($blocks) ? $blocks : array();
+$raw = isset($row['data']) ? $row['data'] : '[]';
+$decoded = json_decode($raw, true);
+$blocks = is_array($decoded) ? $decoded : array();
 
 if(!$blocks || count($blocks) == 0){
     die("No activities for this unit");
@@ -197,7 +200,7 @@ function playAudio(){
             background:white;
             cursor:grab;
             box-shadow:0 2px 6px rgba(0,0,0,.15);
-@@ -214,125 +67,125 @@ function playAudio(){
+@@ -214,52 +68,50 @@ function playAudio(){
             text-align:center;
             margin-top:10px;
         }
@@ -250,29 +253,7 @@ function playAudio(){
         let isSpeaking = false;
 
         const wordsDiv = document.getElementById("words");
-        const answerDiv = document.getElementById("answer");
-        const feedback = document.getElementById("feedback");
-
-        function playAudio() {
-            if (isSpeaking && !isPaused) {
-                speechSynthesis.pause();
-                isPaused = true;
-                return;
-            }
-
-            if (isPaused) {
-                speechSynthesis.resume();
-                isPaused = false;
-                return;
-            }
-
-            const utter = new SpeechSynthesisUtterance(blocks[index].sentence || "");
-            const sentence = (blocks[index] && blocks[index].sentence) ? blocks[index].sentence : "";
-            const utter = new SpeechSynthesisUtterance(sentence);
-            utter.lang = "en-US";
-            utter.rate = 0.7;
-
-            utter.onstart = function () {
+@@ -287,52 +139,54 @@ function playAudio(){
                 isSpeaking = true;
                 isPaused = false;
             };
@@ -300,7 +281,6 @@ function playAudio(){
             const block = blocks[index];
             correct = Array.isArray(block.images) ? [...block.images] : [];
             const shuffled = [...correct].sort(() => Math.random() - 0.5);
-            const block = blocks[index] || {};
             correct = Array.isArray(block.images) ? block.images.slice() : [];
             const shuffled = correct.slice().sort(function () {
                 return Math.random() - 0.5;
@@ -330,7 +310,7 @@ function playAudio(){
 
         answerDiv.addEventListener("drop", function () {
             if (dragged) {
-@@ -347,134 +200,30 @@ function playAudio(){
+@@ -347,134 +201,30 @@ function playAudio(){
 
             if (JSON.stringify(built) === JSON.stringify(correct)) {
                 feedback.textContent = "🌟 Excellent!";
