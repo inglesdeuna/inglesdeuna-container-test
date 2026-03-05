@@ -23,7 +23,20 @@ function load_multiple_choice_questions($pdo, $unit)
     $raw = isset($row['data']) ? $row['data'] : '[]';
     $decoded = json_decode($raw, true);
 
-    return is_array($decoded) ? $decoded : array();
+    if (!is_array($decoded)) {
+        return array();
+    }
+
+    $isList = array_keys($decoded) === range(0, count($decoded) - 1);
+    if ($isList) {
+        return $decoded;
+    }
+
+    if (isset($decoded['questions']) && is_array($decoded['questions'])) {
+        return $decoded['questions'];
+    }
+
+    return array();
 }
 
 function save_multiple_choice_questions($pdo, $unit, $questions)
