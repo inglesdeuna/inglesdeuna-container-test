@@ -9,8 +9,39 @@ if ($activityId === '' && $unit === '') {
     die('Actividad no especificada');
 }
 
+function activities_columns($pdo)
+{
+    static $cache = null;
+
+    if (is_array($cache)) {
+        return $cache;
+    }
+
+    $cache = array();
+
+    $stmt = $pdo->query(
+        "SELECT column_name
+         FROM information_schema.columns
+         WHERE table_schema = 'public'
+           AND table_name = 'activities'"
+    );
+
+    $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    foreach ($rows as $row) {
+        if (isset($row['column_name'])) {
+            $cache[] = (string) $row['column_name'];
+        }
+    }
+
+    return $cache;
+}
+
 function normalize_multiple_choice_questions($rawData)
 {
+    if ($rawData === null || $rawData === '') {
+        return array();
+    }
+
     if (is_string($rawData)) {
         $decoded = json_decode($rawData, true);
 
@@ -100,33 +131,81 @@ function normalize_multiple_choice_questions($rawData)
     return $normalized;
 }
 
-$row = null;
+function load_multiple_choice_raw($pdo, $activityId, $unit)
+{
+    $columns = activities_columns($pdo);
 
-if ($activityId !== '') {
-    $stmt = $pdo->prepare(
-        "SELECT data
-         FROM activities
-         WHERE id = :id
-           AND type = 'multiple_choice'
-         LIMIT 1"
-    );
-    $stmt->execute(array('id' => $activityId));
-    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+    $hasModern = in_array('unit_id', $columns, true) && in_array('data', $columns, true);
+    $hasLegacy = in_array('unit', $columns, true) && in_array('content_json', $columns, true);
+
+    if ($hasModern) {
+        if ($activityId !== '' && in_array('id', $columns, true)) {
+            $stmt = $pdo->prepare(
+                "SELECT data
+                 FROM activities
+                 WHERE id = :id
+                   AND type = 'multiple_choice'
+                 LIMIT 1"
+            );
+            $stmt->execute(array('id' => $activityId));
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+            if ($row && array_key_exists('data', $row)) {
+                return $row['data'];
+            }
+        }
+
+        if ($unit !== '') {
+            $stmt = $pdo->prepare(
+                "SELECT data
+                 FROM activities
+                 WHERE unit_id = :unit
+                   AND type = 'multiple_choice'
+                 LIMIT 1"
+            );
+            $stmt->execute(array('unit' => $unit));
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+            if ($row && array_key_exists('data', $row)) {
+                return $row['data'];
+            }
+        }
+    }
+
+    if ($hasLegacy) {
+        if ($activityId !== '' && in_array('id', $columns, true)) {
+            $stmt = $pdo->prepare(
+                "SELECT content_json
+                 FROM activities
+                 WHERE id = :id
+                   AND type = 'multiple_choice'
+                 LIMIT 1"
+            );
+            $stmt->execute(array('id' => $activityId));
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+            if ($row && array_key_exists('content_json', $row)) {
+                return $row['content_json'];
+            }
+        }
+
+        if ($unit !== '') {
+            $stmt = $pdo->prepare(
+                "SELECT content_json
+                 FROM activities
+                 WHERE unit = :unit
+                   AND type = 'multiple_choice'
+                 LIMIT 1"
+            );
+            $stmt->execute(array('unit' => $unit));
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+            if ($row && array_key_exists('content_json', $row)) {
+                return $row['content_json'];
+            }
+        }
+    }
+
+    return '[]';
 }
 
-if (!$row && $unit !== '') {
-    $stmt = $pdo->prepare(
-        "SELECT data
-         FROM activities
-         WHERE unit_id = :unit
-           AND type = 'multiple_choice'
-         LIMIT 1"
-    );
-    $stmt->execute(array('unit' => $unit));
-    $row = $stmt->fetch(PDO::FETCH_ASSOC);
-}
-
-$raw = isset($row['data']) ? $row['data'] : '[]';
+$raw = load_multiple_choice_raw($pdo, $activityId, $unit);
 $questions = normalize_multiple_choice_questions($raw);
 
 $cssVersion = file_exists(__DIR__ . '/multiple_choice.css') ? (string) filemtime(__DIR__ . '/multiple_choice.css') : (string) time();
