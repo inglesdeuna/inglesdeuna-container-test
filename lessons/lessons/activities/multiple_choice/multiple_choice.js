@@ -1,45 +1,107 @@
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener('DOMContentLoaded', function () {
+  const questions = Array.isArray(window.MULTIPLE_CHOICE_DATA) ? window.MULTIPLE_CHOICE_DATA : [];
 
-  const container = document.getElementById("mc-container");
-  if (!container || typeof MC_DATA === "undefined") return;
+  const statusEl = document.getElementById('mc-status');
+  const questionEl = document.getElementById('mc-question');
+  const imageEl = document.getElementById('mc-image');
+  const optionsEl = document.getElementById('mc-options');
+  const feedbackEl = document.getElementById('mc-feedback');
+  const checkBtn = document.getElementById('mc-check');
+  const nextBtn = document.getElementById('mc-next');
 
-  container.innerHTML = `<div class="mc-grid"></div>`;
-  const grid = container.querySelector(".mc-grid");
+  if (!questions.length) {
+    if (questionEl) {
+      questionEl.textContent = 'No questions available.';
+    }
+    return;
+  }
 
-  MC_DATA.forEach(item => {
+  let index = 0;
+  let selected = null;
 
-    const card = document.createElement("div");
-    card.className = "mc-card";
+  function safeOptions(item) {
+    return item && Array.isArray(item.options) ? item.options : [];
+  }
 
-    card.innerHTML = `
-      <div class="mc-question">${item.question}</div>
+  function loadQuestion() {
+    const item = questions[index] || {};
 
-      ${item.image ? `<img src="${item.image}" class="mc-image">` : ""}
+    selected = null;
+    feedbackEl.textContent = '';
+    feedbackEl.className = 'mc-feedback';
 
-      ${item.options.map((opt, i) => `
-        <div class="mc-option" data-correct="${i === item.correct}">
-          ${opt}
-        </div>
-      `).join("")}
-    `;
+    statusEl.textContent = 'Question ' + (index + 1) + ' of ' + questions.length;
+    questionEl.textContent = item.question || '';
 
-    grid.appendChild(card);
-  });
-
-  document.addEventListener("click", e => {
-
-    if (e.target.classList.contains("mc-option")) {
-
-      const options = e.target.parentElement.querySelectorAll(".mc-option");
-      options.forEach(opt => opt.classList.remove("mc-correct","mc-wrong"));
-
-      if (e.target.dataset.correct === "true") {
-        e.target.classList.add("mc-correct");
-      } else {
-        e.target.classList.add("mc-wrong");
-      }
+    if (item.image) {
+      imageEl.style.display = 'block';
+      imageEl.src = item.image;
+    } else {
+      imageEl.style.display = 'none';
+      imageEl.removeAttribute('src');
     }
 
-  });
+    optionsEl.innerHTML = '';
 
+    safeOptions(item).forEach(function (optionText, optIndex) {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'mc-option';
+      button.textContent = optionText;
+      button.addEventListener('click', function () {
+        selected = optIndex;
+        Array.prototype.forEach.call(optionsEl.querySelectorAll('.mc-option'), function (node) {
+          node.classList.remove('selected');
+        });
+        button.classList.add('selected');
+      });
+      optionsEl.appendChild(button);
+    });
+  }
+
+  function checkAnswer() {
+    const item = questions[index] || {};
+    const correct = Number.isInteger(item.correct) ? item.correct : 0;
+    const options = optionsEl.querySelectorAll('.mc-option');
+
+    if (selected === null) {
+      feedbackEl.textContent = 'Selecciona una opción primero.';
+      feedbackEl.className = 'mc-feedback bad';
+      return;
+    }
+
+    Array.prototype.forEach.call(options, function (node, optIndex) {
+      node.classList.remove('correct', 'wrong');
+      if (optIndex === correct) {
+        node.classList.add('correct');
+      }
+      if (optIndex === selected && selected !== correct) {
+        node.classList.add('wrong');
+      }
+    });
+
+    if (selected === correct) {
+      feedbackEl.textContent = '🌟 Excellent!';
+      feedbackEl.className = 'mc-feedback good';
+    } else {
+      feedbackEl.textContent = '🔁 Try again!';
+      feedbackEl.className = 'mc-feedback bad';
+    }
+  }
+
+  function nextQuestion() {
+    if (index < questions.length - 1) {
+      index += 1;
+      loadQuestion();
+      return;
+    }
+
+    feedbackEl.textContent = '🏆 Completed!';
+    feedbackEl.className = 'mc-feedback good';
+  }
+
+  checkBtn.addEventListener('click', checkAnswer);
+  nextBtn.addEventListener('click', nextQuestion);
+
+  loadQuestion();
 });
