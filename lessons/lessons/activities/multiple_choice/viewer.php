@@ -138,6 +138,8 @@ function load_multiple_choice_raw($pdo, $activityId, $unit)
     $hasModern = in_array('unit_id', $columns, true) && in_array('data', $columns, true);
     $hasLegacy = in_array('unit', $columns, true) && in_array('content_json', $columns, true);
 
+    $typeCandidates = array('multiple_choice', 'multiple-choice', 'multiple choice');
+
     if ($hasModern) {
         if ($activityId !== '' && in_array('id', $columns, true)) {
             $stmt = $pdo->prepare(
@@ -152,6 +154,18 @@ function load_multiple_choice_raw($pdo, $activityId, $unit)
             if ($row && array_key_exists('data', $row)) {
                 return $row['data'];
             }
+
+            $stmt = $pdo->prepare(
+                "SELECT data
+                 FROM activities
+                 WHERE id = :id
+                 LIMIT 1"
+            );
+            $stmt->execute(array('id' => $activityId));
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+            if ($row && array_key_exists('data', $row)) {
+                return $row['data'];
+            }
         }
 
         if ($unit !== '') {
@@ -159,7 +173,22 @@ function load_multiple_choice_raw($pdo, $activityId, $unit)
                 "SELECT data
                  FROM activities
                  WHERE unit_id = :unit
-                   AND type = 'multiple_choice'
+                   AND type = :type
+                 LIMIT 1"
+            );
+            foreach ($typeCandidates as $type) {
+                $stmt->execute(array('unit' => $unit, 'type' => $type));
+                $row = $stmt->fetch(PDO::FETCH_ASSOC);
+                if ($row && array_key_exists('data', $row)) {
+                    return $row['data'];
+                }
+            }
+
+            $stmt = $pdo->prepare(
+                "SELECT data
+                 FROM activities
+                 WHERE unit_id = :unit
+                 ORDER BY created_at DESC
                  LIMIT 1"
             );
             $stmt->execute(array('unit' => $unit));
@@ -184,6 +213,18 @@ function load_multiple_choice_raw($pdo, $activityId, $unit)
             if ($row && array_key_exists('content_json', $row)) {
                 return $row['content_json'];
             }
+
+            $stmt = $pdo->prepare(
+                "SELECT content_json
+                 FROM activities
+                 WHERE id = :id
+                 LIMIT 1"
+            );
+            $stmt->execute(array('id' => $activityId));
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+            if ($row && array_key_exists('content_json', $row)) {
+                return $row['content_json'];
+            }
         }
 
         if ($unit !== '') {
@@ -191,7 +232,22 @@ function load_multiple_choice_raw($pdo, $activityId, $unit)
                 "SELECT content_json
                  FROM activities
                  WHERE unit = :unit
-                   AND type = 'multiple_choice'
+                   AND type = :type
+                 LIMIT 1"
+            );
+            foreach ($typeCandidates as $type) {
+                $stmt->execute(array('unit' => $unit, 'type' => $type));
+                $row = $stmt->fetch(PDO::FETCH_ASSOC);
+                if ($row && array_key_exists('content_json', $row)) {
+                    return $row['content_json'];
+                }
+            }
+
+            $stmt = $pdo->prepare(
+                "SELECT content_json
+                 FROM activities
+                 WHERE unit = :unit
+                 ORDER BY updated_at DESC NULLS LAST
                  LIMIT 1"
             );
             $stmt->execute(array('unit' => $unit));
