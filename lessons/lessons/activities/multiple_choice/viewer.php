@@ -2,29 +2,42 @@
 require_once __DIR__ . '/../../config/db.php';
 require_once __DIR__ . '/../../core/_activity_viewer_template.php';
 
-$unit = isset($_GET['unit']) ? $_GET['unit'] : null;
-if (!$unit) {
-    die('Unidad no especificada');
+$activityId = isset($_GET['id']) ? trim((string) $_GET['id']) : '';
+$unit = isset($_GET['unit']) ? trim((string) $_GET['unit']) : '';
+
+if ($activityId === '' && $unit === '') {
+    die('Actividad no especificada');
 }
 
-$stmt = $pdo->prepare(
-    "SELECT data
-     FROM activities
-     WHERE unit_id = :unit
-       AND type = 'multiple_choice'
-     LIMIT 1"
-);
-$stmt->execute(array('unit' => $unit));
+$row = null;
 
-$row = $stmt->fetch(PDO::FETCH_ASSOC);
+if ($activityId !== '') {
+    $stmt = $pdo->prepare(
+        "SELECT data
+         FROM activities
+         WHERE id = :id
+           AND type = 'multiple_choice'
+         LIMIT 1"
+    );
+    $stmt->execute(array('id' => $activityId));
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+}
+
+if (!$row && $unit !== '') {
+    $stmt = $pdo->prepare(
+        "SELECT data
+         FROM activities
+         WHERE unit_id = :unit
+           AND type = 'multiple_choice'
+         LIMIT 1"
+    );
+    $stmt->execute(array('unit' => $unit));
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+}
+
 $raw = isset($row['data']) ? $row['data'] : '[]';
 $decoded = json_decode($raw, true);
 $questions = is_array($decoded) ? $decoded : array();
-
-if (count($questions) === 0) {
-    die('No hay preguntas para esta unidad');
-}
-
 
 $cssVersion = file_exists(__DIR__ . '/multiple_choice.css') ? (string) filemtime(__DIR__ . '/multiple_choice.css') : (string) time();
 $jsVersion = file_exists(__DIR__ . '/multiple_choice.js') ? (string) filemtime(__DIR__ . '/multiple_choice.js') : (string) time();
