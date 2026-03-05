@@ -3,8 +3,26 @@ require_once __DIR__ . '/../../config/db.php';
 require_once __DIR__ . '/../../core/cloudinary_upload.php';
 require_once __DIR__ . '/../../core/_activity_editor_template.php';
 
-$unit = isset($_GET['unit']) ? $_GET['unit'] : null;
-if (!$unit) {
+$activityId = isset($_GET['id']) ? trim((string) $_GET['id']) : '';
+$unit = isset($_GET['unit']) ? trim((string) $_GET['unit']) : '';
+$source = isset($_GET['source']) ? trim((string) $_GET['source']) : '';
+
+if ($unit === '' && $activityId !== '') {
+    $unitStmt = $pdo->prepare(
+        "SELECT unit_id
+         FROM activities
+         WHERE id = :id
+           AND type = 'multiple_choice'
+         LIMIT 1"
+    );
+    $unitStmt->execute(array('id' => $activityId));
+    $unitRow = $unitStmt->fetch(PDO::FETCH_ASSOC);
+    if ($unitRow && isset($unitRow['unit_id'])) {
+        $unit = (string) $unitRow['unit_id'];
+    }
+}
+
+if ($unit === '') {
     die('Unidad no especificada');
 }
 
@@ -207,7 +225,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     save_multiple_choice_questions($pdo, $unit, $sanitized);
 
-    header('Location: editor.php?unit=' . urlencode($unit) . '&saved=1');
+    $redirectParams = array('unit=' . urlencode($unit), 'saved=1');
+    if ($activityId !== '') {
+        $redirectParams[] = 'id=' . urlencode($activityId);
+    }
+    if ($source !== '') {
+        $redirectParams[] = 'source=' . urlencode($source);
+    }
+
+    header('Location: editor.php?' . implode('&', $redirectParams));
     exit;
 }
 
@@ -301,3 +327,80 @@ if (isset($_GET['saved'])) {
 
 .mc-preview{
     width:120px;
+    border-radius:8px;
+    border:1px solid #e2e8f0;
+}
+
+.mc-block-footer{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+}
+
+.mc-actions{
+    display:flex;
+    gap:10px;
+    margin-top:14px;
+}
+
+.btn-add,
+.btn-save,
+.btn-remove{
+    border:none;
+    border-radius:8px;
+    color:#fff;
+    cursor:pointer;
+    font-weight:bold;
+}
+
+.btn-add{ background:#16a34a; padding:10px 14px; }
+.btn-save{ background:#0b5ed7; padding:10px 14px; }
+.btn-remove{ background:#ef4444; padding:9px 12px; }
+</style>
+
+<script>
+function addQuestion(){
+    const container = document.getElementById('questions');
+
+    const block = document.createElement('div');
+    block.className = 'mc-block';
+    block.innerHTML = `
+        <label>Question</label>
+        <input type="text" name="question[]" placeholder="Question" required>
+
+        <label>Image (optional)</label>
+        <input type="file" name="image_file[]" accept="image/*">
+        <input type="hidden" name="image[]" value="">
+
+        <label>Options</label>
+        <div class="mc-options-grid">
+            <input type="text" name="option_a[]" placeholder="Option A" required>
+            <input type="text" name="option_b[]" placeholder="Option B" required>
+            <input type="text" name="option_c[]" placeholder="Option C" required>
+        </div>
+
+        <div class="mc-block-footer">
+            <select name="correct[]">
+                <option value="0">Correct: A</option>
+                <option value="1">Correct: B</option>
+                <option value="2">Correct: C</option>
+            </select>
+            <button type="button" onclick="removeQuestion(this)" class="btn-remove">✖ Eliminar</button>
+        </div>
+    `;
+
+    container.appendChild(block);
+}
+
+function removeQuestion(btn){
+    const block = btn.closest('.mc-block');
+    if (block) {
+        block.remove();
+    }
+}
+</script>
+
+<?php
+$content = ob_get_clean();
+render_activity_editor('📝 Multiple Choice Editor', '📝', $content);
