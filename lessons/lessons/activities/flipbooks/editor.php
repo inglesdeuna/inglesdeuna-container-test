@@ -62,6 +62,39 @@ function save_flipbook_data($pdo, $unit, $payload)
     }
 }
 
+function save_pdf_locally($tmpPath, $originalName, $unit)
+{
+    $uploadDir = __DIR__ . '/uploads';
+    if (!is_dir($uploadDir)) {
+        if (!mkdir($uploadDir, 0775, true) && !is_dir($uploadDir)) {
+            return array('error' => 'No se pudo crear la carpeta de uploads del flipbook.');
+        }
+    }
+
+    $safeUnit = preg_replace('/[^a-zA-Z0-9_-]/', '_', (string) $unit);
+    $safeName = preg_replace('/[^a-zA-Z0-9._-]/', '_', (string) $originalName);
+    $filename = 'unit_' . $safeUnit . '_' . time() . '_' . substr(md5((string) mt_rand()), 0, 8) . '_' . $safeName;
+    if (!preg_match('/\.pdf$/i', $filename)) {
+        $filename .= '.pdf';
+    }
+
+    $targetPath = $uploadDir . '/' . $filename;
+
+    $moved = is_uploaded_file($tmpPath)
+        ? move_uploaded_file($tmpPath, $targetPath)
+        : rename($tmpPath, $targetPath);
+
+    if (!$moved) {
+        return array('error' => 'No se pudo guardar el PDF en el servidor.');
+    }
+
+    return array(
+        'secure_url' => '/lessons/lessons/activities/flipbooks/uploads/' . $filename,
+        'public_id' => 'local:' . $filename,
+        'bytes' => file_exists($targetPath) ? (int) filesize($targetPath) : 0,
+    );
+}
+
 function upload_pdf_to_cloudinary($tmpPath, $originalName)
 {
     $cloud = getenv('CLOUDINARY_CLOUD_NAME');
@@ -79,7 +112,6 @@ function upload_pdf_to_cloudinary($tmpPath, $originalName)
     $timestamp = time();
     $publicId = 'unit_' . preg_replace('/[^a-zA-Z0-9_-]/', '_', (string) ($_GET['unit'] ?? '')) . '_' . $timestamp;
 
-    // Cloudinary signature must include the exact upload params (except file/api_key/signature).
     $signatureParams = array(
         'folder' => 'flipbooks',
         'public_id' => $publicId,
@@ -111,7 +143,6 @@ function upload_pdf_to_cloudinary($tmpPath, $originalName)
     );
 
     $ch = curl_init();
-    // Upload PDF as RAW resource to avoid Cloudinary image/pdf delivery restrictions (401 in viewer).
     curl_setopt($ch, CURLOPT_URL, 'https://api.cloudinary.com/v1_1/' . $cloud . '/raw/upload');
     curl_setopt($ch, CURLOPT_POST, 1);
     curl_setopt($ch, CURLOPT_POSTFIELDS, $post);
@@ -220,10 +251,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($extension !== 'pdf') {
                 $errorMsg = 'Solo se permite subir archivos PDF.';
             } else {
-                $upload = upload_pdf_to_cloudinary($_FILES['pdf']['tmp_name'], $_FILES['pdf']['name']);
+                $upload = save_pdf_locally($_FILES['pdf']['tmp_name'], $_FILES['pdf']['name'], $unit);
 
                 if (isset($upload['error'])) {
-                    $errorMsg = $upload['error'];
+                    $cloudUpload = upload_pdf_to_cloudinary($_FILES['pdf']['tmp_name'], $_FILES['pdf']['name']);
+                    if (isset($cloudUpload['error'])) {
+                        $errorMsg = $upload['error'] . ' / Cloudinary: ' . $cloudUpload['error'];
+                    } else {
+                        $flipbook['pdf_url'] = $cloudUpload['secure_url'];
+                        $flipbook['pdf_public_id'] = $cloudUpload['public_id'];
+                        $flipbook['pdf_bytes'] = $cloudUpload['bytes'];
+                        $flipbook['pdf'] = $cloudUpload['secure_url'];
+                    }
                 } else {
                     $flipbook['pdf_url'] = $upload['secure_url'];
                     $flipbook['pdf_public_id'] = $upload['public_id'];
@@ -294,7 +333,7 @@ ob_start();
     <div class="row">
         <label style="font-weight:bold;">Subir PDF (puede reemplazar el actual)</label>
         <input type="file" name="pdf" accept="application/pdf">
-        <small style="color:#6b7280;">Se sube a Cloudinary como raw/pdf para evitar bloqueos de entrega PDF (401) en el viewer.</small>
+        <small style="color:#6b7280;">Se guarda localmente en el servidor (y usa Cloudinary solo como fallback si falla el guardado local).</small>
     </div>
 
     <div class="row">
