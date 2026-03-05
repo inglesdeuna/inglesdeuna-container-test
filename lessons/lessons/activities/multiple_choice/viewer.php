@@ -9,6 +9,97 @@ if ($activityId === '' && $unit === '') {
     die('Actividad no especificada');
 }
 
+function normalize_multiple_choice_questions($rawData)
+{
+    if (is_string($rawData)) {
+        $decoded = json_decode($rawData, true);
+
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            return array();
+        }
+
+        if (is_string($decoded)) {
+            $decodedAgain = json_decode($decoded, true);
+            if (json_last_error() === JSON_ERROR_NONE) {
+                $decoded = $decodedAgain;
+            }
+        }
+    } else {
+        $decoded = $rawData;
+    }
+
+    if (!is_array($decoded)) {
+        return array();
+    }
+
+    if (isset($decoded['questions']) && is_array($decoded['questions'])) {
+        $decoded = $decoded['questions'];
+    } elseif (isset($decoded['items']) && is_array($decoded['items'])) {
+        $decoded = $decoded['items'];
+    } elseif (isset($decoded['data']) && is_array($decoded['data'])) {
+        $decoded = $decoded['data'];
+    }
+
+    $isList = array_keys($decoded) === range(0, count($decoded) - 1);
+    if (!$isList) {
+        if (isset($decoded['question']) || isset($decoded['options']) || isset($decoded['option_a'])) {
+            $decoded = array($decoded);
+        } else {
+            return array();
+        }
+    }
+
+    $normalized = array();
+
+    foreach ($decoded as $item) {
+        if (!is_array($item)) {
+            continue;
+        }
+
+        $question = isset($item['question']) ? trim((string) $item['question']) : '';
+
+        $image = '';
+        if (isset($item['image'])) {
+            $image = trim((string) $item['image']);
+        } elseif (isset($item['img'])) {
+            $image = trim((string) $item['img']);
+        }
+
+        $options = array('', '', '');
+        if (isset($item['options']) && is_array($item['options'])) {
+            $options = array(
+                isset($item['options'][0]) ? trim((string) $item['options'][0]) : '',
+                isset($item['options'][1]) ? trim((string) $item['options'][1]) : '',
+                isset($item['options'][2]) ? trim((string) $item['options'][2]) : '',
+            );
+        } else {
+            $options = array(
+                isset($item['option_a']) ? trim((string) $item['option_a']) : '',
+                isset($item['option_b']) ? trim((string) $item['option_b']) : '',
+                isset($item['option_c']) ? trim((string) $item['option_c']) : '',
+            );
+        }
+
+        $correct = isset($item['correct']) ? (int) $item['correct'] : 0;
+        if ($correct < 0 || $correct > 2) {
+            $correct = 0;
+        }
+
+        if ($question === '' && $options[0] === '' && $options[1] === '' && $options[2] === '') {
+            continue;
+        }
+
+        $normalized[] = array(
+            'question' => $question,
+            'image' => $image,
+            'options' => $options,
+            'correct' => $correct,
+        );
+    }
+
+    return $normalized;
+}
+
 $row = null;
 
 if ($activityId !== '') {
@@ -36,18 +127,7 @@ if (!$row && $unit !== '') {
 }
 
 $raw = isset($row['data']) ? $row['data'] : '[]';
-$decoded = json_decode($raw, true);
-
-$questions = array();
-if (is_array($decoded)) {
-    $isList = array_keys($decoded) === range(0, count($decoded) - 1);
-
-    if ($isList) {
-        $questions = $decoded;
-    } elseif (isset($decoded['questions']) && is_array($decoded['questions'])) {
-        $questions = $decoded['questions'];
-    }
-}
+$questions = normalize_multiple_choice_questions($raw);
 
 $cssVersion = file_exists(__DIR__ . '/multiple_choice.css') ? (string) filemtime(__DIR__ . '/multiple_choice.css') : (string) time();
 $jsVersion = file_exists(__DIR__ . '/multiple_choice.js') ? (string) filemtime(__DIR__ . '/multiple_choice.js') : (string) time();
