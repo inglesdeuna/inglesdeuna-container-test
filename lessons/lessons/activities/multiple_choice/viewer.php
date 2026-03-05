@@ -3,13 +3,13 @@ require_once __DIR__ . '/../../config/db.php';
 require_once __DIR__ . '/../../core/_activity_viewer_template.php';
 
 $activityId = isset($_GET['id']) ? trim((string) $_GET['id']) : '';
-$unit = isset($_GET['unit']) ? trim((string) $_GET['unit']) : '';
+$unit       = isset($_GET['unit']) ? trim((string) $_GET['unit']) : '';
 
 if ($activityId === '' && $unit === '') {
     die('Actividad no especificada');
 }
 
-function activities_columns($pdo)
+function activities_columns(PDO $pdo): array
 {
     static $cache = null;
 
@@ -36,11 +36,13 @@ function activities_columns($pdo)
     return $cache;
 }
 
-function normalize_multiple_choice_questions($rawData)
+function normalize_multiple_choice_questions($rawData): array
 {
     if ($rawData === null || $rawData === '') {
         return array();
     }
+
+    $decoded = null;
 
     if (is_string($rawData)) {
         $decoded = json_decode($rawData, true);
@@ -49,6 +51,7 @@ function normalize_multiple_choice_questions($rawData)
             return array();
         }
 
+        // A veces viene como JSON doble-encapsulado en string
         if (is_string($decoded)) {
             $decodedAgain = json_decode($decoded, true);
             if (json_last_error() === JSON_ERROR_NONE) {
@@ -63,6 +66,7 @@ function normalize_multiple_choice_questions($rawData)
         return array();
     }
 
+    // Detectar contenedores comunes
     if (isset($decoded['questions']) && is_array($decoded['questions'])) {
         $decoded = $decoded['questions'];
     } elseif (isset($decoded['items']) && is_array($decoded['items'])) {
@@ -71,8 +75,16 @@ function normalize_multiple_choice_questions($rawData)
         $decoded = $decoded['data'];
     }
 
-    $isList = array_keys($decoded) === range(0, count($decoded) - 1);
+    if (!is_array($decoded)) {
+        return array();
+    }
+
+    // Evitar range(0, -1) en arrays vacíos
+    $count = count($decoded);
+    $isList = ($count === 0) ? true : (array_keys($decoded) === range(0, $count - 1));
+
     if (!$isList) {
+        // Si es un objeto "pregunta suelta", lo envolvemos
         if (isset($decoded['question']) || isset($decoded['options']) || isset($decoded['option_a'])) {
             $decoded = array($decoded);
         } else {
@@ -96,6 +108,7 @@ function normalize_multiple_choice_questions($rawData)
             $image = trim((string) $item['img']);
         }
 
+        // 3 opciones (A,B,C)
         $options = array('', '', '');
         if (isset($item['options']) && is_array($item['options'])) {
             $options = array(
@@ -116,22 +129,23 @@ function normalize_multiple_choice_questions($rawData)
             $correct = 0;
         }
 
+        // Saltar ítems totalmente vacíos
         if ($question === '' && $options[0] === '' && $options[1] === '' && $options[2] === '') {
             continue;
         }
 
         $normalized[] = array(
             'question' => $question,
-            'image' => $image,
-            'options' => $options,
-            'correct' => $correct,
+            'image'    => $image,
+            'options'  => $options,
+            'correct'  => $correct,
         );
     }
 
     return $normalized;
 }
 
-function load_multiple_choice_raw($pdo, $activityId, $unit)
+function load_multiple_choice_raw(PDO $pdo, string $activityId, string $unit)
 {
     $columns = activities_columns($pdo);
 
@@ -140,21 +154,28 @@ function load_multiple_choice_raw($pdo, $activityId, $unit)
 
     $typeCandidates = array('multiple_choice', 'multiple-choice', 'multiple choice');
 
+    // ---------------- MODERNO (data, unit_id) ----------------
     if ($hasModern) {
         if ($activityId !== '' && in_array('id', $columns, true)) {
-            $stmt = $pdo->prepare(
+
+            // 1) Intentar por id con varios type posibles
+            $stmtByIdType = $pdo->prepare(
                 "SELECT data
                  FROM activities
                  WHERE id = :id
-                   AND type = 'multiple_choice'
+                   AND type = :type
                  LIMIT 1"
             );
-            $stmt->execute(array('id' => $activityId));
-            $row = $stmt->fetch(PDO::FETCH_ASSOC);
-            if ($row && array_key_exists('data', $row)) {
-                return $row['data'];
+
+            foreach ($typeCandidates as $type) {
+                $stmtByIdType->execute(array('id' => $activityId, 'type' => $type));
+                $row = $stmtByIdType->fetch(PDO::FETCH_ASSOC);
+                if ($row && array_key_exists('data', $row)) {
+                    return $row['data'];
+                }
             }
 
+            // 2) Fallback: por id sin filtrar type
             $stmt = $pdo->prepare(
                 "SELECT data
                  FROM activities
@@ -176,6 +197,7 @@ function load_multiple_choice_raw($pdo, $activityId, $unit)
                    AND type = :type
                  LIMIT 1"
             );
+
             foreach ($typeCandidates as $type) {
                 $stmt->execute(array('unit' => $unit, 'type' => $type));
                 $row = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -199,19 +221,24 @@ function load_multiple_choice_raw($pdo, $activityId, $unit)
         }
     }
 
+    // ---------------- LEGADO (content_json, unit) ----------------
     if ($hasLegacy) {
         if ($activityId !== '' && in_array('id', $columns, true)) {
-            $stmt = $pdo->prepare(
+
+            $stmtByIdType = $pdo->prepare(
                 "SELECT content_json
                  FROM activities
                  WHERE id = :id
-                   AND type = 'multiple_choice'
+                   AND type = :type
                  LIMIT 1"
             );
-            $stmt->execute(array('id' => $activityId));
-            $row = $stmt->fetch(PDO::FETCH_ASSOC);
-            if ($row && array_key_exists('content_json', $row)) {
-                return $row['content_json'];
+
+            foreach ($typeCandidates as $type) {
+                $stmtByIdType->execute(array('id' => $activityId, 'type' => $type));
+                $row = $stmtByIdType->fetch(PDO::FETCH_ASSOC);
+                if ($row && array_key_exists('content_json', $row)) {
+                    return $row['content_json'];
+                }
             }
 
             $stmt = $pdo->prepare(
@@ -235,6 +262,7 @@ function load_multiple_choice_raw($pdo, $activityId, $unit)
                    AND type = :type
                  LIMIT 1"
             );
+
             foreach ($typeCandidates as $type) {
                 $stmt->execute(array('unit' => $unit, 'type' => $type));
                 $row = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -261,8 +289,9 @@ function load_multiple_choice_raw($pdo, $activityId, $unit)
     return '[]';
 }
 
-$raw = load_multiple_choice_raw($pdo, $activityId, $unit);
+$raw       = load_multiple_choice_raw($pdo, $activityId, $unit);
 $questions = normalize_multiple_choice_questions($raw);
+
 /* ===== DEBUG TEMPORAL (quitar después) ===== */
 $debugEnabled = isset($_GET['debug']) && $_GET['debug'] === '1';
 
@@ -274,14 +303,15 @@ if ($debugEnabled) {
     echo "activityId: " . $activityId . "\n";
     echo "unit: " . $unit . "\n";
     echo "raw type: " . gettype($raw) . "\n";
-    echo "raw preview: " . substr((string) $raw, 0, 500) . "\n";
+    $preview = substr((string) $raw, 0, 500);
+    echo "raw preview: " . $preview . "\n";
     echo "questions count: " . count($questions) . "\n";
     echo "questions json: " . json_encode($questions, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT) . "\n";
     exit;
 }
 
 $cssVersion = file_exists(__DIR__ . '/multiple_choice.css') ? (string) filemtime(__DIR__ . '/multiple_choice.css') : (string) time();
-$jsVersion = file_exists(__DIR__ . '/multiple_choice.js') ? (string) filemtime(__DIR__ . '/multiple_choice.js') : (string) time();
+$jsVersion  = file_exists(__DIR__ . '/multiple_choice.js') ? (string) filemtime(__DIR__ . '/multiple_choice.js') : (string) time();
 
 ob_start();
 ?>
@@ -291,7 +321,7 @@ ob_start();
 
     <div class="mc-card">
         <div class="mc-question" id="mc-question"></div>
-        <img id="mc-image" class="mc-image" alt="Question image">
+        <img id="mc-image" class="mc-image" alt="">
         <div class="mc-options" id="mc-options"></div>
     </div>
 
