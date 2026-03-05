@@ -263,6 +263,22 @@ function load_multiple_choice_raw($pdo, $activityId, $unit)
 
 $raw = load_multiple_choice_raw($pdo, $activityId, $unit);
 $questions = normalize_multiple_choice_questions($raw);
+/* ===== DEBUG TEMPORAL (quitar después) ===== */
+$debugEnabled = isset($_GET['debug']) && $_GET['debug'] === '1';
+
+if ($debugEnabled) {
+    header('Content-Type: text/plain; charset=utf-8');
+
+    echo "DEBUG multiple_choice viewer\n";
+    echo "============================\n";
+    echo "activityId: " . $activityId . "\n";
+    echo "unit: " . $unit . "\n";
+    echo "raw type: " . gettype($raw) . "\n";
+    echo "raw preview: " . substr((string) $raw, 0, 500) . "\n";
+    echo "questions count: " . count($questions) . "\n";
+    echo "questions json: " . json_encode($questions, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT) . "\n";
+    exit;
+}
 
 $cssVersion = file_exists(__DIR__ . '/multiple_choice.css') ? (string) filemtime(__DIR__ . '/multiple_choice.css') : (string) time();
 $jsVersion = file_exists(__DIR__ . '/multiple_choice.js') ? (string) filemtime(__DIR__ . '/multiple_choice.js') : (string) time();
