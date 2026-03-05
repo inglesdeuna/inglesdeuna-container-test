@@ -8,6 +8,97 @@ if (!$unit) {
     die('Unidad no especificada');
 }
 
+function normalize_multiple_choice_questions($rawData)
+{
+    if (is_string($rawData)) {
+        $decoded = json_decode($rawData, true);
+
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            return array();
+        }
+
+        if (is_string($decoded)) {
+            $decodedAgain = json_decode($decoded, true);
+            if (json_last_error() === JSON_ERROR_NONE) {
+                $decoded = $decodedAgain;
+            }
+        }
+    } else {
+        $decoded = $rawData;
+    }
+
+    if (!is_array($decoded)) {
+        return array();
+    }
+
+    if (isset($decoded['questions']) && is_array($decoded['questions'])) {
+        $decoded = $decoded['questions'];
+    } elseif (isset($decoded['items']) && is_array($decoded['items'])) {
+        $decoded = $decoded['items'];
+    } elseif (isset($decoded['data']) && is_array($decoded['data'])) {
+        $decoded = $decoded['data'];
+    }
+
+    $isList = array_keys($decoded) === range(0, count($decoded) - 1);
+    if (!$isList) {
+        if (isset($decoded['question']) || isset($decoded['options']) || isset($decoded['option_a'])) {
+            $decoded = array($decoded);
+        } else {
+            return array();
+        }
+    }
+
+    $normalized = array();
+
+    foreach ($decoded as $item) {
+        if (!is_array($item)) {
+            continue;
+        }
+
+        $question = isset($item['question']) ? trim((string) $item['question']) : '';
+
+        $image = '';
+        if (isset($item['image'])) {
+            $image = trim((string) $item['image']);
+        } elseif (isset($item['img'])) {
+            $image = trim((string) $item['img']);
+        }
+
+        $options = array('', '', '');
+        if (isset($item['options']) && is_array($item['options'])) {
+            $options = array(
+                isset($item['options'][0]) ? trim((string) $item['options'][0]) : '',
+                isset($item['options'][1]) ? trim((string) $item['options'][1]) : '',
+                isset($item['options'][2]) ? trim((string) $item['options'][2]) : '',
+            );
+        } else {
+            $options = array(
+                isset($item['option_a']) ? trim((string) $item['option_a']) : '',
+                isset($item['option_b']) ? trim((string) $item['option_b']) : '',
+                isset($item['option_c']) ? trim((string) $item['option_c']) : '',
+            );
+        }
+
+        $correct = isset($item['correct']) ? (int) $item['correct'] : 0;
+        if ($correct < 0 || $correct > 2) {
+            $correct = 0;
+        }
+
+        if ($question === '' && $options[0] === '' && $options[1] === '' && $options[2] === '') {
+            continue;
+        }
+
+        $normalized[] = array(
+            'question' => $question,
+            'image' => $image,
+            'options' => $options,
+            'correct' => $correct,
+        );
+    }
+
+    return $normalized;
+}
+
 function load_multiple_choice_questions($pdo, $unit)
 {
     $stmt = $pdo->prepare(
@@ -21,22 +112,8 @@ function load_multiple_choice_questions($pdo, $unit)
 
     $row = $stmt->fetch(PDO::FETCH_ASSOC);
     $raw = isset($row['data']) ? $row['data'] : '[]';
-    $decoded = json_decode($raw, true);
 
-    if (!is_array($decoded)) {
-        return array();
-    }
-
-    $isList = array_keys($decoded) === range(0, count($decoded) - 1);
-    if ($isList) {
-        return $decoded;
-    }
-
-    if (isset($decoded['questions']) && is_array($decoded['questions'])) {
-        return $decoded['questions'];
-    }
-
-    return array();
+    return normalize_multiple_choice_questions($raw);
 }
 
 function save_multiple_choice_questions($pdo, $unit, $questions)
@@ -224,80 +301,3 @@ if (isset($_GET['saved'])) {
 
 .mc-preview{
     width:120px;
-    border-radius:8px;
-    border:1px solid #e2e8f0;
-}
-
-.mc-block-footer{
-    display:flex;
-    align-items:center;
-    justify-content:space-between;
-    gap:10px;
-}
-
-.mc-actions{
-    display:flex;
-    gap:10px;
-    margin-top:14px;
-}
-
-.btn-add,
-.btn-save,
-.btn-remove{
-    border:none;
-    border-radius:8px;
-    color:#fff;
-    cursor:pointer;
-    font-weight:bold;
-}
-
-.btn-add{ background:#16a34a; padding:10px 14px; }
-.btn-save{ background:#0b5ed7; padding:10px 14px; }
-.btn-remove{ background:#ef4444; padding:9px 12px; }
-</style>
-
-<script>
-function addQuestion(){
-    const container = document.getElementById('questions');
-
-    const block = document.createElement('div');
-    block.className = 'mc-block';
-    block.innerHTML = `
-        <label>Question</label>
-        <input type="text" name="question[]" placeholder="Question" required>
-
-        <label>Image (optional)</label>
-        <input type="file" name="image_file[]" accept="image/*">
-        <input type="hidden" name="image[]" value="">
-
-        <label>Options</label>
-        <div class="mc-options-grid">
-            <input type="text" name="option_a[]" placeholder="Option A" required>
-            <input type="text" name="option_b[]" placeholder="Option B" required>
-            <input type="text" name="option_c[]" placeholder="Option C" required>
-        </div>
-
-        <div class="mc-block-footer">
-            <select name="correct[]">
-                <option value="0">Correct: A</option>
-                <option value="1">Correct: B</option>
-                <option value="2">Correct: C</option>
-            </select>
-            <button type="button" onclick="removeQuestion(this)" class="btn-remove">✖ Eliminar</button>
-        </div>
-    `;
-
-    container.appendChild(block);
-}
-
-function removeQuestion(btn){
-    const block = btn.closest('.mc-block');
-    if (block) {
-        block.remove();
-    }
-}
-</script>
-
-<?php
-$content = ob_get_clean();
-render_activity_editor('📝 Multiple Choice Editor', '📝', $content);
