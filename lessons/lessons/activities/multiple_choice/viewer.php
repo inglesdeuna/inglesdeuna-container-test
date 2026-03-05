@@ -37,7 +37,17 @@ if (!$row && $unit !== '') {
 
 $raw = isset($row['data']) ? $row['data'] : '[]';
 $decoded = json_decode($raw, true);
-$questions = is_array($decoded) ? $decoded : array();
+
+$questions = array();
+if (is_array($decoded)) {
+    $isList = array_keys($decoded) === range(0, count($decoded) - 1);
+
+    if ($isList) {
+        $questions = $decoded;
+    } elseif (isset($decoded['questions']) && is_array($decoded['questions'])) {
+        $questions = $decoded['questions'];
+    }
+}
 
 $cssVersion = file_exists(__DIR__ . '/multiple_choice.css') ? (string) filemtime(__DIR__ . '/multiple_choice.css') : (string) time();
 $jsVersion = file_exists(__DIR__ . '/multiple_choice.js') ? (string) filemtime(__DIR__ . '/multiple_choice.js') : (string) time();
