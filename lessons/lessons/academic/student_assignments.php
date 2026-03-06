@@ -32,7 +32,6 @@ $units = is_array($units) ? $units : [];
 $studentAssignments = is_array($studentAssignments) ? $studentAssignments : [];
 
 $technicalPeriods = ['1', '2', '3', '4', '5', '6'];
-$englishPhases = ['1', '2', '3', '4', '5', '6', '7', '8'];
 $programOptions = [
     'english' => 'Inglés',
     'technical' => 'Programa Técnico',
@@ -136,22 +135,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $teacherId = trim((string) ($_POST['teacher_id'] ?? ''));
     $program = trim((string) ($_POST['program'] ?? 'technical'));
     $period = trim((string) ($_POST['period'] ?? ''));
-    $phaseId = trim((string) ($_POST['phase_id'] ?? ''));
     $unitId = trim((string) ($_POST['unit_id'] ?? ''));
 
     if (!isset($programOptions[$program])) {
         $program = 'technical';
     }
 
-    $programSpecificOk = $program === 'technical' || ($program === 'english' && $phaseId !== '');
-
-    if ($studentId !== '' && $teacherId !== '' && $period !== '' && $unitId !== '' && $programSpecificOk) {
+    if ($studentId !== '' && $teacherId !== '' && $period !== '' && $unitId !== '') {
         $record = [
             'id' => $editId !== '' ? $editId : uniqid('stu_assign_'),
             'student_id' => $studentId,
             'teacher_id' => $teacherId,
             'program' => $program,
-            'phase_id' => $program === 'english' ? $phaseId : '',
             'period' => $period,
             'unit_id' => $unitId,
         ];
@@ -192,9 +187,9 @@ if (!isset($programOptions[$editingProgram])) {
     $editingProgram = 'technical';
 }
 
-$phaseOptionsEnglish = filter_courses_by_program($courses, 'english');
-if (empty($phaseOptionsEnglish)) {
-    $phaseOptionsEnglish = $courses;
+$levelOptionsEnglish = filter_courses_by_program($courses, 'english');
+if (empty($levelOptionsEnglish)) {
+    $levelOptionsEnglish = $courses;
 }
 
 $unitOptionsTechnical = filter_units_by_program($units, 'technical');
@@ -260,7 +255,7 @@ select,input[type="text"]{width:100%;padding:10px;border:1px solid #cfd8e8;borde
 <div class="wrapper">
   <div class="header-card">
     <h1>🎓 Asignación de Estudiantes</h1>
-    <div class="subtitle">Selecciona estudiante, docente, programa, periodo y unidad.</div>
+    <div class="subtitle">Selecciona estudiante, docente, programa, período y unidad.</div>
   </div>
 
   <div class="top-actions">
@@ -316,31 +311,19 @@ select,input[type="text"]{width:100%;padding:10px;border:1px solid #cfd8e8;borde
             </select>
           </div>
 
-          <div class="row" id="phase-row">
-            <label>Seleccionar Phase</label>
-            <select name="phase_id" id="phase-select">
-              <option value="">Selecciona una Phase</option>
-              <?php foreach ($phaseOptionsEnglish as $phase) { ?>
-                <?php $pid = (string) ($phase['id'] ?? ''); ?>
-                <option data-program="english" value="<?php echo htmlspecialchars($pid); ?>" <?php echo ((string) ($editing['phase_id'] ?? ($editing['course_id'] ?? '')) === $pid) ? 'selected' : ''; ?>>
-                  <?php echo htmlspecialchars((string) ($phase['name'] ?? $pid)); ?>
-                </option>
-              <?php } ?>
-            </select>
-          </div>
-
           <div class="row">
-            <label id="period-label"><?php echo $editingProgram === 'english' ? 'Seleccionar Phase (Nivel)' : 'Seleccionar Semestre'; ?></label>
+            <label id="period-label"><?php echo $editingProgram === 'english' ? 'Seleccionar Nivel' : 'Seleccionar Semestre'; ?></label>
             <select name="period" id="period-select" required>
-              <option value=""><?php echo $editingProgram === 'english' ? 'Selecciona una Phase' : 'Selecciona un Semestre'; ?></option>
+              <option value=""><?php echo $editingProgram === 'english' ? 'Selecciona un Nivel' : 'Selecciona un Semestre'; ?></option>
               <?php foreach ($technicalPeriods as $period) { ?>
                 <option data-program="technical" value="<?php echo htmlspecialchars($period); ?>" <?php echo (((string) ($editing['period'] ?? ($editing['semester'] ?? '')) === $period) && $editingProgram === 'technical') ? 'selected' : ''; ?>>
                   Semestre <?php echo htmlspecialchars($period); ?>
                 </option>
               <?php } ?>
-              <?php foreach ($englishPhases as $phase) { ?>
-                <option data-program="english" value="<?php echo htmlspecialchars($phase); ?>" <?php echo (((string) ($editing['period'] ?? ($editing['semester'] ?? '')) === $phase) && $editingProgram === 'english') ? 'selected' : ''; ?>>
-                  Phase <?php echo htmlspecialchars($phase); ?>
+              <?php foreach ($levelOptionsEnglish as $level) { ?>
+                <?php $levelId = (string) ($level['id'] ?? ''); ?>
+                <option data-program="english" value="<?php echo htmlspecialchars($levelId); ?>" <?php echo (((string) ($editing['period'] ?? ($editing['semester'] ?? '')) === $levelId) && $editingProgram === 'english') ? 'selected' : ''; ?>>
+                  <?php echo htmlspecialchars((string) ($level['name'] ?? $levelId)); ?>
                 </option>
               <?php } ?>
             </select>
@@ -351,20 +334,17 @@ select,input[type="text"]{width:100%;padding:10px;border:1px solid #cfd8e8;borde
             <select name="unit_id" id="unit-select" required>
               <option value="">Seleccione una Unidad</option>
               <?php foreach ($unitOptionsTechnical as $unit) { ?>
-                <?php
-                $uid = (string) ($unit['id'] ?? '');
-                $courseId = (string) ($unit['course_id'] ?? '');
-                ?>
-                <option data-program="technical" data-phase-id="" value="<?php echo htmlspecialchars($uid); ?>" <?php echo (((string) ($editing['unit_id'] ?? '') === $uid) && $editingProgram === 'technical') ? 'selected' : ''; ?>>
+                <?php $uid = (string) ($unit['id'] ?? ''); ?>
+                <option data-program="technical" value="<?php echo htmlspecialchars($uid); ?>" <?php echo (((string) ($editing['unit_id'] ?? '') === $uid) && $editingProgram === 'technical') ? 'selected' : ''; ?>>
                   <?php echo htmlspecialchars((string) ($unit['name'] ?? $uid)); ?>
                 </option>
               <?php } ?>
               <?php foreach ($unitOptionsEnglish as $unit) { ?>
                 <?php
                 $uid = (string) ($unit['id'] ?? '');
-                $phaseIdForUnit = (string) ($unit['course_id'] ?? '');
+                $levelIdForUnit = (string) ($unit['course_id'] ?? '');
                 ?>
-                <option data-program="english" data-phase-id="<?php echo htmlspecialchars($phaseIdForUnit); ?>" value="<?php echo htmlspecialchars($uid); ?>" <?php echo (((string) ($editing['unit_id'] ?? '') === $uid) && $editingProgram === 'english') ? 'selected' : ''; ?>>
+                <option data-program="english" data-level-id="<?php echo htmlspecialchars($levelIdForUnit); ?>" value="<?php echo htmlspecialchars($uid); ?>" <?php echo (((string) ($editing['unit_id'] ?? '') === $uid) && $editingProgram === 'english') ? 'selected' : ''; ?>>
                   <?php echo htmlspecialchars((string) ($unit['name'] ?? $uid)); ?>
                 </option>
               <?php } ?>
@@ -391,12 +371,15 @@ select,input[type="text"]{width:100%;padding:10px;border:1px solid #cfd8e8;borde
             <?php } ?>
           </select>
           <select name="f_period">
-            <option value="">Filtrar por Semestre / Phase</option>
+            <option value="">Filtrar por Semestre / Nivel</option>
             <?php foreach ($technicalPeriods as $period) { ?>
               <option value="<?php echo htmlspecialchars($period); ?>" <?php echo $filterPeriod === $period ? 'selected' : ''; ?>>Semestre <?php echo htmlspecialchars($period); ?></option>
             <?php } ?>
-            <?php foreach ($englishPhases as $phase) { ?>
-              <option value="<?php echo htmlspecialchars($phase); ?>" <?php echo $filterPeriod === $phase ? 'selected' : ''; ?>>Phase <?php echo htmlspecialchars($phase); ?></option>
+            <?php foreach ($levelOptionsEnglish as $level) { ?>
+              <?php $levelId = (string) ($level['id'] ?? ''); ?>
+              <option value="<?php echo htmlspecialchars($levelId); ?>" <?php echo $filterPeriod === $levelId ? 'selected' : ''; ?>>
+                <?php echo htmlspecialchars((string) ($level['name'] ?? $levelId)); ?>
+              </option>
             <?php } ?>
           </select>
           <button class="btn btn-primary" type="submit">Aplicar</button>
@@ -415,8 +398,8 @@ select,input[type="text"]{width:100%;padding:10px;border:1px solid #cfd8e8;borde
               $program = (string) ($row['program'] ?? 'technical');
               $programLabel = $programOptions[$program] ?? 'Programa';
               $periodValue = (string) ($row['period'] ?? ($row['semester'] ?? ''));
-              $periodLabel = $program === 'english' ? 'Phase' : 'Semestre';
-              $phaseName = find_name_by_id($phaseOptionsEnglish, (string) ($row['phase_id'] ?? ($row['course_id'] ?? '')), '');
+              $periodLabel = $program === 'english' ? 'Nivel' : 'Semestre';
+              $levelName = $program === 'english' ? find_name_by_id($levelOptionsEnglish, $periodValue, $periodValue) : $periodValue;
               ?>
               <div class="item">
                 <div class="meta">
@@ -425,10 +408,7 @@ select,input[type="text"]{width:100%;padding:10px;border:1px solid #cfd8e8;borde
                   <br>
                   <small>
                     <?php echo htmlspecialchars($programLabel); ?> ·
-                    <?php if ($program === 'english' && $phaseName !== '') { ?>
-                      <?php echo htmlspecialchars($phaseName); ?> ·
-                    <?php } ?>
-                    <?php echo htmlspecialchars($periodLabel); ?> <?php echo htmlspecialchars($periodValue); ?> ·
+                    <?php echo htmlspecialchars($periodLabel); ?> <?php echo htmlspecialchars($levelName); ?> ·
                     <?php echo htmlspecialchars($unitName); ?>
                   </small>
                 </div>
@@ -448,13 +428,11 @@ select,input[type="text"]{width:100%;padding:10px;border:1px solid #cfd8e8;borde
 <script>
 (function () {
   const programSelect = document.getElementById('program-select');
-  const phaseSelect = document.getElementById('phase-select');
-  const phaseRow = document.getElementById('phase-row');
   const periodSelect = document.getElementById('period-select');
   const unitSelect = document.getElementById('unit-select');
   const periodLabel = document.getElementById('period-label');
 
-  if (!programSelect || !phaseSelect || !phaseRow || !periodSelect || !unitSelect || !periodLabel) {
+  if (!programSelect || !periodSelect || !unitSelect || !periodLabel) {
     return;
   }
 
@@ -503,52 +481,39 @@ select,input[type="text"]{width:100%;padding:10px;border:1px solid #cfd8e8;borde
     const program = programSelect.value === 'english' ? 'english' : 'technical';
     const isEnglish = program === 'english';
 
-    phaseRow.style.display = isEnglish ? '' : 'none';
-    phaseSelect.required = isEnglish;
-
-    filterSelectOptions(
-      phaseSelect,
-      'english',
-      'Selecciona una Phase',
-      phaseSelect.value
-    );
-
-    if (!isEnglish) {
-      phaseSelect.selectedIndex = 0;
-    }
-
-    periodLabel.textContent = isEnglish ? 'Seleccionar Phase (Nivel)' : 'Seleccionar Semestre';
+    periodLabel.textContent = isEnglish ? 'Seleccionar Nivel' : 'Seleccionar Semestre';
 
     filterSelectOptions(
       periodSelect,
       program,
-      isEnglish ? 'Selecciona una Phase' : 'Selecciona un Semestre',
+      isEnglish ? 'Selecciona un Nivel' : 'Selecciona un Semestre',
       periodSelect.value
     );
 
-    const selectedPhaseId = phaseSelect.value;
+    const selectedLevelId = periodSelect.value;
 
     filterSelectOptions(
       unitSelect,
       program,
-      isEnglish ? 'Seleccione una Unidad de la Phase' : 'Seleccione una Unidad del Semestre',
+      isEnglish ? 'Seleccione una Unidad del Nivel' : 'Seleccione una Unidad del Semestre',
       unitSelect.value,
       function (opt) {
         if (!isEnglish) {
           return true;
         }
 
-        const phaseId = opt.getAttribute('data-phase-id') || '';
-        return !selectedPhaseId || !phaseId || phaseId === selectedPhaseId;
+        const levelId = opt.getAttribute('data-level-id') || '';
+        return !selectedLevelId || !levelId || levelId === selectedLevelId;
       }
     );
   }
 
   programSelect.addEventListener('change', applyProgramRules);
-  phaseSelect.addEventListener('change', applyProgramRules);
+  periodSelect.addEventListener('change', applyProgramRules);
   applyProgramRules();
 })();
 </script>
 
 </body>
 </html>
+PHP
