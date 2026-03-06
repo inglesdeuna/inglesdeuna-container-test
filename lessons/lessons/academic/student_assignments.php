@@ -31,11 +31,72 @@ $courses = is_array($courses) ? $courses : [];
 $units = is_array($units) ? $units : [];
 $studentAssignments = is_array($studentAssignments) ? $studentAssignments : [];
 
-$semesterOptions = ['1', '2', '3', '4', '5', '6'];
+$technicalPeriods = ['1', '2', '3', '4', '5', '6'];
+$englishPhases = ['1', '2', '3', '4', '5', '6', '7', '8'];
 $programOptions = [
     'english' => 'Inglés',
     'technical' => 'Programa Técnico',
 ];
+
+function detect_program_for_course(array $course): string
+{
+    $programRaw = mb_strtolower((string) (
+        $course['program']
+        ?? $course['program_id']
+        ?? $course['scope']
+        ?? ''
+    ));
+    $nameRaw = mb_strtolower((string) ($course['name'] ?? ''));
+
+    if (
+        str_contains($programRaw, 'english')
+        || str_contains($programRaw, 'ingles')
+        || str_contains($programRaw, 'prog_english_courses')
+        || str_contains($nameRaw, 'phase')
+        || str_contains($nameRaw, 'fase')
+    ) {
+        return 'english';
+    }
+
+    return 'technical';
+}
+
+function detect_program_for_unit(array $unit): string
+{
+    $programRaw = mb_strtolower((string) (
+        $unit['program']
+        ?? $unit['program_id']
+        ?? $unit['scope']
+        ?? ''
+    ));
+    $nameRaw = mb_strtolower((string) ($unit['name'] ?? ''));
+
+    if (
+        str_contains($programRaw, 'english')
+        || str_contains($programRaw, 'ingles')
+        || str_contains($programRaw, 'prog_english_courses')
+        || str_contains($nameRaw, 'phase')
+        || str_contains($nameRaw, 'fase')
+    ) {
+        return 'english';
+    }
+
+    return 'technical';
+}
+
+function filter_courses_by_program(array $courses, string $program): array
+{
+    return array_values(array_filter($courses, function ($course) use ($program) {
+        return detect_program_for_course((array) $course) === $program;
+    }));
+}
+
+function filter_units_by_program(array $units, string $program): array
+{
+    return array_values(array_filter($units, function ($unit) use ($program) {
+        return detect_program_for_unit((array) $unit) === $program;
+    }));
+}
 
 function find_name_by_id(array $rows, string $id, string $fallback): string
 {
@@ -73,23 +134,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $editId = trim((string) ($_POST['edit_id'] ?? ''));
     $studentId = trim((string) ($_POST['student_id'] ?? ''));
     $teacherId = trim((string) ($_POST['teacher_id'] ?? ''));
-    $program = trim((string) ($_POST['program'] ?? ''));
+    $program = trim((string) ($_POST['program'] ?? 'technical'));
     $courseId = trim((string) ($_POST['course_id'] ?? ''));
-    $semester = trim((string) ($_POST['semester'] ?? ''));
+    $period = trim((string) ($_POST['period'] ?? ''));
     $unitId = trim((string) ($_POST['unit_id'] ?? ''));
 
     if (!isset($programOptions[$program])) {
         $program = 'technical';
     }
 
-    if ($studentId !== '' && $teacherId !== '' && $courseId !== '' && $semester !== '' && $unitId !== '') {
+    if ($studentId !== '' && $teacherId !== '' && $courseId !== '' && $period !== '' && $unitId !== '') {
         $record = [
             'id' => $editId !== '' ? $editId : uniqid('stu_assign_'),
             'student_id' => $studentId,
             'teacher_id' => $teacherId,
             'program' => $program,
             'course_id' => $courseId,
-            'semester' => $semester,
+            'period' => $period,
             'unit_id' => $unitId,
         ];
 
@@ -124,15 +185,33 @@ if ($editId !== '') {
     }
 }
 
-$filterProgram = trim((string) ($_GET['f_program'] ?? ''));
-$filterSemester = trim((string) ($_GET['f_semester'] ?? ''));
+$editingProgram = (string) ($editing['program'] ?? 'technical');
+if (!isset($programOptions[$editingProgram])) {
+    $editingProgram = 'technical';
+}
 
-$visibleAssignments = array_values(array_filter($studentAssignments, function ($row) use ($filterProgram, $filterSemester) {
+$courseOptionsTechnical = filter_courses_by_program($courses, 'technical');
+$courseOptionsEnglish = filter_courses_by_program($courses, 'english');
+if (empty($courseOptionsTechnical) && empty($courseOptionsEnglish)) {
+    $courseOptionsTechnical = $courses;
+}
+
+$unitOptionsTechnical = filter_units_by_program($units, 'technical');
+$unitOptionsEnglish = filter_units_by_program($units, 'english');
+if (empty($unitOptionsTechnical) && empty($unitOptionsEnglish)) {
+    $unitOptionsTechnical = $units;
+}
+
+$filterProgram = trim((string) ($_GET['f_program'] ?? ''));
+$filterPeriod = trim((string) ($_GET['f_period'] ?? ''));
+
+$visibleAssignments = array_values(array_filter($studentAssignments, function ($row) use ($filterProgram, $filterPeriod) {
     if ($filterProgram !== '' && (string) ($row['program'] ?? '') !== $filterProgram) {
         return false;
     }
 
-    if ($filterSemester !== '' && (string) ($row['semester'] ?? '') !== $filterSemester) {
+    $rowPeriod = (string) ($row['period'] ?? ($row['semester'] ?? ''));
+    if ($filterPeriod !== '' && $rowPeriod !== $filterPeriod) {
         return false;
     }
 
@@ -180,7 +259,7 @@ select,input[type="text"]{width:100%;padding:10px;border:1px solid #cfd8e8;borde
 <div class="wrapper">
   <div class="header-card">
     <h1>🎓 Asignación de Estudiantes</h1>
-    <div class="subtitle">Selecciona estudiante, docente, semestre, programa, curso y unidad.</div>
+    <div class="subtitle">Selecciona estudiante, docente, programa, curso, periodo y unidad.</div>
   </div>
 
   <div class="top-actions">
@@ -196,7 +275,7 @@ select,input[type="text"]{width:100%;padding:10px;border:1px solid #cfd8e8;borde
     <section class="panel">
       <h3>Inscribir Estudiante</h3>
       <div class="panel-body">
-        <form method="post">
+        <form method="post" id="student-assignment-form">
           <input type="hidden" name="edit_id" value="<?php echo htmlspecialchars((string) ($editing['id'] ?? '')); ?>">
 
           <div class="row">
@@ -227,9 +306,9 @@ select,input[type="text"]{width:100%;padding:10px;border:1px solid #cfd8e8;borde
 
           <div class="row">
             <label>Seleccionar Programa</label>
-            <select name="program" required>
+            <select name="program" id="program-select" required>
               <?php foreach ($programOptions as $key => $label) { ?>
-                <option value="<?php echo htmlspecialchars($key); ?>" <?php echo ((string) ($editing['program'] ?? 'technical') === $key) ? 'selected' : ''; ?>>
+                <option value="<?php echo htmlspecialchars($key); ?>" <?php echo ($editingProgram === $key) ? 'selected' : ''; ?>>
                   <?php echo htmlspecialchars($label); ?>
                 </option>
               <?php } ?>
@@ -238,11 +317,17 @@ select,input[type="text"]{width:100%;padding:10px;border:1px solid #cfd8e8;borde
 
           <div class="row">
             <label>Seleccionar Curso</label>
-            <select name="course_id" required>
+            <select name="course_id" id="course-select" required>
               <option value="">Elige un Curso</option>
-              <?php foreach ($courses as $course) { ?>
+              <?php foreach ($courseOptionsTechnical as $course) { ?>
                 <?php $cid = (string) ($course['id'] ?? ''); ?>
-                <option value="<?php echo htmlspecialchars($cid); ?>" <?php echo ((string) ($editing['course_id'] ?? '') === $cid) ? 'selected' : ''; ?>>
+                <option data-program="technical" value="<?php echo htmlspecialchars($cid); ?>" <?php echo (((string) ($editing['course_id'] ?? '') === $cid) && $editingProgram === 'technical') ? 'selected' : ''; ?>>
+                  <?php echo htmlspecialchars((string) ($course['name'] ?? $cid)); ?>
+                </option>
+              <?php } ?>
+              <?php foreach ($courseOptionsEnglish as $course) { ?>
+                <?php $cid = (string) ($course['id'] ?? ''); ?>
+                <option data-program="english" value="<?php echo htmlspecialchars($cid); ?>" <?php echo (((string) ($editing['course_id'] ?? '') === $cid) && $editingProgram === 'english') ? 'selected' : ''; ?>>
                   <?php echo htmlspecialchars((string) ($course['name'] ?? $cid)); ?>
                 </option>
               <?php } ?>
@@ -250,12 +335,17 @@ select,input[type="text"]{width:100%;padding:10px;border:1px solid #cfd8e8;borde
           </div>
 
           <div class="row">
-            <label>Seleccionar Semestre</label>
-            <select name="semester" required>
-              <option value="">Selecciona un Semestre</option>
-              <?php foreach ($semesterOptions as $semester) { ?>
-                <option value="<?php echo htmlspecialchars($semester); ?>" <?php echo ((string) ($editing['semester'] ?? '') === $semester) ? 'selected' : ''; ?>>
-                  Semestre <?php echo htmlspecialchars($semester); ?>
+            <label id="period-label"><?php echo $editingProgram === 'english' ? 'Seleccionar Phase' : 'Seleccionar Semestre'; ?></label>
+            <select name="period" id="period-select" required>
+              <option value=""><?php echo $editingProgram === 'english' ? 'Selecciona una Phase' : 'Selecciona un Semestre'; ?></option>
+              <?php foreach ($technicalPeriods as $period) { ?>
+                <option data-program="technical" value="<?php echo htmlspecialchars($period); ?>" <?php echo (((string) ($editing['period'] ?? ($editing['semester'] ?? '')) === $period) && $editingProgram === 'technical') ? 'selected' : ''; ?>>
+                  Semestre <?php echo htmlspecialchars($period); ?>
+                </option>
+              <?php } ?>
+              <?php foreach ($englishPhases as $phase) { ?>
+                <option data-program="english" value="<?php echo htmlspecialchars($phase); ?>" <?php echo (((string) ($editing['period'] ?? ($editing['semester'] ?? '')) === $phase) && $editingProgram === 'english') ? 'selected' : ''; ?>>
+                  Phase <?php echo htmlspecialchars($phase); ?>
                 </option>
               <?php } ?>
             </select>
@@ -263,11 +353,23 @@ select,input[type="text"]{width:100%;padding:10px;border:1px solid #cfd8e8;borde
 
           <div class="row">
             <label>Seleccionar Unidad</label>
-            <select name="unit_id" required>
+            <select name="unit_id" id="unit-select" required>
               <option value="">Seleccione una Unidad</option>
-              <?php foreach ($units as $unit) { ?>
-                <?php $uid = (string) ($unit['id'] ?? ''); ?>
-                <option value="<?php echo htmlspecialchars($uid); ?>" <?php echo ((string) ($editing['unit_id'] ?? '') === $uid) ? 'selected' : ''; ?>>
+              <?php foreach ($unitOptionsTechnical as $unit) { ?>
+                <?php
+                $uid = (string) ($unit['id'] ?? '');
+                $courseId = (string) ($unit['course_id'] ?? '');
+                ?>
+                <option data-program="technical" data-course-id="<?php echo htmlspecialchars($courseId); ?>" value="<?php echo htmlspecialchars($uid); ?>" <?php echo (((string) ($editing['unit_id'] ?? '') === $uid) && $editingProgram === 'technical') ? 'selected' : ''; ?>>
+                  <?php echo htmlspecialchars((string) ($unit['name'] ?? $uid)); ?>
+                </option>
+              <?php } ?>
+              <?php foreach ($unitOptionsEnglish as $unit) { ?>
+                <?php
+                $uid = (string) ($unit['id'] ?? '');
+                $courseId = (string) ($unit['course_id'] ?? '');
+                ?>
+                <option data-program="english" data-course-id="<?php echo htmlspecialchars($courseId); ?>" value="<?php echo htmlspecialchars($uid); ?>" <?php echo (((string) ($editing['unit_id'] ?? '') === $uid) && $editingProgram === 'english') ? 'selected' : ''; ?>>
                   <?php echo htmlspecialchars((string) ($unit['name'] ?? $uid)); ?>
                 </option>
               <?php } ?>
@@ -293,10 +395,13 @@ select,input[type="text"]{width:100%;padding:10px;border:1px solid #cfd8e8;borde
               </option>
             <?php } ?>
           </select>
-          <select name="f_semester">
-            <option value="">Filtrar por Semestre</option>
-            <?php foreach ($semesterOptions as $semester) { ?>
-              <option value="<?php echo htmlspecialchars($semester); ?>" <?php echo $filterSemester === $semester ? 'selected' : ''; ?>>Semestre <?php echo htmlspecialchars($semester); ?></option>
+          <select name="f_period">
+            <option value="">Filtrar por Semestre / Phase</option>
+            <?php foreach ($technicalPeriods as $period) { ?>
+              <option value="<?php echo htmlspecialchars($period); ?>" <?php echo $filterPeriod === $period ? 'selected' : ''; ?>>Semestre <?php echo htmlspecialchars($period); ?></option>
+            <?php } ?>
+            <?php foreach ($englishPhases as $phase) { ?>
+              <option value="<?php echo htmlspecialchars($phase); ?>" <?php echo $filterPeriod === $phase ? 'selected' : ''; ?>>Phase <?php echo htmlspecialchars($phase); ?></option>
             <?php } ?>
           </select>
           <button class="btn btn-primary" type="submit">Aplicar</button>
@@ -313,8 +418,10 @@ select,input[type="text"]{width:100%;padding:10px;border:1px solid #cfd8e8;borde
               $teacherName = find_name_by_id($teachers, (string) ($row['teacher_id'] ?? ''), 'Docente');
               $courseName = find_name_by_id($courses, (string) ($row['course_id'] ?? ''), 'Curso');
               $unitName = find_name_by_id($units, (string) ($row['unit_id'] ?? ''), 'Unidad');
-              $programLabel = $programOptions[(string) ($row['program'] ?? 'technical')] ?? 'Programa';
-              $semester = (string) ($row['semester'] ?? '');
+              $program = (string) ($row['program'] ?? 'technical');
+              $programLabel = $programOptions[$program] ?? 'Programa';
+              $periodValue = (string) ($row['period'] ?? ($row['semester'] ?? ''));
+              $periodLabel = $program === 'english' ? 'Phase' : 'Semestre';
               ?>
               <div class="item">
                 <div class="meta">
@@ -324,7 +431,7 @@ select,input[type="text"]{width:100%;padding:10px;border:1px solid #cfd8e8;borde
                   <small>
                     <?php echo htmlspecialchars($programLabel); ?> ·
                     <?php echo htmlspecialchars($courseName); ?> ·
-                    Semestre <?php echo htmlspecialchars($semester); ?> ·
+                    <?php echo htmlspecialchars($periodLabel); ?> <?php echo htmlspecialchars($periodValue); ?> ·
                     <?php echo htmlspecialchars($unitName); ?>
                   </small>
                 </div>
@@ -340,6 +447,98 @@ select,input[type="text"]{width:100%;padding:10px;border:1px solid #cfd8e8;borde
     </section>
   </div>
 </div>
+
+<script>
+(function () {
+  const programSelect = document.getElementById('program-select');
+  const courseSelect = document.getElementById('course-select');
+  const periodSelect = document.getElementById('period-select');
+  const unitSelect = document.getElementById('unit-select');
+  const periodLabel = document.getElementById('period-label');
+
+  if (!programSelect || !courseSelect || !periodSelect || !unitSelect || !periodLabel) {
+    return;
+  }
+
+  function filterSelectOptions(selectEl, program, placeholderText, selectedValue, extraFilterFn) {
+    let visibleCount = 0;
+
+    Array.from(selectEl.options).forEach((opt, idx) => {
+      if (idx === 0) {
+        opt.text = placeholderText;
+        opt.hidden = false;
+        return;
+      }
+
+      const optProgram = opt.getAttribute('data-program');
+      const programMatches = !optProgram || optProgram === program;
+      const extraMatches = typeof extraFilterFn === 'function' ? extraFilterFn(opt) : true;
+      const visible = programMatches && extraMatches;
+
+      opt.hidden = !visible;
+      if (!visible && opt.selected) {
+        opt.selected = false;
+      }
+      if (visible) {
+        visibleCount += 1;
+      }
+    });
+
+    if (!selectedValue) {
+      selectEl.selectedIndex = 0;
+    }
+
+    if (selectedValue) {
+      const candidate = Array.from(selectEl.options).find((opt) => !opt.hidden && opt.value === selectedValue);
+      if (candidate) {
+        candidate.selected = true;
+      } else {
+        selectEl.selectedIndex = 0;
+      }
+    }
+
+    selectEl.required = visibleCount > 0;
+    return visibleCount;
+  }
+
+  function applyProgramRules() {
+    const program = programSelect.value === 'english' ? 'english' : 'technical';
+    const isEnglish = program === 'english';
+
+    periodLabel.textContent = isEnglish ? 'Seleccionar Phase' : 'Seleccionar Semestre';
+
+    filterSelectOptions(
+      courseSelect,
+      program,
+      isEnglish ? 'Elige una Phase/Curso' : 'Elige un Curso',
+      courseSelect.value
+    );
+
+    filterSelectOptions(
+      periodSelect,
+      program,
+      isEnglish ? 'Selecciona una Phase' : 'Selecciona un Semestre',
+      periodSelect.value
+    );
+
+    const selectedCourseId = courseSelect.value;
+    filterSelectOptions(
+      unitSelect,
+      program,
+      isEnglish ? 'Seleccione una Unidad de la Phase' : 'Seleccione una Unidad del Semestre',
+      unitSelect.value,
+      function (opt) {
+        const unitCourseId = opt.getAttribute('data-course-id') || '';
+        return !selectedCourseId || !unitCourseId || unitCourseId === selectedCourseId;
+      }
+    );
+  }
+
+  programSelect.addEventListener('change', applyProgramRules);
+  courseSelect.addEventListener('change', applyProgramRules);
+  applyProgramRules();
+})();
+</script>
 
 </body>
 </html>
