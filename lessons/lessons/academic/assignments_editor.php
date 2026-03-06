@@ -1,3 +1,4 @@
+cat > lessons/lessons/academic/assignments_editor.php <<'PHP'
 <?php
 session_start();
 
@@ -156,47 +157,109 @@ $titleProgram = $program === 'technical' ? 'Programas Técnicos' : 'Cursos de In
 <meta charset="UTF-8">
 <title>Asignaciones</title>
 <style>
-body{font-family:Arial,sans-serif;background:#eef2f7;margin:0;padding:30px;color:#1f2937}
-.wrapper{max-width:1100px;margin:0 auto;background:#e9eef6;border-radius:24px;padding:0 24px 24px 24px}
-.header{background:linear-gradient(90deg,#0f4fa8,#2470d9);color:#fff;border-radius:24px 24px 0 0;padding:18px 22px;font-size:30px;font-weight:700}
-.subtitle{font-size:15px;font-weight:500;opacity:.95}
-.layout{display:grid;grid-template-columns:1.15fr .95fr;gap:18px;margin-top:18px}
-.panel{background:#fff;border:1px solid #d9e0ec;border-radius:14px;overflow:hidden}
-.panel h3{margin:0;padding:12px 16px;border-bottom:1px solid #e3e8f1;font-size:17px}
-.panel-body{padding:14px 16px}
-.row{margin-bottom:12px}
-label{display:block;font-weight:700;font-size:14px;margin-bottom:5px}
-select,input[type="text"]{width:100%;padding:10px;border:1px solid #cdd6e4;border-radius:8px;background:#fff}
-.inline{display:flex;gap:8px;align-items:center}
-.btn{border:none;border-radius:8px;padding:10px 14px;font-weight:700;cursor:pointer}
-.btn-primary{background:#1261c9;color:#fff}
-.btn-save{background:#0d5bc2;color:#fff;width:220px;margin:6px auto 0 auto;display:block}
-.perm{display:flex;gap:14px;padding:5px 0}
-.filters{display:flex;gap:8px;margin-bottom:10px}
-.filters select{flex:1}
-.list{border:1px solid #d8dfec;border-radius:8px;overflow:hidden;background:#fff}
-.item{display:flex;justify-content:space-between;align-items:center;padding:10px 10px;border-bottom:1px solid #e7ecf5}
-.item:last-child{border-bottom:none}
-.meta{font-size:15px}
-.role{font-weight:700;color:#115dc0}
-.actions a{text-decoration:none;margin-left:8px;font-size:15px}
-.actions .edit{color:#4b5563}
-.actions .delete{color:#c62828}
-.top-actions{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
-.back{color:#0d5bc2;text-decoration:none;font-weight:700}
-.notice{background:#ecfdf3;color:#166534;padding:8px 10px;border-radius:8px;font-size:13px;margin-bottom:10px}
-@media (max-width:920px){.layout{grid-template-columns:1fr}}
+:root {
+  --blue-1:#0d4ea7;
+  --blue-2:#2d77db;
+  --page-bg:#edf1f8;
+  --card-bg:#f4f5f8;
+  --surface:#ffffff;
+  --text-main:#2f4460;
+  --text-soft:#66748a;
+  --line:#dde4ef;
+  --ok-bg:#ecfdf3;
+  --ok-text:#166534;
+  --ok-line:#b9eacb;
+}
+* { box-sizing:border-box; }
+body {
+  margin:0;
+  font-family:"Segoe UI",Arial,sans-serif;
+  background:var(--page-bg);
+  color:var(--text-main);
+}
+.topbar{
+  background:linear-gradient(90deg,var(--blue-1),#1a61bd 52%,var(--blue-2));
+  color:#fff;
+  padding:12px 24px;
+}
+.topbar h1{ margin:0; font-size:38px; font-weight:700; }
+.topbar p{ margin:4px 0 0; opacity:.95; font-size:15px; }
+.page{ max-width:1260px; margin:18px auto 0; padding:0 16px 24px; }
+.top-actions{ display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; }
+.back{ color:#2d71d2; text-decoration:none; font-weight:700; }
+.notice{
+  background:var(--ok-bg);
+  color:var(--ok-text);
+  padding:10px 12px;
+  border-radius:10px;
+  font-size:14px;
+  margin-bottom:14px;
+  border:1px solid var(--ok-line);
+}
+.layout{ display:grid; grid-template-columns:1.1fr .9fr; gap:18px; }
+.panel{
+  background:var(--card-bg);
+  border:1px solid var(--line);
+  border-radius:16px;
+  box-shadow:0 5px 14px rgba(51,72,107,.08);
+  overflow:hidden;
+}
+.panel h3{
+  margin:0;
+  padding:14px 16px;
+  border-bottom:1px solid var(--line);
+  font-size:30px;
+  color:var(--text-main);
+  background:linear-gradient(180deg,#f8f9fc,#f0f3f9);
+}
+.panel-body{ padding:16px; }
+.row{ margin-bottom:12px; }
+label{ display:block; font-weight:700; font-size:14px; margin-bottom:6px; color:var(--text-main); }
+select,input[type="text"]{
+  width:100%;
+  padding:10px;
+  border:1px solid #cfd8e8;
+  border-radius:9px;
+  background:var(--surface);
+  color:var(--text-main);
+}
+.inline{ display:flex; gap:8px; align-items:center; }
+.btn{
+  border:none;
+  border-radius:8px;
+  padding:10px 14px;
+  font-weight:700;
+  cursor:pointer;
+}
+.btn-primary{ background:linear-gradient(90deg,#2a67c4,#2d71d2); color:#fff; }
+.btn-save{ background:linear-gradient(90deg,#2a67c4,#2d71d2); color:#fff; width:220px; margin:8px auto 0; display:block; }
+.perm{ display:flex; gap:14px; padding:5px 0; }
+.filters{ display:flex; gap:8px; margin-bottom:10px; }
+.filters select{ flex:1; }
+.list{ border:1px solid #d8dfec; border-radius:10px; overflow:hidden; background:#fff; }
+.item{ display:flex; justify-content:space-between; align-items:center; padding:12px; border-bottom:1px solid #e7ecf5; }
+.item:last-child{ border-bottom:none; }
+.meta{ font-size:15px; color:var(--text-main); }
+.role{ font-weight:700; color:#1f6fd6; }
+.actions a{ text-decoration:none; margin-left:8px; font-size:16px; }
+.actions .edit{ color:#4b5563; }
+.actions .delete{ color:#c62828; }
+@media (max-width:980px){
+  .topbar{ padding:12px 16px; }
+  .topbar h1{ font-size:28px; }
+  .layout{ grid-template-columns:1fr; }
+}
 </style>
 </head>
 <body>
 
-<div class="wrapper">
-  <div class="header">
-    🎓 Asignación de Cursos a Docentes
-    <div class="subtitle"><?php echo htmlspecialchars($titleProgram); ?></div>
-  </div>
+<header class="topbar">
+  <h1>🎓 Asignación de Cursos a Docentes</h1>
+  <p><?php echo htmlspecialchars($titleProgram); ?></p>
+</header>
 
-  <div class="top-actions" style="margin-top:14px;">
+<main class="page">
+  <div class="top-actions">
     <a class="back" href="../admin/dashboard.php">← Volver al panel</a>
     <a class="back" href="assignments_editor.php?program=<?php echo urlencode($program); ?>">Limpiar filtros</a>
   </div>
@@ -206,7 +269,7 @@ select,input[type="text"]{width:100%;padding:10px;border:1px solid #cdd6e4;borde
   <?php } ?>
 
   <div class="layout">
-    <div class="panel">
+    <section class="panel">
       <h3>Inscribir Docente</h3>
       <div class="panel-body">
         <form method="post">
@@ -266,9 +329,9 @@ select,input[type="text"]{width:100%;padding:10px;border:1px solid #cdd6e4;borde
           </button>
         </form>
       </div>
-    </div>
+    </section>
 
-    <div class="panel">
+    <section class="panel">
       <h3>Cursos Asignados</h3>
       <div class="panel-body">
         <form method="get" class="filters">
@@ -320,9 +383,10 @@ select,input[type="text"]{width:100%;padding:10px;border:1px solid #cdd6e4;borde
           <?php } ?>
         </div>
       </div>
-    </div>
+    </section>
   </div>
-</div>
+</main>
 
 </body>
 </html>
+PHP
