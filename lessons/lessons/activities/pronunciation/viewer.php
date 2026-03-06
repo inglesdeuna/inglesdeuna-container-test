@@ -186,7 +186,6 @@ ob_start();
 
 <style>
 body{font-family:Arial,sans-serif;background:#eef6ff;padding:20px}
-h1{text-align:center;color:#0b5ed7;margin:0 0 18px 0}
 .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px}
 .card{background:#fff;border-radius:18px;padding:14px;text-align:center;box-shadow:0 4px 8px rgba(0,0,0,.1)}
 .image{width:100%;height:130px;object-fit:contain;margin-bottom:6px}
@@ -198,7 +197,6 @@ button{margin:4px;padding:7px 12px;border:none;border-radius:10px;background:#0b
 .good{color:green}.try{color:orange}.muted{color:#666}
 </style>
 
-<h1>Pronunciation</h1>
 <div class="grid" id="cards"></div>
 
 <script>
