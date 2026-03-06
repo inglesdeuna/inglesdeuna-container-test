@@ -1,4 +1,3 @@
-cat > lessons/lessons/academic/assignments_editor.php <<'PHP'
 <?php
 session_start();
 
