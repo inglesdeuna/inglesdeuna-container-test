@@ -1,11 +1,13 @@
 <?php
 require_once __DIR__ . '/../../config/db.php';
-require_once __DIR__ . '/../../core/cloudinary_upload.php';
-require_once __DIR__ . '/../../core/_activity_editor_template.php';
+require_once __DIR__ . '/../../core/_activity_viewer_template.php';
 
 $activityId = isset($_GET['id']) ? trim((string) $_GET['id']) : '';
 $unit = isset($_GET['unit']) ? trim((string) $_GET['unit']) : '';
-$source = isset($_GET['source']) ? trim((string) $_GET['source']) : '';
+
+if ($activityId === '' && $unit === '') {
+    die('Actividad no especificada');
+}
 
 function activities_columns(PDO $pdo): array
 {
@@ -118,7 +120,7 @@ function normalize_pronunciation_items($rawData): array
     return $normalized;
 }
 
-function load_pronunciation_items(PDO $pdo, string $unit, string $activityId): array
+function load_pronunciation_items(PDO $pdo, string $activityId, string $unit): array
 {
     $columns = activities_columns($pdo);
 
@@ -173,245 +175,150 @@ function load_pronunciation_items(PDO $pdo, string $unit, string $activityId): a
     return array();
 }
 
-function save_pronunciation_items(PDO $pdo, string $unit, array $items): void
-{
-    $columns = activities_columns($pdo);
-    $json = json_encode($items, JSON_UNESCAPED_UNICODE);
-
-    if (in_array('unit_id', $columns, true) && in_array('data', $columns, true)) {
-        $check = $pdo->prepare(
-            "SELECT id
-             FROM activities
-             WHERE unit_id = :unit
-               AND type = 'pronunciation'
-             LIMIT 1"
-        );
-        $check->execute(array('unit' => $unit));
-
-        if ($check->fetch()) {
-            $stmt = $pdo->prepare(
-                "UPDATE activities
-                 SET data = :data
-                 WHERE unit_id = :unit
-                   AND type = 'pronunciation'"
-            );
-            $stmt->execute(array('data' => $json, 'unit' => $unit));
-            return;
-        }
-
-        try {
-            $stmt = $pdo->prepare(
-                "INSERT INTO activities (unit_id, type, data)
-                 VALUES (:unit, 'pronunciation', :data)"
-            );
-            $stmt->execute(array('unit' => $unit, 'data' => $json));
-            return;
-        } catch (Exception $e) {
-            if (in_array('id', $columns, true)) {
-                $stmt = $pdo->prepare(
-                    "INSERT INTO activities (id, unit_id, type, data)
-                     VALUES (:id, :unit, 'pronunciation', :data)"
-                );
-                $stmt->execute(array('id' => md5(random_bytes(16)), 'unit' => $unit, 'data' => $json));
-                return;
-            }
-
-            throw $e;
-        }
-    }
-
-    if (in_array('unit', $columns, true) && in_array('content_json', $columns, true)) {
-        $check = $pdo->prepare(
-            "SELECT id
-             FROM activities
-             WHERE unit = :unit
-               AND type = 'pronunciation'
-             LIMIT 1"
-        );
-        $check->execute(array('unit' => $unit));
-
-        if ($check->fetch()) {
-            $stmt = $pdo->prepare(
-                "UPDATE activities
-                 SET content_json = :data
-                 WHERE unit = :unit
-                   AND type = 'pronunciation'"
-            );
-            $stmt->execute(array('data' => $json, 'unit' => $unit));
-            return;
-        }
-
-        $stmt = $pdo->prepare(
-            "INSERT INTO activities (unit, type, content_json)
-             VALUES (:unit, 'pronunciation', :data)"
-        );
-        $stmt->execute(array('unit' => $unit, 'data' => $json));
-    }
-}
-
 if ($unit === '' && $activityId !== '') {
     $unit = resolve_unit_from_activity($pdo, $activityId);
 }
 
-if ($unit === '') {
-    die('Unidad no especificada');
-}
-
-$items = load_pronunciation_items($pdo, $unit, $activityId);
-
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $ens = isset($_POST['en']) && is_array($_POST['en']) ? $_POST['en'] : array();
-    $phs = isset($_POST['ph']) && is_array($_POST['ph']) ? $_POST['ph'] : array();
-    $ess = isset($_POST['es']) && is_array($_POST['es']) ? $_POST['es'] : array();
-    $imgs = isset($_POST['img']) && is_array($_POST['img']) ? $_POST['img'] : array();
-    $audios = isset($_POST['audio']) && is_array($_POST['audio']) ? $_POST['audio'] : array();
-
-    $imageFiles = isset($_FILES['img_file']) ? $_FILES['img_file'] : null;
-    $audioFiles = isset($_FILES['audio_file']) ? $_FILES['audio_file'] : null;
-
-    $sanitized = array();
-
-    foreach ($ens as $i => $enRaw) {
-        $en = trim((string) $enRaw);
-        $ph = isset($phs[$i]) ? trim((string) $phs[$i]) : '';
-        $es = isset($ess[$i]) ? trim((string) $ess[$i]) : '';
-
-        $img = isset($imgs[$i]) ? trim((string) $imgs[$i]) : '';
-        $audio = isset($audios[$i]) ? trim((string) $audios[$i]) : '';
-
-        if (
-            $imageFiles
-            && isset($imageFiles['name'][$i])
-            && $imageFiles['name'][$i] !== ''
-            && isset($imageFiles['tmp_name'][$i])
-            && $imageFiles['tmp_name'][$i] !== ''
-        ) {
-            $uploadedImage = upload_to_cloudinary($imageFiles['tmp_name'][$i]);
-            if ($uploadedImage) {
-                $img = $uploadedImage;
-            }
-        }
-
-        if (
-            $audioFiles
-            && isset($audioFiles['name'][$i])
-            && $audioFiles['name'][$i] !== ''
-            && isset($audioFiles['tmp_name'][$i])
-            && $audioFiles['tmp_name'][$i] !== ''
-        ) {
-            $uploadedAudio = upload_to_cloudinary($audioFiles['tmp_name'][$i]);
-            if ($uploadedAudio) {
-                $audio = $uploadedAudio;
-            }
-        }
-
-        if ($en === '' && $img === '' && $ph === '' && $es === '') {
-            continue;
-        }
-
-        $sanitized[] = array(
-            'img' => $img,
-            'en' => $en,
-            'ph' => $ph,
-            'es' => $es,
-            'audio' => $audio,
-        );
-    }
-
-    save_pronunciation_items($pdo, $unit, $sanitized);
-
-    $redirectParams = array('unit=' . urlencode($unit), 'saved=1');
-    if ($activityId !== '') {
-        $redirectParams[] = 'id=' . urlencode($activityId);
-    }
-    if ($source !== '') {
-        $redirectParams[] = 'source=' . urlencode($source);
-    }
-
-    header('Location: editor.php?' . implode('&', $redirectParams));
-    exit;
-}
+$items = load_pronunciation_items($pdo, $activityId, $unit);
 
 ob_start();
 ?>
 
-<?php if (isset($_GET['saved'])) { ?>
-<p style="color:green;font-weight:bold;margin-bottom:15px;">✔ Guardado correctamente</p>
-<?php } ?>
-
-<form method="post" enctype="multipart/form-data" style="text-align:left;max-width:980px;margin:0 auto;">
-    <div id="items">
-        <?php foreach ($items as $item) { ?>
-            <div class="pron-block">
-                <label>Command (English)</label>
-                <input type="text" name="en[]" value="<?php echo htmlspecialchars(isset($item['en']) ? $item['en'] : ''); ?>" placeholder="Stand up" required>
-
-                <label>Phonetic</label>
-                <input type="text" name="ph[]" value="<?php echo htmlspecialchars(isset($item['ph']) ? $item['ph'] : ''); ?>" placeholder="stánd ap">
-
-                <label>Spanish</label>
-                <input type="text" name="es[]" value="<?php echo htmlspecialchars(isset($item['es']) ? $item['es'] : ''); ?>" placeholder="Levántate / Levántense">
-
-                <label>Image URL (optional)</label>
-                <input type="text" name="img[]" value="<?php echo htmlspecialchars(isset($item['img']) ? $item['img'] : ''); ?>" placeholder="https://...">
-                <input type="file" name="img_file[]" accept="image/*">
-
-                <label>Audio URL (optional)</label>
-                <input type="text" name="audio[]" value="<?php echo htmlspecialchars(isset($item['audio']) ? $item['audio'] : ''); ?>" placeholder="https://...mp3">
-                <input type="file" name="audio_file[]" accept="audio/*">
-
-                <button type="button" onclick="removeItem(this)" class="btn-remove">✖ Remove</button>
-            </div>
-        <?php } ?>
-    </div>
-
-    <div class="actions-row">
-        <button type="button" onclick="addItem()" class="btn-add">+ Add Card</button>
-        <button type="submit" class="btn-save">💾 Save</button>
-    </div>
-</form>
-
 <style>
-.pron-block{background:#f9fafb;padding:14px;margin-bottom:12px;border-radius:12px;border:1px solid #e5e7eb;display:grid;grid-template-columns:1fr 1fr;gap:8px 10px}
-.pron-block label{font-weight:700;grid-column:span 2}
-.pron-block input{padding:8px 10px;border-radius:8px;border:1px solid #ccc;font-size:14px;grid-column:span 2}
-.actions-row{display:flex;gap:10px;justify-content:center;margin-top:8px}
-.btn-add{background:#16a34a;color:#fff;padding:9px 14px;border:none;border-radius:8px;cursor:pointer}
-.btn-save{background:#0b5ed7;color:#fff;padding:9px 14px;border:none;border-radius:8px;cursor:pointer}
-.btn-remove{background:#ef4444;color:#fff;border:none;padding:6px 10px;border-radius:6px;cursor:pointer;justify-self:end;grid-column:span 2}
-@media (max-width:680px){.pron-block{display:flex;flex-direction:column}}
+body{font-family:Arial,sans-serif;background:#eef6ff;padding:20px}
+h1{text-align:center;color:#0b5ed7;margin:0 0 18px 0}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px}
+.card{background:#fff;border-radius:18px;padding:14px;text-align:center;box-shadow:0 4px 8px rgba(0,0,0,.1)}
+.image{width:100%;height:130px;object-fit:contain;margin-bottom:6px}
+.command{font-size:28px;font-weight:700;line-height:1.1}
+.phonetic{font-size:18px;color:#555;line-height:1.1}
+.spanish{font-size:18px;margin-bottom:8px;line-height:1.1}
+button{margin:4px;padding:7px 12px;border:none;border-radius:10px;background:#0b5ed7;color:#fff;cursor:pointer;font-size:13px}
+.feedback{font-size:15px;font-weight:700;min-height:20px}
+.good{color:green}.try{color:orange}.muted{color:#666}
 </style>
 
+<h1>📘 Basic Commands – Listen &amp; Speak</h1>
+<div class="grid" id="cards"></div>
+
 <script>
-function addItem() {
-    var container = document.getElementById('items');
-    var div = document.createElement('div');
-    div.className = 'pron-block';
-    div.innerHTML = '' +
-      '<label>Command (English)</label>' +
-      '<input type="text" name="en[]" placeholder="Stand up" required>' +
-      '<label>Phonetic</label>' +
-      '<input type="text" name="ph[]" placeholder="stánd ap">' +
-      '<label>Spanish</label>' +
-      '<input type="text" name="es[]" placeholder="Levántate / Levántense">' +
-      '<label>Image URL (optional)</label>' +
-      '<input type="text" name="img[]" placeholder="https://...">' +
-      '<input type="file" name="img_file[]" accept="image/*">' +
-      '<label>Audio URL (optional)</label>' +
-      '<input type="text" name="audio[]" placeholder="https://...mp3">' +
-      '<input type="file" name="audio_file[]" accept="audio/*">' +
-      '<button type="button" onclick="removeItem(this)" class="btn-remove">✖ Remove</button>';
-    container.appendChild(div);
+window.PRONUNCIATION_DATA = <?php echo json_encode($items, JSON_UNESCAPED_UNICODE); ?>;
+
+var recognition = null;
+if ('webkitSpeechRecognition' in window) {
+  recognition = new webkitSpeechRecognition();
+  recognition.lang = 'en-US';
+  recognition.interimResults = false;
+  recognition.maxAlternatives = 1;
 }
 
-function removeItem(btn) {
-    var block = btn.closest('.pron-block');
-    if (block) {
-        block.remove();
-    }
+function escapeHtml(value) {
+  return String(value || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
 }
+
+function renderCards() {
+  var data = Array.isArray(window.PRONUNCIATION_DATA) ? window.PRONUNCIATION_DATA : [];
+  var container = document.getElementById('cards');
+
+  if (!container) {
+    return;
+  }
+
+  if (!data.length) {
+    container.innerHTML = '<div class="card"><div class="muted">No pronunciation data available.</div></div>';
+    return;
+  }
+
+  container.innerHTML = data.map(function (item, i) {
+    var img = item.img ? '<img class="image" src="' + escapeHtml(item.img) + '" alt="' + escapeHtml(item.en || '') + '">' : '';
+    return '' +
+      '<div class="card">' +
+        img +
+        '<div class="command">' + escapeHtml(item.en || '') + '</div>' +
+        '<div class="phonetic">' + escapeHtml(item.ph || '') + '</div>' +
+        '<div class="spanish">' + escapeHtml(item.es || '') + '</div>' +
+        '<button type="button" onclick="speak(' + i + ')">🔊 Listen</button>' +
+        '<button type="button" onclick="record(' + i + ')">🎤 Speak</button>' +
+        '<div id="f' + i + '" class="feedback"></div>' +
+      '</div>';
+  }).join('');
+}
+
+function speak(index) {
+  var data = Array.isArray(window.PRONUNCIATION_DATA) ? window.PRONUNCIATION_DATA : [];
+  if (!data[index]) {
+    return;
+  }
+
+  if (data[index].audio) {
+    var audio = new Audio(data[index].audio);
+    audio.play();
+    return;
+  }
+
+  var text = data[index].en || '';
+  if (!text) {
+    return;
+  }
+
+  var utter = new SpeechSynthesisUtterance(text);
+  utter.lang = 'en-US';
+  utter.rate = 0.9;
+  speechSynthesis.cancel();
+  speechSynthesis.speak(utter);
+}
+
+function record(index) {
+  var data = Array.isArray(window.PRONUNCIATION_DATA) ? window.PRONUNCIATION_DATA : [];
+  var fb = document.getElementById('f' + index);
+
+  if (!data[index]) {
+    return;
+  }
+
+  if (!recognition) {
+    if (fb) {
+      fb.innerHTML = '⚠️ Speech recognition not available in this browser.';
+      fb.className = 'feedback try';
+    }
+    return;
+  }
+
+  recognition.onresult = function (event) {
+    var said = String(event.results[0][0].transcript || '').toLowerCase();
+    var correct = String(data[index].en || '').toLowerCase();
+
+    if (!fb) {
+      return;
+    }
+
+    if (correct !== '' && (said === correct || said.indexOf(correct.split(' ')[0]) !== -1)) {
+      fb.innerHTML = '🌟 Good job!';
+      fb.className = 'feedback good';
+    } else {
+      fb.innerHTML = '🔁 Try again!';
+      fb.className = 'feedback try';
+    }
+  };
+
+  recognition.onerror = function () {
+    if (fb) {
+      fb.innerHTML = '🔁 Try again!';
+      fb.className = 'feedback try';
+    }
+  };
+
+  recognition.start();
+}
+
+renderCards();
 </script>
 
 <?php
 $content = ob_get_clean();
-render_activity_editor('Pronunciation Editor', '🔊', $content);
+render_activity_viewer('Pronunciation', '🔊', $content);
