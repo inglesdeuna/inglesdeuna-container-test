@@ -26,19 +26,8 @@ body { margin:0; font-family:"Segoe UI",Arial,sans-serif; background:var(--page-
   color:#fff; padding:12px 56px; display:flex; align-items:center; justify-content:space-between;
 }
 .brand{ display:flex; align-items:center; gap:18px; }
-.logo-wrap{ width:96px; height:96px; position:relative; flex-shrink:0; }
-.logo-front,.logo-back-green,.logo-back-blue,.logo-back-red{ position:absolute; border-radius:10px; }
-.logo-front{
-  inset:0; background:linear-gradient(#fff 0 72%, #3d92dd 72%);
-  border:5px solid #f5be2f; box-shadow:0 5px 14px rgba(14,48,95,.25); z-index:4;
-  display:flex; align-items:center; justify-content:center; flex-direction:column; font-weight:800; line-height:1;
-}
-.logo-back-green{ inset:-7px 7px 7px -7px; background:#89bb35; z-index:1; }
-.logo-back-blue{ inset:7px -7px -7px 7px; background:#2d8fdc; z-index:2; }
-.logo-back-red{ inset:7px -7px -7px 7px; transform:translate(7px,7px); background:#de3a33; z-index:0; }
-.logo-let{ font-size:20px; letter-spacing:.8px; color:#2b63c7; }
-.logo-aprende{ font-size:13px; color:#5e6572; margin:2px 0; }
-.logo-ingles{ font-size:18px; color:#ffb11c; }
+.logo-wrap{ width:96px; height:96px; flex-shrink:0; border-radius:12px; overflow:hidden; box-shadow:0 5px 14px rgba(14,48,95,.25); background:#fff; }
+.logo-wrap img{ width:100%; height:100%; object-fit:cover; display:block; }
 
 .topbar h1{ margin:0; font-size:44px; font-weight:700; }
 .logout-btn{
@@ -81,14 +70,7 @@ body { margin:0; font-family:"Segoe UI",Arial,sans-serif; background:var(--page-
 <header class="topbar">
   <div class="brand">
     <div class="logo-wrap" aria-label="Logo Let&apos;s Aprende Inglés">
-      <div class="logo-back-green"></div>
-      <div class="logo-back-blue"></div>
-      <div class="logo-back-red"></div>
-      <div class="logo-front">
-        <div class="logo-let">LET'S</div>
-        <div class="logo-aprende">aprende</div>
-        <div class="logo-ingles">Inglés</div>
-      </div>
+      <img src="../assets/img/logo-lets-aprende-ingles.png" alt="Logo Let's Aprende Inglés">
     </div>
     <h1>Panel Administrador</h1>
   </div>
