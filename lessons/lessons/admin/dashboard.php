@@ -124,7 +124,7 @@ body { margin:0; font-family:"Segoe UI",Arial,sans-serif; background:var(--page-
       <h2>🎓 Estudiantes</h2>
       <p>Gestiona el flujo en dos pasos: primero inscripción y luego asignaciones.</p>
       <a class="btn btn-purple" href="../academic/student_enrollments.php">1. Inscripciones</a>
-      <a class="btn btn-pink" href="../academic/student_assignments.php">2. Asignaciones</a>
+      <a class="btn btn-pink" href="../academic/student_assignments.php">2. Asignaciones / Perfil</a>
     </article>
   </section>
 </main>
