@@ -7,45 +7,41 @@ $activityId = isset($_GET['id']) ? trim((string) $_GET['id']) : '';
 $unit = isset($_GET['unit']) ? trim((string) $_GET['unit']) : '';
 $source = isset($_GET['source']) ? trim((string) $_GET['source']) : '';
 
-if ($unit === '' && $activityId !== '') {
-    $unitStmt = $pdo->prepare(
-        "SELECT unit_id
-         FROM activities
-         WHERE id = :id
-           AND type = 'multiple_choice'
-         LIMIT 1"
-    );
-    $unitStmt->execute(array('id' => $activityId));
-    $unitRow = $unitStmt->fetch(PDO::FETCH_ASSOC);
-    if ($unitRow && isset($unitRow['unit_id'])) {
-        $unit = (string) $unitRow['unit_id'];
-    }
-}
-
-if ($unit === '') {
-    die('Unidad no especificada');
-}
-
-function normalize_multiple_choice_questions($rawData)
+function activities_columns(PDO $pdo): array
 {
-    if (is_string($rawData)) {
-        $decoded = json_decode($rawData, true);
+    static $cache = null;
 
-        if (json_last_error() !== JSON_ERROR_NONE) {
-            return array();
-        }
-
-        if (is_string($decoded)) {
-            $decodedAgain = json_decode($decoded, true);
-            if (json_last_error() === JSON_ERROR_NONE) {
-                $decoded = $decodedAgain;
-            }
-        }
-    } else {
-        $decoded = $rawData;
+    if (is_array($cache)) {
+        return $cache;
     }
 
-    if (!is_array($decoded)) {
+    $cache = array();
+
+    $stmt = $pdo->query(
+        "SELECT column_name
+         FROM information_schema.columns
+         WHERE table_schema = 'public'
+           AND table_name = 'activities'"
+    );
+
+    foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+        if (isset($row['column_name'])) {
+            $cache[] = (string) $row['column_name'];
+        }
+    }
+
+    return $cache;
+}
+
+function normalize_multiple_choice_questions($rawData): array
+{
+    if ($rawData === null || $rawData === '') {
+        return array();
+    }
+
+    $decoded = is_string($rawData) ? json_decode($rawData, true) : $rawData;
+
+    if (json_last_error() !== JSON_ERROR_NONE || !is_array($decoded)) {
         return array();
     }
 
@@ -57,15 +53,6 @@ function normalize_multiple_choice_questions($rawData)
         $decoded = $decoded['data'];
     }
 
-    $isList = array_keys($decoded) === range(0, count($decoded) - 1);
-    if (!$isList) {
-        if (isset($decoded['question']) || isset($decoded['options']) || isset($decoded['option_a'])) {
-            $decoded = array($decoded);
-        } else {
-            return array();
-        }
-    }
-
     $normalized = array();
 
     foreach ($decoded as $item) {
@@ -73,105 +60,207 @@ function normalize_multiple_choice_questions($rawData)
             continue;
         }
 
-        $question = isset($item['question']) ? trim((string) $item['question']) : '';
-
-        $image = '';
-        if (isset($item['image'])) {
-            $image = trim((string) $item['image']);
-        } elseif (isset($item['img'])) {
-            $image = trim((string) $item['img']);
-        }
-
-        $options = array('', '', '');
-        if (isset($item['options']) && is_array($item['options'])) {
-            $options = array(
-                isset($item['options'][0]) ? trim((string) $item['options'][0]) : '',
-                isset($item['options'][1]) ? trim((string) $item['options'][1]) : '',
-                isset($item['options'][2]) ? trim((string) $item['options'][2]) : '',
+        $options = isset($item['options']) && is_array($item['options'])
+            ? $item['options']
+            : array(
+                isset($item['option_a']) ? (string) $item['option_a'] : '',
+                isset($item['option_b']) ? (string) $item['option_b'] : '',
+                isset($item['option_c']) ? (string) $item['option_c'] : '',
             );
-        } else {
-            $options = array(
-                isset($item['option_a']) ? trim((string) $item['option_a']) : '',
-                isset($item['option_b']) ? trim((string) $item['option_b']) : '',
-                isset($item['option_c']) ? trim((string) $item['option_c']) : '',
-            );
-        }
-
-        $correct = isset($item['correct']) ? (int) $item['correct'] : 0;
-        if ($correct < 0 || $correct > 2) {
-            $correct = 0;
-        }
-
-        if ($question === '' && $options[0] === '' && $options[1] === '' && $options[2] === '') {
-            continue;
-        }
 
         $normalized[] = array(
-            'question' => $question,
-            'image' => $image,
-            'options' => $options,
-            'correct' => $correct,
+            'question' => isset($item['question']) ? trim((string) $item['question']) : '',
+            'image' => isset($item['image']) ? trim((string) $item['image']) : '',
+            'options' => array(
+                isset($options[0]) ? trim((string) $options[0]) : '',
+                isset($options[1]) ? trim((string) $options[1]) : '',
+                isset($options[2]) ? trim((string) $options[2]) : '',
+            ),
+            'correct' => isset($item['correct']) ? max(0, min(2, (int) $item['correct'])) : 0,
         );
     }
 
     return $normalized;
 }
 
-function load_multiple_choice_questions($pdo, $unit)
+function resolve_unit_from_activity(PDO $pdo, string $activityId): string
 {
-    $stmt = $pdo->prepare(
-        "SELECT data
-         FROM activities
-         WHERE unit_id = :unit
-           AND type = 'multiple_choice'
-         LIMIT 1"
-    );
-    $stmt->execute(array('unit' => $unit));
+    if ($activityId === '') {
+        return '';
+    }
 
-    $row = $stmt->fetch(PDO::FETCH_ASSOC);
-    $raw = isset($row['data']) ? $row['data'] : '[]';
+    $columns = activities_columns($pdo);
 
-    return normalize_multiple_choice_questions($raw);
+    if (in_array('unit_id', $columns, true)) {
+        $stmt = $pdo->prepare(
+            "SELECT unit_id
+             FROM activities
+             WHERE id = :id
+             LIMIT 1"
+        );
+        $stmt->execute(array('id' => $activityId));
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if ($row && isset($row['unit_id'])) {
+            return (string) $row['unit_id'];
+        }
+    }
+
+    if (in_array('unit', $columns, true)) {
+        $stmt = $pdo->prepare(
+            "SELECT unit
+             FROM activities
+             WHERE id = :id
+             LIMIT 1"
+        );
+        $stmt->execute(array('id' => $activityId));
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if ($row && isset($row['unit'])) {
+            return (string) $row['unit'];
+        }
+    }
+
+    return '';
 }
 
-function save_multiple_choice_questions($pdo, $unit, $questions)
+function load_multiple_choice_questions(PDO $pdo, string $unit, string $activityId): array
 {
+    $columns = activities_columns($pdo);
+
+    if ($activityId !== '' && in_array('data', $columns, true)) {
+        $stmt = $pdo->prepare(
+            "SELECT data
+             FROM activities
+             WHERE id = :id
+               AND type = 'multiple_choice'
+             LIMIT 1"
+        );
+        $stmt->execute(array('id' => $activityId));
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        if ($row && isset($row['data'])) {
+            return normalize_multiple_choice_questions($row['data']);
+        }
+    }
+
+    if ($unit !== '' && in_array('unit_id', $columns, true) && in_array('data', $columns, true)) {
+        $stmt = $pdo->prepare(
+            "SELECT data
+             FROM activities
+             WHERE unit_id = :unit
+               AND type = 'multiple_choice'
+             LIMIT 1"
+        );
+        $stmt->execute(array('unit' => $unit));
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        if ($row && isset($row['data'])) {
+            return normalize_multiple_choice_questions($row['data']);
+        }
+    }
+
+    if ($unit !== '' && in_array('unit', $columns, true) && in_array('content_json', $columns, true)) {
+        $stmt = $pdo->prepare(
+            "SELECT content_json
+             FROM activities
+             WHERE unit = :unit
+               AND type = 'multiple_choice'
+             LIMIT 1"
+        );
+        $stmt->execute(array('unit' => $unit));
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        if ($row && isset($row['content_json'])) {
+            return normalize_multiple_choice_questions($row['content_json']);
+        }
+    }
+
+    return array();
+}
+
+function save_multiple_choice_questions(PDO $pdo, string $unit, array $questions): void
+{
+    $columns = activities_columns($pdo);
     $json = json_encode($questions, JSON_UNESCAPED_UNICODE);
 
-    $check = $pdo->prepare(
-        "SELECT id
-         FROM activities
-         WHERE unit_id = :unit
-           AND type = 'multiple_choice'
-         LIMIT 1"
-    );
-    $check->execute(array('unit' => $unit));
-
-    if ($check->fetch()) {
-        $stmt = $pdo->prepare(
-            "UPDATE activities
-             SET data = :data
+    if (in_array('unit_id', $columns, true) && in_array('data', $columns, true)) {
+        $check = $pdo->prepare(
+            "SELECT id
+             FROM activities
              WHERE unit_id = :unit
-               AND type = 'multiple_choice'"
+               AND type = 'multiple_choice'
+             LIMIT 1"
         );
-        $stmt->execute(array(
-            'data' => $json,
-            'unit' => $unit,
-        ));
-    } else {
+        $check->execute(array('unit' => $unit));
+
+        if ($check->fetch()) {
+            $stmt = $pdo->prepare(
+                "UPDATE activities
+                 SET data = :data
+                 WHERE unit_id = :unit
+                   AND type = 'multiple_choice'"
+            );
+            $stmt->execute(array('data' => $json, 'unit' => $unit));
+            return;
+        }
+
+        try {
+            $stmt = $pdo->prepare(
+                "INSERT INTO activities (unit_id, type, data)
+                 VALUES (:unit, 'multiple_choice', :data)"
+            );
+            $stmt->execute(array('unit' => $unit, 'data' => $json));
+            return;
+        } catch (Exception $e) {
+            if (in_array('id', $columns, true)) {
+                $stmt = $pdo->prepare(
+                    "INSERT INTO activities (id, unit_id, type, data)
+                     VALUES (:id, :unit, 'multiple_choice', :data)"
+                );
+                $stmt->execute(array('id' => md5(random_bytes(16)), 'unit' => $unit, 'data' => $json));
+                return;
+            }
+
+            throw $e;
+        }
+    }
+
+    if (in_array('unit', $columns, true) && in_array('content_json', $columns, true)) {
+        $check = $pdo->prepare(
+            "SELECT id
+             FROM activities
+             WHERE unit = :unit
+               AND type = 'multiple_choice'
+             LIMIT 1"
+        );
+        $check->execute(array('unit' => $unit));
+
+        if ($check->fetch()) {
+            $stmt = $pdo->prepare(
+                "UPDATE activities
+                 SET content_json = :data
+                 WHERE unit = :unit
+                   AND type = 'multiple_choice'"
+            );
+            $stmt->execute(array('data' => $json, 'unit' => $unit));
+            return;
+        }
+
         $stmt = $pdo->prepare(
-            "INSERT INTO activities (id, unit_id, type, data)
-             VALUES (:id, :unit, 'multiple_choice', :data)"
+            "INSERT INTO activities (unit, type, content_json)
+             VALUES (:unit, 'multiple_choice', :data)"
         );
-        $stmt->execute(array(
-            'id' => md5(random_bytes(16)),
-            'unit' => $unit,
-            'data' => $json,
-        ));
+        $stmt->execute(array('unit' => $unit, 'data' => $json));
     }
 }
 
-$questions = load_multiple_choice_questions($pdo, $unit);
+if ($unit === '' && $activityId !== '') {
+    $unit = resolve_unit_from_activity($pdo, $activityId);
+}
+
+if ($unit === '') {
+    die('Unidad no especificada');
+}
+
+$questions = load_multiple_choice_questions($pdo, $unit, $activityId);
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $inputQuestions = isset($_POST['question']) && is_array($_POST['question']) ? $_POST['question'] : array();
@@ -278,128 +367,67 @@ if (isset($_GET['saved'])) {
                         <option value="1" <?php echo $correct === 1 ? 'selected' : ''; ?>>Correct: B</option>
                         <option value="2" <?php echo $correct === 2 ? 'selected' : ''; ?>>Correct: C</option>
                     </select>
-
-                    <button type="button" onclick="removeQuestion(this)" class="btn-remove">✖ Eliminar</button>
+                    <button type="button" class="mc-remove" onclick="removeQuestion(this)">✖ Remove</button>
                 </div>
             </div>
         <?php } ?>
     </div>
 
     <div class="mc-actions">
-        <button type="button" onclick="addQuestion()" class="btn-add">+ Add Question</button>
-        <button type="submit" class="btn-save">💾 Save</button>
+        <button type="button" class="mc-add" onclick="addQuestion()">+ Add Question</button>
+        <button type="submit" class="mc-save">💾 Save</button>
     </div>
 </form>
 
-<style>
-.mc-block{
-    background:#f9fafb;
-    border:1px solid #e5e7eb;
-    border-radius:12px;
-    padding:14px;
-    margin-bottom:14px;
-    display:flex;
-    flex-direction:column;
-    gap:8px;
-}
-
-.mc-block label{
-    font-size:13px;
-    font-weight:bold;
-    color:#334155;
-}
-
-.mc-block input,
-.mc-block select{
-    width:100%;
-    padding:9px 10px;
-    border-radius:8px;
-    border:1px solid #cbd5e1;
-    font-size:14px;
-    box-sizing:border-box;
-}
-
-.mc-options-grid{
-    display:grid;
-    grid-template-columns:repeat(auto-fit, minmax(180px, 1fr));
-    gap:8px;
-}
-
-.mc-preview{
-    width:120px;
-    border-radius:8px;
-    border:1px solid #e2e8f0;
-}
-
-.mc-block-footer{
-    display:flex;
-    align-items:center;
-    justify-content:space-between;
-    gap:10px;
-}
-
-.mc-actions{
-    display:flex;
-    gap:10px;
-    margin-top:14px;
-}
-
-.btn-add,
-.btn-save,
-.btn-remove{
-    border:none;
-    border-radius:8px;
-    color:#fff;
-    cursor:pointer;
-    font-weight:bold;
-}
-
-.btn-add{ background:#16a34a; padding:10px 14px; }
-.btn-save{ background:#0b5ed7; padding:10px 14px; }
-.btn-remove{ background:#ef4444; padding:9px 12px; }
-</style>
-
 <script>
-function addQuestion(){
-    const container = document.getElementById('questions');
+function addQuestion() {
+    var wrapper = document.createElement('div');
+    wrapper.className = 'mc-block';
+    wrapper.innerHTML = '' +
+        '<label>Question</label>' +
+        '<input type="text" name="question[]" placeholder="Question" required>' +
+        '<label>Image (optional)</label>' +
+        '<input type="file" name="image_file[]" accept="image/*">' +
+        '<input type="hidden" name="image[]" value="">' +
+        '<label>Options</label>' +
+        '<div class="mc-options-grid">' +
+            '<input type="text" name="option_a[]" placeholder="Option A" required>' +
+            '<input type="text" name="option_b[]" placeholder="Option B" required>' +
+            '<input type="text" name="option_c[]" placeholder="Option C" required>' +
+        '</div>' +
+        '<div class="mc-block-footer">' +
+            '<select name="correct[]">' +
+                '<option value="0">Correct: A</option>' +
+                '<option value="1">Correct: B</option>' +
+                '<option value="2">Correct: C</option>' +
+            '</select>' +
+            '<button type="button" class="mc-remove" onclick="removeQuestion(this)">✖ Remove</button>' +
+        '</div>';
 
-    const block = document.createElement('div');
-    block.className = 'mc-block';
-    block.innerHTML = `
-        <label>Question</label>
-        <input type="text" name="question[]" placeholder="Question" required>
-
-        <label>Image (optional)</label>
-        <input type="file" name="image_file[]" accept="image/*">
-        <input type="hidden" name="image[]" value="">
-
-        <label>Options</label>
-        <div class="mc-options-grid">
-            <input type="text" name="option_a[]" placeholder="Option A" required>
-            <input type="text" name="option_b[]" placeholder="Option B" required>
-            <input type="text" name="option_c[]" placeholder="Option C" required>
-        </div>
-
-        <div class="mc-block-footer">
-            <select name="correct[]">
-                <option value="0">Correct: A</option>
-                <option value="1">Correct: B</option>
-                <option value="2">Correct: C</option>
-            </select>
-            <button type="button" onclick="removeQuestion(this)" class="btn-remove">✖ Eliminar</button>
-        </div>
-    `;
-
-    container.appendChild(block);
+    document.getElementById('questions').appendChild(wrapper);
 }
 
-function removeQuestion(btn){
-    const block = btn.closest('.mc-block');
+function removeQuestion(button) {
+    var block = button.closest('.mc-block');
     if (block) {
         block.remove();
     }
 }
 </script>
+
+<style>
+.mc-block { border:1px solid #dbe3f1; border-radius:12px; padding:14px; margin-bottom:12px; background:#f8fbff; }
+.mc-block label { display:block; font-weight:700; margin:6px 0; }
+.mc-block input[type="text"], .mc-block select { width:100%; padding:9px; border:1px solid #cfd8ea; border-radius:8px; }
+.mc-options-grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-top:6px; }
+.mc-block-footer { margin-top:10px; display:flex; gap:8px; align-items:center; }
+.mc-remove { background:#ef4444; color:#fff; border:none; border-radius:8px; padding:8px 10px; cursor:pointer; }
+.mc-actions { display:flex; gap:10px; justify-content:center; margin-top:12px; }
+.mc-add { background:#16a34a; color:#fff; border:none; border-radius:10px; padding:10px 14px; cursor:pointer; }
+.mc-save { background:#0b5ed7; color:#fff; border:none; border-radius:10px; padding:10px 14px; cursor:pointer; }
+.mc-preview { width:120px; border-radius:8px; margin-top:8px; }
+@media (max-width:760px){ .mc-options-grid{ grid-template-columns:1fr; } }
+</style>
 
 <?php
 $content = ob_get_clean();
