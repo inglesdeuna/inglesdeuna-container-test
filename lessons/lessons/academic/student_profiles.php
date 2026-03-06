@@ -80,7 +80,7 @@ h1{margin-top:0}
 .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
 .full{grid-column:1/-1}
 input,select,button{font:inherit;padding:10px;border:1px solid #d4dce8;border-radius:8px;width:100%}
-button{background:#7c3aed;color:#fff;border:none;font-weight:700;cursor:pointer}
+button{background:#1f66cc;color:#fff;border:none;font-weight:700;cursor:pointer}
 table{width:100%;border-collapse:collapse}
 th,td{padding:10px;border-bottom:1px solid #e4e9f1;text-align:left;font-size:14px}
 .back{display:inline-block;margin-bottom:15px;color:#1f66cc;text-decoration:none;font-weight:700}
@@ -93,7 +93,7 @@ th,td{padding:10px;border-bottom:1px solid #e4e9f1;text-align:left;font-size:14p
 
     <div class="card">
         <h1>🎓 Crear perfil de estudiante</h1>
-        <p>Aquí creas usuario y contraseña para el login del estudiante.</p>
+        <p>Con este botón/forma se crea el usuario y contraseña del estudiante para su login y acceso a sus cursos.</p>
         <?php if (isset($_GET['saved'])) { ?><div class="notice">Perfil estudiante creado/actualizado.</div><?php } ?>
 
         <form method="post" class="grid">
@@ -106,23 +106,23 @@ th,td{padding:10px;border-bottom:1px solid #e4e9f1;text-align:left;font-size:14p
 
             <input type="text" name="username" placeholder="Crear usuario" required>
             <input class="full" type="text" name="password" placeholder="Crear password" required>
-
             <button class="full" type="submit">Crear perfil estudiante</button>
         </form>
     </div>
 
     <div class="card">
-        <h2>Perfiles de estudiantes creados</h2>
+        <h2>Perfiles creados</h2>
         <table>
-            <thead><tr><th>Estudiante</th><th>Usuario</th></tr></thead>
+            <thead><tr><th>Estudiante</th><th>Usuario</th><th>ID</th></tr></thead>
             <tbody>
             <?php if (empty($accounts)) { ?>
-                <tr><td colspan="2">No hay perfiles creados todavía.</td></tr>
+                <tr><td colspan="3">No hay perfiles creados todavía.</td></tr>
             <?php } else { ?>
                 <?php foreach ($accounts as $account) { ?>
                     <tr>
                         <td><?php echo htmlspecialchars((string) ($account['student_name'] ?? 'Estudiante')); ?></td>
                         <td><?php echo htmlspecialchars((string) ($account['username'] ?? '')); ?></td>
+                        <td><?php echo htmlspecialchars((string) ($account['student_id'] ?? '')); ?></td>
                     </tr>
                 <?php } ?>
             <?php } ?>
