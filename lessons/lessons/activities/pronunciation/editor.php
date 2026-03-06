@@ -267,7 +267,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $audios = isset($_POST['audio']) && is_array($_POST['audio']) ? $_POST['audio'] : array();
 
     $imageFiles = isset($_FILES['img_file']) ? $_FILES['img_file'] : null;
-    $audioFiles = isset($_FILES['audio_file']) ? $_FILES['audio_file'] : null;
 
     $sanitized = array();
 
@@ -289,19 +288,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $uploadedImage = upload_to_cloudinary($imageFiles['tmp_name'][$i]);
             if ($uploadedImage) {
                 $img = $uploadedImage;
-            }
-        }
-
-        if (
-            $audioFiles
-            && isset($audioFiles['name'][$i])
-            && $audioFiles['name'][$i] !== ''
-            && isset($audioFiles['tmp_name'][$i])
-            && $audioFiles['tmp_name'][$i] !== ''
-        ) {
-            $uploadedAudio = upload_to_cloudinary($audioFiles['tmp_name'][$i]);
-            if ($uploadedAudio) {
-                $audio = $uploadedAudio;
             }
         }
 
@@ -352,13 +338,11 @@ ob_start();
                 <label>Spanish</label>
                 <input type="text" name="es[]" value="<?php echo htmlspecialchars(isset($item['es']) ? $item['es'] : ''); ?>" placeholder="Levántate / Levántense">
 
-                <label>Image URL (optional)</label>
-                <input type="text" name="img[]" value="<?php echo htmlspecialchars(isset($item['img']) ? $item['img'] : ''); ?>" placeholder="https://...">
+                <label>Image (optional)</label>
                 <input type="file" name="img_file[]" accept="image/*">
+                <input type="hidden" name="img[]" value="<?php echo htmlspecialchars(isset($item['img']) ? $item['img'] : ''); ?>">
 
-                <label>Audio URL (optional)</label>
-                <input type="text" name="audio[]" value="<?php echo htmlspecialchars(isset($item['audio']) ? $item['audio'] : ''); ?>" placeholder="https://...mp3">
-                <input type="file" name="audio_file[]" accept="audio/*">
+                <input type="hidden" name="audio[]" value="<?php echo htmlspecialchars(isset($item['audio']) ? $item['audio'] : ''); ?>">
 
                 <button type="button" onclick="removeItem(this)" class="btn-remove">✖ Remove</button>
             </div>
@@ -394,12 +378,10 @@ function addItem() {
       '<input type="text" name="ph[]" placeholder="stánd ap">' +
       '<label>Spanish</label>' +
       '<input type="text" name="es[]" placeholder="Levántate / Levántense">' +
-      '<label>Image URL (optional)</label>' +
-      '<input type="text" name="img[]" placeholder="https://...">' +
+      '<label>Image (optional)</label>' +
       '<input type="file" name="img_file[]" accept="image/*">' +
-      '<label>Audio URL (optional)</label>' +
-      '<input type="text" name="audio[]" placeholder="https://...mp3">' +
-      '<input type="file" name="audio_file[]" accept="audio/*">' +
+      '<input type="hidden" name="img[]" value="">' +
+      '<input type="hidden" name="audio[]" value="">' +
       '<button type="button" onclick="removeItem(this)" class="btn-remove">✖ Remove</button>';
     container.appendChild(div);
 }
