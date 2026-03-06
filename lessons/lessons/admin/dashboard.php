@@ -1,8 +1,87 @@
 <?php
 session_start();
 
-if (!isset($_SESSION["admin_logged"]) || $_SESSION["admin_logged"] !== true) {
-    header("Location: login.php");
+if (!isset($_SESSION['admin_logged']) || $_SESSION['admin_logged'] !== true) {
+    header('Location: login.php');
+    exit;
+}
+
+$baseDir = dirname(__DIR__) . '/academic/data';
+$teachersFile = $baseDir . '/teachers.json';
+$studentsFile = $baseDir . '/students.json';
+
+if (!is_dir($baseDir)) {
+    mkdir($baseDir, 0777, true);
+}
+
+foreach ([$teachersFile, $studentsFile] as $file) {
+    if (!file_exists($file)) {
+        file_put_contents($file, '[]');
+    }
+}
+
+$teachers = json_decode((string) file_get_contents($teachersFile), true);
+$students = json_decode((string) file_get_contents($studentsFile), true);
+
+$teachers = is_array($teachers) ? $teachers : [];
+$students = is_array($students) ? $students : [];
+
+function save_people(string $file, array $rows): void
+{
+    file_put_contents($file, json_encode(array_values($rows), JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+}
+
+function add_person(array $rows, string $name, array $extra = []): array
+{
+    $cleanName = trim($name);
+    if ($cleanName === '') {
+        return $rows;
+    }
+
+    foreach ($rows as $existing) {
+        if (mb_strtolower((string) ($existing['name'] ?? '')) === mb_strtolower($cleanName)) {
+            return $rows;
+        }
+    }
+
+    $rows[] = array_merge([
+        'id' => uniqid('usr_'),
+        'name' => $cleanName,
+    ], $extra);
+
+    return $rows;
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $action = isset($_POST['action']) ? (string) $_POST['action'] : '';
+
+    if ($action === 'add_teacher') {
+        $teachers = add_person(
+            $teachers,
+            isset($_POST['teacher_name']) ? (string) $_POST['teacher_name'] : '',
+            [
+                'id_number' => trim((string) ($_POST['teacher_id_number'] ?? '')),
+                'phone' => trim((string) ($_POST['teacher_phone'] ?? '')),
+                'bank_account' => trim((string) ($_POST['teacher_bank_account'] ?? '')),
+            ]
+        );
+        save_people($teachersFile, $teachers);
+    }
+
+    if ($action === 'add_student') {
+        $students = add_person(
+            $students,
+            isset($_POST['student_name']) ? (string) $_POST['student_name'] : '',
+            [
+                'guardian' => trim((string) ($_POST['student_guardian'] ?? '')),
+                'contact' => trim((string) ($_POST['student_contact'] ?? '')),
+                'eps' => trim((string) ($_POST['student_eps'] ?? '')),
+            ]
+        );
+        save_people($studentsFile, $students);
+    }
+
+    header('Location: dashboard.php?saved=1');
     exit;
 }
 ?>
@@ -52,75 +131,45 @@ body {
 }
 
 .logo-wrap {
-    width: 102px;
-    height: 102px;
+    width: 96px;
+    height: 96px;
     position: relative;
     flex-shrink: 0;
 }
 
-.logo-badge {
-    width: 100%;
-    height: 100%;
-    background: #fff;
-    border-radius: 10px;
-    border: 4px solid #f6d04d;
-    box-shadow: 0 5px 16px rgba(9, 43, 91, .3);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    line-height: 1;
-    font-weight: 800;
-    position: relative;
-    z-index: 2;
-}
-
-.logo-badge small {
-    font-size: 13px;
-    color: #4f5f75;
-    margin-top: 4px;
-}
-
-.logo-badge .word {
-    font-size: 16px;
-    letter-spacing: .6px;
-}
-
-.logo-shadow-blue,
-.logo-shadow-red,
-.logo-shadow-green {
+.logo-front,
+.logo-back-green,
+.logo-back-blue,
+.logo-back-red {
     position: absolute;
     border-radius: 10px;
-    z-index: 1;
 }
 
-.logo-shadow-blue {
-    width: 100%;
-    height: 100%;
-    left: -8px;
-    bottom: -8px;
-    background: #2f91df;
+.logo-front {
+    inset: 0;
+    background: linear-gradient(#fff 0 72%, #3d92dd 72%);
+    border: 5px solid #f5be2f;
+    box-shadow: 0 5px 14px rgba(14, 48, 95, .25);
+    z-index: 4;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    font-weight: 800;
+    line-height: 1;
 }
 
-.logo-shadow-red {
-    width: 100%;
-    height: 100%;
-    right: -8px;
-    bottom: -8px;
-    background: #dc3a32;
-}
+.logo-back-green { inset: -7px 7px 7px -7px; background: #89bb35; z-index: 1; }
+.logo-back-blue { inset: 7px -7px -7px 7px; background: #2d8fdc; z-index: 2; }
+.logo-back-red { inset: 7px -7px -7px 7px; transform: translate(7px, 7px); background: #de3a33; z-index: 0; }
 
-.logo-shadow-green {
-    width: 100%;
-    height: 100%;
-    left: -8px;
-    top: -8px;
-    background: #8dbb2b;
-}
+.logo-let { font-size: 20px; letter-spacing: .8px; color: #2b63c7; }
+.logo-aprende { font-size: 13px; color: #5e6572; margin: 2px 0; }
+.logo-ingles { font-size: 18px; color: #ffb11c; }
 
 .topbar h1 {
     margin: 0;
-    font-size: 49px;
+    font-size: 44px;
     font-weight: 700;
 }
 
@@ -138,6 +187,16 @@ body {
     max-width: 1260px;
     margin: 18px auto 0;
     padding: 0 16px 24px;
+}
+
+.notice {
+    margin-bottom: 12px;
+    padding: 10px 14px;
+    border-radius: 10px;
+    border: 1px solid #b4e2c8;
+    background: #e9f9ef;
+    color: #12653f;
+    font-weight: 600;
 }
 
 .grid-two {
@@ -159,7 +218,7 @@ body {
 .card h3 {
     margin: 0 0 10px;
     color: var(--text-main);
-    font-size: 46px;
+    font-size: 32px;
     display: flex;
     align-items: center;
     gap: 10px;
@@ -169,6 +228,16 @@ body {
     margin: 0 0 18px;
     color: var(--text-soft);
     font-size: 15px;
+}
+
+.flow-note {
+    background: #ffffff;
+    border: 1px dashed #c8d6ea;
+    border-radius: 10px;
+    padding: 10px 12px;
+    margin-bottom: 10px;
+    color: #42526b;
+    font-size: 14px;
 }
 
 .btn {
@@ -190,19 +259,57 @@ body {
 .btn-green { background: linear-gradient(90deg, #54b98e, var(--btn-green)); }
 .btn-orange { background: linear-gradient(90deg, #f0b739, var(--btn-orange)); }
 
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.form-grid .full { grid-column: 1 / -1; }
+
+input,
+select,
+button {
+    font: inherit;
+}
+
+input,
+select {
+    width: 100%;
+    border: 1px solid #d0d9e8;
+    border-radius: 8px;
+    background: #fff;
+    padding: 10px 12px;
+}
+
+.inline-row {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.save-btn {
+    border: 0;
+    background: #0c5cc2;
+    color: #fff;
+    font-weight: 700;
+    border-radius: 8px;
+    padding: 10px 16px;
+    cursor: pointer;
+}
+
+.list-mini {
+    margin: 10px 0 0;
+    padding-left: 18px;
+    color: #52627b;
+    max-height: 130px;
+    overflow: auto;
+}
+
 .assignment-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 10px;
-}
-
-.input-like {
-    background: #fff;
-    border: 1px solid #d9dfeb;
-    border-radius: 6px;
-    padding: 10px 12px;
-    color: #55647a;
-    font-size: 14px;
 }
 
 .assignment-actions {
@@ -236,14 +343,14 @@ body {
 <body>
 <header class="topbar">
     <div class="brand">
-        <div class="logo-wrap" aria-hidden="true">
-            <div class="logo-shadow-green"></div>
-            <div class="logo-shadow-blue"></div>
-            <div class="logo-shadow-red"></div>
-            <div class="logo-badge">
-                <div class="word">LET'S</div>
-                <small>aprende</small>
-                <div class="word" style="color:#2b63c7">Inglés</div>
+        <div class="logo-wrap" aria-label="Logo Let&apos;s Aprende Inglés">
+            <div class="logo-back-green"></div>
+            <div class="logo-back-blue"></div>
+            <div class="logo-back-red"></div>
+            <div class="logo-front">
+                <div class="logo-let">LET'S</div>
+                <div class="logo-aprende">aprende</div>
+                <div class="logo-ingles">Inglés</div>
             </div>
         </div>
         <h1>Panel Administrador</h1>
@@ -252,6 +359,10 @@ body {
 </header>
 
 <main class="page">
+    <?php if (isset($_GET['saved'])) { ?>
+        <div class="notice">✔ Registro guardado. Ya aparece disponible en las listas de asignación.</div>
+    <?php } ?>
+
     <section class="grid-two">
         <article class="card">
             <h2>📘 Programas Técnicos</h2>
@@ -274,13 +385,58 @@ body {
 
     <section class="grid-two">
         <article class="card">
+            <h3>🧾 Inscripción de Docentes</h3>
+            <p class="flow-note">Este bloque es independiente. Los docentes registrados aquí aparecen para seleccionar en asignaciones.</p>
+            <form method="post" class="form-grid">
+                <input class="full" type="hidden" name="action" value="add_teacher">
+                <input class="full" type="text" name="teacher_name" placeholder="Nombre" required>
+                <input type="text" name="teacher_id_number" placeholder="C.C">
+                <input type="text" name="teacher_phone" placeholder="Teléfono">
+                <input class="full" type="text" name="teacher_bank_account" placeholder="# Cuenta">
+                <button type="submit" class="save-btn full">Guardar docente</button>
+            </form>
+            <ul class="list-mini">
+                <?php foreach ($teachers as $teacher) { ?>
+                    <li><?php echo htmlspecialchars((string) ($teacher['name'] ?? 'Docente')); ?></li>
+                <?php } ?>
+            </ul>
+        </article>
+
+        <article class="card">
+            <h3>🧾 Inscripción de Estudiantes</h3>
+            <p class="flow-note">Este bloque es independiente. Los estudiantes registrados aquí aparecen para seleccionar en asignaciones.</p>
+            <form method="post" class="form-grid">
+                <input class="full" type="hidden" name="action" value="add_student">
+                <input class="full" type="text" name="student_name" placeholder="Nombre" required>
+                <input type="text" name="student_guardian" placeholder="Acudientes">
+                <input type="text" name="student_contact" placeholder="Contacto">
+                <input class="full" type="text" name="student_eps" placeholder="EPS">
+                <button type="submit" class="save-btn full">Guardar estudiante</button>
+            </form>
+            <ul class="list-mini">
+                <?php foreach ($students as $student) { ?>
+                    <li><?php echo htmlspecialchars((string) ($student['name'] ?? 'Estudiante')); ?></li>
+                <?php } ?>
+            </ul>
+        </article>
+    </section>
+
+    <section class="grid-two">
+        <article class="card">
             <h3>🧑‍🏫 Asignación de Docentes</h3>
             <div class="assignment-grid">
-                <div class="input-like">Seleccione un Docente</div>
-                <div class="input-like">Elige un Curso</div>
-                <div class="input-like">Elige un Curso</div>
-                <div class="input-like">Selecciona un Semestre</div>
-                <div class="input-like">Selecciona un Semestre</div>
+                <select>
+                    <option>Seleccione un Docente</option>
+                    <?php foreach ($teachers as $teacher) { ?>
+                        <option><?php echo htmlspecialchars((string) ($teacher['name'] ?? 'Docente')); ?></option>
+                    <?php } ?>
+                </select>
+                <select>
+                    <option>Elige un Curso</option>
+                </select>
+                <select>
+                    <option>Selecciona un Semestre</option>
+                </select>
             </div>
             <div class="assignment-actions">
                 <a class="btn btn-blue" href="../academic/technical_assignments.php">Programa Técnico</a>
@@ -291,11 +447,18 @@ body {
         <article class="card">
             <h3>🎓 Asignación de Estudiantes</h3>
             <div class="assignment-grid">
-                <div class="input-like">Seleccione un Estudiante</div>
-                <div class="input-like">Elige un Curso</div>
-                <div class="input-like">Elige un Curso</div>
-                <div class="input-like">Selecciona un Semestre</div>
-                <div class="input-like">Selecciona un Semestre</div>
+                <select>
+                    <option>Seleccione un Estudiante</option>
+                    <?php foreach ($students as $student) { ?>
+                        <option><?php echo htmlspecialchars((string) ($student['name'] ?? 'Estudiante')); ?></option>
+                    <?php } ?>
+                </select>
+                <select>
+                    <option>Elige un Curso</option>
+                </select>
+                <select>
+                    <option>Selecciona un Semestre</option>
+                </select>
             </div>
             <div class="assignment-actions">
                 <a class="btn btn-blue" href="../academic/technical_assignments.php">Programa Técnico</a>
