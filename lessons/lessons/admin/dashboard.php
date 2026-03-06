@@ -5,7 +5,7 @@ if (!isset($_SESSION['admin_logged']) || $_SESSION['admin_logged'] !== true) {
     header('Location: login.php');
     exit;
 }
-?>
+?> 
 <!DOCTYPE html>
 <html lang="es">
 <head>
