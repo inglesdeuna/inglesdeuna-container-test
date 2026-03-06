@@ -1,4 +1,4 @@
-<?php 
+<?php
 session_start();
 
 if (!isset($_SESSION['admin_logged']) || $_SESSION['admin_logged'] !== true) {
@@ -59,7 +59,7 @@ body { margin:0; font-family:"Segoe UI",Arial,sans-serif; background:var(--page-
 
 .btn{
   display:block; width:100%; text-align:center; text-decoration:none; color:#fff;
-  font-size:28px; font-weight:700; border-radius:8px; padding:14px 14px; margin-bottom:12px;
+  font-size:25px; font-weight:700; border-radius:8px; padding:14px 14px; margin-bottom:12px;
 }
 .btn:last-child{ margin-bottom:0; }
 .btn-blue{ background:linear-gradient(90deg,#2a67c4,var(--btn-blue)); }
@@ -73,7 +73,7 @@ body { margin:0; font-family:"Segoe UI",Arial,sans-serif; background:var(--page-
   .topbar h1{ font-size:28px; }
   .logo-wrap{ width:70px; height:70px; }
   .grid-two{ grid-template-columns:1fr; }
-  .btn{ font-size:20px; }
+  .btn{ font-size:17px; }
 }
 </style>
 </head>
