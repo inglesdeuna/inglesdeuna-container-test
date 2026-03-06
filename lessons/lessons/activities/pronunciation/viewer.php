@@ -103,22 +103,17 @@ function normalize_pronunciation_items($rawData): array
             continue;
         }
 
-        $word = isset($item['word']) ? trim((string) $item['word']) : '';
-        $audio = '';
-
-        if (isset($item['audio'])) {
-            $audio = trim((string) $item['audio']);
-        } elseif (isset($item['audio_url'])) {
-            $audio = trim((string) $item['audio_url']);
-        }
-
-        if ($word === '' && $audio === '') {
-            continue;
+        $en = isset($item['en']) ? trim((string) $item['en']) : '';
+        if ($en === '' && isset($item['word'])) {
+            $en = trim((string) $item['word']);
         }
 
         $normalized[] = array(
-            'word' => $word,
-            'audio' => $audio,
+            'img' => isset($item['img']) ? trim((string) $item['img']) : (isset($item['image']) ? trim((string) $item['image']) : ''),
+            'en' => $en,
+            'ph' => isset($item['ph']) ? trim((string) $item['ph']) : '',
+            'es' => isset($item['es']) ? trim((string) $item['es']) : '',
+            'audio' => isset($item['audio']) ? trim((string) $item['audio']) : '',
         );
     }
 
@@ -190,99 +185,138 @@ ob_start();
 ?>
 
 <style>
-.pron-view{max-width:640px;margin:0 auto;text-align:center}
-.pron-box{background:#fff;padding:28px;border-radius:16px;box-shadow:0 4px 10px rgba(0,0,0,.08)}
-.pron-word{font-size:34px;font-weight:700;margin:16px 0;color:#0f172a}
-.pron-btn{background:#0b5ed7;color:#fff;border:none;padding:11px 20px;border-radius:12px;font-weight:700;cursor:pointer;margin:4px}
-.pron-btn:hover{background:#084298}
-.pron-feedback{margin-top:12px;color:#475569;min-height:22px}
+body{font-family:Arial,sans-serif;background:#eef6ff;padding:20px}
+h1{text-align:center;color:#0b5ed7;margin:0 0 18px 0}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px}
+.card{background:#fff;border-radius:18px;padding:14px;text-align:center;box-shadow:0 4px 8px rgba(0,0,0,.1)}
+.image{width:100%;height:130px;object-fit:contain;margin-bottom:6px}
+.command{font-size:28px;font-weight:700;line-height:1.1}
+.phonetic{font-size:18px;color:#555;line-height:1.1}
+.spanish{font-size:18px;margin-bottom:8px;line-height:1.1}
+button{margin:4px;padding:7px 12px;border:none;border-radius:10px;background:#0b5ed7;color:#fff;cursor:pointer;font-size:13px}
+.feedback{font-size:15px;font-weight:700;min-height:20px}
+.good{color:green}.try{color:orange}.muted{color:#666}
 </style>
 
-<div class="pron-view">
-  <div class="pron-box">
-    <?php if (!empty($items)) { ?>
-      <div id="pron-word" class="pron-word"></div>
-      <div>
-        <button class="pron-btn" type="button" onclick="playAudioOrSpeech()">🔊 Listen</button>
-        <button class="pron-btn" type="button" onclick="nextWord()">➡️ Next</button>
-      </div>
-      <div class="pron-feedback" id="pron-feedback"></div>
-    <?php } else { ?>
-      <p>No pronunciation data available.</p>
-    <?php } ?>
-  </div>
-</div>
+<h1>📘 Basic Commands – Listen &amp; Speak</h1>
+<div class="grid" id="cards"></div>
 
 <script>
 window.PRONUNCIATION_DATA = <?php echo json_encode($items, JSON_UNESCAPED_UNICODE); ?>;
 
-var current = 0;
-
-function renderWord() {
-  var list = Array.isArray(window.PRONUNCIATION_DATA) ? window.PRONUNCIATION_DATA : [];
-  if (!list.length) {
-    return;
-  }
-
-  var item = list[current] || {};
-  var wordEl = document.getElementById('pron-word');
-  if (wordEl) {
-    wordEl.textContent = item.word || '';
-  }
+var recognition = null;
+if ('webkitSpeechRecognition' in window) {
+  recognition = new webkitSpeechRecognition();
+  recognition.lang = 'en-US';
+  recognition.interimResults = false;
+  recognition.maxAlternatives = 1;
 }
 
-function playAudioOrSpeech() {
-  var list = Array.isArray(window.PRONUNCIATION_DATA) ? window.PRONUNCIATION_DATA : [];
-  if (!list.length) {
-    return;
-  }
-
-  var item = list[current] || {};
-  var feedback = document.getElementById('pron-feedback');
-
-  if (item.audio) {
-    var audio = new Audio(item.audio);
-    audio.play().then(function(){
-      if (feedback) feedback.textContent = 'Playing uploaded audio...';
-    }).catch(function(){
-      if (feedback) feedback.textContent = 'No se pudo reproducir el audio.';
-    });
-    return;
-  }
-
-  if ('speechSynthesis' in window && item.word) {
-    var utter = new SpeechSynthesisUtterance(item.word);
-    utter.lang = 'en-US';
-    utter.rate = 0.85;
-    speechSynthesis.cancel();
-    speechSynthesis.speak(utter);
-    if (feedback) feedback.textContent = 'Playing browser voice...';
-    return;
-  }
-
-  if (feedback) feedback.textContent = 'No audio available for this word.';
+function escapeHtml(value) {
+  return String(value || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
 }
 
-function nextWord() {
-  var list = Array.isArray(window.PRONUNCIATION_DATA) ? window.PRONUNCIATION_DATA : [];
-  if (!list.length) {
+function renderCards() {
+  var data = Array.isArray(window.PRONUNCIATION_DATA) ? window.PRONUNCIATION_DATA : [];
+  var container = document.getElementById('cards');
+
+  if (!container) {
     return;
   }
 
-  current += 1;
-  if (current >= list.length) {
-    current = 0;
+  if (!data.length) {
+    container.innerHTML = '<div class="card"><div class="muted">No pronunciation data available.</div></div>';
+    return;
   }
 
-  renderWord();
-
-  var feedback = document.getElementById('pron-feedback');
-  if (feedback) {
-    feedback.textContent = '';
-  }
+  container.innerHTML = data.map(function (item, i) {
+    var img = item.img ? '<img class="image" src="' + escapeHtml(item.img) + '" alt="' + escapeHtml(item.en || '') + '">' : '';
+    return '' +
+      '<div class="card">' +
+        img +
+        '<div class="command">' + escapeHtml(item.en || '') + '</div>' +
+        '<div class="phonetic">' + escapeHtml(item.ph || '') + '</div>' +
+        '<div class="spanish">' + escapeHtml(item.es || '') + '</div>' +
+        '<button type="button" onclick="speak(' + i + ')">🔊 Listen</button>' +
+        '<button type="button" onclick="record(' + i + ')">🎤 Speak</button>' +
+        '<div id="f' + i + '" class="feedback"></div>' +
+      '</div>';
+  }).join('');
 }
 
-renderWord();
+function speak(index) {
+  var data = Array.isArray(window.PRONUNCIATION_DATA) ? window.PRONUNCIATION_DATA : [];
+  if (!data[index]) {
+    return;
+  }
+
+  if (data[index].audio) {
+    var audio = new Audio(data[index].audio);
+    audio.play();
+    return;
+  }
+
+  var text = data[index].en || '';
+  if (!text) {
+    return;
+  }
+
+  var utter = new SpeechSynthesisUtterance(text);
+  utter.lang = 'en-US';
+  utter.rate = 0.9;
+  speechSynthesis.cancel();
+  speechSynthesis.speak(utter);
+}
+
+function record(index) {
+  var data = Array.isArray(window.PRONUNCIATION_DATA) ? window.PRONUNCIATION_DATA : [];
+  var fb = document.getElementById('f' + index);
+
+  if (!data[index]) {
+    return;
+  }
+
+  if (!recognition) {
+    if (fb) {
+      fb.innerHTML = '⚠️ Speech recognition not available in this browser.';
+      fb.className = 'feedback try';
+    }
+    return;
+  }
+
+  recognition.onresult = function (event) {
+    var said = String(event.results[0][0].transcript || '').toLowerCase();
+    var correct = String(data[index].en || '').toLowerCase();
+
+    if (!fb) {
+      return;
+    }
+
+    if (correct !== '' && (said === correct || said.indexOf(correct.split(' ')[0]) !== -1)) {
+      fb.innerHTML = '🌟 Good job!';
+      fb.className = 'feedback good';
+    } else {
+      fb.innerHTML = '🔁 Try again!';
+      fb.className = 'feedback try';
+    }
+  };
+
+  recognition.onerror = function () {
+    if (fb) {
+      fb.innerHTML = '🔁 Try again!';
+      fb.className = 'feedback try';
+    }
+  };
+
+  recognition.start();
+}
+
+renderCards();
 </script>
 
 <?php
