@@ -5,7 +5,7 @@ if (!isset($_SESSION['admin_logged']) || $_SESSION['admin_logged'] !== true) {
     header('Location: login.php');
     exit;
 }
-?> 
+?>
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -48,7 +48,7 @@ body { margin:0; font-family:"Segoe UI",Arial,sans-serif; background:var(--page-
 
 .btn{
   display:block; width:100%; text-align:center; text-decoration:none; color:#fff;
-  font-size:25px; font-weight:700; border-radius:8px; padding:14px 14px; margin-bottom:12px;
+  font-size:21px; font-weight:700; border-radius:8px; padding:14px 14px; margin-bottom:12px;
 }
 .btn:last-child{ margin-bottom:0; }
 .btn-blue{ background:linear-gradient(90deg,#2a67c4,var(--btn-blue)); }
@@ -62,7 +62,7 @@ body { margin:0; font-family:"Segoe UI",Arial,sans-serif; background:var(--page-
   .topbar h1{ font-size:28px; }
   .logo-wrap{ width:70px; height:70px; }
   .grid-two{ grid-template-columns:1fr; }
-  .btn{ font-size:17px; }
+  .btn{ font-size:13px; }
 }
 </style>
 </head>
@@ -70,7 +70,7 @@ body { margin:0; font-family:"Segoe UI",Arial,sans-serif; background:var(--page-
 <header class="topbar">
   <div class="brand">
     <div class="logo-wrap" aria-label="Logo Let&apos;s Aprende Inglés">
-      <img src="../assets/img/logo-lets-aprende-ingles.png" alt="Logo Let's Aprende Inglés">
+      <img src="../assets/img/logo-lets-aprende-ingles.png" alt="Logo Let's Aprende Inglés" onerror="if(!this.dataset.f1){this.dataset.f1=1;this.src='../../assets/img/logo-lets-aprende-ingles.png';}else if(!this.dataset.f2){this.dataset.f2=1;this.src='/lessons/lessons/assets/img/logo-lets-aprende-ingles.png';}else if(!this.dataset.f3){this.dataset.f3=1;this.src='/lessons/assets/img/logo-lets-aprende-ingles.png';}">
     </div>
     <h1>Panel Administrador</h1>
   </div>
@@ -98,15 +98,15 @@ body { margin:0; font-family:"Segoe UI",Arial,sans-serif; background:var(--page-
     <article class="card">
       <h2>👩‍🏫 Docentes</h2>
       <p>Gestiona el flujo en dos pasos: primero inscripción y luego asignaciones.</p>
-      <a class="btn btn-blue" href="../academic/teacher_enrollments.php">1. Inscripciones</a>
-      <a class="btn btn-green" href="../academic/teacher_profiles.php">2. Asignaciones</a>
+      <a class="btn btn-blue" href="../academic/teacher_enrollments.php">Inscripciones</a>
+      <a class="btn btn-green" href="../academic/teacher_profiles.php">Asignaciones</a>
     </article>
 
     <article class="card">
       <h2>🎓 Estudiantes</h2>
       <p>Gestiona el flujo en dos pasos: primero inscripción y luego asignaciones.</p>
-      <a class="btn btn-purple" href="../academic/student_enrollments.php">1. Inscripciones</a>
-      <a class="btn btn-pink" href="../academic/student_assignments.php">2. Asignaciones / Perfil</a>
+      <a class="btn btn-purple" href="../academic/student_enrollments.php">Inscripciones</a>
+      <a class="btn btn-pink" href="../academic/student_assignments.php">Asignaciones / Perfil</a>
     </article>
   </section>
 </main>
