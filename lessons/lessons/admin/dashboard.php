@@ -70,7 +70,7 @@ body { margin:0; font-family:"Segoe UI",Arial,sans-serif; background:var(--page-
 <header class="topbar">
   <div class="brand">
     <div class="logo-wrap" aria-label="Logo Let&apos;s Aprende Inglés">
-      <img src="../assets/img/logo-lets-aprende-ingles.png" alt="Logo Let's Aprende Inglés" onerror="if(!this.dataset.f1){this.dataset.f1=1;this.src='../../assets/img/logo-lets-aprende-ingles.png';}else if(!this.dataset.f2){this.dataset.f2=1;this.src='/lessons/lessons/assets/img/logo-lets-aprende-ingles.png';}else if(!this.dataset.f3){this.dataset.f3=1;this.src='/lessons/assets/img/logo-lets-aprende-ingles.png';}">
+      <img id="logoImage" src="../assets/img/logo-lets-aprende-ingles.png" alt="Logo Let's Aprende Inglés">
     </div>
     <h1>Panel Administrador</h1>
   </div>
@@ -110,5 +110,32 @@ body { margin:0; font-family:"Segoe UI",Arial,sans-serif; background:var(--page-
     </article>
   </section>
 </main>
+<script>
+(function(){
+  var logo = document.getElementById('logoImage');
+  if (!logo) return;
+  var candidates = [
+    '../assets/img/logo-lets-aprende-ingles.png',
+    '../assets/img/logo-lets-aprende-ingles.jpg',
+    '../assets/img/logo-lets-aprende-ingles.jpeg',
+    '../assets/img/logo-lets-aprende-ingles.webp',
+    '../assets/img/logo-lets.png',
+    '../../assets/img/logo-lets-aprende-ingles.png',
+    '../../assets/img/logo-lets-aprende-ingles.jpg',
+    '/lessons/lessons/assets/img/logo-lets-aprende-ingles.png',
+    '/lessons/lessons/assets/img/logo-lets-aprende-ingles.jpg',
+    '/lessons/assets/img/logo-lets-aprende-ingles.png',
+    '/lessons/assets/img/logo-lets-aprende-ingles.jpg'
+  ];
+  var idx = 0;
+  function tryNext(){
+    if (idx >= candidates.length) return;
+    logo.src = candidates[idx++];
+  }
+  logo.addEventListener('error', tryNext);
+  tryNext();
+})();
+</script>
+
 </body>
 </html>
