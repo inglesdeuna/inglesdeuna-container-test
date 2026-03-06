@@ -4,7 +4,7 @@ session_start();
 if (!isset($_SESSION['academic_logged']) || $_SESSION['academic_logged'] !== true) {
     header('Location: login.php');
     exit;
-} 
+}
 
 $teacherId = (string) ($_SESSION['teacher_id'] ?? '');
 $teacherName = (string) ($_SESSION['teacher_name'] ?? 'Docente');
