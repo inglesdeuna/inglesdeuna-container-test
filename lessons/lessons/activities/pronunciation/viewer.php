@@ -198,7 +198,7 @@ button{margin:4px;padding:7px 12px;border:none;border-radius:10px;background:#0b
 .good{color:green}.try{color:orange}.muted{color:#666}
 </style>
 
-<h1>📘 Basic Commands – Listen &amp; Speak</h1>
+<h1>Pronunciation</h1>
 <div class="grid" id="cards"></div>
 
 <script>
