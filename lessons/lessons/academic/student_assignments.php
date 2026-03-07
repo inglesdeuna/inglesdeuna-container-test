@@ -186,6 +186,10 @@ function load_english_catalog_from_database(): array
     return [$englishLevels, $englishUnits];
 }
 
+function h(string $value): string
+{
+    return htmlspecialchars($value, ENT_QUOTES, 'UTF-8');
+}
 
 if (isset($_GET['delete']) && $_GET['delete'] !== '') {
     $deleteId = (string) $_GET['delete'];
@@ -200,6 +204,26 @@ if (isset($_GET['delete']) && $_GET['delete'] !== '') {
     exit;
 }
 
+[$englishCoursesDb, $englishUnitsDb] = load_english_catalog_from_database();
+
+$technicalCourses = filter_courses_by_program($courses, 'technical');
+$englishCoursesLocal = filter_courses_by_program($courses, 'english');
+$englishCourses = count($englishCoursesDb) > 0 ? $englishCoursesDb : $englishCoursesLocal;
+
+$technicalUnits = filter_units_by_program($units, 'technical');
+$englishUnitsLocal = filter_units_by_program($units, 'english');
+$englishUnits = count($englishUnitsDb) > 0 ? $englishUnitsDb : $englishUnitsLocal;
+
+$coursesByProgram = [
+    'technical' => $technicalCourses,
+    'english' => $englishCourses,
+];
+
+$unitsByProgram = [
+    'technical' => $technicalUnits,
+    'english' => $englishUnits,
+];
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $editId = trim((string) ($_POST['edit_id'] ?? ''));
     $studentId = trim((string) ($_POST['student_id'] ?? ''));
@@ -207,14 +231,247 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $program = trim((string) ($_POST['program'] ?? 'technical'));
     $period = trim((string) ($_POST['period'] ?? ''));
     $unitId = trim((string) ($_POST['unit_id'] ?? ''));
+    $courseId = trim((string) ($_POST['course_id'] ?? ''));
 
     if (!isset($programOptions[$program])) {
         $program = 'technical';
     }
 
     if ($studentId !== '' && $teacherId !== '' && $period !== '' && $unitId !== '') {
+        if ($courseId === '') {
+            foreach ($unitsByProgram[$program] as $unit) {
+                if ((string) ($unit['id'] ?? '') === $unitId) {
+                    $courseId = (string) ($unit['course_id'] ?? $unit['level_id'] ?? '');
+                    break;
+                }
+            }
+        }
+
         $record = [
             'id' => $editId !== '' ? $editId : uniqid('stu_assign_'),
             'student_id' => $studentId,
             'teacher_id' => $teacherId,
             'program' => $program,
+            'period' => $period,
+            'course_id' => $courseId,
+            'unit_id' => $unitId,
+            'updated_at' => date('c'),
+        ];
+
+        $updated = false;
+        foreach ($studentAssignments as $index => $existing) {
+            if ((string) ($existing['id'] ?? '') === $record['id']) {
+                $studentAssignments[$index] = $record;
+                $updated = true;
+                break;
+            }
+        }
+
+        if (!$updated) {
+            $studentAssignments[] = $record;
+        }
+
+        save_student_assignments($studentAssignmentsFile, $studentAssignments);
+        header('Location: student_assignments.php?saved=1');
+        exit;
+    }
+}
+
+$editRecord = null;
+if (isset($_GET['edit']) && $_GET['edit'] !== '') {
+    $editId = (string) $_GET['edit'];
+    foreach ($studentAssignments as $row) {
+        if ((string) ($row['id'] ?? '') === $editId) {
+            $editRecord = (array) $row;
+            break;
+        }
+    }
+}
+
+$selectedProgram = (string) ($editRecord['program'] ?? 'technical');
+if (!isset($programOptions[$selectedProgram])) {
+    $selectedProgram = 'technical';
+}
+?>
+<!doctype html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Asignaciones de estudiantes</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .row { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; margin-bottom: 10px; }
+        label { display:block; font-size: 13px; margin-bottom: 4px; }
+        select, button { width: 100%; padding: 8px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 16px; }
+        th, td { border: 1px solid #ddd; padding: 8px; font-size: 14px; }
+        th { background: #f2f2f2; }
+        .ok { color: #0a7d22; margin-bottom: 10px; }
+    </style>
+</head>
+<body>
+<h1>Asignaciones de estudiantes</h1>
+
+<?php if (isset($_GET['saved'])): ?>
+    <p class="ok">Guardado correctamente.</p>
+<?php endif; ?>
+
+<form method="post">
+    <input type="hidden" name="edit_id" value="<?= h((string) ($editRecord['id'] ?? '')) ?>">
+
+    <div class="row">
+        <div>
+            <label>Estudiante</label>
+            <select name="student_id" required>
+                <option value="">Seleccionar...</option>
+                <?php foreach ($students as $student): ?>
+                    <?php $sid = (string) ($student['id'] ?? ''); ?>
+                    <option value="<?= h($sid) ?>" <?= $sid === (string) ($editRecord['student_id'] ?? '') ? 'selected' : '' ?>>
+                        <?= h((string) ($student['name'] ?? 'Sin nombre')) ?>
+                    </option>
+                <?php endforeach; ?>
+            </select>
+        </div>
+
+        <div>
+            <label>Docente</label>
+            <select name="teacher_id" required>
+                <option value="">Seleccionar...</option>
+                <?php foreach ($teachers as $teacher): ?>
+                    <?php $tid = (string) ($teacher['id'] ?? ''); ?>
+                    <option value="<?= h($tid) ?>" <?= $tid === (string) ($editRecord['teacher_id'] ?? '') ? 'selected' : '' ?>>
+                        <?= h((string) ($teacher['name'] ?? 'Sin nombre')) ?>
+                    </option>
+                <?php endforeach; ?>
+            </select>
+        </div>
+
+        <div>
+            <label>Programa</label>
+            <select name="program" id="program" required>
+                <?php foreach ($programOptions as $programKey => $programLabel): ?>
+                    <option value="<?= h($programKey) ?>" <?= $programKey === $selectedProgram ? 'selected' : '' ?>>
+                        <?= h($programLabel) ?>
+                    </option>
+                <?php endforeach; ?>
+            </select>
+        </div>
+
+        <div>
+            <label>Periodo</label>
+            <select name="period" required>
+                <option value="">Seleccionar...</option>
+                <?php foreach ($technicalPeriods as $p): ?>
+                    <option value="<?= h($p) ?>" <?= $p === (string) ($editRecord['period'] ?? '') ? 'selected' : '' ?>><?= h($p) ?></option>
+                <?php endforeach; ?>
+            </select>
+        </div>
+    </div>
+
+    <div class="row">
+        <div>
+            <label>Curso / Nivel</label>
+            <select name="course_id" id="course_id">
+                <option value="">Seleccionar...</option>
+            </select>
+        </div>
+
+        <div>
+            <label>Unidad</label>
+            <select name="unit_id" id="unit_id" required>
+                <option value="">Seleccionar...</option>
+            </select>
+        </div>
+
+        <div style="align-self:end;">
+            <button type="submit">Guardar asignación</button>
+        </div>
+    </div>
+</form>
+
+<table>
+    <thead>
+    <tr>
+        <th>Estudiante</th>
+        <th>Docente</th>
+        <th>Programa</th>
+        <th>Periodo</th>
+        <th>Curso</th>
+        <th>Unidad</th>
+        <th>Acciones</th>
+    </tr>
+    </thead>
+    <tbody>
+    <?php foreach ($studentAssignments as $row): ?>
+        <?php
+        $program = (string) ($row['program'] ?? 'technical');
+        $coursesForRow = $coursesByProgram[$program] ?? [];
+        $unitsForRow = $unitsByProgram[$program] ?? [];
+        ?>
+        <tr>
+            <td><?= h(find_name_by_id($students, (string) ($row['student_id'] ?? ''), 'N/D')) ?></td>
+            <td><?= h(find_name_by_id($teachers, (string) ($row['teacher_id'] ?? ''), 'N/D')) ?></td>
+            <td><?= h($programOptions[$program] ?? 'Programa Técnico') ?></td>
+            <td><?= h((string) ($row['period'] ?? '')) ?></td>
+            <td><?= h(find_name_by_id($coursesForRow, (string) ($row['course_id'] ?? ''), 'N/D')) ?></td>
+            <td><?= h(find_name_by_id($unitsForRow, (string) ($row['unit_id'] ?? ''), 'N/D')) ?></td>
+            <td>
+                <a href="student_assignments.php?edit=<?= h((string) ($row['id'] ?? '')) ?>">Editar</a>
+                |
+                <a href="student_assignments.php?delete=<?= h((string) ($row['id'] ?? '')) ?>" onclick="return confirm('¿Eliminar asignación?')">Eliminar</a>
+            </td>
+        </tr>
+    <?php endforeach; ?>
+    </tbody>
+</table>
+
+<script>
+const coursesByProgram = <?= json_encode($coursesByProgram, JSON_UNESCAPED_UNICODE) ?>;
+const unitsByProgram = <?= json_encode($unitsByProgram, JSON_UNESCAPED_UNICODE) ?>;
+const selectedCourse = <?= json_encode((string) ($editRecord['course_id'] ?? '')) ?>;
+const selectedUnit = <?= json_encode((string) ($editRecord['unit_id'] ?? '')) ?>;
+
+const programSelect = document.getElementById('program');
+const courseSelect = document.getElementById('course_id');
+const unitSelect = document.getElementById('unit_id');
+
+function fillSelect(select, items, selected, placeholder) {
+    select.innerHTML = '';
+    const first = document.createElement('option');
+    first.value = '';
+    first.textContent = placeholder;
+    select.appendChild(first);
+
+    items.forEach((item) => {
+        const option = document.createElement('option');
+        option.value = String(item.id ?? '');
+        option.textContent = String(item.name ?? 'Sin nombre');
+        if (option.value === selected) option.selected = true;
+        select.appendChild(option);
+    });
+}
+
+function refreshCatalog() {
+    const program = programSelect.value || 'technical';
+    const courses = coursesByProgram[program] || [];
+    const units = unitsByProgram[program] || [];
+
+    const selectedCourseId = courseSelect.value || selectedCourse;
+    fillSelect(courseSelect, courses, selectedCourseId, 'Seleccionar...');
+
+    const byCourse = units.filter((u) => String(u.course_id ?? u.level_id ?? '') === (courseSelect.value || selectedCourseId));
+    const finalUnits = byCourse.length > 0 ? byCourse : units;
+    fillSelect(unitSelect, finalUnits, unitSelect.value || selectedUnit, 'Seleccionar...');
+}
+
+programSelect.addEventListener('change', () => {
+    courseSelect.value = '';
+    unitSelect.value = '';
+    refreshCatalog();
+});
+courseSelect.addEventListener('change', refreshCatalog);
+refreshCatalog();
+</script>
+</body>
+</html>
