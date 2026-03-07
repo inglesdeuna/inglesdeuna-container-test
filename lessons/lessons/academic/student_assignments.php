@@ -496,34 +496,63 @@ if (!isset($programOptions[$selectedProgram])) {
             font-weight:600;
         }
 
-        table{
-            width:100%;
-            border-collapse:collapse;
-            overflow:hidden;
-            background:#fff;
-            border:1px solid var(--line);
-            border-radius:14px;
-        }
+        .table-wrap{
+    background:#ffffff;
+    border:1px solid var(--line);
+    border-radius:16px;
+    padding:12px;
+}
 
-        th, td{
-            padding:11px 10px;
-            border-bottom:1px solid #e7edf6;
-            font-size:14px;
-            vertical-align:top;
-        }
+table{
+    width:100%;
+    border-collapse:separate;
+    border-spacing:0;
+    background:#fff;
+}
 
-        th{
-            background:#f6f9fd;
-            text-align:left;
-            color:#304866;
-            font-size:13px;
-            text-transform:uppercase;
-            letter-spacing:.2px;
-        }
+th, td{
+    padding:11px 10px;
+    border-bottom:1px solid #e7edf6;
+    font-size:14px;
+    vertical-align:top;
+}
 
-        tbody tr:last-child td{
-            border-bottom:none;
-        }
+th{
+    background:#f6f9fd;
+    text-align:left;
+    color:#304866;
+    font-size:13px;
+    text-transform:uppercase;
+    letter-spacing:.2px;
+}
+
+thead th{
+    background:#eef4ff;
+}
+
+thead th:first-child{
+    border-top-left-radius:12px;
+    border-bottom-left-radius:12px;
+    padding-left:14px;
+}
+
+thead th:last-child{
+    border-top-right-radius:12px;
+    border-bottom-right-radius:12px;
+    padding-right:14px;
+}
+
+tbody td:first-child{
+    padding-left:14px;
+}
+
+tbody td:last-child{
+    padding-right:14px;
+}
+
+tbody tr:last-child td{
+    border-bottom:none;
+}
 
         .actions a{
             text-decoration:none;
@@ -660,18 +689,20 @@ if (!isset($programOptions[$selectedProgram])) {
             </div>
 
             <div class="card-body">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Estudiante</th>
-                            <th>Docente</th>
-                            <th>Programa</th>
-                            <th>Nivel / Semestre</th>
-                            <th>Fase</th>
-                            <th>Unidad</th>
-                            <th>Acciones</th>
-                        </tr>
-                    </thead>
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>Estudiante</th>
+                    <th>Docente</th>
+                    <th>Programa</th>
+                    <th>Nivel / Semestre</th>
+                    <th>Fase</th>
+                    <th>Unidad</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
                     <tbody>
                     <?php if (empty($studentAssignments)): ?>
                         <tr>
@@ -710,9 +741,10 @@ if (!isset($programOptions[$selectedProgram])) {
                             </tr>
                         <?php endforeach; ?>
                     <?php endif; ?>
-                    </tbody>
-                </table>
-            </div>
+                                </tbody>
+        </table>
+    </div>
+</div>
         </section>
     </div>
 </main>
