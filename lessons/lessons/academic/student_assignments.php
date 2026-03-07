@@ -123,36 +123,50 @@ function save_student_assignments(string $file, array $records): void
 function load_english_catalog_from_database(): array
 {
     if (!getenv('DATABASE_URL')) {
-        return [[], [], false];
+        return [[], [], [], false];
     }
 
     $dbFile = __DIR__ . '/../config/db.php';
     if (!file_exists($dbFile)) {
-        return [[], [], false];
+        return [[], [], [], false];
     }
 
     require $dbFile;
 
     if (!isset($pdo) || !($pdo instanceof PDO)) {
-        return [[], [], false];
+        return [[], [], [], false];
     }
 
     try {
-        $levelsStmt = $pdo->query('SELECT id, name FROM english_levels ORDER BY id ASC');
+        // 1) Levels reales: PHASE 1, PHASE 2, etc.
+        $levelsStmt = $pdo->query('
+            SELECT id, name
+            FROM english_levels
+            ORDER BY id ASC
+        ');
         $levels = $levelsStmt->fetchAll(PDO::FETCH_ASSOC);
 
+        // 2) Phases reales por level: PRESCHOOL LEVEL, KINDERGARTEN LEVEL, etc.
+        $phasesStmt = $pdo->query('
+            SELECT id, level_id, name
+            FROM english_phases
+            ORDER BY level_id ASC, created_at ASC, id ASC
+        ');
+        $phases = $phasesStmt->fetchAll(PDO::FETCH_ASSOC);
+
+        // 3) Units reales por phase
         $unitsStmt = $pdo->query('
             SELECT u.id, u.name, u.phase_id, p.level_id
             FROM units u
             INNER JOIN english_phases p ON p.id = u.phase_id
-            ORDER BY p.level_id ASC, u.id ASC
+            ORDER BY p.level_id ASC, p.id ASC, u.id ASC
         ');
         $unitsRaw = $unitsStmt->fetchAll(PDO::FETCH_ASSOC);
     } catch (Throwable $e) {
-        return [[], [], false];
+        return [[], [], [], false];
     }
 
-    $englishLevels = array_map(function ($level) {
+    $englishCourses = array_map(function ($level) {
         return [
             'id' => (string) ($level['id'] ?? ''),
             'name' => (string) ($level['name'] ?? ''),
@@ -162,27 +176,36 @@ function load_english_catalog_from_database(): array
         ];
     }, is_array($levels) ? $levels : []);
 
+    $englishPhases = array_map(function ($phase) {
+        return [
+            'id' => (string) ($phase['id'] ?? ''),
+            'level_id' => (string) ($phase['level_id'] ?? ''),
+            'course_id' => (string) ($phase['level_id'] ?? ''),
+            'name' => (string) ($phase['name'] ?? ''),
+            'program' => 'english',
+            'scope' => 'english',
+            'program_id' => 'prog_english_courses',
+        ];
+    }, is_array($phases) ? $phases : []);
+
     $englishUnits = array_map(function ($unit) {
         return [
             'id' => (string) ($unit['id'] ?? ''),
             'name' => (string) ($unit['name'] ?? ''),
             'phase_id' => (string) ($unit['phase_id'] ?? ''),
-            'course_id' => (string) ($unit['level_id'] ?? ''),
+            'course_id' => (string) ($unit['level_id'] ?? ''), // para compatibilidad
+            'level_id' => (string) ($unit['level_id'] ?? ''),
             'program' => 'english',
             'scope' => 'english',
             'program_id' => 'prog_english_courses',
         ];
     }, is_array($unitsRaw) ? $unitsRaw : []);
 
-    $englishLevels = array_values(array_filter($englishLevels, function ($row) {
-        return (string) ($row['id'] ?? '') !== '';
-    }));
+    $englishCourses = array_values(array_filter($englishCourses, fn($row) => (string) ($row['id'] ?? '') !== ''));
+    $englishPhases = array_values(array_filter($englishPhases, fn($row) => (string) ($row['id'] ?? '') !== ''));
+    $englishUnits = array_values(array_filter($englishUnits, fn($row) => (string) ($row['id'] ?? '') !== ''));
 
-    $englishUnits = array_values(array_filter($englishUnits, function ($row) {
-        return (string) ($row['id'] ?? '') !== '';
-    }));
-
-    return [$englishLevels, $englishUnits, true];
+    return [$englishCourses, $englishPhases, $englishUnits, true];
 }
 
 function h(string $value): string
@@ -203,7 +226,7 @@ if (isset($_GET['delete']) && $_GET['delete'] !== '') {
     exit;
 }
 
-[$englishCoursesDb, $englishUnitsDb, $englishFromDb] = load_english_catalog_from_database();
+[$englishCoursesDb, $englishPhasesDb, $englishUnitsDb, $englishFromDb] = load_english_catalog_from_database();
 
 $technicalCourses = filter_courses_by_program($courses, 'technical');
 $englishCoursesLocal = filter_courses_by_program($courses, 'english');
@@ -223,12 +246,12 @@ $unitsByProgram = [
     'english' => $englishUnits,
 ];
 
-$englishLevels = $englishCourses;
-if (empty($englishLevels)) {
-    $englishLevels = [
-        ['id' => 'preschool', 'name' => 'PRESCHOOL LEVEL'],
-        ['id' => 'kindergarten', 'name' => 'KINDERGARTEN LEVEL'],
-        ['id' => 'first_grade', 'name' => 'FIRST GRADE LEVEL'],
+// ESTE ES EL SELECT 2: ahora debe cargar PHASES, no LEVELS
+$englishPhases = $englishPhasesDb;
+if (empty($englishPhases)) {
+    $englishPhases = [
+        ['id' => 'phase_1', 'course_id' => '1', 'level_id' => '1', 'name' => 'PRESCHOOL LEVEL'],
+        ['id' => 'phase_2', 'course_id' => '1', 'level_id' => '1', 'name' => 'KINDERGARTEN LEVEL'],
     ];
 }
 
@@ -237,7 +260,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $studentId = trim((string) ($_POST['student_id'] ?? ''));
     $teacherId = trim((string) ($_POST['teacher_id'] ?? ''));
     $program = trim((string) ($_POST['program'] ?? 'technical'));
-    $levelId = trim((string) ($_POST['level_id'] ?? ''));
+    $levelId = trim((string) ($_POST['level_id'] ?? ''));   // aquí ahora se guarda phase_id
     $unitId = trim((string) ($_POST['unit_id'] ?? ''));
     $courseId = trim((string) ($_POST['course_id'] ?? ''));
 
@@ -246,17 +269,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if ($studentId !== '' && $teacherId !== '' && $unitId !== '') {
-        if ($courseId === '') {
-            foreach ($unitsByProgram[$program] as $unit) {
-                if ((string) ($unit['id'] ?? '') === $unitId) {
-                    $courseId = (string) ($unit['course_id'] ?? $unit['level_id'] ?? '');
-                    break;
+
+        if ($program === 'english') {
+            // Si no viene el curso, lo obtenemos desde la phase seleccionada
+            if ($courseId === '' && $levelId !== '') {
+                foreach ($englishPhases as $phase) {
+                    if ((string) ($phase['id'] ?? '') === $levelId) {
+                        $courseId = (string) ($phase['course_id'] ?? $phase['level_id'] ?? '');
+                        break;
+                    }
                 }
             }
-        }
-
-        if ($program === 'english' && $levelId === '') {
-            $levelId = $courseId;
+        } else {
+            if ($courseId === '') {
+                foreach ($unitsByProgram[$program] as $unit) {
+                    if ((string) ($unit['id'] ?? '') === $unitId) {
+                        $courseId = (string) ($unit['course_id'] ?? $unit['level_id'] ?? '');
+                        break;
+                    }
+                }
+            }
         }
 
         $record = [
@@ -264,9 +296,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'student_id' => $studentId,
             'teacher_id' => $teacherId,
             'program' => $program,
-            'level_id' => $levelId,
+            'level_id' => $levelId, // aquí guardamos la PHASE seleccionada
             'period' => $levelId,
-            'course_id' => $courseId,
+            'course_id' => $courseId, // aquí guardamos el LEVEL padre (PHASE 1, etc.)
             'unit_id' => $unitId,
             'updated_at' => date('c'),
         ];
@@ -442,17 +474,17 @@ if (!isset($programOptions[$selectedProgram])) {
                             <label>Level (Inglés)</label>
                             <select name="level_id" id="level_id">
                                 <option value="">Seleccionar level...</option>
-                                <?php foreach ($englishLevels as $level): ?>
-                                    <?php $lvlId = (string) ($level['id'] ?? ''); ?>
-                                    <option value="<?= h($lvlId) ?>" <?= $lvlId === (string) ($editRecord['level_id'] ?? $editRecord['period'] ?? '') ? 'selected' : '' ?>>
-                                        <?= h((string) ($level['name'] ?? 'LEVEL')) ?>
+                                <?php foreach ($englishPhases as $phase): ?>
+                                    <?php $phaseId = (string) ($phase['id'] ?? ''); ?>
+                                    <option value="<?= h($phaseId) ?>" <?= $phaseId === (string) ($editRecord['level_id'] ?? $editRecord['period'] ?? '') ? 'selected' : '' ?>>
+                                        <?= h((string) ($phase['name'] ?? 'LEVEL')) ?>
                                     </option>
                                 <?php endforeach; ?>
                             </select>
                             <div class="hint">
                                 Configurar levels/phases: <a href="english_structure_levels.php">english_structure_levels.php</a>
-                                <?php if ($englishFromDb && !empty($englishLevels)): ?>
-                                    | <a href="english_structure_phases.php?level=<?= h((string) ($englishLevels[0]['id'] ?? '1')) ?>">Abrir phases del primer level</a>
+                                <?php if ($englishFromDb && !empty($englishCourses)): ?>
+                                    | <a href="english_structure_phases.php?level=<?= h((string) ($englishCourses[0]['id'] ?? '1')) ?>">Abrir phases del primer level</a>
                                 <?php endif; ?>
                             </div>
                         </div>
@@ -513,7 +545,7 @@ if (!isset($programOptions[$selectedProgram])) {
                             <td><?= h(find_name_by_id($students, (string) ($row['student_id'] ?? ''), 'N/D')) ?></td>
                             <td><?= h(find_name_by_id($teachers, (string) ($row['teacher_id'] ?? ''), 'N/D')) ?></td>
                             <td><?= h($programOptions[$program] ?? 'Programa Técnico') ?></td>
-                            <td><?= h(find_name_by_id($englishLevels, $rowLevelId, $rowLevelId !== '' ? $rowLevelId : 'N/D')) ?></td>
+                            <td><?= h(find_name_by_id($englishPhases, $rowLevelId, $rowLevelId !== '' ? $rowLevelId : 'N/D')) ?></td>
                             <td><?= h(find_name_by_id($coursesForRow, (string) ($row['course_id'] ?? ''), 'N/D')) ?></td>
                             <td><?= h(find_name_by_id($unitsForRow, (string) ($row['unit_id'] ?? ''), 'N/D')) ?></td>
                             <td class="actions">
@@ -533,6 +565,7 @@ if (!isset($programOptions[$selectedProgram])) {
 <script>
 const coursesByProgram = <?= json_encode($coursesByProgram, JSON_UNESCAPED_UNICODE) ?>;
 const unitsByProgram = <?= json_encode($unitsByProgram, JSON_UNESCAPED_UNICODE) ?>;
+const englishPhases = <?= json_encode($englishPhases, JSON_UNESCAPED_UNICODE) ?>;
 const selectedCourse = <?= json_encode((string) ($editRecord['course_id'] ?? '')) ?>;
 const selectedUnit = <?= json_encode((string) ($editRecord['unit_id'] ?? '')) ?>;
 const selectedLevel = <?= json_encode((string) ($editRecord['level_id'] ?? $editRecord['period'] ?? '')) ?>;
@@ -563,42 +596,45 @@ function refreshCatalog() {
     const courses = coursesByProgram[program] || [];
     const units = unitsByProgram[program] || [];
 
-    const selectedCourseId = courseSelect.value || selectedCourse;
-    fillSelect(courseSelect, courses, selectedCourseId, 'Seleccionar...');
-
-    const targetCourse = courseSelect.value || selectedCourseId || (program === 'english' ? (levelSelect.value || selectedLevel) : '');
-    const byCourse = units.filter((u) => String(u.course_id ?? u.level_id ?? '') === targetCourse);
-    const finalUnits = byCourse.length > 0 ? byCourse : units;
-    fillSelect(unitSelect, finalUnits, unitSelect.value || selectedUnit, 'Seleccionar...');
-
     if (program === 'english') {
+        fillSelect(courseSelect, courses, courseSelect.value || selectedCourse, 'Seleccionar...');
+
+        const currentCourseId = courseSelect.value || selectedCourse || '';
+        const phasesForCourse = englishPhases.filter((p) => String(p.course_id ?? p.level_id ?? '') === currentCourseId);
+        fillSelect(levelSelect, phasesForCourse, levelSelect.value || selectedLevel, 'Seleccionar level...');
+
+        const currentPhaseId = levelSelect.value || selectedLevel || '';
+        const unitsForPhase = units.filter((u) => String(u.phase_id ?? '') === currentPhaseId);
+        fillSelect(unitSelect, unitsForPhase, unitSelect.value || selectedUnit, 'Seleccionar...');
         levelSelect.disabled = false;
-        if (!levelSelect.value && selectedLevel) {
-            levelSelect.value = selectedLevel;
-        }
     } else {
-        levelSelect.value = '';
+        fillSelect(courseSelect, courses, courseSelect.value || selectedCourse, 'Seleccionar...');
+        const currentCourseId = courseSelect.value || selectedCourse || '';
+        const byCourse = units.filter((u) => String(u.course_id ?? u.level_id ?? '') === currentCourseId);
+        fillSelect(unitSelect, byCourse, unitSelect.value || selectedUnit, 'Seleccionar...');
+        fillSelect(levelSelect, [], '', 'No aplica');
         levelSelect.disabled = true;
     }
 }
 
 programSelect.addEventListener('change', () => {
     courseSelect.value = '';
+    levelSelect.value = '';
     unitSelect.value = '';
     refreshCatalog();
 });
 
-courseSelect.addEventListener('change', refreshCatalog);
-levelSelect.addEventListener('change', () => {
-    if (programSelect.value === 'english' && !courseSelect.value) {
-        courseSelect.value = levelSelect.value;
-    }
+courseSelect.addEventListener('change', () => {
+    levelSelect.value = '';
+    unitSelect.value = '';
     refreshCatalog();
 });
 
-if (selectedLevel) {
-    levelSelect.value = selectedLevel;
-}
+levelSelect.addEventListener('change', () => {
+    unitSelect.value = '';
+    refreshCatalog();
+});
+
 refreshCatalog();
 </script>
 </body>
