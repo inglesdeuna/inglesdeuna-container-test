@@ -6,6 +6,9 @@ if (!isset($_SESSION['admin_logged']) || $_SESSION['admin_logged'] !== true) {
     exit;
 }
 
+/* ===============================
+   ARCHIVOS LOCALES
+=============================== */
 $baseDir = __DIR__ . '/data';
 $studentsFile = $baseDir . '/students.json';
 $teachersFile = $baseDir . '/teachers.json';
@@ -31,10 +34,40 @@ $courses = is_array($courses) ? $courses : [];
 $units = is_array($units) ? $units : [];
 $studentAssignments = is_array($studentAssignments) ? $studentAssignments : [];
 
+/* ===============================
+   CONFIG
+=============================== */
 $programOptions = [
-    'english' => 'Inglés',
+    'english' => 'Cursos de Inglés',
     'technical' => 'Programa Técnico',
 ];
+
+/* ===============================
+   HELPERS
+=============================== */
+function h(string $value): string
+{
+    return htmlspecialchars($value, ENT_QUOTES, 'UTF-8');
+}
+
+function save_student_assignments(string $file, array $records): void
+{
+    file_put_contents(
+        $file,
+        json_encode(array_values($records), JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)
+    );
+}
+
+function find_name_by_id(array $rows, string $id, string $fallback = 'N/D'): string
+{
+    foreach ($rows as $row) {
+        if ((string) ($row['id'] ?? '') === $id) {
+            return (string) ($row['name'] ?? $fallback);
+        }
+    }
+
+    return $fallback;
+}
 
 function detect_program_for_course(array $course): string
 {
@@ -47,13 +80,12 @@ function detect_program_for_course(array $course): string
     $nameRaw = mb_strtolower((string) ($course['name'] ?? ''));
 
     if (
-        str_contains($programRaw, 'english')
-        || str_contains($programRaw, 'ingles')
-        || str_contains($programRaw, 'prog_english_courses')
-        || str_contains($programRaw, 'prog_english')
-        || str_contains($programRaw, 'english_levels')
-        || str_contains($nameRaw, 'phase')
-        || str_contains($nameRaw, 'fase')
+        str_contains($programRaw, 'english') ||
+        str_contains($programRaw, 'ingles') ||
+        str_contains($programRaw, 'prog_english') ||
+        str_contains($programRaw, 'english_levels') ||
+        str_contains($nameRaw, 'phase') ||
+        str_contains($nameRaw, 'fase')
     ) {
         return 'english';
     }
@@ -72,14 +104,13 @@ function detect_program_for_unit(array $unit): string
     $nameRaw = mb_strtolower((string) ($unit['name'] ?? ''));
 
     if (
-        str_contains($programRaw, 'english')
-        || str_contains($programRaw, 'ingles')
-        || str_contains($programRaw, 'prog_english_courses')
-        || str_contains($programRaw, 'prog_english')
-        || str_contains($programRaw, 'english_levels')
-        || str_contains($nameRaw, 'phase')
-        || str_contains($nameRaw, 'fase')
-        || !empty($unit['phase_id'])
+        str_contains($programRaw, 'english') ||
+        str_contains($programRaw, 'ingles') ||
+        str_contains($programRaw, 'prog_english') ||
+        str_contains($programRaw, 'english_levels') ||
+        str_contains($nameRaw, 'phase') ||
+        str_contains($nameRaw, 'fase') ||
+        !empty($unit['phase_id'])
     ) {
         return 'english';
     }
@@ -101,25 +132,12 @@ function filter_units_by_program(array $units, string $program): array
     }));
 }
 
-function find_name_by_id(array $rows, string $id, string $fallback): string
-{
-    foreach ($rows as $row) {
-        if ((string) ($row['id'] ?? '') === $id) {
-            return (string) ($row['name'] ?? $fallback);
-        }
-    }
-
-    return $fallback;
-}
-
-function save_student_assignments(string $file, array $records): void
-{
-    file_put_contents(
-        $file,
-        json_encode(array_values($records), JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)
-    );
-}
-
+/* ===============================
+   CARGAR CATÁLOGO DE INGLÉS DESDE DB
+   english_levels   = NIVEL
+   english_phases   = FASE
+   units            = UNIDAD
+=============================== */
 function load_english_catalog_from_database(): array
 {
     if (!getenv('DATABASE_URL')) {
@@ -138,81 +156,72 @@ function load_english_catalog_from_database(): array
     }
 
     try {
-        // 1) Levels reales: PHASE 1, PHASE 2, etc.
-        $levelsStmt = $pdo->query('
+        $levelsStmt = $pdo->query("
             SELECT id, name
             FROM english_levels
             ORDER BY id ASC
-        ');
+        ");
         $levels = $levelsStmt->fetchAll(PDO::FETCH_ASSOC);
 
-        // 2) Phases reales por level: PRESCHOOL LEVEL, KINDERGARTEN LEVEL, etc.
-        $phasesStmt = $pdo->query('
+        $phasesStmt = $pdo->query("
             SELECT id, level_id, name
             FROM english_phases
             ORDER BY level_id ASC, created_at ASC, id ASC
-        ');
+        ");
         $phases = $phasesStmt->fetchAll(PDO::FETCH_ASSOC);
 
-        // 3) Units reales por phase
-        $unitsStmt = $pdo->query('
-            SELECT u.id, u.name, u.phase_id, p.level_id
+        $unitsStmt = $pdo->query("
+            SELECT 
+                u.id,
+                u.name,
+                u.phase_id,
+                p.level_id
             FROM units u
             INNER JOIN english_phases p ON p.id = u.phase_id
-            ORDER BY p.level_id ASC, p.id ASC, u.id ASC
-        ');
+            ORDER BY p.level_id ASC, u.phase_id ASC, u.id ASC
+        ");
         $unitsRaw = $unitsStmt->fetchAll(PDO::FETCH_ASSOC);
     } catch (Throwable $e) {
         return [[], [], [], false];
     }
 
-    $englishCourses = array_map(function ($level) {
+    $englishLevels = array_map(function ($row) {
         return [
-            'id' => (string) ($level['id'] ?? ''),
-            'name' => (string) ($level['name'] ?? ''),
+            'id' => (string) ($row['id'] ?? ''),
+            'name' => (string) ($row['name'] ?? ''),
             'program' => 'english',
-            'scope' => 'english',
-            'program_id' => 'prog_english_courses',
         ];
     }, is_array($levels) ? $levels : []);
 
-    $englishPhases = array_map(function ($phase) {
+    $englishPhases = array_map(function ($row) {
         return [
-            'id' => (string) ($phase['id'] ?? ''),
-            'level_id' => (string) ($phase['level_id'] ?? ''),
-            'course_id' => (string) ($phase['level_id'] ?? ''),
-            'name' => (string) ($phase['name'] ?? ''),
+            'id' => (string) ($row['id'] ?? ''),
+            'level_id' => (string) ($row['level_id'] ?? ''),
+            'name' => (string) ($row['name'] ?? ''),
             'program' => 'english',
-            'scope' => 'english',
-            'program_id' => 'prog_english_courses',
         ];
     }, is_array($phases) ? $phases : []);
 
-    $englishUnits = array_map(function ($unit) {
+    $englishUnits = array_map(function ($row) {
         return [
-            'id' => (string) ($unit['id'] ?? ''),
-            'name' => (string) ($unit['name'] ?? ''),
-            'phase_id' => (string) ($unit['phase_id'] ?? ''),
-            'course_id' => (string) ($unit['level_id'] ?? ''), // para compatibilidad
-            'level_id' => (string) ($unit['level_id'] ?? ''),
+            'id' => (string) ($row['id'] ?? ''),
+            'name' => (string) ($row['name'] ?? ''),
+            'phase_id' => (string) ($row['phase_id'] ?? ''),
+            'level_id' => (string) ($row['level_id'] ?? ''),
             'program' => 'english',
-            'scope' => 'english',
-            'program_id' => 'prog_english_courses',
         ];
     }, is_array($unitsRaw) ? $unitsRaw : []);
 
-    $englishCourses = array_values(array_filter($englishCourses, fn($row) => (string) ($row['id'] ?? '') !== ''));
-    $englishPhases = array_values(array_filter($englishPhases, fn($row) => (string) ($row['id'] ?? '') !== ''));
-    $englishUnits = array_values(array_filter($englishUnits, fn($row) => (string) ($row['id'] ?? '') !== ''));
+    $englishLevels = array_values(array_filter($englishLevels, fn($r) => (string) ($r['id'] ?? '') !== ''));
+    $englishPhases = array_values(array_filter($englishPhases, fn($r) => (string) ($r['id'] ?? '') !== ''));
+    $englishUnits = array_values(array_filter($englishUnits, fn($r) => (string) ($r['id'] ?? '') !== ''));
 
-    return [$englishCourses, $englishPhases, $englishUnits, true];
+    return [$englishLevels, $englishPhases, $englishUnits, true];
 }
 
-function h(string $value): string
-{
-    return htmlspecialchars($value, ENT_QUOTES, 'UTF-8');
-}
-
+/* ===============================
+   ELIMINAR
+=============================== */
 if (isset($_GET['delete']) && $_GET['delete'] !== '') {
     $deleteId = (string) $_GET['delete'];
 
@@ -221,84 +230,85 @@ if (isset($_GET['delete']) && $_GET['delete'] !== '') {
     }));
 
     save_student_assignments($studentAssignmentsFile, $studentAssignments);
-
     header('Location: student_assignments.php?saved=1');
     exit;
 }
 
-[$englishCoursesDb, $englishPhasesDb, $englishUnitsDb, $englishFromDb] = load_english_catalog_from_database();
+/* ===============================
+   CATÁLOGOS
+=============================== */
+[$englishLevelsDb, $englishPhasesDb, $englishUnitsDb, $englishFromDb] = load_english_catalog_from_database();
 
-$technicalCourses = filter_courses_by_program($courses, 'technical');
-$englishCoursesLocal = filter_courses_by_program($courses, 'english');
-$englishCourses = count($englishCoursesDb) > 0 ? $englishCoursesDb : $englishCoursesLocal;
-
+/* Técnico desde JSON */
+$technicalSemesters = filter_courses_by_program($courses, 'technical');
 $technicalUnits = filter_units_by_program($units, 'technical');
-$englishUnitsLocal = filter_units_by_program($units, 'english');
-$englishUnits = count($englishUnitsDb) > 0 ? $englishUnitsDb : $englishUnitsLocal;
 
-$coursesByProgram = [
-    'technical' => $technicalCourses,
-    'english' => $englishCourses,
-];
-
-$unitsByProgram = [
-    'technical' => $technicalUnits,
-    'english' => $englishUnits,
-];
-
-// ESTE ES EL SELECT 2: ahora debe cargar PHASES, no LEVELS
+/* Inglés desde DB */
+$englishLevels = $englishLevelsDb;
 $englishPhases = $englishPhasesDb;
+$englishUnits = $englishUnitsDb;
+
+/* Fallbacks por si no hay DB */
+if (empty($englishLevels)) {
+    $englishLevels = [
+        ['id' => '1', 'name' => 'PHASE 1'],
+        ['id' => '2', 'name' => 'PHASE 2'],
+    ];
+}
 if (empty($englishPhases)) {
     $englishPhases = [
-        ['id' => 'phase_1', 'course_id' => '1', 'level_id' => '1', 'name' => 'PRESCHOOL LEVEL'],
-        ['id' => 'phase_2', 'course_id' => '1', 'level_id' => '1', 'name' => 'KINDERGARTEN LEVEL'],
+        ['id' => '101', 'level_id' => '1', 'name' => 'PRESCHOOL LEVEL'],
+        ['id' => '102', 'level_id' => '1', 'name' => 'KINDERGARTEN LEVEL'],
+    ];
+}
+if (empty($englishUnits)) {
+    $englishUnits = [
+        ['id' => '1001', 'phase_id' => '101', 'level_id' => '1', 'name' => 'UNIT 1 TOUCH YOUR HEAD'],
     ];
 }
 
+/* ===============================
+   GUARDAR
+   - english:
+       course_id = nivel
+       level_id  = fase
+       unit_id   = unidad
+   - technical:
+       course_id = semestre
+       level_id  = vacío
+       unit_id   = unidad
+=============================== */
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $editId = trim((string) ($_POST['edit_id'] ?? ''));
     $studentId = trim((string) ($_POST['student_id'] ?? ''));
     $teacherId = trim((string) ($_POST['teacher_id'] ?? ''));
     $program = trim((string) ($_POST['program'] ?? 'technical'));
-    $levelId = trim((string) ($_POST['level_id'] ?? ''));   // aquí ahora se guarda phase_id
-    $unitId = trim((string) ($_POST['unit_id'] ?? ''));
     $courseId = trim((string) ($_POST['course_id'] ?? ''));
+    $levelId = trim((string) ($_POST['level_id'] ?? ''));
+    $unitId = trim((string) ($_POST['unit_id'] ?? ''));
 
     if (!isset($programOptions[$program])) {
         $program = 'technical';
     }
 
-    if ($studentId !== '' && $teacherId !== '' && $unitId !== '') {
+    $isValid = false;
 
-        if ($program === 'english') {
-            // Si no viene el curso, lo obtenemos desde la phase seleccionada
-            if ($courseId === '' && $levelId !== '') {
-                foreach ($englishPhases as $phase) {
-                    if ((string) ($phase['id'] ?? '') === $levelId) {
-                        $courseId = (string) ($phase['course_id'] ?? $phase['level_id'] ?? '');
-                        break;
-                    }
-                }
-            }
-        } else {
-            if ($courseId === '') {
-                foreach ($unitsByProgram[$program] as $unit) {
-                    if ((string) ($unit['id'] ?? '') === $unitId) {
-                        $courseId = (string) ($unit['course_id'] ?? $unit['level_id'] ?? '');
-                        break;
-                    }
-                }
-            }
-        }
+    if ($program === 'english') {
+        $isValid = ($studentId !== '' && $teacherId !== '' && $courseId !== '' && $levelId !== '' && $unitId !== '');
+    } else {
+        $levelId = '';
+        $isValid = ($studentId !== '' && $teacherId !== '' && $courseId !== '' && $unitId !== '');
+    }
 
+    if ($isValid) {
         $record = [
             'id' => $editId !== '' ? $editId : uniqid('stu_assign_'),
             'student_id' => $studentId,
             'teacher_id' => $teacherId,
             'program' => $program,
-            'level_id' => $levelId, // aquí guardamos la PHASE seleccionada
+            'course_id' => $courseId,
+            'level_id' => $levelId,
             'period' => $levelId,
-            'course_id' => $courseId, // aquí guardamos el LEVEL padre (PHASE 1, etc.)
             'unit_id' => $unitId,
             'updated_at' => date('c'),
         ];
@@ -306,7 +316,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $updated = false;
         foreach ($studentAssignments as $index => $existing) {
             if ((string) ($existing['id'] ?? '') === $record['id']) {
-                $studentAssignments[$index] = array_merge($existing, $record);
+                $studentAssignments[$index] = array_merge((array) $existing, $record);
                 $updated = true;
                 break;
             }
@@ -322,6 +332,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
+/* ===============================
+   EDITAR
+=============================== */
 $editRecord = null;
 if (isset($_GET['edit']) && $_GET['edit'] !== '') {
     $editId = (string) $_GET['edit'];
@@ -333,9 +346,9 @@ if (isset($_GET['edit']) && $_GET['edit'] !== '') {
     }
 }
 
-$selectedProgram = (string) ($editRecord['program'] ?? 'technical');
+$selectedProgram = (string) ($editRecord['program'] ?? 'english');
 if (!isset($programOptions[$selectedProgram])) {
-    $selectedProgram = 'technical';
+    $selectedProgram = 'english';
 }
 ?>
 <!doctype html>
@@ -345,95 +358,232 @@ if (!isset($programOptions[$selectedProgram])) {
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Asignaciones de estudiantes</title>
     <style>
-        :root {
-            --blue-1:#0d4ea7;
-            --blue-2:#2d77db;
-            --page-bg:#edf1f8;
-            --card-bg:#f4f5f8;
-            --surface:#ffffff;
-            --text-main:#2f4460;
-            --text-soft:#66748a;
-            --line:#dde4ef;
-            --ok-bg:#ecfdf3;
-            --ok-text:#166534;
-            --ok-line:#b9eacb;
+        :root{
+            --bg:#edf1f7;
+            --card:#ffffff;
+            --line:#dde5f0;
+            --text:#1c2d45;
+            --muted:#66758c;
+            --blue:#2f66dd;
+            --blue2:#5a35e6;
+            --danger:#c62828;
+            --shadow:0 10px 28px rgba(36,52,79,.08);
         }
-        * { box-sizing:border-box; }
-        body {
+
+        *{ box-sizing:border-box; }
+
+        body{
             margin:0;
-            font-family:"Segoe UI",Arial,sans-serif;
-            background:var(--page-bg);
-            color:var(--text-main);
+            font-family:"Segoe UI", Arial, sans-serif;
+            background:var(--bg);
+            color:var(--text);
         }
-        .topbar{
-            background:linear-gradient(90deg,var(--blue-1),#1a61bd 52%,var(--blue-2));
-            color:#fff;
-            padding:14px 24px;
+
+        .page{
+            max-width:1100px;
+            margin:26px auto;
+            padding:0 18px 30px;
         }
-        .topbar h1{ margin:0; font-size:34px; }
-        .topbar p{ margin:6px 0 0; opacity:.95; }
-        .page{ max-width:1280px; margin:16px auto 0; padding:0 16px 24px; }
-        .top-actions{ display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; }
-        .back{ color:#2d71d2; text-decoration:none; font-weight:700; }
-        .notice{ background:var(--ok-bg); color:var(--ok-text); border:1px solid var(--ok-line); padding:10px 12px; border-radius:10px; margin-bottom:12px; }
-        .layout{ display:grid; grid-template-columns:1.1fr .9fr; gap:16px; }
-        .panel{ background:var(--card-bg); border:1px solid var(--line); border-radius:16px; overflow:hidden; box-shadow:0 5px 14px rgba(51,72,107,.08); }
-        .panel h3{ margin:0; padding:14px 16px; border-bottom:1px solid var(--line); background:linear-gradient(180deg,#f8f9fc,#f0f3f9); font-size:28px; }
-        .panel-body{ padding:16px; }
-        .row{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
-        .row + .row{ margin-top:10px; }
-        label{ display:block; font-weight:700; font-size:14px; margin-bottom:6px; }
+
+        .back{
+            display:inline-block;
+            margin-bottom:14px;
+            color:#2f66dd;
+            text-decoration:none;
+            font-weight:700;
+            font-size:15px;
+        }
+
+        .notice{
+            margin:0 0 14px;
+            background:#ecfdf3;
+            color:#166534;
+            border:1px solid #b7e6c7;
+            border-radius:12px;
+            padding:12px 14px;
+        }
+
+        .grid{
+            display:grid;
+            grid-template-columns:1.08fr .92fr;
+            gap:18px;
+            align-items:start;
+        }
+
+        .card{
+            background:var(--card);
+            border:1px solid var(--line);
+            border-radius:18px;
+            box-shadow:var(--shadow);
+            overflow:hidden;
+        }
+
+        .card-header{
+            padding:18px 20px;
+            border-bottom:1px solid var(--line);
+            background:#fbfcff;
+        }
+
+        .card-header h2{
+            margin:0;
+            font-size:22px;
+            font-weight:800;
+            color:#18304e;
+        }
+
+        .card-body{
+            padding:18px;
+        }
+
+        .form-grid{
+            display:grid;
+            grid-template-columns:repeat(2, minmax(0, 1fr));
+            gap:12px 14px;
+        }
+
+        .field{
+            display:flex;
+            flex-direction:column;
+        }
+
+        .field.full{
+            grid-column:1 / -1;
+        }
+
+        label{
+            margin:0 0 7px;
+            font-size:13px;
+            font-weight:800;
+            color:#314765;
+            letter-spacing:.2px;
+            text-transform:uppercase;
+        }
+
         select, button{
             width:100%;
-            padding:10px;
-            border:1px solid #cfd8e8;
-            border-radius:9px;
+            min-height:46px;
+            border-radius:10px;
+            border:1px solid #ccd7e6;
             background:#fff;
-            color:var(--text-main);
+            color:#243955;
+            padding:10px 12px;
+            font-size:14px;
         }
-        .button-primary{ border:none; background:linear-gradient(90deg,#2a67c4,#2d71d2); color:#fff; font-weight:700; cursor:pointer; }
-        .hint{ margin-top:8px; font-size:12px; color:var(--text-soft); }
-        .hint a{ color:#1f6fd6; text-decoration:none; }
-        table{ width:100%; border-collapse:collapse; background:#fff; border:1px solid var(--line); border-radius:10px; overflow:hidden; }
-        th, td{ border-bottom:1px solid #e7ecf5; padding:10px; font-size:14px; }
-        th{ background:#f4f7fb; text-align:left; }
-        tr:last-child td{ border-bottom:none; }
-        .actions a{ text-decoration:none; font-weight:600; }
-        .actions a:first-child{ color:#1f6fd6; }
-        .actions a:last-child{ color:#c62828; }
-        @media (max-width:980px){
-            .topbar h1{ font-size:28px; }
-            .layout{ grid-template-columns:1fr; }
-            .row{ grid-template-columns:1fr; }
+
+        select:focus, button:focus{
+            outline:none;
+            border-color:#7f9cf5;
+            box-shadow:0 0 0 3px rgba(99,102,241,.12);
+        }
+
+        .button-primary{
+            border:none;
+            color:#fff;
+            font-weight:800;
+            cursor:pointer;
+            background:linear-gradient(90deg, var(--blue), var(--blue2));
+        }
+
+        .hint{
+            margin-top:8px;
+            font-size:12px;
+            color:var(--muted);
+        }
+
+        .hint a{
+            color:#2f66dd;
+            text-decoration:none;
+            font-weight:600;
+        }
+
+        table{
+            width:100%;
+            border-collapse:collapse;
+            overflow:hidden;
+            background:#fff;
+            border:1px solid var(--line);
+            border-radius:14px;
+        }
+
+        th, td{
+            padding:11px 10px;
+            border-bottom:1px solid #e7edf6;
+            font-size:14px;
+            vertical-align:top;
+        }
+
+        th{
+            background:#f6f9fd;
+            text-align:left;
+            color:#304866;
+            font-size:13px;
+            text-transform:uppercase;
+            letter-spacing:.2px;
+        }
+
+        tbody tr:last-child td{
+            border-bottom:none;
+        }
+
+        .actions a{
+            text-decoration:none;
+            font-weight:700;
+        }
+
+        .actions a:first-child{
+            color:#2f66dd;
+        }
+
+        .actions a:last-child{
+            color:var(--danger);
+        }
+
+        .muted{
+            color:var(--muted);
+        }
+
+        .program-badge{
+            display:inline-block;
+            padding:4px 9px;
+            border-radius:999px;
+            font-size:12px;
+            font-weight:700;
+            background:#eef3ff;
+            color:#2f66dd;
+        }
+
+        @media (max-width: 980px){
+            .grid{
+                grid-template-columns:1fr;
+            }
+            .form-grid{
+                grid-template-columns:1fr;
+            }
         }
     </style>
 </head>
 <body>
-<header class="topbar">
-    <h1>🎓 Asignaciones de estudiantes</h1>
-    <p>Asigna estudiante, docente, programa, level y unidad.</p>
-</header>
-
 <main class="page">
-    <div class="top-actions">
-        <a class="back" href="dashboard.php">← Volver al panel académico</a>
-    </div>
+    <a class="back" href="dashboard.php">← Volver al dashboard</a>
 
     <?php if (isset($_GET['saved'])): ?>
         <div class="notice">Guardado correctamente.</div>
     <?php endif; ?>
 
-    <div class="layout">
-        <section class="panel">
-            <h3>Formulario de asignación</h3>
-            <div class="panel-body">
-                <form method="post">
+    <div class="grid">
+        <section class="card">
+            <div class="card-header">
+                <h2>🎓 Asignaciones de estudiantes</h2>
+            </div>
+
+            <div class="card-body">
+                <form method="post" id="assignmentForm">
                     <input type="hidden" name="edit_id" value="<?= h((string) ($editRecord['id'] ?? '')) ?>">
 
-                    <div class="row">
-                        <div>
-                            <label>Estudiante</label>
-                            <select name="student_id" required>
+                    <div class="form-grid">
+                        <div class="field">
+                            <label for="student_id">Estudiante</label>
+                            <select name="student_id" id="student_id" required>
                                 <option value="">Seleccionar...</option>
                                 <?php foreach ($students as $student): ?>
                                     <?php $sid = (string) ($student['id'] ?? ''); ?>
@@ -444,9 +594,9 @@ if (!isset($programOptions[$selectedProgram])) {
                             </select>
                         </div>
 
-                        <div>
-                            <label>Docente</label>
-                            <select name="teacher_id" required>
+                        <div class="field">
+                            <label for="teacher_id">Docente</label>
+                            <select name="teacher_id" id="teacher_id" required>
                                 <option value="">Seleccionar...</option>
                                 <?php foreach ($teachers as $teacher): ?>
                                     <?php $tid = (string) ($teacher['id'] ?? ''); ?>
@@ -456,11 +606,9 @@ if (!isset($programOptions[$selectedProgram])) {
                                 <?php endforeach; ?>
                             </select>
                         </div>
-                    </div>
 
-                    <div class="row">
-                        <div>
-                            <label>Programa</label>
+                        <div class="field">
+                            <label for="program">Programa</label>
                             <select name="program" id="program" required>
                                 <?php foreach ($programOptions as $programKey => $programLabel): ?>
                                     <option value="<?= h($programKey) ?>" <?= $programKey === $selectedProgram ? 'selected' : '' ?>>
@@ -470,91 +618,98 @@ if (!isset($programOptions[$selectedProgram])) {
                             </select>
                         </div>
 
-                        <div>
-                            <label>Level (Inglés)</label>
-                            <select name="level_id" id="level_id">
-                                <option value="">Seleccionar level...</option>
-                                <?php foreach ($englishPhases as $phase): ?>
-                                    <?php $phaseId = (string) ($phase['id'] ?? ''); ?>
-                                    <option value="<?= h($phaseId) ?>" <?= $phaseId === (string) ($editRecord['level_id'] ?? $editRecord['period'] ?? '') ? 'selected' : '' ?>>
-                                        <?= h((string) ($phase['name'] ?? 'LEVEL')) ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
-                            <div class="hint">
-                                Configurar levels/phases: <a href="english_structure_levels.php">english_structure_levels.php</a>
-                                <?php if ($englishFromDb && !empty($englishCourses)): ?>
-                                    | <a href="english_structure_phases.php?level=<?= h((string) ($englishCourses[0]['id'] ?? '1')) ?>">Abrir phases del primer level</a>
-                                <?php endif; ?>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="row">
-                        <div>
-                            <label>Curso / Nivel</label>
-                            <select name="course_id" id="course_id">
+                        <div class="field" id="courseField">
+                            <label for="course_id" id="courseLabel">Nivel</label>
+                            <select name="course_id" id="course_id" required>
                                 <option value="">Seleccionar...</option>
                             </select>
                         </div>
 
-                        <div>
-                            <label>Unidad</label>
+                        <div class="field" id="phaseField">
+                            <label for="level_id">Fase</label>
+                            <select name="level_id" id="level_id">
+                                <option value="">Seleccionar fase...</option>
+                            </select>
+                            <div class="hint" id="englishHint">
+                                Configurar estructura:
+                                <a href="english_structure_levels.php">Levels</a>
+                                <?php if ($englishFromDb && !empty($englishLevels)): ?>
+                                    | <a href="english_structure_phases.php?level=<?= h((string) ($englishLevels[0]['id'] ?? '1')) ?>">Phases</a>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+
+                        <div class="field" id="unitField">
+                            <label for="unit_id">Unidad</label>
                             <select name="unit_id" id="unit_id" required>
                                 <option value="">Seleccionar...</option>
                             </select>
                         </div>
-                    </div>
 
-                    <div class="row" style="grid-template-columns:1fr; margin-top:12px;">
-                        <button class="button-primary" type="submit">Guardar asignación</button>
+                        <div class="field full">
+                            <button class="button-primary" type="submit">Guardar asignación</button>
+                        </div>
                     </div>
                 </form>
             </div>
         </section>
 
-        <section class="panel">
-            <h3>Asignaciones creadas</h3>
-            <div class="panel-body">
+        <section class="card">
+            <div class="card-header">
+                <h2>📋 Asignaciones creadas</h2>
+            </div>
+
+            <div class="card-body">
                 <table>
                     <thead>
-                    <tr>
-                        <th>Estudiante</th>
-                        <th>Docente</th>
-                        <th>Programa</th>
-                        <th>Level</th>
-                        <th>Curso</th>
-                        <th>Unidad</th>
-                        <th>Acciones</th>
-                    </tr>
+                        <tr>
+                            <th>Estudiante</th>
+                            <th>Docente</th>
+                            <th>Programa</th>
+                            <th>Nivel / Semestre</th>
+                            <th>Fase</th>
+                            <th>Unidad</th>
+                            <th>Acciones</th>
+                        </tr>
                     </thead>
                     <tbody>
                     <?php if (empty($studentAssignments)): ?>
                         <tr>
-                            <td colspan="7">No hay asignaciones registradas.</td>
+                            <td colspan="7" class="muted">No hay asignaciones registradas.</td>
                         </tr>
+                    <?php else: ?>
+                        <?php foreach ($studentAssignments as $row): ?>
+                            <?php
+                            $program = (string) ($row['program'] ?? 'technical');
+                            $isEnglish = $program === 'english';
+
+                            $courseName = $isEnglish
+                                ? find_name_by_id($englishLevels, (string) ($row['course_id'] ?? ''), 'N/D')
+                                : find_name_by_id($technicalSemesters, (string) ($row['course_id'] ?? ''), 'N/D');
+
+                            $phaseName = $isEnglish
+                                ? find_name_by_id($englishPhases, (string) ($row['level_id'] ?? $row['period'] ?? ''), 'N/D')
+                                : 'No aplica';
+
+                            $unitName = $isEnglish
+                                ? find_name_by_id($englishUnits, (string) ($row['unit_id'] ?? ''), 'N/D')
+                                : find_name_by_id($technicalUnits, (string) ($row['unit_id'] ?? ''), 'N/D');
+                            ?>
+                            <tr>
+                                <td><?= h(find_name_by_id($students, (string) ($row['student_id'] ?? ''), 'N/D')) ?></td>
+                                <td><?= h(find_name_by_id($teachers, (string) ($row['teacher_id'] ?? ''), 'N/D')) ?></td>
+                                <td><span class="program-badge"><?= h($programOptions[$program] ?? 'Programa Técnico') ?></span></td>
+                                <td><?= h($courseName) ?></td>
+                                <td><?= h($phaseName) ?></td>
+                                <td><?= h($unitName) ?></td>
+                                <td class="actions">
+                                    <a href="student_assignments.php?edit=<?= h((string) ($row['id'] ?? '')) ?>">Editar</a>
+                                    |
+                                    <a href="student_assignments.php?delete=<?= h((string) ($row['id'] ?? '')) ?>" onclick="return confirm('¿Eliminar asignación?')">Eliminar</a>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
                     <?php endif; ?>
-                    <?php foreach ($studentAssignments as $row): ?>
-                        <?php
-                        $program = (string) ($row['program'] ?? 'technical');
-                        $coursesForRow = $coursesByProgram[$program] ?? [];
-                        $unitsForRow = $unitsByProgram[$program] ?? [];
-                        $rowLevelId = (string) ($row['level_id'] ?? $row['period'] ?? '');
-                        ?>
-                        <tr>
-                            <td><?= h(find_name_by_id($students, (string) ($row['student_id'] ?? ''), 'N/D')) ?></td>
-                            <td><?= h(find_name_by_id($teachers, (string) ($row['teacher_id'] ?? ''), 'N/D')) ?></td>
-                            <td><?= h($programOptions[$program] ?? 'Programa Técnico') ?></td>
-                            <td><?= h(find_name_by_id($englishPhases, $rowLevelId, $rowLevelId !== '' ? $rowLevelId : 'N/D')) ?></td>
-                            <td><?= h(find_name_by_id($coursesForRow, (string) ($row['course_id'] ?? ''), 'N/D')) ?></td>
-                            <td><?= h(find_name_by_id($unitsForRow, (string) ($row['unit_id'] ?? ''), 'N/D')) ?></td>
-                            <td class="actions">
-                                <a href="student_assignments.php?edit=<?= h((string) ($row['id'] ?? '')) ?>">Editar</a>
-                                |
-                                <a href="student_assignments.php?delete=<?= h((string) ($row['id'] ?? '')) ?>" onclick="return confirm('¿Eliminar asignación?')">Eliminar</a>
-                            </td>
-                        </tr>
-                    <?php endforeach; ?>
                     </tbody>
                 </table>
             </div>
@@ -563,20 +718,32 @@ if (!isset($programOptions[$selectedProgram])) {
 </main>
 
 <script>
-const coursesByProgram = <?= json_encode($coursesByProgram, JSON_UNESCAPED_UNICODE) ?>;
-const unitsByProgram = <?= json_encode($unitsByProgram, JSON_UNESCAPED_UNICODE) ?>;
+const englishLevels = <?= json_encode($englishLevels, JSON_UNESCAPED_UNICODE) ?>;
 const englishPhases = <?= json_encode($englishPhases, JSON_UNESCAPED_UNICODE) ?>;
+const englishUnits = <?= json_encode($englishUnits, JSON_UNESCAPED_UNICODE) ?>;
+
+const technicalSemesters = <?= json_encode($technicalSemesters, JSON_UNESCAPED_UNICODE) ?>;
+const technicalUnits = <?= json_encode($technicalUnits, JSON_UNESCAPED_UNICODE) ?>;
+
+const selectedProgram = <?= json_encode((string) $selectedProgram) ?>;
 const selectedCourse = <?= json_encode((string) ($editRecord['course_id'] ?? '')) ?>;
+const selectedPhase = <?= json_encode((string) ($editRecord['level_id'] ?? $editRecord['period'] ?? '')) ?>;
 const selectedUnit = <?= json_encode((string) ($editRecord['unit_id'] ?? '')) ?>;
-const selectedLevel = <?= json_encode((string) ($editRecord['level_id'] ?? $editRecord['period'] ?? '')) ?>;
 
 const programSelect = document.getElementById('program');
 const courseSelect = document.getElementById('course_id');
+const phaseSelect = document.getElementById('level_id');
 const unitSelect = document.getElementById('unit_id');
-const levelSelect = document.getElementById('level_id');
 
-function fillSelect(select, items, selected, placeholder) {
+const courseField = document.getElementById('courseField');
+const phaseField = document.getElementById('phaseField');
+const unitField = document.getElementById('unitField');
+const courseLabel = document.getElementById('courseLabel');
+const englishHint = document.getElementById('englishHint');
+
+function fillSelect(select, items, selectedValue, placeholder) {
     select.innerHTML = '';
+
     const first = document.createElement('option');
     first.value = '';
     first.textContent = placeholder;
@@ -586,56 +753,86 @@ function fillSelect(select, items, selected, placeholder) {
         const option = document.createElement('option');
         option.value = String(item.id ?? '');
         option.textContent = String(item.name ?? 'Sin nombre');
-        if (option.value === selected) option.selected = true;
+        if (String(option.value) === String(selectedValue || '')) {
+            option.selected = true;
+        }
         select.appendChild(option);
     });
 }
 
-function refreshCatalog() {
-    const program = programSelect.value || 'technical';
-    const courses = coursesByProgram[program] || [];
-    const units = unitsByProgram[program] || [];
+function setEnglishLayout() {
+    courseLabel.textContent = 'Nivel';
+    phaseField.style.display = '';
+    englishHint.style.display = '';
+    phaseSelect.disabled = false;
+    phaseSelect.required = true;
+}
+
+function setTechnicalLayout() {
+    courseLabel.textContent = 'Semestre';
+    phaseField.style.display = 'none';
+    englishHint.style.display = 'none';
+    phaseSelect.value = '';
+    phaseSelect.disabled = true;
+    phaseSelect.required = false;
+}
+
+function refreshForm(useInitial = false) {
+    const program = programSelect.value || 'english';
 
     if (program === 'english') {
-        fillSelect(courseSelect, courses, courseSelect.value || selectedCourse, 'Seleccionar...');
+        setEnglishLayout();
 
-        const currentCourseId = courseSelect.value || selectedCourse || '';
-        const phasesForCourse = englishPhases.filter((p) => String(p.course_id ?? p.level_id ?? '') === currentCourseId);
-        fillSelect(levelSelect, phasesForCourse, levelSelect.value || selectedLevel, 'Seleccionar level...');
+        const currentLevel = useInitial ? selectedCourse : (courseSelect.value || '');
+        fillSelect(courseSelect, englishLevels, currentLevel, 'Seleccionar nivel...');
 
-        const currentPhaseId = levelSelect.value || selectedLevel || '';
-        const unitsForPhase = units.filter((u) => String(u.phase_id ?? '') === currentPhaseId);
-        fillSelect(unitSelect, unitsForPhase, unitSelect.value || selectedUnit, 'Seleccionar...');
-        levelSelect.disabled = false;
+        const levelId = courseSelect.value || currentLevel || '';
+        const phasesForLevel = englishPhases.filter((phase) => String(phase.level_id ?? '') === String(levelId));
+        const currentPhase = useInitial ? selectedPhase : (phaseSelect.value || '');
+        fillSelect(phaseSelect, phasesForLevel, currentPhase, 'Seleccionar fase...');
+
+        const phaseId = phaseSelect.value || currentPhase || '';
+        const unitsForPhase = englishUnits.filter((unit) => String(unit.phase_id ?? '') === String(phaseId));
+        const currentUnit = useInitial ? selectedUnit : (unitSelect.value || '');
+        fillSelect(unitSelect, unitsForPhase, currentUnit, 'Seleccionar unidad...');
     } else {
-        fillSelect(courseSelect, courses, courseSelect.value || selectedCourse, 'Seleccionar...');
-        const currentCourseId = courseSelect.value || selectedCourse || '';
-        const byCourse = units.filter((u) => String(u.course_id ?? u.level_id ?? '') === currentCourseId);
-        fillSelect(unitSelect, byCourse, unitSelect.value || selectedUnit, 'Seleccionar...');
-        fillSelect(levelSelect, [], '', 'No aplica');
-        levelSelect.disabled = true;
+        setTechnicalLayout();
+
+        const currentSemester = useInitial ? selectedCourse : (courseSelect.value || '');
+        fillSelect(courseSelect, technicalSemesters, currentSemester, 'Seleccionar semestre...');
+
+        const semesterId = courseSelect.value || currentSemester || '';
+        const unitsForSemester = technicalUnits.filter((unit) => {
+            return String(unit.course_id ?? unit.level_id ?? '') === String(semesterId);
+        });
+
+        const currentUnit = useInitial ? selectedUnit : (unitSelect.value || '');
+        fillSelect(unitSelect, unitsForSemester, currentUnit, 'Seleccionar unidad...');
     }
 }
 
 programSelect.addEventListener('change', () => {
     courseSelect.value = '';
-    levelSelect.value = '';
+    phaseSelect.value = '';
     unitSelect.value = '';
-    refreshCatalog();
+    refreshForm(false);
 });
 
 courseSelect.addEventListener('change', () => {
-    levelSelect.value = '';
+    phaseSelect.value = '';
     unitSelect.value = '';
-    refreshCatalog();
+    refreshForm(false);
 });
 
-levelSelect.addEventListener('change', () => {
+phaseSelect.addEventListener('change', () => {
     unitSelect.value = '';
-    refreshCatalog();
+    refreshForm(false);
 });
 
-refreshCatalog();
+if (selectedProgram) {
+    programSelect.value = selectedProgram;
+}
+refreshForm(true);
 </script>
 </body>
 </html>
