@@ -141,7 +141,7 @@ body {
   margin: 0;
   padding: 20px;
   font-family: 'Segoe UI', Roboto, Arial, sans-serif;
-  background: #f4f6fb;
+  background: #e9f1fb; /* azul claro igual al resto de la interfaz */
   color: #2c3e50;
 }
 
