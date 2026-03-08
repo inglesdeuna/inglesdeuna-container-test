@@ -17,15 +17,15 @@ $unitsFile = $baseDir . '/units.json';
 $studentAssignmentsFile = $baseDir . '/student_assignments_records.json';
 $studentAccountsFile = $baseDir . '/student_accounts.json';
 
+if (!is_dir($baseDir)) {
+    mkdir($baseDir, 0777, true);
+}
+
 foreach ([$studentsFile, $teachersFile, $coursesFile, $unitsFile, $studentAssignmentsFile, $studentAccountsFile] as $file) {
     if (!file_exists($file)) {
         file_put_contents($file, '[]');
     }
 }
-
-$students = json_decode((string) file_get_contents($studentsFile), true);
-$teachers = json_decode((string) file_get_contents($teachersFile), true);
-$courses = json_decode((string) file_get_contents($coursesFile), true);
 $units = json_decode((string) file_get_contents($unitsFile), true);
 $studentAssignments = json_decode((string) file_get_contents($studentAssignmentsFile), true);
 $studentAccounts = json_decode((string) file_get_contents($studentAccountsFile), true);
