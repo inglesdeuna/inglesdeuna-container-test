@@ -34,8 +34,13 @@ $courses = is_array($courses) ? $courses : [];
 $units = is_array($units) ? $units : [];
 $studentAssignments = is_array($studentAssignments) ? $studentAssignments : [];
 
-function h(string $v): string { return htmlspecialchars($v, ENT_QUOTES, 'UTF-8'); }
-function map_names(array $rows): array {
+function h(string $v): string
+{
+    return htmlspecialchars($v, ENT_QUOTES, 'UTF-8');
+}
+
+function map_names(array $rows): array
+{
     $mapped = [];
     foreach ($rows as $row) {
         $id = (string) ($row['id'] ?? '');
@@ -53,7 +58,9 @@ $unitNameById = map_names($units);
 $teachersById = [];
 foreach ($teachers as $teacher) {
     $teacherId = (string) ($teacher['id'] ?? '');
-    if ($teacherId === '') continue;
+    if ($teacherId === '') {
+        continue;
+    }
     $teachersById[$teacherId] = [
         'id' => $teacherId,
         'name' => (string) ($teacher['name'] ?? 'Docente'),
@@ -64,7 +71,9 @@ foreach ($teachers as $teacher) {
 
 foreach ($accounts as $account) {
     $teacherId = (string) ($account['teacher_id'] ?? '');
-    if ($teacherId === '') continue;
+    if ($teacherId === '') {
+        continue;
+    }
 
     if (!isset($teachersById[$teacherId])) {
         $teachersById[$teacherId] = [
@@ -83,7 +92,9 @@ foreach ($accounts as $account) {
 
 foreach ($studentAssignments as $assignment) {
     $teacherId = (string) ($assignment['teacher_id'] ?? '');
-    if ($teacherId === '') continue;
+    if ($teacherId === '') {
+        continue;
+    }
 
     if (!isset($teachersById[$teacherId])) {
         $teachersById[$teacherId] = [
@@ -97,6 +108,7 @@ foreach ($studentAssignments as $assignment) {
     $courseName = $courseNameById[(string) ($assignment['course_id'] ?? '')] ?? '';
     $unitName = $unitNameById[(string) ($assignment['unit_id'] ?? '')] ?? '';
     $groupName = trim($courseName !== '' && $unitName !== '' ? ($courseName . ' - ' . $unitName) : ($courseName !== '' ? $courseName : $unitName));
+
     if ($groupName !== '') {
         $teachersById[$teacherId]['groups'][$groupName] = $groupName;
     }
@@ -117,18 +129,6 @@ usort($teacherCards, fn($a, $b) => strcasecmp((string) ($a['name'] ?? ''), (stri
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Docentes y Grupos</title>
 <style>
-body{margin:0;padding:28px;font-family:Arial,sans-serif;background:#e8ecf4;color:#23376a}
-.wrapper{max-width:1100px;margin:0 auto}
-.back{display:inline-block;margin-bottom:14px;color:#2f66dd;text-decoration:none;font-weight:700}
-.title{font-size:40px;text-align:center;margin:6px 0 30px}
-.list{background:#fff;border:1px solid #d8e1ef;border-radius:16px;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,.08)}
-.row{border-top:1px solid #d8e1ef}
-.row:first-child{border-top:none}
-.head{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:18px 22px}
-.name{margin:0;font-size:32px;font-weight:800;color:#263b72}
-.meta{font-size:22px;color:#4c618f}
-.badges{margin-top:10px;display:flex;gap:10px;flex-wrap:wrap}
-.badge{background:linear-gradient(180deg,#3f7ee6,#2f63c9);color:#fff;font-weight:700;border-radius:8px;padding:10px 14px;font-size:20px}
 body{margin:0;padding:30px;font-family:Arial,sans-serif;background:linear-gradient(180deg,#e9eef7,#e4e9f4);color:#203768}
 .wrapper{max-width:1050px;margin:0 auto}
 .back{display:inline-block;margin-bottom:18px;color:#fff;background:#2f66dd;text-decoration:none;font-weight:700;border-radius:10px;padding:10px 14px;box-shadow:0 8px 18px rgba(47,102,221,.32)}
@@ -170,6 +170,40 @@ li{font-size:28px;color:#304e80;padding:6px 0;border-bottom:1px solid #dce3f1}
 <div class="wrapper" id="docentes-grupos">
   <a class="back" href="student_assignments.php">← Volver a asignaciones</a>
   <h1 class="title">Docentes y Grupos</h1>
+
+  <div class="panel">
+    <?php if (empty($teacherCards)) { ?>
+      <div class="teacher">
+        <div class="head"><p class="empty">No hay docentes registrados todavía.</p></div>
+      </div>
+    <?php } else { ?>
+      <?php foreach ($teacherCards as $index => $teacherCard) { ?>
+        <?php
+          $groups = array_values((array) ($teacherCard['groups'] ?? []));
+          $studentsList = array_values((array) ($teacherCard['students'] ?? []));
+          $countGroups = count($groups);
+        ?>
+        <article class="teacher">
+          <div class="head">
+            <div>
+              <p class="name">Prof. <?= h((string) ($teacherCard['name'] ?? 'Docente')) ?></p>
+              <span class="meta"><?= $countGroups ?> <?= $countGroups === 1 ? 'Grupo asignado' : 'Grupos asignados' ?></span>
+              <?php if (!empty($groups)) { ?>
+                <div class="badges">
+                  <?php foreach ($groups as $groupIndex => $groupName) { ?>
+                    <?php $groupClass = 'badge-' . (($groupIndex % 4) + 1); ?>
+                    <span class="badge <?= h($groupClass) ?>"><?= h((string) $groupName) ?></span>
+                  <?php } ?>
+                </div>
+              <?php } ?>
+            </div>
+            <div class="right">
+              <button type="button" class="view-btn" data-target="body-<?= $index ?>">Ver →</button>
+              <button type="button" class="toggle" data-target="body-<?= $index ?>">⌄</button>
+            </div>
+          </div>
+          <div class="body" id="body-<?= $index ?>">
+            <h3>Lista de Estudiantes Asignados:</h3>
             <?php if (empty($studentsList)) { ?>
               <p class="empty">Este docente no tiene estudiantes asignados todavía.</p>
             <?php } else { ?>
@@ -183,4 +217,20 @@ li{font-size:28px;color:#304e80;padding:6px 0;border-bottom:1px solid #dce3f1}
         </article>
       <?php } ?>
     <?php } ?>
- '
+  </div>
+</div>
+<script>
+function togglePanel(targetId) {
+  const panel = document.getElementById(targetId);
+  if (!panel) return;
+  panel.classList.toggle('open');
+}
+
+document.querySelectorAll('.toggle, .view-btn').forEach((button) => {
+  button.addEventListener('click', () => {
+    togglePanel(button.dataset.target || '');
+  });
+});
+</script>
+</body>
+</html>
