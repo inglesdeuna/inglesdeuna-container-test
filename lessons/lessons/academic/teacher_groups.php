@@ -129,48 +129,47 @@ body{margin:0;padding:28px;font-family:Arial,sans-serif;background:#e8ecf4;color
 .meta{font-size:22px;color:#4c618f}
 .badges{margin-top:10px;display:flex;gap:10px;flex-wrap:wrap}
 .badge{background:linear-gradient(180deg,#3f7ee6,#2f63c9);color:#fff;font-weight:700;border-radius:8px;padding:10px 14px;font-size:20px}
-.toggle{font-size:28px;background:none;border:none;color:#6f83ad;cursor:pointer}
-.body{display:none;background:#f1f4fb;padding:18px 22px;border-top:1px solid #d8e1ef}
+body{margin:0;padding:30px;font-family:Arial,sans-serif;background:linear-gradient(180deg,#e9eef7,#e4e9f4);color:#203768}
+.wrapper{max-width:1050px;margin:0 auto}
+.back{display:inline-block;margin-bottom:18px;color:#fff;background:#2f66dd;text-decoration:none;font-weight:700;border-radius:10px;padding:10px 14px;box-shadow:0 8px 18px rgba(47,102,221,.32)}
+.title{text-align:center;margin:6px 0 26px;font-size:56px;color:#1f3c75}
+.panel{background:#f5f7fc;border:1px solid #d7dfef;border-radius:20px;padding:18px;box-shadow:0 12px 26px rgba(27,49,94,.12)}
+.teacher{background:#fff;border:1px solid #d6deee;border-radius:16px;margin-bottom:14px;overflow:hidden}
+.teacher:last-child{margin-bottom:0}
+.head{display:flex;justify-content:space-between;gap:16px;padding:20px 22px;align-items:flex-start}
+.name{margin:0;font-size:50px;font-weight:800;color:#1f3c75}
+.meta{margin-top:6px;display:block;font-size:24px;color:#4a5f86}
+.badges{margin-top:12px;display:flex;gap:10px;flex-wrap:wrap}
+.badge{display:inline-block;color:#fff;font-weight:800;border-radius:10px;padding:10px 18px;box-shadow:0 8px 16px rgba(45,99,201,.28);font-size:30px}
+.badge-1{background:linear-gradient(180deg,#4f89ec,#2f63c9)}
+.badge-2{background:linear-gradient(180deg,#8a7ef2,#6653cc)}
+.badge-3{background:linear-gradient(180deg,#f79448,#ee6e12)}
+.badge-4{background:linear-gradient(180deg,#4dbda0,#219b7b)}
+.right{display:flex;align-items:center;gap:12px}
+.view-btn{border:none;border-radius:10px;padding:10px 22px;font-size:34px;font-weight:800;color:#fff;background:linear-gradient(180deg,#4f89ec,#2f63c9);box-shadow:0 8px 16px rgba(47,102,221,.35);cursor:pointer}
+.toggle{border:none;background:none;color:#7a8fb6;font-size:34px;cursor:pointer;line-height:1}
+.body{display:none;background:#f3f6fd;border-top:1px solid #d6deee;padding:16px 22px 20px}
 .body.open{display:block}
-.body h3{margin:0 0 10px;font-size:26px}
+.body h3{margin:0 0 10px;font-size:30px;color:#213b72}
 ol{margin:0;padding-left:30px}
-li{font-size:22px;padding:8px 0;border-bottom:1px solid #d8e1ef}
-.empty{font-size:18px;color:#5a6f98;font-weight:600}
+li{font-size:28px;color:#304e80;padding:6px 0;border-bottom:1px solid #dce3f1}
+.empty{font-size:22px;color:#5a6f98;font-weight:600}
 @media (max-width:980px){
- .title{font-size:30px}
- .name{font-size:24px}
- .meta,.badge,.body h3,li{font-size:18px}
+  .title{font-size:34px}
+  .name{font-size:30px}
+  .meta{font-size:18px}
+  .badge,.view-btn{font-size:18px}
+  .head{flex-direction:column}
+  .right{width:100%;justify-content:flex-end}
+  .body h3{font-size:22px}
+  li{font-size:18px}
 }
 </style>
 </head>
 <body>
 <div class="wrapper" id="docentes-grupos">
-  <a class="back" href="../admin/dashboard.php">← Volver al dashboard</a>
+  <a class="back" href="student_assignments.php">← Volver a asignaciones</a>
   <h1 class="title">Docentes y Grupos</h1>
-
-  <div class="list">
-    <?php if (empty($teacherCards)) { ?>
-      <div class="head"><p class="empty">No hay docentes registrados todavía.</p></div>
-    <?php } else { ?>
-      <?php foreach ($teacherCards as $index => $teacherCard) { ?>
-        <?php $groups = array_values((array) ($teacherCard['groups'] ?? [])); $studentsList = array_values((array) ($teacherCard['students'] ?? [])); $countGroups = count($groups); ?>
-        <article class="row">
-          <div class="head">
-            <div>
-              <p class="name">Prof. <?= h((string) ($teacherCard['name'] ?? 'Docente')) ?></p>
-              <span class="meta"><?= $countGroups ?> <?= $countGroups === 1 ? 'Grupo asignado' : 'Grupos asignados' ?></span>
-              <?php if (!empty($groups)) { ?>
-                <div class="badges">
-                  <?php foreach ($groups as $groupName) { ?>
-                    <span class="badge"><?= h((string) $groupName) ?></span>
-                  <?php } ?>
-                </div>
-              <?php } ?>
-            </div>
-            <button type="button" class="toggle" data-target="body-<?= $index ?>">⌄</button>
-          </div>
-          <div class="body" id="body-<?= $index ?>">
-            <h3>Lista de Estudiantes Asignados:</h3>
             <?php if (empty($studentsList)) { ?>
               <p class="empty">Este docente no tiene estudiantes asignados todavía.</p>
             <?php } else { ?>
@@ -184,15 +183,4 @@ li{font-size:22px;padding:8px 0;border-bottom:1px solid #d8e1ef}
         </article>
       <?php } ?>
     <?php } ?>
-  </div>
-</div>
-<script>
-document.querySelectorAll('.toggle').forEach((button)=>{
-  button.addEventListener('click',()=>{
-    const panel = document.getElementById(button.dataset.target);
-    if (panel) panel.classList.toggle('open');
-  });
-});
-</script>
-</body>
-</html>
+ '
