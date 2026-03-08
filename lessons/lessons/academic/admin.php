@@ -14,26 +14,26 @@ $teacherId = $_SESSION["teacher_id"];
 /* =====================
    ARCHIVO DOCENTES
    ===================== */
-$teachersFile = __DIR__ . "/teachers.json";
-$teachers = file_exists($teachersFile)
-  ? json_decode(file_get_contents($teachersFile), true)
-  : [];
+$dataDir = __DIR__ . '/data';
+$teachersFile = $dataDir . '/teachers.json';
+$legacyTeachersFile = __DIR__ . '/teachers.json';
 
-/* =====================
-   VALIDAR ADMIN
-   ===================== */
-$isAdmin = false;
-$adminName = "";
+if (!is_dir($dataDir)) {
+  mkdir($dataDir, 0777, true);
+}
 
-foreach ($teachers as $t) {
-  if (
-    ($t["id"] ?? null) === $teacherId &&
-    ($t["role"] ?? "") === "admin"
-  ) {
-    $isAdmin = true;
-    $adminName = $t["name"];
-    break;
-  }
+if (!file_exists($teachersFile) && file_exists($legacyTeachersFile)) {
+  copy($legacyTeachersFile, $teachersFile);
+}
+
+if (!file_exists($teachersFile)) {
+  file_put_contents($teachersFile, '[]');
+}
+
+$teachers = json_decode((string) file_get_contents($teachersFile), true);
+if (!is_array($teachers)) {
+  $teachers = [];
+}
 }
 
 if (!$isAdmin) {
