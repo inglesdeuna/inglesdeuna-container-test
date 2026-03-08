@@ -15,8 +15,9 @@ $teachersFile = $baseDir . '/teachers.json';
 $coursesFile = $baseDir . '/courses.json';
 $unitsFile = $baseDir . '/units.json';
 $studentAssignmentsFile = $baseDir . '/student_assignments_records.json';
+$studentAccountsFile = $baseDir . '/student_accounts.json';
 
-foreach ([$studentsFile, $teachersFile, $coursesFile, $unitsFile, $studentAssignmentsFile] as $file) {
+foreach ([$studentsFile, $teachersFile, $coursesFile, $unitsFile, $studentAssignmentsFile, $studentAccountsFile] as $file) {
     if (!file_exists($file)) {
         file_put_contents($file, '[]');
     }
@@ -27,12 +28,14 @@ $teachers = json_decode((string) file_get_contents($teachersFile), true);
 $courses = json_decode((string) file_get_contents($coursesFile), true);
 $units = json_decode((string) file_get_contents($unitsFile), true);
 $studentAssignments = json_decode((string) file_get_contents($studentAssignmentsFile), true);
+$studentAccounts = json_decode((string) file_get_contents($studentAccountsFile), true);
 
 $students = is_array($students) ? $students : [];
 $teachers = is_array($teachers) ? $teachers : [];
 $courses = is_array($courses) ? $courses : [];
 $units = is_array($units) ? $units : [];
 $studentAssignments = is_array($studentAssignments) ? $studentAssignments : [];
+$studentAccounts = is_array($studentAccounts) ? $studentAccounts : [];
 
 /* ===============================
    CONFIG
@@ -50,7 +53,7 @@ function h(string $value): string
     return htmlspecialchars($value, ENT_QUOTES, 'UTF-8');
 }
 
-function save_student_assignments(string $file, array $records): void
+function save_json_file(string $file, array $records): void
 {
     file_put_contents(
         $file,
@@ -169,11 +172,115 @@ function normalize_technical_courses(array $technicalCourses, array $technicalUn
     return $normalized;
 }
 
+function slugify_username(string $value): string
+{
+    $value = mb_strtolower(trim($value), 'UTF-8');
+    $value = iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $value);
+    $value = strtolower((string) $value);
+    $value = preg_replace('/[^a-z0-9]+/', '.', $value);
+    $value = trim((string) $value, '.');
+    return $value !== '' ? $value : 'student';
+}
+
+function generate_student_username(array $student, array $accounts): string
+{
+    $name = (string) ($student['name'] ?? 'student');
+    $studentId = (string) ($student['id'] ?? '');
+    $base = slugify_username($name);
+
+    if ($studentId !== '') {
+        $base .= '.' . preg_replace('/[^a-zA-Z0-9]/', '', $studentId);
+    }
+
+    $username = $base;
+    $counter = 1;
+
+    $existingUsernames = [];
+    foreach ($accounts as $acc) {
+        $existingUsernames[] = (string) ($acc['username'] ?? '');
+    }
+
+    while (in_array($username, $existingUsernames, true)) {
+        $username = $base . '.' . $counter;
+        $counter++;
+    }
+
+    return $username;
+}
+
+function generate_temp_password(int $length = 10): string
+{
+    $chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
+    $max = strlen($chars) - 1;
+    $password = '';
+
+    for ($i = 0; $i < $length; $i++) {
+        $password .= $chars[random_int(0, $max)];
+    }
+
+    return $password;
+}
+
+function find_student_by_id(array $students, string $studentId): ?array
+{
+    foreach ($students as $student) {
+        if ((string) ($student['id'] ?? '') === $studentId) {
+            return (array) $student;
+        }
+    }
+    return null;
+}
+
+function find_student_account(array $accounts, string $studentId): ?array
+{
+    foreach ($accounts as $account) {
+        if ((string) ($account['student_id'] ?? '') === $studentId) {
+            return (array) $account;
+        }
+    }
+    return null;
+}
+
+function ensure_student_account(string $studentId, array $students, array &$accounts, string $accountsFile): ?array
+{
+    if ($studentId === '') {
+        return null;
+    }
+
+    foreach ($accounts as $account) {
+        if ((string) ($account['student_id'] ?? '') === $studentId) {
+            return $account;
+        }
+    }
+
+    $student = find_student_by_id($students, $studentId);
+    if (!$student) {
+        return null;
+    }
+
+    $username = generate_student_username($student, $accounts);
+    $tempPassword = generate_temp_password(10);
+
+    $newAccount = [
+        'id' => uniqid('stu_acc_'),
+        'student_id' => $studentId,
+        'student_name' => (string) ($student['name'] ?? 'Estudiante'),
+        'username' => $username,
+        'password_hash' => password_hash($tempPassword, PASSWORD_DEFAULT),
+        'temp_password' => $tempPassword,
+        'must_change_password' => true,
+        'created_at' => date('c'),
+        'updated_at' => date('c'),
+    ];
+
+    $accounts[] = $newAccount;
+    save_json_file($accountsFile, $accounts);
+
+    return $newAccount;
+}
+
 /* ===============================
    DB CATÁLOGO INGLÉS
-   english_levels = NIVEL
-   english_phases = FASE
-   units          = UNIDAD
 =============================== */
 function load_english_catalog_from_database(): array
 {
@@ -263,7 +370,7 @@ if (isset($_GET['delete']) && $_GET['delete'] !== '') {
         return (string) ($row['id'] ?? '') !== $deleteId;
     }));
 
-    save_student_assignments($studentAssignmentsFile, $studentAssignments);
+    save_json_file($studentAssignmentsFile, $studentAssignments);
     header('Location: student_assignments.php?saved=1');
     exit;
 }
@@ -342,6 +449,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if ($isValid) {
+        $studentAccount = ensure_student_account($studentId, $students, $studentAccounts, $studentAccountsFile);
+
         $record = [
             'id' => $editId !== '' ? $editId : uniqid('stu_assign_'),
             'student_id' => $studentId,
@@ -351,6 +460,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'level_id' => $levelId,
             'period' => $levelId,
             'unit_id' => $unitId,
+            'student_username' => (string) ($studentAccount['username'] ?? ''),
+            'student_temp_password' => (string) ($studentAccount['temp_password'] ?? ''),
             'updated_at' => date('c'),
         ];
 
@@ -367,7 +478,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $studentAssignments[] = $record;
         }
 
-        save_student_assignments($studentAssignmentsFile, $studentAssignments);
+        save_json_file($studentAssignmentsFile, $studentAssignments);
         header('Location: student_assignments.php?saved=1');
         exit;
     }
@@ -400,87 +511,98 @@ if (!isset($programOptions[$selectedProgram])) {
     <title>Asignaciones de estudiantes</title>
     <style>
         :root{
-            --bg:#edf2f8;
+            --bg:#eef2f7;
             --card:#ffffff;
-            --line:#d7e0ec;
-            --text:#163152;
-            --muted:#70809a;
-            --head:#eef4ff;
-            --blue:#2f66dd;
-            --purple:#5c39e6;
-            --danger:#c62828;
-            --shadow:0 10px 24px rgba(33,50,77,.08);
+            --line:#dce4f0;
+            --text:#1f2937;
+            --title:#1f3c75;
+            --subtitle:#2c3e50;
+            --muted:#5b6577;
+            --head:#f7faff;
+            --blue:#1f66cc;
+            --blue-hover:#2f5bb5;
+            --badge-bg:#eef2ff;
+            --badge-text:#1f4ec9;
+            --danger:#dc2626;
+            --shadow:0 8px 24px rgba(0,0,0,.08);
         }
 
         *{ box-sizing:border-box; }
 
         body{
             margin:0;
-            font-family:"Segoe UI", Arial, sans-serif;
+            font-family:Arial, sans-serif;
             background:var(--bg);
             color:var(--text);
+            padding:30px;
         }
 
         .page{
-            max-width:1160px;
-            margin:18px auto 28px;
-            padding:0 16px;
+            max-width:1100px;
+            margin:0 auto;
         }
 
         .back{
             display:inline-block;
-            margin:4px 0 14px;
+            margin-bottom:16px;
             text-decoration:none;
-            color:#2f66dd;
+            color:var(--blue);
             font-weight:700;
             font-size:14px;
+        }
+
+        .page-title{
+            font-size:28px;
+            font-weight:700;
+            color:var(--title);
+            margin:0 0 18px;
         }
 
         .notice{
             background:#ecfdf3;
             border:1px solid #b9eacb;
             color:#166534;
-            border-radius:12px;
-            padding:11px 14px;
-            margin-bottom:14px;
+            border-radius:14px;
+            padding:12px 14px;
+            margin-bottom:18px;
+            box-shadow:var(--shadow);
         }
 
-        .layout{
-            display:grid;
-            grid-template-columns:1.05fr .95fr;
-            gap:14px;
-            align-items:start;
+        .stack{
+            display:flex;
+            flex-direction:column;
+            gap:18px;
         }
 
         .card{
             background:var(--card);
             border:1px solid var(--line);
-            border-radius:18px;
+            border-radius:14px;
             box-shadow:var(--shadow);
             overflow:hidden;
         }
 
         .card-header{
-            padding:14px 18px;
+            padding:16px 20px;
             border-bottom:1px solid var(--line);
             background:#fafcff;
         }
 
         .card-header h2{
             margin:0;
-            font-size:17px;
-            font-weight:800;
-            color:#163152;
+            font-size:22px;
+            font-weight:600;
+            color:var(--subtitle);
         }
 
         .card-body{
-            padding:16px;
+            padding:20px;
         }
 
         .form-grid{
             display:grid;
             grid-template-columns:repeat(2, minmax(0, 1fr));
-            gap:12px 12px;
+            gap:14px;
         }
 
         .field{
@@ -495,29 +617,29 @@ if (!isset($programOptions[$selectedProgram])) {
 
         label{
             font-size:12px;
-            font-weight:800;
-            color:#163152;
+            font-weight:700;
+            color:var(--text);
+            margin:0 0 8px;
             text-transform:uppercase;
-            margin:0 0 7px;
             letter-spacing:.2px;
         }
 
-        select, button{
+        select,
+        input,
+        button{
             width:100%;
-            min-height:34px;
-            border-radius:9px;
-            border:1px solid #bccbe0;
+            min-height:42px;
+            border-radius:10px;
+            border:1px solid #c7d3e3;
             background:#fff;
-            color:#173152;
-            padding:7px 11px;
+            color:var(--text);
+            padding:10px 12px;
             font-size:14px;
         }
 
-        select{
-            appearance:auto;
-        }
-
-        select:focus, button:focus{
+        select:focus,
+        input:focus,
+        button:focus{
             outline:none;
             border-color:#7d9dff;
             box-shadow:0 0 0 3px rgba(70,96,220,.10);
@@ -525,11 +647,16 @@ if (!isset($programOptions[$selectedProgram])) {
 
         .button-primary{
             border:none;
+            background:var(--blue);
             color:#fff;
-            font-weight:800;
+            font-weight:700;
+            font-size:14px;
             cursor:pointer;
-            background:linear-gradient(90deg, var(--blue), var(--purple));
-            min-height:40px;
+            transition:background .2s ease;
+        }
+
+        .button-primary:hover{
+            background:var(--blue-hover);
         }
 
         .hint{
@@ -539,77 +666,48 @@ if (!isset($programOptions[$selectedProgram])) {
         }
 
         .hint a{
-            color:#2f66dd;
+            color:var(--blue);
             text-decoration:none;
             font-weight:700;
         }
 
         .table-wrap{
             width:100%;
-            max-width:100%;
             border:1px solid var(--line);
             border-radius:14px;
             background:#fff;
-            padding:10px;
             overflow:hidden;
         }
 
         .table-scroll{
             width:100%;
-            max-width:100%;
             overflow-x:auto;
-            overflow-y:hidden;
         }
 
         table{
             width:100%;
-            min-width:760px;
+            min-width:1100px;
             border-collapse:separate;
             border-spacing:0;
-            table-layout:auto;
         }
 
         thead th{
             background:var(--head);
-            color:#173152;
+            color:var(--text);
             font-size:12px;
-            font-weight:800;
+            font-weight:700;
             text-transform:uppercase;
-            letter-spacing:.2px;
+            padding:12px 12px;
             text-align:left;
-            padding:10px 10px;
-            white-space:normal;
-            word-break:break-word;
-            line-height:1.2;
-        }
-
-        thead th:first-child{
-            border-top-left-radius:12px;
-            border-bottom-left-radius:12px;
-            padding-left:14px;
-        }
-
-        thead th:last-child{
-            border-top-right-radius:12px;
-            border-bottom-right-radius:12px;
-            padding-right:14px;
+            white-space:nowrap;
         }
 
         tbody td{
-            padding:10px 10px;
-            border-bottom:1px solid #e7edf6;
+            padding:12px;
+            border-bottom:1px solid #e8eef6;
             font-size:14px;
-            color:#27415f;
+            color:var(--text);
             vertical-align:top;
-            background:#fff;
-        }
-
-        tbody td:first-child{
-            padding-left:14px;
-        }
-
-        tbody td:last-child{
-            padding-right:14px;
         }
 
         tbody tr:last-child td{
@@ -620,11 +718,30 @@ if (!isset($programOptions[$selectedProgram])) {
             display:inline-block;
             padding:4px 8px;
             border-radius:999px;
-            background:#eef4ff;
-            color:#2f66dd;
+            background:var(--badge-bg);
+            color:var(--badge-text);
             font-size:12px;
             font-weight:700;
             white-space:nowrap;
+        }
+
+        .credential-box{
+            display:flex;
+            flex-direction:column;
+            gap:4px;
+        }
+
+        .credential-chip{
+            display:inline-block;
+            padding:4px 8px;
+            border-radius:999px;
+            background:#f3f6fb;
+            color:#324968;
+            font-size:12px;
+            font-weight:700;
+            width:max-content;
+            max-width:100%;
+            word-break:break-word;
         }
 
         .actions{
@@ -637,7 +754,7 @@ if (!isset($programOptions[$selectedProgram])) {
         }
 
         .actions a:first-child{
-            color:#2f66dd;
+            color:var(--blue);
         }
 
         .actions a:last-child{
@@ -648,31 +765,42 @@ if (!isset($programOptions[$selectedProgram])) {
             color:var(--muted);
         }
 
-        @media (max-width: 980px){
-            .layout{
-                grid-template-columns:1fr;
+        @media (max-width: 768px){
+            body{
+                padding:20px;
             }
-        }
 
-        @media (max-width: 700px){
+            .page-title{
+                font-size:24px;
+            }
+
+            .card-header h2{
+                font-size:20px;
+            }
+
             .form-grid{
                 grid-template-columns:1fr;
+            }
+
+            .button-primary{
+                font-size:12px;
             }
         }
     </style>
 </head>
 <body>
 <main class="page">
-   <a class="back" href="../admin/dashboard.php">← Volver al dashboard</a>
+    <a class="back" href="../admin/dashboard.php">← Volver al dashboard</a>
+    <h1 class="page-title">Asignaciones de estudiantes</h1>
 
     <?php if (isset($_GET['saved'])): ?>
         <div class="notice">Guardado correctamente.</div>
     <?php endif; ?>
 
-    <div class="layout">
+    <div class="stack">
         <section class="card">
             <div class="card-header">
-                <h2>🎓 Asignaciones de estudiantes</h2>
+                <h2>🎓 Crear o editar asignación</h2>
             </div>
 
             <div class="card-body">
@@ -683,7 +811,7 @@ if (!isset($programOptions[$selectedProgram])) {
                         <div class="field">
                             <label for="student_id">Estudiante</label>
                             <select name="student_id" id="student_id" required>
-                                <option value="">Seleccionar...</option>
+                                <option value="">Seleccionar estudiante...</option>
                                 <?php foreach ($students as $student): ?>
                                     <?php $sid = (string) ($student['id'] ?? ''); ?>
                                     <option value="<?= h($sid) ?>" <?= $sid === (string) ($editRecord['student_id'] ?? '') ? 'selected' : '' ?>>
@@ -696,7 +824,7 @@ if (!isset($programOptions[$selectedProgram])) {
                         <div class="field">
                             <label for="teacher_id">Docente</label>
                             <select name="teacher_id" id="teacher_id" required>
-                                <option value="">Seleccionar...</option>
+                                <option value="">Seleccionar docente...</option>
                                 <?php foreach ($teachers as $teacher): ?>
                                     <?php $tid = (string) ($teacher['id'] ?? ''); ?>
                                     <option value="<?= h($tid) ?>" <?= $tid === (string) ($editRecord['teacher_id'] ?? '') ? 'selected' : '' ?>>
@@ -741,12 +869,12 @@ if (!isset($programOptions[$selectedProgram])) {
                         <div class="field" id="unitField">
                             <label for="unit_id">Unidad</label>
                             <select name="unit_id" id="unit_id" required>
-                                <option value="">Seleccionar...</option>
+                                <option value="">Seleccionar unidad...</option>
                             </select>
                         </div>
 
                         <div class="field full">
-                            <button class="button-primary" type="submit">Guardar asignación</button>
+                            <button class="button-primary" type="submit">Guardar asignación y crear acceso del estudiante</button>
                         </div>
                     </div>
                 </form>
@@ -765,6 +893,8 @@ if (!isset($programOptions[$selectedProgram])) {
                             <thead>
                                 <tr>
                                     <th>Estudiante</th>
+                                    <th>Usuario</th>
+                                    <th>Password temporal</th>
                                     <th>Docente</th>
                                     <th>Programa</th>
                                     <th>Nivel / Semestre</th>
@@ -776,7 +906,7 @@ if (!isset($programOptions[$selectedProgram])) {
                             <tbody>
                             <?php if (empty($studentAssignments)): ?>
                                 <tr>
-                                    <td colspan="7" class="muted">No hay asignaciones registradas.</td>
+                                    <td colspan="9" class="muted">No hay asignaciones registradas.</td>
                                 </tr>
                             <?php else: ?>
                                 <?php foreach ($studentAssignments as $row): ?>
@@ -795,9 +925,32 @@ if (!isset($programOptions[$selectedProgram])) {
                                     $unitName = $isEnglish
                                         ? find_name_by_id($englishUnits, (string) ($row['unit_id'] ?? ''), 'N/D')
                                         : find_name_by_id($technicalUnits, (string) ($row['unit_id'] ?? ''), 'N/D');
+
+                                    $studentIdRow = (string) ($row['student_id'] ?? '');
+                                    $account = find_student_account($studentAccounts, $studentIdRow);
+                                    $username = (string) ($account['username'] ?? $row['student_username'] ?? '');
+                                    $tempPassword = (string) ($account['temp_password'] ?? $row['student_temp_password'] ?? '');
                                     ?>
                                     <tr>
-                                        <td><?= h(find_name_by_id($students, (string) ($row['student_id'] ?? ''), 'N/D')) ?></td>
+                                        <td><?= h(find_name_by_id($students, $studentIdRow, 'N/D')) ?></td>
+                                        <td>
+                                            <?php if ($username !== ''): ?>
+                                                <div class="credential-box">
+                                                    <span class="credential-chip"><?= h($username) ?></span>
+                                                </div>
+                                            <?php else: ?>
+                                                <span class="muted">Sin crear</span>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td>
+                                            <?php if ($tempPassword !== ''): ?>
+                                                <div class="credential-box">
+                                                    <span class="credential-chip"><?= h($tempPassword) ?></span>
+                                                </div>
+                                            <?php else: ?>
+                                                <span class="muted">No disponible</span>
+                                            <?php endif; ?>
+                                        </td>
                                         <td><?= h(find_name_by_id($teachers, (string) ($row['teacher_id'] ?? ''), 'N/D')) ?></td>
                                         <td><span class="program-badge"><?= h($programOptions[$program] ?? 'Programa Técnico') ?></span></td>
                                         <td><?= h($courseName) ?></td>
