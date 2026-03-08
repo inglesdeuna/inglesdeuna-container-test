@@ -288,25 +288,86 @@ function ensure_student_account(string $studentId, array $students, array &$acco
 /* ===============================
    DB CATÁLOGO TÉCNICO
 =============================== */
-$technicalSemesters = !empty($technicalSemestersDb) ? $technicalSemestersDb : $technicalSemestersJson;
-$technicalUnits = !empty($technicalUnitsDb) ? $technicalUnitsDb : $technicalUnitsJson;
-
-// Respaldo extra: si no hay semestres pero sí hay unidades, construir semestres desde las unidades
-if (empty($technicalSemesters) && !empty($technicalUnits)) {
-    $seen = [];
-    foreach ($technicalUnits as $unit) {
-        $semesterId = (string) ($unit['course_id'] ?? $unit['level_id'] ?? '');
-        if ($semesterId === '' || isset($seen[$semesterId])) {
-            continue;
-        }
-
-        $seen[$semesterId] = true;
-        $technicalSemesters[] = [
-            'id' => $semesterId,
-            'name' => 'SEMESTRE ' . $semesterId,
-        ];
+function load_technical_catalog_from_database(): array
+{
+    if (!getenv('DATABASE_URL')) {
+        return [[], []];
     }
+
+    $dbFile = __DIR__ . '/../config/db.php';
+    if (!file_exists($dbFile)) {
+        return [[], []];
+    }
+
+    require $dbFile;
+
+    if (!isset($pdo) || !($pdo instanceof PDO)) {
+        return [[], []];
+    }
+
+    try {
+        $semestersStmt = $pdo->query("
+            SELECT id, name, program_id
+            FROM courses
+            WHERE
+                LOWER(COALESCE(program_id, '')) IN (
+                    'prog_technical',
+                    'technical',
+                    'prog_tecnico',
+                    'tecnico',
+                    'programa_tecnico'
+                )
+                OR LOWER(COALESCE(name, '')) LIKE '%semestre%'
+            ORDER BY name ASC, id ASC
+        ");
+        $semestersRaw = $semestersStmt->fetchAll(PDO::FETCH_ASSOC);
+
+        $unitsStmt = $pdo->query("
+            SELECT u.id, u.name, u.course_id
+            FROM units u
+            INNER JOIN courses c ON c.id = u.course_id
+            WHERE
+                LOWER(COALESCE(c.program_id, '')) IN (
+                    'prog_technical',
+                    'technical',
+                    'prog_tecnico',
+                    'tecnico',
+                    'programa_tecnico'
+                )
+                OR LOWER(COALESCE(c.name, '')) LIKE '%semestre%'
+            ORDER BY u.course_id ASC, u.created_at ASC, u.id ASC
+        ");
+        $unitsRaw = $unitsStmt->fetchAll(PDO::FETCH_ASSOC);
+    } catch (Throwable $e) {
+        return [[], []];
+    }
+
+    $technicalSemesters = array_map(function ($row) {
+        return [
+            'id' => (string) ($row['id'] ?? ''),
+            'name' => (string) ($row['name'] ?? ''),
+        ];
+    }, is_array($semestersRaw) ? $semestersRaw : []);
+
+    $technicalUnits = array_map(function ($row) {
+        return [
+            'id' => (string) ($row['id'] ?? ''),
+            'course_id' => (string) ($row['course_id'] ?? ''),
+            'name' => (string) ($row['name'] ?? ''),
+        ];
+    }, is_array($unitsRaw) ? $unitsRaw : []);
+
+    $technicalSemesters = array_values(array_filter($technicalSemesters, function ($r) {
+        return (string) ($r['id'] ?? '') !== '';
+    }));
+
+    $technicalUnits = array_values(array_filter($technicalUnits, function ($r) {
+        return (string) ($r['id'] ?? '') !== '';
+    }));
+
+    return [$technicalSemesters, $technicalUnits];
 }
+
 /* ===============================
    DB CATÁLOGO INGLÉS
 =============================== */
@@ -328,13 +389,26 @@ function load_english_catalog_from_database(): array
     }
 
     try {
-        $levelsStmt = $pdo->query("\n            SELECT id, name\n            FROM english_levels\n            ORDER BY id ASC\n        ");
+        $levelsStmt = $pdo->query("
+            SELECT id, name
+            FROM english_levels
+            ORDER BY id ASC
+        ");
         $levels = $levelsStmt->fetchAll(PDO::FETCH_ASSOC);
 
-        $phasesStmt = $pdo->query("\n            SELECT id, level_id, name\n            FROM english_phases\n            ORDER BY level_id ASC, created_at ASC, id ASC\n        ");
+        $phasesStmt = $pdo->query("
+            SELECT id, level_id, name
+            FROM english_phases
+            ORDER BY level_id ASC, created_at ASC, id ASC
+        ");
         $phases = $phasesStmt->fetchAll(PDO::FETCH_ASSOC);
 
-        $unitsStmt = $pdo->query("\n            SELECT u.id, u.name, u.phase_id, p.level_id\n            FROM units u\n            INNER JOIN english_phases p ON p.id = u.phase_id\n            ORDER BY p.level_id ASC, u.phase_id ASC, u.id ASC\n        ");
+        $unitsStmt = $pdo->query("
+            SELECT u.id, u.name, u.phase_id, p.level_id
+            FROM units u
+            INNER JOIN english_phases p ON p.id = u.phase_id
+            ORDER BY p.level_id ASC, u.phase_id ASC, u.id ASC
+        ");
         $unitsRaw = $unitsStmt->fetchAll(PDO::FETCH_ASSOC);
     } catch (Throwable $e) {
         return [[], [], [], false];
@@ -420,6 +494,22 @@ $technicalSemestersJson = normalize_technical_courses($technicalCoursesRaw, $tec
 
 $technicalSemesters = !empty($technicalSemestersDb) ? $technicalSemestersDb : $technicalSemestersJson;
 $technicalUnits = !empty($technicalUnitsDb) ? $technicalUnitsDb : $technicalUnitsJson;
+
+if (empty($technicalSemesters) && !empty($technicalUnits)) {
+    $seen = [];
+    foreach ($technicalUnits as $unit) {
+        $semesterId = (string) ($unit['course_id'] ?? $unit['level_id'] ?? '');
+        if ($semesterId === '' || isset($seen[$semesterId])) {
+            continue;
+        }
+
+        $seen[$semesterId] = true;
+        $technicalSemesters[] = [
+            'id' => $semesterId,
+            'name' => 'SEMESTRE ' . $semesterId,
+        ];
+    }
+}
 
 $englishLevels = $englishLevelsDb;
 $englishPhases = $englishPhasesDb;
@@ -792,4 +882,3 @@ refreshForm(true);
 </script>
 </body>
 </html>
-                                   
