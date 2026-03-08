@@ -96,14 +96,14 @@ body { margin:0; font-family:"Segoe UI",Arial,sans-serif; background:var(--page-
 
   <section class="grid-two">
     <article class="card">
-      <h2>👩‍🏫 Docentes</h2>
+      <h2>👩‍🏫 Docentes y grupos (nuevo)</h2>
       <p>Gestiona el flujo en dos pasos: primero inscripción y luego asignaciones.</p>
       <a class="btn btn-blue" href="../academic/teacher_enrollments.php">Inscripciones</a>
       <a class="btn btn-green" href="../academic/teacher_profiles.php">Asignaciones</a>
     </article>
 
     <article class="card">
-      <h2>🎓 Estudiantes</h2>
+      <h2>🎓 Perfiles estudiante (usuario/password)</h2>
       <p>Gestiona el flujo en dos pasos: primero inscripción y luego asignaciones.</p>
       <a class="btn btn-purple" href="../academic/student_enrollments.php">Inscripciones</a>
       <a class="btn btn-pink" href="../academic/student_assignments.php">Asignaciones</a>
