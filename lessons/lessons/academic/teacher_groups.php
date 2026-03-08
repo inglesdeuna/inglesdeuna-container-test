@@ -137,6 +137,7 @@ usort($teacherCards, fn($a, $b) => strcasecmp((string) ($a['name'] ?? ''), (stri
 <title>Docentes y Grupos</title>
 <style>
 /* Estilo general */
+    
 body {
   margin: 0;
   padding: 20px;
