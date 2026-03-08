@@ -9,14 +9,14 @@ session_start();
 if (!isset($_SESSION['student_logged']) || $_SESSION['student_logged'] !== true) {
     header("Location: ../student/login.php");
     exit;
-}
+$coursesFile  = __DIR__ . "/../courses.json";
+$studentsFile = __DIR__ . "/../data/students.json";
+$unitsFile    = __DIR__ . "/../units.json";
 
-$studentId   = $_SESSION['student_id']   ?? null;
-$studentName = $_SESSION['student_name'] ?? 'Estudiante';
-
-/* ==========================
-   DATA
-   ========================== */
+/* CARGAR DATOS */
+$courses  = file_exists($coursesFile)  ? json_decode(file_get_contents($coursesFile), true)  : [];
+$students = file_exists($studentsFile) ? json_decode(file_get_contents($studentsFile), true) : [];
+$units    = file_exists($unitsFile)    ? json_decode(file_get_contents($unitsFile), true)    : [];
 $baseDir = dirname(__DIR__) . "/admin/data";
 
 $assignmentsFile = $baseDir . "/assignments.json";
