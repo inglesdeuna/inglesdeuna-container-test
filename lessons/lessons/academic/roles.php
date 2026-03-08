@@ -12,39 +12,39 @@ if (
 
 /* ARCHIVOS */
 $coursesFile = dirname(__DIR__) . "/academic/courses.json";
-$teachersFile = __DIR__ . "/teachers.json";
-$studentsFile = __DIR__ . "/students.json";
+$dataDir = __DIR__ . '/data';
+$teachersFile = $dataDir . '/teachers.json';
+$studentsFile = $dataDir . '/students.json';
+$legacyTeachersFile = __DIR__ . '/teachers.json';
+$legacyStudentsFile = __DIR__ . '/students.json';
+
+if (!is_dir($dataDir)) {
+  mkdir($dataDir, 0777, true);
+}
+
+if (!file_exists($teachersFile) && file_exists($legacyTeachersFile)) {
+  copy($legacyTeachersFile, $teachersFile);
+}
+
+if (!file_exists($studentsFile) && file_exists($legacyStudentsFile)) {
+  copy($legacyStudentsFile, $studentsFile);
+}
+
+if (!file_exists($teachersFile)) {
+  file_put_contents($teachersFile, '[]');
+}
+
+if (!file_exists($studentsFile)) {
+  file_put_contents($studentsFile, '[]');
+}
 
 $courses  = file_exists($coursesFile)  ? json_decode(file_get_contents($coursesFile), true)  : [];
-$teachers = file_exists($teachersFile) ? json_decode(file_get_contents($teachersFile), true) : [];
-$students = file_exists($studentsFile) ? json_decode(file_get_contents($studentsFile), true) : [];
+$teachers = json_decode((string) file_get_contents($teachersFile), true);
+$students = json_decode((string) file_get_contents($studentsFile), true);
 
 if (!is_array($courses))  $courses = [];
 if (!is_array($teachers)) $teachers = [];
 if (!is_array($students)) $students = [];
-
-/* CURSO */
-$courseId = $_GET["course"] ?? null;
-if (!$courseId) die("Curso no especificado");
-
-$courseIndex = null;
-foreach ($courses as $i => $c) {
-  if (($c["id"] ?? null) === $courseId) {
-    $courseIndex = $i;
-    break;
-  }
-}
-if ($courseIndex === null) die("Curso no encontrado");
-
-$courses[$courseIndex]["students"] = $courses[$courseIndex]["students"] ?? [];
-$courses[$courseIndex]["teacher"]  = $courses[$courseIndex]["teacher"]  ?? null;
-
-/* ASIGNAR DOCENTE */
-if (isset($_POST["assign_teacher"])) {
-  $tid = $_POST["teacher_id"] ?? null;
-  if ($tid) {
-    $courses[$courseIndex]["teacher"] = [
-      "id" => $tid,
       "role" => "editor"
     ];
     file_put_contents($coursesFile, json_encode($courses, JSON_PRETTY_PRINT));
