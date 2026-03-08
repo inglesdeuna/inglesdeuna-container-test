@@ -129,41 +129,179 @@ usort($teacherCards, fn($a, $b) => strcasecmp((string) ($a['name'] ?? ''), (stri
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Docentes y Grupos</title>
 <style>
-body{margin:0;padding:30px;font-family:Arial,sans-serif;background:linear-gradient(180deg,#e9eef7,#e4e9f4);color:#203768}
-.wrapper{max-width:1050px;margin:0 auto}
-.back{display:inline-block;margin-bottom:18px;color:#fff;background:#2f66dd;text-decoration:none;font-weight:700;border-radius:10px;padding:10px 14px;box-shadow:0 8px 18px rgba(47,102,221,.32)}
-.title{text-align:center;margin:6px 0 26px;font-size:56px;color:#1f3c75}
-.panel{background:#f5f7fc;border:1px solid #d7dfef;border-radius:20px;padding:18px;box-shadow:0 12px 26px rgba(27,49,94,.12)}
-.teacher{background:#fff;border:1px solid #d6deee;border-radius:16px;margin-bottom:14px;overflow:hidden}
-.teacher:last-child{margin-bottom:0}
-.head{display:flex;justify-content:space-between;gap:16px;padding:20px 22px;align-items:flex-start}
-.name{margin:0;font-size:50px;font-weight:800;color:#1f3c75}
-.meta{margin-top:6px;display:block;font-size:24px;color:#4a5f86}
-.badges{margin-top:12px;display:flex;gap:10px;flex-wrap:wrap}
-.badge{display:inline-block;color:#fff;font-weight:800;border-radius:10px;padding:10px 18px;box-shadow:0 8px 16px rgba(45,99,201,.28);font-size:30px}
-.badge-1{background:linear-gradient(180deg,#4f89ec,#2f63c9)}
-.badge-2{background:linear-gradient(180deg,#8a7ef2,#6653cc)}
-.badge-3{background:linear-gradient(180deg,#f79448,#ee6e12)}
-.badge-4{background:linear-gradient(180deg,#4dbda0,#219b7b)}
-.right{display:flex;align-items:center;gap:12px}
-.view-btn{border:none;border-radius:10px;padding:10px 22px;font-size:34px;font-weight:800;color:#fff;background:linear-gradient(180deg,#4f89ec,#2f63c9);box-shadow:0 8px 16px rgba(47,102,221,.35);cursor:pointer}
-.toggle{border:none;background:none;color:#7a8fb6;font-size:34px;cursor:pointer;line-height:1}
-.body{display:none;background:#f3f6fd;border-top:1px solid #d6deee;padding:16px 22px 20px}
-.body.open{display:block}
-.body h3{margin:0 0 10px;font-size:30px;color:#213b72}
-ol{margin:0;padding-left:30px}
-li{font-size:28px;color:#304e80;padding:6px 0;border-bottom:1px solid #dce3f1}
-.empty{font-size:22px;color:#5a6f98;font-weight:600}
-@media (max-width:980px){
-  .title{font-size:34px}
-  .name{font-size:30px}
-  .meta{font-size:18px}
-  .badge,.view-btn{font-size:18px}
-  .head{flex-direction:column}
-  .right{width:100%;justify-content:flex-end}
-  .body h3{font-size:22px}
-  li{font-size:18px}
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Docentes y Grupos</title>
+<style>
+/* Estilo general */
+body {
+  margin: 0;
+  padding: 20px;
+  font-family: 'Segoe UI', Roboto, Arial, sans-serif;
+  background: #f4f6fb;
+  color: #2c3e50;
 }
+
+.wrapper {
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+/* Botón volver */
+.back {
+  display: inline-block;
+  margin-bottom: 20px;
+  color: #fff;
+  background: #3b6dd8;
+  text-decoration: none;
+  font-weight: 600;
+  border-radius: 6px;
+  padding: 8px 14px;
+  font-size: 14px;
+  transition: background .2s;
+}
+.back:hover { background: #2f5bb5; }
+
+/* Título */
+.title {
+  text-align: center;
+  margin: 10px 0 30px;
+  font-size: 28px;
+  font-weight: 700;
+  color: #1f3c75;
+}
+
+/* Panel */
+.panel {
+  background: #fff;
+  border: 1px solid #dce3f1;
+  border-radius: 10px;
+  padding: 20px;
+  box-shadow: 0 4px 12px rgba(0,0,0,.08);
+}
+
+/* Tarjeta docente */
+.teacher {
+  border: 1px solid #e0e6f0;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  overflow: hidden;
+  background: #fafbff;
+}
+.teacher:last-child { margin-bottom: 0; }
+
+.head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px;
+  align-items: center;
+}
+
+.name {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  color: #2c3e50;
+}
+
+.meta {
+  margin-top: 4px;
+  display: block;
+  font-size: 14px;
+  color: #6c7a92;
+}
+
+/* Badges */
+.badges {
+  margin-top: 8px;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.badge {
+  display: inline-block;
+  color: #fff;
+  font-weight: 600;
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 13px;
+}
+.badge-1 { background: #3b6dd8; }
+.badge-2 { background: #7a5de8; }
+.badge-3 { background: #f57c3d; }
+.badge-4 { background: #2fa88d; }
+
+/* Botones */
+.right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.view-btn, .toggle {
+  border: none;
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.view-btn {
+  background: #3b6dd8;
+  color: #fff;
+  transition: background .2s;
+}
+.view-btn:hover { background: #2f5bb5; }
+.toggle {
+  background: none;
+  color: #6c7a92;
+}
+
+/* Cuerpo desplegable */
+.body {
+  display: none;
+  background: #f9fbff;
+  border-top: 1px solid #e0e6f0;
+  padding: 14px 16px;
+}
+.body.open { display: block; }
+.body h3 {
+  margin: 0 0 10px;
+  font-size: 16px;
+  color: #2c3e50;
+}
+ol {
+  margin: 0;
+  padding-left: 20px;
+}
+li {
+  font-size: 14px;
+  color: #34495e;
+  padding: 4px 0;
+  border-bottom: 1px solid #e6ebf3;
+}
+.empty {
+  font-size: 13px;
+  color: #7a8fa8;
+  font-weight: 500;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .title { font-size: 22px; }
+  .name { font-size: 18px; }
+  .meta { font-size: 13px; }
+  .badge { font-size: 12px; }
+  .view-btn, .toggle { font-size: 12px; }
+  li { font-size: 13px; }
+}
+</style>
+</head>
+<body>
+
 </style>
 </head>
 <body>
