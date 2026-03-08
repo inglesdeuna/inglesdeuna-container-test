@@ -280,55 +280,68 @@ function ensure_student_account(string $studentId, array $students, array &$acco
 }
 
 /* ===============================
-   DB CATÁLOGO INGLÉS
+   DB CATÁLOGO TÉCNICO
 =============================== */
-function load_english_catalog_from_database(): array
+function load_technical_catalog_from_database(): array
 {
     if (!getenv('DATABASE_URL')) {
-        return [[], [], [], false];
+        return [[], []];
     }
 
     $dbFile = __DIR__ . '/../config/db.php';
     if (!file_exists($dbFile)) {
-        return [[], [], [], false];
+        return [[], []];
     }
 
     require $dbFile;
 
     if (!isset($pdo) || !($pdo instanceof PDO)) {
-        return [[], [], [], false];
+        return [[], []];
     }
 
     try {
-        $levelsStmt = $pdo->query("
+        $semestersStmt = $pdo->prepare("
             SELECT id, name
-            FROM english_levels
-            ORDER BY id ASC
+            FROM courses
+            WHERE program_id = :program
+            ORDER BY name ASC, id ASC
         ");
-        $levels = $levelsStmt->fetchAll(PDO::FETCH_ASSOC);
+        $semestersStmt->execute(['program' => 'prog_technical']);
+        $semestersRaw = $semestersStmt->fetchAll(PDO::FETCH_ASSOC);
 
-        $phasesStmt = $pdo->query("
-            SELECT id, level_id, name
-            FROM english_phases
-            ORDER BY level_id ASC, created_at ASC, id ASC
-        ");
-        $phases = $phasesStmt->fetchAll(PDO::FETCH_ASSOC);
-
-        $unitsStmt = $pdo->query("
-            SELECT
-                u.id,
-                u.name,
-                u.phase_id,
-                p.level_id
+        $unitsStmt = $pdo->prepare("
+            SELECT u.id, u.name, u.course_id
             FROM units u
-            INNER JOIN english_phases p ON p.id = u.phase_id
-            ORDER BY p.level_id ASC, u.phase_id ASC, u.id ASC
+            INNER JOIN courses c ON c.id = u.course_id
+            WHERE c.program_id = :program
+            ORDER BY u.course_id ASC, u.created_at ASC, u.id ASC
         ");
+        $unitsStmt->execute(['program' => 'prog_technical']);
         $unitsRaw = $unitsStmt->fetchAll(PDO::FETCH_ASSOC);
     } catch (Throwable $e) {
-        return [[], [], [], false];
+        return [[], []];
     }
 
+    $technicalSemesters = array_map(function ($row) {
+        return [
+            'id' => (string) ($row['id'] ?? ''),
+            'name' => (string) ($row['name'] ?? ''),
+        ];
+    }, is_array($semestersRaw) ? $semestersRaw : []);
+
+    $technicalUnits = array_map(function ($row) {
+        return [
+            'id' => (string) ($row['id'] ?? ''),
+            'course_id' => (string) ($row['course_id'] ?? ''),
+            'name' => (string) ($row['name'] ?? ''),
+        ];
+    }, is_array($unitsRaw) ? $unitsRaw : []);
+
+    $technicalSemesters = array_values(array_filter($technicalSemesters, fn($r) => (string) ($r['id'] ?? '') !== ''));
+    $technicalUnits = array_values(array_filter($technicalUnits, fn($r) => (string) ($r['id'] ?? '') !== ''));
+
+    return [$technicalSemesters, $technicalUnits];
+}
     $englishLevels = array_map(function ($row) {
         return [
             'id' => (string) ($row['id'] ?? ''),
@@ -379,14 +392,14 @@ if (isset($_GET['delete']) && $_GET['delete'] !== '') {
    CATÁLOGOS
 =============================== */
 [$englishLevelsDb, $englishPhasesDb, $englishUnitsDb, $englishFromDb] = load_english_catalog_from_database();
+[$technicalSemestersDb, $technicalUnitsDb] = load_technical_catalog_from_database();
 
 $technicalCoursesRaw = filter_courses_by_program($courses, 'technical');
-$technicalUnits = filter_units_by_program($units, 'technical');
-$technicalSemesters = normalize_technical_courses($technicalCoursesRaw, $technicalUnits);
+$technicalUnitsJson = filter_units_by_program($units, 'technical');
+$technicalSemestersJson = normalize_technical_courses($technicalCoursesRaw, $technicalUnitsJson);
 
-$englishLevels = $englishLevelsDb;
-$englishPhases = $englishPhasesDb;
-$englishUnits = $englishUnitsDb;
+$technicalSemesters = !empty($technicalSemestersDb) ? $technicalSemestersDb : $technicalSemestersJson;
+$technicalUnits = !empty($technicalUnitsDb) ? $technicalUnitsDb : $technicalUnitsJson;
 
 /* Fallbacks */
 if (empty($englishLevels)) {
