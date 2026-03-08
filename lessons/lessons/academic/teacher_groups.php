@@ -139,11 +139,10 @@ usort($teacherCards, fn($a, $b) => strcasecmp((string) ($a['name'] ?? ''), (stri
 /* Estilo general */
     
 body {
-  margin: 0;
-  padding: 20px;
-  font-family: 'Segoe UI', Roboto, Arial, sans-serif;
-  background: #e9f1fb; /* azul claro igual al resto de la interfaz */
-  color: #2c3e50;
+  font-family: Arial, sans-serif;
+  background: #eef2f7;   /* azul claro uniforme */
+  padding: 30px;
+  color: #1f2937;        /* gris oscuro para texto */
 }
 
 .wrapper {
