@@ -288,60 +288,25 @@ function ensure_student_account(string $studentId, array $students, array &$acco
 /* ===============================
    DB CATÁLOGO TÉCNICO
 =============================== */
-function load_technical_catalog_from_database(): array
-{
-    if (!getenv('DATABASE_URL')) {
-        return [[], []];
-    }
+$technicalSemesters = !empty($technicalSemestersDb) ? $technicalSemestersDb : $technicalSemestersJson;
+$technicalUnits = !empty($technicalUnitsDb) ? $technicalUnitsDb : $technicalUnitsJson;
 
-    $dbFile = __DIR__ . '/../config/db.php';
-    if (!file_exists($dbFile)) {
-        return [[], []];
-    }
+// Respaldo extra: si no hay semestres pero sí hay unidades, construir semestres desde las unidades
+if (empty($technicalSemesters) && !empty($technicalUnits)) {
+    $seen = [];
+    foreach ($technicalUnits as $unit) {
+        $semesterId = (string) ($unit['course_id'] ?? $unit['level_id'] ?? '');
+        if ($semesterId === '' || isset($seen[$semesterId])) {
+            continue;
+        }
 
-    require $dbFile;
-
-    if (!isset($pdo) || !($pdo instanceof PDO)) {
-        return [[], []];
-    }
-
-    try {
-        $semestersStmt = $pdo->prepare("\n            SELECT id, name\n            FROM courses\n            WHERE program_id = :program\n            ORDER BY name ASC, id ASC\n        ");
-        $semestersStmt->execute(['program' => 'prog_technical']);
-        $semestersRaw = $semestersStmt->fetchAll(PDO::FETCH_ASSOC);
-
-        $unitsStmt = $pdo->prepare("\n            SELECT u.id, u.name, u.course_id\n            FROM units u\n            INNER JOIN courses c ON c.id = u.course_id\n            WHERE c.program_id = :program\n            ORDER BY u.course_id ASC, u.created_at ASC, u.id ASC\n        ");
-        $unitsStmt->execute(['program' => 'prog_technical']);
-        $unitsRaw = $unitsStmt->fetchAll(PDO::FETCH_ASSOC);
-    } catch (Throwable $e) {
-        return [[], []];
-    }
-
-    $technicalSemesters = array_map(function ($row) {
-        return [
-            'id' => (string) ($row['id'] ?? ''),
-            'name' => (string) ($row['name'] ?? ''),
+        $seen[$semesterId] = true;
+        $technicalSemesters[] = [
+            'id' => $semesterId,
+            'name' => 'SEMESTRE ' . $semesterId,
         ];
-    }, is_array($semestersRaw) ? $semestersRaw : []);
-
-    $technicalUnits = array_map(function ($row) {
-        return [
-            'id' => (string) ($row['id'] ?? ''),
-            'course_id' => (string) ($row['course_id'] ?? ''),
-            'name' => (string) ($row['name'] ?? ''),
-        ];
-    }, is_array($unitsRaw) ? $unitsRaw : []);
-
-    $technicalSemesters = array_values(array_filter($technicalSemesters, function ($r) {
-        return (string) ($r['id'] ?? '') !== '';
-    }));
-    $technicalUnits = array_values(array_filter($technicalUnits, function ($r) {
-        return (string) ($r['id'] ?? '') !== '';
-    }));
-
-    return [$technicalSemesters, $technicalUnits];
+    }
 }
-
 /* ===============================
    DB CATÁLOGO INGLÉS
 =============================== */
