@@ -2,7 +2,7 @@
 session_start();
 
 if (!isset($_SESSION['admin_logged']) || $_SESSION['admin_logged'] !== true) {
-    header('Location: ../admin/login.php');
+    header('Location: ../admin/dashboard.php');
     exit;
 }
 
@@ -663,7 +663,7 @@ if (!isset($programOptions[$selectedProgram])) {
 </head>
 <body>
 <main class="page">
-    <a class="back" href="dashboard.php">← Volver al dashboard</a>
+   <a class="back" href="../admin/dashboard.php">← Volver al dashboard</a>
 
     <?php if (isset($_GET['saved'])): ?>
         <div class="notice">Guardado correctamente.</div>
