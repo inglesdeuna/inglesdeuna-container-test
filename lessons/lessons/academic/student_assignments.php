@@ -688,21 +688,21 @@ function load_technical_catalog_from_database(): array
     }
 
     try {
-        $semestersStmt = $pdo->query("
-            SELECT id, name, program_id
-            FROM courses
-            WHERE
-                LOWER(COALESCE(program_id, '')) IN (
-                    'prog_technical',
-                    'technical',
-                    'prog_tecnico',
-                    'tecnico',
-                    'programa_tecnico'
-                )
-                OR LOWER(COALESCE(name, '')) LIKE '%semestre%'
-            ORDER BY name ASC, id ASC
-        ");
-        $semestersRaw = $semestersStmt->fetchAll(PDO::FETCH_ASSOC);
+       $semestersStmt = $pdo->query("
+    SELECT id, name, program_id
+    FROM courses
+    WHERE
+        LOWER(COALESCE(program_id::text, '')) IN (
+            '1',
+            'prog_technical',
+            'technical',
+            'prog_tecnico',
+            'tecnico',
+            'programa_tecnico'
+        )
+        OR LOWER(COALESCE(name, '')) LIKE '%semestre%'
+    ORDER BY name ASC, id ASC
+");
 
        $unitsStmt = $pdo->query("
     SELECT u.id, u.name, u.course_id
