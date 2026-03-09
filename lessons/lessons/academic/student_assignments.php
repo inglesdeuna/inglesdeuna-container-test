@@ -64,6 +64,26 @@ function save_json_file(string $file, array $records): void
     );
 }
 
+function get_pdo_connection(): ?PDO
+{
+    if (!getenv('DATABASE_URL')) {
+        return null;
+    }
+
+    $dbFile = __DIR__ . '/../config/db.php';
+    if (!file_exists($dbFile)) {
+        return null;
+    }
+
+    require $dbFile;
+
+    if (!isset($pdo) || !($pdo instanceof PDO)) {
+        return null;
+    }
+
+    return $pdo;
+}
+
 function find_name_by_id(array $rows, string $id, string $fallback = 'N/D'): string
 {
     foreach ($rows as $row) {
@@ -286,22 +306,74 @@ function ensure_student_account(string $studentId, array $students, array &$acco
 }
 
 /* ===============================
+   DB ESTUDIANTES
+=============================== */
+function load_students_from_database(): array
+{
+    $pdo = get_pdo_connection();
+    if (!$pdo) {
+        return [];
+    }
+
+    try {
+        $stmt = $pdo->query("
+            SELECT id, name
+            FROM students
+            ORDER BY name ASC, id ASC
+        ");
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    } catch (Throwable $e) {
+        return [];
+    }
+
+    return array_values(array_filter(array_map(function ($row) {
+        return [
+            'id' => (string) ($row['id'] ?? ''),
+            'name' => (string) ($row['name'] ?? ''),
+        ];
+    }, is_array($rows) ? $rows : []), function ($row) {
+        return (string) ($row['id'] ?? '') !== '';
+    }));
+}
+
+/* ===============================
+   DB DOCENTES
+=============================== */
+function load_teachers_from_database(): array
+{
+    $pdo = get_pdo_connection();
+    if (!$pdo) {
+        return [];
+    }
+
+    try {
+        $stmt = $pdo->query("
+            SELECT id, name
+            FROM teachers
+            ORDER BY name ASC, id ASC
+        ");
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    } catch (Throwable $e) {
+        return [];
+    }
+
+    return array_values(array_filter(array_map(function ($row) {
+        return [
+            'id' => (string) ($row['id'] ?? ''),
+            'name' => (string) ($row['name'] ?? ''),
+        ];
+    }, is_array($rows) ? $rows : []), function ($row) {
+        return (string) ($row['id'] ?? '') !== '';
+    }));
+}
+
+/* ===============================
    DB CATÁLOGO TÉCNICO
 =============================== */
 function load_technical_catalog_from_database(): array
 {
-    if (!getenv('DATABASE_URL')) {
-        return [[], []];
-    }
-
-    $dbFile = __DIR__ . '/../config/db.php';
-    if (!file_exists($dbFile)) {
-        return [[], []];
-    }
-
-    require $dbFile;
-
-    if (!isset($pdo) || !($pdo instanceof PDO)) {
+    $pdo = get_pdo_connection();
+    if (!$pdo) {
         return [[], []];
     }
 
@@ -373,18 +445,8 @@ function load_technical_catalog_from_database(): array
 =============================== */
 function load_english_catalog_from_database(): array
 {
-    if (!getenv('DATABASE_URL')) {
-        return [[], [], [], false];
-    }
-
-    $dbFile = __DIR__ . '/../config/db.php';
-    if (!file_exists($dbFile)) {
-        return [[], [], [], false];
-    }
-
-    require $dbFile;
-
-    if (!isset($pdo) || !($pdo instanceof PDO)) {
+    $pdo = get_pdo_connection();
+    if (!$pdo) {
         return [[], [], [], false];
     }
 
@@ -460,6 +522,9 @@ ensure_data_files($baseDir, [
     $studentAccountsFile,
 ]);
 
+/* ===============================
+   CARGA PRINCIPAL
+=============================== */
 $studentsJson = load_json_array($studentsFile);
 $teachersJson = load_json_array($teachersFile);
 
@@ -489,81 +554,6 @@ if (isset($_GET['delete']) && $_GET['delete'] !== '') {
     exit;
 }
 
-function load_students_from_database(): array
-{
-    if (!getenv('DATABASE_URL')) {
-        return [];
-    }
-
-    $dbFile = __DIR__ . '/../config/db.php';
-    if (!file_exists($dbFile)) {
-        return [];
-    }
-
-    require $dbFile;
-
-    if (!isset($pdo) || !($pdo instanceof PDO)) {
-        return [];
-    }
-
-    try {
-        $stmt = $pdo->query("
-            SELECT id, name
-            FROM students
-            ORDER BY name ASC, id ASC
-        ");
-        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    } catch (Throwable $e) {
-        return [];
-    }
-
-    return array_values(array_filter(array_map(function ($row) {
-        return [
-            'id' => (string) ($row['id'] ?? ''),
-            'name' => (string) ($row['name'] ?? ''),
-        ];
-    }, is_array($rows) ? $rows : []), function ($row) {
-        return (string) ($row['id'] ?? '') !== '';
-    }));
-}
-
-function load_teachers_from_database(): array
-{
-    if (!getenv('DATABASE_URL')) {
-        return [];
-    }
-
-    $dbFile = __DIR__ . '/../config/db.php';
-    if (!file_exists($dbFile)) {
-        return [];
-    }
-
-    require $dbFile;
-
-    if (!isset($pdo) || !($pdo instanceof PDO)) {
-        return [];
-    }
-
-    try {
-        $stmt = $pdo->query("
-            SELECT id, name
-            FROM teachers
-            ORDER BY name ASC, id ASC
-        ");
-        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    } catch (Throwable $e) {
-        return [];
-    }
-
-    return array_values(array_filter(array_map(function ($row) {
-        return [
-            'id' => (string) ($row['id'] ?? ''),
-            'name' => (string) ($row['name'] ?? ''),
-        ];
-    }, is_array($rows) ? $rows : []), function ($row) {
-        return (string) ($row['id'] ?? '') !== '';
-    }));
-}
 /* ===============================
    CATÁLOGOS
 =============================== */
