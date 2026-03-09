@@ -704,24 +704,22 @@ function load_technical_catalog_from_database(): array
         ");
         $semestersRaw = $semestersStmt->fetchAll(PDO::FETCH_ASSOC);
 
-        $unitsStmt = $pdo->query("
-            SELECT u.id, u.name, u.course_id
-            FROM units u
-            INNER JOIN courses c ON c.id = u.course_id
-            WHERE
-                LOWER(COALESCE(c.program_id, '')) IN (
-                    'prog_technical',
-                    'technical',
-                    'prog_tecnico',
-                    'tecnico',
-                    'programa_tecnico'
-                )
-                OR LOWER(COALESCE(c.name, '')) LIKE '%semestre%'
-            ORDER BY u.course_id ASC, u.id ASC
-        ");
-        $unitsRaw = $unitsStmt->fetchAll(PDO::FETCH_ASSOC);
-    } catch (Throwable $e) {
-        return [[], []];
+       $unitsStmt = $pdo->query("
+    SELECT u.id, u.name, u.course_id
+    FROM units u
+    INNER JOIN courses c ON c.id = u.course_id
+    WHERE
+        LOWER(COALESCE(c.program_id::text, '')) IN (
+            '1',
+            'prog_technical',
+            'technical',
+            'prog_tecnico',
+            'tecnico',
+            'programa_tecnico'
+        )
+        OR LOWER(COALESCE(c.name, '')) LIKE '%semestre%'
+    ORDER BY u.course_id ASC, u.id ASC
+");
     }
 
     $technicalSemesters = array_map(function ($row) {
