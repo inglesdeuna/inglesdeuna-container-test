@@ -70,6 +70,15 @@ function get_pdo_connection(): ?PDO
         return null;
     }
 
+    static $cachedPdo = null;
+    static $loaded = false;
+
+    if ($loaded) {
+        return $cachedPdo;
+    }
+
+    $loaded = true;
+
     $dbFile = __DIR__ . '/../config/db.php';
     if (!file_exists($dbFile)) {
         return null;
@@ -81,7 +90,8 @@ function get_pdo_connection(): ?PDO
         return null;
     }
 
-    return $pdo;
+    $cachedPdo = $pdo;
+    return $cachedPdo;
 }
 
 function find_name_by_id(array $rows, string $id, string $fallback = 'N/D'): string
@@ -256,55 +266,6 @@ function find_student_by_id(array $students, string $studentId): ?array
     return null;
 }
 
-function find_student_account(array $accounts, string $studentId): ?array
-{
-    foreach ($accounts as $account) {
-        if ((string) ($account['student_id'] ?? '') === $studentId) {
-            return (array) $account;
-        }
-    }
-
-    return null;
-}
-
-function ensure_student_account(string $studentId, array $students, array &$accounts, string $accountsFile): ?array
-{
-    if ($studentId === '') {
-        return null;
-    }
-
-    foreach ($accounts as $account) {
-        if ((string) ($account['student_id'] ?? '') === $studentId) {
-            return $account;
-        }
-    }
-
-    $student = find_student_by_id($students, $studentId);
-    if (!$student) {
-        return null;
-    }
-
-    $username = generate_student_username($student, $accounts);
-    $tempPassword = generate_temp_password(10);
-
-    $newAccount = [
-        'id' => uniqid('stu_acc_'),
-        'student_id' => $studentId,
-        'student_name' => (string) ($student['name'] ?? 'Estudiante'),
-        'username' => $username,
-        'password_hash' => password_hash($tempPassword, PASSWORD_DEFAULT),
-        'temp_password' => $tempPassword,
-        'must_change_password' => true,
-        'created_at' => date('c'),
-        'updated_at' => date('c'),
-    ];
-
-    $accounts[] = $newAccount;
-    save_json_file($accountsFile, $accounts);
-
-    return $newAccount;
-}
-
 /* ===============================
    DB ESTUDIANTES
 =============================== */
@@ -368,6 +329,238 @@ function load_teachers_from_database(): array
 }
 
 /* ===============================
+   DB CUENTAS ESTUDIANTES
+=============================== */
+function load_student_accounts_from_database(): array
+{
+    $pdo = get_pdo_connection();
+    if (!$pdo) {
+        return [];
+    }
+
+    try {
+        $stmt = $pdo->query("
+            SELECT id, student_id, student_name, username, password_hash, temp_password, must_change_password, created_at, updated_at
+            FROM student_accounts
+            ORDER BY created_at ASC NULLS LAST, id ASC
+        ");
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    } catch (Throwable $e) {
+        return [];
+    }
+
+    return array_values(array_filter(array_map(function ($row) {
+        return [
+            'id' => (string) ($row['id'] ?? ''),
+            'student_id' => (string) ($row['student_id'] ?? ''),
+            'student_name' => (string) ($row['student_name'] ?? ''),
+            'username' => (string) ($row['username'] ?? ''),
+            'password_hash' => (string) ($row['password_hash'] ?? ''),
+            'temp_password' => (string) ($row['temp_password'] ?? ''),
+            'must_change_password' => (bool) ($row['must_change_password'] ?? false),
+            'created_at' => (string) ($row['created_at'] ?? ''),
+            'updated_at' => (string) ($row['updated_at'] ?? ''),
+        ];
+    }, is_array($rows) ? $rows : []), function ($row) {
+        return (string) ($row['id'] ?? '') !== '';
+    }));
+}
+
+function save_student_account_to_database(array $account): bool
+{
+    $pdo = get_pdo_connection();
+    if (!$pdo) {
+        return false;
+    }
+
+    try {
+        $stmt = $pdo->prepare("
+            INSERT INTO student_accounts (
+                id, student_id, student_name, username, password_hash, temp_password, must_change_password, created_at, updated_at
+            ) VALUES (
+                :id, :student_id, :student_name, :username, :password_hash, :temp_password, :must_change_password, :created_at, :updated_at
+            )
+            ON CONFLICT (student_id) DO UPDATE SET
+                student_name = EXCLUDED.student_name,
+                username = EXCLUDED.username,
+                password_hash = EXCLUDED.password_hash,
+                temp_password = EXCLUDED.temp_password,
+                must_change_password = EXCLUDED.must_change_password,
+                updated_at = EXCLUDED.updated_at
+        ");
+
+        return $stmt->execute([
+            'id' => (string) ($account['id'] ?? ''),
+            'student_id' => (string) ($account['student_id'] ?? ''),
+            'student_name' => (string) ($account['student_name'] ?? ''),
+            'username' => (string) ($account['username'] ?? ''),
+            'password_hash' => (string) ($account['password_hash'] ?? ''),
+            'temp_password' => (string) ($account['temp_password'] ?? ''),
+            'must_change_password' => !empty($account['must_change_password']),
+            'created_at' => (string) ($account['created_at'] ?? date('Y-m-d H:i:s')),
+            'updated_at' => (string) ($account['updated_at'] ?? date('Y-m-d H:i:s')),
+        ]);
+    } catch (Throwable $e) {
+        return false;
+    }
+}
+
+function find_student_account(array $accounts, string $studentId): ?array
+{
+    foreach ($accounts as $account) {
+        if ((string) ($account['student_id'] ?? '') === $studentId) {
+            return (array) $account;
+        }
+    }
+
+    return null;
+}
+
+function ensure_student_account(string $studentId, array $students, array &$accounts, string $accountsFile): ?array
+{
+    if ($studentId === '') {
+        return null;
+    }
+
+    foreach ($accounts as $account) {
+        if ((string) ($account['student_id'] ?? '') === $studentId) {
+            return $account;
+        }
+    }
+
+    $student = find_student_by_id($students, $studentId);
+    if (!$student) {
+        return null;
+    }
+
+    $username = generate_student_username($student, $accounts);
+    $tempPassword = generate_temp_password(10);
+
+    $newAccount = [
+        'id' => uniqid('stu_acc_'),
+        'student_id' => $studentId,
+        'student_name' => (string) ($student['name'] ?? 'Estudiante'),
+        'username' => $username,
+        'password_hash' => password_hash($tempPassword, PASSWORD_DEFAULT),
+        'temp_password' => $tempPassword,
+        'must_change_password' => true,
+        'created_at' => date('Y-m-d H:i:s'),
+        'updated_at' => date('Y-m-d H:i:s'),
+    ];
+
+    $savedInDb = save_student_account_to_database($newAccount);
+
+    if (!$savedInDb) {
+        $accounts[] = $newAccount;
+        save_json_file($accountsFile, $accounts);
+    } else {
+        $accounts[] = $newAccount;
+    }
+
+    return $newAccount;
+}
+
+/* ===============================
+   DB ASIGNACIONES
+=============================== */
+function load_student_assignments_from_database(): array
+{
+    $pdo = get_pdo_connection();
+    if (!$pdo) {
+        return [];
+    }
+
+    try {
+        $stmt = $pdo->query("
+            SELECT id, student_id, teacher_id, program, course_id, level_id, period, unit_id, student_username, student_temp_password, updated_at
+            FROM student_assignments
+            ORDER BY updated_at DESC NULLS LAST, id DESC
+        ");
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    } catch (Throwable $e) {
+        return [];
+    }
+
+    return array_values(array_filter(array_map(function ($row) {
+        return [
+            'id' => (string) ($row['id'] ?? ''),
+            'student_id' => (string) ($row['student_id'] ?? ''),
+            'teacher_id' => (string) ($row['teacher_id'] ?? ''),
+            'program' => (string) ($row['program'] ?? ''),
+            'course_id' => (string) ($row['course_id'] ?? ''),
+            'level_id' => (string) ($row['level_id'] ?? ''),
+            'period' => (string) ($row['period'] ?? ''),
+            'unit_id' => (string) ($row['unit_id'] ?? ''),
+            'student_username' => (string) ($row['student_username'] ?? ''),
+            'student_temp_password' => (string) ($row['student_temp_password'] ?? ''),
+            'updated_at' => (string) ($row['updated_at'] ?? ''),
+        ];
+    }, is_array($rows) ? $rows : []), function ($row) {
+        return (string) ($row['id'] ?? '') !== '';
+    }));
+}
+
+function save_student_assignment_to_database(array $record): bool
+{
+    $pdo = get_pdo_connection();
+    if (!$pdo) {
+        return false;
+    }
+
+    try {
+        $stmt = $pdo->prepare("
+            INSERT INTO student_assignments (
+                id, student_id, teacher_id, program, course_id, level_id, period, unit_id, student_username, student_temp_password, updated_at
+            ) VALUES (
+                :id, :student_id, :teacher_id, :program, :course_id, :level_id, :period, :unit_id, :student_username, :student_temp_password, :updated_at
+            )
+            ON CONFLICT (id) DO UPDATE SET
+                student_id = EXCLUDED.student_id,
+                teacher_id = EXCLUDED.teacher_id,
+                program = EXCLUDED.program,
+                course_id = EXCLUDED.course_id,
+                level_id = EXCLUDED.level_id,
+                period = EXCLUDED.period,
+                unit_id = EXCLUDED.unit_id,
+                student_username = EXCLUDED.student_username,
+                student_temp_password = EXCLUDED.student_temp_password,
+                updated_at = EXCLUDED.updated_at
+        ");
+
+        return $stmt->execute([
+            'id' => (string) ($record['id'] ?? ''),
+            'student_id' => (string) ($record['student_id'] ?? ''),
+            'teacher_id' => (string) ($record['teacher_id'] ?? ''),
+            'program' => (string) ($record['program'] ?? ''),
+            'course_id' => (string) ($record['course_id'] ?? ''),
+            'level_id' => (string) ($record['level_id'] ?? ''),
+            'period' => (string) ($record['period'] ?? ''),
+            'unit_id' => (string) ($record['unit_id'] ?? ''),
+            'student_username' => (string) ($record['student_username'] ?? ''),
+            'student_temp_password' => (string) ($record['student_temp_password'] ?? ''),
+            'updated_at' => (string) ($record['updated_at'] ?? date('Y-m-d H:i:s')),
+        ]);
+    } catch (Throwable $e) {
+        return false;
+    }
+}
+
+function delete_student_assignment_from_database(string $id): bool
+{
+    $pdo = get_pdo_connection();
+    if (!$pdo || $id === '') {
+        return false;
+    }
+
+    try {
+        $stmt = $pdo->prepare("DELETE FROM student_assignments WHERE id = :id");
+        return $stmt->execute(['id' => $id]);
+    } catch (Throwable $e) {
+        return false;
+    }
+}
+
+/* ===============================
    DB CATÁLOGO TÉCNICO
 =============================== */
 function load_technical_catalog_from_database(): array
@@ -407,7 +600,7 @@ function load_technical_catalog_from_database(): array
                     'programa_tecnico'
                 )
                 OR LOWER(COALESCE(c.name, '')) LIKE '%semestre%'
-            ORDER BY u.course_id ASC, u.created_at ASC, u.id ASC
+            ORDER BY u.course_id ASC, u.id ASC
         ");
         $unitsRaw = $unitsStmt->fetchAll(PDO::FETCH_ASSOC);
     } catch (Throwable $e) {
@@ -461,7 +654,7 @@ function load_english_catalog_from_database(): array
         $phasesStmt = $pdo->query("
             SELECT id, level_id, name
             FROM english_phases
-            ORDER BY level_id ASC, created_at ASC, id ASC
+            ORDER BY level_id ASC, id ASC
         ");
         $phases = $phasesStmt->fetchAll(PDO::FETCH_ASSOC);
 
@@ -527,17 +720,21 @@ ensure_data_files($baseDir, [
 =============================== */
 $studentsJson = load_json_array($studentsFile);
 $teachersJson = load_json_array($teachersFile);
+$studentAssignmentsJson = load_json_array($studentAssignmentsFile);
+$studentAccountsJson = load_json_array($studentAccountsFile);
 
 $studentsDb = load_students_from_database();
 $teachersDb = load_teachers_from_database();
+$studentAssignmentsDb = load_student_assignments_from_database();
+$studentAccountsDb = load_student_accounts_from_database();
 
 $students = !empty($studentsDb) ? $studentsDb : $studentsJson;
 $teachers = !empty($teachersDb) ? $teachersDb : $teachersJson;
+$studentAssignments = !empty($studentAssignmentsDb) ? $studentAssignmentsDb : $studentAssignmentsJson;
+$studentAccounts = !empty($studentAccountsDb) ? $studentAccountsDb : $studentAccountsJson;
 
 $courses = load_json_array($coursesFile);
 $units = load_json_array($unitsFile);
-$studentAssignments = load_json_array($studentAssignmentsFile);
-$studentAccounts = load_json_array($studentAccountsFile);
 
 /* ===============================
    ELIMINAR
@@ -545,11 +742,15 @@ $studentAccounts = load_json_array($studentAccountsFile);
 if (isset($_GET['delete']) && $_GET['delete'] !== '') {
     $deleteId = (string) $_GET['delete'];
 
-    $studentAssignments = array_values(array_filter($studentAssignments, function ($row) use ($deleteId) {
-        return (string) ($row['id'] ?? '') !== $deleteId;
-    }));
+    $deletedInDb = delete_student_assignment_from_database($deleteId);
 
-    save_json_file($studentAssignmentsFile, $studentAssignments);
+    if (!$deletedInDb) {
+        $studentAssignments = array_values(array_filter($studentAssignments, function ($row) use ($deleteId) {
+            return (string) ($row['id'] ?? '') !== $deleteId;
+        }));
+        save_json_file($studentAssignmentsFile, $studentAssignments);
+    }
+
     header('Location: student_assignments.php?saved=1');
     exit;
 }
@@ -647,23 +848,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'unit_id' => $unitId,
             'student_username' => (string) ($studentAccount['username'] ?? ''),
             'student_temp_password' => (string) ($studentAccount['temp_password'] ?? ''),
-            'updated_at' => date('c'),
+            'updated_at' => date('Y-m-d H:i:s'),
         ];
 
-        $updated = false;
-        foreach ($studentAssignments as $index => $existing) {
-            if ((string) ($existing['id'] ?? '') === $record['id']) {
-                $studentAssignments[$index] = array_merge((array) $existing, $record);
-                $updated = true;
-                break;
+        $savedInDb = save_student_assignment_to_database($record);
+
+        if (!$savedInDb) {
+            $updated = false;
+            foreach ($studentAssignments as $index => $existing) {
+                if ((string) ($existing['id'] ?? '') === $record['id']) {
+                    $studentAssignments[$index] = array_merge((array) $existing, $record);
+                    $updated = true;
+                    break;
+                }
             }
+
+            if (!$updated) {
+                $studentAssignments[] = $record;
+            }
+
+            save_json_file($studentAssignmentsFile, $studentAssignments);
         }
 
-        if (!$updated) {
-            $studentAssignments[] = $record;
-        }
-
-        save_json_file($studentAssignmentsFile, $studentAssignments);
         header('Location: student_assignments.php?saved=1');
         exit;
     }
@@ -738,7 +944,9 @@ if (!isset($programOptions[$selectedProgram])) {
                             <select name="student_id" id="student_id" required>
                                 <option value="">Seleccionar estudiante...</option>
                                 <?php foreach ($students as $student): $sid = (string) ($student['id'] ?? ''); ?>
-                                    <option value="<?= h($sid) ?>" <?= $sid === (string) ($editRecord['student_id'] ?? '') ? 'selected' : '' ?>><?= h((string) ($student['name'] ?? 'Sin nombre')) ?></option>
+                                    <option value="<?= h($sid) ?>" <?= $sid === (string) ($editRecord['student_id'] ?? '') ? 'selected' : '' ?>>
+                                        <?= h((string) ($student['name'] ?? 'Sin nombre')) ?>
+                                    </option>
                                 <?php endforeach; ?>
                             </select>
                         </div>
@@ -748,7 +956,9 @@ if (!isset($programOptions[$selectedProgram])) {
                             <select name="teacher_id" id="teacher_id" required>
                                 <option value="">Seleccionar docente...</option>
                                 <?php foreach ($teachers as $teacher): $tid = (string) ($teacher['id'] ?? ''); ?>
-                                    <option value="<?= h($tid) ?>" <?= $tid === (string) ($editRecord['teacher_id'] ?? '') ? 'selected' : '' ?>><?= h((string) ($teacher['name'] ?? 'Sin nombre')) ?></option>
+                                    <option value="<?= h($tid) ?>" <?= $tid === (string) ($editRecord['teacher_id'] ?? '') ? 'selected' : '' ?>>
+                                        <?= h((string) ($teacher['name'] ?? 'Sin nombre')) ?>
+                                    </option>
                                 <?php endforeach; ?>
                             </select>
                         </div>
@@ -757,19 +967,25 @@ if (!isset($programOptions[$selectedProgram])) {
                             <label for="program">Programa</label>
                             <select name="program" id="program" required>
                                 <?php foreach ($programOptions as $key => $label): ?>
-                                    <option value="<?= h($key) ?>" <?= $key === $selectedProgram ? 'selected' : '' ?>><?= h($label) ?></option>
+                                    <option value="<?= h($key) ?>" <?= $key === $selectedProgram ? 'selected' : '' ?>>
+                                        <?= h($label) ?>
+                                    </option>
                                 <?php endforeach; ?>
                             </select>
                         </div>
 
                         <div class="field" id="courseField">
                             <label for="course_id" id="courseLabel">Semestre</label>
-                            <select name="course_id" id="course_id" required><option value="">Seleccionar...</option></select>
+                            <select name="course_id" id="course_id" required>
+                                <option value="">Seleccionar...</option>
+                            </select>
                         </div>
 
                         <div class="field" id="phaseField">
                             <label for="level_id">Fase</label>
-                            <select name="level_id" id="level_id"><option value="">Seleccionar fase...</option></select>
+                            <select name="level_id" id="level_id">
+                                <option value="">Seleccionar fase...</option>
+                            </select>
                             <div class="hint" id="englishHint">
                                 Configurar: <a href="english_structure_levels.php">Levels</a>
                                 <?php if ($englishFromDb && !empty($englishLevels)): ?>
@@ -780,7 +996,9 @@ if (!isset($programOptions[$selectedProgram])) {
 
                         <div class="field" id="unitField">
                             <label for="unit_id">Unidad</label>
-                            <select name="unit_id" id="unit_id" required><option value="">Seleccionar unidad...</option></select>
+                            <select name="unit_id" id="unit_id" required>
+                                <option value="">Seleccionar unidad...</option>
+                            </select>
                         </div>
 
                         <div class="field full">
@@ -794,46 +1012,68 @@ if (!isset($programOptions[$selectedProgram])) {
         <section class="card">
             <div class="card-header"><h2>📋 Asignaciones creadas</h2></div>
             <div class="card-body">
-                <div class="table-wrap"><div class="table-scroll">
-                    <table>
-                        <thead><tr><th>Estudiante</th><th>Usuario</th><th>Password temporal</th><th>Docente</th><th>Programa</th><th>Nivel / Semestre</th><th>Fase</th><th>Unidad</th><th>Acciones</th></tr></thead>
-                        <tbody>
-                        <?php if (empty($studentAssignments)): ?>
-                            <tr><td colspan="9" class="muted">No hay asignaciones registradas.</td></tr>
-                        <?php else: ?>
-                            <?php foreach ($studentAssignments as $row):
-                                $program = (string) ($row['program'] ?? 'technical');
-                                $isEnglish = $program === 'english';
-                                $courseName = $isEnglish
-                                    ? find_name_by_id($englishLevels, (string) ($row['course_id'] ?? ''), 'N/D')
-                                    : find_name_by_id($technicalSemesters, (string) ($row['course_id'] ?? ''), 'N/D');
-                                $phaseName = $isEnglish
-                                    ? find_name_by_id($englishPhases, (string) ($row['level_id'] ?? $row['period'] ?? ''), 'N/D')
-                                    : 'No aplica';
-                                $unitName = $isEnglish
-                                    ? find_name_by_id($englishUnits, (string) ($row['unit_id'] ?? ''), 'N/D')
-                                    : find_name_by_id($technicalUnits, (string) ($row['unit_id'] ?? ''), 'N/D');
-                                $studentIdRow = (string) ($row['student_id'] ?? '');
-                                $account = find_student_account($studentAccounts, $studentIdRow);
-                                $username = (string) ($account['username'] ?? $row['student_username'] ?? '');
-                                $tempPassword = (string) ($account['temp_password'] ?? $row['student_temp_password'] ?? '');
-                            ?>
+                <div class="table-wrap">
+                    <div class="table-scroll">
+                        <table>
+                            <thead>
                                 <tr>
-                                    <td><?= h(find_name_by_id($students, $studentIdRow, 'N/D')) ?></td>
-                                    <td><?= $username !== '' ? '<div class="credential-box"><span class="credential-chip">' . h($username) . '</span></div>' : '<span class="muted">Sin crear</span>' ?></td>
-                                    <td><?= $tempPassword !== '' ? '<div class="credential-box"><span class="credential-chip">' . h($tempPassword) . '</span></div>' : '<span class="muted">No disponible</span>' ?></td>
-                                    <td><?= h(find_name_by_id($teachers, (string) ($row['teacher_id'] ?? ''), 'N/D')) ?></td>
-                                    <td><span class="program-badge"><?= h($programOptions[$program] ?? 'Programa Técnico') ?></span></td>
-                                    <td><?= h($courseName) ?></td>
-                                    <td><?= h($phaseName) ?></td>
-                                    <td><?= h($unitName) ?></td>
-                                    <td class="actions"><a href="student_assignments.php?edit=<?= h((string) ($row['id'] ?? '')) ?>">Editar</a> | <a href="student_assignments.php?delete=<?= h((string) ($row['id'] ?? '')) ?>" onclick="return confirm('¿Eliminar asignación?')">Eliminar</a></td>
+                                    <th>Estudiante</th>
+                                    <th>Usuario</th>
+                                    <th>Password temporal</th>
+                                    <th>Docente</th>
+                                    <th>Programa</th>
+                                    <th>Nivel / Semestre</th>
+                                    <th>Fase</th>
+                                    <th>Unidad</th>
+                                    <th>Acciones</th>
                                 </tr>
-                            <?php endforeach; ?>
-                        <?php endif; ?>
-                        </tbody>
-                    </table>
-                </div></div>
+                            </thead>
+                            <tbody>
+                            <?php if (empty($studentAssignments)): ?>
+                                <tr><td colspan="9" class="muted">No hay asignaciones registradas.</td></tr>
+                            <?php else: ?>
+                                <?php foreach ($studentAssignments as $row):
+                                    $program = (string) ($row['program'] ?? 'technical');
+                                    $isEnglish = $program === 'english';
+
+                                    $courseName = $isEnglish
+                                        ? find_name_by_id($englishLevels, (string) ($row['course_id'] ?? ''), 'N/D')
+                                        : find_name_by_id($technicalSemesters, (string) ($row['course_id'] ?? ''), 'N/D');
+
+                                    $phaseName = $isEnglish
+                                        ? find_name_by_id($englishPhases, (string) ($row['level_id'] ?? $row['period'] ?? ''), 'N/D')
+                                        : 'No aplica';
+
+                                    $unitName = $isEnglish
+                                        ? find_name_by_id($englishUnits, (string) ($row['unit_id'] ?? ''), 'N/D')
+                                        : find_name_by_id($technicalUnits, (string) ($row['unit_id'] ?? ''), 'N/D');
+
+                                    $studentIdRow = (string) ($row['student_id'] ?? '');
+                                    $account = find_student_account($studentAccounts, $studentIdRow);
+                                    $username = (string) ($account['username'] ?? $row['student_username'] ?? '');
+                                    $tempPassword = (string) ($account['temp_password'] ?? $row['student_temp_password'] ?? '');
+                                ?>
+                                    <tr>
+                                        <td><?= h(find_name_by_id($students, $studentIdRow, 'N/D')) ?></td>
+                                        <td><?= $username !== '' ? '<div class="credential-box"><span class="credential-chip">' . h($username) . '</span></div>' : '<span class="muted">Sin crear</span>' ?></td>
+                                        <td><?= $tempPassword !== '' ? '<div class="credential-box"><span class="credential-chip">' . h($tempPassword) . '</span></div>' : '<span class="muted">No disponible</span>' ?></td>
+                                        <td><?= h(find_name_by_id($teachers, (string) ($row['teacher_id'] ?? ''), 'N/D')) ?></td>
+                                        <td><span class="program-badge"><?= h($programOptions[$program] ?? 'Programa Técnico') ?></span></td>
+                                        <td><?= h($courseName) ?></td>
+                                        <td><?= h($phaseName) ?></td>
+                                        <td><?= h($unitName) ?></td>
+                                        <td class="actions">
+                                            <a href="student_assignments.php?edit=<?= h((string) ($row['id'] ?? '')) ?>">Editar</a>
+                                            |
+                                            <a href="student_assignments.php?delete=<?= h((string) ($row['id'] ?? '')) ?>" onclick="return confirm('¿Eliminar asignación?')">Eliminar</a>
+                                        </td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
         </section>
     </div>
@@ -862,6 +1102,7 @@ const englishHint = document.getElementById('englishHint');
 
 function fillSelect(select, items, selectedValue, placeholder) {
     select.innerHTML = '';
+
     const first = document.createElement('option');
     first.value = '';
     first.textContent = placeholder;
@@ -871,9 +1112,11 @@ function fillSelect(select, items, selectedValue, placeholder) {
         const option = document.createElement('option');
         option.value = String(item.id ?? '');
         option.textContent = String(item.name ?? 'Sin nombre');
+
         if (String(option.value) === String(selectedValue || '')) {
             option.selected = true;
         }
+
         select.appendChild(option);
     });
 }
