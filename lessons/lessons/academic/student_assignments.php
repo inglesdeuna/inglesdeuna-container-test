@@ -14,6 +14,7 @@ $studentsFile = $baseDir . '/students.json';
 $teachersFile = $baseDir . '/teachers.json';
 $coursesFile = $baseDir . '/courses.json';
 $unitsFile = $baseDir . '/units.json';
+$coursePeriodsFile = $baseDir . '/course_periods.json';
 $studentAssignmentsFile = $baseDir . '/student_assignments_records.json';
 $studentAccountsFile = $baseDir . '/student_accounts.json';
 
@@ -205,6 +206,122 @@ function normalize_technical_courses(array $technicalCourses, array $technicalUn
 
     return $normalized;
 }
+
+
+function build_technical_semesters_from_periods(array $coursePeriods, array $courses): array
+{
+    if (empty($coursePeriods)) {
+        return [];
+    }
+
+    $courseNames = [];
+    foreach ($courses as $course) {
+        $courseId = (string) ($course['id'] ?? '');
+        if ($courseId === '') {
+            continue;
+        }
+
+        $courseNames[$courseId] = (string) ($course['name'] ?? $courseId);
+    }
+
+    $semesters = [];
+    foreach ($coursePeriods as $periodRow) {
+        $periodId = (string) ($periodRow['id'] ?? '');
+        $courseId = (string) ($periodRow['course_id'] ?? '');
+        $period = trim((string) ($periodRow['period'] ?? $periodRow['name'] ?? ''));
+
+        if ($periodId === '' || $courseId === '' || $period === '') {
+            continue;
+        }
+
+        $courseName = $courseNames[$courseId] ?? $courseId;
+        $semesters[] = [
+            'id' => $periodId,
+            'name' => $courseName . ' – Periodo ' . $period,
+            'course_id' => $courseId,
+            'period' => $period,
+        ];
+    }
+
+    return $semesters;
+}
+
+function find_technical_semester_by_id(array $semesters, string $semesterId): ?array
+{
+    foreach ($semesters as $semester) {
+        if ((string) ($semester['id'] ?? '') === $semesterId) {
+            return (array) $semester;
+        }
+    }
+
+    return null;
+}
+
+
+function resolve_technical_selection(string $selectedValue, array $semesters): ?array
+{
+    if ($selectedValue === '') {
+        return null;
+    }
+
+    foreach ($semesters as $semester) {
+        $semesterId = (string) ($semester['id'] ?? '');
+        if ($semesterId !== '' && $semesterId === $selectedValue) {
+            return (array) $semester;
+        }
+    }
+
+    $parts = explode('|', $selectedValue, 2);
+    if (count($parts) !== 2) {
+        return null;
+    }
+
+    [$courseId, $period] = $parts;
+
+    foreach ($semesters as $semester) {
+        if (
+            (string) ($semester['course_id'] ?? '') === $courseId
+            && (string) ($semester['period'] ?? '') === $period
+        ) {
+            return (array) $semester;
+        }
+    }
+
+    return null;
+}
+
+function find_technical_semester_for_assignment(array $semesters, string $courseId, string $period): ?array
+{
+    foreach ($semesters as $semester) {
+        if (
+            (string) ($semester['course_id'] ?? '') === $courseId
+            && (string) ($semester['period'] ?? '') === $period
+        ) {
+            return (array) $semester;
+        }
+    }
+
+    return null;
+}
+
+function technical_assignment_label(array $row, array $semesters, array $courses): string
+{
+    $courseId = (string) ($row['course_id'] ?? '');
+    $period = (string) ($row['period'] ?? '');
+
+    $semester = find_technical_semester_for_assignment($semesters, $courseId, $period);
+    if ($semester) {
+        return (string) ($semester['name'] ?? 'N/D');
+    }
+
+    $courseName = find_name_by_id($courses, $courseId, $courseId !== '' ? $courseId : 'N/D');
+    if ($period !== '') {
+        return $courseName . ' – Periodo ' . $period;
+    }
+
+    return $courseName;
+}
+
 
 function slugify_username(string $value): string
 {
@@ -711,6 +828,7 @@ ensure_data_files($baseDir, [
     $teachersFile,
     $coursesFile,
     $unitsFile,
+    $coursePeriodsFile,
     $studentAssignmentsFile,
     $studentAccountsFile,
 ]);
@@ -735,6 +853,7 @@ $studentAccounts = !empty($studentAccountsDb) ? $studentAccountsDb : $studentAcc
 
 $courses = load_json_array($coursesFile);
 $units = load_json_array($unitsFile);
+$coursePeriods = load_json_array($coursePeriodsFile);
 
 /* ===============================
    ELIMINAR
@@ -763,9 +882,17 @@ if (isset($_GET['delete']) && $_GET['delete'] !== '') {
 
 $technicalCoursesRaw = filter_courses_by_program($courses, 'technical');
 $technicalUnitsJson = filter_units_by_program($units, 'technical');
+$technicalSemestersFromPeriods = build_technical_semesters_from_periods($coursePeriods, $courses);
 $technicalSemestersJson = normalize_technical_courses($technicalCoursesRaw, $technicalUnitsJson);
 
-$technicalSemesters = !empty($technicalSemestersDb) ? $technicalSemestersDb : $technicalSemestersJson;
+if (!empty($technicalSemestersFromPeriods)) {
+    $technicalSemesters = $technicalSemestersFromPeriods;
+} elseif (!empty($technicalSemestersDb)) {
+    $technicalSemesters = $technicalSemestersDb;
+} else {
+    $technicalSemesters = $technicalSemestersJson;
+}
+
 $technicalUnits = !empty($technicalUnitsDb) ? $technicalUnitsDb : $technicalUnitsJson;
 
 if (empty($technicalSemesters) && !empty($technicalUnits)) {
@@ -828,6 +955,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $levelId = '';
     }
 
+    $technicalSemester = $program === 'technical' ? resolve_technical_selection($courseId, $technicalSemesters) : null;
+    $technicalPeriod = (string) ($technicalSemester['period'] ?? '');
+
+    if ($program === 'technical' && $technicalSemester) {
+        $courseId = (string) ($technicalSemester['course_id'] ?? $courseId);
+    }
+
     if ($program === 'english') {
         $isValid = $studentId !== '' && $teacherId !== '' && $courseId !== '' && $levelId !== '' && $unitId !== '';
     } else {
@@ -844,7 +978,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'program' => $program,
             'course_id' => $courseId,
             'level_id' => $levelId,
-            'period' => $levelId,
+            'period' => $program === 'technical' ? $technicalPeriod : $levelId,
             'unit_id' => $unitId,
             'student_username' => (string) ($studentAccount['username'] ?? ''),
             'student_temp_password' => (string) ($studentAccount['temp_password'] ?? ''),
@@ -893,6 +1027,17 @@ if (isset($_GET['edit']) && $_GET['edit'] !== '') {
 $selectedProgram = (string) ($editRecord['program'] ?? 'technical');
 if (!isset($programOptions[$selectedProgram])) {
     $selectedProgram = 'technical';
+}
+
+$selectedCourseValue = (string) ($editRecord['course_id'] ?? '');
+if ($selectedProgram === 'technical' && $editRecord) {
+    $currentCourseId = (string) ($editRecord['course_id'] ?? '');
+    $currentPeriod = (string) ($editRecord['period'] ?? '');
+    $semesterForEdit = find_technical_semester_for_assignment($technicalSemesters, $currentCourseId, $currentPeriod);
+
+    if ($semesterForEdit) {
+        $selectedCourseValue = (string) ($semesterForEdit['id'] ?? $selectedCourseValue);
+    }
 }
 ?>
 <!doctype html>
@@ -1038,7 +1183,7 @@ if (!isset($programOptions[$selectedProgram])) {
 
                                     $courseName = $isEnglish
                                         ? find_name_by_id($englishLevels, (string) ($row['course_id'] ?? ''), 'N/D')
-                                        : find_name_by_id($technicalSemesters, (string) ($row['course_id'] ?? ''), 'N/D');
+                                        : technical_assignment_label((array) $row, $technicalSemesters, $technicalCoursesRaw);
 
                                     $phaseName = $isEnglish
                                         ? find_name_by_id($englishPhases, (string) ($row['level_id'] ?? $row['period'] ?? ''), 'N/D')
@@ -1087,7 +1232,7 @@ const technicalSemesters = <?= json_encode($technicalSemesters, JSON_UNESCAPED_U
 const technicalUnits = <?= json_encode($technicalUnits, JSON_UNESCAPED_UNICODE) ?>;
 
 const selectedProgram = <?= json_encode((string) $selectedProgram) ?>;
-const selectedCourse = <?= json_encode((string) ($editRecord['course_id'] ?? '')) ?>;
+const selectedCourse = <?= json_encode((string) ($selectedCourseValue ?? ($editRecord['course_id'] ?? ''))) ?>;
 const selectedPhase = <?= json_encode((string) ($editRecord['level_id'] ?? $editRecord['period'] ?? '')) ?>;
 const selectedUnit = <?= json_encode((string) ($editRecord['unit_id'] ?? '')) ?>;
 
@@ -1165,7 +1310,11 @@ function refreshForm(initial = false) {
         fillSelect(courseSelect, technicalSemesters, currentSemester, 'Seleccionar semestre...');
 
         const semesterId = courseSelect.value || currentSemester || '';
-        const unitsForSemester = technicalUnits.filter(item => String(item.course_id ?? item.level_id ?? '') === String(semesterId));
+        const selectedSemester = technicalSemesters.find(item => String(item.id ?? '') === String(semesterId));
+        const fallbackParts = String(semesterId).split('|');
+        const fallbackCourseId = fallbackParts.length === 2 ? fallbackParts[0] : semesterId;
+        const baseCourseId = String(selectedSemester?.course_id ?? fallbackCourseId);
+        const unitsForSemester = technicalUnits.filter(item => String(item.course_id ?? item.level_id ?? '') === baseCourseId);
 
         const currentUnit = initial ? selectedUnit : (unitSelect.value || '');
         fillSelect(unitSelect, unitsForSemester, currentUnit, 'Seleccionar unidad...');
