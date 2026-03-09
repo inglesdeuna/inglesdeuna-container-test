@@ -35,6 +35,142 @@ function write_json_array(string $file, array $rows): bool
     return file_put_contents($file, $json) !== false;
 }
 
+function get_pdo_connection(): ?PDO
+{
+    if (!getenv('DATABASE_URL')) {
+        return null;
+    }
+
+    static $cachedPdo = null;
+    static $loaded = false;
+
+    if ($loaded) {
+        return $cachedPdo;
+    }
+
+    $loaded = true;
+
+    $dbFile = __DIR__ . '/../config/db.php';
+    if (!file_exists($dbFile)) {
+        return null;
+    }
+
+    require $dbFile;
+
+    if (!isset($pdo) || !($pdo instanceof PDO)) {
+        return null;
+    }
+
+    $cachedPdo = $pdo;
+    return $cachedPdo;
+}
+
+function load_teachers_from_database(): array
+{
+    $pdo = get_pdo_connection();
+    if (!$pdo) {
+        return [];
+    }
+
+    try {
+        $stmt = $pdo->query("
+            SELECT id, name
+            FROM teachers
+            ORDER BY name ASC, id ASC
+        ");
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    } catch (Throwable $e) {
+        return [];
+    }
+
+    return array_values(array_filter(array_map(function ($row) {
+        return [
+            'id' => (string) ($row['id'] ?? ''),
+            'name' => (string) ($row['name'] ?? ''),
+        ];
+    }, is_array($rows) ? $rows : []), function ($row) {
+        return (string) ($row['id'] ?? '') !== '';
+    }));
+}
+
+function load_teacher_accounts_from_database(): array
+{
+    $pdo = get_pdo_connection();
+    if (!$pdo) {
+        return [];
+    }
+
+    try {
+        $stmt = $pdo->query("
+            SELECT id, teacher_id, teacher_name, scope, target_id, target_name, permission, username, password, updated_at
+            FROM teacher_accounts
+            ORDER BY updated_at DESC NULLS LAST, teacher_name ASC, id ASC
+        ");
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    } catch (Throwable $e) {
+        return [];
+    }
+
+    return array_values(array_filter(array_map(function ($row) {
+        return [
+            'id' => (string) ($row['id'] ?? ''),
+            'teacher_id' => (string) ($row['teacher_id'] ?? ''),
+            'teacher_name' => (string) ($row['teacher_name'] ?? ''),
+            'scope' => (string) ($row['scope'] ?? 'technical'),
+            'target_id' => (string) ($row['target_id'] ?? ''),
+            'target_name' => (string) ($row['target_name'] ?? ''),
+            'permission' => (string) ($row['permission'] ?? 'viewer'),
+            'username' => (string) ($row['username'] ?? ''),
+            'password' => (string) ($row['password'] ?? ''),
+            'updated_at' => (string) ($row['updated_at'] ?? ''),
+        ];
+    }, is_array($rows) ? $rows : []), function ($row) {
+        return (string) ($row['id'] ?? '') !== '';
+    }));
+}
+
+function save_teacher_account_to_database(array $record): bool
+{
+    $pdo = get_pdo_connection();
+    if (!$pdo) {
+        return false;
+    }
+
+    try {
+        $stmt = $pdo->prepare("
+            INSERT INTO teacher_accounts (
+                id, teacher_id, teacher_name, scope, target_id, target_name, permission, username, password, updated_at
+            ) VALUES (
+                :id, :teacher_id, :teacher_name, :scope, :target_id, :target_name, :permission, :username, :password, :updated_at
+            )
+            ON CONFLICT (teacher_id) DO UPDATE SET
+                teacher_name = EXCLUDED.teacher_name,
+                scope = EXCLUDED.scope,
+                target_id = EXCLUDED.target_id,
+                target_name = EXCLUDED.target_name,
+                permission = EXCLUDED.permission,
+                username = EXCLUDED.username,
+                password = EXCLUDED.password,
+                updated_at = EXCLUDED.updated_at
+        ");
+
+        return $stmt->execute([
+            'id' => (string) ($record['id'] ?? ''),
+            'teacher_id' => (string) ($record['teacher_id'] ?? ''),
+            'teacher_name' => (string) ($record['teacher_name'] ?? ''),
+            'scope' => (string) ($record['scope'] ?? 'technical'),
+            'target_id' => (string) ($record['target_id'] ?? ''),
+            'target_name' => (string) ($record['target_name'] ?? ''),
+            'permission' => (string) ($record['permission'] ?? 'viewer'),
+            'username' => (string) ($record['username'] ?? ''),
+            'password' => (string) ($record['password'] ?? ''),
+            'updated_at' => (string) ($record['updated_at'] ?? date('Y-m-d H:i:s')),
+        ]);
+    } catch (Throwable $e) {
+        return false;
+    }
+}
+
 $dataDir = __DIR__ . '/data';
 $teachersFile = $dataDir . '/teachers.json';
 $accountsFile = $dataDir . '/teacher_accounts.json';
@@ -49,36 +185,69 @@ foreach ([$teachersFile, $accountsFile] as $file) {
     }
 }
 
-$teachers = read_json_array($teachersFile);
-$accounts = read_json_array($accountsFile);
+$teachersJson = read_json_array($teachersFile);
+$accountsJson = read_json_array($accountsFile);
+
+$teachersDb = load_teachers_from_database();
+$accountsDb = load_teacher_accounts_from_database();
+
+$teachers = !empty($teachersDb) ? $teachersDb : $teachersJson;
+$accounts = !empty($accountsDb) ? $accountsDb : $accountsJson;
 
 $technical = [];
 $english = [];
+
 if (getenv('DATABASE_URL')) {
     try {
-        require __DIR__ . '/../config/db.php';
+        $pdo = get_pdo_connection();
 
-        $stmtTechnical = $pdo->query("
-            SELECT c.id, c.name
-            FROM courses c
-            INNER JOIN programs p ON p.id = c.program_id
-            WHERE p.slug = 'prog_technical'
-            ORDER BY c.id ASC
-        ");
-        $technical = $stmtTechnical->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        if ($pdo) {
+            $stmtTechnical = $pdo->query("
+                SELECT c.id, c.name
+                FROM courses c
+                WHERE
+                    LOWER(COALESCE(c.program_id::text, '')) IN (
+                        '1',
+                        'prog_technical',
+                        'technical',
+                        'prog_tecnico',
+                        'tecnico',
+                        'programa_tecnico'
+                    )
+                    OR LOWER(COALESCE(c.name, '')) LIKE '%semestre%'
+                ORDER BY c.id ASC, c.name ASC
+            ");
+            $technical = $stmtTechnical->fetchAll(PDO::FETCH_ASSOC) ?: [];
 
-        $stmtEnglish = $pdo->query("
-            SELECT ph.id, CONCAT(l.name, ' - ', ph.name) AS name
-            FROM english_phases ph
-            INNER JOIN english_levels l ON l.id = ph.level_id
-            ORDER BY l.id ASC, ph.id ASC
-        ");
-        $english = $stmtEnglish->fetchAll(PDO::FETCH_ASSOC) ?: [];
+            $stmtEnglish = $pdo->query("
+                SELECT ph.id, CONCAT(l.name, ' - ', ph.name) AS name
+                FROM english_phases ph
+                INNER JOIN english_levels l ON l.id = ph.level_id
+                ORDER BY l.id ASC, ph.id ASC
+            ");
+            $english = $stmtEnglish->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        }
     } catch (Throwable $e) {
         $technical = [];
         $english = [];
     }
 }
+
+$technical = array_map(function ($row) {
+    $id = (string) ($row['id'] ?? '');
+    $name = trim((string) ($row['name'] ?? ''));
+
+    if ($name !== '' && preg_match('/^\d+$/', $name)) {
+        $name = 'SEMESTRE ' . $name;
+    } elseif ($name === '' && $id !== '') {
+        $name = 'SEMESTRE ' . $id;
+    }
+
+    return [
+        'id' => $id,
+        'name' => $name !== '' ? $name : 'Semestre',
+    ];
+}, $technical);
 
 $errors = [];
 $form = [
@@ -133,7 +302,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if ($teacherName === '') {
-        $errors[] = 'El docente seleccionado no existe en la lista de inscritos.';
+        $errors[] = 'El docente seleccionado no existe en la base de datos.';
     }
 
     if (empty($errors)) {
@@ -142,38 +311,52 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         foreach ($accounts as $index => $account) {
             if (mb_strtolower((string) ($account['username'] ?? '')) === $normalizedUsername) {
-                $foundIndex = $index;
+                $sameTeacher = (string) ($account['teacher_id'] ?? '') === $form['teacher_id'];
+                if (!$sameTeacher) {
+                    $errors[] = 'Ese usuario ya está en uso por otro docente.';
+                } else {
+                    $foundIndex = $index;
+                }
                 break;
             }
         }
 
-        $record = [
-            'id' => $foundIndex === null
-                ? uniqid('acc_', true)
-                : (string) ($accounts[$foundIndex]['id'] ?? uniqid('acc_', true)),
-            'teacher_id' => $form['teacher_id'],
-            'teacher_name' => $teacherName,
-            'scope' => $form['scope'],
-            'target_id' => $form['target_id'],
-            'target_name' => $form['target_name'],
-            'permission' => $form['permission'],
-            'username' => $form['username'],
-            'password' => $form['password'],
-            'updated_at' => date('c'),
-        ];
+        if (empty($errors)) {
+            $record = [
+                'id' => $foundIndex === null
+                    ? uniqid('acc_', true)
+                    : (string) ($accounts[$foundIndex]['id'] ?? uniqid('acc_', true)),
+                'teacher_id' => $form['teacher_id'],
+                'teacher_name' => $teacherName,
+                'scope' => $form['scope'],
+                'target_id' => $form['target_id'],
+                'target_name' => $form['target_name'],
+                'permission' => $form['permission'],
+                'username' => $form['username'],
+                'password' => $form['password'],
+                'updated_at' => date('Y-m-d H:i:s'),
+            ];
 
-        if ($foundIndex === null) {
-            $accounts[] = $record;
-        } else {
-            $accounts[$foundIndex] = $record;
+            $savedInDb = save_teacher_account_to_database($record);
+
+            if ($savedInDb) {
+                header('Location: teacher_profiles.php?saved=1');
+                exit;
+            }
+
+            if ($foundIndex === null) {
+                $accounts[] = $record;
+            } else {
+                $accounts[$foundIndex] = $record;
+            }
+
+            if (write_json_array($accountsFile, $accounts)) {
+                header('Location: teacher_profiles.php?saved=1');
+                exit;
+            }
+
+            $errors[] = 'No se pudo guardar el perfil. Intente nuevamente.';
         }
-
-        if (write_json_array($accountsFile, $accounts)) {
-            header('Location: teacher_profiles.php?saved=1');
-            exit;
-        }
-
-        $errors[] = 'No se pudo guardar el perfil. Intente nuevamente.';
     }
 }
 ?>
