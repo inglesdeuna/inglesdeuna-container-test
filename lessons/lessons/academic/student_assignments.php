@@ -460,8 +460,15 @@ ensure_data_files($baseDir, [
     $studentAccountsFile,
 ]);
 
-$students = load_json_array($studentsFile);
-$teachers = load_json_array($teachersFile);
+$studentsJson = load_json_array($studentsFile);
+$teachersJson = load_json_array($teachersFile);
+
+$studentsDb = load_students_from_database();
+$teachersDb = load_teachers_from_database();
+
+$students = !empty($studentsDb) ? $studentsDb : $studentsJson;
+$teachers = !empty($teachersDb) ? $teachersDb : $teachersJson;
+
 $courses = load_json_array($coursesFile);
 $units = load_json_array($unitsFile);
 $studentAssignments = load_json_array($studentAssignmentsFile);
