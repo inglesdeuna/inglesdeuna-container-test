@@ -106,6 +106,31 @@ function find_name_by_id(array $rows, string $id, string $fallback = 'N/D'): str
     return $fallback;
 }
 
+function normalize_semester_name(string $value, string $fallbackId = ''): string
+{
+    $value = trim($value);
+
+    if ($value === '' && $fallbackId !== '') {
+        $value = trim($fallbackId);
+    }
+
+    if ($value === '') {
+        return 'SEMESTRE';
+    }
+
+    if (preg_match('/^\d+$/', $value)) {
+        return 'SEMESTRE ' . $value;
+    }
+
+    $upper = mb_strtoupper($value, 'UTF-8');
+
+    if (str_contains($upper, 'SEMESTRE')) {
+        return $upper;
+    }
+
+    return $value;
+}
+
 function detect_program_for_course(array $course): string
 {
     $programRaw = mb_strtolower((string) (
@@ -180,9 +205,11 @@ function normalize_technical_courses(array $technicalCourses, array $technicalUn
             continue;
         }
 
+        $name = normalize_semester_name((string) ($course['name'] ?? ''), $id);
+
         $normalized[] = [
             'id' => $id,
-            'name' => (string) ($course['name'] ?? ('SEMESTRE ' . $id)),
+            'name' => $name,
         ];
     }
 
@@ -200,13 +227,12 @@ function normalize_technical_courses(array $technicalCourses, array $technicalUn
         $seen[$semesterId] = true;
         $normalized[] = [
             'id' => $semesterId,
-            'name' => 'SEMESTRE ' . $semesterId,
+            'name' => normalize_semester_name('', $semesterId),
         ];
     }
 
     return $normalized;
 }
-
 
 function build_technical_semesters_from_periods(array $coursePeriods, array $courses): array
 {
@@ -221,7 +247,7 @@ function build_technical_semesters_from_periods(array $coursePeriods, array $cou
             continue;
         }
 
-        $courseNames[$courseId] = (string) ($course['name'] ?? $courseId);
+        $courseNames[$courseId] = normalize_semester_name((string) ($course['name'] ?? ''), $courseId);
     }
 
     $semesters = [];
@@ -234,7 +260,7 @@ function build_technical_semesters_from_periods(array $coursePeriods, array $cou
             continue;
         }
 
-        $courseName = $courseNames[$courseId] ?? $courseId;
+        $courseName = $courseNames[$courseId] ?? normalize_semester_name('', $courseId);
         $semesters[] = [
             'id' => $periodId,
             'name' => $courseName . ' – Periodo ' . $period,
@@ -256,7 +282,6 @@ function find_technical_semester_by_id(array $semesters, string $semesterId): ?a
 
     return null;
 }
-
 
 function resolve_technical_selection(string $selectedValue, array $semesters): ?array
 {
@@ -294,7 +319,7 @@ function find_technical_semester_for_assignment(array $semesters, string $course
 {
     foreach ($semesters as $semester) {
         if (
-            (string) ($semester['course_id'] ?? '') === $courseId
+            (string) ($semester['course_id'] ?? $semester['id'] ?? '') === $courseId
             && (string) ($semester['period'] ?? '') === $period
         ) {
             return (array) $semester;
@@ -314,14 +339,14 @@ function technical_assignment_label(array $row, array $semesters, array $courses
         return (string) ($semester['name'] ?? 'N/D');
     }
 
-    $courseName = find_name_by_id($courses, $courseId, $courseId !== '' ? $courseId : 'N/D');
+    $courseName = normalize_semester_name(find_name_by_id($courses, $courseId, $courseId !== '' ? $courseId : 'N/D'), $courseId);
+
     if ($period !== '') {
         return $courseName . ' – Periodo ' . $period;
     }
 
     return $courseName;
 }
-
 
 function slugify_username(string $value): string
 {
@@ -688,44 +713,51 @@ function load_technical_catalog_from_database(): array
     }
 
     try {
-       $semestersStmt = $pdo->query("
-    SELECT id, name, program_id
-    FROM courses
-    WHERE
-        LOWER(COALESCE(program_id::text, '')) IN (
-            '1',
-            'prog_technical',
-            'technical',
-            'prog_tecnico',
-            'tecnico',
-            'programa_tecnico'
-        )
-        OR LOWER(COALESCE(name, '')) LIKE '%semestre%'
-    ORDER BY name ASC, id ASC
-");
+        $semestersStmt = $pdo->query("
+            SELECT id, name, program_id
+            FROM courses
+            WHERE
+                LOWER(COALESCE(program_id::text, '')) IN (
+                    '1',
+                    'prog_technical',
+                    'technical',
+                    'prog_tecnico',
+                    'tecnico',
+                    'programa_tecnico'
+                )
+                OR LOWER(COALESCE(name, '')) LIKE '%semestre%'
+            ORDER BY id ASC, name ASC
+        ");
+        $semestersRaw = $semestersStmt->fetchAll(PDO::FETCH_ASSOC);
 
-       $unitsStmt = $pdo->query("
-    SELECT u.id, u.name, u.course_id
-    FROM units u
-    INNER JOIN courses c ON c.id = u.course_id
-    WHERE
-        LOWER(COALESCE(c.program_id::text, '')) IN (
-            '1',
-            'prog_technical',
-            'technical',
-            'prog_tecnico',
-            'tecnico',
-            'programa_tecnico'
-        )
-        OR LOWER(COALESCE(c.name, '')) LIKE '%semestre%'
-    ORDER BY u.course_id ASC, u.id ASC
-");
+        $unitsStmt = $pdo->query("
+            SELECT u.id, u.name, u.course_id
+            FROM units u
+            INNER JOIN courses c ON c.id = u.course_id
+            WHERE
+                LOWER(COALESCE(c.program_id::text, '')) IN (
+                    '1',
+                    'prog_technical',
+                    'technical',
+                    'prog_tecnico',
+                    'tecnico',
+                    'programa_tecnico'
+                )
+                OR LOWER(COALESCE(c.name, '')) LIKE '%semestre%'
+            ORDER BY u.course_id ASC, u.id ASC
+        ");
+        $unitsRaw = $unitsStmt->fetchAll(PDO::FETCH_ASSOC);
+    } catch (Throwable $e) {
+        return [[], []];
     }
 
     $technicalSemesters = array_map(function ($row) {
+        $id = (string) ($row['id'] ?? '');
+        $name = normalize_semester_name((string) ($row['name'] ?? ''), $id);
+
         return [
-            'id' => (string) ($row['id'] ?? ''),
-            'name' => (string) ($row['name'] ?? ''),
+            'id' => $id,
+            'name' => $name,
         ];
     }, is_array($semestersRaw) ? $semestersRaw : []);
 
@@ -883,12 +915,18 @@ $technicalUnitsJson = filter_units_by_program($units, 'technical');
 $technicalSemestersFromPeriods = build_technical_semesters_from_periods($coursePeriods, $courses);
 $technicalSemestersJson = normalize_technical_courses($technicalCoursesRaw, $technicalUnitsJson);
 
-if (!empty($technicalSemestersFromPeriods)) {
-    $technicalSemesters = $technicalSemestersFromPeriods;
-} elseif (!empty($technicalSemestersDb)) {
+/*
+   PRIORIDAD:
+   1. Semestres desde DB
+   2. Semestres desde courses.json
+   3. Periodos (respaldo)
+*/
+if (!empty($technicalSemestersDb)) {
     $technicalSemesters = $technicalSemestersDb;
-} else {
+} elseif (!empty($technicalSemestersJson)) {
     $technicalSemesters = $technicalSemestersJson;
+} else {
+    $technicalSemesters = $technicalSemestersFromPeriods;
 }
 
 $technicalUnits = !empty($technicalUnitsDb) ? $technicalUnitsDb : $technicalUnitsJson;
@@ -904,7 +942,7 @@ if (empty($technicalSemesters) && !empty($technicalUnits)) {
         $seen[$semesterId] = true;
         $technicalSemesters[] = [
             'id' => $semesterId,
-            'name' => 'SEMESTRE ' . $semesterId,
+            'name' => normalize_semester_name('', $semesterId),
         ];
     }
 }
@@ -957,7 +995,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $technicalPeriod = (string) ($technicalSemester['period'] ?? '');
 
     if ($program === 'technical' && $technicalSemester) {
-        $courseId = (string) ($technicalSemester['course_id'] ?? $courseId);
+        $courseId = (string) ($technicalSemester['course_id'] ?? $technicalSemester['id'] ?? $courseId);
     }
 
     if ($program === 'english') {
@@ -1181,7 +1219,7 @@ if ($selectedProgram === 'technical' && $editRecord) {
 
                                     $courseName = $isEnglish
                                         ? find_name_by_id($englishLevels, (string) ($row['course_id'] ?? ''), 'N/D')
-                                        : technical_assignment_label((array) $row, $technicalSemesters, $technicalCoursesRaw);
+                                        : technical_assignment_label((array) $row, $technicalSemesters, $courses);
 
                                     $phaseName = $isEnglish
                                         ? find_name_by_id($englishPhases, (string) ($row['level_id'] ?? $row['period'] ?? ''), 'N/D')
@@ -1311,8 +1349,11 @@ function refreshForm(initial = false) {
         const selectedSemester = technicalSemesters.find(item => String(item.id ?? '') === String(semesterId));
         const fallbackParts = String(semesterId).split('|');
         const fallbackCourseId = fallbackParts.length === 2 ? fallbackParts[0] : semesterId;
-        const baseCourseId = String(selectedSemester?.course_id ?? fallbackCourseId);
-        const unitsForSemester = technicalUnits.filter(item => String(item.course_id ?? item.level_id ?? '') === baseCourseId);
+        const baseCourseId = String(selectedSemester?.course_id ?? selectedSemester?.id ?? fallbackCourseId);
+
+        const unitsForSemester = technicalUnits.filter(
+            item => String(item.course_id ?? item.level_id ?? '') === baseCourseId
+        );
 
         const currentUnit = initial ? selectedUnit : (unitSelect.value || '');
         fillSelect(unitSelect, unitsForSemester, currentUnit, 'Seleccionar unidad...');
