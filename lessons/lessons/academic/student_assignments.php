@@ -1,4 +1,4 @@
-<?php 
+<?php
 session_start();
 
 if (!isset($_SESSION['admin_logged']) || $_SESSION['admin_logged'] !== true) {
@@ -866,21 +866,15 @@ ensure_data_files($baseDir, [
 /* ===============================
    CARGA PRINCIPAL
 =============================== */
-$studentsJson = load_json_array($studentsFile);
-$teachersJson = load_json_array($teachersFile);
-$studentAssignmentsJson = load_json_array($studentAssignmentsFile);
-$studentAccountsJson = load_json_array($studentAccountsFile);
+$students = load_students_from_database();
+$teachers = load_teachers_from_database();
+$studentAssignments = load_student_assignments_from_database();
+$studentAccounts = load_student_accounts_from_database();
 
-$studentsDb = load_students_from_database();
-$teachersDb = load_teachers_from_database();
-$studentAssignmentsDb = load_student_assignments_from_database();
-$studentAccountsDb = load_student_accounts_from_database();
-
-$students = !empty($studentsDb) ? $studentsDb : $studentsJson;
-$teachers = !empty($teachersDb) ? $teachersDb : $teachersJson;
-$studentAssignments = !empty($studentAssignmentsDb) ? $studentAssignmentsDb : $studentAssignmentsJson;
-$studentAccounts = !empty($studentAccountsDb) ? $studentAccountsDb : $studentAccountsJson;
-
+/* Catálogos académicos:
+   por ahora se dejan desde JSON como respaldo temporal,
+   mientras terminamos la migración completa de cursos/unidades.
+*/
 $courses = load_json_array($coursesFile);
 $units = load_json_array($unitsFile);
 $coursePeriods = load_json_array($coursePeriodsFile);
