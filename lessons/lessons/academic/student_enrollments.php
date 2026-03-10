@@ -14,31 +14,6 @@ function h(string $value): string
     return htmlspecialchars($value, ENT_QUOTES, 'UTF-8');
 }
 
-function read_json_array(string $file): array
-{
-    if (!file_exists($file)) {
-        return [];
-    }
-
-    $raw = file_get_contents($file);
-    if ($raw === false) {
-        return [];
-    }
-
-    $decoded = json_decode($raw, true);
-    return is_array($decoded) ? $decoded : [];
-}
-
-function write_json_array(string $file, array $rows): bool
-{
-    $json = json_encode(array_values($rows), JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
-    if ($json === false) {
-        return false;
-    }
-
-    return file_put_contents($file, $json) !== false;
-}
-
 function get_pdo_connection(): ?PDO
 {
     if (!getenv('DATABASE_URL')) {
@@ -100,6 +75,27 @@ function load_students_from_database(): array
     }, is_array($rows) ? $rows : []));
 }
 
+function find_existing_student(array $students, string $name, string $contact): ?array
+{
+    $normalizedName = mb_strtolower(trim($name));
+    $normalizedContact = trim($contact);
+
+    foreach ($students as $student) {
+        $studentName = mb_strtolower(trim((string) ($student['name'] ?? '')));
+        $studentContact = trim((string) ($student['contact'] ?? ''));
+
+        if ($normalizedName !== '' && $studentName === $normalizedName) {
+            return (array) $student;
+        }
+
+        if ($normalizedContact !== '' && $studentContact !== '' && $studentContact === $normalizedContact) {
+            return (array) $student;
+        }
+    }
+
+    return null;
+}
+
 function save_student_to_database(array $student): bool
 {
     $pdo = get_pdo_connection();
@@ -136,40 +132,10 @@ function save_student_to_database(array $student): bool
     }
 }
 
-function find_existing_student(array $students, string $name): ?array
-{
-    $normalizedName = mb_strtolower(trim($name));
-
-    foreach ($students as $student) {
-        $studentName = mb_strtolower(trim((string) ($student['name'] ?? '')));
-        if ($normalizedName !== '' && $studentName === $normalizedName) {
-            return (array) $student;
-        }
-    }
-
-    return null;
-}
-
-/* ===============================
-   ARCHIVOS
-=============================== */
-$dataDir = __DIR__ . '/data';
-$studentsFile = $dataDir . '/students.json';
-
-if (!is_dir($dataDir)) {
-    mkdir($dataDir, 0777, true);
-}
-
-if (!file_exists($studentsFile)) {
-    file_put_contents($studentsFile, '[]');
-}
-
 /* ===============================
    CARGA
 =============================== */
-$studentsJson = read_json_array($studentsFile);
-$studentsDb = load_students_from_database();
-$students = !empty($studentsDb) ? $studentsDb : $studentsJson;
+$students = load_students_from_database();
 
 $errors = [];
 $form = [
@@ -192,7 +158,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $errors[] = 'Debe escribir el nombre del estudiante.';
     }
 
-    $existingStudent = find_existing_student($students, $form['student_name']);
+    $existingStudent = find_existing_student($students, $form['student_name'], $form['student_contact']);
 
     if (empty($errors)) {
         $now = date('Y-m-d H:i:s');
@@ -218,26 +184,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             exit;
         }
 
-        $updated = false;
-        foreach ($students as $index => $student) {
-            if ((string) ($student['id'] ?? '') === (string) $studentRecord['id']) {
-                $students[$index] = $studentRecord;
-                $updated = true;
-                break;
-            }
-        }
-
-        if (!$updated) {
-            $students[] = $studentRecord;
-        }
-
-        if (write_json_array($studentsFile, $students)) {
-            header('Location: student_enrollments.php?saved=1');
-            exit;
-        }
-
-        $errors[] = 'No se pudo guardar el estudiante. Intente nuevamente.';
+        $errors[] = 'No se pudo guardar el estudiante en la base de datos.';
     }
+
+    $students = load_students_from_database();
 }
 ?>
 <!DOCTYPE html>
@@ -248,256 +198,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <title>Inscripciones Estudiantes</title>
 <style>
 :root{
-    --bg:#eef2f7;
-    --card:#ffffff;
-    --line:#dce4f0;
-    --text:#1f2937;
-    --title:#1f3c75;
-    --subtitle:#2c3e50;
-    --muted:#5b6577;
-    --blue:#1f66cc;
-    --blue-hover:#2f5bb5;
-    --badge-bg:#eef2ff;
-    --badge-text:#1f4ec9;
-    --shadow:0 8px 24px rgba(0,0,0,.08);
-    --success-bg:#ecfdf3;
-    --success-border:#b9eacb;
-    --success-text:#166534;
-    --error-bg:#fff2f2;
-    --error-border:#f3b5b5;
-    --error-text:#9f1d1d;
+    --bg:#eef2f7;--card:#ffffff;--line:#dce4f0;--text:#1f2937;--title:#1f3c75;--subtitle:#2c3e50;
+    --muted:#5b6577;--blue:#1f66cc;--blue-hover:#2f5bb5;--badge-bg:#eef2ff;--badge-text:#1f4ec9;
+    --shadow:0 8px 24px rgba(0,0,0,.08);--success-bg:#ecfdf3;--success-border:#b9eacb;--success-text:#166534;
+    --error-bg:#fff2f2;--error-border:#f3b5b5;--error-text:#9f1d1d;
 }
-
-*{
-    box-sizing:border-box;
-}
-
-body{
-    font-family:Arial, sans-serif;
-    background:#eef2f7;
-    padding:30px;
-    color:#1f2937;
-    margin:0;
-}
-
-.wrapper{
-    max-width:1100px;
-    margin:0 auto;
-}
-
-.back{
-    display:inline-block;
-    margin-bottom:16px;
-    color:#1f66cc;
-    text-decoration:none;
-    font-weight:700;
-    font-size:14px;
-}
-
-.page-title{
-    font-size:28px;
-    font-weight:700;
-    color:#1f3c75;
-    margin:0 0 18px;
-}
-
-.stack{
-    display:flex;
-    flex-direction:column;
-    gap:18px;
-}
-
-.card{
-    background:#ffffff;
-    border:1px solid #dce4f0;
-    border-radius:14px;
-    padding:20px;
-    box-shadow:0 8px 24px rgba(0,0,0,.08);
-}
-
-.card-header{
-    margin-bottom:18px;
-}
-
-.card-header h2{
-    font-size:22px;
-    font-weight:600;
-    color:#2c3e50;
-    margin:0 0 8px;
-}
-
-.subtitle{
-    font-size:14px;
-    color:#5b6577;
-    margin:0;
-    line-height:1.5;
-}
-
-.notice{
-    padding:12px 14px;
-    border-radius:10px;
-    background:#ecfdf3;
-    border:1px solid #b9eacb;
-    color:#166534;
-    margin-bottom:16px;
-    font-size:14px;
-    font-weight:600;
-}
-
-.error{
-    padding:12px 14px;
-    border-radius:10px;
-    background:#fff2f2;
-    border:1px solid #f3b5b5;
-    color:#9f1d1d;
-    margin-bottom:16px;
-    font-size:14px;
-}
-
-.error div + div{
-    margin-top:6px;
-}
-
-.form-grid{
-    display:grid;
-    grid-template-columns:repeat(2, minmax(0, 1fr));
-    gap:14px;
-}
-
-.field{
-    display:flex;
-    flex-direction:column;
-}
-
-.field.full{
-    grid-column:1 / -1;
-}
-
-label{
-    font-size:12px;
-    font-weight:700;
-    color:#1f2937;
-    margin:0 0 8px;
-    text-transform:uppercase;
-    letter-spacing:.2px;
-}
-
-input,
-button{
-    width:100%;
-    min-height:42px;
-    border-radius:10px;
-    border:1px solid #c7d3e3;
-    background:#fff;
-    color:#1f2937;
-    padding:10px 12px;
-    font-size:14px;
-    font-family:Arial, sans-serif;
-}
-
-input:focus,
-button:focus{
-    outline:none;
-    border-color:#7d9dff;
-    box-shadow:0 0 0 3px rgba(70,96,220,.10);
-}
-
-.button-primary{
-    border:none;
-    background:#1f66cc;
-    color:#fff;
-    font-weight:700;
-    cursor:pointer;
-    transition:background .2s ease;
-}
-
-.button-primary:hover{
-    background:#2f5bb5;
-}
-
-.table-wrap{
-    width:100%;
-    border:1px solid #dce4f0;
-    border-radius:14px;
-    background:#fff;
-    overflow:hidden;
-}
-
-.table-scroll{
-    width:100%;
-    overflow-x:auto;
-}
-
-table{
-    width:100%;
-    min-width:900px;
-    border-collapse:separate;
-    border-spacing:0;
-}
-
-thead th{
-    background:#f7faff;
-    color:#1f2937;
-    font-size:12px;
-    font-weight:700;
-    text-transform:uppercase;
-    padding:12px;
-    text-align:left;
-    white-space:nowrap;
-}
-
-tbody td{
-    padding:12px;
-    border-bottom:1px solid #e8eef6;
-    font-size:14px;
-    color:#1f2937;
-    vertical-align:top;
-}
-
-tbody tr:last-child td{
-    border-bottom:none;
-}
-
-.badge{
-    display:inline-block;
-    padding:4px 8px;
-    border-radius:999px;
-    background:#eef2ff;
-    color:#1f4ec9;
-    font-size:12px;
-    font-weight:700;
-}
-
-.small{
-    font-size:13px;
-    color:#5b6577;
-}
-
-.empty-row{
-    color:#5b6577;
-}
-
-@media (max-width:768px){
-    body{
-        padding:20px;
-    }
-
-    .page-title{
-        font-size:24px;
-    }
-
-    .card-header h2{
-        font-size:20px;
-    }
-
-    .form-grid{
-        grid-template-columns:1fr;
-    }
-
-    .button-primary{
-        font-size:12px;
-    }
-}
+*{box-sizing:border-box}
+body{font-family:Arial,sans-serif;background:#eef2f7;padding:30px;color:#1f2937;margin:0}
+.wrapper{max-width:1100px;margin:0 auto}
+.back{display:inline-block;margin-bottom:16px;color:#1f66cc;text-decoration:none;font-weight:700;font-size:14px}
+.page-title{font-size:28px;font-weight:700;color:#1f3c75;margin:0 0 18px}
+.stack{display:flex;flex-direction:column;gap:18px}
+.card{background:#fff;border:1px solid #dce4f0;border-radius:14px;padding:20px;box-shadow:0 8px 24px rgba(0,0,0,.08)}
+.card-header{margin-bottom:18px}
+.card-header h2{font-size:22px;font-weight:600;color:#2c3e50;margin:0 0 8px}
+.subtitle{font-size:14px;color:#5b6577;margin:0;line-height:1.5}
+.notice{padding:12px 14px;border-radius:10px;background:#ecfdf3;border:1px solid #b9eacb;color:#166534;margin-bottom:16px;font-size:14px;font-weight:600}
+.error{padding:12px 14px;border-radius:10px;background:#fff2f2;border:1px solid #f3b5b5;color:#9f1d1d;margin-bottom:16px;font-size:14px}
+.error div + div{margin-top:6px}
+.form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.field{display:flex;flex-direction:column}
+.field.full{grid-column:1/-1}
+label{font-size:12px;font-weight:700;color:#1f2937;margin:0 0 8px;text-transform:uppercase;letter-spacing:.2px}
+input,button{width:100%;min-height:42px;border-radius:10px;border:1px solid #c7d3e3;background:#fff;color:#1f2937;padding:10px 12px;font-size:14px;font-family:Arial,sans-serif}
+input:focus,button:focus{outline:none;border-color:#7d9dff;box-shadow:0 0 0 3px rgba(70,96,220,.10)}
+.button-primary{border:none;background:#1f66cc;color:#fff;font-weight:700;cursor:pointer;transition:background .2s ease}
+.button-primary:hover{background:#2f5bb5}
+.table-wrap{width:100%;border:1px solid #dce4f0;border-radius:14px;background:#fff;overflow:hidden}
+.table-scroll{width:100%;overflow-x:auto}
+table{width:100%;min-width:900px;border-collapse:separate;border-spacing:0}
+thead th{background:#f7faff;color:#1f2937;font-size:12px;font-weight:700;text-transform:uppercase;padding:12px;text-align:left;white-space:nowrap}
+tbody td{padding:12px;border-bottom:1px solid #e8eef6;font-size:14px;color:#1f2937;vertical-align:top}
+tbody tr:last-child td{border-bottom:none}
+.badge{display:inline-block;padding:4px 8px;border-radius:999px;background:#eef2ff;color:#1f4ec9;font-size:12px;font-weight:700}
+.small{font-size:13px;color:#5b6577}
+.empty-row{color:#5b6577}
+@media (max-width:768px){body{padding:20px}.page-title{font-size:24px}.card-header h2{font-size:20px}.form-grid{grid-template-columns:1fr}.button-primary{font-size:12px}}
 </style>
 </head>
 <body>
@@ -509,7 +245,7 @@ tbody tr:last-child td{
         <section class="card">
             <div class="card-header">
                 <h2>🧾 Registrar estudiante</h2>
-                <p class="subtitle">La inscripción queda guardada en la base de datos. Si la base falla, el sistema usa JSON como respaldo.</p>
+                <p class="subtitle">La inscripción queda guardada en la base de datos.</p>
             </div>
 
             <?php if (isset($_GET['saved'])) { ?>
@@ -527,47 +263,22 @@ tbody tr:last-child td{
             <form method="post" class="form-grid">
                 <div class="field full">
                     <label for="student_name">Nombre del estudiante</label>
-                    <input
-                        id="student_name"
-                        type="text"
-                        name="student_name"
-                        placeholder="Nombre completo"
-                        value="<?php echo h($form['student_name']); ?>"
-                        required
-                    >
+                    <input id="student_name" type="text" name="student_name" placeholder="Nombre completo" value="<?php echo h($form['student_name']); ?>" required>
                 </div>
 
                 <div class="field">
                     <label for="student_guardian">Acudiente</label>
-                    <input
-                        id="student_guardian"
-                        type="text"
-                        name="student_guardian"
-                        placeholder="Nombre del acudiente"
-                        value="<?php echo h($form['student_guardian']); ?>"
-                    >
+                    <input id="student_guardian" type="text" name="student_guardian" placeholder="Nombre del acudiente" value="<?php echo h($form['student_guardian']); ?>">
                 </div>
 
                 <div class="field">
                     <label for="student_contact">Contacto</label>
-                    <input
-                        id="student_contact"
-                        type="text"
-                        name="student_contact"
-                        placeholder="Número de contacto"
-                        value="<?php echo h($form['student_contact']); ?>"
-                    >
+                    <input id="student_contact" type="text" name="student_contact" placeholder="Número de contacto" value="<?php echo h($form['student_contact']); ?>">
                 </div>
 
                 <div class="field full">
                     <label for="student_eps">EPS</label>
-                    <input
-                        id="student_eps"
-                        type="text"
-                        name="student_eps"
-                        placeholder="Entidad de salud"
-                        value="<?php echo h($form['student_eps']); ?>"
-                    >
+                    <input id="student_eps" type="text" name="student_eps" placeholder="Entidad de salud" value="<?php echo h($form['student_eps']); ?>">
                 </div>
 
                 <div class="field full">
@@ -595,33 +306,14 @@ tbody tr:last-child td{
                         </thead>
                         <tbody>
                         <?php if (empty($students)) { ?>
-                            <tr>
-                                <td colspan="4" class="empty-row">No hay estudiantes inscritos.</td>
-                            </tr>
+                            <tr><td colspan="4" class="empty-row">No hay estudiantes inscritos.</td></tr>
                         <?php } else { ?>
                             <?php foreach ($students as $student) { ?>
                                 <tr>
-                                    <td>
-                                        <strong><?php echo h((string) ($student['name'] ?? 'Estudiante')); ?></strong>
-                                    </td>
-                                    <td>
-                                        <?php
-                                            $guardian = (string) ($student['guardian'] ?? '');
-                                            echo $guardian !== '' ? h($guardian) : '<span class="small">Sin dato</span>';
-                                        ?>
-                                    </td>
-                                    <td>
-                                        <?php
-                                            $contact = (string) ($student['contact'] ?? '');
-                                            echo $contact !== '' ? h($contact) : '<span class="small">Sin dato</span>';
-                                        ?>
-                                    </td>
-                                    <td>
-                                        <?php
-                                            $eps = (string) ($student['eps'] ?? '');
-                                            echo $eps !== '' ? '<span class="badge">' . h($eps) . '</span>' : '<span class="small">Sin dato</span>';
-                                        ?>
-                                    </td>
+                                    <td><strong><?php echo h((string) ($student['name'] ?? 'Estudiante')); ?></strong></td>
+                                    <td><?php echo ((string) ($student['guardian'] ?? '')) !== '' ? h((string) $student['guardian']) : '<span class="small">Sin dato</span>'; ?></td>
+                                    <td><?php echo ((string) ($student['contact'] ?? '')) !== '' ? h((string) $student['contact']) : '<span class="small">Sin dato</span>'; ?></td>
+                                    <td><?php echo ((string) ($student['eps'] ?? '')) !== '' ? '<span class="badge">' . h((string) $student['eps']) . '</span>' : '<span class="small">Sin dato</span>'; ?></td>
                                 </tr>
                             <?php } ?>
                         <?php } ?>
