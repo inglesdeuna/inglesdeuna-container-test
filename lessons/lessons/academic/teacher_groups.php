@@ -6,37 +6,153 @@ if (!isset($_SESSION['admin_logged']) || $_SESSION['admin_logged'] !== true) {
     exit;
 }
 
-$dataDir = __DIR__ . '/data';
-$teachersFile = $dataDir . '/teachers.json';
-$accountsFile = $dataDir . '/teacher_accounts.json';
-$studentsFile = $dataDir . '/students.json';
-$coursesFile = $dataDir . '/courses.json';
-$unitsFile = $dataDir . '/units.json';
-$studentAssignmentsFile = $dataDir . '/student_assignments_records.json';
-
-foreach ([$teachersFile, $accountsFile, $studentsFile, $coursesFile, $unitsFile, $studentAssignmentsFile] as $file) {
-    if (!file_exists($file)) {
-        file_put_contents($file, '[]');
-    }
-}
-
-$teachers = json_decode((string) file_get_contents($teachersFile), true);
-$accounts = json_decode((string) file_get_contents($accountsFile), true);
-$students = json_decode((string) file_get_contents($studentsFile), true);
-$courses = json_decode((string) file_get_contents($coursesFile), true);
-$units = json_decode((string) file_get_contents($unitsFile), true);
-$studentAssignments = json_decode((string) file_get_contents($studentAssignmentsFile), true);
-
-$teachers = is_array($teachers) ? $teachers : [];
-$accounts = is_array($accounts) ? $accounts : [];
-$students = is_array($students) ? $students : [];
-$courses = is_array($courses) ? $courses : [];
-$units = is_array($units) ? $units : [];
-$studentAssignments = is_array($studentAssignments) ? $studentAssignments : [];
-
 function h(string $v): string
 {
     return htmlspecialchars($v, ENT_QUOTES, 'UTF-8');
+}
+
+function get_pdo_connection(): ?PDO
+{
+    if (!getenv('DATABASE_URL')) {
+        return null;
+    }
+
+    static $cachedPdo = null;
+    static $loaded = false;
+
+    if ($loaded) {
+        return $cachedPdo;
+    }
+
+    $loaded = true;
+
+    $dbFile = __DIR__ . '/../config/db.php';
+    if (!file_exists($dbFile)) {
+        return null;
+    }
+
+    require $dbFile;
+
+    if (!isset($pdo) || !($pdo instanceof PDO)) {
+        return null;
+    }
+
+    $cachedPdo = $pdo;
+    return $cachedPdo;
+}
+
+function load_teachers_from_database(): array
+{
+    $pdo = get_pdo_connection();
+    if (!$pdo) {
+        return [];
+    }
+
+    try {
+        $stmt = $pdo->query("
+            SELECT id, name
+            FROM teachers
+            ORDER BY name ASC, id ASC
+        ");
+        return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    } catch (Throwable $e) {
+        return [];
+    }
+}
+
+function load_teacher_accounts_from_database(): array
+{
+    $pdo = get_pdo_connection();
+    if (!$pdo) {
+        return [];
+    }
+
+    try {
+        $stmt = $pdo->query("
+            SELECT id, teacher_id, teacher_name, scope, target_id, target_name, permission, username, password, updated_at
+            FROM teacher_accounts
+            ORDER BY updated_at DESC NULLS LAST, teacher_name ASC
+        ");
+        return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    } catch (Throwable $e) {
+        return [];
+    }
+}
+
+function load_students_from_database(): array
+{
+    $pdo = get_pdo_connection();
+    if (!$pdo) {
+        return [];
+    }
+
+    try {
+        $stmt = $pdo->query("
+            SELECT id, name
+            FROM students
+            ORDER BY name ASC, id ASC
+        ");
+        return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    } catch (Throwable $e) {
+        return [];
+    }
+}
+
+function load_courses_from_database(): array
+{
+    $pdo = get_pdo_connection();
+    if (!$pdo) {
+        return [];
+    }
+
+    try {
+        $stmt = $pdo->query("
+            SELECT id, name
+            FROM courses
+            ORDER BY id ASC, name ASC
+        ");
+        return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    } catch (Throwable $e) {
+        return [];
+    }
+}
+
+function load_units_from_database(): array
+{
+    $pdo = get_pdo_connection();
+    if (!$pdo) {
+        return [];
+    }
+
+    try {
+        $stmt = $pdo->query("
+            SELECT id, name, course_id, phase_id
+            FROM units
+            ORDER BY id ASC
+        ");
+        return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    } catch (Throwable $e) {
+        return [];
+    }
+}
+
+function load_student_assignments_from_database(): array
+{
+    $pdo = get_pdo_connection();
+    if (!$pdo) {
+        return [];
+    }
+
+    try {
+        $stmt = $pdo->query("
+            SELECT id, student_id, teacher_id, program, course_id, level_id, period, unit_id, student_username, student_temp_password, updated_at
+            FROM student_assignments
+            ORDER BY updated_at DESC NULLS LAST, id DESC
+        ");
+        return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    } catch (Throwable $e) {
+        return [];
+    }
 }
 
 function map_names(array $rows): array
@@ -50,6 +166,13 @@ function map_names(array $rows): array
     }
     return $mapped;
 }
+
+$teachers = load_teachers_from_database();
+$accounts = load_teacher_accounts_from_database();
+$students = load_students_from_database();
+$courses = load_courses_from_database();
+$units = load_units_from_database();
+$studentAssignments = load_student_assignments_from_database();
 
 $studentNameById = map_names($students);
 $courseNameById = map_names($courses);
@@ -134,10 +257,7 @@ usort($teacherCards, fn($a, $b) => strcasecmp((string) ($a['name'] ?? ''), (stri
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Docentes y Grupos</title>
     <style>
-        * {
-            box-sizing: border-box;
-        }
-
+        * { box-sizing: border-box; }
         body {
             font-family: Arial, sans-serif;
             background: #eef2f7;
@@ -145,12 +265,10 @@ usort($teacherCards, fn($a, $b) => strcasecmp((string) ($a['name'] ?? ''), (stri
             color: #1f2937;
             margin: 0;
         }
-
         .wrapper {
             max-width: 1100px;
             margin: 0 auto;
         }
-
         .topbar {
             display: flex;
             justify-content: space-between;
@@ -159,7 +277,6 @@ usort($teacherCards, fn($a, $b) => strcasecmp((string) ($a['name'] ?? ''), (stri
             flex-wrap: wrap;
             margin-bottom: 20px;
         }
-
         .back {
             display: inline-block;
             padding: 8px 12px;
@@ -171,18 +288,15 @@ usort($teacherCards, fn($a, $b) => strcasecmp((string) ($a['name'] ?? ''), (stri
             font-size: 14px;
             transition: background .2s ease;
         }
-
         .back:hover {
             background: #2f5bb5;
         }
-
         h1.title {
             font-size: 28px;
             font-weight: 700;
             color: #1f3c75;
             margin: 0 0 20px;
         }
-
         .panel {
             background: #ffffff;
             border-radius: 14px;
@@ -190,7 +304,6 @@ usort($teacherCards, fn($a, $b) => strcasecmp((string) ($a['name'] ?? ''), (stri
             box-shadow: 0 8px 24px rgba(0,0,0,.08);
             border: 1px solid #dce4f0;
         }
-
         .teacher {
             background: #ffffff;
             border: 1px solid #dce4f0;
@@ -199,11 +312,9 @@ usort($teacherCards, fn($a, $b) => strcasecmp((string) ($a['name'] ?? ''), (stri
             overflow: hidden;
             box-shadow: 0 8px 24px rgba(0,0,0,.04);
         }
-
         .teacher:last-child {
             margin-bottom: 0;
         }
-
         .head {
             display: flex;
             justify-content: space-between;
@@ -211,32 +322,27 @@ usort($teacherCards, fn($a, $b) => strcasecmp((string) ($a['name'] ?? ''), (stri
             gap: 16px;
             padding: 18px 20px;
         }
-
         .teacher-info {
             flex: 1;
             min-width: 0;
         }
-
         .name {
             margin: 0 0 6px;
             font-size: 22px;
             font-weight: 700;
             color: #2c3e50;
         }
-
         .meta {
             font-size: 13px;
             color: #5b6577;
             display: block;
             margin-bottom: 12px;
         }
-
         .badges {
             display: flex;
             flex-wrap: wrap;
             gap: 8px;
         }
-
         .badge {
             display: inline-block;
             padding: 4px 10px;
@@ -247,14 +353,12 @@ usort($teacherCards, fn($a, $b) => strcasecmp((string) ($a['name'] ?? ''), (stri
             font-weight: 700;
             line-height: 1.4;
         }
-
         .right {
             display: flex;
             align-items: center;
             gap: 8px;
             flex-shrink: 0;
         }
-
         .view-btn,
         .toggle {
             display: inline-block;
@@ -264,105 +368,68 @@ usort($teacherCards, fn($a, $b) => strcasecmp((string) ($a['name'] ?? ''), (stri
             font-weight: 700;
             font-size: 14px;
             cursor: pointer;
-            transition: background .2s ease, color .2s ease, transform .2s ease;
+            transition: background .2s ease, color .2s ease;
         }
-
         .view-btn {
             background: #1f66cc;
             color: #fff;
         }
-
         .view-btn:hover {
             background: #2f5bb5;
         }
-
         .toggle {
             background: #eef2ff;
             color: #1f4ec9;
         }
-
         .toggle:hover {
             background: #dfe8ff;
         }
-
         .body-panel {
             display: none;
             padding: 18px 20px 20px;
             border-top: 1px solid #dce4f0;
             background: #f8fbff;
         }
-
         .body-panel.open {
             display: block;
         }
-
         .body-panel h3 {
             font-size: 18px;
             font-weight: 600;
             color: #2c3e50;
             margin: 0 0 12px;
         }
-
         .students-list {
             margin: 0;
             padding-left: 20px;
         }
-
         .students-list li {
             font-size: 14px;
             color: #1f2937;
             padding: 8px 0;
             border-bottom: 1px solid #e7edf6;
         }
-
         .students-list li:last-child {
             border-bottom: none;
         }
-
         .empty {
             font-size: 13px;
             color: #5b6577;
             margin: 0;
         }
-
         @media (max-width: 768px) {
-            body {
-                padding: 20px;
-            }
-
-            h1.title {
-                font-size: 24px;
-            }
-
-            .head {
-                flex-direction: column;
-                align-items: stretch;
-            }
-
-            .right {
-                width: 100%;
-                justify-content: flex-start;
-            }
-
-            .name {
-                font-size: 20px;
-            }
-
-            .view-btn,
-            .toggle {
-                font-size: 12px;
-                padding: 6px 10px;
-            }
-
-            .body-panel h3 {
-                font-size: 16px;
-            }
+            body { padding: 20px; }
+            h1.title { font-size: 24px; }
+            .head { flex-direction: column; align-items: stretch; }
+            .right { width: 100%; justify-content: flex-start; }
+            .name { font-size: 20px; }
+            .view-btn, .toggle { font-size: 12px; padding: 6px 10px; }
+            .body-panel h3 { font-size: 16px; }
         }
     </style>
 </head>
 <body>
 <div class="wrapper" id="docentes-grupos">
-
     <div class="topbar">
         <a class="back" href="student_assignments.php">← Volver a asignaciones</a>
     </div>
