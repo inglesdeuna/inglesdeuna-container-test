@@ -8,109 +8,304 @@ if (!isset($_SESSION['academic_logged']) || $_SESSION['academic_logged'] !== tru
 
 $unitId = trim((string) ($_GET['unit'] ?? ''));
 $mode = trim((string) ($_GET['mode'] ?? 'view'));
-if ($mode !== 'edit') {
-    $mode = 'view';
-}
+$mode = $mode === 'edit' ? 'edit' : 'view';
 
 if ($unitId === '') {
-    die('Unidad no especificada');
+    die('Unidad no especificada.');
 }
 
-$dataDir = __DIR__ . '/data';
-$accountsFile = $dataDir . '/teacher_accounts.json';
-$accounts = file_exists($accountsFile) ? json_decode((string) file_get_contents($accountsFile), true) : [];
-$accounts = is_array($accounts) ? $accounts : [];
-
 $teacherId = (string) ($_SESSION['teacher_id'] ?? '');
+
+function h(string $value): string
+{
+    return htmlspecialchars($value, ENT_QUOTES, 'UTF-8');
+}
+
+function get_pdo_connection(): ?PDO
+{
+    if (!getenv('DATABASE_URL')) {
+        return null;
+    }
+
+    $dbFile = __DIR__ . '/../config/db.php';
+    if (!file_exists($dbFile)) {
+        return null;
+    }
+
+    try {
+        require $dbFile;
+        return (isset($pdo) && $pdo instanceof PDO) ? $pdo : null;
+    } catch (Throwable $e) {
+        return null;
+    }
+}
+
+$pdo = get_pdo_connection();
+if (!$pdo) {
+    die('Base de datos no disponible.');
+}
+
+try {
+    $stmtUnit = $pdo->prepare("
+        SELECT id, name, course_id, phase_id
+        FROM units
+        WHERE id = :id
+        LIMIT 1
+    ");
+    $stmtUnit->execute(['id' => $unitId]);
+    $unit = $stmtUnit->fetch(PDO::FETCH_ASSOC);
+} catch (Throwable $e) {
+    $unit = false;
+}
+
+if (!$unit) {
+    die('Unidad no encontrada.');
+}
+
+try {
+    $stmtAccounts = $pdo->prepare("
+        SELECT teacher_id, scope, target_id, permission
+        FROM teacher_accounts
+        WHERE teacher_id = :teacher_id
+    ");
+    $stmtAccounts->execute(['teacher_id' => $teacherId]);
+    $accounts = $stmtAccounts->fetchAll(PDO::FETCH_ASSOC) ?: [];
+} catch (Throwable $e) {
+    $accounts = [];
+}
 
 $allowed = false;
 $allowEdit = false;
 
-if (getenv('DATABASE_URL')) {
-    try {
-        require __DIR__ . '/../config/db.php';
-
-        $stmtUnit = $pdo->prepare('SELECT id, name, course_id, phase_id FROM units WHERE id = :id LIMIT 1');
-        $stmtUnit->execute(['id' => $unitId]);
-        $unit = $stmtUnit->fetch(PDO::FETCH_ASSOC);
-
-        if (!$unit) {
-            die('Unidad no encontrada');
-        }
-
-        foreach ($accounts as $account) {
-            if ((string) ($account['teacher_id'] ?? '') !== $teacherId) {
-                continue;
-            }
-
-            $scope = (string) ($account['scope'] ?? 'technical');
-            $target = (string) ($account['target_id'] ?? '');
-            $permission = (string) ($account['permission'] ?? 'viewer');
-
-            if ($scope === 'english' && $target !== '' && $target === (string) ($unit['phase_id'] ?? '')) {
-                $allowed = true;
-                $allowEdit = $allowEdit || $permission === 'editor';
-            }
-
-            if ($scope === 'technical' && $target !== '' && $target === (string) ($unit['course_id'] ?? '')) {
-                $allowed = true;
-                $allowEdit = $allowEdit || $permission === 'editor';
-            }
-        }
-
-        if (!$allowed) {
-            die('No tienes permiso para esta unidad.');
-        }
-
-        if ($mode === 'edit' && !$allowEdit) {
-            die('Tu perfil es sólo de visualización.');
-        }
-
-        $stmtActivities = $pdo->prepare('SELECT id, type, created_at FROM activities WHERE unit_id = :unit_id ORDER BY position ASC, id ASC');
-        $stmtActivities->execute(['unit_id' => $unitId]);
-        $activities = $stmtActivities->fetchAll(PDO::FETCH_ASSOC) ?: [];
-    } catch (Throwable $e) {
-        die('No fue posible cargar la unidad.');
+foreach ($accounts as $account) {
+    if ((string) ($account['teacher_id'] ?? '') !== $teacherId) {
+        continue;
     }
-} else {
-    die('DATABASE_URL no está configurada.');
+
+    $scope = (string) ($account['scope'] ?? 'technical');
+    $targetId = (string) ($account['target_id'] ?? '');
+    $permission = (string) ($account['permission'] ?? 'viewer');
+
+    if (
+        $scope === 'english' &&
+        $targetId !== '' &&
+        $targetId === (string) ($unit['phase_id'] ?? '')
+    ) {
+        $allowed = true;
+        if ($permission === 'editor') {
+            $allowEdit = true;
+        }
+    }
+
+    if (
+        $scope === 'technical' &&
+        $targetId !== '' &&
+        $targetId === (string) ($unit['course_id'] ?? '')
+    ) {
+        $allowed = true;
+        if ($permission === 'editor') {
+            $allowEdit = true;
+        }
+    }
 }
+
+if (!$allowed) {
+    die('No tienes permiso para esta unidad.');
+}
+
+if ($mode === 'edit' && !$allowEdit) {
+    $mode = 'view';
+}
+
+try {
+    $stmtActivities = $pdo->prepare("
+        SELECT id, type, title, name, position
+        FROM activities
+        WHERE unit_id = :unit_id
+        ORDER BY position ASC, id ASC
+    ");
+    $stmtActivities->execute(['unit_id' => $unitId]);
+    $activities = $stmtActivities->fetchAll(PDO::FETCH_ASSOC) ?: [];
+} catch (Throwable $e) {
+    $activities = [];
+}
+
+$activityLabels = [
+    'flashcards' => 'Flashcards',
+    'quiz' => 'Quiz',
+    'multiple_choice' => 'Quiz',
+    'video_lesson' => 'Video Lesson',
+    'flipbooks' => 'Video Lesson',
+    'hangman' => 'Hangman',
+    'pronunciation' => 'Pronunciation',
+    'listen_order' => 'Listen & Order',
+    'drag_drop' => 'Drag & Drop',
+    'match' => 'Match',
+    'external' => 'External',
+];
 ?>
 <!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Unidad Docente</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title><?php echo h((string) ($unit['name'] ?? 'Unidad')); ?></title>
 <style>
-body{font-family:Arial,sans-serif;background:#eef2f7;padding:30px;color:#1f2937}
-.card{background:#fff;border-radius:14px;padding:20px;box-shadow:0 8px 24px rgba(0,0,0,.08);margin-bottom:18px}
-.back{display:inline-block;margin-bottom:15px;color:#1f66cc;text-decoration:none;font-weight:700}
-.row{padding:10px;border:1px solid #dee6f1;border-radius:8px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center}
-.btn{display:inline-block;padding:8px 12px;border-radius:8px;background:#1f66cc;color:#fff;text-decoration:none;font-weight:700}
+:root{
+    --bg:#eef3ff;
+    --card:#ffffff;
+    --line:#d8e2f2;
+    --title:#1f4d8f;
+    --text:#1d355d;
+    --muted:#5d6f8f;
+    --blue:#2563eb;
+    --blue-hover:#1d4ed8;
+    --green:#15803d;
+}
+*{
+    box-sizing:border-box;
+}
+body{
+    margin:0;
+    background:var(--bg);
+    font-family:Arial,sans-serif;
+    padding:24px;
+    color:var(--text);
+}
+.page{
+    max-width:1100px;
+    margin:0 auto;
+}
+.top{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:12px;
+    flex-wrap:wrap;
+    margin-bottom:14px;
+}
+.top h1{
+    margin:0;
+    color:var(--title);
+    font-size:30px;
+}
+.back{
+    color:var(--blue);
+    text-decoration:none;
+    font-weight:700;
+}
+.meta{
+    margin:0 0 24px;
+    color:var(--muted);
+    font-size:16px;
+}
+.section-title{
+    margin:0 0 14px;
+    color:var(--title);
+    font-size:24px;
+    font-weight:700;
+}
+.card{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:12px;
+    padding:16px;
+    margin-top:12px;
+}
+.card h3{
+    margin:0 0 10px;
+    color:var(--text);
+    font-size:20px;
+}
+.card p{
+    margin:0 0 10px;
+    color:var(--muted);
+}
+.actions{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+    margin-top:10px;
+}
+.btn{
+    display:inline-block;
+    padding:9px 14px;
+    background:var(--blue);
+    color:#fff;
+    text-decoration:none;
+    border-radius:8px;
+    font-weight:700;
+}
+.btn:hover{
+    background:var(--blue-hover);
+}
+.btn.edit{
+    background:var(--green);
+}
+.empty{
+    background:#fff;
+    border:1px solid var(--line);
+    border-radius:12px;
+    padding:16px;
+    color:var(--muted);
+}
+@media (max-width: 768px){
+    body{
+        padding:18px;
+    }
+    .top h1{
+        font-size:24px;
+    }
+}
 </style>
 </head>
 <body>
-<a class="back" href="dashboard.php">← Volver a panel docente</a>
-<div class="card">
-    <h1 style="margin-top:0"><?php echo htmlspecialchars((string) ($unit['name'] ?? 'Unidad')); ?></h1>
-    <p>Modo: <strong><?php echo htmlspecialchars($mode === 'edit' ? 'Edición' : 'Visualización'); ?></strong></p>
-</div>
+<div class="page">
+    <div class="top">
+        <h1><?php echo h((string) ($unit['name'] ?? 'Unidad')); ?></h1>
+        <a class="back" href="dashboard.php">← Volver</a>
+    </div>
 
-<div class="card">
-    <h2 style="margin-top:0">Actividades de la unidad</h2>
+    <p class="meta">
+        Modo: <strong><?php echo h($mode === 'edit' ? 'Edición' : 'Visualización'); ?></strong>
+    </p>
+
+    <h2 class="section-title">Actividades de la unidad</h2>
+
     <?php if (empty($activities)) { ?>
-        <p>No hay actividades registradas.</p>
+        <div class="empty">No hay actividades registradas en esta unidad.</div>
     <?php } else { ?>
         <?php foreach ($activities as $activity) { ?>
-            <div class="row">
-                <div>
-                    <strong><?php echo htmlspecialchars(strtoupper((string) ($activity['type'] ?? 'actividad'))); ?></strong><br>
-                    <small><?php echo htmlspecialchars((string) ($activity['created_at'] ?? '')); ?></small>
-                </div>
-                <div>
-                    <a class="btn" href="../activities/<?php echo urlencode((string) ($activity['type'] ?? '')); ?>/viewer.php?id=<?php echo urlencode((string) ($activity['id'] ?? '')); ?>&unit=<?php echo urlencode($unitId); ?>">Abrir</a>
-                    <?php if ($mode === 'edit' && $allowEdit) { ?>
-                        <a class="btn" style="background:#0f8f4a" href="../activities/<?php echo urlencode((string) ($activity['type'] ?? '')); ?>/editor.php?id=<?php echo urlencode((string) ($activity['id'] ?? '')); ?>&unit=<?php echo urlencode($unitId); ?>">Editar</a>
+            <?php
+            $activityId = (string) ($activity['id'] ?? '');
+            $type = strtolower((string) ($activity['type'] ?? 'activity'));
+            $typeLabel = $activityLabels[$type] ?? ucwords(str_replace('_', ' ', $type));
+            $title = (string) ($activity['title'] ?? $activity['name'] ?? $typeLabel);
+            $activityBase = '../activities/' . rawurlencode($type);
+            ?>
+            <div class="card">
+                <h3><?php echo h($title); ?></h3>
+                <p>Tipo: <strong><?php echo h($typeLabel); ?></strong></p>
+
+                <div class="actions">
+                    <a
+                        class="btn"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        href="<?php echo h($activityBase . '/viewer.php?id=' . urlencode($activityId) . '&unit=' . urlencode($unitId)); ?>"
+                    >
+                        Ver actividad
+                    </a>
+
+                    <?php if ($allowEdit) { ?>
+                        <a
+                            class="btn edit"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            href="<?php echo h($activityBase . '/editor.php?id=' . urlencode($activityId) . '&unit=' . urlencode($unitId)); ?>"
+                        >
+                            Editar actividad
+                        </a>
                     <?php } ?>
                 </div>
             </div>
