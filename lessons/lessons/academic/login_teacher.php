@@ -1,4 +1,2 @@
 <?php
-// Login docente ANTIGUO — DESACTIVADO
-header("Location: login.php");
-exit;
+require __DIR__ . '/login.php';
