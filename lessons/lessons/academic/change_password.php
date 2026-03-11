@@ -60,7 +60,6 @@ if (!$pdo) {
 }
 
 $error = '';
-$success = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $currentPassword = trim((string) ($_POST['current_password'] ?? ''));
@@ -116,7 +115,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ]);
 
                 $_SESSION['teacher_must_change_password'] = false;
-                $success = 'Contraseña actualizada correctamente.';
+                header('Location: dashboard.php?password_changed=1');
+                exit;
             }
         } catch (Throwable $e) {
             $error = 'No fue posible actualizar la contraseña.';
@@ -193,7 +193,7 @@ input{
 input:focus{
     border-color:#8bb0ea;
 }
-button, .link-btn{
+button{
     width:100%;
     height:46px;
     margin-top:16px;
@@ -204,19 +204,9 @@ button, .link-btn{
     font-weight:700;
     font-size:15px;
     cursor:pointer;
-    text-decoration:none;
-    display:flex;
-    align-items:center;
-    justify-content:center;
 }
-button:hover, .link-btn:hover{
+button:hover{
     background:var(--blue-hover);
-}
-.success{
-    margin-top:12px;
-    color:var(--green);
-    font-weight:700;
-    font-size:14px;
 }
 .error{
     margin-top:12px;
@@ -246,11 +236,6 @@ button:hover, .link-btn:hover{
 
     <?php if ($error !== '') { ?>
         <div class="error"><?php echo h($error); ?></div>
-    <?php } ?>
-
-    <?php if ($success !== '') { ?>
-        <div class="success"><?php echo h($success); ?></div>
-        <a class="link-btn" href="dashboard.php" style="margin-top:14px;">Ir al panel docente</a>
     <?php } ?>
 </div>
 </body>
