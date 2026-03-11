@@ -1,19 +1,4 @@
 <?php
-if (isset($_GET['delete']) && $_GET['delete'] !== '') {
-    $deleteId = (string) $_GET['delete'];
-
-    if (getenv('DATABASE_URL')) {
-        try {
-            require __DIR__ . '/../config/db.php';
-            $stmt = $pdo->prepare("DELETE FROM teacher_accounts WHERE id = :id");
-            $stmt->execute(['id' => $deleteId]);
-        } catch (Throwable $e) {
-        }
-    }
-
-    header('Location: teacher_profiles.php?saved=1');
-    exit;
-}
 session_start();
 
 if (!isset($_SESSION['admin_logged']) || $_SESSION['admin_logged'] !== true) {
@@ -21,33 +6,12 @@ if (!isset($_SESSION['admin_logged']) || $_SESSION['admin_logged'] !== true) {
     exit;
 }
 
+/* ===============================
+   HELPERS
+=============================== */
 function h(string $value): string
 {
     return htmlspecialchars($value, ENT_QUOTES, 'UTF-8');
-}
-
-function read_json_array(string $file): array
-{
-    if (!file_exists($file)) {
-        return [];
-    }
-
-    $raw = file_get_contents($file);
-    if ($raw === false) {
-        return [];
-    }
-
-    $decoded = json_decode($raw, true);
-    return is_array($decoded) ? $decoded : [];
-}
-
-function write_json_array(string $file, array $rows): bool
-{
-    $json = json_encode(array_values($rows), JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
-    if ($json === false) {
-        return false;
-    }
-    return file_put_contents($file, $json) !== false;
 }
 
 function get_pdo_connection(): ?PDO
@@ -93,19 +57,10 @@ function load_teachers_from_database(): array
             FROM teachers
             ORDER BY name ASC, id ASC
         ");
-        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
     } catch (Throwable $e) {
         return [];
     }
-
-    return array_values(array_filter(array_map(function ($row) {
-        return [
-            'id' => (string) ($row['id'] ?? ''),
-            'name' => (string) ($row['name'] ?? ''),
-        ];
-    }, is_array($rows) ? $rows : []), function ($row) {
-        return (string) ($row['id'] ?? '') !== '';
-    }));
 }
 
 function load_teacher_accounts_from_database(): array
@@ -119,29 +74,81 @@ function load_teacher_accounts_from_database(): array
         $stmt = $pdo->query("
             SELECT id, teacher_id, teacher_name, scope, target_id, target_name, permission, username, password, updated_at
             FROM teacher_accounts
-            ORDER BY updated_at DESC NULLS LAST, teacher_name ASC, id ASC
+            ORDER BY updated_at DESC NULLS LAST, teacher_name ASC
         ");
-        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
     } catch (Throwable $e) {
         return [];
     }
+}
 
-    return array_values(array_filter(array_map(function ($row) {
-        return [
-            'id' => (string) ($row['id'] ?? ''),
-            'teacher_id' => (string) ($row['teacher_id'] ?? ''),
-            'teacher_name' => (string) ($row['teacher_name'] ?? ''),
-            'scope' => (string) ($row['scope'] ?? 'technical'),
-            'target_id' => (string) ($row['target_id'] ?? ''),
-            'target_name' => (string) ($row['target_name'] ?? ''),
-            'permission' => (string) ($row['permission'] ?? 'viewer'),
-            'username' => (string) ($row['username'] ?? ''),
-            'password' => (string) ($row['password'] ?? ''),
-            'updated_at' => (string) ($row['updated_at'] ?? ''),
-        ];
-    }, is_array($rows) ? $rows : []), function ($row) {
-        return (string) ($row['id'] ?? '') !== '';
-    }));
+function load_technical_courses_from_database(): array
+{
+    $pdo = get_pdo_connection();
+    if (!$pdo) {
+        return [];
+    }
+
+    try {
+        $stmt = $pdo->query("
+            SELECT id, name
+            FROM courses
+            WHERE
+                LOWER(COALESCE(program_id::text, '')) IN (
+                    '1',
+                    'prog_technical',
+                    'technical',
+                    'prog_tecnico',
+                    'tecnico',
+                    'programa_tecnico'
+                )
+                OR LOWER(COALESCE(name, '')) LIKE '%semestre%'
+            ORDER BY id ASC, name ASC
+        ");
+        return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    } catch (Throwable $e) {
+        return [];
+    }
+}
+
+function load_english_targets_from_database(): array
+{
+    $pdo = get_pdo_connection();
+    if (!$pdo) {
+        return [];
+    }
+
+    try {
+        $stmt = $pdo->query("
+            SELECT ph.id, CONCAT(l.name, ' - ', ph.name) AS name
+            FROM english_phases ph
+            INNER JOIN english_levels l ON l.id = ph.level_id
+            ORDER BY l.id ASC, ph.id ASC
+        ");
+        return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    } catch (Throwable $e) {
+        return [];
+    }
+}
+
+function find_teacher_name_by_id(array $teachers, string $teacherId): string
+{
+    foreach ($teachers as $teacher) {
+        if ((string) ($teacher['id'] ?? '') === $teacherId) {
+            return (string) ($teacher['name'] ?? 'Docente');
+        }
+    }
+    return '';
+}
+
+function find_account_by_id(array $accounts, string $id): ?array
+{
+    foreach ($accounts as $account) {
+        if ((string) ($account['id'] ?? '') === $id) {
+            return (array) $account;
+        }
+    }
+    return null;
 }
 
 function save_teacher_account_to_database(array $record): bool
@@ -158,7 +165,8 @@ function save_teacher_account_to_database(array $record): bool
             ) VALUES (
                 :id, :teacher_id, :teacher_name, :scope, :target_id, :target_name, :permission, :username, :password, :updated_at
             )
-            ON CONFLICT (teacher_id) DO UPDATE SET
+            ON CONFLICT (id) DO UPDATE SET
+                teacher_id = EXCLUDED.teacher_id,
                 teacher_name = EXCLUDED.teacher_name,
                 scope = EXCLUDED.scope,
                 target_id = EXCLUDED.target_id,
@@ -186,86 +194,33 @@ function save_teacher_account_to_database(array $record): bool
     }
 }
 
-$dataDir = __DIR__ . '/data';
-$teachersFile = $dataDir . '/teachers.json';
-$accountsFile = $dataDir . '/teacher_accounts.json';
-
-if (!is_dir($dataDir)) {
-    mkdir($dataDir, 0777, true);
-}
-
-foreach ([$teachersFile, $accountsFile] as $file) {
-    if (!file_exists($file)) {
-        file_put_contents($file, '[]');
+function delete_teacher_account_from_database(string $id): bool
+{
+    $pdo = get_pdo_connection();
+    if (!$pdo || $id === '') {
+        return false;
     }
-}
 
-$teachersJson = read_json_array($teachersFile);
-$accountsJson = read_json_array($accountsFile);
-
-$teachersDb = load_teachers_from_database();
-$accountsDb = load_teacher_accounts_from_database();
-
-$teachers = !empty($teachersDb) ? $teachersDb : $teachersJson;
-$accounts = !empty($accountsDb) ? $accountsDb : $accountsJson;
-
-$technical = [];
-$english = [];
-
-if (getenv('DATABASE_URL')) {
     try {
-        $pdo = get_pdo_connection();
-
-        if ($pdo) {
-            $stmtTechnical = $pdo->query("
-                SELECT c.id, c.name
-                FROM courses c
-                WHERE
-                    LOWER(COALESCE(c.program_id::text, '')) IN (
-                        '1',
-                        'prog_technical',
-                        'technical',
-                        'prog_tecnico',
-                        'tecnico',
-                        'programa_tecnico'
-                    )
-                    OR LOWER(COALESCE(c.name, '')) LIKE '%semestre%'
-                ORDER BY c.id ASC, c.name ASC
-            ");
-            $technical = $stmtTechnical->fetchAll(PDO::FETCH_ASSOC) ?: [];
-
-            $stmtEnglish = $pdo->query("
-                SELECT ph.id, CONCAT(l.name, ' - ', ph.name) AS name
-                FROM english_phases ph
-                INNER JOIN english_levels l ON l.id = ph.level_id
-                ORDER BY l.id ASC, ph.id ASC
-            ");
-            $english = $stmtEnglish->fetchAll(PDO::FETCH_ASSOC) ?: [];
-        }
+        $stmt = $pdo->prepare("DELETE FROM teacher_accounts WHERE id = :id");
+        return $stmt->execute(['id' => $id]);
     } catch (Throwable $e) {
-        $technical = [];
-        $english = [];
+        return false;
     }
 }
 
-$technical = array_map(function ($row) {
-    $id = (string) ($row['id'] ?? '');
-    $name = trim((string) ($row['name'] ?? ''));
-
-    if ($name !== '' && preg_match('/^\d+$/', $name)) {
-        $name = 'SEMESTRE ' . $name;
-    } elseif ($name === '' && $id !== '') {
-        $name = 'SEMESTRE ' . $id;
-    }
-
-    return [
-        'id' => $id,
-        'name' => $name !== '' ? $name : 'Semestre',
-    ];
-}, $technical);
+/* ===============================
+   CARGA INICIAL
+=============================== */
+$teachers = load_teachers_from_database();
+$accounts = load_teacher_accounts_from_database();
+$technical = load_technical_courses_from_database();
+$english = load_english_targets_from_database();
 
 $errors = [];
+
 $form = [
+    'edit_id' => '',
     'teacher_id' => '',
     'scope' => 'technical',
     'target_id' => '',
@@ -275,7 +230,40 @@ $form = [
     'password' => '',
 ];
 
+/* ===============================
+   ELIMINAR
+=============================== */
+if (isset($_GET['delete']) && $_GET['delete'] !== '') {
+    $deleteId = (string) $_GET['delete'];
+    delete_teacher_account_from_database($deleteId);
+    header('Location: teacher_profiles.php?saved=1');
+    exit;
+}
+
+/* ===============================
+   EDITAR
+=============================== */
+if (isset($_GET['edit']) && $_GET['edit'] !== '') {
+    $editId = (string) $_GET['edit'];
+    $editAccount = find_account_by_id($accounts, $editId);
+
+    if ($editAccount) {
+        $form['edit_id'] = (string) ($editAccount['id'] ?? '');
+        $form['teacher_id'] = (string) ($editAccount['teacher_id'] ?? '');
+        $form['scope'] = (string) ($editAccount['scope'] ?? 'technical');
+        $form['target_id'] = (string) ($editAccount['target_id'] ?? '');
+        $form['target_name'] = (string) ($editAccount['target_name'] ?? '');
+        $form['permission'] = (string) ($editAccount['permission'] ?? 'viewer');
+        $form['username'] = (string) ($editAccount['username'] ?? '');
+        $form['password'] = (string) ($editAccount['password'] ?? '');
+    }
+}
+
+/* ===============================
+   GUARDAR
+=============================== */
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $form['edit_id'] = trim((string) ($_POST['edit_id'] ?? ''));
     $form['teacher_id'] = trim((string) ($_POST['teacher_id'] ?? ''));
     $form['scope'] = trim((string) ($_POST['scope'] ?? 'technical'));
     $form['target_id'] = trim((string) ($_POST['target_id'] ?? ''));
@@ -308,71 +296,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $errors[] = 'La contraseña debe tener mínimo 4 caracteres.';
     }
 
-    $teacherName = '';
-    foreach ($teachers as $teacher) {
-        if ((string) ($teacher['id'] ?? '') === $form['teacher_id']) {
-            $teacherName = (string) ($teacher['name'] ?? 'Docente');
-            break;
-        }
-    }
-
+    $teacherName = find_teacher_name_by_id($teachers, $form['teacher_id']);
     if ($teacherName === '') {
-        $errors[] = 'El docente seleccionado no existe en la base de datos.';
+        $errors[] = 'El docente seleccionado no existe en la lista de inscritos.';
     }
 
     if (empty($errors)) {
-        $foundIndex = null;
-        $normalizedUsername = mb_strtolower($form['username']);
+        $record = [
+            'id' => $form['edit_id'] !== '' ? $form['edit_id'] : uniqid('acc_', true),
+            'teacher_id' => $form['teacher_id'],
+            'teacher_name' => $teacherName,
+            'scope' => $form['scope'],
+            'target_id' => $form['target_id'],
+            'target_name' => $form['target_name'],
+            'permission' => $form['permission'],
+            'username' => $form['username'],
+            'password' => $form['password'],
+            'updated_at' => date('Y-m-d H:i:s'),
+        ];
 
-        foreach ($accounts as $index => $account) {
-            if (mb_strtolower((string) ($account['username'] ?? '')) === $normalizedUsername) {
-                $sameTeacher = (string) ($account['teacher_id'] ?? '') === $form['teacher_id'];
-                if (!$sameTeacher) {
-                    $errors[] = 'Ese usuario ya está en uso por otro docente.';
-                } else {
-                    $foundIndex = $index;
-                }
-                break;
-            }
+        $saved = save_teacher_account_to_database($record);
+
+        if ($saved) {
+            header('Location: teacher_profiles.php?saved=1');
+            exit;
         }
 
-        if (empty($errors)) {
-            $record = [
-                'id' => $foundIndex === null
-                    ? uniqid('acc_', true)
-                    : (string) ($accounts[$foundIndex]['id'] ?? uniqid('acc_', true)),
-                'teacher_id' => $form['teacher_id'],
-                'teacher_name' => $teacherName,
-                'scope' => $form['scope'],
-                'target_id' => $form['target_id'],
-                'target_name' => $form['target_name'],
-                'permission' => $form['permission'],
-                'username' => $form['username'],
-                'password' => $form['password'],
-                'updated_at' => date('Y-m-d H:i:s'),
-            ];
-
-            $savedInDb = save_teacher_account_to_database($record);
-
-            if ($savedInDb) {
-                header('Location: teacher_profiles.php?saved=1');
-                exit;
-            }
-
-            if ($foundIndex === null) {
-                $accounts[] = $record;
-            } else {
-                $accounts[$foundIndex] = $record;
-            }
-
-            if (write_json_array($accountsFile, $accounts)) {
-                header('Location: teacher_profiles.php?saved=1');
-                exit;
-            }
-
-            $errors[] = 'No se pudo guardar el perfil. Intente nuevamente.';
-        }
+        $errors[] = 'No se pudo guardar el perfil docente en la base de datos.';
     }
+
+    $accounts = load_teacher_accounts_from_database();
 }
 ?>
 <!DOCTYPE html>
@@ -609,7 +562,7 @@ button:focus{
 
 table{
     width:100%;
-    min-width:760px;
+    min-width:860px;
     border-collapse:separate;
     border-spacing:0;
 }
@@ -656,6 +609,43 @@ tbody tr:last-child td{
 .permission-badge{
     background:#eef8f2;
     color:#1d6a40;
+}
+
+.actions{
+    display:flex;
+    gap:8px;
+    flex-wrap:wrap;
+}
+
+.action-btn{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    padding:5px 10px;
+    border-radius:999px;
+    font-size:12px;
+    font-weight:700;
+    text-decoration:none;
+    white-space:nowrap;
+    transition:all .2s ease;
+}
+
+.edit-btn{
+    background:#e8f0ff;
+    color:#1f66cc;
+}
+
+.edit-btn:hover{
+    background:#dbeafe;
+}
+
+.delete-btn{
+    background:#fee2e2;
+    color:#b91c1c;
+}
+
+.delete-btn:hover{
+    background:#fecaca;
 }
 
 .empty-row{
@@ -707,7 +697,7 @@ tbody tr:last-child td{
             </div>
 
             <?php if (isset($_GET['saved'])) { ?>
-                <div class="notice">Perfil docente creado o actualizado correctamente.</div>
+                <div class="notice">Perfil docente creado, actualizado o eliminado correctamente.</div>
             <?php } ?>
 
             <?php if (!empty($errors)) { ?>
@@ -719,6 +709,8 @@ tbody tr:last-child td{
             <?php } ?>
 
             <form method="post" class="form-grid">
+                <input type="hidden" name="edit_id" value="<?php echo h($form['edit_id']); ?>">
+
                 <div class="field">
                     <label for="teacher_id">Docente</label>
                     <select name="teacher_id" id="teacher_id" required>
@@ -793,7 +785,9 @@ tbody tr:last-child td{
                 </div>
 
                 <div class="field full">
-                    <button class="button-primary" type="submit">Crear perfil docente</button>
+                    <button class="button-primary" type="submit">
+                        <?php echo $form['edit_id'] !== '' ? 'Actualizar perfil docente' : 'Crear perfil docente'; ?>
+                    </button>
                 </div>
             </form>
         </div>
@@ -819,17 +813,14 @@ tbody tr:last-child td{
                         <tbody>
                         <?php if (empty($accounts)) { ?>
                             <tr>
-                                <td colspan="5" class="empty-row">No hay perfiles creados todavía.</td>
+                                <td colspan="6" class="empty-row">No hay perfiles creados todavía.</td>
                             </tr>
                         <?php } else { ?>
-                            <?php foreach ($accounts as $account) { ?><td>
-    <a href="teacher_profiles.php?edit=<?php echo h((string) ($account['id'] ?? '')); ?>">Editar</a>
-    |
-    <a href="teacher_profiles.php?delete=<?php echo h((string) ($account['id'] ?? '')); ?>" onclick="return confirm('¿Eliminar perfil docente?')">Eliminar</a>
-</td>
+                            <?php foreach ($accounts as $account) { ?>
                                 <?php
                                     $scopeValue = (string) ($account['scope'] ?? 'technical');
                                     $scopeLabel = $scopeValue === 'english' ? 'Cursos de inglés' : 'Programa técnico';
+
                                     $permissionValue = (string) ($account['permission'] ?? 'viewer');
                                     $permissionLabel = $permissionValue === 'editor' ? 'Puede editar' : 'Sólo ver';
                                 ?>
@@ -839,6 +830,12 @@ tbody tr:last-child td{
                                     <td><span class="scope-badge"><?php echo h($scopeLabel); ?></span></td>
                                     <td><?php echo h((string) ($account['target_name'] ?? '')); ?></td>
                                     <td><span class="permission-badge"><?php echo h($permissionLabel); ?></span></td>
+                                    <td>
+                                        <div class="actions">
+                                            <a class="action-btn edit-btn" href="teacher_profiles.php?edit=<?php echo h((string) ($account['id'] ?? '')); ?>">Editar</a>
+                                            <a class="action-btn delete-btn" href="teacher_profiles.php?delete=<?php echo h((string) ($account['id'] ?? '')); ?>" onclick="return confirm('¿Eliminar perfil docente?')">Eliminar</a>
+                                        </div>
+                                    </td>
                                 </tr>
                             <?php } ?>
                         <?php } ?>
@@ -855,6 +852,7 @@ const technical = <?php echo json_encode(array_values($technical), JSON_UNESCAPE
 const english = <?php echo json_encode(array_values($english), JSON_UNESCAPED_UNICODE); ?>;
 const preselectedScope = <?php echo json_encode($form['scope'], JSON_UNESCAPED_UNICODE); ?>;
 const preselectedTargetId = <?php echo json_encode($form['target_id'], JSON_UNESCAPED_UNICODE); ?>;
+const preselectedTargetName = <?php echo json_encode($form['target_name'], JSON_UNESCAPED_UNICODE); ?>;
 
 const scopeSelect = document.getElementById('scopeSelect');
 const targetId = document.getElementById('targetId');
@@ -891,6 +889,10 @@ if (scopeSelect && targetId && targetName) {
     scopeSelect.value = preselectedScope || 'technical';
     renderOptions();
 
+    if (preselectedTargetName && targetName.value === '') {
+        targetName.value = preselectedTargetName;
+    }
+
     scopeSelect.addEventListener('change', () => {
         targetId.selectedIndex = 0;
         targetName.value = '';
@@ -899,7 +901,7 @@ if (scopeSelect && targetId && targetName) {
 
     targetId.addEventListener('change', () => {
         const selected = targetId.options[targetId.selectedIndex];
-        targetName.value = selected ? (selected.dataset.name || '') : '';
+        targetName.value = selected && selected.value !== '' ? (selected.dataset.name || '') : '';
     });
 }
 </script>
