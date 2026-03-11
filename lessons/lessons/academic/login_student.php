@@ -1,8 +1,8 @@
 <?php
 session_start();
 
-if (isset($_SESSION['student_logged']) && $_SESSION['student_logged'] === true) {
-    header('Location: student_dashboard.php');
+if (isset($_SESSION['academic_logged']) && $_SESSION['academic_logged'] === true) {
+    header('Location: dashboard.php');
     exit;
 }
 
@@ -25,7 +25,7 @@ function get_pdo_connection(): ?PDO
     }
 }
 
-function load_student_accounts_from_database(): array
+function load_teacher_accounts_from_database(): array
 {
     $pdo = get_pdo_connection();
     if (!$pdo) {
@@ -34,9 +34,9 @@ function load_student_accounts_from_database(): array
 
     try {
         $stmt = $pdo->query("
-            SELECT id, student_id, student_name, username, password_hash, temp_password, password
-            FROM student_accounts
-            ORDER BY updated_at DESC NULLS LAST, student_name ASC
+            SELECT teacher_id, teacher_name, username, password_hash, temp_password, password
+            FROM teacher_accounts
+            ORDER BY updated_at DESC NULLS LAST, teacher_name ASC
         ");
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
@@ -46,10 +46,10 @@ function load_student_accounts_from_database(): array
     }
 }
 
-function load_student_accounts_from_json(): array
+function load_teacher_accounts_from_json(): array
 {
     $dataDir = __DIR__ . '/data';
-    $accountsFile = $dataDir . '/student_accounts.json';
+    $accountsFile = $dataDir . '/teacher_accounts.json';
 
     if (!is_dir($dataDir)) {
         mkdir($dataDir, 0777, true);
@@ -63,7 +63,7 @@ function load_student_accounts_from_json(): array
     return is_array($accounts) ? $accounts : [];
 }
 
-function verify_student_password(array $account, string $password): bool
+function verify_teacher_password(array $account, string $password): bool
 {
     $passwordHash = (string) ($account['password_hash'] ?? '');
     $tempPassword = (string) ($account['temp_password'] ?? '');
@@ -84,9 +84,9 @@ function verify_student_password(array $account, string $password): bool
     return false;
 }
 
-$accounts = load_student_accounts_from_database();
+$accounts = load_teacher_accounts_from_database();
 if (empty($accounts)) {
-    $accounts = load_student_accounts_from_json();
+    $accounts = load_teacher_accounts_from_json();
 }
 
 $error = '';
@@ -104,16 +104,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             continue;
         }
 
-        if (!verify_student_password($account, $password)) {
+        if (!verify_teacher_password($account, $password)) {
             continue;
         }
 
-        $_SESSION['student_logged'] = true;
-        $_SESSION['student_id'] = (string) ($account['student_id'] ?? '');
-        $_SESSION['student_name'] = (string) ($account['student_name'] ?? 'Estudiante');
-        $_SESSION['student_username'] = $username;
+        $_SESSION['academic_logged'] = true;
+        $_SESSION['teacher_id'] = (string) ($account['teacher_id'] ?? '');
+        $_SESSION['teacher_name'] = (string) ($account['teacher_name'] ?? 'Docente');
+        $_SESSION['teacher_username'] = $username;
 
-        header('Location: student_dashboard.php');
+        header('Location: dashboard.php');
         exit;
     }
 
@@ -125,7 +125,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Login Estudiante</title>
+<title>Login Docente</title>
 <style>
 body{
     margin:0;
@@ -192,7 +192,7 @@ button{
 </head>
 <body>
 <div class="card">
-    <h1>Perfil Estudiante</h1>
+    <h1>Perfil Docente</h1>
     <p>Ingresa con tu usuario asignado.</p>
 
     <form method="post">
@@ -205,7 +205,7 @@ button{
         <div class="error"><?php echo htmlspecialchars($error, ENT_QUOTES, 'UTF-8'); ?></div>
     <?php endif; ?>
 
-    <div class="small">¿Eres docente? <a href="login.php">Ir a login docente</a></div>
+    <div class="small">¿Eres estudiante? <a href="login_student.php">Ir a login estudiante</a></div>
 </div>
 </body>
 </html>
