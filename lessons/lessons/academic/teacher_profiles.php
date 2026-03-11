@@ -1,4 +1,19 @@
 <?php
+if (isset($_GET['delete']) && $_GET['delete'] !== '') {
+    $deleteId = (string) $_GET['delete'];
+
+    if (getenv('DATABASE_URL')) {
+        try {
+            require __DIR__ . '/../config/db.php';
+            $stmt = $pdo->prepare("DELETE FROM teacher_accounts WHERE id = :id");
+            $stmt->execute(['id' => $deleteId]);
+        } catch (Throwable $e) {
+        }
+    }
+
+    header('Location: teacher_profiles.php?saved=1');
+    exit;
+}
 session_start();
 
 if (!isset($_SESSION['admin_logged']) || $_SESSION['admin_logged'] !== true) {
@@ -798,6 +813,7 @@ tbody tr:last-child td{
                                 <th>Ámbito</th>
                                 <th>Asignado</th>
                                 <th>Permiso</th>
+                                <th>Acciones</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -806,7 +822,11 @@ tbody tr:last-child td{
                                 <td colspan="5" class="empty-row">No hay perfiles creados todavía.</td>
                             </tr>
                         <?php } else { ?>
-                            <?php foreach ($accounts as $account) { ?>
+                            <?php foreach ($accounts as $account) { ?><td>
+    <a href="teacher_profiles.php?edit=<?php echo h((string) ($account['id'] ?? '')); ?>">Editar</a>
+    |
+    <a href="teacher_profiles.php?delete=<?php echo h((string) ($account['id'] ?? '')); ?>" onclick="return confirm('¿Eliminar perfil docente?')">Eliminar</a>
+</td>
                                 <?php
                                     $scopeValue = (string) ($account['scope'] ?? 'technical');
                                     $scopeLabel = $scopeValue === 'english' ? 'Cursos de inglés' : 'Programa técnico';
