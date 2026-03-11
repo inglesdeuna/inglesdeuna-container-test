@@ -30,21 +30,22 @@ function get_pdo_connection(): ?PDO
     }
 }
 
-function slug_username(string $name): string
+function slug_teacher_username(string $name): string
 {
-    $name = trim(mb_strtolower($name, 'UTF-8'));
+    $value = mb_strtolower(trim($name), 'UTF-8');
 
-    $replace = [
+    $map = [
         'á' => 'a', 'é' => 'e', 'í' => 'i', 'ó' => 'o', 'ú' => 'u',
         'ä' => 'a', 'ë' => 'e', 'ï' => 'i', 'ö' => 'o', 'ü' => 'u',
         'ñ' => 'n',
     ];
-    $name = strtr($name, $replace);
-    $name = preg_replace('/[^a-z0-9\s]/', '', $name);
-    $name = preg_replace('/\s+/', '.', $name);
-    $name = trim((string) $name, '.');
 
-    return $name !== '' ? $name : 'docente';
+    $value = strtr($value, $map);
+    $value = preg_replace('/[^a-z0-9\s]/', '', $value);
+    $value = preg_replace('/\s+/', '.', (string) $value);
+    $value = trim((string) $value, '.');
+
+    return $value !== '' ? $value : 'docente';
 }
 
 function table_has_column(PDO $pdo, string $tableName, string $columnName): bool
@@ -68,9 +69,40 @@ function table_has_column(PDO $pdo, string $tableName, string $columnName): bool
     }
 }
 
+function find_by_id(array $rows, string $id): ?array
+{
+    foreach ($rows as $row) {
+        if ((string) ($row['id'] ?? '') === $id) {
+            return $row;
+        }
+    }
+
+    return null;
+}
+
+function label_course(array $courses, string $id): string
+{
+    $course = find_by_id($courses, $id);
+    return (string) ($course['name'] ?? 'Curso');
+}
+
+function label_teacher(array $teachers, string $id): string
+{
+    $teacher = find_by_id($teachers, $id);
+    return (string) ($teacher['name'] ?? 'Docente');
+}
+
+function save_assignments(string $assignmentsFile, array $assignments): void
+{
+    file_put_contents(
+        $assignmentsFile,
+        json_encode(array_values($assignments), JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)
+    );
+}
+
 function generate_unique_teacher_username(PDO $pdo, string $teacherName, string $teacherId): string
 {
-    $base = slug_username($teacherName);
+    $base = slug_teacher_username($teacherName);
 
     try {
         $stmt = $pdo->prepare("
@@ -101,9 +133,9 @@ function generate_unique_teacher_username(PDO $pdo, string $teacherName, string 
                 LIMIT 1
             ");
             $stmt->execute(['username' => $candidate]);
-            $taken = (bool) $stmt->fetchColumn();
+            $exists = (bool) $stmt->fetchColumn();
 
-            if (!$taken) {
+            if (!$exists) {
                 return $candidate;
             }
         } catch (Throwable $e) {
@@ -115,7 +147,7 @@ function generate_unique_teacher_username(PDO $pdo, string $teacherName, string 
     }
 }
 
-function generate_temp_password(): string
+function generate_temp_teacher_password(): string
 {
     return '123456';
 }
@@ -130,7 +162,7 @@ function ensure_teacher_account(
     string $permission
 ): array {
     $username = generate_unique_teacher_username($pdo, $teacherName, $teacherId);
-    $tempPassword = generate_temp_password();
+    $tempPassword = generate_temp_teacher_password();
 
     $hasMustChangePassword = table_has_column($pdo, 'teacher_accounts', 'must_change_password');
     $hasPasswordUpdatedAt = table_has_column($pdo, 'teacher_accounts', 'password_updated_at');
@@ -162,7 +194,6 @@ function ensure_teacher_account(
         $setParts = [
             'teacher_name = :teacher_name',
             'username = :username',
-            'password = COALESCE(NULLIF(password, \'\'), :password)',
             'permission = :permission',
             'target_name = :target_name',
             'updated_at = NOW()',
@@ -176,6 +207,10 @@ function ensure_teacher_account(
             $setParts[] = 'is_active = COALESCE(is_active, TRUE)';
         }
 
+        if ((string) ($existing['password'] ?? '') === '') {
+            $setParts[] = 'password = :password';
+        }
+
         $sql = "
             UPDATE teacher_accounts
             SET " . implode(",\n                ", $setParts) . "
@@ -183,14 +218,19 @@ function ensure_teacher_account(
         ";
 
         $stmt = $pdo->prepare($sql);
-        $stmt->execute([
+        $params = [
             'teacher_name' => $teacherName,
             'username' => $username,
-            'password' => $tempPassword,
             'permission' => $permission,
             'target_name' => $courseName,
             'id' => $accountId,
-        ]);
+        ];
+
+        if ((string) ($existing['password'] ?? '') === '') {
+            $params['password'] = $tempPassword;
+        }
+
+        $stmt->execute($params);
 
         try {
             $stmt2 = $pdo->prepare("
@@ -304,37 +344,6 @@ if ($program !== 'technical' && $program !== 'english') {
 
 $semesterOptions = ['1', '2', '3', '4', '5', '6'];
 
-function find_by_id(array $rows, string $id): ?array
-{
-    foreach ($rows as $row) {
-        if ((string) ($row['id'] ?? '') === $id) {
-            return $row;
-        }
-    }
-
-    return null;
-}
-
-function label_course(array $courses, string $id): string
-{
-    $course = find_by_id($courses, $id);
-    return (string) ($course['name'] ?? 'Curso');
-}
-
-function label_teacher(array $teachers, string $id): string
-{
-    $teacher = find_by_id($teachers, $id);
-    return (string) ($teacher['name'] ?? 'Docente');
-}
-
-function save_assignments(string $assignmentsFile, array $assignments): void
-{
-    file_put_contents(
-        $assignmentsFile,
-        json_encode(array_values($assignments), JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)
-    );
-}
-
 if (isset($_GET['delete']) && $_GET['delete'] !== '') {
     $deleteId = (string) $_GET['delete'];
 
@@ -347,8 +356,6 @@ if (isset($_GET['delete']) && $_GET['delete'] !== '') {
     header('Location: assignments_editor.php?program=' . urlencode($program) . '&saved=1');
     exit;
 }
-
-$createdAccountInfo = null;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $editId = isset($_POST['edit_id']) ? trim((string) $_POST['edit_id']) : '';
@@ -411,7 +418,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $query = [
                     'program' => $program,
                     'saved' => '1',
-                    'account_created' => $accountInfo['created'] ? '1' : '0',
                     'teacher_user' => $accountInfo['username'],
                 ];
 
@@ -612,33 +618,31 @@ select,input[type="text"]{
   <?php if (isset($_GET['saved'])) { ?>
     <div class="notice">✔ Asignación guardada correctamente.</div>
   <?php } ?>
-    <?php if (isset($_GET['temp_password']) && $_GET['temp_password'] !== '' && isset($_GET['reset_user'])) { ?>
-  <div class="notice notice-warn">
-    Contraseña restablecida correctamente. Nueva temporal: <strong><?php echo h((string) $_GET['temp_password']); ?></strong>
-  </div>
-<?php } ?>
 
-<?php if (isset($_GET['error_reset'])) { ?>
-  <div class="notice notice-warn">
-    No fue posible restablecer la contraseña del docente.
-  </div>
-<?php } ?>
+  <?php if (isset($_GET['temp_password']) && $_GET['temp_password'] !== '' && isset($_GET['reset_user'])) { ?>
+    <div class="notice notice-warn">
+      Contraseña restablecida correctamente. Nueva temporal: <strong><?php echo h((string) $_GET['temp_password']); ?></strong>
+    </div>
+  <?php } ?>
+
+  <?php if (isset($_GET['error_reset'])) { ?>
+    <div class="notice notice-warn">
+      No fue posible restablecer la contraseña del docente.
+    </div>
+  <?php } ?>
 
   <?php if (isset($_GET['teacher_user']) && $_GET['teacher_user'] !== '') { ?>
-  <div class="notice notice-warn">
-    Usuario docente creado: 
-    <strong><?php echo h((string) $_GET['teacher_user']); ?></strong>
+    <div class="notice notice-warn">
+      Usuario docente creado:
+      <strong><?php echo h((string) $_GET['teacher_user']); ?></strong>
 
-    <?php if (isset($_GET['temp_password']) && $_GET['temp_password'] !== '') { ?>
-      <br>
-      Contraseña temporal: 
-      <strong><?php echo h((string) $_GET['temp_password']); ?></strong>
-    <?php } ?>
-  </div>
-<?php } ?>
-        — Contraseña temporal: <strong><?php echo h((string) $_GET['temp_password']); ?></strong>
+      <?php if (isset($_GET['temp_password']) && $_GET['temp_password'] !== '') { ?>
+        <br>
+        Contraseña temporal:
+        <strong><?php echo h((string) $_GET['temp_password']); ?></strong>
       <?php } else { ?>
-        — Cuenta existente actualizada.
+        <br>
+        Cuenta existente actualizada.
       <?php } ?>
     </div>
   <?php } ?>
@@ -764,26 +768,26 @@ select,input[type="text"]{
                 </div>
 
                 <div class="actions">
-  <a
-    class="edit"
-    href="assignments_editor.php?program=<?php echo urlencode($program); ?>&edit=<?php echo urlencode($id); ?>"
-    title="Editar"
-  >✏️</a>
+                  <a
+                    class="edit"
+                    href="assignments_editor.php?program=<?php echo urlencode($program); ?>&edit=<?php echo urlencode($id); ?>"
+                    title="Editar"
+                  >✏️</a>
 
-  <a
-    class="edit"
-    href="reset_teacher_password.php?program=<?php echo urlencode((string) ($a['program'] ?? '')); ?>&teacher_id=<?php echo urlencode($teacherId); ?>&target_id=<?php echo urlencode($courseId); ?>"
-    title="Restablecer contraseña"
-    onclick="return confirm('¿Restablecer la contraseña de este docente a 123456?');"
-  >🔑</a>
+                  <a
+                    class="edit"
+                    href="reset_teacher_password.php?program=<?php echo urlencode((string) ($a['program'] ?? '')); ?>&teacher_id=<?php echo urlencode($teacherId); ?>&target_id=<?php echo urlencode($courseId); ?>"
+                    title="Restablecer contraseña"
+                    onclick="return confirm('¿Restablecer la contraseña de este docente a 123456?');"
+                  >🔑</a>
 
-  <a
-    class="delete"
-    href="assignments_editor.php?program=<?php echo urlencode($program); ?>&delete=<?php echo urlencode($id); ?>"
-    onclick="return confirm('¿Eliminar esta asignación?');"
-    title="Eliminar"
-  >🗑️</a>
-</div>
+                  <a
+                    class="delete"
+                    href="assignments_editor.php?program=<?php echo urlencode($program); ?>&delete=<?php echo urlencode($id); ?>"
+                    onclick="return confirm('¿Eliminar esta asignación?');"
+                    title="Eliminar"
+                  >🗑️</a>
+                </div>
               </div>
             <?php } ?>
           <?php } ?>
