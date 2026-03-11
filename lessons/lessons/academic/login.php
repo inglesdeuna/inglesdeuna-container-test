@@ -2,6 +2,11 @@
 session_start();
 
 if (isset($_SESSION['academic_logged']) && $_SESSION['academic_logged'] === true) {
+    if (!empty($_SESSION['teacher_must_change_password'])) {
+        header('Location: change_password.php');
+        exit;
+    }
+
     header('Location: dashboard.php');
     exit;
 }
@@ -30,18 +35,21 @@ function get_pdo_connection(): ?PDO
     }
 }
 
-function teacher_accounts_has_column(PDO $pdo, string $columnName): bool
+function table_has_column(PDO $pdo, string $tableName, string $columnName): bool
 {
     try {
         $stmt = $pdo->prepare("
             SELECT 1
             FROM information_schema.columns
             WHERE table_schema = 'public'
-              AND table_name = 'teacher_accounts'
+              AND table_name = :table_name
               AND column_name = :column_name
             LIMIT 1
         ");
-        $stmt->execute(['column_name' => $columnName]);
+        $stmt->execute([
+            'table_name' => $tableName,
+            'column_name' => $columnName,
+        ]);
         return (bool) $stmt->fetchColumn();
     } catch (Throwable $e) {
         return false;
@@ -55,8 +63,8 @@ function load_teacher_accounts_from_database(): array
         return [];
     }
 
-    $hasMustChangePassword = teacher_accounts_has_column($pdo, 'must_change_password');
-    $hasIsActive = teacher_accounts_has_column($pdo, 'is_active');
+    $hasMustChangePassword = table_has_column($pdo, 'teacher_accounts', 'must_change_password');
+    $hasIsActive = table_has_column($pdo, 'teacher_accounts', 'is_active');
 
     $selectMustChangePassword = $hasMustChangePassword
         ? 'must_change_password'
