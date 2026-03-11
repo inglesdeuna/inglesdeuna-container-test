@@ -210,7 +210,8 @@ foreach ($accounts as $account) {
 
     $groupName = trim((string) ($account['target_name'] ?? ''));
     if ($groupName !== '') {
-        $teachersById[$teacherId]['groups'][$groupName] = $groupName;
+        $groupKey = $teacherId . '|' . $groupName;
+        $teachersById[$teacherId]['groups'][$groupKey] = $groupName;
     }
 }
 
@@ -231,14 +232,13 @@ foreach ($studentAssignments as $assignment) {
 
     $courseName = $courseNameById[(string) ($assignment['course_id'] ?? '')] ?? '';
     $unitName = $unitNameById[(string) ($assignment['unit_id'] ?? '')] ?? '';
-    $groupName = trim(
-        $courseName !== '' && $unitName !== ''
-            ? ($courseName . ' - ' . $unitName)
-            : ($courseName !== '' ? $courseName : $unitName)
-    );
+
+    // Mostrar un solo grupo por curso/semestre, no repetir por cada unidad
+    $groupName = trim($courseName !== '' ? $courseName : $unitName);
 
     if ($groupName !== '') {
-        $teachersById[$teacherId]['groups'][$groupName] = $groupName;
+        $groupKey = $teacherId . '|' . $groupName;
+        $teachersById[$teacherId]['groups'][$groupKey] = $groupName;
     }
 
     $studentId = (string) ($assignment['student_id'] ?? '');
@@ -258,6 +258,7 @@ usort($teacherCards, fn($a, $b) => strcasecmp((string) ($a['name'] ?? ''), (stri
     <title>Docentes y Grupos</title>
     <style>
         * { box-sizing: border-box; }
+
         body {
             font-family: Arial, sans-serif;
             background: #eef2f7;
@@ -265,10 +266,12 @@ usort($teacherCards, fn($a, $b) => strcasecmp((string) ($a['name'] ?? ''), (stri
             color: #1f2937;
             margin: 0;
         }
+
         .wrapper {
             max-width: 1100px;
             margin: 0 auto;
         }
+
         .topbar {
             display: flex;
             justify-content: space-between;
@@ -277,6 +280,7 @@ usort($teacherCards, fn($a, $b) => strcasecmp((string) ($a['name'] ?? ''), (stri
             flex-wrap: wrap;
             margin-bottom: 20px;
         }
+
         .back {
             display: inline-block;
             padding: 8px 12px;
@@ -288,15 +292,18 @@ usort($teacherCards, fn($a, $b) => strcasecmp((string) ($a['name'] ?? ''), (stri
             font-size: 14px;
             transition: background .2s ease;
         }
+
         .back:hover {
             background: #2f5bb5;
         }
+
         h1.title {
             font-size: 28px;
             font-weight: 700;
             color: #1f3c75;
             margin: 0 0 20px;
         }
+
         .panel {
             background: #ffffff;
             border-radius: 14px;
@@ -304,6 +311,7 @@ usort($teacherCards, fn($a, $b) => strcasecmp((string) ($a['name'] ?? ''), (stri
             box-shadow: 0 8px 24px rgba(0,0,0,.08);
             border: 1px solid #dce4f0;
         }
+
         .teacher {
             background: #ffffff;
             border: 1px solid #dce4f0;
@@ -312,9 +320,11 @@ usort($teacherCards, fn($a, $b) => strcasecmp((string) ($a['name'] ?? ''), (stri
             overflow: hidden;
             box-shadow: 0 8px 24px rgba(0,0,0,.04);
         }
+
         .teacher:last-child {
             margin-bottom: 0;
         }
+
         .head {
             display: flex;
             justify-content: space-between;
@@ -322,27 +332,32 @@ usort($teacherCards, fn($a, $b) => strcasecmp((string) ($a['name'] ?? ''), (stri
             gap: 16px;
             padding: 18px 20px;
         }
+
         .teacher-info {
             flex: 1;
             min-width: 0;
         }
+
         .name {
             margin: 0 0 6px;
             font-size: 22px;
             font-weight: 700;
             color: #2c3e50;
         }
+
         .meta {
             font-size: 13px;
             color: #5b6577;
             display: block;
             margin-bottom: 12px;
         }
+
         .badges {
             display: flex;
             flex-wrap: wrap;
             gap: 8px;
         }
+
         .badge {
             display: inline-block;
             padding: 4px 10px;
@@ -353,12 +368,14 @@ usort($teacherCards, fn($a, $b) => strcasecmp((string) ($a['name'] ?? ''), (stri
             font-weight: 700;
             line-height: 1.4;
         }
+
         .right {
             display: flex;
             align-items: center;
             gap: 8px;
             flex-shrink: 0;
         }
+
         .view-btn,
         .toggle {
             display: inline-block;
@@ -370,53 +387,65 @@ usort($teacherCards, fn($a, $b) => strcasecmp((string) ($a['name'] ?? ''), (stri
             cursor: pointer;
             transition: background .2s ease, color .2s ease;
         }
+
         .view-btn {
             background: #1f66cc;
             color: #fff;
         }
+
         .view-btn:hover {
             background: #2f5bb5;
         }
+
         .toggle {
             background: #eef2ff;
             color: #1f4ec9;
         }
+
         .toggle:hover {
             background: #dfe8ff;
         }
+
         .body-panel {
             display: none;
             padding: 18px 20px 20px;
             border-top: 1px solid #dce4f0;
             background: #f8fbff;
         }
+
         .body-panel.open {
             display: block;
         }
+
         .body-panel h3 {
             font-size: 18px;
             font-weight: 600;
             color: #2c3e50;
             margin: 0 0 12px;
         }
+
         .students-list {
             margin: 0;
             padding-left: 20px;
         }
+
         .students-list li {
             font-size: 14px;
             color: #1f2937;
             padding: 8px 0;
             border-bottom: 1px solid #e7edf6;
         }
+
         .students-list li:last-child {
             border-bottom: none;
         }
+
         .empty {
             font-size: 13px;
             color: #5b6577;
             margin: 0;
         }
+
         @media (max-width: 768px) {
             body { padding: 20px; }
             h1.title { font-size: 24px; }
