@@ -612,11 +612,30 @@ select,input[type="text"]{
   <?php if (isset($_GET['saved'])) { ?>
     <div class="notice">✔ Asignación guardada correctamente.</div>
   <?php } ?>
+    <?php if (isset($_GET['temp_password']) && $_GET['temp_password'] !== '' && isset($_GET['reset_user'])) { ?>
+  <div class="notice notice-warn">
+    Contraseña restablecida correctamente. Nueva temporal: <strong><?php echo h((string) $_GET['temp_password']); ?></strong>
+  </div>
+<?php } ?>
+
+<?php if (isset($_GET['error_reset'])) { ?>
+  <div class="notice notice-warn">
+    No fue posible restablecer la contraseña del docente.
+  </div>
+<?php } ?>
 
   <?php if (isset($_GET['teacher_user']) && $_GET['teacher_user'] !== '') { ?>
-    <div class="notice notice-warn">
-      Usuario docente: <strong><?php echo h((string) $_GET['teacher_user']); ?></strong>
-      <?php if (isset($_GET['temp_password']) && $_GET['temp_password'] !== '') { ?>
+  <div class="notice notice-warn">
+    Usuario docente creado: 
+    <strong><?php echo h((string) $_GET['teacher_user']); ?></strong>
+
+    <?php if (isset($_GET['temp_password']) && $_GET['temp_password'] !== '') { ?>
+      <br>
+      Contraseña temporal: 
+      <strong><?php echo h((string) $_GET['temp_password']); ?></strong>
+    <?php } ?>
+  </div>
+<?php } ?>
         — Contraseña temporal: <strong><?php echo h((string) $_GET['temp_password']); ?></strong>
       <?php } else { ?>
         — Cuenta existente actualizada.
@@ -745,9 +764,26 @@ select,input[type="text"]{
                 </div>
 
                 <div class="actions">
-                  <a class="edit" href="assignments_editor.php?program=<?php echo urlencode($program); ?>&edit=<?php echo urlencode($id); ?>">✏️</a>
-                  <a class="delete" href="assignments_editor.php?program=<?php echo urlencode($program); ?>&delete=<?php echo urlencode($id); ?>" onclick="return confirm('¿Eliminar esta asignación?');">🗑️</a>
-                </div>
+  <a
+    class="edit"
+    href="assignments_editor.php?program=<?php echo urlencode($program); ?>&edit=<?php echo urlencode($id); ?>"
+    title="Editar"
+  >✏️</a>
+
+  <a
+    class="edit"
+    href="reset_teacher_password.php?program=<?php echo urlencode((string) ($a['program'] ?? '')); ?>&teacher_id=<?php echo urlencode($teacherId); ?>&target_id=<?php echo urlencode($courseId); ?>"
+    title="Restablecer contraseña"
+    onclick="return confirm('¿Restablecer la contraseña de este docente a 123456?');"
+  >🔑</a>
+
+  <a
+    class="delete"
+    href="assignments_editor.php?program=<?php echo urlencode($program); ?>&delete=<?php echo urlencode($id); ?>"
+    onclick="return confirm('¿Eliminar esta asignación?');"
+    title="Eliminar"
+  >🗑️</a>
+</div>
               </div>
             <?php } ?>
           <?php } ?>
