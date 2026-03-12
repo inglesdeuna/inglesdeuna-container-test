@@ -158,6 +158,7 @@ $activityTypeLabels = [
     'drag_drop' => 'Drag & Drop',
     'match' => 'Match',
     'external' => 'External',
+    'build_sentence' => 'Build the Sentence',
 ];
 
 $sidebarItems = [];
@@ -205,256 +206,425 @@ if ($current) {
     $currentTypeLabel = $activityTypeLabels[strtolower($type)] ?? ucwords(str_replace('_', ' ', $type));
     $currentUnitName = $unitMap[(string) ($current['unit_id'] ?? '')] ?? 'Unidad';
 }
+
+$logoPath = '../hangman/assets/LETS%20NUEVO%20-%20copia.jpeg';
 ?>
 <!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Presentación docente</title>
+<title>Actividad</title>
 <style>
 :root{
-    --bg:#e9edf7;
-    --panel:#f3f6fc;
+    --bg:#eef2f7;
     --card:#ffffff;
-    --line:#d8e0f0;
-    --blue:#3568c9;
-    --green:#47ad66;
-    --orange:#efab3b;
-    --muted:#6f7f9a;
-    --text:#22304f;
-    --danger:#d9534f;
+    --line:#dce4f0;
+    --text:#1f2937;
+    --title:#1f3c75;
+    --muted:#5b6577;
+    --blue:#1f66cc;
+    --blue-hover:#2f5bb5;
+    --badge-bg:#eef2ff;
+    --badge-text:#1f4ec9;
+    --danger:#dc2626;
+    --shadow:0 8px 24px rgba(0,0,0,.08);
+    --topbar:#3d69cf;
+    --topbar-dark:#2f59b8;
+    --green:#43b05c;
+    --orange:#f0a629;
 }
-*{box-sizing:border-box}
+
+*{
+    box-sizing:border-box;
+}
+
 body{
     margin:0;
+    font-family:Arial, sans-serif;
     background:var(--bg);
-    font-family:Arial,sans-serif;
     color:var(--text);
 }
+
+.topbar{
+    background:linear-gradient(180deg, var(--topbar), var(--topbar-dark));
+    padding:22px 30px;
+    color:#fff;
+}
+
+.topbar-inner{
+    max-width:1280px;
+    margin:0 auto;
+    display:grid;
+    grid-template-columns:160px 1fr 160px;
+    align-items:center;
+    gap:16px;
+}
+
+.topbar-title{
+    text-align:center;
+    font-size:28px;
+    font-weight:700;
+    margin:0;
+}
+
+.top-btn{
+    display:inline-block;
+    padding:12px 18px;
+    border-radius:10px;
+    color:#fff;
+    text-decoration:none;
+    font-size:14px;
+    font-weight:700;
+    box-shadow:var(--shadow);
+}
+
+.top-btn.back{
+    background:#3359b8;
+    justify-self:start;
+}
+
+.top-btn.logout{
+    background:#d95b5b;
+    justify-self:end;
+}
+
 .page{
     max-width:1280px;
     margin:0 auto;
-    padding:22px;
+    padding:0 30px 30px;
 }
-.top{
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
-    gap:14px;
-    background:#dce4f3;
-    border-radius:16px;
-    padding:16px 20px;
-    margin-bottom:16px;
-}
-.logo{
-    font-size:28px;
-    font-weight:700;
-    color:#1f4d95;
-}
-.logout{
-    background:var(--danger);
-    color:#fff;
-    text-decoration:none;
-    padding:11px 22px;
-    border-radius:12px;
-    font-weight:700;
-}
-.breadcrumb{
-    background:#dfe4ef;
-    border-radius:999px;
-    padding:12px 20px;
-    color:#66758f;
-    margin-bottom:18px;
-    font-size:18px;
-}
+
 .layout{
     display:grid;
-    grid-template-columns:320px 1fr;
-    gap:18px;
+    grid-template-columns:180px 1fr;
+    gap:22px;
+    align-items:start;
 }
+
 .sidebar{
-    background:var(--panel);
-    border-radius:12px;
-    padding:16px;
+    background:#eaf0fb;
+    min-height:calc(100vh - 140px);
+    padding:26px 14px;
 }
-.nav-btn{
+
+.logo-wrap{
+    background:transparent;
+    text-align:center;
+    margin-bottom:28px;
+}
+
+.logo-wrap img{
+    width:120px;
+    max-width:100%;
+    border-radius:10px;
+    display:block;
+    margin:0 auto;
+}
+
+.side-btn{
     display:block;
     width:100%;
-    text-decoration:none;
-    color:#fff;
-    border-radius:10px;
-    padding:12px 16px;
-    margin-bottom:12px;
-    font-size:22px;
-    font-weight:700;
-    background:#8195c2;
-}
-.nav-btn.quiz{background:var(--green)}
-.nav-btn.video{background:var(--orange)}
-.nav-btn.active{outline:3px solid rgba(31,102,204,.35)}
-.content{text-align:center}
-h1{
-    margin:6px 0 10px;
-    color:#2f61c5;
-    font-size:54px;
-}
-.listen{
-    display:inline-block;
-    background:var(--blue);
-    padding:10px 22px;
-    border-radius:14px;
-    color:#fff;
-    text-decoration:none;
-    font-weight:700;
+    padding:13px 12px;
     margin-bottom:14px;
+    border-radius:10px;
+    text-decoration:none;
+    color:#fff;
+    font-size:14px;
+    font-weight:700;
+    text-align:center;
+    box-shadow:var(--shadow);
 }
+
+.side-btn.blue{
+    background:linear-gradient(180deg,#4f77df,#355fc9);
+}
+
+.side-btn.orange{
+    background:linear-gradient(180deg,#f2b33e,#e39a12);
+}
+
+.side-btn.green{
+    background:linear-gradient(180deg,#62c56c,#40a853);
+}
+
+.content{
+    padding:26px 0;
+}
+
+.viewer-shell{
+    background:#f2f5fb;
+    border-radius:22px;
+    padding:36px;
+    border:1px solid var(--line);
+    box-shadow:var(--shadow);
+}
+
 .viewer-card{
     background:var(--card);
-    border-radius:24px;
-    min-height:620px;
-    max-width:760px;
-    margin:0 auto;
-    padding:24px;
+    border-radius:20px;
     border:1px solid var(--line);
-    box-shadow:0 14px 36px rgba(28,51,95,.12);
-    display:flex;
-    flex-direction:column;
+    box-shadow:var(--shadow);
+    padding:34px 36px 28px;
 }
-.meta{
-    font-size:18px;
+
+.viewer-header{
+    margin-bottom:18px;
+}
+
+.viewer-title{
+    margin:0 0 12px;
+    font-size:22px;
+    font-weight:700;
+    color:#3c63c7;
+}
+
+.viewer-subtitle{
+    margin:0;
+    font-size:15px;
     color:var(--muted);
-    margin-bottom:14px;
 }
+
+.viewer-frame-wrap{
+    background:#fff;
+    border:1px solid #e6ebf4;
+    border-radius:16px;
+    padding:8px;
+    min-height:420px;
+}
+
 .viewer-frame{
-    flex:1;
     width:100%;
+    min-height:430px;
     border:0;
-    border-radius:14px;
-    background:#fafbfd;
-    min-height:440px;
+    border-radius:12px;
+    background:#fff;
 }
+
 .controls{
     display:flex;
     justify-content:space-between;
-    gap:12px;
-    margin-top:18px;
+    align-items:center;
+    gap:16px;
+    margin-top:26px;
 }
-.btn{
+
+.nav-btn{
     display:inline-block;
+    min-width:130px;
+    text-align:center;
+    padding:12px 18px;
+    border-radius:10px;
+    text-decoration:none;
     color:#fff;
-    text-decoration:none;
-    padding:12px 24px;
-    border-radius:14px;
-    font-size:34px;
+    font-size:14px;
     font-weight:700;
+    box-shadow:var(--shadow);
 }
-.btn.prev{background:var(--blue)}
-.btn.next{background:var(--green)}
-.btn.disabled{
+
+.nav-btn.prev{
+    background:linear-gradient(180deg,#4f77df,#355fc9);
+}
+
+.nav-btn.next{
+    background:linear-gradient(180deg,#4f77df,#355fc9);
+}
+
+.nav-btn.disabled{
+    opacity:.45;
     pointer-events:none;
-    opacity:.5;
 }
-.mode{
-    margin-top:12px;
-    font-size:16px;
-    color:var(--muted);
+
+.meta-row{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:12px;
+    flex-wrap:wrap;
+    margin-bottom:18px;
 }
-.mode a{
-    color:#1f66cc;
-    text-decoration:none;
+
+.badges{
+    display:flex;
+    gap:8px;
+    flex-wrap:wrap;
+}
+
+.badge{
+    display:inline-block;
+    padding:4px 8px;
+    border-radius:999px;
+    background:var(--badge-bg);
+    color:var(--badge-text);
+    font-size:12px;
     font-weight:700;
 }
+
 .editor-link{
     display:inline-block;
-    margin-top:10px;
-    background:#15803d;
+    margin-top:16px;
+    padding:10px 14px;
+    border-radius:8px;
+    background:var(--blue);
     color:#fff;
     text-decoration:none;
-    padding:10px 16px;
-    border-radius:10px;
+    font-size:14px;
     font-weight:700;
 }
+
 .empty-card{
     background:#fff;
-    border-radius:20px;
     border:1px solid var(--line);
+    border-radius:20px;
     padding:24px;
-    text-align:left;
+    box-shadow:var(--shadow);
 }
-@media (max-width:1100px){
-    .layout{grid-template-columns:1fr}
-    .nav-btn{font-size:20px}
-    .btn{font-size:24px}
-    h1{font-size:36px}
+
+.empty-card h2{
+    margin-top:0;
+    font-size:22px;
+    color:var(--title);
+}
+
+.empty-card p{
+    font-size:15px;
+    color:var(--muted);
+}
+
+.empty-card a{
+    color:var(--blue);
+    text-decoration:none;
+    font-weight:700;
+}
+
+@media (max-width: 980px){
+    .topbar-inner{
+        grid-template-columns:1fr;
+        text-align:center;
+    }
+
+    .top-btn.back,
+    .top-btn.logout{
+        justify-self:center;
+    }
+
+    .layout{
+        grid-template-columns:1fr;
+    }
+
+    .sidebar{
+        min-height:auto;
+        display:grid;
+        grid-template-columns:repeat(2,minmax(0,1fr));
+        gap:12px;
+        align-items:start;
+    }
+
+    .logo-wrap{
+        grid-column:1 / -1;
+    }
+}
+
+@media (max-width: 768px){
+    .page{
+        padding:0 20px 20px;
+    }
+
+    .topbar{
+        padding:20px;
+    }
+
+    .viewer-shell{
+        padding:18px;
+    }
+
+    .viewer-card{
+        padding:22px 18px;
+    }
+
+    .topbar-title{
+        font-size:24px;
+    }
+
+    .viewer-title{
+        font-size:20px;
+    }
 }
 </style>
 </head>
 <body>
-<div class="page">
-    <header class="top">
-        <div class="logo">Let's aprende inglés</div>
-        <a class="logout" href="logout.php">Logout</a>
-    </header>
-
-    <div class="breadcrumb">
-        Home &nbsp;›&nbsp; <?php echo h((string) ($account['target_name'] ?? 'Curso')); ?> &nbsp;›&nbsp; <?php echo h($currentUnitName); ?> &nbsp;›&nbsp; <strong><?php echo h($currentTypeLabel); ?></strong>
+<header class="topbar">
+    <div class="topbar-inner">
+        <a class="top-btn back" href="dashboard.php">← Volver</a>
+        <h1 class="topbar-title">Actividad</h1>
+        <a class="top-btn logout" href="logout.php">Logout</a>
     </div>
+</header>
 
+<div class="page">
     <?php if (!$current || !$viewerHref) { ?>
-        <div class="empty-card">
-            <h2 style="margin-top:0">No hay actividades disponibles.</h2>
-            <p>Este curso aún no tiene actividades para presentar o el tipo de actividad no tiene viewer configurado.</p>
-            <a href="dashboard.php">← Volver al panel docente</a>
+        <div class="content" style="padding-top:30px;">
+            <div class="empty-card">
+                <h2>No hay actividades disponibles.</h2>
+                <p>Este curso aún no tiene actividades para presentar o el tipo de actividad no tiene viewer configurado.</p>
+                <a href="dashboard.php">← Volver al panel docente</a>
+            </div>
         </div>
     <?php } else { ?>
         <div class="layout">
             <aside class="sidebar">
-                <a class="nav-btn" href="teacher_course.php?account=<?php echo urlencode($accountId); ?>&mode=<?php echo urlencode($mode); ?>&step=<?php echo $hasPrev ? $prevStep : $step; ?>">← Prev</a>
+                <div class="logo-wrap">
+                    <img src="<?php echo h($logoPath); ?>" alt="Let's aprende inglés">
+                </div>
 
-                <?php foreach ($sidebarItems as $type => $item) { ?>
-                    <?php
-                    $typeClass = '';
-                    if ($type === 'quiz' || $type === 'multiple_choice') {
-                        $typeClass .= ' quiz';
-                    } elseif ($type === 'video_lesson' || $type === 'flipbooks') {
-                        $typeClass .= ' video';
-                    }
+                <a class="side-btn blue" href="dashboard.php">📘 Mis Cursos</a>
 
-                    if ((int) $item['step'] === $step) {
-                        $typeClass .= ' active';
-                    }
-                    ?>
-                    <a class="nav-btn<?php echo h($typeClass); ?>" href="teacher_course.php?account=<?php echo urlencode($accountId); ?>&mode=<?php echo urlencode($mode); ?>&step=<?php echo (int) $item['step']; ?>">
-                        <?php echo h((string) $item['label']); ?>
-                    </a>
+                <?php if ($permission === 'editor') { ?>
+                    <a class="side-btn orange" href="teacher_course.php?account=<?php echo urlencode($accountId); ?>&mode=edit&step=<?php echo $step; ?>">🧑‍🏫 Editar Cursos</a>
                 <?php } ?>
+
+                <a class="side-btn green" href="teacher_groups.php">👥 Ver Estudiantes</a>
             </aside>
 
             <main class="content">
-                <h1><?php echo h($currentTypeLabel); ?></h1>
-                <a class="listen" href="<?php echo h($viewerHref); ?>" target="_blank" rel="noopener noreferrer">🔊 Listen</a>
+                <div class="viewer-shell">
+                    <div class="meta-row">
+                        <div class="badges">
+                            <span class="badge"><?php echo h((string) ($account['target_name'] ?? 'Curso')); ?></span>
+                            <span class="badge"><?php echo h($currentUnitName); ?></span>
+                            <span class="badge"><?php echo h($currentTypeLabel); ?></span>
+                        </div>
 
-                <section class="viewer-card">
-                    <div class="meta">
-                        Actividad <?php echo $step + 1; ?> de <?php echo $total; ?> ·
-                        Modo <?php echo h($mode === 'edit' ? 'edición' : 'presentación'); ?>
+                        <div class="badges">
+                            <span class="badge">Actividad <?php echo $step + 1; ?> de <?php echo $total; ?></span>
+                            <span class="badge"><?php echo h($mode === 'edit' ? 'Modo edición' : 'Modo presentación'); ?></span>
+                        </div>
                     </div>
 
-                    <iframe class="viewer-frame" src="<?php echo h($viewerHref); ?>" title="Viewer actividad"></iframe>
+                    <section class="viewer-card">
+                        <div class="viewer-header">
+                            <h2 class="viewer-title">🎯 <?php echo h($currentTypeLabel); ?></h2>
+                            <p class="viewer-subtitle">
+                                Presentación de la actividad del curso para el docente.
+                            </p>
+                        </div>
 
-                    <div class="controls">
-                        <a class="btn prev <?php echo $hasPrev ? '' : 'disabled'; ?>" href="teacher_course.php?account=<?php echo urlencode($accountId); ?>&mode=<?php echo urlencode($mode); ?>&step=<?php echo $hasPrev ? $prevStep : $step; ?>">← Prev</a>
-                        <a class="btn next <?php echo $hasNext ? '' : 'disabled'; ?>" href="teacher_course.php?account=<?php echo urlencode($accountId); ?>&mode=<?php echo urlencode($mode); ?>&step=<?php echo $hasNext ? $nextStep : $step; ?>">Next →</a>
-                    </div>
-                </section>
+                        <div class="viewer-frame-wrap">
+                            <iframe class="viewer-frame" src="<?php echo h($viewerHref); ?>" title="Viewer actividad"></iframe>
+                        </div>
 
-                <?php if ($editorHref !== null) { ?>
-                    <a class="editor-link" target="_blank" rel="noopener noreferrer" href="<?php echo h($editorHref); ?>">Editar actividad actual</a>
-                <?php } ?>
+                        <div class="controls">
+                            <a class="nav-btn prev <?php echo $hasPrev ? '' : 'disabled'; ?>" href="teacher_course.php?account=<?php echo urlencode($accountId); ?>&mode=<?php echo urlencode($mode); ?>&step=<?php echo $hasPrev ? $prevStep : $step; ?>">← Previous</a>
 
-                <div class="mode">
-                    <a href="dashboard.php">← Volver al perfil docente</a>
+                            <a class="nav-btn next <?php echo $hasNext ? '' : 'disabled'; ?>" href="teacher_course.php?account=<?php echo urlencode($accountId); ?>&mode=<?php echo urlencode($mode); ?>&step=<?php echo $hasNext ? $nextStep : $step; ?>">Next →</a>
+                        </div>
+
+                        <?php if ($editorHref !== null) { ?>
+                            <a class="editor-link" target="_blank" rel="noopener noreferrer" href="<?php echo h($editorHref); ?>">
+                                Editar actividad actual
+                            </a>
+                        <?php } ?>
+                    </section>
                 </div>
             </main>
         </div>
