@@ -337,4 +337,3 @@ tbody tr:last-child td{border-bottom:none}
 </div>
 </body>
 </html>
-lessons/lessons/academic/teacher_enrollme
