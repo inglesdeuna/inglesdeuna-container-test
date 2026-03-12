@@ -171,6 +171,11 @@ function load_teacher_latest_credentials_from_database(string $teacherId): ?arra
     }
 }
 
+function database_is_available(): bool
+{
+    return get_pdo_connection() instanceof PDO;
+}
+
 function teacher_account_exists(string $teacherId, ?string $excludeId = null): bool
 {
     $pdo = get_pdo_connection();
@@ -334,6 +339,10 @@ $accounts = load_teacher_accounts_from_database();
 
 $errors = [];
 
+if (!database_is_available()) {
+    $errors[] = 'No hay conexión a la base de datos. Revise la variable de entorno DATABASE_URL y el archivo config/db.php.';
+}
+
 $form = [
     'edit_id' => '',
     'teacher_id' => '',
@@ -402,7 +411,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $generatedUsername = $storedUsername;
         }
 
-        if ($storedPassword !== '') {
+        if ($storedPassword !== '' && $form['password'] === '') {
             $form['password'] = $storedPassword;
         }
     }
