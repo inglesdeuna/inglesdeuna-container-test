@@ -6,9 +6,9 @@ if (!isset($_SESSION['admin_logged']) || $_SESSION['admin_logged'] !== true) {
     exit;
 }
 
-function h(string $v): string
+function h(string $value): string
 {
-    return htmlspecialchars($v, ENT_QUOTES, 'UTF-8');
+    return htmlspecialchars($value, ENT_QUOTES, 'UTF-8');
 }
 
 function get_pdo_connection(): ?PDO
@@ -41,7 +41,22 @@ function get_pdo_connection(): ?PDO
     return $cachedPdo;
 }
 
-function load_teachers_from_database(): array
+function delete_teacher_assignments_from_database(string $teacherId): bool
+{
+    $pdo = get_pdo_connection();
+    if (!$pdo || $teacherId === '') {
+        return false;
+    }
+
+    try {
+        $stmt = $pdo->prepare("DELETE FROM teacher_assignments WHERE teacher_id = :teacher_id");
+        return $stmt->execute(['teacher_id' => $teacherId]);
+    } catch (Throwable $e) {
+        return false;
+    }
+}
+
+function load_grouped_assignments_from_database(): array
 {
     $pdo = get_pdo_connection();
     if (!$pdo) {
@@ -50,489 +65,207 @@ function load_teachers_from_database(): array
 
     try {
         $stmt = $pdo->query("
-            SELECT id, name
-            FROM teachers
-            ORDER BY name ASC, id ASC
+            SELECT teacher_id, teacher_name, program_type, course_name, unit_name, id
+            FROM teacher_assignments
+            ORDER BY teacher_name ASC, program_type ASC, course_name ASC, COALESCE(unit_name, '') ASC
         ");
-        return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
-    } catch (Throwable $e) {
-        return [];
-    }
-}
 
-function load_teacher_accounts_from_database(): array
-{
-    $pdo = get_pdo_connection();
-    if (!$pdo) {
-        return [];
-    }
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        $grouped = [];
 
-    try {
-        $stmt = $pdo->query("
-            SELECT id, teacher_id, teacher_name, scope, target_id, target_name, permission, username, password, updated_at
-            FROM teacher_accounts
-            ORDER BY updated_at DESC NULLS LAST, teacher_name ASC
-        ");
-        return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
-    } catch (Throwable $e) {
-        return [];
-    }
-}
+        foreach ($rows as $row) {
+            $teacherId = (string) ($row['teacher_id'] ?? '');
+            if ($teacherId === '') {
+                continue;
+            }
 
-function load_students_from_database(): array
-{
-    $pdo = get_pdo_connection();
-    if (!$pdo) {
-        return [];
-    }
+            if (!isset($grouped[$teacherId])) {
+                $grouped[$teacherId] = [
+                    'teacher_id' => $teacherId,
+                    'teacher_name' => (string) ($row['teacher_name'] ?? 'Docente'),
+                    'items' => [],
+                ];
+            }
 
-    try {
-        $stmt = $pdo->query("
-            SELECT id, name
-            FROM students
-            ORDER BY name ASC, id ASC
-        ");
-        return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
-    } catch (Throwable $e) {
-        return [];
-    }
-}
-
-function load_courses_from_database(): array
-{
-    $pdo = get_pdo_connection();
-    if (!$pdo) {
-        return [];
-    }
-
-    try {
-        $stmt = $pdo->query("
-            SELECT id, name
-            FROM courses
-            ORDER BY id ASC, name ASC
-        ");
-        return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
-    } catch (Throwable $e) {
-        return [];
-    }
-}
-
-function load_units_from_database(): array
-{
-    $pdo = get_pdo_connection();
-    if (!$pdo) {
-        return [];
-    }
-
-    try {
-        $stmt = $pdo->query("
-            SELECT id, name, course_id, phase_id
-            FROM units
-            ORDER BY id ASC
-        ");
-        return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
-    } catch (Throwable $e) {
-        return [];
-    }
-}
-
-function load_student_assignments_from_database(): array
-{
-    $pdo = get_pdo_connection();
-    if (!$pdo) {
-        return [];
-    }
-
-    try {
-        $stmt = $pdo->query("
-            SELECT id, student_id, teacher_id, program, course_id, level_id, period, unit_id, student_username, student_temp_password, updated_at
-            FROM student_assignments
-            ORDER BY updated_at DESC NULLS LAST, id DESC
-        ");
-        return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
-    } catch (Throwable $e) {
-        return [];
-    }
-}
-
-function map_names(array $rows): array
-{
-    $mapped = [];
-    foreach ($rows as $row) {
-        $id = (string) ($row['id'] ?? '');
-        if ($id !== '') {
-            $mapped[$id] = (string) ($row['name'] ?? $id);
+            $grouped[$teacherId]['items'][] = [
+                'id' => (string) ($row['id'] ?? ''),
+                'program_type' => (string) ($row['program_type'] ?? ''),
+                'course_name' => (string) ($row['course_name'] ?? ''),
+                'unit_name' => (string) ($row['unit_name'] ?? ''),
+            ];
         }
-    }
-    return $mapped;
-}
 
-$teachers = load_teachers_from_database();
-$accounts = load_teacher_accounts_from_database();
-$students = load_students_from_database();
-$courses = load_courses_from_database();
-$units = load_units_from_database();
-$studentAssignments = load_student_assignments_from_database();
-
-$studentNameById = map_names($students);
-$courseNameById = map_names($courses);
-$unitNameById = map_names($units);
-
-$teachersById = [];
-foreach ($teachers as $teacher) {
-    $teacherId = (string) ($teacher['id'] ?? '');
-    if ($teacherId === '') {
-        continue;
-    }
-
-    $teachersById[$teacherId] = [
-        'id' => $teacherId,
-        'name' => (string) ($teacher['name'] ?? 'Docente'),
-        'groups' => [],
-        'students' => [],
-    ];
-}
-
-foreach ($accounts as $account) {
-    $teacherId = (string) ($account['teacher_id'] ?? '');
-    if ($teacherId === '') {
-        continue;
-    }
-
-    if (!isset($teachersById[$teacherId])) {
-        $teachersById[$teacherId] = [
-            'id' => $teacherId,
-            'name' => (string) ($account['teacher_name'] ?? 'Docente'),
-            'groups' => [],
-            'students' => [],
-        ];
-    }
-
-    $groupName = trim((string) ($account['target_name'] ?? ''));
-    if ($groupName !== '') {
-        $groupKey = $teacherId . '|' . $groupName;
-        $teachersById[$teacherId]['groups'][$groupKey] = $groupName;
+        return array_values($grouped);
+    } catch (Throwable $e) {
+        return [];
     }
 }
 
-foreach ($studentAssignments as $assignment) {
-    $teacherId = (string) ($assignment['teacher_id'] ?? '');
-    if ($teacherId === '') {
-        continue;
-    }
-
-    if (!isset($teachersById[$teacherId])) {
-        $teachersById[$teacherId] = [
-            'id' => $teacherId,
-            'name' => 'Docente',
-            'groups' => [],
-            'students' => [],
-        ];
-    }
-
-    $courseName = $courseNameById[(string) ($assignment['course_id'] ?? '')] ?? '';
-    $unitName = $unitNameById[(string) ($assignment['unit_id'] ?? '')] ?? '';
-
-    // Mostrar un solo grupo por curso/semestre, no repetir por cada unidad
-    $groupName = trim($courseName !== '' ? $courseName : $unitName);
-
-    if ($groupName !== '') {
-        $groupKey = $teacherId . '|' . $groupName;
-        $teachersById[$teacherId]['groups'][$groupKey] = $groupName;
-    }
-
-    $studentId = (string) ($assignment['student_id'] ?? '');
-    if ($studentId !== '') {
-        $teachersById[$teacherId]['students'][$studentId] = $studentNameById[$studentId] ?? ('Estudiante ' . $studentId);
-    }
+if (isset($_GET['remove_teacher']) && $_GET['remove_teacher'] !== '') {
+    delete_teacher_assignments_from_database((string) $_GET['remove_teacher']);
+    header('Location: teacher_groups.php?saved=1');
+    exit;
 }
 
-$teacherCards = array_values($teachersById);
-usort($teacherCards, fn($a, $b) => strcasecmp((string) ($a['name'] ?? ''), (string) ($b['name'] ?? '')));
+$teachers = load_grouped_assignments_from_database();
 ?>
-<!doctype html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Docentes y Grupos</title>
-    <style>
-        * { box-sizing: border-box; }
-
-        body {
-            font-family: Arial, sans-serif;
-            background: #eef2f7;
-            padding: 30px;
-            color: #1f2937;
-            margin: 0;
-        }
-
-        .wrapper {
-            max-width: 1100px;
-            margin: 0 auto;
-        }
-
-        .topbar {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 12px;
-            flex-wrap: wrap;
-            margin-bottom: 20px;
-        }
-
-        .back {
-            display: inline-block;
-            padding: 8px 12px;
-            border-radius: 8px;
-            background: #1f66cc;
-            color: #fff;
-            text-decoration: none;
-            font-weight: 700;
-            font-size: 14px;
-            transition: background .2s ease;
-        }
-
-        .back:hover {
-            background: #2f5bb5;
-        }
-
-        h1.title {
-            font-size: 28px;
-            font-weight: 700;
-            color: #1f3c75;
-            margin: 0 0 20px;
-        }
-
-        .panel {
-            background: #ffffff;
-            border-radius: 14px;
-            padding: 20px;
-            box-shadow: 0 8px 24px rgba(0,0,0,.08);
-            border: 1px solid #dce4f0;
-        }
-
-        .teacher {
-            background: #ffffff;
-            border: 1px solid #dce4f0;
-            border-radius: 14px;
-            margin-bottom: 18px;
-            overflow: hidden;
-            box-shadow: 0 8px 24px rgba(0,0,0,.04);
-        }
-
-        .teacher:last-child {
-            margin-bottom: 0;
-        }
-
-        .head {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            gap: 16px;
-            padding: 18px 20px;
-        }
-
-        .teacher-info {
-            flex: 1;
-            min-width: 0;
-        }
-
-        .name {
-            margin: 0 0 6px;
-            font-size: 22px;
-            font-weight: 700;
-            color: #2c3e50;
-        }
-
-        .meta {
-            font-size: 13px;
-            color: #5b6577;
-            display: block;
-            margin-bottom: 12px;
-        }
-
-        .badges {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-        }
-
-        .badge {
-            display: inline-block;
-            padding: 4px 10px;
-            border-radius: 999px;
-            background: #eef2ff;
-            color: #1f4ec9;
-            font-size: 12px;
-            font-weight: 700;
-            line-height: 1.4;
-        }
-
-        .right {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            flex-shrink: 0;
-        }
-
-        .view-btn,
-        .toggle {
-            display: inline-block;
-            padding: 8px 12px;
-            border-radius: 8px;
-            border: none;
-            font-weight: 700;
-            font-size: 14px;
-            cursor: pointer;
-            transition: background .2s ease, color .2s ease;
-        }
-
-        .view-btn {
-            background: #1f66cc;
-            color: #fff;
-        }
-
-        .view-btn:hover {
-            background: #2f5bb5;
-        }
-
-        .toggle {
-            background: #eef2ff;
-            color: #1f4ec9;
-        }
-
-        .toggle:hover {
-            background: #dfe8ff;
-        }
-
-        .body-panel {
-            display: none;
-            padding: 18px 20px 20px;
-            border-top: 1px solid #dce4f0;
-            background: #f8fbff;
-        }
-
-        .body-panel.open {
-            display: block;
-        }
-
-        .body-panel h3 {
-            font-size: 18px;
-            font-weight: 600;
-            color: #2c3e50;
-            margin: 0 0 12px;
-        }
-
-        .students-list {
-            margin: 0;
-            padding-left: 20px;
-        }
-
-        .students-list li {
-            font-size: 14px;
-            color: #1f2937;
-            padding: 8px 0;
-            border-bottom: 1px solid #e7edf6;
-        }
-
-        .students-list li:last-child {
-            border-bottom: none;
-        }
-
-        .empty {
-            font-size: 13px;
-            color: #5b6577;
-            margin: 0;
-        }
-
-        @media (max-width: 768px) {
-            body { padding: 20px; }
-            h1.title { font-size: 24px; }
-            .head { flex-direction: column; align-items: stretch; }
-            .right { width: 100%; justify-content: flex-start; }
-            .name { font-size: 20px; }
-            .view-btn, .toggle { font-size: 12px; padding: 6px 10px; }
-            .body-panel h3 { font-size: 16px; }
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Docentes y Grupos</title>
+<style>
+:root{
+    --bg:#eef2f7;
+    --card:#ffffff;
+    --line:#dce4f0;
+    --text:#1f2937;
+    --subtitle:#143d7a;
+    --muted:#5b6577;
+    --blue:#1f66cc;
+    --blue-hover:#2f5bb5;
+    --orange:#b45309;
+    --green:#166534;
+    --shadow:0 8px 24px rgba(0,0,0,.08);
+    --radius:14px;
+}
+*{box-sizing:border-box;}
+body{
+    margin:0;
+    font-family:Arial, sans-serif;
+    background:var(--bg);
+    color:var(--text);
+    min-height:100vh;
+    padding:32px 20px;
+}
+.wrapper{width:100%;max-width:980px;margin:0 auto;}
+.back{
+    display:inline-flex;align-items:center;justify-content:center;min-height:38px;padding:8px 14px;
+    border-radius:10px;background:var(--blue);color:#fff;text-decoration:none;font-weight:700;font-size:13px;
+}
+.page-title{
+    margin:14px 0 18px;
+    color:var(--subtitle);
+    font-size:24px;
+    font-weight:700;
+}
+.notice{
+    padding:12px 14px;border-radius:10px;background:#ecfdf3;border:1px solid #b9eacb;
+    color:#166534;margin-bottom:16px;font-size:14px;font-weight:600;
+}
+.card{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    box-shadow:var(--shadow);
+    padding:14px;
+    margin-bottom:14px;
+}
+.teacher-head{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    gap:16px;
+    flex-wrap:wrap;
+}
+.teacher-name{
+    font-size:16px;
+    font-weight:700;
+    color:#1f3c75;
+    margin-bottom:6px;
+}
+.teacher-meta{
+    font-size:13px;
+    color:var(--muted);
+}
+.teacher-actions{
+    display:flex;
+    gap:8px;
+    flex-wrap:wrap;
+}
+.btn{
+    display:inline-flex;align-items:center;justify-content:center;padding:8px 12px;border-radius:10px;
+    text-decoration:none;font-weight:700;font-size:12px;border:none;cursor:pointer;
+}
+.btn-blue{background:var(--blue);color:#fff;}
+.btn-blue:hover{background:var(--blue-hover);}
+.btn-red{background:#fee2e2;color:#b91c1c;}
+.btn-red:hover{background:#fecaca;}
+.items{
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+    margin-top:12px;
+}
+.badge{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    padding:6px 10px;
+    border-radius:999px;
+    font-size:12px;
+    font-weight:700;
+    white-space:nowrap;
+}
+.badge-tech{background:#eef4ff;color:#1f66cc;}
+.badge-eng{background:#fff3e8;color:var(--orange);}
+.badge-unit{background:#eef8f2;color:var(--green);}
+.empty{
+    color:var(--muted);
+    font-size:14px;
+}
+</style>
 </head>
 <body>
-<div class="wrapper" id="docentes-grupos">
-    <div class="topbar">
-        <a class="back" href="student_assignments.php">← Volver a asignaciones</a>
-    </div>
+<div class="wrapper">
+    <a class="back" href="teacher_assignments.php">← Volver a asignaciones</a>
+    <div class="page-title">Docentes y Grupos</div>
 
-    <h1 class="title">Docentes y Grupos</h1>
+    <?php if (isset($_GET['saved'])) { ?>
+        <div class="notice">Asignaciones actualizadas correctamente.</div>
+    <?php } ?>
 
-    <div class="panel">
-        <?php if (empty($teacherCards)) { ?>
-            <article class="teacher">
-                <div class="head">
-                    <p class="empty">No hay docentes registrados todavía.</p>
+    <?php if (empty($teachers)) { ?>
+        <div class="card">
+            <div class="empty">No hay docentes con asignaciones actualmente.</div>
+        </div>
+    <?php } else { ?>
+        <?php foreach ($teachers as $teacher) { ?>
+            <div class="card">
+                <div class="teacher-head">
+                    <div>
+                        <div class="teacher-name">Prof. <?php echo h((string) ($teacher['teacher_name'] ?? 'Docente')); ?></div>
+                        <div class="teacher-meta"><?php echo count((array) ($teacher['items'] ?? [])); ?> asignación(es)</div>
+                    </div>
+
+                    <div class="teacher-actions">
+                        <a class="btn btn-blue" href="teacher_assignments.php?teacher_id=<?php echo h((string) ($teacher['teacher_id'] ?? '')); ?>">Editar</a>
+                        <a class="btn btn-red" href="teacher_groups.php?remove_teacher=<?php echo h((string) ($teacher['teacher_id'] ?? '')); ?>" onclick="return confirm('¿Eliminar todas las asignaciones de este docente?')">Eliminar</a>
+                    </div>
                 </div>
-            </article>
-        <?php } else { ?>
-            <?php foreach ($teacherCards as $index => $teacherCard) { ?>
-                <?php
-                    $groups = array_values((array) ($teacherCard['groups'] ?? []));
-                    $studentsList = array_values((array) ($teacherCard['students'] ?? []));
-                    $countGroups = count($groups);
-                ?>
-                <article class="teacher">
-                    <div class="head">
-                        <div class="teacher-info">
-                            <p class="name">Prof. <?= h((string) ($teacherCard['name'] ?? 'Docente')) ?></p>
-                            <span class="meta">
-                                <?= $countGroups ?> <?= $countGroups === 1 ? 'grupo asignado' : 'grupos asignados' ?>
-                            </span>
 
-                            <?php if (!empty($groups)) { ?>
-                                <div class="badges">
-                                    <?php foreach ($groups as $groupName) { ?>
-                                        <span class="badge"><?= h((string) $groupName) ?></span>
-                                    <?php } ?>
-                                </div>
-                            <?php } ?>
-                        </div>
+                <div class="items">
+                    <?php foreach ((array) ($teacher['items'] ?? []) as $item) { ?>
+                        <?php
+                            $program = (string) ($item['program_type'] ?? '');
+                            $courseName = (string) ($item['course_name'] ?? '');
+                            $unitName = (string) ($item['unit_name'] ?? '');
+                        ?>
 
-                        <div class="right">
-                            <button type="button" class="view-btn" data-target="body-<?= $index ?>">Ver estudiantes</button>
-                            <button type="button" class="toggle" data-target="body-<?= $index ?>">⌄</button>
-                        </div>
-                    </div>
-
-                    <div class="body-panel" id="body-<?= $index ?>">
-                        <h3>Lista de estudiantes asignados</h3>
-
-                        <?php if (empty($studentsList)) { ?>
-                            <p class="empty">Este docente no tiene estudiantes asignados todavía.</p>
+                        <?php if ($program === 'english') { ?>
+                            <span class="badge badge-eng"><?php echo h($courseName); ?> · curso completo</span>
                         <?php } else { ?>
-                            <ol class="students-list">
-                                <?php foreach ($studentsList as $studentName) { ?>
-                                    <li><?= h((string) $studentName) ?></li>
-                                <?php } ?>
-                            </ol>
+                            <span class="badge badge-tech"><?php echo h($courseName); ?></span>
+                            <?php if ($unitName !== '') { ?>
+                                <span class="badge badge-unit"><?php echo h($unitName); ?></span>
+                            <?php } ?>
                         <?php } ?>
-                    </div>
-                </article>
-            <?php } ?>
+                    <?php } ?>
+                </div>
+            </div>
         <?php } ?>
-    </div>
+    <?php } ?>
 </div>
-
-<script>
-function togglePanel(targetId) {
-    const panel = document.getElementById(targetId);
-    if (!panel) return;
-    panel.classList.toggle('open');
-}
-
-document.querySelectorAll('.toggle, .view-btn').forEach((button) => {
-    button.addEventListener('click', () => {
-        togglePanel(button.dataset.target || '');
-    });
-});
-</script>
 </body>
 </html>
