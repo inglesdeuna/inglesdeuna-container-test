@@ -132,12 +132,23 @@ function save_teacher_to_database(array $teacher): bool
     }
 }
 
+
+function database_is_available(): bool
+{
+    return get_pdo_connection() instanceof PDO;
+}
+
 /* ===============================
    CARGA
 =============================== */
 $teachers = load_teachers_from_database();
 
 $errors = [];
+
+if (!database_is_available()) {
+    $errors[] = 'No hay conexión a la base de datos. Revise la variable de entorno DATABASE_URL y el archivo config/db.php.';
+}
+
 $form = [
     'teacher_name' => '',
     'teacher_id_number' => '',
@@ -326,3 +337,4 @@ tbody tr:last-child td{border-bottom:none}
 </div>
 </body>
 </html>
+lessons/lessons/academic/teacher_enrollme
