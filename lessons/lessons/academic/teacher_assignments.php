@@ -895,4 +895,3 @@ if (technicalCourseId) {
 </script>
 </body>
 </html>
-lessons/lessons/academic/teacher_assignments.php
