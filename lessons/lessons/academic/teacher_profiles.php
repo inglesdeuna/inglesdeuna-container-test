@@ -82,6 +82,83 @@ function load_teacher_accounts_from_database(): array
     }
 }
 
+function table_has_column(PDO $pdo, string $tableName, string $columnName): bool
+{
+    try {
+        $stmt = $pdo->prepare("
+            SELECT 1
+            FROM information_schema.columns
+            WHERE table_schema = 'public'
+              AND table_name = :table_name
+              AND column_name = :column_name
+            LIMIT 1
+        ");
+        $stmt->execute([
+            'table_name' => $tableName,
+            'column_name' => $columnName,
+        ]);
+
+        return (bool) $stmt->fetchColumn();
+    } catch (Throwable $e) {
+        return false;
+    }
+}
+
+function slug_piece(string $value): string
+{
+    $normalized = mb_strtolower(trim($value), 'UTF-8');
+    $map = [
+        'á' => 'a', 'é' => 'e', 'í' => 'i', 'ó' => 'o', 'ú' => 'u',
+        'ä' => 'a', 'ë' => 'e', 'ï' => 'i', 'ö' => 'o', 'ü' => 'u',
+        'ñ' => 'n',
+    ];
+
+    $normalized = strtr($normalized, $map);
+    $normalized = preg_replace('/[^a-z0-9\s]/', '', $normalized);
+    $normalized = preg_replace('/\s+/', ' ', (string) $normalized);
+
+    return trim((string) $normalized);
+}
+
+function generate_teacher_username(string $teacherName): string
+{
+    $clean = slug_piece($teacherName);
+    $parts = array_values(array_filter(explode(' ', $clean), static fn ($part): bool => $part !== ''));
+
+    if (empty($parts)) {
+        return 'docente.docente';
+    }
+
+    $firstName = $parts[0];
+    $lastName = $parts[count($parts) - 1] ?? $firstName;
+
+    return $firstName . '.' . $lastName;
+}
+
+function load_teacher_latest_credentials_from_database(string $teacherId): ?array
+{
+    $pdo = get_pdo_connection();
+    if (!$pdo || $teacherId === '') {
+        return null;
+    }
+
+    try {
+        $stmt = $pdo->prepare("
+            SELECT username, password
+            FROM teacher_accounts
+            WHERE teacher_id = :teacher_id
+            ORDER BY updated_at DESC NULLS LAST
+            LIMIT 1
+        ");
+        $stmt->execute(['teacher_id' => $teacherId]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        return is_array($row) ? $row : null;
+    } catch (Throwable $e) {
+        return null;
+    }
+}
+
 function load_technical_courses_from_database(): array
 {
     $pdo = get_pdo_connection();
@@ -159,25 +236,65 @@ function save_teacher_account_to_database(array $record): bool
     }
 
     try {
-        $stmt = $pdo->prepare("
-            INSERT INTO teacher_accounts (
-                id, teacher_id, teacher_name, scope, target_id, target_name, permission, username, password, updated_at
-            ) VALUES (
-                :id, :teacher_id, :teacher_name, :scope, :target_id, :target_name, :permission, :username, :password, :updated_at
-            )
-            ON CONFLICT (id) DO UPDATE SET
-                teacher_id = EXCLUDED.teacher_id,
-                teacher_name = EXCLUDED.teacher_name,
-                scope = EXCLUDED.scope,
-                target_id = EXCLUDED.target_id,
-                target_name = EXCLUDED.target_name,
-                permission = EXCLUDED.permission,
-                username = EXCLUDED.username,
-                password = EXCLUDED.password,
-                updated_at = EXCLUDED.updated_at
-        ");
+        $hasMustChangePassword = table_has_column($pdo, 'teacher_accounts', 'must_change_password');
 
-        return $stmt->execute([
+        $columns = [
+            'id',
+            'teacher_id',
+            'teacher_name',
+            'scope',
+            'target_id',
+            'target_name',
+            'permission',
+            'username',
+            'password',
+            'updated_at',
+        ];
+
+        $values = [
+            ':id',
+            ':teacher_id',
+            ':teacher_name',
+            ':scope',
+            ':target_id',
+            ':target_name',
+            ':permission',
+            ':username',
+            ':password',
+            ':updated_at',
+        ];
+
+        if ($hasMustChangePassword) {
+            $columns[] = 'must_change_password';
+            $values[] = ':must_change_password';
+        }
+
+        $updateSet = [
+            'teacher_id = EXCLUDED.teacher_id',
+            'teacher_name = EXCLUDED.teacher_name',
+            'scope = EXCLUDED.scope',
+            'target_id = EXCLUDED.target_id',
+            'target_name = EXCLUDED.target_name',
+            'permission = EXCLUDED.permission',
+            'username = EXCLUDED.username',
+            'password = EXCLUDED.password',
+            'updated_at = EXCLUDED.updated_at',
+        ];
+
+        if ($hasMustChangePassword) {
+            $updateSet[] = 'must_change_password = EXCLUDED.must_change_password';
+        }
+
+        $sql = "
+            INSERT INTO teacher_accounts (" . implode(', ', $columns) . ")
+            VALUES (" . implode(', ', $values) . ")
+            ON CONFLICT (id) DO UPDATE SET
+                " . implode(",\n                ", $updateSet) . "
+        ";
+
+        $stmt = $pdo->prepare($sql);
+
+        $params = [
             'id' => (string) ($record['id'] ?? ''),
             'teacher_id' => (string) ($record['teacher_id'] ?? ''),
             'teacher_name' => (string) ($record['teacher_name'] ?? ''),
@@ -188,7 +305,13 @@ function save_teacher_account_to_database(array $record): bool
             'username' => (string) ($record['username'] ?? ''),
             'password' => (string) ($record['password'] ?? ''),
             'updated_at' => (string) ($record['updated_at'] ?? date('Y-m-d H:i:s')),
-        ]);
+        ];
+
+        if ($hasMustChangePassword) {
+            $params['must_change_password'] = !empty($record['must_change_password']);
+        }
+
+        return $stmt->execute($params);
     } catch (Throwable $e) {
         return false;
     }
@@ -225,9 +348,10 @@ $form = [
     'scope' => 'technical',
     'target_id' => '',
     'target_name' => '',
+    'target_ids' => [],
     'permission' => 'viewer',
     'username' => '',
-    'password' => '',
+    'password' => '1234',
 ];
 
 /* ===============================
@@ -255,7 +379,7 @@ if (isset($_GET['edit']) && $_GET['edit'] !== '') {
         $form['target_name'] = (string) ($editAccount['target_name'] ?? '');
         $form['permission'] = (string) ($editAccount['permission'] ?? 'viewer');
         $form['username'] = (string) ($editAccount['username'] ?? '');
-        $form['password'] = (string) ($editAccount['password'] ?? '');
+        $form['password'] = (string) ($editAccount['password'] ?? '1234');
     }
 }
 
@@ -268,9 +392,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $form['scope'] = trim((string) ($_POST['scope'] ?? 'technical'));
     $form['target_id'] = trim((string) ($_POST['target_id'] ?? ''));
     $form['target_name'] = trim((string) ($_POST['target_name'] ?? ''));
+
+    $postedTargetIds = $_POST['target_ids'] ?? [];
+    $form['target_ids'] = is_array($postedTargetIds)
+        ? array_values(array_filter(array_map(static fn ($value): string => trim((string) $value), $postedTargetIds), static fn ($value): bool => $value !== ''))
+        : [];
+
     $form['permission'] = trim((string) ($_POST['permission'] ?? 'viewer'));
     $form['username'] = trim((string) ($_POST['username'] ?? ''));
-    $form['password'] = trim((string) ($_POST['password'] ?? ''));
+    $form['password'] = trim((string) ($_POST['password'] ?? '1234'));
 
     if ($form['scope'] !== 'technical' && $form['scope'] !== 'english') {
         $form['scope'] = 'technical';
@@ -284,16 +414,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $errors[] = 'Debe seleccionar un docente.';
     }
 
-    if ($form['target_id'] === '' || $form['target_name'] === '') {
+    if ($form['edit_id'] === '' && empty($form['target_ids'])) {
+        $errors[] = 'Debe seleccionar al menos un semestre/curso válido.';
+    }
+
+    if ($form['edit_id'] !== '' && ($form['target_id'] === '' || $form['target_name'] === '')) {
         $errors[] = 'Debe seleccionar un semestre/curso válido.';
-    }
-
-    if ($form['username'] === '' || mb_strlen($form['username']) < 3) {
-        $errors[] = 'El usuario debe tener mínimo 3 caracteres.';
-    }
-
-    if ($form['password'] === '' || mb_strlen($form['password']) < 4) {
-        $errors[] = 'La contraseña debe tener mínimo 4 caracteres.';
     }
 
     $teacherName = find_teacher_name_by_id($teachers, $form['teacher_id']);
@@ -301,21 +427,89 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $errors[] = 'El docente seleccionado no existe en la lista de inscritos.';
     }
 
-    if (empty($errors)) {
-        $record = [
-            'id' => $form['edit_id'] !== '' ? $form['edit_id'] : uniqid('acc_', true),
-            'teacher_id' => $form['teacher_id'],
-            'teacher_name' => $teacherName,
-            'scope' => $form['scope'],
-            'target_id' => $form['target_id'],
-            'target_name' => $form['target_name'],
-            'permission' => $form['permission'],
-            'username' => $form['username'],
-            'password' => $form['password'],
-            'updated_at' => date('Y-m-d H:i:s'),
-        ];
+    $generatedUsername = $teacherName !== '' ? generate_teacher_username($teacherName) : 'docente.docente';
+    $existingCredentials = load_teacher_latest_credentials_from_database($form['teacher_id']);
 
-        $saved = save_teacher_account_to_database($record);
+    if (is_array($existingCredentials)) {
+        $storedUsername = trim((string) ($existingCredentials['username'] ?? ''));
+        $storedPassword = trim((string) ($existingCredentials['password'] ?? ''));
+
+        if ($storedUsername !== '') {
+            $generatedUsername = $storedUsername;
+        }
+
+        if ($storedPassword !== '') {
+            $form['password'] = $storedPassword;
+        }
+    }
+
+    $form['username'] = $generatedUsername;
+
+    if ($form['password'] === '') {
+        $form['password'] = '1234';
+    }
+
+    if (mb_strlen($form['username']) < 3) {
+        $errors[] = 'El usuario generado no es válido.';
+    }
+
+    if (mb_strlen($form['password']) < 4) {
+        $errors[] = 'La contraseña debe tener mínimo 4 caracteres.';
+    }
+
+    if (empty($errors)) {
+        $saved = true;
+
+        if ($form['edit_id'] !== '') {
+            $record = [
+                'id' => $form['edit_id'],
+                'teacher_id' => $form['teacher_id'],
+                'teacher_name' => $teacherName,
+                'scope' => $form['scope'],
+                'target_id' => $form['target_id'],
+                'target_name' => $form['target_name'],
+                'permission' => $form['permission'],
+                'username' => $form['username'],
+                'password' => $form['password'],
+                'must_change_password' => true,
+                'updated_at' => date('Y-m-d H:i:s'),
+            ];
+
+            $saved = save_teacher_account_to_database($record);
+        } else {
+            $source = $form['scope'] === 'english' ? $english : $technical;
+            $targetMap = [];
+
+            foreach ($source as $item) {
+                $targetMap[(string) ($item['id'] ?? '')] = (string) ($item['name'] ?? 'Curso');
+            }
+
+            foreach ($form['target_ids'] as $targetIdSelected) {
+                $targetNameSelected = $targetMap[(string) $targetIdSelected] ?? '';
+                if ($targetNameSelected === '') {
+                    continue;
+                }
+
+                $record = [
+                    'id' => uniqid('acc_', true),
+                    'teacher_id' => $form['teacher_id'],
+                    'teacher_name' => $teacherName,
+                    'scope' => $form['scope'],
+                    'target_id' => (string) $targetIdSelected,
+                    'target_name' => $targetNameSelected,
+                    'permission' => $form['permission'],
+                    'username' => $form['username'],
+                    'password' => $form['password'],
+                    'must_change_password' => true,
+                    'updated_at' => date('Y-m-d H:i:s'),
+                ];
+
+                if (!save_teacher_account_to_database($record)) {
+                    $saved = false;
+                    break;
+                }
+            }
+        }
 
         if ($saved) {
             header('Location: teacher_profiles.php?saved=1');
@@ -527,6 +721,10 @@ input[readonly]{
     color:#6b7280;
 }
 
+select[multiple]{
+    min-height:140px;
+}
+
 input:focus,
 select:focus,
 button:focus{
@@ -652,6 +850,13 @@ tbody tr:last-child td{
     color:var(--muted);
 }
 
+.helper-text{
+    font-size:12px;
+    color:var(--muted);
+    margin-top:6px;
+    line-height:1.4;
+}
+
 @media (max-width: 768px){
     body{
         padding:20px 14px;
@@ -734,9 +939,17 @@ tbody tr:last-child td{
 
                 <div class="field">
                     <label for="targetId">Semestre / Curso</label>
-                    <select name="target_id" id="targetId" required>
+                    <select name="target_id" id="targetId" <?php echo $form['edit_id'] !== '' ? 'required' : ''; ?>>
                         <option value="">Seleccione semestre/curso</option>
                     </select>
+                    <div class="helper-text">En edición se actualiza un solo perfil.</div>
+                </div>
+
+                <div class="field">
+                    <label for="targetIds">Asignar varios (nuevo perfil)</label>
+                    <select name="target_ids[]" id="targetIds" multiple size="5" <?php echo $form['edit_id'] === '' ? 'required' : ''; ?>>
+                    </select>
+                    <div class="helper-text">Al crear, puedes asignar varios semestres/cursos al mismo docente.</div>
                 </div>
 
                 <div class="field">
@@ -747,7 +960,7 @@ tbody tr:last-child td{
                         id="targetName"
                         placeholder="Nombre semestre/curso (auto)"
                         value="<?php echo h($form['target_name']); ?>"
-                        required
+                        <?php echo $form['edit_id'] !== '' ? 'required' : ''; ?>
                         readonly
                     >
                 </div>
@@ -766,9 +979,10 @@ tbody tr:last-child td{
                         type="text"
                         name="username"
                         id="username"
-                        placeholder="Crear usuario"
+                        placeholder="nombre.apellido"
                         value="<?php echo h($form['username']); ?>"
                         required
+                        readonly
                     >
                 </div>
 
@@ -778,9 +992,10 @@ tbody tr:last-child td{
                         type="text"
                         name="password"
                         id="password"
-                        placeholder="Crear password"
+                        placeholder="1234"
                         value="<?php echo h($form['password']); ?>"
                         required
+                        readonly
                     >
                 </div>
 
@@ -852,14 +1067,52 @@ const technical = <?php echo json_encode(array_values($technical), JSON_UNESCAPE
 const english = <?php echo json_encode(array_values($english), JSON_UNESCAPED_UNICODE); ?>;
 const preselectedScope = <?php echo json_encode($form['scope'], JSON_UNESCAPED_UNICODE); ?>;
 const preselectedTargetId = <?php echo json_encode($form['target_id'], JSON_UNESCAPED_UNICODE); ?>;
+const preselectedTargetIds = <?php echo json_encode(array_values($form['target_ids']), JSON_UNESCAPED_UNICODE); ?>;
 const preselectedTargetName = <?php echo json_encode($form['target_name'], JSON_UNESCAPED_UNICODE); ?>;
+const isEditMode = <?php echo json_encode($form['edit_id'] !== '', JSON_UNESCAPED_UNICODE); ?>;
+const teacherMap = <?php
+echo json_encode(
+    array_reduce($teachers, static function (array $carry, array $teacher): array {
+        $carry[(string) ($teacher['id'] ?? '')] = (string) ($teacher['name'] ?? '');
+        return $carry;
+    }, []),
+    JSON_UNESCAPED_UNICODE
+);
+?>;
 
 const scopeSelect = document.getElementById('scopeSelect');
 const targetId = document.getElementById('targetId');
+const targetIds = document.getElementById('targetIds');
 const targetName = document.getElementById('targetName');
+const teacherSelect = document.getElementById('teacher_id');
+const username = document.getElementById('username');
+const password = document.getElementById('password');
+
+function normalizeName(value) {
+    return String(value || '')
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-z0-9\s]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+}
+
+function generateUsername(name) {
+    const normalized = normalizeName(name);
+    if (!normalized) {
+        return 'docente.docente';
+    }
+
+    const pieces = normalized.split(' ').filter(Boolean);
+    const firstName = pieces[0] || 'docente';
+    const lastName = pieces[pieces.length - 1] || firstName;
+
+    return `${firstName}.${lastName}`;
+}
 
 function renderOptions() {
-    if (!scopeSelect || !targetId || !targetName) {
+    if (!scopeSelect || !targetId || !targetName || !targetIds) {
         return;
     }
 
@@ -867,27 +1120,57 @@ function renderOptions() {
     const source = scope === 'english' ? english : technical;
 
     targetId.innerHTML = '<option value="">Seleccione semestre/curso</option>';
+    targetIds.innerHTML = '';
 
     source.forEach(item => {
-        const option = document.createElement('option');
-        option.value = String(item.id || '');
-        option.textContent = String(item.name || 'Curso');
-        option.dataset.name = String(item.name || 'Curso');
+        const optionValue = String(item.id || '');
+        const optionLabel = String(item.name || 'Curso');
 
-        if (String(option.value) === String(preselectedTargetId || '')) {
+        const option = document.createElement('option');
+        option.value = optionValue;
+        option.textContent = optionLabel;
+        option.dataset.name = optionLabel;
+
+        if (String(optionValue) === String(preselectedTargetId || '')) {
             option.selected = true;
         }
 
         targetId.appendChild(option);
+
+        const multipleOption = document.createElement('option');
+        multipleOption.value = optionValue;
+        multipleOption.textContent = optionLabel;
+
+        if (Array.isArray(preselectedTargetIds) && preselectedTargetIds.includes(optionValue)) {
+            multipleOption.selected = true;
+        }
+
+        targetIds.appendChild(multipleOption);
     });
 
     const selected = targetId.options[targetId.selectedIndex];
     targetName.value = selected && selected.value !== '' ? (selected.dataset.name || '') : '';
 }
 
-if (scopeSelect && targetId && targetName) {
+function syncTeacherCredentials() {
+    if (!teacherSelect || !username || !password) {
+        return;
+    }
+
+    if (isEditMode && username.value && password.value) {
+        return;
+    }
+
+    const teacherId = String(teacherSelect.value || '');
+    const teacherName = String(teacherMap[teacherId] || '');
+    username.value = generateUsername(teacherName);
+    password.value = '1234';
+}
+
+if (scopeSelect && targetId && targetName && targetIds) {
     scopeSelect.value = preselectedScope || 'technical';
     renderOptions();
+    syncTeacherCredentials();
 
     if (preselectedTargetName && targetName.value === '') {
         targetName.value = preselectedTargetName;
@@ -898,6 +1181,12 @@ if (scopeSelect && targetId && targetName) {
         targetName.value = '';
         renderOptions();
     });
+
+    if (teacherSelect) {
+        teacherSelect.addEventListener('change', () => {
+            syncTeacherCredentials();
+        });
+    }
 
     targetId.addEventListener('change', () => {
         const selected = targetId.options[targetId.selectedIndex];
