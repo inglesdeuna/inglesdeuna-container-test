@@ -33,18 +33,13 @@ ob_start();
     --card:#ffffff;
     --line:#dce4f0;
     --text:#1f2937;
-    --muted:#5b6577;
     --title:#1f4ec9;
     --blue:#1f66cc;
     --blue-hover:#2f5bb5;
-    --badge-bg:#eef2ff;
-    --badge-text:#1f4ec9;
     --shadow:0 8px 24px rgba(0,0,0,.08);
 }
 
-*{
-    box-sizing:border-box;
-}
+*{ box-sizing:border-box; }
 
 body{
     margin:0;
@@ -59,24 +54,6 @@ body{
     margin:0 auto;
 }
 
-.activity-header{
-    text-align:left;
-    margin-bottom:16px;
-}
-
-.activity-title{
-    margin:0 0 8px;
-    font-size:22px;
-    font-weight:700;
-    color:var(--title);
-}
-
-.activity-instructions{
-    margin:0;
-    font-size:15px;
-    color:var(--muted);
-}
-
 .activity-body{
     background:var(--card);
     border:1px solid var(--line);
@@ -85,13 +62,9 @@ body{
     padding:24px;
 }
 
-.flashcards-wrap{
-    text-align:center;
-}
+.flashcards-wrap{ text-align:center; }
 
-.listen-wrapper{
-    margin-bottom:18px;
-}
+.listen-wrapper{ margin-bottom:18px; }
 
 .flash-btn{
     display:inline-block;
@@ -100,21 +73,18 @@ body{
     border-radius:8px;
     background:var(--blue);
     color:#fff;
-    text-decoration:none;
     font-weight:700;
     font-size:14px;
     cursor:pointer;
     transition:background .2s ease;
 }
-
-.flash-btn:hover{
-    background:var(--blue-hover);
-}
+.flash-btn:hover{ background:var(--blue-hover); }
 
 .card-container{
     perspective:1000px;
     display:flex;
     justify-content:center;
+    position:relative;
 }
 
 .card{
@@ -127,9 +97,7 @@ body{
     cursor:pointer;
 }
 
-.card.flip{
-    transform:rotateY(180deg);
-}
+.card.flip{ transform:rotateY(180deg); }
 
 .side{
     position:absolute;
@@ -148,27 +116,13 @@ body{
     background:#fff;
 }
 
-.front{
-    background:#ffffff;
-}
-
-.back{
-    background:#ffffff;
-    transform:rotateY(180deg);
-    text-align:center;
-}
-
 .front img{
     max-width:260px;
     max-height:240px;
     object-fit:contain;
-    margin-bottom:18px;
 }
 
-.front-label{
-    font-size:13px;
-    color:var(--muted);
-}
+.back{ transform:rotateY(180deg); text-align:center; }
 
 .back-word{
     font-size:28px;
@@ -178,61 +132,38 @@ body{
     word-break:break-word;
 }
 
-.controls{
-    margin-top:20px;
+.card-arrows{
+    position:absolute;
+    top:50%;
+    left:0;
+    right:0;
     display:flex;
-    justify-content:center;
-    gap:10px;
-    flex-wrap:wrap;
+    justify-content:space-between;
+    padding:0 12px;
+    transform:translateY(-50%);
 }
 
-.meta{
-    margin-top:16px;
-    font-size:13px;
-    color:var(--muted);
-    text-align:center;
+.arrow-btn{
+    background:none;
+    border:none;
+    font-size:28px;
+    font-weight:bold;
+    color:var(--blue);
+    cursor:pointer;
+    transition:color .2s ease;
 }
+.arrow-btn:hover{ color:var(--blue-hover); }
 
 @media (max-width:768px){
-    body{
-        padding:16px;
-    }
-
-    .activity-title{
-        font-size:20px;
-    }
-
-    .activity-instructions{
-        font-size:14px;
-    }
-
-    .activity-body{
-        padding:18px;
-    }
-
-    .card{
-        height:360px;
-    }
-
-    .front img{
-        max-width:210px;
-        max-height:190px;
-    }
-
-    .back-word{
-        font-size:22px;
-    }
+    body{ padding:16px; }
+    .activity-body{ padding:18px; }
+    .card{ height:360px; }
+    .front img{ max-width:210px; max-height:190px; }
+    .back-word{ font-size:22px; }
 }
 </style>
 
 <div class="activity-container">
-    <div class="activity-header">
-        <h2 class="activity-title">🧸 Flashcards</h2>
-        <p class="activity-instructions">
-            Mira la imagen, escucha la palabra y haz clic en la tarjeta para voltearla.
-        </p>
-    </div>
-
     <div class="activity-body">
         <div class="flashcards-wrap">
             <div class="listen-wrapper">
@@ -243,28 +174,23 @@ body{
                 <div class="card" id="card" role="button" tabindex="0" aria-label="Flashcard">
                     <div class="side front" id="front"></div>
                     <div class="side back" id="back"></div>
+                    <div class="card-arrows">
+                        <button class="arrow-btn" type="button" onclick="previousCard(event)">←</button>
+                        <button class="arrow-btn" type="button" onclick="nextCard(event)">→</button>
+                    </div>
                 </div>
             </div>
-
-            <div class="controls">
-                <button class="flash-btn" type="button" onclick="previousCard(event)">← Previous</button>
-                <button class="flash-btn" type="button" onclick="nextCard(event)">Next →</button>
-            </div>
-
-            <div class="meta" id="flashcardMeta"></div>
         </div>
     </div>
 </div>
 
 <script>
 const data = <?= json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
-
 let index = 0;
 
 const front = document.getElementById('front');
 const back = document.getElementById('back');
 const card = document.getElementById('card');
-const flashcardMeta = document.getElementById('flashcardMeta');
 
 function escapeHtml(value) {
     return String(value)
@@ -278,7 +204,6 @@ function escapeHtml(value) {
 function getText(item) {
     return item && typeof item.text === 'string' ? item.text : '';
 }
-
 function getImage(item) {
     return item && typeof item.image === 'string' ? item.image : '';
 }
@@ -288,32 +213,18 @@ function loadCard() {
     const image = getImage(item);
     const text = getText(item);
 
-    front.innerHTML = `
-        ${image ? `<img src="${escapeHtml(image)}" alt="flashcard-image">` : ''}
-        <div class="front-label">Haz clic en la tarjeta para ver la palabra</div>
-    `;
-
+    front.innerHTML = `${image ? `<img src="${escapeHtml(image)}" alt="flashcard-image">` : ''}`;
     back.innerHTML = `<div class="back-word">${escapeHtml(text || 'Sin texto')}</div>`;
-    flashcardMeta.textContent = `Tarjeta ${index + 1} de ${data.length}`;
 }
 
 function speak(event) {
-    if (event) {
-        event.stopPropagation();
-    }
-
-    if (!('speechSynthesis' in window)) {
-        return;
-    }
+    if (event) event.stopPropagation();
+    if (!('speechSynthesis' in window)) return;
 
     window.speechSynthesis.cancel();
-
     const item = data[index] || {};
     const text = getText(item);
-
-    if (!text) {
-        return;
-    }
+    if (!text) return;
 
     const utter = new SpeechSynthesisUtterance(text);
     utter.lang = 'en-US';
@@ -321,40 +232,21 @@ function speak(event) {
 }
 
 function nextCard(event) {
-    if (event) {
-        event.stopPropagation();
-    }
-
+    if (event) event.stopPropagation();
     card.classList.remove('flip');
-    index += 1;
-
-    if (index >= data.length) {
-        index = 0;
-    }
-
+    index = (index + 1) % data.length;
     loadCard();
 }
 
 function previousCard(event) {
-    if (event) {
-        event.stopPropagation();
-    }
-
+    if (event) event.stopPropagation();
     card.classList.remove('flip');
-    index -= 1;
-
-    if (index < 0) {
-        index = data.length - 1;
-    }
-
+    index = (index - 1 + data.length) % data.length;
     loadCard();
 }
 
-card.addEventListener('click', function () {
-    card.classList.toggle('flip');
-});
-
-card.addEventListener('keydown', function (event) {
+card.addEventListener('click', () => card.classList.toggle('flip'));
+card.addEventListener('keydown', (event) => {
     if (event.key === 'Enter' || event.key === ' ') {
         event.preventDefault();
         card.classList.toggle('flip');
@@ -365,4 +257,4 @@ loadCard();
 </script>
 <?php
 $content = ob_get_clean();
-render_activity_viewer('Flashcards', '🧸', $content);
+render_activity_viewer('', '', $content);
