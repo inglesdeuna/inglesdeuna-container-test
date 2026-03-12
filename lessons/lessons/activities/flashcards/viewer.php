@@ -64,8 +64,6 @@ body{
 
 .flashcards-wrap{ text-align:center; }
 
-.listen-wrapper{ margin-bottom:18px; }
-
 .flash-btn{
     display:inline-block;
     padding:8px 14px;
@@ -110,16 +108,21 @@ body{
     box-shadow:var(--shadow);
     display:flex;
     flex-direction:column;
-    justify-content:center;
+    justify-content:flex-start;
     align-items:center;
-    padding:24px;
+    padding:16px;
     background:#fff;
+}
+
+.listen-inside{
+    margin-bottom:12px;
 }
 
 .front img{
     max-width:260px;
     max-height:240px;
     object-fit:contain;
+    margin-top:12px;
 }
 
 .back{ transform:rotateY(180deg); text-align:center; }
@@ -130,6 +133,7 @@ body{
     color:var(--title);
     line-height:1.2;
     word-break:break-word;
+    margin-top:40px;
 }
 
 .card-arrows{
@@ -146,7 +150,7 @@ body{
 .arrow-btn{
     background:none;
     border:none;
-    font-size:28px;
+    font-size:42px; /* más grandes */
     font-weight:bold;
     color:var(--blue);
     cursor:pointer;
@@ -160,19 +164,20 @@ body{
     .card{ height:360px; }
     .front img{ max-width:210px; max-height:190px; }
     .back-word{ font-size:22px; }
+    .arrow-btn{ font-size:36px; }
 }
 </style>
 
 <div class="activity-container">
     <div class="activity-body">
         <div class="flashcards-wrap">
-            <div class="listen-wrapper">
-                <button class="flash-btn" id="listenBtn" type="button" onclick="speak(event)">🔊 Listen</button>
-            </div>
-
             <div class="card-container">
                 <div class="card" id="card" role="button" tabindex="0" aria-label="Flashcard">
-                    <div class="side front" id="front"></div>
+                    <div class="side front" id="front">
+                        <div class="listen-inside">
+                            <button class="flash-btn" id="listenBtn" type="button" onclick="speak(event)">🔊 Listen</button>
+                        </div>
+                    </div>
                     <div class="side back" id="back"></div>
                     <div class="card-arrows">
                         <button class="arrow-btn" type="button" onclick="previousCard(event)">←</button>
@@ -213,7 +218,12 @@ function loadCard() {
     const image = getImage(item);
     const text = getText(item);
 
-    front.innerHTML = `${image ? `<img src="${escapeHtml(image)}" alt="flashcard-image">` : ''}`;
+    front.innerHTML = `
+        <div class="listen-inside">
+            <button class="flash-btn" id="listenBtn" type="button" onclick="speak(event)">🔊 Listen</button>
+        </div>
+        ${image ? `<img src="${escapeHtml(image)}" alt="flashcard-image">` : ''}
+    `;
     back.innerHTML = `<div class="back-word">${escapeHtml(text || 'Sin texto')}</div>`;
 }
 
