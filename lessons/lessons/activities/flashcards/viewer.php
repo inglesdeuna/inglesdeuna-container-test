@@ -27,28 +27,88 @@ if (count($data) === 0) {
 
 ob_start();
 ?>
-<link rel="stylesheet" href="/lessons/lessons/activities/assets/activity-layout.css">
-
 <style>
+:root{
+    --bg:#eef2f7;
+    --card:#ffffff;
+    --line:#dce4f0;
+    --text:#1f2937;
+    --muted:#5b6577;
+    --title:#1f4ec9;
+    --blue:#1f66cc;
+    --blue-hover:#2f5bb5;
+    --badge-bg:#eef2ff;
+    --badge-text:#1f4ec9;
+    --shadow:0 8px 24px rgba(0,0,0,.08);
+}
+
+*{
+    box-sizing:border-box;
+}
+
+body{
+    margin:0;
+    padding:24px;
+    font-family:Arial, sans-serif;
+    background:var(--bg);
+    color:var(--text);
+}
+
+.activity-container{
+    max-width:760px;
+    margin:0 auto;
+}
+
+.activity-header{
+    text-align:left;
+    margin-bottom:16px;
+}
+
+.activity-title{
+    margin:0 0 8px;
+    font-size:22px;
+    font-weight:700;
+    color:var(--title);
+}
+
+.activity-instructions{
+    margin:0;
+    font-size:15px;
+    color:var(--muted);
+}
+
+.activity-body{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:14px;
+    box-shadow:var(--shadow);
+    padding:24px;
+}
+
 .flashcards-wrap{
     text-align:center;
 }
 
-.flashcard-stage{
-    max-width:720px;
-    margin:0 auto;
-}
-
-.flashcard-toolbar{
+.listen-wrapper{
     margin-bottom:18px;
-    display:flex;
-    justify-content:center;
-    gap:10px;
-    flex-wrap:wrap;
 }
 
-.flashcard-toolbar .activity-btn{
-    min-width:120px;
+.flash-btn{
+    display:inline-block;
+    padding:8px 14px;
+    border:none;
+    border-radius:8px;
+    background:var(--blue);
+    color:#fff;
+    text-decoration:none;
+    font-weight:700;
+    font-size:14px;
+    cursor:pointer;
+    transition:background .2s ease;
+}
+
+.flash-btn:hover{
+    background:var(--blue-hover);
 }
 
 .card-container{
@@ -60,10 +120,10 @@ ob_start();
 .card{
     width:100%;
     max-width:420px;
-    height:460px;
+    height:420px;
     position:relative;
     transform-style:preserve-3d;
-    transition:transform .6s;
+    transition:transform .6s ease;
     cursor:pointer;
 }
 
@@ -74,15 +134,18 @@ ob_start();
 .side{
     position:absolute;
     inset:0;
+    width:100%;
+    height:100%;
     backface-visibility:hidden;
-    border-radius:20px;
-    box-shadow:0 8px 24px rgba(0,0,0,.08);
+    border-radius:14px;
+    border:1px solid var(--line);
+    box-shadow:var(--shadow);
     display:flex;
     flex-direction:column;
     justify-content:center;
     align-items:center;
     padding:24px;
-    border:1px solid #dce4f0;
+    background:#fff;
 }
 
 .front{
@@ -90,30 +153,32 @@ ob_start();
 }
 
 .back{
-    background:#1f66cc;
-    color:#ffffff;
+    background:#ffffff;
     transform:rotateY(180deg);
-    font-size:28px;
-    font-weight:700;
     text-align:center;
-    word-break:break-word;
-    line-height:1.25;
 }
 
 .front img{
-    max-width:280px;
-    max-height:260px;
+    max-width:260px;
+    max-height:240px;
     object-fit:contain;
     margin-bottom:18px;
 }
 
 .front-label{
-    font-size:14px;
-    color:#5b6577;
-    margin-bottom:16px;
+    font-size:13px;
+    color:var(--muted);
 }
 
-.flashcard-footer{
+.back-word{
+    font-size:28px;
+    font-weight:700;
+    color:var(--title);
+    line-height:1.2;
+    word-break:break-word;
+}
+
+.controls{
     margin-top:20px;
     display:flex;
     justify-content:center;
@@ -121,26 +186,41 @@ ob_start();
     flex-wrap:wrap;
 }
 
-.flashcard-meta{
+.meta{
     margin-top:16px;
-    text-align:center;
     font-size:13px;
-    color:#5b6577;
+    color:var(--muted);
+    text-align:center;
 }
 
-@media (max-width: 768px){
-    .card{
-        max-width:100%;
-        height:400px;
+@media (max-width:768px){
+    body{
+        padding:16px;
     }
 
-    .back{
-        font-size:22px;
+    .activity-title{
+        font-size:20px;
+    }
+
+    .activity-instructions{
+        font-size:14px;
+    }
+
+    .activity-body{
+        padding:18px;
+    }
+
+    .card{
+        height:360px;
     }
 
     .front img{
-        max-width:220px;
-        max-height:220px;
+        max-width:210px;
+        max-height:190px;
+    }
+
+    .back-word{
+        font-size:22px;
     }
 }
 </style>
@@ -154,28 +234,24 @@ ob_start();
     </div>
 
     <div class="activity-body">
-        <div class="activity-content">
-            <div class="flashcards-wrap">
-                <div class="flashcard-stage">
-                    <div class="flashcard-toolbar">
-                        <button class="activity-btn" id="listenBtn" type="button" onclick="speak(event)">🔊 Listen</button>
-                    </div>
+        <div class="flashcards-wrap">
+            <div class="listen-wrapper">
+                <button class="flash-btn" id="listenBtn" type="button" onclick="speak(event)">🔊 Listen</button>
+            </div>
 
-                    <div class="card-container">
-                        <div class="card" id="card" role="button" tabindex="0" aria-label="Flashcard">
-                            <div class="side front" id="front"></div>
-                            <div class="side back" id="back"></div>
-                        </div>
-                    </div>
-
-                    <div class="flashcard-footer">
-                        <button class="activity-btn" type="button" onclick="previousCard(event)">← Previous</button>
-                        <button class="activity-btn" type="button" onclick="nextCard(event)">Next →</button>
-                    </div>
-
-                    <div class="flashcard-meta" id="flashcardMeta"></div>
+            <div class="card-container">
+                <div class="card" id="card" role="button" tabindex="0" aria-label="Flashcard">
+                    <div class="side front" id="front"></div>
+                    <div class="side back" id="back"></div>
                 </div>
             </div>
+
+            <div class="controls">
+                <button class="flash-btn" type="button" onclick="previousCard(event)">← Previous</button>
+                <button class="flash-btn" type="button" onclick="nextCard(event)">Next →</button>
+            </div>
+
+            <div class="meta" id="flashcardMeta"></div>
         </div>
     </div>
 </div>
@@ -214,10 +290,10 @@ function loadCard() {
 
     front.innerHTML = `
         ${image ? `<img src="${escapeHtml(image)}" alt="flashcard-image">` : ''}
-        <div class="front-label">Haz clic en la tarjeta para ver la respuesta</div>
+        <div class="front-label">Haz clic en la tarjeta para ver la palabra</div>
     `;
 
-    back.textContent = text || 'Sin texto';
+    back.innerHTML = `<div class="back-word">${escapeHtml(text || 'Sin texto')}</div>`;
     flashcardMeta.textContent = `Tarjeta ${index + 1} de ${data.length}`;
 }
 
