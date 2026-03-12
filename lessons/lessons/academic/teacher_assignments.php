@@ -324,6 +324,11 @@ function find_teacher_name_by_id(array $teachers, string $teacherId): string
     return '';
 }
 
+function database_is_available(): bool
+{
+    return get_pdo_connection() instanceof PDO;
+}
+
 function build_map(array $items): array
 {
     $map = [];
@@ -342,6 +347,11 @@ $englishTargets = load_english_targets_from_database();
 $technicalUnits = load_technical_units_from_database();
 
 $errors = [];
+
+if (!database_is_available()) {
+    $errors[] = 'No hay conexión a la base de datos. Revise la variable de entorno DATABASE_URL y el archivo config/db.php.';
+}
+
 $form = [
     'teacher_id' => '',
     'program_type' => 'technical',
@@ -438,6 +448,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (empty($errors)) {
         $saved = true;
         $dbError = null;
+        $processedAssignments = 0;
 
         if ($form['program_type'] === 'english') {
             foreach ($form['english_course_ids'] as $courseId) {
@@ -463,6 +474,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $saved = false;
                     break;
                 }
+
+                $processedAssignments++;
             }
         } else {
             $courseId = $form['technical_course_id'];
@@ -491,15 +504,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $saved = false;
                     break;
                 }
+
+                $processedAssignments++;
             }
         }
 
-        if ($saved) {
+        if ($saved && $processedAssignments > 0) {
             header('Location: teacher_assignments.php?saved=1&teacher_id=' . urlencode($form['teacher_id']));
             exit;
         }
 
-        $errors[] = 'No se pudieron guardar las asignaciones.';
+        if ($saved && $processedAssignments === 0) {
+            $errors[] = 'No se guardaron asignaciones válidas. Revise que el curso y las unidades existan en la estructura académica.';
+        } else {
+            $errors[] = 'No se pudieron guardar las asignaciones.';
+        }
         if (!empty($dbError)) {
             $errors[] = 'Detalle técnico: ' . $dbError;
         }
@@ -876,3 +895,4 @@ if (technicalCourseId) {
 </script>
 </body>
 </html>
+lessons/lessons/academic/teacher_assignments.php
