@@ -137,7 +137,7 @@ function load_teacher_accounts_from_database(): array
 
     try {
         $stmt = $pdo->query("
-            SELECT id, teacher_id, teacher_name, scope, target_id, target_name, permission, username, password, updated_at
+            SELECT id, teacher_id, teacher_name, permission, username, password, updated_at
             FROM teacher_accounts
             ORDER BY updated_at DESC NULLS LAST, teacher_name ASC
         ");
@@ -171,52 +171,41 @@ function load_teacher_latest_credentials_from_database(string $teacherId): ?arra
     }
 }
 
-function load_technical_courses_from_database(): array
+function teacher_account_exists(string $teacherId, ?string $excludeId = null): bool
 {
     $pdo = get_pdo_connection();
-    if (!$pdo) {
-        return [];
+    if (!$pdo || $teacherId === '') {
+        return false;
     }
 
     try {
-        $stmt = $pdo->query("
-            SELECT id, name
-            FROM courses
-            WHERE
-                LOWER(COALESCE(program_id::text, '')) IN (
-                    '1',
-                    'prog_technical',
-                    'technical',
-                    'prog_tecnico',
-                    'tecnico',
-                    'programa_tecnico'
-                )
-                OR LOWER(COALESCE(name, '')) LIKE '%semestre%'
-            ORDER BY id ASC, name ASC
-        ");
-        return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
-    } catch (Throwable $e) {
-        return [];
-    }
-}
+        if ($excludeId !== null && $excludeId !== '') {
+            $stmt = $pdo->prepare("
+                SELECT 1
+                FROM teacher_accounts
+                WHERE teacher_id = :teacher_id
+                  AND id <> :exclude_id
+                LIMIT 1
+            ");
+            $stmt->execute([
+                'teacher_id' => $teacherId,
+                'exclude_id' => $excludeId,
+            ]);
+        } else {
+            $stmt = $pdo->prepare("
+                SELECT 1
+                FROM teacher_accounts
+                WHERE teacher_id = :teacher_id
+                LIMIT 1
+            ");
+            $stmt->execute([
+                'teacher_id' => $teacherId,
+            ]);
+        }
 
-function load_english_targets_from_database(): array
-{
-    $pdo = get_pdo_connection();
-    if (!$pdo) {
-        return [];
-    }
-
-    try {
-        $stmt = $pdo->query("
-            SELECT ph.id, CONCAT(l.name, ' - ', ph.name) AS name
-            FROM english_phases ph
-            INNER JOIN english_levels l ON l.id = ph.level_id
-            ORDER BY l.id ASC, ph.id ASC
-        ");
-        return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        return (bool) $stmt->fetchColumn();
     } catch (Throwable $e) {
-        return [];
+        return false;
     }
 }
 
@@ -258,9 +247,6 @@ function save_teacher_account_to_database(array $record, ?string &$errorMessage 
             'id',
             'teacher_id',
             'teacher_name',
-            'scope',
-            'target_id',
-            'target_name',
             'permission',
             'username',
             'password',
@@ -271,9 +257,6 @@ function save_teacher_account_to_database(array $record, ?string &$errorMessage 
             ':id',
             ':teacher_id',
             ':teacher_name',
-            ':scope',
-            ':target_id',
-            ':target_name',
             ':permission',
             ':username',
             ':password',
@@ -288,9 +271,6 @@ function save_teacher_account_to_database(array $record, ?string &$errorMessage 
         $updateSet = [
             'teacher_id = EXCLUDED.teacher_id',
             'teacher_name = EXCLUDED.teacher_name',
-            'scope = EXCLUDED.scope',
-            'target_id = EXCLUDED.target_id',
-            'target_name = EXCLUDED.target_name',
             'permission = EXCLUDED.permission',
             'username = EXCLUDED.username',
             'password = EXCLUDED.password',
@@ -314,9 +294,6 @@ function save_teacher_account_to_database(array $record, ?string &$errorMessage 
             'id' => (string) ($record['id'] ?? ''),
             'teacher_id' => (string) ($record['teacher_id'] ?? ''),
             'teacher_name' => (string) ($record['teacher_name'] ?? ''),
-            'scope' => (string) ($record['scope'] ?? 'technical'),
-            'target_id' => (string) ($record['target_id'] ?? ''),
-            'target_name' => (string) ($record['target_name'] ?? ''),
             'permission' => (string) ($record['permission'] ?? 'viewer'),
             'username' => (string) ($record['username'] ?? ''),
             'password' => (string) ($record['password'] ?? ''),
@@ -354,18 +331,12 @@ function delete_teacher_account_from_database(string $id): bool
 =============================== */
 $teachers = load_teachers_from_database();
 $accounts = load_teacher_accounts_from_database();
-$technical = load_technical_courses_from_database();
-$english = load_english_targets_from_database();
 
 $errors = [];
 
 $form = [
     'edit_id' => '',
     'teacher_id' => '',
-    'scope' => 'technical',
-    'target_id' => '',
-    'target_name' => '',
-    'target_ids' => [],
     'permission' => 'viewer',
     'username' => '',
     'password' => '1234',
@@ -391,9 +362,6 @@ if (isset($_GET['edit']) && $_GET['edit'] !== '') {
     if ($editAccount) {
         $form['edit_id'] = (string) ($editAccount['id'] ?? '');
         $form['teacher_id'] = (string) ($editAccount['teacher_id'] ?? '');
-        $form['scope'] = (string) ($editAccount['scope'] ?? 'technical');
-        $form['target_id'] = (string) ($editAccount['target_id'] ?? '');
-        $form['target_name'] = (string) ($editAccount['target_name'] ?? '');
         $form['permission'] = (string) ($editAccount['permission'] ?? 'viewer');
         $form['username'] = (string) ($editAccount['username'] ?? '');
         $form['password'] = (string) ($editAccount['password'] ?? '1234');
@@ -406,25 +374,9 @@ if (isset($_GET['edit']) && $_GET['edit'] !== '') {
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $form['edit_id'] = trim((string) ($_POST['edit_id'] ?? ''));
     $form['teacher_id'] = trim((string) ($_POST['teacher_id'] ?? ''));
-    $form['scope'] = trim((string) ($_POST['scope'] ?? 'technical'));
-    $form['target_id'] = trim((string) ($_POST['target_id'] ?? ''));
-    $form['target_name'] = trim((string) ($_POST['target_name'] ?? ''));
-
-    $postedTargetIds = $_POST['target_ids'] ?? [];
-    $form['target_ids'] = is_array($postedTargetIds)
-        ? array_values(array_filter(
-            array_map(static fn($value): string => trim((string) $value), $postedTargetIds),
-            static fn($value): bool => $value !== ''
-        ))
-        : [];
-
     $form['permission'] = trim((string) ($_POST['permission'] ?? 'viewer'));
     $form['username'] = trim((string) ($_POST['username'] ?? ''));
     $form['password'] = trim((string) ($_POST['password'] ?? '1234'));
-
-    if ($form['scope'] !== 'technical' && $form['scope'] !== 'english') {
-        $form['scope'] = 'technical';
-    }
 
     if ($form['permission'] !== 'viewer' && $form['permission'] !== 'editor') {
         $form['permission'] = 'viewer';
@@ -434,17 +386,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $errors[] = 'Debe seleccionar un docente.';
     }
 
-    if ($form['edit_id'] === '' && empty($form['target_ids'])) {
-        $errors[] = 'Debe seleccionar al menos un semestre/curso válido.';
-    }
-
-    if ($form['edit_id'] !== '' && ($form['target_id'] === '' || $form['target_name'] === '')) {
-        $errors[] = 'Debe seleccionar un semestre/curso válido.';
-    }
-
     $teacherName = find_teacher_name_by_id($teachers, $form['teacher_id']);
     if ($teacherName === '') {
-        $errors[] = 'El docente seleccionado no existe en la lista de inscritos.';
+        $errors[] = 'El docente seleccionado no existe en la lista.';
     }
 
     $generatedUsername = $teacherName !== '' ? generate_teacher_username($teacherName) : 'docente.docente';
@@ -477,62 +421,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $errors[] = 'La contraseña debe tener mínimo 4 caracteres.';
     }
 
+    if ($form['edit_id'] === '' && teacher_account_exists($form['teacher_id'])) {
+        $errors[] = 'Este docente ya tiene un perfil creado.';
+    }
+
     if (empty($errors)) {
-        $saved = true;
         $dbError = null;
 
-        if ($form['edit_id'] !== '') {
-            $record = [
-                'id' => $form['edit_id'],
-                'teacher_id' => $form['teacher_id'],
-                'teacher_name' => $teacherName,
-                'scope' => $form['scope'],
-                'target_id' => $form['target_id'],
-                'target_name' => $form['target_name'],
-                'permission' => $form['permission'],
-                'username' => $form['username'],
-                'password' => $form['password'],
-                'must_change_password' => true,
-                'updated_at' => date('Y-m-d H:i:s'),
-            ];
+        $record = [
+            'id' => $form['edit_id'] !== '' ? $form['edit_id'] : generate_account_id(),
+            'teacher_id' => $form['teacher_id'],
+            'teacher_name' => $teacherName,
+            'permission' => $form['permission'],
+            'username' => $form['username'],
+            'password' => $form['password'],
+            'must_change_password' => true,
+            'updated_at' => date('Y-m-d H:i:s'),
+        ];
 
-            $saved = save_teacher_account_to_database($record, $dbError);
-        } else {
-            $source = $form['scope'] === 'english' ? $english : $technical;
-            $targetMap = [];
-
-            foreach ($source as $item) {
-                $targetMap[(string) ($item['id'] ?? '')] = (string) ($item['name'] ?? 'Curso');
-            }
-
-            foreach ($form['target_ids'] as $targetIdSelected) {
-                $targetIdSelected = trim((string) $targetIdSelected);
-                $targetNameSelected = $targetMap[$targetIdSelected] ?? '';
-
-                if ($targetIdSelected === '' || $targetNameSelected === '') {
-                    continue;
-                }
-
-                $record = [
-                    'id' => generate_account_id(),
-                    'teacher_id' => $form['teacher_id'],
-                    'teacher_name' => $teacherName,
-                    'scope' => $form['scope'],
-                    'target_id' => $targetIdSelected,
-                    'target_name' => $targetNameSelected,
-                    'permission' => $form['permission'],
-                    'username' => $form['username'],
-                    'password' => $form['password'],
-                    'must_change_password' => true,
-                    'updated_at' => date('Y-m-d H:i:s'),
-                ];
-
-                if (!save_teacher_account_to_database($record, $dbError)) {
-                    $saved = false;
-                    break;
-                }
-            }
-        }
+        $saved = save_teacher_account_to_database($record, $dbError);
 
         if ($saved) {
             header('Location: teacher_profiles.php?saved=1');
@@ -560,7 +467,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     --card:#ffffff;
     --line:#dce4f0;
     --text:#1f2937;
-    --title:#1f3c75;
     --subtitle:#2c3e50;
     --muted:#5b6577;
     --blue:#1f66cc;
@@ -747,10 +653,6 @@ input[readonly]{
     color:#6b7280;
 }
 
-select[multiple]{
-    min-height:140px;
-}
-
 input:focus,
 select:focus,
 button:focus{
@@ -786,7 +688,7 @@ button:focus{
 
 table{
     width:100%;
-    min-width:860px;
+    min-width:760px;
     border-collapse:separate;
     border-spacing:0;
 }
@@ -815,7 +717,6 @@ tbody tr:last-child td{
     border-bottom:none;
 }
 
-.scope-badge,
 .permission-badge{
     display:inline-block;
     padding:5px 10px;
@@ -823,14 +724,6 @@ tbody tr:last-child td{
     font-size:12px;
     font-weight:700;
     white-space:nowrap;
-}
-
-.scope-badge{
-    background:#eef4ff;
-    color:#1f66cc;
-}
-
-.permission-badge{
     background:#eef8f2;
     color:#1d6a40;
 }
@@ -876,13 +769,6 @@ tbody tr:last-child td{
     color:var(--muted);
 }
 
-.helper-text{
-    font-size:12px;
-    color:var(--muted);
-    margin-top:6px;
-    line-height:1.4;
-}
-
 @media (max-width: 768px){
     body{
         padding:20px 14px;
@@ -924,7 +810,7 @@ tbody tr:last-child td{
         <div class="card">
             <div class="card-header">
                 <h1>👩‍🏫 Crear perfil de docente</h1>
-                <p class="subtitle">Aquí se crea el usuario y contraseña del docente para su login y acceso a lo asignado.</p>
+                <p class="subtitle">Aquí se crea el usuario y contraseña del docente para su login.</p>
             </div>
 
             <?php if (isset($_GET['saved']) && empty($errors)) { ?>
@@ -956,42 +842,6 @@ tbody tr:last-child td{
                 </div>
 
                 <div class="field">
-                    <label for="scopeSelect">Programa</label>
-                    <select name="scope" id="scopeSelect" required>
-                        <option value="technical" <?php echo $form['scope'] === 'technical' ? 'selected' : ''; ?>>Programa técnico (semestres)</option>
-                        <option value="english" <?php echo $form['scope'] === 'english' ? 'selected' : ''; ?>>Cursos de inglés</option>
-                    </select>
-                </div>
-
-                <div class="field">
-                    <label for="targetId">Semestre / Curso</label>
-                    <select name="target_id" id="targetId" <?php echo $form['edit_id'] !== '' ? 'required' : ''; ?>>
-                        <option value="">Seleccione semestre/curso</option>
-                    </select>
-                    <div class="helper-text">En edición se actualiza un solo perfil.</div>
-                </div>
-
-                <div class="field">
-                    <label for="targetIds">Asignar varios (nuevo perfil)</label>
-                    <select name="target_ids[]" id="targetIds" multiple size="5" <?php echo $form['edit_id'] === '' ? 'required' : ''; ?>>
-                    </select>
-                    <div class="helper-text">Al crear, puedes asignar varios semestres/cursos al mismo docente.</div>
-                </div>
-
-                <div class="field">
-                    <label for="targetName">Asignado</label>
-                    <input
-                        type="text"
-                        name="target_name"
-                        id="targetName"
-                        placeholder="Nombre semestre/curso (auto)"
-                        value="<?php echo h($form['target_name']); ?>"
-                        <?php echo $form['edit_id'] !== '' ? 'required' : ''; ?>
-                        readonly
-                    >
-                </div>
-
-                <div class="field">
                     <label for="permission">Permiso</label>
                     <select name="permission" id="permission" required>
                         <option value="viewer" <?php echo $form['permission'] === 'viewer' ? 'selected' : ''; ?>>Sólo ver</option>
@@ -1012,7 +862,7 @@ tbody tr:last-child td{
                     >
                 </div>
 
-                <div class="field full">
+                <div class="field">
                     <label for="password">Contraseña</label>
                     <input
                         type="text"
@@ -1045,8 +895,6 @@ tbody tr:last-child td{
                             <tr>
                                 <th>Docente</th>
                                 <th>Usuario</th>
-                                <th>Ámbito</th>
-                                <th>Asignado</th>
                                 <th>Permiso</th>
                                 <th>Acciones</th>
                             </tr>
@@ -1054,22 +902,17 @@ tbody tr:last-child td{
                         <tbody>
                         <?php if (empty($accounts)) { ?>
                             <tr>
-                                <td colspan="6" class="empty-row">No hay perfiles creados todavía.</td>
+                                <td colspan="4" class="empty-row">No hay perfiles creados todavía.</td>
                             </tr>
                         <?php } else { ?>
                             <?php foreach ($accounts as $account) { ?>
                                 <?php
-                                    $scopeValue = (string) ($account['scope'] ?? 'technical');
-                                    $scopeLabel = $scopeValue === 'english' ? 'Cursos de inglés' : 'Programa técnico';
-
                                     $permissionValue = (string) ($account['permission'] ?? 'viewer');
                                     $permissionLabel = $permissionValue === 'editor' ? 'Puede editar' : 'Sólo ver';
                                 ?>
                                 <tr>
                                     <td><?php echo h((string) ($account['teacher_name'] ?? 'Docente')); ?></td>
                                     <td><?php echo h((string) ($account['username'] ?? '')); ?></td>
-                                    <td><span class="scope-badge"><?php echo h($scopeLabel); ?></span></td>
-                                    <td><?php echo h((string) ($account['target_name'] ?? '')); ?></td>
                                     <td><span class="permission-badge"><?php echo h($permissionLabel); ?></span></td>
                                     <td>
                                         <div class="actions">
@@ -1089,30 +932,20 @@ tbody tr:last-child td{
 </div>
 
 <script>
-const technical = <?php echo json_encode(array_values($technical), JSON_UNESCAPED_UNICODE); ?>;
-const english = <?php echo json_encode(array_values($english), JSON_UNESCAPED_UNICODE); ?>;
-const preselectedScope = <?php echo json_encode($form['scope'], JSON_UNESCAPED_UNICODE); ?>;
-const preselectedTargetId = <?php echo json_encode($form['target_id'], JSON_UNESCAPED_UNICODE); ?>;
-const preselectedTargetIds = <?php echo json_encode(array_values($form['target_ids']), JSON_UNESCAPED_UNICODE); ?>;
-const preselectedTargetName = <?php echo json_encode($form['target_name'], JSON_UNESCAPED_UNICODE); ?>;
-const isEditMode = <?php echo json_encode($form['edit_id'] !== '', JSON_UNESCAPED_UNICODE); ?>;
 const teacherMap = <?php
 echo json_encode(
     array_reduce($teachers, static function (array $carry, array $teacher): array {
-        $carry[String($teacher['id'] ?? '')] = String($teacher['name'] ?? '');
+        $carry[(string) ($teacher['id'] ?? '')] = (string) ($teacher['name'] ?? '');
         return $carry;
     }, []),
     JSON_UNESCAPED_UNICODE
 );
 ?>;
 
-const scopeSelect = document.getElementById('scopeSelect');
-const targetId = document.getElementById('targetId');
-const targetIds = document.getElementById('targetIds');
-const targetName = document.getElementById('targetName');
 const teacherSelect = document.getElementById('teacher_id');
 const username = document.getElementById('username');
 const password = document.getElementById('password');
+const isEditMode = <?php echo json_encode($form['edit_id'] !== '', JSON_UNESCAPED_UNICODE); ?>;
 
 function normalizeName(value) {
     return String(value || '')
@@ -1137,47 +970,6 @@ function generateUsername(name) {
     return `${firstName}.${lastName}`;
 }
 
-function renderOptions() {
-    if (!scopeSelect || !targetId || !targetName || !targetIds) {
-        return;
-    }
-
-    const scope = scopeSelect.value;
-    const source = scope === 'english' ? english : technical;
-
-    targetId.innerHTML = '<option value="">Seleccione semestre/curso</option>';
-    targetIds.innerHTML = '';
-
-    source.forEach(item => {
-        const optionValue = String(item.id || '');
-        const optionLabel = String(item.name || 'Curso');
-
-        const option = document.createElement('option');
-        option.value = optionValue;
-        option.textContent = optionLabel;
-        option.dataset.name = optionLabel;
-
-        if (String(optionValue) === String(preselectedTargetId || '')) {
-            option.selected = true;
-        }
-
-        targetId.appendChild(option);
-
-        const multipleOption = document.createElement('option');
-        multipleOption.value = optionValue;
-        multipleOption.textContent = optionLabel;
-
-        if (Array.isArray(preselectedTargetIds) && preselectedTargetIds.includes(optionValue)) {
-            multipleOption.selected = true;
-        }
-
-        targetIds.appendChild(multipleOption);
-    });
-
-    const selected = targetId.options[targetId.selectedIndex];
-    targetName.value = selected && selected.value !== '' ? (selected.dataset.name || '') : '';
-}
-
 function syncTeacherCredentials() {
     if (!teacherSelect || !username || !password) {
         return;
@@ -1189,35 +981,14 @@ function syncTeacherCredentials() {
 
     const teacherId = String(teacherSelect.value || '');
     const teacherName = String(teacherMap[teacherId] || '');
+
     username.value = generateUsername(teacherName);
     password.value = '1234';
 }
 
-if (scopeSelect && targetId && targetName && targetIds) {
-    scopeSelect.value = preselectedScope || 'technical';
-    renderOptions();
+if (teacherSelect) {
     syncTeacherCredentials();
-
-    if (preselectedTargetName && targetName.value === '') {
-        targetName.value = preselectedTargetName;
-    }
-
-    scopeSelect.addEventListener('change', () => {
-        targetId.selectedIndex = 0;
-        targetName.value = '';
-        renderOptions();
-    });
-
-    if (teacherSelect) {
-        teacherSelect.addEventListener('change', () => {
-            syncTeacherCredentials();
-        });
-    }
-
-    targetId.addEventListener('change', () => {
-        const selected = targetId.options[targetId.selectedIndex];
-        targetName.value = selected && selected.value !== '' ? (selected.dataset.name || '') : '';
-    });
+    teacherSelect.addEventListener('change', syncTeacherCredentials);
 }
 </script>
 </body>
