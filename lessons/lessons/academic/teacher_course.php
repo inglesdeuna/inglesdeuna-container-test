@@ -17,6 +17,15 @@ function get_pdo_connection(): ?PDO
         return null;
     }
 
+    static $cachedPdo = null;
+    static $loaded = false;
+
+    if ($loaded) {
+        return $cachedPdo;
+    }
+
+    $loaded = true;
+
     $dbFile = __DIR__ . '/../config/db.php';
     if (!file_exists($dbFile)) {
         return null;
@@ -24,9 +33,51 @@ function get_pdo_connection(): ?PDO
 
     try {
         require $dbFile;
-        return (isset($pdo) && $pdo instanceof PDO) ? $pdo : null;
+        if (isset($pdo) && $pdo instanceof PDO) {
+            $cachedPdo = $pdo;
+        }
     } catch (Throwable $e) {
         return null;
+    }
+
+    return $cachedPdo;
+}
+
+function table_exists(PDO $pdo, string $tableName): bool
+{
+    try {
+        $stmt = $pdo->prepare("
+            SELECT 1
+            FROM information_schema.tables
+            WHERE table_schema = 'public'
+              AND table_name = :table_name
+            LIMIT 1
+        ");
+        $stmt->execute(['table_name' => $tableName]);
+        return (bool) $stmt->fetchColumn();
+    } catch (Throwable $e) {
+        return false;
+    }
+}
+
+function column_exists(PDO $pdo, string $tableName, string $columnName): bool
+{
+    try {
+        $stmt = $pdo->prepare("
+            SELECT 1
+            FROM information_schema.columns
+            WHERE table_schema = 'public'
+              AND table_name = :table_name
+              AND column_name = :column_name
+            LIMIT 1
+        ");
+        $stmt->execute([
+            'table_name' => $tableName,
+            'column_name' => $columnName,
+        ]);
+        return (bool) $stmt->fetchColumn();
+    } catch (Throwable $e) {
+        return false;
     }
 }
 
@@ -44,81 +95,162 @@ function get_activity_base_path(string $type): ?string
     return '../activities/' . rawurlencode($type);
 }
 
-$pdo = get_pdo_connection();
-if (!$pdo) {
-    die('Base de datos no disponible.');
-}
-
-$accountId = trim((string) ($_GET['account'] ?? ''));
-$teacherId = (string) ($_SESSION['teacher_id'] ?? '');
-$mode = (string) ($_GET['mode'] ?? 'view');
-$mode = $mode === 'edit' ? 'edit' : 'view';
-$step = max(0, (int) ($_GET['step'] ?? 0));
-
-if ($accountId === '') {
-    die('Cuenta docente no especificada.');
-}
-
-try {
-    $stmtAccount = $pdo->prepare("
-        SELECT id, teacher_id, target_name, target_id, scope, permission
-        FROM teacher_accounts
-        WHERE id = :id
-        LIMIT 1
-    ");
-    $stmtAccount->execute(['id' => $accountId]);
-    $account = $stmtAccount->fetch(PDO::FETCH_ASSOC);
-} catch (Throwable $e) {
-    $account = false;
-}
-
-if (!$account || (string) ($account['teacher_id'] ?? '') !== $teacherId) {
-    die('No tienes permiso para este curso.');
-}
-
-$scope = (string) ($account['scope'] ?? 'technical');
-$targetId = (string) ($account['target_id'] ?? '');
-$permission = (string) ($account['permission'] ?? 'viewer');
-
-if ($mode === 'edit' && $permission !== 'editor') {
-    $mode = 'view';
-}
-
-try {
-    if ($scope === 'english') {
-        $stmtUnits = $pdo->prepare("
-            SELECT id, name, position
-            FROM units
-            WHERE phase_id = :target
-            ORDER BY position ASC, id ASC
-        ");
-    } else {
-        $stmtUnits = $pdo->prepare("
-            SELECT id, name, position
-            FROM units
-            WHERE course_id = :target
-            ORDER BY position ASC, id ASC
-        ");
+function load_teacher_permission_from_accounts(PDO $pdo, string $teacherId): string
+{
+    if ($teacherId === '') {
+        return 'viewer';
     }
 
-    $stmtUnits->execute(['target' => $targetId]);
-    $units = $stmtUnits->fetchAll(PDO::FETCH_ASSOC) ?: [];
-} catch (Throwable $e) {
-    $units = [];
+    try {
+        if (!table_exists($pdo, 'teacher_accounts')) {
+            return 'viewer';
+        }
+
+        $stmt = $pdo->prepare("
+            SELECT permission
+            FROM teacher_accounts
+            WHERE teacher_id = :teacher_id
+            ORDER BY updated_at DESC NULLS LAST
+            LIMIT 1
+        ");
+        $stmt->execute(['teacher_id' => $teacherId]);
+        $permission = (string) $stmt->fetchColumn();
+
+        return $permission === 'editor' ? 'editor' : 'viewer';
+    } catch (Throwable $e) {
+        return 'viewer';
+    }
 }
 
-$unitIds = array_values(array_filter(array_map(
-    fn($unit) => (string) ($unit['id'] ?? ''),
-    $units
-)));
+function load_assignment(PDO $pdo, string $assignmentId): ?array
+{
+    if ($assignmentId === '') {
+        return null;
+    }
 
-$unitMap = [];
-foreach ($units as $unit) {
-    $unitMap[(string) ($unit['id'] ?? '')] = (string) ($unit['name'] ?? 'Unidad');
+    try {
+        $stmt = $pdo->prepare("
+            SELECT
+                id,
+                teacher_id,
+                teacher_name,
+                program_type,
+                course_id,
+                course_name,
+                unit_id,
+                unit_name,
+                updated_at
+            FROM teacher_assignments
+            WHERE id = :id
+            LIMIT 1
+        ");
+        $stmt->execute(['id' => $assignmentId]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        return is_array($row) ? $row : null;
+    } catch (Throwable $e) {
+        return null;
+    }
 }
 
-$activities = [];
-if (!empty($unitIds)) {
+function load_english_units(PDO $pdo, string $phaseId): array
+{
+    if ($phaseId === '') {
+        return [];
+    }
+
+    if (!table_exists($pdo, 'units') || !column_exists($pdo, 'units', 'phase_id')) {
+        return [];
+    }
+
+    try {
+        $orderBy = column_exists($pdo, 'units', 'position')
+            ? 'ORDER BY position ASC, id ASC'
+            : 'ORDER BY id ASC';
+
+        $stmt = $pdo->prepare("
+            SELECT id, name
+            FROM units
+            WHERE phase_id = :phase_id
+            {$orderBy}
+        ");
+        $stmt->execute(['phase_id' => $phaseId]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    } catch (Throwable $e) {
+        return [];
+    }
+}
+
+function load_technical_units(PDO $pdo, string $courseId, ?string $preferredUnitId = null, ?string $preferredUnitName = null): array
+{
+    $preferredUnitId = trim((string) $preferredUnitId);
+    $preferredUnitName = trim((string) $preferredUnitName);
+
+    if ($preferredUnitId !== '') {
+        return [[
+            'id' => $preferredUnitId,
+            'name' => $preferredUnitName !== '' ? $preferredUnitName : 'Unidad',
+        ]];
+    }
+
+    if ($courseId === '') {
+        return [];
+    }
+
+    $candidates = [
+        ['table' => 'course_units', 'course_column' => 'course_id', 'name_column' => 'name'],
+        ['table' => 'technical_units', 'course_column' => 'course_id', 'name_column' => 'name'],
+        ['table' => 'technical_units', 'course_column' => 'semester_id', 'name_column' => 'name'],
+        ['table' => 'units', 'course_column' => 'course_id', 'name_column' => 'name'],
+        ['table' => 'units', 'course_column' => 'semester_id', 'name_column' => 'name'],
+    ];
+
+    foreach ($candidates as $candidate) {
+        $table = $candidate['table'];
+        $courseColumn = $candidate['course_column'];
+        $nameColumn = $candidate['name_column'];
+
+        if (
+            !table_exists($pdo, $table) ||
+            !column_exists($pdo, $table, 'id') ||
+            !column_exists($pdo, $table, $courseColumn) ||
+            !column_exists($pdo, $table, $nameColumn)
+        ) {
+            continue;
+        }
+
+        try {
+            $orderBy = column_exists($pdo, $table, 'position')
+                ? 'ORDER BY position ASC, id ASC'
+                : 'ORDER BY id ASC';
+
+            $stmt = $pdo->prepare("
+                SELECT id, {$nameColumn} AS name
+                FROM {$table}
+                WHERE {$courseColumn} = :course_id
+                {$orderBy}
+            ");
+            $stmt->execute(['course_id' => $courseId]);
+            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+            if (!empty($rows)) {
+                return $rows;
+            }
+        } catch (Throwable $e) {
+            return [];
+        }
+    }
+
+    return [];
+}
+
+function load_activities_for_units(PDO $pdo, array $unitIds): array
+{
+    $unitIds = array_values(array_filter(array_map('strval', $unitIds), static fn ($v): bool => $v !== ''));
+    if (empty($unitIds)) {
+        return [];
+    }
+
     try {
         $placeholders = implode(',', array_fill(0, count($unitIds), '?'));
         $sql = "
@@ -127,13 +259,64 @@ if (!empty($unitIds)) {
             WHERE unit_id IN ($placeholders)
             ORDER BY unit_id ASC, pos ASC, id ASC
         ";
-        $stmtActivities = $pdo->prepare($sql);
-        $stmtActivities->execute($unitIds);
-        $activities = $stmtActivities->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute($unitIds);
+
+        return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
     } catch (Throwable $e) {
-        $activities = [];
+        return [];
     }
 }
+
+$pdo = get_pdo_connection();
+if (!$pdo) {
+    die('Base de datos no disponible.');
+}
+
+$assignmentId = trim((string) ($_GET['assignment'] ?? ''));
+$teacherId = (string) ($_SESSION['teacher_id'] ?? '');
+$mode = (string) ($_GET['mode'] ?? 'view');
+$mode = $mode === 'edit' ? 'edit' : 'view';
+$step = max(0, (int) ($_GET['step'] ?? 0));
+
+if ($assignmentId === '') {
+    die('Asignación docente no especificada.');
+}
+
+$assignment = load_assignment($pdo, $assignmentId);
+
+if (!$assignment || (string) ($assignment['teacher_id'] ?? '') !== $teacherId) {
+    die('No tienes permiso para este curso.');
+}
+
+$permission = load_teacher_permission_from_accounts($pdo, $teacherId);
+if ($mode === 'edit' && $permission !== 'editor') {
+    $mode = 'view';
+}
+
+$programType = (string) ($assignment['program_type'] ?? 'technical');
+$courseId = (string) ($assignment['course_id'] ?? '');
+$courseName = (string) ($assignment['course_name'] ?? 'Curso');
+$assignmentUnitId = (string) ($assignment['unit_id'] ?? '');
+$assignmentUnitName = (string) ($assignment['unit_name'] ?? '');
+
+if ($programType === 'english') {
+    $units = load_english_units($pdo, $courseId);
+} else {
+    $units = load_technical_units($pdo, $courseId, $assignmentUnitId, $assignmentUnitName);
+}
+
+$unitIds = array_values(array_filter(array_map(
+    static fn ($unit) => (string) ($unit['id'] ?? ''),
+    $units
+)));
+
+$unitMap = [];
+foreach ($units as $unit) {
+    $unitMap[(string) ($unit['id'] ?? '')] = (string) ($unit['name'] ?? 'Unidad');
+}
+
+$activities = load_activities_for_units($pdo, $unitIds);
 
 $total = count($activities);
 if ($step > max(0, $total - 1)) {
@@ -161,25 +344,10 @@ $activityTypeLabels = [
     'build_sentence' => 'Build the Sentence',
 ];
 
-$sidebarItems = [];
-foreach ($activities as $index => $activity) {
-    $rawType = (string) ($activity['type'] ?? 'activity');
-    $normalizedType = strtolower($rawType);
-
-    if (isset($sidebarItems[$normalizedType])) {
-        continue;
-    }
-
-    $sidebarItems[$normalizedType] = [
-        'label' => $activityTypeLabels[$normalizedType] ?? ucwords(str_replace('_', ' ', $normalizedType)),
-        'step' => $index,
-    ];
-}
-
 $viewerHref = null;
 $editorHref = null;
 $currentTypeLabel = 'Actividad';
-$currentUnitName = 'Unidad';
+$currentUnitName = $assignmentUnitName !== '' ? $assignmentUnitName : 'Unidad';
 
 if ($current) {
     $type = (string) ($current['type'] ?? '');
@@ -191,6 +359,7 @@ if ($current) {
             'unit' => (string) ($current['unit_id'] ?? ''),
             'embedded' => '1',
             'from' => 'teacher_course',
+            'assignment' => $assignmentId,
         ]);
 
         $viewerHref = $activityPath . '/viewer.php?' . $query;
@@ -204,10 +373,16 @@ if ($current) {
     }
 
     $currentTypeLabel = $activityTypeLabels[strtolower($type)] ?? ucwords(str_replace('_', ' ', $type));
-    $currentUnitName = $unitMap[(string) ($current['unit_id'] ?? '')] ?? 'Unidad';
+    $currentUnitName = $unitMap[(string) ($current['unit_id'] ?? '')] ?? $currentUnitName;
 }
 
 $logoPath = '../hangman/assets/LETS%20NUEVO%20-%20copia.jpeg';
+$programLabel = $programType === 'english' ? 'English' : 'Técnico';
+
+$courseTitle = $courseName;
+if ($programType === 'technical' && $assignmentUnitName !== '') {
+    $courseTitle .= ' · ' . $assignmentUnitName;
+}
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -580,7 +755,7 @@ body{
                 <a class="side-btn blue" href="dashboard.php">📘 Mis Cursos</a>
 
                 <?php if ($permission === 'editor') { ?>
-                    <a class="side-btn orange" href="teacher_course.php?account=<?php echo urlencode($accountId); ?>&mode=edit&step=<?php echo $step; ?>">🧑‍🏫 Editar Cursos</a>
+                    <a class="side-btn orange" href="teacher_course.php?assignment=<?php echo urlencode($assignmentId); ?>&mode=edit&step=<?php echo $step; ?>">🧑‍🏫 Editar Cursos</a>
                 <?php } ?>
 
                 <a class="side-btn green" href="teacher_groups.php">👥 Ver Estudiantes</a>
@@ -590,7 +765,8 @@ body{
                 <div class="viewer-shell">
                     <div class="meta-row">
                         <div class="badges">
-                            <span class="badge"><?php echo h((string) ($account['target_name'] ?? 'Curso')); ?></span>
+                            <span class="badge"><?php echo h($programLabel); ?></span>
+                            <span class="badge"><?php echo h($courseTitle); ?></span>
                             <span class="badge"><?php echo h($currentUnitName); ?></span>
                             <span class="badge"><?php echo h($currentTypeLabel); ?></span>
                         </div>
@@ -614,9 +790,9 @@ body{
                         </div>
 
                         <div class="controls">
-                            <a class="nav-btn prev <?php echo $hasPrev ? '' : 'disabled'; ?>" href="teacher_course.php?account=<?php echo urlencode($accountId); ?>&mode=<?php echo urlencode($mode); ?>&step=<?php echo $hasPrev ? $prevStep : $step; ?>">← Previous</a>
+                            <a class="nav-btn prev <?php echo $hasPrev ? '' : 'disabled'; ?>" href="teacher_course.php?assignment=<?php echo urlencode($assignmentId); ?>&mode=<?php echo urlencode($mode); ?>&step=<?php echo $hasPrev ? $prevStep : $step; ?>">← Previous</a>
 
-                            <a class="nav-btn next <?php echo $hasNext ? '' : 'disabled'; ?>" href="teacher_course.php?account=<?php echo urlencode($accountId); ?>&mode=<?php echo urlencode($mode); ?>&step=<?php echo $hasNext ? $nextStep : $step; ?>">Next →</a>
+                            <a class="nav-btn next <?php echo $hasNext ? '' : 'disabled'; ?>" href="teacher_course.php?assignment=<?php echo urlencode($assignmentId); ?>&mode=<?php echo urlencode($mode); ?>&step=<?php echo $hasNext ? $nextStep : $step; ?>">Next →</a>
                         </div>
 
                         <?php if ($editorHref !== null) { ?>
