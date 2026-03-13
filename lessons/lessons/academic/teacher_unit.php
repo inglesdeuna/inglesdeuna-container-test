@@ -302,7 +302,7 @@ body{
                             class="btn edit"
                             target="_blank"
                             rel="noopener noreferrer"
-                            href="<?php echo h($activityBase . '/editor.php?id=' . urlencode($activityId) . '&unit=' . urlencode($unitId)); ?>"
+                            href="<?php echo h('teacher_activity_edit.php?assignment=' . urlencode($assignmentId) . '&unit=' . urlencode($unitId) . '&activity=' . urlencode($activityId)); ?>"
                         >
                             Editar actividad
                         </a>
