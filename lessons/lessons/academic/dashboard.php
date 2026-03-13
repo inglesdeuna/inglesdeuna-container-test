@@ -767,7 +767,7 @@ body{
 
                         <?php if ($teacherPermission === 'editor') { ?>
                             <a class="btn btn-orange" href="teacher_course.php?assignment=<?php echo urlencode((string) ($firstAssignment['id'] ?? '')); ?>&mode=edit">
-                                Editar Actividad
+                                Ver actividades
                             </a>
                         <?php } ?>
                     </div>
