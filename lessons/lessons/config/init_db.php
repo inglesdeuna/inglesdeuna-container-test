@@ -74,6 +74,113 @@ try {
         // Ya existe, no hacemos nada
     }
 
+    /* ===============================
+       TEACHERS (inscripciones)
+       =============================== */
+    $pdo->exec("
+    CREATE TABLE IF NOT EXISTS teachers (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        id_number TEXT,
+        phone TEXT,
+        bank_account TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+    ");
+
+    /* ===============================
+       STUDENTS (inscripciones)
+       =============================== */
+    $pdo->exec("
+    CREATE TABLE IF NOT EXISTS students (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        guardian TEXT,
+        contact TEXT,
+        eps TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+    ");
+
+    /* ===============================
+       TEACHER ACCOUNTS
+       =============================== */
+    $pdo->exec("
+    CREATE TABLE IF NOT EXISTS teacher_accounts (
+        id TEXT PRIMARY KEY,
+        teacher_id TEXT NOT NULL,
+        teacher_name TEXT NOT NULL,
+        username TEXT NOT NULL,
+        password TEXT NOT NULL,
+        permission TEXT,
+        scope TEXT,
+        target_id TEXT,
+        target_name TEXT,
+        must_change_password BOOLEAN DEFAULT FALSE,
+        password_updated_at TIMESTAMP,
+        is_active BOOLEAN DEFAULT TRUE,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+    ");
+
+    try {
+        $pdo->exec("CREATE UNIQUE INDEX IF NOT EXISTS teacher_accounts_username_idx ON teacher_accounts (username);");
+    } catch (Exception $e) {
+        // índice ya existe
+    }
+
+    /* ===============================
+       TEACHER ASSIGNMENTS (asignaciones)
+       =============================== */
+    $pdo->exec("
+    CREATE TABLE IF NOT EXISTS teacher_assignments (
+        id TEXT PRIMARY KEY,
+        teacher_id TEXT NOT NULL,
+        teacher_name TEXT NOT NULL,
+        program_type TEXT NOT NULL,
+        course_id TEXT NOT NULL,
+        course_name TEXT NOT NULL,
+        unit_id TEXT,
+        unit_name TEXT,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+    ");
+
+    try {
+        $pdo->exec("CREATE INDEX IF NOT EXISTS teacher_assignments_teacher_id_idx ON teacher_assignments (teacher_id);");
+        $pdo->exec("CREATE INDEX IF NOT EXISTS teacher_assignments_course_id_idx ON teacher_assignments (course_id);");
+    } catch (Exception $e) {
+        // índice ya existe
+    }
+
+    /* ===============================
+       STUDENT ASSIGNMENTS (asignaciones)
+       =============================== */
+    $pdo->exec("
+    CREATE TABLE IF NOT EXISTS student_assignments (
+        id TEXT PRIMARY KEY,
+        student_id TEXT NOT NULL,
+        teacher_id TEXT NOT NULL,
+        program TEXT,
+        course_id TEXT,
+        level_id TEXT,
+        period TEXT,
+        unit_id TEXT,
+        student_username TEXT,
+        student_temp_password TEXT,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+    ");
+
+    try {
+        $pdo->exec("CREATE INDEX IF NOT EXISTS student_assignments_student_id_idx ON student_assignments (student_id);");
+        $pdo->exec("CREATE INDEX IF NOT EXISTS student_assignments_teacher_id_idx ON student_assignments (teacher_id);");
+    } catch (Exception $e) {
+        // índice ya existe
+    }
+
 } catch (Exception $e) {
     die("DB INIT ERROR: " . $e->getMessage());
 }
