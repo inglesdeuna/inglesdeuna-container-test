@@ -20,6 +20,15 @@ function get_pdo_connection(): ?PDO
         return null;
     }
 
+    static $cachedPdo = null;
+    static $loaded = false;
+
+    if ($loaded) {
+        return $cachedPdo;
+    }
+
+    $loaded = true;
+
     $dbFile = __DIR__ . '/../config/db.php';
     if (!file_exists($dbFile)) {
         return null;
@@ -27,25 +36,80 @@ function get_pdo_connection(): ?PDO
 
     try {
         require $dbFile;
-        return (isset($pdo) && $pdo instanceof PDO) ? $pdo : null;
+        if (isset($pdo) && $pdo instanceof PDO) {
+            $cachedPdo = $pdo;
+        }
     } catch (Throwable $e) {
         return null;
     }
+
+    return $cachedPdo;
 }
 
-function load_teacher_accounts(string $teacherId): array
+function table_exists(PDO $pdo, string $tableName): bool
+{
+    try {
+        $stmt = $pdo->prepare("
+            SELECT 1
+            FROM information_schema.tables
+            WHERE table_schema = 'public'
+              AND table_name = :table_name
+            LIMIT 1
+        ");
+        $stmt->execute(['table_name' => $tableName]);
+        return (bool) $stmt->fetchColumn();
+    } catch (Throwable $e) {
+        return false;
+    }
+}
+
+function column_exists(PDO $pdo, string $tableName, string $columnName): bool
+{
+    try {
+        $stmt = $pdo->prepare("
+            SELECT 1
+            FROM information_schema.columns
+            WHERE table_schema = 'public'
+              AND table_name = :table_name
+              AND column_name = :column_name
+            LIMIT 1
+        ");
+        $stmt->execute([
+            'table_name' => $tableName,
+            'column_name' => $columnName,
+        ]);
+        return (bool) $stmt->fetchColumn();
+    } catch (Throwable $e) {
+        return false;
+    }
+}
+
+function load_teacher_assignments(string $teacherId): array
 {
     $pdo = get_pdo_connection();
-    if (!$pdo) {
+    if (!$pdo || $teacherId === '') {
         return [];
     }
 
     try {
         $stmt = $pdo->prepare("
-            SELECT id, teacher_id, teacher_name, scope, target_id, target_name, permission
-            FROM teacher_accounts
+            SELECT
+                id,
+                teacher_id,
+                teacher_name,
+                program_type,
+                course_id,
+                course_name,
+                unit_id,
+                unit_name,
+                updated_at
+            FROM teacher_assignments
             WHERE teacher_id = :teacher_id
-            ORDER BY updated_at DESC NULLS LAST, target_name ASC
+            ORDER BY
+                CASE WHEN program_type = 'english' THEN 1 ELSE 2 END,
+                course_name ASC,
+                COALESCE(unit_name, '') ASC,
+                updated_at DESC
         ");
         $stmt->execute(['teacher_id' => $teacherId]);
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -56,65 +120,253 @@ function load_teacher_accounts(string $teacherId): array
     }
 }
 
-function load_units_grouped(): array
+function load_teacher_permission_from_accounts(string $teacherId): string
 {
     $pdo = get_pdo_connection();
-    if (!$pdo) {
-        return [
-            'by_course' => [],
-            'by_phase' => [],
-        ];
+    if (!$pdo || $teacherId === '') {
+        return 'viewer';
     }
-
-    $unitsByCourse = [];
-    $unitsByPhase = [];
 
     try {
-        $stmt = $pdo->query("
-            SELECT id, name, course_id, phase_id
-            FROM units
-            ORDER BY id ASC
-        ");
-        $units = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
-
-        foreach ($units as $unit) {
-            if (!empty($unit['course_id'])) {
-                $unitsByCourse[(string) $unit['course_id']][] = $unit;
-            }
-
-            if (!empty($unit['phase_id'])) {
-                $unitsByPhase[(string) $unit['phase_id']][] = $unit;
-            }
+        if (!table_exists($pdo, 'teacher_accounts')) {
+            return 'viewer';
         }
-    } catch (Throwable $e) {
-        $unitsByCourse = [];
-        $unitsByPhase = [];
-    }
 
-    return [
-        'by_course' => $unitsByCourse,
-        'by_phase' => $unitsByPhase,
-    ];
+        $stmt = $pdo->prepare("
+            SELECT permission
+            FROM teacher_accounts
+            WHERE teacher_id = :teacher_id
+            ORDER BY updated_at DESC NULLS LAST
+            LIMIT 1
+        ");
+        $stmt->execute(['teacher_id' => $teacherId]);
+        $permission = (string) $stmt->fetchColumn();
+
+        return $permission === 'editor' ? 'editor' : 'viewer';
+    } catch (Throwable $e) {
+        return 'viewer';
+    }
 }
 
-$accounts = load_teacher_accounts($teacherId);
-$firstAccount = $accounts[0] ?? null;
+function load_english_units_by_phase_ids(array $phaseIds): array
+{
+    $pdo = get_pdo_connection();
+    if (!$pdo || empty($phaseIds)) {
+        return [];
+    }
 
-$groupedUnits = load_units_grouped();
-$unitsByCourse = $groupedUnits['by_course'];
-$unitsByPhase = $groupedUnits['by_phase'];
+    if (!table_exists($pdo, 'units') || !column_exists($pdo, 'units', 'phase_id')) {
+        return [];
+    }
+
+    $phaseIds = array_values(array_unique(array_filter(array_map('strval', $phaseIds), static fn ($v): bool => $v !== '')));
+    if (empty($phaseIds)) {
+        return [];
+    }
+
+    try {
+        $placeholders = [];
+        $params = [];
+        foreach ($phaseIds as $index => $phaseId) {
+            $key = ':phase_' . $index;
+            $placeholders[] = $key;
+            $params['phase_' . $index] = $phaseId;
+        }
+
+        $sql = "
+            SELECT id, name, phase_id
+            FROM units
+            WHERE phase_id IN (" . implode(', ', $placeholders) . ")
+            ORDER BY phase_id ASC, id ASC
+        ";
+
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute($params);
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+        $grouped = [];
+        foreach ($rows as $row) {
+            $phaseId = (string) ($row['phase_id'] ?? '');
+            if ($phaseId === '') {
+                continue;
+            }
+            $grouped[$phaseId][] = $row;
+        }
+
+        return $grouped;
+    } catch (Throwable $e) {
+        return [];
+    }
+}
+
+function load_technical_units_for_assignments(array $technicalAssignments): array
+{
+    $pdo = get_pdo_connection();
+    if (!$pdo || empty($technicalAssignments)) {
+        return [];
+    }
+
+    $unitIds = [];
+    $courseIds = [];
+
+    foreach ($technicalAssignments as $assignment) {
+        $unitId = trim((string) ($assignment['unit_id'] ?? ''));
+        $courseId = trim((string) ($assignment['course_id'] ?? ''));
+        if ($unitId !== '') {
+            $unitIds[] = $unitId;
+        }
+        if ($courseId !== '') {
+            $courseIds[] = $courseId;
+        }
+    }
+
+    $unitIds = array_values(array_unique($unitIds));
+    $courseIds = array_values(array_unique($courseIds));
+
+    $result = [];
+
+    if (!empty($unitIds)) {
+        foreach ($technicalAssignments as $assignment) {
+            $assignmentId = (string) ($assignment['id'] ?? '');
+            $unitId = trim((string) ($assignment['unit_id'] ?? ''));
+            $unitName = trim((string) ($assignment['unit_name'] ?? ''));
+            if ($assignmentId !== '' && $unitId !== '') {
+                $result[$assignmentId][] = [
+                    'id' => $unitId,
+                    'name' => $unitName !== '' ? $unitName : 'Unidad',
+                ];
+            }
+        }
+        return $result;
+    }
+
+    $candidates = [
+        ['table' => 'course_units', 'course_column' => 'course_id', 'name_column' => 'name'],
+        ['table' => 'technical_units', 'course_column' => 'course_id', 'name_column' => 'name'],
+        ['table' => 'technical_units', 'course_column' => 'semester_id', 'name_column' => 'name'],
+        ['table' => 'units', 'course_column' => 'course_id', 'name_column' => 'name'],
+        ['table' => 'units', 'course_column' => 'semester_id', 'name_column' => 'name'],
+    ];
+
+    foreach ($candidates as $candidate) {
+        $table = $candidate['table'];
+        $courseColumn = $candidate['course_column'];
+        $nameColumn = $candidate['name_column'];
+
+        if (
+            !table_exists($pdo, $table) ||
+            !column_exists($pdo, $table, 'id') ||
+            !column_exists($pdo, $table, $courseColumn) ||
+            !column_exists($pdo, $table, $nameColumn)
+        ) {
+            continue;
+        }
+
+        if (empty($courseIds)) {
+            continue;
+        }
+
+        try {
+            $placeholders = [];
+            $params = [];
+            foreach ($courseIds as $index => $courseId) {
+                $key = ':course_' . $index;
+                $placeholders[] = $key;
+                $params['course_' . $index] = $courseId;
+            }
+
+            $sql = "
+                SELECT id, {$courseColumn} AS course_id, {$nameColumn} AS name
+                FROM {$table}
+                WHERE {$courseColumn} IN (" . implode(', ', $placeholders) . ")
+                ORDER BY {$courseColumn} ASC, id ASC
+            ";
+
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute($params);
+            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+            $groupedByCourse = [];
+            foreach ($rows as $row) {
+                $courseId = (string) ($row['course_id'] ?? '');
+                if ($courseId === '') {
+                    continue;
+                }
+                $groupedByCourse[$courseId][] = [
+                    'id' => (string) ($row['id'] ?? ''),
+                    'name' => (string) ($row['name'] ?? 'Unidad'),
+                ];
+            }
+
+            foreach ($technicalAssignments as $assignment) {
+                $assignmentId = (string) ($assignment['id'] ?? '');
+                $courseId = trim((string) ($assignment['course_id'] ?? ''));
+                if ($assignmentId !== '' && $courseId !== '' && isset($groupedByCourse[$courseId])) {
+                    $result[$assignmentId] = $groupedByCourse[$courseId];
+                }
+            }
+
+            if (!empty($result)) {
+                return $result;
+            }
+        } catch (Throwable $e) {
+            return [];
+        }
+    }
+
+    return [];
+}
+
+function build_assignment_title(array $assignment): string
+{
+    $courseName = trim((string) ($assignment['course_name'] ?? 'Curso'));
+    $unitName = trim((string) ($assignment['unit_name'] ?? ''));
+    $programType = trim((string) ($assignment['program_type'] ?? ''));
+
+    if ($programType === 'technical' && $unitName !== '') {
+        return $courseName . ' · ' . $unitName;
+    }
+
+    return $courseName;
+}
+
+$assignments = load_teacher_assignments($teacherId);
+$firstAssignment = $assignments[0] ?? null;
+$teacherPermission = load_teacher_permission_from_accounts($teacherId);
+
+$englishPhaseIds = [];
+$technicalAssignments = [];
+
+foreach ($assignments as $assignment) {
+    $programType = (string) ($assignment['program_type'] ?? '');
+    if ($programType === 'english') {
+        $phaseId = trim((string) ($assignment['course_id'] ?? ''));
+        if ($phaseId !== '') {
+            $englishPhaseIds[] = $phaseId;
+        }
+    } elseif ($programType === 'technical') {
+        $technicalAssignments[] = $assignment;
+    }
+}
+
+$englishUnitsByPhase = load_english_units_by_phase_ids($englishPhaseIds);
+$technicalUnitsByAssignment = load_technical_units_for_assignments($technicalAssignments);
 
 $todayUnits = [];
-$todayPermission = 'viewer';
+$todayTitle = 'Curso';
+$todayProgramLabel = 'Docente';
 
-if ($firstAccount) {
-    $scope = (string) ($firstAccount['scope'] ?? 'technical');
-    $targetId = (string) ($firstAccount['target_id'] ?? '');
-    $todayPermission = (string) ($firstAccount['permission'] ?? 'viewer');
+if ($firstAssignment) {
+    $todayTitle = build_assignment_title($firstAssignment);
+    $todayProgramLabel = ((string) ($firstAssignment['program_type'] ?? '') === 'english') ? 'English' : 'Técnico';
 
-    $todayUnits = $scope === 'english'
-        ? ($unitsByPhase[$targetId] ?? [])
-        : ($unitsByCourse[$targetId] ?? []);
+    if ((string) ($firstAssignment['program_type'] ?? '') === 'english') {
+        $phaseId = trim((string) ($firstAssignment['course_id'] ?? ''));
+        $todayUnits = $englishUnitsByPhase[$phaseId] ?? [];
+    } else {
+        $assignmentId = (string) ($firstAssignment['id'] ?? '');
+        $todayUnits = $technicalUnitsByAssignment[$assignmentId] ?? [];
+    }
 }
 ?>
 <!DOCTYPE html>
@@ -139,6 +391,7 @@ if ($firstAccount) {
     --orange-hover:#d97706;
     --danger:#dc2626;
     --shadow:0 8px 24px rgba(0,0,0,.08);
+    --radius:14px;
 }
 
 *{
@@ -147,7 +400,7 @@ if ($firstAccount) {
 
 body{
     margin:0;
-    font-family:Arial, sans-serif;
+    font-family:Arial, "Segoe UI", sans-serif;
     background:var(--bg);
     color:var(--text);
 }
@@ -192,7 +445,7 @@ body{
 .card{
     background:var(--card);
     border:1px solid var(--line);
-    border-radius:14px;
+    border-radius:var(--radius);
     box-shadow:var(--shadow);
 }
 
@@ -323,7 +576,7 @@ body{
     padding:22px 18px;
     color:#fff;
     text-decoration:none;
-    min-height:120px;
+    min-height:140px;
     display:flex;
     flex-direction:column;
     justify-content:center;
@@ -352,6 +605,14 @@ body{
 .course-sub{
     font-size:14px;
     opacity:.95;
+}
+
+.course-meta{
+    font-size:12px;
+    font-weight:700;
+    opacity:.95;
+    text-transform:uppercase;
+    letter-spacing:.03em;
 }
 
 .unit-list{
@@ -489,10 +750,10 @@ body{
         <main>
             <h2 class="main-section-title">Actividad para Hoy</h2>
 
-            <?php if ($firstAccount) { ?>
+            <?php if ($firstAssignment) { ?>
                 <div class="card">
                     <h3 class="activity-title">
-                        Tema: "<?php echo h((string) ($firstAccount['target_name'] ?? 'Curso')); ?>"
+                        Tema: "<?php echo h($todayTitle); ?>"
                     </h3>
 
                     <p class="activity-text">
@@ -500,12 +761,12 @@ body{
                     </p>
 
                     <div class="actions">
-                        <a class="btn btn-green" href="teacher_course.php?account=<?php echo urlencode((string) ($firstAccount['id'] ?? '')); ?>">
+                        <a class="btn btn-green" href="teacher_course.php?assignment=<?php echo urlencode((string) ($firstAssignment['id'] ?? '')); ?>">
                             Iniciar Presentación
                         </a>
 
-                        <?php if ($todayPermission === 'editor') { ?>
-                            <a class="btn btn-orange" href="teacher_course.php?account=<?php echo urlencode((string) ($firstAccount['id'] ?? '')); ?>&mode=edit">
+                        <?php if ($teacherPermission === 'editor') { ?>
+                            <a class="btn btn-orange" href="teacher_course.php?assignment=<?php echo urlencode((string) ($firstAssignment['id'] ?? '')); ?>&mode=edit">
                                 Editar Actividad
                             </a>
                         <?php } ?>
@@ -513,12 +774,8 @@ body{
 
                     <div class="unit-list">
                         <div class="badge-row">
-                            <span class="badge">
-                                <?php echo h(((string) ($firstAccount['scope'] ?? '') === 'english') ? 'Estudiantes' : 'Docentes'); ?>
-                            </span>
-                            <span class="badge">
-                                <?php echo h($todayPermission === 'editor' ? 'Puede editar' : 'Solo ver'); ?>
-                            </span>
+                            <span class="badge"><?php echo h($todayProgramLabel); ?></span>
+                            <span class="badge"><?php echo h($teacherPermission === 'editor' ? 'Puede editar' : 'Solo ver'); ?></span>
                         </div>
 
                         <?php if (empty($todayUnits)) { ?>
@@ -531,12 +788,12 @@ body{
                                     </div>
 
                                     <div class="unit-actions">
-                                        <a class="unit-btn" href="teacher_unit.php?unit=<?php echo urlencode((string) ($unit['id'] ?? '')); ?>&mode=view">
+                                        <a class="unit-btn" href="teacher_unit.php?assignment=<?php echo urlencode((string) ($firstAssignment['id'] ?? '')); ?>&unit=<?php echo urlencode((string) ($unit['id'] ?? '')); ?>&mode=view">
                                             Ver
                                         </a>
 
-                                        <?php if ($todayPermission === 'editor') { ?>
-                                            <a class="unit-btn edit" href="teacher_unit.php?unit=<?php echo urlencode((string) ($unit['id'] ?? '')); ?>&mode=edit">
+                                        <?php if ($teacherPermission === 'editor') { ?>
+                                            <a class="unit-btn edit" href="teacher_unit.php?assignment=<?php echo urlencode((string) ($firstAssignment['id'] ?? '')); ?>&unit=<?php echo urlencode((string) ($unit['id'] ?? '')); ?>&mode=edit">
                                                 Editar
                                             </a>
                                         <?php } ?>
@@ -552,11 +809,11 @@ body{
 
             <h2 class="main-section-title">Mis Cursos</h2>
 
-            <?php if (empty($accounts)) { ?>
+            <?php if (empty($assignments)) { ?>
                 <div class="empty">No tienes cursos asignados todavía.</div>
             <?php } else { ?>
                 <div class="course-grid">
-                    <?php foreach ($accounts as $index => $account) { ?>
+                    <?php foreach ($assignments as $index => $assignment) { ?>
                         <?php
                         $colorClass = 'course-blue';
                         if ($index % 3 === 1) {
@@ -564,10 +821,15 @@ body{
                         } elseif ($index % 3 === 2) {
                             $colorClass = 'course-green';
                         }
+
+                        $programType = (string) ($assignment['program_type'] ?? '');
+                        $cardTitle = build_assignment_title($assignment);
+                        $cardSub = $programType === 'english' ? 'Curso de inglés' : 'Curso técnico';
                         ?>
-                        <a class="course-card <?php echo $colorClass; ?>" href="teacher_course.php?account=<?php echo urlencode((string) ($account['id'] ?? '')); ?>">
-                            <div class="course-name"><?php echo h((string) ($account['target_name'] ?? 'Curso')); ?></div>
-                            <div class="course-sub">Entrar al curso</div>
+                        <a class="course-card <?php echo h($colorClass); ?>" href="teacher_course.php?assignment=<?php echo urlencode((string) ($assignment['id'] ?? '')); ?>">
+                            <div class="course-meta"><?php echo h($programType === 'english' ? 'English' : 'Técnico'); ?></div>
+                            <div class="course-name"><?php echo h($cardTitle); ?></div>
+                            <div class="course-sub"><?php echo h($cardSub); ?></div>
                         </a>
                     <?php } ?>
                 </div>
