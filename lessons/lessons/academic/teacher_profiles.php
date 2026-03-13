@@ -57,8 +57,8 @@ function table_has_column(PDO $pdo, string $tableName, string $columnName): bool
             SELECT 1
             FROM information_schema.columns
             WHERE table_schema = 'public'
-            AND table_name = :table_name
-            AND column_name = :column_name
+              AND table_name = :table_name
+              AND column_name = :column_name
             LIMIT 1
         ");
         $stmt->execute([
@@ -169,7 +169,7 @@ function teacher_account_exists(string $teacherId, ?string $excludeId = null): b
                 SELECT 1
                 FROM teacher_accounts
                 WHERE teacher_id = :teacher_id
-                AND id <> :exclude_id
+                  AND id <> :exclude_id
                 LIMIT 1
             ");
             $stmt->execute([
@@ -214,24 +214,29 @@ function find_account_by_id(array $accounts, string $id): ?array {
     }
     return null;
 }
+
 function save_teacher_account_to_database(array $record, ?string &$errorMessage = null): bool {
     $pdo = get_pdo_connection();
     if (!$pdo) {
         $errorMessage = 'No hay conexión con la base de datos.';
         return false;
     }
+
     try {
         $hasMustChangePassword = table_has_column($pdo, 'teacher_accounts', 'must_change_password');
+
         $columns = [
-            'id','teacher_id','teacher_name','permission','username','password','updated_at',
+            'id', 'teacher_id', 'teacher_name', 'permission', 'username', 'password', 'updated_at',
         ];
         $values = [
-            ':id',':teacher_id',':teacher_name',':permission',':username',':password',':updated_at',
+            ':id', ':teacher_id', ':teacher_name', ':permission', ':username', ':password', ':updated_at',
         ];
+
         if ($hasMustChangePassword) {
             $columns[] = 'must_change_password';
             $values[] = ':must_change_password';
         }
+
         $updateSet = [
             'teacher_id = EXCLUDED.teacher_id',
             'teacher_name = EXCLUDED.teacher_name',
@@ -240,16 +245,20 @@ function save_teacher_account_to_database(array $record, ?string &$errorMessage 
             'password = EXCLUDED.password',
             'updated_at = EXCLUDED.updated_at',
         ];
+
         if ($hasMustChangePassword) {
             $updateSet[] = 'must_change_password = EXCLUDED.must_change_password';
         }
+
         $sql = "
             INSERT INTO teacher_accounts (" . implode(', ', $columns) . ")
             VALUES (" . implode(', ', $values) . ")
             ON CONFLICT (id) DO UPDATE SET
-            " . implode(",\n ", $updateSet) . "
+            " . implode(",\n            ", $updateSet) . "
         ";
+
         $stmt = $pdo->prepare($sql);
+
         $params = [
             'id' => (string) ($record['id'] ?? ''),
             'teacher_id' => (string) ($record['teacher_id'] ?? ''),
@@ -259,9 +268,11 @@ function save_teacher_account_to_database(array $record, ?string &$errorMessage 
             'password' => (string) ($record['password'] ?? ''),
             'updated_at' => (string) ($record['updated_at'] ?? date('Y-m-d H:i:s')),
         ];
+
         if ($hasMustChangePassword) {
             $params['must_change_password'] = !empty($record['must_change_password']) ? 1 : 0;
         }
+
         return $stmt->execute($params);
     } catch (Throwable $e) {
         $errorMessage = $e->getMessage();
@@ -339,6 +350,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($form['permission'] !== 'viewer' && $form['permission'] !== 'editor') {
         $form['permission'] = 'viewer';
     }
+
     if ($form['teacher_id'] === '') {
         $errors[] = 'Debe seleccionar un docente.';
     }
@@ -350,9 +362,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $generatedUsername = $teacherName !== '' ? generate_teacher_username($teacherName) : 'docente.docente';
     $existingCredentials = load_teacher_latest_credentials_from_database($form['teacher_id']);
+
     if (is_array($existingCredentials)) {
         $storedUsername = trim((string) ($existingCredentials['username'] ?? ''));
         $storedPassword = trim((string) ($existingCredentials['password'] ?? ''));
+
         if ($storedUsername !== '') {
             $generatedUsername = $storedUsername;
         }
@@ -362,6 +376,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     $form['username'] = $generatedUsername;
+
     if ($form['password'] === '') {
         $form['password'] = '1234';
     }
@@ -369,15 +384,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (mb_strlen($form['username']) < 3) {
         $errors[] = 'El usuario generado no es válido.';
     }
+
     if (mb_strlen($form['password']) < 4) {
         $errors[] = 'La contraseña debe tener mínimo 4 caracteres.';
     }
+
     if ($form['edit_id'] === '' && teacher_account_exists($form['teacher_id'])) {
         $errors[] = 'Este docente ya tiene un perfil creado.';
     }
 
     if (empty($errors)) {
         $dbError = null;
+
         $record = [
             'id' => $form['edit_id'] !== '' ? $form['edit_id'] : generate_account_id(),
             'teacher_id' => $form['teacher_id'],
@@ -388,16 +406,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'must_change_password' => true,
             'updated_at' => date('Y-m-d H:i:s'),
         ];
+
         $saved = save_teacher_account_to_database($record, $dbError);
+
         if ($saved) {
             header('Location: teacher_assignments.php?teacher_id=' . urlencode($form['teacher_id']) . '&from_profile=1');
             exit;
         }
+
         $errors[] = 'No se pudo guardar el perfil docente en la base de datos.';
         if (!empty($dbError)) {
             $errors[] = 'Detalle técnico: ' . $dbError;
         }
     }
+
     $accounts = load_teacher_accounts_from_database();
 }
 ?>
@@ -418,7 +440,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     --blue:#1f66cc;
     --blue-hover:#2f5bb5;
     --orange:#ff6600;
-    --green:#1d6a40;
+    --green:#166534;
     --head:#f7faff;
     --success-bg:#ecfdf3;
     --success-border:#b9eacb;
@@ -426,11 +448,233 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     --error-bg:#fff2f2;
     --error-border:#f3b5b5;
     --error-text:#9f1d1d;
+    --danger:#dc2626;
+    --danger-hover:#b91c1c;
     --shadow:0 8px 24px rgba(0,0,0,.08);
     --radius:14px;
 }
 
-/* ... estilos previos ... */
+*{
+    box-sizing:border-box;
+}
+
+body{
+    margin:0;
+    padding:30px;
+    font-family:Arial, "Segoe UI", Roboto, sans-serif;
+    background:var(--bg);
+    color:var(--text);
+    font-size:15px;
+}
+
+a{
+    color:var(--blue);
+    text-decoration:none;
+}
+
+a:hover{
+    text-decoration:underline;
+}
+
+.page-shell{
+    width:100%;
+}
+
+.wrapper{
+    max-width:1120px;
+    margin:0 auto;
+}
+
+.topbar{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    gap:16px;
+    margin-bottom:22px;
+    flex-wrap:wrap;
+}
+
+.back{
+    font-weight:700;
+    color:var(--blue);
+}
+
+.links{
+    display:flex;
+    gap:12px;
+    flex-wrap:wrap;
+}
+
+.links a{
+    font-size:14px;
+    font-weight:600;
+}
+
+.card{
+    background:var(--card);
+    border-radius:var(--radius);
+    box-shadow:var(--shadow);
+    padding:22px;
+    margin-bottom:20px;
+    border:1px solid var(--line);
+}
+
+.card-header{
+    margin-bottom:18px;
+}
+
+.card-header h1{
+    margin:0 0 10px;
+    font-size:28px;
+    line-height:1.2;
+    color:#1f3c75;
+}
+
+.card-header h2{
+    margin:0;
+    font-size:22px;
+    line-height:1.3;
+    color:var(--subtitle);
+}
+
+.subtitle{
+    margin:6px 0 0;
+    color:var(--muted);
+    font-size:14px;
+    line-height:1.5;
+}
+
+.notice{
+    margin-bottom:16px;
+    padding:12px 14px;
+    border-radius:10px;
+    background:var(--success-bg);
+    border:1px solid var(--success-border);
+    color:var(--success-text);
+    font-size:14px;
+    font-weight:600;
+}
+
+.error{
+    margin-bottom:16px;
+    padding:12px 14px;
+    border-radius:10px;
+    background:var(--error-bg);
+    border:1px solid var(--error-border);
+    color:var(--error-text);
+    font-size:14px;
+    line-height:1.5;
+}
+
+.form-grid{
+    display:grid;
+    grid-template-columns:repeat(2, minmax(240px, 1fr));
+    gap:16px;
+}
+
+.field{
+    display:flex;
+    flex-direction:column;
+    gap:7px;
+}
+
+.field.full{
+    grid-column:1 / -1;
+}
+
+label{
+    font-size:14px;
+    font-weight:700;
+    color:var(--text);
+}
+
+input[type="text"],
+select{
+    width:100%;
+    min-height:44px;
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:10px 12px;
+    font-size:14px;
+    color:var(--text);
+    background:#fff;
+    outline:none;
+    transition:border-color .2s ease, box-shadow .2s ease;
+}
+
+input[type="text"]:focus,
+select:focus{
+    border-color:var(--blue);
+    box-shadow:0 0 0 3px rgba(31,102,204,.12);
+}
+
+input[readonly]{
+    background:#f8fafc;
+    color:#4b5563;
+}
+
+.button-primary{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    min-height:44px;
+    padding:10px 16px;
+    border:none;
+    border-radius:10px;
+    background:var(--blue);
+    color:#fff;
+    font-size:14px;
+    font-weight:700;
+    cursor:pointer;
+    transition:background .2s ease, transform .06s ease;
+}
+
+.button-primary:hover{
+    background:var(--blue-hover);
+    text-decoration:none;
+}
+
+.button-primary:active{
+    transform:translateY(1px);
+}
+
+.table-wrap{
+    width:100%;
+}
+
+.table-scroll{
+    overflow-x:auto;
+    border:1px solid var(--line);
+    border-radius:12px;
+}
+
+table{
+    width:100%;
+    border-collapse:collapse;
+    background:#fff;
+    min-width:720px;
+}
+
+thead th{
+    background:var(--head);
+    color:var(--subtitle);
+    font-size:13px;
+    font-weight:700;
+    text-align:left;
+    padding:14px 16px;
+    border-bottom:1px solid var(--line);
+}
+
+tbody td{
+    padding:14px 16px;
+    border-bottom:1px solid #e9eef5;
+    font-size:14px;
+    vertical-align:top;
+}
+
+tbody tr:last-child td{
+    border-bottom:none;
+}
 
 .permission-badge{
     display:inline-block;
@@ -439,13 +683,98 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     font-size:12px;
     font-weight:700;
     white-space:nowrap;
+    background:#eef2ff;
+    color:#1f4ec9;
 }
-.badge-tech{background:#eef4ff;color:#1f66cc;}
-.badge-eng{background:#fff3e8;color:var(--orange);}
-.badge-unit{background:#eef8f2;color:var(--green);}
+
+.actions{
+    display:flex;
+    gap:8px;
+    flex-wrap:wrap;
+}
+
+.action-btn{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    padding:8px 12px;
+    border-radius:8px;
+    font-size:13px;
+    font-weight:700;
+    text-decoration:none;
+    transition:background .2s ease, color .2s ease;
+}
+
+.edit-btn{
+    background:#eef4ff;
+    color:var(--blue);
+    border:1px solid #cfe0ff;
+}
+
+.edit-btn:hover{
+    background:#dceaff;
+    text-decoration:none;
+}
+
+.delete-btn{
+    background:#fff1f2;
+    color:var(--danger);
+    border:1px solid #fecdd3;
+}
+
+.delete-btn:hover{
+    background:#ffe4e6;
+    color:var(--danger-hover);
+    text-decoration:none;
+}
+
 .empty{
     color:var(--muted);
     font-size:14px;
+    text-align:center;
+    padding:22px !important;
+}
+
+@media (max-width: 768px){
+    body{
+        padding:20px;
+    }
+
+    .card{
+        padding:18px;
+    }
+
+    .card-header h1{
+        font-size:24px;
+    }
+
+    .card-header h2{
+        font-size:20px;
+    }
+
+    .form-grid{
+        grid-template-columns:1fr;
+    }
+
+    .topbar{
+        flex-direction:column;
+        align-items:flex-start;
+    }
+
+    .links{
+        width:100%;
+        flex-direction:column;
+        gap:8px;
+    }
+
+    .actions{
+        flex-direction:column;
+        align-items:flex-start;
+    }
+
+    .action-btn{
+        width:100%;
+    }
 }
 </style>
 </head>
@@ -470,9 +799,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <?php if (isset($_GET['saved']) && empty($errors)) { ?>
                 <div class="notice">Perfil docente creado, actualizado o eliminado correctamente.</div>
             <?php } ?>
+
             <?php if (isset($_GET['from_assignments']) && $_GET['from_assignments'] === '1') { ?>
                 <div class="notice">Paso 2 completado: este docente ya tiene asignaciones guardadas.</div>
             <?php } ?>
+
             <?php if (!empty($errors)) { ?>
                 <div class="error">
                     <?php foreach ($errors as $error) { ?>
@@ -527,6 +858,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <div class="card-header">
                 <h2>Perfiles creados</h2>
             </div>
+
             <div class="table-wrap">
                 <div class="table-scroll">
                     <table>
@@ -612,11 +944,14 @@ function syncTeacherCredentials() {
     if (!teacherSelect || !username || !password) {
         return;
     }
+
     if (isEditMode && username.value && password.value) {
         return;
     }
+
     const teacherId = String(teacherSelect.value || '');
-    const teacherName = String(teacherMap[    const teacherName = String(teacherMap[teacherId] || '');
+    const teacherName = String(teacherMap[teacherId] || '');
+
     username.value = generateUsername(teacherName);
     password.value = '1234';
 }
@@ -626,7 +961,5 @@ if (teacherSelect) {
     teacherSelect.addEventListener('change', syncTeacherCredentials);
 }
 </script>
-
 </body>
 </html>
-
