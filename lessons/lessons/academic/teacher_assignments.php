@@ -18,20 +18,27 @@ function get_pdo_connection(): ?PDO {
     if (!getenv('DATABASE_URL')) {
         return null;
     }
+
     static $cachedPdo = null;
     static $loaded = false;
+
     if ($loaded) {
         return $cachedPdo;
     }
+
     $loaded = true;
     $dbFile = __DIR__ . '/../config/db.php';
+
     if (!file_exists($dbFile)) {
         return null;
     }
+
     require $dbFile;
+
     if (!isset($pdo) || !($pdo instanceof PDO)) {
         return null;
     }
+
     $cachedPdo = $pdo;
     return $cachedPdo;
 }
@@ -47,9 +54,10 @@ function generate_id(string $prefix = 'id_'): string {
 function table_exists(PDO $pdo, string $tableName): bool {
     try {
         $stmt = $pdo->prepare("
-            SELECT 1 FROM information_schema.tables
+            SELECT 1
+            FROM information_schema.tables
             WHERE table_schema = 'public'
-            AND table_name = :table_name
+              AND table_name = :table_name
             LIMIT 1
         ");
         $stmt->execute(['table_name' => $tableName]);
@@ -62,10 +70,11 @@ function table_exists(PDO $pdo, string $tableName): bool {
 function column_exists(PDO $pdo, string $tableName, string $columnName): bool {
     try {
         $stmt = $pdo->prepare("
-            SELECT 1 FROM information_schema.columns
+            SELECT 1
+            FROM information_schema.columns
             WHERE table_schema = 'public'
-            AND table_name = :table_name
-            AND column_name = :column_name
+              AND table_name = :table_name
+              AND column_name = :column_name
             LIMIT 1
         ");
         $stmt->execute([
@@ -84,14 +93,19 @@ function column_exists(PDO $pdo, string $tableName, string $columnName): bool {
 
 function load_profiled_teachers_from_database(): array {
     $pdo = get_pdo_connection();
-    if (!$pdo) return [];
+    if (!$pdo) {
+        return [];
+    }
+
     try {
         $hasIsActive = column_exists($pdo, 'teacher_accounts', 'is_active');
+
         $sql = "SELECT DISTINCT teacher_id AS id, teacher_name AS name FROM teacher_accounts";
         if ($hasIsActive) {
             $sql .= " WHERE COALESCE(is_active, true) = true ";
         }
         $sql .= " ORDER BY teacher_name ASC, teacher_id ASC ";
+
         $stmt = $pdo->query($sql);
         return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
     } catch (Throwable $e) {
@@ -101,10 +115,14 @@ function load_profiled_teachers_from_database(): array {
 
 function load_technical_courses_from_database(): array {
     $pdo = get_pdo_connection();
-    if (!$pdo) return [];
+    if (!$pdo) {
+        return [];
+    }
+
     try {
         $stmt = $pdo->query("
-            SELECT id, name FROM courses
+            SELECT id, name
+            FROM courses
             WHERE LOWER(COALESCE(program_id::text, '')) IN (
                 '1','prog_technical','technical','prog_tecnico','tecnico','programa_tecnico'
             )
@@ -119,7 +137,10 @@ function load_technical_courses_from_database(): array {
 
 function load_english_targets_from_database(): array {
     $pdo = get_pdo_connection();
-    if (!$pdo) return [];
+    if (!$pdo) {
+        return [];
+    }
+
     try {
         $stmt = $pdo->query("
             SELECT ph.id, CONCAT(l.name, ' - ', ph.name) AS name
@@ -135,7 +156,10 @@ function load_english_targets_from_database(): array {
 
 function load_technical_units_from_database(): array {
     $pdo = get_pdo_connection();
-    if (!$pdo) return [];
+    if (!$pdo) {
+        return [];
+    }
+
     $candidates = [
         ['table' => 'course_units', 'course_column' => 'course_id', 'name_column' => 'name'],
         ['table' => 'technical_units', 'course_column' => 'course_id', 'name_column' => 'name'],
@@ -143,12 +167,18 @@ function load_technical_units_from_database(): array {
         ['table' => 'units', 'course_column' => 'course_id', 'name_column' => 'name'],
         ['table' => 'units', 'course_column' => 'semester_id', 'name_column' => 'name'],
     ];
+
     foreach ($candidates as $candidate) {
         $table = $candidate['table'];
         $courseColumn = $candidate['course_column'];
         $nameColumn = $candidate['name_column'];
-        if (table_exists($pdo, $table) && column_exists($pdo, $table, 'id')
-            && column_exists($pdo, $table, $courseColumn) && column_exists($pdo, $table, $nameColumn)) {
+
+        if (
+            table_exists($pdo, $table) &&
+            column_exists($pdo, $table, 'id') &&
+            column_exists($pdo, $table, $courseColumn) &&
+            column_exists($pdo, $table, $nameColumn)
+        ) {
             try {
                 $sql = "
                     SELECT id, {$courseColumn} AS course_id, {$nameColumn} AS name
@@ -162,22 +192,30 @@ function load_technical_units_from_database(): array {
             }
         }
     }
+
     return [];
 }
 
 function load_teacher_assignments_from_database(?string $teacherId = null): array {
     $pdo = get_pdo_connection();
-    if (!$pdo) return [];
+    if (!$pdo) {
+        return [];
+    }
+
     try {
         $sql = "SELECT id, teacher_id, teacher_name, program_type, course_id, course_name, unit_id, unit_name, updated_at FROM teacher_assignments";
         $params = [];
+
         if ($teacherId !== null && $teacherId !== '') {
             $sql .= " WHERE teacher_id = :teacher_id ";
             $params['teacher_id'] = $teacherId;
         }
+
         $sql .= " ORDER BY teacher_name ASC, program_type ASC, course_name ASC, COALESCE(unit_name, '') ASC, updated_at DESC";
+
         $stmt = $pdo->prepare($sql);
         $stmt->execute($params);
+
         return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
     } catch (Throwable $e) {
         return [];
@@ -186,10 +224,12 @@ function load_teacher_assignments_from_database(?string $teacherId = null): arra
 
 function save_assignment_to_database(array $record, ?string &$errorMessage = null): bool {
     $pdo = get_pdo_connection();
+
     if (!$pdo) {
         $errorMessage = 'No hay conexión con la base de datos.';
         return false;
     }
+
     try {
         $stmt = $pdo->prepare("
             INSERT INTO teacher_assignments (
@@ -199,6 +239,7 @@ function save_assignment_to_database(array $record, ?string &$errorMessage = nul
             )
             ON CONFLICT DO NOTHING
         ");
+
         return $stmt->execute([
             'id' => (string) ($record['id'] ?? generate_id('asg_')),
             'teacher_id' => (string) ($record['teacher_id'] ?? ''),
@@ -222,11 +263,13 @@ function save_assignment_to_database(array $record, ?string &$errorMessage = nul
 
 function delete_assignment_from_database(string $id): bool {
     $pdo = get_pdo_connection();
-    if (!$pdo || $id === '') return false;
+    if (!$pdo || $id === '') {
+        return false;
+    }
+
     try {
         $stmt = $pdo->prepare("DELETE FROM teacher_assignments WHERE id = :id");
         return $stmt->execute(['id' => $id]);
-    } catch (Throwable $e) {
     } catch (Throwable $e) {
         return false;
     }
@@ -234,7 +277,10 @@ function delete_assignment_from_database(string $id): bool {
 
 function delete_teacher_assignments_from_database(string $teacherId): bool {
     $pdo = get_pdo_connection();
-    if (!$pdo || $teacherId === '') return false;
+    if (!$pdo || $teacherId === '') {
+        return false;
+    }
+
     try {
         $stmt = $pdo->prepare("DELETE FROM teacher_assignments WHERE teacher_id = :teacher_id");
         return $stmt->execute(['teacher_id' => $teacherId]);
@@ -290,8 +336,15 @@ $form = [
    ELIMINAR ASIGNACION
    =============================== */
 if (isset($_GET['delete']) && $_GET['delete'] !== '') {
+    $teacherIdReturn = isset($_GET['teacher_id']) ? (string) $_GET['teacher_id'] : '';
     delete_assignment_from_database((string) $_GET['delete']);
-    header('Location: teacher_assignments.php?saved=1');
+
+    $url = 'teacher_assignments.php?saved=1';
+    if ($teacherIdReturn !== '') {
+        $url .= '&teacher_id=' . urlencode($teacherIdReturn);
+    }
+
+    header('Location: ' . $url);
     exit;
 }
 
@@ -300,7 +353,7 @@ if (isset($_GET['delete']) && $_GET['delete'] !== '') {
    =============================== */
 if (isset($_GET['delete_teacher']) && $_GET['delete_teacher'] !== '') {
     delete_teacher_assignments_from_database((string) $_GET['delete_teacher']);
-    header('Location: teacher_assignments.php?saved=1');
+    header('Location: teacher_assignments.php?saved=1&teacher_id=' . urlencode((string) $_GET['delete_teacher']));
     exit;
 }
 
@@ -324,6 +377,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         : [];
 
     $form['technical_course_id'] = trim((string) ($_POST['technical_course_id'] ?? ''));
+
     $postedUnits = $_POST['technical_unit_ids'] ?? [];
     $form['technical_unit_ids'] = is_array($postedUnits)
         ? array_values(array_filter(array_map('strval', $postedUnits), static fn ($v): bool => trim($v) !== ''))
@@ -357,9 +411,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($form['program_type'] === 'english' && empty($form['english_course_ids'])) {
         $errors[] = 'Debe seleccionar al menos un curso de inglés.';
     }
+
     if ($form['program_type'] === 'technical' && $form['technical_course_id'] === '') {
         $errors[] = 'Debe seleccionar un semestre técnico.';
     }
+
     if ($form['program_type'] === 'technical' && empty($form['technical_unit_ids'])) {
         $errors[] = 'Debe seleccionar al menos una unidad técnica.';
     }
@@ -373,7 +429,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             foreach ($form['english_course_ids'] as $courseId) {
                 $courseId = trim((string) $courseId);
                 $courseName = $englishMap[$courseId] ?? '';
-                if ($courseId === '' || $courseName === '') continue;
+
+                if ($courseId === '' || $courseName === '') {
+                    continue;
+                }
 
                 $record = [
                     'id' => generate_id('asg_'),
@@ -385,21 +444,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'unit_id' => null,
                     'unit_name' => null,
                 ];
+
                 if (!save_assignment_to_database($record, $dbError)) {
                     $saved = false;
                     break;
                 }
+
                 $processedAssignments++;
             }
         } else {
             $courseId = $form['technical_course_id'];
             $courseName = $technicalMap[$courseId] ?? '';
+
             foreach ($form['technical_unit_ids'] as $unitId) {
                 $unitId = trim((string) $unitId);
                 $unitName = $unitNameMap[$unitId] ?? '';
+
                 if ($courseId === '' || $courseName === '' || $unitId === '' || $unitName === '') {
                     continue;
                 }
+
                 $record = [
                     'id' => generate_id('asg_'),
                     'teacher_id' => $form['teacher_id'],
@@ -410,10 +474,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'unit_id' => $unitId,
                     'unit_name' => $unitName,
                 ];
+
                 if (!save_assignment_to_database($record, $dbError)) {
                     $saved = false;
                     break;
                 }
+
                 $processedAssignments++;
             }
         }
@@ -425,6 +491,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 header('Location: teacher_profiles.php?from_assignments=1');
                 exit;
             }
+
             header('Location: teacher_assignments.php?saved=1&teacher_id=' . urlencode($form['teacher_id']));
             exit;
         }
@@ -434,6 +501,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } else {
             $errors[] = 'No se pudieron guardar las asignaciones.';
         }
+
         if (!empty($dbError)) {
             $errors[] = 'Detalle técnico: ' . $dbError;
         }
@@ -452,7 +520,421 @@ $currentTeacherAssignments = $form['teacher_id'] !== ''
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Asignación de Docentes</title>
 <style>
-/* Usa aquí los mismos estilos que ya tenías en tu archivo original */
+:root{
+    --bg:#eef2f7;
+    --card:#ffffff;
+    --line:#dce4f0;
+    --text:#1f2937;
+    --subtitle:#2c3e50;
+    --muted:#5b6577;
+    --blue:#1f66cc;
+    --blue-hover:#2f5bb5;
+    --orange:#ff6600;
+    --green:#166534;
+    --head:#f7faff;
+    --success-bg:#ecfdf3;
+    --success-border:#b9eacb;
+    --success-text:#166534;
+    --error-bg:#fff2f2;
+    --error-border:#f3b5b5;
+    --error-text:#9f1d1d;
+    --danger:#dc2626;
+    --danger-hover:#b91c1c;
+    --shadow:0 8px 24px rgba(0,0,0,.08);
+    --radius:14px;
+}
+
+*{
+    box-sizing:border-box;
+}
+
+body{
+    margin:0;
+    padding:30px;
+    font-family:Arial, "Segoe UI", Roboto, sans-serif;
+    background:var(--bg);
+    color:var(--text);
+    font-size:15px;
+}
+
+a{
+    color:var(--blue);
+    text-decoration:none;
+}
+
+a:hover{
+    text-decoration:underline;
+}
+
+.page-shell{
+    width:100%;
+}
+
+.wrapper{
+    max-width:1120px;
+    margin:0 auto;
+}
+
+.topbar{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    gap:16px;
+    margin-bottom:22px;
+    flex-wrap:wrap;
+}
+
+.back{
+    font-weight:700;
+    color:var(--blue);
+}
+
+.links{
+    display:flex;
+    gap:12px;
+    flex-wrap:wrap;
+}
+
+.links a{
+    font-size:14px;
+    font-weight:600;
+}
+
+.card{
+    background:var(--card);
+    border-radius:var(--radius);
+    box-shadow:var(--shadow);
+    padding:22px;
+    margin-bottom:20px;
+    border:1px solid var(--line);
+}
+
+.card-header{
+    margin-bottom:18px;
+}
+
+.card-header h1{
+    margin:0 0 10px;
+    font-size:28px;
+    line-height:1.2;
+    color:#1f3c75;
+}
+
+.card-header h2{
+    margin:0;
+    font-size:22px;
+    line-height:1.3;
+    color:var(--subtitle);
+}
+
+.subtitle{
+    margin:6px 0 0;
+    color:var(--muted);
+    font-size:14px;
+    line-height:1.5;
+}
+
+.notice{
+    margin-bottom:16px;
+    padding:12px 14px;
+    border-radius:10px;
+    background:var(--success-bg);
+    border:1px solid var(--success-border);
+    color:var(--success-text);
+    font-size:14px;
+    font-weight:600;
+}
+
+.error{
+    margin-bottom:16px;
+    padding:12px 14px;
+    border-radius:10px;
+    background:var(--error-bg);
+    border:1px solid var(--error-border);
+    color:var(--error-text);
+    font-size:14px;
+    line-height:1.5;
+}
+
+.form-grid{
+    display:grid;
+    grid-template-columns:repeat(2, minmax(260px, 1fr));
+    gap:16px;
+}
+
+.field{
+    display:flex;
+    flex-direction:column;
+    gap:7px;
+}
+
+.field.full{
+    grid-column:1 / -1;
+}
+
+label{
+    font-size:14px;
+    font-weight:700;
+    color:var(--text);
+}
+
+input[type="text"],
+select{
+    width:100%;
+    min-height:44px;
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:10px 12px;
+    font-size:14px;
+    color:var(--text);
+    background:#fff;
+    outline:none;
+    transition:border-color .2s ease, box-shadow .2s ease;
+}
+
+input[type="text"]:focus,
+select:focus{
+    border-color:var(--blue);
+    box-shadow:0 0 0 3px rgba(31,102,204,.12);
+}
+
+select[multiple]{
+    min-height:150px;
+}
+
+.helper-text{
+    color:var(--muted);
+    font-size:14px;
+    line-height:1.5;
+}
+
+.button-primary{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    min-height:44px;
+    padding:10px 16px;
+    border:none;
+    border-radius:10px;
+    background:var(--blue);
+    color:#fff;
+    font-size:14px;
+    font-weight:700;
+    cursor:pointer;
+    transition:background .2s ease, transform .06s ease;
+}
+
+.button-primary:hover{
+    background:var(--blue-hover);
+    text-decoration:none;
+}
+
+.button-primary:active{
+    transform:translateY(1px);
+}
+
+.badge{
+    display:inline-flex;
+    align-items:center;
+    padding:6px 10px;
+    border-radius:999px;
+    font-size:12px;
+    font-weight:700;
+    background:#eef4ff;
+    color:#1f66cc;
+    white-space:nowrap;
+}
+
+.badge-program-english{
+    background:#fff3e8;
+    color:var(--orange);
+}
+
+.badge-program-technical{
+    background:#eef4ff;
+    color:#1f66cc;
+}
+
+.badge-unit{
+    background:#eef8f2;
+    color:var(--green);
+}
+
+.list-stack{
+    display:flex;
+    flex-direction:column;
+    gap:12px;
+}
+
+.assignment-chip{
+    display:flex;
+    justify-content:space-between;
+    gap:12px;
+    align-items:flex-start;
+    padding:14px;
+    border:1px solid var(--line);
+    border-radius:12px;
+    background:#fbfdff;
+    flex-wrap:wrap;
+}
+
+.assignment-chip-left{
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+}
+
+.assignment-chip-right a{
+    font-size:13px;
+    font-weight:700;
+    color:var(--danger);
+}
+
+.table-wrap{
+    width:100%;
+}
+
+.table-scroll{
+    overflow-x:auto;
+    border:1px solid var(--line);
+    border-radius:12px;
+}
+
+table{
+    width:100%;
+    border-collapse:collapse;
+    background:#fff;
+    min-width:760px;
+}
+
+thead th{
+    background:var(--head);
+    color:var(--subtitle);
+    font-size:13px;
+    font-weight:700;
+    text-align:left;
+    padding:14px 16px;
+    border-bottom:1px solid var(--line);
+}
+
+tbody td{
+    padding:14px 16px;
+    border-bottom:1px solid #e9eef5;
+    font-size:14px;
+    vertical-align:top;
+}
+
+tbody tr:last-child td{
+    border-bottom:none;
+}
+
+.actions{
+    display:flex;
+    gap:8px;
+    flex-wrap:wrap;
+}
+
+.action-btn{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    padding:8px 12px;
+    border-radius:8px;
+    font-size:13px;
+    font-weight:700;
+    text-decoration:none;
+    transition:background .2s ease, color .2s ease;
+}
+
+.edit-btn{
+    background:#eef4ff;
+    color:var(--blue);
+    border:1px solid #cfe0ff;
+}
+
+.edit-btn:hover{
+    background:#dceaff;
+    text-decoration:none;
+}
+
+.delete-btn{
+    background:#fff1f2;
+    color:var(--danger);
+    border:1px solid #fecdd3;
+}
+
+.delete-btn:hover{
+    background:#ffe4e6;
+    color:var(--danger-hover);
+    text-decoration:none;
+}
+
+.empty-row{
+    color:var(--muted);
+    font-size:14px;
+    text-align:center;
+    padding:22px !important;
+}
+
+.block-section{
+    padding:14px;
+    border:1px solid var(--line);
+    border-radius:12px;
+    background:#fafcff;
+}
+
+.block-title{
+    margin:0 0 8px;
+    font-size:15px;
+    font-weight:700;
+    color:var(--subtitle);
+}
+
+@media (max-width: 768px){
+    body{
+        padding:20px;
+    }
+
+    .card{
+        padding:18px;
+    }
+
+    .card-header h1{
+        font-size:24px;
+    }
+
+    .card-header h2{
+        font-size:20px;
+    }
+
+    .form-grid{
+        grid-template-columns:1fr;
+    }
+
+    .topbar{
+        flex-direction:column;
+        align-items:flex-start;
+    }
+
+    .links{
+        width:100%;
+        flex-direction:column;
+        gap:8px;
+    }
+
+    .assignment-chip{
+        flex-direction:column;
+    }
+
+    .actions{
+        flex-direction:column;
+        align-items:flex-start;
+    }
+
+    .action-btn{
+        width:100%;
+    }
+}
 </style>
 </head>
 <body>
@@ -490,7 +972,65 @@ $currentTeacherAssignments = $form['teacher_id'] !== ''
             <?php } ?>
 
             <form method="post" class="form-grid">
-                <!-- Aquí va tu formulario de selección de docente, programa, cursos y unidades -->
+                <div class="field">
+                    <label for="teacher_id">Docente</label>
+                    <select name="teacher_id" id="teacher_id" required>
+                        <option value="">Seleccione un docente con perfil</option>
+                        <?php foreach ($teachers as $teacher) { ?>
+                            <?php $tid = (string) ($teacher['id'] ?? ''); ?>
+                            <option value="<?php echo h($tid); ?>" <?php echo $tid === $form['teacher_id'] ? 'selected' : ''; ?>>
+                                <?php echo h((string) ($teacher['name'] ?? 'Docente')); ?>
+                            </option>
+                        <?php } ?>
+                    </select>
+                </div>
+
+                <div class="field">
+                    <label for="program_type">Programa</label>
+                    <select name="program_type" id="program_type" required>
+                        <option value="technical" <?php echo $form['program_type'] === 'technical' ? 'selected' : ''; ?>>Técnico</option>
+                        <option value="english" <?php echo $form['program_type'] === 'english' ? 'selected' : ''; ?>>English</option>
+                    </select>
+                </div>
+
+                <div class="field full block-section" id="englishBlock">
+                    <div class="block-title">Cursos de inglés</div>
+                    <label for="english_course_ids">Seleccione uno o varios cursos</label>
+                    <select name="english_course_ids[]" id="english_course_ids" multiple>
+                        <?php foreach ($englishTargets as $target) { ?>
+                            <?php $targetId = (string) ($target['id'] ?? ''); ?>
+                            <option value="<?php echo h($targetId); ?>" <?php echo in_array($targetId, $form['english_course_ids'], true) ? 'selected' : ''; ?>>
+                                <?php echo h((string) ($target['name'] ?? 'Curso')); ?>
+                            </option>
+                        <?php } ?>
+                    </select>
+                    <div class="helper-text">Mantén presionada la tecla Ctrl para seleccionar varios cursos.</div>
+                </div>
+
+                <div class="field full block-section" id="technicalCourseBlock">
+                    <div class="block-title">Semestre técnico</div>
+                    <label for="technical_course_id">Seleccione el semestre</label>
+                    <select name="technical_course_id" id="technical_course_id">
+                        <option value="">Seleccione semestre técnico</option>
+                        <?php foreach ($technicalCourses as $course) { ?>
+                            <?php $courseId = (string) ($course['id'] ?? ''); ?>
+                            <option value="<?php echo h($courseId); ?>" <?php echo $courseId === $form['technical_course_id'] ? 'selected' : ''; ?>>
+                                <?php echo h((string) ($course['name'] ?? 'Semestre')); ?>
+                            </option>
+                        <?php } ?>
+                    </select>
+                </div>
+
+                <div class="field full block-section" id="technicalUnitsBlock">
+                    <div class="block-title">Unidades técnicas</div>
+                    <label for="technical_unit_ids">Seleccione una o varias unidades</label>
+                    <select name="technical_unit_ids[]" id="technical_unit_ids" multiple></select>
+                    <div class="helper-text">Primero selecciona el semestre. Luego aparecerán las unidades disponibles.</div>
+                </div>
+
+                <div class="field full">
+                    <button class="button-primary" type="submit">Guardar asignaciones</button>
+                </div>
             </form>
         </div>
 
@@ -528,6 +1068,7 @@ $currentTeacherAssignments = $form['teacher_id'] !== ''
                         </div>
                     <?php } ?>
                 </div>
+
                 <div style="margin-top:14px;">
                     <a class="action-btn delete-btn" href="teacher_assignments.php?delete_teacher=<?php echo h($form['teacher_id']); ?>" onclick="return confirm('¿Eliminar todas las asignaciones de este docente?')">Eliminar todas las asignaciones del docente</a>
                 </div>
@@ -539,6 +1080,7 @@ $currentTeacherAssignments = $form['teacher_id'] !== ''
             <div class="card-header">
                 <h2>Todas las asignaciones</h2>
             </div>
+
             <div class="table-wrap">
                 <div class="table-scroll">
                     <table>
@@ -598,6 +1140,7 @@ const preselectedTechnicalUnitIds = <?php echo json_encode(array_values($form['t
 function toggleProgramBlocks() {
     const value = programType ? programType.value : 'technical';
     const isEnglish = value === 'english';
+
     if (englishBlock) englishBlock.style.display = isEnglish ? 'block' : 'none';
     if (technicalCourseBlock) technicalCourseBlock.style.display = isEnglish ? 'none' : 'block';
     if (technicalUnitsBlock) technicalUnitsBlock.style.display = isEnglish ? 'none' : 'block';
@@ -605,8 +1148,10 @@ function toggleProgramBlocks() {
 
 function renderTechnicalUnits() {
     if (!technicalCourseId || !technicalUnitIds) return;
+
     const courseId = String(technicalCourseId.value || '');
     technicalUnitIds.innerHTML = '';
+
     technicalUnits
         .filter(item => String(item.course_id || '') === courseId)
         .forEach(item => {
@@ -614,9 +1159,11 @@ function renderTechnicalUnits() {
             const value = String(item.id || '');
             option.value = value;
             option.textContent = String(item.name || 'Unidad');
+
             if (Array.isArray(preselectedTechnicalUnitIds) && preselectedTechnicalUnitIds.includes(value)) {
                 option.selected = true;
             }
+
             technicalUnitIds.appendChild(option);
         });
 }
@@ -625,11 +1172,11 @@ if (programType) {
     toggleProgramBlocks();
     programType.addEventListener('change', toggleProgramBlocks);
 }
+
 if (technicalCourseId) {
     renderTechnicalUnits();
     technicalCourseId.addEventListener('change', renderTechnicalUnits);
 }
 </script>
-
 </body>
 </html>
