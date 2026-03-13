@@ -7,11 +7,16 @@ if (!isset($_SESSION['academic_logged']) || $_SESSION['academic_logged'] !== tru
 }
 
 $unitId = trim((string) ($_GET['unit'] ?? ''));
+$assignmentId = trim((string) ($_GET['assignment'] ?? ''));
 $mode = trim((string) ($_GET['mode'] ?? 'view'));
 $mode = $mode === 'edit' ? 'edit' : 'view';
 
 if ($unitId === '') {
     die('Unidad no especificada.');
+}
+
+if ($assignmentId === '') {
+    die('Asignación no especificada.');
 }
 
 $teacherId = (string) ($_SESSION['teacher_id'] ?? '');
@@ -27,6 +32,15 @@ function get_pdo_connection(): ?PDO
         return null;
     }
 
+    static $cachedPdo = null;
+    static $loaded = false;
+
+    if ($loaded) {
+        return $cachedPdo;
+    }
+
+    $loaded = true;
+
     $dbFile = __DIR__ . '/../config/db.php';
     if (!file_exists($dbFile)) {
         return null;
@@ -34,15 +48,103 @@ function get_pdo_connection(): ?PDO
 
     try {
         require $dbFile;
-        return (isset($pdo) && $pdo instanceof PDO) ? $pdo : null;
+        if (isset($pdo) && $pdo instanceof PDO) {
+            $cachedPdo = $pdo;
+        }
     } catch (Throwable $e) {
         return null;
+    }
+
+    return $cachedPdo;
+}
+
+function table_exists(PDO $pdo, string $tableName): bool
+{
+    try {
+        $stmt = $pdo->prepare("
+            SELECT 1
+            FROM information_schema.tables
+            WHERE table_schema = 'public'
+              AND table_name = :table_name
+            LIMIT 1
+        ");
+        $stmt->execute(['table_name' => $tableName]);
+        return (bool) $stmt->fetchColumn();
+    } catch (Throwable $e) {
+        return false;
+    }
+}
+
+function load_assignment(PDO $pdo, string $assignmentId): ?array
+{
+    if ($assignmentId === '') {
+        return null;
+    }
+
+    try {
+        $stmt = $pdo->prepare("
+            SELECT
+                id,
+                teacher_id,
+                teacher_name,
+                program_type,
+                course_id,
+                course_name,
+                unit_id,
+                unit_name,
+                updated_at
+            FROM teacher_assignments
+            WHERE id = :id
+            LIMIT 1
+        ");
+        $stmt->execute(['id' => $assignmentId]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        return is_array($row) ? $row : null;
+    } catch (Throwable $e) {
+        return null;
+    }
+}
+
+function load_teacher_permission_from_accounts(PDO $pdo, string $teacherId): string
+{
+    if ($teacherId === '') {
+        return 'viewer';
+    }
+
+    try {
+        if (!table_exists($pdo, 'teacher_accounts')) {
+            return 'viewer';
+        }
+
+        $stmt = $pdo->prepare("
+            SELECT permission
+            FROM teacher_accounts
+            WHERE teacher_id = :teacher_id
+            ORDER BY updated_at DESC NULLS LAST
+            LIMIT 1
+        ");
+        $stmt->execute(['teacher_id' => $teacherId]);
+        $permission = (string) $stmt->fetchColumn();
+
+        return $permission === 'editor' ? 'editor' : 'viewer';
+    } catch (Throwable $e) {
+        return 'viewer';
     }
 }
 
 $pdo = get_pdo_connection();
 if (!$pdo) {
     die('Base de datos no disponible.');
+}
+
+$assignment = load_assignment($pdo, $assignmentId);
+if (!$assignment) {
+    die('Asignación no encontrada.');
+}
+
+if ((string) ($assignment['teacher_id'] ?? '') !== $teacherId) {
+    die('No tienes permiso para esta asignación.');
 }
 
 try {
@@ -62,56 +164,28 @@ if (!$unit) {
     die('Unidad no encontrada.');
 }
 
-try {
-    $stmtAccounts = $pdo->prepare("
-        SELECT teacher_id, scope, target_id, permission
-        FROM teacher_accounts
-        WHERE teacher_id = :teacher_id
-    ");
-    $stmtAccounts->execute(['teacher_id' => $teacherId]);
-    $accounts = $stmtAccounts->fetchAll(PDO::FETCH_ASSOC) ?: [];
-} catch (Throwable $e) {
-    $accounts = [];
-}
+$programType = (string) ($assignment['program_type'] ?? 'technical');
+$assignmentCourseId = (string) ($assignment['course_id'] ?? '');
+$assignmentUnitId = (string) ($assignment['unit_id'] ?? '');
+$permission = load_teacher_permission_from_accounts($pdo, $teacherId);
 
 $allowed = false;
-$allowEdit = false;
 
-foreach ($accounts as $account) {
-    if ((string) ($account['teacher_id'] ?? '') !== $teacherId) {
-        continue;
-    }
-
-    $scope = (string) ($account['scope'] ?? 'technical');
-    $targetId = (string) ($account['target_id'] ?? '');
-    $permission = (string) ($account['permission'] ?? 'viewer');
-
-    if (
-        $scope === 'english' &&
-        $targetId !== '' &&
-        $targetId === (string) ($unit['phase_id'] ?? '')
-    ) {
-        $allowed = true;
-        if ($permission === 'editor') {
-            $allowEdit = true;
-        }
-    }
-
-    if (
-        $scope === 'technical' &&
-        $targetId !== '' &&
-        $targetId === (string) ($unit['course_id'] ?? '')
-    ) {
-        $allowed = true;
-        if ($permission === 'editor') {
-            $allowEdit = true;
-        }
+if ($programType === 'english') {
+    $allowed = $assignmentCourseId !== '' && $assignmentCourseId === (string) ($unit['phase_id'] ?? '');
+} else {
+    if ($assignmentUnitId !== '') {
+        $allowed = $assignmentUnitId === (string) ($unit['id'] ?? '');
+    } else {
+        $allowed = $assignmentCourseId !== '' && $assignmentCourseId === (string) ($unit['course_id'] ?? '');
     }
 }
 
 if (!$allowed) {
     die('No tienes permiso para esta unidad.');
 }
+
+$allowEdit = $permission === 'editor';
 
 if ($mode === 'edit' && !$allowEdit) {
     $mode = 'view';
@@ -122,7 +196,7 @@ try {
         SELECT id, type, title, name, position
         FROM activities
         WHERE unit_id = :unit_id
-        ORDER BY position ASC, id ASC
+        ORDER BY COALESCE(position, 0) ASC, id ASC
     ");
     $stmtActivities->execute(['unit_id' => $unitId]);
     $activities = $stmtActivities->fetchAll(PDO::FETCH_ASSOC) ?: [];
@@ -142,7 +216,17 @@ $activityLabels = [
     'drag_drop' => 'Drag & Drop',
     'match' => 'Match',
     'external' => 'External',
+    'build_sentence' => 'Build the Sentence',
 ];
+
+$courseName = (string) ($assignment['course_name'] ?? 'Curso');
+$assignmentUnitName = (string) ($assignment['unit_name'] ?? '');
+$programLabel = $programType === 'english' ? 'English' : 'Técnico';
+
+$backHref = 'teacher_course.php?assignment=' . urlencode($assignmentId);
+if ($mode === 'edit') {
+    $backHref .= '&mode=edit';
+}
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -161,6 +245,10 @@ $activityLabels = [
     --blue:#2563eb;
     --blue-hover:#1d4ed8;
     --green:#15803d;
+    --green-hover:#166534;
+    --badge-bg:#eef2ff;
+    --badge-text:#1f4ec9;
+    --shadow:0 8px 24px rgba(0,0,0,.08);
 }
 *{
     box-sizing:border-box;
@@ -168,7 +256,7 @@ $activityLabels = [
 body{
     margin:0;
     background:var(--bg);
-    font-family:Arial,sans-serif;
+    font-family:Arial, "Segoe UI", sans-serif;
     padding:24px;
     color:var(--text);
 }
@@ -198,6 +286,22 @@ body{
     margin:0 0 24px;
     color:var(--muted);
     font-size:16px;
+    line-height:1.6;
+}
+.badges{
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+    margin:0 0 18px;
+}
+.badge{
+    display:inline-block;
+    padding:5px 10px;
+    border-radius:999px;
+    background:var(--badge-bg);
+    color:var(--badge-text);
+    font-size:12px;
+    font-weight:700;
 }
 .section-title{
     margin:0 0 14px;
@@ -211,6 +315,7 @@ body{
     border-radius:12px;
     padding:16px;
     margin-top:12px;
+    box-shadow:var(--shadow);
 }
 .card h3{
     margin:0 0 10px;
@@ -242,12 +347,16 @@ body{
 .btn.edit{
     background:var(--green);
 }
+.btn.edit:hover{
+    background:var(--green-hover);
+}
 .empty{
     background:#fff;
     border:1px solid var(--line);
     border-radius:12px;
     padding:16px;
     color:var(--muted);
+    box-shadow:var(--shadow);
 }
 @media (max-width: 768px){
     body{
@@ -263,11 +372,20 @@ body{
 <div class="page">
     <div class="top">
         <h1><?php echo h((string) ($unit['name'] ?? 'Unidad')); ?></h1>
-        <a class="back" href="dashboard.php">← Volver</a>
+        <a class="back" href="<?php echo h($backHref); ?>">← Volver</a>
+    </div>
+
+    <div class="badges">
+        <span class="badge"><?php echo h($programLabel); ?></span>
+        <span class="badge"><?php echo h($courseName); ?></span>
+        <?php if ($assignmentUnitName !== '') { ?>
+            <span class="badge"><?php echo h($assignmentUnitName); ?></span>
+        <?php } ?>
+        <span class="badge"><?php echo h($mode === 'edit' ? 'Modo edición' : 'Modo visualización'); ?></span>
     </div>
 
     <p class="meta">
-        Modo: <strong><?php echo h($mode === 'edit' ? 'Edición' : 'Visualización'); ?></strong>
+        Unidad vinculada a la asignación del docente.
     </p>
 
     <h2 class="section-title">Actividades de la unidad</h2>
@@ -282,20 +400,23 @@ body{
             $typeLabel = $activityLabels[$type] ?? ucwords(str_replace('_', ' ', $type));
             $title = (string) ($activity['title'] ?? $activity['name'] ?? $typeLabel);
             $activityBase = '../activities/' . rawurlencode($type);
+            $viewerFile = __DIR__ . '/../activities/' . $type . '/viewer.php';
             ?>
             <div class="card">
                 <h3><?php echo h($title); ?></h3>
                 <p>Tipo: <strong><?php echo h($typeLabel); ?></strong></p>
 
                 <div class="actions">
-                    <a
-                        class="btn"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        href="<?php echo h($activityBase . '/viewer.php?id=' . urlencode($activityId) . '&unit=' . urlencode($unitId)); ?>"
-                    >
-                        Ver actividad
-                    </a>
+                    <?php if (file_exists($viewerFile)) { ?>
+                        <a
+                            class="btn"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            href="<?php echo h($activityBase . '/viewer.php?id=' . urlencode($activityId) . '&unit=' . urlencode($unitId) . '&assignment=' . urlencode($assignmentId)); ?>"
+                        >
+                            Ver actividad
+                        </a>
+                    <?php } ?>
 
                     <?php if ($allowEdit) { ?>
                         <a
