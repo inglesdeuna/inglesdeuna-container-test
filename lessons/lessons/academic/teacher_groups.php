@@ -6,48 +6,37 @@ if (!isset($_SESSION['admin_logged']) || $_SESSION['admin_logged'] !== true) {
     exit;
 }
 
-function h(string $value): string
-{
+function h(string $value): string {
     return htmlspecialchars($value, ENT_QUOTES, 'UTF-8');
 }
 
-function get_pdo_connection(): ?PDO
-{
+function get_pdo_connection(): ?PDO {
     if (!getenv('DATABASE_URL')) {
         return null;
     }
-
     static $cachedPdo = null;
     static $loaded = false;
-
     if ($loaded) {
         return $cachedPdo;
     }
-
     $loaded = true;
-
     $dbFile = __DIR__ . '/../config/db.php';
     if (!file_exists($dbFile)) {
         return null;
     }
-
     require $dbFile;
-
     if (!isset($pdo) || !($pdo instanceof PDO)) {
         return null;
     }
-
     $cachedPdo = $pdo;
     return $cachedPdo;
 }
 
-function delete_teacher_assignments_from_database(string $teacherId): bool
-{
+function delete_teacher_assignments_from_database(string $teacherId): bool {
     $pdo = get_pdo_connection();
     if (!$pdo || $teacherId === '') {
         return false;
     }
-
     try {
         $stmt = $pdo->prepare("DELETE FROM teacher_assignments WHERE teacher_id = :teacher_id");
         return $stmt->execute(['teacher_id' => $teacherId]);
@@ -56,29 +45,22 @@ function delete_teacher_assignments_from_database(string $teacherId): bool
     }
 }
 
-function load_grouped_assignments_from_database(): array
-{
+function load_grouped_assignments_from_database(): array {
     $pdo = get_pdo_connection();
     if (!$pdo) {
         return [];
     }
-
     try {
         $stmt = $pdo->query("
             SELECT teacher_id, teacher_name, program_type, course_name, unit_name, id
             FROM teacher_assignments
             ORDER BY teacher_name ASC, program_type ASC, course_name ASC, COALESCE(unit_name, '') ASC
         ");
-
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
         $grouped = [];
-
         foreach ($rows as $row) {
             $teacherId = (string) ($row['teacher_id'] ?? '');
-            if ($teacherId === '') {
-                continue;
-            }
-
+            if ($teacherId === '') continue;
             if (!isset($grouped[$teacherId])) {
                 $grouped[$teacherId] = [
                     'teacher_id' => $teacherId,
@@ -86,7 +68,6 @@ function load_grouped_assignments_from_database(): array
                     'items' => [],
                 ];
             }
-
             $grouped[$teacherId]['items'][] = [
                 'id' => (string) ($row['id'] ?? ''),
                 'program_type' => (string) ($row['program_type'] ?? ''),
@@ -94,7 +75,6 @@ function load_grouped_assignments_from_database(): array
                 'unit_name' => (string) ($row['unit_name'] ?? ''),
             ];
         }
-
         return array_values($grouped);
     } catch (Throwable $e) {
         return [];
@@ -229,6 +209,11 @@ body{
     <?php if (empty($teachers)) { ?>
         <div class="card">
             <div class="empty">No hay docentes con asignaciones actualmente.</div>
+            <div class="empty">Primero crea perfil y luego asigna cursos.</div>
+            <div class="teacher-actions" style="margin-top:10px;">
+                <a class="btn btn-blue" href="teacher_profiles.php">Crear/editar perfil</a>
+                <a class="btn btn-blue" href="teacher_assignments.php">Ir a asignaciones</a>
+            </div>
         </div>
     <?php } else { ?>
         <?php foreach ($teachers as $teacher) { ?>
@@ -238,13 +223,11 @@ body{
                         <div class="teacher-name">Prof. <?php echo h((string) ($teacher['teacher_name'] ?? 'Docente')); ?></div>
                         <div class="teacher-meta"><?php echo count((array) ($teacher['items'] ?? [])); ?> asignación(es)</div>
                     </div>
-
                     <div class="teacher-actions">
                         <a class="btn btn-blue" href="teacher_assignments.php?teacher_id=<?php echo h((string) ($teacher['teacher_id'] ?? '')); ?>">Editar</a>
                         <a class="btn btn-red" href="teacher_groups.php?remove_teacher=<?php echo h((string) ($teacher['teacher_id'] ?? '')); ?>" onclick="return confirm('¿Eliminar todas las asignaciones de este docente?')">Eliminar</a>
                     </div>
                 </div>
-
                 <div class="items">
                     <?php foreach ((array) ($teacher['items'] ?? []) as $item) { ?>
                         <?php
@@ -252,20 +235,7 @@ body{
                             $courseName = (string) ($item['course_name'] ?? '');
                             $unitName = (string) ($item['unit_name'] ?? '');
                         ?>
-
                         <?php if ($program === 'english') { ?>
                             <span class="badge badge-eng"><?php echo h($courseName); ?> · curso completo</span>
                         <?php } else { ?>
-                            <span class="badge badge-tech"><?php echo h($courseName); ?></span>
-                            <?php if ($unitName !== '') { ?>
-                                <span class="badge badge-unit"><?php echo h($unitName); ?></span>
-                            <?php } ?>
-                        <?php } ?>
-                    <?php } ?>
-                </div>
-            </div>
-        <?php } ?>
-    <?php } ?>
-</div>
-</body>
-</html>
+                            <span class="
