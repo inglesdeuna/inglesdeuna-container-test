@@ -14,20 +14,27 @@ function get_pdo_connection(): ?PDO {
     if (!getenv('DATABASE_URL')) {
         return null;
     }
+
     static $cachedPdo = null;
     static $loaded = false;
+
     if ($loaded) {
         return $cachedPdo;
     }
+
     $loaded = true;
     $dbFile = __DIR__ . '/../config/db.php';
+
     if (!file_exists($dbFile)) {
         return null;
     }
+
     require $dbFile;
+
     if (!isset($pdo) || !($pdo instanceof PDO)) {
         return null;
     }
+
     $cachedPdo = $pdo;
     return $cachedPdo;
 }
@@ -37,6 +44,7 @@ function delete_teacher_assignments_from_database(string $teacherId): bool {
     if (!$pdo || $teacherId === '') {
         return false;
     }
+
     try {
         $stmt = $pdo->prepare("DELETE FROM teacher_assignments WHERE teacher_id = :teacher_id");
         return $stmt->execute(['teacher_id' => $teacherId]);
@@ -50,17 +58,23 @@ function load_grouped_assignments_from_database(): array {
     if (!$pdo) {
         return [];
     }
+
     try {
         $stmt = $pdo->query("
             SELECT teacher_id, teacher_name, program_type, course_name, unit_name, id
             FROM teacher_assignments
             ORDER BY teacher_name ASC, program_type ASC, course_name ASC, COALESCE(unit_name, '') ASC
         ");
+
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
         $grouped = [];
+
         foreach ($rows as $row) {
             $teacherId = (string) ($row['teacher_id'] ?? '');
-            if ($teacherId === '') continue;
+            if ($teacherId === '') {
+                continue;
+            }
+
             if (!isset($grouped[$teacherId])) {
                 $grouped[$teacherId] = [
                     'teacher_id' => $teacherId,
@@ -68,6 +82,7 @@ function load_grouped_assignments_from_database(): array {
                     'items' => [],
                 ];
             }
+
             $grouped[$teacherId]['items'][] = [
                 'id' => (string) ($row['id'] ?? ''),
                 'program_type' => (string) ($row['program_type'] ?? ''),
@@ -75,6 +90,7 @@ function load_grouped_assignments_from_database(): array {
                 'unit_name' => (string) ($row['unit_name'] ?? ''),
             ];
         }
+
         return array_values($grouped);
     } catch (Throwable $e) {
         return [];
@@ -110,37 +126,97 @@ $teachers = load_grouped_assignments_from_database();
     --shadow:0 8px 24px rgba(0,0,0,.08);
     --radius:14px;
 }
-*{box-sizing:border-box;}
+*{
+    box-sizing:border-box;
+}
 body{
     margin:0;
-    font-family:Arial, sans-serif;
+    font-family:Arial, "Segoe UI", sans-serif;
     background:var(--bg);
     color:var(--text);
     min-height:100vh;
     padding:32px 20px;
 }
-.wrapper{width:100%;max-width:980px;margin:0 auto;}
+.wrapper{
+    width:100%;
+    max-width:980px;
+    margin:0 auto;
+}
+.topbar{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    gap:16px;
+    margin-bottom:18px;
+    flex-wrap:wrap;
+}
 .back{
-    display:inline-flex;align-items:center;justify-content:center;min-height:38px;padding:8px 14px;
-    border-radius:10px;background:var(--blue);color:#fff;text-decoration:none;font-weight:700;font-size:13px;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    min-height:40px;
+    padding:8px 14px;
+    border-radius:10px;
+    background:var(--blue);
+    color:#fff;
+    text-decoration:none;
+    font-weight:700;
+    font-size:13px;
+}
+.back:hover{
+    background:var(--blue-hover);
+}
+.links{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+}
+.link-secondary{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    min-height:40px;
+    padding:8px 14px;
+    border-radius:10px;
+    background:#eef4ff;
+    color:var(--blue);
+    text-decoration:none;
+    font-weight:700;
+    font-size:13px;
+    border:1px solid #cfe0ff;
+}
+.link-secondary:hover{
+    background:#dceaff;
 }
 .page-title{
-    margin:14px 0 18px;
+    margin:10px 0 18px;
     color:var(--subtitle);
-    font-size:24px;
+    font-size:28px;
     font-weight:700;
 }
+.page-subtitle{
+    margin:-8px 0 18px;
+    color:var(--muted);
+    font-size:14px;
+    line-height:1.5;
+}
 .notice{
-    padding:12px 14px;border-radius:10px;background:#ecfdf3;border:1px solid #b9eacb;
-    color:#166534;margin-bottom:16px;font-size:14px;font-weight:600;
+    padding:12px 14px;
+    border-radius:10px;
+    background:#ecfdf3;
+    border:1px solid #b9eacb;
+    color:#166534;
+    margin-bottom:16px;
+    font-size:14px;
+    font-weight:600;
 }
 .card{
     background:var(--card);
     border:1px solid var(--line);
     border-radius:var(--radius);
     box-shadow:var(--shadow);
-    padding:14px;
-    margin-bottom:14px;
+    padding:16px;
+    margin-bottom:16px;
 }
 .teacher-head{
     display:flex;
@@ -150,7 +226,7 @@ body{
     flex-wrap:wrap;
 }
 .teacher-name{
-    font-size:16px;
+    font-size:18px;
     font-weight:700;
     color:#1f3c75;
     margin-bottom:6px;
@@ -165,42 +241,99 @@ body{
     flex-wrap:wrap;
 }
 .btn{
-    display:inline-flex;align-items:center;justify-content:center;padding:8px 12px;border-radius:10px;
-    text-decoration:none;font-weight:700;font-size:12px;border:none;cursor:pointer;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    padding:8px 12px;
+    border-radius:10px;
+    text-decoration:none;
+    font-weight:700;
+    font-size:12px;
+    border:none;
+    cursor:pointer;
 }
-.btn-blue{background:var(--blue);color:#fff;}
-.btn-blue:hover{background:var(--blue-hover);}
-.btn-red{background:#fee2e2;color:#b91c1c;}
-.btn-red:hover{background:#fecaca;}
+.btn-blue{
+    background:var(--blue);
+    color:#fff;
+}
+.btn-blue:hover{
+    background:var(--blue-hover);
+}
+.btn-red{
+    background:#fee2e2;
+    color:#b91c1c;
+}
+.btn-red:hover{
+    background:#fecaca;
+}
 .items{
     display:flex;
     flex-wrap:wrap;
     gap:8px;
-    margin-top:12px;
+    margin-top:14px;
 }
 .badge{
     display:inline-flex;
     align-items:center;
     gap:6px;
-    padding:6px 10px;
+    padding:7px 11px;
     border-radius:999px;
     font-size:12px;
     font-weight:700;
     white-space:nowrap;
 }
-.badge-tech{background:#eef4ff;color:#1f66cc;}
-.badge-eng{background:#fff3e8;color:var(--orange);}
-.badge-unit{background:#eef8f2;color:var(--green);}
+.badge-tech{
+    background:#eef4ff;
+    color:#1f66cc;
+}
+.badge-eng{
+    background:#fff3e8;
+    color:var(--orange);
+}
+.badge-unit{
+    background:#eef8f2;
+    color:var(--green);
+}
 .empty{
     color:var(--muted);
     font-size:14px;
+    line-height:1.6;
+}
+@media (max-width: 768px){
+    body{
+        padding:20px 16px;
+    }
+    .page-title{
+        font-size:24px;
+    }
+    .teacher-head{
+        flex-direction:column;
+    }
+    .teacher-actions{
+        width:100%;
+    }
+    .btn,
+    .link-secondary,
+    .back{
+        width:100%;
+    }
 }
 </style>
 </head>
 <body>
 <div class="wrapper">
-    <a class="back" href="teacher_assignments.php">← Volver a asignaciones</a>
+    <div class="topbar">
+        <a class="back" href="teacher_assignments.php">← Volver a asignaciones</a>
+        <div class="links">
+            <a class="link-secondary" href="teacher_profiles.php">Perfiles docentes</a>
+            <a class="link-secondary" href="../admin/dashboard.php">Dashboard</a>
+        </div>
+    </div>
+
     <div class="page-title">Docentes y Grupos</div>
+    <div class="page-subtitle">
+        Aquí puedes ver todos los docentes que tienen asignaciones activas, agrupadas por curso, semestre y unidad.
+    </div>
 
     <?php if (isset($_GET['saved'])) { ?>
         <div class="notice">Asignaciones actualizadas correctamente.</div>
@@ -210,7 +343,7 @@ body{
         <div class="card">
             <div class="empty">No hay docentes con asignaciones actualmente.</div>
             <div class="empty">Primero crea perfil y luego asigna cursos.</div>
-            <div class="teacher-actions" style="margin-top:10px;">
+            <div class="teacher-actions" style="margin-top:12px;">
                 <a class="btn btn-blue" href="teacher_profiles.php">Crear/editar perfil</a>
                 <a class="btn btn-blue" href="teacher_assignments.php">Ir a asignaciones</a>
             </div>
@@ -220,14 +353,24 @@ body{
             <div class="card">
                 <div class="teacher-head">
                     <div>
-                        <div class="teacher-name">Prof. <?php echo h((string) ($teacher['teacher_name'] ?? 'Docente')); ?></div>
-                        <div class="teacher-meta"><?php echo count((array) ($teacher['items'] ?? [])); ?> asignación(es)</div>
+                        <div class="teacher-name">
+                            Prof. <?php echo h((string) ($teacher['teacher_name'] ?? 'Docente')); ?>
+                        </div>
+                        <div class="teacher-meta">
+                            <?php echo count((array) ($teacher['items'] ?? [])); ?> asignación(es)
+                        </div>
                     </div>
+
                     <div class="teacher-actions">
-                        <a class="btn btn-blue" href="teacher_assignments.php?teacher_id=<?php echo h((string) ($teacher['teacher_id'] ?? '')); ?>">Editar</a>
-                        <a class="btn btn-red" href="teacher_groups.php?remove_teacher=<?php echo h((string) ($teacher['teacher_id'] ?? '')); ?>" onclick="return confirm('¿Eliminar todas las asignaciones de este docente?')">Eliminar</a>
+                        <a class="btn btn-blue" href="teacher_assignments.php?teacher_id=<?php echo h((string) ($teacher['teacher_id'] ?? '')); ?>">
+                            Editar
+                        </a>
+                        <a class="btn btn-red" href="teacher_groups.php?remove_teacher=<?php echo h((string) ($teacher['teacher_id'] ?? '')); ?>" onclick="return confirm('¿Eliminar todas las asignaciones de este docente?')">
+                            Eliminar
+                        </a>
                     </div>
                 </div>
+
                 <div class="items">
                     <?php foreach ((array) ($teacher['items'] ?? []) as $item) { ?>
                         <?php
@@ -235,7 +378,26 @@ body{
                             $courseName = (string) ($item['course_name'] ?? '');
                             $unitName = (string) ($item['unit_name'] ?? '');
                         ?>
+
                         <?php if ($program === 'english') { ?>
-                            <span class="badge badge-eng"><?php echo h($courseName); ?> · curso completo</span>
+                            <span class="badge badge-eng">
+                                <?php echo h($courseName); ?> · curso completo
+                            </span>
                         <?php } else { ?>
-                            <span class="
+                            <span class="badge badge-tech">
+                                <?php echo h($courseName); ?>
+                            </span>
+                            <?php if ($unitName !== '') { ?>
+                                <span class="badge badge-unit">
+                                    <?php echo h($unitName); ?>
+                                </span>
+                            <?php } ?>
+                        <?php } ?>
+                    <?php } ?>
+                </div>
+            </div>
+        <?php } ?>
+    <?php } ?>
+</div>
+</body>
+</html>
