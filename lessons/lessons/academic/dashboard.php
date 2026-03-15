@@ -8,6 +8,11 @@ if (!isset($_SESSION['academic_logged']) || $_SESSION['academic_logged'] !== tru
 
 $teacherId = (string) ($_SESSION['teacher_id'] ?? '');
 $teacherName = (string) ($_SESSION['teacher_name'] ?? 'Docente');
+$teacherPhoto = trim((string) ($_SESSION['teacher_photo'] ?? ''));
+
+if ($teacherPhoto === '') {
+    $teacherPhoto = 'assets/img/default-teacher.png';
+}
 
 function h(string $value): string
 {
@@ -167,6 +172,7 @@ function load_english_units_by_phase_ids(array $phaseIds): array
     try {
         $placeholders = [];
         $params = [];
+
         foreach ($phaseIds as $index => $phaseId) {
             $key = ':phase_' . $index;
             $placeholders[] = $key;
@@ -212,9 +218,11 @@ function load_technical_units_for_assignments(array $technicalAssignments): arra
     foreach ($technicalAssignments as $assignment) {
         $unitId = trim((string) ($assignment['unit_id'] ?? ''));
         $courseId = trim((string) ($assignment['course_id'] ?? ''));
+
         if ($unitId !== '') {
             $unitIds[] = $unitId;
         }
+
         if ($courseId !== '') {
             $courseIds[] = $courseId;
         }
@@ -222,7 +230,6 @@ function load_technical_units_for_assignments(array $technicalAssignments): arra
 
     $unitIds = array_values(array_unique($unitIds));
     $courseIds = array_values(array_unique($courseIds));
-
     $result = [];
 
     if (!empty($unitIds)) {
@@ -230,6 +237,7 @@ function load_technical_units_for_assignments(array $technicalAssignments): arra
             $assignmentId = (string) ($assignment['id'] ?? '');
             $unitId = trim((string) ($assignment['unit_id'] ?? ''));
             $unitName = trim((string) ($assignment['unit_name'] ?? ''));
+
             if ($assignmentId !== '' && $unitId !== '') {
                 $result[$assignmentId][] = [
                     'id' => $unitId,
@@ -237,6 +245,7 @@ function load_technical_units_for_assignments(array $technicalAssignments): arra
                 ];
             }
         }
+
         return $result;
     }
 
@@ -269,6 +278,7 @@ function load_technical_units_for_assignments(array $technicalAssignments): arra
         try {
             $placeholders = [];
             $params = [];
+
             foreach ($courseIds as $index => $courseId) {
                 $key = ':course_' . $index;
                 $placeholders[] = $key;
@@ -292,6 +302,7 @@ function load_technical_units_for_assignments(array $technicalAssignments): arra
                 if ($courseId === '') {
                     continue;
                 }
+
                 $groupedByCourse[$courseId][] = [
                     'id' => (string) ($row['id'] ?? ''),
                     'name' => (string) ($row['name'] ?? 'Unidad'),
@@ -301,6 +312,7 @@ function load_technical_units_for_assignments(array $technicalAssignments): arra
             foreach ($technicalAssignments as $assignment) {
                 $assignmentId = (string) ($assignment['id'] ?? '');
                 $courseId = trim((string) ($assignment['course_id'] ?? ''));
+
                 if ($assignmentId !== '' && $courseId !== '' && isset($groupedByCourse[$courseId])) {
                     $result[$assignmentId] = $groupedByCourse[$courseId];
                 }
@@ -339,6 +351,7 @@ $technicalAssignments = [];
 
 foreach ($assignments as $assignment) {
     $programType = (string) ($assignment['program_type'] ?? '');
+
     if ($programType === 'english') {
         $phaseId = trim((string) ($assignment['course_id'] ?? ''));
         if ($phaseId !== '') {
@@ -462,12 +475,17 @@ body{
     height:160px;
     margin:0 auto 18px;
     border-radius:50%;
+    overflow:hidden;
     background:#dbe7f6;
     border:4px solid #edf3fb;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    font-size:64px;
+    box-shadow:0 6px 18px rgba(31, 60, 117, 0.12);
+}
+
+.avatar-image{
+    width:100%;
+    height:100%;
+    object-fit:cover;
+    display:block;
 }
 
 .teacher-name{
@@ -738,7 +756,14 @@ body{
     <div class="layout">
         <aside class="panel">
             <div class="profile-box">
-                <div class="avatar">👨‍🏫</div>
+                <div class="avatar">
+                    <img
+                        src="<?php echo h($teacherPhoto); ?>"
+                        alt="Foto de <?php echo h($teacherName); ?>"
+                        class="avatar-image"
+                    >
+                </div>
+
                 <div class="teacher-name"><?php echo h($teacherName); ?></div>
                 <div class="teacher-role">Docente</div>
 
