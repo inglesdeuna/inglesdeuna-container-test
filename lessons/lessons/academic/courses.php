@@ -17,6 +17,15 @@ function get_pdo_connection(): ?PDO
         return null;
     }
 
+    static $cachedPdo = null;
+    static $loaded = false;
+
+    if ($loaded) {
+        return $cachedPdo;
+    }
+
+    $loaded = true;
+
     $dbFile = __DIR__ . '/../config/db.php';
     if (!file_exists($dbFile)) {
         return null;
@@ -24,10 +33,14 @@ function get_pdo_connection(): ?PDO
 
     try {
         require $dbFile;
-        return (isset($pdo) && $pdo instanceof PDO) ? $pdo : null;
+        if (isset($pdo) && $pdo instanceof PDO) {
+            $cachedPdo = $pdo;
+        }
     } catch (Throwable $e) {
         return null;
     }
+
+    return $cachedPdo;
 }
 
 function get_activity_base_path(string $type): ?string
@@ -52,6 +65,7 @@ if (!$pdo) {
 $teacherId = trim((string) ($_SESSION['teacher_id'] ?? ''));
 $accountId = trim((string) ($_GET['account'] ?? ''));
 $assignmentId = trim((string) ($_GET['assignment'] ?? ''));
+$requestedUnitId = trim((string) ($_GET['unit'] ?? ''));
 $mode = (string) ($_GET['mode'] ?? 'view');
 $mode = $mode === 'edit' ? 'edit' : 'view';
 $step = max(0, (int) ($_GET['step'] ?? 0));
@@ -71,7 +85,12 @@ $titleFromSource = 'Curso';
 
 if ($assignmentId !== '') {
     try {
-        $stmt = $pdo->prepare("\n            SELECT id, teacher_id, program_type, course_id, course_name\n            FROM teacher_assignments\n            WHERE id = :id\n            LIMIT 1\n        ");
+        $stmt = $pdo->prepare("
+            SELECT id, teacher_id, program_type, course_id, course_name
+            FROM teacher_assignments
+            WHERE id = :id
+            LIMIT 1
+        ");
         $stmt->execute(['id' => $assignmentId]);
         $assignment = $stmt->fetch(PDO::FETCH_ASSOC);
     } catch (Throwable $e) {
@@ -87,7 +106,15 @@ if ($assignmentId !== '') {
     $titleFromSource = trim((string) ($assignment['course_name'] ?? 'Curso'));
 
     try {
-        $stmtPerm = $pdo->prepare("\n            SELECT permission\n            FROM teacher_accounts\n            WHERE teacher_id = :teacher_id\n              AND scope = :scope\n              AND target_id = :target_id\n            ORDER BY updated_at DESC NULLS LAST\n            LIMIT 1\n        ");
+        $stmtPerm = $pdo->prepare("
+            SELECT permission
+            FROM teacher_accounts
+            WHERE teacher_id = :teacher_id
+              AND scope = :scope
+              AND target_id = :target_id
+            ORDER BY updated_at DESC NULLS LAST
+            LIMIT 1
+        ");
         $stmtPerm->execute([
             'teacher_id' => $teacherId,
             'scope' => $scope,
@@ -100,7 +127,12 @@ if ($assignmentId !== '') {
     }
 } else {
     try {
-        $stmt = $pdo->prepare("\n            SELECT id, teacher_id, target_name, target_id, scope, permission\n            FROM teacher_accounts\n            WHERE id = :id\n            LIMIT 1\n        ");
+        $stmt = $pdo->prepare("
+            SELECT id, teacher_id, target_name, target_id, scope, permission
+            FROM teacher_accounts
+            WHERE id = :id
+            LIMIT 1
+        ");
         $stmt->execute(['id' => $accountId]);
         $account = $stmt->fetch(PDO::FETCH_ASSOC);
     } catch (Throwable $e) {
@@ -127,9 +159,19 @@ if ($mode === 'edit' && $permission !== 'editor') {
 
 try {
     if ($scope === 'english') {
-        $stmtUnits = $pdo->prepare("\n            SELECT id, name, position\n            FROM units\n            WHERE phase_id = :target\n            ORDER BY position ASC, id ASC\n        ");
+        $stmtUnits = $pdo->prepare("
+            SELECT id, name, COALESCE(position, 0) AS position
+            FROM units
+            WHERE phase_id = :target
+            ORDER BY position ASC, id ASC
+        ");
     } else {
-        $stmtUnits = $pdo->prepare("\n            SELECT id, name, position\n            FROM units\n            WHERE course_id = :target\n            ORDER BY position ASC, id ASC\n        ");
+        $stmtUnits = $pdo->prepare("
+            SELECT id, name, COALESCE(position, 0) AS position
+            FROM units
+            WHERE course_id = :target
+            ORDER BY position ASC, id ASC
+        ");
     }
 
     $stmtUnits->execute(['target' => $targetId]);
@@ -139,7 +181,7 @@ try {
 }
 
 $unitIds = array_values(array_filter(array_map(
-    fn ($unit) => (string) ($unit['id'] ?? ''),
+    static fn ($unit) => (string) ($unit['id'] ?? ''),
     $units
 )));
 
@@ -152,12 +194,26 @@ $activities = [];
 if (!empty($unitIds)) {
     try {
         $placeholders = implode(',', array_fill(0, count($unitIds), '?'));
-        $sql = "\n            SELECT id, type, unit_id, COALESCE(position, 0) AS pos\n            FROM activities\n            WHERE unit_id IN ($placeholders)\n            ORDER BY unit_id ASC, pos ASC, id ASC\n        ";
+        $sql = "
+            SELECT id, type, unit_id, COALESCE(position, 0) AS pos
+            FROM activities
+            WHERE unit_id IN ($placeholders)
+            ORDER BY unit_id ASC, pos ASC, id ASC
+        ";
         $stmtActivities = $pdo->prepare($sql);
         $stmtActivities->execute($unitIds);
         $activities = $stmtActivities->fetchAll(PDO::FETCH_ASSOC) ?: [];
     } catch (Throwable $e) {
         $activities = [];
+    }
+}
+
+if ($requestedUnitId !== '' && !empty($activities)) {
+    foreach ($activities as $index => $activityRow) {
+        if ((string) ($activityRow['unit_id'] ?? '') === $requestedUnitId) {
+            $step = $index;
+            break;
+        }
     }
 }
 
@@ -205,7 +261,7 @@ foreach ($activities as $index => $activity) {
 $viewerHref = null;
 $editorHref = null;
 $currentTypeLabel = 'Actividad';
-$currentUnitName = 'Unidad';
+$currentUnitName = $requestedUnitId !== '' ? ($unitMap[$requestedUnitId] ?? 'Unidad') : 'Unidad';
 
 if ($current) {
     $type = (string) ($current['type'] ?? '');
@@ -307,6 +363,7 @@ body{
     display:flex;
     gap:8px;
     align-items:center;
+    flex-wrap:wrap;
 }
 
 .badge{
@@ -474,7 +531,7 @@ body{
         <div class="header-right">
             <span class="badge"><?php echo h($scope === 'english' ? 'English' : 'Técnico'); ?></span>
             <span class="badge"><?php echo h($permission === 'editor' ? 'Puede editar' : 'Solo ver'); ?></span>
-            <a class="link-btn link-back" href="dashboard.php">Volver</a>
+            <a class="link-btn link-back" href="dashboard.php?assignment=<?php echo urlencode($assignmentId); ?>#unidades-curso">Volver</a>
             <a class="link-btn link-logout" href="logout.php">Cerrar sesión</a>
         </div>
     </div>
@@ -492,6 +549,7 @@ body{
                             echo h(http_build_query([
                                 'assignment' => $assignmentId,
                                 'account' => $accountId,
+                                'unit' => $requestedUnitId,
                                 'mode' => $mode,
                                 'step' => $itemStep,
                             ]));
@@ -527,6 +585,7 @@ body{
                     $baseParams = [
                         'assignment' => $assignmentId,
                         'account' => $accountId,
+                        'unit' => $requestedUnitId,
                         'mode' => $mode,
                     ];
                     ?>
@@ -547,4 +606,3 @@ body{
 </div>
 </body>
 </html>
-lessons/lessons/academic/t
