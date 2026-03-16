@@ -6,13 +6,10 @@ if (!isset($_SESSION['academic_logged']) || $_SESSION['academic_logged'] !== tru
     exit;
 }
 
-$teacherId = (string) ($_SESSION['teacher_id'] ?? '');
-$teacherName = (string) ($_SESSION['teacher_name'] ?? 'Docente');
-$teacherPhoto = trim((string) ($_SESSION['teacher_photo'] ?? ''));
-
-if ($teacherPhoto === '') {
-    $teacherPhoto = 'assets/img/default-teacher.png';
-}
+$teacherId = trim((string) ($_SESSION['teacher_id'] ?? ''));
+$teacherName = trim((string) ($_SESSION['teacher_name'] ?? 'Docente'));
+$flashMessage = '';
+$flashError = '';
 
 function h(string $value): string
 {
@@ -25,15 +22,6 @@ function get_pdo_connection(): ?PDO
         return null;
     }
 
-    static $cachedPdo = null;
-    static $loaded = false;
-
-    if ($loaded) {
-        return $cachedPdo;
-    }
-
-    $loaded = true;
-
     $dbFile = __DIR__ . '/../config/db.php';
     if (!file_exists($dbFile)) {
         return null;
@@ -41,44 +29,16 @@ function get_pdo_connection(): ?PDO
 
     try {
         require $dbFile;
-        if (isset($pdo) && $pdo instanceof PDO) {
-            $cachedPdo = $pdo;
-        }
+        return (isset($pdo) && $pdo instanceof PDO) ? $pdo : null;
     } catch (Throwable $e) {
         return null;
     }
-
-    return $cachedPdo;
 }
 
-function table_exists(PDO $pdo, string $tableName): bool
+function table_has_column(PDO $pdo, string $tableName, string $columnName): bool
 {
     try {
-        $stmt = $pdo->prepare("
-            SELECT 1
-            FROM information_schema.tables
-            WHERE table_schema = 'public'
-              AND table_name = :table_name
-            LIMIT 1
-        ");
-        $stmt->execute(['table_name' => $tableName]);
-        return (bool) $stmt->fetchColumn();
-    } catch (Throwable $e) {
-        return false;
-    }
-}
-
-function column_exists(PDO $pdo, string $tableName, string $columnName): bool
-{
-    try {
-        $stmt = $pdo->prepare("
-            SELECT 1
-            FROM information_schema.columns
-            WHERE table_schema = 'public'
-              AND table_name = :table_name
-              AND column_name = :column_name
-            LIMIT 1
-        ");
+        $stmt = $pdo->prepare("\n            SELECT 1\n            FROM information_schema.columns\n            WHERE table_schema = 'public'\n              AND table_name = :table_name\n              AND column_name = :column_name\n            LIMIT 1\n        ");
         $stmt->execute([
             'table_name' => $tableName,
             'column_name' => $columnName,
@@ -89,7 +49,129 @@ function column_exists(PDO $pdo, string $tableName, string $columnName): bool
     }
 }
 
-function load_teacher_assignments(string $teacherId): array
+function ensure_data_directory(): string
+{
+    $dataDir = __DIR__ . '/data';
+    if (!is_dir($dataDir)) {
+        mkdir($dataDir, 0777, true);
+    }
+
+    return $dataDir;
+}
+
+function teacher_photos_store_file(): string
+{
+    return ensure_data_directory() . '/teacher_photos.json';
+}
+
+function teacher_photos_directory(): string
+{
+    $photoDir = ensure_data_directory() . '/teacher_photos';
+    if (!is_dir($photoDir)) {
+        mkdir($photoDir, 0777, true);
+    }
+
+    return $photoDir;
+}
+
+function load_teacher_photos_store(): array
+{
+    $storeFile = teacher_photos_store_file();
+    if (!file_exists($storeFile)) {
+        return [];
+    }
+
+    $decoded = json_decode((string) file_get_contents($storeFile), true);
+    return is_array($decoded) ? $decoded : [];
+}
+
+function save_teacher_photos_store(array $photos): void
+{
+    file_put_contents(
+        teacher_photos_store_file(),
+        json_encode($photos, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)
+    );
+}
+
+function load_teacher_photo_from_database(string $teacherId): string
+{
+    $pdo = get_pdo_connection();
+    if (!$pdo || $teacherId === '' || !table_has_column($pdo, 'teacher_accounts', 'teacher_photo')) {
+        return '';
+    }
+
+    try {
+        $stmt = $pdo->prepare("\n            SELECT teacher_photo\n            FROM teacher_accounts\n            WHERE teacher_id = :teacher_id\n            ORDER BY updated_at DESC NULLS LAST\n            LIMIT 1\n        ");
+        $stmt->execute(['teacher_id' => $teacherId]);
+        return trim((string) $stmt->fetchColumn());
+    } catch (Throwable $e) {
+        return '';
+    }
+}
+
+function save_teacher_photo_to_database(string $teacherId, string $photoPath): void
+{
+    $pdo = get_pdo_connection();
+    if (!$pdo || $teacherId === '' || !table_has_column($pdo, 'teacher_accounts', 'teacher_photo')) {
+        return;
+    }
+
+    try {
+        $stmt = $pdo->prepare("\n            UPDATE teacher_accounts\n            SET teacher_photo = :teacher_photo,\n                updated_at = NOW()\n            WHERE teacher_id = :teacher_id\n        ");
+        $stmt->execute([
+            'teacher_photo' => $photoPath,
+            'teacher_id' => $teacherId,
+        ]);
+    } catch (Throwable $e) {
+        // Mantener respaldo JSON local si DB no está disponible o falla.
+    }
+}
+
+function load_teacher_photo(string $teacherId): string
+{
+    if ($teacherId === '') {
+        return '';
+    }
+
+    $store = load_teacher_photos_store();
+    $photoPath = trim((string) ($store[$teacherId] ?? ''));
+    if ($photoPath !== '') {
+        return $photoPath;
+    }
+
+    return load_teacher_photo_from_database($teacherId);
+}
+
+function save_teacher_photo(string $teacherId, string $photoPath): void
+{
+    if ($teacherId === '') {
+        return;
+    }
+
+    $store = load_teacher_photos_store();
+    $store[$teacherId] = $photoPath;
+    save_teacher_photos_store($store);
+    save_teacher_photo_to_database($teacherId, $photoPath);
+}
+
+function is_local_teacher_photo_path(string $photoPath): bool
+{
+    return str_starts_with($photoPath, 'data/teacher_photos/');
+}
+
+function maybe_delete_local_teacher_photo(string $photoPath): void
+{
+    if ($photoPath === '' || !is_local_teacher_photo_path($photoPath)) {
+        return;
+    }
+
+    $fullPath = __DIR__ . '/' . $photoPath;
+    if (is_file($fullPath)) {
+        @unlink($fullPath);
+    }
+}
+
+function load_teacher_accounts(string $teacherId): array
 {
     $pdo = get_pdo_connection();
     if (!$pdo || $teacherId === '') {
@@ -97,25 +179,7 @@ function load_teacher_assignments(string $teacherId): array
     }
 
     try {
-        $stmt = $pdo->prepare("
-            SELECT
-                id,
-                teacher_id,
-                teacher_name,
-                program_type,
-                course_id,
-                course_name,
-                unit_id,
-                unit_name,
-                updated_at
-            FROM teacher_assignments
-            WHERE teacher_id = :teacher_id
-            ORDER BY
-                CASE WHEN program_type = 'english' THEN 1 ELSE 2 END,
-                course_name ASC,
-                COALESCE(unit_name, '') ASC,
-                updated_at DESC
-        ");
+        $stmt = $pdo->prepare("\n            SELECT id, teacher_id, teacher_name, scope, target_id, target_name, permission\n            FROM teacher_accounts\n            WHERE teacher_id = :teacher_id\n            ORDER BY updated_at DESC NULLS LAST, target_name ASC\n        ");
         $stmt->execute(['teacher_id' => $teacherId]);
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
@@ -125,261 +189,123 @@ function load_teacher_assignments(string $teacherId): array
     }
 }
 
-function load_teacher_permission_from_accounts(string $teacherId): string
+function load_units_grouped(): array
 {
     $pdo = get_pdo_connection();
-    if (!$pdo || $teacherId === '') {
-        return 'viewer';
+    if (!$pdo) {
+        return [
+            'by_course' => [],
+            'by_phase' => [],
+        ];
     }
+
+    $unitsByCourse = [];
+    $unitsByPhase = [];
 
     try {
-        if (!table_exists($pdo, 'teacher_accounts')) {
-            return 'viewer';
-        }
+        $stmt = $pdo->query("\n            SELECT id, name, course_id, phase_id\n            FROM units\n            ORDER BY id ASC\n        ");
+        $units = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
 
-        $stmt = $pdo->prepare("
-            SELECT permission
-            FROM teacher_accounts
-            WHERE teacher_id = :teacher_id
-            ORDER BY updated_at DESC NULLS LAST
-            LIMIT 1
-        ");
-        $stmt->execute(['teacher_id' => $teacherId]);
-        $permission = (string) $stmt->fetchColumn();
+        foreach ($units as $unit) {
+            $courseId = trim((string) ($unit['course_id'] ?? ''));
+            $phaseId = trim((string) ($unit['phase_id'] ?? ''));
 
-        return $permission === 'editor' ? 'editor' : 'viewer';
-    } catch (Throwable $e) {
-        return 'viewer';
-    }
-}
-
-function load_english_units_by_phase_ids(array $phaseIds): array
-{
-    $pdo = get_pdo_connection();
-    if (!$pdo || empty($phaseIds)) {
-        return [];
-    }
-
-    if (!table_exists($pdo, 'units') || !column_exists($pdo, 'units', 'phase_id')) {
-        return [];
-    }
-
-    $phaseIds = array_values(array_unique(array_filter(array_map('strval', $phaseIds), static fn ($v): bool => $v !== '')));
-    if (empty($phaseIds)) {
-        return [];
-    }
-
-    try {
-        $placeholders = [];
-        $params = [];
-
-        foreach ($phaseIds as $index => $phaseId) {
-            $key = ':phase_' . $index;
-            $placeholders[] = $key;
-            $params['phase_' . $index] = $phaseId;
-        }
-
-        $sql = "
-            SELECT id, name, phase_id
-            FROM units
-            WHERE phase_id IN (" . implode(', ', $placeholders) . ")
-            ORDER BY phase_id ASC, id ASC
-        ";
-
-        $stmt = $pdo->prepare($sql);
-        $stmt->execute($params);
-        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
-
-        $grouped = [];
-        foreach ($rows as $row) {
-            $phaseId = (string) ($row['phase_id'] ?? '');
-            if ($phaseId === '') {
-                continue;
+            if ($courseId !== '') {
+                $unitsByCourse[$courseId][] = $unit;
             }
-            $grouped[$phaseId][] = $row;
-        }
 
-        return $grouped;
-    } catch (Throwable $e) {
-        return [];
-    }
-}
-
-function load_technical_units_for_assignments(array $technicalAssignments): array
-{
-    $pdo = get_pdo_connection();
-    if (!$pdo || empty($technicalAssignments)) {
-        return [];
-    }
-
-    $unitIds = [];
-    $courseIds = [];
-
-    foreach ($technicalAssignments as $assignment) {
-        $unitId = trim((string) ($assignment['unit_id'] ?? ''));
-        $courseId = trim((string) ($assignment['course_id'] ?? ''));
-
-        if ($unitId !== '') {
-            $unitIds[] = $unitId;
-        }
-
-        if ($courseId !== '') {
-            $courseIds[] = $courseId;
-        }
-    }
-
-    $unitIds = array_values(array_unique($unitIds));
-    $courseIds = array_values(array_unique($courseIds));
-    $result = [];
-
-    if (!empty($unitIds)) {
-        foreach ($technicalAssignments as $assignment) {
-            $assignmentId = (string) ($assignment['id'] ?? '');
-            $unitId = trim((string) ($assignment['unit_id'] ?? ''));
-            $unitName = trim((string) ($assignment['unit_name'] ?? ''));
-
-            if ($assignmentId !== '' && $unitId !== '') {
-                $result[$assignmentId][] = [
-                    'id' => $unitId,
-                    'name' => $unitName !== '' ? $unitName : 'Unidad',
-                ];
+            if ($phaseId !== '') {
+                $unitsByPhase[$phaseId][] = $unit;
             }
         }
-
-        return $result;
+    } catch (Throwable $e) {
+        $unitsByCourse = [];
+        $unitsByPhase = [];
     }
 
-    $candidates = [
-        ['table' => 'course_units', 'course_column' => 'course_id', 'name_column' => 'name'],
-        ['table' => 'technical_units', 'course_column' => 'course_id', 'name_column' => 'name'],
-        ['table' => 'technical_units', 'course_column' => 'semester_id', 'name_column' => 'name'],
-        ['table' => 'units', 'course_column' => 'course_id', 'name_column' => 'name'],
-        ['table' => 'units', 'course_column' => 'semester_id', 'name_column' => 'name'],
+    return [
+        'by_course' => $unitsByCourse,
+        'by_phase' => $unitsByPhase,
     ];
+}
 
-    foreach ($candidates as $candidate) {
-        $table = $candidate['table'];
-        $courseColumn = $candidate['course_column'];
-        $nameColumn = $candidate['name_column'];
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && (string) ($_POST['action'] ?? '') === 'upload_teacher_photo') {
+    if ($teacherId === '') {
+        $flashError = 'No se encontró la sesión del docente.';
+    } elseif (!isset($_FILES['teacher_photo']) || !is_array($_FILES['teacher_photo'])) {
+        $flashError = 'Debes seleccionar una imagen.';
+    } else {
+        $file = $_FILES['teacher_photo'];
+        $errorCode = (int) ($file['error'] ?? UPLOAD_ERR_NO_FILE);
 
-        if (
-            !table_exists($pdo, $table) ||
-            !column_exists($pdo, $table, 'id') ||
-            !column_exists($pdo, $table, $courseColumn) ||
-            !column_exists($pdo, $table, $nameColumn)
-        ) {
-            continue;
-        }
+        if ($errorCode !== UPLOAD_ERR_OK) {
+            $flashError = 'No se pudo subir la imagen. Intenta nuevamente.';
+        } else {
+            $tmpName = (string) ($file['tmp_name'] ?? '');
+            $size = (int) ($file['size'] ?? 0);
+            $maxBytes = 5 * 1024 * 1024;
 
-        if (empty($courseIds)) {
-            continue;
-        }
-
-        try {
-            $placeholders = [];
-            $params = [];
-
-            foreach ($courseIds as $index => $courseId) {
-                $key = ':course_' . $index;
-                $placeholders[] = $key;
-                $params['course_' . $index] = $courseId;
-            }
-
-            $sql = "
-                SELECT id, {$courseColumn} AS course_id, {$nameColumn} AS name
-                FROM {$table}
-                WHERE {$courseColumn} IN (" . implode(', ', $placeholders) . ")
-                ORDER BY {$courseColumn} ASC, id ASC
-            ";
-
-            $stmt = $pdo->prepare($sql);
-            $stmt->execute($params);
-            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
-
-            $groupedByCourse = [];
-            foreach ($rows as $row) {
-                $courseId = (string) ($row['course_id'] ?? '');
-                if ($courseId === '') {
-                    continue;
-                }
-
-                $groupedByCourse[$courseId][] = [
-                    'id' => (string) ($row['id'] ?? ''),
-                    'name' => (string) ($row['name'] ?? 'Unidad'),
+            if ($tmpName === '' || !is_uploaded_file($tmpName) || $size <= 0 || $size > $maxBytes) {
+                $flashError = 'La imagen debe pesar máximo 5MB.';
+            } else {
+                $mime = (string) mime_content_type($tmpName);
+                $allowedMimes = [
+                    'image/jpeg' => 'jpg',
+                    'image/png' => 'png',
+                    'image/webp' => 'webp',
+                    'image/gif' => 'gif',
                 ];
-            }
 
-            foreach ($technicalAssignments as $assignment) {
-                $assignmentId = (string) ($assignment['id'] ?? '');
-                $courseId = trim((string) ($assignment['course_id'] ?? ''));
+                if (!isset($allowedMimes[$mime])) {
+                    $flashError = 'Formato no permitido. Usa JPG, PNG, WEBP o GIF.';
+                } else {
+                    $extension = $allowedMimes[$mime];
+                    $safeTeacherId = preg_replace('/[^a-zA-Z0-9_-]/', '_', $teacherId) ?: 'teacher';
+                    $newFilename = $safeTeacherId . '_' . date('YmdHis') . '_' . bin2hex(random_bytes(4)) . '.' . $extension;
+                    $newFileAbsolute = teacher_photos_directory() . '/' . $newFilename;
+                    $newFileRelative = 'data/teacher_photos/' . $newFilename;
 
-                if ($assignmentId !== '' && $courseId !== '' && isset($groupedByCourse[$courseId])) {
-                    $result[$assignmentId] = $groupedByCourse[$courseId];
+                    if (!move_uploaded_file($tmpName, $newFileAbsolute)) {
+                        $flashError = 'No fue posible guardar la imagen subida.';
+                    } else {
+                        $oldPhoto = trim((string) ($_SESSION['teacher_photo'] ?? load_teacher_photo($teacherId)));
+                        save_teacher_photo($teacherId, $newFileRelative);
+                        $_SESSION['teacher_photo'] = $newFileRelative;
+                        maybe_delete_local_teacher_photo($oldPhoto);
+                        $flashMessage = 'Foto actualizada correctamente.';
+                    }
                 }
             }
-
-            if (!empty($result)) {
-                return $result;
-            }
-        } catch (Throwable $e) {
-            return [];
         }
     }
-
-    return [];
 }
 
-function build_assignment_title(array $assignment): string
-{
-    $courseName = trim((string) ($assignment['course_name'] ?? 'Curso'));
-    $unitName = trim((string) ($assignment['unit_name'] ?? ''));
-    $programType = trim((string) ($assignment['program_type'] ?? ''));
-
-    if ($programType === 'technical' && $unitName !== '') {
-        return $courseName . ' · ' . $unitName;
-    }
-
-    return $courseName;
-}
-
-$assignments = load_teacher_assignments($teacherId);
-$firstAssignment = $assignments[0] ?? null;
-$teacherPermission = load_teacher_permission_from_accounts($teacherId);
-
-$englishPhaseIds = [];
-$technicalAssignments = [];
-
-foreach ($assignments as $assignment) {
-    $programType = (string) ($assignment['program_type'] ?? '');
-
-    if ($programType === 'english') {
-        $phaseId = trim((string) ($assignment['course_id'] ?? ''));
-        if ($phaseId !== '') {
-            $englishPhaseIds[] = $phaseId;
-        }
-    } elseif ($programType === 'technical') {
-        $technicalAssignments[] = $assignment;
+$teacherPhoto = trim((string) ($_SESSION['teacher_photo'] ?? ''));
+if ($teacherPhoto === '') {
+    $teacherPhoto = load_teacher_photo($teacherId);
+    if ($teacherPhoto !== '') {
+        $_SESSION['teacher_photo'] = $teacherPhoto;
     }
 }
 
-$englishUnitsByPhase = load_english_units_by_phase_ids($englishPhaseIds);
-$technicalUnitsByAssignment = load_technical_units_for_assignments($technicalAssignments);
+$accounts = load_teacher_accounts($teacherId);
+$firstAccount = $accounts[0] ?? null;
+
+$groupedUnits = load_units_grouped();
+$unitsByCourse = $groupedUnits['by_course'];
+$unitsByPhase = $groupedUnits['by_phase'];
 
 $todayUnits = [];
-$todayTitle = 'Curso';
-$todayProgramLabel = 'Docente';
+$todayPermission = 'viewer';
 
-if ($firstAssignment) {
-    $todayTitle = build_assignment_title($firstAssignment);
-    $todayProgramLabel = ((string) ($firstAssignment['program_type'] ?? '') === 'english') ? 'English' : 'Técnico';
+if ($firstAccount) {
+    $scope = (string) ($firstAccount['scope'] ?? 'technical');
+    $targetId = (string) ($firstAccount['target_id'] ?? '');
+    $todayPermission = (string) ($firstAccount['permission'] ?? 'viewer');
 
-    if ((string) ($firstAssignment['program_type'] ?? '') === 'english') {
-        $phaseId = trim((string) ($firstAssignment['course_id'] ?? ''));
-        $todayUnits = $englishUnitsByPhase[$phaseId] ?? [];
-    } else {
-        $assignmentId = (string) ($firstAssignment['id'] ?? '');
-        $todayUnits = $technicalUnitsByAssignment[$assignmentId] ?? [];
-    }
+    $todayUnits = $scope === 'english'
+        ? ($unitsByPhase[$targetId] ?? [])
+        : ($unitsByCourse[$targetId] ?? []);
 }
 ?>
 <!DOCTYPE html>
@@ -404,7 +330,6 @@ if ($firstAssignment) {
     --orange-hover:#d97706;
     --danger:#dc2626;
     --shadow:0 8px 24px rgba(0,0,0,.08);
-    --radius:14px;
 }
 
 *{
@@ -413,7 +338,7 @@ if ($firstAssignment) {
 
 body{
     margin:0;
-    font-family:Arial, "Segoe UI", sans-serif;
+    font-family:Arial, sans-serif;
     background:var(--bg);
     color:var(--text);
 }
@@ -458,7 +383,7 @@ body{
 .card{
     background:var(--card);
     border:1px solid var(--line);
-    border-radius:var(--radius);
+    border-radius:14px;
     box-shadow:var(--shadow);
 }
 
@@ -475,10 +400,13 @@ body{
     height:160px;
     margin:0 auto 18px;
     border-radius:50%;
-    overflow:hidden;
     background:#dbe7f6;
     border:4px solid #edf3fb;
-    box-shadow:0 6px 18px rgba(31, 60, 117, 0.12);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:64px;
+    overflow:hidden;
 }
 
 .avatar-image{
@@ -513,6 +441,56 @@ body{
     color:#fff;
     background:linear-gradient(180deg, #2f74ce, #1f4d95);
     text-align:center;
+}
+
+.upload-form{
+    margin-top:14px;
+    margin-bottom:12px;
+    text-align:left;
+}
+
+.upload-label{
+    display:block;
+    font-size:12px;
+    color:var(--muted);
+    font-weight:700;
+    margin-bottom:6px;
+}
+
+.upload-input{
+    width:100%;
+    margin-bottom:8px;
+}
+
+.upload-btn{
+    width:100%;
+    border:none;
+    border-radius:10px;
+    padding:10px;
+    color:#fff;
+    cursor:pointer;
+    font-size:13px;
+    font-weight:700;
+    background:linear-gradient(180deg, #4cbf62, #249145);
+}
+
+.flash{
+    border-radius:10px;
+    padding:10px 12px;
+    margin-bottom:14px;
+    font-size:13px;
+}
+
+.flash.ok{
+    background:#ecfdf3;
+    border:1px solid #86efac;
+    color:#166534;
+}
+
+.flash.error{
+    background:#fef2f2;
+    border:1px solid #fca5a5;
+    color:#991b1b;
 }
 
 .main-section-title{
@@ -594,7 +572,7 @@ body{
     padding:22px 18px;
     color:#fff;
     text-decoration:none;
-    min-height:140px;
+    min-height:120px;
     display:flex;
     flex-direction:column;
     justify-content:center;
@@ -623,14 +601,6 @@ body{
 .course-sub{
     font-size:14px;
     opacity:.95;
-}
-
-.course-meta{
-    font-size:12px;
-    font-weight:700;
-    opacity:.95;
-    text-transform:uppercase;
-    letter-spacing:.03em;
 }
 
 .unit-list{
@@ -757,15 +727,30 @@ body{
         <aside class="panel">
             <div class="profile-box">
                 <div class="avatar">
-                    <img
-                        src="<?php echo h($teacherPhoto); ?>"
-                        alt="Foto de <?php echo h($teacherName); ?>"
-                        class="avatar-image"
-                    >
+                    <?php if ($teacherPhoto !== '') { ?>
+                        <img class="avatar-image" src="<?php echo h($teacherPhoto); ?>" alt="Foto de <?php echo h($teacherName); ?>">
+                    <?php } else { ?>
+                        👨‍🏫
+                    <?php } ?>
                 </div>
+
+                <?php if ($flashMessage !== '') { ?>
+                    <div class="flash ok"><?php echo h($flashMessage); ?></div>
+                <?php } ?>
+
+                <?php if ($flashError !== '') { ?>
+                    <div class="flash error"><?php echo h($flashError); ?></div>
+                <?php } ?>
 
                 <div class="teacher-name"><?php echo h($teacherName); ?></div>
                 <div class="teacher-role">Docente</div>
+
+                <form class="upload-form" method="post" enctype="multipart/form-data">
+                    <label class="upload-label" for="teacher_photo">Subir / cambiar foto</label>
+                    <input class="upload-input" type="file" id="teacher_photo" name="teacher_photo" accept="image/*" required>
+                    <input type="hidden" name="action" value="upload_teacher_photo">
+                    <button type="submit" class="upload-btn">Guardar foto</button>
+                </form>
 
                 <a class="side-button" href="teacher_groups.php">Lista de Estudiantes</a>
                 <a class="side-button" href="teacher_groups.php">Progreso del Estudiante</a>
@@ -775,10 +760,10 @@ body{
         <main>
             <h2 class="main-section-title">Actividad para Hoy</h2>
 
-            <?php if ($firstAssignment) { ?>
+            <?php if ($firstAccount) { ?>
                 <div class="card">
                     <h3 class="activity-title">
-                        Tema: "<?php echo h($todayTitle); ?>"
+                        Tema: "<?php echo h((string) ($firstAccount['target_name'] ?? 'Curso')); ?>"
                     </h3>
 
                     <p class="activity-text">
@@ -786,25 +771,29 @@ body{
                     </p>
 
                     <div class="actions">
-                        <a class="btn btn-green" href="teacher_course.php?assignment=<?php echo urlencode((string) ($firstAssignment['id'] ?? '')); ?>">
+                        <a class="btn btn-green" href="teacher_course.php?account=<?php echo urlencode((string) ($firstAccount['id'] ?? '')); ?>">
                             Iniciar Presentación
                         </a>
 
-                        <?php if ($teacherPermission === 'editor') { ?>
-                            <a class="btn btn-orange" href="teacher_course.php?assignment=<?php echo urlencode((string) ($firstAssignment['id'] ?? '')); ?>&mode=edit">
-                                Ver actividades
+                        <?php if ($todayPermission === 'editor') { ?>
+                            <a class="btn btn-orange" href="teacher_course.php?account=<?php echo urlencode((string) ($firstAccount['id'] ?? '')); ?>&mode=edit">
+                                Editar Actividad
                             </a>
                         <?php } ?>
                     </div>
 
                     <div class="unit-list">
                         <div class="badge-row">
-                            <span class="badge"><?php echo h($todayProgramLabel); ?></span>
-                            <span class="badge"><?php echo h($teacherPermission === 'editor' ? 'Puede editar' : 'Solo ver'); ?></span>
+                            <span class="badge">
+                                <?php echo h(((string) ($firstAccount['scope'] ?? '') === 'english') ? 'Estudiantes' : 'Docentes'); ?>
+                            </span>
+                            <span class="badge">
+                                <?php echo h($todayPermission === 'editor' ? 'Puede editar' : 'Solo ver'); ?>
+                            </span>
                         </div>
 
                         <?php if (empty($todayUnits)) { ?>
-                            <div class="empty">No hay unidades encontradas para esta asignación.</div>
+                            <div class="empty">No hay unidades configuradas para esta asignación.</div>
                         <?php } else { ?>
                             <?php foreach ($todayUnits as $unit) { ?>
                                 <div class="unit">
@@ -813,12 +802,12 @@ body{
                                     </div>
 
                                     <div class="unit-actions">
-                                        <a class="unit-btn" href="teacher_unit.php?assignment=<?php echo urlencode((string) ($firstAssignment['id'] ?? '')); ?>&unit=<?php echo urlencode((string) ($unit['id'] ?? '')); ?>&mode=view">
+                                        <a class="unit-btn" href="teacher_unit.php?unit=<?php echo urlencode((string) ($unit['id'] ?? '')); ?>&mode=view">
                                             Ver
                                         </a>
 
-                                        <?php if ($teacherPermission === 'editor') { ?>
-                                            <a class="unit-btn edit" href="teacher_unit.php?assignment=<?php echo urlencode((string) ($firstAssignment['id'] ?? '')); ?>&unit=<?php echo urlencode((string) ($unit['id'] ?? '')); ?>&mode=edit">
+                                        <?php if ($todayPermission === 'editor') { ?>
+                                            <a class="unit-btn edit" href="teacher_unit.php?unit=<?php echo urlencode((string) ($unit['id'] ?? '')); ?>&mode=edit">
                                                 Editar
                                             </a>
                                         <?php } ?>
@@ -834,11 +823,11 @@ body{
 
             <h2 class="main-section-title">Mis Cursos</h2>
 
-            <?php if (empty($assignments)) { ?>
+            <?php if (empty($accounts)) { ?>
                 <div class="empty">No tienes cursos asignados todavía.</div>
             <?php } else { ?>
                 <div class="course-grid">
-                    <?php foreach ($assignments as $index => $assignment) { ?>
+                    <?php foreach ($accounts as $index => $account) { ?>
                         <?php
                         $colorClass = 'course-blue';
                         if ($index % 3 === 1) {
@@ -847,14 +836,13 @@ body{
                             $colorClass = 'course-green';
                         }
 
-                        $programType = (string) ($assignment['program_type'] ?? '');
-                        $cardTitle = build_assignment_title($assignment);
-                        $cardSub = $programType === 'english' ? 'Curso de inglés' : 'Curso técnico';
+                        $scope = (string) ($account['scope'] ?? 'technical');
+                        $targetName = (string) ($account['target_name'] ?? 'Curso');
+                        $courseSub = $scope === 'english' ? 'Curso de inglés' : 'Curso técnico';
                         ?>
-                        <a class="course-card <?php echo h($colorClass); ?>" href="teacher_course.php?assignment=<?php echo urlencode((string) ($assignment['id'] ?? '')); ?>">
-                            <div class="course-meta"><?php echo h($programType === 'english' ? 'English' : 'Técnico'); ?></div>
-                            <div class="course-name"><?php echo h($cardTitle); ?></div>
-                            <div class="course-sub"><?php echo h($cardSub); ?></div>
+                        <a class="course-card <?php echo h($colorClass); ?>" href="teacher_course.php?account=<?php echo urlencode((string) ($account['id'] ?? '')); ?>">
+                            <div class="course-name"><?php echo h($targetName); ?></div>
+                            <div class="course-sub"><?php echo h($courseSub); ?></div>
                         </a>
                     <?php } ?>
                 </div>
