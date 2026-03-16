@@ -51,7 +51,13 @@ function get_pdo_connection(): ?PDO
 function table_exists(PDO $pdo, string $tableName): bool
 {
     try {
-        $stmt = $pdo->prepare("\n            SELECT 1\n            FROM information_schema.tables\n            WHERE table_schema = 'public'\n              AND table_name = :table_name\n            LIMIT 1\n        ");
+        $stmt = $pdo->prepare("
+            SELECT 1
+            FROM information_schema.tables
+            WHERE table_schema = 'public'
+              AND table_name = :table_name
+            LIMIT 1
+        ");
         $stmt->execute(['table_name' => $tableName]);
         return (bool) $stmt->fetchColumn();
     } catch (Throwable $e) {
@@ -62,7 +68,14 @@ function table_exists(PDO $pdo, string $tableName): bool
 function table_has_column(PDO $pdo, string $tableName, string $columnName): bool
 {
     try {
-        $stmt = $pdo->prepare("\n            SELECT 1\n            FROM information_schema.columns\n            WHERE table_schema = 'public'\n              AND table_name = :table_name\n              AND column_name = :column_name\n            LIMIT 1\n        ");
+        $stmt = $pdo->prepare("
+            SELECT 1
+            FROM information_schema.columns
+            WHERE table_schema = 'public'
+              AND table_name = :table_name
+              AND column_name = :column_name
+            LIMIT 1
+        ");
         $stmt->execute([
             'table_name' => $tableName,
             'column_name' => $columnName,
@@ -125,7 +138,13 @@ function load_teacher_photo_from_database(string $teacherId): string
     }
 
     try {
-        $stmt = $pdo->prepare("\n            SELECT teacher_photo\n            FROM teacher_accounts\n            WHERE teacher_id = :teacher_id\n            ORDER BY updated_at DESC NULLS LAST\n            LIMIT 1\n        ");
+        $stmt = $pdo->prepare("
+            SELECT teacher_photo
+            FROM teacher_accounts
+            WHERE teacher_id = :teacher_id
+            ORDER BY updated_at DESC NULLS LAST
+            LIMIT 1
+        ");
         $stmt->execute(['teacher_id' => $teacherId]);
         return trim((string) $stmt->fetchColumn());
     } catch (Throwable $e) {
@@ -141,7 +160,11 @@ function save_teacher_photo_to_database(string $teacherId, string $photoPath): v
     }
 
     try {
-        $stmt = $pdo->prepare("\n            UPDATE teacher_accounts\n            SET teacher_photo = :teacher_photo\n            WHERE teacher_id = :teacher_id\n        ");
+        $stmt = $pdo->prepare("
+            UPDATE teacher_accounts
+            SET teacher_photo = :teacher_photo
+            WHERE teacher_id = :teacher_id
+        ");
         $stmt->execute([
             'teacher_photo' => $photoPath,
             'teacher_id' => $teacherId,
@@ -203,7 +226,25 @@ function load_teacher_assignments(string $teacherId): array
     }
 
     try {
-        $stmt = $pdo->prepare("\n            SELECT\n                id,\n                teacher_id,\n                teacher_name,\n                program_type,\n                course_id,\n                course_name,\n                unit_id,\n                unit_name,\n                updated_at\n            FROM teacher_assignments\n            WHERE teacher_id = :teacher_id\n            ORDER BY\n                CASE WHEN program_type = 'english' THEN 1 ELSE 2 END,\n                course_name ASC,\n                COALESCE(unit_name, '') ASC,\n                updated_at DESC\n        ");
+        $stmt = $pdo->prepare("
+            SELECT
+                id,
+                teacher_id,
+                teacher_name,
+                program_type,
+                course_id,
+                course_name,
+                unit_id,
+                unit_name,
+                updated_at
+            FROM teacher_assignments
+            WHERE teacher_id = :teacher_id
+            ORDER BY
+                CASE WHEN program_type = 'english' THEN 1 ELSE 2 END,
+                course_name ASC,
+                COALESCE(unit_name, '') ASC,
+                updated_at DESC
+        ");
         $stmt->execute(['teacher_id' => $teacherId]);
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
         return is_array($rows) ? $rows : [];
@@ -220,7 +261,13 @@ function load_teacher_permission(string $teacherId): string
     }
 
     try {
-        $stmt = $pdo->prepare("\n            SELECT permission\n            FROM teacher_accounts\n            WHERE teacher_id = :teacher_id\n            ORDER BY updated_at DESC NULLS LAST\n            LIMIT 1\n        ");
+        $stmt = $pdo->prepare("
+            SELECT permission
+            FROM teacher_accounts
+            WHERE teacher_id = :teacher_id
+            ORDER BY updated_at DESC NULLS LAST
+            LIMIT 1
+        ");
         $stmt->execute(['teacher_id' => $teacherId]);
         $permission = (string) $stmt->fetchColumn();
         return $permission === 'editor' ? 'editor' : 'viewer';
@@ -251,7 +298,12 @@ function load_english_units_by_phase_ids(array $phaseIds): array
             $params['phase_' . $index] = $phaseId;
         }
 
-        $sql = "\n            SELECT id, name, phase_id\n            FROM units\n            WHERE phase_id IN (" . implode(', ', $placeholders) . ")\n            ORDER BY phase_id ASC, id ASC\n        ";
+        $sql = "
+            SELECT id, name, phase_id
+            FROM units
+            WHERE phase_id IN (" . implode(', ', $placeholders) . ")
+            ORDER BY phase_id ASC, id ASC
+        ";
 
         $stmt = $pdo->prepare($sql);
         $stmt->execute($params);
