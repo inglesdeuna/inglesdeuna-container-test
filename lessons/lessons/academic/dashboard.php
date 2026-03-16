@@ -103,12 +103,12 @@ function teacher_photos_store_file(): string
 
 function teacher_photos_directory(): string
 {
-    $photoDir = ensure_data_directory() . '/teacher_photos';
-    if (!is_dir($photoDir)) {
-        mkdir($photoDir, 0777, true);
+    $photosDir = ensure_data_directory() . '/teacher_photos';
+    if (!is_dir($photosDir)) {
+        mkdir($photosDir, 0777, true);
     }
 
-    return $photoDir;
+    return $photosDir;
 }
 
 function load_teacher_photos_store(): array
@@ -170,7 +170,7 @@ function save_teacher_photo_to_database(string $teacherId, string $photoPath): v
             'teacher_id' => $teacherId,
         ]);
     } catch (Throwable $e) {
-        // El respaldo local en JSON mantiene la foto.
+        // Mantener respaldo local JSON.
     }
 }
 
@@ -276,72 +276,43 @@ function load_teacher_permission(string $teacherId): string
     }
 }
 
-function load_english_units_by_phase_ids(array $phaseIds): array
+function load_units_for_assignment(array $assignment): array
 {
     $pdo = get_pdo_connection();
-    if (!$pdo || empty($phaseIds) || !table_exists($pdo, 'units') || !table_has_column($pdo, 'units', 'phase_id')) {
+    if (!$pdo || !table_exists($pdo, 'units')) {
         return [];
     }
 
-    $phaseIds = array_values(array_unique(array_filter(array_map('strval', $phaseIds), static fn ($v): bool => $v !== '')));
-    if (empty($phaseIds)) {
+    $programType = trim((string) ($assignment['program_type'] ?? ''));
+    $courseId = trim((string) ($assignment['course_id'] ?? ''));
+
+    if ($courseId === '') {
         return [];
     }
 
     try {
-        $placeholders = [];
-        $params = [];
-
-        foreach ($phaseIds as $index => $phaseId) {
-            $key = ':phase_' . $index;
-            $placeholders[] = $key;
-            $params['phase_' . $index] = $phaseId;
+        if ($programType === 'english' && table_has_column($pdo, 'units', 'phase_id')) {
+            $stmt = $pdo->prepare("
+                SELECT id, name
+                FROM units
+                WHERE phase_id = :course_id
+                ORDER BY id ASC
+            ");
+        } else {
+            $stmt = $pdo->prepare("
+                SELECT id, name
+                FROM units
+                WHERE course_id = :course_id
+                ORDER BY id ASC
+            ");
         }
 
-        $sql = "
-            SELECT id, name, phase_id
-            FROM units
-            WHERE phase_id IN (" . implode(', ', $placeholders) . ")
-            ORDER BY phase_id ASC, id ASC
-        ";
-
-        $stmt = $pdo->prepare($sql);
-        $stmt->execute($params);
-        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
-
-        $grouped = [];
-        foreach ($rows as $row) {
-            $phaseId = (string) ($row['phase_id'] ?? '');
-            if ($phaseId === '') {
-                continue;
-            }
-            $grouped[$phaseId][] = $row;
-        }
-
-        return $grouped;
+        $stmt->execute(['course_id' => $courseId]);
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        return is_array($rows) ? $rows : [];
     } catch (Throwable $e) {
         return [];
     }
-}
-
-function load_technical_units_for_assignments(array $technicalAssignments): array
-{
-    $result = [];
-
-    foreach ($technicalAssignments as $assignment) {
-        $assignmentId = (string) ($assignment['id'] ?? '');
-        $unitId = trim((string) ($assignment['unit_id'] ?? ''));
-        $unitName = trim((string) ($assignment['unit_name'] ?? ''));
-
-        if ($assignmentId !== '' && $unitId !== '') {
-            $result[$assignmentId][] = [
-                'id' => $unitId,
-                'name' => $unitName !== '' ? $unitName : 'Unidad',
-            ];
-        }
-    }
-
-    return $result;
 }
 
 function build_assignment_title(array $assignment): string
@@ -417,43 +388,32 @@ if ($teacherPhoto === '') {
 }
 
 $assignments = load_teacher_assignments($teacherId);
-$firstAssignment = $assignments[0] ?? null;
 $teacherPermission = load_teacher_permission($teacherId);
+$selectedAssignmentId = trim((string) ($_GET['assignment'] ?? ''));
+$selectedAssignment = null;
 
-$englishPhaseIds = [];
-$technicalAssignments = [];
-
-foreach ($assignments as $assignment) {
-    $programType = (string) ($assignment['program_type'] ?? '');
-
-    if ($programType === 'english') {
-        $phaseId = trim((string) ($assignment['course_id'] ?? ''));
-        if ($phaseId !== '') {
-            $englishPhaseIds[] = $phaseId;
+if ($selectedAssignmentId !== '') {
+    foreach ($assignments as $candidate) {
+        if ((string) ($candidate['id'] ?? '') === $selectedAssignmentId) {
+            $selectedAssignment = $candidate;
+            break;
         }
-    } elseif ($programType === 'technical') {
-        $technicalAssignments[] = $assignment;
     }
 }
 
-$englishUnitsByPhase = load_english_units_by_phase_ids($englishPhaseIds);
-$technicalUnitsByAssignment = load_technical_units_for_assignments($technicalAssignments);
+if (!$selectedAssignment) {
+    $selectedAssignment = $assignments[0] ?? null;
+    $selectedAssignmentId = (string) ($selectedAssignment['id'] ?? '');
+}
 
 $todayUnits = [];
 $todayTitle = 'Curso';
 $todayProgramLabel = 'Docente';
 
-if ($firstAssignment) {
-    $todayTitle = build_assignment_title($firstAssignment);
-    $todayProgramLabel = ((string) ($firstAssignment['program_type'] ?? '') === 'english') ? 'English' : 'Técnico';
-
-    if ((string) ($firstAssignment['program_type'] ?? '') === 'english') {
-        $phaseId = trim((string) ($firstAssignment['course_id'] ?? ''));
-        $todayUnits = $englishUnitsByPhase[$phaseId] ?? [];
-    } else {
-        $assignmentId = (string) ($firstAssignment['id'] ?? '');
-        $todayUnits = $technicalUnitsByAssignment[$assignmentId] ?? [];
-    }
+if ($selectedAssignment) {
+    $todayTitle = build_assignment_title($selectedAssignment);
+    $todayProgramLabel = ((string) ($selectedAssignment['program_type'] ?? '') === 'english') ? 'English' : 'Técnico';
+    $todayUnits = load_units_for_assignment($selectedAssignment);
 }
 ?>
 <!DOCTYPE html>
@@ -483,13 +443,7 @@ if ($firstAssignment) {
 
 *{ box-sizing:border-box; }
 
-body{
-    margin:0;
-    font-family:Arial, "Segoe UI", sans-serif;
-    background:var(--bg);
-    color:var(--text);
-}
-
+body{ margin:0; font-family:Arial, "Segoe UI", sans-serif; background:var(--bg); color:var(--text); }
 .page{ max-width:1280px; margin:0 auto; padding:30px; }
 
 .header{
@@ -532,72 +486,24 @@ body{
 .teacher-name{ font-size:20px; font-weight:700; color:var(--title); margin-bottom:6px; }
 .teacher-role{ font-size:15px; color:var(--muted); margin-bottom:18px; }
 
-.side-button{
-    display:block;
-    width:100%;
-    margin-top:10px;
-    padding:12px 14px;
-    border-radius:10px;
-    text-decoration:none;
-    font-size:14px;
-    font-weight:700;
-    color:#fff;
-    background:linear-gradient(180deg, #2f74ce, #1f4d95);
-    text-align:center;
-}
-
+.side-button{ display:block; width:100%; margin-top:10px; padding:12px 14px; border-radius:10px; text-decoration:none; font-size:14px; font-weight:700; color:#fff; background:linear-gradient(180deg, #2f74ce, #1f4d95); text-align:center; }
 .upload-form{ margin-top:14px; margin-bottom:12px; text-align:left; }
 .upload-label{ display:block; font-size:12px; color:var(--muted); font-weight:700; margin-bottom:6px; }
 .upload-input{ width:100%; margin-bottom:8px; }
-
-.upload-btn{
-    width:100%;
-    border:none;
-    border-radius:10px;
-    padding:10px;
-    color:#fff;
-    cursor:pointer;
-    font-size:13px;
-    font-weight:700;
-    background:linear-gradient(180deg, #4cbf62, #249145);
-}
-
+.upload-btn{ width:100%; border:none; border-radius:10px; padding:10px; color:#fff; cursor:pointer; font-size:13px; font-weight:700; background:linear-gradient(180deg, #4cbf62, #249145); }
 .flash{ border-radius:10px; padding:10px 12px; margin-bottom:14px; font-size:13px; }
 .flash.ok{ background:#ecfdf3; border:1px solid #86efac; color:#166534; }
 .flash.error{ background:#fef2f2; border:1px solid #fca5a5; color:#991b1b; }
 
-.main-section-title{
-    display:flex;
-    align-items:center;
-    gap:14px;
-    font-size:22px;
-    font-weight:700;
-    color:var(--title);
-    margin:0 0 14px;
-}
-
+.main-section-title{ display:flex; align-items:center; gap:14px; font-size:22px; font-weight:700; color:var(--title); margin:0 0 14px; }
 .main-section-title::after{ content:""; flex:1; height:2px; background:var(--line); }
 .card{ padding:20px; margin-bottom:18px; }
 .activity-title{ margin:0 0 12px; font-size:18px; font-weight:700; color:var(--title); }
 .activity-text{ margin:0 0 18px; font-size:15px; color:var(--text); }
 .actions{ display:flex; flex-wrap:wrap; gap:12px; }
-
-.btn{
-    display:inline-block;
-    padding:12px 18px;
-    border-radius:10px;
-    text-decoration:none;
-    color:#fff;
-    font-size:14px;
-    font-weight:700;
-    transition:background .2s ease;
-}
-
+.btn{ display:inline-block; padding:12px 18px; border-radius:10px; text-decoration:none; color:#fff; font-size:14px; font-weight:700; }
 .btn-green{ background:linear-gradient(180deg, #4cbf62, #249145); }
-.btn-green:hover{ background:var(--green-hover); }
 .btn-orange{ background:linear-gradient(180deg, #f7a531, #e57e08); }
-.btn-orange:hover{ background:var(--orange-hover); }
-
 .course-grid{ display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:16px; }
 
 .course-card{
@@ -621,61 +527,16 @@ body{
 .course-meta{ font-size:12px; font-weight:700; opacity:.95; text-transform:uppercase; letter-spacing:.03em; }
 
 .unit-list{ margin-top:16px; }
-
-.unit{
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
-    gap:12px;
-    padding:12px 14px;
-    margin-bottom:10px;
-    border:1px solid var(--line);
-    border-radius:10px;
-    background:#fff;
-}
-
+.unit{ display:flex; justify-content:space-between; align-items:center; gap:12px; padding:12px 14px; margin-bottom:10px; border:1px solid var(--line); border-radius:10px; background:#fff; }
 .unit-name{ font-size:15px; font-weight:700; color:#243b63; }
 .unit-actions{ display:flex; flex-wrap:wrap; gap:8px; }
-
-.unit-btn{
-    display:inline-block;
-    padding:8px 12px;
-    border-radius:8px;
-    text-decoration:none;
-    font-size:13px;
-    font-weight:700;
-    color:#fff;
-    background:var(--blue);
-}
-
-.unit-btn:hover{ background:var(--blue-hover); }
-.unit-btn.edit{ background:var(--green); }
-.unit-btn.edit:hover{ background:var(--green-hover); }
-
-.empty{
-    background:#fff;
-    border:1px solid var(--line);
-    border-radius:14px;
-    padding:18px;
-    color:var(--muted);
-    font-size:14px;
-}
-
+.unit-btn{ display:inline-block; padding:8px 12px; border-radius:8px; text-decoration:none; font-size:13px; font-weight:700; color:#fff; background:var(--blue); }
+.empty{ background:#fff; border:1px solid var(--line); border-radius:14px; padding:18px; color:var(--muted); font-size:14px; }
 .badge-row{ display:flex; flex-wrap:wrap; gap:8px; margin-bottom:14px; }
 .badge{ display:inline-block; padding:4px 10px; border-radius:999px; background:#eef2ff; color:#1f4ec9; font-size:12px; font-weight:700; }
 
-@media (max-width: 1024px){
-    .layout{ grid-template-columns:1fr; }
-    .course-grid{ grid-template-columns:1fr; }
-}
-
-@media (max-width: 768px){
-    .page{ padding:20px; }
-    .header{ flex-direction:column; align-items:flex-start; }
-    .unit{ flex-direction:column; align-items:flex-start; }
-    .actions{ flex-direction:column; }
-    .btn{ width:100%; text-align:center; }
-}
+@media (max-width: 1024px){ .layout{ grid-template-columns:1fr; } .course-grid{ grid-template-columns:1fr; } }
+@media (max-width: 768px){ .page{ padding:20px; } .header{ flex-direction:column; align-items:flex-start; } .unit{ flex-direction:column; align-items:flex-start; } .actions{ flex-direction:column; } .btn{ width:100%; text-align:center; } }
 </style>
 </head>
 <body>
@@ -699,7 +560,6 @@ body{
                 <?php if ($flashMessage !== '') { ?>
                     <div class="flash ok"><?php echo h($flashMessage); ?></div>
                 <?php } ?>
-
                 <?php if ($flashError !== '') { ?>
                     <div class="flash error"><?php echo h($flashError); ?></div>
                 <?php } ?>
@@ -722,7 +582,7 @@ body{
         <main>
             <h2 class="main-section-title">Actividad para Hoy</h2>
 
-            <?php if ($firstAssignment) { ?>
+            <?php if ($selectedAssignment) { ?>
                 <div class="card">
                     <h3 class="activity-title">Tema: "<?php echo h($todayTitle); ?>"</h3>
 
@@ -731,18 +591,22 @@ body{
                     </p>
 
                     <div class="actions">
-                        <a class="btn btn-green" href="teacher_course.php?assignment=<?php echo urlencode((string) ($firstAssignment['id'] ?? '')); ?>">
+                        <a class="btn btn-green" href="teacher_course.php?assignment=<?php echo urlencode((string) ($selectedAssignment['id'] ?? '')); ?>">
                             Iniciar Presentación
                         </a>
 
+                        <a class="btn btn-orange" href="#unidades-curso">
+                            Ver unidades
+                        </a>
+
                         <?php if ($teacherPermission === 'editor') { ?>
-                            <a class="btn btn-orange" href="teacher_course.php?assignment=<?php echo urlencode((string) ($firstAssignment['id'] ?? '')); ?>&mode=edit">
-                                Ver actividades
+                            <a class="btn btn-green" href="teacher_course.php?assignment=<?php echo urlencode((string) ($selectedAssignment['id'] ?? '')); ?>&mode=edit">
+                                Puede editar
                             </a>
                         <?php } ?>
                     </div>
 
-                    <div class="unit-list">
+                    <div class="unit-list" id="unidades-curso">
                         <div class="badge-row">
                             <span class="badge"><?php echo h($todayProgramLabel); ?></span>
                             <span class="badge"><?php echo h($teacherPermission === 'editor' ? 'Puede editar' : 'Solo ver'); ?></span>
@@ -756,15 +620,9 @@ body{
                                     <div class="unit-name"><?php echo h((string) ($unit['name'] ?? 'Unidad')); ?></div>
 
                                     <div class="unit-actions">
-                                        <a class="unit-btn" href="teacher_unit.php?assignment=<?php echo urlencode((string) ($firstAssignment['id'] ?? '')); ?>&unit=<?php echo urlencode((string) ($unit['id'] ?? '')); ?>&mode=view">
+                                        <a class="unit-btn" href="teacher_unit.php?assignment=<?php echo urlencode((string) ($selectedAssignment['id'] ?? '')); ?>&unit=<?php echo urlencode((string) ($unit['id'] ?? '')); ?>&mode=view">
                                             Ver
                                         </a>
-
-                                        <?php if ($teacherPermission === 'editor') { ?>
-                                            <a class="unit-btn edit" href="teacher_unit.php?assignment=<?php echo urlencode((string) ($firstAssignment['id'] ?? '')); ?>&unit=<?php echo urlencode((string) ($unit['id'] ?? '')); ?>&mode=edit">
-                                                Editar
-                                            </a>
-                                        <?php } ?>
                                     </div>
                                 </div>
                             <?php } ?>
@@ -794,7 +652,7 @@ body{
                         $cardTitle = build_assignment_title($assignment);
                         $cardSub = $programType === 'english' ? 'Curso de inglés' : 'Curso técnico';
                         ?>
-                        <a class="course-card <?php echo h($colorClass); ?>" href="teacher_course.php?assignment=<?php echo urlencode((string) ($assignment['id'] ?? '')); ?>">
+                        <a class="course-card <?php echo h($colorClass); ?>" href="dashboard.php?assignment=<?php echo urlencode((string) ($assignment['id'] ?? '')); ?>#unidades-curso">
                             <div class="course-meta"><?php echo h($programType === 'english' ? 'English' : 'Técnico'); ?></div>
                             <div class="course-name"><?php echo h($cardTitle); ?></div>
                             <div class="course-sub"><?php echo h($cardSub); ?></div>
