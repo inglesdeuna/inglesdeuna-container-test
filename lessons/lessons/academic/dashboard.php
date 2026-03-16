@@ -596,12 +596,12 @@ body{ margin:0; font-family:Arial, "Segoe UI", sans-serif; background:var(--bg);
                         </a>
 
                         <a class="btn btn-orange" href="#unidades-curso">
-                            Ver unidades
-                        </a>
+                          Ver unidades
+                           </a>
 
-                        <?php if ($teacherPermission === 'editor') { ?>
-                            <a class="btn btn-green" href="teacher_course.php?assignment=<?php echo urlencode((string) ($selectedAssignment['id'] ?? '')); ?>&mode=edit">
-                                Puede editar
+                <?php if ($teacherPermission === 'editor') { ?>
+                         <a class="btn btn-red" href="teacher_course.php?assignment=<?php echo urlencode((string) ($selectedAssignment['id'] ?? '')); ?>&mode=edit">
+                         Editar
                             </a>
                         <?php } ?>
                     </div>
