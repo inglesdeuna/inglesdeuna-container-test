@@ -107,46 +107,42 @@ function load_assignment(PDO $pdo, string $assignmentId): ?array
 }
 
 function load_teacher_permission_from_accounts(PDO $pdo, string $teacherId): string
-{
-    if ($teacherId === '') {
-        return 'viewer';
-    }
+}
 
-    try {
-        if (!table_exists($pdo, 'teacher_accounts')) {
-            return 'viewer';
-        }
+if (!$allowed) {
+    die('No tienes permiso para esta unidad.');
+}
 
-        $stmt = $pdo->prepare("
-            SELECT permission
-            FROM teacher_accounts
-            WHERE teacher_id = :teacher_id
-            ORDER BY updated_at DESC NULLS LAST
-            LIMIT 1
+if ($mode === 'edit' && !$allowEdit) {
+    $mode = 'view';
+}
+
+try {
+    $stmtActivities = $pdo->prepare("
+        SELECT id, type, title, name, position
+        FROM activities
+        WHERE unit_id = :unit_id
+        ORDER BY position ASC, id ASC
+    ");
+    $stmtActivities->execute(['unit_id' => $unitId]);
+    $activities = $stmtActivities->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+    if (empty($activities)) {
+        $stmtAltUnits = $pdo->prepare("
+            SELECT id
+            FROM units
+            WHERE name = :name
+              AND COALESCE(course_id, '') = COALESCE(:course_id, '')
+              AND COALESCE(phase_id, '') = COALESCE(:phase_id, '')
+              AND id <> :unit_id
         ");
-        $stmt->execute(['teacher_id' => $teacherId]);
-        $permission = (string) $stmt->fetchColumn();
-
-        return $permission === 'editor' ? 'editor' : 'viewer';
-    } catch (Throwable $e) {
-        return 'viewer';
-    }
-}
-
-$pdo = get_pdo_connection();
-if (!$pdo) {
-    die('Base de datos no disponible.');
-}
-
-$assignment = load_assignment($pdo, $assignmentId);
-if (!$assignment) {
-    die('Asignación no encontrada.');
-}
-
-if ((string) ($assignment['teacher_id'] ?? '') !== $teacherId) {
-    die('No tienes permiso para esta asignación.');
-}
-
+        $stmtAltUnits->execute([
+            'name' => (string) ($unit['name'] ?? ''),
+            'course_id' => (string) ($unit['course_id'] ?? ''),
+            'phase_id' => (string) ($unit['phase_id'] ?? ''),
+            'unit_id' => $unitId,
+        ]);
+        $altUnitIds = $stmtAltUnits->fetchAll(PDO::FETCH_COLUMN) ?: [];
 try {
     $stmtUnit = $pdo->prepare("
         SELECT id, name, course_id, phase_id
