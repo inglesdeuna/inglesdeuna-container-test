@@ -585,10 +585,46 @@ body{ margin:0; font-family:Arial, "Segoe UI", sans-serif; background:var(--bg);
 .course-meta{ font-size:12px; font-weight:700; opacity:.95; text-transform:uppercase; letter-spacing:.03em; }
 
 .unit-list{ margin-top:16px; }
-.unit{ display:flex; justify-content:space-between; align-items:center; gap:12px; padding:12px 14px; margin-bottom:10px; border:1px solid var(--line); border-radius:10px; background:#fff; }
-.unit-name{ font-size:15px; font-weight:700; color:#243b63; }
-.unit-actions{ display:flex; flex-wrap:wrap; gap:8px; }
-.unit-btn{ display:inline-block; padding:8px 12px; border-radius:8px; text-decoration:none; font-size:13px; font-weight:700; color:#fff; background:var(--blue); }
+.unit{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:12px;
+    padding:12px 14px;
+    margin-bottom:10px;
+    border:1px solid var(--line);
+    border-radius:10px;
+    background:#fff;
+    transition:.2s ease;
+}
+.unit.active{
+    border:2px solid #2563eb;
+    background:#eff6ff;
+    box-shadow:0 0 0 3px rgba(37, 99, 235, 0.10);
+}
+.unit-name{
+    font-size:15px;
+    font-weight:700;
+    color:#243b63;
+}
+.unit-actions{
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+}
+.unit-btn{
+    display:inline-block;
+    padding:8px 12px;
+    border-radius:8px;
+    text-decoration:none;
+    font-size:13px;
+    font-weight:700;
+    color:#fff;
+    background:var(--blue);
+}
+.unit-btn-edit{
+    background:#16a34a;
+}
 .empty{ background:#fff; border:1px solid var(--line); border-radius:14px; padding:18px; color:var(--muted); font-size:14px; }
 .badge-row{ display:flex; flex-wrap:wrap; gap:8px; margin-bottom:14px; }
 .badge{ display:inline-block; padding:4px 10px; border-radius:999px; background:#eef2ff; color:#1f4ec9; font-size:12px; font-weight:700; }
@@ -672,7 +708,7 @@ body{ margin:0; font-family:Arial, "Segoe UI", sans-serif; background:var(--bg);
                         </a>
 
                         <?php if ($teacherPermission === 'editor') { ?>
-                           <a class="btn btn-red" href="teacher_unit.php?assignment=<?php echo urlencode((string) ($selectedAssignment['id'] ?? '')); ?>&unit=<?php echo urlencode($selectedUnitId); ?>&mode=edit">
+                            <a class="btn btn-red" href="teacher_unit.php?assignment=<?php echo urlencode((string) ($selectedAssignment['id'] ?? '')); ?>&unit=<?php echo urlencode($selectedUnitId); ?>&mode=edit">
                                 Editar
                             </a>
                         <?php } ?>
@@ -682,36 +718,39 @@ body{ margin:0; font-family:Arial, "Segoe UI", sans-serif; background:var(--bg);
                         <div class="badge-row">
                             <span class="badge"><?php echo h($todayProgramLabel); ?></span>
                             <span class="badge"><?php echo h($teacherPermission === 'editor' ? 'Puede editar' : 'Solo ver'); ?></span>
+                            <?php if ($selectedUnit) { ?>
+                                <span class="badge"><?php echo h((string) ($selectedUnit['name'] ?? 'Unidad')); ?></span>
+                            <?php } ?>
                         </div>
 
                         <?php if (empty($todayUnits)) { ?>
                             <div class="empty">No hay unidades encontradas para esta asignación.</div>
                         <?php } else { ?>
                             <?php foreach ($todayUnits as $unit) { ?>
-    <?php
-    $unitId = (string) ($unit['id'] ?? '');
-    $isActiveUnit = $unitId === $selectedUnitId;
-    ?>
-    <div class="unit<?php echo $isActiveUnit ? ' active' : ''; ?>">
-        <div class="unit-name"><?php echo h((string) ($unit['name'] ?? 'Unidad')); ?></div>
+                                <?php
+                                $unitId = (string) ($unit['id'] ?? '');
+                                $isActiveUnit = $unitId === $selectedUnitId;
+                                ?>
+                                <div class="unit<?php echo $isActiveUnit ? ' active' : ''; ?>">
+                                    <div class="unit-name"><?php echo h((string) ($unit['name'] ?? 'Unidad')); ?></div>
 
-        <div class="unit-actions">
-            <a class="unit-btn" href="dashboard.php?assignment=<?php echo urlencode((string) ($selectedAssignment['id'] ?? '')); ?>&unit=<?php echo urlencode($unitId); ?>#unidades-curso">
-                Seleccionar
-            </a>
+                                    <div class="unit-actions">
+                                        <a class="unit-btn" href="dashboard.php?assignment=<?php echo urlencode((string) ($selectedAssignment['id'] ?? '')); ?>&unit=<?php echo urlencode($unitId); ?>#unidades-curso">
+                                            Seleccionar
+                                        </a>
 
-            <a class="unit-btn" href="teacher_unit.php?assignment=<?php echo urlencode((string) ($selectedAssignment['id'] ?? '')); ?>&unit=<?php echo urlencode($unitId); ?>&mode=view">
-                Ver
-            </a>
+                                        <a class="unit-btn" href="teacher_unit.php?assignment=<?php echo urlencode((string) ($selectedAssignment['id'] ?? '')); ?>&unit=<?php echo urlencode($unitId); ?>&mode=view">
+                                            Ver
+                                        </a>
 
-            <?php if ($teacherPermission === 'editor') { ?>
-                <a class="unit-btn unit-btn-edit" href="teacher_unit.php?assignment=<?php echo urlencode((string) ($selectedAssignment['id'] ?? '')); ?>&unit=<?php echo urlencode($unitId); ?>&mode=edit">
-                    Editar
-                </a>
-            <?php } ?>
-        </div>
-    </div>
-<?php } ?>
+                                        <?php if ($teacherPermission === 'editor') { ?>
+                                            <a class="unit-btn unit-btn-edit" href="teacher_unit.php?assignment=<?php echo urlencode((string) ($selectedAssignment['id'] ?? '')); ?>&unit=<?php echo urlencode($unitId); ?>&mode=edit">
+                                                Editar
+                                            </a>
+                                        <?php } ?>
+                                    </div>
+                                </div>
+                            <?php } ?>
                         <?php } ?>
                     </div>
                 </div>
