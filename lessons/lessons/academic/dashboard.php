@@ -472,19 +472,23 @@ body{ margin:0; font-family:Arial, "Segoe UI", sans-serif; background:var(--bg);
 .profile-box{ text-align:center; }
 
 .avatar{
-    width:160px;
-    height:160px;
+    width:190px;
+    height:190px;
     margin:0 auto 18px;
     border-radius:50%;
     overflow:hidden;
     background:#dbe7f6;
     border:4px solid #edf3fb;
     box-shadow:0 6px 18px rgba(31, 60, 117, 0.12);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:82px;
 }
 
 .avatar-image{ width:100%; height:100%; object-fit:cover; display:block; }
-.teacher-name{ font-size:20px; font-weight:700; color:var(--title); margin-bottom:6px; }
-.teacher-role{ font-size:15px; color:var(--muted); margin-bottom:18px; }
+.avatar-fallback{ display:none; line-height:1; }
+.teacher-name{ font-size:20px; font-weight:700; color:var(--title); margin:2px 0 6px; }
 
 .side-button{ display:block; width:100%; margin-top:10px; padding:12px 14px; border-radius:10px; text-decoration:none; font-size:14px; font-weight:700; color:#fff; background:linear-gradient(180deg, #2f74ce, #1f4d95); text-align:center; }
 .upload-form{ margin-top:14px; margin-bottom:12px; text-align:left; }
@@ -546,16 +550,15 @@ body{ margin:0; font-family:Arial, "Segoe UI", sans-serif; background:var(--bg);
         <a class="logout" href="logout.php">Cerrar sesión</a>
     </div>
 
-    <div class="layout">
-        <aside class="panel">
-            <div class="profile-box">
-                <div class="avatar">
-                    <?php if ($teacherPhoto !== '') { ?>
-                        <img class="avatar-image" src="<?php echo h($teacherPhoto); ?>" alt="Foto de <?php echo h($teacherName); ?>">
-                    <?php } else { ?>
-                        <span>👨‍🏫</span>
-                    <?php } ?>
-                </div>
+    <div class="avatar">
+    <img
+        class="avatar-image"
+        src="<?php echo h($teacherPhotoSrc); ?>"
+        alt="Foto de <?php echo h($teacherName); ?>"
+        onerror="this.style.display='none';this.nextElementSibling.style.display='block';"
+    >
+    <span class="avatar-fallback" aria-hidden="true">👩‍🏫</span>
+        </div>
 
                 <?php if ($flashMessage !== '') { ?>
                     <div class="flash ok"><?php echo h($flashMessage); ?></div>
