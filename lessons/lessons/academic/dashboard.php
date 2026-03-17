@@ -411,6 +411,7 @@ $teacherPhotoSrc = resolve_teacher_photo_src($teacherPhoto);
 
 $assignments = load_teacher_assignments($teacherId);
 $teacherPermission = load_teacher_permission($teacherId);
+
 $selectedAssignmentId = trim((string) ($_GET['assignment'] ?? ''));
 $selectedAssignment = null;
 
@@ -469,18 +470,14 @@ if ($selectedAssignment) {
     --title:#1f3c75;
     --muted:#5b6577;
     --blue:#1f66cc;
-    --blue-hover:#2f5bb5;
     --green:#16a34a;
-    --green-hover:#15803d;
     --orange:#f59e0b;
-    --orange-hover:#d97706;
     --danger:#dc2626;
     --shadow:0 8px 24px rgba(0,0,0,.08);
     --radius:14px;
 }
 
 *{ box-sizing:border-box; }
-
 body{ margin:0; font-family:Arial, "Segoe UI", sans-serif; background:var(--bg); color:var(--text); }
 .page{ max-width:1280px; margin:0 auto; padding:30px; }
 
@@ -496,6 +493,7 @@ body{ margin:0; font-family:Arial, "Segoe UI", sans-serif; background:var(--bg);
 
 .header h1{ margin:0; font-size:28px; font-weight:700; color:var(--title); }
 .logout{ color:var(--danger); text-decoration:none; font-weight:700; font-size:14px; }
+
 .layout{ display:grid; grid-template-columns:320px 1fr; gap:24px; }
 
 .panel,
@@ -553,9 +551,11 @@ body{ margin:0; font-family:Arial, "Segoe UI", sans-serif; background:var(--bg);
 
 .main-section-title{ display:flex; align-items:center; gap:14px; font-size:22px; font-weight:700; color:var(--title); margin:0 0 14px; }
 .main-section-title::after{ content:""; flex:1; height:2px; background:var(--line); }
+
 .card{ padding:20px; margin-bottom:18px; }
 .activity-title{ margin:0 0 12px; font-size:18px; font-weight:700; color:var(--title); }
 .activity-text{ margin:0 0 18px; font-size:15px; color:var(--text); }
+
 .actions{ display:flex; flex-wrap:wrap; gap:12px; }
 .btn{ display:inline-block; padding:12px 18px; border-radius:10px; text-decoration:none; color:#fff; font-size:14px; font-weight:700; }
 .btn-green{ background:linear-gradient(180deg, #4cbf62, #249145); }
@@ -625,6 +625,7 @@ body{ margin:0; font-family:Arial, "Segoe UI", sans-serif; background:var(--bg);
 .unit-btn-edit{
     background:#16a34a;
 }
+
 .empty{ background:#fff; border:1px solid var(--line); border-radius:14px; padding:18px; color:var(--muted); font-size:14px; }
 .badge-row{ display:flex; flex-wrap:wrap; gap:8px; margin-bottom:14px; }
 .badge{ display:inline-block; padding:4px 10px; border-radius:999px; background:#eef2ff; color:#1f4ec9; font-size:12px; font-weight:700; }
@@ -633,6 +634,7 @@ body{ margin:0; font-family:Arial, "Segoe UI", sans-serif; background:var(--bg);
     .layout{ grid-template-columns:1fr; }
     .course-grid{ grid-template-columns:1fr; }
 }
+
 @media (max-width: 768px){
     .page{ padding:20px; }
     .header{ flex-direction:column; align-items:flex-start; }
@@ -699,7 +701,8 @@ body{ margin:0; font-family:Arial, "Segoe UI", sans-serif; background:var(--bg);
                     </p>
 
                     <div class="actions">
-                        <a class="btn btn-green" href="teacher_presentation.php?unit=<?php echo urlencode($selectedUnitId); ?>"
+                        <a class="btn btn-green"
+                           href="teacher_unit.php?assignment=<?php echo urlencode((string) ($selectedAssignment['id'] ?? '')); ?>&unit=<?php echo urlencode($selectedUnitId); ?>&mode=present">
                             Iniciar Presentación
                         </a>
 
@@ -708,7 +711,8 @@ body{ margin:0; font-family:Arial, "Segoe UI", sans-serif; background:var(--bg);
                         </a>
 
                         <?php if ($teacherPermission === 'editor') { ?>
-                            <a class="btn btn-red" href="teacher_unit.php?assignment=<?php echo urlencode((string) ($selectedAssignment['id'] ?? '')); ?>&unit=<?php echo urlencode($selectedUnitId); ?>&mode=edit">
+                            <a class="btn btn-red"
+                               href="teacher_unit.php?assignment=<?php echo urlencode((string) ($selectedAssignment['id'] ?? '')); ?>&unit=<?php echo urlencode($selectedUnitId); ?>&mode=edit">
                                 Editar
                             </a>
                         <?php } ?>
@@ -740,12 +744,12 @@ body{ margin:0; font-family:Arial, "Segoe UI", sans-serif; background:var(--bg);
                                         </a>
 
                                         <a class="unit-btn" href="teacher_unit.php?assignment=<?php echo urlencode((string) ($selectedAssignment['id'] ?? '')); ?>&unit=<?php echo urlencode($unitId); ?>&mode=view">
-                                            Ver             
+                                            Ver
                                         </a>
 
                                         <?php if ($teacherPermission === 'editor') { ?>
                                             <a class="unit-btn unit-btn-edit" href="teacher_unit.php?assignment=<?php echo urlencode((string) ($selectedAssignment['id'] ?? '')); ?>&unit=<?php echo urlencode($unitId); ?>&mode=edit">
-                                                Editar                        
+                                                Editar
                                             </a>
                                         <?php } ?>
                                     </div>
