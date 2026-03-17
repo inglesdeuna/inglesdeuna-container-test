@@ -699,7 +699,7 @@ body{ margin:0; font-family:Arial, "Segoe UI", sans-serif; background:var(--bg);
                     </p>
 
                     <div class="actions">
-                        <a class="btn btn-green" href="teacher_unit.php?assignment=<?php echo urlencode((string) ($selectedAssignment['id'] ?? '')); ?>&unit=<?php echo urlencode($selectedUnitId); ?>&mode=view">
+                        <a class="btn btn-green" href="teacher_presentation.php?unit=<?php echo urlencode($selectedUnitId); ?>"
                             Iniciar Presentación
                         </a>
 
@@ -740,12 +740,12 @@ body{ margin:0; font-family:Arial, "Segoe UI", sans-serif; background:var(--bg);
                                         </a>
 
                                         <a class="unit-btn" href="teacher_unit.php?assignment=<?php echo urlencode((string) ($selectedAssignment['id'] ?? '')); ?>&unit=<?php echo urlencode($unitId); ?>&mode=view">
-                                            Ver
+                                            Ver             
                                         </a>
 
                                         <?php if ($teacherPermission === 'editor') { ?>
                                             <a class="unit-btn unit-btn-edit" href="teacher_unit.php?assignment=<?php echo urlencode((string) ($selectedAssignment['id'] ?? '')); ?>&unit=<?php echo urlencode($unitId); ?>&mode=edit">
-                                                Editar
+                                                Editar                        
                                             </a>
                                         <?php } ?>
                                     </div>
