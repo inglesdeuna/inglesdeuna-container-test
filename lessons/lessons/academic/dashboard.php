@@ -328,6 +328,26 @@ function build_assignment_title(array $assignment): string
     return $courseName;
 }
 
+function resolve_teacher_photo_src(string $teacherPhoto): string
+{
+    $teacherPhoto = trim($teacherPhoto);
+
+    if ($teacherPhoto === '') {
+        return '';
+    }
+
+    if (preg_match('/^https?:\/\//i', $teacherPhoto)) {
+        return $teacherPhoto;
+    }
+
+    $fullPath = __DIR__ . '/' . ltrim($teacherPhoto, '/');
+    if (is_file($fullPath)) {
+        return h($teacherPhoto);
+    }
+
+    return '';
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && (string) ($_POST['action'] ?? '') === 'upload_teacher_photo') {
     if ($teacherId === '') {
         $flashError = 'No se encontró la sesión del docente.';
@@ -386,6 +406,8 @@ if ($teacherPhoto === '') {
         $_SESSION['teacher_photo'] = $teacherPhoto;
     }
 }
+
+$teacherPhotoSrc = resolve_teacher_photo_src($teacherPhoto);
 
 $assignments = load_teacher_assignments($teacherId);
 $teacherPermission = load_teacher_permission($teacherId);
@@ -489,8 +511,22 @@ body{ margin:0; font-family:Arial, "Segoe UI", sans-serif; background:var(--bg);
 .avatar-image{ width:100%; height:100%; object-fit:cover; display:block; }
 .avatar-fallback{ display:none; line-height:1; }
 .teacher-name{ font-size:20px; font-weight:700; color:var(--title); margin:2px 0 6px; }
+.teacher-role{ font-size:14px; color:var(--muted); font-weight:700; margin-bottom:14px; }
 
-.side-button{ display:block; width:100%; margin-top:10px; padding:12px 14px; border-radius:10px; text-decoration:none; font-size:14px; font-weight:700; color:#fff; background:linear-gradient(180deg, #2f74ce, #1f4d95); text-align:center; }
+.side-button{
+    display:block;
+    width:100%;
+    margin-top:10px;
+    padding:12px 14px;
+    border-radius:10px;
+    text-decoration:none;
+    font-size:14px;
+    font-weight:700;
+    color:#fff;
+    background:linear-gradient(180deg, #2f74ce, #1f4d95);
+    text-align:center;
+}
+
 .upload-form{ margin-top:14px; margin-bottom:12px; text-align:left; }
 .upload-label{ display:block; font-size:12px; color:var(--muted); font-weight:700; margin-bottom:6px; }
 .upload-input{ width:100%; margin-bottom:8px; }
@@ -508,6 +544,8 @@ body{ margin:0; font-family:Arial, "Segoe UI", sans-serif; background:var(--bg);
 .btn{ display:inline-block; padding:12px 18px; border-radius:10px; text-decoration:none; color:#fff; font-size:14px; font-weight:700; }
 .btn-green{ background:linear-gradient(180deg, #4cbf62, #249145); }
 .btn-orange{ background:linear-gradient(180deg, #f7a531, #e57e08); }
+.btn-red{ background:linear-gradient(180deg, #ef4444, #dc2626); }
+
 .course-grid{ display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:16px; }
 
 .course-card{
@@ -539,8 +577,17 @@ body{ margin:0; font-family:Arial, "Segoe UI", sans-serif; background:var(--bg);
 .badge-row{ display:flex; flex-wrap:wrap; gap:8px; margin-bottom:14px; }
 .badge{ display:inline-block; padding:4px 10px; border-radius:999px; background:#eef2ff; color:#1f4ec9; font-size:12px; font-weight:700; }
 
-@media (max-width: 1024px){ .layout{ grid-template-columns:1fr; } .course-grid{ grid-template-columns:1fr; } }
-@media (max-width: 768px){ .page{ padding:20px; } .header{ flex-direction:column; align-items:flex-start; } .unit{ flex-direction:column; align-items:flex-start; } .actions{ flex-direction:column; } .btn{ width:100%; text-align:center; } }
+@media (max-width: 1024px){
+    .layout{ grid-template-columns:1fr; }
+    .course-grid{ grid-template-columns:1fr; }
+}
+@media (max-width: 768px){
+    .page{ padding:20px; }
+    .header{ flex-direction:column; align-items:flex-start; }
+    .unit{ flex-direction:column; align-items:flex-start; }
+    .actions{ flex-direction:column; }
+    .btn{ width:100%; text-align:center; }
+}
 </style>
 </head>
 <body>
@@ -550,19 +597,25 @@ body{ margin:0; font-family:Arial, "Segoe UI", sans-serif; background:var(--bg);
         <a class="logout" href="logout.php">Cerrar sesión</a>
     </div>
 
-    <div class="avatar">
-    <img
-        class="avatar-image"
-        src="<?php echo h($teacherPhotoSrc); ?>"
-        alt="Foto de <?php echo h($teacherName); ?>"
-        onerror="this.style.display='none';this.nextElementSibling.style.display='block';"
-    >
-    <span class="avatar-fallback" aria-hidden="true">👩‍🏫</span>
-        </div>
+    <div class="layout">
+        <aside class="panel">
+            <div class="profile-box">
+                <div class="avatar">
+                    <?php if ($teacherPhotoSrc !== '') { ?>
+                        <img
+                            class="avatar-image"
+                            src="<?php echo $teacherPhotoSrc; ?>"
+                            alt="Foto de <?php echo h($teacherName); ?>"
+                            onerror="this.style.display='none';this.nextElementSibling.style.display='block';"
+                        >
+                    <?php } ?>
+                    <span class="avatar-fallback" aria-hidden="true" style="<?php echo $teacherPhotoSrc === '' ? 'display:block;' : ''; ?>">👩‍🏫</span>
+                </div>
 
                 <?php if ($flashMessage !== '') { ?>
                     <div class="flash ok"><?php echo h($flashMessage); ?></div>
                 <?php } ?>
+
                 <?php if ($flashError !== '') { ?>
                     <div class="flash error"><?php echo h($flashError); ?></div>
                 <?php } ?>
@@ -599,12 +652,12 @@ body{ margin:0; font-family:Arial, "Segoe UI", sans-serif; background:var(--bg);
                         </a>
 
                         <a class="btn btn-orange" href="#unidades-curso">
-                          Ver unidades
-                           </a>
+                            Ver unidades
+                        </a>
 
-                <?php if ($teacherPermission === 'editor') { ?>
-                         <a class="btn btn-red" href="teacher_course.php?assignment=<?php echo urlencode((string) ($selectedAssignment['id'] ?? '')); ?>&mode=edit">
-                         Editar
+                        <?php if ($teacherPermission === 'editor') { ?>
+                            <a class="btn btn-red" href="teacher_course.php?assignment=<?php echo urlencode((string) ($selectedAssignment['id'] ?? '')); ?>&mode=edit">
+                                Editar
                             </a>
                         <?php } ?>
                     </div>
