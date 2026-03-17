@@ -431,11 +431,27 @@ if (!$selectedAssignment) {
 $todayUnits = [];
 $todayTitle = 'Curso';
 $todayProgramLabel = 'Docente';
+$selectedUnitId = trim((string) ($_GET['unit'] ?? ''));
+$selectedUnit = null;
 
 if ($selectedAssignment) {
     $todayTitle = build_assignment_title($selectedAssignment);
     $todayProgramLabel = ((string) ($selectedAssignment['program_type'] ?? '') === 'english') ? 'English' : 'Técnico';
     $todayUnits = load_units_for_assignment($selectedAssignment);
+
+    if (!empty($todayUnits)) {
+        foreach ($todayUnits as $unit) {
+            if ((string) ($unit['id'] ?? '') === $selectedUnitId) {
+                $selectedUnit = $unit;
+                break;
+            }
+        }
+
+        if (!$selectedUnit) {
+            $selectedUnit = $todayUnits[0];
+            $selectedUnitId = (string) ($selectedUnit['id'] ?? '');
+        }
+    }
 }
 ?>
 <!DOCTYPE html>
@@ -647,7 +663,7 @@ body{ margin:0; font-family:Arial, "Segoe UI", sans-serif; background:var(--bg);
                     </p>
 
                     <div class="actions">
-                        <a class="btn btn-green" href="teacher_course.php?assignment=<?php echo urlencode((string) ($selectedAssignment['id'] ?? '')); ?>">
+                        <a class="btn btn-green" href="teacher_unit.php?assignment=<?php echo urlencode((string) ($selectedAssignment['id'] ?? '')); ?>&unit=<?php echo urlencode($selectedUnitId); ?>&mode=view">
                             Iniciar Presentación
                         </a>
 
@@ -656,7 +672,7 @@ body{ margin:0; font-family:Arial, "Segoe UI", sans-serif; background:var(--bg);
                         </a>
 
                         <?php if ($teacherPermission === 'editor') { ?>
-                            <a class="btn btn-red" href="teacher_course.php?assignment=<?php echo urlencode((string) ($selectedAssignment['id'] ?? '')); ?>&mode=edit">
+                           <a class="btn btn-red" href="teacher_unit.php?assignment=<?php echo urlencode((string) ($selectedAssignment['id'] ?? '')); ?>&unit=<?php echo urlencode($selectedUnitId); ?>&mode=edit">
                                 Editar
                             </a>
                         <?php } ?>
@@ -672,16 +688,30 @@ body{ margin:0; font-family:Arial, "Segoe UI", sans-serif; background:var(--bg);
                             <div class="empty">No hay unidades encontradas para esta asignación.</div>
                         <?php } else { ?>
                             <?php foreach ($todayUnits as $unit) { ?>
-                                <div class="unit">
-                                    <div class="unit-name"><?php echo h((string) ($unit['name'] ?? 'Unidad')); ?></div>
+    <?php
+    $unitId = (string) ($unit['id'] ?? '');
+    $isActiveUnit = $unitId === $selectedUnitId;
+    ?>
+    <div class="unit<?php echo $isActiveUnit ? ' active' : ''; ?>">
+        <div class="unit-name"><?php echo h((string) ($unit['name'] ?? 'Unidad')); ?></div>
 
-                                    <div class="unit-actions">
-                                        <a class="unit-btn" href="teacher_unit.php?assignment=<?php echo urlencode((string) ($selectedAssignment['id'] ?? '')); ?>&unit=<?php echo urlencode((string) ($unit['id'] ?? '')); ?>&mode=view">
-                                            Ver
-                                        </a>
-                                    </div>
-                                </div>
-                            <?php } ?>
+        <div class="unit-actions">
+            <a class="unit-btn" href="dashboard.php?assignment=<?php echo urlencode((string) ($selectedAssignment['id'] ?? '')); ?>&unit=<?php echo urlencode($unitId); ?>#unidades-curso">
+                Seleccionar
+            </a>
+
+            <a class="unit-btn" href="teacher_unit.php?assignment=<?php echo urlencode((string) ($selectedAssignment['id'] ?? '')); ?>&unit=<?php echo urlencode($unitId); ?>&mode=view">
+                Ver
+            </a>
+
+            <?php if ($teacherPermission === 'editor') { ?>
+                <a class="unit-btn unit-btn-edit" href="teacher_unit.php?assignment=<?php echo urlencode((string) ($selectedAssignment['id'] ?? '')); ?>&unit=<?php echo urlencode($unitId); ?>&mode=edit">
+                    Editar
+                </a>
+            <?php } ?>
+        </div>
+    </div>
+<?php } ?>
                         <?php } ?>
                     </div>
                 </div>
