@@ -9,8 +9,7 @@ if (!isset($_SESSION['academic_logged']) || $_SESSION['academic_logged'] !== tru
 $unitId = trim((string) ($_GET['unit'] ?? ''));
 $assignmentId = trim((string) ($_GET['assignment'] ?? ''));
 $mode = trim((string) ($_GET['mode'] ?? 'view'));
-$allowedModes = ['view', 'edit', 'present'];
-$mode = in_array($mode, $allowedModes, true) ? $mode : 'view';
+$mode = $mode === 'edit' ? 'edit' : 'view';
 
 if ($unitId === '') {
     die('Unidad no especificada.');
@@ -307,33 +306,6 @@ if ($mode === 'edit' && !$allowEdit) {
 }
 
 $activities = load_activities_for_unit($pdo, (string) ($selectedUnit['id'] ?? ''));
-
-if ($mode === 'present') {
-    if (empty($activities)) {
-        die('No hay actividades registradas en esta unidad.');
-    }
-
-    $firstActivity = $activities[0];
-    $firstActivityId = (string) ($firstActivity['id'] ?? '');
-    $firstType = strtolower((string) ($firstActivity['type'] ?? ''));
-
-    if ($firstActivityId === '' || $firstType === '') {
-        die('No fue posible iniciar la presentación.');
-    }
-
-    $viewerFile = __DIR__ . '/../activities/' . $firstType . '/viewer.php';
-    if (!file_exists($viewerFile)) {
-        die('No se encontró el viewer de la actividad.');
-    }
-
-    $viewerHref = '../activities/' . rawurlencode($firstType)
-        . '/viewer.php?id=' . urlencode($firstActivityId)
-        . '&unit=' . urlencode((string) ($selectedUnit['id'] ?? ''))
-        . '&assignment=' . urlencode($assignmentId);
-
-    header('Location: ' . $viewerHref);
-    exit;
-}
 
 $activityLabels = [
     'flashcards' => 'Flashcards',
