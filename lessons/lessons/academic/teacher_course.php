@@ -313,10 +313,6 @@ if ($programType === 'english') {
     $allUnits = load_technical_units($pdo, $courseId, $assignmentUnitId, $assignmentUnitName);
 }
 
-/*
- * Si viene unit en la URL, respetar esa unidad.
- * Si no viene, usar la primera disponible.
- */
 $units = [];
 if ($selectedUnitId !== '') {
     foreach ($allUnits as $unit) {
@@ -410,13 +406,6 @@ if ($current) {
 }
 
 $logoPath = '../hangman/assets/LETS%20NUEVO%20-%20copia.jpeg';
-$programLabel = $programType === 'english' ? 'English' : 'Técnico';
-
-$courseTitle = $courseName;
-if ($programType === 'technical' && $assignmentUnitName !== '') {
-    $courseTitle .= ' · ' . $assignmentUnitName;
-}
-
 $backDashboard = 'dashboard.php?assignment=' . urlencode($assignmentId) . '&unit=' . urlencode($selectedUnitId) . '#unidades-curso';
 ?>
 <!DOCTYPE html>
@@ -431,12 +420,9 @@ $backDashboard = 'dashboard.php?assignment=' . urlencode($assignmentId) . '&unit
     --card:#ffffff;
     --line:#dce4f0;
     --text:#1f2937;
-    --title:#1f3c75;
     --muted:#5b6577;
     --blue:#1f66cc;
     --blue-hover:#2f5bb5;
-    --badge-bg:#eef2ff;
-    --badge-text:#1f4ec9;
     --danger:#dc2626;
     --shadow:0 8px 24px rgba(0,0,0,.08);
     --topbar:#3d69cf;
@@ -445,6 +431,10 @@ $backDashboard = 'dashboard.php?assignment=' . urlencode($assignmentId) . '&unit
 
 *{
     box-sizing:border-box;
+}
+
+html, body{
+    height:100%;
 }
 
 body{
@@ -456,33 +446,33 @@ body{
 
 .topbar{
     background:linear-gradient(180deg, var(--topbar), var(--topbar-dark));
-    padding:22px 30px;
+    padding:14px 24px;
     color:#fff;
 }
 
 .topbar-inner{
-    max-width:1280px;
+    max-width:1380px;
     margin:0 auto;
     display:grid;
-    grid-template-columns:160px 1fr 160px;
+    grid-template-columns:140px 1fr 140px;
     align-items:center;
-    gap:16px;
+    gap:12px;
 }
 
 .topbar-title{
     text-align:center;
-    font-size:28px;
+    font-size:24px;
     font-weight:700;
     margin:0;
 }
 
 .top-btn{
     display:inline-block;
-    padding:12px 18px;
+    padding:10px 14px;
     border-radius:10px;
     color:#fff;
     text-decoration:none;
-    font-size:14px;
+    font-size:13px;
     font-weight:700;
     box-shadow:var(--shadow);
 }
@@ -498,31 +488,31 @@ body{
 }
 
 .page{
-    max-width:1280px;
+    max-width:1380px;
     margin:0 auto;
-    padding:0 30px 30px;
+    padding:16px 20px 20px;
 }
 
 .layout{
     display:grid;
-    grid-template-columns:180px 1fr;
-    gap:22px;
+    grid-template-columns:165px 1fr;
+    gap:18px;
     align-items:start;
 }
 
 .sidebar{
     background:#eaf0fb;
-    min-height:calc(100vh - 140px);
-    padding:26px 14px;
+    min-height:calc(100vh - 110px);
+    padding:20px 12px;
 }
 
 .logo-wrap{
     text-align:center;
-    margin-bottom:28px;
+    margin-bottom:18px;
 }
 
 .logo-wrap img{
-    width:120px;
+    width:110px;
     max-width:100%;
     border-radius:10px;
     display:block;
@@ -532,12 +522,12 @@ body{
 .side-btn{
     display:block;
     width:100%;
-    padding:13px 12px;
-    margin-bottom:14px;
+    padding:12px 10px;
+    margin-bottom:12px;
     border-radius:10px;
     text-decoration:none;
     color:#fff;
-    font-size:14px;
+    font-size:13px;
     font-weight:700;
     text-align:center;
     box-shadow:var(--shadow);
@@ -556,13 +546,13 @@ body{
 }
 
 .content{
-    padding:26px 0;
+    padding:4px 0;
 }
 
 .viewer-shell{
     background:#f2f5fb;
     border-radius:22px;
-    padding:36px;
+    padding:18px;
     border:1px solid var(--line);
     box-shadow:var(--shadow);
 }
@@ -572,23 +562,23 @@ body{
     border-radius:20px;
     border:1px solid var(--line);
     box-shadow:var(--shadow);
-    padding:34px 36px 28px;
+    padding:18px 18px 16px;
 }
 
 .viewer-header{
-    margin-bottom:18px;
+    margin-bottom:10px;
 }
 
 .viewer-title{
-    margin:0 0 12px;
-    font-size:22px;
+    margin:0 0 6px;
+    font-size:18px;
     font-weight:700;
     color:#3c63c7;
 }
 
 .viewer-subtitle{
     margin:0;
-    font-size:15px;
+    font-size:13px;
     color:var(--muted);
 }
 
@@ -596,16 +586,19 @@ body{
     background:#fff;
     border:1px solid #e6ebf4;
     border-radius:16px;
-    padding:8px;
-    min-height:420px;
+    padding:6px;
+    height:calc(100vh - 240px);
+    min-height:620px;
+    overflow:hidden;
 }
 
 .viewer-frame{
     width:100%;
-    min-height:430px;
+    height:100%;
     border:0;
     border-radius:12px;
     background:#fff;
+    display:block;
 }
 
 .controls{
@@ -613,7 +606,7 @@ body{
     justify-content:space-between;
     align-items:center;
     gap:16px;
-    margin-top:26px;
+    margin-top:14px;
 }
 
 .nav-btn{
@@ -639,34 +632,9 @@ body{
     pointer-events:none;
 }
 
-.meta-row{
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
-    gap:12px;
-    flex-wrap:wrap;
-    margin-bottom:18px;
-}
-
-.badges{
-    display:flex;
-    gap:8px;
-    flex-wrap:wrap;
-}
-
-.badge{
-    display:inline-block;
-    padding:4px 8px;
-    border-radius:999px;
-    background:var(--badge-bg);
-    color:var(--badge-text);
-    font-size:12px;
-    font-weight:700;
-}
-
 .editor-link{
     display:inline-block;
-    margin-top:16px;
+    margin-top:12px;
     padding:10px 14px;
     border-radius:8px;
     background:var(--blue);
@@ -687,7 +655,7 @@ body{
 .empty-card h2{
     margin-top:0;
     font-size:22px;
-    color:var(--title);
+    color:#1f3c75;
 }
 
 .empty-card p{
@@ -727,31 +695,49 @@ body{
     .logo-wrap{
         grid-column:1 / -1;
     }
+
+    .viewer-frame-wrap{
+        height:calc(100vh - 300px);
+        min-height:520px;
+    }
 }
 
 @media (max-width: 768px){
     .page{
-        padding:0 20px 20px;
+        padding:12px;
     }
 
     .topbar{
-        padding:20px;
+        padding:14px;
     }
 
     .viewer-shell{
-        padding:18px;
+        padding:12px;
     }
 
     .viewer-card{
-        padding:22px 18px;
+        padding:14px 12px 12px;
     }
 
     .topbar-title{
-        font-size:24px;
+        font-size:22px;
     }
 
     .viewer-title{
-        font-size:20px;
+        font-size:17px;
+    }
+
+    .viewer-frame-wrap{
+        height:calc(100vh - 260px);
+        min-height:460px;
+    }
+
+    .controls{
+        flex-direction:column;
+    }
+
+    .nav-btn{
+        width:100%;
     }
 }
 </style>
@@ -767,7 +753,7 @@ body{
 
 <div class="page">
     <?php if (!$current || !$viewerHref) { ?>
-        <div class="content" style="padding-top:30px;">
+        <div class="content" style="padding-top:20px;">
             <div class="empty-card">
                 <h2>No hay actividades disponibles.</h2>
                 <p>Esta unidad aún no tiene actividades para presentar o el tipo de actividad no tiene viewer configurado.</p>
@@ -792,30 +778,19 @@ body{
 
             <main class="content">
                 <div class="viewer-shell">
-                    <div class="meta-row">
-                        <div class="badges">
-                            <span class="badge"><?php echo h($programLabel); ?></span>
-                            <span class="badge"><?php echo h($courseTitle); ?></span>
-                            <span class="badge"><?php echo h($currentUnitName); ?></span>
-                            <span class="badge"><?php echo h($currentTypeLabel); ?></span>
-                        </div>
-
-                        <div class="badges">
-                            <span class="badge">Actividad <?php echo $step + 1; ?> de <?php echo $total; ?></span>
-                            <span class="badge"><?php echo h($mode === 'edit' ? 'Modo edición' : 'Modo presentación'); ?></span>
-                        </div>
-                    </div>
-
                     <section class="viewer-card">
                         <div class="viewer-header">
-                            <h2 class="viewer-title">🎯 <?php echo h($currentTypeLabel); ?></h2>
-                            <p class="viewer-subtitle">
-                                Presentación de la actividad del curso para el docente.
-                            </p>
+                            <h2 class="viewer-title"><?php echo h($currentTypeLabel); ?></h2>
+                            <p class="viewer-subtitle">Presentación de la actividad del curso para el docente.</p>
                         </div>
 
                         <div class="viewer-frame-wrap">
-                            <iframe class="viewer-frame" src="<?php echo h($viewerHref); ?>" title="Viewer actividad"></iframe>
+                            <iframe
+                                id="activityViewer"
+                                class="viewer-frame"
+                                src="<?php echo h($viewerHref); ?>"
+                                title="Viewer actividad"
+                            ></iframe>
                         </div>
 
                         <div class="controls">
@@ -841,5 +816,72 @@ body{
         </div>
     <?php } ?>
 </div>
+
+<script>
+(function () {
+    const iframe = document.getElementById('activityViewer');
+    if (!iframe) {
+        return;
+    }
+
+    function hideEmbeddedBackButton() {
+        try {
+            const doc = iframe.contentDocument || iframe.contentWindow.document;
+            if (!doc) {
+                return;
+            }
+
+            const selectors = [
+                '.back',
+                '.btn-volver',
+                '.back-button',
+                '.btn.back',
+                'a[href*="dashboard"]',
+                'a[href*="unit_view"]',
+                'a[href*="technical_units"]',
+                'a[href*="english_structure_units"]'
+            ];
+
+            selectors.forEach((selector) => {
+                doc.querySelectorAll(selector).forEach((el) => {
+                    const text = (el.textContent || '').toLowerCase();
+                    const href = (el.getAttribute('href') || '').toLowerCase();
+
+                    if (
+                        text.includes('volver') ||
+                        text.includes('back') ||
+                        href.includes('dashboard') ||
+                        href.includes('unit_view') ||
+                        href.includes('technical_units') ||
+                        href.includes('english_structure_units')
+                    ) {
+                        el.style.display = 'none';
+                    }
+                });
+            });
+
+            doc.querySelectorAll('a, button').forEach((el) => {
+                const text = (el.textContent || '').trim().toLowerCase();
+                if (text === 'back' || text === 'volver' || text === '← volver' || text === '↩ back') {
+                    el.style.display = 'none';
+                }
+            });
+
+            const style = doc.createElement('style');
+            style.innerHTML = `
+                body{
+                    margin-top:0 !important;
+                    padding-top:0 !important;
+                }
+            `;
+            doc.head.appendChild(style);
+        } catch (e) {
+            // Ignorar si algún viewer no permite manipulación.
+        }
+    }
+
+    iframe.addEventListener('load', hideEmbeddedBackButton);
+})();
+</script>
 </body>
 </html>
