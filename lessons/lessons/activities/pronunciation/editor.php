@@ -6,6 +6,7 @@ require_once __DIR__ . '/../../core/_activity_editor_template.php';
 $activityId = isset($_GET['id']) ? trim((string) $_GET['id']) : '';
 $unit = isset($_GET['unit']) ? trim((string) $_GET['unit']) : '';
 $source = isset($_GET['source']) ? trim((string) $_GET['source']) : '';
+$assignment = isset($_GET['assignment']) ? trim((string) $_GET['assignment']) : '';
 
 function activities_columns(PDO $pdo): array
 {
@@ -279,11 +280,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $audio = isset($audios[$i]) ? trim((string) $audios[$i]) : '';
 
         if (
-            $imageFiles
-            && isset($imageFiles['name'][$i])
-            && $imageFiles['name'][$i] !== ''
-            && isset($imageFiles['tmp_name'][$i])
-            && $imageFiles['tmp_name'][$i] !== ''
+            $imageFiles &&
+            isset($imageFiles['name'][$i]) &&
+            $imageFiles['name'][$i] !== '' &&
+            isset($imageFiles['tmp_name'][$i]) &&
+            $imageFiles['tmp_name'][$i] !== ''
         ) {
             $uploadedImage = upload_to_cloudinary($imageFiles['tmp_name'][$i]);
             if ($uploadedImage) {
@@ -306,10 +307,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     save_pronunciation_items($pdo, $unit, $sanitized);
 
-    $redirectParams = array('unit=' . urlencode($unit), 'saved=1');
+    $redirectParams = array(
+        'unit=' . urlencode($unit),
+        'saved=1'
+    );
+
     if ($activityId !== '') {
         $redirectParams[] = 'id=' . urlencode($activityId);
     }
+
+    if ($assignment !== '') {
+        $redirectParams[] = 'assignment=' . urlencode($assignment);
+    }
+
     if ($source !== '') {
         $redirectParams[] = 'source=' . urlencode($source);
     }
@@ -325,24 +335,31 @@ ob_start();
 <p style="color:green;font-weight:bold;margin-bottom:15px;">✔ Guardado correctamente</p>
 <?php } ?>
 
-<form method="post" enctype="multipart/form-data" style="text-align:left;max-width:980px;margin:0 auto;">
+<form id="pronunciationForm" method="post" enctype="multipart/form-data" style="text-align:left;max-width:980px;margin:0 auto;">
     <div id="items">
         <?php foreach ($items as $item) { ?>
             <div class="pron-block">
                 <label>Command (English)</label>
-                <input type="text" name="en[]" value="<?php echo htmlspecialchars(isset($item['en']) ? $item['en'] : ''); ?>" placeholder="Stand up" required>
+                <input type="text" name="en[]" value="<?php echo htmlspecialchars(isset($item['en']) ? $item['en'] : '', ENT_QUOTES, 'UTF-8'); ?>" placeholder="Stand up" required>
 
                 <label>Phonetic</label>
-                <input type="text" name="ph[]" value="<?php echo htmlspecialchars(isset($item['ph']) ? $item['ph'] : ''); ?>" placeholder="stánd ap">
+                <input type="text" name="ph[]" value="<?php echo htmlspecialchars(isset($item['ph']) ? $item['ph'] : '', ENT_QUOTES, 'UTF-8'); ?>" placeholder="stánd ap">
 
                 <label>Spanish</label>
-                <input type="text" name="es[]" value="<?php echo htmlspecialchars(isset($item['es']) ? $item['es'] : ''); ?>" placeholder="Levántate / Levántense">
+                <input type="text" name="es[]" value="<?php echo htmlspecialchars(isset($item['es']) ? $item['es'] : '', ENT_QUOTES, 'UTF-8'); ?>" placeholder="Levántate / Levántense">
 
                 <label>Image (optional)</label>
                 <input type="file" name="img_file[]" accept="image/*">
-                <input type="hidden" name="img[]" value="<?php echo htmlspecialchars(isset($item['img']) ? $item['img'] : ''); ?>">
+                <input type="hidden" name="img[]" value="<?php echo htmlspecialchars(isset($item['img']) ? $item['img'] : '', ENT_QUOTES, 'UTF-8'); ?>">
 
-                <input type="hidden" name="audio[]" value="<?php echo htmlspecialchars(isset($item['audio']) ? $item['audio'] : ''); ?>">
+                <?php if (!empty($item['img'])) { ?>
+                    <div class="image-preview-wrap">
+                        <p class="preview-label">Current image:</p>
+                        <img src="<?php echo htmlspecialchars($item['img'], ENT_QUOTES, 'UTF-8'); ?>" alt="Saved image" class="image-preview">
+                    </div>
+                <?php } ?>
+
+                <input type="hidden" name="audio[]" value="<?php echo htmlspecialchars(isset($item['audio']) ? $item['audio'] : '', ENT_QUOTES, 'UTF-8'); ?>">
 
                 <button type="button" onclick="removeItem(this)" class="btn-remove">✖ Remove</button>
             </div>
@@ -356,17 +373,92 @@ ob_start();
 </form>
 
 <style>
-.pron-block{background:#f9fafb;padding:14px;margin-bottom:12px;border-radius:12px;border:1px solid #e5e7eb;display:grid;grid-template-columns:1fr 1fr;gap:8px 10px}
-.pron-block label{font-weight:700;grid-column:span 2}
-.pron-block input{padding:8px 10px;border-radius:8px;border:1px solid #ccc;font-size:14px;grid-column:span 2}
-.actions-row{display:flex;gap:10px;justify-content:center;margin-top:8px}
-.btn-add{background:#16a34a;color:#fff;padding:9px 14px;border:none;border-radius:8px;cursor:pointer}
-.btn-save{background:#0b5ed7;color:#fff;padding:9px 14px;border:none;border-radius:8px;cursor:pointer}
-.btn-remove{background:#ef4444;color:#fff;border:none;padding:6px 10px;border-radius:6px;cursor:pointer;justify-self:end;grid-column:span 2}
-@media (max-width:680px){.pron-block{display:flex;flex-direction:column}}
+.pron-block{
+    background:#f9fafb;
+    padding:14px;
+    margin-bottom:12px;
+    border-radius:12px;
+    border:1px solid #e5e7eb;
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:8px 10px;
+}
+.pron-block label{
+    font-weight:700;
+    grid-column:span 2;
+}
+.pron-block input{
+    padding:8px 10px;
+    border-radius:8px;
+    border:1px solid #ccc;
+    font-size:14px;
+    grid-column:span 2;
+}
+.image-preview-wrap{
+    grid-column:span 2;
+    margin-top:4px;
+}
+.preview-label{
+    margin:0 0 6px 0;
+    font-size:13px;
+    font-weight:700;
+    color:#374151;
+}
+.image-preview{
+    max-width:140px;
+    max-height:140px;
+    border-radius:10px;
+    border:1px solid #d1d5db;
+    display:block;
+}
+.actions-row{
+    display:flex;
+    gap:10px;
+    justify-content:center;
+    margin-top:8px;
+}
+.btn-add{
+    background:#16a34a;
+    color:#fff;
+    padding:9px 14px;
+    border:none;
+    border-radius:8px;
+    cursor:pointer;
+}
+.btn-save{
+    background:#0b5ed7;
+    color:#fff;
+    padding:9px 14px;
+    border:none;
+    border-radius:8px;
+    cursor:pointer;
+}
+.btn-remove{
+    background:#ef4444;
+    color:#fff;
+    border:none;
+    padding:6px 10px;
+    border-radius:6px;
+    cursor:pointer;
+    justify-self:end;
+    grid-column:span 2;
+}
+@media (max-width:680px){
+    .pron-block{
+        display:flex;
+        flex-direction:column;
+    }
+}
 </style>
 
 <script>
+let formChanged = false;
+let formSubmitted = false;
+
+function markAsChanged() {
+    formChanged = true;
+}
+
 function addItem() {
     var container = document.getElementById('items');
     var div = document.createElement('div');
@@ -383,15 +475,46 @@ function addItem() {
       '<input type="hidden" name="img[]" value="">' +
       '<input type="hidden" name="audio[]" value="">' +
       '<button type="button" onclick="removeItem(this)" class="btn-remove">✖ Remove</button>';
+
     container.appendChild(div);
+    bindChangeTracking(div);
+    markAsChanged();
 }
 
 function removeItem(btn) {
     var block = btn.closest('.pron-block');
     if (block) {
         block.remove();
+        markAsChanged();
     }
 }
+
+function bindChangeTracking(scope) {
+    var elements = scope.querySelectorAll('input, textarea, select');
+    elements.forEach(function(el) {
+        el.addEventListener('input', markAsChanged);
+        el.addEventListener('change', markAsChanged);
+    });
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+    bindChangeTracking(document);
+
+    var form = document.getElementById('pronunciationForm');
+    if (form) {
+        form.addEventListener('submit', function () {
+            formSubmitted = true;
+            formChanged = false;
+        });
+    }
+});
+
+window.addEventListener('beforeunload', function (e) {
+    if (formChanged && !formSubmitted) {
+        e.preventDefault();
+        e.returnValue = '';
+    }
+});
 </script>
 
 <?php
