@@ -120,13 +120,38 @@ function normalize_pronunciation_items($rawData): array
     return $normalized;
 }
 
-function load_pronunciation_items(PDO $pdo, string $activityId, string $unit): array
+function default_pronunciation_title(): string
+{
+    return 'Pronunciation';
+}
+
+function normalize_activity_title(string $title): string
+{
+    $title = trim($title);
+    return $title !== '' ? $title : default_pronunciation_title();
+}
+
+function load_pronunciation_activity(PDO $pdo, string $activityId, string $unit): array
 {
     $columns = activities_columns($pdo);
+    $selectFields = array('id');
 
-    if ($activityId !== '' && in_array('data', $columns, true)) {
+    if (in_array('data', $columns, true)) {
+        $selectFields[] = 'data';
+    }
+    if (in_array('content_json', $columns, true)) {
+        $selectFields[] = 'content_json';
+    }
+    if (in_array('title', $columns, true)) {
+        $selectFields[] = 'title';
+    }
+    if (in_array('name', $columns, true)) {
+        $selectFields[] = 'name';
+    }
+
+    if ($activityId !== '') {
         $stmt = $pdo->prepare(
-            "SELECT data
+            "SELECT " . implode(', ', $selectFields) . "
              FROM activities
              WHERE id = :id
                AND type = 'pronunciation'
@@ -135,51 +160,113 @@ function load_pronunciation_items(PDO $pdo, string $activityId, string $unit): a
         $stmt->execute(array('id' => $activityId));
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
-        if ($row && isset($row['data'])) {
-            return normalize_pronunciation_items($row['data']);
+        if ($row) {
+            $rawTitle = '';
+            if (isset($row['title']) && trim((string) $row['title']) !== '') {
+                $rawTitle = (string) $row['title'];
+            } elseif (isset($row['name']) && trim((string) $row['name']) !== '') {
+                $rawTitle = (string) $row['name'];
+            }
+
+            $rawData = null;
+            if (isset($row['data'])) {
+                $rawData = $row['data'];
+            } elseif (isset($row['content_json'])) {
+                $rawData = $row['content_json'];
+            }
+
+            return array(
+                'id' => isset($row['id']) ? (string) $row['id'] : '',
+                'title' => normalize_activity_title($rawTitle),
+                'items' => normalize_pronunciation_items($rawData),
+            );
         }
     }
 
-    if ($unit !== '' && in_array('unit_id', $columns, true) && in_array('data', $columns, true)) {
+    if ($unit !== '' && in_array('unit_id', $columns, true)) {
         $stmt = $pdo->prepare(
-            "SELECT data
+            "SELECT " . implode(', ', $selectFields) . "
              FROM activities
              WHERE unit_id = :unit
                AND type = 'pronunciation'
+             ORDER BY id ASC
              LIMIT 1"
         );
         $stmt->execute(array('unit' => $unit));
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
-        if ($row && isset($row['data'])) {
-            return normalize_pronunciation_items($row['data']);
+        if ($row) {
+            $rawTitle = '';
+            if (isset($row['title']) && trim((string) $row['title']) !== '') {
+                $rawTitle = (string) $row['title'];
+            } elseif (isset($row['name']) && trim((string) $row['name']) !== '') {
+                $rawTitle = (string) $row['name'];
+            }
+
+            $rawData = null;
+            if (isset($row['data'])) {
+                $rawData = $row['data'];
+            } elseif (isset($row['content_json'])) {
+                $rawData = $row['content_json'];
+            }
+
+            return array(
+                'id' => isset($row['id']) ? (string) $row['id'] : '',
+                'title' => normalize_activity_title($rawTitle),
+                'items' => normalize_pronunciation_items($rawData),
+            );
         }
     }
 
-    if ($unit !== '' && in_array('unit', $columns, true) && in_array('content_json', $columns, true)) {
+    if ($unit !== '' && in_array('unit', $columns, true)) {
         $stmt = $pdo->prepare(
-            "SELECT content_json
+            "SELECT " . implode(', ', $selectFields) . "
              FROM activities
              WHERE unit = :unit
                AND type = 'pronunciation'
+             ORDER BY id ASC
              LIMIT 1"
         );
         $stmt->execute(array('unit' => $unit));
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
-        if ($row && isset($row['content_json'])) {
-            return normalize_pronunciation_items($row['content_json']);
+        if ($row) {
+            $rawTitle = '';
+            if (isset($row['title']) && trim((string) $row['title']) !== '') {
+                $rawTitle = (string) $row['title'];
+            } elseif (isset($row['name']) && trim((string) $row['name']) !== '') {
+                $rawTitle = (string) $row['name'];
+            }
+
+            $rawData = null;
+            if (isset($row['data'])) {
+                $rawData = $row['data'];
+            } elseif (isset($row['content_json'])) {
+                $rawData = $row['content_json'];
+            }
+
+            return array(
+                'id' => isset($row['id']) ? (string) $row['id'] : '',
+                'title' => normalize_activity_title($rawTitle),
+                'items' => normalize_pronunciation_items($rawData),
+            );
         }
     }
 
-    return array();
+    return array(
+        'id' => '',
+        'title' => default_pronunciation_title(),
+        'items' => array(),
+    );
 }
 
 if ($unit === '' && $activityId !== '') {
     $unit = resolve_unit_from_activity($pdo, $activityId);
 }
 
-$items = load_pronunciation_items($pdo, $activityId, $unit);
+$activity = load_pronunciation_activity($pdo, $activityId, $unit);
+$items = isset($activity['items']) && is_array($activity['items']) ? $activity['items'] : array();
+$viewerTitle = isset($activity['title']) ? (string) $activity['title'] : default_pronunciation_title();
 
 ob_start();
 ?>
@@ -319,4 +406,4 @@ renderCards();
 
 <?php
 $content = ob_get_clean();
-render_activity_viewer('Pronunciation', '🔊', $content);
+render_activity_viewer($viewerTitle, '🔊', $content);
