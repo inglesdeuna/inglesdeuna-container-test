@@ -27,29 +27,82 @@ function render_activity_viewer($title, $icon, $content)
             margin:0;
             font-family: Arial, sans-serif;
             background:#cfd8e6;
-            padding:20px;
-        }
-
-        h1{
-            text-align:center;
-            color:#1d4ed8;
-            margin-bottom:30px;
+            padding:14px 20px 20px;
         }
 
         .activity-wrapper{
-            max-width:1200px;
+            max-width:1280px;
             margin:0 auto;
+        }
+
+        .top-row{
+            display:flex;
+            align-items:center;
+            justify-content:flex-start;
+            min-height:42px;
+            margin-bottom:8px;
         }
 
         .back-btn{
             display:inline-block;
             background:#16a34a;
             color:white;
-            padding:10px 18px;
-            border-radius:12px;
+            padding:8px 14px;
+            border-radius:10px;
             text-decoration:none;
-            margin-bottom:20px;
             font-weight:bold;
+            font-size:14px;
+            line-height:1;
+        }
+
+        .viewer-header{
+            text-align:center;
+            margin:6px 0 8px 0;
+        }
+
+        h1{
+            margin:0;
+            color:#1d4ed8;
+            font-size:22px;
+            line-height:1.15;
+            font-weight:700;
+        }
+
+        .viewer-content{
+            margin-top:2px;
+        }
+
+        @media (max-width: 900px){
+            body{
+                padding:12px 12px 16px;
+            }
+
+            .top-row{
+                margin-bottom:6px;
+            }
+
+            .viewer-header{
+                margin:4px 0 6px 0;
+            }
+
+            h1{
+                font-size:20px;
+            }
+
+            .back-btn{
+                padding:8px 12px;
+                font-size:13px;
+            }
+        }
+
+        @media (max-width: 640px){
+            h1{
+                font-size:18px;
+            }
+
+            .top-row{
+                min-height:36px;
+            }
         }
     </style>
 </head>
@@ -58,11 +111,17 @@ function render_activity_viewer($title, $icon, $content)
 
 <div class="activity-wrapper">
 
-    <a href="<?= htmlspecialchars($backUrl, ENT_QUOTES, 'UTF-8') ?>" class="back-btn">↩ Back</a>
+    <div class="top-row">
+        <a href="<?= htmlspecialchars($backUrl, ENT_QUOTES, 'UTF-8') ?>" class="back-btn">↩ Back</a>
+    </div>
 
-    <h1><?= htmlspecialchars($icon, ENT_QUOTES, 'UTF-8') ?> <?= htmlspecialchars($title, ENT_QUOTES, 'UTF-8') ?></h1>
+    <div class="viewer-header">
+        <h1><?= htmlspecialchars($icon, ENT_QUOTES, 'UTF-8') ?> <?= htmlspecialchars($title, ENT_QUOTES, 'UTF-8') ?></h1>
+    </div>
 
-    <?= $content ?>
+    <div class="viewer-content">
+        <?= $content ?>
+    </div>
 
 </div>
 
