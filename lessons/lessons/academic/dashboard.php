@@ -702,7 +702,7 @@ body{ margin:0; font-family:Arial, "Segoe UI", sans-serif; background:var(--bg);
 
                     <div class="actions">
                         <a class="btn btn-green"
-                           href="teacher_unit.php?assignment=<?php echo urlencode((string) ($selectedAssignment['id'] ?? '')); ?>&unit=<?php echo urlencode($selectedUnitId); ?>&mode=present">
+                           href="teacher_course.php?assignment=<?php echo urlencode((string) ($selectedAssignment['id'] ?? '')); ?>&unit=<?php echo urlencode($selectedUnitId); ?>">
                             Iniciar Presentación
                         </a>
 
