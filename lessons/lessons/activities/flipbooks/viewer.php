@@ -264,13 +264,13 @@ body{
 }
 
 .back-btn{
-    margin-bottom:10px !important;
+    margin-bottom:8px !important;
 }
 
 h1{
-    margin-top:8px !important;
-    margin-bottom:6px !important;
-    line-height:1.1;
+    margin-top:4px !important;
+    margin-bottom:0 !important;
+    line-height:1.08;
 }
 
 .flipbook-wrap{
@@ -285,13 +285,13 @@ h1{
     width:100%;
     max-width:1260px;
     margin:0 auto;
-    padding-top:8px;
+    padding-top:0;
 }
 
 .book-view{
     position:relative;
     width:100%;
-    min-height:700px;
+    min-height:680px;
     display:flex;
     align-items:flex-start;
     justify-content:center;
@@ -305,7 +305,7 @@ h1{
     gap:24px;
     align-items:center;
     justify-items:center;
-    min-height:700px;
+    min-height:680px;
 }
 
 .single-cover{
@@ -314,7 +314,7 @@ h1{
     display:flex;
     align-items:center;
     justify-content:center;
-    min-height:700px;
+    min-height:680px;
 }
 
 .sheet-wrap{
@@ -378,7 +378,7 @@ h1{
 
 .listen-btn{
     position:absolute;
-    top:42px;
+    top:64px;
     right:82px;
     border:none;
     border-radius:999px;
@@ -430,29 +430,6 @@ h1{
     pointer-events:none;
 }
 
-.page-turn-hint{
-    position:absolute;
-    bottom:22px;
-    width:34px;
-    height:34px;
-    border-right:2px solid rgba(0,0,0,.28);
-    border-bottom:2px solid rgba(0,0,0,.28);
-    border-radius:0 0 8px 0;
-    opacity:.75;
-    pointer-events:none;
-    z-index:20;
-}
-
-.page-turn-hint.prev{
-    left:28px;
-    transform:rotate(135deg);
-}
-
-.page-turn-hint.next{
-    right:28px;
-    transform:rotate(-45deg);
-}
-
 .loading{
     color:#334155;
     font-weight:bold;
@@ -481,8 +458,8 @@ h1{
 
 @media (max-width: 900px){
     h1{
-        margin-top:6px !important;
-        margin-bottom:4px !important;
+        margin-top:4px !important;
+        margin-bottom:0 !important;
     }
 
     .book-view,
@@ -509,7 +486,7 @@ h1{
     }
 
     .listen-btn{
-        top:24px;
+        top:42px;
         right:54px;
     }
 
@@ -543,11 +520,7 @@ h1{
         padding:9px 14px;
         font-size:13px;
         right:48px;
-        top:22px;
-    }
-
-    .page-turn-hint{
-        display:none;
+        top:40px;
     }
 }
 </style>
@@ -567,9 +540,6 @@ h1{
 
         <button class="corner-arrow prev" id="prevBtn" type="button" aria-label="Previous page">‹</button>
         <button class="corner-arrow next" id="nextBtn" type="button" aria-label="Next page">›</button>
-
-        <div class="page-turn-hint prev" id="prevHint"></div>
-        <div class="page-turn-hint next" id="nextHint"></div>
     </div>
 </div>
 
@@ -593,8 +563,6 @@ const flipSound = document.getElementById('pageFlipSound');
 const bookView = document.getElementById('bookView');
 const prevBtn = document.getElementById('prevBtn');
 const nextBtn = document.getElementById('nextBtn');
-const prevHint = document.getElementById('prevHint');
-const nextHint = document.getElementById('nextHint');
 
 let pdfDoc = null;
 let realPdfPages = 0;
@@ -653,8 +621,6 @@ function updateNavState() {
 
     prevBtn.classList.toggle('hidden', !hasPrev);
     nextBtn.classList.toggle('hidden', !hasNext);
-    prevHint.style.display = hasPrev ? 'block' : 'none';
-    nextHint.style.display = hasNext ? 'block' : 'none';
 }
 
 function buildSheetShell(sideClass) {
