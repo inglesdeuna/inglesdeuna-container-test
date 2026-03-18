@@ -258,6 +258,16 @@ body{
     background:#d8e1ee;
 }
 
+.activity-wrapper{
+    max-width:1280px;
+    margin:0 auto;
+}
+
+h1{
+    margin-top:26px !important;
+    margin-bottom:28px !important;
+}
+
 .flipbook-wrap{
     width:100%;
     max-width:1260px;
@@ -265,11 +275,17 @@ body{
     text-align:center;
 }
 
+.top-spacer{
+    height:6px;
+}
+
 .page-indicator{
     color:#475569;
-    font-size:14px;
+    font-size:13px;
+    margin-top:18px;
     margin-bottom:8px;
     font-weight:600;
+    min-height:18px;
 }
 
 .book-stage{
@@ -277,13 +293,16 @@ body{
     width:100%;
     max-width:1260px;
     margin:0 auto;
-    padding-top:2px;
+    padding-top:26px;
 }
 
 .book-view{
     position:relative;
     width:100%;
     min-height:760px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
 }
 
 .spread{
@@ -320,6 +339,7 @@ body{
     aspect-ratio:var(--page-ratio);
     background:transparent;
     overflow:visible;
+    cursor:pointer;
 }
 
 .sheet canvas{
@@ -366,8 +386,8 @@ body{
 
 .listen-btn{
     position:absolute;
-    top:8px;
-    right:14px;
+    top:24px;
+    right:90px;
     border:none;
     border-radius:999px;
     color:#fff;
@@ -386,7 +406,7 @@ body{
 
 .corner-arrow{
     position:absolute;
-    bottom:12px;
+    bottom:20px;
     width:54px;
     height:54px;
     border:none;
@@ -405,11 +425,11 @@ body{
 }
 
 .corner-arrow.prev{
-    left:0;
+    left:8px;
 }
 
 .corner-arrow.next{
-    right:0;
+    right:8px;
 }
 
 .corner-arrow.hidden{
@@ -419,25 +439,24 @@ body{
 
 .page-turn-hint{
     position:absolute;
-    bottom:36px;
+    bottom:38px;
     width:34px;
     height:34px;
     border-right:2px solid rgba(0,0,0,.28);
     border-bottom:2px solid rgba(0,0,0,.28);
     border-radius:0 0 8px 0;
-    transform:rotate(-45deg);
     opacity:.75;
     pointer-events:none;
     z-index:20;
 }
 
 .page-turn-hint.prev{
-    left:18px;
+    left:24px;
     transform:rotate(135deg);
 }
 
 .page-turn-hint.next{
-    right:18px;
+    right:24px;
     transform:rotate(-45deg);
 }
 
@@ -461,9 +480,18 @@ body{
     .sheet{
         width:min(100%, 470px);
     }
+
+    .listen-btn{
+        right:74px;
+    }
 }
 
 @media (max-width: 900px){
+    h1{
+        margin-top:22px !important;
+        margin-bottom:22px !important;
+    }
+
     .book-view,
     .spread,
     .single-cover{
@@ -485,6 +513,11 @@ body{
 
     .sheet{
         width:min(100%, 540px);
+    }
+
+    .listen-btn{
+        top:12px;
+        right:58px;
     }
 }
 
@@ -508,12 +541,14 @@ body{
     .listen-btn{
         padding:9px 14px;
         font-size:13px;
+        right:52px;
+        top:10px;
     }
 }
 </style>
 
 <div class="flipbook-wrap">
-    <div class="page-indicator" id="pageIndicator">Loading...</div>
+    <div class="top-spacer"></div>
 
     <div class="book-stage">
         <button
@@ -525,7 +560,7 @@ body{
 
         <div id="status" class="loading">Loading book...</div>
 
-        <div class="book-view" id="bookView" style="display:none;"></div>
+        <div id="bookView" class="book-view" style="display:none;"></div>
 
         <button class="corner-arrow prev" id="prevBtn" type="button" aria-label="Previous page">‹</button>
         <button class="corner-arrow next" id="nextBtn" type="button" aria-label="Next page">›</button>
@@ -533,6 +568,8 @@ body{
         <div class="page-turn-hint prev" id="prevHint"></div>
         <div class="page-turn-hint next" id="nextHint"></div>
     </div>
+
+    <div class="page-indicator" id="pageIndicator"></div>
 </div>
 
 <audio id="pageFlipSound" preload="auto">
@@ -564,7 +601,6 @@ let realPdfPages = 0;
 let virtualPageCount = 0;
 let currentViewStart = 1;
 let renderedCache = {};
-let realPageRatio = 0.7727;
 
 function setPageRatio(ratio) {
     if (!ratio || !isFinite(ratio) || ratio <= 0) return;
@@ -613,25 +649,28 @@ function getTextForVirtualPage(virtualPage) {
 
 function updateIndicator() {
     if (isSinglePageMode()) {
-        pageIndicator.textContent = 'Page ' + currentViewStart + ' / ' + virtualPageCount;
+        pageIndicator.textContent = 'Page ' + currentViewStart;
         return;
     }
 
     if (isCoverPage(currentViewStart) || isBackCoverPage(currentViewStart)) {
-        pageIndicator.textContent = 'Page ' + currentViewStart + ' / ' + virtualPageCount;
+        pageIndicator.textContent = 'Page ' + currentViewStart;
         return;
     }
 
     const second = Math.min(currentViewStart + 1, virtualPageCount);
-    pageIndicator.textContent = 'Pages ' + currentViewStart + ' - ' + second + ' / ' + virtualPageCount;
+    pageIndicator.textContent = 'Pages ' + currentViewStart + ' - ' + second;
 }
 
 function updateNavState() {
-    prevBtn.classList.toggle('hidden', currentViewStart <= 1);
-    prevHint.style.display = currentViewStart <= 1 ? 'none' : 'block';
+    const hasPrev = currentViewStart > 1;
+    const hasNext = currentViewStart < virtualPageCount;
 
-    nextBtn.classList.toggle('hidden', currentViewStart >= virtualPageCount);
-    nextHint.style.display = currentViewStart >= virtualPageCount ? 'none' : 'block';
+    prevBtn.classList.toggle('hidden', !hasPrev);
+    nextBtn.classList.toggle('hidden', !hasNext);
+
+    prevHint.style.display = hasPrev ? 'block' : 'none';
+    nextHint.style.display = hasNext ? 'block' : 'none';
 }
 
 function buildSheetShell(sideClass) {
@@ -673,92 +712,31 @@ async function getRenderedCanvas(realPageNumber, targetWidth, targetHeight) {
     return canvas;
 }
 
-async function fillSheetWithVirtualPage(sheet, virtualPageNumber, sideClass) {
+async function fillSheetWithVirtualPage(sheet, virtualPageNumber) {
     sheet.innerHTML = '';
 
     const rect = sheet.getBoundingClientRect();
     const targetWidth = Math.max(240, Math.floor(rect.width));
     const targetHeight = Math.max(320, Math.floor(rect.height));
 
+    let canvasSource = null;
+
     if (isCoverPage(virtualPageNumber)) {
-        const canvas = await getRenderedCanvas(1, targetWidth, targetHeight);
-        const clone = document.createElement('canvas');
-        clone.width = canvas.width;
-        clone.height = canvas.height;
-        clone.getContext('2d').drawImage(canvas, 0, 0);
-        sheet.appendChild(clone);
-        addCanvasPageNumber(sheet, virtualPageNumber);
-        return;
+        canvasSource = await getRenderedCanvas(1, targetWidth, targetHeight);
+    } else if (isBackCoverPage(virtualPageNumber)) {
+        canvasSource = await getRenderedCanvas(realPdfPages, targetWidth, targetHeight);
+    } else {
+        const realPage = getRealPageFromVirtual(virtualPageNumber);
+        if (!realPage) return;
+        canvasSource = await getRenderedCanvas(realPage, targetWidth, targetHeight);
     }
 
-    if (isBackCoverPage(virtualPageNumber)) {
-        const canvas = await getRenderedCanvas(realPdfPages, targetWidth, targetHeight);
-        const clone = document.createElement('canvas');
-        clone.width = canvas.width;
-        clone.height = canvas.height;
-        clone.getContext('2d').drawImage(canvas, 0, 0);
-        sheet.appendChild(clone);
-        addCanvasPageNumber(sheet, virtualPageNumber);
-        return;
-    }
-
-    const realPage = getRealPageFromVirtual(virtualPageNumber);
-    if (!realPage) return;
-
-    const canvas = await getRenderedCanvas(realPage, targetWidth, targetHeight);
     const clone = document.createElement('canvas');
-    clone.width = canvas.width;
-    clone.height = canvas.height;
-    clone.getContext('2d').drawImage(canvas, 0, 0);
+    clone.width = canvasSource.width;
+    clone.height = canvasSource.height;
+    clone.getContext('2d').drawImage(canvasSource, 0, 0);
     sheet.appendChild(clone);
     addCanvasPageNumber(sheet, virtualPageNumber);
-}
-
-async function renderCurrentView() {
-    bookView.innerHTML = '';
-    updateIndicator();
-    updateNavState();
-
-    if (isSinglePageMode()) {
-        const single = document.createElement('div');
-        single.className = 'single-cover';
-
-        const singleSheet = buildSheetShell('right');
-        single.appendChild(singleSheet.wrap);
-        bookView.appendChild(single);
-
-        await fillSheetWithVirtualPage(singleSheet.sheet, currentViewStart, 'right');
-        return;
-    }
-
-    if (isCoverPage(currentViewStart) || isBackCoverPage(currentViewStart)) {
-        const single = document.createElement('div');
-        single.className = 'single-cover';
-
-        const singleSheet = buildSheetShell('right');
-        single.appendChild(singleSheet.wrap);
-        bookView.appendChild(single);
-
-        await fillSheetWithVirtualPage(singleSheet.sheet, currentViewStart, 'right');
-        return;
-    }
-
-    const spread = document.createElement('div');
-    spread.className = 'spread';
-
-    const centerShadow = document.createElement('div');
-    centerShadow.className = 'page-shadow-center';
-    spread.appendChild(centerShadow);
-
-    const leftSheet = buildSheetShell('left');
-    const rightSheet = buildSheetShell('right');
-
-    spread.appendChild(leftSheet.wrap);
-    spread.appendChild(rightSheet.wrap);
-    bookView.appendChild(spread);
-
-    await fillSheetWithVirtualPage(leftSheet.sheet, currentViewStart, 'left');
-    await fillSheetWithVirtualPage(rightSheet.sheet, currentViewStart + 1, 'right');
 }
 
 function getNextStart(current) {
@@ -839,6 +817,73 @@ if (listenEnabledGlobal) {
     });
 }
 
+async function renderCurrentView() {
+    bookView.innerHTML = '';
+    updateIndicator();
+    updateNavState();
+
+    if (isSinglePageMode()) {
+        const single = document.createElement('div');
+        single.className = 'single-cover';
+
+        const singleSheet = buildSheetShell('right');
+        single.appendChild(singleSheet.wrap);
+        bookView.appendChild(single);
+
+        await fillSheetWithVirtualPage(singleSheet.sheet, currentViewStart);
+        singleSheet.sheet.addEventListener('click', function () {
+            if (currentViewStart < virtualPageCount) {
+                goNext();
+            }
+        });
+        return;
+    }
+
+    if (isCoverPage(currentViewStart) || isBackCoverPage(currentViewStart)) {
+        const single = document.createElement('div');
+        single.className = 'single-cover';
+
+        const singleSheet = buildSheetShell('right');
+        single.appendChild(singleSheet.wrap);
+        bookView.appendChild(single);
+
+        await fillSheetWithVirtualPage(singleSheet.sheet, currentViewStart);
+        singleSheet.sheet.addEventListener('click', function () {
+            if (isCoverPage(currentViewStart)) {
+                goNext();
+            } else {
+                goPrev();
+            }
+        });
+        return;
+    }
+
+    const spread = document.createElement('div');
+    spread.className = 'spread';
+
+    const centerShadow = document.createElement('div');
+    centerShadow.className = 'page-shadow-center';
+    spread.appendChild(centerShadow);
+
+    const leftSheet = buildSheetShell('left');
+    const rightSheet = buildSheetShell('right');
+
+    spread.appendChild(leftSheet.wrap);
+    spread.appendChild(rightSheet.wrap);
+    bookView.appendChild(spread);
+
+    await fillSheetWithVirtualPage(leftSheet.sheet, currentViewStart);
+    await fillSheetWithVirtualPage(rightSheet.sheet, currentViewStart + 1);
+
+    leftSheet.sheet.addEventListener('click', function () {
+        goPrev();
+    });
+
+    rightSheet.sheet.addEventListener('click', function () {
+        goNext();
+    });
+}
+
 let resizeTimer = null;
 window.addEventListener('resize', function () {
     if (!pdfDoc) return;
@@ -858,11 +903,10 @@ pdfjsLib.getDocument({ url: pdfUrl, withCredentials: false }).promise
 
         const firstPage = await pdf.getPage(1);
         const firstViewport = firstPage.getViewport({ scale: 1 });
-        realPageRatio = firstViewport.width / firstViewport.height;
-        setPageRatio(realPageRatio);
+        setPageRatio(firstViewport.width / firstViewport.height);
 
         statusEl.style.display = 'none';
-        bookView.style.display = 'block';
+        bookView.style.display = 'flex';
         currentViewStart = 1;
 
         return renderCurrentView();
