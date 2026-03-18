@@ -1,18 +1,30 @@
 <?php
 
 function render_activity_editor($title, $icon, $content) {
+    $unit = isset($_GET['unit']) ? trim((string) $_GET['unit']) : '';
+    $assignment = isset($_GET['assignment']) ? trim((string) $_GET['assignment']) : '';
+    $source = isset($_GET['source']) ? trim((string) $_GET['source']) : '';
+
+    if ($assignment !== '') {
+        $backUrl = '../../academic/teacher_unit.php?assignment=' . urlencode($assignment) . '&unit=' . urlencode($unit);
+    } else {
+        $backUrl = '../../academic/unit_view.php?unit=' . urlencode($unit);
+        if ($source !== '') {
+            $backUrl .= '&source=' . urlencode($source);
+        }
+    }
 ?>
 <!DOCTYPE html>
 <html>
 <head>
 <meta charset="UTF-8">
-<title><?= htmlspecialchars($title) ?></title>
+<title><?= htmlspecialchars($title, ENT_QUOTES, 'UTF-8') ?></title>
 
 <style>
 body{
     margin:0;
     background:#eef6ff;
-    font-family:Arial;
+    font-family:Arial, sans-serif;
 }
 
 .back-btn{
@@ -26,6 +38,8 @@ body{
     color:white;
     cursor:pointer;
     font-weight:bold;
+    text-decoration:none;
+    display:inline-block;
 }
 
 .editor-container{
@@ -91,22 +105,11 @@ button.save-btn{
 
 <body>
 
-<?php
-$unit = $_GET['unit'] ?? '';
-?>
-
-<button 
-class="back-btn"
-onclick="window.location.href='../../academic/unit_view.php?unit=<?= urlencode($unit) ?>'">
-↩ Back
-</button>
+<a class="back-btn" href="<?= htmlspecialchars($backUrl, ENT_QUOTES, 'UTF-8') ?>">↩ Back</a>
 
 <div class="editor-container">
-
-<h1><?= htmlspecialchars($title) ?></h1>
-
-<?= $content ?>
-
+    <h1><?= htmlspecialchars($title, ENT_QUOTES, 'UTF-8') ?></h1>
+    <?= $content ?>
 </div>
 
 </body>
