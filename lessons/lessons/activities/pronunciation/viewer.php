@@ -76,50 +76,6 @@ function resolve_unit_from_activity(PDO $pdo, string $activityId): string
     return '';
 }
 
-function normalize_pronunciation_items($rawData): array
-{
-    if ($rawData === null || $rawData === '') {
-        return array();
-    }
-
-    $decoded = is_string($rawData) ? json_decode($rawData, true) : $rawData;
-
-    if (json_last_error() !== JSON_ERROR_NONE || !is_array($decoded)) {
-        return array();
-    }
-
-    if (isset($decoded['items']) && is_array($decoded['items'])) {
-        $decoded = $decoded['items'];
-    } elseif (isset($decoded['data']) && is_array($decoded['data'])) {
-        $decoded = $decoded['data'];
-    } elseif (isset($decoded['words']) && is_array($decoded['words'])) {
-        $decoded = $decoded['words'];
-    }
-
-    $normalized = array();
-
-    foreach ($decoded as $item) {
-        if (!is_array($item)) {
-            continue;
-        }
-
-        $en = isset($item['en']) ? trim((string) $item['en']) : '';
-        if ($en === '' && isset($item['word'])) {
-            $en = trim((string) $item['word']);
-        }
-
-        $normalized[] = array(
-            'img' => isset($item['img']) ? trim((string) $item['img']) : (isset($item['image']) ? trim((string) $item['image']) : ''),
-            'en' => $en,
-            'ph' => isset($item['ph']) ? trim((string) $item['ph']) : '',
-            'es' => isset($item['es']) ? trim((string) $item['es']) : '',
-            'audio' => isset($item['audio']) ? trim((string) $item['audio']) : '',
-        );
-    }
-
-    return $normalized;
-}
-
 function default_pronunciation_title(): string
 {
     return 'Pronunciation';
@@ -129,6 +85,67 @@ function normalize_activity_title(string $title): string
 {
     $title = trim($title);
     return $title !== '' ? $title : default_pronunciation_title();
+}
+
+function normalize_pronunciation_payload($rawData): array
+{
+    $default = array(
+        'title' => default_pronunciation_title(),
+        'items' => array(),
+    );
+
+    if ($rawData === null || $rawData === '') {
+        return $default;
+    }
+
+    $decoded = is_string($rawData) ? json_decode($rawData, true) : $rawData;
+
+    if (!is_array($decoded)) {
+        return $default;
+    }
+
+    $title = '';
+    $itemsSource = $decoded;
+
+    if (isset($decoded['title'])) {
+        $title = trim((string) $decoded['title']);
+    }
+
+    if (isset($decoded['items']) && is_array($decoded['items'])) {
+        $itemsSource = $decoded['items'];
+    } elseif (isset($decoded['data']) && is_array($decoded['data'])) {
+        $itemsSource = $decoded['data'];
+    } elseif (isset($decoded['words']) && is_array($decoded['words'])) {
+        $itemsSource = $decoded['words'];
+    }
+
+    $normalizedItems = array();
+
+    if (is_array($itemsSource)) {
+        foreach ($itemsSource as $item) {
+            if (!is_array($item)) {
+                continue;
+            }
+
+            $en = isset($item['en']) ? trim((string) $item['en']) : '';
+            if ($en === '' && isset($item['word'])) {
+                $en = trim((string) $item['word']);
+            }
+
+            $normalizedItems[] = array(
+                'img' => isset($item['img']) ? trim((string) $item['img']) : (isset($item['image']) ? trim((string) $item['image']) : ''),
+                'en' => $en,
+                'ph' => isset($item['ph']) ? trim((string) $item['ph']) : '',
+                'es' => isset($item['es']) ? trim((string) $item['es']) : '',
+                'audio' => isset($item['audio']) ? trim((string) $item['audio']) : '',
+            );
+        }
+    }
+
+    return array(
+        'title' => normalize_activity_title($title),
+        'items' => $normalizedItems,
+    );
 }
 
 function load_pronunciation_activity(PDO $pdo, string $activityId, string $unit): array
@@ -149,7 +166,17 @@ function load_pronunciation_activity(PDO $pdo, string $activityId, string $unit)
         $selectFields[] = 'name';
     }
 
-    if ($activityId !== '') {
+    $fallback = array(
+        'id' => '',
+        'title' => default_pronunciation_title(),
+        'items' => array(),
+    );
+
+    $findById = function (string $id) use ($pdo, $selectFields): ?array {
+        if ($id === '') {
+            return null;
+        }
+
         $stmt = $pdo->prepare(
             "SELECT " . implode(', ', $selectFields) . "
              FROM activities
@@ -157,33 +184,17 @@ function load_pronunciation_activity(PDO $pdo, string $activityId, string $unit)
                AND type = 'pronunciation'
              LIMIT 1"
         );
-        $stmt->execute(array('id' => $activityId));
+        $stmt->execute(array('id' => $id));
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
-        if ($row) {
-            $rawTitle = '';
-            if (isset($row['title']) && trim((string) $row['title']) !== '') {
-                $rawTitle = (string) $row['title'];
-            } elseif (isset($row['name']) && trim((string) $row['name']) !== '') {
-                $rawTitle = (string) $row['name'];
-            }
+        return is_array($row) ? $row : null;
+    };
 
-            $rawData = null;
-            if (isset($row['data'])) {
-                $rawData = $row['data'];
-            } elseif (isset($row['content_json'])) {
-                $rawData = $row['content_json'];
-            }
-
-            return array(
-                'id' => isset($row['id']) ? (string) $row['id'] : '',
-                'title' => normalize_activity_title($rawTitle),
-                'items' => normalize_pronunciation_items($rawData),
-            );
+    $findByUnitId = function (string $unitId) use ($pdo, $selectFields, $columns): ?array {
+        if ($unitId === '' || !in_array('unit_id', $columns, true)) {
+            return null;
         }
-    }
 
-    if ($unit !== '' && in_array('unit_id', $columns, true)) {
         $stmt = $pdo->prepare(
             "SELECT " . implode(', ', $selectFields) . "
              FROM activities
@@ -192,33 +203,17 @@ function load_pronunciation_activity(PDO $pdo, string $activityId, string $unit)
              ORDER BY id ASC
              LIMIT 1"
         );
-        $stmt->execute(array('unit' => $unit));
+        $stmt->execute(array('unit' => $unitId));
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
-        if ($row) {
-            $rawTitle = '';
-            if (isset($row['title']) && trim((string) $row['title']) !== '') {
-                $rawTitle = (string) $row['title'];
-            } elseif (isset($row['name']) && trim((string) $row['name']) !== '') {
-                $rawTitle = (string) $row['name'];
-            }
+        return is_array($row) ? $row : null;
+    };
 
-            $rawData = null;
-            if (isset($row['data'])) {
-                $rawData = $row['data'];
-            } elseif (isset($row['content_json'])) {
-                $rawData = $row['content_json'];
-            }
-
-            return array(
-                'id' => isset($row['id']) ? (string) $row['id'] : '',
-                'title' => normalize_activity_title($rawTitle),
-                'items' => normalize_pronunciation_items($rawData),
-            );
+    $findByUnitLegacy = function (string $unitValue) use ($pdo, $selectFields, $columns): ?array {
+        if ($unitValue === '' || !in_array('unit', $columns, true)) {
+            return null;
         }
-    }
 
-    if ($unit !== '' && in_array('unit', $columns, true)) {
         $stmt = $pdo->prepare(
             "SELECT " . implode(', ', $selectFields) . "
              FROM activities
@@ -227,36 +222,51 @@ function load_pronunciation_activity(PDO $pdo, string $activityId, string $unit)
              ORDER BY id ASC
              LIMIT 1"
         );
-        $stmt->execute(array('unit' => $unit));
+        $stmt->execute(array('unit' => $unitValue));
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
-        if ($row) {
-            $rawTitle = '';
-            if (isset($row['title']) && trim((string) $row['title']) !== '') {
-                $rawTitle = (string) $row['title'];
-            } elseif (isset($row['name']) && trim((string) $row['name']) !== '') {
-                $rawTitle = (string) $row['name'];
-            }
+        return is_array($row) ? $row : null;
+    };
 
-            $rawData = null;
-            if (isset($row['data'])) {
-                $rawData = $row['data'];
-            } elseif (isset($row['content_json'])) {
-                $rawData = $row['content_json'];
-            }
+    $row = null;
+    if ($activityId !== '') {
+        $row = $findById($activityId);
+    }
+    if (!$row && $unit !== '') {
+        $row = $findByUnitId($unit);
+    }
+    if (!$row && $unit !== '') {
+        $row = $findByUnitLegacy($unit);
+    }
 
-            return array(
-                'id' => isset($row['id']) ? (string) $row['id'] : '',
-                'title' => normalize_activity_title($rawTitle),
-                'items' => normalize_pronunciation_items($rawData),
-            );
-        }
+    if (!$row) {
+        return $fallback;
+    }
+
+    $rawData = null;
+    if (isset($row['data'])) {
+        $rawData = $row['data'];
+    } elseif (isset($row['content_json'])) {
+        $rawData = $row['content_json'];
+    }
+
+    $payload = normalize_pronunciation_payload($rawData);
+
+    $columnTitle = '';
+    if (isset($row['title']) && trim((string) $row['title']) !== '') {
+        $columnTitle = trim((string) $row['title']);
+    } elseif (isset($row['name']) && trim((string) $row['name']) !== '') {
+        $columnTitle = trim((string) $row['name']);
+    }
+
+    if ($columnTitle !== '') {
+        $payload['title'] = $columnTitle;
     }
 
     return array(
-        'id' => '',
-        'title' => default_pronunciation_title(),
-        'items' => array(),
+        'id' => isset($row['id']) ? (string) $row['id'] : '',
+        'title' => normalize_activity_title((string) ($payload['title'] ?? '')),
+        'items' => isset($payload['items']) && is_array($payload['items']) ? $payload['items'] : array(),
     );
 }
 
