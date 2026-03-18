@@ -252,15 +252,24 @@ ob_start();
 <style>
 .flipbook-wrap{
     width:100%;
-    max-width:100%;
+    max-width:1200px;
     margin:0 auto;
     text-align:center;
 }
+
+.viewer-tip{
+    color:#64748b;
+    font-size:13px;
+    margin-bottom:8px;
+}
+
 .page-indicator{
     color:#475569;
     font-size:14px;
     margin-bottom:10px;
+    font-weight:bold;
 }
+
 .toolbar{
     display:flex;
     justify-content:center;
@@ -269,6 +278,7 @@ ob_start();
     flex-wrap:wrap;
     margin-bottom:12px;
 }
+
 .toolbar button{
     border:none;
     border-radius:10px;
@@ -277,63 +287,129 @@ ob_start();
     cursor:pointer;
     color:white;
 }
+
 .btn-nav{background:#0b5ed7}
 .btn-listen{background:#16a34a}
 .btn-listen.disabled{background:#94a3b8;cursor:not-allowed}
-#book-shell{
+
+.book-stage{
+    width:100%;
+    max-width:1200px;
+    margin:0 auto;
+    background:#eef2f7;
+    border-radius:18px;
+    padding:18px;
+    box-shadow:0 12px 28px rgba(0,0,0,.10);
+}
+
+.book-spread{
     position:relative;
-    margin:0 auto;
     width:100%;
-    max-width:100%;
-}
-#flipbook{
-    width:100%;
-    height:min(72vh, 760px);
-    min-height:480px;
-    margin:0 auto;
-    box-shadow:0 10px 30px rgba(0,0,0,.18);
-    background:white;
-    border-radius:16px;
+    aspect-ratio: 16 / 9.8;
+    min-height:420px;
+    background:linear-gradient(90deg,#f8fafc 0%,#ffffff 48%,#edf2f7 50%,#ffffff 52%,#f8fafc 100%);
+    border-radius:14px;
     overflow:hidden;
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:0;
+    box-shadow:inset 0 0 0 1px rgba(0,0,0,.06);
 }
-.flip-page{
-    background:#fff;
-    overflow:hidden;
+
+.book-spread::before{
+    content:"";
+    position:absolute;
+    top:0;
+    bottom:0;
+    left:50%;
+    width:8px;
+    transform:translateX(-50%);
+    background:linear-gradient(180deg, rgba(0,0,0,.08), rgba(0,0,0,.03), rgba(0,0,0,.08));
+    z-index:2;
+    border-radius:20px;
+}
+
+.book-page{
+    position:relative;
     display:flex;
     align-items:center;
     justify-content:center;
+    overflow:hidden;
+    background:white;
 }
-.flip-page canvas,
-.flip-page iframe{
-    width:100%;
-    height:100%;
+
+.book-page.left{
+    box-shadow:inset -14px 0 18px rgba(0,0,0,.06);
+}
+
+.book-page.right{
+    box-shadow:inset 14px 0 18px rgba(0,0,0,.06);
+}
+
+.book-page.empty{
+    background:linear-gradient(180deg,#f8fafc,#eef2f7);
+}
+
+.book-page canvas{
+    max-width:100%;
+    max-height:100%;
     display:block;
-    border:none;
+    object-fit:contain;
 }
+
+.page-label{
+    position:absolute;
+    bottom:10px;
+    right:14px;
+    font-size:12px;
+    color:#64748b;
+    background:rgba(255,255,255,.88);
+    padding:4px 8px;
+    border-radius:999px;
+    z-index:3;
+}
+
 .loading{color:#334155;font-weight:bold;padding:30px 0}
 .error{color:#dc2626;font-weight:bold;padding:20px 0}
-.viewer-tip{
-    color:#64748b;
-    font-size:13px;
-    margin-bottom:8px;
+
+@media (max-width: 900px){
+    .book-spread{
+        grid-template-columns:1fr;
+        aspect-ratio:auto;
+        min-height:420px;
+    }
+
+    .book-spread::before{
+        display:none;
+    }
+
+    .book-page.left{
+        display:none;
+    }
+
+    .book-page.right{
+        box-shadow:none;
+    }
 }
+
 @media (max-width: 768px){
-    #flipbook{
-        height:min(64vh, 620px);
-        min-height:380px;
-    }
-    .toolbar{
-        gap:8px;
-    }
     .toolbar button{
         width:100%;
+    }
+
+    .book-stage{
+        padding:12px;
+    }
+
+    .book-spread{
+        min-height:340px;
     }
 }
 </style>
 
 <div class="flipbook-wrap">
-    <div class="viewer-tip">Pasa páginas dentro del contenedor. El botón Listen lee el texto asignado a la página actual.</div>
-    <div class="page-indicator" id="pageIndicator">Page 1</div>
+    <div class="viewer-tip">Ahora se muestra como libro abierto con páginas opuestas. En pantallas pequeñas se adapta a una página.</div>
+    <div class="page-indicator" id="pageIndicator">Pages 1 - 2</div>
 
     <div class="toolbar">
         <button class="btn-nav" id="prevBtn" type="button">⬅ Prev</button>
@@ -341,9 +417,17 @@ ob_start();
         <button class="btn-nav" id="nextBtn" type="button">Next ➡</button>
     </div>
 
-    <div id="book-shell">
-        <div id="flipbook"></div>
+    <div class="book-stage">
         <div id="status" class="loading">Loading book...</div>
+
+        <div class="book-spread" id="bookSpread" style="display:none;">
+            <div class="book-page left" id="leftPage">
+                <div class="page-label" id="leftLabel"></div>
+            </div>
+            <div class="book-page right" id="rightPage">
+                <div class="page-label" id="rightLabel"></div>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -351,8 +435,6 @@ ob_start();
     <source src="./sounds/page-flip.mp3" type="audio/mpeg">
 </audio>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/turn.js/4.1.0/turn.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
 
 <script>
@@ -367,170 +449,174 @@ const statusEl = document.getElementById('status');
 const pageIndicator = document.getElementById('pageIndicator');
 const listenBtn = document.getElementById('listenBtn');
 const flipSound = document.getElementById('pageFlipSound');
-const flipbookEl = document.getElementById('flipbook');
+const bookSpread = document.getElementById('bookSpread');
+const leftPage = document.getElementById('leftPage');
+const rightPage = document.getElementById('rightPage');
+const leftLabel = document.getElementById('leftLabel');
+const rightLabel = document.getElementById('rightLabel');
 
+let pdfDoc = null;
 let totalPages = 0;
-let currentPage = 1;
-let simpleMode = false;
+let currentSpreadStart = 1;
+let renderedCache = {};
 
-function escapeHtml(value) {
-    return String(value || '')
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#039;');
+function safePlayFlipSound() {
+    if (!flipSound) return;
+    try {
+        flipSound.currentTime = 0;
+        const p = flipSound.play();
+        if (p && typeof p.catch === 'function') {
+            p.catch(function () {});
+        }
+    } catch (e) {}
 }
 
-function updatePageIndicator(page) {
-    currentPage = page;
-    pageIndicator.textContent = 'Page ' + page + ' / ' + totalPages;
+function getSpreadStep() {
+    return window.innerWidth <= 900 ? 1 : 2;
 }
 
-function getTextForPage(page) {
-    const idx = page - 1;
+function getTextForPage(pageNumber) {
+    const idx = pageNumber - 1;
     if (idx >= 0 && idx < pageTexts.length && pageTexts[idx]) {
         return String(pageTexts[idx]);
     }
     return '';
 }
 
-function safePlayFlipSound() {
-    if (!flipSound) return;
-    try {
-        flipSound.currentTime = 0;
-        const promise = flipSound.play();
-        if (promise && typeof promise.catch === 'function') {
-            promise.catch(function () {});
-        }
-    } catch (e) {}
+function updateIndicator() {
+    const step = getSpreadStep();
+
+    if (step === 1) {
+        pageIndicator.textContent = 'Page ' + currentSpreadStart + ' / ' + totalPages;
+    } else {
+        const end = Math.min(currentSpreadStart + 1, totalPages);
+        pageIndicator.textContent = 'Pages ' + currentSpreadStart + ' - ' + end + ' / ' + totalPages;
+    }
 }
 
-function getBookSize() {
-    const shell = document.getElementById('book-shell');
-    const shellWidth = shell ? shell.clientWidth : window.innerWidth;
-    const maxWidth = Math.min(shellWidth, 1200);
-    const width = Math.max(320, maxWidth);
-    const height = Math.max(380, Math.min(window.innerHeight * 0.72, 760));
+function getTargetCanvasSize(containerEl) {
+    const rect = containerEl.getBoundingClientRect();
+    const width = Math.max(200, Math.floor(rect.width - 18));
+    const height = Math.max(260, Math.floor(rect.height - 18));
     return { width, height };
 }
 
-function buildPagesFromPdf(pdf) {
-    totalPages = pdf.numPages;
-    const size = getBookSize();
-    const displayDouble = size.width >= 900;
-
-    const pagePromises = [];
-
-    for (let pageNum = 1; pageNum <= totalPages; pageNum += 1) {
-        const promise = pdf.getPage(pageNum).then(function (page) {
-            const pageDiv = document.createElement('div');
-            pageDiv.className = 'flip-page';
-
-            const canvas = document.createElement('canvas');
-            pageDiv.appendChild(canvas);
-            flipbookEl.appendChild(pageDiv);
-
-            const pageWidth = displayDouble ? Math.floor(size.width / 2) : size.width;
-            const pageHeight = size.height;
-
-            const baseViewport = page.getViewport({ scale: 1 });
-            const scale = Math.min(pageWidth / baseViewport.width, pageHeight / baseViewport.height);
-            const viewport = page.getViewport({ scale: scale });
-
-            const ctx = canvas.getContext('2d');
-            canvas.width = viewport.width;
-            canvas.height = viewport.height;
-
-            return page.render({ canvasContext: ctx, viewport: viewport }).promise;
-        });
-
-        pagePromises.push(promise);
+function clearPage(containerEl, labelEl, pageNumber, isEmpty) {
+    const oldCanvas = containerEl.querySelector('canvas');
+    if (oldCanvas) {
+        oldCanvas.remove();
     }
 
-    return Promise.all(pagePromises).then(function () {
-        return { width: size.width, height: size.height, displayDouble: displayDouble };
-    });
+    if (isEmpty) {
+        containerEl.classList.add('empty');
+        labelEl.textContent = '';
+    } else {
+        containerEl.classList.remove('empty');
+        labelEl.textContent = 'Page ' + pageNumber;
+    }
 }
 
-function initTurnBook(bookConfig) {
-    const $book = $('#flipbook');
-
-    if (!$book.length || typeof $book.turn !== 'function') {
-        initSimpleFallback();
+async function renderPdfPageToContainer(pageNumber, containerEl, labelEl) {
+    if (!pageNumber || pageNumber < 1 || pageNumber > totalPages) {
+        clearPage(containerEl, labelEl, pageNumber, true);
         return;
     }
 
-    const displayMode = bookConfig.displayDouble ? 'double' : 'single';
+    clearPage(containerEl, labelEl, pageNumber, false);
 
-    $book.turn({
-        width: bookConfig.width,
-        height: bookConfig.height,
-        autoCenter: true,
-        elevation: 50,
-        gradients: true,
-        display: displayMode,
-        when: {
-            turned: function (event, page) {
-                updatePageIndicator(page);
-            },
-            turning: function () {
-                safePlayFlipSound();
-            }
-        }
-    });
+    let sourceCanvas = renderedCache[pageNumber];
 
-    document.getElementById('prevBtn').addEventListener('click', function () {
-        $book.turn('previous');
-    });
+    if (!sourceCanvas) {
+        const page = await pdfDoc.getPage(pageNumber);
+        const baseViewport = page.getViewport({ scale: 1 });
 
-    document.getElementById('nextBtn').addEventListener('click', function () {
-        $book.turn('next');
-    });
+        const target = getTargetCanvasSize(containerEl);
+        const scale = Math.min(target.width / baseViewport.width, target.height / baseViewport.height);
+        const viewport = page.getViewport({ scale: scale });
 
-    updatePageIndicator(1);
-}
+        sourceCanvas = document.createElement('canvas');
+        const ctx = sourceCanvas.getContext('2d');
 
-function initSimpleFallback() {
-    simpleMode = true;
+        sourceCanvas.width = viewport.width;
+        sourceCanvas.height = viewport.height;
 
-    const pages = Array.prototype.slice.call(flipbookEl.querySelectorAll('.flip-page'));
-    if (!pages.length) {
-        return;
+        await page.render({ canvasContext: ctx, viewport: viewport }).promise;
+        renderedCache[pageNumber] = sourceCanvas;
     }
 
-    pages.forEach(function (p, i) {
-        p.style.display = i === 0 ? 'flex' : 'none';
-        p.style.width = '100%';
-        p.style.height = '100%';
-    });
+    const clonedCanvas = document.createElement('canvas');
+    clonedCanvas.width = sourceCanvas.width;
+    clonedCanvas.height = sourceCanvas.height;
+    clonedCanvas.getContext('2d').drawImage(sourceCanvas, 0, 0);
 
-    document.getElementById('prevBtn').addEventListener('click', function () {
-        pages[currentPage - 1].style.display = 'none';
-        currentPage = currentPage <= 1 ? totalPages : currentPage - 1;
-        pages[currentPage - 1].style.display = 'flex';
-        safePlayFlipSound();
-        updatePageIndicator(currentPage);
-    });
-
-    document.getElementById('nextBtn').addEventListener('click', function () {
-        pages[currentPage - 1].style.display = 'none';
-        currentPage = currentPage >= totalPages ? 1 : currentPage + 1;
-        pages[currentPage - 1].style.display = 'flex';
-        safePlayFlipSound();
-        updatePageIndicator(currentPage);
-    });
-
-    updatePageIndicator(1);
+    containerEl.appendChild(clonedCanvas);
 }
+
+async function renderCurrentSpread() {
+    const step = getSpreadStep();
+    updateIndicator();
+
+    if (step === 1) {
+        leftPage.style.display = 'none';
+        await renderPdfPageToContainer(currentSpreadStart, rightPage, rightLabel);
+    } else {
+        leftPage.style.display = 'flex';
+        await renderPdfPageToContainer(currentSpreadStart, leftPage, leftLabel);
+        await renderPdfPageToContainer(currentSpreadStart + 1, rightPage, rightLabel);
+    }
+}
+
+function goNext() {
+    const step = getSpreadStep();
+    let nextStart = currentSpreadStart + step;
+
+    if (nextStart > totalPages) {
+        nextStart = step === 1 ? totalPages : (totalPages % 2 === 0 ? totalPages - 1 : totalPages);
+        if (nextStart < 1) nextStart = 1;
+    }
+
+    if (nextStart !== currentSpreadStart) {
+        currentSpreadStart = nextStart;
+        safePlayFlipSound();
+        renderCurrentSpread();
+    }
+}
+
+function goPrev() {
+    const step = getSpreadStep();
+    let prevStart = currentSpreadStart - step;
+
+    if (prevStart < 1) {
+        prevStart = 1;
+    }
+
+    if (prevStart !== currentSpreadStart) {
+        currentSpreadStart = prevStart;
+        safePlayFlipSound();
+        renderCurrentSpread();
+    }
+}
+
+document.getElementById('nextBtn').addEventListener('click', goNext);
+document.getElementById('prevBtn').addEventListener('click', goPrev);
 
 if (listenEnabledGlobal) {
     listenBtn.addEventListener('click', function () {
-        const text = getTextForPage(currentPage);
-        if (!text) return;
-
         try {
             speechSynthesis.cancel();
+
+            const step = getSpreadStep();
+            let text = getTextForPage(currentSpreadStart);
+
+            if (step === 2) {
+                const secondText = getTextForPage(currentSpreadStart + 1);
+                if (secondText) {
+                    text = text ? (text + '. ' + secondText) : secondText;
+                }
+            }
+
+            if (!text) return;
+
             const utter = new SpeechSynthesisUtterance(text);
             utter.lang = speechLang || 'en-US';
             utter.rate = 0.9;
@@ -539,18 +625,24 @@ if (listenEnabledGlobal) {
     });
 }
 
+let resizeTimer = null;
+window.addEventListener('resize', function () {
+    if (!pdfDoc) return;
+
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(function () {
+        renderedCache = {};
+        renderCurrentSpread();
+    }, 250);
+});
+
 pdfjsLib.getDocument({ url: pdfUrl, withCredentials: false }).promise
     .then(function (pdf) {
-        return buildPagesFromPdf(pdf);
-    })
-    .then(function (bookConfig) {
+        pdfDoc = pdf;
+        totalPages = pdf.numPages;
         statusEl.style.display = 'none';
-
-        if (window.jQuery && typeof window.jQuery.fn.turn === 'function') {
-            initTurnBook(bookConfig);
-        } else {
-            initSimpleFallback();
-        }
+        bookSpread.style.display = 'grid';
+        return renderCurrentSpread();
     })
     .catch(function (error) {
         statusEl.className = 'error';
