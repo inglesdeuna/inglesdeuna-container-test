@@ -253,11 +253,17 @@ function load_activities_for_units(PDO $pdo, array $unitIds): array
 
     try {
         $placeholders = implode(',', array_fill(0, count($unitIds), '?'));
+
+        $orderBy = 'unit_id ASC, id ASC';
+        if (column_exists($pdo, 'activities', 'position')) {
+            $orderBy = 'unit_id ASC, COALESCE(position, 0) ASC, id ASC';
+        }
+
         $sql = "
-            SELECT id, type, unit_id, COALESCE(position, 0) AS pos
+            SELECT id, type, unit_id
             FROM activities
             WHERE unit_id IN ($placeholders)
-            ORDER BY unit_id ASC, pos ASC, id ASC
+            ORDER BY {$orderBy}
         ";
         $stmt = $pdo->prepare($sql);
         $stmt->execute($unitIds);
@@ -274,6 +280,7 @@ if (!$pdo) {
 }
 
 $assignmentId = trim((string) ($_GET['assignment'] ?? ''));
+$selectedUnitId = trim((string) ($_GET['unit'] ?? ''));
 $teacherId = (string) ($_SESSION['teacher_id'] ?? '');
 $mode = (string) ($_GET['mode'] ?? 'view');
 $mode = $mode === 'edit' ? 'edit' : 'view';
@@ -301,9 +308,35 @@ $assignmentUnitId = (string) ($assignment['unit_id'] ?? '');
 $assignmentUnitName = (string) ($assignment['unit_name'] ?? '');
 
 if ($programType === 'english') {
-    $units = load_english_units($pdo, $courseId);
+    $allUnits = load_english_units($pdo, $courseId);
 } else {
-    $units = load_technical_units($pdo, $courseId, $assignmentUnitId, $assignmentUnitName);
+    $allUnits = load_technical_units($pdo, $courseId, $assignmentUnitId, $assignmentUnitName);
+}
+
+/*
+ * Si viene unit en la URL, respetar esa unidad.
+ * Si no viene, usar la primera disponible.
+ */
+$units = [];
+if ($selectedUnitId !== '') {
+    foreach ($allUnits as $unit) {
+        if ((string) ($unit['id'] ?? '') === $selectedUnitId) {
+            $units[] = $unit;
+            break;
+        }
+    }
+
+    if (empty($units) && $selectedUnitId !== '') {
+        $units[] = [
+            'id' => $selectedUnitId,
+            'name' => $assignmentUnitName !== '' ? $assignmentUnitName : 'Unidad',
+        ];
+    }
+} else {
+    $units = $allUnits;
+    if (!empty($units)) {
+        $selectedUnitId = (string) ($units[0]['id'] ?? '');
+    }
 }
 
 $unitIds = array_values(array_filter(array_map(
@@ -383,6 +416,8 @@ $courseTitle = $courseName;
 if ($programType === 'technical' && $assignmentUnitName !== '') {
     $courseTitle .= ' · ' . $assignmentUnitName;
 }
+
+$backDashboard = 'dashboard.php?assignment=' . urlencode($assignmentId) . '&unit=' . urlencode($selectedUnitId) . '#unidades-curso';
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -406,8 +441,6 @@ if ($programType === 'technical' && $assignmentUnitName !== '') {
     --shadow:0 8px 24px rgba(0,0,0,.08);
     --topbar:#3d69cf;
     --topbar-dark:#2f59b8;
-    --green:#43b05c;
-    --orange:#f0a629;
 }
 
 *{
@@ -484,7 +517,6 @@ body{
 }
 
 .logo-wrap{
-    background:transparent;
     text-align:center;
     margin-bottom:28px;
 }
@@ -597,10 +629,7 @@ body{
     box-shadow:var(--shadow);
 }
 
-.nav-btn.prev{
-    background:linear-gradient(180deg,#4f77df,#355fc9);
-}
-
+.nav-btn.prev,
 .nav-btn.next{
     background:linear-gradient(180deg,#4f77df,#355fc9);
 }
@@ -730,7 +759,7 @@ body{
 <body>
 <header class="topbar">
     <div class="topbar-inner">
-        <a class="top-btn back" href="dashboard.php">← Volver</a>
+        <a class="top-btn back" href="<?php echo h($backDashboard); ?>">← Volver</a>
         <h1 class="topbar-title">Actividad</h1>
         <a class="top-btn logout" href="logout.php">Logout</a>
     </div>
@@ -741,8 +770,8 @@ body{
         <div class="content" style="padding-top:30px;">
             <div class="empty-card">
                 <h2>No hay actividades disponibles.</h2>
-                <p>Este curso aún no tiene actividades para presentar o el tipo de actividad no tiene viewer configurado.</p>
-                <a href="dashboard.php">← Volver al panel docente</a>
+                <p>Esta unidad aún no tiene actividades para presentar o el tipo de actividad no tiene viewer configurado.</p>
+                <a href="<?php echo h($backDashboard); ?>">← Volver al panel docente</a>
             </div>
         </div>
     <?php } else { ?>
@@ -752,10 +781,10 @@ body{
                     <img src="<?php echo h($logoPath); ?>" alt="Let's aprende inglés">
                 </div>
 
-                <a class="side-btn blue" href="dashboard.php">📘 Mis Cursos</a>
+                <a class="side-btn blue" href="<?php echo h($backDashboard); ?>">📘 Mis Cursos</a>
 
                 <?php if ($permission === 'editor') { ?>
-                    <a class="side-btn orange" href="teacher_course.php?assignment=<?php echo urlencode($assignmentId); ?>&mode=edit&step=<?php echo $step; ?>">🧑‍🏫 Editar Cursos</a>
+                    <a class="side-btn orange" href="teacher_course.php?assignment=<?php echo urlencode($assignmentId); ?>&unit=<?php echo urlencode($selectedUnitId); ?>&mode=edit&step=<?php echo $step; ?>">🧑‍🏫 Editar Cursos</a>
                 <?php } ?>
 
                 <a class="side-btn green" href="teacher_groups.php">👥 Ver Estudiantes</a>
@@ -790,9 +819,15 @@ body{
                         </div>
 
                         <div class="controls">
-                            <a class="nav-btn prev <?php echo $hasPrev ? '' : 'disabled'; ?>" href="teacher_course.php?assignment=<?php echo urlencode($assignmentId); ?>&mode=<?php echo urlencode($mode); ?>&step=<?php echo $hasPrev ? $prevStep : $step; ?>">← Previous</a>
+                            <a class="nav-btn prev <?php echo $hasPrev ? '' : 'disabled'; ?>"
+                               href="teacher_course.php?assignment=<?php echo urlencode($assignmentId); ?>&unit=<?php echo urlencode($selectedUnitId); ?>&mode=<?php echo urlencode($mode); ?>&step=<?php echo $hasPrev ? $prevStep : $step; ?>">
+                                ← Previous
+                            </a>
 
-                            <a class="nav-btn next <?php echo $hasNext ? '' : 'disabled'; ?>" href="teacher_course.php?assignment=<?php echo urlencode($assignmentId); ?>&mode=<?php echo urlencode($mode); ?>&step=<?php echo $hasNext ? $nextStep : $step; ?>">Next →</a>
+                            <a class="nav-btn next <?php echo $hasNext ? '' : 'disabled'; ?>"
+                               href="teacher_course.php?assignment=<?php echo urlencode($assignmentId); ?>&unit=<?php echo urlencode($selectedUnitId); ?>&mode=<?php echo urlencode($mode); ?>&step=<?php echo $hasNext ? $nextStep : $step; ?>">
+                                Next →
+                            </a>
                         </div>
 
                         <?php if ($editorHref !== null) { ?>
