@@ -119,13 +119,43 @@ function normalize_pronunciation_items($rawData): array
     return $normalized;
 }
 
-function load_pronunciation_items(PDO $pdo, string $unit, string $activityId): array
+function default_pronunciation_title(): string
+{
+    return 'Pronunciation';
+}
+
+function normalize_activity_title(string $title): string
+{
+    $title = trim($title);
+    return $title !== '' ? $title : default_pronunciation_title();
+}
+
+function load_pronunciation_activity(PDO $pdo, string $unit, string $activityId): array
 {
     $columns = activities_columns($pdo);
+    $result = array(
+        'id' => '',
+        'title' => default_pronunciation_title(),
+        'items' => array(),
+    );
 
-    if ($activityId !== '' && in_array('data', $columns, true)) {
+    $selectFields = array('id');
+    if (in_array('data', $columns, true)) {
+        $selectFields[] = 'data';
+    }
+    if (in_array('content_json', $columns, true)) {
+        $selectFields[] = 'content_json';
+    }
+    if (in_array('title', $columns, true)) {
+        $selectFields[] = 'title';
+    }
+    if (in_array('name', $columns, true)) {
+        $selectFields[] = 'name';
+    }
+
+    if ($activityId !== '') {
         $stmt = $pdo->prepare(
-            "SELECT data
+            "SELECT " . implode(', ', $selectFields) . "
              FROM activities
              WHERE id = :id
                AND type = 'pronunciation'
@@ -134,120 +164,293 @@ function load_pronunciation_items(PDO $pdo, string $unit, string $activityId): a
         $stmt->execute(array('id' => $activityId));
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
-        if ($row && isset($row['data'])) {
-            return normalize_pronunciation_items($row['data']);
+        if ($row) {
+            $rawTitle = '';
+            if (isset($row['title']) && trim((string) $row['title']) !== '') {
+                $rawTitle = (string) $row['title'];
+            } elseif (isset($row['name']) && trim((string) $row['name']) !== '') {
+                $rawTitle = (string) $row['name'];
+            }
+
+            $rawData = null;
+            if (isset($row['data'])) {
+                $rawData = $row['data'];
+            } elseif (isset($row['content_json'])) {
+                $rawData = $row['content_json'];
+            }
+
+            return array(
+                'id' => isset($row['id']) ? (string) $row['id'] : '',
+                'title' => normalize_activity_title($rawTitle),
+                'items' => normalize_pronunciation_items($rawData),
+            );
         }
     }
 
-    if ($unit !== '' && in_array('unit_id', $columns, true) && in_array('data', $columns, true)) {
+    if ($unit !== '' && in_array('unit_id', $columns, true)) {
         $stmt = $pdo->prepare(
-            "SELECT data
+            "SELECT " . implode(', ', $selectFields) . "
              FROM activities
              WHERE unit_id = :unit
                AND type = 'pronunciation'
+             ORDER BY id ASC
              LIMIT 1"
         );
         $stmt->execute(array('unit' => $unit));
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
-        if ($row && isset($row['data'])) {
-            return normalize_pronunciation_items($row['data']);
+        if ($row) {
+            $rawTitle = '';
+            if (isset($row['title']) && trim((string) $row['title']) !== '') {
+                $rawTitle = (string) $row['title'];
+            } elseif (isset($row['name']) && trim((string) $row['name']) !== '') {
+                $rawTitle = (string) $row['name'];
+            }
+
+            $rawData = null;
+            if (isset($row['data'])) {
+                $rawData = $row['data'];
+            } elseif (isset($row['content_json'])) {
+                $rawData = $row['content_json'];
+            }
+
+            return array(
+                'id' => isset($row['id']) ? (string) $row['id'] : '',
+                'title' => normalize_activity_title($rawTitle),
+                'items' => normalize_pronunciation_items($rawData),
+            );
         }
     }
 
-    if ($unit !== '' && in_array('unit', $columns, true) && in_array('content_json', $columns, true)) {
+    if ($unit !== '' && in_array('unit', $columns, true)) {
         $stmt = $pdo->prepare(
-            "SELECT content_json
+            "SELECT " . implode(', ', $selectFields) . "
              FROM activities
              WHERE unit = :unit
                AND type = 'pronunciation'
+             ORDER BY id ASC
              LIMIT 1"
         );
         $stmt->execute(array('unit' => $unit));
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
-        if ($row && isset($row['content_json'])) {
-            return normalize_pronunciation_items($row['content_json']);
+        if ($row) {
+            $rawTitle = '';
+            if (isset($row['title']) && trim((string) $row['title']) !== '') {
+                $rawTitle = (string) $row['title'];
+            } elseif (isset($row['name']) && trim((string) $row['name']) !== '') {
+                $rawTitle = (string) $row['name'];
+            }
+
+            $rawData = null;
+            if (isset($row['data'])) {
+                $rawData = $row['data'];
+            } elseif (isset($row['content_json'])) {
+                $rawData = $row['content_json'];
+            }
+
+            return array(
+                'id' => isset($row['id']) ? (string) $row['id'] : '',
+                'title' => normalize_activity_title($rawTitle),
+                'items' => normalize_pronunciation_items($rawData),
+            );
         }
     }
 
-    return array();
+    return $result;
 }
 
-function save_pronunciation_items(PDO $pdo, string $unit, array $items): void
+function save_pronunciation_activity(PDO $pdo, string $unit, string $activityId, string $title, array $items): string
 {
     $columns = activities_columns($pdo);
     $json = json_encode($items, JSON_UNESCAPED_UNICODE);
+    $title = normalize_activity_title($title);
 
-    if (in_array('unit_id', $columns, true) && in_array('data', $columns, true)) {
-        $check = $pdo->prepare(
-            "SELECT id
-             FROM activities
-             WHERE unit_id = :unit
-               AND type = 'pronunciation'
-             LIMIT 1"
-        );
-        $check->execute(array('unit' => $unit));
+    $hasUnitId = in_array('unit_id', $columns, true);
+    $hasUnit = in_array('unit', $columns, true);
+    $hasData = in_array('data', $columns, true);
+    $hasContentJson = in_array('content_json', $columns, true);
+    $hasId = in_array('id', $columns, true);
+    $hasTitle = in_array('title', $columns, true);
+    $hasName = in_array('name', $columns, true);
 
-        if ($check->fetch()) {
-            $stmt = $pdo->prepare(
-                "UPDATE activities
-                 SET data = :data
+    if ($hasUnitId && $hasData) {
+        $targetId = $activityId;
+
+        if ($targetId === '') {
+            $check = $pdo->prepare(
+                "SELECT id
+                 FROM activities
                  WHERE unit_id = :unit
-                   AND type = 'pronunciation'"
+                   AND type = 'pronunciation'
+                 ORDER BY id ASC
+                 LIMIT 1"
             );
-            $stmt->execute(array('data' => $json, 'unit' => $unit));
-            return;
+            $check->execute(array('unit' => $unit));
+            $targetId = (string) $check->fetchColumn();
         }
 
-        try {
-            $stmt = $pdo->prepare(
-                "INSERT INTO activities (unit_id, type, data)
-                 VALUES (:unit, 'pronunciation', :data)"
+        if ($targetId !== '') {
+            $setParts = array('data = :data');
+            $params = array(
+                'id' => $targetId,
+                'data' => $json,
             );
-            $stmt->execute(array('unit' => $unit, 'data' => $json));
-            return;
-        } catch (Exception $e) {
-            if (in_array('id', $columns, true)) {
-                $stmt = $pdo->prepare(
-                    "INSERT INTO activities (id, unit_id, type, data)
-                     VALUES (:id, :unit, 'pronunciation', :data)"
-                );
-                $stmt->execute(array('id' => md5(random_bytes(16)), 'unit' => $unit, 'data' => $json));
-                return;
+
+            if ($hasTitle) {
+                $setParts[] = 'title = :title';
+                $params['title'] = $title;
+            }
+            if ($hasName) {
+                $setParts[] = 'name = :name';
+                $params['name'] = $title;
             }
 
-            throw $e;
-        }
-    }
-
-    if (in_array('unit', $columns, true) && in_array('content_json', $columns, true)) {
-        $check = $pdo->prepare(
-            "SELECT id
-             FROM activities
-             WHERE unit = :unit
-               AND type = 'pronunciation'
-             LIMIT 1"
-        );
-        $check->execute(array('unit' => $unit));
-
-        if ($check->fetch()) {
             $stmt = $pdo->prepare(
                 "UPDATE activities
-                 SET content_json = :data
-                 WHERE unit = :unit
+                 SET " . implode(', ', $setParts) . "
+                 WHERE id = :id
                    AND type = 'pronunciation'"
             );
-            $stmt->execute(array('data' => $json, 'unit' => $unit));
-            return;
+            $stmt->execute($params);
+            return $targetId;
+        }
+
+        $insertColumns = array();
+        $insertValues = array();
+        $params = array();
+
+        if ($hasId) {
+            $activityId = md5(random_bytes(16));
+            $insertColumns[] = 'id';
+            $insertValues[] = ':id';
+            $params['id'] = $activityId;
+        }
+
+        $insertColumns[] = 'unit_id';
+        $insertValues[] = ':unit';
+        $params['unit'] = $unit;
+
+        $insertColumns[] = 'type';
+        $insertValues[] = "'pronunciation'";
+
+        $insertColumns[] = 'data';
+        $insertValues[] = ':data';
+        $params['data'] = $json;
+
+        if ($hasTitle) {
+            $insertColumns[] = 'title';
+            $insertValues[] = ':title';
+            $params['title'] = $title;
+        }
+
+        if ($hasName) {
+            $insertColumns[] = 'name';
+            $insertValues[] = ':name';
+            $params['name'] = $title;
         }
 
         $stmt = $pdo->prepare(
-            "INSERT INTO activities (unit, type, content_json)
-             VALUES (:unit, 'pronunciation', :data)"
+            "INSERT INTO activities (" . implode(', ', $insertColumns) . ")
+             VALUES (" . implode(', ', $insertValues) . ")"
         );
-        $stmt->execute(array('unit' => $unit, 'data' => $json));
+        $stmt->execute($params);
+
+        if ($activityId !== '') {
+            return $activityId;
+        }
+
+        return '';
     }
+
+    if ($hasUnit && $hasContentJson) {
+        $targetId = $activityId;
+
+        if ($targetId === '') {
+            $check = $pdo->prepare(
+                "SELECT id
+                 FROM activities
+                 WHERE unit = :unit
+                   AND type = 'pronunciation'
+                 ORDER BY id ASC
+                 LIMIT 1"
+            );
+            $check->execute(array('unit' => $unit));
+            $targetId = (string) $check->fetchColumn();
+        }
+
+        if ($targetId !== '') {
+            $setParts = array('content_json = :data');
+            $params = array(
+                'id' => $targetId,
+                'data' => $json,
+            );
+
+            if ($hasTitle) {
+                $setParts[] = 'title = :title';
+                $params['title'] = $title;
+            }
+            if ($hasName) {
+                $setParts[] = 'name = :name';
+                $params['name'] = $title;
+            }
+
+            $stmt = $pdo->prepare(
+                "UPDATE activities
+                 SET " . implode(', ', $setParts) . "
+                 WHERE id = :id
+                   AND type = 'pronunciation'"
+            );
+            $stmt->execute($params);
+            return $targetId;
+        }
+
+        $insertColumns = array();
+        $insertValues = array();
+        $params = array();
+
+        if ($hasId) {
+            $activityId = md5(random_bytes(16));
+            $insertColumns[] = 'id';
+            $insertValues[] = ':id';
+            $params['id'] = $activityId;
+        }
+
+        $insertColumns[] = 'unit';
+        $insertValues[] = ':unit';
+        $params['unit'] = $unit;
+
+        $insertColumns[] = 'type';
+        $insertValues[] = "'pronunciation'";
+
+        $insertColumns[] = 'content_json';
+        $insertValues[] = ':data';
+        $params['data'] = $json;
+
+        if ($hasTitle) {
+            $insertColumns[] = 'title';
+            $insertValues[] = ':title';
+            $params['title'] = $title;
+        }
+
+        if ($hasName) {
+            $insertColumns[] = 'name';
+            $insertValues[] = ':name';
+            $params['name'] = $title;
+        }
+
+        $stmt = $pdo->prepare(
+            "INSERT INTO activities (" . implode(', ', $insertColumns) . ")
+             VALUES (" . implode(', ', $insertValues) . ")"
+        );
+        $stmt->execute($params);
+
+        if ($activityId !== '') {
+            return $activityId;
+        }
+    }
+
+    return $activityId;
 }
 
 if ($unit === '' && $activityId !== '') {
@@ -258,9 +461,16 @@ if ($unit === '') {
     die('Unidad no especificada');
 }
 
-$items = load_pronunciation_items($pdo, $unit, $activityId);
+$activity = load_pronunciation_activity($pdo, $unit, $activityId);
+$items = isset($activity['items']) && is_array($activity['items']) ? $activity['items'] : array();
+$activityTitle = isset($activity['title']) ? (string) $activity['title'] : default_pronunciation_title();
+
+if ($activityId === '' && !empty($activity['id'])) {
+    $activityId = (string) $activity['id'];
+}
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $postedTitle = isset($_POST['activity_title']) ? trim((string) $_POST['activity_title']) : '';
     $ens = isset($_POST['en']) && is_array($_POST['en']) ? $_POST['en'] : array();
     $phs = isset($_POST['ph']) && is_array($_POST['ph']) ? $_POST['ph'] : array();
     $ess = isset($_POST['es']) && is_array($_POST['es']) ? $_POST['es'] : array();
@@ -305,14 +515,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         );
     }
 
-    save_pronunciation_items($pdo, $unit, $sanitized);
+    $savedActivityId = save_pronunciation_activity($pdo, $unit, $activityId, $postedTitle, $sanitized);
 
     $redirectParams = array(
         'unit=' . urlencode($unit),
         'saved=1'
     );
 
-    if ($activityId !== '') {
+    if ($savedActivityId !== '') {
+        $redirectParams[] = 'id=' . urlencode($savedActivityId);
+    } elseif ($activityId !== '') {
         $redirectParams[] = 'id=' . urlencode($activityId);
     }
 
@@ -336,6 +548,18 @@ ob_start();
 <?php } ?>
 
 <form id="pronunciationForm" method="post" enctype="multipart/form-data" style="text-align:left;max-width:980px;margin:0 auto;">
+    <div class="title-box">
+        <label for="activity_title">Activity title</label>
+        <input
+            id="activity_title"
+            type="text"
+            name="activity_title"
+            value="<?php echo htmlspecialchars($activityTitle, ENT_QUOTES, 'UTF-8'); ?>"
+            placeholder="Example: Classroom Commands"
+            required
+        >
+    </div>
+
     <div id="items">
         <?php foreach ($items as $item) { ?>
             <div class="pron-block">
@@ -373,6 +597,25 @@ ob_start();
 </form>
 
 <style>
+.title-box{
+    background:#f9fafb;
+    padding:14px;
+    margin-bottom:14px;
+    border-radius:12px;
+    border:1px solid #e5e7eb;
+}
+.title-box label{
+    display:block;
+    font-weight:700;
+    margin-bottom:8px;
+}
+.title-box input{
+    width:100%;
+    padding:10px 12px;
+    border-radius:8px;
+    border:1px solid #ccc;
+    font-size:15px;
+}
 .pron-block{
     background:#f9fafb;
     padding:14px;
