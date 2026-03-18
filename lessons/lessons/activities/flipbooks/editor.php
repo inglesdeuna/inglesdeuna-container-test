@@ -2,77 +2,184 @@
 require_once __DIR__ . '/../../config/db.php';
 require_once __DIR__ . '/../../core/_activity_editor_template.php';
 
-$unit = isset($_GET['unit']) ? $_GET['unit'] : null;
-if (!$unit) {
+$activityId = isset($_GET['id']) ? trim((string) $_GET['id']) : '';
+$unit = isset($_GET['unit']) ? trim((string) $_GET['unit']) : '';
+$source = isset($_GET['source']) ? trim((string) $_GET['source']) : '';
+$assignment = isset($_GET['assignment']) ? trim((string) $_GET['assignment']) : '';
+
+if ($unit === '') {
     die('Unidad no especificada');
 }
 
-function load_flipbook_data($pdo, $unit)
+function activities_columns(PDO $pdo): array
 {
-    $stmt = $pdo->prepare(
-        "SELECT data
-         FROM activities
-         WHERE unit_id = :unit
-           AND type = 'flipbooks'
-         LIMIT 1"
-    );
-    $stmt->execute(array('unit' => $unit));
+    static $cache = null;
 
-    $row = $stmt->fetch(PDO::FETCH_ASSOC);
-    $raw = isset($row['data']) ? $row['data'] : '{}';
-    $decoded = json_decode($raw, true);
-
-    return is_array($decoded) ? $decoded : array();
-}
-
-function save_flipbook_data($pdo, $unit, $payload)
-{
-    $json = json_encode($payload, JSON_UNESCAPED_UNICODE);
-
-    $check = $pdo->prepare(
-        "SELECT id
-         FROM activities
-         WHERE unit_id = :unit
-           AND type = 'flipbooks'
-         LIMIT 1"
-    );
-    $check->execute(array('unit' => $unit));
-
-    if ($check->fetch()) {
-        $stmt = $pdo->prepare(
-            "UPDATE activities
-             SET data = :data
-             WHERE unit_id = :unit
-               AND type = 'flipbooks'"
-        );
-        $stmt->execute(array(
-            'data' => $json,
-            'unit' => $unit,
-        ));
-    } else {
-        $stmt = $pdo->prepare(
-            "INSERT INTO activities (id, unit_id, type, data)
-             VALUES (:id, :unit, 'flipbooks', :data)"
-        );
-        $stmt->execute(array(
-            'id' => md5(random_bytes(16)),
-            'unit' => $unit,
-            'data' => $json,
-        ));
+    if (is_array($cache)) {
+        return $cache;
     }
+
+    $cache = array();
+
+    $stmt = $pdo->query(
+        "SELECT column_name
+         FROM information_schema.columns
+         WHERE table_schema = 'public'
+           AND table_name = 'activities'"
+    );
+
+    foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+        if (isset($row['column_name'])) {
+            $cache[] = (string) $row['column_name'];
+        }
+    }
+
+    return $cache;
 }
 
-function save_pdf_locally($tmpPath, $originalName, $unit)
+function resolve_unit_from_activity(PDO $pdo, string $activityId): string
+{
+    if ($activityId === '') {
+        return '';
+    }
+
+    $columns = activities_columns($pdo);
+
+    if (in_array('unit_id', $columns, true)) {
+        $stmt = $pdo->prepare(
+            "SELECT unit_id
+             FROM activities
+             WHERE id = :id
+             LIMIT 1"
+        );
+        $stmt->execute(array('id' => $activityId));
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if ($row && isset($row['unit_id'])) {
+            return (string) $row['unit_id'];
+        }
+    }
+
+    if (in_array('unit', $columns, true)) {
+        $stmt = $pdo->prepare(
+            "SELECT unit
+             FROM activities
+             WHERE id = :id
+             LIMIT 1"
+        );
+        $stmt->execute(array('id' => $activityId));
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if ($row && isset($row['unit'])) {
+            return (string) $row['unit'];
+        }
+    }
+
+    return '';
+}
+
+function default_flipbook_title(): string
+{
+    return 'Flipbook';
+}
+
+function normalize_flipbook_title(string $title): string
+{
+    $title = trim($title);
+    return $title !== '' ? $title : default_flipbook_title();
+}
+
+function normalize_flipbook_payload($rawData): array
+{
+    $default = array(
+        'title' => default_flipbook_title(),
+        'language' => 'en-US',
+        'listen_enabled' => true,
+        'page_texts' => array(),
+        'pdf_url' => '',
+        'pdf_public_id' => '',
+        'pdf_bytes' => 0,
+        'pdf' => '',
+    );
+
+    if ($rawData === null || $rawData === '') {
+        return $default;
+    }
+
+    $decoded = is_string($rawData) ? json_decode($rawData, true) : $rawData;
+    if (!is_array($decoded)) {
+        return $default;
+    }
+
+    return array(
+        'title' => normalize_flipbook_title(isset($decoded['title']) ? (string) $decoded['title'] : ''),
+        'language' => isset($decoded['language']) && trim((string) $decoded['language']) !== '' ? trim((string) $decoded['language']) : 'en-US',
+        'listen_enabled' => !isset($decoded['listen_enabled']) || (bool) $decoded['listen_enabled'],
+        'page_texts' => isset($decoded['page_texts']) && is_array($decoded['page_texts']) ? array_values($decoded['page_texts']) : array(),
+        'pdf_url' => isset($decoded['pdf_url']) ? trim((string) $decoded['pdf_url']) : '',
+        'pdf_public_id' => isset($decoded['pdf_public_id']) ? trim((string) $decoded['pdf_public_id']) : '',
+        'pdf_bytes' => isset($decoded['pdf_bytes']) ? (int) $decoded['pdf_bytes'] : 0,
+        'pdf' => isset($decoded['pdf']) ? trim((string) $decoded['pdf']) : '',
+    );
+}
+
+function encode_flipbook_payload(array $payload): string
+{
+    return json_encode(array(
+        'title' => normalize_flipbook_title(isset($payload['title']) ? (string) $payload['title'] : ''),
+        'language' => isset($payload['language']) && trim((string) $payload['language']) !== '' ? trim((string) $payload['language']) : 'en-US',
+        'listen_enabled' => !empty($payload['listen_enabled']),
+        'page_texts' => isset($payload['page_texts']) && is_array($payload['page_texts']) ? array_values($payload['page_texts']) : array(),
+        'pdf_url' => isset($payload['pdf_url']) ? trim((string) $payload['pdf_url']) : '',
+        'pdf_public_id' => isset($payload['pdf_public_id']) ? trim((string) $payload['pdf_public_id']) : '',
+        'pdf_bytes' => isset($payload['pdf_bytes']) ? (int) $payload['pdf_bytes'] : 0,
+        'pdf' => isset($payload['pdf']) ? trim((string) $payload['pdf']) : '',
+    ), JSON_UNESCAPED_UNICODE);
+}
+
+function parse_page_texts($raw): array
+{
+    $lines = preg_split('/\r\n|\r|\n/', (string) $raw);
+    $texts = array();
+
+    foreach ($lines as $line) {
+        $trimmed = trim((string) $line);
+        if ($trimmed !== '') {
+            $texts[] = $trimmed;
+        }
+    }
+
+    return $texts;
+}
+
+function get_upload_error_message($code): string
+{
+    $messages = array(
+        UPLOAD_ERR_INI_SIZE => 'El archivo excede upload_max_filesize en el servidor.',
+        UPLOAD_ERR_FORM_SIZE => 'El archivo excede el tamaño permitido por el formulario.',
+        UPLOAD_ERR_PARTIAL => 'El archivo se subió parcialmente.',
+        UPLOAD_ERR_NO_FILE => 'No se seleccionó ningún PDF.',
+        UPLOAD_ERR_NO_TMP_DIR => 'Falta la carpeta temporal del servidor.',
+        UPLOAD_ERR_CANT_WRITE => 'No se pudo escribir el archivo en disco.',
+        UPLOAD_ERR_EXTENSION => 'Una extensión de PHP detuvo la subida.',
+    );
+
+    return isset($messages[$code]) ? $messages[$code] : 'Error desconocido de subida (' . (int) $code . ').';
+}
+
+function save_pdf_locally(string $tmpPath, string $originalName, string $unit): array
 {
     $uploadDir = __DIR__ . '/uploads';
+
     if (!is_dir($uploadDir)) {
         if (!mkdir($uploadDir, 0775, true) && !is_dir($uploadDir)) {
             return array('error' => 'No se pudo crear la carpeta de uploads del flipbook.');
         }
     }
 
-    $safeUnit = preg_replace('/[^a-zA-Z0-9_-]/', '_', (string) $unit);
-    $safeName = preg_replace('/[^a-zA-Z0-9._-]/', '_', (string) $originalName);
+    $safeUnit = preg_replace('/[^a-zA-Z0-9_-]/', '_', $unit);
+    $safeName = preg_replace('/[^a-zA-Z0-9._-]/', '_', $originalName);
+
     $filename = 'unit_' . $safeUnit . '_' . time() . '_' . substr(md5((string) mt_rand()), 0, 8) . '_' . $safeName;
     if (!preg_match('/\.pdf$/i', $filename)) {
         $filename .= '.pdf';
@@ -95,174 +202,293 @@ function save_pdf_locally($tmpPath, $originalName, $unit)
     );
 }
 
-function upload_pdf_to_cloudinary($tmpPath, $originalName)
+function load_flipbook_activity(PDO $pdo, string $unit, string $activityId): array
 {
-    $cloud = getenv('CLOUDINARY_CLOUD_NAME');
-    $key = getenv('CLOUDINARY_API_KEY');
-    $secret = getenv('CLOUDINARY_API_SECRET');
+    $columns = activities_columns($pdo);
 
-    $cloud = $cloud !== false ? trim((string) $cloud) : '';
-    $key = $key !== false ? trim((string) $key) : '';
-    $secret = $secret !== false ? trim((string) $secret) : '';
-
-    if ($cloud === '' || $key === '' || $secret === '') {
-        return array('error' => 'Cloudinary no está configurado en el entorno.');
+    $selectFields = array('id');
+    if (in_array('data', $columns, true)) {
+        $selectFields[] = 'data';
+    }
+    if (in_array('content_json', $columns, true)) {
+        $selectFields[] = 'content_json';
+    }
+    if (in_array('title', $columns, true)) {
+        $selectFields[] = 'title';
+    }
+    if (in_array('name', $columns, true)) {
+        $selectFields[] = 'name';
     }
 
-    $timestamp = time();
-    $publicId = 'unit_' . preg_replace('/[^a-zA-Z0-9_-]/', '_', (string) ($_GET['unit'] ?? '')) . '_' . $timestamp;
-
-    $signatureParams = array(
-        'folder' => 'flipbooks',
-        'public_id' => $publicId,
-        'timestamp' => $timestamp,
-        'unique_filename' => 'true',
-        'use_filename' => 'true',
+    $fallback = array(
+        'id' => '',
+        'title' => default_flipbook_title(),
+        'payload' => normalize_flipbook_payload(null),
     );
 
-    ksort($signatureParams);
+    $row = null;
 
-    $signatureStringParts = array();
-    foreach ($signatureParams as $keyParam => $valueParam) {
-        $signatureStringParts[] = $keyParam . '=' . $valueParam;
+    if ($activityId !== '') {
+        $stmt = $pdo->prepare(
+            "SELECT " . implode(', ', $selectFields) . "
+             FROM activities
+             WHERE id = :id
+               AND type = 'flipbooks'
+             LIMIT 1"
+        );
+        $stmt->execute(array('id' => $activityId));
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
     }
 
-    $signatureBase = implode('&', $signatureStringParts) . $secret;
-    $signature = sha1($signatureBase);
-
-    $post = array(
-        'file' => new CURLFile($tmpPath, 'application/pdf', $originalName),
-        'api_key' => $key,
-        'timestamp' => $timestamp,
-        'signature' => $signature,
-        'public_id' => $publicId,
-        'folder' => 'flipbooks',
-        'resource_type' => 'raw',
-        'use_filename' => 'true',
-        'unique_filename' => 'true',
-    );
-
-    $ch = curl_init();
-    curl_setopt($ch, CURLOPT_URL, 'https://api.cloudinary.com/v1_1/' . $cloud . '/raw/upload');
-    curl_setopt($ch, CURLOPT_POST, 1);
-    curl_setopt($ch, CURLOPT_POSTFIELDS, $post);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 600);
-    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 30);
-    curl_setopt($ch, CURLOPT_FAILONERROR, false);
-
-    $result = curl_exec($ch);
-    $curlError = curl_error($ch);
-    $httpCode = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    curl_close($ch);
-
-    if ($result === false) {
-        return array('error' => 'Error al subir PDF: ' . $curlError);
+    if (!$row && in_array('unit_id', $columns, true)) {
+        $stmt = $pdo->prepare(
+            "SELECT " . implode(', ', $selectFields) . "
+             FROM activities
+             WHERE unit_id = :unit
+               AND type = 'flipbooks'
+             ORDER BY id ASC
+             LIMIT 1"
+        );
+        $stmt->execute(array('unit' => $unit));
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
     }
 
-    $response = json_decode($result, true);
-
-    if ($httpCode >= 400) {
-        $message = is_array($response) && isset($response['error']['message'])
-            ? $response['error']['message']
-            : 'Error HTTP ' . $httpCode . ' en Cloudinary';
-        return array('error' => $message);
+    if (!$row && in_array('unit', $columns, true)) {
+        $stmt = $pdo->prepare(
+            "SELECT " . implode(', ', $selectFields) . "
+             FROM activities
+             WHERE unit = :unit
+               AND type = 'flipbooks'
+             ORDER BY id ASC
+             LIMIT 1"
+        );
+        $stmt->execute(array('unit' => $unit));
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
     }
 
-    if (!is_array($response) || isset($response['error'])) {
-        $message = is_array($response) && isset($response['error']['message'])
-            ? $response['error']['message']
-            : 'Error desconocido subiendo PDF';
-        return array('error' => $message);
+    if (!$row) {
+        return $fallback;
     }
 
-    $secureUrl = isset($response['secure_url']) ? (string) $response['secure_url'] : '';
-    $format = isset($response['format']) ? (string) $response['format'] : '';
-    if ($secureUrl !== '' && $format === 'pdf' && !preg_match('/\.pdf(\?|$)/i', $secureUrl)) {
-        $secureUrl .= '.pdf';
+    $rawData = null;
+    if (isset($row['data'])) {
+        $rawData = $row['data'];
+    } elseif (isset($row['content_json'])) {
+        $rawData = $row['content_json'];
+    }
+
+    $payload = normalize_flipbook_payload($rawData);
+
+    $columnTitle = '';
+    if (isset($row['title']) && trim((string) $row['title']) !== '') {
+        $columnTitle = trim((string) $row['title']);
+    } elseif (isset($row['name']) && trim((string) $row['name']) !== '') {
+        $columnTitle = trim((string) $row['name']);
+    }
+
+    if ($columnTitle !== '') {
+        $payload['title'] = $columnTitle;
     }
 
     return array(
-        'secure_url' => $secureUrl,
-        'public_id' => isset($response['public_id']) ? $response['public_id'] : '',
-        'bytes' => isset($response['bytes']) ? (int) $response['bytes'] : 0,
+        'id' => isset($row['id']) ? (string) $row['id'] : '',
+        'title' => normalize_flipbook_title((string) $payload['title']),
+        'payload' => $payload,
     );
 }
 
-function get_upload_error_message($code)
+function save_flipbook_activity(PDO $pdo, string $unit, string $activityId, array $payload): string
 {
-    $messages = array(
-        UPLOAD_ERR_INI_SIZE => 'El archivo excede upload_max_filesize en el servidor.',
-        UPLOAD_ERR_FORM_SIZE => 'El archivo excede el tamaño permitido por el formulario.',
-        UPLOAD_ERR_PARTIAL => 'El archivo se subió parcialmente.',
-        UPLOAD_ERR_NO_FILE => 'No se seleccionó ningún PDF.',
-        UPLOAD_ERR_NO_TMP_DIR => 'Falta la carpeta temporal del servidor.',
-        UPLOAD_ERR_CANT_WRITE => 'No se pudo escribir el archivo en disco.',
-        UPLOAD_ERR_EXTENSION => 'Una extensión de PHP detuvo la subida.',
-    );
+    $columns = activities_columns($pdo);
+    $payload['title'] = normalize_flipbook_title(isset($payload['title']) ? (string) $payload['title'] : '');
+    $json = encode_flipbook_payload($payload);
 
-    return isset($messages[$code]) ? $messages[$code] : 'Error desconocido de subida (' . (int) $code . ').';
-}
+    $hasUnitId = in_array('unit_id', $columns, true);
+    $hasUnit = in_array('unit', $columns, true);
+    $hasData = in_array('data', $columns, true);
+    $hasContentJson = in_array('content_json', $columns, true);
+    $hasId = in_array('id', $columns, true);
+    $hasTitle = in_array('title', $columns, true);
+    $hasName = in_array('name', $columns, true);
 
-function parse_page_texts($raw)
-{
-    $lines = preg_split('/\r\n|\r|\n/', (string) $raw);
-    $texts = array();
+    $targetId = $activityId;
 
-    foreach ($lines as $line) {
-        $trimmed = trim($line);
-        if ($trimmed !== '') {
-            $texts[] = $trimmed;
+    if ($targetId === '') {
+        if ($hasUnitId) {
+            $stmt = $pdo->prepare(
+                "SELECT id
+                 FROM activities
+                 WHERE unit_id = :unit
+                   AND type = 'flipbooks'
+                 ORDER BY id ASC
+                 LIMIT 1"
+            );
+            $stmt->execute(array('unit' => $unit));
+            $targetId = trim((string) $stmt->fetchColumn());
+        }
+
+        if ($targetId === '' && $hasUnit) {
+            $stmt = $pdo->prepare(
+                "SELECT id
+                 FROM activities
+                 WHERE unit = :unit
+                   AND type = 'flipbooks'
+                 ORDER BY id ASC
+                 LIMIT 1"
+            );
+            $stmt->execute(array('unit' => $unit));
+            $targetId = trim((string) $stmt->fetchColumn());
         }
     }
 
-    return $texts;
+    if ($targetId !== '') {
+        $setParts = array();
+        $params = array('id' => $targetId);
+
+        if ($hasData) {
+            $setParts[] = 'data = :data';
+            $params['data'] = $json;
+        }
+        if ($hasContentJson) {
+            $setParts[] = 'content_json = :content_json';
+            $params['content_json'] = $json;
+        }
+        if ($hasTitle) {
+            $setParts[] = 'title = :title';
+            $params['title'] = $payload['title'];
+        }
+        if ($hasName) {
+            $setParts[] = 'name = :name';
+            $params['name'] = $payload['title'];
+        }
+
+        if (!empty($setParts)) {
+            $stmt = $pdo->prepare(
+                "UPDATE activities
+                 SET " . implode(', ', $setParts) . "
+                 WHERE id = :id
+                   AND type = 'flipbooks'"
+            );
+            $stmt->execute($params);
+        }
+
+        return $targetId;
+    }
+
+    $insertColumns = array();
+    $insertValues = array();
+    $params = array();
+
+    $newId = '';
+    if ($hasId) {
+        $newId = md5(random_bytes(16));
+        $insertColumns[] = 'id';
+        $insertValues[] = ':id';
+        $params['id'] = $newId;
+    }
+
+    if ($hasUnitId) {
+        $insertColumns[] = 'unit_id';
+        $insertValues[] = ':unit_id';
+        $params['unit_id'] = $unit;
+    } elseif ($hasUnit) {
+        $insertColumns[] = 'unit';
+        $insertValues[] = ':unit';
+        $params['unit'] = $unit;
+    }
+
+    $insertColumns[] = 'type';
+    $insertValues[] = "'flipbooks'";
+
+    if ($hasData) {
+        $insertColumns[] = 'data';
+        $insertValues[] = ':data';
+        $params['data'] = $json;
+    }
+    if ($hasContentJson) {
+        $insertColumns[] = 'content_json';
+        $insertValues[] = ':content_json';
+        $params['content_json'] = $json;
+    }
+    if ($hasTitle) {
+        $insertColumns[] = 'title';
+        $insertValues[] = ':title';
+        $params['title'] = $payload['title'];
+    }
+    if ($hasName) {
+        $insertColumns[] = 'name';
+        $insertValues[] = ':name';
+        $params['name'] = $payload['title'];
+    }
+
+    $stmt = $pdo->prepare(
+        "INSERT INTO activities (" . implode(', ', $insertColumns) . ")
+         VALUES (" . implode(', ', $insertValues) . ")"
+    );
+    $stmt->execute($params);
+
+    return $newId;
 }
 
-$flipbook = load_flipbook_data($pdo, $unit);
+if ($unit === '' && $activityId !== '') {
+    $unit = resolve_unit_from_activity($pdo, $activityId);
+}
+
+if ($unit === '') {
+    die('Unidad no especificada');
+}
+
+$activity = load_flipbook_activity($pdo, $unit, $activityId);
+$flipbook = isset($activity['payload']) && is_array($activity['payload']) ? $activity['payload'] : normalize_flipbook_payload(null);
+
+if ($activityId === '' && !empty($activity['id'])) {
+    $activityId = (string) $activity['id'];
+}
+
 $errorMsg = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    if (isset($_POST['delete_pdf'])) {
+    if (isset($_POST['delete_pdf']) && $_POST['delete_pdf'] === '1') {
         $flipbook['pdf_url'] = '';
         $flipbook['pdf_public_id'] = '';
         $flipbook['pdf_bytes'] = 0;
-        save_flipbook_data($pdo, $unit, $flipbook);
+        $flipbook['pdf'] = '';
 
-        header('Location: editor.php?unit=' . urlencode((string) $unit) . '&saved=1');
+        $savedActivityId = save_flipbook_activity($pdo, $unit, $activityId, $flipbook);
+
+        $params = array('unit=' . urlencode($unit), 'saved=1');
+        if ($savedActivityId !== '') {
+            $params[] = 'id=' . urlencode($savedActivityId);
+        }
+        if ($assignment !== '') {
+            $params[] = 'assignment=' . urlencode($assignment);
+        }
+        if ($source !== '') {
+            $params[] = 'source=' . urlencode($source);
+        }
+
+        header('Location: editor.php?' . implode('&', $params));
         exit;
     }
 
-    $title = isset($_POST['title']) ? trim($_POST['title']) : '';
-    $language = isset($_POST['language']) ? trim($_POST['language']) : 'en-US';
-    $listenEnabled = isset($_POST['listen_enabled']) && $_POST['listen_enabled'] === '1';
-    $pageTexts = parse_page_texts(isset($_POST['page_texts']) ? $_POST['page_texts'] : '');
-
-    $flipbook['title'] = $title !== '' ? $title : 'My Flipbook';
-    $flipbook['language'] = $language !== '' ? $language : 'en-US';
-    $flipbook['listen_enabled'] = $listenEnabled;
-    $flipbook['page_texts'] = $pageTexts;
+    $flipbook['title'] = normalize_flipbook_title(isset($_POST['title']) ? (string) $_POST['title'] : '');
+    $flipbook['language'] = isset($_POST['language']) && trim((string) $_POST['language']) !== '' ? trim((string) $_POST['language']) : 'en-US';
+    $flipbook['listen_enabled'] = isset($_POST['listen_enabled']) && (string) $_POST['listen_enabled'] === '1';
+    $flipbook['page_texts'] = parse_page_texts(isset($_POST['page_texts']) ? $_POST['page_texts'] : '');
 
     if (isset($_FILES['pdf']) && isset($_FILES['pdf']['error'])) {
         $pdfError = (int) $_FILES['pdf']['error'];
 
         if ($pdfError === UPLOAD_ERR_OK) {
             $extension = strtolower(pathinfo((string) $_FILES['pdf']['name'], PATHINFO_EXTENSION));
+
             if ($extension !== 'pdf') {
                 $errorMsg = 'Solo se permite subir archivos PDF.';
             } else {
-                $upload = save_pdf_locally($_FILES['pdf']['tmp_name'], $_FILES['pdf']['name'], $unit);
+                $upload = save_pdf_locally((string) $_FILES['pdf']['tmp_name'], (string) $_FILES['pdf']['name'], $unit);
 
                 if (isset($upload['error'])) {
-                    $cloudUpload = upload_pdf_to_cloudinary($_FILES['pdf']['tmp_name'], $_FILES['pdf']['name']);
-                    if (isset($cloudUpload['error'])) {
-                        $errorMsg = $upload['error'] . ' / Cloudinary: ' . $cloudUpload['error'];
-                    } else {
-                        $flipbook['pdf_url'] = $cloudUpload['secure_url'];
-                        $flipbook['pdf_public_id'] = $cloudUpload['public_id'];
-                        $flipbook['pdf_bytes'] = $cloudUpload['bytes'];
-                        $flipbook['pdf'] = $cloudUpload['secure_url'];
-                    }
+                    $errorMsg = $upload['error'];
                 } else {
                     $flipbook['pdf_url'] = $upload['secure_url'];
                     $flipbook['pdf_public_id'] = $upload['public_id'];
@@ -276,28 +502,108 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if ($errorMsg === '') {
-        save_flipbook_data($pdo, $unit, $flipbook);
-        header('Location: editor.php?unit=' . urlencode((string) $unit) . '&saved=1');
+        $savedActivityId = save_flipbook_activity($pdo, $unit, $activityId, $flipbook);
+
+        $params = array('unit=' . urlencode($unit), 'saved=1');
+        if ($savedActivityId !== '') {
+            $params[] = 'id=' . urlencode($savedActivityId);
+        }
+        if ($assignment !== '') {
+            $params[] = 'assignment=' . urlencode($assignment);
+        }
+        if ($source !== '') {
+            $params[] = 'source=' . urlencode($source);
+        }
+
+        header('Location: editor.php?' . implode('&', $params));
         exit;
     }
 }
 
-$currentPdf = isset($flipbook['pdf_url']) ? $flipbook['pdf_url'] : '';
-$currentTitle = isset($flipbook['title']) ? $flipbook['title'] : 'My Flipbook';
-$currentLanguage = isset($flipbook['language']) ? $flipbook['language'] : 'en-US';
-$currentListen = isset($flipbook['listen_enabled']) ? (bool) $flipbook['listen_enabled'] : true;
+$currentPdf = isset($flipbook['pdf_url']) && trim((string) $flipbook['pdf_url']) !== ''
+    ? trim((string) $flipbook['pdf_url'])
+    : (isset($flipbook['pdf']) ? trim((string) $flipbook['pdf']) : '');
+$currentTitle = normalize_flipbook_title(isset($flipbook['title']) ? (string) $flipbook['title'] : '');
+$currentLanguage = isset($flipbook['language']) ? (string) $flipbook['language'] : 'en-US';
+$currentListen = !isset($flipbook['listen_enabled']) || (bool) $flipbook['listen_enabled'];
 $currentPageTexts = isset($flipbook['page_texts']) && is_array($flipbook['page_texts']) ? $flipbook['page_texts'] : array();
+
+$draftKey = 'flipbook_draft_' . md5($unit . '|' . $activityId . '|' . $assignment . '|' . $source);
 
 ob_start();
 ?>
 <style>
-.flipbook-form{max-width:800px;margin:0 auto;text-align:left;}
+.flipbook-form{max-width:860px;margin:0 auto;text-align:left}
 .flipbook-form input[type="text"],
 .flipbook-form input[type="file"],
 .flipbook-form select,
-.flipbook-form textarea{width:100%;padding:10px;border:1px solid #d1d5db;border-radius:8px;box-sizing:border-box;margin-top:6px;}
-.flipbook-form .row{margin-bottom:14px;}
-.file-box{margin-top:18px;background:#f3f4f6;border:1px solid #e5e7eb;padding:12px;border-radius:10px;}
+.flipbook-form textarea{
+    width:100%;
+    padding:10px;
+    border:1px solid #d1d5db;
+    border-radius:8px;
+    box-sizing:border-box;
+    margin-top:6px;
+}
+.flipbook-form .row{margin-bottom:14px}
+.file-box{
+    margin-top:18px;
+    background:#f3f4f6;
+    border:1px solid #e5e7eb;
+    padding:12px;
+    border-radius:10px;
+}
+.editor-note{
+    background:#eef6ff;
+    border:1px solid #bfdbfe;
+    color:#1e3a8a;
+    padding:10px 12px;
+    border-radius:10px;
+    margin-bottom:14px;
+    font-size:14px;
+}
+.preview-box{
+    margin-top:18px;
+    border:1px solid #e5e7eb;
+    background:#fff;
+    border-radius:14px;
+    padding:12px;
+}
+.preview-frame{
+    width:100%;
+    height:480px;
+    border:none;
+    border-radius:10px;
+    background:#f8fafc;
+}
+.small-muted{
+    color:#6b7280;
+    font-size:13px;
+}
+.toolbar-row{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+    align-items:center;
+}
+.secondary-btn{
+    background:#64748b;
+    color:#fff;
+    border:none;
+    border-radius:8px;
+    padding:10px 14px;
+    cursor:pointer;
+    font-weight:700;
+}
+.delete-btn{
+    background:#dc2626;
+    color:#fff;
+    border:none;
+    border-radius:8px;
+    padding:10px 14px;
+    cursor:pointer;
+    font-weight:700;
+}
 </style>
 
 <?php if (isset($_GET['saved'])) { ?>
@@ -305,13 +611,17 @@ ob_start();
 <?php } ?>
 
 <?php if ($errorMsg !== '') { ?>
-    <p style="color:#dc2626;font-weight:bold;margin-bottom:15px;">❌ <?= htmlspecialchars($errorMsg) ?></p>
+    <p style="color:#dc2626;font-weight:bold;margin-bottom:15px;">❌ <?= htmlspecialchars($errorMsg, ENT_QUOTES, 'UTF-8') ?></p>
 <?php } ?>
 
-<form class="flipbook-form" method="post" enctype="multipart/form-data">
+<div class="editor-note">
+    Este editor guarda el título, el PDF y el texto por página para el botón Listen. Si cierras accidentalmente, el navegador conserva un borrador local hasta que guardes.
+</div>
+
+<form class="flipbook-form" id="flipbookForm" method="post" enctype="multipart/form-data">
     <div class="row">
         <label style="font-weight:bold;">Título del flipbook</label>
-        <input type="text" name="title" value="<?= htmlspecialchars($currentTitle) ?>" placeholder="Ej: My Story Book">
+        <input type="text" name="title" value="<?= htmlspecialchars($currentTitle, ENT_QUOTES, 'UTF-8') ?>" placeholder="Ej: My Story Book" required>
     </div>
 
     <div class="row">
@@ -331,22 +641,27 @@ ob_start();
     </div>
 
     <div class="row">
-        <label style="font-weight:bold;">Subir PDF (puede reemplazar el actual)</label>
+        <label style="font-weight:bold;">Subir PDF (reemplaza el actual)</label>
         <input type="file" name="pdf" accept="application/pdf">
-        <small style="color:#6b7280;">Se guarda localmente en el servidor (y usa Cloudinary solo como fallback si falla el guardado local).</small>
+        <div class="small-muted">Sube un PDF visual, colorido, con imágenes. El flipbook lo mostrará dentro del contenedor de presentación.</div>
     </div>
 
     <div class="row">
         <label style="font-weight:bold;">Texto por página para Listen (1 línea = 1 página)</label>
-        <textarea name="page_texts" rows="8" placeholder="Page 1 text...&#10;Page 2 text..."><?= htmlspecialchars(implode("\n", $currentPageTexts)) ?></textarea>
+        <textarea name="page_texts" rows="8" placeholder="Page 1 text...&#10;Page 2 text..."><?= htmlspecialchars(implode("\n", $currentPageTexts), ENT_QUOTES, 'UTF-8') ?></textarea>
+        <div class="small-muted">Si el PDF tiene 10 páginas, puedes poner 10 líneas. Cada línea se leerá en la página correspondiente.</div>
     </div>
 
-    <button type="submit" class="save-btn">💾 Guardar flipbook</button>
+    <div class="toolbar-row">
+        <button type="submit" class="save-btn">💾 Guardar flipbook</button>
+        <button type="button" class="secondary-btn" id="clearDraftBtn">Borrar borrador local</button>
+    </div>
 </form>
 
 <?php if ($currentPdf !== '') { ?>
     <div class="file-box">
-        <div><strong>PDF actual:</strong> <a href="<?= htmlspecialchars($currentPdf) ?>" target="_blank">Abrir PDF</a></div>
+        <div><strong>PDF actual:</strong> <a href="<?= htmlspecialchars($currentPdf, ENT_QUOTES, 'UTF-8') ?>" target="_blank">Abrir PDF</a></div>
+
         <?php if (!empty($flipbook['pdf_bytes'])) { ?>
             <div style="margin-top:6px;color:#6b7280;">Tamaño: <?= number_format(((int) $flipbook['pdf_bytes']) / 1024 / 1024, 2) ?> MB</div>
         <?php } ?>
@@ -356,7 +671,115 @@ ob_start();
             <button type="submit" class="delete-btn">✖ Quitar PDF</button>
         </form>
     </div>
+
+    <div class="preview-box">
+        <div style="font-weight:bold;margin-bottom:10px;">Vista previa rápida</div>
+        <iframe
+            class="preview-frame"
+            src="viewer.php?unit=<?= urlencode($unit) ?><?php if ($activityId !== '') { ?>&id=<?= urlencode($activityId) ?><?php } ?><?php if ($assignment !== '') { ?>&assignment=<?= urlencode($assignment) ?><?php } ?><?php if ($source !== '') { ?>&source=<?= urlencode($source) ?><?php } ?>"
+            title="Preview Flipbook"
+        ></iframe>
+    </div>
 <?php } ?>
+
+<script>
+(function () {
+    const form = document.getElementById('flipbookForm');
+    const clearDraftBtn = document.getElementById('clearDraftBtn');
+    const draftKey = <?= json_encode($draftKey, JSON_UNESCAPED_UNICODE) ?>;
+    let formChanged = false;
+    let formSubmitted = false;
+
+    function markChanged() {
+        formChanged = true;
+        saveDraft();
+    }
+
+    function serializeDraft() {
+        const titleEl = form.querySelector('[name="title"]');
+        const languageEl = form.querySelector('[name="language"]');
+        const listenEl = form.querySelector('[name="listen_enabled"][type="checkbox"]');
+        const pageTextsEl = form.querySelector('[name="page_texts"]');
+
+        return {
+            title: titleEl ? titleEl.value : '',
+            language: languageEl ? languageEl.value : 'en-US',
+            listen_enabled: !!(listenEl && listenEl.checked),
+            page_texts: pageTextsEl ? pageTextsEl.value : ''
+        };
+    }
+
+    function saveDraft() {
+        if (!form) return;
+        try {
+            localStorage.setItem(draftKey, JSON.stringify(serializeDraft()));
+        } catch (e) {}
+    }
+
+    function loadDraft() {
+        try {
+            const raw = localStorage.getItem(draftKey);
+            if (!raw) return null;
+            const parsed = JSON.parse(raw);
+            return parsed && typeof parsed === 'object' ? parsed : null;
+        } catch (e) {
+            return null;
+        }
+    }
+
+    function applyDraft(draft) {
+        if (!draft || !form) return;
+
+        const titleEl = form.querySelector('[name="title"]');
+        const languageEl = form.querySelector('[name="language"]');
+        const listenEl = form.querySelector('[name="listen_enabled"][type="checkbox"]');
+        const pageTextsEl = form.querySelector('[name="page_texts"]');
+
+        if (titleEl && draft.title !== undefined) titleEl.value = draft.title;
+        if (languageEl && draft.language !== undefined) languageEl.value = draft.language;
+        if (listenEl && draft.listen_enabled !== undefined) listenEl.checked = !!draft.listen_enabled;
+        if (pageTextsEl && draft.page_texts !== undefined) pageTextsEl.value = draft.page_texts;
+    }
+
+    const savedFlag = new URLSearchParams(window.location.search).get('saved');
+    if (savedFlag === '1') {
+        try { localStorage.removeItem(draftKey); } catch (e) {}
+    } else {
+        const draft = loadDraft();
+        if (draft) {
+            const wantsRestore = window.confirm('Se encontró un borrador local del flipbook. ¿Quieres restaurarlo?');
+            if (wantsRestore) {
+                applyDraft(draft);
+            }
+        }
+    }
+
+    form.querySelectorAll('input, textarea, select').forEach(function (el) {
+        el.addEventListener('input', markChanged);
+        el.addEventListener('change', markChanged);
+    });
+
+    form.addEventListener('submit', function () {
+        formSubmitted = true;
+        formChanged = false;
+        try { localStorage.removeItem(draftKey); } catch (e) {}
+    });
+
+    window.addEventListener('beforeunload', function (e) {
+        if (formChanged && !formSubmitted) {
+            e.preventDefault();
+            e.returnValue = '';
+        }
+    });
+
+    if (clearDraftBtn) {
+        clearDraftBtn.addEventListener('click', function () {
+            try { localStorage.removeItem(draftKey); } catch (e) {}
+            alert('Borrador local eliminado.');
+        });
+    }
+})();
+</script>
 
 <?php
 $content = ob_get_clean();
