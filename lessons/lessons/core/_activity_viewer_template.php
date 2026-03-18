@@ -27,7 +27,7 @@ function render_activity_viewer($title, $icon, $content)
             margin:0;
             font-family: Arial, sans-serif;
             background:#cfd8e6;
-            padding:14px 20px 20px;
+            padding:10px 20px 14px;
         }
 
         .activity-wrapper{
@@ -39,8 +39,8 @@ function render_activity_viewer($title, $icon, $content)
             display:flex;
             align-items:center;
             justify-content:flex-start;
-            min-height:42px;
-            margin-bottom:8px;
+            min-height:36px;
+            margin-bottom:2px;
         }
 
         .back-btn{
@@ -57,32 +57,33 @@ function render_activity_viewer($title, $icon, $content)
 
         .viewer-header{
             text-align:center;
-            margin:6px 0 8px 0;
+            margin:0 0 2px 0;
         }
 
         h1{
             margin:0;
             color:#1d4ed8;
             font-size:22px;
-            line-height:1.15;
+            line-height:1.12;
             font-weight:700;
         }
 
         .viewer-content{
-            margin-top:2px;
+            margin-top:0;
         }
 
         @media (max-width: 900px){
             body{
-                padding:12px 12px 16px;
+                padding:10px 12px 14px;
             }
 
             .top-row{
-                margin-bottom:6px;
+                margin-bottom:2px;
+                min-height:34px;
             }
 
             .viewer-header{
-                margin:4px 0 6px 0;
+                margin:0 0 2px 0;
             }
 
             h1{
@@ -101,7 +102,7 @@ function render_activity_viewer($title, $icon, $content)
             }
 
             .top-row{
-                min-height:36px;
+                min-height:32px;
             }
         }
     </style>
