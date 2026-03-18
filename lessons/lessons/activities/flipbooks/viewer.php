@@ -263,9 +263,14 @@ body{
     margin:0 auto;
 }
 
+.back-btn{
+    margin-bottom:10px !important;
+}
+
 h1{
-    margin-top:26px !important;
-    margin-bottom:28px !important;
+    margin-top:8px !important;
+    margin-bottom:6px !important;
+    line-height:1.1;
 }
 
 .flipbook-wrap{
@@ -275,33 +280,20 @@ h1{
     text-align:center;
 }
 
-.top-spacer{
-    height:6px;
-}
-
-.page-indicator{
-    color:#475569;
-    font-size:13px;
-    margin-top:18px;
-    margin-bottom:8px;
-    font-weight:600;
-    min-height:18px;
-}
-
 .book-stage{
     position:relative;
     width:100%;
     max-width:1260px;
     margin:0 auto;
-    padding-top:26px;
+    padding-top:8px;
 }
 
 .book-view{
     position:relative;
     width:100%;
-    min-height:760px;
+    min-height:700px;
     display:flex;
-    align-items:center;
+    align-items:flex-start;
     justify-content:center;
 }
 
@@ -313,7 +305,7 @@ h1{
     gap:24px;
     align-items:center;
     justify-items:center;
-    min-height:760px;
+    min-height:700px;
 }
 
 .single-cover{
@@ -322,7 +314,7 @@ h1{
     display:flex;
     align-items:center;
     justify-content:center;
-    min-height:760px;
+    min-height:700px;
 }
 
 .sheet-wrap{
@@ -375,7 +367,7 @@ h1{
 .page-shadow-center{
     position:absolute;
     top:2%;
-    bottom:8%;
+    bottom:10%;
     left:50%;
     width:30px;
     transform:translateX(-50%);
@@ -386,8 +378,8 @@ h1{
 
 .listen-btn{
     position:absolute;
-    top:24px;
-    right:90px;
+    top:42px;
+    right:82px;
     border:none;
     border-radius:999px;
     color:#fff;
@@ -406,30 +398,31 @@ h1{
 
 .corner-arrow{
     position:absolute;
-    bottom:20px;
-    width:54px;
-    height:54px;
+    top:50%;
+    transform:translateY(-50%);
+    width:56px;
+    height:56px;
     border:none;
     background:transparent;
-    color:#4b5563;
-    font-size:44px;
+    color:#6b7280;
+    font-size:52px;
     line-height:1;
     cursor:pointer;
-    z-index:30;
+    z-index:35;
     transition:transform .18s ease, opacity .18s ease;
     text-shadow:0 4px 10px rgba(0,0,0,.18);
 }
 
 .corner-arrow:hover{
-    transform:scale(1.06);
+    transform:translateY(-50%) scale(1.06);
 }
 
 .corner-arrow.prev{
-    left:8px;
+    left:6px;
 }
 
 .corner-arrow.next{
-    right:8px;
+    right:6px;
 }
 
 .corner-arrow.hidden{
@@ -439,7 +432,7 @@ h1{
 
 .page-turn-hint{
     position:absolute;
-    bottom:38px;
+    bottom:22px;
     width:34px;
     height:34px;
     border-right:2px solid rgba(0,0,0,.28);
@@ -451,12 +444,12 @@ h1{
 }
 
 .page-turn-hint.prev{
-    left:24px;
+    left:28px;
     transform:rotate(135deg);
 }
 
 .page-turn-hint.next{
-    right:24px;
+    right:28px;
     transform:rotate(-45deg);
 }
 
@@ -482,20 +475,20 @@ h1{
     }
 
     .listen-btn{
-        right:74px;
+        right:68px;
     }
 }
 
 @media (max-width: 900px){
     h1{
-        margin-top:22px !important;
-        margin-bottom:22px !important;
+        margin-top:6px !important;
+        margin-bottom:4px !important;
     }
 
     .book-view,
     .spread,
     .single-cover{
-        min-height:680px;
+        min-height:620px;
     }
 
     .spread{
@@ -516,8 +509,22 @@ h1{
     }
 
     .listen-btn{
-        top:12px;
-        right:58px;
+        top:24px;
+        right:54px;
+    }
+
+    .corner-arrow{
+        width:48px;
+        height:48px;
+        font-size:42px;
+    }
+
+    .corner-arrow.prev{
+        left:2px;
+    }
+
+    .corner-arrow.next{
+        right:2px;
     }
 }
 
@@ -525,31 +532,27 @@ h1{
     .book-view,
     .spread,
     .single-cover{
-        min-height:520px;
+        min-height:500px;
     }
 
     .sheet{
         width:min(100%, 380px);
     }
 
-    .corner-arrow{
-        width:46px;
-        height:46px;
-        font-size:36px;
-    }
-
     .listen-btn{
         padding:9px 14px;
         font-size:13px;
-        right:52px;
-        top:10px;
+        right:48px;
+        top:22px;
+    }
+
+    .page-turn-hint{
+        display:none;
     }
 }
 </style>
 
 <div class="flipbook-wrap">
-    <div class="top-spacer"></div>
-
     <div class="book-stage">
         <button
             class="listen-btn <?= $listenEnabled ? '' : 'disabled' ?>"
@@ -568,8 +571,6 @@ h1{
         <div class="page-turn-hint prev" id="prevHint"></div>
         <div class="page-turn-hint next" id="nextHint"></div>
     </div>
-
-    <div class="page-indicator" id="pageIndicator"></div>
 </div>
 
 <audio id="pageFlipSound" preload="auto">
@@ -587,7 +588,6 @@ const speechLang = <?= json_encode($language, JSON_UNESCAPED_UNICODE) ?>;
 pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
 
 const statusEl = document.getElementById('status');
-const pageIndicator = document.getElementById('pageIndicator');
 const listenBtn = document.getElementById('listenBtn');
 const flipSound = document.getElementById('pageFlipSound');
 const bookView = document.getElementById('bookView');
@@ -647,28 +647,12 @@ function getTextForVirtualPage(virtualPage) {
     return '';
 }
 
-function updateIndicator() {
-    if (isSinglePageMode()) {
-        pageIndicator.textContent = 'Page ' + currentViewStart;
-        return;
-    }
-
-    if (isCoverPage(currentViewStart) || isBackCoverPage(currentViewStart)) {
-        pageIndicator.textContent = 'Page ' + currentViewStart;
-        return;
-    }
-
-    const second = Math.min(currentViewStart + 1, virtualPageCount);
-    pageIndicator.textContent = 'Pages ' + currentViewStart + ' - ' + second;
-}
-
 function updateNavState() {
     const hasPrev = currentViewStart > 1;
     const hasNext = currentViewStart < virtualPageCount;
 
     prevBtn.classList.toggle('hidden', !hasPrev);
     nextBtn.classList.toggle('hidden', !hasNext);
-
     prevHint.style.display = hasPrev ? 'block' : 'none';
     nextHint.style.display = hasNext ? 'block' : 'none';
 }
@@ -684,15 +668,8 @@ function buildSheetShell(sideClass) {
     return { wrap, sheet };
 }
 
-function addCanvasPageNumber(sheet, pageNumber) {
-    const badge = document.createElement('div');
-    badge.className = 'page-number';
-    badge.textContent = 'Page ' + pageNumber;
-    sheet.appendChild(badge);
-}
-
 async function getRenderedCanvas(realPageNumber, targetWidth, targetHeight) {
-    let cacheKey = realPageNumber + '_' + targetWidth + 'x' + targetHeight;
+    const cacheKey = realPageNumber + '_' + targetWidth + 'x' + targetHeight;
     if (renderedCache[cacheKey]) {
         return renderedCache[cacheKey];
     }
@@ -736,7 +713,6 @@ async function fillSheetWithVirtualPage(sheet, virtualPageNumber) {
     clone.height = canvasSource.height;
     clone.getContext('2d').drawImage(canvasSource, 0, 0);
     sheet.appendChild(clone);
-    addCanvasPageNumber(sheet, virtualPageNumber);
 }
 
 function getNextStart(current) {
@@ -819,7 +795,6 @@ if (listenEnabledGlobal) {
 
 async function renderCurrentView() {
     bookView.innerHTML = '';
-    updateIndicator();
     updateNavState();
 
     if (isSinglePageMode()) {
