@@ -1,12 +1,14 @@
 <?php
 require_once __DIR__ . '/../../config/db.php';
-require_once __DIR__ . '/../../core/_activity_viewer_template.php';
+require_once __DIR__ . '/../../core/_activity_editor_template.php';
 
 $activityId = isset($_GET['id']) ? trim((string) $_GET['id']) : '';
 $unit = isset($_GET['unit']) ? trim((string) $_GET['unit']) : '';
+$source = isset($_GET['source']) ? trim((string) $_GET['source']) : '';
+$assignment = isset($_GET['assignment']) ? trim((string) $_GET['assignment']) : '';
 
-if ($activityId === '' && $unit === '') {
-    die('Actividad no especificada');
+if ($unit === '') {
+    die('Unidad no especificada');
 }
 
 function activities_columns(PDO $pdo): array
@@ -121,6 +123,85 @@ function normalize_flipbook_payload($rawData): array
     );
 }
 
+function encode_flipbook_payload(array $payload): string
+{
+    return json_encode(array(
+        'title' => normalize_flipbook_title(isset($payload['title']) ? (string) $payload['title'] : ''),
+        'language' => isset($payload['language']) && trim((string) $payload['language']) !== '' ? trim((string) $payload['language']) : 'en-US',
+        'listen_enabled' => !empty($payload['listen_enabled']),
+        'page_texts' => isset($payload['page_texts']) && is_array($payload['page_texts']) ? array_values($payload['page_texts']) : array(),
+        'pdf_url' => isset($payload['pdf_url']) ? trim((string) $payload['pdf_url']) : '',
+        'pdf_public_id' => isset($payload['pdf_public_id']) ? trim((string) $payload['pdf_public_id']) : '',
+        'pdf_bytes' => isset($payload['pdf_bytes']) ? (int) $payload['pdf_bytes'] : 0,
+        'pdf' => isset($payload['pdf']) ? trim((string) $payload['pdf']) : '',
+    ), JSON_UNESCAPED_UNICODE);
+}
+
+function parse_page_texts($raw): array
+{
+    $lines = preg_split('/\r\n|\r|\n/', (string) $raw);
+    $texts = array();
+
+    foreach ($lines as $line) {
+        $trimmed = trim((string) $line);
+        if ($trimmed !== '') {
+            $texts[] = $trimmed;
+        }
+    }
+
+    return $texts;
+}
+
+function get_upload_error_message($code): string
+{
+    $messages = array(
+        UPLOAD_ERR_INI_SIZE => 'El archivo excede upload_max_filesize en el servidor.',
+        UPLOAD_ERR_FORM_SIZE => 'El archivo excede el tamaño permitido por el formulario.',
+        UPLOAD_ERR_PARTIAL => 'El archivo se subió parcialmente.',
+        UPLOAD_ERR_NO_FILE => 'No se seleccionó ningún PDF.',
+        UPLOAD_ERR_NO_TMP_DIR => 'Falta la carpeta temporal del servidor.',
+        UPLOAD_ERR_CANT_WRITE => 'No se pudo escribir el archivo en disco.',
+        UPLOAD_ERR_EXTENSION => 'Una extensión de PHP detuvo la subida.',
+    );
+
+    return isset($messages[$code]) ? $messages[$code] : 'Error desconocido de subida (' . (int) $code . ').';
+}
+
+function save_pdf_locally(string $tmpPath, string $originalName, string $unit): array
+{
+    $uploadDir = __DIR__ . '/uploads';
+
+    if (!is_dir($uploadDir)) {
+        if (!mkdir($uploadDir, 0775, true) && !is_dir($uploadDir)) {
+            return array('error' => 'No se pudo crear la carpeta de uploads del flipbook.');
+        }
+    }
+
+    $safeUnit = preg_replace('/[^a-zA-Z0-9_-]/', '_', $unit);
+    $safeName = preg_replace('/[^a-zA-Z0-9._-]/', '_', $originalName);
+
+    $filename = 'unit_' . $safeUnit . '_' . time() . '_' . substr(md5((string) mt_rand()), 0, 8) . '_' . $safeName;
+    if (!preg_match('/\.pdf$/i', $filename)) {
+        $filename .= '.pdf';
+    }
+
+    $targetPath = $uploadDir . '/' . $filename;
+
+    $moved = is_uploaded_file($tmpPath)
+        ? move_uploaded_file($tmpPath, $targetPath)
+        : rename($tmpPath, $targetPath);
+
+    if (!$moved) {
+        return array('error' => 'No se pudo guardar el PDF en el servidor.');
+    }
+
+    return array(
+        'secure_url' => '/lessons/lessons/activities/flipbooks/uploads/' . $filename,
+        'public_id' => 'local:' . $filename,
+        'bytes' => file_exists($targetPath) ? (int) filesize($targetPath) : 0,
+    );
+}
+
 function load_flipbook_activity(PDO $pdo, string $unit, string $activityId): array
 {
     $columns = activities_columns($pdo);
@@ -216,644 +297,490 @@ function load_flipbook_activity(PDO $pdo, string $unit, string $activityId): arr
     );
 }
 
+function save_flipbook_activity(PDO $pdo, string $unit, string $activityId, array $payload): string
+{
+    $columns = activities_columns($pdo);
+    $payload['title'] = normalize_flipbook_title(isset($payload['title']) ? (string) $payload['title'] : '');
+    $json = encode_flipbook_payload($payload);
+
+    $hasUnitId = in_array('unit_id', $columns, true);
+    $hasUnit = in_array('unit', $columns, true);
+    $hasData = in_array('data', $columns, true);
+    $hasContentJson = in_array('content_json', $columns, true);
+    $hasId = in_array('id', $columns, true);
+    $hasTitle = in_array('title', $columns, true);
+    $hasName = in_array('name', $columns, true);
+
+    $targetId = $activityId;
+
+    if ($targetId === '') {
+        if ($hasUnitId) {
+            $stmt = $pdo->prepare(
+                "SELECT id
+                 FROM activities
+                 WHERE unit_id = :unit
+                   AND type = 'flipbooks'
+                 ORDER BY id ASC
+                 LIMIT 1"
+            );
+            $stmt->execute(array('unit' => $unit));
+            $targetId = trim((string) $stmt->fetchColumn());
+        }
+
+        if ($targetId === '' && $hasUnit) {
+            $stmt = $pdo->prepare(
+                "SELECT id
+                 FROM activities
+                 WHERE unit = :unit
+                   AND type = 'flipbooks'
+                 ORDER BY id ASC
+                 LIMIT 1"
+            );
+            $stmt->execute(array('unit' => $unit));
+            $targetId = trim((string) $stmt->fetchColumn());
+        }
+    }
+
+    if ($targetId !== '') {
+        $setParts = array();
+        $params = array('id' => $targetId);
+
+        if ($hasData) {
+            $setParts[] = 'data = :data';
+            $params['data'] = $json;
+        }
+        if ($hasContentJson) {
+            $setParts[] = 'content_json = :content_json';
+            $params['content_json'] = $json;
+        }
+        if ($hasTitle) {
+            $setParts[] = 'title = :title';
+            $params['title'] = $payload['title'];
+        }
+        if ($hasName) {
+            $setParts[] = 'name = :name';
+            $params['name'] = $payload['title'];
+        }
+
+        if (!empty($setParts)) {
+            $stmt = $pdo->prepare(
+                "UPDATE activities
+                 SET " . implode(', ', $setParts) . "
+                 WHERE id = :id
+                   AND type = 'flipbooks'"
+            );
+            $stmt->execute($params);
+        }
+
+        return $targetId;
+    }
+
+    $insertColumns = array();
+    $insertValues = array();
+    $params = array();
+
+    $newId = '';
+    if ($hasId) {
+        $newId = md5(random_bytes(16));
+        $insertColumns[] = 'id';
+        $insertValues[] = ':id';
+        $params['id'] = $newId;
+    }
+
+    if ($hasUnitId) {
+        $insertColumns[] = 'unit_id';
+        $insertValues[] = ':unit_id';
+        $params['unit_id'] = $unit;
+    } elseif ($hasUnit) {
+        $insertColumns[] = 'unit';
+        $insertValues[] = ':unit';
+        $params['unit'] = $unit;
+    }
+
+    $insertColumns[] = 'type';
+    $insertValues[] = "'flipbooks'";
+
+    if ($hasData) {
+        $insertColumns[] = 'data';
+        $insertValues[] = ':data';
+        $params['data'] = $json;
+    }
+    if ($hasContentJson) {
+        $insertColumns[] = 'content_json';
+        $insertValues[] = ':content_json';
+        $params['content_json'] = $json;
+    }
+    if ($hasTitle) {
+        $insertColumns[] = 'title';
+        $insertValues[] = ':title';
+        $params['title'] = $payload['title'];
+    }
+    if ($hasName) {
+        $insertColumns[] = 'name';
+        $insertValues[] = ':name';
+        $params['name'] = $payload['title'];
+    }
+
+    $stmt = $pdo->prepare(
+        "INSERT INTO activities (" . implode(', ', $insertColumns) . ")
+         VALUES (" . implode(', ', $insertValues) . ")"
+    );
+    $stmt->execute($params);
+
+    return $newId;
+}
+
 if ($unit === '' && $activityId !== '') {
     $unit = resolve_unit_from_activity($pdo, $activityId);
+}
+
+if ($unit === '') {
+    die('Unidad no especificada');
 }
 
 $activity = load_flipbook_activity($pdo, $unit, $activityId);
 $flipbook = isset($activity['payload']) && is_array($activity['payload']) ? $activity['payload'] : normalize_flipbook_payload(null);
 
-$pdfUrl = '';
-if (isset($flipbook['pdf_url']) && trim((string) $flipbook['pdf_url']) !== '') {
-    $pdfUrl = trim((string) $flipbook['pdf_url']);
-} elseif (isset($flipbook['pdf']) && trim((string) $flipbook['pdf']) !== '') {
-    $legacyPdf = trim((string) $flipbook['pdf']);
-    if (preg_match('/^https?:\/\//i', $legacyPdf)) {
-        $pdfUrl = $legacyPdf;
-    } else {
-        $pdfUrl = '/lessons/lessons/' . ltrim($legacyPdf, '/');
+if ($activityId === '' && !empty($activity['id'])) {
+    $activityId = (string) $activity['id'];
+}
+
+$errorMsg = '';
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (isset($_POST['delete_pdf']) && $_POST['delete_pdf'] === '1') {
+        $flipbook['pdf_url'] = '';
+        $flipbook['pdf_public_id'] = '';
+        $flipbook['pdf_bytes'] = 0;
+        $flipbook['pdf'] = '';
+
+        $savedActivityId = save_flipbook_activity($pdo, $unit, $activityId, $flipbook);
+
+        $params = array('unit=' . urlencode($unit), 'saved=1');
+        if ($savedActivityId !== '') {
+            $params[] = 'id=' . urlencode($savedActivityId);
+        }
+        if ($assignment !== '') {
+            $params[] = 'assignment=' . urlencode($assignment);
+        }
+        if ($source !== '') {
+            $params[] = 'source=' . urlencode($source);
+        }
+
+        header('Location: editor.php?' . implode('&', $params));
+        exit;
+    }
+
+    $flipbook['title'] = normalize_flipbook_title(isset($_POST['title']) ? (string) $_POST['title'] : '');
+    $flipbook['language'] = isset($_POST['language']) && trim((string) $_POST['language']) !== '' ? trim((string) $_POST['language']) : 'en-US';
+    $flipbook['listen_enabled'] = isset($_POST['listen_enabled']) && (string) $_POST['listen_enabled'] === '1';
+    $flipbook['page_texts'] = parse_page_texts(isset($_POST['page_texts']) ? $_POST['page_texts'] : '');
+
+    if (isset($_FILES['pdf']) && isset($_FILES['pdf']['error'])) {
+        $pdfError = (int) $_FILES['pdf']['error'];
+
+        if ($pdfError === UPLOAD_ERR_OK) {
+            $extension = strtolower(pathinfo((string) $_FILES['pdf']['name'], PATHINFO_EXTENSION));
+
+            if ($extension !== 'pdf') {
+                $errorMsg = 'Solo se permite subir archivos PDF.';
+            } else {
+                $upload = save_pdf_locally((string) $_FILES['pdf']['tmp_name'], (string) $_FILES['pdf']['name'], $unit);
+
+                if (isset($upload['error'])) {
+                    $errorMsg = $upload['error'];
+                } else {
+                    $flipbook['pdf_url'] = $upload['secure_url'];
+                    $flipbook['pdf_public_id'] = $upload['public_id'];
+                    $flipbook['pdf_bytes'] = $upload['bytes'];
+                    $flipbook['pdf'] = $upload['secure_url'];
+                }
+            }
+        } elseif ($pdfError !== UPLOAD_ERR_NO_FILE) {
+            $errorMsg = get_upload_error_message($pdfError);
+        }
+    }
+
+    if ($errorMsg === '') {
+        $savedActivityId = save_flipbook_activity($pdo, $unit, $activityId, $flipbook);
+
+        $params = array('unit=' . urlencode($unit), 'saved=1');
+        if ($savedActivityId !== '') {
+            $params[] = 'id=' . urlencode($savedActivityId);
+        }
+        if ($assignment !== '') {
+            $params[] = 'assignment=' . urlencode($assignment);
+        }
+        if ($source !== '') {
+            $params[] = 'source=' . urlencode($source);
+        }
+
+        header('Location: editor.php?' . implode('&', $params));
+        exit;
     }
 }
 
-$language = isset($flipbook['language']) && trim((string) $flipbook['language']) !== ''
-    ? trim((string) $flipbook['language'])
-    : 'en-US';
+$currentPdf = isset($flipbook['pdf_url']) && trim((string) $flipbook['pdf_url']) !== ''
+    ? trim((string) $flipbook['pdf_url'])
+    : (isset($flipbook['pdf']) ? trim((string) $flipbook['pdf']) : '');
+$currentTitle = normalize_flipbook_title(isset($flipbook['title']) ? (string) $flipbook['title'] : '');
+$currentLanguage = isset($flipbook['language']) ? (string) $flipbook['language'] : 'en-US';
+$currentListen = !isset($flipbook['listen_enabled']) || (bool) $flipbook['listen_enabled'];
+$currentPageTexts = isset($flipbook['page_texts']) && is_array($flipbook['page_texts']) ? $flipbook['page_texts'] : array();
 
-$listenEnabled = !isset($flipbook['listen_enabled']) || (bool) $flipbook['listen_enabled'];
-$pageTexts = isset($flipbook['page_texts']) && is_array($flipbook['page_texts']) ? $flipbook['page_texts'] : array();
-$viewerTitle = isset($activity['title']) ? (string) $activity['title'] : default_flipbook_title();
-
-if ($pdfUrl === '') {
-    die('No hay flipbook para esta unidad');
-}
+$draftKey = 'flipbook_draft_' . md5($unit . '|' . $activityId . '|' . $assignment . '|' . $source);
 
 ob_start();
 ?>
 <style>
-:root{
-    --page-ratio: 0.7727;
-}
-
-body{
-    background:#d8e1ee;
-}
-
-.activity-wrapper{
-    max-width:1280px;
-    margin:0 auto;
-}
-
-.back-btn{
-    margin-bottom:8px !important;
-}
-
-h1{
-    margin-top:4px !important;
-    margin-bottom:0 !important;
-    line-height:1.08;
-}
-
-.flipbook-wrap{
+.flipbook-form{max-width:860px;margin:0 auto;text-align:left}
+.flipbook-form input[type="text"],
+.flipbook-form input[type="file"],
+.flipbook-form select,
+.flipbook-form textarea{
     width:100%;
-    max-width:1260px;
-    margin:0 auto;
-    text-align:center;
-}
-
-.book-stage{
-    position:relative;
-    width:100%;
-    max-width:1260px;
-    margin:0 auto;
-    padding-top:0;
-}
-
-.book-view{
-    position:relative;
-    width:100%;
-    min-height:680px;
-    display:flex;
-    align-items:flex-start;
-    justify-content:center;
-}
-
-.spread{
-    position:relative;
-    width:100%;
-    display:grid;
-    grid-template-columns:1fr 1fr;
-    gap:24px;
-    align-items:center;
-    justify-items:center;
-    min-height:680px;
-}
-
-.single-cover{
-    position:relative;
-    width:100%;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    min-height:680px;
-}
-
-.sheet-wrap{
-    position:relative;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    width:100%;
-}
-
-.sheet{
-    position:relative;
-    width:min(100%, 520px);
-    aspect-ratio:var(--page-ratio);
-    background:transparent;
-    overflow:visible;
-    cursor:pointer;
-}
-
-.sheet canvas{
-    width:100%;
-    height:100%;
-    display:block;
-    object-fit:contain;
-    border-radius:2px;
-    box-shadow:
-        0 18px 38px rgba(0,0,0,.16),
-        0 4px 10px rgba(0,0,0,.10);
-    background:#fff;
-}
-
-.sheet.left canvas{
-    box-shadow:
-        -10px 18px 38px rgba(0,0,0,.16),
-        -2px 4px 10px rgba(0,0,0,.08);
-}
-
-.sheet.right canvas{
-    box-shadow:
-        10px 18px 38px rgba(0,0,0,.16),
-        2px 4px 10px rgba(0,0,0,.08);
-}
-
-.single-cover .sheet canvas{
-    box-shadow:
-        0 18px 38px rgba(0,0,0,.18),
-        0 4px 10px rgba(0,0,0,.10);
-}
-
-.page-shadow-center{
-    position:absolute;
-    top:2%;
-    bottom:10%;
-    left:50%;
-    width:30px;
-    transform:translateX(-50%);
-    background:radial-gradient(ellipse at center, rgba(0,0,0,.16) 0%, rgba(0,0,0,.07) 28%, rgba(0,0,0,0) 72%);
-    pointer-events:none;
-    z-index:0;
-}
-
-.listen-row{
-    width:100%;
-    display:flex;
-    justify-content:center;
+    padding:10px;
+    border:1px solid #d1d5db;
+    border-radius:8px;
+    box-sizing:border-box;
     margin-top:6px;
-    margin-bottom:2px;
 }
-
-.listen-btn{
+.flipbook-form .row{margin-bottom:14px}
+.file-box{
+    margin-top:18px;
+    background:#f3f4f6;
+    border:1px solid #e5e7eb;
+    padding:12px;
+    border-radius:10px;
+}
+.editor-note{
+    background:#eef6ff;
+    border:1px solid #bfdbfe;
+    color:#1e3a8a;
+    padding:10px 12px;
+    border-radius:10px;
+    margin-bottom:14px;
+    font-size:14px;
+}
+.preview-box{
+    margin-top:18px;
+    border:1px solid #e5e7eb;
+    background:#fff;
+    border-radius:14px;
+    padding:12px;
+}
+.preview-frame{
+    width:100%;
+    height:480px;
     border:none;
-    border-radius:999px;
-    color:#fff;
-    background:#16a34a;
-    padding:10px 16px;
-    font-weight:700;
-    cursor:pointer;
-    z-index:30;
-    box-shadow:0 8px 18px rgba(0,0,0,.14);
+    border-radius:10px;
+    background:#f8fafc;
 }
-
-.listen-btn.disabled{
-    background:#94a3b8;
-    cursor:not-allowed;
-}
-
-.corner-arrow{
-    position:absolute;
-    top:50%;
-    transform:translateY(-50%);
-    width:56px;
-    height:56px;
-    border:none;
-    background:transparent;
+.small-muted{
     color:#6b7280;
-    font-size:52px;
-    line-height:1;
+    font-size:13px;
+}
+.toolbar-row{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+    align-items:center;
+}
+.secondary-btn{
+    background:#64748b;
+    color:#fff;
+    border:none;
+    border-radius:8px;
+    padding:10px 14px;
     cursor:pointer;
-    z-index:35;
-    transition:transform .18s ease, opacity .18s ease;
-    text-shadow:0 4px 10px rgba(0,0,0,.18);
+    font-weight:700;
 }
-
-.corner-arrow:hover{
-    transform:translateY(-50%) scale(1.06);
-}
-
-.corner-arrow.prev{
-    left:6px;
-}
-
-.corner-arrow.next{
-    right:6px;
-}
-
-.corner-arrow.hidden{
-    opacity:0;
-    pointer-events:none;
-}
-
-.loading{
-    color:#334155;
-    font-weight:bold;
-    padding:30px 0;
-}
-
-.error{
-    color:#dc2626;
-    font-weight:bold;
-    padding:20px 0;
-}
-
-@media (max-width: 1024px){
-    .spread{
-        gap:14px;
-    }
-
-    .sheet{
-        width:min(100%, 470px);
-    }
-}
-
-@media (max-width: 900px){
-    h1{
-        margin-top:4px !important;
-        margin-bottom:0 !important;
-    }
-
-    .book-view,
-    .spread,
-    .single-cover{
-        min-height:620px;
-    }
-
-    .spread{
-        grid-template-columns:1fr;
-        gap:0;
-    }
-
-    .spread .sheet-wrap:first-child{
-        display:none;
-    }
-
-    .page-shadow-center{
-        display:none;
-    }
-
-    .sheet{
-        width:min(100%, 540px);
-    }
-
-    .corner-arrow{
-        width:48px;
-        height:48px;
-        font-size:42px;
-    }
-
-    .corner-arrow.prev{
-        left:2px;
-    }
-
-    .corner-arrow.next{
-        right:2px;
-    }
-}
-
-@media (max-width: 640px){
-    .book-view,
-    .spread,
-    .single-cover{
-        min-height:500px;
-    }
-
-    .sheet{
-        width:min(100%, 380px);
-    }
-
-    .listen-btn{
-        padding:9px 14px;
-        font-size:13px;
-    }
+.delete-btn{
+    background:#dc2626;
+    color:#fff;
+    border:none;
+    border-radius:8px;
+    padding:10px 14px;
+    cursor:pointer;
+    font-weight:700;
 }
 </style>
 
-<div class="flipbook-wrap">
-    <div class="book-stage">
-        <div id="status" class="loading">Loading book...</div>
+<?php if (isset($_GET['saved'])) { ?>
+    <p style="color:green;font-weight:bold;margin-bottom:15px;">✔ Guardado correctamente</p>
+<?php } ?>
 
-        <div id="bookView" class="book-view" style="display:none;"></div>
+<?php if ($errorMsg !== '') { ?>
+    <p style="color:#dc2626;font-weight:bold;margin-bottom:15px;">❌ <?= htmlspecialchars($errorMsg, ENT_QUOTES, 'UTF-8') ?></p>
+<?php } ?>
 
-        <button class="corner-arrow prev" id="prevBtn" type="button" aria-label="Previous page">‹</button>
-        <button class="corner-arrow next" id="nextBtn" type="button" aria-label="Next page">›</button>
-    </div>
-
-    <div class="listen-row">
-        <button
-            class="listen-btn <?= $listenEnabled ? '' : 'disabled' ?>"
-            id="listenBtn"
-            type="button"
-            <?= $listenEnabled ? '' : 'disabled' ?>
-        >🔊 Listen</button>
-    </div>
+<div class="editor-note">
+    Este editor guarda el título, el PDF y el texto por página para el botón Listen. Si cierras accidentalmente, el navegador conserva un borrador local hasta que guardes.
 </div>
 
-<audio id="pageFlipSound" preload="auto">
-    <source src="./sounds/page-flip.mp3" type="audio/mpeg">
-</audio>
+<form class="flipbook-form" id="flipbookForm" method="post" enctype="multipart/form-data">
+    <div class="row">
+        <label style="font-weight:bold;">Título del flipbook</label>
+        <input type="text" name="title" value="<?= htmlspecialchars($currentTitle, ENT_QUOTES, 'UTF-8') ?>" placeholder="Ej: My Story Book" required>
+    </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+    <div class="row">
+        <label style="font-weight:bold;">Idioma de lectura (Listen)</label>
+        <select name="language">
+            <option value="en-US" <?= $currentLanguage === 'en-US' ? 'selected' : '' ?>>English (en-US)</option>
+            <option value="es-ES" <?= $currentLanguage === 'es-ES' ? 'selected' : '' ?>>Español (es-ES)</option>
+        </select>
+    </div>
+
+    <div class="row">
+        <label style="display:flex;align-items:center;gap:8px;font-weight:bold;">
+            <input type="hidden" name="listen_enabled" value="0">
+            <input type="checkbox" name="listen_enabled" value="1" <?= $currentListen ? 'checked' : '' ?>>
+            Activar botón Listen en el viewer
+        </label>
+    </div>
+
+    <div class="row">
+        <label style="font-weight:bold;">Subir PDF (reemplaza el actual)</label>
+        <input type="file" name="pdf" accept="application/pdf">
+        <div class="small-muted">Sube un PDF visual, colorido, con imágenes. El flipbook lo mostrará dentro del contenedor de presentación.</div>
+    </div>
+
+    <div class="row">
+        <label style="font-weight:bold;">Texto por página para Listen (1 línea = 1 página)</label>
+        <textarea name="page_texts" rows="8" placeholder="Page 1 text...&#10;Page 2 text..."><?= htmlspecialchars(implode("\n", $currentPageTexts), ENT_QUOTES, 'UTF-8') ?></textarea>
+        <div class="small-muted">Si el PDF tiene 10 páginas, puedes poner 10 líneas. Cada línea se leerá en la página correspondiente.</div>
+    </div>
+
+    <div class="toolbar-row">
+        <button type="submit" class="save-btn">💾 Guardar flipbook</button>
+        <button type="button" class="secondary-btn" id="clearDraftBtn">Borrar borrador local</button>
+    </div>
+</form>
+
+<?php if ($currentPdf !== '') { ?>
+    <div class="file-box">
+        <div><strong>PDF actual:</strong> <a href="<?= htmlspecialchars($currentPdf, ENT_QUOTES, 'UTF-8') ?>" target="_blank">Abrir PDF</a></div>
+
+        <?php if (!empty($flipbook['pdf_bytes'])) { ?>
+            <div style="margin-top:6px;color:#6b7280;">Tamaño: <?= number_format(((int) $flipbook['pdf_bytes']) / 1024 / 1024, 2) ?> MB</div>
+        <?php } ?>
+
+        <form method="post" style="margin-top:10px;">
+            <input type="hidden" name="delete_pdf" value="1">
+            <button type="submit" class="delete-btn">✖ Quitar PDF</button>
+        </form>
+    </div>
+
+    <div class="preview-box">
+        <div style="font-weight:bold;margin-bottom:10px;">Vista previa rápida</div>
+        <iframe
+            class="preview-frame"
+            src="viewer.php?unit=<?= urlencode($unit) ?><?php if ($activityId !== '') { ?>&id=<?= urlencode($activityId) ?><?php } ?><?php if ($assignment !== '') { ?>&assignment=<?= urlencode($assignment) ?><?php } ?><?php if ($source !== '') { ?>&source=<?= urlencode($source) ?><?php } ?>"
+            title="Preview Flipbook"
+        ></iframe>
+    </div>
+<?php } ?>
 
 <script>
-const pdfUrl = <?= json_encode($pdfUrl, JSON_UNESCAPED_UNICODE) ?>;
-const pageTexts = <?= json_encode($pageTexts, JSON_UNESCAPED_UNICODE) ?>;
-const listenEnabledGlobal = <?= $listenEnabled ? 'true' : 'false' ?>;
-const speechLang = <?= json_encode($language, JSON_UNESCAPED_UNICODE) ?>;
+(function () {
+    const form = document.getElementById('flipbookForm');
+    const clearDraftBtn = document.getElementById('clearDraftBtn');
+    const draftKey = <?= json_encode($draftKey, JSON_UNESCAPED_UNICODE) ?>;
+    let formChanged = false;
+    let formSubmitted = false;
 
-pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
-
-const statusEl = document.getElementById('status');
-const listenBtn = document.getElementById('listenBtn');
-const flipSound = document.getElementById('pageFlipSound');
-const bookView = document.getElementById('bookView');
-const prevBtn = document.getElementById('prevBtn');
-const nextBtn = document.getElementById('nextBtn');
-
-let pdfDoc = null;
-let realPdfPages = 0;
-let virtualPageCount = 0;
-let currentViewStart = 1;
-let renderedCache = {};
-
-function setPageRatio(ratio) {
-    if (!ratio || !isFinite(ratio) || ratio <= 0) return;
-    document.documentElement.style.setProperty('--page-ratio', String(ratio));
-}
-
-function safePlayFlipSound() {
-    if (!flipSound) return;
-    try {
-        flipSound.currentTime = 0;
-        const p = flipSound.play();
-        if (p && typeof p.catch === 'function') {
-            p.catch(function () {});
-        }
-    } catch (e) {}
-}
-
-function isSinglePageMode() {
-    return window.innerWidth <= 900;
-}
-
-function getRealPageFromVirtual(virtualPage) {
-    if (virtualPage <= 1) return null;
-    if (virtualPage >= virtualPageCount) return null;
-    return virtualPage - 1;
-}
-
-function isCoverPage(virtualPage) {
-    return virtualPage === 1;
-}
-
-function isBackCoverPage(virtualPage) {
-    return virtualPage === virtualPageCount;
-}
-
-function getTextForVirtualPage(virtualPage) {
-    const realPage = getRealPageFromVirtual(virtualPage);
-    if (!realPage) return '';
-
-    const idx = realPage - 1;
-    if (idx >= 0 && idx < pageTexts.length && pageTexts[idx]) {
-        return String(pageTexts[idx]);
-    }
-    return '';
-}
-
-function updateNavState() {
-    const hasPrev = currentViewStart > 1;
-    const hasNext = currentViewStart < virtualPageCount;
-
-    prevBtn.classList.toggle('hidden', !hasPrev);
-    nextBtn.classList.toggle('hidden', !hasNext);
-}
-
-function buildSheetShell(sideClass) {
-    const wrap = document.createElement('div');
-    wrap.className = 'sheet-wrap';
-
-    const sheet = document.createElement('div');
-    sheet.className = 'sheet ' + sideClass;
-
-    wrap.appendChild(sheet);
-    return { wrap, sheet };
-}
-
-async function getRenderedCanvas(realPageNumber, targetWidth, targetHeight) {
-    const cacheKey = realPageNumber + '_' + targetWidth + 'x' + targetHeight;
-    if (renderedCache[cacheKey]) {
-        return renderedCache[cacheKey];
+    function markChanged() {
+        formChanged = true;
+        saveDraft();
     }
 
-    const page = await pdfDoc.getPage(realPageNumber);
-    const baseViewport = page.getViewport({ scale: 1 });
-    const scale = Math.min(targetWidth / baseViewport.width, targetHeight / baseViewport.height);
-    const viewport = page.getViewport({ scale: scale });
+    function serializeDraft() {
+        const titleEl = form.querySelector('[name="title"]');
+        const languageEl = form.querySelector('[name="language"]');
+        const listenEl = form.querySelector('[name="listen_enabled"][type="checkbox"]');
+        const pageTextsEl = form.querySelector('[name="page_texts"]');
 
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
-    canvas.width = viewport.width;
-    canvas.height = viewport.height;
-
-    await page.render({ canvasContext: ctx, viewport: viewport }).promise;
-    renderedCache[cacheKey] = canvas;
-    return canvas;
-}
-
-async function fillSheetWithVirtualPage(sheet, virtualPageNumber) {
-    sheet.innerHTML = '';
-
-    const rect = sheet.getBoundingClientRect();
-    const targetWidth = Math.max(240, Math.floor(rect.width));
-    const targetHeight = Math.max(320, Math.floor(rect.height));
-
-    let canvasSource = null;
-
-    if (isCoverPage(virtualPageNumber)) {
-        canvasSource = await getRenderedCanvas(1, targetWidth, targetHeight);
-    } else if (isBackCoverPage(virtualPageNumber)) {
-        canvasSource = await getRenderedCanvas(realPdfPages, targetWidth, targetHeight);
-    } else {
-        const realPage = getRealPageFromVirtual(virtualPageNumber);
-        if (!realPage) return;
-        canvasSource = await getRenderedCanvas(realPage, targetWidth, targetHeight);
+        return {
+            title: titleEl ? titleEl.value : '',
+            language: languageEl ? languageEl.value : 'en-US',
+            listen_enabled: !!(listenEl && listenEl.checked),
+            page_texts: pageTextsEl ? pageTextsEl.value : ''
+        };
     }
 
-    const clone = document.createElement('canvas');
-    clone.width = canvasSource.width;
-    clone.height = canvasSource.height;
-    clone.getContext('2d').drawImage(canvasSource, 0, 0);
-    sheet.appendChild(clone);
-}
-
-function getNextStart(current) {
-    if (isSinglePageMode()) {
-        return Math.min(current + 1, virtualPageCount);
-    }
-
-    if (isCoverPage(current)) {
-        return 2;
-    }
-
-    if (current + 2 >= virtualPageCount) {
-        return virtualPageCount;
-    }
-
-    return current + 2;
-}
-
-function getPrevStart(current) {
-    if (isSinglePageMode()) {
-        return Math.max(current - 1, 1);
-    }
-
-    if (isBackCoverPage(current)) {
-        const prev = virtualPageCount - 2;
-        return prev >= 2 ? prev : 1;
-    }
-
-    if (current <= 2) {
-        return 1;
-    }
-
-    return current - 2;
-}
-
-function goNext() {
-    const next = getNextStart(currentViewStart);
-    if (next !== currentViewStart) {
-        currentViewStart = next;
-        safePlayFlipSound();
-        renderCurrentView();
-    }
-}
-
-function goPrev() {
-    const prev = getPrevStart(currentViewStart);
-    if (prev !== currentViewStart) {
-        currentViewStart = prev;
-        safePlayFlipSound();
-        renderCurrentView();
-    }
-}
-
-prevBtn.addEventListener('click', goPrev);
-nextBtn.addEventListener('click', goNext);
-
-if (listenEnabledGlobal) {
-    listenBtn.addEventListener('click', function () {
+    function saveDraft() {
+        if (!form) return;
         try {
-            speechSynthesis.cancel();
-
-            let text = getTextForVirtualPage(currentViewStart);
-
-            if (!isSinglePageMode() && !isCoverPage(currentViewStart) && !isBackCoverPage(currentViewStart)) {
-                const secondText = getTextForVirtualPage(currentViewStart + 1);
-                if (secondText) {
-                    text = text ? (text + '. ' + secondText) : secondText;
-                }
-            }
-
-            if (!text) return;
-
-            const utter = new SpeechSynthesisUtterance(text);
-            utter.lang = speechLang || 'en-US';
-            utter.rate = 0.9;
-            speechSynthesis.speak(utter);
+            localStorage.setItem(draftKey, JSON.stringify(serializeDraft()));
         } catch (e) {}
-    });
-}
-
-async function renderCurrentView() {
-    bookView.innerHTML = '';
-    updateNavState();
-
-    if (isSinglePageMode()) {
-        const single = document.createElement('div');
-        single.className = 'single-cover';
-
-        const singleSheet = buildSheetShell('right');
-        single.appendChild(singleSheet.wrap);
-        bookView.appendChild(single);
-
-        await fillSheetWithVirtualPage(singleSheet.sheet, currentViewStart);
-        singleSheet.sheet.addEventListener('click', function () {
-            if (currentViewStart < virtualPageCount) {
-                goNext();
-            }
-        });
-        return;
     }
 
-    if (isCoverPage(currentViewStart) || isBackCoverPage(currentViewStart)) {
-        const single = document.createElement('div');
-        single.className = 'single-cover';
-
-        const singleSheet = buildSheetShell('right');
-        single.appendChild(singleSheet.wrap);
-        bookView.appendChild(single);
-
-        await fillSheetWithVirtualPage(singleSheet.sheet, currentViewStart);
-        singleSheet.sheet.addEventListener('click', function () {
-            if (isCoverPage(currentViewStart)) {
-                goNext();
-            } else {
-                goPrev();
-            }
-        });
-        return;
+    function loadDraft() {
+        try {
+            const raw = localStorage.getItem(draftKey);
+            if (!raw) return null;
+            const parsed = JSON.parse(raw);
+            return parsed && typeof parsed === 'object' ? parsed : null;
+        } catch (e) {
+            return null;
+        }
     }
 
-    const spread = document.createElement('div');
-    spread.className = 'spread';
+    function applyDraft(draft) {
+        if (!draft || !form) return;
 
-    const centerShadow = document.createElement('div');
-    centerShadow.className = 'page-shadow-center';
-    spread.appendChild(centerShadow);
+        const titleEl = form.querySelector('[name="title"]');
+        const languageEl = form.querySelector('[name="language"]');
+        const listenEl = form.querySelector('[name="listen_enabled"][type="checkbox"]');
+        const pageTextsEl = form.querySelector('[name="page_texts"]');
 
-    const leftSheet = buildSheetShell('left');
-    const rightSheet = buildSheetShell('right');
+        if (titleEl && draft.title !== undefined) titleEl.value = draft.title;
+        if (languageEl && draft.language !== undefined) languageEl.value = draft.language;
+        if (listenEl && draft.listen_enabled !== undefined) listenEl.checked = !!draft.listen_enabled;
+        if (pageTextsEl && draft.page_texts !== undefined) pageTextsEl.value = draft.page_texts;
+    }
 
-    spread.appendChild(leftSheet.wrap);
-    spread.appendChild(rightSheet.wrap);
-    bookView.appendChild(spread);
+    const savedFlag = new URLSearchParams(window.location.search).get('saved');
+    if (savedFlag === '1') {
+        try { localStorage.removeItem(draftKey); } catch (e) {}
+    } else {
+        const draft = loadDraft();
+        if (draft) {
+            const wantsRestore = window.confirm('Se encontró un borrador local del flipbook. ¿Quieres restaurarlo?');
+            if (wantsRestore) {
+                applyDraft(draft);
+            }
+        }
+    }
 
-    await fillSheetWithVirtualPage(leftSheet.sheet, currentViewStart);
-    await fillSheetWithVirtualPage(rightSheet.sheet, currentViewStart + 1);
-
-    leftSheet.sheet.addEventListener('click', function () {
-        goPrev();
+    form.querySelectorAll('input, textarea, select').forEach(function (el) {
+        el.addEventListener('input', markChanged);
+        el.addEventListener('change', markChanged);
     });
 
-    rightSheet.sheet.addEventListener('click', function () {
-        goNext();
+    form.addEventListener('submit', function () {
+        formSubmitted = true;
+        formChanged = false;
+        try { localStorage.removeItem(draftKey); } catch (e) {}
     });
-}
 
-let resizeTimer = null;
-window.addEventListener('resize', function () {
-    if (!pdfDoc) return;
-
-    clearTimeout(resizeTimer);
-    resizeTimer = setTimeout(function () {
-        renderedCache = {};
-        renderCurrentView();
-    }, 250);
-});
-
-pdfjsLib.getDocument({ url: pdfUrl, withCredentials: false }).promise
-    .then(async function (pdf) {
-        pdfDoc = pdf;
-        realPdfPages = pdf.numPages;
-        virtualPageCount = realPdfPages + 2;
-
-        const firstPage = await pdf.getPage(1);
-        const firstViewport = firstPage.getViewport({ scale: 1 });
-        setPageRatio(firstViewport.width / firstViewport.height);
-
-        statusEl.style.display = 'none';
-        bookView.style.display = 'flex';
-        currentViewStart = 1;
-
-        return renderCurrentView();
-    })
-    .catch(function (error) {
-        statusEl.className = 'error';
-        statusEl.textContent = 'No se pudo cargar el flipbook PDF.';
-        console.error('Flipbook PDF load error:', error);
+    window.addEventListener('beforeunload', function (e) {
+        if (formChanged && !formSubmitted) {
+            e.preventDefault();
+            e.returnValue = '';
+        }
     });
+
+    if (clearDraftBtn) {
+        clearDraftBtn.addEventListener('click', function () {
+            try { localStorage.removeItem(draftKey); } catch (e) {}
+            alert('Borrador local eliminado.');
+        });
+    }
+})();
 </script>
+
 <?php
 $content = ob_get_clean();
-render_activity_viewer($viewerTitle, '📖', $content);
+render_activity_editor('📖 Flipbook Editor', '📖', $content);
