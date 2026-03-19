@@ -303,7 +303,6 @@ if ($mode === 'edit' && $permission !== 'editor') {
 
 $programType = (string) ($assignment['program_type'] ?? 'technical');
 $courseId = (string) ($assignment['course_id'] ?? '');
-$courseName = (string) ($assignment['course_name'] ?? 'Curso');
 $assignmentUnitId = (string) ($assignment['unit_id'] ?? '');
 $assignmentUnitName = (string) ($assignment['unit_name'] ?? '');
 
@@ -361,7 +360,7 @@ $hasNext = $nextStep < $total;
 $activityTypeLabels = [
     'flashcards' => 'Flashcards',
     'quiz' => 'Quiz',
-    'multiple_choice' => 'Quiz',
+    'multiple_choice' => 'Multiple Choice',
     'video_lesson' => 'Video Lesson',
     'flipbooks' => 'Video Lesson',
     'hangman' => 'Hangman',
@@ -376,14 +375,13 @@ $activityTypeLabels = [
 $viewerHref = null;
 $editorHref = null;
 $currentTypeLabel = 'Actividad';
-$currentUnitName = $assignmentUnitName !== '' ? $assignmentUnitName : 'Unidad';
 $currentType = '';
-$isMatchActivity = false;
+$isWideActivity = false;
 
 if ($current) {
     $type = (string) ($current['type'] ?? '');
     $currentType = strtolower($type);
-    $isMatchActivity = $currentType === 'match';
+    $isWideActivity = in_array($currentType, array('match', 'multiple_choice'), true);
 
     $activityPath = get_activity_base_path($type);
 
@@ -407,7 +405,6 @@ if ($current) {
     }
 
     $currentTypeLabel = $activityTypeLabels[$currentType] ?? ucwords(str_replace('_', ' ', $type));
-    $currentUnitName = $unitMap[(string) ($current['unit_id'] ?? '')] ?? $currentUnitName;
 }
 
 $logoPath = '../hangman/assets/LETS%20NUEVO%20-%20copia.jpeg';
@@ -427,8 +424,6 @@ $backDashboard = 'dashboard.php?assignment=' . urlencode($assignmentId) . '&unit
     --text:#1f2937;
     --muted:#5b6577;
     --blue:#1f66cc;
-    --blue-hover:#2f5bb5;
-    --danger:#dc2626;
     --shadow:0 8px 24px rgba(0,0,0,.08);
     --topbar:#3d69cf;
     --topbar-dark:#2f59b8;
@@ -657,38 +652,21 @@ body{
     box-shadow:var(--shadow);
 }
 
-.empty-card h2{
-    margin-top:0;
-    font-size:22px;
-    color:#1f3c75;
-}
-
-.empty-card p{
-    font-size:15px;
-    color:var(--muted);
-}
-
-.empty-card a{
-    color:var(--blue);
-    text-decoration:none;
-    font-weight:700;
-}
-
-/* SOLO PARA MATCH */
-.match-activity-page .layout{
+/* SOLO PARA MATCH Y MULTIPLE CHOICE */
+.wide-activity-page .layout{
     display:block;
 }
 
-.match-activity-page .sidebar{
+.wide-activity-page .sidebar{
     display:none;
 }
 
-.match-activity-page .content{
+.wide-activity-page .content{
     padding:0;
     width:100%;
 }
 
-.match-activity-page .viewer-shell{
+.wide-activity-page .viewer-shell{
     background:transparent;
     border-radius:0;
     padding:0;
@@ -696,14 +674,14 @@ body{
     box-shadow:none;
 }
 
-.match-activity-page .viewer-card{
+.wide-activity-page .viewer-card{
     width:100%;
     max-width:1280px;
     margin:0 auto;
     padding:14px 14px 12px;
 }
 
-.match-activity-page .viewer-frame-wrap{
+.wide-activity-page .viewer-frame-wrap{
     background:#fff;
     border:1px solid #e6ebf4;
     border-radius:16px;
@@ -713,7 +691,7 @@ body{
     overflow:visible;
 }
 
-.match-activity-page .viewer-frame{
+.wide-activity-page .viewer-frame{
     height:900px;
     border-radius:16px;
 }
@@ -750,20 +728,20 @@ body{
         min-height:520px;
     }
 
-    .match-activity-page .sidebar{
+    .wide-activity-page .sidebar{
         display:none;
     }
 
-    .match-activity-page .viewer-card{
+    .wide-activity-page .viewer-card{
         padding:12px 12px 10px;
     }
 
-    .match-activity-page .viewer-frame-wrap{
+    .wide-activity-page .viewer-frame-wrap{
         height:auto;
         min-height:0;
     }
 
-    .match-activity-page .viewer-frame{
+    .wide-activity-page .viewer-frame{
         height:820px;
     }
 }
@@ -806,26 +784,26 @@ body{
         width:100%;
     }
 
-    .match-activity-page .viewer-shell{
+    .wide-activity-page .viewer-shell{
         padding:0;
     }
 
-    .match-activity-page .viewer-card{
+    .wide-activity-page .viewer-card{
         padding:10px;
     }
 
-    .match-activity-page .viewer-frame-wrap{
+    .wide-activity-page .viewer-frame-wrap{
         height:auto;
         min-height:0;
     }
 
-    .match-activity-page .viewer-frame{
+    .wide-activity-page .viewer-frame{
         height:720px;
     }
 }
 </style>
 </head>
-<body class="<?php echo $isMatchActivity ? 'match-activity-page' : ''; ?>">
+<body class="<?php echo $isWideActivity ? 'wide-activity-page' : ''; ?>">
 <header class="topbar">
     <div class="topbar-inner">
         <a class="top-btn back" href="<?php echo h($backDashboard); ?>">← Volver</a>
@@ -903,14 +881,14 @@ body{
 <script>
 (function () {
     const iframe = document.getElementById('activityViewer');
-    const isMatchActivity = <?php echo $isMatchActivity ? 'true' : 'false'; ?>;
+    const isWideActivity = <?php echo $isWideActivity ? 'true' : 'false'; ?>;
 
     if (!iframe) {
         return;
     }
 
     function resizeIframe() {
-        if (!isMatchActivity) {
+        if (!isWideActivity) {
             return;
         }
 
@@ -981,7 +959,7 @@ body{
                 }
             });
 
-            if (isMatchActivity) {
+            if (isWideActivity) {
                 const style = doc.createElement('style');
                 style.innerHTML = `
                     html, body{
