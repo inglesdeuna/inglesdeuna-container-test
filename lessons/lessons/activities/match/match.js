@@ -10,7 +10,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const shuffle = (arr) => [...arr].sort(() => Math.random() - 0.5);
 
-  const correctSound = new Audio("../../hangman/assets/correct.wav");
+  const correctSound = new Audio("../../hangman/assets/realcorrect.mp3");
   const errorSound = new Audio("../../hangman/assets/losefun.mp3");
   const winSound = new Audio("../../hangman/assets/win.mp3");
 
@@ -34,9 +34,41 @@ document.addEventListener("DOMContentLoaded", () => {
     } catch (e) {}
   }
 
+  function getBoardConfig(count) {
+    if (count <= 2) {
+      return { cols: 2, size: 150 };
+    }
+    if (count <= 4) {
+      return { cols: 2, size: 130 };
+    }
+    if (count <= 6) {
+      return { cols: 3, size: 108 };
+    }
+    if (count <= 8) {
+      return { cols: 4, size: 92 };
+    }
+    if (count <= 10) {
+      return { cols: 4, size: 84 };
+    }
+    return { cols: 5, size: 74 };
+  }
+
+  function applyBoardLayout() {
+    const count = data.length;
+    const config = getBoardConfig(count);
+
+    imagesDiv.style.gridTemplateColumns = `repeat(${config.cols}, ${config.size}px)`;
+    wordsDiv.style.gridTemplateColumns = `repeat(${config.cols}, ${config.size}px)`;
+
+    imagesDiv.style.setProperty("--tile-size", `${config.size}px`);
+    wordsDiv.style.setProperty("--tile-size", `${config.size}px`);
+  }
+
   function renderBoard() {
     imagesDiv.innerHTML = "";
     wordsDiv.innerHTML = "";
+
+    applyBoardLayout();
 
     shuffle(data).forEach((item) => {
       imagesDiv.innerHTML += `
@@ -131,6 +163,8 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   renderBoard();
+
+  window.addEventListener("resize", applyBoardLayout);
 
   document.addEventListener("dragstart", (e) => {
     if (!e.target.classList.contains("image")) {
