@@ -377,9 +377,14 @@ $viewerHref = null;
 $editorHref = null;
 $currentTypeLabel = 'Actividad';
 $currentUnitName = $assignmentUnitName !== '' ? $assignmentUnitName : 'Unidad';
+$currentType = '';
+$isMatchActivity = false;
 
 if ($current) {
     $type = (string) ($current['type'] ?? '');
+    $currentType = strtolower($type);
+    $isMatchActivity = $currentType === 'match';
+
     $activityPath = get_activity_base_path($type);
 
     if ($activityPath) {
@@ -401,7 +406,7 @@ if ($current) {
         }
     }
 
-    $currentTypeLabel = $activityTypeLabels[strtolower($type)] ?? ucwords(str_replace('_', ' ', $type));
+    $currentTypeLabel = $activityTypeLabels[$currentType] ?? ucwords(str_replace('_', ' ', $type));
     $currentUnitName = $unitMap[(string) ($current['unit_id'] ?? '')] ?? $currentUnitName;
 }
 
@@ -669,6 +674,50 @@ body{
     font-weight:700;
 }
 
+/* SOLO PARA MATCH */
+.match-activity-page .layout{
+    display:block;
+}
+
+.match-activity-page .sidebar{
+    display:none;
+}
+
+.match-activity-page .content{
+    padding:0;
+    width:100%;
+}
+
+.match-activity-page .viewer-shell{
+    background:transparent;
+    border-radius:0;
+    padding:0;
+    border:none;
+    box-shadow:none;
+}
+
+.match-activity-page .viewer-card{
+    width:100%;
+    max-width:1280px;
+    margin:0 auto;
+    padding:14px 14px 12px;
+}
+
+.match-activity-page .viewer-frame-wrap{
+    background:#fff;
+    border:1px solid #e6ebf4;
+    border-radius:16px;
+    padding:0;
+    height:auto;
+    min-height:0;
+    overflow:visible;
+}
+
+.match-activity-page .viewer-frame{
+    height:900px;
+    border-radius:16px;
+}
+
 @media (max-width: 980px){
     .topbar-inner{
         grid-template-columns:1fr;
@@ -699,6 +748,23 @@ body{
     .viewer-frame-wrap{
         height:calc(100vh - 300px);
         min-height:520px;
+    }
+
+    .match-activity-page .sidebar{
+        display:none;
+    }
+
+    .match-activity-page .viewer-card{
+        padding:12px 12px 10px;
+    }
+
+    .match-activity-page .viewer-frame-wrap{
+        height:auto;
+        min-height:0;
+    }
+
+    .match-activity-page .viewer-frame{
+        height:820px;
     }
 }
 
@@ -739,10 +805,27 @@ body{
     .nav-btn{
         width:100%;
     }
+
+    .match-activity-page .viewer-shell{
+        padding:0;
+    }
+
+    .match-activity-page .viewer-card{
+        padding:10px;
+    }
+
+    .match-activity-page .viewer-frame-wrap{
+        height:auto;
+        min-height:0;
+    }
+
+    .match-activity-page .viewer-frame{
+        height:720px;
+    }
 }
 </style>
 </head>
-<body>
+<body class="<?php echo $isMatchActivity ? 'match-activity-page' : ''; ?>">
 <header class="topbar">
     <div class="topbar-inner">
         <a class="top-btn back" href="<?php echo h($backDashboard); ?>">← Volver</a>
@@ -820,8 +903,38 @@ body{
 <script>
 (function () {
     const iframe = document.getElementById('activityViewer');
+    const isMatchActivity = <?php echo $isMatchActivity ? 'true' : 'false'; ?>;
+
     if (!iframe) {
         return;
+    }
+
+    function resizeIframe() {
+        if (!isMatchActivity) {
+            return;
+        }
+
+        try {
+            const doc = iframe.contentDocument || iframe.contentWindow.document;
+            if (!doc) {
+                return;
+            }
+
+            const body = doc.body;
+            const html = doc.documentElement;
+
+            const height = Math.max(
+                body ? body.scrollHeight : 0,
+                body ? body.offsetHeight : 0,
+                html ? html.scrollHeight : 0,
+                html ? html.offsetHeight : 0,
+                720
+            );
+
+            iframe.style.height = height + 'px';
+        } catch (e) {
+            // Ignorar
+        }
     }
 
     function hideEmbeddedBackButton() {
@@ -836,6 +949,7 @@ body{
                 '.btn-volver',
                 '.back-button',
                 '.btn.back',
+                '.back-btn',
                 'a[href*="dashboard"]',
                 'a[href*="unit_view"]',
                 'a[href*="technical_units"]',
@@ -867,20 +981,37 @@ body{
                 }
             });
 
-            const style = doc.createElement('style');
-            style.innerHTML = `
-                body{
-                    margin-top:0 !important;
-                    padding-top:0 !important;
-                }
-            `;
-            doc.head.appendChild(style);
+            if (isMatchActivity) {
+                const style = doc.createElement('style');
+                style.innerHTML = `
+                    html, body{
+                        margin:0 !important;
+                        padding:0 !important;
+                        overflow:visible !important;
+                    }
+                `;
+                doc.head.appendChild(style);
+
+                resizeIframe();
+                setTimeout(resizeIframe, 200);
+                setTimeout(resizeIframe, 700);
+            } else {
+                const style = doc.createElement('style');
+                style.innerHTML = `
+                    body{
+                        margin-top:0 !important;
+                        padding-top:0 !important;
+                    }
+                `;
+                doc.head.appendChild(style);
+            }
         } catch (e) {
             // Ignorar si algún viewer no permite manipulación.
         }
     }
 
     iframe.addEventListener('load', hideEmbeddedBackButton);
+    window.addEventListener('resize', resizeIframe);
 })();
 </script>
 </body>
