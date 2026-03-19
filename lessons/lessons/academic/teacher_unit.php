@@ -310,16 +310,16 @@ $activities = load_activities_for_unit($pdo, (string) ($selectedUnit['id'] ?? ''
 $activityLabels = [
     'flashcards' => 'Flashcards',
     'quiz' => 'Quiz',
-    'multiple_choice' => 'Quiz',
+    'multiple_choice' => 'Multiple Choice',
     'video_lesson' => 'Video Lesson',
-    'flipbooks' => 'Video Lesson',
+    'flipbooks' => 'Flipbook',
     'hangman' => 'Hangman',
     'pronunciation' => 'Pronunciation',
     'listen_order' => 'Listen & Order',
     'drag_drop' => 'Drag & Drop',
     'match' => 'Match',
     'external' => 'External',
-    'build_sentence' => 'Build the Sentence',
+    'build_sentence' => 'Unscramble',
 ];
 
 $programType = (string) ($assignment['program_type'] ?? 'technical');
