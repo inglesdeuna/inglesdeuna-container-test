@@ -376,10 +376,15 @@ h1{
     z-index:0;
 }
 
+.listen-row{
+    width:100%;
+    display:flex;
+    justify-content:center;
+    margin-top:6px;
+    margin-bottom:2px;
+}
+
 .listen-btn{
-    position:absolute;
-    top:64px;
-    right:82px;
     border:none;
     border-radius:999px;
     color:#fff;
@@ -450,10 +455,6 @@ h1{
     .sheet{
         width:min(100%, 470px);
     }
-
-    .listen-btn{
-        right:68px;
-    }
 }
 
 @media (max-width: 900px){
@@ -485,11 +486,6 @@ h1{
         width:min(100%, 540px);
     }
 
-    .listen-btn{
-        top:42px;
-        right:54px;
-    }
-
     .corner-arrow{
         width:48px;
         height:48px;
@@ -519,27 +515,27 @@ h1{
     .listen-btn{
         padding:9px 14px;
         font-size:13px;
-        right:48px;
-        top:40px;
     }
 }
 </style>
 
 <div class="flipbook-wrap">
     <div class="book-stage">
-        <button
-            class="listen-btn <?= $listenEnabled ? '' : 'disabled' ?>"
-            id="listenBtn"
-            type="button"
-            <?= $listenEnabled ? '' : 'disabled' ?>
-        >🔊 Listen</button>
-
         <div id="status" class="loading">Loading book...</div>
 
         <div id="bookView" class="book-view" style="display:none;"></div>
 
         <button class="corner-arrow prev" id="prevBtn" type="button" aria-label="Previous page">‹</button>
         <button class="corner-arrow next" id="nextBtn" type="button" aria-label="Next page">›</button>
+    </div>
+
+    <div class="listen-row">
+        <button
+            class="listen-btn <?= $listenEnabled ? '' : 'disabled' ?>"
+            id="listenBtn"
+            type="button"
+            <?= $listenEnabled ? '' : 'disabled' ?>
+        >🔊 Listen</button>
     </div>
 </div>
 
