@@ -1,169 +1,235 @@
-body{
-  font-family: Arial, sans-serif;
-}
+document.addEventListener("DOMContentLoaded", () => {
+  const data = Array.isArray(MATCH_DATA) ? MATCH_DATA : [];
 
-.container{
-  max-width: 760px;
-  margin: 24px auto 0 auto;
-  display: flex;
-  align-items: flex-start;
-  justify-content: center;
-  gap: 16px;
-  flex-wrap: nowrap;
-}
+  const imagesDiv = document.getElementById("match-images");
+  const wordsDiv = document.getElementById("match-words");
 
-.images,
-.words{
-  display: grid;
-  grid-template-columns: repeat(4, 84px);
-  gap: 10px;
-  align-content: start;
-}
-
-.card,
-.word{
-  background: #ffffff;
-  border-radius: 14px;
-  box-shadow: 0 4px 10px rgba(0,0,0,.10);
-}
-
-.card{
-  width: 84px;
-  height: 84px;
-  padding: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: transform .2s ease, opacity .2s ease, box-shadow .2s ease;
-}
-
-.card.dragging{
-  opacity: .45;
-  transform: scale(.95);
-}
-
-.card.returning{
-  animation: returnCard .42s ease;
-}
-
-.card.matched-left{
-  opacity: 0;
-  transform: scale(.78);
-}
-
-.image{
-  width: 58px;
-  height: 58px;
-  object-fit: contain;
-  cursor: grab;
-  user-select: none;
-  -webkit-user-drag: element;
-}
-
-.word{
-  width: 84px;
-  height: 84px;
-  padding: 6px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  font-size: 11px;
-  line-height: 1.15;
-  font-weight: 800;
-  letter-spacing: .2px;
-  border: 2px dashed #3b82f6;
-  box-sizing: border-box;
-  text-transform: uppercase;
-  transition: transform .2s ease, background .2s ease, border-color .2s ease, color .2s ease;
-}
-
-.word.correct{
-  background: #dcfce7;
-  border: 2px solid #22c55e;
-  color: #166534;
-}
-
-.word.wrong{
-  background: #fee2e2;
-  border: 2px solid #ef4444;
-  color: #991b1b;
-  animation: shakeWrong .38s ease;
-}
-
-#matchCompletedOverlay{
-  position: fixed;
-  inset: 0;
-  background: rgba(17, 24, 39, .45);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 9999;
-  padding: 20px;
-}
-
-.match-completed-box{
-  background: #ffffff;
-  border-radius: 24px;
-  padding: 28px 34px;
-  text-align: center;
-  box-shadow: 0 18px 50px rgba(0,0,0,.22);
-  min-width: 240px;
-  animation: popIn .3s ease;
-}
-
-.match-completed-emoji{
-  font-size: 48px;
-  margin-bottom: 8px;
-}
-
-.match-completed-title{
-  font-size: 30px;
-  font-weight: 800;
-  color: #16a34a;
-}
-
-@keyframes shakeWrong{
-  0%{ transform: translateX(0); }
-  25%{ transform: translateX(-5px); }
-  50%{ transform: translateX(5px); }
-  75%{ transform: translateX(-3px); }
-  100%{ transform: translateX(0); }
-}
-
-@keyframes returnCard{
-  0%{ transform: scale(1); }
-  35%{ transform: scale(1.05); }
-  100%{ transform: scale(1); }
-}
-
-@keyframes popIn{
-  0%{ transform: scale(.84); opacity: 0; }
-  100%{ transform: scale(1); opacity: 1; }
-}
-
-@media (max-width: 900px){
-  .container{
-    max-width: 100%;
-    gap: 12px;
-    transform: scale(.95);
-    transform-origin: top center;
+  if (!imagesDiv || !wordsDiv) {
+    return;
   }
 
-  .images,
-  .words{
-    grid-template-columns: repeat(3, 84px);
-  }
-}
+  const shuffle = (arr) => [...arr].sort(() => Math.random() - 0.5);
 
-@media (max-width: 640px){
-  .container{
-    flex-direction: column;
-    align-items: center;
+  const correctSound = new Audio("../../hangman/assets/correct.wav");
+  const errorSound = new Audio("../../hangman/assets/losefun.mp3");
+  const winSound = new Audio("../../hangman/assets/win.mp3");
+
+  let matchedCount = 0;
+  let currentDraggedCard = null;
+
+  function escapeHtml(value) {
+    return String(value || "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
   }
 
-  .images,
-  .words{
-    grid-template-columns: repeat(3, 84px);
+  function playSound(audio) {
+    try {
+      audio.pause();
+      audio.currentTime = 0;
+      audio.play();
+    } catch (e) {}
   }
-}
+
+  function getBoardConfig(count) {
+    if (count <= 2) {
+      return { cols: 2, size: 150 };
+    }
+    if (count <= 4) {
+      return { cols: 2, size: 130 };
+    }
+    if (count <= 6) {
+      return { cols: 3, size: 108 };
+    }
+    if (count <= 8) {
+      return { cols: 4, size: 92 };
+    }
+    if (count <= 10) {
+      return { cols: 4, size: 84 };
+    }
+    return { cols: 5, size: 74 };
+  }
+
+  function applyBoardLayout() {
+    const count = data.length;
+    const config = getBoardConfig(count);
+
+    imagesDiv.style.gridTemplateColumns = `repeat(${config.cols}, ${config.size}px)`;
+    wordsDiv.style.gridTemplateColumns = `repeat(${config.cols}, ${config.size}px)`;
+
+    imagesDiv.style.setProperty("--tile-size", `${config.size}px`);
+    wordsDiv.style.setProperty("--tile-size", `${config.size}px`);
+  }
+
+  function renderBoard() {
+    imagesDiv.innerHTML = "";
+    wordsDiv.innerHTML = "";
+
+    applyBoardLayout();
+
+    shuffle(data).forEach((item) => {
+      imagesDiv.innerHTML += `
+        <div class="card" data-id="${escapeHtml(item.id)}">
+          <img
+            src="${escapeHtml(item.image)}"
+            draggable="true"
+            data-id="${escapeHtml(item.id)}"
+            class="image"
+            alt="${escapeHtml(item.text || "")}"
+          >
+        </div>
+      `;
+    });
+
+    shuffle(data).forEach((item) => {
+      wordsDiv.innerHTML += `
+        <div class="word" data-id="${escapeHtml(item.id)}">
+          ${escapeHtml(item.text)}
+        </div>
+      `;
+    });
+  }
+
+  function showCompleted() {
+    if (document.getElementById("matchCompletedOverlay")) {
+      return;
+    }
+
+    const overlay = document.createElement("div");
+    overlay.id = "matchCompletedOverlay";
+    overlay.innerHTML = `
+      <div class="match-completed-box">
+        <div class="match-completed-emoji">🏆</div>
+        <div class="match-completed-title">Completed!</div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+    playSound(winSound);
+  }
+
+  function checkCompletion() {
+    if (matchedCount >= data.length && data.length > 0) {
+      showCompleted();
+    }
+  }
+
+  function markCorrect(wordEl, cardEl) {
+    if (!wordEl || !cardEl) {
+      return;
+    }
+
+    wordEl.classList.add("correct");
+    wordEl.classList.remove("wrong");
+    wordEl.dataset.matched = "1";
+    wordEl.innerHTML = `✓ ${wordEl.textContent}`;
+
+    const img = cardEl.querySelector(".image");
+    if (img) {
+      img.draggable = false;
+    }
+
+    cardEl.dataset.matched = "1";
+    cardEl.classList.add("matched-left");
+
+    setTimeout(() => {
+      cardEl.style.visibility = "hidden";
+      cardEl.style.pointerEvents = "none";
+    }, 220);
+
+    matchedCount += 1;
+    playSound(correctSound);
+    checkCompletion();
+  }
+
+  function markWrong(wordEl, cardEl) {
+    if (wordEl) {
+      wordEl.classList.add("wrong");
+      setTimeout(() => {
+        wordEl.classList.remove("wrong");
+      }, 650);
+    }
+
+    if (cardEl) {
+      cardEl.classList.add("returning");
+      setTimeout(() => {
+        cardEl.classList.remove("returning");
+      }, 420);
+    }
+
+    playSound(errorSound);
+  }
+
+  renderBoard();
+
+  window.addEventListener("resize", applyBoardLayout);
+
+  document.addEventListener("dragstart", (e) => {
+    if (!e.target.classList.contains("image")) {
+      return;
+    }
+
+    const card = e.target.closest(".card");
+    if (!card || card.dataset.matched === "1") {
+      e.preventDefault();
+      return;
+    }
+
+    currentDraggedCard = card;
+    e.dataTransfer.setData("id", e.target.dataset.id || "");
+    e.dataTransfer.effectAllowed = "move";
+
+    setTimeout(() => {
+      card.classList.add("dragging");
+    }, 0);
+  });
+
+  document.addEventListener("dragend", (e) => {
+    if (!e.target.classList.contains("image")) {
+      return;
+    }
+
+    const card = e.target.closest(".card");
+    if (card) {
+      card.classList.remove("dragging");
+    }
+
+    currentDraggedCard = null;
+  });
+
+  document.addEventListener("dragover", (e) => {
+    const word = e.target.closest(".word");
+    if (!word || word.dataset.matched === "1") {
+      return;
+    }
+
+    e.preventDefault();
+  });
+
+  document.addEventListener("drop", (e) => {
+    const word = e.target.closest(".word");
+    if (!word || word.dataset.matched === "1") {
+      return;
+    }
+
+    e.preventDefault();
+
+    const draggedId = e.dataTransfer.getData("id");
+    const targetId = word.dataset.id;
+
+    const selectorId = window.CSS && CSS.escape ? CSS.escape(draggedId) : draggedId;
+    const card = currentDraggedCard || imagesDiv.querySelector(`.card[data-id="${selectorId}"]`);
+
+    if (!draggedId || !card || card.dataset.matched === "1") {
+      return;
+    }
+
+    if (draggedId === targetId) {
+      markCorrect(word, card);
+    } else {
+      markWrong(word, card);
+    }
+  });
+});
