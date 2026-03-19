@@ -3,88 +3,98 @@ body{
 }
 
 .container{
-  max-width: 1100px;
-  margin: 20px auto 0 auto;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 28px;
-  align-items: start;
+  max-width: 760px;
+  margin: 24px auto 0 auto;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 16px;
+  flex-wrap: nowrap;
 }
 
 .images,
 .words{
   display: grid;
-  gap: 16px;
+  grid-template-columns: repeat(4, 84px);
+  gap: 10px;
+  align-content: start;
 }
 
 .card,
 .word{
   background: #ffffff;
-  border-radius: 18px;
-  box-shadow: 0 8px 22px rgba(0,0,0,.08);
+  border-radius: 14px;
+  box-shadow: 0 4px 10px rgba(0,0,0,.10);
 }
 
 .card{
-  padding: 14px;
+  width: 84px;
+  height: 84px;
+  padding: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 150px;
-  transition: transform .25s ease, opacity .25s ease, box-shadow .25s ease;
+  transition: transform .2s ease, opacity .2s ease, box-shadow .2s ease;
 }
 
 .card.dragging{
   opacity: .45;
-  transform: scale(.96);
+  transform: scale(.95);
 }
 
 .card.returning{
-  animation: returnCard .45s ease;
+  animation: returnCard .42s ease;
 }
 
 .card.matched-left{
   opacity: 0;
-  transform: scale(.82);
+  transform: scale(.78);
 }
 
 .image{
-  max-width: 100%;
-  max-height: 120px;
+  width: 58px;
+  height: 58px;
   object-fit: contain;
   cursor: grab;
   user-select: none;
+  -webkit-user-drag: element;
 }
 
 .word{
-  min-height: 84px;
-  padding: 18px 20px;
+  width: 84px;
+  height: 84px;
+  padding: 6px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 26px;
-  font-weight: 700;
   text-align: center;
-  border: 3px solid transparent;
-  transition: transform .2s ease, background .2s ease, border-color .2s ease;
+  font-size: 11px;
+  line-height: 1.15;
+  font-weight: 800;
+  letter-spacing: .2px;
+  border: 2px dashed #3b82f6;
+  box-sizing: border-box;
+  text-transform: uppercase;
+  transition: transform .2s ease, background .2s ease, border-color .2s ease, color .2s ease;
 }
 
 .word.correct{
   background: #dcfce7;
-  border-color: #22c55e;
+  border: 2px solid #22c55e;
   color: #166534;
 }
 
 .word.wrong{
   background: #fee2e2;
-  border-color: #ef4444;
+  border: 2px solid #ef4444;
   color: #991b1b;
-  animation: shakeWrong .4s ease;
+  animation: shakeWrong .38s ease;
 }
 
 #matchCompletedOverlay{
   position: fixed;
   inset: 0;
-  background: rgba(17, 24, 39, .55);
+  background: rgba(17, 24, 39, .45);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -94,63 +104,66 @@ body{
 
 .match-completed-box{
   background: #ffffff;
-  border-radius: 26px;
-  padding: 32px 28px;
+  border-radius: 24px;
+  padding: 28px 34px;
   text-align: center;
   box-shadow: 0 18px 50px rgba(0,0,0,.22);
-  min-width: 280px;
-  animation: popIn .35s ease;
+  min-width: 240px;
+  animation: popIn .3s ease;
 }
 
 .match-completed-emoji{
-  font-size: 54px;
-  margin-bottom: 10px;
-}
-
-.match-completed-title{
-  font-size: 34px;
-  font-weight: 800;
-  color: #16a34a;
+  font-size: 48px;
   margin-bottom: 8px;
 }
 
-.match-completed-subtitle{
-  font-size: 18px;
-  color: #4b5563;
-  font-weight: 700;
+.match-completed-title{
+  font-size: 30px;
+  font-weight: 800;
+  color: #16a34a;
 }
 
 @keyframes shakeWrong{
   0%{ transform: translateX(0); }
-  25%{ transform: translateX(-6px); }
-  50%{ transform: translateX(6px); }
-  75%{ transform: translateX(-4px); }
+  25%{ transform: translateX(-5px); }
+  50%{ transform: translateX(5px); }
+  75%{ transform: translateX(-3px); }
   100%{ transform: translateX(0); }
 }
 
 @keyframes returnCard{
   0%{ transform: scale(1); }
-  30%{ transform: scale(1.05); }
+  35%{ transform: scale(1.05); }
   100%{ transform: scale(1); }
 }
 
 @keyframes popIn{
-  0%{ transform: scale(.82); opacity: 0; }
+  0%{ transform: scale(.84); opacity: 0; }
   100%{ transform: scale(1); opacity: 1; }
 }
 
 @media (max-width: 900px){
   .container{
-    grid-template-columns: 1fr;
-    gap: 18px;
+    max-width: 100%;
+    gap: 12px;
+    transform: scale(.95);
+    transform-origin: top center;
   }
 
-  .word{
-    font-size: 22px;
-    min-height: 72px;
+  .images,
+  .words{
+    grid-template-columns: repeat(3, 84px);
+  }
+}
+
+@media (max-width: 640px){
+  .container{
+    flex-direction: column;
+    align-items: center;
   }
 
-  .card{
-    min-height: 130px;
+  .images,
+  .words{
+    grid-template-columns: repeat(3, 84px);
   }
 }
