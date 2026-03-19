@@ -9,15 +9,33 @@ document.addEventListener('DOMContentLoaded', function () {
   const checkBtn = document.getElementById('mc-check');
   const nextBtn = document.getElementById('mc-next');
 
+  const completedSound = new Audio('../../hangman/assets/win.mp3');
+
   if (!questions.length) {
     if (questionEl) {
       questionEl.textContent = 'No questions available.';
+    }
+    if (checkBtn) {
+      checkBtn.disabled = true;
+    }
+    if (nextBtn) {
+      nextBtn.disabled = true;
     }
     return;
   }
 
   let index = 0;
   let selected = null;
+  let checked = false;
+  let finished = false;
+
+  function playCompletedSound() {
+    try {
+      completedSound.pause();
+      completedSound.currentTime = 0;
+      completedSound.play();
+    } catch (e) {}
+  }
 
   function safeOptions(item) {
     return item && Array.isArray(item.options) ? item.options : [];
@@ -27,6 +45,8 @@ document.addEventListener('DOMContentLoaded', function () {
     const item = questions[index] || {};
 
     selected = null;
+    checked = false;
+
     feedbackEl.textContent = '';
     feedbackEl.className = 'mc-feedback';
 
@@ -48,18 +68,39 @@ document.addEventListener('DOMContentLoaded', function () {
       button.type = 'button';
       button.className = 'mc-option';
       button.textContent = optionText;
+
       button.addEventListener('click', function () {
+        if (checked || finished) {
+          return;
+        }
+
         selected = optIndex;
+
         Array.prototype.forEach.call(optionsEl.querySelectorAll('.mc-option'), function (node) {
           node.classList.remove('selected');
         });
+
         button.classList.add('selected');
       });
+
       optionsEl.appendChild(button);
     });
+
+    if (checkBtn) {
+      checkBtn.disabled = false;
+    }
+
+    if (nextBtn) {
+      nextBtn.disabled = false;
+      nextBtn.textContent = index < questions.length - 1 ? '➡️ Next' : '🏁 Finish';
+    }
   }
 
   function checkAnswer() {
+    if (finished) {
+      return;
+    }
+
     const item = questions[index] || {};
     const correct = Number.isInteger(item.correct) ? item.correct : 0;
     const options = optionsEl.querySelectorAll('.mc-option');
@@ -70,11 +111,15 @@ document.addEventListener('DOMContentLoaded', function () {
       return;
     }
 
+    checked = true;
+
     Array.prototype.forEach.call(options, function (node, optIndex) {
       node.classList.remove('correct', 'wrong');
+
       if (optIndex === correct) {
         node.classList.add('correct');
       }
+
       if (optIndex === selected && selected !== correct) {
         node.classList.add('wrong');
       }
@@ -89,15 +134,35 @@ document.addEventListener('DOMContentLoaded', function () {
     }
   }
 
+  function showCompleted() {
+    finished = true;
+    feedbackEl.textContent = '🏆 Completed!';
+    feedbackEl.className = 'mc-feedback good completed';
+
+    if (checkBtn) {
+      checkBtn.disabled = true;
+    }
+
+    if (nextBtn) {
+      nextBtn.disabled = true;
+      nextBtn.textContent = '✅ Completed';
+    }
+
+    playCompletedSound();
+  }
+
   function nextQuestion() {
+    if (finished) {
+      return;
+    }
+
     if (index < questions.length - 1) {
       index += 1;
       loadQuestion();
       return;
     }
 
-    feedbackEl.textContent = '🏆 Completed!';
-    feedbackEl.className = 'mc-feedback good';
+    showCompleted();
   }
 
   checkBtn.addEventListener('click', checkAnswer);
