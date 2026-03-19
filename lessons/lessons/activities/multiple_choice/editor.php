@@ -8,68 +8,23 @@ $unit = isset($_GET['unit']) ? trim((string) $_GET['unit']) : '';
 $source = isset($_GET['source']) ? trim((string) $_GET['source']) : '';
 $assignment = isset($_GET['assignment']) ? trim((string) $_GET['assignment']) : '';
 
-function activities_columns(PDO $pdo): array
-{
-    static $cache = null;
-
-    if (is_array($cache)) {
-        return $cache;
-    }
-
-    $cache = array();
-
-    $stmt = $pdo->query(
-        "SELECT column_name
-         FROM information_schema.columns
-         WHERE table_schema = 'public'
-           AND table_name = 'activities'"
-    );
-
-    foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
-        if (isset($row['column_name'])) {
-            $cache[] = (string) $row['column_name'];
-        }
-    }
-
-    return $cache;
-}
-
 function resolve_unit_from_activity(PDO $pdo, string $activityId): string
 {
     if ($activityId === '') {
         return '';
     }
 
-    $columns = activities_columns($pdo);
+    $stmt = $pdo->prepare("
+        SELECT unit_id
+        FROM activities
+        WHERE id = :id
+        LIMIT 1
+    ");
+    $stmt->execute(array('id' => $activityId));
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
-    if (in_array('unit_id', $columns, true)) {
-        $stmt = $pdo->prepare(
-            "SELECT unit_id
-             FROM activities
-             WHERE id = :id
-             LIMIT 1"
-        );
-        $stmt->execute(array('id' => $activityId));
-        $row = $stmt->fetch(PDO::FETCH_ASSOC);
-
-        if ($row && isset($row['unit_id'])) {
-            return (string) $row['unit_id'];
-        }
-    }
-
-    if (in_array('unit', $columns, true)) {
-        $stmt = $pdo->prepare(
-            "SELECT unit
-             FROM activities
-             WHERE id = :id
-             LIMIT 1"
-        );
-        $stmt->execute(array('id' => $activityId));
-        $row = $stmt->fetch(PDO::FETCH_ASSOC);
-
-        if ($row && isset($row['unit'])) {
-            return (string) $row['unit'];
-        }
+    if ($row && isset($row['unit_id'])) {
+        return (string) $row['unit_id'];
     }
 
     return '';
@@ -165,22 +120,6 @@ function encode_multiple_choice_payload(array $payload): string
 
 function load_multiple_choice_activity(PDO $pdo, string $unit, string $activityId): array
 {
-    $columns = activities_columns($pdo);
-
-    $selectFields = array('id');
-    if (in_array('data', $columns, true)) {
-        $selectFields[] = 'data';
-    }
-    if (in_array('content_json', $columns, true)) {
-        $selectFields[] = 'content_json';
-    }
-    if (in_array('title', $columns, true)) {
-        $selectFields[] = 'title';
-    }
-    if (in_array('name', $columns, true)) {
-        $selectFields[] = 'name';
-    }
-
     $fallback = array(
         'id' => '',
         'title' => default_multiple_choice_title(),
@@ -190,39 +129,26 @@ function load_multiple_choice_activity(PDO $pdo, string $unit, string $activityI
     $row = null;
 
     if ($activityId !== '') {
-        $stmt = $pdo->prepare(
-            "SELECT " . implode(', ', $selectFields) . "
-             FROM activities
-             WHERE id = :id
-               AND type = 'multiple_choice'
-             LIMIT 1"
-        );
+        $stmt = $pdo->prepare("
+            SELECT id, data
+            FROM activities
+            WHERE id = :id
+              AND type = 'multiple_choice'
+            LIMIT 1
+        ");
         $stmt->execute(array('id' => $activityId));
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
     }
 
-    if (!$row && in_array('unit_id', $columns, true)) {
-        $stmt = $pdo->prepare(
-            "SELECT " . implode(', ', $selectFields) . "
-             FROM activities
-             WHERE unit_id = :unit
-               AND type = 'multiple_choice'
-             ORDER BY id ASC
-             LIMIT 1"
-        );
-        $stmt->execute(array('unit' => $unit));
-        $row = $stmt->fetch(PDO::FETCH_ASSOC);
-    }
-
-    if (!$row && in_array('unit', $columns, true)) {
-        $stmt = $pdo->prepare(
-            "SELECT " . implode(', ', $selectFields) . "
-             FROM activities
-             WHERE unit = :unit
-               AND type = 'multiple_choice'
-             ORDER BY id ASC
-             LIMIT 1"
-        );
+    if (!$row && $unit !== '') {
+        $stmt = $pdo->prepare("
+            SELECT id, data
+            FROM activities
+            WHERE unit_id = :unit
+              AND type = 'multiple_choice'
+            ORDER BY id ASC
+            LIMIT 1
+        ");
         $stmt->execute(array('unit' => $unit));
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
     }
@@ -231,173 +157,76 @@ function load_multiple_choice_activity(PDO $pdo, string $unit, string $activityI
         return $fallback;
     }
 
-    $rawData = null;
-    if (isset($row['data'])) {
-        $rawData = $row['data'];
-    } elseif (isset($row['content_json'])) {
-        $rawData = $row['content_json'];
-    }
-
-    $payload = normalize_multiple_choice_payload($rawData);
-
-    $columnTitle = '';
-    if (isset($row['title']) && trim((string) $row['title']) !== '') {
-        $columnTitle = trim((string) $row['title']);
-    } elseif (isset($row['name']) && trim((string) $row['name']) !== '') {
-        $columnTitle = trim((string) $row['name']);
-    }
-
-    if ($columnTitle !== '') {
-        $payload['title'] = $columnTitle;
-    }
+    $payload = normalize_multiple_choice_payload($row['data'] ?? null);
 
     return array(
         'id' => isset($row['id']) ? (string) $row['id'] : '',
-        'title' => normalize_multiple_choice_title((string) $payload['title']),
+        'title' => normalize_multiple_choice_title((string) ($payload['title'] ?? '')),
         'questions' => isset($payload['questions']) && is_array($payload['questions']) ? $payload['questions'] : array(),
     );
 }
 
 function save_multiple_choice_activity(PDO $pdo, string $unit, string $activityId, string $title, array $questions): string
 {
-    $columns = activities_columns($pdo);
     $title = normalize_multiple_choice_title($title);
     $json = encode_multiple_choice_payload(array(
         'title' => $title,
         'questions' => $questions,
     ));
 
-    $hasUnitId = in_array('unit_id', $columns, true);
-    $hasUnit = in_array('unit', $columns, true);
-    $hasData = in_array('data', $columns, true);
-    $hasContentJson = in_array('content_json', $columns, true);
-    $hasId = in_array('id', $columns, true);
-    $hasTitle = in_array('title', $columns, true);
-    $hasName = in_array('name', $columns, true);
-
     $targetId = $activityId;
 
     if ($targetId === '') {
-        if ($hasUnitId) {
-            $stmt = $pdo->prepare(
-                "SELECT id
-                 FROM activities
-                 WHERE unit_id = :unit
-                   AND type = 'multiple_choice'
-                 ORDER BY id ASC
-                 LIMIT 1"
-            );
-            $stmt->execute(array('unit' => $unit));
-            $targetId = trim((string) $stmt->fetchColumn());
-        }
-
-        if ($targetId === '' && $hasUnit) {
-            $stmt = $pdo->prepare(
-                "SELECT id
-                 FROM activities
-                 WHERE unit = :unit
-                   AND type = 'multiple_choice'
-                 ORDER BY id ASC
-                 LIMIT 1"
-            );
-            $stmt->execute(array('unit' => $unit));
-            $targetId = trim((string) $stmt->fetchColumn());
-        }
+        $stmt = $pdo->prepare("
+            SELECT id
+            FROM activities
+            WHERE unit_id = :unit
+              AND type = 'multiple_choice'
+            ORDER BY id ASC
+            LIMIT 1
+        ");
+        $stmt->execute(array('unit' => $unit));
+        $targetId = trim((string) $stmt->fetchColumn());
     }
 
     if ($targetId !== '') {
-        $setParts = array();
-        $params = array('id' => $targetId);
-
-        if ($hasData) {
-            $setParts[] = 'data = :data';
-            $params['data'] = $json;
-        }
-
-        if ($hasContentJson) {
-            $setParts[] = 'content_json = :content_json';
-            $params['content_json'] = $json;
-        }
-
-        if ($hasTitle) {
-            $setParts[] = 'title = :title';
-            $params['title'] = $title;
-        }
-
-        if ($hasName) {
-            $setParts[] = 'name = :name';
-            $params['name'] = $title;
-        }
-
-        if (!empty($setParts)) {
-            $stmt = $pdo->prepare(
-                "UPDATE activities
-                 SET " . implode(', ', $setParts) . "
-                 WHERE id = :id
-                   AND type = 'multiple_choice'"
-            );
-            $stmt->execute($params);
-        }
+        $stmt = $pdo->prepare("
+            UPDATE activities
+            SET data = :data
+            WHERE id = :id
+              AND type = 'multiple_choice'
+        ");
+        $stmt->execute(array(
+            'data' => $json,
+            'id' => $targetId,
+        ));
 
         return $targetId;
     }
 
-    $insertColumns = array();
-    $insertValues = array();
-    $params = array();
+    $stmt = $pdo->prepare("
+        INSERT INTO activities (unit_id, type, data, position, created_at)
+        VALUES (
+            :unit_id,
+            'multiple_choice',
+            :data,
+            (
+                SELECT COALESCE(MAX(position), 0) + 1
+                FROM activities
+                WHERE unit_id = :unit_id2
+            ),
+            CURRENT_TIMESTAMP
+        )
+        RETURNING id
+    ");
 
-    $newId = '';
-    if ($hasId) {
-        $newId = md5(random_bytes(16));
-        $insertColumns[] = 'id';
-        $insertValues[] = ':id';
-        $params['id'] = $newId;
-    }
+    $stmt->execute(array(
+        'unit_id' => $unit,
+        'unit_id2' => $unit,
+        'data' => $json,
+    ));
 
-    if ($hasUnitId) {
-        $insertColumns[] = 'unit_id';
-        $insertValues[] = ':unit_id';
-        $params['unit_id'] = $unit;
-    } elseif ($hasUnit) {
-        $insertColumns[] = 'unit';
-        $insertValues[] = ':unit';
-        $params['unit'] = $unit;
-    }
-
-    $insertColumns[] = 'type';
-    $insertValues[] = "'multiple_choice'";
-
-    if ($hasData) {
-        $insertColumns[] = 'data';
-        $insertValues[] = ':data';
-        $params['data'] = $json;
-    }
-
-    if ($hasContentJson) {
-        $insertColumns[] = 'content_json';
-        $insertValues[] = ':content_json';
-        $params['content_json'] = $json;
-    }
-
-    if ($hasTitle) {
-        $insertColumns[] = 'title';
-        $insertValues[] = ':title';
-        $params['title'] = $title;
-    }
-
-    if ($hasName) {
-        $insertColumns[] = 'name';
-        $insertValues[] = ':name';
-        $params['name'] = $title;
-    }
-
-    $stmt = $pdo->prepare(
-        "INSERT INTO activities (" . implode(', ', $insertColumns) . ")
-         VALUES (" . implode(', ', $insertValues) . ")"
-    );
-    $stmt->execute($params);
-
-    return $newId;
+    return (string) $stmt->fetchColumn();
 }
 
 if ($unit === '' && $activityId !== '') {
