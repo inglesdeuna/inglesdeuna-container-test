@@ -10,8 +10,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const shuffle = (arr) => [...arr].sort(() => Math.random() - 0.5);
 
-  const errorSound = new Audio("sounds/error.mp3");
-  const winSound = new Audio("sounds/win.mp3");
+  const correctSound = new Audio("../../hangman/assets/correct.wav");
+  const errorSound = new Audio("../../hangman/assets/losefun.mp3");
+  const winSound = new Audio("../../hangman/assets/win.mp3");
 
   let matchedCount = 0;
   let currentDraggedCard = null;
@@ -23,6 +24,14 @@ document.addEventListener("DOMContentLoaded", () => {
       .replace(/>/g, "&gt;")
       .replace(/"/g, "&quot;")
       .replace(/'/g, "&#039;");
+  }
+
+  function playSound(audio) {
+    try {
+      audio.pause();
+      audio.currentTime = 0;
+      audio.play();
+    } catch (e) {}
   }
 
   function renderBoard() {
@@ -52,20 +61,6 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  function playError() {
-    try {
-      errorSound.currentTime = 0;
-      errorSound.play();
-    } catch (e) {}
-  }
-
-  function playWin() {
-    try {
-      winSound.currentTime = 0;
-      winSound.play();
-    } catch (e) {}
-  }
-
   function showCompleted() {
     if (document.getElementById("matchCompletedOverlay")) {
       return;
@@ -77,11 +72,10 @@ document.addEventListener("DOMContentLoaded", () => {
       <div class="match-completed-box">
         <div class="match-completed-emoji">🏆</div>
         <div class="match-completed-title">Completed!</div>
-        <div class="match-completed-subtitle">Great job!</div>
       </div>
     `;
     document.body.appendChild(overlay);
-    playWin();
+    playSound(winSound);
   }
 
   function checkCompletion() {
@@ -97,23 +91,24 @@ document.addEventListener("DOMContentLoaded", () => {
 
     wordEl.classList.add("correct");
     wordEl.classList.remove("wrong");
-    wordEl.innerHTML = `✅ ${wordEl.textContent}`;
+    wordEl.dataset.matched = "1";
+    wordEl.innerHTML = `✓ ${wordEl.textContent}`;
 
     const img = cardEl.querySelector(".image");
     if (img) {
       img.draggable = false;
     }
 
+    cardEl.dataset.matched = "1";
     cardEl.classList.add("matched-left");
+
     setTimeout(() => {
       cardEl.style.visibility = "hidden";
       cardEl.style.pointerEvents = "none";
-    }, 250);
-
-    wordEl.dataset.matched = "1";
-    cardEl.dataset.matched = "1";
+    }, 220);
 
     matchedCount += 1;
+    playSound(correctSound);
     checkCompletion();
   }
 
@@ -122,17 +117,17 @@ document.addEventListener("DOMContentLoaded", () => {
       wordEl.classList.add("wrong");
       setTimeout(() => {
         wordEl.classList.remove("wrong");
-      }, 700);
+      }, 650);
     }
 
     if (cardEl) {
       cardEl.classList.add("returning");
       setTimeout(() => {
         cardEl.classList.remove("returning");
-      }, 450);
+      }, 420);
     }
 
-    playError();
+    playSound(errorSound);
   }
 
   renderBoard();
@@ -172,11 +167,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   document.addEventListener("dragover", (e) => {
     const word = e.target.closest(".word");
-    if (!word) {
-      return;
-    }
-
-    if (word.dataset.matched === "1") {
+    if (!word || word.dataset.matched === "1") {
       return;
     }
 
@@ -185,11 +176,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   document.addEventListener("drop", (e) => {
     const word = e.target.closest(".word");
-    if (!word) {
-      return;
-    }
-
-    if (word.dataset.matched === "1") {
+    if (!word || word.dataset.matched === "1") {
       return;
     }
 
@@ -198,7 +185,8 @@ document.addEventListener("DOMContentLoaded", () => {
     const draggedId = e.dataTransfer.getData("id");
     const targetId = word.dataset.id;
 
-    const card = currentDraggedCard || imagesDiv.querySelector(`.card[data-id="${CSS.escape(draggedId)}"]`);
+    const selectorId = window.CSS && CSS.escape ? CSS.escape(draggedId) : draggedId;
+    const card = currentDraggedCard || imagesDiv.querySelector(`.card[data-id="${selectorId}"]`);
 
     if (!draggedId || !card || card.dataset.matched === "1") {
       return;
