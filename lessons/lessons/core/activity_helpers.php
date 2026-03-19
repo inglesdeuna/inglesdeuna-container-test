@@ -12,7 +12,8 @@ function sanitize_json($json) {
 function require_admin_session() {
     session_start();
     if (!isset($_SESSION["admin_logged"])) {
-        header("Location: ../admin/login.php");
+        // Use an absolute project path to avoid relative redirect bugs from activity subfolders.
+        header("Location: /lessons/lessons/admin/login.php");
         exit;
     }
 }
