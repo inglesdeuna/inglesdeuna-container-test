@@ -1,212 +1,456 @@
 <?php
 require_once __DIR__ . "/../../config/db.php";
+require_once __DIR__ . "/../../core/_activity_editor_template.php";
 
-$unit = $_GET["unit"] ?? null;
-if (!$unit) die("Unidad no especificada");
+$activityId = isset($_GET["id"]) ? trim((string) $_GET["id"]) : "";
+$unit = isset($_GET["unit"]) ? trim((string) $_GET["unit"]) : "";
+$source = isset($_GET["source"]) ? trim((string) $_GET["source"]) : "";
+$assignment = isset($_GET["assignment"]) ? trim((string) $_GET["assignment"]) : "";
 
-/* =========================
-   OBTENER DATOS
-========================= */
-$stmt = $pdo->prepare("
-    SELECT data
-    FROM activities
-    WHERE unit_id = :unit
-    AND type = 'hangman'
-");
-$stmt->execute(["unit"=>$unit]);
-$row = $stmt->fetch(PDO::FETCH_ASSOC);
-
-$data = json_decode($row["data"] ?? "[]", true);
-if (!is_array($data)) $data = [];
-
-/* =========================
-   AGREGAR PALABRA
-========================= */
-if (isset($_POST["add"])) {
-
-    $word = trim($_POST["word"] ?? "");
-
-    if ($word !== "") {
-        $data[] = ["word"=>strtoupper($word)];
+function resolve_unit_from_activity(PDO $pdo, string $activityId): string
+{
+    if ($activityId === "") {
+        return "";
     }
 
-    saveData($pdo, $unit, $data, $row);
+    $stmt = $pdo->prepare("
+        SELECT unit_id
+        FROM activities
+        WHERE id = :id
+        LIMIT 1
+    ");
+    $stmt->execute(["id" => $activityId]);
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    return $row && isset($row["unit_id"]) ? (string) $row["unit_id"] : "";
 }
 
-/* =========================
-   ELIMINAR PALABRA
-========================= */
-if (isset($_POST["delete"])) {
+function default_hangman_title(): string
+{
+    return "Hangman";
+}
 
-    $index = intval($_POST["delete"]);
+function normalize_hangman_title(string $title): string
+{
+    $title = trim($title);
+    return $title !== "" ? $title : default_hangman_title();
+}
 
-    if (isset($data[$index])) {
-        unset($data[$index]);
-        $data = array_values($data);
+function normalize_hangman_payload($rawData): array
+{
+    $default = [
+        "title" => default_hangman_title(),
+        "items" => [],
+    ];
+
+    if ($rawData === null || $rawData === "") {
+        return $default;
     }
 
-    saveData($pdo, $unit, $data, $row);
+    $decoded = is_string($rawData) ? json_decode($rawData, true) : $rawData;
+    if (!is_array($decoded)) {
+        return $default;
+    }
+
+    $title = "";
+    $itemsSource = $decoded;
+
+    if (isset($decoded["title"])) {
+        $title = trim((string) $decoded["title"]);
+    }
+
+    if (isset($decoded["items"]) && is_array($decoded["items"])) {
+        $itemsSource = $decoded["items"];
+    } elseif (isset($decoded["words"]) && is_array($decoded["words"])) {
+        $itemsSource = $decoded["words"];
+    }
+
+    $items = [];
+    foreach ($itemsSource as $item) {
+        if (is_string($item)) {
+            $word = strtoupper(trim($item));
+            if ($word !== "") {
+                $items[] = [
+                    "id" => uniqid("hang_"),
+                    "word" => $word,
+                    "hint" => "",
+                ];
+            }
+            continue;
+        }
+
+        if (!is_array($item)) {
+            continue;
+        }
+
+        $word = strtoupper(trim((string) ($item["word"] ?? "")));
+        $hint = trim((string) ($item["hint"] ?? ""));
+
+        if ($word === "") {
+            continue;
+        }
+
+        $items[] = [
+            "id" => trim((string) ($item["id"] ?? uniqid("hang_"))),
+            "word" => $word,
+            "hint" => $hint,
+        ];
+    }
+
+    return [
+        "title" => normalize_hangman_title($title),
+        "items" => $items,
+    ];
 }
 
-/* =========================
-   FUNCION GUARDAR
-========================= */
-function saveData($pdo, $unit, $data, $row){
+function encode_hangman_payload(array $payload): string
+{
+    return json_encode([
+        "title" => normalize_hangman_title((string) ($payload["title"] ?? "")),
+        "items" => array_values($payload["items"] ?? []),
+    ], JSON_UNESCAPED_UNICODE);
+}
 
-    $json = json_encode($data, JSON_UNESCAPED_UNICODE);
+function load_hangman_activity(PDO $pdo, string $unit, string $activityId): array
+{
+    $fallback = [
+        "id" => "",
+        "title" => default_hangman_title(),
+        "items" => [],
+    ];
 
-    if ($row) {
-        $update = $pdo->prepare("
+    $row = null;
+
+    if ($activityId !== "") {
+        $stmt = $pdo->prepare("
+            SELECT id, data
+            FROM activities
+            WHERE id = :id
+              AND type = 'hangman'
+            LIMIT 1
+        ");
+        $stmt->execute(["id" => $activityId]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+    }
+
+    if (!$row && $unit !== "") {
+        $stmt = $pdo->prepare("
+            SELECT id, data
+            FROM activities
+            WHERE unit_id = :unit
+              AND type = 'hangman'
+            ORDER BY id ASC
+            LIMIT 1
+        ");
+        $stmt->execute(["unit" => $unit]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+    }
+
+    if (!$row) {
+        return $fallback;
+    }
+
+    $payload = normalize_hangman_payload($row["data"] ?? null);
+
+    return [
+        "id" => (string) ($row["id"] ?? ""),
+        "title" => (string) ($payload["title"] ?? default_hangman_title()),
+        "items" => is_array($payload["items"] ?? null) ? $payload["items"] : [],
+    ];
+}
+
+function save_hangman_activity(PDO $pdo, string $unit, string $activityId, string $title, array $items): string
+{
+    $json = encode_hangman_payload([
+        "title" => $title,
+        "items" => $items,
+    ]);
+
+    $targetId = $activityId;
+
+    if ($targetId === "") {
+        $stmt = $pdo->prepare("
+            SELECT id
+            FROM activities
+            WHERE unit_id = :unit
+              AND type = 'hangman'
+            ORDER BY id ASC
+            LIMIT 1
+        ");
+        $stmt->execute(["unit" => $unit]);
+        $targetId = trim((string) $stmt->fetchColumn());
+    }
+
+    if ($targetId !== "") {
+        $stmt = $pdo->prepare("
             UPDATE activities
             SET data = :data
-            WHERE unit_id = :unit
-            AND type = 'hangman'
+            WHERE id = :id
+              AND type = 'hangman'
         ");
-        $update->execute([
-            "data"=>$json,
-            "unit"=>$unit
+        $stmt->execute([
+            "data" => $json,
+            "id" => $targetId,
         ]);
-    } else {
-        $insert = $pdo->prepare("
-            INSERT INTO activities (unit_id, type, data)
-            VALUES (:unit, 'hangman', :data)
-        ");
-        $insert->execute([
-            "unit"=>$unit,
-            "data"=>$json
-        ]);
+
+        return $targetId;
     }
 
-    header("Location: editor.php?unit=" . urlencode($unit));
+    $stmt = $pdo->prepare("
+        INSERT INTO activities (unit_id, type, data, position, created_at)
+        VALUES (
+            :unit_id,
+            'hangman',
+            :data,
+            (
+                SELECT COALESCE(MAX(position), 0) + 1
+                FROM activities
+                WHERE unit_id = :unit_id2
+            ),
+            CURRENT_TIMESTAMP
+        )
+        RETURNING id
+    ");
+    $stmt->execute([
+        "unit_id" => $unit,
+        "unit_id2" => $unit,
+        "data" => $json,
+    ]);
+
+    return (string) $stmt->fetchColumn();
+}
+
+if ($unit === "" && $activityId !== "") {
+    $unit = resolve_unit_from_activity($pdo, $activityId);
+}
+
+if ($unit === "") {
+    die("Unidad no especificada");
+}
+
+$activity = load_hangman_activity($pdo, $unit, $activityId);
+$activityTitle = (string) ($activity["title"] ?? default_hangman_title());
+$items = is_array($activity["items"] ?? null) ? $activity["items"] : [];
+
+if ($activityId === "" && !empty($activity["id"])) {
+    $activityId = (string) $activity["id"];
+}
+
+if ($_SERVER["REQUEST_METHOD"] === "POST") {
+    $postedTitle = trim((string) ($_POST["activity_title"] ?? ""));
+    $itemIds = isset($_POST["item_id"]) && is_array($_POST["item_id"]) ? $_POST["item_id"] : [];
+    $words = isset($_POST["word"]) && is_array($_POST["word"]) ? $_POST["word"] : [];
+    $hints = isset($_POST["hint"]) && is_array($_POST["hint"]) ? $_POST["hint"] : [];
+
+    $sanitized = [];
+
+    foreach ($words as $i => $wordRaw) {
+        $word = strtoupper(trim((string) $wordRaw));
+        $hint = trim((string) ($hints[$i] ?? ""));
+        $itemId = trim((string) ($itemIds[$i] ?? uniqid("hang_")));
+
+        if ($word === "") {
+            continue;
+        }
+
+        $sanitized[] = [
+            "id" => $itemId !== "" ? $itemId : uniqid("hang_"),
+            "word" => $word,
+            "hint" => $hint,
+        ];
+    }
+
+    $savedActivityId = save_hangman_activity($pdo, $unit, $activityId, $postedTitle, $sanitized);
+
+    $params = [
+        "unit=" . urlencode($unit),
+        "saved=1"
+    ];
+
+    if ($savedActivityId !== "") {
+        $params[] = "id=" . urlencode($savedActivityId);
+    }
+
+    if ($assignment !== "") {
+        $params[] = "assignment=" . urlencode($assignment);
+    }
+
+    if ($source !== "") {
+        $params[] = "source=" . urlencode($source);
+    }
+
+    header("Location: editor.php?" . implode("&", $params));
     exit;
 }
+
+ob_start();
 ?>
 
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<title>Hangman Editor</title>
-
 <style>
-body{
-    font-family: Arial, sans-serif;
-    background:#eef6ff;
-    padding:40px;
-    text-align:center;
+.hg-form{
+    max-width:900px;
+    margin:0 auto;
+    text-align:left;
 }
-
-.box{
-    background:white;
-    padding:30px;
-    border-radius:15px;
-    max-width:600px;
-    margin:20px auto;
+.title-box,
+.word-item{
+    background:#f9fafb;
+    padding:14px;
+    margin-bottom:14px;
+    border-radius:12px;
+    border:1px solid #e5e7eb;
 }
-
-h2{
-    color:#0b5ed7;
-    margin-bottom:5px;
+.title-box label,
+.word-item label{
+    display:block;
+    font-weight:700;
+    margin-bottom:8px;
 }
-
-.subtitle{
-    color:#444;
-    margin-bottom:20px;
-}
-
-input{
-    padding:10px;
+.title-box input,
+.word-item input,
+.word-item textarea{
     width:100%;
+    padding:10px 12px;
     border-radius:8px;
     border:1px solid #d1d5db;
+    box-sizing:border-box;
+    margin-bottom:12px;
+    font-size:14px;
 }
-
-button{
-    padding:10px 18px;
-    border:none;
-    border-radius:12px;
-    background:#2563eb;
-    color:white;
-    font-weight:bold;
-    cursor:pointer;
-    margin-top:10px;
+.word-item textarea{
+    min-height:80px;
+    resize:vertical;
 }
-
-button:hover{
-    background:#1e40af;
-}
-
-.word{
-    background:#eef2ff;
-    padding:10px;
-    border-radius:8px;
-    margin-top:8px;
+.toolbar-row{
     display:flex;
-    justify-content:space-between;
-    align-items:center;
+    gap:10px;
+    flex-wrap:wrap;
+    justify-content:center;
+    margin-top:8px;
 }
-
-.delete-btn{
-    background:#dc2626;
-    padding:5px 10px;
-    border-radius:8px;
-    font-size:12px;
-    cursor:pointer;
-}
-
-.delete-btn:hover{
-    background:#b91c1c;
-}
-
-.back-btn{
-    display:inline-block;
-    margin-top:20px;
+.btn-add{
     background:#16a34a;
-    color:white;
-    padding:10px 18px;
-    border-radius:12px;
-    font-weight:bold;
-    text-decoration:none;
+    color:#fff;
+    padding:10px 14px;
+    border:none;
+    border-radius:8px;
+    cursor:pointer;
+    font-weight:700;
+}
+.btn-remove{
+    background:#ef4444;
+    color:#fff;
+    border:none;
+    padding:8px 12px;
+    border-radius:8px;
+    cursor:pointer;
+    font-weight:700;
 }
 </style>
-</head>
 
-<body>
+<?php if (isset($_GET["saved"])) { ?>
+    <p style="color:green;font-weight:bold;margin-bottom:15px;">✔ Guardado correctamente</p>
+<?php } ?>
 
-<div class="box">
+<form class="hg-form" id="hangmanForm" method="post">
+    <div class="title-box">
+        <label for="activity_title">Activity title</label>
+        <input
+            id="activity_title"
+            type="text"
+            name="activity_title"
+            value="<?= htmlspecialchars($activityTitle, ENT_QUOTES, 'UTF-8') ?>"
+            placeholder="Example: Guess the classroom words"
+            required
+        >
+    </div>
 
-<h2>🎯 Hangman Editor</h2>
-<p class="subtitle">Add words for this unit.</p>
+    <div id="itemsContainer">
+        <?php foreach ($items as $item) { ?>
+            <div class="word-item">
+                <input type="hidden" name="item_id[]" value="<?= htmlspecialchars((string) ($item["id"] ?? uniqid("hang_")), ENT_QUOTES, 'UTF-8') ?>">
 
-<form method="post">
-    <input name="word" placeholder="Enter word" required>
-    <button type="submit" name="add">Guardar</button>
+                <label>Word</label>
+                <input type="text" name="word[]" value="<?= htmlspecialchars((string) ($item["word"] ?? ""), ENT_QUOTES, 'UTF-8') ?>" required>
+
+                <label>Hint</label>
+                <textarea name="hint[]" placeholder="Example: It is an animal / It is a color / It is in the classroom"><?= htmlspecialchars((string) ($item["hint"] ?? ""), ENT_QUOTES, 'UTF-8') ?></textarea>
+
+                <button type="button" class="btn-remove" onclick="removeItem(this)">✖ Remove</button>
+            </div>
+        <?php } ?>
+    </div>
+
+    <div class="toolbar-row">
+        <button type="button" class="btn-add" onclick="addItem()">+ Add Word</button>
+        <button type="submit" class="save-btn">💾 Save</button>
+    </div>
 </form>
 
-<hr>
+<script>
+let formChanged = false;
+let formSubmitted = false;
 
-<h3>Saved words</h3>
+function markChanged() {
+    formChanged = true;
+}
 
-<?php if(empty($data)): ?>
-<p>No words yet</p>
-<?php else: ?>
-<?php foreach($data as $i=>$w): ?>
-<div class="word">
-    <?= htmlspecialchars($w["word"]) ?>
-    <form method="post" style="margin:0;">
-        <input type="hidden" name="delete" value="<?= $i ?>">
-        <button type="submit" class="delete-btn">✕</button>
-    </form>
-</div>
-<?php endforeach; ?>
-<?php endif; ?>
+function removeItem(button) {
+    const item = button.closest('.word-item');
+    if (item) {
+        item.remove();
+        markChanged();
+    }
+}
 
-</div>
+function addItem() {
+    const container = document.getElementById('itemsContainer');
+    const div = document.createElement('div');
+    div.className = 'word-item';
+    div.innerHTML = `
+        <input type="hidden" name="item_id[]" value="hang_${Date.now()}_${Math.floor(Math.random() * 1000)}">
 
-<!-- BOTÓN VERDE REAL -->
-<a class="back-btn" href="../../academic/unit_view.php?unit=<?= urlencode($unit) ?>">
-  ↩ Back
-</a>
+        <label>Word</label>
+        <input type="text" name="word[]" required>
 
-</body>
-</html>
+        <label>Hint</label>
+        <textarea name="hint[]" placeholder="Example: It is an animal / It is a color / It is in the classroom"></textarea>
+
+        <button type="button" class="btn-remove" onclick="removeItem(this)">✖ Remove</button>
+    `;
+    container.appendChild(div);
+    bindChangeTracking(div);
+    markChanged();
+}
+
+function bindChangeTracking(scope) {
+    const elements = scope.querySelectorAll('input, textarea, select');
+    elements.forEach(function(el) {
+        el.addEventListener('input', markChanged);
+        el.addEventListener('change', markChanged);
+    });
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+    bindChangeTracking(document);
+
+    const form = document.getElementById('hangmanForm');
+    if (form) {
+        form.addEventListener('submit', function () {
+            formSubmitted = true;
+            formChanged = false;
+        });
+    }
+});
+
+window.addEventListener('beforeunload', function (e) {
+    if (formChanged && !formSubmitted) {
+        e.preventDefault();
+        e.returnValue = '';
+    }
+});
+</script>
+
+<?php
+$content = ob_get_clean();
+render_activity_editor("🎯 Hangman Editor", "🎯", $content);
