@@ -2,7 +2,7 @@
 session_start();
 
 if (!isset($_SESSION['academic_logged']) || $_SESSION['academic_logged'] !== true) {
-    header('Location: login.php');
+    header('Location: /lessons/lessons/academic/login.php');
     exit;
 }
 
@@ -339,11 +339,6 @@ $unitIds = array_values(array_filter(array_map(
     $units
 )));
 
-$unitMap = [];
-foreach ($units as $unit) {
-    $unitMap[(string) ($unit['id'] ?? '')] = (string) ($unit['name'] ?? 'Unidad');
-}
-
 $activities = load_activities_for_units($pdo, $unitIds);
 
 $total = count($activities);
@@ -381,7 +376,7 @@ $isWideActivity = false;
 if ($current) {
     $type = (string) ($current['type'] ?? '');
     $currentType = strtolower($type);
-    $isWideActivity = in_array($currentType, array('match', 'multiple_choice'), true);
+    $isWideActivity = in_array($currentType, ['match', 'multiple_choice', 'drag_drop'], true);
 
     $activityPath = get_activity_base_path($type);
 
@@ -428,28 +423,19 @@ $backDashboard = 'dashboard.php?assignment=' . urlencode($assignmentId) . '&unit
     --topbar:#3d69cf;
     --topbar-dark:#2f59b8;
 }
-
-*{
-    box-sizing:border-box;
-}
-
-html, body{
-    height:100%;
-}
-
+*{ box-sizing:border-box; }
+html, body{ height:100%; }
 body{
     margin:0;
     font-family:Arial, sans-serif;
     background:var(--bg);
     color:var(--text);
 }
-
 .topbar{
     background:linear-gradient(180deg, var(--topbar), var(--topbar-dark));
     padding:14px 24px;
     color:#fff;
 }
-
 .topbar-inner{
     max-width:1380px;
     margin:0 auto;
@@ -458,14 +444,12 @@ body{
     align-items:center;
     gap:12px;
 }
-
 .topbar-title{
     text-align:center;
     font-size:24px;
     font-weight:700;
     margin:0;
 }
-
 .top-btn{
     display:inline-block;
     padding:10px 14px;
@@ -476,41 +460,34 @@ body{
     font-weight:700;
     box-shadow:var(--shadow);
 }
-
 .top-btn.back{
     background:#3359b8;
     justify-self:start;
 }
-
 .top-btn.logout{
     background:#d95b5b;
     justify-self:end;
 }
-
 .page{
     max-width:1380px;
     margin:0 auto;
     padding:16px 20px 20px;
 }
-
 .layout{
     display:grid;
     grid-template-columns:165px 1fr;
     gap:18px;
     align-items:start;
 }
-
 .sidebar{
     background:#eaf0fb;
     min-height:calc(100vh - 110px);
     padding:20px 12px;
 }
-
 .logo-wrap{
     text-align:center;
     margin-bottom:18px;
 }
-
 .logo-wrap img{
     width:110px;
     max-width:100%;
@@ -518,7 +495,6 @@ body{
     display:block;
     margin:0 auto;
 }
-
 .side-btn{
     display:block;
     width:100%;
@@ -532,23 +508,18 @@ body{
     text-align:center;
     box-shadow:var(--shadow);
 }
-
 .side-btn.blue{
     background:linear-gradient(180deg,#4f77df,#355fc9);
 }
-
 .side-btn.orange{
     background:linear-gradient(180deg,#f2b33e,#e39a12);
 }
-
 .side-btn.green{
     background:linear-gradient(180deg,#62c56c,#40a853);
 }
-
 .content{
     padding:4px 0;
 }
-
 .viewer-shell{
     background:#f2f5fb;
     border-radius:22px;
@@ -556,7 +527,6 @@ body{
     border:1px solid var(--line);
     box-shadow:var(--shadow);
 }
-
 .viewer-card{
     background:var(--card);
     border-radius:20px;
@@ -564,24 +534,20 @@ body{
     box-shadow:var(--shadow);
     padding:18px 18px 16px;
 }
-
 .viewer-header{
     margin-bottom:10px;
 }
-
 .viewer-title{
     margin:0 0 6px;
     font-size:18px;
     font-weight:700;
     color:#3c63c7;
 }
-
 .viewer-subtitle{
     margin:0;
     font-size:13px;
     color:var(--muted);
 }
-
 .viewer-frame-wrap{
     background:#fff;
     border:1px solid #e6ebf4;
@@ -591,7 +557,6 @@ body{
     min-height:620px;
     overflow:hidden;
 }
-
 .viewer-frame{
     width:100%;
     height:100%;
@@ -600,7 +565,6 @@ body{
     background:#fff;
     display:block;
 }
-
 .controls{
     display:flex;
     justify-content:space-between;
@@ -608,7 +572,6 @@ body{
     gap:16px;
     margin-top:14px;
 }
-
 .nav-btn{
     display:inline-block;
     min-width:130px;
@@ -621,17 +584,14 @@ body{
     font-weight:700;
     box-shadow:var(--shadow);
 }
-
 .nav-btn.prev,
 .nav-btn.next{
     background:linear-gradient(180deg,#4f77df,#355fc9);
 }
-
 .nav-btn.disabled{
     opacity:.45;
     pointer-events:none;
 }
-
 .editor-link{
     display:inline-block;
     margin-top:12px;
@@ -643,7 +603,6 @@ body{
     font-size:14px;
     font-weight:700;
 }
-
 .empty-card{
     background:#fff;
     border:1px solid var(--line);
@@ -652,20 +611,17 @@ body{
     box-shadow:var(--shadow);
 }
 
-/* SOLO PARA MATCH Y MULTIPLE CHOICE */
+/* SOLO PARA ACTIVIDADES ANCHAS */
 .wide-activity-page .layout{
     display:block;
 }
-
 .wide-activity-page .sidebar{
     display:none;
 }
-
 .wide-activity-page .content{
     padding:0;
     width:100%;
 }
-
 .wide-activity-page .viewer-shell{
     background:transparent;
     border-radius:0;
@@ -673,14 +629,12 @@ body{
     border:none;
     box-shadow:none;
 }
-
 .wide-activity-page .viewer-card{
     width:100%;
     max-width:1280px;
     margin:0 auto;
     padding:14px 14px 12px;
 }
-
 .wide-activity-page .viewer-frame-wrap{
     background:#fff;
     border:1px solid #e6ebf4;
@@ -690,7 +644,6 @@ body{
     min-height:0;
     overflow:visible;
 }
-
 .wide-activity-page .viewer-frame{
     height:900px;
     border-radius:16px;
@@ -701,16 +654,13 @@ body{
         grid-template-columns:1fr;
         text-align:center;
     }
-
     .top-btn.back,
     .top-btn.logout{
         justify-self:center;
     }
-
     .layout{
         grid-template-columns:1fr;
     }
-
     .sidebar{
         min-height:auto;
         display:grid;
@@ -718,29 +668,23 @@ body{
         gap:12px;
         align-items:start;
     }
-
     .logo-wrap{
         grid-column:1 / -1;
     }
-
     .viewer-frame-wrap{
         height:calc(100vh - 300px);
         min-height:520px;
     }
-
     .wide-activity-page .sidebar{
         display:none;
     }
-
     .wide-activity-page .viewer-card{
         padding:12px 12px 10px;
     }
-
     .wide-activity-page .viewer-frame-wrap{
         height:auto;
         min-height:0;
     }
-
     .wide-activity-page .viewer-frame{
         height:820px;
     }
@@ -750,53 +694,41 @@ body{
     .page{
         padding:12px;
     }
-
     .topbar{
         padding:14px;
     }
-
     .viewer-shell{
         padding:12px;
     }
-
     .viewer-card{
         padding:14px 12px 12px;
     }
-
     .topbar-title{
         font-size:22px;
     }
-
     .viewer-title{
         font-size:17px;
     }
-
     .viewer-frame-wrap{
         height:calc(100vh - 260px);
         min-height:460px;
     }
-
     .controls{
         flex-direction:column;
     }
-
     .nav-btn{
         width:100%;
     }
-
     .wide-activity-page .viewer-shell{
         padding:0;
     }
-
     .wide-activity-page .viewer-card{
         padding:10px;
     }
-
     .wide-activity-page .viewer-frame-wrap{
         height:auto;
         min-height:0;
     }
-
     .wide-activity-page .viewer-frame{
         height:720px;
     }
@@ -808,7 +740,7 @@ body{
     <div class="topbar-inner">
         <a class="top-btn back" href="<?php echo h($backDashboard); ?>">← Volver</a>
         <h1 class="topbar-title">Actividad</h1>
-        <a class="top-btn logout" href="logout.php">Logout</a>
+        <a class="top-btn logout" href="/lessons/lessons/academic/logout.php">Logout</a>
     </div>
 </header>
 
@@ -834,7 +766,7 @@ body{
                     <a class="side-btn orange" href="teacher_course.php?assignment=<?php echo urlencode($assignmentId); ?>&unit=<?php echo urlencode($selectedUnitId); ?>&mode=edit&step=<?php echo $step; ?>">🧑‍🏫 Editar Cursos</a>
                 <?php } ?>
 
-                <a class="side-btn green" href="teacher_groups.php">👥 Ver Estudiantes</a>
+                <a class="side-btn green" href="/lessons/lessons/academic/teacher_groups.php">👥 Ver Estudiantes</a>
             </aside>
 
             <main class="content">
@@ -984,7 +916,7 @@ body{
                 doc.head.appendChild(style);
             }
         } catch (e) {
-            // Ignorar si algún viewer no permite manipulación.
+            // Ignorar
         }
     }
 
