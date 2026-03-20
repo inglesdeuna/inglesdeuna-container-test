@@ -2,92 +2,47 @@
 require_once __DIR__ . '/../../config/db.php';
 require_once __DIR__ . '/../../core/_activity_editor_template.php';
 
-$activityId = isset($_GET['id']) ? $_GET['id'] : null;
-$unit = isset($_GET['unit']) ? $_GET['unit'] : null;
+$activityId = isset($_GET['id']) ? trim((string) $_GET['id']) : '';
+$unit = isset($_GET['unit']) ? trim((string) $_GET['unit']) : '';
+$source = isset($_GET['source']) ? trim((string) $_GET['source']) : '';
+$assignment = isset($_GET['assignment']) ? trim((string) $_GET['assignment']) : '';
 
-if ($activityId && !$unit) {
-    $stmt = $pdo->prepare(
-        "SELECT unit_id
-         FROM activities
-         WHERE id = :id
-         LIMIT 1"
-    );
-    $stmt->execute(array('id' => $activityId));
-    $row = $stmt->fetch(PDO::FETCH_ASSOC);
-
-    if (!$row) {
-        die('Actividad no encontrada');
+function resolve_unit_from_activity(PDO $pdo, string $activityId): string
+{
+    if ($activityId === '') {
+        return '';
     }
 
-    $unit = $row['unit_id'];
-}
-
-if (!$unit) {
-    die('Unidad no especificada');
-}
-
-function load_drag_drop_blocks($pdo, $unit)
-{
-    $stmt = $pdo->prepare(
-        "SELECT data
-         FROM activities
-         WHERE unit_id = :unit
-           AND type = 'drag_drop'
-         LIMIT 1"
-    );
-    $stmt->execute(array('unit' => $unit));
-
+    $stmt = $pdo->prepare("
+        SELECT unit_id
+        FROM activities
+        WHERE id = :id
+        LIMIT 1
+    ");
+    $stmt->execute(['id' => $activityId]);
     $row = $stmt->fetch(PDO::FETCH_ASSOC);
-    $raw = isset($row['data']) ? $row['data'] : '[]';
-    $decoded = json_decode($raw, true);
 
-    return is_array($decoded) ? $decoded : array();
+    return $row && isset($row['unit_id']) ? (string) $row['unit_id'] : '';
 }
 
-function save_drag_drop_blocks($pdo, $unit, $blocks)
+function default_drag_drop_title(): string
 {
-    $json = json_encode($blocks, JSON_UNESCAPED_UNICODE);
-
-    $check = $pdo->prepare(
-        "SELECT id
-         FROM activities
-         WHERE unit_id = :unit
-           AND type = 'drag_drop'
-         LIMIT 1"
-    );
-    $check->execute(array('unit' => $unit));
-
-    if ($check->fetch()) {
-        $stmt = $pdo->prepare(
-            "UPDATE activities
-             SET data = :data
-             WHERE unit_id = :unit
-               AND type = 'drag_drop'"
-        );
-        $stmt->execute(array(
-            'data' => $json,
-            'unit' => $unit,
-        ));
-    } else {
-        $stmt = $pdo->prepare(
-            "INSERT INTO activities (id, unit_id, type, data)
-             VALUES (:id, :unit, 'drag_drop', :data)"
-        );
-        $stmt->execute(array(
-            'id' => md5(random_bytes(16)),
-            'unit' => $unit,
-            'data' => $json,
-        ));
-    }
+    return 'Build the Sentence';
 }
 
-function normalize_words($rawWords)
+function normalize_drag_drop_title(string $title): string
+{
+    $title = trim($title);
+    return $title !== '' ? $title : default_drag_drop_title();
+}
+
+function normalize_words($rawWords): array
 {
     $parts = preg_split('/[,\n]/', (string) $rawWords);
-    $clean = array();
+    $clean = [];
 
     foreach ($parts as $word) {
-        $trimmed = trim($word);
+        $trimmed = trim((string) $word);
         if ($trimmed !== '') {
             $clean[] = $trimmed;
         }
@@ -96,51 +51,264 @@ function normalize_words($rawWords)
     return array_values(array_unique($clean));
 }
 
-function block_listen_enabled($block)
+function normalize_drag_drop_payload($rawData): array
 {
-    if (isset($block['listen_enabled']) && is_bool($block['listen_enabled'])) {
-        return $block['listen_enabled'];
+    $default = [
+        'title' => default_drag_drop_title(),
+        'blocks' => [],
+    ];
+
+    if ($rawData === null || $rawData === '') {
+        return $default;
     }
 
-    if (isset($block['listen']) && is_bool($block['listen'])) {
-        return $block['listen'];
+    $decoded = is_string($rawData) ? json_decode($rawData, true) : $rawData;
+    if (!is_array($decoded)) {
+        return $default;
     }
 
-    return true;
-}
+    $title = '';
+    $blocksSource = $decoded;
 
-$blocks = load_drag_drop_blocks($pdo, $unit);
+    if (isset($decoded['title'])) {
+        $title = trim((string) $decoded['title']);
+    }
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    if (isset($_POST['delete_index'])) {
-        $deleteIndex = (int) $_POST['delete_index'];
+    if (isset($decoded['blocks']) && is_array($decoded['blocks'])) {
+        $blocksSource = $decoded['blocks'];
+    }
 
-        if (isset($blocks[$deleteIndex])) {
-            array_splice($blocks, $deleteIndex, 1);
-            save_drag_drop_blocks($pdo, $unit, $blocks);
+    $blocks = [];
+
+    foreach ($blocksSource as $block) {
+        if (!is_array($block)) {
+            continue;
         }
 
-        header('Location: editor.php?unit=' . urlencode((string) $unit) . '&saved=1');
-        exit;
+        $text = '';
+        if (isset($block['text']) && is_string($block['text'])) {
+            $text = trim($block['text']);
+        } elseif (isset($block['sentence']) && is_string($block['sentence'])) {
+            $text = trim($block['sentence']);
+        }
+
+        $missingWords = [];
+        if (isset($block['missing_words']) && is_array($block['missing_words'])) {
+            foreach ($block['missing_words'] as $word) {
+                $w = trim((string) $word);
+                if ($w !== '') {
+                    $missingWords[] = $w;
+                }
+            }
+        }
+
+        $listenEnabled = true;
+        if (array_key_exists('listen_enabled', $block)) {
+            $listenEnabled = filter_var($block['listen_enabled'], FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
+            $listenEnabled = $listenEnabled === null ? true : $listenEnabled;
+        } elseif (array_key_exists('listen', $block)) {
+            $listenEnabled = filter_var($block['listen'], FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
+            $listenEnabled = $listenEnabled === null ? true : $listenEnabled;
+        }
+
+        if ($text === '') {
+            continue;
+        }
+
+        $blocks[] = [
+            'id' => trim((string) ($block['id'] ?? uniqid('drag_drop_'))),
+            'text' => $text,
+            'missing_words' => $missingWords,
+            'listen_enabled' => (bool) $listenEnabled,
+        ];
     }
 
-    $text = isset($_POST['text']) ? trim($_POST['text']) : '';
-    $missingWordsRaw = isset($_POST['missing_words']) ? trim($_POST['missing_words']) : '';
-    $missingWords = normalize_words($missingWordsRaw);
-    $listenEnabled = isset($_POST['listen_enabled']) && $_POST['listen_enabled'] === '1';
+    return [
+        'title' => normalize_drag_drop_title($title),
+        'blocks' => $blocks,
+    ];
+}
 
-    if ($text !== '' && count($missingWords) > 0) {
-        $blocks[] = array(
-            'id' => uniqid('drag_drop_'),
+function encode_drag_drop_payload(array $payload): string
+{
+    return json_encode([
+        'title' => normalize_drag_drop_title((string) ($payload['title'] ?? '')),
+        'blocks' => array_values($payload['blocks'] ?? []),
+    ], JSON_UNESCAPED_UNICODE);
+}
+
+function load_drag_drop_activity(PDO $pdo, string $unit, string $activityId): array
+{
+    $fallback = [
+        'id' => '',
+        'title' => default_drag_drop_title(),
+        'blocks' => [],
+    ];
+
+    $row = null;
+
+    if ($activityId !== '') {
+        $stmt = $pdo->prepare("
+            SELECT id, data
+            FROM activities
+            WHERE id = :id
+              AND type = 'drag_drop'
+            LIMIT 1
+        ");
+        $stmt->execute(['id' => $activityId]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+    }
+
+    if (!$row && $unit !== '') {
+        $stmt = $pdo->prepare("
+            SELECT id, data
+            FROM activities
+            WHERE unit_id = :unit
+              AND type = 'drag_drop'
+            ORDER BY id ASC
+            LIMIT 1
+        ");
+        $stmt->execute(['unit' => $unit]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+    }
+
+    if (!$row) {
+        return $fallback;
+    }
+
+    $payload = normalize_drag_drop_payload($row['data'] ?? null);
+
+    return [
+        'id' => (string) ($row['id'] ?? ''),
+        'title' => (string) ($payload['title'] ?? default_drag_drop_title()),
+        'blocks' => is_array($payload['blocks'] ?? null) ? $payload['blocks'] : [],
+    ];
+}
+
+function save_drag_drop_activity(PDO $pdo, string $unit, string $activityId, string $title, array $blocks): string
+{
+    $json = encode_drag_drop_payload([
+        'title' => $title,
+        'blocks' => $blocks,
+    ]);
+
+    $targetId = $activityId;
+
+    if ($targetId === '') {
+        $stmt = $pdo->prepare("
+            SELECT id
+            FROM activities
+            WHERE unit_id = :unit
+              AND type = 'drag_drop'
+            ORDER BY id ASC
+            LIMIT 1
+        ");
+        $stmt->execute(['unit' => $unit]);
+        $targetId = trim((string) $stmt->fetchColumn());
+    }
+
+    if ($targetId !== '') {
+        $stmt = $pdo->prepare("
+            UPDATE activities
+            SET data = :data
+            WHERE id = :id
+              AND type = 'drag_drop'
+        ");
+        $stmt->execute([
+            'data' => $json,
+            'id' => $targetId,
+        ]);
+
+        return $targetId;
+    }
+
+    $stmt = $pdo->prepare("
+        INSERT INTO activities (unit_id, type, data, position, created_at)
+        VALUES (
+            :unit_id,
+            'drag_drop',
+            :data,
+            (
+                SELECT COALESCE(MAX(position), 0) + 1
+                FROM activities
+                WHERE unit_id = :unit_id2
+            ),
+            CURRENT_TIMESTAMP
+        )
+        RETURNING id
+    ");
+    $stmt->execute([
+        'unit_id' => $unit,
+        'unit_id2' => $unit,
+        'data' => $json,
+    ]);
+
+    return (string) $stmt->fetchColumn();
+}
+
+if ($unit === '' && $activityId !== '') {
+    $unit = resolve_unit_from_activity($pdo, $activityId);
+}
+
+if ($unit === '') {
+    die('Unidad no especificada');
+}
+
+$activity = load_drag_drop_activity($pdo, $unit, $activityId);
+$activityTitle = (string) ($activity['title'] ?? default_drag_drop_title());
+$blocks = is_array($activity['blocks'] ?? null) ? $activity['blocks'] : [];
+
+if ($activityId === '' && !empty($activity['id'])) {
+    $activityId = (string) $activity['id'];
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $postedTitle = trim((string) ($_POST['activity_title'] ?? ''));
+    $blockIds = isset($_POST['block_id']) && is_array($_POST['block_id']) ? $_POST['block_id'] : [];
+    $texts = isset($_POST['text']) && is_array($_POST['text']) ? $_POST['text'] : [];
+    $missingWordsRaw = isset($_POST['missing_words']) && is_array($_POST['missing_words']) ? $_POST['missing_words'] : [];
+    $listenEnabledValues = isset($_POST['listen_enabled']) && is_array($_POST['listen_enabled']) ? $_POST['listen_enabled'] : [];
+
+    $sanitized = [];
+
+    foreach ($texts as $i => $textRaw) {
+        $text = trim((string) $textRaw);
+        $missingWords = normalize_words($missingWordsRaw[$i] ?? '');
+        $listenEnabled = isset($listenEnabledValues[$i]) && (string) $listenEnabledValues[$i] === '1';
+        $blockId = trim((string) ($blockIds[$i] ?? uniqid('drag_drop_')));
+
+        if ($text === '') {
+            continue;
+        }
+
+        $sanitized[] = [
+            'id' => $blockId !== '' ? $blockId : uniqid('drag_drop_'),
             'text' => $text,
             'missing_words' => $missingWords,
             'listen_enabled' => $listenEnabled,
-        );
-
-        save_drag_drop_blocks($pdo, $unit, $blocks);
+        ];
     }
 
-    header('Location: editor.php?unit=' . urlencode((string) $unit) . '&saved=1');
+    $savedActivityId = save_drag_drop_activity($pdo, $unit, $activityId, $postedTitle, $sanitized);
+
+    $params = [
+        'unit=' . urlencode($unit),
+        'saved=1'
+    ];
+
+    if ($savedActivityId !== '') {
+        $params[] = 'id=' . urlencode($savedActivityId);
+    }
+
+    if ($assignment !== '') {
+        $params[] = 'assignment=' . urlencode($assignment);
+    }
+
+    if ($source !== '') {
+        $params[] = 'source=' . urlencode($source);
+    }
+
+    header('Location: editor.php?' . implode('&', $params));
     exit;
 }
 
@@ -151,99 +319,217 @@ if (isset($_GET['saved'])) {
 }
 ?>
 
-<form method="post" style="text-align:left; max-width:780px; margin:0 auto 20px auto;">
-    <h3 style="margin:0 0 12px 0;">➕ Nuevo bloque Drag &amp; Drop</h3>
+<style>
+.dd-form{
+    max-width:860px;
+    margin:0 auto;
+    text-align:left;
+}
+.title-box,
+.block-item{
+    background:#f9fafb;
+    padding:14px;
+    margin-bottom:14px;
+    border-radius:12px;
+    border:1px solid #e5e7eb;
+}
+.title-box label,
+.block-item label{
+    display:block;
+    font-weight:700;
+    margin-bottom:8px;
+}
+.title-box input,
+.block-item input,
+.block-item textarea{
+    width:100%;
+    padding:10px 12px;
+    border-radius:8px;
+    border:1px solid #d1d5db;
+    box-sizing:border-box;
+    margin-bottom:12px;
+    font-size:14px;
+}
+.block-item textarea{
+    min-height:90px;
+    resize:vertical;
+}
+.toolbar-row{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+    justify-content:center;
+    margin-top:8px;
+}
+.btn-add{
+    background:#16a34a;
+    color:#fff;
+    padding:10px 14px;
+    border:none;
+    border-radius:8px;
+    cursor:pointer;
+    font-weight:700;
+}
+.btn-remove{
+    background:#ef4444;
+    color:#fff;
+    border:none;
+    padding:8px 12px;
+    border-radius:8px;
+    cursor:pointer;
+    font-weight:700;
+}
+.help{
+    margin:-6px 0 12px 0;
+    color:#6b7280;
+    font-size:13px;
+}
+.checkbox-row{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    font-weight:700;
+    margin-bottom:10px;
+}
+.checkbox-row input[type="checkbox"]{
+    width:auto;
+    margin:0;
+}
+</style>
 
-    <label style="font-weight:bold;display:block;margin-bottom:6px;">Oración o párrafo completo</label>
-    <textarea
-        name="text"
-        required
-        placeholder="Ej: I usually wake up early and drink coffee before work."
-        style="width:100%;min-height:90px;padding:10px;margin:0 0 14px 0;border:1px solid #ccc;border-radius:8px;resize:vertical;"
-    ></textarea>
+<form method="post" class="dd-form" id="dragDropForm">
+    <div class="title-box">
+        <label for="activity_title">Activity title</label>
+        <input
+            id="activity_title"
+            type="text"
+            name="activity_title"
+            value="<?= htmlspecialchars($activityTitle, ENT_QUOTES, 'UTF-8') ?>"
+            placeholder="Example: Build the sentence"
+            required
+        >
+    </div>
 
-    <label style="font-weight:bold;display:block;margin-bottom:6px;">Palabras para arrastrar (separadas por coma)</label>
-    <input
-        type="text"
-        name="missing_words"
-        required
-        placeholder="Ej: usually, early, coffee"
-        style="width:100%;padding:10px;margin:0 0 10px 0;border:1px solid #ccc;border-radius:8px;"
-    >
+    <div id="blocksContainer">
+        <?php foreach ($blocks as $block) { ?>
+            <div class="block-item">
+                <input type="hidden" name="block_id[]" value="<?= htmlspecialchars((string) ($block['id'] ?? uniqid('drag_drop_')), ENT_QUOTES, 'UTF-8') ?>">
 
-    <label style="display:flex;align-items:center;gap:8px;margin:0 0 14px 0;font-weight:bold;">
-        <input type="hidden" name="listen_enabled" value="0">
-        <input type="checkbox" name="listen_enabled" value="1" checked>
-        Activar botón Listen en este bloque
-    </label>
+                <label>Sentence or paragraph</label>
+                <textarea name="text[]" required><?= htmlspecialchars((string) ($block['text'] ?? ''), ENT_QUOTES, 'UTF-8') ?></textarea>
 
-    <p style="margin:0 0 16px 0;color:#6b7280;font-size:14px;">
-        Si desactivas Listen, en el viewer no se mostrará el botón de audio para este bloque.
-    </p>
+                <label>Words to drag</label>
+                <input
+                    type="text"
+                    name="missing_words[]"
+                    value="<?= htmlspecialchars(implode(', ', is_array($block['missing_words'] ?? null) ? $block['missing_words'] : []), ENT_QUOTES, 'UTF-8') ?>"
+                    placeholder="Example: usually, early, coffee"
+                    required
+                >
+                <p class="help">Separate the draggable words with commas.</p>
 
-    <button type="submit" style="background:#0b5ed7;color:#fff;border:none;padding:10px 16px;border-radius:8px;cursor:pointer;">
-        💾 Guardar bloque
-    </button>
-</form>
+                <label class="checkbox-row">
+                    <input type="hidden" name="listen_enabled[]" value="0">
+                    <input type="checkbox" value="1" <?= !empty($block['listen_enabled']) ? 'checked' : '' ?> onchange="syncCheckboxValue(this)">
+                    Activate Listen in this block
+                </label>
 
-<hr style="margin:24px 0; border:none; border-top:1px solid #e5e7eb;">
-
-<div style="max-width:780px; margin:0 auto; text-align:left;">
-    <h3 style="margin:0 0 12px 0;">📦 Bloques guardados</h3>
-
-    <?php if (empty($blocks)) { ?>
-        <p style="color:#6b7280;">No hay bloques guardados todavía.</p>
-    <?php } else { ?>
-        <?php foreach ($blocks as $i => $block) { ?>
-            <?php
-            $textValue = '';
-            if (isset($block['text']) && is_string($block['text'])) {
-                $textValue = $block['text'];
-            } elseif (isset($block['sentence']) && is_string($block['sentence'])) {
-                $textValue = $block['sentence'];
-            }
-
-            $wordsValue = array();
-            if (isset($block['missing_words']) && is_array($block['missing_words'])) {
-                $wordsValue = $block['missing_words'];
-            }
-
-            $listenStatus = block_listen_enabled($block);
-            ?>
-            <div style="border:1px solid #e5e7eb;border-radius:12px;padding:12px;margin-bottom:12px;background:#f9fafb;">
-                <div style="font-weight:bold; margin-bottom:8px;">📝 <?php echo htmlspecialchars($textValue); ?></div>
-                <div style="margin-bottom:8px;font-size:13px;color:<?php echo $listenStatus ? '#166534' : '#b91c1c'; ?>;font-weight:bold;">
-                    <?php echo $listenStatus ? '🔊 Listen: activado' : '🔇 Listen: desactivado'; ?>
-                </div>
-
-                <div style="margin-bottom:10px;">
-                    <span style="font-size:13px;color:#6b7280;font-weight:bold;">Palabras drag:</span>
-                    <?php if (empty($wordsValue)) { ?>
-                        <span style="font-size:13px;color:#9ca3af;">(sin palabras definidas)</span>
-                    <?php } else { ?>
-                        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:6px;">
-                            <?php foreach ($wordsValue as $w) { ?>
-                                <span style="background:#dbeafe;color:#1e3a8a;padding:5px 9px;border-radius:999px;font-size:13px;">
-                                    <?php echo htmlspecialchars($w); ?>
-                                </span>
-                            <?php } ?>
-                        </div>
-                    <?php } ?>
-                </div>
-
-                <form method="post" style="margin:0;">
-                    <input type="hidden" name="delete_index" value="<?php echo $i; ?>">
-                    <button
-                        type="submit"
-                        style="background:#ef4444;color:#fff;border:none;padding:8px 12px;border-radius:8px;cursor:pointer;"
-                    >
-                        ✖ Eliminar
-                    </button>
-                </form>
+                <button type="button" class="btn-remove" onclick="removeBlock(this)">✖ Remove</button>
             </div>
         <?php } ?>
-    <?php } ?>
-</div>
+    </div>
+
+    <div class="toolbar-row">
+        <button type="button" class="btn-add" onclick="addBlock()">+ Add Block</button>
+        <button type="submit" class="save-btn">💾 Save</button>
+    </div>
+</form>
+
+<script>
+let formChanged = false;
+let formSubmitted = false;
+
+function markChanged() {
+    formChanged = true;
+}
+
+function syncCheckboxValue(checkbox) {
+    const hidden = checkbox.parentElement.querySelector('input[type="hidden"][name="listen_enabled[]"]');
+    if (hidden) {
+        hidden.value = checkbox.checked ? '1' : '0';
+    }
+    markChanged();
+}
+
+function removeBlock(button) {
+    const item = button.closest('.block-item');
+    if (item) {
+        item.remove();
+        markChanged();
+    }
+}
+
+function addBlock() {
+    const container = document.getElementById('blocksContainer');
+    const div = document.createElement('div');
+    div.className = 'block-item';
+    div.innerHTML = `
+        <input type="hidden" name="block_id[]" value="drag_drop_${Date.now()}_${Math.floor(Math.random() * 1000)}">
+
+        <label>Sentence or paragraph</label>
+        <textarea name="text[]" required></textarea>
+
+        <label>Words to drag</label>
+        <input type="text" name="missing_words[]" placeholder="Example: usually, early, coffee" required>
+        <p class="help">Separate the draggable words with commas.</p>
+
+        <label class="checkbox-row">
+            <input type="hidden" name="listen_enabled[]" value="0">
+            <input type="checkbox" value="1" onchange="syncCheckboxValue(this)">
+            Activate Listen in this block
+        </label>
+
+        <button type="button" class="btn-remove" onclick="removeBlock(this)">✖ Remove</button>
+    `;
+    container.appendChild(div);
+    bindChangeTracking(div);
+    markChanged();
+}
+
+function bindChangeTracking(scope) {
+    const elements = scope.querySelectorAll('input, textarea, select');
+    elements.forEach(function(el) {
+        el.addEventListener('input', markChanged);
+        el.addEventListener('change', markChanged);
+    });
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+    bindChangeTracking(document);
+
+    document.querySelectorAll('.checkbox-row input[type="checkbox"]').forEach(function(cb) {
+        const hidden = cb.parentElement.querySelector('input[type="hidden"][name="listen_enabled[]"]');
+        if (hidden) {
+            hidden.value = cb.checked ? '1' : '0';
+        }
+    });
+
+    const form = document.getElementById('dragDropForm');
+    if (form) {
+        form.addEventListener('submit', function () {
+            formSubmitted = true;
+            formChanged = false;
+        });
+    }
+});
+
+window.addEventListener('beforeunload', function (e) {
+    if (formChanged && !formSubmitted) {
+        e.preventDefault();
+        e.returnValue = '';
+    }
+});
+</script>
 
 <?php
 $content = ob_get_clean();
