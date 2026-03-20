@@ -2,43 +2,164 @@
 require_once __DIR__ . '/../../config/db.php';
 require_once __DIR__ . '/../../core/_activity_viewer_template.php';
 
-$activityId = isset($_GET['id']) ? $_GET['id'] : null;
-$unit = isset($_GET['unit']) ? $_GET['unit'] : null;
+$activityId = isset($_GET['id']) ? trim((string) $_GET['id']) : '';
+$unit = isset($_GET['unit']) ? trim((string) $_GET['unit']) : '';
 
-if ($activityId && !$unit) {
-    $stmt = $pdo->prepare(
-        "SELECT unit_id
-         FROM activities
-         WHERE id = :id
-         LIMIT 1"
-    );
-    $stmt->execute(array('id' => $activityId));
-    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+if ($activityId === '' && $unit === '') {
+    die('Actividad no especificada');
+}
 
-    if (!$row) {
-        die('Actividad no encontrada');
+function resolve_unit_from_activity(PDO $pdo, string $activityId): string
+{
+    if ($activityId === '') {
+        return '';
     }
 
-    $unit = $row['unit_id'];
+    $stmt = $pdo->prepare("
+        SELECT unit_id
+        FROM activities
+        WHERE id = :id
+        LIMIT 1
+    ");
+    $stmt->execute(['id' => $activityId]);
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    return $row && isset($row['unit_id']) ? (string) $row['unit_id'] : '';
 }
 
-if (!$unit) {
-    die('Unidad no especificada');
+function default_drag_drop_title(): string
+{
+    return 'Build the Sentence';
 }
 
-$stmt = $pdo->prepare(
-    "SELECT data
-     FROM activities
-     WHERE unit_id = :unit
-       AND type = 'drag_drop'
-     LIMIT 1"
-);
-$stmt->execute(array('unit' => $unit));
-$row = $stmt->fetch(PDO::FETCH_ASSOC);
+function parse_listen_value($raw): bool
+{
+    if (is_bool($raw)) return $raw;
+    if (is_numeric($raw)) return (int) $raw === 1;
+    if (is_string($raw)) {
+        $value = strtolower(trim($raw));
+        if (in_array($value, ['1', 'true', 'yes', 'on'], true)) return true;
+        if (in_array($value, ['0', 'false', 'no', 'off'], true)) return false;
+    }
+    return true;
+}
 
-$raw = isset($row['data']) ? $row['data'] : '[]';
-$decoded = json_decode($raw, true);
-$blocks = is_array($decoded) ? $decoded : array();
+function normalize_drag_drop_payload($rawData): array
+{
+    $default = [
+        'title' => default_drag_drop_title(),
+        'blocks' => [],
+    ];
+
+    if ($rawData === null || $rawData === '') {
+        return $default;
+    }
+
+    $decoded = is_string($rawData) ? json_decode($rawData, true) : $rawData;
+    if (!is_array($decoded)) {
+        return $default;
+    }
+
+    $title = trim((string) ($decoded['title'] ?? ''));
+    $blocksSource = $decoded;
+
+    if (isset($decoded['blocks']) && is_array($decoded['blocks'])) {
+        $blocksSource = $decoded['blocks'];
+    }
+
+    $blocks = [];
+
+    foreach ($blocksSource as $block) {
+        if (!is_array($block)) {
+            continue;
+        }
+
+        $text = '';
+        if (isset($block['text']) && is_string($block['text'])) {
+            $text = trim($block['text']);
+        } elseif (isset($block['sentence']) && is_string($block['sentence'])) {
+            $text = trim($block['sentence']);
+        }
+
+        $missingWords = [];
+        if (isset($block['missing_words']) && is_array($block['missing_words'])) {
+            foreach ($block['missing_words'] as $word) {
+                $w = trim((string) $word);
+                if ($w !== '') {
+                    $missingWords[] = $w;
+                }
+            }
+        }
+
+        if ($text === '') {
+            continue;
+        }
+
+        $listenEnabled = array_key_exists('listen_enabled', $block)
+            ? parse_listen_value($block['listen_enabled'])
+            : (array_key_exists('listen', $block) ? parse_listen_value($block['listen']) : true);
+
+        $blocks[] = [
+            'text' => $text,
+            'missing_words' => $missingWords,
+            'listen_enabled' => $listenEnabled,
+        ];
+    }
+
+    return [
+        'title' => $title !== '' ? $title : default_drag_drop_title(),
+        'blocks' => $blocks,
+    ];
+}
+
+function load_drag_drop_activity(PDO $pdo, string $activityId, string $unit): array
+{
+    $fallback = [
+        'title' => default_drag_drop_title(),
+        'blocks' => [],
+    ];
+
+    $row = null;
+
+    if ($activityId !== '') {
+        $stmt = $pdo->prepare("
+            SELECT data
+            FROM activities
+            WHERE id = :id
+              AND type = 'drag_drop'
+            LIMIT 1
+        ");
+        $stmt->execute(['id' => $activityId]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+    }
+
+    if (!$row && $unit !== '') {
+        $stmt = $pdo->prepare("
+            SELECT data
+            FROM activities
+            WHERE unit_id = :unit
+              AND type = 'drag_drop'
+            ORDER BY id ASC
+            LIMIT 1
+        ");
+        $stmt->execute(['unit' => $unit]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+    }
+
+    if (!$row) {
+        return $fallback;
+    }
+
+    return normalize_drag_drop_payload($row['data'] ?? null);
+}
+
+if ($unit === '' && $activityId !== '') {
+    $unit = resolve_unit_from_activity($pdo, $activityId);
+}
+
+$activity = load_drag_drop_activity($pdo, $activityId, $unit);
+$viewerTitle = (string) ($activity['title'] ?? default_drag_drop_title());
+$blocks = is_array($activity['blocks'] ?? null) ? $activity['blocks'] : [];
 
 if (count($blocks) === 0) {
     die('No hay oraciones para esta unidad');
@@ -55,15 +176,16 @@ ob_start();
 
 #sentenceBox{
   margin:20px auto;
-  padding:15px;
+  padding:20px;
   background:white;
-  border-radius:15px;
-  max-width:900px;
+  border-radius:18px;
+  max-width:920px;
+  box-shadow:0 8px 24px rgba(0,0,0,.08);
 }
 
 #promptText{
   line-height:2;
-  font-size:20px;
+  font-size:22px;
 }
 
 .blank{
@@ -111,13 +233,14 @@ button{
   color:white;
   cursor:pointer;
   margin:6px;
+  font-weight:700;
 }
 
 #listenBtn.hidden{ display:none; }
 
 #feedback{
   text-align:center;
-  font-size:18px;
+  font-size:20px;
   font-weight:bold;
   min-height:28px;
 }
@@ -125,24 +248,29 @@ button{
 .good{ color:green; }
 .bad{ color:crimson; }
 
-.controls{ margin-top:15px; text-align:center; }
+.controls{
+  margin-top:15px;
+  text-align:center;
+}
 </style>
 
-<p class="instructions">Completa los espacios arrastrando las palabras correctas.</p>
+<p class="instructions">Complete the blanks by dragging the correct words.</p>
 
 <div id="sentenceBox">
-  <button id="listenBtn" onclick="speak()">🔊 Listen</button>
+  <button id="listenBtn" type="button" onclick="speak()">🔊 Listen</button>
   <div id="promptText"></div>
 </div>
 
 <div id="wordBank"></div>
 
 <div class="controls">
-  <button onclick="checkSentence()">✅ Check</button>
-  <button onclick="nextSentence()">➡️ Next</button>
+  <button type="button" onclick="checkSentence()">✅ Check</button>
+  <button type="button" onclick="nextSentence()">➡️ Next</button>
 </div>
 
 <div id="feedback"></div>
+
+<audio id="winSound" src="../../hangman/assets/win.mp3" preload="auto"></audio>
 
 <script>
 const blocks = <?= json_encode($blocks, JSON_UNESCAPED_UNICODE) ?>;
@@ -152,54 +280,20 @@ let dragged = null;
 let currentText = '';
 let currentAnswers = [];
 let listenEnabled = true;
+let finished = false;
 
 const promptText = document.getElementById('promptText');
 const wordBank = document.getElementById('wordBank');
 const feedback = document.getElementById('feedback');
 const listenBtn = document.getElementById('listenBtn');
+const winSound = document.getElementById('winSound');
 
-function parseListenValue(raw) {
-  if (typeof raw === 'boolean') {
-    return raw;
-  }
-
-  if (typeof raw === 'number') {
-    return raw === 1;
-  }
-
-  if (typeof raw === 'string') {
-    const value = raw.trim().toLowerCase();
-    if (value === '1' || value === 'true' || value === 'yes' || value === 'on') {
-      return true;
-    }
-
-    if (value === '0' || value === 'false' || value === 'no' || value === 'off') {
-      return false;
-    }
-  }
-
-  return true;
-}
-
-function normalizeBlock(block) {
-  const text = (block && typeof block.text === 'string' && block.text.trim() !== '')
-    ? block.text.trim()
-    : ((block && typeof block.sentence === 'string') ? block.sentence.trim() : '');
-
-  let missing = [];
-  if (block && Array.isArray(block.missing_words)) {
-    missing = block.missing_words
-      .map(function (w) { return String(w).trim(); })
-      .filter(function (w) { return w.length > 0; });
-  }
-
-  const rawListen = block && Object.prototype.hasOwnProperty.call(block, 'listen_enabled')
-    ? block.listen_enabled
-    : (block ? block.listen : true);
-
-  const listen = parseListenValue(rawListen);
-
-  return { text: text, missing_words: missing, listen_enabled: listen };
+function playSound(audio) {
+  try {
+    audio.pause();
+    audio.currentTime = 0;
+    audio.play();
+  } catch (e) {}
 }
 
 function setListenVisible(visible) {
@@ -243,9 +337,7 @@ function createBlank(indexBlank) {
 
   blank.addEventListener('drop', function (event) {
     event.preventDefault();
-    if (!dragged) {
-      return;
-    }
+    if (!dragged || finished) return;
 
     const draggedWord = dragged.dataset.word || '';
     const oldWord = blank.dataset.word || '';
@@ -263,10 +355,10 @@ function createBlank(indexBlank) {
   });
 
   blank.addEventListener('click', function () {
+    if (finished) return;
+
     const existing = blank.dataset.word || '';
-    if (!existing) {
-      return;
-    }
+    if (!existing) return;
 
     wordBank.appendChild(createWordChip(existing));
     blank.dataset.word = '';
@@ -279,21 +371,22 @@ function createBlank(indexBlank) {
 
 function loadSentence() {
   dragged = null;
+  finished = false;
   feedback.textContent = '';
   feedback.className = '';
 
   promptText.innerHTML = '';
   wordBank.innerHTML = '';
 
-  const block = normalizeBlock(blocks[index] || {});
-  currentText = block.text;
-  currentAnswers = block.missing_words.slice();
-  listenEnabled = block.listen_enabled;
+  const block = blocks[index] || {};
+  currentText = typeof block.text === 'string' ? block.text.trim() : '';
+  currentAnswers = Array.isArray(block.missing_words) ? block.missing_words.slice() : [];
+  listenEnabled = !!block.listen_enabled;
 
   setListenVisible(listenEnabled);
 
   if (!currentText) {
-    feedback.textContent = '⚠ Bloque vacío';
+    feedback.textContent = '⚠ Empty block';
     feedback.className = 'bad';
     return;
   }
@@ -331,6 +424,8 @@ function getBuiltAnswers() {
 }
 
 function checkSentence() {
+  if (finished) return;
+
   const built = getBuiltAnswers();
 
   if (built.includes('')) {
@@ -340,8 +435,17 @@ function checkSentence() {
   }
 
   if (JSON.stringify(built) === JSON.stringify(currentAnswers)) {
+    if (index === blocks.length - 1) {
+      feedback.textContent = '🏆 Completed!';
+      feedback.className = 'good';
+      playSound(winSound);
+      finished = true;
+      return;
+    }
+
     feedback.textContent = '🌟 Excellent!';
     feedback.className = 'good';
+    finished = true;
   } else {
     feedback.textContent = '🔁 Try again!';
     feedback.className = 'bad';
@@ -349,22 +453,20 @@ function checkSentence() {
 }
 
 function nextSentence() {
-  index += 1;
-
-  if (index >= blocks.length) {
-    feedback.textContent = '🏆 You finished all sentences!';
+  if (index >= blocks.length - 1) {
+    feedback.textContent = '🏆 Completed!';
     feedback.className = 'good';
-    index = blocks.length - 1;
+    playSound(winSound);
+    finished = true;
     return;
   }
 
+  index += 1;
   loadSentence();
 }
 
 function speak() {
-  if (!listenEnabled) {
-    return;
-  }
+  if (!listenEnabled) return;
 
   speechSynthesis.cancel();
   const msg = new SpeechSynthesisUtterance(currentText || '');
@@ -377,4 +479,4 @@ loadSentence();
 </script>
 <?php
 $content = ob_get_clean();
-render_activity_viewer('Build the Sentence', '🎯', $content);
+render_activity_viewer($viewerTitle, '🎯', $content);
