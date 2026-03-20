@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . "/../../config/db.php";
+require_once __DIR__ . "/../../core/cloudinary_upload.php";
 require_once __DIR__ . "/../../core/_activity_editor_template.php";
 
 $activityId = isset($_GET["id"]) ? trim((string) $_GET["id"]) : "";
@@ -74,6 +75,7 @@ function normalize_hangman_payload($rawData): array
                     "id" => uniqid("hang_"),
                     "word" => $word,
                     "hint" => "",
+                    "image" => "",
                 ];
             }
             continue;
@@ -85,6 +87,7 @@ function normalize_hangman_payload($rawData): array
 
         $word = strtoupper(trim((string) ($item["word"] ?? "")));
         $hint = trim((string) ($item["hint"] ?? ""));
+        $image = trim((string) ($item["image"] ?? ""));
 
         if ($word === "") {
             continue;
@@ -94,6 +97,7 @@ function normalize_hangman_payload($rawData): array
             "id" => trim((string) ($item["id"] ?? uniqid("hang_"))),
             "word" => $word,
             "hint" => $hint,
+            "image" => $image,
         ];
     }
 
@@ -241,13 +245,29 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $itemIds = isset($_POST["item_id"]) && is_array($_POST["item_id"]) ? $_POST["item_id"] : [];
     $words = isset($_POST["word"]) && is_array($_POST["word"]) ? $_POST["word"] : [];
     $hints = isset($_POST["hint"]) && is_array($_POST["hint"]) ? $_POST["hint"] : [];
+    $images = isset($_POST["image_existing"]) && is_array($_POST["image_existing"]) ? $_POST["image_existing"] : [];
+    $imageFiles = isset($_FILES["image_file"]) ? $_FILES["image_file"] : null;
 
     $sanitized = [];
 
     foreach ($words as $i => $wordRaw) {
         $word = strtoupper(trim((string) $wordRaw));
         $hint = trim((string) ($hints[$i] ?? ""));
+        $image = trim((string) ($images[$i] ?? ""));
         $itemId = trim((string) ($itemIds[$i] ?? uniqid("hang_")));
+
+        if (
+            $imageFiles &&
+            isset($imageFiles["name"][$i]) &&
+            $imageFiles["name"][$i] !== "" &&
+            isset($imageFiles["tmp_name"][$i]) &&
+            $imageFiles["tmp_name"][$i] !== ""
+        ) {
+            $uploadedImage = upload_to_cloudinary($imageFiles["tmp_name"][$i]);
+            if ($uploadedImage) {
+                $image = $uploadedImage;
+            }
+        }
 
         if ($word === "") {
             continue;
@@ -257,6 +277,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             "id" => $itemId !== "" ? $itemId : uniqid("hang_"),
             "word" => $word,
             "hint" => $hint,
+            "image" => $image,
         ];
     }
 
@@ -321,6 +342,16 @@ ob_start();
     min-height:80px;
     resize:vertical;
 }
+.image-preview{
+    display:block;
+    max-width:140px;
+    max-height:140px;
+    object-fit:contain;
+    border-radius:10px;
+    border:1px solid #d1d5db;
+    background:#fff;
+    margin-bottom:10px;
+}
 .toolbar-row{
     display:flex;
     gap:10px;
@@ -352,7 +383,7 @@ ob_start();
     <p style="color:green;font-weight:bold;margin-bottom:15px;">✔ Guardado correctamente</p>
 <?php } ?>
 
-<form class="hg-form" id="hangmanForm" method="post">
+<form class="hg-form" id="hangmanForm" method="post" enctype="multipart/form-data">
     <div class="title-box">
         <label for="activity_title">Activity title</label>
         <input
@@ -360,7 +391,7 @@ ob_start();
             type="text"
             name="activity_title"
             value="<?= htmlspecialchars($activityTitle, ENT_QUOTES, 'UTF-8') ?>"
-            placeholder="Example: Guess the classroom words"
+            placeholder="Example: Guess the shapes"
             required
         >
     </div>
@@ -369,12 +400,19 @@ ob_start();
         <?php foreach ($items as $item) { ?>
             <div class="word-item">
                 <input type="hidden" name="item_id[]" value="<?= htmlspecialchars((string) ($item["id"] ?? uniqid("hang_")), ENT_QUOTES, 'UTF-8') ?>">
+                <input type="hidden" name="image_existing[]" value="<?= htmlspecialchars((string) ($item["image"] ?? ""), ENT_QUOTES, 'UTF-8') ?>">
 
-                <label>Word</label>
+                <label>Word or phrase</label>
                 <input type="text" name="word[]" value="<?= htmlspecialchars((string) ($item["word"] ?? ""), ENT_QUOTES, 'UTF-8') ?>" required>
 
-                <label>Hint</label>
-                <textarea name="hint[]" placeholder="Example: It is an animal / It is a color / It is in the classroom"><?= htmlspecialchars((string) ($item["hint"] ?? ""), ENT_QUOTES, 'UTF-8') ?></textarea>
+                <label>Hint text</label>
+                <textarea name="hint[]" placeholder="Example: A shape with 4 sides."><?= htmlspecialchars((string) ($item["hint"] ?? ""), ENT_QUOTES, 'UTF-8') ?></textarea>
+
+                <label>Hint image (optional)</label>
+                <?php if (!empty($item["image"])) { ?>
+                    <img src="<?= htmlspecialchars((string) $item["image"], ENT_QUOTES, 'UTF-8') ?>" alt="hint-image" class="image-preview">
+                <?php } ?>
+                <input type="file" name="image_file[]" accept="image/*">
 
                 <button type="button" class="btn-remove" onclick="removeItem(this)">✖ Remove</button>
             </div>
@@ -409,12 +447,16 @@ function addItem() {
     div.className = 'word-item';
     div.innerHTML = `
         <input type="hidden" name="item_id[]" value="hang_${Date.now()}_${Math.floor(Math.random() * 1000)}">
+        <input type="hidden" name="image_existing[]" value="">
 
-        <label>Word</label>
+        <label>Word or phrase</label>
         <input type="text" name="word[]" required>
 
-        <label>Hint</label>
-        <textarea name="hint[]" placeholder="Example: It is an animal / It is a color / It is in the classroom"></textarea>
+        <label>Hint text</label>
+        <textarea name="hint[]" placeholder="Example: A shape with 4 sides."></textarea>
+
+        <label>Hint image (optional)</label>
+        <input type="file" name="image_file[]" accept="image/*">
 
         <button type="button" class="btn-remove" onclick="removeItem(this)">✖ Remove</button>
     `;
