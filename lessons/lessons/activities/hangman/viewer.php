@@ -62,7 +62,7 @@ function normalize_hangman_payload($rawData): array
         if (is_string($item)) {
             $word = strtoupper(trim($item));
             if ($word !== "") {
-                $items[] = ["word" => $word, "hint" => ""];
+                $items[] = ["word" => $word, "hint" => "", "image" => ""];
             }
             continue;
         }
@@ -73,6 +73,7 @@ function normalize_hangman_payload($rawData): array
 
         $word = strtoupper(trim((string) ($item["word"] ?? "")));
         $hint = trim((string) ($item["hint"] ?? ""));
+        $image = trim((string) ($item["image"] ?? ""));
 
         if ($word === "") {
             continue;
@@ -81,6 +82,7 @@ function normalize_hangman_payload($rawData): array
         $items[] = [
             "word" => $word,
             "hint" => $hint,
+            "image" => $image,
         ];
     }
 
@@ -140,7 +142,7 @@ $viewerTitle = (string) ($activity["title"] ?? default_hangman_title());
 $items = is_array($activity["items"] ?? null) ? $activity["items"] : [];
 
 if (empty($items)) {
-    $items = [["word" => "TEST", "hint" => ""]];
+    $items = [["word" => "TEST", "hint" => "", "image" => ""]];
 }
 
 ob_start();
@@ -148,7 +150,7 @@ ob_start();
 
 <style>
 .hg-viewer{
-  max-width:820px;
+  max-width:860px;
   margin:0 auto;
   text-align:center;
 }
@@ -163,6 +165,27 @@ ob_start();
   padding:24px;
   box-shadow:0 8px 24px rgba(0,0,0,.08);
 }
+.hg-visual{
+  min-height:240px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  margin-bottom:10px;
+}
+.hg-hangman-img{
+  width:220px;
+  max-width:100%;
+  display:block;
+  margin:0 auto;
+}
+.hg-hint-image{
+  max-width:220px;
+  max-height:180px;
+  object-fit:contain;
+  border-radius:14px;
+  display:none;
+  margin:0 auto 12px;
+}
 .hg-hint{
   margin:0 0 16px;
   font-size:16px;
@@ -172,10 +195,26 @@ ob_start();
 }
 .hg-word{
   font-size:34px;
-  letter-spacing:10px;
   margin:20px 0;
   font-weight:800;
   color:#1f2937;
+  display:flex;
+  flex-wrap:wrap;
+  justify-content:center;
+  gap:8px 10px;
+}
+.hg-char{
+  min-width:24px;
+  display:inline-flex;
+  justify-content:center;
+  align-items:center;
+  border-bottom:2px solid #1f2937;
+  line-height:1;
+  padding-bottom:4px;
+}
+.hg-char.space{
+  min-width:18px;
+  border-bottom:none;
 }
 .hg-keyboard{
   margin-top:15px;
@@ -207,6 +246,10 @@ ob_start();
   margin:6px;
   font-weight:700;
 }
+.hg-controls button:disabled{
+  opacity:.55;
+  cursor:default;
+}
 #feedback{
   font-size:20px;
   font-weight:800;
@@ -221,7 +264,11 @@ ob_start();
   <p class="hg-subtitle">Guess the correct word.</p>
 
   <div class="hg-game-box">
-    <img id="hangmanImg" src="../../hangman/assets/hangman0.png" width="220" alt="hangman">
+    <div class="hg-visual">
+      <img id="hangmanImg" class="hg-hangman-img" src="../../hangman/assets/hangman0.png" alt="hangman">
+    </div>
+
+    <img id="hintImage" class="hg-hint-image" alt="hint image">
 
     <div id="hint" class="hg-hint"></div>
 
@@ -230,65 +277,120 @@ ob_start();
     <div id="keyboard" class="hg-keyboard"></div>
 
     <div class="hg-controls">
-      <button type="button" onclick="checkGame()">✅ Check</button>
-      <button type="button" onclick="showHint()">💡 Hint</button>
-      <button type="button" onclick="nextWord()">➡️ Next</button>
+      <button type="button" id="checkBtn" onclick="checkGame()">✅ Check</button>
+      <button type="button" id="hintBtn" onclick="showHint()">💡 Hint</button>
+      <button type="button" id="nextBtn" onclick="nextWord()">➡️ Next</button>
     </div>
 
     <div id="feedback"></div>
   </div>
 </div>
 
-<audio id="correctSound" src="../../hangman/assets/realcorrect.mp3"></audio>
-<audio id="winSound" src="../../hangman/assets/win.mp3"></audio>
-<audio id="loseSound" src="../../hangman/assets/losefun.mp3"></audio>
+<audio id="correctSound" src="../../hangman/assets/realcorrect.mp3" preload="auto"></audio>
+<audio id="winSound" src="../../hangman/assets/win.mp3" preload="auto"></audio>
+<audio id="loseSound" src="../../hangman/assets/losefun.mp3" preload="auto"></audio>
 
 <script>
 const items = <?= json_encode($items, JSON_UNESCAPED_UNICODE) ?>;
+const hangmanImages = [];
+
+for (let i = 0; i <= 7; i++) {
+  const img = new Image();
+  img.src = `../../hangman/assets/hangman${i}.png`;
+  hangmanImages.push(img);
+}
 
 let index = 0;
 let current = items[index];
-let word = current.word;
+let word = (current.word || 'TEST').toUpperCase();
 let hint = current.hint || '';
+let hintImage = current.image || '';
 let guessed = [];
 let mistakes = 0;
 let maxMistakes = 7;
 let hintVisible = false;
+let roundSolved = false;
+let roundLost = false;
+let finished = false;
 
 const feedback = document.getElementById("feedback");
+const hangmanImg = document.getElementById("hangmanImg");
+const hintEl = document.getElementById("hint");
+const hintImageEl = document.getElementById("hintImage");
+const keyboardEl = document.getElementById("keyboard");
+const checkBtn = document.getElementById("checkBtn");
+const hintBtn = document.getElementById("hintBtn");
+const nextBtn = document.getElementById("nextBtn");
+const correctSound = document.getElementById("correctSound");
+const winSound = document.getElementById("winSound");
+const loseSound = document.getElementById("loseSound");
 
-function loadWord(){
-  guessed = [];
-  mistakes = 0;
-  hintVisible = false;
-  current = items[index];
-  word = (current.word || 'TEST').toUpperCase();
-  hint = current.hint || '';
-
-  feedback.textContent = "";
-  feedback.className = "";
-
-  document.getElementById("hangmanImg").src = "../../hangman/assets/hangman0.png";
-  document.getElementById("hint").textContent = "";
-
-  buildKeyboard();
-  renderWord();
+function playSound(audioEl) {
+  try {
+    audioEl.pause();
+    audioEl.currentTime = 0;
+    audioEl.play();
+  } catch (e) {}
 }
 
-function renderWord(){
-  let display = "";
-  for (let l of word){
-    display += guessed.includes(l) ? l + " " : "_ ";
+function sanitizeWord(text) {
+  return String(text || "").toUpperCase();
+}
+
+function setRoundButtons() {
+  checkBtn.disabled = finished;
+  hintBtn.disabled = finished;
+  nextBtn.disabled = finished;
+}
+
+function updateHintVisual() {
+  if (hintVisible && hintImage) {
+    hintImageEl.src = hintImage;
+    hintImageEl.style.display = 'block';
+  } else {
+    hintImageEl.removeAttribute('src');
+    hintImageEl.style.display = 'none';
   }
-  document.getElementById("word").innerText = display;
+
+  if (hintVisible) {
+    hintEl.textContent = hint ? "💡 Hint: " + hint : "💡 No hint available.";
+  } else {
+    hintEl.textContent = "";
+  }
 }
 
-function showHint(){
+function updateHangmanImage() {
+  hangmanImg.src = `../../hangman/assets/hangman${mistakes}.png`;
+}
+
+function isSolved() {
+  return word.split("").every(letter => {
+    if (letter === " ") return true;
+    return guessed.includes(letter);
+  });
+}
+
+function renderWord() {
+  const html = word.split("").map(letter => {
+    if (letter === " ") {
+      return '<span class="hg-char space">&nbsp;</span>';
+    }
+    if (guessed.includes(letter)) {
+      return `<span class="hg-char">${letter}</span>`;
+    }
+    return '<span class="hg-char">&nbsp;</span>';
+  }).join("");
+
+  document.getElementById("word").innerHTML = html;
+}
+
+function showHint() {
   hintVisible = true;
-  document.getElementById("hint").textContent = hint ? "💡 Hint: " + hint : "💡 No hint available.";
+  updateHintVisual();
 }
 
-function guess(letter){
+function guess(letter) {
+  if (finished || roundSolved || roundLost) return;
   if (guessed.includes(letter)) return;
 
   guessed.push(letter);
@@ -296,30 +398,39 @@ function guess(letter){
   const btn = document.querySelector(`button[data-letter="${letter}"]`);
   if (btn) btn.disabled = true;
 
-  if (!word.includes(letter)){
-    mistakes++;
-    document.getElementById("hangmanImg").src = "../../hangman/assets/hangman" + mistakes + ".png";
+  if (!word.includes(letter)) {
+    mistakes = Math.min(maxMistakes, mistakes + 1);
+    updateHangmanImage();
   }
 
   renderWord();
 }
 
-function checkGame(){
-  const completed = word.split("").every(l => guessed.includes(l));
+function checkGame() {
+  if (finished) return;
 
-  if (completed){
-    feedback.textContent = "🌟 Excellent!";
-    feedback.className = "good";
-    document.getElementById("correctSound").currentTime = 0;
-    document.getElementById("correctSound").play();
+  if (isSolved()) {
+    if (index === items.length - 1) {
+      feedback.textContent = "🏆 Completed!";
+      feedback.className = "good";
+      finished = true;
+      playSound(winSound);
+    } else {
+      feedback.textContent = "🌟 Excellent!";
+      feedback.className = "good";
+      roundSolved = true;
+      playSound(correctSound);
+    }
+    setRoundButtons();
     return;
   }
 
-  if (mistakes >= maxMistakes){
+  if (mistakes >= maxMistakes) {
     feedback.textContent = "❌ You lost!";
     feedback.className = "bad";
-    document.getElementById("loseSound").currentTime = 0;
-    document.getElementById("loseSound").play();
+    roundLost = true;
+    playSound(loseSound);
+    setRoundButtons();
     return;
   }
 
@@ -327,27 +438,51 @@ function checkGame(){
   feedback.className = "bad";
 }
 
-function nextWord(){
-  index++;
+function nextWord() {
+  if (finished) return;
 
-  if (index >= items.length){
+  if (index >= items.length - 1) {
     feedback.textContent = "🏆 Completed!";
     feedback.className = "good";
-    document.getElementById("winSound").currentTime = 0;
-    document.getElementById("winSound").play();
+    finished = true;
+    playSound(winSound);
+    setRoundButtons();
     return;
   }
 
+  index++;
   loadWord();
 }
 
-function buildKeyboard(){
-  let letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+function buildKeyboard() {
+  const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
   let html = "";
-  for (let l of letters){
+  for (const l of letters) {
     html += `<button type="button" data-letter="${l}" onclick="guess('${l}')">${l}</button>`;
   }
-  document.getElementById("keyboard").innerHTML = html;
+  keyboardEl.innerHTML = html;
+}
+
+function loadWord() {
+  guessed = [];
+  mistakes = 0;
+  hintVisible = false;
+  roundSolved = false;
+  roundLost = false;
+
+  current = items[index] || { word: "TEST", hint: "", image: "" };
+  word = sanitizeWord(current.word || "TEST");
+  hint = current.hint || "";
+  hintImage = current.image || "";
+
+  feedback.textContent = "";
+  feedback.className = "";
+
+  updateHangmanImage();
+  updateHintVisual();
+  buildKeyboard();
+  renderWord();
+  setRoundButtons();
 }
 
 loadWord();
