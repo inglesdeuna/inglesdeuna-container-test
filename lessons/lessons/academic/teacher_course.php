@@ -376,7 +376,7 @@ $isWideActivity = false;
 if ($current) {
     $type = (string) ($current['type'] ?? '');
     $currentType = strtolower($type);
-    $isWideActivity = in_array($currentType, ['match', 'multiple_choice', 'drag_drop'], true);
+    $isWideActivity = in_array($currentType, ['match', 'multiple_choice', 'drag_drop', 'listen_order'], true);
 
     $activityPath = get_activity_base_path($type);
 
@@ -610,8 +610,6 @@ body{
     padding:24px;
     box-shadow:var(--shadow);
 }
-
-/* SOLO PARA ACTIVIDADES ANCHAS */
 .wide-activity-page .layout{
     display:block;
 }
@@ -648,7 +646,6 @@ body{
     height:900px;
     border-radius:16px;
 }
-
 @media (max-width: 980px){
     .topbar-inner{
         grid-template-columns:1fr;
@@ -689,7 +686,6 @@ body{
         height:820px;
     }
 }
-
 @media (max-width: 768px){
     .page{
         padding:12px;
