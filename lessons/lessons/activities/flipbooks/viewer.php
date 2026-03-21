@@ -1,217 +1,276 @@
 <?php
 require_once __DIR__ . '/../../config/db.php';
 
-$activityId = isset($_GET['id']) ? trim((string)$_GET['id']) : '';
-$unit = isset($_GET['unit']) ? trim((string)$_GET['unit']) : '';
+$activityId = isset($_GET['id']) ? trim((string) $_GET['id']) : '';
+$unit       = isset($_GET['unit']) ? trim((string) $_GET['unit']) : '';
 
 if ($activityId === '') {
-    die('ID de actividad no especificado');
+    die('ID de actividad no especificado.');
 }
 
-// 1. Cargar datos de la actividad
 $stmt = $pdo->prepare("SELECT * FROM activities WHERE id = :id LIMIT 1");
 $stmt->execute(['id' => $activityId]);
 $activity = $stmt->fetch(PDO::FETCH_ASSOC);
 
 if (!$activity) {
-    die('Actividad no encontrada');
+    die('Actividad no encontrada.');
 }
 
-// Decodificar JSON de la columna 'data'
-$data = json_decode($activity['data'] ?? '', true) ?: [];
-$pdfUrl = $data['pdf_url'] ?? '';
-$pageTexts = $data['page_texts'] ?? [];
-$listenEnabled = $data['listen_enabled'] ?? true;
-$language = $data['language'] ?? 'en-US';
-
-// Si no hay PDF, mostrar mensaje amigable
-if (empty($pdfUrl)) {
-    die('<div style="text-align:center; padding:50px; color:#666;"><h3><i class="fas fa-file-pdf"></i> No hay un PDF cargado aún.</h3><p>Por favor, usa el editor para subir un archivo.</p></div>');
+$data = json_decode($activity['data'] ?? '', true);
+if (!is_array($data)) {
+    $data = [];
 }
 
-// Incluir el template base del viewer (Header/Layout general)
+$title          = isset($data['title']) ? (string) $data['title'] : 'Flipbook';
+$pdfUrl         = isset($data['pdf_url']) ? (string) $data['pdf_url'] : '';
+$pageTexts      = isset($data['page_texts']) && is_array($data['page_texts']) ? $data['page_texts'] : [];
+$listenEnabled  = array_key_exists('listen_enabled', $data) ? (bool) $data['listen_enabled'] : true;
+$language       = isset($data['language']) ? (string) $data['language'] : 'en-US';
+
+if ($pdfUrl === '') {
+    die(
+        '<div style="max-width:700px;margin:40px auto;padding:32px;background:#fff;border:1px solid #e5e7eb;border-radius:16px;text-align:center;color:#475569;">' .
+        '<h3 style="margin-bottom:10px;">No hay un PDF cargado todavía</h3>' .
+        '<p style="margin:0;">Abre el editor del flipbook y sube un archivo para poder visualizarlo.</p>' .
+        '</div>'
+    );
+}
+
 include __DIR__ . '/../../core/_activity_viewer_template.php';
 ?>
 
-<!-- LIBRERÍAS ESPECÍFICAS PARA EL FLIPBOOK -->
-<script src="https://cdnjs.cloudflare.com"></script>
-<script src="https://cdn.rawgit.com"></script>
-
-<style>
-    #flipbook-container { 
-        width: 100%; 
-        max-width: 900px; 
-        margin: 0 auto; 
-        position: relative;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-    }
-    
-    #flipbook { display: none; box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
-    
-    .page-canvas { background: white; width: 100%; height: 100%; }
-
-    /* Barra estilo Heyzine unificada */
-    .viewer-toolbar {
-        margin-top: 20px;
-        background: #333;
-        padding: 8px 20px;
-        border-radius: 40px;
-        display: flex;
-        align-items: center;
-        gap: 15px;
-        color: white;
-        box-shadow: 0 4px 10px rgba(0,0,0,0.3);
-    }
-
-    .viewer-toolbar button {
-        background: none;
-        border: none;
-        color: white;
-        font-size: 1.1rem;
-        cursor: pointer;
-        transition: 0.2s;
-    }
-
-    .viewer-toolbar button:hover { color: #00d4ff; }
-    .viewer-toolbar .page-info { font-size: 0.9rem; border-left: 1px solid #555; border-right: 1px solid #555; padding: 0 15px; }
-    
-    #loading-flipbook { padding: 40px; text-align: center; color: #555; }
-</style>
-
-<div id="flipbook-container">
-    <div id="loading-flipbook">
-        <i class="fas fa-spinner fa-spin fa-3x mb-3" style="color:#00d4ff;"></i>
-        <p>Cargando libro interactivo...</p>
+<div class="flipbook-viewer">
+    <div class="flipbook-viewer__header mb-4">
+        <h2 class="mb-1"><?php echo htmlspecialchars($title, ENT_QUOTES, 'UTF-8'); ?></h2>
+        <p class="text-muted mb-0">Visualiza el libro y usa la función Listen para reproducir el texto configurado por página.</p>
     </div>
 
-    <!-- El Flipbook -->
-    <div id="flipbook"></div>
+    <div class="card shadow-sm border-0 flipbook-viewer__card">
+        <div class="card-body">
+            <div class="flipbook-toolbar">
+                <div class="flipbook-toolbar__left">
+                    <button type="button" id="prev-btn" class="btn btn-outline-secondary btn-sm">
+                        <i class="fas fa-chevron-left me-1"></i>Anterior
+                    </button>
 
-    <!-- Barra de Herramientas -->
-    <div class="viewer-toolbar" id="main-toolbar" style="display:none;">
-        <button id="prev-btn"><i class="fas fa-chevron-left"></i></button>
-        
-        <div class="page-info">
-            Página <span id="current-page">1</span> / <span id="total-pages">0</span>
+                    <button type="button" id="next-btn" class="btn btn-outline-secondary btn-sm">
+                        Siguiente<i class="fas fa-chevron-right ms-1"></i>
+                    </button>
+                </div>
+
+                <div class="flipbook-toolbar__center">
+                    <span class="flipbook-page-badge">
+                        Página <span id="current-page">1</span>
+                        <?php if (!empty($pageTexts)): ?>
+                            / <span id="total-pages"><?php echo count($pageTexts); ?></span>
+                        <?php else: ?>
+                            / <span id="total-pages">1</span>
+                        <?php endif; ?>
+                    </span>
+                </div>
+
+                <div class="flipbook-toolbar__right">
+                    <?php if ($listenEnabled): ?>
+                        <button type="button" id="listen-btn" class="btn btn-primary btn-sm">
+                            <i class="fas fa-volume-up me-1"></i>Listen
+                        </button>
+
+                        <button type="button" id="stop-listen-btn" class="btn btn-outline-secondary btn-sm">
+                            <i class="fas fa-stop me-1"></i>Detener
+                        </button>
+                    <?php endif; ?>
+
+                    <button type="button" id="open-pdf-btn" class="btn btn-outline-primary btn-sm">
+                        <i class="fas fa-external-link-alt me-1"></i>Abrir PDF
+                    </button>
+
+                    <button type="button" id="full-screen-btn" class="btn btn-outline-dark btn-sm">
+                        <i class="fas fa-expand me-1"></i>Pantalla completa
+                    </button>
+                </div>
+            </div>
+
+            <div class="flipbook-stage mt-3" id="flipbook-stage">
+                <iframe
+                    id="pdf-frame"
+                    class="flipbook-pdf-frame"
+                    src="<?php echo htmlspecialchars($pdfUrl, ENT_QUOTES, 'UTF-8'); ?>#toolbar=1&navpanes=0&scrollbar=1"
+                    title="Flipbook PDF"
+                ></iframe>
+            </div>
+
+            <div class="flipbook-listen-panel mt-3">
+                <div class="small text-muted mb-2">Texto configurado para la página actual</div>
+                <div id="current-page-text" class="flipbook-page-text-box">
+                    <?php
+                    $initialText = isset($pageTexts[0]) ? (string) $pageTexts[0] : 'No hay texto definido para esta página.';
+                    echo nl2br(htmlspecialchars($initialText, ENT_QUOTES, 'UTF-8'));
+                    ?>
+                </div>
+            </div>
         </div>
-
-        <button id="next-btn"><i class="fas fa-chevron-right"></i></button>
-        
-        <?php if ($listenEnabled): ?>
-        <button id="listen-btn" title="Listen Page"><i class="fas fa-volume-up"></i></button>
-        <?php endif; ?>
-        
-        <button id="full-screen-btn"><i class="fas fa-expand"></i></button>
     </div>
 </div>
 
-<audio id="flip-sound" src="https://www.soundjay.com"></audio>
-
 <script>
-$(document).ready(function() {
-    const pdfUrl = '<?php echo $pdfUrl; ?>';
-    const pageTexts = <?php echo json_encode($pageTexts); ?>;
-    const voiceLang = '<?php echo $language; ?>';
-    
-    const pdfjsLib = window['pdfjs-dist/build/pdf'];
-    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com';
+$(function () {
+    const pdfUrl = <?php echo json_encode($pdfUrl, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
+    const pageTexts = <?php echo json_encode(array_values($pageTexts), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
+    const voiceLang = <?php echo json_encode($language, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
 
-    async function initFlipbook() {
-        try {
-            const loadingTask = pdfjsLib.getDocument(pdfUrl);
-            const pdf = await loadingTask.promise;
-            const $flipbook = $('#flipbook');
-            const totalPages = pdf.numPages;
-            $('#total-pages').text(totalPages);
+    let currentPage = 1;
+    let totalPages = pageTexts.length > 0 ? pageTexts.length : 1;
 
-            // Renderizado de páginas
-            for (let i = 1; i <= totalPages; i++) {
-                const page = await pdf.getPage(i);
-                const viewport = page.getViewport({ scale: 1.5 });
-                
-                const pageDiv = $('<div class="page"></div>');
-                const canvas = document.createElement('canvas');
-                canvas.className = 'page-canvas';
-                const context = canvas.getContext('2d');
-                canvas.height = viewport.height;
-                canvas.width = viewport.width;
+    function updatePageInfo() {
+        $('#current-page').text(currentPage);
+        $('#total-pages').text(totalPages);
 
-                await page.render({ canvasContext: context, viewport: viewport }).promise;
-                pageDiv.append(canvas);
-                $flipbook.append(pageDiv);
-            }
+        const pageText = pageTexts[currentPage - 1] || 'No hay texto definido para esta página.';
+        $('#current-page-text').text(pageText);
+    }
 
-            // Inicializar Turn.js
-            $flipbook.show().turn({
-                width: 850,
-                height: 550,
-                autoCenter: true,
-                acceleration: true,
-                gradients: true,
-                when: {
-                    turning: function(e, page) {
-                        $('#current-page').text(page);
-                        document.getElementById('flip-sound').play();
-                        stopSpeaking(); // Detener audio si cambia de página
-                    }
-                }
-            });
-
-            $('#loading-flipbook').hide();
-            $('#main-toolbar').css('display', 'flex');
-
-        } catch (err) {
-            console.error(err);
-            $('#loading-flipbook').html('<p class="text-danger">Error al cargar el PDF.</p>');
+    function stopSpeaking() {
+        if ('speechSynthesis' in window) {
+            window.speechSynthesis.cancel();
         }
     }
 
-    // Navegación
-    $('#prev-btn').click(() => $('#flipbook').turn('previous'));
-    $('#next-btn').click(() => $('#flipbook').turn('next'));
+    $('#prev-btn').on('click', function () {
+        if (currentPage > 1) {
+            currentPage--;
+            stopSpeaking();
+            updatePageInfo();
+        }
+    });
 
-    // Función Listen (Text-to-Speech)
-    function stopSpeaking() { window.speechSynthesis.cancel(); }
-    
-    $('#listen-btn').click(function() {
+    $('#next-btn').on('click', function () {
+        if (currentPage < totalPages) {
+            currentPage++;
+            stopSpeaking();
+            updatePageInfo();
+        }
+    });
+
+    $('#listen-btn').on('click', function () {
         stopSpeaking();
-        const currentPage = $('#flipbook').turn('page');
-        const text = pageTexts[currentPage - 1]; // Los arrays en JS empiezan en 0
 
-        if (text) {
-            const msg = new SpeechSynthesisUtterance();
-            msg.text = text;
-            msg.lang = voiceLang;
-            window.speechSynthesis.speak(msg);
-            
-            // Efecto visual en el botón
-            $(this).addClass('text-info');
-            msg.onend = () => $(this).removeClass('text-info');
-        } else {
-            console.log("No hay texto definido para esta página.");
+        const text = pageTexts[currentPage - 1] || '';
+        if (!text) {
+            alert('No hay texto configurado para esta página.');
+            return;
         }
+
+        if (!('speechSynthesis' in window)) {
+            alert('Este navegador no soporta lectura de voz.');
+            return;
+        }
+
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = voiceLang;
+        window.speechSynthesis.speak(utterance);
     });
 
-    // Pantalla Completa
-    $('#full-screen-btn').click(function() {
-        const elem = document.getElementById('flipbook-container');
+    $('#stop-listen-btn').on('click', function () {
+        stopSpeaking();
+    });
+
+    $('#open-pdf-btn').on('click', function () {
+        window.open(pdfUrl, '_blank');
+    });
+
+    $('#full-screen-btn').on('click', function () {
+        const container = document.getElementById('flipbook-stage');
+
         if (!document.fullscreenElement) {
-            elem.requestFullscreen();
-            $(this).html('<i class="fas fa-compress"></i>');
+            if (container.requestFullscreen) {
+                container.requestFullscreen();
+            }
         } else {
-            document.exitFullscreen();
-            $(this).html('<i class="fas fa-expand"></i>');
+            if (document.exitFullscreen) {
+                document.exitFullscreen();
+            }
         }
     });
 
-    initFlipbook();
+    updatePageInfo();
 });
 </script>
 
-<?php 
-// Opcional: Footer si tu sistema lo usa
+<style>
+.flipbook-viewer__card {
+    border-radius: 16px;
+}
+
+.flipbook-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+.flipbook-toolbar__left,
+.flipbook-toolbar__center,
+.flipbook-toolbar__right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.flipbook-page-badge {
+    display: inline-flex;
+    align-items: center;
+    min-height: 38px;
+    padding: 0 14px;
+    border-radius: 999px;
+    background: #f3f4f6;
+    color: #374151;
+    font-weight: 600;
+}
+
+.flipbook-stage {
+    width: 100%;
+    min-height: 720px;
+    border: 1px solid #e5e7eb;
+    border-radius: 14px;
+    overflow: hidden;
+    background: #f8fafc;
+}
+
+.flipbook-pdf-frame {
+    width: 100%;
+    height: 720px;
+    border: 0;
+    display: block;
+    background: #fff;
+}
+
+.flipbook-listen-panel {
+    border-top: 1px solid #eef2f7;
+    padding-top: 16px;
+}
+
+.flipbook-page-text-box {
+    min-height: 70px;
+    padding: 14px 16px;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    background: #fafafa;
+    color: #334155;
+    white-space: pre-wrap;
+}
+
+@media (max-width: 768px) {
+    .flipbook-stage,
+    .flipbook-pdf-frame {
+        min-height: 520px;
+        height: 520px;
+    }
+}
+</style>
+
+<?php
 if (file_exists(__DIR__ . '/../../core/_activity_viewer_footer.php')) {
     include __DIR__ . '/../../core/_activity_viewer_footer.php';
 }
