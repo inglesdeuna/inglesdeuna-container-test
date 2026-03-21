@@ -370,14 +370,9 @@ $activityTypeLabels = [
 $viewerHref = null;
 $editorHref = null;
 $currentTypeLabel = 'Actividad';
-$currentType = '';
-$isWideActivity = false;
 
 if ($current) {
     $type = (string) ($current['type'] ?? '');
-    $currentType = strtolower($type);
-    $isWideActivity = in_array($currentType, ['match', 'multiple_choice', 'drag_drop', 'listen_order'], true);
-
     $activityPath = get_activity_base_path($type);
 
     if ($activityPath) {
@@ -399,6 +394,7 @@ if ($current) {
         }
     }
 
+    $currentType = strtolower($type);
     $currentTypeLabel = $activityTypeLabels[$currentType] ?? ucwords(str_replace('_', ' ', $type));
 }
 
@@ -532,13 +528,13 @@ body{
     border-radius:20px;
     border:1px solid var(--line);
     box-shadow:var(--shadow);
-    padding:18px 18px 16px;
+    padding:12px 12px 14px;
 }
 .viewer-header{
-    margin-bottom:10px;
+    margin-bottom:8px;
 }
 .viewer-title{
-    margin:0 0 6px;
+    margin:0 0 4px;
     font-size:18px;
     font-weight:700;
     color:#3c63c7;
@@ -549,19 +545,19 @@ body{
     color:var(--muted);
 }
 .viewer-frame-wrap{
-    background:#fff;
-    border:1px solid #e6ebf4;
+    background:#dfe8f4;
+    border:1px solid #d8e3f1;
     border-radius:16px;
-    padding:6px;
-    height:calc(100vh - 240px);
-    min-height:620px;
+    padding:8px;
+    height:calc(100vh - 250px);
+    min-height:560px;
     overflow:hidden;
 }
 .viewer-frame{
     width:100%;
     height:100%;
     border:0;
-    border-radius:12px;
+    border-radius:14px;
     background:#fff;
     display:block;
 }
@@ -574,7 +570,7 @@ body{
 }
 .nav-btn{
     display:inline-block;
-    min-width:130px;
+    min-width:120px;
     text-align:center;
     padding:12px 18px;
     border-radius:10px;
@@ -610,42 +606,6 @@ body{
     padding:24px;
     box-shadow:var(--shadow);
 }
-.wide-activity-page .layout{
-    display:block;
-}
-.wide-activity-page .sidebar{
-    display:none;
-}
-.wide-activity-page .content{
-    padding:0;
-    width:100%;
-}
-.wide-activity-page .viewer-shell{
-    background:transparent;
-    border-radius:0;
-    padding:0;
-    border:none;
-    box-shadow:none;
-}
-.wide-activity-page .viewer-card{
-    width:100%;
-    max-width:1280px;
-    margin:0 auto;
-    padding:14px 14px 12px;
-}
-.wide-activity-page .viewer-frame-wrap{
-    background:#fff;
-    border:1px solid #e6ebf4;
-    border-radius:16px;
-    padding:0;
-    height:auto;
-    min-height:0;
-    overflow:visible;
-}
-.wide-activity-page .viewer-frame{
-    height:900px;
-    border-radius:16px;
-}
 @media (max-width: 980px){
     .topbar-inner{
         grid-template-columns:1fr;
@@ -670,20 +630,7 @@ body{
     }
     .viewer-frame-wrap{
         height:calc(100vh - 300px);
-        min-height:520px;
-    }
-    .wide-activity-page .sidebar{
-        display:none;
-    }
-    .wide-activity-page .viewer-card{
-        padding:12px 12px 10px;
-    }
-    .wide-activity-page .viewer-frame-wrap{
-        height:auto;
-        min-height:0;
-    }
-    .wide-activity-page .viewer-frame{
-        height:820px;
+        min-height:500px;
     }
 }
 @media (max-width: 768px){
@@ -697,7 +644,7 @@ body{
         padding:12px;
     }
     .viewer-card{
-        padding:14px 12px 12px;
+        padding:10px 10px 12px;
     }
     .topbar-title{
         font-size:22px;
@@ -706,8 +653,8 @@ body{
         font-size:17px;
     }
     .viewer-frame-wrap{
-        height:calc(100vh - 260px);
-        min-height:460px;
+        height:calc(100vh - 270px);
+        min-height:440px;
     }
     .controls{
         flex-direction:column;
@@ -715,23 +662,10 @@ body{
     .nav-btn{
         width:100%;
     }
-    .wide-activity-page .viewer-shell{
-        padding:0;
-    }
-    .wide-activity-page .viewer-card{
-        padding:10px;
-    }
-    .wide-activity-page .viewer-frame-wrap{
-        height:auto;
-        min-height:0;
-    }
-    .wide-activity-page .viewer-frame{
-        height:720px;
-    }
 }
 </style>
 </head>
-<body class="<?php echo $isWideActivity ? 'wide-activity-page' : ''; ?>">
+<body>
 <header class="topbar">
     <div class="topbar-inner">
         <a class="top-btn back" href="<?php echo h($backDashboard); ?>">← Volver</a>
@@ -809,38 +743,8 @@ body{
 <script>
 (function () {
     const iframe = document.getElementById('activityViewer');
-    const isWideActivity = <?php echo $isWideActivity ? 'true' : 'false'; ?>;
-
     if (!iframe) {
         return;
-    }
-
-    function resizeIframe() {
-        if (!isWideActivity) {
-            return;
-        }
-
-        try {
-            const doc = iframe.contentDocument || iframe.contentWindow.document;
-            if (!doc) {
-                return;
-            }
-
-            const body = doc.body;
-            const html = doc.documentElement;
-
-            const height = Math.max(
-                body ? body.scrollHeight : 0,
-                body ? body.offsetHeight : 0,
-                html ? html.scrollHeight : 0,
-                html ? html.offsetHeight : 0,
-                720
-            );
-
-            iframe.style.height = height + 'px';
-        } catch (e) {
-            // Ignorar
-        }
     }
 
     function hideEmbeddedBackButton() {
@@ -887,37 +791,20 @@ body{
                 }
             });
 
-            if (isWideActivity) {
-                const style = doc.createElement('style');
-                style.innerHTML = `
-                    html, body{
-                        margin:0 !important;
-                        padding:0 !important;
-                        overflow:visible !important;
-                    }
-                `;
-                doc.head.appendChild(style);
-
-                resizeIframe();
-                setTimeout(resizeIframe, 200);
-                setTimeout(resizeIframe, 700);
-            } else {
-                const style = doc.createElement('style');
-                style.innerHTML = `
-                    body{
-                        margin-top:0 !important;
-                        padding-top:0 !important;
-                    }
-                `;
-                doc.head.appendChild(style);
-            }
+            const style = doc.createElement('style');
+            style.innerHTML = `
+                body{
+                    margin-top:0 !important;
+                    padding-top:0 !important;
+                }
+            `;
+            doc.head.appendChild(style);
         } catch (e) {
             // Ignorar
         }
     }
 
     iframe.addEventListener('load', hideEmbeddedBackButton);
-    window.addEventListener('resize', resizeIframe);
 })();
 </script>
 </body>
