@@ -53,7 +53,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                     // Successful login
                     session_unset();
                     session_regenerate_id(true);
-                    session_start();
                     
                     Security::initializeSession();
                     $_SESSION["admin_logged"] = true;
