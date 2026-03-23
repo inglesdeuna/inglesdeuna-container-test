@@ -697,7 +697,7 @@ body{ margin:0; font-family:Arial,sans-serif; background:var(--bg); color:var(--
 .upload-form{ margin-top:20px; margin-bottom:12px; text-align:left; }
 .upload-label{ display:block; font-size:13px; color:var(--muted); font-weight:600; margin-bottom:8px; }
 .upload-input{ width:100%; margin-bottom:10px; padding:8px; border:1px solid var(--line); border-radius:8px; }
-.upload-btn{ width:100%; border:none; border-radius:10px; padding:11px; color:#fff; cursor:pointer; font-size:13px; font-weight:600; background:linear-gradient(135deg, var(--success) 0%, var(--success-dark) 100%); transition:all .3s; box-shadow:var(--shadow); }
+.upload-btn{ width:100%; border:none; border-radius:10px; padding:11px; color:#fff; cursor:pointer; font-size:13px; font-weight:600; background:linear-gradient(180deg,#3b82f6,#1d4ed8); transition:all .3s; box-shadow:var(--shadow); }
 .upload-btn:hover{ transform:translateY(-2px); box-shadow:var(--shadow-md); }
 .flash{ border-radius:10px; padding:12px 14px; margin-bottom:14px; font-size:13px; }
 .flash.ok{ background:#f0fdf4; border:1px solid #86efac; color:#166534; }
@@ -1070,9 +1070,6 @@ body{ margin:0; font-family:Arial,sans-serif; background:var(--bg); color:var(--
                                 <span class="current-unit-label">Unidad activa</span>
                                 <div class="current-unit-name"><?php echo h((string) ($selectedUnit['name'] ?? 'Unidad')); ?></div>
                                 <div class="secondary-actions">
-                                    <a class="unit-btn" href="teacher_unit.php?assignment=<?php echo urlencode((string) ($selectedAssignment['id'] ?? '')); ?>&unit=<?php echo urlencode($selectedUnitId); ?>&mode=view">
-                                        Ver contenido
-                                    </a>
                                     <a class="unit-btn" href="#unidades-curso">
                                         Explorar unidades
                                     </a>
