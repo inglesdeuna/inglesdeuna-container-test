@@ -16,6 +16,30 @@ function h(string $value): string
     return htmlspecialchars($value, ENT_QUOTES, 'UTF-8');
 }
 
+function teacher_initials(string $name): string
+{
+    $name = trim($name);
+    if ($name === '') {
+        return 'DC';
+    }
+
+    $parts = preg_split('/\s+/', $name) ?: [];
+    $initials = '';
+
+    foreach ($parts as $part) {
+        if ($part === '') {
+            continue;
+        }
+
+        $initials .= strtoupper(substr($part, 0, 1));
+        if (strlen($initials) === 2) {
+            break;
+        }
+    }
+
+    return $initials !== '' ? $initials : 'DC';
+}
+
 function get_pdo_connection(): ?PDO
 {
     if (!getenv('DATABASE_URL')) {
@@ -408,6 +432,7 @@ if ($teacherPhoto === '') {
 }
 
 $teacherPhotoSrc = resolve_teacher_photo_src($teacherPhoto);
+$teacherInitials = teacher_initials($teacherName);
 
 $assignments = load_teacher_assignments($teacherId);
 $teacherPermission = load_teacher_permission($teacherId);
@@ -463,38 +488,46 @@ if ($selectedAssignment) {
 <title>Perfil del Docente</title>
 <style>
 :root{
-    --bg:#eef2f7;
+    --bg:#f8fafc;
     --card:#ffffff;
-    --line:#dce4f0;
-    --text:#1f2937;
-    --title:#1f3c75;
-    --muted:#5b6577;
-    --blue:#1f66cc;
-    --green:#16a34a;
-    --orange:#f59e0b;
-    --danger:#dc2626;
-    --shadow:0 8px 24px rgba(0,0,0,.08);
-    --radius:14px;
+    --line:#e2e8f0;
+    --text:#334155;
+    --title:#0f172a;
+    --muted:#64748b;
+    --primary:#3b82f6;
+    --primary-dark:#1e40af;
+    --primary-light:#dbeafe;
+    --success:#10b981;
+    --success-dark:#059669;
+    --warning:#f59e0b;
+    --warning-dark:#d97706;
+    --danger:#ef4444;
+    --danger-dark:#dc2626;
+    --shadow:0 1px 3px rgba(0,0,0,.1), 0 1px 2px rgba(0,0,0,.06);
+    --shadow-md:0 4px 6px rgba(0,0,0,.1), 0 2px 4px rgba(0,0,0,.06);
+    --shadow-lg:0 10px 15px rgba(0,0,0,.1), 0 4px 6px rgba(0,0,0,.05);
+    --radius:12px;
 }
 
 *{ box-sizing:border-box; }
-body{ margin:0; font-family:Arial, "Segoe UI", sans-serif; background:var(--bg); color:var(--text); }
-.page{ max-width:1280px; margin:0 auto; padding:30px; }
+body{ margin:0; font-family:-apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", sans-serif; background:var(--bg); color:var(--text); }
+.page{ max-width:1400px; margin:0 auto; padding:40px 20px; }
 
 .header{
     display:flex;
     justify-content:space-between;
     align-items:center;
-    gap:16px;
-    padding-bottom:14px;
-    border-bottom:2px solid var(--line);
-    margin-bottom:22px;
+    gap:20px;
+    padding-bottom:20px;
+    border-bottom:1px solid var(--line);
+    margin-bottom:32px;
 }
 
-.header h1{ margin:0; font-size:28px; font-weight:700; color:var(--title); }
-.logout{ color:var(--danger); text-decoration:none; font-weight:700; font-size:14px; }
+.header h1{ margin:0; font-size:32px; font-weight:800; color:var(--title); }
+.logout{ color:var(--danger); text-decoration:none; font-weight:600; font-size:14px; transition:color .2s; }
+.logout:hover{ color:var(--danger-dark); }
 
-.layout{ display:grid; grid-template-columns:320px 1fr; gap:24px; }
+.layout{ display:grid; grid-template-columns:340px 1fr; gap:32px; }
 
 .panel,
 .card{
@@ -504,143 +537,350 @@ body{ margin:0; font-family:Arial, "Segoe UI", sans-serif; background:var(--bg);
     box-shadow:var(--shadow);
 }
 
-.panel{ padding:18px; }
+.panel{ padding:28px 24px; }
 .profile-box{ text-align:center; }
 
 .avatar{
-    width:190px;
-    height:190px;
-    margin:0 auto 18px;
+    width:180px;
+    height:180px;
+    margin:0 auto 24px;
     border-radius:50%;
     overflow:hidden;
-    background:#dbe7f6;
-    border:4px solid #edf3fb;
-    box-shadow:0 6px 18px rgba(31, 60, 117, 0.12);
+    background:linear-gradient(135deg, var(--primary-light) 0%, #e0e7ff 100%);
+    border:4px solid #f0f4ff;
+    box-shadow:0 8px 20px rgba(59, 130, 246, 0.15);
     display:flex;
     align-items:center;
     justify-content:center;
-    font-size:82px;
+    font-size:72px;
 }
 
 .avatar-image{ width:100%; height:100%; object-fit:cover; display:block; }
-.avatar-fallback{ display:none; line-height:1; }
-.teacher-name{ font-size:20px; font-weight:700; color:var(--title); margin:2px 0 6px; }
-.teacher-role{ font-size:14px; color:var(--muted); font-weight:700; margin-bottom:14px; }
+.avatar-fallback{
+    display:none;
+    width:100%;
+    height:100%;
+    align-items:center;
+    justify-content:center;
+    background:linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+    color:var(--primary-dark);
+    font-size:44px;
+    font-weight:800;
+    letter-spacing:.08em;
+}
+.teacher-name{ font-size:22px; font-weight:700; color:var(--title); margin:8px 0 6px; }
+.teacher-role{ font-size:13px; color:var(--muted); font-weight:600; margin-bottom:20px; }
+
+.profile-meta{
+    display:grid;
+    grid-template-columns:repeat(2, minmax(0, 1fr));
+    gap:10px;
+    margin:0 0 20px;
+}
+
+.profile-stat{
+    padding:12px;
+    border:1px solid var(--line);
+    border-radius:10px;
+    background:#f8fafc;
+    text-align:left;
+}
+
+.profile-stat-label{
+    display:block;
+    font-size:11px;
+    font-weight:700;
+    text-transform:uppercase;
+    letter-spacing:.08em;
+    color:var(--muted);
+    margin-bottom:4px;
+}
+
+.profile-stat-value{
+    display:block;
+    font-size:16px;
+    font-weight:700;
+    color:var(--title);
+}
 
 .side-button{
     display:block;
     width:100%;
-    margin-top:10px;
-    padding:12px 14px;
+    margin-top:12px;
+    padding:12px 16px;
     border-radius:10px;
     text-decoration:none;
     font-size:14px;
-    font-weight:700;
+    font-weight:600;
     color:#fff;
-    background:linear-gradient(180deg, #2f74ce, #1f4d95);
+    background:linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
     text-align:center;
+    transition:all .3s;
+    box-shadow:var(--shadow);
+}
+.side-button:hover{
+    transform:translateY(-2px);
+    box-shadow:var(--shadow-md);
 }
 
-.upload-form{ margin-top:14px; margin-bottom:12px; text-align:left; }
-.upload-label{ display:block; font-size:12px; color:var(--muted); font-weight:700; margin-bottom:6px; }
-.upload-input{ width:100%; margin-bottom:8px; }
-.upload-btn{ width:100%; border:none; border-radius:10px; padding:10px; color:#fff; cursor:pointer; font-size:13px; font-weight:700; background:linear-gradient(180deg, #4cbf62, #249145); }
-.flash{ border-radius:10px; padding:10px 12px; margin-bottom:14px; font-size:13px; }
-.flash.ok{ background:#ecfdf3; border:1px solid #86efac; color:#166534; }
+.upload-form{ margin-top:20px; margin-bottom:12px; text-align:left; }
+.upload-label{ display:block; font-size:13px; color:var(--muted); font-weight:600; margin-bottom:8px; }
+.upload-input{ width:100%; margin-bottom:10px; padding:8px; border:1px solid var(--line); border-radius:8px; }
+.upload-btn{ width:100%; border:none; border-radius:10px; padding:11px; color:#fff; cursor:pointer; font-size:13px; font-weight:600; background:linear-gradient(135deg, var(--success) 0%, var(--success-dark) 100%); transition:all .3s; box-shadow:var(--shadow); }
+.upload-btn:hover{ transform:translateY(-2px); box-shadow:var(--shadow-md); }
+.flash{ border-radius:10px; padding:12px 14px; margin-bottom:14px; font-size:13px; }
+.flash.ok{ background:#f0fdf4; border:1px solid #86efac; color:#166534; }
 .flash.error{ background:#fef2f2; border:1px solid #fca5a5; color:#991b1b; }
 
-.main-section-title{ display:flex; align-items:center; gap:14px; font-size:22px; font-weight:700; color:var(--title); margin:0 0 14px; }
-.main-section-title::after{ content:""; flex:1; height:2px; background:var(--line); }
+.main-section-title{ display:flex; align-items:center; gap:12px; font-size:24px; font-weight:800; color:var(--title); margin:32px 0 20px; }
+.main-section-title::after{ content:""; flex:1; height:2px; background:linear-gradient(90deg, var(--line) 0%, transparent 100%); }
 
-.card{ padding:20px; margin-bottom:18px; }
-.activity-title{ margin:0 0 12px; font-size:18px; font-weight:700; color:var(--title); }
-.activity-text{ margin:0 0 18px; font-size:15px; color:var(--text); }
+.card{ padding:28px; margin-bottom:20px; }
+.hero-card{
+    position:relative;
+    overflow:hidden;
+    background:linear-gradient(135deg, #ffffff 0%, #f8fbff 100%);
+}
 
-.actions{ display:flex; flex-wrap:wrap; gap:12px; }
-.btn{ display:inline-block; padding:12px 18px; border-radius:10px; text-decoration:none; color:#fff; font-size:14px; font-weight:700; }
-.btn-green{ background:linear-gradient(180deg, #4cbf62, #249145); }
-.btn-orange{ background:linear-gradient(180deg, #f7a531, #e57e08); }
-.btn-red{ background:linear-gradient(180deg, #ef4444, #dc2626); }
+.hero-card::before{
+    content:"";
+    position:absolute;
+    inset:auto -80px -80px auto;
+    width:220px;
+    height:220px;
+    border-radius:50%;
+    background:radial-gradient(circle, rgba(59,130,246,.18) 0%, rgba(59,130,246,0) 70%);
+}
 
-.course-grid{ display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:16px; }
+.hero-content{
+    position:relative;
+    z-index:1;
+}
+
+.activity-topline{
+    display:flex;
+    flex-wrap:wrap;
+    align-items:center;
+    gap:10px;
+    margin-bottom:10px;
+}
+
+.activity-title{ margin:0 0 14px; font-size:20px; font-weight:700; color:var(--title); }
+.activity-text{ margin:0 0 22px; font-size:15px; color:var(--text); line-height:1.6; }
+
+.actions{ display:flex; flex-wrap:wrap; gap:14px; }
+.btn{
+    display:inline-block;
+    padding:12px 20px;
+    border-radius:10px;
+    text-decoration:none;
+    color:#fff;
+    font-size:14px;
+    font-weight:600;
+    transition:all .3s;
+    box-shadow:var(--shadow);
+    border:none;
+    cursor:pointer;
+}
+.btn:hover{ transform:translateY(-2px); box-shadow:var(--shadow-md); }
+.btn-green{
+    background:linear-gradient(135deg, var(--success) 0%, #059669 100%);
+}
+.btn-orange{
+    background:linear-gradient(135deg, var(--warning) 0%, var(--warning-dark) 100%);
+}
+.btn-blue{
+    background:linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+}
+
+.course-grid{ display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:20px; }
 
 .course-card{
     border-radius:14px;
-    padding:22px 18px;
+    padding:24px 20px;
     color:#fff;
     text-decoration:none;
-    min-height:140px;
+    min-height:150px;
     display:flex;
     flex-direction:column;
     justify-content:center;
-    gap:8px;
-    box-shadow:var(--shadow);
+    gap:10px;
+    box-shadow:var(--shadow-lg);
+    transition:all .3s;
+}
+.course-card:hover{
+    transform:translateY(-4px);
+    box-shadow:var(--shadow-lg);
 }
 
-.course-blue{ background:linear-gradient(180deg, #2f74ce, #1f4d95); }
-.course-yellow{ background:linear-gradient(180deg, #f5be35, #db9600); }
-.course-green{ background:linear-gradient(180deg, #71c557, #2b9d48); }
-.course-name{ font-size:22px; font-weight:700; line-height:1.2; }
-.course-sub{ font-size:14px; opacity:.95; }
-.course-meta{ font-size:12px; font-weight:700; opacity:.95; text-transform:uppercase; letter-spacing:.03em; }
+.course-blue{ background:linear-gradient(135deg, #3b82f6 0%, #1e40af 100%); }
+.course-yellow{ background:linear-gradient(135deg, #f59e0b 0%, #d97706 100%); }
+.course-green{ background:linear-gradient(135deg, #10b981 0%, #059669 100%); }
+.course-name{ font-size:20px; font-weight:700; line-height:1.3; }
+.course-sub{ font-size:13px; opacity:.9; }
+.course-meta{ font-size:11px; font-weight:700; opacity:.85; text-transform:uppercase; letter-spacing:.05em; }
 
-.unit-list{ margin-top:16px; }
-.unit{
+.unit-list{ margin-top:20px; }
+
+/* Accordion styles */
+.accordion-item{
+    border:1px solid var(--line);
+    border-radius:10px;
+    margin-bottom:12px;
+    overflow:hidden;
+    background:#fff;
+    transition:all .2s;
+}
+.accordion-item.active{
+    border:1px solid var(--primary);
+    box-shadow:0 0 0 3px var(--primary-light);
+}
+
+.accordion-header{
     display:flex;
     justify-content:space-between;
     align-items:center;
-    gap:12px;
-    padding:12px 14px;
-    margin-bottom:10px;
-    border:1px solid var(--line);
-    border-radius:10px;
-    background:#fff;
-    transition:.2s ease;
+    padding:16px 18px;
+    cursor:pointer;
+    background:#fafbfc;
+    user-select:none;
+    transition:background .2s;
 }
-.unit.active{
-    border:2px solid #2563eb;
+.accordion-header:hover{
+    background:#f1f5f9;
+}
+.accordion-item.active .accordion-header{
     background:#eff6ff;
-    box-shadow:0 0 0 3px rgba(37, 99, 235, 0.10);
 }
-.unit-name{
+
+.accordion-title{
     font-size:15px;
     font-weight:700;
-    color:#243b63;
+    color:var(--title);
+    margin:0;
 }
+
+.accordion-toggle{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    width:24px;
+    height:24px;
+    border-radius:6px;
+    background:var(--primary-light);
+    color:var(--primary);
+    font-size:16px;
+    transition:transform .3s;
+    flex-shrink:0;
+}
+.accordion-item.active .accordion-toggle{
+    transform:rotate(180deg);
+}
+
+.accordion-content{
+    display:none;
+    padding:16px 18px;
+    border-top:1px solid var(--line);
+    background:#f8fafc;
+}
+.accordion-item.active .accordion-content{
+    display:block;
+}
+
 .unit-actions{
     display:flex;
     flex-wrap:wrap;
-    gap:8px;
+    gap:10px;
+    margin-top:0;
 }
+
 .unit-btn{
     display:inline-block;
-    padding:8px 12px;
+    padding:9px 14px;
     border-radius:8px;
     text-decoration:none;
     font-size:13px;
-    font-weight:700;
+    font-weight:600;
     color:#fff;
-    background:var(--blue);
+    background:var(--primary);
+    transition:all .2s;
+    box-shadow:var(--shadow);
 }
-.unit-btn-edit{
-    background:#16a34a;
+.unit-btn:hover{
+    background:var(--primary-dark);
+    box-shadow:var(--shadow-md);
+    transform:translateY(-1px);
 }
 
-.empty{ background:#fff; border:1px solid var(--line); border-radius:14px; padding:18px; color:var(--muted); font-size:14px; }
-.badge-row{ display:flex; flex-wrap:wrap; gap:8px; margin-bottom:14px; }
-.badge{ display:inline-block; padding:4px 10px; border-radius:999px; background:#eef2ff; color:#1f4ec9; font-size:12px; font-weight:700; }
+.unit-btn-edit{
+    background:var(--success);
+}
+.unit-btn-edit:hover{
+    background:var(--success-dark);
+}
+
+.empty{ background:#f8fafc; border:1px dashed var(--line); border-radius:14px; padding:32px 24px; text-align:center; color:var(--muted); font-size:15px; }
+.badge-row{ display:flex; flex-wrap:wrap; gap:10px; margin-bottom:16px; }
+.badge{
+    display:inline-block;
+    padding:6px 12px;
+    border-radius:999px;
+    background:var(--primary-light);
+    color:var(--primary-dark);
+    font-size:12px;
+    font-weight:700;
+}
+
+.current-unit-panel{
+    margin-top:20px;
+    padding:18px;
+    border:1px solid var(--line);
+    border-radius:12px;
+    background:#f8fafc;
+}
+
+.current-unit-label{
+    display:block;
+    font-size:12px;
+    font-weight:700;
+    text-transform:uppercase;
+    letter-spacing:.08em;
+    color:var(--muted);
+    margin-bottom:6px;
+}
+
+.current-unit-name{
+    font-size:18px;
+    font-weight:700;
+    color:var(--title);
+    margin-bottom:14px;
+}
+
+.section-note{
+    margin:0 0 18px;
+    color:var(--muted);
+    font-size:14px;
+}
+
+.secondary-actions{
+    display:flex;
+    flex-wrap:wrap;
+    gap:12px;
+}
 
 @media (max-width: 1024px){
     .layout{ grid-template-columns:1fr; }
-    .course-grid{ grid-template-columns:1fr; }
+    .course-grid{ grid-template-columns:repeat(2, 1fr); }
 }
 
 @media (max-width: 768px){
     .page{ padding:20px; }
-    .header{ flex-direction:column; align-items:flex-start; }
-    .unit{ flex-direction:column; align-items:flex-start; }
+    .header{ flex-direction:column; align-items:flex-start; gap:12px; }
+    .course-grid{ grid-template-columns:1fr; }
     .actions{ flex-direction:column; }
+    .secondary-actions{ flex-direction:column; }
     .btn{ width:100%; text-align:center; }
+    .profile-meta{ grid-template-columns:1fr; }
 }
 </style>
 </head>
@@ -663,7 +903,7 @@ body{ margin:0; font-family:Arial, "Segoe UI", sans-serif; background:var(--bg);
                             onerror="this.style.display='none';this.nextElementSibling.style.display='block';"
                         >
                     <?php } ?>
-                    <span class="avatar-fallback" aria-hidden="true" style="<?php echo $teacherPhotoSrc === '' ? 'display:block;' : ''; ?>">👩‍🏫</span>
+                    <span class="avatar-fallback" aria-hidden="true" style="<?php echo $teacherPhotoSrc === '' ? 'display:flex;' : ''; ?>"><?php echo h($teacherInitials); ?></span>
                 </div>
 
                 <?php if ($flashMessage !== '') { ?>
@@ -676,6 +916,17 @@ body{ margin:0; font-family:Arial, "Segoe UI", sans-serif; background:var(--bg);
 
                 <div class="teacher-name"><?php echo h($teacherName); ?></div>
                 <div class="teacher-role">Docente</div>
+
+                <div class="profile-meta">
+                    <div class="profile-stat">
+                        <span class="profile-stat-label">Cursos</span>
+                        <span class="profile-stat-value"><?php echo count($assignments); ?></span>
+                    </div>
+                    <div class="profile-stat">
+                        <span class="profile-stat-label">Permiso</span>
+                        <span class="profile-stat-value"><?php echo h($teacherPermission === 'editor' ? 'Editor' : 'Consulta'); ?></span>
+                    </div>
+                </div>
 
                 <form class="upload-form" method="post" enctype="multipart/form-data">
                     <label class="upload-label" for="teacher_photo">Subir / cambiar foto</label>
@@ -693,70 +944,91 @@ body{ margin:0; font-family:Arial, "Segoe UI", sans-serif; background:var(--bg);
             <h2 class="main-section-title">Actividad para Hoy</h2>
 
             <?php if ($selectedAssignment) { ?>
-                <div class="card">
-                    <h3 class="activity-title">Tema: "<?php echo h($todayTitle); ?>"</h3>
+                <div class="card hero-card">
+                    <div class="hero-content">
+                        <div class="activity-topline">
+                            <span class="badge"><?php echo h($todayProgramLabel); ?></span>
+                            <span class="badge"><?php echo h($teacherPermission === 'editor' ? 'Puede editar' : 'Solo ver'); ?></span>
+                        </div>
 
-                    <p class="activity-text">
-                        Ingresa al curso para proyectar las actividades en modo presentación y avanzar con Next.
-                    </p>
+                        <h3 class="activity-title">Tema: "<?php echo h($todayTitle); ?>"</h3>
 
-                    <div class="actions">
+                        <p class="activity-text">
+                            Ingresa al curso para proyectar las actividades en modo presentación y avanzar con Next. La unidad activa queda destacada abajo para que accedas rápido sin repetir acciones.
+                        </p>
+
+                        <div class="actions">
                         <a class="btn btn-green"
                            href="teacher_course.php?assignment=<?php echo urlencode((string) ($selectedAssignment['id'] ?? '')); ?>&unit=<?php echo urlencode($selectedUnitId); ?>">
                             Iniciar Presentación
                         </a>
 
-                        <a class="btn btn-orange" href="#unidades-curso">
-                            Ver unidades
-                        </a>
-
                         <?php if ($teacherPermission === 'editor') { ?>
-                            <a class="btn btn-red"
+                            <a class="btn btn-blue"
                                href="teacher_unit.php?assignment=<?php echo urlencode((string) ($selectedAssignment['id'] ?? '')); ?>&unit=<?php echo urlencode($selectedUnitId); ?>&mode=edit">
-                                Editar
+                                Editar unidad activa
                             </a>
                         <?php } ?>
-                    </div>
-
-                    <div class="unit-list" id="unidades-curso">
-                        <div class="badge-row">
-                            <span class="badge"><?php echo h($todayProgramLabel); ?></span>
-                            <span class="badge"><?php echo h($teacherPermission === 'editor' ? 'Puede editar' : 'Solo ver'); ?></span>
-                            <?php if ($selectedUnit) { ?>
-                                <span class="badge"><?php echo h((string) ($selectedUnit['name'] ?? 'Unidad')); ?></span>
-                            <?php } ?>
                         </div>
 
-                        <?php if (empty($todayUnits)) { ?>
-                            <div class="empty">No hay unidades encontradas para esta asignación.</div>
-                        <?php } else { ?>
+                        <?php if ($selectedUnit) { ?>
+                            <div class="current-unit-panel">
+                                <span class="current-unit-label">Unidad activa</span>
+                                <div class="current-unit-name"><?php echo h((string) ($selectedUnit['name'] ?? 'Unidad')); ?></div>
+                                <div class="secondary-actions">
+                                    <a class="unit-btn" href="teacher_unit.php?assignment=<?php echo urlencode((string) ($selectedAssignment['id'] ?? '')); ?>&unit=<?php echo urlencode($selectedUnitId); ?>&mode=view">
+                                        Ver contenido
+                                    </a>
+                                    <a class="unit-btn" href="#unidades-curso">
+                                        Explorar unidades
+                                    </a>
+                                </div>
+                            </div>
+                        <?php } ?>
+                    </div>
+                </div>
+
+                <div class="card" id="unidades-curso">
+                    <h3 class="activity-title">Unidades del curso</h3>
+                    <p class="section-note">Cada unidad se despliega para mostrar solo las acciones necesarias y mantener el panel más limpio.</p>
+
+                    <?php if (empty($todayUnits)) { ?>
+                        <div class="empty">No hay unidades encontradas para esta asignación.</div>
+                    <?php } else { ?>
+                        <div class="unit-list">
                             <?php foreach ($todayUnits as $unit) { ?>
                                 <?php
                                 $unitId = (string) ($unit['id'] ?? '');
                                 $isActiveUnit = $unitId === $selectedUnitId;
                                 ?>
-                                <div class="unit<?php echo $isActiveUnit ? ' active' : ''; ?>">
-                                    <div class="unit-name"><?php echo h((string) ($unit['name'] ?? 'Unidad')); ?></div>
+                                <div class="accordion-item<?php echo $isActiveUnit ? ' active' : ''; ?>">
+                                    <div class="accordion-header" onclick="toggleUnitAccordion(this)">
+                                        <h4 class="accordion-title"><?php echo h((string) ($unit['name'] ?? 'Unidad')); ?></h4>
+                                        <span class="accordion-toggle" aria-hidden="true">⌄</span>
+                                    </div>
+                                    <div class="accordion-content">
+                                        <div class="unit-actions">
+                                            <?php if (!$isActiveUnit) { ?>
+                                                <a class="unit-btn" href="dashboard.php?assignment=<?php echo urlencode((string) ($selectedAssignment['id'] ?? '')); ?>&unit=<?php echo urlencode($unitId); ?>#unidades-curso">
+                                                    Activar unidad
+                                                </a>
+                                            <?php } ?>
 
-                                    <div class="unit-actions">
-                                        <a class="unit-btn" href="dashboard.php?assignment=<?php echo urlencode((string) ($selectedAssignment['id'] ?? '')); ?>&unit=<?php echo urlencode($unitId); ?>#unidades-curso">
-                                            Seleccionar
-                                        </a>
-
-                                        <a class="unit-btn" href="teacher_unit.php?assignment=<?php echo urlencode((string) ($selectedAssignment['id'] ?? '')); ?>&unit=<?php echo urlencode($unitId); ?>&mode=view">
-                                            Ver
-                                        </a>
-
-                                        <?php if ($teacherPermission === 'editor') { ?>
-                                            <a class="unit-btn unit-btn-edit" href="teacher_unit.php?assignment=<?php echo urlencode((string) ($selectedAssignment['id'] ?? '')); ?>&unit=<?php echo urlencode($unitId); ?>&mode=edit">
-                                                Editar
+                                            <a class="unit-btn" href="teacher_unit.php?assignment=<?php echo urlencode((string) ($selectedAssignment['id'] ?? '')); ?>&unit=<?php echo urlencode($unitId); ?>&mode=view">
+                                                Ver contenido
                                             </a>
-                                        <?php } ?>
+
+                                            <?php if ($teacherPermission === 'editor') { ?>
+                                                <a class="unit-btn unit-btn-edit" href="teacher_unit.php?assignment=<?php echo urlencode((string) ($selectedAssignment['id'] ?? '')); ?>&unit=<?php echo urlencode($unitId); ?>&mode=edit">
+                                                    Editar contenido
+                                                </a>
+                                            <?php } ?>
+                                        </div>
                                     </div>
                                 </div>
                             <?php } ?>
-                        <?php } ?>
-                    </div>
+                        </div>
+                    <?php } ?>
                 </div>
             <?php } else { ?>
                 <div class="empty">No tienes cursos asignados todavía.</div>
@@ -792,5 +1064,15 @@ body{ margin:0; font-family:Arial, "Segoe UI", sans-serif; background:var(--bg);
         </main>
     </div>
 </div>
+<script>
+function toggleUnitAccordion(element) {
+    var item = element.parentElement;
+    if (!item) {
+        return;
+    }
+
+    item.classList.toggle('active');
+}
+</script>
 </body>
 </html>
