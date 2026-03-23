@@ -1,7 +1,22 @@
 <?php
 session_start();
 
+// Load security utilities
+require_once __DIR__ . "/../config/security.php";
+
+// Initialize secure session
+Security::initializeSession();
+
+// Check authentication
 if (!isset($_SESSION['admin_logged']) || $_SESSION['admin_logged'] !== true) {
+    header('Location: login.php');
+    exit;
+}
+
+// Handle logout
+if (isset($_GET['logout'])) {
+    Security::logSecurityEvent('admin_logout', 'User logged out', $_SESSION['admin_id'] ?? 'unknown');
+    Security::destroySession();
     header('Location: login.php');
     exit;
 }
@@ -33,6 +48,9 @@ body { margin:0; font-family:"Segoe UI",Arial,sans-serif; background:var(--page-
 .logout-btn{
   text-decoration:none; color:#fff; font-weight:700; font-size:18px;
   padding:12px 22px; border-radius:10px; background:linear-gradient(180deg,#5aabf6,#4594ec);
+}
+.logout-btn:hover{
+  background:linear-gradient(180deg,#4a9ae8,#3e84d8);
 }
 
 .page{ max-width:1260px; margin:18px auto 0; padding:0 16px 24px; }

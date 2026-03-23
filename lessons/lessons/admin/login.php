@@ -7,42 +7,75 @@ session_start();
  * No comparte sesión con academic ni student
  */
 
+// Load security utilities
+require_once __DIR__ . "/../config/security.php";
+require_once __DIR__ . "/../config/db.php";
+
+// Initialize secure session settings
+Security::initializeSession();
+
 // Si ya hay un admin logueado, ir directo al dashboard
 if (isset($_SESSION['admin_logged']) && $_SESSION['admin_logged'] === true) {
     header("Location: /lessons/lessons/admin/dashboard.php");
     exit;
 }
 
-// Cargar usuarios admin
-$file = __DIR__ . "/data/users.json";
-$users = file_exists($file) ? json_decode(file_get_contents($file), true) : [];
-
 $error = "";
+$csrf_token = Security::generateCSRFToken();
 
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
-    session_unset();
-    session_destroy();
-    session_start();
+    // Verify CSRF token
+    $submitted_token = $_POST['_csrf_token'] ?? '';
+    
+    if (!Security::verifyCSRFToken($submitted_token)) {
+        Security::logSecurityEvent('failed_login', 'CSRF token validation failed');
+        $error = "Error de seguridad: token inválido. Intenta de nuevo.";
+    } else {
+        $email = Security::sanitize($_POST["email"] ?? "", "email");
+        $pass  = Security::sanitize($_POST["password"] ?? "", "string");
 
-    $email = trim($_POST["email"] ?? "");
-    $pass  = trim($_POST["password"] ?? "");
+        // Validate input
+        if (empty($email) || empty($pass)) {
+            Security::logSecurityEvent('failed_login', 'Empty credentials');
+            $error = "Correo y contraseña son requeridos";
+        } else {
+            try {
+                // Query database for admin user
+                $stmt = $pdo->prepare("
+                    SELECT id, email, password_hash, role, is_active 
+                    FROM admin_users 
+                    WHERE email = ? AND is_active = TRUE
+                ");
+                $stmt->execute([$email]);
+                $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
-    foreach ($users as $u) {
-        if (
-            isset($u["email"], $u["password"]) &&
-            $u["email"] === $email &&
-            $u["password"] === $pass
-        ) {
-            $_SESSION["admin_logged"] = true;
-            $_SESSION["admin_id"]     = $u["id"] ?? null;
-            $_SESSION["admin_email"]  = $u["email"];
+                if ($user && Security::verifyPassword($pass, $user['password_hash'])) {
+                    // Successful login
+                    session_unset();
+                    session_regenerate_id(true);
+                    session_start();
+                    
+                    Security::initializeSession();
+                    $_SESSION["admin_logged"] = true;
+                    $_SESSION["admin_id"]     = $user["id"];
+                    $_SESSION["admin_email"]  = $user["email"];
+                    $_SESSION["admin_role"]   = $user["role"];
+                    $_SESSION['_session_start_time'] = time();
 
-            header("Location: /lessons/lessons/admin/dashboard.php");
-            exit;
+                    Security::logSecurityEvent('admin_login', 'Successful login', $user['id']);
+                    header("Location: /lessons/lessons/admin/dashboard.php");
+                    exit;
+                } else {
+                    // Failed login - don't reveal if email exists
+                    Security::logSecurityEvent('failed_login', 'Invalid credentials', $email);
+                    $error = "Credenciales incorrectas";
+                }
+            } catch (Exception $e) {
+                Security::logSecurityEvent('failed_login', 'Database error: ' . $e->getMessage());
+                $error = "Error al procesar la solicitud. Intenta de nuevo.";
+            }
         }
     }
-
-    $error = "Credenciales incorrectas";
 }
 ?>
 <!DOCTYPE html>
@@ -334,6 +367,9 @@ body{
             </div>
 
             <form method="post" autocomplete="off">
+                <!-- CSRF Token Protection -->
+                <input type="hidden" name="_csrf_token" value="<?= htmlspecialchars($csrf_token, ENT_QUOTES, 'UTF-8') ?>">
+                
                 <div class="form-group">
                     <label class="form-label" for="email">Usuario o email</label>
                     <input
