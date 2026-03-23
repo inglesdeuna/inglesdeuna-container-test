@@ -74,14 +74,18 @@ function load_teacher_accounts_from_database(): array
 
     $hasMustChangePassword = table_has_column($pdo, 'teacher_accounts', 'must_change_password');
     $hasIsActive = table_has_column($pdo, 'teacher_accounts', 'is_active');
+    $hasPasswordHash = table_has_column($pdo, 'teacher_accounts', 'password_hash');
+    $hasTempPassword = table_has_column($pdo, 'teacher_accounts', 'temp_password');
 
     $selectMustChangePassword = $hasMustChangePassword ? 'must_change_password' : 'FALSE AS must_change_password';
     $selectIsActive = $hasIsActive ? 'is_active' : 'TRUE AS is_active';
+    $selectPasswordHash = $hasPasswordHash ? 'password_hash' : "'' AS password_hash";
+    $selectTempPassword = $hasTempPassword ? 'temp_password' : "'' AS temp_password";
 
     try {
         $sql = "
             SELECT id, teacher_id, teacher_name, username, password, permission, scope, target_id, target_name,
-                   {$selectMustChangePassword}, {$selectIsActive}, updated_at
+                   {$selectMustChangePassword}, {$selectIsActive}, {$selectPasswordHash}, {$selectTempPassword}, updated_at
             FROM teacher_accounts
             ORDER BY updated_at DESC NULLS LAST, teacher_name ASC
         ";
@@ -110,21 +114,157 @@ function load_teacher_accounts_from_json(): array
     return is_array($accounts) ? $accounts : [];
 }
 
+function save_teacher_accounts_to_json(array $accounts): void
+{
+    $accountsFile = __DIR__ . '/data/teacher_accounts.json';
+    file_put_contents(
+        $accountsFile,
+        json_encode(array_values($accounts), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)
+    );
+}
+
+function verify_teacher_password(array $account, string $password): bool
+{
+    $passwordHash = trim((string) ($account['password_hash'] ?? ''));
+    $tempPassword = (string) ($account['temp_password'] ?? '');
+    $plainPassword = (string) ($account['password'] ?? '');
+
+    if ($passwordHash !== '' && Security::verifyPassword($password, $passwordHash)) {
+        return true;
+    }
+
+    if ($tempPassword !== '' && hash_equals($tempPassword, $password)) {
+        return true;
+    }
+
+    return $plainPassword !== '' && hash_equals($plainPassword, $password);
+}
+
+function update_teacher_password_in_database(string $username, string $newPassword, bool $mustChangePassword): bool
+{
+    $pdo = get_pdo_connection();
+    if (!$pdo) {
+        return false;
+    }
+
+    $setParts = [
+        'password = :password',
+        'updated_at = NOW()',
+    ];
+
+    if (table_has_column($pdo, 'teacher_accounts', 'must_change_password')) {
+        $setParts[] = 'must_change_password = :must_change_password';
+    }
+
+    if (table_has_column($pdo, 'teacher_accounts', 'password_hash')) {
+        $setParts[] = 'password_hash = :password_hash';
+    }
+
+    if (table_has_column($pdo, 'teacher_accounts', 'temp_password')) {
+        $setParts[] = 'temp_password = :temp_password';
+    }
+
+    if (table_has_column($pdo, 'teacher_accounts', 'password_updated_at')) {
+        $setParts[] = $mustChangePassword ? 'password_updated_at = NULL' : 'password_updated_at = NOW()';
+    }
+
+    try {
+        $sql = 'UPDATE teacher_accounts SET ' . implode(', ', $setParts) . ' WHERE username = :username';
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute([
+            'password' => $newPassword,
+            'must_change_password' => $mustChangePassword,
+            'password_hash' => Security::hashPassword($newPassword),
+            'temp_password' => $mustChangePassword ? $newPassword : null,
+            'username' => $username,
+        ]);
+        return $stmt->rowCount() > 0;
+    } catch (Throwable $e) {
+        return false;
+    }
+}
+
+function update_teacher_password_in_json(string $username, string $newPassword, bool $mustChangePassword): bool
+{
+    $accounts = load_teacher_accounts_from_json();
+    $updated = false;
+
+    foreach ($accounts as $index => $account) {
+        if ((string) ($account['username'] ?? '') !== $username) {
+            continue;
+        }
+
+        $accounts[$index]['password'] = $newPassword;
+        $accounts[$index]['password_hash'] = Security::hashPassword($newPassword);
+        $accounts[$index]['temp_password'] = $mustChangePassword ? $newPassword : '';
+        $accounts[$index]['must_change_password'] = $mustChangePassword;
+        $updated = true;
+        break;
+    }
+
+    if ($updated) {
+        save_teacher_accounts_to_json($accounts);
+    }
+
+    return $updated;
+}
+
+function establish_teacher_session(array $account, string $username, bool $mustChangePassword): void
+{
+    session_unset();
+    session_regenerate_id(true);
+
+    Security::initializeSession();
+    $_SESSION['academic_logged'] = true;
+    $_SESSION['teacher_id'] = (string) ($account['teacher_id'] ?? '');
+    $_SESSION['teacher_name'] = (string) ($account['teacher_name'] ?? 'Docente');
+    $_SESSION['teacher_username'] = $username;
+    $_SESSION['teacher_account_id'] = (string) ($account['id'] ?? '');
+    $_SESSION['teacher_must_change_password'] = $mustChangePassword;
+    $_SESSION['_session_start_time'] = time();
+}
+
 $accounts = load_teacher_accounts_from_database();
 if (empty($accounts)) {
     $accounts = load_teacher_accounts_from_json();
 }
 
 $error = '';
+$success = '';
+$temporaryPassword = '';
 $csrf_token = Security::generateCSRFToken();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Verify CSRF token
     $submitted_token = $_POST['_csrf_token'] ?? '';
+    $action = (string) ($_POST['action'] ?? 'login');
     
     if (!Security::verifyCSRFToken($submitted_token)) {
         Security::logSecurityEvent('failed_login', 'CSRF token validation failed - academic');
         $error = 'Error de seguridad: token inválido. Intenta de nuevo.';
+    } elseif ($action === 'recover_password') {
+        $username = Security::sanitize($_POST['recovery_username'] ?? '', 'string');
+
+        if ($username === '') {
+            $error = 'Ingresa tu usuario docente para recuperar la clave.';
+        } else {
+            $recovered = false;
+            $temporaryPassword = 'Doc' . strtoupper(bin2hex(random_bytes(3)));
+
+            if (update_teacher_password_in_database($username, $temporaryPassword, true)) {
+                $recovered = true;
+            } elseif (update_teacher_password_in_json($username, $temporaryPassword, true)) {
+                $recovered = true;
+            }
+
+            if ($recovered) {
+                Security::logSecurityEvent('teacher_password_recovery', 'Temporary password generated', $username);
+                $success = 'Se generó una contraseña temporal para el docente.';
+            } else {
+                Security::logSecurityEvent('teacher_password_recovery_failed', 'Username not found', $username);
+                $error = 'No encontramos un docente con ese usuario.';
+            }
+        }
     } else {
         $username = Security::sanitize($_POST['username'] ?? '', 'string');
         $password = Security::sanitize($_POST['password'] ?? '', 'string');
@@ -153,24 +293,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     break;
                 }
 
-                if ($accountPassword !== $password) {
+                if (!verify_teacher_password($account, $password)) {
                     Security::logSecurityEvent('failed_login', 'Invalid password - ' . $username);
                     $error = 'Usuario o contraseña inválidos.';
                     break;
                 }
 
                 // Successful login
-                session_unset();
-                session_regenerate_id(true);
-
-                Security::initializeSession();
-                $_SESSION['academic_logged'] = true;
-                $_SESSION['teacher_id'] = (string) ($account['teacher_id'] ?? '');
-                $_SESSION['teacher_name'] = (string) ($account['teacher_name'] ?? 'Docente');
-                $_SESSION['teacher_username'] = $username;
-                $_SESSION['teacher_account_id'] = (string) ($account['id'] ?? '');
-                $_SESSION['teacher_must_change_password'] = $mustChangePassword;
-                $_SESSION['_session_start_time'] = time();
+                establish_teacher_session($account, $username, $mustChangePassword);
 
                 Security::logSecurityEvent('teacher_login', 'Successful login', $account['teacher_id'] ?? 'unknown');
 
@@ -351,6 +481,10 @@ body{
     margin-bottom:14px;
 }
 
+.password-wrap{
+    position:relative;
+}
+
 .form-label{
     display:block;
     margin-bottom:7px;
@@ -375,6 +509,24 @@ body{
     border-color:var(--blue);
     background:#fff;
     box-shadow:0 0 0 4px rgba(31,102,204,.12);
+}
+
+.password-input{
+    padding-right:48px;
+}
+
+.password-toggle{
+    position:absolute;
+    top:50%;
+    right:12px;
+    transform:translateY(-50%);
+    border:none;
+    background:transparent;
+    color:var(--muted);
+    cursor:pointer;
+    font-size:18px;
+    line-height:1;
+    padding:4px;
 }
 
 .submit-btn{
@@ -410,6 +562,53 @@ body{
     text-align:center;
     font-size:14px;
     font-weight:700;
+}
+
+.success{
+    margin-top:14px;
+    background:#eff6ff;
+    border:1px solid #bfdbfe;
+    color:#1d4ed8;
+    border-radius:12px;
+    padding:12px 14px;
+    text-align:center;
+    font-size:14px;
+    font-weight:700;
+}
+
+.recovery-card{
+    margin-top:16px;
+    padding:16px;
+    border:1px solid var(--line);
+    border-radius:14px;
+    background:#f8fbff;
+}
+
+.recovery-title{
+    margin:0 0 8px;
+    color:var(--title);
+    font-size:15px;
+    font-weight:800;
+}
+
+.recovery-text{
+    margin:0 0 12px;
+    color:var(--muted);
+    font-size:13px;
+    line-height:1.5;
+}
+
+.temp-password{
+    display:block;
+    margin-top:10px;
+    padding:12px;
+    border-radius:10px;
+    background:#ffffff;
+    border:1px dashed #93c5fd;
+    color:#1e3a8a;
+    font-size:20px;
+    font-weight:800;
+    letter-spacing:.08em;
 }
 
 .footer-note{
@@ -503,6 +702,7 @@ body{
             <form method="post" autocomplete="off">
                 <!-- CSRF Token Protection -->
                 <input type="hidden" name="_csrf_token" value="<?= htmlspecialchars($csrf_token, ENT_QUOTES, 'UTF-8') ?>">
+                <input type="hidden" name="action" value="login">
                 
                 <div class="form-group">
                     <label class="form-label" for="username">Usuario</label>
@@ -512,27 +712,64 @@ body{
                         type="text"
                         name="username"
                         placeholder="Ingresa tu usuario"
+                        value="<?= h((string) ($_POST['username'] ?? '')) ?>"
                         required
                     >
                 </div>
 
                 <div class="form-group">
                     <label class="form-label" for="password">Contraseña</label>
-                    <input
-                        class="form-input"
-                        id="password"
-                        type="password"
-                        name="password"
-                        placeholder="Ingresa tu contraseña"
-                        required
-                    >
+                    <div class="password-wrap">
+                        <input
+                            class="form-input password-input"
+                            id="password"
+                            type="password"
+                            name="password"
+                            placeholder="Ingresa tu contraseña"
+                            required
+                        >
+                        <button class="password-toggle" type="button" data-target="password" aria-label="Mostrar u ocultar contraseña">👁</button>
+                    </div>
                 </div>
 
                 <button class="submit-btn" type="submit">Entrar</button>
             </form>
 
+            <div class="recovery-card">
+                <div class="recovery-title">Recuperar contraseña</div>
+                <p class="recovery-text">Si no recuerdas la clave, escribe tu usuario docente y el sistema generará una contraseña temporal para volver a entrar.</p>
+                <form method="post" autocomplete="off">
+                    <input type="hidden" name="_csrf_token" value="<?= htmlspecialchars($csrf_token, ENT_QUOTES, 'UTF-8') ?>">
+                    <input type="hidden" name="action" value="recover_password">
+
+                    <div class="form-group">
+                        <label class="form-label" for="recovery_username">Usuario docente</label>
+                        <input
+                            class="form-input"
+                            id="recovery_username"
+                            type="text"
+                            name="recovery_username"
+                            placeholder="Ingresa tu usuario"
+                            value="<?= h((string) ($_POST['recovery_username'] ?? '')) ?>"
+                            required
+                        >
+                    </div>
+
+                    <button class="submit-btn" type="submit">Generar contraseña temporal</button>
+                </form>
+            </div>
+
             <?php if ($error): ?>
                 <div class="error"><?= h($error) ?></div>
+            <?php endif; ?>
+
+            <?php if ($success): ?>
+                <div class="success">
+                    <?= h($success) ?>
+                    <?php if ($temporaryPassword !== ''): ?>
+                        <span class="temp-password"><?= h($temporaryPassword) ?></span>
+                    <?php endif; ?>
+                </div>
             <?php endif; ?>
 
             <div class="link-area">
@@ -543,6 +780,21 @@ body{
         </div>
     </section>
 </div>
+
+<script>
+document.querySelectorAll('.password-toggle').forEach(function (button) {
+    button.addEventListener('click', function () {
+        var targetId = button.getAttribute('data-target');
+        var input = targetId ? document.getElementById(targetId) : null;
+        if (!input) {
+            return;
+        }
+
+        input.type = input.type === 'password' ? 'text' : 'password';
+        button.textContent = input.type === 'password' ? '👁' : '🙈';
+    });
+});
+</script>
 
 </body>
 </html>

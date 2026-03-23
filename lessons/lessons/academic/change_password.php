@@ -54,6 +54,51 @@ function table_has_column(PDO $pdo, string $tableName, string $columnName): bool
     }
 }
 
+function load_teacher_accounts_from_json(): array
+{
+    $accountsFile = __DIR__ . '/data/teacher_accounts.json';
+    if (!is_file($accountsFile)) {
+        return [];
+    }
+
+    $accounts = json_decode((string) file_get_contents($accountsFile), true);
+    return is_array($accounts) ? $accounts : [];
+}
+
+function save_teacher_accounts_to_json(array $accounts): void
+{
+    $accountsFile = __DIR__ . '/data/teacher_accounts.json';
+    file_put_contents(
+        $accountsFile,
+        json_encode(array_values($accounts), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)
+    );
+}
+
+function update_teacher_password_in_json(string $teacherId, string $newPassword): bool
+{
+    $accounts = load_teacher_accounts_from_json();
+    $updated = false;
+
+    foreach ($accounts as $index => $account) {
+        if ((string) ($account['teacher_id'] ?? '') !== $teacherId) {
+            continue;
+        }
+
+        $accounts[$index]['password'] = $newPassword;
+        $accounts[$index]['password_hash'] = Security::hashPassword($newPassword);
+        $accounts[$index]['temp_password'] = '';
+        $accounts[$index]['must_change_password'] = false;
+        $updated = true;
+        break;
+    }
+
+    if ($updated) {
+        save_teacher_accounts_to_json($accounts);
+    }
+
+    return $updated;
+}
+
 $pdo = get_pdo_connection();
 if (!$pdo) {
     die('Base de datos no disponible.');
@@ -84,15 +129,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt->execute(['teacher_id' => $teacherId]);
             $account = $stmt->fetch(PDO::FETCH_ASSOC);
 
+            $currentPasswordMatches = false;
+            if ($account) {
+                $currentPasswordMatches = (string) ($account['password'] ?? '') === $currentPassword;
+
+                if (!$currentPasswordMatches && !empty($account['password_hash'] ?? '')) {
+                    $currentPasswordMatches = Security::verifyPassword($currentPassword, (string) $account['password_hash']);
+                }
+
+                if (!$currentPasswordMatches && !empty($account['temp_password'] ?? '')) {
+                    $currentPasswordMatches = hash_equals((string) $account['temp_password'], $currentPassword);
+                }
+            }
+
             if (!$account) {
                 $error = 'No se encontró la cuenta del docente.';
-            } elseif ((string) ($account['password'] ?? '') !== $currentPassword) {
+            } elseif (!$currentPasswordMatches) {
                 $error = 'La contraseña actual no es correcta.';
             } else {
                 $setParts = [
                     'password = :new_password',
                     'updated_at = NOW()',
                 ];
+
+                if (table_has_column($pdo, 'teacher_accounts', 'password_hash')) {
+                    $setParts[] = 'password_hash = :password_hash';
+                }
+
+                if (table_has_column($pdo, 'teacher_accounts', 'temp_password')) {
+                    $setParts[] = 'temp_password = NULL';
+                }
 
                 if (table_has_column($pdo, 'teacher_accounts', 'must_change_password')) {
                     $setParts[] = 'must_change_password = FALSE';
@@ -111,6 +177,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $update = $pdo->prepare($sql);
                 $update->execute([
                     'new_password' => $newPassword,
+                    'password_hash' => Security::hashPassword($newPassword),
                     'teacher_id' => $teacherId,
                 ]);
 
@@ -119,6 +186,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 exit;
             }
         } catch (Throwable $e) {
+            if (update_teacher_password_in_json($teacherId, $newPassword)) {
+                $_SESSION['teacher_must_change_password'] = false;
+                header('Location: dashboard.php?password_changed=1');
+                exit;
+            }
+
             $error = 'No fue posible actualizar la contraseña.';
         }
     }
@@ -181,6 +254,7 @@ label{
     font-weight:700;
     font-size:14px;
 }
+.password-wrap{ position:relative; }
 input{
     width:100%;
     height:46px;
@@ -189,6 +263,18 @@ input{
     padding:0 12px;
     font-size:15px;
     outline:none;
+}
+.password-input{ padding-right:44px; }
+.password-toggle{
+    position:absolute;
+    top:50%;
+    right:10px;
+    transform:translateY(-50%);
+    border:none;
+    background:transparent;
+    color:var(--muted);
+    cursor:pointer;
+    font-size:18px;
 }
 input:focus{
     border-color:#8bb0ea;
@@ -223,13 +309,22 @@ button:hover{
 
     <form method="post">
         <label for="current_password">Contraseña actual</label>
-        <input id="current_password" type="password" name="current_password" required>
+        <div class="password-wrap">
+            <input class="password-input" id="current_password" type="password" name="current_password" required>
+            <button class="password-toggle" type="button" data-target="current_password" aria-label="Mostrar u ocultar contraseña">👁</button>
+        </div>
 
         <label for="new_password">Nueva contraseña</label>
-        <input id="new_password" type="password" name="new_password" required>
+        <div class="password-wrap">
+            <input class="password-input" id="new_password" type="password" name="new_password" required>
+            <button class="password-toggle" type="button" data-target="new_password" aria-label="Mostrar u ocultar contraseña">👁</button>
+        </div>
 
         <label for="confirm_password">Confirmar nueva contraseña</label>
-        <input id="confirm_password" type="password" name="confirm_password" required>
+        <div class="password-wrap">
+            <input class="password-input" id="confirm_password" type="password" name="confirm_password" required>
+            <button class="password-toggle" type="button" data-target="confirm_password" aria-label="Mostrar u ocultar contraseña">👁</button>
+        </div>
 
         <button type="submit">Guardar nueva contraseña</button>
     </form>
@@ -238,5 +333,19 @@ button:hover{
         <div class="error"><?php echo h($error); ?></div>
     <?php } ?>
 </div>
+<script>
+document.querySelectorAll('.password-toggle').forEach(function (button) {
+    button.addEventListener('click', function () {
+        var targetId = button.getAttribute('data-target');
+        var input = targetId ? document.getElementById(targetId) : null;
+        if (!input) {
+            return;
+        }
+
+        input.type = input.type === 'password' ? 'text' : 'password';
+        button.textContent = input.type === 'password' ? '👁' : '🙈';
+    });
+});
+</script>
 </body>
 </html>
