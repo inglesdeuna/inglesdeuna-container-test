@@ -793,8 +793,7 @@ body{ margin:0; font-family:Arial,sans-serif; background:var(--bg); color:var(--
 
 .unit-list{ margin-top:20px; }
 
-/* Accordion styles */
-.accordion-item{
+.unit-item{
     border:1px solid var(--line);
     border-radius:10px;
     margin-bottom:12px;
@@ -802,92 +801,49 @@ body{ margin:0; font-family:Arial,sans-serif; background:var(--bg); color:var(--
     background:#fff;
     transition:all .2s;
 }
-.accordion-item.active{
+.unit-item.active{
     border:1px solid var(--primary);
     box-shadow:0 0 0 3px var(--primary-light);
 }
 
-.accordion-header{
+.unit-header{
     display:flex;
     justify-content:space-between;
     align-items:center;
     padding:16px 18px;
-    cursor:pointer;
     background:#fafbfc;
-    user-select:none;
     transition:background .2s;
 }
-.accordion-header:hover{
-    background:#f1f5f9;
-}
-.accordion-item.active .accordion-header{
+.unit-item.active .unit-header{
     background:#eff6ff;
 }
 
-.accordion-title{
+.unit-title{
     font-size:15px;
     font-weight:700;
     color:var(--title);
     margin:0;
 }
 
-.accordion-toggle{
+.unit-status{
     display:inline-flex;
     align-items:center;
     justify-content:center;
-    width:24px;
-    height:24px;
-    border-radius:6px;
+    min-width:92px;
+    height:28px;
+    padding:0 10px;
+    border-radius:999px;
     background:var(--primary-light);
     color:var(--primary);
-    font-size:16px;
-    transition:transform .3s;
+    font-size:11px;
+    font-weight:800;
+    letter-spacing:.06em;
+    text-transform:uppercase;
     flex-shrink:0;
 }
-.accordion-item.active .accordion-toggle{
-    transform:rotate(180deg);
-}
-
-.accordion-content{
-    display:none;
-    padding:16px 18px;
-    border-top:1px solid var(--line);
-    background:#f8fafc;
-}
-.accordion-item.active .accordion-content{
-    display:block;
-}
-
-.unit-actions{
-    display:flex;
-    flex-wrap:wrap;
-    gap:10px;
-    margin-top:0;
-}
-
-.unit-btn{
-    display:inline-block;
-    padding:9px 14px;
-    border-radius:8px;
-    text-decoration:none;
-    font-size:13px;
-    font-weight:600;
+.unit-item.active .unit-status{
+    background:linear-gradient(180deg,#1d4ed8,#1e3a8a);
     color:#fff;
-    background:var(--primary);
-    transition:all .2s;
-    box-shadow:var(--shadow);
-}
-.unit-btn:hover{
-    background:var(--primary-dark);
-    box-shadow:var(--shadow-md);
-    transform:translateY(-1px);
-}
-
-.unit-btn-edit{
-    background:#1d4ed8;
-}
-.unit-btn-edit:hover{
-    background:#1e3a8a;
 }
 
 .empty{ background:#f8fafc; border:1px dashed var(--line); border-radius:14px; padding:32px 24px; text-align:center; color:var(--muted); font-size:15px; }
@@ -1087,10 +1043,10 @@ body{ margin:0; font-family:Arial,sans-serif; background:var(--bg); color:var(--
                                 $unitId = (string) ($unit['id'] ?? '');
                                 $isActiveUnit = $unitId === $selectedUnitId;
                                 ?>
-                                <div class="accordion-item<?php echo $isActiveUnit ? ' active' : ''; ?>">
-                                    <div class="accordion-header" onclick="toggleUnitAccordion(this)">
-                                        <h4 class="accordion-title"><?php echo h((string) ($unit['name'] ?? 'Unidad')); ?></h4>
-                                        <span class="accordion-toggle" aria-hidden="true">⌄</span>
+                                <div class="unit-item<?php echo $isActiveUnit ? ' active' : ''; ?>">
+                                    <div class="unit-header">
+                                        <h4 class="unit-title"><?php echo h((string) ($unit['name'] ?? 'Unidad')); ?></h4>
+                                        <span class="unit-status"><?php echo $isActiveUnit ? 'Activa' : 'Disponible'; ?></span>
                                     </div>
                                 </div>
                             <?php } ?>
@@ -1103,15 +1059,5 @@ body{ margin:0; font-family:Arial,sans-serif; background:var(--bg); color:var(--
         </main>
     </div>
 </div>
-<script>
-function toggleUnitAccordion(element) {
-    var item = element.parentElement;
-    if (!item) {
-        return;
-    }
-
-    item.classList.toggle('active');
-}
-</script>
 </body>
 </html>
