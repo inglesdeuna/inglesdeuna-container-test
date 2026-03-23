@@ -24,14 +24,26 @@ if (!is_array($rawData)) {
     $rawData = [];
 }
 
+$pageTexts = isset($rawData['page_texts']) && is_array($rawData['page_texts'])
+    ? array_values($rawData['page_texts'])
+    : [];
+
+$pageCount = isset($rawData['page_count']) ? (int) $rawData['page_count'] : max(count($pageTexts), 1);
+
 $payload = [
     'title'          => isset($rawData['title']) ? (string) $rawData['title'] : 'Flipbook',
     'pdf_url'        => isset($rawData['pdf_url']) ? (string) $rawData['pdf_url'] : '',
     'listen_enabled' => array_key_exists('listen_enabled', $rawData) ? (bool) $rawData['listen_enabled'] : true,
-    'page_texts'     => isset($rawData['page_texts']) && is_array($rawData['page_texts']) ? array_values($rawData['page_texts']) : [],
-    'page_count'     => isset($rawData['page_count']) ? max(1, (int) $rawData['page_count']) : max(1, count($rawData['page_texts'] ?? [])),
+    'page_texts'     => $pageTexts,
+    'page_count'     => $pageCount,
     'language'       => isset($rawData['language']) ? (string) $rawData['language'] : 'en-US',
 ];
+
+$currentFileName = '';
+if ($payload['pdf_url'] !== '') {
+    $path = parse_url($payload['pdf_url'], PHP_URL_PATH);
+    $currentFileName = basename($path ?: $payload['pdf_url']);
+}
 
 ob_start();
 ?>
@@ -55,19 +67,34 @@ ob_start();
                     <i class="fas fa-file-pdf text-danger me-2"></i>Archivo PDF
                 </h5>
 
-                <div id="drop-zone" class="border rounded p-4 text-center bg-light" style="cursor:pointer;">
-                    <i class="fas fa-cloud-upload-alt fa-2x text-secondary mb-2"></i>
-                    <div class="fw-semibold">Seleccione o arrastre el archivo PDF</div>
-                    <div class="text-muted small">Formato permitido: PDF</div>
-                    <input type="file" id="pdf-file" accept="application/pdf,.pdf" class="d-none">
+                <div id="drop-zone" class="flipbook-dropzone">
+                    <div class="flipbook-dropzone__inner">
+                        <i class="fas fa-cloud-upload-alt fa-2x text-secondary mb-2"></i>
+                        <div class="fw-semibold">Seleccione o arrastre el archivo PDF</div>
+                        <div class="text-muted small">Formato permitido: PDF</div>
+                    </div>
                 </div>
+
+                <input
+                    type="file"
+                    id="pdf-file"
+                    name="pdf"
+                    accept="application/pdf,.pdf"
+                    style="position:absolute; left:-9999px; width:1px; height:1px; opacity:0;"
+                >
 
                 <div id="file-status" class="alert alert-success mt-3 <?php echo $payload['pdf_url'] !== '' ? '' : 'd-none'; ?>">
                     <strong>Archivo actual:</strong>
-                    <span id="file-name-display"><?php echo htmlspecialchars(basename(parse_url($payload['pdf_url'], PHP_URL_PATH) ?? $payload['pdf_url']), ENT_QUOTES, 'UTF-8'); ?></span>
+                    <span id="file-name-display"><?php echo htmlspecialchars($currentFileName, ENT_QUOTES, 'UTF-8'); ?></span>
+
                     <?php if ($payload['pdf_url'] !== ''): ?>
                         <div class="mt-2">
-                            <a href="<?php echo htmlspecialchars($payload['pdf_url'], ENT_QUOTES, 'UTF-8'); ?>" target="_blank" class="btn btn-outline-secondary btn-sm">
+                            <a
+                                href="<?php echo htmlspecialchars($payload['pdf_url'], ENT_QUOTES, 'UTF-8'); ?>"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                class="btn btn-outline-secondary btn-sm"
+                            >
                                 Ver PDF actual
                             </a>
                         </div>
@@ -81,6 +108,7 @@ ob_start();
                         id="page-count"
                         class="form-control"
                         min="1"
+                        step="1"
                         value="<?php echo (int) $payload['page_count']; ?>"
                     >
                     <div class="form-text">Usada para la navegación del visor y para sincronizar el texto por página.</div>
@@ -140,77 +168,135 @@ ob_start();
     </button>
 </div>
 
+<style>
+.flipbook-dropzone {
+    position: relative;
+    border: 2px dashed #cbd5e1;
+    border-radius: 12px;
+    padding: 24px;
+    text-align: center;
+    background: #f8fafc;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.flipbook-dropzone:hover {
+    border-color: #60a5fa;
+    background: #eff6ff;
+}
+
+.flipbook-dropzone.is-dragover {
+    border-color: #2563eb;
+    background: #dbeafe;
+}
+
+.flipbook-dropzone__inner {
+    pointer-events: none;
+}
+</style>
+
 <script>
-$(function () {
-    let hasChanges = false;
+document.addEventListener('DOMContentLoaded', function () {
+    const dropZone = document.getElementById('drop-zone');
+    const fileInput = document.getElementById('pdf-file');
+    const fileStatus = document.getElementById('file-status');
+    const fileNameDisplay = document.getElementById('file-name-display');
+    const saveBtn = document.getElementById('btn-save-flipbook');
+    const unsavedMsg = document.getElementById('unsaved-msg');
+
+    const titleInput = document.getElementById('flipbook-title');
+    const pageTextsInput = document.getElementById('page-texts');
+    const pageCountInput = document.getElementById('page-count');
+    const listenEnabledInput = document.getElementById('listen-enabled');
+    const voiceLangInput = document.getElementById('voice-lang');
+
     const existingPdfUrl = <?php echo json_encode($payload['pdf_url'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
+    let hasChanges = false;
 
     function markAsChanged() {
         hasChanges = true;
-        $('#unsaved-msg').removeClass('d-none');
+        unsavedMsg.classList.remove('d-none');
     }
 
-    function setSelectedFile(file) {
+    function showSelectedFile(file) {
         if (!file) return;
-
-        const fileName = (file.name || '').toLowerCase();
-        const isPdf = file.type === 'application/pdf' || fileName.endsWith('.pdf');
-
-        if (!isPdf) {
-            alert('Solo se permiten archivos PDF.');
-            return;
-        }
-
-        const input = document.getElementById('pdf-file');
-        const dt = new DataTransfer();
-        dt.items.add(file);
-        input.files = dt.files;
-
-        $('#file-name-display').text(file.name);
-        $('#file-status').removeClass('d-none');
+        fileNameDisplay.textContent = file.name;
+        fileStatus.classList.remove('d-none');
         markAsChanged();
     }
 
-    $('#flipbook-title, #page-texts, #voice-lang, #listen-enabled, #page-count').on('input change', markAsChanged);
-
-    $('#drop-zone').on('click', function () {
-        $('#pdf-file').trigger('click');
-    });
-
-    $('#drop-zone').on('dragover', function (e) {
-        e.preventDefault();
-        e.stopPropagation();
-        $(this).addClass('border-primary bg-white');
-    });
-
-    $('#drop-zone').on('dragleave', function (e) {
-        e.preventDefault();
-        e.stopPropagation();
-        $(this).removeClass('border-primary bg-white');
-    });
-
-    $('#drop-zone').on('drop', function (e) {
-        e.preventDefault();
-        e.stopPropagation();
-        $(this).removeClass('border-primary bg-white');
-
-        const files = e.originalEvent.dataTransfer.files;
-        if (files && files[0]) {
-            setSelectedFile(files[0]);
+    function validatePdfFile(file) {
+        if (!file) {
+            return { ok: false, message: 'No se seleccionó ningún archivo.' };
         }
+
+        const fileName = file.name.toLowerCase();
+        const mimeType = (file.type || '').toLowerCase();
+        const isPdfByName = fileName.endsWith('.pdf');
+        const isPdfByMime = mimeType === 'application/pdf' || mimeType === '';
+
+        if (!isPdfByName && !isPdfByMime) {
+            return { ok: false, message: 'Solo se permiten archivos PDF.' };
+        }
+
+        return { ok: true };
+    }
+
+    dropZone.addEventListener('click', function () {
+        fileInput.click();
     });
 
-    $('#pdf-file').on('change', function () {
+    fileInput.addEventListener('change', function () {
         const file = this.files && this.files[0] ? this.files[0] : null;
         if (!file) return;
-        setSelectedFile(file);
+
+        const validation = validatePdfFile(file);
+        if (!validation.ok) {
+            alert(validation.message);
+            fileInput.value = '';
+            return;
+        }
+
+        showSelectedFile(file);
     });
 
-    $('#btn-save-flipbook').on('click', function () {
-        const btn = $(this);
-        const title = $('#flipbook-title').val().trim();
-        const selectedFile = $('#pdf-file')[0].files[0] || null;
-        const pageCount = Math.max(1, parseInt($('#page-count').val(), 10) || 1);
+    dropZone.addEventListener('dragover', function (e) {
+        e.preventDefault();
+        dropZone.classList.add('is-dragover');
+    });
+
+    dropZone.addEventListener('dragleave', function () {
+        dropZone.classList.remove('is-dragover');
+    });
+
+    dropZone.addEventListener('drop', function (e) {
+        e.preventDefault();
+        dropZone.classList.remove('is-dragover');
+
+        const files = e.dataTransfer.files;
+        if (!files || !files.length) return;
+
+        const file = files[0];
+        const validation = validatePdfFile(file);
+
+        if (!validation.ok) {
+            alert(validation.message);
+            return;
+        }
+
+        fileInput.files = files;
+        showSelectedFile(file);
+    });
+
+    [titleInput, pageTextsInput, pageCountInput, listenEnabledInput, voiceLangInput].forEach(function (el) {
+        el.addEventListener('input', markAsChanged);
+        el.addEventListener('change', markAsChanged);
+    });
+
+    saveBtn.addEventListener('click', function () {
+        const title = titleInput.value.trim();
+        const pageCount = parseInt(pageCountInput.value, 10);
+        const selectedFile = fileInput.files && fileInput.files[0] ? fileInput.files[0] : null;
 
         if (!title) {
             alert('Debes escribir un título.');
@@ -222,9 +308,22 @@ $(function () {
             return;
         }
 
-        const pageTexts = $('#page-texts').val()
+        if (selectedFile) {
+            const validation = validatePdfFile(selectedFile);
+            if (!validation.ok) {
+                alert(validation.message);
+                return;
+            }
+        }
+
+        if (!Number.isInteger(pageCount) || pageCount < 1) {
+            alert('Debes indicar una cantidad de páginas válida.');
+            return;
+        }
+
+        const pageTexts = pageTextsInput.value
             .split(/\r?\n/)
-            .map(line => line.trim());
+            .map(function (line) { return line.trim(); });
 
         const formData = new FormData();
         formData.append('id', <?php echo json_encode($activityId); ?>);
@@ -232,8 +331,8 @@ $(function () {
         formData.append('source', <?php echo json_encode($source); ?>);
         formData.append('assignment', <?php echo json_encode($assignment); ?>);
         formData.append('title', title);
-        formData.append('listen_enabled', $('#listen-enabled').is(':checked') ? '1' : '0');
-        formData.append('language', $('#voice-lang').val());
+        formData.append('listen_enabled', listenEnabledInput.checked ? '1' : '0');
+        formData.append('language', voiceLangInput.value);
         formData.append('page_count', String(pageCount));
         formData.append('page_texts', JSON.stringify(pageTexts));
 
@@ -241,43 +340,42 @@ $(function () {
             formData.append('pdf', selectedFile);
         }
 
-        btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-2"></i>Guardando...');
+        saveBtn.disabled = true;
+        saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Guardando...';
 
-        $.ajax({
-            url: 'save_flipbook.php',
-            type: 'POST',
-            data: formData,
-            processData: false,
-            contentType: false,
-            dataType: 'json',
-            success: function (res) {
-                if (res && res.status === 'success') {
-                    hasChanges = false;
-                    $('#unsaved-msg').addClass('d-none');
-                    alert(res.message || 'Actividad guardada correctamente.');
-                    window.location.reload();
-                } else {
-                    alert((res && res.message) ? res.message : 'No fue posible guardar.');
-                }
-            },
-            error: function (xhr) {
-                let msg = 'Error al guardar la actividad.';
-                if (xhr.responseJSON && xhr.responseJSON.message) {
-                    msg = xhr.responseJSON.message;
-                }
-                alert(msg);
-            },
-            complete: function () {
-                btn.prop('disabled', false).html('<i class="fas fa-save me-2"></i>Guardar actividad');
+        fetch('save_flipbook.php', {
+            method: 'POST',
+            body: formData
+        })
+        .then(function (response) {
+            return response.json().catch(function () {
+                throw new Error('Respuesta inválida del servidor.');
+            });
+        })
+        .then(function (res) {
+            if (res.status === 'success') {
+                hasChanges = false;
+                unsavedMsg.classList.add('d-none');
+                alert(res.message || 'Actividad guardada correctamente.');
+                window.location.reload();
+            } else {
+                alert(res.message || 'No fue posible guardar.');
             }
+        })
+        .catch(function (error) {
+            alert(error.message || 'Error al guardar la actividad.');
+        })
+        .finally(function () {
+            saveBtn.disabled = false;
+            saveBtn.innerHTML = '<i class="fas fa-save me-2"></i>Guardar actividad';
         });
     });
 
-    window.onbeforeunload = function () {
-        if (hasChanges) {
-            return 'Hay cambios sin guardar. ¿Deseas salir?';
-        }
-    };
+    window.addEventListener('beforeunload', function (e) {
+        if (!hasChanges) return;
+        e.preventDefault();
+        e.returnValue = '';
+    });
 });
 </script>
 
