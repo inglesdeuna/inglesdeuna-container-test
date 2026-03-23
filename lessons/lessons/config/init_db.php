@@ -181,45 +181,6 @@ try {
         // índice ya existe
     }
 
-    /* ===============================
-       ADMIN USERS
-       =============================== */
-    $pdo->exec("
-    CREATE TABLE IF NOT EXISTS admin_users (
-        id TEXT PRIMARY KEY,
-        email TEXT UNIQUE NOT NULL,
-        password_hash TEXT NOT NULL,
-        role TEXT DEFAULT 'admin',
-        is_active BOOLEAN DEFAULT TRUE,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    );
-    ");
-
-    // Seed default admin user if none exists
-    try {
-        $stmt = $pdo->query("SELECT COUNT(*) FROM admin_users WHERE email = 'admin@lets.com'");
-        $count = $stmt->fetchColumn();
-        
-        if ($count == 0) {
-            // Hash the password using bcrypt
-            require_once __DIR__ . '/security.php';
-            $hashedPassword = Security::hashPassword('1234');
-            
-            $insertStmt = $pdo->prepare("
-                INSERT INTO admin_users (id, email, password_hash, role, is_active)
-                VALUES (?, ?, ?, 'admin', TRUE)
-            ");
-            $insertStmt->execute([
-                'admin_1',
-                'admin@lets.com',
-                $hashedPassword
-            ]);
-        }
-    } catch (Exception $e) {
-        // Table might not exist yet or other error - not critical on init
-    }
-
 } catch (Exception $e) {
     die("DB INIT ERROR: " . $e->getMessage());
 }
