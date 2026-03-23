@@ -1,8 +1,8 @@
 <?php
 require_once __DIR__ . '/../../config/db.php';
+require_once __DIR__ . '/../../core/_activity_viewer_template.php';
 
 $activityId = isset($_GET['id']) ? trim((string) $_GET['id']) : '';
-$unit       = isset($_GET['unit']) ? trim((string) $_GET['unit']) : '';
 
 if ($activityId === '') {
     die('ID de actividad no especificado.');
@@ -38,46 +38,41 @@ if (count($pageTexts) < $pageCount) {
     $pageTexts = array_slice($pageTexts, 0, $pageCount);
 }
 
-if ($pdfUrl === '') {
-    die(
-        '<div style="max-width:700px;margin:40px auto;padding:32px;background:#fff;border:1px solid #e5e7eb;border-radius:16px;text-align:center;color:#475569;">' .
-        '<h3 style="margin-bottom:10px;">No hay un PDF cargado todavía</h3>' .
-        '<p style="margin:0;">Abre el editor del flipbook y sube un archivo para poder visualizarlo.</p>' .
-        '</div>'
-    );
-}
-
-include __DIR__ . '/../../core/_activity_viewer_template.php';
+ob_start();
 ?>
 
-<link rel="stylesheet" href="flipbook.css">
+<link rel="stylesheet" href="/lessons/lessons/activities/flipbooks/flipbook.css">
 
-<div
-    class="flipbook-viewer"
-    id="flipbook-viewer"
-    data-pdf-url="<?php echo htmlspecialchars($pdfUrl, ENT_QUOTES, 'UTF-8'); ?>"
-    data-language="<?php echo htmlspecialchars($language, ENT_QUOTES, 'UTF-8'); ?>"
-    data-listen-enabled="<?php echo $listenEnabled ? '1' : '0'; ?>"
-    data-page-count="<?php echo (int) $pageCount; ?>"
-    data-page-texts="<?php echo htmlspecialchars(json_encode($pageTexts, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), ENT_QUOTES, 'UTF-8'); ?>"
->
-    <div class="flipbook-viewer__header mb-4">
-        <h2 class="mb-1"><?php echo htmlspecialchars($title, ENT_QUOTES, 'UTF-8'); ?></h2>
-        <p class="text-muted mb-0">
-            Visualiza el libro y usa la función Listen para reproducir el texto configurado por página.
-        </p>
+<?php if ($pdfUrl === ''): ?>
+    <div class="flipbook-empty-state">
+        <h3>No hay un PDF cargado todavía</h3>
+        <p>Abre el editor del flipbook y sube un archivo para poder visualizarlo.</p>
     </div>
+<?php else: ?>
+    <div
+        class="flipbook-viewer"
+        id="flipbook-viewer"
+        data-pdf-url="<?php echo htmlspecialchars($pdfUrl, ENT_QUOTES, 'UTF-8'); ?>"
+        data-language="<?php echo htmlspecialchars($language, ENT_QUOTES, 'UTF-8'); ?>"
+        data-listen-enabled="<?php echo $listenEnabled ? '1' : '0'; ?>"
+        data-page-count="<?php echo (int) $pageCount; ?>"
+        data-page-texts="<?php echo htmlspecialchars(json_encode($pageTexts, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), ENT_QUOTES, 'UTF-8'); ?>"
+    >
+        <div class="flipbook-viewer__header">
+            <p class="flipbook-viewer__subtitle">
+                Visualiza el libro y usa la función Listen para reproducir el texto configurado por página.
+            </p>
+        </div>
 
-    <div class="card shadow-sm border-0 flipbook-viewer__card">
-        <div class="card-body">
+        <div class="flipbook-viewer__card">
             <div class="flipbook-toolbar">
                 <div class="flipbook-toolbar__left">
-                    <button type="button" id="prev-btn" class="btn btn-outline-secondary btn-sm">
-                        <i class="fas fa-chevron-left me-1"></i>Anterior
+                    <button type="button" id="prev-btn" class="flipbook-btn flipbook-btn--secondary">
+                        Anterior
                     </button>
 
-                    <button type="button" id="next-btn" class="btn btn-outline-secondary btn-sm">
-                        Siguiente<i class="fas fa-chevron-right ms-1"></i>
+                    <button type="button" id="next-btn" class="flipbook-btn flipbook-btn--secondary">
+                        Siguiente
                     </button>
                 </div>
 
@@ -89,36 +84,36 @@ include __DIR__ . '/../../core/_activity_viewer_template.php';
 
                 <div class="flipbook-toolbar__right">
                     <?php if ($listenEnabled): ?>
-                        <button type="button" id="listen-btn" class="btn btn-primary btn-sm">
-                            <i class="fas fa-volume-up me-1"></i>Listen
+                        <button type="button" id="listen-btn" class="flipbook-btn flipbook-btn--primary">
+                            Listen
                         </button>
 
-                        <button type="button" id="stop-listen-btn" class="btn btn-outline-secondary btn-sm">
-                            <i class="fas fa-stop me-1"></i>Detener
+                        <button type="button" id="stop-listen-btn" class="flipbook-btn flipbook-btn--secondary">
+                            Detener
                         </button>
                     <?php endif; ?>
 
-                    <button type="button" id="open-pdf-btn" class="btn btn-outline-primary btn-sm">
-                        <i class="fas fa-external-link-alt me-1"></i>Abrir PDF
+                    <button type="button" id="open-pdf-btn" class="flipbook-btn flipbook-btn--secondary">
+                        Abrir PDF
                     </button>
 
-                    <button type="button" id="full-screen-btn" class="btn btn-outline-dark btn-sm">
-                        <i class="fas fa-expand me-1"></i>Pantalla completa
+                    <button type="button" id="full-screen-btn" class="flipbook-btn flipbook-btn--dark">
+                        Pantalla completa
                     </button>
                 </div>
             </div>
 
-            <div class="flipbook-stage mt-3" id="flipbook-stage">
+            <div class="flipbook-stage" id="flipbook-stage">
                 <iframe
                     id="pdf-frame"
                     class="flipbook-pdf-frame"
-                    src=""
+                    src="<?php echo htmlspecialchars($pdfUrl, ENT_QUOTES, 'UTF-8'); ?>#page=1&toolbar=1&navpanes=0&scrollbar=1"
                     title="Flipbook PDF"
                 ></iframe>
             </div>
 
-            <div class="flipbook-listen-panel mt-3">
-                <div class="small text-muted mb-2">Texto configurado para la página actual</div>
+            <div class="flipbook-listen-panel">
+                <div class="flipbook-listen-panel__label">Texto configurado para la página actual</div>
                 <div id="current-page-text" class="flipbook-page-text-box">
                     <?php
                     $initialText = trim((string) ($pageTexts[0] ?? ''));
@@ -128,12 +123,10 @@ include __DIR__ . '/../../core/_activity_viewer_template.php';
             </div>
         </div>
     </div>
-</div>
 
-<script src="flipbook.js"></script>
+    <script src="/lessons/lessons/activities/flipbooks/flipbook.js"></script>
+<?php endif; ?>
 
 <?php
-if (file_exists(__DIR__ . '/../../core/_activity_viewer_footer.php')) {
-    include __DIR__ . '/../../core/_activity_viewer_footer.php';
-}
-?>
+$content = ob_get_clean();
+render_activity_viewer($title, '📘', $content);
