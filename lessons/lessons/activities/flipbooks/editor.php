@@ -347,10 +347,18 @@ document.addEventListener('DOMContentLoaded', function () {
             method: 'POST',
             body: formData
         })
-        .then(function (response) {
-            return response.json().catch(function () {
-                throw new Error('Respuesta inválida del servidor.');
-            });
+        .then(async function (response) {
+            const raw = await response.text();
+
+            let res;
+            try {
+                res = JSON.parse(raw);
+            } catch (e) {
+                console.error('Respuesta cruda del servidor:', raw);
+                throw new Error('Respuesta inválida del servidor. Revisa save_flipbook.php');
+            }
+
+            return res;
         })
         .then(function (res) {
             if (res.status === 'success') {
@@ -363,6 +371,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         })
         .catch(function (error) {
+            console.error(error);
             alert(error.message || 'Error al guardar la actividad.');
         })
         .finally(function () {
