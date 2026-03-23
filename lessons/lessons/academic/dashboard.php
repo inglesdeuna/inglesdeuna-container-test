@@ -488,15 +488,24 @@ if ($selectedAssignment) {
 <title>Perfil del Docente</title>
 <style>
 :root{
-    --bg:#f8fafc;
+    --bg:#eef7f0;
     --card:#ffffff;
-    --line:#e2e8f0;
-    --text:#334155;
-    --title:#0f172a;
-    --muted:#64748b;
-    --primary:#3b82f6;
-    --primary-dark:#1e40af;
-    --primary-light:#dbeafe;
+    --line:#d8e8dc;
+    --text:#1f3b28;
+    --muted:#5d7465;
+    --green:#2f9e44;
+    --green-dark:#237a35;
+    --green-soft:#e9f8ee;
+    --red:#dc2626;
+    --red-dark:#b91c1c;
+    --blue:#1d4ed8;
+    --orange:#d97706;
+    --shadow:0 10px 24px rgba(0,0,0,.08);
+    --shadow-sm:0 2px 8px rgba(0,0,0,.06);
+    /* legacy aliases kept for any inline usage */
+    --primary:#2f9e44;
+    --primary-dark:#237a35;
+    --primary-light:#e9f8ee;
     --success:#10b981;
     --success-dark:#059669;
     --warning:#f59e0b;
@@ -506,12 +515,11 @@ if ($selectedAssignment) {
     --shadow:0 1px 3px rgba(0,0,0,.1), 0 1px 2px rgba(0,0,0,.06);
     --shadow-md:0 4px 6px rgba(0,0,0,.1), 0 2px 4px rgba(0,0,0,.06);
     --shadow-lg:0 10px 15px rgba(0,0,0,.1), 0 4px 6px rgba(0,0,0,.05);
-    --radius:12px;
 }
 
 *{ box-sizing:border-box; }
-body{ margin:0; font-family:-apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", sans-serif; background:var(--bg); color:var(--text); }
-.page{ max-width:1400px; margin:0 auto; padding:40px 20px; }
+body{ margin:0; font-family:Arial,sans-serif; background:var(--bg); color:var(--text); }
+.page{ max-width:1400px; margin:0 auto; padding:20px 20px 40px; }
 
 .header{
     display:flex;
