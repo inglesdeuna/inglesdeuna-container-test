@@ -632,19 +632,27 @@ body{ margin:0; font-family:Arial,sans-serif; background:var(--bg); color:var(--
     width:100%;
     margin-top:12px;
     padding:12px 16px;
-    border-radius:10px;
+    border-radius:12px;
     text-decoration:none;
-    font-size:14px;
-    font-weight:600;
+    font-size:13px;
+    font-weight:700;
     color:#fff;
-    background:linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+    background:linear-gradient(180deg,#7b8b7f,#66756a);
     text-align:center;
-    transition:all .3s;
-    box-shadow:var(--shadow);
+    transition:filter .2s, transform .15s;
+    box-shadow:var(--shadow-sm);
 }
 .side-button:hover{
-    transform:translateY(-2px);
-    box-shadow:var(--shadow-md);
+    filter:brightness(1.07);
+    transform:translateY(-1px);
+}
+
+.side-button.green{
+    background:linear-gradient(180deg,#41b95a,#2f9e44);
+}
+
+.side-button.gray{
+    background:linear-gradient(180deg,#7b8b7f,#66756a);
 }
 
 .sidebar-section-title{
@@ -998,8 +1006,8 @@ body{ margin:0; font-family:Arial,sans-serif; background:var(--bg); color:var(--
                     <button type="submit" class="upload-btn">Guardar foto</button>
                 </form>
 
-                <a class="side-button" href="teacher_groups.php">Lista de Estudiantes</a>
-                <a class="side-button" href="teacher_groups.php">Progreso del Estudiante</a>
+                <a class="side-button green" href="teacher_groups.php">Lista de Estudiantes</a>
+                <a class="side-button gray" href="teacher_groups.php">Progreso del Estudiante</a>
 
                 <div class="sidebar-section-title">Mis cursos</div>
                 <div class="sidebar-course-list">
