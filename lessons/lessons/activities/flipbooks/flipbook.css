@@ -1,0 +1,71 @@
+.flipbook-viewer__card {
+    border-radius: 16px;
+}
+
+.flipbook-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+.flipbook-toolbar__left,
+.flipbook-toolbar__center,
+.flipbook-toolbar__right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.flipbook-page-badge {
+    display: inline-flex;
+    align-items: center;
+    min-height: 38px;
+    padding: 0 14px;
+    border-radius: 999px;
+    background: #f3f4f6;
+    color: #374151;
+    font-weight: 600;
+}
+
+.flipbook-stage {
+    width: 100%;
+    min-height: 720px;
+    border: 1px solid #e5e7eb;
+    border-radius: 14px;
+    overflow: hidden;
+    background: #f8fafc;
+}
+
+.flipbook-pdf-frame {
+    width: 100%;
+    height: 720px;
+    border: 0;
+    display: block;
+    background: #fff;
+}
+
+.flipbook-listen-panel {
+    border-top: 1px solid #eef2f7;
+    padding-top: 16px;
+}
+
+.flipbook-page-text-box {
+    min-height: 70px;
+    padding: 14px 16px;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    background: #fafafa;
+    color: #334155;
+    white-space: pre-wrap;
+}
+
+@media (max-width: 768px) {
+    .flipbook-stage,
+    .flipbook-pdf-frame {
+        min-height: 520px;
+        height: 520px;
+    }
+}
