@@ -28,7 +28,8 @@ $payload = [
     'title'          => isset($rawData['title']) ? (string) $rawData['title'] : 'Flipbook',
     'pdf_url'        => isset($rawData['pdf_url']) ? (string) $rawData['pdf_url'] : '',
     'listen_enabled' => array_key_exists('listen_enabled', $rawData) ? (bool) $rawData['listen_enabled'] : true,
-    'page_texts'     => isset($rawData['page_texts']) && is_array($rawData['page_texts']) ? $rawData['page_texts'] : [],
+    'page_texts'     => isset($rawData['page_texts']) && is_array($rawData['page_texts']) ? array_values($rawData['page_texts']) : [],
+    'page_count'     => isset($rawData['page_count']) ? max(1, (int) $rawData['page_count']) : max(1, count($rawData['page_texts'] ?? [])),
     'language'       => isset($rawData['language']) ? (string) $rawData['language'] : 'en-US',
 ];
 
@@ -56,9 +57,9 @@ ob_start();
 
                 <div id="drop-zone" class="border rounded p-4 text-center bg-light" style="cursor:pointer;">
                     <i class="fas fa-cloud-upload-alt fa-2x text-secondary mb-2"></i>
-                    <div class="fw-semibold">Seleccione el archivo del flipbook</div>
+                    <div class="fw-semibold">Seleccione o arrastre el archivo PDF</div>
                     <div class="text-muted small">Formato permitido: PDF</div>
-                    <input type="file" id="pdf-file" accept="application/pdf" class="d-none">
+                    <input type="file" id="pdf-file" accept="application/pdf,.pdf" class="d-none">
                 </div>
 
                 <div id="file-status" class="alert alert-success mt-3 <?php echo $payload['pdf_url'] !== '' ? '' : 'd-none'; ?>">
@@ -71,6 +72,18 @@ ob_start();
                             </a>
                         </div>
                     <?php endif; ?>
+                </div>
+
+                <div class="mt-3">
+                    <label for="page-count" class="form-label fw-bold small">Cantidad de páginas</label>
+                    <input
+                        type="number"
+                        id="page-count"
+                        class="form-control"
+                        min="1"
+                        value="<?php echo (int) $payload['page_count']; ?>"
+                    >
+                    <div class="form-text">Usada para la navegación del visor y para sincronizar el texto por página.</div>
                 </div>
             </div>
         </div>
@@ -130,31 +143,74 @@ ob_start();
 <script>
 $(function () {
     let hasChanges = false;
-    const existingPdfUrl = <?php echo json_encode($payload['pdf_url']); ?>;
+    const existingPdfUrl = <?php echo json_encode($payload['pdf_url'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
 
     function markAsChanged() {
         hasChanges = true;
         $('#unsaved-msg').removeClass('d-none');
     }
 
-    $('#flipbook-title, #page-texts, #voice-lang, #listen-enabled').on('input change', markAsChanged);
+    function setSelectedFile(file) {
+        if (!file) return;
+
+        const fileName = (file.name || '').toLowerCase();
+        const isPdf = file.type === 'application/pdf' || fileName.endsWith('.pdf');
+
+        if (!isPdf) {
+            alert('Solo se permiten archivos PDF.');
+            return;
+        }
+
+        const input = document.getElementById('pdf-file');
+        const dt = new DataTransfer();
+        dt.items.add(file);
+        input.files = dt.files;
+
+        $('#file-name-display').text(file.name);
+        $('#file-status').removeClass('d-none');
+        markAsChanged();
+    }
+
+    $('#flipbook-title, #page-texts, #voice-lang, #listen-enabled, #page-count').on('input change', markAsChanged);
 
     $('#drop-zone').on('click', function () {
         $('#pdf-file').trigger('click');
     });
 
+    $('#drop-zone').on('dragover', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        $(this).addClass('border-primary bg-white');
+    });
+
+    $('#drop-zone').on('dragleave', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        $(this).removeClass('border-primary bg-white');
+    });
+
+    $('#drop-zone').on('drop', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        $(this).removeClass('border-primary bg-white');
+
+        const files = e.originalEvent.dataTransfer.files;
+        if (files && files[0]) {
+            setSelectedFile(files[0]);
+        }
+    });
+
     $('#pdf-file').on('change', function () {
         const file = this.files && this.files[0] ? this.files[0] : null;
         if (!file) return;
-        $('#file-name-display').text(file.name);
-        $('#file-status').removeClass('d-none');
-        markAsChanged();
+        setSelectedFile(file);
     });
 
     $('#btn-save-flipbook').on('click', function () {
         const btn = $(this);
         const title = $('#flipbook-title').val().trim();
         const selectedFile = $('#pdf-file')[0].files[0] || null;
+        const pageCount = Math.max(1, parseInt($('#page-count').val(), 10) || 1);
 
         if (!title) {
             alert('Debes escribir un título.');
@@ -168,8 +224,7 @@ $(function () {
 
         const pageTexts = $('#page-texts').val()
             .split(/\r?\n/)
-            .map(line => line.trim())
-            .filter(line => line !== '');
+            .map(line => line.trim());
 
         const formData = new FormData();
         formData.append('id', <?php echo json_encode($activityId); ?>);
@@ -179,6 +234,7 @@ $(function () {
         formData.append('title', title);
         formData.append('listen_enabled', $('#listen-enabled').is(':checked') ? '1' : '0');
         formData.append('language', $('#voice-lang').val());
+        formData.append('page_count', String(pageCount));
         formData.append('page_texts', JSON.stringify(pageTexts));
 
         if (selectedFile) {
@@ -193,26 +249,23 @@ $(function () {
             data: formData,
             processData: false,
             contentType: false,
-            success: function (response) {
-                let res;
-                try {
-                    res = typeof response === 'object' ? response : JSON.parse(response);
-                } catch (e) {
-                    alert('Respuesta inválida del servidor.');
-                    return;
-                }
-
-                if (res.status === 'success') {
+            dataType: 'json',
+            success: function (res) {
+                if (res && res.status === 'success') {
                     hasChanges = false;
                     $('#unsaved-msg').addClass('d-none');
                     alert(res.message || 'Actividad guardada correctamente.');
                     window.location.reload();
                 } else {
-                    alert(res.message || 'No fue posible guardar.');
+                    alert((res && res.message) ? res.message : 'No fue posible guardar.');
                 }
             },
-            error: function () {
-                alert('Error al guardar la actividad.');
+            error: function (xhr) {
+                let msg = 'Error al guardar la actividad.';
+                if (xhr.responseJSON && xhr.responseJSON.message) {
+                    msg = xhr.responseJSON.message;
+                }
+                alert(msg);
             },
             complete: function () {
                 btn.prop('disabled', false).html('<i class="fas fa-save me-2"></i>Guardar actividad');
@@ -231,4 +284,3 @@ $(function () {
 <?php
 $content = ob_get_clean();
 render_activity_editor($payload['title'], 'fas fa-book-open', $content);
-
