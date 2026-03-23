@@ -488,16 +488,16 @@ if ($selectedAssignment) {
 <title>Perfil del Docente</title>
 <style>
 :root{
-    --bg:#eef7f0;
+    --bg:#eef5ff;
     --card:#ffffff;
-    --line:#d8e8dc;
-    --text:#1f3b28;
-    --title:#1f3b28;
-    --muted:#5d7465;
+    --line:#d6e4ff;
+    --text:#16325c;
+    --title:#16325c;
+    --muted:#5f7294;
     --radius:12px;
-    --green:#2f9e44;
-    --green-dark:#237a35;
-    --green-soft:#e9f8ee;
+    --green:#3b82f6;
+    --green-dark:#1d4ed8;
+    --green-soft:#eaf2ff;
     --red:#dc2626;
     --red-dark:#b91c1c;
     --blue:#1d4ed8;
@@ -505,11 +505,11 @@ if ($selectedAssignment) {
     --shadow:0 10px 24px rgba(0,0,0,.08);
     --shadow-sm:0 2px 8px rgba(0,0,0,.06);
     /* legacy aliases kept for any inline usage */
-    --primary:#2f9e44;
-    --primary-dark:#237a35;
-    --primary-light:#e9f8ee;
-    --success:#10b981;
-    --success-dark:#059669;
+    --primary:#3b82f6;
+    --primary-dark:#1d4ed8;
+    --primary-light:#eaf2ff;
+    --success:#60a5fa;
+    --success-dark:#2563eb;
     --warning:#f59e0b;
     --warning-dark:#d97706;
     --danger:#ef4444;
@@ -697,10 +697,10 @@ body{ margin:0; font-family:Arial,sans-serif; background:var(--bg); color:var(--
 .upload-form{ margin-top:20px; margin-bottom:12px; text-align:left; }
 .upload-label{ display:block; font-size:13px; color:var(--muted); font-weight:600; margin-bottom:8px; }
 .upload-input{ width:100%; margin-bottom:10px; padding:8px; border:1px solid var(--line); border-radius:8px; }
-.upload-btn{ width:100%; border:none; border-radius:10px; padding:11px; color:#fff; cursor:pointer; font-size:13px; font-weight:600; background:linear-gradient(180deg,#3b82f6,#1d4ed8); transition:all .3s; box-shadow:var(--shadow); }
+.upload-btn{ width:100%; border:none; border-radius:10px; padding:11px; color:#fff; cursor:pointer; font-size:13px; font-weight:600; background:linear-gradient(180deg,#60a5fa,#2563eb); transition:all .3s; box-shadow:var(--shadow); }
 .upload-btn:hover{ transform:translateY(-2px); box-shadow:var(--shadow-md); }
 .flash{ border-radius:10px; padding:12px 14px; margin-bottom:14px; font-size:13px; }
-.flash.ok{ background:#f0fdf4; border:1px solid #86efac; color:#166534; }
+.flash.ok{ background:#eff6ff; border:1px solid #93c5fd; color:#1d4ed8; }
 .flash.error{ background:#fef2f2; border:1px solid #fca5a5; color:#991b1b; }
 
 .main-section-title{ display:flex; align-items:center; gap:12px; font-size:24px; font-weight:800; color:var(--title); margin:32px 0 20px; }
@@ -755,7 +755,7 @@ body{ margin:0; font-family:Arial,sans-serif; background:var(--bg); color:var(--
 }
 .btn:hover{ transform:translateY(-2px); box-shadow:var(--shadow-md); }
 .btn-green{
-    background:linear-gradient(135deg, var(--success) 0%, #059669 100%);
+    background:linear-gradient(135deg, #60a5fa 0%, #2563eb 100%);
 }
 .btn-orange{
     background:linear-gradient(135deg, var(--warning) 0%, var(--warning-dark) 100%);
@@ -786,7 +786,7 @@ body{ margin:0; font-family:Arial,sans-serif; background:var(--bg); color:var(--
 
 .course-blue{ background:linear-gradient(135deg, #3b82f6 0%, #1e40af 100%); }
 .course-yellow{ background:linear-gradient(135deg, #f59e0b 0%, #d97706 100%); }
-.course-green{ background:linear-gradient(135deg, #10b981 0%, #059669 100%); }
+.course-green{ background:linear-gradient(135deg, #60a5fa 0%, #2563eb 100%); }
 .course-name{ font-size:20px; font-weight:700; line-height:1.3; }
 .course-sub{ font-size:13px; opacity:.9; }
 .course-meta{ font-size:11px; font-weight:700; opacity:.85; text-transform:uppercase; letter-spacing:.05em; }
@@ -884,10 +884,10 @@ body{ margin:0; font-family:Arial,sans-serif; background:var(--bg); color:var(--
 }
 
 .unit-btn-edit{
-    background:var(--success);
+    background:#1d4ed8;
 }
 .unit-btn-edit:hover{
-    background:var(--success-dark);
+    background:#1e3a8a;
 }
 
 .empty{ background:#f8fafc; border:1px dashed var(--line); border-radius:14px; padding:32px 24px; text-align:center; color:var(--muted); font-size:15px; }
