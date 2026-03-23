@@ -13,9 +13,6 @@ class Security
 
     /**
      * Hash a password using bcrypt (PASSWORD_BCRYPT)
-     * 
-     * @param string $password The plaintext password to hash
-     * @return string The hashed password
      */
     public static function hashPassword(string $password): string
     {
@@ -24,10 +21,6 @@ class Security
 
     /**
      * Verify a plaintext password against a hash
-     * 
-     * @param string $password The plaintext password to verify
-     * @param string $hash The password hash to check against
-     * @return bool True if password matches hash, false otherwise
      */
     public static function verifyPassword(string $password, string $hash): bool
     {
@@ -35,10 +28,7 @@ class Security
     }
 
     /**
-     * Check if a password needs rehashing (for upgrading hashes)
-     * 
-     * @param string $hash The password hash
-     * @return bool True if password should be rehashed
+     * Check if a password needs rehashing
      */
     public static function needsRehash(string $hash): bool
     {
@@ -47,8 +37,6 @@ class Security
 
     /**
      * Generate a CSRF token for session
-     * 
-     * @return string The generated CSRF token
      */
     public static function generateCSRFToken(): string
     {
@@ -60,8 +48,6 @@ class Security
 
     /**
      * Get the current CSRF token from session
-     * 
-     * @return string|null The CSRF token or null if not set
      */
     public static function getCSRFToken(): ?string
     {
@@ -70,9 +56,6 @@ class Security
 
     /**
      * Verify that a submitted CSRF token matches the session token
-     * 
-     * @param string $token The submitted token to verify
-     * @return bool True if token is valid and matches session token
      */
     public static function verifyCSRFToken(string $token): bool
     {
@@ -82,17 +65,16 @@ class Security
             return false;
         }
 
-        // Use hash_equals to prevent timing attacks
         return hash_equals($sessionToken, $token);
     }
 
     /**
      * Initialize secure session settings
-     * Should be called at the start of each session
+     * Note: Call this AFTER session_start()
      */
     public static function initializeSession(): void
     {
-        // Set session timeout
+        // Set session timeout check
         if (!isset($_SESSION['_session_start_time'])) {
             $_SESSION['_session_start_time'] = time();
         }
@@ -102,18 +84,6 @@ class Security
             session_destroy();
             session_start();
             $_SESSION['_session_start_time'] = time();
-        }
-
-        // Set secure session options
-        ini_set('session.use_only_cookies', '1');
-        ini_set('session.cookie_httponly', '1');
-        
-        // Set SameSite attribute (PHP 7.3+)
-        if (PHP_VERSION_ID >= 70300) {
-            session_set_cookie_params([
-                'httponly' => true,
-                'samesite' => 'Lax',
-            ]);
         }
     }
 
@@ -141,11 +111,7 @@ class Security
     }
 
     /**
-     * Sanitize user input - remove/escape potentially dangerous content
-     * 
-     * @param string $input The input to sanitize
-     * @param string $type The type of sanitization (string|email|url|integer)
-     * @return mixed The sanitized value
+     * Sanitize user input
      */
     public static function sanitize(string $input, string $type = 'string')
     {
@@ -164,16 +130,12 @@ class Security
             
             case 'string':
             default:
-                // Remove null bytes and trim whitespace
                 return trim(str_replace("\x00", '', $input));
         }
     }
 
     /**
      * Validate email format
-     * 
-     * @param string $email The email to validate
-     * @return bool True if email is valid
      */
     public static function isValidEmail(string $email): bool
     {
@@ -182,9 +144,6 @@ class Security
 
     /**
      * Validate URL format
-     * 
-     * @param string $url The URL to validate
-     * @return bool True if URL is valid
      */
     public static function isValidURL(string $url): bool
     {
@@ -193,11 +152,6 @@ class Security
 
     /**
      * Check string length constraints
-     * 
-     * @param string $input The string to check
-     * @param int $minLength Minimum allowed length
-     * @param int $maxLength Maximum allowed length
-     * @return bool True if length is valid
      */
     public static function isValidLength(string $input, int $minLength = 0, int $maxLength = PHP_INT_MAX): bool
     {
@@ -207,9 +161,6 @@ class Security
 
     /**
      * Escape HTML to prevent XSS attacks
-     * 
-     * @param string $text The text to escape
-     * @return string HTML-escaped text safe for output
      */
     public static function escapeHTML(string $text): string
     {
@@ -218,17 +169,13 @@ class Security
 
     /**
      * Log security event for audit trail
-     * 
-     * @param string $event The event type (login, logout, failed_login, etc.)
-     * @param string $details Additional details about the event
-     * @param string|null $userId The user ID if applicable
      */
     public static function logSecurityEvent(string $event, string $details = '', ?string $userId = null): void
     {
         $logDir = dirname(__DIR__) . '/logs';
         
         if (!is_dir($logDir)) {
-            mkdir($logDir, 0755, true);
+            @mkdir($logDir, 0755, true);
         }
 
         $logFile = $logDir . '/security.log';
@@ -245,6 +192,6 @@ class Security
             $_SERVER['HTTP_USER_AGENT'] ?? 'unknown'
         );
 
-        file_put_contents($logFile, $logEntry, FILE_APPEND);
+        @file_put_contents($logFile, $logEntry, FILE_APPEND);
     }
 }

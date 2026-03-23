@@ -5,7 +5,11 @@ vendor/
 *.json
 !composer.json
 !composer.lock
-config/
+lessons/lessons/config/db.php
+lessons/lessons/config/cloudinary.php
+lessons/lessons/config/seed_program.php
+lessons/lessons/config/create_tables.php
+lessons/lessons/config/ensure_teacher_photo_column.php
 uploads/
 logs/
 .DS_Store
