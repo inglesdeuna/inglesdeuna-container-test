@@ -23,14 +23,19 @@ function respond_error(string $message, int $statusCode = 400): void
 }
 
 try {
-    $activityId     = isset($_POST['id']) ? trim((string) $_POST['id']) : '';
-    $unit           = isset($_POST['unit']) ? trim((string) $_POST['unit']) : 'general';
-    $title          = isset($_POST['title']) ? trim((string) $_POST['title']) : 'Flipbook';
-    $language       = isset($_POST['language']) ? trim((string) $_POST['language']) : 'en-US';
-    $listenEnabled  = isset($_POST['listen_enabled']) && $_POST['listen_enabled'] === '1';
+    $activityId    = isset($_POST['id']) ? trim((string) $_POST['id']) : '';
+    $unit          = isset($_POST['unit']) ? trim((string) $_POST['unit']) : 'general';
+    $title         = isset($_POST['title']) ? trim((string) $_POST['title']) : 'Flipbook';
+    $language      = isset($_POST['language']) ? trim((string) $_POST['language']) : 'en-US';
+    $listenEnabled = isset($_POST['listen_enabled']) && $_POST['listen_enabled'] === '1';
+    $pageCount     = isset($_POST['page_count']) ? (int) $_POST['page_count'] : 1;
 
     if ($activityId === '') {
         respond_error('ID de actividad faltante.');
+    }
+
+    if ($pageCount < 1) {
+        $pageCount = 1;
     }
 
     $stmt = $pdo->prepare("SELECT id, data FROM activities WHERE id = :id LIMIT 1");
@@ -49,16 +54,16 @@ try {
     $pdfUrl = isset($currentData['pdf_url']) ? (string) $currentData['pdf_url'] : '';
 
     $pageTextsRaw = $_POST['page_texts'] ?? '[]';
-    $pageTexts = json_decode($pageTextsRaw, true);
-    if (!is_array($pageTexts)) {
-        $pageTexts = [];
+    $decodedPageTexts = json_decode($pageTextsRaw, true);
+
+    if (!is_array($decodedPageTexts)) {
+        $decodedPageTexts = [];
     }
 
-    $pageTexts = array_values(array_filter(array_map(function ($line) {
-        return trim((string) $line);
-    }, $pageTexts), function ($line) {
-        return $line !== '';
-    }));
+    $pageTexts = [];
+    for ($i = 0; $i < $pageCount; $i++) {
+        $pageTexts[] = isset($decodedPageTexts[$i]) ? trim((string) $decodedPageTexts[$i]) : '';
+    }
 
     if (isset($_FILES['pdf']) && is_array($_FILES['pdf'])) {
         $uploadError = $_FILES['pdf']['error'] ?? UPLOAD_ERR_NO_FILE;
@@ -98,9 +103,14 @@ try {
                 respond_error('El archivo debe tener extensión .pdf.');
             }
 
+            if (!class_exists('finfo')) {
+                respond_error('La extensión Fileinfo no está habilitada en el servidor.');
+            }
+
             $finfo = new finfo(FILEINFO_MIME_TYPE);
             $mime = $finfo->file($tmpPath);
-            if ($mime !== 'application/pdf') {
+
+            if ($mime !== 'application/pdf' && $mime !== 'application/octet-stream') {
                 respond_error('El archivo no es un PDF válido.');
             }
 
@@ -125,7 +135,10 @@ try {
                 respond_error('No se pudo guardar el archivo PDF.');
             }
 
+            // Ajusta esta URL pública según tu estructura real del servidor.
             $pdfUrl = '/lessons/lessons/activities/flipbooks/uploads/pdfs/' . $newFileName;
+
+            // Si quieres borrar el PDF anterior al reemplazarlo, podrías hacerlo aquí.
         }
     }
 
@@ -133,12 +146,13 @@ try {
         respond_error('Debes cargar un archivo PDF.');
     }
 
-    $payload = $currentData;
+    $payload = is_array($currentData) ? $currentData : [];
     $payload['type'] = 'flipbook';
     $payload['title'] = $title;
     $payload['pdf_url'] = $pdfUrl;
     $payload['listen_enabled'] = $listenEnabled;
     $payload['language'] = $language;
+    $payload['page_count'] = $pageCount;
     $payload['page_texts'] = $pageTexts;
     $payload['updated_at'] = date('Y-m-d H:i:s');
 
