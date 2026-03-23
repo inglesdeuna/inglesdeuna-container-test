@@ -113,6 +113,32 @@ function update_admin_user_in_json(string $id, array $updates): bool
     return $updated;
 }
 
+function verify_json_admin_password(array $jsonUser, string $password): bool
+{
+    $jsonPasswordHash = (string) ($jsonUser['password_hash'] ?? '');
+    $jsonPassword = (string) ($jsonUser['password'] ?? '');
+
+    if ($jsonPasswordHash !== '') {
+        return Security::verifyPassword($password, $jsonPasswordHash);
+    }
+
+    return $jsonPassword !== '' && hash_equals($jsonPassword, $password);
+}
+
+function establish_admin_session(array $user, bool $mustChangePassword = false): void
+{
+    session_unset();
+    session_regenerate_id(true);
+
+    Security::initializeSession();
+    $_SESSION['admin_logged'] = true;
+    $_SESSION['admin_id'] = (string) ($user['id'] ?? 'admin_json');
+    $_SESSION['admin_email'] = (string) ($user['email'] ?? 'admin@lets.com');
+    $_SESSION['admin_role'] = (string) ($user['role'] ?? 'admin');
+    $_SESSION['admin_must_change_password'] = $mustChangePassword;
+    $_SESSION['_session_start_time'] = time();
+}
+
 // Initialize secure session settings
 Security::initializeSession();
 ensure_admin_recovery_columns($pdo);
@@ -257,17 +283,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
                 if ($user && Security::verifyPassword($pass, $user['password_hash'])) {
-                    // Successful login
-                    session_unset();
-                    session_regenerate_id(true);
-                    
-                    Security::initializeSession();
-                    $_SESSION["admin_logged"] = true;
-                    $_SESSION["admin_id"]     = $user["id"];
-                    $_SESSION["admin_email"]  = $user["email"];
-                    $_SESSION["admin_role"]   = $user["role"];
-                    $_SESSION['admin_must_change_password'] = !empty($user['must_change_password']);
-                    $_SESSION['_session_start_time'] = time();
+                    establish_admin_session($user, !empty($user['must_change_password']));
 
                     Security::logSecurityEvent('admin_login', 'Successful login', $user['id']);
 
@@ -281,29 +297,14 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 }
 
                 $jsonUser = find_admin_user_in_json($identifier);
-                $jsonPasswordHash = (string) ($jsonUser['password_hash'] ?? '');
-                $jsonPassword = (string) ($jsonUser['password'] ?? '');
-                $jsonPasswordMatches = false;
-
-                if ($jsonUser) {
-                    if ($jsonPasswordHash !== '') {
-                        $jsonPasswordMatches = Security::verifyPassword($pass, $jsonPasswordHash);
-                    } else {
-                        $jsonPasswordMatches = hash_equals($jsonPassword, $pass);
-                    }
-                }
+                $jsonPasswordMatches = $jsonUser ? verify_json_admin_password($jsonUser, $pass) : false;
 
                 if ($jsonUser && $jsonPasswordMatches) {
-                    session_unset();
-                    session_regenerate_id(true);
-
-                    Security::initializeSession();
-                    $_SESSION['admin_logged'] = true;
-                    $_SESSION['admin_id'] = (string) ($jsonUser['id'] ?? 'admin_json');
-                    $_SESSION['admin_email'] = (string) ($jsonUser['email'] ?? $identifier);
-                    $_SESSION['admin_role'] = (string) ($jsonUser['role'] ?? 'admin');
-                    $_SESSION['admin_must_change_password'] = !empty($jsonUser['must_change_password']);
-                    $_SESSION['_session_start_time'] = time();
+                    establish_admin_session([
+                        'id' => (string) ($jsonUser['id'] ?? 'admin_json'),
+                        'email' => (string) ($jsonUser['email'] ?? $identifier),
+                        'role' => (string) ($jsonUser['role'] ?? 'admin'),
+                    ], !empty($jsonUser['must_change_password']));
 
                     Security::logSecurityEvent('admin_login', 'Successful JSON fallback login', (string) ($_SESSION['admin_id'] ?? 'admin_json'));
 
@@ -320,6 +321,27 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                     $error = "Credenciales incorrectas";
                 }
             } catch (Exception $e) {
+                $identifier = $email !== '' ? $email : Security::sanitize($loginIdentifier, 'string');
+                $jsonUser = find_admin_user_in_json($identifier);
+
+                if ($jsonUser && verify_json_admin_password($jsonUser, $pass)) {
+                    establish_admin_session([
+                        'id' => (string) ($jsonUser['id'] ?? 'admin_json'),
+                        'email' => (string) ($jsonUser['email'] ?? $identifier),
+                        'role' => (string) ($jsonUser['role'] ?? 'admin'),
+                    ], !empty($jsonUser['must_change_password']));
+
+                    Security::logSecurityEvent('admin_login', 'Successful JSON fallback login after database error', (string) ($_SESSION['admin_id'] ?? 'admin_json'));
+
+                    if (!empty($jsonUser['must_change_password'])) {
+                        header("Location: /lessons/lessons/admin/change_password.php");
+                        exit;
+                    }
+
+                    header("Location: /lessons/lessons/admin/dashboard.php");
+                    exit;
+                }
+
                 Security::logSecurityEvent('failed_login', 'Database error: ' . $e->getMessage());
                 $error = "Error al procesar la solicitud. Intenta de nuevo.";
             }
@@ -484,6 +506,10 @@ body{
     margin-bottom:14px;
 }
 
+.password-wrap{
+    position:relative;
+}
+
 .form-label{
     display:block;
     margin-bottom:7px;
@@ -508,6 +534,24 @@ body{
     border-color:var(--green);
     background:#fff;
     box-shadow:0 0 0 4px rgba(47,163,74,.12);
+}
+
+.password-input{
+    padding-right:48px;
+}
+
+.password-toggle{
+    position:absolute;
+    top:50%;
+    right:12px;
+    transform:translateY(-50%);
+    border:none;
+    background:transparent;
+    color:var(--muted);
+    cursor:pointer;
+    font-size:18px;
+    line-height:1;
+    padding:4px;
 }
 
 .submit-btn{
@@ -700,14 +744,17 @@ body{
 
                 <div class="form-group">
                     <label class="form-label" for="password">Contraseña</label>
-                    <input
-                        class="form-input"
-                        id="password"
-                        type="password"
-                        name="password"
-                        placeholder="Ingresa tu contraseña"
-                        required
-                    >
+                    <div class="password-wrap">
+                        <input
+                            class="form-input password-input"
+                            id="password"
+                            type="password"
+                            name="password"
+                            placeholder="Ingresa tu contraseña"
+                            required
+                        >
+                        <button class="password-toggle" type="button" data-target="password" aria-label="Mostrar u ocultar contraseña">👁</button>
+                    </div>
                 </div>
 
                 <button class="submit-btn" type="submit">Ingresar</button>
@@ -754,6 +801,21 @@ body{
         </div>
     </section>
 </div>
+
+<script>
+document.querySelectorAll('.password-toggle').forEach(function (button) {
+    button.addEventListener('click', function () {
+        var targetId = button.getAttribute('data-target');
+        var input = targetId ? document.getElementById(targetId) : null;
+        if (!input) {
+            return;
+        }
+
+        input.type = input.type === 'password' ? 'text' : 'password';
+        button.textContent = input.type === 'password' ? '👁' : '🙈';
+    });
+});
+</script>
 
 </body>
 </html>

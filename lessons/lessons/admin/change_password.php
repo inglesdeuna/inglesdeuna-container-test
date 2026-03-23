@@ -185,6 +185,7 @@ body{
     line-height:1.5;
 }
 .form-group{ margin-bottom:14px; }
+.password-wrap{ position:relative; }
 .form-label{ display:block; margin-bottom:7px; font-size:14px; font-weight:700; }
 .form-input{
     width:100%;
@@ -195,6 +196,20 @@ body{
     padding:13px 14px;
     font-size:15px;
     outline:none;
+}
+.password-input{ padding-right:48px; }
+.password-toggle{
+    position:absolute;
+    top:50%;
+    right:12px;
+    transform:translateY(-50%);
+    border:none;
+    background:transparent;
+    color:var(--muted);
+    cursor:pointer;
+    font-size:18px;
+    line-height:1;
+    padding:4px;
 }
 .submit-btn{
     width:100%;
@@ -240,12 +255,18 @@ body{
 
         <div class="form-group">
             <label class="form-label" for="new_password">Nueva contraseña</label>
-            <input class="form-input" id="new_password" type="password" name="new_password" required>
+            <div class="password-wrap">
+                <input class="form-input password-input" id="new_password" type="password" name="new_password" required>
+                <button class="password-toggle" type="button" data-target="new_password" aria-label="Mostrar u ocultar contraseña">👁</button>
+            </div>
         </div>
 
         <div class="form-group">
             <label class="form-label" for="confirm_password">Confirmar contraseña</label>
-            <input class="form-input" id="confirm_password" type="password" name="confirm_password" required>
+            <div class="password-wrap">
+                <input class="form-input password-input" id="confirm_password" type="password" name="confirm_password" required>
+                <button class="password-toggle" type="button" data-target="confirm_password" aria-label="Mostrar u ocultar contraseña">👁</button>
+            </div>
         </div>
 
         <button class="submit-btn" type="submit">Guardar nueva contraseña</button>
@@ -257,5 +278,19 @@ body{
 
     <a class="back-link" href="dashboard.php">Ir al panel</a>
 </div>
+<script>
+document.querySelectorAll('.password-toggle').forEach(function (button) {
+    button.addEventListener('click', function () {
+        var targetId = button.getAttribute('data-target');
+        var input = targetId ? document.getElementById(targetId) : null;
+        if (!input) {
+            return;
+        }
+
+        input.type = input.type === 'password' ? 'text' : 'password';
+        button.textContent = input.type === 'password' ? '👁' : '🙈';
+    });
+});
+</script>
 </body>
 </html>
