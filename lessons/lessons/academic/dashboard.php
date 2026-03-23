@@ -794,16 +794,22 @@ body{ margin:0; font-family:Arial,sans-serif; background:var(--bg); color:var(--
 .unit-list{ margin-top:20px; }
 
 .unit-item{
+    display:block;
     border:1px solid var(--line);
     border-radius:10px;
     margin-bottom:12px;
     overflow:hidden;
     background:#fff;
     transition:all .2s;
+    text-decoration:none;
 }
 .unit-item.active{
     border:1px solid var(--primary);
     box-shadow:0 0 0 3px var(--primary-light);
+}
+.unit-item:hover{
+    transform:translateY(-1px);
+    box-shadow:var(--shadow-sm);
 }
 
 .unit-header{
@@ -1043,12 +1049,15 @@ body{ margin:0; font-family:Arial,sans-serif; background:var(--bg); color:var(--
                                 $unitId = (string) ($unit['id'] ?? '');
                                 $isActiveUnit = $unitId === $selectedUnitId;
                                 ?>
-                                <div class="unit-item<?php echo $isActiveUnit ? ' active' : ''; ?>">
+                                <a
+                                    class="unit-item<?php echo $isActiveUnit ? ' active' : ''; ?>"
+                                    href="dashboard.php?assignment=<?php echo urlencode((string) ($selectedAssignment['id'] ?? '')); ?>&unit=<?php echo urlencode($unitId); ?>#unidades-curso"
+                                >
                                     <div class="unit-header">
                                         <h4 class="unit-title"><?php echo h((string) ($unit['name'] ?? 'Unidad')); ?></h4>
                                         <span class="unit-status"><?php echo $isActiveUnit ? 'Activa' : 'Disponible'; ?></span>
                                     </div>
-                                </div>
+                                </a>
                             <?php } ?>
                         </div>
                     <?php } ?>
