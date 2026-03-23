@@ -1069,11 +1069,6 @@ body{ margin:0; font-family:Arial,sans-serif; background:var(--bg); color:var(--
                             <div class="current-unit-panel">
                                 <span class="current-unit-label">Unidad activa</span>
                                 <div class="current-unit-name"><?php echo h((string) ($selectedUnit['name'] ?? 'Unidad')); ?></div>
-                                <div class="secondary-actions">
-                                    <a class="unit-btn" href="#unidades-curso">
-                                        Explorar unidades
-                                    </a>
-                                </div>
                             </div>
                         <?php } ?>
                     </div>
@@ -1096,25 +1091,6 @@ body{ margin:0; font-family:Arial,sans-serif; background:var(--bg); color:var(--
                                     <div class="accordion-header" onclick="toggleUnitAccordion(this)">
                                         <h4 class="accordion-title"><?php echo h((string) ($unit['name'] ?? 'Unidad')); ?></h4>
                                         <span class="accordion-toggle" aria-hidden="true">⌄</span>
-                                    </div>
-                                    <div class="accordion-content">
-                                        <div class="unit-actions">
-                                            <?php if (!$isActiveUnit) { ?>
-                                                <a class="unit-btn" href="dashboard.php?assignment=<?php echo urlencode((string) ($selectedAssignment['id'] ?? '')); ?>&unit=<?php echo urlencode($unitId); ?>#unidades-curso">
-                                                    Activar unidad
-                                                </a>
-                                            <?php } ?>
-
-                                            <a class="unit-btn" href="teacher_unit.php?assignment=<?php echo urlencode((string) ($selectedAssignment['id'] ?? '')); ?>&unit=<?php echo urlencode($unitId); ?>&mode=view">
-                                                Ver contenido
-                                            </a>
-
-                                            <?php if ($teacherPermission === 'editor') { ?>
-                                                <a class="unit-btn unit-btn-edit" href="teacher_unit.php?assignment=<?php echo urlencode((string) ($selectedAssignment['id'] ?? '')); ?>&unit=<?php echo urlencode($unitId); ?>&mode=edit">
-                                                    Editar contenido
-                                                </a>
-                                            <?php } ?>
-                                        </div>
                                     </div>
                                 </div>
                             <?php } ?>
