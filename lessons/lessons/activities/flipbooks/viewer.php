@@ -21,7 +21,7 @@ if (!is_array($data)) {
     $data = [];
 }
 
-$title         = isset($data['title']) ? (string) $data['title'] : 'Flipbook';
+$title         = isset($data['title']) ? (string) $data['title'] : 'Downloadable';
 $pdfUrl        = isset($data['pdf_url']) ? (string) $data['pdf_url'] : '';
 $pageTexts     = isset($data['page_texts']) && is_array($data['page_texts']) ? array_values($data['page_texts']) : [];
 $pageCount     = isset($data['page_count']) ? (int) $data['page_count'] : max(count($pageTexts), 1);
