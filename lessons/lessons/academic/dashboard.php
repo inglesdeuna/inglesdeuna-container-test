@@ -492,7 +492,9 @@ if ($selectedAssignment) {
     --card:#ffffff;
     --line:#d8e8dc;
     --text:#1f3b28;
+    --title:#1f3b28;
     --muted:#5d7465;
+    --radius:12px;
     --green:#2f9e44;
     --green-dark:#237a35;
     --green-soft:#e9f8ee;
@@ -532,8 +534,22 @@ body{ margin:0; font-family:Arial,sans-serif; background:var(--bg); color:var(--
 }
 
 .header h1{ margin:0; font-size:32px; font-weight:800; color:var(--title); }
-.logout{ color:var(--danger); text-decoration:none; font-weight:600; font-size:14px; transition:color .2s; }
-.logout:hover{ color:var(--danger-dark); }
+.logout-btn{
+    display:inline-block;
+    text-decoration:none;
+    color:#fff;
+    font-size:13px;
+    font-weight:700;
+    border-radius:10px;
+    padding:10px 16px;
+    background:linear-gradient(180deg,#ef4444,#dc2626);
+    box-shadow:var(--shadow-sm);
+    transition:filter .2s, transform .15s;
+}
+.logout-btn:hover{
+    filter:brightness(1.06);
+    transform:translateY(-1px);
+}
 
 .layout{ display:grid; grid-template-columns:340px 1fr; gap:32px; }
 
@@ -629,6 +645,45 @@ body{ margin:0; font-family:Arial,sans-serif; background:var(--bg); color:var(--
 .side-button:hover{
     transform:translateY(-2px);
     box-shadow:var(--shadow-md);
+}
+
+.sidebar-section-title{
+    margin:16px 0 8px;
+    font-size:11px;
+    font-weight:800;
+    text-transform:uppercase;
+    letter-spacing:.08em;
+    color:var(--muted);
+}
+
+.sidebar-course-list{
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+}
+
+.sidebar-course-btn{
+    display:block;
+    width:100%;
+    text-decoration:none;
+    color:#fff;
+    font-size:12px;
+    font-weight:700;
+    line-height:1.35;
+    padding:10px 12px;
+    border-radius:10px;
+    background:linear-gradient(180deg,#7b8b7f,#66756a);
+    box-shadow:var(--shadow-sm);
+    transition:filter .2s, transform .15s;
+}
+
+.sidebar-course-btn:hover{
+    filter:brightness(1.07);
+    transform:translateY(-1px);
+}
+
+.sidebar-course-btn.active{
+    background:linear-gradient(180deg,#41b95a,#2f9e44);
 }
 
 .upload-form{ margin-top:20px; margin-bottom:12px; text-align:left; }
@@ -896,7 +951,7 @@ body{ margin:0; font-family:Arial,sans-serif; background:var(--bg); color:var(--
 <div class="page">
     <div class="header">
         <h1>Perfil del Docente</h1>
-        <a class="logout" href="logout.php">Cerrar sesión</a>
+        <a class="logout-btn" href="logout.php">Cerrar sesión</a>
     </div>
 
     <div class="layout">
@@ -945,6 +1000,29 @@ body{ margin:0; font-family:Arial,sans-serif; background:var(--bg); color:var(--
 
                 <a class="side-button" href="teacher_groups.php">Lista de Estudiantes</a>
                 <a class="side-button" href="teacher_groups.php">Progreso del Estudiante</a>
+
+                <div class="sidebar-section-title">Mis cursos</div>
+                <div class="sidebar-course-list">
+                    <?php if (empty($assignments)) { ?>
+                        <span class="upload-label">No tienes cursos asignados.</span>
+                    <?php } else { ?>
+                        <?php foreach ($assignments as $assignment) { ?>
+                            <?php
+                            $assignmentId = (string) ($assignment['id'] ?? '');
+                            $isActiveAssignment = $assignmentId === $selectedAssignmentId;
+                            $programType = (string) ($assignment['program_type'] ?? '');
+                            $courseLabel = $programType === 'english' ? 'English' : 'Técnico';
+                            $courseTitle = build_assignment_title($assignment);
+                            ?>
+                            <a
+                                class="sidebar-course-btn<?php echo $isActiveAssignment ? ' active' : ''; ?>"
+                                href="dashboard.php?assignment=<?php echo urlencode($assignmentId); ?>#unidades-curso"
+                            >
+                                <?php echo h($courseLabel); ?> · <?php echo h($courseTitle); ?>
+                            </a>
+                        <?php } ?>
+                    <?php } ?>
+                </div>
             </div>
         </aside>
 
@@ -1040,34 +1118,6 @@ body{ margin:0; font-family:Arial,sans-serif; background:var(--bg); color:var(--
                 </div>
             <?php } else { ?>
                 <div class="empty">No tienes cursos asignados todavía.</div>
-            <?php } ?>
-
-            <h2 class="main-section-title">Mis Cursos</h2>
-
-            <?php if (empty($assignments)) { ?>
-                <div class="empty">No tienes cursos asignados todavía.</div>
-            <?php } else { ?>
-                <div class="course-grid">
-                    <?php foreach ($assignments as $index => $assignment) { ?>
-                        <?php
-                        $colorClass = 'course-blue';
-                        if ($index % 3 === 1) {
-                            $colorClass = 'course-yellow';
-                        } elseif ($index % 3 === 2) {
-                            $colorClass = 'course-green';
-                        }
-
-                        $programType = (string) ($assignment['program_type'] ?? '');
-                        $cardTitle = build_assignment_title($assignment);
-                        $cardSub = $programType === 'english' ? 'Curso de inglés' : 'Curso técnico';
-                        ?>
-                        <a class="course-card <?php echo h($colorClass); ?>" href="dashboard.php?assignment=<?php echo urlencode((string) ($assignment['id'] ?? '')); ?>#unidades-curso">
-                            <div class="course-meta"><?php echo h($programType === 'english' ? 'English' : 'Técnico'); ?></div>
-                            <div class="course-name"><?php echo h($cardTitle); ?></div>
-                            <div class="course-sub"><?php echo h($cardSub); ?></div>
-                        </a>
-                    <?php } ?>
-                </div>
             <?php } ?>
         </main>
     </div>
