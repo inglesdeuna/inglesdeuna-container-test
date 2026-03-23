@@ -31,7 +31,7 @@ $pageTexts = isset($rawData['page_texts']) && is_array($rawData['page_texts'])
 $pageCount = isset($rawData['page_count']) ? (int) $rawData['page_count'] : max(count($pageTexts), 1);
 
 $payload = [
-    'title'          => isset($rawData['title']) ? (string) $rawData['title'] : 'Flipbook',
+    'title'          => isset($rawData['title']) ? (string) $rawData['title'] : 'downloadable',
     'pdf_url'        => isset($rawData['pdf_url']) ? (string) $rawData['pdf_url'] : '',
     'listen_enabled' => array_key_exists('listen_enabled', $rawData) ? (bool) $rawData['listen_enabled'] : true,
     'page_texts'     => $pageTexts,
@@ -49,10 +49,10 @@ ob_start();
 ?>
 
 <div class="mb-4">
-    <label for="flipbook-title" class="form-label fw-bold">Título de la actividad</label>
+    <label for="downloadable-title" class="form-label fw-bold">Título de la actividad</label>
     <input
         type="text"
-        id="flipbook-title"
+        id="downloadable-title"
         class="form-control form-control-lg"
         value="<?php echo htmlspecialchars($payload['title'], ENT_QUOTES, 'UTF-8'); ?>"
         placeholder="Ej: Reading Practice - Unit 1"
@@ -67,8 +67,8 @@ ob_start();
                     <i class="fas fa-file-pdf text-danger me-2"></i>Archivo PDF
                 </h5>
 
-                <div id="drop-zone" class="flipbook-dropzone">
-                    <div class="flipbook-dropzone__inner">
+                <div id="drop-zone" class="downloadable-dropzone">
+                    <div class="downloadable-dropzone__inner">
                         <i class="fas fa-cloud-upload-alt fa-2x text-secondary mb-2"></i>
                         <div class="fw-semibold">Seleccione o arrastre el archivo PDF</div>
                         <div class="text-muted small">Formato permitido: PDF</div>
@@ -163,13 +163,13 @@ ob_start();
         <i class="fas fa-exclamation-triangle me-1"></i>Tienes cambios sin guardar.
     </span>
 
-    <button type="button" id="btn-save-flipbook" class="btn btn-primary btn-lg">
+    <button type="button" id="btn-save-downloadable" class="btn btn-primary btn-lg">
         <i class="fas fa-save me-2"></i>Guardar actividad
     </button>
 </div>
 
 <style>
-.flipbook-dropzone {
+.downloadable-dropzone {
     position: relative;
     border: 2px dashed #cbd5e1;
     border-radius: 12px;
@@ -180,17 +180,17 @@ ob_start();
     transition: all 0.2s ease;
 }
 
-.flipbook-dropzone:hover {
+.downloadable-dropzone:hover {
     border-color: #60a5fa;
     background: #eff6ff;
 }
 
-.flipbook-dropzone.is-dragover {
+.downloadable-dropzone.is-dragover {
     border-color: #2563eb;
     background: #dbeafe;
 }
 
-.flipbook-dropzone__inner {
+.downloadable-dropzone__inner {
     pointer-events: none;
 }
 </style>
@@ -201,10 +201,10 @@ document.addEventListener('DOMContentLoaded', function () {
     const fileInput = document.getElementById('pdf-file');
     const fileStatus = document.getElementById('file-status');
     const fileNameDisplay = document.getElementById('file-name-display');
-    const saveBtn = document.getElementById('btn-save-flipbook');
+    const saveBtn = document.getElementById('btn-save-downloadable');
     const unsavedMsg = document.getElementById('unsaved-msg');
 
-    const titleInput = document.getElementById('flipbook-title');
+    const titleInput = document.getElementById('downloadable-title');
     const pageTextsInput = document.getElementById('page-texts');
     const pageCountInput = document.getElementById('page-count');
     const listenEnabledInput = document.getElementById('listen-enabled');
@@ -343,7 +343,7 @@ document.addEventListener('DOMContentLoaded', function () {
         saveBtn.disabled = true;
         saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Guardando...';
 
-        fetch('save_flipbook.php', {
+        fetch('save_downloadable.php', {
             method: 'POST',
             body: formData
         })
