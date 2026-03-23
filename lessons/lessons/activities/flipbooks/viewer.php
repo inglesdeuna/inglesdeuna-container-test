@@ -24,8 +24,19 @@ if (!is_array($data)) {
 $title         = isset($data['title']) ? (string) $data['title'] : 'Flipbook';
 $pdfUrl        = isset($data['pdf_url']) ? (string) $data['pdf_url'] : '';
 $pageTexts     = isset($data['page_texts']) && is_array($data['page_texts']) ? array_values($data['page_texts']) : [];
+$pageCount     = isset($data['page_count']) ? (int) $data['page_count'] : max(count($pageTexts), 1);
 $listenEnabled = array_key_exists('listen_enabled', $data) ? (bool) $data['listen_enabled'] : true;
 $language      = isset($data['language']) ? (string) $data['language'] : 'en-US';
+
+if ($pageCount < 1) {
+    $pageCount = 1;
+}
+
+if (count($pageTexts) < $pageCount) {
+    $pageTexts = array_pad($pageTexts, $pageCount, '');
+} elseif (count($pageTexts) > $pageCount) {
+    $pageTexts = array_slice($pageTexts, 0, $pageCount);
+}
 
 if ($pdfUrl === '') {
     die(
@@ -47,6 +58,7 @@ include __DIR__ . '/../../core/_activity_viewer_template.php';
     data-pdf-url="<?php echo htmlspecialchars($pdfUrl, ENT_QUOTES, 'UTF-8'); ?>"
     data-language="<?php echo htmlspecialchars($language, ENT_QUOTES, 'UTF-8'); ?>"
     data-listen-enabled="<?php echo $listenEnabled ? '1' : '0'; ?>"
+    data-page-count="<?php echo (int) $pageCount; ?>"
     data-page-texts="<?php echo htmlspecialchars(json_encode($pageTexts, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), ENT_QUOTES, 'UTF-8'); ?>"
 >
     <div class="flipbook-viewer__header mb-4">
@@ -71,7 +83,7 @@ include __DIR__ . '/../../core/_activity_viewer_template.php';
 
                 <div class="flipbook-toolbar__center">
                     <span class="flipbook-page-badge">
-                        Página <span id="current-page">1</span> / <span id="total-pages">1</span>
+                        Página <span id="current-page">1</span> / <span id="total-pages"><?php echo (int) $pageCount; ?></span>
                     </span>
                 </div>
 
@@ -108,7 +120,10 @@ include __DIR__ . '/../../core/_activity_viewer_template.php';
             <div class="flipbook-listen-panel mt-3">
                 <div class="small text-muted mb-2">Texto configurado para la página actual</div>
                 <div id="current-page-text" class="flipbook-page-text-box">
-                    No hay texto definido para esta página.
+                    <?php
+                    $initialText = trim((string) ($pageTexts[0] ?? ''));
+                    echo htmlspecialchars($initialText !== '' ? $initialText : 'No hay texto definido para esta página.', ENT_QUOTES, 'UTF-8');
+                    ?>
                 </div>
             </div>
         </div>
@@ -121,3 +136,4 @@ include __DIR__ . '/../../core/_activity_viewer_template.php';
 if (file_exists(__DIR__ . '/../../core/_activity_viewer_footer.php')) {
     include __DIR__ . '/../../core/_activity_viewer_footer.php';
 }
+?>
