@@ -147,7 +147,7 @@ try {
     }
 
     $payload = is_array($currentData) ? $currentData : [];
-    $payload['type'] = 'flipbook';
+    $payload['type'] = 'downloadable';
     $payload['title'] = $title;
     $payload['pdf_url'] = $pdfUrl;
     $payload['listen_enabled'] = $listenEnabled;
