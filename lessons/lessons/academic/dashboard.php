@@ -542,7 +542,7 @@ body{ margin:0; font-family:Arial,sans-serif; background:var(--bg); color:var(--
     font-weight:700;
     border-radius:10px;
     padding:10px 16px;
-    background:linear-gradient(180deg,#ef4444,#dc2626);
+    background:linear-gradient(180deg,#3b82f6,#1d4ed8);
     box-shadow:var(--shadow-sm);
     transition:filter .2s, transform .15s;
 }
@@ -648,7 +648,7 @@ body{ margin:0; font-family:Arial,sans-serif; background:var(--bg); color:var(--
 }
 
 .side-button.green{
-    background:linear-gradient(180deg,#41b95a,#2f9e44);
+    background:linear-gradient(180deg,#60a5fa,#2563eb);
 }
 
 .side-button.gray{
@@ -691,7 +691,7 @@ body{ margin:0; font-family:Arial,sans-serif; background:var(--bg); color:var(--
 }
 
 .sidebar-course-btn.active{
-    background:linear-gradient(180deg,#41b95a,#2f9e44);
+    background:linear-gradient(180deg,#1d4ed8,#1e3a8a);
 }
 
 .upload-form{ margin-top:20px; margin-bottom:12px; text-align:left; }
