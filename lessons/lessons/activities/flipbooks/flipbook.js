@@ -1,27 +1,25 @@
 <?php
-declare(strict_types=1);
-
 require_once __DIR__ . '/../../config/db.php';
 
 header('Content-Type: application/json; charset=utf-8');
 
-function respond_json(array $payload, int $statusCode = 200): void
-{
-    http_response_code($statusCode);
-    echo json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    http_response_code(405);
+    echo json_encode([
+        'status' => 'error',
+        'message' => 'Método no permitido.'
+    ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;
 }
 
 function respond_error(string $message, int $statusCode = 400): void
 {
-    respond_json([
+    http_response_code($statusCode);
+    echo json_encode([
         'status' => 'error',
         'message' => $message
-    ], $statusCode);
-}
-
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    respond_error('Método no permitido.', 405);
+    ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    exit;
 }
 
 try {
@@ -78,7 +76,7 @@ try {
                     UPLOAD_ERR_PARTIAL    => 'El PDF se cargó parcialmente.',
                     UPLOAD_ERR_NO_TMP_DIR => 'No existe carpeta temporal en el servidor.',
                     UPLOAD_ERR_CANT_WRITE => 'El servidor no pudo escribir el archivo.',
-                    UPLOAD_ERR_EXTENSION  => 'La subida del PDF fue detenida por una extensión del servidor.'
+                    UPLOAD_ERR_EXTENSION  => 'La subida del PDF fue detenida por una extensión del servidor.',
                 ];
 
                 respond_error($uploadErrors[$uploadError] ?? 'Error desconocido al subir el PDF.');
@@ -105,11 +103,15 @@ try {
                 respond_error('El archivo debe tener extensión .pdf.');
             }
 
-            if (function_exists('mime_content_type')) {
-                $mime = mime_content_type($tmpPath);
-                if ($mime !== 'application/pdf' && $mime !== 'application/octet-stream') {
-                    respond_error('El archivo no es un PDF válido.');
-                }
+            if (!class_exists('finfo')) {
+                respond_error('La extensión Fileinfo no está habilitada en el servidor.');
+            }
+
+            $finfo = new finfo(FILEINFO_MIME_TYPE);
+            $mime = $finfo->file($tmpPath);
+
+            if ($mime !== 'application/pdf' && $mime !== 'application/octet-stream') {
+                respond_error('El archivo no es un PDF válido.');
             }
 
             $safeUnit = preg_replace('/[^a-zA-Z0-9_-]/', '_', $unit);
@@ -118,11 +120,8 @@ try {
             }
 
             $uploadDir = __DIR__ . '/uploads/pdfs/';
-
-            if (!is_dir($uploadDir)) {
-                if (!mkdir($uploadDir, 0775, true) && !is_dir($uploadDir)) {
-                    respond_error('No se pudo crear la carpeta de uploads.');
-                }
+            if (!is_dir($uploadDir) && !mkdir($uploadDir, 0775, true)) {
+                respond_error('No se pudo crear la carpeta de uploads.');
             }
 
             if (!is_writable($uploadDir)) {
@@ -136,6 +135,7 @@ try {
                 respond_error('No se pudo guardar el archivo PDF.');
             }
 
+            // IMPORTANTE: no cambiar esta ruta si ya estaba funcionando.
             $pdfUrl = '/lessons/lessons/activities/flipbooks/uploads/pdfs/' . $newFileName;
         }
     }
@@ -169,11 +169,12 @@ try {
         respond_error('No se pudo actualizar la actividad.');
     }
 
-    respond_json([
+    echo json_encode([
         'status'  => 'success',
         'message' => 'Actividad guardada correctamente.',
         'data'    => $payload
-    ]);
+    ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+
 } catch (Throwable $e) {
-    respond_error('Error interno del servidor: ' . $e->getMessage(), 500);
+    respond_error($e->getMessage(), 500);
 }
