@@ -231,3 +231,4 @@ $(function () {
 <?php
 $content = ob_get_clean();
 render_activity_editor($payload['title'], 'fas fa-book-open', $content);
+
