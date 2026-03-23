@@ -43,6 +43,71 @@ function generate_temporary_admin_password(): string
     return 'Adm' . strtoupper(bin2hex(random_bytes(3)));
 }
 
+function admin_users_json_file(): string
+{
+    return __DIR__ . '/data/users.json';
+}
+
+function load_admin_users_json(): array
+{
+    $file = admin_users_json_file();
+    if (!is_file($file)) {
+        return [];
+    }
+
+    $decoded = json_decode((string) file_get_contents($file), true);
+    return is_array($decoded) ? $decoded : [];
+}
+
+function save_admin_users_json(array $users): void
+{
+    file_put_contents(
+        admin_users_json_file(),
+        json_encode(array_values($users), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)
+    );
+}
+
+function find_admin_user_in_json(string $identifier): ?array
+{
+    $identifier = trim($identifier);
+    if ($identifier === '') {
+        return null;
+    }
+
+    foreach (load_admin_users_json() as $user) {
+        $email = trim((string) ($user['email'] ?? ''));
+        $username = trim((string) ($user['username'] ?? ''));
+
+        if ($identifier === $email || ($username !== '' && $identifier === $username)) {
+            return is_array($user) ? $user : null;
+        }
+    }
+
+    return null;
+}
+
+function update_admin_user_in_json(string $id, array $updates): bool
+{
+    $users = load_admin_users_json();
+    $updated = false;
+
+    foreach ($users as $index => $user) {
+        if ((string) ($user['id'] ?? '') !== $id) {
+            continue;
+        }
+
+        $users[$index] = array_merge($user, $updates);
+        $updated = true;
+        break;
+    }
+
+    if ($updated) {
+        save_admin_users_json($users);
+    }
+
+    return $updated;
+}
+
 // Initialize secure session settings
 Security::initializeSession();
 ensure_admin_recovery_columns($pdo);
@@ -112,12 +177,49 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                     $success = 'Se generó una clave temporal para el administrador.';
                     $recoveryPassword = $temporaryPassword;
                 } else {
-                    Security::logSecurityEvent('admin_password_recovery_failed', 'Recovery requested for unknown email', $recoveryEmail);
-                    $error = 'No encontramos un administrador activo con ese correo.';
+                    $jsonUser = find_admin_user_in_json($recoveryEmail);
+
+                    if ($jsonUser) {
+                        $temporaryPassword = generate_temporary_admin_password();
+                        $jsonUpdates = [
+                            'password' => $temporaryPassword,
+                            'must_change_password' => true,
+                        ];
+
+                        if (!empty($jsonUser['password_hash'])) {
+                            $jsonUpdates['password_hash'] = Security::hashPassword($temporaryPassword);
+                        }
+
+                        update_admin_user_in_json((string) ($jsonUser['id'] ?? ''), $jsonUpdates);
+                        Security::logSecurityEvent('admin_password_recovery', 'Temporary password generated from JSON store', (string) ($jsonUser['id'] ?? 'unknown'));
+                        $success = 'Se generó una clave temporal para el administrador.';
+                        $recoveryPassword = $temporaryPassword;
+                    } else {
+                        Security::logSecurityEvent('admin_password_recovery_failed', 'Recovery requested for unknown email', $recoveryEmail);
+                        $error = 'No encontramos un administrador activo con ese correo.';
+                    }
                 }
             } catch (Throwable $e) {
-                Security::logSecurityEvent('admin_password_recovery_failed', 'Database error: ' . $e->getMessage(), $recoveryEmail);
-                $error = 'No fue posible generar la clave temporal en este momento.';
+                $jsonUser = find_admin_user_in_json($recoveryEmail);
+                if ($jsonUser) {
+                    $temporaryPassword = generate_temporary_admin_password();
+                    $jsonUpdates = [
+                        'password' => $temporaryPassword,
+                        'must_change_password' => true,
+                    ];
+
+                    if (!empty($jsonUser['password_hash'])) {
+                        $jsonUpdates['password_hash'] = Security::hashPassword($temporaryPassword);
+                    }
+
+                    update_admin_user_in_json((string) ($jsonUser['id'] ?? ''), $jsonUpdates);
+                    Security::logSecurityEvent('admin_password_recovery', 'Temporary password generated from JSON fallback after database error', (string) ($jsonUser['id'] ?? 'unknown'));
+                    $success = 'Se generó una clave temporal para el administrador.';
+                    $recoveryPassword = $temporaryPassword;
+                } else {
+                    Security::logSecurityEvent('admin_password_recovery_failed', 'Database error: ' . $e->getMessage(), $recoveryEmail);
+                    $error = 'No fue posible generar la clave temporal en este momento.';
+                }
             }
         }
     } else {
@@ -165,6 +267,42 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                     Security::logSecurityEvent('admin_login', 'Successful login', $user['id']);
 
                     if (!empty($user['must_change_password'])) {
+                        header("Location: /lessons/lessons/admin/change_password.php");
+                        exit;
+                    }
+
+                    header("Location: /lessons/lessons/admin/dashboard.php");
+                    exit;
+                }
+
+                $jsonUser = find_admin_user_in_json($identifier);
+                $jsonPasswordHash = (string) ($jsonUser['password_hash'] ?? '');
+                $jsonPassword = (string) ($jsonUser['password'] ?? '');
+                $jsonPasswordMatches = false;
+
+                if ($jsonUser) {
+                    if ($jsonPasswordHash !== '') {
+                        $jsonPasswordMatches = Security::verifyPassword($pass, $jsonPasswordHash);
+                    } else {
+                        $jsonPasswordMatches = hash_equals($jsonPassword, $pass);
+                    }
+                }
+
+                if ($jsonUser && $jsonPasswordMatches) {
+                    session_unset();
+                    session_regenerate_id(true);
+
+                    Security::initializeSession();
+                    $_SESSION['admin_logged'] = true;
+                    $_SESSION['admin_id'] = (string) ($jsonUser['id'] ?? 'admin_json');
+                    $_SESSION['admin_email'] = (string) ($jsonUser['email'] ?? $identifier);
+                    $_SESSION['admin_role'] = (string) ($jsonUser['role'] ?? 'admin');
+                    $_SESSION['admin_must_change_password'] = !empty($jsonUser['must_change_password']);
+                    $_SESSION['_session_start_time'] = time();
+
+                    Security::logSecurityEvent('admin_login', 'Successful JSON fallback login', (string) ($_SESSION['admin_id'] ?? 'admin_json'));
+
+                    if (!empty($jsonUser['must_change_password'])) {
                         header("Location: /lessons/lessons/admin/change_password.php");
                         exit;
                     }
