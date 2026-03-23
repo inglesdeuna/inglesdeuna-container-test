@@ -77,8 +77,13 @@ function find_admin_user_in_json(string $identifier): ?array
     foreach (load_admin_users_json() as $user) {
         $email = trim((string) ($user['email'] ?? ''));
         $username = trim((string) ($user['username'] ?? ''));
+        $legacyUsername = 'admin';
 
-        if ($identifier === $email || ($username !== '' && $identifier === $username)) {
+        if (
+            $identifier === $email
+            || ($username !== '' && $identifier === $username)
+            || ($username === '' && $identifier === $legacyUsername)
+        ) {
             return is_array($user) ? $user : null;
         }
     }
@@ -687,7 +692,7 @@ body{
                         id="email"
                         type="text"
                         name="email"
-                        placeholder="Ingresa tu usuario"
+                        placeholder="Ingresa admin o tu correo"
                         value="<?= htmlspecialchars((string) ($_POST['email'] ?? ''), ENT_QUOTES, 'UTF-8') ?>"
                         required
                     >
@@ -710,7 +715,7 @@ body{
 
             <div class="recovery-card">
                 <div class="recovery-title">Recuperar clave</div>
-                <p class="recovery-text">Si no recuerdas tu clave, ingresa el correo del administrador y el sistema generará una clave temporal para volver a entrar.</p>
+                <p class="recovery-text">Puedes entrar con <strong>admin</strong> o con el correo del administrador. Si no recuerdas la clave, ingresa el correo y el sistema generará una clave temporal.</p>
                 <form method="post" autocomplete="off">
                     <input type="hidden" name="_csrf_token" value="<?= htmlspecialchars($csrf_token, ENT_QUOTES, 'UTF-8') ?>">
                     <input type="hidden" name="action" value="recover_password">
