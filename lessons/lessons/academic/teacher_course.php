@@ -473,6 +473,7 @@ body{font-family:Arial,sans-serif;background:var(--bg);color:var(--text)}
   transition:background .2s;
 }
 .topbar-back:hover{background:rgba(255,255,255,.26)}
+.topbar-back{display:none}
 .topbar-center{flex:1;text-align:center;min-width:0}
 .topbar-title{
   font-size:16px;font-weight:800;color:#fff;
@@ -540,8 +541,16 @@ body{font-family:Arial,sans-serif;background:var(--bg);color:var(--text)}
   color:#fff;
 }
 .nav-link.accent:hover{filter:brightness(1.07)}
-.nav-link.danger{color:#dc2626}
-.nav-link.danger:hover{background:#fff0f0;color:#b91c1c}
+.nav-link.secondary{
+  background:linear-gradient(180deg,#4f77df,#355fc9);
+  color:#fff;
+}
+.nav-link.secondary:hover{filter:brightness(1.07);color:#fff}
+.nav-link.danger{
+  background:linear-gradient(180deg,#ef4444,#dc2626);
+  color:#fff;
+}
+.nav-link.danger:hover{filter:brightness(1.07);color:#fff}
 
 /* MAIN CONTENT */
 .view-area{
@@ -679,7 +688,7 @@ body{font-family:Arial,sans-serif;background:var(--bg);color:var(--text)}
       </a>
     <?php } ?>
 
-    <a class="nav-link" href="/lessons/lessons/academic/teacher_groups.php">
+    <a class="nav-link secondary" href="/lessons/lessons/academic/teacher_groups.php">
       Mis Estudiantes
     </a>
 
@@ -749,8 +758,10 @@ body{font-family:Arial,sans-serif;background:var(--bg);color:var(--text)}
 
             const selectors = [
                 '.back','.btn-volver','.back-button','.btn.back','.back-btn',
+              '[class*="back"]','[id*="back"]',
                 'a[href*="dashboard"]','a[href*="unit_view"]',
-                'a[href*="technical_units"]','a[href*="english_structure_units"]'
+              'a[href*="technical_units"]','a[href*="english_structure_units"]',
+              'a[href*="teacher_course"]','a[href*="course.php"]'
             ];
 
             selectors.forEach((selector) => {
@@ -758,9 +769,11 @@ body{font-family:Arial,sans-serif;background:var(--bg);color:var(--text)}
                     const text = (el.textContent || '').toLowerCase();
                     const href = (el.getAttribute('href') || '').toLowerCase();
                     if (
-                        text.includes('volver') || text.includes('back') ||
+                      text.includes('volver') || text.includes('back') ||
+                      text.includes('regresar') || text.includes('mis cursos') ||
                         href.includes('dashboard') || href.includes('unit_view') ||
-                        href.includes('technical_units') || href.includes('english_structure_units')
+                      href.includes('technical_units') || href.includes('english_structure_units') ||
+                      href.includes('teacher_course') || href.includes('course.php')
                     ) {
                         el.style.display = 'none';
                     }
@@ -769,7 +782,10 @@ body{font-family:Arial,sans-serif;background:var(--bg);color:var(--text)}
 
             doc.querySelectorAll('a, button').forEach((el) => {
                 const text = (el.textContent || '').trim().toLowerCase();
-                if (text === 'back' || text === 'volver') {
+                  if (
+                    text === 'back' || text === 'volver' || text === 'regresar' ||
+                    text.includes('mis cursos') || text.includes('volver al')
+                  ) {
                     el.style.display = 'none';
                 }
             });
