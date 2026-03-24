@@ -26,6 +26,105 @@ function h(string $value): string
     return htmlspecialchars($value, ENT_QUOTES, 'UTF-8');
 }
 
+function teacher_initials(string $name): string
+{
+    $name = trim($name);
+    if ($name === '') {
+        return 'DC';
+    }
+
+    $parts = preg_split('/\s+/', $name) ?: [];
+    $initials = '';
+
+    foreach ($parts as $part) {
+        if ($part === '') {
+            continue;
+        }
+
+        $initials .= strtoupper(substr($part, 0, 1));
+        if (strlen($initials) === 2) {
+            break;
+        }
+    }
+
+    return $initials !== '' ? $initials : 'DC';
+}
+
+function ensure_data_directory(): string
+{
+    $dataDir = __DIR__ . '/data';
+    if (!is_dir($dataDir)) {
+        mkdir($dataDir, 0777, true);
+    }
+
+    return $dataDir;
+}
+
+function teacher_photos_store_file(): string
+{
+    return ensure_data_directory() . '/teacher_photos.json';
+}
+
+function load_teacher_photos_store(): array
+{
+    $storeFile = teacher_photos_store_file();
+    if (!file_exists($storeFile)) {
+        return [];
+    }
+
+    $decoded = json_decode((string) file_get_contents($storeFile), true);
+    return is_array($decoded) ? $decoded : [];
+}
+
+function load_teacher_photo_from_database(PDO $pdo, string $teacherId): string
+{
+    if ($teacherId === '' || !table_exists($pdo, 'teacher_accounts') || !table_has_column($pdo, 'teacher_accounts', 'teacher_photo')) {
+        return '';
+    }
+
+    try {
+        $stmt = $pdo->prepare("\n            SELECT teacher_photo\n            FROM teacher_accounts\n            WHERE teacher_id = :teacher_id\n            ORDER BY updated_at DESC NULLS LAST\n            LIMIT 1\n        ");
+        $stmt->execute(['teacher_id' => $teacherId]);
+        return trim((string) $stmt->fetchColumn());
+    } catch (Throwable $e) {
+        return '';
+    }
+}
+
+function load_teacher_photo(PDO $pdo, string $teacherId): string
+{
+    if ($teacherId === '') {
+        return '';
+    }
+
+    $store = load_teacher_photos_store();
+    $fromStore = trim((string) ($store[$teacherId] ?? ''));
+    if ($fromStore !== '') {
+        return $fromStore;
+    }
+
+    return load_teacher_photo_from_database($pdo, $teacherId);
+}
+
+function resolve_teacher_photo_src(string $teacherPhoto): string
+{
+    $teacherPhoto = trim($teacherPhoto);
+    if ($teacherPhoto === '') {
+        return '';
+    }
+
+    if (preg_match('/^https?:\/\//i', $teacherPhoto)) {
+        return $teacherPhoto;
+    }
+
+    $fullPath = __DIR__ . '/' . ltrim($teacherPhoto, '/');
+    if (is_file($fullPath)) {
+        return ltrim($teacherPhoto, '/');
+    }
+
+    return '';
+}
+
 function get_pdo_connection(): ?PDO
 {
     if (!getenv('DATABASE_URL')) {
@@ -325,6 +424,16 @@ $activityLabels = [
 $programType = (string) ($assignment['program_type'] ?? 'technical');
 $programLabel = $programType === 'english' ? 'English' : 'Técnico';
 $courseName = (string) ($assignment['course_name'] ?? 'Curso');
+$teacherName = trim((string) ($_SESSION['teacher_name'] ?? $assignment['teacher_name'] ?? 'Docente'));
+$teacherPhoto = trim((string) ($_SESSION['teacher_photo'] ?? ''));
+if ($teacherPhoto === '') {
+    $teacherPhoto = load_teacher_photo($pdo, $teacherId);
+    if ($teacherPhoto !== '') {
+        $_SESSION['teacher_photo'] = $teacherPhoto;
+    }
+}
+$teacherPhotoSrc = resolve_teacher_photo_src($teacherPhoto);
+$teacherInitials = teacher_initials($teacherName);
 $backHref = 'dashboard.php?assignment=' . urlencode($assignmentId) . '&unit=' . urlencode((string) ($selectedUnit['id'] ?? '')) . '#unidades-curso';
 ?>
 <!DOCTYPE html>
@@ -351,7 +460,7 @@ $backHref = 'dashboard.php?assignment=' . urlencode($assignmentId) . '&unit=' . 
 body{
     margin:0;
     background:var(--bg);
-    font-family:Arial, "Segoe UI", sans-serif;
+    font-family:Arial, sans-serif;
     color:var(--text);
 }
 
@@ -365,7 +474,7 @@ body{
     max-width:1280px;
     margin:0 auto;
     display:grid;
-    grid-template-columns:180px 1fr 180px;
+    grid-template-columns:180px 1fr;
     align-items:center;
     gap:12px;
 }
@@ -390,7 +499,6 @@ body{
 }
 
 .top-btn.back{ justify-self:start; }
-.top-btn.dashboard{ justify-self:end; }
 
 .page{
     max-width:1280px;
@@ -418,17 +526,37 @@ body{
     margin-bottom:16px;
 }
 
-.logo-badge{
+.avatar{
     width:90px;
     height:90px;
     margin:0 auto;
-    border-radius:18px;
-    background:linear-gradient(180deg,#ffffff,#dce7ff);
+    border-radius:50%;
+    overflow:hidden;
+    background:linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+    border:3px solid #f0f4ff;
     display:flex;
     align-items:center;
     justify-content:center;
-    font-size:36px;
-    box-shadow:var(--shadow);
+    box-shadow:0 8px 20px rgba(59, 130, 246, 0.15);
+}
+
+.avatar-image{
+    width:100%;
+    height:100%;
+    object-fit:cover;
+    display:block;
+}
+
+.avatar-fallback{
+    display:none;
+    width:100%;
+    height:100%;
+    align-items:center;
+    justify-content:center;
+    color:var(--blue-dark);
+    font-size:24px;
+    font-weight:800;
+    letter-spacing:.08em;
 }
 
 .side-btn{
@@ -494,24 +622,30 @@ body{
 .unit-switcher{
     display:flex;
     flex-wrap:wrap;
-    gap:10px;
+    gap:12px;
     margin:14px 0 0;
 }
 .unit-link{
     display:inline-block;
-    padding:8px 12px;
-    border-radius:999px;
+    padding:16px 18px;
+    border-radius:14px;
     text-decoration:none;
-    font-size:13px;
+    font-size:15px;
     font-weight:700;
     background:#fff;
     color:var(--blue);
-    border:1px solid var(--line);
+    border:1px solid #cddfff;
+    box-shadow:0 8px 18px rgba(37, 99, 235, 0.18);
 }
 .unit-link.active{
-    background:var(--blue);
-    color:#fff;
+    background:#fff;
+    color:var(--blue-dark);
     border-color:var(--blue);
+    box-shadow:0 10px 22px rgba(37, 99, 235, 0.26);
+}
+.unit-link:hover{
+    transform:translateY(-1px);
+    box-shadow:0 10px 22px rgba(37, 99, 235, 0.26);
 }
 
 .activities-shell{ padding:18px; }
@@ -601,8 +735,7 @@ body{
         text-align:center;
     }
 
-    .top-btn.back,
-    .top-btn.dashboard{
+    .top-btn.back{
         justify-self:center;
     }
 
@@ -640,7 +773,6 @@ body{
     <div class="topbar-inner">
         <a class="top-btn back" href="<?php echo h($backHref); ?>">← Volver</a>
         <h1 class="topbar-title">Gestión de Unidad</h1>
-        <a class="top-btn dashboard" href="/lessons/lessons/academic/dashboard.php">Dashboard</a>
     </div>
 </header>
 
@@ -648,7 +780,17 @@ body{
     <div class="layout">
         <aside class="sidebar">
             <div class="logo-wrap">
-                <div class="logo-badge">👨‍🏫</div>
+                <div class="avatar">
+                    <?php if ($teacherPhotoSrc !== '') { ?>
+                        <img
+                            class="avatar-image"
+                            src="<?php echo h($teacherPhotoSrc); ?>"
+                            alt="Foto de <?php echo h($teacherName); ?>"
+                            onerror="this.style.display='none';this.nextElementSibling.style.display='flex';"
+                        >
+                    <?php } ?>
+                    <span class="avatar-fallback" aria-hidden="true" style="<?php echo $teacherPhotoSrc === '' ? 'display:flex;' : ''; ?>"><?php echo h($teacherInitials); ?></span>
+                </div>
             </div>
 
             <a class="side-btn blue" href="<?php echo h($backHref); ?>">📚 Volver a unidades</a>
