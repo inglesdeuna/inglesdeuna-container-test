@@ -126,10 +126,15 @@ function normalize_match_payload($rawData): array
                 continue;
             }
 
+            $legacyText = isset($item['text']) ? trim((string) $item['text']) : (isset($item['word']) ? trim((string) $item['word']) : '');
+            $legacyImage = isset($item['image']) ? trim((string) $item['image']) : (isset($item['img']) ? trim((string) $item['img']) : '');
+
             $pairs[] = array(
                 'id' => isset($item['id']) && trim((string) $item['id']) !== '' ? trim((string) $item['id']) : uniqid('match_'),
-                'text' => isset($item['text']) ? trim((string) $item['text']) : (isset($item['word']) ? trim((string) $item['word']) : ''),
-                'image' => isset($item['image']) ? trim((string) $item['image']) : (isset($item['img']) ? trim((string) $item['img']) : ''),
+                'left_text' => isset($item['left_text']) ? trim((string) $item['left_text']) : '',
+                'left_image' => isset($item['left_image']) ? trim((string) $item['left_image']) : $legacyImage,
+                'right_text' => isset($item['right_text']) ? trim((string) $item['right_text']) : $legacyText,
+                'right_image' => isset($item['right_image']) ? trim((string) $item['right_image']) : '',
             );
         }
     }
@@ -406,39 +411,68 @@ if ($activityId === '' && !empty($activity['id'])) {
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $postedTitle = isset($_POST['activity_title']) ? trim((string) $_POST['activity_title']) : '';
-    $texts = isset($_POST['text']) && is_array($_POST['text']) ? $_POST['text'] : array();
-    $images = isset($_POST['image_existing']) && is_array($_POST['image_existing']) ? $_POST['image_existing'] : array();
+    $leftTexts = isset($_POST['left_text']) && is_array($_POST['left_text']) ? $_POST['left_text'] : array();
+    $rightTexts = isset($_POST['right_text']) && is_array($_POST['right_text']) ? $_POST['right_text'] : array();
+    $leftImages = isset($_POST['left_image_existing']) && is_array($_POST['left_image_existing']) ? $_POST['left_image_existing'] : array();
+    $rightImages = isset($_POST['right_image_existing']) && is_array($_POST['right_image_existing']) ? $_POST['right_image_existing'] : array();
     $ids = isset($_POST['pair_id']) && is_array($_POST['pair_id']) ? $_POST['pair_id'] : array();
-    $imageFiles = isset($_FILES['image_file']) ? $_FILES['image_file'] : null;
+    $leftImageFiles = isset($_FILES['left_image_file']) ? $_FILES['left_image_file'] : null;
+    $rightImageFiles = isset($_FILES['right_image_file']) ? $_FILES['right_image_file'] : null;
 
     $sanitized = array();
 
-    foreach ($texts as $i => $textRaw) {
-        $text = trim((string) $textRaw);
-        $image = isset($images[$i]) ? trim((string) $images[$i]) : '';
+    $totalPairs = max(count($leftTexts), count($rightTexts), count($leftImages), count($rightImages), count($ids));
+
+    for ($i = 0; $i < $totalPairs; $i++) {
+        $leftText = isset($leftTexts[$i]) ? trim((string) $leftTexts[$i]) : '';
+        $rightText = isset($rightTexts[$i]) ? trim((string) $rightTexts[$i]) : '';
+        $leftImage = isset($leftImages[$i]) ? trim((string) $leftImages[$i]) : '';
+        $rightImage = isset($rightImages[$i]) ? trim((string) $rightImages[$i]) : '';
         $pairId = isset($ids[$i]) && trim((string) $ids[$i]) !== '' ? trim((string) $ids[$i]) : uniqid('match_');
 
         if (
-            $imageFiles &&
-            isset($imageFiles['name'][$i]) &&
-            $imageFiles['name'][$i] !== '' &&
-            isset($imageFiles['tmp_name'][$i]) &&
-            $imageFiles['tmp_name'][$i] !== ''
+            $leftImageFiles &&
+            isset($leftImageFiles['name'][$i]) &&
+            $leftImageFiles['name'][$i] !== '' &&
+            isset($leftImageFiles['tmp_name'][$i]) &&
+            $leftImageFiles['tmp_name'][$i] !== ''
         ) {
-            $uploadedImage = upload_to_cloudinary($imageFiles['tmp_name'][$i]);
+            $uploadedImage = upload_to_cloudinary($leftImageFiles['tmp_name'][$i]);
             if ($uploadedImage) {
-                $image = $uploadedImage;
+                $leftImage = $uploadedImage;
             }
         }
 
-        if ($text === '' && $image === '') {
+        if (
+            $rightImageFiles &&
+            isset($rightImageFiles['name'][$i]) &&
+            $rightImageFiles['name'][$i] !== '' &&
+            isset($rightImageFiles['tmp_name'][$i]) &&
+            $rightImageFiles['tmp_name'][$i] !== ''
+        ) {
+            $uploadedImage = upload_to_cloudinary($rightImageFiles['tmp_name'][$i]);
+            if ($uploadedImage) {
+                $rightImage = $uploadedImage;
+            }
+        }
+
+        $leftHasContent = ($leftText !== '' || $leftImage !== '');
+        $rightHasContent = ($rightText !== '' || $rightImage !== '');
+
+        if (!$leftHasContent && !$rightHasContent) {
+            continue;
+        }
+
+        if (!$leftHasContent || !$rightHasContent) {
             continue;
         }
 
         $sanitized[] = array(
             'id' => $pairId,
-            'text' => $text,
-            'image' => $image,
+            'left_text' => $leftText,
+            'left_image' => $leftImage,
+            'right_text' => $rightText,
+            'right_image' => $rightImage,
         );
     }
 
@@ -508,6 +542,25 @@ ob_start();
     border:1px solid #e5e7eb;
 }
 
+.match-grid{
+    display:grid;
+    grid-template-columns:repeat(2, minmax(0, 1fr));
+    gap:14px;
+}
+
+.match-side{
+    background:#ffffff;
+    border:1px solid #e5e7eb;
+    border-radius:12px;
+    padding:12px;
+}
+
+.match-side h4{
+    margin:0 0 10px 0;
+    font-size:15px;
+    color:#111827;
+}
+
 .match-item label{
     display:block;
     font-weight:700;
@@ -562,6 +615,18 @@ ob_start();
     cursor:pointer;
     font-weight:700;
 }
+
+.match-help{
+    margin:0 0 14px;
+    color:#4b5563;
+    font-size:14px;
+}
+
+@media (max-width: 760px){
+    .match-grid{
+        grid-template-columns:1fr;
+    }
+}
 </style>
 
 <?php if (isset($_GET['saved'])) { ?>
@@ -581,20 +646,40 @@ ob_start();
         >
     </div>
 
+    <p class="match-help">Cada pareja puede combinar texto e imagen en ambos lados. Puedes crear texto con texto, imagen con imagen o mezclas entre ambos.</p>
+
     <div id="pairsContainer">
         <?php foreach ($pairs as $pair) { ?>
             <div class="match-item">
                 <input type="hidden" name="pair_id[]" value="<?= htmlspecialchars(isset($pair['id']) ? $pair['id'] : uniqid('match_'), ENT_QUOTES, 'UTF-8') ?>">
-                <input type="hidden" name="image_existing[]" value="<?= htmlspecialchars(isset($pair['image']) ? $pair['image'] : '', ENT_QUOTES, 'UTF-8') ?>">
+                <input type="hidden" name="left_image_existing[]" value="<?= htmlspecialchars(isset($pair['left_image']) ? $pair['left_image'] : '', ENT_QUOTES, 'UTF-8') ?>">
+                <input type="hidden" name="right_image_existing[]" value="<?= htmlspecialchars(isset($pair['right_image']) ? $pair['right_image'] : '', ENT_QUOTES, 'UTF-8') ?>">
 
-                <label>Word / text</label>
-                <input type="text" name="text[]" value="<?= htmlspecialchars(isset($pair['text']) ? $pair['text'] : '', ENT_QUOTES, 'UTF-8') ?>" placeholder="Write the word" required>
+                <div class="match-grid">
+                    <div class="match-side">
+                        <h4>Left item</h4>
+                        <label>Text</label>
+                        <input type="text" name="left_text[]" value="<?= htmlspecialchars(isset($pair['left_text']) ? $pair['left_text'] : '', ENT_QUOTES, 'UTF-8') ?>" placeholder="Example: Dog">
 
-                <label>Image</label>
-                <?php if (!empty($pair['image'])) { ?>
-                    <img src="<?= htmlspecialchars($pair['image'], ENT_QUOTES, 'UTF-8') ?>" alt="match-image" class="image-preview">
-                <?php } ?>
-                <input type="file" name="image_file[]" accept="image/*">
+                        <label>Image</label>
+                        <?php if (!empty($pair['left_image'])) { ?>
+                            <img src="<?= htmlspecialchars($pair['left_image'], ENT_QUOTES, 'UTF-8') ?>" alt="left-match-image" class="image-preview">
+                        <?php } ?>
+                        <input type="file" name="left_image_file[]" accept="image/*">
+                    </div>
+
+                    <div class="match-side">
+                        <h4>Right item</h4>
+                        <label>Text</label>
+                        <input type="text" name="right_text[]" value="<?= htmlspecialchars(isset($pair['right_text']) ? $pair['right_text'] : '', ENT_QUOTES, 'UTF-8') ?>" placeholder="Example: Perro">
+
+                        <label>Image</label>
+                        <?php if (!empty($pair['right_image'])) { ?>
+                            <img src="<?= htmlspecialchars($pair['right_image'], ENT_QUOTES, 'UTF-8') ?>" alt="right-match-image" class="image-preview">
+                        <?php } ?>
+                        <input type="file" name="right_image_file[]" accept="image/*">
+                    </div>
+                </div>
 
                 <button type="button" class="btn-remove" onclick="removePair(this)">✖ Remove</button>
             </div>
@@ -629,13 +714,28 @@ function addPair() {
     div.className = 'match-item';
     div.innerHTML = `
         <input type="hidden" name="pair_id[]" value="match_${Date.now()}_${Math.floor(Math.random() * 1000)}">
-        <input type="hidden" name="image_existing[]" value="">
+        <input type="hidden" name="left_image_existing[]" value="">
+        <input type="hidden" name="right_image_existing[]" value="">
 
-        <label>Word / text</label>
-        <input type="text" name="text[]" placeholder="Write the word" required>
+        <div class="match-grid">
+            <div class="match-side">
+                <h4>Left item</h4>
+                <label>Text</label>
+                <input type="text" name="left_text[]" placeholder="Example: Sun">
 
-        <label>Image</label>
-        <input type="file" name="image_file[]" accept="image/*">
+                <label>Image</label>
+                <input type="file" name="left_image_file[]" accept="image/*">
+            </div>
+
+            <div class="match-side">
+                <h4>Right item</h4>
+                <label>Text</label>
+                <input type="text" name="right_text[]" placeholder="Example: Sol">
+
+                <label>Image</label>
+                <input type="file" name="right_image_file[]" accept="image/*">
+            </div>
+        </div>
 
         <button type="button" class="btn-remove" onclick="removePair(this)">✖ Remove</button>
     `;

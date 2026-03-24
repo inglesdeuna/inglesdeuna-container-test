@@ -1,10 +1,10 @@
 document.addEventListener("DOMContentLoaded", () => {
   const data = Array.isArray(MATCH_DATA) ? MATCH_DATA : [];
 
-  const imagesDiv = document.getElementById("match-images");
-  const wordsDiv = document.getElementById("match-words");
+  const leftBoard = document.getElementById("match-left");
+  const rightBoard = document.getElementById("match-right");
 
-  if (!imagesDiv || !wordsDiv) {
+  if (!leftBoard || !rightBoard) {
     return;
   }
 
@@ -57,37 +57,49 @@ document.addEventListener("DOMContentLoaded", () => {
     const count = data.length;
     const config = getBoardConfig(count);
 
-    imagesDiv.style.gridTemplateColumns = `repeat(${config.cols}, ${config.size}px)`;
-    wordsDiv.style.gridTemplateColumns = `repeat(${config.cols}, ${config.size}px)`;
+    leftBoard.style.gridTemplateColumns = `repeat(${config.cols}, minmax(${config.size}px, 1fr))`;
+    rightBoard.style.gridTemplateColumns = `repeat(${config.cols}, minmax(${config.size}px, 1fr))`;
 
-    imagesDiv.style.setProperty("--tile-size", `${config.size}px`);
-    wordsDiv.style.setProperty("--tile-size", `${config.size}px`);
+    leftBoard.style.setProperty("--tile-size", `${config.size}px`);
+    rightBoard.style.setProperty("--tile-size", `${config.size}px`);
+  }
+
+  function renderTileContent(text, image, side) {
+    const safeText = escapeHtml(text || "");
+    const safeImage = escapeHtml(image || "");
+    const media = safeImage !== ""
+      ? `<img src="${safeImage}" class="match-media" alt="${safeText || side}">`
+      : "";
+    const label = safeText !== ""
+      ? `<div class="match-text">${safeText}</div>`
+      : "";
+
+    return `
+      <div class="match-tile-inner ${safeImage !== "" ? "has-image" : ""} ${safeText !== "" ? "has-text" : ""}">
+        ${media}
+        ${label}
+      </div>
+    `;
   }
 
   function renderBoard() {
-    imagesDiv.innerHTML = "";
-    wordsDiv.innerHTML = "";
+    leftBoard.innerHTML = "";
+    rightBoard.innerHTML = "";
 
     applyBoardLayout();
 
     shuffle(data).forEach((item) => {
-      imagesDiv.innerHTML += `
-        <div class="card" data-id="${escapeHtml(item.id)}">
-          <img
-            src="${escapeHtml(item.image)}"
-            draggable="true"
-            data-id="${escapeHtml(item.id)}"
-            class="image"
-            alt="${escapeHtml(item.text || "")}"
-          >
+      leftBoard.innerHTML += `
+        <div class="card match-card" data-id="${escapeHtml(item.id)}" draggable="true">
+          ${renderTileContent(item.left_text, item.left_image, "left")}
         </div>
       `;
     });
 
     shuffle(data).forEach((item) => {
-      wordsDiv.innerHTML += `
-        <div class="word" data-id="${escapeHtml(item.id)}">
-          ${escapeHtml(item.text)}
+      rightBoard.innerHTML += `
+        <div class="word match-target" data-id="${escapeHtml(item.id)}">
+          ${renderTileContent(item.right_text, item.right_image, "right")}
         </div>
       `;
     });
@@ -116,19 +128,20 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  function markCorrect(wordEl, cardEl) {
-    if (!wordEl || !cardEl) {
+  function markCorrect(targetEl, cardEl) {
+    if (!targetEl || !cardEl) {
       return;
     }
 
-    wordEl.classList.add("correct");
-    wordEl.classList.remove("wrong");
-    wordEl.dataset.matched = "1";
-    wordEl.innerHTML = `✓ ${wordEl.textContent}`;
+    targetEl.classList.add("correct");
+    targetEl.classList.remove("wrong");
+    targetEl.dataset.matched = "1";
 
-    const img = cardEl.querySelector(".image");
-    if (img) {
-      img.draggable = false;
+    if (!targetEl.querySelector(".match-badge")) {
+      const badge = document.createElement("div");
+      badge.className = "match-badge";
+      badge.textContent = "✓";
+      targetEl.appendChild(badge);
     }
 
     cardEl.dataset.matched = "1";
@@ -144,11 +157,11 @@ document.addEventListener("DOMContentLoaded", () => {
     checkCompletion();
   }
 
-  function markWrong(wordEl, cardEl) {
-    if (wordEl) {
-      wordEl.classList.add("wrong");
+  function markWrong(targetEl, cardEl) {
+    if (targetEl) {
+      targetEl.classList.add("wrong");
       setTimeout(() => {
-        wordEl.classList.remove("wrong");
+        targetEl.classList.remove("wrong");
       }, 650);
     }
 
@@ -167,18 +180,18 @@ document.addEventListener("DOMContentLoaded", () => {
   window.addEventListener("resize", applyBoardLayout);
 
   document.addEventListener("dragstart", (e) => {
-    if (!e.target.classList.contains("image")) {
+    const card = e.target.closest(".match-card");
+    if (!card) {
       return;
     }
 
-    const card = e.target.closest(".card");
-    if (!card || card.dataset.matched === "1") {
+    if (card.dataset.matched === "1") {
       e.preventDefault();
       return;
     }
 
     currentDraggedCard = card;
-    e.dataTransfer.setData("id", e.target.dataset.id || "");
+    e.dataTransfer.setData("id", card.dataset.id || "");
     e.dataTransfer.effectAllowed = "move";
 
     setTimeout(() => {
@@ -187,21 +200,18 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   document.addEventListener("dragend", (e) => {
-    if (!e.target.classList.contains("image")) {
+    const card = e.target.closest(".match-card");
+    if (!card) {
       return;
     }
 
-    const card = e.target.closest(".card");
-    if (card) {
-      card.classList.remove("dragging");
-    }
-
+    card.classList.remove("dragging");
     currentDraggedCard = null;
   });
 
   document.addEventListener("dragover", (e) => {
-    const word = e.target.closest(".word");
-    if (!word || word.dataset.matched === "1") {
+    const target = e.target.closest(".match-target");
+    if (!target || target.dataset.matched === "1") {
       return;
     }
 
@@ -209,27 +219,27 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   document.addEventListener("drop", (e) => {
-    const word = e.target.closest(".word");
-    if (!word || word.dataset.matched === "1") {
+    const target = e.target.closest(".match-target");
+    if (!target || target.dataset.matched === "1") {
       return;
     }
 
     e.preventDefault();
 
     const draggedId = e.dataTransfer.getData("id");
-    const targetId = word.dataset.id;
+    const targetId = target.dataset.id;
 
     const selectorId = window.CSS && CSS.escape ? CSS.escape(draggedId) : draggedId;
-    const card = currentDraggedCard || imagesDiv.querySelector(`.card[data-id="${selectorId}"]`);
+    const card = currentDraggedCard || leftBoard.querySelector(`.card[data-id="${selectorId}"]`);
 
     if (!draggedId || !card || card.dataset.matched === "1") {
       return;
     }
 
     if (draggedId === targetId) {
-      markCorrect(word, card);
+      markCorrect(target, card);
     } else {
-      markWrong(word, card);
+      markWrong(target, card);
     }
   });
 });

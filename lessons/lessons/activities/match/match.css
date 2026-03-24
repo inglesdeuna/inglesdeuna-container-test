@@ -12,12 +12,12 @@ body{
   flex-wrap: nowrap;
 }
 
-.images,
-.words{
+.board-column{
   display: grid;
   gap: 12px;
   align-content: start;
-  justify-content: center;
+  justify-content: stretch;
+  width: min(430px, 100%);
 }
 
 .card,
@@ -28,13 +28,13 @@ body{
 }
 
 .card{
-  width: var(--tile-size, 92px);
-  height: var(--tile-size, 92px);
-  padding: 0;
+  min-height: var(--tile-size, 92px);
+  padding: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
   transition: transform .2s ease, opacity .2s ease, box-shadow .2s ease;
+  cursor: grab;
 }
 
 .card.dragging{
@@ -51,31 +51,50 @@ body{
   transform: scale(.78);
 }
 
-.image{
-  width: calc(var(--tile-size, 92px) * 0.68);
-  height: calc(var(--tile-size, 92px) * 0.68);
-  object-fit: contain;
-  cursor: grab;
-  user-select: none;
-  -webkit-user-drag: element;
-}
-
 .word{
-  width: var(--tile-size, 92px);
-  height: var(--tile-size, 92px);
-  padding: 6px;
+  min-height: var(--tile-size, 92px);
+  padding: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
   text-align: center;
-  font-size: clamp(11px, calc(var(--tile-size, 92px) * 0.14), 20px);
-  line-height: 1.15;
-  font-weight: 800;
-  letter-spacing: .2px;
   border: 2px dashed #3b82f6;
   box-sizing: border-box;
-  text-transform: uppercase;
   transition: transform .2s ease, background .2s ease, border-color .2s ease, color .2s ease;
+  position: relative;
+}
+
+.match-tile-inner{
+  width: 100%;
+  min-height: calc(var(--tile-size, 92px) - 20px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  text-align: center;
+}
+
+.match-media{
+  width: min(100%, calc(var(--tile-size, 92px) * 0.76));
+  height: calc(var(--tile-size, 92px) * 0.76);
+  object-fit: contain;
+  user-select: none;
+  -webkit-user-drag: none;
+  border-radius: 12px;
+}
+
+.match-text{
+  font-size: clamp(11px, calc(var(--tile-size, 92px) * 0.14), 18px);
+  line-height: 1.18;
+  font-weight: 800;
+  letter-spacing: .2px;
+  color: #0f172a;
+  word-break: break-word;
+}
+
+.has-image.has-text .match-media{
+  height: calc(var(--tile-size, 92px) * 0.5);
 }
 
 .word.correct{
@@ -89,6 +108,22 @@ body{
   border: 2px solid #ef4444;
   color: #991b1b;
   animation: shakeWrong .38s ease;
+}
+
+.match-badge{
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: #16a34a;
+  color: #ffffff;
+  font-weight: 800;
+  font-size: 14px;
 }
 
 #matchCompletedOverlay{

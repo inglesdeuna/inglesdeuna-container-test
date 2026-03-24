@@ -127,10 +127,15 @@ function normalize_match_payload($rawData): array
                 continue;
             }
 
+            $legacyText = isset($item['text']) ? trim((string) $item['text']) : (isset($item['word']) ? trim((string) $item['word']) : '');
+            $legacyImage = isset($item['image']) ? trim((string) $item['image']) : (isset($item['img']) ? trim((string) $item['img']) : '');
+
             $pairs[] = array(
                 'id' => isset($item['id']) && trim((string) $item['id']) !== '' ? trim((string) $item['id']) : uniqid('match_'),
-                'text' => isset($item['text']) ? trim((string) $item['text']) : (isset($item['word']) ? trim((string) $item['word']) : ''),
-                'image' => isset($item['image']) ? trim((string) $item['image']) : (isset($item['img']) ? trim((string) $item['img']) : ''),
+                'left_text' => isset($item['left_text']) ? trim((string) $item['left_text']) : '',
+                'left_image' => isset($item['left_image']) ? trim((string) $item['left_image']) : $legacyImage,
+                'right_text' => isset($item['right_text']) ? trim((string) $item['right_text']) : $legacyText,
+                'right_image' => isset($item['right_image']) ? trim((string) $item['right_image']) : '',
             );
         }
     }
@@ -296,8 +301,8 @@ ob_start();
     <div class="match-empty">No match data available.</div>
 <?php } else { ?>
     <div class="container">
-        <div class="images" id="match-images"></div>
-        <div class="words" id="match-words"></div>
+        <div class="board-column" id="match-left"></div>
+        <div class="board-column" id="match-right"></div>
     </div>
 
     <script>
