@@ -310,7 +310,7 @@ $mode = $mode === 'edit' ? 'edit' : 'view';
 $step = max(0, (int) ($_GET['step'] ?? 0));
 
 if ($assignmentId === '') {
-    die('AsignaciÃ³n docente no especificada.');
+  die('Asignacion docente no especificada.');
 }
 
 $assignment = load_assignment($pdo, $assignmentId);
@@ -433,7 +433,7 @@ $backDashboard = 'dashboard.php?assignment=' . urlencode($assignmentId) . '&unit
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title><?php echo h($currentTypeLabel); ?> â€” <?php echo h((string)($assignment['course_name'] ?? 'Curso')); ?></title>
+<title><?php echo h($currentTypeLabel); ?> - <?php echo h((string)($assignment['course_name'] ?? 'Curso')); ?></title>
 <style>
 :root{
   --bg:#eef5ff;
@@ -455,7 +455,7 @@ $backDashboard = 'dashboard.php?assignment=' . urlencode($assignmentId) . '&unit
 html,body{height:100%}
 body{font-family:Arial,sans-serif;background:var(--bg);color:var(--text)}
 
-/* â”€â”€ TOPBAR â”€â”€ */
+/* TOPBAR */
 .topbar{
   position:sticky;top:0;z-index:100;
   height:var(--topbar-h);
@@ -488,14 +488,14 @@ body{font-family:Arial,sans-serif;background:var(--bg);color:var(--text)}
 }
 .topbar-avatar img{width:100%;height:100%;object-fit:cover;display:block}
 
-/* â”€â”€ OUTER â”€â”€ */
+/* OUTER */
 .outer{
   display:flex;
   height:calc(100dvh - var(--topbar-h));
   overflow:hidden;
 }
 
-/* â”€â”€ SIDEBAR â”€â”€ */
+/* SIDEBAR */
 .sidebar{
   width:var(--sidebar-w);flex-shrink:0;
   background:var(--card);border-right:1px solid var(--line);
@@ -543,7 +543,7 @@ body{font-family:Arial,sans-serif;background:var(--bg);color:var(--text)}
 .nav-link.danger{color:#dc2626}
 .nav-link.danger:hover{background:#fff0f0;color:#b91c1c}
 
-/* â”€â”€ MAIN CONTENT â”€â”€ */
+/* MAIN CONTENT */
 .view-area{
   flex:1;display:flex;flex-direction:column;
   overflow:hidden;padding:14px 16px 0;gap:10px;
@@ -569,7 +569,7 @@ body{font-family:Arial,sans-serif;background:var(--bg);color:var(--text)}
 }
 .edit-link:hover{filter:brightness(1.08)}
 
-/* â”€â”€ IFRAME â”€â”€ */
+/* IFRAME */
 .frame-wrap{
   flex:1;border-radius:var(--radius);overflow:hidden;
   background:#fff;border:1px solid var(--line);
@@ -577,7 +577,7 @@ body{font-family:Arial,sans-serif;background:var(--bg);color:var(--text)}
 }
 .frame-wrap iframe{display:block;width:100%;height:100%;border:0}
 
-/* â”€â”€ CONTROLS â”€â”€ */
+/* CONTROLS */
 .controls{
   flex-shrink:0;
   display:flex;align-items:center;justify-content:space-between;gap:12px;
@@ -596,7 +596,7 @@ body{font-family:Arial,sans-serif;background:var(--bg);color:var(--text)}
 .ctrl-btn:hover{filter:brightness(1.07);transform:translateY(-1px)}
 .ctrl-btn.disabled{opacity:.38;pointer-events:none}
 
-/* â”€â”€ EMPTY â”€â”€ */
+/* EMPTY */
 .empty-state{
   flex:1;display:flex;flex-direction:column;
   align-items:center;justify-content:center;
@@ -613,7 +613,7 @@ body{font-family:Arial,sans-serif;background:var(--bg);color:var(--text)}
   box-shadow:var(--shadow-sm);
 }
 
-/* â”€â”€ RESPONSIVE â”€â”€ */
+/* RESPONSIVE */
 @media (max-width:768px){
   .sidebar{display:none}
   .topbar-title{font-size:14px}
@@ -633,7 +633,7 @@ body{font-family:Arial,sans-serif;background:var(--bg);color:var(--text)}
 
 <header class="topbar">
   <a class="topbar-back" href="<?php echo h($backDashboard); ?>">
-    â† <span class="topbar-back-label">Mis Cursos</span>
+    &larr; <span class="topbar-back-label">Mis Cursos</span>
   </a>
   <div class="topbar-center">
     <div class="topbar-title"><?php echo h((string)($assignment['course_name'] ?? 'Curso')); ?></div>
@@ -666,35 +666,35 @@ body{font-family:Arial,sans-serif;background:var(--bg);color:var(--text)}
       <div class="sidebar-role">Docente</div>
     </div>
 
-    <span class="sidebar-label">NavegaciÃ³n</span>
+    <span class="sidebar-label">Navegacion</span>
 
     <a class="nav-link primary" href="<?php echo h($backDashboard); ?>">
-      ðŸ“˜ Mis Cursos
+      Mis Cursos
     </a>
 
     <?php if ($permission === 'editor') { ?>
       <a class="nav-link accent"
          href="teacher_course.php?assignment=<?php echo urlencode($assignmentId); ?>&unit=<?php echo urlencode($selectedUnitId); ?>&mode=edit&step=<?php echo $step; ?>">
-        ðŸ§‘â€ðŸ« Editar Curso
+        Editar Curso
       </a>
     <?php } ?>
 
     <a class="nav-link" href="/lessons/lessons/academic/teacher_groups.php">
-      ðŸ‘¥ Mis Estudiantes
+      Mis Estudiantes
     </a>
 
     <a class="nav-link danger" href="/lessons/lessons/academic/logout.php">
-      ðŸšª Cerrar sesiÃ³n
+      Cerrar sesion
     </a>
   </nav>
 
   <?php if (!$current || !$viewerHref) { ?>
     <div style="flex:1;display:flex;">
       <div class="empty-state">
-        <div class="empty-icon">ðŸ“­</div>
+        <div class="empty-icon">Sin actividades</div>
         <div class="empty-title">Sin actividades</div>
-        <div class="empty-text">Esta unidad aÃºn no tiene actividades para presentar o el tipo de actividad no tiene visor configurado.</div>
-        <a class="empty-btn" href="<?php echo h($backDashboard); ?>">â† Volver al panel docente</a>
+        <div class="empty-text">Esta unidad aun no tiene actividades para presentar o el tipo de actividad no tiene visor configurado.</div>
+        <a class="empty-btn" href="<?php echo h($backDashboard); ?>">&larr; Volver al panel docente</a>
       </div>
     </div>
   <?php } else { ?>
@@ -706,7 +706,7 @@ body{font-family:Arial,sans-serif;background:var(--bg);color:var(--text)}
           <?php if ($editorHref !== null) { ?>
             <a class="edit-link" target="_blank" rel="noopener noreferrer"
                href="<?php echo h($editorHref); ?>">
-              âœï¸ Editar
+              Editar
             </a>
           <?php } ?>
         </div>
@@ -723,14 +723,14 @@ body{font-family:Arial,sans-serif;background:var(--bg);color:var(--text)}
       <div class="controls">
         <a class="ctrl-btn <?php echo $hasPrev ? '' : 'disabled'; ?>"
            href="teacher_course.php?assignment=<?php echo urlencode($assignmentId); ?>&unit=<?php echo urlencode($selectedUnitId); ?>&mode=<?php echo urlencode($mode); ?>&step=<?php echo $hasPrev ? $prevStep : $step; ?>">
-          â† Anterior
+          &larr; Anterior
         </a>
         <div class="step-counter">
           <strong><?php echo ($step + 1); ?></strong> / <?php echo $total; ?>
         </div>
         <a class="ctrl-btn <?php echo $hasNext ? '' : 'disabled'; ?>"
            href="teacher_course.php?assignment=<?php echo urlencode($assignmentId); ?>&unit=<?php echo urlencode($selectedUnitId); ?>&mode=<?php echo urlencode($mode); ?>&step=<?php echo $hasNext ? $nextStep : $step; ?>">
-          Siguiente â†’
+          Siguiente &rarr;
         </a>
       </div>
     </main>
@@ -769,7 +769,7 @@ body{font-family:Arial,sans-serif;background:var(--bg);color:var(--text)}
 
             doc.querySelectorAll('a, button').forEach((el) => {
                 const text = (el.textContent || '').trim().toLowerCase();
-                if (text === 'back' || text === 'volver' || text === 'â† volver' || text === 'â†© back') {
+                if (text === 'back' || text === 'volver') {
                     el.style.display = 'none';
                 }
             });
