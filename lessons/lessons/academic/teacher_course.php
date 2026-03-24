@@ -118,7 +118,7 @@ function get_activity_base_path(string $type): ?string
     return '../activities/' . rawurlencode($type);
 }
 
-function load_teacher_permission_from_accounts(PDO $pdo, string $teacherId): string
+function load_teacher_permission_from_accounts(PDO $pdo, string $teacherId, ?string $scope = null, ?string $targetId = null): string
 {
     if ($teacherId === '') {
         return 'viewer';
@@ -129,12 +129,42 @@ function load_teacher_permission_from_accounts(PDO $pdo, string $teacherId): str
             return 'viewer';
         }
 
-        $stmt = $pdo->prepare("
+        $scope = trim((string) $scope);
+        $targetId = trim((string) $targetId);
+
+        if (
+          $scope !== '' &&
+          $targetId !== '' &&
+          column_exists($pdo, 'teacher_accounts', 'scope') &&
+          column_exists($pdo, 'teacher_accounts', 'target_id')
+        ) {
+          $stmtScoped = $pdo->prepare("
             SELECT permission
             FROM teacher_accounts
             WHERE teacher_id = :teacher_id
+              AND scope = :scope
+              AND target_id = :target_id
             ORDER BY updated_at DESC NULLS LAST
             LIMIT 1
+          ");
+          $stmtScoped->execute([
+            'teacher_id' => $teacherId,
+            'scope' => $scope,
+            'target_id' => $targetId,
+          ]);
+          $permissionScoped = (string) $stmtScoped->fetchColumn();
+
+          if ($permissionScoped !== '') {
+            return $permissionScoped === 'editor' ? 'editor' : 'viewer';
+          }
+        }
+
+        $stmt = $pdo->prepare("
+          SELECT permission
+          FROM teacher_accounts
+          WHERE teacher_id = :teacher_id
+          ORDER BY updated_at DESC NULLS LAST
+          LIMIT 1
         ");
         $stmt->execute(['teacher_id' => $teacherId]);
         $permission = (string) $stmt->fetchColumn();
@@ -319,15 +349,16 @@ if (!$assignment || (string) ($assignment['teacher_id'] ?? '') !== $teacherId) {
     die('No tienes permiso para este curso.');
 }
 
-$permission = load_teacher_permission_from_accounts($pdo, $teacherId);
-if ($mode === 'edit' && $permission !== 'editor') {
-    $mode = 'view';
-}
-
 $programType = (string) ($assignment['program_type'] ?? 'technical');
 $courseId = (string) ($assignment['course_id'] ?? '');
 $assignmentUnitId = (string) ($assignment['unit_id'] ?? '');
 $assignmentUnitName = (string) ($assignment['unit_name'] ?? '');
+$scope = $programType === 'english' ? 'english' : 'technical';
+
+$permission = load_teacher_permission_from_accounts($pdo, $teacherId, $scope, $courseId);
+if ($mode === 'edit' && $permission !== 'editor') {
+  $mode = 'view';
+}
 
 if ($programType === 'english') {
     $allUnits = load_english_units($pdo, $courseId);
