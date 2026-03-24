@@ -423,7 +423,6 @@ $activityTypeLabels = [
 ];
 
 $viewerHref = null;
-$editorHref = null;
 $currentTypeLabel = 'Actividad';
 
 if ($current) {
@@ -441,12 +440,6 @@ if ($current) {
 
         $viewerHref = $activityPath . '/viewer.php?' . $query;
 
-        if ($mode === 'edit' && $permission === 'editor') {
-            $editorAbsolute = __DIR__ . '/../activities/' . $type . '/editor.php';
-            if (file_exists($editorAbsolute)) {
-                $editorHref = $activityPath . '/editor.php?' . $query;
-            }
-        }
     }
 
     $currentType = strtolower($type);
@@ -601,15 +594,6 @@ body{font-family:Arial,sans-serif;background:var(--bg);color:var(--text)}
   background:var(--primary-light);color:var(--primary-dark);
   font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;
 }
-.edit-link{
-  display:inline-flex;align-items:center;gap:5px;
-  padding:6px 12px;border-radius:8px;
-  background:linear-gradient(180deg,#fbbf24,#d97706);
-  color:#fff;font-size:12px;font-weight:700;text-decoration:none;
-  box-shadow:var(--shadow-sm);transition:filter .15s;
-}
-.edit-link:hover{filter:brightness(1.08)}
-
 /* IFRAME */
 .frame-wrap{
   flex:1;border-radius:var(--radius);overflow:hidden;
@@ -715,7 +699,7 @@ body{font-family:Arial,sans-serif;background:var(--bg);color:var(--text)}
 
     <?php if ($permission === 'editor') { ?>
       <a class="nav-link accent"
-         href="teacher_course.php?assignment=<?php echo urlencode($assignmentId); ?>&unit=<?php echo urlencode($selectedUnitId); ?>&mode=edit&step=<?php echo $step; ?>">
+         href="teacher_unit.php?assignment=<?php echo urlencode($assignmentId); ?>&unit=<?php echo urlencode($selectedUnitId); ?>&mode=edit">
         Editar Curso
       </a>
     <?php } ?>
@@ -744,12 +728,6 @@ body{font-family:Arial,sans-serif;background:var(--bg);color:var(--text)}
         <h1 class="act-title"><?php echo h($currentTypeLabel); ?></h1>
         <div class="act-meta">
           <span class="act-badge">Actividad <?php echo ($step + 1); ?> / <?php echo $total; ?></span>
-          <?php if ($editorHref !== null) { ?>
-            <a class="edit-link" target="_blank" rel="noopener noreferrer"
-               href="<?php echo h($editorHref); ?>">
-              Editar
-            </a>
-          <?php } ?>
         </div>
       </div>
 
