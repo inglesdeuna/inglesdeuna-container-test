@@ -119,15 +119,14 @@
 }
 
 #flipbook-fullscreen-target:fullscreen .flipbook-toolbar {
-    justify-content: flex-end;
-    flex: 0 0 auto;
+    display: none;
 }
 
 #flipbook-fullscreen-target:fullscreen .flipbook-stage {
     flex: 1 1 auto;
     min-height: 0;
     height: auto;
-    margin-top: 10px;
+    margin-top: 0;
     border: 0;
     border-radius: 8px;
 }
