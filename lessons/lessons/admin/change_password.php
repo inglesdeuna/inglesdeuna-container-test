@@ -137,7 +137,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $dbUpdated = false;
 
-        // Attempt 1: UPDATE WHERE id = :id
+        // Actualiza por múltiples identificadores para evitar loops cuando existen filas duplicadas.
+        // No detenemos en la primera coincidencia: limpiamos must_change_password en todas las filas relacionadas.
         if ($adminId !== '') {
             try {
                 $stmt = $pdo->prepare("UPDATE admin_users SET {$setClause} WHERE id = :id");
@@ -146,12 +147,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $dbUpdated = true;
                 }
             } catch (Throwable $e) {
-                // will try by email/username next
+                // seguir con otros identificadores
             }
         }
 
-        // Attempt 2: UPDATE WHERE email = :email (handles ID type mismatches)
-        if (!$dbUpdated && $adminEmail !== '') {
+        if ($adminEmail !== '') {
             try {
                 $stmt = $pdo->prepare("UPDATE admin_users SET {$setClause} WHERE email = :email");
                 $stmt->execute(['password_hash' => $newHash, 'email' => $adminEmail]);
@@ -159,12 +159,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $dbUpdated = true;
                 }
             } catch (Throwable $e) {
-                // will try JSON next
+                // seguir con otros identificadores
             }
         }
 
-        // Attempt 3: UPDATE WHERE username = :username
-        if (!$dbUpdated && $adminUsername !== '' && table_has_column($pdo, 'admin_users', 'username')) {
+        if ($adminUsername !== '' && table_has_column($pdo, 'admin_users', 'username')) {
             try {
                 $stmt = $pdo->prepare("UPDATE admin_users SET {$setClause} WHERE username = :username");
                 $stmt->execute(['password_hash' => $newHash, 'username' => $adminUsername]);
@@ -172,7 +171,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $dbUpdated = true;
                 }
             } catch (Throwable $e) {
-                // will try JSON next
+                // fallback JSON
             }
         }
 
