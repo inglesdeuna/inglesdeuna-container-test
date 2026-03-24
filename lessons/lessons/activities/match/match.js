@@ -3,9 +3,20 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const leftBoard = document.getElementById("match-left");
   const rightBoard = document.getElementById("match-right");
+  const matchStage = document.querySelector(".match-stage");
 
   if (!leftBoard || !rightBoard) {
     return;
+  }
+
+  const isTextOnlyMode = data.length > 0 && data.every((item) => {
+    const leftImage = String(item.left_image || "").trim();
+    const rightImage = String(item.right_image || "").trim();
+    return leftImage === "" && rightImage === "";
+  });
+
+  if (matchStage) {
+    matchStage.classList.toggle("text-only-mode", isTextOnlyMode);
   }
 
   const shuffle = (arr) => [...arr].sort(() => Math.random() - 0.5);
@@ -35,33 +46,51 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function getBoardConfig(count) {
+    if (isTextOnlyMode) {
+      if (window.innerWidth <= 640) {
+        return { cols: 1, width: 240, height: 82 };
+      }
+      if (count <= 4) {
+        return { cols: 2, width: 220, height: 86 };
+      }
+      if (count <= 8) {
+        return { cols: 2, width: 205, height: 82 };
+      }
+      if (count <= 12) {
+        return { cols: 3, width: 178, height: 78 };
+      }
+      return { cols: 3, width: 166, height: 74 };
+    }
+
     if (count <= 2) {
-      return { cols: 2, size: 150 };
+      return { cols: 2, width: 150, height: 150 };
     }
     if (count <= 4) {
-      return { cols: 2, size: 130 };
+      return { cols: 2, width: 130, height: 130 };
     }
     if (count <= 6) {
-      return { cols: 3, size: 108 };
+      return { cols: 3, width: 108, height: 108 };
     }
     if (count <= 8) {
-      return { cols: 4, size: 92 };
+      return { cols: 4, width: 92, height: 92 };
     }
     if (count <= 10) {
-      return { cols: 4, size: 84 };
+      return { cols: 4, width: 84, height: 84 };
     }
-    return { cols: 5, size: 74 };
+    return { cols: 5, width: 74, height: 74 };
   }
 
   function applyBoardLayout() {
     const count = data.length;
     const config = getBoardConfig(count);
 
-    leftBoard.style.gridTemplateColumns = `repeat(${config.cols}, minmax(${config.size}px, 1fr))`;
-    rightBoard.style.gridTemplateColumns = `repeat(${config.cols}, minmax(${config.size}px, 1fr))`;
+    leftBoard.style.gridTemplateColumns = `repeat(${config.cols}, minmax(${config.width}px, 1fr))`;
+    rightBoard.style.gridTemplateColumns = `repeat(${config.cols}, minmax(${config.width}px, 1fr))`;
 
-    leftBoard.style.setProperty("--tile-size", `${config.size}px`);
-    rightBoard.style.setProperty("--tile-size", `${config.size}px`);
+    leftBoard.style.setProperty("--tile-width", `${config.width}px`);
+    rightBoard.style.setProperty("--tile-width", `${config.width}px`);
+    leftBoard.style.setProperty("--tile-height", `${config.height}px`);
+    rightBoard.style.setProperty("--tile-height", `${config.height}px`);
   }
 
   function renderTileContent(text, image, side) {

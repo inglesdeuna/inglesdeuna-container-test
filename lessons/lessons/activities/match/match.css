@@ -1,5 +1,7 @@
+@import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@600;700;800&display=swap');
+
 body{
-  font-family: Arial, sans-serif;
+  font-family: 'Nunito', 'Segoe UI', sans-serif;
 }
 
 .container{
@@ -14,7 +16,7 @@ body{
 
 .board-column{
   display: grid;
-  gap: 12px;
+  gap: 14px;
   align-content: start;
   justify-content: stretch;
   width: 100%;
@@ -23,24 +25,25 @@ body{
 .card,
 .word{
   background: #ffffff;
-  border-radius: 16px;
-  box-shadow: 0 10px 24px rgba(15, 23, 42, .08);
+  border-radius: 18px;
+  box-shadow: 0 12px 26px rgba(15, 23, 42, .08);
 }
 
 .card{
-  min-height: var(--tile-size, 92px);
-  padding: 10px;
+  min-height: var(--tile-height, 92px);
+  padding: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
   transition: transform .2s ease, opacity .2s ease, box-shadow .2s ease;
   cursor: grab;
-  border: 1px solid #d6e4f5;
+  border: 2px solid #f4c75e;
+  background: linear-gradient(180deg, #fffdf2 0%, #ffefbf 100%);
 }
 
 .card.dragging{
   opacity: .45;
-  transform: scale(.95);
+  transform: scale(.95) rotate(-2deg);
 }
 
 .card.returning{
@@ -53,22 +56,22 @@ body{
 }
 
 .word{
-  min-height: var(--tile-size, 92px);
-  padding: 10px;
+  min-height: var(--tile-height, 92px);
+  padding: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
   text-align: center;
-  border: 2px dashed #3b82f6;
+  border: 2px dashed #38bdf8;
   box-sizing: border-box;
   transition: transform .2s ease, background .2s ease, border-color .2s ease, color .2s ease;
   position: relative;
-  background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+  background: linear-gradient(180deg, #fafdff 0%, #e0f2fe 100%);
 }
 
 .match-tile-inner{
   width: 100%;
-  min-height: calc(var(--tile-size, 92px) - 20px);
+  min-height: calc(var(--tile-height, 92px) - 24px);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -78,8 +81,8 @@ body{
 }
 
 .match-media{
-  width: min(100%, calc(var(--tile-size, 92px) * 0.76));
-  height: calc(var(--tile-size, 92px) * 0.76);
+  width: min(100%, calc(var(--tile-height, 92px) * 0.76));
+  height: calc(var(--tile-height, 92px) * 0.76);
   object-fit: contain;
   user-select: none;
   -webkit-user-drag: none;
@@ -88,16 +91,49 @@ body{
 }
 
 .match-text{
-  font-size: clamp(11px, calc(var(--tile-size, 92px) * 0.14), 18px);
-  line-height: 1.18;
+  max-width: 100%;
+  font-family: 'Nunito', 'Segoe UI', sans-serif;
+  font-size: clamp(11px, calc(var(--tile-height, 92px) * 0.14), 18px);
+  line-height: 1.15;
   font-weight: 800;
-  letter-spacing: .2px;
+  letter-spacing: .15px;
   color: #0f172a;
+  overflow-wrap: anywhere;
   word-break: break-word;
+  hyphens: auto;
 }
 
 .has-image.has-text .match-media{
-  height: calc(var(--tile-size, 92px) * 0.5);
+  height: calc(var(--tile-height, 92px) * 0.5);
+}
+
+.text-only-mode .board-column{
+  gap: 16px;
+}
+
+.text-only-mode .card,
+.text-only-mode .word{
+  min-height: var(--tile-height, 78px);
+  padding: 14px 18px;
+  border-radius: 22px;
+}
+
+.text-only-mode .match-tile-inner{
+  min-height: auto;
+}
+
+.text-only-mode .match-text{
+  font-family: 'Fredoka', 'Trebuchet MS', sans-serif;
+  font-size: clamp(15px, 1vw + 12px, 24px);
+  line-height: 1.12;
+}
+
+.text-only-mode .card .match-text{
+  color: #8a4b00;
+}
+
+.text-only-mode .word .match-text{
+  color: #075985;
 }
 
 .word.correct{
@@ -185,11 +221,19 @@ body{
     max-width: 100%;
     gap: 12px;
   }
+
+  .text-only-mode .match-text{
+    font-size: clamp(14px, 2vw + 8px, 22px);
+  }
 }
 
 @media (max-width: 640px){
   .container{
     flex-direction: column;
     align-items: center;
+  }
+
+  .text-only-mode .board-column{
+    grid-template-columns: 1fr !important;
   }
 }

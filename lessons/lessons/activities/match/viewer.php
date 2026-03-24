@@ -284,29 +284,36 @@ ob_start();
 
 <style>
 .match-stage{
-    max-width:980px;
+    --match-left-accent:#d97706;
+    --match-left-soft:#fff4cf;
+    --match-right-accent:#0284c7;
+    --match-right-soft:#e0f2fe;
+    max-width:1060px;
     margin:0 auto;
 }
 
 .match-intro{
-    background:linear-gradient(180deg, #ffffff 0%, #f5f9ff 100%);
+    background:linear-gradient(135deg, #fff8df 0%, #eef8ff 52%, #f8fbff 100%);
     border:1px solid #dbe7f5;
-    border-radius:22px;
-    padding:22px;
-    box-shadow:0 10px 30px rgba(15, 23, 42, .08);
+    border-radius:26px;
+    padding:24px 26px;
+    box-shadow:0 16px 34px rgba(15, 23, 42, .09);
 }
 
 .match-intro h2{
     margin:0 0 8px;
-    font-size:28px;
-    font-weight:800;
+    font-family:'Fredoka', 'Trebuchet MS', sans-serif;
+    font-size:30px;
+    font-weight:700;
     color:#0f172a;
+    letter-spacing:.3px;
 }
 
 .match-intro p{
     margin:0;
-    color:#475569;
-    font-size:15px;
+    font-family:'Nunito', 'Segoe UI', sans-serif;
+    color:#334155;
+    font-size:16px;
     line-height:1.6;
 }
 
@@ -318,24 +325,58 @@ ob_start();
 }
 
 .match-column-card{
+    position:relative;
     background:#ffffff;
     border:1px solid #dbe7f5;
-    border-radius:20px;
+    border-radius:24px;
     padding:18px;
-    box-shadow:0 10px 24px rgba(15, 23, 42, .06);
+    box-shadow:0 14px 28px rgba(15, 23, 42, .07);
+    overflow:hidden;
+}
+
+.match-column-card::before{
+    content:'';
+    position:absolute;
+    inset:0 0 auto 0;
+    height:8px;
+}
+
+.match-column-left{
+    background:linear-gradient(180deg, #fffdf7 0%, #ffffff 100%);
+}
+
+.match-column-left::before{
+    background:linear-gradient(90deg, #f59e0b 0%, #facc15 100%);
+}
+
+.match-column-right{
+    background:linear-gradient(180deg, #f8fdff 0%, #ffffff 100%);
+}
+
+.match-column-right::before{
+    background:linear-gradient(90deg, #38bdf8 0%, #0ea5e9 100%);
 }
 
 .match-column-card h3{
     margin:0 0 6px;
-    font-size:18px;
-    font-weight:800;
-    color:#0f172a;
+    font-family:'Fredoka', 'Trebuchet MS', sans-serif;
+    font-size:22px;
+    font-weight:700;
+}
+
+.match-column-left h3{
+    color:var(--match-left-accent);
+}
+
+.match-column-right h3{
+    color:var(--match-right-accent);
 }
 
 .match-column-card p{
     margin:0 0 14px;
-    color:#64748b;
-    font-size:14px;
+    font-family:'Nunito', 'Segoe UI', sans-serif;
+    color:#475569;
+    font-size:15px;
 }
 
 .match-empty{
@@ -364,19 +405,19 @@ ob_start();
     <div class="match-stage">
         <div class="match-intro">
             <h2>Match The Pairs</h2>
-            <p>Arrastra cada tarjeta de la izquierda hacia su pareja correcta en la derecha. Puedes encontrar texto, imagen o combinaciones de ambos en cualquier lado.</p>
+            <p>Drag each card from the left to its correct pair on the right. Cards can contain text, images, or a mix of both depending on the activity.</p>
         </div>
 
         <div class="match-columns">
-            <section class="match-column-card">
+            <section class="match-column-card match-column-left">
                 <h3>Drag From Here</h3>
-                <p>Estas son las tarjetas móviles.</p>
+                <p>Move these cards and look for the matching idea on the other side.</p>
                 <div class="board-column" id="match-left"></div>
             </section>
 
-            <section class="match-column-card">
+            <section class="match-column-card match-column-right">
                 <h3>Drop In The Correct Pair</h3>
-                <p>Encuentra la coincidencia correcta para cada tarjeta.</p>
+                <p>Drop each card on the option that completes the pair correctly.</p>
                 <div class="board-column" id="match-right"></div>
             </section>
         </div>
