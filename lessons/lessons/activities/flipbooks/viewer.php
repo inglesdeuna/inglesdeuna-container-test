@@ -76,7 +76,7 @@ ob_start();
             </p>
         </div>
 
-        <div class="flipbook-viewer__card">
+        <div class="flipbook-viewer__card" id="flipbook-fullscreen-target">
             <div class="flipbook-toolbar">
                 <div class="flipbook-toolbar__right">
                     <button type="button" id="open-pdf-btn" class="flipbook-btn flipbook-btn--secondary">
@@ -107,6 +107,7 @@ ob_start();
     document.addEventListener('DOMContentLoaded', function () {
         const viewer = document.getElementById('flipbook-viewer');
         const pdfFrame = document.getElementById('pdf-frame');
+        const fullScreenTarget = document.getElementById('flipbook-fullscreen-target');
         const openBtn = document.getElementById('open-pdf-btn');
         const downloadBtn = document.getElementById('download-pdf-btn');
         const fullScreenBtn = document.getElementById('full-screen-btn');
@@ -144,19 +145,26 @@ ob_start();
             });
         }
 
-        if (fullScreenBtn && pdfFrame) {
-            fullScreenBtn.addEventListener('click', function () {
-                const stage = document.getElementById('flipbook-stage');
-                if (!stage) {
-                    return;
-                }
+        function updateFullscreenButtonState() {
+            if (!fullScreenBtn || !fullScreenTarget) {
+                return;
+            }
 
-                if (document.fullscreenElement) {
+            const isFullscreen = document.fullscreenElement === fullScreenTarget;
+            fullScreenBtn.textContent = isFullscreen ? 'Salir pantalla completa' : 'Pantalla completa';
+        }
+
+        if (fullScreenBtn && fullScreenTarget && pdfFrame) {
+            fullScreenBtn.addEventListener('click', function () {
+                if (document.fullscreenElement === fullScreenTarget) {
                     document.exitFullscreen().catch(function () {});
                 } else {
-                    stage.requestFullscreen().catch(function () {});
+                    fullScreenTarget.requestFullscreen().catch(function () {});
                 }
             });
+
+            document.addEventListener('fullscreenchange', updateFullscreenButtonState);
+            updateFullscreenButtonState();
         }
     });
     </script>
