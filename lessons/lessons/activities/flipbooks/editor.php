@@ -24,19 +24,9 @@ if (!is_array($rawData)) {
     $rawData = [];
 }
 
-$pageTexts = isset($rawData['page_texts']) && is_array($rawData['page_texts'])
-    ? array_values($rawData['page_texts'])
-    : [];
-
-$pageCount = isset($rawData['page_count']) ? (int) $rawData['page_count'] : max(count($pageTexts), 1);
-
 $payload = [
     'title'          => isset($rawData['title']) ? (string) $rawData['title'] : 'Downloadable',
     'pdf_url'        => isset($rawData['pdf_url']) ? (string) $rawData['pdf_url'] : '',
-    'listen_enabled' => array_key_exists('listen_enabled', $rawData) ? (bool) $rawData['listen_enabled'] : true,
-    'page_texts'     => $pageTexts,
-    'page_count'     => $pageCount,
-    'language'       => isset($rawData['language']) ? (string) $rawData['language'] : 'en-US',
 ];
 
 $currentFileName = '';
@@ -48,20 +38,13 @@ if ($payload['pdf_url'] !== '') {
 ob_start();
 ?>
 
-<div class="mb-4">
-    <label for="flipbook-title" class="form-label fw-bold">Título de la actividad</label>
-    <input
-        type="text"
-        id="flipbook-title"
-        class="form-control form-control-lg"
-        value="<?php echo htmlspecialchars($payload['title'], ENT_QUOTES, 'UTF-8'); ?>"
-        placeholder="Ej: Downloadable"
-    >
+<div class="alert alert-info mb-4">
+    <strong>Tipo de actividad:</strong> Downloadable
 </div>
 
 <div class="row g-4">
-    <div class="col-lg-5">
-        <div class="card shadow-sm border-0 mb-4">
+    <div class="col-lg-12">
+        <div class="card shadow-sm border-0">
             <div class="card-body">
                 <h5 class="card-title mb-3">
                     <i class="fas fa-file-pdf text-danger me-2"></i>Archivo PDF
@@ -100,59 +83,6 @@ ob_start();
                         </div>
                     <?php endif; ?>
                 </div>
-
-                <div class="mt-3">
-                    <label for="page-count" class="form-label fw-bold small">Cantidad de páginas</label>
-                    <input
-                        type="number"
-                        id="page-count"
-                        class="form-control"
-                        min="1"
-                        step="1"
-                        value="<?php echo (int) $payload['page_count']; ?>"
-                    >
-                    <div class="form-text">Usada para la navegación del visor y para sincronizar el texto por página.</div>
-                </div>
-            </div>
-        </div>
-
-        <div class="card shadow-sm border-0">
-            <div class="card-body">
-                <h5 class="card-title mb-3">
-                    <i class="fas fa-volume-up text-primary me-2"></i>Opciones de lectura
-                </h5>
-
-                <div class="form-check form-switch mb-3">
-                    <input class="form-check-input" type="checkbox" id="listen-enabled" <?php echo $payload['listen_enabled'] ? 'checked' : ''; ?>>
-                    <label class="form-check-label" for="listen-enabled">Habilitar lectura de voz</label>
-                </div>
-
-                <label for="voice-lang" class="form-label fw-bold small">Idioma de lectura</label>
-                <select id="voice-lang" class="form-select">
-                    <option value="en-US" <?php echo $payload['language'] === 'en-US' ? 'selected' : ''; ?>>Inglés (US)</option>
-                    <option value="en-GB" <?php echo $payload['language'] === 'en-GB' ? 'selected' : ''; ?>>Inglés (UK)</option>
-                    <option value="es-ES" <?php echo $payload['language'] === 'es-ES' ? 'selected' : ''; ?>>Español</option>
-                </select>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-lg-7">
-        <div class="card shadow-sm border-0 h-100">
-            <div class="card-body">
-                <h5 class="card-title mb-2">
-                    <i class="fas fa-align-left text-info me-2"></i>Texto por página
-                </h5>
-                <p class="text-muted small">
-                    Escriba una línea por cada página del PDF.
-                </p>
-
-                <textarea
-                    id="page-texts"
-                    class="form-control"
-                    rows="16"
-                    placeholder="Texto página 1&#10;Texto página 2&#10;Texto página 3..."
-                ><?php echo htmlspecialchars(implode("\n", $payload['page_texts']), ENT_QUOTES, 'UTF-8'); ?></textarea>
             </div>
         </div>
     </div>
@@ -203,12 +133,6 @@ document.addEventListener('DOMContentLoaded', function () {
     const fileNameDisplay = document.getElementById('file-name-display');
     const saveBtn = document.getElementById('btn-save-flipbook');
     const unsavedMsg = document.getElementById('unsaved-msg');
-
-    const titleInput = document.getElementById('flipbook-title');
-    const pageTextsInput = document.getElementById('page-texts');
-    const pageCountInput = document.getElementById('page-count');
-    const listenEnabledInput = document.getElementById('listen-enabled');
-    const voiceLangInput = document.getElementById('voice-lang');
 
     const existingPdfUrl = <?php echo json_encode($payload['pdf_url'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
     let hasChanges = false;
@@ -288,20 +212,8 @@ document.addEventListener('DOMContentLoaded', function () {
         showSelectedFile(file);
     });
 
-    [titleInput, pageTextsInput, pageCountInput, listenEnabledInput, voiceLangInput].forEach(function (el) {
-        el.addEventListener('input', markAsChanged);
-        el.addEventListener('change', markAsChanged);
-    });
-
     saveBtn.addEventListener('click', function () {
-        const title = titleInput.value.trim();
-        const pageCount = parseInt(pageCountInput.value, 10);
         const selectedFile = fileInput.files && fileInput.files[0] ? fileInput.files[0] : null;
-
-        if (!title) {
-            alert('Debes escribir un título.');
-            return;
-        }
 
         if (!existingPdfUrl && !selectedFile) {
             alert('Debes cargar un PDF.');
@@ -316,25 +228,16 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         }
 
-        if (!Number.isInteger(pageCount) || pageCount < 1) {
-            alert('Debes indicar una cantidad de páginas válida.');
-            return;
-        }
-
-        const pageTexts = pageTextsInput.value
-            .split(/\r?\n/)
-            .map(function (line) { return line.trim(); });
-
         const formData = new FormData();
         formData.append('id', <?php echo json_encode($activityId); ?>);
         formData.append('unit', <?php echo json_encode($unit); ?>);
         formData.append('source', <?php echo json_encode($source); ?>);
         formData.append('assignment', <?php echo json_encode($assignment); ?>);
-        formData.append('title', title);
-        formData.append('listen_enabled', listenEnabledInput.checked ? '1' : '0');
-        formData.append('language', voiceLangInput.value);
-        formData.append('page_count', String(pageCount));
-        formData.append('page_texts', JSON.stringify(pageTexts));
+        formData.append('title', 'Downloadable');
+        formData.append('listen_enabled', '0');
+        formData.append('language', 'en-US');
+        formData.append('page_count', '1');
+        formData.append('page_texts', JSON.stringify([]));
 
         if (selectedFile) {
             formData.append('pdf', selectedFile);
@@ -390,4 +293,4 @@ document.addEventListener('DOMContentLoaded', function () {
 
 <?php
 $content = ob_get_clean();
-render_activity_editor($payload['title'], 'fas fa-book-open', $content);
+render_activity_editor('Downloadable', 'fas fa-file-pdf', $content);

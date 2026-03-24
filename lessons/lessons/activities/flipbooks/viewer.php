@@ -28,19 +28,29 @@ if (!is_array($data)) {
  */
 $title         = 'Downloadable';
 $pdfUrl        = isset($data['pdf_url']) ? (string) $data['pdf_url'] : '';
-$pageTexts     = isset($data['page_texts']) && is_array($data['page_texts']) ? array_values($data['page_texts']) : [];
-$pageCount     = isset($data['page_count']) ? (int) $data['page_count'] : max(count($pageTexts), 1);
-$listenEnabled = array_key_exists('listen_enabled', $data) ? (bool) $data['listen_enabled'] : true;
-$language      = isset($data['language']) ? (string) $data['language'] : 'en-US';
 
-if ($pageCount < 1) {
-    $pageCount = 1;
-}
+$pdfDisplayUrl = '';
+$pdfDownloadUrl = '';
 
-if (count($pageTexts) < $pageCount) {
-    $pageTexts = array_pad($pageTexts, $pageCount, '');
-} elseif (count($pageTexts) > $pageCount) {
-    $pageTexts = array_slice($pageTexts, 0, $pageCount);
+if ($pdfUrl !== '') {
+    $rawPdfUrl = trim($pdfUrl);
+    $pathPart = parse_url($rawPdfUrl, PHP_URL_PATH);
+    $localName = basename((string) ($pathPart !== null && $pathPart !== false ? $pathPart : $rawPdfUrl));
+    $localPath = __DIR__ . '/uploads/pdfs/' . $localName;
+
+    if ($localName !== '' && is_file($localPath)) {
+        $canonicalLocalUrl = '/lessons/lessons/activities/flipbooks/uploads/pdfs/' . rawurlencode($localName);
+        $pdfDisplayUrl = $canonicalLocalUrl;
+        $pdfDownloadUrl = $canonicalLocalUrl;
+    } elseif (preg_match('/^https?:\/\//i', $rawPdfUrl) === 1) {
+        $proxyBase = '/lessons/lessons/activities/flipbooks/pdf_proxy.php?url=';
+        $pdfDisplayUrl = $proxyBase . rawurlencode($rawPdfUrl);
+        $pdfDownloadUrl = $rawPdfUrl;
+    } else {
+        $normalized = '/' . ltrim($rawPdfUrl, '/');
+        $pdfDisplayUrl = $normalized;
+        $pdfDownloadUrl = $normalized;
+    }
 }
 
 ob_start();
@@ -48,7 +58,7 @@ ob_start();
 
 <link rel="stylesheet" href="/lessons/lessons/activities/flipbooks/flipbook.css">
 
-<?php if ($pdfUrl === ''): ?>
+<?php if ($pdfDisplayUrl === ''): ?>
     <div class="flipbook-empty-state">
         <h3>No hay un PDF cargado todavía</h3>
         <p>Abre el editor y sube un archivo para poder visualizarlo.</p>
@@ -57,11 +67,8 @@ ob_start();
     <div
         class="flipbook-viewer"
         id="flipbook-viewer"
-        data-pdf-url="<?php echo htmlspecialchars($pdfUrl, ENT_QUOTES, 'UTF-8'); ?>"
-        data-language="<?php echo htmlspecialchars($language, ENT_QUOTES, 'UTF-8'); ?>"
-        data-listen-enabled="<?php echo $listenEnabled ? '1' : '0'; ?>"
-        data-page-count="<?php echo (int) $pageCount; ?>"
-        data-page-texts="<?php echo htmlspecialchars(json_encode($pageTexts, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), ENT_QUOTES, 'UTF-8'); ?>"
+        data-pdf-url="<?php echo htmlspecialchars($pdfDisplayUrl, ENT_QUOTES, 'UTF-8'); ?>"
+        data-pdf-download-url="<?php echo htmlspecialchars($pdfDownloadUrl, ENT_QUOTES, 'UTF-8'); ?>"
     >
         <div class="flipbook-viewer__header">
             <p class="flipbook-viewer__subtitle">
@@ -71,35 +78,13 @@ ob_start();
 
         <div class="flipbook-viewer__card">
             <div class="flipbook-toolbar">
-                <div class="flipbook-toolbar__left">
-                    <button type="button" id="prev-btn" class="flipbook-btn flipbook-btn--secondary">
-                        Anterior
-                    </button>
-
-                    <button type="button" id="next-btn" class="flipbook-btn flipbook-btn--secondary">
-                        Siguiente
-                    </button>
-                </div>
-
-                <div class="flipbook-toolbar__center">
-                    <span class="flipbook-page-badge">
-                        Página <span id="current-page">1</span> / <span id="total-pages"><?php echo (int) $pageCount; ?></span>
-                    </span>
-                </div>
-
                 <div class="flipbook-toolbar__right">
-                    <?php if ($listenEnabled): ?>
-                        <button type="button" id="listen-btn" class="flipbook-btn flipbook-btn--primary">
-                            Listen
-                        </button>
-
-                        <button type="button" id="stop-listen-btn" class="flipbook-btn flipbook-btn--secondary">
-                            Detener
-                        </button>
-                    <?php endif; ?>
-
                     <button type="button" id="open-pdf-btn" class="flipbook-btn flipbook-btn--secondary">
                         Abrir PDF
+                    </button>
+
+                    <button type="button" id="download-pdf-btn" class="flipbook-btn flipbook-btn--primary">
+                        Descargar PDF
                     </button>
 
                     <button type="button" id="full-screen-btn" class="flipbook-btn flipbook-btn--dark">
@@ -112,24 +97,69 @@ ob_start();
                 <iframe
                     id="pdf-frame"
                     class="flipbook-pdf-frame"
-                    src="<?php echo htmlspecialchars($pdfUrl, ENT_QUOTES, 'UTF-8'); ?>#page=1&toolbar=1&navpanes=0&scrollbar=1"
+                    src="<?php echo htmlspecialchars($pdfDisplayUrl, ENT_QUOTES, 'UTF-8'); ?>#toolbar=1&navpanes=0&scrollbar=1"
                     title="Documento PDF"
                 ></iframe>
             </div>
-
-            <div class="flipbook-listen-panel">
-                <div class="flipbook-listen-panel__label">Texto configurado para la página actual</div>
-                <div id="current-page-text" class="flipbook-page-text-box">
-                    <?php
-                    $initialText = trim((string) ($pageTexts[0] ?? ''));
-                    echo htmlspecialchars($initialText !== '' ? $initialText : 'No hay texto definido para esta página.', ENT_QUOTES, 'UTF-8');
-                    ?>
-                </div>
-            </div>
         </div>
     </div>
+    <script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const viewer = document.getElementById('flipbook-viewer');
+        const pdfFrame = document.getElementById('pdf-frame');
+        const openBtn = document.getElementById('open-pdf-btn');
+        const downloadBtn = document.getElementById('download-pdf-btn');
+        const fullScreenBtn = document.getElementById('full-screen-btn');
 
-    <script src="/lessons/lessons/activities/flipbooks/flipbook.js"></script>
+        if (!viewer) {
+            return;
+        }
+
+        const pdfUrl = viewer.getAttribute('data-pdf-url') || '';
+        const pdfDownloadUrl = viewer.getAttribute('data-pdf-download-url') || pdfUrl;
+
+        if (openBtn) {
+            openBtn.addEventListener('click', function () {
+                if (!pdfUrl) {
+                    return;
+                }
+                window.open(pdfUrl, '_blank', 'noopener');
+            });
+        }
+
+        if (downloadBtn) {
+            downloadBtn.addEventListener('click', function () {
+                if (!pdfDownloadUrl) {
+                    return;
+                }
+
+                const link = document.createElement('a');
+                link.href = pdfDownloadUrl;
+                link.target = '_blank';
+                link.rel = 'noopener';
+                link.download = 'downloadable.pdf';
+                document.body.appendChild(link);
+                link.click();
+                link.remove();
+            });
+        }
+
+        if (fullScreenBtn && pdfFrame) {
+            fullScreenBtn.addEventListener('click', function () {
+                const stage = document.getElementById('flipbook-stage');
+                if (!stage) {
+                    return;
+                }
+
+                if (document.fullscreenElement) {
+                    document.exitFullscreen().catch(function () {});
+                } else {
+                    stage.requestFullscreen().catch(function () {});
+                }
+            });
+        }
+    });
+    </script>
 <?php endif; ?>
 
 <?php

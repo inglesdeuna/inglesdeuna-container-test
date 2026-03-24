@@ -27,7 +27,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 try {
     $activityId    = isset($_POST['id']) ? trim((string) $_POST['id']) : '';
     $unit          = isset($_POST['unit']) ? trim((string) $_POST['unit']) : 'general';
-    $title         = isset($_POST['title']) ? trim((string) $_POST['title']) : 'Downloadable';
+    $title         = 'Downloadable';
     $language      = isset($_POST['language']) ? trim((string) $_POST['language']) : 'en-US';
     $listenEnabled = isset($_POST['listen_enabled']) && $_POST['listen_enabled'] === '1';
     $pageCount     = isset($_POST['page_count']) ? (int) $_POST['page_count'] : 1;
