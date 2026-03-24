@@ -217,7 +217,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 *{box-sizing:border-box}
 body{font-family:Arial,sans-serif;background:var(--bg);padding:30px;color:var(--text);margin:0}
 .wrapper{max-width:1100px;margin:0 auto}
-.back{display:inline-block;margin-bottom:16px;color:var(--blue);text-decoration:none;font-weight:700;font-size:14px}
+.back{display:inline-block;margin-bottom:18px;padding:10px 18px;border-radius:12px;background:linear-gradient(180deg,#7b8b7f,#66756a);color:#fff;text-decoration:none;font-weight:700;font-size:13px;box-shadow:0 2px 8px rgba(0,0,0,.1);transition:filter .2s,transform .15s}
+.back:hover{filter:brightness(1.07);transform:translateY(-1px)}
 .page-title{font-size:28px;font-weight:700;color:var(--title);margin:0 0 18px}
 .stack{display:flex;flex-direction:column;gap:18px}
 .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:20px;box-shadow:var(--shadow)}
@@ -231,9 +232,9 @@ body{font-family:Arial,sans-serif;background:var(--bg);padding:30px;color:var(--
 .field{display:flex;flex-direction:column}
 .field.full{grid-column:1/-1}
 label{font-size:12px;font-weight:700;color:var(--text);margin:0 0 8px;text-transform:uppercase;letter-spacing:.2px}
-input,button{width:100%;min-height:42px;border-radius:10px;border:1px solid var(--line);background:#fff;color:var(--text);padding:10px 12px;font-size:14px;font-family:Arial,sans-serif}
-input:focus,button:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px rgba(47,158,68,.15)}
-.button-primary{border:none;background:linear-gradient(180deg,#41b95a,#2f9e44);color:#fff;font-weight:700;cursor:pointer;transition:filter .2s,transform .15s}
+input{width:100%;min-height:42px;border-radius:10px;border:1px solid var(--line);background:#fff;color:var(--text);padding:10px 12px;font-size:14px;font-family:Arial,sans-serif}
+input:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px rgba(47,158,68,.15)}
+.button-primary{display:block;width:100%;min-height:42px;border-radius:10px;border:none;background:linear-gradient(180deg,#41b95a,#2f9e44);color:#fff;font-weight:700;cursor:pointer;transition:filter .2s,transform .15s;font-size:14px;font-family:Arial,sans-serif;padding:10px 12px;text-align:center}
 .button-primary:hover{filter:brightness(1.07);transform:translateY(-1px)}
 .table-wrap{width:100%;border:1px solid var(--line);border-radius:14px;background:var(--card);overflow:hidden}
 .table-scroll{width:100%;overflow-x:auto}
