@@ -361,6 +361,60 @@ function load_activities_for_unit(PDO $pdo, string $unitId): array
     }
 }
 
+function update_activities_order(PDO $pdo, string $unitId, array $orderedActivityIds): bool
+{
+    if ($unitId === '' || empty($orderedActivityIds)) {
+        return false;
+    }
+
+    $orderedActivityIds = array_values(array_unique(array_filter(array_map(
+        static fn ($value): string => trim((string) $value),
+        $orderedActivityIds
+    ), static fn (string $value): bool => $value !== '')));
+
+    if (empty($orderedActivityIds)) {
+        return false;
+    }
+
+    try {
+        $placeholders = implode(',', array_fill(0, count($orderedActivityIds), '?'));
+        $sql = "
+            SELECT id
+            FROM activities
+            WHERE unit_id = ?
+              AND id IN ({$placeholders})
+        ";
+
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute(array_merge([$unitId], $orderedActivityIds));
+        $validIds = array_map('strval', $stmt->fetchAll(PDO::FETCH_COLUMN) ?: []);
+
+        if (count($validIds) !== count($orderedActivityIds)) {
+            return false;
+        }
+
+        $pdo->beginTransaction();
+        $updateStmt = $pdo->prepare("\n            UPDATE activities\n            SET position = :position\n            WHERE id = :id\n              AND unit_id = :unit_id\n        ");
+
+        foreach ($orderedActivityIds as $index => $activityId) {
+            $updateStmt->execute([
+                'position' => $index + 1,
+                'id' => $activityId,
+                'unit_id' => $unitId,
+            ]);
+        }
+
+        $pdo->commit();
+        return true;
+    } catch (Throwable $e) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+
+        return false;
+    }
+}
+
 $pdo = get_pdo_connection();
 if (!$pdo) {
     die('No fue posible conectar con la base de datos.');
@@ -399,9 +453,40 @@ if (!teacher_can_access_unit($assignment, $selectedUnit)) {
 
 $permission = load_teacher_permission($pdo, $teacherId);
 $allowEdit = $permission === 'editor';
+$hasActivityPosition = table_has_column($pdo, 'activities', 'position');
 
 if ($mode === 'edit' && !$allowEdit) {
     $mode = 'view';
+}
+
+$allowReorder = $allowEdit && $mode === 'edit' && $hasActivityPosition;
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && (string) ($_POST['action'] ?? '') === 'reorder_activities') {
+    header('Content-Type: application/json; charset=UTF-8');
+
+    if (!$allowReorder) {
+        http_response_code(403);
+        echo json_encode(['status' => 'error', 'message' => 'No autorizado para reordenar actividades.']);
+        exit;
+    }
+
+    $orderedIds = $_POST['order'] ?? [];
+    if (!is_array($orderedIds) || empty($orderedIds)) {
+        http_response_code(422);
+        echo json_encode(['status' => 'error', 'message' => 'No se recibió un orden válido.']);
+        exit;
+    }
+
+    $updated = update_activities_order($pdo, (string) ($selectedUnit['id'] ?? ''), $orderedIds);
+
+    if (!$updated) {
+        http_response_code(422);
+        echo json_encode(['status' => 'error', 'message' => 'No fue posible guardar el nuevo orden.']);
+        exit;
+    }
+
+    echo json_encode(['status' => 'success']);
+    exit;
 }
 
 $activities = load_activities_for_unit($pdo, (string) ($selectedUnit['id'] ?? ''));
@@ -669,6 +754,29 @@ body{
     gap:14px;
 }
 
+.card.draggable{
+    cursor:grab;
+}
+
+.card.draggable:active{
+    cursor:grabbing;
+}
+
+.card.dragging{
+    opacity:.65;
+}
+
+.helper-status{
+    margin:0 0 14px;
+    font-size:13px;
+    font-weight:700;
+    color:var(--blue-dark);
+}
+
+.helper-status.error{
+    color:#b91c1c;
+}
+
 .card{
     background:linear-gradient(180deg,#3d73ee,#2557d1);
     border-radius:16px;
@@ -831,12 +939,15 @@ body{
 
             <section class="activities-shell">
                 <h2 class="section-title">Actividades de la unidad</h2>
-                <p class="helper">Consulta y administra las actividades disponibles para esta unidad.</p>
+                <p class="helper">Consulta y administra las actividades disponibles para esta unidad<?php echo $allowReorder ? '. Arrastra las tarjetas para cambiar el orden.' : '.'; ?></p>
+                <?php if ($allowReorder) { ?>
+                    <p class="helper-status" id="orderStatus" aria-live="polite"></p>
+                <?php } ?>
 
                 <?php if (empty($activities)) { ?>
                     <div class="empty">No hay actividades registradas en esta unidad.</div>
                 <?php } else { ?>
-                    <div class="activity-list">
+                    <div class="activity-list" id="activityContainer">
                     <?php foreach ($activities as $activity) { ?>
                         <?php
                         $activityId = (string) ($activity['id'] ?? '');
@@ -845,7 +956,7 @@ body{
                         $title = trim((string) ($activity['title'] ?? $activity['name'] ?? $typeLabel));
                         $viewerFile = __DIR__ . '/../activities/' . $type . '/viewer.php';
                         ?>
-                        <div class="card">
+                        <div class="card<?php echo $allowReorder ? ' draggable' : ''; ?>"<?php echo $allowReorder ? ' draggable="true" data-id="' . h($activityId) . '"' : ''; ?>>
                             <div class="activity-main">
                                 <h3><?php echo h($title !== '' ? $title : $typeLabel); ?></h3>
                                 <p>Tipo: <strong><?php echo h($typeLabel); ?></strong></p>
@@ -882,5 +993,117 @@ body{
         </main>
     </div>
 </div>
+<?php if ($allowReorder) { ?>
+<script>
+(function () {
+    const container = document.getElementById('activityContainer');
+    const status = document.getElementById('orderStatus');
+    if (!container || !status) {
+        return;
+    }
+
+    let draggedItem = null;
+    let isSaving = false;
+    let lastOrder = getCurrentOrder();
+
+    function getCurrentOrder() {
+        return Array.from(container.querySelectorAll('.draggable')).map(item => item.dataset.id || '');
+    }
+
+    function setStatus(message, isError) {
+        status.textContent = message;
+        status.classList.toggle('error', Boolean(isError));
+    }
+
+    function getDragAfterElement(parent, y) {
+        const draggableElements = [...parent.querySelectorAll('.draggable:not(.dragging)')];
+
+        return draggableElements.reduce((closest, child) => {
+            const box = child.getBoundingClientRect();
+            const offset = y - box.top - box.height / 2;
+
+            if (offset < 0 && offset > closest.offset) {
+                return { offset: offset, element: child };
+            }
+
+            return closest;
+        }, { offset: Number.NEGATIVE_INFINITY }).element;
+    }
+
+    async function saveOrder() {
+        const order = getCurrentOrder().filter(Boolean);
+        if (order.length === 0 || order.join('|') === lastOrder.join('|') || isSaving) {
+            return;
+        }
+
+        isSaving = true;
+        setStatus('Guardando orden...', false);
+
+        const payload = new URLSearchParams();
+        payload.append('action', 'reorder_activities');
+        order.forEach(id => payload.append('order[]', id));
+
+        try {
+            const response = await fetch('teacher_unit.php?assignment=<?php echo urlencode($assignmentId); ?>&unit=<?php echo urlencode((string) ($selectedUnit['id'] ?? '')); ?>&mode=edit', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'
+                },
+                body: payload.toString()
+            });
+
+            const data = await response.json().catch(() => ({}));
+
+            if (!response.ok || data.status !== 'success') {
+                throw new Error(data.message || 'Error al guardar el orden.');
+            }
+
+            lastOrder = order;
+            setStatus('Orden guardado correctamente.', false);
+        } catch (error) {
+            setStatus((error && error.message) ? error.message : 'No fue posible guardar el orden.', true);
+        } finally {
+            isSaving = false;
+        }
+    }
+
+    container.addEventListener('dragstart', function (event) {
+        const target = event.target.closest('.draggable');
+        if (!target) {
+            return;
+        }
+
+        draggedItem = target;
+        target.classList.add('dragging');
+    });
+
+    container.addEventListener('dragend', function (event) {
+        const target = event.target.closest('.draggable');
+        if (!target) {
+            return;
+        }
+
+        target.classList.remove('dragging');
+        draggedItem = null;
+        saveOrder();
+    });
+
+    container.addEventListener('dragover', function (event) {
+        event.preventDefault();
+        if (!draggedItem) {
+            return;
+        }
+
+        const afterElement = getDragAfterElement(container, event.clientY);
+
+        if (!afterElement) {
+            container.appendChild(draggedItem);
+        } else if (afterElement !== draggedItem) {
+            container.insertBefore(draggedItem, afterElement);
+        }
+    });
+})();
+</script>
+<?php } ?>
 </body>
 </html>
