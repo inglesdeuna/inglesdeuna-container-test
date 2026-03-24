@@ -206,33 +206,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 *{box-sizing:border-box}
 body{font-family:Arial,sans-serif;background:var(--bg);padding:30px;color:var(--text);margin:0}
 .wrapper{max-width:1100px;margin:0 auto}
-.back{display:inline-block;margin-bottom:16px;color:#1f66cc;text-decoration:none;font-weight:700;font-size:14px}
-.page-title{font-size:28px;font-weight:700;color:#1f3c75;margin:0 0 18px}
+.back{display:inline-block;margin-bottom:16px;color:var(--blue);text-decoration:none;font-weight:700;font-size:14px}
+.page-title{font-size:28px;font-weight:700;color:var(--title);margin:0 0 18px}
 .stack{display:flex;flex-direction:column;gap:18px}
-.card{background:#fff;border:1px solid #dce4f0;border-radius:14px;padding:20px;box-shadow:0 8px 24px rgba(0,0,0,.08)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:20px;box-shadow:var(--shadow)}
 .card-header{margin-bottom:18px}
-.card-header h2{font-size:22px;font-weight:600;color:#2c3e50;margin:0 0 8px}
-.subtitle{font-size:14px;color:#5b6577;margin:0;line-height:1.5}
+.card-header h2{font-size:22px;font-weight:600;color:var(--title);margin:0 0 8px}
+.subtitle{font-size:14px;color:var(--muted);margin:0;line-height:1.5}
 .notice{padding:12px 14px;border-radius:10px;background:#ecfdf3;border:1px solid #b9eacb;color:#166534;margin-bottom:16px;font-size:14px;font-weight:600}
 .error{padding:12px 14px;border-radius:10px;background:#fff2f2;border:1px solid #f3b5b5;color:#9f1d1d;margin-bottom:16px;font-size:14px}
 .error div + div{margin-top:6px}
 .form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
 .field{display:flex;flex-direction:column}
 .field.full{grid-column:1/-1}
-label{font-size:12px;font-weight:700;color:#1f2937;margin:0 0 8px;text-transform:uppercase;letter-spacing:.2px}
-input,button{width:100%;min-height:42px;border-radius:10px;border:1px solid #c7d3e3;background:#fff;color:var(--text);padding:10px 12px;font-size:14px;font-family:Arial,sans-serif}
-input:focus,button:focus{outline:none;border-color:#6ab786;box-shadow:0 0 0 3px rgba(47,158,68,.15)}
-.button-primary{border:none;background:#1f66cc;color:#fff;font-weight:700;cursor:pointer;transition:background .2s ease}
-.button-primary:hover{background:#2f5bb5}
-.table-wrap{width:100%;border:1px solid #dce4f0;border-radius:14px;background:#fff;overflow:hidden}
+label{font-size:12px;font-weight:700;color:var(--text);margin:0 0 8px;text-transform:uppercase;letter-spacing:.2px}
+input,button{width:100%;min-height:42px;border-radius:10px;border:1px solid var(--line);background:#fff;color:var(--text);padding:10px 12px;font-size:14px;font-family:Arial,sans-serif}
+input:focus,button:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px rgba(47,158,68,.15)}
+.button-primary{border:none;background:linear-gradient(180deg,#41b95a,#2f9e44);color:#fff;font-weight:700;cursor:pointer;transition:filter .2s,transform .15s}
+.button-primary:hover{filter:brightness(1.07);transform:translateY(-1px)}
+.table-wrap{width:100%;border:1px solid var(--line);border-radius:14px;background:var(--card);overflow:hidden}
 .table-scroll{width:100%;overflow-x:auto}
 table{width:100%;min-width:900px;border-collapse:separate;border-spacing:0}
 thead th{background:#f3fbf5;color:var(--text);font-size:12px;font-weight:700;text-transform:uppercase;padding:12px;text-align:left;white-space:nowrap}
-tbody td{padding:12px;border-bottom:1px solid #e8eef6;font-size:14px;color:var(--text);vertical-align:top}
+tbody td{padding:12px;border-bottom:1px solid var(--line);font-size:14px;color:var(--text);vertical-align:top}
 tbody tr:last-child td{border-bottom:none}
-.badge{display:inline-block;padding:4px 8px;border-radius:999px;background:#eef2ff;color:#1f4ec9;font-size:12px;font-weight:700}
-.small{font-size:13px;color:#5b6577}
-.empty-row{color:#5b6577}
+.badge{display:inline-block;padding:4px 8px;border-radius:999px;background:var(--badge-bg);color:var(--badge-text);font-size:12px;font-weight:700}
+.small{font-size:13px;color:var(--muted)}
+.empty-row{color:var(--muted)}
 @media (max-width:768px){body{padding:20px}.page-title{font-size:24px}.card-header h2{font-size:20px}.form-grid{grid-template-columns:1fr}.button-primary{font-size:12px}}
 </style>
 </head>
