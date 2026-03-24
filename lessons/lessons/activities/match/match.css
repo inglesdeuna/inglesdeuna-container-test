@@ -17,14 +17,14 @@ body{
   gap: 12px;
   align-content: start;
   justify-content: stretch;
-  width: min(430px, 100%);
+  width: 100%;
 }
 
 .card,
 .word{
   background: #ffffff;
   border-radius: 16px;
-  box-shadow: 0 4px 10px rgba(0,0,0,.10);
+  box-shadow: 0 10px 24px rgba(15, 23, 42, .08);
 }
 
 .card{
@@ -35,6 +35,7 @@ body{
   justify-content: center;
   transition: transform .2s ease, opacity .2s ease, box-shadow .2s ease;
   cursor: grab;
+  border: 1px solid #d6e4f5;
 }
 
 .card.dragging{
@@ -62,6 +63,7 @@ body{
   box-sizing: border-box;
   transition: transform .2s ease, background .2s ease, border-color .2s ease, color .2s ease;
   position: relative;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
 }
 
 .match-tile-inner{
@@ -82,6 +84,7 @@ body{
   user-select: none;
   -webkit-user-drag: none;
   border-radius: 12px;
+  background: #f8fafc;
 }
 
 .match-text{

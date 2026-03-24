@@ -283,6 +283,61 @@ ob_start();
 <link rel="stylesheet" href="match.css">
 
 <style>
+.match-stage{
+    max-width:980px;
+    margin:0 auto;
+}
+
+.match-intro{
+    background:linear-gradient(180deg, #ffffff 0%, #f5f9ff 100%);
+    border:1px solid #dbe7f5;
+    border-radius:22px;
+    padding:22px;
+    box-shadow:0 10px 30px rgba(15, 23, 42, .08);
+}
+
+.match-intro h2{
+    margin:0 0 8px;
+    font-size:28px;
+    font-weight:800;
+    color:#0f172a;
+}
+
+.match-intro p{
+    margin:0;
+    color:#475569;
+    font-size:15px;
+    line-height:1.6;
+}
+
+.match-columns{
+    display:grid;
+    grid-template-columns:repeat(2, minmax(0, 1fr));
+    gap:18px;
+    margin-top:18px;
+}
+
+.match-column-card{
+    background:#ffffff;
+    border:1px solid #dbe7f5;
+    border-radius:20px;
+    padding:18px;
+    box-shadow:0 10px 24px rgba(15, 23, 42, .06);
+}
+
+.match-column-card h3{
+    margin:0 0 6px;
+    font-size:18px;
+    font-weight:800;
+    color:#0f172a;
+}
+
+.match-column-card p{
+    margin:0 0 14px;
+    color:#64748b;
+    font-size:14px;
+}
+
 .match-empty{
     max-width:700px;
     margin:30px auto;
@@ -295,14 +350,36 @@ ob_start();
     font-size:18px;
     font-weight:700;
 }
+
+@media (max-width: 760px){
+    .match-columns{
+        grid-template-columns:1fr;
+    }
+}
 </style>
 
 <?php if (empty($pairs)) { ?>
     <div class="match-empty">No match data available.</div>
 <?php } else { ?>
-    <div class="container">
-        <div class="board-column" id="match-left"></div>
-        <div class="board-column" id="match-right"></div>
+    <div class="match-stage">
+        <div class="match-intro">
+            <h2>Match The Pairs</h2>
+            <p>Arrastra cada tarjeta de la izquierda hacia su pareja correcta en la derecha. Puedes encontrar texto, imagen o combinaciones de ambos en cualquier lado.</p>
+        </div>
+
+        <div class="match-columns">
+            <section class="match-column-card">
+                <h3>Drag From Here</h3>
+                <p>Estas son las tarjetas móviles.</p>
+                <div class="board-column" id="match-left"></div>
+            </section>
+
+            <section class="match-column-card">
+                <h3>Drop In The Correct Pair</h3>
+                <p>Encuentra la coincidencia correcta para cada tarjeta.</p>
+                <div class="board-column" id="match-right"></div>
+            </section>
+        </div>
     </div>
 
     <script>

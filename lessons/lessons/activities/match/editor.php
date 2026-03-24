@@ -561,6 +561,14 @@ ob_start();
     color:#111827;
 }
 
+.match-side small{
+    display:block;
+    margin-top:-4px;
+    margin-bottom:10px;
+    color:#64748b;
+    font-size:12px;
+}
+
 .match-item label{
     display:block;
     font-weight:700;
@@ -596,6 +604,13 @@ ob_start();
     margin-top:8px;
 }
 
+.quick-types{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+    margin:0 0 18px;
+}
+
 .btn-add{
     background:#16a34a;
     color:#fff;
@@ -604,6 +619,21 @@ ob_start();
     border-radius:8px;
     cursor:pointer;
     font-weight:700;
+}
+
+.btn-type{
+    background:#ffffff;
+    color:#0f172a;
+    padding:10px 14px;
+    border:1px solid #cbd5e1;
+    border-radius:10px;
+    cursor:pointer;
+    font-weight:700;
+}
+
+.btn-type:hover{
+    background:#f8fafc;
+    border-color:#94a3b8;
 }
 
 .btn-remove{
@@ -622,15 +652,53 @@ ob_start();
     font-size:14px;
 }
 
+.match-examples{
+    display:grid;
+    grid-template-columns:repeat(4, minmax(0, 1fr));
+    gap:12px;
+    margin:0 0 18px;
+}
+
+.match-example-card{
+    background:linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+    border:1px solid #dbe4ee;
+    border-radius:14px;
+    padding:12px;
+}
+
+.match-example-card strong{
+    display:block;
+    margin-bottom:6px;
+    color:#0f172a;
+    font-size:14px;
+}
+
+.match-example-card span{
+    display:block;
+    color:#475569;
+    font-size:13px;
+    line-height:1.45;
+}
+
 @media (max-width: 760px){
+    .match-examples{
+        grid-template-columns:repeat(2, minmax(0, 1fr));
+    }
+
     .match-grid{
+        grid-template-columns:1fr;
+    }
+}
+
+@media (max-width: 520px){
+    .match-examples{
         grid-template-columns:1fr;
     }
 }
 </style>
 
 <?php if (isset($_GET['saved'])) { ?>
-    <p style="color:green;font-weight:bold;margin-bottom:15px;">✔ Guardado correctamente</p>
+    <p style="color:green;font-weight:bold;margin-bottom:15px;">✔ Saved successfully</p>
 <?php } ?>
 
 <form class="match-form" id="matchForm" method="post" enctype="multipart/form-data">
@@ -646,7 +714,37 @@ ob_start();
         >
     </div>
 
-    <p class="match-help">Cada pareja puede combinar texto e imagen en ambos lados. Puedes crear texto con texto, imagen con imagen o mezclas entre ambos.</p>
+    <p class="match-help">Each pair can use text and image on both sides. You can build text-to-text, image-to-image, text-to-image, or image-to-text activities.</p>
+
+    <div class="match-examples">
+        <div class="match-example-card">
+            <strong>Text + text</strong>
+            <span>Left: dog</span>
+            <span>Right: perro</span>
+        </div>
+        <div class="match-example-card">
+            <strong>Image + text</strong>
+            <span>Left: picture of an apple</span>
+            <span>Right: apple</span>
+        </div>
+        <div class="match-example-card">
+            <strong>Image + image</strong>
+            <span>Left: flag of Colombia</span>
+            <span>Right: map of the country</span>
+        </div>
+        <div class="match-example-card">
+            <strong>Text + image</strong>
+            <span>Left: teacher</span>
+            <span>Right: teacher photo</span>
+        </div>
+    </div>
+
+    <div class="quick-types">
+        <button type="button" class="btn-type" onclick="addPair('text-text')">+ Text + Text</button>
+        <button type="button" class="btn-type" onclick="addPair('image-text')">+ Image + Text</button>
+        <button type="button" class="btn-type" onclick="addPair('image-image')">+ Image + Image</button>
+        <button type="button" class="btn-type" onclick="addPair('text-image')">+ Text + Image</button>
+    </div>
 
     <div id="pairsContainer">
         <?php foreach ($pairs as $pair) { ?>
@@ -708,11 +806,35 @@ function removePair(button) {
     }
 }
 
-function addPair() {
-    const container = document.getElementById('pairsContainer');
-    const div = document.createElement('div');
-    div.className = 'match-item';
-    div.innerHTML = `
+function buildPairTemplate(pairType) {
+    let leftPlaceholder = 'Example: Sun';
+    let rightPlaceholder = 'Example: Sol';
+    let leftHint = 'Add text or upload an image';
+    let rightHint = 'Add text or upload an image';
+
+    if (pairType === 'text-text') {
+        leftPlaceholder = 'Example: dog';
+        rightPlaceholder = 'Example: perro';
+        leftHint = 'Use text on this side';
+        rightHint = 'Use text on this side';
+    } else if (pairType === 'image-text') {
+        leftPlaceholder = '';
+        rightPlaceholder = 'Example: apple';
+        leftHint = 'Upload an image on this side';
+        rightHint = 'Use text on this side';
+    } else if (pairType === 'image-image') {
+        leftPlaceholder = '';
+        rightPlaceholder = '';
+        leftHint = 'Upload an image on this side';
+        rightHint = 'Upload an image on this side';
+    } else if (pairType === 'text-image') {
+        leftPlaceholder = 'Example: teacher';
+        rightPlaceholder = '';
+        leftHint = 'Use text on this side';
+        rightHint = 'Upload an image on this side';
+    }
+
+    return `
         <input type="hidden" name="pair_id[]" value="match_${Date.now()}_${Math.floor(Math.random() * 1000)}">
         <input type="hidden" name="left_image_existing[]" value="">
         <input type="hidden" name="right_image_existing[]" value="">
@@ -721,24 +843,33 @@ function addPair() {
             <div class="match-side">
                 <h4>Left item</h4>
                 <label>Text</label>
-                <input type="text" name="left_text[]" placeholder="Example: Sun">
+                <input type="text" name="left_text[]" placeholder="${leftPlaceholder}">
 
                 <label>Image</label>
                 <input type="file" name="left_image_file[]" accept="image/*">
+                <small>${leftHint}</small>
             </div>
 
             <div class="match-side">
                 <h4>Right item</h4>
                 <label>Text</label>
-                <input type="text" name="right_text[]" placeholder="Example: Sol">
+                <input type="text" name="right_text[]" placeholder="${rightPlaceholder}">
 
                 <label>Image</label>
                 <input type="file" name="right_image_file[]" accept="image/*">
+                <small>${rightHint}</small>
             </div>
         </div>
 
         <button type="button" class="btn-remove" onclick="removePair(this)">✖ Remove</button>
     `;
+}
+
+function addPair(pairType = 'text-text') {
+    const container = document.getElementById('pairsContainer');
+    const div = document.createElement('div');
+    div.className = 'match-item';
+    div.innerHTML = buildPairTemplate(pairType);
     container.appendChild(div);
     bindChangeTracking(div);
     markChanged();
