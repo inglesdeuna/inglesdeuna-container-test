@@ -3,100 +3,9 @@ session_start();
 
 // Load security utilities
 require_once __DIR__ . "/../config/security.php";
-require_once __DIR__ . "/../config/db.php";
 
 // Initialize secure session
 Security::initializeSession();
-
-function table_has_column(PDO $pdo, string $tableName, string $columnName): bool
-{
-  try {
-    $stmt = $pdo->prepare(
-      "SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = :table_name AND column_name = :column_name LIMIT 1"
-    );
-    $stmt->execute([
-      'table_name' => $tableName,
-      'column_name' => $columnName,
-    ]);
-    return (bool) $stmt->fetchColumn();
-  } catch (Throwable $e) {
-    return false;
-  }
-}
-
-function admin_users_json_file(): string
-{
-  return __DIR__ . '/data/users.json';
-}
-
-function load_admin_users_json(): array
-{
-  $file = admin_users_json_file();
-  if (!is_file($file)) {
-    return [];
-  }
-
-  $decoded = json_decode((string) file_get_contents($file), true);
-  return is_array($decoded) ? $decoded : [];
-}
-
-function resolve_admin_must_change_password(PDO $pdo, string $adminId, string $adminEmail, string $adminUsername): ?bool
-{
-  $hasMustChangePasswordColumn = table_has_column($pdo, 'admin_users', 'must_change_password');
-  if (!$hasMustChangePasswordColumn) {
-    return false;
-  }
-
-  $hasUsernameColumn = table_has_column($pdo, 'admin_users', 'username');
-
-  try {
-    if ($adminId !== '') {
-      $stmt = $pdo->prepare('SELECT must_change_password FROM admin_users WHERE id = :id AND is_active = TRUE LIMIT 1');
-      $stmt->execute(['id' => $adminId]);
-      $value = $stmt->fetchColumn();
-      if ($value !== false) {
-        return (bool) $value;
-      }
-    }
-
-    if ($adminEmail !== '') {
-      $stmt = $pdo->prepare('SELECT must_change_password FROM admin_users WHERE email = :email AND is_active = TRUE LIMIT 1');
-      $stmt->execute(['email' => $adminEmail]);
-      $value = $stmt->fetchColumn();
-      if ($value !== false) {
-        return (bool) $value;
-      }
-    }
-
-    if ($hasUsernameColumn && $adminUsername !== '') {
-      $stmt = $pdo->prepare('SELECT must_change_password FROM admin_users WHERE username = :username AND is_active = TRUE LIMIT 1');
-      $stmt->execute(['username' => $adminUsername]);
-      $value = $stmt->fetchColumn();
-      if ($value !== false) {
-        return (bool) $value;
-      }
-    }
-  } catch (Throwable $e) {
-    // fallback to JSON
-  }
-
-  $jsonUsers = load_admin_users_json();
-  foreach ($jsonUsers as $jsonUser) {
-    $jsonId = (string) ($jsonUser['id'] ?? '');
-    $jsonEmail = trim((string) ($jsonUser['email'] ?? ''));
-    $jsonUsername = trim((string) ($jsonUser['username'] ?? ''));
-
-    $idMatches = ($adminId !== '' && $jsonId === $adminId);
-    $emailMatches = ($adminEmail !== '' && $jsonEmail !== '' && strcasecmp($jsonEmail, $adminEmail) === 0);
-    $usernameMatches = ($adminUsername !== '' && $jsonUsername !== '' && strcasecmp($jsonUsername, $adminUsername) === 0);
-
-    if ($idMatches || $emailMatches || $usernameMatches) {
-      return !empty($jsonUser['must_change_password']);
-    }
-  }
-
-  return null;
-}
 
 // Check authentication
 if (!isset($_SESSION['admin_logged']) || $_SESSION['admin_logged'] !== true) {
@@ -104,20 +13,9 @@ if (!isset($_SESSION['admin_logged']) || $_SESSION['admin_logged'] !== true) {
     exit;
 }
 
-$resolvedMustChangePassword = resolve_admin_must_change_password(
-  $pdo,
-  (string) ($_SESSION['admin_id'] ?? ''),
-  (string) ($_SESSION['admin_email'] ?? ''),
-  trim((string) ($_SESSION['admin_username'] ?? ''))
-);
-
-if ($resolvedMustChangePassword !== null) {
-  $_SESSION['admin_must_change_password'] = $resolvedMustChangePassword;
-}
-
 if (!empty($_SESSION['admin_must_change_password'])) {
-  header('Location: change_password.php');
-  exit;
+    header('Location: change_password.php');
+    exit;
 }
 
 // Handle logout

@@ -157,27 +157,27 @@ function resolve_admin_must_change_password(PDO $pdo, string $adminId, string $a
         if ($adminId !== '') {
             $stmt = $pdo->prepare('SELECT must_change_password FROM admin_users WHERE id = :id AND is_active = TRUE LIMIT 1');
             $stmt->execute(['id' => $adminId]);
-            $value = $stmt->fetchColumn();
-            if ($value !== false) {
-                return (bool) $value;
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+            if ($row !== false) {
+                return (bool) $row['must_change_password'];
             }
         }
 
         if ($adminEmail !== '') {
             $stmt = $pdo->prepare('SELECT must_change_password FROM admin_users WHERE email = :email AND is_active = TRUE LIMIT 1');
             $stmt->execute(['email' => $adminEmail]);
-            $value = $stmt->fetchColumn();
-            if ($value !== false) {
-                return (bool) $value;
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+            if ($row !== false) {
+                return (bool) $row['must_change_password'];
             }
         }
 
         if ($hasUsernameColumn && $adminUsername !== '') {
             $stmt = $pdo->prepare('SELECT must_change_password FROM admin_users WHERE username = :username AND is_active = TRUE LIMIT 1');
             $stmt->execute(['username' => $adminUsername]);
-            $value = $stmt->fetchColumn();
-            if ($value !== false) {
-                return (bool) $value;
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+            if ($row !== false) {
+                return (bool) $row['must_change_password'];
             }
         }
     } catch (Throwable $e) {
