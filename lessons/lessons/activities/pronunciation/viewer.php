@@ -282,19 +282,183 @@ ob_start();
 ?>
 
 <style>
-body{font-family:Arial,sans-serif;background:#eef6ff;padding:20px}
-.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px}
-.card{background:#fff;border-radius:18px;padding:14px;text-align:center;box-shadow:0 4px 8px rgba(0,0,0,.1)}
-.image{width:100%;height:130px;object-fit:contain;margin-bottom:6px}
-.command{font-size:28px;font-weight:700;line-height:1.1}
-.phonetic{font-size:18px;color:#555;line-height:1.1}
-.spanish{font-size:18px;margin-bottom:8px;line-height:1.1}
-button{margin:4px;padding:7px 12px;border:none;border-radius:10px;background:#0b5ed7;color:#fff;cursor:pointer;font-size:13px}
-.feedback{font-size:15px;font-weight:700;min-height:20px}
-.good{color:green}.try{color:orange}.muted{color:#666}
+@import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@600;700;800&display=swap');
+
+body{
+    font-family:'Nunito', 'Segoe UI', sans-serif;
+    background:#eef6ff;
+    padding:20px;
+}
+
+.pron-stage{
+    max-width:1060px;
+    margin:0 auto;
+}
+
+.pron-intro{
+    background:linear-gradient(135deg, #fff8df 0%, #eef8ff 52%, #f8fbff 100%);
+    border:1px solid #dbe7f5;
+    border-radius:26px;
+    padding:24px 26px;
+    box-shadow:0 16px 34px rgba(15, 23, 42, .09);
+    margin-bottom:18px;
+}
+
+.pron-intro h2{
+    margin:0 0 8px;
+    font-family:'Fredoka', 'Trebuchet MS', sans-serif;
+    font-size:30px;
+    font-weight:700;
+    color:#0f172a;
+    letter-spacing:.3px;
+}
+
+.pron-intro p{
+    margin:0;
+    color:#334155;
+    font-size:16px;
+    line-height:1.6;
+}
+
+.grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit, minmax(250px, 1fr));
+    gap:16px;
+}
+
+.card{
+    position:relative;
+    overflow:hidden;
+    background:linear-gradient(180deg, #f8fdff 0%, #ffffff 100%);
+    border:1px solid #dbe7f5;
+    border-radius:22px;
+    padding:16px;
+    text-align:center;
+    box-shadow:0 14px 28px rgba(15, 23, 42, .07);
+}
+
+.card::before{
+    content:'';
+    position:absolute;
+    top:0;
+    left:0;
+    right:0;
+    height:8px;
+    background:linear-gradient(90deg, #38bdf8 0%, #0ea5e9 100%);
+}
+
+.image-wrap{
+    min-height:116px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    margin:8px 0 4px;
+}
+
+.image{
+    width:min(100%, 130px);
+    height:96px;
+    object-fit:contain;
+    border-radius:12px;
+    background:#f8fafc;
+}
+
+.command{
+    font-family:'Fredoka', 'Trebuchet MS', sans-serif;
+    font-size:34px;
+    font-weight:700;
+    line-height:1.04;
+    letter-spacing:.2px;
+    color:#0f172a;
+}
+
+.phonetic{
+    margin-top:2px;
+    font-size:20px;
+    color:#334155;
+    line-height:1.1;
+}
+
+.spanish{
+    margin-top:2px;
+    font-size:20px;
+    line-height:1.1;
+    color:#0f172a;
+}
+
+.actions{
+    margin-top:12px;
+    display:flex;
+    justify-content:center;
+    gap:8px;
+    flex-wrap:wrap;
+}
+
+.btn{
+    border:none;
+    border-radius:999px;
+    padding:8px 13px;
+    color:#fff;
+    cursor:pointer;
+    font-size:13px;
+    font-weight:700;
+    font-family:'Nunito', 'Segoe UI', sans-serif;
+    box-shadow:0 6px 14px rgba(37, 99, 235, .25);
+    transition:transform .15s ease, filter .15s ease;
+}
+
+.btn:hover{
+    filter:brightness(1.06);
+    transform:translateY(-1px);
+}
+
+.btn-listen{
+    background:linear-gradient(180deg, #2563eb, #1d4ed8);
+}
+
+.btn-speak{
+    background:linear-gradient(180deg, #2563eb, #1d4ed8);
+}
+
+.feedback{
+    margin-top:10px;
+    font-size:14px;
+    font-weight:800;
+    min-height:21px;
+    line-height:1.2;
+}
+
+.good{color:#15803d}
+.try{color:#d97706}
+
+.empty-state{
+    max-width:700px;
+    margin:20px auto;
+    background:#ffffff;
+    border-radius:18px;
+    padding:24px;
+    text-align:center;
+    box-shadow:0 8px 24px rgba(0,0,0,.08);
+    color:#4b5563;
+    font-size:18px;
+    font-weight:700;
+}
+
+@media (max-width:760px){
+    .pron-intro h2{font-size:26px}
+    .pron-intro p{font-size:15px}
+    .command{font-size:30px}
+    .phonetic,.spanish{font-size:18px}
+}
 </style>
 
-<div class="grid" id="cards"></div>
+<div class="pron-stage">
+    <section class="pron-intro">
+        <h2>Pronunciation Practice</h2>
+        <p>Listen to each word and then use Speak to practice your pronunciation. Repeat until you get a positive result.</p>
+    </section>
+    <div class="grid" id="cards"></div>
+</div>
 
 <script>
 window.PRONUNCIATION_DATA = <?php echo json_encode($items, JSON_UNESCAPED_UNICODE); ?>;
@@ -325,20 +489,24 @@ function renderCards() {
   }
 
   if (!data.length) {
-    container.innerHTML = '<div class="card"><div class="muted">No pronunciation data available.</div></div>';
+        container.innerHTML = '<div class="empty-state">No pronunciation data available.</div>';
     return;
   }
 
   container.innerHTML = data.map(function (item, i) {
-    var img = item.img ? '<img class="image" src="' + escapeHtml(item.img) + '" alt="' + escapeHtml(item.en || '') + '">' : '';
+        var img = item.img
+            ? '<div class="image-wrap"><img class="image" src="' + escapeHtml(item.img) + '" alt="' + escapeHtml(item.en || '') + '"></div>'
+            : '<div class="image-wrap"></div>';
     return '' +
       '<div class="card">' +
         img +
         '<div class="command">' + escapeHtml(item.en || '') + '</div>' +
         '<div class="phonetic">' + escapeHtml(item.ph || '') + '</div>' +
         '<div class="spanish">' + escapeHtml(item.es || '') + '</div>' +
-        '<button type="button" onclick="speak(' + i + ')">🔊 Listen</button>' +
-        '<button type="button" onclick="record(' + i + ')">🎤 Speak</button>' +
+                '<div class="actions">' +
+                    '<button class="btn btn-listen" type="button" onclick="speak(' + i + ')">🔊 Listen</button>' +
+                    '<button class="btn btn-speak" type="button" onclick="record(' + i + ')">🎤 Speak</button>' +
+                '</div>' +
         '<div id="f' + i + '" class="feedback"></div>' +
       '</div>';
   }).join('');

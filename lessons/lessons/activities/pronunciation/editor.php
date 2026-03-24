@@ -509,11 +509,207 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 ob_start();
 ?>
 
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@600;700;800&display=swap');
+
+.pron-form{
+    max-width:900px;
+    margin:0 auto;
+    text-align:left;
+    font-family:'Nunito', 'Segoe UI', sans-serif;
+}
+
+.pron-intro{
+    background:linear-gradient(135deg, #fff8df 0%, #eef8ff 52%, #f8fbff 100%);
+    border:1px solid #dbe7f5;
+    border-radius:20px;
+    padding:18px 20px;
+    margin:0 0 14px;
+    box-shadow:0 12px 26px rgba(15, 23, 42, .08);
+}
+
+.pron-intro h3{
+    margin:0 0 6px;
+    font-family:'Fredoka', 'Trebuchet MS', sans-serif;
+    font-size:24px;
+    font-weight:700;
+    color:#0f172a;
+}
+
+.pron-intro p{
+    margin:0;
+    color:#475569;
+    font-size:14px;
+    line-height:1.5;
+}
+
+.title-box{
+    background:#ffffff;
+    padding:14px;
+    margin-bottom:14px;
+    border-radius:14px;
+    border:1px solid #e2e8f0;
+    box-shadow:0 8px 18px rgba(15, 23, 42, .04);
+}
+
+.title-box label{
+    display:block;
+    font-weight:800;
+    margin-bottom:8px;
+    color:#1e293b;
+}
+
+.title-box input{
+    width:100%;
+    padding:10px 12px;
+    border-radius:10px;
+    border:1px solid #cbd5e1;
+    font-size:15px;
+    font-family:'Nunito', 'Segoe UI', sans-serif;
+    box-sizing:border-box;
+}
+
+.pron-block{
+    position:relative;
+    overflow:hidden;
+    background:linear-gradient(180deg, #f8fdff 0%, #ffffff 100%);
+    padding:14px;
+    margin-bottom:12px;
+    border-radius:16px;
+    border:1px solid #dbe7f5;
+    box-shadow:0 10px 22px rgba(15, 23, 42, .06);
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:8px 10px;
+}
+
+.pron-block::before{
+    content:'';
+    position:absolute;
+    top:0;
+    left:0;
+    right:0;
+    height:7px;
+    background:linear-gradient(90deg, #38bdf8 0%, #0ea5e9 100%);
+}
+
+.pron-block label{
+    font-weight:800;
+    grid-column:span 2;
+    color:#0f172a;
+    margin-top:2px;
+}
+
+.pron-block input{
+    padding:9px 11px;
+    border-radius:10px;
+    border:1px solid #cbd5e1;
+    font-size:14px;
+    font-family:'Nunito', 'Segoe UI', sans-serif;
+    grid-column:span 2;
+}
+
+.image-preview-wrap{
+    grid-column:span 2;
+    margin-top:4px;
+}
+
+.preview-label{
+    margin:0 0 6px 0;
+    font-size:13px;
+    font-weight:700;
+    color:#374151;
+}
+
+.image-preview{
+    max-width:140px;
+    max-height:140px;
+    border-radius:12px;
+    border:1px solid #d1d5db;
+    background:#fff;
+    display:block;
+}
+
+.actions-row{
+    display:flex;
+    gap:10px;
+    justify-content:center;
+    margin-top:10px;
+    flex-wrap:wrap;
+}
+
+.btn-add,
+.btn-save,
+.btn-remove{
+    border:none;
+    border-radius:10px;
+    cursor:pointer;
+    font-weight:800;
+    font-family:'Nunito', 'Segoe UI', sans-serif;
+    transition:transform .15s ease, filter .15s ease;
+}
+
+.btn-add:hover,
+.btn-save:hover,
+.btn-remove:hover{
+    filter:brightness(1.06);
+    transform:translateY(-1px);
+}
+
+.btn-add{
+    background:#16a34a;
+    color:#fff;
+    padding:10px 14px;
+}
+
+.btn-save{
+    background:#2563eb;
+    color:#fff;
+    padding:10px 14px;
+}
+
+.btn-remove{
+    background:#ef4444;
+    color:#fff;
+    padding:8px 12px;
+    justify-self:end;
+    grid-column:span 2;
+}
+
+.saved-notice{
+    max-width:900px;
+    margin:0 auto 14px;
+    padding:10px 12px;
+    border-radius:10px;
+    border:1px solid #86efac;
+    background:#f0fdf4;
+    color:#166534;
+    font-weight:800;
+    font-family:'Nunito', 'Segoe UI', sans-serif;
+}
+
+@media (max-width:680px){
+    .pron-block{
+        display:flex;
+        flex-direction:column;
+    }
+
+    .pron-intro h3{
+        font-size:22px;
+    }
+}
+</style>
+
 <?php if (isset($_GET['saved'])) { ?>
-<p style="color:green;font-weight:bold;margin-bottom:15px;">✔ Guardado correctamente</p>
+<p class="saved-notice">✔ Guardado correctamente</p>
 <?php } ?>
 
-<form id="pronunciationForm" method="post" enctype="multipart/form-data" style="text-align:left;max-width:980px;margin:0 auto;">
+<form class="pron-form" id="pronunciationForm" method="post" enctype="multipart/form-data">
+    <section class="pron-intro">
+        <h3>Pronunciation Editor</h3>
+        <p>Create cards with word, phonetic help, Spanish translation and optional image. Use clear short phrases so students can repeat them easily.</p>
+    </section>
+
     <div class="title-box">
         <label for="activity_title">Activity title</label>
         <input
@@ -561,104 +757,6 @@ ob_start();
         <button type="submit" class="btn-save">💾 Save</button>
     </div>
 </form>
-
-<style>
-.title-box{
-    background:#f9fafb;
-    padding:14px;
-    margin-bottom:14px;
-    border-radius:12px;
-    border:1px solid #e5e7eb;
-}
-.title-box label{
-    display:block;
-    font-weight:700;
-    margin-bottom:8px;
-}
-.title-box input{
-    width:100%;
-    padding:10px 12px;
-    border-radius:8px;
-    border:1px solid #ccc;
-    font-size:15px;
-}
-.pron-block{
-    background:#f9fafb;
-    padding:14px;
-    margin-bottom:12px;
-    border-radius:12px;
-    border:1px solid #e5e7eb;
-    display:grid;
-    grid-template-columns:1fr 1fr;
-    gap:8px 10px;
-}
-.pron-block label{
-    font-weight:700;
-    grid-column:span 2;
-}
-.pron-block input{
-    padding:8px 10px;
-    border-radius:8px;
-    border:1px solid #ccc;
-    font-size:14px;
-    grid-column:span 2;
-}
-.image-preview-wrap{
-    grid-column:span 2;
-    margin-top:4px;
-}
-.preview-label{
-    margin:0 0 6px 0;
-    font-size:13px;
-    font-weight:700;
-    color:#374151;
-}
-.image-preview{
-    max-width:140px;
-    max-height:140px;
-    border-radius:10px;
-    border:1px solid #d1d5db;
-    display:block;
-}
-.actions-row{
-    display:flex;
-    gap:10px;
-    justify-content:center;
-    margin-top:8px;
-}
-.btn-add{
-    background:#16a34a;
-    color:#fff;
-    padding:9px 14px;
-    border:none;
-    border-radius:8px;
-    cursor:pointer;
-}
-.btn-save{
-    background:#0b5ed7;
-    color:#fff;
-    padding:9px 14px;
-    border:none;
-    border-radius:8px;
-    cursor:pointer;
-}
-.btn-remove{
-    background:#ef4444;
-    color:#fff;
-    border:none;
-    padding:6px 10px;
-    border-radius:6px;
-    cursor:pointer;
-    justify-self:end;
-    grid-column:span 2;
-}
-@media (max-width:680px){
-    .pron-block{
-        display:flex;
-        flex-direction:column;
-    }
-}
-</style>
 
 <script>
 let formChanged = false;
