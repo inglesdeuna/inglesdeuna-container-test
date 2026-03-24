@@ -186,6 +186,9 @@ $slides = isset($activity['slides']) && is_array($activity['slides']) ? $activit
 $presentationFile = (string) ($activity['presentation_file'] ?? '');
 $presentationName = (string) ($activity['presentation_name'] ?? '');
 $canvaLink = (string) ($activity['canva_link'] ?? '');
+$showCanvaBlock = $canvaLink !== '';
+$showSlidesBlock = !$showCanvaBlock && !empty($slides);
+$showEmptyBlock = !$showCanvaBlock && !$showSlidesBlock && $presentationFile === '';
 
 ob_start();
 ?>
@@ -250,9 +253,9 @@ ob_start();
     </div>
   <?php } ?>
 
-  <?php if (empty($slides) && $presentationFile === '') { ?>
+    <?php if ($showEmptyBlock) { ?>
         <div class="ppt-empty">No hay diapositivas configuradas en esta actividad.</div>
-  <?php } elseif (!empty($slides)) { ?>
+    <?php } elseif ($showSlidesBlock) { ?>
         <div class="ppt-stage">
             <div id="pptSlide" class="ppt-slide"></div>
 
