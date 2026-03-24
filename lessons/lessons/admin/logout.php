@@ -1,16 +1,19 @@
 <?php
 session_start();
 
-// Load security utilities
-require_once __DIR__ . "/../config/security.php";
+// Elimina todas las variables de sesión
+session_unset();
 
-// Log the logout event
-$userId = $_SESSION['admin_id'] ?? 'unknown';
-Security::logSecurityEvent('admin_logout', 'User logged out', $userId);
+// Destruye la sesión
+session_destroy();
 
-// Destroy session securely
-Security::destroySession();
+// Reinicia el array de sesión por seguridad
+$_SESSION = [];
 
-header("Location: login.php");
+// Regenerar ID de sesión para evitar reutilización
+session_regenerate_id(true);
+
+// Redirigir al login
+header("Location: /lessons/lessons/admin/login.php");
 exit;
-
+?>
