@@ -96,8 +96,8 @@ try {
                 respond_error('El archivo PDF está vacío.');
             }
 
-            if ($fileSize > 25 * 1024 * 1024) {
-                respond_error('El archivo PDF excede el límite permitido de 25 MB.');
+            if ($fileSize > 10 * 1024 * 1024) {
+                respond_error('El archivo PDF excede el límite permitido de 10 MB.');
             }
 
             $extension = strtolower(pathinfo($originalName, PATHINFO_EXTENSION));
@@ -112,31 +112,13 @@ try {
                 }
             }
 
-            $safeUnit = preg_replace('/[^a-zA-Z0-9_-]/', '_', $unit);
-            if ($safeUnit === '') {
-                $safeUnit = 'general';
+            // Store PDF as base64 in DB — no filesystem dependency (Render ephemeral storage)
+            $binaryContent = file_get_contents($tmpPath);
+            if ($binaryContent === false) {
+                respond_error('No se pudo leer el archivo PDF.');
             }
 
-            $uploadDir = __DIR__ . '/uploads/pdfs/';
-
-            if (!is_dir($uploadDir)) {
-                if (!mkdir($uploadDir, 0775, true) && !is_dir($uploadDir)) {
-                    respond_error('No se pudo crear la carpeta de uploads.');
-                }
-            }
-
-            if (!is_writable($uploadDir)) {
-                respond_error('La carpeta de uploads no tiene permisos de escritura.');
-            }
-
-            $newFileName = 'unit_' . $safeUnit . '_' . time() . '_' . bin2hex(random_bytes(4)) . '.pdf';
-            $destination = $uploadDir . $newFileName;
-
-            if (!move_uploaded_file($tmpPath, $destination)) {
-                respond_error('No se pudo guardar el archivo PDF.');
-            }
-
-            $pdfUrl = '/lessons/lessons/activities/flipbooks/uploads/pdfs/' . $newFileName;
+            $pdfUrl = 'data:application/pdf;base64,' . base64_encode($binaryContent);
         }
     }
 

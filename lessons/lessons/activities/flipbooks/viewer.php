@@ -33,24 +33,11 @@ $pdfDisplayUrl = '';
 $pdfDownloadUrl = '';
 
 if ($pdfUrl !== '') {
-    $rawPdfUrl = trim($pdfUrl);
-    $pathPart = parse_url($rawPdfUrl, PHP_URL_PATH);
-    $localName = basename((string) ($pathPart !== null && $pathPart !== false ? $pathPart : $rawPdfUrl));
-    $localPath = __DIR__ . '/uploads/pdfs/' . $localName;
-
-    if ($localName !== '' && is_file($localPath)) {
-        $canonicalLocalUrl = '/lessons/lessons/activities/flipbooks/uploads/pdfs/' . rawurlencode($localName);
-        $pdfDisplayUrl = $canonicalLocalUrl;
-        $pdfDownloadUrl = $canonicalLocalUrl;
-    } elseif (preg_match('/^https?:\/\//i', $rawPdfUrl) === 1) {
-        $proxyBase = '/lessons/lessons/activities/flipbooks/pdf_proxy.php?url=';
-        $pdfDisplayUrl = $proxyBase . rawurlencode($rawPdfUrl);
-        $pdfDownloadUrl = $rawPdfUrl;
-    } else {
-        $normalized = '/' . ltrim($rawPdfUrl, '/');
-        $pdfDisplayUrl = $normalized;
-        $pdfDownloadUrl = $normalized;
-    }
+    // Always serve via serve_pdf.php — works for both base64 (DB) and legacy file paths.
+    // This is resilient to Render's ephemeral filesystem.
+    $serveUrl = '/lessons/lessons/activities/flipbooks/serve_pdf.php?id=' . rawurlencode($activityId);
+    $pdfDisplayUrl  = $serveUrl;
+    $pdfDownloadUrl = $serveUrl;
 }
 
 ob_start();
