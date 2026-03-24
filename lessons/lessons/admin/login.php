@@ -153,6 +153,7 @@ function establish_admin_session(array $user, bool $mustChangePassword = false):
     $_SESSION['admin_logged'] = true;
     $_SESSION['admin_id'] = (string) ($user['id'] ?? 'admin_json');
     $_SESSION['admin_email'] = (string) ($user['email'] ?? 'admin@lets.com');
+    $_SESSION['admin_username'] = (string) ($user['username'] ?? '');
     $_SESSION['admin_role'] = (string) ($user['role'] ?? 'admin');
     $_SESSION['admin_must_change_password'] = $mustChangePassword;
     $_SESSION['_session_start_time'] = time();
@@ -292,8 +293,9 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 }
 
                 $mustChangePasswordSelect = $hasMustChangePasswordColumn ? ', must_change_password' : ', FALSE AS must_change_password';
+                $usernameSelect = $hasUsernameColumn ? ', username' : ", '' AS username";
                 $stmt = $pdo->prepare("
-                    SELECT id, email, password_hash, role, is_active{$mustChangePasswordSelect}
+                    SELECT id, email{$usernameSelect}, password_hash, role, is_active{$mustChangePasswordSelect}
                     FROM admin_users 
                     WHERE {$whereClause} AND is_active = TRUE
                     LIMIT 1
@@ -322,6 +324,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                     establish_admin_session([
                         'id' => (string) ($jsonUser['id'] ?? 'admin_json'),
                         'email' => (string) ($jsonUser['email'] ?? $identifier),
+                        'username' => (string) ($jsonUser['username'] ?? ''),
                         'role' => (string) ($jsonUser['role'] ?? 'admin'),
                     ], !empty($jsonUser['must_change_password']));
 
@@ -347,6 +350,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                     establish_admin_session([
                         'id' => (string) ($jsonUser['id'] ?? 'admin_json'),
                         'email' => (string) ($jsonUser['email'] ?? $identifier),
+                        'username' => (string) ($jsonUser['username'] ?? ''),
                         'role' => (string) ($jsonUser['role'] ?? 'admin'),
                     ], !empty($jsonUser['must_change_password']));
 

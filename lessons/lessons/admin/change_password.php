@@ -66,6 +66,36 @@ function update_admin_user_in_json(string $id, array $updates): bool
     return $updated;
 }
 
+function update_admin_user_in_json_by_identifiers(string $adminId, string $adminEmail, string $adminUsername, array $updates): bool
+{
+    $users = load_admin_users_json();
+    $updated = false;
+
+    foreach ($users as $index => $user) {
+        $userId = (string) ($user['id'] ?? '');
+        $userEmail = trim((string) ($user['email'] ?? ''));
+        $userUsername = trim((string) ($user['username'] ?? ''));
+
+        $idMatches = ($adminId !== '' && $userId === $adminId);
+        $emailMatches = ($adminEmail !== '' && $userEmail !== '' && strcasecmp($userEmail, $adminEmail) === 0);
+        $usernameMatches = ($adminUsername !== '' && $userUsername !== '' && strcasecmp($userUsername, $adminUsername) === 0);
+
+        if (!$idMatches && !$emailMatches && !$usernameMatches) {
+            continue;
+        }
+
+        $users[$index] = array_merge($user, $updates);
+        $updated = true;
+        break;
+    }
+
+    if ($updated) {
+        save_admin_users_json($users);
+    }
+
+    return $updated;
+}
+
 Security::initializeSession();
 
 if (!isset($_SESSION['admin_logged']) || $_SESSION['admin_logged'] !== true) {
@@ -94,6 +124,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $newHash  = Security::hashPassword($newPassword);
         $adminId  = (string) ($_SESSION['admin_id']    ?? '');
         $adminEmail = (string) ($_SESSION['admin_email'] ?? '');
+        $adminUsername = trim((string) ($_SESSION['admin_username'] ?? ''));
 
         $setParts = ['password_hash = :password_hash'];
         if ($hasMustChangePasswordColumn) {
@@ -107,14 +138,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $dbUpdated = false;
 
         // Attempt 1: UPDATE WHERE id = :id
-        try {
-            $stmt = $pdo->prepare("UPDATE admin_users SET {$setClause} WHERE id = :id");
-            $stmt->execute(['password_hash' => $newHash, 'id' => $adminId]);
-            if ($stmt->rowCount() > 0) {
-                $dbUpdated = true;
+        if ($adminId !== '') {
+            try {
+                $stmt = $pdo->prepare("UPDATE admin_users SET {$setClause} WHERE id = :id");
+                $stmt->execute(['password_hash' => $newHash, 'id' => $adminId]);
+                if ($stmt->rowCount() > 0) {
+                    $dbUpdated = true;
+                }
+            } catch (Throwable $e) {
+                // will try by email/username next
             }
-        } catch (Throwable $e) {
-            // will try by email next
         }
 
         // Attempt 2: UPDATE WHERE email = :email (handles ID type mismatches)
@@ -130,19 +163,45 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
 
+        // Attempt 3: UPDATE WHERE username = :username
+        if (!$dbUpdated && $adminUsername !== '' && table_has_column($pdo, 'admin_users', 'username')) {
+            try {
+                $stmt = $pdo->prepare("UPDATE admin_users SET {$setClause} WHERE username = :username");
+                $stmt->execute(['password_hash' => $newHash, 'username' => $adminUsername]);
+                if ($stmt->rowCount() > 0) {
+                    $dbUpdated = true;
+                }
+            } catch (Throwable $e) {
+                // will try JSON next
+            }
+        }
+
         if ($dbUpdated) {
             $_SESSION['admin_must_change_password'] = false;
+            update_admin_user_in_json_by_identifiers($adminId, $adminEmail, $adminUsername, [
+                'password' => $newPassword,
+                'password_hash' => $newHash,
+                'must_change_password' => false,
+            ]);
             Security::logSecurityEvent('admin_password_changed', 'Password updated successfully in DB', $adminId);
             header('Location: dashboard.php?password_updated=1');
             exit;
         }
 
-        // Attempt 3: JSON fallback (used when DB has no matching row)
-        $jsonUpdated = update_admin_user_in_json($adminId, [
+        // Attempt 4: JSON fallback (used when DB has no matching row)
+        $jsonUpdated = update_admin_user_in_json_by_identifiers($adminId, $adminEmail, $adminUsername, [
             'password'             => $newPassword,
             'password_hash'        => $newHash,
             'must_change_password' => false,
         ]);
+
+        if (!$jsonUpdated && $adminId !== '') {
+            $jsonUpdated = update_admin_user_in_json($adminId, [
+                'password'             => $newPassword,
+                'password_hash'        => $newHash,
+                'must_change_password' => false,
+            ]);
+        }
 
         if ($jsonUpdated) {
             $_SESSION['admin_must_change_password'] = false;
