@@ -48,18 +48,12 @@ document.addEventListener("DOMContentLoaded", () => {
   function getBoardConfig(count) {
     if (isTextOnlyMode) {
       if (window.innerWidth <= 640) {
-        return { cols: 1, width: 240, height: 82 };
+        return { cols: 1, width: 226, height: 82 };
       }
-      if (count <= 4) {
-        return { cols: 2, width: 220, height: 86 };
+      if (window.innerWidth <= 980) {
+        return { cols: 2, width: 154, height: 82 };
       }
-      if (count <= 8) {
-        return { cols: 2, width: 205, height: 82 };
-      }
-      if (count <= 12) {
-        return { cols: 3, width: 178, height: 78 };
-      }
-      return { cols: 3, width: 166, height: 74 };
+      return { cols: 2, width: 172, height: 82 };
     }
 
     if (count <= 2) {

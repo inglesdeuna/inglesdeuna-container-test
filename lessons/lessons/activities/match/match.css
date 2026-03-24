@@ -20,6 +20,7 @@ body{
   align-content: start;
   justify-content: stretch;
   width: 100%;
+  min-width: 0;
 }
 
 .card,
@@ -98,6 +99,7 @@ body{
   font-weight: 800;
   letter-spacing: .15px;
   color: #0f172a;
+  white-space: normal;
   overflow-wrap: anywhere;
   word-break: break-word;
   hyphens: auto;
@@ -114,8 +116,11 @@ body{
 .text-only-mode .card,
 .text-only-mode .word{
   min-height: var(--tile-height, 78px);
-  padding: 14px 18px;
+  width: 100%;
+  max-width: 100%;
+  padding: 14px 22px;
   border-radius: 22px;
+  box-sizing: border-box;
 }
 
 .text-only-mode .match-tile-inner{
@@ -124,16 +129,15 @@ body{
 
 .text-only-mode .match-text{
   font-family: 'Fredoka', 'Trebuchet MS', sans-serif;
-  font-size: clamp(15px, 1vw + 12px, 24px);
-  line-height: 1.12;
+  font-size: clamp(14px, .8vw + 11px, 19px);
+  line-height: 1.08;
+  letter-spacing: .05px;
+  text-wrap: balance;
 }
 
-.text-only-mode .card .match-text{
-  color: #8a4b00;
-}
-
+.text-only-mode .card .match-text,
 .text-only-mode .word .match-text{
-  color: #075985;
+  font-size: inherit;
 }
 
 .word.correct{
@@ -223,7 +227,7 @@ body{
   }
 
   .text-only-mode .match-text{
-    font-size: clamp(14px, 2vw + 8px, 22px);
+    font-size: clamp(13px, 1.3vw + 9px, 17px);
   }
 }
 

@@ -320,7 +320,7 @@ ob_start();
 .match-columns{
     display:grid;
     grid-template-columns:repeat(2, minmax(0, 1fr));
-    gap:18px;
+    gap:30px;
     margin-top:18px;
 }
 
@@ -329,9 +329,10 @@ ob_start();
     background:#ffffff;
     border:1px solid #dbe7f5;
     border-radius:24px;
-    padding:18px;
+    padding:18px 16px;
     box-shadow:0 14px 28px rgba(15, 23, 42, .07);
     overflow:hidden;
+    min-width:0;
 }
 
 .match-column-card::before{
@@ -395,6 +396,7 @@ ob_start();
 @media (max-width: 760px){
     .match-columns{
         grid-template-columns:1fr;
+        gap:18px;
     }
 }
 </style>
