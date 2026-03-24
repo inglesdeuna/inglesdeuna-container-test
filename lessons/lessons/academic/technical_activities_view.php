@@ -422,7 +422,8 @@ body{
                             'listen_order' => '🎧',
                             'pronunciation' => '🎤',
                             'external' => '🌐',
-                            'flipbooks' => '📖'
+                            'flipbooks' => '📖',
+                            'powerpoint' => '🖥️'
                         ];
 
                         $icon = $icons[$typeRaw] ?? '📘';

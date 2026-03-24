@@ -45,7 +45,8 @@ $activityTypes = [
     "listen_order" => "Listen Order",
     "pronunciation" => "Pronunciation",
     "external" => "External",
-    "flipbooks" => "Flipbooks"
+    "flipbooks" => "Flipbooks",
+    "powerpoint" => "PowerPoint"
 ];
 
 /* ===============================

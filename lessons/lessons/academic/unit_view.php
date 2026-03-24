@@ -90,6 +90,7 @@ function activity_display_title(array $activity): string
         'drag_drop' => 'Drag & Drop',
         'match' => 'Match',
         'external' => 'External',
+        'powerpoint' => 'PowerPoint',
         'build_sentence' => 'Build the Sentence',
     ];
 
@@ -190,6 +191,7 @@ $activityLabels = [
     'drag_drop' => 'Drag & Drop',
     'match' => 'Match',
     'external' => 'External',
+    'powerpoint' => 'PowerPoint',
     'build_sentence' => 'Build the Sentence',
 ];
 ?>

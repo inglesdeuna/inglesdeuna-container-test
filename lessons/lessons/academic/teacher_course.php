@@ -387,6 +387,7 @@ $activityTypeLabels = [
     'drag_drop' => 'Drag & Drop',
     'match' => 'Match',
     'external' => 'External',
+    'powerpoint' => 'PowerPoint',
     'build_sentence' => 'Build the Sentence',
 ];
 
