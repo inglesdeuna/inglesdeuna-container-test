@@ -470,14 +470,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (string) ($_POST['action'] ?? '') =
         exit;
     }
 
-    $orderedIds = $_POST['order'] ?? [];
-    if (!is_array($orderedIds) || empty($orderedIds)) {
+    $orderedIds = isset($_POST['order']) && is_array($_POST['order']) 
+        ? array_filter(array_map('strval', $_POST['order']), fn($id) => trim($id) !== '')
+        : [];
+    
+    if (empty($orderedIds)) {
         http_response_code(422);
         echo json_encode(['status' => 'error', 'message' => 'No se recibió un orden válido.']);
         exit;
     }
 
-    $updated = update_activities_order($pdo, (string) ($selectedUnit['id'] ?? ''), $orderedIds);
+    $updated = update_activities_order($pdo, (string) ($selectedUnit['id'] ?? ''), array_values($orderedIds));
 
     if (!$updated) {
         http_response_code(422);
@@ -1004,11 +1007,14 @@ body{
 
     let draggedItem = null;
     let isSaving = false;
-    let lastOrder = getCurrentOrder();
+    let lastOrder = [];
 
     function getCurrentOrder() {
         return Array.from(container.querySelectorAll('.draggable')).map(item => item.dataset.id || '');
     }
+
+    // Initialize lastOrder after DOM is ready
+    lastOrder = getCurrentOrder();
 
     function setStatus(message, isError) {
         status.textContent = message;
@@ -1055,13 +1061,22 @@ body{
             const data = await response.json().catch(() => ({}));
 
             if (!response.ok || data.status !== 'success') {
-                throw new Error(data.message || 'Error al guardar el orden.');
+                const errorMsg = data.message || 'Error al guardar el orden.';
+                console.error('Reorder error response:', { status: response.status, data });
+                throw new Error(errorMsg);
             }
 
             lastOrder = order;
             setStatus('Orden guardado correctamente.', false);
+            
+            // Reload page after 1 second to show updated order
+            setTimeout(() => {
+                window.location.reload();
+            }, 1000);
         } catch (error) {
-            setStatus((error && error.message) ? error.message : 'No fue posible guardar el orden.', true);
+            const errMsg = (error && error.message) ? error.message : 'No fue posible guardar el orden.';
+            setStatus(errMsg, true);
+            console.error('Reorder failed:', error);
         } finally {
             isSaving = false;
         }
