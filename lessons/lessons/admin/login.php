@@ -30,9 +30,28 @@ function table_has_column(PDO $pdo, string $tableName, string $columnName): bool
 function ensure_admin_recovery_columns(PDO $pdo): void
 {
     try {
+        // Create table if it has never been created
+        $pdo->exec("
+            CREATE TABLE IF NOT EXISTS admin_users (
+                id        SERIAL PRIMARY KEY,
+                email     TEXT NOT NULL,
+                username  TEXT,
+                password_hash          TEXT NOT NULL DEFAULT '',
+                role                   TEXT NOT NULL DEFAULT 'admin',
+                is_active              BOOLEAN DEFAULT TRUE,
+                must_change_password   BOOLEAN DEFAULT FALSE,
+                password_updated_at    TIMESTAMP,
+                created_at             TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ");
+
+        // Add columns that may be missing in older installations
         $pdo->exec("ALTER TABLE admin_users ADD COLUMN IF NOT EXISTS username TEXT");
         $pdo->exec("ALTER TABLE admin_users ADD COLUMN IF NOT EXISTS must_change_password BOOLEAN DEFAULT FALSE");
         $pdo->exec("ALTER TABLE admin_users ADD COLUMN IF NOT EXISTS password_updated_at TIMESTAMP");
+
+        // Make sure existing rows that have must_change_password = NULL are treated as FALSE
+        $pdo->exec("UPDATE admin_users SET must_change_password = FALSE WHERE must_change_password IS NULL");
     } catch (Throwable $e) {
         // Si la tabla no existe o el motor no permite la alteración, el login sigue funcionando sin recovery avanzado.
     }

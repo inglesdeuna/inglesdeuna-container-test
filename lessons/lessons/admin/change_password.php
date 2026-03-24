@@ -91,44 +91,68 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } elseif ($newPassword !== $confirmPassword) {
         $error = 'La confirmación de la contraseña no coincide.';
     } else {
+        $newHash  = Security::hashPassword($newPassword);
+        $adminId  = (string) ($_SESSION['admin_id']    ?? '');
+        $adminEmail = (string) ($_SESSION['admin_email'] ?? '');
+
+        $setParts = ['password_hash = :password_hash'];
+        if ($hasMustChangePasswordColumn) {
+            $setParts[] = 'must_change_password = FALSE';
+        }
+        if ($hasPasswordUpdatedAtColumn) {
+            $setParts[] = 'password_updated_at = CURRENT_TIMESTAMP';
+        }
+        $setClause = implode(', ', $setParts);
+
+        $dbUpdated = false;
+
+        // Attempt 1: UPDATE WHERE id = :id
         try {
-            $setParts = ['password_hash = :password_hash'];
-            if ($hasMustChangePasswordColumn) {
-                $setParts[] = 'must_change_password = FALSE';
+            $stmt = $pdo->prepare("UPDATE admin_users SET {$setClause} WHERE id = :id");
+            $stmt->execute(['password_hash' => $newHash, 'id' => $adminId]);
+            if ($stmt->rowCount() > 0) {
+                $dbUpdated = true;
             }
-            if ($hasPasswordUpdatedAtColumn) {
-                $setParts[] = 'password_updated_at = CURRENT_TIMESTAMP';
+        } catch (Throwable $e) {
+            // will try by email next
+        }
+
+        // Attempt 2: UPDATE WHERE email = :email (handles ID type mismatches)
+        if (!$dbUpdated && $adminEmail !== '') {
+            try {
+                $stmt = $pdo->prepare("UPDATE admin_users SET {$setClause} WHERE email = :email");
+                $stmt->execute(['password_hash' => $newHash, 'email' => $adminEmail]);
+                if ($stmt->rowCount() > 0) {
+                    $dbUpdated = true;
+                }
+            } catch (Throwable $e) {
+                // will try JSON next
             }
+        }
 
-            $sql = 'UPDATE admin_users SET ' . implode(', ', $setParts) . ' WHERE id = :id';
-            $stmt = $pdo->prepare($sql);
-            $stmt->execute([
-                'password_hash' => Security::hashPassword($newPassword),
-                'id' => (string) ($_SESSION['admin_id'] ?? ''),
-            ]);
-
+        if ($dbUpdated) {
             $_SESSION['admin_must_change_password'] = false;
-            Security::logSecurityEvent('admin_password_changed', 'Password updated successfully', (string) ($_SESSION['admin_id'] ?? 'unknown'));
+            Security::logSecurityEvent('admin_password_changed', 'Password updated successfully in DB', $adminId);
             header('Location: dashboard.php?password_updated=1');
             exit;
-        } catch (Throwable $e) {
-            $adminId = (string) ($_SESSION['admin_id'] ?? 'unknown');
-            $jsonUpdated = update_admin_user_in_json($adminId, [
-                'password' => $newPassword,
-                'password_hash' => Security::hashPassword($newPassword),
-                'must_change_password' => false,
-            ]);
-
-            if ($jsonUpdated) {
-                $_SESSION['admin_must_change_password'] = false;
-                Security::logSecurityEvent('admin_password_changed', 'Password updated successfully in JSON fallback', $adminId);
-                header('Location: dashboard.php?password_updated=1');
-                exit;
-            }
-
-            Security::logSecurityEvent('admin_password_change_failed', 'Database error: ' . $e->getMessage(), $adminId);
-            $error = 'No fue posible actualizar la contraseña. Intenta nuevamente.';
         }
+
+        // Attempt 3: JSON fallback (used when DB has no matching row)
+        $jsonUpdated = update_admin_user_in_json($adminId, [
+            'password'             => $newPassword,
+            'password_hash'        => $newHash,
+            'must_change_password' => false,
+        ]);
+
+        if ($jsonUpdated) {
+            $_SESSION['admin_must_change_password'] = false;
+            Security::logSecurityEvent('admin_password_changed', 'Password updated via JSON fallback (no matching DB row)', $adminId);
+            header('Location: dashboard.php?password_updated=1');
+            exit;
+        }
+
+        Security::logSecurityEvent('admin_password_change_failed', 'Could not update password (DB and JSON both failed)', $adminId);
+        $error = 'No fue posible actualizar la contraseña. Intenta nuevamente.';
     }
 }
 ?>
