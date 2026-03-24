@@ -431,17 +431,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <title>Perfiles Docente</title>
 <style>
 :root{
-    --bg:#eef2f7;
+    --bg:#eef7f0;
     --card:#ffffff;
-    --line:#dce4f0;
-    --text:#1f2937;
-    --subtitle:#2c3e50;
-    --muted:#5b6577;
-    --blue:#1f66cc;
-    --blue-hover:#2f5bb5;
+    --line:#d8e8dc;
+    --text:#1f3b28;
+    --subtitle:#2a5136;
+    --muted:#5d7465;
+    --blue:#2f9e44;
+    --blue-hover:#237a35;
     --orange:#ff6600;
     --green:#166534;
-    --head:#f7faff;
+    --head:#f3fbf5;
     --success-bg:#ecfdf3;
     --success-border:#b9eacb;
     --success-text:#166534;
@@ -450,7 +450,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     --error-text:#9f1d1d;
     --danger:#dc2626;
     --danger-hover:#b91c1c;
-    --shadow:0 8px 24px rgba(0,0,0,.08);
+    --shadow:0 10px 24px rgba(0,0,0,.08);
     --radius:14px;
 }
 
@@ -527,7 +527,7 @@ a:hover{
     margin:0 0 10px;
     font-size:28px;
     line-height:1.2;
-    color:#1f3c75;
+    color:var(--text);
 }
 
 .card-header h2{
@@ -605,7 +605,7 @@ select{
 input[type="text"]:focus,
 select:focus{
     border-color:var(--blue);
-    box-shadow:0 0 0 3px rgba(31,102,204,.12);
+    box-shadow:0 0 0 3px rgba(47,158,68,.15);
 }
 
 input[readonly]{
@@ -683,8 +683,8 @@ tbody tr:last-child td{
     font-size:12px;
     font-weight:700;
     white-space:nowrap;
-    background:#eef2ff;
-    color:#1f4ec9;
+    background:#e9f8ee;
+    color:var(--blue-hover);
 }
 
 .actions{
@@ -706,13 +706,13 @@ tbody tr:last-child td{
 }
 
 .edit-btn{
-    background:#eef4ff;
+    background:#eef9f1;
     color:var(--blue);
-    border:1px solid #cfe0ff;
+    border:1px solid #cce8d4;
 }
 
 .edit-btn:hover{
-    background:#dceaff;
+    background:#dff3e5;
     text-decoration:none;
 }
 

@@ -55,10 +55,21 @@ foreach ($rows as $row) {
 <title>Cursos creados - English</title>
 
 <style>
+:root{
+    --bg:#eef7f0;
+    --card:#ffffff;
+    --line:#d8e8dc;
+    --text:#1f3b28;
+    --green:#2f9e44;
+    --green-dark:#237a35;
+    --gray:#6f7e73;
+    --shadow:0 10px 24px rgba(0,0,0,.08);
+}
 body{
     font-family: Arial, sans-serif;
-    background:#eef2f7;
+    background:var(--bg);
     padding:40px;
+    color:var(--text);
 }
 
 .container{
@@ -69,7 +80,7 @@ body{
 .back{
     display:inline-block;
     margin-bottom:25px;
-    background:#6b7280;
+    background:linear-gradient(180deg,#7b8b7f,#66756a);
     color:#fff;
     padding:10px 18px;
     border-radius:8px;
@@ -78,10 +89,11 @@ body{
 }
 
 .card{
-    background:#ffffff;
+    background:var(--card);
     padding:30px;
     border-radius:18px;
-    box-shadow:0 15px 35px rgba(0,0,0,.08);
+    box-shadow:var(--shadow);
+    border:1px solid var(--line);
     margin-bottom:25px;
 }
 
@@ -91,7 +103,8 @@ body{
 }
 
 .phase-item{
-    background:#eef2ff;
+    background:#f7fcf8;
+    border:1px solid var(--line);
     padding:15px 18px;
     border-radius:12px;
     margin-bottom:12px;
@@ -101,7 +114,7 @@ body{
 }
 
 .btn{
-    background:#2563eb;
+    background:linear-gradient(180deg,var(--green),var(--green-dark));
     color:#fff;
     padding:8px 16px;
     border-radius:8px;

@@ -1077,7 +1077,7 @@ if ($selectedProgram === 'technical' && $editRecord) {
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Asignaciones de estudiantes</title>
     <style>
-        :root{--bg:#eef2f7;--card:#fff;--line:#dce4f0;--text:#1f2937;--title:#1f3c75;--subtitle:#2c3e50;--muted:#5b6577;--head:#f7faff;--blue:#1f66cc;--blue-hover:#2f5bb5;--badge-bg:#eef2ff;--badge-text:#1f4ec9;--danger:#dc2626;--shadow:0 8px 24px rgba(0,0,0,.08)}
+        :root{--bg:#eef7f0;--card:#fff;--line:#d8e8dc;--text:#1f3b28;--title:#1f3b28;--subtitle:#2a5136;--muted:#5d7465;--head:#f3fbf5;--blue:#2f9e44;--blue-hover:#237a35;--badge-bg:#e9f8ee;--badge-text:#237a35;--danger:#dc2626;--shadow:0 10px 24px rgba(0,0,0,.08)}
         *{box-sizing:border-box} body{margin:0;font-family:Arial,sans-serif;background:var(--bg);color:var(--text);padding:30px}
         .page{max-width:1100px;margin:0 auto}.back{display:inline-block;margin-bottom:16px;text-decoration:none;color:var(--blue);font-weight:700;font-size:14px}
         .page-title{font-size:28px;font-weight:700;color:var(--title);margin:0 0 18px}.notice{background:#ecfdf3;border:1px solid #b9eacb;color:#166534;border-radius:14px;padding:12px 14px;margin-bottom:18px;box-shadow:var(--shadow)}
@@ -1086,14 +1086,14 @@ if ($selectedProgram === 'technical' && $editRecord) {
         .card-body{padding:20px}.form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.field{display:flex;flex-direction:column;min-width:0}.field.full{grid-column:1/-1}
         label{font-size:12px;font-weight:700;color:var(--text);margin:0 0 8px;text-transform:uppercase;letter-spacing:.2px}
         select,input,button{width:100%;min-height:42px;border-radius:10px;border:1px solid #c7d3e3;background:#fff;color:var(--text);padding:10px 12px;font-size:14px}
-        select:focus,input:focus,button:focus{outline:none;border-color:#7d9dff;box-shadow:0 0 0 3px rgba(70,96,220,.1)}
+        select:focus,input:focus,button:focus{outline:none;border-color:#6ab786;box-shadow:0 0 0 3px rgba(47,158,68,.15)}
         .button-primary{border:none;background:var(--blue);color:#fff;font-weight:700;font-size:14px;cursor:pointer}.button-primary:hover{background:var(--blue-hover)}
         .hint{margin-top:7px;font-size:12px;color:var(--muted)}.hint a{color:var(--blue);text-decoration:none;font-weight:700}
         .table-wrap{width:100%;border:1px solid var(--line);border-radius:14px;background:#fff;overflow:hidden}.table-scroll{width:100%;overflow-x:auto}
         table{width:100%;min-width:1100px;border-collapse:separate;border-spacing:0} thead th{background:var(--head);color:var(--text);font-size:12px;font-weight:700;text-transform:uppercase;padding:12px;text-align:left;white-space:nowrap}
         tbody td{padding:12px;border-bottom:1px solid #e8eef6;font-size:14px;color:var(--text);vertical-align:top}tbody tr:last-child td{border-bottom:none}
         .program-badge{display:inline-block;padding:4px 8px;border-radius:999px;background:var(--badge-bg);color:var(--badge-text);font-size:12px;font-weight:700;white-space:nowrap}
-        .credential-box{display:flex;flex-direction:column;gap:4px}.credential-chip{display:inline-block;padding:4px 8px;border-radius:999px;background:#f3f6fb;color:#324968;font-size:12px;font-weight:700;width:max-content;max-width:100%;word-break:break-word}
+        .credential-box{display:flex;flex-direction:column;gap:4px}.credential-chip{display:inline-block;padding:4px 8px;border-radius:999px;background:#edf9f1;color:#2a5136;font-size:12px;font-weight:700;width:max-content;max-width:100%;word-break:break-word}
         .actions{white-space:nowrap}.actions a{text-decoration:none;font-weight:700}.actions a:first-child{color:var(--blue)}.actions a:last-child{color:var(--danger)}.muted{color:var(--muted)}
         @media (max-width:768px){body{padding:20px}.page-title{font-size:24px}.card-header h2{font-size:20px}.form-grid{grid-template-columns:1fr}.button-primary{font-size:12px}}
     </style>

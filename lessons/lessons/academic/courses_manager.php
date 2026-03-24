@@ -110,18 +110,31 @@ $courses = $stmtCourses->fetchAll(PDO::FETCH_ASSOC);
 <title><?= htmlspecialchars($program["name"]) ?></title>
 
 <style>
+:root{
+    --bg:#eef7f0;
+    --card:#ffffff;
+    --line:#d8e8dc;
+    --text:#1f3b28;
+    --muted:#5d7465;
+    --green:#2f9e44;
+    --green-dark:#237a35;
+    --gray:#6f7e73;
+    --shadow:0 10px 24px rgba(0,0,0,.08);
+}
 body {
-    font-family: Arial;
-    background: #f4f8ff;
+    font-family: Arial, sans-serif;
+    background: var(--bg);
     padding: 40px;
+    color: var(--text);
 }
 
 .card {
-    background: #fff;
+    background: var(--card);
     padding: 25px;
     border-radius: 14px;
     max-width: 800px;
-    box-shadow: 0 10px 25px rgba(0,0,0,.08);
+    box-shadow: var(--shadow);
+    border:1px solid var(--line);
     margin-bottom: 25px;
 }
 
@@ -130,13 +143,13 @@ input {
     padding: 12px;
     margin-top: 10px;
     border-radius: 8px;
-    border: 1px solid #ddd;
+    border: 1px solid var(--line);
 }
 
 button {
     margin-top: 15px;
     padding: 10px 18px;
-    background: #2563eb;
+    background: linear-gradient(180deg,var(--green),var(--green-dark));
     color: #fff;
     border: none;
     border-radius: 8px;
@@ -145,7 +158,8 @@ button {
 }
 
 .item {
-    background: #eef2ff;
+    background: #f7fcf8;
+    border:1px solid var(--line);
     padding: 15px;
     border-radius: 10px;
     margin-bottom: 10px;
@@ -155,7 +169,7 @@ button {
 }
 
 .btn {
-    background: #2563eb;
+    background: linear-gradient(180deg,var(--green),var(--green-dark));
     color: #fff;
     padding: 8px 14px;
     border-radius: 8px;
@@ -188,7 +202,7 @@ button {
 .back {
     display: inline-block;
     margin-bottom: 25px;
-    background: #6b7280;
+    background: linear-gradient(180deg,#7b8b7f,#66756a);
     color: #fff;
     padding: 10px 16px;
     border-radius: 8px;

@@ -198,13 +198,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <title>Inscripciones Estudiantes</title>
 <style>
 :root{
-    --bg:#eef2f7;--card:#ffffff;--line:#dce4f0;--text:#1f2937;--title:#1f3c75;--subtitle:#2c3e50;
-    --muted:#5b6577;--blue:#1f66cc;--blue-hover:#2f5bb5;--badge-bg:#eef2ff;--badge-text:#1f4ec9;
+    --bg:#eef7f0;--card:#ffffff;--line:#d8e8dc;--text:#1f3b28;--title:#1f3b28;--subtitle:#2a5136;
+    --muted:#5d7465;--blue:#2f9e44;--blue-hover:#237a35;--badge-bg:#e9f8ee;--badge-text:#237a35;
     --shadow:0 8px 24px rgba(0,0,0,.08);--success-bg:#ecfdf3;--success-border:#b9eacb;--success-text:#166534;
     --error-bg:#fff2f2;--error-border:#f3b5b5;--error-text:#9f1d1d;
 }
 *{box-sizing:border-box}
-body{font-family:Arial,sans-serif;background:#eef2f7;padding:30px;color:#1f2937;margin:0}
+body{font-family:Arial,sans-serif;background:var(--bg);padding:30px;color:var(--text);margin:0}
 .wrapper{max-width:1100px;margin:0 auto}
 .back{display:inline-block;margin-bottom:16px;color:#1f66cc;text-decoration:none;font-weight:700;font-size:14px}
 .page-title{font-size:28px;font-weight:700;color:#1f3c75;margin:0 0 18px}
@@ -220,15 +220,15 @@ body{font-family:Arial,sans-serif;background:#eef2f7;padding:30px;color:#1f2937;
 .field{display:flex;flex-direction:column}
 .field.full{grid-column:1/-1}
 label{font-size:12px;font-weight:700;color:#1f2937;margin:0 0 8px;text-transform:uppercase;letter-spacing:.2px}
-input,button{width:100%;min-height:42px;border-radius:10px;border:1px solid #c7d3e3;background:#fff;color:#1f2937;padding:10px 12px;font-size:14px;font-family:Arial,sans-serif}
-input:focus,button:focus{outline:none;border-color:#7d9dff;box-shadow:0 0 0 3px rgba(70,96,220,.10)}
+input,button{width:100%;min-height:42px;border-radius:10px;border:1px solid #c7d3e3;background:#fff;color:var(--text);padding:10px 12px;font-size:14px;font-family:Arial,sans-serif}
+input:focus,button:focus{outline:none;border-color:#6ab786;box-shadow:0 0 0 3px rgba(47,158,68,.15)}
 .button-primary{border:none;background:#1f66cc;color:#fff;font-weight:700;cursor:pointer;transition:background .2s ease}
 .button-primary:hover{background:#2f5bb5}
 .table-wrap{width:100%;border:1px solid #dce4f0;border-radius:14px;background:#fff;overflow:hidden}
 .table-scroll{width:100%;overflow-x:auto}
 table{width:100%;min-width:900px;border-collapse:separate;border-spacing:0}
-thead th{background:#f7faff;color:#1f2937;font-size:12px;font-weight:700;text-transform:uppercase;padding:12px;text-align:left;white-space:nowrap}
-tbody td{padding:12px;border-bottom:1px solid #e8eef6;font-size:14px;color:#1f2937;vertical-align:top}
+thead th{background:#f3fbf5;color:var(--text);font-size:12px;font-weight:700;text-transform:uppercase;padding:12px;text-align:left;white-space:nowrap}
+tbody td{padding:12px;border-bottom:1px solid #e8eef6;font-size:14px;color:var(--text);vertical-align:top}
 tbody tr:last-child td{border-bottom:none}
 .badge{display:inline-block;padding:4px 8px;border-radius:999px;background:#eef2ff;color:#1f4ec9;font-size:12px;font-weight:700}
 .small{font-size:13px;color:#5b6577}

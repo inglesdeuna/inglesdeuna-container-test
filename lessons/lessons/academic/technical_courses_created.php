@@ -45,10 +45,22 @@ $semestres = $stmt->fetchAll(PDO::FETCH_ASSOC);
 <title>Semestres creados</title>
 
 <style>
+:root{
+    --bg:#eef7f0;
+    --card:#ffffff;
+    --line:#d8e8dc;
+    --text:#1f3b28;
+    --muted:#5d7465;
+    --green:#2f9e44;
+    --green-dark:#237a35;
+    --gray:#6f7e73;
+    --shadow:0 10px 24px rgba(0,0,0,.08);
+}
 body {
-    font-family: 'Segoe UI', sans-serif;
-    background: #eef2f7;
+    font-family: Arial, sans-serif;
+    background: var(--bg);
     padding: 40px;
+    color:var(--text);
 }
 
 /* CONTENEDOR CENTRAL */
@@ -61,7 +73,7 @@ body {
 .back {
     display: inline-block;
     margin-bottom: 25px;
-    background: #6b7280;
+    background: linear-gradient(180deg,#7b8b7f,#66756a);
     color: white;
     padding: 10px 18px;
     border-radius: 8px;
@@ -71,10 +83,11 @@ body {
 
 /* CARD */
 .card {
-    background: white;
+    background: var(--card);
     padding: 30px;
     border-radius: 18px;
-    box-shadow: 0 15px 35px rgba(0,0,0,.08);
+    box-shadow: var(--shadow);
+    border:1px solid var(--line);
 }
 
 /* TÍTULO */
@@ -84,7 +97,8 @@ body {
 
 /* ITEM FILA */
 .row {
-    background: #f4f6fb;
+    background: #f7fcf8;
+    border:1px solid var(--line);
     padding: 15px 20px;
     border-radius: 12px;
     margin-bottom: 15px;
@@ -106,7 +120,7 @@ body {
 }
 
 .btn-view {
-    background: #2563eb;
+    background: linear-gradient(180deg,var(--green),var(--green-dark));
     color: white;
     padding: 8px 14px;
     border-radius: 8px;
