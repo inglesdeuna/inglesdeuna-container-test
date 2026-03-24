@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 session_start();
 
 if (!isset($_SESSION['academic_logged']) || $_SESSION['academic_logged'] !== true) {
@@ -9,6 +9,29 @@ if (!isset($_SESSION['academic_logged']) || $_SESSION['academic_logged'] !== tru
 function h(string $value): string
 {
     return htmlspecialchars($value, ENT_QUOTES, 'UTF-8');
+}
+
+function teacher_initials(string $name): string
+{
+    $name = trim($name);
+    if ($name === '') return 'DC';
+    $parts = preg_split('/\s+/', $name) ?: [];
+    $initials = '';
+    foreach ($parts as $part) {
+        if ($part === '') continue;
+        $initials .= strtoupper(substr($part, 0, 1));
+        if (strlen($initials) === 2) break;
+    }
+    return $initials !== '' ? $initials : 'DC';
+}
+
+function resolve_photo_src(string $photo): string
+{
+    $photo = trim($photo);
+    if ($photo === '') return '';
+    if (preg_match('/^https?:\/\//i', $photo)) return $photo;
+    $full = __DIR__ . '/' . ltrim($photo, '/');
+    return is_file($full) ? htmlspecialchars($photo, ENT_QUOTES, 'UTF-8') : '';
 }
 
 function get_pdo_connection(): ?PDO
@@ -287,7 +310,7 @@ $mode = $mode === 'edit' ? 'edit' : 'view';
 $step = max(0, (int) ($_GET['step'] ?? 0));
 
 if ($assignmentId === '') {
-    die('Asignación docente no especificada.');
+    die('AsignaciÃ³n docente no especificada.');
 }
 
 $assignment = load_assignment($pdo, $assignmentId);
@@ -398,7 +421,11 @@ if ($current) {
     $currentTypeLabel = $activityTypeLabels[$currentType] ?? ucwords(str_replace('_', ' ', $type));
 }
 
-$logoPath = '../hangman/assets/LETS%20NUEVO%20-%20copia.jpeg';
+$teacherName    = trim((string) ($_SESSION['teacher_name'] ?? 'Docente'));
+$teacherInitials = teacher_initials($teacherName);
+$teacherPhotoRaw = trim((string) ($_SESSION['teacher_photo'] ?? ''));
+$teacherPhotoSrc = resolve_photo_src($teacherPhotoRaw);
+
 $backDashboard = 'dashboard.php?assignment=' . urlencode($assignmentId) . '&unit=' . urlencode($selectedUnitId) . '#unidades-curso';
 ?>
 <!DOCTYPE html>
@@ -406,378 +433,334 @@ $backDashboard = 'dashboard.php?assignment=' . urlencode($assignmentId) . '&unit
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Actividad</title>
+<title><?php echo h($currentTypeLabel); ?> â€” <?php echo h((string)($assignment['course_name'] ?? 'Curso')); ?></title>
 <style>
 :root{
-    --bg:#eef2f7;
-    --card:#ffffff;
-    --line:#dce4f0;
-    --text:#1f2937;
-    --muted:#5b6577;
-    --blue:#1f66cc;
-    --shadow:0 8px 24px rgba(0,0,0,.08);
-    --topbar:#3d69cf;
-    --topbar-dark:#2f59b8;
+  --bg:#eef5ff;
+  --card:#ffffff;
+  --line:#d6e4ff;
+  --text:#16325c;
+  --title:#0f1f42;
+  --muted:#5f7294;
+  --primary:#2563eb;
+  --primary-dark:#1d4ed8;
+  --primary-light:#eff6ff;
+  --shadow:0 8px 24px rgba(0,0,0,.09);
+  --shadow-sm:0 2px 8px rgba(0,0,0,.06);
+  --radius:16px;
+  --topbar-h:64px;
+  --sidebar-w:220px;
 }
-*{ box-sizing:border-box; }
-html, body{ height:100%; }
-body{
-    margin:0;
-    font-family:Arial, sans-serif;
-    background:var(--bg);
-    color:var(--text);
-}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{font-family:Arial,sans-serif;background:var(--bg);color:var(--text)}
+
+/* â”€â”€ TOPBAR â”€â”€ */
 .topbar{
-    background:linear-gradient(180deg, var(--topbar), var(--topbar-dark));
-    padding:14px 24px;
-    color:#fff;
+  position:sticky;top:0;z-index:100;
+  height:var(--topbar-h);
+  background:linear-gradient(180deg,#2d5fd4,#1a45b8);
+  display:flex;align-items:center;
+  padding:0 20px;gap:14px;
+  box-shadow:0 2px 12px rgba(26,69,184,.35);
 }
-.topbar-inner{
-    max-width:1380px;
-    margin:0 auto;
-    display:grid;
-    grid-template-columns:140px 1fr 140px;
-    align-items:center;
-    gap:12px;
+.topbar-back{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:8px 14px;border-radius:10px;
+  background:rgba(255,255,255,.15);
+  color:#fff;text-decoration:none;
+  font-size:13px;font-weight:700;flex-shrink:0;
+  transition:background .2s;
 }
+.topbar-back:hover{background:rgba(255,255,255,.26)}
+.topbar-center{flex:1;text-align:center;min-width:0}
 .topbar-title{
-    text-align:center;
-    font-size:24px;
-    font-weight:700;
-    margin:0;
+  font-size:16px;font-weight:800;color:#fff;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
 }
-.top-btn{
-    display:inline-block;
-    padding:10px 14px;
-    border-radius:10px;
-    color:#fff;
-    text-decoration:none;
-    font-size:13px;
-    font-weight:700;
-    box-shadow:var(--shadow);
+.topbar-sub{font-size:12px;color:rgba(255,255,255,.75);margin-top:2px}
+.topbar-avatar{
+  flex-shrink:0;width:40px;height:40px;border-radius:50%;overflow:hidden;
+  background:rgba(255,255,255,.2);border:2px solid rgba(255,255,255,.4);
+  display:flex;align-items:center;justify-content:center;
+  font-size:14px;font-weight:800;color:#fff;letter-spacing:.05em;
+  cursor:default;
 }
-.top-btn.back{
-    background:#3359b8;
-    justify-self:start;
+.topbar-avatar img{width:100%;height:100%;object-fit:cover;display:block}
+
+/* â”€â”€ OUTER â”€â”€ */
+.outer{
+  display:flex;
+  height:calc(100dvh - var(--topbar-h));
+  overflow:hidden;
 }
-.top-btn.logout{
-    background:#d95b5b;
-    justify-self:end;
-}
-.page{
-    max-width:1380px;
-    margin:0 auto;
-    padding:16px 20px 20px;
-}
-.layout{
-    display:grid;
-    grid-template-columns:165px 1fr;
-    gap:18px;
-    align-items:start;
-}
+
+/* â”€â”€ SIDEBAR â”€â”€ */
 .sidebar{
-    background:#eaf0fb;
-    min-height:calc(100vh - 110px);
-    padding:20px 12px;
+  width:var(--sidebar-w);flex-shrink:0;
+  background:var(--card);border-right:1px solid var(--line);
+  display:flex;flex-direction:column;overflow-y:auto;
+  padding:16px 12px 20px;gap:6px;
 }
-.logo-wrap{
-    text-align:center;
-    margin-bottom:18px;
+.sidebar-profile{
+  text-align:center;padding:12px 8px 16px;
+  border-bottom:1px solid var(--line);margin-bottom:6px;
 }
-.logo-wrap img{
-    width:110px;
-    max-width:100%;
-    border-radius:10px;
-    display:block;
-    margin:0 auto;
+.sidebar-avatar{
+  width:72px;height:72px;border-radius:50%;margin:0 auto 10px;
+  overflow:hidden;
+  background:linear-gradient(135deg,var(--primary-light),#dbeafe);
+  border:3px solid #e0eeff;
+  display:flex;align-items:center;justify-content:center;
+  font-size:24px;font-weight:800;color:var(--primary-dark);
 }
-.side-btn{
-    display:block;
-    width:100%;
-    padding:12px 10px;
-    margin-bottom:12px;
-    border-radius:10px;
-    text-decoration:none;
-    color:#fff;
-    font-size:13px;
-    font-weight:700;
-    text-align:center;
-    box-shadow:var(--shadow);
+.sidebar-avatar img{width:100%;height:100%;object-fit:cover;display:block}
+.sidebar-name{font-size:13px;font-weight:700;color:var(--title);margin-bottom:3px}
+.sidebar-role{font-size:11px;color:var(--muted)}
+.sidebar-label{
+  font-size:10px;font-weight:800;text-transform:uppercase;
+  letter-spacing:.1em;color:var(--muted);
+  padding:10px 4px 4px;
 }
-.side-btn.blue{
-    background:linear-gradient(180deg,#4f77df,#355fc9);
+.nav-link{
+  display:flex;align-items:center;gap:8px;
+  padding:10px 12px;border-radius:10px;
+  text-decoration:none;color:var(--text);
+  font-size:13px;font-weight:600;
+  transition:background .15s,color .15s;
 }
-.side-btn.orange{
-    background:linear-gradient(180deg,#f2b33e,#e39a12);
+.nav-link:hover{background:var(--primary-light);color:var(--primary-dark)}
+.nav-link.primary{
+  background:linear-gradient(180deg,#3d73ee,#2054d4);
+  color:#fff;
 }
-.side-btn.green{
-    background:linear-gradient(180deg,#62c56c,#40a853);
+.nav-link.primary:hover{filter:brightness(1.07)}
+.nav-link.accent{
+  background:linear-gradient(180deg,#fbbf24,#d97706);
+  color:#fff;
 }
-.content{
-    padding:4px 0;
+.nav-link.accent:hover{filter:brightness(1.07)}
+.nav-link.danger{color:#dc2626}
+.nav-link.danger:hover{background:#fff0f0;color:#b91c1c}
+
+/* â”€â”€ MAIN CONTENT â”€â”€ */
+.view-area{
+  flex:1;display:flex;flex-direction:column;
+  overflow:hidden;padding:14px 16px 0;gap:10px;
 }
-.viewer-shell{
-    background:#f2f5fb;
-    border-radius:22px;
-    padding:18px;
-    border:1px solid var(--line);
-    box-shadow:var(--shadow);
+.act-header{
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  flex-shrink:0;flex-wrap:wrap;
 }
-.viewer-card{
-    background:var(--card);
-    border-radius:20px;
-    border:1px solid var(--line);
-    box-shadow:var(--shadow);
-    padding:12px 12px 14px;
+.act-title{font-size:18px;font-weight:800;color:var(--title)}
+.act-meta{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.act-badge{
+  display:inline-flex;align-items:center;
+  padding:5px 12px;border-radius:999px;
+  background:var(--primary-light);color:var(--primary-dark);
+  font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;
 }
-.viewer-header{
-    margin-bottom:8px;
+.edit-link{
+  display:inline-flex;align-items:center;gap:5px;
+  padding:6px 12px;border-radius:8px;
+  background:linear-gradient(180deg,#fbbf24,#d97706);
+  color:#fff;font-size:12px;font-weight:700;text-decoration:none;
+  box-shadow:var(--shadow-sm);transition:filter .15s;
 }
-.viewer-title{
-    margin:0 0 4px;
-    font-size:18px;
-    font-weight:700;
-    color:#3c63c7;
+.edit-link:hover{filter:brightness(1.08)}
+
+/* â”€â”€ IFRAME â”€â”€ */
+.frame-wrap{
+  flex:1;border-radius:var(--radius);overflow:hidden;
+  background:#fff;border:1px solid var(--line);
+  box-shadow:var(--shadow);min-height:0;
 }
-.viewer-subtitle{
-    margin:0;
-    font-size:13px;
-    color:var(--muted);
-}
-.viewer-frame-wrap{
-    background:#dfe8f4;
-    border:1px solid #d8e3f1;
-    border-radius:16px;
-    padding:8px;
-    height:calc(100vh - 250px);
-    min-height:560px;
-    overflow:hidden;
-}
-.viewer-frame{
-    width:100%;
-    height:100%;
-    border:0;
-    border-radius:14px;
-    background:#fff;
-    display:block;
-}
+.frame-wrap iframe{display:block;width:100%;height:100%;border:0}
+
+/* â”€â”€ CONTROLS â”€â”€ */
 .controls{
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
-    gap:16px;
-    margin-top:14px;
+  flex-shrink:0;
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  padding:10px 0 14px;
 }
-.nav-btn{
-    display:inline-block;
-    min-width:120px;
-    text-align:center;
-    padding:12px 18px;
-    border-radius:10px;
-    text-decoration:none;
-    color:#fff;
-    font-size:14px;
-    font-weight:700;
-    box-shadow:var(--shadow);
+.step-counter{font-size:13px;font-weight:700;color:var(--muted);text-align:center}
+.step-counter strong{color:var(--title)}
+.ctrl-btn{
+  display:inline-flex;align-items:center;gap:6px;
+  min-width:110px;justify-content:center;
+  padding:11px 18px;border-radius:10px;
+  text-decoration:none;color:#fff;font-size:14px;font-weight:700;
+  background:linear-gradient(180deg,#3d73ee,#2054d4);
+  box-shadow:var(--shadow-sm);transition:filter .15s,transform .15s;
 }
-.nav-btn.prev,
-.nav-btn.next{
-    background:linear-gradient(180deg,#4f77df,#355fc9);
+.ctrl-btn:hover{filter:brightness(1.07);transform:translateY(-1px)}
+.ctrl-btn.disabled{opacity:.38;pointer-events:none}
+
+/* â”€â”€ EMPTY â”€â”€ */
+.empty-state{
+  flex:1;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+  padding:40px 20px;text-align:center;gap:14px;
 }
-.nav-btn.disabled{
-    opacity:.45;
-    pointer-events:none;
+.empty-icon{font-size:52px}
+.empty-title{font-size:22px;font-weight:800;color:var(--title)}
+.empty-text{font-size:15px;color:var(--muted);max-width:400px}
+.empty-btn{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:12px 20px;border-radius:10px;
+  background:linear-gradient(180deg,#3d73ee,#2054d4);
+  color:#fff;text-decoration:none;font-size:14px;font-weight:700;
+  box-shadow:var(--shadow-sm);
 }
-.editor-link{
-    display:inline-block;
-    margin-top:12px;
-    padding:10px 14px;
-    border-radius:8px;
-    background:var(--blue);
-    color:#fff;
-    text-decoration:none;
-    font-size:14px;
-    font-weight:700;
+
+/* â”€â”€ RESPONSIVE â”€â”€ */
+@media (max-width:768px){
+  .sidebar{display:none}
+  .topbar-title{font-size:14px}
+  .topbar-sub{display:none}
+  .view-area{padding:10px 10px 0}
+  .act-title{font-size:15px}
+  .ctrl-btn{min-width:90px;padding:10px 12px;font-size:13px}
 }
-.empty-card{
-    background:#fff;
-    border:1px solid var(--line);
-    border-radius:20px;
-    padding:24px;
-    box-shadow:var(--shadow);
-}
-@media (max-width: 980px){
-    .topbar-inner{
-        grid-template-columns:1fr;
-        text-align:center;
-    }
-    .top-btn.back,
-    .top-btn.logout{
-        justify-self:center;
-    }
-    .layout{
-        grid-template-columns:1fr;
-    }
-    .sidebar{
-        min-height:auto;
-        display:grid;
-        grid-template-columns:repeat(2,minmax(0,1fr));
-        gap:12px;
-        align-items:start;
-    }
-    .logo-wrap{
-        grid-column:1 / -1;
-    }
-    .viewer-frame-wrap{
-        height:calc(100vh - 300px);
-        min-height:500px;
-    }
-}
-@media (max-width: 768px){
-    .page{
-        padding:12px;
-    }
-    .topbar{
-        padding:14px;
-    }
-    .viewer-shell{
-        padding:12px;
-    }
-    .viewer-card{
-        padding:10px 10px 12px;
-    }
-    .topbar-title{
-        font-size:22px;
-    }
-    .viewer-title{
-        font-size:17px;
-    }
-    .viewer-frame-wrap{
-        height:calc(100vh - 270px);
-        min-height:440px;
-    }
-    .controls{
-        flex-direction:column;
-    }
-    .nav-btn{
-        width:100%;
-    }
+@media (max-width:480px){
+  .topbar{padding:0 12px}
+  .topbar-back .topbar-back-label{display:none}
+  .controls{gap:8px}
 }
 </style>
 </head>
 <body>
+
 <header class="topbar">
-    <div class="topbar-inner">
-        <a class="top-btn back" href="<?php echo h($backDashboard); ?>">← Volver</a>
-        <h1 class="topbar-title">Actividad</h1>
-        <a class="top-btn logout" href="/lessons/lessons/academic/logout.php">Logout</a>
-    </div>
+  <a class="topbar-back" href="<?php echo h($backDashboard); ?>">
+    â† <span class="topbar-back-label">Mis Cursos</span>
+  </a>
+  <div class="topbar-center">
+    <div class="topbar-title"><?php echo h((string)($assignment['course_name'] ?? 'Curso')); ?></div>
+    <?php if (trim((string)($assignment['unit_name'] ?? '')) !== '') { ?>
+      <div class="topbar-sub"><?php echo h((string)$assignment['unit_name']); ?></div>
+    <?php } ?>
+  </div>
+  <div class="topbar-avatar">
+    <?php if ($teacherPhotoSrc !== '') { ?>
+      <img src="<?php echo $teacherPhotoSrc; ?>" alt="<?php echo h($teacherName); ?>"
+           onerror="this.style.display='none';this.parentElement.textContent='<?php echo h($teacherInitials); ?>'">
+    <?php } else { ?>
+      <?php echo h($teacherInitials); ?>
+    <?php } ?>
+  </div>
 </header>
 
-<div class="page">
-    <?php if (!$current || !$viewerHref) { ?>
-        <div class="content" style="padding-top:20px;">
-            <div class="empty-card">
-                <h2>No hay actividades disponibles.</h2>
-                <p>Esta unidad aún no tiene actividades para presentar o el tipo de actividad no tiene viewer configurado.</p>
-                <a href="<?php echo h($backDashboard); ?>">← Volver al panel docente</a>
-            </div>
-        </div>
-    <?php } else { ?>
-        <div class="layout">
-            <aside class="sidebar">
-                <div class="logo-wrap">
-                    <img src="<?php echo h($logoPath); ?>" alt="Let's aprende inglés">
-                </div>
+<div class="outer">
+  <nav class="sidebar">
+    <div class="sidebar-profile">
+      <div class="sidebar-avatar">
+        <?php if ($teacherPhotoSrc !== '') { ?>
+          <img src="<?php echo $teacherPhotoSrc; ?>" alt="<?php echo h($teacherName); ?>"
+               onerror="this.style.display='none'">
+        <?php } else { ?>
+          <?php echo h($teacherInitials); ?>
+        <?php } ?>
+      </div>
+      <div class="sidebar-name"><?php echo h($teacherName); ?></div>
+      <div class="sidebar-role">Docente</div>
+    </div>
 
-                <a class="side-btn blue" href="<?php echo h($backDashboard); ?>">📘 Mis Cursos</a>
+    <span class="sidebar-label">NavegaciÃ³n</span>
 
-                <?php if ($permission === 'editor') { ?>
-                    <a class="side-btn orange" href="teacher_course.php?assignment=<?php echo urlencode($assignmentId); ?>&unit=<?php echo urlencode($selectedUnitId); ?>&mode=edit&step=<?php echo $step; ?>">🧑‍🏫 Editar Cursos</a>
-                <?php } ?>
+    <a class="nav-link primary" href="<?php echo h($backDashboard); ?>">
+      ðŸ“˜ Mis Cursos
+    </a>
 
-                <a class="side-btn green" href="/lessons/lessons/academic/teacher_groups.php">👥 Ver Estudiantes</a>
-            </aside>
-
-            <main class="content">
-                <div class="viewer-shell">
-                    <section class="viewer-card">
-                        <div class="viewer-header">
-                            <h2 class="viewer-title"><?php echo h($currentTypeLabel); ?></h2>
-                            <p class="viewer-subtitle">Presentación de la actividad del curso para el docente.</p>
-                        </div>
-
-                        <div class="viewer-frame-wrap">
-                            <iframe
-                                id="activityViewer"
-                                class="viewer-frame"
-                                src="<?php echo h($viewerHref); ?>"
-                                title="Viewer actividad"
-                            ></iframe>
-                        </div>
-
-                        <div class="controls">
-                            <a class="nav-btn prev <?php echo $hasPrev ? '' : 'disabled'; ?>"
-                               href="teacher_course.php?assignment=<?php echo urlencode($assignmentId); ?>&unit=<?php echo urlencode($selectedUnitId); ?>&mode=<?php echo urlencode($mode); ?>&step=<?php echo $hasPrev ? $prevStep : $step; ?>">
-                                ← Previous
-                            </a>
-
-                            <a class="nav-btn next <?php echo $hasNext ? '' : 'disabled'; ?>"
-                               href="teacher_course.php?assignment=<?php echo urlencode($assignmentId); ?>&unit=<?php echo urlencode($selectedUnitId); ?>&mode=<?php echo urlencode($mode); ?>&step=<?php echo $hasNext ? $nextStep : $step; ?>">
-                                Next →
-                            </a>
-                        </div>
-
-                        <?php if ($editorHref !== null) { ?>
-                            <a class="editor-link" target="_blank" rel="noopener noreferrer" href="<?php echo h($editorHref); ?>">
-                                Editar actividad actual
-                            </a>
-                        <?php } ?>
-                    </section>
-                </div>
-            </main>
-        </div>
+    <?php if ($permission === 'editor') { ?>
+      <a class="nav-link accent"
+         href="teacher_course.php?assignment=<?php echo urlencode($assignmentId); ?>&unit=<?php echo urlencode($selectedUnitId); ?>&mode=edit&step=<?php echo $step; ?>">
+        ðŸ§‘â€ðŸ« Editar Curso
+      </a>
     <?php } ?>
+
+    <a class="nav-link" href="/lessons/lessons/academic/teacher_groups.php">
+      ðŸ‘¥ Mis Estudiantes
+    </a>
+
+    <a class="nav-link danger" href="/lessons/lessons/academic/logout.php">
+      ðŸšª Cerrar sesiÃ³n
+    </a>
+  </nav>
+
+  <?php if (!$current || !$viewerHref) { ?>
+    <div style="flex:1;display:flex;">
+      <div class="empty-state">
+        <div class="empty-icon">ðŸ“­</div>
+        <div class="empty-title">Sin actividades</div>
+        <div class="empty-text">Esta unidad aÃºn no tiene actividades para presentar o el tipo de actividad no tiene visor configurado.</div>
+        <a class="empty-btn" href="<?php echo h($backDashboard); ?>">â† Volver al panel docente</a>
+      </div>
+    </div>
+  <?php } else { ?>
+    <main class="view-area">
+      <div class="act-header">
+        <h1 class="act-title"><?php echo h($currentTypeLabel); ?></h1>
+        <div class="act-meta">
+          <span class="act-badge">Actividad <?php echo ($step + 1); ?> / <?php echo $total; ?></span>
+          <?php if ($editorHref !== null) { ?>
+            <a class="edit-link" target="_blank" rel="noopener noreferrer"
+               href="<?php echo h($editorHref); ?>">
+              âœï¸ Editar
+            </a>
+          <?php } ?>
+        </div>
+      </div>
+
+      <div class="frame-wrap">
+        <iframe
+          id="activityViewer"
+          src="<?php echo h($viewerHref); ?>"
+          title="Visor de actividad"
+        ></iframe>
+      </div>
+
+      <div class="controls">
+        <a class="ctrl-btn <?php echo $hasPrev ? '' : 'disabled'; ?>"
+           href="teacher_course.php?assignment=<?php echo urlencode($assignmentId); ?>&unit=<?php echo urlencode($selectedUnitId); ?>&mode=<?php echo urlencode($mode); ?>&step=<?php echo $hasPrev ? $prevStep : $step; ?>">
+          â† Anterior
+        </a>
+        <div class="step-counter">
+          <strong><?php echo ($step + 1); ?></strong> / <?php echo $total; ?>
+        </div>
+        <a class="ctrl-btn <?php echo $hasNext ? '' : 'disabled'; ?>"
+           href="teacher_course.php?assignment=<?php echo urlencode($assignmentId); ?>&unit=<?php echo urlencode($selectedUnitId); ?>&mode=<?php echo urlencode($mode); ?>&step=<?php echo $hasNext ? $nextStep : $step; ?>">
+          Siguiente â†’
+        </a>
+      </div>
+    </main>
+  <?php } ?>
 </div>
 
 <script>
 (function () {
     const iframe = document.getElementById('activityViewer');
-    if (!iframe) {
-        return;
-    }
+    if (!iframe) return;
 
     function hideEmbeddedBackButton() {
         try {
             const doc = iframe.contentDocument || iframe.contentWindow.document;
-            if (!doc) {
-                return;
-            }
+            if (!doc) return;
 
             const selectors = [
-                '.back',
-                '.btn-volver',
-                '.back-button',
-                '.btn.back',
-                '.back-btn',
-                'a[href*="dashboard"]',
-                'a[href*="unit_view"]',
-                'a[href*="technical_units"]',
-                'a[href*="english_structure_units"]'
+                '.back','.btn-volver','.back-button','.btn.back','.back-btn',
+                'a[href*="dashboard"]','a[href*="unit_view"]',
+                'a[href*="technical_units"]','a[href*="english_structure_units"]'
             ];
 
             selectors.forEach((selector) => {
                 doc.querySelectorAll(selector).forEach((el) => {
                     const text = (el.textContent || '').toLowerCase();
                     const href = (el.getAttribute('href') || '').toLowerCase();
-
                     if (
-                        text.includes('volver') ||
-                        text.includes('back') ||
-                        href.includes('dashboard') ||
-                        href.includes('unit_view') ||
-                        href.includes('technical_units') ||
-                        href.includes('english_structure_units')
+                        text.includes('volver') || text.includes('back') ||
+                        href.includes('dashboard') || href.includes('unit_view') ||
+                        href.includes('technical_units') || href.includes('english_structure_units')
                     ) {
                         el.style.display = 'none';
                     }
@@ -786,21 +769,16 @@ body{
 
             doc.querySelectorAll('a, button').forEach((el) => {
                 const text = (el.textContent || '').trim().toLowerCase();
-                if (text === 'back' || text === 'volver' || text === '← volver' || text === '↩ back') {
+                if (text === 'back' || text === 'volver' || text === 'â† volver' || text === 'â†© back') {
                     el.style.display = 'none';
                 }
             });
 
             const style = doc.createElement('style');
-            style.innerHTML = `
-                body{
-                    margin-top:0 !important;
-                    padding-top:0 !important;
-                }
-            `;
+            style.innerHTML = `body{ margin-top:0 !important; padding-top:0 !important; }`;
             doc.head.appendChild(style);
         } catch (e) {
-            // Ignorar
+            // Ignorar errores cross-origin
         }
     }
 
