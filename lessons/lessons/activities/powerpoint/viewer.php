@@ -50,18 +50,62 @@ function normalize_color(string $value): string
     return '#FFFFFF';
 }
 
+  function normalize_canva_link(string $value): string
+  {
+    $value = trim($value);
+    if ($value === '' || !preg_match('/^https?:\/\//i', $value)) {
+      return '';
+    }
+
+    $parts = parse_url($value);
+    if (!is_array($parts)) {
+      return '';
+    }
+
+    $host = strtolower((string) ($parts['host'] ?? ''));
+    if ($host === '' || strpos($host, 'canva.com') === false) {
+      return $value;
+    }
+
+    $path = (string) ($parts['path'] ?? '');
+    if ($path !== '' && preg_match('#/edit/?$#i', $path)) {
+      $path = preg_replace('#/edit/?$#i', '/view', $path);
+    }
+
+    $query = [];
+    if (!empty($parts['query'])) {
+      parse_str((string) $parts['query'], $query);
+    }
+    $query['embed'] = '1';
+
+    $scheme = isset($parts['scheme']) ? strtolower((string) $parts['scheme']) : 'https';
+    $normalized = $scheme . '://' . $host . $path;
+    if (!empty($query)) {
+      $normalized .= '?' . http_build_query($query);
+    }
+
+    return $normalized;
+  }
+
 function normalize_powerpoint_payload($rawData): array
 {
     $decoded = is_string($rawData) ? json_decode($rawData, true) : $rawData;
 
     $title = default_powerpoint_title();
     $slides = [];
+  $presentationFile = '';
+  $presentationName = '';
+    $canvaLink = '';
 
     if (is_array($decoded)) {
         $rawTitle = trim((string) ($decoded['title'] ?? ''));
         if ($rawTitle !== '') {
             $title = $rawTitle;
         }
+
+    $presentationFile = trim((string) ($decoded['presentation_file'] ?? ''));
+    $presentationName = trim((string) ($decoded['presentation_name'] ?? ''));
+    $canvaLink = normalize_canva_link((string) ($decoded['canva_link'] ?? ''));
 
         $slidesSource = isset($decoded['slides']) && is_array($decoded['slides']) ? $decoded['slides'] : [];
 
@@ -95,6 +139,9 @@ function normalize_powerpoint_payload($rawData): array
     return [
         'title' => $title,
         'slides' => $slides,
+      'presentation_file' => $presentationFile,
+      'presentation_name' => $presentationName,
+      'canva_link' => $canvaLink,
     ];
 }
 
@@ -103,6 +150,9 @@ function load_powerpoint_activity(PDO $pdo, string $activityId, string $unit): a
     $fallback = [
         'title' => default_powerpoint_title(),
         'slides' => [],
+      'presentation_file' => '',
+      'presentation_name' => '',
+      'canva_link' => '',
     ];
 
     $row = null;
@@ -133,6 +183,9 @@ if ($unit === '' && $activityId !== '') {
 $activity = load_powerpoint_activity($pdo, $activityId, $unit);
 $viewerTitle = (string) ($activity['title'] ?? default_powerpoint_title());
 $slides = isset($activity['slides']) && is_array($activity['slides']) ? $activity['slides'] : [];
+$presentationFile = (string) ($activity['presentation_file'] ?? '');
+$presentationName = (string) ($activity['presentation_name'] ?? '');
+$canvaLink = (string) ($activity['canva_link'] ?? '');
 
 ob_start();
 ?>
@@ -156,6 +209,11 @@ ob_start();
 .ppt-btn-light{background:#e2e8f0;color:#0f172a}
 .ppt-count{font-weight:700;color:#334155}
 .ppt-empty{background:#fff;border:1px solid #dbe4f0;border-radius:14px;padding:28px;text-align:center;color:#b91c1c;font-weight:700}
+.ppt-file{background:#fff;border:1px solid #dbe4f0;border-radius:14px;padding:14px;margin-bottom:12px;display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.ppt-file-name{color:#0f172a;font-weight:700}
+.ppt-embedded-file{margin-bottom:12px;background:#fff;border:1px solid #dbe4f0;border-radius:14px;padding:10px}
+.ppt-embedded-file iframe{width:100%;height:420px;border:none;border-radius:10px}
+.ppt-note{font-size:12px;color:#64748b;margin-top:6px}
 @media (max-width: 900px){
   .ppt-slide{padding:16px;min-height:420px}
   .ppt-slide.template-text_image{grid-template-columns:1fr}
@@ -163,9 +221,38 @@ ob_start();
 </style>
 
 <div class="ppt-viewer-shell">
-    <?php if (empty($slides)) { ?>
+  <?php if ($presentationFile !== '') { ?>
+    <div class="ppt-file">
+      <span class="ppt-file-name">Uploaded presentation: <?php echo htmlspecialchars($presentationName !== '' ? $presentationName : 'presentation.pptx', ENT_QUOTES, 'UTF-8'); ?></span>
+      <div class="ppt-actions">
+        <button type="button" class="ppt-btn ppt-btn-primary" id="btnOpenPresentation">Open file</button>
+      </div>
+    </div>
+
+    <?php if (stripos($presentationFile, 'data:application/pdf') === 0) { ?>
+      <div class="ppt-embedded-file">
+        <iframe src="<?php echo htmlspecialchars($presentationFile, ENT_QUOTES, 'UTF-8'); ?>" title="Uploaded presentation PDF"></iframe>
+      </div>
+    <?php } ?>
+  <?php } ?>
+
+  <?php if ($canvaLink !== '') { ?>
+    <div class="ppt-file">
+      <span class="ppt-file-name">Canva link configured</span>
+      <div class="ppt-actions">
+        <button type="button" class="ppt-btn ppt-btn-primary" id="btnOpenCanva">Open Canva</button>
+      </div>
+    </div>
+
+    <div class="ppt-embedded-file">
+      <iframe src="<?php echo htmlspecialchars($canvaLink, ENT_QUOTES, 'UTF-8'); ?>" title="Canva presentation"></iframe>
+      <div class="ppt-note">If Canva blocks embedding in this browser, use the Open Canva button.</div>
+    </div>
+  <?php } ?>
+
+  <?php if (empty($slides) && $presentationFile === '') { ?>
         <div class="ppt-empty">No hay diapositivas configuradas en esta actividad.</div>
-    <?php } else { ?>
+  <?php } elseif (!empty($slides)) { ?>
         <div class="ppt-stage">
             <div id="pptSlide" class="ppt-slide"></div>
 
@@ -190,6 +277,9 @@ ob_start();
 
 <script>
 const PPT_SLIDES = <?php echo json_encode($slides, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
+const PPT_PRESENTATION_FILE = <?php echo json_encode($presentationFile, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
+const PPT_PRESENTATION_NAME = <?php echo json_encode($presentationName, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
+const PPT_CANVA_LINK = <?php echo json_encode($canvaLink, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
 let slideIndex = 0;
 let currentAudio = null;
 
@@ -265,10 +355,51 @@ function speakSlide() {
   }
 
   const utterance = new SpeechSynthesisUtterance(textToRead);
-  utterance.lang = 'es-CO';
+  utterance.lang = 'en-US';
   utterance.rate = 1;
+  const selectedVoice = getPreferredEnglishFemaleVoice();
+  if (selectedVoice) {
+    utterance.voice = selectedVoice;
+  }
   speechSynthesis.cancel();
   speechSynthesis.speak(utterance);
+}
+
+function getPreferredEnglishFemaleVoice() {
+  const voices = window.speechSynthesis ? window.speechSynthesis.getVoices() : [];
+  if (!Array.isArray(voices) || voices.length === 0) {
+    return null;
+  }
+
+  const englishVoices = voices.filter((voice) => /^en(-|_)/i.test(String(voice.lang || '')) || /english/i.test(String(voice.name || '')));
+  if (!englishVoices.length) {
+    return voices[0] || null;
+  }
+
+  const femaleHints = ['female', 'woman', 'zira', 'samantha', 'karen', 'aria', 'jenny', 'emma', 'olivia', 'ava'];
+  const femaleVoice = englishVoices.find((voice) => {
+    const label = (String(voice.name || '') + ' ' + String(voice.voiceURI || '')).toLowerCase();
+    return femaleHints.some((hint) => label.includes(hint));
+  });
+
+  return femaleVoice || englishVoices[0];
+}
+
+function openPresentation() {
+  if (!PPT_PRESENTATION_FILE) return;
+  window.open(PPT_PRESENTATION_FILE, '_blank');
+}
+
+function openCanva() {
+  if (!PPT_CANVA_LINK) return;
+  let openUrl = PPT_CANVA_LINK;
+  try {
+    const parsedUrl = new URL(PPT_CANVA_LINK);
+    parsedUrl.searchParams.delete('embed');
+    openUrl = parsedUrl.toString();
+  } catch (error) {
+  }
+  window.open(openUrl, '_blank');
 }
 
 function stopSpeech() {
@@ -289,6 +420,12 @@ document.getElementById('btnNext')?.addEventListener('click', () => {
 
 document.getElementById('btnTts')?.addEventListener('click', speakSlide);
 document.getElementById('btnStopTts')?.addEventListener('click', stopSpeech);
+document.getElementById('btnOpenPresentation')?.addEventListener('click', openPresentation);
+document.getElementById('btnOpenCanva')?.addEventListener('click', openCanva);
+
+if (window.speechSynthesis) {
+  window.speechSynthesis.onvoiceschanged = function () {};
+}
 
 if (Array.isArray(PPT_SLIDES) && PPT_SLIDES.length) {
   renderSlide();

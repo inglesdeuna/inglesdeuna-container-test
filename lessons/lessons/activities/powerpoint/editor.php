@@ -76,18 +76,73 @@ function normalize_data_blob(string $value, int $maxLength): string
     return $value;
 }
 
+  function normalize_presentation_name(string $value): string
+  {
+    $value = trim($value);
+    if ($value === '') {
+      return '';
+    }
+
+    $value = preg_replace('/[^a-zA-Z0-9_\-. ]+/', '_', $value);
+    return trim((string) $value);
+  }
+
+  function normalize_canva_link(string $value): string
+  {
+    $value = trim($value);
+    if ($value === '' || !preg_match('/^https?:\/\//i', $value)) {
+      return '';
+    }
+
+    $parts = parse_url($value);
+    if (!is_array($parts)) {
+      return '';
+    }
+
+    $host = strtolower((string) ($parts['host'] ?? ''));
+    if ($host === '' || strpos($host, 'canva.com') === false) {
+      return $value;
+    }
+
+    $path = (string) ($parts['path'] ?? '');
+    if ($path !== '' && preg_match('#/edit/?$#i', $path)) {
+      $path = preg_replace('#/edit/?$#i', '/view', $path);
+    }
+
+    $query = [];
+    if (!empty($parts['query'])) {
+      parse_str((string) $parts['query'], $query);
+    }
+    $query['embed'] = '1';
+
+    $scheme = isset($parts['scheme']) ? strtolower((string) $parts['scheme']) : 'https';
+    $normalized = $scheme . '://' . $host . $path;
+    if (!empty($query)) {
+      $normalized .= '?' . http_build_query($query);
+    }
+
+    return $normalized;
+  }
+
 function normalize_powerpoint_payload($rawData): array
 {
     $decoded = is_string($rawData) ? json_decode($rawData, true) : $rawData;
 
     $title = default_powerpoint_title();
     $slides = [];
+  $presentationFile = '';
+  $presentationName = '';
+    $canvaLink = '';
 
     if (is_array($decoded)) {
         $rawTitle = trim((string) ($decoded['title'] ?? ''));
         if ($rawTitle !== '') {
             $title = $rawTitle;
         }
+
+    $presentationFile = normalize_data_blob((string) ($decoded['presentation_file'] ?? ''), 40 * 1024 * 1024);
+    $presentationName = normalize_presentation_name((string) ($decoded['presentation_name'] ?? ''));
+    $canvaLink = normalize_canva_link((string) ($decoded['canva_link'] ?? ''));
 
         $slidesSource = isset($decoded['slides']) && is_array($decoded['slides']) ? $decoded['slides'] : [];
 
@@ -125,14 +180,22 @@ function normalize_powerpoint_payload($rawData): array
     return [
         'title' => $title,
         'slides' => $slides,
+      'presentation_file' => $presentationFile,
+      'presentation_name' => $presentationName,
+      'canva_link' => $canvaLink,
     ];
 }
 
-function encode_powerpoint_payload(string $title, array $slides): string
+  function encode_powerpoint_payload(string $title, array $slides, string $presentationFile, string $presentationName, string $canvaLink): string
 {
+    $safeCanvaLink = normalize_canva_link($canvaLink);
+
     return json_encode([
         'title' => trim($title) !== '' ? trim($title) : default_powerpoint_title(),
         'slides' => array_values($slides),
+      'presentation_file' => normalize_data_blob($presentationFile, 40 * 1024 * 1024),
+      'presentation_name' => normalize_presentation_name($presentationName),
+      'canva_link' => $safeCanvaLink,
     ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 }
 
@@ -142,6 +205,9 @@ function load_powerpoint_activity(PDO $pdo, string $unit, string $activityId): a
         'id' => '',
         'title' => default_powerpoint_title(),
         'slides' => [default_slide()],
+      'presentation_file' => '',
+      'presentation_name' => '',
+        'canva_link' => '',
     ];
 
     $row = null;
@@ -168,12 +234,15 @@ function load_powerpoint_activity(PDO $pdo, string $unit, string $activityId): a
         'id' => (string) ($row['id'] ?? ''),
         'title' => (string) ($payload['title'] ?? default_powerpoint_title()),
         'slides' => isset($payload['slides']) && is_array($payload['slides']) ? $payload['slides'] : [default_slide()],
+      'presentation_file' => (string) ($payload['presentation_file'] ?? ''),
+      'presentation_name' => (string) ($payload['presentation_name'] ?? ''),
+      'canva_link' => (string) ($payload['canva_link'] ?? ''),
     ];
 }
 
-function save_powerpoint_activity(PDO $pdo, string $unit, string $activityId, string $title, array $slides): string
+  function save_powerpoint_activity(PDO $pdo, string $unit, string $activityId, string $title, array $slides, string $presentationFile, string $presentationName, string $canvaLink): string
 {
-    $json = encode_powerpoint_payload($title, $slides);
+    $json = encode_powerpoint_payload($title, $slides, $presentationFile, $presentationName, $canvaLink);
     $targetId = $activityId;
 
     if ($targetId === '') {
@@ -219,15 +288,25 @@ if ($activityId === '' && !empty($activity['id'])) {
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $postedTitle = trim((string) ($_POST['activity_title'] ?? default_powerpoint_title()));
     $slidesJson = (string) ($_POST['slides_payload'] ?? '[]');
+  $presentationJson = (string) ($_POST['presentation_payload'] ?? '{}');
+    $canvaLink = trim((string) ($_POST['canva_link'] ?? ''));
     $decodedSlides = json_decode($slidesJson, true);
+  $decodedPresentation = json_decode($presentationJson, true);
 
     if (!is_array($decodedSlides)) {
         $decodedSlides = [];
     }
 
+  if (!is_array($decodedPresentation)) {
+    $decodedPresentation = [];
+  }
+
     $payload = normalize_powerpoint_payload([
         'title' => $postedTitle,
         'slides' => $decodedSlides,
+    'presentation_file' => (string) ($decodedPresentation['file'] ?? ''),
+    'presentation_name' => (string) ($decodedPresentation['name'] ?? ''),
+        'canva_link' => $canvaLink,
     ]);
 
     $savedActivityId = save_powerpoint_activity(
@@ -235,7 +314,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $unit,
         $activityId,
         (string) $payload['title'],
-        (array) $payload['slides']
+        (array) $payload['slides'],
+        (string) ($payload['presentation_file'] ?? ''),
+        (string) ($payload['presentation_name'] ?? ''),
+        (string) ($payload['canva_link'] ?? '')
     );
 
     $params = [
@@ -261,6 +343,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 $activityTitle = (string) ($activity['title'] ?? default_powerpoint_title());
 $slides = isset($activity['slides']) && is_array($activity['slides']) ? $activity['slides'] : [default_slide()];
+$presentationFile = (string) ($activity['presentation_file'] ?? '');
+$presentationName = (string) ($activity['presentation_name'] ?? '');
+$canvaLink = (string) ($activity['canva_link'] ?? '');
 
 ob_start();
 ?>
@@ -293,6 +378,7 @@ ob_start();
 
     <form id="powerpointForm" method="post">
         <input type="hidden" name="slides_payload" id="slides_payload" value="[]">
+      <input type="hidden" name="presentation_payload" id="presentation_payload" value="{}">
 
         <div class="ppt-card">
             <label class="ppt-label" for="activity_title">Titulo de la actividad</label>
@@ -312,6 +398,17 @@ ob_start();
             <div id="slidesContainer"></div>
         </div>
 
+          <div class="ppt-card">
+            <label class="ppt-label">Upload full presentation (PowerPoint or Canva export)</label>
+            <input class="ppt-input" id="pptFileInput" type="file" accept=".ppt,.pptx,.pdf,.canva,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/pdf">
+            <div class="ppt-preview-media" style="margin-top:10px;" id="pptFileStatus"></div>
+          </div>
+
+          <div class="ppt-card">
+            <label class="ppt-label" for="canva_link">Canva share link (optional)</label>
+            <input class="ppt-input" id="canva_link" name="canva_link" placeholder="https://www.canva.com/..." value="<?php echo htmlspecialchars($canvaLink, ENT_QUOTES, 'UTF-8'); ?>">
+          </div>
+
         <div class="ppt-card">
             <div class="ppt-actions">
                 <button type="submit" class="ppt-btn ppt-btn-primary">Guardar PowerPoint</button>
@@ -322,6 +419,10 @@ ob_start();
 
 <script>
 const INITIAL_SLIDES = <?php echo json_encode($slides, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
+const INITIAL_PRESENTATION = {
+  file: <?php echo json_encode($presentationFile, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>,
+  name: <?php echo json_encode($presentationName, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>
+};
 const FONT_OPTIONS = ['Arial','Georgia','Verdana','Tahoma','Times New Roman'];
 
 function createSlideModel(templateName) {
@@ -339,6 +440,10 @@ function createSlideModel(templateName) {
 }
 
 let slidesState = Array.isArray(INITIAL_SLIDES) && INITIAL_SLIDES.length ? INITIAL_SLIDES : [createSlideModel('title_text')];
+let presentationState = {
+  file: String(INITIAL_PRESENTATION.file || ''),
+  name: String(INITIAL_PRESENTATION.name || '')
+};
 
 function fileToDataUrl(fileObject) {
   return new Promise((resolve, reject) => {
@@ -402,7 +507,7 @@ function renderSlides() {
         '<div><label class="ppt-label">Color fondo</label><input class="ppt-input" type="color" data-field="bg_color" value="' + slide.bg_color + '"></div>' +
       '</div>' +
       '<div><label class="ppt-label">Texto explicativo</label><textarea class="ppt-textarea" data-field="text">' + escapeHtml(slide.text) + '</textarea></div>' +
-      '<div><label class="ppt-label">Texto para voz TTS (opcional)</label><textarea class="ppt-textarea" data-field="tts_text">' + escapeHtml(slide.tts_text) + '</textarea></div>' +
+      '<div><label class="ppt-label">Text for English TTS (optional)</label><textarea class="ppt-textarea" data-field="tts_text">' + escapeHtml(slide.tts_text) + '</textarea></div>' +
       '<div class="ppt-row">' +
         '<div>' +
           '<label class="ppt-label">Imagen (subir foto)</label>' +
@@ -520,15 +625,70 @@ function escapeHtml(rawValue) {
     .replace(/'/g, '&#39;');
 }
 
+function renderPresentationStatus() {
+  const status = document.getElementById('pptFileStatus');
+  if (!status) return;
+
+  if (!presentationState.file) {
+    status.innerHTML = '<span style="color:#64748b;font-size:13px;">No uploaded PowerPoint/Canva file yet.</span>';
+    return;
+  }
+
+  const fileName = escapeHtml(presentationState.name || 'presentacion.pptx');
+  status.innerHTML = '' +
+    '<span style="color:#0f172a;font-weight:700;">Uploaded file: ' + fileName + '</span>' +
+    '<button type="button" class="ppt-btn ppt-btn-light" id="btnClearPresentation">Remove file</button>';
+
+  const clearButton = document.getElementById('btnClearPresentation');
+  if (clearButton) {
+    clearButton.addEventListener('click', () => {
+      presentationState = { file: '', name: '' };
+      renderPresentationStatus();
+    });
+  }
+}
+
 document.getElementById('btnAddSlide').addEventListener('click', () => {
   const templateSelect = document.getElementById('newSlideTemplate');
   slidesState.push(createSlideModel(templateSelect.value));
   renderSlides();
 });
 
+document.getElementById('pptFileInput').addEventListener('change', async (event) => {
+  const selectedFile = event.target.files && event.target.files[0] ? event.target.files[0] : null;
+  if (!selectedFile) {
+    return;
+  }
+
+  const lowerName = selectedFile.name.toLowerCase();
+  const isAllowed =
+    lowerName.endsWith('.ppt') ||
+    lowerName.endsWith('.pptx') ||
+    lowerName.endsWith('.pdf') ||
+    lowerName.endsWith('.canva');
+
+  if (!isAllowed) {
+    alert('Allowed files: .ppt, .pptx, .pdf, .canva');
+    event.target.value = '';
+    return;
+  }
+
+  try {
+    const dataUrl = await fileToDataUrl(selectedFile);
+    presentationState = {
+      file: dataUrl,
+      name: selectedFile.name
+    };
+    renderPresentationStatus();
+  } catch (error) {
+    alert('Could not process the uploaded presentation file.');
+  }
+});
+
 document.getElementById('powerpointForm').addEventListener('submit', (event) => {
   const normalizedSlides = slidesState.map(normalizeSlideState);
   document.getElementById('slides_payload').value = JSON.stringify(normalizedSlides);
+  document.getElementById('presentation_payload').value = JSON.stringify(presentationState);
 
   if (!normalizedSlides.length) {
     event.preventDefault();
@@ -537,6 +697,7 @@ document.getElementById('powerpointForm').addEventListener('submit', (event) => 
 });
 
 renderSlides();
+renderPresentationStatus();
 </script>
 
 <?php
