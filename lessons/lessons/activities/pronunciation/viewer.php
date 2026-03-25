@@ -414,10 +414,22 @@ body{
 
 .btn-listen{
     background:linear-gradient(180deg, #2563eb, #1d4ed8);
+    box-shadow:0 6px 14px rgba(37, 99, 235, .25);
 }
 
 .btn-speak{
     background:linear-gradient(180deg, #2563eb, #1d4ed8);
+    box-shadow:0 6px 14px rgba(37, 99, 235, .25);
+}
+
+.btn-tryagain{
+    background:linear-gradient(180deg, #f59e0b, #d97706);
+    box-shadow:0 6px 14px rgba(245, 158, 11, .25);
+}
+
+.btn-show{
+    background:linear-gradient(180deg, #6366f1, #4f46e5);
+    box-shadow:0 6px 14px rgba(99, 102, 241, .25);
 }
 
 .feedback{
@@ -428,8 +440,99 @@ body{
     line-height:1.2;
 }
 
-.good{color:#15803d}
-.try{color:#d97706}
+.answer-reveal{
+    display:none;
+    margin-top:10px;
+    padding:14px 16px;
+    border-radius:16px;
+    background:linear-gradient(180deg, #eff6ff 0%, #dbeafe 100%);
+    border:1px solid #93c5fd;
+    color:#1e3a8a;
+    box-shadow:0 10px 22px rgba(37, 99, 235, .14);
+}
+
+.answer-reveal.show{
+    display:block;
+}
+
+.answer-reveal-label{
+    font-size:12px;
+    font-weight:800;
+    letter-spacing:.08em;
+    text-transform:uppercase;
+    color:#1d4ed8;
+}
+
+.answer-reveal-word{
+    margin-top:6px;
+    font-family:'Fredoka', 'Trebuchet MS', sans-serif;
+    font-size:28px;
+    font-weight:700;
+    line-height:1.05;
+    color:#0f172a;
+}
+
+.answer-reveal-phonetic{
+    margin-top:4px;
+    font-size:18px;
+    font-weight:700;
+    color:#334155;
+}
+
+.correct{color:#15803d}
+.incorrect{color:#dc2626}
+
+.completion-modal{
+    position:fixed;
+    top:0;
+    left:0;
+    right:0;
+    bottom:0;
+    background:rgba(0,0,0,0.5);
+    display:none;
+    align-items:center;
+    justify-content:center;
+    z-index:9999;
+}
+
+.completion-modal.show{
+    display:flex;
+}
+
+.completion-content{
+    background:#ffffff;
+    border-radius:24px;
+    padding:40px;
+    text-align:center;
+    box-shadow:0 20px 60px rgba(0,0,0,0.3);
+    animation:slideIn .4s ease;
+}
+
+@keyframes slideIn{
+    from{
+        transform:scale(0.8);
+        opacity:0;
+    }
+    to{
+        transform:scale(1);
+        opacity:1;
+    }
+}
+
+.completion-content h2{
+    margin:0 0 16px;
+    font-family:'Fredoka', 'Trebuchet MS', sans-serif;
+    font-size:48px;
+    font-weight:700;
+    color:#15803d;
+}
+
+.completion-content p{
+    margin:0;
+    font-size:18px;
+    color:#475569;
+    font-weight:600;
+}
 
 .empty-state{
     max-width:700px;
@@ -460,8 +563,16 @@ body{
     <div class="grid" id="cards"></div>
 </div>
 
+<div class="completion-modal" id="completionModal">
+    <div class="completion-content">
+        <h2>Completed!</h2>
+        <p>Excellent! You've completed all the pronunciation exercises.</p>
+    </div>
+</div>
+
 <script>
 window.PRONUNCIATION_DATA = <?php echo json_encode($items, JSON_UNESCAPED_UNICODE); ?>;
+window.pronunciationStates = {};
 
 var recognition = null;
 if ('webkitSpeechRecognition' in window) {
@@ -494,6 +605,7 @@ function renderCards() {
   }
 
   container.innerHTML = data.map(function (item, i) {
+      window.pronunciationStates[i] = { correct: false };
         var img = item.img
             ? '<div class="image-wrap"><img class="image" src="' + escapeHtml(item.img) + '" alt="' + escapeHtml(item.en || '') + '"></div>'
             : '<div class="image-wrap"></div>';
@@ -503,9 +615,14 @@ function renderCards() {
         '<div class="command">' + escapeHtml(item.en || '') + '</div>' +
         '<div class="phonetic">' + escapeHtml(item.ph || '') + '</div>' +
         '<div class="spanish">' + escapeHtml(item.es || '') + '</div>' +
-                '<div class="actions">' +
+                '<div class="actions" id="actions' + i + '">' +
                     '<button class="btn btn-listen" type="button" onclick="speak(' + i + ')">🔊 Listen</button>' +
                     '<button class="btn btn-speak" type="button" onclick="record(' + i + ')">🎤 Speak</button>' +
+                '</div>' +
+                '<div id="answer' + i + '" class="answer-reveal">' +
+                        '<div class="answer-reveal-label">Correct Answer</div>' +
+                        '<div class="answer-reveal-word">' + escapeHtml(item.en || '') + '</div>' +
+                        '<div class="answer-reveal-phonetic">' + escapeHtml(item.ph || '') + '</div>' +
                 '</div>' +
         '<div id="f' + i + '" class="feedback"></div>' +
       '</div>';
@@ -539,6 +656,8 @@ function speak(index) {
 function record(index) {
   var data = Array.isArray(window.PRONUNCIATION_DATA) ? window.PRONUNCIATION_DATA : [];
   var fb = document.getElementById('f' + index);
+    var actions = document.getElementById('actions' + index);
+    var answer = document.getElementById('answer' + index);
 
   if (!data[index]) {
     return;
@@ -546,8 +665,8 @@ function record(index) {
 
   if (!recognition) {
     if (fb) {
-      fb.innerHTML = '⚠️ Speech recognition not available in this browser.';
-      fb.className = 'feedback try';
+            fb.innerHTML = 'Speech recognition is not available in this browser.';
+            fb.className = 'feedback incorrect';
     }
     return;
   }
@@ -561,22 +680,114 @@ function record(index) {
     }
 
     if (correct !== '' && (said === correct || said.indexOf(correct.split(' ')[0]) !== -1)) {
-      fb.innerHTML = '🌟 Good job!';
-      fb.className = 'feedback good';
+            window.pronunciationStates[index].correct = true;
+            fb.innerHTML = 'Correct!';
+            fb.className = 'feedback correct';
+
+            if (actions) {
+                actions.innerHTML = '<span style="color:#15803d; font-weight:700; font-size:16px;">✓ Correct</span>';
+            }
+
+            if (answer) {
+                answer.classList.remove('show');
+            }
+
+            checkCompletion();
     } else {
-      fb.innerHTML = '🔁 Try again!';
-      fb.className = 'feedback try';
+            window.pronunciationStates[index].correct = false;
+            fb.innerHTML = 'Try again!';
+            fb.className = 'feedback incorrect';
+
+            if (actions) {
+                actions.innerHTML = '' +
+                    '<button class="btn btn-listen" type="button" onclick="speak(' + index + ')">🔊 Listen</button>' +
+                    '<button class="btn btn-tryagain" type="button" onclick="resetPronunciation(' + index + ')">🔄 Try Again</button>' +
+                    '<button class="btn btn-show" type="button" onclick="showAnswer(' + index + ')">👁️ Show Answer</button>';
+            }
     }
   };
 
   recognition.onerror = function () {
     if (fb) {
-      fb.innerHTML = '🔁 Try again!';
-      fb.className = 'feedback try';
+            fb.innerHTML = 'Try again!';
+            fb.className = 'feedback incorrect';
+        }
+
+        if (actions) {
+            actions.innerHTML = '' +
+                '<button class="btn btn-listen" type="button" onclick="speak(' + index + ')">🔊 Listen</button>' +
+                                '<button class="btn btn-tryagain" type="button" onclick="resetPronunciation(' + index + ')">🔄 Try Again</button>' +
+                                '<button class="btn btn-show" type="button" onclick="showAnswer(' + index + ')">👁️ Show Answer</button>';
     }
   };
 
   recognition.start();
+}
+
+function resetPronunciation(index) {
+    var fb = document.getElementById('f' + index);
+    var actions = document.getElementById('actions' + index);
+    var answer = document.getElementById('answer' + index);
+
+    window.pronunciationStates[index] = { correct: false };
+
+    if (fb) {
+        fb.innerHTML = '';
+        fb.className = 'feedback';
+    }
+
+    if (actions) {
+        actions.innerHTML = '' +
+            '<button class="btn btn-listen" type="button" onclick="speak(' + index + ')">🔊 Listen</button>' +
+            '<button class="btn btn-speak" type="button" onclick="record(' + index + ')">🎤 Speak</button>';
+    }
+
+    if (answer) {
+        answer.classList.remove('show');
+    }
+}
+
+function showAnswer(index) {
+    var answer = document.getElementById('answer' + index);
+
+    if (answer) {
+        answer.classList.toggle('show');
+    }
+}
+
+function checkCompletion() {
+    var data = Array.isArray(window.PRONUNCIATION_DATA) ? window.PRONUNCIATION_DATA : [];
+    var allCorrect = data.length > 0 && Object.keys(window.pronunciationStates).length === data.length;
+
+    if (allCorrect) {
+        for (var i = 0; i < data.length; i++) {
+            if (!window.pronunciationStates[i] || !window.pronunciationStates[i].correct) {
+                allCorrect = false;
+                break;
+            }
+        }
+    }
+
+    if (allCorrect) {
+        showCompletion();
+    }
+}
+
+function showCompletion() {
+    var modal = document.getElementById('completionModal');
+
+    if (modal) {
+        modal.classList.add('show');
+        setTimeout(function () {
+            modal.classList.remove('show');
+        }, 3000);
+    }
+
+    var utter = new SpeechSynthesisUtterance('Excellent! You have completed all exercises!');
+    utter.lang = 'en-US';
+    utter.rate = 0.95;
+    speechSynthesis.cancel();
+    speechSynthesis.speak(utter);
 }
 
 renderCards();

@@ -525,7 +525,7 @@ ob_start();
     border-radius:20px;
     padding:18px 20px;
     margin:0 0 14px;
-    box-shadow:0 12px 26px rgba(15, 23, 42, .08);
+    box-shadow:0 16px 34px rgba(15, 23, 42, .09);
 }
 
 .pron-intro h3{
@@ -577,7 +577,7 @@ ob_start();
     margin-bottom:12px;
     border-radius:16px;
     border:1px solid #dbe7f5;
-    box-shadow:0 10px 22px rgba(15, 23, 42, .06);
+    box-shadow:0 14px 28px rgba(15, 23, 42, .07);
     display:grid;
     grid-template-columns:1fr 1fr;
     gap:8px 10px;
