@@ -586,8 +586,23 @@ a:hover{
 }
 
 .back{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    min-height:40px;
+    padding:8px 14px;
+    border-radius:10px;
+    background:linear-gradient(180deg,#6b8f71,#4a6e52);
+    color:#fff;
+    text-decoration:none;
     font-weight:700;
-    color:var(--blue);
+    font-size:13px;
+    border:none;
+}
+
+.back:hover{
+    background:linear-gradient(180deg,#5a7d60,#3a5e42);
+    text-decoration:none;
 }
 
 .links{
@@ -596,9 +611,24 @@ a:hover{
     flex-wrap:wrap;
 }
 
-.links a{
-    font-size:14px;
-    font-weight:600;
+.link-secondary{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    min-height:40px;
+    padding:8px 14px;
+    border-radius:10px;
+    background:#eef7f0;
+    color:var(--blue);
+    text-decoration:none;
+    font-size:13px;
+    font-weight:700;
+    border:1px solid #b8dfc4;
+}
+
+.link-secondary:hover{
+    background:#d4f0dc;
+    text-decoration:none;
 }
 
 .card{
@@ -1038,8 +1068,8 @@ tbody tr:last-child td{
         <div class="topbar">
             <a class="back" href="../admin/dashboard.php">← Volver al dashboard</a>
             <div class="links">
-                <a href="teacher_profiles.php">Perfiles docentes</a>
-                <a href="teacher_groups.php">Ver Docentes y Grupos</a>
+                <a class="link-secondary" href="teacher_profiles.php">Perfiles docentes</a>
+                <a class="link-secondary" href="teacher_groups.php">Ver Docentes y Grupos</a>
             </div>
         </div>
 
