@@ -44,6 +44,7 @@ $activityTypes = [
     "hangman" => "Hangman",
     "listen_order" => "Listen Order",
     "pronunciation" => "Pronunciation",
+    "dictation" => "Dictation",
     "external" => "External",
     "flipbooks" => "Flipbooks",
     "powerpoint" => "PowerPoint"
