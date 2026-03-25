@@ -648,7 +648,7 @@ a:hover{
     margin:0 0 10px;
     font-size:28px;
     line-height:1.2;
-    color:#1f3c75;
+    color:var(--subtitle);
 }
 
 .card-header h2{
@@ -726,7 +726,7 @@ select{
 input[type="text"]:focus,
 select:focus{
     border-color:var(--blue);
-    box-shadow:0 0 0 3px rgba(31,102,204,.12);
+    box-shadow:0 0 0 3px rgba(47,158,68,.15);
 }
 
 select[multiple]{
