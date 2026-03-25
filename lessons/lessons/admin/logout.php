@@ -2,18 +2,25 @@
 session_start();
 
 // Elimina todas las variables de sesión
-session_unset();
-
-// Destruye la sesión
-session_destroy();
-
-// Reinicia el array de sesión por seguridad
 $_SESSION = [];
 
-// Regenerar ID de sesión para evitar reutilización
-session_regenerate_id(true);
+// Invalida cookie de sesión si aplica
+if (ini_get('session.use_cookies')) {
+	$params = session_get_cookie_params();
+	setcookie(
+		session_name(),
+		'',
+		time() - 42000,
+		$params['path'],
+		$params['domain'],
+		$params['secure'],
+		$params['httponly']
+	);
+}
+
+// Destruye la sesión activa
+session_destroy();
 
 // Redirigir al login
 header("Location: /lessons/lessons/admin/login.php");
 exit;
-?>
