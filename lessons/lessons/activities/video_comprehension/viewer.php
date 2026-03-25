@@ -179,179 +179,183 @@ ob_start();
         <div class="vc-panel">
             <div class="vc-empty">No video iframe URL configured for this activity.</div>
         </div>
-    <?php elseif ($activityMode === 'video_only') { ?>
-        <section class="vc-video-only">
-            <div class="vc-video-wrap">
-                <iframe class="vc-video" src="<?= htmlspecialchars($iframeUrl, ENT_QUOTES, 'UTF-8') ?>" title="Video comprehension" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>
-            </div>
-            <div class="vc-video-copy">
-                <h3>Watch And Focus</h3>
-                <p><?= htmlspecialchars($instructions, ENT_QUOTES, 'UTF-8') ?></p>
-            </div>
-        </section>
-    <?php elseif (empty($questions)) { ?>
-        <div class="vc-layout">
-            <section class="vc-panel">
-                <div class="vc-video-wrap">
-                    <iframe class="vc-video" src="<?= htmlspecialchars($iframeUrl, ENT_QUOTES, 'UTF-8') ?>" title="Video comprehension" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>
-                </div>
-            </section>
-            <section class="vc-panel">
-                <div class="vc-empty">No questions configured yet.</div>
-            </section>
-        </div>
     <?php else { ?>
-        <div class="vc-layout">
-            <section class="vc-panel">
+        <?php if ($activityMode === 'video_only') { ?>
+            <section class="vc-video-only">
                 <div class="vc-video-wrap">
                     <iframe class="vc-video" src="<?= htmlspecialchars($iframeUrl, ENT_QUOTES, 'UTF-8') ?>" title="Video comprehension" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>
                 </div>
+                <div class="vc-video-copy">
+                    <h3>Watch And Focus</h3>
+                    <p><?= htmlspecialchars($instructions, ENT_QUOTES, 'UTF-8') ?></p>
+                </div>
             </section>
+        <?php else { ?>
+            <?php if (empty($questions)) { ?>
+                <div class="vc-layout">
+                    <section class="vc-panel">
+                        <div class="vc-video-wrap">
+                            <iframe class="vc-video" src="<?= htmlspecialchars($iframeUrl, ENT_QUOTES, 'UTF-8') ?>" title="Video comprehension" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>
+                        </div>
+                    </section>
+                    <section class="vc-panel">
+                        <div class="vc-empty">No questions configured yet.</div>
+                    </section>
+                </div>
+            <?php } else { ?>
+                <div class="vc-layout">
+                    <section class="vc-panel">
+                        <div class="vc-video-wrap">
+                            <iframe class="vc-video" src="<?= htmlspecialchars($iframeUrl, ENT_QUOTES, 'UTF-8') ?>" title="Video comprehension" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>
+                        </div>
+                    </section>
 
-            <section class="vc-panel">
-                <div class="vc-panel-header"><strong>Comprehension Questions</strong></div>
+                    <section class="vc-panel">
+                        <div class="vc-panel-header"><strong>Comprehension Questions</strong></div>
 
-                <div id="vc-quizShell">
-                    <div class="vc-questions">
-                        <div class="vc-question-count" id="vc-count"></div>
-                        <div class="vc-question" id="vc-question"></div>
-                        <div class="vc-options" id="vc-options"></div>
-                    </div>
+                        <div id="vc-quizShell">
+                            <div class="vc-questions">
+                                <div class="vc-question-count" id="vc-count"></div>
+                                <div class="vc-question" id="vc-question"></div>
+                                <div class="vc-options" id="vc-options"></div>
+                            </div>
 
-                    <div class="vc-controls">
-                        <button type="button" class="vc-btn vc-btn-check" id="vc-check">Check Answer</button>
-                        <button type="button" class="vc-btn vc-btn-next" id="vc-next">Next</button>
-                        <button type="button" class="vc-btn vc-btn-restart" id="vc-restart">Restart</button>
-                    </div>
+                            <div class="vc-controls">
+                                <button type="button" class="vc-btn vc-btn-check" id="vc-check">Check Answer</button>
+                                <button type="button" class="vc-btn vc-btn-next" id="vc-next">Next</button>
+                                <button type="button" class="vc-btn vc-btn-restart" id="vc-restart">Restart</button>
+                            </div>
 
-                    <div class="vc-feedback" id="vc-feedback">Select an option to begin.</div>
+                            <div class="vc-feedback" id="vc-feedback">Select an option to begin.</div>
+                        </div>
+
+                        <div class="vc-complete" id="vc-complete" style="display:none;"></div>
+                    </section>
                 </div>
 
-                <div class="vc-complete" id="vc-complete" style="display:none;"></div>
-            </section>
-        </div>
+                <script>
+                (function () {
+                    const data = <?= json_encode($questions, JSON_UNESCAPED_UNICODE) ?>;
+                    if (!Array.isArray(data) || data.length === 0) return;
 
-        <script>
-        (function () {
-            const data = <?= json_encode($questions, JSON_UNESCAPED_UNICODE) ?>;
-            if (!Array.isArray(data) || data.length === 0) return;
+                    const countEl = document.getElementById('vc-count');
+                    const questionEl = document.getElementById('vc-question');
+                    const optionsEl = document.getElementById('vc-options');
+                    const feedbackEl = document.getElementById('vc-feedback');
+                    const checkBtn = document.getElementById('vc-check');
+                    const nextBtn = document.getElementById('vc-next');
+                    const restartBtn = document.getElementById('vc-restart');
+                    const completeEl = document.getElementById('vc-complete');
+                    const shellEl = document.getElementById('vc-quizShell');
 
-            const countEl = document.getElementById('vc-count');
-            const questionEl = document.getElementById('vc-question');
-            const optionsEl = document.getElementById('vc-options');
-            const feedbackEl = document.getElementById('vc-feedback');
-            const checkBtn = document.getElementById('vc-check');
-            const nextBtn = document.getElementById('vc-next');
-            const restartBtn = document.getElementById('vc-restart');
-            const completeEl = document.getElementById('vc-complete');
-            const shellEl = document.getElementById('vc-quizShell');
+                    let index = 0;
+                    let selectedIndex = -1;
+                    let score = 0;
+                    let checked = false;
 
-            let index = 0;
-            let selectedIndex = -1;
-            let score = 0;
-            let checked = false;
-
-            function getCurrent() {
-                return data[index] || { question: '', options: ['', '', ''], correct: 0, explanation: '' };
-            }
-
-            function setFeedback(message, kind) {
-                feedbackEl.textContent = message;
-                feedbackEl.classList.remove('success', 'error');
-                if (kind === 'success') feedbackEl.classList.add('success');
-                if (kind === 'error') feedbackEl.classList.add('error');
-            }
-
-            function render() {
-                const current = getCurrent();
-                selectedIndex = -1;
-                checked = false;
-
-                countEl.textContent = `Question ${index + 1} of ${data.length}`;
-                questionEl.textContent = current.question || 'Question';
-                optionsEl.innerHTML = '';
-
-                (current.options || ['', '', '']).forEach((optionText, optionIndex) => {
-                    const btn = document.createElement('button');
-                    btn.type = 'button';
-                    btn.className = 'vc-option';
-                    btn.textContent = optionText !== '' ? optionText : `Option ${optionIndex + 1}`;
-                    btn.addEventListener('click', function () {
-                        if (checked) return;
-                        selectedIndex = optionIndex;
-                        Array.from(optionsEl.children).forEach(node => node.classList.remove('active'));
-                        btn.classList.add('active');
-                        setFeedback('Answer selected. Press Check Answer.', '');
-                    });
-                    optionsEl.appendChild(btn);
-                });
-
-                setFeedback('Select an option to begin.', '');
-            }
-
-            function showCompletion() {
-                shellEl.style.display = 'none';
-                completeEl.style.display = 'block';
-                completeEl.textContent = `Completed! You scored ${score} of ${data.length}.`;
-            }
-
-            checkBtn.addEventListener('click', function () {
-                if (checked) return;
-                if (selectedIndex < 0) {
-                    setFeedback('Please choose an answer first.', 'error');
-                    return;
-                }
-
-                checked = true;
-                const current = getCurrent();
-                const correctIndex = Number(current.correct || 0);
-                const optionNodes = Array.from(optionsEl.children);
-
-                optionNodes.forEach(function (node, nodeIndex) {
-                    node.classList.remove('active');
-                    if (nodeIndex === correctIndex) {
-                        node.classList.add('correct');
-                    } else if (nodeIndex === selectedIndex) {
-                        node.classList.add('wrong');
+                    function getCurrent() {
+                        return data[index] || { question: '', options: ['', '', ''], correct: 0, explanation: '' };
                     }
-                });
 
-                if (selectedIndex === correctIndex) {
-                    score += 1;
-                    setFeedback('Correct! ' + (current.explanation || ''), 'success');
-                } else {
-                    setFeedback('Try again. ' + (current.explanation || ''), 'error');
-                }
-            });
+                    function setFeedback(message, kind) {
+                        feedbackEl.textContent = message;
+                        feedbackEl.classList.remove('success', 'error');
+                        if (kind === 'success') feedbackEl.classList.add('success');
+                        if (kind === 'error') feedbackEl.classList.add('error');
+                    }
 
-            nextBtn.addEventListener('click', function () {
-                if (!checked) {
-                    setFeedback('Check your answer before going to the next question.', 'error');
-                    return;
-                }
+                    function render() {
+                        const current = getCurrent();
+                        selectedIndex = -1;
+                        checked = false;
 
-                if (index + 1 >= data.length) {
-                    showCompletion();
-                    return;
-                }
+                        countEl.textContent = `Question ${index + 1} of ${data.length}`;
+                        questionEl.textContent = current.question || 'Question';
+                        optionsEl.innerHTML = '';
 
-                index += 1;
-                render();
-            });
+                        (current.options || ['', '', '']).forEach((optionText, optionIndex) => {
+                            const btn = document.createElement('button');
+                            btn.type = 'button';
+                            btn.className = 'vc-option';
+                            btn.textContent = optionText !== '' ? optionText : `Option ${optionIndex + 1}`;
+                            btn.addEventListener('click', function () {
+                                if (checked) return;
+                                selectedIndex = optionIndex;
+                                Array.from(optionsEl.children).forEach(node => node.classList.remove('active'));
+                                btn.classList.add('active');
+                                setFeedback('Answer selected. Press Check Answer.', '');
+                            });
+                            optionsEl.appendChild(btn);
+                        });
 
-            restartBtn.addEventListener('click', function () {
-                index = 0;
-                score = 0;
-                selectedIndex = -1;
-                checked = false;
-                shellEl.style.display = 'block';
-                completeEl.style.display = 'none';
-                render();
-            });
+                        setFeedback('Select an option to begin.', '');
+                    }
 
-            render();
-        })();
-        </script>
+                    function showCompletion() {
+                        shellEl.style.display = 'none';
+                        completeEl.style.display = 'block';
+                        completeEl.textContent = `Completed! You scored ${score} of ${data.length}.`;
+                    }
+
+                    checkBtn.addEventListener('click', function () {
+                        if (checked) return;
+                        if (selectedIndex < 0) {
+                            setFeedback('Please choose an answer first.', 'error');
+                            return;
+                        }
+
+                        checked = true;
+                        const current = getCurrent();
+                        const correctIndex = Number(current.correct || 0);
+                        const optionNodes = Array.from(optionsEl.children);
+
+                        optionNodes.forEach(function (node, nodeIndex) {
+                            node.classList.remove('active');
+                            if (nodeIndex === correctIndex) {
+                                node.classList.add('correct');
+                            } else if (nodeIndex === selectedIndex) {
+                                node.classList.add('wrong');
+                            }
+                        });
+
+                        if (selectedIndex === correctIndex) {
+                            score += 1;
+                            setFeedback('Correct! ' + (current.explanation || ''), 'success');
+                        } else {
+                            setFeedback('Try again. ' + (current.explanation || ''), 'error');
+                        }
+                    });
+
+                    nextBtn.addEventListener('click', function () {
+                        if (!checked) {
+                            setFeedback('Check your answer before going to the next question.', 'error');
+                            return;
+                        }
+
+                        if (index + 1 >= data.length) {
+                            showCompletion();
+                            return;
+                        }
+
+                        index += 1;
+                        render();
+                    });
+
+                    restartBtn.addEventListener('click', function () {
+                        index = 0;
+                        score = 0;
+                        selectedIndex = -1;
+                        checked = false;
+                        shellEl.style.display = 'block';
+                        completeEl.style.display = 'none';
+                        render();
+                    });
+
+                    render();
+                })();
+                </script>
+            <?php } ?>
+        <?php } ?>
     <?php } ?>
 </div>
 
