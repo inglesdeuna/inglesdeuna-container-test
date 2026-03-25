@@ -261,7 +261,7 @@ tbody tr:last-child td{border-bottom:none}
             </div>
 
             <?php if (isset($_GET['saved'])) { ?>
-                <div class="notice">Docente guardado correctamente.</div>
+                <div class="notice">Docente guardado correctamente. &nbsp; <a href="teacher_profiles.php" style="color:#237a35;font-weight:800;">→ Siguiente paso: Crear perfil de acceso</a></div>
             <?php } ?>
 
             <?php if (!empty($errors)) { ?>

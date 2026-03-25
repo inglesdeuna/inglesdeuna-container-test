@@ -143,7 +143,8 @@ function load_english_targets_from_database(): array {
 
     try {
         $stmt = $pdo->query("
-            SELECT ph.id, CONCAT(l.name, ' - ', ph.name) AS name
+            SELECT ph.id, ph.name AS phase_name, l.id AS level_id, l.name AS level_name,
+                   CONCAT(l.name, ' - ', ph.name) AS name
             FROM english_phases ph
             INNER JOIN english_levels l ON l.id = ph.level_id
             ORDER BY l.id ASC, ph.id ASC
@@ -890,6 +891,100 @@ tbody tr:last-child td{
     color:var(--subtitle);
 }
 
+.check-groups{
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+}
+
+.check-group-wrap{
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:12px 14px;
+    background:#fff;
+}
+
+.check-group-header{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    cursor:pointer;
+    margin-bottom:8px;
+    font-size:14px;
+}
+
+.check-group-header input,
+.check-item input{
+    width:auto;
+    min-height:auto;
+    cursor:pointer;
+    margin:0;
+}
+
+.select-all-label{
+    color:var(--blue);
+    font-size:12px;
+    font-weight:600;
+}
+
+.check-group-items{
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+    padding-left:18px;
+}
+
+.check-item{
+    display:flex;
+    align-items:center;
+    gap:6px;
+    cursor:pointer;
+    font-size:14px;
+    padding:6px 10px;
+    border-radius:8px;
+    border:1px solid var(--line);
+    background:#fafcff;
+    flex-shrink:0;
+}
+
+.check-item:hover{
+    background:#eef4ff;
+    border-color:#cfe0ff;
+}
+
+.check-items-wrap{
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+    min-height:40px;
+}
+
+.btn-select-all{
+    padding:6px 12px;
+    border:1px solid var(--blue);
+    border-radius:8px;
+    color:var(--blue);
+    background:#eef4ff;
+    font-size:13px;
+    font-weight:700;
+    cursor:pointer;
+    transition:background .15s ease;
+}
+
+.btn-select-all:hover{
+    background:#dceaff;
+}
+
+.btn-deselect{
+    border-color:var(--muted);
+    color:var(--muted);
+    background:#f5f6f7;
+}
+
+.btn-deselect:hover{
+    background:#e9eaeb;
+}
+
 @media (max-width: 768px){
     body{
         padding:20px;
@@ -994,17 +1089,43 @@ tbody tr:last-child td{
                 </div>
 
                 <div class="field full block-section" id="englishBlock">
-                    <div class="block-title">Cursos de inglés</div>
-                    <label for="english_course_ids">Seleccione uno o varios cursos</label>
-                    <select name="english_course_ids[]" id="english_course_ids" multiple>
-                        <?php foreach ($englishTargets as $target) { ?>
-                            <?php $targetId = (string) ($target['id'] ?? ''); ?>
-                            <option value="<?php echo h($targetId); ?>" <?php echo in_array($targetId, $form['english_course_ids'], true) ? 'selected' : ''; ?>>
-                                <?php echo h((string) ($target['name'] ?? 'Curso')); ?>
-                            </option>
+                    <div class="block-title">Cursos de inglés — selecciona por nivel o fase</div>
+                    <div class="check-groups" id="englishCheckGroups">
+                        <?php
+                        $levelGroups = [];
+                        foreach ($englishTargets as $target) {
+                            $lvId   = (string)($target['level_id']   ?? $target['id']   ?? '');
+                            $lvName = (string)($target['level_name'] ?? $target['name'] ?? 'Nivel');
+                            if (!isset($levelGroups[$lvId])) {
+                                $levelGroups[$lvId] = ['label' => $lvName, 'phases' => []];
+                            }
+                            $levelGroups[$lvId]['phases'][] = $target;
+                        }
+                        foreach ($levelGroups as $lvId => $group) { ?>
+                            <div class="check-group-wrap">
+                                <label class="check-group-header">
+                                    <input type="checkbox" class="level-select-all" data-level="<?php echo h($lvId); ?>">
+                                    <strong><?php echo h($group['label']); ?></strong>
+                                    <span class="select-all-label">(seleccionar todo el nivel)</span>
+                                </label>
+                                <div class="check-group-items" data-level-group="<?php echo h($lvId); ?>">
+                                    <?php foreach ($group['phases'] as $phase) {
+                                        $phaseId   = (string)($phase['id'] ?? '');
+                                        $phaseName = (string)($phase['phase_name'] ?? $phase['name'] ?? 'Fase');
+                                        $checked   = in_array($phaseId, $form['english_course_ids'], true);
+                                    ?>
+                                        <label class="check-item">
+                                            <input type="checkbox" name="english_course_ids[]" value="<?php echo h($phaseId); ?>" <?php echo $checked ? 'checked' : ''; ?> class="phase-check" data-level="<?php echo h($lvId); ?>">
+                                            <span><?php echo h($phaseName); ?></span>
+                                        </label>
+                                    <?php } ?>
+                                </div>
+                            </div>
                         <?php } ?>
-                    </select>
-                    <div class="helper-text">Mantén presionada la tecla Ctrl para seleccionar varios cursos.</div>
+                        <?php if (empty($englishTargets)) { ?>
+                            <div class="helper-text">No hay cursos de inglés configurados aún.</div>
+                        <?php } ?>
+                    </div>
                 </div>
 
                 <div class="field full block-section" id="technicalCourseBlock">
@@ -1022,10 +1143,14 @@ tbody tr:last-child td{
                 </div>
 
                 <div class="field full block-section" id="technicalUnitsBlock">
-                    <div class="block-title">Unidades técnicas</div>
-                    <label for="technical_unit_ids">Seleccione una o varias unidades</label>
-                    <select name="technical_unit_ids[]" id="technical_unit_ids" multiple></select>
-                    <div class="helper-text">Primero selecciona el semestre. Luego aparecerán las unidades disponibles.</div>
+                    <div class="block-title">Unidades técnicas — asigna unidad por unidad</div>
+                    <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;">
+                        <button type="button" class="btn-select-all" onclick="selectAllTechnicalUnits()">Seleccionar todas</button>
+                        <button type="button" class="btn-select-all btn-deselect" onclick="deselectAllTechnicalUnits()">Deseleccionar</button>
+                    </div>
+                    <div class="check-items-wrap" id="technicalUnitsContainer">
+                        <div class="helper-text">Primero selecciona el semestre para ver las unidades.</div>
+                    </div>
                 </div>
 
                 <div class="field full">
@@ -1134,7 +1259,6 @@ const englishBlock = document.getElementById('englishBlock');
 const technicalCourseBlock = document.getElementById('technicalCourseBlock');
 const technicalUnitsBlock = document.getElementById('technicalUnitsBlock');
 const technicalCourseId = document.getElementById('technical_course_id');
-const technicalUnitIds = document.getElementById('technical_unit_ids');
 const preselectedTechnicalUnitIds = <?php echo json_encode(array_values($form['technical_unit_ids']), JSON_UNESCAPED_UNICODE); ?>;
 
 function toggleProgramBlocks() {
@@ -1147,25 +1271,47 @@ function toggleProgramBlocks() {
 }
 
 function renderTechnicalUnits() {
-    if (!technicalCourseId || !technicalUnitIds) return;
+    const container = document.getElementById('technicalUnitsContainer');
+    if (!technicalCourseId || !container) return;
 
     const courseId = String(technicalCourseId.value || '');
-    technicalUnitIds.innerHTML = '';
+    container.innerHTML = '';
 
-    technicalUnits
-        .filter(item => String(item.course_id || '') === courseId)
-        .forEach(item => {
-            const option = document.createElement('option');
-            const value = String(item.id || '');
-            option.value = value;
-            option.textContent = String(item.name || 'Unidad');
+    const filtered = technicalUnits.filter(function(item) {
+        return String(item.course_id || '') === courseId;
+    });
 
-            if (Array.isArray(preselectedTechnicalUnitIds) && preselectedTechnicalUnitIds.includes(value)) {
-                option.selected = true;
-            }
+    if (filtered.length === 0) {
+        container.innerHTML = '<div class="helper-text">Selecciona un semestre para ver sus unidades.</div>';
+        return;
+    }
 
-            technicalUnitIds.appendChild(option);
-        });
+    filtered.forEach(function(item) {
+        const value = String(item.id || '');
+        const label = document.createElement('label');
+        label.className = 'check-item';
+        const cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.name = 'technical_unit_ids[]';
+        cb.value = value;
+        cb.className = 'tech-unit-check';
+        if (Array.isArray(preselectedTechnicalUnitIds) && preselectedTechnicalUnitIds.includes(value)) {
+            cb.checked = true;
+        }
+        const span = document.createElement('span');
+        span.textContent = String(item.name || 'Unidad');
+        label.appendChild(cb);
+        label.appendChild(span);
+        container.appendChild(label);
+    });
+}
+
+function selectAllTechnicalUnits() {
+    document.querySelectorAll('.tech-unit-check').forEach(function(cb) { cb.checked = true; });
+}
+
+function deselectAllTechnicalUnits() {
+    document.querySelectorAll('.tech-unit-check').forEach(function(cb) { cb.checked = false; });
 }
 
 if (programType) {
@@ -1177,6 +1323,31 @@ if (technicalCourseId) {
     renderTechnicalUnits();
     technicalCourseId.addEventListener('change', renderTechnicalUnits);
 }
+
+// English level "Select All" behavior
+document.querySelectorAll('.level-select-all').forEach(function(masterCb) {
+    masterCb.addEventListener('change', function() {
+        const levelId = this.dataset.level;
+        document.querySelectorAll('.phase-check[data-level="' + levelId + '"]').forEach(function(cb) {
+            cb.checked = masterCb.checked;
+        });
+    });
+});
+
+// Sync master checkbox when individual phases change
+document.querySelectorAll('.phase-check').forEach(function(cb) {
+    cb.addEventListener('change', function() {
+        const levelId = this.dataset.level;
+        const allPhases = document.querySelectorAll('.phase-check[data-level="' + levelId + '"]');
+        const master = document.querySelector('.level-select-all[data-level="' + levelId + '"]');
+        if (master) {
+            const allChecked = Array.from(allPhases).every(function(p) { return p.checked; });
+            const anyChecked = Array.from(allPhases).some(function(p) { return p.checked; });
+            master.checked = allChecked;
+            master.indeterminate = !allChecked && anyChecked;
+        }
+    });
+});
 </script>
 </body>
 </html>
