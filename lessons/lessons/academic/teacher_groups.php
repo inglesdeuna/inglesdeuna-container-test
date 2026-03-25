@@ -169,14 +169,14 @@ $studentCounts = load_student_counts_per_teacher();
 <title>Docentes y Grupos</title>
 <style>
 :root{
-    --bg:#eef2f7;
+    --bg:#eef7f0;
     --card:#ffffff;
-    --line:#dce4f0;
-    --text:#1f2937;
-    --subtitle:#143d7a;
-    --muted:#5b6577;
-    --blue:#1f66cc;
-    --blue-hover:#2f5bb5;
+    --line:#d8e8dc;
+    --text:#1f3b28;
+    --subtitle:#2a5136;
+    --muted:#5d7465;
+    --green-primary:#2f9e44;
+    --green-dark:#237a35;
     --orange:#b45309;
     --green:#166534;
     --shadow:0 8px 24px rgba(0,0,0,.08);
@@ -213,14 +213,15 @@ body{
     min-height:40px;
     padding:8px 14px;
     border-radius:10px;
-    background:var(--blue);
+    background:linear-gradient(180deg,#6b8f71,#4a6e52);
     color:#fff;
     text-decoration:none;
     font-weight:700;
     font-size:13px;
+    border:none;
 }
 .back:hover{
-    background:var(--blue-hover);
+    background:linear-gradient(180deg,#5a7d60,#3a5e42);
 }
 .links{
     display:flex;
@@ -234,15 +235,15 @@ body{
     min-height:40px;
     padding:8px 14px;
     border-radius:10px;
-    background:#eef4ff;
-    color:var(--blue);
+    background:#eef7f0;
+    color:var(--green-primary);
     text-decoration:none;
     font-weight:700;
     font-size:13px;
-    border:1px solid #cfe0ff;
+    border:1px solid #b8dfc4;
 }
 .link-secondary:hover{
-    background:#dceaff;
+    background:#d4f0dc;
 }
 .page-title{
     margin:10px 0 18px;
@@ -284,7 +285,7 @@ body{
 .teacher-name{
     font-size:18px;
     font-weight:700;
-    color:#1f3c75;
+    color:var(--subtitle);
     margin-bottom:6px;
 }
 .teacher-meta{
@@ -308,12 +309,13 @@ body{
     border:none;
     cursor:pointer;
 }
-.btn-blue{
-    background:var(--blue);
+.btn-green{
+    background:linear-gradient(180deg,var(--green-primary),var(--green-dark));
     color:#fff;
+    border:none;
 }
-.btn-blue:hover{
-    background:var(--blue-hover);
+.btn-green:hover{
+    background:linear-gradient(180deg,var(--green-dark),#1b6329);
 }
 .btn-red{
     background:#fee2e2;
@@ -346,8 +348,8 @@ body{
     white-space:nowrap;
 }
 .badge-tech{
-    background:#eef4ff;
-    color:#1f66cc;
+    background:#eef7f0;
+    color:var(--green-primary);
 }
 .badge-eng{
     background:#fff3e8;
@@ -407,8 +409,8 @@ body{
             <div class="empty">No hay docentes con asignaciones actualmente.</div>
             <div class="empty">Primero crea perfil y luego asigna cursos.</div>
             <div class="teacher-actions" style="margin-top:12px;">
-                <a class="btn btn-blue" href="teacher_profiles.php">Crear/editar perfil</a>
-                <a class="btn btn-blue" href="teacher_assignments.php">Ir a asignaciones</a>
+                <a class="btn btn-green" href="teacher_profiles.php">Crear/editar perfil</a>
+                <a class="btn btn-green" href="teacher_assignments.php">Ir a asignaciones</a>
             </div>
         </div>
     <?php } else { ?>
@@ -422,7 +424,7 @@ body{
                 <div class="teacher-head">
                     <div>
                         <div class="teacher-name">
-                            Prof. <?php echo h((string)($teacher['teacher_name'] ?? 'Docente')); ?>
+                            👨‍🏫 Prof. <?php echo h((string)($teacher['teacher_name'] ?? 'Docente')); ?>
                         </div>
                         <div class="teacher-meta">
                             <?php if (!empty($account['username'])) { ?>
@@ -440,11 +442,11 @@ body{
 
                     <div class="teacher-actions">
                         <?php if (!empty($account['account_id'])) { ?>
-                            <a class="btn btn-blue" href="teacher_profiles.php?edit=<?php echo h($account['account_id']); ?>">
+                            <a class="btn btn-green" href="teacher_profiles.php?edit=<?php echo h($account['account_id']); ?>">
                                 Editar Perfil
                             </a>
                         <?php } ?>
-                        <a class="btn btn-blue" href="teacher_assignments.php?teacher_id=<?php echo h($tid); ?>">
+                        <a class="btn btn-green" href="teacher_assignments.php?teacher_id=<?php echo h($tid); ?>">
                             Editar Asignaciones
                         </a>
                         <a class="btn btn-red" href="teacher_groups.php?remove_teacher=<?php echo h($tid); ?>" onclick="return confirm('¿Quitar todas las asignaciones de este docente?')">
