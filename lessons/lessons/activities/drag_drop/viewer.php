@@ -6,7 +6,7 @@ $activityId = isset($_GET['id']) ? trim((string) $_GET['id']) : '';
 $unit = isset($_GET['unit']) ? trim((string) $_GET['unit']) : '';
 
 if ($activityId === '' && $unit === '') {
-    die('Actividad no especificada');
+  die('Activity not specified');
 }
 
 function resolve_unit_from_activity(PDO $pdo, string $activityId): string
@@ -162,113 +162,173 @@ $viewerTitle = (string) ($activity['title'] ?? default_drag_drop_title());
 $blocks = is_array($activity['blocks'] ?? null) ? $activity['blocks'] : [];
 
 if (count($blocks) === 0) {
-    die('No hay oraciones para esta unidad');
+  die('No sentences found for this unit');
 }
 
 ob_start();
 ?>
 <style>
+.dd-stage{
+  max-width:980px;
+  margin:0 auto;
+}
+
+.dd-intro{
+  margin-bottom:18px;
+  padding:24px 26px;
+  border-radius:26px;
+  border:1px solid #ffd8b8;
+  background:linear-gradient(135deg, #fff2e2 0%, #fff8e7 52%, #f4eadc 100%);
+  box-shadow:0 16px 34px rgba(15, 23, 42, .09);
+}
+
+.dd-intro h2{
+  margin:0 0 8px;
+  font-family:'Fredoka', 'Trebuchet MS', sans-serif;
+  font-size:30px;
+  line-height:1.1;
+  color:#9a3412;
+}
+
+.dd-intro p,
 .instructions{
-  margin:0 0 16px 0;
+  margin:0;
   text-align:center;
-  color:#334155;
+  color:#6b4f3a;
+  font-size:16px;
+  line-height:1.6;
 }
 
 #sentenceBox{
-  margin:20px auto;
-  padding:20px;
-  background:white;
-  border-radius:18px;
+  margin:20px auto 0;
+  padding:22px;
+  background:linear-gradient(180deg, #fffdf9 0%, #fff5eb 100%);
+  border:1px solid #f3dcc8;
+  border-radius:24px;
   max-width:920px;
-  box-shadow:0 8px 24px rgba(0,0,0,.08);
+  box-shadow:0 14px 28px rgba(15, 23, 42, .08);
 }
 
 #promptText{
   line-height:2;
-  font-size:22px;
+  font-family:'Fredoka', 'Trebuchet MS', sans-serif;
+  font-size:clamp(20px, 2.4vw, 32px);
+  color:#4b2e1c;
 }
 
 .blank{
   display:inline-flex;
   align-items:center;
   justify-content:center;
-  min-width:100px;
-  min-height:42px;
-  padding:4px 8px;
-  margin:0 5px;
-  border:2px dashed #0b5ed7;
-  border-radius:10px;
-  background:#f8fbff;
+  min-width:110px;
+  min-height:48px;
+  padding:6px 12px;
+  margin:4px 6px;
+  border:2px dashed #f59e0b;
+  border-radius:16px;
+  background:#fff7ed;
   vertical-align:middle;
+  color:#9a3412;
+  font-weight:800;
 }
 
 .blank.filled{
   border-style:solid;
-  background:#e8f1ff;
+  background:#ffedd5;
 }
 
 #wordBank{
   display:flex;
   flex-wrap:wrap;
   justify-content:center;
-  gap:10px;
-  margin:15px 0;
+  gap:12px;
+  margin:18px 0;
 }
 
 .word{
-  padding:8px 14px;
-  border-radius:10px;
-  color:white;
-  font-weight:bold;
+  padding:10px 16px;
+  border-radius:999px;
+  color:#7c2d12;
+  font-weight:800;
   cursor:grab;
-  background:#2563eb;
+  background:linear-gradient(180deg, #fed7aa 0%, #fdba74 100%);
+  box-shadow:0 10px 20px rgba(251, 146, 60, .18);
   user-select:none;
 }
 
-button{
-  padding:10px 18px;
+.dd-btn{
+  padding:11px 18px;
   border:none;
-  border-radius:12px;
-  background:#0b5ed7;
+  border-radius:999px;
   color:white;
   cursor:pointer;
   margin:6px;
-  font-weight:700;
+  min-width:148px;
+  font-weight:800;
+  font-family:'Nunito', 'Segoe UI', sans-serif;
+  font-size:14px;
+  box-shadow:0 10px 22px rgba(15, 23, 42, .12);
+  transition:transform .15s ease, filter .15s ease;
 }
+
+.dd-btn:hover{
+  filter:brightness(1.04);
+  transform:translateY(-1px);
+}
+
+.dd-btn-listen{background:linear-gradient(180deg, #14b8a6 0%, #0f766e 100%)}
+.dd-btn-check{background:linear-gradient(180deg, #fb923c 0%, #f97316 100%)}
+.dd-btn-show{background:linear-gradient(180deg, #d8b4fe 0%, #a855f7 100%)}
+.dd-btn-next{background:linear-gradient(180deg, #5eead4 0%, #14b8a6 100%)}
 
 #listenBtn.hidden{ display:none; }
 
 #feedback{
   text-align:center;
   font-size:20px;
-  font-weight:bold;
-  min-height:28px;
+  font-weight:800;
+  min-height:32px;
+  margin-top:8px;
 }
 
-.good{ color:green; }
-.bad{ color:crimson; }
+.good{ color:#15803d; }
+.bad{ color:#dc2626; }
 
 .controls{
   margin-top:15px;
   text-align:center;
 }
+
+@media (max-width:760px){
+  .dd-intro{padding:20px 18px}
+  .dd-intro h2{font-size:26px}
+  #sentenceBox{padding:18px}
+  .controls{display:flex;flex-direction:column;align-items:center}
+  .dd-btn{width:100%;max-width:320px}
+}
 </style>
 
-<p class="instructions">Complete the blanks by dragging the correct words.</p>
+<div class="dd-stage">
+  <section class="dd-intro">
+    <h2>Build The Sentence</h2>
+    <p class="instructions">Complete the blanks by dragging the correct words into place. Use Show Answer when you need to reveal the full sentence.</p>
+  </section>
 
-<div id="sentenceBox">
-  <button id="listenBtn" type="button" onclick="speak()">🔊 Listen</button>
-  <div id="promptText"></div>
+  <div id="sentenceBox">
+    <button id="listenBtn" class="dd-btn dd-btn-listen" type="button" onclick="speak()">Listen</button>
+    <div id="promptText"></div>
+  </div>
+
+  <div id="wordBank"></div>
+
+  <div class="controls">
+    <button class="dd-btn dd-btn-check" type="button" onclick="checkSentence()">Check Answer</button>
+    <button class="dd-btn dd-btn-show" type="button" onclick="showAnswer()">Show Answer</button>
+    <button class="dd-btn dd-btn-next" type="button" onclick="nextSentence()">Next</button>
+  </div>
+
+  <div id="feedback"></div>
 </div>
-
-<div id="wordBank"></div>
-
-<div class="controls">
-  <button type="button" onclick="checkSentence()">✅ Check</button>
-  <button type="button" onclick="nextSentence()">➡️ Next</button>
-</div>
-
-<div id="feedback"></div>
 
 <audio id="winSound" src="../../hangman/assets/win.mp3" preload="auto"></audio>
 
@@ -429,32 +489,48 @@ function checkSentence() {
   const built = getBuiltAnswers();
 
   if (built.includes('')) {
-    feedback.textContent = '⚠ Complete all blanks.';
+    feedback.textContent = 'Complete all blanks first.';
     feedback.className = 'bad';
     return;
   }
 
   if (JSON.stringify(built) === JSON.stringify(currentAnswers)) {
     if (index === blocks.length - 1) {
-      feedback.textContent = '🏆 Completed!';
+      feedback.textContent = 'Completed!';
       feedback.className = 'good';
       playSound(winSound);
       finished = true;
       return;
     }
 
-    feedback.textContent = '🌟 Excellent!';
+    feedback.textContent = 'Correct!';
     feedback.className = 'good';
     finished = true;
   } else {
-    feedback.textContent = '🔁 Try again!';
+    feedback.textContent = 'Try Again';
     feedback.className = 'bad';
   }
 }
 
+function showAnswer() {
+  const blanks = Array.prototype.slice.call(promptText.querySelectorAll('.blank'));
+
+  blanks.forEach(function (blank, blankIndex) {
+    const answer = currentAnswers[blankIndex] || '';
+    blank.dataset.word = answer;
+    blank.textContent = answer;
+    blank.classList.add('filled');
+  });
+
+  wordBank.innerHTML = '';
+  feedback.textContent = 'Show The Answer';
+  feedback.className = 'good';
+  finished = true;
+}
+
 function nextSentence() {
   if (index >= blocks.length - 1) {
-    feedback.textContent = '🏆 Completed!';
+    feedback.textContent = 'Completed!';
     feedback.className = 'good';
     playSound(winSound);
     finished = true;

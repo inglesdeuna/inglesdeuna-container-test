@@ -427,7 +427,7 @@ if ($unit === '' && $activityId !== '') {
 }
 
 if ($unit === '') {
-    die('Unidad no especificada');
+    die('Unit not specified');
 }
 
 $activity = load_dictation_activity($pdo, $unit, $activityId);
@@ -704,7 +704,7 @@ ob_start();
 </style>
 
 <?php if (isset($_GET['saved'])) { ?>
-<p class="saved-notice">✔ Guardado correctamente</p>
+<p class="saved-notice">✔ Saved successfully</p>
 <?php } ?>
 
 <form class="dict-form" id="dictationForm" method="post" enctype="multipart/form-data">

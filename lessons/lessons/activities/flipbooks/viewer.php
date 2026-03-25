@@ -5,7 +5,7 @@ require_once __DIR__ . '/../../core/_activity_viewer_template.php';
 $activityId = isset($_GET['id']) ? trim((string) $_GET['id']) : '';
 
 if ($activityId === '') {
-    die('ID de actividad no especificado.');
+    die('Activity ID not specified.');
 }
 
 $stmt = $pdo->prepare("SELECT id, data FROM activities WHERE id = :id LIMIT 1");
@@ -13,7 +13,7 @@ $stmt->execute(['id' => $activityId]);
 $activity = $stmt->fetch(PDO::FETCH_ASSOC);
 
 if (!$activity) {
-    die('Actividad no encontrada.');
+    die('Activity not found.');
 }
 
 $data = json_decode($activity['data'] ?? '', true);
@@ -46,9 +46,14 @@ ob_start();
 <link rel="stylesheet" href="/lessons/lessons/activities/flipbooks/flipbook.css">
 
 <?php if ($pdfDisplayUrl === ''): ?>
+    <div class="flipbook-intro">
+        <h2>Downloadable Material</h2>
+        <p>Open the document in the browser, download it, or use fullscreen mode for easier reading on any screen size.</p>
+    </div>
+
     <div class="flipbook-empty-state">
-        <h3>No hay un PDF cargado todavía</h3>
-        <p>Abre el editor y sube un archivo para poder visualizarlo.</p>
+        <h3>No PDF has been uploaded yet</h3>
+        <p>Open the editor and upload a file to preview it here.</p>
     </div>
 <?php else: ?>
     <div
@@ -58,8 +63,13 @@ ob_start();
         data-pdf-download-url="<?php echo htmlspecialchars($pdfDownloadUrl, ENT_QUOTES, 'UTF-8'); ?>"
     >
         <div class="flipbook-viewer__header">
+            <div class="flipbook-intro">
+                <h2>Downloadable Material</h2>
+                <p>Open the document in the browser, download it, or use fullscreen mode for easier reading on any screen size.</p>
+            </div>
+
             <p class="flipbook-viewer__subtitle">
-                Visualiza el documento o descárgalo para consultarlo.
+                Preview the document here or download it for later review.
             </p>
         </div>
 
@@ -71,11 +81,11 @@ ob_start();
                     </button>
 
                     <button type="button" id="download-pdf-btn" class="flipbook-btn flipbook-btn--primary">
-                        Descargar PDF
+                        Download PDF
                     </button>
 
                     <button type="button" id="full-screen-btn" class="flipbook-btn flipbook-btn--dark">
-                        Pantalla completa
+                        Full Screen
                     </button>
                 </div>
             </div>
@@ -138,7 +148,7 @@ ob_start();
             }
 
             const isFullscreen = document.fullscreenElement === fullScreenTarget;
-            fullScreenBtn.textContent = isFullscreen ? 'Salir pantalla completa' : 'Pantalla completa';
+            fullScreenBtn.textContent = isFullscreen ? 'Exit Full Screen' : 'Full Screen';
         }
 
         if (fullScreenBtn && fullScreenTarget && pdfFrame) {

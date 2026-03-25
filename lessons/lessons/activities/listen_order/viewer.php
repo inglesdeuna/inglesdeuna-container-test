@@ -6,7 +6,7 @@ $activityId = isset($_GET['id']) ? trim((string) $_GET['id']) : '';
 $unit = isset($_GET['unit']) ? trim((string) $_GET['unit']) : '';
 
 if ($activityId === '' && $unit === '') {
-    die('Actividad no especificada');
+  die('Activity not specified');
 }
 
 function resolve_unit_from_activity(PDO $pdo, string $activityId): string
@@ -146,35 +146,63 @@ if (count($blocks) === 0) {
 ob_start();
 ?>
 <style>
+.lo-stage{
+  max-width:980px;
+  margin:0 auto;
+}
+
+.lo-intro{
+  margin-bottom:18px;
+  padding:24px 26px;
+  border-radius:26px;
+  border:1px solid #d9cff6;
+  background:linear-gradient(135deg, #eef4ff 0%, #f8ebff 48%, #e8fff7 100%);
+  box-shadow:0 16px 34px rgba(15, 23, 42, .09);
+}
+
+.lo-intro h2{
+  margin:0 0 8px;
+  font-family:'Fredoka', 'Trebuchet MS', sans-serif;
+  font-size:30px;
+  line-height:1.1;
+  color:#4c1d95;
+}
+
+.lo-intro p,
 .instructions{
-  margin:0 0 16px 0;
+  margin:0;
   text-align:center;
-  color:#334155;
+  color:#5b516f;
+  font-size:16px;
+  line-height:1.6;
 }
 
 #sentenceBox{
-  margin:20px auto;
-  padding:15px;
-  background:white;
-  border-radius:15px;
+  margin:20px auto 0;
+  padding:20px;
+  background:linear-gradient(180deg, #fdfcff 0%, #f2fbff 100%);
+  border:1px solid #d7e6fb;
+  border-radius:24px;
   max-width:760px;
-  box-shadow:0 8px 24px rgba(0,0,0,.08);
+  box-shadow:0 14px 28px rgba(15, 23, 42, .08);
+  text-align:center;
 }
 
 #words, #answer{
   display:flex;
   flex-wrap:wrap;
   justify-content:center;
-  gap:10px;
-  margin:15px 0;
+  gap:12px;
+  margin:18px 0;
 }
 
 .word{
-  padding:6px;
-  border-radius:12px;
-  background:white;
+  padding:8px;
+  border-radius:18px;
+  background:linear-gradient(180deg, #ffffff 0%, #f5f3ff 100%);
   cursor:grab;
-  box-shadow:0 2px 6px rgba(0,0,0,.15);
+  border:1px solid #ddd6fe;
+  box-shadow:0 10px 20px rgba(124, 58, 237, .1);
 }
 
 .word img{
@@ -182,53 +210,87 @@ ob_start();
   width:auto;
   display:block;
   object-fit:contain;
+  border-radius:12px;
 }
 
 .drop-zone{
   background:#fff;
-  border:2px dashed #0b5ed7;
-  border-radius:12px;
-  padding:15px;
-  min-height:110px;
+  border:2px dashed #7c3aed;
+  border-radius:20px;
+  padding:18px;
+  min-height:126px;
 }
 
-button{
-  padding:10px 18px;
+.lo-controls{
+  display:flex;
+  flex-wrap:wrap;
+  justify-content:center;
+  gap:10px;
+}
+
+.lo-btn{
+  padding:11px 18px;
   border:none;
-  border-radius:12px;
-  background:#0b5ed7;
+  border-radius:999px;
   color:white;
   cursor:pointer;
-  margin:6px;
-  font-weight:700;
+  min-width:148px;
+  font-weight:800;
+  font-family:'Nunito', 'Segoe UI', sans-serif;
+  font-size:14px;
+  box-shadow:0 10px 22px rgba(15, 23, 42, .12);
+  transition:transform .15s ease, filter .15s ease;
 }
+
+.lo-btn:hover{
+  filter:brightness(1.04);
+  transform:translateY(-1px);
+}
+
+.lo-btn-listen{background:linear-gradient(180deg, #38bdf8 0%, #0ea5e9 100%)}
+.lo-btn-check{background:linear-gradient(180deg, #8b5cf6 0%, #7c3aed 100%)}
+.lo-btn-show{background:linear-gradient(180deg, #f9a8d4 0%, #ec4899 100%)}
+.lo-btn-next{background:linear-gradient(180deg, #2dd4bf 0%, #0f766e 100%)}
 
 #feedback{
   font-size:20px;
-  font-weight:bold;
+  font-weight:800;
   min-height:28px;
   text-align:center;
 }
 
-.good{color:green;}
-.bad{color:crimson;}
+.good{color:#15803d;}
+.bad{color:#dc2626;}
+
+@media (max-width:760px){
+  .lo-intro{padding:20px 18px}
+  .lo-intro h2{font-size:26px}
+  .lo-controls{flex-direction:column;align-items:center}
+  .lo-btn{width:100%;max-width:320px}
+}
 </style>
 
-<p class="instructions">Listen and drag the images into the correct order.</p>
+<div class="lo-stage">
+  <section class="lo-intro">
+    <h2>Listen And Order</h2>
+    <p class="instructions">Listen to the sentence and drag the images into the correct sequence. Use Show Answer to reveal the right order.</p>
+  </section>
 
-<div id="sentenceBox">
-  <button type="button" onclick="playAudio()">🔊 Listen</button>
+  <div id="sentenceBox">
+    <button class="lo-btn lo-btn-listen" type="button" onclick="playAudio()">Listen</button>
+  </div>
+
+  <div id="words"></div>
+  <div id="answer" class="drop-zone"></div>
+
+  <div class="lo-controls">
+    <button class="lo-btn lo-btn-check" type="button" onclick="checkOrder()">Check Answer</button>
+    <button class="lo-btn lo-btn-show" type="button" onclick="showAnswer()">Show Answer</button>
+    <button class="lo-btn lo-btn-next" type="button" onclick="nextBlock()">Next</button>
+  </div>
+
+  <div id="feedback"></div>
 </div>
-
-<div id="words"></div>
-<div id="answer" class="drop-zone"></div>
-
-<div>
-  <button type="button" onclick="checkOrder()">✅ Check</button>
-  <button type="button" onclick="nextBlock()">➡️ Next</button>
-</div>
-
-<div id="feedback"></div>
 
 <audio id="winSound" src="../../hangman/assets/win.mp3" preload="auto"></audio>
 
@@ -362,32 +424,45 @@ function checkOrder() {
   });
 
   if (built.length !== correct.length) {
-    feedback.textContent = '⚠ Complete all images first.';
+    feedback.textContent = 'Complete all images first.';
     feedback.className = 'bad';
     return;
   }
 
   if (JSON.stringify(built) === JSON.stringify(correct)) {
     if (index === blocks.length - 1) {
-      feedback.textContent = '🏆 Completed!';
+      feedback.textContent = 'Completed!';
       feedback.className = 'good';
       playSound(winSound);
       finished = true;
       return;
     }
 
-    feedback.textContent = '🌟 Excellent!';
+    feedback.textContent = 'Correct!';
     feedback.className = 'good';
     finished = true;
   } else {
-    feedback.textContent = '🔁 Try again!';
+    feedback.textContent = 'Try Again';
     feedback.className = 'bad';
   }
 }
 
+function showAnswer() {
+  answerDiv.innerHTML = '';
+  wordsDiv.innerHTML = '';
+
+  correct.forEach(function (src) {
+    answerDiv.appendChild(createImageChip(src));
+  });
+
+  feedback.textContent = 'Show The Answer';
+  feedback.className = 'good';
+  finished = true;
+}
+
 function nextBlock() {
   if (index >= blocks.length - 1) {
-    feedback.textContent = '🏆 Completed!';
+    feedback.textContent = 'Completed!';
     feedback.className = 'good';
     playSound(winSound);
     finished = true;

@@ -191,7 +191,7 @@ if ($unit === '' && $activityId !== '') {
 }
 
 if ($unit === '') {
-    die('Unidad no especificada');
+    die('Unit not specified');
 }
 
 $activity = load_external_activity($pdo, $unit, $activityId);
@@ -348,14 +348,14 @@ ob_start();
 </style>
 
 <?php if (isset($_GET['saved'])) { ?>
-    <p style="color:green;font-weight:bold;margin-bottom:15px;">✔ Guardado correctamente</p>
+    <p style="color:green;font-weight:bold;margin-bottom:15px;">✔ Saved successfully</p>
 <?php } ?>
 
 <form method="post" class="ex-form" id="externalForm">
     <div class="ex-shell">
         <div class="ex-hero">
             <h2 class="ex-hero-title">🌐 External Activity</h2>
-            <p class="ex-hero-text">Crea una actividad que abra un recurso externo con una presentación más bonita y consistente con el resto del sistema.</p>
+            <p class="ex-hero-text">Create an activity that opens an external resource with a cleaner presentation consistent with the rest of the system.</p>
         </div>
 
         <div class="ex-body">

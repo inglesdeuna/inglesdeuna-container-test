@@ -222,7 +222,7 @@ if ($unit === "" && $activityId !== "") {
 }
 
 if ($unit === "") {
-    die("Unidad no especificada");
+    die("Unit not specified");
 }
 
 $activity = load_listen_order_activity($pdo, $unit, $activityId);
@@ -310,7 +310,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 ob_start();
 
 if (isset($_GET["saved"])) {
-    echo '<p style="color:green;font-weight:bold;margin-bottom:15px;">✔ Guardado correctamente</p>';
+    echo '<p style="color:green;font-weight:bold;margin-bottom:15px;">✔ Saved successfully</p>';
 }
 ?>
 

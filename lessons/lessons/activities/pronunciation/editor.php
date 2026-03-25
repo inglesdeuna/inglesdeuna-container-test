@@ -424,7 +424,7 @@ if ($unit === '' && $activityId !== '') {
 }
 
 if ($unit === '') {
-    die('Unidad no especificada');
+    die('Unit not specified');
 }
 
 $activity = load_pronunciation_activity($pdo, $unit, $activityId);
@@ -701,7 +701,7 @@ ob_start();
 </style>
 
 <?php if (isset($_GET['saved'])) { ?>
-<p class="saved-notice">✔ Guardado correctamente</p>
+<p class="saved-notice">✔ Saved successfully</p>
 <?php } ?>
 
 <form class="pron-form" id="pronunciationForm" method="post" enctype="multipart/form-data">

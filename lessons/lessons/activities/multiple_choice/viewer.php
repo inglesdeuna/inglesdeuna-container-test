@@ -6,7 +6,7 @@ $activityId = isset($_GET['id']) ? trim((string) $_GET['id']) : '';
 $unit = isset($_GET['unit']) ? trim((string) $_GET['unit']) : '';
 
 if ($activityId === '' && $unit === '') {
-    die('Actividad no especificada');
+    die('Activity not specified');
 }
 
 function resolve_unit_from_activity(PDO $pdo, string $activityId): string
@@ -170,6 +170,11 @@ ob_start();
 ?>
 
 <div class="mc-viewer" id="mc-container">
+    <section class="mc-intro">
+        <h2>Choose The Best Answer</h2>
+        <p>Review each question, select the best option, and use Show Answer whenever you need support.</p>
+    </section>
+
     <div class="mc-status" id="mc-status"></div>
 
     <div class="mc-card">
@@ -179,8 +184,9 @@ ob_start();
     </div>
 
     <div class="mc-controls">
-        <button type="button" class="mc-btn" id="mc-check">✅ Check</button>
-        <button type="button" class="mc-btn" id="mc-next">➡️ Next</button>
+        <button type="button" class="mc-btn mc-btn-check" id="mc-check">Check Answer</button>
+        <button type="button" class="mc-btn mc-btn-show" id="mc-show">Show Answer</button>
+        <button type="button" class="mc-btn mc-btn-next" id="mc-next">Next</button>
     </div>
 
     <div class="mc-feedback" id="mc-feedback"></div>

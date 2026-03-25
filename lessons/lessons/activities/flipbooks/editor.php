@@ -8,7 +8,7 @@ $source     = isset($_GET['source']) ? trim((string) $_GET['source']) : '';
 $assignment = isset($_GET['assignment']) ? trim((string) $_GET['assignment']) : '';
 
 if ($activityId === '') {
-    die('ID de actividad no especificado.');
+    die('Activity ID not specified.');
 }
 
 $stmt = $pdo->prepare("SELECT * FROM activities WHERE id = :id LIMIT 1");
@@ -16,7 +16,7 @@ $stmt->execute(['id' => $activityId]);
 $activity = $stmt->fetch(PDO::FETCH_ASSOC);
 
 if (!$activity) {
-    die('Actividad no encontrada.');
+    die('Activity not found.');
 }
 
 $rawData = json_decode($activity['data'] ?? '', true);
@@ -53,7 +53,7 @@ ob_start();
                 <div id="drop-zone" class="flipbook-dropzone">
                     <div class="flipbook-dropzone__inner">
                         <i class="fas fa-cloud-upload-alt fa-2x text-secondary mb-2"></i>
-                        <div class="fw-semibold">Seleccione o arrastre el archivo PDF</div>
+                        <div class="fw-semibold">Select or drag the PDF file here</div>
                         <div class="text-muted small">Formato permitido: PDF</div>
                     </div>
                 </div>
@@ -67,7 +67,7 @@ ob_start();
                 >
 
                 <div id="file-status" class="alert alert-success mt-3 <?php echo $payload['pdf_url'] !== '' ? '' : 'd-none'; ?>">
-                    <strong>Archivo actual:</strong>
+                    <strong>Current file:</strong>
                     <span id="file-name-display"><?php echo htmlspecialchars($currentFileName, ENT_QUOTES, 'UTF-8'); ?></span>
 
                     <?php if ($payload['pdf_url'] !== ''): ?>
@@ -78,7 +78,7 @@ ob_start();
                                 rel="noopener noreferrer"
                                 class="btn btn-outline-secondary btn-sm"
                             >
-                                Ver PDF actual
+                                View Current PDF
                             </a>
                         </div>
                     <?php endif; ?>
@@ -90,11 +90,11 @@ ob_start();
 
 <div class="d-flex justify-content-between align-items-center mt-4 flex-wrap gap-3">
     <span id="unsaved-msg" class="text-warning small d-none">
-        <i class="fas fa-exclamation-triangle me-1"></i>Tienes cambios sin guardar.
+        <i class="fas fa-exclamation-triangle me-1"></i>You have unsaved changes.
     </span>
 
     <button type="button" id="btn-save-flipbook" class="btn btn-primary btn-lg">
-        <i class="fas fa-save me-2"></i>Guardar actividad
+        <i class="fas fa-save me-2"></i>Save Activity
     </button>
 </div>
 
@@ -151,7 +151,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function validatePdfFile(file) {
         if (!file) {
-            return { ok: false, message: 'No se seleccionó ningún archivo.' };
+            return { ok: false, message: 'No file was selected.' };
         }
 
         const fileName = file.name.toLowerCase();
@@ -160,7 +160,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const isPdfByMime = mimeType === 'application/pdf' || mimeType === '';
 
         if (!isPdfByName && !isPdfByMime) {
-            return { ok: false, message: 'Solo se permiten archivos PDF.' };
+            return { ok: false, message: 'Only PDF files are allowed.' };
         }
 
         return { ok: true };
@@ -216,7 +216,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const selectedFile = fileInput.files && fileInput.files[0] ? fileInput.files[0] : null;
 
         if (!existingPdfUrl && !selectedFile) {
-            alert('Debes cargar un PDF.');
+            alert('You must upload a PDF.');
             return;
         }
 
@@ -244,7 +244,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         saveBtn.disabled = true;
-        saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Guardando...';
+        saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Saving...';
 
         fetch('save_flipbook.php', {
             method: 'POST',
@@ -258,7 +258,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 res = JSON.parse(raw);
             } catch (e) {
                 console.error('Respuesta cruda del servidor:', raw);
-                throw new Error('Respuesta inválida del servidor. Revisa save_flipbook.php');
+                throw new Error('Invalid server response. Check save_flipbook.php');
             }
 
             return res;
@@ -267,19 +267,19 @@ document.addEventListener('DOMContentLoaded', function () {
             if (res.status === 'success') {
                 hasChanges = false;
                 unsavedMsg.classList.add('d-none');
-                alert(res.message || 'Actividad guardada correctamente.');
+                alert(res.message || 'Activity saved successfully.');
                 window.location.reload();
             } else {
-                alert(res.message || 'No fue posible guardar.');
+                alert(res.message || 'The activity could not be saved.');
             }
         })
         .catch(function (error) {
             console.error(error);
-            alert(error.message || 'Error al guardar la actividad.');
+            alert(error.message || 'Error while saving the activity.');
         })
         .finally(function () {
             saveBtn.disabled = false;
-            saveBtn.innerHTML = '<i class="fas fa-save me-2"></i>Guardar actividad';
+            saveBtn.innerHTML = '<i class="fas fa-save me-2"></i>Save Activity';
         });
     });
 

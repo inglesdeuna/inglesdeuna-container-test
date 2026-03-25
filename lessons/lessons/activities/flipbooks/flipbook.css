@@ -1,19 +1,44 @@
 .flipbook-viewer {
-    margin-top: 10px;
+    margin-top: 4px;
+}
+
+.flipbook-intro {
+    margin: 0 0 18px 0;
+    padding: 24px 26px;
+    border-radius: 26px;
+    border: 1px solid #f0d2df;
+    background: linear-gradient(135deg, #fff1f5 0%, #fff7eb 50%, #f3ffe9 100%);
+    box-shadow: 0 16px 34px rgba(15, 23, 42, .09);
+}
+
+.flipbook-intro h2 {
+    margin: 0 0 8px 0;
+    font-family: 'Fredoka', 'Trebuchet MS', sans-serif;
+    font-size: 30px;
+    line-height: 1.1;
+    color: #be185d;
+}
+
+.flipbook-intro p {
+    margin: 0;
+    color: #6b5b41;
+    font-size: 16px;
+    line-height: 1.6;
 }
 
 .flipbook-viewer__subtitle {
     margin: 0 0 14px 0;
-    color: #475569;
+    color: #6b7280;
     font-size: 14px;
     text-align: center;
 }
 
 .flipbook-viewer__card {
-    background: #ffffff;
-    border: 1px solid #dbe3ef;
-    border-radius: 16px;
-    padding: 16px;
+    background: linear-gradient(180deg, #fffdf9 0%, #fff 100%);
+    border: 1px solid #f0d2df;
+    border-radius: 22px;
+    padding: 18px;
+    box-shadow: 0 14px 28px rgba(15, 23, 42, .08);
 }
 
 .flipbook-toolbar {
@@ -35,18 +60,21 @@
 
 .flipbook-btn {
     appearance: none;
-    border: 1px solid #cbd5e1;
+    border: 0;
     background: #ffffff;
     color: #1e293b;
-    padding: 8px 12px;
-    border-radius: 10px;
-    font-size: 13px;
-    font-weight: 600;
+    padding: 10px 14px;
+    border-radius: 999px;
+    font-size: 14px;
+    font-weight: 800;
     cursor: pointer;
+    box-shadow: 0 10px 22px rgba(15, 23, 42, .12);
+    transition: transform .15s ease, filter .15s ease;
 }
 
 .flipbook-btn:hover {
-    background: #f8fafc;
+    filter: brightness(1.04);
+    transform: translateY(-1px);
 }
 
 .flipbook-btn:disabled {
@@ -55,23 +83,26 @@
 }
 
 .flipbook-btn--primary {
-    background: #2563eb;
-    border-color: #2563eb;
+    background: linear-gradient(180deg, #ec4899 0%, #db2777 100%);
     color: #ffffff;
 }
 
 .flipbook-btn--primary:hover {
-    background: #1d4ed8;
+    background: linear-gradient(180deg, #ec4899 0%, #db2777 100%);
 }
 
 .flipbook-btn--dark {
-    background: #0f172a;
-    border-color: #0f172a;
+    background: linear-gradient(180deg, #14b8a6 0%, #0f766e 100%);
     color: #ffffff;
 }
 
 .flipbook-btn--dark:hover {
-    background: #020617;
+    background: linear-gradient(180deg, #14b8a6 0%, #0f766e 100%);
+}
+
+.flipbook-btn--secondary {
+    background: linear-gradient(180deg, #fbbf24 0%, #f59e0b 100%);
+    color: #78350f;
 }
 
 .flipbook-page-badge {
@@ -90,10 +121,10 @@
     margin-top: 14px;
     width: 100%;
     min-height: 720px;
-    border: 1px solid #dbe3ef;
-    border-radius: 14px;
+    border: 1px solid #f0d2df;
+    border-radius: 18px;
     overflow: hidden;
-    background: #f8fafc;
+    background: #fdf2f8;
 }
 
 .flipbook-pdf-frame {
@@ -165,10 +196,11 @@
     margin: 24px auto;
     padding: 28px;
     background: #ffffff;
-    border: 1px solid #dbe3ef;
-    border-radius: 16px;
+    border: 1px solid #f0d2df;
+    border-radius: 20px;
     text-align: center;
     color: #475569;
+    box-shadow: 0 14px 28px rgba(15, 23, 42, .08);
 }
 
 .flipbook-empty-state h3 {
@@ -181,6 +213,14 @@
 }
 
 @media (max-width: 768px) {
+    .flipbook-intro {
+        padding: 20px 18px;
+    }
+
+    .flipbook-intro h2 {
+        font-size: 26px;
+    }
+
     .flipbook-toolbar {
         align-items: flex-start;
         flex-direction: column;
@@ -189,6 +229,10 @@
     .flipbook-toolbar__left,
     .flipbook-toolbar__center,
     .flipbook-toolbar__right {
+        width: 100%;
+    }
+
+    .flipbook-btn {
         width: 100%;
     }
 

@@ -234,7 +234,7 @@ if ($unit === '' && $activityId !== '') {
 }
 
 if ($unit === '') {
-    die('Unidad no especificada');
+    die('Unit not specified');
 }
 
 $activity = load_multiple_choice_activity($pdo, $unit, $activityId);
@@ -425,7 +425,7 @@ ob_start();
 </style>
 
 <?php if (isset($_GET['saved'])) { ?>
-    <p style="color:green;font-weight:bold;margin-bottom:15px;">✔ Guardado correctamente</p>
+    <p style="color:green;font-weight:bold;margin-bottom:15px;">✔ Saved successfully</p>
 <?php } ?>
 
 <form class="mc-form" id="multipleChoiceForm" method="post" enctype="multipart/form-data">

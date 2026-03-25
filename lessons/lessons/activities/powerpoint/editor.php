@@ -276,7 +276,7 @@ if ($unit === '' && $activityId !== '') {
 }
 
 if ($unit === '') {
-    die('Unidad no especificada');
+  die('Unit not specified');
 }
 
 $activity = load_powerpoint_activity($pdo, $unit, $activityId);
@@ -373,7 +373,7 @@ ob_start();
 
 <div class="ppt-editor-shell">
     <?php if (isset($_GET['saved']) && $_GET['saved'] === '1') { ?>
-        <div class="ppt-success">Actividad guardada correctamente.</div>
+        <div class="ppt-success">Activity saved successfully.</div>
     <?php } ?>
 
     <form id="powerpointForm" method="post">
@@ -381,18 +381,18 @@ ob_start();
       <input type="hidden" name="presentation_payload" id="presentation_payload" value="{}">
 
         <div class="ppt-card">
-            <label class="ppt-label" for="activity_title">Titulo de la actividad</label>
+            <label class="ppt-label" for="activity_title">Activity title</label>
             <input class="ppt-input" id="activity_title" name="activity_title" value="<?php echo htmlspecialchars($activityTitle, ENT_QUOTES, 'UTF-8'); ?>" required>
         </div>
 
         <div class="ppt-card">
             <div class="ppt-actions" style="margin-bottom:12px;">
                 <select id="newSlideTemplate" class="ppt-select" style="max-width:240px;">
-                    <option value="title_text">Template: Titulo + Texto</option>
-                    <option value="text_image">Template: Texto + Imagen</option>
-                    <option value="image_full">Template: Imagen completa</option>
+                    <option value="title_text">Template: Title + Text</option>
+                    <option value="text_image">Template: Text + Image</option>
+                    <option value="image_full">Template: Full Image</option>
                 </select>
-                <button type="button" class="ppt-btn ppt-btn-secondary" id="btnAddSlide">+ Agregar diapositiva</button>
+                  <button type="button" class="ppt-btn ppt-btn-secondary" id="btnAddSlide">+ Add Slide</button>
             </div>
 
             <div id="slidesContainer"></div>
@@ -411,7 +411,7 @@ ob_start();
 
         <div class="ppt-card">
             <div class="ppt-actions">
-                <button type="submit" class="ppt-btn ppt-btn-primary">Guardar PowerPoint</button>
+                <button type="submit" class="ppt-btn ppt-btn-primary">Save PowerPoint</button>
             </div>
         </div>
     </form>
@@ -449,7 +449,7 @@ function fileToDataUrl(fileObject) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(String(reader.result || ''));
-    reader.onerror = () => reject(new Error('No fue posible leer el archivo.'));
+    reader.onerror = () => reject(new Error('The file could not be read.'));
     reader.readAsDataURL(fileObject);
   });
 }
@@ -485,39 +485,39 @@ function renderSlides() {
       return '<option value="' + fontValue + '" ' + selected + '>' + fontValue + '</option>';
     }).join('');
 
-    const imagePreviewHtml = slide.image ? '<img class="ppt-preview-image" src="' + slide.image + '" alt="Imagen slide">' : '<span style="color:#64748b;font-size:13px;">Sin imagen</span>';
-    const audioPreviewHtml = slide.music ? '<audio controls preload="none" src="' + slide.music + '" style="max-width:220px;"></audio>' : '<span style="color:#64748b;font-size:13px;">Sin audio</span>';
+    const imagePreviewHtml = slide.image ? '<img class="ppt-preview-image" src="' + slide.image + '" alt="Slide image">' : '<span style="color:#64748b;font-size:13px;">No image</span>';
+    const audioPreviewHtml = slide.music ? '<audio controls preload="none" src="' + slide.music + '" style="max-width:220px;"></audio>' : '<span style="color:#64748b;font-size:13px;">No audio</span>';
 
     card.innerHTML = '' +
       '<div class="ppt-slide-head">' +
-        '<strong>Diapositiva ' + (index + 1) + '</strong>' +
+        '<strong>Slide ' + (index + 1) + '</strong>' +
         '<div class="ppt-actions">' +
-          '<button type="button" class="ppt-btn ppt-btn-light" data-action="up">Subir</button>' +
-          '<button type="button" class="ppt-btn ppt-btn-light" data-action="down">Bajar</button>' +
-          '<button type="button" class="ppt-btn ppt-btn-danger" data-action="remove">Eliminar</button>' +
+          '<button type="button" class="ppt-btn ppt-btn-light" data-action="up">Move Up</button>' +
+          '<button type="button" class="ppt-btn ppt-btn-light" data-action="down">Move Down</button>' +
+          '<button type="button" class="ppt-btn ppt-btn-danger" data-action="remove">Remove</button>' +
         '</div>' +
       '</div>' +
       '<div class="ppt-row">' +
-        '<div><label class="ppt-label">Template</label><select class="ppt-select" data-field="template"><option value="title_text" ' + (slide.template === 'title_text' ? 'selected' : '') + '>Titulo + Texto</option><option value="text_image" ' + (slide.template === 'text_image' ? 'selected' : '') + '>Texto + Imagen</option><option value="image_full" ' + (slide.template === 'image_full' ? 'selected' : '') + '>Imagen completa</option></select></div>' +
-        '<div><label class="ppt-label">Titulo de diapositiva</label><input class="ppt-input" data-field="title" value="' + escapeHtml(slide.title) + '"></div>' +
+        '<div><label class="ppt-label">Template</label><select class="ppt-select" data-field="template"><option value="title_text" ' + (slide.template === 'title_text' ? 'selected' : '') + '>Title + Text</option><option value="text_image" ' + (slide.template === 'text_image' ? 'selected' : '') + '>Text + Image</option><option value="image_full" ' + (slide.template === 'image_full' ? 'selected' : '') + '>Full Image</option></select></div>' +
+        '<div><label class="ppt-label">Slide title</label><input class="ppt-input" data-field="title" value="' + escapeHtml(slide.title) + '"></div>' +
       '</div>' +
       '<div class="ppt-row">' +
-        '<div><label class="ppt-label">Fuente</label><select class="ppt-select" data-field="font_family">' + fontOptionsHtml + '</select></div>' +
-        '<div><label class="ppt-label">Tamaño fuente</label><input class="ppt-input" type="number" min="14" max="72" data-field="font_size" value="' + slide.font_size + '"></div>' +
-        '<div><label class="ppt-label">Color fondo</label><input class="ppt-input" type="color" data-field="bg_color" value="' + slide.bg_color + '"></div>' +
+        '<div><label class="ppt-label">Font</label><select class="ppt-select" data-field="font_family">' + fontOptionsHtml + '</select></div>' +
+        '<div><label class="ppt-label">Font size</label><input class="ppt-input" type="number" min="14" max="72" data-field="font_size" value="' + slide.font_size + '"></div>' +
+        '<div><label class="ppt-label">Background color</label><input class="ppt-input" type="color" data-field="bg_color" value="' + slide.bg_color + '"></div>' +
       '</div>' +
-      '<div><label class="ppt-label">Texto explicativo</label><textarea class="ppt-textarea" data-field="text">' + escapeHtml(slide.text) + '</textarea></div>' +
+      '<div><label class="ppt-label">Supporting text</label><textarea class="ppt-textarea" data-field="text">' + escapeHtml(slide.text) + '</textarea></div>' +
       '<div><label class="ppt-label">Text for English TTS (optional)</label><textarea class="ppt-textarea" data-field="tts_text">' + escapeHtml(slide.tts_text) + '</textarea></div>' +
       '<div class="ppt-row">' +
         '<div>' +
-          '<label class="ppt-label">Imagen (subir foto)</label>' +
+          '<label class="ppt-label">Image (upload photo)</label>' +
           '<input class="ppt-input" type="file" accept="image/*" data-upload="image">' +
-          '<div class="ppt-preview-media" style="margin-top:8px;">' + imagePreviewHtml + '<button type="button" class="ppt-btn ppt-btn-light" data-action="clear-image">Quitar imagen</button></div>' +
+          '<div class="ppt-preview-media" style="margin-top:8px;">' + imagePreviewHtml + '<button type="button" class="ppt-btn ppt-btn-light" data-action="clear-image">Remove Image</button></div>' +
         '</div>' +
         '<div>' +
-          '<label class="ppt-label">Musica MP3 (subir audio)</label>' +
+          '<label class="ppt-label">MP3 audio (upload audio)</label>' +
           '<input class="ppt-input" type="file" accept="audio/mpeg,audio/mp3,audio/*" data-upload="music">' +
-          '<div class="ppt-preview-media" style="margin-top:8px;">' + audioPreviewHtml + '<button type="button" class="ppt-btn ppt-btn-light" data-action="clear-music">Quitar audio</button></div>' +
+          '<div class="ppt-preview-media" style="margin-top:8px;">' + audioPreviewHtml + '<button type="button" class="ppt-btn ppt-btn-light" data-action="clear-music">Remove Audio</button></div>' +
         '</div>' +
       '</div>';
 
@@ -545,7 +545,7 @@ function bindSlideCardEvents(cardElement, slideIndex) {
     const selectedFile = imageInput.files && imageInput.files[0] ? imageInput.files[0] : null;
     if (!selectedFile) return;
     if (!selectedFile.type.startsWith('image/')) {
-      alert('El archivo de imagen no es valido.');
+      alert('The image file is not valid.');
       imageInput.value = '';
       return;
     }
@@ -555,7 +555,7 @@ function bindSlideCardEvents(cardElement, slideIndex) {
       slidesState[slideIndex].image = dataUrl;
       renderSlides();
     } catch (error) {
-      alert('No fue posible procesar la imagen.');
+      alert('The image could not be processed.');
     }
   });
 
@@ -568,7 +568,7 @@ function bindSlideCardEvents(cardElement, slideIndex) {
       slidesState[slideIndex].music = dataUrl;
       renderSlides();
     } catch (error) {
-      alert('No fue posible procesar el audio.');
+      alert('The audio could not be processed.');
     }
   });
 
@@ -578,7 +578,7 @@ function bindSlideCardEvents(cardElement, slideIndex) {
 
       if (action === 'remove') {
         if (slidesState.length === 1) {
-          alert('Debe existir al menos una diapositiva.');
+          alert('At least one slide must exist.');
           return;
         }
         slidesState.splice(slideIndex, 1);
@@ -692,7 +692,7 @@ document.getElementById('powerpointForm').addEventListener('submit', (event) => 
 
   if (!normalizedSlides.length) {
     event.preventDefault();
-    alert('Debes crear al menos una diapositiva.');
+    alert('You must create at least one slide.');
   }
 });
 

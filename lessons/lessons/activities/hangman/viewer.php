@@ -2,7 +2,7 @@
 require_once __DIR__ . "/../../config/db.php";
 
 $unit = $_GET['unit'] ?? null;
-if (!$unit) die("Unidad no especificada");
+if (!$unit) die("Unit not specified");
 
 $stmt = $pdo->prepare("
     SELECT data
@@ -74,32 +74,52 @@ if (empty($normalizedItems)) {
 <head>
 <meta charset="UTF-8">
 <title><?= htmlspecialchars($title) ?></title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <style>
+@import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@600;700;800&display=swap');
+
+*{ box-sizing:border-box; }
+
 body{
-  font-family: Arial, sans-serif;
-  background:#eef6ff;
+  margin:0;
+  font-family:'Nunito', 'Segoe UI', sans-serif;
+  background:linear-gradient(135deg, #fff8db 0%, #fff0de 50%, #f2f7e9 100%);
   text-align:center;
   padding:20px;
+  color:#3f3a2b;
 }
 
 h1{
-  color:#0b5ed7;
-  font-size:26px;
-  margin-bottom:5px;
+  color:#9a3412;
+  font-family:'Fredoka', 'Trebuchet MS', sans-serif;
+  font-size:32px;
+  margin:0 0 6px;
 }
 
 .subtitle{
-  color:#444;
-  margin-bottom:20px;
+  color:#6b5b41;
+  margin:0;
+}
+
+.hangman-intro,
+.game-box{
+  background:rgba(255,255,255,.86);
+  border-radius:24px;
+  border:1px solid rgba(255,255,255,.8);
+  box-shadow:0 16px 34px rgba(15, 23, 42, .1);
+}
+
+.hangman-intro{
+  max-width:760px;
+  margin:0 auto 18px;
+  padding:24px 26px;
 }
 
 .game-box{
-  background:white;
-  border-radius:15px;
   padding:25px;
-  max-width:750px;
-  margin:20px auto;
+  max-width:760px;
+  margin:0 auto 20px;
 }
 
 .word{
@@ -133,48 +153,68 @@ h1{
 }
 
 .keyboard button{
-  padding:8px 14px;
+  padding:10px 14px;
   margin:4px;
   border:none;
-  border-radius:10px;
-  background:#2563eb;
-  color:white;
-  font-weight:bold;
+  border-radius:14px;
+  background:linear-gradient(180deg, #fde68a 0%, #fbbf24 100%);
+  color:#7c2d12;
+  font-weight:800;
+  box-shadow:0 8px 18px rgba(251, 191, 36, .18);
   cursor:pointer;
 }
 
 .keyboard button:disabled{
-  background:#9ca3af;
+  background:#d6d3d1;
+  color:#78716c;
+  box-shadow:none;
 }
 
 .controls{
   margin-top:15px;
+  display:flex;
+  flex-wrap:wrap;
+  justify-content:center;
+  gap:10px;
 }
 
-button{
+.action-btn{
   padding:10px 18px;
   border:none;
-  border-radius:12px;
-  background:#0b5ed7;
+  border-radius:999px;
   color:white;
   cursor:pointer;
-  margin:6px;
+  min-width:142px;
+  font-weight:800;
+  font-family:'Nunito', 'Segoe UI', sans-serif;
+  box-shadow:0 10px 22px rgba(15, 23, 42, .12);
+  transition:transform .15s ease, filter .15s ease;
 }
 
+.action-btn:hover{
+  filter:brightness(1.04);
+  transform:translateY(-1px);
+}
+
+.action-check{background:linear-gradient(180deg, #f59e0b 0%, #ea580c 100%)}
+.action-hint{background:linear-gradient(180deg, #2dd4bf 0%, #0f766e 100%)}
+.action-answer{background:linear-gradient(180deg, #f9a8d4 0%, #ec4899 100%)}
+.action-next{background:linear-gradient(180deg, #84cc16 0%, #4d7c0f 100%)}
+
 #feedback{
-  font-size:18px;
-  font-weight:bold;
+  font-size:20px;
+  font-weight:800;
   margin-top:10px;
   min-height:24px;
 }
 
-.good{ color:green; }
-.bad{ color:crimson; }
+.good{ color:#15803d; }
+.bad{ color:#dc2626; }
 
 .hint{
   font-size:16px;
-  font-weight:bold;
-  color:#1d4ed8;
+  font-weight:800;
+  color:#0f766e;
   margin:12px 0;
   min-height:22px;
 }
@@ -191,20 +231,31 @@ button{
 a.back{
   display:inline-block;
   margin-top:20px;
-  background:#16a34a;
+  background:linear-gradient(180deg, #34d399 0%, #10b981 100%);
   color:#fff;
-  padding:10px 18px;
-  border-radius:12px;
+  padding:11px 18px;
+  border-radius:999px;
   text-decoration:none;
-  font-weight:bold;
+  font-weight:800;
+  box-shadow:0 10px 22px rgba(16, 185, 129, .24);
+}
+
+@media (max-width:760px){
+  body{padding:14px}
+  h1{font-size:28px}
+  .hangman-intro,
+  .game-box{padding:20px 18px}
+  .action-btn{width:100%;max-width:320px}
 }
 </style>
 </head>
 
 <body>
 
-<h1>🎯 <?= htmlspecialchars($title) ?></h1>
-<p class="subtitle">Guess the correct word.</p>
+<section class="hangman-intro">
+  <h1>🎯 <?= htmlspecialchars($title) ?></h1>
+  <p class="subtitle">Guess the correct word, use Hint if needed, and reveal the answer only when you want full support.</p>
+</section>
 
 <div class="game-box">
 
@@ -219,9 +270,10 @@ a.back{
   <div id="keyboard" class="keyboard"></div>
 
   <div class="controls">
-    <button type="button" onclick="checkGame()">✅ Check</button>
-    <button type="button" onclick="showHint()">💡 Hint</button>
-    <button type="button" onclick="nextWord()">➡️</button>
+    <button class="action-btn action-check" type="button" onclick="checkGame()">Check Answer</button>
+    <button class="action-btn action-hint" type="button" onclick="showHint()">Hint</button>
+    <button class="action-btn action-answer" type="button" onclick="showAnswer()">Show Answer</button>
+    <button class="action-btn action-next" type="button" onclick="nextWord()">Next</button>
   </div>
 
   <div id="feedback"></div>
@@ -354,11 +406,11 @@ function checkGame(){
 
   if (isSolved()) {
     if (index === items.length - 1) {
-      feedback.textContent = "🏆 Completed!";
+      feedback.textContent = "Completed!";
       feedback.className = "good";
       playSound(winSound);
     } else {
-      feedback.textContent = "🌟 Excellent!";
+      feedback.textContent = "Correct!";
       feedback.className = "good";
       playSound(correctSound);
     }
@@ -374,13 +426,29 @@ function checkGame(){
     return;
   }
 
-  feedback.textContent = "🔁 Try again!";
+  feedback.textContent = "Try Again";
   feedback.className = "bad";
+}
+
+function showAnswer(){
+  if (gameFinished) return;
+
+  guessed = [];
+  for (let l of word) {
+    if (l !== " ") {
+      guessed.push(l);
+    }
+  }
+
+  renderWord();
+  feedback.textContent = "Show The Answer";
+  feedback.className = "good";
+  gameFinished = true;
 }
 
 function nextWord(){
   if (index >= items.length - 1) {
-    feedback.textContent = "🏆 Completed!";
+    feedback.textContent = "Completed!";
     feedback.className = "good";
     playSound(winSound);
     gameFinished = true;

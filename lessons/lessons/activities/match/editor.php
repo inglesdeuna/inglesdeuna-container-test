@@ -398,7 +398,7 @@ if ($unit === '' && $activityId !== '') {
 }
 
 if ($unit === '') {
-    die('Unidad no especificada');
+    die('Unit not specified');
 }
 
 $activity = load_match_activity($pdo, $unit, $activityId);

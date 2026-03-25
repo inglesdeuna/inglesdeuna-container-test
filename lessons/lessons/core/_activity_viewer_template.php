@@ -23,11 +23,35 @@ function render_activity_viewer($title, $icon, $content)
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@500;700;800&display=swap');
+
+        :root{
+            --viewer-bg-a:#dff5ff;
+            --viewer-bg-b:#fff4db;
+            --viewer-bg-c:#f8d9e6;
+            --viewer-paper:#fffdf9;
+            --viewer-text:#1f2937;
+            --viewer-muted:#475569;
+            --viewer-accent:#0f766e;
+            --viewer-accent-2:#14b8a6;
+            --viewer-success:#16a34a;
+            --viewer-shadow:0 18px 40px rgba(15, 23, 42, .12);
+        }
+
+        *{
+            box-sizing:border-box;
+        }
+
         body{
             margin:0;
-            font-family: Arial, sans-serif;
-            background:#cfd8e6;
-            padding:10px 20px 14px;
+            min-height:100vh;
+            font-family:'Nunito', 'Segoe UI', sans-serif;
+            color:var(--viewer-text);
+            background:
+                radial-gradient(circle at top left, rgba(255, 255, 255, .72), rgba(255, 255, 255, 0) 28%),
+                radial-gradient(circle at top right, rgba(255, 255, 255, .6), rgba(255, 255, 255, 0) 24%),
+                linear-gradient(135deg, var(--viewer-bg-a) 0%, var(--viewer-bg-b) 48%, var(--viewer-bg-c) 100%);
+            padding:18px 22px 24px;
         }
 
         .activity-wrapper{
@@ -45,36 +69,51 @@ function render_activity_viewer($title, $icon, $content)
 
         .back-btn{
             display:inline-block;
-            background:#16a34a;
+            background:linear-gradient(180deg, #34d399 0%, #10b981 100%);
             color:white;
-            padding:8px 14px;
-            border-radius:10px;
+            padding:10px 16px;
+            border-radius:999px;
             text-decoration:none;
-            font-weight:bold;
+            font-weight:800;
             font-size:14px;
             line-height:1;
+            box-shadow:0 10px 22px rgba(16, 185, 129, .24);
+            transition:transform .18s ease, filter .18s ease;
+        }
+
+        .back-btn:hover{
+            filter:brightness(1.04);
+            transform:translateY(-1px);
         }
 
         .viewer-header{
             text-align:center;
-            margin:0 0 2px 0;
+            margin:0 0 10px 0;
         }
 
         h1{
             margin:0;
-            color:#1d4ed8;
-            font-size:22px;
+            font-family:'Fredoka', 'Trebuchet MS', sans-serif;
+            color:#0f172a;
+            font-size:clamp(24px, 2vw, 34px);
             line-height:1.12;
             font-weight:700;
+            letter-spacing:.02em;
         }
 
         .viewer-content{
             margin-top:0;
+            background:rgba(255, 253, 249, .52);
+            border:1px solid rgba(255, 255, 255, .6);
+            border-radius:30px;
+            padding:18px;
+            box-shadow:var(--viewer-shadow);
+            backdrop-filter:blur(10px);
         }
 
         @media (max-width: 900px){
             body{
-                padding:10px 12px 14px;
+                padding:12px 12px 18px;
             }
 
             .top-row{
@@ -83,26 +122,36 @@ function render_activity_viewer($title, $icon, $content)
             }
 
             .viewer-header{
-                margin:0 0 2px 0;
+                margin:0 0 8px 0;
             }
 
             h1{
-                font-size:20px;
+                font-size:22px;
             }
 
             .back-btn{
-                padding:8px 12px;
+                padding:9px 13px;
                 font-size:13px;
+            }
+
+            .viewer-content{
+                border-radius:24px;
+                padding:14px;
             }
         }
 
         @media (max-width: 640px){
             h1{
-                font-size:18px;
+                font-size:20px;
             }
 
             .top-row{
                 min-height:32px;
+            }
+
+            .viewer-content{
+                border-radius:20px;
+                padding:12px;
             }
         }
     </style>

@@ -6,7 +6,7 @@ $activityId = isset($_GET['id']) ? trim((string) $_GET['id']) : '';
 $unit = isset($_GET['unit']) ? trim((string) $_GET['unit']) : '';
 
 if ($activityId === '' && $unit === '') {
-    die('Actividad no especificada');
+    die('Activity not specified');
 }
 
 function activities_columns(PDO $pdo): array
@@ -284,20 +284,14 @@ ob_start();
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@600;700;800&display=swap');
 
-body{
-    font-family:'Nunito', 'Segoe UI', sans-serif;
-    background:#eef6ff;
-    padding:20px;
-}
-
 .pron-stage{
     max-width:1060px;
     margin:0 auto;
 }
 
 .pron-intro{
-    background:linear-gradient(135deg, #fff8df 0%, #eef8ff 52%, #f8fbff 100%);
-    border:1px solid #dbe7f5;
+    background:linear-gradient(135deg, #fff4df 0%, #ffe7d6 46%, #fff6eb 100%);
+    border:1px solid #ffd2b3;
     border-radius:26px;
     padding:24px 26px;
     box-shadow:0 16px 34px rgba(15, 23, 42, .09);
@@ -322,17 +316,20 @@ body{
 
 .grid{
     display:grid;
-    grid-template-columns:repeat(auto-fit, minmax(250px, 1fr));
-    gap:16px;
+    grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));
+    gap:18px;
 }
 
 .card{
     position:relative;
     overflow:hidden;
-    background:linear-gradient(180deg, #f8fdff 0%, #ffffff 100%);
-    border:1px solid #dbe7f5;
-    border-radius:22px;
-    padding:16px;
+    display:flex;
+    flex-direction:column;
+    min-height:100%;
+    background:linear-gradient(180deg, #fff8f1 0%, #ffffff 100%);
+    border:1px solid #ffd7ba;
+    border-radius:24px;
+    padding:18px;
     text-align:center;
     box-shadow:0 14px 28px rgba(15, 23, 42, .07);
 }
@@ -344,7 +341,7 @@ body{
     left:0;
     right:0;
     height:8px;
-    background:linear-gradient(90deg, #38bdf8 0%, #0ea5e9 100%);
+    background:linear-gradient(90deg, #fb923c 0%, #fdba74 48%, #fcd34d 100%);
 }
 
 .image-wrap{
@@ -387,23 +384,25 @@ body{
 }
 
 .actions{
-    margin-top:12px;
+    margin-top:auto;
+    padding-top:14px;
     display:flex;
     justify-content:center;
-    gap:8px;
+    gap:10px;
     flex-wrap:wrap;
 }
 
 .btn{
     border:none;
     border-radius:999px;
-    padding:8px 13px;
+    padding:10px 14px;
+    min-width:138px;
     color:#fff;
     cursor:pointer;
-    font-size:13px;
+    font-size:14px;
     font-weight:700;
     font-family:'Nunito', 'Segoe UI', sans-serif;
-    box-shadow:0 6px 14px rgba(37, 99, 235, .25);
+    box-shadow:0 8px 18px rgba(251, 146, 60, .22);
     transition:transform .15s ease, filter .15s ease;
 }
 
@@ -413,23 +412,23 @@ body{
 }
 
 .btn-listen{
-    background:linear-gradient(180deg, #2563eb, #1d4ed8);
-    box-shadow:0 6px 14px rgba(37, 99, 235, .25);
+    background:linear-gradient(180deg, #fb923c, #f97316);
+    box-shadow:0 6px 14px rgba(249, 115, 22, .25);
 }
 
 .btn-speak{
-    background:linear-gradient(180deg, #2563eb, #1d4ed8);
-    box-shadow:0 6px 14px rgba(37, 99, 235, .25);
+    background:linear-gradient(180deg, #fdba74, #fb923c);
+    box-shadow:0 6px 14px rgba(251, 146, 60, .25);
 }
 
 .btn-tryagain{
-    background:linear-gradient(180deg, #f59e0b, #d97706);
+    background:linear-gradient(180deg, #fbbf24, #f59e0b);
     box-shadow:0 6px 14px rgba(245, 158, 11, .25);
 }
 
 .btn-show{
-    background:linear-gradient(180deg, #6366f1, #4f46e5);
-    box-shadow:0 6px 14px rgba(99, 102, 241, .25);
+    background:linear-gradient(180deg, #f9a8d4, #ec4899);
+    box-shadow:0 6px 14px rgba(236, 72, 153, .25);
 }
 
 .feedback{
@@ -445,10 +444,10 @@ body{
     margin-top:10px;
     padding:14px 16px;
     border-radius:16px;
-    background:linear-gradient(180deg, #eff6ff 0%, #dbeafe 100%);
-    border:1px solid #93c5fd;
-    color:#1e3a8a;
-    box-shadow:0 10px 22px rgba(37, 99, 235, .14);
+    background:linear-gradient(180deg, #fff1e6 0%, #ffe0c7 100%);
+    border:1px solid #fdba74;
+    color:#9a3412;
+    box-shadow:0 10px 22px rgba(251, 146, 60, .14);
 }
 
 .answer-reveal.show{
@@ -460,7 +459,7 @@ body{
     font-weight:800;
     letter-spacing:.08em;
     text-transform:uppercase;
-    color:#1d4ed8;
+    color:#c2410c;
 }
 
 .answer-reveal-word{
@@ -502,10 +501,11 @@ body{
 .completion-content{
     background:#ffffff;
     border-radius:24px;
-    padding:40px;
+    padding:34px 30px;
     text-align:center;
     box-shadow:0 20px 60px rgba(0,0,0,0.3);
     animation:slideIn .4s ease;
+    width:min(100%, 420px);
 }
 
 @keyframes slideIn{
@@ -522,7 +522,7 @@ body{
 .completion-content h2{
     margin:0 0 16px;
     font-family:'Fredoka', 'Trebuchet MS', sans-serif;
-    font-size:48px;
+    font-size:42px;
     font-weight:700;
     color:#15803d;
 }
@@ -552,6 +552,8 @@ body{
     .pron-intro p{font-size:15px}
     .command{font-size:30px}
     .phonetic,.spanish{font-size:18px}
+    .actions{flex-direction:column}
+    .btn{width:100%}
 }
 </style>
 
@@ -616,8 +618,8 @@ function renderCards() {
         '<div class="phonetic">' + escapeHtml(item.ph || '') + '</div>' +
         '<div class="spanish">' + escapeHtml(item.es || '') + '</div>' +
                 '<div class="actions" id="actions' + i + '">' +
-                    '<button class="btn btn-listen" type="button" onclick="speak(' + i + ')">🔊 Listen</button>' +
-                    '<button class="btn btn-speak" type="button" onclick="record(' + i + ')">🎤 Speak</button>' +
+                    '<button class="btn btn-listen" type="button" onclick="speak(' + i + ')">Listen</button>' +
+                    '<button class="btn btn-speak" type="button" onclick="record(' + i + ')">Speak</button>' +
                 '</div>' +
                 '<div id="answer' + i + '" class="answer-reveal">' +
                         '<div class="answer-reveal-label">Correct Answer</div>' +
@@ -685,7 +687,7 @@ function record(index) {
             fb.className = 'feedback correct';
 
             if (actions) {
-                actions.innerHTML = '<span style="color:#15803d; font-weight:700; font-size:16px;">✓ Correct</span>';
+                actions.innerHTML = '<span style="color:#15803d; font-weight:800; font-size:16px;">Correct</span>';
             }
 
             if (answer) {
@@ -695,29 +697,29 @@ function record(index) {
             checkCompletion();
     } else {
             window.pronunciationStates[index].correct = false;
-            fb.innerHTML = 'Try again!';
+                fb.innerHTML = 'Try Again';
             fb.className = 'feedback incorrect';
 
             if (actions) {
                 actions.innerHTML = '' +
-                    '<button class="btn btn-listen" type="button" onclick="speak(' + index + ')">🔊 Listen</button>' +
-                    '<button class="btn btn-tryagain" type="button" onclick="resetPronunciation(' + index + ')">🔄 Try Again</button>' +
-                    '<button class="btn btn-show" type="button" onclick="showAnswer(' + index + ')">👁️ Show Answer</button>';
+                    '<button class="btn btn-listen" type="button" onclick="speak(' + index + ')">Listen</button>' +
+                    '<button class="btn btn-tryagain" type="button" onclick="resetPronunciation(' + index + ')">Try Again</button>' +
+                    '<button class="btn btn-show" type="button" onclick="showAnswer(' + index + ')">Show Answer</button>';
             }
     }
   };
 
   recognition.onerror = function () {
     if (fb) {
-            fb.innerHTML = 'Try again!';
+            fb.innerHTML = 'Try Again';
             fb.className = 'feedback incorrect';
         }
 
         if (actions) {
             actions.innerHTML = '' +
-                '<button class="btn btn-listen" type="button" onclick="speak(' + index + ')">🔊 Listen</button>' +
-                                '<button class="btn btn-tryagain" type="button" onclick="resetPronunciation(' + index + ')">🔄 Try Again</button>' +
-                                '<button class="btn btn-show" type="button" onclick="showAnswer(' + index + ')">👁️ Show Answer</button>';
+                '<button class="btn btn-listen" type="button" onclick="speak(' + index + ')">Listen</button>' +
+                                '<button class="btn btn-tryagain" type="button" onclick="resetPronunciation(' + index + ')">Try Again</button>' +
+                                '<button class="btn btn-show" type="button" onclick="showAnswer(' + index + ')">Show Answer</button>';
     }
   };
 
@@ -738,8 +740,8 @@ function resetPronunciation(index) {
 
     if (actions) {
         actions.innerHTML = '' +
-            '<button class="btn btn-listen" type="button" onclick="speak(' + index + ')">🔊 Listen</button>' +
-            '<button class="btn btn-speak" type="button" onclick="record(' + index + ')">🎤 Speak</button>';
+            '<button class="btn btn-listen" type="button" onclick="speak(' + index + ')">Listen</button>' +
+            '<button class="btn btn-speak" type="button" onclick="record(' + index + ')">Speak</button>';
     }
 
     if (answer) {

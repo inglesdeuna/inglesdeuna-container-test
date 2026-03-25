@@ -6,7 +6,7 @@ $activityId = isset($_GET['id']) ? trim((string) $_GET['id']) : '';
 $unit = isset($_GET['unit']) ? trim((string) $_GET['unit']) : '';
 
 if ($activityId === '' && $unit === '') {
-    die('Actividad no especificada');
+    die('Activity not specified');
 }
 
 function activities_columns(PDO $pdo): array
@@ -236,29 +236,26 @@ $data = isset($activity['cards']) && is_array($activity['cards']) ? $activity['c
 $viewerTitle = isset($activity['title']) ? (string) $activity['title'] : default_flashcards_title();
 
 if (count($data) === 0) {
-    die('No hay flashcards para esta unidad');
+    die('No flashcards found for this unit');
 }
 
 ob_start();
 ?>
 <style>
 :root{
-    --bg:#eef2f7;
-    --card-front:#ffffff;
-    --card-back:#7c3aed;
+    --bg:#fff6f0;
+    --card-front:#fffdf9;
+    --card-back:#ec4899;
     --text:#1f2937;
     --white:#ffffff;
-    --arrow:#4f46e5;
-    --arrow-hover:#312e81;
-    --shadow:0 10px 28px rgba(0,0,0,.14);
+    --arrow:#db2777;
+    --arrow-hover:#9d174d;
+    --shadow:0 16px 34px rgba(15, 23, 42, .14);
 }
 
 *{ box-sizing:border-box; }
 
 body{
-    margin:0;
-    font-family:Arial, sans-serif;
-    background:var(--bg);
     color:var(--text);
 }
 
@@ -266,7 +263,31 @@ body{
     max-width:980px;
     margin:0 auto;
     text-align:center;
-    padding:10px 0 4px;
+    padding:4px 0 4px;
+}
+
+.flashcards-intro{
+    margin-bottom:18px;
+    padding:24px 26px;
+    border-radius:26px;
+    border:1px solid #f8c9dd;
+    background:linear-gradient(135deg, #fff1f2 0%, #fff7ed 52%, #fff8cc 100%);
+    box-shadow:0 16px 34px rgba(15, 23, 42, .09);
+}
+
+.flashcards-intro h2{
+    margin:0 0 8px;
+    font-family:'Fredoka', 'Trebuchet MS', sans-serif;
+    font-size:30px;
+    line-height:1.1;
+    color:#be185d;
+}
+
+.flashcards-intro p{
+    margin:0;
+    color:#6b4b5f;
+    font-size:16px;
+    line-height:1.6;
 }
 
 .flashcards-stage{
@@ -313,7 +334,7 @@ body{
 
 .front{
     background:var(--card-front);
-    border:1px solid #e5e7eb;
+    border:1px solid #f8d7e6;
     flex-direction:column;
 }
 
@@ -338,7 +359,7 @@ body{
     justify-content:center;
     min-height:100%;
     padding:10px;
-    font-family:"Comic Sans MS", "Trebuchet MS", cursive, sans-serif;
+    font-family:'Fredoka', 'Trebuchet MS', sans-serif;
     font-size:42px;
     font-weight:700;
     line-height:1.15;
@@ -355,7 +376,7 @@ body{
     padding:10px 18px;
     border:none;
     border-radius:999px;
-    background:#16a34a;
+    background:linear-gradient(180deg, #f59e0b 0%, #ea580c 100%);
     color:#fff;
     font-weight:700;
     font-size:15px;
@@ -396,10 +417,18 @@ body{
 .flip-hint{
     margin-top:10px;
     font-size:14px;
-    color:#64748b;
+    color:#7a5c68;
 }
 
 @media (max-width:768px){
+    .flashcards-intro{
+        padding:20px 18px;
+    }
+
+    .flashcards-intro h2{
+        font-size:26px;
+    }
+
     .flashcards-stage{
         padding:0 56px;
     }
@@ -427,6 +456,11 @@ body{
 </style>
 
 <div class="flashcards-wrap">
+    <section class="flashcards-intro">
+        <h2>Flashcards Practice</h2>
+        <p>Flip each card to reveal the answer, then use Listen to repeat the pronunciation and review at your own pace.</p>
+    </section>
+
     <div class="flashcards-stage">
         <button class="arrow-btn arrow-left" type="button" onclick="previousCard(event)" aria-label="Previous card">❮</button>
 

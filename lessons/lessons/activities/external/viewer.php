@@ -6,7 +6,7 @@ $activityId = isset($_GET['id']) ? trim((string) $_GET['id']) : '';
 $unit = isset($_GET['unit']) ? trim((string) $_GET['unit']) : '';
 
 if ($activityId === '' && $unit === '') {
-    die('Actividad no especificada');
+    die('Activity not specified');
 }
 
 function resolve_unit_from_activity(PDO $pdo, string $activityId): string
@@ -130,17 +130,38 @@ ob_start();
     max-width:860px;
     margin:0 auto;
 }
+.ex-intro{
+    margin-bottom:18px;
+    padding:24px 26px;
+    border-radius:26px;
+    border:1px solid #cdeee4;
+    background:linear-gradient(135deg,#e6fffb 0%, #eefbf3 48%, #fff6e6 100%);
+    box-shadow:0 16px 34px rgba(15, 23, 42, .09);
+}
+.ex-intro h2{
+    margin:0 0 8px 0;
+    color:#0f766e;
+    font-family:'Fredoka', 'Trebuchet MS', sans-serif;
+    font-size:30px;
+    line-height:1.1;
+}
+.ex-intro p{
+    margin:0;
+    color:#4b5563;
+    line-height:1.6;
+    font-size:16px;
+}
 .ex-card{
-    background:#ffffff;
-    border:1px solid #e5e7eb;
+    background:linear-gradient(180deg,#fffdf9 0%, #ffffff 100%);
+    border:1px solid #cdeee4;
     border-radius:24px;
     overflow:hidden;
-    box-shadow:0 14px 30px rgba(0,0,0,.08);
+    box-shadow:0 14px 30px rgba(15,23,42,.08);
 }
 .ex-banner{
     padding:28px 28px 18px;
-    background:linear-gradient(135deg,#dbeafe 0%, #eff6ff 40%, #f8fbff 100%);
-    border-bottom:1px solid #e5e7eb;
+    background:linear-gradient(135deg,#dffcf7 0%, #f0fdf4 40%, #fff8e7 100%);
+    border-bottom:1px solid #cdeee4;
 }
 .ex-badge{
     display:inline-block;
@@ -148,7 +169,7 @@ ob_start();
     padding:8px 12px;
     border-radius:999px;
     background:#ffffff;
-    color:#1d4ed8;
+    color:#0f766e;
     font-size:12px;
     font-weight:800;
     box-shadow:0 4px 10px rgba(0,0,0,.06);
@@ -156,6 +177,7 @@ ob_start();
 .ex-heading{
     margin:0 0 10px 0;
     color:#0f172a;
+    font-family:'Fredoka', 'Trebuchet MS', sans-serif;
     font-size:30px;
     font-weight:800;
 }
@@ -169,8 +191,8 @@ ob_start();
     padding:24px 28px 28px;
 }
 .ex-url-box{
-    background:#f8fafc;
-    border:1px solid #e2e8f0;
+    background:#f8fffd;
+    border:1px solid #cdeee4;
     border-radius:16px;
     padding:16px;
     margin-bottom:18px;
@@ -184,7 +206,7 @@ ob_start();
     margin-bottom:8px;
 }
 .ex-url{
-    color:#2563eb;
+    color:#0f766e;
     word-break:break-word;
     text-decoration:none;
     font-size:15px;
@@ -196,19 +218,25 @@ ob_start();
 }
 .ex-btn{
     border:none;
-    border-radius:14px;
+    border-radius:999px;
     padding:13px 18px;
     font-weight:800;
     font-size:14px;
     cursor:pointer;
+    box-shadow:0 10px 22px rgba(15,23,42,.12);
+    transition:transform .15s ease, filter .15s ease;
+}
+.ex-btn:hover{
+    filter:brightness(1.04);
+    transform:translateY(-1px);
 }
 .ex-btn.primary{
-    background:#0b5ed7;
+    background:linear-gradient(180deg,#14b8a6 0%, #0f766e 100%);
     color:#fff;
 }
 .ex-btn.secondary{
-    background:#e2e8f0;
-    color:#0f172a;
+    background:linear-gradient(180deg,#fbbf24 0%, #f59e0b 100%);
+    color:#78350f;
 }
 .ex-empty{
     text-align:center;
@@ -216,9 +244,20 @@ ob_start();
     font-weight:700;
     padding:30px 10px;
 }
+@media (max-width:760px){
+    .ex-intro{padding:20px 18px}
+    .ex-intro h2{font-size:26px}
+    .ex-actions{flex-direction:column}
+    .ex-btn{width:100%}
+}
 </style>
 
 <div class="ex-viewer">
+    <section class="ex-intro">
+        <h2>External Resource</h2>
+        <p>Open the resource in a new tab or copy the link quickly. The card layout now keeps spacing and buttons aligned on mobile screens too.</p>
+    </section>
+
     <div class="ex-card">
         <?php if ($url === '') { ?>
             <div class="ex-empty">No URL configured for this activity.</div>

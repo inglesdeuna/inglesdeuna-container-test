@@ -6,7 +6,7 @@ $activityId = isset($_GET['id']) ? trim((string) $_GET['id']) : '';
 $unit = isset($_GET['unit']) ? trim((string) $_GET['unit']) : '';
 
 if ($activityId === '' && $unit === '') {
-    die('Actividad no especificada');
+    die('Activity not specified');
 }
 
 function activities_columns(PDO $pdo): array
@@ -287,20 +287,14 @@ ob_start();
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@600;700;800&display=swap');
 
-body{
-    font-family:'Nunito', 'Segoe UI', sans-serif;
-    background:#f0fdf4;
-    padding:20px;
-}
-
 .dict-stage{
     max-width:1060px;
     margin:0 auto;
 }
 
 .dict-intro{
-    background:linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 52%, #f0fdf4 100%);
-    border:1px solid #ccfbf1;
+    background:linear-gradient(135deg, #e6fffb 0%, #f3ffe9 42%, #fff6dd 100%);
+    border:1px solid #bdeee7;
     border-radius:26px;
     padding:24px 26px;
     box-shadow:0 16px 34px rgba(15, 23, 42, .09);
@@ -325,17 +319,20 @@ body{
 
 .grid{
     display:grid;
-    grid-template-columns:repeat(auto-fit, minmax(250px, 1fr));
-    gap:16px;
+    grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));
+    gap:18px;
 }
 
 .card{
     position:relative;
     overflow:hidden;
-    background:linear-gradient(180deg, #f0fdf4 0%, #ffffff 100%);
-    border:1px solid #ccfbf1;
-    border-radius:22px;
-    padding:16px;
+    display:flex;
+    flex-direction:column;
+    min-height:100%;
+    background:linear-gradient(180deg, #effffc 0%, #fffef6 100%);
+    border:1px solid #cdeee4;
+    border-radius:24px;
+    padding:18px;
     text-align:center;
     box-shadow:0 14px 28px rgba(15, 23, 42, .07);
 }
@@ -347,7 +344,7 @@ body{
     left:0;
     right:0;
     height:8px;
-    background:linear-gradient(90deg, #14b8a6 0%, #0d9488 100%);
+    background:linear-gradient(90deg, #14b8a6 0%, #67e8f9 52%, #facc15 100%);
 }
 
 .image-wrap{
@@ -392,32 +389,36 @@ body{
 .answer-box{
     margin-top:12px;
     padding:10px 12px;
-    border:2px solid #ccfbf1;
-    border-radius:10px;
+    border:2px solid #bdeee7;
+    border-radius:16px;
     background:#ffffff;
     font-size:16px;
     font-weight:600;
     font-family:'Nunito', 'Segoe UI', sans-serif;
     box-sizing:border-box;
-    min-height:44px;
+    min-height:110px;
+    width:100%;
     resize:vertical;
+    transition:border-color .18s ease, box-shadow .18s ease, background-color .18s ease;
 }
 
 .actions{
-    margin-top:12px;
+    margin-top:auto;
+    padding-top:14px;
     display:flex;
     justify-content:center;
-    gap:8px;
+    gap:10px;
     flex-wrap:wrap;
 }
 
 .btn{
     border:none;
     border-radius:999px;
-    padding:8px 13px;
+    padding:10px 14px;
+    min-width:138px;
     color:#fff;
     cursor:pointer;
-    font-size:13px;
+    font-size:14px;
     font-weight:700;
     font-family:'Nunito', 'Segoe UI', sans-serif;
     transition:transform .15s ease, filter .15s ease;
@@ -429,22 +430,22 @@ body{
 }
 
 .btn-listen{
-    background:linear-gradient(180deg, #14b8a6, #0d9488);
+    background:linear-gradient(180deg, #14b8a6, #0f766e);
     box-shadow:0 6px 14px rgba(20, 184, 166, .25);
 }
 
 .btn-check{
-    background:linear-gradient(180deg, #0d9488, #0f766e);
-    box-shadow:0 6px 14px rgba(13, 148, 136, .25);
+    background:linear-gradient(180deg, #38bdf8, #0ea5e9);
+    box-shadow:0 6px 14px rgba(14, 165, 233, .25);
 }
 
 .btn-show{
-    background:linear-gradient(180deg, #6366f1, #4f46e5);
-    box-shadow:0 6px 14px rgba(99, 102, 241, .25);
+    background:linear-gradient(180deg, #f59eae, #ec4899);
+    box-shadow:0 6px 14px rgba(236, 72, 153, .25);
 }
 
 .btn-tryagain{
-    background:linear-gradient(180deg, #f59e0b, #d97706);
+    background:linear-gradient(180deg, #fbbf24, #f59e0b);
     box-shadow:0 6px 14px rgba(245, 158, 11, .25);
 }
 
@@ -480,10 +481,11 @@ body{
 .completion-content{
     background:#ffffff;
     border-radius:24px;
-    padding:40px;
+    padding:34px 30px;
     text-align:center;
     box-shadow:0 20px 60px rgba(0,0,0,0.3);
     animation:slideIn .4s ease;
+    width:min(100%, 420px);
 }
 
 @keyframes slideIn{
@@ -500,7 +502,7 @@ body{
 .completion-content h2{
     margin:0 0 16px;
     font-family:'Fredoka', 'Trebuchet MS', sans-serif;
-    font-size:48px;
+    font-size:42px;
     font-weight:700;
     color:#15803d;
 }
@@ -530,6 +532,8 @@ body{
     .dict-intro p{font-size:15px}
     .sentence{font-size:30px}
     .phonetic,.spanish{font-size:18px}
+    .actions{flex-direction:column}
+    .btn{width:100%}
 }
 </style>
 
@@ -605,8 +609,8 @@ function renderCards() {
         '<div class="spanish">' + escapeHtml(item.es || '') + '</div>' +
         '<textarea class="answer-box" id="a' + i + '" placeholder="Write what you hear..."></textarea>' +
         '<div class="actions" id="actions' + i + '">' +
-          '<button class="btn btn-listen" type="button" onclick="speak(' + i + ')">🔊 Listen</button>' +
-          '<button class="btn btn-check" type="button" onclick="checkAnswer(' + i + ')">✓ Check Answer</button>' +
+                    '<button class="btn btn-listen" type="button" onclick="speak(' + i + ')">Listen</button>' +
+                    '<button class="btn btn-check" type="button" onclick="checkAnswer(' + i + ')">Check Answer</button>' +
         '</div>' +
         '<div id="f' + i + '" class="feedback"></div>' +
       '</div>';
@@ -651,7 +655,7 @@ function checkAnswer(index) {
   var correctAnswer = normalizeText(data[index].en || '');
 
   if (userAnswer === '') {
-    feedbackEl.innerHTML = '⚠️ Please write an answer first';
+        feedbackEl.innerHTML = 'Write an answer first';
     feedbackEl.className = 'feedback incorrect';
     return;
   }
@@ -661,7 +665,7 @@ function checkAnswer(index) {
     window.cardStates[index].correct = true;
     window.cardStates[index].answered = true;
     
-    feedbackEl.innerHTML = '🌟 Correct!';
+    feedbackEl.innerHTML = 'Correct!';
     feedbackEl.className = 'feedback correct';
     
     answerEl.style.borderColor = '#15803d';
@@ -670,7 +674,7 @@ function checkAnswer(index) {
     playSound('success');
     
     // Replace button with just a check mark
-    actionsEl.innerHTML = '<span style="color:#15803d; font-weight:700; font-size:16px;">✓ Correct</span>';
+    actionsEl.innerHTML = '<span style="color:#15803d; font-weight:800; font-size:16px;">Correct</span>';
     
     checkCompletion();
   } else {
@@ -678,7 +682,7 @@ function checkAnswer(index) {
     window.cardStates[index].correct = false;
     window.cardStates[index].answered = true;
     
-    feedbackEl.innerHTML = '❌ Try again';
+    feedbackEl.innerHTML = 'Try Again';
     feedbackEl.className = 'feedback incorrect';
     
     answerEl.style.borderColor = '#dc2626';
@@ -688,8 +692,9 @@ function checkAnswer(index) {
     
     // Show Try Again and Show Answer buttons
     actionsEl.innerHTML = '' +
-      '<button class="btn btn-tryagain" type="button" onclick="clearAnswer(' + index + ')">🔄 Try Again</button>' +
-      '<button class="btn btn-show" type="button" onclick="showAnswer(' + index + ')">👁️ Show Answer</button>';
+            '<button class="btn btn-listen" type="button" onclick="speak(' + index + ')">Listen</button>' +
+            '<button class="btn btn-tryagain" type="button" onclick="clearAnswer(' + index + ')">Try Again</button>' +
+            '<button class="btn btn-show" type="button" onclick="showAnswer(' + index + ')">Show Answer</button>';
   }
 }
 
@@ -713,8 +718,8 @@ function clearAnswer(index) {
   window.cardStates[index].correct = false;
   
   actionsEl.innerHTML = '' +
-    '<button class="btn btn-listen" type="button" onclick="speak(' + index + ')">🔊 Listen</button>' +
-    '<button class="btn btn-check" type="button" onclick="checkAnswer(' + index + ')">✓ Check Answer</button>';
+        '<button class="btn btn-listen" type="button" onclick="speak(' + index + ')">Listen</button>' +
+        '<button class="btn btn-check" type="button" onclick="checkAnswer(' + index + ')">Check Answer</button>';
 }
 
 function showAnswer(index) {

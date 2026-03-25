@@ -7,7 +7,7 @@ $unit = isset($_GET['unit']) ? trim((string) $_GET['unit']) : '';
 $nextUrl = isset($_GET['next']) ? trim((string) $_GET['next']) : '';
 
 if ($activityId === '' && $unit === '') {
-    die('Actividad no especificada');
+  die('Activity not specified');
 }
 
 function resolve_unit_from_activity(PDO $pdo, string $activityId): string
@@ -195,40 +195,55 @@ ob_start();
 
 <style>
 .ppt-viewer-shell{max-width:1100px;margin:0 auto}
-.ppt-stage{background:#fff;border:1px solid #dbe4f0;border-radius:18px;overflow:hidden;box-shadow:0 10px 24px rgba(15,23,42,.1)}
-.ppt-slide{min-height:520px;padding:26px;display:flex;gap:18px;align-items:flex-start}
+.ppt-intro{margin-bottom:18px;padding:24px 26px;border-radius:26px;border:1px solid #d7c7ff;background:linear-gradient(135deg,#eef4ff 0%,#f7edff 48%,#fff6d9 100%);box-shadow:0 16px 34px rgba(15,23,42,.09)}
+.ppt-intro h2{margin:0 0 8px;font-family:'Fredoka','Trebuchet MS',sans-serif;font-size:30px;line-height:1.1;color:#5b21b6}
+.ppt-intro p{margin:0;color:#62556f;font-size:16px;line-height:1.6}
+.ppt-stage{background:linear-gradient(180deg,#fffdfc 0%,#f8fbff 100%);border:1px solid #ddd6fe;border-radius:24px;overflow:hidden;box-shadow:0 14px 28px rgba(15,23,42,.1)}
+.ppt-slide{min-height:520px;padding:28px;display:flex;gap:20px;align-items:flex-start}
 .ppt-slide.template-title_text{flex-direction:column}
 .ppt-slide.template-text_image{display:grid;grid-template-columns:1.1fr .9fr}
 .ppt-slide.template-image_full{display:flex;flex-direction:column}
 .ppt-col-text{display:flex;flex-direction:column;gap:10px}
-.ppt-slide-title{margin:0;color:#0f172a;font-weight:800;line-height:1.15}
-.ppt-slide-text{margin:0;color:#1e293b;line-height:1.6;white-space:pre-wrap}
+.ppt-slide-title{margin:0;color:#0f172a;font-family:'Fredoka','Trebuchet MS',sans-serif;font-weight:800;line-height:1.08}
+.ppt-slide-text{margin:0;color:#334155;line-height:1.7;white-space:pre-wrap}
 .ppt-image-wrap{width:100%;display:flex;justify-content:center;align-items:center}
-.ppt-image{max-width:100%;max-height:420px;border-radius:12px;object-fit:contain;border:1px solid rgba(15,23,42,.12);background:#fff}
-.ppt-toolbar{display:flex;gap:10px;flex-wrap:wrap;padding:12px 14px;border-top:1px solid #dbe4f0;background:#f8fbff;align-items:center;justify-content:space-between}
+.ppt-image{max-width:100%;max-height:420px;border-radius:18px;object-fit:contain;border:1px solid rgba(15,23,42,.08);background:#fff;box-shadow:0 10px 22px rgba(15,23,42,.08)}
+.ppt-toolbar{display:flex;gap:10px;flex-wrap:wrap;padding:14px 16px;border-top:1px solid #ddd6fe;background:linear-gradient(180deg,#faf5ff 0%,#f0fdfa 100%);align-items:center;justify-content:space-between}
 .ppt-actions{display:flex;gap:8px;flex-wrap:wrap}
-.ppt-btn{border:none;border-radius:10px;padding:10px 14px;font-weight:700;cursor:pointer}
-.ppt-btn-primary{background:#2563eb;color:#fff}
-.ppt-btn-light{background:#e2e8f0;color:#0f172a}
-.ppt-count{font-weight:700;color:#334155}
-.ppt-empty{background:#fff;border:1px solid #dbe4f0;border-radius:14px;padding:28px;text-align:center;color:#b91c1c;font-weight:700}
-.ppt-file{background:#fff;border:1px solid #dbe4f0;border-radius:14px;padding:14px;margin-bottom:12px;display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
-.ppt-file-name{color:#0f172a;font-weight:700}
-.ppt-embedded-file{margin-bottom:12px;background:#fff;border:1px solid #dbe4f0;border-radius:14px;padding:10px}
-.ppt-embedded-file iframe{width:100%;height:420px;border:none;border-radius:10px}
+.ppt-btn{border:none;border-radius:999px;padding:11px 16px;font-weight:800;font-family:'Nunito','Segoe UI',sans-serif;font-size:14px;cursor:pointer;box-shadow:0 10px 22px rgba(15,23,42,.12);transition:transform .15s ease,filter .15s ease;text-decoration:none}
+.ppt-btn:hover{filter:brightness(1.04);transform:translateY(-1px)}
+.ppt-btn-primary{background:linear-gradient(180deg,#8b5cf6 0%,#7c3aed 100%);color:#fff}
+.ppt-btn-light{background:linear-gradient(180deg,#f59eb2 0%,#ec4899 100%);color:#fff}
+.ppt-btn-mint{background:linear-gradient(180deg,#5eead4 0%,#14b8a6 100%);color:#083344}
+.ppt-count{font-weight:800;color:#5b21b6}
+.ppt-empty{background:#fff;border:1px solid #ddd6fe;border-radius:18px;padding:28px;text-align:center;color:#7c2d12;font-weight:700}
+.ppt-file{background:linear-gradient(180deg,#fffdfc 0%,#faf5ff 100%);border:1px solid #ddd6fe;border-radius:18px;padding:16px 18px;margin-bottom:14px;display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;box-shadow:0 10px 22px rgba(15,23,42,.07)}
+.ppt-file-name{color:#0f172a;font-weight:800}
+.ppt-embedded-file{margin-bottom:14px;background:#fff;border:1px solid #ddd6fe;border-radius:18px;padding:12px;box-shadow:0 10px 22px rgba(15,23,42,.07)}
+.ppt-embedded-file iframe{width:100%;height:420px;border:none;border-radius:12px}
 .ppt-note{font-size:12px;color:#64748b;margin-top:6px}
 @media (max-width: 900px){
-  .ppt-slide{padding:16px;min-height:420px}
+  .ppt-intro{padding:20px 18px}
+  .ppt-intro h2{font-size:26px}
+  .ppt-slide{padding:18px;min-height:420px}
   .ppt-slide.template-text_image{grid-template-columns:1fr}
+  .ppt-toolbar{flex-direction:column;align-items:stretch}
+  .ppt-actions{width:100%}
+  .ppt-btn{width:100%;justify-content:center;text-align:center}
 }
 </style>
 
 <div class="ppt-viewer-shell">
+  <section class="ppt-intro">
+    <h2>Presentation Viewer</h2>
+    <p>Review slides, play narration, and open the original file or Canva link when available. The layout now adapts better across phones and wider screens.</p>
+  </section>
+
   <?php if ($presentationFile !== '') { ?>
     <div class="ppt-file">
       <span class="ppt-file-name">Uploaded presentation: <?php echo htmlspecialchars($presentationName !== '' ? $presentationName : 'presentation.pptx', ENT_QUOTES, 'UTF-8'); ?></span>
       <div class="ppt-actions">
-        <button type="button" class="ppt-btn ppt-btn-primary" id="btnOpenPresentation">Open file</button>
+        <button type="button" class="ppt-btn ppt-btn-primary" id="btnOpenPresentation">Open File</button>
       </div>
     </div>
 
@@ -254,23 +269,23 @@ ob_start();
   <?php } ?>
 
     <?php if ($showEmptyBlock) { ?>
-        <div class="ppt-empty">No hay diapositivas configuradas en esta actividad.</div>
+        <div class="ppt-empty">No slides are configured for this activity.</div>
     <?php } elseif ($showSlidesBlock) { ?>
         <div class="ppt-stage">
             <div id="pptSlide" class="ppt-slide"></div>
 
             <div class="ppt-toolbar">
                 <div class="ppt-actions">
-                    <button type="button" class="ppt-btn ppt-btn-light" id="btnPrev">Anterior</button>
-                    <button type="button" class="ppt-btn ppt-btn-primary" id="btnNext">Siguiente</button>
-                    <button type="button" class="ppt-btn ppt-btn-light" id="btnTts">Leer voz (TTS)</button>
-                    <button type="button" class="ppt-btn ppt-btn-light" id="btnStopTts">Detener voz</button>
+                    <button type="button" class="ppt-btn ppt-btn-light" id="btnPrev">Previous</button>
+                    <button type="button" class="ppt-btn ppt-btn-primary" id="btnNext">Next</button>
+                    <button type="button" class="ppt-btn ppt-btn-mint" id="btnTts">Read Aloud</button>
+                    <button type="button" class="ppt-btn ppt-btn-light" id="btnStopTts">Stop Reading</button>
                 </div>
 
                 <div class="ppt-actions">
                     <span class="ppt-count" id="pptCounter"></span>
                     <?php if ($nextUrl !== '') { ?>
-                        <a class="ppt-btn ppt-btn-primary" style="text-decoration:none;display:inline-flex;align-items:center;" href="<?php echo htmlspecialchars($nextUrl, ENT_QUOTES, 'UTF-8'); ?>">Siguiente actividad</a>
+                        <a class="ppt-btn ppt-btn-primary" style="text-decoration:none;display:inline-flex;align-items:center;" href="<?php echo htmlspecialchars($nextUrl, ENT_QUOTES, 'UTF-8'); ?>">Next Activity</a>
                     <?php } ?>
                 </div>
             </div>
@@ -335,7 +350,7 @@ function renderSlide() {
       imageHtml;
   }
 
-  counter.textContent = 'Diapositiva ' + (slideIndex + 1) + ' / ' + PPT_SLIDES.length;
+  counter.textContent = 'Slide ' + (slideIndex + 1) + ' / ' + PPT_SLIDES.length;
 
   if (currentAudio) {
     currentAudio.pause();

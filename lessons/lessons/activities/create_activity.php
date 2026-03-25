@@ -9,7 +9,7 @@ $unitId = $_POST['unit'] ?? null;
 $types  = $_POST['types'] ?? [];
 
 if (!$unitId) {
-    die("Unidad no especificada.");
+    die("Unit not specified.");
 }
 
 if (empty($types)) {
@@ -32,7 +32,7 @@ $stmtUnit->execute([
 $unit = $stmtUnit->fetch(PDO::FETCH_ASSOC);
 
 if (!$unit) {
-    die("Unidad no encontrada.");
+    die("Unit not found.");
 }
 
 /* ===============================

@@ -7,6 +7,7 @@ document.addEventListener('DOMContentLoaded', function () {
   const optionsEl = document.getElementById('mc-options');
   const feedbackEl = document.getElementById('mc-feedback');
   const checkBtn = document.getElementById('mc-check');
+  const showBtn = document.getElementById('mc-show');
   const nextBtn = document.getElementById('mc-next');
 
   const completedSound = new Audio('../../hangman/assets/win.mp3');
@@ -17,6 +18,9 @@ document.addEventListener('DOMContentLoaded', function () {
     }
     if (checkBtn) {
       checkBtn.disabled = true;
+    }
+    if (showBtn) {
+      showBtn.disabled = true;
     }
     if (nextBtn) {
       nextBtn.disabled = true;
@@ -90,6 +94,10 @@ document.addEventListener('DOMContentLoaded', function () {
       checkBtn.disabled = false;
     }
 
+    if (showBtn) {
+      showBtn.disabled = false;
+    }
+
     if (nextBtn) {
       nextBtn.disabled = false;
       nextBtn.textContent = index < questions.length - 1 ? '➡️ Next' : '🏁 Finish';
@@ -106,7 +114,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const options = optionsEl.querySelectorAll('.mc-option');
 
     if (selected === null) {
-      feedbackEl.textContent = 'Selecciona una opción primero.';
+      feedbackEl.textContent = 'Select an option first.';
       feedbackEl.className = 'mc-feedback bad';
       return;
     }
@@ -126,26 +134,54 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     if (selected === correct) {
-      feedbackEl.textContent = '🌟 Excellent!';
+      feedbackEl.textContent = 'Correct!';
       feedbackEl.className = 'mc-feedback good';
     } else {
-      feedbackEl.textContent = '🔁 Try again!';
+      feedbackEl.textContent = 'Try Again';
       feedbackEl.className = 'mc-feedback bad';
     }
   }
 
+  function showAnswer() {
+    if (finished) {
+      return;
+    }
+
+    const item = questions[index] || {};
+    const correct = Number.isInteger(item.correct) ? item.correct : 0;
+    const options = optionsEl.querySelectorAll('.mc-option');
+
+    checked = true;
+    selected = correct;
+
+    Array.prototype.forEach.call(options, function (node, optIndex) {
+      node.classList.remove('selected', 'wrong');
+      if (optIndex === correct) {
+        node.classList.add('selected', 'correct');
+      }
+    });
+
+    feedbackEl.textContent = 'Show The Answer';
+    feedbackEl.className = 'mc-feedback good';
+  }
+
   function showCompleted() {
     finished = true;
-    feedbackEl.textContent = '🏆 Completed!';
+    feedbackEl.textContent = 'Completed!';
     feedbackEl.className = 'mc-feedback good completed';
 
     if (checkBtn) {
       checkBtn.disabled = true;
     }
 
+    if (showBtn) {
+      showBtn.disabled = true;
+      showBtn.textContent = 'Show Answer';
+    }
+
     if (nextBtn) {
       nextBtn.disabled = true;
-      nextBtn.textContent = '✅ Completed';
+      nextBtn.textContent = 'Completed';
     }
 
     playCompletedSound();
@@ -166,6 +202,7 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   checkBtn.addEventListener('click', checkAnswer);
+  showBtn.addEventListener('click', showAnswer);
   nextBtn.addEventListener('click', nextQuestion);
 
   loadQuestion();
