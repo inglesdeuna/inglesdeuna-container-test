@@ -385,7 +385,7 @@ input{
     height:46px;
     border-radius:12px;
     border:1px solid var(--line);
-    padding:0 12px;
+    padding:0 44px 0 12px;
     font-size:15px;
     background:#fff;
 }
@@ -404,17 +404,49 @@ input:focus{
 
 .toggle-password{
     position:absolute;
-    right:8px;
-    top:7px;
-    border:none;
-    background:var(--ocre-soft);
+    right:7px;
+    top:6px;
+    width:34px;
+    height:34px;
+    border:1px solid var(--line);
+    background:#fff;
     color:var(--ocre-dark);
-    height:32px;
-    padding:0 10px;
     border-radius:8px;
     cursor:pointer;
-    font-size:12px;
-    font-weight:700;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:0;
+}
+
+.toggle-password:hover{
+    background:var(--ocre-soft);
+}
+
+.toggle-password svg{
+    width:18px;
+    height:18px;
+    fill:none;
+    stroke:currentColor;
+    stroke-width:2;
+    stroke-linecap:round;
+    stroke-linejoin:round;
+}
+
+.toggle-password .icon-off{display:none;}
+.toggle-password.is-visible .icon-on{display:none;}
+.toggle-password.is-visible .icon-off{display:block;}
+
+.sr-only{
+    position:absolute;
+    width:1px;
+    height:1px;
+    padding:0;
+    margin:-1px;
+    overflow:hidden;
+    clip:rect(0,0,0,0);
+    white-space:nowrap;
+    border:0;
 }
 
 .submit-btn{
@@ -510,7 +542,19 @@ input:focus{
                     <label for="password">Contraseña</label>
                     <div class="password-wrap">
                         <input id="password" type="password" name="password" placeholder="Contraseña" required>
-                        <button type="button" class="toggle-password" id="togglePassword">Mostrar</button>
+                        <button type="button" class="toggle-password" id="togglePassword" aria-label="Mostrar contraseña" title="Mostrar contraseña">
+                            <svg class="icon-on" viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"></path>
+                                <circle cx="12" cy="12" r="3"></circle>
+                            </svg>
+                            <svg class="icon-off" viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M3 3l18 18"></path>
+                                <path d="M10.58 10.58a2 2 0 102.83 2.83"></path>
+                                <path d="M9.88 5.09A10.94 10.94 0 0112 5c7 0 11 7 11 7a21.77 21.77 0 01-2.16 3.19"></path>
+                                <path d="M6.61 6.61A21.75 21.75 0 001 12s4 7 11 7a10.94 10.94 0 005.39-1.61"></path>
+                            </svg>
+                            <span class="sr-only">Mostrar contraseña</span>
+                        </button>
                     </div>
                 </div>
 
@@ -552,7 +596,9 @@ if (togglePassword && passwordInput) {
     togglePassword.addEventListener('click', function () {
         const isPassword = passwordInput.type === 'password';
         passwordInput.type = isPassword ? 'text' : 'password';
-        togglePassword.textContent = isPassword ? 'Ocultar' : 'Mostrar';
+        togglePassword.classList.toggle('is-visible', isPassword);
+        togglePassword.setAttribute('aria-label', isPassword ? 'Ocultar contraseña' : 'Mostrar contraseña');
+        togglePassword.setAttribute('title', isPassword ? 'Ocultar contraseña' : 'Mostrar contraseña');
     });
 }
 
