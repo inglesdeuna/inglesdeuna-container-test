@@ -13,11 +13,6 @@ if (!isset($_SESSION['admin_logged']) || $_SESSION['admin_logged'] !== true) {
     exit;
 }
 
-if (!empty($_SESSION['admin_must_change_password'])) {
-    header('Location: change_password.php');
-    exit;
-}
-
 // Handle logout
 if (isset($_GET['logout'])) {
     Security::logSecurityEvent('admin_logout', 'User logged out', $_SESSION['admin_id'] ?? 'unknown');

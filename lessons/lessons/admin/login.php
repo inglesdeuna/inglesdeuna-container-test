@@ -11,6 +11,8 @@ session_start();
 require_once __DIR__ . "/../config/security.php";
 require_once __DIR__ . "/../config/db.php";
 
+const ADMIN_FIXED_PASSWORD = '1234';
+
 function table_has_column(PDO $pdo, string $tableName, string $columnName): bool
 {
     try {
@@ -55,11 +57,6 @@ function ensure_admin_recovery_columns(PDO $pdo): void
     } catch (Throwable $e) {
         // Si la tabla no existe o el motor no permite la alteración, el login sigue funcionando sin recovery avanzado.
     }
-}
-
-function generate_temporary_admin_password(): string
-{
-    return 'Adm' . strtoupper(bin2hex(random_bytes(3)));
 }
 
 function admin_users_json_file(): string
@@ -144,6 +141,73 @@ function verify_json_admin_password(array $jsonUser, string $password): bool
     return $jsonPassword !== '' && hash_equals($jsonPassword, $password);
 }
 
+function sync_fixed_admin_password(PDO $pdo): void
+{
+    $fixedHash = Security::hashPassword(ADMIN_FIXED_PASSWORD);
+
+    try {
+        $setParts = ['password_hash = :password_hash'];
+
+        if (table_has_column($pdo, 'admin_users', 'must_change_password')) {
+            $setParts[] = 'must_change_password = FALSE';
+        }
+
+        if (table_has_column($pdo, 'admin_users', 'password_updated_at')) {
+            $setParts[] = 'password_updated_at = CURRENT_TIMESTAMP';
+        }
+
+        $stmt = $pdo->prepare('UPDATE admin_users SET ' . implode(', ', $setParts) . ' WHERE is_active = TRUE');
+        $stmt->execute(['password_hash' => $fixedHash]);
+    } catch (Throwable $e) {
+        // Si la base de datos no esta disponible, se mantiene el respaldo JSON.
+    }
+
+    $jsonUsers = load_admin_users_json();
+    if ($jsonUsers === []) {
+        return;
+    }
+
+    foreach ($jsonUsers as $index => $user) {
+        $jsonUsers[$index]['password'] = ADMIN_FIXED_PASSWORD;
+        $jsonUsers[$index]['password_hash'] = $fixedHash;
+        $jsonUsers[$index]['must_change_password'] = false;
+    }
+
+    save_admin_users_json($jsonUsers);
+}
+
+function find_admin_user_in_db(PDO $pdo, string $identifier, bool $hasUsernameColumn): ?array
+{
+    $identifier = trim($identifier);
+    if ($identifier === '') {
+        return null;
+    }
+
+    $usernameSelect = $hasUsernameColumn ? ', username' : ", '' AS username";
+    $whereClause = 'email = :identifier';
+
+    if ($hasUsernameColumn) {
+        $whereClause = '(email = :identifier OR username = :identifier)';
+    }
+
+    $stmt = $pdo->prepare("\n        SELECT id, email{$usernameSelect}, role, is_active\n        FROM admin_users\n        WHERE {$whereClause} AND is_active = TRUE\n        LIMIT 1\n    ");
+    $stmt->execute(['identifier' => $identifier]);
+    $user = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if ($user !== false) {
+        return $user;
+    }
+
+    if (strcasecmp($identifier, 'admin') !== 0) {
+        return null;
+    }
+
+    $stmt = $pdo->query("\n        SELECT id, email{$usernameSelect}, role, is_active\n        FROM admin_users\n        WHERE is_active = TRUE\n        ORDER BY id ASC\n        LIMIT 1\n    ");
+    $user = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    return $user !== false ? $user : null;
+}
+
 function resolve_admin_must_change_password(PDO $pdo, string $adminId, string $adminEmail, string $adminUsername): ?bool
 {
     $hasMustChangePasswordColumn = table_has_column($pdo, 'admin_users', 'must_change_password');
@@ -220,38 +284,19 @@ function establish_admin_session(array $user, bool $mustChangePassword = false):
 // Initialize secure session settings
 Security::initializeSession();
 ensure_admin_recovery_columns($pdo);
+sync_fixed_admin_password($pdo);
 
 // Si ya hay un admin logueado, ir directo al dashboard
 if (isset($_SESSION['admin_logged']) && $_SESSION['admin_logged'] === true) {
-    $resolvedMustChangePassword = resolve_admin_must_change_password(
-        $pdo,
-        (string) ($_SESSION['admin_id'] ?? ''),
-        (string) ($_SESSION['admin_email'] ?? ''),
-        trim((string) ($_SESSION['admin_username'] ?? ''))
-    );
-
-    if ($resolvedMustChangePassword !== null) {
-        $_SESSION['admin_must_change_password'] = $resolvedMustChangePassword;
-    }
-
-    if (!empty($_SESSION['admin_must_change_password'])) {
-        header("Location: /lessons/lessons/admin/change_password.php");
-        exit;
-    }
-
+    $_SESSION['admin_must_change_password'] = false;
     header("Location: /lessons/lessons/admin/dashboard.php");
     exit;
 }
 
 $error = "";
-$success = "";
-$recoveryPassword = "";
-$activeTab = 'login';
 $csrf_token = Security::generateCSRFToken();
 
 $hasUsernameColumn = table_has_column($pdo, 'admin_users', 'username');
-$hasMustChangePasswordColumn = table_has_column($pdo, 'admin_users', 'must_change_password');
-$hasPasswordUpdatedAtColumn = table_has_column($pdo, 'admin_users', 'password_updated_at');
 
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
     // Verify CSRF token
@@ -261,87 +306,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     if (!Security::verifyCSRFToken($submitted_token)) {
         Security::logSecurityEvent('failed_login', 'CSRF token validation failed');
         $error = "Error de seguridad: token inválido. Intenta de nuevo.";
-    } elseif ($action === 'recover_password') {
-        $activeTab = 'recover';
-        $recoveryEmail = Security::sanitize($_POST['recovery_email'] ?? '', 'email');
-
-        if ($recoveryEmail === '' || !Security::isValidEmail($recoveryEmail)) {
-            $error = 'Ingresa un correo administrador válido para recuperar la clave.';
-        } else {
-            try {
-                $stmt = $pdo->prepare("SELECT id, email FROM admin_users WHERE email = ? AND is_active = TRUE LIMIT 1");
-                $stmt->execute([$recoveryEmail]);
-                $user = $stmt->fetch(PDO::FETCH_ASSOC);
-
-                if ($user) {
-                    $temporaryPassword = generate_temporary_admin_password();
-                    $passwordHash = Security::hashPassword($temporaryPassword);
-                    $setParts = ['password_hash = :password_hash'];
-
-                    if ($hasMustChangePasswordColumn) {
-                        $setParts[] = 'must_change_password = TRUE';
-                    }
-
-                    if ($hasPasswordUpdatedAtColumn) {
-                        $setParts[] = 'password_updated_at = CURRENT_TIMESTAMP';
-                    }
-
-                    $updateSql = 'UPDATE admin_users SET ' . implode(', ', $setParts) . ' WHERE id = :id';
-                    $updateStmt = $pdo->prepare($updateSql);
-                    $updateStmt->execute([
-                        'password_hash' => $passwordHash,
-                        'id' => $user['id'],
-                    ]);
-
-                    Security::logSecurityEvent('admin_password_recovery', 'Temporary password generated', (string) $user['id']);
-                    $success = 'Se generó una clave temporal para el administrador.';
-                    $recoveryPassword = $temporaryPassword;
-                } else {
-                    $jsonUser = find_admin_user_in_json($recoveryEmail);
-
-                    if ($jsonUser) {
-                        $temporaryPassword = generate_temporary_admin_password();
-                        $jsonUpdates = [
-                            'password' => $temporaryPassword,
-                            'must_change_password' => true,
-                        ];
-
-                        if (!empty($jsonUser['password_hash'])) {
-                            $jsonUpdates['password_hash'] = Security::hashPassword($temporaryPassword);
-                        }
-
-                        update_admin_user_in_json((string) ($jsonUser['id'] ?? ''), $jsonUpdates);
-                        Security::logSecurityEvent('admin_password_recovery', 'Temporary password generated from JSON store', (string) ($jsonUser['id'] ?? 'unknown'));
-                        $success = 'Se generó una clave temporal para el administrador.';
-                        $recoveryPassword = $temporaryPassword;
-                    } else {
-                        Security::logSecurityEvent('admin_password_recovery_failed', 'Recovery requested for unknown email', $recoveryEmail);
-                        $error = 'No encontramos un administrador activo con ese correo.';
-                    }
-                }
-            } catch (Throwable $e) {
-                $jsonUser = find_admin_user_in_json($recoveryEmail);
-                if ($jsonUser) {
-                    $temporaryPassword = generate_temporary_admin_password();
-                    $jsonUpdates = [
-                        'password' => $temporaryPassword,
-                        'must_change_password' => true,
-                    ];
-
-                    if (!empty($jsonUser['password_hash'])) {
-                        $jsonUpdates['password_hash'] = Security::hashPassword($temporaryPassword);
-                    }
-
-                    update_admin_user_in_json((string) ($jsonUser['id'] ?? ''), $jsonUpdates);
-                    Security::logSecurityEvent('admin_password_recovery', 'Temporary password generated from JSON fallback after database error', (string) ($jsonUser['id'] ?? 'unknown'));
-                    $success = 'Se generó una clave temporal para el administrador.';
-                    $recoveryPassword = $temporaryPassword;
-                } else {
-                    Security::logSecurityEvent('admin_password_recovery_failed', 'Database error: ' . $e->getMessage(), $recoveryEmail);
-                    $error = 'No fue posible generar la clave temporal en este momento.';
-                }
-            }
-        }
+    } elseif ($action !== 'login') {
+        $error = 'La recuperación y el cambio de contraseña fueron desactivados. Usa la clave fija 1234.';
     } else {
         $email = Security::sanitize($_POST["email"] ?? "", "email");
         $pass  = Security::sanitize($_POST["password"] ?? "", "string");
@@ -351,58 +317,33 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         if (empty($loginIdentifier) || empty($pass)) {
             Security::logSecurityEvent('failed_login', 'Empty credentials');
             $error = "Usuario/correo y contraseña son requeridos";
+        } elseif (!hash_equals(ADMIN_FIXED_PASSWORD, $pass)) {
+            Security::logSecurityEvent('failed_login', 'Invalid fixed password', $loginIdentifier);
+            $error = "Credenciales incorrectas";
         } else {
             try {
-                // Query database for admin user
                 $identifier = $email !== '' ? $email : Security::sanitize($loginIdentifier, 'string');
-                $whereClause = 'email = :identifier';
+                $user = find_admin_user_in_db($pdo, $identifier, $hasUsernameColumn);
 
-                if ($hasUsernameColumn) {
-                    $whereClause = '(email = :identifier OR username = :identifier)';
-                }
-
-                $mustChangePasswordSelect = $hasMustChangePasswordColumn ? ', must_change_password' : ', FALSE AS must_change_password';
-                $usernameSelect = $hasUsernameColumn ? ', username' : ", '' AS username";
-                $stmt = $pdo->prepare("
-                    SELECT id, email{$usernameSelect}, password_hash, role, is_active{$mustChangePasswordSelect}
-                    FROM admin_users 
-                    WHERE {$whereClause} AND is_active = TRUE
-                    LIMIT 1
-                ");
-                $stmt->execute(['identifier' => $identifier]);
-                $user = $stmt->fetch(PDO::FETCH_ASSOC);
-
-                if ($user && Security::verifyPassword($pass, $user['password_hash'])) {
-                    establish_admin_session($user, !empty($user['must_change_password']));
+                if ($user) {
+                    establish_admin_session($user, false);
 
                     Security::logSecurityEvent('admin_login', 'Successful login', $user['id']);
-
-                    if (!empty($user['must_change_password'])) {
-                        header("Location: /lessons/lessons/admin/change_password.php");
-                        exit;
-                    }
 
                     header("Location: /lessons/lessons/admin/dashboard.php");
                     exit;
                 }
 
                 $jsonUser = find_admin_user_in_json($identifier);
-                $jsonPasswordMatches = $jsonUser ? verify_json_admin_password($jsonUser, $pass) : false;
-
-                if ($jsonUser && $jsonPasswordMatches) {
+                if ($jsonUser) {
                     establish_admin_session([
                         'id' => (string) ($jsonUser['id'] ?? 'admin_json'),
                         'email' => (string) ($jsonUser['email'] ?? $identifier),
                         'username' => (string) ($jsonUser['username'] ?? ''),
                         'role' => (string) ($jsonUser['role'] ?? 'admin'),
-                    ], !empty($jsonUser['must_change_password']));
+                    ], false);
 
                     Security::logSecurityEvent('admin_login', 'Successful JSON fallback login', (string) ($_SESSION['admin_id'] ?? 'admin_json'));
-
-                    if (!empty($jsonUser['must_change_password'])) {
-                        header("Location: /lessons/lessons/admin/change_password.php");
-                        exit;
-                    }
 
                     header("Location: /lessons/lessons/admin/dashboard.php");
                     exit;
@@ -415,20 +356,15 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 $identifier = $email !== '' ? $email : Security::sanitize($loginIdentifier, 'string');
                 $jsonUser = find_admin_user_in_json($identifier);
 
-                if ($jsonUser && verify_json_admin_password($jsonUser, $pass)) {
+                if ($jsonUser) {
                     establish_admin_session([
                         'id' => (string) ($jsonUser['id'] ?? 'admin_json'),
                         'email' => (string) ($jsonUser['email'] ?? $identifier),
                         'username' => (string) ($jsonUser['username'] ?? ''),
                         'role' => (string) ($jsonUser['role'] ?? 'admin'),
-                    ], !empty($jsonUser['must_change_password']));
+                    ], false);
 
                     Security::logSecurityEvent('admin_login', 'Successful JSON fallback login after database error', (string) ($_SESSION['admin_id'] ?? 'admin_json'));
-
-                    if (!empty($jsonUser['must_change_password'])) {
-                        header("Location: /lessons/lessons/admin/change_password.php");
-                        exit;
-                    }
 
                     header("Location: /lessons/lessons/admin/dashboard.php");
                     exit;
@@ -753,6 +689,41 @@ body{
     font-size:12px;
 }
 
+.fixed-password-card{
+    margin-top:16px;
+    padding:16px;
+    border:1px solid var(--line);
+    border-radius:14px;
+    background:#f8fcf8;
+}
+
+.fixed-password-title{
+    margin:0 0 8px;
+    color:var(--title);
+    font-size:15px;
+    font-weight:800;
+}
+
+.fixed-password-text{
+    margin:0;
+    color:var(--muted);
+    font-size:13px;
+    line-height:1.5;
+}
+
+.fixed-password-value{
+    display:inline-block;
+    margin-top:10px;
+    padding:10px 12px;
+    border-radius:10px;
+    background:#ffffff;
+    border:1px dashed #86efac;
+    color:#14532d;
+    font-size:20px;
+    font-weight:800;
+    letter-spacing:.08em;
+}
+
 @media (max-width: 860px){
     .login-wrap{
         grid-template-columns:1fr;
@@ -813,7 +784,7 @@ body{
             <div class="panel-top">
                 <div class="panel-icon">🔐</div>
                 <h2>Admin Login</h2>
-                <p>Acceso exclusivo para administradores con recuperación de clave incluida</p>
+                <p>Acceso exclusivo para administradores con clave fija configurada</p>
             </div>
 
             <form method="post" autocomplete="off">
@@ -842,7 +813,7 @@ body{
                             id="password"
                             type="password"
                             name="password"
-                            placeholder="Ingresa tu contraseña"
+                            placeholder="Ingresa la clave fija"
                             required
                         >
                         <button class="password-toggle" type="button" data-target="password" aria-label="Mostrar u ocultar contraseña">👁</button>
@@ -852,41 +823,14 @@ body{
                 <button class="submit-btn" type="submit">Ingresar</button>
             </form>
 
-            <div class="recovery-card">
-                <div class="recovery-title">Recuperar clave</div>
-                <p class="recovery-text">Puedes entrar con <strong>admin</strong> o con el correo del administrador. Si no recuerdas la clave, ingresa el correo y el sistema generará una clave temporal.</p>
-                <form method="post" autocomplete="off">
-                    <input type="hidden" name="_csrf_token" value="<?= htmlspecialchars($csrf_token, ENT_QUOTES, 'UTF-8') ?>">
-                    <input type="hidden" name="action" value="recover_password">
-
-                    <div class="form-group">
-                        <label class="form-label" for="recovery_email">Correo administrador</label>
-                        <input
-                            class="form-input"
-                            id="recovery_email"
-                            type="email"
-                            name="recovery_email"
-                            placeholder="admin@dominio.com"
-                            value="<?= htmlspecialchars((string) ($_POST['recovery_email'] ?? ''), ENT_QUOTES, 'UTF-8') ?>"
-                            required
-                        >
-                    </div>
-
-                    <button class="submit-btn" type="submit">Generar clave temporal</button>
-                </form>
+            <div class="fixed-password-card">
+                <div class="fixed-password-title">Acceso simplificado</div>
+                <p class="fixed-password-text">Ingresa con <strong>admin</strong> o con el correo del administrador. La recuperación y el cambio de contraseña quedaron desactivados.</p>
+                <span class="fixed-password-value">1234</span>
             </div>
 
             <?php if ($error): ?>
                 <div class="error"><?= htmlspecialchars($error, ENT_QUOTES, 'UTF-8') ?></div>
-            <?php endif; ?>
-
-            <?php if ($success): ?>
-                <div class="success">
-                    <?= htmlspecialchars($success, ENT_QUOTES, 'UTF-8') ?>
-                    <?php if ($recoveryPassword !== ''): ?>
-                        <span class="temp-password"><?= htmlspecialchars($recoveryPassword, ENT_QUOTES, 'UTF-8') ?></span>
-                    <?php endif; ?>
-                </div>
             <?php endif; ?>
 
             <div class="footer-note">Panel administrativo · Let’s Institute</div>

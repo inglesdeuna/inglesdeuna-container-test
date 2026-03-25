@@ -103,6 +103,10 @@ if (!isset($_SESSION['admin_logged']) || $_SESSION['admin_logged'] !== true) {
     exit;
 }
 
+$_SESSION['admin_must_change_password'] = false;
+header('Location: dashboard.php');
+exit;
+
 $csrfToken = Security::generateCSRFToken();
 $error = '';
 $success = '';
