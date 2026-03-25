@@ -16,6 +16,8 @@ $unitId = trim((string) ($_GET['unit'] ?? ''));
 
 $backHref = 'teacher_course.php?assignment=' . urlencode($assignmentId) . '&unit=' . urlencode($unitId) . '&step=' . urlencode('9999');
 $dashboardHref = 'dashboard.php?assignment=' . urlencode($assignmentId) . '&unit=' . urlencode($unitId) . '#unidades-curso';
+$quizEditorHref = '../activities/quiz/editor.php?unit=' . urlencode($unitId) . '&assignment=' . urlencode($assignmentId);
+$quizViewerHref = '../activities/quiz/viewer.php?unit=' . urlencode($unitId) . '&assignment=' . urlencode($assignmentId);
 
 $courseName = trim((string) ($_SESSION['teacher_current_course_name'] ?? 'Curso actual'));
 $unitName = trim((string) ($_SESSION['teacher_current_unit_name'] ?? ($unitId !== '' ? ('Unidad ' . $unitId) : 'Unidad actual')));
@@ -180,10 +182,11 @@ body{
       <span class="badge">Unidad: <?php echo h($unitName); ?></span>
       <span class="badge warn">Porcentaje actual: <?php echo (int) $completionPercent; ?>%</span>
     </div>
-    <p class="text">Esta vista queda lista para programar el quiz de cierre. Aquí irá la lógica de preguntas, cálculo de puntaje y actualización de porcentaje obtenido por unidad.</p>
+    <p class="text">Aquí queda la estructura base del quiz final de unidad con flujo editor/viewer, igual al resto de actividades. Puedes crear preguntas y luego previsualizar el quiz.</p>
 
     <div class="actions">
-      <a class="btn" href="#" onclick="alert('Pendiente: implementación del quiz'); return false;">Iniciar quiz (pendiente)</a>
+      <a class="btn" href="<?php echo h($quizEditorHref); ?>">Abrir editor de quiz</a>
+      <a class="btn" href="<?php echo h($quizViewerHref); ?>" target="_blank" rel="noopener noreferrer">Previsualizar quiz</a>
       <a class="btn secondary" href="<?php echo h($dashboardHref); ?>">Volver al panel docente</a>
     </div>
   </section>
