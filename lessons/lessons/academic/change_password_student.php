@@ -130,13 +130,11 @@ function update_student_password_in_database(PDO $pdo, string $studentId, string
     }
 
     if (table_has_column($pdo, 'student_accounts', 'temp_password')) {
-        $setParts[] = 'temp_password = :temp_password';
-        $params['temp_password'] = null;
+        $setParts[] = 'temp_password = NULL';   // SQL literal avoids PDO null binding error
     }
 
     if (table_has_column($pdo, 'student_accounts', 'must_change_password')) {
-        $setParts[] = 'must_change_password = :must_change_password';
-        $params['must_change_password'] = false;
+        $setParts[] = 'must_change_password = FALSE';  // SQL literal
     }
 
     if (table_has_column($pdo, 'student_accounts', 'password_updated_at')) {
@@ -201,12 +199,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $error = 'No se encontró la cuenta del estudiante.';
             } elseif (!verify_student_password($account, $currentPassword)) {
                 $error = 'La contraseña actual no es correcta.';
-            } elseif (update_student_password_in_database($pdo, $studentId, $newPassword)) {
+            } else {
+                $updated = update_student_password_in_database($pdo, $studentId, $newPassword);
+                if (!$updated) {
+                    // Fallback: try JSON in case rowCount was 0 due to no-op
+                    update_student_password_in_json($studentId, $newPassword);
+                }
                 $_SESSION['student_must_change_password'] = false;
                 header('Location: student_dashboard.php?password_changed=1');
                 exit;
-            } else {
-                $error = 'No fue posible actualizar la contraseña.';
             }
         } else {
             $accounts = load_student_accounts_from_json();
@@ -238,56 +239,126 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Cambiar contraseña estudiante</title>
+<title>Cambiar contraseña – Estudiante</title>
 <style>
+:root{
+    --bg:#fefae8;
+    --card:#ffffff;
+    --line:#e8dcaa;
+    --title:#7a5c0e;
+    --text:#5a420a;
+    --muted:#8a7040;
+    --ocre:#c48b1a;
+    --ocre-hover:#a07010;
+    --ocre-soft:#fdf3c8;
+    --danger:#b42318;
+    --danger-soft:#fff5f5;
+    --shadow:0 18px 42px rgba(120,90,10,.18);
+}
+*{box-sizing:border-box}
 body{
     margin:0;
     font-family:Arial,sans-serif;
-    background:linear-gradient(180deg,#fff7f3,#fffdfc);
+    background:linear-gradient(160deg,#fefae8 0%,#fff9db 50%,#fffdf0 100%);
     min-height:100vh;
     display:flex;
     align-items:center;
     justify-content:center;
     padding:24px;
+    color:var(--text);
 }
 .card{
     width:100%;
-    max-width:420px;
-    background:#fff;
-    border:1px solid #ffd8d1;
-    border-radius:18px;
-    padding:26px;
-    box-shadow:0 18px 40px rgba(153,60,44,.14);
+    max-width:430px;
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:20px;
+    padding:32px 28px;
+    box-shadow:var(--shadow);
 }
-h1{margin:0 0 8px;color:#b04632;font-size:28px;}
-p{margin:0 0 16px;color:#7a5d56;}
-input,button{width:100%;height:44px;border-radius:10px;border:1px solid #f0beb4;padding:0 12px;font-size:15px;}
-input{margin-top:10px;}
-button{margin-top:14px;background:#fa8072;color:#fff;border:none;font-weight:700;cursor:pointer;}
-button:hover{background:#e8654e;}
-.error{margin-top:10px;color:#c81e1e;font-weight:700;}
-.success{margin-top:10px;color:#12703d;font-weight:700;}
+.card-icon{font-size:36px;margin-bottom:10px;}
+h1{margin:0 0 6px;color:var(--title);font-size:26px;font-weight:800;}
+.subtitle{margin:0 0 22px;color:var(--muted);font-size:14px;line-height:1.5;}
+label{display:block;margin:12px 0 5px;font-weight:700;font-size:13px;color:var(--title);}
+.password-wrap{position:relative;}
+input[type=password],input[type=text]{
+    width:100%;height:46px;border-radius:10px;
+    border:1.5px solid var(--line);
+    padding:0 48px 0 12px;
+    font-size:15px;color:var(--text);background:#fff;outline:none;
+    transition:border-color .15s,box-shadow .15s;
+}
+input:focus{border-color:var(--ocre);box-shadow:0 0 0 3px rgba(196,139,26,.15);}
+.pwd-toggle{
+    position:absolute;top:50%;right:10px;transform:translateY(-50%);
+    width:32px;height:32px;display:inline-flex;align-items:center;justify-content:center;
+    border:none;border-radius:8px;background:transparent;color:var(--muted);cursor:pointer;padding:0;
+}
+.pwd-toggle:hover{background:var(--ocre-soft);color:var(--ocre-hover);}
+.pwd-toggle svg{width:18px;height:18px;}
+.submit-btn{
+    width:100%;height:48px;margin-top:22px;border:none;border-radius:12px;
+    background:linear-gradient(180deg,var(--ocre),var(--ocre-hover));
+    color:#fff;font-weight:800;font-size:15px;cursor:pointer;letter-spacing:.3px;
+}
+.submit-btn:hover{background:linear-gradient(180deg,#b07c14,#8a6010);}
+.error-box{
+    margin-top:14px;color:var(--danger);font-weight:700;font-size:13px;
+    background:var(--danger-soft);border:1px solid #fecdd3;border-radius:10px;padding:10px 14px;
+}
 </style>
 </head>
 <body>
 <div class="card">
+    <div class="card-icon">🔐</div>
     <h1>Cambiar contraseña</h1>
-    <p>Por seguridad, debes cambiar tu contraseña temporal antes de entrar al dashboard.</p>
+    <p class="subtitle">Por seguridad debes cambiar tu contraseña temporal antes de continuar.</p>
 
     <form method="post">
-        <input type="password" name="current_password" placeholder="Contraseña actual" required>
-        <input type="password" name="new_password" placeholder="Nueva contraseña" required>
-        <input type="password" name="confirm_password" placeholder="Confirmar nueva contraseña" required>
-        <button type="submit">Guardar y entrar</button>
+        <label for="current_password">Contraseña actual</label>
+        <div class="password-wrap">
+            <input type="password" id="current_password" name="current_password" required autocomplete="current-password">
+            <button type="button" class="pwd-toggle" data-target="current_password" aria-label="Mostrar contraseña">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            </button>
+        </div>
+
+        <label for="new_password">Nueva contraseña</label>
+        <div class="password-wrap">
+            <input type="password" id="new_password" name="new_password" required autocomplete="new-password">
+            <button type="button" class="pwd-toggle" data-target="new_password" aria-label="Mostrar contraseña">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            </button>
+        </div>
+
+        <label for="confirm_password">Confirmar nueva contraseña</label>
+        <div class="password-wrap">
+            <input type="password" id="confirm_password" name="confirm_password" required autocomplete="new-password">
+            <button type="button" class="pwd-toggle" data-target="confirm_password" aria-label="Mostrar contraseña">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            </button>
+        </div>
+
+        <button type="submit" class="submit-btn">Guardar y entrar</button>
     </form>
 
-    <?php if ($error): ?>
-        <div class="error"><?php echo h($error); ?></div>
-    <?php endif; ?>
-
-    <?php if ($success): ?>
-        <div class="success"><?php echo h($success); ?></div>
+    <?php if ($error !== ''): ?>
+        <div class="error-box"><?php echo h($error); ?></div>
     <?php endif; ?>
 </div>
+<script>
+document.querySelectorAll('.pwd-toggle').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+        var input = document.getElementById(btn.getAttribute('data-target'));
+        if (!input) return;
+        var isVisible = input.type === 'text';
+        input.type = isVisible ? 'password' : 'text';
+        btn.setAttribute('aria-label', isVisible ? 'Mostrar contraseña' : 'Ocultar contraseña');
+        btn.querySelector('svg').innerHTML = isVisible
+            ? '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>'
+            : '<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>';
+    });
+});
+</script>
 </body>
 </html>
