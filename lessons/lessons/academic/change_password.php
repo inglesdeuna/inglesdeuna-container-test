@@ -210,24 +210,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <title>Cambiar contraseña</title>
 <style>
 :root{
-    --bg:#eef7f0;
+    --bg:#eef4fc;
     --card:#ffffff;
-    --line:#d8e8dc;
-    --title:#2a5136;
-    --text:#1f3b28;
-    --muted:#5d7465;
-    --green:#2f9e44;
-    --green-hover:#237a35;
-    --green-soft:#eef7f0;
+    --line:#d6e0ee;
+    --title:#1f4d8f;
+    --text:#1f3559;
+    --muted:#5d6f8f;
+    --blue:#1f66cc;
+    --blue-hover:#184fa3;
+    --blue-soft:#e8f2ff;
     --danger:#c42828;
     --danger-soft:#fff1f2;
-    --shadow:0 18px 40px rgba(35,122,53,.12);
+    --shadow:0 18px 40px rgba(18,52,114,.15);
 }
 *{box-sizing:border-box}
 body{
     margin:0;
     font-family:Arial,sans-serif;
-    background:linear-gradient(180deg,#e8f5eb,#f7fcf8);
+    background:linear-gradient(180deg,#eaf1ff,#f8fbff);
     min-height:100vh;
     display:flex;
     align-items:center;
@@ -239,7 +239,7 @@ body{
     width:100%;
     max-width:430px;
     background:var(--card);
-    border:1px solid var(--line);
+    border:1px solid #dce6f6;
     border-radius:18px;
     padding:28px;
     box-shadow:var(--shadow);
@@ -294,19 +294,19 @@ input{
     line-height:1;
 }
 .password-toggle:hover{
-    background:var(--green-soft);
-    color:var(--green-hover);
+    background:var(--blue-soft);
+    color:var(--blue-hover);
 }
 
 .password-toggle:focus-visible{
     outline:none;
-    border-color:#b8dfc4;
-    background:var(--green-soft);
+    border-color:#c8d8f0;
+    background:var(--blue-soft);
 }
 
 input:focus{
-    border-color:var(--green);
-    box-shadow:0 0 0 3px rgba(47,158,68,.15);
+    border-color:var(--blue);
+    box-shadow:0 0 0 3px rgba(31,102,204,.12);
 }
 .submit-btn{
     width:100%;
@@ -314,14 +314,14 @@ input:focus{
     margin-top:16px;
     border:none;
     border-radius:10px;
-    background:linear-gradient(180deg,var(--green),var(--green-hover));
+    background:linear-gradient(180deg,var(--blue),var(--blue-hover));
     color:#fff;
     font-weight:700;
     font-size:15px;
     cursor:pointer;
 }
 .submit-btn:hover{
-    background:linear-gradient(180deg,var(--green-hover),#1c642a);
+    background:linear-gradient(180deg,var(--blue-hover),#123f86);
 }
 .error{
     margin-top:12px;
