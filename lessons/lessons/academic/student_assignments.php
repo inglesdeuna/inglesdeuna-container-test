@@ -375,12 +375,19 @@ function slugify_username(string $value): string
 
 function generate_student_username(array $student, array $accounts): string
 {
-    $name = (string) ($student['name'] ?? 'student');
-    $studentId = (string) ($student['id'] ?? '');
-    $base = slugify_username($name);
+    $name  = trim((string) ($student['name'] ?? 'student'));
+    $parts = preg_split('/\s+/', $name, -1, PREG_SPLIT_NO_EMPTY);
 
-    if ($studentId !== '') {
-        $base .= '.' . preg_replace('/[^a-zA-Z0-9]/', '', $studentId);
+    if (count($parts) >= 2) {
+        $first = slugify_username($parts[0]);
+        $last  = slugify_username((string) end($parts));
+        $base  = $first . '.' . $last;
+    } else {
+        $base = slugify_username($name);
+    }
+
+    if ($base === '' || $base === '.') {
+        $base = 'student';
     }
 
     $username = $base;
@@ -1021,6 +1028,67 @@ if (empty($englishUnits)) {
    GUARDAR
 =============================== */
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $postAction = trim((string) ($_POST['action'] ?? 'save'));
+
+    /* ---- RESET PASSWORD ---- */
+    if ($postAction === 'reset_student_password') {
+        $resetStudentId = trim((string) ($_POST['reset_student_id'] ?? ''));
+        $newPassword    = trim((string) ($_POST['new_password'] ?? ''));
+
+        if ($resetStudentId !== '' && $newPassword !== '') {
+            $pdo2      = get_pdo_connection();
+            $resetOk   = false;
+
+            if ($pdo2) {
+                $setParts2   = ['updated_at = NOW()'];
+                $resetParams = ['student_id' => $resetStudentId];
+
+                if (table_has_column($pdo2, 'student_accounts', 'password_hash')) {
+                    $setParts2[]         = 'password_hash = :password_hash';
+                    $resetParams['password_hash'] = password_hash($newPassword, PASSWORD_DEFAULT);
+                }
+                if (table_has_column($pdo2, 'student_accounts', 'temp_password')) {
+                    $setParts2[]         = 'temp_password = :temp_password';
+                    $resetParams['temp_password'] = $newPassword;
+                }
+                if (table_has_column($pdo2, 'student_accounts', 'must_change_password')) {
+                    $setParts2[]         = 'must_change_password = :must_change_password';
+                    $resetParams['must_change_password'] = true;
+                }
+
+                try {
+                    $sqlReset = 'UPDATE student_accounts SET '
+                        . implode(', ', $setParts2)
+                        . ' WHERE student_id = :student_id';
+                    $stmtReset = $pdo2->prepare($sqlReset);
+                    $stmtReset->execute($resetParams);
+                    $resetOk = $stmtReset->rowCount() > 0;
+                } catch (Throwable $e) {
+                    $resetOk = false;
+                }
+            }
+
+            if (!$resetOk) {
+                $jsonAccs = load_json_array($studentAccountsFile);
+                foreach ($jsonAccs as $i => $acc) {
+                    if ((string) ($acc['student_id'] ?? '') === $resetStudentId) {
+                        $jsonAccs[$i]['password_hash']        = password_hash($newPassword, PASSWORD_DEFAULT);
+                        $jsonAccs[$i]['temp_password']        = $newPassword;
+                        $jsonAccs[$i]['must_change_password'] = true;
+                        $resetOk = true;
+                        break;
+                    }
+                }
+                if ($resetOk) {
+                    save_json_file($studentAccountsFile, $jsonAccs);
+                }
+            }
+        }
+        header('Location: student_assignments.php?pwd_reset=1');
+        exit;
+    }
+
+    /* ---- SAVE ASSIGNMENT ---- */
     $editId = trim((string) ($_POST['edit_id'] ?? ''));
     $studentId = trim((string) ($_POST['student_id'] ?? ''));
     $teacherId = trim((string) ($_POST['teacher_id'] ?? ''));
@@ -1129,39 +1197,113 @@ if ($selectedProgram === 'technical' && $editRecord) {
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Asignaciones de estudiantes</title>
     <style>
-        :root{--bg:#eef7f0;--card:#fff;--line:#d8e8dc;--text:#1f3b28;--title:#1f3b28;--subtitle:#2a5136;--muted:#5d7465;--head:#f3fbf5;--blue:#2f9e44;--blue-hover:#237a35;--badge-bg:#e9f8ee;--badge-text:#237a35;--danger:#dc2626;--shadow:0 10px 24px rgba(0,0,0,.08)}
-        *{box-sizing:border-box} body{margin:0;font-family:Arial,sans-serif;background:var(--bg);color:var(--text);padding:30px}
-        .page{max-width:1100px;margin:0 auto}.back{display:inline-block;margin-bottom:16px;text-decoration:none;color:var(--blue);font-weight:700;font-size:14px}
-        .page-title{font-size:28px;font-weight:700;color:var(--title);margin:0 0 18px}.notice{background:#ecfdf3;border:1px solid #b9eacb;color:#166534;border-radius:14px;padding:12px 14px;margin-bottom:18px;box-shadow:var(--shadow)}
-        .stack{display:flex;flex-direction:column;gap:18px}.card{background:var(--card);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);overflow:hidden}
-        .card-header{padding:16px 20px;border-bottom:1px solid var(--line);background:#fafcff}.card-header h2{margin:0;font-size:22px;font-weight:600;color:var(--subtitle)}
-        .card-body{padding:20px}.form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.field{display:flex;flex-direction:column;min-width:0}.field.full{grid-column:1/-1}
-        label{font-size:12px;font-weight:700;color:var(--text);margin:0 0 8px;text-transform:uppercase;letter-spacing:.2px}
-        select,input,button{width:100%;min-height:42px;border-radius:10px;border:1px solid #c7d3e3;background:#fff;color:var(--text);padding:10px 12px;font-size:14px}
-        select:focus,input:focus,button:focus{outline:none;border-color:#6ab786;box-shadow:0 0 0 3px rgba(47,158,68,.15)}
-        .button-primary{border:none;background:var(--blue);color:#fff;font-weight:700;font-size:14px;cursor:pointer}.button-primary:hover{background:var(--blue-hover)}
-        .hint{margin-top:7px;font-size:12px;color:var(--muted)}.hint a{color:var(--blue);text-decoration:none;font-weight:700}
-        .table-wrap{width:100%;border:1px solid var(--line);border-radius:14px;background:#fff;overflow:hidden}.table-scroll{width:100%;overflow-x:auto}
-        table{width:100%;min-width:1100px;border-collapse:separate;border-spacing:0} thead th{background:var(--head);color:var(--text);font-size:12px;font-weight:700;text-transform:uppercase;padding:12px;text-align:left;white-space:nowrap}
-        tbody td{padding:12px;border-bottom:1px solid #e8eef6;font-size:14px;color:var(--text);vertical-align:top}tbody tr:last-child td{border-bottom:none}
-        .program-badge{display:inline-block;padding:4px 8px;border-radius:999px;background:var(--badge-bg);color:var(--badge-text);font-size:12px;font-weight:700;white-space:nowrap}
-        .credential-box{display:flex;flex-direction:column;gap:4px}.credential-chip{display:inline-block;padding:4px 8px;border-radius:999px;background:#edf9f1;color:#2a5136;font-size:12px;font-weight:700;width:max-content;max-width:100%;word-break:break-word}
-        .actions{white-space:nowrap}.actions a{text-decoration:none;font-weight:700}.actions a:first-child{color:var(--blue)}.actions a:last-child{color:var(--danger)}.muted{color:var(--muted)}
-        @media (max-width:768px){body{padding:20px}.page-title{font-size:24px}.card-header h2{font-size:20px}.form-grid{grid-template-columns:1fr}.button-primary{font-size:12px}}
+        :root{
+            --bg:#eef7f0;--card:#fff;--line:#d8e8dc;--text:#1f3b28;--title:#1f3b28;
+            --subtitle:#2a5136;--muted:#5d7465;--head:#f3fbf5;
+            --green:#2f9e44;--green-hover:#237a35;--green-soft:#e9f8ee;
+            --danger:#dc2626;--danger-soft:#fef2f2;
+            --warn:#b45309;--warn-soft:#fef9c3;
+            --blue-soft:#dbeafe;--blue-text:#1e40af;
+            --shadow:0 10px 24px rgba(0,0,0,.08);
+        }
+        *{box-sizing:border-box}
+        body{margin:0;font-family:Arial,sans-serif;background:var(--bg);color:var(--text);padding:30px}
+        .page{max-width:1100px;margin:0 auto}
+        /* Header */
+        .page-header{display:flex;align-items:center;gap:14px;margin-bottom:20px;flex-wrap:wrap}
+        .page-title{font-size:26px;font-weight:700;color:var(--title);margin:0}
+        /* Buttons */
+        .btn{display:inline-flex;align-items:center;gap:6px;height:38px;padding:0 14px;border-radius:10px;border:none;font-weight:700;font-size:13px;cursor:pointer;text-decoration:none;white-space:nowrap}
+        .btn-back{background:var(--green-soft);color:var(--subtitle)}.btn-back:hover{background:#d4eddb;color:var(--subtitle)}
+        .btn-cancel-edit{background:#f3f4f6;color:var(--muted)}.btn-cancel-edit:hover{background:#e5e7eb}
+        /* Notices */
+        .notice{border-radius:12px;padding:12px 16px;margin-bottom:16px;font-size:14px;font-weight:600}
+        .notice-ok{background:#ecfdf3;border:1px solid #b9eacb;color:#166534}
+        .notice-pwd{background:#fef9c3;border:1px solid #fde68a;color:#92400e}
+        /* Stack & Cards */
+        .stack{display:flex;flex-direction:column;gap:18px}
+        .card{background:var(--card);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);overflow:hidden}
+        .card-header{padding:14px 20px;border-bottom:1px solid var(--line);background:var(--head);display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+        .card-header h2{margin:0;font-size:20px;font-weight:600;color:var(--subtitle)}
+        .card-body{padding:20px}
+        /* Form */
+        .form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+        .field{display:flex;flex-direction:column;min-width:0}.field.full{grid-column:1/-1}
+        label{font-size:12px;font-weight:700;color:var(--text);margin:0 0 6px;text-transform:uppercase;letter-spacing:.2px}
+        select,input{width:100%;min-height:42px;border-radius:10px;border:1px solid #c7d3e3;background:#fff;color:var(--text);padding:10px 12px;font-size:14px}
+        select:focus,input:focus{outline:none;border-color:#6ab786;box-shadow:0 0 0 3px rgba(47,158,68,.15)}
+        .button-primary{border:none;background:var(--green);color:#fff;font-weight:700;font-size:14px;cursor:pointer;display:block;width:100%;min-height:44px;border-radius:10px}
+        .button-primary:hover{background:var(--green-hover)}
+        .hint{margin-top:7px;font-size:12px;color:var(--muted)}.hint a{color:var(--green);text-decoration:none;font-weight:700}
+        /* Group accordion */
+        .groups-wrap{display:flex;flex-direction:column;gap:10px;padding:16px}
+        .group-card{border:1px solid var(--line);border-radius:12px;background:var(--card);overflow:hidden;box-shadow:0 2px 6px rgba(0,0,0,.04)}
+        .group-header{padding:13px 18px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none;background:var(--head);gap:12px;flex-wrap:wrap}
+        .group-header:hover{background:#e8f5ec}
+        .group-info{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+        .group-name{font-size:15px;font-weight:700;color:var(--subtitle)}
+        .group-count{font-size:13px;color:var(--muted)}
+        .badge-prog{display:inline-block;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:700;white-space:nowrap}
+        .badge-en{background:var(--blue-soft);color:var(--blue-text)}
+        .badge-tech{background:var(--green-soft);color:#237a35}
+        .chevron{font-size:11px;color:var(--muted);width:22px;height:22px;display:flex;align-items:center;justify-content:center;transition:transform .2s;border-radius:6px;background:rgba(0,0,0,.04);flex-shrink:0}
+        .chevron.open{transform:rotate(-180deg)}
+        .group-body{display:none}
+        .group-body.open{display:block}
+        /* Student rows */
+        .student-row{padding:12px 18px;border-bottom:1px solid #f0f4f2;display:flex;gap:12px;align-items:flex-start;flex-wrap:wrap}
+        .student-row:last-child{border-bottom:none}
+        .student-main{display:flex;gap:10px;align-items:flex-start;flex:1;min-width:200px}
+        .student-avatar{width:38px;height:38px;border-radius:10px;background:var(--green-soft);color:var(--subtitle);font-weight:800;font-size:15px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+        .student-name{font-size:14px;font-weight:700;color:var(--text);margin-bottom:5px}
+        .student-meta{display:flex;flex-wrap:wrap;gap:5px}
+        .cred-chip{display:inline-flex;align-items:center;gap:3px;padding:3px 8px;border-radius:999px;font-size:12px;font-weight:600;background:#edf9f1;color:#2a5136;white-space:nowrap}
+        .cred-chip.dim{background:#f4f7f5;color:var(--muted)}
+        .student-actions{display:flex;gap:6px;flex-wrap:wrap;align-items:center;padding-top:2px}
+        /* Small action buttons */
+        .btn-sm{display:inline-flex;align-items:center;gap:4px;height:30px;padding:0 10px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;border:none;text-decoration:none;white-space:nowrap}
+        .btn-pwd{background:var(--warn-soft);color:var(--warn)}.btn-pwd:hover{background:#fde68a}
+        .btn-edit{background:var(--blue-soft);color:var(--blue-text)}.btn-edit:hover{background:#bfdbfe}
+        .btn-del{background:var(--danger-soft);color:var(--danger)}.btn-del:hover{background:#fee2e2}
+        .btn-save{background:var(--green);color:#fff}.btn-save:hover{background:var(--green-hover)}
+        .btn-cancel-sm{background:#f3f4f6;color:var(--muted)}.btn-cancel-sm:hover{background:#e5e7eb}
+        /* Inline password form */
+        .pwd-form{width:100%;padding:10px 0 2px;border-top:1px dashed var(--line);margin-top:8px;display:none}
+        .pwd-form form{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+        .pwd-form input{max-width:200px;min-height:34px;flex:1}
+        /* Misc */
+        .empty-state{padding:28px;text-align:center;color:var(--muted);font-size:14px}
+        .program-badge{display:inline-block;padding:4px 8px;border-radius:999px;background:var(--green-soft);color:#237a35;font-size:12px;font-weight:700;white-space:nowrap}
+        .muted{color:var(--muted)}
+        @media(max-width:768px){
+            body{padding:16px}.page-title{font-size:22px}.card-header h2{font-size:18px}
+            .form-grid{grid-template-columns:1fr}.button-primary{font-size:13px}
+            .student-row{flex-direction:column}.student-actions{justify-content:flex-start}
+        }
     </style>
 </head>
 <body>
 <main class="page">
-    <a class="back" href="../admin/dashboard.php">← Volver al dashboard</a>
-    <h1 class="page-title">Asignaciones de estudiantes</h1>
+    <div class="page-header">
+        <button class="btn btn-back" onclick="location.href='../admin/dashboard.php'">← Volver</button>
+        <h1 class="page-title">Asignaciones de estudiantes</h1>
+    </div>
 
     <?php if (isset($_GET['saved'])): ?>
-        <div class="notice">Guardado correctamente.</div>
+        <div class="notice notice-ok">✅ Guardado correctamente.</div>
+    <?php endif; ?>
+    <?php if (isset($_GET['pwd_reset'])): ?>
+        <div class="notice notice-pwd">🔑 Contraseña actualizada. El estudiante deberá cambiarla al ingresar.</div>
     <?php endif; ?>
 
     <div class="stack">
         <section class="card">
-            <div class="card-header"><h2>🎓 Crear o editar asignación</h2></div>
+            <div class="card-header">
+                <h2><?= $editRecord ? '✏️ Editar asignación' : '🎓 Crear asignación' ?></h2>
+                <?php if ($editRecord): ?>
+                    <button class="btn btn-cancel-edit" onclick="location.href='student_assignments.php'">✕ Cancelar edición</button>
+                <?php endif; ?>
+            </div>
             <div class="card-body">
                 <form method="post">
                     <input type="hidden" name="edit_id" value="<?= h((string) ($editRecord['id'] ?? '')) ?>">
@@ -1237,76 +1379,139 @@ if ($selectedProgram === 'technical' && $editRecord) {
         </section>
 
         <section class="card">
-            <div class="card-header"><h2>📋 Asignaciones creadas</h2></div>
-            <div class="card-body">
-                <div class="table-wrap">
-                    <div class="table-scroll">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Estudiante</th>
-                                    <th>Usuario</th>
-                                    <th>Password temporal</th>
-                                    <th>Docente</th>
-                                    <th>Programa</th>
-                                    <th>Nivel / Semestre</th>
-                                    <th>Fase</th>
-                                    <th>Unidad</th>
-                                    <th>Acciones</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                            <?php if (empty($studentAssignments)): ?>
-                                <tr><td colspan="9" class="muted">No hay asignaciones registradas.</td></tr>
-                            <?php else: ?>
-                                <?php foreach ($studentAssignments as $row):
-                                    $program = (string) ($row['program'] ?? 'technical');
-                                    $isEnglish = $program === 'english';
+            <div class="card-header"><h2>📋 Grupos por programa / curso</h2></div>
+            <?php
+            /* Build groups: group by program + course_id */
+            $assignmentGroups = [];
+            foreach ($studentAssignments as $aRow) {
+                $aProg    = (string) ($aRow['program'] ?? 'technical');
+                $aCourseId = (string) ($aRow['course_id'] ?? '');
+                $aIsEn    = $aProg === 'english';
+                $aKey     = $aProg . '::' . $aCourseId;
 
-                                    $courseName = $isEnglish
-                                        ? find_name_by_id($englishLevels, (string) ($row['course_id'] ?? ''), 'N/D')
-                                        : technical_assignment_label((array) $row, $technicalSemesters, $courses);
+                if (!isset($assignmentGroups[$aKey])) {
+                    $aCourseName = $aIsEn
+                        ? find_name_by_id($englishLevels, $aCourseId, 'Nivel desconocido')
+                        : technical_assignment_label((array) $aRow, $technicalSemesters, $courses);
 
-                                    $phaseName = $isEnglish
-                                        ? find_name_by_id($englishPhases, (string) ($row['level_id'] ?? $row['period'] ?? ''), 'N/D')
-                                        : 'No aplica';
+                    $assignmentGroups[$aKey] = [
+                        'program'     => $aProg,
+                        'label'       => $programOptions[$aProg] ?? 'Técnico',
+                        'course_name' => $aCourseName,
+                        'is_english'  => $aIsEn,
+                        'rows'        => [],
+                    ];
+                }
+                $assignmentGroups[$aKey]['rows'][] = $aRow;
+            }
+            ?>
 
-                                    $unitName = $isEnglish
-                                        ? find_name_by_id($englishUnits, (string) ($row['unit_id'] ?? ''), 'N/D')
-                                        : find_name_by_id($technicalUnits, (string) ($row['unit_id'] ?? ''), 'N/D');
+            <?php if (empty($assignmentGroups)): ?>
+                <div class="empty-state">Sin asignaciones registradas todavía.</div>
+            <?php else: ?>
+                <div class="groups-wrap">
+                    <?php foreach ($assignmentGroups as $gKey => $gGroup):
+                        $safeKey = 'g_' . md5($gKey);
+                        $gIsEn   = $gGroup['is_english'];
+                    ?>
+                    <div class="group-card">
+                        <div class="group-header" onclick="toggleGroup('<?= $safeKey ?>')" id="hdr-<?= $safeKey ?>">
+                            <div class="group-info">
+                                <span class="badge-prog <?= $gIsEn ? 'badge-en' : 'badge-tech' ?>"><?= h($gGroup['label']) ?></span>
+                                <span class="group-name"><?= h($gGroup['course_name']) ?></span>
+                                <span class="group-count"><?= count($gGroup['rows']) ?> estudiante<?= count($gGroup['rows']) !== 1 ? 's' : '' ?></span>
+                            </div>
+                            <div class="chevron" id="chev-<?= $safeKey ?>">&#9660;</div>
+                        </div>
 
-                                    $studentIdRow = (string) ($row['student_id'] ?? '');
-                                    $account = find_student_account($studentAccounts, $studentIdRow);
-                                    $username = (string) ($account['username'] ?? $row['student_username'] ?? '');
-                                    $tempPassword = (string) ($account['temp_password'] ?? $row['student_temp_password'] ?? '');
-                                ?>
-                                    <tr>
-                                        <td><?= h(find_name_by_id($students, $studentIdRow, 'N/D')) ?></td>
-                                        <td><?= $username !== '' ? '<div class="credential-box"><span class="credential-chip">' . h($username) . '</span></div>' : '<span class="muted">Sin crear</span>' ?></td>
-                                        <td><?= $tempPassword !== '' ? '<div class="credential-box"><span class="credential-chip">' . h($tempPassword) . '</span></div>' : '<span class="muted">No disponible</span>' ?></td>
-                                        <td><?= h(find_name_by_id($teachers, (string) ($row['teacher_id'] ?? ''), 'N/D')) ?></td>
-                                        <td><span class="program-badge"><?= h($programOptions[$program] ?? 'Programa Técnico') ?></span></td>
-                                        <td><?= h($courseName) ?></td>
-                                        <td><?= h($phaseName) ?></td>
-                                        <td><?= h($unitName) ?></td>
-                                        <td class="actions">
-                                            <a href="student_assignments.php?edit=<?= h((string) ($row['id'] ?? '')) ?>">Editar</a>
-                                            |
-                                            <a href="student_assignments.php?delete=<?= h((string) ($row['id'] ?? '')) ?>" onclick="return confirm('¿Eliminar asignación?')">Eliminar</a>
-                                        </td>
-                                    </tr>
-                                <?php endforeach; ?>
-                            <?php endif; ?>
-                            </tbody>
-                        </table>
+                        <div class="group-body" id="body-<?= $safeKey ?>">
+                            <?php foreach ($gGroup['rows'] as $gRow):
+                                $gStudentId  = (string) ($gRow['student_id'] ?? '');
+                                $gAccount    = find_student_account($studentAccounts, $gStudentId);
+                                $gUsername   = (string) ($gAccount['username'] ?? $gRow['student_username'] ?? '');
+                                $gTempPass   = (string) ($gAccount['temp_password'] ?? $gRow['student_temp_password'] ?? '');
+                                $gAssignId   = (string) ($gRow['id'] ?? '');
+                                $gRowId      = 'r' . md5($gAssignId);
+
+                                $gUnitName   = $gIsEn
+                                    ? find_name_by_id($englishUnits, (string) ($gRow['unit_id'] ?? ''), '')
+                                    : find_name_by_id($technicalUnits, (string) ($gRow['unit_id'] ?? ''), '');
+                                $gTeacher    = find_name_by_id($teachers, (string) ($gRow['teacher_id'] ?? ''), '');
+                                $gStudentName = find_name_by_id($students, $gStudentId, 'N/D');
+                                $gInitial    = mb_strtoupper(mb_substr(trim($gStudentName), 0, 1, 'UTF-8'), 'UTF-8');
+                                $gSafeDelete = h(addslashes($gStudentName));
+                            ?>
+                            <div class="student-row">
+                                <div class="student-main">
+                                    <div class="student-avatar"><?= $gInitial ?></div>
+                                    <div style="flex:1">
+                                        <div class="student-name"><?= h($gStudentName) ?></div>
+                                        <div class="student-meta">
+                                            <?php if ($gUsername !== ''): ?>
+                                                <span class="cred-chip">👤 <?= h($gUsername) ?></span>
+                                            <?php endif; ?>
+                                            <?php if ($gTempPass !== ''): ?>
+                                                <span class="cred-chip">🔑 <?= h($gTempPass) ?></span>
+                                            <?php endif; ?>
+                                            <?php if ($gUnitName !== ''): ?>
+                                                <span class="cred-chip dim">📖 <?= h($gUnitName) ?></span>
+                                            <?php endif; ?>
+                                            <?php if ($gTeacher !== ''): ?>
+                                                <span class="cred-chip dim">👩‍🏫 <?= h($gTeacher) ?></span>
+                                            <?php endif; ?>
+                                        </div>
+                                        <div class="pwd-form" id="<?= $gRowId ?>">
+                                            <form method="post">
+                                                <input type="hidden" name="action" value="reset_student_password">
+                                                <input type="hidden" name="reset_student_id" value="<?= h($gStudentId) ?>">
+                                                <input type="password" name="new_password" placeholder="Nueva contraseña" required>
+                                                <button type="submit" class="btn-sm btn-save">Guardar</button>
+                                                <button type="button" class="btn-sm btn-cancel-sm" onclick="togglePwd('<?= $gRowId ?>')">Cancelar</button>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="student-actions">
+                                    <button type="button" class="btn-sm btn-pwd" onclick="togglePwd('<?= $gRowId ?>')">🔑 Contraseña</button>
+                                    <button type="button" class="btn-sm btn-edit" onclick="location.href='student_assignments.php?edit=<?= h($gAssignId) ?>'">✏️ Cambiar grupo</button>
+                                    <button type="button" class="btn-sm btn-del" onclick="if(confirm('¿Eliminar a <?= $gSafeDelete ?>?')) location.href='student_assignments.php?delete=<?= h($gAssignId) ?>'">🗑️ Eliminar</button>
+                                </div>
+                            </div>
+                            <?php endforeach; ?>
+                        </div>
                     </div>
+                    <?php endforeach; ?>
                 </div>
-            </div>
+            <?php endif; ?>
         </section>
     </div>
 </main>
 
 <script>
+/* ---- Accordion groups ---- */
+function toggleGroup(key) {
+    const body  = document.getElementById('body-' + key);
+    const chev  = document.getElementById('chev-' + key);
+    const hdr   = document.getElementById('hdr-' + key);
+    if (!body) return;
+    const isOpen = body.classList.toggle('open');
+    if (chev) chev.classList.toggle('open', isOpen);
+    if (hdr)  hdr.style.borderBottomColor = isOpen ? 'var(--line)' : 'transparent';
+}
+
+/* ---- Inline password form ---- */
+function togglePwd(rowId) {
+    const form = document.getElementById(rowId);
+    if (!form) return;
+    const visible = form.style.display !== 'none' && form.style.display !== '';
+    form.style.display = visible ? 'none' : 'block';
+    if (!visible) {
+        const input = form.querySelector('input[name="new_password"]');
+        if (input) input.focus();
+    }
+}
+
+/* ---- Dropdown selects ---- */
 const englishLevels = <?= json_encode($englishLevels, JSON_UNESCAPED_UNICODE) ?>;
 const englishPhases = <?= json_encode($englishPhases, JSON_UNESCAPED_UNICODE) ?>;
 const englishUnits = <?= json_encode($englishUnits, JSON_UNESCAPED_UNICODE) ?>;
