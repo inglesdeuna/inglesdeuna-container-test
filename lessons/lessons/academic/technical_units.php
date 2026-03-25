@@ -103,77 +103,90 @@ $units = $stmtUnits->fetchAll(PDO::FETCH_ASSOC);
 <title><?= htmlspecialchars($course["name"]) ?> — Gestionar Unidades</title>
 
 <style>
+:root{
+    --bg:#eef7f0;
+    --card:#ffffff;
+    --line:#d8e8dc;
+    --text:#1f3b28;
+    --muted:#5d7465;
+    --green:#2f9e44;
+    --green-dark:#237a35;
+    --shadow:0 10px 24px rgba(0,0,0,.08);
+}
+
 body{
     font-family: Arial, sans-serif;
-    background:#f4f8ff;
-    padding:40px;
+    background: var(--bg);
+    padding: 40px;
+    color: var(--text);
 }
 
 .back{
-    display:inline-block;
-    margin-bottom:25px;
-    background:#6b7280;
-    color:#ffffff;
-    padding:10px 18px;
-    border-radius:8px;
-    text-decoration:none;
-    font-weight:600;
+    display: inline-block;
+    margin-bottom: 25px;
+    background: linear-gradient(180deg,#7b8b7f,#66756a);
+    color: #fff;
+    padding: 10px 16px;
+    border-radius: 8px;
+    text-decoration: none;
+    font-weight: bold;
 }
 
 .card{
-    background:#ffffff;
-    padding:25px;
-    border-radius:16px;
-    box-shadow:0 10px 25px rgba(0,0,0,.08);
-    margin-bottom:25px;
-    max-width:900px;
+    background: var(--card);
+    padding: 25px;
+    border-radius: 14px;
+    max-width: 800px;
+    box-shadow: var(--shadow);
+    border: 1px solid var(--line);
+    margin-bottom: 25px;
 }
 
 input{
-    width:100%;
-    padding:12px;
-    margin-top:10px;
-    border-radius:8px;
-    border:1px solid #ddd;
+    width: 100%;
+    padding: 12px;
+    margin-top: 10px;
+    border-radius: 8px;
+    border: 1px solid var(--line);
+    box-sizing: border-box;
 }
 
 button{
-    margin-top:15px;
-    padding:10px 18px;
-    background:#2563eb;
-    color:#ffffff;
-    border:none;
-    border-radius:8px;
-    font-weight:600;
-    cursor:pointer;
+    margin-top: 15px;
+    padding: 10px 18px;
+    background: linear-gradient(180deg,var(--green),var(--green-dark));
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-weight: bold;
+    cursor: pointer;
 }
 
 .item{
-    background:#eef2ff;
-    padding:15px 18px;
-    border-radius:12px;
-    margin-bottom:12px;
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
+    background: #f7fcf8;
+    border: 1px solid var(--line);
+    padding: 15px;
+    border-radius: 10px;
+    margin-bottom: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
 }
 
-.btn-blue{
-    background:#2563eb;
-    color:#ffffff;
-    padding:8px 16px;
-    border-radius:8px;
-    text-decoration:none;
-    font-weight:600;
+.btn{
+    background: linear-gradient(180deg,var(--green),var(--green-dark));
+    color: #fff;
+    padding: 8px 14px;
+    border-radius: 8px;
+    text-decoration: none;
+    font-weight: bold;
 }
 </style>
 </head>
 
 <body>
 
-<a class="back" href="courses_manager.php?program=prog_technical">
-← Volver
-</a>
+<a class="back" href="courses_manager.php?program=prog_technical">← Volver</a>
 
 <div class="card">
     <h2>➕ Crear Unidad</h2>
@@ -185,7 +198,7 @@ button{
 </div>
 
 <div class="card">
-    <h2>📋 Unidades creadas</h2>
+    <h2>📋 Unidades creadas — <?= htmlspecialchars($course["name"]) ?></h2>
 
     <?php if (empty($units)): ?>
         <p>No hay unidades creadas.</p>
@@ -194,8 +207,7 @@ button{
             <div class="item">
                 <strong><?= htmlspecialchars($unit["name"]) ?></strong>
 
-                <a class="btn-blue"
-                   href="../activities/hub/index.php?unit=<?= urlencode($unit["id"]) ?>">
+                <a class="btn" href="../activities/hub/index.php?unit=<?= urlencode($unit["id"]) ?>">
                     Gestionar →
                 </a>
             </div>
