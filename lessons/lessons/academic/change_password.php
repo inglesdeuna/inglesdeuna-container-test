@@ -9,6 +9,11 @@ if (!isset($_SESSION['academic_logged']) || $_SESSION['academic_logged'] !== tru
 $teacherId = (string) ($_SESSION['teacher_id'] ?? '');
 $teacherName = (string) ($_SESSION['teacher_name'] ?? 'Docente');
 
+function teacher_dashboard_redirect_url(): string
+{
+    return 'dashboard.php?password_changed=1';
+}
+
 function h(string $value): string
 {
     return htmlspecialchars($value, ENT_QUOTES, 'UTF-8');
@@ -182,13 +187,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ]);
 
                 $_SESSION['teacher_must_change_password'] = false;
-                header('Location: dashboard.php?password_changed=1');
+                header('Location: ' . teacher_dashboard_redirect_url());
                 exit;
             }
         } catch (Throwable $e) {
             if (update_teacher_password_in_json($teacherId, $newPassword)) {
                 $_SESSION['teacher_must_change_password'] = false;
-                header('Location: dashboard.php?password_changed=1');
+                header('Location: ' . teacher_dashboard_redirect_url());
                 exit;
             }
 
@@ -205,23 +210,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <title>Cambiar contraseña</title>
 <style>
 :root{
-    --bg:#f4f7fc;
+    --bg:#eef7f0;
     --card:#ffffff;
-    --line:#d6e0ee;
-    --title:#1f4d8f;
-    --text:#1f3559;
-    --muted:#5d6f8f;
-    --blue:#1f66cc;
-    --blue-hover:#184fa3;
-    --green:#15803d;
+    --line:#d8e8dc;
+    --title:#2a5136;
+    --text:#1f3b28;
+    --muted:#5d7465;
+    --green:#2f9e44;
+    --green-hover:#237a35;
+    --green-soft:#eef7f0;
     --danger:#c42828;
-    --shadow:0 18px 40px rgba(18,52,114,.15);
+    --danger-soft:#fff1f2;
+    --shadow:0 18px 40px rgba(35,122,53,.12);
 }
 *{box-sizing:border-box}
 body{
     margin:0;
     font-family:Arial,sans-serif;
-    background:linear-gradient(180deg,#eaf1ff,#f8fbff);
+    background:linear-gradient(180deg,#e8f5eb,#f7fcf8);
     min-height:100vh;
     display:flex;
     align-items:center;
@@ -233,7 +239,7 @@ body{
     width:100%;
     max-width:430px;
     background:var(--card);
-    border:1px solid #dce6f6;
+    border:1px solid var(--line);
     border-radius:18px;
     padding:28px;
     box-shadow:var(--shadow);
@@ -259,46 +265,73 @@ input{
     width:100%;
     height:46px;
     border-radius:10px;
-    border:1px solid #c8d8f0;
-    padding:0 12px;
+    border:1px solid var(--line);
+    padding:0 48px 0 12px;
     font-size:15px;
+    color:var(--text);
+    background:#fff;
     outline:none;
 }
-.password-input{ padding-right:44px; }
+.password-input{ padding-right:48px; }
 .password-toggle{
     position:absolute;
     top:50%;
-    right:10px;
+    right:12px;
     transform:translateY(-50%);
-    border:none;
+    width:30px;
+    height:30px;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    margin:0;
+    padding:0;
+    border:1px solid transparent;
+    border-radius:999px;
     background:transparent;
     color:var(--muted);
     cursor:pointer;
-    font-size:18px;
+    font-size:16px;
+    line-height:1;
 }
+.password-toggle:hover{
+    background:var(--green-soft);
+    color:var(--green-hover);
+}
+
+.password-toggle:focus-visible{
+    outline:none;
+    border-color:#b8dfc4;
+    background:var(--green-soft);
+}
+
 input:focus{
-    border-color:#8bb0ea;
+    border-color:var(--green);
+    box-shadow:0 0 0 3px rgba(47,158,68,.15);
 }
-button{
+.submit-btn{
     width:100%;
     height:46px;
     margin-top:16px;
     border:none;
     border-radius:10px;
-    background:var(--blue);
+    background:linear-gradient(180deg,var(--green),var(--green-hover));
     color:#fff;
     font-weight:700;
     font-size:15px;
     cursor:pointer;
 }
-button:hover{
-    background:var(--blue-hover);
+.submit-btn:hover{
+    background:linear-gradient(180deg,var(--green-hover),#1c642a);
 }
 .error{
     margin-top:12px;
     color:var(--danger);
     font-weight:700;
     font-size:14px;
+    background:var(--danger-soft);
+    border:1px solid #fecdd3;
+    border-radius:10px;
+    padding:10px 12px;
 }
 </style>
 </head>
@@ -326,7 +359,7 @@ button:hover{
             <button class="password-toggle" type="button" data-target="confirm_password" aria-label="Mostrar u ocultar contraseña">👁</button>
         </div>
 
-        <button type="submit">Guardar nueva contraseña</button>
+        <button class="submit-btn" type="submit">Guardar nueva contraseña</button>
     </form>
 
     <?php if ($error !== '') { ?>
