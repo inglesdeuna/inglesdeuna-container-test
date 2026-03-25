@@ -433,9 +433,19 @@ body{
     box-shadow:0 6px 14px rgba(20, 184, 166, .25);
 }
 
-.btn-show{
+.btn-check{
     background:linear-gradient(180deg, #0d9488, #0f766e);
     box-shadow:0 6px 14px rgba(13, 148, 136, .25);
+}
+
+.btn-show{
+    background:linear-gradient(180deg, #6366f1, #4f46e5);
+    box-shadow:0 6px 14px rgba(99, 102, 241, .25);
+}
+
+.btn-tryagain{
+    background:linear-gradient(180deg, #f59e0b, #d97706);
+    box-shadow:0 6px 14px rgba(245, 158, 11, .25);
 }
 
 .feedback{
@@ -446,8 +456,61 @@ body{
     line-height:1.2;
 }
 
-.good{color:#15803d}
+.correct{color:#15803d}
+.incorrect{color:#dc2626}
 .try{color:#d97706}
+
+.completion-modal{
+    position:fixed;
+    top:0;
+    left:0;
+    right:0;
+    bottom:0;
+    background:rgba(0,0,0,0.5);
+    display:none;
+    align-items:center;
+    justify-content:center;
+    z-index:9999;
+}
+
+.completion-modal.show{
+    display:flex;
+}
+
+.completion-content{
+    background:#ffffff;
+    border-radius:24px;
+    padding:40px;
+    text-align:center;
+    box-shadow:0 20px 60px rgba(0,0,0,0.3);
+    animation:slideIn .4s ease;
+}
+
+@keyframes slideIn{
+    from{
+        transform:scale(0.8);
+        opacity:0;
+    }
+    to{
+        transform:scale(1);
+        opacity:1;
+    }
+}
+
+.completion-content h2{
+    margin:0 0 16px;
+    font-family:'Fredoka', 'Trebuchet MS', sans-serif;
+    font-size:48px;
+    font-weight:700;
+    color:#15803d;
+}
+
+.completion-content p{
+    margin:0;
+    font-size:18px;
+    color:#475569;
+    font-weight:600;
+}
 
 .empty-state{
     max-width:700px;
@@ -473,13 +536,21 @@ body{
 <div class="dict-stage">
     <section class="dict-intro">
         <h2>Dictation Practice</h2>
-        <p>Listen to each sentence carefully and write what you hear. Click the Show Answer button to check your work.</p>
+        <p>Listen to each sentence carefully and write what you hear. Click the Check Answer button to verify your work.</p>
     </section>
     <div class="grid" id="cards"></div>
 </div>
 
+<div class="completion-modal" id="completionModal">
+    <div class="completion-content">
+        <h2>🎉 Completed!</h2>
+        <p>Excellent! You've completed all the dictation exercises.</p>
+    </div>
+</div>
+
 <script>
 window.DICTATION_DATA = <?php echo json_encode($items, JSON_UNESCAPED_UNICODE); ?>;
+window.cardStates = {};
 
 var recognition = null;
 if ('webkitSpeechRecognition' in window) {
@@ -498,6 +569,14 @@ function escapeHtml(value) {
     .replace(/'/g, '&#039;');
 }
 
+function normalizeText(text) {
+  return String(text || '')
+    .toLowerCase()
+    .trim()
+    .replace(/[.,!?;:]/g, '')
+    .replace(/\s+/g, ' ');
+}
+
 function renderCards() {
   var data = Array.isArray(window.DICTATION_DATA) ? window.DICTATION_DATA : [];
   var container = document.getElementById('cards');
@@ -507,24 +586,27 @@ function renderCards() {
   }
 
   if (!data.length) {
-        container.innerHTML = '<div class="empty-state">No dictation data available.</div>';
+    container.innerHTML = '<div class="empty-state">No dictation data available.</div>';
     return;
   }
 
   container.innerHTML = data.map(function (item, i) {
-        var img = item.img
-            ? '<div class="image-wrap"><img class="image" src="' + escapeHtml(item.img) + '" alt="' + escapeHtml(item.en || '') + '"></div>'
-            : '<div class="image-wrap"></div>';
+    window.cardStates[i] = { answered: false, correct: false, showAnswer: false };
+    
+    var img = item.img
+      ? '<div class="image-wrap"><img class="image" src="' + escapeHtml(item.img) + '" alt="' + escapeHtml(item.en || '') + '"></div>'
+      : '<div class="image-wrap"></div>';
+    
     return '' +
-      '<div class="card">' +
+      '<div class="card" id="card' + i + '">' +
         img +
         '<div class="sentence" id="s' + i + '" style="display:none;">' + escapeHtml(item.en || '') + '</div>' +
         '<div class="phonetic">' + escapeHtml(item.ph || '') + '</div>' +
         '<div class="spanish">' + escapeHtml(item.es || '') + '</div>' +
         '<textarea class="answer-box" id="a' + i + '" placeholder="Write what you hear..."></textarea>' +
-        '<div class="actions">' +
-            '<button class="btn btn-listen" type="button" onclick="speak(' + i + ')">🔊 Listen</button>' +
-            '<button class="btn btn-show" type="button" onclick="showAnswer(' + i + ')">👁️ Show Answer</button>' +
+        '<div class="actions" id="actions' + i + '">' +
+          '<button class="btn btn-listen" type="button" onclick="speak(' + i + ')">🔊 Listen</button>' +
+          '<button class="btn btn-check" type="button" onclick="checkAnswer(' + i + ')">✓ Check Answer</button>' +
         '</div>' +
         '<div id="f' + i + '" class="feedback"></div>' +
       '</div>';
@@ -555,8 +637,87 @@ function speak(index) {
   speechSynthesis.speak(utter);
 }
 
-function showAnswer(index) {
+function checkAnswer(index) {
   var data = Array.isArray(window.DICTATION_DATA) ? window.DICTATION_DATA : [];
+  var answerEl = document.getElementById('a' + index);
+  var feedbackEl = document.getElementById('f' + index);
+  var actionsEl = document.getElementById('actions' + index);
+  
+  if (!answerEl || !feedbackEl || !data[index]) {
+    return;
+  }
+
+  var userAnswer = normalizeText(answerEl.value);
+  var correctAnswer = normalizeText(data[index].en || '');
+
+  if (userAnswer === '') {
+    feedbackEl.innerHTML = '⚠️ Please write an answer first';
+    feedbackEl.className = 'feedback incorrect';
+    return;
+  }
+
+  if (userAnswer === correctAnswer) {
+    // Correct
+    window.cardStates[index].correct = true;
+    window.cardStates[index].answered = true;
+    
+    feedbackEl.innerHTML = '🌟 Correct!';
+    feedbackEl.className = 'feedback correct';
+    
+    answerEl.style.borderColor = '#15803d';
+    answerEl.style.backgroundColor = '#f0fdf4';
+    
+    playSound('success');
+    
+    // Replace button with just a check mark
+    actionsEl.innerHTML = '<span style="color:#15803d; font-weight:700; font-size:16px;">✓ Correct</span>';
+    
+    checkCompletion();
+  } else {
+    // Incorrect
+    window.cardStates[index].correct = false;
+    window.cardStates[index].answered = true;
+    
+    feedbackEl.innerHTML = '❌ Try again';
+    feedbackEl.className = 'feedback incorrect';
+    
+    answerEl.style.borderColor = '#dc2626';
+    answerEl.style.backgroundColor = '#fef2f2';
+    
+    playSound('error');
+    
+    // Show Try Again and Show Answer buttons
+    actionsEl.innerHTML = '' +
+      '<button class="btn btn-tryagain" type="button" onclick="clearAnswer(' + index + ')">🔄 Try Again</button>' +
+      '<button class="btn btn-show" type="button" onclick="showAnswer(' + index + ')">👁️ Show Answer</button>';
+  }
+}
+
+function clearAnswer(index) {
+  var answerEl = document.getElementById('a' + index);
+  var feedbackEl = document.getElementById('f' + index);
+  var actionsEl = document.getElementById('actions' + index);
+  
+  if (!answerEl) {
+    return;
+  }
+
+  answerEl.value = '';
+  answerEl.style.borderColor = '#ccfbf1';
+  answerEl.style.backgroundColor = '#ffffff';
+  
+  feedbackEl.innerHTML = '';
+  feedbackEl.className = 'feedback';
+  
+  window.cardStates[index].answered = false;
+  window.cardStates[index].correct = false;
+  
+  actionsEl.innerHTML = '' +
+    '<button class="btn btn-listen" type="button" onclick="speak(' + index + ')">🔊 Listen</button>' +
+    '<button class="btn btn-check" type="button" onclick="checkAnswer(' + index + ')">✓ Check Answer</button>';
+}
+
+function showAnswer(index) {
   var sentenceEl = document.getElementById('s' + index);
   
   if (!sentenceEl) {
@@ -567,6 +728,56 @@ function showAnswer(index) {
     sentenceEl.style.display = 'block';
   } else {
     sentenceEl.style.display = 'none';
+  }
+}
+
+function checkCompletion() {
+  var data = Array.isArray(window.DICTATION_DATA) ? window.DICTATION_DATA : [];
+  var allCorrect = data.length > 0 && Object.keys(window.cardStates).length === data.length;
+
+  if (allCorrect) {
+    for (var i = 0; i < data.length; i++) {
+      if (!window.cardStates[i] || !window.cardStates[i].correct) {
+        allCorrect = false;
+        break;
+      }
+    }
+  }
+
+  if (allCorrect && data.length > 0) {
+    playSound('complete');
+    showCompletion();
+  }
+}
+
+function showCompletion() {
+  var modal = document.getElementById('completionModal');
+  if (modal) {
+    modal.classList.add('show');
+    setTimeout(function() {
+      modal.classList.remove('show');
+    }, 3000);
+  }
+}
+
+function playSound(type) {
+  var audioUrl = '';
+  if (type === 'success') {
+    audioUrl = 'data:audio/wav;base64,UklGRiYAAABXQVZFZm10IBAAAAABAAEAQB8AAABABAAZGF0YQIAAAAAAA==';
+  } else if (type === 'error') {
+    audioUrl = 'data:audio/wav;base64,UklGRiYAAABXQVZFZm10IBAAAAABAAEAQB8AAABABAAZGF0YQIAAAAAAA==';
+  } else if (type === 'complete') {
+    var utter = new SpeechSynthesisUtterance('Excellent! You have completed all exercises!');
+    utter.lang = 'en-US';
+    utter.rate = 0.95;
+    speechSynthesis.cancel();
+    speechSynthesis.speak(utter);
+    return;
+  }
+  
+  if (audioUrl) {
+    var audio = new Audio(audioUrl);
+    audio.play();
   }
 }
 
