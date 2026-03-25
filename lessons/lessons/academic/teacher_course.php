@@ -396,15 +396,18 @@ $unitIds = array_values(array_filter(array_map(
 $activities = load_activities_for_units($pdo, $unitIds);
 
 $total = count($activities);
-if ($step > max(0, $total - 1)) {
-    $step = max(0, $total - 1);
+$isCompleted = $total > 0 && $step >= $total;
+if ($step < 0) {
+  $step = 0;
 }
 
-$current = $total > 0 ? $activities[$step] : null;
+$current = (!$isCompleted && $total > 0) ? $activities[$step] : null;
 $prevStep = max(0, $step - 1);
 $nextStep = $step + 1;
 $hasPrev = $step > 0;
 $hasNext = $nextStep < $total;
+$isLastActivity = !$isCompleted && $total > 0 && $step === ($total - 1);
+$completionPercent = 0;
 
 $activityTypeLabels = [
     'flashcards' => 'Flashcards',
@@ -453,6 +456,7 @@ $teacherPhotoRaw = trim((string) ($_SESSION['teacher_photo'] ?? ''));
 $teacherPhotoSrc = resolve_photo_src($teacherPhotoRaw);
 
 $backDashboard = 'dashboard.php?assignment=' . urlencode($assignmentId) . '&unit=' . urlencode($selectedUnitId) . '#unidades-curso';
+$quizHref = '#';
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -529,12 +533,13 @@ body{font-family:Arial,sans-serif;background:var(--bg);color:var(--text)}
 
 .layout{
   display:grid;
-  grid-template-columns:220px 1fr;
+  grid-template-columns:1fr;
   gap:18px;
   align-items:start;
 }
 
 .sidebar{
+  display:none;
   background:#e3ecff;
   border-radius:20px;
   padding:18px 14px;
@@ -612,7 +617,7 @@ body{font-family:Arial,sans-serif;background:var(--bg);color:var(--text)}
 .hero-card{
   position:relative;
   overflow:hidden;
-  padding:26px 28px;
+  padding:16px 18px;
   background:linear-gradient(135deg, #ffffff 0%, #f8fbff 100%);
 }
 
@@ -630,7 +635,7 @@ body{font-family:Arial,sans-serif;background:var(--bg);color:var(--text)}
   display:inline-flex;
   align-items:center;
   gap:8px;
-  padding:7px 12px;
+  padding:5px 10px;
   border-radius:999px;
   background:var(--blue-soft);
   color:var(--blue-dark);
@@ -641,15 +646,15 @@ body{font-family:Arial,sans-serif;background:var(--bg);color:var(--text)}
 }
 
 .hero-title{
-  margin:16px 0 12px;
-  font-size:24px;
+  margin:10px 0 8px;
+  font-size:20px;
   font-weight:800;
   color:var(--title);
 }
 
 .hero-text{
   margin:0;
-  font-size:15px;
+  font-size:14px;
   line-height:1.6;
   color:var(--text);
   max-width:760px;
@@ -659,7 +664,7 @@ body{font-family:Arial,sans-serif;background:var(--bg);color:var(--text)}
   display:flex;
   flex-wrap:wrap;
   gap:10px;
-  margin-top:18px;
+  margin-top:10px;
 }
 
 .hero-badge{
@@ -725,10 +730,10 @@ body{font-family:Arial,sans-serif;background:var(--bg);color:var(--text)}
   background:#fff;
   border:1px solid var(--line);
   box-shadow:var(--shadow-sm);
-  min-height:68vh;
+  min-height:78vh;
 }
 
-.frame-wrap iframe{display:block;width:100%;height:68vh;border:0;background:#fff}
+.frame-wrap iframe{display:block;width:100%;height:78vh;border:0;background:#fff}
 
 .controls{
   display:flex;
@@ -763,6 +768,10 @@ body{font-family:Arial,sans-serif;background:var(--bg);color:var(--text)}
   background:linear-gradient(180deg,#3d73ee,#2563eb);
   box-shadow:var(--shadow-sm);
   transition:filter .15s, transform .15s;
+}
+
+.ctrl-btn.warn{
+  background:linear-gradient(180deg,#fbbf24,#d97706);
 }
 
 .ctrl-btn:hover,
@@ -850,7 +859,34 @@ body{font-family:Arial,sans-serif;background:var(--bg);color:var(--text)}
     <a class="side-btn red" href="/lessons/lessons/academic/logout.php">🚪 Cerrar sesión</a>
   </nav>
 
-  <?php if (!$current || !$viewerHref) { ?>
+  <?php if ($isCompleted) { ?>
+    <main class="content">
+      <section class="hero-card">
+        <div class="activity-topline">Unidad finalizada</div>
+        <h1 class="hero-title">✅ Completed</h1>
+        <p class="hero-text">Terminaste todas las actividades de esta unidad. Aquí se mostrará el porcentaje obtenido cuando se programe la evaluación final.</p>
+        <div class="hero-badges">
+          <span class="hero-badge"><?php echo h((string)($assignment['course_name'] ?? 'Curso')); ?></span>
+          <?php if (trim((string)($assignment['unit_name'] ?? '')) !== '') { ?>
+            <span class="hero-badge warn"><?php echo h((string)$assignment['unit_name']); ?></span>
+          <?php } ?>
+          <span class="hero-badge">Porcentaje: <?php echo $completionPercent; ?>%</span>
+        </div>
+      </section>
+
+      <section class="empty-shell">
+        <div class="empty-state">
+          <div class="empty-icon">🏁</div>
+          <div class="empty-title">Unidad completada</div>
+          <div class="empty-text">Continúa con la evaluación final de la unidad o vuelve al panel docente para seguir con otro curso.</div>
+          <div class="controls" style="padding-top:0; width:100%; justify-content:center;">
+            <a class="empty-btn" href="<?php echo h($backDashboard); ?>">&larr; Volver al panel docente</a>
+            <a class="empty-btn ctrl-btn warn" href="<?php echo h($quizHref); ?>" onclick="alert('Quiz pendiente de programación'); return false;">Quiz time</a>
+          </div>
+        </div>
+      </section>
+    </main>
+  <?php } elseif (!$current || !$viewerHref) { ?>
     <main class="content">
       <section class="hero-card">
         <div class="activity-topline">Vista del curso</div>
@@ -910,9 +946,9 @@ body{font-family:Arial,sans-serif;background:var(--bg);color:var(--text)}
           <div class="step-counter">
             <strong><?php echo ($step + 1); ?></strong> / <?php echo $total; ?>
           </div>
-          <a class="ctrl-btn <?php echo $hasNext ? '' : 'disabled'; ?>"
-             href="teacher_course.php?assignment=<?php echo urlencode($assignmentId); ?>&unit=<?php echo urlencode($selectedUnitId); ?>&mode=<?php echo urlencode($mode); ?>&step=<?php echo $hasNext ? $nextStep : $step; ?>">
-            Siguiente &rarr;
+          <a class="ctrl-btn <?php echo ($hasNext || $isLastActivity) ? '' : 'disabled'; ?>"
+             href="teacher_course.php?assignment=<?php echo urlencode($assignmentId); ?>&unit=<?php echo urlencode($selectedUnitId); ?>&mode=<?php echo urlencode($mode); ?>&step=<?php echo $isLastActivity ? $total : ($hasNext ? $nextStep : $step); ?>">
+            <?php echo $isLastActivity ? 'Finalizar unidad' : 'Siguiente →'; ?>
           </a>
         </div>
       </section>
