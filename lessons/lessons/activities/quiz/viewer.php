@@ -171,6 +171,7 @@ ob_start();
 <script>
 window.QUIZ_DATA = <?php echo json_encode($questions, JSON_UNESCAPED_UNICODE); ?>;
 window.QUIZ_RETURN_TO = <?php echo json_encode($returnTo, JSON_UNESCAPED_UNICODE); ?>;
+window.QUIZ_ACTIVITY_ID = <?php echo json_encode((string) ($activity['id'] ?? ''), JSON_UNESCAPED_UNICODE); ?>;
 (function(){
   const btn = document.getElementById('btnCheckQuiz');
   const saveBtn = document.getElementById('btnSaveResult');
@@ -220,7 +221,8 @@ window.QUIZ_RETURN_TO = <?php echo json_encode($returnTo, JSON_UNESCAPED_UNICODE
       const target = window.QUIZ_RETURN_TO
         + joiner + 'quiz_percent=' + encodeURIComponent(String(lastPercent))
         + '&quiz_errors=' + encodeURIComponent(String(lastErrors))
-        + '&quiz_total=' + encodeURIComponent(String(lastTotal));
+        + '&quiz_total=' + encodeURIComponent(String(lastTotal))
+        + '&quiz_activity_id=' + encodeURIComponent(String(window.QUIZ_ACTIVITY_ID || ''));
 
       window.location.href = target;
     });

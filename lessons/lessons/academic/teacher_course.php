@@ -392,6 +392,62 @@ function read_unit_performance(string $teacherId, string $assignmentId, string $
   return $all[$key];
 }
 
+function read_activity_scores(string $teacherId, string $assignmentId, string $unitId): array
+{
+  $key = $teacherId . '|' . $assignmentId . '|' . $unitId;
+  $all = $_SESSION['teacher_activity_scores'] ?? [];
+  if (!is_array($all) || !isset($all[$key]) || !is_array($all[$key])) {
+    return [];
+  }
+  return $all[$key];
+}
+
+function build_lowest_scored_activities(array $activities, array $scoresByActivityId, array $activityTypeLabels, string $assignmentId, string $unitId, int $limit = 3): array
+{
+  $rows = [];
+  foreach ($activities as $index => $activity) {
+    $activity = (array) $activity;
+    if (is_passive_activity($activity)) {
+      continue;
+    }
+
+    $activityId = (string) ($activity['id'] ?? '');
+    if ($activityId === '' || !isset($scoresByActivityId[$activityId]) || !is_array($scoresByActivityId[$activityId])) {
+      continue;
+    }
+
+    $score = (int) ($scoresByActivityId[$activityId]['percent'] ?? -1);
+    if ($score < 0) {
+      continue;
+    }
+
+    $score = max(0, min(100, $score));
+    $type = strtolower(trim((string) ($activity['type'] ?? 'actividad')));
+    $label = $activityTypeLabels[$type] ?? ucwords(str_replace('_', ' ', $type));
+
+    $rows[] = [
+      'activity_id' => $activityId,
+      'type_label' => $label,
+      'percent' => $score,
+      'step' => (int) $index,
+      'practice_href' => 'teacher_course.php?assignment=' . urlencode($assignmentId) . '&unit=' . urlencode($unitId) . '&step=' . urlencode((string) $index),
+    ];
+  }
+
+  usort($rows, static function (array $a, array $b): int {
+    if ((int) $a['percent'] === (int) $b['percent']) {
+      return (int) $a['step'] <=> (int) $b['step'];
+    }
+    return (int) $a['percent'] <=> (int) $b['percent'];
+  });
+
+  if ($limit < 1) {
+    return $rows;
+  }
+
+  return array_slice($rows, 0, $limit);
+}
+
 $pdo = get_pdo_connection();
 if (!$pdo) {
     die('Base de datos no disponible.');
@@ -464,6 +520,7 @@ $mix = activity_mix($activities);
 $quizTotalRaw = isset($_GET['quiz_total']) ? (int) $_GET['quiz_total'] : -1;
 $quizErrorsRaw = isset($_GET['quiz_errors']) ? (int) $_GET['quiz_errors'] : -1;
 $quizPercentRaw = isset($_GET['quiz_percent']) ? (int) $_GET['quiz_percent'] : -1;
+$quizActivityId = trim((string) ($_GET['quiz_activity_id'] ?? ''));
 
 if ($selectedUnitId !== '' && $quizTotalRaw >= 0) {
   $quizTotal = max(0, $quizTotalRaw);
@@ -487,6 +544,22 @@ if ($selectedUnitId !== '' && $quizTotalRaw >= 0) {
     'completion_percent' => $quizPercent,
     'updated_at' => time(),
   ];
+
+  if ($quizActivityId !== '') {
+    if (!isset($_SESSION['teacher_activity_scores']) || !is_array($_SESSION['teacher_activity_scores'])) {
+      $_SESSION['teacher_activity_scores'] = [];
+    }
+    if (!isset($_SESSION['teacher_activity_scores'][$key]) || !is_array($_SESSION['teacher_activity_scores'][$key])) {
+      $_SESSION['teacher_activity_scores'][$key] = [];
+    }
+
+    $_SESSION['teacher_activity_scores'][$key][$quizActivityId] = [
+      'percent' => $quizPercent,
+      'errors' => $quizErrors,
+      'total' => $quizTotal,
+      'updated_at' => time(),
+    ];
+  }
 }
 
 $total = count($activities);
@@ -523,6 +596,16 @@ $activityTypeLabels = [
     'powerpoint' => 'PowerPoint',
     'build_sentence' => 'Build the Sentence',
 ];
+
+$activityScores = read_activity_scores($teacherId, $assignmentId, $selectedUnitId);
+$lowestScoredActivities = build_lowest_scored_activities(
+  $activities,
+  $activityScores,
+  $activityTypeLabels,
+  $assignmentId,
+  $selectedUnitId,
+  3
+);
 
 $viewerHref = null;
 $currentTypeLabel = 'Actividad';
@@ -894,6 +977,67 @@ body{font-family:Arial,sans-serif;background:var(--bg);color:var(--text)}
 .empty-title{font-size:24px;font-weight:800;color:var(--title)}
 .empty-text{max-width:480px;font-size:15px;line-height:1.6;color:var(--muted)}
 
+.low-score-wrap{
+  width:100%;
+  max-width:780px;
+  margin-top:8px;
+  padding:14px;
+  border:1px solid var(--line);
+  border-radius:14px;
+  background:#f8fbff;
+  text-align:left;
+}
+
+.low-score-title{
+  margin:0 0 10px;
+  font-size:14px;
+  font-weight:800;
+  color:var(--title);
+}
+
+.low-score-row{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  justify-content:space-between;
+  padding:10px 0;
+  border-top:1px solid #dbe8ff;
+}
+
+.low-score-row:first-of-type{border-top:none;padding-top:0}
+
+.low-score-meta{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  flex-wrap:wrap;
+}
+
+.low-score-pill{
+  display:inline-flex;
+  align-items:center;
+  padding:6px 10px;
+  border-radius:999px;
+  background:var(--blue-soft);
+  color:var(--blue-dark);
+  font-size:12px;
+  font-weight:800;
+}
+
+.low-practice-btn{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  padding:9px 12px;
+  border-radius:10px;
+  text-decoration:none;
+  color:#fff;
+  font-size:12px;
+  font-weight:800;
+  background:linear-gradient(180deg,#3d73ee,#2563eb);
+  box-shadow:var(--shadow-sm);
+}
+
 @media (max-width: 1100px){
   .layout{grid-template-columns:1fr}
   .sidebar{min-height:auto}
@@ -983,6 +1127,20 @@ body{font-family:Arial,sans-serif;background:var(--bg);color:var(--text)}
           <div class="empty-icon">🏁</div>
           <div class="empty-title">Unidad completada</div>
           <div class="empty-text"><?php echo $hasUnitResult ? 'Resultado calculado. Si deseas mejorar el porcentaje, puedes repetir el quiz de la unidad.' : 'Aún no hay resultado guardado para esta unidad. Abre Quiz time para registrar errores y porcentaje final.'; ?></div>
+          <?php if (!empty($lowestScoredActivities)) { ?>
+            <div class="low-score-wrap">
+              <h3 class="low-score-title">Actividades con menor puntuación</h3>
+              <?php foreach ($lowestScoredActivities as $lowItem) { ?>
+                <div class="low-score-row">
+                  <div class="low-score-meta">
+                    <span class="low-score-pill"><?php echo h((string) ($lowItem['type_label'] ?? 'Actividad')); ?></span>
+                    <span class="low-score-pill">Puntaje: <?php echo (int) ($lowItem['percent'] ?? 0); ?>%</span>
+                  </div>
+                  <a class="low-practice-btn" href="<?php echo h((string) ($lowItem['practice_href'] ?? '#')); ?>">Practicar nuevamente</a>
+                </div>
+              <?php } ?>
+            </div>
+          <?php } ?>
           <div class="controls" style="padding-top:0; width:100%; justify-content:center;">
             <a class="empty-btn" href="<?php echo h($backDashboard); ?>">&larr; Volver al panel docente</a>
             <a class="empty-btn ctrl-btn warn" href="<?php echo h($quizHref); ?>">Quiz time</a>
