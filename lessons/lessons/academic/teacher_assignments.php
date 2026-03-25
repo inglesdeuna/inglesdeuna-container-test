@@ -522,17 +522,17 @@ $currentTeacherAssignments = $form['teacher_id'] !== ''
 <title>Asignación de Docentes</title>
 <style>
 :root{
-    --bg:#eef2f7;
+    --bg:#eef7f0;
     --card:#ffffff;
-    --line:#dce4f0;
-    --text:#1f2937;
-    --subtitle:#2c3e50;
-    --muted:#5b6577;
-    --blue:#1f66cc;
-    --blue-hover:#2f5bb5;
-    --orange:#ff6600;
+    --line:#d8e8dc;
+    --text:#1f3b28;
+    --subtitle:#2a5136;
+    --muted:#5d7465;
+    --blue:#2f9e44;
+    --blue-hover:#237a35;
+    --orange:#b45309;
     --green:#166534;
-    --head:#f7faff;
+    --head:#f3fbf5;
     --success-bg:#ecfdf3;
     --success-border:#b9eacb;
     --success-text:#166534;
@@ -741,8 +741,8 @@ select[multiple]{
     border-radius:999px;
     font-size:12px;
     font-weight:700;
-    background:#eef4ff;
-    color:#1f66cc;
+    background:#eef7f0;
+    color:#2f9e44;
     white-space:nowrap;
 }
 
@@ -752,8 +752,8 @@ select[multiple]{
 }
 
 .badge-program-technical{
-    background:#eef4ff;
-    color:#1f66cc;
+    background:#eef7f0;
+    color:#2f9e44;
 }
 
 .badge-unit{
@@ -775,7 +775,7 @@ select[multiple]{
     padding:14px;
     border:1px solid var(--line);
     border-radius:12px;
-    background:#fbfdff;
+    background:#f7fcf8;
     flex-wrap:wrap;
 }
 
@@ -820,7 +820,7 @@ thead th{
 
 tbody td{
     padding:14px 16px;
-    border-bottom:1px solid #e9eef5;
+    border-bottom:1px solid #d8e8dc;
     font-size:14px;
     vertical-align:top;
 }
@@ -848,13 +848,13 @@ tbody tr:last-child td{
 }
 
 .edit-btn{
-    background:#eef4ff;
+    background:#eef7f0;
     color:var(--blue);
-    border:1px solid #cfe0ff;
+    border:1px solid #b8dfc4;
 }
 
 .edit-btn:hover{
-    background:#dceaff;
+    background:#d4f0dc;
     text-decoration:none;
 }
 
@@ -881,7 +881,7 @@ tbody tr:last-child td{
     padding:14px;
     border:1px solid var(--line);
     border-radius:12px;
-    background:#fafcff;
+    background:#f3fbf5;
 }
 
 .block-title{
@@ -943,13 +943,13 @@ tbody tr:last-child td{
     padding:6px 10px;
     border-radius:8px;
     border:1px solid var(--line);
-    background:#fafcff;
+    background:#f7fcf8;
     flex-shrink:0;
 }
 
 .check-item:hover{
-    background:#eef4ff;
-    border-color:#cfe0ff;
+    background:#eef7f0;
+    border-color:#b8dfc4;
 }
 
 .check-items-wrap{
@@ -964,7 +964,7 @@ tbody tr:last-child td{
     border:1px solid var(--blue);
     border-radius:8px;
     color:var(--blue);
-    background:#eef4ff;
+    background:#eef7f0;
     font-size:13px;
     font-weight:700;
     cursor:pointer;
@@ -972,7 +972,7 @@ tbody tr:last-child td{
 }
 
 .btn-select-all:hover{
-    background:#dceaff;
+    background:#d4f0dc;
 }
 
 .btn-deselect{
