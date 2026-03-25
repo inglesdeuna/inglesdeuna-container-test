@@ -1,6 +1,8 @@
 <?php
 session_start();
 
+require_once __DIR__ . '/../config/db.php';
+
 if (!isset($_SESSION['academic_logged']) || $_SESSION['academic_logged'] !== true) {
     header('Location: /lessons/lessons/academic/login.php');
     exit;
@@ -9,6 +11,26 @@ if (!isset($_SESSION['academic_logged']) || $_SESSION['academic_logged'] !== tru
 function h(string $value): string
 {
     return htmlspecialchars($value, ENT_QUOTES, 'UTF-8');
+}
+
+function load_unit_performance_db(?PDO $pdo, string $teacherId, string $assignmentId, string $unitId): array
+{
+  if (!$pdo || $teacherId === '' || $assignmentId === '' || $unitId === '') {
+    return [];
+  }
+
+  try {
+    $stmt = $pdo->prepare("\n          SELECT completion_percent, quiz_errors, quiz_total\n          FROM teacher_unit_results\n          WHERE teacher_id = :teacher_id\n            AND assignment_id = :assignment_id\n            AND unit_id = :unit_id\n          LIMIT 1\n        ");
+    $stmt->execute([
+      'teacher_id' => $teacherId,
+      'assignment_id' => $assignmentId,
+      'unit_id' => $unitId,
+    ]);
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+    return is_array($row) ? $row : [];
+  } catch (Throwable $e) {
+    return [];
+  }
 }
 
 $assignmentId = trim((string) ($_GET['assignment'] ?? ''));
@@ -35,6 +57,13 @@ if (is_array($performance) && isset($performance[$performanceKey]) && is_array($
   $completionPercent = (int) ($performance[$performanceKey]['completion_percent'] ?? 0);
   $quizErrors = (int) ($performance[$performanceKey]['quiz_errors'] ?? 0);
   $quizTotal = (int) ($performance[$performanceKey]['quiz_total'] ?? 0);
+}
+
+$dbPerformance = load_unit_performance_db(isset($pdo) && $pdo instanceof PDO ? $pdo : null, $teacherId, $assignmentId, $unitId);
+if (!empty($dbPerformance)) {
+  $completionPercent = (int) ($dbPerformance['completion_percent'] ?? $completionPercent);
+  $quizErrors = (int) ($dbPerformance['quiz_errors'] ?? $quizErrors);
+  $quizTotal = (int) ($dbPerformance['quiz_total'] ?? $quizTotal);
 }
 ?>
 <!DOCTYPE html>

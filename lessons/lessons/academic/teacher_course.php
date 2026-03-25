@@ -402,6 +402,114 @@ function read_activity_scores(string $teacherId, string $assignmentId, string $u
   return $all[$key];
 }
 
+function ensure_performance_tables(PDO $pdo): void
+{
+  try {
+    $pdo->exec("\n      CREATE TABLE IF NOT EXISTS teacher_unit_results (\n        teacher_id TEXT NOT NULL,\n        assignment_id TEXT NOT NULL,\n        unit_id TEXT NOT NULL,\n        completion_percent INTEGER NOT NULL DEFAULT 0,\n        quiz_errors INTEGER NOT NULL DEFAULT 0,\n        quiz_total INTEGER NOT NULL DEFAULT 0,\n        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),\n        PRIMARY KEY (teacher_id, assignment_id, unit_id)\n      )\n    ");
+
+    $pdo->exec("\n      CREATE TABLE IF NOT EXISTS teacher_activity_results (\n        teacher_id TEXT NOT NULL,\n        assignment_id TEXT NOT NULL,\n        unit_id TEXT NOT NULL,\n        activity_id TEXT NOT NULL,\n        percent INTEGER NOT NULL DEFAULT 0,\n        errors_count INTEGER NOT NULL DEFAULT 0,\n        total_questions INTEGER NOT NULL DEFAULT 0,\n        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),\n        PRIMARY KEY (teacher_id, assignment_id, unit_id, activity_id)\n      )\n    ");
+  } catch (Throwable $e) {
+  }
+}
+
+function save_unit_performance_db(PDO $pdo, string $teacherId, string $assignmentId, string $unitId, int $completionPercent, int $quizErrors, int $quizTotal): void
+{
+  if ($teacherId === '' || $assignmentId === '' || $unitId === '') {
+    return;
+  }
+
+  try {
+    $stmt = $pdo->prepare("\n      INSERT INTO teacher_unit_results (teacher_id, assignment_id, unit_id, completion_percent, quiz_errors, quiz_total, updated_at)\n      VALUES (:teacher_id, :assignment_id, :unit_id, :completion_percent, :quiz_errors, :quiz_total, NOW())\n      ON CONFLICT (teacher_id, assignment_id, unit_id)\n      DO UPDATE SET\n        completion_percent = EXCLUDED.completion_percent,\n        quiz_errors = EXCLUDED.quiz_errors,\n        quiz_total = EXCLUDED.quiz_total,\n        updated_at = NOW()\n    ");
+
+    $stmt->execute([
+      'teacher_id' => $teacherId,
+      'assignment_id' => $assignmentId,
+      'unit_id' => $unitId,
+      'completion_percent' => max(0, min(100, $completionPercent)),
+      'quiz_errors' => max(0, $quizErrors),
+      'quiz_total' => max(0, $quizTotal),
+    ]);
+  } catch (Throwable $e) {
+  }
+}
+
+function save_activity_score_db(PDO $pdo, string $teacherId, string $assignmentId, string $unitId, string $activityId, int $percent, int $errors, int $total): void
+{
+  if ($teacherId === '' || $assignmentId === '' || $unitId === '' || $activityId === '') {
+    return;
+  }
+
+  try {
+    $stmt = $pdo->prepare("\n      INSERT INTO teacher_activity_results (teacher_id, assignment_id, unit_id, activity_id, percent, errors_count, total_questions, updated_at)\n      VALUES (:teacher_id, :assignment_id, :unit_id, :activity_id, :percent, :errors_count, :total_questions, NOW())\n      ON CONFLICT (teacher_id, assignment_id, unit_id, activity_id)\n      DO UPDATE SET\n        percent = EXCLUDED.percent,\n        errors_count = EXCLUDED.errors_count,\n        total_questions = EXCLUDED.total_questions,\n        updated_at = NOW()\n    ");
+
+    $stmt->execute([
+      'teacher_id' => $teacherId,
+      'assignment_id' => $assignmentId,
+      'unit_id' => $unitId,
+      'activity_id' => $activityId,
+      'percent' => max(0, min(100, $percent)),
+      'errors_count' => max(0, $errors),
+      'total_questions' => max(0, $total),
+    ]);
+  } catch (Throwable $e) {
+  }
+}
+
+function load_unit_performance_db(PDO $pdo, string $teacherId, string $assignmentId, string $unitId): array
+{
+  if ($teacherId === '' || $assignmentId === '' || $unitId === '') {
+    return [];
+  }
+
+  try {
+    $stmt = $pdo->prepare("\n      SELECT completion_percent, quiz_errors, quiz_total\n      FROM teacher_unit_results\n      WHERE teacher_id = :teacher_id\n        AND assignment_id = :assignment_id\n        AND unit_id = :unit_id\n      LIMIT 1\n    ");
+    $stmt->execute([
+      'teacher_id' => $teacherId,
+      'assignment_id' => $assignmentId,
+      'unit_id' => $unitId,
+    ]);
+
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+    return is_array($row) ? $row : [];
+  } catch (Throwable $e) {
+    return [];
+  }
+}
+
+function load_activity_scores_db(PDO $pdo, string $teacherId, string $assignmentId, string $unitId): array
+{
+  if ($teacherId === '' || $assignmentId === '' || $unitId === '') {
+    return [];
+  }
+
+  try {
+    $stmt = $pdo->prepare("\n      SELECT activity_id, percent, errors_count, total_questions\n      FROM teacher_activity_results\n      WHERE teacher_id = :teacher_id\n        AND assignment_id = :assignment_id\n        AND unit_id = :unit_id\n      ORDER BY updated_at DESC\n    ");
+    $stmt->execute([
+      'teacher_id' => $teacherId,
+      'assignment_id' => $assignmentId,
+      'unit_id' => $unitId,
+    ]);
+
+    $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    $mapped = [];
+    foreach ($rows as $row) {
+      $activityId = (string) ($row['activity_id'] ?? '');
+      if ($activityId === '') {
+        continue;
+      }
+      $mapped[$activityId] = [
+        'percent' => (int) ($row['percent'] ?? 0),
+        'errors' => (int) ($row['errors_count'] ?? 0),
+        'total' => (int) ($row['total_questions'] ?? 0),
+      ];
+    }
+
+    return $mapped;
+  } catch (Throwable $e) {
+    return [];
+  }
+}
+
 function build_lowest_scored_activities(array $activities, array $scoresByActivityId, array $activityTypeLabels, string $assignmentId, string $unitId, int $limit = 3): array
 {
   $rows = [];
@@ -452,6 +560,8 @@ $pdo = get_pdo_connection();
 if (!$pdo) {
     die('Base de datos no disponible.');
 }
+
+ensure_performance_tables($pdo);
 
 $assignmentId = trim((string) ($_GET['assignment'] ?? ''));
 $selectedUnitId = trim((string) ($_GET['unit'] ?? ''));
@@ -545,6 +655,8 @@ if ($selectedUnitId !== '' && $quizTotalRaw >= 0) {
     'updated_at' => time(),
   ];
 
+  save_unit_performance_db($pdo, $teacherId, $assignmentId, $selectedUnitId, $quizPercent, $quizErrors, $quizTotal);
+
   if ($quizActivityId !== '') {
     if (!isset($_SESSION['teacher_activity_scores']) || !is_array($_SESSION['teacher_activity_scores'])) {
       $_SESSION['teacher_activity_scores'] = [];
@@ -559,6 +671,8 @@ if ($selectedUnitId !== '' && $quizTotalRaw >= 0) {
       'total' => $quizTotal,
       'updated_at' => time(),
     ];
+
+    save_activity_score_db($pdo, $teacherId, $assignmentId, $selectedUnitId, $quizActivityId, $quizPercent, $quizErrors, $quizTotal);
   }
 }
 
@@ -575,6 +689,15 @@ $hasPrev = $step > 0;
 $hasNext = $nextStep < $total;
 $isLastActivity = !$isCompleted && $total > 0 && $step === ($total - 1);
 $unitPerformance = read_unit_performance($teacherId, $assignmentId, $selectedUnitId);
+$dbUnitPerformance = load_unit_performance_db($pdo, $teacherId, $assignmentId, $selectedUnitId);
+if (!empty($dbUnitPerformance)) {
+  $unitPerformance = array_merge($unitPerformance, [
+    'completion_percent' => (int) ($dbUnitPerformance['completion_percent'] ?? ($unitPerformance['completion_percent'] ?? 0)),
+    'quiz_errors' => (int) ($dbUnitPerformance['quiz_errors'] ?? ($unitPerformance['quiz_errors'] ?? 0)),
+    'quiz_total' => (int) ($dbUnitPerformance['quiz_total'] ?? ($unitPerformance['quiz_total'] ?? 0)),
+  ]);
+}
+
 $completionPercent = (int) ($unitPerformance['completion_percent'] ?? 0);
 $quizErrors = (int) ($unitPerformance['quiz_errors'] ?? 0);
 $quizTotal = (int) ($unitPerformance['quiz_total'] ?? 0);
@@ -598,6 +721,11 @@ $activityTypeLabels = [
 ];
 
 $activityScores = read_activity_scores($teacherId, $assignmentId, $selectedUnitId);
+$dbActivityScores = load_activity_scores_db($pdo, $teacherId, $assignmentId, $selectedUnitId);
+if (!empty($dbActivityScores)) {
+  $activityScores = array_merge($activityScores, $dbActivityScores);
+}
+
 $lowestScoredActivities = build_lowest_scored_activities(
   $activities,
   $activityScores,
