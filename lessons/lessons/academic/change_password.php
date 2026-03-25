@@ -124,8 +124,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error = 'La nueva contraseña debe tener al menos 6 caracteres.';
     } else {
         try {
+            $hasPasswordHash = table_has_column($pdo, 'teacher_accounts', 'password_hash');
+            $hasTempPassword = table_has_column($pdo, 'teacher_accounts', 'temp_password');
+
+            $selectPasswordHash = $hasPasswordHash ? 'password_hash' : "'' AS password_hash";
+            $selectTempPassword = $hasTempPassword ? 'temp_password' : "'' AS temp_password";
+
             $stmt = $pdo->prepare("
-                SELECT id, password
+                SELECT id, password, {$selectPasswordHash}, {$selectTempPassword}
                 FROM teacher_accounts
                 WHERE teacher_id = :teacher_id
                 ORDER BY updated_at DESC NULLS LAST
@@ -180,11 +186,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ";
 
                 $update = $pdo->prepare($sql);
-                $update->execute([
+                $params = [
                     'new_password' => $newPassword,
-                    'password_hash' => Security::hashPassword($newPassword),
                     'teacher_id' => $teacherId,
-                ]);
+                ];
+
+                if (in_array('password_hash = :password_hash', $setParts, true)) {
+                    $params['password_hash'] = Security::hashPassword($newPassword);
+                }
+
+                $update->execute($params);
 
                 $_SESSION['teacher_must_change_password'] = false;
                 header('Location: ' . teacher_dashboard_redirect_url());
