@@ -29,7 +29,7 @@ function table_has_column(PDO $pdo, string $tableName, string $columnName): bool
     }
 }
 
-function ensure_admin_recovery_columns(PDO $pdo): void
+function ensure_admin_access_columns(PDO $pdo): void
 {
     try {
         // Create table if it has never been created
@@ -55,7 +55,7 @@ function ensure_admin_recovery_columns(PDO $pdo): void
         // Make sure existing rows that have must_change_password = NULL are treated as FALSE
         $pdo->exec("UPDATE admin_users SET must_change_password = FALSE WHERE must_change_password IS NULL");
     } catch (Throwable $e) {
-        // Si la tabla no existe o el motor no permite la alteración, el login sigue funcionando sin recovery avanzado.
+        // Si la tabla no existe o el motor no permite la alteracion, el login sigue funcionando con el respaldo JSON.
     }
 }
 
@@ -105,40 +105,6 @@ function find_admin_user_in_json(string $identifier): ?array
     }
 
     return null;
-}
-
-function update_admin_user_in_json(string $id, array $updates): bool
-{
-    $users = load_admin_users_json();
-    $updated = false;
-
-    foreach ($users as $index => $user) {
-        if ((string) ($user['id'] ?? '') !== $id) {
-            continue;
-        }
-
-        $users[$index] = array_merge($user, $updates);
-        $updated = true;
-        break;
-    }
-
-    if ($updated) {
-        save_admin_users_json($users);
-    }
-
-    return $updated;
-}
-
-function verify_json_admin_password(array $jsonUser, string $password): bool
-{
-    $jsonPasswordHash = (string) ($jsonUser['password_hash'] ?? '');
-    $jsonPassword = (string) ($jsonUser['password'] ?? '');
-
-    if ($jsonPasswordHash !== '') {
-        return Security::verifyPassword($password, $jsonPasswordHash);
-    }
-
-    return $jsonPassword !== '' && hash_equals($jsonPassword, $password);
 }
 
 function sync_fixed_admin_password(PDO $pdo): void
@@ -208,65 +174,7 @@ function find_admin_user_in_db(PDO $pdo, string $identifier, bool $hasUsernameCo
     return $user !== false ? $user : null;
 }
 
-function resolve_admin_must_change_password(PDO $pdo, string $adminId, string $adminEmail, string $adminUsername): ?bool
-{
-    $hasMustChangePasswordColumn = table_has_column($pdo, 'admin_users', 'must_change_password');
-    if (!$hasMustChangePasswordColumn) {
-        return false;
-    }
-
-    $hasUsernameColumn = table_has_column($pdo, 'admin_users', 'username');
-
-    try {
-        if ($adminId !== '') {
-            $stmt = $pdo->prepare('SELECT must_change_password FROM admin_users WHERE id = :id AND is_active = TRUE LIMIT 1');
-            $stmt->execute(['id' => $adminId]);
-            $row = $stmt->fetch(PDO::FETCH_ASSOC);
-            if ($row !== false) {
-                return (bool) $row['must_change_password'];
-            }
-        }
-
-        if ($adminEmail !== '') {
-            $stmt = $pdo->prepare('SELECT must_change_password FROM admin_users WHERE email = :email AND is_active = TRUE LIMIT 1');
-            $stmt->execute(['email' => $adminEmail]);
-            $row = $stmt->fetch(PDO::FETCH_ASSOC);
-            if ($row !== false) {
-                return (bool) $row['must_change_password'];
-            }
-        }
-
-        if ($hasUsernameColumn && $adminUsername !== '') {
-            $stmt = $pdo->prepare('SELECT must_change_password FROM admin_users WHERE username = :username AND is_active = TRUE LIMIT 1');
-            $stmt->execute(['username' => $adminUsername]);
-            $row = $stmt->fetch(PDO::FETCH_ASSOC);
-            if ($row !== false) {
-                return (bool) $row['must_change_password'];
-            }
-        }
-    } catch (Throwable $e) {
-        // fallback to JSON
-    }
-
-    $jsonUsers = load_admin_users_json();
-    foreach ($jsonUsers as $jsonUser) {
-        $jsonId = (string) ($jsonUser['id'] ?? '');
-        $jsonEmail = trim((string) ($jsonUser['email'] ?? ''));
-        $jsonUsername = trim((string) ($jsonUser['username'] ?? ''));
-
-        $idMatches = ($adminId !== '' && $jsonId === $adminId);
-        $emailMatches = ($adminEmail !== '' && $jsonEmail !== '' && strcasecmp($jsonEmail, $adminEmail) === 0);
-        $usernameMatches = ($adminUsername !== '' && $jsonUsername !== '' && strcasecmp($jsonUsername, $adminUsername) === 0);
-
-        if ($idMatches || $emailMatches || $usernameMatches) {
-            return !empty($jsonUser['must_change_password']);
-        }
-    }
-
-    return null;
-}
-
-function establish_admin_session(array $user, bool $mustChangePassword = false): void
+function establish_admin_session(array $user): void
 {
     session_unset();
     session_regenerate_id(true);
@@ -277,13 +185,13 @@ function establish_admin_session(array $user, bool $mustChangePassword = false):
     $_SESSION['admin_email'] = (string) ($user['email'] ?? 'admin@lets.com');
     $_SESSION['admin_username'] = (string) ($user['username'] ?? '');
     $_SESSION['admin_role'] = (string) ($user['role'] ?? 'admin');
-    $_SESSION['admin_must_change_password'] = $mustChangePassword;
+    $_SESSION['admin_must_change_password'] = false;
     $_SESSION['_session_start_time'] = time();
 }
 
 // Initialize secure session settings
 Security::initializeSession();
-ensure_admin_recovery_columns($pdo);
+ensure_admin_access_columns($pdo);
 sync_fixed_admin_password($pdo);
 
 // Si ya hay un admin logueado, ir directo al dashboard
@@ -301,13 +209,10 @@ $hasUsernameColumn = table_has_column($pdo, 'admin_users', 'username');
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
     // Verify CSRF token
     $submitted_token = $_POST['_csrf_token'] ?? '';
-    $action = (string) ($_POST['action'] ?? 'login');
 
     if (!Security::verifyCSRFToken($submitted_token)) {
         Security::logSecurityEvent('failed_login', 'CSRF token validation failed');
         $error = "Error de seguridad: token inválido. Intenta de nuevo.";
-    } elseif ($action !== 'login') {
-        $error = 'La recuperación y el cambio de contraseña fueron desactivados. Usa la clave fija 1234.';
     } else {
         $email = Security::sanitize($_POST["email"] ?? "", "email");
         $pass  = Security::sanitize($_POST["password"] ?? "", "string");
@@ -326,7 +231,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 $user = find_admin_user_in_db($pdo, $identifier, $hasUsernameColumn);
 
                 if ($user) {
-                    establish_admin_session($user, false);
+                    establish_admin_session($user);
 
                     Security::logSecurityEvent('admin_login', 'Successful login', $user['id']);
 
@@ -341,7 +246,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                         'email' => (string) ($jsonUser['email'] ?? $identifier),
                         'username' => (string) ($jsonUser['username'] ?? ''),
                         'role' => (string) ($jsonUser['role'] ?? 'admin'),
-                    ], false);
+                    ]);
 
                     Security::logSecurityEvent('admin_login', 'Successful JSON fallback login', (string) ($_SESSION['admin_id'] ?? 'admin_json'));
 
@@ -362,7 +267,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                         'email' => (string) ($jsonUser['email'] ?? $identifier),
                         'username' => (string) ($jsonUser['username'] ?? ''),
                         'role' => (string) ($jsonUser['role'] ?? 'admin'),
-                    ], false);
+                    ]);
 
                     Security::logSecurityEvent('admin_login', 'Successful JSON fallback login after database error', (string) ($_SESSION['admin_id'] ?? 'admin_json'));
 
@@ -617,71 +522,6 @@ body{
     font-weight:700;
 }
 
-.success{
-    margin-top:14px;
-    background:#ecfdf3;
-    border:1px solid #bbf7d0;
-    color:#166534;
-    border-radius:12px;
-    padding:12px 14px;
-    text-align:center;
-    font-size:14px;
-    font-weight:700;
-}
-
-.recovery-card{
-    margin-top:16px;
-    padding:16px;
-    border:1px solid var(--line);
-    border-radius:14px;
-    background:#f8fcf8;
-}
-
-.recovery-title{
-    margin:0 0 8px;
-    color:var(--title);
-    font-size:15px;
-    font-weight:800;
-}
-
-.recovery-text{
-    margin:0 0 12px;
-    color:var(--muted);
-    font-size:13px;
-    line-height:1.5;
-}
-
-.helper-row{
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
-    gap:12px;
-    margin-top:10px;
-}
-
-.helper-link{
-    border:none;
-    background:none;
-    color:var(--green-dark);
-    font-size:13px;
-    font-weight:700;
-    cursor:pointer;
-    padding:0;
-}
-
-.temp-password{
-    display:block;
-    margin-top:10px;
-    padding:12px;
-    border-radius:10px;
-    background:#ffffff;
-    border:1px dashed #86efac;
-    color:#14532d;
-    font-size:20px;
-    font-weight:800;
-    letter-spacing:.08em;
-}
-
 .footer-note{
     margin-top:18px;
     text-align:center;
@@ -790,7 +630,6 @@ body{
             <form method="post" autocomplete="off">
                 <!-- CSRF Token Protection -->
                 <input type="hidden" name="_csrf_token" value="<?= htmlspecialchars($csrf_token, ENT_QUOTES, 'UTF-8') ?>">
-                <input type="hidden" name="action" value="login">
                 
                 <div class="form-group">
                     <label class="form-label" for="email">Usuario o email</label>
