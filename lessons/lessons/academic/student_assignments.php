@@ -95,6 +95,21 @@ function get_pdo_connection(): ?PDO
     return $cachedPdo;
 }
 
+function table_has_column(PDO $pdo, string $tableName, string $columnName): bool
+{
+    try {
+        $stmt = $pdo->prepare("\n            SELECT 1\n            FROM information_schema.columns\n            WHERE table_schema = 'public'\n              AND table_name = :table_name\n              AND column_name = :column_name\n            LIMIT 1\n        ");
+        $stmt->execute([
+            'table_name' => $tableName,
+            'column_name' => $columnName,
+        ]);
+
+        return (bool) $stmt->fetchColumn();
+    } catch (Throwable $e) {
+        return false;
+    }
+}
+
 function find_name_by_id(array $rows, string $id, string $fallback = 'N/D'): string
 {
     foreach ($rows as $row) {
@@ -481,11 +496,18 @@ function load_student_accounts_from_database(): array
     }
 
     try {
-        $stmt = $pdo->query("
-            SELECT id, student_id, student_name, username, password_hash, temp_password, must_change_password, created_at, updated_at
-            FROM student_accounts
-            ORDER BY created_at ASC NULLS LAST, id ASC
-        ");
+        $hasPermission = table_has_column($pdo, 'student_accounts', 'permission');
+        $hasStudentPhoto = table_has_column($pdo, 'student_accounts', 'student_photo');
+
+        $select = 'id, student_id, student_name, username, password_hash, temp_password, must_change_password, created_at, updated_at';
+        if ($hasPermission) {
+            $select .= ', permission';
+        }
+        if ($hasStudentPhoto) {
+            $select .= ', student_photo';
+        }
+
+        $stmt = $pdo->query("SELECT {$select} FROM student_accounts ORDER BY created_at ASC NULLS LAST, id ASC");
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
     } catch (Throwable $e) {
         return [];
@@ -499,6 +521,8 @@ function load_student_accounts_from_database(): array
             'username' => (string) ($row['username'] ?? ''),
             'password_hash' => (string) ($row['password_hash'] ?? ''),
             'temp_password' => (string) ($row['temp_password'] ?? ''),
+            'permission' => (string) ($row['permission'] ?? 'viewer'),
+            'student_photo' => (string) ($row['student_photo'] ?? ''),
             'must_change_password' => (bool) ($row['must_change_password'] ?? false),
             'created_at' => (string) ($row['created_at'] ?? ''),
             'updated_at' => (string) ($row['updated_at'] ?? ''),
@@ -516,22 +540,39 @@ function save_student_account_to_database(array $account): bool
     }
 
     try {
-        $stmt = $pdo->prepare("
-            INSERT INTO student_accounts (
-                id, student_id, student_name, username, password_hash, temp_password, must_change_password, created_at, updated_at
-            ) VALUES (
-                :id, :student_id, :student_name, :username, :password_hash, :temp_password, :must_change_password, :created_at, :updated_at
-            )
-            ON CONFLICT (student_id) DO UPDATE SET
-                student_name = EXCLUDED.student_name,
-                username = EXCLUDED.username,
-                password_hash = EXCLUDED.password_hash,
-                temp_password = EXCLUDED.temp_password,
-                must_change_password = EXCLUDED.must_change_password,
-                updated_at = EXCLUDED.updated_at
-        ");
+        $hasPermission = table_has_column($pdo, 'student_accounts', 'permission');
+        $hasStudentPhoto = table_has_column($pdo, 'student_accounts', 'student_photo');
 
-        return $stmt->execute([
+        $columns = [
+            'id', 'student_id', 'student_name', 'username', 'password_hash', 'temp_password', 'must_change_password', 'created_at', 'updated_at',
+        ];
+        $values = [
+            ':id', ':student_id', ':student_name', ':username', ':password_hash', ':temp_password', ':must_change_password', ':created_at', ':updated_at',
+        ];
+        $updates = [
+            'student_name = EXCLUDED.student_name',
+            'username = EXCLUDED.username',
+            'password_hash = EXCLUDED.password_hash',
+            'temp_password = EXCLUDED.temp_password',
+            'must_change_password = EXCLUDED.must_change_password',
+            'updated_at = EXCLUDED.updated_at',
+        ];
+
+        if ($hasPermission) {
+            $columns[] = 'permission';
+            $values[] = ':permission';
+            $updates[] = 'permission = EXCLUDED.permission';
+        }
+
+        if ($hasStudentPhoto) {
+            $columns[] = 'student_photo';
+            $values[] = ':student_photo';
+            $updates[] = 'student_photo = COALESCE(EXCLUDED.student_photo, student_accounts.student_photo)';
+        }
+
+        $stmt = $pdo->prepare("\n            INSERT INTO student_accounts (" . implode(', ', $columns) . ")\n            VALUES (" . implode(', ', $values) . ")\n            ON CONFLICT (student_id) DO UPDATE SET\n                " . implode(",\n                ", $updates) . "\n        ");
+
+        $params = [
             'id' => (string) ($account['id'] ?? ''),
             'student_id' => (string) ($account['student_id'] ?? ''),
             'student_name' => (string) ($account['student_name'] ?? ''),
@@ -541,7 +582,17 @@ function save_student_account_to_database(array $account): bool
             'must_change_password' => !empty($account['must_change_password']),
             'created_at' => (string) ($account['created_at'] ?? date('Y-m-d H:i:s')),
             'updated_at' => (string) ($account['updated_at'] ?? date('Y-m-d H:i:s')),
-        ]);
+        ];
+
+        if ($hasPermission) {
+            $params['permission'] = (string) ($account['permission'] ?? 'viewer');
+        }
+
+        if ($hasStudentPhoto) {
+            $params['student_photo'] = (string) ($account['student_photo'] ?? '');
+        }
+
+        return $stmt->execute($params);
     } catch (Throwable $e) {
         return false;
     }
@@ -585,6 +636,7 @@ function ensure_student_account(string $studentId, array $students, array &$acco
         'username' => $username,
         'password_hash' => password_hash($tempPassword, PASSWORD_DEFAULT),
         'temp_password' => $tempPassword,
+        'permission' => 'viewer',
         'must_change_password' => true,
         'created_at' => date('Y-m-d H:i:s'),
         'updated_at' => date('Y-m-d H:i:s'),

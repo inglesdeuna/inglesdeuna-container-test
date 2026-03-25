@@ -107,6 +107,61 @@ function load_student_counts_per_teacher(): array {
     }
 }
 
+function load_students_grouped_per_teacher(): array {
+    $pdo = get_pdo_connection();
+    if (!$pdo) {
+        return [];
+    }
+
+    try {
+        $stmt = $pdo->query("
+            SELECT sa.teacher_id, sa.student_id, COALESCE(s.name, sa.student_id) AS student_name
+            FROM student_assignments sa
+            LEFT JOIN students s ON s.id = sa.student_id
+            WHERE sa.teacher_id IS NOT NULL
+              AND sa.teacher_id <> ''
+              AND sa.student_id IS NOT NULL
+              AND sa.student_id <> ''
+            ORDER BY sa.teacher_id ASC, student_name ASC
+        ");
+
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        $grouped = [];
+
+        foreach ($rows as $row) {
+            $teacherId = (string) ($row['teacher_id'] ?? '');
+            $studentId = (string) ($row['student_id'] ?? '');
+            if ($teacherId === '' || $studentId === '') {
+                continue;
+            }
+
+            if (!isset($grouped[$teacherId])) {
+                $grouped[$teacherId] = [];
+            }
+
+            $alreadyAdded = false;
+            foreach ($grouped[$teacherId] as $added) {
+                if ((string) ($added['student_id'] ?? '') === $studentId) {
+                    $alreadyAdded = true;
+                    break;
+                }
+            }
+            if ($alreadyAdded) {
+                continue;
+            }
+
+            $grouped[$teacherId][] = [
+                'student_id' => $studentId,
+                'student_name' => (string) ($row['student_name'] ?? $studentId),
+            ];
+        }
+
+        return $grouped;
+    } catch (Throwable $e) {
+        return [];
+    }
+}
+
 function load_grouped_assignments_from_database(): array {
     $pdo = get_pdo_connection();
     if (!$pdo) {
@@ -160,6 +215,7 @@ if (isset($_GET['remove_teacher']) && $_GET['remove_teacher'] !== '') {
 $teachers = load_grouped_assignments_from_database();
 $teacherAccounts = load_teacher_accounts_summary();
 $studentCounts = load_student_counts_per_teacher();
+$studentsByTeacher = load_students_grouped_per_teacher();
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -359,6 +415,23 @@ body{
     background:#eef8f2;
     color:var(--green);
 }
+.student-list{
+    margin-top:12px;
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+}
+.student-badge{
+    display:inline-flex;
+    align-items:center;
+    padding:6px 10px;
+    border-radius:999px;
+    font-size:12px;
+    font-weight:700;
+    background:#f3f8ff;
+    color:#1f4d8f;
+    border:1px solid #d9e7ff;
+}
 .empty{
     color:var(--muted);
     font-size:14px;
@@ -482,6 +555,15 @@ body{
                         <?php } ?>
                     <?php } ?>
                 </div>
+
+                <?php $studentsForTeacher = $studentsByTeacher[$tid] ?? []; ?>
+                <?php if (!empty($studentsForTeacher)) { ?>
+                    <div class="student-list">
+                        <?php foreach ($studentsForTeacher as $studentRow) { ?>
+                            <span class="student-badge">👤 <?php echo h((string) ($studentRow['student_name'] ?? 'Estudiante')); ?></span>
+                        <?php } ?>
+                    </div>
+                <?php } ?>
             </div>
         <?php } ?>
     <?php } ?>

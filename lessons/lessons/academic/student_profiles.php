@@ -73,17 +73,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <meta charset="UTF-8">
 <title>Perfiles Estudiante</title>
 <style>
-body{font-family:Arial,sans-serif;background:#eef2f7;padding:30px;color:#1f2937}
+body{font-family:Arial,sans-serif;background:#fff8f5;padding:30px;color:#5e352e}
 .wrapper{max-width:1100px;margin:0 auto}
-.card{background:#fff;border-radius:14px;padding:20px;box-shadow:0 8px 24px rgba(0,0,0,.08);margin-bottom:18px}
-h1{margin-top:0}
+.card{background:#fff;border-radius:14px;padding:20px;box-shadow:0 8px 24px rgba(135,58,42,.10);margin-bottom:18px;border:1px solid #ffd9d2}
+h1{margin-top:0;color:#b04632}
 .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
 .full{grid-column:1/-1}
-input,select,button{font:inherit;padding:10px;border:1px solid #d4dce8;border-radius:8px;width:100%}
-button{background:#1f66cc;color:#fff;border:none;font-weight:700;cursor:pointer}
+input,select,button{font:inherit;padding:10px;border:1px solid #f0beb4;border-radius:8px;width:100%}
+button{background:#fa8072;color:#fff;border:none;font-weight:700;cursor:pointer}
+button:hover{background:#e8654e}
 table{width:100%;border-collapse:collapse}
-th,td{padding:10px;border-bottom:1px solid #e4e9f1;text-align:left;font-size:14px}
-.back{display:inline-block;margin-bottom:15px;color:#1f66cc;text-decoration:none;font-weight:700}
+th,td{padding:10px;border-bottom:1px solid #ffe3de;text-align:left;font-size:14px}
+.back{display:inline-block;margin-bottom:15px;color:#b04632;text-decoration:none;font-weight:700}
 .notice{padding:10px 12px;border-radius:8px;background:#eaf9ef;border:1px solid #bfe7cc;color:#1d6a40;margin-bottom:12px}
 </style>
 </head>

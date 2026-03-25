@@ -1,9 +1,14 @@
 <?php
 session_start();
 
-if (isset($_SESSION['academic_logged']) && $_SESSION['academic_logged'] === true) {
-    header('Location: dashboard.php');
+if (isset($_SESSION['student_logged']) && $_SESSION['student_logged'] === true) {
+    header('Location: student_dashboard.php');
     exit;
+}
+
+function h(string $value): string
+{
+    return htmlspecialchars($value, ENT_QUOTES, 'UTF-8');
 }
 
 function get_pdo_connection(): ?PDO
@@ -25,7 +30,21 @@ function get_pdo_connection(): ?PDO
     }
 }
 
-function load_teacher_accounts_from_database(): array
+function table_has_column(PDO $pdo, string $tableName, string $columnName): bool
+{
+    try {
+        $stmt = $pdo->prepare("SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = :table_name AND column_name = :column_name LIMIT 1");
+        $stmt->execute([
+            'table_name' => $tableName,
+            'column_name' => $columnName,
+        ]);
+        return (bool) $stmt->fetchColumn();
+    } catch (Throwable $e) {
+        return false;
+    }
+}
+
+function load_student_accounts_from_database(): array
 {
     $pdo = get_pdo_connection();
     if (!$pdo) {
@@ -33,11 +52,15 @@ function load_teacher_accounts_from_database(): array
     }
 
     try {
-        $stmt = $pdo->query("
-            SELECT teacher_id, teacher_name, username, password_hash, temp_password, password
-            FROM teacher_accounts
-            ORDER BY updated_at DESC NULLS LAST, teacher_name ASC
-        ");
+        $select = 'id, student_id, student_name, username, password_hash, temp_password, updated_at';
+        if (table_has_column($pdo, 'student_accounts', 'permission')) {
+            $select .= ', permission';
+        }
+        if (table_has_column($pdo, 'student_accounts', 'student_photo')) {
+            $select .= ', student_photo';
+        }
+
+        $stmt = $pdo->query("SELECT {$select} FROM student_accounts ORDER BY updated_at DESC NULLS LAST, student_name ASC");
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         return is_array($rows) ? $rows : [];
@@ -46,10 +69,10 @@ function load_teacher_accounts_from_database(): array
     }
 }
 
-function load_teacher_accounts_from_json(): array
+function load_student_accounts_from_json(): array
 {
     $dataDir = __DIR__ . '/data';
-    $accountsFile = $dataDir . '/teacher_accounts.json';
+    $accountsFile = $dataDir . '/student_accounts.json';
 
     if (!is_dir($dataDir)) {
         mkdir($dataDir, 0777, true);
@@ -63,7 +86,7 @@ function load_teacher_accounts_from_json(): array
     return is_array($accounts) ? $accounts : [];
 }
 
-function verify_teacher_password(array $account, string $password): bool
+function verify_student_password(array $account, string $password): bool
 {
     $passwordHash = (string) ($account['password_hash'] ?? '');
     $tempPassword = (string) ($account['temp_password'] ?? '');
@@ -84,9 +107,9 @@ function verify_teacher_password(array $account, string $password): bool
     return false;
 }
 
-$accounts = load_teacher_accounts_from_database();
+$accounts = load_student_accounts_from_database();
 if (empty($accounts)) {
-    $accounts = load_teacher_accounts_from_json();
+    $accounts = load_student_accounts_from_json();
 }
 
 $error = '';
@@ -104,16 +127,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             continue;
         }
 
-        if (!verify_teacher_password($account, $password)) {
+        if (!verify_student_password($account, $password)) {
             continue;
         }
 
-        $_SESSION['academic_logged'] = true;
-        $_SESSION['teacher_id'] = (string) ($account['teacher_id'] ?? '');
-        $_SESSION['teacher_name'] = (string) ($account['teacher_name'] ?? 'Docente');
-        $_SESSION['teacher_username'] = $username;
+        $_SESSION['student_logged'] = true;
+        $_SESSION['student_id'] = (string) ($account['student_id'] ?? '');
+        $_SESSION['student_name'] = (string) ($account['student_name'] ?? 'Estudiante');
+        $_SESSION['student_username'] = $username;
+        $_SESSION['student_permission'] = ((string) ($account['permission'] ?? 'viewer')) === 'editor' ? 'editor' : 'viewer';
+        $_SESSION['student_photo'] = (string) ($account['student_photo'] ?? '');
 
-        header('Location: dashboard.php');
+        header('Location: student_dashboard.php');
         exit;
     }
 
@@ -125,12 +150,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Login Docente</title>
+<title>Login Estudiante</title>
 <style>
 body{
     margin:0;
     font-family:Arial,sans-serif;
-    background:linear-gradient(180deg,#eaf1ff,#f8fbff);
+    background:linear-gradient(180deg,#fff7f3,#fffdfc);
     min-height:100vh;
     display:flex;
     align-items:center;
@@ -141,25 +166,25 @@ body{
     width:100%;
     max-width:380px;
     background:#fff;
-    border:1px solid #dce6f6;
+    border:1px solid #ffd8d1;
     border-radius:18px;
     padding:26px;
-    box-shadow:0 18px 40px rgba(18,52,114,.15);
+    box-shadow:0 18px 40px rgba(153,60,44,.14);
 }
 h1{
     margin:0 0 6px;
-    color:#1f3c75;
+    color:#b04632;
     font-size:28px;
 }
 p{
     margin:0 0 16px;
-    color:#5a6780;
+    color:#7a5d56;
 }
 input,button{
     width:100%;
     height:44px;
     border-radius:10px;
-    border:1px solid #c8d8f0;
+    border:1px solid #f0beb4;
     padding:0 12px;
     font-size:15px;
 }
@@ -168,11 +193,14 @@ input{
 }
 button{
     margin-top:14px;
-    background:#1f66cc;
+    background:#fa8072;
     color:#fff;
     border:none;
     font-weight:700;
     cursor:pointer;
+}
+button:hover{
+    background:#e8654e;
 }
 .error{
     margin-top:10px;
@@ -184,7 +212,7 @@ button{
     font-size:13px;
 }
 .small a{
-    color:#1f66cc;
+    color:#b04632;
     text-decoration:none;
     font-weight:700;
 }
@@ -192,8 +220,8 @@ button{
 </head>
 <body>
 <div class="card">
-    <h1>Perfil Docente</h1>
-    <p>Ingresa con tu usuario asignado.</p>
+    <h1>Perfil Estudiante</h1>
+    <p>Ingresa con tu usuario asignado para ver tu programa y unidades.</p>
 
     <form method="post">
         <input type="text" name="username" placeholder="Usuario" required>
@@ -202,10 +230,10 @@ button{
     </form>
 
     <?php if ($error): ?>
-        <div class="error"><?php echo htmlspecialchars($error, ENT_QUOTES, 'UTF-8'); ?></div>
+        <div class="error"><?php echo h($error); ?></div>
     <?php endif; ?>
 
-    <div class="small">¿Eres estudiante? <a href="login_student.php">Ir a login estudiante</a></div>
+    <div class="small">¿Eres docente? <a href="login.php">Ir a login docente</a></div>
 </div>
 </body>
 </html>
