@@ -1214,7 +1214,7 @@ if ($selectedProgram === 'technical' && $editRecord) {
         .page-title{font-size:26px;font-weight:700;color:var(--title);margin:0}
         /* Buttons */
         .btn{display:inline-flex;align-items:center;gap:6px;height:38px;padding:0 14px;border-radius:10px;border:none;font-weight:700;font-size:13px;cursor:pointer;text-decoration:none;white-space:nowrap}
-        .btn-back{background:var(--green-soft);color:var(--subtitle)}.btn-back:hover{background:#d4eddb;color:var(--subtitle)}
+        .btn-back{background:linear-gradient(180deg,#7b8b7f,#66756a);color:#fff}.btn-back:hover{background:linear-gradient(180deg,#6b7f75,#556a5e);color:#fff}
         .btn-cancel-edit{background:#f3f4f6;color:var(--muted)}.btn-cancel-edit:hover{background:#e5e7eb}
         /* Notices */
         .notice{border-radius:12px;padding:12px 16px;margin-bottom:16px;font-size:14px;font-weight:600}
