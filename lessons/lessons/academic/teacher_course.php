@@ -486,102 +486,72 @@ body{font-family:Arial,sans-serif;background:var(--bg);color:var(--text)}
   background:linear-gradient(180deg, var(--blue), var(--blue-dark));
   color:#fff;
   padding:16px 24px;
-  box-shadow:0 8px 22px rgba(29,78,216,.28);
 }
 
 .topbar-inner{
-  max-width:1380px;
+  max-width:1280px;
   margin:0 auto;
   display:grid;
-  grid-template-columns:220px 1fr 56px;
+  grid-template-columns:180px 1fr;
   align-items:center;
-  gap:14px;
+  gap:12px;
 }
 
-.topbar-back{
+.top-btn{
   display:inline-flex;
   align-items:center;
   justify-content:center;
   padding:10px 14px;
-  border-radius:12px;
+  border-radius:10px;
   text-decoration:none;
   font-size:13px;
   font-weight:700;
   color:#fff;
-  background:rgba(255,255,255,.18);
-  box-shadow:var(--shadow-sm);
+  box-shadow:var(--shadow);
+  background:rgba(255,255,255,.2);
 }
 
-.topbar-back:hover{filter:brightness(1.07)}
-
-.topbar-center{text-align:center;min-width:0}
+.top-btn.back{ justify-self:start; }
 
 .topbar-title{
   font-size:28px;
   font-weight:800;
-  line-height:1.15;
-  white-space:nowrap;
-  overflow:hidden;
-  text-overflow:ellipsis;
+  text-align:center;
 }
 
-.topbar-sub{
-  margin-top:4px;
-  font-size:13px;
-  color:rgba(255,255,255,.82);
-  white-space:nowrap;
-  overflow:hidden;
-  text-overflow:ellipsis;
-}
-
-.topbar-avatar{
-  width:52px;
-  height:52px;
-  border-radius:50%;
-  overflow:hidden;
-  background:rgba(255,255,255,.18);
-  border:3px solid rgba(255,255,255,.35);
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  font-size:18px;
-  font-weight:800;
-  color:#fff;
-}
-
-.topbar-avatar img{width:100%;height:100%;object-fit:cover;display:block}
+.topbar-sub{display:none}
 
 .page{
-  max-width:1380px;
+  max-width:1280px;
   margin:0 auto;
-  padding:20px;
+  padding:18px 20px 24px;
 }
 
 .layout{
   display:grid;
-  grid-template-columns:240px 1fr;
-  gap:20px;
+  grid-template-columns:220px 1fr;
+  gap:18px;
   align-items:start;
 }
 
 .sidebar{
   background:#e3ecff;
-  border-radius:22px;
+  border-radius:20px;
   padding:18px 14px;
   box-shadow:var(--shadow);
   min-height:calc(100vh - 150px);
 }
 
-.sidebar-profile{
+.logo-wrap{
   text-align:center;
-  padding:8px 8px 18px;
+  margin-bottom:16px;
 }
 
-.sidebar-avatar{
-  width:92px;
-  height:92px;
+.avatar{
+  width:90px;
+  height:90px;
   border-radius:50%;
-  margin:0 auto 12px;
+  margin:0 auto;
   overflow:hidden;
   background:linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
   border:3px solid #f0f4ff;
@@ -589,25 +559,28 @@ body{font-family:Arial,sans-serif;background:var(--bg);color:var(--text)}
   align-items:center;
   justify-content:center;
   box-shadow:0 8px 20px rgba(59,130,246,.15);
-  font-size:28px;
-  font-weight:800;
-  color:var(--blue-dark);
 }
 
-.sidebar-avatar img{width:100%;height:100%;object-fit:cover;display:block}
-.sidebar-name{font-size:14px;font-weight:800;color:var(--title);margin-bottom:4px}
-.sidebar-role{font-size:12px;color:var(--muted)}
-.sidebar-label{
+.avatar-image{
+  width:100%;
+  height:100%;
+  object-fit:cover;
   display:block;
-  margin:10px 0 8px;
-  font-size:11px;
-  font-weight:800;
-  text-transform:uppercase;
-  letter-spacing:.08em;
-  color:var(--muted);
 }
 
-.nav-link{
+.avatar-fallback{
+  display:none;
+  width:100%;
+  height:100%;
+  align-items:center;
+  justify-content:center;
+  color:var(--blue-dark);
+  font-size:24px;
+  font-weight:800;
+  letter-spacing:.08em;
+}
+
+.side-btn{
   display:block;
   width:100%;
   text-align:center;
@@ -621,11 +594,9 @@ body{font-family:Arial,sans-serif;background:var(--bg);color:var(--text)}
   box-shadow:var(--shadow-sm);
 }
 
-.nav-link.primary{ background:linear-gradient(180deg,#3d73ee,#2563eb); }
-.nav-link.secondary{ background:linear-gradient(180deg,#7b8b9e,#66758b); }
-.nav-link.accent{ background:linear-gradient(180deg,#fbbf24,#d97706); }
-.nav-link.danger{ background:linear-gradient(180deg,#ef4444,#dc2626); }
-.nav-link:hover{ filter:brightness(1.07); }
+.side-btn.blue{ background:linear-gradient(180deg,#3d73ee,#2563eb); }
+.side-btn.gray{ background:linear-gradient(180deg,#7b8b9e,#66758b); }
+.side-btn.red{ background:linear-gradient(180deg,#ef4444,#dc2626); }
 
 .content{display:flex;flex-direction:column;gap:18px;min-width:0}
 
@@ -820,10 +791,13 @@ body{font-family:Arial,sans-serif;background:var(--bg);color:var(--text)}
 }
 
 @media (max-width: 768px){
-  .topbar{padding:14px}
-  .topbar-inner{grid-template-columns:1fr;gap:10px}
-  .topbar-back{justify-self:center}
-  .topbar-title{font-size:22px}
+  .topbar{ padding:14px; }
+  .topbar-inner{
+    grid-template-columns:1fr;
+    text-align:center;
+  }
+  .top-btn.back{ justify-self:center; }
+  .topbar-title{ font-size:24px; }
   .page{padding:12px}
   .hero-card,.viewer-shell,.empty-shell{border-radius:18px}
   .hero-card{padding:20px}
@@ -840,62 +814,40 @@ body{font-family:Arial,sans-serif;background:var(--bg);color:var(--text)}
 
 <header class="topbar">
   <div class="topbar-inner">
-    <a class="topbar-back" href="<?php echo h($backDashboard); ?>">&larr; Volver a mis cursos</a>
-    <div class="topbar-center">
-      <div class="topbar-title"><?php echo h((string)($assignment['course_name'] ?? 'Curso')); ?></div>
-      <?php if (trim((string)($assignment['unit_name'] ?? '')) !== '') { ?>
-        <div class="topbar-sub"><?php echo h((string)$assignment['unit_name']); ?></div>
-      <?php } else { ?>
-        <div class="topbar-sub"><?php echo h($currentTypeLabel); ?></div>
-      <?php } ?>
-    </div>
-    <div class="topbar-avatar">
-      <?php if ($teacherPhotoSrc !== '') { ?>
-        <img src="<?php echo $teacherPhotoSrc; ?>" alt="<?php echo h($teacherName); ?>"
-             onerror="this.style.display='none';this.parentElement.textContent='<?php echo h($teacherInitials); ?>'">
-      <?php } else { ?>
-        <?php echo h($teacherInitials); ?>
-      <?php } ?>
-    </div>
+    <a class="top-btn back" href="<?php echo h($backDashboard); ?>">← Volver</a>
+    <h1 class="topbar-title">Presentación del Curso</h1>
   </div>
 </header>
 
 <div class="page">
 <div class="layout">
   <nav class="sidebar">
-    <div class="sidebar-profile">
-      <div class="sidebar-avatar">
+    <div class="logo-wrap">
+      <div class="avatar">
         <?php if ($teacherPhotoSrc !== '') { ?>
-          <img src="<?php echo $teacherPhotoSrc; ?>" alt="<?php echo h($teacherName); ?>"
-               onerror="this.style.display='none'">
-        <?php } else { ?>
-          <?php echo h($teacherInitials); ?>
+          <img
+            class="avatar-image"
+            src="<?php echo h($teacherPhotoSrc); ?>"
+            alt="Foto de <?php echo h($teacherName); ?>"
+            onerror="this.style.display='none';this.nextElementSibling.style.display='flex';"
+          >
         <?php } ?>
+        <span class="avatar-fallback" aria-hidden="true" style="<?php echo $teacherPhotoSrc === '' ? 'display:flex;' : ''; ?>"><?php echo h($teacherInitials); ?></span>
       </div>
-      <div class="sidebar-name"><?php echo h($teacherName); ?></div>
-      <div class="sidebar-role">Docente</div>
     </div>
 
-    <span class="sidebar-label">Navegación</span>
-
-    <a class="nav-link primary" href="<?php echo h($backDashboard); ?>">
-      Mis cursos
-    </a>
+    <a class="side-btn blue" href="<?php echo h($backDashboard); ?>">📚 Volver a mis cursos</a>
 
     <?php if ($permission === 'editor') { ?>
-      <a class="nav-link accent"
+      <a class="side-btn blue"
          href="teacher_unit.php?assignment=<?php echo urlencode($assignmentId); ?>&unit=<?php echo urlencode($selectedUnitId); ?>&mode=edit">
-        Editar curso
+        ✏️ Editar curso
       </a>
     <?php } ?>
 
-    <a class="nav-link secondary" href="/lessons/lessons/academic/teacher_groups.php">
-      Ver docentes y grupos
-    </a>
+    <a class="side-btn gray" href="teacher_assignments.php">🧾 Mis asignaciones</a>
 
-    <a class="nav-link danger" href="/lessons/lessons/academic/logout.php">
-      Cerrar sesión
-    </a>
+    <a class="side-btn red" href="/lessons/lessons/academic/logout.php">🚪 Cerrar sesión</a>
   </nav>
 
   <?php if (!$current || !$viewerHref) { ?>
