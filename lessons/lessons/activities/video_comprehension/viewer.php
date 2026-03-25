@@ -186,6 +186,7 @@ ob_start();
         <div class="vc-panel">
             <div class="vc-empty">No video iframe URL configured for this activity.</div>
         </div>
+    <?php } ?>
 
     <?php if ($isVideoOnly) { ?>
         <section class="vc-video-only">
