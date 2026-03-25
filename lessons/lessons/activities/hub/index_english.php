@@ -41,6 +41,7 @@ $activityTypes = [
     "flashcards" => "Flashcards",
     "match" => "Match",
     "multiple_choice" => "Multiple Choice",
+    "video_comprehension" => "Video Comprehension",
     "hangman" => "Hangman",
     "listen_order" => "Listen Order",
     "pronunciation" => "Pronunciation",

@@ -498,6 +498,7 @@ $activityLabels = [
     'flashcards' => 'Flashcards',
     'quiz' => 'Quiz',
     'multiple_choice' => 'Multiple Choice',
+    'video_comprehension' => 'Video Comprehension',
     'video_lesson' => 'Video Lesson',
     'flipbooks' => 'Flipbook',
     'hangman' => 'Hangman',

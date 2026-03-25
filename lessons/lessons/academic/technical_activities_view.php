@@ -470,6 +470,7 @@ body{
                             'flashcards' => '🃏',
                             'match' => '🔗',
                             'multiple_choice' => '✅',
+                            'video_comprehension' => '🎬',
                             'listen_order' => '🎧',
                             'pronunciation' => '🎤',
                             'external' => '🌐',
