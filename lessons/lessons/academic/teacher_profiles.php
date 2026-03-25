@@ -450,7 +450,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     --error-text:#9f1d1d;
     --danger:#dc2626;
     --danger-hover:#b91c1c;
-    --shadow:0 10px 24px rgba(0,0,0,.08);
+    --shadow:0 8px 24px rgba(0,0,0,.08);
     --radius:14px;
 }
 
@@ -697,7 +697,7 @@ thead th{
 
 tbody td{
     padding:14px 16px;
-    border-bottom:1px solid #e9eef5;
+    border-bottom:1px solid var(--line);
     font-size:14px;
     vertical-align:top;
 }
@@ -713,8 +713,8 @@ tbody tr:last-child td{
     font-size:12px;
     font-weight:700;
     white-space:nowrap;
-    background:#e9f8ee;
-    color:var(--blue-hover);
+    background:#eef7f0;
+    color:var(--blue);
 }
 
 .actions{
@@ -736,13 +736,13 @@ tbody tr:last-child td{
 }
 
 .edit-btn{
-    background:#eef9f1;
+    background:#eef7f0;
     color:var(--blue);
-    border:1px solid #cce8d4;
+    border:1px solid #b8dfc4;
 }
 
 .edit-btn:hover{
-    background:#dff3e5;
+    background:#d4f0dc;
     text-decoration:none;
 }
 
