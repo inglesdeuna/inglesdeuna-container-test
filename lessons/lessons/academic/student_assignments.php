@@ -622,11 +622,29 @@ function ensure_student_account(string $studentId, array $students, array &$acco
         return null;
     }
 
-    foreach ($accounts as $account) {
+    foreach ($accounts as &$account) {
         if ((string) ($account['student_id'] ?? '') === $studentId) {
+            // Repair legacy username: if it contains the student_id (old format), regenerate
+            $existingUsername = (string) ($account['username'] ?? '');
+            if (
+                $existingUsername !== '' &&
+                (strpos($existingUsername, $studentId) !== false ||
+                 !preg_match('/^[a-z][a-z0-9]*(\.[a-z][a-z0-9]*)+(\.[0-9]+)?$/', $existingUsername))
+            ) {
+                $studentData = find_student_by_id($students, $studentId);
+                if ($studentData) {
+                    $otherAccounts = array_filter($accounts, fn($a) => (string)($a['student_id'] ?? '') !== $studentId);
+                    $newUsername = generate_student_username($studentData, array_values($otherAccounts));
+                    $account['username'] = $newUsername;
+                    $account['updated_at'] = date('Y-m-d H:i:s');
+                    save_student_account_to_database($account);
+                    save_json_file($accountsFile, $accounts);
+                }
+            }
             return $account;
         }
     }
+    unset($account);
 
     $student = find_student_by_id($students, $studentId);
     if (!$student) {
