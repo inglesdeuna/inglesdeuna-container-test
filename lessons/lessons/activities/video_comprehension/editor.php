@@ -432,7 +432,9 @@ ob_start();
             </div>
 
             <div class="vc-actions">
-                <button type="button" class="vc-btn vc-add" onclick="addQuestion()">+ Add Question</button>
+                <div id="addQuestionWrap" class="vc-add-wrap<?= $activityMode === 'video_only' ? ' is-hidden' : '' ?>">
+                    <button type="button" class="vc-btn vc-add" onclick="addQuestion()">+ Add Question</button>
+                </div>
                 <button type="submit" class="save-btn">💾 Save</button>
             </div>
         </div>
@@ -480,9 +482,7 @@ function removeQuestion(button) {
         markChanged();
     }
 }
-                    <div id="addQuestionWrap"<?= $activityMode === 'video_only' ? ' class="is-hidden"' : '' ?>>
-                        <button type="button" class="vc-btn vc-add" onclick="addQuestion()">+ Add Question</button>
-                    </div>
+
 function addQuestion() {
     const container = document.getElementById('questionsContainer');
     const card = document.createElement('div');
