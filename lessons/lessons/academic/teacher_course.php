@@ -464,220 +464,404 @@ $backDashboard = 'dashboard.php?assignment=' . urlencode($assignmentId) . '&unit
 :root{
   --bg:#eef5ff;
   --card:#ffffff;
-  --line:#d6e4ff;
-  --text:#16325c;
+  --line:#d8e2f2;
+  --text:#1b3050;
   --title:#0f1f42;
-  --muted:#5f7294;
-  --primary:#2563eb;
-  --primary-dark:#1d4ed8;
-  --primary-light:#eff6ff;
-  --shadow:0 8px 24px rgba(0,0,0,.09);
+  --muted:#5d6f8f;
+  --blue:#2563eb;
+  --blue-dark:#1d4ed8;
+  --blue-soft:#e9f1ff;
+  --blue-pale:#f8fbff;
+  --warning:#f59e0b;
+  --warning-dark:#d97706;
+  --danger:#dc2626;
+  --shadow:0 10px 24px rgba(0,0,0,.08);
   --shadow-sm:0 2px 8px rgba(0,0,0,.06);
-  --radius:16px;
-  --topbar-h:64px;
-  --sidebar-w:220px;
+  --radius:18px;
 }
 *{box-sizing:border-box;margin:0;padding:0}
-html,body{height:100%}
 body{font-family:Arial,sans-serif;background:var(--bg);color:var(--text)}
 
-/* TOPBAR */
 .topbar{
-  position:sticky;top:0;z-index:100;
-  height:var(--topbar-h);
-  background:linear-gradient(180deg,#2d5fd4,#1a45b8);
-  display:flex;align-items:center;
-  padding:0 20px;gap:14px;
-  box-shadow:0 2px 12px rgba(26,69,184,.35);
+  background:linear-gradient(180deg, var(--blue), var(--blue-dark));
+  color:#fff;
+  padding:16px 24px;
+  box-shadow:0 8px 22px rgba(29,78,216,.28);
 }
+
+.topbar-inner{
+  max-width:1380px;
+  margin:0 auto;
+  display:grid;
+  grid-template-columns:220px 1fr 56px;
+  align-items:center;
+  gap:14px;
+}
+
 .topbar-back{
-  display:inline-flex;align-items:center;gap:6px;
-  padding:8px 14px;border-radius:10px;
-  background:rgba(255,255,255,.15);
-  color:#fff;text-decoration:none;
-  font-size:13px;font-weight:700;flex-shrink:0;
-  transition:background .2s;
-}
-.topbar-back:hover{background:rgba(255,255,255,.26)}
-.topbar-back{display:none}
-.topbar-center{flex:1;text-align:center;min-width:0}
-.topbar-title{
-  font-size:16px;font-weight:800;color:#fff;
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
-}
-.topbar-sub{font-size:12px;color:rgba(255,255,255,.75);margin-top:2px}
-.topbar-avatar{
-  flex-shrink:0;width:40px;height:40px;border-radius:50%;overflow:hidden;
-  background:rgba(255,255,255,.2);border:2px solid rgba(255,255,255,.4);
-  display:flex;align-items:center;justify-content:center;
-  font-size:14px;font-weight:800;color:#fff;letter-spacing:.05em;
-  cursor:default;
-}
-.topbar-avatar img{width:100%;height:100%;object-fit:cover;display:block}
-
-/* OUTER */
-.outer{
-  display:flex;
-  height:calc(100dvh - var(--topbar-h));
-  overflow:hidden;
-}
-
-/* SIDEBAR */
-.sidebar{
-  width:var(--sidebar-w);flex-shrink:0;
-  background:var(--card);border-right:1px solid var(--line);
-  display:flex;flex-direction:column;overflow-y:auto;
-  padding:16px 12px 20px;gap:6px;
-}
-.sidebar-profile{
-  text-align:center;padding:12px 8px 16px;
-  border-bottom:1px solid var(--line);margin-bottom:6px;
-}
-.sidebar-avatar{
-  width:72px;height:72px;border-radius:50%;margin:0 auto 10px;
-  overflow:hidden;
-  background:linear-gradient(135deg,var(--primary-light),#dbeafe);
-  border:3px solid #e0eeff;
-  display:flex;align-items:center;justify-content:center;
-  font-size:24px;font-weight:800;color:var(--primary-dark);
-}
-.sidebar-avatar img{width:100%;height:100%;object-fit:cover;display:block}
-.sidebar-name{font-size:13px;font-weight:700;color:var(--title);margin-bottom:3px}
-.sidebar-role{font-size:11px;color:var(--muted)}
-.sidebar-label{
-  font-size:10px;font-weight:800;text-transform:uppercase;
-  letter-spacing:.1em;color:var(--muted);
-  padding:10px 4px 4px;
-}
-.nav-link{
-  display:flex;align-items:center;gap:8px;
-  padding:10px 12px;border-radius:10px;
-  text-decoration:none;color:var(--text);
-  font-size:13px;font-weight:600;
-  transition:background .15s,color .15s;
-}
-.nav-link:hover{background:var(--primary-light);color:var(--primary-dark)}
-.nav-link.primary{
-  background:linear-gradient(180deg,#3d73ee,#2054d4);
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  padding:10px 14px;
+  border-radius:12px;
+  text-decoration:none;
+  font-size:13px;
+  font-weight:700;
   color:#fff;
-}
-.nav-link.primary:hover{filter:brightness(1.07)}
-.nav-link.accent{
-  background:linear-gradient(180deg,#fbbf24,#d97706);
-  color:#fff;
-}
-.nav-link.accent:hover{filter:brightness(1.07)}
-.nav-link.secondary{
-  background:linear-gradient(180deg,#4f77df,#355fc9);
-  color:#fff;
-}
-.nav-link.secondary:hover{filter:brightness(1.07);color:#fff}
-.nav-link.danger{
-  background:linear-gradient(180deg,#ef4444,#dc2626);
-  color:#fff;
-}
-.nav-link.danger:hover{filter:brightness(1.07);color:#fff}
-
-/* MAIN CONTENT */
-.view-area{
-  flex:1;display:flex;flex-direction:column;
-  overflow:hidden;padding:14px 16px 0;gap:10px;
-}
-.act-header{
-  display:flex;align-items:center;justify-content:space-between;gap:12px;
-  flex-shrink:0;flex-wrap:wrap;
-}
-.act-title{font-size:18px;font-weight:800;color:var(--title)}
-.act-meta{display:flex;align-items:center;gap:8px;flex-shrink:0}
-.act-badge{
-  display:inline-flex;align-items:center;
-  padding:5px 12px;border-radius:999px;
-  background:var(--primary-light);color:var(--primary-dark);
-  font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;
-}
-/* IFRAME */
-.frame-wrap{
-  flex:1;border-radius:var(--radius);overflow:hidden;
-  background:#fff;border:1px solid var(--line);
-  box-shadow:var(--shadow);min-height:0;
-}
-.frame-wrap iframe{display:block;width:100%;height:100%;border:0}
-
-/* CONTROLS */
-.controls{
-  flex-shrink:0;
-  display:flex;align-items:center;justify-content:space-between;gap:12px;
-  padding:10px 0 14px;
-}
-.step-counter{font-size:13px;font-weight:700;color:var(--muted);text-align:center}
-.step-counter strong{color:var(--title)}
-.ctrl-btn{
-  display:inline-flex;align-items:center;gap:6px;
-  min-width:110px;justify-content:center;
-  padding:11px 18px;border-radius:10px;
-  text-decoration:none;color:#fff;font-size:14px;font-weight:700;
-  background:linear-gradient(180deg,#3d73ee,#2054d4);
-  box-shadow:var(--shadow-sm);transition:filter .15s,transform .15s;
-}
-.ctrl-btn:hover{filter:brightness(1.07);transform:translateY(-1px)}
-.ctrl-btn.disabled{opacity:.38;pointer-events:none}
-
-/* EMPTY */
-.empty-state{
-  flex:1;display:flex;flex-direction:column;
-  align-items:center;justify-content:center;
-  padding:40px 20px;text-align:center;gap:14px;
-}
-.empty-icon{font-size:52px}
-.empty-title{font-size:22px;font-weight:800;color:var(--title)}
-.empty-text{font-size:15px;color:var(--muted);max-width:400px}
-.empty-btn{
-  display:inline-flex;align-items:center;gap:6px;
-  padding:12px 20px;border-radius:10px;
-  background:linear-gradient(180deg,#3d73ee,#2054d4);
-  color:#fff;text-decoration:none;font-size:14px;font-weight:700;
+  background:rgba(255,255,255,.18);
   box-shadow:var(--shadow-sm);
 }
 
-/* RESPONSIVE */
-@media (max-width:768px){
-  .sidebar{display:none}
-  .topbar-title{font-size:14px}
-  .topbar-sub{display:none}
-  .view-area{padding:10px 10px 0}
-  .act-title{font-size:15px}
-  .ctrl-btn{min-width:90px;padding:10px 12px;font-size:13px}
+.topbar-back:hover{filter:brightness(1.07)}
+
+.topbar-center{text-align:center;min-width:0}
+
+.topbar-title{
+  font-size:28px;
+  font-weight:800;
+  line-height:1.15;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
 }
-@media (max-width:480px){
-  .topbar{padding:0 12px}
-  .topbar-back .topbar-back-label{display:none}
-  .controls{gap:8px}
+
+.topbar-sub{
+  margin-top:4px;
+  font-size:13px;
+  color:rgba(255,255,255,.82);
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
+.topbar-avatar{
+  width:52px;
+  height:52px;
+  border-radius:50%;
+  overflow:hidden;
+  background:rgba(255,255,255,.18);
+  border:3px solid rgba(255,255,255,.35);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:18px;
+  font-weight:800;
+  color:#fff;
+}
+
+.topbar-avatar img{width:100%;height:100%;object-fit:cover;display:block}
+
+.page{
+  max-width:1380px;
+  margin:0 auto;
+  padding:20px;
+}
+
+.layout{
+  display:grid;
+  grid-template-columns:240px 1fr;
+  gap:20px;
+  align-items:start;
+}
+
+.sidebar{
+  background:#e3ecff;
+  border-radius:22px;
+  padding:18px 14px;
+  box-shadow:var(--shadow);
+  min-height:calc(100vh - 150px);
+}
+
+.sidebar-profile{
+  text-align:center;
+  padding:8px 8px 18px;
+}
+
+.sidebar-avatar{
+  width:92px;
+  height:92px;
+  border-radius:50%;
+  margin:0 auto 12px;
+  overflow:hidden;
+  background:linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+  border:3px solid #f0f4ff;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  box-shadow:0 8px 20px rgba(59,130,246,.15);
+  font-size:28px;
+  font-weight:800;
+  color:var(--blue-dark);
+}
+
+.sidebar-avatar img{width:100%;height:100%;object-fit:cover;display:block}
+.sidebar-name{font-size:14px;font-weight:800;color:var(--title);margin-bottom:4px}
+.sidebar-role{font-size:12px;color:var(--muted)}
+.sidebar-label{
+  display:block;
+  margin:10px 0 8px;
+  font-size:11px;
+  font-weight:800;
+  text-transform:uppercase;
+  letter-spacing:.08em;
+  color:var(--muted);
+}
+
+.nav-link{
+  display:block;
+  width:100%;
+  text-align:center;
+  text-decoration:none;
+  color:#fff;
+  font-weight:700;
+  font-size:14px;
+  padding:12px 10px;
+  border-radius:12px;
+  margin-bottom:12px;
+  box-shadow:var(--shadow-sm);
+}
+
+.nav-link.primary{ background:linear-gradient(180deg,#3d73ee,#2563eb); }
+.nav-link.secondary{ background:linear-gradient(180deg,#7b8b9e,#66758b); }
+.nav-link.accent{ background:linear-gradient(180deg,#fbbf24,#d97706); }
+.nav-link.danger{ background:linear-gradient(180deg,#ef4444,#dc2626); }
+.nav-link:hover{ filter:brightness(1.07); }
+
+.content{display:flex;flex-direction:column;gap:18px;min-width:0}
+
+.hero-card,
+.viewer-shell,
+.empty-shell{
+  background:var(--card);
+  border:1px solid var(--line);
+  border-radius:22px;
+  box-shadow:var(--shadow);
+}
+
+.hero-card{
+  position:relative;
+  overflow:hidden;
+  padding:26px 28px;
+  background:linear-gradient(135deg, #ffffff 0%, #f8fbff 100%);
+}
+
+.hero-card::before{
+  content:"";
+  position:absolute;
+  inset:auto -80px -100px auto;
+  width:240px;
+  height:240px;
+  background:radial-gradient(circle, rgba(59,130,246,.18) 0%, rgba(59,130,246,0) 70%);
+  pointer-events:none;
+}
+
+.activity-topline{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  padding:7px 12px;
+  border-radius:999px;
+  background:var(--blue-soft);
+  color:var(--blue-dark);
+  font-size:11px;
+  font-weight:800;
+  text-transform:uppercase;
+  letter-spacing:.08em;
+}
+
+.hero-title{
+  margin:16px 0 12px;
+  font-size:24px;
+  font-weight:800;
+  color:var(--title);
+}
+
+.hero-text{
+  margin:0;
+  font-size:15px;
+  line-height:1.6;
+  color:var(--text);
+  max-width:760px;
+}
+
+.hero-badges{
+  display:flex;
+  flex-wrap:wrap;
+  gap:10px;
+  margin-top:18px;
+}
+
+.hero-badge{
+  display:inline-flex;
+  align-items:center;
+  padding:7px 12px;
+  border-radius:999px;
+  background:var(--blue-soft);
+  color:var(--blue-dark);
+  font-size:12px;
+  font-weight:800;
+}
+
+.hero-badge.warn{
+  background:#fff3d9;
+  color:var(--warning-dark);
+}
+
+.viewer-shell{padding:18px}
+
+.viewer-top{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:14px;
+  margin-bottom:14px;
+  flex-wrap:wrap;
+}
+
+.section-title{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  font-size:24px;
+  font-weight:800;
+  color:var(--title);
+}
+
+.section-title::after{
+  content:"";
+  flex:1;
+  height:2px;
+  min-width:60px;
+  background:linear-gradient(90deg, var(--line) 0%, transparent 100%);
+}
+
+.act-badge{
+  display:inline-flex;
+  align-items:center;
+  padding:7px 12px;
+  border-radius:999px;
+  background:var(--blue-soft);
+  color:var(--blue-dark);
+  font-size:12px;
+  font-weight:800;
+  letter-spacing:.04em;
+  text-transform:uppercase;
+}
+
+.frame-wrap{
+  border-radius:18px;
+  overflow:hidden;
+  background:#fff;
+  border:1px solid var(--line);
+  box-shadow:var(--shadow-sm);
+  min-height:68vh;
+}
+
+.frame-wrap iframe{display:block;width:100%;height:68vh;border:0;background:#fff}
+
+.controls{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  padding-top:16px;
+}
+
+.step-counter{
+  font-size:13px;
+  font-weight:700;
+  color:var(--muted);
+  text-align:center;
+}
+
+.step-counter strong{color:var(--title)}
+
+.ctrl-btn,
+.empty-btn{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:6px;
+  min-width:130px;
+  padding:12px 18px;
+  border-radius:12px;
+  text-decoration:none;
+  color:#fff;
+  font-size:14px;
+  font-weight:700;
+  background:linear-gradient(180deg,#3d73ee,#2563eb);
+  box-shadow:var(--shadow-sm);
+  transition:filter .15s, transform .15s;
+}
+
+.ctrl-btn:hover,
+.empty-btn:hover{filter:brightness(1.07);transform:translateY(-1px)}
+.ctrl-btn.disabled{opacity:.38;pointer-events:none}
+
+.empty-shell{
+  padding:40px 24px;
+  text-align:center;
+}
+
+.empty-state{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:14px;
+}
+
+.empty-icon{font-size:46px}
+.empty-title{font-size:24px;font-weight:800;color:var(--title)}
+.empty-text{max-width:480px;font-size:15px;line-height:1.6;color:var(--muted)}
+
+@media (max-width: 1100px){
+  .layout{grid-template-columns:1fr}
+  .sidebar{min-height:auto}
+}
+
+@media (max-width: 768px){
+  .topbar{padding:14px}
+  .topbar-inner{grid-template-columns:1fr;gap:10px}
+  .topbar-back{justify-self:center}
+  .topbar-title{font-size:22px}
+  .page{padding:12px}
+  .hero-card,.viewer-shell,.empty-shell{border-radius:18px}
+  .hero-card{padding:20px}
+  .section-title{font-size:20px}
+  .frame-wrap{min-height:56vh}
+  .frame-wrap iframe{height:56vh}
+  .controls{flex-wrap:wrap}
+  .ctrl-btn,.empty-btn{flex:1 1 100%;min-width:0}
+  .step-counter{width:100%;order:-1}
 }
 </style>
 </head>
 <body>
 
 <header class="topbar">
-  <a class="topbar-back" href="<?php echo h($backDashboard); ?>">
-    &larr; <span class="topbar-back-label">Mis Cursos</span>
-  </a>
-  <div class="topbar-center">
-    <div class="topbar-title"><?php echo h((string)($assignment['course_name'] ?? 'Curso')); ?></div>
-    <?php if (trim((string)($assignment['unit_name'] ?? '')) !== '') { ?>
-      <div class="topbar-sub"><?php echo h((string)$assignment['unit_name']); ?></div>
-    <?php } ?>
-  </div>
-  <div class="topbar-avatar">
-    <?php if ($teacherPhotoSrc !== '') { ?>
-      <img src="<?php echo $teacherPhotoSrc; ?>" alt="<?php echo h($teacherName); ?>"
-           onerror="this.style.display='none';this.parentElement.textContent='<?php echo h($teacherInitials); ?>'">
-    <?php } else { ?>
-      <?php echo h($teacherInitials); ?>
-    <?php } ?>
+  <div class="topbar-inner">
+    <a class="topbar-back" href="<?php echo h($backDashboard); ?>">&larr; Volver a mis cursos</a>
+    <div class="topbar-center">
+      <div class="topbar-title"><?php echo h((string)($assignment['course_name'] ?? 'Curso')); ?></div>
+      <?php if (trim((string)($assignment['unit_name'] ?? '')) !== '') { ?>
+        <div class="topbar-sub"><?php echo h((string)$assignment['unit_name']); ?></div>
+      <?php } else { ?>
+        <div class="topbar-sub"><?php echo h($currentTypeLabel); ?></div>
+      <?php } ?>
+    </div>
+    <div class="topbar-avatar">
+      <?php if ($teacherPhotoSrc !== '') { ?>
+        <img src="<?php echo $teacherPhotoSrc; ?>" alt="<?php echo h($teacherName); ?>"
+             onerror="this.style.display='none';this.parentElement.textContent='<?php echo h($teacherInitials); ?>'">
+      <?php } else { ?>
+        <?php echo h($teacherInitials); ?>
+      <?php } ?>
+    </div>
   </div>
 </header>
 
-<div class="outer">
+<div class="page">
+<div class="layout">
   <nav class="sidebar">
     <div class="sidebar-profile">
       <div class="sidebar-avatar">
@@ -692,69 +876,97 @@ body{font-family:Arial,sans-serif;background:var(--bg);color:var(--text)}
       <div class="sidebar-role">Docente</div>
     </div>
 
-    <span class="sidebar-label">Navegacion</span>
+    <span class="sidebar-label">Navegación</span>
 
     <a class="nav-link primary" href="<?php echo h($backDashboard); ?>">
-      Mis Cursos
+      Mis cursos
     </a>
 
     <?php if ($permission === 'editor') { ?>
       <a class="nav-link accent"
          href="teacher_unit.php?assignment=<?php echo urlencode($assignmentId); ?>&unit=<?php echo urlencode($selectedUnitId); ?>&mode=edit">
-        Editar Curso
+        Editar curso
       </a>
     <?php } ?>
 
     <a class="nav-link secondary" href="/lessons/lessons/academic/teacher_groups.php">
-      Mis Estudiantes
+      Ver docentes y grupos
     </a>
 
     <a class="nav-link danger" href="/lessons/lessons/academic/logout.php">
-      Cerrar sesion
+      Cerrar sesión
     </a>
   </nav>
 
   <?php if (!$current || !$viewerHref) { ?>
-    <div style="flex:1;display:flex;">
-      <div class="empty-state">
-        <div class="empty-icon">Sin actividades</div>
-        <div class="empty-title">Sin actividades</div>
-        <div class="empty-text">Esta unidad aun no tiene actividades para presentar o el tipo de actividad no tiene visor configurado.</div>
-        <a class="empty-btn" href="<?php echo h($backDashboard); ?>">&larr; Volver al panel docente</a>
-      </div>
-    </div>
+    <main class="content">
+      <section class="hero-card">
+        <div class="activity-topline">Vista del curso</div>
+        <h1 class="hero-title"><?php echo h((string)($assignment['course_name'] ?? 'Curso')); ?></h1>
+        <p class="hero-text">Aquí se presenta la actividad actual con el mismo estilo visual del panel académico, priorizando lectura clara, navegación lateral y el visor al centro.</p>
+        <div class="hero-badges">
+          <span class="hero-badge"><?php echo h($currentTypeLabel); ?></span>
+          <?php if (trim((string)($assignment['unit_name'] ?? '')) !== '') { ?>
+            <span class="hero-badge warn"><?php echo h((string)$assignment['unit_name']); ?></span>
+          <?php } ?>
+        </div>
+      </section>
+
+      <section class="empty-shell">
+        <div class="empty-state">
+          <div class="empty-icon">📭</div>
+          <div class="empty-title">Sin actividades disponibles</div>
+          <div class="empty-text">Esta unidad aún no tiene actividades para presentar o el tipo de actividad no cuenta con visor configurado.</div>
+          <a class="empty-btn" href="<?php echo h($backDashboard); ?>">&larr; Volver al panel docente</a>
+        </div>
+      </section>
+    </main>
   <?php } else { ?>
-    <main class="view-area">
-      <div class="act-header">
-        <h1 class="act-title"><?php echo h($currentTypeLabel); ?></h1>
-        <div class="act-meta">
+    <main class="content">
+      <section class="hero-card">
+        <div class="activity-topline">Actividad para hoy</div>
+        <h1 class="hero-title"><?php echo h($currentTypeLabel); ?></h1>
+        <p class="hero-text">Presentación del curso en modo docente con navegación secuencial entre actividades, visor central y contexto del curso siempre visible.</p>
+        <div class="hero-badges">
+          <span class="hero-badge"><?php echo h((string)($assignment['course_name'] ?? 'Curso')); ?></span>
+          <?php if (trim((string)($assignment['unit_name'] ?? '')) !== '') { ?>
+            <span class="hero-badge warn"><?php echo h((string)$assignment['unit_name']); ?></span>
+          <?php } ?>
+          <span class="hero-badge">Paso <?php echo ($step + 1); ?> de <?php echo $total; ?></span>
+        </div>
+      </section>
+
+      <section class="viewer-shell">
+        <div class="viewer-top">
+          <h2 class="section-title">Presentación de actividades</h2>
           <span class="act-badge">Actividad <?php echo ($step + 1); ?> / <?php echo $total; ?></span>
         </div>
-      </div>
 
-      <div class="frame-wrap">
-        <iframe
-          id="activityViewer"
-          src="<?php echo h($viewerHref); ?>"
-          title="Visor de actividad"
-        ></iframe>
-      </div>
-
-      <div class="controls">
-        <a class="ctrl-btn <?php echo $hasPrev ? '' : 'disabled'; ?>"
-           href="teacher_course.php?assignment=<?php echo urlencode($assignmentId); ?>&unit=<?php echo urlencode($selectedUnitId); ?>&mode=<?php echo urlencode($mode); ?>&step=<?php echo $hasPrev ? $prevStep : $step; ?>">
-          &larr; Anterior
-        </a>
-        <div class="step-counter">
-          <strong><?php echo ($step + 1); ?></strong> / <?php echo $total; ?>
+        <div class="frame-wrap">
+          <iframe
+            id="activityViewer"
+            src="<?php echo h($viewerHref); ?>"
+            title="Visor de actividad"
+          ></iframe>
         </div>
-        <a class="ctrl-btn <?php echo $hasNext ? '' : 'disabled'; ?>"
-           href="teacher_course.php?assignment=<?php echo urlencode($assignmentId); ?>&unit=<?php echo urlencode($selectedUnitId); ?>&mode=<?php echo urlencode($mode); ?>&step=<?php echo $hasNext ? $nextStep : $step; ?>">
-          Siguiente &rarr;
-        </a>
-      </div>
+
+        <div class="controls">
+          <a class="ctrl-btn <?php echo $hasPrev ? '' : 'disabled'; ?>"
+             href="teacher_course.php?assignment=<?php echo urlencode($assignmentId); ?>&unit=<?php echo urlencode($selectedUnitId); ?>&mode=<?php echo urlencode($mode); ?>&step=<?php echo $hasPrev ? $prevStep : $step; ?>">
+            &larr; Anterior
+          </a>
+          <div class="step-counter">
+            <strong><?php echo ($step + 1); ?></strong> / <?php echo $total; ?>
+          </div>
+          <a class="ctrl-btn <?php echo $hasNext ? '' : 'disabled'; ?>"
+             href="teacher_course.php?assignment=<?php echo urlencode($assignmentId); ?>&unit=<?php echo urlencode($selectedUnitId); ?>&mode=<?php echo urlencode($mode); ?>&step=<?php echo $hasNext ? $nextStep : $step; ?>">
+            Siguiente &rarr;
+          </a>
+        </div>
+      </section>
     </main>
   <?php } ?>
+</div>
 </div>
 
 <script>
