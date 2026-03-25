@@ -4,6 +4,7 @@ require_once __DIR__ . '/../../core/_activity_viewer_template.php';
 
 $activityId = isset($_GET['id']) ? trim((string) $_GET['id']) : '';
 $unit = isset($_GET['unit']) ? trim((string) $_GET['unit']) : '';
+$returnTo = isset($_GET['return_to']) ? trim((string) $_GET['return_to']) : '';
 
 if ($activityId === '' && $unit === '') {
     die('Activity not specified');
@@ -112,6 +113,10 @@ if ($unit === '' && $activityId !== '') {
     $unit = resolve_unit_from_activity($pdo, $activityId);
 }
 
+if ($returnTo === '') {
+  $returnTo = '../../academic/teacher_course.php?assignment=' . urlencode((string) ($_GET['assignment'] ?? '')) . '&unit=' . urlencode($unit) . '&step=9999';
+}
+
 $activity = load_quiz_activity($pdo, $activityId, $unit);
 $viewerTitle = (string) ($activity['title'] ?? 'Unit Quiz');
 $questions = isset($activity['questions']) && is_array($activity['questions']) ? $activity['questions'] : [];
@@ -128,6 +133,7 @@ ob_start();
 .qz-opt{display:flex;align-items:flex-start;gap:8px;padding:10px;border:1px solid #dbeafe;border-radius:10px;background:#f8fbff}
 .qz-actions{display:flex;gap:10px;flex-wrap:wrap}
 .qz-btn{border:none;border-radius:10px;padding:10px 14px;font-weight:700;cursor:pointer;color:#fff;background:linear-gradient(180deg,#3d73ee,#2563eb)}
+.qz-btn.secondary{background:linear-gradient(180deg,#7b8b9e,#66758b);display:none}
 .qz-result{padding:12px;border-radius:10px;background:#e9f8ee;color:#166534;font-weight:700;display:none}
 .qz-empty{padding:14px;border:1px solid #dbeafe;border-radius:12px;background:#f8fbff;color:#64748b}
 </style>
@@ -156,6 +162,7 @@ ob_start();
 
     <div class="qz-actions">
       <button type="button" class="qz-btn" id="btnCheckQuiz">Finalizar quiz</button>
+      <button type="button" class="qz-btn secondary" id="btnSaveResult">Guardar resultado y volver</button>
     </div>
     <div class="qz-result" id="quizResult"></div>
   <?php } ?>
@@ -163,12 +170,18 @@ ob_start();
 
 <script>
 window.QUIZ_DATA = <?php echo json_encode($questions, JSON_UNESCAPED_UNICODE); ?>;
+window.QUIZ_RETURN_TO = <?php echo json_encode($returnTo, JSON_UNESCAPED_UNICODE); ?>;
 (function(){
   const btn = document.getElementById('btnCheckQuiz');
+  const saveBtn = document.getElementById('btnSaveResult');
   const result = document.getElementById('quizResult');
   if (!btn || !result || !Array.isArray(window.QUIZ_DATA) || window.QUIZ_DATA.length === 0) {
     return;
   }
+
+  let lastPercent = 0;
+  let lastErrors = 0;
+  let lastTotal = 0;
 
   btn.addEventListener('click', function(){
     let correct = 0;
@@ -183,9 +196,35 @@ window.QUIZ_DATA = <?php echo json_encode($questions, JSON_UNESCAPED_UNICODE); ?
     });
 
     const percent = total > 0 ? Math.round((correct / total) * 100) : 0;
+    const errors = Math.max(0, total - correct);
+    lastPercent = percent;
+    lastErrors = errors;
+    lastTotal = total;
+
     result.style.display = 'block';
     result.textContent = 'Resultado: ' + correct + '/' + total + ' (' + percent + '%)';
+
+    if (saveBtn) {
+      saveBtn.style.display = 'inline-flex';
+    }
   });
+
+  if (saveBtn) {
+    saveBtn.addEventListener('click', function(){
+      if (!window.QUIZ_RETURN_TO) {
+        return;
+      }
+
+      const hasQuery = window.QUIZ_RETURN_TO.indexOf('?') !== -1;
+      const joiner = hasQuery ? '&' : '?';
+      const target = window.QUIZ_RETURN_TO
+        + joiner + 'quiz_percent=' + encodeURIComponent(String(lastPercent))
+        + '&quiz_errors=' + encodeURIComponent(String(lastErrors))
+        + '&quiz_total=' + encodeURIComponent(String(lastTotal));
+
+      window.location.href = target;
+    });
+  }
 })();
 </script>
 <?php

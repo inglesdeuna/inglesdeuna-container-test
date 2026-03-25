@@ -13,15 +13,29 @@ function h(string $value): string
 
 $assignmentId = trim((string) ($_GET['assignment'] ?? ''));
 $unitId = trim((string) ($_GET['unit'] ?? ''));
+$returnTo = trim((string) ($_GET['return_to'] ?? ''));
 
 $backHref = 'teacher_course.php?assignment=' . urlencode($assignmentId) . '&unit=' . urlencode($unitId) . '&step=' . urlencode('9999');
 $dashboardHref = 'dashboard.php?assignment=' . urlencode($assignmentId) . '&unit=' . urlencode($unitId) . '#unidades-curso';
 $quizEditorHref = '../activities/quiz/editor.php?unit=' . urlencode($unitId) . '&assignment=' . urlencode($assignmentId);
-$quizViewerHref = '../activities/quiz/viewer.php?unit=' . urlencode($unitId) . '&assignment=' . urlencode($assignmentId);
+$quizReturn = $returnTo !== '' ? $returnTo : $backHref;
+$quizViewerHref = '../activities/quiz/viewer.php?unit=' . urlencode($unitId) . '&assignment=' . urlencode($assignmentId) . '&return_to=' . urlencode($quizReturn);
 
 $courseName = trim((string) ($_SESSION['teacher_current_course_name'] ?? 'Curso actual'));
 $unitName = trim((string) ($_SESSION['teacher_current_unit_name'] ?? ($unitId !== '' ? ('Unidad ' . $unitId) : 'Unidad actual')));
+
+$teacherId = trim((string) ($_SESSION['teacher_id'] ?? ''));
 $completionPercent = 0;
+$quizErrors = 0;
+$quizTotal = 0;
+
+$performance = $_SESSION['teacher_unit_performance'] ?? [];
+$performanceKey = $teacherId . '|' . $assignmentId . '|' . $unitId;
+if (is_array($performance) && isset($performance[$performanceKey]) && is_array($performance[$performanceKey])) {
+  $completionPercent = (int) ($performance[$performanceKey]['completion_percent'] ?? 0);
+  $quizErrors = (int) ($performance[$performanceKey]['quiz_errors'] ?? 0);
+  $quizTotal = (int) ($performance[$performanceKey]['quiz_total'] ?? 0);
+}
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -181,12 +195,15 @@ body{
       <span class="badge">Curso: <?php echo h($courseName); ?></span>
       <span class="badge">Unidad: <?php echo h($unitName); ?></span>
       <span class="badge warn">Porcentaje actual: <?php echo (int) $completionPercent; ?>%</span>
+      <?php if ($quizTotal > 0) { ?>
+        <span class="badge warn">Errores: <?php echo $quizErrors; ?>/<?php echo $quizTotal; ?></span>
+      <?php } ?>
     </div>
-    <p class="text">Aquí queda la estructura base del quiz final de unidad con flujo editor/viewer, igual al resto de actividades. Puedes crear preguntas y luego previsualizar el quiz.</p>
+    <p class="text">Este quiz final registra errores y porcentaje para mostrar el resultado al finalizar la unidad. Puedes crear preguntas y luego resolver el quiz para actualizar el cierre.</p>
 
     <div class="actions">
       <a class="btn" href="<?php echo h($quizEditorHref); ?>">Abrir editor de quiz</a>
-      <a class="btn" href="<?php echo h($quizViewerHref); ?>" target="_blank" rel="noopener noreferrer">Previsualizar quiz</a>
+      <a class="btn" href="<?php echo h($quizViewerHref); ?>">Previsualizar quiz</a>
       <a class="btn secondary" href="<?php echo h($dashboardHref); ?>">Volver al panel docente</a>
     </div>
   </section>

@@ -312,8 +312,13 @@ function load_activities_for_units(PDO $pdo, array $unitIds): array
             $orderBy = 'unit_id ASC, COALESCE(position, 0) ASC, id ASC';
         }
 
+        $selectFields = 'id, type, unit_id';
+        if (column_exists($pdo, 'activities', 'data')) {
+          $selectFields .= ', data';
+        }
+
         $sql = "
-            SELECT id, type, unit_id
+          SELECT {$selectFields}
             FROM activities
             WHERE unit_id IN ($placeholders)
             ORDER BY {$orderBy}
@@ -325,6 +330,66 @@ function load_activities_for_units(PDO $pdo, array $unitIds): array
     } catch (Throwable $e) {
         return [];
     }
+}
+
+function decode_activity_data(array $activity): array
+{
+  $raw = $activity['data'] ?? null;
+  if (!is_string($raw) || trim($raw) === '') {
+    return [];
+  }
+
+  $decoded = json_decode($raw, true);
+  return is_array($decoded) ? $decoded : [];
+}
+
+function is_passive_activity(array $activity): bool
+{
+  $type = strtolower(trim((string) ($activity['type'] ?? '')));
+  $passiveTypes = ['downloadable', 'video_lesson', 'flipbooks', 'external', 'powerpoint'];
+  if (in_array($type, $passiveTypes, true)) {
+    return true;
+  }
+
+  if ($type === 'video_comprehension') {
+    $data = decode_activity_data($activity);
+    $mode = strtolower(trim((string) ($data['mode'] ?? '')));
+    if (in_array($mode, ['video', 'video_only', 'only_video'], true)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+function activity_mix(array $activities): array
+{
+  $mix = [
+    'total' => 0,
+    'passive' => 0,
+    'evaluable' => 0,
+  ];
+
+  foreach ($activities as $activity) {
+    $mix['total']++;
+    if (is_passive_activity((array) $activity)) {
+      $mix['passive']++;
+      continue;
+    }
+    $mix['evaluable']++;
+  }
+
+  return $mix;
+}
+
+function read_unit_performance(string $teacherId, string $assignmentId, string $unitId): array
+{
+  $key = $teacherId . '|' . $assignmentId . '|' . $unitId;
+  $all = $_SESSION['teacher_unit_performance'] ?? [];
+  if (!is_array($all) || !isset($all[$key]) || !is_array($all[$key])) {
+    return [];
+  }
+  return $all[$key];
 }
 
 $pdo = get_pdo_connection();
@@ -394,6 +459,35 @@ $unitIds = array_values(array_filter(array_map(
 )));
 
 $activities = load_activities_for_units($pdo, $unitIds);
+$mix = activity_mix($activities);
+
+$quizTotalRaw = isset($_GET['quiz_total']) ? (int) $_GET['quiz_total'] : -1;
+$quizErrorsRaw = isset($_GET['quiz_errors']) ? (int) $_GET['quiz_errors'] : -1;
+$quizPercentRaw = isset($_GET['quiz_percent']) ? (int) $_GET['quiz_percent'] : -1;
+
+if ($selectedUnitId !== '' && $quizTotalRaw >= 0) {
+  $quizTotal = max(0, $quizTotalRaw);
+  $quizErrors = max(0, $quizErrorsRaw);
+  if ($quizTotal > 0 && $quizErrors > $quizTotal) {
+    $quizErrors = $quizTotal;
+  }
+
+  $quizPercent = $quizTotal > 0
+    ? max(0, min(100, (int) round((($quizTotal - $quizErrors) / $quizTotal) * 100)))
+    : max(0, min(100, $quizPercentRaw));
+
+  $key = $teacherId . '|' . $assignmentId . '|' . $selectedUnitId;
+  if (!isset($_SESSION['teacher_unit_performance']) || !is_array($_SESSION['teacher_unit_performance'])) {
+    $_SESSION['teacher_unit_performance'] = [];
+  }
+
+  $_SESSION['teacher_unit_performance'][$key] = [
+    'quiz_total' => $quizTotal,
+    'quiz_errors' => $quizErrors,
+    'completion_percent' => $quizPercent,
+    'updated_at' => time(),
+  ];
+}
 
 $total = count($activities);
 $isCompleted = $total > 0 && $step >= $total;
@@ -407,7 +501,11 @@ $nextStep = $step + 1;
 $hasPrev = $step > 0;
 $hasNext = $nextStep < $total;
 $isLastActivity = !$isCompleted && $total > 0 && $step === ($total - 1);
-$completionPercent = 0;
+$unitPerformance = read_unit_performance($teacherId, $assignmentId, $selectedUnitId);
+$completionPercent = (int) ($unitPerformance['completion_percent'] ?? 0);
+$quizErrors = (int) ($unitPerformance['quiz_errors'] ?? 0);
+$quizTotal = (int) ($unitPerformance['quiz_total'] ?? 0);
+$hasUnitResult = $quizTotal > 0;
 
 $activityTypeLabels = [
     'flashcards' => 'Flashcards',
@@ -456,7 +554,9 @@ $teacherPhotoRaw = trim((string) ($_SESSION['teacher_photo'] ?? ''));
 $teacherPhotoSrc = resolve_photo_src($teacherPhotoRaw);
 
 $backDashboard = 'dashboard.php?assignment=' . urlencode($assignmentId) . '&unit=' . urlencode($selectedUnitId) . '#unidades-curso';
-$quizHref = 'teacher_quiz.php?assignment=' . urlencode($assignmentId) . '&unit=' . urlencode($selectedUnitId);
+$completedStep = max(9999, $total);
+$completedHref = 'teacher_course.php?assignment=' . urlencode($assignmentId) . '&unit=' . urlencode($selectedUnitId) . '&step=' . urlencode((string) $completedStep);
+$quizHref = 'teacher_quiz.php?assignment=' . urlencode($assignmentId) . '&unit=' . urlencode($selectedUnitId) . '&return_to=' . urlencode($completedHref);
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -864,13 +964,17 @@ body{font-family:Arial,sans-serif;background:var(--bg);color:var(--text)}
       <section class="hero-card">
         <div class="activity-topline">Unidad finalizada</div>
         <h1 class="hero-title">✅ Completed</h1>
-        <p class="hero-text">Terminaste todas las actividades de esta unidad. Aquí se mostrará el porcentaje obtenido cuando se programe la evaluación final.</p>
+        <p class="hero-text">Terminaste todas las actividades de la unidad. El porcentaje final se calcula por errores en actividades evaluables y excluye actividades pasivas (por ejemplo: descargables y video solo).</p>
         <div class="hero-badges">
           <span class="hero-badge"><?php echo h((string)($assignment['course_name'] ?? 'Curso')); ?></span>
           <?php if (trim((string)($assignment['unit_name'] ?? '')) !== '') { ?>
             <span class="hero-badge warn"><?php echo h((string)$assignment['unit_name']); ?></span>
           <?php } ?>
           <span class="hero-badge">Porcentaje: <?php echo $completionPercent; ?>%</span>
+          <?php if ($hasUnitResult) { ?>
+            <span class="hero-badge">Errores: <?php echo $quizErrors; ?>/<?php echo $quizTotal; ?></span>
+          <?php } ?>
+          <span class="hero-badge">Pasivas excluidas: <?php echo (int) $mix['passive']; ?></span>
         </div>
       </section>
 
@@ -878,7 +982,7 @@ body{font-family:Arial,sans-serif;background:var(--bg);color:var(--text)}
         <div class="empty-state">
           <div class="empty-icon">🏁</div>
           <div class="empty-title">Unidad completada</div>
-          <div class="empty-text">Continúa con la evaluación final de la unidad o vuelve al panel docente para seguir con otro curso.</div>
+          <div class="empty-text"><?php echo $hasUnitResult ? 'Resultado calculado. Si deseas mejorar el porcentaje, puedes repetir el quiz de la unidad.' : 'Aún no hay resultado guardado para esta unidad. Abre Quiz time para registrar errores y porcentaje final.'; ?></div>
           <div class="controls" style="padding-top:0; width:100%; justify-content:center;">
             <a class="empty-btn" href="<?php echo h($backDashboard); ?>">&larr; Volver al panel docente</a>
             <a class="empty-btn ctrl-btn warn" href="<?php echo h($quizHref); ?>">Quiz time</a>
