@@ -362,23 +362,23 @@ $scoreSummaryByAssignment = load_assignment_score_summary($studentId);
 <title>Panel Estudiante</title>
 <style>
 :root{
-    --bg:#fff8f5;
+    --bg:#ffd881;
     --card:#ffffff;
-    --line:#ffd9d2;
-    --title:#b04632;
-    --text:#5e352e;
-    --muted:#8a625a;
-    --salmon:#fa8072;
-    --salmon-dark:#e8654e;
+    --line:#f7c95f;
+    --title:#40c0df;
+    --text:#f14902;
+    --muted:#b8551f;
+    --salmon:#f14902;
+    --salmon-dark:#d33d00;
     --danger:#c42828;
-    --soft:#fff1ed;
-    --shadow:0 8px 20px rgba(135,58,42,.12);
+    --soft:#ffe8bf;
+    --shadow:0 10px 24px rgba(241,73,2,.14);
 }
 *{box-sizing:border-box}
 body{
     margin:0;
     font-family:Arial,sans-serif;
-    background:var(--bg);
+    background:linear-gradient(145deg,#ffd881 0%,#ffe7ad 48%,#fff2cf 100%);
     color:var(--text);
     padding:26px;
 }
@@ -392,7 +392,8 @@ body{
     margin-bottom:18px;
 }
 .top h1{margin:0;color:var(--title);font-size:30px}
-.logout{color:var(--danger);text-decoration:none;font-weight:700}
+.logout{color:#fff;text-decoration:none;font-weight:700;background:var(--title);padding:10px 14px;border-radius:10px;display:inline-flex;align-items:center;justify-content:center}
+.logout:hover{background:#2ba7c5}
 .profile-card{
     background:var(--card);
     border:1px solid var(--line);
@@ -410,7 +411,7 @@ body{
     height:112px;
     border-radius:50%;
     overflow:hidden;
-    background:linear-gradient(180deg,#ffd7cf,#ffb8a8);
+    background:linear-gradient(180deg,#40c0df,#2ba7c5);
     color:#fff;
     display:flex;
     align-items:center;
@@ -431,7 +432,7 @@ body{
     font-weight:700;
     background:var(--soft);
     color:var(--title);
-    border:1px solid #ffcfc4;
+    border:1px solid #f7c95f;
 }
 .profile-form{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 .profile-form input[type="file"]{max-width:240px}
@@ -449,7 +450,8 @@ body{
 }
 .btn:hover{background:var(--salmon-dark)}
 .btn.secondary{background:#a08a85}
-.btn.secondary:hover{background:#8d7771}
+.btn.secondary{background:var(--title)}
+.btn.secondary:hover{background:#2ba7c5}
 .section-title{margin:0 0 16px;color:var(--title);font-size:24px;font-weight:700}
 .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px}
 .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px;box-shadow:var(--shadow)}

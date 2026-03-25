@@ -253,19 +253,19 @@ $programLabel = ((string) ($assignment['program'] ?? '') === 'english') ? 'Ingl√
 <title><?php echo h($courseName); ?></title>
 <style>
 :root{
-    --bg:#fff8f5;
+    --bg:#ffd881;
     --card:#ffffff;
-    --line:#ffd9d2;
-    --title:#b04632;
-    --text:#5e352e;
-    --muted:#8a625a;
-    --salmon:#fa8072;
-    --salmon-dark:#e8654e;
+    --line:#f7c95f;
+    --title:#40c0df;
+    --text:#f14902;
+    --muted:#b8551f;
+    --salmon:#f14902;
+    --salmon-dark:#d33d00;
 }
 *{box-sizing:border-box}
 body{
     margin:0;
-    background:var(--bg);
+    background:linear-gradient(145deg,#ffd881 0%,#ffe7ad 48%,#fff2cf 100%);
     font-family:Arial,sans-serif;
     padding:24px;
     color:var(--text);
@@ -273,18 +273,19 @@ body{
 .page{max-width:1100px;margin:0 auto}
 .top{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px}
 .top h1{margin:0;color:var(--title);font-size:30px}
-.back{color:var(--salmon-dark);text-decoration:none;font-weight:700}
+.back{color:#fff;text-decoration:none;font-weight:700;background:var(--title);padding:10px 14px;border-radius:10px;display:inline-flex;align-items:center;justify-content:center}
+.back:hover{background:#2ba7c5}
 .meta{margin:0 0 24px;color:var(--muted);font-size:16px}
 .section-title{margin:0 0 14px;color:var(--title);font-size:24px;font-weight:700}
 .unit{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;margin-top:12px}
 .unit h3{margin:0 0 10px;color:var(--text);font-size:20px}
 .badges{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px}
-.badge{display:inline-flex;align-items:center;padding:6px 10px;border-radius:999px;font-size:12px;font-weight:700;background:#fff1ed;color:#b04632;border:1px solid #ffcfc4}
+.badge{display:inline-flex;align-items:center;padding:6px 10px;border-radius:999px;font-size:12px;font-weight:700;background:#ffe8bf;color:#f14902;border:1px solid #f7c95f}
 .actions{display:flex;gap:8px;flex-wrap:wrap}
 .btn{display:inline-block;margin-top:8px;padding:9px 14px;background:var(--salmon);color:#fff;text-decoration:none;border-radius:8px;font-weight:700;transition:background .2s ease}
 .btn:hover{background:var(--salmon-dark)}
-.btn.secondary{background:#9f8882}
-.btn.secondary:hover{background:#896f68}
+.btn.secondary{background:var(--title)}
+.btn.secondary:hover{background:#2ba7c5}
 .empty{background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px;color:var(--muted)}
 @media (max-width: 768px){body{padding:18px}.top h1{font-size:24px}}
 </style>

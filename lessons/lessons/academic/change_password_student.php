@@ -242,24 +242,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <title>Cambiar contraseña – Estudiante</title>
 <style>
 :root{
-    --bg:#fefae8;
+    --bg:#ffd881;
     --card:#ffffff;
-    --line:#e8dcaa;
-    --title:#7a5c0e;
-    --text:#5a420a;
-    --muted:#8a7040;
-    --ocre:#c48b1a;
-    --ocre-hover:#a07010;
-    --ocre-soft:#fdf3c8;
+    --line:#f7c95f;
+    --title:#40c0df;
+    --text:#f14902;
+    --muted:#b8551f;
+    --ocre:#f14902;
+    --ocre-hover:#d33d00;
+    --ocre-soft:#ffe8bf;
     --danger:#b42318;
     --danger-soft:#fff5f5;
-    --shadow:0 18px 42px rgba(120,90,10,.18);
+    --shadow:0 18px 42px rgba(241,73,2,.18);
 }
 *{box-sizing:border-box}
 body{
     margin:0;
     font-family:Arial,sans-serif;
-    background:linear-gradient(160deg,#fefae8 0%,#fff9db 50%,#fffdf0 100%);
+    background:linear-gradient(145deg,#ffd881 0%,#ffe7ad 48%,#fff2cf 100%);
     min-height:100vh;
     display:flex;
     align-items:center;
@@ -288,7 +288,7 @@ input[type=password],input[type=text]{
     font-size:15px;color:var(--text);background:#fff;outline:none;
     transition:border-color .15s,box-shadow .15s;
 }
-input:focus{border-color:var(--ocre);box-shadow:0 0 0 3px rgba(196,139,26,.15);}
+input:focus{border-color:var(--ocre);box-shadow:0 0 0 3px rgba(241,73,2,.15);}
 .pwd-toggle{
     position:absolute;top:50%;right:10px;transform:translateY(-50%);
     width:32px;height:32px;display:inline-flex;align-items:center;justify-content:center;
@@ -301,7 +301,7 @@ input:focus{border-color:var(--ocre);box-shadow:0 0 0 3px rgba(196,139,26,.15);}
     background:linear-gradient(180deg,var(--ocre),var(--ocre-hover));
     color:#fff;font-weight:800;font-size:15px;cursor:pointer;letter-spacing:.3px;
 }
-.submit-btn:hover{background:linear-gradient(180deg,#b07c14,#8a6010);}
+.submit-btn:hover{background:linear-gradient(180deg,#e54500,#c93800);}
 .error-box{
     margin-top:14px;color:var(--danger);font-weight:700;font-size:13px;
     background:var(--danger-soft);border:1px solid #fecdd3;border-radius:10px;padding:10px 14px;

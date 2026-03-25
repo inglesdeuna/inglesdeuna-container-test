@@ -276,18 +276,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <title>Login Estudiante</title>
 <style>
 :root{
-    --bg:#f8f3e8;
+    --bg:#ffd881;
     --card:#ffffff;
-    --line:#e8dcc1;
-    --title:#8a5a13;
-    --text:#5a4522;
-    --muted:#7b6642;
-    --ocre:#b7791f;
-    --ocre-dark:#8a5a13;
-    --ocre-soft:#f6ead2;
+    --line:#f7c95f;
+    --title:#40c0df;
+    --text:#f14902;
+    --muted:#b8551f;
+    --ocre:#f14902;
+    --ocre-dark:#d33d00;
+    --ocre-soft:#ffe8bf;
     --danger:#b42318;
     --ok:#166534;
-    --shadow:0 18px 42px rgba(138,90,19,.16);
+    --shadow:0 18px 42px rgba(241,73,2,.18);
 }
 
 *{box-sizing:border-box;}
@@ -296,7 +296,7 @@ html, body{height:100%;}
 body{
     margin:0;
     font-family:Arial, "Segoe UI", sans-serif;
-    background:radial-gradient(circle at top left, #fffaf0 0%, #f8f3e8 45%, #f2e7d0 100%);
+    background:linear-gradient(145deg, #ffd881 0%, #ffe7ad 45%, #fff2cf 100%);
     color:var(--text);
     display:flex;
     align-items:center;
@@ -317,7 +317,7 @@ body{
 }
 
 .login-side{
-    background:linear-gradient(180deg, var(--ocre) 0%, var(--ocre-dark) 100%);
+    background:linear-gradient(180deg, #40c0df 0%, #2ba7c5 100%);
     color:#fff;
     padding:44px 40px;
     display:flex;
@@ -330,7 +330,7 @@ body{
     width:76px;
     height:76px;
     border-radius:20px;
-    background:rgba(255,255,255,.18);
+    background:rgba(255,255,255,.24);
     display:flex;
     align-items:center;
     justify-content:center;
@@ -473,10 +473,17 @@ input:focus{
 }
 
 .inline-links a{
-    color:var(--title);
+    color:#fff;
     text-decoration:none;
     font-weight:700;
+    background:var(--ocre);
+    padding:10px 12px;
+    border-radius:10px;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
 }
+.inline-links a:hover{background:var(--ocre-dark);}
 
 .recover-card{
     margin-top:14px;
@@ -495,8 +502,8 @@ input:focus{
     height:40px;
     border:none;
     border-radius:10px;
-    background:var(--ocre-soft);
-    color:var(--ocre-dark);
+    background:var(--title);
+    color:#fff;
     font-weight:700;
     cursor:pointer;
 }
