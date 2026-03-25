@@ -25,20 +25,71 @@ if (isset($_GET['delete'])) {
    ACTUALIZAR ORDEN (DRAG)
 ========================== */
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['order'])) {
-    $order = $_POST['order'];
+    header('Content-Type: application/json; charset=UTF-8');
 
-    foreach ($order as $position => $id) {
-        $stmtUpdate = $pdo->prepare("
-            UPDATE activities 
-            SET position = :position 
-            WHERE id = :id
-        ");
-        $stmtUpdate->execute([
-            'position' => $position + 1,
-            'id' => $id
-        ]);
+    $rawOrder = $_POST['order'] ?? [];
+    if (is_string($rawOrder)) {
+        $rawOrder = explode(',', $rawOrder);
     }
 
+    $order = is_array($rawOrder)
+        ? array_values(array_unique(array_filter(array_map(
+            static fn ($value): string => trim((string) $value),
+            $rawOrder
+        ), static fn (string $value): bool => $value !== '')))
+        : [];
+
+    if (empty($order)) {
+        http_response_code(422);
+        echo json_encode(['status' => 'error', 'message' => 'No valid order received.']);
+        exit;
+    }
+
+    try {
+        $placeholders = implode(',', array_fill(0, count($order), '?'));
+        $verifySql = "
+            SELECT id
+            FROM activities
+            WHERE unit_id = ?
+              AND id IN ({$placeholders})
+        ";
+
+        $verifyStmt = $pdo->prepare($verifySql);
+        $verifyStmt->execute(array_merge([$unit_id], $order));
+        $validIds = array_map('strval', $verifyStmt->fetchAll(PDO::FETCH_COLUMN) ?: []);
+
+        if (count($validIds) !== count($order)) {
+            http_response_code(422);
+            echo json_encode(['status' => 'error', 'message' => 'Some activities are not in this unit.']);
+            exit;
+        }
+
+        $pdo->beginTransaction();
+
+        $stmtUpdate = $pdo->prepare("
+            UPDATE activities
+            SET position = :position
+            WHERE id = :id
+              AND unit_id = :unit_id
+        ");
+
+        foreach ($order as $position => $id) {
+            $stmtUpdate->execute([
+                'position' => $position + 1,
+                'id' => $id,
+                'unit_id' => $unit_id,
+            ]);
+        }
+
+        $pdo->commit();
+        echo json_encode(['status' => 'success']);
+    } catch (Throwable $e) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        http_response_code(500);
+        echo json_encode(['status' => 'error', 'message' => 'Unable to save order.']);
+    }
     exit;
 }
 
@@ -502,19 +553,33 @@ if (container) {
         }
     });
 
-    container.addEventListener('drop', () => {
-        const items = document.querySelectorAll('.draggable');
-        let order = [];
+    container.addEventListener('drop', async () => {
+        const items = container.querySelectorAll('.draggable');
+        const order = [];
 
         items.forEach(item => {
-            order.push(item.dataset.id);
+            if (item.dataset.id) {
+                order.push(item.dataset.id);
+            }
         });
 
-        fetch("unit_view.php?unit=<?= $unit_id ?>", {
-            method: "POST",
-            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-            body: new URLSearchParams({order: order})
-        });
+        const payload = new URLSearchParams();
+        order.forEach(id => payload.append('order[]', id));
+
+        try {
+            const response = await fetch("technical_activities_view.php?unit=<?= urlencode($unit_id); ?>", {
+                method: "POST",
+                headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                body: payload.toString()
+            });
+
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok || data.status !== 'success') {
+                console.error('Failed to save activity order', { status: response.status, data });
+            }
+        } catch (error) {
+            console.error('Failed to save activity order', error);
+        }
     });
 }
 
