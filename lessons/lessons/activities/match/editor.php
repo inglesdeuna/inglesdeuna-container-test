@@ -3,6 +3,18 @@ require_once __DIR__ . '/../../config/db.php';
 require_once __DIR__ . '/../../core/cloudinary_upload.php';
 require_once __DIR__ . '/../../core/_activity_editor_template.php';
 
+// Block student access to editor
+if (isset($_SESSION['student_logged']) && $_SESSION['student_logged']) {
+    header('Location: ../../../student_dashboard.php?error=access_denied');
+    exit;
+}
+
+// Ensure teacher/admin is logged in
+if (!isset($_SESSION['academic_logged']) || !$_SESSION['academic_logged']) {
+    header('Location: ../../../login.php');
+    exit;
+}
+
 $activityId = isset($_GET['id']) ? trim((string) $_GET['id']) : '';
 $unit = isset($_GET['unit']) ? trim((string) $_GET['unit']) : '';
 $source = isset($_GET['source']) ? trim((string) $_GET['source']) : '';
