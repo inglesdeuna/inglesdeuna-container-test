@@ -86,20 +86,21 @@ body{
   font-family:'Nunito', 'Segoe UI', sans-serif;
   background:linear-gradient(135deg, #fff8db 0%, #fff0de 50%, #f2f7e9 100%);
   text-align:center;
-  padding:20px;
+  padding:8px;
   color:#3f3a2b;
 }
 
 h1{
   color:#9a3412;
   font-family:'Fredoka', 'Trebuchet MS', sans-serif;
-  font-size:32px;
-  margin:0 0 6px;
+  font-size:26px;
+  margin:0 0 2px;
 }
 
 .subtitle{
   color:#6b5b41;
   margin:0;
+  font-size:13px;
 }
 
 .hangman-intro,
@@ -111,24 +112,50 @@ h1{
 }
 
 .hangman-intro{
-  max-width:760px;
-  margin:0 auto 18px;
-  padding:24px 26px;
+  max-width:1020px;
+  margin:0 auto 6px;
+  padding:8px 12px;
 }
 
 .game-box{
-  padding:25px;
-  max-width:760px;
-  margin:0 auto 20px;
+  padding:10px;
+  max-width:1020px;
+  margin:0 auto 6px;
+}
+
+.game-layout{
+  display:grid;
+  grid-template-columns:minmax(0, 1fr) 140px;
+  gap:8px;
+  align-items:start;
+}
+
+.left-panel{
+  min-width:0;
+}
+
+.right-panel{
+  display:flex;
+  justify-content:flex-end;
+}
+
+.hangman-wrap{
+  display:flex;
+  justify-content:center;
+}
+
+#hangmanImg{
+  width:150px;
+  max-width:100%;
 }
 
 .word{
-  font-size:32px;
-  margin:20px 0;
+  font-size:22px;
+  margin:4px 0 6px;
   display:flex;
   flex-wrap:wrap;
   justify-content:center;
-  gap:8px 10px;
+  gap:6px 8px;
 }
 
 .word-char{
@@ -149,17 +176,25 @@ h1{
 }
 
 .keyboard{
-  margin-top:15px;
+  margin-top:4px;
+  display:flex;
+  flex-wrap:wrap;
+  justify-content:center;
+  gap:5px;
+  max-width:430px;
+  margin-left:auto;
+  margin-right:auto;
 }
 
 .keyboard button{
-  padding:10px 14px;
-  margin:4px;
+  width:32px;
+  height:32px;
   border:none;
-  border-radius:14px;
+  border-radius:10px;
   background:linear-gradient(180deg, #fde68a 0%, #fbbf24 100%);
   color:#7c2d12;
   font-weight:800;
+  font-size:11px;
   box-shadow:0 8px 18px rgba(251, 191, 36, .18);
   cursor:pointer;
 }
@@ -171,21 +206,22 @@ h1{
 }
 
 .controls{
-  margin-top:15px;
+  margin-top:6px;
   display:flex;
   flex-wrap:wrap;
   justify-content:center;
-  gap:10px;
+  gap:8px;
 }
 
 .action-btn{
-  padding:10px 18px;
+  padding:7px 10px;
   border:none;
   border-radius:999px;
   color:white;
   cursor:pointer;
-  min-width:142px;
+  min-width:98px;
   font-weight:800;
+  font-size:12px;
   font-family:'Nunito', 'Segoe UI', sans-serif;
   box-shadow:0 10px 22px rgba(15, 23, 42, .12);
   transition:transform .15s ease, filter .15s ease;
@@ -202,38 +238,41 @@ h1{
 .action-next{background:linear-gradient(180deg, #84cc16 0%, #4d7c0f 100%)}
 
 #feedback{
-  font-size:20px;
+  font-size:14px;
   font-weight:800;
-  margin-top:10px;
-  min-height:24px;
+  margin-top:5px;
+  min-height:16px;
 }
 
 .good{ color:#15803d; }
 .bad{ color:#dc2626; }
 
 .hint{
-  font-size:16px;
+  font-size:12px;
   font-weight:800;
   color:#0f766e;
-  margin:12px 0;
-  min-height:22px;
+  margin:4px 0;
+  min-height:14px;
 }
 
 .hint-image{
-  max-width:220px;
-  max-height:170px;
+  width:120px;
+  max-width:120px;
+  max-height:88px;
   object-fit:contain;
-  border-radius:12px;
-  margin:10px auto 14px;
+  border-radius:10px;
+  border:1px solid #e2e8f0;
+  background:#fff;
+  margin:0;
   display:none;
 }
 
 a.back{
   display:inline-block;
-  margin-top:20px;
+  margin-top:4px;
   background:linear-gradient(180deg, #34d399 0%, #10b981 100%);
   color:#fff;
-  padding:11px 18px;
+  padding:8px 14px;
   border-radius:999px;
   text-decoration:none;
   font-weight:800;
@@ -241,11 +280,16 @@ a.back{
 }
 
 @media (max-width:760px){
-  body{padding:14px}
-  h1{font-size:28px}
+  body{padding:8px}
+  h1{font-size:21px}
+  .subtitle{font-size:12px}
   .hangman-intro,
-  .game-box{padding:20px 18px}
-  .action-btn{width:100%;max-width:320px}
+  .game-box{padding:8px}
+  .game-layout{grid-template-columns:1fr}
+  .right-panel{justify-content:center}
+  .hint-image{max-width:108px;max-height:80px}
+  #hangmanImg{width:136px}
+  .action-btn{width:calc(50% - 8px);min-width:0}
 }
 </style>
 </head>
@@ -258,25 +302,32 @@ a.back{
 </section>
 
 <div class="game-box">
+  <div class="game-layout">
+    <div class="left-panel">
+      <div class="hangman-wrap">
+        <img id="hangmanImg" src="../../hangman/assets/hangman0.png" width="200" alt="hangman">
+      </div>
 
-  <img id="hangmanImg" src="../../hangman/assets/hangman0.png" width="200" alt="hangman">
+      <div id="hint" class="hint"></div>
 
-  <img id="hintImage" class="hint-image" alt="hint image">
+      <div id="word" class="word"></div>
 
-  <div id="hint" class="hint"></div>
+      <div id="keyboard" class="keyboard"></div>
 
-  <div id="word" class="word"></div>
+      <div class="controls">
+        <button class="action-btn action-check" type="button" onclick="checkGame()">Check Answer</button>
+        <button class="action-btn action-hint" type="button" onclick="showHint()">Hint</button>
+        <button class="action-btn action-answer" type="button" onclick="showAnswer()">Show Answer</button>
+        <button class="action-btn action-next" type="button" onclick="nextWord()">Next</button>
+      </div>
 
-  <div id="keyboard" class="keyboard"></div>
+      <div id="feedback"></div>
+    </div>
 
-  <div class="controls">
-    <button class="action-btn action-check" type="button" onclick="checkGame()">Check Answer</button>
-    <button class="action-btn action-hint" type="button" onclick="showHint()">Hint</button>
-    <button class="action-btn action-answer" type="button" onclick="showAnswer()">Show Answer</button>
-    <button class="action-btn action-next" type="button" onclick="nextWord()">Next</button>
+    <aside class="right-panel">
+      <img id="hintImage" class="hint-image" alt="hint image">
+    </aside>
   </div>
-
-  <div id="feedback"></div>
 
 </div>
 
@@ -316,6 +367,13 @@ let mistakes = 0;
 let maxMistakes = 7;
 let gameFinished = false;
 let hintVisible = false;
+
+function setKeyboardDisabled(disabledState) {
+  const keys = document.querySelectorAll('#keyboard button');
+  keys.forEach((keyButton) => {
+    keyButton.disabled = !!disabledState;
+  });
+}
 
 function playSound(audio) {
   try {
@@ -388,6 +446,28 @@ function guess(letter){
     mistakes++;
     // ya está preloaded
     hangmanImg.src = `../../hangman/assets/hangman${mistakes}.png`;
+    if (mistakes >= maxMistakes) {
+      feedback.textContent = "❌ You lost!";
+      feedback.className = "bad";
+      playSound(loseSound);
+      gameFinished = true;
+      setKeyboardDisabled(true);
+    }
+  } else {
+    playSound(correctSound);
+
+    if (isSolved()) {
+      if (index === items.length - 1) {
+        feedback.textContent = "Completed!";
+        feedback.className = "good";
+        playSound(winSound);
+      } else {
+        feedback.textContent = "Correct!";
+        feedback.className = "good";
+      }
+      gameFinished = true;
+      setKeyboardDisabled(true);
+    }
   }
 
   renderWord();
@@ -415,6 +495,7 @@ function checkGame(){
       playSound(correctSound);
     }
     gameFinished = true;
+    setKeyboardDisabled(true);
     return;
   }
 
@@ -423,6 +504,7 @@ function checkGame(){
     feedback.className = "bad";
     playSound(loseSound);
     gameFinished = true;
+    setKeyboardDisabled(true);
     return;
   }
 
@@ -444,6 +526,7 @@ function showAnswer(){
   feedback.textContent = "Show The Answer";
   feedback.className = "good";
   gameFinished = true;
+  setKeyboardDisabled(true);
 }
 
 function nextWord(){
@@ -452,6 +535,7 @@ function nextWord(){
     feedback.className = "good";
     playSound(winSound);
     gameFinished = true;
+    setKeyboardDisabled(true);
     return;
   }
 
