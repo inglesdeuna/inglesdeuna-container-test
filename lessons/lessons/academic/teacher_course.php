@@ -456,7 +456,7 @@ $teacherPhotoRaw = trim((string) ($_SESSION['teacher_photo'] ?? ''));
 $teacherPhotoSrc = resolve_photo_src($teacherPhotoRaw);
 
 $backDashboard = 'dashboard.php?assignment=' . urlencode($assignmentId) . '&unit=' . urlencode($selectedUnitId) . '#unidades-curso';
-$quizHref = '#';
+$quizHref = 'teacher_quiz.php?assignment=' . urlencode($assignmentId) . '&unit=' . urlencode($selectedUnitId);
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -881,7 +881,7 @@ body{font-family:Arial,sans-serif;background:var(--bg);color:var(--text)}
           <div class="empty-text">Continúa con la evaluación final de la unidad o vuelve al panel docente para seguir con otro curso.</div>
           <div class="controls" style="padding-top:0; width:100%; justify-content:center;">
             <a class="empty-btn" href="<?php echo h($backDashboard); ?>">&larr; Volver al panel docente</a>
-            <a class="empty-btn ctrl-btn warn" href="<?php echo h($quizHref); ?>" onclick="alert('Quiz pendiente de programación'); return false;">Quiz time</a>
+            <a class="empty-btn ctrl-btn warn" href="<?php echo h($quizHref); ?>">Quiz time</a>
           </div>
         </div>
       </section>
