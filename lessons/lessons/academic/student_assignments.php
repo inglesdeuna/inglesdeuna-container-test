@@ -627,7 +627,7 @@ function ensure_student_account(string $studentId, array $students, array &$acco
     }
 
     $username = generate_student_username($student, $accounts);
-    $tempPassword = generate_temp_password(10);
+    $tempPassword = '1234';
 
     $newAccount = [
         'id' => uniqid('stu_acc_'),

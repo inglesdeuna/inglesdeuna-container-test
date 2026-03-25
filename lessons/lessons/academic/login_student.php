@@ -2,6 +2,10 @@
 session_start();
 
 if (isset($_SESSION['student_logged']) && $_SESSION['student_logged'] === true) {
+    if (!empty($_SESSION['student_must_change_password'])) {
+        header('Location: change_password_student.php');
+        exit;
+    }
     header('Location: student_dashboard.php');
     exit;
 }
@@ -52,7 +56,10 @@ function load_student_accounts_from_database(): array
     }
 
     try {
-        $select = 'id, student_id, student_name, username, password_hash, temp_password, updated_at';
+        $hasMustChangePassword = table_has_column($pdo, 'student_accounts', 'must_change_password');
+        $selectMustChangePassword = $hasMustChangePassword ? 'must_change_password' : 'FALSE AS must_change_password';
+
+        $select = "id, student_id, student_name, username, password_hash, temp_password, {$selectMustChangePassword}, updated_at";
         if (table_has_column($pdo, 'student_accounts', 'permission')) {
             $select .= ', permission';
         }
@@ -137,6 +144,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $_SESSION['student_username'] = $username;
         $_SESSION['student_permission'] = ((string) ($account['permission'] ?? 'viewer')) === 'editor' ? 'editor' : 'viewer';
         $_SESSION['student_photo'] = (string) ($account['student_photo'] ?? '');
+
+        $mustChangePassword = (bool) ($account['must_change_password'] ?? false);
+        $tempPassword = (string) ($account['temp_password'] ?? '');
+        if (!$mustChangePassword && $tempPassword !== '' && hash_equals($tempPassword, $password)) {
+            $mustChangePassword = true;
+        }
+        $_SESSION['student_must_change_password'] = $mustChangePassword;
+
+        if ($mustChangePassword) {
+            header('Location: change_password_student.php');
+            exit;
+        }
 
         header('Location: student_dashboard.php');
         exit;

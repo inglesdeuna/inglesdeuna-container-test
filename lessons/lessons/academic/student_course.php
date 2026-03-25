@@ -6,6 +6,11 @@ if (!isset($_SESSION['student_logged']) || $_SESSION['student_logged'] !== true)
     exit;
 }
 
+if (!empty($_SESSION['student_must_change_password'])) {
+    header('Location: change_password_student.php');
+    exit;
+}
+
 $assignmentId = trim((string) ($_GET['assignment'] ?? ''));
 $studentId = trim((string) ($_SESSION['student_id'] ?? ''));
 
