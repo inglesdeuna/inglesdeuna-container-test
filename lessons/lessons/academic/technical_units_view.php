@@ -48,61 +48,79 @@ $units = $stmtUnits->fetchAll(PDO::FETCH_ASSOC);
 <title><?= htmlspecialchars($course["name"]) ?> — Unidades</title>
 
 <style>
+:root{
+    --bg:#eef7f0;
+    --card:#ffffff;
+    --line:#d8e8dc;
+    --text:#1f3b28;
+    --muted:#5d7465;
+    --green:#2f9e44;
+    --green-dark:#237a35;
+    --gray:#6f7e73;
+    --shadow:0 10px 24px rgba(0,0,0,.08);
+}
 body{
     font-family: Arial, sans-serif;
-    background:#f4f8ff;
-    padding:40px;
+    background: var(--bg);
+    padding: 40px;
+    color: var(--text);
+}
+.container{
+    max-width: 850px;
+    margin: 0 auto;
 }
 .card{
-    background:#ffffff;
-    padding:25px;
-    border-radius:16px;
-    box-shadow:0 10px 25px rgba(0,0,0,.08);
-    margin-bottom:25px;
-    max-width:900px;
+    background: var(--card);
+    padding: 30px;
+    border-radius: 18px;
+    box-shadow: var(--shadow);
+    border: 1px solid var(--line);
+    margin-bottom: 25px;
 }
 .back{
-    display:inline-block;
-    margin-bottom:20px;
-    background:#6b7280;
-    color:#ffffff;
-    padding:10px 18px;
-    border-radius:8px;
-    text-decoration:none;
-    font-weight:600;
+    display: inline-block;
+    margin-bottom: 25px;
+    background: linear-gradient(180deg,#7b8b7f,#66756a);
+    color: #ffffff;
+    padding: 10px 18px;
+    border-radius: 8px;
+    text-decoration: none;
+    font-weight: 600;
 }
 .unit-item{
-    background:#e2e8f0;
-    padding:18px;
-    border-radius:12px;
-    margin-bottom:15px;
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
+    background: #f7fcf8;
+    border: 1px solid var(--line);
+    padding: 15px 20px;
+    border-radius: 12px;
+    margin-bottom: 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.unit-item strong{
+    font-size: 15px;
 }
 .btn{
-    background:#2563eb;
-    color:#ffffff;
-    padding:10px 16px;
-    border-radius:8px;
-    text-decoration:none;
-    font-weight:600;
-    font-size:14px;
+    background: linear-gradient(180deg,var(--green),var(--green-dark));
+    color: #ffffff;
+    padding: 8px 14px;
+    border-radius: 8px;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 14px;
 }
 </style>
 </head>
 
 <body>
 
-<a class="back" href="technical_courses_created.php">
-← Volver a Semestres
-</a>
+<div class="container">
+
+<a class="back" href="technical_courses_created.php">← Volver a Semestres</a>
 
 <div class="card">
     <h2>📘 <?= htmlspecialchars($course["name"]) ?> — Unidades</h2>
-</div>
 
-<div class="card">
     <?php if (empty($units)): ?>
         <p>No hay unidades creadas en este semestre.</p>
     <?php else: ?>
@@ -116,6 +134,8 @@ body{
             </div>
         <?php endforeach; ?>
     <?php endif; ?>
+</div>
+
 </div>
 
 </body>
