@@ -318,21 +318,21 @@ $completedHref = 'student_course.php?assignment=' . urlencode($assignmentId) . '
 <title><?php echo h($currentTypeLabel . ' — ' . $courseName); ?></title>
 <style>
 :root{
-    --bg:#ffd881;
+    --bg:#fff8e6;
     --card:#ffffff;
-    --line:#f7c95f;
-    --title:#40c0df;
+    --line:#dcc4f0;
+    --title:#a855c8;
     --text:#f14902;
     --muted:#b8551f;
     --salmon:#f14902;
     --salmon-dark:#d33d00;
-    --salmon-soft:#ffe8bf;
-    --shadow:0 10px 24px rgba(241,73,2,.12);
+    --salmon-soft:#eddeff;
+    --shadow:0 10px 24px rgba(120,40,160,.12);
     --shadow-sm:0 2px 8px rgba(0,0,0,.06);
     --radius:18px;
 }
 *{box-sizing:border-box;margin:0;padding:0}
-body{margin:0;font-family:Arial,sans-serif;background:linear-gradient(145deg,#ffd881 0%,#ffe7ad 48%,#fff2cf 100%);color:var(--text)}
+body{margin:0;font-family:Arial,sans-serif;background:linear-gradient(145deg,#fff8e6 0%,#fdeaff 55%,#f0e0ff 100%);color:var(--text)}
 
 .topbar{
     background:linear-gradient(180deg,#f14902,#d33d00);
@@ -416,7 +416,7 @@ body{margin:0;font-family:Arial,sans-serif;background:linear-gradient(145deg,#ff
     background:linear-gradient(180deg,#f14902,#d33d00);
     box-shadow:var(--shadow-sm);transition:filter .15s,transform .15s;
 }
-.ctrl-btn.blue{background:linear-gradient(180deg,#40c0df,#2ba7c5)}
+.ctrl-btn.blue{background:linear-gradient(180deg,#c97de8,#8b1a9a)}
 .ctrl-btn:hover{filter:brightness(1.07);transform:translateY(-1px)}
 .ctrl-btn.disabled{opacity:.38;pointer-events:none}
 
@@ -448,7 +448,7 @@ body{margin:0;font-family:Arial,sans-serif;background:linear-gradient(145deg,#ff
     font-size:15px;font-weight:700;background:linear-gradient(180deg,#f14902,#d33d00);
     box-shadow:var(--shadow-sm);margin-top:4px;
 }
-.empty-btn.blue{background:linear-gradient(180deg,#40c0df,#2ba7c5)}
+.empty-btn.blue{background:linear-gradient(180deg,#c97de8,#8b1a9a)}
 
 @media(max-width:768px){
     .topbar-inner{grid-template-columns:1fr;text-align:center}

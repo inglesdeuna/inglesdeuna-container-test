@@ -362,23 +362,23 @@ $scoreSummaryByAssignment = load_assignment_score_summary($studentId);
 <title>Panel Estudiante</title>
 <style>
 :root{
-    --bg:#ffd881;
+    --bg:#fff8e6;
     --card:#ffffff;
-    --line:#f7c95f;
-    --title:#40c0df;
+    --line:#dcc4f0;
+    --title:#a855c8;
     --text:#f14902;
     --muted:#b8551f;
     --salmon:#f14902;
     --salmon-dark:#d33d00;
     --danger:#c42828;
-    --soft:#ffe8bf;
-    --shadow:0 10px 24px rgba(241,73,2,.14);
+    --soft:#eddeff;
+    --shadow:0 10px 24px rgba(120,40,160,.13);
 }
 *{box-sizing:border-box}
 body{
     margin:0;
     font-family:Arial,sans-serif;
-    background:linear-gradient(145deg,#ffd881 0%,#ffe7ad 48%,#fff2cf 100%);
+    background:linear-gradient(145deg,#fff8e6 0%,#fdeaff 55%,#f0e0ff 100%);
     color:var(--text);
     padding:26px;
 }
@@ -411,7 +411,7 @@ body{
     height:112px;
     border-radius:50%;
     overflow:hidden;
-    background:linear-gradient(180deg,#40c0df,#2ba7c5);
+    background:linear-gradient(180deg,#c97de8,#8b1a9a);
     color:#fff;
     display:flex;
     align-items:center;

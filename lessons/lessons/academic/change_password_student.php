@@ -242,24 +242,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <title>Cambiar contraseña – Estudiante</title>
 <style>
 :root{
-    --bg:#ffd881;
+    --bg:#fff8e6;
     --card:#ffffff;
-    --line:#f7c95f;
-    --title:#40c0df;
+    --line:#dcc4f0;
+    --title:#a855c8;
     --text:#f14902;
     --muted:#b8551f;
     --ocre:#f14902;
     --ocre-hover:#d33d00;
-    --ocre-soft:#ffe8bf;
+    --ocre-soft:#eddeff;
     --danger:#b42318;
     --danger-soft:#fff5f5;
-    --shadow:0 18px 42px rgba(241,73,2,.18);
+    --shadow:0 18px 42px rgba(120,40,160,.14);
 }
 *{box-sizing:border-box}
 body{
     margin:0;
     font-family:Arial,sans-serif;
-    background:linear-gradient(145deg,#ffd881 0%,#ffe7ad 48%,#fff2cf 100%);
+    background:linear-gradient(145deg,#fff8e6 0%,#fdeaff 55%,#f0e0ff 100%);
     min-height:100vh;
     display:flex;
     align-items:center;
