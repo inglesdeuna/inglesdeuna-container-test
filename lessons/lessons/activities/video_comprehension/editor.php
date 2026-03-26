@@ -8,11 +8,12 @@ if (isset($_SESSION['student_logged']) && $_SESSION['student_logged']) {
     exit;
 }
 
-// Ensure teacher/admin is logged in
-if (!isset($_SESSION['academic_logged']) || !$_SESSION['academic_logged']) {
+// Accept admin OR teacher session
+$isLoggedIn = !empty($_SESSION['academic_logged']) || !empty($_SESSION['admin_logged']);
+if (!$isLoggedIn) {
     header('Location: /lessons/lessons/academic/login.php');
     exit;
-
+}
 
 $activityId = isset($_GET['id']) ? trim((string) $_GET['id']) : '';
 $unit = isset($_GET['unit']) ? trim((string) $_GET['unit']) : '';
