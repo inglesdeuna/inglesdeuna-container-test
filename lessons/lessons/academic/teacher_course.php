@@ -880,9 +880,10 @@ body{font-family:Arial,sans-serif;background:var(--bg);color:var(--text);overflo
   display:flex;
   flex-direction:column;
   gap:10px;
-  background:#e3ecff;
-  border-radius:20px;
-  padding:14px 12px;
+  background:#ffffff;
+  border:1px solid var(--line);
+  border-radius:12px;
+  padding:28px 24px;
   box-shadow:var(--shadow);
   min-height:0;
   height:100%;
@@ -1249,8 +1250,6 @@ body{font-family:Arial,sans-serif;background:var(--bg);color:var(--text);overflo
 <div class="page">
 <div class="layout">
   <nav class="sidebar">
-    <div class="sidebar-title">Course Title</div>
-
     <div class="logo-wrap">
       <div class="avatar">
         <?php if ($teacherPhotoSrc !== '') { ?>
