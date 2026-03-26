@@ -420,6 +420,58 @@ body{
     color:#7a5c68;
 }
 
+.completed-screen{
+    display:none;
+    text-align:center;
+    max-width:600px;
+    margin:0 auto;
+    padding:40px 20px;
+}
+
+.completed-screen.active{
+    display:block;
+}
+
+.completed-icon{
+    font-size:80px;
+    margin-bottom:20px;
+}
+
+.completed-title{
+    font-family:'Fredoka', 'Trebuchet MS', sans-serif;
+    font-size:36px;
+    font-weight:700;
+    color:#be185d;
+    margin:0 0 16px;
+    line-height:1.2;
+}
+
+.completed-text{
+    font-size:16px;
+    color:#6b4b5f;
+    line-height:1.6;
+    margin:0 0 32px;
+}
+
+.completed-button{
+    display:inline-block;
+    padding:12px 24px;
+    border:none;
+    border-radius:999px;
+    background:linear-gradient(180deg, #db2777 0%, #be185d 100%);
+    color:#fff;
+    font-weight:700;
+    font-size:16px;
+    cursor:pointer;
+    box-shadow:0 10px 24px rgba(0,0,0,.14);
+    transition:transform .18s ease, filter .18s ease;
+}
+
+.completed-button:hover{
+    transform:scale(1.05);
+    filter:brightness(1.07);
+}
+
 @media (max-width:768px){
     .flashcards-intro{
         padding:20px 18px;
@@ -461,7 +513,7 @@ body{
         <p>Flip each card to reveal the answer, then use Listen to repeat the pronunciation and review at your own pace.</p>
     </section>
 
-    <div class="flashcards-stage">
+    <div id="cards-stage" class="flashcards-stage">
         <button class="arrow-btn arrow-left" type="button" onclick="previousCard(event)" aria-label="Previous card">❮</button>
 
         <div class="card-container">
@@ -479,15 +531,25 @@ body{
     </div>
 
     <div class="flip-hint">Tap or click the card to flip it.</div>
+
+    <div id="completed-container" class="completed-screen">
+        <div class="completed-icon">✅</div>
+        <h2 class="completed-title">Completed</h2>
+        <p class="completed-text">You've reviewed all flashcards! Great job practicing.</p>
+        <button class="completed-button" onclick="goBackToCards()">Back to Cards</button>
+    </div>
 </div>
 
 <script>
 const data = <?= json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
 let index = 0;
+let isCompleted = false;
 
 const front = document.getElementById('front');
 const back = document.getElementById('back');
 const card = document.getElementById('card');
+const cardsStage = document.getElementById('cards-stage');
+const completedContainer = document.getElementById('completed-container');
 
 function escapeHtml(value) {
     return String(value || '')
@@ -533,25 +595,56 @@ function speak(event) {
     window.speechSynthesis.speak(utter);
 }
 
+function showCompleted() {
+    isCompleted = true;
+    cardsStage.style.display = 'none';
+    document.querySelector('.listen-row').style.display = 'none';
+    document.querySelector('.flip-hint').style.display = 'none';
+    completedContainer.classList.add('active');
+}
+
+function goBackToCards() {
+    isCompleted = false;
+    index = data.length - 1;
+    cardsStage.style.display = 'block';
+    document.querySelector('.listen-row').style.display = 'block';
+    document.querySelector('.flip-hint').style.display = 'block';
+    completedContainer.classList.remove('active');
+    card.classList.remove('flip');
+    loadCard();
+}
+
 function nextCard(event) {
     if (event) event.stopPropagation();
+    if (isCompleted) return;
+    
     card.classList.remove('flip');
-    index = (index + 1) % data.length;
-    loadCard();
+    
+    if (index >= data.length - 1) {
+        showCompleted();
+    } else {
+        index = index + 1;
+        loadCard();
+    }
 }
 
 function previousCard(event) {
     if (event) event.stopPropagation();
+    if (isCompleted) return;
+    
     card.classList.remove('flip');
     index = (index - 1 + data.length) % data.length;
     loadCard();
 }
 
 card.addEventListener('click', function () {
-    card.classList.toggle('flip');
+    if (!isCompleted) {
+        card.classList.toggle('flip');
+    }
 });
 
 card.addEventListener('keydown', function (event) {
+    if (isCompleted) return;
     if (event.key === 'Enter' || event.key === ' ') {
         event.preventDefault();
         card.classList.toggle('flip');
