@@ -236,7 +236,7 @@ if ($selectedUnitId !== '' && $quizTotalRaw >= 0) {
     save_student_unit_performance($pdo, $studentId, $assignmentId, $selectedUnitId, $quizPercent, $quizErrors, $quizTotal);
 }
 
-$units = load_units_for_assignment($pdo, $assignment);
+$allUnits = load_units_for_assignment($pdo, $assignment);
 $unitResults = load_student_unit_results($pdo, $studentId, $assignmentId);
 $courseName = trim((string) ($assignment['course_name'] ?? 'Curso'));
 if ($courseName === '') {
@@ -244,13 +244,78 @@ if ($courseName === '') {
 }
 $teacherName = trim((string) ($assignment['teacher_name'] ?? 'Docente'));
 $programLabel = ((string) ($assignment['program'] ?? '') === 'english') ? 'Inglés' : 'Técnico';
+
+/* ---- Determine active unit ---- */
+if ($selectedUnitId === '' && !empty($allUnits)) {
+    $selectedUnitId = (string) ($allUnits[0]['id'] ?? '');
+}
+
+$selectedUnitName = 'Unidad';
+foreach ($allUnits as $_u) {
+    if ((string) ($_u['id'] ?? '') === $selectedUnitId) {
+        $selectedUnitName = (string) ($_u['name'] ?? 'Unidad');
+        break;
+    }
+}
+
+/* ---- Activities for selected unit ---- */
+$step = max(0, (int) ($_GET['step'] ?? 0));
+$activities = $selectedUnitId !== '' ? load_activities_for_unit($pdo, $selectedUnitId) : [];
+$total = count($activities);
+$isCompleted = $total > 0 && $step >= $total;
+$current = (!$isCompleted && $total > 0) ? $activities[$step] : null;
+$prevStep = max(0, $step - 1);
+$nextStep = $step + 1;
+$hasPrev = $step > 0;
+$hasNext = $nextStep < $total;
+$isLastActivity = !$isCompleted && $total > 0 && $step === ($total - 1);
+
+$activityTypeLabels = [
+    'flashcards' => 'Flashcards', 'quiz' => 'Quiz',
+    'multiple_choice' => 'Multiple Choice', 'video_comprehension' => 'Video Comprehension',
+    'flipbooks' => 'Video Lesson', 'hangman' => 'Hangman',
+    'pronunciation' => 'Pronunciation', 'listen_order' => 'Listen & Order',
+    'drag_drop' => 'Drag & Drop', 'match' => 'Match',
+    'external' => 'External', 'powerpoint' => 'PowerPoint',
+];
+
+$viewerHref = null;
+$currentTypeLabel = 'Actividad';
+if ($current) {
+    $type = (string) ($current['type'] ?? '');
+    $activityPath = get_activity_base_path($type);
+    if ($activityPath) {
+        $returnUrl = 'student_course.php?assignment=' . urlencode($assignmentId) . '&unit=' . urlencode($selectedUnitId);
+        $query = http_build_query([
+            'id'         => (string) ($current['id'] ?? ''),
+            'unit'       => $selectedUnitId,
+            'embedded'   => '1',
+            'from'       => 'student_course',
+            'assignment' => $assignmentId,
+            'return_to'  => $returnUrl,
+        ]);
+        $viewerHref = $activityPath . '/viewer.php?' . $query;
+    }
+    $currentType = strtolower(trim($type));
+    $currentTypeLabel = $activityTypeLabels[$currentType] ?? ucwords(str_replace('_', ' ', $type));
+}
+
+$unitResult = $unitResults[$selectedUnitId] ?? ['completion_percent' => 0, 'quiz_errors' => 0, 'quiz_total' => 0];
+$completionPercent = (int) ($unitResult['completion_percent'] ?? 0);
+$quizErrors = (int) ($unitResult['quiz_errors'] ?? 0);
+$quizTotal = (int) ($unitResult['quiz_total'] ?? 0);
+$hasUnitResult = $quizTotal > 0;
+
+$backHref = 'student_dashboard.php';
+$completedStep = max(9999, $total);
+$completedHref = 'student_course.php?assignment=' . urlencode($assignmentId) . '&unit=' . urlencode($selectedUnitId) . '&step=' . urlencode((string) $completedStep);
 ?>
 <!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title><?php echo h($courseName); ?></title>
+<title><?php echo h($currentTypeLabel . ' — ' . $courseName); ?></title>
 <style>
 :root{
     --bg:#ffd881;
@@ -261,94 +326,299 @@ $programLabel = ((string) ($assignment['program'] ?? '') === 'english') ? 'Ingl�
     --muted:#b8551f;
     --salmon:#f14902;
     --salmon-dark:#d33d00;
+    --salmon-soft:#ffe8bf;
+    --shadow:0 10px 24px rgba(241,73,2,.12);
+    --shadow-sm:0 2px 8px rgba(0,0,0,.06);
+    --radius:18px;
 }
-*{box-sizing:border-box}
-body{
-    margin:0;
-    background:linear-gradient(145deg,#ffd881 0%,#ffe7ad 48%,#fff2cf 100%);
-    font-family:Arial,sans-serif;
-    padding:24px;
-    color:var(--text);
+*{box-sizing:border-box;margin:0;padding:0}
+body{margin:0;font-family:Arial,sans-serif;background:linear-gradient(145deg,#ffd881 0%,#ffe7ad 48%,#fff2cf 100%);color:var(--text)}
+
+.topbar{
+    background:linear-gradient(180deg,#f14902,#d33d00);
+    color:#fff;
+    padding:16px 24px;
 }
-.page{max-width:1100px;margin:0 auto}
-.top{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px}
-.top h1{margin:0;color:var(--title);font-size:30px}
-.back{color:#fff;text-decoration:none;font-weight:700;background:var(--title);padding:10px 14px;border-radius:10px;display:inline-flex;align-items:center;justify-content:center}
-.back:hover{background:#2ba7c5}
-.meta{margin:0 0 24px;color:var(--muted);font-size:16px}
-.section-title{margin:0 0 14px;color:var(--title);font-size:24px;font-weight:700}
-.unit{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;margin-top:12px}
-.unit h3{margin:0 0 10px;color:var(--text);font-size:20px}
-.badges{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px}
-.badge{display:inline-flex;align-items:center;padding:6px 10px;border-radius:999px;font-size:12px;font-weight:700;background:#ffe8bf;color:#f14902;border:1px solid #f7c95f}
-.actions{display:flex;gap:8px;flex-wrap:wrap}
-.btn{display:inline-block;margin-top:8px;padding:9px 14px;background:var(--salmon);color:#fff;text-decoration:none;border-radius:8px;font-weight:700;transition:background .2s ease}
-.btn:hover{background:var(--salmon-dark)}
-.btn.secondary{background:var(--title)}
-.btn.secondary:hover{background:#2ba7c5}
-.empty{background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px;color:var(--muted)}
-@media (max-width: 768px){body{padding:18px}.top h1{font-size:24px}}
+.topbar-inner{
+    max-width:1280px;
+    margin:0 auto;
+    display:grid;
+    grid-template-columns:180px 1fr;
+    align-items:center;
+    gap:12px;
+}
+.top-btn{
+    display:inline-flex;align-items:center;justify-content:center;
+    padding:10px 14px;border-radius:10px;text-decoration:none;
+    font-size:13px;font-weight:700;color:#fff;
+    background:rgba(255,255,255,.2);
+}
+.topbar-title{font-size:26px;font-weight:800;text-align:center}
+
+.page{max-width:1280px;margin:0 auto;padding:18px 20px 28px}
+.content{display:flex;flex-direction:column;gap:18px;min-width:0}
+
+.hero-card{
+    background:var(--card);border:1px solid var(--line);border-radius:22px;
+    box-shadow:var(--shadow);padding:18px 20px;
+}
+.activity-topline{
+    display:inline-flex;align-items:center;gap:8px;padding:5px 10px;
+    border-radius:999px;background:var(--salmon-soft);color:var(--salmon);
+    font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;
+}
+.hero-title{margin:10px 0 8px;font-size:20px;font-weight:800;color:var(--muted)}
+.hero-badges{display:flex;flex-wrap:wrap;gap:10px;margin-top:10px}
+.hero-badge{
+    display:inline-flex;align-items:center;padding:7px 12px;border-radius:999px;
+    background:var(--salmon-soft);color:var(--salmon);font-size:12px;font-weight:800;
+}
+.hero-badge.blue{background:#e0f5fd;color:#0d7a9a}
+
+.viewer-shell{
+    background:var(--card);border:1px solid var(--line);
+    border-radius:22px;box-shadow:var(--shadow);padding:18px;
+}
+.viewer-top{
+    display:flex;align-items:center;justify-content:space-between;
+    gap:14px;margin-bottom:14px;flex-wrap:wrap;
+}
+.section-title{
+    display:flex;align-items:center;gap:12px;
+    font-size:22px;font-weight:800;color:var(--muted);
+}
+.section-title::after{
+    content:"";flex:1;height:2px;min-width:60px;
+    background:linear-gradient(90deg,var(--line) 0%,transparent 100%);
+}
+.act-badge{
+    display:inline-flex;align-items:center;padding:7px 12px;
+    border-radius:999px;background:var(--salmon-soft);color:var(--salmon);
+    font-size:12px;font-weight:800;text-transform:uppercase;
+}
+.frame-wrap{
+    border-radius:18px;overflow:hidden;background:#fff;
+    border:1px solid var(--line);box-shadow:var(--shadow-sm);min-height:78vh;
+}
+.frame-wrap iframe{display:block;width:100%;height:78vh;border:0;background:#fff}
+
+.controls{
+    display:flex;align-items:center;justify-content:space-between;
+    gap:12px;padding-top:16px;
+}
+.step-counter{font-size:13px;font-weight:700;color:var(--muted);text-align:center}
+.step-counter strong{color:var(--salmon)}
+
+.ctrl-btn{
+    display:inline-flex;align-items:center;justify-content:center;gap:6px;
+    min-width:130px;padding:12px 18px;border-radius:12px;text-decoration:none;
+    color:#fff;font-size:14px;font-weight:700;
+    background:linear-gradient(180deg,#f14902,#d33d00);
+    box-shadow:var(--shadow-sm);transition:filter .15s,transform .15s;
+}
+.ctrl-btn.blue{background:linear-gradient(180deg,#40c0df,#2ba7c5)}
+.ctrl-btn:hover{filter:brightness(1.07);transform:translateY(-1px)}
+.ctrl-btn.disabled{opacity:.38;pointer-events:none}
+
+/* units sidebar strip */
+.units-strip{
+    display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px;
+}
+.unit-chip{
+    display:inline-flex;align-items:center;padding:8px 14px;border-radius:999px;
+    font-size:13px;font-weight:700;text-decoration:none;
+    background:var(--card);border:2px solid var(--line);color:var(--muted);
+    transition:background .15s,border-color .15s;
+}
+.unit-chip:hover{border-color:var(--salmon);color:var(--salmon)}
+.unit-chip.active{background:var(--salmon);border-color:var(--salmon);color:#fff}
+
+/* empty / completed */
+.empty-shell{
+    background:var(--card);border:1px solid var(--line);border-radius:22px;
+    box-shadow:var(--shadow);padding:48px 24px;text-align:center;
+}
+.empty-state{display:flex;flex-direction:column;align-items:center;gap:14px}
+.empty-icon{font-size:46px}
+.empty-title{font-size:24px;font-weight:800;color:var(--muted)}
+.empty-text{max-width:480px;font-size:15px;line-height:1.6;color:var(--muted)}
+.empty-btn{
+    display:inline-flex;align-items:center;justify-content:center;gap:6px;
+    padding:13px 22px;border-radius:12px;text-decoration:none;color:#fff;
+    font-size:15px;font-weight:700;background:linear-gradient(180deg,#f14902,#d33d00);
+    box-shadow:var(--shadow-sm);margin-top:4px;
+}
+.empty-btn.blue{background:linear-gradient(180deg,#40c0df,#2ba7c5)}
+
+@media(max-width:768px){
+    .topbar-inner{grid-template-columns:1fr;text-align:center}
+    .page{padding:12px}
+    .frame-wrap{min-height:56vh}
+    .frame-wrap iframe{height:56vh}
+    .controls{flex-wrap:wrap}
+    .ctrl-btn,.empty-btn{flex:1 1 100%;min-width:0}
+    .step-counter{width:100%;order:-1}
+}
 </style>
 </head>
 <body>
-<div class="page">
-    <div class="top">
-        <h1><?php echo h($courseName); ?></h1>
-        <a class="back" href="student_dashboard.php">← Volver</a>
+
+<header class="topbar">
+    <div class="topbar-inner">
+        <a class="top-btn" href="<?php echo h($backHref); ?>">← Volver</a>
+        <h1 class="topbar-title"><?php echo h($courseName); ?></h1>
     </div>
+</header>
 
-    <p class="meta">
-        Programa: <strong><?php echo h($programLabel); ?></strong> ·
-        Docente: <strong><?php echo h($teacherName); ?></strong> ·
-        Periodo: <strong><?php echo h((string) ($assignment['period'] ?? '')); ?></strong>
-    </p>
+<div class="page">
+<main class="content">
 
-    <h2 class="section-title">Unidades y puntaje</h2>
+    <!-- Unit selector strip (only if multiple units) -->
+    <?php if (count($allUnits) > 1): ?>
+    <div class="units-strip">
+        <?php foreach ($allUnits as $_unit):
+            $_uid = (string) ($_unit['id'] ?? '');
+            $_uname = (string) ($_unit['name'] ?? 'Unidad');
+            $_href = 'student_course.php?assignment=' . urlencode($assignmentId) . '&unit=' . urlencode($_uid);
+        ?>
+            <a class="unit-chip <?php echo $_uid === $selectedUnitId ? 'active' : ''; ?>"
+               href="<?php echo h($_href); ?>">
+                <?php echo h($_uname); ?>
+            </a>
+        <?php endforeach; ?>
+    </div>
+    <?php endif; ?>
 
-    <?php if (empty($units)) { ?>
-        <div class="empty">No hay unidades disponibles.</div>
-    <?php } else { ?>
-        <?php foreach ($units as $unit) { ?>
-            <?php
-            $unitId = (string) ($unit['id'] ?? '');
-            $unitName = (string) ($unit['name'] ?? 'Unidad');
-            $result = $unitResults[$unitId] ?? [
-                'completion_percent' => 0,
-                'quiz_errors' => 0,
-                'quiz_total' => 0,
-            ];
-            $quizReturn = 'student_course.php?assignment=' . urlencode($assignmentId) . '&unit=' . urlencode($unitId);
-            $quizViewerHref = '../activities/quiz/viewer.php?unit=' . urlencode($unitId) . '&assignment=' . urlencode($assignmentId) . '&return_to=' . urlencode($quizReturn);
-            $activities = load_activities_for_unit($pdo, $unitId);
-            ?>
-            <div class="unit">
-                <h3><?php echo h($unitName); ?></h3>
-                <div class="badges">
-                    <span class="badge">Puntaje: <?php echo (int) ($result['completion_percent'] ?? 0); ?>%</span>
-                    <?php if ((int) ($result['quiz_total'] ?? 0) > 0) { ?>
-                        <span class="badge">Errores quiz: <?php echo (int) ($result['quiz_errors'] ?? 0); ?>/<?php echo (int) ($result['quiz_total'] ?? 0); ?></span>
-                    <?php } ?>
-                </div>
-                <div class="actions">
-                    <?php foreach ($activities as $activity) { ?>
-                        <?php
-                        $activityId = (string) ($activity['id'] ?? '');
-                        $activityType = strtolower(trim((string) ($activity['type'] ?? '')));
-                        $basePath = get_activity_base_path($activityType);
-                        if ($activityId === '' || $basePath === null) {
-                            continue;
-                        }
+    <!-- Hero info card -->
+    <section class="hero-card">
+        <div class="activity-topline">Actividad del curso</div>
+        <h1 class="hero-title"><?php echo h($currentTypeLabel); ?></h1>
+        <div class="hero-badges">
+            <span class="hero-badge"><?php echo h($courseName); ?></span>
+            <?php if ($selectedUnitName !== 'Unidad' && $selectedUnitName !== ''): ?>
+                <span class="hero-badge blue"><?php echo h($selectedUnitName); ?></span>
+            <?php endif; ?>
+            <span class="hero-badge">Docente: <?php echo h($teacherName); ?></span>
+            <?php if ($completionPercent > 0): ?>
+                <span class="hero-badge">Puntaje: <?php echo $completionPercent; ?>%</span>
+            <?php endif; ?>
+            <span class="hero-badge"><?php echo h($programLabel); ?></span>
+        </div>
+    </section>
 
-                        $viewerHref = $basePath . '/viewer.php?id=' . rawurlencode($activityId) . '&unit=' . rawurlencode($unitId) . '&assignment=' . rawurlencode($assignmentId) . '&return_to=' . rawurlencode($quizReturn);
-                        ?>
-                        <a class="btn secondary" href="<?php echo h($viewerHref); ?>" target="_blank">Ver <?php echo h($activityType); ?></a>
-                    <?php } ?>
-
-                    <a class="btn" href="<?php echo h($quizViewerHref); ?>" target="_blank">Abrir quiz (viewer)</a>
-                </div>
+    <?php if ($isCompleted): ?>
+    <!-- COMPLETED -->
+    <section class="empty-shell">
+        <div class="empty-state">
+            <div class="empty-icon">🏁</div>
+            <div class="empty-title">¡Unidad completada!</div>
+            <div class="empty-text">
+                Terminaste todas las actividades de esta unidad.
+                <?php if ($hasUnitResult): ?>
+                    Tu puntaje es <strong><?php echo $completionPercent; ?>%</strong>
+                    (errores: <?php echo $quizErrors; ?>/<?php echo $quizTotal; ?>).
+                <?php else: ?>
+                    Completa el quiz para registrar tu resultado.
+                <?php endif; ?>
             </div>
-        <?php } ?>
-    <?php } ?>
+            <div style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center">
+                <a class="empty-btn blue" href="<?php echo h($backHref); ?>">← Mis cursos</a>
+                <a class="empty-btn"
+                   href="student_course.php?assignment=<?php echo urlencode($assignmentId); ?>&unit=<?php echo urlencode($selectedUnitId); ?>&step=0">
+                   Repetir unidad
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <?php elseif (!$current || !$viewerHref): ?>
+    <!-- NO ACTIVITIES -->
+    <section class="empty-shell">
+        <div class="empty-state">
+            <div class="empty-icon">📭</div>
+            <div class="empty-title">Sin actividades disponibles</div>
+            <div class="empty-text">Esta unidad aún no tiene actividades o el tipo de actividad no cuenta con visor configurado.</div>
+            <a class="empty-btn blue" href="<?php echo h($backHref); ?>">← Mis cursos</a>
+        </div>
+    </section>
+
+    <?php else: ?>
+    <!-- ACTIVITY VIEWER -->
+    <section class="viewer-shell">
+        <div class="viewer-top">
+            <h2 class="section-title">Presentación de actividades</h2>
+            <span class="act-badge">Actividad <?php echo ($step + 1); ?> / <?php echo $total; ?></span>
+        </div>
+
+        <div class="frame-wrap">
+            <iframe
+                id="activityViewer"
+                src="<?php echo h($viewerHref); ?>"
+                title="Visor de actividad"
+            ></iframe>
+        </div>
+
+        <div class="controls">
+            <a class="ctrl-btn blue <?php echo $hasPrev ? '' : 'disabled'; ?>"
+               href="student_course.php?assignment=<?php echo urlencode($assignmentId); ?>&unit=<?php echo urlencode($selectedUnitId); ?>&step=<?php echo $hasPrev ? $prevStep : $step; ?>">
+                &larr; Anterior
+            </a>
+            <div class="step-counter">
+                <strong><?php echo ($step + 1); ?></strong> / <?php echo $total; ?>
+            </div>
+            <a class="ctrl-btn <?php echo ($hasNext || $isLastActivity) ? '' : 'disabled'; ?>"
+               href="student_course.php?assignment=<?php echo urlencode($assignmentId); ?>&unit=<?php echo urlencode($selectedUnitId); ?>&step=<?php echo $isLastActivity ? $completedStep : ($hasNext ? $nextStep : $step); ?>">
+                <?php echo $isLastActivity ? 'Finalizar unidad' : 'Siguiente &rarr;'; ?>
+            </a>
+        </div>
+    </section>
+    <?php endif; ?>
+
+</main>
 </div>
+
+<script>
+(function () {
+    const iframe = document.getElementById('activityViewer');
+    if (!iframe) return;
+
+    function hideEmbeddedBackButton() {
+        try {
+            const doc = iframe.contentDocument || iframe.contentWindow.document;
+            if (!doc) return;
+
+            const selectors = [
+                '.back','.btn-volver','.back-button','.btn.back','.back-btn',
+                '[class*="back"]','[id*="back"]',
+                'a[href*="dashboard"]','a[href*="unit_view"]',
+                'a[href*="student_course"]','a[href*="course.php"]'
+            ];
+
+            selectors.forEach((selector) => {
+                doc.querySelectorAll(selector).forEach((el) => {
+                    const text = (el.textContent || '').toLowerCase();
+                    const href = (el.getAttribute('href') || '').toLowerCase();
+                    if (
+                        text.includes('volver') || text.includes('back') ||
+                        text.includes('regresar') || text.includes('mis cursos') ||
+                        href.includes('dashboard') || href.includes('unit_view') ||
+                        href.includes('student_course') || href.includes('course.php')
+                    ) {
+                        el.style.display = 'none';
+                    }
+                });
+            });
+
+            const style = doc.createElement('style');
+            style.innerHTML = 'body{ margin-top:0 !important; padding-top:0 !important; }';
+            doc.head.appendChild(style);
+        } catch (e) {
+            // cross-origin — ignore
+        }
+    }
+
+    iframe.addEventListener('load', hideEmbeddedBackButton);
+})();
+</script>
 </body>
 </html>
