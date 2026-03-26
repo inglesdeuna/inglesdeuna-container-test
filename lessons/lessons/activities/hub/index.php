@@ -52,7 +52,8 @@ $activityTypes = [
     "dictation" => "Dictation",
     "external" => "External",
     "flipbooks" => "Flipbooks",
-    "powerpoint" => "PowerPoint"
+    "powerpoint" => "PowerPoint",
+    "crossword" => "Crossword Puzzle"
 ];
 
 /* ===============================

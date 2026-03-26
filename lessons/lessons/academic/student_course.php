@@ -277,6 +277,7 @@ $activityTypeLabels = [
     'pronunciation' => 'Pronunciation', 'listen_order' => 'Listen & Order',
     'drag_drop' => 'Drag & Drop', 'match' => 'Match',
     'external' => 'External', 'powerpoint' => 'PowerPoint',
+    'crossword' => 'Crossword Puzzle',
 ];
 
 $viewerHref = null;

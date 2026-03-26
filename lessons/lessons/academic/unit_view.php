@@ -145,6 +145,7 @@ function activity_display_title(array $activity): string
         'match' => 'Match',
         'external' => 'External',
         'powerpoint' => 'PowerPoint',
+        'crossword' => 'Crossword Puzzle',
         'build_sentence' => 'Build the Sentence',
     ];
 
@@ -247,6 +248,7 @@ $activityLabels = [
     'match' => 'Match',
     'external' => 'External',
     'powerpoint' => 'PowerPoint',
+    'crossword' => 'Crossword Puzzle',
     'build_sentence' => 'Build the Sentence',
 ];
 ?>

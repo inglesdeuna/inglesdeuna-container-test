@@ -717,6 +717,7 @@ $activityTypeLabels = [
     'match' => 'Match',
     'external' => 'External',
     'powerpoint' => 'PowerPoint',
+    'crossword' => 'Crossword Puzzle',
     'build_sentence' => 'Build the Sentence',
 ];
 
