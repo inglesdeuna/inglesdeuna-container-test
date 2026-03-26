@@ -318,7 +318,6 @@ a.back{
       <div id="keyboard" class="keyboard"></div>
 
       <div class="controls">
-        <button class="action-btn action-check" type="button" onclick="checkGame()">Check Answer</button>
         <button class="action-btn action-hint" type="button" onclick="showHint()">Hint</button>
         <button class="action-btn action-answer" type="button" onclick="showAnswer()">Show Answer</button>
         <button class="action-btn action-next" type="button" onclick="nextWord()">Next</button>
