@@ -1,15 +1,19 @@
 <?php
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
 require_once __DIR__ . "/../../config/db.php";
 require_once __DIR__ . "/../../core/_activity_editor_template.php";
 
 // Block student access to editor
-if (isset($_SESSION['student_logged']) && $_SESSION['student_logged']) {
+if (!empty($_SESSION['student_logged'])) {
     header('Location: /lessons/lessons/academic/student_dashboard.php?error=access_denied');
     exit;
 }
 
 // Accept admin OR teacher session
-$isLoggedIn = (!empty($_SESSION['academic_logged'])) || (!empty($_SESSION['admin_logged']));
+$isLoggedIn = !empty($_SESSION['academic_logged']) || !empty($_SESSION['admin_logged']);
 if (!$isLoggedIn) {
     header('Location: /lessons/lessons/academic/login.php');
     exit;
