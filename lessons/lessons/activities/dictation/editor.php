@@ -5,13 +5,13 @@ require_once __DIR__ . '/../../core/_activity_editor_template.php';
 
 // Block student access to editor
 if (isset($_SESSION['student_logged']) && $_SESSION['student_logged']) {
-    header('Location: ../../../student_dashboard.php?error=access_denied');
+    header('Location: /lessons/lessons/academic/student_dashboard.php?error=access_denied');
     exit;
 }
 
 // Ensure teacher/admin is logged in
 if (!isset($_SESSION['academic_logged']) || !$_SESSION['academic_logged']) {
-    header('Location: ../../../login.php');
+    header('Location: /lessons/lessons/academic/login.php');
     exit;
 }
 

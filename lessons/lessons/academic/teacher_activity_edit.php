@@ -145,5 +145,6 @@ $query = http_build_query([
     'assignment' => $assignmentId,
 ]);
 
-header('Location: ../activities/' . rawurlencode($type) . '/editor.php?' . $query);
+$editorUrl = '/lessons/lessons/activities/' . rawurlencode($type) . '/editor.php?' . $query;
+header('Location: ' . $editorUrl);
 exit;
