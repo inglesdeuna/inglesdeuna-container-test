@@ -5,6 +5,7 @@ function render_activity_viewer($title, $icon, $content)
     $unit = isset($_GET['unit']) ? trim((string) $_GET['unit']) : '';
     $assignment = isset($_GET['assignment']) ? trim((string) $_GET['assignment']) : '';
     $source = isset($_GET['source']) ? trim((string) $_GET['source']) : '';
+    $embedded = isset($_GET['embedded']) && (string) $_GET['embedded'] === '1';
 
     if ($assignment !== '') {
         $backUrl = '../../academic/teacher_unit.php?assignment=' . urlencode($assignment) . '&unit=' . urlencode($unit);
@@ -248,6 +249,7 @@ function render_activity_viewer($title, $icon, $content)
 
 <div class="activity-wrapper">
 
+    <?php if (!$embedded) { ?>
     <div class="top-row">
         <a href="<?= htmlspecialchars($backUrl, ENT_QUOTES, 'UTF-8') ?>" class="back-btn">↩ Back</a>
     </div>
@@ -255,6 +257,7 @@ function render_activity_viewer($title, $icon, $content)
     <div class="viewer-header">
         <h1><?= htmlspecialchars($icon, ENT_QUOTES, 'UTF-8') ?> <?= htmlspecialchars($title, ENT_QUOTES, 'UTF-8') ?></h1>
     </div>
+    <?php } ?>
 
     <div class="viewer-content">
         <?= $content ?>
