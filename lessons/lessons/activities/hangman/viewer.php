@@ -115,11 +115,11 @@ h1{
 .hangman-intro{
   max-width:980px;
   margin:0 auto 14px;
-  padding:20px 24px;
+  padding:16px 18px;
 }
 
 .game-box{
-  padding:20px;
+  padding:16px;
   max-width:980px;
   margin:0 auto 14px;
 }
@@ -207,11 +207,11 @@ h1{
 }
 
 .controls{
-  margin-top:14px;
+  margin-top:10px;
   display:flex;
   flex-wrap:wrap;
   justify-content:center;
-  gap:12px;
+  gap:10px;
 }
 
 .action-btn{
@@ -220,7 +220,7 @@ h1{
   border-radius:999px;
   color:white;
   cursor:pointer;
-  min-width:148px;
+  min-width:142px;
   font-weight:800;
   font-size:14px;
   font-family:'Nunito', 'Segoe UI', sans-serif;
@@ -293,6 +293,12 @@ a.back{
   #hangmanImg{width:160px}
   .keyboard button{width:36px;height:36px}
   .action-btn{width:calc(50% - 8px);min-width:0}
+}
+
+@media (max-height:900px) and (min-width:761px){
+  .hangman-intro{padding:14px 16px;margin-bottom:10px}
+  .game-box{padding:14px}
+  .action-btn{padding:10px 16px;min-width:132px;font-size:13px}
 }
 </style>
 </head>

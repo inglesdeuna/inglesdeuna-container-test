@@ -169,7 +169,7 @@ body {
 .cw-layout {
     display: flex;
     gap: 24px;
-    max-width: 1060px;
+    max-width: 980px;
     margin: 0 auto;
     align-items: flex-start;
     flex-wrap: wrap;
@@ -257,10 +257,11 @@ body {
     margin-top: 14px;
 }
 .cw-toolbar button {
-    padding: 9px 15px;
+    padding: 11px 18px;
     border: none; border-radius: 50px;
     font-family: 'Nunito', sans-serif;
-    font-weight: 800; font-size: 13px;
+    font-weight: 800; font-size: 14px;
+    min-width: 142px;
     cursor: pointer;
     transition: transform .1s, box-shadow .1s;
 }
@@ -374,6 +375,16 @@ body {
     :root { --cell-size: 34px; }
     .cw-clues-col { flex: 0 0 100%; }
     .clue-list li { font-size: 12px; }
+    .cw-toolbar button { min-width: 0; }
+}
+
+@media (max-height: 900px) and (min-width: 641px) {
+    .cw-layout { gap: 16px; }
+    .cw-toolbar button {
+        padding: 10px 16px;
+        min-width: 132px;
+        font-size: 13px;
+    }
 }
 </style>
 </head>

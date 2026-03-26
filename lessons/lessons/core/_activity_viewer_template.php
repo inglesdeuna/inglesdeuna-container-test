@@ -111,6 +111,81 @@ function render_activity_viewer($title, $icon, $content)
             backdrop-filter:blur(10px);
         }
 
+        /* Global size normalization for activity viewers */
+        .viewer-content > :is(div, section){
+            max-width:980px;
+            margin-left:auto;
+            margin-right:auto;
+        }
+
+        .viewer-content :is(.mc-viewer, .dd-stage, .lo-stage, .vc-viewer, .dict-stage, .pron-stage, .match-stage, .flashcards-wrap, .qz-wrap, .flipbook-viewer, .ppt-viewer-shell, .ex-viewer){
+            max-width:980px !important;
+            margin-left:auto !important;
+            margin-right:auto !important;
+        }
+
+        .viewer-content :is(.mc-intro, .dd-intro, .lo-intro, .vc-intro, .dict-intro, .pron-intro, .match-intro, .flashcards-intro, .flipbook-intro, .ex-intro){
+            margin-bottom:12px !important;
+            padding:16px 18px !important;
+        }
+
+        .viewer-content :is(.mc-card, #sentenceBox, .vc-panel, .flipbook-viewer__card){
+            padding:14px !important;
+        }
+
+        .viewer-content :is(.mc-question, #promptText, .lo-prompt, .vc-question){
+            font-size:clamp(20px, 2.1vw, 30px) !important;
+            line-height:1.12 !important;
+            margin-bottom:10px !important;
+        }
+
+        .viewer-content :is(.mc-controls, .controls, .lo-controls, .vc-controls, .qz-actions, .ex-actions, .flipbook-toolbar__right){
+            gap:10px !important;
+        }
+
+        .viewer-content :is(.mc-btn, .dd-btn, .lo-btn, .vc-btn, .action-btn, .qz-btn, .ppt-btn, .ex-btn, .flash-btn, .flipbook-btn, .dict-stage .btn, .pron-stage .btn){
+            padding:11px 18px !important;
+            min-width:142px !important;
+            font-size:14px !important;
+            font-weight:800 !important;
+            border-radius:999px !important;
+        }
+
+        @media (max-width: 768px){
+            .viewer-content :is(.mc-btn, .dd-btn, .lo-btn, .vc-btn, .action-btn, .qz-btn, .ppt-btn, .ex-btn, .flash-btn, .flipbook-btn, .dict-stage .btn, .pron-stage .btn){
+                width:100% !important;
+                max-width:300px !important;
+                min-width:0 !important;
+            }
+
+            .viewer-content :is(.mc-controls, .controls, .lo-controls, .vc-controls, .qz-actions, .ex-actions, .flipbook-toolbar__right){
+                justify-content:center !important;
+                flex-wrap:wrap !important;
+            }
+        }
+
+        @media (max-height: 900px) and (min-width: 769px){
+            .viewer-content :is(.mc-intro, .dd-intro, .lo-intro, .vc-intro, .dict-intro, .pron-intro, .match-intro, .flashcards-intro, .flipbook-intro, .ex-intro){
+                margin-bottom:10px !important;
+                padding:14px 16px !important;
+            }
+
+            .viewer-content :is(.mc-question, #promptText, .lo-prompt, .vc-question){
+                font-size:clamp(18px, 1.8vw, 26px) !important;
+            }
+
+            .viewer-content :is(.mc-btn, .dd-btn, .lo-btn, .vc-btn, .action-btn, .qz-btn, .ppt-btn, .ex-btn, .flash-btn, .flipbook-btn, .dict-stage .btn, .pron-stage .btn){
+                padding:10px 16px !important;
+                min-width:132px !important;
+                font-size:13px !important;
+            }
+
+            .viewer-content :is(.mc-options, .vc-options){
+                max-height:180px;
+                overflow-y:auto;
+            }
+        }
+
         @media (max-width: 900px){
             body{
                 padding:12px 12px 18px;
