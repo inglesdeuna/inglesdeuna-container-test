@@ -94,14 +94,16 @@ body{
 h1{
   color:#9a3412;
   font-family:'Fredoka', 'Trebuchet MS', sans-serif;
-  font-size:30px;
+  font-size:clamp(26px, 2.2vw, 30px);
   margin:0 0 4px;
+  text-align:center;
 }
 
 .subtitle{
   color:#6b5b41;
   margin:0;
   font-size:15px;
+  text-align:center;
 }
 
 .hangman-intro,
@@ -306,7 +308,7 @@ a.back{
 <body>
 
 <section class="hangman-intro">
-  <h1>🎯 <?= htmlspecialchars($title) ?></h1>
+  <h1><?= htmlspecialchars($title) ?></h1>
   <p class="subtitle">Guess the correct word, use Hint if needed, and reveal the answer only when you want full support.</p>
 </section>
 

@@ -204,7 +204,7 @@ ob_start();
 .ppt-slide.template-text_image{display:grid;grid-template-columns:1.1fr .9fr}
 .ppt-slide.template-image_full{display:flex;flex-direction:column}
 .ppt-col-text{display:flex;flex-direction:column;gap:10px}
-.ppt-slide-title{margin:0;color:#0f172a;font-family:'Fredoka','Trebuchet MS',sans-serif;font-weight:800;line-height:1.08}
+.ppt-slide-title{margin:0;color:#5b21b6;font-family:'Fredoka','Trebuchet MS',sans-serif;font-weight:800;line-height:1.08;text-align:center}
 .ppt-slide-text{margin:0;color:#334155;line-height:1.7;white-space:pre-wrap}
 .ppt-image-wrap{width:100%;display:flex;justify-content:center;align-items:center}
 .ppt-image{max-width:100%;max-height:420px;border-radius:18px;object-fit:contain;border:1px solid rgba(15,23,42,.08);background:#fff;box-shadow:0 10px 22px rgba(15,23,42,.08)}
@@ -218,7 +218,7 @@ ob_start();
 .ppt-count{font-weight:800;color:#5b21b6}
 .ppt-empty{background:#fff;border:1px solid #ddd6fe;border-radius:18px;padding:28px;text-align:center;color:#7c2d12;font-weight:700}
 .ppt-file{background:linear-gradient(180deg,#fffdfc 0%,#faf5ff 100%);border:1px solid #ddd6fe;border-radius:18px;padding:16px 18px;margin-bottom:14px;display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;box-shadow:0 10px 22px rgba(15,23,42,.07)}
-.ppt-file-name{color:#0f172a;font-weight:800}
+.ppt-file-name{color:#5b21b6;font-weight:800}
 .ppt-embedded-file{margin-bottom:14px;background:#fff;border:1px solid #ddd6fe;border-radius:18px;padding:12px;box-shadow:0 10px 22px rgba(15,23,42,.07)}
 .ppt-embedded-file iframe{width:100%;height:420px;border:none;border-radius:12px}
 .ppt-note{font-size:12px;color:#64748b;margin-top:6px}

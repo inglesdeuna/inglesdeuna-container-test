@@ -125,15 +125,26 @@ function render_activity_viewer($title, $icon, $content)
             margin-right:auto !important;
         }
 
-        .viewer-content :is(.mc-intro, .dd-intro, .lo-intro, .vc-intro, .dict-intro, .pron-intro, .match-intro, .flashcards-intro, .flipbook-intro, .ex-intro){
+        .viewer-content :is(.mc-intro, .dd-intro, .lo-intro, .vc-intro, .dict-intro, .pron-intro, .match-intro, .flashcards-intro, .flipbook-intro, .ex-intro, .ppt-intro){
             margin-bottom:12px !important;
             padding:16px 18px !important;
         }
 
-        .viewer-content :is(.mc-intro h2, .dd-intro h2, .lo-intro h2, .vc-intro h2, .dict-intro h2, .pron-intro h2, .match-intro h2, .flashcards-intro h2, .flipbook-intro h2, .ex-intro h2){
+        .viewer-content :is(.mc-intro h2, .dd-intro h2, .lo-intro h2, .vc-intro h2, .dict-intro h2, .pron-intro h2, .match-intro h2, .flashcards-intro h2, .flipbook-intro h2, .ex-intro h2, .ppt-intro h2){
             font-size:clamp(26px, 2.2vw, 30px) !important;
             line-height:1.1 !important;
             margin:0 0 8px !important;
+            font-family:'Fredoka', 'Trebuchet MS', sans-serif !important;
+            font-weight:700 !important;
+            text-align:center !important;
+            color:#5b21b6 !important;
+        }
+
+        .viewer-content :is(.ppt-slide-title){
+            font-size:clamp(26px, 2.2vw, 30px) !important;
+            line-height:1.1 !important;
+            text-align:center !important;
+            color:#5b21b6 !important;
             font-family:'Fredoka', 'Trebuchet MS', sans-serif !important;
             font-weight:700 !important;
         }
@@ -174,12 +185,12 @@ function render_activity_viewer($title, $icon, $content)
         }
 
         @media (max-height: 900px) and (min-width: 769px){
-            .viewer-content :is(.mc-intro, .dd-intro, .lo-intro, .vc-intro, .dict-intro, .pron-intro, .match-intro, .flashcards-intro, .flipbook-intro, .ex-intro){
+            .viewer-content :is(.mc-intro, .dd-intro, .lo-intro, .vc-intro, .dict-intro, .pron-intro, .match-intro, .flashcards-intro, .flipbook-intro, .ex-intro, .ppt-intro){
                 margin-bottom:10px !important;
                 padding:14px 16px !important;
             }
 
-            .viewer-content :is(.mc-intro h2, .dd-intro h2, .lo-intro h2, .vc-intro h2, .dict-intro h2, .pron-intro h2, .match-intro h2, .flashcards-intro h2, .flipbook-intro h2, .ex-intro h2){
+            .viewer-content :is(.mc-intro h2, .dd-intro h2, .lo-intro h2, .vc-intro h2, .dict-intro h2, .pron-intro h2, .match-intro h2, .flashcards-intro h2, .flipbook-intro h2, .ex-intro h2, .ppt-intro h2, .ppt-slide-title){
                 font-size:clamp(22px, 1.9vw, 26px) !important;
             }
 
