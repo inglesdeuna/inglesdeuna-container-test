@@ -134,7 +134,7 @@ function load_student_unit_results(PDO $pdo, string $studentId, string $assignme
 function load_assignment(PDO $pdo, string $assignmentId): ?array
 {
     try {
-        $stmt = $pdo->prepare("\n            SELECT sa.id, sa.student_id, sa.teacher_id, sa.course_id, sa.period, sa.program, sa.unit_id, sa.level_id,\n                   t.name AS teacher_name,\n                   c.name AS course_name\n            FROM student_assignments sa\n            LEFT JOIN teachers t ON t.id = sa.teacher_id\n            LEFT JOIN courses c ON c.id = sa.course_id\n            WHERE sa.id = :id\n            LIMIT 1\n        ");
+        $stmt = $pdo->prepare("\n            SELECT sa.id, sa.student_id, sa.teacher_id, sa.course_id, sa.period, sa.program, sa.unit_id, sa.level_id,\n                   t.name AS teacher_name,\n                   c.name AS course_name\n            FROM student_assignments sa\n            LEFT JOIN teachers t ON t.id = sa.teacher_id\n            LEFT JOIN courses c ON c.id::text = sa.course_id\n            WHERE sa.id = :id\n            LIMIT 1\n        ");
         $stmt->execute(['id' => $assignmentId]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
         return is_array($row) ? $row : null;
@@ -156,7 +156,7 @@ function load_units_for_assignment(PDO $pdo, array $assignment): array
         $orderBy = table_has_column($pdo, 'units', 'position') ? 'ORDER BY position ASC, id ASC' : 'ORDER BY id ASC';
 
         if ($program === 'english' && table_has_column($pdo, 'units', 'phase_id')) {
-            $stmt = $pdo->prepare("SELECT id, name FROM units WHERE phase_id = :course_id {$orderBy}");
+            $stmt = $pdo->prepare("SELECT id, name FROM units WHERE phase_id::text = :course_id {$orderBy}");
             $stmt->execute(['course_id' => $courseId]);
             $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
             if (!empty($rows)) {
@@ -164,7 +164,7 @@ function load_units_for_assignment(PDO $pdo, array $assignment): array
             }
         }
 
-        $stmt = $pdo->prepare("SELECT id, name FROM units WHERE course_id = :course_id {$orderBy}");
+        $stmt = $pdo->prepare("SELECT id, name FROM units WHERE course_id::text = :course_id {$orderBy}");
         $stmt->execute(['course_id' => $courseId]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
     } catch (Throwable $e) {
@@ -183,7 +183,7 @@ function load_activities_for_unit(PDO $pdo, string $unitId): array
             ? 'ORDER BY COALESCE(position, 0) ASC, id ASC'
             : 'ORDER BY id ASC';
 
-        $stmt = $pdo->prepare("SELECT id, type FROM activities WHERE unit_id = :unit_id {$orderBy}");
+        $stmt = $pdo->prepare("SELECT id, type FROM activities WHERE unit_id::text = :unit_id {$orderBy}");
         $stmt->execute(['unit_id' => $unitId]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
     } catch (Throwable $e) {

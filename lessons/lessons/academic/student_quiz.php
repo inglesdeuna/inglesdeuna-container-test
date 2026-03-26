@@ -59,7 +59,7 @@ function get_pdo_connection(): ?PDO
 function load_assignment(PDO $pdo, string $assignmentId): ?array
 {
     try {
-        $stmt = $pdo->prepare("\n            SELECT sa.id, sa.student_id, sa.course_id, sa.program, sa.period, c.name AS course_name\n            FROM student_assignments sa\n            LEFT JOIN courses c ON c.id = sa.course_id\n            WHERE sa.id = :id\n            LIMIT 1\n        ");
+        $stmt = $pdo->prepare("\n            SELECT sa.id, sa.student_id, sa.course_id, sa.program, sa.period, c.name AS course_name\n            FROM student_assignments sa\n            LEFT JOIN courses c ON c.id::text = sa.course_id\n            WHERE sa.id = :id\n            LIMIT 1\n        ");
         $stmt->execute(['id' => $assignmentId]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
         return is_array($row) ? $row : null;
