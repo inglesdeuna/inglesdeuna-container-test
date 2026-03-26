@@ -824,9 +824,9 @@ body{font-family:Arial,sans-serif;background:var(--bg);color:var(--text);overflo
   max-width:1280px;
   margin:0 auto;
   display:grid;
-  grid-template-columns:180px 1fr 180px;
+  grid-template-columns:280px minmax(0, 1fr);
   align-items:center;
-  gap:12px;
+  gap:14px;
 }
 
 .top-btn{
