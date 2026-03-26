@@ -94,14 +94,14 @@ body{
 h1{
   color:#9a3412;
   font-family:'Fredoka', 'Trebuchet MS', sans-serif;
-  font-size:26px;
-  margin:0 0 2px;
+  font-size:30px;
+  margin:0 0 4px;
 }
 
 .subtitle{
   color:#6b5b41;
   margin:0;
-  font-size:13px;
+  font-size:15px;
 }
 
 .hangman-intro,
@@ -113,21 +113,21 @@ h1{
 }
 
 .hangman-intro{
-  max-width:1020px;
-  margin:0 auto 6px;
-  padding:8px 12px;
+  max-width:980px;
+  margin:0 auto 14px;
+  padding:20px 24px;
 }
 
 .game-box{
-  padding:10px;
-  max-width:1020px;
-  margin:0 auto 6px;
+  padding:20px;
+  max-width:980px;
+  margin:0 auto 14px;
 }
 
 .game-layout{
   display:grid;
-  grid-template-columns:minmax(0, 1fr) 140px;
-  gap:8px;
+  grid-template-columns:minmax(0, 1fr) 200px;
+  gap:12px;
   align-items:start;
 }
 
@@ -146,21 +146,21 @@ h1{
 }
 
 #hangmanImg{
-  width:150px;
+  width:200px;
   max-width:100%;
 }
 
 .word{
-  font-size:22px;
-  margin:4px 0 6px;
+  font-size:clamp(22px, 2.4vw, 30px);
+  margin:8px 0 12px;
   display:flex;
   flex-wrap:wrap;
   justify-content:center;
-  gap:6px 8px;
+  gap:8px 10px;
 }
 
 .word-char{
-  min-width:22px;
+  min-width:28px;
   display:inline-flex;
   justify-content:center;
   align-items:center;
@@ -172,30 +172,30 @@ h1{
 }
 
 .word-space{
-  min-width:18px;
+  min-width:22px;
   border-bottom:none;
 }
 
 .keyboard{
-  margin-top:4px;
+  margin-top:12px;
   display:flex;
   flex-wrap:wrap;
   justify-content:center;
-  gap:5px;
-  max-width:430px;
+  gap:8px;
+  max-width:560px;
   margin-left:auto;
   margin-right:auto;
 }
 
 .keyboard button{
-  width:32px;
-  height:32px;
+  width:40px;
+  height:40px;
   border:none;
   border-radius:10px;
   background:linear-gradient(180deg, #fde68a 0%, #fbbf24 100%);
   color:#7c2d12;
   font-weight:800;
-  font-size:11px;
+  font-size:13px;
   box-shadow:0 8px 18px rgba(251, 191, 36, .18);
   cursor:pointer;
 }
@@ -207,22 +207,22 @@ h1{
 }
 
 .controls{
-  margin-top:6px;
+  margin-top:14px;
   display:flex;
   flex-wrap:wrap;
   justify-content:center;
-  gap:8px;
+  gap:12px;
 }
 
 .action-btn{
-  padding:7px 10px;
+  padding:11px 18px;
   border:none;
   border-radius:999px;
   color:white;
   cursor:pointer;
-  min-width:98px;
+  min-width:148px;
   font-weight:800;
-  font-size:12px;
+  font-size:14px;
   font-family:'Nunito', 'Segoe UI', sans-serif;
   box-shadow:0 10px 22px rgba(15, 23, 42, .12);
   transition:transform .15s ease, filter .15s ease;
@@ -239,27 +239,27 @@ h1{
 .action-next{background:linear-gradient(180deg, #84cc16 0%, #4d7c0f 100%)}
 
 #feedback{
-  font-size:14px;
+  font-size:18px;
   font-weight:800;
-  margin-top:5px;
-  min-height:16px;
+  margin-top:10px;
+  min-height:22px;
 }
 
 .good{ color:#15803d; }
 .bad{ color:#dc2626; }
 
 .hint{
-  font-size:12px;
+  font-size:14px;
   font-weight:800;
   color:#0f766e;
-  margin:4px 0;
-  min-height:14px;
+  margin:8px 0;
+  min-height:18px;
 }
 
 .hint-image{
-  width:120px;
-  max-width:120px;
-  max-height:88px;
+  width:140px;
+  max-width:140px;
+  max-height:110px;
   object-fit:contain;
   border-radius:10px;
   border:1px solid #e2e8f0;
@@ -270,10 +270,10 @@ h1{
 
 a.back{
   display:inline-block;
-  margin-top:4px;
+  margin-top:10px;
   background:linear-gradient(180deg, #34d399 0%, #10b981 100%);
   color:#fff;
-  padding:8px 14px;
+  padding:10px 16px;
   border-radius:999px;
   text-decoration:none;
   font-weight:800;
@@ -281,15 +281,16 @@ a.back{
 }
 
 @media (max-width:760px){
-  body{padding:8px}
-  h1{font-size:21px}
-  .subtitle{font-size:12px}
+  body{padding:12px}
+  h1{font-size:24px}
+  .subtitle{font-size:13px}
   .hangman-intro,
-  .game-box{padding:8px}
+  .game-box{padding:16px}
   .game-layout{grid-template-columns:1fr}
   .right-panel{justify-content:center}
-  .hint-image{max-width:108px;max-height:80px}
-  #hangmanImg{width:136px}
+  .hint-image{max-width:120px;max-height:96px}
+  #hangmanImg{width:160px}
+  .keyboard button{width:36px;height:36px}
   .action-btn{width:calc(50% - 8px);min-width:0}
 }
 </style>
