@@ -338,6 +338,7 @@ a.back{
 <audio id="correctSound" src="../../hangman/assets/realcorrect.mp3" preload="auto"></audio>
 <audio id="winSound" src="../../hangman/assets/win.mp3" preload="auto"></audio>
 <audio id="loseSound" src="../../hangman/assets/losefun.mp3" preload="auto"></audio>
+<audio id="wrongSound" src="assets/wrong.wav" preload="auto"></audio>
 
 <script>
 const items = <?= json_encode($normalizedItems, JSON_UNESCAPED_UNICODE) ?>;
@@ -357,6 +358,7 @@ const hangmanImg = document.getElementById("hangmanImg");
 const correctSound = document.getElementById("correctSound");
 const winSound = document.getElementById("winSound");
 const loseSound = document.getElementById("loseSound");
+const wrongSound = document.getElementById("wrongSound");
 
 let index = 0;
 let word = "";
@@ -447,11 +449,13 @@ function guess(letter){
     // ya está preloaded
     hangmanImg.src = `../../hangman/assets/hangman${mistakes}.png`;
     if (mistakes >= maxMistakes) {
-      feedback.textContent = "❌ You lost!";
+      feedback.textContent = "❌ Try Again!";
       feedback.className = "bad";
       playSound(loseSound);
       gameFinished = true;
       setKeyboardDisabled(true);
+    } else {
+      playSound(wrongSound);
     }
   } else {
     playSound(correctSound);
@@ -500,7 +504,7 @@ function checkGame(){
   }
 
   if (mistakes >= maxMistakes) {
-    feedback.textContent = "❌ You lost!";
+    feedback.textContent = "❌ Try Again!";
     feedback.className = "bad";
     playSound(loseSound);
     gameFinished = true;
