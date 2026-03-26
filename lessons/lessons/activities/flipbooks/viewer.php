@@ -76,10 +76,6 @@ ob_start();
         <div class="flipbook-viewer__card" id="flipbook-fullscreen-target">
             <div class="flipbook-toolbar">
                 <div class="flipbook-toolbar__right">
-                    <button type="button" id="open-pdf-btn" class="flipbook-btn flipbook-btn--secondary">
-                        Abrir PDF
-                    </button>
-
                     <button type="button" id="download-pdf-btn" class="flipbook-btn flipbook-btn--primary">
                         Download PDF
                     </button>
@@ -105,7 +101,6 @@ ob_start();
         const viewer = document.getElementById('flipbook-viewer');
         const pdfFrame = document.getElementById('pdf-frame');
         const fullScreenTarget = document.getElementById('flipbook-fullscreen-target');
-        const openBtn = document.getElementById('open-pdf-btn');
         const downloadBtn = document.getElementById('download-pdf-btn');
         const fullScreenBtn = document.getElementById('full-screen-btn');
 
@@ -115,15 +110,6 @@ ob_start();
 
         const pdfUrl = viewer.getAttribute('data-pdf-url') || '';
         const pdfDownloadUrl = viewer.getAttribute('data-pdf-download-url') || pdfUrl;
-
-        if (openBtn) {
-            openBtn.addEventListener('click', function () {
-                if (!pdfUrl) {
-                    return;
-                }
-                window.open(pdfUrl, '_blank', 'noopener');
-            });
-        }
 
         if (downloadBtn) {
             downloadBtn.addEventListener('click', function () {
