@@ -247,6 +247,7 @@ h1{
 
 .good{ color:#15803d; }
 .bad{ color:#dc2626; }
+.word-char.revealed{ color:#dc2626; font-style:italic; }
 
 .hint{
   font-size:14px;
@@ -411,7 +412,7 @@ function loadWord(){
   renderWord();
 }
 
-function renderWord(){
+function renderWord(revealMissing = false){
   let html = "";
 
   for (let l of word) {
@@ -419,6 +420,8 @@ function renderWord(){
       html += `<span class="word-char word-space">&nbsp;</span>`;
     } else if (guessed.includes(l)) {
       html += `<span class="word-char">${l}</span>`;
+    } else if (revealMissing) {
+      html += `<span class="word-char revealed">${l}</span>`;
     } else {
       html += `<span class="word-char">&nbsp;</span>`;
     }
@@ -519,16 +522,7 @@ function checkGame(){
 }
 
 function showAnswer(){
-  if (gameFinished) return;
-
-  guessed = [];
-  for (let l of word) {
-    if (l !== " ") {
-      guessed.push(l);
-    }
-  }
-
-  renderWord();
+  renderWord(true);
   feedback.textContent = "Show The Answer";
   feedback.className = "good";
   gameFinished = true;
