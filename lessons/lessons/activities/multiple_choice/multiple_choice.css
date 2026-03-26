@@ -1,12 +1,12 @@
 .mc-viewer{
   max-width: 980px;
   margin: 0 auto;
-  padding: 4px 0 20px;
+  padding: 0 0 10px;
 }
 
 .mc-intro{
-  margin-bottom: 18px;
-  padding: 24px 26px;
+  margin-bottom: 12px;
+  padding: 18px 20px;
   border-radius: 26px;
   border: 1px solid #e7d8fb;
   background: linear-gradient(135deg, #f7ecff 0%, #fff3eb 48%, #fff9d9 100%);
@@ -16,7 +16,7 @@
 .mc-intro h2{
   margin: 0 0 8px;
   font-family: 'Fredoka', 'Trebuchet MS', sans-serif;
-  font-size: 30px;
+  font-size: 26px;
   line-height: 1.1;
   color: #4c1d95;
 }
@@ -24,49 +24,51 @@
 .mc-intro p{
   margin: 0;
   color: #5b516f;
-  font-size: 16px;
-  line-height: 1.6;
+  font-size: 15px;
+  line-height: 1.5;
 }
 
 .mc-status{
   text-align: center;
   font-weight: 700;
   color: #7c3aed;
-  margin-bottom: 14px;
-  font-size: 16px;
+  margin-bottom: 10px;
+  font-size: 15px;
 }
 
 .mc-card{
+  max-width: 920px;
+  margin: 0 auto;
   background: linear-gradient(180deg, #fff7ff 0%, #fffdf4 100%);
   border: 1px solid #f1d7eb;
   border-radius: 24px;
-  padding: 24px;
+  padding: 16px;
   box-shadow: 0 14px 28px rgba(15, 23, 42, .08);
 }
 
 .mc-question{
   font-family: 'Fredoka', 'Trebuchet MS', sans-serif;
-  font-size: clamp(28px, 3vw, 36px);
+  font-size: clamp(20px, 2.1vw, 30px);
   font-weight: 800;
   color: #0f172a;
-  margin-bottom: 18px;
+  margin-bottom: 10px;
   text-align: center;
-  line-height: 1.08;
+  line-height: 1.12;
 }
 
 .mc-image{
   display: none;
-  width: min(100%, 220px);
+  width: min(100%, 150px);
   max-width: 100%;
   border-radius: 18px;
-  margin: 0 auto 18px auto;
+  margin: 0 auto 10px auto;
   background: #fff;
   box-shadow: 0 10px 24px rgba(15, 23, 42, .08);
 }
 
 .mc-options{
   display: grid;
-  gap: 12px;
+  gap: 10px;
 }
 
 .mc-option{
@@ -74,11 +76,11 @@
   background: linear-gradient(180deg, #faf5ff 0%, #fff7ed 100%);
   color: #5b21b6;
   border-radius: 18px;
-  padding: 16px 18px;
+  padding: 10px 14px;
   text-align: left;
   cursor: pointer;
   font-weight: 700;
-  font-size: 18px;
+  font-size: 16px;
   box-shadow: 0 8px 18px rgba(124, 58, 237, .08);
   transition: transform .15s ease, background .15s ease, border-color .15s ease, box-shadow .15s ease;
 }
@@ -106,10 +108,10 @@
 }
 
 .mc-controls{
-  margin-top: 16px;
+  margin-top: 10px;
   display: flex;
   justify-content: center;
-  gap: 12px;
+  gap: 10px;
   flex-wrap: wrap;
 }
 
@@ -117,11 +119,11 @@
   border: none;
   border-radius: 999px;
   color: #fff;
-  padding: 12px 18px;
-  min-width: 148px;
+  padding: 11px 18px;
+  min-width: 142px;
   font-weight: 800;
   cursor: pointer;
-  font-size: 15px;
+  font-size: 14px;
   box-shadow: 0 10px 22px rgba(15, 23, 42, .14);
   transition: transform .15s ease, filter .15s ease;
 }
@@ -151,9 +153,9 @@
 .mc-feedback{
   text-align: center;
   font-weight: 800;
-  margin-top: 14px;
-  min-height: 26px;
-  font-size: 20px;
+  margin-top: 8px;
+  min-height: 24px;
+  font-size: 17px;
 }
 
 .mc-feedback.good{
@@ -165,7 +167,7 @@
 }
 
 .mc-feedback.completed{
-  font-size: 28px;
+  font-size: 24px;
 }
 
 @media (max-width: 768px){
@@ -174,11 +176,11 @@
   }
 
   .mc-card{
-    padding: 16px;
+    padding: 14px;
   }
 
   .mc-intro{
-    padding: 20px 18px;
+    padding: 16px 14px;
   }
 
   .mc-intro h2{
@@ -186,12 +188,12 @@
   }
 
   .mc-question{
-    font-size: 22px;
+    font-size: 20px;
   }
 
   .mc-option{
     font-size: 16px;
-    padding: 14px;
+    padding: 12px;
   }
 
   .mc-feedback{
@@ -204,6 +206,59 @@
 
   .mc-btn{
     width: 100%;
-    max-width: 320px;
+    max-width: 300px;
+  }
+}
+
+@media (max-height: 760px) and (min-width: 769px){
+  .mc-intro{
+    margin-bottom: 10px;
+    padding: 14px 16px;
+  }
+
+  .mc-intro h2{
+    font-size: 26px;
+  }
+
+  .mc-status{
+    margin-bottom: 8px;
+    font-size: 14px;
+  }
+
+  .mc-card{
+    padding: 14px;
+  }
+
+  .mc-question{
+    font-size: clamp(20px, 2vw, 28px);
+    margin-bottom: 10px;
+  }
+
+  .mc-image{
+    width: min(100%, 150px);
+    margin-bottom: 10px;
+  }
+
+  .mc-option{
+    padding: 9px 12px;
+    font-size: 15px;
+  }
+
+  .mc-controls{
+    margin-top: 10px;
+  }
+
+  .mc-btn{
+    padding: 10px 16px;
+    min-width: 132px;
+    font-size: 13px;
+  }
+}
+
+@media (max-height: 900px) and (min-width: 769px){
+  .mc-options{
+    max-height: 180px;
+    overflow-y: auto;
+    padding-right: 2px;
   }
 }

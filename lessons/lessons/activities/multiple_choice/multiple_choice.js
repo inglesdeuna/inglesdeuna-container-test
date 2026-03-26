@@ -100,7 +100,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     if (nextBtn) {
       nextBtn.disabled = false;
-      nextBtn.textContent = index < questions.length - 1 ? '➡️ Next' : '🏁 Finish';
+      nextBtn.textContent = index < questions.length - 1 ? 'Next' : 'Finish';
     }
   }
 
