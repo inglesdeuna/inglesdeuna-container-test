@@ -765,6 +765,14 @@ $teacherInitials = teacher_initials($teacherName);
 $teacherPhotoRaw = trim((string) ($_SESSION['teacher_photo'] ?? ''));
 $teacherPhotoSrc = resolve_photo_src($teacherPhotoRaw);
 
+$pageTitle = trim((string) ($assignment['unit_name'] ?? ''));
+if ($pageTitle === '') {
+  $pageTitle = trim((string) ($assignment['course_name'] ?? ''));
+}
+if ($pageTitle === '') {
+  $pageTitle = 'Course';
+}
+
 $backDashboard = 'dashboard.php?assignment=' . urlencode($assignmentId) . '&unit=' . urlencode($selectedUnitId) . '#unidades-curso';
 $completedStep = max(9999, $total);
 $completedHref = 'teacher_course.php?assignment=' . urlencode($assignmentId) . '&unit=' . urlencode($selectedUnitId) . '&step=' . urlencode((string) $completedStep);
@@ -838,10 +846,14 @@ body{font-family:Arial,sans-serif;background:var(--bg);color:var(--text);overflo
 .top-btn.back{ justify-self:start; }
 
 .topbar-title{
-  font-size:30px;
+  font-size:clamp(22px, 2.2vw, 30px);
   font-weight:800;
   text-align:center;
   grid-column:2;
+  font-family:'Fredoka', 'Trebuchet MS', sans-serif;
+  color:#fff;
+  text-transform:uppercase;
+  letter-spacing:.08em;
 }
 
 .topbar-sub{display:none}
@@ -888,6 +900,7 @@ body{font-family:Arial,sans-serif;background:var(--bg);color:var(--text);overflo
   color:#fff;
   font-size:11px;
   font-weight:800;
+  font-family:'Fredoka', 'Trebuchet MS', sans-serif;
   letter-spacing:.08em;
   text-transform:uppercase;
 }
@@ -1033,40 +1046,25 @@ body{font-family:Arial,sans-serif;background:var(--bg);color:var(--text);overflo
 .viewer-top{
   display:flex;
   align-items:center;
-  justify-content:space-between;
+  justify-content:center;
   gap:14px;
   margin-bottom:10px;
   flex-wrap:wrap;
 }
 
-.section-title{
-  display:flex;
-  align-items:center;
-  gap:12px;
-  font-size:18px;
-  font-weight:800;
-  color:var(--title);
-}
-
-.section-title::after{
-  content:"";
-  flex:1;
-  height:2px;
-  min-width:60px;
-  background:linear-gradient(90deg, var(--line) 0%, transparent 100%);
-}
-
 .act-badge{
-  display:inline-flex;
-  align-items:center;
-  padding:7px 12px;
-  border-radius:999px;
-  background:var(--blue-soft);
+  display:block;
+  width:100%;
+  text-align:center;
+  padding:0;
+  border-radius:0;
+  background:transparent;
   color:var(--blue-dark);
-  font-size:12px;
+  font-size:15px;
   font-weight:800;
   letter-spacing:.04em;
   text-transform:uppercase;
+  font-family:'Fredoka', 'Trebuchet MS', sans-serif;
 }
 
 .frame-wrap{
@@ -1244,7 +1242,7 @@ body{font-family:Arial,sans-serif;background:var(--bg);color:var(--text);overflo
 <header class="topbar">
   <div class="topbar-inner">
     <a class="top-btn back" href="<?php echo h($backDashboard); ?>">&larr; Back</a>
-    <h1 class="topbar-title">Course Presentation</h1>
+    <h1 class="topbar-title"><?php echo h($pageTitle); ?></h1>
   </div>
 </header>
 
@@ -1366,7 +1364,6 @@ body{font-family:Arial,sans-serif;background:var(--bg);color:var(--text);overflo
     <main class="content">
       <section class="viewer-shell">
         <div class="viewer-top">
-          <h2 class="section-title">Activities Presentation</h2>
           <span class="act-badge">Activity <?php echo ($step + 1); ?> / <?php echo $total; ?></span>
         </div>
 
