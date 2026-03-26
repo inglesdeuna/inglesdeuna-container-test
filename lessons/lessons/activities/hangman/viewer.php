@@ -83,10 +83,11 @@ if (empty($normalizedItems)) {
 
 body{
   margin:0;
+  min-height:100vh;
   font-family:'Nunito', 'Segoe UI', sans-serif;
   background:linear-gradient(135deg, #fff8db 0%, #fff0de 50%, #f2f7e9 100%);
   text-align:center;
-  padding:8px;
+  padding:18px 22px 24px;
   color:#3f3a2b;
 }
 
