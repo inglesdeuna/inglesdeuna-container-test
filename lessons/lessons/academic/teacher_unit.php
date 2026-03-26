@@ -983,7 +983,7 @@ body{
                                         class="btn edit"
                                         target="_blank"
                                         rel="noopener noreferrer"
-                                        href="<?php echo h('teacher_activity_edit.php?assignment=' . urlencode($assignmentId) . '&unit=' . urlencode((string) ($selectedUnit['id'] ?? '')) . '&activity=' . urlencode($activityId)); ?>"
+                                        href="<?php echo h('./teacher_activity_edit.php?assignment=' . urlencode($assignmentId) . '&unit=' . urlencode((string) ($selectedUnit['id'] ?? '')) . '&activity=' . urlencode($activityId)); ?>"
                                     >
                                         Editar actividad
                                     </a>
