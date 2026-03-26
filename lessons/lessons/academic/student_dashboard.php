@@ -246,7 +246,7 @@ function load_student_assignments(string $studentId): array
     }
 
     try {
-        $stmt = $pdo->prepare("\n            SELECT sa.id, sa.teacher_id, sa.course_id, sa.period, sa.unit_id, sa.level_id, sa.program, sa.updated_at,\n                   t.name AS teacher_name,\n                   c.name AS course_name,\n                   u.name AS unit_name\n            FROM student_assignments sa\n            LEFT JOIN teachers t ON t.id = sa.teacher_id\n            LEFT JOIN courses c ON c.id = sa.course_id\n            LEFT JOIN units u ON u.id = sa.unit_id\n            WHERE sa.student_id = :student_id\n            ORDER BY sa.updated_at DESC NULLS LAST, sa.id DESC\n        ");
+        $stmt = $pdo->prepare("\n            SELECT sa.id, sa.teacher_id, sa.course_id, sa.period, sa.unit_id, sa.level_id, sa.program, sa.updated_at,\n                   t.name AS teacher_name,\n                   c.name AS course_name,\n                   u.name AS unit_name\n            FROM student_assignments sa\n            LEFT JOIN teachers t ON t.id = sa.teacher_id\n            LEFT JOIN courses c ON c.id::text = sa.course_id\n            LEFT JOIN units u ON u.id::text = sa.unit_id\n            WHERE sa.student_id = :student_id\n            ORDER BY sa.updated_at DESC NULLS LAST, sa.id DESC\n        ");
         $stmt->execute(['student_id' => $studentId]);
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
