@@ -605,7 +605,7 @@ function showCompleted() {
 
 function goBackToCards() {
     isCompleted = false;
-    index = data.length - 1;
+    index = 0;
     cardsStage.style.display = 'block';
     document.querySelector('.listen-row').style.display = 'block';
     document.querySelector('.flip-hint').style.display = 'block';
