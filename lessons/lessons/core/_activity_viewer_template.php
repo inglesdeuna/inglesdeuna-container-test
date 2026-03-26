@@ -129,6 +129,14 @@ function render_activity_viewer($title, $icon, $content)
             padding:16px 18px !important;
         }
 
+        .viewer-content :is(.mc-intro h2, .dd-intro h2, .lo-intro h2, .vc-intro h2, .dict-intro h2, .pron-intro h2, .match-intro h2, .flashcards-intro h2, .flipbook-intro h2, .ex-intro h2){
+            font-size:clamp(26px, 2.2vw, 30px) !important;
+            line-height:1.1 !important;
+            margin:0 0 8px !important;
+            font-family:'Fredoka', 'Trebuchet MS', sans-serif !important;
+            font-weight:700 !important;
+        }
+
         .viewer-content :is(.mc-card, #sentenceBox, .vc-panel, .flipbook-viewer__card){
             padding:14px !important;
         }
@@ -168,6 +176,10 @@ function render_activity_viewer($title, $icon, $content)
             .viewer-content :is(.mc-intro, .dd-intro, .lo-intro, .vc-intro, .dict-intro, .pron-intro, .match-intro, .flashcards-intro, .flipbook-intro, .ex-intro){
                 margin-bottom:10px !important;
                 padding:14px 16px !important;
+            }
+
+            .viewer-content :is(.mc-intro h2, .dd-intro h2, .lo-intro h2, .vc-intro h2, .dict-intro h2, .pron-intro h2, .match-intro h2, .flashcards-intro h2, .flipbook-intro h2, .ex-intro h2){
+                font-size:clamp(22px, 1.9vw, 26px) !important;
             }
 
             .viewer-content :is(.mc-question, #promptText, .lo-prompt, .vc-question){

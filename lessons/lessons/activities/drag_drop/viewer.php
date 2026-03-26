@@ -29,7 +29,7 @@ function resolve_unit_from_activity(PDO $pdo, string $activityId): string
 
 function default_drag_drop_title(): string
 {
-    return 'Build the Sentence';
+  return 'Unscramble';
 }
 
 function parse_listen_value($raw): bool
@@ -158,7 +158,7 @@ if ($unit === '' && $activityId !== '') {
 }
 
 $activity = load_drag_drop_activity($pdo, $activityId, $unit);
-$viewerTitle = (string) ($activity['title'] ?? default_drag_drop_title());
+$viewerTitle = default_drag_drop_title();
 $blocks = is_array($activity['blocks'] ?? null) ? $activity['blocks'] : [];
 
 if (count($blocks) === 0) {
@@ -310,7 +310,7 @@ ob_start();
 
 <div class="dd-stage">
   <section class="dd-intro">
-    <h2>Build The Sentence</h2>
+    <h2>Unscramble</h2>
     <p class="instructions">Complete the blanks by dragging the correct words into place. Use Show Answer when you need to reveal the full sentence.</p>
   </section>
 
