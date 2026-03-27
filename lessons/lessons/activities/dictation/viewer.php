@@ -310,12 +310,17 @@ ob_start();
 
 .dict-image{
     display: none;
-    width: min(100%, 150px);
+    width: min(100%, 153px);
     max-width: 100%;
     border-radius: 18px;
     margin: 0 auto 10px auto;
     background: #fff;
     box-shadow: 0 10px 24px rgba(15, 23, 42, .08);
+}
+
+.dict-prompt,
+.dict-hint{
+    display:none;
 }
 
 .dict-answer-box{
@@ -442,15 +447,14 @@ ob_start();
         <div class="mc-status" id="dict-status"></div>
 
         <div class="mc-card" id="dict-card">
+            <div class="dict-listen-row" id="dict-listen-row">
+                <button type="button" class="mc-btn mc-btn-listen" id="dict-listen">Listen</button>
+            </div>
                 <div class="dict-prompt" id="dict-prompt"></div>
                 <div class="dict-hint" id="dict-hint"></div>
                 <img id="dict-image" class="dict-image" alt="">
                 <textarea id="dict-answer" class="dict-answer-box" placeholder="Write what you hear..."></textarea>
                 <div id="dict-reveal" class="dict-answer-reveal"></div>
-        </div>
-
-        <div class="dict-listen-row" id="dict-listen-row">
-            <button type="button" class="mc-btn mc-btn-listen" id="dict-listen">Listen</button>
         </div>
 
         <div class="mc-controls" id="dict-controls">
@@ -561,8 +565,8 @@ document.addEventListener('DOMContentLoaded', function () {
         controlsEl.style.display = 'flex';
 
         statusEl.textContent = (index + 1) + ' / ' + data.length;
-        promptEl.textContent = 'Listen and write what you hear.';
-        hintEl.textContent = item.ph || '';
+        promptEl.textContent = '';
+        hintEl.textContent = '';
         answerEl.value = '';
         answerEl.className = 'dict-answer-box';
         feedbackEl.textContent = '';
