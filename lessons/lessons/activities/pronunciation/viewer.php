@@ -350,51 +350,86 @@ ob_start();
     display: block;
 }
 
-.mc-btn-prev{
-    background: linear-gradient(180deg, #94a3b8 0%, #64748b 100%);
-}
-
 .mc-btn-listen{
-    background: linear-gradient(180deg, #5eead4 0%, #14b8a6 100%);
+    background:linear-gradient(180deg, #38bdf8 0%, #0ea5e9 100%);
 }
 
-.mc-btn-speak{
-    background: linear-gradient(180deg, #fdba74 0%, #f97316 100%);
+.mc-btn-check{background:linear-gradient(180deg, #8b5cf6 0%, #7c3aed 100%)}
+.mc-btn-show{background:linear-gradient(180deg, #f9a8d4 0%, #ec4899 100%)}
+.mc-btn-next{background:linear-gradient(180deg, #2dd4bf 0%, #0f766e 100%)}
+
+.mc-status{
+    font-size:14px;
+    margin-bottom:8px;
 }
 
-.pron-completed{
-    display: none;
-    max-width: 920px;
-    margin: 10px auto 0;
-    text-align: center;
-    background: linear-gradient(180deg, #ecfdf5 0%, #dcfce7 100%);
-    border: 1px solid #86efac;
-    border-radius: 24px;
-    padding: 22px;
+.pron-listen-row{
+    display:flex;
+    justify-content:center;
+    margin-top:10px;
 }
 
-.pron-completed.show{
-    display: block;
+.pron-listen-row .mc-btn{
+    min-width:160px;
 }
 
-.pron-completed h3{
-    margin: 0 0 6px;
-    color: #166534;
-    font-family: 'Fredoka', 'Trebuchet MS', sans-serif;
-    font-size: 34px;
+.completed-screen{
+    display:none;
+    text-align:center;
+    max-width:600px;
+    margin:0 auto;
+    padding:40px 20px;
 }
 
-.pron-completed p{
-    margin: 0 0 12px;
-    color: #14532d;
-    font-weight: 700;
+.completed-screen.active{
+    display:block;
+}
+
+.completed-icon{
+    font-size:80px;
+    margin-bottom:20px;
+}
+
+.completed-title{
+    font-family:'Fredoka', 'Trebuchet MS', sans-serif;
+    font-size:36px;
+    font-weight:700;
+    color:#be185d;
+    margin:0 0 16px;
+    line-height:1.2;
+}
+
+.completed-text{
+    font-size:16px;
+    color:#6b4b5f;
+    line-height:1.6;
+    margin:0 0 32px;
+}
+
+.completed-button{
+    display:inline-block;
+    padding:12px 24px;
+    border:none;
+    border-radius:999px;
+    background:linear-gradient(180deg, #db2777 0%, #be185d 100%);
+    color:#fff;
+    font-weight:700;
+    font-size:16px;
+    cursor:pointer;
+    box-shadow:0 10px 24px rgba(0,0,0,.14);
+    transition:transform .18s ease, filter .18s ease;
+}
+
+.completed-button:hover{
+    transform:scale(1.05);
+    filter:brightness(1.07);
 }
 </style>
 
 <div class="mc-viewer" id="pron-viewer">
         <section class="mc-intro">
-                <h2>Pronunciation Practice</h2>
-                <p>One card at a time. Listen, press Speak, then Check Answer. Use Show Answer if you need help.</p>
+            <h2>Pronunciation Practice</h2>
+            <p>One card at a time. Listen first, then press Check Answer to record and validate your pronunciation. Use Show Answer if you need help.</p>
         </section>
 
         <div class="mc-status" id="pron-status"></div>
@@ -403,14 +438,15 @@ ob_start();
                 <div class="pron-prompt" id="pron-prompt"></div>
                 <div class="pron-hint" id="pron-hint"></div>
                 <img id="pron-image" class="pron-image" alt="">
-                <div class="pron-captured" id="pron-captured">Press Speak to record your pronunciation.</div>
+                <div class="pron-captured" id="pron-captured">Press Check Answer to record your pronunciation.</div>
                 <div class="pron-answer" id="pron-answer"></div>
         </div>
 
+        <div class="pron-listen-row" id="pron-listen-row">
+            <button type="button" class="mc-btn mc-btn-listen" id="pron-listen">Listen</button>
+        </div>
+
         <div class="mc-controls" id="pron-controls">
-                <button type="button" class="mc-btn mc-btn-prev" id="pron-prev">Prev</button>
-                <button type="button" class="mc-btn mc-btn-listen" id="pron-listen">Listen</button>
-                <button type="button" class="mc-btn mc-btn-speak" id="pron-speak">Speak</button>
                 <button type="button" class="mc-btn mc-btn-check" id="pron-check">Check Answer</button>
                 <button type="button" class="mc-btn mc-btn-show" id="pron-show">Show Answer</button>
                 <button type="button" class="mc-btn mc-btn-next" id="pron-next">Next</button>
@@ -418,10 +454,11 @@ ob_start();
 
         <div class="mc-feedback" id="pron-feedback"></div>
 
-        <div class="pron-completed" id="pron-completed">
-                <h3>Completed!</h3>
-                <p>Excellent! You finished the pronunciation activity.</p>
-                <button type="button" class="mc-btn mc-btn-next" id="pron-restart">Back to Start</button>
+        <div id="pron-completed" class="completed-screen">
+            <div class="completed-icon">✅</div>
+            <h2 class="completed-title">Completed</h2>
+            <p class="completed-text">You've completed this pronunciation activity. Great job practicing.</p>
+            <button type="button" class="completed-button" id="pron-restart">Back to Cards</button>
         </div>
 </div>
 
@@ -438,12 +475,11 @@ document.addEventListener('DOMContentLoaded', function () {
     var answerEl = document.getElementById('pron-answer');
     var feedbackEl = document.getElementById('pron-feedback');
     var cardEl = document.getElementById('pron-card');
+    var listenRowEl = document.getElementById('pron-listen-row');
     var controlsEl = document.getElementById('pron-controls');
     var completedEl = document.getElementById('pron-completed');
 
-    var prevBtn = document.getElementById('pron-prev');
     var listenBtn = document.getElementById('pron-listen');
-    var speakBtn = document.getElementById('pron-speak');
     var checkBtn = document.getElementById('pron-check');
     var showBtn = document.getElementById('pron-show');
     var nextBtn = document.getElementById('pron-next');
@@ -464,6 +500,7 @@ document.addEventListener('DOMContentLoaded', function () {
     var index = 0;
     var finished = false;
     var capturedText = '';
+    var recognitionBusy = false;
 
     function normalizeText(text) {
         return String(text || '')
@@ -512,14 +549,15 @@ document.addEventListener('DOMContentLoaded', function () {
         finished = false;
         capturedText = '';
 
-        completedEl.classList.remove('show');
+        completedEl.classList.remove('active');
         cardEl.style.display = 'block';
+        listenRowEl.style.display = 'flex';
         controlsEl.style.display = 'flex';
 
-        statusEl.textContent = 'Item ' + (index + 1) + ' of ' + data.length;
+        statusEl.textContent = (index + 1) + ' / ' + data.length;
         promptEl.textContent = item.en || 'Listen and pronounce the word.';
         hintEl.textContent = item.ph || '';
-        capturedEl.textContent = 'Press Speak to record your pronunciation.';
+        capturedEl.textContent = 'Press Check Answer to record your pronunciation.';
         capturedEl.className = 'pron-captured';
         answerEl.classList.remove('show');
         answerEl.textContent = 'Correct answer: ' + (item.en || '');
@@ -536,36 +574,8 @@ document.addEventListener('DOMContentLoaded', function () {
             imageEl.alt = '';
         }
 
-        prevBtn.disabled = index === 0;
         nextBtn.disabled = false;
         nextBtn.textContent = index < data.length - 1 ? 'Next' : 'Finish';
-    }
-
-    function recordPronunciation() {
-        if (!recognition) {
-            feedbackEl.textContent = 'Speech recognition is not available in this browser.';
-            feedbackEl.className = 'mc-feedback bad';
-            return;
-        }
-
-        feedbackEl.textContent = 'Listening...';
-        feedbackEl.className = 'mc-feedback';
-
-        recognition.onresult = function (event) {
-            capturedText = String(event.results[0][0].transcript || '');
-            capturedEl.textContent = 'You said: ' + capturedText;
-            feedbackEl.textContent = 'Now press Check Answer.';
-            feedbackEl.className = 'mc-feedback';
-        };
-
-        recognition.onerror = function () {
-            capturedText = '';
-            capturedEl.textContent = 'Could not capture voice. Try again.';
-            feedbackEl.textContent = 'Try Again';
-            feedbackEl.className = 'mc-feedback bad';
-        };
-
-        recognition.start();
     }
 
     function checkAnswer() {
@@ -573,25 +583,53 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
-        var said = normalizeText(capturedText);
-        var expected = normalizeText(data[index].en || '');
+        if (recognitionBusy) {
+            return;
+        }
 
-        if (said === '') {
-            feedbackEl.textContent = 'Press Speak first.';
+        if (!recognition) {
+            feedbackEl.textContent = 'Speech recognition is not available in this browser.';
             feedbackEl.className = 'mc-feedback bad';
             return;
         }
 
-        if (said === expected || said.indexOf(expected) !== -1 || expected.indexOf(said) !== -1) {
-            feedbackEl.textContent = 'Correct!';
-            feedbackEl.className = 'mc-feedback good';
-            capturedEl.className = 'pron-captured ok';
-            playSound(correctSound);
-        } else {
+        recognitionBusy = true;
+        feedbackEl.textContent = 'Listening...';
+        feedbackEl.className = 'mc-feedback';
+
+        recognition.onresult = function (event) {
+            capturedText = String(event.results[0][0].transcript || '');
+            capturedEl.textContent = 'You said: ' + capturedText;
+            recognitionBusy = false;
+
+            var said = normalizeText(capturedText);
+            var expected = normalizeText(data[index].en || '');
+
+            if (said === expected || said.indexOf(expected) !== -1 || expected.indexOf(said) !== -1) {
+                feedbackEl.textContent = 'Correct!';
+                feedbackEl.className = 'mc-feedback good';
+                capturedEl.className = 'pron-captured ok';
+                playSound(correctSound);
+            } else {
+                feedbackEl.textContent = 'Try Again';
+                feedbackEl.className = 'mc-feedback bad';
+                capturedEl.className = 'pron-captured bad';
+                playSound(wrongSound);
+            }
+        };
+
+        recognition.onerror = function () {
+            capturedText = '';
+            capturedEl.textContent = 'Could not capture voice. Try again.';
             feedbackEl.textContent = 'Try Again';
             feedbackEl.className = 'mc-feedback bad';
-            capturedEl.className = 'pron-captured bad';
-            playSound(wrongSound);
+            recognitionBusy = false;
+        };
+
+        try {
+            recognition.start();
+        } catch (e) {
+            recognitionBusy = false;
         }
     }
 
@@ -609,10 +647,11 @@ document.addEventListener('DOMContentLoaded', function () {
     function showCompleted() {
         finished = true;
         cardEl.style.display = 'none';
+        listenRowEl.style.display = 'none';
         controlsEl.style.display = 'none';
         statusEl.textContent = 'Completed';
         feedbackEl.textContent = '';
-        completedEl.classList.add('show');
+        completedEl.classList.add('active');
         playSound(doneSound);
     }
 
@@ -629,15 +668,6 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    function goPrev() {
-        if (finished || index === 0) {
-            return;
-        }
-
-        index -= 1;
-        loadCard();
-    }
-
     function restart() {
         index = 0;
         loadCard();
@@ -647,15 +677,14 @@ document.addEventListener('DOMContentLoaded', function () {
         promptEl.textContent = 'No pronunciation data available.';
         hintEl.textContent = '';
         capturedEl.style.display = 'none';
+        listenRowEl.style.display = 'none';
         controlsEl.style.display = 'none';
         statusEl.textContent = '';
         imageEl.style.display = 'none';
         return;
     }
 
-    prevBtn.addEventListener('click', goPrev);
     listenBtn.addEventListener('click', speakCurrent);
-    speakBtn.addEventListener('click', recordPronunciation);
     checkBtn.addEventListener('click', checkAnswer);
     showBtn.addEventListener('click', showAnswer);
     nextBtn.addEventListener('click', goNext);

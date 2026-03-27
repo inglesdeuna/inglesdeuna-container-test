@@ -357,40 +357,79 @@ ob_start();
     display: block;
 }
 
-.mc-btn-prev{
-    background: linear-gradient(180deg, #94a3b8 0%, #64748b 100%);
-}
-
 .mc-btn-listen{
-    background: linear-gradient(180deg, #5eead4 0%, #14b8a6 100%);
+    background:linear-gradient(180deg, #38bdf8 0%, #0ea5e9 100%);
 }
 
-.dict-completed{
-    display: none;
-    max-width: 920px;
-    margin: 10px auto 0;
-    text-align: center;
-    background: linear-gradient(180deg, #ecfdf5 0%, #dcfce7 100%);
-    border: 1px solid #86efac;
-    border-radius: 24px;
-    padding: 22px;
+.mc-btn-check{background:linear-gradient(180deg, #8b5cf6 0%, #7c3aed 100%)}
+.mc-btn-show{background:linear-gradient(180deg, #f9a8d4 0%, #ec4899 100%)}
+.mc-btn-next{background:linear-gradient(180deg, #2dd4bf 0%, #0f766e 100%)}
+
+.mc-status{
+    font-size:14px;
+    margin-bottom:8px;
 }
 
-.dict-completed.show{
-    display: block;
+.dict-listen-row{
+    display:flex;
+    justify-content:center;
+    margin-top:10px;
 }
 
-.dict-completed h3{
-    margin: 0 0 6px;
-    color: #166534;
-    font-family: 'Fredoka', 'Trebuchet MS', sans-serif;
-    font-size: 34px;
+.dict-listen-row .mc-btn{
+    min-width:160px;
 }
 
-.dict-completed p{
-    margin: 0 0 12px;
-    color: #14532d;
-    font-weight: 700;
+.completed-screen{
+    display:none;
+    text-align:center;
+    max-width:600px;
+    margin:0 auto;
+    padding:40px 20px;
+}
+
+.completed-screen.active{
+    display:block;
+}
+
+.completed-icon{
+    font-size:80px;
+    margin-bottom:20px;
+}
+
+.completed-title{
+    font-family:'Fredoka', 'Trebuchet MS', sans-serif;
+    font-size:36px;
+    font-weight:700;
+    color:#be185d;
+    margin:0 0 16px;
+    line-height:1.2;
+}
+
+.completed-text{
+    font-size:16px;
+    color:#6b4b5f;
+    line-height:1.6;
+    margin:0 0 32px;
+}
+
+.completed-button{
+    display:inline-block;
+    padding:12px 24px;
+    border:none;
+    border-radius:999px;
+    background:linear-gradient(180deg, #db2777 0%, #be185d 100%);
+    color:#fff;
+    font-weight:700;
+    font-size:16px;
+    cursor:pointer;
+    box-shadow:0 10px 24px rgba(0,0,0,.14);
+    transition:transform .18s ease, filter .18s ease;
+}
+
+.completed-button:hover{
+    transform:scale(1.05);
+    filter:brightness(1.07);
 }
 </style>
 
@@ -410,9 +449,11 @@ ob_start();
                 <div id="dict-reveal" class="dict-answer-reveal"></div>
         </div>
 
+        <div class="dict-listen-row" id="dict-listen-row">
+            <button type="button" class="mc-btn mc-btn-listen" id="dict-listen">Listen</button>
+        </div>
+
         <div class="mc-controls" id="dict-controls">
-                <button type="button" class="mc-btn mc-btn-prev" id="dict-prev">Prev</button>
-                <button type="button" class="mc-btn mc-btn-listen" id="dict-listen">Listen</button>
                 <button type="button" class="mc-btn mc-btn-check" id="dict-check">Check Answer</button>
                 <button type="button" class="mc-btn mc-btn-show" id="dict-show">Show Answer</button>
                 <button type="button" class="mc-btn mc-btn-next" id="dict-next">Next</button>
@@ -420,10 +461,11 @@ ob_start();
 
         <div class="mc-feedback" id="dict-feedback"></div>
 
-        <div class="dict-completed" id="dict-completed">
-                <h3>Completed!</h3>
-                <p>Excellent! You finished the dictation activity.</p>
-                <button type="button" class="mc-btn mc-btn-next" id="dict-restart">Back to Start</button>
+        <div id="dict-completed" class="completed-screen">
+            <div class="completed-icon">✅</div>
+            <h2 class="completed-title">Completed</h2>
+            <p class="completed-text">You've completed this dictation activity. Great job practicing.</p>
+            <button type="button" class="completed-button" id="dict-restart">Back to Cards</button>
         </div>
 </div>
 
@@ -440,10 +482,10 @@ document.addEventListener('DOMContentLoaded', function () {
     var revealEl = document.getElementById('dict-reveal');
     var feedbackEl = document.getElementById('dict-feedback');
     var cardEl = document.getElementById('dict-card');
+    var listenRowEl = document.getElementById('dict-listen-row');
     var controlsEl = document.getElementById('dict-controls');
     var completedEl = document.getElementById('dict-completed');
 
-    var prevBtn = document.getElementById('dict-prev');
     var listenBtn = document.getElementById('dict-listen');
     var checkBtn = document.getElementById('dict-check');
     var showBtn = document.getElementById('dict-show');
@@ -502,11 +544,12 @@ document.addEventListener('DOMContentLoaded', function () {
         var item = data[index] || {};
 
         finished = false;
-        completedEl.classList.remove('show');
+        completedEl.classList.remove('active');
         cardEl.style.display = 'block';
+        listenRowEl.style.display = 'flex';
         controlsEl.style.display = 'flex';
 
-        statusEl.textContent = 'Item ' + (index + 1) + ' of ' + data.length;
+        statusEl.textContent = (index + 1) + ' / ' + data.length;
         promptEl.textContent = 'Listen and write what you hear.';
         hintEl.textContent = item.ph || '';
         answerEl.value = '';
@@ -526,7 +569,6 @@ document.addEventListener('DOMContentLoaded', function () {
             imageEl.alt = '';
         }
 
-        prevBtn.disabled = index === 0;
         nextBtn.disabled = false;
         nextBtn.textContent = index < data.length - 1 ? 'Next' : 'Finish';
     }
@@ -572,10 +614,11 @@ document.addEventListener('DOMContentLoaded', function () {
     function showCompleted() {
         finished = true;
         cardEl.style.display = 'none';
+        listenRowEl.style.display = 'none';
         controlsEl.style.display = 'none';
         statusEl.textContent = 'Completed';
         feedbackEl.textContent = '';
-        completedEl.classList.add('show');
+        completedEl.classList.add('active');
         playSound(doneSound);
     }
 
@@ -592,15 +635,6 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    function goPrev() {
-        if (finished || index === 0) {
-            return;
-        }
-
-        index -= 1;
-        loadCard();
-    }
-
     function restart() {
         index = 0;
         loadCard();
@@ -609,6 +643,7 @@ document.addEventListener('DOMContentLoaded', function () {
     if (!data.length) {
         promptEl.textContent = 'No dictation data available.';
         hintEl.textContent = '';
+        listenRowEl.style.display = 'none';
         controlsEl.style.display = 'none';
         statusEl.textContent = '';
         answerEl.style.display = 'none';
@@ -620,7 +655,6 @@ document.addEventListener('DOMContentLoaded', function () {
     checkBtn.addEventListener('click', checkAnswer);
     showBtn.addEventListener('click', showAnswer);
     nextBtn.addEventListener('click', goNext);
-    prevBtn.addEventListener('click', goPrev);
     restartBtn.addEventListener('click', restart);
 
     loadCard();
