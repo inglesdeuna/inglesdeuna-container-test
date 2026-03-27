@@ -83,7 +83,8 @@ document.addEventListener('DOMContentLoaded', function () {
     feedbackEl.className = 'mc-feedback';
 
     statusEl.textContent = 'Question ' + (index + 1) + ' of ' + questions.length;
-    questionEl.textContent = item.question || '';
+    const rawQuestion = String(item.question || '');
+    questionEl.textContent = rawQuestion.replace(/^Choose the correct basic command:\s*/i, '');
 
     if (item.image) {
       imageEl.style.display = 'block';
