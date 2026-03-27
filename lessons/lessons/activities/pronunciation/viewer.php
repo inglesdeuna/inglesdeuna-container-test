@@ -307,16 +307,20 @@ ob_start();
 
 .pron-image{
     display: none;
-    width: min(100%, 153px);
+    width: min(100%, 172px);
     max-width: 100%;
     border-radius: 18px;
-    margin: 0 auto 10px auto;
+    margin: 8px auto 12px auto;
     background: #fff;
     box-shadow: 0 10px 24px rgba(15, 23, 42, .08);
 }
 
 .pron-captured{
     margin-top: 10px;
+    max-width: 620px;
+    width: 100%;
+    margin-left: auto;
+    margin-right: auto;
     border: 2px solid #ead8ff;
     border-radius: 14px;
     padding: 10px;
@@ -342,6 +346,10 @@ ob_start();
 .pron-answer{
     display: none;
     margin-top: 10px;
+    max-width: 620px;
+    width: 100%;
+    margin-left: auto;
+    margin-right: auto;
     border-radius: 14px;
     border: 1px solid #fecdd3;
     background: #fff1f2;
@@ -370,12 +378,29 @@ ob_start();
 .pron-listen-row{
     display:flex;
     justify-content:center;
-    margin-top:10px;
+    margin: 2mm 0 4mm 0;
     gap:10px;
 }
 
 .pron-listen-row .mc-btn{
     min-width:140px;
+}
+
+#pron-viewer{
+    width:100%;
+    max-width:100%;
+}
+
+#pron-card{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:flex-start;
+}
+
+#pron-controls{
+    margin-top: 3mm;
+    margin-bottom: 4mm;
 }
 
 .mc-btn-speak{background:linear-gradient(180deg, #f97316 0%, #c2410c 100%)}
