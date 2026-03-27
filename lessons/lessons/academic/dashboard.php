@@ -345,11 +345,21 @@ function build_assignment_title(array $assignment): string
     $unitName = trim((string) ($assignment['unit_name'] ?? ''));
     $programType = trim((string) ($assignment['program_type'] ?? ''));
 
+    $normalize = static function (string $value): string {
+        if ($value === '') {
+            return $value;
+        }
+
+        return preg_replace_callback('/ingl(?:e|é)s\s+t(?:e|é)cnico/iu', static function (): string {
+            return 'INGLÉS TÉCNICO';
+        }, $value) ?? $value;
+    };
+
     if ($programType === 'technical' && $unitName !== '') {
-        return $courseName . ' · ' . $unitName;
+        return $normalize($courseName) . ' · ' . $normalize($unitName);
     }
 
-    return $courseName;
+    return $normalize($courseName);
 }
 
 function resolve_teacher_photo_src(string $teacherPhoto): string
@@ -462,7 +472,7 @@ $selectedUnit = null;
 
 if ($selectedAssignment) {
     $todayTitle = build_assignment_title($selectedAssignment);
-    $todayProgramLabel = ((string) ($selectedAssignment['program_type'] ?? '') === 'english') ? 'English' : 'Técnico';
+    $todayProgramLabel = ((string) ($selectedAssignment['program_type'] ?? '') === 'english') ? 'English' : 'INGLÉS TÉCNICO';
     $todayUnits = load_units_for_assignment($selectedAssignment);
 
     if (!empty($todayUnits)) {
@@ -487,6 +497,8 @@ if ($selectedAssignment) {
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Perfil del Docente</title>
 <style>
+@import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@500;700;800&display=swap');
+
 :root{
     --bg:#eef5ff;
     --card:#ffffff;
@@ -520,7 +532,7 @@ if ($selectedAssignment) {
 }
 
 *{ box-sizing:border-box; }
-body{ margin:0; font-family:Arial,sans-serif; background:var(--bg); color:var(--text); }
+body{ margin:0; font-family:'Nunito','Segoe UI',sans-serif; background:var(--bg); color:var(--text); }
 .page{ max-width:1400px; margin:0 auto; padding:20px 20px 40px; }
 
 .header{
@@ -533,7 +545,7 @@ body{ margin:0; font-family:Arial,sans-serif; background:var(--bg); color:var(--
     margin-bottom:32px;
 }
 
-.header h1{ margin:0; font-size:32px; font-weight:800; color:var(--title); }
+.header h1{ margin:0; font-size:32px; font-weight:800; color:var(--title); font-family:'Fredoka','Trebuchet MS',sans-serif; }
 .logout-btn{
     display:inline-block;
     text-decoration:none;
@@ -703,7 +715,7 @@ body{ margin:0; font-family:Arial,sans-serif; background:var(--bg); color:var(--
 .flash.ok{ background:#eff6ff; border:1px solid #93c5fd; color:#1d4ed8; }
 .flash.error{ background:#fef2f2; border:1px solid #fca5a5; color:#991b1b; }
 
-.main-section-title{ display:flex; align-items:center; gap:12px; font-size:24px; font-weight:800; color:var(--title); margin:32px 0 20px; }
+.main-section-title{ display:flex; align-items:center; gap:12px; font-size:24px; font-weight:800; color:var(--title); margin:32px 0 20px; font-family:'Fredoka','Trebuchet MS',sans-serif; }
 .main-section-title::after{ content:""; flex:1; height:2px; background:linear-gradient(90deg, var(--line) 0%, transparent 100%); }
 
 .card{ padding:28px; margin-bottom:20px; }
@@ -736,7 +748,7 @@ body{ margin:0; font-family:Arial,sans-serif; background:var(--bg); color:var(--
     margin-bottom:10px;
 }
 
-.activity-title{ margin:0 0 14px; font-size:20px; font-weight:700; color:var(--title); }
+.activity-title{ margin:0 0 14px; font-size:20px; font-weight:700; color:var(--title); font-family:'Fredoka','Trebuchet MS',sans-serif; }
 .activity-text{ margin:0 0 22px; font-size:15px; color:var(--text); line-height:1.6; }
 
 .actions{ display:flex; flex-wrap:wrap; gap:14px; }
@@ -982,7 +994,7 @@ body{ margin:0; font-family:Arial,sans-serif; background:var(--bg); color:var(--
                             $assignmentId = (string) ($assignment['id'] ?? '');
                             $isActiveAssignment = $assignmentId === $selectedAssignmentId;
                             $programType = (string) ($assignment['program_type'] ?? '');
-                            $courseLabel = $programType === 'english' ? 'English' : 'Técnico';
+                            $courseLabel = $programType === 'english' ? 'English' : 'INGLÉS TÉCNICO';
                             $courseTitle = build_assignment_title($assignment);
                             ?>
                             <a
