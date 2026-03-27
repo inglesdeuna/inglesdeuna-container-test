@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . "/../../config/db.php";
+require_once __DIR__ . "/../../core/_activity_viewer_template.php";
 
 $unit       = isset($_GET['unit']) ? trim((string)$_GET['unit']) : "";
 $activityId = isset($_GET['id'])   ? trim((string)$_GET['id'])   : "";
@@ -365,18 +366,14 @@ for ($r = 0; $r < $gridRows; $r++) {
 $jsWords = json_encode(array_values($words), JSON_UNESCAPED_UNICODE);
 $jsCellMap = json_encode($cellMap, JSON_UNESCAPED_UNICODE);
 $jsWordNumbers = json_encode($wordNumber, JSON_UNESCAPED_UNICODE);
+
+ob_start();
 ?>
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title><?= htmlspecialchars($title, ENT_QUOTES, 'UTF-8') ?></title>
-<link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
 <style>
 :root {
-    --bg1: #fdf4ff;
-    --bg2: #fff8f0;
+    --bg1: #dff5ff;
+    --bg2: #fff4db;
+    --bg3: #f8d9e6;
     --purple: #7c3aed;
     --purple-soft: #ddd6fe;
     --purple-mid: #a78bfa;
@@ -387,55 +384,65 @@ $jsWordNumbers = json_encode($wordNumber, JSON_UNESCAPED_UNICODE);
     --red: #dc2626;
     --text: #1e1b4b;
     --muted: #6b7280;
-    --cell-size: 42px;
+    --cell-size: 40px;
     --cell-border: 2px solid #c4b5fd;
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
-body {
-    font-family: 'Nunito', sans-serif;
-    background: linear-gradient(135deg, var(--bg1) 0%, var(--bg2) 100%);
-    min-height: 100vh;
-    padding: 18px 12px 40px;
-    color: var(--text);
-}
 
-/* ---- TOP BAR ---- */
-.cw-topbar {
-    text-align: center;
-    margin-bottom: 22px;
-}
-.cw-topbar h1 {
-    font-family: 'Fredoka One', cursive;
-    font-size: clamp(1.5rem, 4vw, 2.2rem);
-    color: var(--purple-dark);
-    letter-spacing: .5px;
-}
-.cw-topbar .subtitle {
-    font-size: 13px;
-    color: var(--muted);
-    margin-top: 4px;
-}
-
-/* ---- LAYOUT ---- */
-.cw-layout {
-    display: flex;
-    gap: 24px;
+.cw-viewer {
     max-width: 980px;
     margin: 0 auto;
+}
+
+.cw-intro {
+    margin-bottom: 12px;
+    padding: 18px 20px;
+    border-radius: 26px;
+    border: 1px solid #e7d8fb;
+    background: linear-gradient(135deg, #f7ecff 0%, #fff3eb 48%, #fff9d9 100%);
+    box-shadow: 0 16px 34px rgba(15, 23, 42, .09);
+    text-align: center;
+}
+
+.cw-intro h2 {
+    margin: 0 0 8px;
+    font-family: 'Fredoka', 'Trebuchet MS', sans-serif;
+    font-size: clamp(26px, 2.2vw, 30px);
+    line-height: 1.1;
+    color: var(--purple-dark);
+}
+
+.cw-intro p {
+    margin: 0;
+    color: #5b516f;
+    font-size: 15px;
+    line-height: 1.5;
+}
+
+.cw-card {
+    background: linear-gradient(180deg, #fff7ff 0%, #fffdf4 100%);
+    border: 1px solid #f1d7eb;
+    border-radius: 24px;
+    padding: 16px;
+    box-shadow: 0 14px 28px rgba(15, 23, 42, .08);
+}
+
+.cw-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 280px;
+    gap: 16px;
     align-items: flex-start;
-    flex-wrap: wrap;
 }
 .cw-grid-col {
-    flex: 1 1 420px;
     display: flex;
     flex-direction: column;
     align-items: center;
+    min-width: 0;
 }
 .cw-clues-col {
-    flex: 0 0 280px;
     display: flex;
     flex-direction: column;
-    gap: 18px;
+    gap: 12px;
 }
 
 /* ---- GRID ---- */
@@ -455,17 +462,17 @@ body {
     position: relative;
     background: var(--purple-soft);
     border: var(--cell-border);
-    border-radius: 4px;
+    border-radius: 8px;
     display: flex; align-items: center; justify-content: center;
     cursor: pointer;
     transition: background .15s;
 }
 .cw-cell.blocked {
-    background: #1e1b4b;
-    border-color: #1e1b4b;
+    background: #312e81;
+    border-color: #312e81;
     cursor: default;
     pointer-events: none;
-    border-radius: 4px;
+    border-radius: 8px;
 }
 .cw-cell .num {
     position: absolute;
@@ -483,7 +490,7 @@ body {
     text-align: center;
     font-size: 17px;
     font-weight: 800;
-    font-family: 'Nunito', sans-serif;
+    font-family: 'Nunito', 'Segoe UI', sans-serif;
     color: var(--text);
     text-transform: uppercase;
     caret-color: var(--purple);
@@ -503,24 +510,26 @@ body {
 
 /* ---- TOOLBAR ---- */
 .cw-toolbar {
-    display: flex; gap: 8px; flex-wrap: wrap;
+    display: flex; gap: 10px; flex-wrap: wrap;
     justify-content: center;
     margin-top: 14px;
 }
 .cw-toolbar button {
     padding: 11px 18px;
-    border: none; border-radius: 50px;
-    font-family: 'Nunito', sans-serif;
+    border: none; border-radius: 999px;
+    font-family: 'Nunito', 'Segoe UI', sans-serif;
     font-weight: 800; font-size: 14px;
     min-width: 142px;
     cursor: pointer;
-    transition: transform .1s, box-shadow .1s;
+    color: #fff;
+    box-shadow: 0 10px 22px rgba(15, 23, 42, .14);
+    transition: transform .15s ease, filter .15s ease;
 }
-.cw-toolbar button:active { transform: scale(.96); }
-.btn-check   { background: var(--purple);      color: #fff; box-shadow: 0 3px 10px rgba(124,58,237,.3); }
-.btn-reveal  { background: var(--orange);      color: #fff; box-shadow: 0 3px 10px rgba(249,115,22,.3); }
-.btn-reveal-all { background: #f59e0b; color: #fff; box-shadow: 0 3px 10px rgba(245,158,11,.3); }
-.btn-clear   { background: #e5e7eb; color: #374151; }
+.cw-toolbar button:hover { transform: translateY(-1px); filter: brightness(1.04); }
+.btn-check   { background: linear-gradient(180deg, #8b5cf6 0%, #7c3aed 100%); }
+.btn-reveal  { background: linear-gradient(180deg, #f59e0b 0%, #ea580c 100%); }
+.btn-reveal-all { background: linear-gradient(180deg, #f9a8d4 0%, #ec4899 100%); }
+.btn-clear   { background: linear-gradient(180deg, #94a3b8 0%, #64748b 100%); }
 
 /* ---- RESULT BANNER ---- */
 #cw-result {
@@ -533,12 +542,12 @@ body {
 .clue-panel {
     background: #fff;
     border-radius: 16px;
-    border: 1px solid var(--purple-soft);
+    border: 1px solid #ead8ff;
     padding: 14px 16px;
-    box-shadow: 0 4px 16px rgba(124,58,237,.08);
+    box-shadow: 0 8px 18px rgba(124, 58, 237, .08);
 }
 .clue-panel h3 {
-    font-family: 'Fredoka One', cursive;
+    font-family: 'Fredoka', 'Trebuchet MS', sans-serif;
     font-size: 1rem;
     color: var(--purple-dark);
     margin-bottom: 10px;
@@ -569,11 +578,12 @@ body {
     margin-top: 16px;
 }
 .cw-progress-label {
-    font-size: 12px; color: var(--muted);
+    font-size: 13px; color: #5b516f;
     margin-bottom: 4px; text-align: center;
+    font-weight: 700;
 }
 .cw-progress-bar-bg {
-    background: #e9d5ff; border-radius: 50px; height: 10px; overflow: hidden;
+    background: #e9d5ff; border-radius: 999px; height: 10px; overflow: hidden;
 }
 .cw-progress-bar {
     height: 100%;
@@ -583,54 +593,69 @@ body {
     width: 0%;
 }
 
-/* ---- CONFETTI success overlay ---- */
-.cw-complete {
+/* ---- Completed screen (shared activity style) ---- */
+.completed-screen {
     display: none;
-    position: fixed; inset: 0;
-    background: rgba(30,27,75,.6);
-    z-index: 200;
-    align-items: center;
-    justify-content: center;
-}
-.cw-complete.show { display: flex; }
-.cw-complete-card {
-    background: #fff;
-    border-radius: 24px;
-    padding: 40px 30px;
     text-align: center;
-    max-width: 360px;
-    width: 90%;
-    box-shadow: 0 20px 60px rgba(0,0,0,.2);
-    animation: pop .35s ease;
+    max-width: 600px;
+    margin: 0 auto;
+    padding: 40px 20px 24px;
 }
-@keyframes pop { from { transform: scale(.7); opacity:0; } to { transform: scale(1); opacity:1; } }
-.cw-complete-card .big-emoji { font-size: 4rem; }
-.cw-complete-card h2 {
-    font-family: 'Fredoka One', cursive;
-    font-size: 2rem; color: var(--purple-dark);
-    margin: 12px 0 6px;
+.completed-screen.active {
+    display: block;
 }
-.cw-complete-card p { color: var(--muted); font-size: 15px; }
-.btn-play-again {
-    margin-top: 20px;
+
+.completed-icon {
+    font-size: 80px;
+    margin-bottom: 20px;
+}
+
+.completed-title {
+    font-family: 'Fredoka', 'Trebuchet MS', sans-serif;
+    font-size: 36px;
+    font-weight: 700;
+    color: #6d28d9;
+    margin: 0 0 16px;
+    line-height: 1.2;
+}
+
+.completed-text {
+    font-size: 16px;
+    color: #5b516f;
+    line-height: 1.6;
+    margin: 0 0 32px;
+}
+
+.completed-button {
     display: inline-block;
-    padding: 12px 28px;
-    background: var(--purple);
-    color: #fff; border-radius: 50px;
-    font-weight: 800; font-size: 15px;
-    cursor: pointer; border: none;
-    font-family: 'Nunito', sans-serif;
+    padding: 12px 24px;
+    border: none;
+    border-radius: 999px;
+    background: linear-gradient(180deg, #8b5cf6 0%, #7c3aed 100%);
+    color: #fff;
+    font-weight: 700;
+    font-size: 16px;
+    cursor: pointer;
+    box-shadow: 0 10px 24px rgba(0, 0, 0, .14);
+    transition: transform .18s ease, filter .18s ease;
+}
+
+.completed-button:hover {
+    transform: scale(1.05);
+    filter: brightness(1.07);
 }
 
 @media (max-width: 640px) {
     :root { --cell-size: 34px; }
-    .cw-clues-col { flex: 0 0 100%; }
+    .cw-intro { padding: 16px 14px; }
+    .cw-layout { grid-template-columns: 1fr; }
     .clue-list li { font-size: 12px; }
-    .cw-toolbar button { min-width: 0; }
+    .cw-toolbar button { width: 100%; min-width: 0; max-width: 300px; }
 }
 
 @media (max-height: 900px) and (min-width: 641px) {
-    .cw-layout { gap: 16px; }
+    .cw-intro { padding: 14px 16px; }
+    .cw-intro h2 { font-size: clamp(22px, 1.9vw, 26px); }
     .cw-toolbar button {
         padding: 10px 16px;
         min-width: 132px;
@@ -638,17 +663,17 @@ body {
     }
 }
 </style>
-</head>
-<body>
 
-<div class="cw-topbar">
-    <h1>📝 <?= htmlspecialchars($title, ENT_QUOTES, 'UTF-8') ?></h1>
-    <p class="subtitle">Fill in the blanks using the clues. Click a cell to start!</p>
-</div>
+<div class="cw-viewer" id="cwViewer">
+    <section class="cw-intro">
+        <h2><?= htmlspecialchars($title, ENT_QUOTES, 'UTF-8') ?></h2>
+        <p>Fill the crossword using Across and Down clues. Click a square to begin.</p>
+    </section>
 
-<div class="cw-layout">
-    <!-- GRID COLUMN -->
-    <div class="cw-grid-col">
+    <div class="cw-card" id="cwGame">
+        <div class="cw-layout">
+            <!-- GRID COLUMN -->
+            <div class="cw-grid-col">
         <div class="cw-grid-wrap">
             <div class="cw-grid" id="cwGrid">
                 <?php for ($r = 0; $r < $gridRows; $r++): ?>
@@ -688,10 +713,10 @@ body {
                 <div class="cw-progress-bar" id="progressBar"></div>
             </div>
         </div>
-    </div>
+            </div>
 
-    <!-- CLUES COLUMN -->
-    <div class="cw-clues-col">
+            <!-- CLUES COLUMN -->
+            <div class="cw-clues-col">
         <?php if (!empty($acrossWords)): ?>
         <div class="clue-panel">
             <h3>→ Across</h3>
@@ -719,16 +744,15 @@ body {
             </ul>
         </div>
         <?php endif; ?>
+            </div>
+        </div>
     </div>
-</div>
 
-<!-- Complete overlay -->
-<div class="cw-complete" id="cwComplete">
-    <div class="cw-complete-card">
-        <div class="big-emoji">🎉</div>
-        <h2>Excellent!</h2>
-        <p>You completed the crossword puzzle!</p>
-        <button class="btn-play-again" onclick="clearAll(); document.getElementById('cwComplete').classList.remove('show')">Play Again</button>
+    <div id="cw-completed" class="completed-screen">
+        <div class="completed-icon">✅</div>
+        <h2 class="completed-title" id="cw-completed-title"></h2>
+        <p class="completed-text" id="cw-completed-text"></p>
+        <button type="button" class="completed-button" onclick="restartCrossword()">Restart</button>
     </div>
 </div>
 
@@ -960,8 +984,18 @@ function checkComplete() {
         if (!inp || inp.value.trim() === '' || !cell.classList.contains('correct')) allDone = false;
     });
     if (allDone) {
-        setTimeout(() => { document.getElementById('cwComplete').classList.add('show'); }, 400);
+        const completed = document.getElementById('cw-completed');
+        if (completed) {
+            completed.classList.add('active');
+            completed.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
     }
+}
+
+function restartCrossword() {
+    clearAll();
+    const completed = document.getElementById('cw-completed');
+    if (completed) completed.classList.remove('active');
 }
 
 /* ===== REVEAL ===== */
@@ -1005,6 +1039,11 @@ function clearAll() {
 
 /* ===== INIT ===== */
 function init() {
+    const completedTitle = document.getElementById('cw-completed-title');
+    const completedText = document.getElementById('cw-completed-text');
+    if (completedTitle) completedTitle.textContent = <?= json_encode($title, JSON_UNESCAPED_UNICODE) ?> || 'Crossword Puzzle';
+    if (completedText) completedText.textContent = "You've completed " + (<?= json_encode($title, JSON_UNESCAPED_UNICODE) ?> || 'this activity') + '. Great job practicing.';
+
     updateProgress();
     // auto-select first word
     if (WORDS.length > 0) {
@@ -1020,5 +1059,7 @@ window.addEventListener('beforeunload', function(e) {
     if (hasInput) { e.preventDefault(); e.returnValue = ''; }
 });
 </script>
-</body>
-</html>
+
+<?php
+$content = ob_get_clean();
+render_activity_viewer($title, '🧩', $content);
