@@ -164,8 +164,14 @@ ob_start();
 .vc-feedback{min-height:46px;margin:0 16px 16px;padding:10px 12px;border-radius:12px;font-weight:800;font-size:14px;display:flex;align-items:center;background:#f8fafc;border:1px solid #e2e8f0;color:#475569}
 .vc-feedback.success{background:#ecfdf5;border-color:#86efac;color:#166534}
 .vc-feedback.error{background:#fef2f2;border-color:#fca5a5;color:#991b1b}
-.vc-complete{padding:16px;margin:14px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:14px;color:#1d4ed8;font-weight:800}
 .vc-empty{padding:26px;text-align:center;font-weight:800;color:#b91c1c}
+.completed-screen{display:none;text-align:center;max-width:600px;margin:0 auto;padding:40px 20px}
+.completed-screen.active{display:block}
+.completed-icon{font-size:80px;margin-bottom:20px}
+.completed-title{font-family:'Fredoka','Trebuchet MS',sans-serif;font-size:36px;font-weight:700;color:#1d4ed8;margin:0 0 16px;line-height:1.2}
+.completed-text{font-size:16px;color:#475569;line-height:1.6;margin:0 0 32px}
+.completed-button{display:inline-block;padding:12px 24px;border:none;border-radius:999px;background:linear-gradient(180deg,#3b82f6,#1d4ed8);color:#fff;font-weight:700;font-size:16px;cursor:pointer;box-shadow:0 10px 24px rgba(0,0,0,.14);transition:transform .18s ease,filter .18s ease}
+.completed-button:hover{transform:scale(1.05);filter:brightness(1.07)}
 @media (max-width:1040px){.vc-layout{grid-template-columns:1fr}.vc-intro{padding:20px 18px}.vc-intro h2{font-size:26px}.vc-question{font-size:18px}}
 </style>
 
@@ -240,7 +246,12 @@ ob_start();
                     <div class="vc-feedback" id="vc-feedback">Select an option to begin.</div>
                 </div>
 
-                <div class="vc-complete" id="vc-complete" style="display:none;"></div>
+                <div id="vc-complete" class="completed-screen">
+                    <div class="completed-icon">✅</div>
+                    <h2 class="completed-title" id="vc-completed-title"></h2>
+                    <p class="completed-text" id="vc-completed-text"></p>
+                    <button type="button" class="completed-button" id="vc-completed-restart">Restart</button>
+                </div>
             </section>
         </div>
 
@@ -248,6 +259,7 @@ ob_start();
         (function () {
             const data = <?= json_encode($questions, JSON_UNESCAPED_UNICODE) ?>;
             if (!Array.isArray(data) || data.length === 0) return;
+            const activityTitle = <?= json_encode($viewerTitle, JSON_UNESCAPED_UNICODE) ?>;
 
             const countEl = document.getElementById('vc-count');
             const questionEl = document.getElementById('vc-question');
@@ -258,11 +270,22 @@ ob_start();
             const restartBtn = document.getElementById('vc-restart');
             const completeEl = document.getElementById('vc-complete');
             const shellEl = document.getElementById('vc-quizShell');
+            const completedTitleEl = document.getElementById('vc-completed-title');
+            const completedTextEl = document.getElementById('vc-completed-text');
+            const completedRestartBtn = document.getElementById('vc-completed-restart');
 
             let index = 0;
             let selectedIndex = -1;
             let score = 0;
             let checked = false;
+
+            if (completedTitleEl) {
+                completedTitleEl.textContent = activityTitle || 'Video Comprehension';
+            }
+
+            if (completedTextEl) {
+                completedTextEl.textContent = "You've completed " + (activityTitle || 'this activity') + '. Great job practicing.';
+            }
 
             function getCurrent() {
                 return data[index] || { question: '', options: ['', '', ''], correct: 0, explanation: '' };
@@ -304,8 +327,7 @@ ob_start();
 
             function showCompletion() {
                 shellEl.style.display = 'none';
-                completeEl.style.display = 'block';
-                completeEl.textContent = `Completed! You scored ${score} of ${data.length}.`;
+                completeEl.classList.add('active');
             }
 
             checkBtn.addEventListener('click', function () {
@@ -358,9 +380,21 @@ ob_start();
                 selectedIndex = -1;
                 checked = false;
                 shellEl.style.display = 'block';
-                completeEl.style.display = 'none';
+                completeEl.classList.remove('active');
                 render();
             });
+
+            if (completedRestartBtn) {
+                completedRestartBtn.addEventListener('click', function () {
+                    index = 0;
+                    score = 0;
+                    selectedIndex = -1;
+                    checked = false;
+                    shellEl.style.display = 'block';
+                    completeEl.classList.remove('active');
+                    render();
+                });
+            }
 
             render();
         })();
