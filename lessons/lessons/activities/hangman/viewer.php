@@ -271,6 +271,58 @@ h1{
   display:none;
 }
 
+.hg-completed-screen{
+  display:none;
+  text-align:center;
+  max-width:600px;
+  margin:0 auto;
+  padding:40px 20px;
+}
+
+.hg-completed-screen.active{
+  display:block;
+}
+
+.hg-completed-icon{
+  font-size:80px;
+  margin-bottom:20px;
+}
+
+.hg-completed-title{
+  font-family:'Fredoka', 'Trebuchet MS', sans-serif;
+  font-size:36px;
+  font-weight:700;
+  color:#9a3412;
+  margin:0 0 16px;
+  line-height:1.2;
+}
+
+.hg-completed-text{
+  font-size:16px;
+  color:#6b5b41;
+  line-height:1.6;
+  margin:0 0 32px;
+}
+
+.hg-completed-button{
+  display:inline-block;
+  padding:12px 24px;
+  border:none;
+  border-radius:999px;
+  background:linear-gradient(180deg, #f59e0b 0%, #ea580c 100%);
+  color:#fff;
+  font-weight:700;
+  font-size:16px;
+  cursor:pointer;
+  box-shadow:0 10px 24px rgba(0,0,0,.14);
+  transition:transform .18s ease, filter .18s ease;
+}
+
+.hg-completed-button:hover{
+  transform:scale(1.05);
+  filter:brightness(1.07);
+}
+
 a.back{
   display:inline-block;
   margin-top:10px;
@@ -313,7 +365,7 @@ a.back{
 </section>
 
 <div class="game-box">
-  <div class="game-layout">
+  <div class="game-layout" id="gameLayout">
     <div class="left-panel">
       <div class="hangman-wrap">
         <img id="hangmanImg" src="../../hangman/assets/hangman0.png" width="200" alt="hangman">
@@ -339,6 +391,13 @@ a.back{
     </aside>
   </div>
 
+  <div id="hg-completed" class="hg-completed-screen">
+    <div class="hg-completed-icon">✅</div>
+    <h2 class="hg-completed-title" id="hg-completed-title"></h2>
+    <p class="hg-completed-text" id="hg-completed-text"></p>
+    <button type="button" class="hg-completed-button" id="hg-restart" onclick="restartActivity()">Restart</button>
+  </div>
+
 </div>
 
 <a class="back" href="../../academic/unit_view.php?unit=<?= urlencode($unit) ?>&source=<?= urlencode($_GET['source'] ?? '') ?>">
@@ -352,6 +411,7 @@ a.back{
 
 <script>
 const items = <?= json_encode($normalizedItems, JSON_UNESCAPED_UNICODE) ?>;
+const activityTitle = <?= json_encode($title, JSON_UNESCAPED_UNICODE) ?>;
 
 // PRELOAD imágenes del ahorcado para evitar delay
 const preloadedHangmanImages = [];
@@ -369,6 +429,18 @@ const correctSound = document.getElementById("correctSound");
 const winSound = document.getElementById("winSound");
 const loseSound = document.getElementById("loseSound");
 const wrongSound = document.getElementById("wrongSound");
+const gameLayout = document.getElementById("gameLayout");
+const completedEl = document.getElementById("hg-completed");
+const completedTitleEl = document.getElementById("hg-completed-title");
+const completedTextEl = document.getElementById("hg-completed-text");
+
+if (completedTitleEl) {
+  completedTitleEl.textContent = activityTitle || 'Hangman';
+}
+
+if (completedTextEl) {
+  completedTextEl.textContent = "You've completed " + (activityTitle || 'this activity') + '. Great job practicing.';
+}
 
 let index = 0;
 let word = "";
@@ -401,6 +473,14 @@ function loadWord(){
   gameFinished = false;
   hintVisible = false;
 
+  if (completedEl) {
+    completedEl.classList.remove('active');
+  }
+
+  if (gameLayout) {
+    gameLayout.style.display = 'grid';
+  }
+
   const current = items[index] || { word: "TEST", hint: "", image: "" };
   word = String(current.word || "TEST").toUpperCase();
   hint = String(current.hint || "");
@@ -417,6 +497,28 @@ function loadWord(){
 
   buildKeyboard();
   renderWord();
+}
+
+function showCompleted() {
+  gameFinished = true;
+  feedback.textContent = '';
+  feedback.className = '';
+  setKeyboardDisabled(true);
+
+  if (gameLayout) {
+    gameLayout.style.display = 'none';
+  }
+
+  if (completedEl) {
+    completedEl.classList.add('active');
+  }
+
+  playSound(winSound);
+}
+
+function restartActivity() {
+  index = 0;
+  loadWord();
 }
 
 function renderWord(revealMissing = false){
@@ -474,9 +576,7 @@ function guess(letter){
 
     if (isSolved()) {
       if (index === items.length - 1) {
-        feedback.textContent = "Completed!";
-        feedback.className = "good";
-        playSound(winSound);
+        showCompleted();
       } else {
         feedback.textContent = "Correct!";
         feedback.className = "good";
@@ -502,9 +602,7 @@ function checkGame(){
 
   if (isSolved()) {
     if (index === items.length - 1) {
-      feedback.textContent = "Completed!";
-      feedback.className = "good";
-      playSound(winSound);
+      showCompleted();
     } else {
       feedback.textContent = "Correct!";
       feedback.className = "good";
@@ -538,11 +636,7 @@ function showAnswer(){
 
 function nextWord(){
   if (index >= items.length - 1) {
-    feedback.textContent = "Completed!";
-    feedback.className = "good";
-    playSound(winSound);
-    gameFinished = true;
-    setKeyboardDisabled(true);
+    showCompleted();
     return;
   }
 

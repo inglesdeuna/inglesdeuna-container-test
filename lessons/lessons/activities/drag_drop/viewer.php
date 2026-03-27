@@ -158,7 +158,7 @@ if ($unit === '' && $activityId !== '') {
 }
 
 $activity = load_drag_drop_activity($pdo, $activityId, $unit);
-$viewerTitle = default_drag_drop_title();
+$viewerTitle = (string) ($activity['title'] ?? default_drag_drop_title());
 $blocks = is_array($activity['blocks'] ?? null) ? $activity['blocks'] : [];
 
 if (count($blocks) === 0) {
@@ -299,6 +299,58 @@ ob_start();
   text-align:center;
 }
 
+.dd-completed-screen{
+  display:none;
+  text-align:center;
+  max-width:600px;
+  margin:0 auto;
+  padding:40px 20px;
+}
+
+.dd-completed-screen.active{
+  display:block;
+}
+
+.dd-completed-icon{
+  font-size:80px;
+  margin-bottom:20px;
+}
+
+.dd-completed-title{
+  font-family:'Fredoka', 'Trebuchet MS', sans-serif;
+  font-size:36px;
+  font-weight:700;
+  color:#9a3412;
+  margin:0 0 16px;
+  line-height:1.2;
+}
+
+.dd-completed-text{
+  font-size:16px;
+  color:#6b4f3a;
+  line-height:1.6;
+  margin:0 0 32px;
+}
+
+.dd-completed-button{
+  display:inline-block;
+  padding:12px 24px;
+  border:none;
+  border-radius:999px;
+  background:linear-gradient(180deg, #fb923c 0%, #f97316 100%);
+  color:#fff;
+  font-weight:700;
+  font-size:16px;
+  cursor:pointer;
+  box-shadow:0 10px 24px rgba(0,0,0,.14);
+  transition:transform .18s ease, filter .18s ease;
+}
+
+.dd-completed-button:hover{
+  transform:scale(1.05);
+  filter:brightness(1.07);
+}
+
 @media (max-width:760px){
   .dd-intro{padding:20px 18px}
   .dd-intro h2{font-size:26px}
@@ -328,12 +380,20 @@ ob_start();
   </div>
 
   <div id="feedback"></div>
+
+  <div id="dd-completed" class="dd-completed-screen">
+    <div class="dd-completed-icon">✅</div>
+    <h2 class="dd-completed-title" id="dd-completed-title"></h2>
+    <p class="dd-completed-text" id="dd-completed-text"></p>
+    <button type="button" class="dd-completed-button" id="dd-restart" onclick="restartActivity()">Restart</button>
+  </div>
 </div>
 
 <audio id="winSound" src="../../hangman/assets/win.mp3" preload="auto"></audio>
 
 <script>
 const blocks = <?= json_encode($blocks, JSON_UNESCAPED_UNICODE) ?>;
+const activityTitle = <?= json_encode($viewerTitle, JSON_UNESCAPED_UNICODE) ?>;
 
 let index = 0;
 let dragged = null;
@@ -347,6 +407,19 @@ const wordBank = document.getElementById('wordBank');
 const feedback = document.getElementById('feedback');
 const listenBtn = document.getElementById('listenBtn');
 const winSound = document.getElementById('winSound');
+const sentenceBox = document.getElementById('sentenceBox');
+const controls = document.querySelector('.controls');
+const completedEl = document.getElementById('dd-completed');
+const completedTitleEl = document.getElementById('dd-completed-title');
+const completedTextEl = document.getElementById('dd-completed-text');
+
+if (completedTitleEl) {
+  completedTitleEl.textContent = activityTitle || 'Unscramble';
+}
+
+if (completedTextEl) {
+  completedTextEl.textContent = "You've completed " + (activityTitle || 'this activity') + '. Great job practicing.';
+}
 
 function playSound(audio) {
   try {
@@ -432,6 +505,27 @@ function createBlank(indexBlank) {
 function loadSentence() {
   dragged = null;
   finished = false;
+
+  if (completedEl) {
+    completedEl.classList.remove('active');
+  }
+
+  if (sentenceBox) {
+    sentenceBox.style.display = 'block';
+  }
+
+  if (wordBank) {
+    wordBank.style.display = 'flex';
+  }
+
+  if (promptText) {
+    promptText.style.display = 'block';
+  }
+
+  if (controls) {
+    controls.style.display = 'block';
+  }
+
   feedback.textContent = '';
   feedback.className = '';
 
@@ -476,6 +570,30 @@ function loadSentence() {
   });
 }
 
+function showCompleted() {
+  finished = true;
+  feedback.textContent = '';
+  feedback.className = '';
+
+  if (sentenceBox) {
+    sentenceBox.style.display = 'none';
+  }
+
+  if (wordBank) {
+    wordBank.style.display = 'none';
+  }
+
+  if (controls) {
+    controls.style.display = 'none';
+  }
+
+  if (completedEl) {
+    completedEl.classList.add('active');
+  }
+
+  playSound(winSound);
+}
+
 function getBuiltAnswers() {
   const blanks = Array.prototype.slice.call(promptText.querySelectorAll('.blank'));
   return blanks.map(function (blank) {
@@ -496,10 +614,7 @@ function checkSentence() {
 
   if (JSON.stringify(built) === JSON.stringify(currentAnswers)) {
     if (index === blocks.length - 1) {
-      feedback.textContent = 'Completed!';
-      feedback.className = 'good';
-      playSound(winSound);
-      finished = true;
+      showCompleted();
       return;
     }
 
@@ -530,14 +645,16 @@ function showAnswer() {
 
 function nextSentence() {
   if (index >= blocks.length - 1) {
-    feedback.textContent = 'Completed!';
-    feedback.className = 'good';
-    playSound(winSound);
-    finished = true;
+    showCompleted();
     return;
   }
 
   index += 1;
+  loadSentence();
+}
+
+function restartActivity() {
+  index = 0;
   loadSentence();
 }
 

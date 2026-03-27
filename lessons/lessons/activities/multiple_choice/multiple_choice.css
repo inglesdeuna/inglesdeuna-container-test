@@ -170,6 +170,58 @@
   font-size: 24px;
 }
 
+.mc-completed-screen{
+  display:none;
+  text-align:center;
+  max-width:600px;
+  margin:0 auto;
+  padding:40px 20px;
+}
+
+.mc-completed-screen.active{
+  display:block;
+}
+
+.mc-completed-icon{
+  font-size:80px;
+  margin-bottom:20px;
+}
+
+.mc-completed-title{
+  font-family:'Fredoka', 'Trebuchet MS', sans-serif;
+  font-size:36px;
+  font-weight:700;
+  color:#6d28d9;
+  margin:0 0 16px;
+  line-height:1.2;
+}
+
+.mc-completed-text{
+  font-size:16px;
+  color:#5b516f;
+  line-height:1.6;
+  margin:0 0 32px;
+}
+
+.mc-completed-button{
+  display:inline-block;
+  padding:12px 24px;
+  border:none;
+  border-radius:999px;
+  background:linear-gradient(180deg, #8b5cf6 0%, #7c3aed 100%);
+  color:#fff;
+  font-weight:700;
+  font-size:16px;
+  cursor:pointer;
+  box-shadow:0 10px 24px rgba(0,0,0,.14);
+  transition:transform .18s ease, filter .18s ease;
+}
+
+.mc-completed-button:hover{
+  transform:scale(1.05);
+  filter:brightness(1.07);
+}
+
 @media (max-width: 768px){
   .mc-viewer{
     max-width: 100%;

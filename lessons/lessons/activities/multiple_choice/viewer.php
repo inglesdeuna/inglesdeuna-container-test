@@ -190,11 +190,19 @@ ob_start();
     </div>
 
     <div class="mc-feedback" id="mc-feedback"></div>
+
+    <div id="mc-completed" class="mc-completed-screen">
+        <div class="mc-completed-icon">✅</div>
+        <h2 class="mc-completed-title" id="mc-completed-title"></h2>
+        <p class="mc-completed-text" id="mc-completed-text"></p>
+        <button type="button" class="mc-completed-button" id="mc-restart">Restart</button>
+    </div>
 </div>
 
 <link rel="stylesheet" href="multiple_choice.css?v=<?php echo urlencode($cssVersion); ?>">
 <script>
 window.MULTIPLE_CHOICE_DATA = <?php echo json_encode($questions, JSON_UNESCAPED_UNICODE); ?>;
+window.MULTIPLE_CHOICE_TITLE = <?php echo json_encode($viewerTitle, JSON_UNESCAPED_UNICODE); ?>;
 </script>
 <script src="multiple_choice.js?v=<?php echo urlencode($jsVersion); ?>"></script>
 

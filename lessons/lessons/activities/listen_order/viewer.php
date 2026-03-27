@@ -228,6 +228,58 @@ ob_start();
   gap:10px;
 }
 
+.lo-completed-screen{
+  display:none;
+  text-align:center;
+  max-width:600px;
+  margin:0 auto;
+  padding:40px 20px;
+}
+
+.lo-completed-screen.active{
+  display:block;
+}
+
+.lo-completed-icon{
+  font-size:80px;
+  margin-bottom:20px;
+}
+
+.lo-completed-title{
+  font-family:'Fredoka', 'Trebuchet MS', sans-serif;
+  font-size:36px;
+  font-weight:700;
+  color:#4c1d95;
+  margin:0 0 16px;
+  line-height:1.2;
+}
+
+.lo-completed-text{
+  font-size:16px;
+  color:#5b516f;
+  line-height:1.6;
+  margin:0 0 32px;
+}
+
+.lo-completed-button{
+  display:inline-block;
+  padding:12px 24px;
+  border:none;
+  border-radius:999px;
+  background:linear-gradient(180deg, #8b5cf6 0%, #7c3aed 100%);
+  color:#fff;
+  font-weight:700;
+  font-size:16px;
+  cursor:pointer;
+  box-shadow:0 10px 24px rgba(0,0,0,.14);
+  transition:transform .18s ease, filter .18s ease;
+}
+
+.lo-completed-button:hover{
+  transform:scale(1.05);
+  filter:brightness(1.07);
+}
+
 .lo-btn{
   padding:11px 18px;
   border:none;
@@ -290,12 +342,20 @@ ob_start();
   </div>
 
   <div id="feedback"></div>
+
+  <div id="lo-completed" class="lo-completed-screen">
+    <div class="lo-completed-icon">✅</div>
+    <h2 class="lo-completed-title" id="lo-completed-title"></h2>
+    <p class="lo-completed-text" id="lo-completed-text"></p>
+    <button type="button" class="lo-completed-button" id="lo-restart" onclick="restartActivity()">Restart</button>
+  </div>
 </div>
 
 <audio id="winSound" src="../../hangman/assets/win.mp3" preload="auto"></audio>
 
 <script>
 const blocks = <?= json_encode($blocks, JSON_UNESCAPED_UNICODE) ?>;
+const activityTitle = <?= json_encode($viewerTitle, JSON_UNESCAPED_UNICODE) ?>;
 
 let index = 0;
 let correct = [];
@@ -310,6 +370,19 @@ const wordsDiv = document.getElementById('words');
 const answerDiv = document.getElementById('answer');
 const feedback = document.getElementById('feedback');
 const winSound = document.getElementById('winSound');
+const sentenceBox = document.getElementById('sentenceBox');
+const controls = document.querySelector('.lo-controls');
+const completedEl = document.getElementById('lo-completed');
+const completedTitleEl = document.getElementById('lo-completed-title');
+const completedTextEl = document.getElementById('lo-completed-text');
+
+if (completedTitleEl) {
+  completedTitleEl.textContent = activityTitle || 'Listen & Order';
+}
+
+if (completedTextEl) {
+  completedTextEl.textContent = "You've completed " + (activityTitle || 'this activity') + '. Great job practicing.';
+}
 
 function playSound(audio) {
   try {
@@ -391,6 +464,26 @@ function loadBlock() {
   dragged = null;
   finished = false;
 
+  if (completedEl) {
+    completedEl.classList.remove('active');
+  }
+
+  if (sentenceBox) {
+    sentenceBox.style.display = 'block';
+  }
+
+  if (wordsDiv) {
+    wordsDiv.style.display = 'flex';
+  }
+
+  if (answerDiv) {
+    answerDiv.style.display = 'flex';
+  }
+
+  if (controls) {
+    controls.style.display = 'flex';
+  }
+
   feedback.textContent = '';
   feedback.className = '';
 
@@ -404,6 +497,34 @@ function loadBlock() {
   shuffle(correct).forEach(function (src) {
     wordsDiv.appendChild(createImageChip(src));
   });
+}
+
+function showCompleted() {
+  finished = true;
+  feedback.textContent = '';
+  feedback.className = '';
+
+  if (sentenceBox) {
+    sentenceBox.style.display = 'none';
+  }
+
+  if (wordsDiv) {
+    wordsDiv.style.display = 'none';
+  }
+
+  if (answerDiv) {
+    answerDiv.style.display = 'none';
+  }
+
+  if (controls) {
+    controls.style.display = 'none';
+  }
+
+  if (completedEl) {
+    completedEl.classList.add('active');
+  }
+
+  playSound(winSound);
 }
 
 answerDiv.addEventListener('dragover', function (event) {
@@ -431,10 +552,7 @@ function checkOrder() {
 
   if (JSON.stringify(built) === JSON.stringify(correct)) {
     if (index === blocks.length - 1) {
-      feedback.textContent = 'Completed!';
-      feedback.className = 'good';
-      playSound(winSound);
-      finished = true;
+      showCompleted();
       return;
     }
 
@@ -462,14 +580,16 @@ function showAnswer() {
 
 function nextBlock() {
   if (index >= blocks.length - 1) {
-    feedback.textContent = 'Completed!';
-    feedback.className = 'good';
-    playSound(winSound);
-    finished = true;
+    showCompleted();
     return;
   }
 
   index += 1;
+  loadBlock();
+}
+
+function restartActivity() {
+  index = 0;
   loadBlock();
 }
 

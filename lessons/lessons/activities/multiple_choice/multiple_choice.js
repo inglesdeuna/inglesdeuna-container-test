@@ -9,6 +9,13 @@ document.addEventListener('DOMContentLoaded', function () {
   const checkBtn = document.getElementById('mc-check');
   const showBtn = document.getElementById('mc-show');
   const nextBtn = document.getElementById('mc-next');
+  const cardEl = document.querySelector('.mc-card');
+  const controlsEl = document.querySelector('.mc-controls');
+  const completedEl = document.getElementById('mc-completed');
+  const completedTitleEl = document.getElementById('mc-completed-title');
+  const completedTextEl = document.getElementById('mc-completed-text');
+  const restartBtn = document.getElementById('mc-restart');
+  const activityTitle = window.MULTIPLE_CHOICE_TITLE || 'Multiple Choice';
 
   const completedSound = new Audio('../../hangman/assets/win.mp3');
 
@@ -33,6 +40,14 @@ document.addEventListener('DOMContentLoaded', function () {
   let checked = false;
   let finished = false;
 
+  if (completedTitleEl) {
+    completedTitleEl.textContent = activityTitle;
+  }
+
+  if (completedTextEl) {
+    completedTextEl.textContent = "You've completed " + activityTitle + '. Great job practicing.';
+  }
+
   function playCompletedSound() {
     try {
       completedSound.pause();
@@ -50,6 +65,19 @@ document.addEventListener('DOMContentLoaded', function () {
 
     selected = null;
     checked = false;
+    finished = false;
+
+    if (completedEl) {
+      completedEl.classList.remove('active');
+    }
+
+    if (cardEl) {
+      cardEl.style.display = 'block';
+    }
+
+    if (controlsEl) {
+      controlsEl.style.display = 'flex';
+    }
 
     feedbackEl.textContent = '';
     feedbackEl.className = 'mc-feedback';
@@ -167,8 +195,24 @@ document.addEventListener('DOMContentLoaded', function () {
 
   function showCompleted() {
     finished = true;
-    feedbackEl.textContent = 'Completed!';
-    feedbackEl.className = 'mc-feedback good completed';
+    feedbackEl.textContent = '';
+    feedbackEl.className = 'mc-feedback';
+
+    if (cardEl) {
+      cardEl.style.display = 'none';
+    }
+
+    if (controlsEl) {
+      controlsEl.style.display = 'none';
+    }
+
+    if (statusEl) {
+      statusEl.textContent = 'Completed';
+    }
+
+    if (completedEl) {
+      completedEl.classList.add('active');
+    }
 
     if (checkBtn) {
       checkBtn.disabled = true;
@@ -201,9 +245,18 @@ document.addEventListener('DOMContentLoaded', function () {
     showCompleted();
   }
 
+  function restartActivity() {
+    index = 0;
+    loadQuestion();
+  }
+
   checkBtn.addEventListener('click', checkAnswer);
   showBtn.addEventListener('click', showAnswer);
   nextBtn.addEventListener('click', nextQuestion);
+
+  if (restartBtn) {
+    restartBtn.addEventListener('click', restartActivity);
+  }
 
   loadQuestion();
 });
