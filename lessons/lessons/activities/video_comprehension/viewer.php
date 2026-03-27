@@ -165,6 +165,7 @@ ob_start();
 .vc-feedback.success{background:#ecfdf5;border-color:#86efac;color:#166534}
 .vc-feedback.error{background:#fef2f2;border-color:#fca5a5;color:#991b1b}
 .vc-empty{padding:26px;text-align:center;font-weight:800;color:#b91c1c}
+.vc-activity.is-hidden{display:none}
 .completed-screen{display:none;text-align:center;max-width:600px;margin:0 auto;padding:40px 20px}
 .completed-screen.active{display:block}
 .completed-icon{font-size:80px;margin-bottom:20px}
@@ -220,7 +221,7 @@ ob_start();
     <?php } ?>
 
     <?php if ($hasQuiz) { ?>
-        <div class="vc-layout">
+        <div class="vc-layout vc-activity" id="vc-activity">
             <section class="vc-panel">
                 <div class="vc-video-wrap">
                     <iframe class="vc-video" src="<?= htmlspecialchars($iframeUrl, ENT_QUOTES, 'UTF-8') ?>" title="Video comprehension" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>
@@ -245,14 +246,14 @@ ob_start();
 
                     <div class="vc-feedback" id="vc-feedback">Select an option to begin.</div>
                 </div>
-
-                <div id="vc-complete" class="completed-screen">
-                    <div class="completed-icon">✅</div>
-                    <h2 class="completed-title" id="vc-completed-title"></h2>
-                    <p class="completed-text" id="vc-completed-text"></p>
-                    <button type="button" class="completed-button" id="vc-completed-restart">Restart</button>
-                </div>
             </section>
+        </div>
+
+        <div id="vc-complete" class="completed-screen">
+            <div class="completed-icon">✅</div>
+            <h2 class="completed-title" id="vc-completed-title"></h2>
+            <p class="completed-text" id="vc-completed-text"></p>
+            <button type="button" class="completed-button" id="vc-completed-restart">Restart</button>
         </div>
 
         <script>
@@ -269,6 +270,7 @@ ob_start();
             const nextBtn = document.getElementById('vc-next');
             const restartBtn = document.getElementById('vc-restart');
             const completeEl = document.getElementById('vc-complete');
+            const activityEl = document.getElementById('vc-activity');
             const shellEl = document.getElementById('vc-quizShell');
             const completedTitleEl = document.getElementById('vc-completed-title');
             const completedTextEl = document.getElementById('vc-completed-text');
@@ -326,8 +328,20 @@ ob_start();
             }
 
             function showCompletion() {
-                shellEl.style.display = 'none';
+                if (activityEl) activityEl.classList.add('is-hidden');
                 completeEl.classList.add('active');
+                completeEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+
+            function restartQuiz() {
+                index = 0;
+                score = 0;
+                selectedIndex = -1;
+                checked = false;
+                shellEl.style.display = 'block';
+                if (activityEl) activityEl.classList.remove('is-hidden');
+                completeEl.classList.remove('active');
+                render();
             }
 
             checkBtn.addEventListener('click', function () {
@@ -374,26 +388,10 @@ ob_start();
                 render();
             });
 
-            restartBtn.addEventListener('click', function () {
-                index = 0;
-                score = 0;
-                selectedIndex = -1;
-                checked = false;
-                shellEl.style.display = 'block';
-                completeEl.classList.remove('active');
-                render();
-            });
+            restartBtn.addEventListener('click', restartQuiz);
 
             if (completedRestartBtn) {
-                completedRestartBtn.addEventListener('click', function () {
-                    index = 0;
-                    score = 0;
-                    selectedIndex = -1;
-                    checked = false;
-                    shellEl.style.display = 'block';
-                    completeEl.classList.remove('active');
-                    render();
-                });
+                completedRestartBtn.addEventListener('click', restartQuiz);
             }
 
             render();
