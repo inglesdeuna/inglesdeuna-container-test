@@ -394,14 +394,14 @@ ob_start();
     font-family:'Fredoka', 'Trebuchet MS', sans-serif;
     font-size:36px;
     font-weight:700;
-    color:#be185d;
+    color:#c2410c;
     margin:0 0 16px;
     line-height:1.2;
 }
 
 .completed-text{
     font-size:16px;
-    color:#6b4b5f;
+    color:#1f2937;
     line-height:1.6;
     margin:0 0 32px;
 }
@@ -411,7 +411,7 @@ ob_start();
     padding:12px 24px;
     border:none;
     border-radius:999px;
-    background:linear-gradient(180deg, #db2777 0%, #be185d 100%);
+    background:linear-gradient(180deg, #f97316 0%, #c2410c 100%);
     color:#fff;
     font-weight:700;
     font-size:16px;
@@ -456,9 +456,9 @@ ob_start();
 
         <div id="pron-completed" class="completed-screen">
             <div class="completed-icon">✅</div>
-            <h2 class="completed-title">Completed</h2>
-            <p class="completed-text">You've completed this pronunciation activity. Great job practicing.</p>
-            <button type="button" class="completed-button" id="pron-restart">Back to Cards</button>
+            <h2 class="completed-title" id="pron-completed-title"></h2>
+            <p class="completed-text" id="pron-completed-text"></p>
+            <button type="button" class="completed-button" id="pron-restart">Restart</button>
         </div>
 </div>
 
@@ -466,6 +466,7 @@ ob_start();
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     var data = Array.isArray(<?php echo json_encode($items, JSON_UNESCAPED_UNICODE); ?>) ? <?php echo json_encode($items, JSON_UNESCAPED_UNICODE); ?> : [];
+    var activityTitle = <?php echo json_encode($viewerTitle, JSON_UNESCAPED_UNICODE); ?>;
 
     var statusEl = document.getElementById('pron-status');
     var promptEl = document.getElementById('pron-prompt');
@@ -478,6 +479,8 @@ document.addEventListener('DOMContentLoaded', function () {
     var listenRowEl = document.getElementById('pron-listen-row');
     var controlsEl = document.getElementById('pron-controls');
     var completedEl = document.getElementById('pron-completed');
+    var completedTitleEl = document.getElementById('pron-completed-title');
+    var completedTextEl = document.getElementById('pron-completed-text');
 
     var listenBtn = document.getElementById('pron-listen');
     var checkBtn = document.getElementById('pron-check');
@@ -501,6 +504,14 @@ document.addEventListener('DOMContentLoaded', function () {
     var finished = false;
     var capturedText = '';
     var recognitionBusy = false;
+
+    if (completedTitleEl) {
+        completedTitleEl.textContent = activityTitle || 'Pronunciation Practice';
+    }
+
+    if (completedTextEl) {
+        completedTextEl.textContent = "You've completed " + (activityTitle || 'this activity') + '. Great job practicing.';
+    }
 
     function normalizeText(text) {
         return String(text || '')

@@ -401,14 +401,14 @@ ob_start();
     font-family:'Fredoka', 'Trebuchet MS', sans-serif;
     font-size:36px;
     font-weight:700;
-    color:#be185d;
+    color:#0f766e;
     margin:0 0 16px;
     line-height:1.2;
 }
 
 .completed-text{
     font-size:16px;
-    color:#6b4b5f;
+    color:#1f2937;
     line-height:1.6;
     margin:0 0 32px;
 }
@@ -418,7 +418,7 @@ ob_start();
     padding:12px 24px;
     border:none;
     border-radius:999px;
-    background:linear-gradient(180deg, #db2777 0%, #be185d 100%);
+    background:linear-gradient(180deg, #14b8a6 0%, #0f766e 100%);
     color:#fff;
     font-weight:700;
     font-size:16px;
@@ -463,9 +463,9 @@ ob_start();
 
         <div id="dict-completed" class="completed-screen">
             <div class="completed-icon">✅</div>
-            <h2 class="completed-title">Completed</h2>
-            <p class="completed-text">You've completed this dictation activity. Great job practicing.</p>
-            <button type="button" class="completed-button" id="dict-restart">Back to Cards</button>
+            <h2 class="completed-title" id="dict-completed-title"></h2>
+            <p class="completed-text" id="dict-completed-text"></p>
+            <button type="button" class="completed-button" id="dict-restart">Restart</button>
         </div>
 </div>
 
@@ -473,6 +473,7 @@ ob_start();
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     var data = Array.isArray(<?php echo json_encode($items, JSON_UNESCAPED_UNICODE); ?>) ? <?php echo json_encode($items, JSON_UNESCAPED_UNICODE); ?> : [];
+    var activityTitle = <?php echo json_encode($viewerTitle, JSON_UNESCAPED_UNICODE); ?>;
 
     var statusEl = document.getElementById('dict-status');
     var promptEl = document.getElementById('dict-prompt');
@@ -485,6 +486,8 @@ document.addEventListener('DOMContentLoaded', function () {
     var listenRowEl = document.getElementById('dict-listen-row');
     var controlsEl = document.getElementById('dict-controls');
     var completedEl = document.getElementById('dict-completed');
+    var completedTitleEl = document.getElementById('dict-completed-title');
+    var completedTextEl = document.getElementById('dict-completed-text');
 
     var listenBtn = document.getElementById('dict-listen');
     var checkBtn = document.getElementById('dict-check');
@@ -498,6 +501,14 @@ document.addEventListener('DOMContentLoaded', function () {
 
     var index = 0;
     var finished = false;
+
+    if (completedTitleEl) {
+        completedTitleEl.textContent = activityTitle || 'Dictation Practice';
+    }
+
+    if (completedTextEl) {
+        completedTextEl.textContent = "You've completed " + (activityTitle || 'this activity') + '. Great job practicing.';
+    }
 
     function normalizeText(text) {
         return String(text || '')
