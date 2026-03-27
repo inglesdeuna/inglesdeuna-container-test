@@ -210,23 +210,6 @@ ob_start();
 }
 .cw-word-item textarea { min-height:72px; resize:vertical; }
 
-.cw-row2 {
-    display:grid;
-    grid-template-columns:1fr 1fr 100px 100px;
-    gap:10px;
-    align-items:end;
-}
-
-.cw-row2 > div { display:flex; flex-direction:column; }
-
-select {
-    padding:9px 12px;
-    border:1px solid #d1d5db;
-    border-radius:8px;
-    font-size:14px;
-    background:#fff;
-}
-
 .word-num-badge {
     position:absolute; top:14px; left:14px;
     width:28px; height:28px; border-radius:50%;
@@ -285,7 +268,7 @@ select {
 
 <!-- Live preview -->
 <div class="cw-preview-wrap">
-    <div class="cw-preview-title">📐 Grid Preview (updates as you type)</div>
+    <div class="cw-preview-title">📐 Auto Grid Preview (updates as you type)</div>
     <div id="cwPreviewGrid"></div>
 </div>
 
@@ -313,24 +296,7 @@ select {
             <label>Clue / Hint</label>
             <textarea name="clue[]" placeholder="e.g. Pay attention with your ears."><?= htmlspecialchars((string)($w["clue"] ?? ""), ENT_QUOTES, 'UTF-8') ?></textarea>
 
-            <div class="cw-row2">
-                <div>
-                    <label>Direction</label>
-                    <select name="direction[]">
-                        <option value="across" <?= ($w["direction"] ?? "") === "across" ? "selected" : "" ?>>Across →</option>
-                        <option value="down"   <?= ($w["direction"] ?? "") === "down"   ? "selected" : "" ?>>Down ↓</option>
-                    </select>
-                </div>
-                <div></div>
-                <div>
-                    <label>Start Row (0-based)</label>
-                    <input type="number" name="row[]" min="0" max="30" value="<?= (int)($w["row"] ?? 0) ?>">
-                </div>
-                <div>
-                    <label>Start Col (0-based)</label>
-                    <input type="number" name="col[]" min="0" max="30" value="<?= (int)($w["col"] ?? 0) ?>">
-                </div>
-            </div>
+            <p style="margin-top:10px;color:#6b7280;font-size:12px;">Placement is automatic in the preview and player.</p>
 
             <div style="margin-top:12px;">
                 <button type="button" class="btn-remove" onclick="removeWord(this)">✖ Remove</button>
@@ -373,28 +339,11 @@ function addWord(){
     div.innerHTML = `
         <div class="word-num-badge">${n}</div>
         <input type="hidden" name="word_id[]" value="${id}">
-        <label>Word (letters only)</label>
+        <label>Word (letters and numbers only)</label>
         <input type="text" name="word[]" placeholder="e.g. LISTEN" required>
         <label>Clue / Hint</label>
         <textarea name="clue[]" placeholder="e.g. Pay attention with your ears."></textarea>
-        <div class="cw-row2">
-            <div>
-                <label>Direction</label>
-                <select name="direction[]">
-                    <option value="across">Across →</option>
-                    <option value="down">Down ↓</option>
-                </select>
-            </div>
-            <div></div>
-            <div>
-                <label>Start Row (0-based)</label>
-                <input type="number" name="row[]" min="0" max="30" value="0">
-            </div>
-            <div>
-                <label>Start Col (0-based)</label>
-                <input type="number" name="col[]" min="0" max="30" value="0">
-            </div>
-        </div>
+        <p style="margin-top:10px;color:#6b7280;font-size:12px;">Placement is automatic in the preview and player.</p>
         <div style="margin-top:12px;">
             <button type="button" class="btn-remove" onclick="removeWord(this)">✖ Remove</button>
         </div>
@@ -420,14 +369,156 @@ function collectWords(){
     const result = [];
     items.forEach(function(item){
         const word  = (item.querySelector('input[name="word[]"]')      || {}).value || '';
-        const dir   = (item.querySelector('select[name="direction[]"]') || {}).value || 'across';
-        const rowEl = item.querySelector('input[name="row[]"]');
-        const colEl = item.querySelector('input[name="col[]"]');
-        const row   = rowEl ? parseInt(rowEl.value)||0 : 0;
-        const col   = colEl ? parseInt(colEl.value)||0 : 0;
-        if(word.trim() !== '') result.push({ word: word.trim().toUpperCase(), direction: dir, row, col });
+        const cleaned = word.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+        if(cleaned.length >= 2) result.push({ word: cleaned });
     });
     return result;
+}
+
+function keyRC(r, c){ return r + ',' + c; }
+
+function canPlaceWord(grid, word, row, col, direction){
+    const len = word.length;
+    let overlaps = 0;
+    const dr = direction === 'across' ? 0 : 1;
+    const dc = direction === 'across' ? 1 : 0;
+
+    const before = keyRC(row - dr, col - dc);
+    const after = keyRC(row + dr * len, col + dc * len);
+    if(grid[before] || grid[after]) return { ok:false, overlaps:0 };
+
+    for(let i=0;i<len;i++){
+        const r = row + dr * i;
+        const c = col + dc * i;
+        const key = keyRC(r,c);
+        const ch = word[i];
+
+        if(grid[key]){
+            if((grid[key].letter || '') !== ch) return { ok:false, overlaps:0 };
+            overlaps++;
+            continue;
+        }
+
+        if(direction === 'across'){
+            if(grid[keyRC(r-1,c)] || grid[keyRC(r+1,c)]) return { ok:false, overlaps:0 };
+        } else {
+            if(grid[keyRC(r,c-1)] || grid[keyRC(r,c+1)]) return { ok:false, overlaps:0 };
+        }
+    }
+
+    return { ok:true, overlaps };
+}
+
+function placeWord(grid, placed){
+    const { word, row, col, direction, idx } = placed;
+    for(let i=0;i<word.length;i++){
+        const r = direction === 'across' ? row : row + i;
+        const c = direction === 'across' ? col + i : col;
+        const key = keyRC(r,c);
+        if(!grid[key]) grid[key] = { letter: word[i], wordIdxs: [] };
+        grid[key].wordIdxs.push(idx);
+    }
+}
+
+function generateLayout(words){
+    if(!words.length) return [];
+
+    const indexed = words.map((w, idx) => ({ idx, word: w.word }))
+        .sort((a,b) => (b.word.length - a.word.length) || (a.idx - b.idx));
+
+    const grid = {};
+    const placed = [];
+
+    const first = indexed[0];
+    const firstPlaced = { idx:first.idx, word:first.word, row:0, col:0, direction:'across' };
+    placed.push(firstPlaced);
+    placeWord(grid, firstPlaced);
+
+    for(let p=1;p<indexed.length;p++){
+        const candidate = indexed[p];
+        const word = candidate.word;
+        let best = null;
+        let bestScore = -1000000;
+
+        Object.keys(grid).forEach(function(key){
+            const parts = key.split(',');
+            const r0 = parseInt(parts[0], 10);
+            const c0 = parseInt(parts[1], 10);
+            const gridCh = grid[key].letter;
+
+            for(let i=0;i<word.length;i++){
+                if(word[i] !== gridCh) continue;
+                ['across','down'].forEach(function(dir){
+                    const startRow = dir === 'across' ? r0 : r0 - i;
+                    const startCol = dir === 'across' ? c0 - i : c0;
+                    const check = canPlaceWord(grid, word, startRow, startCol, dir);
+                    if(!check.ok || check.overlaps < 1) return;
+
+                    const minR = startRow;
+                    const maxR = dir === 'down' ? startRow + word.length - 1 : startRow;
+                    const minC = startCol;
+                    const maxC = dir === 'across' ? startCol + word.length - 1 : startCol;
+                    const areaPenalty = (maxR - minR + 1) * (maxC - minC + 1);
+                    const score = (check.overlaps * 1000) - areaPenalty;
+
+                    if(score > bestScore){
+                        bestScore = score;
+                        best = { idx:candidate.idx, word, row:startRow, col:startCol, direction:dir };
+                    }
+                });
+            }
+        });
+
+        if(!best){
+            let minC = 0;
+            let maxR = 0;
+            let firstBound = true;
+            Object.keys(grid).forEach(function(key){
+                const parts = key.split(',');
+                const r = parseInt(parts[0], 10);
+                const c = parseInt(parts[1], 10);
+                if(firstBound){ minC = c; maxR = r; firstBound = false; }
+                else { minC = Math.min(minC, c); maxR = Math.max(maxR, r); }
+            });
+
+            const preferDown = (p % 2) === 1;
+            best = {
+                idx:candidate.idx,
+                word,
+                row:maxR + 2,
+                col:minC,
+                direction: preferDown ? 'down' : 'across'
+            };
+
+            const fallbackCheck = canPlaceWord(grid, best.word, best.row, best.col, best.direction);
+            if(!fallbackCheck.ok){
+                best.direction = best.direction === 'across' ? 'down' : 'across';
+            }
+        }
+
+        placed.push(best);
+        placeWord(grid, best);
+    }
+
+    let minRow = 0;
+    let minCol = 0;
+    let firstCell = true;
+    Object.keys(grid).forEach(function(key){
+        const parts = key.split(',');
+        const r = parseInt(parts[0], 10);
+        const c = parseInt(parts[1], 10);
+        if(firstCell){ minRow = r; minCol = c; firstCell = false; }
+        else { minRow = Math.min(minRow, r); minCol = Math.min(minCol, c); }
+    });
+
+    if(minRow !== 0 || minCol !== 0){
+        placed.forEach(function(pw){
+            pw.row -= minRow;
+            pw.col -= minCol;
+        });
+    }
+
+    return placed;
 }
 
 function renderPreview(){
@@ -435,9 +526,14 @@ function renderPreview(){
     const grid = document.getElementById('cwPreviewGrid');
     if(!words.length){ grid.innerHTML = '<span style="color:#9ca3af;font-size:13px;">Add words to see the grid preview.</span>'; return; }
 
-    // compute grid size
+    const placed = generateLayout(words);
+    if(!placed.length){
+        grid.innerHTML = '<span style="color:#9ca3af;font-size:13px;">Unable to build crossword from current words.</span>';
+        return;
+    }
+
     let maxR = 0, maxC = 0;
-    words.forEach(function(w){
+    placed.forEach(function(w){
         if(w.direction === 'across'){
             maxR = Math.max(maxR, w.row);
             maxC = Math.max(maxC, w.col + w.word.length - 1);
@@ -450,20 +546,29 @@ function renderPreview(){
     const cells = [];
     for(let r=0;r<rows;r++){ cells.push([]); for(let c=0;c<cols;c++) cells[r].push({letter:'',num:'',blocked:true}); }
 
-    // assign numbers: sort words by row then col
-    const numbered = words.slice().sort(function(a,b){ return a.row!==b.row ? a.row-b.row : a.col-b.col; });
-    let num = 1;
-    const numMap = {};
-    numbered.forEach(function(w){ const key = w.row+'_'+w.col; if(!numMap[key]){ numMap[key]=num++; } });
-
-    words.forEach(function(w){
-        const key = w.row+'_'+w.col;
+    placed.forEach(function(w){
         for(let i=0;i<w.word.length;i++){
             const r = w.direction==='across' ? w.row : w.row+i;
             const c = w.direction==='across' ? w.col+i : w.col;
             if(r<rows && c<cols){ cells[r][c].letter = w.word[i]; cells[r][c].blocked = false; }
         }
-        if(cells[w.row] && cells[w.row][w.col]) cells[w.row][w.col].num = numMap[key]||'';
+    });
+
+    const startNum = {};
+    let next = 1;
+    for(let r=0;r<rows;r++){
+        for(let c=0;c<cols;c++){
+            if(cells[r][c].blocked) continue;
+            const startsAcross = (c===0 || cells[r][c-1].blocked) && (c+1<cols && !cells[r][c+1].blocked);
+            const startsDown = (r===0 || cells[r-1][c].blocked) && (r+1<rows && !cells[r+1][c].blocked);
+            if(startsAcross || startsDown){
+                startNum[keyRC(r,c)] = next++;
+            }
+        }
+    }
+    placed.forEach(function(w){
+        const key = keyRC(w.row, w.col);
+        if(cells[w.row] && cells[w.row][w.col]) cells[w.row][w.col].num = startNum[key] || '';
     });
 
     let html = '<table>';

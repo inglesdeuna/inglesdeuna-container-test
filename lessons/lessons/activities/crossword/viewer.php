@@ -29,27 +29,273 @@ $words = [];
 foreach ($rawWords as $w) {
     if (!is_array($w)) continue;
     $word = strtoupper(trim((string)($w["word"] ?? "")));
-    if ($word === "" || strlen($word) < 1) continue;
-    $dir = in_array(($w["direction"] ?? ""), ["across","down"], true) ? $w["direction"] : "across";
+    $word = preg_replace('/[^A-Z0-9]/', '', $word);
+    if ($word === "" || strlen($word) < 2) continue;
     $words[] = [
         "word"      => $word,
         "clue"      => htmlspecialchars(trim((string)($w["clue"] ?? "")), ENT_QUOTES, "UTF-8"),
         "raw_clue"  => trim((string)($w["clue"] ?? "")),
-        "direction" => $dir,
-        "row"       => max(0, (int)($w["row"] ?? 0)),
-        "col"       => max(0, (int)($w["col"] ?? 0)),
     ];
 }
 
-// Compute grid dimensions
-$maxRow = 0; $maxCol = 0;
+function cw_key(int $r, int $c): string {
+    return $r . ',' . $c;
+}
+
+function cw_can_place_word(array $grid, string $word, int $row, int $col, string $direction): array
+{
+    $len = strlen($word);
+    $overlaps = 0;
+
+    $dr = $direction === 'across' ? 0 : 1;
+    $dc = $direction === 'across' ? 1 : 0;
+
+    $beforeKey = cw_key($row - $dr, $col - $dc);
+    $afterKey = cw_key($row + $dr * $len, $col + $dc * $len);
+    if (isset($grid[$beforeKey]) || isset($grid[$afterKey])) {
+        return [false, 0];
+    }
+
+    for ($i = 0; $i < $len; $i++) {
+        $r = $row + $dr * $i;
+        $c = $col + $dc * $i;
+        $key = cw_key($r, $c);
+        $ch = $word[$i];
+
+        if (isset($grid[$key])) {
+            if (($grid[$key]['letter'] ?? '') !== $ch) {
+                return [false, 0];
+            }
+            $overlaps++;
+            continue;
+        }
+
+        if ($direction === 'across') {
+            if (isset($grid[cw_key($r - 1, $c)]) || isset($grid[cw_key($r + 1, $c)])) {
+                return [false, 0];
+            }
+        } else {
+            if (isset($grid[cw_key($r, $c - 1)]) || isset($grid[cw_key($r, $c + 1)])) {
+                return [false, 0];
+            }
+        }
+    }
+
+    return [true, $overlaps];
+}
+
+function cw_place_word(array &$grid, array $placedWord): void
+{
+    $word = $placedWord['word'];
+    $len = strlen($word);
+    $row = (int)$placedWord['row'];
+    $col = (int)$placedWord['col'];
+    $dir = $placedWord['direction'];
+
+    for ($i = 0; $i < $len; $i++) {
+        $r = $dir === 'across' ? $row : $row + $i;
+        $c = $dir === 'across' ? $col + $i : $col;
+        $key = cw_key($r, $c);
+        if (!isset($grid[$key])) {
+            $grid[$key] = ['letter' => $word[$i], 'wordIdxs' => []];
+        }
+        $grid[$key]['wordIdxs'][] = $placedWord['idx'];
+    }
+}
+
+function cw_generate_layout(array $words): array
+{
+    if (empty($words)) {
+        return [[], []];
+    }
+
+    $indexed = [];
+    foreach ($words as $idx => $w) {
+        $indexed[] = ['idx' => $idx, 'word' => $w['word']];
+    }
+
+    usort($indexed, function ($a, $b) {
+        $lenCmp = strlen($b['word']) <=> strlen($a['word']);
+        if ($lenCmp !== 0) return $lenCmp;
+        return $a['idx'] <=> $b['idx'];
+    });
+
+    $grid = [];
+    $placed = [];
+
+    $first = $indexed[0];
+    $firstPlaced = [
+        'idx' => $first['idx'],
+        'word' => $first['word'],
+        'row' => 0,
+        'col' => 0,
+        'direction' => 'across',
+    ];
+    $placed[] = $firstPlaced;
+    cw_place_word($grid, $firstPlaced);
+
+    for ($p = 1; $p < count($indexed); $p++) {
+        $candidateWord = $indexed[$p];
+        $word = $candidateWord['word'];
+        $len = strlen($word);
+
+        $best = null;
+        $bestScore = -1000000;
+
+        foreach ($grid as $key => $cell) {
+            $parts = explode(',', $key);
+            $r0 = (int)$parts[0];
+            $c0 = (int)$parts[1];
+            $gridCh = $cell['letter'];
+
+            for ($i = 0; $i < $len; $i++) {
+                if ($word[$i] !== $gridCh) continue;
+
+                foreach (['across', 'down'] as $dir) {
+                    $startRow = $dir === 'across' ? $r0 : $r0 - $i;
+                    $startCol = $dir === 'across' ? $c0 - $i : $c0;
+                    [$ok, $overlaps] = cw_can_place_word($grid, $word, $startRow, $startCol, $dir);
+                    if (!$ok || $overlaps < 1) continue;
+
+                    $minR = $startRow;
+                    $maxR = $dir === 'down' ? $startRow + $len - 1 : $startRow;
+                    $minC = $startCol;
+                    $maxC = $dir === 'across' ? $startCol + $len - 1 : $startCol;
+                    $areaPenalty = ($maxR - $minR + 1) * ($maxC - $minC + 1);
+                    $score = ($overlaps * 1000) - $areaPenalty;
+
+                    if ($score > $bestScore) {
+                        $bestScore = $score;
+                        $best = [
+                            'idx' => $candidateWord['idx'],
+                            'word' => $word,
+                            'row' => $startRow,
+                            'col' => $startCol,
+                            'direction' => $dir,
+                        ];
+                    }
+                }
+            }
+        }
+
+        if ($best === null) {
+            $bounds = ['minR' => 0, 'maxR' => 0, 'minC' => 0, 'maxC' => 0];
+            $firstBound = true;
+            foreach ($grid as $key => $_cell) {
+                $parts = explode(',', $key);
+                $r = (int)$parts[0];
+                $c = (int)$parts[1];
+                if ($firstBound) {
+                    $bounds = ['minR' => $r, 'maxR' => $r, 'minC' => $c, 'maxC' => $c];
+                    $firstBound = false;
+                } else {
+                    $bounds['minR'] = min($bounds['minR'], $r);
+                    $bounds['maxR'] = max($bounds['maxR'], $r);
+                    $bounds['minC'] = min($bounds['minC'], $c);
+                    $bounds['maxC'] = max($bounds['maxC'], $c);
+                }
+            }
+
+            $preferDown = ($p % 2) === 1;
+            if ($preferDown) {
+                $fallback = [
+                    'idx' => $candidateWord['idx'],
+                    'word' => $word,
+                    'row' => $bounds['maxR'] + 2,
+                    'col' => $bounds['minC'],
+                    'direction' => 'down',
+                ];
+                [$okFallback] = cw_can_place_word($grid, $word, $fallback['row'], $fallback['col'], $fallback['direction']);
+                if (!$okFallback) {
+                    $fallback['direction'] = 'across';
+                    $fallback['row'] = $bounds['maxR'] + 2;
+                    $fallback['col'] = $bounds['minC'];
+                }
+                $best = $fallback;
+            } else {
+                $fallback = [
+                    'idx' => $candidateWord['idx'],
+                    'word' => $word,
+                    'row' => $bounds['maxR'] + 2,
+                    'col' => $bounds['minC'],
+                    'direction' => 'across',
+                ];
+                [$okFallback] = cw_can_place_word($grid, $word, $fallback['row'], $fallback['col'], $fallback['direction']);
+                if (!$okFallback) {
+                    $fallback['direction'] = 'down';
+                    $fallback['row'] = $bounds['maxR'] + 2;
+                    $fallback['col'] = $bounds['minC'];
+                }
+                $best = $fallback;
+            }
+        }
+
+        $placed[] = $best;
+        cw_place_word($grid, $best);
+    }
+
+    $minRow = 0;
+    $minCol = 0;
+    $firstCell = true;
+    foreach ($grid as $key => $_cell) {
+        [$r, $c] = array_map('intval', explode(',', $key));
+        if ($firstCell) {
+            $minRow = $r;
+            $minCol = $c;
+            $firstCell = false;
+        } else {
+            $minRow = min($minRow, $r);
+            $minCol = min($minCol, $c);
+        }
+    }
+
+    if ($minRow !== 0 || $minCol !== 0) {
+        foreach ($placed as &$pw) {
+            $pw['row'] -= $minRow;
+            $pw['col'] -= $minCol;
+        }
+        unset($pw);
+    }
+
+    return [$placed, $grid];
+}
+
+[$placedWords, $_generatedGrid] = cw_generate_layout($words);
+
+$wordsByIdx = [];
+foreach ($words as $idx => $w) {
+    $wordsByIdx[$idx] = $w;
+}
+
+$words = [];
+foreach ($placedWords as $pw) {
+    $idx = (int)$pw['idx'];
+    if (!isset($wordsByIdx[$idx])) continue;
+    $words[] = [
+        'idx' => $idx,
+        'word' => $wordsByIdx[$idx]['word'],
+        'clue' => $wordsByIdx[$idx]['clue'],
+        'raw_clue' => $wordsByIdx[$idx]['raw_clue'],
+        'direction' => $pw['direction'],
+        'row' => (int)$pw['row'],
+        'col' => (int)$pw['col'],
+    ];
+}
+
+if (empty($words)) {
+    die('Crossword has no valid words. Please add at least one word with 2+ letters.');
+}
+
+// Compute grid dimensions from generated placement
+$maxRow = 0;
+$maxCol = 0;
 foreach ($words as $w) {
-    if ($w["direction"] === "across") {
-        $maxRow = max($maxRow, $w["row"]);
-        $maxCol = max($maxCol, $w["col"] + strlen($w["word"]) - 1);
+    if ($w['direction'] === 'across') {
+        $maxRow = max($maxRow, $w['row']);
+        $maxCol = max($maxCol, $w['col'] + strlen($w['word']) - 1);
     } else {
-        $maxRow = max($maxRow, $w["row"] + strlen($w["word"]) - 1);
-        $maxCol = max($maxCol, $w["col"]);
+        $maxRow = max($maxRow, $w['row'] + strlen($w['word']) - 1);
+        $maxCol = max($maxCol, $w['col']);
     }
 }
 $gridRows = $maxRow + 1;
@@ -63,28 +309,6 @@ for ($r = 0; $r < $gridRows; $r++) {
     }
 }
 
-// Assign numbers — sort by row then col, then across before down at same cell
-$indexed = [];
-foreach ($words as $idx => $w) {
-    $indexed[] = array_merge($w, ["idx" => $idx]);
-}
-usort($indexed, function($a, $b) {
-    if ($a["row"] !== $b["row"]) return $a["row"] - $b["row"];
-    if ($a["col"] !== $b["col"]) return $a["col"] - $b["col"];
-    return strcmp($a["direction"], $b["direction"]); // "across" < "down"
-});
-
-$cellNumberMap = []; // "$r,$c" => number
-$wordNumber = [];    // $idx => clue_number
-$nextNum = 1;
-foreach ($indexed as $w) {
-    $key = $w["row"] . "," . $w["col"];
-    if (!isset($cellNumberMap[$key])) {
-        $cellNumberMap[$key] = $nextNum++;
-    }
-    $wordNumber[$w["idx"]] = $cellNumberMap[$key];
-}
-
 foreach ($words as $idx => $w) {
     $len = strlen($w["word"]);
     for ($i = 0; $i < $len; $i++) {
@@ -96,7 +320,27 @@ foreach ($words as $idx => $w) {
             $cellMap[$r][$c]["wordIdxs"][] = $idx;
         }
     }
-    $cellMap[$w["row"]][$w["col"]]["numLabel"] = $wordNumber[$idx];
+}
+
+// Assign clue numbers by crossword starts (scan top-left to bottom-right)
+$startNumberByCell = [];
+$nextNum = 1;
+for ($r = 0; $r < $gridRows; $r++) {
+    for ($c = 0; $c < $gridCols; $c++) {
+        if (!$cellMap[$r][$c]['active']) continue;
+        $startsAcross = ($c === 0 || !$cellMap[$r][$c - 1]['active']) && ($c + 1 < $gridCols && $cellMap[$r][$c + 1]['active']);
+        $startsDown   = ($r === 0 || !$cellMap[$r - 1][$c]['active']) && ($r + 1 < $gridRows && $cellMap[$r + 1][$c]['active']);
+        if ($startsAcross || $startsDown) {
+            $startNumberByCell[$r . ',' . $c] = $nextNum++;
+        }
+    }
+}
+
+$wordNumber = [];
+foreach ($words as $idx => $w) {
+    $key = $w['row'] . ',' . $w['col'];
+    $wordNumber[$idx] = $startNumberByCell[$key] ?? 0;
+    $cellMap[$w['row']][$w['col']]['numLabel'] = $wordNumber[$idx];
 }
 
 // Build across and down lists
@@ -109,6 +353,13 @@ foreach ($words as $idx => $w) {
 }
 usort($acrossWords, fn($a,$b) => $a["num"] - $b["num"]);
 usort($downWords,   fn($a,$b) => $a["num"] - $b["num"]);
+
+$activeCellCount = 0;
+for ($r = 0; $r < $gridRows; $r++) {
+    for ($c = 0; $c < $gridCols; $c++) {
+        if ($cellMap[$r][$c]['active']) $activeCellCount++;
+    }
+}
 
 // Pass data to JS
 $jsWords = json_encode(array_values($words), JSON_UNESCAPED_UNICODE);
@@ -432,7 +683,7 @@ body {
 
         <!-- Progress -->
         <div class="cw-progress-wrap">
-            <div class="cw-progress-label" id="progressLabel">0 / <?= array_sum(array_map(fn($w) => strlen($w["word"]), $words)) ?> letters</div>
+            <div class="cw-progress-label" id="progressLabel">0 / <?= $activeCellCount ?> letters</div>
             <div class="cw-progress-bar-bg">
                 <div class="cw-progress-bar" id="progressBar"></div>
             </div>
@@ -487,7 +738,7 @@ const WORDS = <?= $jsWords ?>;
 const WORD_NUMBERS = <?= $jsWordNumbers ?>;  // idx→number
 const GRID_ROWS = <?= $gridRows ?>;
 const GRID_COLS = <?= $gridCols ?>;
-const TOTAL_LETTERS = <?= array_sum(array_map(fn($w) => strlen($w["word"]), $words)) ?>;
+const TOTAL_LETTERS = <?= $activeCellCount ?>;
 
 /* ===== STATE ===== */
 let selectedCell = null;     // {r, c}
