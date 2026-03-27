@@ -73,80 +73,199 @@ $createdTypes = $stmtActivities->fetchAll(PDO::FETCH_COLUMN);
 <head>
 <meta charset="UTF-8">
 <title>Escoger Actividades</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <style>
+@import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@500;700;800&display=swap');
+
+:root{
+    --primary:#3b82f6;
+    --primary-dark:#1d4ed8;
+    --primary-light:#eaf2ff;
+    --line:#bfdbfe;
+    --ink:#0f172a;
+    --muted:#475569;
+    --success:#16a34a;
+    --success-bg:#eff6ff;
+    --shadow:0 18px 40px rgba(15,23,42,.12);
+}
+
+*{box-sizing:border-box}
+
 body{
-    font-family: Arial, sans-serif;
-    background:#eef2f7;
-    padding:40px;
+    margin:0;
+    min-height:100vh;
+    font-family:'Nunito','Segoe UI',sans-serif;
+    color:var(--ink);
+    background:
+        radial-gradient(circle at top left, rgba(255,255,255,.72), rgba(255,255,255,0) 28%),
+        radial-gradient(circle at top right, rgba(255,255,255,.6), rgba(255,255,255,0) 24%),
+        linear-gradient(135deg, #dff5ff 0%, #fff4db 48%, #f8d9e6 100%);
+    padding:24px 18px 32px;
+}
+
+.page{
+    max-width:880px;
+    margin:0 auto;
+}
+
+.topbar{
+    display:flex;
+    justify-content:flex-start;
+    margin-bottom:12px;
 }
 
 .btn-volver{
     display:inline-block;
-    background:#6b7280;
+    background:linear-gradient(180deg,#94a3b8,#64748b);
     color:#fff;
     padding:10px 16px;
-    border-radius:8px;
+    border-radius:999px;
     text-decoration:none;
-    font-weight:600;
-    margin-bottom:25px;
+    font-weight:800;
+    font-size:14px;
+    box-shadow:0 10px 22px rgba(15,23,42,.14);
+    transition:transform .18s ease, filter .18s ease;
+}
+
+.btn-volver:hover{
+    transform:translateY(-1px);
+    filter:brightness(1.04);
+}
+
+.intro{
+    margin-bottom:12px;
+    padding:18px 20px;
+    border-radius:26px;
+    border:1px solid #dbeafe;
+    background:linear-gradient(135deg,#eff6ff 0%,#f5f3ff 45%,#fff7ed 100%);
+    box-shadow:0 16px 34px rgba(15,23,42,.09);
+    text-align:center;
+}
+
+.intro h1{
+    margin:0 0 8px;
+    color:var(--primary-dark);
+    font-family:'Fredoka','Trebuchet MS',sans-serif;
+    font-size:clamp(26px,2.5vw,32px);
+    line-height:1.1;
+}
+
+.intro p{
+    margin:0;
+    color:var(--muted);
+    font-size:15px;
+    line-height:1.55;
 }
 
 .card{
-    max-width:600px;
+    max-width:760px;
     margin:0 auto;
-    background:#ffffff;
-    padding:30px;
-    border-radius:18px;
-    box-shadow:0 15px 35px rgba(0,0,0,.08);
+    background:linear-gradient(135deg,#ffffff 0%,#f8fbff 100%);
+    padding:24px;
+    border-radius:26px;
+    border:1px solid rgba(255,255,255,.75);
+    box-shadow:var(--shadow);
 }
 
 .card h2{
     text-align:center;
-    margin-bottom:25px;
+    margin:0 0 18px;
+    color:var(--primary-dark);
+    font-family:'Fredoka','Trebuchet MS',sans-serif;
+    font-size:24px;
 }
 
 .list{
     list-style:none;
     padding:0;
-    margin:0 0 25px 0;
+    margin:0 0 24px 0;
+    display:grid;
+    gap:10px;
 }
 
 .list li{
-    padding:12px 0;
-    border-bottom:1px solid #eee;
+    padding:14px 16px;
+    border:1px solid var(--line);
+    border-radius:18px;
+    background:linear-gradient(135deg,#eff6ff 0%,#ffffff 100%);
     display:flex;
     justify-content:space-between;
     align-items:center;
+    gap:12px;
+}
+
+.list label{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    font-weight:800;
+    color:#1e3a8a;
+    cursor:pointer;
+}
+
+.list input[type="checkbox"]{
+    width:18px;
+    height:18px;
+    accent-color:var(--primary);
 }
 
 .created{
-    color:#16a34a;
-    font-weight:bold;
+    color:var(--primary-dark);
+    background:var(--success-bg);
+    border:1px solid #93c5fd;
+    padding:6px 10px;
+    border-radius:999px;
+    font-weight:800;
+    white-space:nowrap;
 }
 
 .btn-submit{
     width:100%;
-    background:#2563eb;
+    background:linear-gradient(180deg,#3b82f6,#1d4ed8);
     color:#fff;
-    padding:14px;
+    padding:14px 16px;
     border:none;
-    border-radius:10px;
-    font-weight:bold;
+    border-radius:14px;
+    font-weight:800;
+    font-size:15px;
     cursor:pointer;
+    box-shadow:0 12px 26px rgba(29,78,216,.28);
+    transition:transform .18s ease, filter .18s ease;
+}
+
+.btn-submit:hover{
+    transform:translateY(-1px);
+    filter:brightness(1.04);
+}
+
+@media (max-width:640px){
+    body{padding:14px 12px 20px}
+    .intro{padding:16px 14px}
+    .card{padding:16px}
+    .list li{flex-direction:column;align-items:flex-start}
+    .created{align-self:flex-start}
 }
 </style>
 </head>
 
 <body>
 
-<a class="btn-volver" href="<?= $backUrl; ?>">
-    ← Volver
-</a>
+<div class="page">
+    <div class="topbar">
+        <a class="btn-volver" href="<?= $backUrl; ?>">
+            ← Volver
+        </a>
+    </div>
 
-<div class="card">
+    <section class="intro">
+        <h1>Escoger Actividades</h1>
+        <p>Selecciona las actividades que quieres crear para esta unidad usando la misma configuración visual del panel administrativo.</p>
+    </section>
 
-    <h2>Escoger Actividades</h2>
+    <div class="card">
+
+    <h2>Lista de Actividades</h2>
 
     <form method="POST" action="../create_activity.php">
 
@@ -174,6 +293,7 @@ body{
 
     </form>
 
+    </div>
 </div>
 
 </body>
