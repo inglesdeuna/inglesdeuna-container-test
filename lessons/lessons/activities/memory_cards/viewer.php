@@ -312,6 +312,7 @@ $totalPairs = (int) floor(count($cards) / 2);
 ob_start();
 ?>
 <style>
+.viewer-header{display:none !important}
 .mc-viewer{max-width:1160px;margin:0 auto}
 .mc-intro{margin-bottom:16px;padding:24px 26px;border-radius:26px;border:1px solid #dbeafe;background:linear-gradient(135deg,#eff6ff 0%,#f0fdf4 45%,#fff7ed 100%);box-shadow:0 16px 34px rgba(15,23,42,.08)}
 .mc-intro h2{margin:0 0 8px;color:#1d4ed8;font-family:'Fredoka','Trebuchet MS',sans-serif;font-size:30px;line-height:1.1}
@@ -320,9 +321,9 @@ ob_start();
 .mc-status{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px}
 .mc-pill{display:inline-flex;align-items:center;gap:6px;background:#eff6ff;border:1px solid #bfdbfe;color:#1e3a8a;font-weight:800;font-size:13px;padding:8px 12px;border-radius:999px}
 .mc-board{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
-.mc-card{position:relative;perspective:900px;border:none;background:transparent;padding:0;cursor:pointer;min-height:180px}
+.viewer-content .mc-card{position:relative;perspective:900px;border:none;background:transparent;padding:0 !important;cursor:pointer;min-height:180px;width:100%}
 .mc-card:disabled{cursor:default}
-.mc-card-inner{position:relative;width:100%;height:100%;min-height:180px;transform-style:preserve-3d;transition:transform .4s ease}
+.mc-card-inner{display:block;position:relative;width:100%;height:100%;min-height:180px;transform-style:preserve-3d;transition:transform .4s ease}
 .mc-card.is-flipped .mc-card-inner{transform:rotateY(180deg)}
 .mc-card-face{position:absolute;inset:0;backface-visibility:hidden;border-radius:16px;border:1px solid #dbeafe;display:flex;align-items:center;justify-content:center;overflow:hidden}
 .mc-card-front{background:linear-gradient(145deg,#3b82f6,#1d4ed8);color:#dbeafe;font-family:'Fredoka','Trebuchet MS',sans-serif;font-size:46px;box-shadow:0 14px 24px rgba(37,99,235,.35)}
