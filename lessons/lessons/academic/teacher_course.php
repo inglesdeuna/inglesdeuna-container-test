@@ -705,6 +705,7 @@ $hasUnitResult = $quizTotal > 0;
 
 $activityTypeLabels = [
     'flashcards' => 'Flashcards',
+    'memory_cards' => 'Memory Cards',
     'quiz' => 'Quiz',
     'multiple_choice' => 'Multiple Choice',
     'video_comprehension' => 'Video Comprehension',

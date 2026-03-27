@@ -496,6 +496,7 @@ $activities = load_activities_for_unit($pdo, (string) ($selectedUnit['id'] ?? ''
 
 $activityLabels = [
     'flashcards' => 'Flashcards',
+    'memory_cards' => 'Memory Cards',
     'quiz' => 'Quiz',
     'multiple_choice' => 'Multiple Choice',
     'video_comprehension' => 'Video Comprehension',

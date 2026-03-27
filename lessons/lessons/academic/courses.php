@@ -230,6 +230,7 @@ $hasNext = $nextStep < $total;
 
 $activityTypeLabels = [
     'flashcards' => 'Flashcards',
+    'memory_cards' => 'Memory Cards',
     'quiz' => 'Quiz',
     'multiple_choice' => 'Quiz',
     'video_comprehension' => 'Video Comprehension',

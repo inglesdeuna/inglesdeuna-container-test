@@ -133,6 +133,7 @@ function activity_display_title(array $activity): string
     $type = strtolower((string) ($activity['type'] ?? ''));
     $defaultMap = [
         'flashcards' => 'Flashcards',
+        'memory_cards' => 'Memory Cards',
         'quiz' => 'Quiz',
         'multiple_choice' => 'Multiple Choice',
         'video_comprehension' => 'Video Comprehension',
@@ -236,6 +237,7 @@ $activities = $stmtActivities->fetchAll(PDO::FETCH_ASSOC);
 
 $activityLabels = [
     'flashcards' => 'Flashcards',
+    'memory_cards' => 'Memory Cards',
     'quiz' => 'Quiz',
     'multiple_choice' => 'Multiple Choice',
     'video_comprehension' => 'Video Comprehension',

@@ -39,6 +39,7 @@ $backUrl = "../../academic/english_structure_units.php?phase=" . urlencode($unit
 $activityTypes = [
     "drag_drop" => "Drag & Drop",
     "flashcards" => "Flashcards",
+    "memory_cards" => "Memory Cards",
     "match" => "Match",
     "multiple_choice" => "Multiple Choice",
     "video_comprehension" => "Video Comprehension",

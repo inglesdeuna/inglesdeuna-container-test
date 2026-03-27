@@ -468,6 +468,7 @@ body{
                             'hangman' => '🎯',
                             'drag_drop' => '🧩',
                             'flashcards' => '🃏',
+                            'memory_cards' => '🃏',
                             'match' => '🔗',
                             'multiple_choice' => '✅',
                             'video_comprehension' => '🎬',
