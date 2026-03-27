@@ -532,8 +532,10 @@ $backHref = 'dashboard.php?assignment=' . urlencode($assignmentId) . '&unit=' . 
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title><?php echo h((string) ($selectedUnit['name'] ?? 'Unidad')); ?></title>
 <style>
+@import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@500;700;800&display=swap');
+
 :root{
-    --bg:#eef3ff;
+    --bg:#eef5ff;
     --card:#ffffff;
     --line:#d8e2f2;
     --text:#1b3050;
@@ -549,34 +551,39 @@ $backHref = 'dashboard.php?assignment=' . urlencode($assignmentId) . '&unit=' . 
 body{
     margin:0;
     background:var(--bg);
-    font-family:Arial, sans-serif;
+    font-family:'Nunito', 'Segoe UI', sans-serif;
     color:var(--text);
 }
 
 .topbar{
     background:linear-gradient(180deg, var(--blue), var(--blue-dark));
     color:#fff;
-    padding:16px 24px;
+    padding:14px 22px;
 }
 
 .topbar-inner{
     max-width:1280px;
     margin:0 auto;
     display:grid;
-    grid-template-columns:180px 1fr;
+    grid-template-columns:280px minmax(0, 1fr);
     align-items:center;
-    gap:12px;
+    gap:14px;
 }
 
 .topbar-title{
     margin:0;
     text-align:center;
-    font-size:28px;
+    font-size:clamp(22px, 2.2vw, 30px);
     font-weight:800;
+    font-family:'Fredoka', 'Trebuchet MS', sans-serif;
+    text-transform:uppercase;
+    letter-spacing:.08em;
 }
 
 .top-btn{
-    display:inline-block;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
     padding:10px 14px;
     border-radius:10px;
     text-decoration:none;
@@ -592,22 +599,26 @@ body{
 .page{
     max-width:1280px;
     margin:0 auto;
-    padding:18px 20px 24px;
+    padding:14px 16px 16px;
 }
 
 .layout{
     display:grid;
-    grid-template-columns:220px 1fr;
-    gap:18px;
+    grid-template-columns:280px minmax(0, 1fr);
+    gap:14px;
     align-items:start;
 }
 
 .sidebar{
-    background:#e3ecff;
-    border-radius:20px;
-    padding:18px 14px;
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+    background:#ffffff;
+    border:1px solid var(--line);
+    border-radius:12px;
+    padding:28px 24px;
     box-shadow:var(--shadow);
-    min-height:calc(100vh - 150px);
+    min-height:calc(100vh - 155px);
 }
 
 .logo-wrap{
@@ -622,7 +633,7 @@ body{
     border-radius:50%;
     overflow:hidden;
     background:linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
-    border:3px solid #f0f4ff;
+    border:3px solid #edf3ff;
     display:flex;
     align-items:center;
     justify-content:center;
@@ -659,14 +670,14 @@ body{
     padding:12px 10px;
     border-radius:12px;
     margin-bottom:12px;
-    box-shadow:var(--shadow);
+    box-shadow:0 2px 8px rgba(0,0,0,.06);
 }
 
 .side-btn.blue{ background:linear-gradient(180deg,#3d73ee,#2563eb); }
 .side-btn.gray{ background:linear-gradient(180deg,#7b8b9e,#66758b); }
 .side-btn.red{ background:linear-gradient(180deg,#ef4444,#dc2626); }
 
-.content{ padding:0; }
+.content{ padding:0; min-width:0; }
 
 .info-card,
 .activities-shell{
@@ -684,7 +695,8 @@ body{
 .info-card h2{
     margin:0 0 12px;
     color:var(--blue-dark);
-    font-size:28px;
+    font-size:30px;
+    font-family:'Fredoka', 'Trebuchet MS', sans-serif;
 }
 
 .badges{
@@ -697,7 +709,7 @@ body{
     display:inline-block;
     padding:7px 12px;
     border-radius:999px;
-    background:var(--blue-soft);
+    background:linear-gradient(180deg,#e5edfb,#d9e5fb);
     color:var(--blue-dark);
     font-size:12px;
     font-weight:800;
@@ -717,7 +729,7 @@ body{
 .unit-link{
     display:inline-block;
     padding:16px 18px;
-    border-radius:14px;
+    border-radius:12px;
     text-decoration:none;
     font-size:15px;
     font-weight:700;
@@ -742,8 +754,9 @@ body{
 .section-title{
     margin:0 0 10px;
     color:var(--blue-dark);
-    font-size:22px;
+    font-size:24px;
     font-weight:800;
+    font-family:'Fredoka', 'Trebuchet MS', sans-serif;
 }
 
 .helper{
@@ -783,7 +796,8 @@ body{
 
 .card{
     background:linear-gradient(180deg,#3d73ee,#2557d1);
-    border-radius:16px;
+    border:1px solid transparent;
+    border-radius:14px;
     padding:18px;
     color:#fff;
     display:flex;
@@ -800,11 +814,12 @@ body{
     font-size:20px;
     font-weight:800;
     line-height:1.2;
+    color:#fff;
 }
 .card p{
     margin:0 0 4px;
     font-size:14px;
-    opacity:.95;
+    color:rgba(255,255,255,.95);
 }
 .actions{
     display:flex;
@@ -815,22 +830,22 @@ body{
 .btn{
     display:inline-block;
     padding:10px 16px;
-    background:#0f2f72;
+    background:linear-gradient(180deg,#3b82f6,#1d4ed8);
     color:#fff;
     text-decoration:none;
-    border-radius:10px;
+    border-radius:999px;
     font-weight:700;
     font-size:14px;
-    box-shadow:var(--shadow);
+    box-shadow:0 8px 18px rgba(29,78,216,.26);
 }
 .btn:hover{
-    background:#153d94;
+    filter:brightness(1.05);
 }
 .btn.edit{
-    background:var(--green);
+    background:linear-gradient(180deg,#22c55e,#16a34a);
 }
 .btn.edit:hover{
-    background:var(--green-hover);
+    filter:brightness(1.05);
 }
 .empty{
     background:#fff;
@@ -862,6 +877,8 @@ body{
     .topbar{ padding:14px; }
 
     .topbar-title{ font-size:24px; }
+
+    .sidebar{ padding:18px 14px; }
 
     .card{
         flex-direction:column;
