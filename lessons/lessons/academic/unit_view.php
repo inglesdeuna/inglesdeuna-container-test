@@ -260,15 +260,17 @@ $activityLabels = [
 <title><?= htmlspecialchars($unit['name'] ?? 'Unidad'); ?></title>
 
 <style>
+@import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@500;700;800&display=swap');
+
 :root{
-    --bg:#eef7f0;
+    --bg:#eef5ff;
     --card:#ffffff;
-    --line:#d8e8dc;
-    --text:#1f3b28;
-    --muted:#5d7465;
-    --green:#2f9e44;
-    --green-dark:#237a35;
-    --green-soft:#e9f8ee;
+    --line:#d8e2f2;
+    --text:#1b3050;
+    --muted:#5d6f8f;
+    --blue:#2563eb;
+    --blue-dark:#1d4ed8;
+    --blue-soft:#e9f1ff;
     --red:#dc2626;
     --red-dark:#b91c1c;
     --shadow:0 10px 24px rgba(0,0,0,.08);
@@ -278,13 +280,16 @@ $activityLabels = [
 
 body{
     margin:0;
-    font-family:Arial, sans-serif;
-    background:var(--bg);
+    font-family:'Nunito', 'Segoe UI', sans-serif;
+    background:
+        radial-gradient(circle at top left, rgba(255,255,255,.72), rgba(255,255,255,0) 28%),
+        radial-gradient(circle at top right, rgba(255,255,255,.6), rgba(255,255,255,0) 24%),
+        linear-gradient(135deg, #dff5ff 0%, #fff4db 48%, #f8d9e6 100%);
     color:var(--text);
 }
 
 .topbar{
-    background:linear-gradient(180deg, var(--green), var(--green-dark));
+    background:linear-gradient(180deg, var(--blue), var(--blue-dark));
     color:#fff;
     padding:16px 24px;
 }
@@ -301,8 +306,10 @@ body{
 .topbar-title{
     margin:0;
     text-align:center;
-    font-size:28px;
+    font-size:clamp(22px, 2.2vw, 30px);
     font-weight:800;
+    font-family:'Fredoka', 'Trebuchet MS', sans-serif;
+    letter-spacing:.04em;
 }
 
 .top-btn{
@@ -340,7 +347,8 @@ body{
 }
 
 .sidebar{
-    background:#e7f6eb;
+    background:#ffffff;
+    border:1px solid var(--line);
     border-radius:20px;
     padding:18px 14px;
     box-shadow:var(--shadow);
@@ -357,12 +365,13 @@ body{
     height:90px;
     margin:0 auto;
     border-radius:18px;
-    background:linear-gradient(180deg,#ffffff,#dff4e5);
+    background:linear-gradient(180deg,#ffffff,#dfe9fb);
     display:flex;
     align-items:center;
     justify-content:center;
     font-size:36px;
     box-shadow:var(--shadow);
+    color:var(--blue-dark);
 }
 
 .side-btn{
@@ -380,7 +389,7 @@ body{
 }
 
 .side-btn.green{
-    background:linear-gradient(180deg,#41b95a,#2f9e44);
+    background:linear-gradient(180deg,#3d73ee,#2563eb);
 }
 
 .side-btn.gray{
@@ -410,8 +419,9 @@ body{
 
 .info-card h2{
     margin:0 0 12px;
-    color:var(--green-dark);
-    font-size:28px;
+    color:var(--blue-dark);
+    font-size:30px;
+    font-family:'Fredoka', 'Trebuchet MS', sans-serif;
 }
 
 .info-meta{
@@ -425,8 +435,8 @@ body{
     display:inline-block;
     padding:7px 12px;
     border-radius:999px;
-    background:var(--green-soft);
-    color:var(--green-dark);
+    background:var(--blue-soft);
+    color:var(--blue-dark);
     font-size:12px;
     font-weight:800;
 }
@@ -443,9 +453,10 @@ body{
 
 .section-title{
     margin:0 0 14px;
-    color:var(--green-dark);
-    font-size:22px;
+    color:var(--blue-dark);
+    font-size:24px;
     font-weight:800;
+    font-family:'Fredoka', 'Trebuchet MS', sans-serif;
 }
 
 .helper{
@@ -461,10 +472,11 @@ body{
 }
 
 .activity-box{
-    background:linear-gradient(180deg,#3bb151,#259741);
+    background:linear-gradient(135deg,#eff6ff 0%,#ffffff 100%);
+    border:1px solid #bfdbfe;
     border-radius:16px;
     padding:18px;
-    color:#fff;
+    color:var(--text);
     display:flex;
     justify-content:space-between;
     align-items:center;
@@ -485,18 +497,19 @@ body{
     font-size:20px;
     font-weight:800;
     line-height:1.2;
+    color:#1e3a8a;
 }
 
 .activity-type{
     margin:0 0 4px;
     font-size:14px;
-    opacity:.95;
+    color:#334155;
 }
 
 .activity-created{
     margin:0;
     font-size:13px;
-    opacity:.88;
+    color:#64748b;
 }
 
 .activity-actions{
@@ -508,7 +521,7 @@ body{
 
 .btn{
     padding:10px 16px;
-    border-radius:10px;
+    border-radius:999px;
     text-decoration:none;
     font-weight:700;
     color:#fff;
@@ -517,11 +530,11 @@ body{
 }
 
 .btn-open{
-    background:#14532d;
+    background:linear-gradient(180deg,#3b82f6,#1d4ed8);
 }
 
 .btn-edit{
-    background:#1d4ed8;
+    background:linear-gradient(180deg,#60a5fa,#2563eb);
 }
 
 .btn-delete{
@@ -611,7 +624,7 @@ body{
 
             <a class="side-btn green" href="<?= htmlspecialchars($backUrl); ?>">📚 Volver a unidades</a>
             <a class="side-btn gray" href="/lessons/lessons/activities/hub/index.php?unit=<?= urlencode($unit_id); ?>">➕ Crear actividades</a>
-            <a class="side-btn red" href="/lessons/lessons/admin/dashboard.php">🏠 Ir al dashboard</a>
+            <a class="side-btn red" href="/lessons/lessons/admin/dashboard.php">🏠 Dashboard</a>
         </aside>
 
         <main class="content">
@@ -634,7 +647,7 @@ body{
                     <span class="badge">Unit ID: <?= htmlspecialchars((string) $unit_id); ?></span>
                 </div>
 
-                <p>Arrastra las actividades para reorganizarlas. Puedes abrir, editar o eliminar cada actividad.</p>
+                <p>Arrastra las actividades para reorganizarlas. Usa abrir, editar o eliminar según necesites.</p>
             </section>
 
             <section class="activities-shell">
