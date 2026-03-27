@@ -52,14 +52,12 @@ function normalize_cw_payload($raw): array
     foreach ((array)($d["words"] ?? []) as $w) {
         if (!is_array($w)) continue;
         $word = strtoupper(trim((string)($w["word"] ?? "")));
+        $word = preg_replace('/[^A-Z0-9]/', '', $word);
         if ($word === "") continue;
         $words[] = [
             "id"        => trim((string)($w["id"]        ?? uniqid("cw_"))),
             "word"      => $word,
             "clue"      => trim((string)($w["clue"]      ?? "")),
-            "direction" => in_array(($w["direction"] ?? ""), ["across","down"], true) ? $w["direction"] : "across",
-            "row"       => max(0, (int)($w["row"]        ?? 0)),
-            "col"       => max(0, (int)($w["col"]        ?? 0)),
         ];
     }
     return ["title" => $title, "words" => $words];
@@ -135,22 +133,16 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $ids        = (array)($_POST["word_id"]        ?? []);
     $rawWords   = (array)($_POST["word"]            ?? []);
     $clues      = (array)($_POST["clue"]            ?? []);
-    $directions = (array)($_POST["direction"]       ?? []);
-    $rows       = (array)($_POST["row"]             ?? []);
-    $cols       = (array)($_POST["col"]             ?? []);
 
     $sanitized = [];
     foreach ($rawWords as $i => $w) {
         $word = strtoupper(trim((string)$w));
+        $word = preg_replace('/[^A-Z0-9]/', '', $word);
         if ($word === "") continue;
-        $dir = in_array(($directions[$i] ?? ""), ["across","down"], true) ? $directions[$i] : "across";
         $sanitized[] = [
             "id"        => trim((string)($ids[$i] ?? uniqid("cw_"))),
             "word"      => $word,
             "clue"      => trim((string)($clues[$i] ?? "")),
-            "direction" => $dir,
-            "row"       => max(0, (int)($rows[$i] ?? 0)),
-            "col"       => max(0, (int)($cols[$i] ?? 0)),
         ];
     }
 
