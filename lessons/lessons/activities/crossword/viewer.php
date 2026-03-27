@@ -362,6 +362,28 @@ for ($r = 0; $r < $gridRows; $r++) {
     }
 }
 
+function cw_compute_cell_sizes(int $rows, int $cols): array
+{
+    $largestSide = max($rows, $cols);
+
+    if ($largestSide >= 22) {
+        return ['desktop' => 26, 'compact' => 24, 'mobile' => 22];
+    }
+    if ($largestSide >= 18) {
+        return ['desktop' => 30, 'compact' => 28, 'mobile' => 24];
+    }
+    if ($largestSide >= 15) {
+        return ['desktop' => 34, 'compact' => 31, 'mobile' => 26];
+    }
+    if ($largestSide >= 12) {
+        return ['desktop' => 38, 'compact' => 34, 'mobile' => 28];
+    }
+
+    return ['desktop' => 40, 'compact' => 36, 'mobile' => 34];
+}
+
+$cellSizes = cw_compute_cell_sizes($gridRows, $gridCols);
+
 // Pass data to JS
 $jsWords = json_encode(array_values($words), JSON_UNESCAPED_UNICODE);
 $jsCellMap = json_encode($cellMap, JSON_UNESCAPED_UNICODE);
@@ -384,7 +406,7 @@ ob_start();
     --red: #dc2626;
     --text: #1e1b4b;
     --muted: #6b7280;
-    --cell-size: 40px;
+    --cell-size: <?= (int)$cellSizes['desktop'] ?>px;
     --cell-border: 2px solid #c4b5fd;
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -428,9 +450,9 @@ ob_start();
 }
 
 .cw-layout {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) 280px;
-    gap: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
     align-items: flex-start;
 }
 .cw-grid-col {
@@ -438,17 +460,24 @@ ob_start();
     flex-direction: column;
     align-items: center;
     min-width: 0;
+    width: 100%;
 }
 .cw-clues-col {
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
+    justify-content: center;
+    flex-wrap: wrap;
     gap: 12px;
+    width: 100%;
 }
 
 /* ---- GRID ---- */
 .cw-grid-wrap {
     overflow-x: auto;
     padding-bottom: 4px;
+    width: 100%;
+    display: flex;
+    justify-content: center;
 }
 .cw-grid {
     display: grid;
@@ -510,9 +539,10 @@ ob_start();
 
 /* ---- TOOLBAR ---- */
 .cw-toolbar {
-    display: flex; gap: 10px; flex-wrap: wrap;
+    display: flex; gap: 10px; flex-wrap: nowrap;
     justify-content: center;
     margin-top: 14px;
+    width: 100%;
 }
 .cw-toolbar button {
     padding: 11px 18px;
@@ -545,6 +575,7 @@ ob_start();
     border: 1px solid #ead8ff;
     padding: 14px 16px;
     box-shadow: 0 8px 18px rgba(124, 58, 237, .08);
+    width: min(100%, 420px);
 }
 .clue-panel h3 {
     font-family: 'Fredoka', 'Trebuchet MS', sans-serif;
@@ -605,6 +636,17 @@ ob_start();
     display: block;
 }
 
+.cw-card.is-completed #cwGameLayout {
+    display: none;
+}
+
+.cw-card.is-completed {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 420px;
+}
+
 .completed-icon {
     font-size: 80px;
     margin-bottom: 20px;
@@ -646,14 +688,16 @@ ob_start();
 }
 
 @media (max-width: 640px) {
-    :root { --cell-size: 34px; }
+    :root { --cell-size: <?= (int)$cellSizes['mobile'] ?>px; }
     .cw-intro { padding: 16px 14px; }
-    .cw-layout { grid-template-columns: 1fr; }
+    .cw-clues-col { flex-direction: column; align-items: stretch; }
     .clue-list li { font-size: 12px; }
+    .cw-toolbar { flex-wrap: wrap; }
     .cw-toolbar button { width: 100%; min-width: 0; max-width: 300px; }
 }
 
 @media (max-height: 900px) and (min-width: 641px) {
+    :root { --cell-size: <?= (int)$cellSizes['compact'] ?>px; }
     .cw-intro { padding: 14px 16px; }
     .cw-intro h2 { font-size: clamp(22px, 1.9vw, 26px); }
     .cw-toolbar button {
@@ -671,7 +715,7 @@ ob_start();
     </section>
 
     <div class="cw-card" id="cwGame">
-        <div class="cw-layout">
+        <div class="cw-layout" id="cwGameLayout">
             <!-- GRID COLUMN -->
             <div class="cw-grid-col">
         <div class="cw-grid-wrap">
@@ -746,13 +790,12 @@ ob_start();
         <?php endif; ?>
             </div>
         </div>
-    </div>
-
-    <div id="cw-completed" class="completed-screen">
-        <div class="completed-icon">✅</div>
-        <h2 class="completed-title" id="cw-completed-title"></h2>
-        <p class="completed-text" id="cw-completed-text"></p>
-        <button type="button" class="completed-button" onclick="restartCrossword()">Restart</button>
+        <div id="cw-completed" class="completed-screen">
+            <div class="completed-icon">✅</div>
+            <h2 class="completed-title" id="cw-completed-title"></h2>
+            <p class="completed-text" id="cw-completed-text"></p>
+            <button type="button" class="completed-button" onclick="restartCrossword()">Restart</button>
+        </div>
     </div>
 </div>
 
@@ -984,17 +1027,21 @@ function checkComplete() {
         if (!inp || inp.value.trim() === '' || !cell.classList.contains('correct')) allDone = false;
     });
     if (allDone) {
+        const gameCard = document.getElementById('cwGame');
         const completed = document.getElementById('cw-completed');
+        if (gameCard) gameCard.classList.add('is-completed');
         if (completed) {
             completed.classList.add('active');
-            completed.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            setTimeout(() => completed.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
         }
     }
 }
 
 function restartCrossword() {
     clearAll();
+    const gameCard = document.getElementById('cwGame');
     const completed = document.getElementById('cw-completed');
+    if (gameCard) gameCard.classList.remove('is-completed');
     if (completed) completed.classList.remove('active');
 }
 
@@ -1035,6 +1082,10 @@ function clearAll() {
     currentWordIdx = -1;
     updateProgress();
     document.getElementById('cw-result').innerHTML = '';
+    const completed = document.getElementById('cw-completed');
+    const gameCard = document.getElementById('cwGame');
+    if (completed) completed.classList.remove('active');
+    if (gameCard) gameCard.classList.remove('is-completed');
 }
 
 /* ===== INIT ===== */
