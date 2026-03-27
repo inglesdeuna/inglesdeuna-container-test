@@ -524,13 +524,15 @@ if ($teacherPhoto === '') {
 $teacherPhotoSrc = resolve_teacher_photo_src($teacherPhoto);
 $teacherInitials = teacher_initials($teacherName);
 $backHref = 'dashboard.php?assignment=' . urlencode($assignmentId) . '&unit=' . urlencode((string) ($selectedUnit['id'] ?? '')) . '#unidades-curso';
+$activityCount = count($activities);
+$pageTitle = trim($courseName) !== '' ? $courseName : (string) ($selectedUnit['name'] ?? 'Unit');
 ?>
 <!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title><?php echo h((string) ($selectedUnit['name'] ?? 'Unidad')); ?></title>
+<title><?php echo h($pageTitle); ?></title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@500;700;800&display=swap');
 
@@ -548,11 +550,13 @@ $backHref = 'dashboard.php?assignment=' . urlencode($assignmentId) . '&unit=' . 
     --shadow:0 10px 24px rgba(0,0,0,.08);
 }
 *{ box-sizing:border-box; }
+html, body{ height:100%; }
 body{
     margin:0;
     background:var(--bg);
     font-family:'Nunito', 'Segoe UI', sans-serif;
     color:var(--text);
+    overflow:hidden;
 }
 
 .topbar{
@@ -578,6 +582,7 @@ body{
     font-family:'Fredoka', 'Trebuchet MS', sans-serif;
     text-transform:uppercase;
     letter-spacing:.08em;
+    grid-column:2;
 }
 
 .top-btn{
@@ -600,6 +605,9 @@ body{
     max-width:1280px;
     margin:0 auto;
     padding:14px 16px 16px;
+    width:100%;
+    min-height:calc(100vh - 74px);
+    height:calc(100vh - 74px);
 }
 
 .layout{
@@ -607,6 +615,8 @@ body{
     grid-template-columns:280px minmax(0, 1fr);
     gap:14px;
     align-items:start;
+    height:100%;
+    min-height:0;
 }
 
 .sidebar{
@@ -618,7 +628,69 @@ body{
     border-radius:12px;
     padding:28px 24px;
     box-shadow:var(--shadow);
-    min-height:calc(100vh - 155px);
+    min-height:0;
+    height:100%;
+    overflow:auto;
+}
+
+.hero-card{
+    background:linear-gradient(135deg, #ffffff 0%, #f8fbff 100%);
+    border:1px solid var(--line);
+    border-radius:18px;
+    box-shadow:var(--shadow);
+    padding:14px 12px;
+}
+
+.activity-topline{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    padding:5px 10px;
+    border-radius:999px;
+    background:var(--blue-soft);
+    color:var(--blue-dark);
+    font-size:11px;
+    font-weight:800;
+    text-transform:uppercase;
+    letter-spacing:.05em;
+    margin-bottom:10px;
+}
+
+.hero-title{
+    margin:0 0 6px;
+    color:#0f1f42;
+    font-family:'Fredoka', 'Trebuchet MS', sans-serif;
+    font-size:18px;
+    line-height:1.2;
+}
+
+.hero-text{
+    margin:0 0 12px;
+    color:var(--muted);
+    font-size:12px;
+    line-height:1.45;
+}
+
+.hero-badges{
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+}
+
+.hero-badge{
+    display:inline-flex;
+    align-items:center;
+    padding:6px 10px;
+    border-radius:999px;
+    background:#dfe9fb;
+    color:var(--blue-dark);
+    font-size:11px;
+    font-weight:800;
+}
+
+.hero-badge.warn{
+    background:#ffe7c2;
+    color:#c97100;
 }
 
 .logo-wrap{
@@ -677,7 +749,7 @@ body{
 .side-btn.gray{ background:linear-gradient(180deg,#7b8b9e,#66758b); }
 .side-btn.red{ background:linear-gradient(180deg,#ef4444,#dc2626); }
 
-.content{ padding:0; min-width:0; }
+.content{ padding:0; min-width:0; min-height:0; height:100%; overflow:auto; }
 
 .info-card,
 .activities-shell{
@@ -868,7 +940,9 @@ body{
 
     .layout{ grid-template-columns:1fr; }
 
-    .sidebar{ min-height:auto; }
+    .page{ min-height:auto; height:auto; }
+    .sidebar{ min-height:auto; height:auto; }
+    .topbar-title{ grid-column:auto; }
 }
 
 @media (max-width: 768px){
@@ -900,8 +974,8 @@ body{
 <body>
 <header class="topbar">
     <div class="topbar-inner">
-        <a class="top-btn back" href="<?php echo h($backHref); ?>">← Volver</a>
-        <h1 class="topbar-title">Gestión de Unidad</h1>
+        <a class="top-btn back" href="<?php echo h($backHref); ?>">&larr; Back</a>
+        <h1 class="topbar-title"><?php echo h($pageTitle); ?></h1>
     </div>
 </header>
 
@@ -922,9 +996,23 @@ body{
                 </div>
             </div>
 
-            <a class="side-btn blue" href="<?php echo h($backHref); ?>">📚 Volver a unidades</a>
-            <a class="side-btn gray" href="teacher_assignments.php">🧾 Mis asignaciones</a>
-            <a class="side-btn red" href="/lessons/lessons/academic/logout.php">🚪 Cerrar sesión</a>
+            <section class="hero-card">
+                <div class="activity-topline">Today's activity</div>
+                <h2 class="hero-title"><?php echo h((string) ($selectedUnit['name'] ?? 'Unit')); ?></h2>
+                <p class="hero-text">Teacher mode with always-visible context and direct access to unit activities.</p>
+                <div class="hero-badges">
+                    <span class="hero-badge"><?php echo h($courseName !== '' ? $courseName : 'Course'); ?></span>
+                    <span class="hero-badge warn"><?php echo h($programLabel); ?></span>
+                    <span class="hero-badge"><?php echo $activityCount; ?> activit<?php echo $activityCount === 1 ? 'y' : 'ies'; ?></span>
+                </div>
+            </section>
+
+            <a class="side-btn blue" href="<?php echo h($backHref); ?>">📚 Back to my courses</a>
+            <?php if ($allowEdit) { ?>
+                <a class="side-btn blue" href="teacher_unit.php?assignment=<?php echo urlencode($assignmentId); ?>&unit=<?php echo urlencode((string) ($selectedUnit['id'] ?? '')); ?>&mode=edit">✏️ Edit course</a>
+            <?php } ?>
+            <a class="side-btn gray" href="teacher_assignments.php">🧾 My assignments</a>
+            <a class="side-btn red" href="/lessons/lessons/academic/logout.php">🚪 Sign out</a>
         </aside>
 
         <main class="content">
@@ -934,11 +1022,11 @@ body{
                 <div class="badges">
                     <span class="badge"><?php echo h($programLabel); ?></span>
                     <span class="badge"><?php echo h($courseName); ?></span>
-                    <span class="badge"><?php echo h($mode === 'edit' ? 'Modo edición' : 'Modo visualización'); ?></span>
+                    <span class="badge"><?php echo h($mode === 'edit' ? 'Edit mode' : 'View mode'); ?></span>
                     <span class="badge">Unit ID: <?php echo h((string) ($selectedUnit['id'] ?? '')); ?></span>
                 </div>
 
-                <p class="meta">Unidad vinculada a la asignación del docente.</p>
+                <p class="meta">Unit linked to the current teacher assignment.</p>
 
                 <?php if (!empty($unitsForAssignment)) { ?>
                     <div class="unit-switcher">
@@ -959,14 +1047,14 @@ body{
             </section>
 
             <section class="activities-shell">
-                <h2 class="section-title">Actividades de la unidad</h2>
-                <p class="helper">Consulta y administra las actividades disponibles para esta unidad<?php echo $allowReorder ? '. Arrastra las tarjetas para cambiar el orden.' : '.'; ?></p>
+                <h2 class="section-title">Unit activities</h2>
+                <p class="helper">Review and manage the activities available for this unit<?php echo $allowReorder ? '. Drag the cards to change the order.' : '.'; ?></p>
                 <?php if ($allowReorder) { ?>
                     <p class="helper-status" id="orderStatus" aria-live="polite"></p>
                 <?php } ?>
 
                 <?php if (empty($activities)) { ?>
-                    <div class="empty">No hay actividades registradas en esta unidad.</div>
+                    <div class="empty">No activities available for this unit.</div>
                 <?php } else { ?>
                     <div class="activity-list" id="activityContainer">
                     <?php foreach ($activities as $activity) { ?>
@@ -980,7 +1068,7 @@ body{
                         <div class="card<?php echo $allowReorder ? ' draggable' : ''; ?>"<?php echo $allowReorder ? ' draggable="true" data-id="' . h($activityId) . '"' : ''; ?>>
                             <div class="activity-main">
                                 <h3><?php echo h($title !== '' ? $title : $typeLabel); ?></h3>
-                                <p>Tipo: <strong><?php echo h($typeLabel); ?></strong></p>
+                                <p>Type: <strong><?php echo h($typeLabel); ?></strong></p>
                             </div>
 
                             <div class="actions">
@@ -991,7 +1079,7 @@ body{
                                         rel="noopener noreferrer"
                                         href="<?php echo h('../activities/' . rawurlencode($type) . '/viewer.php?id=' . urlencode($activityId) . '&unit=' . urlencode((string) ($selectedUnit['id'] ?? '')) . '&assignment=' . urlencode($assignmentId)); ?>"
                                     >
-                                        Ver actividad
+                                        Open activity
                                     </a>
                                 <?php } ?>
 
@@ -1002,7 +1090,7 @@ body{
                                         rel="noopener noreferrer"
                                         href="<?php echo h('./teacher_activity_edit.php?assignment=' . urlencode($assignmentId) . '&unit=' . urlencode((string) ($selectedUnit['id'] ?? '')) . '&activity=' . urlencode($activityId)); ?>"
                                     >
-                                        Editar actividad
+                                        Edit activity
                                     </a>
                                 <?php } ?>
                             </div>
@@ -1061,7 +1149,7 @@ body{
         }
 
         isSaving = true;
-        setStatus('Guardando orden...', false);
+        setStatus('Saving order...', false);
 
         const payload = new URLSearchParams();
         payload.append('action', 'reorder_activities');
@@ -1079,20 +1167,20 @@ body{
             const data = await response.json().catch(() => ({}));
 
             if (!response.ok || data.status !== 'success') {
-                const errorMsg = data.message || 'Error al guardar el orden.';
+                const errorMsg = data.message || 'Unable to save the order.';
                 console.error('Reorder error response:', { status: response.status, data });
                 throw new Error(errorMsg);
             }
 
             lastOrder = order;
-            setStatus('Orden guardado correctamente.', false);
+            setStatus('Order saved successfully.', false);
             
             // Reload page after 1 second to show updated order
             setTimeout(() => {
                 window.location.reload();
             }, 1000);
         } catch (error) {
-            const errMsg = (error && error.message) ? error.message : 'No fue posible guardar el orden.';
+            const errMsg = (error && error.message) ? error.message : 'Unable to save the order.';
             setStatus(errMsg, true);
             console.error('Reorder failed:', error);
         } finally {

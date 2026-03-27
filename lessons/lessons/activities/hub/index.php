@@ -105,14 +105,14 @@ body{
 }
 
 .page{
-    max-width:880px;
+    max-width:640px;
     margin:0 auto;
 }
 
 .topbar{
     display:flex;
     justify-content:flex-start;
-    margin-bottom:12px;
+    margin-bottom:10px;
 }
 
 .btn-volver{
@@ -134,9 +134,9 @@ body{
 }
 
 .intro{
-    margin-bottom:12px;
-    padding:18px 20px;
-    border-radius:26px;
+    margin-bottom:10px;
+    padding:14px 18px;
+    border-radius:22px;
     border:1px solid #dbeafe;
     background:linear-gradient(135deg,#eff6ff 0%,#f5f3ff 45%,#fff7ed 100%);
     box-shadow:0 16px 34px rgba(15,23,42,.09);
@@ -147,7 +147,7 @@ body{
     margin:0 0 8px;
     color:var(--primary-dark);
     font-family:'Fredoka','Trebuchet MS',sans-serif;
-    font-size:clamp(26px,2.5vw,32px);
+    font-size:clamp(24px,2.3vw,30px);
     line-height:1.1;
 }
 
@@ -159,21 +159,21 @@ body{
 }
 
 .card{
-    max-width:760px;
+    max-width:100%;
     margin:0 auto;
     background:linear-gradient(135deg,#ffffff 0%,#f8fbff 100%);
-    padding:24px;
-    border-radius:26px;
+    padding:18px;
+    border-radius:22px;
     border:1px solid rgba(255,255,255,.75);
     box-shadow:var(--shadow);
 }
 
 .card h2{
     text-align:center;
-    margin:0 0 18px;
+    margin:0 0 14px;
     color:var(--primary-dark);
     font-family:'Fredoka','Trebuchet MS',sans-serif;
-    font-size:24px;
+    font-size:22px;
 }
 
 .list{
@@ -185,9 +185,9 @@ body{
 }
 
 .list li{
-    padding:14px 16px;
+    padding:12px 14px;
     border:1px solid var(--line);
-    border-radius:18px;
+    border-radius:16px;
     background:linear-gradient(135deg,#eff6ff 0%,#ffffff 100%);
     display:flex;
     justify-content:space-between;
@@ -224,9 +224,9 @@ body{
     width:100%;
     background:linear-gradient(180deg,#3b82f6,#1d4ed8);
     color:#fff;
-    padding:14px 16px;
+    padding:13px 16px;
     border:none;
-    border-radius:14px;
+    border-radius:12px;
     font-weight:800;
     font-size:15px;
     cursor:pointer;
