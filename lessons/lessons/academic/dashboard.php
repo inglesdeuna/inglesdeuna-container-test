@@ -355,8 +355,24 @@ function build_assignment_title(array $assignment): string
         }, $value) ?? $value;
     };
 
+    $toUpper = static function (string $value): string {
+        if ($value === '') {
+            return $value;
+        }
+
+        if (function_exists('mb_strtoupper')) {
+            return mb_strtoupper($value, 'UTF-8');
+        }
+
+        return strtoupper($value);
+    };
+
     if ($programType === 'technical' && $unitName !== '') {
-        return $normalize($courseName) . ' · ' . $normalize($unitName);
+        return $toUpper($normalize($courseName)) . ' · ' . $toUpper($normalize($unitName));
+    }
+
+    if ($programType === 'technical') {
+        return $toUpper($normalize($courseName));
     }
 
     return $normalize($courseName);

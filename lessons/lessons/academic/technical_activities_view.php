@@ -131,32 +131,37 @@ $activities = $stmtActivities->fetchAll(PDO::FETCH_ASSOC);
 <title><?= htmlspecialchars($unit['name']); ?></title>
 
 <style>
+@import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700;800&family=Nunito:wght@500;700;800&display=swap');
+
 :root{
-    --bg:#eef7f0;
+    --bg:#eef5ff;
     --card:#ffffff;
-    --line:#d8e8dc;
-    --text:#1f3b28;
-    --muted:#5d7465;
-    --green:#2f9e44;
-    --green-dark:#237a35;
-    --green-soft:#e9f8ee;
+    --line:#d8e2f2;
+    --text:#1b3050;
+    --title:#0f1f42;
+    --muted:#5d6f8f;
+    --blue:#2563eb;
+    --blue-dark:#1d4ed8;
+    --blue-soft:#e9f1ff;
+    --blue-pale:#f8fbff;
     --red:#dc2626;
     --shadow:0 10px 24px rgba(0,0,0,.08);
+    --shadow-sm:0 2px 8px rgba(0,0,0,.06);
 }
 
 *{ box-sizing:border-box; }
 
 body{
     margin:0;
-    font-family:Arial, sans-serif;
+    font-family:'Nunito',sans-serif;
     background:var(--bg);
     color:var(--text);
 }
 
 .topbar{
-    background:linear-gradient(180deg, var(--green), var(--green-dark));
+    background:linear-gradient(180deg, var(--blue), var(--blue-dark));
     color:#fff;
-    padding:16px 24px;
+    padding:14px 22px;
 }
 
 .topbar-inner{
@@ -165,18 +170,24 @@ body{
     display:grid;
     grid-template-columns:160px 1fr 160px;
     align-items:center;
-    gap:12px;
+    gap:14px;
 }
 
 .topbar-title{
     margin:0;
     text-align:center;
-    font-size:28px;
+    font-size:clamp(22px, 2.2vw, 30px);
     font-weight:800;
+    font-family:'Fredoka','Trebuchet MS',sans-serif;
+    text-transform:uppercase;
+    letter-spacing:.08em;
+    grid-column:2;
 }
 
 .top-btn{
-    display:inline-block;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
     padding:10px 14px;
     border-radius:10px;
     text-decoration:none;
@@ -193,22 +204,23 @@ body{
 .page{
     max-width:1280px;
     margin:0 auto;
-    padding:18px 20px 24px;
+    padding:14px 16px 16px;
 }
 
 .layout{
     display:grid;
-    grid-template-columns:220px 1fr;
-    gap:18px;
+    grid-template-columns:280px minmax(0, 1fr);
+    gap:14px;
     align-items:start;
 }
 
 .sidebar{
-    background:#e7f6eb;
-    border-radius:20px;
-    padding:18px 14px;
+    background:#ffffff;
+    border:1px solid var(--line);
+    border-radius:12px;
+    padding:28px 24px;
     box-shadow:var(--shadow);
-    min-height:calc(100vh - 150px);
+    min-height:calc(100vh - 120px);
 }
 
 .logo-wrap{
@@ -220,13 +232,14 @@ body{
     width:90px;
     height:90px;
     margin:0 auto;
-    border-radius:18px;
-    background:linear-gradient(180deg,#ffffff,#dff4e5);
+    border-radius:50%;
+    background:linear-gradient(135deg,#eff6ff 0%,#dbeafe 100%);
     display:flex;
     align-items:center;
     justify-content:center;
     font-size:36px;
-    box-shadow:var(--shadow);
+    border:3px solid #f0f4ff;
+    box-shadow:0 8px 20px rgba(59,130,246,.15);
 }
 
 .side-btn{
@@ -240,11 +253,11 @@ body{
     padding:12px 10px;
     border-radius:12px;
     margin-bottom:12px;
-    box-shadow:var(--shadow);
+    box-shadow:var(--shadow-sm);
 }
 
-.side-btn.green{ background:linear-gradient(180deg,#41b95a,#2f9e44); }
-.side-btn.gray{ background:linear-gradient(180deg,#7b8b7f,#66756a); }
+.side-btn.blue{ background:linear-gradient(180deg,#3d73ee,#2563eb); }
+.side-btn.gray{ background:linear-gradient(180deg,#7b8b9e,#66758b); }
 .side-btn.red{ background:linear-gradient(180deg,#ef4444,#dc2626); }
 
 .info-card,
@@ -256,69 +269,78 @@ body{
 }
 
 .info-card{
-    padding:20px 22px;
-    margin-bottom:18px;
+    padding:12px 14px;
+    margin-bottom:12px;
+    background:linear-gradient(135deg,#ffffff 0%,#f8fbff 100%);
 }
 
 .info-card h2{
     margin:0 0 12px;
-    color:var(--green-dark);
-    font-size:28px;
+    color:var(--title);
+    font-size:18px;
+    font-weight:800;
+    font-family:'Fredoka','Trebuchet MS',sans-serif;
 }
 
 .info-meta{
     display:flex;
     flex-wrap:wrap;
-    gap:10px;
-    margin-bottom:12px;
+    gap:8px;
+    margin-bottom:10px;
 }
 
 .badge{
     display:inline-block;
-    padding:7px 12px;
+    padding:7px 11px;
     border-radius:999px;
-    background:var(--green-soft);
-    color:var(--green-dark);
+    background:var(--blue-soft);
+    color:var(--blue-dark);
     font-size:12px;
     font-weight:800;
+    text-transform:uppercase;
+    letter-spacing:.04em;
 }
 
 .info-card p{
-    margin:8px 0 0;
+    margin:0;
     color:var(--muted);
-    font-size:15px;
+    font-size:13px;
+    line-height:1.5;
 }
 
-.activities-shell{ padding:18px; }
+.activities-shell{ padding:14px; }
 
 .section-title{
     margin:0 0 14px;
-    color:var(--green-dark);
-    font-size:22px;
+    color:var(--title);
+    font-size:16px;
     font-weight:800;
+    text-transform:uppercase;
+    letter-spacing:.06em;
+    font-family:'Fredoka','Trebuchet MS',sans-serif;
 }
 
 .helper{
-    margin:0 0 16px;
+    margin:0 0 12px;
     color:var(--muted);
-    font-size:14px;
+    font-size:13px;
 }
 
 .activity-list{
     display:flex;
     flex-direction:column;
-    gap:14px;
+    gap:12px;
 }
 
 .activity-box{
-    background:linear-gradient(180deg,#3bb151,#259741);
-    border-radius:16px;
-    padding:18px;
-    color:#fff;
+    background:linear-gradient(180deg,#3d73ee,#2563eb);
+    border-radius:14px;
+    padding:14px;
+    color:#ffffff;
     display:flex;
     justify-content:space-between;
     align-items:center;
-    gap:18px;
+    gap:14px;
     box-shadow:var(--shadow);
 }
 
@@ -328,20 +350,21 @@ body{
 
 .activity-title{
     margin:0 0 6px;
-    font-size:20px;
+    font-size:18px;
     font-weight:800;
     line-height:1.2;
+    font-family:'Fredoka','Trebuchet MS',sans-serif;
 }
 
 .activity-type{
     margin:0 0 4px;
-    font-size:14px;
+    font-size:13px;
     opacity:.95;
 }
 
 .activity-created{
     margin:0;
-    font-size:13px;
+    font-size:12px;
     opacity:.88;
 }
 
@@ -353,26 +376,26 @@ body{
 }
 
 .btn{
-    padding:10px 16px;
+    padding:10px 14px;
     border-radius:10px;
     text-decoration:none;
     font-weight:700;
     color:#fff;
-    font-size:14px;
-    box-shadow:var(--shadow);
+    font-size:13px;
+    box-shadow:var(--shadow-sm);
 }
 
-.btn-open{ background:#14532d; }
+.btn-open{ background:#1e40af; }
 .btn-edit{ background:#1d4ed8; }
 .btn-delete{ background:var(--red); }
 
 .empty{
-    background:#fff;
+    background:var(--blue-pale);
     border:1px solid var(--line);
-    border-radius:16px;
+    border-radius:14px;
     padding:18px;
     color:var(--muted);
-    box-shadow:var(--shadow);
+    box-shadow:var(--shadow-sm);
 }
 
 .draggable{ cursor:grab; }
@@ -383,8 +406,11 @@ body{
         text-align:center;
     }
 
-    .top-btn.back,
-    .top-btn.dashboard{
+    .topbar-title{
+        grid-column:1;
+    }
+
+    .top-btn.back{
         justify-self:center;
     }
 
@@ -435,7 +461,7 @@ body{
                 <div class="logo-badge">🛠️</div>
             </div>
 
-            <a class="side-btn green" href="technical_units_view.php?course=<?= urlencode($course['id']); ?>">📚 Volver a unidades</a>
+            <a class="side-btn blue" href="technical_units_view.php?course=<?= urlencode($course['id']); ?>">📚 Volver a unidades</a>
             <a class="side-btn gray" href="/lessons/lessons/activities/hub/index.php?unit=<?= urlencode($unit_id); ?>">➕ Crear actividades</a>
             <a class="side-btn red" href="/lessons/lessons/admin/dashboard.php">🏠 Ir al dashboard</a>
         </aside>
