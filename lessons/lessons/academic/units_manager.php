@@ -61,10 +61,15 @@ $units = $stmt->fetchAll(PDO::FETCH_ASSOC);
 <title>Units</title>
 
 <style>
+@import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&family=Nunito:wght@500;700&display=swap');
+
 body{
-    font-family:Arial;
+    font-family:'Nunito',sans-serif;
     background:#f4f8ff;
     padding:40px;
+}
+h2{
+    font-family:'Fredoka',sans-serif;
 }
 .card{
     background:#fff;
@@ -120,7 +125,7 @@ button{
 <div class="card">
     <h2>➕ Crear Unit</h2>
     <form method="post">
-        <input type="text" name="unit_name" required placeholder="Ej: Inglés Técnico 1">
+        <input type="text" name="unit_name" required placeholder="Ej: INGLÉS TÉCNICO 1">
         <button>Crear Unit</button>
     </form>
 </div>
