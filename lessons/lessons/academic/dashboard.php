@@ -398,6 +398,19 @@ function resolve_teacher_photo_src(string $teacherPhoto): string
     return '';
 }
 
+function uppercase_utf8(string $value): string
+{
+    if ($value === '') {
+        return $value;
+    }
+
+    if (function_exists('mb_strtoupper')) {
+        return mb_strtoupper($value, 'UTF-8');
+    }
+
+    return strtoupper($value);
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && (string) ($_POST['action'] ?? '') === 'upload_teacher_photo') {
     if ($teacherId === '') {
         $flashError = 'No se encontró la sesión del docente.';
@@ -856,6 +869,7 @@ body{ margin:0; font-family:'Nunito','Segoe UI',sans-serif; background:var(--bg)
 .unit-title{
     font-size:15px;
     font-weight:700;
+    font-family:'Fredoka','Trebuchet MS',sans-serif;
     color:var(--title);
     margin:0;
 }
@@ -905,6 +919,7 @@ body{ margin:0; font-family:'Nunito','Segoe UI',sans-serif; background:var(--bg)
     display:block;
     font-size:12px;
     font-weight:700;
+    font-family:'Fredoka','Trebuchet MS',sans-serif;
     text-transform:uppercase;
     letter-spacing:.08em;
     color:var(--muted);
@@ -914,6 +929,7 @@ body{ margin:0; font-family:'Nunito','Segoe UI',sans-serif; background:var(--bg)
 .current-unit-name{
     font-size:18px;
     font-weight:700;
+    font-family:'Fredoka','Trebuchet MS',sans-serif;
     color:var(--title);
     margin-bottom:14px;
 }
@@ -1058,15 +1074,15 @@ body{ margin:0; font-family:'Nunito','Segoe UI',sans-serif; background:var(--bg)
 
                         <?php if ($selectedUnit) { ?>
                             <div class="current-unit-panel">
-                                <span class="current-unit-label">Unidad activa</span>
-                                <div class="current-unit-name"><?php echo h((string) ($selectedUnit['name'] ?? 'Unidad')); ?></div>
+                                <span class="current-unit-label">UNIDAD ACTIVA</span>
+                                <div class="current-unit-name"><?php echo h(uppercase_utf8((string) ($selectedUnit['name'] ?? 'Unidad'))); ?></div>
                             </div>
                         <?php } ?>
                     </div>
                 </div>
 
                 <div class="card" id="unidades-curso">
-                    <h3 class="activity-title">Unidades del curso</h3>
+                    <h3 class="activity-title">UNIDADES DEL CURSO</h3>
                     <p class="section-note">Cada unidad se despliega para mostrar solo las acciones necesarias y mantener el panel más limpio.</p>
 
                     <?php if (empty($todayUnits)) { ?>
@@ -1083,7 +1099,7 @@ body{ margin:0; font-family:'Nunito','Segoe UI',sans-serif; background:var(--bg)
                                     href="dashboard.php?assignment=<?php echo urlencode((string) ($selectedAssignment['id'] ?? '')); ?>&unit=<?php echo urlencode($unitId); ?>#unidades-curso"
                                 >
                                     <div class="unit-header">
-                                        <h4 class="unit-title"><?php echo h((string) ($unit['name'] ?? 'Unidad')); ?></h4>
+                                        <h4 class="unit-title"><?php echo h(uppercase_utf8((string) ($unit['name'] ?? 'Unidad'))); ?></h4>
                                         <span class="unit-status"><?php echo $isActiveUnit ? 'Activa' : 'Disponible'; ?></span>
                                     </div>
                                 </a>
