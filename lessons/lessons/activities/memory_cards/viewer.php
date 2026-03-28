@@ -387,7 +387,7 @@ ob_start();
             <button type="button" class="completed-button" id="mc-completed-restart">Play Again</button>
         </div>
 
-        <audio id="mc-audio-flip" preload="auto" src="../../hangman/assets/pageflip.mp3"></audio>
+        <audio id="mc-audio-flip" preload="auto" src="../../hangman/assets/card%20flip.mp3.mp3"></audio>
         <audio id="mc-audio-match" preload="auto" src="../../hangman/assets/swoosh%20sound.mp3"></audio>
         <audio id="mc-audio-lose" preload="auto" src="../../hangman/assets/losefun.mp3"></audio>
         <audio id="mc-audio-win" preload="auto" src="../../hangman/assets/win.mp3"></audio>
@@ -480,13 +480,28 @@ ob_start();
                 }
             }
 
+            function playFlipSound() {
+                if (!flipAudioEl) {
+                    return;
+                }
+
+                const instance = flipAudioEl.cloneNode(true);
+                instance.volume = 1;
+                const p = instance.play();
+                if (p && typeof p.catch === 'function') {
+                    p.catch(function () {
+                        playElementAudio(flipAudioEl);
+                    });
+                }
+            }
+
             function playSound(kind) {
                 if (audioFailed[kind]) {
                     return;
                 }
 
                 if (kind === 'flip') {
-                    playElementAudio(flipAudioEl);
+                    playFlipSound();
                 } else if (kind === 'match') {
                     playElementAudio(matchAudioEl);
                 } else if (kind === 'lose') {
