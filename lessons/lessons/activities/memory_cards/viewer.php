@@ -317,11 +317,11 @@ ob_start();
 .mc-intro{margin-bottom:16px;padding:24px 26px;border-radius:26px;border:1px solid #dbeafe;background:linear-gradient(135deg,#eff6ff 0%,#f0fdf4 45%,#fff7ed 100%);box-shadow:0 16px 34px rgba(15,23,42,.08)}
 .mc-intro h2{margin:0 0 8px;color:#1d4ed8;font-family:'Fredoka','Trebuchet MS',sans-serif;font-size:30px;line-height:1.1}
 .mc-intro p{margin:0;color:#475569;font-size:15px;line-height:1.6}
-.mc-shell{background:#fff;border:1px solid #dbeafe;border-radius:24px;box-shadow:0 14px 30px rgba(15,23,42,.08);padding:18px}
+.mc-shell{background:#fff;border:1px solid #dbeafe;border-radius:24px;box-shadow:0 14px 30px rgba(15,23,42,.08);padding:18px;overflow-x:auto}
 .mc-status{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px}
 .mc-pill{display:inline-flex;align-items:center;gap:6px;background:#eff6ff;border:1px solid #bfdbfe;color:#1e3a8a;font-weight:800;font-size:13px;padding:8px 12px;border-radius:999px}
-.mc-board{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
-.viewer-content .mc-card{position:relative;perspective:900px;border:none;background:transparent;padding:0 !important;cursor:pointer;min-height:180px;width:100%}
+.mc-board{display:grid;grid-template-columns:repeat(5,150px);justify-content:center;gap:12px;min-width:max-content}
+.viewer-content .mc-card{position:relative;perspective:900px;border:none;background:transparent;padding:0 !important;cursor:pointer;min-height:180px;width:150px}
 .mc-card:disabled{cursor:default}
 .mc-card-inner{display:block;position:relative;width:100%;height:100%;min-height:180px;transform-style:preserve-3d;transition:transform .4s ease}
 .mc-card.is-flipped .mc-card-inner{transform:rotateY(180deg)}
@@ -421,7 +421,17 @@ ob_start();
             let matched = new Set();
             let lockBoard = false;
             let moves = 0;
-            const matchDelayMs = 700;
+            const matchDelayMs = 620;
+            const vanishDurationMs = 340;
+            const mismatchFlipBackDelayMs = 760;
+            const completedDelayMs = 900;
+
+            const audioVolumes = {
+                flip: 0.9,
+                match: 0.85,
+                lose: 0.9,
+                win: 0.9
+            };
 
             const audioFallbacks = {
                 flip: ['../../hangman/assets/card%20flip.mp3.mp3', '../../hangman/assets/pageflip.mp3'],
@@ -469,8 +479,11 @@ ob_start();
                 if (movesEl) movesEl.textContent = String(moves);
             }
 
-            function playElementAudio(el) {
+            function playElementAudio(el, volume) {
                 if (!el) return;
+                if (typeof volume === 'number') {
+                    el.volume = Math.max(0, Math.min(1, volume));
+                }
                 try {
                     el.currentTime = 0;
                 } catch (e) {}
@@ -486,11 +499,11 @@ ob_start();
                 }
 
                 const instance = flipAudioEl.cloneNode(true);
-                instance.volume = 1;
+                instance.volume = audioVolumes.flip;
                 const p = instance.play();
                 if (p && typeof p.catch === 'function') {
                     p.catch(function () {
-                        playElementAudio(flipAudioEl);
+                        playElementAudio(flipAudioEl, audioVolumes.flip);
                     });
                 }
             }
@@ -503,11 +516,11 @@ ob_start();
                 if (kind === 'flip') {
                     playFlipSound();
                 } else if (kind === 'match') {
-                    playElementAudio(matchAudioEl);
+                    playElementAudio(matchAudioEl, audioVolumes.match);
                 } else if (kind === 'lose') {
-                    playElementAudio(loseAudioEl);
+                    playElementAudio(loseAudioEl, audioVolumes.lose);
                 } else if (kind === 'win') {
-                    playElementAudio(winAudioEl);
+                    playElementAudio(winAudioEl, audioVolumes.win);
                 }
 
                 if (kind === 'match' && matchAudioEl && (matchAudioEl.error || !matchAudioEl.src)) {
@@ -543,7 +556,7 @@ ob_start();
                 if (activityEl) activityEl.classList.add('is-hidden');
                 window.setTimeout(function () {
                     if (completeEl) completeEl.classList.add('active');
-                }, 280);
+                }, completedDelayMs);
             }
 
             function handleCardClick(index) {
@@ -584,7 +597,6 @@ ob_start();
                     const secondNode = board.querySelector('[data-card-index="' + secondIndex + '"]');
                     if (firstNode) {
                         firstNode.classList.add('is-matched');
-                        firstNode.classList.add('is-vanishing');
                         firstNode.disabled = true;
                     }
                     if (secondNode) {
@@ -597,6 +609,7 @@ ob_start();
 
                     const isFinalMatch = matched.size === deck.length;
                     window.setTimeout(function () {
+                        playSound('match');
                         if (firstNode) firstNode.classList.add('is-vanishing');
                         if (secondNode) secondNode.classList.add('is-vanishing');
 
@@ -609,7 +622,7 @@ ob_start();
                             } else {
                                 lockBoard = false;
                             }
-                        }, 340);
+                        }, vanishDurationMs);
                     }, matchDelayMs);
 
                     return;
@@ -621,12 +634,13 @@ ob_start();
                     const firstNode = board.querySelector('[data-card-index="' + firstIndex + '"]');
                     const secondNode = board.querySelector('[data-card-index="' + secondIndex + '"]');
 
+                    playSound('flip');
                     if (firstNode) firstNode.classList.remove('is-flipped');
                     if (secondNode) secondNode.classList.remove('is-flipped');
 
                     selected = [];
                     lockBoard = false;
-                }, 850);
+                }, mismatchFlipBackDelayMs);
             }
 
             function renderBoard() {
