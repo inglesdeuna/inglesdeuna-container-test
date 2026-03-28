@@ -331,6 +331,9 @@ ob_start();
 .mc-card-back p{margin:0;text-align:center;color:#1e293b;font-weight:800;font-size:18px;line-height:1.35;word-break:break-word}
 .mc-card-back img{width:100%;height:100%;object-fit:cover;border-radius:12px}
 .mc-card.is-matched .mc-card-face{border-color:#34d399}
+.mc-card.is-vanishing{pointer-events:none}
+.mc-card.is-vanishing .mc-card-inner{animation:mcVanish .34s ease forwards}
+.mc-card.is-hidden{display:none !important}
 .mc-controls{display:flex;justify-content:center;margin-top:18px}
 .mc-btn{border:none;border-radius:999px;padding:10px 16px;font-weight:800;font-size:14px;cursor:pointer;box-shadow:0 8px 18px rgba(15,23,42,.1);background:linear-gradient(180deg,#fbbf24,#f59e0b);color:#7c2d12}
 .mc-empty{text-align:center;padding:28px;font-weight:800;color:#b91c1c}
@@ -342,6 +345,10 @@ ob_start();
 .completed-button{display:inline-block;padding:12px 24px;border:none;border-radius:999px;background:linear-gradient(180deg,#3b82f6,#1d4ed8);color:#fff;font-weight:700;font-size:16px;cursor:pointer;box-shadow:0 10px 24px rgba(0,0,0,.14);transition:transform .18s ease,filter .18s ease}
 .completed-button:hover{transform:scale(1.05);filter:brightness(1.07)}
 .mc-activity.is-hidden{display:none}
+@keyframes mcVanish{
+    0%{opacity:1;transform:scale(1)}
+    100%{opacity:0;transform:scale(.7)}
+}
 @media (max-width:900px){
     .mc-intro{padding:20px 18px}
     .mc-intro h2{font-size:26px}
@@ -382,6 +389,11 @@ ob_start();
             <button type="button" class="completed-button" id="mc-completed-restart">Play Again</button>
         </div>
 
+        <audio id="mc-audio-flip" preload="auto" src="../../hangman/assets/pageflip.mp3"></audio>
+        <audio id="mc-audio-match" preload="auto" src="../../hangman/assets/swoosh%20sound.mp3"></audio>
+        <audio id="mc-audio-lose" preload="auto" src="../../hangman/assets/losefun.mp3"></audio>
+        <audio id="mc-audio-win" preload="auto" src="../../hangman/assets/win.mp3"></audio>
+
         <script>
         (function () {
             const seedCards = <?= json_encode($cards, JSON_UNESCAPED_UNICODE) ?>;
@@ -397,6 +409,10 @@ ob_start();
             const completedTitleEl = document.getElementById('mc-completed-title');
             const completedTextEl = document.getElementById('mc-completed-text');
             const completedRestartBtn = document.getElementById('mc-completed-restart');
+            const flipAudioEl = document.getElementById('mc-audio-flip');
+            const matchAudioEl = document.getElementById('mc-audio-match');
+            const loseAudioEl = document.getElementById('mc-audio-lose');
+            const winAudioEl = document.getElementById('mc-audio-win');
 
             if (!Array.isArray(seedCards) || seedCards.length < 2) {
                 return;
@@ -407,6 +423,20 @@ ob_start();
             let matched = new Set();
             let lockBoard = false;
             let moves = 0;
+
+            const audioFallbacks = {
+                flip: ['../../hangman/assets/card%20flip.mp3.mp3', '../../hangman/assets/pageflip.mp3'],
+                match: ['../../hangman/assets/swoosh%20sound.mp3', '../../hangman/assets/realcorrect.mp3'],
+                lose: ['../../hangman/assets/losefun.mp3'],
+                win: ['../../hangman/assets/win.mp3']
+            };
+
+            const audioFailed = {
+                flip: false,
+                match: false,
+                lose: false,
+                win: false
+            };
 
             function shuffle(list) {
                 const copy = list.slice();
@@ -440,12 +470,66 @@ ob_start();
                 if (movesEl) movesEl.textContent = String(moves);
             }
 
+            function playElementAudio(el) {
+                if (!el) return;
+                try {
+                    el.currentTime = 0;
+                } catch (e) {}
+                const p = el.play();
+                if (p && typeof p.catch === 'function') {
+                    p.catch(function () {});
+                }
+            }
+
+            function playSound(kind) {
+                if (audioFailed[kind]) {
+                    return;
+                }
+
+                if (kind === 'flip') {
+                    playElementAudio(flipAudioEl);
+                } else if (kind === 'match') {
+                    playElementAudio(matchAudioEl);
+                } else if (kind === 'lose') {
+                    playElementAudio(loseAudioEl);
+                } else if (kind === 'win') {
+                    playElementAudio(winAudioEl);
+                }
+
+                if (kind === 'match' && matchAudioEl && (matchAudioEl.error || !matchAudioEl.src)) {
+                    audioFailed[kind] = true;
+                }
+            }
+
+            function ensureAudioFallback(kind, audioEl) {
+                if (!audioEl) {
+                    return;
+                }
+
+                const options = audioFallbacks[kind] || [];
+                if (options.length < 2) {
+                    return;
+                }
+
+                audioEl.addEventListener('error', function () {
+                    if (audioEl.dataset.fallbackApplied === '1') {
+                        return;
+                    }
+                    audioEl.dataset.fallbackApplied = '1';
+                    audioEl.src = options[1];
+                    audioEl.load();
+                });
+            }
+
             function showCompleted() {
                 if (completedTitleEl) completedTitleEl.textContent = activityTitle || 'Memory Cards';
                 if (completedTextEl) completedTextEl.textContent = 'Great job. You matched all pairs in ' + String(moves) + ' moves.';
 
+                playSound('win');
                 if (activityEl) activityEl.classList.add('is-hidden');
-                if (completeEl) completeEl.classList.add('active');
+                window.setTimeout(function () {
+                    if (completeEl) completeEl.classList.add('active');
+                }, 280);
             }
 
             function handleCardClick(index) {
@@ -460,6 +544,7 @@ ob_start();
                 selected.push(index);
                 const cardNode = board.querySelector('[data-card-index="' + index + '"]');
                 if (cardNode) {
+                    playSound('flip');
                     cardNode.classList.add('is-flipped');
                 }
 
@@ -478,17 +563,25 @@ ob_start();
                 if (first && second && first.pairId === second.pairId) {
                     matched.add(firstIndex);
                     matched.add(secondIndex);
+                    playSound('match');
 
                     const firstNode = board.querySelector('[data-card-index="' + firstIndex + '"]');
                     const secondNode = board.querySelector('[data-card-index="' + secondIndex + '"]');
                     if (firstNode) {
                         firstNode.classList.add('is-matched');
+                        firstNode.classList.add('is-vanishing');
                         firstNode.disabled = true;
                     }
                     if (secondNode) {
                         secondNode.classList.add('is-matched');
+                        secondNode.classList.add('is-vanishing');
                         secondNode.disabled = true;
                     }
+
+                    window.setTimeout(function () {
+                        if (firstNode) firstNode.classList.add('is-hidden');
+                        if (secondNode) secondNode.classList.add('is-hidden');
+                    }, 330);
 
                     selected = [];
                     updateStats();
@@ -500,6 +593,7 @@ ob_start();
                 }
 
                 lockBoard = true;
+                playSound('lose');
                 window.setTimeout(function () {
                     const firstNode = board.querySelector('[data-card-index="' + firstIndex + '"]');
                     const secondNode = board.querySelector('[data-card-index="' + secondIndex + '"]');
@@ -554,6 +648,9 @@ ob_start();
             if (completedRestartBtn) {
                 completedRestartBtn.addEventListener('click', restart);
             }
+
+            ensureAudioFallback('flip', flipAudioEl);
+            ensureAudioFallback('match', matchAudioEl);
 
             restart();
         })();
