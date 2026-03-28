@@ -333,7 +333,7 @@ ob_start();
 .mc-card.is-matched .mc-card-face{border-color:#34d399}
 .mc-card.is-vanishing{pointer-events:none}
 .mc-card.is-vanishing .mc-card-inner{animation:mcVanish .34s ease forwards}
-.mc-card.is-hidden{display:none !important}
+.mc-card.is-hidden{opacity:0;visibility:hidden;pointer-events:none}
 .mc-controls{display:flex;justify-content:center;margin-top:18px}
 .mc-btn{border:none;border-radius:999px;padding:10px 16px;font-weight:800;font-size:14px;cursor:pointer;box-shadow:0 8px 18px rgba(15,23,42,.1);background:linear-gradient(180deg,#fbbf24,#f59e0b);color:#7c2d12}
 .mc-empty{text-align:center;padding:28px;font-weight:800;color:#b91c1c}
@@ -352,8 +352,6 @@ ob_start();
 @media (max-width:900px){
     .mc-intro{padding:20px 18px}
     .mc-intro h2{font-size:26px}
-    .mc-card{min-height:150px}
-    .mc-card-inner{min-height:150px}
 }
 </style>
 
@@ -423,6 +421,7 @@ ob_start();
             let matched = new Set();
             let lockBoard = false;
             let moves = 0;
+            const matchDelayMs = 700;
 
             const audioFallbacks = {
                 flip: ['../../hangman/assets/card%20flip.mp3.mp3', '../../hangman/assets/pageflip.mp3'],
@@ -561,6 +560,7 @@ ob_start();
                 const second = deck[secondIndex];
 
                 if (first && second && first.pairId === second.pairId) {
+                    lockBoard = true;
                     matched.add(firstIndex);
                     matched.add(secondIndex);
                     playSound('match');
@@ -574,21 +574,29 @@ ob_start();
                     }
                     if (secondNode) {
                         secondNode.classList.add('is-matched');
-                        secondNode.classList.add('is-vanishing');
                         secondNode.disabled = true;
                     }
-
-                    window.setTimeout(function () {
-                        if (firstNode) firstNode.classList.add('is-hidden');
-                        if (secondNode) secondNode.classList.add('is-hidden');
-                    }, 330);
 
                     selected = [];
                     updateStats();
 
-                    if (matched.size === deck.length) {
-                        showCompleted();
-                    }
+                    const isFinalMatch = matched.size === deck.length;
+                    window.setTimeout(function () {
+                        if (firstNode) firstNode.classList.add('is-vanishing');
+                        if (secondNode) secondNode.classList.add('is-vanishing');
+
+                        window.setTimeout(function () {
+                            if (firstNode) firstNode.classList.add('is-hidden');
+                            if (secondNode) secondNode.classList.add('is-hidden');
+
+                            if (isFinalMatch) {
+                                showCompleted();
+                            } else {
+                                lockBoard = false;
+                            }
+                        }, 340);
+                    }, matchDelayMs);
+
                     return;
                 }
 
