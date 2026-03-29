@@ -109,27 +109,53 @@ if (!$pdo) {
     die('Database is not available.');
 }
 
-$courses = load_teacher_courses($pdo, $teacherId);
 $allStudents = load_teacher_students($pdo, $teacherId);
 
 $filterCourse = trim((string) ($_GET['course'] ?? ''));
 $filteredStudents = $allStudents;
 
+$courseOptions = [];
+foreach ($allStudents as $row) {
+    $courseId = trim((string) ($row['course_id'] ?? ''));
+    $courseName = trim((string) ($row['course_name'] ?? ''));
+    if ($courseName === '') {
+        $courseName = 'Curso';
+    }
+
+    $courseKey = $courseId !== '' ? ('id:' . $courseId) : ('name:' . strtolower($courseName));
+    if (!isset($courseOptions[$courseKey])) {
+        $courseOptions[$courseKey] = $courseName;
+    }
+}
+
+if (empty($courseOptions)) {
+    $courses = load_teacher_courses($pdo, $teacherId);
+    foreach ($courses as $course) {
+        $courseId = trim((string) ($course['course_id'] ?? ''));
+        $courseName = trim((string) ($course['course_name'] ?? ''));
+        if ($courseName === '') {
+            $courseName = 'Curso';
+        }
+        if ($courseId !== '') {
+            $courseOptions['id:' . $courseId] = $courseName;
+        }
+    }
+}
+
+asort($courseOptions);
+
 if ($filterCourse !== '') {
     $filteredStudents = array_filter($allStudents, static function (array $row) use ($filterCourse): bool {
         $courseId = trim((string) ($row['course_id'] ?? ''));
-        return $courseId === $filterCourse;
+        $courseName = trim((string) ($row['course_name'] ?? ''));
+        if ($courseName === '') {
+            $courseName = 'Curso';
+        }
+
+        $courseKey = $courseId !== '' ? ('id:' . $courseId) : ('name:' . strtolower($courseName));
+        return $courseKey === $filterCourse;
     });
     $filteredStudents = array_values($filteredStudents);
-}
-
-$courseOptions = [];
-foreach ($courses as $course) {
-    $courseId = trim((string) ($course['course_id'] ?? ''));
-    $courseName = trim((string) ($course['course_name'] ?? ''));
-    if ($courseId !== '' && $courseName !== '') {
-        $courseOptions[$courseId] = $courseName;
-    }
 }
 ?>
 <!DOCTYPE html>
