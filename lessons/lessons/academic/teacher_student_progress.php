@@ -122,131 +122,157 @@ $period = h(trim((string) ($assignment['period'] ?? '')));
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Progreso del Estudiante</title>
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@500;700;800&display=swap');
+
         :root {
-            --bg: #fff8f5;
-            --card: #fff;
-            --line: #ffd9d2;
-            --title: #b04632;
-            --text: #5e352e;
-            --muted: #8a625a;
-            --salmon: #fa8072;
-            --salmon-dark: #e8654e;
+            --bg: #eef5ff;
+            --card: #ffffff;
+            --line: #d6e4ff;
+            --title: #16325c;
+            --text: #16325c;
+            --muted: #5f7294;
+            --primary: #3b82f6;
+            --primary-dark: #1d4ed8;
+            --primary-light: #eaf2ff;
+            --radius: 12px;
+            --shadow: 0 1px 3px rgba(0,0,0,.1), 0 1px 2px rgba(0,0,0,.06);
+            --shadow-sm: 0 2px 8px rgba(0,0,0,.06);
+            --shadow-md: 0 4px 6px rgba(0,0,0,.1), 0 2px 4px rgba(0,0,0,.06);
         }
-        
+
         * { box-sizing: border-box; }
-        
+
         body {
             margin: 0;
-            font-family: Arial, sans-serif;
+            font-family: 'Nunito', 'Segoe UI', sans-serif;
             background: var(--bg);
             color: var(--text);
-            padding: 22px;
         }
         
         .page {
-            max-width: 980px;
+            max-width: 1400px;
             margin: 0 auto;
+            padding: 20px 20px 40px;
         }
         
         .top {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            gap: 10px;
+            gap: 20px;
             flex-wrap: wrap;
-            margin-bottom: 14px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid var(--line);
+            margin-bottom: 24px;
         }
         
         h1 {
             margin: 0;
             color: var(--title);
-            font-size: 28px;
+            font-size: 32px;
+            font-family: 'Fredoka', 'Trebuchet MS', sans-serif;
+            font-weight: 800;
         }
-        
+
         .back {
-            color: var(--salmon-dark);
+            color: var(--primary-dark);
             text-decoration: none;
             font-weight: 700;
         }
-        
+
         .back:hover {
             text-decoration: underline;
         }
-        
+
         .meta {
-            margin: 0 0 14px;
+            margin: 0 0 20px;
             color: var(--muted);
             font-size: 14px;
+            font-weight: 600;
         }
-        
+
         .meta strong {
             color: var(--text);
         }
-        
+
         .card {
             background: var(--card);
             border: 1px solid var(--line);
-            border-radius: 12px;
-            padding: 16px;
+            border-radius: var(--radius);
+            padding: 28px;
+            box-shadow: var(--shadow);
         }
-        
+
         table {
             width: 100%;
             border-collapse: collapse;
         }
-        
+
         th, td {
-            padding: 10px;
-            border-bottom: 1px solid #ffe3de;
+            padding: 12px;
+            border-bottom: 1px solid var(--line);
             text-align: left;
         }
-        
+
         th {
             color: var(--title);
-            font-weight: 700;
-            background: #fff5f2;
+            font-weight: 800;
+            background: var(--primary-light);
+            font-family: 'Fredoka', 'Trebuchet MS', sans-serif;
         }
-        
+
         tr:last-child td {
             border-bottom: none;
         }
-        
+
         .completion-bar {
-            background: #ffe3de;
+            background: var(--primary-light);
             height: 6px;
             border-radius: 3px;
             overflow: hidden;
             margin: 4px 0;
         }
-        
+
         .completion-fill {
-            background: var(--salmon);
+            background: var(--primary);
             height: 100%;
             transition: width 0.3s;
         }
-        
+
         .empty {
             color: var(--muted);
             text-align: center;
             padding: 32px 16px;
         }
-        
+
         .btn {
             display: inline-block;
             margin-top: 12px;
-            padding: 10px 14px;
-            border-radius: 8px;
+            padding: 11px 16px;
+            border-radius: 10px;
             text-decoration: none;
             color: #fff;
-            background: var(--salmon);
-            font-weight: 700;
+            background: linear-gradient(180deg, #60a5fa, #2563eb);
+            font-size: 13px;
+            font-weight: 600;
+            box-shadow: var(--shadow);
+            transition: all .3s;
         }
-        
+
         .btn:hover {
-            background: var(--salmon-dark);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
         }
         
         @media (max-width: 768px) {
+            .page {
+                padding: 16px;
+            }
+
+            h1 {
+                font-size: 26px;
+            }
+
             table {
                 font-size: 12px;
             }
@@ -302,7 +328,7 @@ $period = h(trim((string) ($assignment['period'] ?? '')));
                                     </div>
                                 </td>
                                 <td><?php echo $errors; ?> / <?php echo $total; ?></td>
-                                <td style="font-weight: 700; color: var(--salmon);"><?php echo $percent; ?>%</td>
+                                <td style="font-weight: 700; color: var(--primary-dark);"><?php echo $percent; ?>%</td>
                             </tr>
                         <?php endforeach; ?>
                     </tbody>
