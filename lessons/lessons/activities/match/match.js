@@ -24,9 +24,13 @@ document.addEventListener("DOMContentLoaded", () => {
   const correctSound = new Audio("../../hangman/assets/realcorrect.mp3");
   const errorSound = new Audio("../../hangman/assets/losefun.mp3");
   const winSound = new Audio("../../hangman/assets/win.mp3");
+  const returnTo = typeof MATCH_RETURN_TO === "string" ? MATCH_RETURN_TO : "";
+  const activityId = typeof MATCH_ACTIVITY_ID === "string" ? MATCH_ACTIVITY_ID : "";
 
   let matchedCount = 0;
+  let firstTryCorrect = 0;
   let currentDraggedCard = null;
+  const firstAttemptByTarget = new Set();
 
   function escapeHtml(value) {
     return String(value || "")
@@ -128,10 +132,38 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
+  function buildReturnUrl() {
+    if (!returnTo) {
+      return "";
+    }
+
+    const total = data.length;
+    const correct = Math.max(0, Math.min(total, firstTryCorrect));
+    const errors = Math.max(0, total - correct);
+    const percent = total > 0 ? Math.round((correct / total) * 100) : 0;
+    const hasQuery = returnTo.includes("?");
+    const joiner = hasQuery ? "&" : "?";
+
+    return (
+      returnTo
+      + joiner + "activity_percent=" + encodeURIComponent(String(percent))
+      + "&activity_errors=" + encodeURIComponent(String(errors))
+      + "&activity_total=" + encodeURIComponent(String(total))
+      + "&activity_id=" + encodeURIComponent(String(activityId))
+      + "&activity_type=" + encodeURIComponent("match")
+    );
+  }
+
   function showCompleted() {
     if (document.getElementById("matchCompletedOverlay")) {
       return;
     }
+
+    const total = data.length;
+    const correct = Math.max(0, Math.min(total, firstTryCorrect));
+    const errors = Math.max(0, total - correct);
+    const percent = total > 0 ? Math.round((correct / total) * 100) : 0;
+    const saveUrl = buildReturnUrl();
 
     const overlay = document.createElement("div");
     overlay.id = "matchCompletedOverlay";
@@ -139,9 +171,30 @@ document.addEventListener("DOMContentLoaded", () => {
       <div class="match-completed-box">
         <div class="match-completed-emoji">🏆</div>
         <div class="match-completed-title">Completed!</div>
+        <div class="match-completed-score">Score: <strong>${correct} / ${total}</strong> (${percent}%)</div>
+        <div class="match-completed-subtitle">Correct first attempts: ${correct} of ${total}. Mistakes: ${errors}.</div>
+        <div class="match-completed-actions">
+          <button type="button" class="match-completed-btn secondary" id="matchRestartBtn">Play again</button>
+          ${saveUrl !== "" ? '<button type="button" class="match-completed-btn" id="matchSaveBtn">Save score and return</button>' : ""}
+        </div>
       </div>
     `;
     document.body.appendChild(overlay);
+
+    const restartBtn = document.getElementById("matchRestartBtn");
+    if (restartBtn) {
+      restartBtn.addEventListener("click", () => {
+        window.location.reload();
+      });
+    }
+
+    const saveBtn = document.getElementById("matchSaveBtn");
+    if (saveBtn && saveUrl !== "") {
+      saveBtn.addEventListener("click", () => {
+        window.location.href = saveUrl;
+      });
+    }
+
     playSound(winSound);
   }
 
@@ -259,7 +312,15 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
+    const isFirstAttempt = !firstAttemptByTarget.has(targetId);
+    if (isFirstAttempt) {
+      firstAttemptByTarget.add(targetId);
+    }
+
     if (draggedId === targetId) {
+      if (isFirstAttempt) {
+        firstTryCorrect += 1;
+      }
       markCorrect(target, card);
     } else {
       markWrong(target, card);

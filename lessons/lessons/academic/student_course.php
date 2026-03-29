@@ -73,7 +73,76 @@ function ensure_student_performance_tables(PDO $pdo): void
 {
     try {
         $pdo->exec("\n            CREATE TABLE IF NOT EXISTS student_unit_results (\n              student_id TEXT NOT NULL,\n              assignment_id TEXT NOT NULL,\n              unit_id TEXT NOT NULL,\n              completion_percent INTEGER NOT NULL DEFAULT 0,\n              quiz_errors INTEGER NOT NULL DEFAULT 0,\n              quiz_total INTEGER NOT NULL DEFAULT 0,\n              updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),\n              PRIMARY KEY (student_id, assignment_id, unit_id)\n            )\n        ");
+        $pdo->exec("\n            CREATE TABLE IF NOT EXISTS student_activity_results (\n              student_id TEXT NOT NULL,\n              assignment_id TEXT NOT NULL,\n              unit_id TEXT NOT NULL,\n              activity_id TEXT NOT NULL,\n              activity_type TEXT NOT NULL DEFAULT '',\n              completion_percent INTEGER NOT NULL DEFAULT 0,\n              errors_count INTEGER NOT NULL DEFAULT 0,\n              total_count INTEGER NOT NULL DEFAULT 0,\n              updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),\n              PRIMARY KEY (student_id, assignment_id, unit_id, activity_id)\n            )\n        ");
     } catch (Throwable $e) {
+    }
+}
+
+function save_student_activity_performance(PDO $pdo, string $studentId, string $assignmentId, string $unitId, string $activityId, string $activityType, int $completionPercent, int $errorsCount, int $totalCount): void
+{
+    if ($studentId === '' || $assignmentId === '' || $unitId === '' || $activityId === '') {
+        return;
+    }
+
+    try {
+        $stmt = $pdo->prepare("\n            INSERT INTO student_activity_results (student_id, assignment_id, unit_id, activity_id, activity_type, completion_percent, errors_count, total_count, updated_at)\n            VALUES (:student_id, :assignment_id, :unit_id, :activity_id, :activity_type, :completion_percent, :errors_count, :total_count, NOW())\n            ON CONFLICT (student_id, assignment_id, unit_id, activity_id)\n            DO UPDATE SET\n              activity_type = EXCLUDED.activity_type,\n              completion_percent = EXCLUDED.completion_percent,\n              errors_count = EXCLUDED.errors_count,\n              total_count = EXCLUDED.total_count,\n              updated_at = NOW()\n        ");
+
+        $stmt->execute([
+            'student_id' => $studentId,
+            'assignment_id' => $assignmentId,
+            'unit_id' => $unitId,
+            'activity_id' => $activityId,
+            'activity_type' => trim($activityType),
+            'completion_percent' => max(0, min(100, $completionPercent)),
+            'errors_count' => max(0, $errorsCount),
+            'total_count' => max(0, $totalCount),
+        ]);
+    } catch (Throwable $e) {
+    }
+}
+
+function aggregate_student_activity_performance(PDO $pdo, string $studentId, string $assignmentId, string $unitId): ?array
+{
+    if ($studentId === '' || $assignmentId === '' || $unitId === '') {
+        return null;
+    }
+
+    try {
+        $stmt = $pdo->prepare("\n            SELECT SUM(errors_count) AS errors_sum, SUM(total_count) AS total_sum\n            FROM student_activity_results\n            WHERE student_id = :student_id\n              AND assignment_id = :assignment_id\n              AND unit_id = :unit_id\n        ");
+        $stmt->execute([
+            'student_id' => $studentId,
+            'assignment_id' => $assignmentId,
+            'unit_id' => $unitId,
+        ]);
+
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!is_array($row)) {
+            return null;
+        }
+
+        $total = (int) ($row['total_sum'] ?? 0);
+        $errors = (int) ($row['errors_sum'] ?? 0);
+        if ($total < 0) {
+            $total = 0;
+        }
+        if ($errors < 0) {
+            $errors = 0;
+        }
+        if ($total > 0 && $errors > $total) {
+            $errors = $total;
+        }
+
+        $percent = $total > 0
+            ? max(0, min(100, (int) round((($total - $errors) / $total) * 100)))
+            : 0;
+
+        return [
+            'completion_percent' => $percent,
+            'quiz_errors' => $errors,
+            'quiz_total' => $total,
+        ];
+    } catch (Throwable $e) {
+        return null;
     }
 }
 
@@ -218,22 +287,48 @@ if (!$assignment || (string) ($assignment['student_id'] ?? '') !== $studentId) {
 }
 
 $selectedUnitId = trim((string) ($_GET['unit'] ?? (string) ($assignment['unit_id'] ?? '')));
-$quizTotalRaw = isset($_GET['quiz_total']) ? (int) $_GET['quiz_total'] : -1;
-$quizErrorsRaw = isset($_GET['quiz_errors']) ? (int) $_GET['quiz_errors'] : -1;
-$quizPercentRaw = isset($_GET['quiz_percent']) ? (int) $_GET['quiz_percent'] : -1;
+$rawTotal = isset($_GET['activity_total'])
+    ? (int) $_GET['activity_total']
+    : (isset($_GET['quiz_total']) ? (int) $_GET['quiz_total'] : -1);
+$rawErrors = isset($_GET['activity_errors'])
+    ? (int) $_GET['activity_errors']
+    : (isset($_GET['quiz_errors']) ? (int) $_GET['quiz_errors'] : -1);
+$rawPercent = isset($_GET['activity_percent'])
+    ? (int) $_GET['activity_percent']
+    : (isset($_GET['quiz_percent']) ? (int) $_GET['quiz_percent'] : -1);
+$activityResultId = trim((string) ($_GET['activity_id'] ?? ($_GET['quiz_activity_id'] ?? '')));
+$activityType = trim((string) ($_GET['activity_type'] ?? 'quiz'));
 
-if ($selectedUnitId !== '' && $quizTotalRaw >= 0) {
-    $quizTotal = max(0, $quizTotalRaw);
-    $quizErrors = max(0, $quizErrorsRaw);
-    if ($quizTotal > 0 && $quizErrors > $quizTotal) {
-        $quizErrors = $quizTotal;
+if ($selectedUnitId !== '' && $rawTotal >= 0) {
+    $activityTotal = max(0, $rawTotal);
+    $activityErrors = max(0, $rawErrors);
+    if ($activityTotal > 0 && $activityErrors > $activityTotal) {
+        $activityErrors = $activityTotal;
     }
 
-    $quizPercent = $quizTotal > 0
-        ? max(0, min(100, (int) round((($quizTotal - $quizErrors) / $quizTotal) * 100)))
-        : max(0, min(100, $quizPercentRaw));
+    $activityPercent = $activityTotal > 0
+        ? max(0, min(100, (int) round((($activityTotal - $activityErrors) / $activityTotal) * 100)))
+        : max(0, min(100, $rawPercent));
 
-    save_student_unit_performance($pdo, $studentId, $assignmentId, $selectedUnitId, $quizPercent, $quizErrors, $quizTotal);
+    if ($activityResultId !== '') {
+        save_student_activity_performance($pdo, $studentId, $assignmentId, $selectedUnitId, $activityResultId, $activityType, $activityPercent, $activityErrors, $activityTotal);
+        $aggregated = aggregate_student_activity_performance($pdo, $studentId, $assignmentId, $selectedUnitId);
+        if (is_array($aggregated)) {
+            save_student_unit_performance(
+                $pdo,
+                $studentId,
+                $assignmentId,
+                $selectedUnitId,
+                (int) ($aggregated['completion_percent'] ?? 0),
+                (int) ($aggregated['quiz_errors'] ?? 0),
+                (int) ($aggregated['quiz_total'] ?? 0)
+            );
+        } else {
+            save_student_unit_performance($pdo, $studentId, $assignmentId, $selectedUnitId, $activityPercent, $activityErrors, $activityTotal);
+        }
+    } else {
+        save_student_unit_performance($pdo, $studentId, $assignmentId, $selectedUnitId, $activityPercent, $activityErrors, $activityTotal);
+    }
 }
 
 $allUnits = load_units_for_assignment($pdo, $assignment);
