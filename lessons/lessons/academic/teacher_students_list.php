@@ -215,6 +215,33 @@ function load_latest_student_usernames(PDO $pdo): array
     return $byStudent;
 }
 
+function load_latest_student_usernames_from_json(): array
+{
+    $accountsFile = __DIR__ . '/data/student_accounts.json';
+    if (!file_exists($accountsFile)) {
+        return [];
+    }
+
+    $decoded = json_decode((string) file_get_contents($accountsFile), true);
+    if (!is_array($decoded)) {
+        return [];
+    }
+
+    $byStudent = [];
+    foreach ($decoded as $row) {
+        $studentId = trim((string) ($row['student_id'] ?? ''));
+        $username = trim((string) ($row['username'] ?? ''));
+        if ($studentId === '' || $username === '') {
+            continue;
+        }
+
+        // Keep last occurrence as latest for flat files
+        $byStudent[$studentId] = $username;
+    }
+
+    return $byStudent;
+}
+
 function normalize_student_username(string $username): string
 {
     $value = strtolower(trim($username));
@@ -243,6 +270,21 @@ function repair_teacher_assignment_student_links(PDO $pdo, string $teacherId): v
             $usernameToStudent[strtolower($uname)] = ['student_id' => $sid, 'username' => $uname];
             $normalized = normalize_student_username($uname);
             if ($normalized !== '' && !isset($usernameToStudent[$normalized])) {
+                $usernameToStudent[$normalized] = ['student_id' => $sid, 'username' => $uname];
+            }
+        }
+
+        // Merge JSON accounts as fallback/override when DB is stale
+        $jsonAccounts = load_latest_student_usernames_from_json();
+        foreach ($jsonAccounts as $sid => $uname) {
+            $sid = trim((string) $sid);
+            $uname = trim((string) $uname);
+            if ($sid === '' || $uname === '') {
+                continue;
+            }
+            $usernameToStudent[strtolower($uname)] = ['student_id' => $sid, 'username' => $uname];
+            $normalized = normalize_student_username($uname);
+            if ($normalized !== '') {
                 $usernameToStudent[$normalized] = ['student_id' => $sid, 'username' => $uname];
             }
         }
@@ -310,6 +352,10 @@ repair_teacher_assignment_student_links($pdo, $teacherId);
 
 $allStudents = load_teacher_students($pdo, $teacherId);
 $studentUsernames = load_latest_student_usernames($pdo);
+$jsonStudentUsernames = load_latest_student_usernames_from_json();
+if (!empty($jsonStudentUsernames)) {
+    $studentUsernames = array_merge($studentUsernames, $jsonStudentUsernames);
+}
 if (!empty($studentUsernames)) {
     foreach ($allStudents as $idx => $row) {
         $sid = trim((string) ($row['student_id'] ?? ''));
