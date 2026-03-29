@@ -61,7 +61,7 @@ function load_student_scores(PDO $pdo): array
     }
 
     try {
-        $stmt = $pdo->query("\n            SELECT\n              sur.student_id,\n              COALESCE(NULLIF(TRIM(s.name), ''), sur.student_id) AS student_name,\n              sur.assignment_id,\n              COALESCE(NULLIF(TRIM(c.name), ''), 'N/D') AS course_name,\n              COALESCE(NULLIF(TRIM(sa.program), ''), 'technical') AS program,\n              sur.unit_id,\n              COALESCE(NULLIF(TRIM(u.name), ''), 'Unidad ' || sur.unit_id) AS unit_name,\n              sur.completion_percent,\n              sur.quiz_errors,\n              sur.quiz_total,\n              sur.updated_at\n            FROM student_unit_results sur\n            LEFT JOIN student_assignments sa ON sa.id = sur.assignment_id\n            LEFT JOIN students s ON s.id = sur.student_id\n            LEFT JOIN courses c ON c.id::text = sa.course_id\n            LEFT JOIN units u ON u.id::text = sur.unit_id\n            ORDER BY student_name ASC, course_name ASC, unit_name ASC\n        ");
+        $stmt = $pdo->query("\n            SELECT\n              sur.student_id,\n              COALESCE(NULLIF(TRIM(s.name), ''), sur.student_id) AS student_name,\n              sur.assignment_id,\n              COALESCE(NULLIF(TRIM(c.name), ''), 'N/D') AS course_name,\n              COALESCE(NULLIF(TRIM(sa.program), ''), 'technical') AS program,\n              COALESCE(NULLIF(TRIM(t.name), ''), 'N/D') AS teacher_name,\n              sur.unit_id,\n              COALESCE(NULLIF(TRIM(u.name), ''), 'Unidad ' || sur.unit_id) AS unit_name,\n              sur.completion_percent,\n              sur.quiz_errors,\n              sur.quiz_total,\n              sur.updated_at\n            FROM student_unit_results sur\n            LEFT JOIN student_assignments sa ON sa.id = sur.assignment_id\n            LEFT JOIN students s ON s.id = sur.student_id\n            LEFT JOIN teachers t ON t.id = sa.teacher_id\n            LEFT JOIN courses c ON c.id::text = sa.course_id\n            LEFT JOIN units u ON u.id::text = sur.unit_id\n            ORDER BY student_name ASC, course_name ASC, unit_name ASC\n        ");
 
         return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
     } catch (Throwable $e) {
@@ -71,6 +71,60 @@ function load_student_scores(PDO $pdo): array
 
 $pdo = get_pdo_connection();
 $rows = $pdo ? load_student_scores($pdo) : [];
+
+$filterStudent = trim((string) ($_GET['student'] ?? ''));
+$filterCourse = trim((string) ($_GET['course'] ?? ''));
+$filterTeacher = trim((string) ($_GET['teacher'] ?? ''));
+$filterProgram = trim((string) ($_GET['program'] ?? ''));
+
+$studentOptions = [];
+$courseOptions = [];
+$teacherOptions = [];
+
+foreach ($rows as $row) {
+  $studentName = trim((string) ($row['student_name'] ?? ''));
+  $courseName = trim((string) ($row['course_name'] ?? ''));
+  $teacherName = trim((string) ($row['teacher_name'] ?? ''));
+
+  if ($studentName !== '') {
+    $studentOptions[$studentName] = true;
+  }
+  if ($courseName !== '') {
+    $courseOptions[$courseName] = true;
+  }
+  if ($teacherName !== '') {
+    $teacherOptions[$teacherName] = true;
+  }
+}
+
+$studentOptions = array_keys($studentOptions);
+$courseOptions = array_keys($courseOptions);
+$teacherOptions = array_keys($teacherOptions);
+sort($studentOptions, SORT_NATURAL | SORT_FLAG_CASE);
+sort($courseOptions, SORT_NATURAL | SORT_FLAG_CASE);
+sort($teacherOptions, SORT_NATURAL | SORT_FLAG_CASE);
+
+$filteredRows = array_values(array_filter($rows, static function (array $row) use ($filterStudent, $filterCourse, $filterTeacher, $filterProgram): bool {
+  $studentName = trim((string) ($row['student_name'] ?? ''));
+  $courseName = trim((string) ($row['course_name'] ?? ''));
+  $teacherName = trim((string) ($row['teacher_name'] ?? ''));
+  $program = trim((string) ($row['program'] ?? ''));
+
+  if ($filterStudent !== '' && $studentName !== $filterStudent) {
+    return false;
+  }
+  if ($filterCourse !== '' && $courseName !== $filterCourse) {
+    return false;
+  }
+  if ($filterTeacher !== '' && $teacherName !== $filterTeacher) {
+    return false;
+  }
+  if ($filterProgram !== '' && $program !== $filterProgram) {
+    return false;
+  }
+
+  return true;
+}));
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -106,6 +160,22 @@ th{color:var(--title);background:#f6fbf8;position:sticky;top:0}
 .badge-en{background:#e0ecff;color:#24417c}
 .badge-tech{background:#dff7e6;color:#1e6f31}
 .empty{padding:24px;text-align:center;color:var(--muted)}
+.filters{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:0 0 12px}
+.field{display:flex;flex-direction:column;gap:6px}
+.field label{font-size:12px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.3px}
+.field select{min-height:38px;border:1px solid var(--line);border-radius:10px;padding:8px 10px;background:#fff;color:var(--text)}
+.filters-actions{display:flex;gap:8px;align-items:end}
+.btn-filter,.btn-clear{display:inline-flex;align-items:center;justify-content:center;min-height:38px;padding:0 12px;border:none;border-radius:10px;font-weight:700;cursor:pointer;text-decoration:none}
+.btn-filter{background:var(--green);color:#fff}
+.btn-filter:hover{background:var(--green-dark)}
+.btn-clear{background:#e7efea;color:#375648}
+.btn-clear:hover{background:#d8e6de}
+@media (max-width: 980px){
+  .filters{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media (max-width: 640px){
+  .filters{grid-template-columns:1fr}
+}
 </style>
 </head>
 <body>
@@ -114,12 +184,60 @@ th{color:var(--title);background:#f6fbf8;position:sticky;top:0}
     <h1>Lista de estudiantes con scores</h1>
     <a class="back" href="student_assignments.php">← Volver a asignaciones</a>
   </div>
+      <form method="get" class="filters">
+        <div class="field">
+          <label for="student">Estudiante</label>
+          <select id="student" name="student">
+            <option value="">Todos</option>
+            <?php foreach ($studentOptions as $option) { ?>
+              <option value="<?php echo h($option); ?>" <?php echo $filterStudent === $option ? 'selected' : ''; ?>><?php echo h($option); ?></option>
+            <?php } ?>
+          </select>
+        </div>
+
+        <div class="field">
+          <label for="course">Curso</label>
+          <select id="course" name="course">
+            <option value="">Todos</option>
+            <?php foreach ($courseOptions as $option) { ?>
+              <option value="<?php echo h($option); ?>" <?php echo $filterCourse === $option ? 'selected' : ''; ?>><?php echo h($option); ?></option>
+            <?php } ?>
+          </select>
+        </div>
+
+        <div class="field">
+          <label for="teacher">Docente</label>
+          <select id="teacher" name="teacher">
+            <option value="">Todos</option>
+            <?php foreach ($teacherOptions as $option) { ?>
+              <option value="<?php echo h($option); ?>" <?php echo $filterTeacher === $option ? 'selected' : ''; ?>><?php echo h($option); ?></option>
+            <?php } ?>
+          </select>
+        </div>
+
+        <div class="field">
+          <label for="program">Programa</label>
+          <select id="program" name="program">
+            <option value="">Todos</option>
+            <option value="english" <?php echo $filterProgram === 'english' ? 'selected' : ''; ?>>Ingles</option>
+            <option value="technical" <?php echo $filterProgram === 'technical' ? 'selected' : ''; ?>>Tecnico</option>
+          </select>
+        </div>
+
+        <div class="filters-actions">
+          <button type="submit" class="btn-filter">Filtrar</button>
+          <a class="btn-clear" href="student_scores_admin.php">Limpiar</a>
+        </div>
+      </form>
+
+      <p class="meta">Registros mostrados: <strong><?php echo (int) count($filteredRows); ?></strong> de <strong><?php echo (int) count($rows); ?></strong></p>
 
   <div class="card">
     <?php if (!$pdo) { ?>
       <div class="empty">No hay conexion a base de datos disponible.</div>
     <?php } elseif (empty($rows)) { ?>
       <div class="empty">Aun no hay scores registrados.</div>
+              <th>Docente</th>
     <?php } else { ?>
       <p class="meta">Registros: <strong><?php echo (int) count($rows); ?></strong></p>
       <div class="table-wrap">
@@ -128,11 +246,17 @@ th{color:var(--title);background:#f6fbf8;position:sticky;top:0}
             <tr>
               <th>Estudiante</th>
               <th>Curso</th>
-              <th>Programa</th>
+            <?php if (empty($filteredRows)) { ?>
+              <tr>
+                <td colspan="8" class="empty">No hay resultados para los filtros seleccionados.</td>
+              </tr>
+            <?php } ?>
+            <?php foreach ($filteredRows as $row) { ?>
               <th>Unidad</th>
               <th>Score</th>
               <th>Errores</th>
               <th>Actualizado</th>
+                <td><?php echo h((string) ($row['teacher_name'] ?? 'N/D')); ?></td>
             </tr>
           </thead>
           <tbody>
