@@ -15,7 +15,7 @@ $assignmentId = trim((string) ($_GET['assignment'] ?? ''));
 $studentId = trim((string) ($_SESSION['student_id'] ?? ''));
 
 if ($assignmentId === '') {
-    die('Asignación no especificada.');
+    die('Assignment not specified.');
 }
 
 function h(string $value): string
@@ -207,14 +207,14 @@ function get_activity_base_path(string $type): ?string
 
 $pdo = get_pdo_connection();
 if (!$pdo) {
-    die('Base de datos no disponible.');
+    die('Database is not available.');
 }
 
 ensure_student_performance_tables($pdo);
 
 $assignment = load_assignment($pdo, $assignmentId);
 if (!$assignment || (string) ($assignment['student_id'] ?? '') !== $studentId) {
-    die('No tienes acceso a este curso.');
+    die('You do not have access to this course.');
 }
 
 $selectedUnitId = trim((string) ($_GET['unit'] ?? (string) ($assignment['unit_id'] ?? '')));
@@ -238,22 +238,22 @@ if ($selectedUnitId !== '' && $quizTotalRaw >= 0) {
 
 $allUnits = load_units_for_assignment($pdo, $assignment);
 $unitResults = load_student_unit_results($pdo, $studentId, $assignmentId);
-$courseName = trim((string) ($assignment['course_name'] ?? 'Curso'));
+$courseName = trim((string) ($assignment['course_name'] ?? 'Course'));
 if ($courseName === '') {
-    $courseName = 'Curso';
+    $courseName = 'Course';
 }
-$teacherName = trim((string) ($assignment['teacher_name'] ?? 'Docente'));
-$programLabel = ((string) ($assignment['program'] ?? '') === 'english') ? 'Inglés' : 'Técnico';
+$teacherName = trim((string) ($assignment['teacher_name'] ?? 'Teacher'));
+$programLabel = ((string) ($assignment['program'] ?? '') === 'english') ? 'English' : 'Technical';
 
 /* ---- Determine active unit ---- */
 if ($selectedUnitId === '' && !empty($allUnits)) {
     $selectedUnitId = (string) ($allUnits[0]['id'] ?? '');
 }
 
-$selectedUnitName = 'Unidad';
+$selectedUnitName = 'Unit';
 foreach ($allUnits as $_u) {
     if ((string) ($_u['id'] ?? '') === $selectedUnitId) {
-        $selectedUnitName = (string) ($_u['name'] ?? 'Unidad');
+        $selectedUnitName = (string) ($_u['name'] ?? 'Unit');
         break;
     }
 }
@@ -281,7 +281,7 @@ $activityTypeLabels = [
 ];
 
 $viewerHref = null;
-$currentTypeLabel = 'Actividad';
+$currentTypeLabel = 'Activity';
 if ($current) {
     $type = (string) ($current['type'] ?? '');
     $activityPath = get_activity_base_path($type);
@@ -312,7 +312,7 @@ $completedStep = max(9999, $total);
 $completedHref = 'student_course.php?assignment=' . urlencode($assignmentId) . '&unit=' . urlencode($selectedUnitId) . '&step=' . urlencode((string) $completedStep);
 ?>
 <!DOCTYPE html>
-<html lang="es">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -466,7 +466,7 @@ body{margin:0;font-family:Arial,sans-serif;background:linear-gradient(145deg,#ff
 
 <header class="topbar">
     <div class="topbar-inner">
-        <a class="top-btn" href="<?php echo h($backHref); ?>">← Volver</a>
+        <a class="top-btn" href="<?php echo h($backHref); ?>">← Back</a>
         <h1 class="topbar-title"><?php echo h($courseName); ?></h1>
     </div>
 </header>
@@ -479,7 +479,7 @@ body{margin:0;font-family:Arial,sans-serif;background:linear-gradient(145deg,#ff
     <div class="units-strip">
         <?php foreach ($allUnits as $_unit):
             $_uid = (string) ($_unit['id'] ?? '');
-            $_uname = (string) ($_unit['name'] ?? 'Unidad');
+            $_uname = (string) ($_unit['name'] ?? 'Unit');
             $_href = 'student_course.php?assignment=' . urlencode($assignmentId) . '&unit=' . urlencode($_uid);
         ?>
             <a class="unit-chip <?php echo $_uid === $selectedUnitId ? 'active' : ''; ?>"
@@ -492,16 +492,16 @@ body{margin:0;font-family:Arial,sans-serif;background:linear-gradient(145deg,#ff
 
     <!-- Hero info card -->
     <section class="hero-card">
-        <div class="activity-topline">Actividad del curso</div>
+        <div class="activity-topline">Course activity</div>
         <h1 class="hero-title"><?php echo h($currentTypeLabel); ?></h1>
         <div class="hero-badges">
             <span class="hero-badge"><?php echo h($courseName); ?></span>
-            <?php if ($selectedUnitName !== 'Unidad' && $selectedUnitName !== ''): ?>
+            <?php if ($selectedUnitName !== 'Unit' && $selectedUnitName !== ''): ?>
                 <span class="hero-badge blue"><?php echo h($selectedUnitName); ?></span>
             <?php endif; ?>
-            <span class="hero-badge">Docente: <?php echo h($teacherName); ?></span>
+            <span class="hero-badge">Teacher: <?php echo h($teacherName); ?></span>
             <?php if ($completionPercent > 0): ?>
-                <span class="hero-badge">Puntaje: <?php echo $completionPercent; ?>%</span>
+                <span class="hero-badge">Score: <?php echo $completionPercent; ?>%</span>
             <?php endif; ?>
             <span class="hero-badge"><?php echo h($programLabel); ?></span>
         </div>
@@ -512,21 +512,21 @@ body{margin:0;font-family:Arial,sans-serif;background:linear-gradient(145deg,#ff
     <section class="empty-shell">
         <div class="empty-state">
             <div class="empty-icon">🏁</div>
-            <div class="empty-title">¡Unidad completada!</div>
+            <div class="empty-title">Unit completed!</div>
             <div class="empty-text">
-                Terminaste todas las actividades de esta unidad.
+                You completed all activities in this unit.
                 <?php if ($hasUnitResult): ?>
-                    Tu puntaje es <strong><?php echo $completionPercent; ?>%</strong>
-                    (errores: <?php echo $quizErrors; ?>/<?php echo $quizTotal; ?>).
+                    Your score is <strong><?php echo $completionPercent; ?>%</strong>
+                    (errors: <?php echo $quizErrors; ?>/<?php echo $quizTotal; ?>).
                 <?php else: ?>
-                    Completa el quiz para registrar tu resultado.
+                    Complete the quiz to save your result.
                 <?php endif; ?>
             </div>
             <div style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center">
-                <a class="empty-btn blue" href="<?php echo h($backHref); ?>">← Mis cursos</a>
+                <a class="empty-btn blue" href="<?php echo h($backHref); ?>">← My courses</a>
                 <a class="empty-btn"
                    href="student_course.php?assignment=<?php echo urlencode($assignmentId); ?>&unit=<?php echo urlencode($selectedUnitId); ?>&step=0">
-                   Repetir unidad
+                   Repeat unit
                 </a>
             </div>
         </div>
@@ -537,9 +537,9 @@ body{margin:0;font-family:Arial,sans-serif;background:linear-gradient(145deg,#ff
     <section class="empty-shell">
         <div class="empty-state">
             <div class="empty-icon">📭</div>
-            <div class="empty-title">Sin actividades disponibles</div>
-            <div class="empty-text">Esta unidad aún no tiene actividades o el tipo de actividad no cuenta con visor configurado.</div>
-            <a class="empty-btn blue" href="<?php echo h($backHref); ?>">← Mis cursos</a>
+            <div class="empty-title">No activities available</div>
+            <div class="empty-text">This unit has no activities yet, or this activity type does not have a configured viewer.</div>
+            <a class="empty-btn blue" href="<?php echo h($backHref); ?>">← My courses</a>
         </div>
     </section>
 
@@ -547,29 +547,29 @@ body{margin:0;font-family:Arial,sans-serif;background:linear-gradient(145deg,#ff
     <!-- ACTIVITY VIEWER -->
     <section class="viewer-shell">
         <div class="viewer-top">
-            <h2 class="section-title">Presentación de actividades</h2>
-            <span class="act-badge">Actividad <?php echo ($step + 1); ?> / <?php echo $total; ?></span>
+            <h2 class="section-title">Activity presentation</h2>
+            <span class="act-badge">Activity <?php echo ($step + 1); ?> / <?php echo $total; ?></span>
         </div>
 
         <div class="frame-wrap">
             <iframe
                 id="activityViewer"
                 src="<?php echo h($viewerHref); ?>"
-                title="Visor de actividad"
+                title="Activity viewer"
             ></iframe>
         </div>
 
         <div class="controls">
             <a class="ctrl-btn blue <?php echo $hasPrev ? '' : 'disabled'; ?>"
                href="student_course.php?assignment=<?php echo urlencode($assignmentId); ?>&unit=<?php echo urlencode($selectedUnitId); ?>&step=<?php echo $hasPrev ? $prevStep : $step; ?>">
-                &larr; Anterior
+                &larr; Previous
             </a>
             <div class="step-counter">
                 <strong><?php echo ($step + 1); ?></strong> / <?php echo $total; ?>
             </div>
             <a class="ctrl-btn <?php echo ($hasNext || $isLastActivity) ? '' : 'disabled'; ?>"
                href="student_course.php?assignment=<?php echo urlencode($assignmentId); ?>&unit=<?php echo urlencode($selectedUnitId); ?>&step=<?php echo $isLastActivity ? $completedStep : ($hasNext ? $nextStep : $step); ?>">
-                <?php echo $isLastActivity ? 'Finalizar unidad' : 'Siguiente &rarr;'; ?>
+                <?php echo $isLastActivity ? 'Finish unit' : 'Next &rarr;'; ?>
             </a>
         </div>
     </section>
