@@ -2,6 +2,10 @@
 session_start();
 
 if (!isset($_SESSION['academic_logged']) || $_SESSION['academic_logged'] !== true) {
+    if (isset($_SESSION['admin_logged']) && $_SESSION['admin_logged'] === true) {
+        header('Location: student_scores_admin.php');
+        exit;
+    }
     header('Location: login.php');
     exit;
 }

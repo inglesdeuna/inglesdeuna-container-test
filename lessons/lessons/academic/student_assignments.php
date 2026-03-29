@@ -1233,6 +1233,7 @@ if ($selectedProgram === 'technical' && $editRecord) {
         /* Buttons */
         .btn{display:inline-flex;align-items:center;gap:6px;height:38px;padding:0 14px;border-radius:10px;border:none;font-weight:700;font-size:13px;cursor:pointer;text-decoration:none;white-space:nowrap}
         .btn-back{background:linear-gradient(180deg,#7b8b7f,#66756a);color:#fff}.btn-back:hover{background:linear-gradient(180deg,#6b7f75,#556a5e);color:#fff}
+        .btn-scores{background:linear-gradient(180deg,#3caf58,#2f9e44);color:#fff}.btn-scores:hover{background:linear-gradient(180deg,#319a4a,#257f37);color:#fff}
         .btn-cancel-edit{background:#f3f4f6;color:var(--muted)}.btn-cancel-edit:hover{background:#e5e7eb}
         /* Notices */
         .notice{border-radius:12px;padding:12px 16px;margin-bottom:16px;font-size:14px;font-weight:600}
@@ -1304,6 +1305,7 @@ if ($selectedProgram === 'technical' && $editRecord) {
 <main class="page">
     <div class="page-header">
         <button class="btn btn-back" onclick="location.href='../admin/dashboard.php'">← Volver</button>
+        <button class="btn btn-scores" onclick="location.href='student_scores_admin.php'">📊 Ver scores</button>
         <h1 class="page-title">Asignaciones de estudiantes</h1>
     </div>
 
