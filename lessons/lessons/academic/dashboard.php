@@ -1017,8 +1017,7 @@ body{ margin:0; font-family:'Nunito','Segoe UI',sans-serif; background:var(--bg)
                     <button type="submit" class="upload-btn">Guardar foto</button>
                 </form>
 
-                <a class="side-button green" href="teacher_groups.php">Lista de Estudiantes</a>
-                <a class="side-button gray" href="teacher_groups.php">Progreso del Estudiante</a>
+                <a class="side-button green" href="teacher_students_list.php">Lista de Estudiantes</a>
 
                 <div class="sidebar-section-title">Mis cursos</div>
                 <div class="sidebar-course-list">
