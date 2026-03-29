@@ -24,7 +24,7 @@ if (!is_array($data)) {
 /*
  * IMPORTANTE:
  * Dejamos todo funcionando igual, solo cambiamos el nombre visible.
- * No renombramos carpetas, rutas, type ni archivos del módulo.
+ * Do not rename folders, routes, type, or module files.
  */
 $title         = 'Downloadable';
 $pdfUrl        = isset($data['pdf_url']) ? (string) $data['pdf_url'] : '';

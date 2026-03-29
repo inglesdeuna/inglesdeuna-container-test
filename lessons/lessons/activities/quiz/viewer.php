@@ -144,7 +144,7 @@ ob_start();
   <?php } ?>
 
   <?php if (empty($questions)) { ?>
-    <div class="qz-empty">Este quiz aún no tiene preguntas. Abre el editor para configurarlo.</div>
+    <div class="qz-empty">This quiz does not have questions yet. Open the editor to configure it.</div>
   <?php } else { ?>
     <?php foreach ($questions as $index => $q) { ?>
       <div class="qz-card" data-index="<?php echo (int) $index; ?>">
@@ -161,8 +161,8 @@ ob_start();
     <?php } ?>
 
     <div class="qz-actions">
-      <button type="button" class="qz-btn" id="btnCheckQuiz">Finalizar quiz</button>
-      <button type="button" class="qz-btn secondary" id="btnSaveResult">Guardar resultado y volver</button>
+      <button type="button" class="qz-btn" id="btnCheckQuiz">Finish quiz</button>
+      <button type="button" class="qz-btn secondary" id="btnSaveResult">Save result and return</button>
     </div>
     <div class="qz-result" id="quizResult"></div>
   <?php } ?>
@@ -203,7 +203,7 @@ window.QUIZ_ACTIVITY_ID = <?php echo json_encode((string) ($activity['id'] ?? ''
     lastTotal = total;
 
     result.style.display = 'block';
-    result.textContent = 'Resultado: ' + correct + '/' + total + ' (' + percent + '%)';
+    result.textContent = 'Result: ' + correct + '/' + total + ' (' + percent + '%)';
 
     if (saveBtn) {
       saveBtn.style.display = 'inline-flex';

@@ -413,7 +413,7 @@ a.back{
 const items = <?= json_encode($normalizedItems, JSON_UNESCAPED_UNICODE) ?>;
 const activityTitle = <?= json_encode($title, JSON_UNESCAPED_UNICODE) ?>;
 
-// PRELOAD imágenes del ahorcado para evitar delay
+// Preload hangman images to avoid delay
 const preloadedHangmanImages = [];
 for (let i = 0; i <= 7; i++) {
   const img = new Image();
@@ -560,7 +560,7 @@ function guess(letter){
 
   if (!word.includes(letter)) {
     mistakes++;
-    // ya está preloaded
+    // already preloaded
     hangmanImg.src = `../../hangman/assets/hangman${mistakes}.png`;
     if (mistakes >= maxMistakes) {
       feedback.textContent = "❌ Try Again!";
