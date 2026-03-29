@@ -53,21 +53,27 @@ function load_teacher_students(PDO $pdo, string $teacherId): array
 {
     try {
         $stmt = $pdo->prepare("
-            SELECT DISTINCT
-              s.id,
-              COALESCE(NULLIF(TRIM(s.name), ''), s.id) AS student_name,
+            SELECT
               sa.id AS assignment_id,
+              s.id AS student_id,
+              COALESCE(NULLIF(TRIM(s.name), ''), s.id) AS student_name,
               COALESCE(NULLIF(TRIM(c.name), ''), 'Curso') AS course_name,
               COALESCE(NULLIF(TRIM(sa.program), ''), 'technical') AS program,
-              COUNT(DISTINCT sur.unit_id) AS units_completed,
-              AVG(CAST(sur.completion_percent AS NUMERIC)) AS avg_completion
+              COALESCE((
+                SELECT COUNT(DISTINCT sur.unit_id)
+                FROM student_unit_results sur
+                WHERE sur.assignment_id = sa.id
+              ), 0) AS units_completed,
+              COALESCE((
+                SELECT AVG(CAST(sur.completion_percent AS NUMERIC))
+                FROM student_unit_results sur
+                WHERE sur.assignment_id = sa.id
+              ), 0) AS avg_completion
             FROM student_assignments sa
             LEFT JOIN students s ON s.id = sa.student_id
             LEFT JOIN courses c ON c.id::text = sa.course_id
-            LEFT JOIN student_unit_results sur ON sur.assignment_id = sa.id
             WHERE sa.teacher_id = :teacher_id
-            GROUP BY s.id, s.name, sa.id, c.name, sa.program
-            ORDER BY s.name ASC
+            ORDER BY s.name ASC, sa.id ASC
         ");
         
         $stmt->execute(['teacher_id' => $teacherId]);
