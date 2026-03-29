@@ -49,6 +49,43 @@ function get_pdo_connection(): ?PDO
     return $cachedPdo;
 }
 
+function table_exists(PDO $pdo, string $tableName): bool
+{
+    try {
+        $stmt = $pdo->prepare("\n            SELECT 1\n            FROM information_schema.tables\n            WHERE table_schema = 'public'\n              AND table_name = :table_name\n            LIMIT 1\n        ");
+        $stmt->execute(['table_name' => $tableName]);
+        return (bool) $stmt->fetchColumn();
+    } catch (Throwable $e) {
+        return false;
+    }
+}
+
+function normalize_program_label(string $program): string
+{
+    return strtolower(trim($program)) === 'english' ? 'English' : 'Técnico';
+}
+
+function build_course_key(string $courseId, string $courseName, string $program, string $period): string
+{
+    $normalizedName = strtolower(trim($courseName));
+    $normalizedProgram = strtolower(trim($program));
+    $normalizedPeriod = strtolower(trim($period));
+
+    return ($courseId !== '' ? ('id:' . $courseId) : ('name:' . $normalizedName))
+        . '|program:' . $normalizedProgram
+        . '|period:' . $normalizedPeriod;
+}
+
+function build_course_label(string $courseName, string $program, string $period): string
+{
+    $label = $courseName !== '' ? $courseName : 'Curso';
+    if ($period !== '') {
+        $label .= ' - ' . $period;
+    }
+
+    return $label . ' (' . normalize_program_label($program) . ')';
+}
+
 function load_teacher_courses(PDO $pdo, string $teacherId): array
 {
     try {
@@ -64,6 +101,21 @@ function load_teacher_courses(PDO $pdo, string $teacherId): array
                         ORDER BY c.name ASC, sa.program ASC, sa.period ASC
         ");
         
+        $stmt->execute(['teacher_id' => $teacherId]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    } catch (Throwable $e) {
+        return [];
+    }
+}
+
+function load_assigned_courses_from_dashboard(PDO $pdo, string $teacherId): array
+{
+    if (!table_exists($pdo, 'teacher_assignments')) {
+        return [];
+    }
+
+    try {
+        $stmt = $pdo->prepare("\n            SELECT DISTINCT\n              COALESCE(NULLIF(TRIM(course_id), ''), '') AS course_id,\n              COALESCE(NULLIF(TRIM(course_name), ''), 'Curso') AS course_name,\n              COALESCE(NULLIF(TRIM(program_type), ''), 'technical') AS program,\n              '' AS period\n            FROM teacher_assignments\n            WHERE teacher_id = :teacher_id\n            ORDER BY course_name ASC, program_type ASC\n        ");
         $stmt->execute(['teacher_id' => $teacherId]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
     } catch (Throwable $e) {
@@ -113,11 +165,14 @@ if (!$pdo) {
 }
 
 $allStudents = load_teacher_students($pdo, $teacherId);
+$dashboardCourses = load_assigned_courses_from_dashboard($pdo, $teacherId);
+$studentCourses = load_teacher_courses($pdo, $teacherId);
 
 $filterCourse = trim((string) ($_GET['course'] ?? ''));
 $filteredStudents = $allStudents;
 
 $courseOptions = [];
+$courseHasStudents = [];
 foreach ($allStudents as $row) {
     $courseId = trim((string) ($row['course_id'] ?? ''));
     $courseName = trim((string) ($row['course_name'] ?? ''));
@@ -127,25 +182,18 @@ foreach ($allStudents as $row) {
         $courseName = 'Curso';
     }
 
-    $courseKey = ($courseId !== '' ? ('id:' . $courseId) : ('name:' . strtolower($courseName)))
-        . '|program:' . strtolower($program)
-        . '|period:' . strtolower($period);
-
-    $programLabel = strtolower($program) === 'english' ? 'English' : 'Tecnico';
-    $label = $courseName;
-    if ($period !== '') {
-        $label .= ' - ' . $period;
-    }
-    $label .= ' (' . $programLabel . ')';
+    $courseKey = build_course_key($courseId, $courseName, $program, $period);
+    $label = build_course_label($courseName, $program, $period);
 
     if (!isset($courseOptions[$courseKey])) {
         $courseOptions[$courseKey] = $label;
     }
+
+    $courseHasStudents[$courseKey] = true;
 }
 
-if (empty($courseOptions)) {
-    $courses = load_teacher_courses($pdo, $teacherId);
-    foreach ($courses as $course) {
+foreach ([$studentCourses, $dashboardCourses] as $courseSource) {
+    foreach ($courseSource as $course) {
         $courseId = trim((string) ($course['course_id'] ?? ''));
         $courseName = trim((string) ($course['course_name'] ?? ''));
         $program = trim((string) ($course['program'] ?? 'technical'));
@@ -154,22 +202,20 @@ if (empty($courseOptions)) {
             $courseName = 'Curso';
         }
 
-        $courseKey = ($courseId !== '' ? ('id:' . $courseId) : ('name:' . strtolower($courseName)))
-            . '|program:' . strtolower($program)
-            . '|period:' . strtolower($period);
-
-        $programLabel = strtolower($program) === 'english' ? 'English' : 'Tecnico';
-        $label = $courseName;
-        if ($period !== '') {
-            $label .= ' - ' . $period;
+        $courseKey = build_course_key($courseId, $courseName, $program, $period);
+        if (!isset($courseOptions[$courseKey])) {
+            $courseOptions[$courseKey] = build_course_label($courseName, $program, $period);
+            $courseHasStudents[$courseKey] = false;
         }
-        $label .= ' (' . $programLabel . ')';
-
-        $courseOptions[$courseKey] = $label;
     }
 }
 
 asort($courseOptions);
+
+$selectedCourseLabel = '';
+if ($filterCourse !== '') {
+    $selectedCourseLabel = (string) ($courseOptions[$filterCourse] ?? '');
+}
 
 if ($filterCourse !== '') {
     $filteredStudents = array_filter($allStudents, static function (array $row) use ($filterCourse): bool {
@@ -181,9 +227,7 @@ if ($filterCourse !== '') {
             $courseName = 'Curso';
         }
 
-        $courseKey = ($courseId !== '' ? ('id:' . $courseId) : ('name:' . strtolower($courseName)))
-            . '|program:' . strtolower($program)
-            . '|period:' . strtolower($period);
+        $courseKey = build_course_key($courseId, $courseName, $program, $period);
 
         return $courseKey === $filterCourse;
     });
@@ -407,8 +451,9 @@ if ($filterCourse !== '') {
                     <select name="course" id="course" onchange="this.form.submit()">
                         <option value="">-- Todos los cursos --</option>
                         <?php foreach ($courseOptions as $courseId => $courseName): ?>
+                            <?php $hasStudents = (bool) ($courseHasStudents[$courseId] ?? false); ?>
                             <option value="<?php echo h($courseId); ?>" <?php echo $filterCourse === $courseId ? 'selected' : ''; ?>>
-                                <?php echo h($courseName); ?>
+                                <?php echo h($courseName); ?><?php echo $hasStudents ? '' : ' (sin estudiantes aún)'; ?>
                             </option>
                         <?php endforeach; ?>
                     </select>
@@ -422,7 +467,11 @@ if ($filterCourse !== '') {
         
         <?php if (empty($filteredStudents)): ?>
             <div class="empty">
-                No hay estudiantes en el curso seleccionado.
+                <?php if ($filterCourse !== '' && (($courseHasStudents[$filterCourse] ?? false) === false && $selectedCourseLabel !== '')) { ?>
+                    El curso <strong><?php echo h($selectedCourseLabel); ?></strong> está asignado al docente, pero aún no tiene estudiantes vinculados.
+                <?php } else { ?>
+                    No hay estudiantes en el curso seleccionado.
+                <?php } ?>
             </div>
         <?php else: ?>
             <div class="students-list">
@@ -433,7 +482,7 @@ if ($filterCourse !== '') {
                     $studentName = h((string) ($student['student_name'] ?? 'Estudiante'));
                     $courseName = h((string) ($student['course_name'] ?? 'Curso'));
                     $program = (string) ($student['program'] ?? 'technical');
-                    $programLabel = $program === 'english' ? 'English' : 'Técnico';
+                    $programLabel = normalize_program_label($program);
                     $unitsCompleted = (int) ($student['units_completed'] ?? 0);
                     $avgCompletion = (float) ($student['avg_completion'] ?? 0);
                     $avgCompletionPercent = number_format($avgCompletion, 0);
