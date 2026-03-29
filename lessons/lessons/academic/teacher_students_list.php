@@ -246,35 +246,45 @@ if ($filterCourse !== '') {
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Lista de Estudiantes</title>
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@500;700;800&display=swap');
+
         :root {
-            --bg: #fff8f5;
-            --card: #fff;
-            --line: #ffd9d2;
-            --title: #b04632;
-            --text: #5e352e;
-            --muted: #8a625a;
-            --salmon: #fa8072;
-            --salmon-dark: #e8654e;
-            --green: #4caf50;
-            --green-dark: #45a049;
-            --gray: #9e9e9e;
+            --bg: #eef5ff;
+            --card: #ffffff;
+            --line: #d6e4ff;
+            --text: #16325c;
+            --title: #16325c;
+            --muted: #5f7294;
+            --radius: 12px;
+            --primary: #3b82f6;
+            --primary-dark: #1d4ed8;
+            --primary-light: #eaf2ff;
+            --success: #60a5fa;
+            --success-dark: #2563eb;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --danger-dark: #dc2626;
+            --shadow: 0 1px 3px rgba(0,0,0,.1), 0 1px 2px rgba(0,0,0,.06);
+            --shadow-md: 0 4px 6px rgba(0,0,0,.1), 0 2px 4px rgba(0,0,0,.06);
+            --shadow-lg: 0 10px 15px rgba(0,0,0,.1), 0 4px 6px rgba(0,0,0,.05);
+            --shadow-sm: 0 2px 8px rgba(0,0,0,.06);
         }
-        
+
         * { box-sizing: border-box; }
-        
+
         body {
             margin: 0;
-            font-family: Arial, sans-serif;
+            font-family: 'Nunito', 'Segoe UI', sans-serif;
             background: var(--bg);
             color: var(--text);
             padding: 22px;
         }
-        
+
         .page {
             max-width: 980px;
             margin: 0 auto;
         }
-        
+
         .top {
             display: flex;
             justify-content: space-between;
@@ -283,35 +293,38 @@ if ($filterCourse !== '') {
             flex-wrap: wrap;
             margin-bottom: 14px;
         }
-        
+
         h1 {
             margin: 0;
             color: var(--title);
             font-size: 28px;
+            font-family: 'Fredoka', 'Trebuchet MS', sans-serif;
+            font-weight: 700;
         }
-        
+
         .back {
-            color: var(--salmon-dark);
+            color: var(--primary-dark);
             text-decoration: none;
             font-weight: 700;
         }
-        
+
         .back:hover {
             text-decoration: underline;
         }
-        
+
         .filter-section {
             background: var(--card);
             border: 1px solid var(--line);
-            border-radius: 12px;
+            border-radius: var(--radius);
             padding: 16px;
             margin-bottom: 14px;
             display: flex;
             gap: 10px;
             flex-wrap: wrap;
             align-items: center;
+            box-shadow: var(--shadow-sm);
         }
-        
+
         .filter-group {
             display: flex;
             flex-direction: column;
@@ -319,36 +332,37 @@ if ($filterCourse !== '') {
             flex: 1;
             min-width: 200px;
         }
-        
+
         .filter-group label {
-            font-weight: 700;
+            font-weight: 800;
             font-size: 12px;
             color: var(--title);
             text-transform: uppercase;
+            letter-spacing: 0.05em;
         }
-        
+
         .filter-group select {
             padding: 8px 12px;
             border: 1px solid var(--line);
-            border-radius: 6px;
-            font-family: Arial, sans-serif;
+            border-radius: 8px;
+            font-family: 'Nunito', 'Segoe UI', sans-serif;
             font-size: 14px;
             background: var(--bg);
             color: var(--text);
         }
-        
+
         .filter-group select:focus {
             outline: none;
-            border-color: var(--salmon);
-            box-shadow: 0 0 0 2px rgba(250, 128, 114, 0.1);
+            border-color: var(--primary);
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15);
         }
-        
+
         .filter-buttons {
             display: flex;
             gap: 10px;
             flex-wrap: wrap;
         }
-        
+
         .btn {
             padding: 10px 16px;
             border: none;
@@ -358,84 +372,93 @@ if ($filterCourse !== '') {
             cursor: pointer;
             text-decoration: none;
             display: inline-block;
-            transition: background 0.2s;
+            transition: all 0.2s;
+            font-family: 'Nunito', 'Segoe UI', sans-serif;
         }
-        
+
         .btn-filter {
-            background: var(--salmon);
+            background: linear-gradient(180deg, #60a5fa, #2563eb);
             color: #fff;
+            box-shadow: var(--shadow);
         }
-        
+
         .btn-filter:hover {
-            background: var(--salmon-dark);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
         }
-        
+
         .btn-clear {
-            background: var(--gray);
+            background: var(--muted);
             color: #fff;
+            box-shadow: var(--shadow);
         }
-        
+
         .btn-clear:hover {
-            background: #757575;
+            background: #4a5e7a;
+            transform: translateY(-2px);
         }
-        
+
         .students-list {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
             gap: 14px;
         }
-        
+
         .student-card {
             background: var(--card);
             border: 1px solid var(--line);
-            border-radius: 12px;
+            border-radius: var(--radius);
             padding: 16px;
             text-decoration: none;
             color: inherit;
             transition: all 0.2s;
             cursor: pointer;
+            box-shadow: var(--shadow);
         }
-        
+
         .student-card:hover {
-            box-shadow: 0 4px 12px rgba(176, 70, 50, 0.15);
+            box-shadow: var(--shadow-lg);
             transform: translateY(-2px);
+            border-color: var(--primary);
         }
-        
+
         .student-name {
             font-size: 16px;
-            font-weight: 700;
+            font-weight: 800;
             color: var(--title);
             margin: 0 0 8px 0;
+            font-family: 'Fredoka', 'Trebuchet MS', sans-serif;
         }
-        
+
         .student-info {
             font-size: 13px;
             color: var(--muted);
             margin: 4px 0;
         }
-        
+
         .student-info strong {
             color: var(--text);
         }
-        
+
         .empty {
             background: var(--card);
             border: 1px solid var(--line);
-            border-radius: 12px;
+            border-radius: var(--radius);
             padding: 32px;
             text-align: center;
             color: var(--muted);
+            box-shadow: var(--shadow-sm);
         }
-        
+
         @media (max-width: 768px) {
             .filter-section {
                 flex-direction: column;
             }
-            
+
             .filter-group {
                 min-width: 100%;
             }
-            
+
             .students-list {
                 grid-template-columns: 1fr;
             }
@@ -504,7 +527,7 @@ if ($filterCourse !== '') {
                             <strong>Unidades completadas:</strong> <?php echo $unitsCompleted; ?>
                         </div>
                         <div class="student-info">
-                            <strong>Progreso promedio:</strong> <span style="color: var(--salmon);"><?php echo $avgCompletionPercent; ?>%</span>
+                            <strong>Progreso promedio:</strong> <span style="color: var(--primary-dark); font-weight: 700;"><?php echo $avgCompletionPercent; ?>%</span>
                         </div>
                     </a>
                 <?php endforeach; ?>
