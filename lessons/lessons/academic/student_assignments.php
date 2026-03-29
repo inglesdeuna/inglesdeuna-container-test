@@ -1139,36 +1139,58 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($isValid) {
         $studentAccount = ensure_student_account($studentId, $students, $studentAccounts, $studentAccountsFile);
 
-        $record = [
-            'id' => $editId !== '' ? $editId : uniqid('stu_assign_'),
-            'student_id' => $studentId,
-            'teacher_id' => $teacherId,
-            'program' => $program,
-            'course_id' => $courseId,
-            'level_id' => $levelId,
-            'period' => $program === 'technical' ? $technicalPeriod : $levelId,
-            'unit_id' => $unitId,
-            'student_username' => (string) ($studentAccount['username'] ?? ''),
-            'student_temp_password' => (string) ($studentAccount['temp_password'] ?? ''),
-            'updated_at' => date('Y-m-d H:i:s'),
-        ];
+        // Build list of unit IDs to assign
+        if ($unitId === 'all') {
+            if ($program === 'english') {
+                $allUnitsToAssign = array_filter($englishUnits, function ($u) use ($levelId) {
+                    return (string) ($u['phase_id'] ?? '') === $levelId;
+                });
+            } else {
+                $allUnitsToAssign = array_filter($technicalUnits, function ($u) use ($courseId) {
+                    return (string) ($u['course_id'] ?? $u['level_id'] ?? '') === $courseId;
+                });
+            }
+            $unitIdsToAssign = array_map(fn($u) => (string) ($u['id'] ?? ''), array_values($allUnitsToAssign));
+            $unitIdsToAssign = array_filter($unitIdsToAssign, fn($id) => $id !== '');
+        } else {
+            $unitIdsToAssign = [$unitId];
+        }
 
-        $savedInDb = save_student_assignment_to_database($record);
+        foreach ($unitIdsToAssign as $singleUnitId) {
+            $recordId = $editId !== '' && count($unitIdsToAssign) === 1 ? $editId : uniqid('stu_assign_');
+            $record = [
+                'id' => $recordId,
+                'student_id' => $studentId,
+                'teacher_id' => $teacherId,
+                'program' => $program,
+                'course_id' => $courseId,
+                'level_id' => $levelId,
+                'period' => $program === 'technical' ? $technicalPeriod : $levelId,
+                'unit_id' => $singleUnitId,
+                'student_username' => (string) ($studentAccount['username'] ?? ''),
+                'student_temp_password' => (string) ($studentAccount['temp_password'] ?? ''),
+                'updated_at' => date('Y-m-d H:i:s'),
+            ];
 
-        if (!$savedInDb) {
-            $updated = false;
-            foreach ($studentAssignments as $index => $existing) {
-                if ((string) ($existing['id'] ?? '') === $record['id']) {
-                    $studentAssignments[$index] = array_merge((array) $existing, $record);
-                    $updated = true;
-                    break;
+            $savedInDb = save_student_assignment_to_database($record);
+
+            if (!$savedInDb) {
+                $updated = false;
+                foreach ($studentAssignments as $index => $existing) {
+                    if ((string) ($existing['id'] ?? '') === $record['id']) {
+                        $studentAssignments[$index] = array_merge((array) $existing, $record);
+                        $updated = true;
+                        break;
+                    }
+                }
+
+                if (!$updated) {
+                    $studentAssignments[] = $record;
                 }
             }
+        }
 
-            if (!$updated) {
-                $studentAssignments[] = $record;
-            }
-
+        if (!$savedInDb) {
             save_json_file($studentAssignmentsFile, $studentAssignments);
         }
 
@@ -1305,7 +1327,6 @@ if ($selectedProgram === 'technical' && $editRecord) {
 <main class="page">
     <div class="page-header">
         <button class="btn btn-back" onclick="location.href='../admin/dashboard.php'">← Volver</button>
-        <button class="btn btn-scores" onclick="location.href='student_scores_admin.php'">📊 Ver scores</button>
         <h1 class="page-title">Asignaciones de estudiantes</h1>
     </div>
 
@@ -1573,6 +1594,17 @@ function fillSelect(select, items, selectedValue, placeholder) {
     });
 }
 
+function fillUnitSelect(items, selectedValue) {
+    fillSelect(unitSelect, items, selectedValue, 'Seleccionar unidad...');
+    if (items.length > 0) {
+        const allOpt = document.createElement('option');
+        allOpt.value = 'all';
+        allOpt.textContent = '— Todas las unidades —';
+        if (String(selectedValue) === 'all') allOpt.selected = true;
+        unitSelect.insertBefore(allOpt, unitSelect.options[1]);
+    }
+}
+
 function setEnglishMode() {
     courseLabel.textContent = 'Nivel';
     phaseField.style.display = '';
@@ -1609,7 +1641,7 @@ function refreshForm(initial = false) {
         const unitsForPhase = englishUnits.filter(item => String(item.phase_id ?? '') === String(phaseId));
 
         const currentUnit = initial ? selectedUnit : (unitSelect.value || '');
-        fillSelect(unitSelect, unitsForPhase, currentUnit, 'Seleccionar unidad...');
+        fillUnitSelect(unitsForPhase, currentUnit);
     } else {
         setTechnicalMode();
 
@@ -1627,7 +1659,7 @@ function refreshForm(initial = false) {
         );
 
         const currentUnit = initial ? selectedUnit : (unitSelect.value || '');
-        fillSelect(unitSelect, unitsForSemester, currentUnit, 'Seleccionar unidad...');
+        fillUnitSelect(unitsForSemester, currentUnit);
     }
 }
 
