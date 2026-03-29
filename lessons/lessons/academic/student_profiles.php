@@ -6,6 +6,117 @@ if (!isset($_SESSION['admin_logged']) || $_SESSION['admin_logged'] !== true) {
     exit;
 }
 
+function get_pdo_connection(): ?PDO
+{
+    if (!getenv('DATABASE_URL')) {
+        return null;
+    }
+
+    $dbFile = __DIR__ . '/../config/db.php';
+    if (!file_exists($dbFile)) {
+        return null;
+    }
+
+    try {
+        require $dbFile;
+        return (isset($pdo) && $pdo instanceof PDO) ? $pdo : null;
+    } catch (Throwable $e) {
+        return null;
+    }
+}
+
+function table_has_column(PDO $pdo, string $tableName, string $columnName): bool
+{
+    try {
+        $stmt = $pdo->prepare("\n            SELECT 1\n            FROM information_schema.columns\n            WHERE table_schema = 'public'\n              AND table_name = :table_name\n              AND column_name = :column_name\n            LIMIT 1\n        ");
+        $stmt->execute([
+            'table_name' => $tableName,
+            'column_name' => $columnName,
+        ]);
+        return (bool) $stmt->fetchColumn();
+    } catch (Throwable $e) {
+        return false;
+    }
+}
+
+function save_student_profile_to_database(string $studentId, string $studentName, string $username, string $password): bool
+{
+    $pdo = get_pdo_connection();
+    if (!$pdo) {
+        return false;
+    }
+
+    if (!table_has_column($pdo, 'student_accounts', 'student_id')) {
+        return false;
+    }
+
+    $columns = ['student_id', 'student_name', 'username'];
+    $values = [':student_id', ':student_name', ':username'];
+    $updates = [
+        'student_name = EXCLUDED.student_name',
+        'username = EXCLUDED.username',
+    ];
+
+    if (table_has_column($pdo, 'student_accounts', 'id')) {
+        $columns[] = 'id';
+        $values[] = ':id';
+    }
+
+    if (table_has_column($pdo, 'student_accounts', 'password_hash')) {
+        $columns[] = 'password_hash';
+        $values[] = ':password_hash';
+        $updates[] = 'password_hash = EXCLUDED.password_hash';
+    }
+
+    if (table_has_column($pdo, 'student_accounts', 'temp_password')) {
+        $columns[] = 'temp_password';
+        $values[] = ':temp_password';
+        $updates[] = 'temp_password = EXCLUDED.temp_password';
+    }
+
+    if (table_has_column($pdo, 'student_accounts', 'must_change_password')) {
+        $columns[] = 'must_change_password';
+        $values[] = ':must_change_password';
+        $updates[] = 'must_change_password = EXCLUDED.must_change_password';
+    }
+
+    if (table_has_column($pdo, 'student_accounts', 'permission')) {
+        $columns[] = 'permission';
+        $values[] = ':permission';
+    }
+
+    if (table_has_column($pdo, 'student_accounts', 'created_at')) {
+        $columns[] = 'created_at';
+        $values[] = 'NOW()';
+    }
+
+    if (table_has_column($pdo, 'student_accounts', 'updated_at')) {
+        $columns[] = 'updated_at';
+        $values[] = 'NOW()';
+        $updates[] = 'updated_at = NOW()';
+    }
+
+    $sql = "INSERT INTO student_accounts (" . implode(', ', $columns) . ")\n            VALUES (" . implode(', ', $values) . ")\n            ON CONFLICT (student_id) DO UPDATE SET\n                " . implode(",\n                ", $updates);
+
+    $params = [
+        'student_id' => $studentId,
+        'student_name' => $studentName,
+        'username' => $username,
+        'id' => uniqid('stu_acc_'),
+        'password_hash' => password_hash($password, PASSWORD_DEFAULT),
+        'temp_password' => $password,
+        'must_change_password' => true,
+        'permission' => 'viewer',
+    ];
+
+    try {
+        $stmt = $pdo->prepare($sql);
+        return $stmt->execute($params);
+    } catch (Throwable $e) {
+        return false;
+    }
+}
+
 $dataDir = __DIR__ . '/data';
 $studentsFile = $dataDir . '/students.json';
 $accountsFile = $dataDir . '/student_accounts.json';
@@ -41,9 +152,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $foundIndex = null;
         foreach ($accounts as $index => $account) {
-            if ((string) ($account['username'] ?? '') === $username) {
+            if ((string) ($account['student_id'] ?? '') === $studentId) {
                 $foundIndex = $index;
                 break;
+            }
+        }
+
+        if ($foundIndex === null) {
+            foreach ($accounts as $index => $account) {
+                if ((string) ($account['username'] ?? '') === $username) {
+                    $foundIndex = $index;
+                    break;
+                }
             }
         }
 
@@ -62,6 +182,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         file_put_contents($accountsFile, json_encode(array_values($accounts), JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+        save_student_profile_to_database($studentId, $studentName, $username, $password);
         header('Location: student_profiles.php?saved=1');
         exit;
     }
