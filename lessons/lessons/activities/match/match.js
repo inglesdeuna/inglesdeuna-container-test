@@ -35,6 +35,7 @@ document.addEventListener("DOMContentLoaded", () => {
   let firstTryCorrect = 0;
   let currentDraggedCard = null;
   const firstAttemptByTarget = new Set();
+  let scorePersisted = false;
 
   function escapeHtml(value) {
     return String(value || "")
@@ -158,6 +159,25 @@ document.addEventListener("DOMContentLoaded", () => {
     );
   }
 
+  function persistScoreSilently(saveUrl) {
+    if (!saveUrl || scorePersisted) {
+      return;
+    }
+
+    scorePersisted = true;
+    try {
+      fetch(saveUrl, {
+        method: "GET",
+        credentials: "same-origin",
+        cache: "no-store",
+      }).catch(() => {
+        scorePersisted = false;
+      });
+    } catch (e) {
+      scorePersisted = false;
+    }
+  }
+
   function showCompleted() {
     if (document.getElementById("matchCompletedOverlay")) {
       return;
@@ -166,8 +186,11 @@ document.addEventListener("DOMContentLoaded", () => {
     const total = normalizedData.length;
     const correct = Math.max(0, Math.min(total, firstTryCorrect));
     const errors = Math.max(0, total - correct);
+    const secondTry = errors;
     const percent = total > 0 ? Math.round((correct / total) * 100) : 0;
     const saveUrl = buildReturnUrl();
+
+    persistScoreSilently(saveUrl);
 
     const overlay = document.createElement("div");
     overlay.id = "matchCompletedOverlay";
@@ -176,10 +199,10 @@ document.addEventListener("DOMContentLoaded", () => {
         <div class="match-completed-emoji">🏆</div>
         <div class="match-completed-title">Completed!</div>
         <div class="match-completed-score">Score: <strong>${correct} / ${total}</strong> (${percent}%)</div>
-        <div class="match-completed-subtitle">Correct first attempts: ${correct} of ${total}. Mistakes: ${errors}.</div>
+        <div class="match-completed-subtitle">First attempt: ${correct}/${total}. Second attempt: ${secondTry}/${total}.</div>
         <div class="match-completed-actions">
           <button type="button" class="match-completed-btn secondary" id="matchRestartBtn">Play again</button>
-          ${saveUrl !== "" ? '<button type="button" class="match-completed-btn" id="matchSaveBtn">Save score and return</button>' : ""}
+          ${returnTo !== "" ? '<button type="button" class="match-completed-btn" id="matchReturnBtn">Return</button>' : ""}
         </div>
       </div>
     `;
@@ -192,10 +215,10 @@ document.addEventListener("DOMContentLoaded", () => {
       });
     }
 
-    const saveBtn = document.getElementById("matchSaveBtn");
-    if (saveBtn && saveUrl !== "") {
-      saveBtn.addEventListener("click", () => {
-        window.location.href = saveUrl;
+    const returnBtn = document.getElementById("matchReturnBtn");
+    if (returnBtn) {
+      returnBtn.addEventListener("click", () => {
+        window.location.href = saveUrl || returnTo;
       });
     }
 

@@ -530,6 +530,13 @@ function build_lowest_scored_activities(array $activities, array $scoresByActivi
     }
 
     $score = max(0, min(100, $score));
+    $totalQuestions = max(0, (int) ($scoresByActivityId[$activityId]['total'] ?? 0));
+    $errorsCount = max(0, (int) ($scoresByActivityId[$activityId]['errors'] ?? 0));
+    if ($totalQuestions > 0 && $errorsCount > $totalQuestions) {
+      $errorsCount = $totalQuestions;
+    }
+    $firstAttemptCount = $totalQuestions > 0 ? max(0, $totalQuestions - $errorsCount) : 0;
+    $secondAttemptCount = $totalQuestions > 0 ? $errorsCount : 0;
     $type = strtolower(trim((string) ($activity['type'] ?? 'activity')));
     $label = $activityTypeLabels[$type] ?? ucwords(str_replace('_', ' ', $type));
 
@@ -537,6 +544,9 @@ function build_lowest_scored_activities(array $activities, array $scoresByActivi
       'activity_id' => $activityId,
       'type_label' => $label,
       'percent' => $score,
+      'first_attempt' => $firstAttemptCount,
+      'second_attempt' => $secondAttemptCount,
+      'attempt_total' => $totalQuestions,
       'step' => (int) $index,
       'practice_href' => 'teacher_course.php?assignment=' . urlencode($assignmentId) . '&unit=' . urlencode($unitId) . '&step=' . urlencode((string) $index),
     ];
@@ -1330,6 +1340,10 @@ body{font-family:Arial,sans-serif;background:var(--bg);color:var(--text);overflo
                   <div class="low-score-meta">
                     <span class="low-score-pill"><?php echo h((string) ($lowItem['type_label'] ?? 'Activity')); ?></span>
                     <span class="low-score-pill">Score: <?php echo (int) ($lowItem['percent'] ?? 0); ?>%</span>
+                    <?php if ((int) ($lowItem['attempt_total'] ?? 0) > 0) { ?>
+                      <span class="low-score-pill">First attempt: <?php echo (int) ($lowItem['first_attempt'] ?? 0); ?>/<?php echo (int) ($lowItem['attempt_total'] ?? 0); ?></span>
+                      <span class="low-score-pill">Second attempt: <?php echo (int) ($lowItem['second_attempt'] ?? 0); ?>/<?php echo (int) ($lowItem['attempt_total'] ?? 0); ?></span>
+                    <?php } ?>
                   </div>
                   <a class="low-practice-btn" href="<?php echo h((string) ($lowItem['practice_href'] ?? '#')); ?>">Practice again</a>
                 </div>
