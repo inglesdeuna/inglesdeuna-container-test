@@ -90,17 +90,25 @@ function load_teacher_courses(PDO $pdo, string $teacherId): array
 {
     try {
         $stmt = $pdo->prepare("
-                        SELECT DISTINCT
-              sa.course_id,
-                            COALESCE(NULLIF(TRIM(c.name), ''), 'Curso') AS course_name,
-                            COALESCE(NULLIF(TRIM(sa.program), ''), 'technical') AS program,
-                            COALESCE(NULLIF(TRIM(sa.period), ''), '') AS period
+            SELECT DISTINCT
+              CASE WHEN sa.program = 'english'
+                   THEN COALESCE(NULLIF(TRIM(sa.level_id::text), ''), sa.course_id::text)
+                   ELSE sa.course_id::text
+              END AS course_id,
+              CASE WHEN sa.program = 'english'
+                   THEN COALESCE(NULLIF(TRIM(ep.name), ''), 'Fase ingles')
+                   ELSE COALESCE(NULLIF(TRIM(c.name), ''), 'Curso')
+              END AS course_name,
+              COALESCE(NULLIF(TRIM(sa.program), ''), 'technical') AS program,
+              CASE WHEN sa.program = 'english' THEN ''
+                   ELSE COALESCE(NULLIF(TRIM(sa.period), ''), '')
+              END AS period
             FROM student_assignments sa
-            LEFT JOIN courses c ON c.id::text = sa.course_id
+            LEFT JOIN courses c ON (sa.program <> 'english' AND c.id::text = sa.course_id::text)
+            LEFT JOIN english_phases ep ON (sa.program = 'english' AND ep.id::text = sa.level_id::text)
             WHERE sa.teacher_id = :teacher_id
-                        ORDER BY c.name ASC, sa.program ASC, sa.period ASC
+            ORDER BY course_name ASC, sa.program ASC
         ");
-        
         $stmt->execute(['teacher_id' => $teacherId]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
     } catch (Throwable $e) {
@@ -130,38 +138,46 @@ function load_assigned_courses_from_dashboard(PDO $pdo, string $teacherId): arra
 
 function load_teacher_students(PDO $pdo, string $teacherId): array
 {
-    try {
-        $stmt = $pdo->prepare("
-            SELECT
-              sa.id AS assignment_id,
-              s.id AS student_id,
-              COALESCE(NULLIF(TRIM(s.name), ''), s.id) AS student_name,
-              sa.course_id,
-              COALESCE(NULLIF(TRIM(c.name), ''), 'Curso') AS course_name,
-              COALESCE(NULLIF(TRIM(sa.program), ''), 'technical') AS program,
-                            COALESCE(NULLIF(TRIM(sa.period), ''), '') AS period,
-              COALESCE((
-                SELECT COUNT(DISTINCT sur.unit_id)
-                FROM student_unit_results sur
-                WHERE sur.assignment_id = sa.id
-              ), 0) AS units_completed,
-              COALESCE((
-                SELECT AVG(CAST(sur.completion_percent AS NUMERIC))
-                FROM student_unit_results sur
-                WHERE sur.assignment_id = sa.id
-              ), 0) AS avg_completion
-            FROM student_assignments sa
-            LEFT JOIN students s ON s.id = sa.student_id
-            LEFT JOIN courses c ON c.id::text = sa.course_id
-            WHERE sa.teacher_id = :teacher_id
-            ORDER BY s.name ASC, sa.id ASC
-        ");
-        
-        $stmt->execute(['teacher_id' => $teacherId]);
-        return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
-    } catch (Throwable $e) {
-        return [];
-    }
+        try {
+                $stmt = $pdo->prepare("
+                        SELECT
+                            sa.id AS assignment_id,
+                            s.id AS student_id,
+                            COALESCE(NULLIF(TRIM(s.name), ''), sa.student_id::text) AS student_name,
+                            CASE WHEN sa.program = 'english'
+                                     THEN COALESCE(NULLIF(TRIM(sa.level_id::text), ''), sa.course_id::text)
+                                     ELSE sa.course_id::text
+                            END AS course_id,
+                            CASE WHEN sa.program = 'english'
+                                     THEN COALESCE(NULLIF(TRIM(ep.name), ''), 'Fase ingles')
+                                     ELSE COALESCE(NULLIF(TRIM(c.name), ''), 'Curso')
+                            END AS course_name,
+                            COALESCE(NULLIF(TRIM(sa.program), ''), 'technical') AS program,
+                            CASE WHEN sa.program = 'english' THEN ''
+                                     ELSE COALESCE(NULLIF(TRIM(sa.period), ''), '')
+                            END AS period,
+                            COALESCE((
+                                SELECT COUNT(DISTINCT sur.unit_id)
+                                FROM student_unit_results sur
+                                WHERE sur.assignment_id = sa.id
+                            ), 0) AS units_completed,
+                            COALESCE((
+                                SELECT AVG(CAST(sur.completion_percent AS NUMERIC))
+                                FROM student_unit_results sur
+                                WHERE sur.assignment_id = sa.id
+                            ), 0) AS avg_completion
+                        FROM student_assignments sa
+                        LEFT JOIN students s ON s.id = sa.student_id
+                        LEFT JOIN courses c ON (sa.program <> 'english' AND c.id::text = sa.course_id::text)
+                        LEFT JOIN english_phases ep ON (sa.program = 'english' AND ep.id::text = sa.level_id::text)
+                        WHERE sa.teacher_id = :teacher_id
+                        ORDER BY s.name ASC, sa.id ASC
+                ");
+                $stmt->execute(['teacher_id' => $teacherId]);
+                return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        } catch (Throwable $e) {
+                return [];
+        }
 }
 
 $pdo = get_pdo_connection();
