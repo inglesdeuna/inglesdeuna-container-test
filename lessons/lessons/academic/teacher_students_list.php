@@ -184,12 +184,43 @@ function load_teacher_students(PDO $pdo, string $teacherId): array
         }
 }
 
+function load_latest_student_usernames(PDO $pdo): array
+{
+    try {
+        $stmt = $pdo->query("\n            SELECT student_id::text AS student_id, username, updated_at, id\n            FROM student_accounts\n            WHERE NULLIF(TRIM(username), '') IS NOT NULL\n            ORDER BY student_id::text ASC, updated_at DESC NULLS LAST, id DESC\n        ");
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    } catch (Throwable $e) {
+        return [];
+    }
+
+    $byStudent = [];
+    foreach ($rows as $row) {
+        $studentId = trim((string) ($row['student_id'] ?? ''));
+        $username = trim((string) ($row['username'] ?? ''));
+        if ($studentId === '' || $username === '' || isset($byStudent[$studentId])) {
+            continue;
+        }
+        $byStudent[$studentId] = $username;
+    }
+
+    return $byStudent;
+}
+
 $pdo = get_pdo_connection();
 if (!$pdo) {
     die('Database is not available.');
 }
 
 $allStudents = load_teacher_students($pdo, $teacherId);
+$studentUsernames = load_latest_student_usernames($pdo);
+if (!empty($studentUsernames)) {
+    foreach ($allStudents as $idx => $row) {
+        $sid = trim((string) ($row['student_id'] ?? ''));
+        if ($sid !== '' && isset($studentUsernames[$sid])) {
+            $allStudents[$idx]['student_name'] = $studentUsernames[$sid];
+        }
+    }
+}
 $dashboardCourses = load_assigned_courses_from_dashboard($pdo, $teacherId);
 $studentCourses = load_teacher_courses($pdo, $teacherId);
 
