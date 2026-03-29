@@ -176,6 +176,24 @@ window.QUIZ_ACTIVITY_ID = <?php echo json_encode((string) ($activity['id'] ?? ''
   const btn = document.getElementById('btnCheckQuiz');
   const saveBtn = document.getElementById('btnSaveResult');
   const result = document.getElementById('quizResult');
+
+  function navigateToReturn(targetUrl) {
+    if (!targetUrl) {
+      return;
+    }
+
+    try {
+      if (window.top && window.top !== window.self) {
+        window.top.location.href = targetUrl;
+        return;
+      }
+    } catch (e) {
+      // Fallback to current window navigation.
+    }
+
+    window.location.href = targetUrl;
+  }
+
   if (!btn || !result || !Array.isArray(window.QUIZ_DATA) || window.QUIZ_DATA.length === 0) {
     return;
   }
@@ -224,7 +242,7 @@ window.QUIZ_ACTIVITY_ID = <?php echo json_encode((string) ($activity['id'] ?? ''
         + '&quiz_total=' + encodeURIComponent(String(lastTotal))
         + '&quiz_activity_id=' + encodeURIComponent(String(window.QUIZ_ACTIVITY_ID || ''));
 
-      window.location.href = target;
+      navigateToReturn(target);
     });
   }
 })();
