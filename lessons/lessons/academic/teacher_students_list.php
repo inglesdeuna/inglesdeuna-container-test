@@ -53,13 +53,15 @@ function load_teacher_courses(PDO $pdo, string $teacherId): array
 {
     try {
         $stmt = $pdo->prepare("
-            SELECT DISTINCT
+                        SELECT DISTINCT
               sa.course_id,
-              COALESCE(NULLIF(TRIM(c.name), ''), 'Curso') AS course_name
+                            COALESCE(NULLIF(TRIM(c.name), ''), 'Curso') AS course_name,
+                            COALESCE(NULLIF(TRIM(sa.program), ''), 'technical') AS program,
+                            COALESCE(NULLIF(TRIM(sa.period), ''), '') AS period
             FROM student_assignments sa
             LEFT JOIN courses c ON c.id::text = sa.course_id
             WHERE sa.teacher_id = :teacher_id
-            ORDER BY c.name ASC
+                        ORDER BY c.name ASC, sa.program ASC, sa.period ASC
         ");
         
         $stmt->execute(['teacher_id' => $teacherId]);
@@ -80,6 +82,7 @@ function load_teacher_students(PDO $pdo, string $teacherId): array
               sa.course_id,
               COALESCE(NULLIF(TRIM(c.name), ''), 'Curso') AS course_name,
               COALESCE(NULLIF(TRIM(sa.program), ''), 'technical') AS program,
+                            COALESCE(NULLIF(TRIM(sa.period), ''), '') AS period,
               COALESCE((
                 SELECT COUNT(DISTINCT sur.unit_id)
                 FROM student_unit_results sur
@@ -118,13 +121,25 @@ $courseOptions = [];
 foreach ($allStudents as $row) {
     $courseId = trim((string) ($row['course_id'] ?? ''));
     $courseName = trim((string) ($row['course_name'] ?? ''));
+    $program = trim((string) ($row['program'] ?? 'technical'));
+    $period = trim((string) ($row['period'] ?? ''));
     if ($courseName === '') {
         $courseName = 'Curso';
     }
 
-    $courseKey = $courseId !== '' ? ('id:' . $courseId) : ('name:' . strtolower($courseName));
+    $courseKey = ($courseId !== '' ? ('id:' . $courseId) : ('name:' . strtolower($courseName)))
+        . '|program:' . strtolower($program)
+        . '|period:' . strtolower($period);
+
+    $programLabel = strtolower($program) === 'english' ? 'English' : 'Tecnico';
+    $label = $courseName;
+    if ($period !== '') {
+        $label .= ' - ' . $period;
+    }
+    $label .= ' (' . $programLabel . ')';
+
     if (!isset($courseOptions[$courseKey])) {
-        $courseOptions[$courseKey] = $courseName;
+        $courseOptions[$courseKey] = $label;
     }
 }
 
@@ -133,12 +148,24 @@ if (empty($courseOptions)) {
     foreach ($courses as $course) {
         $courseId = trim((string) ($course['course_id'] ?? ''));
         $courseName = trim((string) ($course['course_name'] ?? ''));
+        $program = trim((string) ($course['program'] ?? 'technical'));
+        $period = trim((string) ($course['period'] ?? ''));
         if ($courseName === '') {
             $courseName = 'Curso';
         }
-        if ($courseId !== '') {
-            $courseOptions['id:' . $courseId] = $courseName;
+
+        $courseKey = ($courseId !== '' ? ('id:' . $courseId) : ('name:' . strtolower($courseName)))
+            . '|program:' . strtolower($program)
+            . '|period:' . strtolower($period);
+
+        $programLabel = strtolower($program) === 'english' ? 'English' : 'Tecnico';
+        $label = $courseName;
+        if ($period !== '') {
+            $label .= ' - ' . $period;
         }
+        $label .= ' (' . $programLabel . ')';
+
+        $courseOptions[$courseKey] = $label;
     }
 }
 
@@ -148,11 +175,16 @@ if ($filterCourse !== '') {
     $filteredStudents = array_filter($allStudents, static function (array $row) use ($filterCourse): bool {
         $courseId = trim((string) ($row['course_id'] ?? ''));
         $courseName = trim((string) ($row['course_name'] ?? ''));
+        $program = trim((string) ($row['program'] ?? 'technical'));
+        $period = trim((string) ($row['period'] ?? ''));
         if ($courseName === '') {
             $courseName = 'Curso';
         }
 
-        $courseKey = $courseId !== '' ? ('id:' . $courseId) : ('name:' . strtolower($courseName));
+        $courseKey = ($courseId !== '' ? ('id:' . $courseId) : ('name:' . strtolower($courseName)))
+            . '|program:' . strtolower($program)
+            . '|period:' . strtolower($period);
+
         return $courseKey === $filterCourse;
     });
     $filteredStudents = array_values($filteredStudents);
