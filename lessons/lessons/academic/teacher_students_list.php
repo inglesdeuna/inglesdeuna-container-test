@@ -142,8 +142,9 @@ function load_teacher_students(PDO $pdo, string $teacherId): array
                 $stmt = $pdo->prepare("
                         SELECT
                             sa.id AS assignment_id,
-                            s.id AS student_id,
+                            sa.student_id::text AS student_id,
                             COALESCE(
+                                NULLIF(TRIM(acc.username), ''),
                                 NULLIF(TRIM(sa.student_username), ''),
                                 NULLIF(TRIM(s.name), ''),
                                 sa.student_id::text
@@ -171,7 +172,15 @@ function load_teacher_students(PDO $pdo, string $teacherId): array
                                 WHERE sur.assignment_id = sa.id
                             ), 0) AS avg_completion
                         FROM student_assignments sa
-                        LEFT JOIN students s ON s.id = sa.student_id
+                                                LEFT JOIN students s ON s.id::text = sa.student_id::text
+                                                LEFT JOIN LATERAL (
+                                                        SELECT sa2.username
+                                                        FROM student_accounts sa2
+                                                        WHERE sa2.student_id::text = sa.student_id::text
+                                                            AND NULLIF(TRIM(sa2.username), '') IS NOT NULL
+                                                        ORDER BY sa2.updated_at DESC NULLS LAST, sa2.id DESC
+                                                        LIMIT 1
+                                                ) acc ON TRUE
                         LEFT JOIN courses c ON (sa.program <> 'english' AND c.id::text = sa.course_id::text)
                         LEFT JOIN english_phases ep ON (sa.program = 'english' AND ep.id::text = sa.level_id::text)
                         WHERE sa.teacher_id = :teacher_id
