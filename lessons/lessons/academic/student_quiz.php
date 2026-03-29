@@ -71,7 +71,7 @@ function load_assignment(PDO $pdo, string $assignmentId): ?array
 function load_unit_scores(PDO $pdo, string $studentId, string $assignmentId): array
 {
     try {
-        $stmt = $pdo->prepare("\n            SELECT sur.unit_id, sur.completion_percent, sur.quiz_errors, sur.quiz_total, u.name AS unit_name\n            FROM student_unit_results sur\n            LEFT JOIN units u ON u.id = sur.unit_id\n            WHERE sur.student_id = :student_id\n              AND sur.assignment_id = :assignment_id\n            ORDER BY u.name ASC NULLS LAST, sur.unit_id ASC\n        ");
+    $stmt = $pdo->prepare("\n            SELECT sur.unit_id, sur.completion_percent, sur.quiz_errors, sur.quiz_total, u.name AS unit_name\n            FROM student_unit_results sur\n            LEFT JOIN units u ON u.id::text = sur.unit_id\n            WHERE sur.student_id = :student_id\n              AND sur.assignment_id = :assignment_id\n            ORDER BY u.name ASC NULLS LAST, sur.unit_id ASC\n        ");
         $stmt->execute([
             'student_id' => $studentId,
             'assignment_id' => $assignmentId,
