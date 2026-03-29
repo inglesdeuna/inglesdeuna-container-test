@@ -85,27 +85,27 @@ function load_unit_scores(PDO $pdo, string $studentId, string $assignmentId): ar
 
 $pdo = get_pdo_connection();
 if (!$pdo) {
-    die('Base de datos no disponible.');
+  die('Database is not available.');
 }
 
 $assignment = load_assignment($pdo, $assignmentId);
 if (!$assignment || (string) ($assignment['student_id'] ?? '') !== $studentId) {
-    die('No tienes acceso a este registro.');
+  die('You do not have access to this record.');
 }
 
 $rows = load_unit_scores($pdo, $studentId, $assignmentId);
-$courseName = trim((string) ($assignment['course_name'] ?? 'Curso'));
+$courseName = trim((string) ($assignment['course_name'] ?? 'Course'));
 if ($courseName === '') {
-    $courseName = 'Curso';
+  $courseName = 'Course';
 }
-$programLabel = ((string) ($assignment['program'] ?? '') === 'english') ? 'Inglés' : 'Técnico';
+$programLabel = ((string) ($assignment['program'] ?? '') === 'english') ? 'English' : 'Technical';
 ?>
 <!DOCTYPE html>
-<html lang="es">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Puntajes del estudiante</title>
+<title>Student Scores</title>
 <style>
 :root{
   --bg:#fff8f5;
@@ -136,29 +136,29 @@ th{color:var(--title)}
 <body>
 <div class="page">
   <div class="top">
-    <h1>Puntajes por unidad y quiz</h1>
-    <a class="back" href="student_dashboard.php">← Volver</a>
+    <h1>Scores by unit and quiz</h1>
+    <a class="back" href="student_dashboard.php">← Back</a>
   </div>
 
-  <p class="meta">Curso: <strong><?php echo h($courseName); ?></strong> · Programa: <strong><?php echo h($programLabel); ?></strong> · Periodo: <strong><?php echo h((string) ($assignment['period'] ?? '')); ?></strong></p>
+  <p class="meta">Course: <strong><?php echo h($courseName); ?></strong> · Program: <strong><?php echo h($programLabel); ?></strong> · Period: <strong><?php echo h((string) ($assignment['period'] ?? '')); ?></strong></p>
 
   <div class="card">
     <?php if (empty($rows)) { ?>
-      <div class="empty">Aún no hay puntajes registrados. Resuelve los quizzes de las unidades y vuelve a consultar.</div>
-      <a class="btn" href="student_course.php?assignment=<?php echo urlencode($assignmentId); ?>">Ir al curso</a>
+      <div class="empty">There are no scores yet. Complete the unit quizzes and check again.</div>
+      <a class="btn" href="student_course.php?assignment=<?php echo urlencode($assignmentId); ?>">Go to course</a>
     <?php } else { ?>
       <table>
         <thead>
           <tr>
-            <th>Unidad</th>
-            <th>Puntaje</th>
-            <th>Errores quiz</th>
+            <th>Unit</th>
+            <th>Score</th>
+            <th>Quiz errors</th>
           </tr>
         </thead>
         <tbody>
           <?php foreach ($rows as $row) { ?>
             <tr>
-              <td><?php echo h((string) ($row['unit_name'] ?: ('Unidad ' . (string) ($row['unit_id'] ?? '')))); ?></td>
+              <td><?php echo h((string) ($row['unit_name'] ?: ('Unit ' . (string) ($row['unit_id'] ?? '')))); ?></td>
               <td><?php echo (int) ($row['completion_percent'] ?? 0); ?>%</td>
               <td><?php echo (int) ($row['quiz_errors'] ?? 0); ?>/<?php echo (int) ($row['quiz_total'] ?? 0); ?></td>
             </tr>

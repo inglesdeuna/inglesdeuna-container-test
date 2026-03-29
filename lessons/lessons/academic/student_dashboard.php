@@ -12,7 +12,7 @@ if (!empty($_SESSION['student_must_change_password'])) {
 }
 
 $studentId = trim((string) ($_SESSION['student_id'] ?? ''));
-$studentName = trim((string) ($_SESSION['student_name'] ?? 'Estudiante'));
+$studentName = trim((string) ($_SESSION['student_name'] ?? 'Student'));
 $flashMessage = '';
 $flashError = '';
 
@@ -25,7 +25,7 @@ function student_initials(string $name): string
 {
     $name = trim($name);
     if ($name === '') {
-        return 'ES';
+        return 'ST';
     }
 
     $parts = preg_split('/\s+/', $name) ?: [];
@@ -40,7 +40,7 @@ function student_initials(string $name): string
         }
     }
 
-    return $initials !== '' ? $initials : 'ES';
+    return $initials !== '' ? $initials : 'ST';
 }
 
 function get_pdo_connection(): ?PDO
@@ -290,22 +290,22 @@ function load_assignment_score_summary(string $studentId): array
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && (string) ($_POST['action'] ?? '') === 'upload_student_photo') {
     if ($studentId === '') {
-        $flashError = 'No se encontró la sesión del estudiante.';
+        $flashError = 'Student session was not found.';
     } elseif (!isset($_FILES['student_photo']) || !is_array($_FILES['student_photo'])) {
-        $flashError = 'Debes seleccionar una imagen.';
+        $flashError = 'You must select an image.';
     } else {
         $file = $_FILES['student_photo'];
         $errorCode = (int) ($file['error'] ?? UPLOAD_ERR_NO_FILE);
 
         if ($errorCode !== UPLOAD_ERR_OK) {
-            $flashError = 'No se pudo subir la imagen. Intenta nuevamente.';
+            $flashError = 'Image upload failed. Please try again.';
         } else {
             $tmpName = (string) ($file['tmp_name'] ?? '');
             $size = (int) ($file['size'] ?? 0);
             $maxBytes = 5 * 1024 * 1024;
 
             if ($tmpName === '' || !is_uploaded_file($tmpName) || $size <= 0 || $size > $maxBytes) {
-                $flashError = 'La imagen debe pesar máximo 5MB.';
+                $flashError = 'Image size must be 5 MB or less.';
             } else {
                 $mime = (string) mime_content_type($tmpName);
                 $allowedMimes = [
@@ -316,7 +316,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (string) ($_POST['action'] ?? '') =
                 ];
 
                 if (!isset($allowedMimes[$mime])) {
-                    $flashError = 'Formato no permitido. Usa JPG, PNG, WEBP o GIF.';
+                    $flashError = 'Unsupported format. Use JPG, PNG, WEBP, or GIF.';
                 } else {
                     $extension = $allowedMimes[$mime];
                     $safeStudentId = preg_replace('/[^a-zA-Z0-9_-]/', '_', $studentId) ?: 'student';
@@ -325,13 +325,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (string) ($_POST['action'] ?? '') =
                     $newFileRelative = 'data/student_photos/' . $newFilename;
 
                     if (!move_uploaded_file($tmpName, $newFileAbsolute)) {
-                        $flashError = 'No fue posible guardar la imagen subida.';
+                        $flashError = 'Unable to save the uploaded image.';
                     } else {
                         $oldPhoto = trim((string) ($_SESSION['student_photo'] ?? load_student_photo($studentId)));
                         save_student_photo($studentId, $newFileRelative);
                         $_SESSION['student_photo'] = $newFileRelative;
                         maybe_delete_local_student_photo($oldPhoto);
-                        $flashMessage = 'Foto actualizada correctamente.';
+                        $flashMessage = 'Photo updated successfully.';
                     }
                 }
             }
@@ -355,11 +355,11 @@ $myAssignments = load_student_assignments($studentId);
 $scoreSummaryByAssignment = load_assignment_score_summary($studentId);
 ?>
 <!DOCTYPE html>
-<html lang="es">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Panel Estudiante</title>
+<title>Student Dashboard</title>
 <style>
 :root{
     --bg:#fff8e6;
@@ -472,8 +472,8 @@ body{
 <body>
 <div class="page">
     <div class="top">
-        <h1>Perfil del Estudiante</h1>
-        <a class="logout" href="logout.php">Cerrar sesión</a>
+        <h1>Student Profile</h1>
+        <a class="logout" href="logout.php">Log out</a>
     </div>
 
     <?php if ($flashMessage !== '') { ?><div class="notice notice-ok"><?php echo h($flashMessage); ?></div><?php } ?>
@@ -482,63 +482,63 @@ body{
     <div class="profile-card">
         <div class="avatar">
             <?php if ($studentPhotoSrc !== '') { ?>
-                <img src="<?php echo $studentPhotoSrc; ?>" alt="Foto estudiante">
+                <img src="<?php echo $studentPhotoSrc; ?>" alt="Student photo">
             <?php } else { ?>
                 <span><?php echo h($studentInitials); ?></span>
             <?php } ?>
         </div>
 
         <div class="profile-body">
-            <p class="welcome">Bienvenido, <strong><?php echo h($studentName); ?></strong>.</p>
-            <span class="badge">Modo: <?php echo h($studentPermission === 'editor' ? 'Editor' : 'Consulta'); ?> (solo lectura recomendado)</span>
+            <p class="welcome">Welcome, <strong><?php echo h($studentName); ?></strong>.</p>
+            <span class="badge">Mode: <?php echo h($studentPermission === 'editor' ? 'Editor' : 'View'); ?> (read-only recommended)</span>
 
             <form method="post" enctype="multipart/form-data" class="profile-form" style="margin-top:12px;">
                 <input type="hidden" name="action" value="upload_student_photo">
                 <input type="file" name="student_photo" accept="image/jpeg,image/png,image/webp,image/gif" required>
-                <button class="btn" type="submit" style="margin-top:0;">Subir foto</button>
+                <button class="btn" type="submit" style="margin-top:0;">Upload photo</button>
             </form>
         </div>
     </div>
 
-    <h2 class="section-title">Mis cursos y programas</h2>
+    <h2 class="section-title">My courses and programs</h2>
 
     <?php if (empty($myAssignments)) { ?>
-        <div class="empty">No tienes cursos asignados aún.</div>
+        <div class="empty">You do not have assigned courses yet.</div>
     <?php } else { ?>
         <div class="grid">
             <?php foreach ($myAssignments as $assignment) { ?>
                 <?php
                 $assignmentId = (string) ($assignment['id'] ?? '');
                 $program = (string) ($assignment['program'] ?? 'technical');
-                $programLabel = $program === 'english' ? 'Inglés' : 'Técnico';
+                $programLabel = $program === 'english' ? 'English' : 'Technical';
                 $courseName = trim((string) ($assignment['course_name'] ?? ''));
                 if ($courseName === '') {
-                    $courseName = 'Curso';
+                    $courseName = 'Course';
                 }
                 $unitName = trim((string) ($assignment['unit_name'] ?? ''));
                 if ($unitName === '' && $program === 'english') {
-                    $unitName = 'Unidades por fase';
+                    $unitName = 'Units by phase';
                 }
                 $scoreSummary = $scoreSummaryByAssignment[$assignmentId] ?? null;
                 ?>
                 <div class="card">
                     <h3><?php echo h($courseName); ?></h3>
-                    <p>Programa: <strong><?php echo h($programLabel); ?></strong></p>
-                    <p>Docente: <strong><?php echo h((string) ($assignment['teacher_name'] ?? 'Docente')); ?></strong></p>
-                    <p>Periodo: <strong><?php echo h((string) ($assignment['period'] ?? '')); ?></strong></p>
+                    <p>Program: <strong><?php echo h($programLabel); ?></strong></p>
+                    <p>Teacher: <strong><?php echo h((string) ($assignment['teacher_name'] ?? 'Teacher')); ?></strong></p>
+                    <p>Period: <strong><?php echo h((string) ($assignment['period'] ?? '')); ?></strong></p>
                     <?php if ($unitName !== '') { ?>
-                        <p>Unidad: <strong><?php echo h($unitName); ?></strong></p>
+                        <p>Unit: <strong><?php echo h($unitName); ?></strong></p>
                     <?php } ?>
                     <?php if (is_array($scoreSummary)) { ?>
-                        <p>Puntaje promedio: <strong><?php echo (int) ($scoreSummary['avg_percent'] ?? 0); ?>%</strong></p>
+                        <p>Average score: <strong><?php echo (int) ($scoreSummary['avg_percent'] ?? 0); ?>%</strong></p>
                         <?php if ((int) ($scoreSummary['total_questions'] ?? 0) > 0) { ?>
-                            <p>Errores en quizzes: <strong><?php echo (int) ($scoreSummary['total_errors'] ?? 0); ?>/<?php echo (int) ($scoreSummary['total_questions'] ?? 0); ?></strong></p>
+                            <p>Quiz errors: <strong><?php echo (int) ($scoreSummary['total_errors'] ?? 0); ?>/<?php echo (int) ($scoreSummary['total_questions'] ?? 0); ?></strong></p>
                         <?php } ?>
                     <?php } ?>
 
                     <div class="actions">
-                        <a class="btn" href="student_course.php?assignment=<?php echo urlencode($assignmentId); ?>">Entrar al curso</a>
-                        <a class="btn secondary" href="student_quiz.php?assignment=<?php echo urlencode($assignmentId); ?>">Ver puntajes</a>
+                        <a class="btn" href="student_course.php?assignment=<?php echo urlencode($assignmentId); ?>">Enter course</a>
+                        <a class="btn secondary" href="student_quiz.php?assignment=<?php echo urlencode($assignmentId); ?>">View scores</a>
                     </div>
                 </div>
             <?php } ?>
