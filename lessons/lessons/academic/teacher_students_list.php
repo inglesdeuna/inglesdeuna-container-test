@@ -143,7 +143,11 @@ function load_teacher_students(PDO $pdo, string $teacherId): array
                         SELECT
                             sa.id AS assignment_id,
                             s.id AS student_id,
-                            COALESCE(NULLIF(TRIM(s.name), ''), sa.student_id::text) AS student_name,
+                            COALESCE(
+                                NULLIF(TRIM(sa.student_username), ''),
+                                NULLIF(TRIM(s.name), ''),
+                                sa.student_id::text
+                            ) AS student_name,
                             CASE WHEN sa.program = 'english'
                                      THEN COALESCE(NULLIF(TRIM(sa.level_id::text), ''), sa.course_id::text)
                                      ELSE sa.course_id::text
