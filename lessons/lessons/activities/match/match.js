@@ -30,10 +30,17 @@ document.addEventListener("DOMContentLoaded", () => {
   const winSound = new Audio("../../hangman/assets/win.mp3");
   const returnTo = typeof MATCH_RETURN_TO === "string" ? MATCH_RETURN_TO : "";
   const activityId = typeof MATCH_ACTIVITY_ID === "string" ? MATCH_ACTIVITY_ID : "";
+  const pageParams = new URLSearchParams(window.location.search || "");
+  const isStudentCourseFlow = pageParams.get("from") === "student_course";
+  const studentStep = pageParams.get("step") || "0";
+  const MAX_ROUNDS = 2;
 
   let matchedCount = 0;
   let firstTryCorrect = 0;
   let currentDraggedCard = null;
+  let currentRound = 1;
+  let activityLocked = false;
+  const roundScores = [];
   const firstAttemptByTarget = new Set();
   let scorePersisted = false;
 
@@ -137,13 +144,14 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  function buildReturnUrl() {
+  function buildReturnUrl(scoreValue) {
     if (!returnTo) {
       return "";
     }
 
     const total = normalizedData.length;
-    const correct = Math.max(0, Math.min(total, firstTryCorrect));
+    const safeScore = Number.isFinite(scoreValue) ? scoreValue : firstTryCorrect;
+    const correct = Math.max(0, Math.min(total, safeScore));
     const errors = Math.max(0, total - correct);
     const percent = total > 0 ? Math.round((correct / total) * 100) : 0;
     const hasQuery = returnTo.includes("?");
@@ -157,6 +165,41 @@ document.addEventListener("DOMContentLoaded", () => {
       + "&activity_id=" + encodeURIComponent(String(activityId))
       + "&activity_type=" + encodeURIComponent("match")
     );
+  }
+
+  function resetRoundState() {
+    matchedCount = 0;
+    firstTryCorrect = 0;
+    currentDraggedCard = null;
+    firstAttemptByTarget.clear();
+  }
+
+  function removeCompletedOverlay() {
+    const overlay = document.getElementById("matchCompletedOverlay");
+    if (overlay) {
+      overlay.remove();
+    }
+  }
+
+  function setActivityLocked(locked) {
+    activityLocked = !!locked;
+    if (matchStage) {
+      matchStage.classList.toggle("is-locked", activityLocked);
+    }
+
+    const cards = leftBoard.querySelectorAll(".match-card");
+    cards.forEach((card) => {
+      card.draggable = !activityLocked;
+      if (activityLocked) {
+        card.classList.remove("dragging", "returning");
+      }
+    });
+  }
+
+  function startRound() {
+    resetRoundState();
+    setActivityLocked(false);
+    renderBoard();
   }
 
   function persistScoreSilently(saveUrl) {
@@ -196,40 +239,92 @@ document.addEventListener("DOMContentLoaded", () => {
     window.location.href = targetUrl;
   }
 
+  function buildStudentResetUrl() {
+    if (!returnTo || !activityId || !isStudentCourseFlow) {
+      return "";
+    }
+
+    const hasQuery = returnTo.includes("?");
+    const joiner = hasQuery ? "&" : "?";
+    return (
+      returnTo
+      + joiner + "reset_activity=1"
+      + "&reset_activity_id=" + encodeURIComponent(String(activityId))
+      + "&reset_activity_type=" + encodeURIComponent("match")
+      + "&step=" + encodeURIComponent(String(studentStep))
+    );
+  }
+
   function showCompleted() {
     if (document.getElementById("matchCompletedOverlay")) {
       return;
     }
 
+    const completedRound = currentRound;
+    const isFinalRound = completedRound >= MAX_ROUNDS;
     const total = normalizedData.length;
     const correct = Math.max(0, Math.min(total, firstTryCorrect));
-    const errors = Math.max(0, total - correct);
-    const secondTry = errors;
     const percent = total > 0 ? Math.round((correct / total) * 100) : 0;
-    const saveUrl = buildReturnUrl();
+    const saveUrl = buildReturnUrl(correct);
 
-    persistScoreSilently(saveUrl);
+    roundScores[completedRound - 1] = correct;
+
+    if (isFinalRound) {
+      persistScoreSilently(saveUrl);
+      setActivityLocked(true);
+    }
+
+    const subtitle = isFinalRound
+      ? `Intento 1: ${roundScores[0] || 0}/${total}. Intento 2: ${roundScores[1] || 0}/${total}.`
+      : `Intento ${completedRound} completado. Tienes una oportunidad mas.`;
+
+    const replayButtonLabel = "Intentar de nuevo";
+    const replayButtonDisabled = isFinalRound ? "disabled" : "";
 
     const overlay = document.createElement("div");
     overlay.id = "matchCompletedOverlay";
-    overlay.innerHTML = `
-      <div class="match-completed-box">
-        <div class="match-completed-emoji">🏆</div>
-        <div class="match-completed-title">Completed!</div>
-        <div class="match-completed-score">Score: <strong>${correct} / ${total}</strong> (${percent}%)</div>
-        <div class="match-completed-subtitle">First attempt: ${correct}/${total}. Second attempt: ${secondTry}/${total}.</div>
-        <div class="match-completed-actions">
-          <button type="button" class="match-completed-btn secondary" id="matchRestartBtn">Play again</button>
-          ${returnTo !== "" ? '<button type="button" class="match-completed-btn" id="matchReturnBtn">Return</button>' : ""}
+
+    if (isFinalRound) {
+      const resetTestButtonHtml = isStudentCourseFlow
+        ? '<button type="button" class="match-teacher-completed-button match-teacher-completed-button-secondary" id="matchResetTestBtn">Borrar progreso de prueba</button>'
+        : "";
+
+      overlay.className = "match-teacher-overlay";
+      overlay.innerHTML = `
+        <div class="match-teacher-completed-box">
+          <div class="match-teacher-completed-icon">✅</div>
+          <div class="match-teacher-completed-title">Completado</div>
+          <div class="match-teacher-completed-score">Puntaje: <strong>${correct} / ${total}</strong> (${percent}%)</div>
+          <div class="match-teacher-completed-text">${subtitle}</div>
+          <div class="match-teacher-completed-actions">
+            <button type="button" class="match-teacher-completed-button" id="matchRestartBtn" ${replayButtonDisabled}>${replayButtonLabel}</button>
+            ${resetTestButtonHtml}
+            ${returnTo !== "" ? '<button type="button" class="match-teacher-completed-button match-teacher-completed-button-secondary" id="matchReturnBtn">Volver</button>' : ""}
+          </div>
         </div>
-      </div>
-    `;
+      `;
+    } else {
+      overlay.innerHTML = `
+        <div class="match-completed-box">
+          <div class="match-completed-emoji">🏆</div>
+          <div class="match-completed-title">Completado</div>
+          <div class="match-completed-score">Puntaje: <strong>${correct} / ${total}</strong> (${percent}%)</div>
+          <div class="match-completed-subtitle">${subtitle}</div>
+          <div class="match-completed-actions">
+            <button type="button" class="match-completed-btn secondary" id="matchRestartBtn" ${replayButtonDisabled}>${replayButtonLabel}</button>
+            ${returnTo !== "" ? '<button type="button" class="match-completed-btn" id="matchReturnBtn">Volver</button>' : ""}
+          </div>
+        </div>
+      `;
+    }
     document.body.appendChild(overlay);
 
     const restartBtn = document.getElementById("matchRestartBtn");
-    if (restartBtn) {
+    if (restartBtn && !isFinalRound) {
       restartBtn.addEventListener("click", () => {
-        window.location.reload();
+        removeCompletedOverlay();
+        currentRound += 1;
+        startRound();
       });
     }
 
@@ -237,6 +332,16 @@ document.addEventListener("DOMContentLoaded", () => {
     if (returnBtn) {
       returnBtn.addEventListener("click", () => {
         navigateToReturn(saveUrl || returnTo);
+      });
+    }
+
+    const resetTestBtn = document.getElementById("matchResetTestBtn");
+    if (resetTestBtn) {
+      resetTestBtn.addEventListener("click", () => {
+        const resetUrl = buildStudentResetUrl();
+        if (resetUrl) {
+          navigateToReturn(resetUrl);
+        }
       });
     }
 
@@ -296,11 +401,16 @@ document.addEventListener("DOMContentLoaded", () => {
     playSound(errorSound);
   }
 
-  renderBoard();
+  startRound();
 
   window.addEventListener("resize", applyBoardLayout);
 
   document.addEventListener("dragstart", (e) => {
+    if (activityLocked) {
+      e.preventDefault();
+      return;
+    }
+
     const card = e.target.closest(".match-card");
     if (!card) {
       return;
@@ -331,6 +441,10 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   document.addEventListener("dragover", (e) => {
+    if (activityLocked) {
+      return;
+    }
+
     const target = e.target.closest(".match-target");
     if (!target || target.dataset.matched === "1") {
       return;
@@ -340,6 +454,10 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   document.addEventListener("drop", (e) => {
+    if (activityLocked) {
+      return;
+    }
+
     const target = e.target.closest(".match-target");
     if (!target || target.dataset.matched === "1") {
       return;

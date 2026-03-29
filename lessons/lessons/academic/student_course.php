@@ -101,6 +101,39 @@ function save_student_activity_performance(PDO $pdo, string $studentId, string $
     }
 }
 
+function delete_student_activity_performance(PDO $pdo, string $studentId, string $assignmentId, string $unitId, string $activityId, string $activityType = ''): void
+{
+    if ($studentId === '' || $assignmentId === '' || $unitId === '' || $activityId === '') {
+        return;
+    }
+
+    try {
+        if ($activityType !== '') {
+            $stmt = $pdo->prepare("\n                DELETE FROM student_activity_results\n                WHERE student_id = :student_id\n                  AND assignment_id = :assignment_id\n                  AND unit_id = :unit_id\n                  AND activity_id = :activity_id\n                  AND activity_type = :activity_type\n            ");
+
+            $stmt->execute([
+                'student_id' => $studentId,
+                'assignment_id' => $assignmentId,
+                'unit_id' => $unitId,
+                'activity_id' => $activityId,
+                'activity_type' => trim($activityType),
+            ]);
+
+            return;
+        }
+
+        $stmt = $pdo->prepare("\n            DELETE FROM student_activity_results\n            WHERE student_id = :student_id\n              AND assignment_id = :assignment_id\n              AND unit_id = :unit_id\n              AND activity_id = :activity_id\n        ");
+
+        $stmt->execute([
+            'student_id' => $studentId,
+            'assignment_id' => $assignmentId,
+            'unit_id' => $unitId,
+            'activity_id' => $activityId,
+        ]);
+    } catch (Throwable $e) {
+    }
+}
+
 function aggregate_student_activity_performance(PDO $pdo, string $studentId, string $assignmentId, string $unitId): ?array
 {
     if ($studentId === '' || $assignmentId === '' || $unitId === '') {
@@ -298,6 +331,41 @@ $rawPercent = isset($_GET['activity_percent'])
     : (isset($_GET['quiz_percent']) ? (int) $_GET['quiz_percent'] : -1);
 $activityResultId = trim((string) ($_GET['activity_id'] ?? ($_GET['quiz_activity_id'] ?? '')));
 $activityType = trim((string) ($_GET['activity_type'] ?? 'quiz'));
+$resetActivityId = trim((string) ($_GET['reset_activity_id'] ?? ''));
+$resetActivityType = trim((string) ($_GET['reset_activity_type'] ?? ''));
+$shouldResetActivity = isset($_GET['reset_activity']) && $_GET['reset_activity'] === '1';
+
+if ($selectedUnitId !== '' && $shouldResetActivity && $resetActivityId !== '') {
+    delete_student_activity_performance(
+        $pdo,
+        $studentId,
+        $assignmentId,
+        $selectedUnitId,
+        $resetActivityId,
+        $resetActivityType
+    );
+
+    $aggregated = aggregate_student_activity_performance($pdo, $studentId, $assignmentId, $selectedUnitId);
+    if (is_array($aggregated)) {
+        save_student_unit_performance(
+            $pdo,
+            $studentId,
+            $assignmentId,
+            $selectedUnitId,
+            (int) ($aggregated['completion_percent'] ?? 0),
+            (int) ($aggregated['quiz_errors'] ?? 0),
+            (int) ($aggregated['quiz_total'] ?? 0)
+        );
+    }
+
+    $redirectQuery = [
+        'assignment' => $assignmentId,
+        'unit' => $selectedUnitId,
+        'step' => (string) max(0, (int) ($_GET['step'] ?? 0)),
+    ];
+    header('Location: student_course.php?' . http_build_query($redirectQuery));
+    exit;
+}
 
 if ($selectedUnitId !== '' && $rawTotal >= 0) {
     $activityTotal = max(0, $rawTotal);
