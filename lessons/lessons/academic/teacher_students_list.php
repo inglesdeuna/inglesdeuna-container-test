@@ -110,12 +110,17 @@ function load_teacher_courses(PDO $pdo, string $teacherId): array
 
 function load_assigned_courses_from_dashboard(PDO $pdo, string $teacherId): array
 {
-    if (!table_exists($pdo, 'teacher_assignments')) {
-        return [];
-    }
-
     try {
-        $stmt = $pdo->prepare("\n            SELECT DISTINCT\n              COALESCE(NULLIF(TRIM(course_id), ''), '') AS course_id,\n              COALESCE(NULLIF(TRIM(course_name), ''), 'Curso') AS course_name,\n              COALESCE(NULLIF(TRIM(program_type), ''), 'technical') AS program,\n              '' AS period\n            FROM teacher_assignments\n            WHERE teacher_id = :teacher_id\n            ORDER BY course_name ASC, program_type ASC\n        ");
+        $stmt = $pdo->prepare("
+            SELECT DISTINCT
+              CAST(course_id AS TEXT) AS course_id,
+              COALESCE(NULLIF(course_name, ''), 'Curso') AS course_name,
+              COALESCE(NULLIF(program_type, ''), 'technical') AS program,
+              '' AS period
+            FROM teacher_assignments
+            WHERE CAST(teacher_id AS TEXT) = :teacher_id
+            ORDER BY course_name ASC
+        ");
         $stmt->execute(['teacher_id' => $teacherId]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
     } catch (Throwable $e) {
