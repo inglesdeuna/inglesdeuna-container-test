@@ -142,12 +142,12 @@ function load_teacher_students(PDO $pdo, string $teacherId): array
                 $stmt = $pdo->prepare("
                         SELECT
                             sa.id AS assignment_id,
-                            sa.student_id::text AS student_id,
+                            TRIM(sa.student_id::text) AS student_id,
                             COALESCE(
                                 NULLIF(TRIM(acc.username), ''),
-                                NULLIF(TRIM(sa.student_username), ''),
                                 NULLIF(TRIM(s.name), ''),
-                                sa.student_id::text
+                                NULLIF(TRIM(sa.student_username), ''),
+                                TRIM(sa.student_id::text)
                             ) AS student_name,
                             CASE WHEN sa.program = 'english'
                                      THEN COALESCE(NULLIF(TRIM(sa.level_id::text), ''), sa.course_id::text)
@@ -172,11 +172,11 @@ function load_teacher_students(PDO $pdo, string $teacherId): array
                                 WHERE sur.assignment_id = sa.id
                             ), 0) AS avg_completion
                         FROM student_assignments sa
-                                                LEFT JOIN students s ON s.id::text = sa.student_id::text
+                                                LEFT JOIN students s ON TRIM(s.id::text) = TRIM(sa.student_id::text)
                                                 LEFT JOIN LATERAL (
                                                         SELECT sa2.username
                                                         FROM student_accounts sa2
-                                                        WHERE sa2.student_id::text = sa.student_id::text
+                                                        WHERE TRIM(sa2.student_id::text) = TRIM(sa.student_id::text)
                                                             AND NULLIF(TRIM(sa2.username), '') IS NOT NULL
                                                         ORDER BY sa2.updated_at DESC NULLS LAST, sa2.id DESC
                                                         LIMIT 1
@@ -184,7 +184,7 @@ function load_teacher_students(PDO $pdo, string $teacherId): array
                         LEFT JOIN courses c ON (sa.program <> 'english' AND c.id::text = sa.course_id::text)
                         LEFT JOIN english_phases ep ON (sa.program = 'english' AND ep.id::text = sa.level_id::text)
                         WHERE sa.teacher_id = :teacher_id
-                        ORDER BY s.name ASC, sa.id ASC
+                        ORDER BY student_name ASC, sa.id ASC
                 ");
                 $stmt->execute(['teacher_id' => $teacherId]);
                 return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
@@ -215,10 +215,98 @@ function load_latest_student_usernames(PDO $pdo): array
     return $byStudent;
 }
 
+function normalize_student_username(string $username): string
+{
+    $value = strtolower(trim($username));
+    if ($value === '') {
+        return '';
+    }
+
+    // Legacy pattern: ledy.rincon.student69b047...
+    $value = preg_replace('/\.student[a-z0-9]+$/i', '', $value) ?? $value;
+    return trim($value);
+}
+
+function repair_teacher_assignment_student_links(PDO $pdo, string $teacherId): void
+{
+    try {
+        $accountsStmt = $pdo->query("\n            SELECT student_id::text AS student_id, username\n            FROM student_accounts\n            WHERE NULLIF(TRIM(username), '') IS NOT NULL\n        ");
+        $accounts = $accountsStmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+        $usernameToStudent = [];
+        foreach ($accounts as $acc) {
+            $sid = trim((string) ($acc['student_id'] ?? ''));
+            $uname = trim((string) ($acc['username'] ?? ''));
+            if ($sid === '' || $uname === '') {
+                continue;
+            }
+            $usernameToStudent[strtolower($uname)] = ['student_id' => $sid, 'username' => $uname];
+            $normalized = normalize_student_username($uname);
+            if ($normalized !== '' && !isset($usernameToStudent[$normalized])) {
+                $usernameToStudent[$normalized] = ['student_id' => $sid, 'username' => $uname];
+            }
+        }
+
+        if (empty($usernameToStudent)) {
+            return;
+        }
+
+        $assignStmt = $pdo->prepare("\n            SELECT id::text AS id, student_id::text AS student_id, COALESCE(student_username, '') AS student_username\n            FROM student_assignments\n            WHERE teacher_id = :teacher_id\n        ");
+        $assignStmt->execute(['teacher_id' => $teacherId]);
+        $assignments = $assignStmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+        if (empty($assignments)) {
+            return;
+        }
+
+        $updateStmt = $pdo->prepare("\n            UPDATE student_assignments\n            SET student_id = :student_id,\n                student_username = :student_username\n            WHERE id::text = :assignment_id\n        ");
+
+        foreach ($assignments as $row) {
+            $assignmentId = trim((string) ($row['id'] ?? ''));
+            $currentStudentId = trim((string) ($row['student_id'] ?? ''));
+            $currentUsername = trim((string) ($row['student_username'] ?? ''));
+            if ($assignmentId === '' || $currentUsername === '') {
+                continue;
+            }
+
+            $lookupKeys = [strtolower($currentUsername), normalize_student_username($currentUsername)];
+            $target = null;
+            foreach ($lookupKeys as $key) {
+                if ($key !== '' && isset($usernameToStudent[$key])) {
+                    $target = $usernameToStudent[$key];
+                    break;
+                }
+            }
+
+            if (!$target) {
+                continue;
+            }
+
+            $targetStudentId = trim((string) ($target['student_id'] ?? ''));
+            $targetUsername = trim((string) ($target['username'] ?? ''));
+            if ($targetStudentId === '' || $targetUsername === '') {
+                continue;
+            }
+
+            if ($targetStudentId !== $currentStudentId || strtolower($targetUsername) !== strtolower($currentUsername)) {
+                $updateStmt->execute([
+                    'student_id' => $targetStudentId,
+                    'student_username' => $targetUsername,
+                    'assignment_id' => $assignmentId,
+                ]);
+            }
+        }
+    } catch (Throwable $e) {
+        // Keep page functional even if repair cannot run
+    }
+}
+
 $pdo = get_pdo_connection();
 if (!$pdo) {
     die('Database is not available.');
 }
+
+repair_teacher_assignment_student_links($pdo, $teacherId);
 
 $allStudents = load_teacher_students($pdo, $teacherId);
 $studentUsernames = load_latest_student_usernames($pdo);
