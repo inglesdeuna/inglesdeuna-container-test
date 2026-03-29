@@ -170,12 +170,30 @@ document.addEventListener("DOMContentLoaded", () => {
         method: "GET",
         credentials: "same-origin",
         cache: "no-store",
+        keepalive: true,
       }).catch(() => {
         scorePersisted = false;
       });
     } catch (e) {
       scorePersisted = false;
     }
+  }
+
+  function navigateToReturn(targetUrl) {
+    if (!targetUrl) {
+      return;
+    }
+
+    try {
+      if (window.top && window.top !== window.self) {
+        window.top.location.href = targetUrl;
+        return;
+      }
+    } catch (e) {
+      // Fallback to current window navigation.
+    }
+
+    window.location.href = targetUrl;
   }
 
   function showCompleted() {
@@ -218,7 +236,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const returnBtn = document.getElementById("matchReturnBtn");
     if (returnBtn) {
       returnBtn.addEventListener("click", () => {
-        window.location.href = saveUrl || returnTo;
+        navigateToReturn(saveUrl || returnTo);
       });
     }
 

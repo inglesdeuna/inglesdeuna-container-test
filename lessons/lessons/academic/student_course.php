@@ -381,7 +381,7 @@ if ($current) {
     $type = (string) ($current['type'] ?? '');
     $activityPath = get_activity_base_path($type);
     if ($activityPath) {
-        $returnUrl = 'student_course.php?assignment=' . urlencode($assignmentId) . '&unit=' . urlencode($selectedUnitId);
+        $returnUrl = '../../academic/student_course.php?assignment=' . urlencode($assignmentId) . '&unit=' . urlencode($selectedUnitId);
         $query = http_build_query([
             'id'         => (string) ($current['id'] ?? ''),
             'unit'       => $selectedUnitId,
