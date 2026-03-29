@@ -55,15 +55,11 @@ function load_teacher_courses(PDO $pdo, string $teacherId): array
         $stmt = $pdo->prepare("
             SELECT DISTINCT
               sa.course_id,
-              COALESCE(NULLIF(TRIM(c.name), ''), 'Curso') AS course_name,
-              COALESCE(NULLIF(TRIM(sa.program), ''), 'technical') AS program,
-              COUNT(DISTINCT sa.id) AS total_assignments,
-              COUNT(DISTINCT sa.student_id) AS total_students
+              COALESCE(NULLIF(TRIM(c.name), ''), 'Curso') AS course_name
             FROM student_assignments sa
             LEFT JOIN courses c ON c.id::text = sa.course_id
             WHERE sa.teacher_id = :teacher_id
-            GROUP BY sa.course_id, c.name, sa.program
-            ORDER BY c.name ASC, sa.program ASC
+            ORDER BY c.name ASC
         ");
         
         $stmt->execute(['teacher_id' => $teacherId]);
@@ -73,7 +69,7 @@ function load_teacher_courses(PDO $pdo, string $teacherId): array
     }
 }
 
-function load_course_students(PDO $pdo, string $teacherId, string $courseId): array
+function load_teacher_students(PDO $pdo, string $teacherId): array
 {
     try {
         $stmt = $pdo->prepare("
@@ -81,6 +77,8 @@ function load_course_students(PDO $pdo, string $teacherId, string $courseId): ar
               sa.id AS assignment_id,
               s.id AS student_id,
               COALESCE(NULLIF(TRIM(s.name), ''), s.id) AS student_name,
+              sa.course_id,
+              COALESCE(NULLIF(TRIM(c.name), ''), 'Curso') AS course_name,
               COALESCE(NULLIF(TRIM(sa.program), ''), 'technical') AS program,
               COALESCE((
                 SELECT COUNT(DISTINCT sur.unit_id)
@@ -94,12 +92,12 @@ function load_course_students(PDO $pdo, string $teacherId, string $courseId): ar
               ), 0) AS avg_completion
             FROM student_assignments sa
             LEFT JOIN students s ON s.id = sa.student_id
+            LEFT JOIN courses c ON c.id::text = sa.course_id
             WHERE sa.teacher_id = :teacher_id
-              AND sa.course_id = :course_id
-            ORDER BY s.name ASC
+            ORDER BY s.name ASC, sa.id ASC
         ");
         
-        $stmt->execute(['teacher_id' => $teacherId, 'course_id' => $courseId]);
+        $stmt->execute(['teacher_id' => $teacherId]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
     } catch (Throwable $e) {
         return [];
@@ -111,31 +109,35 @@ if (!$pdo) {
     die('Database is not available.');
 }
 
-// Handle AJAX request for course students
-if (isset($_GET['ajax']) && $_GET['ajax'] === '1') {
-    $courseId = trim((string) ($_GET['course'] ?? ''));
-    $requestTeacherId = trim((string) ($_GET['teacher_id'] ?? ''));
-    
-    if ($courseId === '' || $requestTeacherId !== $teacherId) {
-        http_response_code(403);
-        echo json_encode(['error' => 'Unauthorized']);
-        exit;
-    }
-    
-    $students = load_course_students($pdo, $teacherId, $courseId);
-    header('Content-Type: application/json');
-    echo json_encode(['students' => $students]);
-    exit;
+$courses = load_teacher_courses($pdo, $teacherId);
+$allStudents = load_teacher_students($pdo, $teacherId);
+
+$filterCourse = trim((string) ($_GET['course'] ?? ''));
+$filteredStudents = $allStudents;
+
+if ($filterCourse !== '') {
+    $filteredStudents = array_filter($allStudents, static function (array $row) use ($filterCourse): bool {
+        $courseId = trim((string) ($row['course_id'] ?? ''));
+        return $courseId === $filterCourse;
+    });
+    $filteredStudents = array_values($filteredStudents);
 }
 
-$courses = load_teacher_courses($pdo, $teacherId);
+$courseOptions = [];
+foreach ($courses as $course) {
+    $courseId = trim((string) ($course['course_id'] ?? ''));
+    $courseName = trim((string) ($course['course_name'] ?? ''));
+    if ($courseId !== '' && $courseName !== '') {
+        $courseOptions[$courseId] = $courseName;
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Lista de Cursos</title>
+    <title>Lista de Estudiantes</title>
     <style>
         :root {
             --bg: #fff8f5;
@@ -146,6 +148,9 @@ $courses = load_teacher_courses($pdo, $teacherId);
             --muted: #8a625a;
             --salmon: #fa8072;
             --salmon-dark: #e8654e;
+            --green: #4caf50;
+            --green-dark: #45a049;
+            --gray: #9e9e9e;
         }
         
         * { box-sizing: border-box; }
@@ -169,7 +174,7 @@ $courses = load_teacher_courses($pdo, $teacherId);
             align-items: center;
             gap: 10px;
             flex-wrap: wrap;
-            margin-bottom: 22px;
+            margin-bottom: 14px;
         }
         
         h1 {
@@ -188,88 +193,96 @@ $courses = load_teacher_courses($pdo, $teacherId);
             text-decoration: underline;
         }
         
-        .courses-list {
-            display: flex;
-            flex-direction: column;
-            gap: 14px;
-        }
-        
-        .course-item {
+        .filter-section {
             background: var(--card);
             border: 1px solid var(--line);
             border-radius: 12px;
-            overflow: hidden;
-        }
-        
-        .course-header {
             padding: 16px;
-            cursor: pointer;
-            user-select: none;
-            transition: background 0.2s;
+            margin-bottom: 14px;
             display: flex;
-            justify-content: space-between;
+            gap: 10px;
+            flex-wrap: wrap;
             align-items: center;
-            gap: 12px;
         }
         
-        .course-header:hover {
-            background: #fffaf8;
-        }
-        
-        .course-header.active {
-            background: #fff3f0;
-        }
-        
-        .course-title-section {
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
             flex: 1;
+            min-width: 200px;
         }
         
-        .course-name {
-            font-size: 16px;
+        .filter-group label {
             font-weight: 700;
-            color: var(--title);
-            margin: 0 0 4px 0;
-        }
-        
-        .course-meta {
             font-size: 12px;
-            color: var(--muted);
-            margin: 4px 0 0 0;
+            color: var(--title);
+            text-transform: uppercase;
         }
         
-        .course-toggle {
-            font-size: 18px;
-            color: var(--salmon);
-            transition: transform 0.2s;
-            flex-shrink: 0;
+        .filter-group select {
+            padding: 8px 12px;
+            border: 1px solid var(--line);
+            border-radius: 6px;
+            font-family: Arial, sans-serif;
+            font-size: 14px;
+            background: var(--bg);
+            color: var(--text);
         }
         
-        .course-header.active .course-toggle {
-            transform: rotate(90deg);
+        .filter-group select:focus {
+            outline: none;
+            border-color: var(--salmon);
+            box-shadow: 0 0 0 2px rgba(250, 128, 114, 0.1);
         }
         
-        .students-container {
-            display: none;
-            border-top: 1px solid var(--line);
-            padding: 16px;
-            background: #fffbfa;
+        .filter-buttons {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
         }
         
-        .students-container.active {
-            display: block;
+        .btn {
+            padding: 10px 16px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 700;
+            font-size: 14px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            transition: background 0.2s;
         }
         
-        .students-grid {
+        .btn-filter {
+            background: var(--salmon);
+            color: #fff;
+        }
+        
+        .btn-filter:hover {
+            background: var(--salmon-dark);
+        }
+        
+        .btn-clear {
+            background: var(--gray);
+            color: #fff;
+        }
+        
+        .btn-clear:hover {
+            background: #757575;
+        }
+        
+        .students-list {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-            gap: 12px;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 14px;
         }
         
         .student-card {
             background: var(--card);
             border: 1px solid var(--line);
-            border-radius: 10px;
-            padding: 14px;
+            border-radius: 12px;
+            padding: 16px;
             text-decoration: none;
             color: inherit;
             transition: all 0.2s;
@@ -282,16 +295,16 @@ $courses = load_teacher_courses($pdo, $teacherId);
         }
         
         .student-name {
-            font-size: 14px;
+            font-size: 16px;
             font-weight: 700;
             color: var(--title);
-            margin: 0 0 6px 0;
+            margin: 0 0 8px 0;
         }
         
         .student-info {
-            font-size: 11px;
+            font-size: 13px;
             color: var(--muted);
-            margin: 3px 0;
+            margin: 4px 0;
         }
         
         .student-info strong {
@@ -307,21 +320,17 @@ $courses = load_teacher_courses($pdo, $teacherId);
             color: var(--muted);
         }
         
-        .no-students {
-            padding: 16px;
-            text-align: center;
-            color: var(--muted);
-            font-size: 13px;
-        }
-        
         @media (max-width: 768px) {
-            .students-grid {
-                grid-template-columns: 1fr;
+            .filter-section {
+                flex-direction: column;
             }
             
-            .course-header {
-                flex-direction: column;
-                align-items: flex-start;
+            .filter-group {
+                min-width: 100%;
+            }
+            
+            .students-list {
+                grid-template-columns: 1fr;
             }
         }
     </style>
@@ -329,111 +338,70 @@ $courses = load_teacher_courses($pdo, $teacherId);
 <body>
     <div class="page">
         <div class="top">
-            <h1>📚 Mis Cursos</h1>
+            <h1>📚 Lista de Estudiantes</h1>
             <a class="back" href="dashboard.php">← Volver</a>
         </div>
         
-        <?php if (empty($courses)): ?>
+        <div class="filter-section">
+            <form method="GET" style="display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; flex: 1;">
+                <div class="filter-group">
+                    <label for="course">Filtrar por Curso</label>
+                    <select name="course" id="course" onchange="this.form.submit()">
+                        <option value="">-- Todos los cursos --</option>
+                        <?php foreach ($courseOptions as $courseId => $courseName): ?>
+                            <option value="<?php echo h($courseId); ?>" <?php echo $filterCourse === $courseId ? 'selected' : ''; ?>>
+                                <?php echo h($courseName); ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                
+                <div class="filter-buttons" style="display: flex; gap: 10px;">
+                    <a href="teacher_students_list.php" class="btn btn-clear">✕ Limpiar</a>
+                </div>
+            </form>
+        </div>
+        
+        <?php if (empty($filteredStudents)): ?>
             <div class="empty">
-                No tienes cursos asignados.
+                No hay estudiantes en el curso seleccionado.
             </div>
         <?php else: ?>
-            <div class="courses-list">
-                <?php foreach ($courses as $index => $course): ?>
+            <div class="students-list">
+                <?php foreach ($filteredStudents as $student): ?>
                     <?php
-                    $courseId = h((string) ($course['course_id'] ?? ''));
-                    $courseName = h((string) ($course['course_name'] ?? 'Curso'));
-                    $program = (string) ($course['program'] ?? 'technical');
+                    $studentId = (string) ($student['student_id'] ?? '');
+                    $assignmentId = (string) ($student['assignment_id'] ?? '');
+                    $studentName = h((string) ($student['student_name'] ?? 'Estudiante'));
+                    $courseName = h((string) ($student['course_name'] ?? 'Curso'));
+                    $program = (string) ($student['program'] ?? 'technical');
                     $programLabel = $program === 'english' ? 'English' : 'Técnico';
-                    $totalAssignments = (int) ($course['total_assignments'] ?? 0);
-                    $totalStudents = (int) ($course['total_students'] ?? 0);
-                    $courseKey = 'course_' . $index;
+                    $unitsCompleted = (int) ($student['units_completed'] ?? 0);
+                    $avgCompletion = (float) ($student['avg_completion'] ?? 0);
+                    $avgCompletionPercent = number_format($avgCompletion, 0);
                     ?>
-                    <div class="course-item" data-course-key="<?php echo h($courseKey); ?>">
-                        <div class="course-header" onclick="toggleCourse(this)">
-                            <div class="course-title-section">
-                                <p class="course-name">📖 <?php echo $courseName; ?></p>
-                                <p class="course-meta">
-                                    <strong><?php echo $programLabel; ?></strong> · 
-                                    <?php echo $totalStudents; ?> estudiante<?php echo $totalStudents !== 1 ? 's' : ''; ?>
-                                </p>
-                            </div>
-                            <div class="course-toggle">▶</div>
+                    <a href="teacher_student_progress.php?student=<?php echo urlencode($studentId); ?>&assignment=<?php echo urlencode($assignmentId); ?>" class="student-card">
+                        <p class="student-name">👤 <?php echo $studentName; ?></p>
+                        <div class="student-info">
+                            <strong>Curso:</strong> <?php echo $courseName; ?>
                         </div>
-                        
-                        <div class="students-container" data-course-id="<?php echo h($courseId); ?>" data-teacher-id="<?php echo h($teacherId); ?>">
-                            <div class="loading" style="text-align: center; color: var(--muted);">Cargando estudiantes...</div>
+                        <div class="student-info">
+                            <strong>Programa:</strong> <?php echo $programLabel; ?>
                         </div>
-                    </div>
+                        <div class="student-info">
+                            <strong>Unidades completadas:</strong> <?php echo $unitsCompleted; ?>
+                        </div>
+                        <div class="student-info">
+                            <strong>Progreso promedio:</strong> <span style="color: var(--salmon);"><?php echo $avgCompletionPercent; ?>%</span>
+                        </div>
+                    </a>
                 <?php endforeach; ?>
             </div>
+            
+            <p style="margin-top: 16px; color: var(--muted); font-size: 12px;">
+                📊 Registros mostrados: <?php echo count($filteredStudents); ?> de <?php echo count($allStudents); ?>
+            </p>
         <?php endif; ?>
     </div>
-    
-    <script>
-        function toggleCourse(header) {
-            const item = header.closest('.course-item');
-            const container = item.querySelector('.students-container');
-            const isActive = header.classList.toggle('active');
-            container.classList.toggle('active');
-            
-            if (isActive && !container.dataset.loaded) {
-                loadStudents(container);
-            }
-        }
-        
-        function loadStudents(container) {
-            const courseId = container.dataset.courseId;
-            const teacherId = container.dataset.teacherId;
-            
-            fetch('?ajax=1&course=' + encodeURIComponent(courseId) + '&teacher_id=' + encodeURIComponent(teacherId))
-                .then(response => response.json())
-                .then(data => {
-                    container.innerHTML = '';
-                    if (data.students && data.students.length > 0) {
-                        const grid = document.createElement('div');
-                        grid.className = 'students-grid';
-                        
-                        data.students.forEach(student => {
-                            const card = document.createElement('a');
-                            card.href = 'teacher_student_progress.php?student=' + encodeURIComponent(student.student_id) + '&assignment=' + encodeURIComponent(student.assignment_id);
-                            card.className = 'student-card';
-                            
-                            const programLabel = student.program === 'english' ? 'English' : 'Técnico';
-                            const avgPercent = Math.round(student.avg_completion || 0);
-                            
-                            card.innerHTML = `
-                                <p class="student-name">👤 ${escapeHtml(student.student_name)}</p>
-                                <div class="student-info">
-                                    <strong>Programa:</strong> ${programLabel}
-                                </div>
-                                <div class="student-info">
-                                    <strong>Unidades:</strong> ${student.units_completed}
-                                </div>
-                                <div class="student-info">
-                                    <strong>Progreso:</strong> <span style="color: var(--salmon);">${avgPercent}%</span>
-                                </div>
-                            `;
-                            grid.appendChild(card);
-                        });
-                        
-                        container.appendChild(grid);
-                    } else {
-                        container.innerHTML = '<div class="no-students">No hay estudiantes en este curso.</div>';
-                    }
-                    container.dataset.loaded = '1';
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    container.innerHTML = '<div class="no-students">Error al cargar los estudiantes.</div>';
-                });
-        }
-        
-        function escapeHtml(text) {
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
-        }
-    </script>
 </body>
 </html>
