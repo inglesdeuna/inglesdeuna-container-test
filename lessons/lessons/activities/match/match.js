@@ -1,5 +1,9 @@
 document.addEventListener("DOMContentLoaded", () => {
   const data = Array.isArray(MATCH_DATA) ? MATCH_DATA : [];
+  const normalizedData = data.map((item, idx) => ({
+    ...item,
+    pairKey: `pair_${idx}`,
+  }));
 
   const leftBoard = document.getElementById("match-left");
   const rightBoard = document.getElementById("match-right");
@@ -9,7 +13,7 @@ document.addEventListener("DOMContentLoaded", () => {
     return;
   }
 
-  const isTextOnlyMode = data.length > 0 && data.every((item) => {
+  const isTextOnlyMode = normalizedData.length > 0 && normalizedData.every((item) => {
     const leftImage = String(item.left_image || "").trim();
     const rightImage = String(item.right_image || "").trim();
     return leftImage === "" && rightImage === "";
@@ -79,7 +83,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function applyBoardLayout() {
-    const count = data.length;
+    const count = normalizedData.length;
     const config = getBoardConfig(count);
 
     leftBoard.style.gridTemplateColumns = `repeat(${config.cols}, minmax(${config.width}px, 1fr))`;
@@ -115,17 +119,17 @@ document.addEventListener("DOMContentLoaded", () => {
 
     applyBoardLayout();
 
-    shuffle(data).forEach((item) => {
+    shuffle(normalizedData).forEach((item) => {
       leftBoard.innerHTML += `
-        <div class="card match-card" data-id="${escapeHtml(item.id)}" draggable="true">
+        <div class="card match-card" data-pair-key="${escapeHtml(item.pairKey)}" draggable="true">
           ${renderTileContent(item.left_text, item.left_image, "left")}
         </div>
       `;
     });
 
-    shuffle(data).forEach((item) => {
+    shuffle(normalizedData).forEach((item) => {
       rightBoard.innerHTML += `
-        <div class="word match-target" data-id="${escapeHtml(item.id)}">
+        <div class="word match-target" data-pair-key="${escapeHtml(item.pairKey)}">
           ${renderTileContent(item.right_text, item.right_image, "right")}
         </div>
       `;
@@ -137,7 +141,7 @@ document.addEventListener("DOMContentLoaded", () => {
       return "";
     }
 
-    const total = data.length;
+    const total = normalizedData.length;
     const correct = Math.max(0, Math.min(total, firstTryCorrect));
     const errors = Math.max(0, total - correct);
     const percent = total > 0 ? Math.round((correct / total) * 100) : 0;
@@ -159,7 +163,7 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
-    const total = data.length;
+    const total = normalizedData.length;
     const correct = Math.max(0, Math.min(total, firstTryCorrect));
     const errors = Math.max(0, total - correct);
     const percent = total > 0 ? Math.round((correct / total) * 100) : 0;
@@ -199,7 +203,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function checkCompletion() {
-    if (matchedCount >= data.length && data.length > 0) {
+    if (matchedCount >= normalizedData.length && normalizedData.length > 0) {
       showCompleted();
     }
   }
@@ -267,7 +271,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     currentDraggedCard = card;
-    e.dataTransfer.setData("id", card.dataset.id || "");
+    e.dataTransfer.setData("pairKey", card.dataset.pairKey || "");
     e.dataTransfer.effectAllowed = "move";
 
     setTimeout(() => {
@@ -302,22 +306,22 @@ document.addEventListener("DOMContentLoaded", () => {
 
     e.preventDefault();
 
-    const draggedId = e.dataTransfer.getData("id");
-    const targetId = target.dataset.id;
+    const draggedPairKey = e.dataTransfer.getData("pairKey");
+    const targetPairKey = target.dataset.pairKey || "";
 
-    const selectorId = window.CSS && CSS.escape ? CSS.escape(draggedId) : draggedId;
-    const card = currentDraggedCard || leftBoard.querySelector(`.card[data-id="${selectorId}"]`);
+    const selectorPairKey = window.CSS && CSS.escape ? CSS.escape(draggedPairKey) : draggedPairKey;
+    const card = currentDraggedCard || leftBoard.querySelector(`.card[data-pair-key="${selectorPairKey}"]`);
 
-    if (!draggedId || !card || card.dataset.matched === "1") {
+    if (!draggedPairKey || !targetPairKey || !card || card.dataset.matched === "1") {
       return;
     }
 
-    const isFirstAttempt = !firstAttemptByTarget.has(targetId);
+    const isFirstAttempt = !firstAttemptByTarget.has(targetPairKey);
     if (isFirstAttempt) {
-      firstAttemptByTarget.add(targetId);
+      firstAttemptByTarget.add(targetPairKey);
     }
 
-    if (draggedId === targetId) {
+    if (draggedPairKey === targetPairKey) {
       if (isFirstAttempt) {
         firstTryCorrect += 1;
       }

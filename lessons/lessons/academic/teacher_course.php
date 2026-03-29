@@ -627,10 +627,16 @@ $unitIds = array_values(array_filter(array_map(
 $activities = load_activities_for_units($pdo, $unitIds);
 $mix = activity_mix($activities);
 
-$quizTotalRaw = isset($_GET['quiz_total']) ? (int) $_GET['quiz_total'] : -1;
-$quizErrorsRaw = isset($_GET['quiz_errors']) ? (int) $_GET['quiz_errors'] : -1;
-$quizPercentRaw = isset($_GET['quiz_percent']) ? (int) $_GET['quiz_percent'] : -1;
-$quizActivityId = trim((string) ($_GET['quiz_activity_id'] ?? ''));
+$quizTotalRaw = isset($_GET['activity_total'])
+  ? (int) $_GET['activity_total']
+  : (isset($_GET['quiz_total']) ? (int) $_GET['quiz_total'] : -1);
+$quizErrorsRaw = isset($_GET['activity_errors'])
+  ? (int) $_GET['activity_errors']
+  : (isset($_GET['quiz_errors']) ? (int) $_GET['quiz_errors'] : -1);
+$quizPercentRaw = isset($_GET['activity_percent'])
+  ? (int) $_GET['activity_percent']
+  : (isset($_GET['quiz_percent']) ? (int) $_GET['quiz_percent'] : -1);
+$quizActivityId = trim((string) ($_GET['activity_id'] ?? ($_GET['quiz_activity_id'] ?? '')));
 
 if ($selectedUnitId !== '' && $quizTotalRaw >= 0) {
   $quizTotal = max(0, $quizTotalRaw);

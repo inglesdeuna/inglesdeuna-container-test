@@ -277,11 +277,13 @@ if ($unit === '' && $activityId !== '') {
 $activity = load_match_activity($pdo, $activityId, $unit);
 $viewerTitle = isset($activity['title']) ? (string) $activity['title'] : default_match_title();
 $pairs = isset($activity['pairs']) && is_array($activity['pairs']) ? $activity['pairs'] : array();
+$matchCssVersion = (string) (@filemtime(__DIR__ . '/match.css') ?: time());
+$matchJsVersion = (string) (@filemtime(__DIR__ . '/match.js') ?: time());
 
 ob_start();
 ?>
 
-<link rel="stylesheet" href="match.css">
+<link rel="stylesheet" href="match.css?v=<?= htmlspecialchars($matchCssVersion, ENT_QUOTES, 'UTF-8') ?>">
 
 <style>
 .match-stage{
@@ -432,7 +434,7 @@ ob_start();
     const MATCH_ACTIVITY_ID = <?= json_encode((string) ($activity['id'] ?? ''), JSON_UNESCAPED_UNICODE) ?>;
     </script>
 
-    <script src="match.js"></script>
+    <script src="match.js?v=<?= htmlspecialchars($matchJsVersion, ENT_QUOTES, 'UTF-8') ?>"></script>
 <?php } ?>
 
 <?php
