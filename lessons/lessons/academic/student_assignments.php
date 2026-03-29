@@ -406,6 +406,15 @@ function generate_student_username(array $student, array $accounts): string
     return $username;
 }
 
+function canonical_student_username(array $student, array $accounts, string $studentId): string
+{
+    $otherAccounts = array_values(array_filter($accounts, function ($acc) use ($studentId) {
+        return (string) ($acc['student_id'] ?? '') !== $studentId;
+    }));
+
+    return generate_student_username($student, $otherAccounts);
+}
+
 function generate_temp_password(int $length = 10): string
 {
     $chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
@@ -624,18 +633,14 @@ function ensure_student_account(string $studentId, array $students, array &$acco
 
     foreach ($accounts as &$account) {
         if ((string) ($account['student_id'] ?? '') === $studentId) {
-            // Repair legacy username: if it contains the student_id (old format), regenerate
+            // Always enforce canonical username for this student_id (nombre.apellido)
             $existingUsername = (string) ($account['username'] ?? '');
-            if (
-                $existingUsername !== '' &&
-                (strpos($existingUsername, $studentId) !== false ||
-                 !preg_match('/^[a-z][a-z0-9]*(\.[a-z][a-z0-9]*)+(\.[0-9]+)?$/', $existingUsername))
-            ) {
-                $studentData = find_student_by_id($students, $studentId);
-                if ($studentData) {
-                    $otherAccounts = array_filter($accounts, fn($a) => (string)($a['student_id'] ?? '') !== $studentId);
-                    $newUsername = generate_student_username($studentData, array_values($otherAccounts));
+            $studentData = find_student_by_id($students, $studentId);
+            if ($studentData) {
+                $newUsername = canonical_student_username($studentData, $accounts, $studentId);
+                if ($newUsername !== '' && $existingUsername !== $newUsername) {
                     $account['username'] = $newUsername;
+                    $account['student_name'] = (string) ($studentData['name'] ?? ($account['student_name'] ?? 'Estudiante'));
                     $account['updated_at'] = date('Y-m-d H:i:s');
                     save_student_account_to_database($account);
                     save_json_file($accountsFile, $accounts);
@@ -651,7 +656,7 @@ function ensure_student_account(string $studentId, array $students, array &$acco
         return null;
     }
 
-    $username = generate_student_username($student, $accounts);
+    $username = canonical_student_username($student, $accounts, $studentId);
     $tempPassword = '1234';
 
     $newAccount = [
@@ -677,6 +682,57 @@ function ensure_student_account(string $studentId, array $students, array &$acco
     }
 
     return $newAccount;
+}
+
+function sync_assignment_usernames(
+    array &$studentAssignments,
+    array $students,
+    array &$studentAccounts,
+    string $accountsFile,
+    string $assignmentsFile
+): void {
+    if (empty($studentAssignments)) {
+        return;
+    }
+
+    $jsonDirty = false;
+
+    foreach ($studentAssignments as $index => $assignment) {
+        $studentId = trim((string) ($assignment['student_id'] ?? ''));
+        if ($studentId === '') {
+            continue;
+        }
+
+        $account = ensure_student_account($studentId, $students, $studentAccounts, $accountsFile);
+        if (!$account) {
+            continue;
+        }
+
+        $expectedUsername = trim((string) ($account['username'] ?? ''));
+        if ($expectedUsername === '') {
+            continue;
+        }
+
+        $currentUsername = trim((string) ($assignment['student_username'] ?? ''));
+        if ($currentUsername === $expectedUsername) {
+            continue;
+        }
+
+        $studentAssignments[$index]['student_username'] = $expectedUsername;
+
+        if (trim((string) ($studentAssignments[$index]['student_temp_password'] ?? '')) === '') {
+            $studentAssignments[$index]['student_temp_password'] = (string) ($account['temp_password'] ?? '');
+        }
+
+        $saved = save_student_assignment_to_database($studentAssignments[$index]);
+        if (!$saved) {
+            $jsonDirty = true;
+        }
+    }
+
+    if ($jsonDirty) {
+        save_json_file($assignmentsFile, $studentAssignments);
+    }
 }
 
 /* ===============================
@@ -947,6 +1003,14 @@ $students = load_students_from_database();
 $teachers = load_teachers_from_database();
 $studentAssignments = load_student_assignments_from_database();
 $studentAccounts = load_student_accounts_from_database();
+
+sync_assignment_usernames(
+    $studentAssignments,
+    $students,
+    $studentAccounts,
+    $studentAccountsFile,
+    $studentAssignmentsFile
+);
 
 /* Catálogos académicos:
    por ahora se dejan desde JSON como respaldo temporal,
