@@ -138,6 +138,7 @@ if ($unit === '' && $activityId !== '') {
 $activity = load_listen_order_activity($pdo, $activityId, $unit);
 $viewerTitle = (string) ($activity['title'] ?? default_listen_order_title());
 $blocks = is_array($activity['blocks'] ?? null) ? $activity['blocks'] : [];
+$returnTo = isset($_GET['return_to']) ? trim((string) $_GET['return_to']) : '';
 
 if (count($blocks) === 0) {
     die('No activities for this unit');
@@ -203,6 +204,12 @@ ob_start();
   cursor:grab;
   border:1px solid #ddd6fe;
   box-shadow:0 10px 20px rgba(124, 58, 237, .1);
+  transition: border-color .15s ease, background-color .15s ease;
+}
+
+.word.incorrect{
+  background:linear-gradient(180deg, #fee2e2 0%, #fecdd3 100%);
+  border-color:#fca5a5;
 }
 
 .word img{
@@ -336,26 +343,32 @@ ob_start();
   <div id="answer" class="drop-zone"></div>
 
   <div class="lo-controls">
-    <button class="lo-btn lo-btn-check" type="button" onclick="checkOrder()">Check Answer</button>
     <button class="lo-btn lo-btn-show" type="button" onclick="showAnswer()">Show Answer</button>
     <button class="lo-btn lo-btn-next" type="button" onclick="nextBlock()">Next</button>
   </div>
 
   <div id="feedback"></div>
 
+  <div id="lo-status" style="text-align:center;margin-bottom:12px;font-size:14px;color:#5b516f;font-weight:700;"></div>
+
   <div id="lo-completed" class="lo-completed-screen">
     <div class="lo-completed-icon">✅</div>
     <h2 class="lo-completed-title" id="lo-completed-title"></h2>
     <p class="lo-completed-text" id="lo-completed-text"></p>
+    <p class="lo-completed-text" id="lo-score-text" style="font-weight:700;font-size:18px;color:#4c1d95;"></p>
     <button type="button" class="lo-completed-button" id="lo-restart" onclick="restartActivity()">Restart</button>
   </div>
 </div>
 
 <audio id="winSound" src="../../hangman/assets/win.mp3" preload="auto"></audio>
+<audio id="loseSound" src="../../hangman/assets/lose.mp3" preload="auto"></audio>
+<audio id="doneSound" src="../../hangman/assets/win (1).mp3" preload="auto"></audio>
 
 <script>
 const blocks = <?= json_encode($blocks, JSON_UNESCAPED_UNICODE) ?>;
 const activityTitle = <?= json_encode($viewerTitle, JSON_UNESCAPED_UNICODE) ?>;
+const LO_ACTIVITY_ID = <?= json_encode($activityId ?? '', JSON_UNESCAPED_UNICODE) ?>;
+const LO_RETURN_TO = <?= json_encode($returnTo, JSON_UNESCAPED_UNICODE) ?>;
 
 let index = 0;
 let correct = [];
@@ -365,16 +378,25 @@ let isSpeaking = false;
 let isPaused = false;
 let utter = null;
 let finished = false;
+let blockFinished = false;
+let correctCount = 0;
+let totalCount = blocks.length;
+let attemptsByBlock = {};
+let checkedBlocks = {};
 
 const wordsDiv = document.getElementById('words');
 const answerDiv = document.getElementById('answer');
 const feedback = document.getElementById('feedback');
+const statusEl = document.getElementById('lo-status');
 const winSound = document.getElementById('winSound');
+const loseSound = document.getElementById('loseSound');
+const doneSound = document.getElementById('doneSound');
 const sentenceBox = document.getElementById('sentenceBox');
 const controls = document.querySelector('.lo-controls');
 const completedEl = document.getElementById('lo-completed');
 const completedTitleEl = document.getElementById('lo-completed-title');
 const completedTextEl = document.getElementById('lo-completed-text');
+const scoreTextEl = document.getElementById('lo-score-text');
 
 if (completedTitleEl) {
   completedTitleEl.textContent = activityTitle || 'Listen & Order';
@@ -392,8 +414,39 @@ function playSound(audio) {
   } catch (e) {}
 }
 
+function persistScoreSilently(targetUrl) {
+    if (!targetUrl) {
+        return Promise.resolve(false);
+    }
+
+    return fetch(targetUrl, {
+        method: 'GET',
+        credentials: 'same-origin',
+        cache: 'no-store',
+    }).then(function (response) {
+        return !!(response && response.ok);
+    }).catch(function () {
+        return false;
+    });
+}
+
+function navigateToReturn(targetUrl) {
+    if (!targetUrl) {
+        return;
+    }
+
+    try {
+        if (window.top && window.top !== window.self) {
+            window.top.location.href = targetUrl;
+            return;
+        }
+    } catch (e) {}
+
+    window.location.href = targetUrl;
+}
+
 function playAudio() {
-  if (finished) return;
+  if (finished || blockFinished) return;
 
   if (isSpeaking && !isPaused) {
     speechSynthesis.pause();
@@ -449,12 +502,62 @@ function createImageChip(src) {
   });
 
   div.addEventListener('click', function () {
-    if (div.parentElement === answerDiv && !finished) {
+    if (div.parentElement === answerDiv && !finished && !blockFinished) {
       wordsDiv.appendChild(div);
     }
   });
 
   return div;
+}
+
+function updateStatus() {
+  statusEl.textContent = (index + 1) + ' / ' + totalCount;
+}
+
+function checkAnswerAuto() {
+  if (finished || blockFinished || checkedBlocks[index]) {
+    return;
+  }
+
+  const built = Array.prototype.slice.call(answerDiv.children).map(function (node) {
+    return node.dataset.src;
+  });
+
+  if (built.length !== correct.length) {
+    return;
+  }
+
+  if (JSON.stringify(built) === JSON.stringify(correct)) {
+    feedback.textContent = '\u2714 Right';
+    feedback.className = 'good';
+    playSound(winSound);
+    checkedBlocks[index] = true;
+    correctCount++;
+    blockFinished = true;
+  } else {
+    var currentAttempts = (attemptsByBlock[index] || 0) + 1;
+    attemptsByBlock[index] = currentAttempts;
+
+    if (currentAttempts >= 2) {
+      feedback.textContent = '\u2718 Wrong (2/2)';
+      feedback.className = 'bad';
+      playSound(loseSound);
+      checkedBlocks[index] = true;
+      blockFinished = true;
+      
+      const answerChildren = Array.prototype.slice.call(answerDiv.children);
+      answerChildren.forEach(function(child) {
+        const isCorrect = JSON.stringify(Array.prototype.slice.call(answerDiv.children).map(function(n) { return n.dataset.src; }).slice(0, answerChildren.indexOf(child) + 1)) === JSON.stringify(correct.slice(0, answerChildren.indexOf(child) + 1));
+        if (!isCorrect && answerChildren.indexOf(child) < correct.length) {
+          child.classList.add('incorrect');
+        }
+      });
+    } else {
+      feedback.textContent = '\u2718 Wrong (1/2) - try again';
+      feedback.className = 'bad';
+      playSound(loseSound);
+    }
+  }
 }
 
 function loadBlock() {
@@ -463,6 +566,7 @@ function loadBlock() {
   isPaused = false;
   dragged = null;
   finished = false;
+  blockFinished = false;
 
   if (completedEl) {
     completedEl.classList.remove('active');
@@ -494,13 +598,16 @@ function loadBlock() {
   currentSentence = typeof block.sentence === 'string' ? block.sentence : '';
   correct = Array.isArray(block.images) ? block.images.slice() : [];
 
+  updateStatus();
+
   shuffle(correct).forEach(function (src) {
     wordsDiv.appendChild(createImageChip(src));
   });
 }
 
-function showCompleted() {
+async function showCompleted() {
   finished = true;
+  blockFinished = true;
   feedback.textContent = '';
   feedback.className = '';
 
@@ -520,11 +627,35 @@ function showCompleted() {
     controls.style.display = 'none';
   }
 
+  statusEl.textContent = 'Completed';
+
   if (completedEl) {
     completedEl.classList.add('active');
   }
 
-  playSound(winSound);
+  playSound(doneSound);
+
+  var pct = totalCount > 0 ? Math.round((correctCount / totalCount) * 100) : 0;
+  var errors = Math.max(0, totalCount - correctCount);
+
+  if (scoreTextEl) {
+    scoreTextEl.textContent = 'Score: ' + correctCount + ' / ' + totalCount + ' (' + pct + '%)';
+  }
+
+  if (LO_ACTIVITY_ID && LO_RETURN_TO) {
+    var joiner = LO_RETURN_TO.indexOf('?') !== -1 ? '&' : '?';
+    var saveUrl = LO_RETURN_TO +
+        joiner + 'activity_percent=' + pct +
+        '&activity_errors=' + errors +
+        '&activity_total=' + totalCount +
+        '&activity_id=' + encodeURIComponent(LO_ACTIVITY_ID) +
+        '&activity_type=listen_order';
+
+    var ok = await persistScoreSilently(saveUrl);
+    if (!ok) {
+        navigateToReturn(saveUrl);
+    }
+  }
 }
 
 answerDiv.addEventListener('dragover', function (event) {
@@ -532,38 +663,11 @@ answerDiv.addEventListener('dragover', function (event) {
 });
 
 answerDiv.addEventListener('drop', function () {
-  if (dragged && !finished) {
+  if (dragged && !finished && !blockFinished) {
     answerDiv.appendChild(dragged);
+    setTimeout(checkAnswerAuto, 100);
   }
 });
-
-function checkOrder() {
-  if (finished) return;
-
-  const built = Array.prototype.slice.call(answerDiv.children).map(function (node) {
-    return node.dataset.src;
-  });
-
-  if (built.length !== correct.length) {
-    feedback.textContent = 'Complete all images first.';
-    feedback.className = 'bad';
-    return;
-  }
-
-  if (JSON.stringify(built) === JSON.stringify(correct)) {
-    if (index === blocks.length - 1) {
-      showCompleted();
-      return;
-    }
-
-    feedback.textContent = 'Correct!';
-    feedback.className = 'good';
-    finished = true;
-  } else {
-    feedback.textContent = 'Try Again';
-    feedback.className = 'bad';
-  }
-}
 
 function showAnswer() {
   answerDiv.innerHTML = '';
@@ -573,23 +677,32 @@ function showAnswer() {
     answerDiv.appendChild(createImageChip(src));
   });
 
-  feedback.textContent = 'Show The Answer';
+  feedback.textContent = 'Show Answer';
   feedback.className = 'good';
-  finished = true;
+  blockFinished = true;
 }
 
 function nextBlock() {
-  if (index >= blocks.length - 1) {
-    showCompleted();
-    return;
-  }
+  if (blockFinished || checkedBlocks[index]) {
+    if (index >= blocks.length - 1) {
+      showCompleted();
+      return;
+    }
 
-  index += 1;
-  loadBlock();
+    index += 1;
+    loadBlock();
+  } else {
+    feedback.textContent = 'Check your answer first.';
+    feedback.className = 'bad';
+  }
 }
 
 function restartActivity() {
   index = 0;
+  correctCount = 0;
+  totalCount = blocks.length;
+  attemptsByBlock = {};
+  checkedBlocks = {};
   loadBlock();
 }
 
