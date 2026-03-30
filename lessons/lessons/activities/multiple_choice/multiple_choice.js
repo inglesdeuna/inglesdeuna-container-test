@@ -14,8 +14,11 @@ document.addEventListener('DOMContentLoaded', function () {
   const completedEl = document.getElementById('mc-completed');
   const completedTitleEl = document.getElementById('mc-completed-title');
   const completedTextEl = document.getElementById('mc-completed-text');
+  const scoreTextEl = document.getElementById('mc-score-text');
   const restartBtn = document.getElementById('mc-restart');
   const activityTitle = window.MULTIPLE_CHOICE_TITLE || 'Multiple Choice';
+  const returnTo = window.MULTIPLE_CHOICE_RETURN_TO || '';
+  const activityId = window.MULTIPLE_CHOICE_ACTIVITY_ID || '';
 
   const completedSound = new Audio('../../hangman/assets/win.mp3');
 
@@ -39,6 +42,7 @@ document.addEventListener('DOMContentLoaded', function () {
   let selected = null;
   let checked = false;
   let finished = false;
+  let questionScores = questions.map(function () { return 0; });
 
   if (completedTitleEl) {
     completedTitleEl.textContent = activityTitle;
@@ -54,6 +58,67 @@ document.addEventListener('DOMContentLoaded', function () {
       completedSound.currentTime = 0;
       completedSound.play();
     } catch (e) {}
+  }
+
+  function persistScoreSilently(targetUrl) {
+    if (!targetUrl) {
+      return Promise.resolve(false);
+    }
+
+    return fetch(targetUrl, {
+      method: 'GET',
+      credentials: 'same-origin',
+      cache: 'no-store',
+    }).then(function (response) {
+      return !!(response && response.ok);
+    }).catch(function () {
+      return false;
+    });
+  }
+
+  function navigateToReturn(targetUrl) {
+    if (!targetUrl) {
+      return;
+    }
+
+    try {
+      if (window.top && window.top !== window.self) {
+        window.top.location.href = targetUrl;
+        return;
+      }
+    } catch (e) {}
+
+    window.location.href = targetUrl;
+  }
+
+  function buildSaveUrl(percent, errors, total) {
+    if (!returnTo || !activityId) {
+      return '';
+    }
+
+    const joiner = returnTo.indexOf('?') !== -1 ? '&' : '?';
+    return returnTo
+      + joiner + 'activity_percent=' + encodeURIComponent(String(percent))
+      + '&activity_errors=' + encodeURIComponent(String(errors))
+      + '&activity_total=' + encodeURIComponent(String(total))
+      + '&activity_id=' + encodeURIComponent(String(activityId))
+      + '&activity_type=multiple_choice';
+  }
+
+  function computeScore() {
+    const total = questions.length;
+    const correct = questionScores.reduce(function (sum, value) {
+      return sum + (value ? 1 : 0);
+    }, 0);
+    const errors = Math.max(0, total - correct);
+    const percent = total > 0 ? Math.round((correct / total) * 100) : 0;
+
+    return {
+      correct: correct,
+      total: total,
+      errors: errors,
+      percent: percent,
+    };
   }
 
   function safeOptions(item) {
@@ -163,9 +228,11 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     if (selected === correct) {
+      questionScores[index] = 1;
       feedbackEl.textContent = 'Correct!';
       feedbackEl.className = 'mc-feedback good';
     } else {
+      questionScores[index] = 0;
       feedbackEl.textContent = 'Try Again';
       feedbackEl.className = 'mc-feedback bad';
     }
@@ -192,12 +259,17 @@ document.addEventListener('DOMContentLoaded', function () {
 
     feedbackEl.textContent = 'Show The Answer';
     feedbackEl.className = 'mc-feedback good';
+    if (questionScores[index] !== 1) {
+      questionScores[index] = 0;
+    }
   }
 
-  function showCompleted() {
+  async function showCompleted() {
     finished = true;
     feedbackEl.textContent = '';
     feedbackEl.className = 'mc-feedback';
+
+    const result = computeScore();
 
     if (cardEl) {
       cardEl.style.display = 'none';
@@ -215,6 +287,10 @@ document.addEventListener('DOMContentLoaded', function () {
       completedEl.classList.add('active');
     }
 
+    if (scoreTextEl) {
+      scoreTextEl.textContent = 'Score: ' + result.correct + ' / ' + result.total + ' (' + result.percent + '%)';
+    }
+
     if (checkBtn) {
       checkBtn.disabled = true;
     }
@@ -230,6 +306,14 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     playCompletedSound();
+
+    const saveUrl = buildSaveUrl(result.percent, result.errors, result.total);
+    if (saveUrl) {
+      const ok = await persistScoreSilently(saveUrl);
+      if (!ok) {
+        navigateToReturn(saveUrl);
+      }
+    }
   }
 
   function nextQuestion() {
@@ -248,6 +332,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
   function restartActivity() {
     index = 0;
+    questionScores = questions.map(function () { return 0; });
     loadQuestion();
   }
 

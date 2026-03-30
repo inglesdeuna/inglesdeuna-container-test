@@ -4,6 +4,7 @@ require_once __DIR__ . '/../../core/_activity_viewer_template.php';
 
 $activityId = isset($_GET['id']) ? trim((string) $_GET['id']) : '';
 $unit = isset($_GET['unit']) ? trim((string) $_GET['unit']) : '';
+$returnTo = isset($_GET['return_to']) ? trim((string) $_GET['return_to']) : '';
 
 if ($activityId === '' && $unit === '') {
     die('Activity not specified');
@@ -195,6 +196,7 @@ ob_start();
         <div class="mc-completed-icon">✅</div>
         <h2 class="mc-completed-title" id="mc-completed-title"></h2>
         <p class="mc-completed-text" id="mc-completed-text"></p>
+        <p class="mc-completed-text" id="mc-score-text" style="font-weight:700;font-size:18px;color:#6d28d9;"></p>
         <button type="button" class="mc-completed-button" id="mc-restart">Restart</button>
     </div>
 </div>
@@ -203,6 +205,8 @@ ob_start();
 <script>
 window.MULTIPLE_CHOICE_DATA = <?php echo json_encode($questions, JSON_UNESCAPED_UNICODE); ?>;
 window.MULTIPLE_CHOICE_TITLE = <?php echo json_encode($viewerTitle, JSON_UNESCAPED_UNICODE); ?>;
+window.MULTIPLE_CHOICE_RETURN_TO = <?php echo json_encode($returnTo, JSON_UNESCAPED_UNICODE); ?>;
+window.MULTIPLE_CHOICE_ACTIVITY_ID = <?php echo json_encode((string) ($activity['id'] ?? ''), JSON_UNESCAPED_UNICODE); ?>;
 </script>
 <script src="multiple_choice.js?v=<?php echo urlencode($jsVersion); ?>"></script>
 
