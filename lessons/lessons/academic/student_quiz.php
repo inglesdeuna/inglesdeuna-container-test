@@ -83,6 +83,29 @@ function load_unit_scores(PDO $pdo, string $studentId, string $assignmentId): ar
     }
 }
 
+function load_activity_scores(PDO $pdo, string $studentId, string $assignmentId, string $unitId): array
+{
+    try {
+        $stmt = $pdo->prepare("
+            SELECT sar.activity_type, sar.completion_percent, sar.errors_count, sar.total_count
+            FROM student_activity_results sar
+            WHERE sar.student_id = :student_id
+              AND sar.assignment_id = :assignment_id
+              AND sar.unit_id = :unit_id
+            ORDER BY sar.activity_type ASC
+        ");
+        $stmt->execute([
+            'student_id' => $studentId,
+            'assignment_id' => $assignmentId,
+            'unit_id' => $unitId,
+        ]);
+
+        return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    } catch (Throwable $e) {
+        return [];
+    }
+}
+
 $pdo = get_pdo_connection();
 if (!$pdo) {
   die('Database is not available.');
@@ -147,6 +170,17 @@ th{color:var(--title)}
 .empty{color:var(--muted)}
 .btn{display:inline-block;margin-top:12px;padding:10px 14px;border-radius:8px;text-decoration:none;color:#fff;background:var(--salmon);font-weight:700}
 .btn:hover{background:var(--salmon-dark)}
+.unit-row{cursor:pointer;background:var(--card);transition:background .2s ease}
+.unit-row:hover{background:#fff5f0}
+.unit-row.expanded{background:#fff0e6}
+.toggle-icon{display:inline-block;margin-right:8px;transition:transform .2s ease;font-size:14px}
+.unit-row.expanded .toggle-icon{transform:rotate(180deg)}
+.activity-row{display:none;background:#f9f4f1}
+.activity-row.show{display:table-row}
+.activity-cell{padding-left:40px;font-size:14px}
+.activity-type{color:var(--title);font-weight:600}
+.activity-percent{color:var(--text)}
+.activity-errors{color:var(--muted)}
 </style>
 </head>
 <body>
@@ -173,17 +207,52 @@ th{color:var(--title)}
         </thead>
         <tbody>
           <?php foreach ($rows as $row) { ?>
-            <?php $unitLabel = $toUpper((string) ($row['unit_name'] ?: ('Unit ' . (string) ($row['unit_id'] ?? '')))); ?>
-            <tr>
-              <td><?php echo h($unitLabel); ?></td>
+            <?php 
+              $unitLabel = $toUpper((string) ($row['unit_name'] ?: ('Unit ' . (string) ($row['unit_id'] ?? ''))));
+              $unitId = (string) ($row['unit_id'] ?? '');
+              $activities = $unitId !== '' ? load_activity_scores($pdo, $studentId, $assignmentId, $unitId) : [];
+            ?>
+            <tr class="unit-row" data-unit-id="<?php echo h($unitId); ?>">
+              <td>
+                <span class="toggle-icon">▼</span>
+                <?php echo h($unitLabel); ?>
+              </td>
               <td><?php echo (int) ($row['completion_percent'] ?? 0); ?>%</td>
               <td><?php echo (int) ($row['quiz_errors'] ?? 0); ?>/<?php echo (int) ($row['quiz_total'] ?? 0); ?></td>
             </tr>
+            <?php foreach ($activities as $activity) { ?>
+              <tr class="activity-row" data-unit-id="<?php echo h($unitId); ?>">
+                <td class="activity-cell">
+                  <span class="activity-type"><?php echo h((string) ($activity['activity_type'] ?? 'Activity')); ?></span>
+                </td>
+                <td class="activity-percent"><?php echo (int) ($activity['completion_percent'] ?? 0); ?>%</td>
+                <td class="activity-errors"><?php echo (int) ($activity['errors_count'] ?? 0); ?>/<?php echo (int) ($activity['total_count'] ?? 0); ?></td>
+              </tr>
+            <?php } ?>
           <?php } ?>
         </tbody>
       </table>
     <?php } ?>
   </div>
 </div>
+<script>
+document.querySelectorAll('.unit-row').forEach(function(row) {
+  row.addEventListener('click', function() {
+    var unitId = this.getAttribute('data-unit-id');
+    var isExpanded = this.classList.contains('expanded');
+    
+    this.classList.toggle('expanded');
+    
+    var allActivityRows = document.querySelectorAll('.activity-row[data-unit-id="' + unitId + '"]');
+    allActivityRows.forEach(function(actRow) {
+      if (isExpanded) {
+        actRow.classList.remove('show');
+      } else {
+        actRow.classList.add('show');
+      }
+    });
+  });
+});
+</script>
 </body>
 </html>
