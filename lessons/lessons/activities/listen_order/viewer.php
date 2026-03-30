@@ -382,10 +382,20 @@ ob_start();
 <audio id="doneSound" src="../../hangman/assets/win (1).mp3" preload="auto"></audio>
 
 <script>
-const blocks = <?= json_encode($blocks, JSON_UNESCAPED_UNICODE) ?>;
+const sourceBlocks = <?= json_encode($blocks, JSON_UNESCAPED_UNICODE) ?>;
 const activityTitle = <?= json_encode($viewerTitle, JSON_UNESCAPED_UNICODE) ?>;
 const LO_ACTIVITY_ID = <?= json_encode($activityId ?? '', JSON_UNESCAPED_UNICODE) ?>;
 const LO_RETURN_TO = <?= json_encode($returnTo, JSON_UNESCAPED_UNICODE) ?>;
+const loParams = new URLSearchParams(window.location.search || '');
+const loRequestedPick = parseInt(loParams.get('lo_pick') || '', 10);
+const loRequestedRatio = Number(loParams.get('lo_ratio') || '0.75');
+const loRatio = Number.isFinite(loRequestedRatio) ? Math.max(0.1, Math.min(1, loRequestedRatio)) : 0.75;
+const loComputedPick = Number.isFinite(loRequestedPick) && loRequestedPick > 0
+  ? Math.min(loRequestedPick, sourceBlocks.length)
+  : Math.max(1, Math.ceil(sourceBlocks.length * loRatio));
+const blocks = sourceBlocks.length > 1
+  ? shuffle(sourceBlocks).slice(0, loComputedPick)
+  : sourceBlocks.slice();
 
 let index = 0;
 let correct = [];

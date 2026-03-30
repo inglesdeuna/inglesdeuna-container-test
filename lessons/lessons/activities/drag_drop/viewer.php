@@ -398,7 +398,10 @@ ob_start();
 <audio id="doneSound" src="../../hangman/assets/win (1).mp3" preload="auto"></audio>
 
 <script>
-const blocks = <?= json_encode($blocks, JSON_UNESCAPED_UNICODE) ?>;
+const sourceBlocks = <?= json_encode($blocks, JSON_UNESCAPED_UNICODE) ?>;
+const blocks = sourceBlocks.length > 1
+  ? sourceBlocks.slice().sort(function () { return Math.random() - 0.5; }).slice(0, Math.max(1, Math.ceil(sourceBlocks.length * 0.75)))
+  : sourceBlocks.slice();
 const activityTitle = <?= json_encode($viewerTitle, JSON_UNESCAPED_UNICODE) ?>;
 const DD_ACTIVITY_ID = <?= json_encode($activityId, JSON_UNESCAPED_UNICODE) ?>;
 const DD_RETURN_TO = <?= json_encode($returnTo, JSON_UNESCAPED_UNICODE) ?>;

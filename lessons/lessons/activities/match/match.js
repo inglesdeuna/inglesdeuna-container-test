@@ -1,5 +1,8 @@
 document.addEventListener("DOMContentLoaded", () => {
-  const data = Array.isArray(MATCH_DATA) ? MATCH_DATA : [];
+  const sourceData = Array.isArray(MATCH_DATA) ? MATCH_DATA : [];
+  const data = sourceData.length > 1
+    ? [...sourceData].sort(() => Math.random() - 0.5).slice(0, Math.max(1, Math.ceil(sourceData.length * 0.75)))
+    : [...sourceData];
   const normalizedData = data.map((item, idx) => ({
     ...item,
     pairKey: `pair_${idx}`,
