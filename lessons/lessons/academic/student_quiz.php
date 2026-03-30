@@ -99,7 +99,17 @@ if ($courseName === '') {
   $courseName = 'Course';
 }
 $toUpper = function (string $value): string {
-  return function_exists('mb_strtoupper') ? mb_strtoupper($value, 'UTF-8') : strtoupper($value);
+  $normalized = strtr($value, [
+    'á' => 'Á',
+    'é' => 'É',
+    'í' => 'Í',
+    'ó' => 'Ó',
+    'ú' => 'Ú',
+    'ü' => 'Ü',
+    'ñ' => 'Ñ',
+  ]);
+
+  return function_exists('mb_strtoupper') ? mb_strtoupper($normalized, 'UTF-8') : strtoupper($normalized);
 };
 $courseName = $toUpper($courseName);
 $periodLabel = $toUpper((string) ($assignment['period'] ?? ''));

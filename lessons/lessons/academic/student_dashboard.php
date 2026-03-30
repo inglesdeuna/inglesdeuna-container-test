@@ -21,6 +21,23 @@ function h(string $value): string
     return htmlspecialchars($value, ENT_QUOTES, 'UTF-8');
 }
 
+function upper_label(string $value): string
+{
+    $normalized = strtr($value, [
+        'á' => 'Á',
+        'é' => 'É',
+        'í' => 'Í',
+        'ó' => 'Ó',
+        'ú' => 'Ú',
+        'ü' => 'Ü',
+        'ñ' => 'Ñ',
+    ]);
+
+    return function_exists('mb_strtoupper')
+        ? mb_strtoupper($normalized, 'UTF-8')
+        : strtoupper($normalized);
+}
+
 function student_initials(string $name): string
 {
     $name = trim($name);
@@ -510,22 +527,25 @@ body{
                 <?php
                 $assignmentId = (string) ($assignment['id'] ?? '');
                 $program = (string) ($assignment['program'] ?? 'technical');
-                $programLabel = $program === 'english' ? 'English' : 'TÉCNICO';
+                $programLabel = upper_label($program === 'english' ? 'inglés' : 'técnico');
                 $courseName = trim((string) ($assignment['course_name'] ?? ''));
                 if ($courseName === '') {
                     $courseName = 'Course';
                 }
+                $courseName = upper_label($courseName);
                 $unitName = trim((string) ($assignment['unit_name'] ?? ''));
                 if ($unitName === '' && $program === 'english') {
                     $unitName = 'Units by phase';
                 }
+                $unitName = upper_label($unitName);
+                $periodLabel = upper_label((string) ($assignment['period'] ?? ''));
                 $scoreSummary = $scoreSummaryByAssignment[$assignmentId] ?? null;
                 ?>
                 <div class="card">
                     <h3><?php echo h($courseName); ?></h3>
                     <p>Program: <strong><?php echo h($programLabel); ?></strong></p>
                     <p>Teacher: <strong><?php echo h((string) ($assignment['teacher_name'] ?? 'Teacher')); ?></strong></p>
-                    <p>Period: <strong><?php echo h((string) ($assignment['period'] ?? '')); ?></strong></p>
+                    <p>Period: <strong><?php echo h($periodLabel); ?></strong></p>
                     <?php if ($unitName !== '') { ?>
                         <p>Unit: <strong><?php echo h($unitName); ?></strong></p>
                     <?php } ?>
