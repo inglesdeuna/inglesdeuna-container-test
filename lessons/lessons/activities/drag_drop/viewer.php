@@ -408,6 +408,12 @@ let dragged = null;
 let currentText = '';
 let currentAnswers = [];
 let listenEnabled = true;
+let isSpeaking = false;
+let isPaused = false;
+let utter = null;
+let speechOffset = 0;
+let speechSourceText = '';
+let speechSegmentStart = 0;
 let finished = false;
 let blockFinished = false;
 let correctCount = 0;
@@ -430,7 +436,7 @@ const completedTextEl = document.getElementById('dd-completed-text');
 const scoreTextEl = document.getElementById('dd-score-text');
 
 if (completedTitleEl) {
-  completedTitleEl.textContent = activityTitle || 'Unscramble';
+  completedTitleEl.textContent = 'Completed';
 }
 
 if (completedTextEl) {
@@ -482,6 +488,11 @@ function setListenVisible(visible) {
   } else {
     listenBtn.classList.add('hidden');
     speechSynthesis.cancel();
+    isSpeaking = false;
+    isPaused = false;
+    speechOffset = 0;
+    speechSourceText = '';
+    speechSegmentStart = 0;
   }
 }
 
@@ -554,6 +565,12 @@ function createBlank(indexBlank) {
 }
 
 function loadSentence() {
+  speechSynthesis.cancel();
+  isSpeaking = false;
+  isPaused = false;
+  speechOffset = 0;
+  speechSourceText = '';
+  speechSegmentStart = 0;
   dragged = null;
   finished = false;
   blockFinished = false;
@@ -586,6 +603,7 @@ function loadSentence() {
 
   const block = blocks[index] || {};
   currentText = typeof block.text === 'string' ? block.text.trim() : '';
+  speechSourceText = currentText;
   currentAnswers = Array.isArray(block.missing_words) ? block.missing_words.slice() : [];
   listenEnabled = !!block.listen_enabled;
 
@@ -625,6 +643,12 @@ function loadSentence() {
 async function showCompleted() {
   finished = true;
   blockFinished = true;
+  speechSynthesis.cancel();
+  isSpeaking = false;
+  isPaused = false;
+  speechOffset = 0;
+  speechSourceText = '';
+  speechSegmentStart = 0;
   feedback.textContent = '';
   feedback.className = '';
 
@@ -787,11 +811,92 @@ function restartActivity() {
 function speak() {
   if (!listenEnabled) return;
 
+  if (!currentText || String(currentText).trim() === '') {
+    return;
+  }
+
+  if (speechSynthesis.paused || isPaused) {
+    speechSynthesis.resume();
+    isSpeaking = true;
+    isPaused = false;
+
+    setTimeout(function () {
+      if (!speechSynthesis.speaking && speechOffset < speechSourceText.length) {
+        startSpeechFromOffset();
+      }
+    }, 80);
+    return;
+  }
+
+  if (speechSynthesis.speaking && !speechSynthesis.paused) {
+    speechSynthesis.pause();
+    isSpeaking = true;
+    isPaused = true;
+    return;
+  }
+
   speechSynthesis.cancel();
-  const msg = new SpeechSynthesisUtterance(currentText || '');
-  msg.lang = 'en-US';
-  msg.rate = 0.9;
-  speechSynthesis.speak(msg);
+  speechSourceText = currentText || '';
+  speechOffset = 0;
+  startSpeechFromOffset();
+}
+
+function startSpeechFromOffset() {
+  const source = speechSourceText || currentText || '';
+  if (!source) {
+    return;
+  }
+
+  const safeOffset = Math.max(0, Math.min(speechOffset, source.length));
+  const remaining = source.slice(safeOffset);
+
+  if (!remaining.trim()) {
+    isSpeaking = false;
+    isPaused = false;
+    speechOffset = 0;
+    return;
+  }
+
+  speechSynthesis.cancel();
+
+  speechSegmentStart = safeOffset;
+  utter = new SpeechSynthesisUtterance(remaining);
+  utter.lang = 'en-US';
+  utter.rate = 0.9;
+  utter.pitch = 1;
+  utter.volume = 1;
+
+  utter.onstart = function () {
+    isSpeaking = true;
+    isPaused = false;
+  };
+
+  utter.onpause = function () {
+    isPaused = true;
+    isSpeaking = true;
+  };
+
+  utter.onresume = function () {
+    isPaused = false;
+    isSpeaking = true;
+  };
+
+  utter.onboundary = function (event) {
+    if (typeof event.charIndex === 'number') {
+      speechOffset = Math.max(speechSegmentStart, Math.min(source.length, speechSegmentStart + event.charIndex));
+    }
+  };
+
+  utter.onend = function () {
+    if (isPaused) {
+      return;
+    }
+    isSpeaking = false;
+    isPaused = false;
+    speechOffset = 0;
+  };
+
+  speechSynthesis.speak(utter);
 }
 
 loadSentence();
