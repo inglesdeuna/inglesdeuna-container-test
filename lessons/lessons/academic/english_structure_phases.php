@@ -67,14 +67,14 @@ $phases = $stmtPhases->fetchAll(PDO::FETCH_ASSOC);
 <style>
 body{
     font-family: Arial, sans-serif;
-    background:#f4f8ff;
+    background:#f0faf4;
     padding:40px;
 }
 
 .back{
     display:inline-block;
     margin-bottom:25px;
-    background:#6b7280;
+    background:#4b7a59;
     color:#ffffff;
     padding:10px 18px;
     border-radius:8px;
@@ -96,13 +96,13 @@ input{
     padding:12px;
     margin-top:10px;
     border-radius:8px;
-    border:1px solid #ddd;
+    border:1px solid #a7f3d0;
 }
 
 button{
     margin-top:15px;
     padding:10px 18px;
-    background:#2563eb;
+    background:#16a34a;
     color:#ffffff;
     border:none;
     border-radius:8px;
@@ -111,7 +111,7 @@ button{
 }
 
 .item{
-    background:#eef2ff;
+    background:#dcfce7;
     padding:15px 18px;
     border-radius:12px;
     margin-bottom:12px;
@@ -121,7 +121,7 @@ button{
 }
 
 .btn-blue{
-    background:#2563eb;
+    background:#16a34a;
     color:#ffffff;
     padding:8px 16px;
     border-radius:8px;
