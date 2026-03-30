@@ -78,14 +78,14 @@ $units = $stmtUnits->fetchAll(PDO::FETCH_ASSOC);
 <style>
 body{
     font-family: Arial, sans-serif;
-    background:#eef2f7;
+    background:#f0faf4;
     padding:40px;
 }
 .container{ max-width:1000px; margin:0 auto; }
 .back{
     display:inline-block;
     margin-bottom:25px;
-    background:#6b7280;
+    background:#4b7a59;
     color:#fff;
     padding:10px 18px;
     border-radius:8px;
@@ -103,12 +103,12 @@ input{
     width:100%;
     padding:12px;
     border-radius:8px;
-    border:1px solid #ddd;
+    border:1px solid #a7f3d0;
 }
 button{
     margin-top:15px;
     padding:10px 18px;
-    background:#2563eb;
+    background:#16a34a;
     color:#fff;
     border:none;
     border-radius:8px;
@@ -116,7 +116,7 @@ button{
     cursor:pointer;
 }
 .unit-item{
-    background:#eef2ff;
+    background:#dcfce7;
     padding:15px 18px;
     border-radius:12px;
     margin-bottom:12px;
@@ -125,7 +125,7 @@ button{
     align-items:center;
 }
 .btn{
-    background:#2563eb;
+    background:#16a34a;
     color:#fff;
     padding:8px 16px;
     border-radius:8px;
