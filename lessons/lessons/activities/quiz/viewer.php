@@ -413,7 +413,25 @@ window.QUIZ_POLICY = <?php echo json_encode($quizAttemptPolicy, JSON_UNESCAPED_U
 
     if (btn) {
       const lockedByPolicy = !policy.finish_enabled;
-      btn.disabled = lockedByPolicy || answered < total;
+      btn.disabled = lockedByPolicy;
+    }
+
+    return {
+      answered: answered,
+      total: total,
+    };
+  }
+
+  function focusFirstUnanswered() {
+    const firstMissing = listEl.querySelector('.qz-card.qz-card-unanswered');
+    if (!firstMissing) {
+      return;
+    }
+
+    try {
+      firstMissing.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    } catch (e) {
+      firstMissing.scrollIntoView();
     }
   }
 
@@ -467,6 +485,25 @@ window.QUIZ_POLICY = <?php echo json_encode($quizAttemptPolicy, JSON_UNESCAPED_U
         resultEl.textContent = String(policy.message || 'Finish is locked for now.');
       }
       return;
+    }
+
+    const progress = updateAnsweredProgress();
+    if (progress.answered < progress.total) {
+      if (resultEl) {
+        resultEl.style.display = 'block';
+        resultEl.style.background = '#fff2f2';
+        resultEl.style.color = '#9b1c1c';
+        resultEl.textContent = 'Answer all questions before finishing.';
+      }
+      focusFirstUnanswered();
+      return;
+    }
+
+    if (resultEl) {
+      resultEl.style.display = 'none';
+      resultEl.style.background = '#e9f8ee';
+      resultEl.style.color = '#166534';
+      resultEl.textContent = '';
     }
 
     let correct = 0;
