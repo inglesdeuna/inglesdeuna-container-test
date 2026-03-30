@@ -428,6 +428,20 @@ foreach ($allUnits as $_u) {
 $step = max(0, (int) ($_GET['step'] ?? 0));
 $activities = $selectedUnitId !== '' ? load_activities_for_unit($pdo, $selectedUnitId) : [];
 $total = count($activities);
+
+$quizStepIndex = null;
+foreach ($activities as $activityIndex => $activityItem) {
+    $activityType = strtolower(trim((string) ($activityItem['type'] ?? '')));
+    if ($activityType === 'quiz' || $activityType === 'multiple_choice') {
+        $quizStepIndex = $activityIndex;
+        break;
+    }
+}
+
+$quizHref = $quizStepIndex !== null
+    ? 'student_course.php?assignment=' . urlencode($assignmentId) . '&unit=' . urlencode($selectedUnitId) . '&step=' . urlencode((string) $quizStepIndex)
+    : '';
+
 $isCompleted = $total > 0 && $step >= $total;
 $current = (!$isCompleted && $total > 0) ? $activities[$step] : null;
 $prevStep = max(0, $step - 1);
@@ -475,19 +489,8 @@ $hasUnitResult = $quizTotal > 0;
 $passThreshold = 60;
 $isPassingScore = $hasUnitResult && $completionPercent >= $passThreshold;
 $scoreToneClass = $isPassingScore ? 'score-pass' : 'score-fail';
-
-$quizStepIndex = null;
-foreach ($activities as $activityIndex => $activityItem) {
-    $activityType = strtolower(trim((string) ($activityItem['type'] ?? '')));
-    if ($activityType === 'quiz' || $activityType === 'multiple_choice') {
-        $quizStepIndex = $activityIndex;
-        break;
-    }
-}
-
-$quizHref = $quizStepIndex !== null
-    ? 'student_course.php?assignment=' . urlencode($assignmentId) . '&unit=' . urlencode($selectedUnitId) . '&step=' . urlencode((string) $quizStepIndex)
-    : '';
+$resultStatusLabel = $isPassingScore ? 'PASS' : 'FAIL';
+$resultStatusClass = $isPassingScore ? 'result-badge-pass' : 'result-badge-fail';
 
 $backHref = 'student_dashboard.php';
 $completedStep = max(9999, $total);
@@ -636,6 +639,29 @@ body{margin:0;font-family:Arial,sans-serif;background:linear-gradient(145deg,#ff
     padding:18px 16px;
     box-shadow:var(--shadow-sm);
 }
+.result-badge{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    min-width:112px;
+    padding:9px 18px;
+    border-radius:999px;
+    font-size:13px;
+    font-weight:900;
+    letter-spacing:.16em;
+    margin-bottom:14px;
+    border:1px solid transparent;
+}
+.result-badge-pass{
+    background:#f3e8ff;
+    color:#6d28d9;
+    border-color:#d8b4fe;
+}
+.result-badge-fail{
+    background:#fee2e2;
+    color:#b91c1c;
+    border-color:#fca5a5;
+}
 .unit-percent{
     font-size:clamp(58px, 9vw, 96px);
     line-height:1;
@@ -738,6 +764,7 @@ body{margin:0;font-family:Arial,sans-serif;background:linear-gradient(145deg,#ff
 
             <?php if ($hasUnitResult): ?>
             <div class="unit-result-card">
+                <div class="result-badge <?php echo h($resultStatusClass); ?>"><?php echo h($resultStatusLabel); ?></div>
                 <div class="unit-percent <?php echo h($scoreToneClass); ?>"><?php echo $completionPercent; ?>%</div>
                 <div class="unit-errors">Errors: <?php echo $quizErrors; ?> / <?php echo $quizTotal; ?></div>
                 <?php if ($isPassingScore): ?>
