@@ -673,7 +673,7 @@ document.addEventListener('DOMContentLoaded', function () {
         attemptsByCard[index] = currentAttempts;
 
         if (answer === expected) {
-            feedbackEl.textContent = 'Correct!';
+            feedbackEl.textContent = '\u2714 Good';
             feedbackEl.className = 'mc-feedback good';
             answerEl.className = 'dict-answer-box ok';
             playSound(correctSound);
@@ -684,7 +684,7 @@ document.addEventListener('DOMContentLoaded', function () {
             answerEl.className = 'dict-answer-box bad';
 
             if (currentAttempts >= 2) {
-                feedbackEl.textContent = 'Wrong (2/2).';
+                feedbackEl.textContent = '\u2718 Wrong (2/2)';
                 feedbackEl.className = 'mc-feedback bad';
                 playSound(wrongSound);
                 checkedCards[index] = true;
@@ -692,7 +692,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 revealEl.textContent = 'You wrote: "' + answerEl.value + '"  ->  Correct: ' + (data[index].en || '');
                 revealEl.classList.add('show');
             } else {
-                feedbackEl.textContent = 'Try Again (1 attempt left)';
+                feedbackEl.textContent = '\u2718 Wrong (1/2) - try again';
                 feedbackEl.className = 'mc-feedback bad';
                 playSound(wrongSound);
             }
