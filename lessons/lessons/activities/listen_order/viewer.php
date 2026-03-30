@@ -394,6 +394,9 @@ let currentSentence = '';
 let isSpeaking = false;
 let isPaused = false;
 let utter = null;
+let speechOffset = 0;
+let speechSourceText = '';
+let speechSegmentStart = 0;
 let finished = false;
 let blockFinished = false;
 let correctCount = 0;
@@ -475,15 +478,15 @@ function playAudio() {
   }
 
   // Resume from paused point first.
-  if (speechSynthesis.paused) {
+  if (speechSynthesis.paused || isPaused) {
     speechSynthesis.resume();
     isSpeaking = true;
     isPaused = false;
 
-    // Some browsers occasionally keep paused state after first resume call.
+    // Some browsers occasionally fail to resume paused utterances after interactions.
     setTimeout(function () {
-      if (speechSynthesis.paused) {
-        speechSynthesis.resume();
+      if (!speechSynthesis.speaking && speechOffset < speechSourceText.length) {
+        startSpeechFromOffset();
       }
     }, 80);
     return;
@@ -497,8 +500,31 @@ function playAudio() {
   }
 
   speechSynthesis.cancel();
+  speechSourceText = currentSentence || '';
+  speechOffset = 0;
+  startSpeechFromOffset();
+}
 
-  utter = new SpeechSynthesisUtterance(currentSentence || '');
+function startSpeechFromOffset() {
+  const source = speechSourceText || currentSentence || '';
+  if (!source) {
+    return;
+  }
+
+  const safeOffset = Math.max(0, Math.min(speechOffset, source.length));
+  const remaining = source.slice(safeOffset);
+
+  if (!remaining.trim()) {
+    isSpeaking = false;
+    isPaused = false;
+    speechOffset = 0;
+    return;
+  }
+
+  speechSynthesis.cancel();
+
+  speechSegmentStart = safeOffset;
+  utter = new SpeechSynthesisUtterance(remaining);
   utter.lang = 'en-US';
   utter.rate = 0.7;
   utter.pitch = 1;
@@ -509,9 +535,29 @@ function playAudio() {
     isPaused = false;
   };
 
+  utter.onpause = function () {
+    isPaused = true;
+    isSpeaking = true;
+  };
+
+  utter.onresume = function () {
+    isPaused = false;
+    isSpeaking = true;
+  };
+
+  utter.onboundary = function (event) {
+    if (typeof event.charIndex === 'number') {
+      speechOffset = Math.max(speechSegmentStart, Math.min(source.length, speechSegmentStart + event.charIndex));
+    }
+  };
+
   utter.onend = function () {
+    if (isPaused) {
+      return;
+    }
     isSpeaking = false;
     isPaused = false;
+    speechOffset = 0;
   };
 
   speechSynthesis.speak(utter);
@@ -601,6 +647,9 @@ function loadBlock() {
   speechSynthesis.cancel();
   isSpeaking = false;
   isPaused = false;
+  speechOffset = 0;
+  speechSourceText = '';
+  speechSegmentStart = 0;
   dragged = null;
   finished = false;
   blockFinished = false;
@@ -637,6 +686,7 @@ function loadBlock() {
 
   const block = blocks[index] || {};
   currentSentence = typeof block.sentence === 'string' ? block.sentence : '';
+  speechSourceText = currentSentence;
   correct = Array.isArray(block.images) ? block.images.slice() : [];
 
   updateStatus();
