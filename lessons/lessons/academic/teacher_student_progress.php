@@ -287,7 +287,7 @@ $period = h(trim((string) ($assignment['period'] ?? '')));
     <div class="page">
         <div class="top">
             <h1>📊 Progreso del Estudiante</h1>
-            <a class="back" href="teacher_students_list.php">← Volver</a>
+            <a class="back" href="dashboard.php">← Volver</a>
         </div>
         
         <p class="meta">
