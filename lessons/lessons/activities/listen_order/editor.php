@@ -471,10 +471,27 @@ function markChanged() {
     formChanged = true;
 }
 
+function reindexBlockInputs() {
+    const blocks = document.querySelectorAll('#blocksContainer .block-item');
+
+    blocks.forEach(function (block, index) {
+        const fileInput = block.querySelector('input[type="file"][name^="images["]');
+        if (fileInput) {
+            fileInput.name = 'images[' + index + '][]';
+        }
+
+        const existingInputs = block.querySelectorAll('input[type="hidden"][name^="images_existing["]');
+        existingInputs.forEach(function (input) {
+            input.name = 'images_existing[' + index + '][]';
+        });
+    });
+}
+
 function removeBlock(button) {
     const item = button.closest('.block-item');
     if (item) {
         item.remove();
+        reindexBlockInputs();
         markChanged();
     }
 }
@@ -497,6 +514,7 @@ function addBlock() {
         <button type="button" class="btn-remove" onclick="removeBlock(this)">✖ Remove</button>
     `;
     container.appendChild(div);
+    reindexBlockInputs();
     bindChangeTracking(div);
     markChanged();
 }
@@ -511,10 +529,12 @@ function bindChangeTracking(scope) {
 
 document.addEventListener('DOMContentLoaded', function () {
     bindChangeTracking(document);
+    reindexBlockInputs();
 
     const form = document.getElementById('listenOrderForm');
     if (form) {
         form.addEventListener('submit', function () {
+            reindexBlockInputs();
             formSubmitted = true;
             formChanged = false;
         });
