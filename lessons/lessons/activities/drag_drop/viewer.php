@@ -417,9 +417,10 @@ let speechSegmentStart = 0;
 let finished = false;
 let blockFinished = false;
 let correctCount = 0;
-let totalCount = blocks.length;
+let totalCount = 0;
 let checkedBlocks = {};
 let attemptsByBlock = {};
+let scoredWordsByBlock = {};
 
 const promptText = document.getElementById('promptText');
 const wordBank = document.getElementById('wordBank');
@@ -500,6 +501,49 @@ function shuffle(list) {
   return list.slice().sort(function () {
     return Math.random() - 0.5;
   });
+}
+
+function getAnswersForBlock(block) {
+  const text = typeof block.text === 'string' ? block.text.trim() : '';
+  const missing = Array.isArray(block.missing_words) ? block.missing_words : [];
+  const cleanedMissing = missing.map(function (word) {
+    return String(word || '').trim();
+  }).filter(function (word) {
+    return word.length > 0;
+  });
+
+  if (cleanedMissing.length > 0) {
+    return cleanedMissing;
+  }
+
+  if (!text) {
+    return [];
+  }
+
+  return text.split(/\s+/).filter(function (word) {
+    return word.length > 0;
+  });
+}
+
+function countCorrectWords(built, answers) {
+  let correct = 0;
+  for (let i = 0; i < answers.length; i += 1) {
+    if ((built[i] || '') === (answers[i] || '')) {
+      correct += 1;
+    }
+  }
+  return correct;
+}
+
+function registerBlockWordScore(built) {
+  if (Object.prototype.hasOwnProperty.call(scoredWordsByBlock, index)) {
+    return;
+  }
+
+  const builtAnswers = Array.isArray(built) ? built : getBuiltAnswers();
+  const score = countCorrectWords(builtAnswers, currentAnswers);
+  scoredWordsByBlock[index] = score;
+  correctCount += score;
 }
 
 function createWordChip(word) {
@@ -604,7 +648,7 @@ function loadSentence() {
   const block = blocks[index] || {};
   currentText = typeof block.text === 'string' ? block.text.trim() : '';
   speechSourceText = currentText;
-  currentAnswers = Array.isArray(block.missing_words) ? block.missing_words.slice() : [];
+  currentAnswers = getAnswersForBlock(block);
   listenEnabled = !!block.listen_enabled;
 
   setListenVisible(listenEnabled);
@@ -613,10 +657,6 @@ function loadSentence() {
     feedback.textContent = 'Empty block';
     feedback.className = 'bad';
     return;
-  }
-
-  if (currentAnswers.length === 0) {
-    currentAnswers = currentText.split(/\s+/).filter(function (w) { return w.length > 0; });
   }
 
   let renderedText = currentText;
@@ -719,7 +759,7 @@ function checkSentence() {
     feedback.className = 'good';
     playSound(winSound);
     checkedBlocks[index] = true;
-    correctCount++;
+    registerBlockWordScore(built);
     blockFinished = true;
   } else {
     if (currentAttempts >= 2) {
@@ -727,6 +767,7 @@ function checkSentence() {
       feedback.className = 'bad';
       playSound(loseSound);
       checkedBlocks[index] = true;
+      registerBlockWordScore(built);
       blockFinished = true;
 
       const blanks = Array.prototype.slice.call(promptText.querySelectorAll('.blank'));
@@ -762,6 +803,9 @@ function showAnswer() {
   const built = getBuiltAnswers();
   const blanks = Array.prototype.slice.call(promptText.querySelectorAll('.blank'));
 
+  registerBlockWordScore(built);
+  checkedBlocks[index] = true;
+
   blanks.forEach(function (blank, blankIndex) {
     const answer = currentAnswers[blankIndex] || '';
     const builtWord = built[blankIndex] || '';
@@ -790,6 +834,8 @@ function nextSentence() {
     return;
   }
 
+  registerBlockWordScore();
+
   if (index >= blocks.length - 1) {
     showCompleted();
     return;
@@ -802,9 +848,12 @@ function nextSentence() {
 function restartActivity() {
   index = 0;
   correctCount = 0;
-  totalCount = blocks.length;
+  totalCount = blocks.reduce(function (sum, block) {
+    return sum + getAnswersForBlock(block).length;
+  }, 0);
   checkedBlocks = {};
   attemptsByBlock = {};
+  scoredWordsByBlock = {};
   loadSentence();
 }
 
@@ -898,6 +947,10 @@ function startSpeechFromOffset() {
 
   speechSynthesis.speak(utter);
 }
+
+totalCount = blocks.reduce(function (sum, block) {
+  return sum + getAnswersForBlock(block).length;
+}, 0);
 
 loadSentence();
 </script>
