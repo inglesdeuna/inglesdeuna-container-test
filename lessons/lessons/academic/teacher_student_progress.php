@@ -116,21 +116,46 @@ function load_student_unit_scores(PDO $pdo, string $studentId, string $assignmen
 function load_activity_scores(PDO $pdo, string $studentId, string $assignmentId, string $unitId): array
 {
     try {
-        $stmt = $pdo->prepare("
-            SELECT sar.activity_type, sar.completion_percent, sar.errors_count, sar.total_count
-            FROM student_activity_results sar
-            WHERE sar.student_id = :student_id
-              AND sar.assignment_id = :assignment_id
-              AND sar.unit_id = :unit_id
-            ORDER BY sar.activity_type ASC
-        ");
-        $stmt->execute([
-            'student_id' => $studentId,
-            'assignment_id' => $assignmentId,
-            'unit_id' => $unitId,
-        ]);
+        try {
+            $stmt = $pdo->prepare("
+                SELECT sar.activity_type, sar.completion_percent, sar.errors_count, sar.total_count,
+                       COALESCE(sar.attempts_count, 1) AS attempts_count
+                FROM student_activity_results sar
+                WHERE sar.student_id = :student_id
+                  AND sar.assignment_id = :assignment_id
+                  AND sar.unit_id = :unit_id
+                ORDER BY sar.activity_type ASC
+            ");
+            $stmt->execute([
+                'student_id' => $studentId,
+                'assignment_id' => $assignmentId,
+                'unit_id' => $unitId,
+            ]);
 
-        return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+            return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        } catch (Throwable $e) {
+            $stmt = $pdo->prepare("
+                SELECT sar.activity_type, sar.completion_percent, sar.errors_count, sar.total_count
+                FROM student_activity_results sar
+                WHERE sar.student_id = :student_id
+                  AND sar.assignment_id = :assignment_id
+                  AND sar.unit_id = :unit_id
+                ORDER BY sar.activity_type ASC
+            ");
+            $stmt->execute([
+                'student_id' => $studentId,
+                'assignment_id' => $assignmentId,
+                'unit_id' => $unitId,
+            ]);
+
+            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+            foreach ($rows as &$row) {
+                $row['attempts_count'] = 1;
+            }
+            unset($row);
+
+            return $rows;
+        }
     } catch (Throwable $e) {
         return [];
     }
@@ -353,6 +378,17 @@ $period = h(app_upper(trim((string) ($assignment['period'] ?? ''))));
             color: var(--primary-dark);
             font-weight: 700;
         }
+
+        .attempt-badge {
+            display: inline-block;
+            margin-left: 8px;
+            padding: 2px 8px;
+            border-radius: 999px;
+            font-size: 11px;
+            font-weight: 700;
+            background: #dbeafe;
+            color: #1e40af;
+        }
         
         @media (max-width: 768px) {
             .page {
@@ -426,9 +462,11 @@ $period = h(app_upper(trim((string) ($assignment['period'] ?? ''))));
                                 <td style="font-weight: 700; color: var(--primary-dark);"><?php echo $percent; ?>%</td>
                             </tr>
                             <?php foreach ($activities as $activity): ?>
+                                <?php $attemptsCount = max(1, min(2, (int) ($activity['attempts_count'] ?? 1))); ?>
                                 <tr class="activity-row" data-unit-id="<?php echo h($unitId); ?>">
                                     <td class="activity-cell">
                                         <span class="activity-type"><?php echo h(app_upper((string) ($activity['activity_type'] ?? 'Actividad'))); ?></span>
+                                        <span class="attempt-badge">INTENTO <?php echo $attemptsCount; ?>/2</span>
                                     </td>
                                     <td>
                                         <div class="completion-bar">
