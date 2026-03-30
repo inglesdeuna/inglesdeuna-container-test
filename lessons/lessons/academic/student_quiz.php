@@ -122,7 +122,8 @@ body{margin:0;font-family:Arial,sans-serif;background:var(--bg);color:var(--text
 .page{max-width:980px;margin:0 auto}
 .top{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px}
 h1{margin:0;color:var(--title)}
-.back{color:var(--salmon-dark);text-decoration:none;font-weight:700}
+.back{display:inline-block;padding:10px 16px;border-radius:8px;text-decoration:none;color:#fff;background:linear-gradient(180deg,#a855f7,#7c3aed);font-weight:700;box-shadow:0 4px 12px rgba(124,58,237,.25);transition:filter .18s ease,transform .18s ease}
+.back:hover{filter:brightness(1.08);transform:translateY(-1px)}
 .meta{margin:0 0 14px;color:var(--muted)}
 .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px}
 table{width:100%;border-collapse:collapse}
