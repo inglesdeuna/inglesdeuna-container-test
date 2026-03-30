@@ -510,7 +510,7 @@ body{
                 <?php
                 $assignmentId = (string) ($assignment['id'] ?? '');
                 $program = (string) ($assignment['program'] ?? 'technical');
-                $programLabel = $program === 'english' ? 'English' : 'Technical';
+                $programLabel = $program === 'english' ? 'English' : 'TÉCNICO';
                 $courseName = trim((string) ($assignment['course_name'] ?? ''));
                 if ($courseName === '') {
                     $courseName = 'Course';
