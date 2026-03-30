@@ -318,6 +318,23 @@ ob_start();
   text-align:center;
 }
 
+#lo-status{
+  text-align:center;
+  margin-bottom:12px;
+  font-size:14px;
+  color:#5b516f;
+  font-weight:700;
+}
+
+#lo-status.completed{
+  font-family:'Fredoka', 'Trebuchet MS', sans-serif;
+  font-size:36px;
+  font-weight:700;
+  color:#4c1d95;
+  line-height:1.2;
+  margin-bottom:18px;
+}
+
 .good{color:#15803d;}
 .bad{color:#dc2626;}
 
@@ -349,7 +366,7 @@ ob_start();
 
   <div id="feedback"></div>
 
-  <div id="lo-status" style="text-align:center;margin-bottom:12px;font-size:14px;color:#5b516f;font-weight:700;"></div>
+  <div id="lo-status"></div>
 
   <div id="lo-completed" class="lo-completed-screen">
     <div class="lo-completed-icon">✅</div>
@@ -511,6 +528,7 @@ function createImageChip(src) {
 }
 
 function updateStatus() {
+  statusEl.classList.remove('completed');
   statusEl.textContent = (index + 1) + ' / ' + totalCount;
 }
 
@@ -627,6 +645,7 @@ async function showCompleted() {
     controls.style.display = 'none';
   }
 
+  statusEl.classList.add('completed');
   statusEl.textContent = 'Completed';
 
   if (completedEl) {
