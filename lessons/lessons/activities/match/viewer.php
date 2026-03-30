@@ -428,6 +428,79 @@ ob_start();
         </div>
     </div>
 
+    <div id="match-final-completed" class="match-final-completed-screen">
+        <div class="match-fc-icon">✅</div>
+        <h2 class="match-fc-title"><?= htmlspecialchars($viewerTitle, ENT_QUOTES, 'UTF-8') ?></h2>
+        <p class="match-fc-score" id="match-fc-score-text"></p>
+        <p class="match-fc-text" id="match-fc-sub-text"></p>
+        <div class="match-fc-actions">
+            <button type="button" class="match-fc-btn match-fc-btn-secondary" id="match-fc-restart-btn">Try Again</button>
+        </div>
+    </div>
+
+    <style>
+    .match-final-completed-screen{
+        display:none;
+        text-align:center;
+        max-width:600px;
+        margin:0 auto;
+        padding:40px 20px;
+    }
+    .match-final-completed-screen.active{
+        display:block;
+    }
+    .match-fc-icon{
+        font-size:80px;
+        margin-bottom:20px;
+    }
+    .match-fc-title{
+        font-family:'Fredoka','Trebuchet MS',sans-serif;
+        font-size:36px;
+        font-weight:700;
+        color:#be185d;
+        margin:0 0 14px;
+        line-height:1.2;
+    }
+    .match-fc-score{
+        font-size:20px;
+        font-weight:800;
+        color:#0f172a;
+        margin:0 0 8px;
+    }
+    .match-fc-text{
+        font-size:15px;
+        color:#6b4b5f;
+        line-height:1.6;
+        margin:0 0 28px;
+    }
+    .match-fc-actions{
+        display:flex;
+        gap:10px;
+        justify-content:center;
+        flex-wrap:wrap;
+    }
+    .match-fc-btn{
+        display:inline-block;
+        padding:12px 24px;
+        border:none;
+        border-radius:999px;
+        background:linear-gradient(180deg,#db2777 0%,#be185d 100%);
+        color:#fff;
+        font-weight:700;
+        font-size:16px;
+        cursor:pointer;
+        box-shadow:0 10px 24px rgba(0,0,0,.14);
+        transition:transform .18s ease,filter .18s ease;
+    }
+    .match-fc-btn:hover{
+        transform:scale(1.05);
+        filter:brightness(1.07);
+    }
+    .match-fc-btn-secondary{
+        background:linear-gradient(180deg,#60a5fa 0%,#2563eb 100%);
+    }
+    </style>
+
     <script>
     const MATCH_DATA = <?= json_encode($pairs, JSON_UNESCAPED_UNICODE) ?>;
     const MATCH_RETURN_TO = <?= json_encode($returnTo, JSON_UNESCAPED_UNICODE) ?>;

@@ -179,6 +179,14 @@ document.addEventListener("DOMContentLoaded", () => {
     if (overlay) {
       overlay.remove();
     }
+    const finalScreen = document.getElementById("match-final-completed");
+    if (finalScreen) {
+      finalScreen.classList.remove("active");
+    }
+    const matchStageEl = document.querySelector(".match-stage");
+    if (matchStageEl) {
+      matchStageEl.style.display = "";
+    }
   }
 
   function setActivityLocked(locked) {
@@ -272,76 +280,64 @@ document.addEventListener("DOMContentLoaded", () => {
     if (isFinalRound) {
       persistScoreSilently(saveUrl);
       setActivityLocked(true);
+
+      // Show standard completed screen
+      const matchStageEl = document.querySelector(".match-stage");
+      const finalScreen = document.getElementById("match-final-completed");
+
+      if (finalScreen) {
+        const scoreEl = document.getElementById("match-fc-score-text");
+        const subEl = document.getElementById("match-fc-sub-text");
+        const restartBtn = document.getElementById("match-fc-restart-btn");
+
+        if (scoreEl) {
+          scoreEl.textContent = "Score: " + correct + " / " + total + " (" + percent + "%)";
+        }
+        if (subEl) {
+          subEl.textContent =
+            "Round 1: " + (roundScores[0] || 0) + "/" + total + ".  Round 2: " + (roundScores[1] || 0) + "/" + total + ".";
+        }
+        if (restartBtn) {
+          restartBtn.disabled = true;
+          restartBtn.style.opacity = "0.5";
+          restartBtn.style.cursor = "not-allowed";
+        }
+
+        if (matchStageEl) {
+          matchStageEl.style.display = "none";
+        }
+        finalScreen.classList.add("active");
+        playSound(winSound);
+        return;
+      }
     }
 
-    const subtitle = isFinalRound
-      ? `Intento 1: ${roundScores[0] || 0}/${total}. Intento 2: ${roundScores[1] || 0}/${total}.`
-      : `Intento ${completedRound} completado. Tienes una oportunidad mas.`;
-
-    const replayButtonLabel = "Intentar de nuevo";
-    const replayButtonDisabled = isFinalRound ? "disabled" : "";
+    // Non-final round: use old overlay for intermediate feedback
+    const subtitle = "Round " + completedRound + " done. One more attempt to go.";
+    const replayButtonLabel = "Try Again";
 
     const overlay = document.createElement("div");
     overlay.id = "matchCompletedOverlay";
-
-    if (isFinalRound) {
-      const resetTestButtonHtml = isStudentCourseFlow
-        ? '<button type="button" class="match-teacher-completed-button match-teacher-completed-button-secondary" id="matchResetTestBtn">Borrar progreso de prueba</button>'
-        : "";
-
-      overlay.className = "match-teacher-overlay";
-      overlay.innerHTML = `
-        <div class="match-teacher-completed-box">
-          <div class="match-teacher-completed-icon">✅</div>
-          <div class="match-teacher-completed-title">Completado</div>
-          <div class="match-teacher-completed-score">Puntaje: <strong>${correct} / ${total}</strong> (${percent}%)</div>
-          <div class="match-teacher-completed-text">${subtitle}</div>
-          <div class="match-teacher-completed-actions">
-            <button type="button" class="match-teacher-completed-button" id="matchRestartBtn" ${replayButtonDisabled}>${replayButtonLabel}</button>
-            ${resetTestButtonHtml}
-            ${returnTo !== "" ? '<button type="button" class="match-teacher-completed-button match-teacher-completed-button-secondary" id="matchReturnBtn">Volver</button>' : ""}
-          </div>
+    overlay.className = "match-teacher-overlay";
+    overlay.innerHTML = `
+      <div class="match-teacher-completed-box">
+        <div class="match-teacher-completed-icon">🏆</div>
+        <div class="match-teacher-completed-title">Round ${completedRound} Done!</div>
+        <div class="match-teacher-completed-score">Score: <strong>${correct} / ${total}</strong> (${percent}%)</div>
+        <div class="match-teacher-completed-text">${subtitle}</div>
+        <div class="match-teacher-completed-actions">
+          <button type="button" class="match-teacher-completed-button" id="matchRestartBtn">${replayButtonLabel}</button>
         </div>
-      `;
-    } else {
-      overlay.innerHTML = `
-        <div class="match-completed-box">
-          <div class="match-completed-emoji">🏆</div>
-          <div class="match-completed-title">Completado</div>
-          <div class="match-completed-score">Puntaje: <strong>${correct} / ${total}</strong> (${percent}%)</div>
-          <div class="match-completed-subtitle">${subtitle}</div>
-          <div class="match-completed-actions">
-            <button type="button" class="match-completed-btn secondary" id="matchRestartBtn" ${replayButtonDisabled}>${replayButtonLabel}</button>
-            ${returnTo !== "" ? '<button type="button" class="match-completed-btn" id="matchReturnBtn">Volver</button>' : ""}
-          </div>
-        </div>
-      `;
-    }
+      </div>
+    `;
     document.body.appendChild(overlay);
 
     const restartBtn = document.getElementById("matchRestartBtn");
-    if (restartBtn && !isFinalRound) {
+    if (restartBtn) {
       restartBtn.addEventListener("click", () => {
         removeCompletedOverlay();
         currentRound += 1;
         startRound();
-      });
-    }
-
-    const returnBtn = document.getElementById("matchReturnBtn");
-    if (returnBtn) {
-      returnBtn.addEventListener("click", () => {
-        navigateToReturn(saveUrl || returnTo);
-      });
-    }
-
-    const resetTestBtn = document.getElementById("matchResetTestBtn");
-    if (resetTestBtn) {
-      resetTestBtn.addEventListener("click", () => {
-        const resetUrl = buildStudentResetUrl();
-        if (resetUrl) {
-          navigateToReturn(resetUrl);
-        }
       });
     }
 
