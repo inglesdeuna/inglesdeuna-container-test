@@ -100,7 +100,7 @@ $units = $stmtUnits->fetchAll(PDO::FETCH_ASSOC);
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title><?= htmlspecialchars($course["name"]) ?> — Gestionar Unidades</title>
+<title><?= htmlspecialchars(strtoupper($course["name"])) ?> — Gestionar Unidades</title>
 
 <style>
 :root{
@@ -198,7 +198,7 @@ button{
 </div>
 
 <div class="card">
-    <h2>📋 Unidades creadas — <?= htmlspecialchars($course["name"]) ?></h2>
+    <h2>📋 Unidades creadas — <?= htmlspecialchars(strtoupper($course["name"])) ?></h2>
 
     <?php if (empty($units)): ?>
         <p>No hay unidades creadas.</p>
