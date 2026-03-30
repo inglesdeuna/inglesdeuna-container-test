@@ -1,5 +1,6 @@
 <?php
 session_start();
+require_once __DIR__ . '/../core/cloudinary_upload.php';
 
 if (!isset($_SESSION['student_logged']) || $_SESSION['student_logged'] !== true) {
     header('Location: login_student.php');
@@ -106,6 +107,41 @@ function table_has_column(PDO $pdo, string $tableName, string $columnName): bool
     }
 }
 
+function ensure_student_photo_column(): void
+{
+    $pdo = get_pdo_connection();
+    if (!$pdo) {
+        return;
+    }
+
+    try {
+        $pdo->exec("ALTER TABLE student_accounts ADD COLUMN IF NOT EXISTS student_photo TEXT");
+    } catch (Throwable $e) {
+    }
+}
+
+function upload_student_photo_to_cloud(string $tmpName): string
+{
+    if ($tmpName === '' || !is_file($tmpName) || !function_exists('upload_to_cloudinary')) {
+        return '';
+    }
+
+    $cloudName = (string) (getenv('CLOUDINARY_CLOUD_NAME') ?: ($_ENV['CLOUDINARY_CLOUD_NAME'] ?? ''));
+    $apiKey = (string) (getenv('CLOUDINARY_API_KEY') ?: ($_ENV['CLOUDINARY_API_KEY'] ?? ''));
+    $apiSecret = (string) (getenv('CLOUDINARY_API_SECRET') ?: ($_ENV['CLOUDINARY_API_SECRET'] ?? ''));
+
+    if ($cloudName === '' || $apiKey === '' || $apiSecret === '') {
+        return '';
+    }
+
+    try {
+        $uploaded = upload_to_cloudinary($tmpName);
+        return is_string($uploaded) ? trim($uploaded) : '';
+    } catch (Throwable $e) {
+        return '';
+    }
+}
+
 function ensure_data_directory(): string
 {
     $dataDir = __DIR__ . '/data';
@@ -186,13 +222,23 @@ function load_student_photo(string $studentId): string
         return '';
     }
 
+    $fromDatabase = load_student_photo_from_database($studentId);
+    if ($fromDatabase !== '') {
+        $store = load_student_photos_store();
+        if ((string) ($store[$studentId] ?? '') !== $fromDatabase) {
+            $store[$studentId] = $fromDatabase;
+            save_student_photos_store($store);
+        }
+        return $fromDatabase;
+    }
+
     $store = load_student_photos_store();
     $fromStore = trim((string) ($store[$studentId] ?? ''));
     if ($fromStore !== '') {
         return $fromStore;
     }
 
-    return load_student_photo_from_database($studentId);
+    return '';
 }
 
 function save_student_photo(string $studentId, string $photoPath): void
@@ -201,10 +247,11 @@ function save_student_photo(string $studentId, string $photoPath): void
         return;
     }
 
+    save_student_photo_to_database($studentId, $photoPath);
+
     $store = load_student_photos_store();
     $store[$studentId] = $photoPath;
     save_student_photos_store($store);
-    save_student_photo_to_database($studentId, $photoPath);
 }
 
 function maybe_delete_local_student_photo(string $photoPath): void
@@ -335,26 +382,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (string) ($_POST['action'] ?? '') =
                 if (!isset($allowedMimes[$mime])) {
                     $flashError = 'Unsupported format. Use JPG, PNG, WEBP, or GIF.';
                 } else {
-                    $extension = $allowedMimes[$mime];
-                    $safeStudentId = preg_replace('/[^a-zA-Z0-9_-]/', '_', $studentId) ?: 'student';
-                    $newFilename = $safeStudentId . '_' . date('YmdHis') . '_' . bin2hex(random_bytes(4)) . '.' . $extension;
-                    $newFileAbsolute = student_photos_directory() . '/' . $newFilename;
-                    $newFileRelative = 'data/student_photos/' . $newFilename;
+                    $oldPhoto = trim((string) ($_SESSION['student_photo'] ?? load_student_photo($studentId)));
 
-                    if (!move_uploaded_file($tmpName, $newFileAbsolute)) {
-                        $flashError = 'Unable to save the uploaded image.';
-                    } else {
-                        $oldPhoto = trim((string) ($_SESSION['student_photo'] ?? load_student_photo($studentId)));
-                        save_student_photo($studentId, $newFileRelative);
-                        $_SESSION['student_photo'] = $newFileRelative;
+                    $cloudPhotoUrl = upload_student_photo_to_cloud($tmpName);
+                    if ($cloudPhotoUrl !== '') {
+                        save_student_photo($studentId, $cloudPhotoUrl);
+                        $_SESSION['student_photo'] = $cloudPhotoUrl;
                         maybe_delete_local_student_photo($oldPhoto);
                         $flashMessage = 'Photo updated successfully.';
+                    } else {
+                        $extension = $allowedMimes[$mime];
+                        $safeStudentId = preg_replace('/[^a-zA-Z0-9_-]/', '_', $studentId) ?: 'student';
+                        $newFilename = $safeStudentId . '_' . date('YmdHis') . '_' . bin2hex(random_bytes(4)) . '.' . $extension;
+                        $newFileAbsolute = student_photos_directory() . '/' . $newFilename;
+                        $newFileRelative = 'data/student_photos/' . $newFilename;
+
+                        if (!move_uploaded_file($tmpName, $newFileAbsolute)) {
+                            $flashError = 'Unable to save the uploaded image.';
+                        } else {
+                            save_student_photo($studentId, $newFileRelative);
+                            $_SESSION['student_photo'] = $newFileRelative;
+                            maybe_delete_local_student_photo($oldPhoto);
+                            $flashMessage = 'Photo updated successfully.';
+                        }
                     }
                 }
             }
         }
     }
 }
+
+ensure_student_photo_column();
 
 $studentPhoto = trim((string) ($_SESSION['student_photo'] ?? ''));
 if ($studentPhoto === '') {

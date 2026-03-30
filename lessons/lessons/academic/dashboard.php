@@ -1,5 +1,6 @@
 <?php
 session_start();
+require_once __DIR__ . '/../core/cloudinary_upload.php';
 
 if (!isset($_SESSION['academic_logged']) || $_SESSION['academic_logged'] !== true) {
     if (isset($_SESSION['admin_logged']) && $_SESSION['admin_logged'] === true) {
@@ -114,6 +115,41 @@ function table_has_column(PDO $pdo, string $tableName, string $columnName): bool
     }
 }
 
+function ensure_teacher_photo_column(): void
+{
+    $pdo = get_pdo_connection();
+    if (!$pdo) {
+        return;
+    }
+
+    try {
+        $pdo->exec("ALTER TABLE teacher_accounts ADD COLUMN IF NOT EXISTS teacher_photo TEXT");
+    } catch (Throwable $e) {
+    }
+}
+
+function upload_teacher_photo_to_cloud(string $tmpName): string
+{
+    if ($tmpName === '' || !is_file($tmpName) || !function_exists('upload_to_cloudinary')) {
+        return '';
+    }
+
+    $cloudName = (string) (getenv('CLOUDINARY_CLOUD_NAME') ?: ($_ENV['CLOUDINARY_CLOUD_NAME'] ?? ''));
+    $apiKey = (string) (getenv('CLOUDINARY_API_KEY') ?: ($_ENV['CLOUDINARY_API_KEY'] ?? ''));
+    $apiSecret = (string) (getenv('CLOUDINARY_API_SECRET') ?: ($_ENV['CLOUDINARY_API_SECRET'] ?? ''));
+
+    if ($cloudName === '' || $apiKey === '' || $apiSecret === '') {
+        return '';
+    }
+
+    try {
+        $uploaded = upload_to_cloudinary($tmpName);
+        return is_string($uploaded) ? trim($uploaded) : '';
+    } catch (Throwable $e) {
+        return '';
+    }
+}
+
 function ensure_data_directory(): string
 {
     $dataDir = __DIR__ . '/data';
@@ -208,13 +244,23 @@ function load_teacher_photo(string $teacherId): string
         return '';
     }
 
+    $fromDatabase = load_teacher_photo_from_database($teacherId);
+    if ($fromDatabase !== '') {
+        $store = load_teacher_photos_store();
+        if ((string) ($store[$teacherId] ?? '') !== $fromDatabase) {
+            $store[$teacherId] = $fromDatabase;
+            save_teacher_photos_store($store);
+        }
+        return $fromDatabase;
+    }
+
     $store = load_teacher_photos_store();
     $fromStore = trim((string) ($store[$teacherId] ?? ''));
     if ($fromStore !== '') {
         return $fromStore;
     }
 
-    return load_teacher_photo_from_database($teacherId);
+    return '';
 }
 
 function save_teacher_photo(string $teacherId, string $photoPath): void
@@ -223,10 +269,11 @@ function save_teacher_photo(string $teacherId, string $photoPath): void
         return;
     }
 
+    save_teacher_photo_to_database($teacherId, $photoPath);
+
     $store = load_teacher_photos_store();
     $store[$teacherId] = $photoPath;
     save_teacher_photos_store($store);
-    save_teacher_photo_to_database($teacherId, $photoPath);
 }
 
 function is_local_teacher_photo_path(string $photoPath): bool
@@ -445,26 +492,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (string) ($_POST['action'] ?? '') =
                 if (!isset($allowedMimes[$mime])) {
                     $flashError = 'Formato no permitido. Usa JPG, PNG, WEBP o GIF.';
                 } else {
-                    $extension = $allowedMimes[$mime];
-                    $safeTeacherId = preg_replace('/[^a-zA-Z0-9_-]/', '_', $teacherId) ?: 'teacher';
-                    $newFilename = $safeTeacherId . '_' . date('YmdHis') . '_' . bin2hex(random_bytes(4)) . '.' . $extension;
-                    $newFileAbsolute = teacher_photos_directory() . '/' . $newFilename;
-                    $newFileRelative = 'data/teacher_photos/' . $newFilename;
+                    $oldPhoto = trim((string) ($_SESSION['teacher_photo'] ?? load_teacher_photo($teacherId)));
 
-                    if (!move_uploaded_file($tmpName, $newFileAbsolute)) {
-                        $flashError = 'No fue posible guardar la imagen subida.';
-                    } else {
-                        $oldPhoto = trim((string) ($_SESSION['teacher_photo'] ?? load_teacher_photo($teacherId)));
-                        save_teacher_photo($teacherId, $newFileRelative);
-                        $_SESSION['teacher_photo'] = $newFileRelative;
+                    $cloudPhotoUrl = upload_teacher_photo_to_cloud($tmpName);
+                    if ($cloudPhotoUrl !== '') {
+                        save_teacher_photo($teacherId, $cloudPhotoUrl);
+                        $_SESSION['teacher_photo'] = $cloudPhotoUrl;
                         maybe_delete_local_teacher_photo($oldPhoto);
                         $flashMessage = 'Foto actualizada correctamente.';
+                    } else {
+                        $extension = $allowedMimes[$mime];
+                        $safeTeacherId = preg_replace('/[^a-zA-Z0-9_-]/', '_', $teacherId) ?: 'teacher';
+                        $newFilename = $safeTeacherId . '_' . date('YmdHis') . '_' . bin2hex(random_bytes(4)) . '.' . $extension;
+                        $newFileAbsolute = teacher_photos_directory() . '/' . $newFilename;
+                        $newFileRelative = 'data/teacher_photos/' . $newFilename;
+
+                        if (!move_uploaded_file($tmpName, $newFileAbsolute)) {
+                            $flashError = 'No fue posible guardar la imagen subida.';
+                        } else {
+                            save_teacher_photo($teacherId, $newFileRelative);
+                            $_SESSION['teacher_photo'] = $newFileRelative;
+                            maybe_delete_local_teacher_photo($oldPhoto);
+                            $flashMessage = 'Foto actualizada correctamente.';
+                        }
                     }
                 }
             }
         }
     }
 }
+
+ensure_teacher_photo_column();
 
 $teacherPhoto = trim((string) ($_SESSION['teacher_photo'] ?? ''));
 if ($teacherPhoto === '') {
