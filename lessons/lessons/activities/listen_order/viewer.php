@@ -463,16 +463,18 @@ function navigateToReturn(targetUrl) {
 }
 
 function playAudio() {
-  if (finished || blockFinished) return;
+  if (finished) return;
 
-  if (isSpeaking && !isPaused) {
+  if (speechSynthesis.speaking && !speechSynthesis.paused) {
     speechSynthesis.pause();
+    isSpeaking = true;
     isPaused = true;
     return;
   }
 
-  if (isPaused) {
+  if (speechSynthesis.paused || isPaused) {
     speechSynthesis.resume();
+    isSpeaking = true;
     isPaused = false;
     return;
   }
@@ -689,11 +691,19 @@ answerDiv.addEventListener('drop', function () {
 });
 
 function showAnswer() {
+  const built = Array.prototype.slice.call(answerDiv.children).map(function (node) {
+    return node.dataset.src;
+  });
+
   answerDiv.innerHTML = '';
   wordsDiv.innerHTML = '';
 
-  correct.forEach(function (src) {
-    answerDiv.appendChild(createImageChip(src));
+  correct.forEach(function (src, position) {
+    const chip = createImageChip(src);
+    if ((built[position] || '') !== src) {
+      chip.classList.add('incorrect');
+    }
+    answerDiv.appendChild(chip);
   });
 
   feedback.textContent = 'Show Answer';
