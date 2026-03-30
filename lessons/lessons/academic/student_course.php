@@ -472,6 +472,22 @@ $completionPercent = (int) ($unitResult['completion_percent'] ?? 0);
 $quizErrors = (int) ($unitResult['quiz_errors'] ?? 0);
 $quizTotal = (int) ($unitResult['quiz_total'] ?? 0);
 $hasUnitResult = $quizTotal > 0;
+$passThreshold = 60;
+$isPassingScore = $hasUnitResult && $completionPercent >= $passThreshold;
+$scoreToneClass = $isPassingScore ? 'score-pass' : 'score-fail';
+
+$quizStepIndex = null;
+foreach ($activities as $activityIndex => $activityItem) {
+    $activityType = strtolower(trim((string) ($activityItem['type'] ?? '')));
+    if ($activityType === 'quiz' || $activityType === 'multiple_choice') {
+        $quizStepIndex = $activityIndex;
+        break;
+    }
+}
+
+$quizHref = $quizStepIndex !== null
+    ? 'student_course.php?assignment=' . urlencode($assignmentId) . '&unit=' . urlencode($selectedUnitId) . '&step=' . urlencode((string) $quizStepIndex)
+    : '';
 
 $backHref = 'student_dashboard.php';
 $completedStep = max(9999, $total);
@@ -612,6 +628,41 @@ body{margin:0;font-family:Arial,sans-serif;background:linear-gradient(145deg,#ff
 .empty-icon{font-size:46px}
 .empty-title{font-size:24px;font-weight:800;color:var(--muted)}
 .empty-text{max-width:480px;font-size:15px;line-height:1.6;color:var(--muted)}
+.unit-result-card{
+    width:min(520px, 100%);
+    border:1px solid var(--line);
+    background:linear-gradient(180deg,#fff9ef 0%,#ffffff 100%);
+    border-radius:20px;
+    padding:18px 16px;
+    box-shadow:var(--shadow-sm);
+}
+.unit-percent{
+    font-size:clamp(58px, 9vw, 96px);
+    line-height:1;
+    font-weight:900;
+    letter-spacing:-.02em;
+    margin-bottom:8px;
+}
+.unit-percent.score-fail{color:#dc2626}
+.unit-percent.score-pass{color:#7c3aed}
+.unit-errors{
+    font-size:18px;
+    font-weight:800;
+    color:var(--muted);
+}
+.unit-rule{
+    margin-top:10px;
+    font-size:14px;
+    font-weight:700;
+}
+.unit-rule.fail{color:#b91c1c}
+.unit-rule.pass{color:#6d28d9}
+.result-actions{
+    display:flex;
+    gap:12px;
+    flex-wrap:wrap;
+    justify-content:center;
+}
 .empty-btn{
     display:inline-flex;align-items:center;justify-content:center;gap:6px;
     padding:13px 22px;border-radius:12px;text-decoration:none;color:#fff;
@@ -619,6 +670,7 @@ body{margin:0;font-family:Arial,sans-serif;background:linear-gradient(145deg,#ff
     box-shadow:var(--shadow-sm);margin-top:4px;
 }
 .empty-btn.blue{background:linear-gradient(180deg,#c97de8,#8b1a9a)}
+.empty-btn.disabled{opacity:.45;pointer-events:none;cursor:not-allowed}
 
 @media(max-width:768px){
     .topbar-inner{grid-template-columns:1fr;text-align:center}
@@ -682,22 +734,46 @@ body{margin:0;font-family:Arial,sans-serif;background:linear-gradient(145deg,#ff
         <div class="empty-state">
             <div class="empty-icon">🏁</div>
             <div class="empty-title">Unit completed!</div>
-            <div class="empty-text">
-                You completed all activities in this unit.
-                <?php if ($hasUnitResult): ?>
-                    Your score is <strong><?php echo $completionPercent; ?>%</strong>
-                    (errors: <?php echo $quizErrors; ?>/<?php echo $quizTotal; ?>).
+            <div class="empty-text">You completed all activities in this unit.</div>
+
+            <?php if ($hasUnitResult): ?>
+            <div class="unit-result-card">
+                <div class="unit-percent <?php echo h($scoreToneClass); ?>"><?php echo $completionPercent; ?>%</div>
+                <div class="unit-errors">Errors: <?php echo $quizErrors; ?> / <?php echo $quizTotal; ?></div>
+                <?php if ($isPassingScore): ?>
+                    <div class="unit-rule pass">Passed: quiz unlocked.</div>
                 <?php else: ?>
-                    Complete the quiz to save your result.
+                    <div class="unit-rule fail">Below 60%: you must repeat this unit to unlock the quiz.</div>
                 <?php endif; ?>
             </div>
-            <div style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center">
+
+            <div class="result-actions">
+                <a class="empty-btn blue" href="<?php echo h($backHref); ?>">← My courses</a>
+
+                <?php if ($isPassingScore): ?>
+                    <?php if ($quizHref !== ''): ?>
+                        <a class="empty-btn" href="<?php echo h($quizHref); ?>">Start quiz</a>
+                    <?php else: ?>
+                        <a class="empty-btn disabled" href="#" aria-disabled="true">Quiz not available</a>
+                    <?php endif; ?>
+                <?php else: ?>
+                    <a class="empty-btn"
+                       href="student_course.php?assignment=<?php echo urlencode($assignmentId); ?>&unit=<?php echo urlencode($selectedUnitId); ?>&step=0">
+                       Repeat unit
+                    </a>
+                <?php endif; ?>
+            </div>
+
+            <?php else: ?>
+            <div class="empty-text">Complete the graded activities to calculate your score and unlock the quiz.</div>
+            <div class="result-actions">
                 <a class="empty-btn blue" href="<?php echo h($backHref); ?>">← My courses</a>
                 <a class="empty-btn"
                    href="student_course.php?assignment=<?php echo urlencode($assignmentId); ?>&unit=<?php echo urlencode($selectedUnitId); ?>&step=0">
                    Repeat unit
                 </a>
             </div>
+            <?php endif; ?>
         </div>
     </section>
 
