@@ -4,6 +4,7 @@ require_once __DIR__ . '/../../core/_activity_viewer_template.php';
 
 $activityId = isset($_GET['id']) ? trim((string) $_GET['id']) : '';
 $unit = isset($_GET['unit']) ? trim((string) $_GET['unit']) : '';
+$returnTo = isset($_GET['return_to']) ? trim((string) $_GET['return_to']) : '';
 
 if ($activityId === '' && $unit === '') {
     die('Activity not specified');
@@ -490,6 +491,7 @@ ob_start();
             <div class="completed-icon">✅</div>
             <h2 class="completed-title" id="pron-completed-title"></h2>
             <p class="completed-text" id="pron-completed-text"></p>
+            <p class="completed-text" id="pron-score-text" style="font-weight:700;font-size:18px;color:#c2410c;"></p>
             <button type="button" class="completed-button" id="pron-restart">Restart</button>
         </div>
 </div>
@@ -499,6 +501,8 @@ ob_start();
 document.addEventListener('DOMContentLoaded', function () {
     var data = Array.isArray(<?php echo json_encode($items, JSON_UNESCAPED_UNICODE); ?>) ? <?php echo json_encode($items, JSON_UNESCAPED_UNICODE); ?> : [];
     var activityTitle = <?php echo json_encode($viewerTitle, JSON_UNESCAPED_UNICODE); ?>;
+    var PRON_ACTIVITY_ID = <?php echo json_encode($activity['id'] ?? '', JSON_UNESCAPED_UNICODE); ?>;
+    var PRON_RETURN_TO = <?php echo json_encode($returnTo, JSON_UNESCAPED_UNICODE); ?>;
 
     var statusEl = document.getElementById('pron-status');
     var promptEl = document.getElementById('pron-prompt');
@@ -513,6 +517,7 @@ document.addEventListener('DOMContentLoaded', function () {
     var completedEl = document.getElementById('pron-completed');
     var completedTitleEl = document.getElementById('pron-completed-title');
     var completedTextEl = document.getElementById('pron-completed-text');
+    var scoreTextEl = document.getElementById('pron-score-text');
 
     var listenBtn = document.getElementById('pron-listen');
     var speakBtn = document.getElementById('pron-speak');
@@ -537,6 +542,9 @@ document.addEventListener('DOMContentLoaded', function () {
     var finished = false;
     var capturedText = '';
     var recognitionBusy = false;
+    var correctCount = 0;
+    var totalCount = 0;
+    var checkedCards = {};
 
     if (completedTitleEl) {
         completedTitleEl.textContent = activityTitle || 'Pronunciation Practice';
@@ -544,6 +552,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
     if (completedTextEl) {
         completedTextEl.textContent = "You've completed " + (activityTitle || 'this activity') + '. Great job practicing.';
+    }
+
+    function persistScoreSilently(targetUrl) {
+        try {
+            fetch(targetUrl, { method: 'GET', credentials: 'same-origin' });
+        } catch (e) {}
     }
 
     function normalizeText(text) {
@@ -678,7 +692,9 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
-        if (said === expected || said.indexOf(expected) !== -1 || expected.indexOf(said) !== -1) {
+        var isCorrect = (said === expected || said.indexOf(expected) !== -1 || expected.indexOf(said) !== -1);
+
+        if (isCorrect) {
             feedbackEl.textContent = 'Correct!';
             feedbackEl.className = 'mc-feedback good';
             capturedEl.className = 'pron-captured ok';
@@ -688,6 +704,14 @@ document.addEventListener('DOMContentLoaded', function () {
             feedbackEl.className = 'mc-feedback bad';
             capturedEl.className = 'pron-captured bad';
             playSound(wrongSound);
+        }
+
+        if (!checkedCards[index]) {
+            checkedCards[index] = true;
+            totalCount++;
+            if (isCorrect) {
+                correctCount++;
+            }
         }
     }
 
@@ -711,6 +735,27 @@ document.addEventListener('DOMContentLoaded', function () {
         feedbackEl.textContent = '';
         completedEl.classList.add('active');
         playSound(doneSound);
+
+        var pct = totalCount > 0 ? Math.round((correctCount / totalCount) * 100) : 0;
+        var errors = totalCount - correctCount;
+
+        if (completedTextEl) {
+            completedTextEl.textContent = "You've completed " + (activityTitle || 'this activity') + '. Great job practicing.';
+        }
+        if (scoreTextEl) {
+            scoreTextEl.textContent = 'Score: ' + correctCount + ' / ' + totalCount + ' (' + pct + '%)';
+        }
+
+        if (PRON_ACTIVITY_ID && PRON_RETURN_TO) {
+            persistScoreSilently(
+                PRON_RETURN_TO +
+                '&activity_percent=' + pct +
+                '&activity_errors=' + errors +
+                '&activity_total=' + totalCount +
+                '&activity_id=' + encodeURIComponent(PRON_ACTIVITY_ID) +
+                '&activity_type=pronunciation'
+            );
+        }
     }
 
     function goNext() {
@@ -727,6 +772,9 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function restart() {
+        correctCount = 0;
+        totalCount = 0;
+        checkedCards = {};
         index = 0;
         loadCard();
     }

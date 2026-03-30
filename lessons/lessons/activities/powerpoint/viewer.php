@@ -198,6 +198,14 @@ ob_start();
 .ppt-intro{margin-bottom:18px;padding:24px 26px;border-radius:26px;border:1px solid #d7c7ff;background:linear-gradient(135deg,#eef4ff 0%,#f7edff 48%,#fff6d9 100%);box-shadow:0 16px 34px rgba(15,23,42,.09)}
 .ppt-intro h2{margin:0 0 8px;font-family:'Fredoka','Trebuchet MS',sans-serif;font-size:30px;line-height:1.1;color:#5b21b6}
 .ppt-intro p{margin:0;color:#62556f;font-size:16px;line-height:1.6}
+.ppt-completed-screen{display:none;text-align:center;max-width:600px;margin:40px auto;padding:40px 20px}
+.ppt-completed-screen.active{display:block}
+.ppt-completed-icon{font-size:80px;margin-bottom:20px}
+.ppt-completed-title{font-family:'Fredoka','Trebuchet MS',sans-serif;font-size:36px;font-weight:700;color:#be185d;margin:0 0 14px;line-height:1.2}
+.ppt-completed-text{font-size:16px;color:#6b4b5f;line-height:1.6;margin:0 0 28px}
+.ppt-completed-actions{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+.ppt-completed-btn{display:inline-block;padding:12px 24px;border:none;border-radius:999px;background:linear-gradient(180deg,#db2777 0%,#be185d 100%);color:#fff;font-weight:700;font-size:16px;cursor:pointer;box-shadow:0 10px 24px rgba(0,0,0,.14);transition:transform .18s ease,filter .18s ease}
+.ppt-completed-btn:hover{transform:scale(1.05);filter:brightness(1.07)}
 .ppt-stage{background:linear-gradient(180deg,#fffdfc 0%,#f8fbff 100%);border:1px solid #ddd6fe;border-radius:24px;overflow:hidden;box-shadow:0 14px 28px rgba(15,23,42,.1)}
 .ppt-slide{min-height:520px;padding:28px;display:flex;gap:20px;align-items:flex-start}
 .ppt-slide.template-title_text{flex-direction:column}
@@ -291,6 +299,15 @@ ob_start();
             </div>
         </div>
     <?php } ?>
+</div>
+
+<div id="ppt-completed-screen" class="ppt-completed-screen">
+    <div class="ppt-completed-icon">✅</div>
+    <h2 class="ppt-completed-title"><?php echo htmlspecialchars($viewerTitle, ENT_QUOTES, 'UTF-8'); ?></h2>
+    <p class="ppt-completed-text">You've reviewed all the slides. Great job!</p>
+    <div class="ppt-completed-actions">
+        <button type="button" class="ppt-completed-btn" id="ppt-restart-btn">Back to Slides</button>
+    </div>
 </div>
 
 <script>
@@ -432,7 +449,24 @@ document.getElementById('btnPrev')?.addEventListener('click', () => {
 
 document.getElementById('btnNext')?.addEventListener('click', () => {
   if (!PPT_SLIDES.length) return;
+  if (slideIndex >= PPT_SLIDES.length - 1) {
+    // Last slide — show completed screen
+    const stageEl = document.querySelector('.ppt-stage');
+    const completedEl = document.getElementById('ppt-completed-screen');
+    if (stageEl) stageEl.style.display = 'none';
+    if (completedEl) completedEl.classList.add('active');
+    return;
+  }
   slideIndex = Math.min(PPT_SLIDES.length - 1, slideIndex + 1);
+  renderSlide();
+});
+
+document.getElementById('ppt-restart-btn')?.addEventListener('click', () => {
+  const stageEl = document.querySelector('.ppt-stage');
+  const completedEl = document.getElementById('ppt-completed-screen');
+  if (completedEl) completedEl.classList.remove('active');
+  if (stageEl) stageEl.style.display = '';
+  slideIndex = 0;
   renderSlide();
 });
 

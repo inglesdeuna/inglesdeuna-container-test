@@ -45,6 +45,17 @@ ob_start();
 
 <link rel="stylesheet" href="/lessons/lessons/activities/flipbooks/flipbook.css">
 
+<style>
+.flipbook-completed-screen{display:none;text-align:center;max-width:600px;margin:40px auto;padding:40px 20px}
+.flipbook-completed-screen.active{display:block}
+.flipbook-completed-icon{font-size:80px;margin-bottom:20px}
+.flipbook-completed-title{font-family:'Fredoka','Trebuchet MS',sans-serif;font-size:36px;font-weight:700;color:#be185d;margin:0 0 14px;line-height:1.2}
+.flipbook-completed-text{font-size:16px;color:#6b4b5f;line-height:1.6;margin:0 0 28px}
+.flipbook-completed-actions{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+.flipbook-completed-btn{display:inline-block;padding:12px 24px;border:none;border-radius:999px;background:linear-gradient(180deg,#db2777 0%,#be185d 100%);color:#fff;font-weight:700;font-size:16px;cursor:pointer;box-shadow:0 10px 24px rgba(0,0,0,.14);transition:transform .18s ease,filter .18s ease}
+.flipbook-completed-btn:hover{transform:scale(1.05);filter:brightness(1.07)}
+</style>
+
 <?php if ($pdfDisplayUrl === ''): ?>
     <div class="flipbook-intro">
         <h2>Downloadable Material</h2>
@@ -82,6 +93,10 @@ ob_start();
 
                     <button type="button" id="full-screen-btn" class="flipbook-btn flipbook-btn--dark">
                         Full Screen
+                    </button>
+
+                    <button type="button" id="flipbook-mark-done-btn" class="flipbook-btn flipbook-btn--primary" style="background:linear-gradient(180deg,#16a34a,#15803d);">
+                        ✓ Mark as Completed
                     </button>
                 </div>
             </div>
@@ -149,9 +164,38 @@ ob_start();
             document.addEventListener('fullscreenchange', updateFullscreenButtonState);
             updateFullscreenButtonState();
         }
+
+        // Mark as Completed button
+        const markDoneBtn = document.getElementById('flipbook-mark-done-btn');
+        const completedScreen = document.getElementById('flipbook-completed-screen');
+        const viewerWrap = document.getElementById('flipbook-viewer');
+
+        if (markDoneBtn && completedScreen) {
+            markDoneBtn.addEventListener('click', function () {
+                if (viewerWrap) viewerWrap.style.display = 'none';
+                completedScreen.classList.add('active');
+            });
+        }
+
+        const restartBtn = document.getElementById('flipbook-restart-btn');
+        if (restartBtn && completedScreen) {
+            restartBtn.addEventListener('click', function () {
+                completedScreen.classList.remove('active');
+                if (viewerWrap) viewerWrap.style.display = '';
+            });
+        }
     });
     </script>
 <?php endif; ?>
+
+<div id="flipbook-completed-screen" class="flipbook-completed-screen">
+    <div class="flipbook-completed-icon">✅</div>
+    <h2 class="flipbook-completed-title"><?php echo htmlspecialchars($title, ENT_QUOTES, 'UTF-8'); ?></h2>
+    <p class="flipbook-completed-text">You've reviewed the material. Great job studying!</p>
+    <div class="flipbook-completed-actions">
+        <button type="button" class="flipbook-completed-btn" id="flipbook-restart-btn">Back to Document</button>
+    </div>
+</div>
 
 <?php
 $content = ob_get_clean();

@@ -238,6 +238,10 @@ ob_start();
     background:linear-gradient(180deg,#fbbf24 0%, #f59e0b 100%);
     color:#78350f;
 }
+.ex-btn.done{
+    background:linear-gradient(180deg,#16a34a 0%, #15803d 100%);
+    color:#fff;
+}
 .ex-empty{
     text-align:center;
     color:#b91c1c;
@@ -250,6 +254,14 @@ ob_start();
     .ex-actions{flex-direction:column}
     .ex-btn{width:100%}
 }
+.ex-completed-screen{display:none;text-align:center;max-width:600px;margin:40px auto;padding:40px 20px}
+.ex-completed-screen.active{display:block}
+.ex-completed-icon{font-size:80px;margin-bottom:20px}
+.ex-completed-title{font-family:'Fredoka','Trebuchet MS',sans-serif;font-size:36px;font-weight:700;color:#be185d;margin:0 0 14px;line-height:1.2}
+.ex-completed-text{font-size:16px;color:#6b4b5f;line-height:1.6;margin:0 0 28px}
+.ex-completed-actions{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+.ex-completed-btn{display:inline-block;padding:12px 24px;border:none;border-radius:999px;background:linear-gradient(180deg,#db2777 0%,#be185d 100%);color:#fff;font-weight:700;font-size:16px;cursor:pointer;box-shadow:0 10px 24px rgba(0,0,0,.14);transition:transform .18s ease,filter .18s ease}
+.ex-completed-btn:hover{transform:scale(1.05);filter:brightness(1.07)}
 </style>
 
 <div class="ex-viewer">
@@ -282,9 +294,22 @@ ob_start();
                     <button class="ex-btn secondary" type="button" onclick="copyExternalLink()">
                         📋 Copy Link
                     </button>
+
+                    <button class="ex-btn done" type="button" id="ex-mark-done-btn">
+                        ✓ Mark as Completed
+                    </button>
                 </div>
             </div>
         <?php } ?>
+    </div>
+</div>
+
+<div id="ex-completed-screen" class="ex-completed-screen">
+    <div class="ex-completed-icon">✅</div>
+    <h2 class="ex-completed-title"><?= htmlspecialchars($viewerTitle, ENT_QUOTES, 'UTF-8') ?></h2>
+    <p class="ex-completed-text">You've completed this external resource activity. Great work!</p>
+    <div class="ex-completed-actions">
+        <button type="button" class="ex-completed-btn" id="ex-restart-btn">Back to Resource</button>
     </div>
 </div>
 
@@ -306,6 +331,27 @@ async function copyExternalLink() {
         alert('Could not copy the link');
     }
 }
+
+(function(){
+    const markDoneBtn = document.getElementById('ex-mark-done-btn');
+    const completedScreen = document.getElementById('ex-completed-screen');
+    const viewerEl = document.querySelector('.ex-viewer');
+    const restartBtn = document.getElementById('ex-restart-btn');
+
+    if (markDoneBtn && completedScreen) {
+        markDoneBtn.addEventListener('click', function(){
+            if (viewerEl) viewerEl.style.display = 'none';
+            completedScreen.classList.add('active');
+        });
+    }
+
+    if (restartBtn && completedScreen) {
+        restartBtn.addEventListener('click', function(){
+            completedScreen.classList.remove('active');
+            if (viewerEl) viewerEl.style.display = '';
+        });
+    }
+})();
 </script>
 
 <?php

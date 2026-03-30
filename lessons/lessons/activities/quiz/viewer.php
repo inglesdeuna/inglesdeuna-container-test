@@ -133,9 +133,17 @@ ob_start();
 .qz-opt{display:flex;align-items:flex-start;gap:8px;padding:10px;border:1px solid #dbeafe;border-radius:10px;background:#f8fbff}
 .qz-actions{display:flex;gap:10px;flex-wrap:wrap}
 .qz-btn{border:none;border-radius:10px;padding:10px 14px;font-weight:700;cursor:pointer;color:#fff;background:linear-gradient(180deg,#3d73ee,#2563eb)}
-.qz-btn.secondary{background:linear-gradient(180deg,#7b8b9e,#66758b);display:none}
 .qz-result{padding:12px;border-radius:10px;background:#e9f8ee;color:#166534;font-weight:700;display:none}
 .qz-empty{padding:14px;border:1px solid #dbeafe;border-radius:12px;background:#f8fbff;color:#64748b}
+.qz-completed-screen{display:none;text-align:center;max-width:600px;margin:0 auto;padding:40px 20px}
+.qz-completed-screen.active{display:block}
+.qz-completed-icon{font-size:80px;margin-bottom:20px}
+.qz-completed-title{font-family:'Fredoka','Trebuchet MS',sans-serif;font-size:36px;font-weight:700;color:#be185d;margin:0 0 14px;line-height:1.2}
+.qz-completed-score{font-size:20px;font-weight:800;color:#0f172a;margin:0 0 8px}
+.qz-completed-text{font-size:16px;color:#6b4b5f;line-height:1.6;margin:0 0 28px}
+.qz-completed-actions{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+.qz-completed-btn{display:inline-block;padding:12px 24px;border:none;border-radius:999px;background:linear-gradient(180deg,#db2777 0%,#be185d 100%);color:#fff;font-weight:700;font-size:16px;cursor:pointer;box-shadow:0 10px 24px rgba(0,0,0,.14);transition:transform .18s ease,filter .18s ease}
+.qz-completed-btn:hover{transform:scale(1.05);filter:brightness(1.07)}
 </style>
 
 <div class="qz-wrap" id="quizApp">
@@ -146,25 +154,36 @@ ob_start();
   <?php if (empty($questions)) { ?>
     <div class="qz-empty">This quiz does not have questions yet. Open the editor to configure it.</div>
   <?php } else { ?>
-    <?php foreach ($questions as $index => $q) { ?>
-      <div class="qz-card" data-index="<?php echo (int) $index; ?>">
-        <div class="qz-q"><?php echo ($index + 1); ?>. <?php echo htmlspecialchars((string) ($q['question'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></div>
-        <div class="qz-opts">
-          <?php foreach ((array) ($q['options'] ?? []) as $optIndex => $optionText) { ?>
-            <label class="qz-opt">
-              <input type="radio" name="q_<?php echo (int) $index; ?>" value="<?php echo (int) $optIndex; ?>">
-              <span><?php echo htmlspecialchars((string) $optionText, ENT_QUOTES, 'UTF-8'); ?></span>
-            </label>
-          <?php } ?>
+    <div id="qz-questions-wrap">
+      <?php foreach ($questions as $index => $q) { ?>
+        <div class="qz-card" data-index="<?php echo (int) $index; ?>">
+          <div class="qz-q"><?php echo ($index + 1); ?>. <?php echo htmlspecialchars((string) ($q['question'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></div>
+          <div class="qz-opts">
+            <?php foreach ((array) ($q['options'] ?? []) as $optIndex => $optionText) { ?>
+              <label class="qz-opt">
+                <input type="radio" name="q_<?php echo (int) $index; ?>" value="<?php echo (int) $optIndex; ?>">
+                <span><?php echo htmlspecialchars((string) $optionText, ENT_QUOTES, 'UTF-8'); ?></span>
+              </label>
+            <?php } ?>
+          </div>
         </div>
-      </div>
-    <?php } ?>
+      <?php } ?>
 
-    <div class="qz-actions">
-      <button type="button" class="qz-btn" id="btnCheckQuiz">Finish quiz</button>
-      <button type="button" class="qz-btn secondary" id="btnSaveResult">Save result and return</button>
+      <div class="qz-actions">
+        <button type="button" class="qz-btn" id="btnCheckQuiz">Finish quiz</button>
+      </div>
+      <div class="qz-result" id="quizResult"></div>
     </div>
-    <div class="qz-result" id="quizResult"></div>
+
+    <div id="qz-completed" class="qz-completed-screen">
+      <div class="qz-completed-icon">✅</div>
+      <h2 class="qz-completed-title"><?php echo htmlspecialchars($viewerTitle, ENT_QUOTES, 'UTF-8'); ?></h2>
+      <p class="qz-completed-score" id="qz-score-text"></p>
+      <p class="qz-completed-text" id="qz-completed-text">Great job! You've finished the quiz.</p>
+      <div class="qz-completed-actions">
+        <button type="button" class="qz-completed-btn" id="qz-restart-btn">Restart</button>
+      </div>
+    </div>
   <?php } ?>
 </div>
 
@@ -174,33 +193,27 @@ window.QUIZ_RETURN_TO = <?php echo json_encode($returnTo, JSON_UNESCAPED_UNICODE
 window.QUIZ_ACTIVITY_ID = <?php echo json_encode((string) ($activity['id'] ?? ''), JSON_UNESCAPED_UNICODE); ?>;
 (function(){
   const btn = document.getElementById('btnCheckQuiz');
-  const saveBtn = document.getElementById('btnSaveResult');
-  const result = document.getElementById('quizResult');
+  const questionsWrap = document.getElementById('qz-questions-wrap');
+  const completedScreen = document.getElementById('qz-completed');
+  const scoreTextEl = document.getElementById('qz-score-text');
+  const restartBtn = document.getElementById('qz-restart-btn');
 
-  function navigateToReturn(targetUrl) {
-    if (!targetUrl) {
-      return;
-    }
-
+  function persistScoreSilently(targetUrl) {
+    if (!targetUrl) return;
     try {
-      if (window.top && window.top !== window.self) {
-        window.top.location.href = targetUrl;
-        return;
-      }
-    } catch (e) {
-      // Fallback to current window navigation.
-    }
-
-    window.location.href = targetUrl;
+      fetch(targetUrl, { method: 'GET', credentials: 'same-origin', cache: 'no-store', keepalive: true }).catch(function(){});
+    } catch(e) {}
   }
 
-  if (!btn || !result || !Array.isArray(window.QUIZ_DATA) || window.QUIZ_DATA.length === 0) {
+  function showCompleted(correct, total, percent) {
+    if (questionsWrap) questionsWrap.style.display = 'none';
+    if (scoreTextEl) scoreTextEl.textContent = 'Score: ' + correct + ' / ' + total + ' (' + percent + '%)';
+    if (completedScreen) completedScreen.classList.add('active');
+  }
+
+  if (!btn || !Array.isArray(window.QUIZ_DATA) || window.QUIZ_DATA.length === 0) {
     return;
   }
-
-  let lastPercent = 0;
-  let lastErrors = 0;
-  let lastTotal = 0;
 
   btn.addEventListener('click', function(){
     let correct = 0;
@@ -216,33 +229,29 @@ window.QUIZ_ACTIVITY_ID = <?php echo json_encode((string) ($activity['id'] ?? ''
 
     const percent = total > 0 ? Math.round((correct / total) * 100) : 0;
     const errors = Math.max(0, total - correct);
-    lastPercent = percent;
-    lastErrors = errors;
-    lastTotal = total;
 
-    result.style.display = 'block';
-    result.textContent = 'Result: ' + correct + '/' + total + ' (' + percent + '%)';
-
-    if (saveBtn) {
-      saveBtn.style.display = 'inline-flex';
-    }
-  });
-
-  if (saveBtn) {
-    saveBtn.addEventListener('click', function(){
-      if (!window.QUIZ_RETURN_TO) {
-        return;
-      }
-
+    if (window.QUIZ_RETURN_TO) {
       const hasQuery = window.QUIZ_RETURN_TO.indexOf('?') !== -1;
       const joiner = hasQuery ? '&' : '?';
-      const target = window.QUIZ_RETURN_TO
-        + joiner + 'quiz_percent=' + encodeURIComponent(String(lastPercent))
-        + '&quiz_errors=' + encodeURIComponent(String(lastErrors))
-        + '&quiz_total=' + encodeURIComponent(String(lastTotal))
-        + '&quiz_activity_id=' + encodeURIComponent(String(window.QUIZ_ACTIVITY_ID || ''));
+      const saveUrl = window.QUIZ_RETURN_TO
+        + joiner + 'activity_percent=' + encodeURIComponent(String(percent))
+        + '&activity_errors=' + encodeURIComponent(String(errors))
+        + '&activity_total=' + encodeURIComponent(String(total))
+        + '&activity_id=' + encodeURIComponent(String(window.QUIZ_ACTIVITY_ID || ''))
+        + '&activity_type=quiz';
+      persistScoreSilently(saveUrl);
+    }
 
-      navigateToReturn(target);
+    showCompleted(correct, total, percent);
+  });
+
+  if (restartBtn) {
+    restartBtn.addEventListener('click', function(){
+      if (completedScreen) completedScreen.classList.remove('active');
+      if (questionsWrap) {
+        questionsWrap.style.display = '';
+        questionsWrap.querySelectorAll('input[type="radio"]').forEach(function(r){ r.checked = false; });
+      }
     });
   }
 })();

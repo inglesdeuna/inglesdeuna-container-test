@@ -69,8 +69,47 @@ function load_student_scores(PDO $pdo): array
     }
 }
 
+function load_student_activity_scores(PDO $pdo): array
+{
+    if (!table_exists($pdo, 'student_activity_results')) {
+        return [];
+    }
+
+    try {
+        $stmt = $pdo->query("
+            SELECT
+              sar.student_id,
+              COALESCE(NULLIF(TRIM(s.name), ''), sar.student_id) AS student_name,
+              sar.assignment_id,
+              COALESCE(NULLIF(TRIM(c.name), ''), 'N/D') AS course_name,
+              COALESCE(NULLIF(TRIM(sa.program), ''), 'technical') AS program,
+              COALESCE(NULLIF(TRIM(t.name), ''), 'N/D') AS teacher_name,
+              sar.unit_id,
+              COALESCE(NULLIF(TRIM(u.name), ''), 'Unidad ' || sar.unit_id) AS unit_name,
+              sar.activity_id,
+              sar.activity_type,
+              sar.completion_percent,
+              sar.errors_count,
+              sar.total_count,
+              sar.updated_at
+            FROM student_activity_results sar
+            LEFT JOIN student_assignments sa ON sa.id = sar.assignment_id
+            LEFT JOIN students s ON s.id = sar.student_id
+            LEFT JOIN teachers t ON t.id = sa.teacher_id
+            LEFT JOIN courses c ON c.id::text = sa.course_id
+            LEFT JOIN units u ON u.id::text = sar.unit_id
+            ORDER BY student_name ASC, course_name ASC, unit_name ASC, sar.activity_type ASC
+        ");
+
+        return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    } catch (Throwable $e) {
+        return [];
+    }
+}
+
 $pdo = get_pdo_connection();
 $rows = $pdo ? load_student_scores($pdo) : [];
+$activityRows = $pdo ? load_student_activity_scores($pdo) : [];
 
 $filterStudent = trim((string) ($_GET['student'] ?? ''));
 $filterCourse = trim((string) ($_GET['course'] ?? ''));
@@ -104,7 +143,7 @@ sort($studentOptions, SORT_NATURAL | SORT_FLAG_CASE);
 sort($courseOptions, SORT_NATURAL | SORT_FLAG_CASE);
 sort($teacherOptions, SORT_NATURAL | SORT_FLAG_CASE);
 
-$filteredRows = array_values(array_filter($rows, static function (array $row) use ($filterStudent, $filterCourse, $filterTeacher, $filterProgram): bool {
+$applyFilters = static function (array $row) use ($filterStudent, $filterCourse, $filterTeacher, $filterProgram): bool {
   $studentName = trim((string) ($row['student_name'] ?? ''));
   $courseName = trim((string) ($row['course_name'] ?? ''));
   $teacherName = trim((string) ($row['teacher_name'] ?? ''));
@@ -124,7 +163,10 @@ $filteredRows = array_values(array_filter($rows, static function (array $row) us
   }
 
   return true;
-}));
+};
+
+$filteredRows = array_values(array_filter($rows, $applyFilters));
+$filteredActivityRows = array_values(array_filter($activityRows, $applyFilters));
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -276,6 +318,61 @@ th{color:var(--title);background:#f6fbf8;position:sticky;top:0}
                 <td><strong><?php echo (int) ($row['completion_percent'] ?? 0); ?>%</strong></td>
                 <td><?php echo (int) ($row['quiz_errors'] ?? 0); ?>/<?php echo (int) ($row['quiz_total'] ?? 0); ?></td>
                 <td><?php echo h((string) ($row['updated_at'] ?? '')); ?></td>
+              </tr>
+            <?php } ?>
+          </tbody>
+        </table>
+      </div>
+    <?php } ?>
+  </div>
+
+  <h2 style="color:var(--title);margin:28px 0 10px;">Scores por actividad</h2>
+  <div class="card">
+    <?php if (!$pdo) { ?>
+      <div class="empty">No hay conexion a base de datos disponible.</div>
+    <?php } elseif (empty($activityRows)) { ?>
+      <div class="empty">Aun no hay scores de actividades registrados.</div>
+    <?php } else { ?>
+      <p class="meta">Registros mostrados: <strong><?php echo (int) count($filteredActivityRows); ?></strong> de <strong><?php echo (int) count($activityRows); ?></strong></p>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Estudiante</th>
+              <th>Curso</th>
+              <th>Programa</th>
+              <th>Docente</th>
+              <th>Unidad</th>
+              <th>Actividad</th>
+              <th>Score</th>
+              <th>Aciertos</th>
+              <th>Actualizado</th>
+            </tr>
+          </thead>
+          <tbody>
+            <?php if (empty($filteredActivityRows)) { ?>
+              <tr>
+                <td colspan="9" class="empty">No hay resultados para los filtros seleccionados.</td>
+              </tr>
+            <?php } ?>
+            <?php foreach ($filteredActivityRows as $arow) { ?>
+              <?php $aprogram = (string) ($arow['program'] ?? 'technical'); ?>
+              <tr>
+                <td><?php echo h((string) ($arow['student_name'] ?? 'N/D')); ?></td>
+                <td><?php echo h((string) ($arow['course_name'] ?? 'N/D')); ?></td>
+                <td>
+                  <?php if ($aprogram === 'english') { ?>
+                    <span class="badge badge-en">Ingles</span>
+                  <?php } else { ?>
+                    <span class="badge badge-tech">Tecnico</span>
+                  <?php } ?>
+                </td>
+                <td><?php echo h((string) ($arow['teacher_name'] ?? 'N/D')); ?></td>
+                <td><?php echo h((string) ($arow['unit_name'] ?? 'N/D')); ?></td>
+                <td><?php echo h(ucfirst((string) ($arow['activity_type'] ?? 'N/D'))); ?></td>
+                <td><strong><?php echo (int) ($arow['completion_percent'] ?? 0); ?>%</strong></td>
+                <td><?php echo (int) ($arow['errors_count'] ?? 0); ?>/<?php echo (int) ($arow['total_count'] ?? 0); ?></td>
+                <td><?php echo h((string) ($arow['updated_at'] ?? '')); ?></td>
               </tr>
             <?php } ?>
           </tbody>
