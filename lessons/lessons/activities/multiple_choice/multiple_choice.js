@@ -6,7 +6,6 @@ document.addEventListener('DOMContentLoaded', function () {
   const imageEl = document.getElementById('mc-image');
   const optionsEl = document.getElementById('mc-options');
   const feedbackEl = document.getElementById('mc-feedback');
-  const checkBtn = document.getElementById('mc-check');
   const showBtn = document.getElementById('mc-show');
   const nextBtn = document.getElementById('mc-next');
   const cardEl = document.querySelector('.mc-card');
@@ -25,9 +24,6 @@ document.addEventListener('DOMContentLoaded', function () {
   if (!questions.length) {
     if (questionEl) {
       questionEl.textContent = 'No questions available.';
-    }
-    if (checkBtn) {
-      checkBtn.disabled = true;
     }
     if (showBtn) {
       showBtn.disabled = true;
@@ -125,6 +121,46 @@ document.addEventListener('DOMContentLoaded', function () {
     return item && Array.isArray(item.options) ? item.options : [];
   }
 
+  function checkAnswer() {
+    if (finished) {
+      return;
+    }
+
+    const item = questions[index] || {};
+    const correct = Number.isInteger(item.correct) ? item.correct : 0;
+    const options = optionsEl.querySelectorAll('.mc-option');
+
+    if (selected === null) {
+      feedbackEl.textContent = 'Select an option first.';
+      feedbackEl.className = 'mc-feedback bad';
+      return;
+    }
+
+    checked = true;
+
+    Array.prototype.forEach.call(options, function (node, optIndex) {
+      node.classList.remove('correct', 'wrong');
+
+      if (optIndex === correct) {
+        node.classList.add('correct');
+      }
+
+      if (optIndex === selected && selected !== correct) {
+        node.classList.add('wrong');
+      }
+    });
+
+    if (selected === correct) {
+      questionScores[index] = 1;
+      feedbackEl.textContent = '\u2714 Right';
+      feedbackEl.className = 'mc-feedback good';
+    } else {
+      questionScores[index] = 0;
+      feedbackEl.textContent = '\u2718 Wrong';
+      feedbackEl.className = 'mc-feedback bad';
+    }
+  }
+
   function loadQuestion() {
     const item = questions[index] || {};
 
@@ -179,14 +215,11 @@ document.addEventListener('DOMContentLoaded', function () {
         });
 
         button.classList.add('selected');
+        checkAnswer();
       });
 
       optionsEl.appendChild(button);
     });
-
-    if (checkBtn) {
-      checkBtn.disabled = false;
-    }
 
     if (showBtn) {
       showBtn.disabled = false;
@@ -195,46 +228,6 @@ document.addEventListener('DOMContentLoaded', function () {
     if (nextBtn) {
       nextBtn.disabled = false;
       nextBtn.textContent = index < questions.length - 1 ? 'Next' : 'Finish';
-    }
-  }
-
-  function checkAnswer() {
-    if (finished) {
-      return;
-    }
-
-    const item = questions[index] || {};
-    const correct = Number.isInteger(item.correct) ? item.correct : 0;
-    const options = optionsEl.querySelectorAll('.mc-option');
-
-    if (selected === null) {
-      feedbackEl.textContent = 'Select an option first.';
-      feedbackEl.className = 'mc-feedback bad';
-      return;
-    }
-
-    checked = true;
-
-    Array.prototype.forEach.call(options, function (node, optIndex) {
-      node.classList.remove('correct', 'wrong');
-
-      if (optIndex === correct) {
-        node.classList.add('correct');
-      }
-
-      if (optIndex === selected && selected !== correct) {
-        node.classList.add('wrong');
-      }
-    });
-
-    if (selected === correct) {
-      questionScores[index] = 1;
-      feedbackEl.textContent = 'Correct!';
-      feedbackEl.className = 'mc-feedback good';
-    } else {
-      questionScores[index] = 0;
-      feedbackEl.textContent = 'Try Again';
-      feedbackEl.className = 'mc-feedback bad';
     }
   }
 
@@ -291,10 +284,6 @@ document.addEventListener('DOMContentLoaded', function () {
       scoreTextEl.textContent = 'Score: ' + result.correct + ' / ' + result.total + ' (' + result.percent + '%)';
     }
 
-    if (checkBtn) {
-      checkBtn.disabled = true;
-    }
-
     if (showBtn) {
       showBtn.disabled = true;
       showBtn.textContent = 'Show Answer';
@@ -336,7 +325,6 @@ document.addEventListener('DOMContentLoaded', function () {
     loadQuestion();
   }
 
-  checkBtn.addEventListener('click', checkAnswer);
   showBtn.addEventListener('click', showAnswer);
   nextBtn.addEventListener('click', nextQuestion);
 
