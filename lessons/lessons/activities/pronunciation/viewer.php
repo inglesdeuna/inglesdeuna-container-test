@@ -603,11 +603,68 @@ document.addEventListener('DOMContentLoaded', function () {
         return matches / Math.max(wa.length, wb.length);
     }
 
+    function soundex(word) {
+        var w = String(word || '').toUpperCase().replace(/[^A-Z]/g, '');
+        if (!w) { return ''; }
+
+        var first = w.charAt(0);
+        var map = {
+            B: '1', F: '1', P: '1', V: '1',
+            C: '2', G: '2', J: '2', K: '2', Q: '2', S: '2', X: '2', Z: '2',
+            D: '3', T: '3',
+            L: '4',
+            M: '5', N: '5',
+            R: '6'
+        };
+
+        var out = first;
+        var prev = map[first] || '';
+
+        for (var i = 1; i < w.length; i++) {
+            var ch = w.charAt(i);
+            var code = map[ch] || '0';
+            if (code !== '0' && code !== prev) {
+                out += code;
+            }
+            prev = code;
+        }
+
+        return (out + '000').slice(0, 4);
+    }
+
+    function phoneticTokensMatch(said, expected) {
+        var saidTokens = said.split(' ').filter(Boolean);
+        var expectedTokens = expected.split(' ').filter(Boolean);
+
+        if (!saidTokens.length || saidTokens.length !== expectedTokens.length) {
+            return false;
+        }
+
+        for (var i = 0; i < saidTokens.length; i++) {
+            var s = saidTokens[i];
+            var e = expectedTokens[i];
+
+            if (s === e) {
+                continue;
+            }
+
+            // For very short tokens, require exact text to avoid false positives like "gu" vs "go".
+            if (s.length <= 2 || e.length <= 2) {
+                return false;
+            }
+
+            if (soundex(s) !== soundex(e)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
     function isMatch(said, expected) {
         if (said === expected) { return true; }
-        if (said.indexOf(expected) !== -1) { return true; }
-        if (expected.indexOf(said) !== -1) { return true; }
-        if (wordOverlapScore(said, expected) >= 0.55) { return true; }
+        if (phoneticTokensMatch(said, expected)) { return true; }
+        if (wordOverlapScore(said, expected) >= 0.8) { return true; }
         return false;
     }
 
@@ -740,9 +797,10 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         var correct = isMatch(said, expected);
+        var expectedLabel = data[index].en || '';
 
         if (correct) {
-            capturedEl.textContent = '\u2714 Good';
+            capturedEl.textContent = '\u2714 Good: ' + expectedLabel;
             capturedEl.className = 'pron-captured ok';
             feedbackEl.textContent = '';
             playSound(correctSound);
