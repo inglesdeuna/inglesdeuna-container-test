@@ -98,6 +98,11 @@ $courseName = trim((string) ($assignment['course_name'] ?? 'Course'));
 if ($courseName === '') {
   $courseName = 'Course';
 }
+$toUpper = function (string $value): string {
+  return function_exists('mb_strtoupper') ? mb_strtoupper($value, 'UTF-8') : strtoupper($value);
+};
+$courseName = $toUpper($courseName);
+$periodLabel = $toUpper((string) ($assignment['period'] ?? ''));
 $programLabel = ((string) ($assignment['program'] ?? '') === 'english') ? 'INGLÉS' : 'TÉCNICO';
 ?>
 <!DOCTYPE html>
@@ -141,7 +146,7 @@ th{color:var(--title)}
     <a class="back" href="student_dashboard.php">← Back</a>
   </div>
 
-  <p class="meta">Course: <strong><?php echo h($courseName); ?></strong> · Program: <strong><?php echo h($programLabel); ?></strong> · Period: <strong><?php echo h((string) ($assignment['period'] ?? '')); ?></strong></p>
+  <p class="meta">Course: <strong><?php echo h($courseName); ?></strong> · Program: <strong><?php echo h($programLabel); ?></strong> · Period: <strong><?php echo h($periodLabel); ?></strong></p>
 
   <div class="card">
     <?php if (empty($rows)) { ?>
@@ -158,8 +163,9 @@ th{color:var(--title)}
         </thead>
         <tbody>
           <?php foreach ($rows as $row) { ?>
+            <?php $unitLabel = $toUpper((string) ($row['unit_name'] ?: ('Unit ' . (string) ($row['unit_id'] ?? '')))); ?>
             <tr>
-              <td><?php echo h((string) ($row['unit_name'] ?: ('Unit ' . (string) ($row['unit_id'] ?? '')))); ?></td>
+              <td><?php echo h($unitLabel); ?></td>
               <td><?php echo (int) ($row['completion_percent'] ?? 0); ?>%</td>
               <td><?php echo (int) ($row['quiz_errors'] ?? 0); ?>/<?php echo (int) ($row['quiz_total'] ?? 0); ?></td>
             </tr>
