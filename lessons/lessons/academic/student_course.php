@@ -409,7 +409,7 @@ if ($courseName === '') {
     $courseName = 'Course';
 }
 $teacherName = trim((string) ($assignment['teacher_name'] ?? 'Teacher'));
-$programLabel = ((string) ($assignment['program'] ?? '') === 'english') ? 'English' : 'Technical';
+$programLabel = ((string) ($assignment['program'] ?? '') === 'english') ? 'English' : 'TÉCNICO';
 
 /* ---- Determine active unit ---- */
 if ($selectedUnitId === '' && !empty($allUnits)) {
@@ -516,10 +516,13 @@ body{margin:0;font-family:Arial,sans-serif;background:linear-gradient(145deg,#ff
 }
 .top-btn{
     display:inline-flex;align-items:center;justify-content:center;
-    padding:10px 14px;border-radius:10px;text-decoration:none;
-    font-size:13px;font-weight:700;color:#fff;
-    background:rgba(255,255,255,.2);
+    padding:8px 16px;border-radius:8px;text-decoration:none;
+    font-size:13px;font-weight:700;color:#fff;white-space:nowrap;
+    background:linear-gradient(180deg,#a855f7,#7c3aed);
+    box-shadow:0 4px 12px rgba(124,58,237,.28);
+    transition:filter .18s ease,transform .18s ease;
 }
+.top-btn:hover{filter:brightness(1.08);transform:translateY(-1px)}
 .topbar-title{font-size:26px;font-weight:800;text-align:center}
 
 .page{max-width:1280px;margin:0 auto;padding:18px 20px 28px}
