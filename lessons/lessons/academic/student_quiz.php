@@ -98,7 +98,7 @@ $courseName = trim((string) ($assignment['course_name'] ?? 'Course'));
 if ($courseName === '') {
   $courseName = 'Course';
 }
-$programLabel = ((string) ($assignment['program'] ?? '') === 'english') ? 'English' : 'TÉCNICO';
+$programLabel = ((string) ($assignment['program'] ?? '') === 'english') ? 'INGLÉS' : 'TÉCNICO';
 ?>
 <!DOCTYPE html>
 <html lang="en">
