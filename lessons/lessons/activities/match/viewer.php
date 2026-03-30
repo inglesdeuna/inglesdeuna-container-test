@@ -435,6 +435,7 @@ ob_start();
         <p class="match-fc-text" id="match-fc-sub-text"></p>
         <div class="match-fc-actions">
             <button type="button" class="match-fc-btn match-fc-btn-secondary" id="match-fc-restart-btn">Try Again</button>
+            <button type="button" class="match-fc-btn" id="match-fc-continue-btn" style="display:none;">Continue &rarr;</button>
         </div>
     </div>
 

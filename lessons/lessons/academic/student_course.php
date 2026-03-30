@@ -12,7 +12,10 @@ if (!empty($_SESSION['student_must_change_password'])) {
 }
 
 $assignmentId = trim((string) ($_GET['assignment'] ?? ''));
-$studentId = trim((string) ($_SESSION['student_id'] ?? ''));
+$studentId    = trim((string) ($_SESSION['student_id'] ?? ''));
+// Release session lock early so parallel fetch requests from activity iframes
+// are not blocked waiting for the session file lock.
+session_write_close();
 
 if ($assignmentId === '') {
     die('Assignment not specified.');

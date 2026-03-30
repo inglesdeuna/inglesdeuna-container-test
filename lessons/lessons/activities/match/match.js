@@ -263,7 +263,7 @@ document.addEventListener("DOMContentLoaded", () => {
     );
   }
 
-  function showCompleted() {
+  async function showCompleted() {
     if (document.getElementById("matchCompletedOverlay")) {
       return;
     }
@@ -278,7 +278,28 @@ document.addEventListener("DOMContentLoaded", () => {
     roundScores[completedRound - 1] = correct;
 
     if (isFinalRound) {
-      persistScoreSilently(saveUrl);
+      // Try to save the score via async fetch; if it fails, fall back to top-frame navigation.
+      if (saveUrl && !scorePersisted) {
+        scorePersisted = true;
+        try {
+          const resp = await fetch(saveUrl, {
+            method: "GET",
+            credentials: "same-origin",
+            cache: "no-store",
+          });
+          if (!resp.ok) {
+            scorePersisted = false;
+          }
+        } catch (e) {
+          scorePersisted = false;
+        }
+        // If fetch failed, navigate the top frame to guarantee score is saved.
+        if (!scorePersisted && saveUrl) {
+          navigateToReturn(saveUrl);
+          return;
+        }
+      }
+
       setActivityLocked(true);
 
       // Show standard completed screen
@@ -308,6 +329,13 @@ document.addEventListener("DOMContentLoaded", () => {
         }
         finalScreen.classList.add("active");
         playSound(winSound);
+                const continueBtn = document.getElementById("match-fc-continue-btn");
+                if (continueBtn && returnTo) {
+                  continueBtn.style.display = "";
+                  continueBtn.addEventListener("click", function () {
+                    navigateToReturn(returnTo);
+                  });
+                }
         return;
       }
     }
