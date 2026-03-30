@@ -54,6 +54,7 @@ $dashboardSections = [
         'id' => 'docentes',
         'eyebrow' => 'Usuarios',
         'title' => 'Docentes',
+      'nav_href' => '../academic/teacher_groups.php',
         'description' => 'Controla inscripciones y asignaciones docentes manteniendo separado el proceso administrativo y el proceso operativo.',
         'links' => [
             ['label' => 'Inscripciones', 'href' => '../academic/teacher_enrollments.php', 'variant' => 'primary'],
@@ -379,7 +380,7 @@ body{ margin:0; font-family:Arial,sans-serif; background:var(--bg); color:var(--
       <div class="sidebar-title">Accesos rapidos</div>
       <div class="nav-list">
         <?php foreach ($dashboardSections as $section): ?>
-          <a class="nav-link<?php echo in_array($section['id'], ['docentes', 'estudiantes'], true) ? ' secondary' : ''; ?>" href="#<?php echo h($section['id']); ?>">
+          <a class="nav-link<?php echo in_array($section['id'], ['docentes', 'estudiantes'], true) ? ' secondary' : ''; ?>" href="<?php echo h($section['nav_href'] ?? ('#' . $section['id'])); ?>">
             <?php echo h($section['title']); ?>
           </a>
         <?php endforeach; ?>
