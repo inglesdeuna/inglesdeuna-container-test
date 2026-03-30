@@ -241,6 +241,7 @@ ob_start();
 .qz-empty{padding:14px;border:1px solid #dcc4f0;border-radius:12px;background:#fff;color:#b8551f}
 .qz-list{display:flex;flex-direction:column;gap:12px}
 .qz-card{border:1px solid #dcc4f0;border-radius:14px;padding:14px;background:#fff;box-shadow:0 6px 16px rgba(120,40,160,.08)}
+.qz-card-unanswered{border-color:#ef4444;background:#fff4f4}
 .qz-q{font-weight:800;color:#f14902;margin-bottom:10px;font-size:17px}
 .qz-opts{display:grid;grid-template-columns:1fr;gap:8px}
 .qz-opt{display:flex;align-items:flex-start;gap:10px;padding:10px;border:1px solid #ead6f8;border-radius:10px;background:#fff9ff;cursor:pointer;transition:border-color .15s,background .15s}
@@ -388,8 +389,14 @@ window.QUIZ_POLICY = <?php echo json_encode($quizAttemptPolicy, JSON_UNESCAPED_U
     const total = randomizedQuestions.length;
     let answered = 0;
     for (let idx = 0; idx < total; idx += 1) {
-      if (document.querySelector('input[name="q_' + idx + '"]:checked')) {
+      const hasAnswer = !!document.querySelector('input[name="q_' + idx + '"]:checked');
+      if (hasAnswer) {
         answered += 1;
+      }
+
+      const cardNode = listEl.querySelector('.qz-card[data-index="' + idx + '"]');
+      if (cardNode) {
+        cardNode.classList.toggle('qz-card-unanswered', !hasAnswer);
       }
     }
 
@@ -403,11 +410,17 @@ window.QUIZ_POLICY = <?php echo json_encode($quizAttemptPolicy, JSON_UNESCAPED_U
     if (progressPercentEl) {
       progressPercentEl.textContent = String(pct) + '%';
     }
+
+    if (btn) {
+      const lockedByPolicy = !policy.finish_enabled;
+      btn.disabled = lockedByPolicy || answered < total;
+    }
   }
 
   randomizedQuestions.forEach(function (q, idx) {
     const card = document.createElement('div');
     card.className = 'qz-card';
+    card.setAttribute('data-index', String(idx));
 
     const qTitle = document.createElement('div');
     qTitle.className = 'qz-q';
