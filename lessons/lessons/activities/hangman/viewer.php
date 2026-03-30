@@ -2,17 +2,40 @@
 require_once __DIR__ . "/../../config/db.php";
 
 $unit = $_GET['unit'] ?? null;
-if (!$unit) die("Unit not specified");
+$activityId = isset($_GET['id']) ? trim((string) $_GET['id']) : '';
+$returnTo = isset($_GET['return_to']) ? trim((string) $_GET['return_to']) : '';
+if (!$unit && $activityId === '') die("Unit not specified");
 
-$stmt = $pdo->prepare("
-    SELECT data
+$stmt = null;
+if ($activityId !== '') {
+  $stmt = $pdo->prepare("
+    SELECT id, unit_id, data
+    FROM activities
+    WHERE id = :id
+    AND type = 'hangman'
+    LIMIT 1
+  ");
+  $stmt->execute(["id" => $activityId]);
+} else {
+  $stmt = $pdo->prepare("
+    SELECT id, unit_id, data
     FROM activities
     WHERE unit_id = :unit
     AND type = 'hangman'
-");
+    ORDER BY id ASC
+    LIMIT 1
+  ");
+  $stmt->execute(["unit" => $unit]);
+}
 
-$stmt->execute(["unit" => $unit]);
 $row = $stmt->fetch(PDO::FETCH_ASSOC);
+if (!$row) die("Activity not found");
+
+if (!$unit && isset($row['unit_id'])) {
+  $unit = (string) $row['unit_id'];
+}
+
+$resolvedActivityId = isset($row['id']) ? (string) $row['id'] : '';
 
 $raw = json_decode($row["data"] ?? "[]", true);
 if (!is_array($raw)) {
@@ -395,6 +418,7 @@ a.back{
     <div class="hg-completed-icon">✅</div>
     <h2 class="hg-completed-title" id="hg-completed-title"></h2>
     <p class="hg-completed-text" id="hg-completed-text"></p>
+    <p class="hg-completed-text" id="hg-score-text" style="font-weight:700;font-size:18px;color:#9a3412;"></p>
     <button type="button" class="hg-completed-button" id="hg-restart" onclick="restartActivity()">Restart</button>
   </div>
 
@@ -412,6 +436,8 @@ a.back{
 <script>
 const items = <?= json_encode($normalizedItems, JSON_UNESCAPED_UNICODE) ?>;
 const activityTitle = <?= json_encode($title, JSON_UNESCAPED_UNICODE) ?>;
+const HG_RETURN_TO = <?= json_encode($returnTo, JSON_UNESCAPED_UNICODE) ?>;
+const HG_ACTIVITY_ID = <?= json_encode($resolvedActivityId, JSON_UNESCAPED_UNICODE) ?>;
 
 // Preload hangman images to avoid delay
 const preloadedHangmanImages = [];
@@ -433,6 +459,7 @@ const gameLayout = document.getElementById("gameLayout");
 const completedEl = document.getElementById("hg-completed");
 const completedTitleEl = document.getElementById("hg-completed-title");
 const completedTextEl = document.getElementById("hg-completed-text");
+const scoreTextEl = document.getElementById("hg-score-text");
 
 if (completedTitleEl) {
   completedTitleEl.textContent = activityTitle || 'Hangman';
@@ -451,6 +478,9 @@ let mistakes = 0;
 let maxMistakes = 7;
 let gameFinished = false;
 let hintVisible = false;
+let correctCount = 0;
+let totalCount = items.length;
+let scoredWordsByIndex = {};
 
 function setKeyboardDisabled(disabledState) {
   const keys = document.querySelectorAll('#keyboard button');
@@ -465,6 +495,46 @@ function playSound(audio) {
     audio.currentTime = 0;
     audio.play();
   } catch (e) {}
+}
+
+function persistScoreSilently(targetUrl) {
+  if (!targetUrl) {
+    return Promise.resolve(false);
+  }
+
+  return fetch(targetUrl, {
+    method: 'GET',
+    credentials: 'same-origin',
+    cache: 'no-store',
+  }).then(function (response) {
+    return !!(response && response.ok);
+  }).catch(function () {
+    return false;
+  });
+}
+
+function navigateToReturn(targetUrl) {
+  if (!targetUrl) {
+    return;
+  }
+
+  try {
+    if (window.top && window.top !== window.self) {
+      window.top.location.href = targetUrl;
+      return;
+    }
+  } catch (e) {}
+
+  window.location.href = targetUrl;
+}
+
+function registerSolvedWord() {
+  if (scoredWordsByIndex[index]) {
+    return;
+  }
+
+  scoredWordsByIndex[index] = true;
+  correctCount += 1;
 }
 
 function loadWord(){
@@ -499,11 +569,14 @@ function loadWord(){
   renderWord();
 }
 
-function showCompleted() {
+async function showCompleted() {
   gameFinished = true;
   feedback.textContent = '';
   feedback.className = '';
   setKeyboardDisabled(true);
+
+  const pct = totalCount > 0 ? Math.round((correctCount / totalCount) * 100) : 0;
+  const errors = Math.max(0, totalCount - correctCount);
 
   if (gameLayout) {
     gameLayout.style.display = 'none';
@@ -513,11 +586,33 @@ function showCompleted() {
     completedEl.classList.add('active');
   }
 
+  if (scoreTextEl) {
+    scoreTextEl.textContent = 'Score: ' + correctCount + ' / ' + totalCount + ' (' + pct + '%)';
+  }
+
   playSound(winSound);
+
+  if (HG_ACTIVITY_ID && HG_RETURN_TO) {
+    const joiner = HG_RETURN_TO.indexOf('?') !== -1 ? '&' : '?';
+    const saveUrl = HG_RETURN_TO
+      + joiner + 'activity_percent=' + pct
+      + '&activity_errors=' + errors
+      + '&activity_total=' + totalCount
+      + '&activity_id=' + encodeURIComponent(HG_ACTIVITY_ID)
+      + '&activity_type=hangman';
+
+    const ok = await persistScoreSilently(saveUrl);
+    if (!ok) {
+      navigateToReturn(saveUrl);
+    }
+  }
 }
 
 function restartActivity() {
   index = 0;
+  correctCount = 0;
+  totalCount = items.length;
+  scoredWordsByIndex = {};
   loadWord();
 }
 
@@ -575,6 +670,7 @@ function guess(letter){
     playSound(correctSound);
 
     if (isSolved()) {
+      registerSolvedWord();
       if (index === items.length - 1) {
         showCompleted();
       } else {
@@ -601,6 +697,7 @@ function checkGame(){
   if (gameFinished) return;
 
   if (isSolved()) {
+    registerSolvedWord();
     if (index === items.length - 1) {
       showCompleted();
     } else {

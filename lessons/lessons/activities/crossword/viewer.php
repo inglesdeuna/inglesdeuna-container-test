@@ -4,6 +4,7 @@ require_once __DIR__ . "/../../core/_activity_viewer_template.php";
 
 $unit       = isset($_GET['unit']) ? trim((string)$_GET['unit']) : "";
 $activityId = isset($_GET['id'])   ? trim((string)$_GET['id'])   : "";
+$returnTo   = isset($_GET['return_to']) ? trim((string)$_GET['return_to']) : "";
 
 // Load activity row
 $row = null;
@@ -794,6 +795,7 @@ ob_start();
             <div class="completed-icon">✅</div>
             <h2 class="completed-title" id="cw-completed-title"></h2>
             <p class="completed-text" id="cw-completed-text"></p>
+            <p class="completed-text" id="cw-score-text" style="font-weight:700;font-size:18px;color:#6d28d9;"></p>
             <button type="button" class="completed-button" onclick="restartCrossword()">Restart</button>
         </div>
     </div>
@@ -806,11 +808,15 @@ const WORD_NUMBERS = <?= $jsWordNumbers ?>;  // idx→number
 const GRID_ROWS = <?= $gridRows ?>;
 const GRID_COLS = <?= $gridCols ?>;
 const TOTAL_LETTERS = <?= $activeCellCount ?>;
+const CW_RETURN_TO = <?= json_encode($returnTo, JSON_UNESCAPED_UNICODE) ?>;
+const CW_ACTIVITY_ID = <?= json_encode((string) ($row['id'] ?? ''), JSON_UNESCAPED_UNICODE) ?>;
 
 /* ===== STATE ===== */
 let selectedCell = null;     // {r, c}
 let currentWordIdx = -1;     // which word is active
 let currentDir = 'across';   // 'across' | 'down'
+const assistedCells = new Set();
+let cwScorePersisted = false;
 
 /* ===== CELL LOOKUP ===== */
 function cellEl(r, c) {
@@ -997,6 +1003,37 @@ function updateProgress() {
     document.getElementById('progressLabel').textContent = filled + ' / ' + TOTAL_LETTERS + ' letters';
 }
 
+function persistScoreSilently(targetUrl) {
+    if (!targetUrl) {
+        return Promise.resolve(false);
+    }
+
+    return fetch(targetUrl, {
+        method: 'GET',
+        credentials: 'same-origin',
+        cache: 'no-store',
+    }).then(function (response) {
+        return !!(response && response.ok);
+    }).catch(function () {
+        return false;
+    });
+}
+
+function navigateToReturn(targetUrl) {
+    if (!targetUrl) {
+        return;
+    }
+
+    try {
+        if (window.top && window.top !== window.self) {
+            window.top.location.href = targetUrl;
+            return;
+        }
+    } catch (e) {}
+
+    window.location.href = targetUrl;
+}
+
 /* ===== CHECK ===== */
 function checkAll() {
     let wrong = 0, correct = 0;
@@ -1019,7 +1056,7 @@ function checkAll() {
     }
 }
 
-function checkComplete() {
+async function checkComplete() {
     const cells = document.querySelectorAll('.cw-cell:not(.blocked)');
     let allDone = true;
     cells.forEach(cell => {
@@ -1029,10 +1066,34 @@ function checkComplete() {
     if (allDone) {
         const gameCard = document.getElementById('cwGame');
         const completed = document.getElementById('cw-completed');
+        const scoreEl = document.getElementById('cw-score-text');
+        const earned = Math.max(0, TOTAL_LETTERS - assistedCells.size);
+        const percent = TOTAL_LETTERS > 0 ? Math.round((earned / TOTAL_LETTERS) * 100) : 0;
+        const errors = Math.max(0, TOTAL_LETTERS - earned);
         if (gameCard) gameCard.classList.add('is-completed');
         if (completed) {
             completed.classList.add('active');
             setTimeout(() => completed.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
+        }
+        if (scoreEl) {
+            scoreEl.textContent = 'Score: ' + earned + ' / ' + TOTAL_LETTERS + ' (' + percent + '%)';
+        }
+
+        if (!cwScorePersisted && CW_ACTIVITY_ID && CW_RETURN_TO) {
+            const joiner = CW_RETURN_TO.indexOf('?') !== -1 ? '&' : '?';
+            const saveUrl = CW_RETURN_TO
+                + joiner + 'activity_percent=' + percent
+                + '&activity_errors=' + errors
+                + '&activity_total=' + TOTAL_LETTERS
+                + '&activity_id=' + encodeURIComponent(CW_ACTIVITY_ID)
+                + '&activity_type=crossword';
+
+            const ok = await persistScoreSilently(saveUrl);
+            if (ok) {
+                cwScorePersisted = true;
+            } else {
+                navigateToReturn(saveUrl);
+            }
         }
     }
 }
@@ -1049,6 +1110,7 @@ function restartCrossword() {
 function revealSelected() {
     if (currentWordIdx === -1) return;
     wordCells(currentWordIdx).forEach(({ el, letter }) => {
+        assistedCells.add(el.dataset.r + ',' + el.dataset.c);
         const inp = el.querySelector('input');
         if (inp) inp.value = letter;
         el.classList.remove('correct','wrong');
@@ -1060,6 +1122,7 @@ function revealSelected() {
 
 function revealAll() {
     document.querySelectorAll('.cw-cell:not(.blocked)').forEach(cell => {
+        assistedCells.add(cell.dataset.r + ',' + cell.dataset.c);
         const inp = cell.querySelector('input');
         const answer = cell.dataset.answer || '';
         if (inp) inp.value = answer;
@@ -1072,6 +1135,8 @@ function revealAll() {
 
 /* ===== CLEAR ===== */
 function clearAll() {
+    assistedCells.clear();
+    cwScorePersisted = false;
     document.querySelectorAll('.cw-cell:not(.blocked)').forEach(cell => {
         const inp = cell.querySelector('input');
         if (inp) inp.value = '';
