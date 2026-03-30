@@ -57,7 +57,7 @@ $dashboardSections = [
         'description' => 'Controla inscripciones y asignaciones docentes manteniendo separado el proceso administrativo y el proceso operativo.',
         'links' => [
             ['label' => 'Inscripciones', 'href' => '../academic/teacher_enrollments.php', 'variant' => 'primary'],
-            ['label' => 'Asignaciones', 'href' => '../academic/teacher_profiles.php', 'variant' => 'secondary'],
+            ['label' => 'Asignaciones', 'href' => '../academic/teacher_groups.php', 'variant' => 'secondary'],
         ],
     ],
     [
