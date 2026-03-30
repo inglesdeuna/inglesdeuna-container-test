@@ -233,6 +233,10 @@ ob_start();
 .qz-lead{font-size:15px;color:#b8551f;margin:8px 0 0;line-height:1.5}
 .qz-meta{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
 .qz-chip{display:inline-flex;align-items:center;padding:6px 10px;border-radius:999px;background:#eddeff;color:#a855c8;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.03em}
+.qz-progress-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:12px}
+.qz-progress-label{font-size:13px;font-weight:800;color:#b8551f}
+.qz-progress-track{width:100%;height:10px;border-radius:999px;background:#f3e5ff;overflow:hidden;border:1px solid #e8ccff}
+.qz-progress-fill{height:100%;width:0%;background:linear-gradient(90deg,#a855c8 0%,#f14902 100%);transition:width .2s ease}
 .qz-alert{border:1px solid #f7b4b4;background:#fff2f2;color:#9b1c1c;border-radius:12px;padding:12px 14px;font-weight:700}
 .qz-empty{padding:14px;border:1px solid #dcc4f0;border-radius:12px;background:#fff;color:#b8551f}
 .qz-list{display:flex;flex-direction:column;gap:12px}
@@ -268,6 +272,14 @@ ob_start();
       <span class="qz-chip">Attempts: <?php echo (int) ($quizAttemptPolicy['attempts_used'] ?? 0); ?>/<?php echo (int) ($quizAttemptPolicy['attempts_allowed'] ?? 3); ?></span>
       <span class="qz-chip">Rule: 1 per day</span>
       <span class="qz-chip">Random questions</span>
+      <span class="qz-chip" id="qz-answered-chip">Answered: <span id="qz-answered-count">0</span>/<?php echo count($questions); ?></span>
+    </div>
+    <div class="qz-progress-head">
+      <span class="qz-progress-label">Progress</span>
+      <span class="qz-progress-label" id="qz-progress-percent">0%</span>
+    </div>
+    <div class="qz-progress-track">
+      <div class="qz-progress-fill" id="qz-progress-fill"></div>
     </div>
   </section>
 
@@ -309,6 +321,9 @@ window.QUIZ_POLICY = <?php echo json_encode($quizAttemptPolicy, JSON_UNESCAPED_U
   const resultEl = document.getElementById('quizResult');
   const listEl = document.getElementById('qz-list');
   const attemptNoteEl = document.getElementById('qz-attempt-note');
+  const answeredCountEl = document.getElementById('qz-answered-count');
+  const progressFillEl = document.getElementById('qz-progress-fill');
+  const progressPercentEl = document.getElementById('qz-progress-percent');
   const policy = window.QUIZ_POLICY || {};
 
   function shuffleArray(items) {
@@ -369,6 +384,27 @@ window.QUIZ_POLICY = <?php echo json_encode($quizAttemptPolicy, JSON_UNESCAPED_U
 
   const randomizedQuestions = buildRandomizedQuiz(window.QUIZ_DATA);
 
+  function updateAnsweredProgress() {
+    const total = randomizedQuestions.length;
+    let answered = 0;
+    for (let idx = 0; idx < total; idx += 1) {
+      if (document.querySelector('input[name="q_' + idx + '"]:checked')) {
+        answered += 1;
+      }
+    }
+
+    const pct = total > 0 ? Math.round((answered / total) * 100) : 0;
+    if (answeredCountEl) {
+      answeredCountEl.textContent = String(answered);
+    }
+    if (progressFillEl) {
+      progressFillEl.style.width = String(pct) + '%';
+    }
+    if (progressPercentEl) {
+      progressPercentEl.textContent = String(pct) + '%';
+    }
+  }
+
   randomizedQuestions.forEach(function (q, idx) {
     const card = document.createElement('div');
     card.className = 'qz-card';
@@ -401,6 +437,15 @@ window.QUIZ_POLICY = <?php echo json_encode($quizAttemptPolicy, JSON_UNESCAPED_U
     card.appendChild(opts);
     listEl.appendChild(card);
   });
+
+  listEl.addEventListener('change', function (event) {
+    const target = event.target;
+    if (target && target.matches('input[type="radio"]')) {
+      updateAnsweredProgress();
+    }
+  });
+
+  updateAnsweredProgress();
 
   btn.addEventListener('click', async function(){
     if (!policy.finish_enabled) {
