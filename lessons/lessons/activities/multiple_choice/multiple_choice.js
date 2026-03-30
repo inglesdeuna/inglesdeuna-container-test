@@ -39,6 +39,7 @@ document.addEventListener('DOMContentLoaded', function () {
   let checked = false;
   let finished = false;
   let questionScores = questions.map(function () { return 0; });
+  let revealedByQuestion = questions.map(function () { return false; });
 
   if (completedTitleEl) {
     completedTitleEl.textContent = activityTitle;
@@ -204,7 +205,7 @@ document.addEventListener('DOMContentLoaded', function () {
       button.textContent = optionText;
 
       button.addEventListener('click', function () {
-        if (checked || finished) {
+        if (finished || revealedByQuestion[index]) {
           return;
         }
 
@@ -242,6 +243,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     checked = true;
     selected = correct;
+    revealedByQuestion[index] = true;
 
     Array.prototype.forEach.call(options, function (node, optIndex) {
       node.classList.remove('selected', 'wrong');
@@ -322,6 +324,7 @@ document.addEventListener('DOMContentLoaded', function () {
   function restartActivity() {
     index = 0;
     questionScores = questions.map(function () { return 0; });
+    revealedByQuestion = questions.map(function () { return false; });
     loadQuestion();
   }
 
