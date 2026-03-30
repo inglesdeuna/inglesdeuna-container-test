@@ -527,11 +527,13 @@ document.addEventListener('DOMContentLoaded', function () {
     var restartBtn = document.getElementById('pron-restart');
 
     var recognition = null;
-    if ('webkitSpeechRecognition' in window) {
-        recognition = new webkitSpeechRecognition();
+    var SpeechRecognitionCtor = window.SpeechRecognition || window.webkitSpeechRecognition || null;
+    if (SpeechRecognitionCtor) {
+        recognition = new SpeechRecognitionCtor();
         recognition.lang = 'en-US';
         recognition.interimResults = false;
         recognition.maxAlternatives = 1;
+        recognition.continuous = false;
     }
 
     var correctSound = new Audio('../../hangman/assets/win.mp3');
@@ -543,7 +545,7 @@ document.addEventListener('DOMContentLoaded', function () {
     var capturedText = '';
     var recognitionBusy = false;
     var correctCount = 0;
-    var totalCount = 0;
+    var totalCount = data.length;
     var checkedCards = {};
 
     if (completedTitleEl) {
@@ -555,9 +557,34 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function persistScoreSilently(targetUrl) {
+        if (!targetUrl) {
+            return Promise.resolve(false);
+        }
+
+        return fetch(targetUrl, {
+            method: 'GET',
+            credentials: 'same-origin',
+            cache: 'no-store',
+        }).then(function (response) {
+            return !!(response && response.ok);
+        }).catch(function () {
+            return false;
+        });
+    }
+
+    function navigateToReturn(targetUrl) {
+        if (!targetUrl) {
+            return;
+        }
+
         try {
-            fetch(targetUrl, { method: 'GET', credentials: 'same-origin' });
+            if (window.top && window.top !== window.self) {
+                window.top.location.href = targetUrl;
+                return;
+            }
         } catch (e) {}
+
+        window.location.href = targetUrl;
     }
 
     function normalizeText(text) {
@@ -656,7 +683,7 @@ document.addEventListener('DOMContentLoaded', function () {
         feedbackEl.className = 'mc-feedback';
 
         recognition.onresult = function (event) {
-            capturedText = String(event.results[0][0].transcript || '');
+            capturedText = String((event.results && event.results[0] && event.results[0][0] && event.results[0][0].transcript) || '');
             capturedEl.textContent = 'You said: ' + capturedText;
             recognitionBusy = false;
             feedbackEl.textContent = 'Now press Check Answer.';
@@ -668,6 +695,10 @@ document.addEventListener('DOMContentLoaded', function () {
             capturedEl.textContent = 'Could not capture voice. Try again.';
             feedbackEl.textContent = 'Try Again';
             feedbackEl.className = 'mc-feedback bad';
+            recognitionBusy = false;
+        };
+
+        recognition.onend = function () {
             recognitionBusy = false;
         };
 
@@ -706,12 +737,9 @@ document.addEventListener('DOMContentLoaded', function () {
             playSound(wrongSound);
         }
 
-        if (!checkedCards[index]) {
+        if (isCorrect && !checkedCards[index]) {
             checkedCards[index] = true;
-            totalCount++;
-            if (isCorrect) {
-                correctCount++;
-            }
+            correctCount++;
         }
     }
 
@@ -726,7 +754,7 @@ document.addEventListener('DOMContentLoaded', function () {
         feedbackEl.className = 'mc-feedback good';
     }
 
-    function showCompleted() {
+    async function showCompleted() {
         finished = true;
         cardEl.style.display = 'none';
         listenRowEl.style.display = 'none';
@@ -737,7 +765,7 @@ document.addEventListener('DOMContentLoaded', function () {
         playSound(doneSound);
 
         var pct = totalCount > 0 ? Math.round((correctCount / totalCount) * 100) : 0;
-        var errors = totalCount - correctCount;
+        var errors = Math.max(0, totalCount - correctCount);
 
         if (completedTextEl) {
             completedTextEl.textContent = "You've completed " + (activityTitle || 'this activity') + '. Great job practicing.';
@@ -747,14 +775,18 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         if (PRON_ACTIVITY_ID && PRON_RETURN_TO) {
-            persistScoreSilently(
-                PRON_RETURN_TO +
-                '&activity_percent=' + pct +
+            var joiner = PRON_RETURN_TO.indexOf('?') !== -1 ? '&' : '?';
+            var saveUrl = PRON_RETURN_TO +
+                joiner + 'activity_percent=' + pct +
                 '&activity_errors=' + errors +
                 '&activity_total=' + totalCount +
                 '&activity_id=' + encodeURIComponent(PRON_ACTIVITY_ID) +
-                '&activity_type=pronunciation'
-            );
+                '&activity_type=pronunciation';
+
+            var ok = await persistScoreSilently(saveUrl);
+            if (!ok) {
+                navigateToReturn(saveUrl);
+            }
         }
     }
 
@@ -773,7 +805,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function restart() {
         correctCount = 0;
-        totalCount = 0;
+        totalCount = data.length;
         checkedCards = {};
         index = 0;
         loadCard();
