@@ -462,7 +462,7 @@ ob_start();
 <div class="mc-viewer" id="pron-viewer">
         <section class="mc-intro">
             <h2>Pronunciation Practice</h2>
-            <p>One card at a time. Listen first, then press Check Answer to record and validate your pronunciation. Use Show Answer if you need help.</p>
+            <p>One card at a time. Listen first, then use Speaker to record and validate your pronunciation automatically. Use Show Answer if you need help.</p>
         </section>
 
         <div class="mc-status" id="pron-status"></div>
@@ -480,7 +480,6 @@ ob_start();
         </div>
 
         <div class="mc-controls" id="pron-controls">
-                <button type="button" class="mc-btn mc-btn-check" id="pron-check">Check Answer</button>
                 <button type="button" class="mc-btn mc-btn-show" id="pron-show">Show Answer</button>
                 <button type="button" class="mc-btn mc-btn-next" id="pron-next">Next</button>
         </div>
@@ -903,7 +902,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
     listenBtn.addEventListener('click', speakCurrent);
     speakBtn.addEventListener('click', recordPronunciation);
-    checkBtn.addEventListener('click', checkAnswer);
+    if (checkBtn) {
+        checkBtn.addEventListener('click', checkAnswer);
+    }
     showBtn.addEventListener('click', showAnswer);
     nextBtn.addEventListener('click', goNext);
     restartBtn.addEventListener('click', restart);
