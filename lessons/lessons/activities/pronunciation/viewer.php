@@ -591,8 +591,24 @@ document.addEventListener('DOMContentLoaded', function () {
         return String(text || '')
             .toLowerCase()
             .trim()
-            .replace(/[.,!?;:]/g, '')
+            .replace(/[.,!?;:'"\-]/g, '')
             .replace(/\s+/g, ' ');
+    }
+
+    function wordOverlapScore(a, b) {
+        var wa = a.split(' ').filter(Boolean);
+        var wb = b.split(' ').filter(Boolean);
+        if (!wa.length || !wb.length) { return 0; }
+        var matches = wa.filter(function (w) { return wb.indexOf(w) !== -1; }).length;
+        return matches / Math.max(wa.length, wb.length);
+    }
+
+    function isMatch(said, expected) {
+        if (said === expected) { return true; }
+        if (said.indexOf(expected) !== -1) { return true; }
+        if (expected.indexOf(said) !== -1) { return true; }
+        if (wordOverlapScore(said, expected) >= 0.55) { return true; }
+        return false;
     }
 
     function playSound(sound) {
@@ -684,10 +700,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
         recognition.onresult = function (event) {
             capturedText = String((event.results && event.results[0] && event.results[0][0] && event.results[0][0].transcript) || '');
-            capturedEl.textContent = 'You said: ' + capturedText;
             recognitionBusy = false;
-            feedbackEl.textContent = 'Now press Check Answer.';
+            feedbackEl.textContent = '';
             feedbackEl.className = 'mc-feedback';
+            checkAnswer();
         };
 
         recognition.onerror = function () {
@@ -723,23 +739,25 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
-        var isCorrect = (said === expected || said.indexOf(expected) !== -1 || expected.indexOf(said) !== -1);
+        var correct = isMatch(said, expected);
 
-        if (isCorrect) {
-            feedbackEl.textContent = 'Correct!';
-            feedbackEl.className = 'mc-feedback good';
+        if (correct) {
+            capturedEl.textContent = '\u2714 Good';
             capturedEl.className = 'pron-captured ok';
+            feedbackEl.textContent = '';
             playSound(correctSound);
         } else {
-            feedbackEl.textContent = 'Try Again';
-            feedbackEl.className = 'mc-feedback bad';
+            capturedEl.textContent = '\u2718 Wrong';
             capturedEl.className = 'pron-captured bad';
+            feedbackEl.textContent = '';
             playSound(wrongSound);
         }
 
-        if (isCorrect && !checkedCards[index]) {
+        if (correct && !checkedCards[index]) {
             checkedCards[index] = true;
             correctCount++;
+        } else if (!correct && !checkedCards[index]) {
+            checkedCards[index] = false;
         }
     }
 
@@ -748,10 +766,13 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
-        answerEl.textContent = 'Correct answer: ' + (data[index].en || '');
+        var lines = [];
+        if (capturedText) {
+            lines.push('You said: \u201c' + capturedText + '\u201d');
+        }
+        lines.push('Correct: ' + (data[index].en || ''));
+        answerEl.textContent = lines.join('   \u2192   ');
         answerEl.classList.add('show');
-        feedbackEl.textContent = 'Show The Answer';
-        feedbackEl.className = 'mc-feedback good';
     }
 
     async function showCompleted() {
