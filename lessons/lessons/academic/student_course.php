@@ -26,6 +26,21 @@ function h(string $value): string
     return htmlspecialchars($value, ENT_QUOTES, 'UTF-8');
 }
 
+function app_upper(string $value): string
+{
+    $normalized = strtr($value, [
+        'á' => 'Á',
+        'é' => 'É',
+        'í' => 'Í',
+        'ó' => 'Ó',
+        'ú' => 'Ú',
+        'ü' => 'Ü',
+        'ñ' => 'Ñ',
+    ]);
+
+    return function_exists('mb_strtoupper') ? mb_strtoupper($normalized, 'UTF-8') : strtoupper($normalized);
+}
+
 function get_pdo_connection(): ?PDO
 {
     if (!getenv('DATABASE_URL')) {
@@ -408,8 +423,9 @@ $courseName = trim((string) ($assignment['course_name'] ?? 'Course'));
 if ($courseName === '') {
     $courseName = 'Course';
 }
+$courseName = app_upper($courseName);
 $teacherName = trim((string) ($assignment['teacher_name'] ?? 'Teacher'));
-$programLabel = ((string) ($assignment['program'] ?? '') === 'english') ? 'English' : 'TÉCNICO';
+$teacherName = app_upper($teacherName);
 
 /* ---- Determine active unit ---- */
 if ($selectedUnitId === '' && !empty($allUnits)) {
@@ -423,6 +439,7 @@ foreach ($allUnits as $_u) {
         break;
     }
 }
+$selectedUnitName = app_upper($selectedUnitName);
 
 /* ---- Activities for selected unit ---- */
 $step = max(0, (int) ($_GET['step'] ?? 0));
@@ -535,13 +552,14 @@ body{margin:0;font-family:Arial,sans-serif;background:linear-gradient(145deg,#ff
 }
 .top-btn{
     display:inline-flex;align-items:center;justify-content:center;
-    padding:8px 16px;border-radius:8px;text-decoration:none;
-    font-size:13px;font-weight:700;color:#fff;white-space:nowrap;
+    gap:6px;
+    padding:13px 22px;border-radius:12px;text-decoration:none;
+    font-size:15px;font-weight:700;color:#fff;white-space:nowrap;
     background:linear-gradient(180deg,#a855f7,#7c3aed);
-    box-shadow:0 4px 12px rgba(124,58,237,.28);
-    transition:filter .18s ease,transform .18s ease;
+    box-shadow:var(--shadow-sm);
+    transition:filter .15s,transform .15s;
 }
-.top-btn:hover{filter:brightness(1.08);transform:translateY(-1px)}
+.top-btn:hover{filter:brightness(1.07);transform:translateY(-1px)}
 .topbar-title{font-size:26px;font-weight:800;text-align:center}
 
 .page{max-width:1280px;margin:0 auto;padding:18px 20px 28px}
@@ -746,11 +764,10 @@ body{margin:0;font-family:Arial,sans-serif;background:linear-gradient(145deg,#ff
             <?php if ($selectedUnitName !== 'Unit' && $selectedUnitName !== ''): ?>
                 <span class="hero-badge blue"><?php echo h($selectedUnitName); ?></span>
             <?php endif; ?>
-            <span class="hero-badge">Teacher: <?php echo h($teacherName); ?></span>
+            <span class="hero-badge"><?php echo h('TEACHER: ' . $teacherName); ?></span>
             <?php if ($completionPercent > 0): ?>
                 <span class="hero-badge">Score: <?php echo $completionPercent; ?>%</span>
             <?php endif; ?>
-            <span class="hero-badge"><?php echo h($programLabel); ?></span>
         </div>
     </section>
 
