@@ -462,7 +462,7 @@ ob_start();
 <div class="mc-viewer" id="dict-viewer">
         <section class="mc-intro">
                 <h2>Dictation Practice</h2>
-                <p>One card at a time. Use Listen, type your answer, then Check Answer. Use Show Answer if you need support.</p>
+            <p>One card at a time. Listen if needed, type your answer, and the result is validated automatically. Use Show Answer if you need support.</p>
         </section>
 
         <div class="mc-status" id="dict-status"></div>
@@ -479,7 +479,6 @@ ob_start();
         </div>
 
         <div class="mc-controls" id="dict-controls">
-                <button type="button" class="mc-btn mc-btn-check" id="dict-check">Check Answer</button>
                 <button type="button" class="mc-btn mc-btn-show" id="dict-show">Show Answer</button>
                 <button type="button" class="mc-btn mc-btn-next" id="dict-next">Next</button>
         </div>
@@ -519,7 +518,6 @@ document.addEventListener('DOMContentLoaded', function () {
     var scoreTextEl = document.getElementById('dict-score-text');
 
     var listenBtn = document.getElementById('dict-listen');
-    var checkBtn = document.getElementById('dict-check');
     var showBtn = document.getElementById('dict-show');
     var nextBtn = document.getElementById('dict-next');
     var restartBtn = document.getElementById('dict-restart');
@@ -673,7 +671,7 @@ document.addEventListener('DOMContentLoaded', function () {
         attemptsByCard[index] = currentAttempts;
 
         if (answer === expected) {
-            feedbackEl.textContent = '\u2714 Good';
+            feedbackEl.textContent = '\u2714 Right';
             feedbackEl.className = 'mc-feedback good';
             answerEl.className = 'dict-answer-box ok';
             playSound(correctSound);
@@ -697,6 +695,22 @@ document.addEventListener('DOMContentLoaded', function () {
                 playSound(wrongSound);
             }
         }
+    }
+
+    function autoCheckIfNeeded() {
+        if (finished || !data[index]) {
+            return;
+        }
+
+        if (checkedCards[index]) {
+            return;
+        }
+
+        if (String(answerEl.value || '').trim() === '') {
+            return;
+        }
+
+        checkAnswer();
     }
 
     function showAnswer() {
@@ -753,6 +767,12 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
+        autoCheckIfNeeded();
+
+        if (!checkedCards[index]) {
+            return;
+        }
+
         if (index < data.length - 1) {
             index += 1;
             loadCard();
@@ -782,10 +802,16 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     listenBtn.addEventListener('click', speakCurrent);
-    checkBtn.addEventListener('click', checkAnswer);
     showBtn.addEventListener('click', showAnswer);
     nextBtn.addEventListener('click', goNext);
     restartBtn.addEventListener('click', restart);
+    answerEl.addEventListener('blur', autoCheckIfNeeded);
+    answerEl.addEventListener('keydown', function (event) {
+        if (event.key === 'Enter' && !event.shiftKey) {
+            event.preventDefault();
+            autoCheckIfNeeded();
+        }
+    });
 
     loadCard();
 });
