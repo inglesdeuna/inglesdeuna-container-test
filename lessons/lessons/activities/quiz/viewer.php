@@ -113,6 +113,67 @@ function load_quiz_activity(PDO $pdo, string $activityId, string $unit): array
     ];
 }
 
+function load_quiz_match_pairs(PDO $pdo, string $unit): array
+{
+  if ($unit === '') {
+    return [];
+  }
+
+  try {
+    $stmt = $pdo->prepare("\n            SELECT data\n            FROM activities\n            WHERE unit_id = :unit\n              AND type = 'match'\n            ORDER BY id ASC\n            LIMIT 1\n        ");
+    $stmt->execute(['unit' => $unit]);
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+    if (!is_array($row)) {
+      return [];
+    }
+
+    $raw = $row['data'] ?? null;
+    $decoded = is_string($raw) ? json_decode($raw, true) : $raw;
+    if (!is_array($decoded)) {
+      return [];
+    }
+
+    $pairsSource = $decoded;
+    if (isset($decoded['pairs']) && is_array($decoded['pairs'])) {
+      $pairsSource = $decoded['pairs'];
+    } elseif (isset($decoded['items']) && is_array($decoded['items'])) {
+      $pairsSource = $decoded['items'];
+    } elseif (isset($decoded['data']) && is_array($decoded['data'])) {
+      $pairsSource = $decoded['data'];
+    }
+
+    $pairs = [];
+    foreach ($pairsSource as $item) {
+      if (!is_array($item)) {
+        continue;
+      }
+
+      $legacyText = isset($item['text']) ? trim((string) $item['text']) : (isset($item['word']) ? trim((string) $item['word']) : '');
+      $legacyImage = isset($item['image']) ? trim((string) $item['image']) : (isset($item['img']) ? trim((string) $item['img']) : '');
+
+      $leftText = isset($item['left_text']) ? trim((string) $item['left_text']) : '';
+      $leftImage = isset($item['left_image']) ? trim((string) $item['left_image']) : $legacyImage;
+      $rightText = isset($item['right_text']) ? trim((string) $item['right_text']) : $legacyText;
+      $rightImage = isset($item['right_image']) ? trim((string) $item['right_image']) : '';
+
+      if ($leftText === '' && $leftImage === '' && $rightText === '' && $rightImage === '') {
+        continue;
+      }
+
+      $pairs[] = [
+        'left_text' => $leftText,
+        'left_image' => $leftImage,
+        'right_text' => $rightText,
+        'right_image' => $rightImage,
+      ];
+    }
+
+    return $pairs;
+  } catch (Throwable $e) {
+    return [];
+  }
+}
+
 function table_has_column(PDO $pdo, string $tableName, string $columnName): bool
 {
   try {
@@ -217,6 +278,7 @@ $activity = load_quiz_activity($pdo, $activityId, $unit);
 $viewerTitle = (string) ($activity['title'] ?? 'Unit Quiz');
 $questions = isset($activity['questions']) && is_array($activity['questions']) ? $activity['questions'] : [];
 $description = (string) ($activity['description'] ?? '');
+$quizMatchPairs = load_quiz_match_pairs($pdo, $unit);
 
 ensure_quiz_attempts_column($pdo);
 
@@ -247,6 +309,18 @@ ob_start();
 .qz-opt{display:flex;align-items:flex-start;gap:10px;padding:10px;border:1px solid #ead6f8;border-radius:10px;background:#fff9ff;cursor:pointer;transition:border-color .15s,background .15s}
 .qz-opt:hover{border-color:#a855c8;background:#f9efff}
 .qz-opt input{margin-top:2px}
+.qz-match-wrap{display:flex;flex-direction:column;gap:10px}
+.qz-match-help{font-size:14px;color:#5d6f8f;font-weight:700}
+.qz-match-status{font-size:13px;color:#7c3aed;font-weight:800}
+.qz-match-rows{display:flex;flex-direction:column;gap:10px}
+.qz-match-row{display:grid;grid-template-columns:repeat(auto-fit, minmax(92px, 1fr));gap:8px}
+.qz-match-tile{border:1px solid #e6d5f8;border-radius:10px;background:#fff9ff;padding:8px;min-height:70px;display:flex;align-items:center;justify-content:center;text-align:center;font-size:12px;font-weight:800;color:#3f2a63;cursor:pointer;user-select:none}
+.qz-match-tile img{max-width:100%;max-height:52px;object-fit:contain;border-radius:8px}
+.qz-match-top .qz-match-tile{background:#fff7e8;border-color:#f4d7a3}
+.qz-match-bottom .qz-match-tile{background:#eef7ff;border-color:#bcdaf5}
+.qz-match-tile.is-selected{outline:2px solid #a855c8;outline-offset:1px}
+.qz-match-tile.is-matched{opacity:.55;cursor:default;filter:grayscale(.08)}
+.qz-match-tile.is-wrong{background:#fff1f1;border-color:#ef4444}
 .qz-actions{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;position:sticky;bottom:12px;padding:12px;border:1px solid #dcc4f0;border-radius:14px;background:rgba(255,255,255,.95);backdrop-filter:blur(3px)}
 .qz-btn{border:none;border-radius:10px;padding:12px 16px;font-weight:800;cursor:pointer;color:#fff;background:linear-gradient(180deg,#f14902,#d33d00);box-shadow:0 8px 18px rgba(241,73,2,.22)}
 .qz-btn:disabled{opacity:.55;cursor:not-allowed}
@@ -314,6 +388,7 @@ window.QUIZ_DATA = <?php echo json_encode($questions, JSON_UNESCAPED_UNICODE); ?
 window.QUIZ_RETURN_TO = <?php echo json_encode($returnTo, JSON_UNESCAPED_UNICODE); ?>;
 window.QUIZ_ACTIVITY_ID = <?php echo json_encode((string) ($activity['id'] ?? ''), JSON_UNESCAPED_UNICODE); ?>;
 window.QUIZ_POLICY = <?php echo json_encode($quizAttemptPolicy, JSON_UNESCAPED_UNICODE); ?>;
+window.QUIZ_MATCH_DATA = <?php echo json_encode($quizMatchPairs, JSON_UNESCAPED_UNICODE); ?>;
 (function(){
   const btn = document.getElementById('btnCheckQuiz');
   const questionsWrap = document.getElementById('qz-questions-wrap');
@@ -326,6 +401,7 @@ window.QUIZ_POLICY = <?php echo json_encode($quizAttemptPolicy, JSON_UNESCAPED_U
   const progressFillEl = document.getElementById('qz-progress-fill');
   const progressPercentEl = document.getElementById('qz-progress-percent');
   const policy = window.QUIZ_POLICY || {};
+  const quizMatchData = Array.isArray(window.QUIZ_MATCH_DATA) ? window.QUIZ_MATCH_DATA : [];
 
   function shuffleArray(items) {
     const cloned = items.slice();
@@ -357,6 +433,23 @@ window.QUIZ_POLICY = <?php echo json_encode($quizAttemptPolicy, JSON_UNESCAPED_U
     return shuffleArray(mapped);
   }
 
+  function escapeHtml(value) {
+    return String(value || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
+  function renderTileContent(text, image) {
+    const safeText = escapeHtml(text || '');
+    const safeImage = escapeHtml(image || '');
+    const media = safeImage !== '' ? ('<img src="' + safeImage + '" alt="">') : '';
+    const label = safeText !== '' ? ('<span>' + safeText + '</span>') : '';
+    return media + label;
+  }
+
   function persistScoreSilently(targetUrl) {
     if (!targetUrl) return Promise.resolve(false);
     try {
@@ -384,14 +477,24 @@ window.QUIZ_POLICY = <?php echo json_encode($quizAttemptPolicy, JSON_UNESCAPED_U
   }
 
   const randomizedQuestions = buildRandomizedQuiz(window.QUIZ_DATA);
+  const matchState = {
+    enabled: quizMatchData.length > 0,
+    total: quizMatchData.length,
+    answered: 0,
+    correct: 0,
+    selectedTop: '',
+    attemptsByTop: {},
+    matchedTop: {},
+    matchedBottom: {},
+  };
 
   function updateAnsweredProgress() {
-    const total = randomizedQuestions.length;
-    let answered = 0;
-    for (let idx = 0; idx < total; idx += 1) {
+    const totalQuestions = randomizedQuestions.length;
+    let answeredQuestions = 0;
+    for (let idx = 0; idx < totalQuestions; idx += 1) {
       const hasAnswer = !!document.querySelector('input[name="q_' + idx + '"]:checked');
       if (hasAnswer) {
-        answered += 1;
+        answeredQuestions += 1;
       }
 
       const cardNode = listEl.querySelector('.qz-card[data-index="' + idx + '"]');
@@ -399,6 +502,9 @@ window.QUIZ_POLICY = <?php echo json_encode($quizAttemptPolicy, JSON_UNESCAPED_U
         cardNode.classList.toggle('qz-card-unanswered', !hasAnswer);
       }
     }
+
+    const answered = answeredQuestions + (matchState.enabled ? matchState.answered : 0);
+    const total = totalQuestions + (matchState.enabled ? matchState.total : 0);
 
     const pct = total > 0 ? Math.round((answered / total) * 100) : 0;
     if (answeredCountEl) {
@@ -416,10 +522,7 @@ window.QUIZ_POLICY = <?php echo json_encode($quizAttemptPolicy, JSON_UNESCAPED_U
       btn.disabled = lockedByPolicy;
     }
 
-    return {
-      answered: answered,
-      total: total,
-    };
+    return { answered: answered, total: total };
   }
 
   function focusFirstUnanswered() {
@@ -469,6 +572,129 @@ window.QUIZ_POLICY = <?php echo json_encode($quizAttemptPolicy, JSON_UNESCAPED_U
     listEl.appendChild(card);
   });
 
+  if (matchState.enabled) {
+    const keyedPairs = quizMatchData.map(function (item, idx) {
+      return {
+        key: 'qm_' + idx,
+        left_text: String(item.left_text || ''),
+        left_image: String(item.left_image || ''),
+        right_text: String(item.right_text || ''),
+        right_image: String(item.right_image || ''),
+      };
+    });
+
+    const topItems = shuffleArray(keyedPairs.slice());
+    const bottomItems = shuffleArray(keyedPairs.slice());
+
+    const matchCard = document.createElement('div');
+    matchCard.className = 'qz-card qz-card-unanswered';
+    matchCard.setAttribute('data-index', 'quiz-match');
+
+    const title = document.createElement('div');
+    title.className = 'qz-q';
+    title.textContent = (randomizedQuestions.length + 1) + '. Match the cards (Top with Bottom)';
+    matchCard.appendChild(title);
+
+    const wrap = document.createElement('div');
+    wrap.className = 'qz-match-wrap';
+    wrap.innerHTML = ''
+      + '<div class="qz-match-help">Top row matches with bottom row. Choose a top card, then its correct card below.</div>'
+      + '<div class="qz-match-status" id="qz-match-status">Matched: 0/' + String(matchState.total) + '</div>'
+      + '<div class="qz-match-rows">'
+      + '  <div class="qz-match-row qz-match-top" id="qz-match-top"></div>'
+      + '  <div class="qz-match-row qz-match-bottom" id="qz-match-bottom"></div>'
+      + '</div>';
+    matchCard.appendChild(wrap);
+    listEl.appendChild(matchCard);
+
+    const topRow = matchCard.querySelector('#qz-match-top');
+    const bottomRow = matchCard.querySelector('#qz-match-bottom');
+    const status = matchCard.querySelector('#qz-match-status');
+
+    function clearWrongState(node) {
+      if (!node) {
+        return;
+      }
+      node.classList.remove('is-wrong');
+      setTimeout(function () {
+        node.classList.remove('is-wrong');
+      }, 260);
+    }
+
+    function refreshMatchStatus() {
+      if (status) {
+        status.textContent = 'Matched: ' + String(matchState.answered) + '/' + String(matchState.total);
+      }
+      updateAnsweredProgress();
+    }
+
+    topItems.forEach(function (item) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'qz-match-tile';
+      btn.setAttribute('data-key', item.key);
+      btn.innerHTML = renderTileContent(item.left_text, item.left_image);
+      btn.addEventListener('click', function () {
+        if (matchState.matchedTop[item.key]) {
+          return;
+        }
+        matchState.selectedTop = item.key;
+        topRow.querySelectorAll('.qz-match-tile').forEach(function (node) {
+          node.classList.remove('is-selected');
+        });
+        btn.classList.add('is-selected');
+      });
+      topRow.appendChild(btn);
+    });
+
+    bottomItems.forEach(function (item) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'qz-match-tile';
+      btn.setAttribute('data-key', item.key);
+      btn.innerHTML = renderTileContent(item.right_text, item.right_image);
+      btn.addEventListener('click', function () {
+        const selectedTop = matchState.selectedTop;
+        if (!selectedTop || matchState.matchedBottom[item.key] || matchState.matchedTop[selectedTop]) {
+          return;
+        }
+
+        const currentAttempts = (matchState.attemptsByTop[selectedTop] || 0) + 1;
+        matchState.attemptsByTop[selectedTop] = currentAttempts;
+
+        if (selectedTop === item.key) {
+          matchState.matchedTop[selectedTop] = true;
+          matchState.matchedBottom[item.key] = true;
+          matchState.answered += 1;
+          if (currentAttempts === 1) {
+            matchState.correct += 1;
+          }
+
+          const topBtn = topRow.querySelector('.qz-match-tile[data-key="' + selectedTop + '"]');
+          if (topBtn) {
+            topBtn.classList.remove('is-selected');
+            topBtn.classList.add('is-matched');
+          }
+          btn.classList.add('is-matched');
+          matchState.selectedTop = '';
+          refreshMatchStatus();
+          return;
+        }
+
+        const topBtn = topRow.querySelector('.qz-match-tile[data-key="' + selectedTop + '"]');
+        if (topBtn) {
+          topBtn.classList.add('is-wrong');
+          clearWrongState(topBtn);
+        }
+        btn.classList.add('is-wrong');
+        clearWrongState(btn);
+      });
+      bottomRow.appendChild(btn);
+    });
+
+    refreshMatchStatus();
+  }
+
   listEl.addEventListener('change', function (event) {
     const target = event.target;
     if (target && target.matches('input[type="radio"]')) {
@@ -507,7 +733,7 @@ window.QUIZ_POLICY = <?php echo json_encode($quizAttemptPolicy, JSON_UNESCAPED_U
     }
 
     let correct = 0;
-    const total = randomizedQuestions.length;
+    const total = randomizedQuestions.length + (matchState.enabled ? matchState.total : 0);
 
     randomizedQuestions.forEach(function(q, idx){
       const checked = document.querySelector('input[name="q_' + idx + '"]:checked');
@@ -516,6 +742,10 @@ window.QUIZ_POLICY = <?php echo json_encode($quizAttemptPolicy, JSON_UNESCAPED_U
         correct += 1;
       }
     });
+
+    if (matchState.enabled) {
+      correct += matchState.correct;
+    }
 
     const percent = total > 0 ? Math.round((correct / total) * 100) : 0;
     const errors = Math.max(0, total - correct);
