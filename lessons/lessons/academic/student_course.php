@@ -104,6 +104,7 @@ function save_student_activity_performance(PDO $pdo, string $studentId, string $
     }
 
     try {
+        $hasAttemptsColumn = table_has_column($pdo, 'student_activity_results', 'attempts_count');
         $cleanType = trim($activityType);
         $cleanErrors = max(0, $errorsCount);
         $cleanTotal = max(0, $totalCount);
@@ -115,7 +116,11 @@ function save_student_activity_performance(PDO $pdo, string $studentId, string $
             $cleanPercent = max(0, min(100, (int) round((($cleanTotal - $cleanErrors) / $cleanTotal) * 100)));
         }
 
-        $existingStmt = $pdo->prepare("\n            SELECT completion_percent, errors_count, total_count, attempts_count\n            FROM student_activity_results\n            WHERE student_id = :student_id\n              AND assignment_id = :assignment_id\n              AND unit_id = :unit_id\n              AND activity_id = :activity_id\n            LIMIT 1\n        ");
+        $existingSql = $hasAttemptsColumn
+            ? "\n            SELECT completion_percent, errors_count, total_count, attempts_count\n            FROM student_activity_results\n            WHERE student_id = :student_id\n              AND assignment_id = :assignment_id\n              AND unit_id = :unit_id\n              AND activity_id = :activity_id\n            LIMIT 1\n        "
+            : "\n            SELECT completion_percent, errors_count, total_count\n            FROM student_activity_results\n            WHERE student_id = :student_id\n              AND assignment_id = :assignment_id\n              AND unit_id = :unit_id\n              AND activity_id = :activity_id\n            LIMIT 1\n        ";
+
+        $existingStmt = $pdo->prepare($existingSql);
         $existingStmt->execute([
             'student_id' => $studentId,
             'assignment_id' => $assignmentId,
@@ -125,7 +130,10 @@ function save_student_activity_performance(PDO $pdo, string $studentId, string $
         $existing = $existingStmt->fetch(PDO::FETCH_ASSOC);
 
         if (!is_array($existing)) {
-            $insertStmt = $pdo->prepare("\n                INSERT INTO student_activity_results (student_id, assignment_id, unit_id, activity_id, activity_type, completion_percent, errors_count, total_count, attempts_count, updated_at)\n                VALUES (:student_id, :assignment_id, :unit_id, :activity_id, :activity_type, :completion_percent, :errors_count, :total_count, 1, NOW())\n            ");
+            $insertSql = $hasAttemptsColumn
+                ? "\n                INSERT INTO student_activity_results (student_id, assignment_id, unit_id, activity_id, activity_type, completion_percent, errors_count, total_count, attempts_count, updated_at)\n                VALUES (:student_id, :assignment_id, :unit_id, :activity_id, :activity_type, :completion_percent, :errors_count, :total_count, 1, NOW())\n            "
+                : "\n                INSERT INTO student_activity_results (student_id, assignment_id, unit_id, activity_id, activity_type, completion_percent, errors_count, total_count, updated_at)\n                VALUES (:student_id, :assignment_id, :unit_id, :activity_id, :activity_type, :completion_percent, :errors_count, :total_count, NOW())\n            ";
+            $insertStmt = $pdo->prepare($insertSql);
             $insertStmt->execute([
                 'student_id' => $studentId,
                 'assignment_id' => $assignmentId,
@@ -142,7 +150,13 @@ function save_student_activity_performance(PDO $pdo, string $studentId, string $
         $existingPercent = max(0, min(100, (int) ($existing['completion_percent'] ?? 0)));
         $existingErrors = max(0, (int) ($existing['errors_count'] ?? 0));
         $existingTotal = max(0, (int) ($existing['total_count'] ?? 0));
-        $existingAttempts = max(1, (int) ($existing['attempts_count'] ?? 1));
+        $existingAttempts = 1;
+        if ($hasAttemptsColumn) {
+            $existingAttempts = max(1, (int) ($existing['attempts_count'] ?? 1));
+        } elseif ($cleanTotal > 0) {
+            // Fallback inference when attempts_count column is unavailable.
+            $existingAttempts = max(1, (int) floor($existingTotal / $cleanTotal));
+        }
 
         // Rule: only activities below 60% may be retried, and max 2 attempts per activity.
         if ($existingPercent >= 60 || $existingAttempts >= 2) {
@@ -158,18 +172,32 @@ function save_student_activity_performance(PDO $pdo, string $studentId, string $
             ? max(0, min(100, (int) round((($newTotal - $newErrors) / $newTotal) * 100)))
             : 0;
 
-        $updateStmt = $pdo->prepare("\n            UPDATE student_activity_results\n            SET activity_type = :activity_type,\n                completion_percent = :completion_percent,\n                errors_count = :errors_count,\n                total_count = :total_count,\n                attempts_count = :attempts_count,\n                updated_at = NOW()\n            WHERE student_id = :student_id\n              AND assignment_id = :assignment_id\n              AND unit_id = :unit_id\n              AND activity_id = :activity_id\n        ");
-        $updateStmt->execute([
-            'activity_type' => $cleanType,
-            'completion_percent' => $newPercent,
-            'errors_count' => $newErrors,
-            'total_count' => $newTotal,
-            'attempts_count' => min(2, $existingAttempts + 1),
-            'student_id' => $studentId,
-            'assignment_id' => $assignmentId,
-            'unit_id' => $unitId,
-            'activity_id' => $activityId,
-        ]);
+        if ($hasAttemptsColumn) {
+            $updateStmt = $pdo->prepare("\n                UPDATE student_activity_results\n                SET activity_type = :activity_type,\n                    completion_percent = :completion_percent,\n                    errors_count = :errors_count,\n                    total_count = :total_count,\n                    attempts_count = :attempts_count,\n                    updated_at = NOW()\n                WHERE student_id = :student_id\n                  AND assignment_id = :assignment_id\n                  AND unit_id = :unit_id\n                  AND activity_id = :activity_id\n            ");
+            $updateStmt->execute([
+                'activity_type' => $cleanType,
+                'completion_percent' => $newPercent,
+                'errors_count' => $newErrors,
+                'total_count' => $newTotal,
+                'attempts_count' => min(2, $existingAttempts + 1),
+                'student_id' => $studentId,
+                'assignment_id' => $assignmentId,
+                'unit_id' => $unitId,
+                'activity_id' => $activityId,
+            ]);
+        } else {
+            $updateStmt = $pdo->prepare("\n                UPDATE student_activity_results\n                SET activity_type = :activity_type,\n                    completion_percent = :completion_percent,\n                    errors_count = :errors_count,\n                    total_count = :total_count,\n                    updated_at = NOW()\n                WHERE student_id = :student_id\n                  AND assignment_id = :assignment_id\n                  AND unit_id = :unit_id\n                  AND activity_id = :activity_id\n            ");
+            $updateStmt->execute([
+                'activity_type' => $cleanType,
+                'completion_percent' => $newPercent,
+                'errors_count' => $newErrors,
+                'total_count' => $newTotal,
+                'student_id' => $studentId,
+                'assignment_id' => $assignmentId,
+                'unit_id' => $unitId,
+                'activity_id' => $activityId,
+            ]);
+        }
     } catch (Throwable $e) {
     }
 }
