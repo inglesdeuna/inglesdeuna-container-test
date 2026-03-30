@@ -4,6 +4,7 @@ require_once __DIR__ . '/../../core/_activity_viewer_template.php';
 
 $activityId = isset($_GET['id']) ? trim((string) $_GET['id']) : '';
 $unit = isset($_GET['unit']) ? trim((string) $_GET['unit']) : '';
+$returnTo = isset($_GET['return_to']) ? trim((string) $_GET['return_to']) : '';
 
 if ($activityId === '' && $unit === '') {
     die('Activity not specified');
@@ -489,6 +490,7 @@ ob_start();
             <div class="completed-icon">✅</div>
             <h2 class="completed-title" id="dict-completed-title"></h2>
             <p class="completed-text" id="dict-completed-text"></p>
+            <p class="completed-text" id="dict-score-text" style="font-weight:700;font-size:18px;color:#0f766e;"></p>
             <button type="button" class="completed-button" id="dict-restart">Restart</button>
         </div>
 </div>
@@ -498,6 +500,8 @@ ob_start();
 document.addEventListener('DOMContentLoaded', function () {
     var data = Array.isArray(<?php echo json_encode($items, JSON_UNESCAPED_UNICODE); ?>) ? <?php echo json_encode($items, JSON_UNESCAPED_UNICODE); ?> : [];
     var activityTitle = <?php echo json_encode($viewerTitle, JSON_UNESCAPED_UNICODE); ?>;
+    var DICT_ACTIVITY_ID = <?php echo json_encode($activity['id'] ?? '', JSON_UNESCAPED_UNICODE); ?>;
+    var DICT_RETURN_TO = <?php echo json_encode($returnTo, JSON_UNESCAPED_UNICODE); ?>;
 
     var statusEl = document.getElementById('dict-status');
     var promptEl = document.getElementById('dict-prompt');
@@ -512,6 +516,7 @@ document.addEventListener('DOMContentLoaded', function () {
     var completedEl = document.getElementById('dict-completed');
     var completedTitleEl = document.getElementById('dict-completed-title');
     var completedTextEl = document.getElementById('dict-completed-text');
+    var scoreTextEl = document.getElementById('dict-score-text');
 
     var listenBtn = document.getElementById('dict-listen');
     var checkBtn = document.getElementById('dict-check');
@@ -525,6 +530,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
     var index = 0;
     var finished = false;
+    var correctCount = 0;
+    var totalCount = data.length;
+    var checkedCards = {};
+    var attemptsByCard = {};
 
     if (completedTitleEl) {
         completedTitleEl.textContent = activityTitle || 'Dictation Practice';
@@ -532,6 +541,37 @@ document.addEventListener('DOMContentLoaded', function () {
 
     if (completedTextEl) {
         completedTextEl.textContent = "You've completed " + (activityTitle || 'this activity') + '. Great job practicing.';
+    }
+
+    function persistScoreSilently(targetUrl) {
+        if (!targetUrl) {
+            return Promise.resolve(false);
+        }
+
+        return fetch(targetUrl, {
+            method: 'GET',
+            credentials: 'same-origin',
+            cache: 'no-store',
+        }).then(function (response) {
+            return !!(response && response.ok);
+        }).catch(function () {
+            return false;
+        });
+    }
+
+    function navigateToReturn(targetUrl) {
+        if (!targetUrl) {
+            return;
+        }
+
+        try {
+            if (window.top && window.top !== window.self) {
+                window.top.location.href = targetUrl;
+                return;
+            }
+        } catch (e) {}
+
+        window.location.href = targetUrl;
     }
 
     function normalizeText(text) {
@@ -589,6 +629,7 @@ document.addEventListener('DOMContentLoaded', function () {
         hintEl.textContent = '';
         answerEl.value = '';
         answerEl.className = 'dict-answer-box';
+        answerEl.disabled = false;
         feedbackEl.textContent = '';
         feedbackEl.className = 'mc-feedback';
         revealEl.classList.remove('show');
@@ -613,6 +654,12 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
+        if (checkedCards[index]) {
+            feedbackEl.textContent = 'Already graded. Press Next.';
+            feedbackEl.className = 'mc-feedback good';
+            return;
+        }
+
         var answer = normalizeText(answerEl.value);
         var expected = normalizeText(data[index].en || '');
 
@@ -622,16 +669,33 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
+        var currentAttempts = (attemptsByCard[index] || 0) + 1;
+        attemptsByCard[index] = currentAttempts;
+
         if (answer === expected) {
             feedbackEl.textContent = 'Correct!';
             feedbackEl.className = 'mc-feedback good';
             answerEl.className = 'dict-answer-box ok';
             playSound(correctSound);
+            checkedCards[index] = true;
+            correctCount++;
+            answerEl.disabled = true;
         } else {
-            feedbackEl.textContent = 'Try Again';
-            feedbackEl.className = 'mc-feedback bad';
             answerEl.className = 'dict-answer-box bad';
-            playSound(wrongSound);
+
+            if (currentAttempts >= 2) {
+                feedbackEl.textContent = 'Wrong (2/2).';
+                feedbackEl.className = 'mc-feedback bad';
+                playSound(wrongSound);
+                checkedCards[index] = true;
+                answerEl.disabled = true;
+                revealEl.textContent = 'You wrote: "' + answerEl.value + '"  ->  Correct: ' + (data[index].en || '');
+                revealEl.classList.add('show');
+            } else {
+                feedbackEl.textContent = 'Try Again (1 attempt left)';
+                feedbackEl.className = 'mc-feedback bad';
+                playSound(wrongSound);
+            }
         }
     }
 
@@ -640,13 +704,15 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
-        revealEl.textContent = data[index].en || '';
+        if (answerEl.value.trim() !== '') {
+            revealEl.textContent = 'You wrote: "' + answerEl.value + '"  ->  Correct: ' + (data[index].en || '');
+        } else {
+            revealEl.textContent = 'Correct: ' + (data[index].en || '');
+        }
         revealEl.classList.add('show');
-        feedbackEl.textContent = 'Show The Answer';
-        feedbackEl.className = 'mc-feedback good';
     }
 
-    function showCompleted() {
+    async function showCompleted() {
         finished = true;
         cardEl.style.display = 'none';
         listenRowEl.style.display = 'none';
@@ -655,6 +721,31 @@ document.addEventListener('DOMContentLoaded', function () {
         feedbackEl.textContent = '';
         completedEl.classList.add('active');
         playSound(doneSound);
+
+        var pct = totalCount > 0 ? Math.round((correctCount / totalCount) * 100) : 0;
+        var errors = Math.max(0, totalCount - correctCount);
+
+        if (completedTextEl) {
+            completedTextEl.textContent = "You've completed " + (activityTitle || 'this activity') + '. Great job practicing.';
+        }
+        if (scoreTextEl) {
+            scoreTextEl.textContent = 'Score: ' + correctCount + ' / ' + totalCount + ' (' + pct + '%)';
+        }
+
+        if (DICT_ACTIVITY_ID && DICT_RETURN_TO) {
+            var joiner = DICT_RETURN_TO.indexOf('?') !== -1 ? '&' : '?';
+            var saveUrl = DICT_RETURN_TO +
+                joiner + 'activity_percent=' + pct +
+                '&activity_errors=' + errors +
+                '&activity_total=' + totalCount +
+                '&activity_id=' + encodeURIComponent(DICT_ACTIVITY_ID) +
+                '&activity_type=dictation';
+
+            var ok = await persistScoreSilently(saveUrl);
+            if (!ok) {
+                navigateToReturn(saveUrl);
+            }
+        }
     }
 
     function goNext() {
@@ -671,6 +762,10 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function restart() {
+        correctCount = 0;
+        totalCount = data.length;
+        checkedCards = {};
+        attemptsByCard = {};
         index = 0;
         loadCard();
     }
