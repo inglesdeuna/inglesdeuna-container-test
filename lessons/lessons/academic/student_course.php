@@ -105,7 +105,26 @@ function save_student_activity_performance(PDO $pdo, string $studentId, string $
 
     try {
         $hasAttemptsColumn = table_has_column($pdo, 'student_activity_results', 'attempts_count');
-        $cleanType = trim($activityType);
+        $cleanType = strtolower(trim($activityType));
+        $isQuizType = ($cleanType === 'quiz');
+
+        // After a quiz attempt starts, learners can still study but score-adding
+        // activities are locked to avoid changing the graded baseline.
+        if (!$isQuizType) {
+            try {
+                $quizLockStmt = $pdo->prepare("\n                    SELECT 1\n                    FROM student_activity_results\n                    WHERE student_id = :student_id\n                      AND assignment_id = :assignment_id\n                      AND unit_id = :unit_id\n                      AND LOWER(activity_type) = 'quiz'\n                    LIMIT 1\n                ");
+                $quizLockStmt->execute([
+                    'student_id' => $studentId,
+                    'assignment_id' => $assignmentId,
+                    'unit_id' => $unitId,
+                ]);
+                if ((bool) $quizLockStmt->fetchColumn()) {
+                    return;
+                }
+            } catch (Throwable $e) {
+            }
+        }
+
         $cleanErrors = max(0, $errorsCount);
         $cleanTotal = max(0, $totalCount);
         if ($cleanTotal > 0 && $cleanErrors > $cleanTotal) {
@@ -117,8 +136,8 @@ function save_student_activity_performance(PDO $pdo, string $studentId, string $
         }
 
         $existingSql = $hasAttemptsColumn
-            ? "\n            SELECT completion_percent, errors_count, total_count, attempts_count\n            FROM student_activity_results\n            WHERE student_id = :student_id\n              AND assignment_id = :assignment_id\n              AND unit_id = :unit_id\n              AND activity_id = :activity_id\n            LIMIT 1\n        "
-            : "\n            SELECT completion_percent, errors_count, total_count\n            FROM student_activity_results\n            WHERE student_id = :student_id\n              AND assignment_id = :assignment_id\n              AND unit_id = :unit_id\n              AND activity_id = :activity_id\n            LIMIT 1\n        ";
+            ? "\n            SELECT completion_percent, errors_count, total_count, attempts_count, updated_at\n            FROM student_activity_results\n            WHERE student_id = :student_id\n              AND assignment_id = :assignment_id\n              AND unit_id = :unit_id\n              AND activity_id = :activity_id\n            LIMIT 1\n        "
+            : "\n            SELECT completion_percent, errors_count, total_count, updated_at\n            FROM student_activity_results\n            WHERE student_id = :student_id\n              AND assignment_id = :assignment_id\n              AND unit_id = :unit_id\n              AND activity_id = :activity_id\n            LIMIT 1\n        ";
 
         $existingStmt = $pdo->prepare($existingSql);
         $existingStmt->execute([
@@ -157,8 +176,24 @@ function save_student_activity_performance(PDO $pdo, string $studentId, string $
             $existingAttempts = max(1, (int) floor($existingTotal / $cleanTotal));
         }
 
-        // Rule: up to 2 attempts per activity. Second attempt is always accumulated.
-        if ($existingAttempts >= 2) {
+        $maxAttempts = $isQuizType ? 3 : 2;
+
+        // Quiz policy: one attempt per day and max 3 attempts in total.
+        if ($isQuizType) {
+            $updatedAtRaw = trim((string) ($existing['updated_at'] ?? ''));
+            if ($updatedAtRaw !== '') {
+                try {
+                    $existingDate = (new DateTimeImmutable($updatedAtRaw))->format('Y-m-d');
+                    $todayDate = (new DateTimeImmutable('now'))->format('Y-m-d');
+                    if ($existingAttempts >= 1 && $existingDate === $todayDate) {
+                        return;
+                    }
+                } catch (Throwable $e) {
+                }
+            }
+        }
+
+        if ($existingAttempts >= $maxAttempts) {
             return;
         }
 
@@ -178,7 +213,7 @@ function save_student_activity_performance(PDO $pdo, string $studentId, string $
                 'completion_percent' => $newPercent,
                 'errors_count' => $newErrors,
                 'total_count' => $newTotal,
-                'attempts_count' => min(2, $existingAttempts + 1),
+                'attempts_count' => min($maxAttempts, $existingAttempts + 1),
                 'student_id' => $studentId,
                 'assignment_id' => $assignmentId,
                 'unit_id' => $unitId,
