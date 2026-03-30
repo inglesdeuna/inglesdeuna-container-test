@@ -20,6 +20,20 @@ function h(string $value): string
     return htmlspecialchars($value, ENT_QUOTES, 'UTF-8');
 }
 
+function app_upper(string $value): string
+{
+    $normalized = strtr($value, [
+        'á' => 'Á',
+        'é' => 'É',
+        'í' => 'Í',
+        'ó' => 'Ó',
+        'ú' => 'Ú',
+        'ü' => 'Ü',
+        'ñ' => 'Ñ',
+    ]);
+    return function_exists('mb_strtoupper') ? mb_strtoupper($normalized, 'UTF-8') : strtoupper($normalized);
+}
+
 function get_pdo_connection(): ?PDO
 {
     if (!getenv('DATABASE_URL')) {
@@ -99,6 +113,29 @@ function load_student_unit_scores(PDO $pdo, string $studentId, string $assignmen
     }
 }
 
+function load_activity_scores(PDO $pdo, string $studentId, string $assignmentId, string $unitId): array
+{
+    try {
+        $stmt = $pdo->prepare("
+            SELECT sar.activity_type, sar.completion_percent, sar.errors_count, sar.total_count
+            FROM student_activity_results sar
+            WHERE sar.student_id = :student_id
+              AND sar.assignment_id = :assignment_id
+              AND sar.unit_id = :unit_id
+            ORDER BY sar.activity_type ASC
+        ");
+        $stmt->execute([
+            'student_id' => $studentId,
+            'assignment_id' => $assignmentId,
+            'unit_id' => $unitId,
+        ]);
+
+        return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    } catch (Throwable $e) {
+        return [];
+    }
+}
+
 $pdo = get_pdo_connection();
 if (!$pdo) {
     die('Database is not available.');
@@ -110,10 +147,10 @@ if (!$assignment || (string) ($assignment['student_id'] ?? '') !== $studentId) {
 }
 
 $rows = load_student_unit_scores($pdo, $studentId, $assignmentId);
-$courseName = h(trim((string) ($assignment['course_name'] ?? 'Curso')));
-$studentName = h(trim((string) ($assignment['student_name'] ?? 'Estudiante')));
-$programLabel = ((string) ($assignment['program'] ?? '') === 'english') ? 'English' : 'TÉCNICO';
-$period = h(trim((string) ($assignment['period'] ?? '')));
+$courseName = h(app_upper(trim((string) ($assignment['course_name'] ?? 'Curso'))));
+$studentName = h(app_upper(trim((string) ($assignment['student_name'] ?? 'Estudiante'))));
+$programLabel = app_upper((string) ($assignment['program'] ?? '') === 'english' ? 'INGLÉS' : 'TÉCNICO');
+$period = h(app_upper(trim((string) ($assignment['period'] ?? ''))));
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -272,6 +309,50 @@ $period = h(trim((string) ($assignment['period'] ?? '')));
             transform: translateY(-2px);
             box-shadow: var(--shadow-md);
         }
+
+        .unit-row {
+            cursor: pointer;
+            background: var(--card);
+            transition: background .2s ease;
+        }
+
+        .unit-row:hover {
+            background: #f0f6ff;
+        }
+
+        .unit-row.expanded {
+            background: #e8f1ff;
+        }
+
+        .toggle-icon {
+            display: inline-block;
+            margin-right: 8px;
+            transition: transform .2s ease;
+            font-size: 14px;
+        }
+
+        .unit-row.expanded .toggle-icon {
+            transform: rotate(180deg);
+        }
+
+        .activity-row {
+            display: none;
+            background: #fafbff;
+        }
+
+        .activity-row.show {
+            display: table-row;
+        }
+
+        .activity-cell {
+            padding-left: 40px !important;
+            font-size: 13px;
+        }
+
+        .activity-type {
+            color: var(--primary-dark);
+            font-weight: 700;
+        }
         
         @media (max-width: 768px) {
             .page {
@@ -323,14 +404,19 @@ $period = h(trim((string) ($assignment['period'] ?? '')));
                     <tbody>
                         <?php foreach ($rows as $row): ?>
                             <?php
-                            $unitName = h((string) ($row['unit_name'] ?? 'Unidad'));
+                            $unitName = h(app_upper((string) ($row['unit_name'] ?? 'Unidad')));
+                            $unitId = (string) ($row['unit_id'] ?? '');
                             $completion = (int) ($row['completion_percent'] ?? 0);
                             $errors = (int) ($row['quiz_errors'] ?? 0);
                             $total = (int) ($row['quiz_total'] ?? 0);
                             $percent = $completion;
+                            $activities = $unitId !== '' ? load_activity_scores($pdo, $studentId, $assignmentId, $unitId) : [];
                             ?>
-                            <tr>
-                                <td><?php echo $unitName; ?></td>
+                            <tr class="unit-row" data-unit-id="<?php echo h($unitId); ?>">
+                                <td>
+                                    <span class="toggle-icon">▼</span>
+                                    <?php echo $unitName; ?>
+                                </td>
                                 <td>
                                     <div class="completion-bar">
                                         <div class="completion-fill" style="width: <?php echo min($percent, 100); ?>%;"></div>
@@ -339,11 +425,44 @@ $period = h(trim((string) ($assignment['period'] ?? '')));
                                 <td><?php echo $errors; ?> / <?php echo $total; ?></td>
                                 <td style="font-weight: 700; color: var(--primary-dark);"><?php echo $percent; ?>%</td>
                             </tr>
+                            <?php foreach ($activities as $activity): ?>
+                                <tr class="activity-row" data-unit-id="<?php echo h($unitId); ?>">
+                                    <td class="activity-cell">
+                                        <span class="activity-type"><?php echo h(app_upper((string) ($activity['activity_type'] ?? 'Actividad'))); ?></span>
+                                    </td>
+                                    <td>
+                                        <div class="completion-bar">
+                                            <div class="completion-fill" style="width: <?php echo min((int) ($activity['completion_percent'] ?? 0), 100); ?>%;"></div>
+                                        </div>
+                                    </td>
+                                    <td><?php echo (int) ($activity['errors_count'] ?? 0); ?> / <?php echo (int) ($activity['total_count'] ?? 0); ?></td>
+                                    <td style="font-weight: 700; color: var(--primary-dark);"><?php echo (int) ($activity['completion_percent'] ?? 0); ?>%</td>
+                                </tr>
+                            <?php endforeach; ?>
                         <?php endforeach; ?>
                     </tbody>
                 </table>
             <?php endif; ?>
         </div>
     </div>
+    <script>
+        document.querySelectorAll('.unit-row').forEach(function(row) {
+            row.addEventListener('click', function() {
+                var unitId = this.getAttribute('data-unit-id');
+                var isExpanded = this.classList.contains('expanded');
+                
+                this.classList.toggle('expanded');
+                
+                var allActivityRows = document.querySelectorAll('.activity-row[data-unit-id="' + unitId + '"]');
+                allActivityRows.forEach(function(actRow) {
+                    if (isExpanded) {
+                        actRow.classList.remove('show');
+                    } else {
+                        actRow.classList.add('show');
+                    }
+                });
+            });
+        });
+    </script>
 </body>
 </html>
