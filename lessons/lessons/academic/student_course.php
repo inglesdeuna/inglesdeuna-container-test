@@ -566,7 +566,7 @@ $total = count($activities);
 $quizStepIndex = null;
 foreach ($activities as $activityIndex => $activityItem) {
     $activityType = strtolower(trim((string) ($activityItem['type'] ?? '')));
-    if ($activityType === 'quiz' || $activityType === 'multiple_choice') {
+    if ($activityType === 'quiz') {
         $quizStepIndex = $activityIndex;
         break;
     }

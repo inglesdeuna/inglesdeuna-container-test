@@ -76,6 +76,101 @@ function normalize_quiz_payload($rawData): array
     ];
 }
 
+function load_quiz_fallback_from_multiple_choice(PDO $pdo, string $unit): array
+{
+  if ($unit === '') {
+    return [
+      'id' => '',
+      'title' => 'Unit Quiz',
+      'description' => 'Answer and submit your result.',
+      'questions' => [],
+    ];
+  }
+
+  try {
+    $stmt = $pdo->prepare("\n            SELECT id, data\n            FROM activities\n            WHERE unit_id = :unit\n              AND type = 'multiple_choice'\n            ORDER BY id ASC\n        ");
+    $stmt->execute(['unit' => $unit]);
+    $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+    $questions = [];
+    foreach ($rows as $row) {
+      $raw = $row['data'] ?? null;
+      $decoded = is_string($raw) ? json_decode($raw, true) : $raw;
+      if (!is_array($decoded)) {
+        continue;
+      }
+
+      $sourceQuestions = [];
+      if (isset($decoded['questions']) && is_array($decoded['questions'])) {
+        $sourceQuestions = $decoded['questions'];
+      } elseif (isset($decoded['items']) && is_array($decoded['items'])) {
+        $sourceQuestions = $decoded['items'];
+      } elseif (isset($decoded['data']) && is_array($decoded['data'])) {
+        $sourceQuestions = $decoded['data'];
+      } else {
+        $sourceQuestions = $decoded;
+      }
+
+      foreach ($sourceQuestions as $item) {
+        if (!is_array($item)) {
+          continue;
+        }
+
+        $options = isset($item['options']) && is_array($item['options'])
+          ? $item['options']
+          : [
+            (string) ($item['option_a'] ?? ''),
+            (string) ($item['option_b'] ?? ''),
+            (string) ($item['option_c'] ?? ''),
+          ];
+
+        $normalizedOptions = [];
+        foreach ($options as $optionLabel) {
+          $normalizedOptions[] = trim((string) $optionLabel);
+        }
+        $normalizedOptions = array_values(array_filter($normalizedOptions, static function ($value) {
+          return $value !== '';
+        }));
+
+        if (count($normalizedOptions) < 2) {
+          continue;
+        }
+
+        $correct = (int) ($item['correct'] ?? 0);
+        if ($correct < 0 || $correct >= count($normalizedOptions)) {
+          $correct = 0;
+        }
+
+        $questionText = trim((string) ($item['question'] ?? ''));
+        if ($questionText === '') {
+          continue;
+        }
+
+        $questions[] = [
+          'question' => $questionText,
+          'options' => $normalizedOptions,
+          'correct' => $correct,
+          'explanation' => '',
+        ];
+      }
+    }
+
+    return [
+      'id' => 'quiz_unit_' . $unit,
+      'title' => 'Unit Quiz',
+      'description' => 'Answer and submit your result.',
+      'questions' => $questions,
+    ];
+  } catch (Throwable $e) {
+    return [
+      'id' => '',
+      'title' => 'Unit Quiz',
+      'description' => 'Answer and submit your result.',
+      'questions' => [],
+    ];
+  }
+}
+
 function load_quiz_activity(PDO $pdo, string $activityId, string $unit): array
 {
     $fallback = [
@@ -100,16 +195,25 @@ function load_quiz_activity(PDO $pdo, string $activityId, string $unit): array
     }
 
     if (!$row) {
-        return $fallback;
+      $fallbackFromMultipleChoice = load_quiz_fallback_from_multiple_choice($pdo, $unit);
+      return !empty($fallbackFromMultipleChoice['questions']) ? $fallbackFromMultipleChoice : $fallback;
     }
 
     $payload = normalize_quiz_payload($row['data'] ?? null);
+
+    $questions = isset($payload['questions']) && is_array($payload['questions']) ? $payload['questions'] : [];
+    if (empty($questions)) {
+      $fallbackFromMultipleChoice = load_quiz_fallback_from_multiple_choice($pdo, $unit);
+      if (!empty($fallbackFromMultipleChoice['questions'])) {
+        return $fallbackFromMultipleChoice;
+      }
+    }
 
     return [
         'id' => (string) ($row['id'] ?? ''),
         'title' => (string) ($payload['title'] ?? 'Unit Quiz'),
         'description' => (string) ($payload['description'] ?? ''),
-        'questions' => isset($payload['questions']) && is_array($payload['questions']) ? $payload['questions'] : [],
+      'questions' => $questions,
     ];
 }
 
