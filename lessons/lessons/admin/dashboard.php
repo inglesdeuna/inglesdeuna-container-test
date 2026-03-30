@@ -65,6 +65,7 @@ $dashboardSections = [
         'id' => 'estudiantes',
         'eyebrow' => 'Usuarios',
         'title' => 'Estudiantes',
+      'nav_href' => '../academic/student_profiles.php',
         'description' => 'Gestiona el flujo de estudiantes en dos etapas, desde la inscripcion hasta la asignacion final a sus cursos.',
         'links' => [
             ['label' => 'Inscripciones', 'href' => '../academic/student_enrollments.php', 'variant' => 'primary'],

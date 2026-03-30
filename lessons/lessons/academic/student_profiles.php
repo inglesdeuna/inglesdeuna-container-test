@@ -135,6 +135,16 @@ $students = json_decode((string) file_get_contents($studentsFile), true);
 $accounts = json_decode((string) file_get_contents($accountsFile), true);
 $students = is_array($students) ? $students : [];
 $accounts = is_array($accounts) ? $accounts : [];
+$studentsById = [];
+
+foreach ($students as $student) {
+    $studentId = (string) ($student['id'] ?? '');
+    if ($studentId === '') {
+        continue;
+    }
+
+    $studentsById[$studentId] = $student;
+}
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $studentId = trim((string) ($_POST['student_id'] ?? ''));
@@ -233,18 +243,25 @@ th,td{padding:10px;border-bottom:1px solid #ffe3de;text-align:left;font-size:14p
     </div>
 
     <div class="card">
-        <h2>Perfiles creados</h2>
+        <h2>Listado administrativo de estudiantes</h2>
         <table>
-            <thead><tr><th>Estudiante</th><th>Usuario</th><th>ID</th></tr></thead>
+            <thead><tr><th>Estudiante</th><th>Acudiente</th><th>Contacto</th><th>EPS</th><th>Usuario</th><th>ID</th></tr></thead>
             <tbody>
             <?php if (empty($accounts)) { ?>
-                <tr><td colspan="3">No hay perfiles creados todavía.</td></tr>
+                <tr><td colspan="6">No hay perfiles creados todavía.</td></tr>
             <?php } else { ?>
                 <?php foreach ($accounts as $account) { ?>
+                    <?php
+                    $studentId = (string) ($account['student_id'] ?? '');
+                    $studentInfo = $studentsById[$studentId] ?? [];
+                    ?>
                     <tr>
                         <td><?php echo htmlspecialchars((string) ($account['student_name'] ?? 'Estudiante')); ?></td>
+                        <td><?php echo htmlspecialchars((string) ($studentInfo['guardian'] ?? '')); ?></td>
+                        <td><?php echo htmlspecialchars((string) ($studentInfo['contact'] ?? '')); ?></td>
+                        <td><?php echo htmlspecialchars((string) ($studentInfo['eps'] ?? '')); ?></td>
                         <td><?php echo htmlspecialchars((string) ($account['username'] ?? '')); ?></td>
-                        <td><?php echo htmlspecialchars((string) ($account['student_id'] ?? '')); ?></td>
+                        <td><?php echo htmlspecialchars($studentId); ?></td>
                     </tr>
                 <?php } ?>
             <?php } ?>
