@@ -4,6 +4,7 @@ require_once __DIR__ . '/../../core/_activity_viewer_template.php';
 
 $activityId = isset($_GET['id']) ? trim((string) $_GET['id']) : '';
 $unit = isset($_GET['unit']) ? trim((string) $_GET['unit']) : '';
+$returnTo = isset($_GET['return_to']) ? trim((string) $_GET['return_to']) : '';
 
 if ($activityId === '' && $unit === '') {
   die('Activity not specified');
@@ -115,6 +116,7 @@ function normalize_drag_drop_payload($rawData): array
 function load_drag_drop_activity(PDO $pdo, string $activityId, string $unit): array
 {
     $fallback = [
+        'id' => '',
         'title' => default_drag_drop_title(),
         'blocks' => [],
     ];
@@ -122,26 +124,13 @@ function load_drag_drop_activity(PDO $pdo, string $activityId, string $unit): ar
     $row = null;
 
     if ($activityId !== '') {
-        $stmt = $pdo->prepare("
-            SELECT data
-            FROM activities
-            WHERE id = :id
-              AND type = 'drag_drop'
-            LIMIT 1
-        ");
+        $stmt = $pdo->prepare("\n            SELECT id, data\n            FROM activities\n            WHERE id = :id\n              AND type = 'drag_drop'\n            LIMIT 1\n        ");
         $stmt->execute(['id' => $activityId]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
     }
 
     if (!$row && $unit !== '') {
-        $stmt = $pdo->prepare("
-            SELECT data
-            FROM activities
-            WHERE unit_id = :unit
-              AND type = 'drag_drop'
-            ORDER BY id ASC
-            LIMIT 1
-        ");
+        $stmt = $pdo->prepare("\n            SELECT id, data\n            FROM activities\n            WHERE unit_id = :unit\n              AND type = 'drag_drop'\n            ORDER BY id ASC\n            LIMIT 1\n        ");
         $stmt->execute(['unit' => $unit]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
     }
@@ -150,7 +139,13 @@ function load_drag_drop_activity(PDO $pdo, string $activityId, string $unit): ar
         return $fallback;
     }
 
-    return normalize_drag_drop_payload($row['data'] ?? null);
+    $payload = normalize_drag_drop_payload($row['data'] ?? null);
+
+    return [
+        'id' => isset($row['id']) ? (string) $row['id'] : '',
+        'title' => (string) ($payload['title'] ?? default_drag_drop_title()),
+        'blocks' => is_array($payload['blocks'] ?? null) ? $payload['blocks'] : [],
+    ];
 }
 
 if ($unit === '' && $activityId !== '') {
@@ -160,6 +155,10 @@ if ($unit === '' && $activityId !== '') {
 $activity = load_drag_drop_activity($pdo, $activityId, $unit);
 $viewerTitle = (string) ($activity['title'] ?? default_drag_drop_title());
 $blocks = is_array($activity['blocks'] ?? null) ? $activity['blocks'] : [];
+
+if ($activityId === '' && !empty($activity['id'])) {
+  $activityId = (string) $activity['id'];
+}
 
 if (count($blocks) === 0) {
   die('No sentences found for this unit');
@@ -237,6 +236,12 @@ ob_start();
   background:#ffedd5;
 }
 
+.blank.incorrect{
+  border-color:#dc2626;
+  background:#fee2e2;
+  color:#991b1b;
+}
+
 #wordBank{
   display:flex;
   flex-wrap:wrap;
@@ -277,7 +282,6 @@ ob_start();
 }
 
 .dd-btn-listen{background:linear-gradient(180deg, #14b8a6 0%, #0f766e 100%)}
-.dd-btn-check{background:linear-gradient(180deg, #fb923c 0%, #f97316 100%)}
 .dd-btn-show{background:linear-gradient(180deg, #d8b4fe 0%, #a855f7 100%)}
 .dd-btn-next{background:linear-gradient(180deg, #5eead4 0%, #14b8a6 100%)}
 
@@ -374,7 +378,6 @@ ob_start();
   <div id="wordBank"></div>
 
   <div class="controls">
-    <button class="dd-btn dd-btn-check" type="button" onclick="checkSentence()">Check Answer</button>
     <button class="dd-btn dd-btn-show" type="button" onclick="showAnswer()">Show Answer</button>
     <button class="dd-btn dd-btn-next" type="button" onclick="nextSentence()">Next</button>
   </div>
@@ -385,15 +388,20 @@ ob_start();
     <div class="dd-completed-icon">✅</div>
     <h2 class="dd-completed-title" id="dd-completed-title"></h2>
     <p class="dd-completed-text" id="dd-completed-text"></p>
+    <p class="dd-completed-text" id="dd-score-text" style="font-weight:700;font-size:18px;color:#9a3412;"></p>
     <button type="button" class="dd-completed-button" id="dd-restart" onclick="restartActivity()">Restart</button>
   </div>
 </div>
 
 <audio id="winSound" src="../../hangman/assets/win.mp3" preload="auto"></audio>
+<audio id="loseSound" src="../../hangman/assets/lose.mp3" preload="auto"></audio>
+<audio id="doneSound" src="../../hangman/assets/win (1).mp3" preload="auto"></audio>
 
 <script>
 const blocks = <?= json_encode($blocks, JSON_UNESCAPED_UNICODE) ?>;
 const activityTitle = <?= json_encode($viewerTitle, JSON_UNESCAPED_UNICODE) ?>;
+const DD_ACTIVITY_ID = <?= json_encode($activityId, JSON_UNESCAPED_UNICODE) ?>;
+const DD_RETURN_TO = <?= json_encode($returnTo, JSON_UNESCAPED_UNICODE) ?>;
 
 let index = 0;
 let dragged = null;
@@ -401,17 +409,25 @@ let currentText = '';
 let currentAnswers = [];
 let listenEnabled = true;
 let finished = false;
+let blockFinished = false;
+let correctCount = 0;
+let totalCount = blocks.length;
+let checkedBlocks = {};
+let attemptsByBlock = {};
 
 const promptText = document.getElementById('promptText');
 const wordBank = document.getElementById('wordBank');
 const feedback = document.getElementById('feedback');
 const listenBtn = document.getElementById('listenBtn');
 const winSound = document.getElementById('winSound');
+const loseSound = document.getElementById('loseSound');
+const doneSound = document.getElementById('doneSound');
 const sentenceBox = document.getElementById('sentenceBox');
 const controls = document.querySelector('.controls');
 const completedEl = document.getElementById('dd-completed');
 const completedTitleEl = document.getElementById('dd-completed-title');
 const completedTextEl = document.getElementById('dd-completed-text');
+const scoreTextEl = document.getElementById('dd-score-text');
 
 if (completedTitleEl) {
   completedTitleEl.textContent = activityTitle || 'Unscramble';
@@ -427,6 +443,37 @@ function playSound(audio) {
     audio.currentTime = 0;
     audio.play();
   } catch (e) {}
+}
+
+function persistScoreSilently(targetUrl) {
+  if (!targetUrl) {
+    return Promise.resolve(false);
+  }
+
+  return fetch(targetUrl, {
+    method: 'GET',
+    credentials: 'same-origin',
+    cache: 'no-store',
+  }).then(function (response) {
+    return !!(response && response.ok);
+  }).catch(function () {
+    return false;
+  });
+}
+
+function navigateToReturn(targetUrl) {
+  if (!targetUrl) {
+    return;
+  }
+
+  try {
+    if (window.top && window.top !== window.self) {
+      window.top.location.href = targetUrl;
+      return;
+    }
+  } catch (e) {}
+
+  window.location.href = targetUrl;
 }
 
 function setListenVisible(visible) {
@@ -470,7 +517,7 @@ function createBlank(indexBlank) {
 
   blank.addEventListener('drop', function (event) {
     event.preventDefault();
-    if (!dragged || finished) return;
+    if (!dragged || finished || blockFinished) return;
 
     const draggedWord = dragged.dataset.word || '';
     const oldWord = blank.dataset.word || '';
@@ -482,13 +529,16 @@ function createBlank(indexBlank) {
     blank.dataset.word = draggedWord;
     blank.textContent = draggedWord;
     blank.classList.add('filled');
+    blank.classList.remove('incorrect');
 
     dragged.remove();
     dragged = null;
+
+    setTimeout(autoCheckIfNeeded, 40);
   });
 
   blank.addEventListener('click', function () {
-    if (finished) return;
+    if (finished || blockFinished) return;
 
     const existing = blank.dataset.word || '';
     if (!existing) return;
@@ -497,6 +547,7 @@ function createBlank(indexBlank) {
     blank.dataset.word = '';
     blank.textContent = '____';
     blank.classList.remove('filled');
+    blank.classList.remove('incorrect');
   });
 
   return blank;
@@ -505,6 +556,7 @@ function createBlank(indexBlank) {
 function loadSentence() {
   dragged = null;
   finished = false;
+  blockFinished = false;
 
   if (completedEl) {
     completedEl.classList.remove('active');
@@ -540,7 +592,7 @@ function loadSentence() {
   setListenVisible(listenEnabled);
 
   if (!currentText) {
-    feedback.textContent = '⚠ Empty block';
+    feedback.textContent = 'Empty block';
     feedback.className = 'bad';
     return;
   }
@@ -570,8 +622,9 @@ function loadSentence() {
   });
 }
 
-function showCompleted() {
+async function showCompleted() {
   finished = true;
+  blockFinished = true;
   feedback.textContent = '';
   feedback.className = '';
 
@@ -591,7 +644,29 @@ function showCompleted() {
     completedEl.classList.add('active');
   }
 
-  playSound(winSound);
+  playSound(doneSound);
+
+  const pct = totalCount > 0 ? Math.round((correctCount / totalCount) * 100) : 0;
+  const errors = Math.max(0, totalCount - correctCount);
+
+  if (scoreTextEl) {
+    scoreTextEl.textContent = 'Score: ' + correctCount + ' / ' + totalCount + ' (' + pct + '%)';
+  }
+
+  if (DD_ACTIVITY_ID && DD_RETURN_TO) {
+    const joiner = DD_RETURN_TO.indexOf('?') !== -1 ? '&' : '?';
+    const saveUrl = DD_RETURN_TO +
+      joiner + 'activity_percent=' + pct +
+      '&activity_errors=' + errors +
+      '&activity_total=' + totalCount +
+      '&activity_id=' + encodeURIComponent(DD_ACTIVITY_ID) +
+      '&activity_type=drag_drop';
+
+    const ok = await persistScoreSilently(saveUrl);
+    if (!ok) {
+      navigateToReturn(saveUrl);
+    }
+  }
 }
 
 function getBuiltAnswers() {
@@ -602,7 +677,7 @@ function getBuiltAnswers() {
 }
 
 function checkSentence() {
-  if (finished) return;
+  if (finished || blockFinished || checkedBlocks[index]) return;
 
   const built = getBuiltAnswers();
 
@@ -612,38 +687,85 @@ function checkSentence() {
     return;
   }
 
-  if (JSON.stringify(built) === JSON.stringify(currentAnswers)) {
-    if (index === blocks.length - 1) {
-      showCompleted();
-      return;
-    }
+  const currentAttempts = (attemptsByBlock[index] || 0) + 1;
+  attemptsByBlock[index] = currentAttempts;
 
-    feedback.textContent = 'Correct!';
+  if (JSON.stringify(built) === JSON.stringify(currentAnswers)) {
+    feedback.textContent = '\u2714 Right';
     feedback.className = 'good';
-    finished = true;
+    playSound(winSound);
+    checkedBlocks[index] = true;
+    correctCount++;
+    blockFinished = true;
   } else {
-    feedback.textContent = 'Try Again';
-    feedback.className = 'bad';
+    if (currentAttempts >= 2) {
+      feedback.textContent = '\u2718 Wrong (2/2)';
+      feedback.className = 'bad';
+      playSound(loseSound);
+      checkedBlocks[index] = true;
+      blockFinished = true;
+
+      const blanks = Array.prototype.slice.call(promptText.querySelectorAll('.blank'));
+      blanks.forEach(function (blank, blankIndex) {
+        const builtWord = built[blankIndex] || '';
+        const answerWord = currentAnswers[blankIndex] || '';
+        if (builtWord !== answerWord) {
+          blank.classList.add('incorrect');
+        }
+      });
+    } else {
+      feedback.textContent = '\u2718 Wrong (1/2) - try again';
+      feedback.className = 'bad';
+      playSound(loseSound);
+    }
   }
 }
 
+function autoCheckIfNeeded() {
+  if (finished || blockFinished || checkedBlocks[index]) {
+    return;
+  }
+
+  const built = getBuiltAnswers();
+  if (built.includes('')) {
+    return;
+  }
+
+  checkSentence();
+}
+
 function showAnswer() {
+  const built = getBuiltAnswers();
   const blanks = Array.prototype.slice.call(promptText.querySelectorAll('.blank'));
 
   blanks.forEach(function (blank, blankIndex) {
     const answer = currentAnswers[blankIndex] || '';
+    const builtWord = built[blankIndex] || '';
+    if (builtWord !== '' && builtWord !== answer) {
+      blank.classList.add('incorrect');
+    }
     blank.dataset.word = answer;
     blank.textContent = answer;
     blank.classList.add('filled');
   });
 
   wordBank.innerHTML = '';
-  feedback.textContent = 'Show The Answer';
+  feedback.textContent = 'Show Answer';
   feedback.className = 'good';
-  finished = true;
+  blockFinished = true;
 }
 
 function nextSentence() {
+  if (finished) {
+    return;
+  }
+
+  autoCheckIfNeeded();
+
+  if (!blockFinished && !checkedBlocks[index]) {
+    return;
+  }
+
   if (index >= blocks.length - 1) {
     showCompleted();
     return;
@@ -655,6 +777,10 @@ function nextSentence() {
 
 function restartActivity() {
   index = 0;
+  correctCount = 0;
+  totalCount = blocks.length;
+  checkedBlocks = {};
+  attemptsByBlock = {};
   loadSentence();
 }
 
