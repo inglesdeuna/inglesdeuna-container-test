@@ -62,7 +62,7 @@ function table_exists(PDO $pdo, string $tableName): bool
 
 function normalize_program_label(string $program): string
 {
-    return strtolower(trim($program)) === 'english' ? 'English' : 'Técnico';
+    return strtolower(trim($program)) === 'english' ? 'English' : 'TÉCNICO';
 }
 
 function build_course_key(string $courseId, string $courseName, string $program, string $period): string
@@ -497,13 +497,22 @@ if ($filterCourse !== '') {
         }
 
         .back {
-            color: var(--primary-dark);
+            display: inline-block;
+            padding: 10px 16px;
+            border-radius: 8px;
             text-decoration: none;
+            color: #fff;
+            background: linear-gradient(180deg, #60a5fa, #2563eb);
+            font-size: 14px;
             font-weight: 700;
+            box-shadow: var(--shadow);
+            transition: all .2s;
+            font-family: 'Nunito', 'Segoe UI', sans-serif;
         }
 
         .back:hover {
-            text-decoration: underline;
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
         }
 
         .filter-section {

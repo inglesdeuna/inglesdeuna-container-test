@@ -112,7 +112,7 @@ if (!$assignment || (string) ($assignment['student_id'] ?? '') !== $studentId) {
 $rows = load_student_unit_scores($pdo, $studentId, $assignmentId);
 $courseName = h(trim((string) ($assignment['course_name'] ?? 'Curso')));
 $studentName = h(trim((string) ($assignment['student_name'] ?? 'Estudiante')));
-$programLabel = ((string) ($assignment['program'] ?? '') === 'english') ? 'English' : 'Técnico';
+$programLabel = ((string) ($assignment['program'] ?? '') === 'english') ? 'English' : 'TÉCNICO';
 $period = h(trim((string) ($assignment['period'] ?? '')));
 ?>
 <!DOCTYPE html>
@@ -175,13 +175,22 @@ $period = h(trim((string) ($assignment['period'] ?? '')));
         }
 
         .back {
-            color: var(--primary-dark);
+            display: inline-block;
+            padding: 10px 16px;
+            border-radius: 8px;
             text-decoration: none;
+            color: #fff;
+            background: linear-gradient(180deg, #60a5fa, #2563eb);
+            font-size: 14px;
             font-weight: 700;
+            box-shadow: var(--shadow);
+            transition: all .2s;
+            font-family: 'Nunito', 'Segoe UI', sans-serif;
         }
 
         .back:hover {
-            text-decoration: underline;
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
         }
 
         .meta {
