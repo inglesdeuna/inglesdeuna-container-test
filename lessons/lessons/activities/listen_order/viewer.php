@@ -409,6 +409,7 @@ const winSound = document.getElementById('winSound');
 const loseSound = document.getElementById('loseSound');
 const doneSound = document.getElementById('doneSound');
 const sentenceBox = document.getElementById('sentenceBox');
+const listenBtn = sentenceBox ? sentenceBox.querySelector('button.lo-btn-listen') : null;
 const controls = document.querySelector('.lo-controls');
 const completedEl = document.getElementById('lo-completed');
 const completedTitleEl = document.getElementById('lo-completed-title');
@@ -465,17 +466,33 @@ function navigateToReturn(targetUrl) {
 function playAudio() {
   if (finished) return;
 
+  if (!currentSentence || String(currentSentence).trim() === '') {
+    return;
+  }
+
+  if (listenBtn) {
+    listenBtn.disabled = false;
+  }
+
+  // Resume from paused point first.
+  if (speechSynthesis.paused) {
+    speechSynthesis.resume();
+    isSpeaking = true;
+    isPaused = false;
+
+    // Some browsers occasionally keep paused state after first resume call.
+    setTimeout(function () {
+      if (speechSynthesis.paused) {
+        speechSynthesis.resume();
+      }
+    }, 80);
+    return;
+  }
+
   if (speechSynthesis.speaking && !speechSynthesis.paused) {
     speechSynthesis.pause();
     isSpeaking = true;
     isPaused = true;
-    return;
-  }
-
-  if (speechSynthesis.paused || isPaused) {
-    speechSynthesis.resume();
-    isSpeaking = true;
-    isPaused = false;
     return;
   }
 
@@ -608,6 +625,10 @@ function loadBlock() {
     controls.style.display = 'flex';
   }
 
+  if (listenBtn) {
+    listenBtn.disabled = false;
+  }
+
   feedback.textContent = '';
   feedback.className = '';
 
@@ -708,6 +729,11 @@ function showAnswer() {
 
   feedback.textContent = 'Show Answer';
   feedback.className = 'good';
+
+  if (listenBtn) {
+    listenBtn.disabled = false;
+  }
+
   blockFinished = true;
 }
 
