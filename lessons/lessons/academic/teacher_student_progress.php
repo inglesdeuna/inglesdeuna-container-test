@@ -66,6 +66,16 @@ function get_pdo_connection(): ?PDO
     return $cachedPdo;
 }
 
+function ensure_student_performance_tables(PDO $pdo): void
+{
+    try {
+        $pdo->exec("\n            CREATE TABLE IF NOT EXISTS student_unit_results (\n              student_id TEXT NOT NULL,\n              assignment_id TEXT NOT NULL,\n              unit_id TEXT NOT NULL,\n              completion_percent INTEGER NOT NULL DEFAULT 0,\n              quiz_errors INTEGER NOT NULL DEFAULT 0,\n              quiz_total INTEGER NOT NULL DEFAULT 0,\n              updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),\n              PRIMARY KEY (student_id, assignment_id, unit_id)\n            )\n        ");
+        $pdo->exec("\n            CREATE TABLE IF NOT EXISTS student_activity_results (\n              student_id TEXT NOT NULL,\n              assignment_id TEXT NOT NULL,\n              unit_id TEXT NOT NULL,\n              activity_id TEXT NOT NULL,\n              activity_type TEXT NOT NULL DEFAULT '',\n              completion_percent INTEGER NOT NULL DEFAULT 0,\n              errors_count INTEGER NOT NULL DEFAULT 0,\n              total_count INTEGER NOT NULL DEFAULT 0,\n              attempts_count INTEGER NOT NULL DEFAULT 1,\n              updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),\n              PRIMARY KEY (student_id, assignment_id, unit_id, activity_id)\n            )\n        ");
+        $pdo->exec("ALTER TABLE student_activity_results ADD COLUMN IF NOT EXISTS attempts_count INTEGER NOT NULL DEFAULT 1");
+    } catch (Throwable $e) {
+    }
+}
+
 function load_student_assignment(PDO $pdo, string $assignmentId, string $teacherId): ?array
 {
     try {
@@ -165,6 +175,8 @@ $pdo = get_pdo_connection();
 if (!$pdo) {
     die('Database is not available.');
 }
+
+ensure_student_performance_tables($pdo);
 
 $assignment = load_student_assignment($pdo, $assignmentId, $teacherId);
 if (!$assignment || (string) ($assignment['student_id'] ?? '') !== $studentId) {
