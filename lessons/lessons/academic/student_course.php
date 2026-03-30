@@ -147,7 +147,6 @@ function save_student_activity_performance(PDO $pdo, string $studentId, string $
             return;
         }
 
-        $existingPercent = max(0, min(100, (int) ($existing['completion_percent'] ?? 0)));
         $existingErrors = max(0, (int) ($existing['errors_count'] ?? 0));
         $existingTotal = max(0, (int) ($existing['total_count'] ?? 0));
         $existingAttempts = 1;
@@ -158,8 +157,8 @@ function save_student_activity_performance(PDO $pdo, string $studentId, string $
             $existingAttempts = max(1, (int) floor($existingTotal / $cleanTotal));
         }
 
-        // Rule: only activities below 60% may be retried, and max 2 attempts per activity.
-        if ($existingPercent >= 60 || $existingAttempts >= 2) {
+        // Rule: up to 2 attempts per activity. Second attempt is always accumulated.
+        if ($existingAttempts >= 2) {
             return;
         }
 
