@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 require_once __DIR__ . '/../../config/db.php';
 require_once __DIR__ . '/../../core/_activity_viewer_template.php';
 
@@ -172,26 +172,27 @@ ob_start();
 
 <div class="mc-viewer" id="mc-container">
     <section class="mc-intro">
-        <h2>Multiple Choice Exam</h2>
-        <p>Exam mode with random questions. Scroll through all selected questions and press Finish.</p>
+        <h2>Choose The Best Answer</h2>
+        <p>Review each question, select the best option, and use Show Answer whenever you need support.</p>
     </section>
 
-    <div class="mc-status" id="mc-status">Answered: <strong id="mc-answered">0</strong>/<strong id="mc-total">0</strong></div>
+    <div class="mc-status" id="mc-status"></div>
 
-    <div class="mc-progress-track">
-        <div class="mc-progress-fill" id="mc-progress-fill"></div>
+    <div class="mc-card">
+        <div class="mc-question" id="mc-question"></div>
+        <img id="mc-image" class="mc-image" alt="">
+        <div class="mc-options" id="mc-options"></div>
     </div>
 
-    <div class="mc-list" id="mc-list"></div>
-
     <div class="mc-controls">
-        <button type="button" class="mc-btn mc-btn-next" id="mc-finish">Finish exam</button>
+        <button type="button" class="mc-btn mc-btn-show" id="mc-show">Show Answer</button>
+        <button type="button" class="mc-btn mc-btn-next" id="mc-next">Next</button>
     </div>
 
     <div class="mc-feedback" id="mc-feedback"></div>
 
     <div id="mc-completed" class="mc-completed-screen">
-        <div class="mc-completed-icon">✅</div>
+        <div class="mc-completed-icon">Ô£à</div>
         <h2 class="mc-completed-title" id="mc-completed-title"></h2>
         <p class="mc-completed-text" id="mc-completed-text"></p>
         <p class="mc-completed-text" id="mc-score-text" style="font-weight:700;font-size:18px;color:#6d28d9;"></p>
@@ -205,10 +206,9 @@ window.MULTIPLE_CHOICE_DATA = <?php echo json_encode($questions, JSON_UNESCAPED_
 window.MULTIPLE_CHOICE_TITLE = <?php echo json_encode($viewerTitle, JSON_UNESCAPED_UNICODE); ?>;
 window.MULTIPLE_CHOICE_RETURN_TO = <?php echo json_encode($returnTo, JSON_UNESCAPED_UNICODE); ?>;
 window.MULTIPLE_CHOICE_ACTIVITY_ID = <?php echo json_encode((string) ($activity['id'] ?? ''), JSON_UNESCAPED_UNICODE); ?>;
-window.MULTIPLE_CHOICE_RATIO = 0.75;
 </script>
 <script src="multiple_choice.js?v=<?php echo urlencode($jsVersion); ?>"></script>
 
 <?php
 $content = ob_get_clean();
-render_activity_viewer($viewerTitle, '📝', $content);
+render_activity_viewer($viewerTitle, '­ƒôØ', $content);
