@@ -427,7 +427,7 @@ if (isset($_GET["saved"])) {
     </div>
 
     <div id="blocksContainer">
-        <?php foreach ($blocks as $block) { ?>
+        <?php foreach ($blocks as $blockIndex => $block) { ?>
             <div class="block-item">
                 <input type="hidden" name="block_id[]" value="<?= htmlspecialchars((string) ($block["id"] ?? uniqid("listen_order_")), ENT_QUOTES, 'UTF-8') ?>">
 
@@ -441,15 +441,15 @@ if (isset($_GET["saved"])) {
                         <?php foreach ($blockImages as $img) { ?>
                             <div>
                                 <img src="<?= htmlspecialchars($img, ENT_QUOTES, 'UTF-8') ?>" class="image-preview" alt="listen-order-image">
-                                <input type="hidden" name="images_existing[<?= htmlspecialchars((string) array_search($img, $blockImages), ENT_QUOTES, 'UTF-8') ?>][]" value="<?= htmlspecialchars($img, ENT_QUOTES, 'UTF-8') ?>">
+                                <input type="hidden" name="images_existing[<?= (int) $blockIndex ?>][]" value="<?= htmlspecialchars($img, ENT_QUOTES, 'UTF-8') ?>">
                             </div>
                         <?php } ?>
                     </div>
                 <?php } else { ?>
-                    <input type="hidden" name="images_existing[0][]" value="">
+                    <input type="hidden" name="images_existing[<?= (int) $blockIndex ?>][]" value="">
                 <?php } ?>
 
-                <input type="file" name="images[<?= htmlspecialchars((string) array_search($block, $blocks), ENT_QUOTES, 'UTF-8') ?>][]" multiple accept="image/*">
+                <input type="file" name="images[<?= (int) $blockIndex ?>][]" multiple accept="image/*">
                 <p class="help">Upload the images in the exact correct order.</p>
 
                 <button type="button" class="btn-remove" onclick="removeBlock(this)">✖ Remove</button>
