@@ -170,11 +170,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $imagesExisting = isset($_POST['image_existing']) && is_array($_POST['image_existing']) ? $_POST['image_existing'] : array();
     $imageFiles = isset($_FILES['image_file']) ? $_FILES['image_file'] : null;
     $sanitized = array();
+    $fileIndex = 0;
     foreach ($ids as $i => $imgId) {
         $imgUrl = isset($imagesExisting[$i]) ? trim((string) $imagesExisting[$i]) : '';
-        if ($imageFiles && isset($imageFiles['name'][$i]) && $imageFiles['name'][$i] !== '' && isset($imageFiles['tmp_name'][$i]) && $imageFiles['tmp_name'][$i] !== '') {
-            $uploadedImage = upload_to_cloudinary($imageFiles['tmp_name'][$i]);
+        // Si no hay URL, intenta subir el archivo correspondiente
+        if ($imgUrl === '' && $imageFiles && isset($imageFiles['name'][$fileIndex]) && $imageFiles['name'][$fileIndex] !== '' && isset($imageFiles['tmp_name'][$fileIndex]) && $imageFiles['tmp_name'][$fileIndex] !== '') {
+            $uploadedImage = upload_to_cloudinary($imageFiles['tmp_name'][$fileIndex]);
             if ($uploadedImage) $imgUrl = $uploadedImage;
+            $fileIndex++;
+        } elseif ($imgUrl !== '') {
+            // Si ya hay URL, solo avanza el índice de archivo si también hay archivo (para mantener sincronía)
+            if ($imageFiles && isset($imageFiles['name'][$fileIndex]) && $imageFiles['name'][$fileIndex] !== '') {
+                $fileIndex++;
+            }
         }
         if ($imgUrl === '') continue;
         $sanitized[] = array('id' => $imgId !== '' ? $imgId : uniqid('tracing_'), 'image' => $imgUrl);
@@ -216,7 +224,7 @@ ob_start();
         <input id="activity_title" type="text" name="activity_title" value="<?= htmlspecialchars($activityTitle, ENT_QUOTES, 'UTF-8') ?>" placeholder="Example: Trace the Letters" required>
     </div>
     <div class="tracing-add-box">
-        <input type="file" name="image_file[]" accept="image/*" multiple>
+        <input type="file" id="imageUploadInput" name="image_file[]" accept="image/*" multiple>
         <span style="font-size:13px;color:#64748b;">You can add multiple images at once.</span>
     </div>
     <ul class="tracing-images-list" id="imagesList">
@@ -253,6 +261,34 @@ function removeImage(btn) {
     const item = btn.closest('.tracing-image-item');
     if (item) item.remove();
 }
+
+// Previsualización de imágenes seleccionadas
+document.getElementById('imageUploadInput').addEventListener('change', function(e) {
+    const files = Array.from(e.target.files);
+    const list = document.getElementById('imagesList');
+    files.forEach(file => {
+        const reader = new FileReader();
+        reader.onload = function(evt) {
+            const li = document.createElement('li');
+            li.className = 'tracing-image-item';
+            li.innerHTML = `
+                <input type="hidden" name="image_id[]" value="tracing_${Date.now()}_${Math.floor(Math.random()*1000)}">
+                <input type="hidden" name="image_existing[]" value="">
+                <img src="${evt.target.result}" class="tracing-image-thumb" alt="tracing-image">
+                <div class="tracing-image-actions">
+                    <button type="button" class="tracing-btn tracing-btn-move" onclick="moveImage(this, -1)">↑</button>
+                    <button type="button" class="tracing-btn tracing-btn-move" onclick="moveImage(this, 1)">↓</button>
+                    <button type="button" class="tracing-btn tracing-btn-remove" onclick="removeImage(this)">Remove</button>
+                </div>
+            `;
+            list.appendChild(li);
+        };
+        reader.readAsDataURL(file);
+    });
+    // Limpiar input para permitir volver a seleccionar los mismos archivos si se desea
+    e.target.value = '';
+});
+
 // Antes de enviar el formulario, asegura el orden de los <li> (inputs ya están dentro)
 document.getElementById('tracingForm').addEventListener('submit', function(e) {
     const list = document.getElementById('imagesList');
