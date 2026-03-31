@@ -1,26 +1,29 @@
 <?php
 
 if (session_status() === PHP_SESSION_NONE) {
-    <div class="tracing-add-box">
-        <button type="button" class="tracing-btn" onclick="addTracingImage()">+ Agregar imagen</button>
-        <span style="font-size:13px;color:#64748b;">Puedes agregar varias imágenes una por una.</span>
-    </div>
-    <ul class="tracing-images-list" id="imagesList">
-        <?php foreach ($images as $i => $img) { ?>
-            <li class="tracing-image-item">
-                <input type="hidden" name="image_id[]" value="<?= htmlspecialchars($img['id'], ENT_QUOTES, 'UTF-8') ?>">
-                <input type="hidden" name="image_existing[]" value="<?= htmlspecialchars($img['image'], ENT_QUOTES, 'UTF-8') ?>">
-                <img src="<?= htmlspecialchars($img['image'], ENT_QUOTES, 'UTF-8') ?>" class="tracing-image-thumb" alt="tracing-image">
-                <input type="file" name="image_file[]" accept="image/*" style="margin-top:8px;">
-                <div class="tracing-image-actions">
-                    <button type="button" class="tracing-btn tracing-btn-move" onclick="moveImage(this, -1)">↑</button>
-                    <button type="button" class="tracing-btn tracing-btn-move" onclick="moveImage(this, 1)">↓</button>
-                    <button type="button" class="tracing-btn tracing-btn-remove" onclick="removeImage(this)">Remove</button>
-                </div>
-            </li>
-        <?php } ?>
-    </ul>
-    <button type="submit" class="tracing-btn" style="margin-top:10px;">💾 Save</button>
+    // Puedes poner aquí lógica PHP si es necesario
+}
+?>
+<div class="tracing-add-box">
+    <button type="button" class="tracing-btn" onclick="addTracingImage()">+ Agregar imagen</button>
+    <span style="font-size:13px;color:#64748b;">Puedes agregar varias imágenes una por una.</span>
+</div>
+<ul class="tracing-images-list" id="imagesList">
+    <?php foreach ($images as $i => $img) { ?>
+        <li class="tracing-image-item">
+            <input type="hidden" name="image_id[]" value="<?= htmlspecialchars($img['id'], ENT_QUOTES, 'UTF-8') ?>">
+            <input type="hidden" name="image_existing[]" value="<?= htmlspecialchars($img['image'], ENT_QUOTES, 'UTF-8') ?>">
+            <img src="<?= htmlspecialchars($img['image'], ENT_QUOTES, 'UTF-8') ?>" class="tracing-image-thumb" alt="tracing-image">
+            <input type="file" name="image_file[]" accept="image/*" style="margin-top:8px;">
+            <div class="tracing-image-actions">
+                <button type="button" class="tracing-btn tracing-btn-move" onclick="moveImage(this, -1)">↑</button>
+                <button type="button" class="tracing-btn tracing-btn-move" onclick="moveImage(this, 1)">↓</button>
+                <button type="button" class="tracing-btn tracing-btn-remove" onclick="removeImage(this)">Remove</button>
+            </div>
+        </li>
+    <?php } ?>
+</ul>
+<button type="submit" class="tracing-btn" style="margin-top:10px;">💾 Save</button>
 </form>
 <script>
 function moveImage(btn, dir) {
