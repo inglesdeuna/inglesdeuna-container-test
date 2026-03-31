@@ -76,3 +76,95 @@ function load_tracing_activity(PDO $pdo, string $unit, string $activityId): arra
     if ($columnTitle !== '') $payload['title'] = $columnTitle;
     return array('id' => isset($row['id']) ? (string) $row['id'] : '', 'title' => normalize_tracing_title((string) $payload['title']), 'images' => isset($payload['images']) && is_array($payload['images']) ? $payload['images'] : array());
 }
+
+function save_tracing_activity(PDO $pdo, string $unit, string $activityId, string $title, array $images): string {
+    $columns = activities_columns($pdo);
+    $title = normalize_tracing_title($title);
+    $json = json_encode([
+        'title' => $title,
+        'images' => array_values($images),
+    ], JSON_UNESCAPED_UNICODE);
+
+    $hasUnitId = in_array('unit_id', $columns, true);
+    $hasUnit = in_array('unit', $columns, true);
+    $hasData = in_array('data', $columns, true);
+    $hasContentJson = in_array('content_json', $columns, true);
+    $hasId = in_array('id', $columns, true);
+    $hasTitle = in_array('title', $columns, true);
+    $hasName = in_array('name', $columns, true);
+
+    $targetId = $activityId;
+    if ($targetId === '') {
+        if ($hasUnitId) {
+            $stmt = $pdo->prepare("SELECT id FROM activities WHERE unit_id = :unit AND type = 'tracing' ORDER BY id ASC LIMIT 1");
+            $stmt->execute(['unit' => $unit]);
+            $targetId = trim((string) $stmt->fetchColumn());
+        }
+        if ($targetId === '' && $hasUnit) {
+            $stmt = $pdo->prepare("SELECT id FROM activities WHERE unit = :unit AND type = 'tracing' ORDER BY id ASC LIMIT 1");
+            $stmt->execute(['unit' => $unit]);
+            $targetId = trim((string) $stmt->fetchColumn());
+        }
+    }
+
+    if ($targetId !== '') {
+        $setParts = [];
+        $params = ['id' => $targetId];
+        if ($hasData) { $setParts[] = 'data = :data'; $params['data'] = $json; }
+        if ($hasContentJson) { $setParts[] = 'content_json = :content_json'; $params['content_json'] = $json; }
+        if ($hasTitle) { $setParts[] = 'title = :title'; $params['title'] = $title; }
+        if ($hasName) { $setParts[] = 'name = :name'; $params['name'] = $title; }
+        if (!empty($setParts)) {
+            $stmt = $pdo->prepare("UPDATE activities SET " . implode(', ', $setParts) . " WHERE id = :id AND type = 'tracing'");
+            $stmt->execute($params);
+        }
+        return $targetId;
+    }
+
+    $insertColumns = [];
+    $insertValues = [];
+    $params = [];
+    $newId = '';
+    if ($hasId) {
+        $newId = md5(random_bytes(16));
+        $insertColumns[] = 'id';
+        $insertValues[] = ':id';
+        $params['id'] = $newId;
+    }
+    if ($hasUnitId) {
+        $insertColumns[] = 'unit_id';
+        $insertValues[] = ':unit_id';
+        $params['unit_id'] = $unit;
+    } elseif ($hasUnit) {
+        $insertColumns[] = 'unit';
+        $insertValues[] = ':unit';
+        $params['unit'] = $unit;
+    }
+    $insertColumns[] = 'type';
+    $insertValues[] = "'tracing'";
+    if ($hasData) {
+        $insertColumns[] = 'data';
+        $insertValues[] = ':data';
+        $params['data'] = $json;
+    }
+    if ($hasContentJson) {
+        $insertColumns[] = 'content_json';
+        $insertValues[] = ':content_json';
+        $params['content_json'] = $json;
+    }
+    if ($hasTitle) {
+        $insertColumns[] = 'title';
+        $insertValues[] = ':title';
+        $params['title'] = $title;
+    }
+    if ($hasName) {
+        $insertColumns[] = 'name';
+        $insertValues[] = ':name';
+        $params['name'] = $title;
+    }
+    $stmt = $pdo->prepare(
+        "INSERT INTO activities (" . implode(', ', $insertColumns) . ") VALUES (" . implode(', ', $insertValues) . ")"
+    );
+    $stmt->execute($params);
+    return $newId;
+}
