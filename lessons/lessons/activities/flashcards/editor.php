@@ -42,9 +42,7 @@ function activities_columns(PDO $pdo): array
            AND table_name = 'activities'"
     );
 
-            <button type="submit" class="btn-add save-btn" style="background:#2563eb;display:flex;align-items:center;gap:8px;font-size:16px;">
-                <span style="font-size:20px;">💾</span> Guardar Flashcards
-            </button>
+    foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
         if (isset($row['column_name'])) {
             $cache[] = (string) $row['column_name'];
         }
