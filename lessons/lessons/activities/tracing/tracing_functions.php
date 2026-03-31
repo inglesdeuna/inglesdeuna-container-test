@@ -163,8 +163,9 @@ function save_tracing_activity(PDO $pdo, string $unit, string $activityId, strin
         $params['name'] = $title;
     }
     $stmt = $pdo->prepare(
-        "INSERT INTO activities (" . implode(', ', $insertColumns) . ") VALUES (" . implode(', ', $insertValues) . ")"
+        "INSERT INTO activities (" . implode(', ', $insertColumns) . ") VALUES (" . implode(', ', $insertValues) . ") RETURNING id"
     );
     $stmt->execute($params);
-    return $newId;
+    $insertedId = $stmt->fetchColumn();
+    return $insertedId ? (string)$insertedId : $newId;
 }
