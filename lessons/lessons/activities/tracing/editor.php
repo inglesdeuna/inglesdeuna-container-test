@@ -1,180 +1,30 @@
+
 <?php
-// Asegura que $images esté definido como array
-if (!isset($images) || !is_array($images)) {
-    $images = array();
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
 }
 
-// Incluye la función render_activity_editor si no existe
+require_once __DIR__ . '/../../config/db.php';
 if (!function_exists('render_activity_editor')) {
     require_once __DIR__ . '/../../core/_activity_editor_template.php';
 }
 
-if (session_status() === PHP_SESSION_NONE) {
-    // Puedes poner aquí lógica PHP si es necesario
+// Block student access to editor
+if (isset($_SESSION['student_logged']) && $_SESSION['student_logged']) {
+    header('Location: /lessons/lessons/academic/student_dashboard.php?error=access_denied');
+    exit;
 }
-?>
-<div class="tracing-add-box">
-    <button type="button" class="tracing-btn" onclick="addTracingImage()">+ Agregar imagen</button>
-    <span style="font-size:13px;color:#64748b;">Puedes agregar varias imágenes una por una.</span>
-</div>
-<ul class="tracing-images-list" id="imagesList">
-    <?php foreach ($images as $i => $img) { ?>
-        <li class="tracing-image-item">
-            <input type="hidden" name="image_id[]" value="<?= htmlspecialchars($img['id'], ENT_QUOTES, 'UTF-8') ?>">
-            <input type="hidden" name="image_existing[]" value="<?= htmlspecialchars($img['image'], ENT_QUOTES, 'UTF-8') ?>">
-            <img src="<?= htmlspecialchars($img['image'], ENT_QUOTES, 'UTF-8') ?>" class="tracing-image-thumb" alt="tracing-image">
-            <input type="file" name="image_file[]" accept="image/*" style="margin-top:8px;">
-            <div class="tracing-image-actions">
-                <button type="button" class="tracing-btn tracing-btn-move" onclick="moveImage(this, -1)">↑</button>
-                <button type="button" class="tracing-btn tracing-btn-move" onclick="moveImage(this, 1)">↓</button>
-                <button type="button" class="tracing-btn tracing-btn-remove" onclick="removeImage(this)">Remove</button>
-            </div>
-        </li>
-    <?php } ?>
-</ul>
-<button type="submit" class="tracing-btn" style="margin-top:10px;">💾 Save</button>
-</form>
-<script>
-function moveImage(btn, dir) {
-    const item = btn.closest('.tracing-image-item');
-    const list = document.getElementById('imagesList');
-    const items = Array.from(list.children);
-    const idx = items.indexOf(item);
-    if ((dir === -1 && idx === 0) || (dir === 1 && idx === items.length - 1)) return;
-    const swapIdx = idx + dir;
-    if (dir === -1) {
-        list.insertBefore(item, items[swapIdx]);
-    } else {
-        list.insertBefore(items[swapIdx], item);
-    }
+
+$isLoggedIn = !empty($_SESSION['academic_logged']) || !empty($_SESSION['admin_logged']);
+if (!$isLoggedIn) {
+    header('Location: /lessons/lessons/academic/login.php');
+    exit;
 }
-function removeImage(btn) {
-    const item = btn.closest('.tracing-image-item');
-    if (item) item.remove();
-}
-function addTracingImage() {
-    const list = document.getElementById('imagesList');
-    const li = document.createElement('li');
-    li.className = 'tracing-image-item';
-    const uniqueId = `tracing_${Date.now()}_${Math.floor(Math.random()*1000)}`;
-    li.innerHTML = `
-        <input type="hidden" name="image_id[]" value="${uniqueId}">
-        <input type="hidden" name="image_existing[]" value="">
-        <img src="" class="tracing-image-thumb" alt="tracing-image" style="display:none;">
-        <input type="file" name="image_file[]" accept="image/*" style="margin-top:8px;">
-        <div class="tracing-image-actions">
-            <button type="button" class="tracing-btn tracing-btn-move" onclick="moveImage(this, -1)">↑</button>
-            <button type="button" class="tracing-btn tracing-btn-move" onclick="moveImage(this, 1)">↓</button>
-            <button type="button" class="tracing-btn tracing-btn-remove" onclick="removeImage(this)">Remove</button>
-        </div>
-    `;
-    // Preview instantáneo
-    const fileInput = li.querySelector('input[type="file"]');
-    const imgPreview = li.querySelector('img.tracing-image-thumb');
-    fileInput.addEventListener('change', function(e) {
-        const file = e.target.files[0];
-        if (!file) { imgPreview.style.display = 'none'; imgPreview.src = ''; return; }
-        const reader = new FileReader();
-        reader.onload = function(evt) {
-            imgPreview.src = evt.target.result;
-            imgPreview.style.display = '';
-        };
-        reader.readAsDataURL(file);
-    });
-    list.appendChild(li);
-}
-// Antes de enviar el formulario, asegura el orden de los <li> (inputs ya están dentro)
-document.getElementById('tracingForm').addEventListener('submit', function(e) {
-    const list = document.getElementById('imagesList');
-    const items = Array.from(list.children);
-    // Validar que haya al menos una imagen
-    if (items.length === 0) {
-        alert('Debes agregar al menos una imagen para guardar la actividad.');
-        e.preventDefault();
-        return false;
-    }
-    // No es necesario eliminar ni reinsertar inputs, solo asegurar el orden visual
-    items.forEach(item => list.appendChild(item));
-});
-    if (!$row && in_array('unit_id', $columns, true)) {
-        $stmt = $pdo->prepare("SELECT " . implode(', ', $selectFields) . " FROM activities WHERE unit_id = :unit AND type = 'tracing' ORDER BY id ASC LIMIT 1");
-        $stmt->execute(array('unit' => $unit));
-        $row = $stmt->fetch(PDO::FETCH_ASSOC);
-    }
-    if (!$row && in_array('unit', $columns, true)) {
-        $stmt = $pdo->prepare("SELECT " . implode(', ', $selectFields) . " FROM activities WHERE unit = :unit AND type = 'tracing' ORDER BY id ASC LIMIT 1");
-        $stmt->execute(array('unit' => $unit));
-        $row = $stmt->fetch(PDO::FETCH_ASSOC);
-    }
-    if (!$row) return $fallback;
-    $rawData = null;
-    if (isset($row['data'])) $rawData = $row['data'];
-    elseif (isset($row['content_json'])) $rawData = $row['content_json'];
-    $payload = normalize_tracing_payload($rawData);
-    $columnTitle = '';
-    if (isset($row['title']) && trim((string) $row['title']) !== '') $columnTitle = trim((string) $row['title']);
-    elseif (isset($row['name']) && trim((string) $row['name']) !== '') $columnTitle = trim((string) $row['name']);
-    if ($columnTitle !== '') $payload['title'] = $columnTitle;
-    return array('id' => isset($row['id']) ? (string) $row['id'] : '', 'title' => normalize_tracing_title((string) $payload['title']), 'images' => isset($payload['images']) && is_array($payload['images']) ? $payload['images'] : array());
-}
-function save_tracing_activity(PDO $pdo, string $unit, string $activityId, string $title, array $images): string {
-    $columns = activities_columns($pdo);
-    $title = normalize_tracing_title($title);
-    $json = encode_tracing_payload(array('title' => $title, 'images' => $images));
-    $hasUnitId = in_array('unit_id', $columns, true);
-    $hasUnit = in_array('unit', $columns, true);
-    $hasData = in_array('data', $columns, true);
-    $hasContentJson = in_array('content_json', $columns, true);
-    $hasId = in_array('id', $columns, true);
-    $hasTitle = in_array('title', $columns, true);
-    $hasName = in_array('name', $columns, true);
-    $targetId = $activityId;
-    if ($targetId === '') {
-        if ($hasUnitId) {
-            $stmt = $pdo->prepare("SELECT id FROM activities WHERE unit_id = :unit AND type = 'tracing' ORDER BY id ASC LIMIT 1");
-            $stmt->execute(array('unit' => $unit));
-            $targetId = trim((string) $stmt->fetchColumn());
-        }
-        if ($targetId === '' && $hasUnit) {
-            $stmt = $pdo->prepare("SELECT id FROM activities WHERE unit = :unit AND type = 'tracing' ORDER BY id ASC LIMIT 1");
-            $stmt->execute(array('unit' => $unit));
-            $targetId = trim((string) $stmt->fetchColumn());
-        }
-    }
-    if ($targetId !== '') {
-        $setParts = array();
-        $params = array('id' => $targetId);
-        if ($hasData) { $setParts[] = 'data = :data'; $params['data'] = $json; }
-        if ($hasContentJson) { $setParts[] = 'content_json = :content_json'; $params['content_json'] = $json; }
-        if ($hasTitle) { $setParts[] = 'title = :title'; $params['title'] = $title; }
-        if ($hasName) { $setParts[] = 'name = :name'; $params['name'] = $title; }
-        if (!empty($setParts)) {
-            $stmt = $pdo->prepare("UPDATE activities SET " . implode(', ', $setParts) . " WHERE id = :id AND type = 'tracing'");
-            $stmt->execute($params);
-        }
-        return $targetId;
-    }
-    $insertColumns = array();
-    $insertValues = array();
-    $params = array();
-    $newId = '';
-    if ($hasId) {
-        $newId = md5(random_bytes(16));
-        $insertColumns[] = 'id';
-        $insertValues[] = ':id';
-        $params['id'] = $newId;
-    }
-    if ($hasUnitId) { $insertColumns[] = 'unit_id'; $insertValues[] = ':unit_id'; $params['unit_id'] = $unit; }
-    elseif ($hasUnit) { $insertColumns[] = 'unit'; $insertValues[] = ':unit'; $params['unit'] = $unit; }
-    $insertColumns[] = 'type'; $insertValues[] = "'tracing'";
-    if ($hasData) { $insertColumns[] = 'data'; $insertValues[] = ':data'; $params['data'] = $json; }
-    if ($hasContentJson) { $insertColumns[] = 'content_json'; $insertValues[] = ':content_json'; $params['content_json'] = $json; }
-    if ($hasTitle) { $insertColumns[] = 'title'; $insertValues[] = ':title'; $params['title'] = $title; }
-    if ($hasName) { $insertColumns[] = 'name'; $insertValues[] = ':name'; $params['name'] = $title; }
-    $stmt = $pdo->prepare("INSERT INTO activities (" . implode(', ', $insertColumns) . ") VALUES (" . implode(', ', $insertValues) . ")");
-    $stmt->execute($params);
-    return $newId;
-}
+
+$activityId = isset($_GET['id']) ? trim((string) $_GET['id']) : '';
+$unit = isset($_GET['unit']) ? trim((string) $_GET['unit']) : '';
+$source = isset($_GET['source']) ? trim((string) $_GET['source']) : '';
+$assignment = isset($_GET['assignment']) ? trim((string) $_GET['assignment']) : '';
 
 // Cargar datos existentes
 $activity = load_tracing_activity($pdo, $unit, $activityId);
@@ -197,7 +47,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($uploadedImage) $imgUrl = $uploadedImage;
             $fileIndex++;
         } elseif ($imgUrl !== '') {
-            // Si ya hay URL, solo avanza el índice de archivo si también hay archivo (para mantener sincronía)
             if ($imageFiles && isset($imageFiles['name'][$fileIndex]) && $imageFiles['name'][$fileIndex] !== '') {
                 $fileIndex++;
             }
@@ -217,26 +66,156 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 ob_start();
 ?>
 <style>
-.tracing-form { max-width: 520px; margin: 0 auto; }
-.tracing-title-box { margin-bottom: 18px; }
-.tracing-title-box label { font-weight: 700; }
-.tracing-title-box input { width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid #ccc; font-size: 15px; }
-.tracing-images-list { list-style: none; padding: 0; margin: 0 0 18px 0; }
-.tracing-image-item { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; background: #f9fafb; border-radius: 12px; border: 1px solid #e5e7eb; padding: 10px; }
-.tracing-image-thumb { max-width: 90px; max-height: 90px; border-radius: 8px; border: 1px solid #d1d5db; background: #fff; object-fit: contain; }
-.tracing-image-actions { display: flex; flex-direction: column; gap: 6px; }
-.tracing-btn { background: #2563eb; color: #fff; border: none; padding: 7px 12px; border-radius: 8px; cursor: pointer; font-weight: 700; font-size: 14px; }
-.tracing-btn:hover { background: #1d4ed8; }
-.tracing-btn-remove { background: #ef4444; }
-.tracing-btn-remove:hover { background: #b91c1c; }
-.tracing-btn-move { background: #fbbf24; color: #1e293b; }
-.tracing-btn-move:hover { background: #f59e42; }
-.tracing-add-box { margin-bottom: 18px; }
+@import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@600;700;800&display=swap');
+
+.tracing-form {
+    max-width:900px;
+    margin:0 auto;
+    text-align:left;
+    font-family:'Nunito', 'Segoe UI', sans-serif;
+}
+
+.tracing-intro{
+    background:linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 52%, #f0fdf4 100%);
+    border:1px solid #ccfbf1;
+    border-radius:20px;
+    padding:18px 20px;
+    margin:0 0 14px;
+    box-shadow:0 12px 26px rgba(15, 23, 42, .08);
+}
+
+.tracing-intro h3{
+    margin:0 0 6px;
+    font-family:'Fredoka', 'Trebuchet MS', sans-serif;
+    font-size:24px;
+    font-weight:700;
+    color:#0f172a;
+}
+
+.tracing-intro p{
+    margin:0;
+    color:#475569;
+    font-size:14px;
+    line-height:1.5;
+}
+
+.tracing-title-box{
+    background:#ffffff;
+    padding:14px;
+    margin-bottom:14px;
+    border-radius:14px;
+    border:1px solid #e2e8f0;
+    box-shadow:0 8px 18px rgba(15, 23, 42, .04);
+}
+
+.tracing-title-box label{
+    display:block;
+    font-weight:800;
+    margin-bottom:8px;
+    color:#1e293b;
+}
+
+.tracing-title-box input{
+    width:100%;
+    padding:10px 12px;
+    border-radius:10px;
+    border:1px solid #cbd5e1;
+    font-size:15px;
+    font-family:'Nunito', 'Segoe UI', sans-serif;
+    box-sizing:border-box;
+}
+
+.tracing-images-list {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 18px 0;
+}
+
+.tracing-image-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+    background: #f9fafb;
+    border-radius: 12px;
+    border: 1px solid #e5e7eb;
+    padding: 10px;
+}
+
+.tracing-image-thumb {
+    max-width: 140px;
+    max-height: 140px;
+    border-radius: 8px;
+    border: 1px solid #d1d5db;
+    background: #fff;
+    object-fit: contain;
+}
+
+.tracing-image-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.tracing-btn {
+    background: #2563eb;
+    color: #fff;
+    border: none;
+    padding: 10px 14px;
+    border-radius: 10px;
+    cursor: pointer;
+    font-weight: 800;
+    font-family:'Nunito', 'Segoe UI', sans-serif;
+    font-size: 15px;
+    transition:transform .15s ease, filter .15s ease;
+}
+
+.tracing-btn:hover {
+    background: #1d4ed8;
+    filter:brightness(1.06);
+    transform:translateY(-1px);
+}
+
+.tracing-btn-remove {
+    background: #ef4444;
+}
+.tracing-btn-remove:hover {
+    background: #b91c1c;
+}
+.tracing-btn-move {
+    background: #fbbf24;
+    color: #1e293b;
+}
+.tracing-btn-move:hover {
+    background: #f59e42;
+}
+.tracing-add-box {
+    margin-bottom: 18px;
+}
+.saved-notice{
+    max-width:900px;
+    margin:0 auto 14px;
+    padding:10px 12px;
+    border-radius:10px;
+    border:1px solid #86efac;
+    background:#f0fdf4;
+    color:#166534;
+    font-weight:800;
+    font-family:'Nunito', 'Segoe UI', sans-serif;
+}
+@media (max-width:680px){
+    .tracing-image-item{flex-direction:column;align-items:flex-start;}
+    .tracing-intro h3{font-size:22px;}
+}
 </style>
 <?php if (isset($_GET['saved'])) { ?>
-    <p style="color:green;font-weight:bold;margin-bottom:15px;">✔ Saved successfully</p>
+<p class="saved-notice">✔ Saved successfully</p>
 <?php } ?>
 <form class="tracing-form" id="tracingForm" method="post" enctype="multipart/form-data">
+    <section class="tracing-intro">
+        <h3>Tracing Editor</h3>
+        <p>Upload images for tracing activities. Students will trace over the images you provide. You can add multiple images and reorder them as needed.</p>
+    </section>
     <div class="tracing-title-box">
         <label for="activity_title">Activity title</label>
         <input id="activity_title" type="text" name="activity_title" value="<?= htmlspecialchars($activityTitle, ENT_QUOTES, 'UTF-8') ?>" placeholder="Example: Trace the Letters" required>
@@ -254,12 +233,15 @@ ob_start();
                 <div class="tracing-image-actions">
                     <button type="button" class="tracing-btn tracing-btn-move" onclick="moveImage(this, -1)">↑</button>
                     <button type="button" class="tracing-btn tracing-btn-move" onclick="moveImage(this, 1)">↓</button>
-                    <button type="button" class="tracing-btn tracing-btn-remove" onclick="removeImage(this)">Remove</button>
+                    <button type="button" class="tracing-btn tracing-btn-remove" onclick="removeImage(this)">✖ Remove</button>
                 </div>
             </li>
         <?php } ?>
     </ul>
-    <button type="submit" class="tracing-btn" style="margin-top:10px;">💾 Save</button>
+    <div class="actions-row" style="display:flex;gap:10px;justify-content:center;margin-top:10px;flex-wrap:wrap;">
+        <button type="button" onclick="document.getElementById('imageUploadInput').click()" class="tracing-btn">+ Add Image</button>
+        <button type="submit" class="tracing-btn" style="background:#0d9488;">💾 Save</button>
+    </div>
 </form>
 <script>
 function moveImage(btn, dir) {
@@ -296,7 +278,7 @@ document.getElementById('imageUploadInput').addEventListener('change', function(
                 <div class="tracing-image-actions">
                     <button type="button" class="tracing-btn tracing-btn-move" onclick="moveImage(this, -1)">↑</button>
                     <button type="button" class="tracing-btn tracing-btn-move" onclick="moveImage(this, 1)">↓</button>
-                    <button type="button" class="tracing-btn tracing-btn-remove" onclick="removeImage(this)">Remove</button>
+                    <button type="button" class="tracing-btn tracing-btn-remove" onclick="removeImage(this)">✖ Remove</button>
                 </div>
             `;
             list.appendChild(li);
