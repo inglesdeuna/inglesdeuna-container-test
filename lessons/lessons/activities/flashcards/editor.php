@@ -42,7 +42,9 @@ function activities_columns(PDO $pdo): array
            AND table_name = 'activities'"
     );
 
-    foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            <button type="submit" class="btn-add save-btn" style="background:#2563eb;display:flex;align-items:center;gap:8px;font-size:16px;">
+                <span style="font-size:20px;">💾</span> Guardar Flashcards
+            </button>
         if (isset($row['column_name'])) {
             $cache[] = (string) $row['column_name'];
         }
@@ -561,6 +563,20 @@ ob_start();
     border-radius:8px;
     cursor:pointer;
     font-weight:700;
+}
+.save-btn{
+    background:#2563eb;
+    color:#fff;
+    padding:10px 18px;
+    border:none;
+    border-radius:8px;
+    cursor:pointer;
+    font-weight:700;
+    box-shadow:0 2px 8px #2563eb22;
+    transition:background 0.2s;
+}
+.save-btn:hover{
+    background:#1d4ed8;
 }
 
 .btn-remove{
