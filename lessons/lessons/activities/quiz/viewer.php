@@ -581,9 +581,52 @@ window.QUIZ_MATCH_DATA = <?php echo json_encode($quizMatchPairs, JSON_UNESCAPED_
   }
 
   const randomizedQuestions = buildRandomizedQuiz(window.QUIZ_DATA);
+
+  function buildFixedMatchPairs(rawPairs, targetCount) {
+    if (!Array.isArray(rawPairs) || rawPairs.length === 0 || targetCount <= 0) {
+      return [];
+    }
+
+    const cleaned = rawPairs
+      .map(function (item) {
+        return {
+          left_text: String(item.left_text || ''),
+          left_image: String(item.left_image || ''),
+          right_text: String(item.right_text || ''),
+          right_image: String(item.right_image || ''),
+        };
+      })
+      .filter(function (item) {
+        return item.left_text !== '' || item.left_image !== '' || item.right_text !== '' || item.right_image !== '';
+      });
+
+    if (cleaned.length === 0) {
+      return [];
+    }
+
+    const shuffled = shuffleArray(cleaned.slice());
+    const selected = shuffled.slice(0, Math.min(targetCount, shuffled.length));
+
+    // Keep a fixed card count even when source data has fewer than target pairs.
+    while (selected.length < targetCount) {
+      const source = selected.length > 0 ? selected : shuffled;
+      const randomIndex = Math.floor(Math.random() * source.length);
+      const picked = source[randomIndex];
+      selected.push({
+        left_text: picked.left_text,
+        left_image: picked.left_image,
+        right_text: picked.right_text,
+        right_image: picked.right_image,
+      });
+    }
+
+    return selected;
+  }
+
+  const fixedMatchPairs = buildFixedMatchPairs(quizMatchData, 9);
   const matchState = {
-    enabled: quizMatchData.length > 0,
-    total: quizMatchData.length,
+    enabled: fixedMatchPairs.length > 0,
+    total: fixedMatchPairs.length,
     answered: 0,
     correct: 0,
     selectedTop: '',
@@ -677,7 +720,7 @@ window.QUIZ_MATCH_DATA = <?php echo json_encode($quizMatchPairs, JSON_UNESCAPED_
   });
 
   if (matchState.enabled) {
-    const keyedPairs = quizMatchData.map(function (item, idx) {
+    const keyedPairs = fixedMatchPairs.map(function (item, idx) {
       return {
         key: 'qm_' + idx,
         left_text: String(item.left_text || ''),
