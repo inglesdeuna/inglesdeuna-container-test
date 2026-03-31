@@ -1,4 +1,13 @@
 <?php
+// Asegura que $images esté definido como array
+if (!isset($images) || !is_array($images)) {
+    $images = array();
+}
+
+// Incluye la función render_activity_editor si no existe
+if (!function_exists('render_activity_editor')) {
+    require_once __DIR__ . '/../../core/_activity_editor_template.php';
+}
 
 if (session_status() === PHP_SESSION_NONE) {
     // Puedes poner aquí lógica PHP si es necesario
