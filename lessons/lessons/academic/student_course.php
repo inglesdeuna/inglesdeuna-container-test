@@ -605,6 +605,19 @@ $quizHref = $quizStepIndex !== null
     ? 'student_course.php?assignment=' . urlencode($assignmentId) . '&unit=' . urlencode($selectedUnitId) . '&step=' . urlencode((string) $quizStepIndex)
     : '';
 
+if ($quizHref === '' && $selectedUnitId !== '') {
+    $quizReturnTo = '../../academic/student_course.php?' . http_build_query([
+        'assignment' => $assignmentId,
+        'unit' => $selectedUnitId,
+        'step' => (string) max(9999, $total),
+    ]);
+    $quizHref = '../activities/quiz/viewer.php?' . http_build_query([
+        'unit' => $selectedUnitId,
+        'assignment' => $assignmentId,
+        'return_to' => $quizReturnTo,
+    ]);
+}
+
 $isCompleted = $total > 0 && $step >= $total;
 $current = (!$isCompleted && $total > 0) ? $activities[$step] : null;
 $prevStep = max(0, $step - 1);
