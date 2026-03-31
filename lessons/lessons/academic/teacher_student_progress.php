@@ -76,6 +76,62 @@ function ensure_student_performance_tables(PDO $pdo): void
     }
 }
 
+function ensure_teacher_quiz_unlocks_table(PDO $pdo): void
+{
+    try {
+        $pdo->exec("\n            CREATE TABLE IF NOT EXISTS teacher_quiz_unlocks (\n              student_id TEXT NOT NULL,\n              assignment_id TEXT NOT NULL,\n              unit_id TEXT NOT NULL,\n              enabled_by_teacher_id TEXT NOT NULL,\n              enabled_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),\n              PRIMARY KEY (student_id, assignment_id, unit_id)\n            )\n        ");
+    } catch (Throwable $e) {
+    }
+}
+
+function enable_teacher_quiz_unlock(PDO $pdo, string $studentId, string $assignmentId, string $unitId, string $teacherId): bool
+{
+    if ($studentId === '' || $assignmentId === '' || $unitId === '' || $teacherId === '') {
+        return false;
+    }
+
+    try {
+        $stmt = $pdo->prepare("\n            INSERT INTO teacher_quiz_unlocks (student_id, assignment_id, unit_id, enabled_by_teacher_id, enabled_at)\n            VALUES (:student_id, :assignment_id, :unit_id, :teacher_id, NOW())\n            ON CONFLICT (student_id, assignment_id, unit_id)\n            DO UPDATE SET\n              enabled_by_teacher_id = EXCLUDED.enabled_by_teacher_id,\n              enabled_at = NOW()\n        ");
+        $stmt->execute([
+            'student_id' => $studentId,
+            'assignment_id' => $assignmentId,
+            'unit_id' => $unitId,
+            'teacher_id' => $teacherId,
+        ]);
+
+        return true;
+    } catch (Throwable $e) {
+        return false;
+    }
+}
+
+function load_teacher_quiz_unlock_units(PDO $pdo, string $studentId, string $assignmentId): array
+{
+    if ($studentId === '' || $assignmentId === '') {
+        return [];
+    }
+
+    try {
+        $stmt = $pdo->prepare("\n            SELECT unit_id\n            FROM teacher_quiz_unlocks\n            WHERE student_id = :student_id\n              AND assignment_id = :assignment_id\n        ");
+        $stmt->execute([
+            'student_id' => $studentId,
+            'assignment_id' => $assignmentId,
+        ]);
+
+        $enabled = [];
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) ?: [] as $row) {
+            $unitId = trim((string) ($row['unit_id'] ?? ''));
+            if ($unitId !== '') {
+                $enabled[$unitId] = true;
+            }
+        }
+
+        return $enabled;
+    } catch (Throwable $e) {
+        return [];
+    }
+}
+
 function load_student_assignment(PDO $pdo, string $assignmentId, string $teacherId): ?array
 {
     try {
@@ -177,17 +233,34 @@ if (!$pdo) {
 }
 
 ensure_student_performance_tables($pdo);
+ensure_teacher_quiz_unlocks_table($pdo);
 
 $assignment = load_student_assignment($pdo, $assignmentId, $teacherId);
 if (!$assignment || (string) ($assignment['student_id'] ?? '') !== $studentId) {
     die('You do not have access to this record.');
 }
 
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && (string) ($_POST['action'] ?? '') === 'enable_quiz') {
+    $unitToEnable = trim((string) ($_POST['unit_id'] ?? ''));
+    if ($unitToEnable !== '') {
+        enable_teacher_quiz_unlock($pdo, $studentId, $assignmentId, $unitToEnable, $teacherId);
+    }
+
+    header('Location: teacher_student_progress.php?' . http_build_query([
+        'student' => $studentId,
+        'assignment' => $assignmentId,
+        'quiz_enabled' => '1',
+    ]));
+    exit;
+}
+
 $rows = load_student_unit_scores($pdo, $studentId, $assignmentId);
+$teacherQuizUnlockUnits = load_teacher_quiz_unlock_units($pdo, $studentId, $assignmentId);
 $courseName = h(app_upper(trim((string) ($assignment['course_name'] ?? 'Curso'))));
 $studentName = h(app_upper(trim((string) ($assignment['student_name'] ?? 'Estudiante'))));
 $programLabel = app_upper((string) ($assignment['program'] ?? '') === 'english' ? 'INGLÉS' : 'TÉCNICO');
 $period = h(app_upper(trim((string) ($assignment['period'] ?? ''))));
+$showQuizEnabledMessage = isset($_GET['quiz_enabled']) && (string) $_GET['quiz_enabled'] === '1';
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -401,6 +474,55 @@ $period = h(app_upper(trim((string) ($assignment['period'] ?? ''))));
             background: #dbeafe;
             color: #1e40af;
         }
+
+        .teacher-actions {
+            text-align: right;
+            white-space: nowrap;
+        }
+
+        .teacher-action-btn {
+            border: none;
+            border-radius: 8px;
+            padding: 7px 10px;
+            background: linear-gradient(180deg, #60a5fa, #2563eb);
+            color: #fff;
+            font-size: 12px;
+            font-weight: 800;
+            cursor: pointer;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .teacher-action-btn:hover {
+            filter: brightness(1.06);
+        }
+
+        .teacher-action-disabled {
+            color: var(--muted);
+            font-weight: 700;
+            font-size: 12px;
+        }
+
+        .teacher-action-enabled {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 999px;
+            background: #dcfce7;
+            color: #166534;
+            font-size: 11px;
+            font-weight: 800;
+            text-transform: uppercase;
+        }
+
+        .teacher-flash {
+            margin: 0 0 16px;
+            border: 1px solid #86efac;
+            background: #f0fdf4;
+            color: #166534;
+            border-radius: 10px;
+            padding: 10px 12px;
+            font-size: 13px;
+            font-weight: 700;
+        }
         
         @media (max-width: 768px) {
             .page {
@@ -434,6 +556,10 @@ $period = h(app_upper(trim((string) ($assignment['period'] ?? ''))));
             <strong>Programa:</strong> <?php echo $programLabel; ?> · 
             <strong>Período:</strong> <?php echo $period; ?>
         </p>
+
+        <?php if ($showQuizEnabledMessage): ?>
+            <div class="teacher-flash">Quiz habilitado por docente para esta asignación.</div>
+        <?php endif; ?>
         
         <div class="card">
             <?php if (empty($rows)): ?>
@@ -447,6 +573,7 @@ $period = h(app_upper(trim((string) ($assignment['period'] ?? ''))));
                             <th>Progreso</th>
                             <th>Errores Quiz</th>
                             <th>%</th>
+                            <th>Acciones</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -459,6 +586,19 @@ $period = h(app_upper(trim((string) ($assignment['period'] ?? ''))));
                             $total = (int) ($row['quiz_total'] ?? 0);
                             $percent = $completion;
                             $activities = $unitId !== '' ? load_activity_scores($pdo, $studentId, $assignmentId, $unitId) : [];
+                            $unitIsEnabledByTeacher = $unitId !== '' && isset($teacherQuizUnlockUnits[$unitId]);
+                            $hasTwoAttempts = false;
+                            foreach ($activities as $activityRow) {
+                                $typeName = strtolower(trim((string) ($activityRow['activity_type'] ?? '')));
+                                if ($typeName === 'quiz') {
+                                    continue;
+                                }
+                                if ((int) ($activityRow['attempts_count'] ?? 1) >= 2) {
+                                    $hasTwoAttempts = true;
+                                    break;
+                                }
+                            }
+                            $canEnableQuiz = !$unitIsEnabledByTeacher && $completion < 60 && $hasTwoAttempts;
                             ?>
                             <tr class="unit-row" data-unit-id="<?php echo h($unitId); ?>">
                                 <td>
@@ -472,6 +612,19 @@ $period = h(app_upper(trim((string) ($assignment['period'] ?? ''))));
                                 </td>
                                 <td><?php echo $errors; ?> / <?php echo $total; ?></td>
                                 <td style="font-weight: 700; color: var(--primary-dark);"><?php echo $percent; ?>%</td>
+                                <td class="teacher-actions">
+                                    <?php if ($unitIsEnabledByTeacher): ?>
+                                        <span class="teacher-action-enabled">Quiz habilitado</span>
+                                    <?php elseif ($canEnableQuiz && $unitId !== ''): ?>
+                                        <form method="post" style="display:inline;" onsubmit="event.stopPropagation();">
+                                            <input type="hidden" name="action" value="enable_quiz">
+                                            <input type="hidden" name="unit_id" value="<?php echo h($unitId); ?>">
+                                            <button type="submit" class="teacher-action-btn">Habilitar quiz</button>
+                                        </form>
+                                    <?php else: ?>
+                                        <span class="teacher-action-disabled">No disponible</span>
+                                    <?php endif; ?>
+                                </td>
                             </tr>
                             <?php foreach ($activities as $activity): ?>
                                 <?php $attemptsCount = max(1, min(2, (int) ($activity['attempts_count'] ?? 1))); ?>
@@ -487,6 +640,7 @@ $period = h(app_upper(trim((string) ($assignment['period'] ?? ''))));
                                     </td>
                                     <td><?php echo (int) ($activity['errors_count'] ?? 0); ?> / <?php echo (int) ($activity['total_count'] ?? 0); ?></td>
                                     <td style="font-weight: 700; color: var(--primary-dark);"><?php echo (int) ($activity['completion_percent'] ?? 0); ?>%</td>
+                                    <td></td>
                                 </tr>
                             <?php endforeach; ?>
                         <?php endforeach; ?>

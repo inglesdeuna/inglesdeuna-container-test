@@ -97,6 +97,34 @@ function ensure_student_performance_tables(PDO $pdo): void
     }
 }
 
+function ensure_teacher_quiz_unlocks_table(PDO $pdo): void
+{
+    try {
+        $pdo->exec("\n            CREATE TABLE IF NOT EXISTS teacher_quiz_unlocks (\n              student_id TEXT NOT NULL,\n              assignment_id TEXT NOT NULL,\n              unit_id TEXT NOT NULL,\n              enabled_by_teacher_id TEXT NOT NULL,\n              enabled_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),\n              PRIMARY KEY (student_id, assignment_id, unit_id)\n            )\n        ");
+    } catch (Throwable $e) {
+    }
+}
+
+function is_quiz_enabled_by_teacher(PDO $pdo, string $studentId, string $assignmentId, string $unitId): bool
+{
+    if ($studentId === '' || $assignmentId === '' || $unitId === '') {
+        return false;
+    }
+
+    try {
+        $stmt = $pdo->prepare("\n            SELECT 1\n            FROM teacher_quiz_unlocks\n            WHERE student_id = :student_id\n              AND assignment_id = :assignment_id\n              AND unit_id = :unit_id\n            LIMIT 1\n        ");
+        $stmt->execute([
+            'student_id' => $studentId,
+            'assignment_id' => $assignmentId,
+            'unit_id' => $unitId,
+        ]);
+
+        return (bool) $stmt->fetchColumn();
+    } catch (Throwable $e) {
+        return false;
+    }
+}
+
 function save_student_activity_performance(PDO $pdo, string $studentId, string $assignmentId, string $unitId, string $activityId, string $activityType, int $completionPercent, int $errorsCount, int $totalCount): void
 {
     if ($studentId === '' || $assignmentId === '' || $unitId === '' || $activityId === '') {
@@ -448,6 +476,7 @@ if (!$pdo) {
 }
 
 ensure_student_performance_tables($pdo);
+ensure_teacher_quiz_unlocks_table($pdo);
 
 $assignment = load_assignment($pdo, $assignmentId);
 if (!$assignment || (string) ($assignment['student_id'] ?? '') !== $studentId) {
@@ -622,6 +651,8 @@ $quizTotal = (int) ($unitResult['quiz_total'] ?? 0);
 $hasUnitResult = $quizTotal > 0;
 $passThreshold = 60;
 $isPassingScore = $hasUnitResult && $completionPercent >= $passThreshold;
+$quizEnabledByTeacher = is_quiz_enabled_by_teacher($pdo, $studentId, $assignmentId, $selectedUnitId);
+$canAccessQuiz = $isPassingScore || $quizEnabledByTeacher;
 $scoreToneClass = $isPassingScore ? 'score-pass' : 'score-fail';
 $resultStatusLabel = $isPassingScore ? 'PASS' : 'FAIL';
 $resultStatusClass = $isPassingScore ? 'result-badge-pass' : 'result-badge-fail';
@@ -903,6 +934,8 @@ body{margin:0;font-family:Arial,sans-serif;background:linear-gradient(145deg,#ff
                 <div class="unit-errors">Errors: <?php echo $quizErrors; ?> / <?php echo $quizTotal; ?></div>
                 <?php if ($isPassingScore): ?>
                     <div class="unit-rule pass">Passed: quiz unlocked.</div>
+                <?php elseif ($quizEnabledByTeacher): ?>
+                    <div class="unit-rule pass">Quiz enabled by your teacher.</div>
                 <?php else: ?>
                     <div class="unit-rule fail">Below 60%: you must repeat this unit to unlock the quiz.</div>
                 <?php endif; ?>
@@ -911,7 +944,7 @@ body{margin:0;font-family:Arial,sans-serif;background:linear-gradient(145deg,#ff
             <div class="result-actions">
                 <a class="empty-btn blue" href="<?php echo h($backHref); ?>">← My courses</a>
 
-                <?php if ($isPassingScore): ?>
+                <?php if ($canAccessQuiz): ?>
                     <?php if ($quizHref !== ''): ?>
                         <a class="empty-btn" href="<?php echo h($quizHref); ?>">Start quiz</a>
                     <?php else: ?>
