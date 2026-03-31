@@ -592,29 +592,9 @@ function speak(event) {
     let text = getText(item);
     if (!text) return;
 
-    // Deletrear: separar letras con espacios
-    let spelled = text.split('').join(' ');
-    const utter = new SpeechSynthesisUtterance(spelled);
+    const utter = new SpeechSynthesisUtterance(text);
     utter.lang = 'en-US';
     utter.rate = 0.5; // Más despacio
-    utter.pitch = 2; // Más agudo, suena más infantil
-
-    // Mostrar voces disponibles en consola para depuración
-    const voices = window.speechSynthesis.getVoices();
-    console.log('Voces disponibles:', voices.map(v => v.name + ' (' + v.lang + ')'));
-
-    // Buscar voz infantil si existe
-    let childVoice = voices.find(v => /child|kid|boy|girl|children/i.test((v.name||'')+(v.voiceURI||'')+(v.lang||'')));
-    if (!childVoice) {
-        // Buscar la voz en inglés con mayor pitch (más aguda)
-        let enVoices = voices.filter(v => v.lang && v.lang.startsWith('en'));
-        if (enVoices.length > 0) {
-            // No se puede saber el pitch real, pero se puede elegir la voz con nombre más "agudo"
-            childVoice = enVoices.find(v => /female|woman|girl/i.test(v.name+v.voiceURI)) || enVoices[0];
-        }
-    }
-    if (childVoice) utter.voice = childVoice;
-
     window.speechSynthesis.speak(utter);
 }
 
