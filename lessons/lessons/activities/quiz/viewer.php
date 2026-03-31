@@ -171,6 +171,75 @@ function load_quiz_fallback_from_multiple_choice(PDO $pdo, string $unit): array
   }
 }
 
+function build_fixed_quiz_question_set(array $questions, int $targetCount = 6): array
+{
+  if ($targetCount <= 0) {
+    return [];
+  }
+
+  $normalized = [];
+  foreach ($questions as $item) {
+    if (!is_array($item)) {
+      continue;
+    }
+
+    $questionText = trim((string) ($item['question'] ?? ''));
+    if ($questionText === '') {
+      continue;
+    }
+
+    $rawOptions = isset($item['options']) && is_array($item['options']) ? $item['options'] : [];
+    $options = [];
+    foreach ($rawOptions as $option) {
+      $label = trim((string) $option);
+      if ($label !== '') {
+        $options[] = $label;
+      }
+    }
+
+    if (count($options) < 2) {
+      continue;
+    }
+
+    $correct = (int) ($item['correct'] ?? 0);
+    if ($correct < 0 || $correct >= count($options)) {
+      $correct = 0;
+    }
+
+    $normalized[] = [
+      'question' => $questionText,
+      'options' => $options,
+      'correct' => $correct,
+      'explanation' => trim((string) ($item['explanation'] ?? '')),
+    ];
+  }
+
+  if (empty($normalized)) {
+    return [];
+  }
+
+  $pool = $normalized;
+  shuffle($pool);
+  $selected = array_slice($pool, 0, min($targetCount, count($pool)));
+
+  while (count($selected) < $targetCount) {
+    try {
+      $index = random_int(0, count($pool) - 1);
+    } catch (Throwable $e) {
+      $index = 0;
+    }
+    $picked = $pool[$index];
+    $selected[] = [
+      'question' => (string) ($picked['question'] ?? ''),
+      'options' => isset($picked['options']) && is_array($picked['options']) ? array_values($picked['options']) : [],
+      'correct' => (int) ($picked['correct'] ?? 0),
+      'explanation' => (string) ($picked['explanation'] ?? ''),
+    ];
+  }
+
+  return $selected;
+}
+
 function load_quiz_activity(PDO $pdo, string $activityId, string $unit): array
 {
     $fallback = [
@@ -381,6 +450,7 @@ if ($returnTo === '') {
 $activity = load_quiz_activity($pdo, $activityId, $unit);
 $viewerTitle = (string) ($activity['title'] ?? 'Unit Quiz');
 $questions = isset($activity['questions']) && is_array($activity['questions']) ? $activity['questions'] : [];
+$questions = build_fixed_quiz_question_set($questions, 6);
 $description = (string) ($activity['description'] ?? '');
 $quizMatchPairs = load_quiz_match_pairs($pdo, $unit);
 
