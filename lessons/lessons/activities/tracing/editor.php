@@ -1,7 +1,7 @@
 <?php
 session_start();
-require_once __DIR__ . '/../../../config/db.php';
-require_once __DIR__ . '/../../../core/_activity_editor_template.php';
+require_once __DIR__ . '/../../config/db.php';
+require_once __DIR__ . '/../../core/_activity_editor_template.php';
 
 // Block student access to editor
 if (isset($_SESSION['student_logged']) && $_SESSION['student_logged']) {
