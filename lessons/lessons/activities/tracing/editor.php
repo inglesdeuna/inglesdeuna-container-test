@@ -253,21 +253,18 @@ function removeImage(btn) {
     const item = btn.closest('.tracing-image-item');
     if (item) item.remove();
 }
-// Antes de enviar el formulario, sincroniza el orden de los inputs
+// Antes de enviar el formulario, asegura el orden de los <li> (inputs ya están dentro)
 document.getElementById('tracingForm').addEventListener('submit', function(e) {
     const list = document.getElementById('imagesList');
     const items = Array.from(list.children);
-    // Elimina todos los inputs existentes
-    document.querySelectorAll('input[name="image_id[]"], input[name="image_existing[]"]').forEach(el => el.remove());
-    // Vuelve a agregarlos en el orden correcto
-    items.forEach(item => {
-        const id = item.querySelector('input[type="hidden"][name^="image_id"]');
-        const img = item.querySelector('input[type="hidden"][name^="image_existing"]');
-        if (id && img) {
-            list.appendChild(id.cloneNode(true));
-            list.appendChild(img.cloneNode(true));
-        }
-    });
+    // Validar que haya al menos una imagen
+    if (items.length === 0) {
+        alert('Debes agregar al menos una imagen para guardar la actividad.');
+        e.preventDefault();
+        return false;
+    }
+    // No es necesario eliminar ni reinsertar inputs, solo asegurar el orden visual
+    items.forEach(item => list.appendChild(item));
 });
 </script>
 <?php
