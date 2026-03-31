@@ -888,6 +888,10 @@ window.QUIZ_PRONUNCIATION_DATA = <?php echo json_encode($quizPronunciationItems,
     return { answered: answered, total: total };
   }
 
+
+  // --- Render blocks in correct order and with correct numbering ---
+  let quizBlockIndex = 1;
+
   if (pronunciationState.enabled) {
     const recognitionCtor = window.SpeechRecognition || window.webkitSpeechRecognition || null;
 
@@ -897,8 +901,7 @@ window.QUIZ_PRONUNCIATION_DATA = <?php echo json_encode($quizPronunciationItems,
 
     const pronTitle = document.createElement('div');
     pronTitle.className = 'qz-q';
-    const pronQuestionIndex = randomizedQuestions.length + (matchState.enabled ? 1 : 0) + 1;
-    pronTitle.textContent = String(pronQuestionIndex) + '. Pronunciation challenge';
+    pronTitle.textContent = String(quizBlockIndex) + '. Pronunciation challenge';
     pronCard.appendChild(pronTitle);
 
     const pronWrap = document.createElement('div');
@@ -1034,6 +1037,7 @@ window.QUIZ_PRONUNCIATION_DATA = <?php echo json_encode($quizPronunciationItems,
     pronWrap.appendChild(pronGrid);
     pronCard.appendChild(pronWrap);
     listEl.appendChild(pronCard);
+    quizBlockIndex++;
   }
 
   function focusFirstUnanswered() {
@@ -1049,14 +1053,15 @@ window.QUIZ_PRONUNCIATION_DATA = <?php echo json_encode($quizPronunciationItems,
     }
   }
 
-  randomizedQuestions.forEach(function (q, idx) {
+  for (let idx = 0; idx < randomizedQuestions.length; idx++) {
+    const q = randomizedQuestions[idx];
     const card = document.createElement('div');
     card.className = 'qz-card';
     card.setAttribute('data-index', String(idx));
 
     const qTitle = document.createElement('div');
     qTitle.className = 'qz-q';
-    qTitle.textContent = (idx + 1) + '. ' + q.question;
+    qTitle.textContent = quizBlockIndex + '. ' + q.question;
     card.appendChild(qTitle);
 
     const opts = document.createElement('div');
@@ -1081,7 +1086,8 @@ window.QUIZ_PRONUNCIATION_DATA = <?php echo json_encode($quizPronunciationItems,
 
     card.appendChild(opts);
     listEl.appendChild(card);
-  });
+    quizBlockIndex++;
+  }
 
   if (matchState.enabled) {
     const keyedPairs = fixedMatchPairs.map(function (item, idx) {
@@ -1103,8 +1109,9 @@ window.QUIZ_PRONUNCIATION_DATA = <?php echo json_encode($quizPronunciationItems,
 
     const title = document.createElement('div');
     title.className = 'qz-q';
-    title.textContent = (randomizedQuestions.length + 1) + '. Match the cards (Top with Bottom)';
+    title.textContent = quizBlockIndex + '. Match the cards (Top with Bottom)';
     matchCard.appendChild(title);
+    quizBlockIndex++;
 
     const wrap = document.createElement('div');
     wrap.className = 'qz-match-wrap';
