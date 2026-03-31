@@ -1145,15 +1145,16 @@ window.QUIZ_PRONUNCIATION_DATA = <?php echo json_encode($quizPronunciationItems,
       btn.className = 'qz-match-tile';
       btn.setAttribute('data-key', item.key);
       btn.innerHTML = renderTileContent(item.left_text, item.left_image);
-      btn.addEventListener('click', function () {
-        if (matchState.matchedTop[item.key]) {
-          return;
-        }
-        matchState.selectedTop = item.key;
-        topRow.querySelectorAll('.qz-match-tile').forEach(function (node) {
-          node.classList.remove('is-selected');
-        });
+      // Drag and drop events
+      btn.setAttribute('draggable', 'true');
+      btn.addEventListener('dragstart', function (e) {
+        if (matchState.matchedTop[item.key]) return;
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', item.key);
         btn.classList.add('is-selected');
+      });
+      btn.addEventListener('dragend', function () {
+        btn.classList.remove('is-selected');
       });
       topRow.appendChild(btn);
     });
@@ -1164,6 +1165,53 @@ window.QUIZ_PRONUNCIATION_DATA = <?php echo json_encode($quizPronunciationItems,
       btn.className = 'qz-match-tile';
       btn.setAttribute('data-key', item.key);
       btn.innerHTML = renderTileContent(item.right_text, item.right_image);
+      // Drag and drop events
+      btn.addEventListener('dragover', function (e) {
+        if (matchState.matchedBottom[item.key]) return;
+        e.preventDefault();
+        btn.classList.add('is-selected');
+      });
+      btn.addEventListener('dragleave', function () {
+        btn.classList.remove('is-selected');
+      });
+      btn.addEventListener('drop', function (e) {
+        if (matchState.matchedBottom[item.key]) return;
+        e.preventDefault();
+        btn.classList.remove('is-selected');
+        const selectedTop = e.dataTransfer.getData('text/plain');
+        if (!selectedTop || matchState.matchedTop[selectedTop]) return;
+
+        const currentAttempts = (matchState.attemptsByTop[selectedTop] || 0) + 1;
+        matchState.attemptsByTop[selectedTop] = currentAttempts;
+
+        if (selectedTop === item.key) {
+          matchState.matchedTop[selectedTop] = true;
+          matchState.matchedBottom[item.key] = true;
+          matchState.answered += 1;
+          if (currentAttempts === 1) {
+            matchState.correct += 1;
+          }
+
+          const topBtn = topRow.querySelector('.qz-match-tile[data-key="' + selectedTop + '"]');
+          if (topBtn) {
+            topBtn.classList.remove('is-selected');
+            topBtn.classList.add('is-matched');
+          }
+          btn.classList.add('is-matched');
+          matchState.selectedTop = '';
+          refreshMatchStatus();
+          return;
+        }
+
+        const topBtn = topRow.querySelector('.qz-match-tile[data-key="' + selectedTop + '"]');
+        if (topBtn) {
+          topBtn.classList.add('is-wrong');
+          clearWrongState(topBtn);
+        }
+        btn.classList.add('is-wrong');
+        clearWrongState(btn);
+      });
+      // Click fallback for accessibility
       btn.addEventListener('click', function () {
         const selectedTop = matchState.selectedTop;
         if (!selectedTop || matchState.matchedBottom[item.key] || matchState.matchedTop[selectedTop]) {
