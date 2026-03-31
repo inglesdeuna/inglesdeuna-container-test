@@ -226,9 +226,9 @@ ob_start();
                 <input type="hidden" name="image_existing[]" value="<?= htmlspecialchars($img['image'], ENT_QUOTES, 'UTF-8') ?>">
                 <img src="<?= htmlspecialchars($img['image'], ENT_QUOTES, 'UTF-8') ?>" class="tracing-image-thumb" alt="tracing-image">
                 <div class="tracing-image-actions">
-                    <button type="button" class="tracing-btn tracing-btn-move" onclick="moveImage(<?= $i ?>, -1)">↑</button>
-                    <button type="button" class="tracing-btn tracing-btn-move" onclick="moveImage(<?= $i ?>, 1)">↓</button>
-                    <button type="button" class="tracing-btn tracing-btn-remove" onclick="removeImage(<?= $i ?>)">Remove</button>
+                    <button type="button" class="tracing-btn tracing-btn-move" onclick="moveImage(this, -1)">↑</button>
+                    <button type="button" class="tracing-btn tracing-btn-move" onclick="moveImage(this, 1)">↓</button>
+                    <button type="button" class="tracing-btn tracing-btn-remove" onclick="removeImage(this)">Remove</button>
                 </div>
             </li>
         <?php } ?>
@@ -236,18 +236,39 @@ ob_start();
     <button type="submit" class="tracing-btn" style="margin-top:10px;">💾 Save</button>
 </form>
 <script>
-function moveImage(idx, dir) {
+function moveImage(btn, dir) {
+    const item = btn.closest('.tracing-image-item');
     const list = document.getElementById('imagesList');
     const items = Array.from(list.children);
+    const idx = items.indexOf(item);
     if ((dir === -1 && idx === 0) || (dir === 1 && idx === items.length - 1)) return;
     const swapIdx = idx + dir;
-    list.insertBefore(items[idx], dir === -1 ? items[swapIdx] : items[swapIdx].nextSibling);
+    if (dir === -1) {
+        list.insertBefore(item, items[swapIdx]);
+    } else {
+        list.insertBefore(items[swapIdx], item);
+    }
 }
-function removeImage(idx) {
+function removeImage(btn) {
+    const item = btn.closest('.tracing-image-item');
+    if (item) item.remove();
+}
+// Antes de enviar el formulario, sincroniza el orden de los inputs
+document.getElementById('tracingForm').addEventListener('submit', function(e) {
     const list = document.getElementById('imagesList');
     const items = Array.from(list.children);
-    if (items[idx]) list.removeChild(items[idx]);
-}
+    // Elimina todos los inputs existentes
+    document.querySelectorAll('input[name="image_id[]"], input[name="image_existing[]"]').forEach(el => el.remove());
+    // Vuelve a agregarlos en el orden correcto
+    items.forEach(item => {
+        const id = item.querySelector('input[type="hidden"][name^="image_id"]');
+        const img = item.querySelector('input[type="hidden"][name^="image_existing"]');
+        if (id && img) {
+            list.appendChild(id.cloneNode(true));
+            list.appendChild(img.cloneNode(true));
+        }
+    });
+});
 </script>
 <?php
 $content = ob_get_clean();
