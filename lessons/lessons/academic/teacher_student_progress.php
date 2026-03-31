@@ -598,7 +598,7 @@ $showQuizEnabledMessage = isset($_GET['quiz_enabled']) && (string) $_GET['quiz_e
                                     break;
                                 }
                             }
-                            $canEnableQuiz = !$unitIsEnabledByTeacher && $completion < 60 && $hasTwoAttempts;
+                            $canEnableQuiz = !$unitIsEnabledByTeacher && $hasTwoAttempts;
                             ?>
                             <tr class="unit-row" data-unit-id="<?php echo h($unitId); ?>">
                                 <td>
