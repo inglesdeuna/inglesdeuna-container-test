@@ -347,6 +347,62 @@ function load_quiz_match_pairs(PDO $pdo, string $unit): array
   }
 }
 
+function load_quiz_pronunciation_items(PDO $pdo, string $unit): array
+{
+  if ($unit === '') {
+    return [];
+  }
+
+  try {
+    $stmt = $pdo->prepare("\n            SELECT data\n            FROM activities\n            WHERE unit_id = :unit\n              AND type = 'pronunciation'\n            ORDER BY id ASC\n            LIMIT 1\n        ");
+    $stmt->execute(['unit' => $unit]);
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+    if (!is_array($row)) {
+      return [];
+    }
+
+    $raw = $row['data'] ?? null;
+    $decoded = is_string($raw) ? json_decode($raw, true) : $raw;
+    if (!is_array($decoded)) {
+      return [];
+    }
+
+    $itemsSource = $decoded;
+    if (isset($decoded['items']) && is_array($decoded['items'])) {
+      $itemsSource = $decoded['items'];
+    } elseif (isset($decoded['data']) && is_array($decoded['data'])) {
+      $itemsSource = $decoded['data'];
+    } elseif (isset($decoded['words']) && is_array($decoded['words'])) {
+      $itemsSource = $decoded['words'];
+    }
+
+    $items = [];
+    foreach ($itemsSource as $item) {
+      if (!is_array($item)) {
+        continue;
+      }
+
+      $word = trim((string) ($item['en'] ?? ($item['word'] ?? '')));
+      $image = trim((string) ($item['img'] ?? ($item['image'] ?? '')));
+      $audio = trim((string) ($item['audio'] ?? ''));
+
+      if ($word === '' && $image === '' && $audio === '') {
+        continue;
+      }
+
+      $items[] = [
+        'en' => $word,
+        'img' => $image,
+        'audio' => $audio,
+      ];
+    }
+
+    return $items;
+  } catch (Throwable $e) {
+    return [];
+  }
+}
+
 function table_has_column(PDO $pdo, string $tableName, string $columnName): bool
 {
   try {
@@ -453,6 +509,7 @@ $questions = isset($activity['questions']) && is_array($activity['questions']) ?
 $questions = build_fixed_quiz_question_set($questions, 6);
 $description = (string) ($activity['description'] ?? '');
 $quizMatchPairs = load_quiz_match_pairs($pdo, $unit);
+$quizPronunciationItems = load_quiz_pronunciation_items($pdo, $unit);
 
 ensure_quiz_attempts_column($pdo);
 
@@ -495,6 +552,21 @@ ob_start();
 .qz-match-tile.is-selected{outline:2px solid #a855c8;outline-offset:1px}
 .qz-match-tile.is-matched{opacity:.55;cursor:default;filter:grayscale(.08)}
 .qz-match-tile.is-wrong{background:#fff1f1;border-color:#ef4444}
+.qz-pron-wrap{display:flex;flex-direction:column;gap:10px}
+.qz-pron-help{font-size:14px;color:#5d6f8f;font-weight:700}
+.qz-pron-grid{display:grid;gap:10px}
+.qz-pron-grid-6{grid-template-columns:repeat(6,minmax(120px,1fr))}
+.qz-pron-grid-8{grid-template-columns:repeat(4,minmax(150px,1fr))}
+.qz-pron-card{border:1px solid #e6d5f8;border-radius:12px;background:#fff9ff;padding:10px;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;min-height:200px;gap:8px}
+.qz-pron-img{width:100%;max-width:132px;height:90px;object-fit:contain;border-radius:10px;background:#fff}
+.qz-pron-word{font-size:16px;font-weight:800;color:#2d1f4f;text-align:center;line-height:1.2;min-height:38px}
+.qz-pron-actions{display:flex;gap:6px;flex-wrap:wrap;justify-content:center}
+.qz-pron-btn{border:none;border-radius:8px;padding:7px 10px;font-size:12px;font-weight:800;cursor:pointer;color:#fff}
+.qz-pron-btn.listen{background:linear-gradient(180deg,#0ea5e9,#0369a1)}
+.qz-pron-btn.speak{background:linear-gradient(180deg,#16a34a,#166534)}
+.qz-pron-status{font-size:12px;font-weight:800;color:#7c3aed;text-align:center;min-height:18px}
+.qz-pron-status.ok{color:#166534}
+.qz-pron-status.bad{color:#b91c1c}
 .qz-actions{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;position:sticky;bottom:12px;padding:12px;border:1px solid #dcc4f0;border-radius:14px;background:rgba(255,255,255,.95);backdrop-filter:blur(3px)}
 .qz-btn{border:none;border-radius:10px;padding:12px 16px;font-weight:800;cursor:pointer;color:#fff;background:linear-gradient(180deg,#f14902,#d33d00);box-shadow:0 8px 18px rgba(241,73,2,.22)}
 .qz-btn:disabled{opacity:.55;cursor:not-allowed}
@@ -506,7 +578,8 @@ ob_start();
 .qz-completed-score{font-size:22px;font-weight:800;color:#f14902;margin:0 0 8px}
 .qz-completed-text{font-size:16px;color:#b8551f;line-height:1.6;margin:0 0 14px}
 .qz-completed-note{font-size:14px;font-weight:700;color:#7c3aed}
-@media (max-width:760px){.qz-title{font-size:26px}.qz-q{font-size:16px}.qz-actions{position:static}}
+@media (max-width:1100px){.qz-pron-grid-6{grid-template-columns:repeat(4,minmax(140px,1fr))}}
+@media (max-width:760px){.qz-title{font-size:26px}.qz-q{font-size:16px}.qz-actions{position:static}.qz-pron-grid-6,.qz-pron-grid-8{grid-template-columns:repeat(2,minmax(130px,1fr))}}
 </style>
 
 <div class="qz-wrap" id="quizApp">
@@ -521,7 +594,7 @@ ob_start();
       <span class="qz-chip">Attempts: <?php echo (int) ($quizAttemptPolicy['attempts_used'] ?? 0); ?>/<?php echo (int) ($quizAttemptPolicy['attempts_allowed'] ?? 3); ?></span>
       <span class="qz-chip">Rule: 1 per day</span>
       <span class="qz-chip">Random questions</span>
-      <span class="qz-chip" id="qz-answered-chip">Answered: <span id="qz-answered-count">0</span>/<?php echo count($questions); ?></span>
+      <span class="qz-chip" id="qz-answered-chip">Answered: <span id="qz-answered-count">0</span>/<span id="qz-total-count"><?php echo count($questions); ?></span></span>
     </div>
     <div class="qz-progress-head">
       <span class="qz-progress-label">Progress</span>
@@ -563,6 +636,7 @@ window.QUIZ_RETURN_TO = <?php echo json_encode($returnTo, JSON_UNESCAPED_UNICODE
 window.QUIZ_ACTIVITY_ID = <?php echo json_encode((string) ($activity['id'] ?? ''), JSON_UNESCAPED_UNICODE); ?>;
 window.QUIZ_POLICY = <?php echo json_encode($quizAttemptPolicy, JSON_UNESCAPED_UNICODE); ?>;
 window.QUIZ_MATCH_DATA = <?php echo json_encode($quizMatchPairs, JSON_UNESCAPED_UNICODE); ?>;
+window.QUIZ_PRONUNCIATION_DATA = <?php echo json_encode($quizPronunciationItems, JSON_UNESCAPED_UNICODE); ?>;
 (function(){
   const btn = document.getElementById('btnCheckQuiz');
   const questionsWrap = document.getElementById('qz-questions-wrap');
@@ -572,10 +646,12 @@ window.QUIZ_MATCH_DATA = <?php echo json_encode($quizMatchPairs, JSON_UNESCAPED_
   const listEl = document.getElementById('qz-list');
   const attemptNoteEl = document.getElementById('qz-attempt-note');
   const answeredCountEl = document.getElementById('qz-answered-count');
+  const totalCountEl = document.getElementById('qz-total-count');
   const progressFillEl = document.getElementById('qz-progress-fill');
   const progressPercentEl = document.getElementById('qz-progress-percent');
   const policy = window.QUIZ_POLICY || {};
   const quizMatchData = Array.isArray(window.QUIZ_MATCH_DATA) ? window.QUIZ_MATCH_DATA : [];
+  const quizPronunciationData = Array.isArray(window.QUIZ_PRONUNCIATION_DATA) ? window.QUIZ_PRONUNCIATION_DATA : [];
 
   function shuffleArray(items) {
     const cloned = items.slice();
@@ -646,11 +722,13 @@ window.QUIZ_MATCH_DATA = <?php echo json_encode($quizMatchPairs, JSON_UNESCAPED_
     window.location.href = targetUrl;
   }
 
-  if (!btn || !listEl || !Array.isArray(window.QUIZ_DATA) || window.QUIZ_DATA.length === 0) {
+  const rawQuizData = Array.isArray(window.QUIZ_DATA) ? window.QUIZ_DATA : [];
+  const hasAnyQuizBlock = rawQuizData.length > 0 || quizMatchData.length > 0 || quizPronunciationData.length > 0;
+  if (!btn || !listEl || !hasAnyQuizBlock) {
     return;
   }
 
-  const randomizedQuestions = buildRandomizedQuiz(window.QUIZ_DATA);
+  const randomizedQuestions = buildRandomizedQuiz(rawQuizData);
 
   function buildFixedMatchPairs(rawPairs, targetCount) {
     if (!Array.isArray(rawPairs) || rawPairs.length === 0 || targetCount <= 0) {
@@ -694,6 +772,55 @@ window.QUIZ_MATCH_DATA = <?php echo json_encode($quizMatchPairs, JSON_UNESCAPED_
   }
 
   const fixedMatchPairs = buildFixedMatchPairs(quizMatchData, 9);
+  function normalizeWord(value) {
+    return String(value || '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  function buildFixedPronunciationSet(rawItems) {
+    if (!Array.isArray(rawItems) || rawItems.length === 0) {
+      return [];
+    }
+
+    const targetCount = window.matchMedia && window.matchMedia('(max-width: 1100px)').matches ? 8 : 6;
+    const cleaned = rawItems
+      .map(function (item) {
+        return {
+          en: String(item.en || item.word || '').trim(),
+          img: String(item.img || item.image || '').trim(),
+          audio: String(item.audio || '').trim(),
+        };
+      })
+      .filter(function (item) {
+        return item.en !== '' || item.img !== '' || item.audio !== '';
+      });
+
+    if (cleaned.length === 0) {
+      return [];
+    }
+
+    const shuffled = shuffleArray(cleaned.slice());
+    const selected = shuffled.slice(0, Math.min(targetCount, shuffled.length));
+
+    while (selected.length < targetCount) {
+      const source = selected.length > 0 ? selected : shuffled;
+      const idx = Math.floor(Math.random() * source.length);
+      selected.push({
+        en: source[idx].en,
+        img: source[idx].img,
+        audio: source[idx].audio,
+      });
+    }
+
+    return selected;
+  }
+
+  const pronunciationItems = buildFixedPronunciationSet(quizPronunciationData);
   const matchState = {
     enabled: fixedMatchPairs.length > 0,
     total: fixedMatchPairs.length,
@@ -703,6 +830,13 @@ window.QUIZ_MATCH_DATA = <?php echo json_encode($quizMatchPairs, JSON_UNESCAPED_
     attemptsByTop: {},
     matchedTop: {},
     matchedBottom: {},
+  };
+  const pronunciationState = {
+    enabled: pronunciationItems.length > 0,
+    total: pronunciationItems.length,
+    answered: 0,
+    correct: 0,
+    done: {},
   };
 
   function updateAnsweredProgress() {
@@ -720,12 +854,24 @@ window.QUIZ_MATCH_DATA = <?php echo json_encode($quizMatchPairs, JSON_UNESCAPED_
       }
     }
 
-    const answered = answeredQuestions + (matchState.enabled ? matchState.answered : 0);
-    const total = totalQuestions + (matchState.enabled ? matchState.total : 0);
+    const pronunciationCard = listEl.querySelector('.qz-card[data-index="quiz-pronunciation"]');
+    if (pronunciationCard) {
+      pronunciationCard.classList.toggle('qz-card-unanswered', pronunciationState.enabled && pronunciationState.answered < pronunciationState.total);
+    }
+
+    const answered = answeredQuestions
+      + (matchState.enabled ? matchState.answered : 0)
+      + (pronunciationState.enabled ? pronunciationState.answered : 0);
+    const total = totalQuestions
+      + (matchState.enabled ? matchState.total : 0)
+      + (pronunciationState.enabled ? pronunciationState.total : 0);
 
     const pct = total > 0 ? Math.round((answered / total) * 100) : 0;
     if (answeredCountEl) {
       answeredCountEl.textContent = String(answered);
+    }
+    if (totalCountEl) {
+      totalCountEl.textContent = String(total);
     }
     if (progressFillEl) {
       progressFillEl.style.width = String(pct) + '%';
@@ -740,6 +886,154 @@ window.QUIZ_MATCH_DATA = <?php echo json_encode($quizMatchPairs, JSON_UNESCAPED_
     }
 
     return { answered: answered, total: total };
+  }
+
+  if (pronunciationState.enabled) {
+    const recognitionCtor = window.SpeechRecognition || window.webkitSpeechRecognition || null;
+
+    const pronCard = document.createElement('div');
+    pronCard.className = 'qz-card qz-card-unanswered';
+    pronCard.setAttribute('data-index', 'quiz-pronunciation');
+
+    const pronTitle = document.createElement('div');
+    pronTitle.className = 'qz-q';
+    const pronQuestionIndex = randomizedQuestions.length + (matchState.enabled ? 1 : 0) + 1;
+    pronTitle.textContent = String(pronQuestionIndex) + '. Pronunciation challenge';
+    pronCard.appendChild(pronTitle);
+
+    const pronWrap = document.createElement('div');
+    pronWrap.className = 'qz-pron-wrap';
+    pronWrap.innerHTML = '<div class="qz-pron-help">Pronounce each card correctly. Desktop shows 6 in one row; compact screens use 2 rows of 4.</div>';
+
+    const pronGrid = document.createElement('div');
+    pronGrid.className = 'qz-pron-grid ' + (pronunciationState.total >= 8 ? 'qz-pron-grid-8' : 'qz-pron-grid-6');
+
+    pronunciationItems.forEach(function (item, idx) {
+      const card = document.createElement('div');
+      card.className = 'qz-pron-card';
+
+      if (item.img) {
+        const img = document.createElement('img');
+        img.className = 'qz-pron-img';
+        img.src = item.img;
+        img.alt = item.en || 'Pronunciation card';
+        card.appendChild(img);
+      }
+
+      const word = document.createElement('div');
+      word.className = 'qz-pron-word';
+      word.textContent = item.en || 'Pronounce';
+      card.appendChild(word);
+
+      const actions = document.createElement('div');
+      actions.className = 'qz-pron-actions';
+
+      const listenBtn = document.createElement('button');
+      listenBtn.type = 'button';
+      listenBtn.className = 'qz-pron-btn listen';
+      listenBtn.textContent = 'Listen';
+
+      const speakBtn = document.createElement('button');
+      speakBtn.type = 'button';
+      speakBtn.className = 'qz-pron-btn speak';
+      speakBtn.textContent = recognitionCtor ? 'Speak' : 'Mark Done';
+
+      actions.appendChild(listenBtn);
+      actions.appendChild(speakBtn);
+      card.appendChild(actions);
+
+      const status = document.createElement('div');
+      status.className = 'qz-pron-status';
+      status.textContent = 'Pending';
+      card.appendChild(status);
+
+      function markPronunciationDone(ok, text) {
+        if (pronunciationState.done[idx]) {
+          return;
+        }
+        pronunciationState.done[idx] = true;
+        pronunciationState.answered += 1;
+        if (ok) {
+          pronunciationState.correct += 1;
+          status.classList.add('ok');
+        } else {
+          status.classList.add('bad');
+        }
+        status.textContent = text;
+        speakBtn.disabled = true;
+        updateAnsweredProgress();
+      }
+
+      listenBtn.addEventListener('click', function () {
+        if (item.audio) {
+          try {
+            const audio = new Audio(item.audio);
+            audio.play();
+            return;
+          } catch (e) {
+          }
+        }
+
+        if ('speechSynthesis' in window && item.en) {
+          const utterance = new SpeechSynthesisUtterance(item.en);
+          utterance.lang = 'en-US';
+          window.speechSynthesis.cancel();
+          window.speechSynthesis.speak(utterance);
+        }
+      });
+
+      speakBtn.addEventListener('click', function () {
+        if (!recognitionCtor) {
+          markPronunciationDone(true, 'Completed');
+          return;
+        }
+
+        const expected = normalizeWord(item.en);
+        if (expected === '') {
+          markPronunciationDone(true, 'Completed');
+          return;
+        }
+
+        const recognition = new recognitionCtor();
+        recognition.lang = 'en-US';
+        recognition.interimResults = false;
+        recognition.maxAlternatives = 1;
+        status.classList.remove('ok', 'bad');
+        status.textContent = 'Listening...';
+
+        recognition.onresult = function (event) {
+          const spokenRaw = event && event.results && event.results[0] && event.results[0][0]
+            ? String(event.results[0][0].transcript || '')
+            : '';
+          const spoken = normalizeWord(spokenRaw);
+          if (spoken === expected || spoken.indexOf(expected) !== -1 || expected.indexOf(spoken) !== -1) {
+            markPronunciationDone(true, 'Correct');
+            return;
+          }
+
+          status.classList.add('bad');
+          status.textContent = 'Try again';
+        };
+
+        recognition.onerror = function () {
+          status.classList.add('bad');
+          status.textContent = 'Try again';
+        };
+
+        try {
+          recognition.start();
+        } catch (e) {
+          status.classList.add('bad');
+          status.textContent = 'Try again';
+        }
+      });
+
+      pronGrid.appendChild(card);
+    });
+
+    pronWrap.appendChild(pronGrid);
+    pronCard.appendChild(pronWrap);
+    listEl.appendChild(pronCard);
   }
 
   function focusFirstUnanswered() {
@@ -950,7 +1244,9 @@ window.QUIZ_MATCH_DATA = <?php echo json_encode($quizMatchPairs, JSON_UNESCAPED_
     }
 
     let correct = 0;
-    const total = randomizedQuestions.length + (matchState.enabled ? matchState.total : 0);
+    const total = randomizedQuestions.length
+      + (matchState.enabled ? matchState.total : 0)
+      + (pronunciationState.enabled ? pronunciationState.total : 0);
 
     randomizedQuestions.forEach(function(q, idx){
       const checked = document.querySelector('input[name="q_' + idx + '"]:checked');
@@ -962,6 +1258,10 @@ window.QUIZ_MATCH_DATA = <?php echo json_encode($quizMatchPairs, JSON_UNESCAPED_
 
     if (matchState.enabled) {
       correct += matchState.correct;
+    }
+
+    if (pronunciationState.enabled) {
+      correct += pronunciationState.correct;
     }
 
     const percent = total > 0 ? Math.round((correct / total) * 100) : 0;
