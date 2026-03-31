@@ -1,83 +1,89 @@
 <?php
 
 if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
-require_once __DIR__ . '/../../config/db.php';
-require_once __DIR__ . '/../../core/cloudinary_upload.php';
-require_once __DIR__ . '/../../core/_activity_editor_template.php';
-
-// Block student access to editor
-if (isset($_SESSION['student_logged']) && $_SESSION['student_logged']) {
-    header('Location: /lessons/lessons/academic/student_dashboard.php?error=access_denied');
-    exit;
-}
-
-// Accept admin OR teacher session
-$isLoggedIn = !empty($_SESSION['academic_logged']) || !empty($_SESSION['admin_logged']);
-if (!$isLoggedIn) {
-    header('Location: /lessons/lessons/academic/login.php');
-    exit;
-}
-
-$activityId = isset($_GET['id']) ? trim((string) $_GET['id']) : '';
-$unit = isset($_GET['unit']) ? trim((string) $_GET['unit']) : '';
-$source = isset($_GET['source']) ? trim((string) $_GET['source']) : '';
-$assignment = isset($_GET['assignment']) ? trim((string) $_GET['assignment']) : '';
-
-function default_tracing_title(): string { return 'Tracing'; }
-function normalize_tracing_title(string $title): string { $title = trim($title); return $title !== '' ? $title : default_tracing_title(); }
-function normalize_tracing_payload($rawData): array {
-    $default = array('title' => default_tracing_title(), 'images' => array());
-    if ($rawData === null || $rawData === '') return $default;
-    $decoded = is_string($rawData) ? json_decode($rawData, true) : $rawData;
-    if (!is_array($decoded)) return $default;
-    $title = '';
-    $imagesSource = $decoded;
-    if (isset($decoded['title'])) $title = trim((string) $decoded['title']);
-    if (isset($decoded['images']) && is_array($decoded['images'])) $imagesSource = $decoded['images'];
-    $images = array();
-    if (is_array($imagesSource)) {
-        foreach ($imagesSource as $item) {
-            if (!is_array($item)) continue;
-            $images[] = array(
-                'id' => isset($item['id']) ? trim((string) $item['id']) : uniqid('tracing_'),
-                'image' => isset($item['image']) ? trim((string) $item['image']) : '',
-            );
-        }
+    <div class="tracing-add-box">
+        <button type="button" class="tracing-btn" onclick="addTracingImage()">+ Agregar imagen</button>
+        <span style="font-size:13px;color:#64748b;">Puedes agregar varias imágenes una por una.</span>
+    </div>
+    <ul class="tracing-images-list" id="imagesList">
+        <?php foreach ($images as $i => $img) { ?>
+            <li class="tracing-image-item">
+                <input type="hidden" name="image_id[]" value="<?= htmlspecialchars($img['id'], ENT_QUOTES, 'UTF-8') ?>">
+                <input type="hidden" name="image_existing[]" value="<?= htmlspecialchars($img['image'], ENT_QUOTES, 'UTF-8') ?>">
+                <img src="<?= htmlspecialchars($img['image'], ENT_QUOTES, 'UTF-8') ?>" class="tracing-image-thumb" alt="tracing-image">
+                <input type="file" name="image_file[]" accept="image/*" style="margin-top:8px;">
+                <div class="tracing-image-actions">
+                    <button type="button" class="tracing-btn tracing-btn-move" onclick="moveImage(this, -1)">↑</button>
+                    <button type="button" class="tracing-btn tracing-btn-move" onclick="moveImage(this, 1)">↓</button>
+                    <button type="button" class="tracing-btn tracing-btn-remove" onclick="removeImage(this)">Remove</button>
+                </div>
+            </li>
+        <?php } ?>
+    </ul>
+    <button type="submit" class="tracing-btn" style="margin-top:10px;">💾 Save</button>
+</form>
+<script>
+function moveImage(btn, dir) {
+    const item = btn.closest('.tracing-image-item');
+    const list = document.getElementById('imagesList');
+    const items = Array.from(list.children);
+    const idx = items.indexOf(item);
+    if ((dir === -1 && idx === 0) || (dir === 1 && idx === items.length - 1)) return;
+    const swapIdx = idx + dir;
+    if (dir === -1) {
+        list.insertBefore(item, items[swapIdx]);
+    } else {
+        list.insertBefore(items[swapIdx], item);
     }
-    return array('title' => normalize_tracing_title($title), 'images' => $images);
 }
-function encode_tracing_payload(array $payload): string {
-    return json_encode(array(
-        'title' => normalize_tracing_title(isset($payload['title']) ? (string) $payload['title'] : ''),
-        'images' => isset($payload['images']) && is_array($payload['images']) ? array_values($payload['images']) : array(),
-    ), JSON_UNESCAPED_UNICODE);
+function removeImage(btn) {
+    const item = btn.closest('.tracing-image-item');
+    if (item) item.remove();
 }
-function activities_columns(PDO $pdo): array {
-    static $cache = null;
-    if (is_array($cache)) return $cache;
-    $cache = array();
-    $stmt = $pdo->query("SELECT column_name FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'activities'");
-    foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
-        if (isset($row['column_name'])) $cache[] = (string) $row['column_name'];
+function addTracingImage() {
+    const list = document.getElementById('imagesList');
+    const li = document.createElement('li');
+    li.className = 'tracing-image-item';
+    const uniqueId = `tracing_${Date.now()}_${Math.floor(Math.random()*1000)}`;
+    li.innerHTML = `
+        <input type="hidden" name="image_id[]" value="${uniqueId}">
+        <input type="hidden" name="image_existing[]" value="">
+        <img src="" class="tracing-image-thumb" alt="tracing-image" style="display:none;">
+        <input type="file" name="image_file[]" accept="image/*" style="margin-top:8px;">
+        <div class="tracing-image-actions">
+            <button type="button" class="tracing-btn tracing-btn-move" onclick="moveImage(this, -1)">↑</button>
+            <button type="button" class="tracing-btn tracing-btn-move" onclick="moveImage(this, 1)">↓</button>
+            <button type="button" class="tracing-btn tracing-btn-remove" onclick="removeImage(this)">Remove</button>
+        </div>
+    `;
+    // Preview instantáneo
+    const fileInput = li.querySelector('input[type="file"]');
+    const imgPreview = li.querySelector('img.tracing-image-thumb');
+    fileInput.addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (!file) { imgPreview.style.display = 'none'; imgPreview.src = ''; return; }
+        const reader = new FileReader();
+        reader.onload = function(evt) {
+            imgPreview.src = evt.target.result;
+            imgPreview.style.display = '';
+        };
+        reader.readAsDataURL(file);
+    });
+    list.appendChild(li);
+}
+// Antes de enviar el formulario, asegura el orden de los <li> (inputs ya están dentro)
+document.getElementById('tracingForm').addEventListener('submit', function(e) {
+    const list = document.getElementById('imagesList');
+    const items = Array.from(list.children);
+    // Validar que haya al menos una imagen
+    if (items.length === 0) {
+        alert('Debes agregar al menos una imagen para guardar la actividad.');
+        e.preventDefault();
+        return false;
     }
-    return $cache;
-}
-function load_tracing_activity(PDO $pdo, string $unit, string $activityId): array {
-    $columns = activities_columns($pdo);
-    $selectFields = array('id');
-    if (in_array('data', $columns, true)) $selectFields[] = 'data';
-    if (in_array('content_json', $columns, true)) $selectFields[] = 'content_json';
-    if (in_array('title', $columns, true)) $selectFields[] = 'title';
-    if (in_array('name', $columns, true)) $selectFields[] = 'name';
-    $fallback = array('id' => '', 'title' => default_tracing_title(), 'images' => array());
-    $row = null;
-    if ($activityId !== '') {
-        $stmt = $pdo->prepare("SELECT " . implode(', ', $selectFields) . " FROM activities WHERE id = :id AND type = 'tracing' LIMIT 1");
-        $stmt->execute(array('id' => $activityId));
-        $row = $stmt->fetch(PDO::FETCH_ASSOC);
-    }
+    // No es necesario eliminar ni reinsertar inputs, solo asegurar el orden visual
+    items.forEach(item => list.appendChild(item));
+});
     if (!$row && in_array('unit_id', $columns, true)) {
         $stmt = $pdo->prepare("SELECT " . implode(', ', $selectFields) . " FROM activities WHERE unit_id = :unit AND type = 'tracing' ORDER BY id ASC LIMIT 1");
         $stmt->execute(array('unit' => $unit));
