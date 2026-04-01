@@ -56,7 +56,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($source !== '') $params[] = 'source=' . urlencode($source);
     if ($assignment !== '') $params[] = 'assignment=' . urlencode($assignment);
     if ($savedActivityId !== '') $params[] = 'id=' . urlencode($savedActivityId);
-    header('Location: viewer.php?' . implode('&', $params) . '&saved=1');
+    header('Location: editor.php?' . implode('&', $params) . '&saved=1');
     exit;
 }
 
