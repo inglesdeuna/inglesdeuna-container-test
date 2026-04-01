@@ -152,8 +152,8 @@ ob_start();
 
     <div class="tracing-stage">
         <div class="tracing-viewer-toolbar">
-            <button class="tracing-viewer-btn tracing-viewer-btn-prev" id="prevBtn">⟨ Previous</button>
-            <button class="tracing-viewer-btn tracing-viewer-btn-next" id="nextBtn">Next ⟩</button>
+            <button class="tracing-viewer-btn tracing-viewer-btn-prev" id="prevBtn">Previous</button>
+            <button class="tracing-viewer-btn tracing-viewer-btn-next" id="nextBtn">Next</button>
             <button class="tracing-viewer-btn tracing-viewer-btn-clear" id="clearBtn">Clear</button>
         </div>
 
