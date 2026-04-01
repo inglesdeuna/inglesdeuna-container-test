@@ -4,6 +4,7 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 require_once __DIR__ . '/../../config/db.php';
+require_once __DIR__ . '/../../core/cloudinary_upload.php';
 require_once __DIR__ . '/tracing_functions.php';
 if (!function_exists('render_activity_editor')) {
     require_once __DIR__ . '/../../core/_activity_editor_template.php';
@@ -46,10 +47,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $uploadedImage = upload_to_cloudinary($imageFiles['tmp_name'][$fileIndex]);
             if ($uploadedImage) $imgUrl = $uploadedImage;
             $fileIndex++;
-        } elseif ($imgUrl !== '') {
-            if ($imageFiles && isset($imageFiles['name'][$fileIndex]) && $imageFiles['name'][$fileIndex] !== '') {
-                $fileIndex++;
-            }
         }
         if ($imgUrl === '') continue;
         $sanitized[] = array('id' => $imgId !== '' ? $imgId : uniqid('tracing_'), 'image' => $imgUrl);
@@ -59,7 +56,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($source !== '') $params[] = 'source=' . urlencode($source);
     if ($assignment !== '') $params[] = 'assignment=' . urlencode($assignment);
     if ($savedActivityId !== '') $params[] = 'id=' . urlencode($savedActivityId);
-    header('Location: editor.php?' . implode('&', $params) . '&saved=1');
+    header('Location: viewer.php?' . implode('&', $params) . '&saved=1');
     exit;
 }
 
@@ -285,8 +282,7 @@ document.getElementById('imageUploadInput').addEventListener('change', function(
         };
         reader.readAsDataURL(file);
     });
-    // Limpiar input para permitir volver a seleccionar los mismos archivos si se desea
-    e.target.value = '';
+    // Mantener el valor del input para que los archivos sí se envíen al guardar.
 });
 
 // Antes de enviar el formulario, asegura el orden de los <li> (inputs ya están dentro)
