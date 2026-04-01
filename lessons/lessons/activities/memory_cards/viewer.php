@@ -327,9 +327,9 @@ ob_start();
 .mc-card.is-flipped .mc-card-inner{transform:rotateY(180deg)}
 .mc-card-face{position:absolute;inset:0;backface-visibility:hidden;border-radius:16px;border:1px solid #dbeafe;display:flex;align-items:center;justify-content:center;overflow:hidden}
 .mc-card-front{background:linear-gradient(145deg,#3b82f6,#1d4ed8);color:#dbeafe;font-family:'Fredoka','Trebuchet MS',sans-serif;font-size:46px;box-shadow:0 14px 24px rgba(37,99,235,.35)}
-.mc-card-back{transform:rotateY(180deg);background:#fff;padding:12px;box-shadow:0 10px 20px rgba(15,23,42,.08)}
+.mc-card-back{transform:rotateY(180deg);background:#fff;padding:4px;box-shadow:0 10px 20px rgba(15,23,42,.08);display:flex;align-items:center;justify-content:center}
 .mc-card-back p{margin:0;text-align:center;color:#1e293b;font-weight:800;font-size:18px;line-height:1.35;word-break:break-word}
-.mc-card-back img{width:100%;height:100%;object-fit:cover;border-radius:12px}
+.mc-card-back img{width:100%;height:100%;object-fit:contain;border-radius:10px}
 .mc-card.is-matched .mc-card-face{border-color:#34d399}
 .mc-card.is-vanishing{pointer-events:none}
 .mc-card.is-vanishing .mc-card-inner{animation:mcVanish .34s ease forwards}
