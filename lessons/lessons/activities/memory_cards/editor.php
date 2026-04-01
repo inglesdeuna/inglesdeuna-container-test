@@ -613,8 +613,8 @@ ob_start();
 .memory-label{display:block;font-size:12px;font-weight:800;color:#475569;margin:8px 0 6px;text-transform:uppercase;letter-spacing:.04em}
 .memory-input,.memory-select{width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:10px;font-size:14px;background:#fff}
 .memory-file{width:100%}
-.memory-preview{margin-top:8px;padding:8px;border:1px dashed #cbd5e1;background:#fff;border-radius:10px;min-height:44px;display:flex;align-items:center;justify-content:center;color:#64748b;font-size:12px;overflow:hidden}
-.memory-preview img{max-width:100%;max-height:120px;border-radius:8px;object-fit:cover}
+.memory-preview{margin-top:8px;padding:1mm;border:1px dashed #cbd5e1;background:#fff;border-radius:10px;min-height:44px;display:flex;align-items:center;justify-content:center;color:#64748b;font-size:12px;overflow:hidden}
+.memory-preview img{max-width:100%;max-height:120px;border-radius:8px;object-fit:contain}
 .memory-tools{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
 .memory-btn{border:none;border-radius:999px;padding:10px 16px;font-weight:800;cursor:pointer;box-shadow:0 8px 18px rgba(15,23,42,.1)}
 .memory-btn-add{background:linear-gradient(180deg,#34d399,#059669);color:#ecfdf5}
