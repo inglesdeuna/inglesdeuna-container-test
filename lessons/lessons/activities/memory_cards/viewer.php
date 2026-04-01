@@ -494,18 +494,7 @@ ob_start();
             }
 
             function playFlipSound() {
-                if (!flipAudioEl) {
-                    return;
-                }
-
-                const instance = flipAudioEl.cloneNode(true);
-                instance.volume = audioVolumes.flip;
-                const p = instance.play();
-                if (p && typeof p.catch === 'function') {
-                    p.catch(function () {
-                        playElementAudio(flipAudioEl, audioVolumes.flip);
-                    });
-                }
+                // flip sound disabled
             }
 
             function playSound(kind) {
