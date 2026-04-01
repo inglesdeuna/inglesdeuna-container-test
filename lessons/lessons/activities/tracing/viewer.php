@@ -123,6 +123,7 @@ ob_start();
     border:2px solid #14b8a6;
     border-radius:12px;
     background:#fff;
+    cursor:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='28' viewBox='0 0 28 28'%3E%3Cg transform='rotate(-35 14 14)'%3E%3Crect x='12' y='2' width='4' height='15' rx='1' fill='%23f59e0b'/%3E%3Crect x='12.3' y='16' width='3.4' height='4' fill='%23fef3c7'/%3E%3Cpolygon points='14,22 12,20 16,20' fill='%231f2937'/%3E%3Crect x='12' y='0.6' width='4' height='2.2' rx='0.7' fill='%23ef4444'/%3E%3C/g%3E%3C/svg%3E") 3 24, crosshair;
 }
 
 .tracing-counter{
