@@ -217,6 +217,23 @@ ob_start();
 }
 .btn-add { background:#7c3aed; color:#fff; padding:10px 16px; border:none; border-radius:8px; cursor:pointer; font-weight:700; }
 .btn-remove { background:#ef4444; color:#fff; border:none; padding:7px 12px; border-radius:8px; cursor:pointer; font-weight:700; font-size:13px; }
+.save-btn{
+    background:linear-gradient(180deg,#0d9488,#0f766e);
+    color:#fff;
+    padding:10px 20px;
+    border:none;
+    border-radius:10px;
+    cursor:pointer;
+    font-weight:800;
+    font-family:'Nunito','Segoe UI',sans-serif;
+    font-size:15px;
+    transition:transform .15s ease, filter .15s ease;
+    box-shadow:0 2px 8px rgba(13,148,136,.22);
+}
+.save-btn:hover{
+    filter:brightness(1.07);
+    transform:translateY(-1px);
+}
 
 /* live preview */
 .cw-preview-wrap {

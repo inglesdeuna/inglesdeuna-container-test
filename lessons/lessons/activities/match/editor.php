@@ -629,13 +629,38 @@ ob_start();
 }
 
 .btn-add{
-    background:#16a34a;
+    background:linear-gradient(180deg,#14b8a6,#0d9488);
     color:#fff;
     padding:10px 14px;
     border:none;
-    border-radius:8px;
+    border-radius:10px;
     cursor:pointer;
-    font-weight:700;
+    font-weight:800;
+    font-family:'Nunito','Segoe UI',sans-serif;
+    font-size:14px;
+    transition:transform .15s ease, filter .15s ease;
+    box-shadow:0 2px 8px rgba(13,148,136,.2);
+}
+.btn-add:hover{
+    filter:brightness(1.07);
+    transform:translateY(-1px);
+}
+.save-btn{
+    background:linear-gradient(180deg,#0d9488,#0f766e);
+    color:#fff;
+    padding:10px 20px;
+    border:none;
+    border-radius:10px;
+    cursor:pointer;
+    font-weight:800;
+    font-family:'Nunito','Segoe UI',sans-serif;
+    font-size:15px;
+    transition:transform .15s ease, filter .15s ease;
+    box-shadow:0 2px 8px rgba(13,148,136,.22);
+}
+.save-btn:hover{
+    filter:brightness(1.07);
+    transform:translateY(-1px);
 }
 
 .btn-type{
@@ -654,13 +679,20 @@ ob_start();
 }
 
 .btn-remove{
-    background:#ef4444;
+    background:linear-gradient(180deg,#ef4444,#b91c1c);
     color:#fff;
     border:none;
     padding:8px 12px;
-    border-radius:8px;
+    border-radius:10px;
     cursor:pointer;
-    font-weight:700;
+    font-weight:800;
+    font-family:'Nunito','Segoe UI',sans-serif;
+    font-size:13px;
+    transition:transform .15s ease, filter .15s ease;
+}
+.btn-remove:hover{
+    filter:brightness(1.07);
+    transform:translateY(-1px);
 }
 
 .match-help{

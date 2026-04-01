@@ -563,18 +563,21 @@ ob_start();
     font-weight:700;
 }
 .save-btn{
-    background:#2563eb;
+    background:linear-gradient(180deg,#0d9488,#0f766e);
     color:#fff;
-    padding:10px 18px;
+    padding:10px 20px;
     border:none;
-    border-radius:8px;
+    border-radius:10px;
     cursor:pointer;
-    font-weight:700;
-    box-shadow:0 2px 8px #2563eb22;
-    transition:background 0.2s;
+    font-weight:800;
+    font-family:'Nunito','Segoe UI',sans-serif;
+    font-size:15px;
+    transition:transform .15s ease, filter .15s ease;
+    box-shadow:0 2px 8px rgba(13,148,136,.22);
 }
 .save-btn:hover{
-    background:#1d4ed8;
+    filter:brightness(1.07);
+    transform:translateY(-1px);
 }
 
 .btn-remove{
