@@ -702,13 +702,13 @@ body{margin:0;font-family:'Nunito','Segoe UI',sans-serif;background:linear-gradi
 .topbar{
     background:linear-gradient(180deg,#f14902,#d33d00);
     color:#fff;
-    padding:16px 24px;
+    padding:12px 24px;
 }
 .topbar-inner{
     max-width:1280px;
     margin:0 auto;
     display:grid;
-    grid-template-columns:180px 1fr;
+    grid-template-columns:180px 1fr 180px;
     align-items:center;
     gap:12px;
 }
@@ -750,9 +750,10 @@ body{margin:0;font-family:'Nunito','Segoe UI',sans-serif;background:linear-gradi
 }
 .frame-wrap{
     border-radius:14px;overflow:hidden;background:#fff;
-    border:1px solid var(--line);box-shadow:var(--shadow-sm);min-height:84vh;
+    border:1px solid var(--line);box-shadow:var(--shadow-sm);
+    min-height:300px;
 }
-.frame-wrap iframe{display:block;width:100%;height:84vh;border:0;background:#fff}
+.frame-wrap iframe{display:block;width:100%;height:calc(100vh - 290px);min-height:300px;border:0;background:#fff}
 
 .controls{
     display:flex;align-items:center;justify-content:space-between;
@@ -863,9 +864,8 @@ body{margin:0;font-family:'Nunito','Segoe UI',sans-serif;background:linear-gradi
 
 @media(max-width:768px){
     .topbar-inner{grid-template-columns:1fr;text-align:center}
-    .page{padding:12px}
-    .frame-wrap{min-height:58vh}
-    .frame-wrap iframe{height:58vh}
+    .page{padding:8px}
+    .frame-wrap iframe{height:calc(100vh - 320px);min-height:260px}
     .controls{flex-wrap:wrap}
     .ctrl-btn,.empty-btn{flex:1 1 100%;min-width:0}
     .step-counter{width:100%;order:-1}
