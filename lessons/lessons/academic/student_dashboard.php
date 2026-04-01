@@ -428,6 +428,20 @@ $_SESSION['student_permission'] = $studentPermission;
 $studentInitials = student_initials($studentName);
 $myAssignments = load_student_assignments($studentId);
 $scoreSummaryByAssignment = load_assignment_score_summary($studentId);
+
+// Check quiz unlock status for the first assignment
+$firstAssignmentId = (string) (($myAssignments[0] ?? [])['id'] ?? '');
+$quizUnlocked = false;
+if ($firstAssignmentId !== '') {
+    $pdoQuiz = get_pdo_connection();
+    if ($pdoQuiz) {
+        try {
+            $qStmt = $pdoQuiz->prepare("SELECT 1 FROM teacher_quiz_unlocks WHERE student_id = :sid AND assignment_id = :aid LIMIT 1");
+            $qStmt->execute(['sid' => $studentId, 'aid' => $firstAssignmentId]);
+            $quizUnlocked = (bool) $qStmt->fetchColumn();
+        } catch (Throwable $e) {}
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -436,6 +450,7 @@ $scoreSummaryByAssignment = load_assignment_score_summary($studentId);
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Student Dashboard</title>
 <style>
+@import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@500;700;800&display=swap');
 :root{
     --bg:#fff8e6;
     --card:#ffffff;
@@ -448,42 +463,62 @@ $scoreSummaryByAssignment = load_assignment_score_summary($studentId);
     --danger:#c42828;
     --soft:#eddeff;
     --shadow:0 10px 24px rgba(120,40,160,.13);
+    --shadow-sm:0 2px 8px rgba(120,40,160,.08);
 }
 *{box-sizing:border-box}
 body{
     margin:0;
-    font-family:Arial,sans-serif;
+    font-family:'Nunito','Segoe UI',sans-serif;
     background:linear-gradient(145deg,#fff8e6 0%,#fdeaff 55%,#f0e0ff 100%);
     color:var(--text);
-    padding:26px;
 }
-.page{max-width:1200px;margin:0 auto}
-.top{
+.page{max-width:1400px;margin:0 auto;padding:20px 20px 40px;}
+.header{
     display:flex;
     justify-content:space-between;
     align-items:center;
-    gap:12px;
-    flex-wrap:wrap;
-    margin-bottom:18px;
+    gap:20px;
+    padding-bottom:20px;
+    border-bottom:1px solid var(--line);
+    margin-bottom:28px;
 }
-.top h1{margin:0;color:var(--title);font-size:30px}
-.logout{color:#fff;text-decoration:none;font-weight:700;background:var(--title);padding:10px 14px;border-radius:10px;display:inline-flex;align-items:center;justify-content:center}
-.logout:hover{background:#2ba7c5}
-.profile-card{
+.header h1{
+    margin:0;
+    font-size:32px;
+    font-weight:800;
+    color:var(--title);
+    font-family:'Fredoka','Trebuchet MS',sans-serif;
+}
+.logout-btn{
+    display:inline-block;
+    text-decoration:none;
+    color:#fff;
+    font-size:13px;
+    font-weight:700;
+    border-radius:10px;
+    padding:10px 16px;
+    background:linear-gradient(180deg,var(--title),#7e22ce);
+    box-shadow:var(--shadow-sm);
+    transition:filter .2s,transform .15s;
+}
+.logout-btn:hover{filter:brightness(1.07);transform:translateY(-1px);}
+/* layout */
+.layout{display:grid;grid-template-columns:300px 1fr;gap:28px;align-items:start;}
+/* sidebar panel */
+.panel{
     background:var(--card);
     border:1px solid var(--line);
     border-radius:14px;
     box-shadow:var(--shadow);
-    padding:16px;
-    margin-bottom:18px;
-    display:flex;
-    gap:18px;
-    align-items:center;
-    flex-wrap:wrap;
+    padding:24px 20px;
+    position:sticky;
+    top:20px;
 }
+.profile-box{text-align:center;}
 .avatar{
-    width:112px;
-    height:112px;
+    width:160px;
+    height:160px;
+    margin:0 auto 16px;
     border-radius:50%;
     overflow:hidden;
     background:linear-gradient(180deg,#c97de8,#8b1a9a);
@@ -491,137 +526,208 @@ body{
     display:flex;
     align-items:center;
     justify-content:center;
-    font-size:34px;
+    font-size:54px;
     font-weight:800;
-    flex-shrink:0;
+    border:4px solid #f3d6f8;
+    box-shadow:0 8px 20px rgba(168,85,200,.2);
 }
-.avatar img{width:100%;height:100%;object-fit:cover;display:block}
-.profile-body{flex:1;min-width:220px}
-.welcome{margin:0 0 8px;font-size:16px}
+.avatar img{width:100%;height:100%;object-fit:cover;display:block;}
+.student-name{
+    font-size:20px;
+    font-weight:800;
+    color:var(--title);
+    margin:0 0 4px;
+    font-family:'Fredoka','Trebuchet MS',sans-serif;
+}
+.student-role{font-size:13px;color:var(--muted);font-weight:600;margin-bottom:14px;}
 .badge{
     display:inline-flex;
     align-items:center;
-    padding:6px 10px;
+    padding:5px 10px;
     border-radius:999px;
     font-size:12px;
     font-weight:700;
     background:var(--soft);
     color:var(--title);
-    border:1px solid #f7c95f;
+    border:1px solid #e9b3f7;
+    margin-bottom:16px;
 }
-.profile-form{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-.profile-form input[type="file"]{max-width:240px}
-.btn{
-    display:inline-block;
-    margin-top:14px;
-    padding:10px 14px;
-    background:var(--salmon);
-    color:#fff;
+.upload-form{text-align:left;margin:8px 0 4px;}
+.upload-label{display:block;font-size:11px;color:var(--muted);font-weight:800;margin-bottom:6px;text-transform:uppercase;letter-spacing:.06em;}
+.upload-input{width:100%;margin-bottom:8px;padding:7px;border:1px solid var(--line);border-radius:8px;font-size:13px;}
+.upload-btn{
+    width:100%;border:none;border-radius:10px;padding:10px;color:#fff;cursor:pointer;
+    font-size:13px;font-weight:700;
+    background:linear-gradient(180deg,#c97de8,#8b1a9a);
+    transition:filter .2s,transform .15s;
+    font-family:'Nunito','Segoe UI',sans-serif;
+}
+.upload-btn:hover{filter:brightness(1.07);transform:translateY(-1px);}
+/* sidebar action buttons */
+.sidebar-section-title{
+    margin:18px 0 8px;
+    font-size:11px;
+    font-weight:800;
+    text-transform:uppercase;
+    letter-spacing:.08em;
+    color:var(--muted);
+}
+.side-button{
+    display:block;
+    width:100%;
+    margin-top:8px;
+    padding:12px 16px;
+    border-radius:12px;
     text-decoration:none;
-    border-radius:8px;
-    font-weight:700;
+    font-size:13px;
+    font-weight:800;
+    color:#fff;
+    background:linear-gradient(180deg,#9d4abf,#7e22ce);
+    text-align:center;
+    transition:filter .2s,transform .15s;
+    box-shadow:var(--shadow-sm);
     border:none;
     cursor:pointer;
+    font-family:'Nunito','Segoe UI',sans-serif;
+    line-height:1;
 }
-.btn:hover{background:var(--salmon-dark)}
-.btn.secondary{background:#a08a85}
-.btn.secondary{background:var(--title)}
-.btn.secondary:hover{background:#2ba7c5}
-.section-title{margin:0 0 16px;color:var(--title);font-size:24px;font-weight:700}
-.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px}
-.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px;box-shadow:var(--shadow)}
-.card h3{margin:0 0 10px;font-size:20px;color:var(--title)}
-.card p{margin:6px 0;color:var(--muted);font-size:15px}
-.actions{display:flex;gap:8px;flex-wrap:wrap}
-.empty{background:#fff;border:1px solid var(--line);border-radius:12px;padding:18px;color:var(--muted)}
-.notice{padding:10px 12px;border-radius:8px;margin-bottom:12px;font-weight:700}
-.notice-ok{background:#ebfff0;border:1px solid #c2efcf;color:#1b7a39}
-.notice-error{background:#fff0f0;border:1px solid #f3c4c4;color:#b42323}
-
-@media (max-width: 768px){
-    body{padding:18px}
-    .top h1{font-size:24px}
+.side-button:hover{filter:brightness(1.07);transform:translateY(-1px);}
+.side-button.green{background:linear-gradient(180deg,#a78bfa,#7c3aed);}
+.side-button.locked{background:linear-gradient(180deg,#b0b0b0,#888);cursor:default;opacity:.78;}
+.side-button.locked:hover{filter:none;transform:none;}
+.side-button.orange{background:linear-gradient(180deg,#fb923c,#ea580c);}
+/* notices */
+.notice{padding:10px 12px;border-radius:8px;margin-bottom:14px;font-weight:700;font-size:13px;}
+.notice-ok{background:#ebfff0;border:1px solid #c2efcf;color:#1b7a39;}
+.notice-error{background:#fff0f0;border:1px solid #f3c4c4;color:#b42323;}
+/* main area */
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px;}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px;box-shadow:var(--shadow);}
+.card h3{margin:0 0 10px;font-size:20px;color:var(--title);font-family:'Fredoka','Trebuchet MS',sans-serif;}
+.card p{margin:6px 0;color:var(--muted);font-size:15px;}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;}
+.btn{
+    display:inline-block;
+    padding:10px 14px;
+    background:linear-gradient(180deg,var(--salmon),var(--salmon-dark));
+    color:#fff;
+    text-decoration:none;
+    border-radius:10px;
+    font-weight:700;
+    font-size:13px;
+    border:none;
+    cursor:pointer;
+    transition:filter .2s,transform .15s;
+}
+.btn:hover{filter:brightness(1.07);transform:translateY(-1px);}
+.btn.secondary{background:linear-gradient(180deg,var(--title),#7e22ce);}
+.empty{background:#fff;border:1px solid var(--line);border-radius:12px;padding:18px;color:var(--muted);}
+@media (max-width:1024px){
+    .layout{grid-template-columns:1fr;}
+    .panel{position:static;}
+}
+@media (max-width:768px){
+    .page{padding:14px;}
+    .header{flex-direction:column;align-items:flex-start;gap:10px;}
+    .header h1{font-size:26px;}
 }
 </style>
 </head>
 <body>
 <div class="page">
-    <div class="top">
-        <h1>Student Profile</h1>
-        <a class="logout" href="logout.php">Log out</a>
+    <div class="header">
+        <h1>Student Dashboard</h1>
+        <a class="logout-btn" href="logout.php">Log out</a>
     </div>
 
-    <?php if ($flashMessage !== '') { ?><div class="notice notice-ok"><?php echo h($flashMessage); ?></div><?php } ?>
-    <?php if ($flashError !== '') { ?><div class="notice notice-error"><?php echo h($flashError); ?></div><?php } ?>
+    <?php if ($flashMessage !== '') { ?>
+        <div class="notice notice-ok"><?php echo h($flashMessage); ?></div>
+    <?php } ?>
+    <?php if ($flashError !== '') { ?>
+        <div class="notice notice-error"><?php echo h($flashError); ?></div>
+    <?php } ?>
 
-    <div class="profile-card">
-        <div class="avatar">
-            <?php if ($studentPhotoSrc !== '') { ?>
-                <img src="<?php echo $studentPhotoSrc; ?>" alt="Student photo">
+    <div class="layout">
+        <aside class="panel">
+            <div class="profile-box">
+                <div class="avatar">
+                    <?php if ($studentPhotoSrc !== '') { ?>
+                        <img src="<?php echo $studentPhotoSrc; ?>" alt="Student photo">
+                    <?php } else { ?>
+                        <?php echo h($studentInitials); ?>
+                    <?php } ?>
+                </div>
+                <div class="student-name"><?php echo h($studentName); ?></div>
+                <div class="student-role">Student</div>
+                <span class="badge"><?php echo h($studentPermission === 'editor' ? 'Editor mode' : 'View mode'); ?></span>
+
+                <form method="post" enctype="multipart/form-data" class="upload-form">
+                    <input type="hidden" name="action" value="upload_student_photo">
+                    <label class="upload-label">Profile photo</label>
+                    <input type="file" name="student_photo" class="upload-input" accept="image/jpeg,image/png,image/webp,image/gif" required>
+                    <button class="upload-btn" type="submit">Update photo</button>
+                </form>
+            </div>
+
+            <div class="sidebar-section-title">Quick Actions</div>
+
+            <?php if ($quizUnlocked && $firstAssignmentId !== '') { ?>
+                <a class="side-button green" href="student_quiz.php?assignment=<?php echo urlencode($firstAssignmentId); ?>">Go to Quiz</a>
             <?php } else { ?>
-                <span><?php echo h($studentInitials); ?></span>
+                <span class="side-button locked" title="Ask your teacher to unlock the quiz">Quiz Locked 🔒</span>
             <?php } ?>
-        </div>
 
-        <div class="profile-body">
-            <p class="welcome">Welcome, <strong><?php echo h($studentName); ?></strong>.</p>
-            <span class="badge">Mode: <?php echo h($studentPermission === 'editor' ? 'Editor' : 'View'); ?> (read-only recommended)</span>
+            <a class="side-button orange" href="change_password_student.php">Change Password</a>
+            <a class="side-button" href="logout.php">Log out</a>
+        </aside>
 
-            <form method="post" enctype="multipart/form-data" class="profile-form" style="margin-top:12px;">
-                <input type="hidden" name="action" value="upload_student_photo">
-                <input type="file" name="student_photo" accept="image/jpeg,image/png,image/webp,image/gif" required>
-                <button class="btn" type="submit" style="margin-top:0;">Upload photo</button>
-            </form>
-        </div>
-    </div>
-
-    <h2 class="section-title">My courses and programs</h2>
-
-    <?php if (empty($myAssignments)) { ?>
-        <div class="empty">You do not have assigned courses yet.</div>
-    <?php } else { ?>
-        <div class="grid">
-            <?php foreach ($myAssignments as $assignment) { ?>
-                <?php
-                $assignmentId = (string) ($assignment['id'] ?? '');
-                $program = (string) ($assignment['program'] ?? 'technical');
-                $programLabel = upper_label($program === 'english' ? 'inglés' : 'técnico');
-                $courseName = trim((string) ($assignment['course_name'] ?? ''));
-                if ($courseName === '') {
-                    $courseName = 'Course';
-                }
-                $courseName = upper_label($courseName);
-                $unitName = trim((string) ($assignment['unit_name'] ?? ''));
-                if ($unitName === '' && $program === 'english') {
-                    $unitName = 'Units by phase';
-                }
-                $unitName = upper_label($unitName);
-                $periodLabel = upper_label((string) ($assignment['period'] ?? ''));
-                $scoreSummary = $scoreSummaryByAssignment[$assignmentId] ?? null;
-                ?>
-                <div class="card">
-                    <h3><?php echo h($courseName); ?></h3>
-                    <p>Program: <strong><?php echo h($programLabel); ?></strong></p>
-                    <p>Teacher: <strong><?php echo h((string) ($assignment['teacher_name'] ?? 'Teacher')); ?></strong></p>
-                    <p>Period: <strong><?php echo h($periodLabel); ?></strong></p>
-                    <?php if ($unitName !== '') { ?>
-                        <p>Unit: <strong><?php echo h($unitName); ?></strong></p>
+        <main class="main-area">
+            <?php if (empty($myAssignments)) { ?>
+                <div class="empty">You do not have assigned courses yet.</div>
+            <?php } else { ?>
+                <div class="grid">
+                    <?php foreach ($myAssignments as $assignment) { ?>
+                        <?php
+                        $assignmentId = (string) ($assignment['id'] ?? '');
+                        $program = (string) ($assignment['program'] ?? 'technical');
+                        $programLabel = upper_label($program === 'english' ? 'inglés' : 'técnico');
+                        $courseName = trim((string) ($assignment['course_name'] ?? ''));
+                        if ($courseName === '') {
+                            $courseName = 'Course';
+                        }
+                        $courseName = upper_label($courseName);
+                        $unitName = trim((string) ($assignment['unit_name'] ?? ''));
+                        if ($unitName === '' && $program === 'english') {
+                            $unitName = 'Units by phase';
+                        }
+                        $unitName = upper_label($unitName);
+                        $periodLabel = upper_label((string) ($assignment['period'] ?? ''));
+                        $scoreSummary = $scoreSummaryByAssignment[$assignmentId] ?? null;
+                        ?>
+                        <div class="card">
+                            <h3><?php echo h($courseName); ?></h3>
+                            <p>Program: <strong><?php echo h($programLabel); ?></strong></p>
+                            <p>Teacher: <strong><?php echo h((string) ($assignment['teacher_name'] ?? 'Teacher')); ?></strong></p>
+                            <p>Period: <strong><?php echo h($periodLabel); ?></strong></p>
+                            <?php if ($unitName !== '') { ?>
+                                <p>Unit: <strong><?php echo h($unitName); ?></strong></p>
+                            <?php } ?>
+                            <?php if (is_array($scoreSummary)) { ?>
+                                <p>Average score: <strong><?php echo (int) ($scoreSummary['avg_percent'] ?? 0); ?>%</strong></p>
+                                <?php if ((int) ($scoreSummary['total_questions'] ?? 0) > 0) { ?>
+                                    <p>Quiz errors: <strong><?php echo (int) ($scoreSummary['total_errors'] ?? 0); ?>/<?php echo (int) ($scoreSummary['total_questions'] ?? 0); ?></strong></p>
+                                <?php } ?>
+                            <?php } ?>
+                            <div class="actions">
+                                <a class="btn" href="student_course.php?assignment=<?php echo urlencode($assignmentId); ?>">Enter course</a>
+                                <a class="btn secondary" href="student_quiz.php?assignment=<?php echo urlencode($assignmentId); ?>">View scores</a>
+                            </div>
+                        </div>
                     <?php } ?>
-                    <?php if (is_array($scoreSummary)) { ?>
-                        <p>Average score: <strong><?php echo (int) ($scoreSummary['avg_percent'] ?? 0); ?>%</strong></p>
-                        <?php if ((int) ($scoreSummary['total_questions'] ?? 0) > 0) { ?>
-                            <p>Quiz errors: <strong><?php echo (int) ($scoreSummary['total_errors'] ?? 0); ?>/<?php echo (int) ($scoreSummary['total_questions'] ?? 0); ?></strong></p>
-                        <?php } ?>
-                    <?php } ?>
-
-                    <div class="actions">
-                        <a class="btn" href="student_course.php?assignment=<?php echo urlencode($assignmentId); ?>">Enter course</a>
-                        <a class="btn secondary" href="student_quiz.php?assignment=<?php echo urlencode($assignmentId); ?>">View scores</a>
-                    </div>
                 </div>
             <?php } ?>
-        </div>
-    <?php } ?>
+        </main>
+    </div>
 </div>
 </body>
 </html>
