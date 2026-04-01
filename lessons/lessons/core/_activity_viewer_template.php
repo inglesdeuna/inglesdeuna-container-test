@@ -70,7 +70,7 @@ function render_activity_viewer($title, $icon, $content)
 
         .back-btn{
             display:inline-block;
-            background:linear-gradient(180deg, #34d399 0%, #10b981 100%);
+            background:linear-gradient(180deg, #a855f7 0%, #7c3aed 100%);
             color:white;
             padding:10px 16px;
             border-radius:999px;
@@ -78,12 +78,12 @@ function render_activity_viewer($title, $icon, $content)
             font-weight:800;
             font-size:14px;
             line-height:1;
-            box-shadow:0 10px 22px rgba(16, 185, 129, .24);
+            box-shadow:0 10px 22px rgba(124, 58, 237, .28);
             transition:transform .18s ease, filter .18s ease;
         }
 
         .back-btn:hover{
-            filter:brightness(1.04);
+            filter:brightness(1.07);
             transform:translateY(-1px);
         }
 

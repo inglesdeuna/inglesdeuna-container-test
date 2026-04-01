@@ -31,7 +31,7 @@ body{
 }
 
 .card{
-  min-height: var(--tile-height, 92px);
+  height: var(--tile-height, 92px);
   padding: 12px;
   display: flex;
   align-items: center;
@@ -57,7 +57,7 @@ body{
 }
 
 .word{
-  min-height: var(--tile-height, 92px);
+  height: var(--tile-height, 92px);
   padding: 12px;
   display: flex;
   align-items: center;
