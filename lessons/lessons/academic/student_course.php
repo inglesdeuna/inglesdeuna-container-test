@@ -681,6 +681,7 @@ $completedHref = 'student_course.php?assignment=' . urlencode($assignmentId) . '
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title><?php echo h($currentTypeLabel . ' — ' . $courseName); ?></title>
 <style>
+@import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@500;700;800&display=swap');
 :root{
     --bg:#fff8e6;
     --card:#ffffff;
@@ -696,7 +697,7 @@ $completedHref = 'student_course.php?assignment=' . urlencode($assignmentId) . '
     --radius:18px;
 }
 *{box-sizing:border-box;margin:0;padding:0}
-body{margin:0;font-family:Arial,sans-serif;background:linear-gradient(145deg,#fff8e6 0%,#fdeaff 55%,#f0e0ff 100%);color:var(--text)}
+body{margin:0;font-family:'Nunito','Segoe UI',sans-serif;background:linear-gradient(145deg,#fff8e6 0%,#fdeaff 55%,#f0e0ff 100%);color:var(--text)}
 
 .topbar{
     background:linear-gradient(180deg,#f14902,#d33d00);
@@ -721,27 +722,10 @@ body{margin:0;font-family:Arial,sans-serif;background:linear-gradient(145deg,#ff
     transition:filter .15s,transform .15s;
 }
 .top-btn:hover{filter:brightness(1.07);transform:translateY(-1px)}
-.topbar-title{font-size:26px;font-weight:800;text-align:center}
+.topbar-title{font-size:28px;font-weight:700;text-align:center;font-family:'Fredoka','Trebuchet MS',sans-serif;letter-spacing:.01em}
 
-.page{max-width:1280px;margin:0 auto;padding:18px 20px 28px}
-.content{display:flex;flex-direction:column;gap:18px;min-width:0}
-
-.hero-card{
-    background:var(--card);border:1px solid var(--line);border-radius:22px;
-    box-shadow:var(--shadow);padding:18px 20px;
-}
-.activity-topline{
-    display:inline-flex;align-items:center;gap:8px;padding:5px 10px;
-    border-radius:999px;background:var(--salmon-soft);color:var(--salmon);
-    font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;
-}
-.hero-title{margin:10px 0 8px;font-size:20px;font-weight:800;color:var(--muted)}
-.hero-badges{display:flex;flex-wrap:wrap;gap:10px;margin-top:10px}
-.hero-badge{
-    display:inline-flex;align-items:center;padding:7px 12px;border-radius:999px;
-    background:var(--salmon-soft);color:var(--salmon);font-size:12px;font-weight:800;
-}
-.hero-badge.blue{background:#e0f5fd;color:#0d7a9a}
+.page{max-width:1280px;margin:0 auto;padding:12px 16px 20px}
+.content{display:flex;flex-direction:column;gap:14px;min-width:0}
 
 .viewer-shell{
     background:var(--card);border:1px solid var(--line);
@@ -765,10 +749,10 @@ body{margin:0;font-family:Arial,sans-serif;background:linear-gradient(145deg,#ff
     font-size:12px;font-weight:800;text-transform:uppercase;
 }
 .frame-wrap{
-    border-radius:18px;overflow:hidden;background:#fff;
-    border:1px solid var(--line);box-shadow:var(--shadow-sm);min-height:78vh;
+    border-radius:14px;overflow:hidden;background:#fff;
+    border:1px solid var(--line);box-shadow:var(--shadow-sm);min-height:84vh;
 }
-.frame-wrap iframe{display:block;width:100%;height:78vh;border:0;background:#fff}
+.frame-wrap iframe{display:block;width:100%;height:84vh;border:0;background:#fff}
 
 .controls{
     display:flex;align-items:center;justify-content:space-between;
@@ -880,8 +864,8 @@ body{margin:0;font-family:Arial,sans-serif;background:linear-gradient(145deg,#ff
 @media(max-width:768px){
     .topbar-inner{grid-template-columns:1fr;text-align:center}
     .page{padding:12px}
-    .frame-wrap{min-height:56vh}
-    .frame-wrap iframe{height:56vh}
+    .frame-wrap{min-height:58vh}
+    .frame-wrap iframe{height:58vh}
     .controls{flex-wrap:wrap}
     .ctrl-btn,.empty-btn{flex:1 1 100%;min-width:0}
     .step-counter{width:100%;order:-1}
@@ -893,7 +877,7 @@ body{margin:0;font-family:Arial,sans-serif;background:linear-gradient(145deg,#ff
 <header class="topbar">
     <div class="topbar-inner">
         <a class="top-btn" href="<?php echo h($backHref); ?>">← Back</a>
-        <h1 class="topbar-title"><?php echo h($courseName); ?></h1>
+        <h1 class="topbar-title"><?php echo h(($selectedUnitName !== '' && $selectedUnitName !== 'UNIT') ? $selectedUnitName : $courseName); ?></h1>
     </div>
 </header>
 
@@ -915,22 +899,6 @@ body{margin:0;font-family:Arial,sans-serif;background:linear-gradient(145deg,#ff
         <?php endforeach; ?>
     </div>
     <?php endif; ?>
-
-    <!-- Hero info card -->
-    <section class="hero-card">
-        <div class="activity-topline">Course activity</div>
-        <h1 class="hero-title"><?php echo h($currentTypeLabel); ?></h1>
-        <div class="hero-badges">
-            <span class="hero-badge"><?php echo h($courseName); ?></span>
-            <?php if ($selectedUnitName !== 'Unit' && $selectedUnitName !== ''): ?>
-                <span class="hero-badge blue"><?php echo h($selectedUnitName); ?></span>
-            <?php endif; ?>
-            <span class="hero-badge"><?php echo h('TEACHER: ' . $teacherName); ?></span>
-            <?php if ($completionPercent > 0): ?>
-                <span class="hero-badge">Score: <?php echo $completionPercent; ?>%</span>
-            <?php endif; ?>
-        </div>
-    </section>
 
     <?php if ($isCompleted): ?>
     <!-- COMPLETED -->
