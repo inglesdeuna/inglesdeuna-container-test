@@ -320,7 +320,7 @@ ob_start();
 .mc-shell{background:#fff;border:1px solid #dbeafe;border-radius:24px;box-shadow:0 14px 30px rgba(15,23,42,.08);padding:18px;overflow-x:auto}
 .mc-status{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px}
 .mc-pill{display:inline-flex;align-items:center;gap:6px;background:#eff6ff;border:1px solid #bfdbfe;color:#1e3a8a;font-weight:800;font-size:13px;padding:8px 12px;border-radius:999px}
-.mc-board{display:grid;grid-template-columns:repeat(5,150px);justify-content:center;gap:12px;min-width:max-content}
+.mc-board{display:grid;grid-template-columns:repeat(4,150px);justify-content:center;gap:12px;min-width:max-content}
 .viewer-content .mc-card{position:relative;perspective:900px;border:none;background:transparent;padding:0 !important;cursor:pointer;min-height:180px;width:150px}
 .mc-card:disabled{cursor:default}
 .mc-card-inner{display:block;position:relative;width:100%;height:100%;min-height:180px;transform-style:preserve-3d;transition:transform .4s ease}
