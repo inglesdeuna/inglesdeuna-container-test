@@ -18,28 +18,154 @@ $activityTitle = isset($activity['title']) ? (string) $activity['title'] : defau
 ob_start();
 ?>
 <style>
-.tracing-viewer-shell { max-width: 520px; margin: 0 auto; }
-.tracing-viewer-title { font-size: 1.3rem; font-weight: 700; margin-bottom: 18px; text-align: center; }
-.tracing-viewer-canvas-wrap { display: flex; justify-content: center; margin-bottom: 16px; }
-.tracing-viewer-canvas { border: 2px solid #2563eb; border-radius: 10px; background: #fff; }
-.tracing-viewer-toolbar { display: flex; justify-content: center; gap: 12px; margin-bottom: 18px; }
-.tracing-viewer-btn { background: #2563eb; color: #fff; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-weight: 700; font-size: 15px; }
-.tracing-viewer-btn:hover { background: #1d4ed8; }
-.tracing-viewer-btn-clear { background: #ef4444; }
-.tracing-viewer-btn-clear:hover { background: #b91c1c; }
+@import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@600;700;800&display=swap');
+
+.tracing-viewer-shell{
+    max-width:980px;
+    margin:0 auto;
+    text-align:center;
+    font-family:'Nunito', 'Segoe UI', sans-serif;
+}
+
+.tracing-intro{
+    margin-bottom:14px;
+    padding:16px 18px;
+    border-radius:20px;
+    border:1px solid #d9f99d;
+    background:linear-gradient(135deg, #ecfccb 0%, #dcfce7 48%, #f0fdf4 100%);
+    box-shadow:0 12px 28px rgba(15, 23, 42, .08);
+}
+
+.tracing-intro h2{
+    margin:0 0 8px;
+    font-size:clamp(26px, 2.2vw, 30px);
+    line-height:1.1;
+    font-family:'Fredoka', 'Trebuchet MS', sans-serif;
+    font-weight:700;
+    color:#14532d;
+}
+
+.tracing-intro p{
+    margin:0;
+    color:#365314;
+    font-weight:700;
+}
+
+.tracing-stage{
+    background:rgba(255, 255, 255, .76);
+    border:1px solid #e2e8f0;
+    border-radius:22px;
+    box-shadow:0 14px 32px rgba(15, 23, 42, .1);
+    padding:14px;
+}
+
+.tracing-viewer-toolbar{
+    display:flex;
+    justify-content:center;
+    gap:10px;
+    margin-bottom:14px;
+    flex-wrap:wrap;
+}
+
+.tracing-viewer-btn{
+    border:none;
+    padding:11px 18px;
+    min-width:142px;
+    border-radius:999px;
+    cursor:pointer;
+    font-weight:800;
+    font-size:14px;
+    color:#fff;
+    transition:transform .15s ease, filter .15s ease;
+}
+
+.tracing-viewer-btn:hover{
+    filter:brightness(1.05);
+    transform:translateY(-1px);
+}
+
+.tracing-viewer-btn-prev{
+    background:linear-gradient(180deg, #38bdf8 0%, #0284c7 100%);
+}
+
+.tracing-viewer-btn-next{
+    background:linear-gradient(180deg, #2dd4bf 0%, #0f766e 100%);
+}
+
+.tracing-viewer-btn-clear{
+    background:linear-gradient(180deg, #fb7185 0%, #e11d48 100%);
+}
+
+.tracing-viewer-btn:focus-visible{
+    outline:none;
+    box-shadow:0 0 0 3px rgba(14, 165, 233, .22);
+}
+
+.tracing-viewer-canvas-wrap{
+    display:flex;
+    justify-content:center;
+    margin-bottom:10px;
+}
+
+.tracing-canvas-shell{
+    width:min(100%, 660px);
+    padding:10px;
+    background:#f8fafc;
+    border:1px solid #cbd5e1;
+    border-radius:18px;
+}
+
+.tracing-viewer-canvas{
+    display:block;
+    width:100%;
+    height:auto;
+    max-width:640px;
+    border:2px solid #14b8a6;
+    border-radius:12px;
+    background:#fff;
+}
+
+.tracing-counter{
+    text-align:center;
+    font-size:14px;
+    color:#475569;
+    font-weight:800;
+}
+
+@media (max-width: 768px){
+    .tracing-viewer-btn{
+        width:100%;
+        max-width:300px;
+        min-width:0;
+    }
+
+    .tracing-intro h2{
+        font-size:24px;
+    }
+}
 </style>
 <div class="tracing-viewer-shell">
-    <div class="tracing-viewer-title"><?= htmlspecialchars($activityTitle, ENT_QUOTES, 'UTF-8') ?></div>
-    <div class="tracing-viewer-toolbar">
-        <button class="tracing-viewer-btn" id="prevBtn">⟨ Prev</button>
-        <button class="tracing-viewer-btn" id="nextBtn">Next ⟩</button>
-        <button class="tracing-viewer-btn tracing-viewer-btn-clear" id="clearBtn">Clear</button>
-    </div>
-    <div class="tracing-viewer-canvas-wrap">
-        <canvas id="traceCanvas" class="tracing-viewer-canvas" width="400" height="400"></canvas>
-    </div>
-    <div style="text-align:center;font-size:14px;color:#64748b;">
-        <span id="imageCounter"></span>
+    <section class="tracing-intro">
+        <h2><?= htmlspecialchars($activityTitle, ENT_QUOTES, 'UTF-8') ?></h2>
+        <p>Trace each image with your finger or mouse. Move between cards and clear the drawing whenever you need.</p>
+    </section>
+
+    <div class="tracing-stage">
+        <div class="tracing-viewer-toolbar">
+            <button class="tracing-viewer-btn tracing-viewer-btn-prev" id="prevBtn">⟨ Previous</button>
+            <button class="tracing-viewer-btn tracing-viewer-btn-next" id="nextBtn">Next ⟩</button>
+            <button class="tracing-viewer-btn tracing-viewer-btn-clear" id="clearBtn">Clear</button>
+        </div>
+
+        <div class="tracing-viewer-canvas-wrap">
+            <div class="tracing-canvas-shell">
+                <canvas id="traceCanvas" class="tracing-viewer-canvas" width="640" height="460"></canvas>
+            </div>
+        </div>
+
+        <div class="tracing-counter">
+            <span id="imageCounter"></span>
+        </div>
     </div>
 </div>
 <script>
@@ -66,7 +192,7 @@ function drawImageToCanvas(imageUrl) {
 function updateCanvas() {
     if (images.length === 0) {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        document.getElementById('imageCounter').textContent = 'No images';
+        document.getElementById('imageCounter').textContent = 'No images available';
         return;
     }
     drawImageToCanvas(images[currentIdx].image);
@@ -130,4 +256,4 @@ updateCanvas();
 </script>
 <?php
 $content = ob_get_clean();
-render_activity_viewer('✏️ Tracing', '✏️', $content);
+render_activity_viewer($activityTitle, '✏️', $content);

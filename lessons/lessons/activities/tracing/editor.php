@@ -122,6 +122,13 @@ ob_start();
     box-sizing:border-box;
 }
 
+.tracing-title-box input:focus,
+.tracing-add-box input[type="file"]:focus{
+    outline:none;
+    border-color:#0d9488;
+    box-shadow:0 0 0 3px rgba(13, 148, 136, .16);
+}
+
 .tracing-images-list {
     list-style: none;
     padding: 0;
@@ -137,6 +144,12 @@ ob_start();
     border-radius: 12px;
     border: 1px solid #e5e7eb;
     padding: 10px;
+}
+
+.tracing-image-item.is-new{
+    border-style:dashed;
+    border-color:#a7f3d0;
+    background:linear-gradient(180deg, #ecfdf5 0%, #f8fafc 100%);
 }
 
 .tracing-image-thumb {
@@ -167,6 +180,11 @@ ob_start();
     transition:transform .15s ease, filter .15s ease;
 }
 
+.tracing-btn:focus-visible{
+    outline:none;
+    box-shadow:0 0 0 3px rgba(37, 99, 235, .24);
+}
+
 .tracing-btn:hover {
     background: #1d4ed8;
     filter:brightness(1.06);
@@ -186,8 +204,60 @@ ob_start();
 .tracing-btn-move:hover {
     background: #f59e42;
 }
+
+.tracing-btn-add{
+    background:#14b8a6;
+}
+
+.tracing-btn-add:hover{
+    background:#0f766e;
+}
+
+.tracing-btn-save{
+    background:#0d9488;
+}
+
+.tracing-btn-save:hover{
+    background:#0f766e;
+}
+
 .tracing-add-box {
+    display:flex;
+    align-items:center;
+    gap:10px;
+    flex-wrap:wrap;
+    background:#ffffff;
+    border:1px solid #e2e8f0;
+    border-radius:14px;
+    padding:12px 14px;
     margin-bottom: 18px;
+}
+
+.tracing-add-box input[type="file"]{
+    flex:1 1 320px;
+    padding:8px 10px;
+    border-radius:10px;
+    border:1px solid #cbd5e1;
+    font-size:14px;
+    color:#334155;
+    background:#fff;
+}
+
+.tracing-hint{
+    margin:0;
+    font-size:13px;
+    color:#64748b;
+    font-weight:700;
+}
+
+.tracing-empty{
+    text-align:center;
+    color:#64748b;
+    font-weight:700;
+    border:1px dashed #cbd5e1;
+    border-radius:12px;
+    padding:14px;
+    background:#f8fafc;
 }
 .saved-notice{
     max-width:900px;
@@ -203,6 +273,19 @@ ob_start();
 @media (max-width:680px){
     .tracing-image-item{flex-direction:column;align-items:flex-start;}
     .tracing-intro h3{font-size:22px;}
+
+    .tracing-btn{
+        width:100%;
+    }
+
+    .tracing-image-actions{
+        width:100%;
+    }
+
+    .tracing-add-box input[type="file"]{
+        flex-basis:100%;
+        width:100%;
+    }
 }
 </style>
 <?php if (isset($_GET['saved'])) { ?>
@@ -219,7 +302,7 @@ ob_start();
     </div>
     <div class="tracing-add-box">
         <input type="file" id="imageUploadInput" name="image_file[]" accept="image/*" multiple>
-        <span style="font-size:13px;color:#64748b;">You can add multiple images at once.</span>
+        <p class="tracing-hint">You can add multiple images at once.</p>
     </div>
     <ul class="tracing-images-list" id="imagesList">
         <?php foreach ($images as $i => $img) { ?>
@@ -234,13 +317,33 @@ ob_start();
                 </div>
             </li>
         <?php } ?>
+        <?php if (count($images) === 0) { ?>
+            <li class="tracing-empty" id="tracingEmptyState">No images yet. Use Add Image to start building this activity.</li>
+        <?php } ?>
     </ul>
-    <div class="actions-row" style="display:flex;gap:10px;justify-content:center;margin-top:10px;flex-wrap:wrap;">
-        <button type="button" onclick="document.getElementById('imageUploadInput').click()" class="tracing-btn">+ Add Image</button>
-        <button type="submit" class="tracing-btn" style="background:#0d9488;">💾 Save</button>
+    <div class="actions-row">
+        <button type="button" onclick="document.getElementById('imageUploadInput').click()" class="tracing-btn tracing-btn-add">+ Add Image</button>
+        <button type="submit" class="tracing-btn tracing-btn-save">💾 Save</button>
     </div>
 </form>
 <script>
+function syncEmptyState() {
+    const list = document.getElementById('imagesList');
+    const empty = document.getElementById('tracingEmptyState');
+    if (!list) return;
+    const imageItems = list.querySelectorAll('.tracing-image-item').length;
+    if (imageItems === 0 && !empty) {
+        const li = document.createElement('li');
+        li.className = 'tracing-empty';
+        li.id = 'tracingEmptyState';
+        li.textContent = 'No images yet. Use Add Image to start building this activity.';
+        list.appendChild(li);
+    }
+    if (imageItems > 0 && empty) {
+        empty.remove();
+    }
+}
+
 function moveImage(btn, dir) {
     const item = btn.closest('.tracing-image-item');
     const list = document.getElementById('imagesList');
@@ -257,6 +360,7 @@ function moveImage(btn, dir) {
 function removeImage(btn) {
     const item = btn.closest('.tracing-image-item');
     if (item) item.remove();
+    syncEmptyState();
 }
 
 // Previsualización de imágenes seleccionadas
@@ -267,7 +371,7 @@ document.getElementById('imageUploadInput').addEventListener('change', function(
         const reader = new FileReader();
         reader.onload = function(evt) {
             const li = document.createElement('li');
-            li.className = 'tracing-image-item';
+            li.className = 'tracing-image-item is-new';
             li.innerHTML = `
                 <input type="hidden" name="image_id[]" value="tracing_${Date.now()}_${Math.floor(Math.random()*1000)}">
                 <input type="hidden" name="image_existing[]" value="">
@@ -279,6 +383,7 @@ document.getElementById('imageUploadInput').addEventListener('change', function(
                 </div>
             `;
             list.appendChild(li);
+            syncEmptyState();
         };
         reader.readAsDataURL(file);
     });
@@ -298,6 +403,8 @@ document.getElementById('tracingForm').addEventListener('submit', function(e) {
     // No es necesario eliminar ni reinsertar inputs, solo asegurar el orden visual
     items.forEach(item => list.appendChild(item));
 });
+
+syncEmptyState();
 </script>
 <?php
 $content = ob_get_clean();
