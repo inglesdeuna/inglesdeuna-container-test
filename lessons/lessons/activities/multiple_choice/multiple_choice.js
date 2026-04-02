@@ -185,7 +185,24 @@
 
     statusEl.textContent = 'Question ' + (index + 1) + ' of ' + questions.length;
     const rawQuestion = String(item.question || '');
-    questionEl.textContent = rawQuestion.replace(/^Choose the correct basic command:\s*/i, '');
+    const cleanQuestion = rawQuestion.replace(/^Choose the correct basic command:\s*/i, '');
+
+    const isListen = item.question_type === 'listen';
+    const isImageOpts = item.option_type === 'image';
+
+    if (isListen) {
+      questionEl.innerHTML = '';
+      const listenBtn = document.createElement('button');
+      listenBtn.type = 'button';
+      listenBtn.className = 'mc-listen-btn';
+      listenBtn.innerHTML = '&#128266; Listen';
+      listenBtn.addEventListener('click', function () { speakText(cleanQuestion); });
+      questionEl.appendChild(listenBtn);
+      // auto-play on load
+      setTimeout(function () { speakText(cleanQuestion); }, 300);
+    } else {
+      questionEl.textContent = cleanQuestion;
+    }
 
     if (item.image) {
       imageEl.style.display = 'block';
@@ -196,12 +213,22 @@
     }
 
     optionsEl.innerHTML = '';
+    optionsEl.classList.toggle('mc-options-images', isImageOpts);
 
     safeOptions(item).forEach(function (optionText, optIndex) {
       const button = document.createElement('button');
       button.type = 'button';
       button.className = 'mc-option';
-      button.textContent = optionText;
+
+      if (isImageOpts && optionText !== '') {
+        const img = document.createElement('img');
+        img.src = optionText;
+        img.alt = 'Option ' + String.fromCharCode(65 + optIndex);
+        img.className = 'mc-option-img';
+        button.appendChild(img);
+      } else {
+        button.textContent = optionText;
+      }
 
       button.addEventListener('click', function () {
         if (checked || finished) {
@@ -333,4 +360,13 @@
   }
 
   loadQuestion();
+
+  function speakText(text) {
+    if (!text || !window.speechSynthesis) return;
+    window.speechSynthesis.cancel();
+    var utt = new SpeechSynthesisUtterance(text);
+    utt.lang = 'en-US';
+    utt.rate = 0.9;
+    window.speechSynthesis.speak(utt);
+  }
 });

@@ -357,3 +357,61 @@
     padding-right: 2px;
   }
 }
+
+/* ── Image options ────────────────────────────────── */
+.mc-options.mc-options-images{
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.mc-options.mc-options-images .mc-option{
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px;
+  border-radius: 14px;
+  text-align: center;
+}
+
+.mc-option-img{
+  display: block;
+  width: 100%;
+  max-width: 160px;
+  height: 120px;
+  object-fit: contain;
+  border-radius: 10px;
+  pointer-events: none;
+}
+
+/* ── TTS listen button ────────────────────────────── */
+.mc-listen-btn{
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: linear-gradient(180deg, #8b5cf6 0%, #7c3aed 100%);
+  color: #fff;
+  border: none;
+  border-radius: 999px;
+  padding: 12px 28px;
+  font-size: 18px;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 8px 20px rgba(124,58,237,.3);
+  transition: transform .15s ease, filter .15s ease;
+  margin: 4px 0 10px;
+}
+.mc-listen-btn:hover{
+  filter: brightness(1.07);
+  transform: translateY(-2px);
+}
+
+@media (max-width: 600px){
+  .mc-options.mc-options-images{
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+  }
+  .mc-option-img{
+    height: 80px;
+  }
+}

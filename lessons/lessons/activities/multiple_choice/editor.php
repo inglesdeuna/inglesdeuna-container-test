@@ -277,8 +277,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $imageFiles = isset($_FILES['image_file']) ? $_FILES['image_file'] : null;
 
     $questionTypes   = isset($_POST['question_type']) && is_array($_POST['question_type']) ? $_POST['question_type'] : array();
-    $audioExisting   = isset($_POST['audio_existing']) && is_array($_POST['audio_existing']) ? $_POST['audio_existing'] : array();
-    $audioFiles      = isset($_FILES['audio_file']) ? $_FILES['audio_file'] : null;
     $optionTypes     = isset($_POST['option_type']) && is_array($_POST['option_type']) ? $_POST['option_type'] : array();
     $optAImgExisting = isset($_POST['option_a_img_existing']) && is_array($_POST['option_a_img_existing']) ? $_POST['option_a_img_existing'] : array();
     $optBImgExisting = isset($_POST['option_b_img_existing']) && is_array($_POST['option_b_img_existing']) ? $_POST['option_b_img_existing'] : array();
@@ -306,20 +304,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $uploadedImage = upload_to_cloudinary($imageFiles['tmp_name'][$i]);
             if ($uploadedImage) {
                 $image = $uploadedImage;
-            }
-        }
-
-        $audio = isset($audioExisting[$i]) ? trim((string) $audioExisting[$i]) : '';
-        if (
-            $audioFiles &&
-            isset($audioFiles['name'][$i]) &&
-            $audioFiles['name'][$i] !== '' &&
-            isset($audioFiles['tmp_name'][$i]) &&
-            $audioFiles['tmp_name'][$i] !== ''
-        ) {
-            $uploadedAudio = upload_video_to_cloudinary($audioFiles['tmp_name'][$i]);
-            if ($uploadedAudio) {
-                $audio = $uploadedAudio;
             }
         }
 
@@ -352,7 +336,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $correct = isset($corrects[$i]) ? max(0, min(2, (int) $corrects[$i])) : 0;
 
-        if ($question === '' && $audio === '' && $image === '' && $a === '' && $b === '' && $c === '') {
+        if ($question === '' && $image === '' && $a === '' && $b === '' && $c === '') {
             continue;
         }
 
@@ -360,7 +344,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'id'            => $qid,
             'question_type' => $questionType,
             'question'      => $question,
-            'audio'         => $audio,
             'image'         => $image,
             'option_type'   => $optionType,
             'options'       => array($a, $b, $c),
@@ -538,12 +521,6 @@ ob_start();
     font-size:14px;
 }
 
-audio.audio-preview{
-    display:block;
-    width:100%;
-    margin-bottom:10px;
-}
-
 .opt-img-group{
     display:flex;
     gap:12px;
@@ -574,6 +551,22 @@ audio.audio-preview{
     background:#fff;
     margin-bottom:8px;
 }
+
+.q-tts-hint{
+    background:#ede9fe;
+    border:1px solid #c4b5fd;
+    border-radius:8px;
+    padding:7px 12px;
+    margin-bottom:8px;
+    font-size:13px;
+    color:#6d28d9;
+    font-weight:700;
+}
+.q-tts-badge{
+    font-size:13px;
+    color:#6d28d9;
+    font-weight:700;
+}
 </style>
 
 <?php if (isset($_GET['saved'])) { ?>
@@ -601,7 +594,6 @@ audio.audio-preview{
             <div class="question-item">
                 <input type="hidden" name="question_id[]" value="<?= htmlspecialchars(isset($question['id']) ? $question['id'] : uniqid('mc_'), ENT_QUOTES, 'UTF-8') ?>">
                 <input type="hidden" name="image_existing[]" value="<?= htmlspecialchars(isset($question['image']) ? $question['image'] : '', ENT_QUOTES, 'UTF-8') ?>">
-                <input type="hidden" name="audio_existing[]" value="<?= htmlspecialchars(isset($question['audio']) ? $question['audio'] : '', ENT_QUOTES, 'UTF-8') ?>">
                 <input type="hidden" name="option_a_img_existing[]" value="<?= htmlspecialchars(($optType === 'image' && isset($question['options'][0])) ? $question['options'][0] : '', ENT_QUOTES, 'UTF-8') ?>">
                 <input type="hidden" name="option_b_img_existing[]" value="<?= htmlspecialchars(($optType === 'image' && isset($question['options'][1])) ? $question['options'][1] : '', ENT_QUOTES, 'UTF-8') ?>">
                 <input type="hidden" name="option_c_img_existing[]" value="<?= htmlspecialchars(($optType === 'image' && isset($question['options'][2])) ? $question['options'][2] : '', ENT_QUOTES, 'UTF-8') ?>">
@@ -611,7 +603,7 @@ audio.audio-preview{
                         <label>Question type</label>
                         <select name="question_type[]" onchange="onQuestionTypeChange(this)">
                             <option value="text" <?= $qType === 'text' ? 'selected' : '' ?>>Text</option>
-                            <option value="listen" <?= $qType === 'listen' ? 'selected' : '' ?>>🔊 Listen (audio)</option>
+                            <option value="listen" <?= $qType === 'listen' ? 'selected' : '' ?>>🔊 Listen (TTS)</option>
                         </select>
                     </div>
                     <div>
@@ -623,20 +615,10 @@ audio.audio-preview{
                     </div>
                 </div>
 
-                <!-- TEXT QUESTION -->
-                <div class="q-text-section" <?= $qType === 'listen' ? 'style="display:none"' : '' ?>>
-                    <label>Question</label>
-                    <textarea name="question[]" placeholder="Write the question" <?= $qType !== 'listen' ? 'required' : '' ?>><?= htmlspecialchars(isset($question['question']) ? $question['question'] : '', ENT_QUOTES, 'UTF-8') ?></textarea>
-                </div>
-
-                <!-- LISTEN QUESTION -->
-                <div class="q-listen-section" <?= $qType !== 'listen' ? 'style="display:none"' : '' ?>>
-                    <label>Audio file</label>
-                    <?php if ($qType === 'listen' && !empty($question['audio'])): ?>
-                        <audio controls class="audio-preview" src="<?= htmlspecialchars($question['audio'], ENT_QUOTES, 'UTF-8') ?>"></audio>
-                    <?php endif; ?>
-                    <input type="file" name="audio_file[]" accept="audio/*">
-                </div>
+                <!-- QUESTION TEXT (always visible; listen type = TTS will read it) -->
+                <label>Question <?php if ($qType === 'listen'): ?><span class="q-tts-badge">🔊 Will be spoken via TTS</span><?php endif; ?></label>
+                <div class="q-tts-hint" <?= $qType !== 'listen' ? 'style="display:none"' : '' ?>><span class="q-tts-badge">🔊 Will be spoken via TTS — text hidden from student</span></div>
+                <textarea name="question[]" placeholder="Write the question text (will be spoken aloud)" required><?= htmlspecialchars(isset($question['question']) ? $question['question'] : '', ENT_QUOTES, 'UTF-8') ?></textarea>
 
                 <label>Image for question (optional)</label>
                 <?php if (!empty($question['image'])): ?>
@@ -713,10 +695,8 @@ function onQuestionTypeChange(sel) {
     markChanged();
     const item = sel.closest('.question-item');
     const isListen = sel.value === 'listen';
-    item.querySelector('.q-text-section').style.display = isListen ? 'none' : '';
-    item.querySelector('.q-listen-section').style.display = isListen ? '' : 'none';
-    const textarea = item.querySelector('textarea[name="question[]"]');
-    if (textarea) textarea.required = !isListen;
+    const hint = item.querySelector('.q-tts-hint');
+    if (hint) hint.style.display = isListen ? '' : 'none';
 }
 
 function onOptionTypeChange(sel) {
@@ -754,7 +734,6 @@ function addQuestion() {
     div.innerHTML = `
         <input type="hidden" name="question_id[]" value="mc_${Date.now()}_${Math.floor(Math.random() * 1000)}">
         <input type="hidden" name="image_existing[]" value="">
-        <input type="hidden" name="audio_existing[]" value="">
         <input type="hidden" name="option_a_img_existing[]" value="">
         <input type="hidden" name="option_b_img_existing[]" value="">
         <input type="hidden" name="option_c_img_existing[]" value="">
@@ -764,7 +743,7 @@ function addQuestion() {
                 <label>Question type</label>
                 <select name="question_type[]" onchange="onQuestionTypeChange(this)">
                     <option value="text">Text</option>
-                    <option value="listen">🔊 Listen (audio)</option>
+                    <option value="listen">🔊 Listen (TTS)</option>
                 </select>
             </div>
             <div>
@@ -776,15 +755,9 @@ function addQuestion() {
             </div>
         </div>
 
-        <div class="q-text-section">
-            <label>Question</label>
-            <textarea name="question[]" placeholder="Write the question" required></textarea>
-        </div>
-
-        <div class="q-listen-section" style="display:none">
-            <label>Audio file</label>
-            <input type="file" name="audio_file[]" accept="audio/*">
-        </div>
+        <div class="q-tts-hint" style="display:none"><span class="q-tts-badge">🔊 Will be spoken via TTS — text hidden from student</span></div>
+        <label>Question</label>
+        <textarea name="question[]" placeholder="Write the question text (will be spoken aloud)" required></textarea>
 
         <label>Image for question (optional)</label>
         <input type="file" name="image_file[]" accept="image/*">
