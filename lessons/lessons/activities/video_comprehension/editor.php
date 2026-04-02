@@ -466,11 +466,37 @@ function markChanged() {
     formChanged = true;
 }
 
+function normalizeEmbedUrl(url) {
+    url = url.trim();
+    if (!url) return '';
+    try {
+        const u = new URL(url);
+        const host = u.hostname.toLowerCase();
+        // youtu.be short link
+        if (host === 'youtu.be') {
+            const videoId = u.pathname.replace(/^\//, '').split('/')[0];
+            return videoId ? 'https://www.youtube.com/embed/' + encodeURIComponent(videoId) : url;
+        }
+        // youtube.com watch
+        if (host.includes('youtube.com')) {
+            if (u.pathname.startsWith('/embed/')) return url; // already embed
+            const videoId = u.searchParams.get('v');
+            return videoId ? 'https://www.youtube.com/embed/' + encodeURIComponent(videoId) : url;
+        }
+        // vimeo
+        if (host.includes('vimeo.com')) {
+            const videoId = u.pathname.replace(/^\//, '').split('/')[0];
+            return /^\d+$/.test(videoId) ? 'https://player.vimeo.com/video/' + videoId : url;
+        }
+    } catch (e) {}
+    return url;
+}
+
 function updateVideoPreview() {
     const input = document.getElementById('iframe_url');
     const preview = document.getElementById('videoPreview');
     if (!input || !preview) return;
-    preview.src = input.value.trim();
+    preview.src = normalizeEmbedUrl(input.value);
 }
 
 function syncModeVisibility() {
