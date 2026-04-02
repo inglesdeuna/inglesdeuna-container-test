@@ -125,8 +125,8 @@ document.addEventListener("DOMContentLoaded", () => {
     const config = getBoardConfig(count);
     const { cols, tileSize } = config;
 
-    leftBoard.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
-    rightBoard.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+    leftBoard.style.gridTemplateColumns = `repeat(${cols}, minmax(0, 1fr))`;
+    rightBoard.style.gridTemplateColumns = `repeat(${cols}, minmax(0, 1fr))`;
 
     // Set on shared parent so both columns inherit exactly the same value
     const matchCols = document.querySelector(".match-columns");
