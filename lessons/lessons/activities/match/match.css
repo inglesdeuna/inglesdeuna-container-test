@@ -39,7 +39,7 @@ body{
   transition: transform .2s ease, opacity .2s ease, box-shadow .2s ease;
   cursor: grab;
   border: 2px solid #f4c75e;
-  background: linear-gradient(180deg, #fffdf2 0%, #ffefbf 100%);
+  background: #ffffff;
 }
 
 .card.dragging{
