@@ -4,6 +4,7 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 require_once __DIR__ . '/../../config/db.php';
+require_once __DIR__ . '/../../core/cloudinary_upload.php';
 require_once __DIR__ . '/../../core/_activity_editor_template.php';
 
 // Block student access to editor
@@ -256,6 +257,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $postedIframeUrl = normalize_embed_url((string) ($_POST['iframe_url'] ?? ''));
     $postedInstructions = trim((string) ($_POST['instructions'] ?? ''));
 
+    // If a video file was uploaded, send it to Cloudinary and use the resulting URL
+    if (
+        isset($_FILES['video_file']) &&
+        $_FILES['video_file']['error'] === UPLOAD_ERR_OK &&
+        $_FILES['video_file']['tmp_name'] !== ''
+    ) {
+        $uploadedVideoUrl = upload_video_to_cloudinary((string) $_FILES['video_file']['tmp_name']);
+        if ($uploadedVideoUrl !== null) {
+            $postedIframeUrl = $uploadedVideoUrl;
+        }
+    }
+
     $questionIds = isset($_POST['question_id']) && is_array($_POST['question_id']) ? $_POST['question_id'] : [];
     $questionTexts = isset($_POST['question']) && is_array($_POST['question']) ? $_POST['question'] : [];
     $optionA = isset($_POST['option_a']) && is_array($_POST['option_a']) ? $_POST['option_a'] : [];
@@ -351,6 +364,11 @@ ob_start();
 .vc-btn{border:none;border-radius:10px;padding:10px 14px;font-weight:800;cursor:pointer}
 .vc-add{background:#2563eb;color:#fff}
 .vc-remove{background:#ef4444;color:#fff}
+.vc-source-tabs{display:flex;gap:8px;margin-bottom:10px}
+.vc-tab{padding:8px 16px;border:1.5px solid #cbd5e1;border-radius:8px;background:#f8fafc;font-weight:700;font-size:13px;cursor:pointer;color:#475569;transition:all .15s ease}
+.vc-tab.active{border-color:#2563eb;background:#eff6ff;color:#1d4ed8}
+.vc-upload-area{display:flex;align-items:center;justify-content:center;min-height:120px;border:2px dashed #93c5fd;border-radius:14px;background:#f0f7ff;cursor:pointer;padding:20px;text-align:center;transition:border-color .15s ease,background .15s ease}
+.vc-upload-area:hover{border-color:#2563eb;background:#dbeafe}
 .save-btn{
     background:linear-gradient(180deg,#0d9488,#0f766e);
     color:#fff;
@@ -375,7 +393,7 @@ ob_start();
     <p style="color:#166534;font-weight:800;margin-bottom:12px;">✔ Saved successfully</p>
 <?php } ?>
 
-<form class="vc-form" id="videoComprehensionForm" method="post">
+<form class="vc-form" id="videoComprehensionForm" method="post" enctype="multipart/form-data">
     <div class="vc-card">
         <div class="vc-hero">
             <h2>Video Comprehension Editor</h2>
@@ -405,9 +423,32 @@ ob_start();
             </div>
 
             <div class="vc-group">
-                <label for="iframe_url">Video iframe URL</label>
-                <input id="iframe_url" class="vc-input" type="url" name="iframe_url" value="<?= htmlspecialchars($iframeUrl, ENT_QUOTES, 'UTF-8') ?>" placeholder="https://www.youtube.com/watch?v=..." required>
-                <div class="vc-help">You can paste a YouTube/Vimeo link and it will be normalized to embed format.</div>
+                <label>Video source</label>
+                <div class="vc-source-tabs">
+                    <button type="button" class="vc-tab active" id="tabUrl" onclick="switchTab('url')">🔗 URL (YouTube / Vimeo)</button>
+                    <button type="button" class="vc-tab" id="tabFile" onclick="switchTab('file')">📁 Upload video file</button>
+                </div>
+
+                <div id="sourceUrl" class="vc-source-panel">
+                    <input id="iframe_url" class="vc-input" type="url" name="iframe_url" value="<?= htmlspecialchars($iframeUrl, ENT_QUOTES, 'UTF-8') ?>" placeholder="https://www.youtube.com/watch?v=...">
+                    <div class="vc-help">You can paste a YouTube/Vimeo link and it will be normalized to embed format.</div>
+                </div>
+
+                <div id="sourceFile" class="vc-source-panel" style="display:none">
+                    <label class="vc-upload-area" id="uploadArea">
+                        <input type="file" name="video_file" id="video_file" accept="video/*" style="display:none" onchange="handleFileSelect(this)">
+                        <div id="uploadPrompt">
+                            <div style="font-size:40px;margin-bottom:8px">🎬</div>
+                            <div style="font-weight:800;color:#1e3a8a;margin-bottom:4px">Click to select a video file</div>
+                            <div style="font-size:12px;color:#64748b">MP4, MOV, AVI, MKV — max 500 MB</div>
+                        </div>
+                        <div id="uploadSelected" style="display:none">
+                            <div style="font-size:32px;margin-bottom:8px">✅</div>
+                            <div id="uploadFileName" style="font-weight:800;color:#166534;word-break:break-all"></div>
+                            <div style="font-size:12px;color:#64748b;margin-top:4px">The file will be uploaded to Cloudinary when you save.</div>
+                        </div>
+                    </label>
+                </div>
             </div>
 
             <div class="vc-group">
@@ -478,6 +519,29 @@ ob_start();
 <script>
 let formChanged = false;
 let formSubmitted = false;
+
+function switchTab(tab) {
+    document.getElementById('sourceUrl').style.display  = tab === 'url'  ? '' : 'none';
+    document.getElementById('sourceFile').style.display = tab === 'file' ? '' : 'none';
+    document.getElementById('tabUrl').classList.toggle('active',  tab === 'url');
+    document.getElementById('tabFile').classList.toggle('active', tab === 'file');
+    // clear file input when switching back to URL
+    if (tab === 'url') {
+        var fi = document.getElementById('video_file');
+        if (fi) fi.value = '';
+        document.getElementById('uploadPrompt').style.display  = '';
+        document.getElementById('uploadSelected').style.display = 'none';
+    }
+}
+
+function handleFileSelect(input) {
+    if (input.files && input.files[0]) {
+        var file = input.files[0];
+        document.getElementById('uploadFileName').textContent = file.name + ' (' + (file.size / 1048576).toFixed(1) + ' MB)';
+        document.getElementById('uploadPrompt').style.display  = 'none';
+        document.getElementById('uploadSelected').style.display = '';
+    }
+}
 
 function markChanged() {
     formChanged = true;
@@ -601,6 +665,20 @@ function bindChangeTracking(scope) {
 }
 
 document.addEventListener('DOMContentLoaded', function () {
+    // If there's already a saved URL, show URL tab active
+    var urlInput = document.getElementById('iframe_url');
+    if (urlInput && urlInput.value.trim() !== '') {
+        switchTab('url');
+    }
+
+    // Clicking the upload area label triggers the hidden file input
+    var uploadArea = document.getElementById('uploadArea');
+    if (uploadArea) {
+        uploadArea.addEventListener('click', function () {
+            document.getElementById('video_file').click();
+        });
+    }
+
     bindChangeTracking(document);
     syncModeVisibility();
 
