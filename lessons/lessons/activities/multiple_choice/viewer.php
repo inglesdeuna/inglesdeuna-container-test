@@ -190,7 +190,7 @@ ob_start();
     <div class="mc-feedback" id="mc-feedback"></div>
 
     <div id="mc-completed" class="mc-completed-screen">
-        <div class="mc-completed-icon">Ô£à</div>
+        <div class="mc-completed-icon">🎉</div>
         <h2 class="mc-completed-title" id="mc-completed-title"></h2>
         <p class="mc-completed-text" id="mc-completed-text"></p>
         <p class="mc-completed-text" id="mc-score-text" style="font-weight:700;font-size:18px;color:#6d28d9;"></p>
