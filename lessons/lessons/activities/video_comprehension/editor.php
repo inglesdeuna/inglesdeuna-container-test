@@ -410,22 +410,22 @@ ob_start();
 
                         <div class="vc-group">
                             <label>Question</label>
-                            <textarea class="vc-textarea" name="question[]" required><?= htmlspecialchars((string) ($question['question'] ?? ''), ENT_QUOTES, 'UTF-8') ?></textarea>
+                            <textarea class="vc-textarea" name="question[]"><?= htmlspecialchars((string) ($question['question'] ?? ''), ENT_QUOTES, 'UTF-8') ?></textarea>
                         </div>
 
                         <div class="vc-group">
                             <label>Option A</label>
-                            <input class="vc-input" type="text" name="option_a[]" value="<?= htmlspecialchars((string) (($question['options'][0] ?? '')), ENT_QUOTES, 'UTF-8') ?>" required>
+                            <input class="vc-input" type="text" name="option_a[]" value="<?= htmlspecialchars((string) (($question['options'][0] ?? '')), ENT_QUOTES, 'UTF-8') ?>">
                         </div>
 
                         <div class="vc-group">
                             <label>Option B</label>
-                            <input class="vc-input" type="text" name="option_b[]" value="<?= htmlspecialchars((string) (($question['options'][1] ?? '')), ENT_QUOTES, 'UTF-8') ?>" required>
+                            <input class="vc-input" type="text" name="option_b[]" value="<?= htmlspecialchars((string) (($question['options'][1] ?? '')), ENT_QUOTES, 'UTF-8') ?>">
                         </div>
 
                         <div class="vc-group">
                             <label>Option C</label>
-                            <input class="vc-input" type="text" name="option_c[]" value="<?= htmlspecialchars((string) (($question['options'][2] ?? '')), ENT_QUOTES, 'UTF-8') ?>" required>
+                            <input class="vc-input" type="text" name="option_c[]" value="<?= htmlspecialchars((string) (($question['options'][2] ?? '')), ENT_QUOTES, 'UTF-8') ?>">
                         </div>
 
                         <div class="vc-group">
@@ -509,22 +509,22 @@ function addQuestion() {
 
         <div class="vc-group">
             <label>Question</label>
-            <textarea class="vc-textarea" name="question[]" required></textarea>
+            <textarea class="vc-textarea" name="question[]"></textarea>
         </div>
 
         <div class="vc-group">
             <label>Option A</label>
-            <input class="vc-input" type="text" name="option_a[]" required>
+            <input class="vc-input" type="text" name="option_a[]">
         </div>
 
         <div class="vc-group">
             <label>Option B</label>
-            <input class="vc-input" type="text" name="option_b[]" required>
+            <input class="vc-input" type="text" name="option_b[]">
         </div>
 
         <div class="vc-group">
             <label>Option C</label>
-            <input class="vc-input" type="text" name="option_c[]" required>
+            <input class="vc-input" type="text" name="option_c[]">
         </div>
 
         <div class="vc-group">
