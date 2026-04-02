@@ -27,6 +27,8 @@ ob_start();
     font-family:'Nunito', 'Segoe UI', sans-serif;
 }
 
+.viewer-header{ display:none !important; }
+
 .tracing-intro{
     margin-bottom:14px;
     padding:16px 18px;
@@ -146,11 +148,6 @@ ob_start();
 }
 </style>
 <div class="tracing-viewer-shell">
-    <section class="tracing-intro">
-        <h2><?= htmlspecialchars($activityTitle, ENT_QUOTES, 'UTF-8') ?></h2>
-        <p>Trace each image with your finger or mouse. Move between cards and clear the drawing whenever you need.</p>
-    </section>
-
     <div class="tracing-stage">
         <div class="tracing-viewer-toolbar">
             <button class="tracing-viewer-btn tracing-viewer-btn-prev" id="prevBtn">Previous</button>
