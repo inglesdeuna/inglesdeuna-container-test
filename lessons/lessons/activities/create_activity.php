@@ -5,14 +5,15 @@ require_once __DIR__ . "/../config/db.php";
 /* ===============================
    VALIDAR DATOS RECIBIDOS
 =============================== */
-$unitId = $_POST['unit'] ?? null;
-$types  = $_POST['types'] ?? [];
+$unitId       = $_POST['unit'] ?? null;
+$checkedTypes = $_POST['checked_types'] ?? $_POST['types'] ?? [];
+$qtyCounts    = $_POST['qty'] ?? [];
 
 if (!$unitId) {
     die("Unit not specified.");
 }
 
-if (empty($types)) {
+if (empty($checkedTypes)) {
     header("Location: /lessons/lessons/academic/unit_view.php?unit=" . urlencode($unitId));
     exit;
 }
@@ -38,9 +39,6 @@ if (!$unit) {
 /* ===============================
    CREAR ACTIVIDADES SELECCIONADAS
 =============================== */
-$checkedTypes = $_POST['checked_types'] ?? $_POST['types'] ?? [];
-$qtyCounts    = $_POST['qty'] ?? [];
-
 foreach ($checkedTypes as $type) {
 
     // Validar formato del tipo
