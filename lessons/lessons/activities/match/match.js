@@ -150,6 +150,36 @@ document.addEventListener("DOMContentLoaded", () => {
     `;
   }
 
+  function fitTextToTile(el) {
+    const textEl = el.querySelector(".match-text");
+    if (!textEl) return;
+    const isSingleWord = !textEl.textContent.trim().includes(" ");
+    if (!isSingleWord) {
+      // Multi-word: allow normal wrapping, reset any overrides
+      textEl.style.whiteSpace = "";
+      textEl.style.fontSize = "";
+      return;
+    }
+    // Single word: keep on one line and shrink to fit
+    textEl.style.whiteSpace = "nowrap";
+    textEl.style.fontSize = "";
+    const container = el.querySelector(".match-tile-inner") || el;
+    const availW = container.clientWidth - 8;
+    if (availW <= 0) return;
+    const baseSize = parseFloat(getComputedStyle(textEl).fontSize);
+    let size = baseSize;
+    for (let i = 0; i < 20; i++) {
+      if (textEl.scrollWidth <= availW) break;
+      size = Math.max(9, size - 1);
+      textEl.style.fontSize = size + "px";
+    }
+  }
+
+  function fitAllTexts() {
+    const tiles = document.querySelectorAll(".match-card, .match-target");
+    tiles.forEach(fitTextToTile);
+  }
+
   function renderBoard() {
     leftBoard.innerHTML = "";
     rightBoard.innerHTML = "";
@@ -171,6 +201,9 @@ document.addEventListener("DOMContentLoaded", () => {
         </div>
       `;
     });
+
+    // Run after layout paint so clientWidth is available
+    requestAnimationFrame(fitAllTexts);
   }
 
   function buildReturnUrl(scoreValue) {
@@ -456,7 +489,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   startRound();
 
-  window.addEventListener("resize", applyBoardLayout);
+  window.addEventListener("resize", () => { applyBoardLayout(); requestAnimationFrame(fitAllTexts); });
 
   document.addEventListener("dragstart", (e) => {
     if (activityLocked) {

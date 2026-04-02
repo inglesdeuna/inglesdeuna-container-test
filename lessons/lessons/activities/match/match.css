@@ -93,6 +93,7 @@ body{
 
 .match-text{
   max-width: 100%;
+  width: 100%;
   font-family: 'Nunito', 'Segoe UI', sans-serif;
   font-size: clamp(11px, calc(var(--tile-height, 92px) * 0.14), 18px);
   line-height: 1.15;
@@ -103,6 +104,8 @@ body{
   overflow-wrap: anywhere;
   word-break: break-word;
   hyphens: auto;
+  overflow: hidden;
+  text-align: center;
 }
 
 .has-image.has-text .match-media{
@@ -132,7 +135,6 @@ body{
   font-size: clamp(14px, .8vw + 11px, 19px);
   line-height: 1.08;
   letter-spacing: .05px;
-  text-wrap: balance;
 }
 
 .text-only-mode .card .match-text,
