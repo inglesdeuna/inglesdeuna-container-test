@@ -2,6 +2,10 @@
   max-width: 980px;
   margin: 0 auto;
   padding: 0 0 10px;
+  min-height: calc(100vh - 120px);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 
 .mc-intro{
