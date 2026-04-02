@@ -110,8 +110,8 @@ document.addEventListener("DOMContentLoaded", () => {
     const tileHFromH = Math.floor((availH - gapV * (rows - 1)) / rows);
 
     // Width-based tile size
-    // match-stage max-width 1060, body padding 44px, 30px gap between the two columns, 32px col-card padding (16+16)
-    const stageW = Math.min(vw - 44, 1060);
+    // match-stage max-width 1060, 18px side padding × 2 = 36px, 30px gap between two columns, 32px col-card padding (16+16)
+    const stageW = Math.min(vw - 44, 1060) - 36;
     const colW = (stageW - 30) / 2 - 32;
     const gapH = 14;
     const tileWFromW = Math.floor((colW - gapH * (cols - 1)) / cols);
@@ -128,8 +128,14 @@ document.addEventListener("DOMContentLoaded", () => {
     leftBoard.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
     rightBoard.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
 
-    leftBoard.style.setProperty("--tile-height", `${tileSize}px`);
-    rightBoard.style.setProperty("--tile-height", `${tileSize}px`);
+    // Set on shared parent so both columns inherit exactly the same value
+    const matchCols = document.querySelector(".match-columns");
+    if (matchCols) {
+      matchCols.style.setProperty("--tile-height", `${tileSize}px`);
+    } else {
+      leftBoard.style.setProperty("--tile-height", `${tileSize}px`);
+      rightBoard.style.setProperty("--tile-height", `${tileSize}px`);
+    }
   }
 
   function renderTileContent(text, image, side) {

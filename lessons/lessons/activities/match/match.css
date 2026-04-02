@@ -40,6 +40,7 @@ body{
   cursor: grab;
   border: 2px solid #f4c75e;
   background: #ffffff;
+  box-sizing: border-box;
 }
 
 .card.dragging{
