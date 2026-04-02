@@ -314,9 +314,9 @@ body{
 
 .card{
     width:100%;
-    max-width:460px;
-    /* fill available height: viewport minus top-row (~44px), viewer padding (~36px), stage, listen-row (~52px), flip-hint (~28px) */
-    height:clamp(200px, calc(100vh - 200px), 460px);
+    /* max-width constrained by available height so card stays square */
+    max-width: min(460px, clamp(180px, calc(100vh - 190px), 460px));
+    aspect-ratio: 1 / 1;
     position:relative;
     transform-style:preserve-3d;
     transition:transform .65s ease;
@@ -348,8 +348,10 @@ body{
 }
 
 .front img{
-    max-width:300px;
-    max-height:280px;
+    max-width:calc(100% - 40px);
+    max-height:calc(100% - 40px);
+    width:auto;
+    height:auto;
     object-fit:contain;
     display:block;
 }
@@ -487,13 +489,7 @@ body{
     }
 
     .card{
-        max-width:360px;
-        height:clamp(180px, calc(100vh - 180px), 360px);
-    }
-
-    .front img{
-        max-width:220px;
-        max-height:210px;
+        max-width: min(360px, clamp(160px, calc(100vh - 180px), 360px));
     }
 
     .back-word{
