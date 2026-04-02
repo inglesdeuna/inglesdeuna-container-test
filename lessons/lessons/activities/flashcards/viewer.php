@@ -267,9 +267,6 @@ body{
     margin:0 auto;
     text-align:center;
     padding:4px 0 4px;
-    display:flex;
-    flex-direction:column;
-    align-items:center;
 }
 
 .viewer-header{ display:none !important; }
@@ -314,9 +311,8 @@ body{
 
 .card{
     width:100%;
-    /* max-width constrained by available height so card stays square */
-    max-width: min(460px, clamp(180px, calc(100vh - 190px), 460px));
-    aspect-ratio: 1 / 1;
+    max-width:460px;
+    height:460px;
     position:relative;
     transform-style:preserve-3d;
     transition:transform .65s ease;
@@ -348,10 +344,8 @@ body{
 }
 
 .front img{
-    max-width:calc(100% - 40px);
-    max-height:calc(100% - 40px);
-    width:auto;
-    height:auto;
+    max-width:300px;
+    max-height:280px;
     object-fit:contain;
     display:block;
 }
@@ -489,7 +483,13 @@ body{
     }
 
     .card{
-        max-width: min(360px, clamp(160px, calc(100vh - 180px), 360px));
+        max-width:360px;
+        height:360px;
+    }
+
+    .front img{
+        max-width:220px;
+        max-height:210px;
     }
 
     .back-word{
