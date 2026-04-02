@@ -129,6 +129,10 @@ ob_start();
 .ex-viewer{
     max-width:860px;
     margin:0 auto;
+    min-height:calc(100vh - 120px);
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
 }
 .ex-intro{
     margin-bottom:18px;

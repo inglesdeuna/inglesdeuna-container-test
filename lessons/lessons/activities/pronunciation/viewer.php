@@ -390,6 +390,10 @@ ob_start();
 #pron-viewer{
     width:100%;
     max-width:100%;
+    min-height:calc(100vh - 120px);
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
 }
 
 #pron-card{

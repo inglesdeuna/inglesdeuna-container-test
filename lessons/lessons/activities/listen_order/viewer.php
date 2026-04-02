@@ -150,6 +150,10 @@ ob_start();
 .lo-stage{
   max-width:980px;
   margin:0 auto;
+  min-height:calc(100vh - 120px);
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
 }
 
 .lo-intro{
