@@ -293,7 +293,7 @@ ob_start();
     --match-right-soft:#e0f2fe;
     max-width:1060px;
     margin:0 auto;
-    padding:0 18px;
+    padding:18px;
 }
 
 .viewer-header{ display:none !important; }
@@ -324,10 +324,9 @@ ob_start();
 }
 
 .match-columns{
-    display:flex;
+    display:grid;
+    grid-template-columns:1fr 1fr;
     gap:30px;
-    margin-top:18px;
-    align-items:stretch;
 }
 
 .match-column-card{
@@ -335,10 +334,10 @@ ob_start();
     background:#ffffff;
     border:1px solid #dbe7f5;
     border-radius:24px;
-    padding:18px 16px;
+    /* 24px top = 8px accent bar + 16px clearance; 16px on other 3 sides */
+    padding:24px 16px 16px;
     box-shadow:0 14px 28px rgba(15, 23, 42, .07);
     overflow:hidden;
-    flex:1 1 0%;
     min-width:0;
     box-sizing:border-box;
 }

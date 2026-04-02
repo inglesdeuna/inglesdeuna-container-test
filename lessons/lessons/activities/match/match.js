@@ -110,7 +110,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const tileHFromH = Math.floor((availH - gapV * (rows - 1)) / rows);
 
     // Width-based tile size
-    // match-stage max-width 1060, 18px side padding × 2 = 36px, 30px gap between two columns, 32px col-card padding (16+16)
+    // match-stage max-width 1060, 18px padding × 2 = 36px, 30px gap between 2 columns, 32px col-card h-padding (16+16)
     const stageW = Math.min(vw - 44, 1060) - 36;
     const colW = (stageW - 30) / 2 - 32;
     const gapH = 14;
