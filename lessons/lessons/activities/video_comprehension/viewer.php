@@ -128,6 +128,24 @@ $iframeUrl = trim((string) ($activity['iframe_url'] ?? ''));
 $instructions = trim((string) ($activity['instructions'] ?? 'Watch the video and answer each question.'));
 $questions = isset($activity['questions']) && is_array($activity['questions']) ? $activity['questions'] : [];
 
+// Redirect admin/teacher to editor if activity has no video configured yet
+if ($iframeUrl === '' && $activityId !== '') {
+    if (session_status() === PHP_SESSION_NONE) {
+        session_start();
+    }
+    $isEditor = !empty($_SESSION['admin_logged']) || !empty($_SESSION['academic_logged']);
+    if ($isEditor) {
+        $editorParams = http_build_query(array_filter([
+            'id'         => $activityId,
+            'unit'       => $unit,
+            'source'     => isset($_GET['source']) ? trim((string) $_GET['source']) : '',
+            'assignment' => isset($_GET['assignment']) ? trim((string) $_GET['assignment']) : '',
+        ]));
+        header('Location: editor.php?' . $editorParams);
+        exit;
+    }
+}
+
 ob_start();
 ?>
 
