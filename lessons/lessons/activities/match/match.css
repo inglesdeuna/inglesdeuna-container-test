@@ -67,7 +67,7 @@ body{
   box-sizing: border-box;
   transition: transform .2s ease, background .2s ease, border-color .2s ease, color .2s ease;
   position: relative;
-  background: linear-gradient(180deg, #fafdff 0%, #e0f2fe 100%);
+  background: #ffffff;
 }
 
 .match-tile-inner{
@@ -88,7 +88,7 @@ body{
   user-select: none;
   -webkit-user-drag: none;
   border-radius: 12px;
-  background: #f8fafc;
+  background: #ffffff;
 }
 
 .match-text{

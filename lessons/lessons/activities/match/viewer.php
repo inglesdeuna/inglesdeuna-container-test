@@ -361,28 +361,6 @@ ob_start();
     background:linear-gradient(90deg, #38bdf8 0%, #0ea5e9 100%);
 }
 
-.match-column-card h3{
-    margin:0 0 6px;
-    font-family:'Fredoka', 'Trebuchet MS', sans-serif;
-    font-size:22px;
-    font-weight:700;
-}
-
-.match-column-left h3{
-    color:var(--match-left-accent);
-}
-
-.match-column-right h3{
-    color:var(--match-right-accent);
-}
-
-.match-column-card p{
-    margin:0 0 14px;
-    font-family:'Nunito', 'Segoe UI', sans-serif;
-    color:#475569;
-    font-size:15px;
-}
-
 .match-empty{
     max-width:700px;
     margin:30px auto;
@@ -415,14 +393,10 @@ ob_start();
 
         <div class="match-columns">
             <section class="match-column-card match-column-left">
-                <h3>Drag From Here</h3>
-                <p>Move these cards and look for the matching idea on the other side.</p>
                 <div class="board-column" id="match-left"></div>
             </section>
 
             <section class="match-column-card match-column-right">
-                <h3>Drop In The Correct Pair</h3>
-                <p>Drop each card on the option that completes the pair correctly.</p>
                 <div class="board-column" id="match-right"></div>
             </section>
         </div>
