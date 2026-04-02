@@ -62,12 +62,16 @@ $activityTypes = [
    ACTIVIDADES YA CREADAS
 =============================== */
 $stmtActivities = $pdo->prepare("
-    SELECT DISTINCT type 
-    FROM activities 
+    SELECT type, COUNT(*) AS cnt
+    FROM activities
     WHERE unit_id = :unit_id
+    GROUP BY type
 ");
 $stmtActivities->execute(['unit_id' => $unit_id]);
-$createdTypes = $stmtActivities->fetchAll(PDO::FETCH_COLUMN);
+$createdCounts = [];
+foreach ($stmtActivities->fetchAll(PDO::FETCH_ASSOC) as $row) {
+    $createdCounts[(string) $row['type']] = (int) $row['cnt'];
+}
 ?>
 
 <!DOCTYPE html>
@@ -212,6 +216,29 @@ body{
     accent-color:var(--primary);
 }
 
+.row-right{
+    display:flex;
+    align-items:center;
+    gap:8px;
+}
+
+.qty-wrap{
+    display:none;
+    align-items:center;
+}
+
+.qty-input{
+    width:52px;
+    padding:4px 8px;
+    border:1.5px solid var(--line);
+    border-radius:8px;
+    font-size:15px;
+    font-weight:700;
+    text-align:center;
+    color:var(--primary-dark);
+    background:#f0f7ff;
+}
+
 .created{
     color:var(--primary-dark);
     background:var(--success-bg);
@@ -277,14 +304,18 @@ body{
             <?php foreach ($activityTypes as $type => $label): ?>
                 <li>
                     <label>
-                        <input type="checkbox" name="types[]" value="<?= $type; ?>"
-                        <?= in_array($type, $createdTypes) ? 'checked disabled' : ''; ?>>
+                        <input type="checkbox" class="type-cb" name="checked_types[]" value="<?= htmlspecialchars($type); ?>">
                         <?= htmlspecialchars($label); ?>
                     </label>
 
-                    <?php if (in_array($type, $createdTypes)): ?>
-                        <span class="created">✓ Creada</span>
-                    <?php endif; ?>
+                    <div class="row-right">
+                        <?php $cnt = $createdCounts[$type] ?? 0; if ($cnt > 0): ?>
+                            <span class="created">✓ <?= $cnt; ?> <?= $cnt === 1 ? 'creada' : 'creadas'; ?></span>
+                        <?php endif; ?>
+                        <span class="qty-wrap" id="qty_<?= htmlspecialchars($type); ?>">
+                            <input type="number" name="qty[<?= htmlspecialchars($type); ?>]" value="1" min="1" max="9" class="qty-input">
+                        </span>
+                    </div>
                 </li>
             <?php endforeach; ?>
         </ul>
@@ -298,5 +329,13 @@ body{
     </div>
 </div>
 
+<script>
+document.querySelectorAll('.type-cb').forEach(function(cb) {
+    cb.addEventListener('change', function() {
+        var wrap = document.getElementById('qty_' + this.value);
+        if (wrap) wrap.style.display = this.checked ? 'flex' : 'none';
+    });
+});
+</script>
 </body>
 </html>

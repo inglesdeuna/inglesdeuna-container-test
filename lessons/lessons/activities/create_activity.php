@@ -38,44 +38,40 @@ if (!$unit) {
 /* ===============================
    CREAR ACTIVIDADES SELECCIONADAS
 =============================== */
-foreach ($types as $type) {
+$checkedTypes = $_POST['checked_types'] ?? $_POST['types'] ?? [];
+$qtyCounts    = $_POST['qty'] ?? [];
 
-    // Evitar duplicados
-    $check = $pdo->prepare("
-        SELECT id FROM activities
-        WHERE unit_id = :unit_id AND type = :type
-        LIMIT 1
-    ");
+foreach ($checkedTypes as $type) {
 
-    $check->execute([
-        "unit_id" => $unitId,
-        "type"    => $type
-    ]);
-
-    if ($check->fetch()) {
-        continue; // ya existe, no insertar
+    // Validar formato del tipo
+    if (!preg_match('/^[a-zA-Z0-9_]+$/', (string) $type)) {
+        continue;
     }
 
-    $stmt = $pdo->prepare("
-        INSERT INTO activities 
-        (unit_id, type, created_at, position) 
-        VALUES (
-            :unit_id, 
-            :type, 
-            NOW(),
-            (
-                SELECT COALESCE(MAX(position),0)+1 
-                FROM activities 
-                WHERE unit_id = :unit_id2
-            )
-        )
-    ");
+    $n = max(1, min(9, (int) ($qtyCounts[$type] ?? 1)));
 
-    $stmt->execute([
-        "unit_id"  => $unitId,
-        "unit_id2" => $unitId,
-        "type"     => $type
-    ]);
+    for ($i = 0; $i < $n; $i++) {
+        $stmt = $pdo->prepare("
+            INSERT INTO activities 
+            (unit_id, type, created_at, position) 
+            VALUES (
+                :unit_id, 
+                :type, 
+                NOW(),
+                (
+                    SELECT COALESCE(MAX(a2.position),0)+1 
+                    FROM activities a2
+                    WHERE a2.unit_id = :unit_id2
+                )
+            )
+        ");
+
+        $stmt->execute([
+            "unit_id"  => $unitId,
+            "unit_id2" => $unitId,
+            "type"     => $type
+        ]);
+    }
 }
 
 /* ===============================
