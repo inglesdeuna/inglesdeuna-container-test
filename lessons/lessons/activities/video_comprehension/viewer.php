@@ -128,22 +128,12 @@ $iframeUrl = trim((string) ($activity['iframe_url'] ?? ''));
 $instructions = trim((string) ($activity['instructions'] ?? 'Watch the video and answer each question.'));
 $questions = isset($activity['questions']) && is_array($activity['questions']) ? $activity['questions'] : [];
 
-// Redirect admin/teacher to editor if activity has no video configured yet
+$isEditorSession = false;
 if ($iframeUrl === '' && $activityId !== '') {
     if (session_status() === PHP_SESSION_NONE) {
         session_start();
     }
-    $isEditor = !empty($_SESSION['admin_logged']) || !empty($_SESSION['academic_logged']);
-    if ($isEditor) {
-        $editorParams = http_build_query(array_filter([
-            'id'         => $activityId,
-            'unit'       => $unit,
-            'source'     => isset($_GET['source']) ? trim((string) $_GET['source']) : '',
-            'assignment' => isset($_GET['assignment']) ? trim((string) $_GET['assignment']) : '',
-        ]));
-        header('Location: editor.php?' . $editorParams);
-        exit;
-    }
+    $isEditorSession = !empty($_SESSION['admin_logged']) || !empty($_SESSION['academic_logged']);
 }
 
 ob_start();
@@ -204,7 +194,25 @@ ob_start();
 
     <?php if (!$hasVideo) { ?>
         <div class="vc-panel">
-            <div class="vc-empty">No video iframe URL configured for this activity.</div>
+            <?php if ($isEditorSession): ?>
+                <?php
+                $editorParams = http_build_query(array_filter([
+                    'id'         => $activityId,
+                    'unit'       => $unit,
+                    'source'     => isset($_GET['source']) ? trim((string) $_GET['source']) : '',
+                    'assignment' => isset($_GET['assignment']) ? trim((string) $_GET['assignment']) : '',
+                ]));
+                ?>
+                <div class="vc-empty" style="display:flex;flex-direction:column;align-items:center;gap:14px;padding:32px 24px;">
+                    <span>Este video aún no está configurado.</span>
+                    <a href="editor.php?<?= htmlspecialchars($editorParams, ENT_QUOTES, 'UTF-8') ?>"
+                       style="display:inline-block;padding:10px 22px;background:linear-gradient(180deg,#3b82f6,#1d4ed8);color:#fff;font-weight:800;border-radius:999px;text-decoration:none;font-size:14px;">
+                        Configurar video →
+                    </a>
+                </div>
+            <?php else: ?>
+                <div class="vc-empty">No hay video configurado para esta actividad.</div>
+            <?php endif; ?>
         </div>
     <?php } ?>
 
