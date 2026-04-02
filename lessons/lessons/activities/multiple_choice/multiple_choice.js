@@ -198,8 +198,7 @@
       listenBtn.innerHTML = '&#128266; Listen';
       listenBtn.addEventListener('click', function () { speakText(cleanQuestion); });
       questionEl.appendChild(listenBtn);
-      // auto-play on load
-      setTimeout(function () { speakText(cleanQuestion); }, 300);
+      speakWhenReady(cleanQuestion);
     } else {
       questionEl.textContent = cleanQuestion;
     }
@@ -359,7 +358,8 @@
     restartBtn.addEventListener('click', restartActivity);
   }
 
-  loadQuestion();
+  let userInteracted = false;
+  let pendingSpeech = '';
 
   function speakText(text) {
     if (!text || !window.speechSynthesis) return;
@@ -369,4 +369,24 @@
     utt.rate = 0.9;
     window.speechSynthesis.speak(utt);
   }
+
+  function speakWhenReady(text) {
+    if (!text) return;
+    if (userInteracted) {
+      speakText(text);
+    } else {
+      pendingSpeech = text;
+    }
+  }
+
+  document.addEventListener('click', function onFirstInteraction() {
+    userInteracted = true;
+    if (pendingSpeech) {
+      speakText(pendingSpeech);
+      pendingSpeech = '';
+    }
+    document.removeEventListener('click', onFirstInteraction);
+  }, { once: true });
+
+  loadQuestion();
 });
