@@ -106,15 +106,18 @@ function normalize_multiple_choice_payload($rawData): array
             );
 
         $questions[] = array(
-            'id' => isset($item['id']) && trim((string) $item['id']) !== '' ? trim((string) $item['id']) : uniqid('mc_'),
-            'question' => isset($item['question']) ? trim((string) $item['question']) : '',
-            'image' => isset($item['image']) ? trim((string) $item['image']) : '',
-            'options' => array(
+            'id'            => isset($item['id']) && trim((string) $item['id']) !== '' ? trim((string) $item['id']) : uniqid('mc_'),
+            'question_type' => (isset($item['question_type']) && $item['question_type'] === 'listen') ? 'listen' : 'text',
+            'question'      => isset($item['question']) ? trim((string) $item['question']) : '',
+            'audio'         => isset($item['audio']) ? trim((string) $item['audio']) : '',
+            'image'         => isset($item['image']) ? trim((string) $item['image']) : '',
+            'option_type'   => (isset($item['option_type']) && $item['option_type'] === 'image') ? 'image' : 'text',
+            'options'       => array(
                 isset($options[0]) ? trim((string) $options[0]) : '',
                 isset($options[1]) ? trim((string) $options[1]) : '',
                 isset($options[2]) ? trim((string) $options[2]) : '',
             ),
-            'correct' => isset($item['correct']) ? max(0, min(2, (int) $item['correct'])) : 0,
+            'correct'       => isset($item['correct']) ? max(0, min(2, (int) $item['correct'])) : 0,
         );
     }
 
@@ -273,12 +276,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $corrects = isset($_POST['correct']) && is_array($_POST['correct']) ? $_POST['correct'] : array();
     $imageFiles = isset($_FILES['image_file']) ? $_FILES['image_file'] : null;
 
+    $questionTypes   = isset($_POST['question_type']) && is_array($_POST['question_type']) ? $_POST['question_type'] : array();
+    $audioExisting   = isset($_POST['audio_existing']) && is_array($_POST['audio_existing']) ? $_POST['audio_existing'] : array();
+    $audioFiles      = isset($_FILES['audio_file']) ? $_FILES['audio_file'] : null;
+    $optionTypes     = isset($_POST['option_type']) && is_array($_POST['option_type']) ? $_POST['option_type'] : array();
+    $optAImgExisting = isset($_POST['option_a_img_existing']) && is_array($_POST['option_a_img_existing']) ? $_POST['option_a_img_existing'] : array();
+    $optBImgExisting = isset($_POST['option_b_img_existing']) && is_array($_POST['option_b_img_existing']) ? $_POST['option_b_img_existing'] : array();
+    $optCImgExisting = isset($_POST['option_c_img_existing']) && is_array($_POST['option_c_img_existing']) ? $_POST['option_c_img_existing'] : array();
+    $optAImgFiles    = isset($_FILES['option_a_img']) ? $_FILES['option_a_img'] : null;
+    $optBImgFiles    = isset($_FILES['option_b_img']) ? $_FILES['option_b_img'] : null;
+    $optCImgFiles    = isset($_FILES['option_c_img']) ? $_FILES['option_c_img'] : null;
+
     $sanitized = array();
 
     foreach ($questionTexts as $i => $questionRaw) {
-        $question = trim((string) $questionRaw);
-        $image = isset($images[$i]) ? trim((string) $images[$i]) : '';
-        $qid = isset($questionIds[$i]) && trim((string) $questionIds[$i]) !== '' ? trim((string) $questionIds[$i]) : uniqid('mc_');
+        $question     = trim((string) $questionRaw);
+        $image        = isset($images[$i]) ? trim((string) $images[$i]) : '';
+        $qid          = isset($questionIds[$i]) && trim((string) $questionIds[$i]) !== '' ? trim((string) $questionIds[$i]) : uniqid('mc_');
+        $questionType = (isset($questionTypes[$i]) && $questionTypes[$i] === 'listen') ? 'listen' : 'text';
+        $optionType   = (isset($optionTypes[$i]) && $optionTypes[$i] === 'image') ? 'image' : 'text';
 
         if (
             $imageFiles &&
@@ -293,21 +309,62 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
 
+        $audio = isset($audioExisting[$i]) ? trim((string) $audioExisting[$i]) : '';
+        if (
+            $audioFiles &&
+            isset($audioFiles['name'][$i]) &&
+            $audioFiles['name'][$i] !== '' &&
+            isset($audioFiles['tmp_name'][$i]) &&
+            $audioFiles['tmp_name'][$i] !== ''
+        ) {
+            $uploadedAudio = upload_video_to_cloudinary($audioFiles['tmp_name'][$i]);
+            if ($uploadedAudio) {
+                $audio = $uploadedAudio;
+            }
+        }
+
         $a = isset($optionA[$i]) ? trim((string) $optionA[$i]) : '';
         $b = isset($optionB[$i]) ? trim((string) $optionB[$i]) : '';
         $c = isset($optionC[$i]) ? trim((string) $optionC[$i]) : '';
+
+        if ($optionType === 'image') {
+            $aImg = isset($optAImgExisting[$i]) ? trim((string) $optAImgExisting[$i]) : '';
+            if ($optAImgFiles && isset($optAImgFiles['name'][$i]) && $optAImgFiles['name'][$i] !== '' && isset($optAImgFiles['tmp_name'][$i]) && $optAImgFiles['tmp_name'][$i] !== '') {
+                $up = upload_to_cloudinary($optAImgFiles['tmp_name'][$i]);
+                if ($up) $aImg = $up;
+            }
+            $a = $aImg;
+
+            $bImg = isset($optBImgExisting[$i]) ? trim((string) $optBImgExisting[$i]) : '';
+            if ($optBImgFiles && isset($optBImgFiles['name'][$i]) && $optBImgFiles['name'][$i] !== '' && isset($optBImgFiles['tmp_name'][$i]) && $optBImgFiles['tmp_name'][$i] !== '') {
+                $up = upload_to_cloudinary($optBImgFiles['tmp_name'][$i]);
+                if ($up) $bImg = $up;
+            }
+            $b = $bImg;
+
+            $cImg = isset($optCImgExisting[$i]) ? trim((string) $optCImgExisting[$i]) : '';
+            if ($optCImgFiles && isset($optCImgFiles['name'][$i]) && $optCImgFiles['name'][$i] !== '' && isset($optCImgFiles['tmp_name'][$i]) && $optCImgFiles['tmp_name'][$i] !== '') {
+                $up = upload_to_cloudinary($optCImgFiles['tmp_name'][$i]);
+                if ($up) $cImg = $up;
+            }
+            $c = $cImg;
+        }
+
         $correct = isset($corrects[$i]) ? max(0, min(2, (int) $corrects[$i])) : 0;
 
-        if ($question === '' && $image === '' && $a === '' && $b === '' && $c === '') {
+        if ($question === '' && $audio === '' && $image === '' && $a === '' && $b === '' && $c === '') {
             continue;
         }
 
         $sanitized[] = array(
-            'id' => $qid,
-            'question' => $question,
-            'image' => $image,
-            'options' => array($a, $b, $c),
-            'correct' => $correct,
+            'id'            => $qid,
+            'question_type' => $questionType,
+            'question'      => $question,
+            'audio'         => $audio,
+            'image'         => $image,
+            'option_type'   => $optionType,
+            'options'       => array($a, $b, $c),
+            'correct'       => $correct,
         );
     }
 
@@ -439,6 +496,84 @@ ob_start();
     cursor:pointer;
     font-weight:700;
 }
+
+.save-btn{
+    background:linear-gradient(180deg,#0d9488,#0f766e);
+    color:#fff;
+    padding:10px 20px;
+    border:none;
+    border-radius:10px;
+    cursor:pointer;
+    font-weight:800;
+    font-family:'Nunito','Segoe UI',sans-serif;
+    font-size:15px;
+    transition:transform .15s ease, filter .15s ease;
+    box-shadow:0 2px 8px rgba(13,148,136,.22);
+}
+.save-btn:hover{
+    filter:brightness(1.07);
+    transform:translateY(-1px);
+}
+
+.q-mode-row{
+    display:flex;
+    gap:16px;
+    margin-bottom:12px;
+    flex-wrap:wrap;
+}
+.q-mode-row > div{
+    flex:1;
+    min-width:160px;
+}
+.q-mode-row label{
+    font-weight:700;
+    margin-bottom:5px;
+    display:block;
+}
+.q-mode-row select{
+    width:100%;
+    padding:8px 10px;
+    border:1px solid #d1d5db;
+    border-radius:8px;
+    font-size:14px;
+}
+
+audio.audio-preview{
+    display:block;
+    width:100%;
+    margin-bottom:10px;
+}
+
+.opt-img-group{
+    display:flex;
+    gap:12px;
+    flex-wrap:wrap;
+    margin-bottom:12px;
+}
+.opt-img-col{
+    flex:1;
+    min-width:130px;
+    border:1px dashed #d1d5db;
+    border-radius:10px;
+    padding:10px;
+    background:#fafafa;
+}
+.opt-img-col label{
+    font-weight:700;
+    font-size:13px;
+    margin-bottom:6px;
+    display:block;
+}
+.opt-img-preview{
+    display:block;
+    max-width:100%;
+    max-height:90px;
+    object-fit:contain;
+    border-radius:8px;
+    border:1px solid #d1d5db;
+    background:#fff;
+    margin-bottom:8px;
+}
 </style>
 
 <?php if (isset($_GET['saved'])) { ?>
@@ -459,28 +594,86 @@ ob_start();
     </div>
 
     <div id="questionsContainer">
-        <?php foreach ($questions as $question) { ?>
+        <?php foreach ($questions as $question) {
+            $qType  = isset($question['question_type']) ? $question['question_type'] : 'text';
+            $optType = isset($question['option_type']) ? $question['option_type'] : 'text';
+        ?>
             <div class="question-item">
                 <input type="hidden" name="question_id[]" value="<?= htmlspecialchars(isset($question['id']) ? $question['id'] : uniqid('mc_'), ENT_QUOTES, 'UTF-8') ?>">
                 <input type="hidden" name="image_existing[]" value="<?= htmlspecialchars(isset($question['image']) ? $question['image'] : '', ENT_QUOTES, 'UTF-8') ?>">
+                <input type="hidden" name="audio_existing[]" value="<?= htmlspecialchars(isset($question['audio']) ? $question['audio'] : '', ENT_QUOTES, 'UTF-8') ?>">
+                <input type="hidden" name="option_a_img_existing[]" value="<?= htmlspecialchars(($optType === 'image' && isset($question['options'][0])) ? $question['options'][0] : '', ENT_QUOTES, 'UTF-8') ?>">
+                <input type="hidden" name="option_b_img_existing[]" value="<?= htmlspecialchars(($optType === 'image' && isset($question['options'][1])) ? $question['options'][1] : '', ENT_QUOTES, 'UTF-8') ?>">
+                <input type="hidden" name="option_c_img_existing[]" value="<?= htmlspecialchars(($optType === 'image' && isset($question['options'][2])) ? $question['options'][2] : '', ENT_QUOTES, 'UTF-8') ?>">
 
-                <label>Question</label>
-                <textarea name="question[]" placeholder="Write the question" required><?= htmlspecialchars(isset($question['question']) ? $question['question'] : '', ENT_QUOTES, 'UTF-8') ?></textarea>
+                <div class="q-mode-row">
+                    <div>
+                        <label>Question type</label>
+                        <select name="question_type[]" onchange="onQuestionTypeChange(this)">
+                            <option value="text" <?= $qType === 'text' ? 'selected' : '' ?>>Text</option>
+                            <option value="listen" <?= $qType === 'listen' ? 'selected' : '' ?>>🔊 Listen (audio)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label>Options type</label>
+                        <select name="option_type[]" onchange="onOptionTypeChange(this)">
+                            <option value="text" <?= $optType === 'text' ? 'selected' : '' ?>>Text</option>
+                            <option value="image" <?= $optType === 'image' ? 'selected' : '' ?>>🖼 Images</option>
+                        </select>
+                    </div>
+                </div>
 
-                <label>Image (optional)</label>
-                <?php if (!empty($question['image'])) { ?>
+                <!-- TEXT QUESTION -->
+                <div class="q-text-section" <?= $qType === 'listen' ? 'style="display:none"' : '' ?>>
+                    <label>Question</label>
+                    <textarea name="question[]" placeholder="Write the question" <?= $qType !== 'listen' ? 'required' : '' ?>><?= htmlspecialchars(isset($question['question']) ? $question['question'] : '', ENT_QUOTES, 'UTF-8') ?></textarea>
+                </div>
+
+                <!-- LISTEN QUESTION -->
+                <div class="q-listen-section" <?= $qType !== 'listen' ? 'style="display:none"' : '' ?>>
+                    <label>Audio file</label>
+                    <?php if ($qType === 'listen' && !empty($question['audio'])): ?>
+                        <audio controls class="audio-preview" src="<?= htmlspecialchars($question['audio'], ENT_QUOTES, 'UTF-8') ?>"></audio>
+                    <?php endif; ?>
+                    <input type="file" name="audio_file[]" accept="audio/*">
+                </div>
+
+                <label>Image for question (optional)</label>
+                <?php if (!empty($question['image'])): ?>
                     <img src="<?= htmlspecialchars($question['image'], ENT_QUOTES, 'UTF-8') ?>" alt="mc-image" class="image-preview">
-                <?php } ?>
+                <?php endif; ?>
                 <input type="file" name="image_file[]" accept="image/*">
 
-                <label>Option A</label>
-                <input type="text" name="option_a[]" value="<?= htmlspecialchars(isset($question['options'][0]) ? $question['options'][0] : '', ENT_QUOTES, 'UTF-8') ?>" required>
+                <!-- TEXT OPTIONS -->
+                <div class="q-text-opts-section" <?= $optType === 'image' ? 'style="display:none"' : '' ?>>
+                    <label>Option A</label>
+                    <input type="text" name="option_a[]" value="<?= htmlspecialchars(($optType === 'text' && isset($question['options'][0])) ? $question['options'][0] : '', ENT_QUOTES, 'UTF-8') ?>" <?= $optType !== 'image' ? 'required' : '' ?>>
 
-                <label>Option B</label>
-                <input type="text" name="option_b[]" value="<?= htmlspecialchars(isset($question['options'][1]) ? $question['options'][1] : '', ENT_QUOTES, 'UTF-8') ?>" required>
+                    <label>Option B</label>
+                    <input type="text" name="option_b[]" value="<?= htmlspecialchars(($optType === 'text' && isset($question['options'][1])) ? $question['options'][1] : '', ENT_QUOTES, 'UTF-8') ?>" <?= $optType !== 'image' ? 'required' : '' ?>>
 
-                <label>Option C</label>
-                <input type="text" name="option_c[]" value="<?= htmlspecialchars(isset($question['options'][2]) ? $question['options'][2] : '', ENT_QUOTES, 'UTF-8') ?>" required>
+                    <label>Option C</label>
+                    <input type="text" name="option_c[]" value="<?= htmlspecialchars(($optType === 'text' && isset($question['options'][2])) ? $question['options'][2] : '', ENT_QUOTES, 'UTF-8') ?>" <?= $optType !== 'image' ? 'required' : '' ?>>
+                </div>
+
+                <!-- IMAGE OPTIONS -->
+                <div class="q-img-opts-section" <?= $optType !== 'image' ? 'style="display:none"' : '' ?>>
+                    <div class="opt-img-group">
+                        <?php foreach (['A' => 0, 'B' => 1, 'C' => 2] as $letter => $idx): ?>
+                            <div class="opt-img-col">
+                                <label>Option <?= $letter ?></label>
+                                <?php if ($optType === 'image' && !empty($question['options'][$idx])): ?>
+                                    <img src="<?= htmlspecialchars($question['options'][$idx], ENT_QUOTES, 'UTF-8') ?>" class="opt-img-preview">
+                                <?php endif; ?>
+                                <input type="file" name="option_<?= strtolower($letter) ?>_img[]" accept="image/*" onchange="previewOptImg(this)">
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                    <!-- hidden shadow fields so option_a/b/c[] array stays aligned -->
+                    <input type="hidden" name="option_a[]" value="">
+                    <input type="hidden" name="option_b[]" value="">
+                    <input type="hidden" name="option_c[]" value="">
+                </div>
 
                 <label>Correct answer</label>
                 <select name="correct[]">
@@ -516,6 +709,44 @@ function removeQuestion(button) {
     }
 }
 
+function onQuestionTypeChange(sel) {
+    markChanged();
+    const item = sel.closest('.question-item');
+    const isListen = sel.value === 'listen';
+    item.querySelector('.q-text-section').style.display = isListen ? 'none' : '';
+    item.querySelector('.q-listen-section').style.display = isListen ? '' : 'none';
+    const textarea = item.querySelector('textarea[name="question[]"]');
+    if (textarea) textarea.required = !isListen;
+}
+
+function onOptionTypeChange(sel) {
+    markChanged();
+    const item = sel.closest('.question-item');
+    const isImage = sel.value === 'image';
+    item.querySelector('.q-text-opts-section').style.display = isImage ? 'none' : '';
+    item.querySelector('.q-img-opts-section').style.display = isImage ? '' : 'none';
+    item.querySelectorAll('.q-text-opts-section input[type="text"]').forEach(function(inp) {
+        inp.required = !isImage;
+    });
+}
+
+function previewOptImg(input) {
+    const file = input.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    const col = input.closest('.opt-img-col');
+    reader.onload = function(e) {
+        let preview = col.querySelector('.opt-img-preview');
+        if (!preview) {
+            preview = document.createElement('img');
+            preview.className = 'opt-img-preview';
+            col.insertBefore(preview, input);
+        }
+        preview.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+}
+
 function addQuestion() {
     const container = document.getElementById('questionsContainer');
     const div = document.createElement('div');
@@ -523,21 +754,69 @@ function addQuestion() {
     div.innerHTML = `
         <input type="hidden" name="question_id[]" value="mc_${Date.now()}_${Math.floor(Math.random() * 1000)}">
         <input type="hidden" name="image_existing[]" value="">
+        <input type="hidden" name="audio_existing[]" value="">
+        <input type="hidden" name="option_a_img_existing[]" value="">
+        <input type="hidden" name="option_b_img_existing[]" value="">
+        <input type="hidden" name="option_c_img_existing[]" value="">
 
-        <label>Question</label>
-        <textarea name="question[]" placeholder="Write the question" required></textarea>
+        <div class="q-mode-row">
+            <div>
+                <label>Question type</label>
+                <select name="question_type[]" onchange="onQuestionTypeChange(this)">
+                    <option value="text">Text</option>
+                    <option value="listen">🔊 Listen (audio)</option>
+                </select>
+            </div>
+            <div>
+                <label>Options type</label>
+                <select name="option_type[]" onchange="onOptionTypeChange(this)">
+                    <option value="text">Text</option>
+                    <option value="image">🖼 Images</option>
+                </select>
+            </div>
+        </div>
 
-        <label>Image (optional)</label>
+        <div class="q-text-section">
+            <label>Question</label>
+            <textarea name="question[]" placeholder="Write the question" required></textarea>
+        </div>
+
+        <div class="q-listen-section" style="display:none">
+            <label>Audio file</label>
+            <input type="file" name="audio_file[]" accept="audio/*">
+        </div>
+
+        <label>Image for question (optional)</label>
         <input type="file" name="image_file[]" accept="image/*">
 
-        <label>Option A</label>
-        <input type="text" name="option_a[]" required>
+        <div class="q-text-opts-section">
+            <label>Option A</label>
+            <input type="text" name="option_a[]" required>
+            <label>Option B</label>
+            <input type="text" name="option_b[]" required>
+            <label>Option C</label>
+            <input type="text" name="option_c[]" required>
+        </div>
 
-        <label>Option B</label>
-        <input type="text" name="option_b[]" required>
-
-        <label>Option C</label>
-        <input type="text" name="option_c[]" required>
+        <div class="q-img-opts-section" style="display:none">
+            <div class="opt-img-group">
+                <div class="opt-img-col">
+                    <label>Option A</label>
+                    <input type="file" name="option_a_img[]" accept="image/*" onchange="previewOptImg(this)">
+                </div>
+                <div class="opt-img-col">
+                    <label>Option B</label>
+                    <input type="file" name="option_b_img[]" accept="image/*" onchange="previewOptImg(this)">
+                </div>
+                <div class="opt-img-col">
+                    <label>Option C</label>
+                    <input type="file" name="option_c_img[]" accept="image/*" onchange="previewOptImg(this)">
+                </div>
+            </div>
+            <input type="hidden" name="option_a[]" value="">
+            <input type="hidden" name="option_b[]" value="">
+            <input type="hidden" name="option_c[]" value="">
+        </div>
 
         <label>Correct answer</label>
         <select name="correct[]">
