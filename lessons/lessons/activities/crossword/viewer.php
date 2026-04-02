@@ -710,11 +710,6 @@ ob_start();
 </style>
 
 <div class="cw-viewer" id="cwViewer">
-    <section class="cw-intro">
-        <h2><?= htmlspecialchars($title, ENT_QUOTES, 'UTF-8') ?></h2>
-        <p>Fill the crossword using Across and Down clues. Click a square to begin.</p>
-    </section>
-
     <div class="cw-card" id="cwGame">
         <div class="cw-layout" id="cwGameLayout">
             <!-- GRID COLUMN -->

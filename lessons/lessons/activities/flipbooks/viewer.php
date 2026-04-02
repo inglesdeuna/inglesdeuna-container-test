@@ -57,11 +57,6 @@ ob_start();
 </style>
 
 <?php if ($pdfDisplayUrl === ''): ?>
-    <div class="flipbook-intro">
-        <h2>Downloadable Material</h2>
-        <p>Open the document in the browser, download it, or use fullscreen mode for easier reading on any screen size.</p>
-    </div>
-
     <div class="flipbook-empty-state">
         <h3>No PDF has been uploaded yet</h3>
         <p>Open the editor and upload a file to preview it here.</p>
@@ -73,17 +68,6 @@ ob_start();
         data-pdf-url="<?php echo htmlspecialchars($pdfDisplayUrl, ENT_QUOTES, 'UTF-8'); ?>"
         data-pdf-download-url="<?php echo htmlspecialchars($pdfDownloadUrl, ENT_QUOTES, 'UTF-8'); ?>"
     >
-        <div class="flipbook-viewer__header">
-            <div class="flipbook-intro">
-                <h2>Downloadable Material</h2>
-                <p>Open the document in the browser, download it, or use fullscreen mode for easier reading on any screen size.</p>
-            </div>
-
-            <p class="flipbook-viewer__subtitle">
-                Preview the document here or download it for later review.
-            </p>
-        </div>
-
         <div class="flipbook-viewer__card" id="flipbook-fullscreen-target">
             <div class="flipbook-toolbar">
                 <div class="flipbook-toolbar__right">

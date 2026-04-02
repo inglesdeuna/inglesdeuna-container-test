@@ -171,11 +171,6 @@ ob_start();
 ?>
 
 <div class="mc-viewer" id="mc-container">
-    <section class="mc-intro">
-        <h2>Choose The Best Answer</h2>
-        <p>Review each question, select the best option, and use Show Answer whenever you need support.</p>
-    </section>
-
     <div class="mc-status" id="mc-status"></div>
 
     <div class="mc-card">

@@ -460,11 +460,6 @@ ob_start();
 </style>
 
 <div class="mc-viewer" id="pron-viewer">
-        <section class="mc-intro">
-            <h2>Pronunciation Practice</h2>
-            <p>One card at a time. Listen first, then use Speaker to record and validate your pronunciation automatically. Use Show Answer if you need help.</p>
-        </section>
-
         <div class="mc-status" id="pron-status"></div>
 
         <div class="mc-card" id="pron-card">

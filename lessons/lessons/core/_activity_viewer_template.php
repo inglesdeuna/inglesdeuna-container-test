@@ -267,10 +267,6 @@ function render_activity_viewer($title, $icon, $content)
     <div class="top-row">
         <a href="<?= htmlspecialchars($backUrl, ENT_QUOTES, 'UTF-8') ?>" class="back-btn">↩ Back</a>
     </div>
-
-    <div class="viewer-header">
-        <h1><?= htmlspecialchars($icon, ENT_QUOTES, 'UTF-8') ?> <?= htmlspecialchars($title, ENT_QUOTES, 'UTF-8') ?></h1>
-    </div>
     <?php } ?>
 
     <div class="viewer-content">

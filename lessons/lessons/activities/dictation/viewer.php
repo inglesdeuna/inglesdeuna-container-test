@@ -460,11 +460,6 @@ ob_start();
 </style>
 
 <div class="mc-viewer" id="dict-viewer">
-        <section class="mc-intro">
-                <h2>Dictation Practice</h2>
-            <p>One card at a time. Listen if needed, type your answer, and the result is validated automatically. Use Show Answer if you need support.</p>
-        </section>
-
         <div class="mc-status" id="dict-status"></div>
 
         <div class="mc-card" id="dict-card">

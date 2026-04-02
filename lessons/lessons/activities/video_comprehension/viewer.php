@@ -177,11 +177,6 @@ ob_start();
 </style>
 
 <div class="vc-viewer" id="vc-app">
-    <section class="vc-intro">
-        <h2>Video Comprehension</h2>
-        <p><?= htmlspecialchars($instructions, ENT_QUOTES, 'UTF-8') ?></p>
-    </section>
-
     <?php
     $hasVideo = $iframeUrl !== '';
     $isVideoOnly = $hasVideo && $activityMode === 'video_only';

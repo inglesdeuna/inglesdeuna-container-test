@@ -356,11 +356,6 @@ ob_start();
 </style>
 
 <div class="mc-viewer" id="mc-app">
-    <section class="mc-intro">
-        <h2>Memory Cards</h2>
-        <p>Flip cards and find each matching pair. Pairs can be text-text, image-image, or image-text.</p>
-    </section>
-
     <?php if (empty($cards)): ?>
         <div class="mc-shell">
             <div class="mc-empty">No pairs configured yet for this activity.</div>

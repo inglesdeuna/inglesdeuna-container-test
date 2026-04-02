@@ -242,11 +242,6 @@ ob_start();
 </style>
 
 <div class="ppt-viewer-shell">
-  <section class="ppt-intro">
-    <h2>Presentation Viewer</h2>
-    <p>Review slides, play narration, and open the original file or Canva link when available. The layout now adapts better across phones and wider screens.</p>
-  </section>
-
   <?php if ($presentationFile !== '') { ?>
     <div class="ppt-file">
       <span class="ppt-file-name">Uploaded presentation: <?php echo htmlspecialchars($presentationName !== '' ? $presentationName : 'presentation.pptx', ENT_QUOTES, 'UTF-8'); ?></span>

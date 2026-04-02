@@ -265,11 +265,6 @@ ob_start();
 </style>
 
 <div class="ex-viewer">
-    <section class="ex-intro">
-        <h2>External Resource</h2>
-        <p>Open the resource in a new tab or copy the link quickly. The card layout now keeps spacing and buttons aligned on mobile screens too.</p>
-    </section>
-
     <div class="ex-card">
         <?php if ($url === '') { ?>
             <div class="ex-empty">No URL configured for this activity.</div>

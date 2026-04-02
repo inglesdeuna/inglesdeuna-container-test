@@ -365,11 +365,6 @@ ob_start();
 </style>
 
 <div class="dd-stage">
-  <section class="dd-intro">
-    <h2>Unscramble</h2>
-    <p class="instructions">Complete the blanks by dragging the correct words into place. Use Show Answer when you need to reveal the full sentence.</p>
-  </section>
-
   <div id="sentenceBox">
     <button id="listenBtn" class="dd-btn dd-btn-listen" type="button" onclick="speak()">Listen</button>
     <div id="promptText"></div>

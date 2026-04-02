@@ -382,11 +382,6 @@ a.back{
 
 <body>
 
-<section class="hangman-intro">
-  <h1><?= htmlspecialchars($title) ?></h1>
-  <p class="subtitle">Guess the correct word, use Hint if needed, and reveal the answer only when you want full support.</p>
-</section>
-
 <div class="game-box">
   <div class="game-layout" id="gameLayout">
     <div class="left-panel">

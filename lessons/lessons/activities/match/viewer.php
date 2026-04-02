@@ -388,11 +388,6 @@ ob_start();
     <div class="match-empty">No match data available.</div>
 <?php } else { ?>
     <div class="match-stage">
-        <div class="match-intro">
-            <h2>Match The Pairs</h2>
-            <p>Drag each card from the left to its correct pair on the right. Cards can contain text, images, or a mix of both depending on the activity.</p>
-        </div>
-
         <div class="match-columns">
             <section class="match-column-card match-column-left">
                 <div class="board-column" id="match-left"></div>

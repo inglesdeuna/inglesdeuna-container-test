@@ -347,11 +347,6 @@ ob_start();
 </style>
 
 <div class="lo-stage">
-  <section class="lo-intro">
-    <h2>Listen And Order</h2>
-    <p class="instructions">Listen to the sentence and drag the images into the correct sequence. Use Show Answer to reveal the right order.</p>
-  </section>
-
   <div id="sentenceBox">
     <button class="lo-btn lo-btn-listen" type="button" onclick="playAudio()">Listen</button>
   </div>
