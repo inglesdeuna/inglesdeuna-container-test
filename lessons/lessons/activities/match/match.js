@@ -62,46 +62,74 @@ document.addEventListener("DOMContentLoaded", () => {
     } catch (e) {}
   }
 
+  function getAvailableHeightForBoard() {
+    const topRow = document.querySelector(".top-row");
+    const viewerHeader = document.querySelector(".viewer-header");
+    const matchIntro = document.querySelector(".match-intro");
+
+    const topRowH = topRow ? topRow.getBoundingClientRect().height + 2 : 0;
+    const viewerHeaderH =
+      viewerHeader && getComputedStyle(viewerHeader).display !== "none"
+        ? viewerHeader.getBoundingClientRect().height + 10
+        : 0;
+    const introH = matchIntro ? matchIntro.getBoundingClientRect().height + 18 : 100;
+
+    const bodyStyle = getComputedStyle(document.body);
+    const bodyPadT = parseFloat(bodyStyle.paddingTop) || 18;
+    const bodyPadB = parseFloat(bodyStyle.paddingBottom) || 24;
+
+    const vcEl = document.querySelector(".viewer-content");
+    const vcPadT = vcEl ? parseFloat(getComputedStyle(vcEl).paddingTop) || 18 : 18;
+    const vcPadB = vcEl ? parseFloat(getComputedStyle(vcEl).paddingBottom) || 18 : 18;
+
+    // 36 = 18px top + 18px bottom padding of .match-column-card
+    const overhead = bodyPadT + topRowH + viewerHeaderH + vcPadT + introH + 36 + vcPadB + bodyPadB;
+    return Math.max(100, window.innerHeight - overhead);
+  }
+
   function getBoardConfig(count) {
+    const vw = window.innerWidth;
+
     if (isTextOnlyMode) {
-      if (window.innerWidth <= 640) {
-        return { cols: 1, width: 226, height: 82 };
-      }
-      if (window.innerWidth <= 980) {
-        return { cols: 2, width: 154, height: 82 };
-      }
-      return { cols: 2, width: 172, height: 82 };
+      const cols = vw <= 640 ? 1 : 2;
+      return { cols, tileSize: 82 };
     }
 
-    if (count <= 2) {
-      return { cols: 2, width: 150, height: 150 };
-    }
-    if (count <= 4) {
-      return { cols: 2, width: 130, height: 130 };
-    }
-    if (count <= 6) {
-      return { cols: 3, width: 108, height: 108 };
-    }
-    if (count <= 8) {
-      return { cols: 4, width: 92, height: 92 };
-    }
-    if (count <= 10) {
-      return { cols: 4, width: 84, height: 84 };
-    }
-    return { cols: 5, width: 74, height: 74 };
+    // Column count by number of pairs
+    let cols;
+    if (count <= 4) cols = 2;
+    else if (count <= 6) cols = 3;
+    else if (count <= 10) cols = 4;
+    else cols = 5;
+
+    const rows = Math.ceil(count / cols);
+
+    // Height-based tile size
+    const availH = getAvailableHeightForBoard();
+    const gapV = 14;
+    const tileHFromH = Math.floor((availH - gapV * (rows - 1)) / rows);
+
+    // Width-based tile size
+    // match-stage max-width 1060, body padding 44px, 30px gap between the two columns, 32px col-card padding (16+16)
+    const stageW = Math.min(vw - 44, 1060);
+    const colW = (stageW - 30) / 2 - 32;
+    const gapH = 14;
+    const tileWFromW = Math.floor((colW - gapH * (cols - 1)) / cols);
+
+    const tileSize = Math.max(60, Math.min(tileHFromH, tileWFromW, 180));
+    return { cols, tileSize };
   }
 
   function applyBoardLayout() {
     const count = normalizedData.length;
     const config = getBoardConfig(count);
+    const { cols, tileSize } = config;
 
-    leftBoard.style.gridTemplateColumns = `repeat(${config.cols}, minmax(${config.width}px, 1fr))`;
-    rightBoard.style.gridTemplateColumns = `repeat(${config.cols}, minmax(${config.width}px, 1fr))`;
+    leftBoard.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+    rightBoard.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
 
-    leftBoard.style.setProperty("--tile-width", `${config.width}px`);
-    rightBoard.style.setProperty("--tile-width", `${config.width}px`);
-    leftBoard.style.setProperty("--tile-height", `${config.height}px`);
-    rightBoard.style.setProperty("--tile-height", `${config.height}px`);
+    leftBoard.style.setProperty("--tile-height", `${tileSize}px`);
+    rightBoard.style.setProperty("--tile-height", `${tileSize}px`);
   }
 
   function renderTileContent(text, image, side) {
