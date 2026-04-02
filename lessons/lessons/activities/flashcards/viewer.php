@@ -267,7 +267,12 @@ body{
     margin:0 auto;
     text-align:center;
     padding:4px 0 4px;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
 }
+
+.viewer-header{ display:none !important; }
 
 .flashcards-intro{
     margin-bottom:18px;
@@ -310,7 +315,8 @@ body{
 .card{
     width:100%;
     max-width:460px;
-    height:460px;
+    /* fill available height: viewport minus top-row (~44px), viewer padding (~36px), stage, listen-row (~52px), flip-hint (~28px) */
+    height:clamp(200px, calc(100vh - 200px), 460px);
     position:relative;
     transform-style:preserve-3d;
     transition:transform .65s ease;
@@ -476,21 +482,13 @@ body{
 }
 
 @media (max-width:768px){
-    .flashcards-intro{
-        padding:20px 18px;
-    }
-
-    .flashcards-intro h2{
-        font-size:26px;
-    }
-
     .flashcards-stage{
         padding:0 56px;
     }
 
     .card{
         max-width:360px;
-        height:360px;
+        height:clamp(180px, calc(100vh - 180px), 360px);
     }
 
     .front img{
@@ -511,11 +509,6 @@ body{
 </style>
 
 <div class="flashcards-wrap">
-    <section class="flashcards-intro">
-        <h2>Flashcards Practice</h2>
-        <p>Flip each card to reveal the answer, then use Listen to repeat the pronunciation and review at your own pace.</p>
-    </section>
-
     <div id="cards-stage" class="flashcards-stage">
         <button class="arrow-btn arrow-left" type="button" onclick="previousCard(event)" aria-label="Previous card">❮</button>
 
