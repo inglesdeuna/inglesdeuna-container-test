@@ -295,6 +295,8 @@ ob_start();
     margin:0 auto;
 }
 
+.viewer-header{ display:none !important; }
+
 .match-intro{
     background:linear-gradient(135deg, #fff8df 0%, #eef8ff 52%, #f8fbff 100%);
     border:1px solid #dbe7f5;

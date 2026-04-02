@@ -69,16 +69,19 @@ function render_activity_viewer($title, $icon, $content)
         }
 
         .back-btn{
-            display:inline-block;
-            background:linear-gradient(180deg, #a855f7 0%, #7c3aed 100%);
-            color:white;
-            padding:10px 16px;
-            border-radius:999px;
+            display:inline-flex;
+            align-items:center;
+            justify-content:center;
+            background:linear-gradient(180deg, #3d73ee 0%, #2563eb 100%);
+            color:#ffffff;
+            padding:10px 14px;
+            border-radius:10px;
             text-decoration:none;
-            font-weight:800;
-            font-size:14px;
+            font-weight:700;
+            font-size:13px;
+            font-family:'Nunito', 'Segoe UI', sans-serif;
             line-height:1;
-            box-shadow:0 10px 22px rgba(124, 58, 237, .28);
+            box-shadow:0 10px 22px rgba(37, 99, 235, .28);
             transition:transform .18s ease, filter .18s ease;
         }
 
