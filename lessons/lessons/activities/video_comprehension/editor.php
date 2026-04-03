@@ -671,18 +671,9 @@ document.addEventListener('DOMContentLoaded', function () {
         switchTab('url');
     }
 
-    // Clicking the upload area label triggers the hidden file input
-    var uploadArea = document.getElementById('uploadArea');
-    if (uploadArea) {
-        uploadArea.addEventListener('click', function () {
-            document.getElementById('video_file').click();
-        });
-    }
-
     bindChangeTracking(document);
     syncModeVisibility();
 
-    const urlInput = document.getElementById('iframe_url');
     if (urlInput) {
         urlInput.addEventListener('input', updateVideoPreview);
         urlInput.addEventListener('change', updateVideoPreview);
