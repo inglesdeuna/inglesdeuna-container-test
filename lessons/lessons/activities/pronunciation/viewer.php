@@ -697,10 +697,12 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         window.speechSynthesis.cancel();
-        var utter = new SpeechSynthesisUtterance(text);
-        utter.lang = 'en-US';
-        utter.rate = 0.9;
-        window.speechSynthesis.speak(utter);
+        setTimeout(function () {
+            var utter = new SpeechSynthesisUtterance(text);
+            utter.lang = 'en-US';
+            utter.rate = 0.9;
+            window.speechSynthesis.speak(utter);
+        }, 50);
     }
 
     function loadCard() {
