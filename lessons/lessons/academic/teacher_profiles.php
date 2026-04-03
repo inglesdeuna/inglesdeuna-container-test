@@ -246,8 +246,14 @@ function save_teacher_account_to_database(array $record, ?string &$errorMessage 
             'updated_at = EXCLUDED.updated_at',
         ];
 
+        // Only overwrite must_change_password when it is being set to true (new profile).
+        // For edits (set to false), preserve the existing DB value so a teacher who already
+        // changed their password isn't forced to do it again.
         if ($hasMustChangePassword) {
-            $updateSet[] = 'must_change_password = EXCLUDED.must_change_password';
+            if (!empty($record['must_change_password'])) {
+                $updateSet[] = 'must_change_password = EXCLUDED.must_change_password';
+            }
+            // else: keep existing DB value — do not add to UPDATE SET
         }
 
         $sql = "
@@ -403,7 +409,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'permission' => $form['permission'],
             'username' => $form['username'],
             'password' => $form['password'],
-            'must_change_password' => true,
+            'must_change_password' => $form['edit_id'] === '', // only force on NEW profiles
             'updated_at' => date('Y-m-d H:i:s'),
         ];
 
