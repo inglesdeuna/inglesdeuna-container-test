@@ -577,10 +577,14 @@ $todayProgramLabel = 'Docente';
 $selectedUnitId = trim((string) ($_GET['unit'] ?? ''));
 $selectedUnit = null;
 
+$activeSemesterName  = '';
+$activeModuleName    = '';
+
 if ($selectedAssignment) {
     $todayTitle = build_assignment_title($selectedAssignment);
     $todayProgramLabel = ((string) ($selectedAssignment['program_type'] ?? '') === 'english') ? 'English' : 'INGLÉS TÉCNICO';
     $todayUnits = load_units_for_assignment($selectedAssignment);
+    $activeSemesterName = uppercase_utf8(trim((string) ($selectedAssignment['course_name'] ?? '')));
 
     if (!empty($todayUnits)) {
         foreach ($todayUnits as $unit) {
@@ -595,6 +599,8 @@ if ($selectedAssignment) {
             $selectedUnitId = (string) ($selectedUnit['id'] ?? '');
         }
     }
+
+    $activeModuleName = uppercase_utf8(trim((string) ($selectedUnit['module_name'] ?? '')));
 }
 ?>
 <!DOCTYPE html>
@@ -856,6 +862,7 @@ body{ margin:0; font-family:'Nunito','Segoe UI',sans-serif; background:var(--bg)
 }
 
 .activity-title{ margin:0 0 14px; font-size:20px; font-weight:700; color:var(--title); font-family:'Fredoka','Trebuchet MS',sans-serif; }
+.course-breadcrumb{ margin:0 0 12px; font-size:13px; font-weight:700; color:var(--primary); letter-spacing:.04em; font-family:'Fredoka','Trebuchet MS',sans-serif; }
 .activity-text{ margin:0 0 22px; font-size:15px; color:var(--text); line-height:1.6; }
 
 .actions{ display:flex; flex-wrap:wrap; gap:14px; }
@@ -1141,7 +1148,17 @@ body{ margin:0; font-family:'Nunito','Segoe UI',sans-serif; background:var(--bg)
                             <span class="badge"><?php echo h($teacherPermission === 'editor' ? 'Puede editar' : 'Solo ver'); ?></span>
                         </div>
 
-                        <h3 class="activity-title">Tema: "<?php echo h($todayTitle); ?>"</h3>
+                        <?php
+                        /* Build breadcrumb: Semester [› Module] [› Unit] */
+                        $crumbs = array_filter([
+                            $activeSemesterName,
+                            $activeModuleName,
+                            $selectedUnit ? uppercase_utf8(trim((string)($selectedUnit['name'] ?? ''))) : '',
+                        ], static fn($v) => $v !== '');
+                        ?>
+                        <div class="course-breadcrumb">
+                            <?php echo h(implode(' › ', $crumbs)); ?>
+                        </div>
 
                         <p class="activity-text">
                             Ingresa al curso para proyectar las actividades en modo presentación y avanzar con Next. La unidad activa queda destacada abajo para que accedas rápido sin repetir acciones.
@@ -1163,7 +1180,11 @@ body{ margin:0; font-family:'Nunito','Segoe UI',sans-serif; background:var(--bg)
 
                         <?php if ($selectedUnit) { ?>
                             <div class="current-unit-panel">
-                                <span class="current-unit-label">UNIDAD ACTIVA</span>
+                                <?php if ($activeModuleName !== '') { ?>
+                                    <span class="current-unit-label"><?php echo h($activeSemesterName); ?> › <?php echo h($activeModuleName); ?></span>
+                                <?php } else { ?>
+                                    <span class="current-unit-label">UNIDAD ACTIVA</span>
+                                <?php } ?>
                                 <div class="current-unit-name"><?php echo h(uppercase_utf8((string) ($selectedUnit['name'] ?? 'Unidad'))); ?></div>
                             </div>
                         <?php } ?>

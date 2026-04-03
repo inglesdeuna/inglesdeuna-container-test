@@ -310,7 +310,7 @@ function load_student_assignments(string $studentId): array
     }
 
     try {
-        $stmt = $pdo->prepare("\n            SELECT sa.id, sa.teacher_id, sa.course_id, sa.period, sa.unit_id, sa.level_id, sa.program, sa.updated_at,\n                   t.name AS teacher_name,\n                   c.name AS course_name,\n                   u.name AS unit_name\n            FROM student_assignments sa\n            LEFT JOIN teachers t ON t.id = sa.teacher_id\n            LEFT JOIN courses c ON c.id::text = sa.course_id\n            LEFT JOIN units u ON u.id::text = sa.unit_id\n            WHERE sa.student_id = :student_id\n            ORDER BY sa.updated_at DESC NULLS LAST, sa.id DESC\n        ");
+        $stmt = $pdo->prepare("\n            SELECT sa.id, sa.teacher_id, sa.course_id, sa.period, sa.unit_id, sa.level_id, sa.program, sa.updated_at,\n                   t.name AS teacher_name,\n                   c.name AS course_name,\n                   u.name AS unit_name,\n                   m.name AS module_name\n            FROM student_assignments sa\n            LEFT JOIN teachers t ON t.id = sa.teacher_id\n            LEFT JOIN courses c ON c.id::text = sa.course_id\n            LEFT JOIN units u ON u.id::text = sa.unit_id\n            LEFT JOIN technical_modules m ON m.id = u.module_id\n            WHERE sa.student_id = :student_id\n            ORDER BY sa.updated_at DESC NULLS LAST, sa.id DESC\n        ");
         $stmt->execute(['student_id' => $studentId]);
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
@@ -604,6 +604,7 @@ body{
 .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px;}
 .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px;box-shadow:var(--shadow);}
 .card h3{margin:0 0 10px;font-size:20px;color:var(--title);font-family:'Fredoka','Trebuchet MS',sans-serif;}
+.student-module-label{margin:0 0 10px;font-size:12px;font-weight:700;color:var(--primary);letter-spacing:.04em;font-family:'Fredoka','Trebuchet MS',sans-serif;}
 .card p{margin:6px 0;color:var(--muted);font-size:15px;}
 .actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;}
 .btn{
@@ -701,11 +702,15 @@ body{
                             $unitName = 'Units by phase';
                         }
                         $unitName = upper_label($unitName);
+                        $moduleName = upper_label(trim((string) ($assignment['module_name'] ?? '')));
                         $periodLabel = upper_label((string) ($assignment['period'] ?? ''));
                         $scoreSummary = $scoreSummaryByAssignment[$assignmentId] ?? null;
                         ?>
                         <div class="card">
                             <h3><?php echo h($courseName); ?></h3>
+                            <?php if ($moduleName !== '') { ?>
+                                <p class="student-module-label"><?php echo h($moduleName); ?></p>
+                            <?php } ?>
                             <p>Program: <strong><?php echo h($programLabel); ?></strong></p>
                             <p>Teacher: <strong><?php echo h((string) ($assignment['teacher_name'] ?? 'Teacher')); ?></strong></p>
                             <p>Period: <strong><?php echo h($periodLabel); ?></strong></p>
