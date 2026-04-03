@@ -115,6 +115,21 @@ if (isset($_GET["delete_module"]) && ctype_digit((string) $_GET["delete_module"]
 }
 
 /* ════════════════════════════════════════
+   RENAME MODULE
+   ════════════════════════════════════════ */
+if ($_SERVER["REQUEST_METHOD"] === "POST"
+    && isset($_POST["action"]) && $_POST["action"] === "rename_module"
+    && ctype_digit((string) ($_POST["rename_id"] ?? ''))
+    && trim((string) ($_POST["rename_name"] ?? '')) !== '') {
+    $renameId   = (int) $_POST["rename_id"];
+    $renameName = mb_strtoupper(trim((string) $_POST["rename_name"]), "UTF-8");
+    $pdo->prepare("UPDATE technical_modules SET name = :name WHERE id = :id AND course_id = :cid")
+        ->execute(["name" => $renameName, "id" => $renameId, "cid" => $courseId]);
+    header("Location: technical_modules_view.php?course=" . urlencode($courseId) . "&renamed=1");
+    exit;
+}
+
+/* ════════════════════════════════════════
    LIST MODULES (with unit count)
    ════════════════════════════════════════ */
 $stmtMods = $pdo->prepare("
@@ -306,6 +321,56 @@ body{
     cursor:not-allowed;
 }
 
+.btn-edit{
+    background:#f59e0b;
+    color:#fff;
+    border:none;
+    width:32px;
+    height:32px;
+    border-radius:8px;
+    font-size:15px;
+    font-weight:700;
+    cursor:pointer;
+    line-height:1;
+}
+.btn-edit:hover{ background:#d97706; }
+
+.rename-form{
+    margin-top:10px;
+    display:flex;
+    gap:8px;
+    flex-wrap:wrap;
+}
+.rename-form input[type=text]{
+    flex:1;
+    min-width:180px;
+    padding:8px 12px;
+    border-radius:8px;
+    border:1px solid var(--line);
+    font-size:13px;
+    font-family:inherit;
+}
+.btn-save-rename{
+    padding:8px 14px;
+    background:linear-gradient(180deg,var(--green),var(--green-dark));
+    color:#fff;
+    border:none;
+    border-radius:8px;
+    font-weight:700;
+    font-size:13px;
+    cursor:pointer;
+}
+.btn-cancel-rename{
+    padding:8px 14px;
+    background:#6b7280;
+    color:#fff;
+    border:none;
+    border-radius:8px;
+    font-weight:700;
+    font-size:13px;
+    cursor:pointer;
+}
+
 .empty{
     color:var(--muted);
     font-size:14px;
@@ -346,6 +411,9 @@ body{
 <?php if (isset($_GET["created"])): ?>
     <div class="banner-success">✔ Módulo creado correctamente.</div>
 <?php endif; ?>
+<?php if (isset($_GET["renamed"])): ?>
+    <div class="banner-success">✔ Nombre actualizado correctamente.</div>
+<?php endif; ?>
 
 <!-- Create module -->
 <div class="card">
@@ -371,8 +439,22 @@ body{
                 <span class="module-meta">
                     <?= (int) $mod["unit_count"] ?> unidad<?= (int) $mod["unit_count"] !== 1 ? 'es' : '' ?>
                 </span>
+                <!-- Inline rename form -->
+                <form method="POST" class="rename-form"
+                      id="rename-mod-<?= $mod['id'] ?>" style="display:none;">
+                    <input type="hidden" name="action" value="rename_module">
+                    <input type="hidden" name="rename_id" value="<?= htmlspecialchars($mod['id']) ?>">
+                    <input type="text" name="rename_name" required
+                           value="<?= htmlspecialchars($mod['name']) ?>">
+                    <button type="submit" class="btn-save-rename">Guardar</button>
+                    <button type="button" class="btn-cancel-rename"
+                            onclick="toggleRename('rename-mod-<?= $mod['id'] ?>')">Cancelar</button>
+                </form>
             </div>
             <div class="module-actions">
+                <button type="button" class="btn-edit"
+                        onclick="toggleRename('rename-mod-<?= $mod['id'] ?>')"
+                        title="Renombrar módulo">✏</button>
                 <a class="btn-view"
                    href="technical_units_view.php?module=<?= urlencode($mod["id"]) ?>">
                    Ver Unidades →
@@ -391,5 +473,11 @@ body{
 </div>
 
 </div>
+<script>
+function toggleRename(id) {
+    var el = document.getElementById(id);
+    el.style.display = el.style.display === 'none' ? 'flex' : 'none';
+}
+</script>
 </body>
 </html>

@@ -126,6 +126,24 @@ if (isset($_GET["delete_unit"]) && ctype_digit((string) $_GET["delete_unit"])) {
 }
 
 /* ════════════════════════════════════════
+   RENAME UNIT
+   ════════════════════════════════════════ */
+if ($_SERVER["REQUEST_METHOD"] === "POST"
+    && isset($_POST["action"]) && $_POST["action"] === "rename_unit"
+    && ctype_digit((string) ($_POST["rename_id"] ?? ''))
+    && trim((string) ($_POST["rename_name"] ?? '')) !== '') {
+    $renameId   = (int) $_POST["rename_id"];
+    $renameName = mb_strtoupper(trim((string) $_POST["rename_name"]), "UTF-8");
+    $pdo->prepare("UPDATE units SET name = :name WHERE id = :id")
+        ->execute(["name" => $renameName, "id" => $renameId]);
+    $redirect = $moduleId !== null
+        ? "technical_units_view.php?module=" . urlencode($moduleId) . "&renamed=1"
+        : "technical_units_view.php?course=" . urlencode($courseId) . "&renamed=1";
+    header("Location: $redirect");
+    exit;
+}
+
+/* ════════════════════════════════════════
    LIST UNITS
    ════════════════════════════════════════ */
 if ($moduleId !== null) {
@@ -301,6 +319,56 @@ body{
     cursor:not-allowed;
 }
 
+.btn-edit{
+    background:#f59e0b;
+    color:#fff;
+    border:none;
+    width:32px;
+    height:32px;
+    border-radius:8px;
+    font-size:15px;
+    font-weight:700;
+    cursor:pointer;
+    line-height:1;
+}
+.btn-edit:hover{ background:#d97706; }
+
+.rename-form{
+    margin-top:10px;
+    display:flex;
+    gap:8px;
+    flex-wrap:wrap;
+}
+.rename-form input[type=text]{
+    flex:1;
+    min-width:180px;
+    padding:8px 12px;
+    border-radius:8px;
+    border:1px solid var(--line);
+    font-size:13px;
+    font-family:inherit;
+}
+.btn-save-rename{
+    padding:8px 14px;
+    background:linear-gradient(180deg,var(--green),var(--green-dark));
+    color:#fff;
+    border:none;
+    border-radius:8px;
+    font-weight:700;
+    font-size:13px;
+    cursor:pointer;
+}
+.btn-cancel-rename{
+    padding:8px 14px;
+    background:#6b7280;
+    color:#fff;
+    border:none;
+    border-radius:8px;
+    font-weight:700;
+    font-size:13px;
+    cursor:pointer;
+}
+
 .empty{ color:var(--muted); font-size:14px; padding:6px 0; }
 
 @media(max-width:600px){
@@ -323,6 +391,10 @@ body{
     › <span><?= htmlspecialchars(mb_strtoupper($module["name"], "UTF-8")) ?></span>
     › Unidades
 </p>
+<?php endif; ?>
+
+<?php if (isset($_GET["renamed"])): ?>
+    <div style="background:#dcfce7;border:1px solid #86efac;color:#166534;padding:12px 18px;border-radius:10px;margin-bottom:18px;font-weight:700;font-size:14px;">✔ Nombre actualizado correctamente.</div>
 <?php endif; ?>
 
 <!-- Create unit -->
@@ -348,8 +420,27 @@ body{
                 <span class="unit-meta">
                     <?= (int) ($unit["activity_count"] ?? 0) ?> actividad<?= (int) ($unit["activity_count"] ?? 0) !== 1 ? 'es' : '' ?>
                 </span>
+                <!-- Inline rename form -->
+                <form method="POST" class="rename-form"
+                      id="rename-unit-<?= $unit['id'] ?>" style="display:none;">
+                    <input type="hidden" name="action" value="rename_unit">
+                    <input type="hidden" name="rename_id" value="<?= htmlspecialchars($unit['id']) ?>">
+                    <?php if ($moduleId !== null): ?>
+                        <input type="hidden" name="module" value="<?= htmlspecialchars($moduleId) ?>">
+                    <?php else: ?>
+                        <input type="hidden" name="course" value="<?= htmlspecialchars($courseId) ?>">
+                    <?php endif; ?>
+                    <input type="text" name="rename_name" required
+                           value="<?= htmlspecialchars($unit['name']) ?>">
+                    <button type="submit" class="btn-save-rename">Guardar</button>
+                    <button type="button" class="btn-cancel-rename"
+                            onclick="toggleRename('rename-unit-<?= $unit['id'] ?>')">Cancelar</button>
+                </form>
             </div>
             <div class="unit-actions">
+                <button type="button" class="btn-edit"
+                        onclick="toggleRename('rename-unit-<?= $unit['id'] ?>')"
+                        title="Renombrar unidad">✏</button>
                 <a class="btn-view"
                    href="technical_activities_view.php?unit=<?= urlencode($unit["id"]) ?>">
                    Ver Actividades →
@@ -369,5 +460,11 @@ body{
 </div>
 
 </div>
+<script>
+function toggleRename(id) {
+    var el = document.getElementById(id);
+    el.style.display = el.style.display === 'none' ? 'flex' : 'none';
+}
+</script>
 </body>
 </html>
