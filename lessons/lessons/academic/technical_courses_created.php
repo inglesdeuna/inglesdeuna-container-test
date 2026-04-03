@@ -310,5 +310,17 @@ body{
 
 </div>
 
+<script>
+function toggleUnits(btn) {
+    var moduleItem = btn.closest('.module-item');
+    var list = moduleItem ? moduleItem.querySelector('.unit-list-collapse') : null;
+    if (!list) return;
+    var isOpen = list.classList.contains('open');
+    list.classList.toggle('open', !isOpen);
+    var count = list.querySelectorAll('.unit-row').length;
+    btn.textContent = isOpen ? 'Ver unidades (' + count + ')' : 'Ocultar unidades';
+}
+</script>
+
 </body>
 </html>
