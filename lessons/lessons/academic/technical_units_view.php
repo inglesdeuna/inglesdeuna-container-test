@@ -126,7 +126,7 @@ body{
     <?php else: ?>
         <?php foreach ($units as $unit): ?>
             <div class="unit-item">
-                <strong><?= htmlspecialchars($unit["name"]) ?></strong>
+                <strong><?= htmlspecialchars(mb_strtoupper($unit["name"], 'UTF-8')) ?></strong>
                 <a class="btn"
                    href="technical_activities_view.php?unit=<?= urlencode($unit["id"]) ?>">
                    Ver Actividades →

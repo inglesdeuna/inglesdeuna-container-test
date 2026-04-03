@@ -41,7 +41,7 @@ if (!$course) {
 =============================== */
 if ($_SERVER["REQUEST_METHOD"] === "POST" && !empty($_POST["unit_name"])) {
 
-    $unitName = strtoupper(trim($_POST["unit_name"]));
+    $unitName = mb_strtoupper(trim($_POST["unit_name"]), 'UTF-8');
 
     // Verificar si ya existe
     $check = $pdo->prepare("
