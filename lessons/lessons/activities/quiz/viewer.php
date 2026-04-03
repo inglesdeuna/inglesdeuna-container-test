@@ -147,10 +147,12 @@ function load_quiz_fallback_from_multiple_choice(PDO $pdo, string $unit): array
         }
 
         $questions[] = [
-          'question' => $questionText,
-          'options' => $normalizedOptions,
-          'correct' => $correct,
+          'question'    => $questionText,
+          'options'     => $normalizedOptions,
+          'correct'     => $correct,
           'explanation' => '',
+          'option_type' => isset($item['option_type']) && $item['option_type'] === 'image' ? 'image' : 'text',
+          'image'       => isset($item['image']) ? trim((string) $item['image']) : '',
         ];
       }
     }
@@ -207,10 +209,12 @@ function build_fixed_quiz_question_set(array $questions, int $targetCount = 6): 
     }
 
     $normalized[] = [
-      'question' => $questionText,
-      'options' => $options,
-      'correct' => $correct,
+      'question'    => $questionText,
+      'options'     => $options,
+      'correct'     => $correct,
       'explanation' => trim((string) ($item['explanation'] ?? '')),
+      'option_type' => isset($item['option_type']) && $item['option_type'] === 'image' ? 'image' : 'text',
+      'image'       => isset($item['image']) ? trim((string) $item['image']) : '',
     ];
   }
 
@@ -230,10 +234,12 @@ function build_fixed_quiz_question_set(array $questions, int $targetCount = 6): 
     }
     $picked = $pool[$index];
     $selected[] = [
-      'question' => (string) ($picked['question'] ?? ''),
-      'options' => isset($picked['options']) && is_array($picked['options']) ? array_values($picked['options']) : [],
-      'correct' => (int) ($picked['correct'] ?? 0),
+      'question'    => (string) ($picked['question'] ?? ''),
+      'options'     => isset($picked['options']) && is_array($picked['options']) ? array_values($picked['options']) : [],
+      'correct'     => (int) ($picked['correct'] ?? 0),
       'explanation' => (string) ($picked['explanation'] ?? ''),
+      'option_type' => isset($picked['option_type']) && $picked['option_type'] === 'image' ? 'image' : 'text',
+      'image'       => isset($picked['image']) ? (string) $picked['image'] : '',
     ];
   }
 
@@ -537,6 +543,9 @@ ob_start();
 .qz-card-unanswered{border-color:#ef4444;background:#fff4f4}
 .qz-q{font-weight:800;color:#f14902;margin-bottom:10px;font-size:17px}
 .qz-opts{display:grid;grid-template-columns:1fr;gap:8px}
+.qz-opts.qz-opts-images{grid-template-columns:repeat(auto-fill,minmax(140px,1fr))}
+.qz-opts.qz-opts-images .qz-opt{flex-direction:column;align-items:center;justify-content:center;padding:8px;text-align:center}
+.qz-opt-img{display:block;width:100%;max-width:150px;height:110px;object-fit:contain;border-radius:10px;pointer-events:none}
 .qz-opt{display:flex;align-items:flex-start;gap:10px;padding:10px;border:1px solid #ead6f8;border-radius:10px;background:#fff9ff;cursor:pointer;transition:border-color .15s,background .15s}
 .qz-opt:hover{border-color:#a855c8;background:#f9efff}
 .qz-opt input{margin-top:2px}
@@ -677,6 +686,8 @@ window.QUIZ_PRONUNCIATION_DATA = <?php echo json_encode($quizPronunciationItems,
       return {
         question: String(q.question || ''),
         options: shuffleArray(optionObjects),
+        option_type: String(q.option_type || 'text'),
+        image: String(q.image || ''),
       };
     });
 
@@ -1055,8 +1066,17 @@ window.QUIZ_PRONUNCIATION_DATA = <?php echo json_encode($quizPronunciationItems,
     qTitle.textContent = quizBlockIndex + '. ' + q.question;
     card.appendChild(qTitle);
 
+    if (q.image) {
+      const qImg = document.createElement('img');
+      qImg.src = q.image;
+      qImg.alt = '';
+      qImg.style.cssText = 'display:block;max-width:100%;max-height:180px;object-fit:contain;border-radius:10px;margin:0 auto 10px;';
+      card.appendChild(qImg);
+    }
+
+    const isImageOpts = q.option_type === 'image';
     const opts = document.createElement('div');
-    opts.className = 'qz-opts';
+    opts.className = isImageOpts ? 'qz-opts qz-opts-images' : 'qz-opts';
 
     q.options.forEach(function (opt, optIdx) {
       const label = document.createElement('label');
@@ -1067,11 +1087,18 @@ window.QUIZ_PRONUNCIATION_DATA = <?php echo json_encode($quizPronunciationItems,
       radio.name = 'q_' + idx;
       radio.value = String(optIdx);
 
-      const text = document.createElement('span');
-      text.textContent = opt.label;
-
       label.appendChild(radio);
-      label.appendChild(text);
+      if (isImageOpts && opt.label !== '') {
+        const img = document.createElement('img');
+        img.src = opt.label;
+        img.alt = 'Option ' + String.fromCharCode(65 + optIdx);
+        img.className = 'qz-opt-img';
+        label.appendChild(img);
+      } else {
+        const text = document.createElement('span');
+        text.textContent = opt.label;
+        label.appendChild(text);
+      }
       opts.appendChild(label);
     });
 
