@@ -108,12 +108,19 @@ body{
 .back{
     display:inline-block;
     margin-bottom:25px;
-    background:linear-gradient(180deg,#7b8b7f,#66756a);
     color:#fff;
-    padding:10px 18px;
-    border-radius:8px;
+    padding:12px 16px;
+    border-radius:12px;
     text-decoration:none;
-    font-weight:600;
+    font-weight:700;
+    font-size:14px;
+    box-shadow:0 2px 8px rgba(0,0,0,.06);
+    transition:filter .2s, transform .15s;
+    background:linear-gradient(180deg,#7b8b7f,#66756a);
+}
+.back:hover{
+    filter:brightness(1.06);
+    transform:translateY(-1px);
 }
 
 .card{
@@ -143,12 +150,25 @@ body{
 }
 
 .btn{
-    background:linear-gradient(180deg,var(--green),var(--green-dark));
+    display:inline-block;
     color:#fff;
-    padding:8px 16px;
-    border-radius:8px;
+    padding:12px 16px;
+    border-radius:12px;
     text-decoration:none;
-    font-weight:600;
+    font-weight:700;
+    font-size:14px;
+    box-shadow:0 2px 8px rgba(0,0,0,.06);
+    transition:filter .2s, transform .15s;
+}
+.btn:hover{
+    filter:brightness(1.06);
+    transform:translateY(-1px);
+}
+.btn-primary{
+    background:linear-gradient(180deg,#41b95a,#2f9e44);
+}
+.btn-secondary{
+    background:linear-gradient(180deg,#7b8b7f,#66756a);
 }
 </style>
 </head>
@@ -176,18 +196,20 @@ body{
                     </div>
 
                     <?php if (empty($semester['modules'])): ?>
-                        <p>No hay módulos creados.
-                            <a href="technical_modules_view.php?course=<?= urlencode($semester['id']); ?>">
+                        <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+                            <span style="color:var(--gray);font-size:14px;">No hay módulos creados.</span>
+                            <a class="btn btn-secondary"
+                               href="technical_modules_view.php?course=<?= urlencode($semester['id']); ?>">
                                 Agregar módulos →
                             </a>
-                        </p>
+                        </div>
                     <?php else: ?>
 
                         <?php foreach ($semester['modules'] as $module): ?>
                             <div class="module-item">
                                 <strong><?= htmlspecialchars($module['name']); ?></strong>
 
-                                <a class="btn"
+                                <a class="btn btn-primary"
                                    href="technical_units_view.php?module=<?= urlencode($module['id']); ?>">
                                     Ver →
                                 </a>
