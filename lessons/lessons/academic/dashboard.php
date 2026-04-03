@@ -612,6 +612,7 @@ $todayTitle = 'Curso';
 $todayProgramLabel = 'Docente';
 $selectedUnitId = trim((string) ($_GET['unit'] ?? ''));
 $selectedUnit = null;
+$unitToAssignmentId = [];
 
 $activeSemesterName  = '';
 $activeModuleName    = '';
@@ -621,6 +622,25 @@ if ($selectedAssignment) {
     $todayProgramLabel = ((string) ($selectedAssignment['program_type'] ?? '') === 'english') ? 'English' : 'INGLÉS TÉCNICO';
     $todayUnits = load_units_for_assignment($selectedAssignment);
     $activeSemesterName = uppercase_utf8(trim((string) ($selectedAssignment['course_name'] ?? '')));
+
+    // Build unit → assignment map from all teacher assignments for this course
+    $unitToAssignmentId = [];
+    $currentCourseId = (string) ($selectedAssignment['course_id'] ?? '');
+    $currentProgramType = (string) ($selectedAssignment['program_type'] ?? 'technical');
+    foreach ($assignments as $_asg) {
+        if ((string) ($_asg['course_id'] ?? '') !== $currentCourseId) continue;
+        $_asgUnitId = trim((string) ($_asg['unit_id'] ?? ''));
+        if ($_asgUnitId !== '') {
+            $unitToAssignmentId[$_asgUnitId] = (string) ($_asg['id'] ?? '');
+        }
+    }
+
+    // For technical programs, only show units that have an assignment
+    if ($currentProgramType !== 'english' && !empty($unitToAssignmentId)) {
+        $todayUnits = array_values(array_filter($todayUnits, static function (array $u) use ($unitToAssignmentId): bool {
+            return isset($unitToAssignmentId[(string) ($u['id'] ?? '')]);
+        }));
+    }
 
     if (!empty($todayUnits)) {
         foreach ($todayUnits as $unit) {
@@ -633,6 +653,20 @@ if ($selectedAssignment) {
         if (!$selectedUnit) {
             $selectedUnit = $todayUnits[0];
             $selectedUnitId = (string) ($selectedUnit['id'] ?? '');
+        }
+    }
+
+    // Update selectedAssignment to match the selectedUnit if different
+    if ($selectedUnit && $currentProgramType !== 'english') {
+        $selUnitAssignmentId = $unitToAssignmentId[(string) ($selectedUnit['id'] ?? '')] ?? '';
+        if ($selUnitAssignmentId !== '' && $selUnitAssignmentId !== $selectedAssignmentId) {
+            foreach ($assignments as $_asg) {
+                if ((string) ($_asg['id'] ?? '') === $selUnitAssignmentId) {
+                    $selectedAssignment = $_asg;
+                    $selectedAssignmentId = $selUnitAssignmentId;
+                    break;
+                }
+            }
         }
     }
 
@@ -1265,10 +1299,11 @@ body{ margin:0; font-family:'Nunito','Segoe UI',sans-serif; background:var(--bg)
                                     <?php foreach ($moduleGroup['units'] as $unit) {
                                         $unitId = (string) ($unit['id'] ?? '');
                                         $isActiveUnit = $unitId === $selectedUnitId;
+                                        $unitAsgId = $unitToAssignmentId[$unitId] ?? (string) ($selectedAssignment['id'] ?? '');
                                     ?>
                                         <a
                                             class="unit-item<?php echo $isActiveUnit ? ' active' : ''; ?>"
-                                            href="dashboard.php?assignment=<?php echo urlencode((string) ($selectedAssignment['id'] ?? '')); ?>&unit=<?php echo urlencode($unitId); ?>#unidades-curso"
+                                            href="dashboard.php?assignment=<?php echo urlencode($unitAsgId); ?>&unit=<?php echo urlencode($unitId); ?>#unidades-curso"
                                         >
                                             <div class="unit-header">
                                                 <h4 class="unit-title"><?php echo h(uppercase_utf8((string) ($unit['name'] ?? 'Unidad'))); ?></h4>
@@ -1285,10 +1320,11 @@ body{ margin:0; font-family:'Nunito','Segoe UI',sans-serif; background:var(--bg)
                                 <?php
                                 $unitId = (string) ($unit['id'] ?? '');
                                 $isActiveUnit = $unitId === $selectedUnitId;
+                                $unitAsgId = $unitToAssignmentId[$unitId] ?? (string) ($selectedAssignment['id'] ?? '');
                                 ?>
                                 <a
                                     class="unit-item<?php echo $isActiveUnit ? ' active' : ''; ?>"
-                                    href="dashboard.php?assignment=<?php echo urlencode((string) ($selectedAssignment['id'] ?? '')); ?>&unit=<?php echo urlencode($unitId); ?>#unidades-curso"
+                                    href="dashboard.php?assignment=<?php echo urlencode($unitAsgId); ?>&unit=<?php echo urlencode($unitId); ?>#unidades-curso"
                                 >
                                     <div class="unit-header">
                                         <h4 class="unit-title"><?php echo h(uppercase_utf8((string) ($unit['name'] ?? 'Unidad'))); ?></h4>
