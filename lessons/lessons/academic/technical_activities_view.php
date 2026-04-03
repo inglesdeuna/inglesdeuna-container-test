@@ -112,6 +112,19 @@ $stmtCourse->execute(['id' => $unit['course_id']]);
 $course = $stmtCourse->fetch(PDO::FETCH_ASSOC);
 
 /* ==========================
+   RESOLVER MÓDULO (si existe)
+========================== */
+$unitModuleId = null;
+if (!empty($unit['module_id'])) {
+    $unitModuleId = (int) $unit['module_id'];
+}
+
+// Build back URL based on module context
+$unitsBackUrl = $unitModuleId !== null
+    ? 'technical_units_view.php?module=' . urlencode($unitModuleId)
+    : 'technical_units_view.php?course=' . urlencode($unit['course_id'] ?? '');
+
+/* ==========================
    OBTENER ACTIVIDADES
 ========================== */
 $stmtActivities = $pdo->prepare("
@@ -448,7 +461,7 @@ body{
 
 <header class="topbar">
     <div class="topbar-inner">
-        <a class="top-btn back" href="technical_units_view.php?course=<?= urlencode($course['id']); ?>">← Volver</a>
+        <a class="top-btn back" href="<?= htmlspecialchars($unitsBackUrl); ?>">← Volver</a>
         <h1 class="topbar-title">Gestión de Unidad</h1>
         <a class="top-btn dashboard" href="/lessons/lessons/admin/dashboard.php">Dashboard</a>
     </div>
@@ -461,7 +474,7 @@ body{
                 <div class="logo-badge">🛠️</div>
             </div>
 
-            <a class="side-btn blue" href="technical_units_view.php?course=<?= urlencode($course['id']); ?>">📚 Volver a unidades</a>
+            <a class="side-btn blue" href="<?= htmlspecialchars($unitsBackUrl); ?>">📚 Volver a unidades</a>
             <a class="side-btn gray" href="/lessons/lessons/activities/hub/index.php?unit=<?= urlencode($unit_id); ?>">➕ Crear actividades</a>
             <a class="side-btn red" href="/lessons/lessons/admin/dashboard.php">🏠 Ir al dashboard</a>
         </aside>

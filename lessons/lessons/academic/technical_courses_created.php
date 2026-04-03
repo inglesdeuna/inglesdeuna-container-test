@@ -165,7 +165,7 @@ body {
 
                 <div class="actions">
                     <a class="btn-view"
-                       href="technical_units_view.php?course=<?= urlencode($sem["id"]) ?>">
+                       href="technical_modules_view.php?course=<?= urlencode($sem["id"]) ?>">
                         Ver →
                     </a>
 
