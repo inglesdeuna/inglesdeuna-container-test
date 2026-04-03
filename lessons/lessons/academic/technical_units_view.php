@@ -332,18 +332,19 @@ body{
 }
 
 .btn-edit{
-    background:#f59e0b;
+    background:linear-gradient(180deg,#f59e0b,#d97706);
     color:#fff;
     border:none;
-    width:32px;
-    height:32px;
-    border-radius:8px;
-    font-size:15px;
+    padding:9px 14px;
+    border-radius:9px;
+    font-size:13px;
     font-weight:700;
     cursor:pointer;
     line-height:1;
+    box-shadow:var(--shadow);
+    transition:filter .15s;
 }
-.btn-edit:hover{ background:#d97706; }
+.btn-edit:hover{ filter:brightness(1.08); }
 
 .rename-form{
     margin-top:10px;
@@ -452,7 +453,7 @@ body{
             <div class="unit-actions">
                 <button type="button" class="btn-edit"
                         onclick="toggleRename('rename-unit-<?= $unit['id'] ?>')"
-                        title="Renombrar unidad">✏</button>
+                        title="Renombrar unidad">✎ Editar</button>
                 <a class="btn-view"
                    href="technical_activities_view.php?unit=<?= urlencode($unit["id"]) ?>">
                    Ver Actividades →
