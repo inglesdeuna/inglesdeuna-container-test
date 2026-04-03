@@ -950,7 +950,7 @@ window.QUIZ_PRONUNCIATION_DATA = <?php echo json_encode($quizPronunciationItems,
       status.textContent = 'Pending';
       card.appendChild(status);
 
-      function markPronunciationDone(ok, text) {
+      function markPronunciationDone(ok) {
         if (pronunciationState.done[idx]) {
           return;
         }
@@ -958,11 +958,9 @@ window.QUIZ_PRONUNCIATION_DATA = <?php echo json_encode($quizPronunciationItems,
         pronunciationState.answered += 1;
         if (ok) {
           pronunciationState.correct += 1;
-          status.classList.add('ok');
-        } else {
-          status.classList.add('bad');
         }
-        status.textContent = text;
+        status.classList.remove('ok', 'bad');
+        status.textContent = 'Done';
         speakBtn.disabled = true;
         updateAnsweredProgress();
       }
@@ -978,22 +976,22 @@ window.QUIZ_PRONUNCIATION_DATA = <?php echo json_encode($quizPronunciationItems,
         }
 
         if ('speechSynthesis' in window && item.en) {
+          window.speechSynthesis.cancel();
           const utterance = new SpeechSynthesisUtterance(item.en);
           utterance.lang = 'en-US';
-          window.speechSynthesis.cancel();
           window.speechSynthesis.speak(utterance);
         }
       });
 
       speakBtn.addEventListener('click', function () {
         if (!recognitionCtor) {
-          markPronunciationDone(true, 'Completed');
+          markPronunciationDone(true);
           return;
         }
 
         const expected = normalizeWord(item.en);
         if (expected === '') {
-          markPronunciationDone(true, 'Completed');
+          markPronunciationDone(true);
           return;
         }
 
@@ -1009,25 +1007,18 @@ window.QUIZ_PRONUNCIATION_DATA = <?php echo json_encode($quizPronunciationItems,
             ? String(event.results[0][0].transcript || '')
             : '';
           const spoken = normalizeWord(spokenRaw);
-          if (spoken === expected || spoken.indexOf(expected) !== -1 || expected.indexOf(spoken) !== -1) {
-            markPronunciationDone(true, 'Correct');
-            return;
-          }
-
-          status.classList.add('bad');
-          status.textContent = 'Try again';
+          const correct = spoken === expected || spoken.indexOf(expected) !== -1 || expected.indexOf(spoken) !== -1;
+          markPronunciationDone(correct);
         };
 
         recognition.onerror = function () {
-          status.classList.add('bad');
-          status.textContent = 'Try again';
+          markPronunciationDone(false);
         };
 
         try {
           recognition.start();
         } catch (e) {
-          status.classList.add('bad');
-          status.textContent = 'Try again';
+          markPronunciationDone(false);
         }
       });
 
