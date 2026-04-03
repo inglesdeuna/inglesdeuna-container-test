@@ -240,7 +240,7 @@ button {
 
                 <?php
 if ($programSlug === "prog_technical") {
-    $adminLink = "technical_units.php?course=" . urlencode($course["id"]);
+    $adminLink = "technical_modules_view.php?course=" . urlencode($course["id"]);
 } else {
     $adminLink = "english_units.php?course=" . urlencode($course["id"]);
 }

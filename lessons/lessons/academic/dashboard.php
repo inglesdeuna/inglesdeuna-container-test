@@ -368,21 +368,37 @@ function load_units_for_assignment(array $assignment): array
     try {
         if ($programType === 'english' && table_has_column($pdo, 'units', 'phase_id')) {
             $stmt = $pdo->prepare("
-                SELECT id, name
+                SELECT id, name, NULL::integer AS module_id, NULL::text AS module_name
                 FROM units
                 WHERE phase_id = :course_id
                 ORDER BY id ASC
             ");
+            $stmt->execute(['course_id' => $courseId]);
+        } elseif (
+            $programType !== 'english' &&
+            table_has_column($pdo, 'units', 'module_id') &&
+            table_exists($pdo, 'technical_modules')
+        ) {
+            $stmt = $pdo->prepare("
+                SELECT u.id, u.name,
+                       m.id   AS module_id,
+                       m.name AS module_name
+                FROM units u
+                LEFT JOIN technical_modules m ON m.id = u.module_id
+                WHERE u.course_id = :course_id
+                ORDER BY COALESCE(m.id, 0) ASC, u.id ASC
+            ");
+            $stmt->execute(['course_id' => $courseId]);
         } else {
             $stmt = $pdo->prepare("
-                SELECT id, name
+                SELECT id, name, NULL::integer AS module_id, NULL::text AS module_name
                 FROM units
                 WHERE course_id = :course_id
                 ORDER BY id ASC
             ");
+            $stmt->execute(['course_id' => $courseId]);
         }
 
-        $stmt->execute(['course_id' => $courseId]);
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
         return is_array($rows) ? $rows : [];
     } catch (Throwable $e) {
@@ -894,7 +910,19 @@ body{ margin:0; font-family:'Nunito','Segoe UI',sans-serif; background:var(--bg)
 .course-sub{ font-size:13px; opacity:.9; }
 .course-meta{ font-size:11px; font-weight:700; opacity:.85; text-transform:uppercase; letter-spacing:.05em; }
 
-.unit-list{ margin-top:20px; }
+.unit-list{ margin-top:12px; }
+
+.module-group{ margin-bottom:20px; }
+.module-group-title{
+    font-size:12px;
+    font-weight:800;
+    letter-spacing:.08em;
+    text-transform:uppercase;
+    color:var(--muted);
+    padding:6px 4px 8px;
+    border-bottom:1px solid var(--line);
+    margin-bottom:10px;
+}
 
 .unit-item{
     display:block;
@@ -1148,6 +1176,46 @@ body{ margin:0; font-family:'Nunito','Segoe UI',sans-serif; background:var(--bg)
 
                     <?php if (empty($todayUnits)) { ?>
                         <div class="empty">No hay unidades encontradas para esta asignación.</div>
+                    <?php } else {
+                        /* Check if any unit has module grouping */
+                        $hasModules = false;
+                        foreach ($todayUnits as $u) {
+                            if (!empty($u['module_name'])) { $hasModules = true; break; }
+                        }
+
+                        if ($hasModules) {
+                            /* Group units by module */
+                            $grouped = [];
+                            foreach ($todayUnits as $u) {
+                                $mKey = (string) ($u['module_id'] ?? '');
+                                $mName = (string) ($u['module_name'] ?? '');
+                                if (!isset($grouped[$mKey])) {
+                                    $grouped[$mKey] = ['name' => $mName, 'units' => []];
+                                }
+                                $grouped[$mKey]['units'][] = $u;
+                            }
+                    ?>
+                        <?php foreach ($grouped as $moduleGroup) { ?>
+                            <div class="module-group">
+                                <div class="module-group-title"><?php echo h(uppercase_utf8($moduleGroup['name'])); ?></div>
+                                <div class="unit-list">
+                                    <?php foreach ($moduleGroup['units'] as $unit) {
+                                        $unitId = (string) ($unit['id'] ?? '');
+                                        $isActiveUnit = $unitId === $selectedUnitId;
+                                    ?>
+                                        <a
+                                            class="unit-item<?php echo $isActiveUnit ? ' active' : ''; ?>"
+                                            href="dashboard.php?assignment=<?php echo urlencode((string) ($selectedAssignment['id'] ?? '')); ?>&unit=<?php echo urlencode($unitId); ?>#unidades-curso"
+                                        >
+                                            <div class="unit-header">
+                                                <h4 class="unit-title"><?php echo h(uppercase_utf8((string) ($unit['name'] ?? 'Unidad'))); ?></h4>
+                                                <span class="unit-status"><?php echo $isActiveUnit ? 'Activa' : 'Disponible'; ?></span>
+                                            </div>
+                                        </a>
+                                    <?php } ?>
+                                </div>
+                            </div>
+                        <?php } ?>
                     <?php } else { ?>
                         <div class="unit-list">
                             <?php foreach ($todayUnits as $unit) { ?>
@@ -1166,6 +1234,7 @@ body{ margin:0; font-family:'Nunito','Segoe UI',sans-serif; background:var(--bg)
                                 </a>
                             <?php } ?>
                         </div>
+                    <?php } ?>
                     <?php } ?>
                 </div>
             <?php } else { ?>

@@ -9,6 +9,20 @@ if (!isset($_SESSION["admin_logged"]) || $_SESSION["admin_logged"] !== true) {
 require __DIR__ . "/../config/db.php";
 
 /* ===============================
+   AUTO-MIGRATE: technical_modules
+=============================== */
+try {
+    $pdo->exec("
+        CREATE TABLE IF NOT EXISTS technical_modules (
+            id SERIAL PRIMARY KEY,
+            course_id INTEGER NOT NULL,
+            name TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT NOW()
+        )
+    ");
+} catch (Throwable $e) {}
+
+/* ===============================
    OBTENER PROGRAMA TÉCNICO
 =============================== */
 $stmtProgram = $pdo->prepare("
@@ -26,23 +40,47 @@ if (!$program) {
 $programId = $program["id"];
 
 /* ===============================
-   OBTENER SEMESTRES
+   OBTENER SEMESTRES Y SUS MÓDULOS
 =============================== */
 $stmt = $pdo->prepare("
-    SELECT id, name
-    FROM courses
-    WHERE program_id = :program_id
-    ORDER BY id ASC
+    SELECT
+        c.id   AS semester_id,
+        c.name AS semester_name,
+        m.id   AS module_id,
+        m.name AS module_name
+    FROM courses c
+    LEFT JOIN technical_modules m ON m.course_id = c.id
+    WHERE c.program_id = :program_id
+    ORDER BY c.id ASC, m.id ASC
 ");
 $stmt->execute(["program_id" => $programId]);
-$semestres = $stmt->fetchAll(PDO::FETCH_ASSOC);
+$rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+/* Agrupar por Semestre */
+$semesters = [];
+foreach ($rows as $row) {
+    $semId = $row['semester_id'];
+    if (!isset($semesters[$semId])) {
+        $semesters[$semId] = [
+            'id'      => $semId,
+            'name'    => $row['semester_name'],
+            'modules' => []
+        ];
+    }
+    if (!empty($row['module_id'])) {
+        $semesters[$semId]['modules'][] = [
+            'id'   => $row['module_id'],
+            'name' => $row['module_name']
+        ];
+    }
+}
 ?>
 
 <!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Semestres creados</title>
+<title>Cursos creados - Técnico</title>
 
 <style>
 :root{
@@ -50,99 +88,67 @@ $semestres = $stmt->fetchAll(PDO::FETCH_ASSOC);
     --card:#ffffff;
     --line:#d8e8dc;
     --text:#1f3b28;
-    --muted:#5d7465;
     --green:#2f9e44;
     --green-dark:#237a35;
     --gray:#6f7e73;
     --shadow:0 10px 24px rgba(0,0,0,.08);
 }
-body {
+body{
     font-family: Arial, sans-serif;
-    background: var(--bg);
-    padding: 40px;
+    background:var(--bg);
+    padding:40px;
     color:var(--text);
 }
 
-/* CONTENEDOR CENTRAL */
-.container {
-    max-width: 850px;
-    margin: 0 auto;
+.container{
+    max-width:1000px;
+    margin:0 auto;
 }
 
-/* BOTÓN VOLVER */
-.back {
-    display: inline-block;
-    margin-bottom: 25px;
-    background: linear-gradient(180deg,#7b8b7f,#66756a);
-    color: white;
-    padding: 10px 18px;
-    border-radius: 8px;
-    text-decoration: none;
-    font-weight: 600;
+.back{
+    display:inline-block;
+    margin-bottom:25px;
+    background:linear-gradient(180deg,#7b8b7f,#66756a);
+    color:#fff;
+    padding:10px 18px;
+    border-radius:8px;
+    text-decoration:none;
+    font-weight:600;
 }
 
-/* CARD */
-.card {
-    background: var(--card);
-    padding: 30px;
-    border-radius: 18px;
-    box-shadow: var(--shadow);
+.card{
+    background:var(--card);
+    padding:30px;
+    border-radius:18px;
+    box-shadow:var(--shadow);
     border:1px solid var(--line);
+    margin-bottom:25px;
 }
 
-/* TÍTULO */
-.card h2 {
-    margin-bottom: 25px;
+.semester-title{
+    font-size:20px;
+    font-weight:700;
+    margin-bottom:15px;
 }
 
-/* ITEM FILA */
-.row {
-    background: #f7fcf8;
+.module-item{
+    background:#f7fcf8;
     border:1px solid var(--line);
-    padding: 15px 20px;
-    border-radius: 12px;
-    margin-bottom: 15px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
+    padding:15px 18px;
+    border-radius:12px;
+    margin-bottom:12px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
 }
 
-/* NOMBRE */
-.row strong {
-    font-size: 15px;
-}
-
-/* BOTONES */
-.actions {
-    display: flex;
-    gap: 10px;
-    align-items: center;
-}
-
-.btn-view {
-    background: linear-gradient(180deg,var(--green),var(--green-dark));
-    color: white;
-    padding: 8px 14px;
-    border-radius: 8px;
-    text-decoration: none;
-    font-weight: 600;
-}
-
-.inline-form {
-    margin: 0;
-}
-
-.btn-delete-x {
-    width: 32px;
-    height: 32px;
-    border-radius: 8px;
-    border: none;
-    background: #dc2626;
-    color: white;
-    font-size: 20px;
-    font-weight: 700;
-    cursor: pointer;
-    line-height: 1;
+.btn{
+    background:linear-gradient(180deg,var(--green),var(--green-dark));
+    color:#fff;
+    padding:8px 16px;
+    border-radius:8px;
+    text-decoration:none;
+    font-weight:600;
 }
 </style>
 </head>
@@ -151,29 +157,52 @@ body {
 
 <div class="container">
 
-<a class="back" href="../admin/dashboard.php">← Volver</a>
+    <a class="back" href="../admin/dashboard.php">
+        ← Volver
+    </a>
 
-<div class="card">
-    <h2>📘 Semestres creados</h2>
+    <div class="card">
+        <h2>📋 Cursos creados - Técnico</h2>
 
-    <?php if (empty($semestres)): ?>
-        <p>No hay semestres creados.</p>
-    <?php else: ?>
-        <?php foreach ($semestres as $sem): ?>
-            <div class="row">
-                <strong><?= htmlspecialchars($sem["name"]) ?></strong>
+        <?php if (empty($semesters)): ?>
+            <p>No hay estructura creada.</p>
+        <?php else: ?>
 
-                <div class="actions">
-                    <a class="btn-view"
-                       href="technical_modules_view.php?course=<?= urlencode($sem["id"]) ?>">
-                        Ver →
-                    </a>
+            <?php foreach ($semesters as $semester): ?>
+
+                <div class="card">
+                    <div class="semester-title">
+                        <?= htmlspecialchars($semester['name']); ?>
+                    </div>
+
+                    <?php if (empty($semester['modules'])): ?>
+                        <p>No hay módulos creados.
+                            <a href="technical_modules_view.php?course=<?= urlencode($semester['id']); ?>">
+                                Agregar módulos →
+                            </a>
+                        </p>
+                    <?php else: ?>
+
+                        <?php foreach ($semester['modules'] as $module): ?>
+                            <div class="module-item">
+                                <strong><?= htmlspecialchars($module['name']); ?></strong>
+
+                                <a class="btn"
+                                   href="technical_units_view.php?module=<?= urlencode($module['id']); ?>">
+                                    Ver →
+                                </a>
+                            </div>
+                        <?php endforeach; ?>
+
+                    <?php endif; ?>
 
                 </div>
-            </div>
-        <?php endforeach; ?>
-    <?php endif; ?>
-</div>
+
+            <?php endforeach; ?>
+
+        <?php endif; ?>
+
+    </div>
 
 </div>
 
