@@ -420,6 +420,13 @@ function getDragAfter(container, y) {
 }
 
 document.querySelectorAll('#os-sentences-list .os-sentence-item').forEach(attachDrag);
+
+/* ── disable inputs inside hidden media sections before submit ── */
+document.getElementById('osSentencesForm').addEventListener('submit', function () {
+    document.querySelectorAll('.media-section:not(.active) input, .media-section:not(.active) textarea').forEach(function (el) {
+        el.disabled = true;
+    });
+});
 </script>
 <?php
 $content = ob_get_clean();
