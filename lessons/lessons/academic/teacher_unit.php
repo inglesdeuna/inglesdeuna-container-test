@@ -505,6 +505,7 @@ $activityLabels = [
     'hangman' => 'Hangman',
     'pronunciation' => 'Pronunciation',
     'listen_order' => 'Listen & Order',
+    'order_sentences' => 'Order the Sentences',
     'drag_drop' => 'Drag & Drop',
     'match' => 'Match',
     'external' => 'External',

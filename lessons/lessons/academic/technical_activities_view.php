@@ -499,6 +499,7 @@ body{
                             'multiple_choice' => '✅',
                             'video_comprehension' => '🎬',
                             'listen_order' => '🎧',
+                            'order_sentences' => '📋',
                             'pronunciation' => '🎤',
                             'external' => '🌐',
                             'flipbooks' => '📖',

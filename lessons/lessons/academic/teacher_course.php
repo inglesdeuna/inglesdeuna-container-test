@@ -730,6 +730,7 @@ $activityTypeLabels = [
     'hangman' => 'Hangman',
     'pronunciation' => 'Pronunciation',
     'listen_order' => 'Listen & Order',
+    'order_sentences' => 'Order the Sentences',
     'drag_drop' => 'Unscramble',
     'match' => 'Match',
     'external' => 'External',

@@ -45,6 +45,7 @@ $activityTypes = [
     "video_comprehension" => "Video Comprehension",
     "hangman" => "Hangman",
     "listen_order" => "Listen Order",
+    "order_sentences" => "Order the Sentences",
     "pronunciation" => "Pronunciation",
     "dictation" => "Dictation",
     "external" => "External",

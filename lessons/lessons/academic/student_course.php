@@ -631,6 +631,7 @@ $activityTypeLabels = [
     'multiple_choice' => 'Multiple Choice', 'video_comprehension' => 'Video Comprehension',
     'flipbooks' => 'Video Lesson', 'hangman' => 'Hangman',
     'pronunciation' => 'Pronunciation', 'listen_order' => 'Listen & Order',
+    'order_sentences' => 'Order the Sentences',
     'drag_drop' => 'Drag & Drop', 'match' => 'Match',
     'external' => 'External', 'powerpoint' => 'PowerPoint',
     'crossword' => 'Crossword Puzzle',
