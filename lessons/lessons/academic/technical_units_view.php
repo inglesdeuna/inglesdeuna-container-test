@@ -134,8 +134,20 @@ if ($_SERVER["REQUEST_METHOD"] === "POST"
     && trim((string) ($_POST["rename_name"] ?? '')) !== '') {
     $renameId   = (int) $_POST["rename_id"];
     $renameName = mb_strtoupper(trim((string) $_POST["rename_name"]), "UTF-8");
+
+    // Update canonical name in units table
     $pdo->prepare("UPDATE units SET name = :name WHERE id = :id")
         ->execute(["name" => $renameName, "id" => $renameId]);
+
+    // Sync cached name in teacher_assignments (unit_id stored as TEXT)
+    try {
+        $pdo->prepare("
+            UPDATE teacher_assignments
+            SET unit_name = :name
+            WHERE unit_id = :unit_id
+        ")->execute(["name" => $renameName, "unit_id" => (string) $renameId]);
+    } catch (Throwable $e) { /* table may not exist yet */ }
+
     $redirect = $moduleId !== null
         ? "technical_units_view.php?module=" . urlencode($moduleId) . "&renamed=1"
         : "technical_units_view.php?course=" . urlencode($courseId) . "&renamed=1";
