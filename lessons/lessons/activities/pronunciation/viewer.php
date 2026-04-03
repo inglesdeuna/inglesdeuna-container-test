@@ -692,15 +692,15 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         var text = data[index].en || '';
-        if (!text) {
+        if (!text || !window.speechSynthesis) {
             return;
         }
 
+        window.speechSynthesis.cancel();
         var utter = new SpeechSynthesisUtterance(text);
         utter.lang = 'en-US';
         utter.rate = 0.9;
-        speechSynthesis.cancel();
-        speechSynthesis.speak(utter);
+        window.speechSynthesis.speak(utter);
     }
 
     function loadCard() {
