@@ -248,9 +248,6 @@ ob_start();
     --card-back:#ec4899;
     --text:#1f2937;
     --white:#ffffff;
-    // Deletrear: separar letras con espacios
-    let spelled = text.split('').join(' ');
-    const utter = new SpeechSynthesisUtterance(spelled);
     --arrow:#db2777;
     --arrow-hover:#9d174d;
     --shadow:0 16px 34px rgba(15, 23, 42, .14);
@@ -583,7 +580,7 @@ function speak(event) {
 
     const utter = new SpeechSynthesisUtterance(text);
     utter.lang = 'en-US';
-    utter.rate = 0.5; // Más despacio
+    utter.rate = 0.9;
     window.speechSynthesis.speak(utter);
 }
 
