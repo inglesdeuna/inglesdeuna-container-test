@@ -232,13 +232,28 @@ function save_assignment_to_database(array $record, ?string &$errorMessage = nul
     }
 
     try {
+        $unitIdValue = $record['unit_id'] !== null && $record['unit_id'] !== '' ? (string) $record['unit_id'] : null;
+
+        /* Prevent duplicate: same teacher + program + course + unit */
+        $checkSql  = $unitIdValue !== null
+            ? "SELECT id FROM teacher_assignments WHERE teacher_id = :tid AND program_type = :prog AND course_id = :cid AND unit_id = :uid LIMIT 1"
+            : "SELECT id FROM teacher_assignments WHERE teacher_id = :tid AND program_type = :prog AND course_id = :cid AND unit_id IS NULL LIMIT 1";
+        $checkParams = ['tid' => (string) ($record['teacher_id'] ?? ''), 'prog' => (string) ($record['program_type'] ?? ''), 'cid' => (string) ($record['course_id'] ?? '')];
+        if ($unitIdValue !== null) {
+            $checkParams['uid'] = $unitIdValue;
+        }
+        $checkStmt = $pdo->prepare($checkSql);
+        $checkStmt->execute($checkParams);
+        if ($checkStmt->fetchColumn()) {
+            return true; // Already exists — skip silently, no duplicate
+        }
+
         $stmt = $pdo->prepare("
             INSERT INTO teacher_assignments (
                 id, teacher_id, teacher_name, program_type, course_id, course_name, unit_id, unit_name, updated_at
             ) VALUES (
                 :id, :teacher_id, :teacher_name, :program_type, :course_id, :course_name, :unit_id, :unit_name, :updated_at
             )
-            ON CONFLICT DO NOTHING
         ");
 
         return $stmt->execute([
@@ -248,7 +263,7 @@ function save_assignment_to_database(array $record, ?string &$errorMessage = nul
             'program_type' => (string) ($record['program_type'] ?? ''),
             'course_id' => (string) ($record['course_id'] ?? ''),
             'course_name' => (string) ($record['course_name'] ?? ''),
-            'unit_id' => $record['unit_id'] !== null && $record['unit_id'] !== '' ? (string) $record['unit_id'] : null,
+            'unit_id' => $unitIdValue,
             'unit_name' => $record['unit_name'] !== null && $record['unit_name'] !== '' ? (string) $record['unit_name'] : null,
             'updated_at' => date('Y-m-d H:i:s'),
         ]);

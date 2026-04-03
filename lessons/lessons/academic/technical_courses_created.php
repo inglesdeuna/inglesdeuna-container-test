@@ -47,16 +47,19 @@ $stmt = $pdo->prepare("
         c.id   AS semester_id,
         c.name AS semester_name,
         m.id   AS module_id,
-        m.name AS module_name
+        m.name AS module_name,
+        u.id   AS unit_id,
+        u.name AS unit_name
     FROM courses c
     LEFT JOIN technical_modules m ON m.course_id = c.id
+    LEFT JOIN units u ON u.module_id = m.id
     WHERE c.program_id = :program_id
-    ORDER BY c.id ASC, m.id ASC
+    ORDER BY c.id ASC, m.id ASC, u.id ASC
 ");
 $stmt->execute(["program_id" => $programId]);
 $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-/* Agrupar por Semestre */
+/* Agrupar por Semestre → Módulo → Unidades */
 $semesters = [];
 foreach ($rows as $row) {
     $semId = $row['semester_id'];
@@ -68,10 +71,20 @@ foreach ($rows as $row) {
         ];
     }
     if (!empty($row['module_id'])) {
-        $semesters[$semId]['modules'][] = [
-            'id'   => $row['module_id'],
-            'name' => $row['module_name']
-        ];
+        $modId = $row['module_id'];
+        if (!isset($semesters[$semId]['modules'][$modId])) {
+            $semesters[$semId]['modules'][$modId] = [
+                'id'    => $modId,
+                'name'  => $row['module_name'],
+                'units' => []
+            ];
+        }
+        if (!empty($row['unit_id'])) {
+            $semesters[$semId]['modules'][$modId]['units'][] = [
+                'id'   => $row['unit_id'],
+                'name' => $row['unit_name']
+            ];
+        }
     }
 }
 ?>
@@ -145,9 +158,54 @@ body{
     border-radius:12px;
     margin-bottom:12px;
     display:flex;
+    flex-direction:column;
+    gap:0;
+}
+.module-item-header{
+    display:flex;
     justify-content:space-between;
     align-items:center;
+    gap:10px;
+    flex-wrap:wrap;
 }
+.module-item-actions{
+    display:flex;
+    gap:8px;
+    flex-wrap:wrap;
+    align-items:center;
+}
+.unit-list-collapse{
+    display:none;
+    margin-top:14px;
+    padding-top:12px;
+    border-top:1px solid var(--line);
+}
+.unit-list-collapse.open{ display:block; }
+.unit-row{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    padding:9px 12px;
+    border-radius:10px;
+    background:#fff;
+    border:1px solid var(--line);
+    margin-bottom:8px;
+    font-size:14px;
+}
+.unit-row:last-child{ margin-bottom:0; }
+.unit-row span{ font-weight:600; color:var(--text); }
+.btn-toggle{
+    background:none;
+    border:1px solid var(--green);
+    color:var(--green);
+    border-radius:10px;
+    padding:6px 12px;
+    font-size:13px;
+    font-weight:700;
+    cursor:pointer;
+    transition:background .15s;
+}
+.btn-toggle:hover{ background:#eaf5ec; }
 
 .btn{
     display:inline-block;
@@ -205,14 +263,38 @@ body{
                         </div>
                     <?php else: ?>
 
-                        <?php foreach ($semester['modules'] as $module): ?>
+                        <?php foreach ($semester['modules'] as $module):
+                              $unitCount = count($module['units']);
+                        ?>
                             <div class="module-item">
-                                <strong><?= htmlspecialchars($module['name']); ?></strong>
+                                <div class="module-item-header">
+                                    <strong><?= htmlspecialchars($module['name']); ?></strong>
+                                    <div class="module-item-actions">
+                                        <?php if ($unitCount > 0): ?>
+                                            <button class="btn-toggle" type="button" onclick="toggleUnits(this)">
+                                                Ver unidades (<?= $unitCount; ?>)
+                                            </button>
+                                        <?php endif; ?>
+                                        <a class="btn btn-primary"
+                                           href="technical_units_view.php?module=<?= urlencode($module['id']); ?>">
+                                            Administrar →
+                                        </a>
+                                    </div>
+                                </div>
 
-                                <a class="btn btn-primary"
-                                   href="technical_units_view.php?module=<?= urlencode($module['id']); ?>">
-                                    Ver →
-                                </a>
+                                <?php if ($unitCount > 0): ?>
+                                    <div class="unit-list-collapse">
+                                        <?php foreach ($module['units'] as $unit): ?>
+                                            <div class="unit-row">
+                                                <span><?= htmlspecialchars($unit['name']); ?></span>
+                                                <a class="btn btn-primary" style="padding:6px 12px;font-size:13px;"
+                                                   href="technical_units_view.php?module=<?= urlencode($module['id']); ?>">
+                                                    Editar →
+                                                </a>
+                                            </div>
+                                        <?php endforeach; ?>
+                                    </div>
+                                <?php endif; ?>
                             </div>
                         <?php endforeach; ?>
 

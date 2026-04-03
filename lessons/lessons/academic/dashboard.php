@@ -554,6 +554,42 @@ $teacherInitials = teacher_initials($teacherName);
 $assignments = load_teacher_assignments($teacherId);
 $teacherPermission = load_teacher_permission($teacherId);
 
+/* ════════════════════════════════════════
+   BUILD SIDEBAR ITEMS
+   Group technical assignments by semester (course_id) so each
+   semester shows as ONE sidebar button instead of one per unit.
+   English assignments keep one button per phase (unchanged).
+   ════════════════════════════════════════ */
+$sidebarItems = [];
+foreach ($assignments as $_asg) {
+    $_asgId = (string) ($_asg['id'] ?? '');
+    $_prog  = (string) ($_asg['program_type'] ?? '');
+    $_cId   = (string) ($_asg['course_id'] ?? '');
+    if ($_prog === 'technical') {
+        $_key = 'tech_' . $_cId;
+        if (!isset($sidebarItems[$_key])) {
+            $sidebarItems[$_key] = [
+                'id'             => $_asgId,
+                'course_id'      => $_cId,
+                'program_type'   => 'technical',
+                'course_name'    => (string) ($_asg['course_name'] ?? ''),
+                'assignment_ids' => [$_asgId],
+            ];
+        } else {
+            $sidebarItems[$_key]['assignment_ids'][] = $_asgId;
+        }
+    } else {
+        $sidebarItems['eng_' . $_asgId] = [
+            'id'             => $_asgId,
+            'course_id'      => $_cId,
+            'program_type'   => 'english',
+            'course_name'    => (string) ($_asg['course_name'] ?? ''),
+            'assignment_ids' => [$_asgId],
+        ];
+    }
+}
+unset($_asg, $_asgId, $_prog, $_cId, $_key);
+
 $selectedAssignmentId = trim((string) ($_GET['assignment'] ?? ''));
 $selectedAssignment = null;
 
@@ -1095,7 +1131,7 @@ body{ margin:0; font-family:'Nunito','Segoe UI',sans-serif; background:var(--bg)
                 <div class="profile-meta">
                     <div class="profile-stat">
                         <span class="profile-stat-label">Cursos</span>
-                        <span class="profile-stat-value"><?php echo count($assignments); ?></span>
+                        <span class="profile-stat-value"><?php echo count($sidebarItems); ?></span>
                     </div>
                     <div class="profile-stat">
                         <span class="profile-stat-label">Permiso</span>
@@ -1114,22 +1150,28 @@ body{ margin:0; font-family:'Nunito','Segoe UI',sans-serif; background:var(--bg)
 
                 <div class="sidebar-section-title">Cursos asignados</div>
                 <div class="sidebar-course-list">
-                    <?php if (empty($assignments)) { ?>
+                    <?php if (empty($sidebarItems)) { ?>
                         <span class="upload-label">No tienes cursos asignados.</span>
                     <?php } else { ?>
-                        <?php foreach ($assignments as $assignment) { ?>
+                        <?php foreach ($sidebarItems as $sItem) { ?>
                             <?php
-                            $assignmentId = (string) ($assignment['id'] ?? '');
-                            $isActiveAssignment = $assignmentId === $selectedAssignmentId;
-                            $programType = (string) ($assignment['program_type'] ?? '');
-                            $courseLabel = $programType === 'english' ? 'English' : 'INGLÉS TÉCNICO';
-                            $courseTitle = build_assignment_title($assignment);
+                            $sItemId      = (string) ($sItem['id'] ?? '');
+                            $sItemProg    = (string) ($sItem['program_type'] ?? '');
+                            $sItemCourseId = (string) ($sItem['course_id'] ?? '');
+                            /* Active when any assignment in this group is selected,
+                               or when selected assignment shares same course (technical) */
+                            $isActiveSItem = in_array($selectedAssignmentId, $sItem['assignment_ids'] ?? [], true)
+                                || ($sItemProg === 'technical'
+                                    && $selectedAssignment !== null
+                                    && (string) ($selectedAssignment['course_id'] ?? '') === $sItemCourseId);
+                            $sItemLabel = $sItemProg === 'english' ? 'English' : 'INGLÉS TÉCNICO';
+                            $sItemTitle = uppercase_utf8(trim((string) ($sItem['course_name'] ?? '')));
                             ?>
                             <a
-                                class="sidebar-course-btn<?php echo $isActiveAssignment ? ' active' : ''; ?>"
-                                href="dashboard.php?assignment=<?php echo urlencode($assignmentId); ?>#unidades-curso"
+                                class="sidebar-course-btn<?php echo $isActiveSItem ? ' active' : ''; ?>"
+                                href="dashboard.php?assignment=<?php echo urlencode($sItemId); ?>#unidades-curso"
                             >
-                                <?php echo h($courseLabel); ?> · <?php echo h($courseTitle); ?>
+                                <?php echo h($sItemLabel); ?> · <?php echo h($sItemTitle); ?>
                             </a>
                         <?php } ?>
                     <?php } ?>
