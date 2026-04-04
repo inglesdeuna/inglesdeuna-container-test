@@ -75,7 +75,7 @@ function wpv_normalize_payload($rawData): array
             'placeholder'     => trim((string) ($item['placeholder'] ?? 'Write your answer here...')),
             'media'           => trim((string) ($item['media']       ?? '')),
             'correct_answers' => $correctAnswers,
-            'points'          => max(1, (int) ($item['points'] ?? 10)),
+            'points'          => 1,
         ];
     }
 
@@ -314,14 +314,8 @@ document.addEventListener('DOMContentLoaded', function () {
     var finished     = false;
     var checkedCards = {};   // index → true when locked
     var attemptsMap  = {};   // index → attempt count
-    var correctCount = 0;    // auto-graded correct
-    var autoTotal    = 0;    // auto-graded questions count
+    var correctCount = 0;    // correct (auto-graded correct + open-writing submitted)
     var openResponses = [];   // collected writing responses
-
-    /* count auto-graded questions */
-    questions.forEach(function (q) {
-        if (String(q.type || 'writing') !== 'writing') { autoTotal++; }
-    });
 
     /* ── helpers ──────────────────────────────────────── */
     function isAutoGraded(q) {
@@ -568,16 +562,17 @@ document.addEventListener('DOMContentLoaded', function () {
             if (!checkedCards[index] && answerEl.value.trim() !== '') { checkAnswer(); }
             if (!checkedCards[index]) { return; }
         } else {
-            /* open writing – record response */
+            /* open writing – record response; always counts as 1 point completed */
             var val = answerEl.value.trim();
             if (!checkedCards[index]) {
                 checkedCards[index] = 'open';
+                correctCount++;          // submission = completed = 1 point
                 if (val !== '') {
                     openResponses.push({
                         question_id:   String(q.id || index),
                         question_text: String(q.question || ''),
                         response_text: val,
-                        max_points:    Math.max(1, Number(q.points) || 10),
+                        max_points:    1,
                     });
                 }
                 feedbackEl.textContent = '\u2714 Submitted for review';
@@ -644,16 +639,13 @@ document.addEventListener('DOMContentLoaded', function () {
         if (compTitleEl) { compTitleEl.textContent = actTitle; }
         if (compTextEl)  { compTextEl.textContent  = "You've completed " + actTitle + ". Great job!"; }
 
-        /* score: only auto-graded contribute */
-        var pct    = autoTotal > 0 ? Math.round((correctCount / autoTotal) * 100) : 100;
-        var errors = Math.max(0, autoTotal - correctCount);
+        /* score: every question = 1 point (auto-graded correct + open-writing submitted) */
+        var totalCount = questions.length;
+        var pct    = totalCount > 0 ? Math.round((correctCount / totalCount) * 100) : 0;
+        var errors = Math.max(0, totalCount - correctCount);
 
         if (scoreTextEl) {
-            if (autoTotal > 0) {
-                scoreTextEl.textContent = 'Score: ' + correctCount + ' / ' + autoTotal + ' (' + pct + '%)';
-            } else {
-                scoreTextEl.textContent = 'Responses submitted for teacher review.';
-            }
+            scoreTextEl.textContent = 'Score: ' + correctCount + ' / ' + totalCount + ' (' + pct + '%)';
         }
 
         var hasOpen = openResponses.length > 0;
@@ -683,7 +675,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 + joiner
                 + 'activity_percent=' + encodeURIComponent(String(pct))
                 + '&activity_errors='  + encodeURIComponent(String(errors))
-                + '&activity_total='   + encodeURIComponent(String(questions.length))
+                + '&activity_total='   + encodeURIComponent(String(totalCount))
                 + '&activity_id='      + encodeURIComponent(activityId)
                 + '&activity_type=writing_practice';
 
@@ -699,6 +691,7 @@ document.addEventListener('DOMContentLoaded', function () {
         openResponses = [];
         correctCount  = 0;
         index         = 0;
+        finished      = false;
         loadCard();
     }
 

@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
@@ -62,7 +62,7 @@ function wp_normalize_payload($rawData): array
             'instruction'     => trim((string) ($item['instruction'] ?? '')),
             'media'           => trim((string) ($item['media']       ?? '')),
             'correct_answers' => $ans,
-            'points'          => max(1, (int) ($item['points'] ?? 10)),
+            'points'          => 1,
         ];
     }
     return [
@@ -140,7 +140,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $instructions= isset($_POST['wp_instr'])    && is_array($_POST['wp_instr'])    ? $_POST['wp_instr']    : [];
     $mediasPost  = isset($_POST['wp_media'])    && is_array($_POST['wp_media'])    ? $_POST['wp_media']    : [];
     $answersList = isset($_POST['wp_answers'])  && is_array($_POST['wp_answers'])  ? $_POST['wp_answers']  : [];
-    $pointsList  = isset($_POST['wp_points'])   && is_array($_POST['wp_points'])   ? $_POST['wp_points']   : [];
     $videoFiles  = isset($_FILES['wp_video_file']) ? $_FILES['wp_video_file'] : null;
 
     $allowed = ['writing', 'listen_write', 'fill_sentence', 'fill_paragraph', 'video_writing'];
@@ -151,7 +150,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $instr  = trim((string) ($instructions[$i] ?? ''));
         $media  = trim((string) ($mediasPost[$i]   ?? ''));
         $rawAns = trim((string) ($answersList[$i]  ?? ''));
-        $pts    = max(1, (int) ($pointsList[$i]    ?? 10));
 
         if ($type === 'video_writing' && $videoFiles
             && !empty($videoFiles['name'][$i])
@@ -169,7 +167,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'instruction'     => $instr,
             'media'           => $media,
             'correct_answers' => $ans,
-            'points'          => $pts,
+            'points'          => 1,
         ];
     }
 
@@ -330,13 +328,12 @@ ob_start();
         $qText   = $q['question']    ?? '';
         $instr   = $q['instruction'] ?? '';
         $media   = $q['media']       ?? '';
-        $pts     = $q['points']      ?? 10;
         $answers = implode("\n", $q['correct_answers'] ?? []);
         ?>
         <div class="wp-block">
             <span class="wp-block-num">Pregunta <?= $i + 1 ?></span>
 
-            <div class="wp-col-half">
+            <div class="wp-col-full">
                 <label>Tipo</label>
                 <select name="wp_type[]" class="wp-type-select" onchange="wpToggleMedia(this)">
                     <option value="writing"        <?= $type==='writing'        ?'selected':'' ?>> Escritura libre</option>
@@ -345,11 +342,6 @@ ob_start();
                     <option value="fill_paragraph" <?= $type==='fill_paragraph' ?'selected':'' ?>> Completar párrafo</option>
                     <option value="video_writing"  <?= $type==='video_writing'  ?'selected':'' ?>> Video + escritura</option>
                 </select>
-            </div>
-
-            <div class="wp-col-half">
-                <label>Puntaje</label>
-                <input type="number" name="wp_points[]" value="<?= (int)$pts ?>" min="1" max="100">
             </div>
 
             <div class="wp-col-full">
@@ -451,7 +443,7 @@ function wpAdd() {
     div.className = 'wp-block';
     div.innerHTML =
         '<span class="wp-block-num">Pregunta ' + wpCount + '</span>' +
-        '<div class="wp-col-half"><label>Tipo</label>' +
+        '<div class="wp-col-full"><label>Tipo</label>' +
         '<select name="wp_type[]" class="wp-type-select" onchange="wpToggleMedia(this)">' +
         '<option value="writing">\u270D\uFE0F Escritura libre</option>' +
         '<option value="listen_write">\uD83C\uDFA7 Escuchar y escribir</option>' +
@@ -459,8 +451,6 @@ function wpAdd() {
         '<option value="fill_paragraph">\uD83D\uDCC4 Completar p\u00E1rrafo</option>' +
         '<option value="video_writing">\uD83C\uDFAC Video + escritura</option>' +
         '</select></div>' +
-        '<div class="wp-col-half"><label>Puntaje</label>' +
-        '<input type="number" name="wp_points[]" value="10" min="1" max="100"></div>' +
         '<div class="wp-col-full"><label>Pregunta / enunciado</label>' +
         '<textarea name="wp_question[]" rows="2" placeholder="Escribe la pregunta o el enunciado aqu\u00ED..."></textarea></div>' +
         '<div class="wp-col-full"><label>Instrucci\u00F3n adicional <span style="font-weight:400;font-size:12px;">(opcional)</span></label>' +
