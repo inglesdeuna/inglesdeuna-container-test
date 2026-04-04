@@ -136,6 +136,17 @@ $viewerTitle = (string) ($activity['title']       ?? 'Writing Practice');
 $description = (string) ($activity['description'] ?? '');
 $questions   = (array)  ($activity['questions']   ?? []);
 
+/* video layout mode: all questions are video_writing */
+$isVideoMode = !empty($questions) && count(array_filter(
+    $questions, function ($q) { return ($q['type'] ?? '') === 'video_writing'; }
+)) === count($questions);
+
+/* grab first video URL for the fixed video banner */
+$videoMediaUrl = '';
+foreach ($questions as $q) {
+    if (!empty($q['media'])) { $videoMediaUrl = (string) $q['media']; break; }
+}
+
 ob_start();
 $cssVer = file_exists(__DIR__ . '/../multiple_choice/multiple_choice.css')
     ? (string) filemtime(__DIR__ . '/../multiple_choice/multiple_choice.css')
@@ -216,11 +227,276 @@ $cssVer = file_exists(__DIR__ . '/../multiple_choice/multiple_choice.css')
     margin-top: 14px;
 }
 .completed-button:hover { transform: scale(1.05); filter: brightness(1.07); }
+
+/* ── Video Layout mode ───────────────────────────────────── */
+.wpvl-wrap        { max-width: 860px; margin: 0 auto; font-family: 'Nunito','Segoe UI',sans-serif; }
+.wpvl-video-box   { position: relative; width: 100%; border-radius: 16px; overflow: hidden;
+                    background: #000; margin-bottom: 20px; box-shadow: 0 12px 28px rgba(15,23,42,.14); }
+.wpvl-video-box.is-iframe { aspect-ratio: 16 / 9; }
+.wpvl-video-box.is-iframe iframe  { position: absolute; top:0; left:0; width:100%; height:100%; border:none; }
+.wpvl-video-box video { display: block; width: 100%; max-height: 480px; border-radius: 16px; }
+.wpvl-qs          { display: flex; flex-direction: column; gap: 14px; margin-bottom: 18px; }
+.wpvl-card        { background: #fff; border: 1px solid #e9d5ff; border-radius: 14px;
+                    padding: 16px 18px; box-shadow: 0 6px 16px rgba(15,23,42,.05); position: relative; overflow: hidden; }
+.wpvl-card::before{ content:''; position:absolute; top:0; left:0; right:0; height:5px;
+                    background: linear-gradient(90deg,#a855f7,#7c3aed); }
+.wpvl-q-num       { font-size: 11px; font-weight: 800; color: #7c3aed; text-transform: uppercase;
+                    letter-spacing: .06em; margin-bottom: 6px; }
+.wpvl-q-text      { font-weight: 800; color: #f14902; font-size: clamp(15px,2vw,19px);
+                    margin: 0 0 10px; line-height: 1.4; }
+.wpvl-q-instr     { font-size: 13px; color: #7c3aed; font-weight: 700; margin: 0 0 10px; }
+.wpvl-answer      { width: 100%; min-height: 80px; resize: vertical; box-sizing: border-box; }
+.wpvl-reveal      { margin-top: 8px; }
+.wpvl-controls    { display: flex; justify-content: center; margin-bottom: 16px; }
+.wpvl-btn-submit  { background: linear-gradient(180deg,#a855f7,#7c3aed); color:#fff; border:none;
+                    border-radius: 999px; padding: 12px 32px; font-size: 15px; font-weight: 800;
+                    cursor: pointer; box-shadow: 0 10px 22px rgba(124,58,237,.3);
+                    transition: transform .15s, filter .15s; font-family: inherit; }
+.wpvl-btn-submit:hover  { filter: brightness(1.08); transform: translateY(-2px); }
+.wpvl-btn-submit:disabled { opacity: .5; cursor: default; transform: none; }
 </style>
 
 <?php if (empty($questions)): ?>
     <p style="padding:20px;color:#b8551f;font-weight:700;">This activity has no questions yet. Open the editor to configure it.</p>
+<?php elseif ($isVideoMode): ?>
+
+<!-- ═══════ VIDEO LAYOUT MODE ═══════ -->
+<link rel="stylesheet" href="../multiple_choice/multiple_choice.css?v=<?= urlencode($cssVer) ?>">
+
+<div class="wpvl-wrap" id="wpvlWrap">
+
+    <!-- ── video (fixed at top) ── -->
+    <?php
+    $isCloudinaryOrMp4 = $videoMediaUrl !== '' && (
+        preg_match('/\.(mp4|webm|ogg)(\?|$)/i', $videoMediaUrl) ||
+        preg_match('/cloudinary\.com\/.+\/video\//i', $videoMediaUrl)
+    );
+    $ytMatch = [];
+    $isYoutube = !$isCloudinaryOrMp4 && $videoMediaUrl !== '' && (
+        preg_match('/youtu\.be\/([A-Za-z0-9_\-]{11})/', $videoMediaUrl, $ytMatch) ||
+        preg_match('/youtube\.com\/watch\?(?:.*&)?v=([A-Za-z0-9_\-]{11})/', $videoMediaUrl, $ytMatch) ||
+        preg_match('/youtube\.com\/embed\/([A-Za-z0-9_\-]+)/', $videoMediaUrl, $ytMatch)
+    );
+    $embedUrl = $isYoutube ? 'https://www.youtube-nocookie.com/embed/' . $ytMatch[1] : $videoMediaUrl;
+    ?>
+
+    <?php if ($isCloudinaryOrMp4 && $videoMediaUrl !== ''): ?>
+        <div class="wpvl-video-box">
+            <video controls preload="metadata">
+                <source src="<?= htmlspecialchars($videoMediaUrl, ENT_QUOTES, 'UTF-8') ?>">
+            </video>
+        </div>
+    <?php elseif ($videoMediaUrl !== ''): ?>
+        <div class="wpvl-video-box is-iframe">
+            <iframe src="<?= htmlspecialchars($embedUrl, ENT_QUOTES, 'UTF-8') ?>"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowfullscreen loading="lazy"></iframe>
+        </div>
+    <?php endif; ?>
+
+    <!-- ── questions ── -->
+    <div class="wpvl-qs" id="wpvlQs">
+        <?php foreach ($questions as $i => $q): ?>
+            <?php $qText = htmlspecialchars((string)($q['question'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>
+            <div class="wpvl-card" id="wpvlCard<?= $i ?>">
+                <div class="wpvl-q-num">Question <?= $i + 1 ?></div>
+                <?php if ($qText !== ''): ?>
+                    <p class="wpvl-q-text"><?= $qText ?></p>
+                <?php endif; ?>
+                <?php if (!empty($q['instruction'])): ?>
+                    <p class="wpvl-q-instr"><?= htmlspecialchars((string)$q['instruction'], ENT_QUOTES, 'UTF-8') ?></p>
+                <?php endif; ?>
+                <textarea class="dict-answer-box wpvl-answer" id="wpvlAns<?= $i ?>"
+                          placeholder="Write your answer here…"></textarea>
+                <div class="dict-answer-reveal wpvl-reveal" id="wpvlReveal<?= $i ?>"></div>
+                <div class="mc-feedback" id="wpvlFb<?= $i ?>"></div>
+            </div>
+        <?php endforeach; ?>
+    </div>
+
+    <!-- ── submit ── -->
+    <div class="wpvl-controls">
+        <button type="button" class="wpvl-btn-submit" id="wpvlSubmit">✔ Check Answers</button>
+    </div>
+
+    <!-- ── completed ── -->
+    <div id="wpvlCompleted" class="completed-screen">
+        <div class="completed-icon">✍️</div>
+        <h2 class="completed-title" id="wpvlCompTitle"></h2>
+        <p class="completed-text" id="wpvlCompText"></p>
+        <p class="completed-text" id="wpvlScoreText" style="font-weight:800;font-size:20px;color:#a855c8;"></p>
+        <p class="completed-text" id="wpvlOpenNote" style="display:none;color:#7c3aed;font-size:14px;"></p>
+        <button type="button" class="completed-button" id="wpvlRestart">Restart</button>
+    </div>
+</div>
+
+<script>
+window.WP_DATA        = <?= json_encode(array_values($questions), JSON_UNESCAPED_UNICODE) ?>;
+window.WP_RETURN_TO   = <?= json_encode($returnTo, JSON_UNESCAPED_UNICODE) ?>;
+window.WP_ACTIVITY_ID = <?= json_encode((string) ($activity['id'] ?? ''), JSON_UNESCAPED_UNICODE) ?>;
+window.WP_UNIT_ID     = <?= json_encode($unit, JSON_UNESCAPED_UNICODE) ?>;
+window.WP_ASSIGNMENT_ID = <?= json_encode((string) ($_GET['assignment'] ?? ''), JSON_UNESCAPED_UNICODE) ?>;
+window.WP_TITLE       = <?= json_encode($viewerTitle, JSON_UNESCAPED_UNICODE) ?>;
+</script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    'use strict';
+    var questions   = Array.isArray(window.WP_DATA) ? window.WP_DATA : [];
+    var returnTo    = String(window.WP_RETURN_TO   || '');
+    var activityId  = String(window.WP_ACTIVITY_ID || '');
+    var unitId      = String(window.WP_UNIT_ID     || '');
+    var assignId    = String(window.WP_ASSIGNMENT_ID || '');
+    var actTitle    = String(window.WP_TITLE       || 'Writing Practice');
+    if (!questions.length) { return; }
+
+    var wrapEl      = document.getElementById('wpvlWrap');
+    var qsEl        = document.getElementById('wpvlQs');
+    var submitBtn   = document.getElementById('wpvlSubmit');
+    var completedEl = document.getElementById('wpvlCompleted');
+    var compTitleEl = document.getElementById('wpvlCompTitle');
+    var compTextEl  = document.getElementById('wpvlCompText');
+    var scoreTextEl = document.getElementById('wpvlScoreText');
+    var openNoteEl  = document.getElementById('wpvlOpenNote');
+    var restartBtn  = document.getElementById('wpvlRestart');
+
+    var sndOk   = new Audio('../../hangman/assets/win.mp3');
+    var sndBad  = new Audio('../../hangman/assets/lose.mp3');
+    var sndDone = new Audio('../../hangman/assets/win (1).mp3');
+    function playSound(s) { try { s.pause(); s.currentTime = 0; s.play(); } catch (e) {} }
+
+    function normalize(s) {
+        return String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+            .trim().toLowerCase().replace(/[.,;:!?'"()]/g, '').replace(/\s+/g, ' ');
+    }
+    function checkCorrect(val, answers) {
+        if (!Array.isArray(answers) || answers.length === 0) { return false; }
+        var u = normalize(val);
+        return answers.some(function (a) { return normalize(a) === u; });
+    }
+    function isAutoGraded(q) {
+        return Array.isArray(q.correct_answers) && q.correct_answers.length > 0;
+    }
+    function persistScore(url) {
+        if (!url) { return Promise.resolve(false); }
+        return fetch(url, { method: 'GET', credentials: 'same-origin', cache: 'no-store' })
+            .then(function (r) { return !!(r && r.ok); }).catch(function () { return false; });
+    }
+    function navigateTo(url) {
+        if (!url) { return; }
+        try { if (window.top && window.top !== window.self) { window.top.location.href = url; return; } } catch (e) {}
+        window.location.href = url;
+    }
+
+    var submitted = false;
+
+    async function handleSubmit() {
+        if (submitted) { return; }
+        submitted = true;
+        submitBtn.disabled = true;
+
+        var correctCount  = 0;
+        var openResponses = [];
+
+        questions.forEach(function (q, i) {
+            var ansEl    = document.getElementById('wpvlAns'    + i);
+            var fbEl     = document.getElementById('wpvlFb'     + i);
+            var revealEl = document.getElementById('wpvlReveal' + i);
+            var val      = ansEl ? ansEl.value.trim() : '';
+
+            if (ansEl) { ansEl.disabled = true; }
+
+            if (isAutoGraded(q)) {
+                var correct = checkCorrect(val, q.correct_answers);
+                if (correct) {
+                    correctCount++;
+                    if (ansEl)  { ansEl.className  = 'dict-answer-box wpvl-answer ok'; }
+                    if (fbEl)   { fbEl.textContent = '\u2714 Right'; fbEl.className = 'mc-feedback good'; }
+                    playSound(sndOk);
+                } else {
+                    if (ansEl)  { ansEl.className  = 'dict-answer-box wpvl-answer bad'; }
+                    if (fbEl)   { fbEl.textContent = '\u2718 Wrong'; fbEl.className = 'mc-feedback bad'; }
+                    var shown = (q.correct_answers || []).slice(0, 2).join(' / ');
+                    if (revealEl) { revealEl.textContent = 'Correct: ' + shown; revealEl.classList.add('show'); }
+                    playSound(sndBad);
+                }
+            } else {
+                /* open writing: counts as completed */
+                correctCount++;
+                if (ansEl) { ansEl.className = 'dict-answer-box wpvl-answer ok'; }
+                if (fbEl)  { fbEl.textContent = '\u2714 Submitted for review'; fbEl.className = 'mc-feedback good'; }
+                if (val !== '') {
+                    openResponses.push({ question_id: String(q.id || i), question_text: String(q.question || ''),
+                                         response_text: val, max_points: 1 });
+                }
+            }
+        });
+
+        var totalCount = questions.length;
+        var pct    = totalCount > 0 ? Math.round((correctCount / totalCount) * 100) : 0;
+        var errors = Math.max(0, totalCount - correctCount);
+
+        /* save open-writing responses */
+        if (openResponses.length > 0) {
+            try {
+                var fd = new FormData();
+                fd.append('activity_id', activityId); fd.append('unit_id', unitId);
+                fd.append('assignment_id', assignId); fd.append('responses', JSON.stringify(openResponses));
+                await fetch('/lessons/lessons/activities/writing_practice/wp_save_response.php',
+                            { method: 'POST', body: fd });
+            } catch (e) {}
+        }
+
+        /* show completed */
+        playSound(sndDone);
+        if (qsEl)        { qsEl.style.marginBottom = '0'; }
+        submitBtn.style.display = 'none';
+        completedEl.classList.add('active');
+        if (compTitleEl) { compTitleEl.textContent = actTitle; }
+        if (compTextEl)  { compTextEl.textContent  = "You've completed " + actTitle + ". Great job!"; }
+        if (scoreTextEl) { scoreTextEl.textContent = 'Score: ' + correctCount + ' / ' + totalCount + ' (' + pct + '%)'; }
+        if (openNoteEl && openResponses.length > 0) {
+            openNoteEl.style.display = '';
+            openNoteEl.textContent   = '\u270D\uFE0F ' + openResponses.length + ' open-writing response(s) sent for teacher grading.';
+        }
+
+        /* persist to return URL */
+        if (returnTo) {
+            var joiner  = returnTo.indexOf('?') !== -1 ? '&' : '?';
+            var saveUrl = returnTo + joiner
+                + 'activity_percent=' + encodeURIComponent(String(pct))
+                + '&activity_errors='  + encodeURIComponent(String(errors))
+                + '&activity_total='   + encodeURIComponent(String(totalCount))
+                + '&activity_id='      + encodeURIComponent(activityId)
+                + '&activity_type=writing_practice';
+            var ok = await persistScore(saveUrl);
+            if (!ok) { navigateTo(saveUrl); }
+        }
+    }
+
+    submitBtn.addEventListener('click', handleSubmit);
+
+    restartBtn.addEventListener('click', function () {
+        submitted = false;
+        submitBtn.disabled = false;
+        submitBtn.style.display = '';
+        completedEl.classList.remove('active');
+        questions.forEach(function (q, i) {
+            var ansEl    = document.getElementById('wpvlAns'    + i);
+            var fbEl     = document.getElementById('wpvlFb'     + i);
+            var revealEl = document.getElementById('wpvlReveal' + i);
+            if (ansEl)    { ansEl.value = ''; ansEl.disabled = false; ansEl.className = 'dict-answer-box wpvl-answer'; }
+            if (fbEl)     { fbEl.textContent = ''; fbEl.className = 'mc-feedback'; }
+            if (revealEl) { revealEl.textContent = ''; revealEl.classList.remove('show'); }
+        });
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+});
+</script>
+
 <?php else: ?>
+
+<!-- ═══════ CARD-BY-CARD MODE (existing) ═══════ -->
 
 <link rel="stylesheet" href="../multiple_choice/multiple_choice.css?v=<?= urlencode($cssVer) ?>">
 
@@ -731,7 +1007,7 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 </script>
 
-<?php endif; ?>
+<?php endif; /* end if/elseif/else */ ?>
 <?php
 $content = ob_get_clean();
 render_activity_viewer($viewerTitle, '✍️', $content);
