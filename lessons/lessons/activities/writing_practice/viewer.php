@@ -165,6 +165,19 @@ $cssVer = file_exists(__DIR__ . '/../multiple_choice/multiple_choice.css')
     padding: 0 4px;
 }
 .wp-video-wrap {
+    margin-bottom: 14px;
+    border-radius: 12px;
+    overflow: hidden;
+    background: #000;
+    width: 100%;
+}
+.wp-video-wrap video {
+    display: block;
+    width: 100%;
+    max-height: 400px;
+    border-radius: 12px;
+}
+.wp-video-wrap-iframe {
     position: relative;
     margin-bottom: 14px;
     border-radius: 12px;
@@ -174,8 +187,7 @@ $cssVer = file_exists(__DIR__ . '/../multiple_choice/multiple_choice.css')
     max-height: 360px;
     width: 100%;
 }
-.wp-video-wrap iframe,
-.wp-video-wrap video {
+.wp-video-wrap-iframe iframe {
     position: absolute; top: 0; left: 0;
     width: 100%; height: 100%; border: none;
 }
@@ -417,26 +429,31 @@ document.addEventListener('DOMContentLoaded', function () {
 
         /* ── video_writing: embed ── */
         if (type === 'video_writing' && q.media) {
-            var embedUrl  = toEmbedUrl(String(q.media));
-            var videoWrap = document.createElement('div');
-            videoWrap.className = 'wp-video-wrap';
-            var isMP4 = /\.(mp4|webm|ogg)(\?|$)/i.test(embedUrl)
-                     || /cloudinary\.com\/.+\/video\//i.test(embedUrl);
-            if (isMP4) {
+            var rawUrl   = String(q.media);
+            var embedUrl = toEmbedUrl(rawUrl);
+            var isDirectVideo = /\.(mp4|webm|ogg)(\?|$)/i.test(rawUrl)
+                             || /cloudinary\.com\/.+\/video\//i.test(rawUrl);
+            if (isDirectVideo) {
+                var videoWrap = document.createElement('div');
+                videoWrap.className = 'wp-video-wrap';
                 var vid = document.createElement('video');
-                vid.controls = true; vid.preload = 'metadata';
-                vid.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;object-fit:contain;';
-                var vs = document.createElement('source'); vs.src = embedUrl;
+                vid.controls = true;
+                vid.preload  = 'metadata';
+                var vs = document.createElement('source');
+                vs.src = rawUrl;
                 vid.appendChild(vs);
                 videoWrap.appendChild(vid);
+                mediaArea.appendChild(videoWrap);
             } else {
+                var videoWrap = document.createElement('div');
+                videoWrap.className = 'wp-video-wrap-iframe';
                 var fr = document.createElement('iframe');
                 fr.src = embedUrl; fr.loading = 'lazy';
                 fr.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture';
                 fr.allowFullscreen = true;
                 videoWrap.appendChild(fr);
+                mediaArea.appendChild(videoWrap);
             }
-            mediaArea.appendChild(videoWrap);
         }
 
         /* ── question text ── */
