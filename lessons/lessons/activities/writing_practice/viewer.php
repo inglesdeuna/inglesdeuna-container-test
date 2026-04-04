@@ -358,6 +358,24 @@ ob_start();
     text-align: right;
 }
 
+.wp-tts-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 8px;
+    padding: 8px 14px;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    font-weight: 800;
+    font-family: inherit;
+    font-size: 14px;
+    background: linear-gradient(180deg, #a855c8, #7c3aed);
+    color: #fff;
+    transition: filter .15s, transform .15s;
+}
+.wp-tts-btn:hover { filter: brightness(1.08); transform: translateY(-1px); }
+
 /* Per-question feedback */
 .wp-q-feedback {
     margin-top: 8px;
@@ -539,6 +557,8 @@ ob_start();
 window.WP_DATA        = <?= json_encode($questions, JSON_UNESCAPED_UNICODE) ?>;
 window.WP_RETURN_TO   = <?= json_encode($returnTo, JSON_UNESCAPED_UNICODE) ?>;
 window.WP_ACTIVITY_ID = <?= json_encode((string) ($activity['id'] ?? ''), JSON_UNESCAPED_UNICODE) ?>;
+window.WP_UNIT_ID       = <?= json_encode($unit, JSON_UNESCAPED_UNICODE) ?>;
+window.WP_ASSIGNMENT_ID = <?= json_encode((string) ($_GET['assignment'] ?? ''), JSON_UNESCAPED_UNICODE) ?>;
 </script>
 
 <script>
@@ -572,6 +592,7 @@ window.WP_ACTIVITY_ID = <?= json_encode((string) ($activity['id'] ?? ''), JSON_U
     /* Flexible answer comparison – ignore case, extra spaces, common punctuation */
     function normalizeAns(s) {
         return String(s || '')
+            .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
             .trim()
             .toLowerCase()
             .replace(/[.,;:!?'"()]/g, '')
@@ -691,19 +712,36 @@ window.WP_ACTIVITY_ID = <?= json_encode((string) ($activity['id'] ?? ''), JSON_U
         }
 
         /* ── Type-specific media ────────────────────────────── */
-        if (type === 'listen_write' && q.media) {
+        if (type === 'listen_write') {
             const audioWrap = document.createElement('div');
             audioWrap.className = 'wp-audio-wrap';
 
-            const audio = document.createElement('audio');
-            audio.controls = true;
-            audio.preload  = 'none';
+            if (q.media) {
+                const audio = document.createElement('audio');
+                audio.controls = true;
+                audio.preload  = 'none';
+                const src = document.createElement('source');
+                src.src = String(q.media);
+                audio.appendChild(src);
+                audio.appendChild(document.createTextNode('Your browser does not support audio playback.'));
+                audioWrap.appendChild(audio);
+            }
 
-            const src = document.createElement('source');
-            src.src = String(q.media);
-            audio.appendChild(src);
-            audio.appendChild(document.createTextNode('Your browser does not support audio playback.'));
-            audioWrap.appendChild(audio);
+            if (q.question) {
+                const ttsBtn = document.createElement('button');
+                ttsBtn.type      = 'button';
+                ttsBtn.className = 'wp-tts-btn';
+                ttsBtn.innerHTML = '&#x1F50A; Escuchar';
+                ttsBtn.addEventListener('click', function () {
+                    speechSynthesis.cancel();
+                    var utter  = new SpeechSynthesisUtterance(String(q.question));
+                    utter.lang = 'en-US';
+                    utter.rate = 0.9;
+                    speechSynthesis.speak(utter);
+                });
+                audioWrap.appendChild(ttsBtn);
+            }
+
             card.appendChild(audioWrap);
         }
 
@@ -739,7 +777,7 @@ window.WP_ACTIVITY_ID = <?= json_encode((string) ($activity['id'] ?? ''), JSON_U
         ta.className = 'wp-textarea';
         ta.setAttribute('data-index', String(idx));
         ta.rows        = 2;
-        ta.placeholder = String(q.placeholder || 'Write your answer here...');
+        ta.placeholder = 'Escribe tu respuesta aqu\u00ED...';
         card.appendChild(ta);
 
         /* Character counter */
@@ -878,6 +916,36 @@ window.WP_ACTIVITY_ID = <?= json_encode((string) ($activity['id'] ?? ''), JSON_U
             + '&activity_type=writing_practice';
 
         submitBtn.disabled = true;
+
+        /* Save open-writing responses for teacher review */
+        try {
+            var openResponses = [];
+            questions.forEach(function (q, idx) {
+                if (String(q.type) === 'writing') {
+                    var taEl = listEl.querySelector('.wp-textarea[data-index="' + idx + '"]');
+                    var val  = taEl ? taEl.value.trim() : '';
+                    if (val !== '') {
+                        openResponses.push({
+                            question_id:   String(q.id || idx),
+                            question_text: String(q.question || ''),
+                            response_text: val,
+                            max_points:    Math.max(1, Number(q.points) || 10),
+                        });
+                    }
+                }
+            });
+            if (openResponses.length > 0) {
+                var fd = new FormData();
+                fd.append('activity_id',   String(window.WP_ACTIVITY_ID || ''));
+                fd.append('unit_id',       String(window.WP_UNIT_ID || ''));
+                fd.append('assignment_id', String(window.WP_ASSIGNMENT_ID || ''));
+                fd.append('responses',     JSON.stringify(openResponses));
+                await fetch('/lessons/lessons/activities/writing_practice/wp_save_response.php', {
+                    method: 'POST',
+                    body: fd,
+                });
+            }
+        } catch (e) { /* non-critical – do not block score save */ }
 
         const ok = await persistScoreSilently(saveUrl);
 

@@ -184,7 +184,7 @@ function load_activity_scores(PDO $pdo, string $studentId, string $assignmentId,
     try {
         try {
             $stmt = $pdo->prepare("
-                SELECT sar.activity_type, sar.completion_percent, sar.errors_count, sar.total_count,
+                SELECT sar.activity_id, sar.activity_type, sar.completion_percent, sar.errors_count, sar.total_count,
                        COALESCE(sar.attempts_count, 1) AS attempts_count
                 FROM student_activity_results sar
                 WHERE sar.student_id = :student_id
@@ -201,7 +201,7 @@ function load_activity_scores(PDO $pdo, string $studentId, string $assignmentId,
             return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
         } catch (Throwable $e) {
             $stmt = $pdo->prepare("
-                SELECT sar.activity_type, sar.completion_percent, sar.errors_count, sar.total_count
+                SELECT sar.activity_id, sar.activity_type, sar.completion_percent, sar.errors_count, sar.total_count
                 FROM student_activity_results sar
                 WHERE sar.student_id = :student_id
                   AND sar.assignment_id = :assignment_id
@@ -640,7 +640,22 @@ $showQuizEnabledMessage = isset($_GET['quiz_enabled']) && (string) $_GET['quiz_e
                                     </td>
                                     <td><?php echo (int) ($activity['errors_count'] ?? 0); ?> / <?php echo (int) ($activity['total_count'] ?? 0); ?></td>
                                     <td style="font-weight: 700; color: var(--primary-dark);"><?php echo (int) ($activity['completion_percent'] ?? 0); ?>%</td>
-                                    <td></td>
+                                    <td>
+                                        <?php
+                                        $actType = strtolower(trim((string) ($activity['activity_type'] ?? '')));
+                                        $actId   = trim((string) ($activity['activity_id'] ?? ''));
+                                        if ($actType === 'writing_practice' && $actId !== '') {
+                                            $gradeUrl = '/lessons/lessons/activities/writing_practice/wp_grade.php?'
+                                                . 'activity_id=' . urlencode($actId)
+                                                . '&student=' . urlencode($studentId)
+                                                . '&assignment=' . urlencode($assignmentId)
+                                                . '&unit=' . urlencode($unitId);
+                                            ?>
+                                            <a href="<?php echo h($gradeUrl); ?>" class="teacher-action-btn" style="text-decoration:none;display:inline-block;">Calificar ✏️</a>
+                                            <?php
+                                        }
+                                        ?>
+                                    </td>
                                 </tr>
                             <?php endforeach; ?>
                         <?php endforeach; ?>
