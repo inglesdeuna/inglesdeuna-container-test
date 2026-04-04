@@ -420,7 +420,8 @@ document.addEventListener('DOMContentLoaded', function () {
             var embedUrl  = toEmbedUrl(String(q.media));
             var videoWrap = document.createElement('div');
             videoWrap.className = 'wp-video-wrap';
-            var isMP4 = /\.(mp4|webm|ogg)(\?|$)/i.test(embedUrl);
+            var isMP4 = /\.(mp4|webm|ogg)(\?|$)/i.test(embedUrl)
+                     || /cloudinary\.com\/.+\/video\//i.test(embedUrl);
             if (isMP4) {
                 var vid = document.createElement('video');
                 vid.controls = true; vid.preload = 'metadata';
