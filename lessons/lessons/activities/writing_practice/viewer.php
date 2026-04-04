@@ -254,6 +254,12 @@ $cssVer = file_exists(__DIR__ . '/../multiple_choice/multiple_choice.css')
                     transition: transform .15s, filter .15s; font-family: inherit; }
 .wpvl-btn-submit:hover  { filter: brightness(1.08); transform: translateY(-2px); }
 .wpvl-btn-submit:disabled { opacity: .5; cursor: default; transform: none; }
+.wpvl-card-footer { display: flex; align-items: center; gap: 10px; margin-top: 8px; flex-wrap: wrap; }
+.wpvl-btn-show  { background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1;
+                  border-radius: 999px; padding: 6px 16px; font-size: 13px; font-weight: 800;
+                  cursor: pointer; font-family: inherit; transition: background .15s, color .15s; }
+.wpvl-btn-show:hover  { background: #e2e8f0; }
+.wpvl-btn-show:disabled { opacity: .4; cursor: default; }
 </style>
 
 <?php if (empty($questions)): ?>
@@ -308,8 +314,14 @@ $cssVer = file_exists(__DIR__ . '/../multiple_choice/multiple_choice.css')
                 <?php endif; ?>
                 <textarea class="dict-answer-box wpvl-answer" id="wpvlAns<?= $i ?>"
                           placeholder="Write your answer here…"></textarea>
+                <div class="wpvl-card-footer">
+                    <?php if (!empty($q['correct_answers'])): ?>
+                    <button type="button" class="wpvl-btn-show" id="wpvlShow<?= $i ?>"
+                            onclick="wpvlShowAnswer(<?= $i ?>)">👁 Show Answer</button>
+                    <?php endif; ?>
+                    <div class="mc-feedback" id="wpvlFb<?= $i ?>"></div>
+                </div>
                 <div class="dict-answer-reveal wpvl-reveal" id="wpvlReveal<?= $i ?>"></div>
-                <div class="mc-feedback" id="wpvlFb<?= $i ?>"></div>
             </div>
         <?php endforeach; ?>
     </div>
@@ -389,6 +401,34 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     var submitted = false;
+    var shownCards = {}; /* tracks which cards had Show Answer clicked */
+
+    function wpvlShowAnswer(i) {
+        var q = questions[i];
+        if (!q || !Array.isArray(q.correct_answers) || q.correct_answers.length === 0) { return; }
+        var shown   = q.correct_answers.slice(0, 2).join(' / ');
+        var ansEl   = document.getElementById('wpvlAns'    + i);
+        var fbEl    = document.getElementById('wpvlFb'     + i);
+        var revealEl= document.getElementById('wpvlReveal' + i);
+        var showBtn = document.getElementById('wpvlShow'   + i);
+
+        /* lock card as wrong immediately */
+        if (!shownCards[i]) {
+            shownCards[i] = true;
+            if (ansEl)  { ansEl.disabled = true; ansEl.className = 'dict-answer-box wpvl-answer bad'; }
+            if (fbEl)   { fbEl.textContent = '\u2718 Wrong'; fbEl.className = 'mc-feedback bad'; }
+            playSound(sndBad);
+        }
+        if (showBtn) { showBtn.disabled = true; }
+
+        var wrote = ansEl ? ansEl.value.trim() : '';
+        if (revealEl) {
+            revealEl.textContent = wrote !== ''
+                ? 'You wrote: "' + wrote + '" \u2192 Correct: ' + shown
+                : 'Correct: ' + shown;
+            revealEl.classList.add('show');
+        }
+    }
 
     async function handleSubmit() {
         if (submitted) { return; }
@@ -402,9 +442,18 @@ document.addEventListener('DOMContentLoaded', function () {
             var ansEl    = document.getElementById('wpvlAns'    + i);
             var fbEl     = document.getElementById('wpvlFb'     + i);
             var revealEl = document.getElementById('wpvlReveal' + i);
+            var showBtn  = document.getElementById('wpvlShow'   + i);
             var val      = ansEl ? ansEl.value.trim() : '';
 
-            if (ansEl) { ansEl.disabled = true; }
+            if (ansEl)    { ansEl.disabled = true; }
+            if (showBtn)  { showBtn.disabled = true; }
+
+            /* if Show Answer was already clicked, card is already locked as wrong */
+            if (shownCards[i]) {
+                /* already counted as wrong — do nothing extra */
+                if (fbEl && !fbEl.textContent) { fbEl.textContent = '\u2718 Wrong'; fbEl.className = 'mc-feedback bad'; }
+                return;
+            }
 
             if (isAutoGraded(q)) {
                 var correct = checkCorrect(val, q.correct_answers);
@@ -481,13 +530,16 @@ document.addEventListener('DOMContentLoaded', function () {
         submitBtn.disabled = false;
         submitBtn.style.display = '';
         completedEl.classList.remove('active');
+        shownCards = {};
         questions.forEach(function (q, i) {
             var ansEl    = document.getElementById('wpvlAns'    + i);
             var fbEl     = document.getElementById('wpvlFb'     + i);
             var revealEl = document.getElementById('wpvlReveal' + i);
+            var showBtn  = document.getElementById('wpvlShow'   + i);
             if (ansEl)    { ansEl.value = ''; ansEl.disabled = false; ansEl.className = 'dict-answer-box wpvl-answer'; }
             if (fbEl)     { fbEl.textContent = ''; fbEl.className = 'mc-feedback'; }
             if (revealEl) { revealEl.textContent = ''; revealEl.classList.remove('show'); }
+            if (showBtn)  { showBtn.disabled = false; }
         });
         window.scrollTo({ top: 0, behavior: 'smooth' });
     });
