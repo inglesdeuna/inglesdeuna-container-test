@@ -254,6 +254,7 @@ $activityLabels = [
     'powerpoint' => 'PowerPoint',
     'crossword' => 'Crossword Puzzle',
     'build_sentence' => 'Build the Sentence',
+    'writing_practice' => 'Writing Practice',
 ];
 ?>
 <!DOCTYPE html>

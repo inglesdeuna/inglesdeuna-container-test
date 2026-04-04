@@ -50,7 +50,8 @@ $activityTypes = [
     "dictation" => "Dictation",
     "external" => "External",
     "flipbooks" => "Flipbooks",
-    "powerpoint" => "PowerPoint"
+    "powerpoint" => "PowerPoint",
+    "writing_practice" => "Writing Practice",
 ];
 
 /* ===============================
