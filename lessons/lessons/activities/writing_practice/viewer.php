@@ -228,6 +228,22 @@ $cssVer = file_exists(__DIR__ . '/../multiple_choice/multiple_choice.css')
 }
 .completed-button:hover { transform: scale(1.05); filter: brightness(1.07); }
 
+/* answer reveal + answer box – shared across both modes */
+.dict-answer-reveal { display: none; font-size: 14px; color: #7c3aed; font-weight: 700;
+                      background: #f5f3ff; border: 1px solid #ddd6fe; border-radius: 8px;
+                      padding: 8px 12px; margin-top: 6px; }
+.dict-answer-reveal.show { display: block; }
+.dict-answer-box { display: block; width: 100%; padding: 10px 12px;
+                   border: 2px solid #cbd5e1; border-radius: 10px; font-size: 15px;
+                   font-family: inherit; resize: vertical; box-sizing: border-box;
+                   transition: border-color .2s, background .2s; }
+.dict-answer-box:focus { outline: none; border-color: #a855f7;
+                         box-shadow: 0 0 0 3px rgba(168,85,247,.15); }
+.dict-answer-box.ok  { border-color: #22c55e !important; background: #f0fdf4 !important; }
+.dict-answer-box.bad { border-color: #ef4444 !important; background: #fef2f2 !important; }
+/* override Show Answer button to purple in card-by-card mode */
+.mc-btn-show { background: linear-gradient(180deg, #a855f7 0%, #7c3aed 100%) !important; }
+
 /* ── Video Layout mode ───────────────────────────────────── */
 .wpvl-wrap        { max-width: 860px; margin: 0 auto; font-family: 'Nunito','Segoe UI',sans-serif; }
 .wpvl-video-box   { position: relative; width: 100%; border-radius: 16px; overflow: hidden;
@@ -255,11 +271,12 @@ $cssVer = file_exists(__DIR__ . '/../multiple_choice/multiple_choice.css')
 .wpvl-btn-submit:hover  { filter: brightness(1.08); transform: translateY(-2px); }
 .wpvl-btn-submit:disabled { opacity: .5; cursor: default; transform: none; }
 .wpvl-card-footer { display: flex; align-items: center; gap: 10px; margin-top: 8px; flex-wrap: wrap; }
-.wpvl-btn-show  { background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1;
+.wpvl-btn-show  { background: linear-gradient(180deg, #a855f7, #7c3aed); color: #fff; border: none;
                   border-radius: 999px; padding: 6px 16px; font-size: 13px; font-weight: 800;
-                  cursor: pointer; font-family: inherit; transition: background .15s, color .15s; }
-.wpvl-btn-show:hover  { background: #e2e8f0; }
-.wpvl-btn-show:disabled { opacity: .4; cursor: default; }
+                  cursor: pointer; font-family: inherit; box-shadow: 0 4px 12px rgba(124,58,237,.2);
+                  transition: filter .15s, transform .15s; }
+.wpvl-btn-show:hover  { filter: brightness(1.08); transform: translateY(-1px); }
+.wpvl-btn-show:disabled { opacity: .38; cursor: default; filter: none; transform: none; }
 </style>
 
 <?php if (empty($questions)): ?>
@@ -317,7 +334,7 @@ $cssVer = file_exists(__DIR__ . '/../multiple_choice/multiple_choice.css')
                 <div class="wpvl-card-footer">
                     <?php if (!empty($q['correct_answers'])): ?>
                     <button type="button" class="wpvl-btn-show" id="wpvlShow<?= $i ?>"
-                            onclick="wpvlShowAnswer(<?= $i ?>)">👁 Show Answer</button>
+                            onclick="wpvlShowAnswer(<?= $i ?>)" disabled>👁 Show Answer</button>
                     <?php endif; ?>
                     <div class="mc-feedback" id="wpvlFb<?= $i ?>"></div>
                 </div>
@@ -525,6 +542,19 @@ document.addEventListener('DOMContentLoaded', function () {
 
     submitBtn.addEventListener('click', handleSubmit);
 
+    /* enable Show Answer per-card only after user has typed something */
+    questions.forEach(function (q, i) {
+        if (!Array.isArray(q.correct_answers) || q.correct_answers.length === 0) { return; }
+        var ansEl   = document.getElementById('wpvlAns'  + i);
+        var showBtn = document.getElementById('wpvlShow' + i);
+        if (!ansEl || !showBtn) { return; }
+        ansEl.addEventListener('input', function () {
+            if (!shownCards[i] && !submitted) {
+                showBtn.disabled = ansEl.value.trim() === '';
+            }
+        });
+    });
+
     restartBtn.addEventListener('click', function () {
         submitted = false;
         submitBtn.disabled = false;
@@ -539,7 +569,7 @@ document.addEventListener('DOMContentLoaded', function () {
             if (ansEl)    { ansEl.value = ''; ansEl.disabled = false; ansEl.className = 'dict-answer-box wpvl-answer'; }
             if (fbEl)     { fbEl.textContent = ''; fbEl.className = 'mc-feedback'; }
             if (revealEl) { revealEl.textContent = ''; revealEl.classList.remove('show'); }
-            if (showBtn)  { showBtn.disabled = false; }
+            if (showBtn)  { showBtn.disabled = true; } /* re-disable: needs typing again to enable */
         });
         window.scrollTo({ top: 0, behavior: 'smooth' });
     });
@@ -807,6 +837,7 @@ document.addEventListener('DOMContentLoaded', function () {
         btnPrev.disabled = (index === 0);
         btnNext.textContent = (index < questions.length - 1) ? 'Next' : 'Finish';
         btnShow.style.display = isAutoGraded(q) ? '' : 'none';
+        btnShow.disabled = isAutoGraded(q) && !checkedCards[index]; /* disabled until user types */
 
         /* restore state if user navigated back */
         if (checkedCards[index]) {
@@ -1041,6 +1072,11 @@ document.addEventListener('DOMContentLoaded', function () {
     btnShow.addEventListener('click', showAnswer);
     btnRestart.addEventListener('click', restart);
 
+    answerEl.addEventListener('input', function () {
+        if (btnShow.style.display !== 'none' && !checkedCards[index] && !finished) {
+            btnShow.disabled = answerEl.value.trim() === '';
+        }
+    });
     answerEl.addEventListener('blur', autoCheck);
     answerEl.addEventListener('keydown', function (e) {
         if (e.key === 'Enter' && !e.shiftKey) {
