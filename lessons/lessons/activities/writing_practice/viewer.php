@@ -601,6 +601,18 @@ document.addEventListener('DOMContentLoaded', function () {
         var answers = q.correct_answers || [];
         if (answers.length === 0) { return; }
         var shown = answers.slice(0, 2).join(' / ');
+
+        /* lock card as wrong the moment the answer is revealed */
+        if (!checkedCards[index]) {
+            checkedCards[index]             = 'wrong';
+            checkedCards[index + '_reveal'] = 'Correct: ' + shown;
+            answerEl.disabled  = true;
+            answerEl.className = 'dict-answer-box bad';
+            feedbackEl.textContent = '\u2718 Wrong';
+            feedbackEl.className   = 'mc-feedback bad';
+            playSound(sndBad);
+        }
+
         if (answerEl.value.trim() !== '') {
             revealEl.textContent = 'You wrote: "' + answerEl.value + '" \u2192 Correct: ' + shown;
         } else {
