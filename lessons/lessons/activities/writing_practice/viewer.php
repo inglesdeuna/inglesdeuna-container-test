@@ -137,154 +137,24 @@ $description = (string) ($activity['description'] ?? '');
 $questions   = (array)  ($activity['questions']   ?? []);
 
 ob_start();
+$cssVer = file_exists(__DIR__ . '/../multiple_choice/multiple_choice.css')
+    ? (string) filemtime(__DIR__ . '/../multiple_choice/multiple_choice.css')
+    : (string) time();
 ?>
 <style>
-/* ── Writing Practice Viewer ─────────────────────────────── */
-/* Reuses .mc-* classes from dictation/multiple_choice.css    */
-
-.wp-wrap {
-    max-width: 980px;
-    margin: 0 auto;
-    padding: 8px 0 28px;
-    display: flex;
-    flex-direction: column;
-    gap: 14px;
-}
-
-/* ── Hero card ─────────────────────────────────────────────── */
-.wp-hero {
-    border: 1px solid #dcc4f0;
-    border-radius: 18px;
-    padding: 18px 20px;
-    background: linear-gradient(145deg, #fff8e6 0%, #fdeaff 55%, #f0e0ff 100%);
-    box-shadow: 0 10px 24px rgba(120, 40, 160, .12);
-}
-
-.wp-title {
-    margin: 0;
-    font-family: 'Fredoka', 'Trebuchet MS', sans-serif;
-    font-size: 30px;
-    line-height: 1.1;
-    color: #a855c8;
-}
-
-.wp-lead {
-    font-size: 15px;
-    color: #b8551f;
-    margin: 8px 0 0;
-    line-height: 1.5;
-}
-
-.wp-meta {
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
-    margin-top: 12px;
-}
-
-.wp-chip {
-    display: inline-flex;
-    align-items: center;
-    padding: 6px 10px;
-    border-radius: 999px;
-    background: #eddeff;
-    color: #a855c8;
-    font-size: 12px;
-    font-weight: 800;
-    text-transform: uppercase;
-    letter-spacing: .03em;
-}
-
-.wp-progress-head {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 10px;
-    margin-top: 12px;
-}
-
-.wp-progress-label { font-size: 13px; font-weight: 800; color: #b8551f; }
-
-.wp-progress-track {
-    width: 100%;
-    height: 10px;
-    border-radius: 999px;
-    background: #f3e5ff;
-    overflow: hidden;
-    border: 1px solid #e8ccff;
-}
-
-.wp-progress-fill {
-    height: 100%;
-    width: 0%;
-    background: linear-gradient(90deg, #a855c8 0%, #f14902 100%);
-    transition: width .2s ease;
-}
-
-/* ── Question list ─────────────────────────────────────────── */
-.wp-list { display: flex; flex-direction: column; gap: 12px; }
-
-.wp-card {
-    border: 1px solid #dcc4f0;
-    border-radius: 14px;
-    padding: 16px 18px;
-    background: #fff;
-    box-shadow: 0 6px 16px rgba(120, 40, 160, .08);
-    transition: border-color .2s;
-}
-
-.wp-card-unanswered { border-color: #ef4444; background: #fff9f9; }
-
-.wp-q-num {
-    font-size: 12px;
-    font-weight: 800;
-    color: #a855c8;
-    text-transform: uppercase;
-    letter-spacing: .06em;
-    margin-bottom: 6px;
-}
-
-.wp-q-type-badge {
-    display: inline-block;
-    padding: 2px 8px;
-    border-radius: 99px;
-    font-size: 11px;
-    font-weight: 800;
-    background: #e0edff;
-    color: #2563eb;
-    margin-left: 6px;
-    letter-spacing: .03em;
-    text-transform: uppercase;
-}
-
-.wp-q-text {
-    font-weight: 800;
-    color: #f14902;
-    font-size: 17px;
-    margin: 0 0 8px;
-    line-height: 1.4;
-}
-
-.wp-q-instruction {
-    font-size: 14px;
-    color: #7c3aed;
-    margin: 0 0 10px;
-    font-weight: 700;
-}
-
-/* Fill-in-blank sentence display */
+/* ── Writing Practice Viewer – card-by-card mode ─────────── */
 .wp-q-sentence {
     background: #f0f6ff;
     border: 1px solid #bfdbfe;
-    border-radius: 10px;
-    padding: 10px 14px;
-    font-size: 16px;
-    margin-bottom: 10px;
-    line-height: 1.6;
+    border-radius: 12px;
+    padding: 12px 16px;
+    font-size: 17px;
+    margin-bottom: 12px;
+    line-height: 1.7;
     color: #1e3a5f;
     font-weight: 700;
+    text-align: center;
 }
-
 .wp-blank {
     display: inline-block;
     min-width: 80px;
@@ -294,17 +164,6 @@ ob_start();
     text-align: center;
     padding: 0 4px;
 }
-
-/* Audio player */
-.wp-audio-wrap { margin-bottom: 12px; }
-
-.wp-audio-wrap audio {
-    width: 100%;
-    border-radius: 10px;
-    outline: none;
-}
-
-/* Video embed */
 .wp-video-wrap {
     position: relative;
     margin-bottom: 14px;
@@ -313,656 +172,543 @@ ob_start();
     background: #000;
     aspect-ratio: 16 / 9;
     max-height: 360px;
+    width: 100%;
 }
-
 .wp-video-wrap iframe,
 .wp-video-wrap video {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    border: none;
+    position: absolute; top: 0; left: 0;
+    width: 100%; height: 100%; border: none;
 }
-
-/* Auto-expanding textarea */
-.wp-textarea {
-    width: 100%;
-    box-sizing: border-box;
-    border: 2px solid #dcc4f0;
-    border-radius: 10px;
-    padding: 12px 14px;
-    font-size: 15px;
-    font-family: 'Nunito', 'Segoe UI', sans-serif;
-    color: #1f2937;
-    resize: none;
-    overflow: hidden;
-    min-height: 56px;
-    line-height: 1.6;
-    transition: border-color .15s, box-shadow .15s;
-    background: #fff;
-}
-
-.wp-textarea:focus {
-    border-color: #a855c8;
-    outline: none;
-    box-shadow: 0 0 0 3px rgba(168, 85, 200, .12);
-}
-
-.wp-textarea-answered { border-color: #16a34a; background: #f0fdf4; }
-.wp-textarea:disabled { opacity: .75; cursor: not-allowed; }
-
-.wp-char-count {
-    font-size: 12px;
-    color: #94a3b8;
-    margin-top: 4px;
-    text-align: right;
-}
-
-.wp-tts-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    margin-top: 8px;
-    padding: 8px 14px;
-    border: none;
-    border-radius: 10px;
-    cursor: pointer;
-    font-weight: 800;
-    font-family: inherit;
-    font-size: 14px;
-    background: linear-gradient(180deg, #a855c8, #7c3aed);
-    color: #fff;
-    transition: filter .15s, transform .15s;
-}
-.wp-tts-btn:hover { filter: brightness(1.08); transform: translateY(-1px); }
-
-/* Per-question feedback */
-.wp-q-feedback {
-    margin-top: 8px;
-    font-size: 14px;
-    font-weight: 800;
-    border-radius: 8px;
-    padding: 8px 12px;
-    display: none;
-}
-
-.wp-q-feedback.correct { background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; }
-.wp-q-feedback.wrong   { background: #fff2f2; color: #991b1b; border: 1px solid #fecaca; }
-.wp-q-feedback.open    { background: #f5f3ff; color: #5b21b6; border: 1px solid #ddd6fe; }
-
-/* ── Actions bar ───────────────────────────────────────────── */
-.wp-actions {
-    display: flex;
-    gap: 10px;
-    flex-wrap: wrap;
-    justify-content: center;
-    position: sticky;
-    bottom: 12px;
-    padding: 12px;
-    border: 1px solid #dcc4f0;
-    border-radius: 14px;
-    background: rgba(255, 255, 255, .95);
-    backdrop-filter: blur(4px);
-}
-
-.wp-btn {
-    border: none;
-    border-radius: 10px;
-    padding: 12px 20px;
-    font-weight: 800;
-    cursor: pointer;
-    color: #fff;
-    background: linear-gradient(180deg, #f14902, #d33d00);
-    box-shadow: 0 8px 18px rgba(241, 73, 2, .22);
-    font-family: 'Nunito', 'Segoe UI', sans-serif;
-    font-size: 15px;
-    min-width: 160px;
-    transition: filter .15s, transform .15s;
-}
-
-.wp-btn:hover:not(:disabled) { filter: brightness(1.07); transform: translateY(-1px); }
-.wp-btn:disabled { opacity: .55; cursor: not-allowed; }
-
-.wp-result {
-    padding: 12px;
-    border-radius: 10px;
-    background: #e9f8ee;
-    color: #166534;
-    font-weight: 700;
-    display: none;
+.wp-audio-wrap { margin-bottom: 12px; text-align: center; }
+.wp-audio-wrap audio { width: 100%; max-width: 500px; border-radius: 10px; outline: none; }
+.mc-btn-prev { background: linear-gradient(180deg, #f97316 0%, #c2410c 100%); }
+.mc-btn-listen-wp { background: linear-gradient(180deg, #38bdf8 0%, #0ea5e9 100%); }
+.wp-open-note {
+    font-size: 13px; color: #7c3aed; font-weight: 700;
+    background: #f5f3ff; border: 1px solid #ddd6fe;
+    border-radius: 8px; padding: 8px 12px; margin-bottom: 10px;
     text-align: center;
-    margin-top: 6px;
 }
-
-/* ── Completed / results screen ────────────────────────────── */
-.wp-completed-screen {
-    display: none;
-    text-align: center;
-    max-width: 600px;
-    margin: 0 auto;
-    padding: 40px 24px;
-    border: 1px solid #dcc4f0;
-    border-radius: 18px;
-    background: #fff;
-    box-shadow: 0 10px 30px rgba(120, 40, 160, .12);
+#wpViewer { width: 100%; max-width: 100%; }
+#wpCard { display: flex; flex-direction: column; align-items: center; justify-content: flex-start; }
+.completed-screen { display: none; text-align: center; max-width: 600px; margin: 0 auto; padding: 40px 20px; }
+.completed-screen.active { display: block; }
+.completed-icon  { font-size: 80px; margin-bottom: 20px; }
+.completed-title { font-family: 'Fredoka','Trebuchet MS',sans-serif; font-size: 36px; font-weight: 700; color: #a855c8; margin: 0 0 16px; line-height: 1.2; }
+.completed-text  { font-size: 16px; color: #1f2937; line-height: 1.6; margin: 0 0 10px; }
+.completed-button {
+    display: inline-block; padding: 12px 24px; border: none; border-radius: 999px;
+    background: linear-gradient(180deg, #a855f7 0%, #7c3aed 100%);
+    color: #fff; font-weight: 700; font-size: 16px; cursor: pointer;
+    box-shadow: 0 10px 24px rgba(0,0,0,.14); transition: transform .18s, filter .18s;
+    margin-top: 14px;
 }
-
-.wp-completed-screen.active { display: block; }
-
-.wp-completed-icon  { font-size: 72px; margin-bottom: 14px; }
-
-.wp-completed-title {
-    font-family: 'Fredoka', 'Trebuchet MS', sans-serif;
-    font-size: 32px;
-    font-weight: 700;
-    color: #a855c8;
-    margin: 0 0 12px;
-    line-height: 1.2;
-}
-
-.wp-completed-score {
-    font-size: 22px;
-    font-weight: 800;
-    color: #f14902;
-    margin: 0 0 8px;
-}
-
-.wp-completed-text {
-    font-size: 15px;
-    color: #b8551f;
-    line-height: 1.6;
-    margin: 0 0 6px;
-}
-
-/* ── Empty state ───────────────────────────────────────────── */
-.wp-empty {
-    padding: 16px;
-    border: 1px solid #dcc4f0;
-    border-radius: 12px;
-    background: #fff;
-    color: #b8551f;
-    font-weight: 700;
-}
-
-/* ── Responsive ────────────────────────────────────────────── */
-@media (max-width: 760px) {
-    .wp-title    { font-size: 24px; }
-    .wp-q-text   { font-size: 15px; }
-    .wp-actions  { position: static; }
-    .wp-textarea { font-size: 14px; }
-    .wp-btn      { width: 100%; max-width: 300px; min-width: 0; }
-}
+.completed-button:hover { transform: scale(1.05); filter: brightness(1.07); }
 </style>
 
-<div class="wp-wrap" id="wpApp">
+<?php if (empty($questions)): ?>
+    <p style="padding:20px;color:#b8551f;font-weight:700;">This activity has no questions yet. Open the editor to configure it.</p>
+<?php else: ?>
 
-    <!-- ── Hero ──────────────────────────────────────────────── -->
-    <section class="wp-hero">
-        <h2 class="wp-title"><?= htmlspecialchars($viewerTitle, ENT_QUOTES, 'UTF-8') ?></h2>
+<link rel="stylesheet" href="../multiple_choice/multiple_choice.css?v=<?= urlencode($cssVer) ?>">
 
-        <?php if ($description !== ''): ?>
-            <p class="wp-lead"><?= htmlspecialchars($description, ENT_QUOTES, 'UTF-8') ?></p>
-        <?php else: ?>
-            <p class="wp-lead">Read each prompt carefully and write your response.</p>
-        <?php endif; ?>
+<div class="mc-viewer" id="wpViewer">
+    <div class="mc-status" id="wpStatus"></div>
 
-        <div class="wp-meta">
-            <span class="wp-chip">Questions: <span id="wp-total-count"><?= count($questions) ?></span></span>
-            <span class="wp-chip">Answered: <span id="wp-answered-count">0</span></span>
-        </div>
+    <div class="mc-card" id="wpCard">
+        <!-- media injected by JS -->
+        <div id="wpMediaArea"></div>
+        <!-- question text injected by JS -->
+        <div id="wpQtext"></div>
+        <!-- instruction injected by JS -->
+        <div id="wpInstruction"></div>
+        <!-- answer input -->
+        <textarea id="wpAnswer" class="dict-answer-box" style="width:100%;max-width:620px;" placeholder="Write your answer here..."></textarea>
+        <!-- answer reveal -->
+        <div id="wpReveal" class="dict-answer-reveal"></div>
+    </div>
 
-        <div class="wp-progress-head">
-            <span class="wp-progress-label">Progress</span>
-            <span class="wp-progress-label" id="wp-progress-pct">0%</span>
-        </div>
-        <div class="wp-progress-track">
-            <div class="wp-progress-fill" id="wp-progress-fill"></div>
-        </div>
-    </section>
+    <div class="mc-controls" id="wpControls">
+        <button type="button" class="mc-btn mc-btn-prev" id="btnPrev">Prev</button>
+        <button type="button" class="mc-btn mc-btn-show" id="btnShow">Show Answer</button>
+        <button type="button" class="mc-btn mc-btn-next" id="btnNext">Next</button>
+    </div>
 
-    <!-- ── Content ───────────────────────────────────────────── -->
-    <?php if (empty($questions)): ?>
+    <div class="mc-feedback" id="wpFeedback"></div>
 
-        <div class="wp-empty">
-            This activity has no questions yet. Open the editor to configure it.
-        </div>
-
-    <?php else: ?>
-
-        <div id="wp-questions-wrap">
-            <div class="wp-list" id="wp-list"></div>
-
-            <div class="wp-actions">
-                <button type="button" class="wp-btn" id="btnSubmitWP">
-                    ✔ Submit
-                </button>
-            </div>
-
-            <div class="wp-result" id="wpResult"></div>
-        </div>
-
-        <div id="wp-completed" class="wp-completed-screen">
-            <div class="wp-completed-icon">✍️</div>
-            <h2 class="wp-completed-title"><?= htmlspecialchars($viewerTitle, ENT_QUOTES, 'UTF-8') ?></h2>
-            <p class="wp-completed-score" id="wp-score-text"></p>
-            <p class="wp-completed-text">Your responses have been submitted successfully.</p>
-        </div>
-
-    <?php endif; ?>
-
+    <div id="wpCompleted" class="completed-screen">
+        <div class="completed-icon">✍️</div>
+        <h2 class="completed-title" id="wpCompTitle"></h2>
+        <p class="completed-text" id="wpCompText"></p>
+        <p class="completed-text" id="wpScoreText" style="font-weight:800;font-size:20px;color:#a855c8;"></p>
+        <p class="completed-text" id="wpOpenNote" style="display:none;color:#7c3aed;font-size:14px;"></p>
+        <button type="button" class="completed-button" id="btnRestart">Restart</button>
+    </div>
 </div>
 
-<!-- Pass PHP data to JavaScript safely -->
+<!-- PHP → JS data bridge -->
 <script>
-window.WP_DATA        = <?= json_encode($questions, JSON_UNESCAPED_UNICODE) ?>;
+window.WP_DATA        = <?= json_encode(array_values($questions), JSON_UNESCAPED_UNICODE) ?>;
 window.WP_RETURN_TO   = <?= json_encode($returnTo, JSON_UNESCAPED_UNICODE) ?>;
 window.WP_ACTIVITY_ID = <?= json_encode((string) ($activity['id'] ?? ''), JSON_UNESCAPED_UNICODE) ?>;
-window.WP_UNIT_ID       = <?= json_encode($unit, JSON_UNESCAPED_UNICODE) ?>;
+window.WP_UNIT_ID     = <?= json_encode($unit, JSON_UNESCAPED_UNICODE) ?>;
 window.WP_ASSIGNMENT_ID = <?= json_encode((string) ($_GET['assignment'] ?? ''), JSON_UNESCAPED_UNICODE) ?>;
+window.WP_TITLE       = <?= json_encode($viewerTitle, JSON_UNESCAPED_UNICODE) ?>;
 </script>
 
 <script>
-(function () {
+document.addEventListener('DOMContentLoaded', function () {
     'use strict';
 
-    /* ── Data & elements ──────────────────────────────────── */
-    const questions      = Array.isArray(window.WP_DATA) ? window.WP_DATA : [];
-    const submitBtn      = document.getElementById('btnSubmitWP');
-    const listEl         = document.getElementById('wp-list');
-    const questionsWrap  = document.getElementById('wp-questions-wrap');
-    const completedScreen = document.getElementById('wp-completed');
-    const scoreTextEl    = document.getElementById('wp-score-text');
-    const resultEl       = document.getElementById('wpResult');
-    const answeredEl     = document.getElementById('wp-answered-count');
-    const progressFill   = document.getElementById('wp-progress-fill');
-    const progressPct    = document.getElementById('wp-progress-pct');
+    /* ── data ─────────────────────────────────────────── */
+    var questions   = Array.isArray(window.WP_DATA) ? window.WP_DATA : [];
+    var returnTo    = String(window.WP_RETURN_TO   || '');
+    var activityId  = String(window.WP_ACTIVITY_ID || '');
+    var unitId      = String(window.WP_UNIT_ID     || '');
+    var assignId    = String(window.WP_ASSIGNMENT_ID || '');
+    var actTitle    = String(window.WP_TITLE       || 'Writing Practice');
 
-    if (!submitBtn || !listEl || questions.length === 0) { return; }
+    if (!questions.length) { return; }
 
-    /* ── Helpers ──────────────────────────────────────────── */
+    /* ── elements ─────────────────────────────────────── */
+    var statusEl    = document.getElementById('wpStatus');
+    var mediaArea   = document.getElementById('wpMediaArea');
+    var qtextEl     = document.getElementById('wpQtext');
+    var instrEl     = document.getElementById('wpInstruction');
+    var answerEl    = document.getElementById('wpAnswer');
+    var revealEl    = document.getElementById('wpReveal');
+    var feedbackEl  = document.getElementById('wpFeedback');
+    var cardEl      = document.getElementById('wpCard');
+    var controlsEl  = document.getElementById('wpControls');
+    var completedEl = document.getElementById('wpCompleted');
+    var compTitleEl = document.getElementById('wpCompTitle');
+    var compTextEl  = document.getElementById('wpCompText');
+    var scoreTextEl = document.getElementById('wpScoreText');
+    var openNoteEl  = document.getElementById('wpOpenNote');
+    var btnPrev     = document.getElementById('btnPrev');
+    var btnShow     = document.getElementById('btnShow');
+    var btnNext     = document.getElementById('btnNext');
+    var btnRestart  = document.getElementById('btnRestart');
 
-    function esc(s) {
-        return String(s || '')
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;');
+    /* ── sounds ───────────────────────────────────────── */
+    var sndOk   = new Audio('../../hangman/assets/win.mp3');
+    var sndBad  = new Audio('../../hangman/assets/lose.mp3');
+    var sndDone = new Audio('../../hangman/assets/win (1).mp3');
+
+    function playSound(s) { try { s.pause(); s.currentTime = 0; s.play(); } catch (e) {} }
+
+    /* ── state ────────────────────────────────────────── */
+    var index        = 0;
+    var finished     = false;
+    var checkedCards = {};   // index → true when locked
+    var attemptsMap  = {};   // index → attempt count
+    var correctCount = 0;    // auto-graded correct
+    var autoTotal    = 0;    // auto-graded questions count
+    var openResponses = [];   // collected writing responses
+
+    /* count auto-graded questions */
+    questions.forEach(function (q) {
+        if (String(q.type || 'writing') !== 'writing') { autoTotal++; }
+    });
+
+    /* ── helpers ──────────────────────────────────────── */
+    function isAutoGraded(q) {
+        return String(q.type || 'writing') !== 'writing';
     }
 
-    /* Flexible answer comparison – ignore case, extra spaces, common punctuation */
-    function normalizeAns(s) {
+    function normalize(s) {
         return String(s || '')
             .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-            .trim()
-            .toLowerCase()
+            .trim().toLowerCase()
             .replace(/[.,;:!?'"()]/g, '')
             .replace(/\s+/g, ' ');
     }
 
-    function isAnswerCorrect(userValue, correctAnswers) {
-        // No correct answers defined → open-ended, always award points
-        if (!Array.isArray(correctAnswers) || correctAnswers.length === 0) {
-            return true;
-        }
-        const ua = normalizeAns(userValue);
-        return correctAnswers.some(function (ca) {
-            return normalizeAns(ca) === ua;
-        });
+    function checkCorrect(userVal, answers) {
+        if (!Array.isArray(answers) || answers.length === 0) { return false; }
+        var u = normalize(userVal);
+        return answers.some(function (a) { return normalize(a) === u; });
     }
 
-    /* Auto-expand textarea height to fit content */
-    function autoResize(ta) {
-        ta.style.height = 'auto';
-        ta.style.height = (ta.scrollHeight + 2) + 'px';
-    }
-
-    /* Convert YouTube watch/share URL to nocookie embed URL */
     function toEmbedUrl(url) {
         if (!url) { return ''; }
         if (/youtube\.com\/embed\/|player\.vimeo\.com\/video\//.test(url)) { return url; }
-
-        const shortMatch = url.match(/youtu\.be\/([A-Za-z0-9_-]{11})/);
-        if (shortMatch) { return 'https://www.youtube-nocookie.com/embed/' + shortMatch[1]; }
-
-        const watchMatch = url.match(/youtube\.com\/watch\?(?:.*&)?v=([A-Za-z0-9_-]{11})/);
-        if (watchMatch) { return 'https://www.youtube-nocookie.com/embed/' + watchMatch[1]; }
-
-        return url; // MP4, Vimeo direct, etc.
+        var m = url.match(/youtu\.be\/([A-Za-z0-9_-]{11})/);
+        if (m) { return 'https://www.youtube-nocookie.com/embed/' + m[1]; }
+        var m2 = url.match(/youtube\.com\/watch\?(?:.*&)?v=([A-Za-z0-9_-]{11})/);
+        if (m2) { return 'https://www.youtube-nocookie.com/embed/' + m2[1]; }
+        return url;
     }
 
-    const TYPE_LABEL = {
-        writing:        'Open Writing',
-        listen_write:   'Listen & Write',
-        fill_sentence:  'Fill the Sentence',
-        fill_paragraph: 'Fill the Paragraph',
-        video_writing:  'Video + Writing',
+    function esc(s) {
+        return String(s || '')
+            .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    var PLACEHOLDERS = {
+        writing:        'Write your response here\u2026',
+        listen_write:   'Write what you hear\u2026',
+        fill_sentence:  'Complete the sentence\u2026',
+        fill_paragraph: 'Complete the paragraph\u2026',
+        video_writing:  'Write about what you saw\u2026',
     };
 
-    /* ── Progress tracker ─────────────────────────────────── */
-    function updateProgress() {
-        const total = questions.length;
-        let answered = 0;
+    /* ── loadCard ─────────────────────────────────────── */
+    function loadCard() {
+        var q    = questions[index];
+        var type = String(q.type || 'writing');
 
-        for (let i = 0; i < total; i++) {
-            const ta   = listEl.querySelector('.wp-textarea[data-index="' + i + '"]');
-            const val  = ta ? ta.value.trim() : '';
-            const card = listEl.querySelector('.wp-card[data-index="' + i + '"]');
+        finished = false;
+        completedEl.classList.remove('active');
+        cardEl.style.display    = '';
+        controlsEl.style.display = '';
 
-            if (val !== '') {
-                answered++;
-                if (ta)   { ta.classList.add('wp-textarea-answered'); }
-                if (card) { card.classList.remove('wp-card-unanswered'); }
-            } else {
-                if (ta)   { ta.classList.remove('wp-textarea-answered'); }
-                if (card) { card.classList.add('wp-card-unanswered'); }
-            }
+        /* status */
+        statusEl.textContent = (index + 1) + ' / ' + questions.length;
+
+        /* clear previous content */
+        mediaArea.innerHTML   = '';
+        qtextEl.innerHTML     = '';
+        instrEl.innerHTML     = '';
+        answerEl.value        = '';
+        answerEl.className    = 'dict-answer-box';
+        answerEl.disabled     = false;
+        answerEl.placeholder  = PLACEHOLDERS[type] || PLACEHOLDERS.writing;
+        feedbackEl.textContent = '';
+        feedbackEl.className   = 'mc-feedback';
+        revealEl.classList.remove('show');
+        revealEl.textContent   = '';
+
+        /* ── open-writing notice ── */
+        if (type === 'writing') {
+            var note = document.createElement('div');
+            note.className   = 'wp-open-note';
+            note.textContent = '\u270D\uFE0F Open Writing \u2014 your response will be submitted for teacher review.';
+            mediaArea.appendChild(note);
         }
 
-        const pct = total > 0 ? Math.round((answered / total) * 100) : 0;
-        if (answeredEl)   { answeredEl.textContent   = String(answered); }
-        if (progressFill) { progressFill.style.width = pct + '%'; }
-        if (progressPct)  { progressPct.textContent  = pct + '%'; }
+        /* ── listen_write: audio + TTS ── */
+        if (type === 'listen_write') {
+            var audioWrap = document.createElement('div');
+            audioWrap.className = 'wp-audio-wrap';
+            if (q.media) {
+                var audio = document.createElement('audio');
+                audio.controls = true; audio.preload = 'none';
+                var src = document.createElement('source');
+                src.src = String(q.media);
+                audio.appendChild(src);
+                audioWrap.appendChild(audio);
+            }
+            var ttsBtn = document.createElement('button');
+            ttsBtn.type      = 'button';
+            ttsBtn.className = 'mc-btn mc-btn-listen-wp';
+            ttsBtn.innerHTML = '\uD83C\uDFA7 Listen';
+            ttsBtn.addEventListener('click', function () {
+                var text = String(q.question || '');
+                if (!text) { return; }
+                speechSynthesis.cancel();
+                var u = new SpeechSynthesisUtterance(text);
+                u.lang = 'en-US'; u.rate = 0.9;
+                speechSynthesis.speak(u);
+            });
+            audioWrap.appendChild(ttsBtn);
+            mediaArea.appendChild(audioWrap);
+        }
 
-        return { answered: answered, total: total };
-    }
+        /* ── video_writing: embed ── */
+        if (type === 'video_writing' && q.media) {
+            var embedUrl  = toEmbedUrl(String(q.media));
+            var videoWrap = document.createElement('div');
+            videoWrap.className = 'wp-video-wrap';
+            var isMP4 = /\.(mp4|webm|ogg)(\?|$)/i.test(embedUrl);
+            if (isMP4) {
+                var vid = document.createElement('video');
+                vid.controls = true; vid.preload = 'metadata';
+                vid.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;object-fit:contain;';
+                var vs = document.createElement('source'); vs.src = embedUrl;
+                vid.appendChild(vs);
+                videoWrap.appendChild(vid);
+            } else {
+                var fr = document.createElement('iframe');
+                fr.src = embedUrl; fr.loading = 'lazy';
+                fr.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture';
+                fr.allowFullscreen = true;
+                videoWrap.appendChild(fr);
+            }
+            mediaArea.appendChild(videoWrap);
+        }
 
-    /* ── Render question cards ────────────────────────────── */
-    questions.forEach(function (q, idx) {
-        const card = document.createElement('div');
-        card.className = 'wp-card wp-card-unanswered';
-        card.setAttribute('data-index', String(idx));
-
-        const type  = String(q.type || 'writing');
-        const label = TYPE_LABEL[type] || 'Writing';
-
-        /* Question number + type badge */
-        const numDiv = document.createElement('div');
-        numDiv.className = 'wp-q-num';
-        numDiv.innerHTML = (idx + 1) + '. Writing'
-            + ' <span class="wp-q-type-badge">' + esc(label) + '</span>';
-        card.appendChild(numDiv);
-
-        /* ── Question text / prompt ─────────────────────────── */
+        /* ── question text ── */
         if (type === 'fill_sentence' || type === 'fill_paragraph') {
-            // For fill-in-blank: render the sentence/paragraph with visual blank markers
             if (q.question) {
-                const sentDiv = document.createElement('div');
+                var sentDiv = document.createElement('div');
                 sentDiv.className = 'wp-q-sentence';
                 sentDiv.innerHTML = esc(String(q.question)).replace(/_{2,}/g, function () {
                     return '<span class="wp-blank">___</span>';
                 });
-                card.appendChild(sentDiv);
+                qtextEl.appendChild(sentDiv);
             }
         } else {
-            // For other types: show the question as a prominent text block
             if (q.question) {
-                const qDiv = document.createElement('div');
-                qDiv.className = 'wp-q-text';
-                qDiv.textContent = String(q.question);
-                card.appendChild(qDiv);
+                var qp = document.createElement('div');
+                qp.style.cssText = 'font-weight:800;color:#f14902;font-size:clamp(16px,2vw,22px);margin-bottom:10px;line-height:1.4;text-align:center;';
+                qp.textContent = String(q.question);
+                qtextEl.appendChild(qp);
             }
         }
 
-        /* Instruction line */
+        /* ── instruction ── */
         if (q.instruction) {
-            const iDiv = document.createElement('div');
-            iDiv.className = 'wp-q-instruction';
-            iDiv.textContent = String(q.instruction);
-            card.appendChild(iDiv);
+            instrEl.style.cssText = 'font-size:14px;color:#7c3aed;font-weight:700;margin-bottom:10px;text-align:center;';
+            instrEl.textContent = String(q.instruction);
         }
 
-        /* ── Type-specific media ────────────────────────────── */
-        if (type === 'listen_write') {
-            const audioWrap = document.createElement('div');
-            audioWrap.className = 'wp-audio-wrap';
+        /* ── buttons state ── */
+        btnPrev.disabled = (index === 0);
+        btnNext.textContent = (index < questions.length - 1) ? 'Next' : 'Finish';
+        btnShow.style.display = isAutoGraded(q) ? '' : 'none';
 
-            if (q.media) {
-                const audio = document.createElement('audio');
-                audio.controls = true;
-                audio.preload  = 'none';
-                const src = document.createElement('source');
-                src.src = String(q.media);
-                audio.appendChild(src);
-                audio.appendChild(document.createTextNode('Your browser does not support audio playback.'));
-                audioWrap.appendChild(audio);
-            }
-
-            if (q.question) {
-                const ttsBtn = document.createElement('button');
-                ttsBtn.type      = 'button';
-                ttsBtn.className = 'wp-tts-btn';
-                ttsBtn.innerHTML = '&#x1F50A; Escuchar';
-                ttsBtn.addEventListener('click', function () {
-                    speechSynthesis.cancel();
-                    var utter  = new SpeechSynthesisUtterance(String(q.question));
-                    utter.lang = 'en-US';
-                    utter.rate = 0.9;
-                    speechSynthesis.speak(utter);
-                });
-                audioWrap.appendChild(ttsBtn);
-            }
-
-            card.appendChild(audioWrap);
-        }
-
-        if (type === 'video_writing' && q.media) {
-            const embedUrl  = toEmbedUrl(String(q.media));
-            const videoWrap = document.createElement('div');
-            videoWrap.className = 'wp-video-wrap';
-
-            const isDirectVideo = /\.(mp4|webm|ogg)(\?|$)/i.test(embedUrl);
-            if (isDirectVideo) {
-                const video  = document.createElement('video');
-                video.controls = true;
-                video.preload  = 'metadata';
-                video.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;object-fit:contain;';
-                const vsrc = document.createElement('source');
-                vsrc.src   = embedUrl;
-                video.appendChild(vsrc);
-                videoWrap.appendChild(video);
+        /* restore state if user navigated back */
+        if (checkedCards[index]) {
+            answerEl.disabled = true;
+            if (isAutoGraded(q)) {
+                var wasCorrect = checkedCards[index] === 'correct';
+                answerEl.className = 'dict-answer-box ' + (wasCorrect ? 'ok' : 'bad');
+                feedbackEl.textContent = wasCorrect ? '\u2714 Right' : '\u2718 Wrong';
+                feedbackEl.className   = 'mc-feedback ' + (wasCorrect ? 'good' : 'bad');
+                revealEl.textContent   = checkedCards[index + '_reveal'] || '';
+                if (revealEl.textContent) { revealEl.classList.add('show'); }
             } else {
-                const iframe = document.createElement('iframe');
-                iframe.src            = embedUrl;
-                iframe.loading        = 'lazy';
-                iframe.allow          = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture';
-                iframe.allowFullscreen = true;
-                videoWrap.appendChild(iframe);
+                feedbackEl.textContent = '\u2714 Submitted for review';
+                feedbackEl.className   = 'mc-feedback good';
             }
-
-            card.appendChild(videoWrap);
         }
 
-        /* ── Auto-expanding textarea ────────────────────────── */
-        const ta = document.createElement('textarea');
-        ta.className = 'wp-textarea';
-        ta.setAttribute('data-index', String(idx));
-        ta.rows        = 2;
-        ta.placeholder = 'Escribe tu respuesta aqu\u00ED...';
-        card.appendChild(ta);
-
-        /* Character counter */
-        const counter = document.createElement('div');
-        counter.className = 'wp-char-count';
-        counter.textContent = '0 characters';
-        card.appendChild(counter);
-
-        /* Per-question feedback area (revealed after submit) */
-        const feedback = document.createElement('div');
-        feedback.className = 'wp-q-feedback';
-        feedback.setAttribute('data-feedback', String(idx));
-        card.appendChild(feedback);
-
-        /* Input events */
-        ta.addEventListener('input', function () {
-            autoResize(ta);
-            const len = ta.value.length;
-            counter.textContent = len + ' character' + (len !== 1 ? 's' : '');
-            updateProgress();
-        });
-
-        listEl.appendChild(card);
-        autoResize(ta); // initial size
-    });
-
-    updateProgress();
-
-    /* ── Score persistence (fire-and-forget) ──────────────── */
-    function persistScoreSilently(url) {
-        if (!url) { return Promise.resolve(false); }
-        try {
-            return fetch(url, {
-                method:      'GET',
-                credentials: 'same-origin',
-                cache:       'no-store',
-                keepalive:   true,
-            })
-            .then(function (r) { return !!(r && r.ok); })
-            .catch(function () { return false; });
-        } catch (e) {
-            return Promise.resolve(false);
-        }
+        answerEl.focus();
     }
 
-    function navigateToReturn(url) {
-        if (!url) { return; }
-        try {
-            if (window.top && window.top !== window.self) {
-                window.top.location.href = url;
-                return;
-            }
-        } catch (e) { /* cross-origin */ }
-        window.location.href = url;
-    }
+    /* ── checkAnswer ──────────────────────────────────── */
+    function checkAnswer() {
+        var q = questions[index];
+        if (!isAutoGraded(q)) { return; }
+        if (checkedCards[index]) { return; }
 
-    /* ── Submit handler ────────────────────────────────────── */
-    submitBtn.addEventListener('click', async function () {
-
-        const progress = updateProgress();
-
-        /* Guard: all questions must be answered */
-        if (progress.answered < progress.total) {
-            if (resultEl) {
-                resultEl.style.display    = 'block';
-                resultEl.style.background = '#fff2f2';
-                resultEl.style.color      = '#9b1c1c';
-                resultEl.textContent = 'Please answer all questions before submitting.';
-            }
-            // Scroll to first unanswered card
-            const firstEmpty = listEl.querySelector('.wp-card.wp-card-unanswered');
-            if (firstEmpty) {
-                try { firstEmpty.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) {}
-            }
+        var val = answerEl.value.trim();
+        if (val === '') {
+            feedbackEl.textContent = 'Write an answer first.';
+            feedbackEl.className   = 'mc-feedback bad';
             return;
         }
 
-        if (resultEl) {
-            resultEl.style.display = 'none';
-            resultEl.textContent   = '';
+        var attempts = (attemptsMap[index] || 0) + 1;
+        attemptsMap[index] = attempts;
+
+        var correct = checkCorrect(val, q.correct_answers || []);
+
+        if (correct) {
+            feedbackEl.textContent = '\u2714 Right';
+            feedbackEl.className   = 'mc-feedback good';
+            answerEl.className     = 'dict-answer-box ok';
+            answerEl.disabled      = true;
+            playSound(sndOk);
+            checkedCards[index]   = 'correct';
+            correctCount++;
+        } else if (attempts >= 2) {
+            feedbackEl.textContent = '\u2718 Wrong';
+            feedbackEl.className   = 'mc-feedback bad';
+            answerEl.className     = 'dict-answer-box bad';
+            answerEl.disabled      = true;
+            playSound(sndBad);
+            var shown = (q.correct_answers || []).slice(0, 2).join(' / ');
+            revealEl.textContent = 'Correct: ' + shown;
+            revealEl.classList.add('show');
+            checkedCards[index]          = 'wrong';
+            checkedCards[index + '_reveal'] = 'Correct: ' + shown;
+        } else {
+            feedbackEl.textContent = '\u2718 Wrong (1/2) \u2013 try again';
+            feedbackEl.className   = 'mc-feedback bad';
+            answerEl.className     = 'dict-answer-box bad';
+            playSound(sndBad);
+        }
+    }
+
+    /* ── autoCheck (on blur / Enter) ──────────────────── */
+    function autoCheck() {
+        var q = questions[index];
+        if (!isAutoGraded(q) || checkedCards[index] || answerEl.value.trim() === '') { return; }
+        checkAnswer();
+    }
+
+    /* ── goNext ───────────────────────────────────────── */
+    function goNext() {
+        if (finished) { return; }
+        var q    = questions[index];
+        var type = String(q.type || 'writing');
+
+        if (isAutoGraded(q)) {
+            /* must check first */
+            if (!checkedCards[index] && answerEl.value.trim() !== '') { checkAnswer(); }
+            if (!checkedCards[index]) { return; }
+        } else {
+            /* open writing – record response */
+            var val = answerEl.value.trim();
+            if (!checkedCards[index]) {
+                checkedCards[index] = 'open';
+                if (val !== '') {
+                    openResponses.push({
+                        question_id:   String(q.id || index),
+                        question_text: String(q.question || ''),
+                        response_text: val,
+                        max_points:    Math.max(1, Number(q.points) || 10),
+                    });
+                }
+                feedbackEl.textContent = '\u2714 Submitted for review';
+                feedbackEl.className   = 'mc-feedback good';
+                answerEl.disabled      = true;
+            }
         }
 
-        /* ── Calculate score ─────────────────────────────────── */
-        let earnedPoints = 0;
-        let maxPoints    = 0;
-        let errorCount   = 0;
+        if (index < questions.length - 1) {
+            index++;
+            loadCard();
+        } else {
+            showCompleted();
+        }
+    }
 
-        questions.forEach(function (q, idx) {
-            const ta  = listEl.querySelector('.wp-textarea[data-index="' + idx + '"]');
-            const val = ta ? ta.value.trim() : '';
-            const pts = Math.max(1, Number(q.points) || 10);
-            maxPoints += pts;
+    /* ── goPrev ───────────────────────────────────────── */
+    function goPrev() {
+        if (index > 0) { index--; loadCard(); }
+    }
 
-            const hasExpected = Array.isArray(q.correct_answers) && q.correct_answers.length > 0;
-            const correct     = isAnswerCorrect(val, q.correct_answers);
+    /* ── showAnswer ───────────────────────────────────── */
+    function showAnswer() {
+        var q = questions[index];
+        if (!isAutoGraded(q)) { return; }
+        var answers = q.correct_answers || [];
+        if (answers.length === 0) { return; }
+        var shown = answers.slice(0, 2).join(' / ');
+        if (answerEl.value.trim() !== '') {
+            revealEl.textContent = 'You wrote: "' + answerEl.value + '" \u2192 Correct: ' + shown;
+        } else {
+            revealEl.textContent = 'Correct: ' + shown;
+        }
+        revealEl.classList.add('show');
+    }
 
-            if (correct && val !== '') {
-                earnedPoints += pts;
-            } else if (hasExpected) {
-                errorCount++;
-            }
+    /* ── persist score (fire & forget) ───────────────── */
+    function persistScore(url) {
+        if (!url) { return Promise.resolve(false); }
+        return fetch(url, { method: 'GET', credentials: 'same-origin', cache: 'no-store' })
+            .then(function (r) { return !!(r && r.ok); })
+            .catch(function () { return false; });
+    }
 
-            /* Disable textarea */
-            if (ta) { ta.disabled = true; }
-
-            /* Show per-question feedback */
-            const feedback = listEl.querySelector('.wp-q-feedback[data-feedback="' + idx + '"]');
-            if (feedback) {
-                feedback.style.display = 'block';
-
-                if (!hasExpected) {
-                    feedback.className   = 'wp-q-feedback open';
-                    feedback.textContent = '✓ Submitted — open-ended response recorded.';
-                } else if (correct) {
-                    feedback.className   = 'wp-q-feedback correct';
-                    feedback.textContent = '✓ Correct!';
-                } else {
-                    feedback.className   = 'wp-q-feedback wrong';
-                    const accepted = q.correct_answers.slice(0, 2).join(' / ');
-                    feedback.textContent = '✗ Expected: ' + accepted;
-                }
-            }
-        });
-
-        const percent = maxPoints > 0 ? Math.round((earnedPoints / maxPoints) * 100) : 100;
-
-        /* Build score URL */
-        const hasQuery = String(window.WP_RETURN_TO).indexOf('?') !== -1;
-        const joiner   = hasQuery ? '&' : '?';
-        const saveUrl  = window.WP_RETURN_TO
-            + joiner
-            + 'activity_percent=' + encodeURIComponent(String(percent))
-            + '&activity_errors='  + encodeURIComponent(String(errorCount))
-            + '&activity_total='   + encodeURIComponent(String(questions.length))
-            + '&activity_id='      + encodeURIComponent(String(window.WP_ACTIVITY_ID || ''))
-            + '&activity_type=writing_practice';
-
-        submitBtn.disabled = true;
-
-        /* Save open-writing responses for teacher review */
+    function navigateTo(url) {
+        if (!url) { return; }
         try {
-            var openResponses = [];
-            questions.forEach(function (q, idx) {
-                if (String(q.type) === 'writing') {
-                    var taEl = listEl.querySelector('.wp-textarea[data-index="' + idx + '"]');
-                    var val  = taEl ? taEl.value.trim() : '';
-                    if (val !== '') {
-                        openResponses.push({
-                            question_id:   String(q.id || idx),
-                            question_text: String(q.question || ''),
-                            response_text: val,
-                            max_points:    Math.max(1, Number(q.points) || 10),
-                        });
-                    }
-                }
-            });
-            if (openResponses.length > 0) {
+            if (window.top && window.top !== window.self) { window.top.location.href = url; return; }
+        } catch (e) {}
+        window.location.href = url;
+    }
+
+    /* ── showCompleted ────────────────────────────────── */
+    async function showCompleted() {
+        finished = true;
+        cardEl.style.display     = 'none';
+        controlsEl.style.display = 'none';
+        feedbackEl.textContent   = '';
+        statusEl.textContent     = 'Completed';
+        completedEl.classList.add('active');
+        playSound(sndDone);
+
+        /* titles */
+        if (compTitleEl) { compTitleEl.textContent = actTitle; }
+        if (compTextEl)  { compTextEl.textContent  = "You've completed " + actTitle + ". Great job!"; }
+
+        /* score: only auto-graded contribute */
+        var pct    = autoTotal > 0 ? Math.round((correctCount / autoTotal) * 100) : 100;
+        var errors = Math.max(0, autoTotal - correctCount);
+
+        if (scoreTextEl) {
+            if (autoTotal > 0) {
+                scoreTextEl.textContent = 'Score: ' + correctCount + ' / ' + autoTotal + ' (' + pct + '%)';
+            } else {
+                scoreTextEl.textContent = 'Responses submitted for teacher review.';
+            }
+        }
+
+        var hasOpen = openResponses.length > 0;
+        if (openNoteEl && hasOpen) {
+            openNoteEl.style.display = '';
+            openNoteEl.textContent   = '\u270D\uFE0F ' + openResponses.length + ' open-writing response(s) sent for teacher grading.';
+        }
+
+        /* save open-writing responses */
+        if (hasOpen) {
+            try {
                 var fd = new FormData();
-                fd.append('activity_id',   String(window.WP_ACTIVITY_ID || ''));
-                fd.append('unit_id',       String(window.WP_UNIT_ID || ''));
-                fd.append('assignment_id', String(window.WP_ASSIGNMENT_ID || ''));
+                fd.append('activity_id',   activityId);
+                fd.append('unit_id',       unitId);
+                fd.append('assignment_id', assignId);
                 fd.append('responses',     JSON.stringify(openResponses));
                 await fetch('/lessons/lessons/activities/writing_practice/wp_save_response.php', {
-                    method: 'POST',
-                    body: fd,
+                    method: 'POST', body: fd,
                 });
+            } catch (e) { /* non-critical */ }
+        }
+
+        /* persist score to return URL */
+        if (returnTo) {
+            var joiner  = returnTo.indexOf('?') !== -1 ? '&' : '?';
+            var saveUrl = returnTo
+                + joiner
+                + 'activity_percent=' + encodeURIComponent(String(pct))
+                + '&activity_errors='  + encodeURIComponent(String(errors))
+                + '&activity_total='   + encodeURIComponent(String(questions.length))
+                + '&activity_id='      + encodeURIComponent(activityId)
+                + '&activity_type=writing_practice';
+
+            var ok = await persistScore(saveUrl);
+            if (!ok) { navigateTo(saveUrl); }
+        }
+    }
+
+    /* ── restart ──────────────────────────────────────── */
+    function restart() {
+        checkedCards  = {};
+        attemptsMap   = {};
+        openResponses = [];
+        correctCount  = 0;
+        index         = 0;
+        loadCard();
+    }
+
+    /* ── event listeners ──────────────────────────────── */
+    btnPrev.addEventListener('click', goPrev);
+    btnNext.addEventListener('click', goNext);
+    btnShow.addEventListener('click', showAnswer);
+    btnRestart.addEventListener('click', restart);
+
+    answerEl.addEventListener('blur', autoCheck);
+    answerEl.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            var q = questions[index];
+            if (isAutoGraded(q)) {
+                autoCheck();
+            } else {
+                goNext();
             }
-        } catch (e) { /* non-critical – do not block score save */ }
-
-        const ok = await persistScoreSilently(saveUrl);
-
-        /* Show completed screen */
-        if (questionsWrap)   { questionsWrap.style.display = 'none'; }
-        if (scoreTextEl)     { scoreTextEl.textContent = 'Score: ' + earnedPoints + ' / ' + maxPoints + ' points (' + percent + '%)'; }
-        if (completedScreen) { completedScreen.classList.add('active'); }
-
-        if (!ok) {
-            navigateToReturn(saveUrl);
         }
     });
 
-})();
+    /* ── init ─────────────────────────────────────────── */
+    loadCard();
+});
 </script>
 
+<?php endif; ?>
 <?php
 $content = ob_get_clean();
 render_activity_viewer($viewerTitle, '✍️', $content);
