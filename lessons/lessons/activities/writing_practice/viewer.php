@@ -140,6 +140,7 @@ ob_start();
 ?>
 <style>
 /* ── Writing Practice Viewer ─────────────────────────────── */
+/* Reuses .mc-* classes from dictation/multiple_choice.css    */
 
 .wp-wrap {
     max-width: 980px;
