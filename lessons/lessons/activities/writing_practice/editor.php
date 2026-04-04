@@ -4,6 +4,7 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 require_once __DIR__ . '/../../config/db.php';
+require_once __DIR__ . '/../../core/cloudinary_upload.php';
 require_once __DIR__ . '/../../core/_activity_editor_template.php';
 
 // Block student access to editor
