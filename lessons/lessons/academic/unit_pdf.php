@@ -449,6 +449,14 @@ function ws_powerpoint(array $d, int $n, bool $k): string {
     return $out.ws_foot();
 }
 
+/* EXTERNAL RESOURCE */
+function ws_external(array $d, int $n, bool $k): string {
+    $title = trim((string)($d['title'] ?? ''));
+    $out   = ws_head($n,'external',$title,'Access the external resource in the app. Use the space below to write your notes and key ideas.',$k);
+    $out  .= '<div class="act-notes-box"></div>';
+    return $out.ws_foot();
+}
+
 /* PRONUNCIATION */
 function ws_pronunciation(array $d, int $n, bool $k): string {
     $items = is_array($d['items'] ?? null) ? $d['items'] : [];
@@ -531,6 +539,7 @@ foreach ($activities as $act) {
         case 'dictation':           $html = ws_dictation($data,$actN,$isTeacher);    break;
         case 'powerpoint':           $html = ws_powerpoint($data,$actN,$isTeacher);    break;
         case 'pronunciation':        $html = ws_pronunciation($data,$actN,$isTeacher);  break;
+        case 'external':             $html = ws_external($data,$actN,$isTeacher);         break;
         default:                    $html = ws_placeholder($type,$actN);              break;
     }
     $sections[] = ['type'=>$type,'html'=>$html];
