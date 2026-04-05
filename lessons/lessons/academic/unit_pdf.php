@@ -398,7 +398,7 @@ function ws_video_comp(array $d, int $n, bool $k): string {
     $instr = trim((string)($d['instructions'] ?? ''));
     $ltrs  = ['A','B','C','D'];
     if ($mode === 'video_only' || empty($qs)) {
-        $out = ws_head($n,'video_comprehension',$d['title']??'','Watch the video carefully. Use the space below to write your notes and answers.',$k);
+        $out = ws_head($n,'video_comprehension',$d['title']??'','',$k);
         $out .= '<div class="act-notes-box"></div>';
         return $out.ws_foot();
     }
@@ -466,7 +466,7 @@ function ws_dictation(array $d, int $n, bool $k): string {
 /* POWERPOINT */
 function ws_powerpoint(array $d, int $n, bool $k): string {
     $title = trim((string)($d['title'] ?? ''));
-    $out   = ws_head($n,'powerpoint',$title,'Watch the presentation carefully. Use the space below to write your notes and summarize the main ideas.',$k);
+    $out   = ws_head($n,'powerpoint',$title,'',$k);
     $out  .= '<div class="act-notes-box"></div>';
     return $out.ws_foot();
 }
@@ -749,11 +749,8 @@ table.ws-tbl th{background:#f3f8fd;text-transform:uppercase;letter-spacing:.08em
 .pr-tbl th:nth-child(3),.pr-tbl td:nth-child(3){width:30%}
 .pr-tbl th:nth-child(4),.pr-tbl td:nth-child(4){width:30%}
 @media print{.pr-grid{grid-template-columns:repeat(3,1fr)}.pr-card{break-inside:avoid;page-break-inside:avoid}}
-/* ── Powerpoint summary ── */
-.ppt-summary{padding:4px 0 8px}
-.ppt-summary-label{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin-bottom:10px}
-.ppt-lines{display:flex;flex-direction:column;gap:14px}
-.ppt-line{height:0;border-bottom:1.5px solid #b0bfcc;width:100%}
+/* ── Notes box (powerpoint, video_comprehension, external) ── */
+.act-notes-box{min-height:278px;border:1.5px dashed #b0bfcc;border-radius:14px;background:#fff;width:100%;box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 /* ── Placeholder ── */
 .ws-hold{padding:22px;border:1px dashed var(--border);border-radius:16px;background:#fbfdff;color:var(--muted);text-align:center;font-style:italic;font-size:13px}
 .ws-empty{font-size:12px;color:var(--muted);font-style:italic;padding:8px 0}
@@ -763,7 +760,7 @@ table.ws-tbl th{background:#f3f8fd;text-transform:uppercase;letter-spacing:.08em
 .ws-plbl span{background:#fff;padding:0 14px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.14em;color:var(--border)}
 /* ── Print ── */
 @media print{
-  @page{size:letter;margin:14mm 18mm}
+  @page{size:letter;margin:18mm 20mm}
   body{background:#fff;font-size:12px;padding:0}
   .toolbar,.ws-pdiv,.ws-plbl{display:none!important}
   .ws-doc{box-shadow:none;border-radius:0;max-width:100%;margin:0}
