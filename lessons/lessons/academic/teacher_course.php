@@ -1402,6 +1402,14 @@ body{font-family:Arial,sans-serif;background:var(--bg);color:var(--text);overflo
     </div>
     <?php endif; ?>
 
+    <?php if ($selectedUnitId !== ''): ?>
+    <a class="side-btn"
+       style="background:linear-gradient(180deg,#0ea5e9,#0284c7);"
+       href="unit_pdf.php?unit=<?php echo urlencode($selectedUnitId); ?>&assignment=<?php echo urlencode($assignmentId); ?>"
+       target="_blank"
+       rel="noopener noreferrer">📄 Export PDF</a>
+    <?php endif; ?>
+
     <a class="side-btn red" href="/lessons/lessons/academic/logout.php">🚪 Sign out</a>
   </nav>
 

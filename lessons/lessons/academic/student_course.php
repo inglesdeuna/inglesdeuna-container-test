@@ -978,6 +978,15 @@ body{margin:0;font-family:'Nunito','Segoe UI',sans-serif;background:linear-gradi
     <div class="topbar-inner">
         <a class="top-btn" href="<?php echo h($backHref); ?>">← Back</a>
         <h1 class="topbar-title"><?php echo h(($selectedUnitName !== '' && $selectedUnitName !== 'UNIT') ? $selectedUnitName : $courseName); ?></h1>
+        <?php if ($selectedUnitId !== ''): ?>
+        <a class="top-btn"
+           style="background:linear-gradient(180deg,#0ea5e9,#0284c7);"
+           href="unit_pdf.php?unit=<?php echo urlencode($selectedUnitId); ?>&assignment=<?php echo urlencode($assignmentId); ?>"
+           target="_blank"
+           rel="noopener noreferrer">📄 PDF</a>
+        <?php else: ?>
+        <span></span>
+        <?php endif; ?>
     </div>
 </header>
 
