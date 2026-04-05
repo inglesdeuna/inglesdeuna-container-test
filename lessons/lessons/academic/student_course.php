@@ -448,7 +448,7 @@ function load_activities_for_unit(PDO $pdo, string $unitId): array
             ? 'ORDER BY COALESCE(position, 0) ASC, id ASC'
             : 'ORDER BY id ASC';
 
-        $stmt = $pdo->prepare("SELECT id, type FROM activities WHERE unit_id::text = :unit_id {$orderBy}");
+        $stmt = $pdo->prepare("SELECT id, type, data FROM activities WHERE unit_id::text = :unit_id {$orderBy}");
         $stmt->execute(['unit_id' => $unitId]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
     } catch (Throwable $e) {
@@ -590,6 +590,26 @@ $selectedUnitName = app_upper($selectedUnitName);
 /* ---- Activities for selected unit ---- */
 $step = max(0, (int) ($_GET['step'] ?? 0));
 $activities = $selectedUnitId !== '' ? load_activities_for_unit($pdo, $selectedUnitId) : [];
+
+// --- Separate worksheet (flipbook) activities from the sequential flow ---
+$worksheets = [];
+$activities = array_values(array_filter($activities, function ($act) use (&$worksheets) {
+    if (strtolower(trim((string) ($act['type'] ?? ''))) === 'flipbooks') {
+        $actData = json_decode((string) ($act['data'] ?? ''), true);
+        $pdfUrl  = isset($actData['pdf_url']) ? trim((string) $actData['pdf_url']) : '';
+        if ($pdfUrl !== '') {
+            $worksheets[] = [
+                'id'        => (string) ($act['id'] ?? ''),
+                'title'     => trim((string) ($actData['title'] ?? '')) ?: 'Worksheet',
+                'serve_url' => '/lessons/lessons/activities/flipbooks/serve_pdf.php?id=' . rawurlencode((string) ($act['id'] ?? '')),
+            ];
+        }
+        return false;
+    }
+    return true;
+}));
+// -------------------------------------------------------------------------
+
 $total = count($activities);
 
 $quizStepIndex = null;
@@ -848,6 +868,85 @@ body{margin:0;font-family:'Nunito','Segoe UI',sans-serif;background:linear-gradi
 }
 .unit-rule.fail{color:#b91c1c}
 .unit-rule.pass{color:#6d28d9}
+
+/* worksheet panel */
+.ws-panel{
+    border:1px solid #d1fae5;
+    background:linear-gradient(135deg,#f0fdf4 0%,#ecfdf5 100%);
+    border-radius:22px;
+    box-shadow:var(--shadow-sm);
+    overflow:hidden;
+}
+.ws-panel-header{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    padding:14px 18px;
+    cursor:pointer;
+    user-select:none;
+}
+.ws-panel-header:hover{background:rgba(16,185,129,.06)}
+.ws-panel-icon{font-size:22px;line-height:1}
+.ws-panel-label{
+    flex:1;
+    font-size:15px;
+    font-weight:800;
+    color:#065f46;
+}
+.ws-panel-count{
+    background:#d1fae5;
+    color:#065f46;
+    font-size:12px;
+    font-weight:800;
+    padding:3px 9px;
+    border-radius:999px;
+}
+.ws-panel-arrow{
+    font-size:13px;
+    color:#10b981;
+    transition:transform .2s;
+}
+.ws-panel[open] .ws-panel-arrow{transform:rotate(180deg)}
+.ws-items{
+    padding:0 18px 14px;
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+}
+.ws-item{
+    background:#fff;
+    border:1px solid #a7f3d0;
+    border-radius:14px;
+    padding:12px 14px;
+    display:flex;
+    align-items:center;
+    gap:12px;
+}
+.ws-item-icon{font-size:20px;flex-shrink:0}
+.ws-item-title{
+    flex:1;
+    font-size:14px;
+    font-weight:700;
+    color:#047857;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+}
+.ws-item-actions{display:flex;gap:6px;flex-shrink:0}
+.ws-btn{
+    display:inline-flex;align-items:center;justify-content:center;
+    padding:7px 12px;
+    border-radius:10px;
+    text-decoration:none;
+    font-size:12px;
+    font-weight:800;
+    transition:filter .15s,transform .15s;
+    white-space:nowrap;
+}
+.ws-btn:hover{filter:brightness(.92);transform:translateY(-1px)}
+.ws-btn-view{background:linear-gradient(180deg,#34d399,#10b981);color:#fff}
+.ws-btn-dl{background:linear-gradient(180deg,#a3e635,#65a30d);color:#fff}
+@media(max-width:560px){.ws-item{flex-wrap:wrap}.ws-item-actions{width:100%;justify-content:flex-end}}
 .result-actions{
     display:flex;
     gap:12px;
@@ -899,6 +998,35 @@ body{margin:0;font-family:'Nunito','Segoe UI',sans-serif;background:linear-gradi
             </a>
         <?php endforeach; ?>
     </div>
+    <?php endif; ?>
+
+    <?php if (!empty($worksheets)): ?>
+    <!-- Worksheet (Downloadable PDF) panel -->
+    <details class="ws-panel" open>
+        <summary class="ws-panel-header">
+            <span class="ws-panel-icon">📄</span>
+            <span class="ws-panel-label">Worksheets</span>
+            <span class="ws-panel-count"><?php echo count($worksheets); ?></span>
+            <span class="ws-panel-arrow">▼</span>
+        </summary>
+        <div class="ws-items">
+            <?php foreach ($worksheets as $_ws): ?>
+            <div class="ws-item">
+                <span class="ws-item-icon">📄</span>
+                <span class="ws-item-title" title="<?php echo h($_ws['title']); ?>"><?php echo h($_ws['title']); ?></span>
+                <div class="ws-item-actions">
+                    <a class="ws-btn ws-btn-view"
+                       href="<?php echo h($_ws['serve_url']); ?>"
+                       target="_blank"
+                       rel="noopener noreferrer">View</a>
+                    <a class="ws-btn ws-btn-dl"
+                       href="<?php echo h($_ws['serve_url']); ?>"
+                       download="worksheet.pdf">Download</a>
+                </div>
+            </div>
+            <?php endforeach; ?>
+        </div>
+    </details>
     <?php endif; ?>
 
     <?php if ($isCompleted): ?>

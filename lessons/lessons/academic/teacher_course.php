@@ -635,6 +635,26 @@ $unitIds = array_values(array_filter(array_map(
 )));
 
 $activities = load_activities_for_units($pdo, $unitIds);
+
+// --- Separate worksheet (flipbook) activities from the sequential flow ---
+$worksheets = [];
+$activities = array_values(array_filter($activities, function ($act) use (&$worksheets) {
+    if (strtolower(trim((string) ($act['type'] ?? ''))) === 'flipbooks') {
+        $actData = json_decode((string) ($act['data'] ?? ''), true);
+        $pdfUrl  = isset($actData['pdf_url']) ? trim((string) $actData['pdf_url']) : '';
+        if ($pdfUrl !== '') {
+            $worksheets[] = [
+                'id'        => (string) ($act['id'] ?? ''),
+                'title'     => trim((string) ($actData['title'] ?? '')) ?: 'Worksheet',
+                'serve_url' => '/lessons/lessons/activities/flipbooks/serve_pdf.php?id=' . rawurlencode((string) ($act['id'] ?? '')),
+            ];
+        }
+        return false;
+    }
+    return true;
+}));
+// -------------------------------------------------------------------------
+
 $mix = activity_mix($activities);
 
 $quizTotalRaw = isset($_GET['activity_total'])
@@ -980,6 +1000,62 @@ body{font-family:Arial,sans-serif;background:var(--bg);color:var(--text);overflo
 .side-btn.gray{ background:linear-gradient(180deg,#7b8b9e,#66758b); }
 .side-btn.red{ background:linear-gradient(180deg,#ef4444,#dc2626); }
 
+.side-worksheet-section{
+  border-top:1px solid var(--line);
+  padding-top:12px;
+  margin-top:4px;
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
+.side-worksheet-title{
+  font-size:11px;
+  font-weight:800;
+  text-transform:uppercase;
+  letter-spacing:.08em;
+  color:var(--blue-dark);
+}
+.side-worksheet-item{
+  background:#f0fdf4;
+  border:1px solid #bbf7d0;
+  border-radius:12px;
+  padding:10px 12px;
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+}
+.side-worksheet-name{
+  font-size:13px;
+  font-weight:700;
+  color:#166534;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.side-worksheet-actions{
+  display:flex;
+  gap:6px;
+}
+.side-worksheet-btn{
+  flex:1;
+  text-align:center;
+  text-decoration:none;
+  font-size:12px;
+  font-weight:800;
+  padding:6px 8px;
+  border-radius:8px;
+  transition:filter .15s;
+}
+.side-worksheet-btn:hover{filter:brightness(.92)}
+.side-worksheet-btn.view{
+  background:linear-gradient(180deg,#34d399,#10b981);
+  color:#fff;
+}
+.side-worksheet-btn.download{
+  background:linear-gradient(180deg,#a3e635,#65a30d);
+  color:#fff;
+}
+
 .content{display:flex;flex-direction:column;gap:12px;min-width:0;min-height:0;height:100%;overflow:auto}
 
 .hero-card,
@@ -1305,6 +1381,26 @@ body{font-family:Arial,sans-serif;background:var(--bg);color:var(--text);overflo
     <?php } ?>
 
     <a class="side-btn gray" href="teacher_assignments.php">🧾 My assignments</a>
+
+    <?php if (!empty($worksheets)): ?>
+    <div class="side-worksheet-section">
+      <div class="side-worksheet-title">📄 Worksheets</div>
+      <?php foreach ($worksheets as $_ws): ?>
+        <div class="side-worksheet-item">
+          <div class="side-worksheet-name" title="<?php echo h($_ws['title']); ?>"><?php echo h($_ws['title']); ?></div>
+          <div class="side-worksheet-actions">
+            <a class="side-worksheet-btn view"
+               href="<?php echo h($_ws['serve_url']); ?>"
+               target="_blank"
+               rel="noopener noreferrer">View</a>
+            <a class="side-worksheet-btn download"
+               href="<?php echo h($_ws['serve_url']); ?>"
+               download="worksheet.pdf">Download</a>
+          </div>
+        </div>
+      <?php endforeach; ?>
+    </div>
+    <?php endif; ?>
 
     <a class="side-btn red" href="/lessons/lessons/academic/logout.php">🚪 Sign out</a>
   </nav>
