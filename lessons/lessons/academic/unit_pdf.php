@@ -75,59 +75,79 @@ function ws_decode($raw): array {
 
 function ws_cfg(string $type): array {
     static $map = [
-        'flashcards'          => ['label'=>'Vocabulary',          'c'=>'#2563eb'],
-        'quiz'                => ['label'=>'Quiz',                'c'=>'#7c3aed'],
-        'multiple_choice'     => ['label'=>'Multiple Choice',     'c'=>'#a855f7'],
-        'drag_drop'           => ['label'=>'Fill in the Blanks',  'c'=>'#0891b2'],
-        'writing_practice'    => ['label'=>'Writing Practice',    'c'=>'#059669'],
-        'match'               => ['label'=>'Match the Pairs',     'c'=>'#ea580c'],
-        'order_sentences'     => ['label'=>'Order the Sentences', 'c'=>'#e11d48'],
-        'listen_order'        => ['label'=>'Listen & Order',      'c'=>'#4338ca'],
-        'crossword'           => ['label'=>'Crossword',           'c'=>'#d97706'],
-        'memory_cards'        => ['label'=>'Memory Cards',        'c'=>'#0ea5e9'],
-        'hangman'             => ['label'=>'Word Challenge',      'c'=>'#64748b'],
-        'video_comprehension' => ['label'=>'Video Activity',      'c'=>'#64748b'],
-        'external'            => ['label'=>'External Resource',   'c'=>'#64748b'],
-        'powerpoint'          => ['label'=>'Presentation',        'c'=>'#64748b'],
-        'pronunciation'       => ['label'=>'Pronunciation',       'c'=>'#64748b'],
-        'tracing'             => ['label'=>'Tracing Activity',    'c'=>'#64748b'],
-        'dictation'           => ['label'=>'Dictation',           'c'=>'#64748b'],
+        'flashcards'          => ['label'=>'Vocabulary',           'cls'=>'blue'],
+        'quiz'                => ['label'=>'Quiz',                 'cls'=>'purple'],
+        'multiple_choice'     => ['label'=>'Multiple Choice',      'cls'=>'purple'],
+        'drag_drop'           => ['label'=>'Fill in the Blanks',   'cls'=>'cyan'],
+        'writing_practice'    => ['label'=>'Writing Practice',     'cls'=>'green'],
+        'match'               => ['label'=>'Match the Pairs',      'cls'=>'orange'],
+        'order_sentences'     => ['label'=>'Order the Sentences',  'cls'=>'orange'],
+        'listen_order'        => ['label'=>'Listen & Order',       'cls'=>'cyan'],
+        'crossword'           => ['label'=>'Crossword',            'cls'=>'orange'],
+        'memory_cards'        => ['label'=>'Memory Cards',         'cls'=>'blue'],
+        'video_comprehension' => ['label'=>'Video Activity',       'cls'=>'blue'],
+        'hangman'             => ['label'=>'Word Challenge',       'cls'=>'pink'],
+        'external'            => ['label'=>'External Resource',    'cls'=>'pink'],
+        'powerpoint'          => ['label'=>'Presentation',         'cls'=>'pink'],
+        'pronunciation'       => ['label'=>'Pronunciation',        'cls'=>'pink'],
+        'tracing'             => ['label'=>'Tracing Activity',     'cls'=>'pink'],
+        'dictation'           => ['label'=>'Dictation',            'cls'=>'pink'],
     ];
-    return $map[$type] ?? ['label' => ucwords(str_replace('_',' ',$type)), 'c' => '#64748b'];
+    return $map[$type] ?? ['label' => ucwords(str_replace('_',' ',$type)), 'cls' => 'blue'];
 }
 
 function ws_head(int $n, string $type, string $title, string $instr, bool $isKey): string {
-    $cfg   = ws_cfg($type);
-    $color = $cfg['c'];
-    $label = h($cfg['label']);
-    $t     = trim($title);
-    $i     = trim($instr);
-    $out   = '<div class="ws-sec">';
-    $out  .= '<div class="ws-sec-hd" style="border-left:4px solid '.$color.';padding-left:12px">';
-    $out  .= '<div class="ws-badge">'.$n.'</div>';
-    $out  .= '<div class="ws-hd-meta">';
-    $out  .= '<div class="ws-hd-type" style="color:'.$color.'">'.$label.'</div>';
-    if ($t !== '' && $t !== $cfg['label']) $out .= '<div class="ws-hd-title">'.h($t).'</div>';
-    $out  .= '</div>';
-    if ($isKey) $out .= '<span class="ws-key-badge">Answer Key</span>';
-    $out  .= '</div>';
-    if ($i !== '') $out .= '<div class="ws-instr">'.h($i).'</div>';
+    $cfg = ws_cfg($type);
+    $cls = $cfg['cls'];
+    $lbl = h($cfg['label']);
+    $t   = trim($title);
+    $i   = trim($instr);
+    $out = '<div class="ws-sec"><div class="section-head '.$cls.'"><div class="num">'.$n.'</div>';
+    $out .= '<div><div class="section-kicker">'.$lbl;
+    if ($isKey) $out .= '<span class="key-tag">Answer Key</span>';
+    $out .= '</div>';
+    if ($t !== '' && $t !== $cfg['label']) $out .= '<div class="section-title">'.h($t).'</div>';
+    $out .= '</div></div><div class="card">';
+    if ($i !== '') $out .= '<div class="instruction">'.h($i).'</div>';
     return $out;
 }
-function ws_foot(): string { return '</div>'; }
+function ws_foot(): string { return '</div></div>'; }
 
 /* VOCABULARY */
 function ws_flashcards(array $d, int $n, bool $k): string {
     $cards = is_array($d['cards'] ?? null) ? $d['cards'] : [];
     $out   = ws_head($n,'flashcards',$d['title']??'','Study the vocabulary list below.',$k);
     if (empty($cards)) return $out.'<p class="ws-empty">No items.</p>'.ws_foot();
-    $out .= '<table class="ws-tbl"><thead><tr><th class="tc-hn">#</th><th>Word / Phrase</th><th class="tc-hw">Translation</th></tr></thead><tbody>';
-    foreach ($cards as $i => $c) {
-        $tx = trim((string)($c['text'] ?? ''));
-        if ($tx === '') continue;
-        $out .= '<tr class="'.($i%2===0?'tr-a':'tr-b').'"><td class="tc-n">'.($i+1).'</td><td class="tc-w">'.h($tx).'</td><td class="tc-bl">&nbsp;</td></tr>';
+    /* check if any card has an image */
+    $hasImages = false;
+    foreach ($cards as $c) { if (!empty($c['image'])) { $hasImages = true; break; } }
+    if ($hasImages) {
+        $out .= '<div class="fc-grid">';
+        foreach ($cards as $c) {
+            $tx  = trim((string)($c['text']  ?? ''));
+            $img = trim((string)($c['image'] ?? ''));
+            if ($tx === '' && $img === '') continue;
+            $out .= '<div class="fc-card">';
+            if ($img !== '') {
+                $out .= '<div class="fc-img"><img src="'.h($img).'" alt="'.h($tx).'" loading="lazy"></div>';
+            } else {
+                $out .= '<div class="fc-img" style="font-weight:600;color:#20324d;font-size:14px;padding:12px">'.h($tx).'</div>';
+            }
+            if ($tx !== '') $out .= '<div class="fc-label">'.h($tx).'</div>';
+            if (!$k) $out .= '<div class="fc-blank"></div>';
+            $out .= '</div>';
+        }
+        $out .= '</div>';
+    } else {
+        $out .= '<table class="ws-tbl"><thead><tr><th class="tc-hn">#</th><th>Word / Phrase</th><th class="tc-hw">Translation</th></tr></thead><tbody>';
+        foreach ($cards as $i => $c) {
+            $tx = trim((string)($c['text'] ?? ''));
+            if ($tx === '') continue;
+            $out .= '<tr class="'.($i%2===0?'tr-a':'tr-b').'"><td class="tc-n">'.($i+1).'</td><td class="tc-w">'.h($tx).'</td><td class="tc-bl">&nbsp;</td></tr>';
+        }
+        $out .= '</tbody></table>';
     }
-    return $out.'</tbody></table>'.ws_foot();
+    return $out.ws_foot();
 }
 
 /* QUIZ */
@@ -272,7 +292,7 @@ function ws_order(array $d, int $n, bool $k): string {
 function ws_listenorder(array $d, int $n, bool $k): string {
     $bl = is_array($d['blocks'] ?? null) ? $d['blocks'] : [];
     $sh = $bl; if (!$k) shuffle($sh);
-    $out = ws_head($n,'listen_order',$d['title']??'',' Listen and number the sentences in the correct order.',$k);
+    $out = ws_head($n,'listen_order',$d['title']??'','Listen and number the sentences in the correct order.',$k);
     foreach ($sh as $b) { $tx=trim((string)($b['sentence']??'')); if($tx==='') continue; $out .= '<div class="ws-or"><span class="ws-ob"></span><span class="ws-ot">'.h($tx).'</span></div>'; }
     return $out.ws_foot();
 }
@@ -294,27 +314,96 @@ function ws_crossword(array $d, int $n, bool $k): string {
 
 /* MEMORY CARDS */
 function ws_memory(array $d, int $n, bool $k): string {
-    $cards = is_array($d['cards']??null)?$d['cards']:(is_array($d['pairs']??null)?$d['pairs']:[]);
-    $out   = ws_head($n,'memory_cards',$d['title']??'','Write the matching word for each card.',$k);
-    $out  .= '<table class="ws-tbl"><thead><tr><th class="tc-hn">#</th><th>Card</th><th class="tc-hw">Match</th></tr></thead><tbody>';
-    foreach ($cards as $i => $c) {
-        $tx = trim((string)($c['text']??$c['word']??$c['front']??''));
-        if ($tx==='') continue;
-        $out .= '<tr class="'.($i%2===0?'tr-a':'tr-b').'"><td class="tc-n">'.($i+1).'</td><td class="tc-w">'.h($tx).'</td><td class="tc-bl">&nbsp;</td></tr>';
+    $pairs = is_array($d['pairs']??null) ? $d['pairs'] : (is_array($d['cards']??null) ? $d['cards'] : []);
+    $out   = ws_head($n,'memory_cards',$d['title']??'','Write the matching word or phrase for each card.',$k);
+    if (empty($pairs)) return $out.'<p class="ws-empty">No items.</p>'.ws_foot();
+    /* detect image sides */
+    $hasImg = false;
+    foreach ($pairs as $p) {
+        $l = $p['left'] ?? null; $r = $p['right'] ?? null;
+        if (($l && !empty($l['image'])) || ($r && !empty($r['image']))) { $hasImg = true; break; }
     }
-    return $out.'</tbody></table>'.ws_foot();
+    if ($hasImg) {
+        $out .= '<div class="mc-grid">';
+        foreach ($pairs as $p) {
+            $l = $p['left'] ?? null; $r = $p['right'] ?? null;
+            $imgUrl = ''; $lbl = '';
+            if ($l && !empty($l['image'])) {
+                $imgUrl = $l['image'];
+                $lbl    = $r ? trim((string)($r['text'] ?? '')) : '';
+            } elseif ($r && !empty($r['image'])) {
+                $imgUrl = $r['image'];
+                $lbl    = $l ? trim((string)($l['text'] ?? '')) : '';
+            } else {
+                $lbl = $l ? trim((string)($l['text'] ?? '')) : trim((string)($p['text'] ?? $p['word'] ?? $p['front'] ?? ''));
+            }
+            $out .= '<div class="mc-card">';
+            if ($imgUrl !== '') {
+                $out .= '<div class="mc-frame"><img src="'.h($imgUrl).'" alt="'.h($lbl).'" loading="lazy"></div>';
+                if ($k && $lbl !== '') {
+                    $out .= '<div class="mc-meta" style="color:#166534;font-weight:600">&#10003; '.h($lbl).'</div>';
+                } else {
+                    $out .= '<div class="mc-meta">&nbsp;</div>';
+                }
+            } else {
+                $out .= '<div class="mc-frame" style="font-weight:600;color:#20324d;font-size:14px">'.h($lbl).'</div>';
+                $out .= '<div class="mc-meta">&nbsp;</div>';
+            }
+            $out .= '</div>';
+        }
+        $out .= '</div>';
+    } else {
+        $out .= '<table class="ws-tbl"><thead><tr><th class="tc-hn">#</th><th>Card</th><th class="tc-hw">Match</th></tr></thead><tbody>';
+        foreach ($pairs as $i => $p) {
+            $l  = $p['left'] ?? null;
+            $tx = $l ? trim((string)($l['text'] ?? '')) : trim((string)($p['text'] ?? $p['word'] ?? $p['front'] ?? ''));
+            if ($tx === '') continue;
+            $out .= '<tr class="'.($i%2===0?'tr-a':'tr-b').'"><td class="tc-n">'.($i+1).'</td><td class="tc-w">'.h($tx).'</td><td class="tc-bl">&nbsp;</td></tr>';
+        }
+        $out .= '</tbody></table>';
+    }
+    return $out.ws_foot();
+}
+
+/* VIDEO COMPREHENSION */
+function ws_video_comp(array $d, int $n, bool $k): string {
+    $mode  = trim((string)($d['mode'] ?? 'quiz'));
+    $qs    = is_array($d['questions'] ?? null) ? $d['questions'] : [];
+    $instr = trim((string)($d['instructions'] ?? ''));
+    $ltrs  = ['A','B','C','D'];
+    if ($mode === 'video_only' || empty($qs)) {
+        $out = ws_head($n,'video_comprehension',$d['title']??'','Watch the video in the app and complete the activity.',$k);
+        $out .= '<div class="ws-hold">This activity requires video playback. Open it in the InglésDeUna app to complete it.</div>';
+        return $out.ws_foot();
+    }
+    $out = ws_head($n,'video_comprehension',$d['title']??'',($instr !== '' ? $instr : 'Watch the video and answer each question.'),$k);
+    foreach ($qs as $qi => $q) {
+        $qt = trim((string)($q['question'] ?? ''));
+        $op = is_array($q['options'] ?? null) ? $q['options'] : [];
+        $ck = (int)($q['correct'] ?? 0);
+        $ex = trim((string)($q['explanation'] ?? ''));
+        $out .= '<div class="ws-qb"><div class="ws-qt"><span class="ws-qn">'.($qi+1).'</span>'.h($qt).'</div><div class="ws-opts">';
+        foreach ($op as $oi => $o) {
+            $ot = trim((string)$o); if ($ot === '') continue;
+            $is = $k && $oi === $ck;
+            $out .= '<div class="ws-opt'.($is?' ws-ck':'').'"><span class="ws-ol">'.($ltrs[$oi]??chr(65+$oi)).'</span>'.h($ot).'</div>';
+        }
+        $out .= '</div>';
+        if ($k && $ex !== '') $out .= '<div class="ws-expl">&#128161; '.h($ex).'</div>';
+        $out .= '</div>';
+    }
+    return $out.ws_foot();
 }
 
 /* PLACEHOLDER */
 function ws_placeholder(string $type, int $n): string {
     static $msgs = [
-        'video_comprehension'=>'This activity contains a video. Complete it in the app.',
-        'external'           =>'This activity links to an external resource.',
-        'powerpoint'         =>'This is a Canva / PowerPoint presentation.',
-        'hangman'            =>'This is an interactive word challenge game.',
-        'pronunciation'      =>'This is a speaking / pronunciation activity.',
-        'tracing'            =>'This is a handwriting / tracing activity.',
-        'dictation'          =>'This is a dictation listening activity.',
+        'external'       => 'This activity links to an external resource. Open it in the app.',
+        'powerpoint'     => 'Presentation / Canva activity. Complete it in class.',
+        'hangman'        => 'Interactive word challenge. Complete it in the app.',
+        'pronunciation'  => 'Speaking and pronunciation activity. Complete it in class.',
+        'tracing'        => 'Handwriting and tracing activity. Complete it in the app.',
+        'dictation'      => 'Dictation activity. Listen and complete it with your teacher.',
     ];
     $out  = ws_head($n,$type,'','',false);
     $out .= '<div class="ws-hold">'.h($msgs[$type]??'This activity is interactive and cannot be printed.').'</div>';
@@ -337,8 +426,9 @@ foreach ($activities as $act) {
         case 'order_sentences':  $html = ws_order($data,$actN,$isTeacher);          break;
         case 'listen_order':     $html = ws_listenorder($data,$actN,$isTeacher);    break;
         case 'crossword':        $html = ws_crossword($data,$actN,$isTeacher);      break;
-        case 'memory_cards':     $html = ws_memory($data,$actN,$isTeacher);         break;
-        default:                 $html = ws_placeholder($type,$actN);               break;
+        case 'memory_cards':        $html = ws_memory($data,$actN,$isTeacher);       break;
+        case 'video_comprehension': $html = ws_video_comp($data,$actN,$isTeacher);   break;
+        default:                    $html = ws_placeholder($type,$actN);             break;
     }
     $sections[] = ['type'=>$type,'html'=>$html];
 }
@@ -352,138 +442,171 @@ $isKey  = $isTeacher;
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title><?= h($unitName) ?> &mdash; Worksheet</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&family=Fredoka:wght@400;500;600;700&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Poppins:wght@400;500;600;700;800&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
 <style>
 /* ── Design tokens ─────────────────────────────────────────── */
 :root{
-  --primary:#004080; --primary-lt:#1a5fa8; --primary-pale:#EAF3FF;
-  --accent:#D6F0FF;  --accent2:#c0e4ff;
-  --green-chip:#E6F7F0; --green-border:#a8dfca;
+  --navy:#20324d; --text:#223046; --muted:#66758a; --line:#d9e4ef;
+  --paper:#f7fbff; --white:#ffffff; --bg:#f8fcff;
+  --blue:#dfeeff;    --blue-strong:#3d7cf4;
+  --cyan:#dff6ff;    --cyan-strong:#1e9ecb;
+  --green:#e6f7ef;   --green-strong:#13a06f;
+  --orange:#fff0e3;  --orange-strong:#ef7c2b;
+  --purple:#f1e8ff;  --purple-strong:#8b5cf6;
+  --pink:#ffe7ef;    --pink-strong:#e64b7b;
   --answer:#10b981;  --answer-bg:#f0fdf4; --answer-border:#86efac;
-  --orange:#f14902;  --orange2:#d33d00;
-  --text:#333333;    --text2:#444444;     --text3:#666666;  --text4:#999999;
-  --border:#e0e0e0;  --border2:#cccccc;
-  --bg:#f7fafd;      --bg2:#eef4fb;       --white:#ffffff;
-  --r:8px;           --rL:12px;
-  --shadow-sm:0 2px 6px rgba(0,0,0,.06);
-  --shadow-md:0 4px 14px rgba(0,64,128,.10);
+  --border:#dce7f0;  --border2:#cfdceb;
+  --shadow:0 10px 30px rgba(31,61,111,.08);
+  --r:10px; --rL:16px;
 }
-/* ── Reset ─────────────────────────────────────────────────── */
+/* ── Reset ── */
 *{box-sizing:border-box;margin:0;padding:0}
 html{-webkit-print-color-adjust:exact;print-color-adjust:exact}
-body{font-family:'Poppins','Nunito','Segoe UI',Arial,sans-serif;font-size:14px;line-height:1.6;color:var(--text);background:#e8edf4}
-/* ── Toolbar (screen only) ─────────────────────────────────── */
-.toolbar{position:sticky;top:0;z-index:100;background:var(--primary);display:flex;align-items:center;gap:12px;padding:10px 24px;box-shadow:0 2px 14px rgba(0,64,128,.35);-webkit-print-color-adjust:exact;print-color-adjust:exact}
-.tb-brand{font-family:'Poppins',sans-serif;font-size:17px;font-weight:700;color:rgba(255,255,255,.80);margin-right:auto;letter-spacing:-.01em}
-.tb-unit{font-size:12px;font-weight:500;color:rgba(255,255,255,.55);max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+body{font-family:'Inter','Poppins','Segoe UI',Arial,sans-serif;font-size:14px;line-height:1.6;color:var(--text);background:radial-gradient(circle at top left,#eef6ff 0,transparent 28%),linear-gradient(180deg,#f5faff 0%,#eef6ff 100%);padding:0}
+/* ── Toolbar ── */
+.toolbar{position:sticky;top:0;z-index:100;background:var(--navy);display:flex;align-items:center;gap:12px;padding:10px 24px;box-shadow:0 2px 16px rgba(31,61,111,.3);-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.tb-brand{font-size:16px;font-weight:800;color:rgba(255,255,255,.80);margin-right:auto;letter-spacing:-.02em}
+.tb-unit{font-size:12px;font-weight:500;color:rgba(255,255,255,.5);max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .tb-badge{font-size:10px;font-weight:700;padding:3px 10px;border-radius:20px;text-transform:uppercase;letter-spacing:.06em}
-.b-ws{background:var(--orange);color:#fff}.b-key{background:var(--answer);color:#fff}
-.btn-print{background:linear-gradient(180deg,#f36022,var(--orange2));color:#fff;border:none;border-radius:var(--r);padding:8px 18px;font-size:13px;font-weight:700;font-family:inherit;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:6px;transition:filter .15s,transform .15s}
+.b-ws{background:var(--orange-strong);color:#fff}.b-key{background:var(--answer);color:#fff}
+.btn-print{background:var(--blue-strong);color:#fff;border:none;border-radius:8px;padding:8px 18px;font-size:13px;font-weight:700;font-family:inherit;cursor:pointer;display:inline-flex;align-items:center;gap:6px;transition:filter .15s,transform .15s}
 .btn-print:hover{filter:brightness(1.1);transform:translateY(-1px)}
-/* ── Document wrapper ──────────────────────────────────────── */
-.ws-doc{max-width:820px;margin:24px auto 60px;background:var(--white);box-shadow:0 8px 40px rgba(0,64,128,.14);border-radius:4px;overflow:hidden}
-/* ── Cover / header ────────────────────────────────────────── */
-.ws-cover{background:#fff;border-bottom:3px solid var(--accent);-webkit-print-color-adjust:exact;print-color-adjust:exact}
-.cover-body{padding:32px 48px 20px;display:flex;align-items:flex-start;gap:18px}
-.cover-logo{height:64px;width:auto;object-fit:contain;flex-shrink:0}
-.cover-logo-placeholder{height:64px;width:64px;border-radius:var(--r);background:var(--primary-pale);display:flex;align-items:center;justify-content:center;flex-shrink:0}
-.cover-logo-placeholder span{font-size:10px;font-weight:700;color:var(--primary);text-align:center;line-height:1.2;padding:4px}
-.cover-text{flex:1}
-.cover-title{font-family:'Poppins',sans-serif;font-size:26px;font-weight:700;color:var(--primary);line-height:1.15;margin-bottom:4px;letter-spacing:-.02em}
-.cover-prog{font-size:14px;font-weight:500;color:var(--text3);margin-bottom:8px}
-.cover-chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
-.chip{display:inline-flex;align-items:center;padding:4px 12px;border-radius:20px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-.chip-ct{background:var(--primary-pale);color:var(--primary);border:1px solid var(--accent2)}
-.chip-ws{background:var(--orange);color:#fff}
-.chip-key{background:var(--answer);color:#fff}
-.chip-dt{background:var(--bg2);color:var(--text3);border:1px solid var(--border)}
-.cover-info{background:var(--bg);border-top:1px solid var(--border);padding:16px 48px;display:grid;grid-template-columns:1fr 160px 160px;gap:16px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-.ci-field{display:flex;flex-direction:column;gap:5px}
-.ci-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.14em;color:var(--text4)}
-.ci-line{border-bottom:1.5px solid var(--border2);height:22px}
-/* ── Page header (repeats on print pages) ──────────────────── */
-.ws-hdr{display:flex;align-items:center;gap:10px;background:var(--primary);padding:8px 24px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-.hdr-brand{font-family:'Poppins',sans-serif;font-size:12px;font-weight:700;color:rgba(255,255,255,.70);white-space:nowrap}
-.hdr-sep{width:1px;height:14px;background:rgba(255,255,255,.25)}
+/* ── Document ── */
+.ws-doc{max-width:920px;margin:24px auto 60px;background:var(--white);box-shadow:var(--shadow);border-radius:4px;overflow:hidden}
+/* ── Cover ── */
+.ws-cover{background:#fff;padding:36px 36px 0;position:relative;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.brand-row{display:flex;justify-content:space-between;align-items:flex-start;gap:24px;margin-bottom:28px}
+.logo-box{min-width:120px;max-width:180px}
+.logo-box img{max-width:100%;height:auto;display:block;object-fit:contain;max-height:70px}
+.badge-row{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end}
+.badge{padding:8px 12px;border-radius:999px;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--navy);background:#eef5ff;border:1px solid #d7e5f6;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.hero{background:linear-gradient(135deg,#f8fbff 0%,#eaf4ff 55%,#f5edff 100%);border:1px solid #e0eaf5;border-radius:24px;padding:28px 30px;margin-bottom:22px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.eyebrow{font-size:12px;text-transform:uppercase;letter-spacing:.16em;font-weight:800;color:var(--blue-strong);margin-bottom:10px}
+.hero h1{margin:0 0 10px;font-size:clamp(24px,4vw,44px);line-height:1.05;letter-spacing:-.03em;color:var(--navy);font-weight:800}
+.hero p{margin:0;color:var(--muted);font-size:14px;line-height:1.65}
+.meta-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:22px}
+.meta-card{background:var(--paper);border:1px solid #e2ebf3;border-radius:18px;padding:16px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.meta-card span{display:block;color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.12em;font-weight:700;margin-bottom:14px}
+.ci-line{height:18px;border-bottom:2px solid var(--line)}
+.intro-card{background:#fcfeff;border:1px dashed #d5e4f2;border-radius:18px;padding:18px 20px;color:var(--muted);font-size:13px;line-height:1.7;margin-bottom:30px}
+/* ── Page header ── */
+.ws-hdr{display:flex;align-items:center;gap:10px;background:var(--navy);padding:8px 22px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.hdr-brand{font-size:11px;font-weight:700;color:rgba(255,255,255,.60);white-space:nowrap}
+.hdr-sep{width:1px;height:14px;background:rgba(255,255,255,.22)}
 .hdr-unit{font-size:12px;font-weight:600;color:#fff;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.hdr-fields{display:flex;gap:16px;flex-shrink:0}
-.hdr-f{display:flex;align-items:center;gap:5px;font-size:10px;font-weight:600;color:rgba(255,255,255,.55);white-space:nowrap}
-.hdr-f span{border-bottom:1px solid rgba(255,255,255,.30);display:inline-block;min-width:80px}
-/* ── Body padding ──────────────────────────────────────────── */
-.ws-body{padding:28px 40px}
-/* ── Activity cards ────────────────────────────────────────── */
-.ws-sec{background:#fff;border-radius:var(--rL);box-shadow:var(--shadow-sm);padding:20px 22px;margin-bottom:22px;break-inside:avoid;page-break-inside:avoid;border:1px solid #eaf0f8}
+.hdr-fields{display:flex;gap:14px;flex-shrink:0}
+.hdr-f{display:flex;align-items:center;gap:5px;font-size:10px;font-weight:600;color:rgba(255,255,255,.5);white-space:nowrap}
+.hdr-f span{border-bottom:1px solid rgba(255,255,255,.28);display:inline-block;min-width:80px}
+/* ── Body ── */
+.ws-body{padding:28px 36px}
+/* ── Activity section ── */
+.ws-sec{margin-bottom:26px;break-inside:avoid;page-break-inside:avoid}
 .ws-sec:last-child{margin-bottom:0}
-.ws-sec-hd{display:flex;align-items:center;gap:12px;margin-bottom:12px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-.ws-badge{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;min-width:32px;border-radius:50%;font-size:14px;font-weight:800;background:var(--primary-pale);color:var(--primary);-webkit-print-color-adjust:exact;print-color-adjust:exact}
-.ws-hd-meta{flex:1}
-.ws-hd-type{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:var(--text3)}
-.ws-hd-title{font-size:16px;font-weight:700;color:var(--primary);margin-top:2px}
-.ws-key-badge{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;background:var(--answer);color:#fff;padding:3px 9px;border-radius:12px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-.ws-instr{font-size:12px;font-style:italic;color:var(--text3);margin-bottom:12px;padding:0 2px}
-/* ── Tables ────────────────────────────────────────────────── */
-.ws-tbl{width:100%;border-collapse:collapse;font-size:13px;margin-top:4px}
-.ws-tbl thead th{background:var(--accent);text-align:left;padding:8px 12px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--primary);border:1px solid var(--border2);-webkit-print-color-adjust:exact;print-color-adjust:exact}
-.ws-tbl tbody td{padding:8px 12px;border:1px solid var(--border);vertical-align:middle}
+.section-head{display:flex;align-items:center;gap:14px;padding:13px 16px;border-radius:22px;border:1px solid transparent;margin-bottom:14px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.section-head.blue  {background:linear-gradient(90deg,var(--blue),#f7fbff);border-color:#d9e8fb}
+.section-head.cyan  {background:linear-gradient(90deg,var(--cyan),#f8fdff);border-color:#d8eef8}
+.section-head.green {background:linear-gradient(90deg,var(--green),#fbfffd);border-color:#d9eee6}
+.section-head.orange{background:linear-gradient(90deg,var(--orange),#fffaf7);border-color:#f3e1d1}
+.section-head.purple{background:linear-gradient(90deg,var(--purple),#fcf9ff);border-color:#e7ddfb}
+.section-head.pink  {background:linear-gradient(90deg,var(--pink),#fffafd);border-color:#f2d8e2}
+.num{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;font-weight:800;color:#fff;flex:0 0 44px;font-size:18px;box-shadow:0 8px 18px rgba(55,86,140,.16);-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.blue  .num{background:var(--blue-strong)}
+.cyan  .num{background:var(--cyan-strong)}
+.green .num{background:var(--green-strong)}
+.orange .num{background:var(--orange-strong)}
+.purple .num{background:var(--purple-strong)}
+.pink  .num{background:var(--pink-strong)}
+.section-kicker{font-size:11px;text-transform:uppercase;letter-spacing:.14em;font-weight:800;color:var(--muted);margin-bottom:2px}
+.section-title{font-size:16px;font-weight:800;color:var(--navy)}
+.key-tag{background:var(--answer);color:#fff;font-size:10px;padding:2px 8px;border-radius:10px;margin-left:6px;vertical-align:middle;font-weight:700;letter-spacing:.04em;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+/* ── Card ── */
+.card{border:1px solid #e1ebf4;background:#fff;border-radius:18px;padding:18px 20px}
+.instruction{color:var(--muted);font-style:italic;margin-bottom:14px;line-height:1.7;font-size:13px}
+/* ── Tables ── */
+table.ws-tbl{width:100%;border-collapse:collapse;overflow:hidden;border-radius:14px;border:1px solid var(--border);font-size:13px;margin-top:4px}
+table.ws-tbl th,table.ws-tbl td{border:1px solid var(--border);padding:10px 14px;text-align:left;vertical-align:middle}
+table.ws-tbl th{background:#f3f8fd;text-transform:uppercase;letter-spacing:.08em;font-size:11px;color:#56677d;font-weight:700;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 .tr-a td{background:var(--bg);-webkit-print-color-adjust:exact;print-color-adjust:exact}
 .tc-hn{width:36px;text-align:center}.tc-hw{width:180px}
-.tc-n{text-align:center;color:var(--text4);font-size:12px}.tc-w{font-weight:600}
-.tc-bl{color:var(--text4)}.tc-ak{color:var(--primary-lt);font-family:monospace;font-size:13px;letter-spacing:.04em;font-weight:700}
-/* ── Question blocks ───────────────────────────────────────── */
-.ws-qb{margin-bottom:16px;break-inside:avoid}
-.ws-qt{font-weight:600;font-size:14px;line-height:1.5;margin-bottom:8px;display:flex;align-items:flex-start;gap:8px}
-.ws-qn{display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:22px;border-radius:50%;background:var(--primary-pale);color:var(--primary);font-size:11px;font-weight:800;flex-shrink:0;margin-top:2px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-.ws-audio{color:var(--primary-lt);font-style:italic;font-size:13px}
-.ws-opts{display:grid;grid-template-columns:1fr 1fr;gap:6px 12px;padding-left:30px}
-.ws-opt{display:flex;align-items:center;gap:8px;border:1px solid var(--border2);border-radius:var(--r);padding:7px 10px;font-size:13px;background:var(--white);break-inside:avoid}
-.ws-ol{min-width:22px;height:22px;display:flex;align-items:center;justify-content:center;border-radius:50%;border:2px solid var(--accent2);background:var(--primary-pale);font-size:11px;font-weight:800;color:var(--primary);flex-shrink:0;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.tc-n{text-align:center;color:var(--muted);font-size:12px}.tc-w{font-weight:600}
+.tc-bl{color:var(--muted)}.tc-ak{color:var(--blue-strong);font-family:monospace;font-size:13px;letter-spacing:.04em;font-weight:700}
+/* ── Question blocks ── */
+.ws-qb{margin-bottom:18px;break-inside:avoid}
+.ws-qt{font-weight:600;font-size:14px;line-height:1.5;margin-bottom:10px;display:flex;align-items:flex-start;gap:10px}
+.ws-qn{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;background:var(--navy);color:#fff;font-size:12px;font-weight:800;flex:0 0 30px;margin-top:2px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.ws-audio{color:var(--cyan-strong);font-style:italic;font-size:13px}
+/* ── MCQ options ── */
+.ws-opts{display:grid;grid-template-columns:1fr 1fr;gap:10px 14px;margin-top:12px;padding-left:40px}
+.ws-opt{display:flex;align-items:center;gap:10px;border:1px solid var(--line);border-radius:14px;padding:10px 12px;font-size:13px;background:#fff;break-inside:avoid;min-height:48px}
+.ws-ol{width:30px;height:30px;border-radius:50%;border:2px solid var(--line);color:#607186;display:grid;place-items:center;font-weight:800;flex:0 0 30px;font-size:12px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 .ws-ck{background:var(--answer-bg);border-color:var(--answer);-webkit-print-color-adjust:exact;print-color-adjust:exact}
 .ws-ck .ws-ol{background:var(--answer);color:#fff;border-color:var(--answer);-webkit-print-color-adjust:exact;print-color-adjust:exact}
-.ws-expl{font-size:11px;color:#059669;background:var(--answer-bg);border-left:3px solid var(--answer);border-radius:0 6px 6px 0;padding:5px 10px;margin-top:6px;margin-left:30px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-/* ── Fill in the blanks ────────────────────────────────────── */
-.ws-bank{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:10px 12px;background:var(--green-chip);border:1px solid var(--green-border);border-radius:var(--r);margin-bottom:14px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-.ws-blbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#2d6a4f;margin-right:4px}
-.ws-chip{background:#fff;border:1px solid var(--border2);border-radius:20px;padding:4px 12px;font-size:13px;font-weight:600;color:var(--text2)}
-.ws-fr{display:flex;align-items:baseline;gap:8px;margin-bottom:10px;font-size:14px;line-height:1.8;break-inside:avoid}
-.ws-fn{font-size:12px;font-weight:700;color:var(--text3);min-width:20px}
-.ws-fs{color:var(--primary-lt);font-weight:600}.ws-fb{flex:1}
-/* ── Writing ───────────────────────────────────────────────── */
+.ws-expl{font-size:11px;color:#059669;background:var(--answer-bg);border-left:3px solid var(--answer);border-radius:0 6px 6px 0;padding:5px 10px;margin-top:8px;margin-left:40px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+/* ── Word bank / Fill in blanks ── */
+.ws-bank{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:12px 14px;border:1px dashed #cfe0ef;border-radius:16px;background:#f8fcff;margin-bottom:16px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.ws-blbl{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.1em;color:var(--blue-strong);margin-right:4px}
+.ws-chip{padding:8px 14px;border-radius:999px;background:#fff;border:1px solid #b9d7f1;color:var(--navy);font-weight:500;font-size:13px}
+.ws-fr{display:flex;align-items:baseline;gap:8px;margin-bottom:12px;font-size:14px;line-height:1.8;break-inside:avoid}
+.ws-fn{font-size:12px;font-weight:800;color:var(--muted);min-width:20px}
+.ws-fs{color:var(--blue-strong);font-weight:600}.ws-fb{flex:1}
+/* ── Writing practice ── */
 .ws-wb{margin-bottom:20px;break-inside:avoid}
-.ws-wi{font-size:12px;color:var(--text3);font-style:italic;margin:4px 0 8px 30px}
-.ws-lines{display:flex;flex-direction:column;gap:8px;margin-top:8px}
-.ws-line{border-bottom:1px solid var(--border2);height:28px;width:100%}
-.ws-ab{background:var(--answer-bg);border:1px solid var(--answer-border);border-radius:var(--r);padding:8px 12px;margin-left:30px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-.ws-ma{font-size:13px;color:#166534;font-weight:600;margin-bottom:4px}
+.ws-wi{font-size:12px;color:var(--muted);font-style:italic;margin:4px 0 8px 40px}
+.ws-lines{display:flex;flex-direction:column;gap:10px;margin-top:10px}
+.ws-line{height:28px;border-bottom:2px solid var(--line);width:100%}
+.ws-ab{background:var(--answer-bg);border:1px solid var(--answer-border);border-radius:12px;padding:8px 12px;margin-left:40px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.ws-ma{font-size:13px;color:#166534;font-weight:600;margin-bottom:3px}
 .ws-ma:last-child{margin-bottom:0}
-/* ── Match ─────────────────────────────────────────────────── */
-.ws-mcols{display:grid;grid-template-columns:1fr 1fr;gap:20px}
-.ws-chhd{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--primary);border-bottom:2px solid var(--accent);padding-bottom:7px;margin-bottom:8px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-.ws-mr{display:flex;align-items:center;gap:8px;padding:7px 6px;border-bottom:1px solid var(--border);font-size:13px}
-.ws-mn,.ws-ml{font-size:12px;font-weight:700;color:var(--text3);min-width:22px}
-.ws-mbl{display:inline-block;min-width:32px;border-bottom:1px solid var(--text)}.ws-mt{flex:1;line-height:1.4}
-/* ── Order ─────────────────────────────────────────────────── */
-.ws-or{display:flex;align-items:center;gap:10px;padding:8px 4px;border-bottom:1px solid var(--border);font-size:14px;break-inside:avoid}
-.ws-ob{width:34px;height:24px;min-width:34px;border:1px solid var(--border2);border-radius:4px;background:var(--primary-pale);-webkit-print-color-adjust:exact;print-color-adjust:exact}
+/* ── Match ── */
+.ws-mcols{display:grid;grid-template-columns:1fr 1fr;gap:24px}
+.ws-chhd{font-size:12px;text-transform:uppercase;letter-spacing:.12em;font-weight:800;color:#5c6d82;margin-bottom:10px;padding-bottom:8px;border-bottom:3px solid var(--line);-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.ws-mr{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #e5edf5;font-size:13px}
+.ws-mn,.ws-ml{font-size:12px;font-weight:700;color:var(--muted);min-width:22px}
+.ws-mbl{width:40px;height:2px;background:#475569;border-radius:2px;flex:0 0 40px;-webkit-print-color-adjust:exact;print-color-adjust:exact}.ws-mt{flex:1;line-height:1.4}
+/* ── Order ── */
+.ws-or{display:flex;align-items:center;gap:12px;padding:10px 4px;border-bottom:1px solid #e5edf5;font-size:14px;break-inside:avoid}
+.ws-ob{width:34px;height:28px;min-width:34px;border:2px solid var(--line);border-radius:8px;background:var(--bg);-webkit-print-color-adjust:exact;print-color-adjust:exact}
 .ws-ot{flex:1;line-height:1.4}
-/* ── Placeholder ───────────────────────────────────────────── */
-.ws-hold{text-align:center;padding:20px;background:var(--bg);border:1px dashed var(--border2);border-radius:var(--r);color:var(--text4);font-style:italic;font-size:13px}
-.ws-empty{font-size:12px;color:var(--text4);font-style:italic;padding:8px 0}
-/* ── Page divider (screen only) ────────────────────────────── */
+/* ── Flashcard image grid ── */
+.fc-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:4px}
+.fc-card{border:1px solid var(--border);border-radius:16px;overflow:hidden;background:#fff;break-inside:avoid}
+.fc-img{aspect-ratio:4/3;background:var(--bg);display:grid;place-items:center;overflow:hidden}
+.fc-img img{width:100%;height:100%;object-fit:cover;display:block}
+.fc-label{padding:8px 10px;border-top:1px solid var(--border);font-size:13px;font-weight:600;color:var(--navy);text-align:center}
+.fc-blank{padding:8px 10px;border-top:1px solid var(--border);color:var(--muted);min-height:30px;border-bottom:1px solid #b0bec5}
+/* ── Memory card grid ── */
+.mc-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.mc-card{border:1px solid var(--border);border-radius:16px;overflow:hidden;background:#fff;break-inside:avoid}
+.mc-frame{aspect-ratio:4/3;background:linear-gradient(135deg,#edf5ff,#f7fbff 60%);display:grid;place-items:center;color:var(--muted);font-size:12px;text-align:center;padding:10px;overflow:hidden}
+.mc-frame img{width:100%;height:100%;object-fit:cover;display:block}
+.mc-meta{padding:10px 12px;border-top:1px solid var(--border);font-size:13px;color:var(--muted)}
+/* ── Placeholder ── */
+.ws-hold{padding:22px;border:1px dashed var(--border);border-radius:16px;background:#fbfdff;color:var(--muted);text-align:center;font-style:italic;font-size:13px}
+.ws-empty{font-size:12px;color:var(--muted);font-style:italic;padding:8px 0}
+/* ── Screen page divider ── */
 .ws-pdiv{border:none;border-top:2px dashed var(--border);margin:28px 0}
 .ws-plbl{text-align:center;margin:-11px 0 28px}
-.ws-plbl span{background:var(--white);padding:0 14px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.14em;color:var(--border2)}
-/* ── Print ─────────────────────────────────────────────────── */
+.ws-plbl span{background:#fff;padding:0 14px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.14em;color:var(--border)}
+/* ── Print ── */
 @media print{
   @page{size:letter;margin:14mm 18mm}
-  body{background:#fff;font-size:12px}
+  body{background:#fff;font-size:12px;padding:0}
   .toolbar,.ws-pdiv,.ws-plbl{display:none!important}
   .ws-doc{box-shadow:none;border-radius:0;max-width:100%;margin:0}
-  .ws-body{padding:16px 20px}
-  .ws-sec{margin-bottom:16px;padding:16px 18px;break-inside:avoid;page-break-inside:avoid;box-shadow:none;border:1px solid #dde8f5}
-  .ws-cover,.ws-hdr,.chip,.ws-badge,.ws-key-badge,.ws-qn,.ws-ol{-webkit-print-color-adjust:exact;print-color-adjust:exact}
-  .ws-tbl thead th,.tr-a td,.ws-bank,.ws-ck,.ws-ck .ws-ol,.ws-expl,.ws-ab,.ws-ob{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .ws-body{padding:14px 20px}
+  .ws-sec{margin-bottom:18px;break-inside:avoid;page-break-inside:avoid}
+  .section-head,.num,.ws-qn,.ws-ol,.ws-ck,.ws-ck .ws-ol,.key-tag{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  table.ws-tbl th,.tr-a td,.ws-bank,.ws-chip,.ws-expl,.ws-ab,.ws-ob,.hero,.ws-hdr,.badge{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .card,.fc-card,.mc-card{break-inside:avoid;-webkit-print-color-adjust:exact;print-color-adjust:exact}
   .ws-opt{break-inside:avoid}
   a{color:inherit;text-decoration:none}
+}
+@media (max-width:820px){
+  .ws-cover{padding:22px 22px 0}
+  .brand-row{flex-direction:column}
+  .badge-row{justify-content:flex-start}
+  .meta-grid,.ws-mcols,.ws-opts,.fc-grid,.mc-grid{grid-template-columns:1fr}
 }
 </style>
 </head>
@@ -500,34 +623,40 @@ body{font-family:'Poppins','Nunito','Segoe UI',Arial,sans-serif;font-size:14px;l
 
   <!-- COVER -->
   <div class="ws-cover">
-
-    <div class="cover-body">
-      <!-- Logo -->
-      <div class="cover-logo-placeholder" aria-hidden="true">
-        <span>LET'S</span>
+    <div class="brand-row">
+      <div class="logo-box">
+        <img src="/lessons/lessons/hangman/assets/LETS%20NUEVO%20-%20copia.jpeg" alt="LET'S Institute">
       </div>
-      <!-- Title block -->
-      <div class="cover-text">
-        <div class="cover-title"><?= h($unitName) ?></div>
-        <div class="cover-prog"><?= h($programName) ?></div>
-        <?php $sub = implode(' &middot; ', array_filter([$unitLevel !== '' ? h($unitLevel) : '', $unitModule !== '' ? h($unitModule) : ''])); ?>
-        <div class="cover-chips">
-          <span class="chip chip-ct"><?= count($sections) ?> activit<?= count($sections)===1?'y':'ies' ?></span>
-          <?php if ($isKey): ?>
-            <span class="chip chip-key">&#10003; Answer Key</span>
-          <?php else: ?>
-            <span class="chip chip-ws">Worksheet</span>
-          <?php endif; ?>
-          <span class="chip chip-dt"><?= h($today) ?></span>
-          <?php if ($sub !== ''): ?><span class="chip chip-ct"><?= $sub ?></span><?php endif; ?>
-        </div>
+      <div class="badge-row">
+        <div class="badge"><?= h($programName) ?></div>
+        <?php if ($isKey): ?>
+          <div class="badge" style="background:#f0fdf4;border-color:#86efac;color:#166534;">&#10003; Answer Key</div>
+        <?php else: ?>
+          <div class="badge" style="background:#fff0e3;border-color:#fcd39a;color:#7c4a00;">Worksheet</div>
+        <?php endif; ?>
+        <div class="badge"><?= h($today) ?></div>
       </div>
     </div>
 
-    <div class="cover-info">
-      <div class="ci-field"><div class="ci-label">Full Name</div><div class="ci-line"></div></div>
-      <div class="ci-field"><div class="ci-label">Date</div><div class="ci-line"></div></div>
-      <div class="ci-field"><div class="ci-label">Group / Level</div><div class="ci-line"></div></div>
+    <div class="hero">
+      <div class="eyebrow">LET'S Institute &bull; <?= h($programName) ?></div>
+      <h1><?= h($unitName) ?></h1>
+      <?php
+        $heroParts = array_filter([$unitLevel, $unitModule]);
+        $heroSub   = implode(' &middot; ', array_map('h', $heroParts));
+      ?>
+      <p><?= $heroSub !== '' ? $heroSub.' &mdash; ' : '' ?><?= count($sections) ?> activit<?= count($sections)===1?'y':'ies' ?> included in this worksheet.</p>
+    </div>
+
+    <div class="meta-grid">
+      <div class="meta-card"><span>Student Name</span><div class="ci-line"></div></div>
+      <div class="meta-card"><span>Date</span><div class="ci-line"></div></div>
+      <div class="meta-card"><span>Group / Level</span><div class="ci-line"></div></div>
+    </div>
+
+    <div class="intro-card">
+      Read each section carefully and complete all activities. Write your answers clearly.
+      <?php if ($isKey): ?> <strong>This is the teacher&apos;s Answer Key &mdash; correct answers are highlighted.</strong><?php endif; ?>
     </div>
   </div><!-- /cover -->
 
