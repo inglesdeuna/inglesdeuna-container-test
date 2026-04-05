@@ -117,28 +117,28 @@ function normalize_data_blob(string $value, int $maxLength): string
     }
 
     $host = strtolower((string) ($parts['host'] ?? ''));
-    if ($host === '' || strpos($host, 'canva.com') === false) {
+    if ($host === '') {
+      return '';
+    }
+
+    // Non-Canva URLs: return as-is
+    if (strpos($host, 'canva.com') === false) {
       return $value;
     }
 
-    $path = (string) ($parts['path'] ?? '');
-    if ($path !== '' && preg_match('#/edit/?$#i', $path)) {
-      $path = preg_replace('#/edit/?$#i', '/view', $path);
+    // Canva URL: ensure the path ends with /view and add the bare ?embed flag.
+    // Canva requires exactly "?embed" (no value) for embeddable iframes.
+    $path = (string) ($parts['path'] ?? '/');
+    // Convert /edit to /view
+    $path = preg_replace('#/edit(/*)$#i', '/view', $path);
+    // Ensure path ends with /view (some share links omit it)
+    if (!preg_match('#/view$#i', $path)) {
+      $path = rtrim($path, '/') . '/view';
     }
-
-    $query = [];
-    if (!empty($parts['query'])) {
-      parse_str((string) $parts['query'], $query);
-    }
-    $query['embed'] = '1';
 
     $scheme = isset($parts['scheme']) ? strtolower((string) $parts['scheme']) : 'https';
-    $normalized = $scheme . '://' . $host . $path;
-    if (!empty($query)) {
-      $normalized .= '?' . http_build_query($query);
-    }
-
-    return $normalized;
+    // Strip all query params; append bare ?embed required by Canva
+    return $scheme . '://' . $host . $path . '?embed';
   }
 
 function normalize_powerpoint_payload($rawData): array
