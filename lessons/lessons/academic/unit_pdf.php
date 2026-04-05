@@ -437,11 +437,24 @@ function ws_dictation(array $d, int $n, bool $k): string {
     return $out.ws_foot();
 }
 
+/* POWERPOINT */
+function ws_powerpoint(array $d, int $n, bool $k): string {
+    $title = trim((string)($d['title'] ?? ''));
+    $out   = ws_head($n,'powerpoint',$title,'Watch the presentation carefully. Then summarize the main ideas below.',$k);
+    $out  .= '<div class="ppt-summary">';
+    $out  .= '<div class="ppt-summary-label">Summary</div>';
+    $out  .= '<div class="ppt-lines">';
+    for ($i = 0; $i < 8; $i++) {
+        $out .= '<div class="ppt-line"></div>';
+    }
+    $out  .= '</div></div>';
+    return $out.ws_foot();
+}
+
 /* PLACEHOLDER */
 function ws_placeholder(string $type, int $n): string {
     static $msgs = [
         'external'       => 'This activity links to an external resource. Open it in the app.',
-        'powerpoint'     => 'Presentation / Canva activity. Complete it in class.',
         'hangman'        => 'Interactive word challenge. Complete it in the app.',
         'pronunciation'  => 'Speaking and pronunciation activity. Complete it in class.',
         'tracing'        => 'Handwriting and tracing activity. Complete it in the app.',
@@ -470,6 +483,7 @@ foreach ($activities as $act) {
         case 'memory_cards':        $html = ws_memory($data,$actN,$isTeacher);       break;
         case 'video_comprehension': $html = ws_video_comp($data,$actN,$isTeacher);   break;
         case 'dictation':           $html = ws_dictation($data,$actN,$isTeacher);    break;
+        case 'powerpoint':           $html = ws_powerpoint($data,$actN,$isTeacher);   break;
         default:                    $html = ws_placeholder($type,$actN);             break;
     }
     $sections[] = ['type'=>$type,'html'=>$html];
@@ -633,6 +647,11 @@ table.ws-tbl th{background:#f3f8fd;text-transform:uppercase;letter-spacing:.08em
 .dt-answer{background:var(--answer-bg);border:1px solid var(--answer-border);border-radius:8px;padding:6px 10px;font-weight:700;color:#166534;font-size:13px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 .dt-lines{display:flex;flex-direction:column;gap:10px;padding-top:4px}
 .dt-line{height:0;border-bottom:1.5px solid #b0bfcc;width:100%}
+/* ── Powerpoint summary ── */
+.ppt-summary{padding:4px 0 8px}
+.ppt-summary-label{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin-bottom:10px}
+.ppt-lines{display:flex;flex-direction:column;gap:14px}
+.ppt-line{height:0;border-bottom:1.5px solid #b0bfcc;width:100%}
 /* ── Placeholder ── */
 .ws-hold{padding:22px;border:1px dashed var(--border);border-radius:16px;background:#fbfdff;color:var(--muted);text-align:center;font-style:italic;font-size:13px}
 .ws-empty{font-size:12px;color:var(--muted);font-style:italic;padding:8px 0}
