@@ -395,6 +395,48 @@ function ws_video_comp(array $d, int $n, bool $k): string {
     return $out.ws_foot();
 }
 
+/* DICTATION */
+function ws_dictation(array $d, int $n, bool $k): string {
+    $items = is_array($d['items'] ?? null) ? $d['items'] : [];
+    $instr = 'Listen to each item and write what you hear.';
+    $out   = ws_head($n,'dictation',$d['title']??'',$instr,$k);
+    if (empty($items)) {
+        $out .= '<div class="ws-hold">No items configured for this dictation.</div>';
+        return $out.ws_foot();
+    }
+    foreach ($items as $i => $item) {
+        $en  = trim((string)($item['en'] ?? ''));
+        $img = trim((string)($item['img'] ?? ''));
+        /* Calculate writing lines based on word count */
+        $wc    = $en !== '' ? count(preg_split('/\s+/', $en)) : 4;
+        $chars = $en !== '' ? mb_strlen($en) : 20;
+        /* 1 line per ~8 words, min 1, max 4 */
+        $lines = max(1, min(4, (int) ceil($wc / 8)));
+        /* Short words (1-3 words) = 1 line; sentences = 2-3 lines */
+        if ($wc <= 3)  { $lines = 1; }
+        elseif ($wc <= 8)  { $lines = 2; }
+        elseif ($wc <= 16) { $lines = 3; }
+        else               { $lines = 4; }
+        $out .= '<div class="dt-item">';
+        $out .= '<div class="dt-num">'.($i+1).'.</div>';
+        $out .= '<div class="dt-write">';
+        if ($img !== '') {
+            $out .= '<div class="dt-img"><img src="'.h($img).'" alt="item '.($i+1).'" loading="eager"></div>';
+        }
+        /* Answer key: show the text; student: show blank lines */
+        if ($k && $en !== '') {
+            $out .= '<div class="dt-answer">'.h($en).'</div>';
+        }
+        /* Always draw writing lines (guides for student + spacing for key) */
+        $out .= '<div class="dt-lines" style="--dt-lines:'.$lines.'">';
+        for ($l = 0; $l < $lines; $l++) {
+            $out .= '<div class="dt-line"></div>';
+        }
+        $out .= '</div></div></div>';
+    }
+    return $out.ws_foot();
+}
+
 /* PLACEHOLDER */
 function ws_placeholder(string $type, int $n): string {
     static $msgs = [
@@ -403,7 +445,6 @@ function ws_placeholder(string $type, int $n): string {
         'hangman'        => 'Interactive word challenge. Complete it in the app.',
         'pronunciation'  => 'Speaking and pronunciation activity. Complete it in class.',
         'tracing'        => 'Handwriting and tracing activity. Complete it in the app.',
-        'dictation'      => 'Dictation activity. Listen and complete it with your teacher.',
     ];
     $out  = ws_head($n,$type,'','',false);
     $out .= '<div class="ws-hold">'.h($msgs[$type]??'This activity is interactive and cannot be printed.').'</div>';
@@ -428,6 +469,7 @@ foreach ($activities as $act) {
         case 'crossword':        $html = ws_crossword($data,$actN,$isTeacher);      break;
         case 'memory_cards':        $html = ws_memory($data,$actN,$isTeacher);       break;
         case 'video_comprehension': $html = ws_video_comp($data,$actN,$isTeacher);   break;
+        case 'dictation':           $html = ws_dictation($data,$actN,$isTeacher);    break;
         default:                    $html = ws_placeholder($type,$actN);             break;
     }
     $sections[] = ['type'=>$type,'html'=>$html];
@@ -581,6 +623,16 @@ table.ws-tbl th{background:#f3f8fd;text-transform:uppercase;letter-spacing:.08em
 .mc-frame{aspect-ratio:4/3;background:#fff;display:grid;place-items:center;color:var(--muted);font-size:12px;text-align:center;padding:4px;overflow:hidden}
 .mc-frame img{max-width:100%;max-height:100%;width:auto;height:auto;object-fit:contain;display:block;margin:auto}
 .mc-meta{padding:10px 12px;border-top:1px solid var(--border);font-size:13px;color:var(--muted)}
+/* ── Dictation ── */
+.dt-item{display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid #eef2f7;break-inside:avoid;page-break-inside:avoid}
+.dt-item:last-child{border-bottom:none}
+.dt-num{min-width:28px;font-weight:800;color:var(--navy);font-size:14px;padding-top:2px}
+.dt-write{flex:1;display:flex;flex-direction:column;gap:6px}
+.dt-img{width:80px;height:60px;flex:0 0 80px;border-radius:10px;overflow:hidden;border:1px solid var(--border);background:#fff}
+.dt-img img{width:100%;height:100%;object-fit:contain;display:block}
+.dt-answer{background:var(--answer-bg);border:1px solid var(--answer-border);border-radius:8px;padding:6px 10px;font-weight:700;color:#166534;font-size:13px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.dt-lines{display:flex;flex-direction:column;gap:10px;padding-top:4px}
+.dt-line{height:0;border-bottom:1.5px solid #b0bfcc;width:100%}
 /* ── Placeholder ── */
 .ws-hold{padding:22px;border:1px dashed var(--border);border-radius:16px;background:#fbfdff;color:var(--muted);text-align:center;font-style:italic;font-size:13px}
 .ws-empty{font-size:12px;color:var(--muted);font-style:italic;padding:8px 0}
