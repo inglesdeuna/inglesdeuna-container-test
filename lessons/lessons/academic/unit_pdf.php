@@ -129,7 +129,7 @@ function ws_flashcards(array $d, int $n, bool $k): string {
             if ($tx === '' && $img === '') continue;
             $out .= '<div class="fc-card">';
             if ($img !== '') {
-                $out .= '<div class="fc-img"><img src="'.h($img).'" alt="'.h($tx).'" loading="lazy"></div>';
+                $out .= '<div class="fc-img"><img src="'.h($img).'" alt="'.h($tx).'" loading="eager"></div>';
             } else {
                 $out .= '<div class="fc-img" style="font-weight:600;color:#20324d;font-size:14px;padding:12px">'.h($tx).'</div>';
             }
@@ -339,7 +339,7 @@ function ws_memory(array $d, int $n, bool $k): string {
             }
             $out .= '<div class="mc-card">';
             if ($imgUrl !== '') {
-                $out .= '<div class="mc-frame"><img src="'.h($imgUrl).'" alt="'.h($lbl).'" loading="lazy"></div>';
+                $out .= '<div class="mc-frame"><img src="'.h($imgUrl).'" alt="'.h($lbl).'" loading="eager"></div>';
                 if ($k && $lbl !== '') {
                     $out .= '<div class="mc-meta" style="color:#166534;font-weight:600">&#10003; '.h($lbl).'</div>';
                 } else {
@@ -571,15 +571,15 @@ table.ws-tbl th{background:#f3f8fd;text-transform:uppercase;letter-spacing:.08em
 /* ── Flashcard image grid ── */
 .fc-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:4px}
 .fc-card{border:1px solid var(--border);border-radius:16px;overflow:hidden;background:#fff;break-inside:avoid}
-.fc-img{aspect-ratio:4/3;background:var(--bg);display:grid;place-items:center;overflow:hidden}
-.fc-img img{width:100%;height:100%;object-fit:cover;display:block}
+.fc-img{aspect-ratio:4/3;background:#fff;display:grid;place-items:center;overflow:hidden}
+.fc-img img{max-width:100%;max-height:100%;width:auto;height:auto;object-fit:contain;display:block;margin:auto}
 .fc-label{padding:8px 10px;border-top:1px solid var(--border);font-size:13px;font-weight:600;color:var(--navy);text-align:center}
 .fc-blank{padding:8px 10px;border-top:1px solid var(--border);color:var(--muted);min-height:30px;border-bottom:1px solid #b0bec5}
 /* ── Memory card grid ── */
 .mc-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
 .mc-card{border:1px solid var(--border);border-radius:16px;overflow:hidden;background:#fff;break-inside:avoid}
-.mc-frame{aspect-ratio:4/3;background:linear-gradient(135deg,#edf5ff,#f7fbff 60%);display:grid;place-items:center;color:var(--muted);font-size:12px;text-align:center;padding:10px;overflow:hidden}
-.mc-frame img{width:100%;height:100%;object-fit:cover;display:block}
+.mc-frame{aspect-ratio:4/3;background:#fff;display:grid;place-items:center;color:var(--muted);font-size:12px;text-align:center;padding:4px;overflow:hidden}
+.mc-frame img{max-width:100%;max-height:100%;width:auto;height:auto;object-fit:contain;display:block;margin:auto}
 .mc-meta{padding:10px 12px;border-top:1px solid var(--border);font-size:13px;color:var(--muted)}
 /* ── Placeholder ── */
 .ws-hold{padding:22px;border:1px dashed var(--border);border-radius:16px;background:#fbfdff;color:var(--muted);text-align:center;font-style:italic;font-size:13px}
@@ -598,8 +598,10 @@ table.ws-tbl th{background:#f3f8fd;text-transform:uppercase;letter-spacing:.08em
   .ws-sec{margin-bottom:18px;break-inside:avoid;page-break-inside:avoid}
   .section-head,.num,.ws-qn,.ws-ol,.ws-ck,.ws-ck .ws-ol,.key-tag{-webkit-print-color-adjust:exact;print-color-adjust:exact}
   table.ws-tbl th,.tr-a td,.ws-bank,.ws-chip,.ws-expl,.ws-ab,.ws-ob,.hero,.ws-hdr,.badge{-webkit-print-color-adjust:exact;print-color-adjust:exact}
-  .card,.fc-card,.mc-card{break-inside:avoid;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .card,.fc-card,.mc-card{break-inside:avoid;page-break-inside:avoid;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .fc-grid,.mc-grid{break-inside:avoid;page-break-inside:avoid}
   .ws-opt{break-inside:avoid}
+  img{max-width:100%;height:auto;-webkit-print-color-adjust:exact;print-color-adjust:exact}
   a{color:inherit;text-decoration:none}
 }
 @media (max-width:820px){
