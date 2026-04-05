@@ -451,12 +451,60 @@ function ws_powerpoint(array $d, int $n, bool $k): string {
     return $out.ws_foot();
 }
 
+/* PRONUNCIATION */
+function ws_pronunciation(array $d, int $n, bool $k): string {
+    $items = is_array($d['items'] ?? null) ? $d['items'] : [];
+    $out   = ws_head($n,'pronunciation',$d['title']??'','Practice the pronunciation of each word. Write the English word, pronunciation, and Spanish translation.',$k);
+    if (empty($items)) {
+        $out .= '<div class="ws-hold">No items configured for this pronunciation activity.</div>';
+        return $out.ws_foot();
+    }
+    $hasImg = false;
+    foreach ($items as $it) { if (trim((string)($it['img'] ?? '')) !== '') { $hasImg = true; break; } }
+    if ($hasImg) {
+        /* Image grid: each card shows the image + 3 fill-in rows */
+        $out .= '<div class="pr-grid">';
+        foreach ($items as $it) {
+            $img = trim((string)($it['img'] ?? ''));
+            $en  = trim((string)($it['en']  ?? ''));
+            $ph  = trim((string)($it['ph']  ?? ''));
+            $es  = trim((string)($it['es']  ?? ''));
+            $out .= '<div class="pr-card">';
+            if ($img !== '') {
+                $out .= '<div class="pr-img"><img src="'.h($img).'" alt="'.h($en).'" loading="eager"></div>';
+            } else {
+                $out .= '<div class="pr-img pr-img-txt">'.h($en).'</div>';
+            }
+            $out .= '<div class="pr-fields">';
+            $out .= '<div class="pr-field"><span class="pr-lbl">English</span>'    .($k && $en!=='' ? '<div class="pr-ans">'.h($en).'</div>' : '<div class="pr-blank"></div>').'</div>';
+            $out .= '<div class="pr-field"><span class="pr-lbl">Pronunciation</span>'.($k && $ph!=='' ? '<div class="pr-ans">'.h($ph).'</div>' : '<div class="pr-blank"></div>').'</div>';
+            $out .= '<div class="pr-field"><span class="pr-lbl">Spanish</span>'    .($k && $es!=='' ? '<div class="pr-ans">'.h($es).'</div>' : '<div class="pr-blank"></div>').'</div>';
+            $out .= '</div></div>';
+        }
+        $out .= '</div>';
+    } else {
+        /* No images: table with 3 write-in columns */
+        $out .= '<table class="ws-tbl pr-tbl"><thead><tr><th>#</th><th>English</th><th>Pronunciation</th><th>Spanish</th></tr></thead><tbody>';
+        foreach ($items as $i => $it) {
+            $en = trim((string)($it['en'] ?? ''));
+            $ph = trim((string)($it['ph'] ?? ''));
+            $es = trim((string)($it['es'] ?? ''));
+            $cls = $i % 2 === 0 ? 'tr-a' : '';
+            $out .= '<tr class="'.$cls.'"><td class="tc-n">'.($i+1).'</td>';
+            $out .= '<td>'.($k && $en!=='' ? '<span class="tc-ak">'.h($en).'</span>' : '&nbsp;').'</td>';
+            $out .= '<td>'.($k && $ph!=='' ? h($ph) : '&nbsp;').'</td>';
+            $out .= '<td>'.($k && $es!=='' ? h($es) : '&nbsp;').'</td></tr>';
+        }
+        $out .= '</tbody></table>';
+    }
+    return $out.ws_foot();
+}
+
 /* PLACEHOLDER */
 function ws_placeholder(string $type, int $n): string {
     static $msgs = [
         'external'       => 'This activity links to an external resource. Open it in the app.',
         'hangman'        => 'Interactive word challenge. Complete it in the app.',
-        'pronunciation'  => 'Speaking and pronunciation activity. Complete it in class.',
         'tracing'        => 'Handwriting and tracing activity. Complete it in the app.',
     ];
     $out  = ws_head($n,$type,'','',false);
@@ -483,8 +531,9 @@ foreach ($activities as $act) {
         case 'memory_cards':        $html = ws_memory($data,$actN,$isTeacher);       break;
         case 'video_comprehension': $html = ws_video_comp($data,$actN,$isTeacher);   break;
         case 'dictation':           $html = ws_dictation($data,$actN,$isTeacher);    break;
-        case 'powerpoint':           $html = ws_powerpoint($data,$actN,$isTeacher);   break;
-        default:                    $html = ws_placeholder($type,$actN);             break;
+        case 'powerpoint':           $html = ws_powerpoint($data,$actN,$isTeacher);    break;
+        case 'pronunciation':        $html = ws_pronunciation($data,$actN,$isTeacher);  break;
+        default:                    $html = ws_placeholder($type,$actN);              break;
     }
     $sections[] = ['type'=>$type,'html'=>$html];
 }
@@ -647,6 +696,21 @@ table.ws-tbl th{background:#f3f8fd;text-transform:uppercase;letter-spacing:.08em
 .dt-answer{background:var(--answer-bg);border:1px solid var(--answer-border);border-radius:8px;padding:6px 10px;font-weight:700;color:#166534;font-size:13px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 .dt-lines{display:flex;flex-direction:column;gap:10px;padding-top:4px}
 .dt-line{height:0;border-bottom:1.5px solid #b0bfcc;width:100%}
+/* ── Pronunciation ── */
+.pr-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:4px}
+.pr-card{border:1px solid var(--border);border-radius:16px;overflow:hidden;background:#fff;break-inside:avoid;page-break-inside:avoid;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.pr-img{aspect-ratio:4/3;background:#f8fbff;display:grid;place-items:center;overflow:hidden;border-bottom:1px solid var(--border)}
+.pr-img img{max-width:100%;max-height:100%;width:auto;height:auto;object-fit:contain;display:block;margin:auto}
+.pr-img-txt{font-weight:700;font-size:15px;color:var(--navy);padding:12px;text-align:center}
+.pr-fields{padding:8px 10px;display:flex;flex-direction:column;gap:6px}
+.pr-field{display:flex;flex-direction:column;gap:2px}
+.pr-lbl{font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.1em;color:var(--muted)}
+.pr-blank{height:20px;border-bottom:1.5px solid #b0bfcc;width:100%}
+.pr-ans{font-size:12px;font-weight:600;color:var(--answer);background:var(--answer-bg);border-radius:4px;padding:2px 6px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.pr-tbl th:nth-child(2),.pr-tbl td:nth-child(2){width:30%}
+.pr-tbl th:nth-child(3),.pr-tbl td:nth-child(3){width:30%}
+.pr-tbl th:nth-child(4),.pr-tbl td:nth-child(4){width:30%}
+@media print{.pr-grid{grid-template-columns:repeat(3,1fr)}.pr-card{break-inside:avoid;page-break-inside:avoid}}
 /* ── Powerpoint summary ── */
 .ppt-summary{padding:4px 0 8px}
 .ppt-summary-label{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin-bottom:10px}
