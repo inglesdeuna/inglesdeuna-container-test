@@ -658,10 +658,27 @@ function loadSentence() {
   }
 
   let renderedText = currentText;
+
+  // Find each answer's first position in the ORIGINAL text so blank order
+  // matches the left-to-right visual order in the sentence, regardless of
+  // the order the words were saved in missing_words.
+  var wordMatches = [];
   currentAnswers.forEach(function (word) {
-    const escaped = word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const regex = new RegExp('\\b' + escaped + '\\b', 'i');
-    renderedText = renderedText.replace(regex, '[[BLANK]]');
+    var escaped = word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    var regex = new RegExp('\\b' + escaped + '\\b', 'i');
+    var match = regex.exec(currentText);
+    if (match) {
+      wordMatches.push({ word: word, pos: match.index, len: match[0].length });
+    }
+  });
+
+  // Sort ascending so blank 0 = leftmost occurrence, blank 1 = next, etc.
+  wordMatches.sort(function (a, b) { return a.pos - b.pos; });
+  currentAnswers = wordMatches.map(function (wm) { return wm.word; });
+
+  // Replace from rightmost to leftmost so earlier offsets stay valid.
+  wordMatches.slice().sort(function (a, b) { return b.pos - a.pos; }).forEach(function (wm) {
+    renderedText = renderedText.slice(0, wm.pos) + '[[BLANK]]' + renderedText.slice(wm.pos + wm.len);
   });
 
   const parts = renderedText.split('[[BLANK]]');
