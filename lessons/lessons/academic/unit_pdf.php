@@ -676,15 +676,15 @@ table.ws-tbl th{background:#f3f8fd;text-transform:uppercase;letter-spacing:.08em
 /* ── Flashcard image grid ── */
 .fc-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:4px}
 .fc-card{border:1px solid var(--border);border-radius:16px;overflow:hidden;background:#fff;break-inside:avoid}
-.fc-img{aspect-ratio:4/3;background:#fff;display:grid;place-items:center;overflow:hidden}
-.fc-img img{max-width:100%;max-height:100%;width:auto;height:auto;object-fit:contain;display:block;margin:auto}
+.fc-img{height:130px;background:#fff;display:flex;align-items:center;justify-content:center;padding:10px;}
+.fc-img img{max-width:100%;max-height:110px;width:auto;height:auto;object-fit:contain;display:block;border-radius:6px}
 .fc-label{padding:8px 10px;border-top:1px solid var(--border);font-size:13px;font-weight:600;color:var(--navy);text-align:center}
 .fc-blank{padding:8px 10px;border-top:1px solid var(--border);color:var(--muted);min-height:30px;border-bottom:1px solid #b0bec5}
 /* ── Memory card grid ── */
 .mc-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
 .mc-card{border:1px solid var(--border);border-radius:16px;overflow:hidden;background:#fff;break-inside:avoid}
-.mc-frame{aspect-ratio:4/3;background:#fff;display:grid;place-items:center;color:var(--muted);font-size:12px;text-align:center;padding:4px;overflow:hidden}
-.mc-frame img{max-width:100%;max-height:100%;width:auto;height:auto;object-fit:contain;display:block;margin:auto}
+.mc-frame{height:130px;background:#fff;display:flex;align-items:center;justify-content:center;padding:10px;color:var(--muted);font-size:12px;text-align:center}
+.mc-frame img{max-width:100%;max-height:110px;width:auto;height:auto;object-fit:contain;display:block;border-radius:6px}
 .mc-meta{padding:10px 12px;border-top:1px solid var(--border);font-size:13px;color:var(--muted)}
 /* ── Dictation ── */
 .dt-item{display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid #eef2f7;break-inside:avoid;page-break-inside:avoid}
@@ -699,8 +699,8 @@ table.ws-tbl th{background:#f3f8fd;text-transform:uppercase;letter-spacing:.08em
 /* ── Pronunciation ── */
 .pr-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:4px}
 .pr-card{border:1px solid var(--border);border-radius:16px;overflow:hidden;background:#fff;break-inside:avoid;page-break-inside:avoid;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-.pr-img{aspect-ratio:4/3;background:#f8fbff;display:grid;place-items:center;overflow:hidden;border-bottom:1px solid var(--border)}
-.pr-img img{max-width:100%;max-height:100%;width:auto;height:auto;object-fit:contain;display:block;margin:auto}
+.pr-img{height:130px;background:#fff;display:flex;align-items:center;justify-content:center;padding:10px;border-bottom:1px solid var(--border)}
+.pr-img img{max-width:100%;max-height:110px;width:auto;height:auto;object-fit:contain;display:block;border-radius:6px}
 .pr-img-txt{font-weight:700;font-size:15px;color:var(--navy);padding:12px;text-align:center}
 .pr-fields{padding:8px 10px;display:flex;flex-direction:column;gap:6px}
 .pr-field{display:flex;flex-direction:column;gap:2px}
