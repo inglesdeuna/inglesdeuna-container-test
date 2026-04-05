@@ -186,19 +186,41 @@ function ws_mc(array $d, int $n, bool $k): string {
     foreach ($qs as $qi => $q) {
         $qt  = trim((string)($q['question']     ?? ''));
         $qtp = $q['question_type'] ?? 'text';
+        $qimg= trim((string)($q['image']        ?? ''));
         $op  = is_array($q['options'] ?? null) ? $q['options'] : [];
         $otp = $q['option_type'] ?? 'text';
         $ck  = (int)($q['correct'] ?? 0);
         $out .= '<div class="ws-qb"><div class="ws-qt"><span class="ws-qn">'.($qi+1).'</span>';
-        $out .= ($qtp==='listen') ? '<em class="ws-audio">&#127911; Listen and choose.</em>' : h($qt);
-        $out .= '</div><div class="ws-opts">';
-        foreach ($op as $oi => $o) {
-            $ot = trim((string)$o);
-            $is = $k && $oi===$ck;
-            $dp = ($otp==='image') ? '[image '.($oi+1).']' : $ot;
-            $out .= '<div class="ws-opt'.($is?' ws-ck':'').'"><span class="ws-ol">'.($ltrs[$oi]??chr(65+$oi)).'</span>'.h($dp).'</div>';
+        if ($qtp === 'listen') {
+            $out .= '<em class="ws-audio">&#127911; Listen and choose.</em>';
+        } else {
+            if ($qt !== '') $out .= h($qt);
+            if ($qimg !== '') $out .= '<div class="mc-qimg"><img src="'.h($qimg).'" alt="" loading="eager"></div>';
         }
-        $out .= '</div></div>';
+        $out .= '</div>';
+        if ($otp === 'image') {
+            $out .= '<div class="mc-img-opts">';
+            foreach ($op as $oi => $o) {
+                $url = trim((string)$o);
+                $is  = $k && $oi === $ck;
+                $out .= '<div class="mc-img-opt'.($is?' ws-ck':'').'">';
+                $out .= '<span class="ws-ol">'.($ltrs[$oi]??chr(65+$oi)).'</span>';
+                if ($url !== '') {
+                    $out .= '<div class="mc-frame"><img src="'.h($url).'" alt="Option '.($ltrs[$oi]??chr(65+$oi)).'" loading="eager"></div>';
+                }
+                $out .= '</div>';
+            }
+            $out .= '</div>';
+        } else {
+            $out .= '<div class="ws-opts">';
+            foreach ($op as $oi => $o) {
+                $ot = trim((string)$o);
+                $is = $k && $oi === $ck;
+                $out .= '<div class="ws-opt'.($is?' ws-ck':'').'"><span class="ws-ol">'.($ltrs[$oi]??chr(65+$oi)).'</span>'.h($ot).'</div>';
+            }
+            $out .= '</div>';
+        }
+        $out .= '</div>';
     }
     return $out.ws_foot();
 }
@@ -693,6 +715,15 @@ table.ws-tbl th{background:#f3f8fd;text-transform:uppercase;letter-spacing:.08em
 .mc-frame{height:130px;background:#fff;display:flex;align-items:center;justify-content:center;padding:10px;color:var(--muted);font-size:12px;text-align:center}
 .mc-frame img{max-width:100%;max-height:110px;width:auto;height:auto;object-fit:contain;display:block;border-radius:6px}
 .mc-meta{padding:10px 12px;border-top:1px solid var(--border);font-size:13px;color:var(--muted)}
+/* ── MC image options ── */
+.mc-qimg{margin:6px 0 0;text-align:center}
+.mc-qimg img{max-width:100%;max-height:120px;object-fit:contain;border-radius:8px;border:1px solid var(--border)}
+.mc-img-opts{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:6px}
+.mc-img-opt{border:1px solid var(--border);border-radius:12px;overflow:hidden;background:#fff;break-inside:avoid;display:flex;flex-direction:column;align-items:center;padding:6px}
+.mc-img-opt .mc-frame{width:100%;height:100px;padding:6px}
+.mc-img-opt .mc-frame img{max-height:88px}
+.mc-img-opt .ws-ol{font-weight:800;color:var(--navy);font-size:12px;margin-bottom:4px}
+.mc-img-opt.ws-ck{background:var(--answer-bg);border-color:var(--answer-border);-webkit-print-color-adjust:exact;print-color-adjust:exact}
 /* ── Dictation ── */
 .dt-item{display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid #eef2f7;break-inside:avoid;page-break-inside:avoid}
 .dt-item:last-child{border-bottom:none}
