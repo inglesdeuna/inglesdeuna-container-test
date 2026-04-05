@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 session_start();
 
 $isTeacher = !empty($_SESSION['academic_logged']) || !empty($_SESSION['admin_logged']);
