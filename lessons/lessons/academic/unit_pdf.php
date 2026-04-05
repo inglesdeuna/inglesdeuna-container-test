@@ -133,8 +133,12 @@ function ws_flashcards(array $d, int $n, bool $k): string {
             } else {
                 $out .= '<div class="fc-img" style="font-weight:600;color:#20324d;font-size:14px;padding:12px">'.h($tx).'</div>';
             }
-            if ($tx !== '') $out .= '<div class="fc-label">'.h($tx).'</div>';
-            if (!$k) $out .= '<div class="fc-blank"></div>';
+            /* Always show blank write-in area; teacher key shows the word */
+            if ($k && $tx !== '') {
+                $out .= '<div class="fc-label">'.h($tx).'</div>';
+            } else {
+                $out .= '<div class="fc-blank"></div>';
+            }
             $out .= '</div>';
         }
         $out .= '</div>';
@@ -372,8 +376,8 @@ function ws_video_comp(array $d, int $n, bool $k): string {
     $instr = trim((string)($d['instructions'] ?? ''));
     $ltrs  = ['A','B','C','D'];
     if ($mode === 'video_only' || empty($qs)) {
-        $out = ws_head($n,'video_comprehension',$d['title']??'','Watch the video in the app and complete the activity.',$k);
-        $out .= '<div class="ws-hold">This activity requires video playback. Open it in the InglésDeUna app to complete it.</div>';
+        $out = ws_head($n,'video_comprehension',$d['title']??'','Watch the video carefully. Use the space below to write your notes and answers.',$k);
+        $out .= '<div class="act-notes-box"></div>';
         return $out.ws_foot();
     }
     $out = ws_head($n,'video_comprehension',$d['title']??'',($instr !== '' ? $instr : 'Watch the video and answer each question.'),$k);
@@ -440,14 +444,8 @@ function ws_dictation(array $d, int $n, bool $k): string {
 /* POWERPOINT */
 function ws_powerpoint(array $d, int $n, bool $k): string {
     $title = trim((string)($d['title'] ?? ''));
-    $out   = ws_head($n,'powerpoint',$title,'Watch the presentation carefully. Then summarize the main ideas below.',$k);
-    $out  .= '<div class="ppt-summary">';
-    $out  .= '<div class="ppt-summary-label">Summary</div>';
-    $out  .= '<div class="ppt-lines">';
-    for ($i = 0; $i < 8; $i++) {
-        $out .= '<div class="ppt-line"></div>';
-    }
-    $out  .= '</div></div>';
+    $out   = ws_head($n,'powerpoint',$title,'Watch the presentation carefully. Use the space below to write your notes and summarize the main ideas.',$k);
+    $out  .= '<div class="act-notes-box"></div>';
     return $out.ws_foot();
 }
 
