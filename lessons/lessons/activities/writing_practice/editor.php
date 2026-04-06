@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
@@ -357,12 +357,11 @@ ob_start();
                        placeholder="Ej: Escribe al menos 3 oraciones completas.">
             </div>
 
-            <!-- Audio  only listen_write -->
-            <div class="wp-audio-row<?= $type==='listen_write' ? ' visible' : '' ?>">
+            <!-- Audio row (not used – listen_write now uses TTS) -->
+            <div class="wp-audio-row">
                 <label> URL del audio (MP3/OGG)</label>
                 <input type="url" name="wp_media[]"
-                       value="<?= $type==='listen_write' ? htmlspecialchars($media, ENT_QUOTES, 'UTF-8') : '' ?>"
-                       <?= $type!=='listen_write' ? 'disabled' : '' ?>
+                       value="" disabled
                        placeholder="https://example.com/audio.mp3">
             </div>
 
@@ -384,7 +383,7 @@ ob_start();
                 </div>
             </div>
 
-            <?php if ($type!=='listen_write' && $type!=='video_writing'): ?>
+            <?php if ($type!=='video_writing'): ?>
                 <input type="hidden" name="wp_media[]" value="">
             <?php endif; ?>
 
@@ -425,11 +424,7 @@ function wpToggleMedia(select) {
     }
     if (hidden) { hidden.disabled = false; }
 
-    if (type === 'listen_write' && audioRow) {
-        audioRow.classList.add('visible');
-        audioRow.querySelectorAll('input').forEach(function(inp){ inp.disabled = false; });
-        if (hidden) { hidden.disabled = true; }
-    } else if (type === 'video_writing' && videoRow) {
+    if (type === 'video_writing' && videoRow) {
         videoRow.classList.add('visible');
         videoRow.querySelectorAll('input').forEach(function(inp){ inp.disabled = false; });
         if (hidden) { hidden.disabled = true; }

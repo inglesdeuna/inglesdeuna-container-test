@@ -826,18 +826,10 @@ document.addEventListener('DOMContentLoaded', function () {
             mediaArea.appendChild(note);
         }
 
-        /* ── listen_write: audio + TTS ── */
+        /* ── listen_write: TTS button only ── */
         if (type === 'listen_write') {
             var audioWrap = document.createElement('div');
             audioWrap.className = 'wp-audio-wrap';
-            if (q.media) {
-                var audio = document.createElement('audio');
-                audio.controls = true; audio.preload = 'none';
-                var src = document.createElement('source');
-                src.src = String(q.media);
-                audio.appendChild(src);
-                audioWrap.appendChild(audio);
-            }
             var ttsBtn = document.createElement('button');
             ttsBtn.type      = 'button';
             ttsBtn.className = 'mc-btn mc-btn-listen-wp';
@@ -884,7 +876,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         /* ── question text ── */
-        if (type === 'fill_sentence' || type === 'fill_paragraph') {
+        if (type === 'fill_sentence' || type === 'fill_paragraph' || type === 'listen_write') {
             answerEl.style.display = 'none';
             var rawText = String(q.question || '');
             var fillBox = document.createElement('div');
@@ -941,7 +933,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         /* restore state if user navigated back */
         if (checkedCards[index]) {
-            var isFillType     = (type === 'fill_sentence' || type === 'fill_paragraph');
+            var isFillType     = (type === 'fill_sentence' || type === 'fill_paragraph' || type === 'listen_write');
             var wasCardCorrect = checkedCards[index] === 'correct';
             if (isFillType && currentFillInputs.length > 0) {
                 var savedVals = checkedCards[index + '_inputs'] || [];
@@ -986,7 +978,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!isAutoGraded(q)) { return; }
         if (checkedCards[index]) { return; }
 
-        var isFill = (type === 'fill_sentence' || type === 'fill_paragraph') && currentFillInputs.length > 0;
+        var isFill = (type === 'fill_sentence' || type === 'fill_paragraph' || type === 'listen_write') && currentFillInputs.length > 0;
 
         if (isFill) {
             var vals    = currentFillInputs.map(function (fi) { return fi.value.trim(); });
@@ -1080,7 +1072,7 @@ document.addEventListener('DOMContentLoaded', function () {
         var q    = questions[index];
         var type = String(q.type || 'writing');
         if (!isAutoGraded(q) || checkedCards[index]) { return; }
-        var isFill = (type === 'fill_sentence' || type === 'fill_paragraph') && currentFillInputs.length > 0;
+        var isFill = (type === 'fill_sentence' || type === 'fill_paragraph' || type === 'listen_write') && currentFillInputs.length > 0;
         if (isFill) {
             if (currentFillInputs.every(function (fi) { return fi.value.trim() !== ''; })) { checkAnswer(); }
         } else {
@@ -1096,7 +1088,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         if (isAutoGraded(q)) {
             /* must check first */
-            var isFillNext = (type === 'fill_sentence' || type === 'fill_paragraph') && currentFillInputs.length > 0;
+            var isFillNext = (type === 'fill_sentence' || type === 'fill_paragraph' || type === 'listen_write') && currentFillInputs.length > 0;
             if (!checkedCards[index]) {
                 if (isFillNext) {
                     if (currentFillInputs.some(function (fi) { return fi.value.trim() !== ''; })) { checkAnswer(); }
@@ -1146,7 +1138,7 @@ document.addEventListener('DOMContentLoaded', function () {
         var answers = q.correct_answers || [];
         if (answers.length === 0) { return; }
 
-        var isFill = (type === 'fill_sentence' || type === 'fill_paragraph') && currentFillInputs.length > 0;
+        var isFill = (type === 'fill_sentence' || type === 'fill_paragraph' || type === 'listen_write') && currentFillInputs.length > 0;
         if (isFill) {
             var shownFill = answers.join(', ');
             if (!checkedCards[index]) {
