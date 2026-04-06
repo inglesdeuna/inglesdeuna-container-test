@@ -667,7 +667,7 @@ function usLoadSentence() {
     usFeedback.className = '';
 
     // Clear build area (keep placeholder)
-    Array.prototype.slice.call(usBuildArea.querySelectorAll('.built-chip')).forEach(function (c) { c.remove(); });
+    Array.prototype.slice.call(usBuildArea.querySelectorAll('.built-chip, .correct-chip, .incorrect-chip')).forEach(function (c) { c.remove(); });
     usUpdatePlaceholder();
     usWordBank.innerHTML = '';
 
