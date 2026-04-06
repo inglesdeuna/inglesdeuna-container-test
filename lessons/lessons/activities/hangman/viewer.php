@@ -147,22 +147,27 @@ h1{
   padding:16px;
   max-width:980px;
   margin:0 auto 14px;
+  position:relative;
 }
 
 .game-layout{
-  display:grid;
-  grid-template-columns:minmax(0, 1fr) 200px;
-  gap:12px;
-  align-items:start;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  position:relative;
 }
 
 .left-panel{
-  min-width:0;
+  width:100%;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
 }
 
 .right-panel{
-  display:flex;
-  justify-content:flex-end;
+  position:absolute;
+  top:0;
+  right:0;
 }
 
 .hangman-wrap{
@@ -364,8 +369,6 @@ a.back{
   .subtitle{font-size:13px}
   .hangman-intro,
   .game-box{padding:16px}
-  .game-layout{grid-template-columns:1fr}
-  .right-panel{justify-content:center}
   .hint-image{max-width:120px;max-height:96px}
   #hangmanImg{width:160px}
   .keyboard button{width:36px;height:36px}
