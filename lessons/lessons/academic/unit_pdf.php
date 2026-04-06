@@ -748,7 +748,6 @@ table.ws-tbl th{background:#f3f8fd;text-transform:uppercase;letter-spacing:.08em
 .pr-tbl th:nth-child(2),.pr-tbl td:nth-child(2){width:30%}
 .pr-tbl th:nth-child(3),.pr-tbl td:nth-child(3){width:30%}
 .pr-tbl th:nth-child(4),.pr-tbl td:nth-child(4){width:30%}
-@media print{.pr-grid{grid-template-columns:repeat(3,1fr)}.pr-card{break-inside:avoid;page-break-inside:avoid}}
 /* ── Notes box (powerpoint, video_comprehension, external) ── */
 .act-notes-box{min-height:278px;border:1.5px dashed #b0bfcc;border-radius:14px;background:#fff;width:100%;box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 /* ── Placeholder ── */
