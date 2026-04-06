@@ -579,6 +579,8 @@ $isKey  = $isTeacher;
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Poppins:wght@400;500;600;700;800&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
 <style>
+/* ── Page setup (top-level, NOT inside @media print) ── */
+@page{size:letter;margin:20mm 18mm}
 /* ── Design tokens ─────────────────────────────────────────── */
 :root{
   --navy:#20324d; --text:#223046; --muted:#66758a; --line:#d9e4ef;
@@ -767,7 +769,6 @@ table.ws-tbl th{background:#f3f8fd;text-transform:uppercase;letter-spacing:.08em
 }
 /* ── Print (must be LAST — overrides responsive breakpoint) ── */
 @media print{
-  @page{size:letter;margin:20mm 18mm}
   body{background:#fff!important;font-size:10.5px;line-height:1.45;padding:0;color:#223046}
   .toolbar,.ws-pdiv,.ws-plbl{display:none!important}
   .ws-doc{box-shadow:none;border-radius:0;max-width:100%;margin:0}
