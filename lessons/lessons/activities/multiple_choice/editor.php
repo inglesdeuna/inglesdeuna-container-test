@@ -652,9 +652,9 @@ ob_start();
                         <?php endforeach; ?>
                     </div>
                     <!-- hidden shadow fields so option_a/b/c[] array stays aligned -->
-                    <input type="hidden" name="option_a[]" value="">
-                    <input type="hidden" name="option_b[]" value="">
-                    <input type="hidden" name="option_c[]" value="">
+                    <input type="hidden" name="option_a[]" value="" <?= $optType !== 'image' ? 'disabled' : '' ?>>
+                    <input type="hidden" name="option_b[]" value="" <?= $optType !== 'image' ? 'disabled' : '' ?>>
+                    <input type="hidden" name="option_c[]" value="" <?= $optType !== 'image' ? 'disabled' : '' ?>>
                 </div>
 
                 <label>Correct answer</label>
@@ -707,6 +707,9 @@ function onOptionTypeChange(sel) {
     item.querySelector('.q-img-opts-section').style.display = isImage ? '' : 'none';
     item.querySelectorAll('.q-text-opts-section input[type="text"]').forEach(function(inp) {
         inp.required = !isImage;
+    });
+    item.querySelectorAll('.q-img-opts-section input[type="hidden"]').forEach(function(inp) {
+        inp.disabled = !isImage;
     });
 }
 
@@ -786,9 +789,9 @@ function addQuestion() {
                     <input type="file" name="option_c_img[]" accept="image/*" onchange="previewOptImg(this)">
                 </div>
             </div>
-            <input type="hidden" name="option_a[]" value="">
-            <input type="hidden" name="option_b[]" value="">
-            <input type="hidden" name="option_c[]" value="">
+            <input type="hidden" name="option_a[]" value="" disabled>
+            <input type="hidden" name="option_b[]" value="" disabled>
+            <input type="hidden" name="option_c[]" value="" disabled>
         </div>
 
         <label>Correct answer</label>
