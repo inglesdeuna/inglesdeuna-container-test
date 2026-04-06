@@ -704,14 +704,14 @@ table.ws-tbl th{background:#f3f8fd;text-transform:uppercase;letter-spacing:.08em
 .ws-ot{flex:1;line-height:1.4}
 /* ── Flashcard image grid ── */
 .fc-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:4px}
-.fc-card{border:1px solid var(--border);border-radius:16px;overflow:hidden;background:#fff;break-inside:avoid}
+.fc-card{border:1px solid var(--border);border-radius:16px;overflow:hidden;background:#fff;break-inside:avoid;page-break-inside:avoid}
 .fc-img{height:130px;background:#fff;display:flex;align-items:center;justify-content:center;padding:10px;}
 .fc-img img{max-width:100%;max-height:110px;width:auto;height:auto;object-fit:contain;display:block;border-radius:6px}
 .fc-label{padding:8px 10px;border-top:1px solid var(--border);font-size:13px;font-weight:600;color:var(--navy);text-align:center}
 .fc-blank{padding:8px 10px;border-top:1px solid var(--border);color:var(--muted);min-height:30px;border-bottom:1px solid #b0bec5}
 /* ── Memory card grid ── */
 .mc-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
-.mc-card{border:1px solid var(--border);border-radius:16px;overflow:hidden;background:#fff;break-inside:avoid}
+.mc-card{border:1px solid var(--border);border-radius:16px;overflow:hidden;background:#fff;break-inside:avoid;page-break-inside:avoid}
 .mc-frame{height:130px;background:#fff;display:flex;align-items:center;justify-content:center;padding:10px;color:var(--muted);font-size:12px;text-align:center}
 .mc-frame img{max-width:100%;max-height:110px;width:auto;height:auto;object-fit:contain;display:block;border-radius:6px}
 .mc-meta{padding:10px 12px;border-top:1px solid var(--border);font-size:13px;color:var(--muted)}
@@ -835,23 +835,23 @@ table.ws-tbl th{background:#f3f8fd;text-transform:uppercase;letter-spacing:.08em
   .ws-or{padding:5px 4px;font-size:11px;border-bottom-width:1px;gap:10px}
   .ws-ob{width:26px;height:20px;min-width:26px;border-radius:5px;border-width:1.5px}
   /* ── Flashcard grid ── */
-  .fc-grid{grid-template-columns:repeat(4,1fr);gap:7px}
-  .fc-card{border-radius:10px}
-  .fc-img{height:76px;padding:5px}
-  .fc-img img{max-height:64px}
+  .fc-grid{grid-template-columns:repeat(3,1fr);gap:7px}
+  .fc-card{border-radius:10px;break-inside:avoid;page-break-inside:avoid}
+  .fc-img{height:80px;padding:5px;border-bottom:1px solid var(--border)}
+  .fc-img img{max-width:100%;max-height:68px;width:auto;height:auto;object-fit:contain;display:block}
   .fc-label{padding:4px 7px;font-size:10px}
   .fc-blank{padding:4px 7px;min-height:20px}
   /* ── Memory card grid ── */
-  .mc-grid{grid-template-columns:repeat(4,1fr);gap:7px}
-  .mc-card{border-radius:10px}
-  .mc-frame{height:76px;padding:5px;font-size:10px}
-  .mc-frame img{max-height:64px}
+  .mc-grid{grid-template-columns:repeat(3,1fr);gap:7px}
+  .mc-card{border-radius:10px;break-inside:avoid;page-break-inside:avoid}
+  .mc-frame{height:80px;padding:5px;font-size:10px;border-bottom:1px solid var(--border)}
+  .mc-frame img{max-width:100%;max-height:68px;width:auto;height:auto;object-fit:contain;display:block}
   .mc-meta{padding:4px 8px;font-size:10px}
   /* ── MC image options ── */
   .mc-img-opts{gap:6px}
-  .mc-img-opt{padding:4px;border-radius:8px}
-  .mc-img-opt .mc-frame{height:65px;padding:4px}
-  .mc-img-opt .mc-frame img{max-height:55px}
+  .mc-img-opt{padding:4px;border-radius:8px;break-inside:avoid;page-break-inside:avoid}
+  .mc-img-opt .mc-frame{height:80px;padding:4px;border-bottom:none}
+  .mc-img-opt .mc-frame img{max-width:100%;max-height:68px;width:auto;height:auto;object-fit:contain;display:block}
   .mc-qimg img{max-height:75px;border-radius:5px}
   /* ── Dictation ── */
   .dt-item{padding:5px 0;gap:8px;break-inside:avoid;page-break-inside:avoid}
