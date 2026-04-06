@@ -45,21 +45,30 @@ function default_powerpoint_title(): string
 function default_slide(): array
 {
     return [
-        'template' => 'title_text',
-        'title' => '',
-        'text' => '',
-        'font_family' => 'Arial',
-        'font_size' => 28,
-        'bg_color' => '#ffffff',
-        'image' => '',
-        'music' => '',
-        'tts_text' => '',
+        'template'       => 'title_text',
+        'title'          => '',
+        'text'           => '',
+        'font_family'    => 'Arial',
+        'font_size'      => 28,
+        'title_size'     => 36,
+        'bg_color'       => '#FFFFFF',
+        'title_color'    => '#1E3A5F',
+        'text_color'     => '#334155',
+        'text_align'     => 'left',
+        'title_align'    => 'center',
+        'bold'           => false,
+        'italic'         => false,
+        'image'          => '',
+        'image_size'     => 50,
+        'image_position' => 'right',
+        'music'          => '',
+        'tts_text'       => '',
     ];
 }
 
 function normalize_font_family(string $value): string
 {
-    $allowed = ['Arial', 'Georgia', 'Verdana', 'Tahoma', 'Times New Roman'];
+    $allowed = ['Arial', 'Georgia', 'Verdana', 'Tahoma', 'Times New Roman', 'Courier New', 'Trebuchet MS', 'Impact'];
     return in_array($value, $allowed, true) ? $value : 'Arial';
 }
 
@@ -176,16 +185,33 @@ function normalize_powerpoint_payload($rawData): array
                 $fontSize = 72;
             }
 
+            $titleSize = (int) ($slide['title_size'] ?? 36);
+            if ($titleSize < 16) { $titleSize = 16; }
+            if ($titleSize > 96) { $titleSize = 96; }
+            $imageSize = (int) ($slide['image_size'] ?? 50);
+            if ($imageSize < 20) { $imageSize = 20; }
+            if ($imageSize > 100) { $imageSize = 100; }
+            $allowedAlign  = ['left', 'center', 'right'];
+            $allowedImgPos = ['right', 'left', 'top', 'bottom'];
             $slides[] = [
-                'template' => normalize_template((string) ($slide['template'] ?? 'title_text')),
-                'title' => trim((string) ($slide['title'] ?? '')),
-                'text' => trim((string) ($slide['text'] ?? '')),
-                'font_family' => normalize_font_family((string) ($slide['font_family'] ?? 'Arial')),
-                'font_size' => $fontSize,
-                'bg_color' => normalize_color((string) ($slide['bg_color'] ?? '#FFFFFF')),
-                'image' => normalize_data_blob((string) ($slide['image'] ?? ''), 8 * 1024 * 1024),
-                'music' => normalize_data_blob((string) ($slide['music'] ?? ''), 18 * 1024 * 1024),
-                'tts_text' => trim((string) ($slide['tts_text'] ?? '')),
+                'template'       => normalize_template((string) ($slide['template'] ?? 'title_text')),
+                'title'          => trim((string) ($slide['title'] ?? '')),
+                'text'           => trim((string) ($slide['text'] ?? '')),
+                'font_family'    => normalize_font_family((string) ($slide['font_family'] ?? 'Arial')),
+                'font_size'      => $fontSize,
+                'title_size'     => $titleSize,
+                'bg_color'       => normalize_color((string) ($slide['bg_color'] ?? '#FFFFFF')),
+                'title_color'    => normalize_color((string) ($slide['title_color'] ?? '#1E3A5F')),
+                'text_color'     => normalize_color((string) ($slide['text_color'] ?? '#334155')),
+                'text_align'     => in_array($slide['text_align']  ?? '', $allowedAlign, true) ? $slide['text_align']  : 'left',
+                'title_align'    => in_array($slide['title_align'] ?? '', $allowedAlign, true) ? $slide['title_align'] : 'center',
+                'bold'           => !empty($slide['bold']),
+                'italic'         => !empty($slide['italic']),
+                'image'          => normalize_data_blob((string) ($slide['image'] ?? ''), 8 * 1024 * 1024),
+                'image_size'     => $imageSize,
+                'image_position' => in_array($slide['image_position'] ?? '', $allowedImgPos, true) ? $slide['image_position'] : 'right',
+                'music'          => normalize_data_blob((string) ($slide['music'] ?? ''), 18 * 1024 * 1024),
+                'tts_text'       => trim((string) ($slide['tts_text'] ?? '')),
             ];
         }
     }
@@ -368,70 +394,145 @@ ob_start();
 ?>
 
 <style>
-.ppt-editor-shell{max-width:980px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
-.ppt-card{background:#fff;border:1px solid #e2e8f0;border-radius:16px;padding:16px;box-shadow:0 8px 24px rgba(15,23,42,.06)}
-.ppt-row{display:flex;gap:10px;flex-wrap:wrap}
-.ppt-row > *{flex:1 1 180px}
-.ppt-label{display:block;margin-bottom:6px;font-size:13px;font-weight:700;color:#334155}
-.ppt-input,.ppt-select,.ppt-textarea{width:100%;border:1px solid #cbd5e1;border-radius:10px;padding:10px 12px;font-size:14px;background:#fff}
-.ppt-textarea{min-height:96px;resize:vertical}
-.ppt-actions{display:flex;gap:10px;flex-wrap:wrap}
-.ppt-btn{border:none;border-radius:10px;padding:10px 14px;font-weight:700;cursor:pointer}
-.ppt-btn-primary{background:#2563eb;color:#fff}
-.ppt-btn-secondary{background:#0f766e;color:#fff}
-.ppt-btn-danger{background:#dc2626;color:#fff}
-.ppt-btn-light{background:#e2e8f0;color:#1e293b}
-.ppt-slide{border:1px solid #dbe4f0;border-radius:14px;padding:14px;background:#f8fbff;display:flex;flex-direction:column;gap:10px}
-.ppt-slide-head{display:flex;justify-content:space-between;align-items:center;gap:10px}
-.ppt-preview-media{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
-.ppt-preview-image{max-width:180px;max-height:110px;border-radius:8px;border:1px solid #cbd5e1;object-fit:cover}
-.ppt-success{background:#ecfdf5;border:1px solid #86efac;color:#166534;border-radius:10px;padding:10px 12px;font-weight:700}
+/* ── Shell ─────────────────────────────────────────────── */
+.ppt-editor-shell{max-width:1080px;margin:0 auto;font-family:'Nunito','Segoe UI',sans-serif}
+.ppt-success{background:#ecfdf5;border:1px solid #86efac;color:#166534;border-radius:12px;padding:12px 16px;font-weight:800;margin-bottom:14px}
+
+/* ── Top bar ───────────────────────────────────────────── */
+.ppt-topbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;background:#fff;border:1px solid #e2e8f0;border-radius:16px;padding:14px 16px;margin-bottom:14px;box-shadow:0 4px 14px rgba(15,23,42,.05)}
+.ppt-topbar input{flex:1 1 220px;min-width:0}
+
+/* ── Add bar ───────────────────────────────────────────── */
+.ppt-addbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
+.ppt-addbar select{flex:0 0 auto}
+
+/* ── Slide list ────────────────────────────────────────── */
+.ppt-slides-list{display:flex;flex-direction:column;gap:14px}
+
+/* ── Individual slide card ─────────────────────────────── */
+.ppt-slide-card{border-radius:18px;overflow:hidden;border:1px solid #dbeafe;box-shadow:0 6px 18px rgba(15,23,42,.07);background:#fff}
+.ppt-slide-card.collapsed .ppt-slide-body{display:none}
+.ppt-slide-header{display:flex;align-items:center;gap:8px;padding:10px 14px;background:linear-gradient(90deg,#2563eb 0%,#1d4ed8 100%);cursor:pointer;user-select:none}
+.ppt-slide-header-title{flex:1;color:#fff;font-weight:800;font-size:14px}
+.ppt-slide-headerbtns{display:flex;gap:6px}
+.ppt-slide-body{padding:16px;display:flex;flex-direction:column;gap:12px}
+
+/* Layouts inside card body */
+.ppt-body-cols{display:grid;grid-template-columns:1fr 340px;gap:16px}
+@media(max-width:860px){.ppt-body-cols{grid-template-columns:1fr}}
+
+/* Fields */
+.ppt-label{display:block;margin-bottom:5px;font-size:12px;font-weight:800;color:#334155;text-transform:uppercase;letter-spacing:.04em}
+.ppt-input,.ppt-select,.ppt-textarea{width:100%;border:1.5px solid #cbd5e1;border-radius:10px;padding:9px 11px;font-size:14px;font-family:inherit;background:#fff;box-sizing:border-box;transition:border-color .15s}
+.ppt-input:focus,.ppt-select:focus,.ppt-textarea:focus{outline:none;border-color:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,.12)}
+.ppt-textarea{min-height:80px;resize:vertical}
+.ppt-row{display:grid;gap:10px}
+.ppt-row-2{grid-template-columns:1fr 1fr}
+.ppt-row-3{grid-template-columns:1fr 1fr 1fr}
+.ppt-row-4{grid-template-columns:1fr 1fr 1fr 1fr}
+@media(max-width:600px){.ppt-row-2,.ppt-row-3,.ppt-row-4{grid-template-columns:1fr}}
+
+/* Color swatch row */
+.ppt-swatch-row{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:4px}
+.ppt-swatch{width:26px;height:26px;border-radius:6px;border:2px solid transparent;cursor:pointer;transition:transform .12s,border-color .12s;flex-shrink:0}
+.ppt-swatch:hover{transform:scale(1.18)}
+.ppt-swatch.active{border-color:#0f172a}
+
+/* Toggle buttons (align / bold / italic) */
+.ppt-toggle-row{display:flex;gap:6px;flex-wrap:wrap}
+.ppt-toggle{background:#f1f5f9;border:1.5px solid #cbd5e1;border-radius:8px;padding:6px 12px;font-size:13px;font-weight:700;cursor:pointer;transition:background .15s,border-color .15s,color .15s;font-family:inherit}
+.ppt-toggle.active{background:#2563eb;border-color:#2563eb;color:#fff}
+
+/* Image size slider */
+.ppt-slider-row{display:flex;align-items:center;gap:8px}
+.ppt-slider-row input[type=range]{flex:1}
+.ppt-slider-val{font-size:13px;font-weight:700;color:#2563eb;min-width:36px;text-align:right}
+
+/* Live preview */
+.ppt-preview-wrap{position:sticky;top:12px}
+.ppt-preview-label{font-size:12px;font-weight:800;color:#64748b;text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px}
+.ppt-preview-stage{width:100%;aspect-ratio:16/9;border-radius:14px;border:1px solid #dbeafe;overflow:hidden;display:flex;align-items:stretch;box-shadow:0 8px 24px rgba(15,23,42,.1);background:#fff}
+/* preview sub-layouts */
+.pprev-col-fill{width:100%;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:10px;box-sizing:border-box;gap:4px}
+.pprev-col-text{flex:1;display:flex;flex-direction:column;justify-content:center;padding:8px 10px;gap:4px;min-width:0}
+.pprev-col-image{flex:0 0 44%;display:flex;align-items:center;justify-content:center;padding:6px;overflow:hidden}
+.pprev-img{max-width:100%;max-height:100%;object-fit:contain;border-radius:8px}
+.pprev-title{font-weight:800;line-height:1.2;overflow:hidden;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical}
+.pprev-text{line-height:1.4;overflow:hidden;display:-webkit-box;-webkit-line-clamp:6;-webkit-box-orient:vertical;white-space:pre-wrap}
+
+/* Image & audio upload areas */
+.ppt-upload-area{background:#f8fafc;border:1.5px dashed #cbd5e1;border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:8px}
+.ppt-preview-image{max-width:100%;max-height:120px;border-radius:8px;border:1px solid #cbd5e1;object-fit:cover}
+
+/* Buttons */
+.ppt-btn{border:none;border-radius:10px;padding:9px 14px;font-weight:800;cursor:pointer;font-family:inherit;font-size:13px;transition:filter .14s,transform .14s;display:inline-flex;align-items:center;gap:5px}
+.ppt-btn:hover{filter:brightness(1.07);transform:translateY(-1px)}
+.ppt-btn-primary{background:linear-gradient(180deg,#3b82f6,#2563eb);color:#fff}
+.ppt-btn-green{background:linear-gradient(180deg,#22c55e,#16a34a);color:#fff}
+.ppt-btn-orange{background:linear-gradient(180deg,#f97316,#ea580c);color:#fff}
+.ppt-btn-danger{background:linear-gradient(180deg,#f87171,#dc2626);color:#fff}
+.ppt-btn-light{background:#f1f5f9;color:#1e293b;border:1px solid #cbd5e1}
+.ppt-btn-sm{padding:6px 10px;font-size:12px;border-radius:8px}
+
+/* Bottom actions */
+.ppt-bottom-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:16px;flex-wrap:wrap}
+
+/* Extra cards */
+.ppt-extra-card{background:#fff;border:1px solid #e2e8f0;border-radius:16px;padding:14px 16px;margin-bottom:12px;box-shadow:0 4px 12px rgba(15,23,42,.04)}
+.ppt-section-title{font-size:13px;font-weight:800;color:#334155;margin:0 0 8px;text-transform:uppercase;letter-spacing:.04em}
 </style>
 
 <div class="ppt-editor-shell">
-    <?php if (isset($_GET['saved']) && $_GET['saved'] === '1') { ?>
-        <div class="ppt-success">Activity saved successfully.</div>
-    <?php } ?>
+<?php if (isset($_GET['saved']) && $_GET['saved'] === '1') { ?>
+    <div class="ppt-success">✅ Actividad guardada correctamente.</div>
+<?php } ?>
 
-    <form id="powerpointForm" method="post">
-        <input type="hidden" name="slides_payload" id="slides_payload" value="[]">
-      <input type="hidden" name="presentation_payload" id="presentation_payload" value="{}">
+<form id="powerpointForm" method="post">
+    <input type="hidden" name="slides_payload" id="slides_payload" value="[]">
+    <input type="hidden" name="presentation_payload" id="presentation_payload" value="{}">
 
-        <div class="ppt-card">
-            <label class="ppt-label" for="activity_title">Activity title</label>
-            <input class="ppt-input" id="activity_title" name="activity_title" value="<?php echo htmlspecialchars($activityTitle, ENT_QUOTES, 'UTF-8'); ?>" required>
-        </div>
+    <!-- Title bar -->
+    <div class="ppt-topbar">
+        <label class="ppt-label" for="activity_title" style="white-space:nowrap;margin:0">📋 Título</label>
+        <input class="ppt-input" id="activity_title" name="activity_title" style="flex:1 1 260px"
+               value="<?php echo htmlspecialchars($activityTitle, ENT_QUOTES, 'UTF-8'); ?>" required placeholder="Título de la actividad">
+        <button type="submit" class="ppt-btn ppt-btn-primary">💾 Guardar</button>
+    </div>
 
-        <div class="ppt-card">
-            <div class="ppt-actions" style="margin-bottom:12px;">
-                <select id="newSlideTemplate" class="ppt-select" style="max-width:240px;">
-                    <option value="title_text">Template: Title + Text</option>
-                    <option value="text_image">Template: Text + Image</option>
-                    <option value="image_full">Template: Full Image</option>
-                </select>
-                  <button type="button" class="ppt-btn ppt-btn-secondary" id="btnAddSlide">+ Add Slide</button>
-            </div>
+    <!-- Add slide bar -->
+    <div class="ppt-addbar">
+        <select id="newSlideTemplate" class="ppt-select" style="width:auto;flex:0 0 auto">
+            <option value="title_text">🖼️ Título + Texto</option>
+            <option value="text_image">📄 Texto + Imagen</option>
+            <option value="image_full">🖼️ Imagen completa</option>
+        </select>
+        <button type="button" class="ppt-btn ppt-btn-green" id="btnAddSlide">＋ Agregar slide</button>
+        <button type="button" class="ppt-btn ppt-btn-light" id="btnCollapseAll">▲ Colapsar todos</button>
+        <button type="button" class="ppt-btn ppt-btn-light" id="btnExpandAll">▼ Expandir todos</button>
+    </div>
 
-            <div id="slidesContainer"></div>
-        </div>
+    <!-- Slide list -->
+    <div class="ppt-slides-list" id="slidesContainer"></div>
 
-          <div class="ppt-card">
-            <label class="ppt-label">Upload full presentation (PowerPoint or Canva export)</label>
-            <input class="ppt-input" id="pptFileInput" type="file" accept=".ppt,.pptx,.pdf,.canva,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/pdf">
-            <div class="ppt-preview-media" style="margin-top:10px;" id="pptFileStatus"></div>
-          </div>
+    <!-- Upload presentation -->
+    <div class="ppt-extra-card" style="margin-top:14px">
+        <p class="ppt-section-title">📁 Subir presentación completa (PowerPoint / PDF / Canva export)</p>
+        <input class="ppt-input" id="pptFileInput" type="file"
+               accept=".ppt,.pptx,.pdf,.canva,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/pdf">
+        <div style="margin-top:8px" id="pptFileStatus"></div>
+    </div>
 
-          <div class="ppt-card">
-            <label class="ppt-label" for="canva_link">Canva share link (optional)</label>
-            <input class="ppt-input" id="canva_link" name="canva_link" placeholder="https://www.canva.com/..." value="<?php echo htmlspecialchars($canvaLink, ENT_QUOTES, 'UTF-8'); ?>">
-          </div>
+    <!-- Canva link -->
+    <div class="ppt-extra-card">
+        <p class="ppt-section-title">🔗 Link de Canva (opcional)</p>
+        <input class="ppt-input" id="canva_link" name="canva_link" placeholder="https://www.canva.com/..."
+               value="<?php echo htmlspecialchars($canvaLink, ENT_QUOTES, 'UTF-8'); ?>">
+    </div>
 
-        <div class="ppt-card">
-            <div class="ppt-actions">
-                <button type="submit" class="ppt-btn ppt-btn-primary">Save PowerPoint</button>
-            </div>
-        </div>
-    </form>
+    <div class="ppt-bottom-actions">
+        <button type="submit" class="ppt-btn ppt-btn-primary" style="padding:11px 26px;font-size:15px">💾 Guardar PowerPoint</button>
+    </div>
+</form>
 </div>
 
 <script>
@@ -440,277 +541,477 @@ const INITIAL_PRESENTATION = {
   file: <?php echo json_encode($presentationFile, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>,
   name: <?php echo json_encode($presentationName, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>
 };
-const FONT_OPTIONS = ['Arial','Georgia','Verdana','Tahoma','Times New Roman'];
 
-function createSlideModel(templateName) {
+const FONT_OPTIONS  = ['Arial','Georgia','Verdana','Tahoma','Times New Roman','Courier New','Trebuchet MS','Impact'];
+const ALIGN_OPTIONS = ['left','center','right'];
+const BG_PRESETS    = [
+  '#FFFFFF','#F0F6FF','#FFF7ED','#F0FDF4','#FDF4FF','#FEF9C3',
+  '#1e293b','#1e3a5f','#3b0764','#0f172a','#065f46','#7c2d12'
+];
+const TEXT_PRESETS  = [
+  '#0f172a','#1e3a5f','#5b21b6','#065f46','#7c2d12','#FFFFFF','#f0f6ff','#fef9c3'
+];
+
+function escapeHtml(v) {
+  return String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+function createSlideModel(tpl) {
   return {
-    template: templateName || 'title_text',
+    template: tpl || 'title_text',
     title: '',
     text: '',
     font_family: 'Arial',
     font_size: 28,
+    title_size: 36,
     bg_color: '#FFFFFF',
+    title_color: '#1e3a5f',
+    text_color: '#334155',
+    text_align: 'left',
+    title_align: 'center',
+    bold: false,
+    italic: false,
     image: '',
+    image_size: 50,
+    image_position: 'right',
     music: '',
     tts_text: ''
   };
 }
 
-let slidesState = Array.isArray(INITIAL_SLIDES) && INITIAL_SLIDES.length ? INITIAL_SLIDES : [createSlideModel('title_text')];
-let presentationState = {
-  file: String(INITIAL_PRESENTATION.file || ''),
-  name: String(INITIAL_PRESENTATION.name || '')
-};
-
-function fileToDataUrl(fileObject) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result || ''));
-    reader.onerror = () => reject(new Error('The file could not be read.'));
-    reader.readAsDataURL(fileObject);
-  });
-}
-
-function normalizeSlideState(slideData) {
-  const fontSize = Number(slideData.font_size || 28);
+function normalizeSlideState(s) {
+  const fs = Number(s.font_size||28), ts = Number(s.title_size||36), is = Number(s.image_size||50);
   return {
-    template: ['title_text','text_image','image_full'].includes(slideData.template) ? slideData.template : 'title_text',
-    title: String(slideData.title || ''),
-    text: String(slideData.text || ''),
-    font_family: FONT_OPTIONS.includes(slideData.font_family) ? slideData.font_family : 'Arial',
-    font_size: Math.max(14, Math.min(72, Number.isFinite(fontSize) ? fontSize : 28)),
-    bg_color: /^#[0-9a-fA-F]{6}$/.test(String(slideData.bg_color || '')) ? String(slideData.bg_color).toUpperCase() : '#FFFFFF',
-    image: String(slideData.image || ''),
-    music: String(slideData.music || ''),
-    tts_text: String(slideData.tts_text || '')
+    template:       ['title_text','text_image','image_full'].includes(s.template) ? s.template : 'title_text',
+    title:          String(s.title||''),
+    text:           String(s.text||''),
+    font_family:    FONT_OPTIONS.includes(s.font_family) ? s.font_family : 'Arial',
+    font_size:      Math.max(12, Math.min(72, Number.isFinite(fs) ? fs : 28)),
+    title_size:     Math.max(16, Math.min(96, Number.isFinite(ts) ? ts : 36)),
+    bg_color:       /^#[0-9a-fA-F]{6}$/.test(String(s.bg_color||'')) ? String(s.bg_color).toUpperCase() : '#FFFFFF',
+    title_color:    /^#[0-9a-fA-F]{6}$/.test(String(s.title_color||'')) ? String(s.title_color).toUpperCase() : '#1E3A5F',
+    text_color:     /^#[0-9a-fA-F]{6}$/.test(String(s.text_color||'')) ? String(s.text_color).toUpperCase() : '#334155',
+    text_align:     ALIGN_OPTIONS.includes(s.text_align) ? s.text_align : 'left',
+    title_align:    ALIGN_OPTIONS.includes(s.title_align) ? s.title_align : 'center',
+    bold:           !!s.bold,
+    italic:         !!s.italic,
+    image:          String(s.image||''),
+    image_size:     Math.max(20, Math.min(100, Number.isFinite(is) ? is : 50)),
+    image_position: ['right','left','top','bottom'].includes(s.image_position) ? s.image_position : 'right',
+    music:          String(s.music||''),
+    tts_text:       String(s.tts_text||'')
   };
 }
 
+let slidesState = Array.isArray(INITIAL_SLIDES) && INITIAL_SLIDES.length
+  ? INITIAL_SLIDES.map(s => Object.assign(createSlideModel(s.template), s))
+  : [createSlideModel('title_text')];
+
+let presentationState = { file: String(INITIAL_PRESENTATION.file||''), name: String(INITIAL_PRESENTATION.name||'') };
+
+/* ─── file → data URL ─── */
+function fileToDataUrl(f) {
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload  = () => res(String(r.result||''));
+    r.onerror = () => rej(new Error('read error'));
+    r.readAsDataURL(f);
+  });
+}
+
+/* ─── Swatch HTML ─── */
+function swatchesHtml(presets, fieldKey, currentVal) {
+  return presets.map(c =>
+    '<span class="ppt-swatch' + (c.toUpperCase()===currentVal.toUpperCase()?' active':'') + '" '
+    + 'style="background:' + c + ';border-color:' + (c.toUpperCase()===currentVal.toUpperCase()?'#0f172a':'transparent') + '"'
+    + ' data-swatch="' + fieldKey + '" data-color="' + c + '" title="' + c + '"></span>'
+  ).join('');
+}
+
+/* ─── Toggle row HTML ─── */
+function togglesHtml(fieldKey, options, labels, currentVal) {
+  return options.map((v,i) =>
+    '<button type="button" class="ppt-toggle' + (currentVal===v?' active':'') + '" data-toggle="' + fieldKey + '" data-val="' + v + '">' + labels[i] + '</button>'
+  ).join('');
+}
+
+/* ─── Live preview render ─── */
+function buildPreview(slide) {
+  const bg    = slide.bg_color || '#FFFFFF';
+  const tCol  = slide.title_color || '#1e3a5f';
+  const txCol = slide.text_color  || '#334155';
+  const tSize = Math.round(slide.title_size * 0.38);  // scale to preview
+  const txSize= Math.round(slide.font_size  * 0.36);
+  const tAlign= slide.title_align || 'center';
+  const txAlign=slide.text_align  || 'left';
+  const fw    = slide.bold   ? '800' : '600';
+  const fs    = slide.italic ? 'italic' : 'normal';
+  const hasImg= !!slide.image;
+  const imgPct= (slide.image_size||50) + '%';
+  const tpl   = slide.template;
+  const imgTag= hasImg ? '<img class="pprev-img" src="'+slide.image+'" alt="">' : '<span style="font-size:11px;color:#94a3b8">No image</span>';
+  const titleEl = slide.title ? '<div class="pprev-title" style="font-family:'+escapeHtml(slide.font_family)+';font-size:'+tSize+'px;color:'+tCol+';text-align:'+tAlign+';font-weight:800">'+escapeHtml(slide.title)+'</div>' : '';
+  const textEl  = slide.text  ? '<div class="pprev-text" style="font-family:'+escapeHtml(slide.font_family)+';font-size:'+txSize+'px;color:'+txCol+';text-align:'+txAlign+';font-weight:'+fw+';font-style:'+fs+'">'+escapeHtml(slide.text)+'</div>' : '';
+
+  let inner = '';
+  if (tpl === 'image_full' || tpl === 'title_text') {
+    inner = '<div class="pprev-col-fill" style="text-align:center">'+titleEl+textEl+(hasImg?'<div style="margin-top:6px;max-width:'+imgPct+';max-height:55%">'+imgTag+'</div>':'')+'</div>';
+  } else {
+    // text_image – image position
+    const pos = slide.image_position || 'right';
+    const textCol = '<div class="pprev-col-text">'+titleEl+textEl+'</div>';
+    const imgCol  = '<div class="pprev-col-image" style="flex-basis:'+imgPct+'">'+imgTag+'</div>';
+    if (pos === 'left') {
+      inner = imgCol + textCol;
+    } else if (pos === 'top') {
+      inner = '<div style="display:flex;flex-direction:column;width:100%"><div style="flex:0 0 '+imgPct+';display:flex;align-items:center;justify-content:center;padding:4px">'+imgTag+'</div>'+textCol+'</div>';
+    } else if (pos === 'bottom') {
+      inner = '<div style="display:flex;flex-direction:column;width:100%">'+textCol+'<div style="flex:0 0 '+imgPct+';display:flex;align-items:center;justify-content:center;padding:4px">'+imgTag+'</div></div>';
+    } else {
+      inner = textCol + imgCol;
+    }
+  }
+  return '<div class="ppt-preview-stage" style="background:'+bg+'">'+inner+'</div>';
+}
+
+/* ─── Render all slides ─── */
 function renderSlides() {
   const container = document.getElementById('slidesContainer');
+  const wasCollapsed = {};
+  container.querySelectorAll('.ppt-slide-card').forEach((el,i) => {
+    wasCollapsed[i] = el.classList.contains('collapsed');
+  });
   container.innerHTML = '';
 
-  slidesState.forEach((slideData, index) => {
+  slidesState.forEach((slideData, idx) => {
     const slide = normalizeSlideState(slideData);
-    slidesState[index] = slide;
+    slidesState[idx] = slide;
 
     const card = document.createElement('div');
-    card.className = 'ppt-slide';
+    card.className = 'ppt-slide-card' + (wasCollapsed[idx] ? ' collapsed' : '');
 
-    const fontOptionsHtml = FONT_OPTIONS.map((fontValue) => {
-      const selected = slide.font_family === fontValue ? 'selected' : '';
-      return '<option value="' + fontValue + '" ' + selected + '>' + fontValue + '</option>';
-    }).join('');
-
-    const imagePreviewHtml = slide.image ? '<img class="ppt-preview-image" src="' + slide.image + '" alt="Slide image">' : '<span style="color:#64748b;font-size:13px;">No image</span>';
-    const audioPreviewHtml = slide.music ? '<audio controls preload="none" src="' + slide.music + '" style="max-width:220px;"></audio>' : '<span style="color:#64748b;font-size:13px;">No audio</span>';
-
-    card.innerHTML = '' +
-      '<div class="ppt-slide-head">' +
-        '<strong>Slide ' + (index + 1) + '</strong>' +
-        '<div class="ppt-actions">' +
-          '<button type="button" class="ppt-btn ppt-btn-light" data-action="up">Move Up</button>' +
-          '<button type="button" class="ppt-btn ppt-btn-light" data-action="down">Move Down</button>' +
-          '<button type="button" class="ppt-btn ppt-btn-danger" data-action="remove">Remove</button>' +
-        '</div>' +
-      '</div>' +
-      '<div class="ppt-row">' +
-        '<div><label class="ppt-label">Template</label><select class="ppt-select" data-field="template"><option value="title_text" ' + (slide.template === 'title_text' ? 'selected' : '') + '>Title + Text</option><option value="text_image" ' + (slide.template === 'text_image' ? 'selected' : '') + '>Text + Image</option><option value="image_full" ' + (slide.template === 'image_full' ? 'selected' : '') + '>Full Image</option></select></div>' +
-        '<div><label class="ppt-label">Slide title</label><input class="ppt-input" data-field="title" value="' + escapeHtml(slide.title) + '"></div>' +
-      '</div>' +
-      '<div class="ppt-row">' +
-        '<div><label class="ppt-label">Font</label><select class="ppt-select" data-field="font_family">' + fontOptionsHtml + '</select></div>' +
-        '<div><label class="ppt-label">Font size</label><input class="ppt-input" type="number" min="14" max="72" data-field="font_size" value="' + slide.font_size + '"></div>' +
-        '<div><label class="ppt-label">Background color</label><input class="ppt-input" type="color" data-field="bg_color" value="' + slide.bg_color + '"></div>' +
-      '</div>' +
-      '<div><label class="ppt-label">Supporting text</label><textarea class="ppt-textarea" data-field="text">' + escapeHtml(slide.text) + '</textarea></div>' +
-      '<div><label class="ppt-label">Text for English TTS (optional)</label><textarea class="ppt-textarea" data-field="tts_text">' + escapeHtml(slide.tts_text) + '</textarea></div>' +
-      '<div class="ppt-row">' +
-        '<div>' +
-          '<label class="ppt-label">Image (upload photo)</label>' +
-          '<input class="ppt-input" type="file" accept="image/*" data-upload="image">' +
-          '<div class="ppt-preview-media" style="margin-top:8px;">' + imagePreviewHtml + '<button type="button" class="ppt-btn ppt-btn-light" data-action="clear-image">Remove Image</button></div>' +
-        '</div>' +
-        '<div>' +
-          '<label class="ppt-label">MP3 audio (upload audio)</label>' +
-          '<input class="ppt-input" type="file" accept="audio/mpeg,audio/mp3,audio/*" data-upload="music">' +
-          '<div class="ppt-preview-media" style="margin-top:8px;">' + audioPreviewHtml + '<button type="button" class="ppt-btn ppt-btn-light" data-action="clear-music">Remove Audio</button></div>' +
-        '</div>' +
+    /* ── header ── */
+    const hdr = document.createElement('div');
+    hdr.className = 'ppt-slide-header';
+    hdr.innerHTML =
+      '<span class="ppt-slide-header-title">▶ Slide '+(idx+1)+(slide.title?' — '+escapeHtml(slide.title.substring(0,40)):'')+' <small style="opacity:.7;font-weight:400">('+slide.template.replace('_',' ')+')</small></span>'+
+      '<div class="ppt-slide-headerbtns">'+
+        (idx>0                        ? '<button type="button" class="ppt-btn ppt-btn-light ppt-btn-sm" data-action="up">↑</button>' : '')+
+        (idx<slidesState.length-1     ? '<button type="button" class="ppt-btn ppt-btn-light ppt-btn-sm" data-action="down">↓</button>' : '')+
+        '<button type="button" class="ppt-btn ppt-btn-light ppt-btn-sm" data-action="duplicate">⧉ Duplicar</button>'+
+        '<button type="button" class="ppt-btn ppt-btn-danger ppt-btn-sm" data-action="remove">✕</button>'+
       '</div>';
+    hdr.addEventListener('click', e => {
+      if (e.target.closest('[data-action]')) return;
+      card.classList.toggle('collapsed');
+    });
+    card.appendChild(hdr);
 
-    bindSlideCardEvents(card, index);
+    /* ── body ── */
+    const body = document.createElement('div');
+    body.className = 'ppt-slide-body';
+
+    /* font options */
+    const fontOpts = FONT_OPTIONS.map(f =>
+      '<option value="'+f+'"'+(slide.font_family===f?' selected':'')+' style="font-family:'+f+'">'+f+'</option>'
+    ).join('');
+    /* image position options */
+    const imgPosOpts = ['right','left','top','bottom'].map(p =>
+      '<option value="'+p+'"'+(slide.image_position===p?' selected':'')+'>'+p.charAt(0).toUpperCase()+p.slice(1)+'</option>'
+    ).join('');
+
+    body.innerHTML =
+      '<div class="ppt-body-cols">'+
+
+      /* ── LEFT: editor fields ── */
+      '<div style="display:flex;flex-direction:column;gap:12px">'+
+
+        /* Template */
+        '<div class="ppt-row ppt-row-2">'+
+          '<div><label class="ppt-label">📐 Layout</label>'+
+            '<select class="ppt-select" data-field="template">'+
+              '<option value="title_text"'+(slide.template==='title_text'?' selected':'')+'>Título + Texto</option>'+
+              '<option value="text_image"'+(slide.template==='text_image'?' selected':'')+'>Texto + Imagen</option>'+
+              '<option value="image_full"'+(slide.template==='image_full'?' selected':'')+'>Imagen completa</option>'+
+            '</select>'+
+          '</div>'+
+          '<div><label class="ppt-label">🔤 Fuente</label>'+
+            '<select class="ppt-select" data-field="font_family">'+fontOpts+'</select>'+
+          '</div>'+
+        '</div>'+
+
+        /* Title + title size + title align */
+        '<div><label class="ppt-label">✏️ Título del slide</label>'+
+          '<input class="ppt-input" data-field="title" value="'+escapeHtml(slide.title)+'" placeholder="Escribe el título...">'+
+        '</div>'+
+        '<div class="ppt-row ppt-row-3">'+
+          '<div><label class="ppt-label">📏 Tamaño título</label>'+
+            '<input class="ppt-input" type="number" min="16" max="96" data-field="title_size" value="'+slide.title_size+'">'+
+          '</div>'+
+          '<div><label class="ppt-label">🎨 Color título</label>'+
+            '<input class="ppt-input" type="color" data-field="title_color" value="'+slide.title_color+'">'+
+            '<div class="ppt-swatch-row" data-swatchgroup="title_color">'+swatchesHtml(TEXT_PRESETS,'title_color',slide.title_color)+'</div>'+
+          '</div>'+
+          '<div><label class="ppt-label">↔ Alineación título</label>'+
+            '<div class="ppt-toggle-row" data-togglegroup="title_align">'+togglesHtml('title_align',['left','center','right'],['≡ Iz','≡ Ce','≡ De'],slide.title_align)+'</div>'+
+          '</div>'+
+        '</div>'+
+
+        /* Text body */
+        '<div><label class="ppt-label">📝 Texto del slide</label>'+
+          '<textarea class="ppt-textarea" data-field="text">'+escapeHtml(slide.text)+'</textarea>'+
+        '</div>'+
+        '<div class="ppt-row ppt-row-4">'+
+          '<div><label class="ppt-label">📏 Tamaño texto</label>'+
+            '<input class="ppt-input" type="number" min="12" max="72" data-field="font_size" value="'+slide.font_size+'">'+
+          '</div>'+
+          '<div><label class="ppt-label">🎨 Color texto</label>'+
+            '<input class="ppt-input" type="color" data-field="text_color" value="'+slide.text_color+'">'+
+            '<div class="ppt-swatch-row" data-swatchgroup="text_color">'+swatchesHtml(TEXT_PRESETS,'text_color',slide.text_color)+'</div>'+
+          '</div>'+
+          '<div><label class="ppt-label">↔ Alineación</label>'+
+            '<div class="ppt-toggle-row" data-togglegroup="text_align">'+togglesHtml('text_align',['left','center','right'],['≡ Iz','≡ Ce','≡ De'],slide.text_align)+'</div>'+
+          '</div>'+
+          '<div><label class="ppt-label">Aa Estilo</label>'+
+            '<div class="ppt-toggle-row">'+
+              '<button type="button" class="ppt-toggle'+(slide.bold?' active':'')+'" data-toggle="bold" data-val="bold"><b>B</b></button>'+
+              '<button type="button" class="ppt-toggle'+(slide.italic?' active':'')+'" data-toggle="italic" data-val="italic"><i>I</i></button>'+
+            '</div>'+
+          '</div>'+
+        '</div>'+
+
+        /* Background */
+        '<div class="ppt-row ppt-row-2">'+
+          '<div><label class="ppt-label">🖌 Fondo del slide</label>'+
+            '<input class="ppt-input" type="color" data-field="bg_color" value="'+slide.bg_color+'">'+
+            '<div class="ppt-swatch-row" data-swatchgroup="bg_color">'+swatchesHtml(BG_PRESETS,'bg_color',slide.bg_color)+'</div>'+
+          '</div>'+
+          /* Image position (only relevant for text_image) */
+          '<div data-section="img-extras">'+
+            '<label class="ppt-label">🖼 Pos. imagen</label>'+
+            '<select class="ppt-select" data-field="image_position">'+imgPosOpts+'</select>'+
+            '<div style="margin-top:6px"><label class="ppt-label">↔ Tamaño imagen</label>'+
+              '<div class="ppt-slider-row"><input type="range" min="20" max="100" step="5" data-field="image_size" value="'+slide.image_size+'"><span class="ppt-slider-val" data-sizeval>'+slide.image_size+'%</span></div>'+
+            '</div>'+
+          '</div>'+
+        '</div>'+
+
+        /* Image upload */
+        '<div class="ppt-upload-area">'+
+          '<label class="ppt-label">🖼 Imagen</label>'+
+          '<input class="ppt-input" type="file" accept="image/*" data-upload="image">'+
+          '<div data-imgpreview style="margin-top:6px;display:flex;gap:8px;align-items:center">'+
+            (slide.image ? '<img class="ppt-preview-image" src="'+slide.image+'" alt="imagen">' : '<span style="color:#94a3b8;font-size:13px">Sin imagen</span>')+
+            '<button type="button" class="ppt-btn ppt-btn-light ppt-btn-sm" data-action="clear-image">✕ Quitar</button>'+
+          '</div>'+
+        '</div>'+
+
+        /* Audio upload */
+        '<div class="ppt-upload-area">'+
+          '<label class="ppt-label">🎵 Audio MP3</label>'+
+          '<input class="ppt-input" type="file" accept="audio/mpeg,audio/mp3,audio/*" data-upload="music">'+
+          '<div data-audiopreview style="margin-top:6px;display:flex;gap:8px;align-items:center">'+
+            (slide.music ? '<audio controls preload="none" src="'+slide.music+'" style="max-width:100%;height:34px"></audio>' : '<span style="color:#94a3b8;font-size:13px">Sin audio</span>')+
+            '<button type="button" class="ppt-btn ppt-btn-light ppt-btn-sm" data-action="clear-music">✕ Quitar</button>'+
+          '</div>'+
+        '</div>'+
+
+        /* TTS */
+        '<div><label class="ppt-label">🔊 Texto TTS en inglés (opcional — se lee en voz alta)</label>'+
+          '<textarea class="ppt-textarea" data-field="tts_text" style="min-height:60px">'+escapeHtml(slide.tts_text)+'</textarea>'+
+        '</div>'+
+
+      '</div>'+/* end LEFT */
+
+      /* ── RIGHT: live preview ── */
+      '<div class="ppt-preview-wrap">'+
+        '<div class="ppt-preview-label">👁 Vista previa</div>'+
+        '<div data-preview>'+buildPreview(slide)+'</div>'+
+      '</div>'+
+
+      '</div>';/* end ppt-body-cols */
+
+    bindSlideCardEvents(body, idx);
+    card.appendChild(body);
     container.appendChild(card);
   });
 }
 
-function bindSlideCardEvents(cardElement, slideIndex) {
-  cardElement.querySelectorAll('[data-field]').forEach((fieldElement) => {
-    fieldElement.addEventListener('input', () => {
-      const key = fieldElement.getAttribute('data-field');
-      slidesState[slideIndex][key] = fieldElement.value;
-    });
-    fieldElement.addEventListener('change', () => {
-      const key = fieldElement.getAttribute('data-field');
-      slidesState[slideIndex][key] = fieldElement.value;
+/* ─── Live preview refresh (no full re-render) ─── */
+function refreshPreview(cardBody, idx) {
+  const slide  = normalizeSlideState(slidesState[idx]);
+  slidesState[idx] = slide;
+  const prev = cardBody.querySelector('[data-preview]');
+  if (prev) prev.innerHTML = buildPreview(slide);
+  /* refresh header title */
+  const hdr = cardBody.closest('.ppt-slide-card').querySelector('.ppt-slide-header-title');
+  if (hdr) hdr.textContent = '▶ Slide '+(idx+1)+(slide.title?' — '+slide.title.substring(0,40):'')+' ('+slide.template.replace('_',' ')+')';
+}
+
+/* ─── Bind events for a single slide card ─── */
+function bindSlideCardEvents(cardBody, sidx) {
+  /* scalar fields */
+  cardBody.querySelectorAll('[data-field]').forEach(el => {
+    const key = el.getAttribute('data-field');
+    const isCheckbox = el.type === 'checkbox';
+    const ev = (el.tagName === 'TEXTAREA' || el.type === 'text' || el.type === 'number') ? 'input' : 'change';
+    el.addEventListener(ev, () => {
+      slidesState[sidx][key] = isCheckbox ? el.checked : el.value;
+      /* update swatch active state */
+      const sg = cardBody.querySelector('[data-swatchgroup="'+key+'"]');
+      if (sg) sg.querySelectorAll('.ppt-swatch').forEach(sw => {
+        const match = sw.dataset.color.toUpperCase() === String(el.value).toUpperCase();
+        sw.classList.toggle('active', match);
+        sw.style.borderColor = match ? '#0f172a' : 'transparent';
+      });
+      /* update slider label */
+      if (key === 'image_size') { const sv = cardBody.querySelector('[data-sizeval]'); if(sv) sv.textContent = el.value+'%'; }
+      refreshPreview(cardBody, sidx);
     });
   });
 
-  const imageInput = cardElement.querySelector('[data-upload="image"]');
-  const musicInput = cardElement.querySelector('[data-upload="music"]');
+  /* swatch clicks */
+  cardBody.querySelectorAll('.ppt-swatch').forEach(sw => {
+    sw.addEventListener('click', () => {
+      const key = sw.getAttribute('data-swatch');
+      const col = sw.getAttribute('data-color');
+      slidesState[sidx][key] = col;
+      /* sync color input */
+      const inp = cardBody.querySelector('[data-field="'+key+'"]');
+      if (inp) inp.value = col;
+      /* update active swatches in this group */
+      const sg = cardBody.querySelector('[data-swatchgroup="'+key+'"]');
+      if (sg) sg.querySelectorAll('.ppt-swatch').forEach(s2 => {
+        const m = s2.dataset.color.toUpperCase() === col.toUpperCase();
+        s2.classList.toggle('active', m);
+        s2.style.borderColor = m ? '#0f172a' : 'transparent';
+      });
+      refreshPreview(cardBody, sidx);
+    });
+  });
+
+  /* toggle buttons */
+  cardBody.querySelectorAll('[data-toggle]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const key = btn.getAttribute('data-toggle');
+      const val = btn.getAttribute('data-val');
+      if (key === 'bold' || key === 'italic') {
+        slidesState[sidx][key] = !slidesState[sidx][key];
+        btn.classList.toggle('active', slidesState[sidx][key]);
+      } else {
+        /* text_align / title_align */
+        slidesState[sidx][key] = val;
+        const grp = cardBody.querySelector('[data-togglegroup="'+key+'"]');
+        if (grp) grp.querySelectorAll('[data-toggle="'+key+'"]').forEach(b2 => b2.classList.toggle('active', b2.dataset.val===val));
+      }
+      refreshPreview(cardBody, sidx);
+    });
+  });
+
+  /* file uploads */
+  const imageInput = cardBody.querySelector('[data-upload="image"]');
+  const musicInput = cardBody.querySelector('[data-upload="music"]');
 
   imageInput.addEventListener('change', async () => {
-    const selectedFile = imageInput.files && imageInput.files[0] ? imageInput.files[0] : null;
-    if (!selectedFile) return;
-    if (!selectedFile.type.startsWith('image/')) {
-      alert('The image file is not valid.');
-      imageInput.value = '';
-      return;
-    }
-
+    const f = imageInput.files && imageInput.files[0];
+    if (!f) return;
+    if (!f.type.startsWith('image/')) { alert('El archivo no es una imagen válida.'); imageInput.value=''; return; }
     try {
-      const dataUrl = await fileToDataUrl(selectedFile);
-      slidesState[slideIndex].image = dataUrl;
-      renderSlides();
-    } catch (error) {
-      alert('The image could not be processed.');
-    }
+      slidesState[sidx].image = await fileToDataUrl(f);
+      const prevDiv = cardBody.querySelector('[data-imgpreview]');
+      if (prevDiv) prevDiv.innerHTML = '<img class="ppt-preview-image" src="'+slidesState[sidx].image+'" alt="imagen"><button type="button" class="ppt-btn ppt-btn-light ppt-btn-sm" data-action="clear-image">✕ Quitar</button>';
+      refreshPreview(cardBody, sidx);
+      /* re-bind clear button */
+      const clrBtn = cardBody.querySelector('[data-imgpreview] [data-action="clear-image"]');
+      if (clrBtn) clrBtn.addEventListener('click', () => { slidesState[sidx].image=''; const pd=cardBody.querySelector('[data-imgpreview]'); if(pd) pd.innerHTML='<span style="color:#94a3b8;font-size:13px">Sin imagen</span><button type="button" class="ppt-btn ppt-btn-light ppt-btn-sm" data-action="clear-image">✕ Quitar</button>'; refreshPreview(cardBody,sidx); });
+    } catch(e) { alert('No se pudo procesar la imagen.'); }
   });
 
   musicInput.addEventListener('change', async () => {
-    const selectedFile = musicInput.files && musicInput.files[0] ? musicInput.files[0] : null;
-    if (!selectedFile) return;
-
+    const f = musicInput.files && musicInput.files[0];
+    if (!f) return;
     try {
-      const dataUrl = await fileToDataUrl(selectedFile);
-      slidesState[slideIndex].music = dataUrl;
-      renderSlides();
-    } catch (error) {
-      alert('The audio could not be processed.');
-    }
+      slidesState[sidx].music = await fileToDataUrl(f);
+      const prevDiv = cardBody.querySelector('[data-audiopreview]');
+      if (prevDiv) prevDiv.innerHTML = '<audio controls preload="none" src="'+slidesState[sidx].music+'" style="max-width:100%;height:34px"></audio><button type="button" class="ppt-btn ppt-btn-light ppt-btn-sm" data-action="clear-music">✕ Quitar</button>';
+      /* re-bind clear button */
+      const clrBtn = cardBody.querySelector('[data-audiopreview] [data-action="clear-music"]');
+      if (clrBtn) clrBtn.addEventListener('click', () => { slidesState[sidx].music=''; const pd=cardBody.querySelector('[data-audiopreview]'); if(pd) pd.innerHTML='<span style="color:#94a3b8;font-size:13px">Sin audio</span><button type="button" class="ppt-btn ppt-btn-light ppt-btn-sm" data-action="clear-music">✕ Quitar</button>'; });
+    } catch(e) { alert('No se pudo procesar el audio.'); }
   });
 
-  cardElement.querySelectorAll('[data-action]').forEach((buttonElement) => {
-    buttonElement.addEventListener('click', () => {
-      const action = buttonElement.getAttribute('data-action');
-
-      if (action === 'remove') {
-        if (slidesState.length === 1) {
-          alert('At least one slide must exist.');
-          return;
-        }
-        slidesState.splice(slideIndex, 1);
-        renderSlides();
-        return;
+  /* action buttons in header */
+  cardBody.closest('.ppt-slide-card').querySelectorAll('[data-action]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const a = btn.getAttribute('data-action');
+      if (a === 'remove') {
+        if (slidesState.length === 1) { alert('Debe haber al menos un slide.'); return; }
+        slidesState.splice(sidx, 1); renderSlides(); return;
       }
-
-      if (action === 'up' && slideIndex > 0) {
-        const temp = slidesState[slideIndex - 1];
-        slidesState[slideIndex - 1] = slidesState[slideIndex];
-        slidesState[slideIndex] = temp;
-        renderSlides();
-        return;
+      if (a === 'up' && sidx > 0) {
+        [slidesState[sidx-1],slidesState[sidx]] = [slidesState[sidx],slidesState[sidx-1]]; renderSlides(); return;
       }
-
-      if (action === 'down' && slideIndex < slidesState.length - 1) {
-        const temp = slidesState[slideIndex + 1];
-        slidesState[slideIndex + 1] = slidesState[slideIndex];
-        slidesState[slideIndex] = temp;
-        renderSlides();
-        return;
+      if (a === 'down' && sidx < slidesState.length-1) {
+        [slidesState[sidx+1],slidesState[sidx]] = [slidesState[sidx],slidesState[sidx+1]]; renderSlides(); return;
       }
-
-      if (action === 'clear-image') {
-        slidesState[slideIndex].image = '';
-        renderSlides();
-        return;
+      if (a === 'duplicate') {
+        slidesState.splice(sidx+1, 0, JSON.parse(JSON.stringify(slidesState[sidx]))); renderSlides(); return;
       }
-
-      if (action === 'clear-music') {
-        slidesState[slideIndex].music = '';
-        renderSlides();
-      }
+      /* clear actions handled inline via re-bind above */
     });
   });
 }
 
-function escapeHtml(rawValue) {
-  return String(rawValue)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-}
-
+/* ─── Presentation file upload ─── */
 function renderPresentationStatus() {
   const status = document.getElementById('pptFileStatus');
   if (!status) return;
-
   if (!presentationState.file) {
-    status.innerHTML = '<span style="color:#64748b;font-size:13px;">No uploaded PowerPoint/Canva file yet.</span>';
+    status.innerHTML = '<span style="color:#64748b;font-size:13px">Sin archivo subido aún.</span>';
     return;
   }
-
-  const fileName = escapeHtml(presentationState.name || 'presentacion.pptx');
-  status.innerHTML = '' +
-    '<span style="color:#0f172a;font-weight:700;">Uploaded file: ' + fileName + '</span>' +
-    '<button type="button" class="ppt-btn ppt-btn-light" id="btnClearPresentation">Remove file</button>';
-
-  const clearButton = document.getElementById('btnClearPresentation');
-  if (clearButton) {
-    clearButton.addEventListener('click', () => {
-      presentationState = { file: '', name: '' };
-      renderPresentationStatus();
-    });
-  }
+  const fn = escapeHtml(presentationState.name||'presentacion.pptx');
+  status.innerHTML = '<span style="color:#0f172a;font-weight:700">Archivo subido: '+fn+'</span> '
+    + '<button type="button" class="ppt-btn ppt-btn-light ppt-btn-sm" id="btnClearPres">✕ Quitar</button>';
+  document.getElementById('btnClearPres').addEventListener('click', () => {
+    presentationState = {file:'',name:''}; renderPresentationStatus();
+  });
 }
 
+/* ─── Top-level event bindings ─── */
 document.getElementById('btnAddSlide').addEventListener('click', () => {
-  const templateSelect = document.getElementById('newSlideTemplate');
-  slidesState.push(createSlideModel(templateSelect.value));
+  slidesState.push(createSlideModel(document.getElementById('newSlideTemplate').value));
   renderSlides();
+  /* scroll to new slide */
+  const cards = document.querySelectorAll('.ppt-slide-card');
+  if (cards.length) cards[cards.length-1].scrollIntoView({behavior:'smooth',block:'start'});
 });
 
-document.getElementById('pptFileInput').addEventListener('change', async (event) => {
-  const selectedFile = event.target.files && event.target.files[0] ? event.target.files[0] : null;
-  if (!selectedFile) {
-    return;
+document.getElementById('btnCollapseAll').addEventListener('click', () => {
+  document.querySelectorAll('.ppt-slide-card').forEach(c => c.classList.add('collapsed'));
+});
+document.getElementById('btnExpandAll').addEventListener('click', () => {
+  document.querySelectorAll('.ppt-slide-card').forEach(c => c.classList.remove('collapsed'));
+});
+
+document.getElementById('pptFileInput').addEventListener('change', async ev => {
+  const f = ev.target.files && ev.target.files[0];
+  if (!f) return;
+  const n = f.name.toLowerCase();
+  if (!n.endsWith('.ppt')&&!n.endsWith('.pptx')&&!n.endsWith('.pdf')&&!n.endsWith('.canva')) {
+    alert('Archivos permitidos: .ppt, .pptx, .pdf, .canva'); ev.target.value=''; return;
   }
-
-  const lowerName = selectedFile.name.toLowerCase();
-  const isAllowed =
-    lowerName.endsWith('.ppt') ||
-    lowerName.endsWith('.pptx') ||
-    lowerName.endsWith('.pdf') ||
-    lowerName.endsWith('.canva');
-
-  if (!isAllowed) {
-    alert('Allowed files: .ppt, .pptx, .pdf, .canva');
-    event.target.value = '';
-    return;
-  }
-
   try {
-    const dataUrl = await fileToDataUrl(selectedFile);
-    presentationState = {
-      file: dataUrl,
-      name: selectedFile.name
-    };
+    presentationState = { file: await fileToDataUrl(f), name: f.name };
     renderPresentationStatus();
-  } catch (error) {
-    alert('Could not process the uploaded presentation file.');
-  }
+  } catch(e) { alert('No se pudo procesar el archivo.'); }
 });
 
-document.getElementById('powerpointForm').addEventListener('submit', (event) => {
-  const normalizedSlides = slidesState.map(normalizeSlideState);
-  document.getElementById('slides_payload').value = JSON.stringify(normalizedSlides);
+document.getElementById('powerpointForm').addEventListener('submit', ev => {
+  const ns = slidesState.map(normalizeSlideState);
+  document.getElementById('slides_payload').value = JSON.stringify(ns);
   document.getElementById('presentation_payload').value = JSON.stringify(presentationState);
-
-  if (!normalizedSlides.length) {
-    event.preventDefault();
-    alert('You must create at least one slide.');
-  }
+  if (!ns.length) { ev.preventDefault(); alert('Debe haber al menos un slide.'); }
 });
 
 renderSlides();

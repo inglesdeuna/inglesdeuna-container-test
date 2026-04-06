@@ -122,16 +122,33 @@ function normalize_powerpoint_payload($rawData): array
                 $fontSize = 72;
             }
 
+            $titleSize = (int) ($slide['title_size'] ?? 36);
+            if ($titleSize < 16) { $titleSize = 16; }
+            if ($titleSize > 96) { $titleSize = 96; }
+            $imageSize = (int) ($slide['image_size'] ?? 50);
+            if ($imageSize < 20) { $imageSize = 20; }
+            if ($imageSize > 100) { $imageSize = 100; }
+            $allowedAlign    = ['left','center','right'];
+            $allowedImgPos   = ['right','left','top','bottom'];
             $slides[] = [
-                'template' => normalize_template((string) ($slide['template'] ?? 'title_text')),
-                'title' => trim((string) ($slide['title'] ?? '')),
-                'text' => trim((string) ($slide['text'] ?? '')),
-                'font_family' => normalize_font_family((string) ($slide['font_family'] ?? 'Arial')),
-                'font_size' => $fontSize,
-                'bg_color' => normalize_color((string) ($slide['bg_color'] ?? '#FFFFFF')),
-                'image' => trim((string) ($slide['image'] ?? '')),
-                'music' => trim((string) ($slide['music'] ?? '')),
-                'tts_text' => trim((string) ($slide['tts_text'] ?? '')),
+                'template'       => normalize_template((string) ($slide['template'] ?? 'title_text')),
+                'title'          => trim((string) ($slide['title'] ?? '')),
+                'text'           => trim((string) ($slide['text'] ?? '')),
+                'font_family'    => normalize_font_family((string) ($slide['font_family'] ?? 'Arial')),
+                'font_size'      => $fontSize,
+                'title_size'     => $titleSize,
+                'bg_color'       => normalize_color((string) ($slide['bg_color'] ?? '#FFFFFF')),
+                'title_color'    => normalize_color((string) ($slide['title_color'] ?? '#1E3A5F')),
+                'text_color'     => normalize_color((string) ($slide['text_color'] ?? '#334155')),
+                'text_align'     => in_array($slide['text_align']  ?? '', $allowedAlign, true) ? $slide['text_align']  : 'left',
+                'title_align'    => in_array($slide['title_align'] ?? '', $allowedAlign, true) ? $slide['title_align'] : 'center',
+                'bold'           => !empty($slide['bold']),
+                'italic'         => !empty($slide['italic']),
+                'image'          => trim((string) ($slide['image'] ?? '')),
+                'image_size'     => $imageSize,
+                'image_position' => in_array($slide['image_position'] ?? '', $allowedImgPos, true) ? $slide['image_position'] : 'right',
+                'music'          => trim((string) ($slide['music'] ?? '')),
+                'tts_text'       => trim((string) ($slide['tts_text'] ?? '')),
             ];
         }
     }
@@ -328,38 +345,46 @@ function renderSlide() {
   if (!stage || !counter || !Array.isArray(PPT_SLIDES) || !PPT_SLIDES.length) return;
 
   const slide = PPT_SLIDES[slideIndex] || {};
-  const template = ['title_text','text_image','image_full'].includes(slide.template) ? slide.template : 'title_text';
-  const backgroundColor = /^#[0-9a-fA-F]{6}$/.test(String(slide.bg_color || '')) ? slide.bg_color : '#FFFFFF';
-  const fontFamily = ['Arial','Georgia','Verdana','Tahoma','Times New Roman'].includes(slide.font_family) ? slide.font_family : 'Arial';
-  const fontSize = Math.max(14, Math.min(72, Number(slide.font_size || 28)));
+  const template    = ['title_text','text_image','image_full'].includes(slide.template) ? slide.template : 'title_text';
+  const bg          = /^#[0-9a-fA-F]{6}$/.test(String(slide.bg_color||'')) ? slide.bg_color : '#FFFFFF';
+  const fontFamily  = ['Arial','Georgia','Verdana','Tahoma','Times New Roman','Courier New','Trebuchet MS','Impact'].includes(slide.font_family) ? slide.font_family : 'Arial';
+  const fontSize    = Math.max(12, Math.min(72, Number(slide.font_size  || 28)));
+  const titleSize   = Math.max(16, Math.min(96, Number(slide.title_size || 36)));
+  const titleColor  = /^#[0-9a-fA-F]{6}$/i.test(String(slide.title_color||'')) ? slide.title_color : '#1e3a5f';
+  const textColor   = /^#[0-9a-fA-F]{6}$/i.test(String(slide.text_color||''))  ? slide.text_color  : '#334155';
+  const textAlign   = ['left','center','right'].includes(slide.text_align)  ? slide.text_align  : 'left';
+  const titleAlign  = ['left','center','right'].includes(slide.title_align) ? slide.title_align : 'center';
+  const fw          = slide.bold   ? '800' : '600';
+  const fi          = slide.italic ? 'italic' : 'normal';
+  const imgPct      = Math.max(20, Math.min(100, Number(slide.image_size||50))) + '%';
+  const imgPos      = ['right','left','top','bottom'].includes(slide.image_position) ? slide.image_position : 'right';
 
   stage.className = 'ppt-slide template-' + template;
-  stage.style.background = backgroundColor;
+  stage.style.background = bg;
 
-  const hasImage = !!slide.image;
-  const imageHtml = hasImage ? '<div class="ppt-image-wrap"><img class="ppt-image" src="' + slide.image + '" alt="Slide image"></div>' : '';
+  const hasImage  = !!slide.image;
+  const imgTag    = hasImage ? '<img class="ppt-image" src="' + slide.image + '" alt="Slide image" style="max-width:'+imgPct+';max-height:'+imgPct+'">' : '';
+  const imgWrap   = hasImage ? '<div class="ppt-image-wrap">'+imgTag+'</div>' : '';
+  const titleHtml = slide.title ? '<h2 class="ppt-slide-title" style="font-family:'+escapeHtml(fontFamily)+';font-size:'+titleSize+'px;color:'+titleColor+';text-align:'+titleAlign+'">'+escapeHtml(slide.title)+'</h2>' : '';
+  const textHtml  = slide.text  ? '<p  class="ppt-slide-text"  style="font-family:'+escapeHtml(fontFamily)+';font-size:'+fontSize+'px;color:'+textColor+';text-align:'+textAlign+';font-weight:'+fw+';font-style:'+fi+'">'+escapeHtml(slide.text)+'</p>' : '';
 
-  if (template === 'image_full') {
-    stage.innerHTML = '' +
-      '<div class="ppt-col-text">' +
-        '<h2 class="ppt-slide-title" style="font-family:' + escapeHtml(fontFamily) + ';font-size:' + fontSize + 'px;">' + escapeHtml(slide.title || '') + '</h2>' +
-        '<p class="ppt-slide-text" style="font-family:' + escapeHtml(fontFamily) + ';font-size:' + Math.max(14, fontSize - 8) + 'px;">' + escapeHtml(slide.text || '') + '</p>' +
-      '</div>' +
-      imageHtml;
-  } else if (template === 'text_image') {
-    stage.innerHTML = '' +
-      '<div class="ppt-col-text">' +
-        '<h2 class="ppt-slide-title" style="font-family:' + escapeHtml(fontFamily) + ';font-size:' + fontSize + 'px;">' + escapeHtml(slide.title || '') + '</h2>' +
-        '<p class="ppt-slide-text" style="font-family:' + escapeHtml(fontFamily) + ';font-size:' + Math.max(14, fontSize - 8) + 'px;">' + escapeHtml(slide.text || '') + '</p>' +
-      '</div>' +
-      '<div>' + imageHtml + '</div>';
+  if (template === 'text_image') {
+    const textCol = '<div class="ppt-col-text">'+titleHtml+textHtml+'</div>';
+    const imgCol  = '<div class="ppt-image-wrap" style="flex-basis:'+imgPct+'">'+imgTag+'</div>';
+    if (imgPos === 'left') {
+      stage.innerHTML = imgCol + textCol;
+    } else if (imgPos === 'top') {
+      stage.style.flexDirection = 'column';
+      stage.innerHTML = imgWrap + '<div class="ppt-col-text">'+titleHtml+textHtml+'</div>';
+    } else if (imgPos === 'bottom') {
+      stage.style.flexDirection = 'column';
+      stage.innerHTML = '<div class="ppt-col-text">'+titleHtml+textHtml+'</div>' + imgWrap;
+    } else {
+      stage.innerHTML = textCol + imgCol;
+    }
   } else {
-    stage.innerHTML = '' +
-      '<div class="ppt-col-text">' +
-        '<h2 class="ppt-slide-title" style="font-family:' + escapeHtml(fontFamily) + ';font-size:' + fontSize + 'px;">' + escapeHtml(slide.title || '') + '</h2>' +
-        '<p class="ppt-slide-text" style="font-family:' + escapeHtml(fontFamily) + ';font-size:' + Math.max(14, fontSize - 8) + 'px;">' + escapeHtml(slide.text || '') + '</p>' +
-      '</div>' +
-      imageHtml;
+    /* title_text and image_full */
+    stage.innerHTML = '<div class="ppt-col-text">'+titleHtml+textHtml+'</div>' + imgWrap;
   }
 
   counter.textContent = 'Slide ' + (slideIndex + 1) + ' / ' + PPT_SLIDES.length;
