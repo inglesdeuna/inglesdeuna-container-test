@@ -760,24 +760,132 @@ table.ws-tbl th{background:#f3f8fd;text-transform:uppercase;letter-spacing:.08em
 .ws-plbl span{background:#fff;padding:0 14px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.14em;color:var(--border)}
 /* ── Print ── */
 @media print{
-  @page{size:letter;margin:25mm 25mm}
-  body{background:#fff;font-size:11px;padding:0}
+  @page{size:letter;margin:20mm 18mm}
+  body{background:#fff!important;font-size:10.5px;line-height:1.45;padding:0;color:#223046}
   .toolbar,.ws-pdiv,.ws-plbl{display:none!important}
   .ws-doc{box-shadow:none;border-radius:0;max-width:100%;margin:0}
-  .ws-cover{padding:0}
-  .ws-body{padding:10px 0}
-  .ws-sec{margin-bottom:14px;break-inside:avoid;page-break-inside:avoid}
-  .hero h1{font-size:16px}
-  .section-title{font-size:12px}
-  .num{width:30px;height:30px;font-size:13px;flex:0 0 30px}
-  .ws-qt{font-size:12px}
-  .ws-opt{font-size:11px;padding:6px 8px;min-height:34px}
-  .ws-chip{font-size:11px;padding:4px 10px}
-  .section-head,.num,.ws-qn,.ws-ol,.ws-ck,.ws-ck .ws-ol,.key-tag{-webkit-print-color-adjust:exact;print-color-adjust:exact}
-  table.ws-tbl th,.tr-a td,.ws-bank,.ws-chip,.ws-expl,.ws-ab,.ws-ob,.hero,.ws-hdr,.badge{-webkit-print-color-adjust:exact;print-color-adjust:exact}
-  .card,.fc-card,.mc-card{break-inside:avoid;page-break-inside:avoid;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-  .fc-grid,.mc-grid{break-inside:avoid;page-break-inside:avoid}
-  .ws-opt{break-inside:avoid}
+  /* ── Cover ── */
+  .ws-cover{padding:0 0 6px}
+  .brand-row{margin-bottom:8px;gap:10px}
+  .logo-box{max-width:100px}
+  .logo-box img{max-height:36px}
+  .badge{padding:2px 7px;font-size:8px}
+  .badge-row{gap:4px}
+  .hero{padding:9px 13px;margin-bottom:7px;border-radius:8px}
+  .eyebrow{font-size:8px;margin-bottom:2px}
+  .hero h1{font-size:14px;margin-bottom:3px}
+  .hero p{font-size:9px;line-height:1.4}
+  .meta-grid{margin-bottom:7px;gap:5px}
+  .meta-card{padding:6px 8px;border-radius:6px}
+  .meta-card span{font-size:7.5px;margin-bottom:4px}
+  .ci-line{height:10px}
+  .intro-card{padding:6px 10px;font-size:9px;margin-bottom:8px;line-height:1.45;border-radius:6px}
+  /* ── Page header ── */
+  .ws-hdr{padding:4px 12px}
+  .hdr-brand{font-size:8px}
+  .hdr-unit{font-size:9px}
+  .hdr-f{font-size:8px}
+  .hdr-f span{min-width:60px}
+  /* ── Body ── */
+  .ws-body{padding:6px 0}
+  /* ── Sections ── */
+  .ws-sec{margin-bottom:9px;break-inside:avoid;page-break-inside:avoid}
+  .section-head{padding:5px 10px;margin-bottom:5px;border-radius:8px}
+  .num{width:24px;height:24px;font-size:11px;flex:0 0 24px}
+  .section-kicker{font-size:8px}
+  .section-title{font-size:10.5px}
+  .key-tag{font-size:7.5px;padding:1px 5px}
+  /* ── Card ── */
+  .card{padding:8px 10px;border-radius:7px}
+  .instruction{font-size:9px;margin-bottom:5px;line-height:1.4}
+  /* ── Tables ── */
+  table.ws-tbl{font-size:9px}
+  table.ws-tbl th,table.ws-tbl td{padding:4px 7px}
+  .tc-hn{width:24px}
+  /* ── Questions ── */
+  .ws-qb{margin-bottom:7px;break-inside:avoid;page-break-inside:avoid}
+  .ws-qt{font-size:10.5px;margin-bottom:4px;gap:5px}
+  .ws-qn{width:19px;height:19px;font-size:9px;flex:0 0 19px;margin-top:1px}
+  .ws-audio{font-size:9.5px}
+  /* ── MCQ options ── */
+  .ws-opts{gap:4px 7px;padding-left:24px;margin-top:4px}
+  .ws-opt{padding:4px 7px;font-size:9.5px;min-height:25px;border-radius:6px;gap:5px;break-inside:avoid}
+  .ws-ol{width:19px;height:19px;font-size:9px;flex:0 0 19px}
+  .ws-expl{font-size:8.5px;padding:3px 6px;margin-top:4px;margin-left:24px}
+  /* ── Word bank / fill-in ── */
+  .ws-bank{padding:5px 9px;gap:3px 5px;margin-bottom:7px;border-radius:7px}
+  .ws-blbl{font-size:8px}
+  .ws-chip{padding:3px 8px;font-size:9px;border-radius:999px}
+  .ws-fr{margin-bottom:5px;font-size:10.5px;gap:6px;line-height:1.55}
+  .ws-fn{font-size:9px}
+  /* ── Writing practice ── */
+  .ws-wb{margin-bottom:8px;break-inside:avoid;page-break-inside:avoid}
+  .ws-wi{font-size:8.5px;margin:2px 0 3px 24px}
+  .ws-lines{gap:6px;margin-top:4px}
+  .ws-line{height:18px;border-bottom-width:1.5px}
+  .ws-ab{padding:4px 8px;margin-left:24px;border-radius:5px}
+  .ws-ma{font-size:9.5px;margin-bottom:1px}
+  /* ── Match ── */
+  .ws-mcols{gap:12px}
+  .ws-chhd{font-size:8.5px;margin-bottom:4px;padding-bottom:3px}
+  .ws-mr{padding:4px 0;font-size:10px;border-bottom-width:1px}
+  .ws-mn,.ws-ml{font-size:8.5px;min-width:16px}
+  .ws-mbl{width:28px;flex:0 0 28px}
+  /* ── Order ── */
+  .ws-or{padding:5px 4px;font-size:11px;border-bottom-width:1px;gap:10px}
+  .ws-ob{width:26px;height:20px;min-width:26px;border-radius:5px;border-width:1.5px}
+  /* ── Flashcard grid ── */
+  .fc-grid{grid-template-columns:repeat(4,1fr);gap:7px}
+  .fc-card{border-radius:10px}
+  .fc-img{height:76px;padding:5px}
+  .fc-img img{max-height:64px}
+  .fc-label{padding:4px 7px;font-size:10px}
+  .fc-blank{padding:4px 7px;min-height:20px}
+  /* ── Memory card grid ── */
+  .mc-grid{grid-template-columns:repeat(4,1fr);gap:7px}
+  .mc-card{border-radius:10px}
+  .mc-frame{height:76px;padding:5px;font-size:10px}
+  .mc-frame img{max-height:64px}
+  .mc-meta{padding:4px 8px;font-size:10px}
+  /* ── MC image options ── */
+  .mc-img-opts{gap:6px}
+  .mc-img-opt{padding:4px;border-radius:8px}
+  .mc-img-opt .mc-frame{height:65px;padding:4px}
+  .mc-img-opt .mc-frame img{max-height:55px}
+  .mc-qimg img{max-height:75px;border-radius:5px}
+  /* ── Dictation ── */
+  .dt-item{padding:5px 0;gap:8px;break-inside:avoid;page-break-inside:avoid}
+  .dt-num{font-size:11px;min-width:20px}
+  .dt-img{width:52px;height:40px;border-radius:6px}
+  .dt-write{gap:5px}
+  .dt-answer{font-size:10px;padding:3px 7px;border-radius:5px}
+  .dt-lines{gap:6px}
+  .dt-line{border-bottom-width:1.5px}
+  /* ── Pronunciation ── */
+  .pr-grid{grid-template-columns:repeat(3,1fr);gap:7px}
+  .pr-card{border-radius:10px}
+  .pr-img{height:80px;padding:5px}
+  .pr-img img{max-height:68px}
+  .pr-img-txt{font-size:12px;padding:8px}
+  .pr-fields{padding:5px 7px;gap:3px}
+  .pr-field{gap:1px}
+  .pr-lbl{font-size:7px}
+  .pr-blank{height:14px}
+  .pr-ans{font-size:9.5px;padding:1px 5px;border-radius:3px}
+  /* ── Notes box ── */
+  .act-notes-box{min-height:200px;border-radius:8px}
+  /* ── Placeholder / empty ── */
+  .ws-hold{padding:12px;font-size:9.5px;border-radius:8px}
+  .ws-empty{font-size:9.5px}
+  /* ── Break control ── */
+  .card,.fc-card,.mc-card,.pr-card{break-inside:avoid;page-break-inside:avoid}
+  .fc-grid,.mc-grid,.pr-grid{break-inside:avoid;page-break-inside:avoid}
+  .ws-qb,.ws-wb,.ws-or,.dt-item{break-inside:avoid;page-break-inside:avoid}
+  /* ── Color exact ── */
+  .section-head,.num,.ws-qn,.ws-ol,.ws-ck,.ws-ck .ws-ol,.key-tag,
+  table.ws-tbl th,.tr-a td,.ws-bank,.ws-chip,.ws-expl,.ws-ab,.ws-ob,
+  .hero,.ws-hdr,.badge,.meta-card,.intro-card,.fc-card,.mc-card,.pr-card,
+  .mc-img-opt,.act-notes-box,.dt-answer,.pr-ans,.ws-hold{-webkit-print-color-adjust:exact;print-color-adjust:exact}
   img{max-width:100%;height:auto;-webkit-print-color-adjust:exact;print-color-adjust:exact}
   a{color:inherit;text-decoration:none}
 }
