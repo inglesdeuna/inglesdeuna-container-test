@@ -42,6 +42,7 @@ if (!empty($unit['course_id'])) {
 =============================== */
 $activityTypes = [
     "drag_drop" => "Drag & Drop",
+    "unscramble" => "Unscramble",
     "flashcards" => "Flashcards",
     "memory_cards" => "Memory Cards",
     "match" => "Match",
