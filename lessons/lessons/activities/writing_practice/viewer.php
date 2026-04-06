@@ -244,6 +244,52 @@ $cssVer = file_exists(__DIR__ . '/../multiple_choice/multiple_choice.css')
 /* override Show Answer button to purple in card-by-card mode */
 .mc-btn-show { background: linear-gradient(180deg, #a855f7 0%, #7c3aed 100%) !important; }
 
+/* ── Inline fill inputs ─────────────────────────────── */
+.wp-fill-sentence-box,
+.wp-fill-paragraph-box {
+    background: #f0f6ff;
+    border: 1px solid #bfdbfe;
+    border-radius: 14px;
+    padding: 14px 22px;
+    font-size: clamp(16px, 2vw, 21px);
+    line-height: 2.8;
+    color: #1e3a5f;
+    font-weight: 600;
+    margin-bottom: 10px;
+    text-align: center;
+    word-break: break-word;
+}
+.wp-fill-paragraph-box {
+    text-align: left;
+    font-size: clamp(15px, 1.8vw, 18px);
+    line-height: 2.6;
+    white-space: pre-wrap;
+}
+.wp-fill-input {
+    display: inline-block;
+    min-width: 60px;
+    border: none;
+    border-bottom: 2.5px solid #a78bfa;
+    background: transparent;
+    color: #5b21b6;
+    font-weight: 700;
+    font-size: inherit;
+    font-family: inherit;
+    padding: 1px 8px 3px;
+    text-align: center;
+    outline: none;
+    border-radius: 4px 4px 0 0;
+    vertical-align: middle;
+    transition: border-color .2s, background .2s, color .2s;
+    margin: 0 4px;
+}
+.wp-fill-input:focus {
+    border-bottom-color: #7c3aed;
+    background: rgba(167,139,250,.1);
+}
+.wp-fill-input.ok  { border-bottom-color: #22c55e; background: rgba(34,197,94,.07);  color: #166534; }
+.wp-fill-input.bad { border-bottom-color: #ef4444; background: rgba(239,68,68,.07);   color: #dc2626; }
+
 /* ── Video Layout mode ───────────────────────────────────── */
 .wpvl-wrap        { max-width: 860px; margin: 0 auto; font-family: 'Nunito','Segoe UI',sans-serif; }
 .wpvl-video-box   { position: relative; width: 100%; border-radius: 16px; overflow: hidden;
@@ -668,12 +714,13 @@ document.addEventListener('DOMContentLoaded', function () {
     function playSound(s) { try { s.pause(); s.currentTime = 0; s.play(); } catch (e) {} }
 
     /* ── state ────────────────────────────────────────── */
-    var index        = 0;
-    var finished     = false;
-    var checkedCards = {};   // index → true when locked
-    var attemptsMap  = {};   // index → attempt count
-    var correctCount = 0;    // correct (auto-graded correct + open-writing submitted)
-    var openResponses = [];   // collected writing responses
+    var index             = 0;
+    var finished          = false;
+    var checkedCards      = {};   // index → true when locked
+    var attemptsMap       = {};   // index → attempt count
+    var correctCount      = 0;    // correct (auto-graded correct + open-writing submitted)
+    var openResponses     = [];   // collected writing responses
+    var currentFillInputs = [];   // inline <input> elements for fill_sentence / fill_paragraph
 
     /* ── helpers ──────────────────────────────────────── */
     function isAutoGraded(q) {
@@ -717,6 +764,32 @@ document.addEventListener('DOMContentLoaded', function () {
         video_writing:  'Write about what you saw\u2026',
     };
 
+    /* ── createFillInput helper ───────────────────────── */
+    function createFillInput(blankIdx, q) {
+        var answers     = q.correct_answers || [];
+        var expectedAns = answers[blankIdx] ? String(answers[blankIdx]) : '';
+        var inp = document.createElement('input');
+        inp.type = 'text';
+        inp.className = 'wp-fill-input';
+        inp.setAttribute('autocomplete',   'off');
+        inp.setAttribute('autocorrect',    'off');
+        inp.setAttribute('autocapitalize', 'off');
+        inp.setAttribute('spellcheck',     'false');
+        inp.placeholder = '…';
+        inp.style.width = Math.max(60, (expectedAns.length || 7) * 11 + 20) + 'px';
+        inp.addEventListener('input', function () {
+            if (!checkedCards[index] && !finished) {
+                var anyFilled = currentFillInputs.some(function (fi) { return fi.value.trim() !== ''; });
+                btnShow.disabled = !anyFilled;
+            }
+        });
+        inp.addEventListener('blur',    function ()  { autoCheck(); });
+        inp.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter') { e.preventDefault(); autoCheck(); }
+        });
+        return inp;
+    }
+
     /* ── loadCard ─────────────────────────────────────── */
     function loadCard() {
         var q    = questions[index];
@@ -731,10 +804,12 @@ document.addEventListener('DOMContentLoaded', function () {
         statusEl.textContent = (index + 1) + ' / ' + questions.length;
 
         /* clear previous content */
+        currentFillInputs     = [];
         mediaArea.innerHTML   = '';
         qtextEl.innerHTML     = '';
         instrEl.innerHTML     = '';
         answerEl.value        = '';
+        answerEl.style.display = '';
         answerEl.className    = 'dict-answer-box';
         answerEl.disabled     = false;
         answerEl.placeholder  = PLACEHOLDERS[type] || PLACEHOLDERS.writing;
@@ -810,14 +885,39 @@ document.addEventListener('DOMContentLoaded', function () {
 
         /* ── question text ── */
         if (type === 'fill_sentence' || type === 'fill_paragraph') {
-            if (q.question) {
-                var sentDiv = document.createElement('div');
-                sentDiv.className = 'wp-q-sentence';
-                sentDiv.innerHTML = esc(String(q.question)).replace(/_{2,}/g, function () {
-                    return '<span class="wp-blank">___</span>';
+            answerEl.style.display = 'none';
+            var rawText = String(q.question || '');
+            var fillBox = document.createElement('div');
+            fillBox.className = type === 'fill_paragraph' ? 'wp-fill-paragraph-box' : 'wp-fill-sentence-box';
+            if (/_{2,}/.test(rawText)) {
+                /* Explicit ___ blanks → embed an input at each position */
+                rawText.split(/_{2,}/).forEach(function (seg, si, arr) {
+                    if (seg) {
+                        seg.split('\n').forEach(function (line, li) {
+                            if (li > 0) { fillBox.appendChild(document.createElement('br')); }
+                            if (line)   { fillBox.appendChild(document.createTextNode(line)); }
+                        });
+                    }
+                    if (si < arr.length - 1) {
+                        var fillInp = createFillInput(si, q);
+                        fillBox.appendChild(fillInp);
+                        currentFillInputs.push(fillInp);
+                    }
                 });
-                qtextEl.appendChild(sentDiv);
+            } else {
+                /* No explicit blanks → show full text + single trailing input */
+                if (rawText) {
+                    rawText.split('\n').forEach(function (line, li) {
+                        if (li > 0) { fillBox.appendChild(document.createElement('br')); }
+                        if (line)   { fillBox.appendChild(document.createTextNode(line)); }
+                    });
+                    fillBox.appendChild(document.createTextNode('\u00a0'));
+                }
+                var fillInp = createFillInput(0, q);
+                fillBox.appendChild(fillInp);
+                currentFillInputs.push(fillInp);
             }
+            qtextEl.appendChild(fillBox);
         } else {
             if (q.question) {
                 var qp = document.createElement('div');
@@ -841,41 +941,113 @@ document.addEventListener('DOMContentLoaded', function () {
 
         /* restore state if user navigated back */
         if (checkedCards[index]) {
-            answerEl.disabled = true;
-            if (isAutoGraded(q)) {
-                var wasCorrect = checkedCards[index] === 'correct';
-                answerEl.className = 'dict-answer-box ' + (wasCorrect ? 'ok' : 'bad');
-                feedbackEl.textContent = wasCorrect ? '\u2714 Right' : '\u2718 Wrong';
-                feedbackEl.className   = 'mc-feedback ' + (wasCorrect ? 'good' : 'bad');
+            var isFillType     = (type === 'fill_sentence' || type === 'fill_paragraph');
+            var wasCardCorrect = checkedCards[index] === 'correct';
+            if (isFillType && currentFillInputs.length > 0) {
+                var savedVals = checkedCards[index + '_inputs'] || [];
+                currentFillInputs.forEach(function (inp, ii) {
+                    inp.value    = savedVals[ii] || '';
+                    inp.disabled = true;
+                    var ans2   = q.correct_answers || [];
+                    var thisOk = wasCardCorrect ? true
+                               : (ans2.length > ii ? checkCorrect(inp.value, [ans2[ii]]) : false);
+                    inp.className = 'wp-fill-input ' + (thisOk ? 'ok' : 'bad');
+                });
+                feedbackEl.textContent = wasCardCorrect ? '\u2714 Right' : '\u2718 Wrong';
+                feedbackEl.className   = 'mc-feedback ' + (wasCardCorrect ? 'good' : 'bad');
                 revealEl.textContent   = checkedCards[index + '_reveal'] || '';
                 if (revealEl.textContent) { revealEl.classList.add('show'); }
             } else {
-                feedbackEl.textContent = '\u2714 Submitted for review';
-                feedbackEl.className   = 'mc-feedback good';
+                answerEl.disabled = true;
+                if (isAutoGraded(q)) {
+                    answerEl.className     = 'dict-answer-box ' + (wasCardCorrect ? 'ok' : 'bad');
+                    feedbackEl.textContent = wasCardCorrect ? '\u2714 Right' : '\u2718 Wrong';
+                    feedbackEl.className   = 'mc-feedback ' + (wasCardCorrect ? 'good' : 'bad');
+                    revealEl.textContent   = checkedCards[index + '_reveal'] || '';
+                    if (revealEl.textContent) { revealEl.classList.add('show'); }
+                } else {
+                    feedbackEl.textContent = '\u2714 Submitted for review';
+                    feedbackEl.className   = 'mc-feedback good';
+                }
             }
         }
 
-        answerEl.focus();
+        if (currentFillInputs.length > 0) {
+            currentFillInputs[0].focus();
+        } else {
+            answerEl.focus();
+        }
     }
 
     /* ── checkAnswer ──────────────────────────────────── */
     function checkAnswer() {
-        var q = questions[index];
+        var q    = questions[index];
+        var type = String(q.type || 'writing');
         if (!isAutoGraded(q)) { return; }
         if (checkedCards[index]) { return; }
 
+        var isFill = (type === 'fill_sentence' || type === 'fill_paragraph') && currentFillInputs.length > 0;
+
+        if (isFill) {
+            var vals    = currentFillInputs.map(function (fi) { return fi.value.trim(); });
+            var answers = q.correct_answers || [];
+            if (vals.every(function (v) { return v === ''; })) {
+                feedbackEl.textContent = 'Fill in the blank first.';
+                feedbackEl.className   = 'mc-feedback bad';
+                return;
+            }
+            var fillAttempts = (attemptsMap[index] || 0) + 1;
+            attemptsMap[index] = fillAttempts;
+            var fillCorrect;
+            if (currentFillInputs.length === 1) {
+                fillCorrect = checkCorrect(vals[0], answers);
+            } else if (answers.length === currentFillInputs.length) {
+                fillCorrect = vals.every(function (v, ii) { return checkCorrect(v, [answers[ii]]); });
+            } else {
+                fillCorrect = answers.some(function (a) { return normalize(vals.join(' ')) === normalize(a); });
+            }
+            if (fillCorrect) {
+                feedbackEl.textContent = '\u2714 Right';
+                feedbackEl.className   = 'mc-feedback good';
+                currentFillInputs.forEach(function (fi) { fi.className = 'wp-fill-input ok'; fi.disabled = true; });
+                playSound(sndOk);
+                checkedCards[index]             = 'correct';
+                checkedCards[index + '_inputs'] = vals;
+                correctCount++;
+            } else if (fillAttempts >= 2) {
+                feedbackEl.textContent = '\u2718 Wrong';
+                feedbackEl.className   = 'mc-feedback bad';
+                currentFillInputs.forEach(function (fi, ii) {
+                    var ok2 = answers.length > ii ? checkCorrect(fi.value.trim(), [answers[ii]]) : false;
+                    fi.className = 'wp-fill-input ' + (ok2 ? 'ok' : 'bad');
+                    fi.disabled  = true;
+                });
+                playSound(sndBad);
+                var shownFill = answers.join(', ');
+                revealEl.textContent = 'Correct: ' + shownFill;
+                revealEl.classList.add('show');
+                checkedCards[index]             = 'wrong';
+                checkedCards[index + '_inputs'] = vals;
+                checkedCards[index + '_reveal'] = 'Correct: ' + shownFill;
+            } else {
+                feedbackEl.textContent = '\u2718 Wrong (1/2) \u2013 try again';
+                feedbackEl.className   = 'mc-feedback bad';
+                currentFillInputs.forEach(function (fi) { fi.className = 'wp-fill-input bad'; });
+                playSound(sndBad);
+            }
+            return;
+        }
+
+        /* ── textarea path ── */
         var val = answerEl.value.trim();
         if (val === '') {
             feedbackEl.textContent = 'Write an answer first.';
             feedbackEl.className   = 'mc-feedback bad';
             return;
         }
-
         var attempts = (attemptsMap[index] || 0) + 1;
         attemptsMap[index] = attempts;
-
         var correct = checkCorrect(val, q.correct_answers || []);
-
         if (correct) {
             feedbackEl.textContent = '\u2714 Right';
             feedbackEl.className   = 'mc-feedback good';
@@ -893,7 +1065,7 @@ document.addEventListener('DOMContentLoaded', function () {
             var shown = (q.correct_answers || []).slice(0, 2).join(' / ');
             revealEl.textContent = 'Correct: ' + shown;
             revealEl.classList.add('show');
-            checkedCards[index]          = 'wrong';
+            checkedCards[index]             = 'wrong';
             checkedCards[index + '_reveal'] = 'Correct: ' + shown;
         } else {
             feedbackEl.textContent = '\u2718 Wrong (1/2) \u2013 try again';
@@ -905,9 +1077,15 @@ document.addEventListener('DOMContentLoaded', function () {
 
     /* ── autoCheck (on blur / Enter) ──────────────────── */
     function autoCheck() {
-        var q = questions[index];
-        if (!isAutoGraded(q) || checkedCards[index] || answerEl.value.trim() === '') { return; }
-        checkAnswer();
+        var q    = questions[index];
+        var type = String(q.type || 'writing');
+        if (!isAutoGraded(q) || checkedCards[index]) { return; }
+        var isFill = (type === 'fill_sentence' || type === 'fill_paragraph') && currentFillInputs.length > 0;
+        if (isFill) {
+            if (currentFillInputs.every(function (fi) { return fi.value.trim() !== ''; })) { checkAnswer(); }
+        } else {
+            if (answerEl.value.trim() !== '') { checkAnswer(); }
+        }
     }
 
     /* ── goNext ───────────────────────────────────────── */
@@ -918,7 +1096,14 @@ document.addEventListener('DOMContentLoaded', function () {
 
         if (isAutoGraded(q)) {
             /* must check first */
-            if (!checkedCards[index] && answerEl.value.trim() !== '') { checkAnswer(); }
+            var isFillNext = (type === 'fill_sentence' || type === 'fill_paragraph') && currentFillInputs.length > 0;
+            if (!checkedCards[index]) {
+                if (isFillNext) {
+                    if (currentFillInputs.some(function (fi) { return fi.value.trim() !== ''; })) { checkAnswer(); }
+                } else if (answerEl.value.trim() !== '') {
+                    checkAnswer();
+                }
+            }
             if (!checkedCards[index]) { return; }
         } else {
             /* open writing – record response; always counts as 1 point completed */
@@ -955,13 +1140,32 @@ document.addEventListener('DOMContentLoaded', function () {
 
     /* ── showAnswer ───────────────────────────────────── */
     function showAnswer() {
-        var q = questions[index];
+        var q    = questions[index];
+        var type = String(q.type || 'writing');
         if (!isAutoGraded(q)) { return; }
         var answers = q.correct_answers || [];
         if (answers.length === 0) { return; }
-        var shown = answers.slice(0, 2).join(' / ');
 
-        /* lock card as wrong the moment the answer is revealed */
+        var isFill = (type === 'fill_sentence' || type === 'fill_paragraph') && currentFillInputs.length > 0;
+        if (isFill) {
+            var shownFill = answers.join(', ');
+            if (!checkedCards[index]) {
+                var savedVals2 = currentFillInputs.map(function (fi) { return fi.value.trim(); });
+                checkedCards[index]             = 'wrong';
+                checkedCards[index + '_inputs'] = savedVals2;
+                checkedCards[index + '_reveal'] = 'Correct: ' + shownFill;
+                currentFillInputs.forEach(function (fi) { fi.className = 'wp-fill-input bad'; fi.disabled = true; });
+                feedbackEl.textContent = '\u2718 Wrong';
+                feedbackEl.className   = 'mc-feedback bad';
+                playSound(sndBad);
+            }
+            revealEl.textContent = 'Correct: ' + shownFill;
+            revealEl.classList.add('show');
+            return;
+        }
+
+        /* ── textarea path ── */
+        var shown = answers.slice(0, 2).join(' / ');
         if (!checkedCards[index]) {
             checkedCards[index]             = 'wrong';
             checkedCards[index + '_reveal'] = 'Correct: ' + shown;
@@ -971,7 +1175,6 @@ document.addEventListener('DOMContentLoaded', function () {
             feedbackEl.className   = 'mc-feedback bad';
             playSound(sndBad);
         }
-
         if (answerEl.value.trim() !== '') {
             revealEl.textContent = 'You wrote: "' + answerEl.value + '" \u2192 Correct: ' + shown;
         } else {
@@ -1057,12 +1260,13 @@ document.addEventListener('DOMContentLoaded', function () {
 
     /* ── restart ──────────────────────────────────────── */
     function restart() {
-        checkedCards  = {};
-        attemptsMap   = {};
-        openResponses = [];
-        correctCount  = 0;
-        index         = 0;
-        finished      = false;
+        checkedCards      = {};
+        attemptsMap       = {};
+        openResponses     = [];
+        correctCount      = 0;
+        index             = 0;
+        finished          = false;
+        currentFillInputs = [];
         loadCard();
     }
 
