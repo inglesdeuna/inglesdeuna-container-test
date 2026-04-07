@@ -148,6 +148,7 @@ function normalize_powerpoint_payload($rawData): array
                 'image_size'     => $imageSize,
                 'image_position' => in_array($slide['image_position'] ?? '', $allowedImgPos, true) ? $slide['image_position'] : 'right',
                 'music'          => trim((string) ($slide['music'] ?? '')),
+                'music_name'     => trim((string) ($slide['music_name'] ?? '')),
                 'tts_text'       => trim((string) ($slide['tts_text'] ?? '')),
             ];
         }
@@ -233,8 +234,14 @@ ob_start();
 .ppt-slide-text{margin:0;color:#334155;line-height:1.7;white-space:pre-wrap}
 .ppt-image-wrap{width:100%;display:flex;justify-content:center;align-items:center}
 .ppt-image{max-width:100%;max-height:420px;border-radius:18px;object-fit:contain;border:1px solid rgba(15,23,42,.08);background:#fff;box-shadow:0 10px 22px rgba(15,23,42,.08)}
-.ppt-toolbar{display:flex;gap:10px;flex-wrap:wrap;padding:14px 16px;border-top:1px solid #ddd6fe;background:linear-gradient(180deg,#faf5ff 0%,#f0fdfa 100%);align-items:center;justify-content:space-between}
-.ppt-actions{display:flex;gap:8px;flex-wrap:wrap}
+.ppt-toolbar{display:flex;flex-direction:column;gap:10px;padding:14px 16px;border-top:1px solid #ddd6fe;background:linear-gradient(180deg,#faf5ff 0%,#f0fdfa 100%);align-items:center}
+.ppt-toolbar-row{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;align-items:center;width:100%}
+.ppt-actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;align-items:center}
+.ppt-slide-audio-wrap{display:flex;justify-content:center;padding:12px 0 4px;grid-column:1/-1;width:100%}
+.ppt-slide-audio-btn{border:none;border-radius:999px;padding:10px 22px;background:linear-gradient(180deg,#8b5cf6 0%,#7c3aed 100%);color:#fff;font-weight:800;font-family:'Nunito','Segoe UI',sans-serif;font-size:14px;cursor:pointer;display:inline-flex;align-items:center;gap:7px;box-shadow:0 6px 18px rgba(124,58,237,.25);transition:filter .15s,transform .15s}
+.ppt-slide-audio-btn:hover{filter:brightness(1.07);transform:translateY(-1px)}
+.ppt-slide-audio-btn.playing{background:linear-gradient(180deg,#10b981 0%,#059669 100%)}
+.ppt-tts-lang{border:1.5px solid #5eead4;border-radius:10px;padding:8px 10px;background:#f0fdf4;color:#083344;font-weight:700;font-family:'Nunito','Segoe UI',sans-serif;font-size:13px;cursor:pointer}
 .ppt-btn{border:none;border-radius:999px;padding:11px 16px;font-weight:800;font-family:'Nunito','Segoe UI',sans-serif;font-size:14px;cursor:pointer;box-shadow:0 10px 22px rgba(15,23,42,.12);transition:transform .15s ease,filter .15s ease;text-decoration:none}
 .ppt-btn:hover{filter:brightness(1.04);transform:translateY(-1px)}
 .ppt-btn-primary{background:linear-gradient(180deg,#8b5cf6 0%,#7c3aed 100%);color:#fff}
@@ -295,15 +302,18 @@ ob_start();
             <div id="pptSlide" class="ppt-slide"></div>
 
             <div class="ppt-toolbar">
-                <div class="ppt-actions">
-                    <button type="button" class="ppt-btn ppt-btn-light" id="btnPrev">Previous</button>
-                    <button type="button" class="ppt-btn ppt-btn-primary" id="btnNext">Next</button>
-                    <button type="button" class="ppt-btn ppt-btn-mint" id="btnTts">Read Aloud</button>
-                    <button type="button" class="ppt-btn ppt-btn-light" id="btnStopTts">Stop Reading</button>
-                </div>
-
-                <div class="ppt-actions">
+                <div class="ppt-toolbar-row">
+                    <button type="button" class="ppt-btn ppt-btn-light" id="btnPrev">&#9664; Anterior</button>
                     <span class="ppt-count" id="pptCounter"></span>
+                    <button type="button" class="ppt-btn ppt-btn-primary" id="btnNext">Siguiente &#9654;</button>
+                </div>
+                <div class="ppt-toolbar-row">
+                    <select id="ttsLang" class="ppt-tts-lang">
+                        <option value="en-US">&#127482;&#127480; English</option>
+                        <option value="es-ES">&#127466;&#127480; Espa&ntilde;ol</option>
+                    </select>
+                    <button type="button" class="ppt-btn ppt-btn-mint" id="btnTts">&#128266; Leer en voz alta</button>
+                    <button type="button" class="ppt-btn ppt-btn-light" id="btnStopTts">&#9209; Detener</button>
                     <?php if ($nextUrl !== '') { ?>
                         <a class="ppt-btn ppt-btn-primary" style="text-decoration:none;display:inline-flex;align-items:center;" href="<?php echo htmlspecialchars($nextUrl, ENT_QUOTES, 'UTF-8'); ?>">Next Activity</a>
                     <?php } ?>
@@ -389,14 +399,43 @@ function renderSlide() {
 
   counter.textContent = 'Slide ' + (slideIndex + 1) + ' / ' + PPT_SLIDES.length;
 
+  // Stop any currently playing audio when navigating
   if (currentAudio) {
     currentAudio.pause();
     currentAudio = null;
   }
 
+  // Add a play button inside the slide if music is attached (no auto-play)
   if (slide.music) {
-    currentAudio = new Audio(slide.music);
-    currentAudio.play().catch(() => {});
+    const audioWrap = document.createElement('div');
+    audioWrap.className = 'ppt-slide-audio-wrap';
+    const musicLabel = (slide.music_name && String(slide.music_name).trim())
+      ? escapeHtml(String(slide.music_name).trim())
+      : '🎵 Audio';
+    const audioBtn = document.createElement('button');
+    audioBtn.type = 'button';
+    audioBtn.className = 'ppt-slide-audio-btn';
+    audioBtn.innerHTML = '▶ ' + musicLabel;
+    audioBtn.addEventListener('click', function () {
+      if (!currentAudio) {
+        currentAudio = new Audio(slide.music);
+        currentAudio.onended = () => {
+          audioBtn.classList.remove('playing');
+          audioBtn.innerHTML = '▶ ' + musicLabel;
+        };
+      }
+      if (currentAudio.paused) {
+        currentAudio.play().catch(() => {});
+        audioBtn.classList.add('playing');
+        audioBtn.innerHTML = '⏸ ' + musicLabel;
+      } else {
+        currentAudio.pause();
+        audioBtn.classList.remove('playing');
+        audioBtn.innerHTML = '▶ ' + musicLabel;
+      }
+    });
+    audioWrap.appendChild(audioBtn);
+    stage.appendChild(audioWrap);
   }
 }
 
@@ -409,10 +448,12 @@ function speakSlide() {
     return;
   }
 
+  const langSel = document.getElementById('ttsLang');
+  const ttsLang = (langSel && langSel.value) ? langSel.value : 'en-US';
   const utterance = new SpeechSynthesisUtterance(textToRead);
-  utterance.lang = 'en-US';
+  utterance.lang = ttsLang;
   utterance.rate = 1;
-  const selectedVoice = getPreferredEnglishFemaleVoice();
+  const selectedVoice = getPreferredVoice(ttsLang);
   if (selectedVoice) {
     utterance.voice = selectedVoice;
   }
@@ -420,24 +461,27 @@ function speakSlide() {
   speechSynthesis.speak(utterance);
 }
 
-function getPreferredEnglishFemaleVoice() {
+function getPreferredVoice(lang) {
+  lang = lang || 'en-US';
   const voices = window.speechSynthesis ? window.speechSynthesis.getVoices() : [];
   if (!Array.isArray(voices) || voices.length === 0) {
     return null;
   }
-
-  const englishVoices = voices.filter((voice) => /^en(-|_)/i.test(String(voice.lang || '')) || /english/i.test(String(voice.name || '')));
-  if (!englishVoices.length) {
+  const langPrefix = lang.split('-')[0].toLowerCase();
+  const matchedVoices = voices.filter((voice) => {
+    const vl = String(voice.lang || '').toLowerCase();
+    return vl === lang.toLowerCase() || vl.startsWith(langPrefix + '-') || vl.startsWith(langPrefix + '_');
+  });
+  if (!matchedVoices.length) {
     return voices[0] || null;
   }
-
-  const femaleHints = ['female', 'woman', 'zira', 'samantha', 'karen', 'aria', 'jenny', 'emma', 'olivia', 'ava'];
-  const femaleVoice = englishVoices.find((voice) => {
+  const femaleHints = ['female', 'woman', 'zira', 'samantha', 'karen', 'aria', 'jenny', 'emma', 'olivia', 'ava',
+    'paulina', 'sabina', 'esperanza', 'mónica', 'monica', 'conchita'];
+  const femaleVoice = matchedVoices.find((voice) => {
     const label = (String(voice.name || '') + ' ' + String(voice.voiceURI || '')).toLowerCase();
     return femaleHints.some((hint) => label.includes(hint));
   });
-
-  return femaleVoice || englishVoices[0];
+  return femaleVoice || matchedVoices[0];
 }
 
 function openPresentation() {

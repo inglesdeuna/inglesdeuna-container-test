@@ -62,6 +62,7 @@ function default_slide(): array
         'image_size'     => 50,
         'image_position' => 'right',
         'music'          => '',
+        'music_name'     => '',
         'tts_text'       => '',
     ];
 }
@@ -211,6 +212,7 @@ function normalize_powerpoint_payload($rawData): array
                 'image_size'     => $imageSize,
                 'image_position' => in_array($slide['image_position'] ?? '', $allowedImgPos, true) ? $slide['image_position'] : 'right',
                 'music'          => normalize_data_blob((string) ($slide['music'] ?? ''), 18 * 1024 * 1024),
+                'music_name'     => trim((string) ($slide['music_name'] ?? '')),
                 'tts_text'       => trim((string) ($slide['tts_text'] ?? '')),
             ];
         }
@@ -575,6 +577,7 @@ function createSlideModel(tpl) {
     image_size: 50,
     image_position: 'right',
     music: '',
+    music_name: '',
     tts_text: ''
   };
 }
@@ -599,6 +602,7 @@ function normalizeSlideState(s) {
     image_size:     Math.max(20, Math.min(100, Number.isFinite(is) ? is : 50)),
     image_position: ['right','left','top','bottom'].includes(s.image_position) ? s.image_position : 'right',
     music:          String(s.music||''),
+    music_name:     String(s.music_name||''),
     tts_text:       String(s.tts_text||'')
   };
 }
@@ -810,14 +814,16 @@ function renderSlides() {
         '<div class="ppt-upload-area">'+
           '<label class="ppt-label">🎵 Audio MP3</label>'+
           '<input class="ppt-input" type="file" accept="audio/mpeg,audio/mp3,audio/*" data-upload="music">'+
-          '<div data-audiopreview style="margin-top:6px;display:flex;gap:8px;align-items:center">'+
-            (slide.music ? '<audio controls preload="none" src="'+slide.music+'" style="max-width:100%;height:34px"></audio>' : '<span style="color:#94a3b8;font-size:13px">Sin audio</span>')+
+          '<div data-audiopreview style="margin-top:6px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">'+
+            (slide.music
+              ? '<span style="color:#5b21b6;font-weight:700;font-size:13px">🎵 '+(slide.music_name ? escapeHtml(slide.music_name) : 'audio.mp3')+'</span>'
+              : '<span style="color:#94a3b8;font-size:13px">Sin audio</span>')+
             '<button type="button" class="ppt-btn ppt-btn-light ppt-btn-sm" data-action="clear-music">✕ Quitar</button>'+
           '</div>'+
         '</div>'+
 
         /* TTS */
-        '<div><label class="ppt-label">🔊 Texto TTS en inglés (opcional — se lee en voz alta)</label>'+
+        '<div><label class="ppt-label">🔊 Texto TTS (opcional — se lee en voz alta en inglés o español)</label>'+
           '<textarea class="ppt-textarea" data-field="tts_text" style="min-height:60px">'+escapeHtml(slide.tts_text)+'</textarea>'+
         '</div>'+
 
@@ -932,11 +938,13 @@ function bindSlideCardEvents(cardBody, sidx) {
     if (!f) return;
     try {
       slidesState[sidx].music = await fileToDataUrl(f);
+      slidesState[sidx].music_name = f.name;
+      const fnLabel = escapeHtml(f.name);
       const prevDiv = cardBody.querySelector('[data-audiopreview]');
-      if (prevDiv) prevDiv.innerHTML = '<audio controls preload="none" src="'+slidesState[sidx].music+'" style="max-width:100%;height:34px"></audio><button type="button" class="ppt-btn ppt-btn-light ppt-btn-sm" data-action="clear-music">✕ Quitar</button>';
+      if (prevDiv) prevDiv.innerHTML = '<span style="color:#5b21b6;font-weight:700;font-size:13px">🎵 '+fnLabel+'</span><button type="button" class="ppt-btn ppt-btn-light ppt-btn-sm" data-action="clear-music">✕ Quitar</button>';
       /* re-bind clear button */
       const clrBtn = cardBody.querySelector('[data-audiopreview] [data-action="clear-music"]');
-      if (clrBtn) clrBtn.addEventListener('click', () => { slidesState[sidx].music=''; const pd=cardBody.querySelector('[data-audiopreview]'); if(pd) pd.innerHTML='<span style="color:#94a3b8;font-size:13px">Sin audio</span><button type="button" class="ppt-btn ppt-btn-light ppt-btn-sm" data-action="clear-music">✕ Quitar</button>'; });
+      if (clrBtn) clrBtn.addEventListener('click', () => { slidesState[sidx].music=''; slidesState[sidx].music_name=''; const pd=cardBody.querySelector('[data-audiopreview]'); if(pd) pd.innerHTML='<span style="color:#94a3b8;font-size:13px">Sin audio</span><button type="button" class="ppt-btn ppt-btn-light ppt-btn-sm" data-action="clear-music">✕ Quitar</button>'; });
     } catch(e) { alert('No se pudo procesar el audio.'); }
   });
 
