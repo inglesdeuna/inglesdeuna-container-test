@@ -150,6 +150,7 @@ function normalize_powerpoint_payload($rawData): array
                 'music'          => trim((string) ($slide['music'] ?? '')),
                 'music_name'     => trim((string) ($slide['music_name'] ?? '')),
                 'tts_text'       => trim((string) ($slide['tts_text'] ?? '')),
+                'tts_lang'       => in_array($slide['tts_lang'] ?? '', ['en-US','es-MX'], true) ? $slide['tts_lang'] : 'en-US',
             ];
         }
     }
@@ -241,12 +242,14 @@ ob_start();
 .ppt-slide-audio-btn{border:none;border-radius:999px;padding:10px 22px;background:linear-gradient(180deg,#8b5cf6 0%,#7c3aed 100%);color:#fff;font-weight:800;font-family:'Nunito','Segoe UI',sans-serif;font-size:14px;cursor:pointer;display:inline-flex;align-items:center;gap:7px;box-shadow:0 6px 18px rgba(124,58,237,.25);transition:filter .15s,transform .15s}
 .ppt-slide-audio-btn:hover{filter:brightness(1.07);transform:translateY(-1px)}
 .ppt-slide-audio-btn.playing{background:linear-gradient(180deg,#10b981 0%,#059669 100%)}
-.ppt-tts-lang{border:1.5px solid #5eead4;border-radius:10px;padding:8px 10px;background:#f0fdf4;color:#083344;font-weight:700;font-family:'Nunito','Segoe UI',sans-serif;font-size:13px;cursor:pointer}
+.ppt-tts-lang{display:none}
 .ppt-btn{border:none;border-radius:999px;padding:11px 16px;font-weight:800;font-family:'Nunito','Segoe UI',sans-serif;font-size:14px;cursor:pointer;box-shadow:0 10px 22px rgba(15,23,42,.12);transition:transform .15s ease,filter .15s ease;text-decoration:none}
 .ppt-btn:hover{filter:brightness(1.04);transform:translateY(-1px)}
 .ppt-btn-primary{background:linear-gradient(180deg,#8b5cf6 0%,#7c3aed 100%);color:#fff}
 .ppt-btn-light{background:linear-gradient(180deg,#f59eb2 0%,#ec4899 100%);color:#fff}
 .ppt-btn-mint{background:linear-gradient(180deg,#5eead4 0%,#14b8a6 100%);color:#083344}
+.ppt-btn-stop{background:linear-gradient(180deg,#94a3b8 0%,#64748b 100%);color:#fff}
+.ppt-btn-next-act{background:linear-gradient(180deg,#22c55e 0%,#16a34a 100%);color:#fff}
 .ppt-count{font-weight:800;color:#5b21b6}
 .ppt-empty{background:#fff;border:1px solid #ddd6fe;border-radius:18px;padding:28px;text-align:center;color:#7c2d12;font-weight:700}
 .ppt-file{background:linear-gradient(180deg,#fffdfc 0%,#faf5ff 100%);border:1px solid #ddd6fe;border-radius:18px;padding:16px 18px;margin-bottom:14px;display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;box-shadow:0 10px 22px rgba(15,23,42,.07)}
@@ -259,9 +262,9 @@ ob_start();
   .ppt-intro h2{font-size:26px}
   .ppt-slide{padding:18px;min-height:420px}
   .ppt-slide.template-text_image{grid-template-columns:1fr}
-  .ppt-toolbar{flex-direction:column;align-items:stretch}
+  .ppt-toolbar-row{flex-direction:column;align-items:stretch}
   .ppt-actions{width:100%}
-  .ppt-btn{width:100%;justify-content:center;text-align:center}
+  .ppt-btn,.ppt-btn-next-act{width:100%;justify-content:center;text-align:center;display:flex}
 }
 </style>
 
@@ -306,16 +309,10 @@ ob_start();
                     <button type="button" class="ppt-btn ppt-btn-light" id="btnPrev">&#9664; Anterior</button>
                     <span class="ppt-count" id="pptCounter"></span>
                     <button type="button" class="ppt-btn ppt-btn-primary" id="btnNext">Siguiente &#9654;</button>
-                </div>
-                <div class="ppt-toolbar-row">
-                    <select id="ttsLang" class="ppt-tts-lang">
-                        <option value="en-US">&#127482;&#127480; English</option>
-                        <option value="es-ES">&#127466;&#127480; Espa&ntilde;ol</option>
-                    </select>
-                    <button type="button" class="ppt-btn ppt-btn-mint" id="btnTts">&#128266; Leer en voz alta</button>
-                    <button type="button" class="ppt-btn ppt-btn-light" id="btnStopTts">&#9209; Detener</button>
+                    <button type="button" class="ppt-btn ppt-btn-mint" id="btnTts">&#128266; Leer</button>
+                    <button type="button" class="ppt-btn ppt-btn-stop" id="btnStopTts">&#9209; Detener</button>
                     <?php if ($nextUrl !== '') { ?>
-                        <a class="ppt-btn ppt-btn-primary" style="text-decoration:none;display:inline-flex;align-items:center;" href="<?php echo htmlspecialchars($nextUrl, ENT_QUOTES, 'UTF-8'); ?>">Next Activity</a>
+                        <a class="ppt-btn ppt-btn-next-act" style="text-decoration:none;display:inline-flex;align-items:center;" href="<?php echo htmlspecialchars($nextUrl, ENT_QUOTES, 'UTF-8'); ?>">Siguiente actividad &#9654;</a>
                     <?php } ?>
                 </div>
             </div>
@@ -448,8 +445,7 @@ function speakSlide() {
     return;
   }
 
-  const langSel = document.getElementById('ttsLang');
-  const ttsLang = (langSel && langSel.value) ? langSel.value : 'en-US';
+  const ttsLang = (String(slide.tts_lang || '').trim() || 'en-US');
   const utterance = new SpeechSynthesisUtterance(textToRead);
   utterance.lang = ttsLang;
   utterance.rate = 1;

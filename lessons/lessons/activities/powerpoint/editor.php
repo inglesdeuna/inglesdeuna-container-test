@@ -64,6 +64,7 @@ function default_slide(): array
         'music'          => '',
         'music_name'     => '',
         'tts_text'       => '',
+        'tts_lang'       => 'en-US',
     ];
 }
 
@@ -214,6 +215,7 @@ function normalize_powerpoint_payload($rawData): array
                 'music'          => normalize_data_blob((string) ($slide['music'] ?? ''), 18 * 1024 * 1024),
                 'music_name'     => trim((string) ($slide['music_name'] ?? '')),
                 'tts_text'       => trim((string) ($slide['tts_text'] ?? '')),
+                'tts_lang'       => in_array($slide['tts_lang'] ?? '', ['en-US','es-MX'], true) ? $slide['tts_lang'] : 'en-US',
             ];
         }
     }
@@ -578,7 +580,8 @@ function createSlideModel(tpl) {
     image_position: 'right',
     music: '',
     music_name: '',
-    tts_text: ''
+    tts_text: '',
+    tts_lang: 'en-US'
   };
 }
 
@@ -603,7 +606,8 @@ function normalizeSlideState(s) {
     image_position: ['right','left','top','bottom'].includes(s.image_position) ? s.image_position : 'right',
     music:          String(s.music||''),
     music_name:     String(s.music_name||''),
-    tts_text:       String(s.tts_text||'')
+    tts_text:       String(s.tts_text||''),
+    tts_lang:       ['en-US','es-MX'].includes(s.tts_lang) ? s.tts_lang : 'en-US'
   };
 }
 
@@ -823,8 +827,16 @@ function renderSlides() {
         '</div>'+
 
         /* TTS */
-        '<div><label class="ppt-label">🔊 Texto TTS (opcional — se lee en voz alta en inglés o español)</label>'+
-          '<textarea class="ppt-textarea" data-field="tts_text" style="min-height:60px">'+escapeHtml(slide.tts_text)+'</textarea>'+
+        '<div class="ppt-row ppt-row-2">'+
+          '<div><label class="ppt-label">🔊 Texto TTS <span style="font-weight:400;font-size:11px">(opcional &mdash; se lee en voz alta)</span></label>'+
+            '<textarea class="ppt-textarea" data-field="tts_text" style="min-height:60px" placeholder="Deja vacío para usar el texto del slide...">'+escapeHtml(slide.tts_text)+'</textarea>'+
+          '</div>'+
+          '<div><label class="ppt-label">🌐 Idioma del TTS</label>'+
+            '<select class="ppt-select" data-field="tts_lang">'+
+              '<option value="en-US"'+(slide.tts_lang==='en-US'?' selected':'')+'>🇺🇸 English</option>'+
+              '<option value="es-MX"'+(slide.tts_lang==='es-MX'?' selected':'')+'>🌎 Español (neutro)</option>'+
+            '</select>'+
+          '</div>'+
         '</div>'+
 
       '</div>'+/* end LEFT */
