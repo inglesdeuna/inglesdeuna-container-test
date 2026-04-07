@@ -831,8 +831,8 @@ function renderSlides() {
 
       '</div>';/* end ppt-body-cols */
 
-    bindSlideCardEvents(body, idx);
     card.appendChild(body);
+    bindSlideCardEvents(body, idx);
     container.appendChild(card);
   });
 }
