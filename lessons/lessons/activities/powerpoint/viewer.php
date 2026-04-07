@@ -230,7 +230,7 @@ ob_start();
 .ppt-slide.template-title_text{flex-direction:column}
 .ppt-slide.template-text_image{display:grid;grid-template-columns:1.1fr .9fr}
 .ppt-slide.template-image_full{display:flex;flex-direction:column}
-.ppt-col-text{display:flex;flex-direction:column;gap:10px}
+.ppt-col-text{display:flex;flex-direction:column;gap:10px;width:100%;align-self:stretch}
 .ppt-slide-title{margin:0;color:#5b21b6;font-family:'Fredoka','Trebuchet MS',sans-serif;font-weight:800;line-height:1.08;text-align:center}
 .ppt-slide-text{margin:0;color:#334155;line-height:1.7;white-space:pre-wrap}
 .ppt-image-wrap{width:100%;display:flex;justify-content:center;align-items:center}
@@ -372,8 +372,8 @@ function renderSlide() {
   const hasImage  = !!slide.image;
   const imgTag    = hasImage ? '<img class="ppt-image" src="' + slide.image + '" alt="Slide image" style="max-width:'+imgPct+';max-height:'+imgPct+'">' : '';
   const imgWrap   = hasImage ? '<div class="ppt-image-wrap">'+imgTag+'</div>' : '';
-  const titleHtml = slide.title ? '<h2 class="ppt-slide-title" style="font-family:'+escapeHtml(fontFamily)+';font-size:'+titleSize+'px;color:'+titleColor+';text-align:'+titleAlign+'">'+escapeHtml(slide.title)+'</h2>' : '';
-  const textHtml  = slide.text  ? '<p  class="ppt-slide-text"  style="font-family:'+escapeHtml(fontFamily)+';font-size:'+fontSize+'px;color:'+textColor+';text-align:'+textAlign+';font-weight:'+fw+';font-style:'+fi+'">'+escapeHtml(slide.text)+'</p>' : '';
+  const titleHtml = slide.title ? '<h2 class="ppt-slide-title" style="width:100%;box-sizing:border-box;font-family:'+escapeHtml(fontFamily)+';font-size:'+titleSize+'px;color:'+titleColor+';text-align:'+titleAlign+'">'+escapeHtml(slide.title)+'</h2>' : '';
+  const textHtml  = slide.text  ? '<p  class="ppt-slide-text"  style="width:100%;box-sizing:border-box;font-family:'+escapeHtml(fontFamily)+';font-size:'+fontSize+'px;color:'+textColor+';text-align:'+textAlign+';font-weight:'+fw+';font-style:'+fi+'">'+escapeHtml(slide.text)+'</p>' : '';
 
   if (template === 'text_image') {
     const textCol = '<div class="ppt-col-text">'+titleHtml+textHtml+'</div>';

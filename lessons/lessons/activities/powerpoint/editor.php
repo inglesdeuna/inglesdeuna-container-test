@@ -658,8 +658,8 @@ function buildPreview(slide) {
   const imgPct= (slide.image_size||50) + '%';
   const tpl   = slide.template;
   const imgTag= hasImg ? '<img class="pprev-img" src="'+slide.image+'" alt="">' : '<span style="font-size:11px;color:#94a3b8">No image</span>';
-  const titleEl = slide.title ? '<div class="pprev-title" style="font-family:'+escapeHtml(slide.font_family)+';font-size:'+tSize+'px;color:'+tCol+';text-align:'+tAlign+';font-weight:800">'+escapeHtml(slide.title)+'</div>' : '';
-  const textEl  = slide.text  ? '<div class="pprev-text" style="font-family:'+escapeHtml(slide.font_family)+';font-size:'+txSize+'px;color:'+txCol+';text-align:'+txAlign+';font-weight:'+fw+';font-style:'+fs+'">'+escapeHtml(slide.text)+'</div>' : '';
+  const titleEl = slide.title ? '<div class="pprev-title" style="width:100%;box-sizing:border-box;font-family:'+escapeHtml(slide.font_family)+';font-size:'+tSize+'px;color:'+tCol+';text-align:'+tAlign+';font-weight:800">'+escapeHtml(slide.title)+'</div>' : '';
+  const textEl  = slide.text  ? '<div class="pprev-text" style="width:100%;box-sizing:border-box;font-family:'+escapeHtml(slide.font_family)+';font-size:'+txSize+'px;color:'+txCol+';text-align:'+txAlign+';font-weight:'+fw+';font-style:'+fs+'">'+escapeHtml(slide.text)+'</div>' : '';
 
   let inner = '';
   if (tpl === 'image_full' || tpl === 'title_text') {
@@ -760,8 +760,8 @@ function renderSlides() {
             '<input class="ppt-input" type="color" data-field="title_color" value="'+slide.title_color+'">'+
             '<div class="ppt-swatch-row" data-swatchgroup="title_color">'+swatchesHtml(TEXT_PRESETS,'title_color',slide.title_color)+'</div>'+
           '</div>'+
-          '<div><label class="ppt-label">↔ Alineación título</label>'+
-            '<div class="ppt-toggle-row" data-togglegroup="title_align">'+togglesHtml('title_align',['left','center','right'],['≡ Iz','≡ Ce','≡ De'],slide.title_align)+'</div>'+
+          '<div><label class="ppt-label">⇔ Alineación título</label>'+
+            '<div class="ppt-toggle-row" data-togglegroup="title_align">'+togglesHtml('title_align',['left','center','right'],['Izq','Ctro','Der'],slide.title_align)+'</div>'+
           '</div>'+
         '</div>'+
 
@@ -777,8 +777,8 @@ function renderSlides() {
             '<input class="ppt-input" type="color" data-field="text_color" value="'+slide.text_color+'">'+
             '<div class="ppt-swatch-row" data-swatchgroup="text_color">'+swatchesHtml(TEXT_PRESETS,'text_color',slide.text_color)+'</div>'+
           '</div>'+
-          '<div><label class="ppt-label">↔ Alineación</label>'+
-            '<div class="ppt-toggle-row" data-togglegroup="text_align">'+togglesHtml('text_align',['left','center','right'],['≡ Iz','≡ Ce','≡ De'],slide.text_align)+'</div>'+
+          '<div><label class="ppt-label">⇔ Alineación texto</label>'+
+            '<div class="ppt-toggle-row" data-togglegroup="text_align">'+togglesHtml('text_align',['left','center','right'],['Izq','Ctro','Der'],slide.text_align)+'</div>'+
           '</div>'+
           '<div><label class="ppt-label">Aa Estilo</label>'+
             '<div class="ppt-toggle-row">'+
