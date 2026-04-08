@@ -68,3 +68,8 @@ function upload_video_to_cloudinary(string $filePath): ?string
 
     return isset($response['secure_url']) ? (string) $response['secure_url'] : null;
 }
+
+function upload_audio_to_cloudinary(string $filePath): ?string
+{
+    return upload_video_to_cloudinary($filePath);
+}

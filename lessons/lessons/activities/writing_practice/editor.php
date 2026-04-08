@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
@@ -141,6 +141,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $mediasPost  = isset($_POST['wp_media'])    && is_array($_POST['wp_media'])    ? $_POST['wp_media']    : [];
     $answersList = isset($_POST['wp_answers'])  && is_array($_POST['wp_answers'])  ? $_POST['wp_answers']  : [];
     $videoFiles  = isset($_FILES['wp_video_file']) ? $_FILES['wp_video_file'] : null;
+    $audioFiles  = isset($_FILES['wp_audio_file'])  ? $_FILES['wp_audio_file']  : null;
 
     $allowed = ['writing', 'listen_write', 'fill_sentence', 'fill_paragraph', 'video_writing'];
     $sanitized = [];
@@ -155,6 +156,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             && !empty($videoFiles['name'][$i])
             && !empty($videoFiles['tmp_name'][$i])) {
             $uploaded = upload_video_to_cloudinary($videoFiles['tmp_name'][$i]);
+            if ($uploaded) { $media = $uploaded; }
+        }
+        if ($type === 'listen_write' && $audioFiles
+            && !empty($audioFiles['name'][$i])
+            && !empty($audioFiles['tmp_name'][$i])
+            && ($audioFiles['error'][$i] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_OK) {
+            $uploaded = upload_audio_to_cloudinary($audioFiles['tmp_name'][$i]);
             if ($uploaded) { $media = $uploaded; }
         }
 
@@ -357,12 +365,22 @@ ob_start();
                        placeholder="Ej: Escribe al menos 3 oraciones completas.">
             </div>
 
-            <!-- Audio row (not used – listen_write now uses TTS) -->
-            <div class="wp-audio-row">
-                <label> URL del audio (MP3/OGG)</label>
-                <input type="url" name="wp_media[]"
-                       value="" disabled
-                       placeholder="https://example.com/audio.mp3">
+            <!-- Audio row – shown for listen_write -->
+            <div class="wp-audio-row<?= $type==='listen_write' ? ' visible' : '' ?>">
+                <div class="wp-video-inner">
+                    <div>
+                        <label>🎧 URL del audio (MP3/OGG)</label>
+                        <input type="url" name="wp_media[]"
+                               value="<?= $type==='listen_write' ? htmlspecialchars($media, ENT_QUOTES, 'UTF-8') : '' ?>"
+                               <?= $type!=='listen_write' ? 'disabled' : '' ?>
+                               placeholder="https://example.com/audio.mp3">
+                    </div>
+                    <div>
+                        <label>— o sube MP3/OGG</label>
+                        <input type="file" name="wp_audio_file[]" accept="audio/*"
+                               <?= $type!=='listen_write' ? 'disabled' : '' ?>>
+                    </div>
+                </div>
             </div>
 
             <!-- Video  only video_writing -->
@@ -383,7 +401,7 @@ ob_start();
                 </div>
             </div>
 
-            <?php if ($type!=='video_writing'): ?>
+            <?php if ($type!=='video_writing' && $type!=='listen_write'): ?>
                 <input type="hidden" name="wp_media[]" value="">
             <?php endif; ?>
 
@@ -424,6 +442,11 @@ function wpToggleMedia(select) {
     }
     if (hidden) { hidden.disabled = false; }
 
+    if (type === 'listen_write' && audioRow) {
+        audioRow.classList.add('visible');
+        audioRow.querySelectorAll('input').forEach(function(inp){ inp.disabled = false; });
+        if (hidden) { hidden.disabled = true; }
+    }
     if (type === 'video_writing' && videoRow) {
         videoRow.classList.add('visible');
         videoRow.querySelectorAll('input').forEach(function(inp){ inp.disabled = false; });
@@ -450,9 +473,12 @@ function wpAdd() {
         '<textarea name="wp_question[]" rows="2" placeholder="Escribe la pregunta o el enunciado aqu\u00ED..."></textarea></div>' +
         '<div class="wp-col-full"><label>Instrucci\u00F3n adicional <span style="font-weight:400;font-size:12px;">(opcional)</span></label>' +
         '<input type="text" name="wp_instr[]" placeholder="Ej: Escribe al menos 3 oraciones completas."></div>' +
-        '<div class="wp-audio-row">' +
-        '<label>\uD83C\uDFA7 URL del audio (MP3/OGG)</label>' +
+        '<div class="wp-audio-row"><div class="wp-video-inner">' +
+        '<div><label>\uD83C\uDFA7 URL del audio (MP3/OGG)</label>' +
         '<input type="url" name="wp_media[]" disabled placeholder="https://example.com/audio.mp3"></div>' +
+        '<div><label>\u2014 o sube MP3/OGG</label>' +
+        '<input type="file" name="wp_audio_file[]" accept="audio/*" disabled></div>' +
+        '</div></div>' +
         '<div class="wp-video-row"><div class="wp-video-inner">' +
         '<div><label>\uD83C\uDFAC URL del video (YouTube / MP4)</label>' +
         '<input type="url" name="wp_media[]" disabled placeholder="https://youtube.com/watch?v=..."></div>' +

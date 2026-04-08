@@ -204,6 +204,10 @@ $cssVer = file_exists(__DIR__ . '/../multiple_choice/multiple_choice.css')
 }
 .wp-audio-wrap { margin-bottom: 12px; text-align: center; }
 .wp-audio-wrap audio { width: 100%; max-width: 500px; border-radius: 10px; outline: none; }
+.wp-lw-player { display:flex; flex-direction:column; align-items:center; gap:10px; margin-bottom:14px; width:100%; }
+.wp-lw-btn-row { display:flex; gap:10px; justify-content:center; flex-wrap:wrap; }
+.wp-lw-pause-btn  { background:linear-gradient(180deg,#f59e0b,#d97706) !important; color:#fff !important; }
+.wp-lw-replay-btn { background:linear-gradient(180deg,#94a3b8,#64748b) !important; color:#fff !important; }
 .mc-btn-prev { background: linear-gradient(180deg, #f97316 0%, #c2410c 100%); }
 .mc-btn-listen-wp { background: linear-gradient(180deg, #38bdf8 0%, #0ea5e9 100%); }
 .wp-open-note {
@@ -795,6 +799,10 @@ document.addEventListener('DOMContentLoaded', function () {
         var q    = questions[index];
         var type = String(q.type || 'writing');
 
+        // Stop any active listen_write audio or TTS from previous card
+        if (window.wpLwAudio) { window.wpLwAudio.pause(); window.wpLwAudio = null; }
+        if (window.speechSynthesis) { speechSynthesis.cancel(); }
+
         finished = false;
         completedEl.classList.remove('active');
         cardEl.style.display    = '';
@@ -826,50 +834,114 @@ document.addEventListener('DOMContentLoaded', function () {
             mediaArea.appendChild(note);
         }
 
-        /* ── listen_write: in-card TTS player ── */
+        /* ── listen_write: MP3/TTS player + optional fill-in blanks ── */
         if (type === 'listen_write') {
             var lwWrap = document.createElement('div');
-            lwWrap.style.cssText = 'display:flex;flex-direction:column;align-items:center;gap:10px;margin-bottom:14px;';
+            lwWrap.className = 'wp-lw-player';
 
             var lwNote = document.createElement('div');
             lwNote.className   = 'wp-open-note';
-            lwNote.textContent = '\uD83C\uDFA7 Escucha la oración y luego escribe lo que oíste.';
+            lwNote.textContent = '\uD83C\uDFA7 Escucha la frase y escribe lo que oyes.';
             lwWrap.appendChild(lwNote);
 
             var lwBtnRow = document.createElement('div');
-            lwBtnRow.style.cssText = 'display:flex;gap:10px;justify-content:center;flex-wrap:wrap;';
+            lwBtnRow.className = 'wp-lw-btn-row';
 
-            var lwRead = document.createElement('button');
-            lwRead.type = 'button';
-            lwRead.className = 'mc-btn mc-btn-listen-wp';
-            lwRead.innerHTML = '\uD83C\uDFA7 Leer';
-            lwRead.addEventListener('click', function () {
-                var text = String(q.question || '');
-                if (!text || !window.speechSynthesis) { return; }
-                speechSynthesis.cancel();
-                var u = new SpeechSynthesisUtterance(text);
-                u.lang = 'en-US'; u.rate = 0.85;
-                u.onstart = function () { lwRead.innerHTML = '\uD83C\uDFA7 Leyendo...'; lwStop.style.display = ''; };
-                u.onend   = function () { lwRead.innerHTML = '\uD83C\uDFA7 Leer'; };
-                u.onerror = function () { lwRead.innerHTML = '\uD83C\uDFA7 Leer'; };
-                speechSynthesis.speak(u);
-            });
+            var lwPlay   = document.createElement('button');
+            lwPlay.type  = 'button'; lwPlay.className = 'mc-btn mc-btn-listen-wp';
+            lwPlay.innerHTML = '\u25B6 Escuchar';
 
-            var lwStop = document.createElement('button');
-            lwStop.type = 'button';
-            lwStop.className = 'mc-btn';
-            lwStop.style.cssText = 'background:linear-gradient(180deg,#94a3b8 0%,#64748b 100%);color:#fff;display:none;';
-            lwStop.innerHTML = '\u23F9 Detener';
-            lwStop.addEventListener('click', function () {
-                if (window.speechSynthesis) { speechSynthesis.cancel(); }
-                lwRead.innerHTML = '\uD83C\uDFA7 Leer';
-                lwStop.style.display = 'none';
-            });
+            var lwPause  = document.createElement('button');
+            lwPause.type = 'button'; lwPause.className = 'mc-btn wp-lw-pause-btn';
+            lwPause.innerHTML = '\u23F8 Pausar'; lwPause.style.display = 'none';
 
-            lwBtnRow.appendChild(lwRead);
-            lwBtnRow.appendChild(lwStop);
+            var lwReplay = document.createElement('button');
+            lwReplay.type = 'button'; lwReplay.className = 'mc-btn wp-lw-replay-btn';
+            lwReplay.innerHTML = '\u21A9 Repetir'; lwReplay.style.display = 'none';
+
+            function lwSetState(s) {
+                lwPlay.style.display   = (s === 'idle' || s === 'paused') ? '' : 'none';
+                lwPause.style.display  = (s === 'playing') ? '' : 'none';
+                lwReplay.style.display = (s === 'done') ? '' : 'none';
+                lwPlay.innerHTML = (s === 'paused') ? '\u25B6 Continuar' : '\u25B6 Escuchar';
+            }
+
+            if (q.media) {
+                /* — MP3 file — */
+                var lwAudio = new Audio(String(q.media));
+                lwAudio.preload = 'auto';
+                window.wpLwAudio = lwAudio;
+                lwPlay.addEventListener('click', function () {
+                    lwAudio.play().catch(function () {});
+                    lwSetState('playing');
+                });
+                lwPause.addEventListener('click', function () {
+                    lwAudio.pause(); lwSetState('paused');
+                });
+                lwReplay.addEventListener('click', function () {
+                    lwAudio.currentTime = 0;
+                    lwAudio.play().catch(function () {});
+                    lwSetState('playing');
+                });
+                lwAudio.addEventListener('ended', function () {
+                    window.wpLwAudio = null; lwSetState('done');
+                });
+            } else if (window.speechSynthesis) {
+                /* — TTS fallback — */
+                var lwTtsPaused = false;
+                function lwSpeak() {
+                    var text = String(q.question || '');
+                    if (!text) { return; }
+                    speechSynthesis.cancel(); lwTtsPaused = false;
+                    var u = new SpeechSynthesisUtterance(text);
+                    u.lang = 'en-US'; u.rate = 0.85;
+                    u.onstart = function () { lwSetState('playing'); };
+                    u.onend   = function () { lwTtsPaused = false; lwSetState('done'); };
+                    u.onerror = function () { lwTtsPaused = false; lwSetState('idle'); };
+                    speechSynthesis.speak(u);
+                }
+                lwPlay.addEventListener('click', function () {
+                    if (lwTtsPaused && speechSynthesis.paused) {
+                        speechSynthesis.resume(); lwTtsPaused = false; lwSetState('playing'); return;
+                    }
+                    lwSpeak();
+                });
+                lwPause.addEventListener('click', function () {
+                    if (speechSynthesis.speaking && !speechSynthesis.paused) {
+                        speechSynthesis.pause(); lwTtsPaused = true; lwSetState('paused');
+                    }
+                });
+                lwReplay.addEventListener('click', function () { lwSpeak(); });
+            }
+
+            lwBtnRow.appendChild(lwPlay);
+            lwBtnRow.appendChild(lwPause);
+            lwBtnRow.appendChild(lwReplay);
             lwWrap.appendChild(lwBtnRow);
             mediaArea.appendChild(lwWrap);
+
+            /* — fill-in blanks if question has ___ — */
+            var lwRawText = String(q.question || '');
+            if (/_{2,}/.test(lwRawText)) {
+                answerEl.style.display = 'none';
+                var lwFillBox = document.createElement('div');
+                lwFillBox.className = 'wp-fill-sentence-box';
+                lwRawText.split(/_{2,}/).forEach(function (seg, si, arr) {
+                    if (seg) {
+                        seg.split('\n').forEach(function (line, li) {
+                            if (li > 0) { lwFillBox.appendChild(document.createElement('br')); }
+                            if (line)   { lwFillBox.appendChild(document.createTextNode(line)); }
+                        });
+                    }
+                    if (si < arr.length - 1) {
+                        var lwInp = createFillInput(si, q);
+                        lwFillBox.appendChild(lwInp);
+                        currentFillInputs.push(lwInp);
+                    }
+                });
+                qtextEl.appendChild(lwFillBox);
+            }
+            /* no blanks: textarea stays visible */
         }
 
         /* ── video_writing: embed ── */
@@ -960,7 +1032,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         /* restore state if user navigated back */
         if (checkedCards[index]) {
-            var isFillType     = (type === 'fill_sentence' || type === 'fill_paragraph');
+            var isFillType     = (type === 'fill_sentence' || type === 'fill_paragraph' || type === 'listen_write');
             var wasCardCorrect = checkedCards[index] === 'correct';
             if (isFillType && currentFillInputs.length > 0) {
                 var savedVals = checkedCards[index + '_inputs'] || [];
@@ -1005,7 +1077,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!isAutoGraded(q)) { return; }
         if (checkedCards[index]) { return; }
 
-        var isFill = (type === 'fill_sentence' || type === 'fill_paragraph') && currentFillInputs.length > 0;
+        var isFill = (type === 'fill_sentence' || type === 'fill_paragraph' || type === 'listen_write') && currentFillInputs.length > 0;
 
         if (isFill) {
             var vals    = currentFillInputs.map(function (fi) { return fi.value.trim(); });
@@ -1099,7 +1171,7 @@ document.addEventListener('DOMContentLoaded', function () {
         var q    = questions[index];
         var type = String(q.type || 'writing');
         if (!isAutoGraded(q) || checkedCards[index]) { return; }
-        var isFill = (type === 'fill_sentence' || type === 'fill_paragraph') && currentFillInputs.length > 0;
+        var isFill = (type === 'fill_sentence' || type === 'fill_paragraph' || type === 'listen_write') && currentFillInputs.length > 0;
         if (isFill) {
             if (currentFillInputs.every(function (fi) { return fi.value.trim() !== ''; })) { checkAnswer(); }
         } else {
@@ -1115,7 +1187,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         if (isAutoGraded(q)) {
             /* must check first */
-            var isFillNext = (type === 'fill_sentence' || type === 'fill_paragraph') && currentFillInputs.length > 0;
+            var isFillNext = (type === 'fill_sentence' || type === 'fill_paragraph' || type === 'listen_write') && currentFillInputs.length > 0;
             if (!checkedCards[index]) {
                 if (isFillNext) {
                     if (currentFillInputs.some(function (fi) { return fi.value.trim() !== ''; })) { checkAnswer(); }
@@ -1287,6 +1359,7 @@ document.addEventListener('DOMContentLoaded', function () {
         finished          = false;
         currentFillInputs = [];
         if (window.speechSynthesis) { speechSynthesis.cancel(); }
+        if (window.wpLwAudio) { window.wpLwAudio.pause(); window.wpLwAudio = null; }
         loadCard();
     }
 
