@@ -147,10 +147,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $mediaType = $_POST['media_type'] ?? 'tts';
     if (!in_array($mediaType, ['tts', 'video', 'audio', 'none'], true)) $mediaType = 'tts';
 
-    $mediaUrl = trim((string) ($_POST['media_url'] ?? ''));
+    // Pick the URL from the correct named field to avoid both sections overwriting each other
+    if ($mediaType === 'video') {
+        $mediaUrl = trim((string) ($_POST['video_url'] ?? ''));
+    } elseif ($mediaType === 'audio') {
+        $mediaUrl = trim((string) ($_POST['audio_url'] ?? ''));
+    } else {
+        $mediaUrl = '';
+    }
+
     // Upload video/audio file if provided
-    if (isset($_FILES['media_file']) && !empty($_FILES['media_file']['name'])) {
-        $uploaded = upload_to_cloudinary($_FILES['media_file']['tmp_name']);
+    if (isset($_FILES['media_file']) && !empty($_FILES['media_file']['name'])
+        && ($_FILES['media_file']['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_OK) {
+        if ($mediaType === 'video') {
+            $uploaded = upload_video_to_cloudinary($_FILES['media_file']['tmp_name']);
+        } else {
+            $uploaded = upload_audio_to_cloudinary($_FILES['media_file']['tmp_name']);
+        }
         if ($uploaded) $mediaUrl = $uploaded;
     }
 
@@ -286,8 +299,8 @@ $d = $activity;
         <!-- Video -->
         <div id="ms-video" class="media-section <?= $d['media_type']==='video' ? 'active' : '' ?>">
             <label>Video URL or upload</label>
-            <input type="text" name="media_url"
-                   value="<?= htmlspecialchars($d['media_url'], ENT_QUOTES, 'UTF-8') ?>"
+            <input type="text" name="video_url"
+                   value="<?= $d['media_type']==='video' ? htmlspecialchars($d['media_url'], ENT_QUOTES, 'UTF-8') : '' ?>"
                    placeholder="https://... (YouTube embed, Cloudinary, etc.)">
             <p class="help-text">Or upload a video file:</p>
             <input type="file" name="media_file" accept="video/*">
@@ -299,8 +312,8 @@ $d = $activity;
         <!-- Audio -->
         <div id="ms-audio" class="media-section <?= $d['media_type']==='audio' ? 'active' : '' ?>">
             <label>Audio URL or upload</label>
-            <input type="text" name="media_url"
-                   value="<?= htmlspecialchars($d['media_url'], ENT_QUOTES, 'UTF-8') ?>"
+            <input type="text" name="audio_url"
+                   value="<?= $d['media_type']==='audio' ? htmlspecialchars($d['media_url'], ENT_QUOTES, 'UTF-8') : '' ?>"
                    placeholder="https://...">
             <p class="help-text">Or upload an audio file:</p>
             <input type="file" name="media_file" accept="audio/*">
