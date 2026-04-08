@@ -1237,7 +1237,7 @@ document.addEventListener('DOMContentLoaded', function () {
         var answers = q.correct_answers || [];
         if (answers.length === 0) { return; }
 
-        var isFill = (type === 'fill_sentence' || type === 'fill_paragraph') && currentFillInputs.length > 0;
+        var isFill = (type === 'fill_sentence' || type === 'fill_paragraph' || type === 'listen_write') && currentFillInputs.length > 0;
         if (isFill) {
             var shownFill = answers.join(', ');
             if (!checkedCards[index]) {
