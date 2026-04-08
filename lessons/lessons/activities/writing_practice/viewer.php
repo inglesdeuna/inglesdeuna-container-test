@@ -826,24 +826,12 @@ document.addEventListener('DOMContentLoaded', function () {
             mediaArea.appendChild(note);
         }
 
-        /* ── listen_write: TTS button only ── */
+        /* ── listen_write: show instruction note, TTS buttons revealed on typing ── */
         if (type === 'listen_write') {
-            var audioWrap = document.createElement('div');
-            audioWrap.className = 'wp-audio-wrap';
-            var ttsBtn = document.createElement('button');
-            ttsBtn.type      = 'button';
-            ttsBtn.className = 'mc-btn mc-btn-listen-wp';
-            ttsBtn.innerHTML = '\uD83C\uDFA7 Listen';
-            ttsBtn.addEventListener('click', function () {
-                var text = String(q.question || '');
-                if (!text) { return; }
-                speechSynthesis.cancel();
-                var u = new SpeechSynthesisUtterance(text);
-                u.lang = 'en-US'; u.rate = 0.9;
-                speechSynthesis.speak(u);
-            });
-            audioWrap.appendChild(ttsBtn);
-            mediaArea.appendChild(audioWrap);
+            var lwNote = document.createElement('div');
+            lwNote.className   = 'wp-open-note';
+            lwNote.textContent = '\uD83C\uDFA7 Listen & Write \u2014 press \"Leer\" to hear the sentence, then type what you hear.';
+            mediaArea.appendChild(lwNote);
         }
 
         /* ── video_writing: embed ── */
@@ -876,7 +864,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         /* ── question text ── */
-        if (type === 'fill_sentence' || type === 'fill_paragraph' || type === 'listen_write') {
+        if (type === 'fill_sentence' || type === 'fill_paragraph') {
             answerEl.style.display = 'none';
             var rawText = String(q.question || '');
             var fillBox = document.createElement('div');
@@ -925,6 +913,17 @@ document.addEventListener('DOMContentLoaded', function () {
             instrEl.textContent = String(q.instruction);
         }
 
+        /* ── listen_write: TTS Leer/Detener buttons (hidden until user types) ── */
+        if (type === 'listen_write') {
+            var lwTtsRow = document.getElementById('wpLwTtsRow');
+            if (lwTtsRow) {
+                lwTtsRow.style.display = checkedCards[index] ? 'flex' : 'none';
+            }
+        } else {
+            var lwTtsRow2 = document.getElementById('wpLwTtsRow');
+            if (lwTtsRow2) { lwTtsRow2.style.display = 'none'; }
+        }
+
         /* ── buttons state ── */
         btnPrev.disabled = (index === 0);
         btnNext.textContent = (index < questions.length - 1) ? 'Next' : 'Finish';
@@ -933,7 +932,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         /* restore state if user navigated back */
         if (checkedCards[index]) {
-            var isFillType     = (type === 'fill_sentence' || type === 'fill_paragraph' || type === 'listen_write');
+            var isFillType     = (type === 'fill_sentence' || type === 'fill_paragraph');
             var wasCardCorrect = checkedCards[index] === 'correct';
             if (isFillType && currentFillInputs.length > 0) {
                 var savedVals = checkedCards[index + '_inputs'] || [];
@@ -978,7 +977,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!isAutoGraded(q)) { return; }
         if (checkedCards[index]) { return; }
 
-        var isFill = (type === 'fill_sentence' || type === 'fill_paragraph' || type === 'listen_write') && currentFillInputs.length > 0;
+        var isFill = (type === 'fill_sentence' || type === 'fill_paragraph') && currentFillInputs.length > 0;
 
         if (isFill) {
             var vals    = currentFillInputs.map(function (fi) { return fi.value.trim(); });
@@ -1072,7 +1071,7 @@ document.addEventListener('DOMContentLoaded', function () {
         var q    = questions[index];
         var type = String(q.type || 'writing');
         if (!isAutoGraded(q) || checkedCards[index]) { return; }
-        var isFill = (type === 'fill_sentence' || type === 'fill_paragraph' || type === 'listen_write') && currentFillInputs.length > 0;
+        var isFill = (type === 'fill_sentence' || type === 'fill_paragraph') && currentFillInputs.length > 0;
         if (isFill) {
             if (currentFillInputs.every(function (fi) { return fi.value.trim() !== ''; })) { checkAnswer(); }
         } else {
@@ -1088,7 +1087,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         if (isAutoGraded(q)) {
             /* must check first */
-            var isFillNext = (type === 'fill_sentence' || type === 'fill_paragraph' || type === 'listen_write') && currentFillInputs.length > 0;
+            var isFillNext = (type === 'fill_sentence' || type === 'fill_paragraph') && currentFillInputs.length > 0;
             if (!checkedCards[index]) {
                 if (isFillNext) {
                     if (currentFillInputs.some(function (fi) { return fi.value.trim() !== ''; })) { checkAnswer(); }
@@ -1138,7 +1137,7 @@ document.addEventListener('DOMContentLoaded', function () {
         var answers = q.correct_answers || [];
         if (answers.length === 0) { return; }
 
-        var isFill = (type === 'fill_sentence' || type === 'fill_paragraph' || type === 'listen_write') && currentFillInputs.length > 0;
+        var isFill = (type === 'fill_sentence' || type === 'fill_paragraph') && currentFillInputs.length > 0;
         if (isFill) {
             var shownFill = answers.join(', ');
             if (!checkedCards[index]) {
@@ -1271,6 +1270,14 @@ document.addEventListener('DOMContentLoaded', function () {
     answerEl.addEventListener('input', function () {
         if (btnShow.style.display !== 'none' && !checkedCards[index] && !finished) {
             btnShow.disabled = answerEl.value.trim() === '';
+        }
+        /* listen_write: show TTS row once user starts typing */
+        var q2 = questions[index];
+        if (q2 && String(q2.type || '') === 'listen_write') {
+            var lwTtsRowInp = document.getElementById('wpLwTtsRow');
+            if (lwTtsRowInp && !checkedCards[index]) {
+                lwTtsRowInp.style.display = answerEl.value.trim() !== '' ? 'flex' : 'none';
+            }
         }
     });
     answerEl.addEventListener('blur', autoCheck);
