@@ -305,15 +305,17 @@ ob_start();
             <div id="pptSlide" class="ppt-slide"></div>
 
             <div class="ppt-toolbar">
-                <div class="ppt-toolbar-row">
+                <div class="ppt-toolbar-row" id="pptNavRow">
                     <button type="button" class="ppt-btn ppt-btn-light" id="btnPrev">&#9664; Anterior</button>
                     <span class="ppt-count" id="pptCounter"></span>
                     <button type="button" class="ppt-btn ppt-btn-primary" id="btnNext">Siguiente &#9654;</button>
-                    <button type="button" class="ppt-btn ppt-btn-mint" id="btnTts">&#128266; Leer</button>
-                    <button type="button" class="ppt-btn ppt-btn-stop" id="btnStopTts">&#9209; Detener</button>
                     <?php if ($nextUrl !== '') { ?>
                         <a class="ppt-btn ppt-btn-next-act" style="text-decoration:none;display:inline-flex;align-items:center;" href="<?php echo htmlspecialchars($nextUrl, ENT_QUOTES, 'UTF-8'); ?>">Siguiente actividad &#9654;</a>
                     <?php } ?>
+                </div>
+                <div class="ppt-toolbar-row" id="pptTtsRow" style="display:none">
+                    <button type="button" class="ppt-btn ppt-btn-mint" id="btnTts">&#128266; Leer</button>
+                    <button type="button" class="ppt-btn ppt-btn-stop" id="btnStopTts">&#9209; Detener</button>
                 </div>
             </div>
         </div>
@@ -395,6 +397,12 @@ function renderSlide() {
   }
 
   counter.textContent = 'Slide ' + (slideIndex + 1) + ' / ' + PPT_SLIDES.length;
+
+  // Show TTS buttons only when the slide has tts_text configured
+  const ttsRow = document.getElementById('pptTtsRow');
+  if (ttsRow) {
+    ttsRow.style.display = (slide.tts_text && String(slide.tts_text).trim()) ? 'flex' : 'none';
+  }
 
   // Stop any currently playing audio when navigating
   if (currentAudio) {
