@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
@@ -381,6 +381,10 @@ ob_start();
                                <?= $type!=='listen_write' ? 'disabled' : '' ?>>
                     </div>
                 </div>
+                <p style="font-size:11px;color:#0369a1;background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;padding:8px;margin:8px 0 0;">
+                    <strong>💡 Formato:</strong> En <em>Pregunta / enunciado</em> escribe la oración con <strong>___</strong> en cada espacio en blanco.<br>
+                    Ej: <em>"I ___ to school every ___ by bus."</em> &mdash; En <em>Respuestas correctas</em>: una respuesta por línea, una por cada ___.
+                </p>
             </div>
 
             <!-- Video  only video_writing -->
@@ -478,7 +482,11 @@ function wpAdd() {
         '<input type="url" name="wp_media[]" disabled placeholder="https://example.com/audio.mp3"></div>' +
         '<div><label>\u2014 o sube MP3/OGG</label>' +
         '<input type="file" name="wp_audio_file[]" accept="audio/*" disabled></div>' +
-        '</div></div>' +
+        '</div>' +
+        '<p style="font-size:11px;color:#0369a1;background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;padding:8px;margin:8px 0 0;">' +
+        '<strong>\uD83D\uDCA1 Formato:</strong> En <em>Pregunta / enunciado</em> escribe la oraci\u00F3n con <strong>___</strong> en cada espacio. ' +
+        'Ej: <em>\'I ___ to school every ___.\'</em> \u2014 En <em>Respuestas correctas</em>: una por l\u00EDnea, una por cada ___.' +
+        '</p></div>' +
         '<div class="wp-video-row"><div class="wp-video-inner">' +
         '<div><label>\uD83C\uDFAC URL del video (YouTube / MP4)</label>' +
         '<input type="url" name="wp_media[]" disabled placeholder="https://youtube.com/watch?v=..."></div>' +

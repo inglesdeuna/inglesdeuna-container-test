@@ -841,7 +841,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
             var lwNote = document.createElement('div');
             lwNote.className   = 'wp-open-note';
-            lwNote.textContent = '\uD83C\uDFA7 Escucha la frase y escribe lo que oyes.';
+            lwNote.textContent = '\uD83C\uDFA7 Escucha y completa los espacios en blanco.';
             lwWrap.appendChild(lwNote);
 
             var lwBtnRow = document.createElement('div');
@@ -890,7 +890,10 @@ document.addEventListener('DOMContentLoaded', function () {
                 /* — TTS fallback — */
                 var lwTtsPaused = false;
                 function lwSpeak() {
-                    var text = String(q.question || '');
+                    var _bi = 0;
+                    var text = String(q.question || '').replace(/_{2,}/g, function () {
+                        return String((q.correct_answers || [])[_bi++] || '...');
+                    });
                     if (!text) { return; }
                     speechSynthesis.cancel(); lwTtsPaused = false;
                     var u = new SpeechSynthesisUtterance(text);
@@ -920,12 +923,13 @@ document.addEventListener('DOMContentLoaded', function () {
             lwWrap.appendChild(lwBtnRow);
             mediaArea.appendChild(lwWrap);
 
-            /* — fill-in blanks if question has ___ — */
+            /* — fill-in blanks — ALWAYS shown for listen_write — */
             var lwRawText = String(q.question || '');
+            answerEl.style.display = 'none';
+            var lwFillBox = document.createElement('div');
+            lwFillBox.className = 'wp-fill-sentence-box';
             if (/_{2,}/.test(lwRawText)) {
-                answerEl.style.display = 'none';
-                var lwFillBox = document.createElement('div');
-                lwFillBox.className = 'wp-fill-sentence-box';
+                /* Explicit ___ markers → embed an input at each blank position */
                 lwRawText.split(/_{2,}/).forEach(function (seg, si, arr) {
                     if (seg) {
                         seg.split('\n').forEach(function (line, li) {
@@ -939,9 +943,24 @@ document.addEventListener('DOMContentLoaded', function () {
                         currentFillInputs.push(lwInp);
                     }
                 });
-                qtextEl.appendChild(lwFillBox);
+            } else {
+                /* No ___ markers → show question text + one input per correct_answer (or one blank) */
+                if (lwRawText) {
+                    lwRawText.split('\n').forEach(function (line, li) {
+                        if (li > 0) { lwFillBox.appendChild(document.createElement('br')); }
+                        if (line)   { lwFillBox.appendChild(document.createTextNode(line)); }
+                    });
+                    lwFillBox.appendChild(document.createTextNode('\u00a0'));
+                }
+                var lwAns2   = Array.isArray(q.correct_answers) ? q.correct_answers : [];
+                var lwCount  = lwAns2.length > 0 ? lwAns2.length : 1;
+                for (var lwi = 0; lwi < lwCount; lwi++) {
+                    var lwInpFb = createFillInput(lwi, q);
+                    lwFillBox.appendChild(lwInpFb);
+                    currentFillInputs.push(lwInpFb);
+                }
             }
-            /* no blanks: textarea stays visible */
+            qtextEl.appendChild(lwFillBox);
         }
 
         /* ── video_writing: embed ── */
