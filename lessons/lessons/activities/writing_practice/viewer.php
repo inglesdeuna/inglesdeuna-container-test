@@ -650,12 +650,6 @@ document.addEventListener('DOMContentLoaded', function () {
         <button type="button" class="mc-btn mc-btn-next" id="btnNext">Next</button>
     </div>
 
-    <!-- TTS row: only shown for listen_write after user starts typing -->
-    <div id="wpLwTtsRow" style="display:none;justify-content:center;gap:8px;margin-top:8px;">
-        <button type="button" class="mc-btn mc-btn-listen-wp" id="btnLwRead">&#127911; Leer</button>
-        <button type="button" class="mc-btn" style="background:linear-gradient(180deg,#94a3b8 0%,#64748b 100%);color:#fff" id="btnLwStop">&#9209; Detener</button>
-    </div>
-
     <div class="mc-feedback" id="wpFeedback"></div>
 
     <div id="wpCompleted" class="completed-screen">
@@ -832,12 +826,50 @@ document.addEventListener('DOMContentLoaded', function () {
             mediaArea.appendChild(note);
         }
 
-        /* ── listen_write: show instruction note, TTS buttons revealed on typing ── */
+        /* ── listen_write: in-card TTS player ── */
         if (type === 'listen_write') {
+            var lwWrap = document.createElement('div');
+            lwWrap.style.cssText = 'display:flex;flex-direction:column;align-items:center;gap:10px;margin-bottom:14px;';
+
             var lwNote = document.createElement('div');
             lwNote.className   = 'wp-open-note';
-            lwNote.textContent = '\uD83C\uDFA7 Listen & Write \u2014 press \"Leer\" to hear the sentence, then type what you hear.';
-            mediaArea.appendChild(lwNote);
+            lwNote.textContent = '\uD83C\uDFA7 Escucha la oración y luego escribe lo que oíste.';
+            lwWrap.appendChild(lwNote);
+
+            var lwBtnRow = document.createElement('div');
+            lwBtnRow.style.cssText = 'display:flex;gap:10px;justify-content:center;flex-wrap:wrap;';
+
+            var lwRead = document.createElement('button');
+            lwRead.type = 'button';
+            lwRead.className = 'mc-btn mc-btn-listen-wp';
+            lwRead.innerHTML = '\uD83C\uDFA7 Leer';
+            lwRead.addEventListener('click', function () {
+                var text = String(q.question || '');
+                if (!text || !window.speechSynthesis) { return; }
+                speechSynthesis.cancel();
+                var u = new SpeechSynthesisUtterance(text);
+                u.lang = 'en-US'; u.rate = 0.85;
+                u.onstart = function () { lwRead.innerHTML = '\uD83C\uDFA7 Leyendo...'; lwStop.style.display = ''; };
+                u.onend   = function () { lwRead.innerHTML = '\uD83C\uDFA7 Leer'; };
+                u.onerror = function () { lwRead.innerHTML = '\uD83C\uDFA7 Leer'; };
+                speechSynthesis.speak(u);
+            });
+
+            var lwStop = document.createElement('button');
+            lwStop.type = 'button';
+            lwStop.className = 'mc-btn';
+            lwStop.style.cssText = 'background:linear-gradient(180deg,#94a3b8 0%,#64748b 100%);color:#fff;display:none;';
+            lwStop.innerHTML = '\u23F9 Detener';
+            lwStop.addEventListener('click', function () {
+                if (window.speechSynthesis) { speechSynthesis.cancel(); }
+                lwRead.innerHTML = '\uD83C\uDFA7 Leer';
+                lwStop.style.display = 'none';
+            });
+
+            lwBtnRow.appendChild(lwRead);
+            lwBtnRow.appendChild(lwStop);
+            lwWrap.appendChild(lwBtnRow);
+            mediaArea.appendChild(lwWrap);
         }
 
         /* ── video_writing: embed ── */
@@ -918,17 +950,6 @@ document.addEventListener('DOMContentLoaded', function () {
         if (q.instruction) {
             instrEl.style.cssText = 'font-size:14px;color:#7c3aed;font-weight:700;margin-bottom:10px;text-align:center;';
             instrEl.textContent = String(q.instruction);
-        }
-
-        /* ── listen_write: TTS Leer/Detener buttons (hidden until user types) ── */
-        if (type === 'listen_write') {
-            var lwTtsRow = document.getElementById('wpLwTtsRow');
-            if (lwTtsRow) {
-                lwTtsRow.style.display = checkedCards[index] ? 'flex' : 'none';
-            }
-        } else {
-            var lwTtsRow2 = document.getElementById('wpLwTtsRow');
-            if (lwTtsRow2) { lwTtsRow2.style.display = 'none'; }
         }
 
         /* ── buttons state ── */
@@ -1266,8 +1287,6 @@ document.addEventListener('DOMContentLoaded', function () {
         finished          = false;
         currentFillInputs = [];
         if (window.speechSynthesis) { speechSynthesis.cancel(); }
-        var lwRow = document.getElementById('wpLwTtsRow');
-        if (lwRow) { lwRow.style.display = 'none'; }
         loadCard();
     }
 
@@ -1277,37 +1296,9 @@ document.addEventListener('DOMContentLoaded', function () {
     btnShow.addEventListener('click', showAnswer);
     btnRestart.addEventListener('click', restart);
 
-    /* TTS for listen_write */
-    var btnLwRead = document.getElementById('btnLwRead');
-    var btnLwStop = document.getElementById('btnLwStop');
-    if (btnLwRead) {
-        btnLwRead.addEventListener('click', function () {
-            var q = questions[index];
-            var text = String(q && q.question ? q.question : '');
-            if (!text || !window.speechSynthesis) { return; }
-            speechSynthesis.cancel();
-            var u = new SpeechSynthesisUtterance(text);
-            u.lang = 'en-US'; u.rate = 0.85;
-            speechSynthesis.speak(u);
-        });
-    }
-    if (btnLwStop) {
-        btnLwStop.addEventListener('click', function () {
-            if (window.speechSynthesis) { speechSynthesis.cancel(); }
-        });
-    }
-
     answerEl.addEventListener('input', function () {
         if (btnShow.style.display !== 'none' && !checkedCards[index] && !finished) {
             btnShow.disabled = answerEl.value.trim() === '';
-        }
-        /* listen_write: show TTS row once user starts typing */
-        var q2 = questions[index];
-        if (q2 && String(q2.type || '') === 'listen_write') {
-            var lwTtsRowInp = document.getElementById('wpLwTtsRow');
-            if (lwTtsRowInp && !checkedCards[index]) {
-                lwTtsRowInp.style.display = answerEl.value.trim() !== '' ? 'flex' : 'none';
-            }
         }
     });
     answerEl.addEventListener('blur', autoCheck);
