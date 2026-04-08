@@ -927,7 +927,7 @@ document.addEventListener('DOMContentLoaded', function () {
             var lwRawText = String(q.question || '');
             answerEl.style.display = 'none';
             var lwFillBox = document.createElement('div');
-            lwFillBox.className = 'wp-fill-sentence-box';
+            lwFillBox.className = 'wp-fill-paragraph-box';
             if (/_{2,}/.test(lwRawText)) {
                 /* Explicit ___ markers → embed an input at each blank position */
                 lwRawText.split(/_{2,}/).forEach(function (seg, si, arr) {
@@ -944,18 +944,49 @@ document.addEventListener('DOMContentLoaded', function () {
                     }
                 });
             } else {
-                /* No ___ markers → show question text + one input per correct_answer (or one blank) */
-                if (lwRawText) {
-                    lwRawText.split('\n').forEach(function (line, li) {
-                        if (li > 0) { lwFillBox.appendChild(document.createElement('br')); }
-                        if (line)   { lwFillBox.appendChild(document.createTextNode(line)); }
+                /* No ___ markers → replace each answer word inline within the paragraph */
+                var lwAns2 = Array.isArray(q.correct_answers) ? q.correct_answers : [];
+                if (lwAns2.length > 0 && lwRawText) {
+                    /* Walk through the text, find each answer word in order and swap it for an input */
+                    var lwRemaining = lwRawText;
+                    var lwSegs = []; /* [{type:'text',val:string}|{type:'input',idx:number}] */
+                    for (var lwai = 0; lwai < lwAns2.length; lwai++) {
+                        var lwWord  = String(lwAns2[lwai] || '');
+                        var lwEsc   = lwWord.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                        var lwRe2   = new RegExp('\\b' + lwEsc + '\\b', 'i');
+                        var lwMatch = lwRe2.exec(lwRemaining);
+                        if (lwMatch) {
+                            if (lwMatch.index > 0) { lwSegs.push({type: 'text', val: lwRemaining.substring(0, lwMatch.index)}); }
+                            lwSegs.push({type: 'input', idx: lwai});
+                            lwRemaining = lwRemaining.substring(lwMatch.index + lwMatch[0].length);
+                        } else {
+                            /* word not found – input will appear at the end */
+                            lwSegs.push({type: 'input', idx: lwai});
+                        }
+                    }
+                    if (lwRemaining) { lwSegs.push({type: 'text', val: lwRemaining}); }
+                    lwSegs.forEach(function (seg) {
+                        if (seg.type === 'text') {
+                            seg.val.split('\n').forEach(function (line, li) {
+                                if (li > 0) { lwFillBox.appendChild(document.createElement('br')); }
+                                if (line)   { lwFillBox.appendChild(document.createTextNode(line)); }
+                            });
+                        } else {
+                            var lwInpFb = createFillInput(seg.idx, q);
+                            lwFillBox.appendChild(lwInpFb);
+                            currentFillInputs.push(lwInpFb);
+                        }
                     });
-                    lwFillBox.appendChild(document.createTextNode('\u00a0'));
-                }
-                var lwAns2   = Array.isArray(q.correct_answers) ? q.correct_answers : [];
-                var lwCount  = lwAns2.length > 0 ? lwAns2.length : 1;
-                for (var lwi = 0; lwi < lwCount; lwi++) {
-                    var lwInpFb = createFillInput(lwi, q);
+                } else {
+                    /* No answers defined – show full text + one blank at end */
+                    if (lwRawText) {
+                        lwRawText.split('\n').forEach(function (line, li) {
+                            if (li > 0) { lwFillBox.appendChild(document.createElement('br')); }
+                            if (line)   { lwFillBox.appendChild(document.createTextNode(line)); }
+                        });
+                        lwFillBox.appendChild(document.createTextNode('\u00a0'));
+                    }
+                    var lwInpFb = createFillInput(0, q);
                     lwFillBox.appendChild(lwInpFb);
                     currentFillInputs.push(lwInpFb);
                 }
