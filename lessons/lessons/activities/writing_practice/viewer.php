@@ -905,7 +905,8 @@ document.addEventListener('DOMContentLoaded', function () {
             }
             qtextEl.appendChild(fillBox);
         } else {
-            if (q.question) {
+            /* listen_write: question text is read aloud by TTS – do NOT show it visually */
+            if (q.question && type !== 'listen_write') {
                 var qp = document.createElement('div');
                 qp.style.cssText = 'font-weight:800;color:#f14902;font-size:clamp(16px,2vw,22px);margin-bottom:10px;line-height:1.4;text-align:center;';
                 qp.textContent = String(q.question);
