@@ -650,6 +650,12 @@ document.addEventListener('DOMContentLoaded', function () {
         <button type="button" class="mc-btn mc-btn-next" id="btnNext">Next</button>
     </div>
 
+    <!-- TTS row: only shown for listen_write after user starts typing -->
+    <div id="wpLwTtsRow" style="display:none;justify-content:center;gap:8px;margin-top:8px;">
+        <button type="button" class="mc-btn mc-btn-listen-wp" id="btnLwRead">&#127911; Leer</button>
+        <button type="button" class="mc-btn" style="background:linear-gradient(180deg,#94a3b8 0%,#64748b 100%);color:#fff" id="btnLwStop">&#9209; Detener</button>
+    </div>
+
     <div class="mc-feedback" id="wpFeedback"></div>
 
     <div id="wpCompleted" class="completed-screen">
@@ -1258,6 +1264,9 @@ document.addEventListener('DOMContentLoaded', function () {
         index             = 0;
         finished          = false;
         currentFillInputs = [];
+        if (window.speechSynthesis) { speechSynthesis.cancel(); }
+        var lwRow = document.getElementById('wpLwTtsRow');
+        if (lwRow) { lwRow.style.display = 'none'; }
         loadCard();
     }
 
@@ -1266,6 +1275,26 @@ document.addEventListener('DOMContentLoaded', function () {
     btnNext.addEventListener('click', goNext);
     btnShow.addEventListener('click', showAnswer);
     btnRestart.addEventListener('click', restart);
+
+    /* TTS for listen_write */
+    var btnLwRead = document.getElementById('btnLwRead');
+    var btnLwStop = document.getElementById('btnLwStop');
+    if (btnLwRead) {
+        btnLwRead.addEventListener('click', function () {
+            var q = questions[index];
+            var text = String(q && q.question ? q.question : '');
+            if (!text || !window.speechSynthesis) { return; }
+            speechSynthesis.cancel();
+            var u = new SpeechSynthesisUtterance(text);
+            u.lang = 'en-US'; u.rate = 0.85;
+            speechSynthesis.speak(u);
+        });
+    }
+    if (btnLwStop) {
+        btnLwStop.addEventListener('click', function () {
+            if (window.speechSynthesis) { speechSynthesis.cancel(); }
+        });
+    }
 
     answerEl.addEventListener('input', function () {
         if (btnShow.style.display !== 'none' && !checkedCards[index] && !finished) {
