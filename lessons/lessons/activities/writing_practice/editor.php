@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
@@ -638,4 +638,4 @@ document.querySelectorAll('.wp-type-select').forEach(function(sel) {
 </script>
 <?php
 $content = ob_get_clean();
-render_activity_editor('Writing Practice &mdash; Editor', 'fas fa-pen-nib', $content);
+render_activity_editor('Writing Practice — Editor', 'fas fa-pen-nib', $content);
