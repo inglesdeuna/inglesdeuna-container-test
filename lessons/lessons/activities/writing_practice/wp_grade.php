@@ -122,6 +122,63 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'pct'           => $percent,
                 'total'         => count($qIds),
             ]);
+
+            /* Re-aggregate all activity scores for this unit into student_unit_results */
+            try {
+                $pdo->exec("
+                    CREATE TABLE IF NOT EXISTS student_unit_results (
+                        student_id         TEXT NOT NULL,
+                        assignment_id      TEXT NOT NULL,
+                        unit_id            TEXT NOT NULL,
+                        completion_percent INTEGER NOT NULL DEFAULT 0,
+                        quiz_errors        INTEGER NOT NULL DEFAULT 0,
+                        quiz_total         INTEGER NOT NULL DEFAULT 0,
+                        updated_at         TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                        PRIMARY KEY (student_id, assignment_id, unit_id)
+                    )
+                ");
+            } catch (Throwable $ignored) {}
+
+            $stmtAgg = $pdo->prepare("
+                SELECT SUM(errors_count) AS errors_sum, SUM(total_count) AS total_sum
+                FROM student_activity_results
+                WHERE student_id    = :student_id
+                  AND assignment_id = :assignment_id
+                  AND unit_id       = :unit_id
+            ");
+            $stmtAgg->execute([
+                'student_id'    => $studentId,
+                'assignment_id' => $assignmentId,
+                'unit_id'       => $unitId,
+            ]);
+            $aggRow    = $stmtAgg->fetch(PDO::FETCH_ASSOC);
+            $aggTotal  = max(0, (int) ($aggRow['total_sum']  ?? 0));
+            $aggErrors = max(0, (int) ($aggRow['errors_sum'] ?? 0));
+            if ($aggErrors > $aggTotal) { $aggErrors = $aggTotal; }
+            $aggPct = $aggTotal > 0
+                ? max(0, min(100, (int) round((($aggTotal - $aggErrors) / $aggTotal) * 100)))
+                : 0;
+
+            $stmtUni = $pdo->prepare("
+                INSERT INTO student_unit_results
+                    (student_id, assignment_id, unit_id, completion_percent, quiz_errors, quiz_total, updated_at)
+                VALUES
+                    (:student_id, :assignment_id, :unit_id, :completion_percent, :quiz_errors, :quiz_total, NOW())
+                ON CONFLICT (student_id, assignment_id, unit_id)
+                DO UPDATE SET
+                    completion_percent = EXCLUDED.completion_percent,
+                    quiz_errors        = EXCLUDED.quiz_errors,
+                    quiz_total         = EXCLUDED.quiz_total,
+                    updated_at         = NOW()
+            ");
+            $stmtUni->execute([
+                'student_id'         => $studentId,
+                'assignment_id'      => $assignmentId,
+                'unit_id'            => $unitId,
+                'completion_percent' => $aggPct,
+                'quiz_errors'        => $aggErrors,
+                'quiz_total'         => $aggTotal,
+            ]);
         }
 
         $pdo->commit();
