@@ -552,6 +552,13 @@ document.addEventListener('DOMContentLoaded', function () {
         var pct    = totalCount > 0 ? Math.round((correctCount / totalCount) * 100) : 0;
         var errors = Math.max(0, totalCount - correctCount);
 
+        /* count words from open responses */
+        var totalWords = 0;
+        openResponses.forEach(function (r) {
+            var t = String(r.response_text || '').replace(/\s+/g, ' ').trim();
+            if (t) { totalWords += t.split(' ').length; }
+        });
+
         /* save open-writing responses */
         if (openResponses.length > 0) {
             try {
@@ -571,9 +578,15 @@ document.addEventListener('DOMContentLoaded', function () {
         if (compTitleEl) { compTitleEl.textContent = actTitle; }
         if (compTextEl)  { compTextEl.textContent  = "You've completed " + actTitle + ". Great job!"; }
         if (scoreTextEl) { scoreTextEl.textContent = 'Score: ' + correctCount + ' / ' + totalCount + ' (' + pct + '%)'; }
-        if (openNoteEl && openResponses.length > 0) {
+        if (openNoteEl) {
             openNoteEl.style.display = '';
-            openNoteEl.textContent   = '\u270D\uFE0F ' + openResponses.length + ' open-writing response(s) sent for teacher grading.';
+            var noteHtml = '';
+            if (totalWords > 0) { noteHtml += '\uD83D\uDCCA ' + totalWords + ' palabras escritas'; }
+            if (openResponses.length > 0) {
+                if (noteHtml) { noteHtml += ' &nbsp;&middot;&nbsp; '; }
+                noteHtml += '\u270D\uFE0F ' + openResponses.length + ' respuesta(s) enviadas para calificaci\u00F3n.';
+            }
+            if (noteHtml) { openNoteEl.innerHTML = noteHtml; } else { openNoteEl.style.display = 'none'; }
         }
 
         /* persist to return URL */
@@ -1359,12 +1372,23 @@ document.addEventListener('DOMContentLoaded', function () {
         var pct    = totalCount > 0 ? Math.round((correctCount / totalCount) * 100) : 0;
         var errors = Math.max(0, totalCount - correctCount);
 
+        /* count total words written across all responses */
+        var totalWords = 0;
+        openResponses.forEach(function (r) {
+            var t = String(r.response_text || '').replace(/\s+/g, ' ').trim();
+            if (t) { totalWords += t.split(' ').length; }
+        });
+
         if (scoreTextEl) {
             scoreTextEl.textContent = 'Score: ' + correctCount + ' / ' + totalCount + ' (' + pct + '%)';
         }
-
-        var hasOpen = openResponses.length > 0;
-        if (openNoteEl && hasOpen) {
+        if (totalWords > 0 && openNoteEl) {
+            openNoteEl.style.display = '';
+            openNoteEl.innerHTML     = '\uD83D\uDCCA ' + totalWords + ' palabras escritas';
+            if (openResponses.length > 0) {
+                openNoteEl.innerHTML += ' &nbsp;&middot;&nbsp; \u270D\uFE0F ' + openResponses.length + ' respuesta(s) enviadas para calificaci\u00F3n.';
+            }
+        } else if (openNoteEl && openResponses.length > 0) {
             openNoteEl.style.display = '';
             openNoteEl.textContent   = '\u270D\uFE0F ' + openResponses.length + ' open-writing response(s) sent for teacher grading.';
         }

@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
@@ -38,7 +38,17 @@ function wp_resolve_unit(PDO $pdo, string $activityId): string
 
 function wp_normalize_payload($rawData): array
 {
-    $default = ['title' => 'Writing Practice', 'description' => '', 'questions' => []];
+    $default = [
+        'title'        => 'Writing Practice',
+        'description'  => '',
+        'questions'    => [],
+        'word_scoring' => [
+            'enabled'             => false,
+            'penalty_spelling'    => 1,
+            'penalty_grammar'     => 1,
+            'penalty_punctuation' => 1,
+        ],
+    ];
     if ($rawData === null || $rawData === '') { return $default; }
     $decoded = is_string($rawData) ? json_decode($rawData, true) : $rawData;
     if (!is_array($decoded)) { return $default; }
@@ -65,10 +75,17 @@ function wp_normalize_payload($rawData): array
             'points'          => 1,
         ];
     }
+$ws = is_array($decoded['word_scoring'] ?? null) ? $decoded['word_scoring'] : [];
     return [
-        'title'       => trim((string) ($decoded['title']       ?? '')) ?: $default['title'],
-        'description' => trim((string) ($decoded['description'] ?? '')),
-        'questions'   => $questions,
+        'title'        => trim((string) ($decoded['title']       ?? '')) ?: $default['title'],
+        'description'  => trim((string) ($decoded['description'] ?? '')),
+        'questions'    => $questions,
+        'word_scoring' => [
+            'enabled'             => (bool)  ($ws['enabled']             ?? false),
+            'penalty_spelling'    => max(0, (float) ($ws['penalty_spelling']    ?? 1)),
+            'penalty_grammar'     => max(0, (float) ($ws['penalty_grammar']     ?? 1)),
+            'penalty_punctuation' => max(0, (float) ($ws['penalty_punctuation'] ?? 1)),
+        ],
     ];
 }
 
@@ -179,10 +196,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         ];
     }
 
+    $wsEnabled  = !empty($_POST['ws_enabled']);
+    $wsPenSpell = max(0, (float) str_replace(',', '.', (string) ($_POST['ws_penalty_spelling']    ?? '1')));
+    $wsPenGram  = max(0, (float) str_replace(',', '.', (string) ($_POST['ws_penalty_grammar']     ?? '1')));
+    $wsPenPunct = max(0, (float) str_replace(',', '.', (string) ($_POST['ws_penalty_punctuation'] ?? '1')));
+
     $savedId = wp_save_activity($pdo, $unit, $activityId, [
-        'title'       => $title,
-        'description' => $description,
-        'questions'   => $sanitized,
+        'title'        => $title,
+        'description'  => $description,
+        'questions'    => $sanitized,
+        'word_scoring' => [
+            'enabled'             => $wsEnabled,
+            'penalty_spelling'    => $wsPenSpell,
+            'penalty_grammar'     => $wsPenGram,
+            'penalty_punctuation' => $wsPenPunct,
+        ],
     ]);
 
     $params = ['unit=' . urlencode($unit), 'saved=1'];
@@ -196,6 +224,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $questions     = $payload['questions']   ?? [];
 $activityTitle = $payload['title']       ?? 'Writing Practice';
 $description   = $payload['description'] ?? '';
+$wordScoring   = $payload['word_scoring'] ?? ['enabled' => false, 'penalty_spelling' => 1, 'penalty_grammar' => 1, 'penalty_punctuation' => 1];
 
 ob_start();
 ?>
@@ -306,6 +335,58 @@ ob_start();
     border-radius: 10px; border: 1px solid #c4b5fd;
     background: #f5f3ff; color: #5b21b6; font-weight: 800;
 }
+.wp-scoring-box {
+    background: #fff;
+    padding: 14px;
+    margin-bottom: 14px;
+    border-radius: 14px;
+    border: 1px solid #bfdbfe;
+    box-shadow: 0 8px 18px rgba(15,23,42,.04);
+}
+.wp-scoring-box legend {
+    font-weight: 800;
+    font-size: 14px;
+    color: #1e40af;
+    padding: 0 6px;
+}
+.wp-scoring-toggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+    font-weight: 800;
+    font-size: 14px;
+    color: #1e293b;
+    cursor: pointer;
+}
+.wp-scoring-toggle input[type="checkbox"] { width: 16px; height: 16px; cursor: pointer; accent-color: #3b82f6; }
+.wp-scoring-fields {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+}
+.wp-scoring-fields label { display: block; font-size: 12px; font-weight: 800; color: #1e40af; margin-bottom: 4px; }
+.wp-scoring-fields input {
+    width: 100%;
+    padding: 8px 10px;
+    border-radius: 8px;
+    border: 1px solid #93c5fd;
+    font-size: 14px;
+    font-family: inherit;
+    box-sizing: border-box;
+    text-align: center;
+}
+.wp-scoring-hint {
+    grid-column: span 3;
+    font-size: 12px;
+    color: #64748b;
+    background: #f0f9ff;
+    border: 1px solid #bae6fd;
+    border-radius: 8px;
+    padding: 8px 10px;
+    margin-top: 4px;
+}
+@media (max-width: 680px) { .wp-scoring-fields { grid-template-columns: 1fr; } .wp-scoring-hint { grid-column: span 1; } }
 @media (max-width: 680px) { .wp-block { display: flex; flex-direction: column; } .wp-video-inner { grid-template-columns: 1fr; } }
 </style>
 
@@ -328,6 +409,46 @@ ob_start();
         <textarea id="description" name="description"
                   placeholder="Ej: Lee cada pregunta y escribe tu respuesta."><?= htmlspecialchars($description, ENT_QUOTES, 'UTF-8') ?></textarea>
     </div>
+
+    <!-- ── Word Scoring Settings ───────────────────── -->
+    <fieldset class="wp-scoring-box">
+        <legend>📊 Puntuación por palabras</legend>
+        <label class="wp-scoring-toggle">
+            <input type="checkbox" name="ws_enabled" id="wsEnabled" value="1"
+                   <?= !empty($wordScoring['enabled']) ? 'checked' : '' ?>
+                   onchange="document.getElementById('wsFields').style.display=this.checked?'':'none'">
+            Activar puntuación basada en cantidad de palabras
+        </label>
+        <div id="wsFields" style="<?= !empty($wordScoring['enabled']) ? '' : 'display:none' ?>">
+            <div class="wp-scoring-fields">
+                <div>
+                    <label for="ws_penalty_spelling">Penalización &mdash; Ortografía</label>
+                    <input type="number" id="ws_penalty_spelling" name="ws_penalty_spelling"
+                           min="0" step="0.5"
+                           value="<?= htmlspecialchars((string) ($wordScoring['penalty_spelling'] ?? 1), ENT_QUOTES, 'UTF-8') ?>">
+                </div>
+                <div>
+                    <label for="ws_penalty_grammar">Penalización &mdash; Gramática</label>
+                    <input type="number" id="ws_penalty_grammar" name="ws_penalty_grammar"
+                           min="0" step="0.5"
+                           value="<?= htmlspecialchars((string) ($wordScoring['penalty_grammar'] ?? 1), ENT_QUOTES, 'UTF-8') ?>">
+                </div>
+                <div>
+                    <label for="ws_penalty_punctuation">Penalización &mdash; Puntuación</label>
+                    <input type="number" id="ws_penalty_punctuation" name="ws_penalty_punctuation"
+                           min="0" step="0.5"
+                           value="<?= htmlspecialchars((string) ($wordScoring['penalty_punctuation'] ?? 1), ENT_QUOTES, 'UTF-8') ?>">
+                </div>
+                <p class="wp-scoring-hint">
+                    <strong>Cómo funciona:</strong> La base = número de palabras escritas por el estudiante.
+                    El puntaje final = base &minus; (errores_ortografía × penalización_ortografía)
+                    &minus; (errores_gramática × penalización_gramática)
+                    &minus; (errores_puntuación × penalización_puntuación), mínimo 0.
+                    El maestro ingresa los errores al calificar en el panel de calificación.
+                </p>
+            </div>
+        </div>
+    </fieldset>
 
     <div id="wpItems">
     <?php foreach ($questions as $i => $q): ?>
