@@ -146,6 +146,8 @@ if ($activityId === '' && $activity['id'] !== '') $activityId = $activity['id'];
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $mediaType = $_POST['media_type'] ?? 'tts';
     if (!in_array($mediaType, ['tts', 'video', 'audio', 'none'], true)) $mediaType = 'tts';
+    $currentMediaType = trim((string) ($_POST['current_media_type'] ?? ''));
+    $currentMediaUrl  = trim((string) ($_POST['current_media_url'] ?? ''));
 
     // Pick the URL from the correct named field to avoid both sections overwriting each other
     if ($mediaType === 'video') {
@@ -157,14 +159,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     // Upload video/audio file if provided
+    $hasNewUpload = false;
     if (isset($_FILES['media_file']) && !empty($_FILES['media_file']['name'])
         && ($_FILES['media_file']['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_OK) {
+        $hasNewUpload = true;
         if ($mediaType === 'video') {
             $uploaded = upload_video_to_cloudinary($_FILES['media_file']['tmp_name']);
         } else {
             $uploaded = upload_audio_to_cloudinary($_FILES['media_file']['tmp_name']);
         }
         if ($uploaded) $mediaUrl = $uploaded;
+    }
+
+    // Keep existing media URL if user did not provide a new one.
+    if (in_array($mediaType, ['video', 'audio'], true)
+        && $mediaUrl === ''
+        && !$hasNewUpload
+        && $currentMediaUrl !== ''
+        && $currentMediaType === $mediaType) {
+        $mediaUrl = $currentMediaUrl;
     }
 
     $rawTexts = isset($_POST['sentence_text']) && is_array($_POST['sentence_text'])
@@ -263,6 +276,8 @@ $d = $activity;
 </style>
 
 <form method="post" enctype="multipart/form-data" class="os-form" id="osSentencesForm">
+    <input type="hidden" name="current_media_type" value="<?= htmlspecialchars($d['media_type'], ENT_QUOTES, 'UTF-8') ?>">
+    <input type="hidden" name="current_media_url" value="<?= htmlspecialchars($d['media_url'], ENT_QUOTES, 'UTF-8') ?>">
 
     <!-- Title -->
     <div class="os-card">
