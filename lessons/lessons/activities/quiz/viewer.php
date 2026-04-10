@@ -88,9 +88,135 @@ function load_quiz_fallback_from_multiple_choice(PDO $pdo, string $unit): array
   }
 
   try {
-    $stmt = $pdo->prepare("\n            SELECT id, type, data\n            FROM activities\n            WHERE unit_id::text = :unit\n              AND type IN ('multiple_choice', 'video_comprehension')\n            ORDER BY id ASC\n        ");
+    $stmt = $pdo->prepare("\n            SELECT id, type, data\n            FROM activities\n            WHERE unit_id::text = :unit\n              AND type IN ('multiple_choice', 'video_comprehension', 'writing_practice', 'match', 'pronunciation')\n            ORDER BY id ASC\n        ");
     $stmt->execute(['unit' => $unit]);
     $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+    $commonDistractors = ['is', 'are', 'am', 'was', 'were', 'do', 'does', 'did', 'a', 'an', 'the', 'in', 'on', 'at'];
+
+    $writingAnswerPool = [];
+    $matchRightPool = [];
+    $pronunciationWordPool = [];
+
+    foreach ($rows as $seedRow) {
+      $seedType = strtolower(trim((string) ($seedRow['type'] ?? '')));
+      $seedRaw = $seedRow['data'] ?? null;
+      $seedDecoded = is_string($seedRaw) ? json_decode($seedRaw, true) : $seedRaw;
+      if (!is_array($seedDecoded)) {
+        continue;
+      }
+
+      if ($seedType === 'writing_practice') {
+        $seedQuestions = isset($seedDecoded['questions']) && is_array($seedDecoded['questions']) ? $seedDecoded['questions'] : [];
+        foreach ($seedQuestions as $seedQ) {
+          if (!is_array($seedQ)) {
+            continue;
+          }
+          $answers = isset($seedQ['correct_answers']) && is_array($seedQ['correct_answers']) ? $seedQ['correct_answers'] : [];
+          foreach ($answers as $a) {
+            $v = trim((string) $a);
+            if ($v !== '') {
+              $writingAnswerPool[] = $v;
+            }
+          }
+        }
+      }
+
+      if ($seedType === 'match') {
+        $pairs = [];
+        if (isset($seedDecoded['pairs']) && is_array($seedDecoded['pairs'])) {
+          $pairs = $seedDecoded['pairs'];
+        } elseif (isset($seedDecoded['items']) && is_array($seedDecoded['items'])) {
+          $pairs = $seedDecoded['items'];
+        } elseif (isset($seedDecoded['data']) && is_array($seedDecoded['data'])) {
+          $pairs = $seedDecoded['data'];
+        } else {
+          $pairs = $seedDecoded;
+        }
+        foreach ($pairs as $p) {
+          if (!is_array($p)) {
+            continue;
+          }
+          $legacyText = isset($p['text']) ? trim((string) $p['text']) : (isset($p['word']) ? trim((string) $p['word']) : '');
+          $rightText = isset($p['right_text']) ? trim((string) $p['right_text']) : $legacyText;
+          if ($rightText !== '') {
+            $matchRightPool[] = $rightText;
+          }
+        }
+      }
+
+      if ($seedType === 'pronunciation') {
+        $items = [];
+        if (isset($seedDecoded['items']) && is_array($seedDecoded['items'])) {
+          $items = $seedDecoded['items'];
+        } elseif (isset($seedDecoded['data']) && is_array($seedDecoded['data'])) {
+          $items = $seedDecoded['data'];
+        } elseif (isset($seedDecoded['words']) && is_array($seedDecoded['words'])) {
+          $items = $seedDecoded['words'];
+        } else {
+          $items = $seedDecoded;
+        }
+        foreach ($items as $it) {
+          if (!is_array($it)) {
+            continue;
+          }
+          $word = trim((string) ($it['en'] ?? ($it['word'] ?? '')));
+          if ($word !== '') {
+            $pronunciationWordPool[] = $word;
+          }
+        }
+      }
+    }
+
+    $writingAnswerPool = array_values(array_unique($writingAnswerPool));
+    $matchRightPool = array_values(array_unique($matchRightPool));
+    $pronunciationWordPool = array_values(array_unique($pronunciationWordPool));
+
+    $buildOptions = static function (string $correct, array $pool, array $fallbackPool = []) use ($commonDistractors): array {
+      $options = [];
+      if ($correct !== '') {
+        $options[] = $correct;
+      }
+
+      foreach ($pool as $candidate) {
+        $candidate = trim((string) $candidate);
+        if ($candidate === '' || in_array($candidate, $options, true)) {
+          continue;
+        }
+        $options[] = $candidate;
+        if (count($options) >= 4) {
+          break;
+        }
+      }
+
+      if (count($options) < 4) {
+        foreach ($fallbackPool as $candidate) {
+          $candidate = trim((string) $candidate);
+          if ($candidate === '' || in_array($candidate, $options, true)) {
+            continue;
+          }
+          $options[] = $candidate;
+          if (count($options) >= 4) {
+            break;
+          }
+        }
+      }
+
+      if (count($options) < 2) {
+        foreach ($commonDistractors as $candidate) {
+          if ($candidate === '' || in_array($candidate, $options, true)) {
+            continue;
+          }
+          $options[] = $candidate;
+          if (count($options) >= 4) {
+            break;
+          }
+        }
+      }
+
+      shuffle($options);
+      return array_values($options);
+    };
 
     $questions = [];
     foreach ($rows as $row) {
@@ -110,7 +236,7 @@ function load_quiz_fallback_from_multiple_choice(PDO $pdo, string $unit): array
         if (isset($decoded['questions']) && is_array($decoded['questions'])) {
           $sourceQuestions = $decoded['questions'];
         }
-      } else {
+      } elseif ($activityType === 'multiple_choice') {
         if (isset($decoded['questions']) && is_array($decoded['questions'])) {
           $sourceQuestions = $decoded['questions'];
         } elseif (isset($decoded['items']) && is_array($decoded['items'])) {
@@ -120,6 +246,141 @@ function load_quiz_fallback_from_multiple_choice(PDO $pdo, string $unit): array
         } else {
           $sourceQuestions = $decoded;
         }
+      } elseif ($activityType === 'writing_practice') {
+        $wpQuestions = isset($decoded['questions']) && is_array($decoded['questions']) ? $decoded['questions'] : [];
+        foreach ($wpQuestions as $wpItem) {
+          if (!is_array($wpItem)) {
+            continue;
+          }
+
+          $wpType = strtolower(trim((string) ($wpItem['type'] ?? 'writing')));
+          if (!in_array($wpType, ['fill_sentence', 'fill_paragraph', 'listen_write'], true)) {
+            continue;
+          }
+
+          $baseQuestionText = trim((string) ($wpItem['question'] ?? ''));
+          $instruction = trim((string) ($wpItem['instruction'] ?? ''));
+          $answers = isset($wpItem['correct_answers']) && is_array($wpItem['correct_answers']) ? $wpItem['correct_answers'] : [];
+          $cleanAnswers = [];
+          foreach ($answers as $a) {
+            $v = trim((string) $a);
+            if ($v !== '') {
+              $cleanAnswers[] = $v;
+            }
+          }
+
+          foreach ($cleanAnswers as $blankIdx => $correctAnswer) {
+            $qText = $baseQuestionText !== '' ? $baseQuestionText : 'Choose the correct word.';
+            if (count($cleanAnswers) > 1) {
+              $qText = 'Blank ' . ($blankIdx + 1) . ': ' . $qText;
+            }
+            $options = $buildOptions($correctAnswer, $writingAnswerPool, $matchRightPool);
+            if (count($options) < 2) {
+              continue;
+            }
+            $correct = array_search($correctAnswer, $options, true);
+            if ($correct === false) {
+              continue;
+            }
+
+            $questions[] = [
+              'question' => $qText,
+              'options' => $options,
+              'correct' => (int) $correct,
+              'explanation' => $instruction,
+              'option_type' => 'text',
+              'image' => '',
+            ];
+          }
+        }
+        continue;
+      } elseif ($activityType === 'match') {
+        $pairs = [];
+        if (isset($decoded['pairs']) && is_array($decoded['pairs'])) {
+          $pairs = $decoded['pairs'];
+        } elseif (isset($decoded['items']) && is_array($decoded['items'])) {
+          $pairs = $decoded['items'];
+        } elseif (isset($decoded['data']) && is_array($decoded['data'])) {
+          $pairs = $decoded['data'];
+        } else {
+          $pairs = $decoded;
+        }
+
+        foreach ($pairs as $pair) {
+          if (!is_array($pair)) {
+            continue;
+          }
+
+          $legacyText = isset($pair['text']) ? trim((string) $pair['text']) : (isset($pair['word']) ? trim((string) $pair['word']) : '');
+          $leftText = isset($pair['left_text']) ? trim((string) $pair['left_text']) : '';
+          $rightText = isset($pair['right_text']) ? trim((string) $pair['right_text']) : $legacyText;
+
+          if ($leftText === '' || $rightText === '') {
+            continue;
+          }
+
+          $options = $buildOptions($rightText, $matchRightPool, $writingAnswerPool);
+          if (count($options) < 2) {
+            continue;
+          }
+          $correct = array_search($rightText, $options, true);
+          if ($correct === false) {
+            continue;
+          }
+
+          $questions[] = [
+            'question' => 'Match pair: ' . $leftText,
+            'options' => $options,
+            'correct' => (int) $correct,
+            'explanation' => '',
+            'option_type' => 'text',
+            'image' => '',
+          ];
+        }
+        continue;
+      } elseif ($activityType === 'pronunciation') {
+        $items = [];
+        if (isset($decoded['items']) && is_array($decoded['items'])) {
+          $items = $decoded['items'];
+        } elseif (isset($decoded['data']) && is_array($decoded['data'])) {
+          $items = $decoded['data'];
+        } elseif (isset($decoded['words']) && is_array($decoded['words'])) {
+          $items = $decoded['words'];
+        } else {
+          $items = $decoded;
+        }
+
+        foreach ($items as $it) {
+          if (!is_array($it)) {
+            continue;
+          }
+          $word = trim((string) ($it['en'] ?? ($it['word'] ?? '')));
+          $image = trim((string) ($it['img'] ?? ($it['image'] ?? '')));
+          if ($word === '') {
+            continue;
+          }
+
+          $options = $buildOptions($word, $pronunciationWordPool, $writingAnswerPool);
+          if (count($options) < 2) {
+            continue;
+          }
+          $correct = array_search($word, $options, true);
+          if ($correct === false) {
+            continue;
+          }
+
+          $questions[] = [
+            'question' => $image !== '' ? 'Choose the correct word for the image.' : 'Choose the correct pronunciation word.',
+            'options' => $options,
+            'correct' => (int) $correct,
+            'explanation' => '',
+            'option_type' => 'text',
+            'image' => $image,
+          ];
+        }
+        continue;
+      } else {
+        continue;
       }
 
       foreach ($sourceQuestions as $item) {
