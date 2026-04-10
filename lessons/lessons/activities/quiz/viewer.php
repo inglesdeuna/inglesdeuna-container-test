@@ -687,23 +687,59 @@ function load_quiz_writing_questions(PDO $pdo, string $unit): array
   $picked = quiz_load_random_activity($pdo, $unit, 'writing_practice');
   if (!$picked) return [];
   $decoded = $picked['data'];
+  $fillTypes = ['fill_sentence', 'fill_paragraph', 'listen_write'];
   $questions = [];
   foreach ((array) ($decoded['questions'] ?? []) as $item) {
     if (!is_array($item)) continue;
     $q = trim((string) ($item['question'] ?? ''));
     if ($q === '') continue;
+    $type = strtolower(trim((string) ($item['type'] ?? 'writing')));
     $answers = [];
     foreach ((array) ($item['correct_answers'] ?? []) as $a) {
       $v = trim((string) $a);
       if ($v !== '') $answers[] = $v;
     }
+
+    // For fill questions with more than 2 blanks: keep 2/3 randomly,
+    // replace remaining blanks in the question text with the actual answer.
+    if (in_array($type, $fillTypes, true) && count($answers) > 2) {
+      $total    = count($answers);
+      $keepCount = (int) ceil($total * 2 / 3);
+      if ($keepCount < 1) $keepCount = 1;
+      $indices  = range(0, $total - 1);
+      try { shuffle($indices); } catch (Throwable $e) {}
+      $keepSet  = array_flip(array_slice($indices, 0, $keepCount));
+
+      // Walk through the question text replacing ___ markers one-by-one
+      $blankIdx = 0;
+      $newQ = preg_replace_callback('/_{2,}/', function () use (&$blankIdx, $keepSet, $answers) {
+        $idx = $blankIdx++;
+        if (isset($keepSet[$idx])) {
+          return '___'; // keep as an input blank
+        }
+        // Replace with the answer so it reads naturally
+        return $answers[$idx] ?? '___';
+      }, $q);
+
+      // Re-index correct_answers to only those kept, in original order
+      $newAnswers = [];
+      foreach ($keepSet as $ki => $_) {
+        $newAnswers[$ki] = $answers[$ki];
+      }
+      ksort($newAnswers);
+      $newAnswers = array_values($newAnswers);
+
+      $q       = $newQ;
+      $answers = $newAnswers;
+    }
+
     $questions[] = [
-      'id' => trim((string) ($item['id'] ?? uniqid('wp_'))),
-      'type' => strtolower(trim((string) ($item['type'] ?? 'writing'))),
-      'question' => $q,
-      'instruction' => trim((string) ($item['instruction'] ?? '')),
-      'placeholder' => trim((string) ($item['placeholder'] ?? 'Write your answer here...')),
-      'media' => trim((string) ($item['media'] ?? '')),
+      'id'              => trim((string) ($item['id'] ?? uniqid('wp_'))),
+      'type'            => $type,
+      'question'        => $q,
+      'instruction'     => trim((string) ($item['instruction'] ?? '')),
+      'placeholder'     => trim((string) ($item['placeholder'] ?? 'Write your answer here...')),
+      'media'           => trim((string) ($item['media'] ?? '')),
       'correct_answers' => $answers,
     ];
   }
