@@ -550,6 +550,14 @@ document.addEventListener('DOMContentLoaded', function () {
     var totalCount = data.length;
     var checkedCards = {};
 
+    var pronIsSpeaking = false;
+    var pronIsPaused = false;
+    var pronSpeechOffset = 0;
+    var pronSpeechSourceText = '';
+    var pronSpeechSegmentStart = 0;
+    var pronUtter = null;
+    var pronCurrentAudio = null;
+
     if (completedTitleEl) {
         completedTitleEl.textContent = activityTitle || 'Pronunciation Practice';
     }
@@ -683,30 +691,88 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
+        // --- Audio file path ---
         if (data[index].audio) {
-            try {
-                var audio = new Audio(data[index].audio);
-                audio.play();
-            } catch (e) {}
+            var audioSrc = data[index].audio;
+            if (!pronCurrentAudio || pronCurrentAudio.getAttribute('data-src') !== audioSrc) {
+                if (pronCurrentAudio) { pronCurrentAudio.pause(); }
+                pronCurrentAudio = new Audio(audioSrc);
+                pronCurrentAudio.setAttribute('data-src', audioSrc);
+                pronCurrentAudio.onended = function () { pronCurrentAudio = null; };
+            }
+            if (!pronCurrentAudio.paused) {
+                pronCurrentAudio.pause();
+            } else {
+                pronCurrentAudio.play().catch(function () {});
+            }
             return;
         }
 
+        // --- TTS path ---
+        if (!window.speechSynthesis) { return; }
         var text = data[index].en || '';
-        if (!text || !window.speechSynthesis) {
+        if (!text) { return; }
+
+        if (speechSynthesis.paused || pronIsPaused) {
+            speechSynthesis.resume();
+            pronIsSpeaking = true;
+            pronIsPaused = false;
+            setTimeout(function () {
+                if (!speechSynthesis.speaking && pronSpeechOffset < pronSpeechSourceText.length) {
+                    pronStartSpeechFromOffset();
+                }
+            }, 80);
             return;
         }
 
-        window.speechSynthesis.cancel();
-        setTimeout(function () {
-            var utter = new SpeechSynthesisUtterance(text);
-            utter.lang = 'en-US';
-            utter.rate = 0.9;
-            window.speechSynthesis.speak(utter);
-        }, 50);
+        if (speechSynthesis.speaking && !speechSynthesis.paused) {
+            speechSynthesis.pause();
+            pronIsSpeaking = true;
+            pronIsPaused = true;
+            return;
+        }
+
+        speechSynthesis.cancel();
+        pronSpeechSourceText = text;
+        pronSpeechOffset = 0;
+        pronStartSpeechFromOffset();
+    }
+
+    function pronStartSpeechFromOffset() {
+        var source = pronSpeechSourceText;
+        if (!source) { return; }
+        var safeOffset = Math.max(0, Math.min(pronSpeechOffset, source.length));
+        var remaining = source.slice(safeOffset);
+        if (!remaining.trim()) {
+            pronIsSpeaking = false; pronIsPaused = false; pronSpeechOffset = 0;
+            return;
+        }
+        speechSynthesis.cancel();
+        pronSpeechSegmentStart = safeOffset;
+        pronUtter = new SpeechSynthesisUtterance(remaining);
+        pronUtter.lang = 'en-US';
+        pronUtter.rate = 0.9;
+        pronUtter.onstart   = function () { pronIsSpeaking = true; pronIsPaused = false; };
+        pronUtter.onpause   = function () { pronIsPaused = true; pronIsSpeaking = true; };
+        pronUtter.onresume  = function () { pronIsPaused = false; pronIsSpeaking = true; };
+        pronUtter.onboundary = function (event) {
+            if (typeof event.charIndex === 'number') {
+                pronSpeechOffset = Math.max(pronSpeechSegmentStart, Math.min(source.length, pronSpeechSegmentStart + event.charIndex));
+            }
+        };
+        pronUtter.onend = function () {
+            if (pronIsPaused) { return; }
+            pronIsSpeaking = false; pronIsPaused = false; pronSpeechOffset = 0;
+        };
+        speechSynthesis.speak(pronUtter);
     }
 
     function loadCard() {
         var item = data[index] || {};
+
+        if (window.speechSynthesis) { speechSynthesis.cancel(); }
+        pronIsSpeaking = false; pronIsPaused = false; pronSpeechOffset = 0; pronSpeechSourceText = ''; pronSpeechSegmentStart = 0; pronUtter = null;
+        if (pronCurrentAudio) { pronCurrentAudio.pause(); pronCurrentAudio = null; }
 
         finished = false;
         capturedText = '';

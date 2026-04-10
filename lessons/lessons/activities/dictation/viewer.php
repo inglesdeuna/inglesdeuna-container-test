@@ -532,6 +532,14 @@ document.addEventListener('DOMContentLoaded', function () {
     var checkedCards = {};
     var attemptsByCard = {};
 
+    var isSpeaking = false;
+    var isPaused = false;
+    var speechOffset = 0;
+    var speechSourceText = '';
+    var speechSegmentStart = 0;
+    var dictUtter = null;
+    var dictCurrentAudio = null;
+
     if (completedTitleEl) {
         completedTitleEl.textContent = activityTitle || 'Dictation Practice';
     }
@@ -592,28 +600,88 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
+        // --- Audio file path ---
         if (data[index].audio) {
-            try {
-                var audio = new Audio(data[index].audio);
-                audio.play();
-            } catch (e) {}
+            var audioSrc = data[index].audio;
+            if (!dictCurrentAudio || dictCurrentAudio.getAttribute('data-src') !== audioSrc) {
+                if (dictCurrentAudio) { dictCurrentAudio.pause(); }
+                dictCurrentAudio = new Audio(audioSrc);
+                dictCurrentAudio.setAttribute('data-src', audioSrc);
+                dictCurrentAudio.onended = function () { dictCurrentAudio = null; };
+            }
+            if (!dictCurrentAudio.paused) {
+                dictCurrentAudio.pause();
+            } else {
+                dictCurrentAudio.play().catch(function () {});
+            }
             return;
         }
 
+        // --- TTS path ---
+        if (!window.speechSynthesis) { return; }
         var text = data[index].en || '';
-        if (!text) {
+        if (!text) { return; }
+
+        if (speechSynthesis.paused || isPaused) {
+            speechSynthesis.resume();
+            isSpeaking = true;
+            isPaused = false;
+            setTimeout(function () {
+                if (!speechSynthesis.speaking && speechOffset < speechSourceText.length) {
+                    dictStartSpeechFromOffset();
+                }
+            }, 80);
             return;
         }
 
-        var utter = new SpeechSynthesisUtterance(text);
-        utter.lang = 'en-US';
-        utter.rate = 0.9;
+        if (speechSynthesis.speaking && !speechSynthesis.paused) {
+            speechSynthesis.pause();
+            isSpeaking = true;
+            isPaused = true;
+            return;
+        }
+
         speechSynthesis.cancel();
-        speechSynthesis.speak(utter);
+        speechSourceText = text;
+        speechOffset = 0;
+        dictStartSpeechFromOffset();
+    }
+
+    function dictStartSpeechFromOffset() {
+        var source = speechSourceText;
+        if (!source) { return; }
+        var safeOffset = Math.max(0, Math.min(speechOffset, source.length));
+        var remaining = source.slice(safeOffset);
+        if (!remaining.trim()) {
+            isSpeaking = false; isPaused = false; speechOffset = 0;
+            return;
+        }
+        speechSynthesis.cancel();
+        speechSegmentStart = safeOffset;
+        dictUtter = new SpeechSynthesisUtterance(remaining);
+        dictUtter.lang = 'en-US';
+        dictUtter.rate = 0.9;
+        dictUtter.onstart   = function () { isSpeaking = true; isPaused = false; };
+        dictUtter.onpause   = function () { isPaused = true; isSpeaking = true; };
+        dictUtter.onresume  = function () { isPaused = false; isSpeaking = true; };
+        dictUtter.onboundary = function (event) {
+            if (typeof event.charIndex === 'number') {
+                speechOffset = Math.max(speechSegmentStart, Math.min(source.length, speechSegmentStart + event.charIndex));
+            }
+        };
+        dictUtter.onend = function () {
+            if (isPaused) { return; }
+            isSpeaking = false; isPaused = false; speechOffset = 0;
+        };
+        speechSynthesis.speak(dictUtter);
     }
 
     function loadCard() {
         var item = data[index] || {};
+
+        if (window.speechSynthesis) { speechSynthesis.cancel(); }
+        isSpeaking = false; isPaused = false; speechOffset = 0; speechSourceText = ''; speechSegmentStart = 0; dictUtter = null;
+        if (dictCurrentAudio) { dictCurrentAudio.pause(); dictCurrentAudio = null; }
 
         finished = false;
         completedEl.classList.remove('active');
