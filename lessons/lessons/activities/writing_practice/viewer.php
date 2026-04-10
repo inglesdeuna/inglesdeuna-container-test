@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 require_once __DIR__ . '/../../config/db.php';
 require_once __DIR__ . '/../../core/_activity_viewer_template.php';
 
@@ -966,7 +966,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     for (var lwai = 0; lwai < lwAns2.length; lwai++) {
                         var lwWord  = String(lwAns2[lwai] || '');
                         var lwEsc   = lwWord.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-                        var lwRe2   = new RegExp('\\b' + lwEsc + '\\b', 'i');
+                        var lwRe2   = new RegExp('(?<![\\w\\\'])' + lwEsc + '(?![\\w\\\'])', 'i');
                         var lwMatch = lwRe2.exec(lwRemaining);
                         if (lwMatch) {
                             if (lwMatch.index > 0) { lwSegs.push({type: 'text', val: lwRemaining.substring(0, lwMatch.index)}); }
@@ -1066,7 +1066,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     for (var fpai = 0; fpai < fpAnswers.length; fpai++) {
                         var fpWord = String(fpAnswers[fpai] || '');
                         var fpEsc  = fpWord.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-                        var fpRe   = new RegExp('\\b' + fpEsc + '\\b', 'i');
+                        var fpRe   = new RegExp('(?<![\\w\\\'])' + fpEsc + '(?![\\w\\\'])', 'i');
                         var fpM    = fpRe.exec(fpRemaining);
                         if (fpM) {
                             if (fpM.index > 0) { fpSegs.push({type: 'text', val: fpRemaining.substring(0, fpM.index)}); }
