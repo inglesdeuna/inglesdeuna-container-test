@@ -54,23 +54,33 @@ function os_load_v(PDO $pdo, string $activityId, string $unit): array
 {
     $row = null;
     if ($activityId !== '') {
-        $s = $pdo->prepare("SELECT data FROM activities WHERE id=:id AND type='order_sentences' LIMIT 1");
+    $s = $pdo->prepare("SELECT id, data FROM activities WHERE id=:id AND type='order_sentences' LIMIT 1");
         $s->execute(['id' => $activityId]);
         $row = $s->fetch(PDO::FETCH_ASSOC);
     }
     if (!$row && $unit !== '') {
-        $s = $pdo->prepare("SELECT data FROM activities WHERE unit_id=:u AND type='order_sentences' ORDER BY id ASC LIMIT 1");
+    $s = $pdo->prepare("SELECT id, data FROM activities WHERE unit_id=:u AND type='order_sentences' ORDER BY id ASC LIMIT 1");
         $s->execute(['u' => $unit]);
         $row = $s->fetch(PDO::FETCH_ASSOC);
     }
-    if (!$row) return os_normalize_v(null);
-    return os_normalize_v($row['data'] ?? null);
+  if (!$row) {
+    $fallback = os_normalize_v(null);
+    $fallback['id'] = '';
+    return $fallback;
+  }
+  $payload = os_normalize_v($row['data'] ?? null);
+  $payload['id'] = (string) ($row['id'] ?? '');
+  return $payload;
 }
 
 if ($unit === '' && $activityId !== '') $unit = os_resolve_unit_v($pdo, $activityId);
 
 $activity     = os_load_v($pdo, $activityId, $unit);
 $viewerTitle  = $activity['title'];
+$resolvedActivityId = trim((string) ($activity['id'] ?? ''));
+if ($activityId === '' && $resolvedActivityId !== '') {
+  $activityId = $resolvedActivityId;
+}
 $sentences    = $activity['sentences'];
 
 if (count($sentences) === 0) die('No sentences configured for this activity');
@@ -360,6 +370,7 @@ const OS_TITLE     = <?= json_encode($viewerTitle, JSON_UNESCAPED_UNICODE) ?>;
 const OS_TTS_TEXT  = <?= json_encode($activity['tts_text'], JSON_UNESCAPED_UNICODE) ?>;
 const OS_MEDIA_TYPE = <?= json_encode($activity['media_type'], JSON_UNESCAPED_UNICODE) ?>;
 const OS_RETURN_TO  = <?= json_encode($returnTo, JSON_UNESCAPED_UNICODE) ?>;
+const OS_ACTIVITY_ID = <?= json_encode($activityId, JSON_UNESCAPED_UNICODE) ?>;
 
 /* ─────────── state ─────────── */
 var osCurrent   = [];   // shuffled order
@@ -600,7 +611,7 @@ function osCheck() {
     fb.className = 'os-good';
     osChecked = true;
     playSound('os-win');
-    setTimeout(osShowCompleted, 900);
+    setTimeout(function(){ osShowCompleted(correct, OS_SENTENCES.length); }, 900);
   } else {
     if (osAttempts < 2) {
       fb.textContent = '✖ Not quite — try again!';
@@ -614,6 +625,7 @@ function osCheck() {
       fb.className = 'os-bad';
       playSound('os-lose');
       osChecked = true;
+      setTimeout(function(){ osShowCompleted(correct, OS_SENTENCES.length); }, 900);
     }
   }
 }
@@ -632,9 +644,62 @@ function clearFeedback() {
   if (!osChecked) clearMarks();
 }
 
+function osCountCorrectPositions() {
+  var items = document.querySelectorAll('#os-sortable .os-item');
+  var correct = 0;
+  items.forEach(function(el, i) {
+    if (OS_SENTENCES[i] && el.dataset.id === OS_SENTENCES[i].id) {
+      correct++;
+    }
+  });
+  return correct;
+}
+
+function osPersistScoreAndReturn(correct, total) {
+  var safeTotal = Math.max(0, Number(total || 0));
+  var safeCorrect = Math.max(0, Math.min(safeTotal, Number(correct || 0)));
+  var errors = Math.max(0, safeTotal - safeCorrect);
+  var pct = safeTotal > 0 ? Math.round((safeCorrect / safeTotal) * 100) : 0;
+
+  if (!OS_RETURN_TO || !OS_ACTIVITY_ID) {
+    return Promise.resolve(false);
+  }
+
+  var joiner = OS_RETURN_TO.indexOf('?') !== -1 ? '&' : '?';
+  var saveUrl = OS_RETURN_TO
+    + joiner + 'activity_percent=' + encodeURIComponent(String(pct))
+    + '&activity_errors=' + encodeURIComponent(String(errors))
+    + '&activity_total=' + encodeURIComponent(String(safeTotal))
+    + '&activity_id=' + encodeURIComponent(String(OS_ACTIVITY_ID))
+    + '&activity_type=order_sentences';
+
+  return fetch(saveUrl, {
+    method: 'GET',
+    credentials: 'same-origin',
+    cache: 'no-store'
+  }).then(function (response) {
+    if (!(response && response.ok)) {
+      throw new Error('save failed');
+    }
+    return true;
+  }).catch(function () {
+    try {
+      if (window.top && window.top !== window) {
+        window.top.location.href = saveUrl;
+      } else {
+        window.location.href = saveUrl;
+      }
+    } catch (e) {
+      window.location.href = saveUrl;
+    }
+    return false;
+  });
+}
+
 /* ─────────── show answer ─────────── */
 function osShowAnswer() {
-  if (osChecked) return;
+  if (document.getElementById('os-completed').classList.contains('active')) return;
+  var currentCorrect = osCountCorrectPositions();
   osChecked = true;
   var ul = document.getElementById('os-sortable');
   ul.innerHTML = '';
@@ -653,6 +718,7 @@ function osShowAnswer() {
   var fb = document.getElementById('os-feedback');
   fb.textContent = '👆 Correct order shown';
   fb.className = 'os-good';
+  setTimeout(function(){ osShowCompleted(currentCorrect, OS_SENTENCES.length); }, 700);
 }
 
 /* ─────────── reset ─────────── */
@@ -671,25 +737,20 @@ function osReset() {
 }
 
 /* ─────────── completed screen ─────────── */
-function osShowCompleted() {
+function osShowCompleted(correct, total) {
   document.getElementById('os-main').style.display = 'none';
   var controls = document.querySelector('.os-controls');
   if (controls) controls.style.display = 'none';
   var el = document.getElementById('os-completed');
   el.classList.add('active');
   document.getElementById('os-completed-title').textContent = OS_TITLE;
+  var safeTotal = Math.max(0, Number(total || OS_SENTENCES.length));
+  var safeCorrect = Math.max(0, Math.min(safeTotal, Number(correct || 0)));
+  var pct = safeTotal > 0 ? Math.round((safeCorrect / safeTotal) * 100) : 0;
   document.getElementById('os-completed-msg').textContent =
-    "You got all sentences in the correct order. Great job!";
+    "Score: " + safeCorrect + " / " + safeTotal + " (" + pct + "%).";
   playSound('os-done');
-
-  if (OS_RETURN_TO) {
-    setTimeout(function() {
-      try {
-        if (window.top && window.top !== window) { window.top.location.href = OS_RETURN_TO; return; }
-      } catch(e){}
-      window.location.href = OS_RETURN_TO;
-    }, 3000);
-  }
+  osPersistScoreAndReturn(safeCorrect, safeTotal);
 }
 
 /* ─────────── audio helpers ─────────── */
