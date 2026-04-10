@@ -4,6 +4,7 @@ require_once __DIR__ . '/../../core/_activity_viewer_template.php';
 
 $activityId = isset($_GET['id']) ? trim((string) $_GET['id']) : '';
 $unit = isset($_GET['unit']) ? trim((string) $_GET['unit']) : '';
+$returnTo = isset($_GET['return_to']) ? trim((string) $_GET['return_to']) : '';
 
 if ($activityId === '' && $unit === '') {
     die('Activity not specified');
@@ -274,6 +275,7 @@ ob_start();
             <div class="completed-icon">✅</div>
             <h2 class="completed-title" id="vc-completed-title"></h2>
             <p class="completed-text" id="vc-completed-text"></p>
+            <p class="completed-text" id="vc-score-text" style="font-weight:800;font-size:20px;color:#1d4ed8;"></p>
             <button type="button" class="completed-button" id="vc-completed-restart">Restart</button>
         </div>
 
@@ -282,6 +284,8 @@ ob_start();
             const data = <?= json_encode($questions, JSON_UNESCAPED_UNICODE) ?>;
             if (!Array.isArray(data) || data.length === 0) return;
             const activityTitle = <?= json_encode($viewerTitle, JSON_UNESCAPED_UNICODE) ?>;
+            const RETURN_TO = <?= json_encode($returnTo, JSON_UNESCAPED_UNICODE) ?>;
+            const ACTIVITY_ID = <?= json_encode($activityId, JSON_UNESCAPED_UNICODE) ?>;
 
             const countEl = document.getElementById('vc-count');
             const questionEl = document.getElementById('vc-question');
@@ -295,12 +299,13 @@ ob_start();
             const shellEl = document.getElementById('vc-quizShell');
             const completedTitleEl = document.getElementById('vc-completed-title');
             const completedTextEl = document.getElementById('vc-completed-text');
+            const scoreTextEl = document.getElementById('vc-score-text');
             const completedRestartBtn = document.getElementById('vc-completed-restart');
 
             let index = 0;
             let selectedIndex = -1;
-            let score = 0;
             let checked = false;
+            let results = Array(data.length).fill(null);
 
             if (completedTitleEl) {
                 completedTitleEl.textContent = activityTitle || 'Video Comprehension';
@@ -319,6 +324,30 @@ ob_start();
                 feedbackEl.classList.remove('success', 'error');
                 if (kind === 'success') feedbackEl.classList.add('success');
                 if (kind === 'error') feedbackEl.classList.add('error');
+            }
+
+            function persistScoreSilently(targetUrl) {
+                if (!targetUrl) return Promise.resolve(false);
+                return fetch(targetUrl, {
+                    method: 'GET',
+                    credentials: 'same-origin',
+                    cache: 'no-store'
+                }).then(function (response) {
+                    return !!(response && response.ok);
+                }).catch(function () {
+                    return false;
+                });
+            }
+
+            function navigateToReturn(targetUrl) {
+                if (!targetUrl) return;
+                try {
+                    if (window.top && window.top !== window.self) {
+                        window.top.location.href = targetUrl;
+                        return;
+                    }
+                } catch (e) {}
+                window.location.href = targetUrl;
             }
 
             function render() {
@@ -348,34 +377,27 @@ ob_start();
                 setFeedback('Select an option to begin.', '');
             }
 
-            function showCompletion() {
-                if (activityEl) activityEl.classList.add('is-hidden');
-                completeEl.classList.add('active');
-                completeEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            }
-
-            function restartQuiz() {
-                index = 0;
-                score = 0;
-                selectedIndex = -1;
-                checked = false;
-                shellEl.style.display = 'block';
-                if (activityEl) activityEl.classList.remove('is-hidden');
-                completeEl.classList.remove('active');
-                render();
-            }
-
-            checkBtn.addEventListener('click', function () {
+            function evaluateCurrent() {
                 if (checked) return;
-                if (selectedIndex < 0) {
-                    setFeedback('Please choose an answer first.', 'error');
-                    return;
-                }
 
-                checked = true;
                 const current = getCurrent();
                 const correctIndex = Number(current.correct || 0);
                 const optionNodes = Array.from(optionsEl.children);
+
+                checked = true;
+
+                if (selectedIndex < 0) {
+                    optionNodes.forEach(function (node, nodeIndex) {
+                        if (nodeIndex === correctIndex) {
+                            node.classList.add('correct');
+                        }
+                    });
+                    if (results[index] === null) {
+                        results[index] = false;
+                    }
+                    setFeedback('Incorrect. ' + (current.explanation || ''), 'error');
+                    return;
+                }
 
                 optionNodes.forEach(function (node, nodeIndex) {
                     node.classList.remove('active');
@@ -387,21 +409,70 @@ ob_start();
                 });
 
                 if (selectedIndex === correctIndex) {
-                    score += 1;
+                    if (results[index] === null) {
+                        results[index] = true;
+                    }
                     setFeedback('Correct! ' + (current.explanation || ''), 'success');
                 } else {
-                    setFeedback('Try again. ' + (current.explanation || ''), 'error');
+                    if (results[index] === null) {
+                        results[index] = false;
+                    }
+                    setFeedback('Incorrect. ' + (current.explanation || ''), 'error');
                 }
+            }
+
+            async function showCompletion() {
+                if (activityEl) activityEl.classList.add('is-hidden');
+                completeEl.classList.add('active');
+                completeEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+                const score = results.filter(function (r) { return r === true; }).length;
+                const total = data.length;
+                const pct = total > 0 ? Math.round((score / total) * 100) : 0;
+                const errors = Math.max(0, total - score);
+
+                if (scoreTextEl) {
+                    scoreTextEl.textContent = 'Score: ' + score + ' / ' + total + ' (' + pct + '%)';
+                }
+
+                if (RETURN_TO && ACTIVITY_ID) {
+                    const joiner = RETURN_TO.indexOf('?') !== -1 ? '&' : '?';
+                    const saveUrl = RETURN_TO
+                        + joiner + 'activity_percent=' + pct
+                        + '&activity_errors=' + errors
+                        + '&activity_total=' + total
+                        + '&activity_id=' + encodeURIComponent(ACTIVITY_ID)
+                        + '&activity_type=video_comprehension';
+
+                    const ok = await persistScoreSilently(saveUrl);
+                    if (!ok) {
+                        navigateToReturn(saveUrl);
+                    }
+                }
+            }
+
+            function restartQuiz() {
+                index = 0;
+                selectedIndex = -1;
+                checked = false;
+                results = Array(data.length).fill(null);
+                shellEl.style.display = 'block';
+                if (activityEl) activityEl.classList.remove('is-hidden');
+                completeEl.classList.remove('active');
+                render();
+            }
+
+            checkBtn.addEventListener('click', function () {
+                evaluateCurrent();
             });
 
-            nextBtn.addEventListener('click', function () {
+            nextBtn.addEventListener('click', async function () {
                 if (!checked) {
-                    setFeedback('Check your answer before going to the next question.', 'error');
-                    return;
+                    evaluateCurrent();
                 }
 
                 if (index + 1 >= data.length) {
-                    showCompletion();
+                    await showCompletion();
                     return;
                 }
 
