@@ -1997,6 +1997,11 @@ ob_start();
       <p class="qz-completed-score" id="qz-score-text"></p>
       <p class="qz-completed-text" id="qz-completed-text">Your percentage was added to the unit score.</p>
       <p class="qz-completed-note" id="qz-attempt-note"></p>
+      <?php if ($returnTo !== '') { ?>
+      <div class="qz-actions" style="margin-top:20px;">
+        <a class="qz-btn" href="<?php echo htmlspecialchars($returnTo, ENT_QUOTES, 'UTF-8'); ?>">&#8592; Return to course</a>
+      </div>
+      <?php } ?>
     </div>
   <?php } ?>
 </div>
@@ -2024,6 +2029,21 @@ window.QUIZ_LISTEN_ORDER_DATA = <?php echo json_encode($quizListenOrderBlocks, J
   const progressFillEl = document.getElementById('qz-progress-fill');
   const progressPercentEl = document.getElementById('qz-progress-percent');
   const policy = window.QUIZ_POLICY || {};
+
+  // Quiz already submitted / locked — show completed state and return button immediately
+  if (!policy.finish_enabled) {
+    if (questionsWrap) questionsWrap.style.display = 'none';
+    const completedTextEl = document.getElementById('qz-completed-text');
+    if (completedTextEl) completedTextEl.textContent = String(policy.message || 'This quiz has already been completed.');
+    if (scoreTextEl) scoreTextEl.textContent = '';
+    if (attemptNoteEl) {
+      const used = Math.min(3, Number(policy.attempts_used || 0));
+      attemptNoteEl.textContent = 'Attempts used: ' + used + '/3';
+    }
+    if (completedScreen) completedScreen.classList.add('active');
+    return;
+  }
+
   const quizMatchData = Array.isArray(window.QUIZ_MATCH_DATA) ? window.QUIZ_MATCH_DATA : [];
   const quizPronunciationData = Array.isArray(window.QUIZ_PRONUNCIATION_DATA) ? window.QUIZ_PRONUNCIATION_DATA : [];
   const quizWritingData = Array.isArray(window.QUIZ_WRITING_DATA) ? window.QUIZ_WRITING_DATA : [];
