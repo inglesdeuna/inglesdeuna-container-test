@@ -88,7 +88,7 @@ function load_quiz_fallback_from_multiple_choice(PDO $pdo, string $unit): array
   }
 
   try {
-    $stmt = $pdo->prepare("\n            SELECT id, type, data\n            FROM activities\n            WHERE unit_id::text = :unit\n              AND type IN ('multiple_choice', 'video_comprehension', 'writing_practice', 'match', 'pronunciation')\n            ORDER BY id ASC\n        ");
+    $stmt = $pdo->prepare("\n            SELECT id, type, data\n            FROM activities\n            WHERE unit_id::text = :unit\n              AND type IN ('multiple_choice', 'video_comprehension')\n            ORDER BY id ASC\n        ");
     $stmt->execute(['unit' => $unit]);
     $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
 
@@ -650,6 +650,109 @@ function load_quiz_activity(PDO $pdo, string $activityId, string $unit): array
     ];
 }
 
+function quiz_load_random_activity(PDO $pdo, string $unit, string $type): ?array
+{
+  if ($unit === '' || $type === '') return null;
+  try {
+    $stmt = $pdo->prepare('SELECT id, data FROM activities WHERE unit_id::text = :unit AND type = :type ORDER BY id ASC');
+    $stmt->execute(['unit' => $unit, 'type' => $type]);
+    $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    if (empty($rows)) return null;
+    $sessionKey = 'qz_pick_' . md5($unit . $type);
+    if (!isset($_SESSION[$sessionKey])) $_SESSION[$sessionKey] = -1;
+    $prevIdx = (int) $_SESSION[$sessionKey];
+    $count = count($rows);
+    if ($count === 1) {
+      $idx = 0;
+    } else {
+      $idx = $prevIdx;
+      $attempts = 0;
+      while ($idx === $prevIdx && $attempts < 20) {
+        try { $idx = random_int(0, $count - 1); } catch (Throwable $e) { $idx = ($prevIdx + 1) % $count; }
+        $attempts++;
+      }
+    }
+    $_SESSION[$sessionKey] = $idx;
+    $row = $rows[$idx];
+    $raw = $row['data'] ?? null;
+    $decoded = is_string($raw) ? json_decode($raw, true) : $raw;
+    return is_array($decoded) ? ['id' => (string) ($row['id'] ?? ''), 'data' => $decoded] : null;
+  } catch (Throwable $e) {
+    return null;
+  }
+}
+
+function load_quiz_writing_questions(PDO $pdo, string $unit): array
+{
+  $picked = quiz_load_random_activity($pdo, $unit, 'writing_practice');
+  if (!$picked) return [];
+  $decoded = $picked['data'];
+  $questions = [];
+  foreach ((array) ($decoded['questions'] ?? []) as $item) {
+    if (!is_array($item)) continue;
+    $q = trim((string) ($item['question'] ?? ''));
+    if ($q === '') continue;
+    $answers = [];
+    foreach ((array) ($item['correct_answers'] ?? []) as $a) {
+      $v = trim((string) $a);
+      if ($v !== '') $answers[] = $v;
+    }
+    $questions[] = [
+      'id' => trim((string) ($item['id'] ?? uniqid('wp_'))),
+      'type' => strtolower(trim((string) ($item['type'] ?? 'writing'))),
+      'question' => $q,
+      'instruction' => trim((string) ($item['instruction'] ?? '')),
+      'placeholder' => trim((string) ($item['placeholder'] ?? 'Write your answer here...')),
+      'media' => trim((string) ($item['media'] ?? '')),
+      'correct_answers' => $answers,
+    ];
+  }
+  return $questions;
+}
+
+function load_quiz_dictation_items(PDO $pdo, string $unit): array
+{
+  $picked = quiz_load_random_activity($pdo, $unit, 'dictation');
+  if (!$picked) return [];
+  $decoded = $picked['data'];
+  $src = isset($decoded['items']) && is_array($decoded['items']) ? $decoded['items']
+       : (isset($decoded['data']) && is_array($decoded['data']) ? $decoded['data']
+       : (isset($decoded['words']) && is_array($decoded['words']) ? $decoded['words'] : []));
+  $items = [];
+  foreach ($src as $item) {
+    if (!is_array($item)) continue;
+    $en = trim((string) ($item['en'] ?? ($item['word'] ?? ($item['sentence'] ?? ''))));
+    if ($en === '') continue;
+    $items[] = [
+      'en' => $en,
+      'img' => trim((string) ($item['img'] ?? ($item['image'] ?? ''))),
+      'audio' => trim((string) ($item['audio'] ?? '')),
+    ];
+  }
+  return $items;
+}
+
+function load_quiz_listen_order_blocks(PDO $pdo, string $unit): array
+{
+  $picked = quiz_load_random_activity($pdo, $unit, 'listen_order');
+  if (!$picked) return [];
+  $decoded = $picked['data'];
+  $src = isset($decoded['blocks']) && is_array($decoded['blocks']) ? $decoded['blocks'] : [];
+  $blocks = [];
+  foreach ($src as $block) {
+    if (!is_array($block)) continue;
+    $sentence = trim((string) ($block['sentence'] ?? ''));
+    if ($sentence === '') continue;
+    $images = [];
+    foreach ((array) ($block['images'] ?? []) as $img) {
+      $v = trim((string) $img);
+      if ($v !== '') $images[] = $v;
+    }
+    $blocks[] = ['sentence' => $sentence, 'images' => $images];
+  }
+  return $blocks;
+}
+
 function load_quiz_match_pairs(PDO $pdo, string $unit): array
 {
   if ($unit === '') {
@@ -657,18 +760,9 @@ function load_quiz_match_pairs(PDO $pdo, string $unit): array
   }
 
   try {
-    $stmt = $pdo->prepare("\n            SELECT data\n            FROM activities\n            WHERE unit_id = :unit\n              AND type = 'match'\n            ORDER BY id ASC\n            LIMIT 1\n        ");
-    $stmt->execute(['unit' => $unit]);
-    $row = $stmt->fetch(PDO::FETCH_ASSOC);
-    if (!is_array($row)) {
-      return [];
-    }
-
-    $raw = $row['data'] ?? null;
-    $decoded = is_string($raw) ? json_decode($raw, true) : $raw;
-    if (!is_array($decoded)) {
-      return [];
-    }
+    $picked = quiz_load_random_activity($pdo, $unit, 'match');
+    if (!$picked) return [];
+    $decoded = $picked['data'];
 
     $pairsSource = $decoded;
     if (isset($decoded['pairs']) && is_array($decoded['pairs'])) {
@@ -718,18 +812,9 @@ function load_quiz_pronunciation_items(PDO $pdo, string $unit): array
   }
 
   try {
-    $stmt = $pdo->prepare("\n            SELECT data\n            FROM activities\n            WHERE unit_id = :unit\n              AND type = 'pronunciation'\n            ORDER BY id ASC\n            LIMIT 1\n        ");
-    $stmt->execute(['unit' => $unit]);
-    $row = $stmt->fetch(PDO::FETCH_ASSOC);
-    if (!is_array($row)) {
-      return [];
-    }
-
-    $raw = $row['data'] ?? null;
-    $decoded = is_string($raw) ? json_decode($raw, true) : $raw;
-    if (!is_array($decoded)) {
-      return [];
-    }
+    $picked = quiz_load_random_activity($pdo, $unit, 'pronunciation');
+    if (!$picked) return [];
+    $decoded = $picked['data'];
 
     $itemsSource = $decoded;
     if (isset($decoded['items']) && is_array($decoded['items'])) {
@@ -874,7 +959,11 @@ $questions = build_fixed_quiz_question_set($questions, 6);
 $description = (string) ($activity['description'] ?? '');
 $quizMatchPairs = load_quiz_match_pairs($pdo, $unit);
 $quizPronunciationItems = load_quiz_pronunciation_items($pdo, $unit);
-$hasAnyQuizBlock = !empty($questions) || !empty($quizMatchPairs) || !empty($quizPronunciationItems);
+$quizWritingQuestions = load_quiz_writing_questions($pdo, $unit);
+$quizDictationItems = load_quiz_dictation_items($pdo, $unit);
+$quizListenOrderBlocks = load_quiz_listen_order_blocks($pdo, $unit);
+$hasAnyQuizBlock = !empty($questions) || !empty($quizMatchPairs) || !empty($quizPronunciationItems)
+  || !empty($quizWritingQuestions) || !empty($quizDictationItems) || !empty($quizListenOrderBlocks);
 
 ensure_quiz_attempts_column($pdo);
 
@@ -948,6 +1037,23 @@ ob_start();
 .qz-completed-note{font-size:14px;font-weight:700;color:#7c3aed}
 @media (max-width:1100px){.qz-pron-grid-6{grid-template-columns:repeat(4,minmax(140px,1fr))}}
 @media (max-width:760px){.qz-title{font-size:26px}.qz-q{font-size:16px}.qz-actions{position:static}.qz-pron-grid-6,.qz-pron-grid-8{grid-template-columns:repeat(2,minmax(130px,1fr))}}
+.qz-block-help{font-size:13px;color:#5d6f8f;margin:0 0 10px}
+.qz-wp-item{margin-bottom:12px}
+.qz-wp-label{font-weight:800;color:#f14902;margin-bottom:4px;font-size:15px}
+.qz-wp-instr{font-size:12px;color:#5d6f8f;margin-bottom:5px}
+.qz-wp-textarea{width:100%;box-sizing:border-box;border:1.5px solid #dcc4f0;border-radius:10px;padding:10px;font-size:14px;resize:vertical;min-height:60px;font-family:inherit;line-height:1.5}
+.qz-wp-textarea:focus{outline:none;border-color:#a855c8;box-shadow:0 0 0 3px rgba(168,85,200,.15)}
+.qz-dict-row{display:flex;gap:10px;align-items:flex-start;margin-bottom:10px;padding:10px;border:1px solid #ead6f8;border-radius:10px;background:#fff9ff}
+.qz-dict-img{width:68px;height:68px;object-fit:contain;border-radius:8px;flex-shrink:0;border:1.5px solid #dcc4f0}
+.qz-dict-controls{flex:1;display:flex;flex-direction:column;gap:7px}
+.qz-dict-input{width:100%;box-sizing:border-box;border:1.5px solid #dcc4f0;border-radius:8px;padding:9px 10px;font-size:14px;font-family:inherit}
+.qz-dict-input:focus{outline:none;border-color:#a855c8;box-shadow:0 0 0 3px rgba(168,85,200,.15)}
+.qz-lo-block{margin-bottom:14px;padding:12px;border:1px solid #ead6f8;border-radius:12px;background:#fff9ff}
+.qz-lo-pool-row,.qz-lo-answer-row{display:flex;flex-wrap:wrap;gap:8px;margin:4px 0;min-height:68px}
+.qz-lo-img{width:80px;height:80px;object-fit:contain;border-radius:10px;border:2px solid #c4b5fd;cursor:pointer;transition:opacity .2s,border-color .2s}
+.qz-lo-img:hover{border-color:#7c3aed}.qz-lo-img.lo-selected{opacity:.3;cursor:default;border-color:#dcc4f0}
+.qz-lo-img.lo-in-answer{border-color:#a855c8;cursor:pointer}
+.qz-lo-status{font-size:13px;font-weight:800;min-height:18px;margin-top:6px}
 </style>
 
 <div class="qz-wrap" id="quizApp">
@@ -1005,6 +1111,9 @@ window.QUIZ_ACTIVITY_ID = <?php echo json_encode((string) ($activity['id'] ?? ''
 window.QUIZ_POLICY = <?php echo json_encode($quizAttemptPolicy, JSON_UNESCAPED_UNICODE); ?>;
 window.QUIZ_MATCH_DATA = <?php echo json_encode($quizMatchPairs, JSON_UNESCAPED_UNICODE); ?>;
 window.QUIZ_PRONUNCIATION_DATA = <?php echo json_encode($quizPronunciationItems, JSON_UNESCAPED_UNICODE); ?>;
+window.QUIZ_WRITING_DATA = <?php echo json_encode($quizWritingQuestions, JSON_UNESCAPED_UNICODE); ?>;
+window.QUIZ_DICTATION_DATA = <?php echo json_encode($quizDictationItems, JSON_UNESCAPED_UNICODE); ?>;
+window.QUIZ_LISTEN_ORDER_DATA = <?php echo json_encode($quizListenOrderBlocks, JSON_UNESCAPED_UNICODE); ?>;
 (function(){
   const btn = document.getElementById('btnCheckQuiz');
   const questionsWrap = document.getElementById('qz-questions-wrap');
@@ -1020,6 +1129,9 @@ window.QUIZ_PRONUNCIATION_DATA = <?php echo json_encode($quizPronunciationItems,
   const policy = window.QUIZ_POLICY || {};
   const quizMatchData = Array.isArray(window.QUIZ_MATCH_DATA) ? window.QUIZ_MATCH_DATA : [];
   const quizPronunciationData = Array.isArray(window.QUIZ_PRONUNCIATION_DATA) ? window.QUIZ_PRONUNCIATION_DATA : [];
+  const quizWritingData = Array.isArray(window.QUIZ_WRITING_DATA) ? window.QUIZ_WRITING_DATA : [];
+  const quizDictData = Array.isArray(window.QUIZ_DICTATION_DATA) ? window.QUIZ_DICTATION_DATA : [];
+  const quizListenOrderData = Array.isArray(window.QUIZ_LISTEN_ORDER_DATA) ? window.QUIZ_LISTEN_ORDER_DATA : [];
 
   function shuffleArray(items) {
     const cloned = items.slice();
@@ -1093,7 +1205,7 @@ window.QUIZ_PRONUNCIATION_DATA = <?php echo json_encode($quizPronunciationItems,
   }
 
   const rawQuizData = Array.isArray(window.QUIZ_DATA) ? window.QUIZ_DATA : [];
-  const hasAnyQuizBlock = rawQuizData.length > 0 || quizMatchData.length > 0 || quizPronunciationData.length > 0;
+  const hasAnyQuizBlock = rawQuizData.length > 0 || quizMatchData.length > 0 || quizPronunciationData.length > 0 || quizWritingData.length > 0 || quizDictData.length > 0 || quizListenOrderData.length > 0;
   if (!btn || !listEl || !hasAnyQuizBlock) {
     return;
   }
@@ -1209,6 +1321,33 @@ window.QUIZ_PRONUNCIATION_DATA = <?php echo json_encode($quizPronunciationItems,
     done: {},
   };
 
+  const writingItems = quizWritingData.filter(function(q) { return !!(q.question && String(q.question).trim()); });
+  const writingState = {
+    enabled: writingItems.length > 0,
+    total: writingItems.length,
+    answered: 0,
+    correct: 0,
+    answers: {},
+  };
+
+  const dictItems = quizDictData.slice(0, 5);
+  const dictState = {
+    enabled: dictItems.length > 0,
+    total: dictItems.length,
+    answered: 0,
+    correct: 0,
+    answers: {},
+  };
+
+  const loBlocks = shuffleArray(quizListenOrderData.slice()).slice(0, Math.min(3, quizListenOrderData.length));
+  const loState = {
+    enabled: loBlocks.length > 0,
+    total: loBlocks.length,
+    answered: 0,
+    correct: 0,
+    blocksDone: {},
+  };
+
   function updateAnsweredProgress() {
     const totalQuestions = randomizedQuestions.length;
     let answeredQuestions = 0;
@@ -1231,10 +1370,16 @@ window.QUIZ_PRONUNCIATION_DATA = <?php echo json_encode($quizPronunciationItems,
 
     const answered = answeredQuestions
       + (matchState.enabled ? matchState.answered : 0)
-      + (pronunciationState.enabled ? pronunciationState.answered : 0);
+      + (pronunciationState.enabled ? pronunciationState.answered : 0)
+      + (writingState.enabled ? writingState.answered : 0)
+      + (dictState.enabled ? dictState.answered : 0)
+      + (loState.enabled ? loState.answered : 0);
     const total = totalQuestions
       + (matchState.enabled ? matchState.total : 0)
-      + (pronunciationState.enabled ? pronunciationState.total : 0);
+      + (pronunciationState.enabled ? pronunciationState.total : 0)
+      + (writingState.enabled ? writingState.total : 0)
+      + (dictState.enabled ? dictState.total : 0)
+      + (loState.enabled ? loState.total : 0);
 
     const pct = total > 0 ? Math.round((answered / total) * 100) : 0;
     if (answeredCountEl) {
@@ -1466,6 +1611,230 @@ window.QUIZ_PRONUNCIATION_DATA = <?php echo json_encode($quizPronunciationItems,
     quizBlockIndex++;
   }
 
+  // Writing Practice block
+  if (writingState.enabled) {
+    const wpCard = document.createElement('div');
+    wpCard.className = 'qz-card qz-card-unanswered';
+    wpCard.setAttribute('data-index', 'quiz-writing');
+    const wpTitle = document.createElement('div');
+    wpTitle.className = 'qz-q';
+    wpTitle.textContent = quizBlockIndex + '. Writing Practice';
+    wpCard.appendChild(wpTitle);
+    quizBlockIndex++;
+    const wpHelp = document.createElement('p');
+    wpHelp.className = 'qz-block-help';
+    wpHelp.textContent = 'Write your response for each prompt.';
+    wpCard.appendChild(wpHelp);
+    writingItems.forEach(function(q, idx) {
+      const item = document.createElement('div');
+      item.className = 'qz-wp-item';
+      const label = document.createElement('div');
+      label.className = 'qz-wp-label';
+      label.textContent = (idx + 1) + '. ' + q.question;
+      item.appendChild(label);
+      if (q.instruction) {
+        const instr = document.createElement('div');
+        instr.className = 'qz-wp-instr';
+        instr.textContent = q.instruction;
+        item.appendChild(instr);
+      }
+      const textarea = document.createElement('textarea');
+      textarea.className = 'qz-wp-textarea';
+      textarea.placeholder = q.placeholder || 'Write your answer here...';
+      textarea.rows = 2;
+      textarea.addEventListener('input', function() {
+        writingState.answers[idx] = textarea.value.trim();
+        var ans = 0;
+        for (var i = 0; i < writingItems.length; i++) {
+          if ((writingState.answers[i] || '').trim() !== '') ans++;
+        }
+        writingState.answered = ans;
+        wpCard.classList.toggle('qz-card-unanswered', ans < writingState.total);
+        updateAnsweredProgress();
+      });
+      item.appendChild(textarea);
+      wpCard.appendChild(item);
+    });
+    listEl.appendChild(wpCard);
+  }
+
+  // Dictation block
+  if (dictState.enabled) {
+    const dictCard = document.createElement('div');
+    dictCard.className = 'qz-card qz-card-unanswered';
+    dictCard.setAttribute('data-index', 'quiz-dictation');
+    const dictTitle = document.createElement('div');
+    dictTitle.className = 'qz-q';
+    dictTitle.textContent = quizBlockIndex + '. Dictation';
+    dictCard.appendChild(dictTitle);
+    quizBlockIndex++;
+    const dictHelp = document.createElement('p');
+    dictHelp.className = 'qz-block-help';
+    dictHelp.textContent = 'Listen to each audio and type what you hear.';
+    dictCard.appendChild(dictHelp);
+    dictItems.forEach(function(item, idx) {
+      const row = document.createElement('div');
+      row.className = 'qz-dict-row';
+      if (item.img) {
+        const dImg = document.createElement('img');
+        dImg.className = 'qz-dict-img';
+        dImg.src = item.img;
+        dImg.alt = '';
+        row.appendChild(dImg);
+      }
+      const controls = document.createElement('div');
+      controls.className = 'qz-dict-controls';
+      const dListenBtn = document.createElement('button');
+      dListenBtn.type = 'button';
+      dListenBtn.className = 'qz-pron-btn listen';
+      dListenBtn.textContent = '\uD83D\uDD0A Listen';
+      dListenBtn.addEventListener('click', function() {
+        if (item.audio) {
+          try { new Audio(item.audio).play(); return; } catch(e) {}
+        }
+        if ('speechSynthesis' in window && item.en) {
+          window.speechSynthesis.cancel();
+          var u = new SpeechSynthesisUtterance(item.en);
+          u.lang = 'en-US'; u.rate = 0.85;
+          window.speechSynthesis.speak(u);
+        }
+      });
+      controls.appendChild(dListenBtn);
+      const dInput = document.createElement('input');
+      dInput.type = 'text';
+      dInput.className = 'qz-dict-input';
+      dInput.placeholder = 'Type what you hear...';
+      dInput.setAttribute('autocomplete', 'off');
+      dInput.spellcheck = false;
+      dInput.addEventListener('input', function() {
+        dictState.answers[idx] = dInput.value.trim();
+        var ans = 0;
+        for (var i = 0; i < dictItems.length; i++) {
+          if ((dictState.answers[i] || '').trim() !== '') ans++;
+        }
+        dictState.answered = ans;
+        dictCard.classList.toggle('qz-card-unanswered', ans < dictState.total);
+        updateAnsweredProgress();
+      });
+      controls.appendChild(dInput);
+      row.appendChild(controls);
+      dictCard.appendChild(row);
+    });
+    listEl.appendChild(dictCard);
+  }
+
+  // Listen & Order block
+  if (loState.enabled) {
+    const loCard = document.createElement('div');
+    loCard.className = 'qz-card qz-card-unanswered';
+    loCard.setAttribute('data-index', 'quiz-listen-order');
+    const loTitle = document.createElement('div');
+    loTitle.className = 'qz-q';
+    loTitle.textContent = quizBlockIndex + '. Listen & Order';
+    loCard.appendChild(loTitle);
+    quizBlockIndex++;
+    const loHelp = document.createElement('p');
+    loHelp.className = 'qz-block-help';
+    loHelp.textContent = 'Listen, then click the images in the correct order. Click a selected image to remove it.';
+    loCard.appendChild(loHelp);
+    loBlocks.forEach(function(block, blockIdx) {
+      var blockDone = false;
+      const blockEl = document.createElement('div');
+      blockEl.className = 'qz-lo-block';
+      const loListenBtn = document.createElement('button');
+      loListenBtn.type = 'button';
+      loListenBtn.className = 'qz-pron-btn listen';
+      loListenBtn.style.marginBottom = '8px';
+      loListenBtn.textContent = '\uD83D\uDD0A Listen ' + (blockIdx + 1);
+      loListenBtn.addEventListener('click', function() {
+        if ('speechSynthesis' in window && block.sentence) {
+          window.speechSynthesis.cancel();
+          var u = new SpeechSynthesisUtterance(block.sentence);
+          u.lang = 'en-US'; u.rate = 0.8;
+          window.speechSynthesis.speak(u);
+        }
+      });
+      blockEl.appendChild(loListenBtn);
+      if (block.images && block.images.length > 0) {
+        const correctOrder = block.images.slice();
+        const shuffledImgs = shuffleArray(block.images.slice());
+        const selected = [];
+        const ansLabel = document.createElement('div');
+        ansLabel.style.cssText = 'font-size:11px;color:#7c3aed;font-weight:700;margin:6px 0 2px;text-transform:uppercase;letter-spacing:.5px;';
+        ansLabel.textContent = 'Your order:';
+        blockEl.appendChild(ansLabel);
+        const answerRow = document.createElement('div');
+        answerRow.className = 'qz-lo-answer-row';
+        blockEl.appendChild(answerRow);
+        const poolLabel = document.createElement('div');
+        poolLabel.style.cssText = 'font-size:11px;color:#7c3aed;font-weight:700;margin:8px 0 2px;text-transform:uppercase;letter-spacing:.5px;';
+        poolLabel.textContent = 'Choose:';
+        blockEl.appendChild(poolLabel);
+        const poolRow = document.createElement('div');
+        poolRow.className = 'qz-lo-pool-row';
+        blockEl.appendChild(poolRow);
+        const loStatusEl = document.createElement('div');
+        loStatusEl.className = 'qz-lo-status';
+        blockEl.appendChild(loStatusEl);
+        shuffledImgs.forEach(function(imgUrl) {
+          const poolImg = document.createElement('img');
+          poolImg.className = 'qz-lo-img';
+          poolImg.src = imgUrl;
+          poolImg.alt = '';
+          poolImg.addEventListener('click', function() {
+            if (blockDone || selected.includes(imgUrl)) return;
+            poolImg.classList.add('lo-selected');
+            selected.push(imgUrl);
+            const ansImg = document.createElement('img');
+            ansImg.src = imgUrl;
+            ansImg.className = 'qz-lo-img lo-in-answer';
+            ansImg.title = 'Click to remove';
+            (function(url, pImg) {
+              ansImg.addEventListener('click', function() {
+                if (blockDone) return;
+                const i = selected.indexOf(url);
+                if (i !== -1) selected.splice(i, 1);
+                ansImg.remove();
+                pImg.classList.remove('lo-selected');
+              });
+            })(imgUrl, poolImg);
+            answerRow.appendChild(ansImg);
+            if (selected.length === correctOrder.length) {
+              blockDone = true;
+              const isCorrect = JSON.stringify(selected) === JSON.stringify(correctOrder);
+              loState.blocksDone[blockIdx] = true;
+              loState.answered += 1;
+              if (isCorrect) loState.correct += 1;
+              loStatusEl.textContent = isCorrect ? '\u2714 Correct!' : '\u2718 Try again next time';
+              loStatusEl.style.color = isCorrect ? '#166534' : '#9b1c1c';
+              loCard.classList.toggle('qz-card-unanswered', loState.answered < loState.total);
+              updateAnsweredProgress();
+            }
+          });
+          poolRow.appendChild(poolImg);
+        });
+      } else {
+        const loDoneBtn = document.createElement('button');
+        loDoneBtn.type = 'button';
+        loDoneBtn.className = 'qz-pron-btn speak';
+        loDoneBtn.textContent = 'Mark as Done';
+        loDoneBtn.addEventListener('click', function() {
+          if (blockDone) return;
+          blockDone = true;
+          loState.blocksDone[blockIdx] = true;
+          loState.answered += 1;
+          loState.correct += 1;
+          loDoneBtn.disabled = true;
+          loCard.classList.toggle('qz-card-unanswered', loState.answered < loState.total);
+          updateAnsweredProgress();
+        });
+        blockEl.appendChild(loDoneBtn);
+      }
+      loCard.appendChild(blockEl);
+    });
+    listEl.appendChild(loCard);
+  }
+
   if (matchState.enabled) {
     const keyedPairs = fixedMatchPairs.map(function (item, idx) {
       return {
@@ -1678,7 +2047,10 @@ window.QUIZ_PRONUNCIATION_DATA = <?php echo json_encode($quizPronunciationItems,
     let correct = 0;
     const total = randomizedQuestions.length
       + (matchState.enabled ? matchState.total : 0)
-      + (pronunciationState.enabled ? pronunciationState.total : 0);
+      + (pronunciationState.enabled ? pronunciationState.total : 0)
+      + (writingState.enabled ? writingState.total : 0)
+      + (dictState.enabled ? dictState.total : 0)
+      + (loState.enabled ? loState.total : 0);
 
     randomizedQuestions.forEach(function(q, idx){
       const checked = document.querySelector('input[name="q_' + idx + '"]:checked');
@@ -1693,7 +2065,28 @@ window.QUIZ_PRONUNCIATION_DATA = <?php echo json_encode($quizPronunciationItems,
     }
 
     if (pronunciationState.enabled) {
-      correct += pronunciationState.correct;
+      correct += pronunciationState.answered;
+    }
+
+    if (writingState.enabled) {
+      writingItems.forEach(function(q, idx) {
+        const typed = normalizeWord(writingState.answers[idx] || '');
+        if (!typed) return;
+        const ok = (q.correct_answers || []).some(function(ca) { return normalizeWord(ca) === typed; });
+        if (ok) correct += 1;
+      });
+    }
+
+    if (dictState.enabled) {
+      dictItems.forEach(function(item, idx) {
+        const typed = normalizeWord(dictState.answers[idx] || '');
+        const expected = normalizeWord(item.en || '');
+        if (typed && typed === expected) correct += 1;
+      });
+    }
+
+    if (loState.enabled) {
+      correct += loState.correct;
     }
 
     const percent = total > 0 ? Math.round((correct / total) * 100) : 0;
