@@ -470,8 +470,8 @@ function addSentence() {
         <p class="help">Write the complete sentence. Students will drag the scrambled words into the correct order.</p>
 
         <label class="checkbox-row">
-            <input type="hidden" name="listen_enabled[]" value="0">
-            <input type="checkbox" value="1" onchange="syncCheckboxValue(this)">
+            <input type="hidden" name="listen_enabled[]" value="1">
+            <input type="checkbox" value="1" checked onchange="syncCheckboxValue(this)">
             Activate Listen for this sentence
         </label>
 
