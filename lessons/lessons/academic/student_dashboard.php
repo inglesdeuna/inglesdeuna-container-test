@@ -302,6 +302,60 @@ function load_student_permission(string $studentId): string
     }
 }
 
+/**
+ * Returns the direct quiz-viewer URL for the best qualifying unit in an assignment,
+ * or '' if the student has not yet unlocked the quiz for this assignment.
+ */
+function build_assignment_quiz_href(PDO $pdo, string $studentId, string $assignmentId, array $assignmentRow): string
+{
+    if ($studentId === '' || $assignmentId === '') return '';
+
+    try {
+        // Check teacher unlock
+        $stmt = $pdo->prepare("SELECT 1 FROM teacher_quiz_unlocks WHERE student_id = :sid AND assignment_id = :aid LIMIT 1");
+        $stmt->execute(['sid' => $studentId, 'aid' => $assignmentId]);
+        $unlocked = (bool) $stmt->fetchColumn();
+
+        // Auto-unlock via score
+        if (!$unlocked) {
+            $stmt = $pdo->prepare("SELECT 1 FROM student_unit_results WHERE student_id = :sid AND assignment_id = :aid AND completion_percent >= 60 LIMIT 1");
+            $stmt->execute(['sid' => $studentId, 'aid' => $assignmentId]);
+            $unlocked = (bool) $stmt->fetchColumn();
+        }
+
+        if (!$unlocked) return '';
+
+        // Find best qualifying unit
+        $stmt = $pdo->prepare("SELECT unit_id FROM student_unit_results WHERE student_id = :sid AND assignment_id = :aid AND completion_percent >= 60 ORDER BY updated_at DESC NULLS LAST LIMIT 1");
+        $stmt->execute(['sid' => $studentId, 'aid' => $assignmentId]);
+        $unitId = (string) ($stmt->fetchColumn() ?: '');
+
+        if ($unitId === '') {
+            $unitId = (string) ($assignmentRow['unit_id'] ?? '');
+        }
+        if ($unitId === '') return 'student_course.php?assignment=' . urlencode($assignmentId);
+
+        // Look for quiz activity
+        $stmt = $pdo->prepare("SELECT id FROM activities WHERE unit_id::text = :uid AND type = 'quiz' ORDER BY id ASC LIMIT 1");
+        $stmt->execute(['uid' => $unitId]);
+        $quizActId = (string) ($stmt->fetchColumn() ?: '');
+
+        $returnTo = 'student_course.php?' . http_build_query(['assignment' => $assignmentId, 'unit' => $unitId, 'step' => '9999']);
+
+        if ($quizActId !== '') {
+            return '../activities/quiz/viewer.php?' . http_build_query([
+                'id'         => $quizActId,
+                'unit'       => $unitId,
+                'assignment' => $assignmentId,
+                'return_to'  => '../../academic/' . $returnTo,
+            ]);
+        }
+        return $returnTo;
+    } catch (Throwable $e) {
+        return '';
+    }
+}
+
 function load_student_assignments(string $studentId): array
 {
     $pdo = get_pdo_connection();
@@ -681,6 +735,7 @@ body{
 }
 .btn:hover{filter:brightness(1.07);transform:translateY(-1px);}
 .btn.secondary{background:linear-gradient(180deg,var(--title),#7e22ce);}
+.btn.quiz-btn{background:linear-gradient(180deg,#22c55e,#15803d);}
 .empty{background:#fff;border:1px solid var(--line);border-radius:12px;padding:18px;color:var(--muted);}
 @media (max-width:1024px){
     .layout{grid-template-columns:1fr;}
@@ -764,6 +819,8 @@ body{
                         $moduleName = upper_label(trim((string) ($assignment['module_name'] ?? '')));
                         $periodLabel = upper_label((string) ($assignment['period'] ?? ''));
                         $scoreSummary = $scoreSummaryByAssignment[$assignmentId] ?? null;
+                        $cardPdo = get_pdo_connection();
+                        $cardQuizHref = $cardPdo ? build_assignment_quiz_href($cardPdo, $studentId, $assignmentId, $assignment) : '';
                         ?>
                         <div class="card">
                             <h3><?php echo h($courseName); ?></h3>
@@ -784,6 +841,9 @@ body{
                             <?php } ?>
                             <div class="actions">
                                 <a class="btn" href="student_course.php?assignment=<?php echo urlencode($assignmentId); ?>">Enter course</a>
+                                <?php if ($cardQuizHref !== '') { ?>
+                                    <a class="btn quiz-btn" href="<?php echo h($cardQuizHref); ?>">Go to Quiz</a>
+                                <?php } ?>
                                 <a class="btn secondary" href="student_quiz.php?assignment=<?php echo urlencode($assignmentId); ?>">View scores</a>
                             </div>
                         </div>
