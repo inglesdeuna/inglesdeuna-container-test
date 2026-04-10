@@ -429,16 +429,25 @@ $studentInitials = student_initials($studentName);
 $myAssignments = load_student_assignments($studentId);
 $scoreSummaryByAssignment = load_assignment_score_summary($studentId);
 
-// Check quiz unlock status for the first assignment
+// Check quiz unlock status for the first assignment.
+// Unlocked if: teacher explicitly unlocked it, OR student achieved >= 60% in any unit.
 $firstAssignmentId = (string) (($myAssignments[0] ?? [])['id'] ?? '');
 $quizUnlocked = false;
 if ($firstAssignmentId !== '') {
     $pdoQuiz = get_pdo_connection();
     if ($pdoQuiz) {
         try {
+            // 1. Teacher-granted unlock
             $qStmt = $pdoQuiz->prepare("SELECT 1 FROM teacher_quiz_unlocks WHERE student_id = :sid AND assignment_id = :aid LIMIT 1");
             $qStmt->execute(['sid' => $studentId, 'aid' => $firstAssignmentId]);
             $quizUnlocked = (bool) $qStmt->fetchColumn();
+
+            // 2. Auto-unlock: student scored >= 60% on any unit in this assignment
+            if (!$quizUnlocked) {
+                $scoreStmt = $pdoQuiz->prepare("SELECT 1 FROM student_unit_results WHERE student_id = :sid AND assignment_id = :aid AND completion_percent >= 60 LIMIT 1");
+                $scoreStmt->execute(['sid' => $studentId, 'aid' => $firstAssignmentId]);
+                $quizUnlocked = (bool) $scoreStmt->fetchColumn();
+            }
         } catch (Throwable $e) {}
     }
 }
