@@ -973,6 +973,10 @@ document.addEventListener('DOMContentLoaded', function () {
                             lwRemaining = lwRemaining.substring(lwMatch.index + lwMatch[0].length);
                         } else {
                             /* word not found – input will appear at the end */
+                            if (lwRemaining) {
+                                lwSegs.push({type: 'text', val: lwRemaining});
+                                lwRemaining = '';
+                            }
                             lwSegs.push({type: 'input', idx: lwai});
                         }
                     }
@@ -1072,6 +1076,10 @@ document.addEventListener('DOMContentLoaded', function () {
                             fpSegs.push({type: 'input', idx: fpai});
                             fpRemaining = fpRemaining.substring(fpM.index + fpM[0].length);
                         } else {
+                            if (fpRemaining) {
+                                fpSegs.push({type: 'text', val: fpRemaining});
+                                fpRemaining = '';
+                            }
                             fpSegs.push({type: 'input', idx: fpai});
                         }
                     }
