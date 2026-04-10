@@ -1815,36 +1815,98 @@ ob_start();
 
 .qz-lo-block:last-child { margin-bottom: 0; }
 
-.qz-lo-pool-row,
-.qz-lo-answer-row {
+.qz-lo-row-label {
+  font-family: var(--qz-font-body);
+  font-size: var(--qz-text-xs);
+  color: var(--qz-purple);
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  margin: 8px 0 4px;
+}
+
+.qz-lo-pool-row {
   display: flex;
   flex-wrap: wrap;
   gap: var(--qz-gap-sm);
   margin: 4px 0;
   min-height: 64px;
+  padding: 6px;
+  border-radius: var(--qz-r-sm);
+  border: 1.5px solid var(--qz-card-border);
+  background: #f8f8ff;
 }
 
-.qz-lo-img {
+.qz-lo-answer-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--qz-gap-sm);
+  margin: 4px 0;
+  min-height: 96px;
+  padding: 8px;
+  border-radius: var(--qz-r-sm);
+  border: 2px dashed var(--qz-purple-border);
+  background: var(--qz-purple-bg);
+  transition: border-color .15s, background .15s;
+}
+
+.qz-lo-answer-row.qz-lo-dropover {
+  border-color: var(--qz-purple);
+  background: #ede9ff;
+}
+
+/* Draggable chip wrapping the image */
+.qz-lo-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--qz-r-sm);
+  border: 2px solid var(--qz-purple-border);
+  background: var(--qz-card-bg);
+  overflow: hidden;
+  cursor: grab;
+  transition: border-color .15s, transform .1s, opacity .2s, box-shadow .15s;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.qz-lo-chip:hover {
+  border-color: var(--qz-purple);
+  transform: scale(1.04);
+  box-shadow: var(--qz-shadow-sm);
+}
+
+.qz-lo-chip:active { cursor: grabbing; }
+
+.qz-lo-chip.qz-lo-dragging {
+  opacity: .35;
+  transform: scale(.97);
+}
+
+.qz-lo-chip img {
   width: 76px;
   height: 76px;
   object-fit: contain;
-  border-radius: var(--qz-r-sm);
-  border: 2px solid var(--qz-purple-border);
-  cursor: pointer;
-  transition: opacity .2s, border-color .2s, transform .1s;
+  display: block;
+  pointer-events: none;
 }
 
-.qz-lo-img:hover { border-color: var(--qz-purple); transform: scale(1.04); }
-.qz-lo-img.lo-selected { opacity: .25; cursor: default; border-color: var(--qz-card-border); }
-.qz-lo-img.lo-in-answer { border-color: var(--qz-purple-mid); cursor: pointer; }
-.qz-lo-img.lo-in-answer:hover { border-color: var(--qz-red); opacity: .8; }
+/* Answer-row chips get a purple border accent */
+.qz-lo-answer-row .qz-lo-chip {
+  border-color: var(--qz-purple-mid);
+  cursor: grab;
+}
+
+.qz-lo-answer-row .qz-lo-chip:hover {
+  border-color: var(--qz-red);
+}
 
 .qz-lo-status {
   font-family: var(--qz-font-body);
   font-size: var(--qz-text-sm);
   font-weight: 800;
   min-height: 18px;
-  margin-top: 6px;
+  margin-top: 8px;
 }
 
 /* ── Responsive ───────────────────────────────────────────── */
@@ -2642,12 +2704,15 @@ window.QUIZ_LISTEN_ORDER_DATA = <?php echo json_encode($quizListenOrderBlocks, J
     quizBlockIndex++;
     const loHelp = document.createElement('p');
     loHelp.className = 'qz-block-help';
-    loHelp.textContent = 'Listen, then click the images in the correct order. Click a selected image to remove it.';
+    loHelp.textContent = 'Listen, then drag or click images into the correct order. Drag or click an image in the answer row to return it to the pool.';
     loCard.appendChild(loHelp);
     loBlocks.forEach(function(block, blockIdx) {
       var blockDone = false;
+      var loCurrentDrag = null;
       const blockEl = document.createElement('div');
       blockEl.className = 'qz-lo-block';
+
+      // Listen button
       const loListenBtn = document.createElement('button');
       loListenBtn.type = 'button';
       loListenBtn.className = 'qz-pron-btn listen';
@@ -2662,63 +2727,122 @@ window.QUIZ_LISTEN_ORDER_DATA = <?php echo json_encode($quizListenOrderBlocks, J
         }
       });
       blockEl.appendChild(loListenBtn);
+
       if (block.images && block.images.length > 0) {
         const correctOrder = block.images.slice();
         const shuffledImgs = shuffleArray(block.images.slice());
-        const selected = [];
+
+        // Answer row (drop zone)
         const ansLabel = document.createElement('div');
-        ansLabel.style.cssText = 'font-size:11px;color:#7c3aed;font-weight:700;margin:6px 0 2px;text-transform:uppercase;letter-spacing:.5px;';
+        ansLabel.className = 'qz-lo-row-label';
         ansLabel.textContent = 'Your order:';
         blockEl.appendChild(ansLabel);
+
         const answerRow = document.createElement('div');
         answerRow.className = 'qz-lo-answer-row';
         blockEl.appendChild(answerRow);
+
+        // Pool row
         const poolLabel = document.createElement('div');
-        poolLabel.style.cssText = 'font-size:11px;color:#7c3aed;font-weight:700;margin:8px 0 2px;text-transform:uppercase;letter-spacing:.5px;';
+        poolLabel.className = 'qz-lo-row-label';
         poolLabel.textContent = 'Choose:';
         blockEl.appendChild(poolLabel);
+
         const poolRow = document.createElement('div');
         poolRow.className = 'qz-lo-pool-row';
         blockEl.appendChild(poolRow);
+
         const loStatusEl = document.createElement('div');
         loStatusEl.className = 'qz-lo-status';
         blockEl.appendChild(loStatusEl);
+
+        // Check completion after every move
+        function checkLoBlock() {
+          var ansChildren = Array.prototype.slice.call(answerRow.children);
+          if (ansChildren.length !== correctOrder.length) return;
+          var built = ansChildren.map(function(c) { return c.dataset.src; });
+          blockDone = true;
+          var isCorrect = JSON.stringify(built) === JSON.stringify(correctOrder);
+          loState.blocksDone[blockIdx] = true;
+          loState.answered += 1;
+          if (isCorrect) loState.correct += 1;
+          loStatusEl.textContent = isCorrect ? '\u2714 Correct!' : '\u2718 Try again next time';
+          loStatusEl.style.color = isCorrect ? '#166534' : '#9b1c1c';
+          loCard.classList.toggle('qz-card-unanswered', loState.answered < loState.total);
+          updateAnsweredProgress();
+        }
+
+        // Drop zone: answer row
+        answerRow.addEventListener('dragover', function(e) {
+          if (blockDone) return;
+          e.preventDefault();
+          answerRow.classList.add('qz-lo-dropover');
+        });
+        answerRow.addEventListener('dragleave', function(e) {
+          if (!answerRow.contains(e.relatedTarget)) {
+            answerRow.classList.remove('qz-lo-dropover');
+          }
+        });
+        answerRow.addEventListener('drop', function(e) {
+          answerRow.classList.remove('qz-lo-dropover');
+          if (blockDone || !loCurrentDrag) return;
+          e.preventDefault();
+          if (loCurrentDrag.parentElement !== answerRow) {
+            answerRow.appendChild(loCurrentDrag);
+          }
+          loCurrentDrag = null;
+          checkLoBlock();
+        });
+
+        // Pool row: allow dropping back
+        poolRow.addEventListener('dragover', function(e) {
+          if (blockDone) return;
+          e.preventDefault();
+        });
+        poolRow.addEventListener('drop', function(e) {
+          if (blockDone || !loCurrentDrag) return;
+          e.preventDefault();
+          if (loCurrentDrag.parentElement !== poolRow) {
+            poolRow.appendChild(loCurrentDrag);
+          }
+          loCurrentDrag = null;
+        });
+
+        // Build draggable chips
         shuffledImgs.forEach(function(imgUrl) {
-          const poolImg = document.createElement('img');
-          poolImg.className = 'qz-lo-img';
-          poolImg.src = imgUrl;
-          poolImg.alt = '';
-          poolImg.addEventListener('click', function() {
-            if (blockDone || selected.includes(imgUrl)) return;
-            poolImg.classList.add('lo-selected');
-            selected.push(imgUrl);
-            const ansImg = document.createElement('img');
-            ansImg.src = imgUrl;
-            ansImg.className = 'qz-lo-img lo-in-answer';
-            ansImg.title = 'Click to remove';
-            (function(url, pImg) {
-              ansImg.addEventListener('click', function() {
-                if (blockDone) return;
-                const i = selected.indexOf(url);
-                if (i !== -1) selected.splice(i, 1);
-                ansImg.remove();
-                pImg.classList.remove('lo-selected');
-              });
-            })(imgUrl, poolImg);
-            answerRow.appendChild(ansImg);
-            if (selected.length === correctOrder.length) {
-              blockDone = true;
-              const isCorrect = JSON.stringify(selected) === JSON.stringify(correctOrder);
-              loState.blocksDone[blockIdx] = true;
-              loState.answered += 1;
-              if (isCorrect) loState.correct += 1;
-              loStatusEl.textContent = isCorrect ? '\u2714 Correct!' : '\u2718 Try again next time';
-              loStatusEl.style.color = isCorrect ? '#166534' : '#9b1c1c';
-              loCard.classList.toggle('qz-card-unanswered', loState.answered < loState.total);
-              updateAnsweredProgress();
+          const chip = document.createElement('div');
+          chip.className = 'qz-lo-chip';
+          chip.draggable = true;
+          chip.dataset.src = imgUrl;
+          const chipImg = document.createElement('img');
+          chipImg.src = imgUrl;
+          chipImg.alt = '';
+          chip.appendChild(chipImg);
+
+          chip.addEventListener('dragstart', function(e) {
+            if (blockDone) { e.preventDefault(); return; }
+            loCurrentDrag = chip;
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/plain', imgUrl);
+            setTimeout(function() { chip.classList.add('qz-lo-dragging'); }, 0);
+          });
+          chip.addEventListener('dragend', function() {
+            chip.classList.remove('qz-lo-dragging');
+            loCurrentDrag = null;
+          });
+
+          // Click: move chip between pool and answer row
+          chip.addEventListener('click', function() {
+            if (blockDone) return;
+            if (chip.parentElement === poolRow) {
+              answerRow.appendChild(chip);
+              checkLoBlock();
+            } else {
+              poolRow.appendChild(chip);
             }
           });
-          poolRow.appendChild(poolImg);
+
+          poolRow.appendChild(chip);
         });
       } else {
         const loDoneBtn = document.createElement('button');
