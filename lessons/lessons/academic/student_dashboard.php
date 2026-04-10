@@ -433,6 +433,7 @@ $scoreSummaryByAssignment = load_assignment_score_summary($studentId);
 // Unlocked if: teacher explicitly unlocked it, OR student achieved >= 60% in any unit.
 $firstAssignmentId = (string) (($myAssignments[0] ?? [])['id'] ?? '');
 $quizUnlocked = false;
+$quizGoHref   = '';   // URL that takes the student directly to the quiz
 if ($firstAssignmentId !== '') {
     $pdoQuiz = get_pdo_connection();
     if ($pdoQuiz) {
@@ -447,6 +448,55 @@ if ($firstAssignmentId !== '') {
                 $scoreStmt = $pdoQuiz->prepare("SELECT 1 FROM student_unit_results WHERE student_id = :sid AND assignment_id = :aid AND completion_percent >= 60 LIMIT 1");
                 $scoreStmt->execute(['sid' => $studentId, 'aid' => $firstAssignmentId]);
                 $quizUnlocked = (bool) $scoreStmt->fetchColumn();
+            }
+
+            // 3. Build the quiz-viewer URL: use the first unit that scored >= 60%,
+            //    or fall back to the assignment's own unit_id, or any unlocked unit.
+            if ($quizUnlocked) {
+                // Try to find the most-recent qualifying unit
+                $unitStmt = $pdoQuiz->prepare(
+                    "SELECT unit_id FROM student_unit_results
+                      WHERE student_id = :sid AND assignment_id = :aid AND completion_percent >= 60
+                      ORDER BY updated_at DESC NULLS LAST LIMIT 1"
+                );
+                $unitStmt->execute(['sid' => $studentId, 'aid' => $firstAssignmentId]);
+                $qualUnitId = (string) ($unitStmt->fetchColumn() ?: '');
+
+                // Fall back to the unit baked into the assignment row
+                if ($qualUnitId === '') {
+                    $qualUnitId = (string) (($myAssignments[0] ?? [])['unit_id'] ?? '');
+                }
+
+                if ($qualUnitId !== '') {
+                    // Check if there is an explicit quiz activity in that unit
+                    $actStmt = $pdoQuiz->prepare(
+                        "SELECT id FROM activities WHERE unit_id::text = :uid AND type = 'quiz' ORDER BY id ASC LIMIT 1"
+                    );
+                    $actStmt->execute(['uid' => $qualUnitId]);
+                    $quizActId = (string) ($actStmt->fetchColumn() ?: '');
+
+                    $returnTo = 'student_course.php?' . http_build_query([
+                        'assignment' => $firstAssignmentId,
+                        'unit'       => $qualUnitId,
+                        'step'       => '9999',
+                    ]);
+
+                    if ($quizActId !== '') {
+                        $quizGoHref = '../activities/quiz/viewer.php?' . http_build_query([
+                            'id'         => $quizActId,
+                            'unit'       => $qualUnitId,
+                            'assignment' => $firstAssignmentId,
+                            'return_to'  => '../../academic/' . $returnTo,
+                        ]);
+                    } else {
+                        // No explicit quiz activity — open the unit at the last step
+                        // so student_course.php can redirect to the quiz viewer
+                        $quizGoHref = $returnTo;
+                    }
+                } else {
+                    // No unit known — send to student_course.php and let it sort it out
+                    $quizGoHref = 'student_course.php?assignment=' . urlencode($firstAssignmentId);
+                }
             }
         } catch (Throwable $e) {}
     }
@@ -681,8 +731,8 @@ body{
 
             <div class="sidebar-section-title">Quick Actions</div>
 
-            <?php if ($quizUnlocked && $firstAssignmentId !== '') { ?>
-                <a class="side-button green" href="student_quiz.php?assignment=<?php echo urlencode($firstAssignmentId); ?>">Go to Quiz</a>
+            <?php if ($quizUnlocked && $quizGoHref !== '') { ?>
+                <a class="side-button green" href="<?php echo h($quizGoHref); ?>">Go to Quiz</a>
             <?php } else { ?>
                 <span class="side-button locked" title="Ask your teacher to unlock the quiz">Quiz Locked 🔒</span>
             <?php } ?>
