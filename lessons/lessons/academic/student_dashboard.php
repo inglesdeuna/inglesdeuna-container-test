@@ -367,8 +367,19 @@ function load_student_assignments(string $studentId): array
         $stmt = $pdo->prepare("\n            SELECT sa.id, sa.teacher_id, sa.course_id, sa.period, sa.unit_id, sa.level_id, sa.program, sa.updated_at,\n                   t.name AS teacher_name,\n                   c.name AS course_name,\n                   u.name AS unit_name,\n                   m.name AS module_name\n            FROM student_assignments sa\n            LEFT JOIN teachers t ON t.id = sa.teacher_id\n            LEFT JOIN courses c ON c.id::text = sa.course_id\n            LEFT JOIN units u ON u.id::text = sa.unit_id\n            LEFT JOIN technical_modules m ON m.id = u.module_id\n            WHERE sa.student_id = :student_id\n            ORDER BY sa.updated_at DESC NULLS LAST, sa.id DESC\n        ");
         $stmt->execute(['student_id' => $studentId]);
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        if (!is_array($rows)) return [];
 
-        return is_array($rows) ? $rows : [];
+        // Deduplicate: keep only the most recent row per (course_id, unit_id) pair.
+        // Rows are already sorted newest-first, so first occurrence wins.
+        $seen = [];
+        $deduped = [];
+        foreach ($rows as $row) {
+            $key = ($row['course_id'] ?? '') . '|' . ($row['unit_id'] ?? '');
+            if (isset($seen[$key])) continue;
+            $seen[$key] = true;
+            $deduped[] = $row;
+        }
+        return $deduped;
     } catch (Throwable $e) {
         return [];
     }
