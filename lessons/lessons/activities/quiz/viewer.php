@@ -1192,18 +1192,19 @@ ob_start();
   font-size: var(--qz-text-md);
 }
 
-/* ── Question list ────────────────────────────────────────── */
+/* ── Question list — 2-column grid for MC/WP cards ───────── */
 .qz-list {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
   gap: var(--qz-gap-md);
+  align-items: start;
 }
 
-/* ── Cards ────────────────────────────────────────────────── */
+/* ── Cards — shared base ──────────────────────────────────── */
 .qz-card {
   border: 1.5px solid var(--qz-card-border);
-  border-radius: var(--qz-r-lg);
-  padding: 16px 18px;
+  border-radius: var(--qz-r-md);
+  padding: 12px 14px;
   background: var(--qz-card-bg);
   box-shadow: var(--qz-shadow-sm);
   transition: box-shadow .2s ease, border-color .2s ease;
@@ -1218,13 +1219,24 @@ ob_start();
   background: #fffafa;
 }
 
+/* Full-row cards (pron, match, dictation, LO, WP) */
+.qz-card--full {
+  grid-column: 1 / -1;
+}
+
+/* MC cards sit in the 2-col grid naturally */
+.qz-card--mc {
+  display: flex;
+  flex-direction: column;
+}
+
 /* ── Question heading ─────────────────────────────────────── */
 .qz-q {
   font-family: var(--qz-font-body);
   font-weight: 800;
   color: var(--qz-orange);
-  margin: 0 0 12px;
-  font-size: var(--qz-text-lg);
+  margin: 0 0 8px;
+  font-size: var(--qz-text-md);
   line-height: 1.4;
 }
 
@@ -1232,72 +1244,71 @@ ob_start();
 .qz-card > img {
   display: block;
   max-width: 100%;
-  max-height: 200px;
+  max-height: 160px;
   width: auto;
   height: auto;
   object-fit: contain;
-  border-radius: var(--qz-r-md);
-  margin: 0 auto 12px;
+  border-radius: var(--qz-r-sm);
+  margin: 0 auto 8px;
 }
 
 /* ── Options grid ─────────────────────────────────────────── */
 .qz-opts {
   display: grid;
   grid-template-columns: 1fr;
-  gap: var(--qz-gap-sm);
+  gap: 5px;
 }
 
 .qz-opts.qz-opts-images {
-  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
 }
 
 .qz-opts.qz-opts-images .qz-opt {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 10px;
+  padding: 8px;
   text-align: center;
 }
 
 .qz-opt-img {
   display: block;
   width: 100%;
-  max-width: 120px;
+  max-width: 100px;
   aspect-ratio: 4/3;
   object-fit: contain;
-  border-radius: var(--qz-r-sm);
+  border-radius: var(--qz-r-xs);
   pointer-events: none;
 }
 
 .qz-opt {
   display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  padding: 10px 14px;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
   border: 1.5px solid var(--qz-purple-border);
-  border-radius: var(--qz-r-sm);
+  border-radius: var(--qz-r-xs);
   background: #fcfaff;
   cursor: pointer;
   font-family: var(--qz-font-body);
-  font-size: var(--qz-text-md);
+  font-size: var(--qz-text-base);
   font-weight: 600;
   color: var(--qz-text);
-  line-height: 1.45;
+  line-height: 1.4;
   transition: border-color .15s, background .15s, box-shadow .15s;
 }
 
 .qz-opt:hover {
   border-color: var(--qz-purple-mid);
   background: var(--qz-purple-bg);
-  box-shadow: 0 2px 8px rgba(124,58,237,.10);
+  box-shadow: 0 2px 6px rgba(124,58,237,.09);
 }
 
 .qz-opt input[type="radio"] {
-  margin-top: 2px;
   flex-shrink: 0;
   accent-color: var(--qz-purple);
-  width: 16px;
-  height: 16px;
+  width: 15px;
+  height: 15px;
   cursor: pointer;
 }
 
@@ -1426,26 +1437,26 @@ ob_start();
 .qz-pron-grid {
   display: grid;
   gap: var(--qz-gap-md);
+  /* Always 3 columns on desktop — bigger, more legible cards */
+  grid-template-columns: repeat(3, 1fr);
 }
 
-.qz-pron-grid-6 {
-  grid-template-columns: repeat(6, minmax(110px, 1fr));
-}
-
+/* Legacy modifiers (kept for JS compatibility) */
+.qz-pron-grid-6,
 .qz-pron-grid-8 {
-  grid-template-columns: repeat(4, minmax(140px, 1fr));
+  grid-template-columns: repeat(3, 1fr);
 }
 
 .qz-pron-card {
   border: 1.5px solid var(--qz-purple-border);
   border-radius: var(--qz-r-md);
   background: var(--qz-card-bg);
-  padding: 12px 10px;
+  padding: 14px 12px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: flex-start;
-  gap: var(--qz-gap-sm);
+  gap: 10px;
   box-shadow: var(--qz-shadow-sm);
   transition: box-shadow .2s;
 }
@@ -1456,7 +1467,7 @@ ob_start();
 
 .qz-pron-img {
   width: 100%;
-  max-width: 120px;
+  max-width: 180px;
   aspect-ratio: 4/3;
   object-fit: contain;
   border-radius: var(--qz-r-sm);
@@ -1465,17 +1476,16 @@ ob_start();
 
 .qz-pron-word {
   font-family: var(--qz-font-body);
-  font-size: var(--qz-text-lg);
+  font-size: var(--qz-text-xl);
   font-weight: 800;
   color: var(--qz-text);
   text-align: center;
   line-height: 1.2;
-  min-height: 34px;
 }
 
 .qz-pron-actions {
   display: flex;
-  gap: var(--qz-gap-xs);
+  gap: var(--qz-gap-sm);
   flex-wrap: wrap;
   justify-content: center;
 }
@@ -1483,9 +1493,9 @@ ob_start();
 .qz-pron-btn {
   border: none;
   border-radius: var(--qz-r-xs);
-  padding: 7px 12px;
+  padding: 8px 16px;
   font-family: var(--qz-font-body);
-  font-size: var(--qz-text-sm);
+  font-size: var(--qz-text-base);
   font-weight: 800;
   cursor: pointer;
   color: #fff;
@@ -1692,22 +1702,22 @@ ob_start();
 .qz-wp-fill-box {
   background: var(--qz-blue-bg);
   border: 1.5px solid var(--qz-blue-border);
-  border-radius: var(--qz-r-md);
-  padding: 14px 20px;
+  border-radius: var(--qz-r-sm);
+  padding: 10px 14px;
   font-family: var(--qz-font-body);
-  font-size: clamp(14px, 1.8vw, 18px);
-  line-height: 2.8;
+  font-size: clamp(13px, 1.6vw, 16px);
+  line-height: 2.6;
   color: #1e3a5f;
   font-weight: 600;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
   text-align: center;
   word-break: break-word;
 }
 
 .qz-wp-fill-box.para {
   text-align: left;
-  font-size: clamp(13px, 1.5vw, 16px);
-  line-height: 2.6;
+  font-size: clamp(12px, 1.3vw, 15px);
+  line-height: 2.5;
   white-space: pre-wrap;
 }
 
@@ -1911,24 +1921,31 @@ ob_start();
 
 /* ── Responsive ───────────────────────────────────────────── */
 @media (max-width: 1100px) {
-  .qz-pron-grid-6 { grid-template-columns: repeat(3, minmax(130px, 1fr)); }
+  .qz-pron-grid,
+  .qz-pron-grid-6,
+  .qz-pron-grid-8 { grid-template-columns: repeat(3, 1fr); }
 }
 
 @media (max-width: 768px) {
   .qz-wrap    { gap: var(--qz-gap-md); padding: 4px 0 24px; }
-  .qz-hero    { padding: 16px; border-radius: var(--qz-r-lg); }
-  .qz-card    { padding: 14px; border-radius: var(--qz-r-md); }
-  .qz-q       { font-size: var(--qz-text-md); }
+  .qz-hero    { padding: 14px 16px; border-radius: var(--qz-r-lg); }
+  .qz-card    { padding: 10px 12px; border-radius: var(--qz-r-sm); }
+  /* Single column on mobile — all cards stack */
+  .qz-list    { grid-template-columns: 1fr; }
+  .qz-card--full { grid-column: 1; }
+  .qz-q       { font-size: var(--qz-text-base); }
   .qz-actions { position: static; border-radius: var(--qz-r-md); }
-  .qz-btn     { width: 100%; max-width: 320px; min-width: 0; padding: 13px 20px; }
+  .qz-btn     { width: 100%; max-width: 320px; min-width: 0; padding: 12px 20px; }
+  .qz-pron-grid,
   .qz-pron-grid-6,
-  .qz-pron-grid-8 { grid-template-columns: repeat(2, minmax(120px, 1fr)); }
-  .qz-match-tile  { min-width: 72px; flex: 1 1 72px; font-size: 11px; padding: 6px 8px; min-height: 56px; }
-  .qz-completed-screen { padding: 28px 16px; }
+  .qz-pron-grid-8 { grid-template-columns: repeat(2, 1fr); }
+  .qz-match-tile  { min-width: 64px; flex: 1 1 64px; font-size: 11px; padding: 5px 7px; min-height: 52px; }
+  .qz-completed-screen { padding: 24px 16px; }
   .qz-completed-title  { font-size: var(--qz-text-xl); }
 }
 
 @media (max-width: 480px) {
+  .qz-pron-grid,
   .qz-pron-grid-6,
   .qz-pron-grid-8       { grid-template-columns: repeat(2, 1fr); }
   .qz-opts.qz-opts-images { grid-template-columns: repeat(2, 1fr); }
@@ -2278,7 +2295,7 @@ window.QUIZ_LISTEN_ORDER_DATA = <?php echo json_encode($quizListenOrderBlocks, J
     const recognitionCtor = window.SpeechRecognition || window.webkitSpeechRecognition || null;
 
     const pronCard = document.createElement('div');
-    pronCard.className = 'qz-card qz-card-unanswered';
+    pronCard.className = 'qz-card qz-card-unanswered qz-card--full';
     pronCard.setAttribute('data-index', 'quiz-pronunciation');
 
     const pronTitle = document.createElement('div');
@@ -2288,10 +2305,10 @@ window.QUIZ_LISTEN_ORDER_DATA = <?php echo json_encode($quizListenOrderBlocks, J
 
     const pronWrap = document.createElement('div');
     pronWrap.className = 'qz-pron-wrap';
-    pronWrap.innerHTML = '<div class="qz-pron-help">Pronounce each card correctly. Desktop shows 6 in one row; compact screens use 2 rows of 4.</div>';
+    pronWrap.innerHTML = '<div class="qz-pron-help">Pronounce each word correctly. Listen first, then tap Speak.</div>';
 
     const pronGrid = document.createElement('div');
-    pronGrid.className = 'qz-pron-grid ' + (pronunciationState.total >= 8 ? 'qz-pron-grid-8' : 'qz-pron-grid-6');
+    pronGrid.className = 'qz-pron-grid';
 
     pronunciationItems.forEach(function (item, idx) {
       const card = document.createElement('div');
@@ -2429,7 +2446,7 @@ window.QUIZ_LISTEN_ORDER_DATA = <?php echo json_encode($quizListenOrderBlocks, J
   for (let idx = 0; idx < randomizedQuestions.length; idx++) {
     const q = randomizedQuestions[idx];
     const card = document.createElement('div');
-    card.className = 'qz-card';
+    card.className = 'qz-card qz-card--mc';
     card.setAttribute('data-index', String(idx));
 
     const qTitle = document.createElement('div');
@@ -2481,7 +2498,7 @@ window.QUIZ_LISTEN_ORDER_DATA = <?php echo json_encode($quizListenOrderBlocks, J
   // Writing Practice block
   if (writingState.enabled) {
     const wpCard = document.createElement('div');
-    wpCard.className = 'qz-card qz-card-unanswered';
+    wpCard.className = 'qz-card qz-card-unanswered qz-card--full';
     wpCard.setAttribute('data-index', 'quiz-writing');
     const wpTitle = document.createElement('div');
     wpTitle.className = 'qz-q';
@@ -2616,7 +2633,7 @@ window.QUIZ_LISTEN_ORDER_DATA = <?php echo json_encode($quizListenOrderBlocks, J
   // Dictation block
   if (dictState.enabled) {
     const dictCard = document.createElement('div');
-    dictCard.className = 'qz-card qz-card-unanswered';
+    dictCard.className = 'qz-card qz-card-unanswered qz-card--full';
     dictCard.setAttribute('data-index', 'quiz-dictation');
     const dictTitle = document.createElement('div');
     dictTitle.className = 'qz-q';
@@ -2681,7 +2698,7 @@ window.QUIZ_LISTEN_ORDER_DATA = <?php echo json_encode($quizListenOrderBlocks, J
   // Listen & Order block
   if (loState.enabled) {
     const loCard = document.createElement('div');
-    loCard.className = 'qz-card qz-card-unanswered';
+    loCard.className = 'qz-card qz-card-unanswered qz-card--full';
     loCard.setAttribute('data-index', 'quiz-listen-order');
     const loTitle = document.createElement('div');
     loTitle.className = 'qz-q';
@@ -2866,7 +2883,7 @@ window.QUIZ_LISTEN_ORDER_DATA = <?php echo json_encode($quizListenOrderBlocks, J
     const bottomItems = shuffleArray(keyedPairs.slice());
 
     const matchCard = document.createElement('div');
-    matchCard.className = 'qz-card qz-card-unanswered';
+    matchCard.className = 'qz-card qz-card-unanswered qz-card--full';
     matchCard.setAttribute('data-index', 'quiz-match');
 
     const title = document.createElement('div');
