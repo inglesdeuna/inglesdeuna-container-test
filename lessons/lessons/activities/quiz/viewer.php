@@ -1080,9 +1080,13 @@ ob_start();
 .qz-wp-textarea{width:100%;box-sizing:border-box;border:1.5px solid #dcc4f0;border-radius:10px;padding:10px;font-size:14px;resize:vertical;min-height:60px;font-family:inherit;line-height:1.5}
 .qz-wp-textarea:focus{outline:none;border-color:#a855c8;box-shadow:0 0 0 3px rgba(168,85,200,.15)}
 .qz-wp-fill-box{background:#f0f6ff;border:1px solid #bfdbfe;border-radius:14px;padding:14px 22px;font-size:clamp(15px,2vw,20px);line-height:2.8;color:#1e3a5f;font-weight:600;margin-bottom:6px;text-align:center;word-break:break-word}
-.qz-wp-fill-box.para{text-align:left;font-size:clamp(14px,1.7vw,17px);line-height:2.6}
-.qz-wp-fill-input{display:inline-block;min-width:60px;border:none;border-bottom:2.5px solid #a78bfa;background:transparent;color:#5b21b6;font-weight:700;font-size:inherit;font-family:inherit;padding:1px 8px 3px;text-align:center;outline:none;border-radius:4px 4px 0 0;vertical-align:middle;transition:border-color .2s,background .2s;margin:0 4px}
+.qz-wp-fill-box.para{text-align:left;font-size:clamp(14px,1.7vw,17px);line-height:2.6;white-space:pre-wrap}
+.qz-wp-fill-input{display:inline-block;min-width:60px;border:none;border-bottom:2.5px solid #a78bfa;background:transparent;color:#5b21b6;font-weight:700;font-size:inherit;font-family:inherit;padding:1px 8px 3px;text-align:center;outline:none;border-radius:4px 4px 0 0;vertical-align:middle;transition:border-color .2s,background .2s,color .2s;margin:0 4px}
 .qz-wp-fill-input:focus{border-bottom-color:#7c3aed;background:rgba(167,139,250,.1)}
+.qz-wp-fill-input.ok{border-bottom-color:#22c55e;background:rgba(34,197,94,.09);color:#166534}
+.qz-wp-fill-input.bad{border-bottom-color:#ef4444;background:rgba(239,68,68,.09);color:#dc2626}
+.qz-wp-reveal{font-size:13px;color:#7c3aed;font-weight:700;background:#f5f3ff;border:1px solid #ddd6fe;border-radius:8px;padding:7px 12px;margin-top:6px;display:none}
+.qz-wp-reveal.show{display:block}
 .qz-dict-row{display:flex;gap:10px;align-items:flex-start;margin-bottom:10px;padding:10px;border:1px solid #ead6f8;border-radius:10px;background:#fff9ff}
 .qz-dict-img{width:68px;height:68px;object-fit:contain;border-radius:8px;flex-shrink:0;border:1.5px solid #dcc4f0}
 .qz-dict-controls{flex:1;display:flex;flex-direction:column;gap:7px}
@@ -1737,7 +1741,10 @@ window.QUIZ_LISTEN_ORDER_DATA = <?php echo json_encode($quizListenOrderBlocks, J
               inp.setAttribute('autocorrect', 'off');
               inp.setAttribute('autocapitalize', 'off');
               inp.setAttribute('spellcheck', 'false');
-              inp.addEventListener('input', qzWpCheck);
+              inp.addEventListener('input', function() {
+                inp.style.width = Math.max(60, Math.max(expectedAns.length || 5, inp.value.length + 1) * 12 + 24) + 'px';
+                qzWpCheck();
+              });
               fillBox.appendChild(inp);
               writingState.fillInputs[idx].push(inp);
             }
@@ -1745,6 +1752,7 @@ window.QUIZ_LISTEN_ORDER_DATA = <?php echo json_encode($quizListenOrderBlocks, J
         } else {
           // No blank markers at all — show question + one input at end
           if (rawText) fillBox.appendChild(document.createTextNode(rawText + ' '));
+          const singleAns = answers[0] ? String(answers[0]) : '';
           const inp = document.createElement('input');
           inp.type = 'text';
           inp.className = 'qz-wp-fill-input';
@@ -1752,7 +1760,11 @@ window.QUIZ_LISTEN_ORDER_DATA = <?php echo json_encode($quizListenOrderBlocks, J
           inp.setAttribute('autocomplete', 'off');
           inp.setAttribute('autocorrect', 'off');
           inp.setAttribute('spellcheck', 'false');
-          inp.addEventListener('input', qzWpCheck);
+          inp.style.width = Math.max(60, (singleAns.length || 5) * 12 + 24) + 'px';
+          inp.addEventListener('input', function() {
+            inp.style.width = Math.max(60, Math.max(singleAns.length || 5, inp.value.length + 1) * 12 + 24) + 'px';
+            qzWpCheck();
+          });
           fillBox.appendChild(inp);
           writingState.fillInputs[idx].push(inp);
         }
@@ -2239,6 +2251,33 @@ window.QUIZ_LISTEN_ORDER_DATA = <?php echo json_encode($quizListenOrderBlocks, J
     if (!ok) {
       navigateToReturn(saveUrl);
       return;
+    }
+
+    // Mark fill inputs ok/bad and reveal correct answers
+    if (writingState.enabled) {
+      writingItems.forEach(function(wq, widx) {
+        const ftype = String(wq.type || 'writing');
+        if (ftype !== 'fill_sentence' && ftype !== 'fill_paragraph' && ftype !== 'listen_write') return;
+        const finputs = writingState.fillInputs[widx] || [];
+        if (finputs.length === 0) return;
+        const fcas = wq.correct_answers || [];
+        let fallOk = true;
+        finputs.forEach(function(finp, fbi) {
+          finp.disabled = true;
+          const fok = normalizeWord(finp.value) !== '' && normalizeWord(finp.value) === normalizeWord(fcas[fbi] || '');
+          finp.className = 'qz-wp-fill-input ' + (fok ? 'ok' : 'bad');
+          if (!fok) fallOk = false;
+        });
+        if (!fallOk && fcas.length > 0) {
+          const fillBox = finputs[0].parentElement;
+          if (fillBox) {
+            const rev = document.createElement('div');
+            rev.className = 'qz-wp-reveal show';
+            rev.textContent = 'Correct: ' + fcas.join(', ');
+            (fillBox.parentElement || fillBox).appendChild(rev);
+          }
+        }
+      });
     }
 
     if (questionsWrap) questionsWrap.style.display = 'none';
