@@ -1058,17 +1058,50 @@ document.addEventListener('DOMContentLoaded', function () {
                     }
                 });
             } else {
-                /* No explicit blanks → show full text + single trailing input */
-                if (rawText) {
-                    rawText.split('\n').forEach(function (line, li) {
-                        if (li > 0) { fillBox.appendChild(document.createElement('br')); }
-                        if (line)   { fillBox.appendChild(document.createTextNode(line)); }
+                /* No explicit ___ blanks → find each answer word inline and replace with input */
+                var fpAnswers = Array.isArray(q.correct_answers) ? q.correct_answers : [];
+                if (fpAnswers.length > 0 && rawText) {
+                    var fpRemaining = rawText;
+                    var fpSegs = [];
+                    for (var fpai = 0; fpai < fpAnswers.length; fpai++) {
+                        var fpWord = String(fpAnswers[fpai] || '');
+                        var fpEsc  = fpWord.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                        var fpRe   = new RegExp('\\b' + fpEsc + '\\b', 'i');
+                        var fpM    = fpRe.exec(fpRemaining);
+                        if (fpM) {
+                            if (fpM.index > 0) { fpSegs.push({type: 'text', val: fpRemaining.substring(0, fpM.index)}); }
+                            fpSegs.push({type: 'input', idx: fpai});
+                            fpRemaining = fpRemaining.substring(fpM.index + fpM[0].length);
+                        } else {
+                            fpSegs.push({type: 'input', idx: fpai});
+                        }
+                    }
+                    if (fpRemaining) { fpSegs.push({type: 'text', val: fpRemaining}); }
+                    fpSegs.forEach(function (seg) {
+                        if (seg.type === 'text') {
+                            seg.val.split('\n').forEach(function (line, li) {
+                                if (li > 0) { fillBox.appendChild(document.createElement('br')); }
+                                if (line)   { fillBox.appendChild(document.createTextNode(line)); }
+                            });
+                        } else {
+                            var fpInp = createFillInput(seg.idx, q);
+                            fillBox.appendChild(fpInp);
+                            currentFillInputs.push(fpInp);
+                        }
                     });
-                    fillBox.appendChild(document.createTextNode('\u00a0'));
+                } else {
+                    /* No answers defined – show full text + one blank at end */
+                    if (rawText) {
+                        rawText.split('\n').forEach(function (line, li) {
+                            if (li > 0) { fillBox.appendChild(document.createElement('br')); }
+                            if (line)   { fillBox.appendChild(document.createTextNode(line)); }
+                        });
+                        fillBox.appendChild(document.createTextNode('\u00a0'));
+                    }
+                    var fillInp = createFillInput(0, q);
+                    fillBox.appendChild(fillInp);
+                    currentFillInputs.push(fillInp);
                 }
-                var fillInp = createFillInput(0, q);
-                fillBox.appendChild(fillInp);
-                currentFillInputs.push(fillInp);
             }
             qtextEl.appendChild(fillBox);
         } else {
@@ -1165,24 +1198,29 @@ document.addEventListener('DOMContentLoaded', function () {
                 feedbackEl.className   = 'mc-feedback good';
                 currentFillInputs.forEach(function (fi) { fi.className = 'wp-fill-input ok'; fi.disabled = true; });
                 playSound(sndOk);
-                checkedCards[index]             = 'correct';
-                checkedCards[index + '_inputs'] = vals;
-                correctCount++;
+                checkedCards[index]              = 'correct';
+                checkedCards[index + '_inputs']  = vals;
+                checkedCards[index + '_correct'] = currentFillInputs.length;
+                correctCount += currentFillInputs.length;
             } else if (fillAttempts >= 2) {
                 feedbackEl.textContent = '\u2718 Wrong';
                 feedbackEl.className   = 'mc-feedback bad';
+                var indivOk = 0;
                 currentFillInputs.forEach(function (fi, ii) {
                     var ok2 = answers.length > ii ? checkCorrect(fi.value.trim(), [answers[ii]]) : false;
                     fi.className = 'wp-fill-input ' + (ok2 ? 'ok' : 'bad');
                     fi.disabled  = true;
+                    if (ok2) { indivOk++; }
                 });
                 playSound(sndBad);
                 var shownFill = answers.join(', ');
                 revealEl.textContent = 'Correct: ' + shownFill;
                 revealEl.classList.add('show');
-                checkedCards[index]             = 'wrong';
-                checkedCards[index + '_inputs'] = vals;
-                checkedCards[index + '_reveal'] = 'Correct: ' + shownFill;
+                checkedCards[index]              = 'wrong';
+                checkedCards[index + '_inputs']  = vals;
+                checkedCards[index + '_reveal']  = 'Correct: ' + shownFill;
+                checkedCards[index + '_correct'] = indivOk;
+                correctCount += indivOk;
             } else {
                 feedbackEl.textContent = '\u2718 Wrong (1/2) \u2013 try again';
                 feedbackEl.className   = 'mc-feedback bad';
@@ -1367,8 +1405,15 @@ document.addEventListener('DOMContentLoaded', function () {
         if (compTitleEl) { compTitleEl.textContent = actTitle; }
         if (compTextEl)  { compTextEl.textContent  = "You've completed " + actTitle + ". Great job!"; }
 
-        /* score: every question = 1 point (auto-graded correct + open-writing submitted) */
-        var totalCount = questions.length;
+        /* score: fill questions count per-input; other questions count as 1 */
+        var totalCount = questions.reduce(function (sum, qq) {
+            var qt = String(qq.type || 'writing');
+            if ((qt === 'fill_paragraph' || qt === 'fill_sentence' || qt === 'listen_write')
+                && Array.isArray(qq.correct_answers) && qq.correct_answers.length > 0) {
+                return sum + qq.correct_answers.length;
+            }
+            return sum + 1;
+        }, 0);
         var pct    = totalCount > 0 ? Math.round((correctCount / totalCount) * 100) : 0;
         var errors = Math.max(0, totalCount - correctCount);
 
