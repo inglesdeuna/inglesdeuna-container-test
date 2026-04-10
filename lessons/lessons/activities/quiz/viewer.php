@@ -88,12 +88,13 @@ function load_quiz_fallback_from_multiple_choice(PDO $pdo, string $unit): array
   }
 
   try {
-    $stmt = $pdo->prepare("\n            SELECT id, data\n            FROM activities\n            WHERE unit_id = :unit\n              AND type = 'multiple_choice'\n            ORDER BY id ASC\n        ");
+    $stmt = $pdo->prepare("\n            SELECT id, type, data\n            FROM activities\n            WHERE unit_id::text = :unit\n              AND type IN ('multiple_choice', 'video_comprehension')\n            ORDER BY id ASC\n        ");
     $stmt->execute(['unit' => $unit]);
     $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
 
     $questions = [];
     foreach ($rows as $row) {
+      $activityType = strtolower(trim((string) ($row['type'] ?? '')));
       $raw = $row['data'] ?? null;
       $decoded = is_string($raw) ? json_decode($raw, true) : $raw;
       if (!is_array($decoded)) {
@@ -101,14 +102,24 @@ function load_quiz_fallback_from_multiple_choice(PDO $pdo, string $unit): array
       }
 
       $sourceQuestions = [];
-      if (isset($decoded['questions']) && is_array($decoded['questions'])) {
-        $sourceQuestions = $decoded['questions'];
-      } elseif (isset($decoded['items']) && is_array($decoded['items'])) {
-        $sourceQuestions = $decoded['items'];
-      } elseif (isset($decoded['data']) && is_array($decoded['data'])) {
-        $sourceQuestions = $decoded['data'];
+      if ($activityType === 'video_comprehension') {
+        $mode = strtolower(trim((string) ($decoded['mode'] ?? 'quiz')));
+        if ($mode === 'video_only') {
+          continue;
+        }
+        if (isset($decoded['questions']) && is_array($decoded['questions'])) {
+          $sourceQuestions = $decoded['questions'];
+        }
       } else {
-        $sourceQuestions = $decoded;
+        if (isset($decoded['questions']) && is_array($decoded['questions'])) {
+          $sourceQuestions = $decoded['questions'];
+        } elseif (isset($decoded['items']) && is_array($decoded['items'])) {
+          $sourceQuestions = $decoded['items'];
+        } elseif (isset($decoded['data']) && is_array($decoded['data'])) {
+          $sourceQuestions = $decoded['data'];
+        } else {
+          $sourceQuestions = $decoded;
+        }
       }
 
       foreach ($sourceQuestions as $item) {
@@ -116,13 +127,16 @@ function load_quiz_fallback_from_multiple_choice(PDO $pdo, string $unit): array
           continue;
         }
 
-        $options = isset($item['options']) && is_array($item['options'])
-          ? $item['options']
-          : [
+        $options = [];
+        if (isset($item['options']) && is_array($item['options'])) {
+          $options = $item['options'];
+        } elseif ($activityType !== 'video_comprehension') {
+          $options = [
             (string) ($item['option_a'] ?? ''),
             (string) ($item['option_b'] ?? ''),
             (string) ($item['option_c'] ?? ''),
           ];
+        }
 
         $normalizedOptions = [];
         foreach ($options as $optionLabel) {
@@ -516,6 +530,7 @@ $questions = build_fixed_quiz_question_set($questions, 6);
 $description = (string) ($activity['description'] ?? '');
 $quizMatchPairs = load_quiz_match_pairs($pdo, $unit);
 $quizPronunciationItems = load_quiz_pronunciation_items($pdo, $unit);
+$hasAnyQuizBlock = !empty($questions) || !empty($quizMatchPairs) || !empty($quizPronunciationItems);
 
 ensure_quiz_attempts_column($pdo);
 
@@ -618,7 +633,7 @@ ob_start();
     <div class="qz-alert"><?php echo htmlspecialchars((string) $quizAttemptPolicy['message'], ENT_QUOTES, 'UTF-8'); ?></div>
   <?php } ?>
 
-  <?php if (empty($questions)) { ?>
+  <?php if (!$hasAnyQuizBlock) { ?>
     <div class="qz-empty">This quiz does not have questions yet. Open the editor to configure it.</div>
   <?php } else { ?>
     <div id="qz-questions-wrap">
