@@ -88,7 +88,7 @@ function load_quiz_fallback_from_multiple_choice(PDO $pdo, string $unit): array
   }
 
   try {
-    $stmt = $pdo->prepare("\n            SELECT id, type, data\n            FROM activities\n            WHERE unit_id::text = :unit\n              AND type IN ('multiple_choice', 'video_comprehension')\n            ORDER BY id ASC\n        ");
+    $stmt = $pdo->prepare("\n            SELECT id, type, data\n            FROM activities\n            WHERE unit_id::text = :unit\n              AND type IN ('multiple_choice')\n            ORDER BY id ASC\n        ");
     $stmt->execute(['unit' => $unit]);
     $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
 
@@ -1038,11 +1038,15 @@ ob_start();
 @media (max-width:1100px){.qz-pron-grid-6{grid-template-columns:repeat(4,minmax(140px,1fr))}}
 @media (max-width:760px){.qz-title{font-size:26px}.qz-q{font-size:16px}.qz-actions{position:static}.qz-pron-grid-6,.qz-pron-grid-8{grid-template-columns:repeat(2,minmax(130px,1fr))}}
 .qz-block-help{font-size:13px;color:#5d6f8f;margin:0 0 10px}
-.qz-wp-item{margin-bottom:12px}
+.qz-wp-item{margin-bottom:16px}
 .qz-wp-label{font-weight:800;color:#f14902;margin-bottom:4px;font-size:15px}
-.qz-wp-instr{font-size:12px;color:#5d6f8f;margin-bottom:5px}
+.qz-wp-instr{font-size:13px;color:#7c3aed;font-weight:700;background:#f5f3ff;border:1px solid #ddd6fe;border-radius:8px;padding:7px 12px;margin-bottom:8px;display:block}
 .qz-wp-textarea{width:100%;box-sizing:border-box;border:1.5px solid #dcc4f0;border-radius:10px;padding:10px;font-size:14px;resize:vertical;min-height:60px;font-family:inherit;line-height:1.5}
 .qz-wp-textarea:focus{outline:none;border-color:#a855c8;box-shadow:0 0 0 3px rgba(168,85,200,.15)}
+.qz-wp-fill-box{background:#f0f6ff;border:1px solid #bfdbfe;border-radius:14px;padding:14px 22px;font-size:clamp(15px,2vw,20px);line-height:2.8;color:#1e3a5f;font-weight:600;margin-bottom:6px;text-align:center;word-break:break-word}
+.qz-wp-fill-box.para{text-align:left;font-size:clamp(14px,1.7vw,17px);line-height:2.6}
+.qz-wp-fill-input{display:inline-block;min-width:60px;border:none;border-bottom:2.5px solid #a78bfa;background:transparent;color:#5b21b6;font-weight:700;font-size:inherit;font-family:inherit;padding:1px 8px 3px;text-align:center;outline:none;border-radius:4px 4px 0 0;vertical-align:middle;transition:border-color .2s,background .2s;margin:0 4px}
+.qz-wp-fill-input:focus{border-bottom-color:#7c3aed;background:rgba(167,139,250,.1)}
 .qz-dict-row{display:flex;gap:10px;align-items:flex-start;margin-bottom:10px;padding:10px;border:1px solid #ead6f8;border-radius:10px;background:#fff9ff}
 .qz-dict-img{width:68px;height:68px;object-fit:contain;border-radius:8px;flex-shrink:0;border:1.5px solid #dcc4f0}
 .qz-dict-controls{flex:1;display:flex;flex-direction:column;gap:7px}
@@ -1328,6 +1332,7 @@ window.QUIZ_LISTEN_ORDER_DATA = <?php echo json_encode($quizListenOrderBlocks, J
     answered: 0,
     correct: 0,
     answers: {},
+    fillInputs: {},
   };
 
   const dictItems = quizDictData.slice(0, 5);
@@ -1621,38 +1626,115 @@ window.QUIZ_LISTEN_ORDER_DATA = <?php echo json_encode($quizListenOrderBlocks, J
     wpTitle.textContent = quizBlockIndex + '. Writing Practice';
     wpCard.appendChild(wpTitle);
     quizBlockIndex++;
-    const wpHelp = document.createElement('p');
-    wpHelp.className = 'qz-block-help';
-    wpHelp.textContent = 'Write your response for each prompt.';
-    wpCard.appendChild(wpHelp);
+
+    function qzWpCheck() {
+      var ans = 0;
+      for (var wi = 0; wi < writingItems.length; wi++) {
+        var wtype = String(writingItems[wi].type || 'writing');
+        if (wtype === 'fill_sentence' || wtype === 'fill_paragraph' || wtype === 'listen_write') {
+          var winputs = writingState.fillInputs[wi] || [];
+          if (winputs.length > 0 && winputs.every(function(inp) { return inp.value.trim() !== ''; })) ans++;
+        } else {
+          if ((writingState.answers[wi] || '').trim() !== '') ans++;
+        }
+      }
+      writingState.answered = ans;
+      wpCard.classList.toggle('qz-card-unanswered', ans < writingState.total);
+      updateAnsweredProgress();
+    }
+
     writingItems.forEach(function(q, idx) {
       const item = document.createElement('div');
       item.className = 'qz-wp-item';
-      const label = document.createElement('div');
-      label.className = 'qz-wp-label';
-      label.textContent = (idx + 1) + '. ' + q.question;
-      item.appendChild(label);
+      const type = String(q.type || 'writing');
+
       if (q.instruction) {
         const instr = document.createElement('div');
         instr.className = 'qz-wp-instr';
         instr.textContent = q.instruction;
         item.appendChild(instr);
       }
-      const textarea = document.createElement('textarea');
-      textarea.className = 'qz-wp-textarea';
-      textarea.placeholder = q.placeholder || 'Write your answer here...';
-      textarea.rows = 2;
-      textarea.addEventListener('input', function() {
-        writingState.answers[idx] = textarea.value.trim();
-        var ans = 0;
-        for (var i = 0; i < writingItems.length; i++) {
-          if ((writingState.answers[i] || '').trim() !== '') ans++;
+
+      if (type === 'fill_sentence' || type === 'fill_paragraph' || type === 'listen_write') {
+        if (type === 'listen_write') {
+          const listenBtn = document.createElement('button');
+          listenBtn.type = 'button';
+          listenBtn.className = 'qz-pron-btn listen';
+          listenBtn.style.marginBottom = '8px';
+          listenBtn.textContent = '\uD83D\uDD0A Listen';
+          listenBtn.addEventListener('click', function() {
+            if (q.media) { try { new Audio(q.media).play(); return; } catch(e) {} }
+            if ('speechSynthesis' in window && q.question) {
+              var bi = 0;
+              var sentence = String(q.question).replace(/_{2,}/g, function() {
+                return (q.correct_answers || [])[bi++] || '...';
+              });
+              window.speechSynthesis.cancel();
+              var u = new SpeechSynthesisUtterance(sentence);
+              u.lang = 'en-US'; u.rate = 0.85;
+              window.speechSynthesis.speak(u);
+            }
+          });
+          item.appendChild(listenBtn);
         }
-        writingState.answered = ans;
-        wpCard.classList.toggle('qz-card-unanswered', ans < writingState.total);
-        updateAnsweredProgress();
-      });
-      item.appendChild(textarea);
+
+        const isPara = type === 'fill_paragraph';
+        const fillBox = document.createElement('div');
+        fillBox.className = 'qz-wp-fill-box' + (isPara ? ' para' : '');
+        const rawText = String(q.question || '');
+        const answers = q.correct_answers || [];
+        writingState.fillInputs[idx] = [];
+
+        if (/_{2,}/.test(rawText)) {
+          rawText.split(/_{2,}/).forEach(function(seg, si, arr) {
+            if (seg) fillBox.appendChild(document.createTextNode(seg));
+            if (si < arr.length - 1) {
+              const expectedAns = answers[si] ? String(answers[si]) : '';
+              const inp = document.createElement('input');
+              inp.type = 'text';
+              inp.className = 'qz-wp-fill-input';
+              inp.placeholder = '\u2026';
+              inp.style.width = Math.max(60, (expectedAns.length || 5) * 12 + 24) + 'px';
+              inp.setAttribute('autocomplete', 'off');
+              inp.setAttribute('autocorrect', 'off');
+              inp.setAttribute('autocapitalize', 'off');
+              inp.setAttribute('spellcheck', 'false');
+              inp.addEventListener('input', qzWpCheck);
+              fillBox.appendChild(inp);
+              writingState.fillInputs[idx].push(inp);
+            }
+          });
+        } else {
+          if (rawText) fillBox.appendChild(document.createTextNode(rawText + ' '));
+          const inp = document.createElement('input');
+          inp.type = 'text';
+          inp.className = 'qz-wp-fill-input';
+          inp.placeholder = '\u2026';
+          inp.setAttribute('autocomplete', 'off');
+          inp.setAttribute('autocorrect', 'off');
+          inp.setAttribute('spellcheck', 'false');
+          inp.addEventListener('input', qzWpCheck);
+          fillBox.appendChild(inp);
+          writingState.fillInputs[idx].push(inp);
+        }
+        item.appendChild(fillBox);
+
+      } else {
+        const label = document.createElement('div');
+        label.className = 'qz-wp-label';
+        label.textContent = (idx + 1) + '. ' + q.question;
+        item.appendChild(label);
+        const textarea = document.createElement('textarea');
+        textarea.className = 'qz-wp-textarea';
+        textarea.placeholder = q.placeholder || 'Write your answer here...';
+        textarea.rows = 2;
+        textarea.addEventListener('input', function() {
+          writingState.answers[idx] = textarea.value.trim();
+          qzWpCheck();
+        });
+        item.appendChild(textarea);
+      }
+
       wpCard.appendChild(item);
     });
     listEl.appendChild(wpCard);
@@ -2070,10 +2152,24 @@ window.QUIZ_LISTEN_ORDER_DATA = <?php echo json_encode($quizListenOrderBlocks, J
 
     if (writingState.enabled) {
       writingItems.forEach(function(q, idx) {
-        const typed = normalizeWord(writingState.answers[idx] || '');
-        if (!typed) return;
-        const ok = (q.correct_answers || []).some(function(ca) { return normalizeWord(ca) === typed; });
-        if (ok) correct += 1;
+        const type = String(q.type || 'writing');
+        if (type === 'fill_sentence' || type === 'fill_paragraph' || type === 'listen_write') {
+          const inputs = writingState.fillInputs[idx] || [];
+          if (inputs.length === 0) return;
+          const cas = q.correct_answers || [];
+          const allOk = inputs.every(function(inp, bi) {
+            const typed = normalizeWord(inp.value);
+            const expected = normalizeWord(cas[bi] || '');
+            return typed !== '' && expected !== '' && typed === expected;
+          });
+          if (allOk) correct += 1;
+        } else {
+          const typed = normalizeWord(writingState.answers[idx] || '');
+          if (!typed) return;
+          const cas = q.correct_answers || [];
+          if (cas.length === 0) { correct += 1; }
+          else if (cas.some(function(ca) { return normalizeWord(ca) === typed; })) { correct += 1; }
+        }
       });
     }
 
