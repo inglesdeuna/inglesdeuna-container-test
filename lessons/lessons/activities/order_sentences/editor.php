@@ -148,6 +148,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!in_array($mediaType, ['tts', 'video', 'audio', 'none'], true)) $mediaType = 'tts';
     $currentMediaType = trim((string) ($_POST['current_media_type'] ?? ''));
     $currentMediaUrl  = trim((string) ($_POST['current_media_url'] ?? ''));
+    $currentVideoUrl  = trim((string) ($_POST['current_video_url'] ?? ''));
+    $currentAudioUrl  = trim((string) ($_POST['current_audio_url'] ?? ''));
+
+    if ($currentVideoUrl === '' && $currentMediaType === 'video' && $currentMediaUrl !== '') {
+        $currentVideoUrl = $currentMediaUrl;
+    }
+    if ($currentAudioUrl === '' && $currentMediaType === 'audio' && $currentMediaUrl !== '') {
+        $currentAudioUrl = $currentMediaUrl;
+    }
 
     // Pick the URL from the correct named field to avoid both sections overwriting each other
     if ($mediaType === 'video') {
@@ -174,10 +183,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Keep existing media URL if user did not provide a new one.
     if (in_array($mediaType, ['video', 'audio'], true)
         && $mediaUrl === ''
-        && !$hasNewUpload
-        && $currentMediaUrl !== ''
-        && $currentMediaType === $mediaType) {
-        $mediaUrl = $currentMediaUrl;
+        && !$hasNewUpload) {
+        if ($mediaType === 'video' && $currentVideoUrl !== '') {
+            $mediaUrl = $currentVideoUrl;
+        } elseif ($mediaType === 'audio' && $currentAudioUrl !== '') {
+            $mediaUrl = $currentAudioUrl;
+        } elseif ($currentMediaUrl !== '' && $currentMediaType === $mediaType) {
+            $mediaUrl = $currentMediaUrl;
+        }
     }
 
     $rawTexts = isset($_POST['sentence_text']) && is_array($_POST['sentence_text'])
@@ -278,6 +291,8 @@ $d = $activity;
 <form method="post" enctype="multipart/form-data" class="os-form" id="osSentencesForm">
     <input type="hidden" name="current_media_type" value="<?= htmlspecialchars($d['media_type'], ENT_QUOTES, 'UTF-8') ?>">
     <input type="hidden" name="current_media_url" value="<?= htmlspecialchars($d['media_url'], ENT_QUOTES, 'UTF-8') ?>">
+    <input type="hidden" name="current_video_url" id="os_current_video_url" value="<?= htmlspecialchars($d['media_type']==='video' ? $d['media_url'] : '', ENT_QUOTES, 'UTF-8') ?>">
+    <input type="hidden" name="current_audio_url" id="os_current_audio_url" value="<?= htmlspecialchars($d['media_type']==='audio' ? $d['media_url'] : '', ENT_QUOTES, 'UTF-8') ?>">
 
     <!-- Title -->
     <div class="os-card">
@@ -449,8 +464,28 @@ function getDragAfter(container, y) {
 
 document.querySelectorAll('#os-sentences-list .os-sentence-item').forEach(attachDrag);
 
+function syncMediaCaches() {
+    var videoInput = document.querySelector('input[name="video_url"]');
+    var audioInput = document.querySelector('input[name="audio_url"]');
+    var videoCache = document.getElementById('os_current_video_url');
+    var audioCache = document.getElementById('os_current_audio_url');
+
+    if (videoInput && videoCache && videoInput.value.trim() !== '') {
+        videoCache.value = videoInput.value.trim();
+    }
+    if (audioInput && audioCache && audioInput.value.trim() !== '') {
+        audioCache.value = audioInput.value.trim();
+    }
+}
+
+var _osVideoInput = document.querySelector('input[name="video_url"]');
+var _osAudioInput = document.querySelector('input[name="audio_url"]');
+if (_osVideoInput) _osVideoInput.addEventListener('input', syncMediaCaches);
+if (_osAudioInput) _osAudioInput.addEventListener('input', syncMediaCaches);
+
 /* ── disable inputs inside hidden media sections before submit ── */
 document.getElementById('osSentencesForm').addEventListener('submit', function () {
+    syncMediaCaches();
     document.querySelectorAll('.media-section:not(.active) input, .media-section:not(.active) textarea').forEach(function (el) {
         el.disabled = true;
     });
