@@ -2766,8 +2766,7 @@ window.QUIZ_LISTEN_ORDER_DATA = <?php echo json_encode($quizListenOrderBlocks, J
           loState.blocksDone[blockIdx] = true;
           loState.answered += 1;
           if (isCorrect) loState.correct += 1;
-          loStatusEl.textContent = isCorrect ? '\u2714 Correct!' : '\u2718 Try again next time';
-          loStatusEl.style.color = isCorrect ? '#166534' : '#9b1c1c';
+          loStatusEl.textContent = '';
           loCard.classList.toggle('qz-card-unanswered', loState.answered < loState.total);
           updateAnsweredProgress();
         }
@@ -2987,13 +2986,6 @@ window.QUIZ_LISTEN_ORDER_DATA = <?php echo json_encode($quizListenOrderBlocks, J
           return;
         }
 
-        const topBtn = topRow.querySelector('.qz-match-tile[data-key="' + selectedTop + '"]');
-        if (topBtn) {
-          topBtn.classList.add('is-wrong');
-          clearWrongState(topBtn);
-        }
-        btn.classList.add('is-wrong');
-        clearWrongState(btn);
       });
       // Click fallback for accessibility
       btn.addEventListener('click', function () {
@@ -3024,13 +3016,6 @@ window.QUIZ_LISTEN_ORDER_DATA = <?php echo json_encode($quizListenOrderBlocks, J
           return;
         }
 
-        const topBtn = topRow.querySelector('.qz-match-tile[data-key="' + selectedTop + '"]');
-        if (topBtn) {
-          topBtn.classList.add('is-wrong');
-          clearWrongState(topBtn);
-        }
-        btn.classList.add('is-wrong');
-        clearWrongState(btn);
       });
       bottomRow.appendChild(btn);
     });
@@ -3149,33 +3134,6 @@ window.QUIZ_LISTEN_ORDER_DATA = <?php echo json_encode($quizListenOrderBlocks, J
     if (!ok) {
       navigateToReturn(saveUrl);
       return;
-    }
-
-    // Mark fill inputs ok/bad and reveal correct answers
-    if (writingState.enabled) {
-      writingItems.forEach(function(wq, widx) {
-        const ftype = String(wq.type || 'writing');
-        if (ftype !== 'fill_sentence' && ftype !== 'fill_paragraph' && ftype !== 'listen_write') return;
-        const finputs = writingState.fillInputs[widx] || [];
-        if (finputs.length === 0) return;
-        const fcas = wq.correct_answers || [];
-        let fallOk = true;
-        finputs.forEach(function(finp, fbi) {
-          finp.disabled = true;
-          const fok = normalizeWord(finp.value) !== '' && normalizeWord(finp.value) === normalizeWord(fcas[fbi] || '');
-          finp.className = 'qz-wp-fill-input ' + (fok ? 'ok' : 'bad');
-          if (!fok) fallOk = false;
-        });
-        if (!fallOk && fcas.length > 0) {
-          const fillBox = finputs[0].parentElement;
-          if (fillBox) {
-            const rev = document.createElement('div');
-            rev.className = 'qz-wp-reveal show';
-            rev.textContent = 'Correct: ' + fcas.join(', ');
-            (fillBox.parentElement || fillBox).appendChild(rev);
-          }
-        }
-      });
     }
 
     if (questionsWrap) questionsWrap.style.display = 'none';
