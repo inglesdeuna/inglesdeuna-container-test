@@ -419,25 +419,34 @@ ob_start();
 
 .cw-layout {
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
     gap: 24px;
-    align-items: center;
+    align-items: flex-start;
+    width: 100%;
 }
 .cw-grid-col {
     display: flex;
     flex-direction: column;
     align-items: center;
     min-width: 0;
-    width: 100%;
+    flex: 1 1 auto;
 }
 .cw-clues-col {
     display: flex;
-    flex-direction: row;
-    justify-content: center;
-    flex-wrap: wrap;
+    flex-direction: column;
     gap: 14px;
-    width: 100%;
+    width: 260px;
+    flex-shrink: 0;
+    max-height: 80vh;
+    overflow-y: auto;
+    position: sticky;
+    top: 20px;
+    scrollbar-width: thin;
+    scrollbar-color: #c4b5fd transparent;
 }
+.cw-clues-col::-webkit-scrollbar { width: 5px; }
+.cw-clues-col::-webkit-scrollbar-track { background: transparent; }
+.cw-clues-col::-webkit-scrollbar-thumb { background: #c4b5fd; border-radius: 99px; }
 
 /* ---- GRID ---- */
 .cw-grid-wrap {
@@ -483,10 +492,14 @@ ob_start();
     font-size: 11px; font-weight: 900;
     color: var(--purple);
     line-height: 1;
-    pointer-events: none;
+    pointer-events: auto;
     user-select: none;
+    cursor: pointer;
+    z-index: 3;
     font-family: 'Nunito', 'Segoe UI', sans-serif;
+    padding: 2px 1px;
 }
+.cw-cell .num:hover { color: var(--purple-dark); text-decoration: underline; }
 
 .cw-cell input {
     width: 100%; height: 100%;
@@ -560,7 +573,7 @@ ob_start();
     border: 2px solid #ede9fe;
     padding: 16px 18px;
     box-shadow: 0 8px 24px rgba(124, 58, 237, .09);
-    width: min(100%, 400px);
+    width: 100%;
 }
 .clue-panel h3 {
     font-family: 'Fredoka', 'Trebuchet MS', sans-serif;
@@ -595,6 +608,38 @@ ob_start();
     min-width: 22px; text-align: right;
     font-size: 13px;
     flex-shrink: 0;
+}
+
+/* ---- CLUE TOOLTIP (shown on number click) ---- */
+#cw-clue-tooltip {
+    position: fixed;
+    z-index: 9999;
+    background: #fff;
+    border: 2.5px solid var(--purple);
+    border-radius: 16px;
+    padding: 10px 14px;
+    box-shadow: 0 8px 28px rgba(124,58,237,.22);
+    font-family: 'Nunito', 'Fredoka', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text);
+    max-width: 240px;
+    line-height: 1.4;
+    pointer-events: none;
+    display: none;
+    transition: opacity .15s;
+}
+#cw-clue-tooltip .tt-dir {
+    font-size: 11px;
+    font-weight: 900;
+    color: var(--purple);
+    text-transform: uppercase;
+    letter-spacing: .5px;
+    margin-bottom: 4px;
+    display: block;
+}
+#cw-clue-tooltip .tt-num {
+    color: var(--purple-dark);
 }
 
 /* ---- PROGRESS BAR ---- */
@@ -656,6 +701,11 @@ ob_start();
 }
 .completed-button:hover { transform: scale(1.05); filter: brightness(1.07); }
 
+@media (max-width: 820px) {
+    .cw-layout { flex-direction: column; align-items: center; }
+    .cw-clues-col { flex-direction: row; flex-wrap: wrap; width: 100%; max-height: none; position: static; overflow-y: visible; }
+    .clue-panel { width: min(100%, 360px); }
+}
 @media (max-width: 640px) {
     :root { --cell-size: <?= (int)$cellSizes['mobile'] ?>px; }
     .cw-clues-col { flex-direction: column; align-items: stretch; }
@@ -687,7 +737,7 @@ ob_start();
                                  data-word-idxs="<?= htmlspecialchars(implode(',', $cell["wordIdxs"]), ENT_QUOTES, 'UTF-8') ?>"
                                  data-answer="<?= htmlspecialchars($cell["letter"], ENT_QUOTES, 'UTF-8') ?>">
                                 <?php if ($cell["numLabel"] > 0): ?>
-                                    <span class="num"><?= $cell["numLabel"] ?></span>
+                                    <span class="num" data-num="<?= $cell['numLabel'] ?>" onclick="cwNumClick(event, <?= $r ?>, <?= $c ?>)"><?= $cell["numLabel"] ?></span>
                                 <?php endif; ?>
                                 <input type="text" maxlength="1" autocomplete="off"
                                        autocorrect="off" autocapitalize="characters" spellcheck="false">
@@ -757,6 +807,9 @@ ob_start();
         </div>
     </div>
 </div>
+
+<!-- Clue tooltip -->
+<div id="cw-clue-tooltip"><span class="tt-dir" id="tt-dir"></span><span id="tt-body"></span></div>
 
 <script>
 /* ===== DATA from PHP ===== */
@@ -849,8 +902,73 @@ function selectWordForCell(r, c, preferDir) {
     highlightWord(chosen);
 }
 
+/* ===== CLUE TOOLTIP ===== */
+const cwTooltip    = document.getElementById('cw-clue-tooltip');
+const ttDir        = document.getElementById('tt-dir');
+const ttBody       = document.getElementById('tt-body');
+let tooltipTimer   = null;
+
+function cwNumClick(event, r, c) {
+    event.stopPropagation();
+
+    // Collect all words that start at this cell
+    const el = cellEl(r, c);
+    if (!el) return;
+    const idxsRaw = el.dataset.wordIdxs || '';
+    const idxs = idxsRaw.split(',').map(Number).filter(n => !isNaN(n));
+
+    // Only show words whose start cell is r,c
+    const starters = idxs.filter(i => WORDS[i] && WORDS[i].row === r && WORDS[i].col === c);
+    if (!starters.length) return;
+
+    const lines = starters.map(i => {
+        const w = WORDS[i];
+        const num = WORD_NUMBERS[i] || '';
+        const dir = w.direction === 'across' ? '→ Across' : '↓ Down';
+        const clueText = w.clue || '—';
+        return `<span class="tt-dir">${num}. ${dir}</span>${clueText}`;
+    });
+
+    ttDir.innerHTML  = '';
+    ttBody.innerHTML = lines.join('<hr style="border:none;border-top:1px solid #ede9fe;margin:6px 0">');
+
+    // Position near the number, but keep inside viewport
+    const rect = event.target.getBoundingClientRect();
+    cwTooltip.style.display = 'block';
+    cwTooltip.style.opacity = '0';
+
+    // measure then place
+    requestAnimationFrame(() => {
+        const tw = cwTooltip.offsetWidth;
+        const th = cwTooltip.offsetHeight;
+        let left = rect.left + window.scrollX;
+        let top  = rect.bottom + window.scrollY + 6;
+
+        if (left + tw > window.innerWidth - 12) left = window.innerWidth - tw - 12;
+        if (top + th > window.innerHeight + window.scrollY - 12) top = rect.top + window.scrollY - th - 8;
+
+        cwTooltip.style.left = left + 'px';
+        cwTooltip.style.top  = top + 'px';
+        cwTooltip.style.opacity = '1';
+    });
+
+    clearTimeout(tooltipTimer);
+    tooltipTimer = setTimeout(cwHideTooltip, 3200);
+}
+
+function cwHideTooltip() {
+    if (cwTooltip) { cwTooltip.style.display = 'none'; }
+}
+
+document.addEventListener('click', function(e) {
+    if (!e.target.closest('#cw-clue-tooltip') && !e.target.classList.contains('num')) {
+        cwHideTooltip();
+    }
+});
+
 /* ===== CLICK CELL ===== */
 document.getElementById('cwGrid').addEventListener('click', function(e) {
+    if (e.target.classList.contains('num')) return; // handled by cwNumClick
     const cell = e.target.closest('.cw-cell:not(.blocked)');
     if (!cell) return;
     const r = parseInt(cell.dataset.r);
