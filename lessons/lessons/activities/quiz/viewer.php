@@ -2115,22 +2115,8 @@ window.QUIZ_LISTEN_ORDER_DATA = <?php echo json_encode($quizListenOrderBlocks, J
     }
 
     const shuffled = shuffleArray(cleaned.slice());
-    const selected = shuffled.slice(0, Math.min(targetCount, shuffled.length));
-
-    // Keep a fixed card count even when source data has fewer than target pairs.
-    while (selected.length < targetCount) {
-      const source = selected.length > 0 ? selected : shuffled;
-      const randomIndex = Math.floor(Math.random() * source.length);
-      const picked = source[randomIndex];
-      selected.push({
-        left_text: picked.left_text,
-        left_image: picked.left_image,
-        right_text: picked.right_text,
-        right_image: picked.right_image,
-      });
-    }
-
-    return selected;
+    // Never exceed available unique pairs — no duplicates.
+    return shuffled.slice(0, Math.min(targetCount, shuffled.length));
   }
 
   const fixedMatchPairs = buildFixedMatchPairs(quizMatchData, 9);
