@@ -985,7 +985,12 @@ if ($unit === '' && $activityId !== '') {
 }
 
 if ($returnTo === '') {
-  $returnTo = '../../academic/teacher_course.php?assignment=' . urlencode((string) ($_GET['assignment'] ?? '')) . '&unit=' . urlencode($unit) . '&step=9999';
+  $assignmentParam = (string) ($_GET['assignment'] ?? '');
+  if ($assignmentParam !== '') {
+    $returnTo = '../../academic/student_course.php?' . http_build_query(['assignment' => $assignmentParam, 'unit' => $unit, 'step' => '9999']);
+  } else {
+    $returnTo = '../../academic/student_dashboard.php';
+  }
 }
 
 $activity = load_quiz_activity($pdo, $activityId, $unit);

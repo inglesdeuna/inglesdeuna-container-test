@@ -7,7 +7,16 @@ function render_activity_viewer($title, $icon, $content)
     $source = isset($_GET['source']) ? trim((string) $_GET['source']) : '';
     $embedded = isset($_GET['embedded']) && (string) $_GET['embedded'] === '1';
 
-    if ($assignment !== '') {
+    // Use return_to as the back URL when it's a safe relative path
+    // (prevents open-redirect: must not start with // or contain a scheme)
+    $returnToParam = isset($_GET['return_to']) ? trim((string) $_GET['return_to']) : '';
+    $isSafeRelative = $returnToParam !== ''
+        && !preg_match('#^[a-zA-Z][a-zA-Z0-9+\-.]*://#', $returnToParam)
+        && !str_starts_with($returnToParam, '//');
+
+    if ($isSafeRelative) {
+        $backUrl = $returnToParam;
+    } elseif ($assignment !== '') {
         $backUrl = '../../academic/teacher_unit.php?assignment=' . urlencode($assignment) . '&unit=' . urlencode($unit);
     } else {
         $backUrl = '../../academic/unit_view.php?unit=' . urlencode($unit);
