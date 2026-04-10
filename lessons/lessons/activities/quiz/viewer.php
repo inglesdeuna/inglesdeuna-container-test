@@ -172,15 +172,83 @@ function load_quiz_fallback_from_multiple_choice(PDO $pdo, string $unit): array
     $matchRightPool = array_values(array_unique($matchRightPool));
     $pronunciationWordPool = array_values(array_unique($pronunciationWordPool));
 
-    $buildOptions = static function (string $correct, array $pool, array $fallbackPool = []) use ($commonDistractors): array {
-      $options = [];
-      if ($correct !== '') {
-        $options[] = $correct;
+    $normalizeKey = static function (string $value): string {
+      $value = strtolower(trim($value));
+      $value = preg_replace('/\s+/', ' ', $value);
+      return $value !== null ? $value : '';
+    };
+
+    $classifyToken = static function (string $value) use ($normalizeKey): string {
+      $v = $normalizeKey($value);
+      if ($v === '') {
+        return 'other';
       }
 
-      foreach ($pool as $candidate) {
-        $candidate = trim((string) $candidate);
-        if ($candidate === '' || in_array($candidate, $options, true)) {
+      $be = ['am','is','are','was','were','be','been','being'];
+      $aux = ['do','does','did','have','has','had','can','could','will','would','should','may','might','must'];
+      $articles = ['a','an','the'];
+      $preps = ['in','on','at','to','for','from','with','by','about','under','over','into','between','after','before'];
+      $pronouns = ['i','you','he','she','it','we','they','me','him','her','us','them','my','your','his','its','our','their'];
+      $questions = ['who','what','where','when','why','which','how'];
+
+      if (in_array($v, $be, true)) return 'be';
+      if (in_array($v, $aux, true)) return 'aux';
+      if (in_array($v, $articles, true)) return 'article';
+      if (in_array($v, $preps, true)) return 'prep';
+      if (in_array($v, $pronouns, true)) return 'pronoun';
+      if (in_array($v, $questions, true)) return 'question';
+      if (preg_match('/^[0-9]+$/', $v)) return 'number';
+      return 'other';
+    };
+
+    $rankCandidates = static function (string $correct, array $candidates) use ($normalizeKey, $classifyToken): array {
+      $correctKey = $normalizeKey($correct);
+      $correctClass = $classifyToken($correct);
+      $correctLen = strlen($correctKey);
+
+      $scored = [];
+      foreach ($candidates as $candidateRaw) {
+        $candidate = trim((string) $candidateRaw);
+        $candidateKey = $normalizeKey($candidate);
+        if ($candidateKey === '' || $candidateKey === $correctKey) {
+          continue;
+        }
+
+        $sameClass = $classifyToken($candidate) === $correctClass ? 1 : 0;
+        $lenDelta = abs(strlen($candidateKey) - $correctLen);
+        $isSingleWord = strpos($candidateKey, ' ') === false ? 1 : 0;
+        $score = ($sameClass * 1000) + ($isSingleWord * 100) - $lenDelta;
+
+        if (!isset($scored[$candidateKey]) || $score > $scored[$candidateKey]['score']) {
+          $scored[$candidateKey] = ['value' => $candidate, 'score' => $score];
+        }
+      }
+
+      uasort($scored, static function (array $a, array $b): int {
+        return $b['score'] <=> $a['score'];
+      });
+
+      return array_values(array_map(static function (array $item): string {
+        return $item['value'];
+      }, $scored));
+    };
+
+    $buildOptions = static function (string $correct, array $pool, array $fallbackPool = []) use ($commonDistractors, $rankCandidates, $normalizeKey): array {
+      $options = [];
+      if (trim($correct) !== '') {
+        $options[] = trim($correct);
+      }
+
+      foreach ($rankCandidates($correct, $pool) as $candidate) {
+        $candidateKey = $normalizeKey($candidate);
+        $already = false;
+        foreach ($options as $opt) {
+          if ($normalizeKey($opt) === $candidateKey) {
+            $already = true;
+            break;
+          }
+        }
+        if ($already) {
           continue;
         }
         $options[] = $candidate;
@@ -190,9 +258,16 @@ function load_quiz_fallback_from_multiple_choice(PDO $pdo, string $unit): array
       }
 
       if (count($options) < 4) {
-        foreach ($fallbackPool as $candidate) {
-          $candidate = trim((string) $candidate);
-          if ($candidate === '' || in_array($candidate, $options, true)) {
+        foreach ($rankCandidates($correct, $fallbackPool) as $candidate) {
+          $candidateKey = $normalizeKey($candidate);
+          $already = false;
+          foreach ($options as $opt) {
+            if ($normalizeKey($opt) === $candidateKey) {
+              $already = true;
+              break;
+            }
+          }
+          if ($already) {
             continue;
           }
           $options[] = $candidate;
@@ -203,8 +278,16 @@ function load_quiz_fallback_from_multiple_choice(PDO $pdo, string $unit): array
       }
 
       if (count($options) < 2) {
-        foreach ($commonDistractors as $candidate) {
-          if ($candidate === '' || in_array($candidate, $options, true)) {
+        foreach ($rankCandidates($correct, $commonDistractors) as $candidate) {
+          $candidateKey = $normalizeKey($candidate);
+          $already = false;
+          foreach ($options as $opt) {
+            if ($normalizeKey($opt) === $candidateKey) {
+              $already = true;
+              break;
+            }
+          }
+          if ($already) {
             continue;
           }
           $options[] = $candidate;
