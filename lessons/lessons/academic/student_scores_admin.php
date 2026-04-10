@@ -279,30 +279,29 @@ th{color:var(--title);background:#f6fbf8;position:sticky;top:0}
       <div class="empty">No hay conexion a base de datos disponible.</div>
     <?php } elseif (empty($rows)) { ?>
       <div class="empty">Aun no hay scores registrados.</div>
-              <th>Docente</th>
     <?php } else { ?>
-      <p class="meta">Registros: <strong><?php echo (int) count($rows); ?></strong></p>
+      <p class="meta">Registros mostrados: <strong><?php echo (int) count($filteredRows); ?></strong></p>
       <div class="table-wrap">
         <table>
           <thead>
             <tr>
               <th>Estudiante</th>
               <th>Curso</th>
+              <th>Programa</th>
+              <th>Docente</th>
+              <th>Unidad</th>
+              <th>Score</th>
+              <th>Errores</th>
+              <th>Actualizado</th>
+            </tr>
+          </thead>
+          <tbody>
             <?php if (empty($filteredRows)) { ?>
               <tr>
                 <td colspan="8" class="empty">No hay resultados para los filtros seleccionados.</td>
               </tr>
             <?php } ?>
             <?php foreach ($filteredRows as $row) { ?>
-              <th>Unidad</th>
-              <th>Score</th>
-              <th>Errores</th>
-              <th>Actualizado</th>
-                <td><?php echo h((string) ($row['teacher_name'] ?? 'N/D')); ?></td>
-            </tr>
-          </thead>
-          <tbody>
-            <?php foreach ($rows as $row) { ?>
               <?php $program = (string) ($row['program'] ?? 'technical'); ?>
               <tr>
                 <td><?php echo h((string) ($row['student_name'] ?? 'N/D')); ?></td>
@@ -314,6 +313,7 @@ th{color:var(--title);background:#f6fbf8;position:sticky;top:0}
                     <span class="badge badge-tech">Tecnico</span>
                   <?php } ?>
                 </td>
+                <td><?php echo h((string) ($row['teacher_name'] ?? 'N/D')); ?></td>
                 <td><?php echo h((string) ($row['unit_name'] ?? 'N/D')); ?></td>
                 <td><strong><?php echo (int) ($row['completion_percent'] ?? 0); ?>%</strong></td>
                 <td><?php echo (int) ($row['quiz_errors'] ?? 0); ?>/<?php echo (int) ($row['quiz_total'] ?? 0); ?></td>
