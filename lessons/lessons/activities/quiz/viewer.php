@@ -710,9 +710,9 @@ function load_quiz_writing_questions(PDO $pdo, string $unit): array
       try { shuffle($indices); } catch (Throwable $e) {}
       $keepSet  = array_flip(array_slice($indices, 0, $keepCount));
 
-      // Walk through the question text replacing ___ markers one-by-one
+      // Walk through the question text replacing ___ or ... markers one-by-one
       $blankIdx = 0;
-      $newQ = preg_replace_callback('/_{2,}/', function () use (&$blankIdx, $keepSet, $answers) {
+      $newQ = preg_replace_callback('/_{2,}|\.{3}/', function () use (&$blankIdx, $keepSet, $answers) {
         $idx = $blankIdx++;
         if (isset($keepSet[$idx])) {
           return '___'; // keep as an input blank
@@ -1702,8 +1702,8 @@ window.QUIZ_LISTEN_ORDER_DATA = <?php echo json_encode($quizListenOrderBlocks, J
             if (q.media) { try { new Audio(q.media).play(); return; } catch(e) {} }
             if ('speechSynthesis' in window && q.question) {
               var bi = 0;
-              var sentence = String(q.question).replace(/_{2,}/g, function() {
-                return (q.correct_answers || [])[bi++] || '...';
+              var sentence = String(q.question).replace(/_{2,}|\.{3}/g, function() {
+                return (q.correct_answers || [])[bi++] || '';
               });
               window.speechSynthesis.cancel();
               var u = new SpeechSynthesisUtterance(sentence);
@@ -1720,9 +1720,11 @@ window.QUIZ_LISTEN_ORDER_DATA = <?php echo json_encode($quizListenOrderBlocks, J
         const rawText = String(q.question || '');
         const answers = q.correct_answers || [];
         writingState.fillInputs[idx] = [];
+        const blankRe = /_{2,}|\.{3}/;
+        const blankReG = /_{2,}|\.{3}/g;
 
-        if (/_{2,}/.test(rawText)) {
-          rawText.split(/_{2,}/).forEach(function(seg, si, arr) {
+        if (blankRe.test(rawText)) {
+          rawText.split(blankReG).forEach(function(seg, si, arr) {
             if (seg) fillBox.appendChild(document.createTextNode(seg));
             if (si < arr.length - 1) {
               const expectedAns = answers[si] ? String(answers[si]) : '';
@@ -1741,6 +1743,7 @@ window.QUIZ_LISTEN_ORDER_DATA = <?php echo json_encode($quizListenOrderBlocks, J
             }
           });
         } else {
+          // No blank markers at all — show question + one input at end
           if (rawText) fillBox.appendChild(document.createTextNode(rawText + ' '));
           const inp = document.createElement('input');
           inp.type = 'text';
