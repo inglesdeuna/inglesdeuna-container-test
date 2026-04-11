@@ -37,6 +37,7 @@ function render_activity_viewer($title, $icon, $content)
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
     <link rel="stylesheet" href="../../assets/css/presentation-mode.css">
+    <style>
         @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@500;700;800&display=swap');
 
         :root{
