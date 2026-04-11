@@ -6,6 +6,10 @@ function render_activity_viewer($title, $icon, $content)
     $assignment = isset($_GET['assignment']) ? trim((string) $_GET['assignment']) : '';
     $source = isset($_GET['source']) ? trim((string) $_GET['source']) : '';
     $embedded = isset($_GET['embedded']) && (string) $_GET['embedded'] === '1';
+    
+    // Presentation mode: triggered by 'next' parameter (from teacher_presentation.php)
+    $nextUrl = isset($_GET['next']) ? trim((string) $_GET['next']) : '';
+    $isPresentationMode = $nextUrl !== '';
 
     // Use return_to as the back URL when it's a safe relative path
     // (prevents open-redirect: must not start with // or contain a scheme)
