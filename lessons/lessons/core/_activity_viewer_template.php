@@ -68,6 +68,162 @@ function render_activity_viewer($title, $icon, $content)
             padding:18px 22px 24px;
         }
 
+        /* ─────────────────────────────────────────────── */
+        /* PRESENTATION MODE – fullscreen, zero padding, no scroll */
+        /* ─────────────────────────────────────────────── */
+        body.presentation-mode {
+            margin: 0;
+            padding: 0;
+            background: #000;
+            overflow: hidden;
+        }
+
+        body.presentation-mode .activity-wrapper {
+            max-width: 100%;
+            height: 100vh;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+        }
+
+        body.presentation-mode .top-row {
+            display: none;
+        }
+
+        body.presentation-mode .viewer-content {
+            flex: 1;
+            border-radius: 0;
+            padding: 0;
+            margin: 0;
+            box-shadow: none;
+            border: none;
+            background: #fff;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        body.presentation-mode .viewer-content > :is(div, section) {
+            max-width: 100%;
+            width: 100%;
+        }
+
+        body.presentation-mode .viewer-content :is(.mc-viewer, .dd-stage, .lo-stage, .vc-viewer, .dict-stage, .pron-stage, .match-stage, .flashcards-wrap, .qz-wrap, .flipbook-viewer, .ppt-viewer-shell, .ex-viewer, .wp-viewer-wrap) {
+            max-width: 100% !important;
+            width: 100% !important;
+            height: 100% !important;
+            margin: 0 !important;
+            display: flex !important;
+            flex-direction: column !important;
+            overflow: hidden !important;
+        }
+
+        body.presentation-mode .viewer-content :is(.mc-intro, .dd-intro, .lo-intro, .vc-intro, .dict-intro, .pron-intro, .match-intro, .flashcards-intro, .flipbook-intro, .ex-intro, .ppt-intro) {
+            margin: 0 !important;
+            padding: 12px 16px !important;
+            flex-shrink: 0 !important;
+            background: linear-gradient(180deg, #f8fbff 0%, #ffffff 100%) !important;
+            border-bottom: 1px solid #e5e7eb !important;
+        }
+
+        body.presentation-mode .viewer-content :is(.mc-intro h2, .dd-intro h2, .lo-intro h2, .vc-intro h2, .dict-intro h2, .pron-intro h2, .match-intro h2, .flashcards-intro h2, .flipbook-intro h2, .ex-intro h2, .ppt-intro h2) {
+            font-size: clamp(28px, 2.5vw, 42px) !important;
+            line-height: 1.1 !important;
+            margin: 0 !important;
+            font-family: 'Fredoka', 'Trebuchet MS', sans-serif !important;
+            font-weight: 700 !important;
+            text-align: center !important;
+            color: #5b21b6 !important;
+        }
+
+        body.presentation-mode .viewer-content :is(.ppt-slide-title) {
+            font-size: clamp(28px, 2.5vw, 42px) !important;
+            line-height: 1.1 !important;
+            text-align: center !important;
+            color: #5b21b6 !important;
+            font-family: 'Fredoka', 'Trebuchet MS', sans-serif !important;
+            font-weight: 700 !important;
+        }
+
+        body.presentation-mode .viewer-content :is(.mc-card, #sentenceBox, .vc-panel, .flipbook-viewer__card) {
+            padding: 0 !important;
+            flex: 1 !important;
+            overflow-y: auto !important;
+            background: #fff !important;
+        }
+
+        body.presentation-mode .viewer-content :is(.mc-question, #promptText, .lo-prompt, .vc-question) {
+            font-size: clamp(24px, 2.5vw, 40px) !important;
+            line-height: 1.2 !important;
+            margin: 0 !important;
+            padding: 16px !important;
+            text-align: center !important;
+        }
+
+        body.presentation-mode .viewer-content :is(.mc-options, .vc-options) {
+            max-height: none !important;
+            flex: 1 !important;
+            overflow-y: auto !important;
+            padding: 12px 16px !important;
+            display: flex !important;
+            flex-direction: column !important;
+            justify-content: center !important;
+        }
+
+        body.presentation-mode .viewer-content :is(.mc-option, .vc-option) {
+            min-height: 60px !important;
+            font-size: clamp(18px, 2vw, 28px) !important;
+            padding: 14px 16px !important;
+            margin-bottom: 10px !important;
+        }
+
+        body.presentation-mode .viewer-content :is(.mc-controls, .controls, .lo-controls, .vc-controls, .qz-actions, .ex-actions, .flipbook-toolbar__right) {
+            gap: 12px !important;
+            flex-shrink: 0 !important;
+            padding: 12px 16px !important;
+            background: #f8fbff !important;
+            border-top: 1px solid #e5e7eb !important;
+            display: flex !important;
+            justify-content: center !important;
+            flex-wrap: wrap !important;
+        }
+
+        body.presentation-mode .viewer-content :is(.mc-btn, .dd-btn, .lo-btn, .vc-btn, .action-btn, .qz-btn, .ppt-btn, .ex-btn, .flash-btn, .flipbook-btn, .dict-stage .btn, .pron-stage .btn) {
+            padding: 14px 20px !important;
+            min-width: 160px !important;
+            font-size: 16px !important;
+            font-weight: 800 !important;
+            border-radius: 10px !important;
+            flex-grow: 1 !important;
+            max-width: 200px !important;
+        }
+
+        body.presentation-mode .pres-next-button {
+            background: linear-gradient(180deg, #22c55e 0%, #16a34a 100%) !important;
+            color: #fff !important;
+            border: none !important;
+            padding: 14px 24px !important;
+            font-size: 16px !important;
+            font-weight: 800 !important;
+            border-radius: 10px !important;
+            cursor: pointer !important;
+            min-width: 180px !important;
+            text-decoration: none !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            gap: 8px !important;
+        }
+
+        body.presentation-mode .pres-next-button:hover {
+            filter: brightness(1.06) !important;
+            transform: translateY(-1px) !important;
+        }
+
+        /* ─────────────────────────────────────────────── */
+        /* Normal mode (non-presentation) */
+        /* ─────────────────────────────────────────────── */
         .activity-wrapper{
             max-width:1280px;
             margin:0 auto;
@@ -272,11 +428,11 @@ function render_activity_viewer($title, $icon, $content)
     </style>
 </head>
 
-<body>
+<body<?= $isPresentationMode ? ' class="presentation-mode"' : '' ?>>
 
 <div class="activity-wrapper">
 
-    <?php if (!$embedded) { ?>
+    <?php if (!$embedded && !$isPresentationMode) { ?>
     <div class="top-row">
         <a href="<?= htmlspecialchars($backUrl, ENT_QUOTES, 'UTF-8') ?>" class="back-btn">↩ Back</a>
     </div>
@@ -284,9 +440,37 @@ function render_activity_viewer($title, $icon, $content)
 
     <div class="viewer-content">
         <?= $content ?>
+        
+        <?php if ($isPresentationMode && $nextUrl !== '') { ?>
+        <div style="flex-shrink: 0; padding: 12px 16px; background: #f8fbff; border-top: 1px solid #e5e7eb; display: flex; justify-content: center; align-items: center; gap: 12px;">
+            <a href="<?= htmlspecialchars($nextUrl, ENT_QUOTES, 'UTF-8') ?>" class="pres-next-button">
+                <span>siguiente actividad</span>
+                <span style="font-size: 18px;">▶</span>
+            </a>
+        </div>
+        <?php } ?>
     </div>
 
 </div>
+
+<script>
+// Presentation mode configuration
+window.PRESENTATION_MODE = <?= json_encode($isPresentationMode) ?>;
+window.PRESENTATION_NEXT_URL = <?= json_encode($nextUrl) ?>;
+
+// Prevent automatic scroll to top in presentation mode
+if (window.PRESENTATION_MODE) {
+    // Override window.scrollTo during presentation
+    var originalScrollTo = window.scrollTo;
+    window.scrollTo = function() {
+        // Allow explicit scrollTo calls but with no animation
+        if (arguments.length > 0 && typeof arguments[0] === 'object' && arguments[0].behavior === 'smooth') {
+            return; // Silently ignore smooth scrolls in presentation mode
+        }
+        originalScrollTo.apply(window, arguments);
+    };
+}
+</script>
 
 </body>
 </html>
