@@ -293,7 +293,7 @@ ob_start();
     --match-right-soft:#e0f2fe;
     max-width:1060px;
     margin:0 auto;
-    padding:18px;
+    padding:clamp(8px, 1.4vw, 16px);
 }
 
 .viewer-header{ display:none !important; }
@@ -326,7 +326,7 @@ ob_start();
 .match-columns{
     display:grid;
     grid-template-columns:minmax(0,1fr) minmax(0,1fr);
-    gap:30px;
+    gap:clamp(12px, 2vw, 26px);
 }
 
 .match-column-card{
