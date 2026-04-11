@@ -633,7 +633,10 @@ document.addEventListener('DOMContentLoaded', function () {
             if (revealEl) { revealEl.textContent = ''; revealEl.classList.remove('show'); }
             if (showBtn)  { showBtn.disabled = true; } /* re-disable: needs typing again to enable */
         });
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+        // Don't scroll in presentation mode
+        if (!window.PRESENTATION_MODE) {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
     });
 });
 </script>
