@@ -326,6 +326,71 @@ $cssVer = file_exists(__DIR__ . '/../multiple_choice/multiple_choice.css')
                   transition: filter .15s, transform .15s; }
 .wpvl-btn-show:hover  { filter: brightness(1.08); transform: translateY(-1px); }
 .wpvl-btn-show:disabled { opacity: .38; cursor: default; filter: none; transform: none; }
+
+/* ─────────────────── PRESENTATION MODE ──────────────────── */
+body.presentation-mode .wp-viewer-wrap,
+body.presentation-mode .wpvl-wrap,
+body.presentation-mode .mc-viewer {
+    max-width: 100% !important;
+    width: 100% !important;
+    height: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+}
+
+body.presentation-mode .wpvl-video-box {
+    margin-bottom: 10px !important;
+    max-height: 45% !important;
+    border-radius: 0 !important;
+}
+
+body.presentation-mode .wpvl-form {
+    flex: 1 !important;
+    overflow: hidden !important;
+    display: flex !important;
+    flex-direction: column !important;
+    max-height: 55% !important;
+}
+
+body.presentation-mode .wpvl-card {
+    flex: 1 !important;
+    overflow-y: auto !important;
+    padding: 20px 16px !important;
+}
+
+body.presentation-mode .wpvl-q-text {
+    font-size: clamp(22px, 2.5vw, 32px) !important;
+    margin-bottom: 16px !important;
+}
+
+body.presentation-mode .wpvl-controls {
+    flex-shrink: 0 !important;
+    padding: 12px 16px !important;
+    background: #f8fbff !important;
+    border-top: 1px solid #e5e7eb !important;
+}
+
+body.presentation-mode .dict-answer-box {
+    font-size: 16px !important;
+    min-height: 60px !important;
+    padding: 12px !important;
+}
+
+body.presentation-mode .mc-card {
+    padding: 0 !important;
+    flex: 1 !important;
+    overflow-y: auto !important;
+    background: #fff !important;
+}
+
+body.presentation-mode .mc-controls {
+    flex-shrink: 0 !important;
+    padding: 12px 16px !important;
+    background: #f8fbff !important;
+    border-top: 1px solid #e5e7eb !important;
+}
 </style>
 
 <?php if (empty($questions)): ?>

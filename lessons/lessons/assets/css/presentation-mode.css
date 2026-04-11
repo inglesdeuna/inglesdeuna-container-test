@@ -1,0 +1,399 @@
+/**
+ * PRESENTATION MODE - CSS
+ * Fullscreen optimization for classroom projectors and large displays
+ * Used when activities are displayed via teacher_presentation.php
+ */
+
+/* ═══════════════════════════════════════════════════════════════
+   CORE: Body and Layout
+═══════════════════════════════════════════════════════════════ */
+
+body.presentation-mode {
+    margin: 0;
+    padding: 0;
+    background: #000;
+    overflow: hidden !important;
+    height: 100vh;
+    width: 100vw;
+}
+
+body.presentation-mode {
+    scrollbar-width: none; /* Firefox */
+}
+
+body.presentation-mode::-webkit-scrollbar {
+    display: none; /* Chrome, Edge */
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Main Wrapper - fills viewport
+═══════════════════════════════════════════════════════════════ */
+
+body.presentation-mode .activity-wrapper {
+    max-width: 100%;
+    width: 100vw;
+    height: 100vh;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    background: #fff;
+}
+
+body.presentation-mode .top-row {
+    display: none !important;
+}
+
+body.presentation-mode .viewer-header {
+    display: none !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Content Container - provides flex structure
+═══════════════════════════════════════════════════════════════ */
+
+body.presentation-mode .viewer-content {
+    flex: 1;
+    border-radius: 0;
+    padding: 0;
+    margin: 0;
+    box-shadow: none;
+    border: none;
+    background: #fff;
+    overflow: hidden;
+    display: flex !important;
+    flex-direction: column !important;
+    width: 100%;
+    height: 100%;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Activity Viewers - stretch to fill
+═══════════════════════════════════════════════════════════════ */
+
+body.presentation-mode .viewer-content > :is(div, section) {
+    max-width: 100%;
+    width: 100%;
+}
+
+body.presentation-mode .viewer-content 
+:is(.mc-viewer, .dd-stage, .lo-stage, .vc-viewer, .dict-stage, 
+    .pron-stage, .match-stage, .flashcards-wrap, .qz-wrap, 
+    .flipbook-viewer, .ppt-viewer-shell, .ex-viewer, .wp-viewer-wrap) {
+    max-width: 100% !important;
+    width: 100% !important;
+    height: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+    border-radius: 0 !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Headers and Titles
+═══════════════════════════════════════════════════════════════ */
+
+body.presentation-mode .viewer-content 
+:is(.mc-intro, .dd-intro, .lo-intro, .vc-intro, .dict-intro, 
+    .pron-intro, .match-intro, .flashcards-intro, .flipbook-intro, 
+    .ex-intro, .ppt-intro) {
+    margin: 0 !important;
+    padding: 14px 18px !important;
+    flex-shrink: 0 !important;
+    background: linear-gradient(180deg, #f8fbff 0%, #ffffff 100%) !important;
+    border-bottom: 2px solid #e0e7ff !important;
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.06) !important;
+}
+
+body.presentation-mode .viewer-content 
+:is(.mc-intro h2, .dd-intro h2, .lo-intro h2, .vc-intro h2, 
+    .dict-intro h2, .pron-intro h2, .match-intro h2, 
+    .flashcards-intro h2, .flipbook-intro h2, .ex-intro h2, .ppt-intro h2) {
+    font-size: clamp(28px, 2.5vw, 44px) !important;
+    line-height: 1.1 !important;
+    margin: 0 !important;
+    font-family: 'Fredoka', 'Trebuchet MS', sans-serif !important;
+    font-weight: 700 !important;
+    text-align: center !important;
+    color: #5b21b6 !important;
+}
+
+body.presentation-mode .viewer-content :is(.ppt-slide-title) {
+    font-size: clamp(28px, 2.5vw, 44px) !important;
+    line-height: 1.1 !important;
+    text-align: center !important;
+    color: #5b21b6 !important;
+    font-family: 'Fredoka', 'Trebuchet MS', sans-serif !important;
+    font-weight: 700 !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Card / Content Area
+═══════════════════════════════════════════════════════════════ */
+
+body.presentation-mode .viewer-content 
+:is(.mc-card, #sentenceBox, .vc-panel, .flipbook-viewer__card) {
+    padding: 0 !important;
+    flex: 1 !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    background: #fff !important;
+    border-radius: 0 !important;
+}
+
+/* Scrollbar styling for content area */
+body.presentation-mode .viewer-content .mc-card::-webkit-scrollbar,
+body.presentation-mode .viewer-content #sentenceBox::-webkit-scrollbar {
+    width: 8px;
+}
+
+body.presentation-mode .viewer-content .mc-card::-webkit-scrollbar-track,
+body.presentation-mode .viewer-content #sentenceBox::-webkit-scrollbar-track {
+    background: #f0f0f0;
+}
+
+body.presentation-mode .viewer-content .mc-card::-webkit-scrollbar-thumb,
+body.presentation-mode .viewer-content #sentenceBox::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 4px;
+}
+
+body.presentation-mode .viewer-content .mc-card::-webkit-scrollbar-thumb:hover,
+body.presentation-mode .viewer-content #sentenceBox::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+}
+
+/* ═════════════════════════════════════════════════════════════  
+   Question and Content Text - Maximize Readability
+═════════════════════════════════════════════════════════════  */
+
+body.presentation-mode .viewer-content 
+:is(.mc-question, #promptText, .lo-prompt, .vc-question) {
+    font-size: clamp(24px, 2.8vw, 40px) !important;
+    line-height: 1.3 !important;
+    margin: 0 !important;
+    padding: 20px 24px !important;
+    text-align: center !important;
+    color: #0f172a !important;
+    font-weight: 600 !important;
+}
+
+/* ═════════════════════════════════════════════════════════════
+   Options/Answers Container
+═════════════════════════════════════════════════════════════ */
+
+body.presentation-mode .viewer-content 
+:is(.mc-options, .vc-options) {
+    max-height: none !important;
+    flex: 1 !important;
+    overflow-y: auto !important;
+    padding: 16px 20px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: center !important;
+    gap: 12px !important;
+}
+
+body.presentation-mode .viewer-content 
+:is(.mc-option, .vc-option) {
+    min-height: 70px !important;
+    font-size: clamp(18px, 2.2vw, 32px) !important;
+    padding: 18px 20px !important;
+    margin-bottom: 0 !important;
+    line-height: 1.4 !important;
+}
+
+/* ═════════════════════════════════════════════════════════════
+   Controls Footer - Remove scroll, align properly
+═════════════════════════════════════════════════════════════ */
+
+body.presentation-mode .viewer-content 
+:is(.mc-controls, .controls, .lo-controls, .vc-controls, 
+    .qz-actions, .ex-actions, .flipbook-toolbar__right) {
+    gap: 12px !important;
+    flex-shrink: 0 !important;
+    padding: 14px 18px !important;
+    background: linear-gradient(180deg, #f8fbff 0%, #ffffff 100%) !important;
+    border-top: 2px solid #e0e7ff !important;
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+    flex-wrap: wrap !important;
+    width: 100% !important;
+    margin-top: auto !important;
+}
+
+/* ═════════════════════════════════════════════════════════════
+   Buttons - Large, Visible, Accessible
+═════════════════════════════════════════════════════════════ */
+
+body.presentation-mode .viewer-content 
+:is(.mc-btn, .dd-btn, .lo-btn, .vc-btn, .action-btn, .qz-btn, 
+    .ppt-btn, .ex-btn, .flash-btn, .flipbook-btn, .dict-stage .btn, 
+    .pron-stage .btn) {
+    padding: 16px 22px !important;
+    min-width: 160px !important;
+    font-size: 16px !important;
+    font-weight: 800 !important;
+    border-radius: 10px !important;
+    flex: 0 1 auto !important;
+    max-width: 220px !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.5px !important;
+}
+
+body.presentation-mode .viewer-content 
+:is(.mc-btn:hover, .dd-btn:hover, .vc-btn:hover, .action-btn:hover) {
+    filter: brightness(1.08) !important;
+    transform: translateY(-2px) !important;
+}
+
+/* ═════════════════════════════════════════════════════════════
+   Navigation Button to Next Activity
+═════════════════════════════════════════════════════════════ */
+
+body.presentation-mode .pres-next-button {
+    background: linear-gradient(180deg, #22c55e 0%, #16a34a 100%) !important;
+    color: #fff !important;
+    border: none !important;
+    padding: 16px 28px !important;
+    font-size: 17px !important;
+    font-weight: 800 !important;
+    border-radius: 10px !important;
+    cursor: pointer !important;
+    min-width: 200px !important;
+    text-decoration: none !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 10px !important;
+    box-shadow: 0 8px 16px rgba(34, 197, 94, 0.3) !important;
+    transition: all 0.2s ease !important;
+}
+
+body.presentation-mode .pres-next-button:hover {
+    filter: brightness(1.08) !important;
+    transform: translateY(-2px) !important;
+    box-shadow: 0 12px 24px rgba(34, 197, 94, 0.4) !important;
+}
+
+body.presentation-mode .pres-next-button:active {
+    transform: translateY(0) !important;
+}
+
+/* ═════════════════════════════════════════════════════════════
+   Feedback Elements - Visible
+═════════════════════════════════════════════════════════════ */
+
+body.presentation-mode .mc-feedback {
+    font-size: 18px !important;
+    font-weight: 700 !important;
+    padding: 12px 16px !important;
+    margin: 10px 0 0 0 !important;
+}
+
+/* ═════════════════════════════════════════════════════════════
+   Completion Screen
+═════════════════════════════════════════════════════════════ */
+
+body.presentation-mode .completed-screen {
+    flex: 1 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: center !important;
+    align-items: center !important;
+    padding: 40px !important;
+    text-align: center !important;
+}
+
+body.presentation-mode .completed-icon {
+    font-size: 80px !important;
+    margin-bottom: 20px !important;
+}
+
+body.presentation-mode .completed-title {
+    font-size: clamp(28px, 2.5vw, 40px) !important;
+    margin-bottom: 12px !important;
+}
+
+body.presentation-mode .completed-text {
+    font-size: clamp(16px, 1.8vw, 24px) !important;
+    margin-bottom: 8px !important;
+}
+
+body.presentation-mode .completed-button {
+    font-size: 16px !important;
+    padding: 16px 32px !important;
+    margin-top: 16px !important;
+}
+
+/* ═════════════════════════════════════════════════════════════
+   Special Elements - Media, Videos, etc
+═════════════════════════════════════════════════════════════ */
+
+body.presentation-mode .wp-video-wrap,
+body.presentation-mode .wp-video-wrap-iframe {
+    max-height: 50vh !important;
+    margin-bottom: 10px !important;
+    border-radius: 0 !important;
+}
+
+body.presentation-mode .wp-video-wrap iframe,
+body.presentation-mode .wp-video-wrap video {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: contain !important;
+}
+
+body.presentation-mode img {
+    max-width: 90% !important;
+    max-height: 60vh !important;
+    object-fit: contain !important;
+}
+
+/* ═════════════════════════════════════════════════════════════
+   Fill-in Elements
+═════════════════════════════════════════════════════════════ */
+
+body.presentation-mode .wp-fill-input {
+    font-size: clamp(16px, 2vw, 24px) !important;
+    padding: 6px 12px !important;
+}
+
+body.presentation-mode .wp-fill-sentence-box,
+body.presentation-mode .wp-fill-paragraph-box {
+    font-size: clamp(18px, 2.2vw, 28px) !important;
+    padding: 20px 24px !important;
+    line-height: 2.8 !important;
+}
+
+/* ═════════════════════════════════════════════════════════════
+   Disable animations that cause jumping
+═════════════════════════════════════════════════════════════ */
+
+body.presentation-mode * {
+    animation-duration: 0.1ms !important;
+    animation-delay: -0.1ms !important;
+    transition-duration: 0.1ms !important;
+}
+
+html:focus-within body.presentation-mode * {
+    scroll-behavior: auto !important;
+}
+
+/* ═════════════════════════════════════════════════════════════
+   Ensure no horizontal scroll
+═════════════════════════════════════════════════════════════ */
+
+body.presentation-mode {
+    overflow-x: hidden !important;
+}
+
+body.presentation-mode .activity-wrapper,
+body.presentation-mode .viewer-content {
+    width: 100vw !important;
+    max-width: 100vw !important;
+    overflow: visible !important;
+}
