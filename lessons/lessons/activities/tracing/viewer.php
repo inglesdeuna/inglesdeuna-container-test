@@ -19,13 +19,21 @@ ob_start();
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@600;700;800&display=swap');
 
+/* ── No-scroll override ── */
+body { overflow: hidden !important; }
+
 /* ── Shell ── */
 .tracing-viewer-shell {
     max-width: 860px;
     margin: 0 auto;
     text-align: center;
     font-family: 'Nunito', 'Segoe UI', sans-serif;
-    padding: 0 8px 24px;
+    /* fill viewport minus body's top padding (~18px) + top-row (~52px) + body bottom padding (~24px) */
+    height: calc(100vh - 95px);
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    overflow: hidden;
 }
 
 .viewer-header { display: none !important; }
@@ -59,7 +67,13 @@ ob_start();
     border: 2px solid #e0f2fe;
     border-radius: 28px;
     box-shadow: 0 12px 36px rgba(14,165,233,.10);
-    padding: 20px 16px 22px;
+    padding: 10px 14px 12px;
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    overflow: hidden;
 }
 
 /* ── Counter badge ── */
@@ -74,7 +88,7 @@ ob_start();
     font-size: 15px;
     font-weight: 800;
     color: #1e40af;
-    margin-bottom: 16px;
+    flex-shrink: 0;
     letter-spacing: .02em;
 }
 .tracing-counter-dot {
@@ -86,29 +100,50 @@ ob_start();
 
 /* ── Canvas wrapper ── */
 .tracing-viewer-canvas-wrap {
+    flex: 1;
+    min-height: 0;
     display: flex;
     justify-content: center;
-    margin-bottom: 16px;
+    align-items: center;
 }
 .tracing-canvas-shell {
     width: min(100%, 700px);
-    padding: 10px;
+    height: 100%;
+    padding: 8px;
     background: linear-gradient(135deg, #f0f9ff, #f8fafc);
     border: 2px solid #bae6fd;
     border-radius: 22px;
     box-shadow: inset 0 2px 8px rgba(14,165,233,.08);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
 }
 .tracing-viewer-canvas {
     display: block;
-    width: 100%;
+    max-width: 100%;
+    max-height: 100%;
+    width: auto;
     height: auto;
-    max-width: 680px;
     border: 3px solid #7dd3fc;
     border-radius: 16px;
     background: #fff;
     touch-action: none;
-    cursor: crosshair;
+    cursor: none;
     box-shadow: 0 4px 18px rgba(14,165,233,.10);
+}
+
+/* ── Floating circle cursor ── */
+#tracingCursor {
+    position: fixed;
+    pointer-events: none;
+    border-radius: 50%;
+    border: 2px solid rgba(255,255,255,0.75);
+    box-shadow: 0 0 0 1.5px rgba(0,0,0,0.30);
+    transform: translate(-50%, -50%);
+    z-index: 9999;
+    display: none;
+    will-change: transform, left, top;
 }
 
 /* ── Toolbar (color + thickness) ── */
@@ -117,12 +152,12 @@ ob_start();
     flex-wrap: wrap;
     align-items: center;
     justify-content: center;
-    gap: 12px 20px;
-    margin-bottom: 18px;
+    gap: 8px 16px;
+    flex-shrink: 0;
     background: linear-gradient(135deg, #f0fdf4, #f0f9ff);
     border: 1.5px solid #bbf7d0;
-    border-radius: 20px;
-    padding: 14px 18px;
+    border-radius: 18px;
+    padding: 8px 14px;
 }
 .tracing-toolbar-label {
     font-size: 12px;
@@ -205,7 +240,7 @@ ob_start();
 .tracing-nav-row {
     display: flex;
     justify-content: center;
-    margin-top: 8px;
+    flex-shrink: 0;
 }
 .tracing-btn-next {
     padding: 14px 42px;
@@ -289,19 +324,16 @@ ob_start();
 
 /* ── Responsive ── */
 @media (max-width: 600px) {
-    .tracing-btn-next { font-size: 16px; padding: 13px 32px; min-width: 140px; }
-    .tracing-color-swatch { width: 32px; height: 32px; }
-    .tracing-toolbar { padding: 12px 10px; gap: 10px 14px; }
+    .tracing-viewer-shell { height: calc(100vh - 80px); }
+    .tracing-btn-next { font-size: 16px; padding: 11px 28px; min-width: 130px; }
+    .tracing-color-swatch { width: 30px; height: 30px; }
+    .tracing-toolbar { padding: 6px 10px; gap: 6px 10px; }
+    .tracing-toolbar-label { font-size: 11px; }
+    .tracing-size-btn .dot { transform: scale(0.85); }
 }
 </style>
 
 <div class="tracing-viewer-shell">
-    <!-- intro -->
-    <div class="tracing-intro">
-        <h2>✏️ <?= htmlspecialchars($activityTitle, ENT_QUOTES, 'UTF-8') ?></h2>
-        <p>Trace each image with your finger or mouse. Use the tools below to pick your pencil color and size!</p>
-    </div>
-
     <div class="tracing-stage">
 
         <!-- counter -->
@@ -309,6 +341,9 @@ ob_start();
             <span class="tracing-counter-dot"></span>
             <span id="counterText">— / —</span>
         </div>
+
+        <!-- floating cursor -->
+        <div id="tracingCursor"></div>
 
         <!-- canvas -->
         <div class="tracing-viewer-canvas-wrap" id="tracingCanvasArea">
@@ -384,6 +419,7 @@ ob_start();
     var completedEl = document.getElementById('tracingCompleted');
     var nextBtn     = document.getElementById('nextBtn');
     var restartBtn  = document.getElementById('restartBtn');
+    var cursorEl    = document.getElementById('tracingCursor');
 
     /* ── helpers ── */
     function getScaledPos(e, isTouch) {
@@ -456,12 +492,33 @@ ob_start();
         updateCanvas();
     });
 
+    /* ── circle cursor helpers ── */
+    function updateCursorStyle() {
+        var rect = canvas.getBoundingClientRect();
+        var scale = rect.width / canvas.width;
+        var d = Math.max(penSize * scale, 4);
+        cursorEl.style.width    = d + 'px';
+        cursorEl.style.height   = d + 'px';
+        cursorEl.style.background = penColor;
+        cursorEl.style.opacity  = '0.7';
+    }
+
+    canvas.addEventListener('mouseenter', function () {
+        updateCursorStyle();
+        cursorEl.style.display = 'block';
+    });
+    canvas.addEventListener('mouseleave', function () {
+        cursorEl.style.display = 'none';
+        drawing = false;
+    });
+
     /* ── color swatches ── */
     document.querySelectorAll('.tracing-color-swatch').forEach(function (btn) {
         btn.addEventListener('click', function () {
             document.querySelectorAll('.tracing-color-swatch').forEach(function (b) { b.classList.remove('active'); });
             btn.classList.add('active');
             penColor = btn.dataset.color;
+            updateCursorStyle();
         });
     });
 
@@ -471,7 +528,12 @@ ob_start();
             document.querySelectorAll('.tracing-size-btn').forEach(function (b) { b.classList.remove('active'); });
             btn.classList.add('active');
             penSize = parseInt(btn.dataset.size, 10);
+            updateCursorStyle();
         });
+    });
+
+    window.addEventListener('resize', function () {
+        if (cursorEl.style.display !== 'none') updateCursorStyle();
     });
 
     /* ── drawing: mouse ── */
@@ -483,8 +545,10 @@ ob_start();
         ctx.moveTo(lastX, lastY);
     });
     canvas.addEventListener('mouseup',  function () { drawing = false; });
-    canvas.addEventListener('mouseleave', function () { drawing = false; });
     canvas.addEventListener('mousemove', function (e) {
+        /* move floating cursor */
+        cursorEl.style.left = e.clientX + 'px';
+        cursorEl.style.top  = e.clientY + 'px';
         if (!drawing) return;
         var pos = getScaledPos(e, false);
         stroke(pos.x, pos.y);
