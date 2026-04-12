@@ -17,6 +17,127 @@ $activityTitle = isset($activity['title']) ? (string) $activity['title'] : defau
 ob_start();
 ?>
 <style>
+
+@import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@600;700;800&display=swap');
+
+body { overflow: hidden !important; }
+
+.tracing-viewer-shell {
+    max-width: 920px;
+    margin: 0 auto;
+
+    height: calc(100vh - 90px);
+    display: flex;
+    flex-direction: column;
+
+.viewer-header { display: none !important; }
+
+.tracing-stage {
+    flex: 1;
+    min-height: 0;
+
+    background: #fff;
+    border: 2px solid #bae6fd;
+    border-radius: 24px;
+
+    padding: 12px;
+    overflow: hidden;
+}
+
+.tracing-counter {
+    display: inline-flex;
+    align-items: center;
+
+    justify-content: center;
+    gap: 6px;
+    align-self: center;
+
+    background: linear-gradient(135deg, #e0f2fe, #bfdbfe);
+    border: 1.5px solid #7dd3fc;
+    border-radius: 999px;
+
+    padding: 6px 16px;
+    font-size: 15px;
+    font-weight: 800;
+
+    color: #1d4ed8;
+    flex-shrink: 0;
+}
+
+.tracing-counter-dot {
+    width: 8px;
+    height: 8px;
+
+    border-radius: 50%;
+    background: #0ea5e9;
+    display: inline-block;
+
+.tracing-canvas-wrap {
+    flex: 1;
+    min-height: 0;
+
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+.tracing-canvas-shell {
+    width: min(100%, 760px);
+    height: 100%;
+
+    padding: 10px;
+    background: linear-gradient(180deg, #f0f9ff 0%, #ffffff 100%);
+    border: 2px solid #bae6fd;
+
+    border-radius: 20px;
+    box-shadow: inset 0 2px 8px rgba(14, 165, 233, .08);
+    display: flex;
+
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
+
+.tracing-canvas {
+    display: block;
+    max-width: 100%;
+
+    max-height: 100%;
+    width: auto;
+    height: auto;
+
+    background: #fff;
+    border: 3px solid #38bdf8;
+    border-radius: 16px;
+
+    box-shadow: 0 4px 18px rgba(14, 165, 233, .10);
+    touch-action: none;
+    cursor: none;
+
+}
+
+/* Additional styles and content continue here... */
+
+/* JavaScript functionality continues here... */
+
+render_activity_viewer($activityTitle, '✏️', $content);
+<?php
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
+require_once __DIR__ . '/../../config/db.php';
+require_once __DIR__ . '/tracing_functions.php';
+require_once __DIR__ . '/../../core/_activity_viewer_template.php';
+
+$activityId = isset($_GET['id']) ? trim((string) $_GET['id']) : '';
+$unit = isset($_GET['unit']) ? trim((string) $_GET['unit']) : '';
+
+$activity = load_tracing_activity($pdo, $unit, $activityId);
+$images = isset($activity['images']) && is_array($activity['images']) ? $activity['images'] : array();
+$activityTitle = isset($activity['title']) ? (string) $activity['title'] : default_tracing_title();
+
+ob_start();
+?>
+<style>
 @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@600;700;800&display=swap');
 
 /* ── No-scroll override ── */
