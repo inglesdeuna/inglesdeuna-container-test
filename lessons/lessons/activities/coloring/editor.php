@@ -114,7 +114,7 @@ ob_start();
     <div class="palette-preview-box">
         <p class="palette-preview-title">Auto generated crayon palette</p>
         <div class="palette-swatches" id="palettePreview"></div>
-        <p class="palette-preview-note">Primary and secondary colors are generated automatically to guide children while coloring.</p>
+        <p class="palette-preview-note">A brighter crayon palette is generated automatically so children can choose from more playful colors while coloring.</p>
     </div>
     <div class="coloring-add-box">
         <input type="file" id="imageUploadInput" name="image_file[]" accept="image/*" multiple>
@@ -169,11 +169,15 @@ function getCrayonPalette() {
         { name: 'Orange', value: '#f97316' },
         { name: 'Yellow', value: '#eab308' },
         { name: 'Green', value: '#22c55e' },
+        { name: 'Teal', value: '#14b8a6' },
         { name: 'Blue', value: '#3b82f6' },
         { name: 'Purple', value: '#8b5cf6' },
         { name: 'Pink', value: '#ec4899' },
+        { name: 'Rose', value: '#fb7185' },
+        { name: 'Lime', value: '#a3e635' },
         { name: 'Brown', value: '#92400e' },
-        { name: 'Black', value: '#111827' }
+        { name: 'Black', value: '#111827' },
+        { name: 'White', value: '#ffffff' }
     ];
 }
 function renderPalettePreview() {

@@ -44,12 +44,34 @@ body {
     display: flex;
     flex-direction: column;
     gap: 10px;
-    background: #fff;
-    border: 2px solid #bae6fd;
+    background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+    border: 2px solid #bfdbfe;
     border-radius: 24px;
-    box-shadow: 0 12px 36px rgba(14, 165, 233, .10);
+    box-shadow: 0 12px 36px rgba(59, 130, 246, .10);
     padding: 12px;
     overflow: hidden;
+}
+
+.tracing-intro {
+    flex-shrink: 0;
+    background: linear-gradient(135deg, #fef3c7 0%, #dbeafe 55%, #dcfce7 100%);
+    border: 2px solid #93c5fd;
+    border-radius: 20px;
+    padding: 10px 14px;
+}
+
+.tracing-intro h2 {
+    margin: 0 0 4px;
+    font-family: 'Fredoka', 'Trebuchet MS', sans-serif;
+    font-size: clamp(22px, 2.7vw, 30px);
+    color: #1d4ed8;
+}
+
+.tracing-intro p {
+    margin: 0;
+    color: #475569;
+    font-size: 14px;
+    font-weight: 700;
 }
 
 .tracing-counter {
@@ -128,10 +150,10 @@ body {
     display: flex;
     justify-content: center;
     align-items: center;
-    gap: 12px;
+    gap: 18px;
     flex-wrap: wrap;
     flex-shrink: 0;
-    padding: 10px 14px;
+    padding: 12px 14px;
     border: 1px solid #dbeafe;
     border-radius: 18px;
     background: linear-gradient(135deg, #eff6ff, #f8fafc);
@@ -145,10 +167,29 @@ body {
     letter-spacing: .05em;
 }
 
+
+.tracing-color-group,
 .tracing-size-group {
     display: flex;
     align-items: center;
     gap: 8px;
+}
+
+.tracing-color-swatch {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: 3px solid transparent;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0,0,0,.14);
+    transition: transform .15s ease, box-shadow .15s ease;
+}
+
+.tracing-color-swatch.active,
+.tracing-color-swatch:hover {
+    transform: scale(1.14);
+    border-color: #fff;
+    box-shadow: 0 0 0 3px #2563eb, 0 4px 12px rgba(0,0,0,.16);
 }
 
 .tracing-size-btn {
@@ -191,10 +232,6 @@ body {
     font-family: 'Fredoka', 'Nunito', sans-serif;
     color: #fff;
     cursor: pointer;
-}
-
-.tracing-btn-reset {
-    background: linear-gradient(135deg, #f59e0b, #d97706);
 }
 
 .tracing-btn-next {
@@ -241,6 +278,11 @@ body {
 
 <div class="tracing-viewer-shell">
     <div class="tracing-stage">
+        <div class="tracing-intro">
+            <h2>Trace and Practice</h2>
+            <p>Choose a color, pick a pencil size, and trace each page in order.</p>
+        </div>
+
         <div class="tracing-counter" id="tracingCounter">
             <span class="tracing-counter-dot"></span>
             <span id="counterText">- / -</span>
@@ -253,6 +295,15 @@ body {
         </div>
 
         <div class="tracing-toolbar" id="tracingToolbar">
+            <span class="tracing-toolbar-label">Pencil Color</span>
+            <div class="tracing-color-group">
+                <button type="button" class="tracing-color-swatch active" data-color="#2563eb" style="background:#2563eb;" aria-label="Blue pencil"></button>
+                <button type="button" class="tracing-color-swatch" data-color="#ef4444" style="background:#ef4444;" aria-label="Red pencil"></button>
+                <button type="button" class="tracing-color-swatch" data-color="#f59e0b" style="background:#f59e0b;" aria-label="Orange pencil"></button>
+                <button type="button" class="tracing-color-swatch" data-color="#22c55e" style="background:#22c55e;" aria-label="Green pencil"></button>
+                <button type="button" class="tracing-color-swatch" data-color="#a855f7" style="background:#a855f7;" aria-label="Purple pencil"></button>
+                <button type="button" class="tracing-color-swatch" data-color="#ec4899" style="background:#ec4899;" aria-label="Pink pencil"></button>
+            </div>
             <span class="tracing-toolbar-label">Pencil Size</span>
             <div class="tracing-size-group">
                 <button type="button" class="tracing-size-btn" data-size="4" aria-label="Thin pencil"><span class="dot" style="width:4px;height:4px;"></span></button>
@@ -262,7 +313,6 @@ body {
         </div>
 
         <div class="tracing-actions" id="tracingActions">
-            <button type="button" class="tracing-btn tracing-btn-reset" id="resetBtn">Reset</button>
             <button type="button" class="tracing-btn tracing-btn-next" id="nextBtn">Next</button>
         </div>
 
@@ -287,17 +337,12 @@ body {
     var ctx = canvas.getContext('2d');
     var counterText = document.getElementById('counterText');
     var nextBtn = document.getElementById('nextBtn');
-    var resetBtn = document.getElementById('resetBtn');
     var restartBtn = document.getElementById('restartBtn');
     var counterEl = document.getElementById('tracingCounter');
     var wrapEl = document.getElementById('tracingCanvasWrap');
     var toolbarEl = document.getElementById('tracingToolbar');
     var actionsEl = document.getElementById('tracingActions');
     var completedEl = document.getElementById('tracingCompleted');
-
-    var cursorEl = document.createElement('div');
-    cursorEl.id = 'tracingCursor';
-    document.body.appendChild(cursorEl);
 
     function getScaledPos(e, isTouch) {
         var rect = canvas.getBoundingClientRect();
@@ -309,14 +354,6 @@ body {
             x: (clientX - rect.left) * scaleX,
             y: (clientY - rect.top) * scaleY
         };
-    }
-
-    function updateCursorStyle() {
-        var rect = canvas.getBoundingClientRect();
-        var scale = rect.width / canvas.width;
-        var d = Math.max(penSize * scale, 4);
-        cursorEl.style.width = d + 'px';
-        cursorEl.style.height = d + 'px';
     }
 
     function drawGuide(url) {
@@ -369,12 +406,15 @@ body {
             document.querySelectorAll('.tracing-size-btn').forEach(function (b) { b.classList.remove('active'); });
             btn.classList.add('active');
             penSize = parseInt(btn.dataset.size, 10) || 8;
-            updateCursorStyle();
         });
     });
 
-    resetBtn.addEventListener('click', function () {
-        renderCurrentPage();
+    document.querySelectorAll('.tracing-color-swatch').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            document.querySelectorAll('.tracing-color-swatch').forEach(function (b) { b.classList.remove('active'); });
+            btn.classList.add('active');
+            penColor = btn.dataset.color || '#2563eb';
+        });
     });
 
     nextBtn.addEventListener('click', function () {
@@ -393,16 +433,6 @@ body {
         currentIdx = 0;
         showTracing();
         renderCurrentPage();
-    });
-
-    canvas.addEventListener('mouseenter', function () {
-        updateCursorStyle();
-        cursorEl.style.display = 'block';
-    });
-
-    canvas.addEventListener('mouseleave', function () {
-        cursorEl.style.display = 'none';
-        drawing = false;
     });
 
     function stroke(x, y) {
@@ -428,8 +458,6 @@ body {
     });
 
     canvas.addEventListener('mousemove', function (e) {
-        cursorEl.style.left = e.clientX + 'px';
-        cursorEl.style.top = e.clientY + 'px';
         if (!drawing) {
             return;
         }
@@ -463,12 +491,6 @@ body {
         var pos = getScaledPos(e, true);
         stroke(pos.x, pos.y);
     }, { passive: false });
-
-    window.addEventListener('resize', function () {
-        if (cursorEl.style.display !== 'none') {
-            updateCursorStyle();
-        }
-    });
 
     renderCurrentPage();
 }());
