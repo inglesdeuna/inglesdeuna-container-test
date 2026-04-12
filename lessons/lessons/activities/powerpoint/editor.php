@@ -242,7 +242,7 @@ function normalize_powerpoint_payload($rawData): array
                 'title_align'    => in_array($slide['title_align'] ?? '', $allowedAlign, true) ? $slide['title_align'] : 'center',
                 'bold'           => !empty($slide['bold']),
                 'italic'         => !empty($slide['italic']),
-                'image'          => normalize_data_blob((string) ($slide['image'] ?? ''), 8 * 1024 * 1024),
+                'image'          => normalize_data_blob((string) ($slide['image'] ?? ''), 12 * 1024 * 1024),
                 'image_size'     => $imageSize,
                 'image_position' => in_array($slide['image_position'] ?? '', $allowedImgPos, true) ? $slide['image_position'] : 'right',
                 'music'          => normalize_data_blob((string) ($slide['music'] ?? ''), 18 * 1024 * 1024),
@@ -660,6 +660,29 @@ function fileToDataUrl(f) {
   });
 }
 
+/* ─── image file → compressed data URL (max 1400px, JPEG 88%) ─── */
+function compressImageFile(f) {
+  return new Promise((res, rej) => {
+    const url = URL.createObjectURL(f);
+    const img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const MAX = 1400;
+      let w = img.naturalWidth, h = img.naturalHeight;
+      if (w > MAX || h > MAX) {
+        if (w >= h) { h = Math.round(h * MAX / w); w = MAX; }
+        else        { w = Math.round(w * MAX / h); h = MAX; }
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      res(canvas.toDataURL('image/jpeg', 0.88));
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); rej(new Error('load error')); };
+    img.src = url;
+  });
+}
+
 /* ─── Swatch HTML ─── */
 function swatchesHtml(presets, fieldKey, currentVal) {
   return presets.map(c =>
@@ -968,7 +991,7 @@ function bindSlideCardEvents(cardBody, sidx) {
     if (!f) return;
     if (!f.type.startsWith('image/')) { alert('El archivo no es una imagen válida.'); imageInput.value=''; return; }
     try {
-      slidesState[sidx].image = await fileToDataUrl(f);
+      slidesState[sidx].image = await compressImageFile(f);
       const prevDiv = cardBody.querySelector('[data-imgpreview]');
       if (prevDiv) prevDiv.innerHTML = '<img class="ppt-preview-image" src="'+slidesState[sidx].image+'" alt="imagen"><button type="button" class="ppt-btn ppt-btn-light ppt-btn-sm" data-action="clear-image">✕ Quitar</button>';
       refreshPreview(cardBody, sidx);
