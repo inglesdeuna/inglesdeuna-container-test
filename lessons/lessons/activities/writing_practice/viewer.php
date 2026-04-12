@@ -294,12 +294,7 @@ $cssVer = file_exists(__DIR__ . '/../multiple_choice/multiple_choice.css')
 .wp-fill-input.bad { border-bottom-color: #ef4444; background: rgba(239,68,68,.07);   color: #dc2626; }
 
 /* ── Video Layout mode ───────────────────────────────────── */
-.wpvl-wrap        { max-width: 860px; margin: 0 auto; font-family: 'Nunito','Segoe UI',sans-serif; }
-.wpvl-video-box   { position: relative; width: 100%; border-radius: 16px; overflow: hidden;
-                    background: #000; margin-bottom: 20px; box-shadow: 0 12px 28px rgba(15,23,42,.14); }
-.wpvl-video-box.is-iframe { aspect-ratio: 16 / 9; }
-.wpvl-video-box.is-iframe iframe  { position: absolute; top:0; left:0; width:100%; height:100%; border:none; }
-.wpvl-video-box video { display: block; width: 100%; max-height: 480px; border-radius: 16px; }
+.wpvl-wrap        { max-width: 1200px; margin: 0 auto; font-family: 'Nunito','Segoe UI',sans-serif; }
 .wpvl-qs          { display: flex; flex-direction: column; gap: 14px; margin-bottom: 18px; }
 .wpvl-card        { background: #fff; border: 1px solid #e9d5ff; border-radius: 14px;
                     padding: 16px 18px; box-shadow: 0 6px 16px rgba(15,23,42,.05); position: relative; overflow: hidden; }
@@ -329,7 +324,6 @@ $cssVer = file_exists(__DIR__ . '/../multiple_choice/multiple_choice.css')
 
 /* ─────────────────── PRESENTATION MODE ──────────────────── */
 body.presentation-mode .wp-viewer-wrap,
-body.presentation-mode .wpvl-wrap,
 body.presentation-mode .mc-viewer {
     max-width: 100% !important;
     width: 100% !important;
@@ -340,24 +334,10 @@ body.presentation-mode .mc-viewer {
     flex-direction: column !important;
 }
 
-body.presentation-mode .wpvl-video-box {
-    margin-bottom: 10px !important;
-    max-height: 45% !important;
-    border-radius: 0 !important;
-}
-
-body.presentation-mode .wpvl-form {
-    flex: 1 !important;
-    overflow: hidden !important;
-    display: flex !important;
-    flex-direction: column !important;
-    max-height: 55% !important;
-}
-
-body.presentation-mode .wpvl-card {
-    flex: 1 !important;
-    overflow-y: auto !important;
-    padding: 20px 16px !important;
+/* Video-writing two-column in presentation mode handled by video-two-col.css */
+body.presentation-mode .wpvl-wrap.vtc-layout {
+    max-width: 100% !important;
+    margin: 0 !important;
 }
 
 body.presentation-mode .wpvl-q-text {
@@ -365,17 +345,17 @@ body.presentation-mode .wpvl-q-text {
     margin-bottom: 16px !important;
 }
 
-body.presentation-mode .wpvl-controls {
+body.presentation-mode .wpvl-answer {
+    font-size: 16px !important;
+    min-height: 60px !important;
+    padding: 12px !important;
+}
+
+body.presentation-mode .vtc-content-col .wpvl-controls {
     flex-shrink: 0 !important;
     padding: 12px 16px !important;
     background: #f8fbff !important;
     border-top: 1px solid #e5e7eb !important;
-}
-
-body.presentation-mode .dict-answer-box {
-    font-size: 16px !important;
-    min-height: 60px !important;
-    padding: 12px !important;
 }
 
 body.presentation-mode .mc-card {
@@ -400,9 +380,10 @@ body.presentation-mode .mc-controls {
 <!-- ═══════ VIDEO LAYOUT MODE ═══════ -->
 <link rel="stylesheet" href="../multiple_choice/multiple_choice.css?v=<?= urlencode($cssVer) ?>">
 
-<div class="wpvl-wrap" id="wpvlWrap">
+<div class="wpvl-wrap vtc-layout" id="wpvlWrap">
 
-    <!-- ── video (fixed at top) ── -->
+    <!-- ── LEFT: video ── -->
+    <div class="vtc-video-col">
     <?php
     $isCloudinaryOrMp4 = $videoMediaUrl !== '' && (
         preg_match('/\.(mp4|webm|ogg)(\?|$)/i', $videoMediaUrl) ||
@@ -418,20 +399,22 @@ body.presentation-mode .mc-controls {
     ?>
 
     <?php if ($isCloudinaryOrMp4 && $videoMediaUrl !== ''): ?>
-        <div class="wpvl-video-box">
+        <div class="vtc-video-box">
             <video controls preload="metadata">
                 <source src="<?= htmlspecialchars($videoMediaUrl, ENT_QUOTES, 'UTF-8') ?>">
             </video>
         </div>
     <?php elseif ($videoMediaUrl !== ''): ?>
-        <div class="wpvl-video-box is-iframe">
+        <div class="vtc-video-box is-iframe">
             <iframe src="<?= htmlspecialchars($embedUrl, ENT_QUOTES, 'UTF-8') ?>"
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                     allowfullscreen loading="lazy"></iframe>
         </div>
     <?php endif; ?>
+    </div><!-- /.vtc-video-col -->
 
-    <!-- ── questions ── -->
+    <!-- ── RIGHT: questions + controls ── -->
+    <div class="vtc-content-col">
     <div class="wpvl-qs" id="wpvlQs">
         <?php foreach ($questions as $i => $q): ?>
             <?php $qText = htmlspecialchars((string)($q['question'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>
@@ -471,7 +454,8 @@ body.presentation-mode .mc-controls {
         <p class="completed-text" id="wpvlOpenNote" style="display:none;color:#7c3aed;font-size:14px;"></p>
         <button type="button" class="completed-button" id="wpvlRestart">Restart</button>
     </div>
-</div>
+    </div><!-- /.vtc-content-col -->
+</div><!-- /.wpvl-wrap vtc-layout -->
 
 <script>
 window.WP_DATA        = <?= json_encode(array_values($questions), JSON_UNESCAPED_UNICODE) ?>;

@@ -1,0 +1,141 @@
+/* ═══════════════════════════════════════════════════════════
+   VIDEO TWO-COLUMN LAYOUT — reusable classroom/projector grid
+   ───────────────────────────────────────────────────────────
+   Usage: add these classes to your wrapper and columns —
+     .vtc-layout       → the grid wrapper
+     .vtc-video-col    → left column (video player)
+     .vtc-content-col  → right column (questions / interaction)
+     .vtc-video-box    → video container (add .is-iframe for iframes)
+   ═══════════════════════════════════════════════════════════ */
+
+/* ── Root container ─────────────────────────────────────── */
+.vtc-layout {
+    display: grid;
+    grid-template-columns: 55fr 45fr;
+    gap: 18px;
+    align-items: start;
+    width: 100%;
+}
+
+/* ── Left: sticky video column ──────────────────────────── */
+.vtc-video-col {
+    position: sticky;
+    top: 16px;
+    min-width: 0;
+}
+
+/* ── Right: independently scrollable content column ──────── */
+.vtc-content-col {
+    min-width: 0;
+    max-height: calc(100vh - 140px);
+    overflow-y: auto;
+    overflow-x: hidden;
+    scrollbar-width: thin;
+    scrollbar-color: #c4b5fd #f5f3ff;
+}
+
+.vtc-content-col::-webkit-scrollbar { width: 6px; }
+.vtc-content-col::-webkit-scrollbar-track { background: #f5f3ff; border-radius: 3px; }
+.vtc-content-col::-webkit-scrollbar-thumb { background: #c4b5fd; border-radius: 3px; }
+
+/* ── Video container ────────────────────────────────────── */
+.vtc-video-box {
+    width: 100%;
+    border-radius: 16px;
+    overflow: hidden;
+    background: #000;
+    box-shadow: 0 12px 28px rgba(15, 23, 42, .16);
+}
+
+/* 16:9 iframe wrapper */
+.vtc-video-box.is-iframe {
+    position: relative;
+    aspect-ratio: 16 / 9;
+}
+
+.vtc-video-box.is-iframe iframe {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    border: none;
+}
+
+/* HTML5 <video> element */
+.vtc-video-box video {
+    display: block;
+    width: 100%;
+    border-radius: 16px;
+}
+
+/* ── Tablet / mobile: stack vertically ──────────────────── */
+@media (max-width: 860px) {
+    .vtc-layout {
+        grid-template-columns: 1fr;
+        gap: 14px;
+    }
+
+    .vtc-video-col {
+        position: relative;
+        top: auto;
+    }
+
+    .vtc-content-col {
+        max-height: none;
+        overflow-y: visible;
+    }
+}
+
+/* ── Presentation mode overrides ────────────────────────── */
+body.presentation-mode .vtc-layout {
+    gap: 0 !important;
+    grid-template-columns: 58fr 42fr !important;
+    align-items: stretch !important;
+    /* flex: 1 lets the grid grow inside the template's flex-column viewer-content */
+    flex: 1 !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+}
+
+body.presentation-mode .vtc-video-col {
+    position: relative !important;
+    top: auto !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    overflow: hidden !important;
+}
+
+body.presentation-mode .vtc-video-box {
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    flex: 1 !important;
+    width: 100% !important;
+    height: 100% !important;
+}
+
+body.presentation-mode .vtc-video-box.is-iframe {
+    aspect-ratio: auto !important;
+    position: relative !important;
+}
+
+body.presentation-mode .vtc-video-box.is-iframe iframe {
+    position: absolute !important;
+    width: 100% !important;
+    height: 100% !important;
+}
+
+body.presentation-mode .vtc-video-box video {
+    width: 100% !important;
+    height: 100% !important;
+    max-height: 100% !important;
+    object-fit: contain !important;
+    border-radius: 0 !important;
+}
+
+body.presentation-mode .vtc-content-col {
+    max-height: 100% !important;
+    height: 100% !important;
+    overflow-y: auto !important;
+    border-radius: 0 !important;
+    border-left: 1px solid rgba(255,255,255,.1) !important;
+}

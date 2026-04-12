@@ -145,8 +145,9 @@ ob_start();
 .vc-intro{margin-bottom:16px;padding:24px 26px;border-radius:26px;border:1px solid #dbeafe;background:linear-gradient(135deg,#eff6ff 0%,#f5f3ff 45%,#fff7ed 100%);box-shadow:0 16px 34px rgba(15,23,42,.08)}
 .vc-intro h2{margin:0 0 8px;color:#1d4ed8;font-family:'Fredoka','Trebuchet MS',sans-serif;font-size:30px;line-height:1.1}
 .vc-intro p{margin:0;color:#475569;font-size:15px;line-height:1.55}
-.vc-layout{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(340px,.9fr);gap:16px;align-items:stretch}
+.vc-layout{gap:16px}
 .vc-panel{background:#fff;border:1px solid #dbeafe;border-radius:22px;box-shadow:0 12px 26px rgba(15,23,42,.08);overflow:hidden}
+.vc-panel.vtc-content-col{overflow-y:auto;overflow-x:hidden}
 .vc-video-only{background:#fff;border:1px solid #dbeafe;border-radius:22px;box-shadow:0 12px 26px rgba(15,23,42,.08);overflow:hidden}
 .vc-video-wrap{padding:16px;background:linear-gradient(180deg,#ffffff 0%,#f8fbff 100%)}
 .vc-video{width:100%;aspect-ratio:16/9;border:none;border-radius:14px;background:#000}
@@ -182,7 +183,7 @@ ob_start();
 .completed-text{font-size:16px;color:#475569;line-height:1.6;margin:0 0 32px}
 .completed-button{display:inline-block;padding:12px 24px;border:none;border-radius:999px;background:linear-gradient(180deg,#3b82f6,#1d4ed8);color:#fff;font-weight:700;font-size:16px;cursor:pointer;box-shadow:0 10px 24px rgba(0,0,0,.14);transition:transform .18s ease,filter .18s ease}
 .completed-button:hover{transform:scale(1.05);filter:brightness(1.07)}
-@media (max-width:1040px){.vc-layout{grid-template-columns:1fr}.vc-intro{padding:20px 18px}.vc-intro h2{font-size:26px}.vc-question{font-size:18px}}
+@media (max-width:860px){.vc-intro{padding:20px 18px}.vc-intro h2{font-size:26px}.vc-question{font-size:18px}}
 </style>
 
 <div class="vc-viewer" id="vc-app">
@@ -230,27 +231,27 @@ ob_start();
     <?php } ?>
 
     <?php if ($isEmptyQuiz) { ?>
-        <div class="vc-layout">
-            <section class="vc-panel">
+        <div class="vtc-layout vc-layout">
+            <section class="vc-panel vtc-video-col">
                 <div class="vc-video-wrap">
                     <iframe class="vc-video" src="<?= htmlspecialchars($iframeUrl, ENT_QUOTES, 'UTF-8') ?>" title="Video comprehension" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>
                 </div>
             </section>
-            <section class="vc-panel">
+            <section class="vc-panel vtc-content-col">
                 <div class="vc-empty">No questions configured yet.</div>
             </section>
         </div>
     <?php } ?>
 
     <?php if ($hasQuiz) { ?>
-        <div class="vc-layout vc-activity" id="vc-activity">
-            <section class="vc-panel">
+        <div class="vtc-layout vc-layout vc-activity" id="vc-activity">
+            <section class="vc-panel vtc-video-col">
                 <div class="vc-video-wrap">
                     <iframe class="vc-video" src="<?= htmlspecialchars($iframeUrl, ENT_QUOTES, 'UTF-8') ?>" title="Video comprehension" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>
                 </div>
             </section>
 
-            <section class="vc-panel">
+            <section class="vc-panel vtc-content-col">
                 <div class="vc-panel-header"><strong>Comprehension Questions</strong></div>
 
                 <div id="vc-quizShell">
