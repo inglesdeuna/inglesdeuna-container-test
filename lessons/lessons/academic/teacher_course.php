@@ -655,6 +655,8 @@ $activities = array_values(array_filter($activities, function ($act) use (&$work
 }));
 // -------------------------------------------------------------------------
 
+$topWorksheetDownloadUrl = !empty($worksheets) ? (string) ($worksheets[0]['serve_url'] ?? '') : '';
+
 $mix = activity_mix($activities);
 
 $quizTotalRaw = isset($_GET['activity_total'])
@@ -1056,6 +1058,16 @@ body{font-family:Arial,sans-serif;background:var(--bg);color:var(--text);overflo
   color:#fff;
 }
 
+.side-doc-actions{
+  display:flex;
+  gap:8px;
+}
+
+.side-doc-actions .side-btn{
+  flex:1;
+  margin-bottom:0;
+}
+
 .content{display:flex;flex-direction:column;gap:12px;min-width:0;min-height:0;height:100%;overflow:auto}
 
 .hero-card,
@@ -1180,7 +1192,12 @@ body{font-family:Arial,sans-serif;background:var(--bg);color:var(--text);overflo
   justify-content:space-between;
   gap:12px;
   padding-top:10px;
+  padding-bottom:4px;
   flex:0 0 auto;
+  position:sticky;
+  bottom:0;
+  background:linear-gradient(180deg, rgba(255,255,255,0) 0%, var(--card) 14%, var(--card) 100%);
+  z-index:3;
 }
 
 .step-counter{
@@ -1402,13 +1419,24 @@ body{font-family:Arial,sans-serif;background:var(--bg);color:var(--text);overflo
     </div>
     <?php endif; ?>
 
-    <?php if ($selectedUnitId !== ''): ?>
-    <a class="side-btn"
-       style="background:linear-gradient(180deg,#0ea5e9,#0284c7);"
-       href="unit_pdf.php?unit=<?php echo urlencode($selectedUnitId); ?>&assignment=<?php echo urlencode($assignmentId); ?>"
-       target="_blank"
-       rel="noopener noreferrer">📄 Export PDF</a>
-    <?php endif; ?>
+     <?php if ($selectedUnitId !== '' || $topWorksheetDownloadUrl !== ''): ?>
+     <div class="side-doc-actions">
+      <?php if ($topWorksheetDownloadUrl !== ''): ?>
+      <a class="side-btn"
+        style="background:linear-gradient(180deg,#84cc16,#65a30d);"
+        href="<?php echo h($topWorksheetDownloadUrl); ?>"
+        download="worksheet.pdf">⬇ Download</a>
+      <?php endif; ?>
+
+      <?php if ($selectedUnitId !== ''): ?>
+      <a class="side-btn"
+        style="background:linear-gradient(180deg,#0ea5e9,#0284c7);"
+        href="unit_pdf.php?unit=<?php echo urlencode($selectedUnitId); ?>&assignment=<?php echo urlencode($assignmentId); ?>"
+        target="_blank"
+        rel="noopener noreferrer">📄 Export PDF</a>
+      <?php endif; ?>
+     </div>
+     <?php endif; ?>
 
     <a class="side-btn red" href="/lessons/lessons/academic/logout.php">🚪 Sign out</a>
   </nav>

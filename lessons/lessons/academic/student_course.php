@@ -610,6 +610,8 @@ $activities = array_values(array_filter($activities, function ($act) use (&$work
 }));
 // -------------------------------------------------------------------------
 
+$topWorksheetDownloadUrl = !empty($worksheets) ? (string) ($worksheets[0]['serve_url'] ?? '') : '';
+
 $total = count($activities);
 
 $quizStepIndex = null;
@@ -729,9 +731,16 @@ body{margin:0;font-family:'Nunito','Segoe UI',sans-serif;background:linear-gradi
     max-width:1280px;
     margin:0 auto;
     display:grid;
-    grid-template-columns:180px 1fr 180px;
+    grid-template-columns:180px 1fr 320px;
     align-items:center;
     gap:12px;
+}
+.top-actions{
+    display:flex;
+    align-items:center;
+    justify-content:flex-end;
+    gap:8px;
+    min-width:0;
 }
 .top-btn{
     display:inline-flex;align-items:center;justify-content:center;
@@ -751,6 +760,9 @@ body{margin:0;font-family:'Nunito','Segoe UI',sans-serif;background:linear-gradi
 .viewer-shell{
     background:var(--card);border:1px solid var(--line);
     border-radius:22px;box-shadow:var(--shadow);padding:18px;
+    display:flex;
+    flex-direction:column;
+    min-height:0;
 }
 .viewer-top{
     display:flex;align-items:center;justify-content:space-between;
@@ -773,12 +785,17 @@ body{margin:0;font-family:'Nunito','Segoe UI',sans-serif;background:linear-gradi
     border-radius:14px;overflow:hidden;background:#fff;
     border:1px solid var(--line);box-shadow:var(--shadow-sm);
     min-height:300px;
+    flex:1 1 auto;
 }
-.frame-wrap iframe{display:block;width:100%;height:calc(100vh - 290px);min-height:300px;border:0;background:#fff}
+.frame-wrap iframe{display:block;width:100%;height:clamp(260px, calc(100vh - 390px), 640px);min-height:260px;border:0;background:#fff}
 
 .controls{
     display:flex;align-items:center;justify-content:space-between;
-    gap:12px;padding-top:16px;
+    gap:12px;padding-top:12px;padding-bottom:4px;
+    position:sticky;
+    bottom:0;
+    background:linear-gradient(180deg, rgba(255,255,255,0) 0%, var(--card) 14%, var(--card) 100%);
+    z-index:3;
 }
 .step-counter{font-size:13px;font-weight:700;color:var(--muted);text-align:center}
 .step-counter strong{color:var(--salmon)}
@@ -964,6 +981,7 @@ body{margin:0;font-family:'Nunito','Segoe UI',sans-serif;background:linear-gradi
 
 @media(max-width:768px){
     .topbar-inner{grid-template-columns:1fr;text-align:center}
+    .top-actions{justify-content:center;flex-wrap:wrap}
     .page{padding:8px}
     .frame-wrap iframe{height:calc(100vh - 320px);min-height:260px}
     .controls{flex-wrap:wrap}
@@ -978,15 +996,21 @@ body{margin:0;font-family:'Nunito','Segoe UI',sans-serif;background:linear-gradi
     <div class="topbar-inner">
         <a class="top-btn" href="<?php echo h($backHref); ?>">← Back</a>
         <h1 class="topbar-title"><?php echo h(($selectedUnitName !== '' && $selectedUnitName !== 'UNIT') ? $selectedUnitName : $courseName); ?></h1>
-        <?php if ($selectedUnitId !== ''): ?>
-        <a class="top-btn"
-           style="background:linear-gradient(180deg,#0ea5e9,#0284c7);"
-           href="unit_pdf.php?unit=<?php echo urlencode($selectedUnitId); ?>&assignment=<?php echo urlencode($assignmentId); ?>"
-           target="_blank"
-           rel="noopener noreferrer">📄 PDF</a>
-        <?php else: ?>
-        <span></span>
-        <?php endif; ?>
+        <div class="top-actions">
+            <?php if ($topWorksheetDownloadUrl !== ''): ?>
+            <a class="top-btn"
+               style="background:linear-gradient(180deg,#84cc16,#65a30d);"
+               href="<?php echo h($topWorksheetDownloadUrl); ?>"
+               download="worksheet.pdf">⬇ Download</a>
+            <?php endif; ?>
+            <?php if ($selectedUnitId !== ''): ?>
+            <a class="top-btn"
+               style="background:linear-gradient(180deg,#0ea5e9,#0284c7);"
+               href="unit_pdf.php?unit=<?php echo urlencode($selectedUnitId); ?>&assignment=<?php echo urlencode($assignmentId); ?>"
+               target="_blank"
+               rel="noopener noreferrer">📄 PDF</a>
+            <?php endif; ?>
+        </div>
     </div>
 </header>
 
