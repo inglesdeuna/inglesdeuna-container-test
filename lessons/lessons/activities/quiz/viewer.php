@@ -984,7 +984,15 @@ if ($unit === '' && $activityId !== '') {
     $unit = resolve_unit_from_activity($pdo, $activityId);
 }
 
-if ($returnTo === '') {
+// Determine return URL based on user role
+$isTeacher = !empty($_SESSION['academic_logged']) && $_SESSION['academic_logged'] === true;
+$isAdmin = !empty($_SESSION['admin_logged']) && $_SESSION['admin_logged'] === true;
+
+if ($isTeacher || $isAdmin) {
+  // Teachers and admins always return to their dashboard
+  $returnTo = '../../academic/dashboard.php';
+} elseif ($returnTo === '') {
+  // For students, use explicit return_to or fallback to course/dashboard
   $assignmentParam = (string) ($_GET['assignment'] ?? '');
   if ($assignmentParam !== '') {
     $returnTo = '../../academic/student_course.php?' . http_build_query(['assignment' => $assignmentParam, 'unit' => $unit, 'step' => '9999']);
