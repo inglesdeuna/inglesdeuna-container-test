@@ -11,7 +11,7 @@
 /* ── Root container ─────────────────────────────────────── */
 .vtc-layout {
     display: grid;
-    grid-template-columns: 55fr 45fr;
+    grid-template-columns: 60fr 40fr;
     gap: 18px;
     align-items: start;
     width: 100%;
@@ -88,7 +88,7 @@
 /* ── Presentation mode overrides ────────────────────────── */
 body.presentation-mode .vtc-layout {
     gap: 0 !important;
-    grid-template-columns: 58fr 42fr !important;
+    grid-template-columns: 60fr 40fr !important;
     align-items: stretch !important;
     /* flex: 1 lets the grid grow inside the template's flex-column viewer-content */
     flex: 1 !important;
