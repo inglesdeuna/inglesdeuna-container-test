@@ -52,6 +52,7 @@ $activityTypes = [
     "external" => "External",
     "flipbooks" => "Flipbooks",
     "powerpoint" => "PowerPoint",
+    "tracing" => "Coloring Page",
     "writing_practice" => "Writing Practice",
 ];
 

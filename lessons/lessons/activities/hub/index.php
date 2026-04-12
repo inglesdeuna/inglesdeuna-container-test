@@ -57,7 +57,7 @@ $activityTypes = [
     "flipbooks" => "Flipbooks",
     "powerpoint" => "PowerPoint",
     "crossword" => "Crossword Puzzle",
-    "tracing" => "Tracing",
+    "tracing" => "Coloring Page",
     "writing_practice" => "Writing Practice",
 ];
 
