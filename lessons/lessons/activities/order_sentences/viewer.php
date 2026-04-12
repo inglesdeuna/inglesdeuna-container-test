@@ -82,6 +82,7 @@ if ($activityId === '' && $resolvedActivityId !== '') {
   $activityId = $resolvedActivityId;
 }
 $sentences    = $activity['sentences'];
+$isVideoLayout = ($activity['media_type'] === 'video' && trim((string) $activity['media_url']) !== '');
 
 if (count($sentences) === 0) die('No sentences configured for this activity');
 
@@ -94,6 +95,22 @@ ob_start();
   max-width:780px;
   margin:0 auto;
   font-family:'Nunito','Segoe UI',sans-serif;
+}
+
+.os-stage.os-video-layout{
+  max-width:1200px;
+}
+
+.os-stage.os-video-layout .os-right-col{
+  min-width:0;
+}
+
+.os-stage.os-video-layout .os-header{
+  margin-bottom:14px;
+}
+
+.os-stage.os-video-layout .os-list-wrap{
+  margin-bottom:14px;
 }
 
 /* ── header card ── */
@@ -288,6 +305,67 @@ ob_start();
 }
 </style>
 
+<?php
+$videoUrl = trim((string) ($activity['media_url'] ?? ''));
+$isYoutubeMedia = false;
+$embedVideoUrl = $videoUrl;
+if ($isVideoLayout) {
+  $isYoutubeMedia = (bool) preg_match('/youtube\.com|youtu\.be/', $videoUrl);
+  if ($isYoutubeMedia) {
+    preg_match('/(?:v=|youtu\.be\/)([A-Za-z0-9_\-]{11})/', $videoUrl, $m);
+    $vid = $m[1] ?? '';
+    $embedVideoUrl = $vid ? "https://www.youtube.com/embed/{$vid}?rel=0" : $videoUrl;
+  }
+}
+?>
+
+<?php if ($isVideoLayout): ?>
+<div class="os-stage os-video-layout vtc-layout">
+  <div class="vtc-video-col">
+    <?php if ($isYoutubeMedia): ?>
+      <div class="vtc-video-box is-iframe">
+        <iframe src="<?= htmlspecialchars($embedVideoUrl, ENT_QUOTES, 'UTF-8') ?>"
+                allow="accelerometer;autoplay;clipboard-write;encrypted-media;gyroscope"
+                allowfullscreen></iframe>
+      </div>
+    <?php else: ?>
+      <div class="vtc-video-box">
+        <video controls>
+          <source src="<?= htmlspecialchars($embedVideoUrl, ENT_QUOTES, 'UTF-8') ?>">
+        </video>
+      </div>
+    <?php endif; ?>
+  </div>
+
+  <div class="vtc-content-col os-right-col">
+    <div class="os-header">
+      <h2><?= htmlspecialchars($viewerTitle, ENT_QUOTES, 'UTF-8') ?></h2>
+      <p class="os-instructions"><?= htmlspecialchars($activity['instructions'], ENT_QUOTES, 'UTF-8') ?></p>
+    </div>
+
+    <div class="os-list-wrap" id="os-main">
+      <h3>📋 Drag the sentences into the correct order</h3>
+      <ul id="os-sortable"></ul>
+    </div>
+
+    <div class="os-controls">
+      <button type="button" class="os-btn os-btn-check"  onclick="osCheck()">✔ Check Order</button>
+      <button type="button" class="os-btn os-btn-show"   onclick="osShowAnswer()">💡 Show Answer</button>
+      <button type="button" class="os-btn os-btn-retry"  onclick="osReset()">🔄 Try Again</button>
+    </div>
+
+    <div id="os-feedback"></div>
+
+    <div class="os-completed" id="os-completed">
+      <div class="os-completed-icon">🎉</div>
+      <h3 id="os-completed-title"></h3>
+      <p id="os-completed-msg"></p>
+      <button type="button" class="os-btn os-btn-retry" onclick="osReset()">🔄 Play Again</button>
+    </div>
+  </div>
+</div>
+<?php else: ?>
+
 <div class="os-stage">
 
   <!-- header / media -->
@@ -359,6 +437,7 @@ ob_start();
     <button type="button" class="os-btn os-btn-retry" onclick="osReset()">🔄 Play Again</button>
   </div>
 </div>
+<?php endif; ?>
 
 <audio id="os-win"  src="../../hangman/assets/win.mp3"       preload="auto"></audio>
 <audio id="os-lose" src="../../hangman/assets/lose.mp3"      preload="auto"></audio>
