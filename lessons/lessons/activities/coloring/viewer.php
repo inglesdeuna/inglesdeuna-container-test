@@ -47,8 +47,8 @@ ob_start();
 .coloring-color-btn.active { border-color: #444; transform: scale(1.12); }
 /* ── stage ───────────────────────────────────────────── */
 .coloring-stage { background: #fff; border-radius: 28px; box-shadow: 0 10px 28px rgba(0,0,0,.08); padding: 16px; }
-.coloring-canvas-wrap { display: flex; justify-content: center; align-items: center; overflow: hidden; border-radius: 16px; background: #fff; touch-action: manipulation; }
-#coloringCanvas { max-width: 100%; height: auto; display: block; touch-action: manipulation; border-radius: 14px; cursor: default; }
+.coloring-canvas-wrap { display: flex; justify-content: center; align-items: center; overflow: visible; border-radius: 16px; background: #fff; touch-action: manipulation; }
+#coloringCanvas { max-width: 100%; max-height: calc(100vh - 360px); width: auto; height: auto; display: block; touch-action: manipulation; border-radius: 14px; cursor: default; }
 .coloring-helper { text-align: center; margin-top: 10px; font-size: 14px; color: #7a6874; font-weight: 700; }
 /* ── completed ───────────────────────────────────────── */
 .coloring-completed { display: none; text-align: center; padding: 50px 20px 30px; flex-direction: column; align-items: center; }
@@ -218,8 +218,11 @@ ob_start();
         var img = new Image();
         img.crossOrigin = 'anonymous';
         img.onload = function () {
-            var maxWidth = Math.min(800, window.innerWidth - 60);
-            var scale    = img.width > maxWidth ? maxWidth / img.width : 1;
+            var maxWidth  = Math.min(800, window.innerWidth - 60);
+            var maxHeight = Math.max(300, window.innerHeight - 360);
+            var scaleW    = img.width  > maxWidth  ? maxWidth  / img.width  : 1;
+            var scaleH    = img.height > maxHeight ? maxHeight / img.height : 1;
+            var scale     = Math.min(scaleW, scaleH);
             canvas.width  = Math.round(img.width  * scale);
             canvas.height = Math.round(img.height * scale);
             ctx.clearRect(0, 0, canvas.width, canvas.height);
