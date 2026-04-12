@@ -343,8 +343,6 @@ body { overflow: hidden !important; }
         </div>
 
         <!-- floating cursor -->
-        <div id="tracingCursor"></div>
-
         <!-- canvas -->
         <div class="tracing-viewer-canvas-wrap" id="tracingCanvasArea">
             <div class="tracing-canvas-shell">
@@ -419,7 +417,10 @@ body { overflow: hidden !important; }
     var completedEl = document.getElementById('tracingCompleted');
     var nextBtn     = document.getElementById('nextBtn');
     var restartBtn  = document.getElementById('restartBtn');
-    var cursorEl    = document.getElementById('tracingCursor');
+    /* create cursor at body level to avoid any stacking-context trap */
+    var cursorEl = document.createElement('div');
+    cursorEl.id = 'tracingCursor';
+    document.body.appendChild(cursorEl);
 
     /* ── helpers ── */
     function getScaledPos(e, isTouch) {
