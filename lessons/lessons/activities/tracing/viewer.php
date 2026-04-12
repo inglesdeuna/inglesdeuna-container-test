@@ -131,19 +131,7 @@ body {
     border-radius: 16px;
     box-shadow: 0 4px 18px rgba(14, 165, 233, .10);
     touch-action: none;
-    cursor: none;
-}
-
-#tracingCursor {
-    position: fixed;
-    pointer-events: none;
-    border-radius: 50%;
-    transform: translate(-50%, -50%);
-    border: 2px solid rgba(255,255,255,.8);
-    box-shadow: 0 0 0 1.5px rgba(0,0,0,.24);
-    background: rgba(37, 99, 235, .72);
-    z-index: 2147483647;
-    display: none;
+    cursor: crosshair;
 }
 
 .tracing-toolbar {
@@ -344,10 +332,6 @@ body {
     var actionsEl = document.getElementById('tracingActions');
     var completedEl = document.getElementById('tracingCompleted');
 
-    var cursorEl = document.createElement('div');
-    cursorEl.id = 'tracingCursor';
-    document.body.appendChild(cursorEl);
-
     function getScaledPos(e, isTouch) {
         var rect = canvas.getBoundingClientRect();
         var scaleX = canvas.width / rect.width;
@@ -375,15 +359,6 @@ body {
             ctx.drawImage(image, x, y, image.width * scale, image.height * scale);
         };
         image.src = url;
-    }
-
-    function updateCursorStyle() {
-        var rect = canvas.getBoundingClientRect();
-        var scale = rect.width / canvas.width;
-        var d = Math.max(penSize * scale, 4);
-        cursorEl.style.width = d + 'px';
-        cursorEl.style.height = d + 'px';
-        cursorEl.style.background = penColor;
     }
 
     function renderCurrentPage() {
@@ -419,7 +394,6 @@ body {
             document.querySelectorAll('.tracing-size-btn').forEach(function (b) { b.classList.remove('active'); });
             btn.classList.add('active');
             penSize = parseInt(btn.dataset.size, 10) || 8;
-            updateCursorStyle();
         });
     });
 
@@ -428,7 +402,6 @@ body {
             document.querySelectorAll('.tracing-color-swatch').forEach(function (b) { b.classList.remove('active'); });
             btn.classList.add('active');
             penColor = btn.dataset.color || '#2563eb';
-            updateCursorStyle();
         });
     });
 
@@ -448,16 +421,6 @@ body {
         currentIdx = 0;
         showTracing();
         renderCurrentPage();
-    });
-
-    canvas.addEventListener('mouseenter', function () {
-        updateCursorStyle();
-        cursorEl.style.display = 'block';
-    });
-
-    canvas.addEventListener('mouseleave', function () {
-        cursorEl.style.display = 'none';
-        drawing = false;
     });
 
     function stroke(x, y) {
@@ -483,8 +446,6 @@ body {
     });
 
     canvas.addEventListener('mousemove', function (e) {
-        cursorEl.style.left = e.clientX + 'px';
-        cursorEl.style.top = e.clientY + 'px';
         if (!drawing) {
             return;
         }
@@ -519,13 +480,6 @@ body {
         stroke(pos.x, pos.y);
     }, { passive: false });
 
-    window.addEventListener('resize', function () {
-        if (cursorEl.style.display !== 'none') {
-            updateCursorStyle();
-        }
-    });
-
-    updateCursorStyle();
     renderCurrentPage();
 }());
 </script>
