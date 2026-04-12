@@ -1,4 +1,37 @@
 <?php
+// Detect POST body silently dropped by PHP due to post_max_size being exceeded.
+// When this happens $_POST is empty but Content-Length is large — must check
+// BEFORE session_start() so no headers are sent before this guard fires.
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $contentLength = (int) ($_SERVER['CONTENT_LENGTH'] ?? 0);
+    $postMaxBytes  = (int) ini_get('post_max_size') * 1024 * 1024;
+    // ini_get returns strings like "200M" – parse properly
+    $rawPostMax = trim((string) ini_get('post_max_size'));
+    $unit = strtoupper(substr($rawPostMax, -1));
+    $num  = (float) $rawPostMax;
+    if ($unit === 'G') { $postMaxBytes = (int) ($num * 1024 * 1024 * 1024); }
+    elseif ($unit === 'M') { $postMaxBytes = (int) ($num * 1024 * 1024); }
+    elseif ($unit === 'K') { $postMaxBytes = (int) ($num * 1024); }
+    else { $postMaxBytes = (int) $num; }
+
+    if ($contentLength > 0 && $postMaxBytes > 0 && $contentLength > $postMaxBytes) {
+        http_response_code(413);
+        header('Content-Type: text/html; charset=UTF-8');
+        $limitMB = round($postMaxBytes / 1024 / 1024);
+        $sentMB  = round($contentLength / 1024 / 1024);
+        echo '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>File too large</title>'
+           . '<style>body{font-family:sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;background:#fef2f2;}'
+           . '.box{background:#fff;border:1px solid #fca5a5;border-radius:16px;padding:32px 40px;max-width:480px;text-align:center;}'
+           . 'h2{color:#b91c1c;margin:0 0 12px;}p{color:#374151;margin:0 0 16px;line-height:1.6;}'
+           . 'a{display:inline-block;padding:10px 24px;background:#7c3aed;color:#fff;border-radius:999px;text-decoration:none;font-weight:700;}</style></head>'
+           . '<body><div class="box"><h2>&#x26A0; File too large</h2>'
+           . '<p>The file you tried to upload is <strong>' . $sentMB . ' MB</strong> but the server limit is <strong>' . $limitMB . ' MB</strong>.</p>'
+           . '<p>Please compress the file or split the presentation into smaller parts.</p>'
+           . '<a href="javascript:history.back()">&#x2190; Go back</a></div></body></html>';
+        exit;
+    }
+}
+
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
