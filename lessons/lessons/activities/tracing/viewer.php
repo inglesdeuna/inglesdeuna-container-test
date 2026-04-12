@@ -24,12 +24,12 @@ body { overflow: hidden !important; }
 
 /* ── Shell ── */
 .tracing-viewer-shell {
-    max-width: 860px;
+    max-width: 980px;
     margin: 0 auto;
     text-align: center;
     font-family: 'Nunito', 'Segoe UI', sans-serif;
     /* fill viewport minus body's top padding (~18px) + top-row (~52px) + body bottom padding (~24px) */
-    height: calc(100vh - 95px);
+    height: calc(100vh - 90px);
     display: flex;
     flex-direction: column;
     gap: 6px;
@@ -64,10 +64,10 @@ body { overflow: hidden !important; }
 /* ── Main stage ── */
 .tracing-stage {
     background: #fff;
-    border: 2px solid #e0f2fe;
-    border-radius: 28px;
-    box-shadow: 0 12px 36px rgba(14,165,233,.10);
-    padding: 10px 14px 12px;
+    border: 2px solid #fde68a;
+    border-radius: 24px;
+    box-shadow: 0 12px 36px rgba(120,53,15,.10);
+    padding: 10px 12px 10px;
     flex: 1;
     min-height: 0;
     display: flex;
@@ -81,20 +81,20 @@ body { overflow: hidden !important; }
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    background: linear-gradient(135deg, #e0f2fe, #bfdbfe);
-    border: 1.5px solid #93c5fd;
+    background: linear-gradient(135deg, #fef3c7, #fde68a);
+    border: 1.5px solid #f59e0b;
     border-radius: 999px;
     padding: 5px 16px;
     font-size: 15px;
     font-weight: 800;
-    color: #1e40af;
+    color: #92400e;
     flex-shrink: 0;
     letter-spacing: .02em;
 }
 .tracing-counter-dot {
     width: 8px; height: 8px;
     border-radius: 50%;
-    background: #3b82f6;
+    background: #f59e0b;
     display: inline-block;
 }
 
@@ -107,13 +107,13 @@ body { overflow: hidden !important; }
     align-items: center;
 }
 .tracing-canvas-shell {
-    width: min(100%, 700px);
+    width: min(100%, 760px);
     height: 100%;
-    padding: 8px;
-    background: linear-gradient(135deg, #f0f9ff, #f8fafc);
-    border: 2px solid #bae6fd;
-    border-radius: 22px;
-    box-shadow: inset 0 2px 8px rgba(14,165,233,.08);
+    padding: 10px;
+    background: linear-gradient(180deg, #fff7ed 0%, #fffbeb 100%);
+    border: 2px solid #fdba74;
+    border-radius: 18px;
+    box-shadow: inset 0 2px 8px rgba(120,53,15,.08);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -121,16 +121,43 @@ body { overflow: hidden !important; }
 }
 .tracing-viewer-canvas {
     display: block;
-    max-width: 100%;
+    max-width: min(100%, 520px);
     max-height: 100%;
     width: auto;
     height: auto;
-    border: 3px solid #7dd3fc;
-    border-radius: 16px;
+    border: 4px solid #f59e0b;
+    border-radius: 8px;
     background: #fff;
     touch-action: none;
     cursor: none;
-    box-shadow: 0 4px 18px rgba(14,165,233,.10);
+    box-shadow: 0 8px 24px rgba(120,53,15,.14);
+}
+
+.worksheet-frame {
+    position: relative;
+    width: min(100%, 520px);
+    aspect-ratio: 3 / 4;
+    background: #fff;
+    border: 2px dashed #fdba74;
+    border-radius: 10px;
+    padding: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.worksheet-title {
+    position: absolute;
+    top: 6px;
+    left: 8px;
+    right: 8px;
+    text-align: center;
+    font-size: 13px;
+    font-weight: 800;
+    color: #7c2d12;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    pointer-events: none;
 }
 
 /* ── Floating circle cursor ── */
@@ -154,15 +181,15 @@ body { overflow: hidden !important; }
     justify-content: center;
     gap: 8px 16px;
     flex-shrink: 0;
-    background: linear-gradient(135deg, #f0fdf4, #f0f9ff);
-    border: 1.5px solid #bbf7d0;
+    background: linear-gradient(135deg, #fef2f2, #fff7ed);
+    border: 1.5px solid #fecaca;
     border-radius: 18px;
     padding: 8px 14px;
 }
 .tracing-toolbar-label {
     font-size: 12px;
     font-weight: 800;
-    color: #374151;
+    color: #9a3412;
     text-transform: uppercase;
     letter-spacing: .05em;
     margin-bottom: 6px;
@@ -198,7 +225,7 @@ body { overflow: hidden !important; }
     box-shadow: 0 0 0 3px #64748b, 0 4px 10px rgba(0,0,0,.2);
 }
 .tracing-color-swatch.active {
-    box-shadow: 0 0 0 3px #1d4ed8, 0 4px 10px rgba(0,0,0,.2);
+    box-shadow: 0 0 0 3px #ea580c, 0 4px 10px rgba(0,0,0,.2);
 }
 /* Size buttons */
 .tracing-sizes {
@@ -223,12 +250,12 @@ body { overflow: hidden !important; }
 .tracing-size-btn:hover,
 .tracing-size-btn.active {
     transform: scale(1.18);
-    border-color: #3b82f6;
-    box-shadow: 0 0 0 3px #bfdbfe;
+    border-color: #f97316;
+    box-shadow: 0 0 0 3px #fed7aa;
 }
 .tracing-size-btn.active {
-    border-color: #1d4ed8;
-    box-shadow: 0 0 0 3px #93c5fd;
+    border-color: #c2410c;
+    box-shadow: 0 0 0 3px #fdba74;
 }
 .tracing-size-btn .dot {
     border-radius: 50%;
@@ -251,8 +278,8 @@ body { overflow: hidden !important; }
     border-radius: 999px;
     cursor: pointer;
     color: #fff;
-    background: linear-gradient(135deg, #34d399 0%, #059669 100%);
-    box-shadow: 0 8px 20px rgba(5,150,105,.28);
+    background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+    box-shadow: 0 8px 20px rgba(234,88,12,.30);
     transition: transform .15s, filter .15s, box-shadow .15s;
     letter-spacing: .03em;
     -webkit-tap-highlight-color: transparent;
@@ -261,7 +288,7 @@ body { overflow: hidden !important; }
 .tracing-btn-next:hover {
     filter: brightness(1.07);
     transform: translateY(-2px);
-    box-shadow: 0 12px 26px rgba(5,150,105,.34);
+    box-shadow: 0 12px 26px rgba(234,88,12,.34);
 }
 .tracing-btn-next:active {
     transform: translateY(0);
@@ -292,7 +319,7 @@ body { overflow: hidden !important; }
     font-family: 'Fredoka', 'Trebuchet MS', sans-serif;
     font-size: clamp(32px, 4vw, 48px);
     font-weight: 700;
-    color: #d97706;
+    color: #ea580c;
     margin: 0 0 10px;
     line-height: 1.1;
 }
@@ -312,7 +339,7 @@ body { overflow: hidden !important; }
     border-radius: 999px;
     cursor: pointer;
     color: #fff;
-    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
     box-shadow: 0 8px 20px rgba(217,119,6,.28);
     transition: transform .15s, filter .15s;
     -webkit-tap-highlight-color: transparent;
@@ -324,12 +351,13 @@ body { overflow: hidden !important; }
 
 /* ── Responsive ── */
 @media (max-width: 600px) {
-    .tracing-viewer-shell { height: calc(100vh - 80px); }
+    .tracing-viewer-shell { height: calc(100vh - 78px); }
     .tracing-btn-next { font-size: 16px; padding: 11px 28px; min-width: 130px; }
     .tracing-color-swatch { width: 30px; height: 30px; }
     .tracing-toolbar { padding: 6px 10px; gap: 6px 10px; }
     .tracing-toolbar-label { font-size: 11px; }
     .tracing-size-btn .dot { transform: scale(0.85); }
+    .worksheet-frame { width: min(100%, 420px); }
 }
 </style>
 
@@ -346,7 +374,10 @@ body { overflow: hidden !important; }
         <!-- canvas -->
         <div class="tracing-viewer-canvas-wrap" id="tracingCanvasArea">
             <div class="tracing-canvas-shell">
-                <canvas id="traceCanvas" class="tracing-viewer-canvas" width="680" height="500"></canvas>
+                <div class="worksheet-frame">
+                    <div class="worksheet-title" id="worksheetTitle">Color this worksheet</div>
+                    <canvas id="traceCanvas" class="tracing-viewer-canvas" width="540" height="720"></canvas>
+                </div>
             </div>
         </div>
 
@@ -355,29 +386,31 @@ body { overflow: hidden !important; }
             <div class="tracing-color-group">
                 <div class="tracing-toolbar-label">🎨 Color</div>
                 <div class="tracing-colors" id="colorSwatches">
-                    <button type="button" class="tracing-color-swatch active" data-color="#ef4444" style="background:#ef4444;" title="Red" aria-label="Red pencil"></button>
-                    <button type="button" class="tracing-color-swatch" data-color="#f97316" style="background:#f97316;" title="Orange" aria-label="Orange pencil"></button>
-                    <button type="button" class="tracing-color-swatch" data-color="#eab308" style="background:#eab308;" title="Yellow" aria-label="Yellow pencil"></button>
-                    <button type="button" class="tracing-color-swatch" data-color="#22c55e" style="background:#22c55e;" title="Green" aria-label="Green pencil"></button>
-                    <button type="button" class="tracing-color-swatch" data-color="#3b82f6" style="background:#3b82f6;" title="Blue" aria-label="Blue pencil"></button>
-                    <button type="button" class="tracing-color-swatch" data-color="#a855f7" style="background:#a855f7;" title="Purple" aria-label="Purple pencil"></button>
-                    <button type="button" class="tracing-color-swatch" data-color="#1e293b" style="background:#1e293b;" title="Black" aria-label="Black pencil"></button>
+                    <button type="button" class="tracing-color-swatch active" data-color="#ef4444" style="background:#ef4444;" title="Red" aria-label="Red crayon"></button>
+                    <button type="button" class="tracing-color-swatch" data-color="#f97316" style="background:#f97316;" title="Orange" aria-label="Orange crayon"></button>
+                    <button type="button" class="tracing-color-swatch" data-color="#eab308" style="background:#eab308;" title="Yellow" aria-label="Yellow crayon"></button>
+                    <button type="button" class="tracing-color-swatch" data-color="#22c55e" style="background:#22c55e;" title="Green" aria-label="Green crayon"></button>
+                    <button type="button" class="tracing-color-swatch" data-color="#3b82f6" style="background:#3b82f6;" title="Blue" aria-label="Blue crayon"></button>
+                    <button type="button" class="tracing-color-swatch" data-color="#8b5cf6" style="background:#8b5cf6;" title="Purple" aria-label="Purple crayon"></button>
+                    <button type="button" class="tracing-color-swatch" data-color="#ec4899" style="background:#ec4899;" title="Pink" aria-label="Pink crayon"></button>
+                    <button type="button" class="tracing-color-swatch" data-color="#92400e" style="background:#92400e;" title="Brown" aria-label="Brown crayon"></button>
+                    <button type="button" class="tracing-color-swatch" data-color="#111827" style="background:#111827;" title="Black" aria-label="Black crayon"></button>
                 </div>
             </div>
             <div class="tracing-size-group">
                 <div class="tracing-toolbar-label">✏️ Size</div>
                 <div class="tracing-sizes" id="sizeButtons">
-                    <button type="button" class="tracing-size-btn" data-size="3" style="width:40px;height:40px;" title="Thin" aria-label="Thin stroke">
-                        <span class="dot" style="width:3px;height:3px;"></span>
+                    <button type="button" class="tracing-size-btn" data-size="4" style="width:40px;height:40px;" title="Thin" aria-label="Thin stroke">
+                        <span class="dot" style="width:4px;height:4px;"></span>
                     </button>
-                    <button type="button" class="tracing-size-btn active" data-size="6" style="width:44px;height:44px;" title="Medium" aria-label="Medium stroke">
-                        <span class="dot" style="width:6px;height:6px;"></span>
+                    <button type="button" class="tracing-size-btn" data-size="8" style="width:44px;height:44px;" title="Medium" aria-label="Medium stroke">
+                        <span class="dot" style="width:8px;height:8px;"></span>
                     </button>
-                    <button type="button" class="tracing-size-btn" data-size="12" style="width:50px;height:50px;" title="Thick" aria-label="Thick stroke">
-                        <span class="dot" style="width:12px;height:12px;"></span>
+                    <button type="button" class="tracing-size-btn active" data-size="14" style="width:50px;height:50px;" title="Thick" aria-label="Thick stroke">
+                        <span class="dot" style="width:14px;height:14px;"></span>
                     </button>
                     <button type="button" class="tracing-size-btn" data-size="22" style="width:58px;height:58px;" title="Extra thick" aria-label="Extra thick stroke">
-                        <span class="dot" style="width:22px;height:22px;"></span>
+                        <span class="dot" style="width:20px;height:20px;"></span>
                     </button>
                 </div>
             </div>
@@ -404,7 +437,7 @@ body { overflow: hidden !important; }
     var images = <?= json_encode(array_values($images), JSON_UNESCAPED_UNICODE) ?>;
     var currentIdx = 0;
     var penColor = '#ef4444';
-    var penSize  = 6;
+    var penSize  = 14;
     var drawing  = false;
     var lastX = 0, lastY = 0;
 
@@ -417,6 +450,7 @@ body { overflow: hidden !important; }
     var completedEl = document.getElementById('tracingCompleted');
     var nextBtn     = document.getElementById('nextBtn');
     var restartBtn  = document.getElementById('restartBtn');
+    var worksheetTitleEl = document.getElementById('worksheetTitle');
     /* create cursor at body level to avoid any stacking-context trap */
     var cursorEl = document.createElement('div');
     cursorEl.id = 'tracingCursor';
@@ -444,7 +478,10 @@ body { overflow: hidden !important; }
             var scale = Math.min(canvas.width / im.width, canvas.height / im.height);
             var x = (canvas.width  - im.width  * scale) / 2;
             var y = (canvas.height - im.height * scale) / 2;
+            // Normalize to classic coloring-page look when source has color.
+            ctx.filter = 'grayscale(1) contrast(1.28) brightness(1.06)';
             ctx.drawImage(im, x, y, im.width * scale, im.height * scale);
+            ctx.filter = 'none';
         };
         im.src = url;
     }
@@ -469,11 +506,13 @@ body { overflow: hidden !important; }
         if (images.length === 0) {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             counterText.textContent = 'No images';
+            if (worksheetTitleEl) worksheetTitleEl.textContent = 'No worksheet uploaded';
             return;
         }
         drawImageToCanvas(images[currentIdx].image);
         counterText.textContent = (currentIdx + 1) + ' / ' + images.length;
         nextBtn.textContent = (currentIdx < images.length - 1) ? 'Next →' : 'Finish ✓';
+        if (worksheetTitleEl) worksheetTitleEl.textContent = 'Coloring page ' + (currentIdx + 1);
     }
 
     /* ── navigation ── */

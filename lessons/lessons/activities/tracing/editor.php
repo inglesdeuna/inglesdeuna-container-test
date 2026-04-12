@@ -66,19 +66,19 @@ ob_start();
 @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@600;700;800&display=swap');
 
 .tracing-form {
-    max-width:900px;
+    max-width:960px;
     margin:0 auto;
     text-align:left;
     font-family:'Nunito', 'Segoe UI', sans-serif;
 }
 
 .tracing-intro{
-    background:linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 52%, #f0fdf4 100%);
-    border:1px solid #ccfbf1;
-    border-radius:20px;
+    background:linear-gradient(135deg, #fff7ed 0%, #fef3c7 48%, #fffbeb 100%);
+    border:1px solid #fdba74;
+    border-radius:22px;
     padding:18px 20px;
     margin:0 0 14px;
-    box-shadow:0 12px 26px rgba(15, 23, 42, .08);
+    box-shadow:0 12px 26px rgba(124, 45, 18, .12);
 }
 
 .tracing-intro h3{
@@ -86,14 +86,21 @@ ob_start();
     font-family:'Fredoka', 'Trebuchet MS', sans-serif;
     font-size:24px;
     font-weight:700;
-    color:#0f172a;
+    color:#9a3412;
 }
 
 .tracing-intro p{
     margin:0;
-    color:#475569;
+    color:#7c2d12;
     font-size:14px;
     line-height:1.5;
+}
+
+.worksheet-guide{
+    margin-top:10px;
+    font-size:13px;
+    font-weight:700;
+    color:#7c2d12;
 }
 
 .tracing-title-box{
@@ -103,6 +110,61 @@ ob_start();
     border-radius:14px;
     border:1px solid #e2e8f0;
     box-shadow:0 8px 18px rgba(15, 23, 42, .04);
+}
+
+.palette-preview-box{
+    background:#ffffff;
+    border:1px solid #fde68a;
+    border-radius:14px;
+    padding:12px 14px;
+    margin-bottom:14px;
+    box-shadow:0 8px 18px rgba(120, 53, 15, .08);
+}
+
+.palette-preview-title{
+    margin:0 0 8px;
+    font-size:13px;
+    text-transform:uppercase;
+    letter-spacing:.06em;
+    font-weight:800;
+    color:#92400e;
+}
+
+.palette-preview-note{
+    margin:8px 0 0;
+    font-size:12px;
+    font-weight:700;
+    color:#7c2d12;
+}
+
+.palette-swatches{
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+}
+
+.palette-swatch{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    border:1px solid #e5e7eb;
+    border-radius:999px;
+    padding:5px 9px 5px 5px;
+    background:#fff;
+}
+
+.palette-dot{
+    width:20px;
+    height:20px;
+    border-radius:50%;
+    border:1px solid rgba(0,0,0,.18);
+    display:inline-block;
+}
+
+.palette-label{
+    font-size:12px;
+    font-weight:800;
+    color:#334155;
 }
 
 .tracing-title-box label{
@@ -233,6 +295,32 @@ ob_start();
     margin-bottom: 18px;
 }
 
+.worksheet-preview {
+    margin-top:10px;
+    border:1px dashed #f59e0b;
+    border-radius:12px;
+    background:linear-gradient(180deg, #fff 0%, #fffbeb 100%);
+    padding:10px;
+    text-align:center;
+}
+
+.worksheet-preview img {
+    width:100%;
+    max-width:260px;
+    aspect-ratio:3/4;
+    object-fit:contain;
+    border:2px solid #fed7aa;
+    border-radius:8px;
+    background:#fff;
+}
+
+.worksheet-preview p {
+    margin:6px 0 0;
+    font-size:12px;
+    font-weight:700;
+    color:#9a3412;
+}
+
 .tracing-add-box input[type="file"]{
     flex:1 1 320px;
     padding:8px 10px;
@@ -293,16 +381,24 @@ ob_start();
 <?php } ?>
 <form class="tracing-form" id="tracingForm" method="post" enctype="multipart/form-data">
     <section class="tracing-intro">
-        <h3>Tracing Editor</h3>
-        <p>Upload images for tracing activities. Students will trace over the images you provide. You can add multiple images and reorder them as needed.</p>
+        <h3>Coloring Page Editor</h3>
+        <p>Upload black and white illustrations with thick clean lines. The activity will be shown as a vertical printable worksheet for children.</p>
+        <div class="worksheet-guide">Recommended style: simple friendly character, centered composition, minimal details for easy coloring.</div>
     </section>
     <div class="tracing-title-box">
         <label for="activity_title">Activity title</label>
-        <input id="activity_title" type="text" name="activity_title" value="<?= htmlspecialchars($activityTitle, ENT_QUOTES, 'UTF-8') ?>" placeholder="Example: Trace the Letters" required>
+        <input id="activity_title" type="text" name="activity_title" value="<?= htmlspecialchars($activityTitle, ENT_QUOTES, 'UTF-8') ?>" placeholder="Example: Unicorn Coloring Page" required>
     </div>
+
+    <div class="palette-preview-box">
+        <p class="palette-preview-title">Auto generated crayon palette</p>
+        <div class="palette-swatches" id="palettePreview"></div>
+        <p class="palette-preview-note">Primary and secondary colors are generated automatically to guide children while coloring.</p>
+    </div>
+
     <div class="tracing-add-box">
         <input type="file" id="imageUploadInput" name="image_file[]" accept="image/*" multiple>
-        <p class="tracing-hint">You can add multiple images at once.</p>
+        <p class="tracing-hint">You can add multiple pages. They will be shown in the exact order they appear in this list.</p>
     </div>
     <ul class="tracing-images-list" id="imagesList">
         <?php foreach ($images as $i => $img) { ?>
@@ -310,6 +406,10 @@ ob_start();
                 <input type="hidden" name="image_id[]" value="<?= htmlspecialchars($img['id'], ENT_QUOTES, 'UTF-8') ?>">
                 <input type="hidden" name="image_existing[]" value="<?= htmlspecialchars($img['image'], ENT_QUOTES, 'UTF-8') ?>">
                 <img src="<?= htmlspecialchars($img['image'], ENT_QUOTES, 'UTF-8') ?>" class="tracing-image-thumb" alt="tracing-image">
+                <div class="worksheet-preview">
+                    <img src="<?= htmlspecialchars($img['image'], ENT_QUOTES, 'UTF-8') ?>" alt="worksheet-preview">
+                    <p>Printable vertical worksheet preview</p>
+                </div>
                 <div class="tracing-image-actions">
                     <button type="button" class="tracing-btn tracing-btn-move" onclick="moveImage(this, -1)">↑</button>
                     <button type="button" class="tracing-btn tracing-btn-move" onclick="moveImage(this, 1)">↓</button>
@@ -344,6 +444,33 @@ function syncEmptyState() {
     }
 }
 
+function getCrayonPalette() {
+    return [
+        { name: 'Red', value: '#ef4444' },
+        { name: 'Orange', value: '#f97316' },
+        { name: 'Yellow', value: '#eab308' },
+        { name: 'Green', value: '#22c55e' },
+        { name: 'Blue', value: '#3b82f6' },
+        { name: 'Purple', value: '#8b5cf6' },
+        { name: 'Pink', value: '#ec4899' },
+        { name: 'Brown', value: '#92400e' },
+        { name: 'Black', value: '#111827' }
+    ];
+}
+
+function renderPalettePreview() {
+    const target = document.getElementById('palettePreview');
+    if (!target) return;
+    target.innerHTML = '';
+    const palette = getCrayonPalette();
+    palette.forEach(c => {
+        const chip = document.createElement('span');
+        chip.className = 'palette-swatch';
+        chip.innerHTML = '<span class="palette-dot" style="background:' + c.value + '"></span><span class="palette-label">' + c.name + '</span>';
+        target.appendChild(chip);
+    });
+}
+
 function moveImage(btn, dir) {
     const item = btn.closest('.tracing-image-item');
     const list = document.getElementById('imagesList');
@@ -376,6 +503,10 @@ document.getElementById('imageUploadInput').addEventListener('change', function(
                 <input type="hidden" name="image_id[]" value="tracing_${Date.now()}_${Math.floor(Math.random()*1000)}">
                 <input type="hidden" name="image_existing[]" value="">
                 <img src="${evt.target.result}" class="tracing-image-thumb" alt="tracing-image">
+                <div class="worksheet-preview">
+                    <img src="${evt.target.result}" alt="worksheet-preview">
+                    <p>Printable vertical worksheet preview</p>
+                </div>
                 <div class="tracing-image-actions">
                     <button type="button" class="tracing-btn tracing-btn-move" onclick="moveImage(this, -1)">↑</button>
                     <button type="button" class="tracing-btn tracing-btn-move" onclick="moveImage(this, 1)">↓</button>
@@ -405,7 +536,8 @@ document.getElementById('tracingForm').addEventListener('submit', function(e) {
 });
 
 syncEmptyState();
+renderPalettePreview();
 </script>
 <?php
 $content = ob_get_clean();
-render_activity_editor('✏️ Tracing Editor', '✏️', $content);
+render_activity_editor('Coloring Page Editor', 'fas fa-palette', $content);
