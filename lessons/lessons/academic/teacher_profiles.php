@@ -471,6 +471,9 @@ body{
     background:var(--bg);
     color:var(--text);
     font-size:15px;
+    min-height:100vh;
+    display:flex;
+    justify-content:center;
 }
 
 a{
@@ -483,12 +486,11 @@ a:hover{
 }
 
 .page-shell{
-    width:100%;
+    width:min(1120px,100%);
 }
 
 .wrapper{
-    max-width:1120px;
-    margin:0 auto;
+    width:100%;
 }
 
 .topbar{

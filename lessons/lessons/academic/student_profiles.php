@@ -204,8 +204,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <meta charset="UTF-8">
 <title>Perfiles Estudiante</title>
 <style>
-body{font-family:Arial,sans-serif;background:#fff8f5;padding:30px;color:#5e352e}
-.wrapper{max-width:1100px;margin:0 auto}
+body{
+    font-family:Arial,sans-serif;
+    background:#fff8f5;
+    padding:30px;
+    color:#5e352e;
+    min-height:100vh;
+    display:flex;
+    justify-content:center;
+}
+.wrapper{width:min(1100px,100%)}
 .card{background:#fff;border-radius:14px;padding:20px;box-shadow:0 8px 24px rgba(135,58,42,.10);margin-bottom:18px;border:1px solid #ffd9d2}
 h1{margin-top:0;color:#b04632}
 .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
@@ -217,6 +225,9 @@ table{width:100%;border-collapse:collapse}
 th,td{padding:10px;border-bottom:1px solid #ffe3de;text-align:left;font-size:14px}
 .back{display:inline-block;margin-bottom:15px;color:#b04632;text-decoration:none;font-weight:700}
 .notice{padding:10px 12px;border-radius:8px;background:#eaf9ef;border:1px solid #bfe7cc;color:#1d6a40;margin-bottom:12px}
+@media (max-width: 768px){
+    body{padding:16px}
+}
 </style>
 </head>
 <body>
