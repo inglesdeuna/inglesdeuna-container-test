@@ -28,12 +28,12 @@ ob_start();
 /* ── app wrapper ─────────────────────────────────────── */
 .coloring-app { max-width: 980px; margin: 0 auto; padding: 16px; font-family: 'Nunito','Segoe UI',sans-serif; color: #4b3b47; }
 .coloring-title-bar { text-align: center; font-family: 'Fredoka','Trebuchet MS',sans-serif; font-size: 28px; font-weight: 700; color: #7c3aed; margin-bottom: 14px; }
-/* ── topbar ──────────────────────────────────────────── */
-.coloring-topbar { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; align-items: center; background: #ffe5f2; border-radius: 22px; padding: 14px 16px; margin-bottom: 16px; }
-.coloring-reset-btn,.coloring-next-btn { border: none; border-radius: 18px; padding: 12px 22px; font-size: 16px; font-weight: 800; cursor: pointer; font-family: inherit; min-height: 48px; transition: transform .15s, filter .15s; }
-.coloring-reset-btn:hover,.coloring-next-btn:hover { filter: brightness(1.08); transform: translateY(-1px); }
-.coloring-reset-btn { background: #ffd36d; color: #5b4520; }
-.coloring-next-btn  { background: #ff8cc6; color: #fff; }
+/* ── controls ───────────────────────────────────────── */
+.coloring-controls { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; align-items: center; padding: 14px 0 4px; margin-top: 12px; }
+.coloring-reset-btn,.coloring-next-btn { border: none; border-radius: 999px; padding: 11px 22px; font-size: 14px; font-weight: 800; cursor: pointer; font-family: inherit; color: #fff; min-width: 130px; box-shadow: 0 10px 22px rgba(15,23,42,.14); transition: transform .15s, filter .15s; }
+.coloring-reset-btn:hover,.coloring-next-btn:hover { filter: brightness(1.04); transform: translateY(-1px); }
+.coloring-reset-btn { background: linear-gradient(180deg, #f59eb2 0%, #ec4899 100%); }
+.coloring-next-btn  { background: linear-gradient(180deg, #5eead4 0%, #14b8a6 100%); }
 .coloring-progress  { font-size: 15px; font-weight: 800; color: #7c3aed; }
 /* ── palette ─────────────────────────────────────────── */
 .coloring-palette-wrap { background: #fff; border-radius: 22px; padding: 14px; box-shadow: 0 6px 20px rgba(0,0,0,.08); margin-bottom: 16px; }
@@ -48,7 +48,7 @@ ob_start();
 /* ── stage ───────────────────────────────────────────── */
 .coloring-stage { background: #fff; border-radius: 28px; box-shadow: 0 10px 28px rgba(0,0,0,.08); padding: 16px; }
 .coloring-canvas-wrap { display: flex; justify-content: center; align-items: center; overflow: hidden; border-radius: 16px; background: #fff; touch-action: manipulation; }
-#coloringCanvas { max-width: 100%; height: auto; display: block; touch-action: manipulation; border-radius: 14px; cursor: crosshair; }
+#coloringCanvas { max-width: 100%; height: auto; display: block; touch-action: manipulation; border-radius: 14px; cursor: default; }
 .coloring-helper { text-align: center; margin-top: 10px; font-size: 14px; color: #7a6874; font-weight: 700; }
 /* ── completed ───────────────────────────────────────── */
 .coloring-completed { display: none; text-align: center; padding: 50px 20px 30px; flex-direction: column; align-items: center; }
@@ -56,7 +56,7 @@ ob_start();
 .coloring-completed-emoji { font-size: 88px; line-height: 1; margin-bottom: 14px; }
 .coloring-completed-title { font-family: 'Fredoka','Trebuchet MS',sans-serif; font-size: clamp(32px,4vw,48px); font-weight: 700; color: #ea580c; margin: 0 0 8px; }
 .coloring-completed-sub { font-size: 17px; font-weight: 700; color: #374151; margin: 0 0 26px; }
-.coloring-btn-restart { padding: 13px 36px; font-size: 17px; font-weight: 800; font-family: 'Fredoka','Nunito',sans-serif; border: none; border-radius: 999px; cursor: pointer; color: #fff; background: linear-gradient(135deg,#3b82f6 0%,#2563eb 100%); }
+.coloring-btn-restart { padding: 13px 36px; font-size: 17px; font-weight: 800; font-family: 'Fredoka','Nunito',sans-serif; border: none; border-radius: 999px; cursor: pointer; color: #fff; background: linear-gradient(180deg, #8b5cf6 0%, #7c3aed 100%); box-shadow: 0 10px 24px rgba(0,0,0,.14); }
 .coloring-no-images { text-align: center; padding: 40px 20px; font-size: 16px; font-weight: 700; color: #7c3aed; }
 @media (max-width: 640px) {
     .coloring-title-bar { font-size: 22px; }
@@ -66,15 +66,6 @@ ob_start();
 </style>
 
 <div class="coloring-app">
-
-    <!-- topbar: progress + buttons -->
-    <div class="coloring-topbar" id="coloringTopbar">
-        <span class="coloring-progress" id="progressText">
-            <?= count($imageUrls) > 0 ? 'Page 1 of ' . count($imageUrls) : 'No images' ?>
-        </span>
-        <button id="resetBtn"  class="coloring-reset-btn" type="button">&#x21BA; Reset Page</button>
-        <button id="nextBtn"   class="coloring-next-btn"  type="button">Next &#x2192;</button>
-    </div>
 
     <!-- color palette -->
     <div class="coloring-palette-wrap" id="coloringPaletteWrap">
@@ -88,6 +79,14 @@ ob_start();
             <canvas id="coloringCanvas"></canvas>
         </div>
         <div class="coloring-helper">Tap or click inside a closed area to fill it with color.</div>
+        <!-- controls below image -->
+        <div class="coloring-controls" id="coloringTopbar">
+            <span class="coloring-progress" id="progressText">
+                <?= count($imageUrls) > 0 ? 'Page 1 of ' . count($imageUrls) : 'No images' ?>
+            </span>
+            <button id="resetBtn"  class="coloring-reset-btn" type="button">&#x21BA; Reset Page</button>
+            <button id="nextBtn"   class="coloring-next-btn"  type="button">Next &#x2192;</button>
+        </div>
     </div>
 
     <!-- completed screen -->
