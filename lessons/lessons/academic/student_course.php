@@ -997,12 +997,6 @@ body{margin:0;font-family:'Nunito','Segoe UI',sans-serif;background:linear-gradi
         <a class="top-btn" href="<?php echo h($backHref); ?>">← Back</a>
         <h1 class="topbar-title"><?php echo h(($selectedUnitName !== '' && $selectedUnitName !== 'UNIT') ? $selectedUnitName : $courseName); ?></h1>
         <div class="top-actions">
-            <?php if ($topWorksheetDownloadUrl !== ''): ?>
-            <a class="top-btn"
-               style="background:linear-gradient(180deg,#84cc16,#65a30d);"
-               href="<?php echo h($topWorksheetDownloadUrl); ?>"
-               download="worksheet.pdf">⬇ Download</a>
-            <?php endif; ?>
             <?php if ($selectedUnitId !== ''): ?>
             <a class="top-btn"
                style="background:linear-gradient(180deg,#0ea5e9,#0284c7);"
@@ -1052,9 +1046,6 @@ body{margin:0;font-family:'Nunito','Segoe UI',sans-serif;background:linear-gradi
                        href="<?php echo h($_ws['serve_url']); ?>"
                        target="_blank"
                        rel="noopener noreferrer">View</a>
-                    <a class="ws-btn ws-btn-dl"
-                       href="<?php echo h($_ws['serve_url']); ?>"
-                       download="worksheet.pdf">Download</a>
                 </div>
             </div>
             <?php endforeach; ?>
