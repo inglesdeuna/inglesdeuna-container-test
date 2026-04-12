@@ -499,9 +499,6 @@ ob_start();
 document.addEventListener('DOMContentLoaded', function () {
     var sourceData = Array.isArray(<?php echo json_encode($items, JSON_UNESCAPED_UNICODE); ?>) ? <?php echo json_encode($items, JSON_UNESCAPED_UNICODE); ?> : [];
     var data = sourceData.slice();
-    if (data.length > 1) {
-        data = data.sort(function () { return Math.random() - 0.5; }).slice(0, Math.max(1, Math.ceil(data.length * 0.75)));
-    }
     var activityTitle = <?php echo json_encode($viewerTitle, JSON_UNESCAPED_UNICODE); ?>;
     var PRON_ACTIVITY_ID = <?php echo json_encode($activity['id'] ?? '', JSON_UNESCAPED_UNICODE); ?>;
     var PRON_RETURN_TO = <?php echo json_encode($returnTo, JSON_UNESCAPED_UNICODE); ?>;
