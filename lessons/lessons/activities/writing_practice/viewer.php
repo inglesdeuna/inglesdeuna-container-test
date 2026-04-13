@@ -857,6 +857,7 @@ document.addEventListener('DOMContentLoaded', function () {
         return String(s || '')
             .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
             .trim().toLowerCase()
+            .replace(/[_–—-]+/g, ' ')
             .replace(/[.,;:!?'"()]/g, '')
             .replace(/\s+/g, ' ');
     }
@@ -865,6 +866,35 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!Array.isArray(answers) || answers.length === 0) { return false; }
         var u = normalize(userVal);
         return answers.some(function (a) { return normalize(a) === u; });
+    }
+
+    function evaluateFillAnswers(values, answers) {
+        var typed = Array.isArray(values) ? values.map(function (v) { return normalize(v); }) : [];
+        var expected = Array.isArray(answers) ? answers.map(function (a) { return normalize(a); }).filter(function (a) {
+            return a !== '';
+        }) : [];
+        var perInput = typed.map(function () { return false; });
+
+        if (!typed.length || !expected.length) {
+            return { allCorrect: false, perInput: perInput };
+        }
+
+        if (typed.length === expected.length) {
+            perInput = typed.map(function (val, i) {
+                return val !== '' && expected[i] !== '' && val === expected[i];
+            });
+            return {
+                allCorrect: perInput.every(Boolean),
+                perInput: perInput,
+            };
+        }
+
+        var joined = normalize(typed.join(' '));
+        var wholeCorrect = expected.some(function (ans) { return ans === joined; });
+        return {
+            allCorrect: wholeCorrect,
+            perInput: typed.map(function (val) { return wholeCorrect && val !== ''; }),
+        };
     }
 
     function toEmbedUrl(url) {
@@ -1403,12 +1433,11 @@ document.addEventListener('DOMContentLoaded', function () {
             var wasCardCorrect = checkedCards[index] === 'correct';
             if (isFillType && currentFillInputs.length > 0) {
                 var savedVals = checkedCards[index + '_inputs'] || [];
+                var savedPerInput = checkedCards[index + '_perInput'] || [];
                 currentFillInputs.forEach(function (inp, ii) {
                     inp.value    = savedVals[ii] || '';
                     inp.disabled = true;
-                    var ans2   = q.correct_answers || [];
-                    var thisOk = wasCardCorrect ? true
-                               : (ans2.length > ii ? checkCorrect(inp.value, [ans2[ii]]) : false);
+                    var thisOk   = wasCardCorrect ? true : !!savedPerInput[ii];
                     inp.className = 'wp-fill-input ' + (thisOk ? 'ok' : 'bad');
                 });
                 feedbackEl.textContent = wasCardCorrect ? '\u2714 Right' : '\u2718 Wrong';
@@ -1465,43 +1494,42 @@ document.addEventListener('DOMContentLoaded', function () {
             }
             var fillAttempts = (attemptsMap[index] || 0) + 1;
             attemptsMap[index] = fillAttempts;
-            var fillCorrect;
-            if (currentFillInputs.length === 1) {
-                fillCorrect = checkCorrect(vals[0], answers);
-            } else if (answers.length === currentFillInputs.length) {
-                fillCorrect = vals.every(function (v, ii) { return checkCorrect(v, [answers[ii]]); });
-            } else {
-                fillCorrect = answers.some(function (a) { return normalize(vals.join(' ')) === normalize(a); });
-            }
-            if (fillCorrect) {
+            var matchState = evaluateFillAnswers(vals, answers);
+            if (matchState.allCorrect) {
                 feedbackEl.textContent = '\u2714 Right';
                 feedbackEl.className   = 'mc-feedback good';
-                currentFillInputs.forEach(function (fi) { fi.className = 'wp-fill-input ok'; fi.disabled = true; });
+                currentFillInputs.forEach(function (fi, ii) {
+                    fi.className = 'wp-fill-input ' + (matchState.perInput[ii] ? 'ok' : 'bad');
+                    fi.disabled = true;
+                });
                 playSound(sndOk);
-                checkedCards[index]              = 'correct';
-                checkedCards[index + '_inputs']  = vals;
-                checkedCards[index + '_correct'] = 1;
+                checkedCards[index]               = 'correct';
+                checkedCards[index + '_inputs']   = vals;
+                checkedCards[index + '_perInput'] = matchState.perInput;
+                checkedCards[index + '_correct']  = 1;
                 correctCount += 1;
             } else if (fillAttempts >= 2) {
                 feedbackEl.textContent = '\u2718 Wrong (2/2)';
                 feedbackEl.className   = 'mc-feedback bad';
                 currentFillInputs.forEach(function (fi, ii) {
-                    var ok2 = answers.length > ii ? checkCorrect(fi.value.trim(), [answers[ii]]) : false;
-                    fi.className = 'wp-fill-input ' + (ok2 ? 'ok' : 'bad');
+                    fi.className = 'wp-fill-input ' + (matchState.perInput[ii] ? 'ok' : 'bad');
                     fi.disabled  = true;
                 });
                 playSound(sndBad);
                 var shownFill = answers.join(', ');
                 revealEl.textContent = 'Correct: ' + shownFill;
                 revealEl.classList.add('show');
-                checkedCards[index]              = 'wrong';
-                checkedCards[index + '_inputs']  = vals;
-                checkedCards[index + '_reveal']  = 'Correct: ' + shownFill;
-                checkedCards[index + '_correct'] = 0;
+                checkedCards[index]               = 'wrong';
+                checkedCards[index + '_inputs']   = vals;
+                checkedCards[index + '_perInput'] = matchState.perInput;
+                checkedCards[index + '_reveal']   = 'Correct: ' + shownFill;
+                checkedCards[index + '_correct']  = 0;
             } else {
-                feedbackEl.textContent = '\u2718 Wrong (1/2) \u2013 try again';
+                feedbackEl.textContent = '\u2718 Some blanks still need correction (1/2)';
                 feedbackEl.className   = 'mc-feedback bad';
-                currentFillInputs.forEach(function (fi) { fi.className = 'wp-fill-input bad'; });
+                currentFillInputs.forEach(function (fi, ii) {
+                    fi.className = 'wp-fill-input ' + (matchState.perInput[ii] ? 'ok' : 'bad');
+                });
                 playSound(sndBad);
             }
             return;
@@ -1652,10 +1680,15 @@ document.addEventListener('DOMContentLoaded', function () {
             var shownFill = answers.join(', ');
             if (!checkedCards[index]) {
                 var savedVals2 = currentFillInputs.map(function (fi) { return fi.value.trim(); });
-                checkedCards[index]             = 'wrong';
-                checkedCards[index + '_inputs'] = savedVals2;
-                checkedCards[index + '_reveal'] = 'Correct: ' + shownFill;
-                currentFillInputs.forEach(function (fi) { fi.className = 'wp-fill-input bad'; fi.disabled = true; });
+                var matchState2 = evaluateFillAnswers(savedVals2, answers);
+                checkedCards[index]               = 'wrong';
+                checkedCards[index + '_inputs']   = savedVals2;
+                checkedCards[index + '_perInput'] = matchState2.perInput;
+                checkedCards[index + '_reveal']   = 'Correct: ' + shownFill;
+                currentFillInputs.forEach(function (fi, ii) {
+                    fi.className = 'wp-fill-input ' + (matchState2.perInput[ii] ? 'ok' : 'bad');
+                    fi.disabled = true;
+                });
                 feedbackEl.textContent = '\u2718 Wrong';
                 feedbackEl.className   = 'mc-feedback bad';
                 playSound(sndBad);
