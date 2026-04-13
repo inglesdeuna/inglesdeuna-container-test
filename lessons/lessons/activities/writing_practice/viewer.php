@@ -1480,17 +1480,15 @@ document.addEventListener('DOMContentLoaded', function () {
                 playSound(sndOk);
                 checkedCards[index]              = 'correct';
                 checkedCards[index + '_inputs']  = vals;
-                checkedCards[index + '_correct'] = currentFillInputs.length;
-                correctCount += currentFillInputs.length;
+                checkedCards[index + '_correct'] = 1;
+                correctCount += 1;
             } else if (fillAttempts >= 2) {
-                feedbackEl.textContent = '\u2718 Wrong';
+                feedbackEl.textContent = '\u2718 Wrong (2/2)';
                 feedbackEl.className   = 'mc-feedback bad';
-                var indivOk = 0;
                 currentFillInputs.forEach(function (fi, ii) {
                     var ok2 = answers.length > ii ? checkCorrect(fi.value.trim(), [answers[ii]]) : false;
                     fi.className = 'wp-fill-input ' + (ok2 ? 'ok' : 'bad');
                     fi.disabled  = true;
-                    if (ok2) { indivOk++; }
                 });
                 playSound(sndBad);
                 var shownFill = answers.join(', ');
@@ -1499,8 +1497,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 checkedCards[index]              = 'wrong';
                 checkedCards[index + '_inputs']  = vals;
                 checkedCards[index + '_reveal']  = 'Correct: ' + shownFill;
-                checkedCards[index + '_correct'] = indivOk;
-                correctCount += indivOk;
+                checkedCards[index + '_correct'] = 0;
             } else {
                 feedbackEl.textContent = '\u2718 Wrong (1/2) \u2013 try again';
                 feedbackEl.className   = 'mc-feedback bad';
@@ -1717,16 +1714,10 @@ document.addEventListener('DOMContentLoaded', function () {
         if (compTitleEl) { compTitleEl.textContent = actTitle; }
         if (compTextEl)  { compTextEl.textContent  = "You've completed " + actTitle + ". Great job!"; }
 
-        /* score: free writing does not count toward the grade */
+        /* score: free writing does not count toward the grade; each other prompt counts as one item like dictation */
         var totalCount = questions.reduce(function (sum, qq) {
             var qt = String(qq.type || 'writing');
-            var ansCount = Array.isArray(qq.correct_answers) ? qq.correct_answers.filter(function (a) {
-                return String(a || '').trim() !== '';
-            }).length : 0;
             if (qt === 'writing') { return sum; }
-            if ((qt === 'fill_paragraph' || qt === 'fill_sentence' || qt === 'listen_write') && ansCount > 0) {
-                return sum + ansCount;
-            }
             return sum + 1;
         }, 0);
         var pct    = totalCount > 0 ? Math.round((correctCount / totalCount) * 100) : 100;
