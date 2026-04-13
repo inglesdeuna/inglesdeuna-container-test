@@ -846,6 +846,38 @@ function delete_student_assignment_from_database(string $id): bool
     }
 }
 
+function delete_student_assignment_bundle_from_database(string $studentId, string $program, string $courseId, string $levelId = '', string $teacherId = ''): bool
+{
+    $pdo = get_pdo_connection();
+    if (!$pdo || $studentId === '' || $program === '' || $courseId === '') {
+        return false;
+    }
+
+    try {
+        $sql = "DELETE FROM student_assignments WHERE student_id = :student_id AND program = :program AND course_id = :course_id";
+        $params = [
+            'student_id' => $studentId,
+            'program' => $program,
+            'course_id' => $courseId,
+        ];
+
+        if ($levelId !== '') {
+            $sql .= " AND COALESCE(level_id, '') = :level_id";
+            $params['level_id'] = $levelId;
+        }
+
+        if ($teacherId !== '') {
+            $sql .= " AND COALESCE(teacher_id, '') = :teacher_id";
+            $params['teacher_id'] = $teacherId;
+        }
+
+        $stmt = $pdo->prepare($sql);
+        return $stmt->execute($params);
+    } catch (Throwable $e) {
+        return false;
+    }
+}
+
 /* ===============================
    DB CATÁLOGO TÉCNICO
 =============================== */
@@ -1034,6 +1066,41 @@ $coursePeriods = load_json_array($coursePeriodsFile);
 /* ===============================
    ELIMINAR
 =============================== */
+if (isset($_GET['delete_group']) && (string) $_GET['delete_group'] === '1') {
+    $deleteStudentId = trim((string) ($_GET['student_id'] ?? ''));
+    $deleteProgram = trim((string) ($_GET['program'] ?? ''));
+    $deleteCourseId = trim((string) ($_GET['course_id'] ?? ''));
+    $deleteLevelId = trim((string) ($_GET['level_id'] ?? ''));
+    $deleteTeacherId = trim((string) ($_GET['teacher_id'] ?? ''));
+
+    $deletedInDb = delete_student_assignment_bundle_from_database($deleteStudentId, $deleteProgram, $deleteCourseId, $deleteLevelId, $deleteTeacherId);
+
+    if (!$deletedInDb) {
+        $studentAssignments = array_values(array_filter($studentAssignments, function ($row) use ($deleteStudentId, $deleteProgram, $deleteCourseId, $deleteLevelId, $deleteTeacherId) {
+            if ((string) ($row['student_id'] ?? '') !== $deleteStudentId) {
+                return true;
+            }
+            if ((string) ($row['program'] ?? '') !== $deleteProgram) {
+                return true;
+            }
+            if ((string) ($row['course_id'] ?? '') !== $deleteCourseId) {
+                return true;
+            }
+            if ($deleteLevelId !== '' && (string) ($row['level_id'] ?? '') !== $deleteLevelId) {
+                return true;
+            }
+            if ($deleteTeacherId !== '' && (string) ($row['teacher_id'] ?? '') !== $deleteTeacherId) {
+                return true;
+            }
+            return false;
+        }));
+        save_json_file($studentAssignmentsFile, $studentAssignments);
+    }
+
+    header('Location: student_assignments.php?saved=1');
+    exit;
+}
+
 if (isset($_GET['delete']) && $_GET['delete'] !== '') {
     $deleteId = (string) $_GET['delete'];
 
@@ -1378,6 +1445,9 @@ if ($selectedProgram === 'technical' && $editRecord) {
         .student-meta{display:flex;flex-wrap:wrap;gap:5px}
         .cred-chip{display:inline-flex;align-items:center;gap:3px;padding:3px 8px;border-radius:999px;font-size:12px;font-weight:600;background:#edf9f1;color:#2a5136;white-space:nowrap}
         .cred-chip.dim{background:#f4f7f5;color:var(--muted)}
+        .unit-select-wrap{margin-top:10px;max-width:360px}
+        .unit-select-wrap label{display:block;margin-bottom:5px;font-size:11px;font-weight:700;color:var(--muted);text-transform:none;letter-spacing:0}
+        .unit-list-select{width:100%;min-height:38px;border-radius:10px;border:1px solid #d7e4da;background:#f8fbf8;color:var(--text);padding:8px 10px;font-size:13px}
         .student-actions{display:flex;gap:6px;flex-wrap:wrap;align-items:center;padding-top:2px}
         /* Small action buttons */
         .btn-sm{display:inline-flex;align-items:center;gap:4px;height:30px;padding:0 10px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;border:none;text-decoration:none;white-space:nowrap}
@@ -1521,9 +1591,14 @@ if ($selectedProgram === 'technical' && $editRecord) {
                         'course_name' => $aCourseName,
                         'is_english'  => $aIsEn,
                         'rows'        => [],
+                        'student_ids' => [],
                     ];
                 }
                 $assignmentGroups[$aKey]['rows'][] = $aRow;
+                $studentKeyForCount = (string) ($aRow['student_id'] ?? '');
+                if ($studentKeyForCount !== '') {
+                    $assignmentGroups[$aKey]['student_ids'][$studentKeyForCount] = true;
+                }
             }
             ?>
 
@@ -1540,27 +1615,80 @@ if ($selectedProgram === 'technical' && $editRecord) {
                             <div class="group-info">
                                 <span class="badge-prog <?= $gIsEn ? 'badge-en' : 'badge-tech' ?>"><?= h($gGroup['label']) ?></span>
                                 <span class="group-name"><?= h($gGroup['course_name']) ?></span>
-                                <span class="group-count"><?= count($gGroup['rows']) ?> estudiante<?= count($gGroup['rows']) !== 1 ? 's' : '' ?></span>
+                                <?php $groupStudentCount = count((array) ($gGroup['student_ids'] ?? [])); ?>
+                                <span class="group-count"><?= $groupStudentCount ?> estudiante<?= $groupStudentCount !== 1 ? 's' : '' ?></span>
                             </div>
                             <div class="chevron" id="chev-<?= $safeKey ?>">&#9660;</div>
                         </div>
 
                         <div class="group-body" id="body-<?= $safeKey ?>">
-                            <?php foreach ($gGroup['rows'] as $gRow):
+                            <?php
+                            $studentBundles = [];
+                            foreach ($gGroup['rows'] as $bundleRow) {
+                                $bundleStudentId = (string) ($bundleRow['student_id'] ?? '');
+                                $bundleTeacherId = (string) ($bundleRow['teacher_id'] ?? '');
+                                $bundleScopeId = $gIsEn ? (string) ($bundleRow['level_id'] ?? '') : (string) ($bundleRow['course_id'] ?? '');
+                                $bundleKey = $bundleStudentId . '::' . $bundleScopeId . '::' . $bundleTeacherId;
+
+                                if (!isset($studentBundles[$bundleKey])) {
+                                    $studentBundles[$bundleKey] = [
+                                        'first_row' => $bundleRow,
+                                        'unit_ids' => [],
+                                        'unit_names' => [],
+                                        'teacher_names' => [],
+                                    ];
+                                }
+
+                                $bundleUnitName = $gIsEn
+                                    ? find_name_by_id($englishUnits, (string) ($bundleRow['unit_id'] ?? ''), '')
+                                    : find_name_by_id($technicalUnits, (string) ($bundleRow['unit_id'] ?? ''), '');
+                                $bundleUnitId = (string) ($bundleRow['unit_id'] ?? '');
+                                $bundleTeacherName = find_name_by_id($teachers, $bundleTeacherId, '');
+
+                                if ($bundleUnitId !== '' && !in_array($bundleUnitId, $studentBundles[$bundleKey]['unit_ids'], true)) {
+                                    $studentBundles[$bundleKey]['unit_ids'][] = $bundleUnitId;
+                                }
+                                if ($bundleUnitName !== '' && !in_array($bundleUnitName, $studentBundles[$bundleKey]['unit_names'], true)) {
+                                    $studentBundles[$bundleKey]['unit_names'][] = $bundleUnitName;
+                                }
+                                if ($bundleTeacherName !== '' && !in_array($bundleTeacherName, $studentBundles[$bundleKey]['teacher_names'], true)) {
+                                    $studentBundles[$bundleKey]['teacher_names'][] = $bundleTeacherName;
+                                }
+                            }
+                            ?>
+                            <?php foreach ($studentBundles as $bundle):
+                                $gRow = (array) ($bundle['first_row'] ?? []);
                                 $gStudentId  = (string) ($gRow['student_id'] ?? '');
                                 $gAccount    = find_student_account($studentAccounts, $gStudentId);
                                 $gUsername   = (string) ($gAccount['username'] ?? $gRow['student_username'] ?? '');
                                 $gTempPass   = (string) ($gAccount['temp_password'] ?? $gRow['student_temp_password'] ?? '');
                                 $gAssignId   = (string) ($gRow['id'] ?? '');
-                                $gRowId      = 'r' . md5($gAssignId);
-
-                                $gUnitName   = $gIsEn
-                                    ? find_name_by_id($englishUnits, (string) ($gRow['unit_id'] ?? ''), '')
-                                    : find_name_by_id($technicalUnits, (string) ($gRow['unit_id'] ?? ''), '');
-                                $gTeacher    = find_name_by_id($teachers, (string) ($gRow['teacher_id'] ?? ''), '');
+                                $gRowId      = 'r' . md5($gAssignId . '::' . $gStudentId . '::' . $safeKey);
                                 $gStudentName = find_name_by_id($students, $gStudentId, 'N/D');
                                 $gInitial    = mb_strtoupper(mb_substr(trim($gStudentName), 0, 1, 'UTF-8'), 'UTF-8');
-                                $gSafeDelete = h(addslashes($gStudentName));
+                                $gUnitNames  = (array) ($bundle['unit_names'] ?? []);
+                                $gUnitIds    = (array) ($bundle['unit_ids'] ?? []);
+                                $gTeacherNames = (array) ($bundle['teacher_names'] ?? []);
+                                $gTeacherLabel = implode(', ', $gTeacherNames);
+                                $availableUnits = array_values(array_filter($gIsEn ? $englishUnits : $technicalUnits, function ($u) use ($gIsEn, $gRow) {
+                                    if ($gIsEn) {
+                                        return (string) ($u['phase_id'] ?? '') === (string) ($gRow['level_id'] ?? '');
+                                    }
+                                    return (string) ($u['course_id'] ?? $u['level_id'] ?? '') === (string) ($gRow['course_id'] ?? '');
+                                }));
+                                $availableUnitIds = array_values(array_unique(array_filter(array_map(function ($u) {
+                                    return (string) ($u['id'] ?? '');
+                                }, $availableUnits))));
+                                $assignedUnitCount = count($gUnitIds);
+                                $hasAllUnits = !empty($availableUnitIds) && count(array_intersect($availableUnitIds, $gUnitIds)) >= count($availableUnitIds);
+                                $deleteQuestion = $assignedUnitCount > 1
+                                    ? '¿Eliminar todas las unidades asignadas a ' . $gStudentName . ' en este curso?' 
+                                    : '¿Eliminar a ' . $gStudentName . '?';
+                                $deleteUrl = 'student_assignments.php?delete_group=1&student_id=' . urlencode($gStudentId)
+                                    . '&program=' . urlencode((string) ($gRow['program'] ?? ''))
+                                    . '&course_id=' . urlencode((string) ($gRow['course_id'] ?? ''))
+                                    . '&level_id=' . urlencode((string) ($gRow['level_id'] ?? ''))
+                                    . '&teacher_id=' . urlencode((string) ($gRow['teacher_id'] ?? ''));
                             ?>
                             <div class="student-row">
                                 <div class="student-main">
@@ -1574,13 +1702,22 @@ if ($selectedProgram === 'technical' && $editRecord) {
                                             <?php if ($gTempPass !== ''): ?>
                                                 <span class="cred-chip">🔑 <?= h($gTempPass) ?></span>
                                             <?php endif; ?>
-                                            <?php if ($gUnitName !== ''): ?>
-                                                <span class="cred-chip dim">📖 <?= h($gUnitName) ?></span>
-                                            <?php endif; ?>
-                                            <?php if ($gTeacher !== ''): ?>
-                                                <span class="cred-chip dim">👩‍🏫 <?= h($gTeacher) ?></span>
+                                            <span class="cred-chip dim">📚 <?= $hasAllUnits ? 'Todas las unidades' : ($assignedUnitCount . ' unidad' . ($assignedUnitCount !== 1 ? 'es' : '')) ?></span>
+                                            <?php if ($gTeacherLabel !== ''): ?>
+                                                <span class="cred-chip dim">👩‍🏫 <?= h($gTeacherLabel) ?></span>
                                             <?php endif; ?>
                                         </div>
+                                        <?php if (!empty($gUnitNames)): ?>
+                                            <div class="unit-select-wrap">
+                                                <label>Unidades asignadas</label>
+                                                <select class="unit-list-select" onchange="this.selectedIndex=0">
+                                                    <option value=""><?= $hasAllUnits ? 'Todas las unidades del curso / semestre' : 'Ver unidades asignadas' ?></option>
+                                                    <?php foreach ($gUnitNames as $unitName): ?>
+                                                        <option value="<?= h($unitName) ?>"><?= h($unitName) ?></option>
+                                                    <?php endforeach; ?>
+                                                </select>
+                                            </div>
+                                        <?php endif; ?>
                                         <div class="pwd-form" id="<?= $gRowId ?>">
                                             <form method="post">
                                                 <input type="hidden" name="action" value="reset_student_password">
@@ -1594,8 +1731,8 @@ if ($selectedProgram === 'technical' && $editRecord) {
                                 </div>
                                 <div class="student-actions">
                                     <button type="button" class="btn-sm btn-pwd" onclick="togglePwd('<?= $gRowId ?>')">🔑 Contraseña</button>
-                                    <button type="button" class="btn-sm btn-edit" onclick="location.href='student_assignments.php?edit=<?= h($gAssignId) ?>'">✏️ Cambiar grupo</button>
-                                    <button type="button" class="btn-sm btn-del" onclick="if(confirm('¿Eliminar a <?= $gSafeDelete ?>?')) location.href='student_assignments.php?delete=<?= h($gAssignId) ?>'">🗑️ Eliminar</button>
+                                    <button type="button" class="btn-sm btn-edit" onclick="location.href='student_assignments.php?edit=<?= h($gAssignId) ?>'">✏️ <?= $assignedUnitCount > 1 ? 'Editar grupo' : 'Cambiar grupo' ?></button>
+                                    <button type="button" class="btn-sm btn-del" onclick="if(confirm('<?= h(addslashes($deleteQuestion)) ?>')) location.href='<?= h($deleteUrl) ?>'">🗑️ Eliminar</button>
                                 </div>
                             </div>
                             <?php endforeach; ?>
