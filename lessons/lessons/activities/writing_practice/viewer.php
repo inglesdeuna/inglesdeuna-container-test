@@ -617,14 +617,8 @@ document.addEventListener('DOMContentLoaded', function () {
                     playSound(sndBad);
                 }
             } else {
-                /* open writing: counts as completed */
-                correctCount++;
-                if (ansEl) { ansEl.className = 'dict-answer-box wpvl-answer ok'; }
-                if (fbEl)  { fbEl.textContent = '\u2714 Submitted for review'; fbEl.className = 'mc-feedback good'; }
-                if (val !== '') {
-                    openResponses.push({ question_id: String(q.id || i), question_text: String(q.question || ''),
-                                         question_type: String(q.type || 'video_writing'), response_text: val, max_points: 1 });
-                }
+                if (ansEl) { ansEl.className = 'dict-answer-box wpvl-answer bad'; }
+                if (fbEl)  { fbEl.textContent = 'No correct answers configured for this prompt.'; fbEl.className = 'mc-feedback bad'; }
             }
         });
 
@@ -841,16 +835,36 @@ document.addEventListener('DOMContentLoaded', function () {
     var writingReviewed   = {};   // index -> true after using the writing helper
 
     /* ── helpers ──────────────────────────────────────── */
-    function isAutoGraded(q) {
-        var type = String((q && q.type) || 'writing');
-        var answers = Array.isArray(q && q.correct_answers) ? q.correct_answers.filter(function (a) {
-            return String(a || '').trim() !== '';
+    function getExpectedAnswerList(q) {
+        return Array.isArray(q && q.correct_answers) ? q.correct_answers.map(function (a) {
+            return String(a || '').trim();
+        }).filter(function (a) {
+            return a !== '';
         }) : [];
-        if (type === 'writing') { return false; }
-        if (type === 'fill_sentence' || type === 'fill_paragraph' || type === 'listen_write') {
-            return answers.length > 0;
+    }
+
+    function isAutoGraded(q) {
+        return String((q && q.type) || 'writing') !== 'writing';
+    }
+
+    function getQuestionInputTotal(q) {
+        var qt = String((q && q.type) || 'writing');
+        var answers = getExpectedAnswerList(q);
+        if (qt === 'writing') { return 0; }
+        if ((qt === 'fill_paragraph' || qt === 'fill_sentence' || qt === 'listen_write') && answers.length > 0) {
+            return answers.length;
         }
-        return type === 'video_writing' && answers.length > 0;
+        return 1;
+    }
+
+    function getQuestionCorrectUnits(q, qi) {
+        var qt = String((q && q.type) || 'writing');
+        if (qt === 'writing') { return 0; }
+        if (qt === 'fill_paragraph' || qt === 'fill_sentence' || qt === 'listen_write') {
+            var perInput = checkedCards[qi + '_perInput'] || [];
+            return perInput.filter(Boolean).length;
+        }
+        return checkedCards[qi] === 'correct' ? 1 : 0;
     }
 
     function normalize(s) {
@@ -1482,11 +1496,18 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!isAutoGraded(q)) { return; }
         if (checkedCards[index]) { return; }
 
+        var expectedAnswers = getExpectedAnswerList(q);
+        if (expectedAnswers.length === 0) {
+            feedbackEl.textContent = 'This activity has no correct answers configured yet.';
+            feedbackEl.className   = 'mc-feedback bad';
+            return;
+        }
+
         var isFill = (type === 'fill_sentence' || type === 'fill_paragraph' || type === 'listen_write') && currentFillInputs.length > 0;
 
         if (isFill) {
             var vals    = currentFillInputs.map(function (fi) { return fi.value.trim(); });
-            var answers = q.correct_answers || [];
+            var answers = expectedAnswers;
             if (vals.every(function (v) { return v === ''; })) {
                 feedbackEl.textContent = 'Fill in the blank first.';
                 feedbackEl.className   = 'mc-feedback bad';
@@ -1544,7 +1565,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         var attempts = (attemptsMap[index] || 0) + 1;
         attemptsMap[index] = attempts;
-        var correct = checkCorrect(val, q.correct_answers || []);
+        var correct = checkCorrect(val, expectedAnswers);
         if (correct) {
             feedbackEl.textContent = '\u2714 Right';
             feedbackEl.className   = 'mc-feedback good';
@@ -1672,8 +1693,12 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
         if (!isAutoGraded(q)) { return; }
-        var answers = q.correct_answers || [];
-        if (answers.length === 0) { return; }
+        var answers = getExpectedAnswerList(q);
+        if (answers.length === 0) {
+            feedbackEl.textContent = 'This activity has no correct answers configured yet.';
+            feedbackEl.className   = 'mc-feedback bad';
+            return;
+        }
 
         var isFill = (type === 'fill_sentence' || type === 'fill_paragraph' || type === 'listen_write') && currentFillInputs.length > 0;
         if (isFill) {
@@ -1749,31 +1774,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
         /* score summary: free writing does not count; fill/listen blocks count by input slot */
         var totalCount = questions.reduce(function (sum, qq) {
-            var qt = String(qq.type || 'writing');
-            var ansCount = Array.isArray(qq.correct_answers) ? qq.correct_answers.filter(function (a) {
-                return String(a || '').trim() !== '';
-            }).length : 0;
-            if (qt === 'writing') { return sum; }
-            if ((qt === 'fill_paragraph' || qt === 'fill_sentence' || qt === 'listen_write') && ansCount > 0) {
-                return sum + ansCount;
-            }
-            return sum + 1;
+            return sum + getQuestionInputTotal(qq);
         }, 0);
 
-        var scoredCorrect = 0;
-        questions.forEach(function (qq, qi) {
-            var qt = String(qq.type || 'writing');
-            if (qt === 'writing') { return; }
-            if (qt === 'fill_paragraph' || qt === 'fill_sentence' || qt === 'listen_write') {
-                var perInput = checkedCards[qi + '_perInput'] || [];
-                var localCorrect = perInput.filter(Boolean).length;
-                scoredCorrect += localCorrect;
-                return;
-            }
-            if (checkedCards[qi] === 'correct' || checkedCards[qi] === 'open') {
-                scoredCorrect += 1;
-            }
-        });
+        var scoredCorrect = questions.reduce(function (sum, qq, qi) {
+            return sum + getQuestionCorrectUnits(qq, qi);
+        }, 0);
 
         var pct    = totalCount > 0 ? Math.round((scoredCorrect / totalCount) * 100) : 100;
         var errors = Math.max(0, totalCount - scoredCorrect);
