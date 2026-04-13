@@ -56,14 +56,18 @@ try {
     ");
 } catch (Throwable $ignored) {}
 
-/* ── Add grader_notes column if missing ──────────────────── */
+/* ── Add grader_notes / question_type columns if missing ─── */
 try {
     $pdo->exec("ALTER TABLE writing_practice_responses ADD COLUMN IF NOT EXISTS grader_notes TEXT DEFAULT NULL");
+} catch (Throwable $ignored) {}
+try {
+    $pdo->exec("ALTER TABLE writing_practice_responses ADD COLUMN IF NOT EXISTS question_type TEXT NOT NULL DEFAULT ''");
 } catch (Throwable $ignored) {}
 
 /* ── Load word scoring settings from activity ────────────── */
 $wordScoring = ['enabled' => false, 'penalty_spelling' => 1.0, 'penalty_grammar' => 1.0, 'penalty_punctuation' => 1.0];
 $activityTitle = 'Writing Practice';
+$questionTypes = [];
 try {
     $stmtA = $pdo->prepare("SELECT data FROM activities WHERE id = :id LIMIT 1");
     $stmtA->execute(['id' => $activityId]);
@@ -72,6 +76,14 @@ try {
         $decodedAct = json_decode((string) $rowData['data'], true);
         if (is_array($decodedAct)) {
             if (!empty($decodedAct['title'])) { $activityTitle = (string) $decodedAct['title']; }
+            if (!empty($decodedAct['questions']) && is_array($decodedAct['questions'])) {
+                foreach ($decodedAct['questions'] as $qItem) {
+                    if (!is_array($qItem)) { continue; }
+                    $mapId = trim((string) ($qItem['id'] ?? ''));
+                    if ($mapId === '') { continue; }
+                    $questionTypes[$mapId] = trim((string) ($qItem['type'] ?? 'writing')) ?: 'writing';
+                }
+            }
             if (isset($decodedAct['word_scoring']) && is_array($decodedAct['word_scoring'])) {
                 $ws = $decodedAct['word_scoring'];
                 $wordScoring = [
@@ -104,8 +116,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $pdo->beginTransaction();
     try {
-        $totalEarned = 0;
-        $totalMax    = 0;
+        $totalEarned   = 0;
+        $totalMax      = 0;
+        $scoreableItems = 0;
 
         if ($wsEnabled) {
             /* ── Word-count scoring mode ─── */
@@ -115,7 +128,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $errPunct    = isset($_POST['err_punct'])    && is_array($_POST['err_punct'])    ? $_POST['err_punct']    : [];
 
             foreach ($qIds as $i => $qId) {
-                $qId    = trim((string) $qId);
+                $qId = trim((string) $qId);
+                $qType = trim((string) ($questionTypes[$qId] ?? '')) ?: 'writing';
+
+                if ($qType === 'writing') {
+                    $notes = json_encode(['practice_only' => true, 'message' => 'Free writing is reviewed without a score.']);
+                    $stmt = $pdo->prepare("
+                        UPDATE writing_practice_responses
+                        SET score        = NULL,
+                            max_points   = 0,
+                            grader_notes = :notes,
+                            graded_by    = :graded_by,
+                            graded_at    = NOW(),
+                            updated_at   = NOW()
+                        WHERE activity_id   = :activity_id
+                          AND student_id    = :student_id
+                          AND assignment_id = :assignment_id
+                          AND question_id   = :question_id
+                    ");
+                    $stmt->execute([
+                        'notes'         => $notes,
+                        'graded_by'     => $teacherId,
+                        'activity_id'   => $activityId,
+                        'student_id'    => $studentId,
+                        'assignment_id' => $assignmentId,
+                        'question_id'   => $qId,
+                    ]);
+                    continue;
+                }
+
                 $base   = max(0, (int) ($wordCounts[$i]  ?? 0));
                 $eSpel  = max(0, (int) ($errSpelling[$i] ?? 0));
                 $eGram  = max(0, (int) ($errGrammar[$i]  ?? 0));
@@ -131,8 +172,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'final'        => $final,
                 ]);
 
-                $totalMax    += $base;
-                $totalEarned += $final;
+                $totalMax      += $base;
+                $totalEarned   += $final;
+                $scoreableItems++;
 
                 $stmt = $pdo->prepare("
                     UPDATE writing_practice_responses
@@ -165,19 +207,49 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             foreach ($qIds as $i => $qId) {
                 $qId   = trim((string) $qId);
+                $qType = trim((string) ($questionTypes[$qId] ?? '')) ?: 'writing';
+
+                if ($qType === 'writing') {
+                    $notes = json_encode(['practice_only' => true, 'message' => 'Free writing is reviewed without a score.']);
+                    $stmt = $pdo->prepare("
+                        UPDATE writing_practice_responses
+                        SET score        = NULL,
+                            max_points   = 0,
+                            grader_notes = :notes,
+                            graded_by    = :graded_by,
+                            graded_at    = NOW(),
+                            updated_at   = NOW()
+                        WHERE activity_id   = :activity_id
+                          AND student_id    = :student_id
+                          AND assignment_id = :assignment_id
+                          AND question_id   = :question_id
+                    ");
+                    $stmt->execute([
+                        'notes'         => $notes,
+                        'graded_by'     => $teacherId,
+                        'activity_id'   => $activityId,
+                        'student_id'    => $studentId,
+                        'assignment_id' => $assignmentId,
+                        'question_id'   => $qId,
+                    ]);
+                    continue;
+                }
+
                 $raw   = trim((string) ($scores[$i]  ?? ''));
                 $max   = max(1, (int) ($maxPts[$i]   ?? 10));
                 $score = ($raw !== '') ? max(0, min($max, (int) $raw)) : null;
 
-                $totalMax    += $max;
-                $totalEarned += ($score !== null) ? (int) $score : 0;
+                $totalMax      += $max;
+                $totalEarned   += ($score !== null) ? (int) $score : 0;
+                $scoreableItems++;
 
                 $stmt = $pdo->prepare("
                     UPDATE writing_practice_responses
-                    SET score     = :score,
-                        graded_by = :graded_by,
-                        graded_at = NOW(),
-                        updated_at = NOW()
+                    SET score        = :score,
+                        max_points   = :max_points,
+                        graded_by    = :graded_by,
+                        graded_at    = NOW(),
+                        updated_at   = NOW()
                     WHERE activity_id   = :activity_id
                       AND student_id    = :student_id
                       AND assignment_id = :assignment_id
@@ -185,6 +257,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ");
                 $stmt->execute([
                     'score'         => $score,
+                    'max_points'    => $max,
                     'graded_by'     => $teacherId,
                     'activity_id'   => $activityId,
                     'student_id'    => $studentId,
@@ -195,8 +268,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         /* Update student_activity_results with the graded score */
-        if ($totalMax > 0 && $unitId !== '' && $assignmentId !== '') {
-            $percent = min(100, (int) round(($totalEarned / $totalMax) * 100));
+        if ($unitId !== '' && $assignmentId !== '') {
+            $percent = $totalMax > 0 ? min(100, (int) round(($totalEarned / $totalMax) * 100)) : 100;
             $stmtSar = $pdo->prepare("
                 INSERT INTO student_activity_results
                     (student_id, assignment_id, unit_id, activity_id, activity_type,
@@ -216,7 +289,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'unit_id'       => $unitId,
                 'activity_id'   => $activityId,
                 'pct'           => $percent,
-                'total'         => count($qIds),
+                'total'         => $scoreableItems,
             ]);
 
             /* Re-aggregate all activity scores for this unit into student_unit_results */
@@ -288,7 +361,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $responses = [];
 try {
     $stmt = $pdo->prepare("
-        SELECT question_id, question_text, response_text, score, max_points,
+        SELECT question_id, question_type, question_text, response_text, score, max_points,
                graded_by, graded_at, created_at,
                COALESCE(grader_notes, '') AS grader_notes
         FROM writing_practice_responses
@@ -401,6 +474,10 @@ ob_start();
 }
 .wg-max-label { color: #7c3aed; font-weight: 700; font-size: 13px; }
 .wg-already-graded { color: #16a34a; font-size: 12px; font-weight: 700; }
+.wg-practice-note {
+    background: #fff7ed; border: 1px solid #fdba74; color: #9a3412;
+    border-radius: 10px; padding: 10px 12px; font-size: 13px; font-weight: 700;
+}
 .wg-empty { padding: 20px; border: 1px solid #e9d5ff; border-radius: 12px; background: #fdf4ff; color: #7c3aed; font-weight: 700; text-align: center; }
 .wg-actions { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 16px; }
 .wg-btn-save {
@@ -448,6 +525,8 @@ $backUrl = '/lessons/lessons/academic/teacher_student_progress.php?'
                 <?php
                 $alreadyGraded = $resp['score'] !== null;
                 $respText      = (string) ($resp['response_text'] ?? '');
+                $qType         = trim((string) ($resp['question_type'] ?? '')) ?: (string) ($questionTypes[$resp['question_id']] ?? 'writing');
+                $practiceOnly  = ($qType === 'writing');
                 $autoWc        = wpg_word_count($respText);
 
                 /* decode saved breakdown if available */
@@ -461,7 +540,7 @@ $backUrl = '/lessons/lessons/academic/teacher_student_progress.php?'
                 $prevDeduct = (int) ($savedNotes['deduction']    ?? 0);
                 $prevFinal  = (int) ($savedNotes['final']        ?? ($alreadyGraded ? (int)$resp['score'] : max(0,$autoWc)));
                 ?>
-                <div class="wg-card <?= $wsEnabled ? 'ws-mode' : '' ?>">
+                <div class="wg-card <?= ($wsEnabled && !$practiceOnly) ? 'ws-mode' : '' ?>">
                     <div class="wg-q-num">Pregunta <?= $i + 1 ?></div>
 
                     <?php if (!empty($resp['question_text'])): ?>
@@ -473,7 +552,14 @@ $backUrl = '/lessons/lessons/academic/teacher_student_progress.php?'
 
                     <input type="hidden" name="question_id[]" value="<?= h($resp['question_id']) ?>">
 
-                    <?php if ($wsEnabled): ?>
+                    <?php if ($practiceOnly): ?>
+                        <div class="wg-practice-note">
+                            ✍️ Esta respuesta es de <strong>escritura libre</strong>. El sistema la conserva como práctica de corrección y <strong>no genera puntaje</strong>.
+                        </div>
+                        <?php if ($alreadyGraded): ?>
+                            <span class="wg-already-graded">✔ Revisado sin nota</span>
+                        <?php endif; ?>
+                    <?php elseif ($wsEnabled): ?>
                     <!-- ── Word-count scoring UI ── -->
                     <div class="wg-wc-row">
                         <label>Palabras (base):</label>

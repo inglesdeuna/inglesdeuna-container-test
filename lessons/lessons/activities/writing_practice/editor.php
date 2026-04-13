@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
@@ -397,7 +397,7 @@ ob_start();
 <form class="wp-form" id="wpForm" method="post" enctype="multipart/form-data">
     <section class="wp-intro">
         <h3>Writing Practice &mdash; Editor</h3>
-        <p>Agrega una pregunta por bloque. Elige el tipo, escribe el enunciado y agrega las respuestas correctas (una por línea). Para escritura libre, deja las respuestas en blanco.</p>
+        <p>Agrega una pregunta por bloque. Elige el tipo, escribe el enunciado y agrega las respuestas correctas (una por línea). La opción <strong>Escritura libre</strong> funciona como práctica con corrector y reescritura, <strong>sin puntaje</strong>.</p>
     </section>
 
     <div class="wp-title-box">
@@ -444,7 +444,7 @@ ob_start();
                     El puntaje final = base &minus; (errores_ortografía × penalización_ortografía)
                     &minus; (errores_gramática × penalización_gramática)
                     &minus; (errores_puntuación × penalización_puntuación), mínimo 0.
-                    El maestro ingresa los errores al calificar en el panel de calificación.
+                    <strong>No aplica a la opción de escritura libre</strong>, porque esa se usa solo como corrector y práctica sin nota.
                 </p>
             </div>
         </div>
@@ -465,7 +465,7 @@ ob_start();
             <div class="wp-col-full">
                 <label>Tipo</label>
                 <select name="wp_type[]" class="wp-type-select" onchange="wpToggleMedia(this)">
-                    <option value="writing"        <?= $type==='writing'        ?'selected':'' ?>> Escritura libre</option>
+                    <option value="writing"        <?= $type==='writing'        ?'selected':'' ?>> Escritura libre (sin puntaje)</option>
                     <option value="listen_write"   <?= $type==='listen_write'   ?'selected':'' ?>> Escuchar y escribir</option>
                     <option value="fill_sentence"  <?= $type==='fill_sentence'  ?'selected':'' ?>> Completar oración</option>
                     <option value="fill_paragraph" <?= $type==='fill_paragraph' ?'selected':'' ?>> Completar párrafo</option>
@@ -588,7 +588,7 @@ function wpAdd() {
         '<span class="wp-block-num">Pregunta ' + wpCount + '</span>' +
         '<div class="wp-col-full"><label>Tipo</label>' +
         '<select name="wp_type[]" class="wp-type-select" onchange="wpToggleMedia(this)">' +
-        '<option value="writing">\u270D\uFE0F Escritura libre</option>' +
+        '<option value="writing">\u270D\uFE0F Escritura libre (sin puntaje)</option>' +
         '<option value="listen_write">\uD83C\uDFA7 Escuchar y escribir</option>' +
         '<option value="fill_sentence">\uD83D\uDCDD Completar oraci\u00F3n</option>' +
         '<option value="fill_paragraph">\uD83D\uDCC4 Completar p\u00E1rrafo</option>' +

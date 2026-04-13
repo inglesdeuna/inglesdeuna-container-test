@@ -58,6 +58,7 @@ try {
             assignment_id TEXT        NOT NULL DEFAULT '',
             unit_id       TEXT        NOT NULL DEFAULT '',
             question_id   TEXT        NOT NULL,
+            question_type TEXT        NOT NULL DEFAULT '',
             question_text TEXT        NOT NULL DEFAULT '',
             response_text TEXT        NOT NULL DEFAULT '',
             score         INTEGER     DEFAULT NULL,
@@ -73,27 +74,38 @@ try {
     // Table may already exist with different constraints – continue
 }
 
+try {
+    $pdo->exec("ALTER TABLE writing_practice_responses ADD COLUMN IF NOT EXISTS question_type TEXT NOT NULL DEFAULT ''");
+} catch (Throwable $e) {
+    // Safe to continue
+}
+
 /* ── Upsert each response ──────────────────────────────── */
 $pdo->beginTransaction();
 try {
+    $scoreableCount = 0;
+
     foreach ($responses as $r) {
         if (!is_array($r)) { continue; }
         $qId       = trim((string) ($r['question_id']   ?? ''));
+        $qType     = trim((string) ($r['question_type'] ?? 'writing'));
         $qText     = trim((string) ($r['question_text'] ?? ''));
         $rText     = trim((string) ($r['response_text'] ?? ''));
-        $maxPts    = max(1, (int) ($r['max_points']    ?? 10));
+        $maxPts    = max(0, (int) ($r['max_points']    ?? 10));
 
         if ($qId === '' || $rText === '') { continue; }
+        if ($qType !== 'writing' || $maxPts > 0) { $scoreableCount++; }
 
         $rowId = substr(md5($activityId . $studentId . $assignmentId . $qId), 0, 20);
 
         $stmt = $pdo->prepare("
             INSERT INTO writing_practice_responses
-                (id, activity_id, student_id, assignment_id, unit_id, question_id, question_text, response_text, max_points, updated_at)
+                (id, activity_id, student_id, assignment_id, unit_id, question_id, question_type, question_text, response_text, max_points, updated_at)
             VALUES
-                (:id, :activity_id, :student_id, :assignment_id, :unit_id, :question_id, :question_text, :response_text, :max_points, NOW())
+                (:id, :activity_id, :student_id, :assignment_id, :unit_id, :question_id, :question_type, :question_text, :response_text, :max_points, NOW())
             ON CONFLICT (activity_id, student_id, assignment_id, question_id)
             DO UPDATE SET
+                question_type = EXCLUDED.question_type,
                 response_text = EXCLUDED.response_text,
                 question_text = EXCLUDED.question_text,
                 max_points    = EXCLUDED.max_points,
@@ -109,13 +121,14 @@ try {
             'assignment_id' => $assignmentId,
             'unit_id'       => $unitId,
             'question_id'   => $qId,
+            'question_type' => $qType,
             'question_text' => $qText,
             'response_text' => $rText,
             'max_points'    => $maxPts,
         ]);
     }
 
-    /* Mark the activity as "pending grading" (completion_percent = 0 until teacher grades) */
+    /* Mark the activity as pending review or complete practice-only work */
     if ($unitId !== '' && $assignmentId !== '') {
         $pdo->exec("
             CREATE TABLE IF NOT EXISTS student_activity_results (
@@ -132,24 +145,28 @@ try {
               PRIMARY KEY (student_id, assignment_id, unit_id, activity_id)
             )
         ");
+        $completionPct = $scoreableCount > 0 ? 0 : 100;
         $stmtSar = $pdo->prepare("
             INSERT INTO student_activity_results
                 (student_id, assignment_id, unit_id, activity_id, activity_type, completion_percent,
                  errors_count, total_count, attempts_count, updated_at)
             VALUES
-                (:student_id, :assignment_id, :unit_id, :activity_id, 'writing_practice', 0,
+                (:student_id, :assignment_id, :unit_id, :activity_id, 'writing_practice', :completion_percent,
                  0, :total, 1, NOW())
             ON CONFLICT (student_id, assignment_id, unit_id, activity_id)
             DO UPDATE SET
+                completion_percent = EXCLUDED.completion_percent,
+                total_count        = EXCLUDED.total_count,
                 attempts_count     = student_activity_results.attempts_count + 1,
                 updated_at         = NOW()
         ");
         $stmtSar->execute([
-            'student_id'    => $studentId,
-            'assignment_id' => $assignmentId,
-            'unit_id'       => $unitId,
-            'activity_id'   => $activityId,
-            'total'         => count($responses),
+            'student_id'         => $studentId,
+            'assignment_id'      => $assignmentId,
+            'unit_id'            => $unitId,
+            'activity_id'        => $activityId,
+            'completion_percent' => $completionPct,
+            'total'              => $scoreableCount,
         ]);
     }
 
