@@ -1506,8 +1506,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 checkedCards[index]               = 'correct';
                 checkedCards[index + '_inputs']   = vals;
                 checkedCards[index + '_perInput'] = matchState.perInput;
-                checkedCards[index + '_correct']  = 1;
-                correctCount += 1;
+                checkedCards[index + '_correct']  = matchState.perInput.filter(Boolean).length;
+                correctCount += matchState.perInput.filter(Boolean).length;
             } else if (fillAttempts >= 2) {
                 feedbackEl.textContent = '\u2718 Wrong (2/2)';
                 feedbackEl.className   = 'mc-feedback bad';
@@ -1523,7 +1523,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 checkedCards[index + '_inputs']   = vals;
                 checkedCards[index + '_perInput'] = matchState.perInput;
                 checkedCards[index + '_reveal']   = 'Correct: ' + shownFill;
-                checkedCards[index + '_correct']  = 0;
+                checkedCards[index + '_correct']  = matchState.perInput.filter(Boolean).length;
             } else {
                 feedbackEl.textContent = '\u2718 Some blanks still need correction (1/2)';
                 feedbackEl.className   = 'mc-feedback bad';
@@ -1747,14 +1747,36 @@ document.addEventListener('DOMContentLoaded', function () {
         if (compTitleEl) { compTitleEl.textContent = actTitle; }
         if (compTextEl)  { compTextEl.textContent  = "You've completed " + actTitle + ". Great job!"; }
 
-        /* score: free writing does not count toward the grade; each other prompt counts as one item like dictation */
+        /* score summary: free writing does not count; fill/listen blocks count by input slot */
         var totalCount = questions.reduce(function (sum, qq) {
             var qt = String(qq.type || 'writing');
+            var ansCount = Array.isArray(qq.correct_answers) ? qq.correct_answers.filter(function (a) {
+                return String(a || '').trim() !== '';
+            }).length : 0;
             if (qt === 'writing') { return sum; }
+            if ((qt === 'fill_paragraph' || qt === 'fill_sentence' || qt === 'listen_write') && ansCount > 0) {
+                return sum + ansCount;
+            }
             return sum + 1;
         }, 0);
-        var pct    = totalCount > 0 ? Math.round((correctCount / totalCount) * 100) : 100;
-        var errors = Math.max(0, totalCount - correctCount);
+
+        var scoredCorrect = 0;
+        questions.forEach(function (qq, qi) {
+            var qt = String(qq.type || 'writing');
+            if (qt === 'writing') { return; }
+            if (qt === 'fill_paragraph' || qt === 'fill_sentence' || qt === 'listen_write') {
+                var perInput = checkedCards[qi + '_perInput'] || [];
+                var localCorrect = perInput.filter(Boolean).length;
+                scoredCorrect += localCorrect;
+                return;
+            }
+            if (checkedCards[qi] === 'correct' || checkedCards[qi] === 'open') {
+                scoredCorrect += 1;
+            }
+        });
+
+        var pct    = totalCount > 0 ? Math.round((scoredCorrect / totalCount) * 100) : 100;
+        var errors = Math.max(0, totalCount - scoredCorrect);
 
         /* count total words written across all responses */
         var totalWords = 0;
@@ -1765,7 +1787,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         if (scoreTextEl) {
             scoreTextEl.textContent = totalCount > 0
-                ? 'Score: ' + correctCount + ' / ' + totalCount + ' (' + pct + '%)'
+                ? 'Score: ' + scoredCorrect + ' / ' + totalCount + ' (' + pct + '%)'
                 : 'Practice completed — free writing has no score.';
         }
         if (totalWords > 0 && openNoteEl) {
