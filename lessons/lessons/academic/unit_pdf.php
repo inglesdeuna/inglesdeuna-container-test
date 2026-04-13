@@ -580,7 +580,7 @@ $isKey  = $isTeacher;
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Poppins:wght@400;500;600;700;800&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
 <style>
 /* ── Page setup (top-level, NOT inside @media print) ── */
-@page{size:letter;margin:20mm 18mm}
+@page{size:letter;margin:10mm 9mm}
 /* ── Design tokens ─────────────────────────────────────────── */
 :root{
   --navy:#20324d; --text:#223046; --muted:#66758a; --line:#d9e4ef;
@@ -769,25 +769,26 @@ table.ws-tbl th{background:#f3f8fd;text-transform:uppercase;letter-spacing:.08em
 }
 /* ── Print (must be LAST — overrides responsive breakpoint) ── */
 @media print{
-  body{background:#fff!important;font-size:10.5px;line-height:1.45;padding:0;color:#223046}
+  html,body{width:100%;height:auto}
+  body{background:#fff!important;font-size:10px;line-height:1.35;padding:0;color:#223046}
   .toolbar,.ws-pdiv,.ws-plbl{display:none!important}
-  .ws-doc{box-shadow:none;border-radius:0;max-width:100%;margin:0}
+  .ws-doc{box-shadow:none;border-radius:0;max-width:100%;width:100%;margin:0}
   /* ── Cover ── */
-  .ws-cover{padding:0 0 6px}
+  .ws-cover{padding:0 0 4px}
   .brand-row{margin-bottom:8px;gap:10px;flex-direction:row}
   .logo-box{max-width:100px}
   .logo-box img{max-height:36px}
   .badge{padding:2px 7px;font-size:8px}
   .badge-row{gap:4px;justify-content:flex-end}
-  .hero{padding:9px 13px;margin-bottom:7px;border-radius:8px}
-  .eyebrow{font-size:8px;margin-bottom:2px}
-  .hero h1{font-size:14px;margin-bottom:3px}
-  .hero p{font-size:9px;line-height:1.4}
-  .meta-grid{margin-bottom:7px;gap:5px;grid-template-columns:repeat(3,1fr)}
-  .meta-card{padding:6px 8px;border-radius:6px}
-  .meta-card span{font-size:7.5px;margin-bottom:4px}
-  .ci-line{height:10px}
-  .intro-card{padding:6px 10px;font-size:9px;margin-bottom:8px;line-height:1.45;border-radius:6px}
+  .hero{padding:8px 11px;margin-bottom:5px;border-radius:8px}
+  .eyebrow{font-size:7.5px;margin-bottom:2px}
+  .hero h1{font-size:13px;margin-bottom:2px}
+  .hero p{font-size:8.5px;line-height:1.3}
+  .meta-grid{margin-bottom:5px;gap:4px;grid-template-columns:repeat(3,1fr)}
+  .meta-card{padding:5px 7px;border-radius:6px}
+  .meta-card span{font-size:7px;margin-bottom:3px}
+  .ci-line{height:8px}
+  .intro-card{padding:5px 8px;font-size:8.5px;margin-bottom:6px;line-height:1.3;border-radius:6px}
   /* ── Page header ── */
   .ws-hdr{padding:4px 12px}
   .hdr-brand{font-size:8px}
@@ -795,24 +796,24 @@ table.ws-tbl th{background:#f3f8fd;text-transform:uppercase;letter-spacing:.08em
   .hdr-f{font-size:8px}
   .hdr-f span{min-width:60px}
   /* ── Body ── */
-  .ws-body{padding:6px 0}
+  .ws-body{padding:4px 0 0}
   /* ── Sections ── */
-  .ws-sec{margin-bottom:9px;break-inside:avoid;page-break-inside:avoid}
-  .section-head{padding:5px 10px;margin-bottom:5px;border-radius:8px}
+  .ws-sec{margin-bottom:6px;break-inside:auto;page-break-inside:auto}
+  .section-head{padding:5px 10px;margin-bottom:4px;border-radius:8px;break-after:avoid;page-break-after:avoid}
   .num{width:24px;height:24px;font-size:11px;flex:0 0 24px}
   .section-kicker{font-size:8px}
   .section-title{font-size:10.5px}
   .key-tag{font-size:7.5px;padding:1px 5px}
   /* ── Card ── */
-  .card{padding:8px 10px;border-radius:7px}
-  .instruction{font-size:9px;margin-bottom:5px;line-height:1.4}
+  .card{padding:6px 8px;border-radius:7px}
+  .instruction{font-size:8.5px;margin-bottom:4px;line-height:1.3}
   /* ── Tables ── */
   table.ws-tbl{font-size:9px}
   table.ws-tbl th,table.ws-tbl td{padding:4px 7px}
   .tc-hn{width:24px}
   /* ── Questions ── */
-  .ws-qb{margin-bottom:7px;break-inside:avoid;page-break-inside:avoid}
-  .ws-qt{font-size:10.5px;margin-bottom:4px;gap:5px}
+  .ws-qb{margin-bottom:5px;break-inside:avoid;page-break-inside:avoid}
+  .ws-qt{font-size:10px;margin-bottom:3px;gap:5px}
   .ws-qn{width:19px;height:19px;font-size:9px;flex:0 0 19px;margin-top:1px}
   .ws-audio{font-size:9.5px}
   /* ── MCQ options ── */
@@ -821,16 +822,16 @@ table.ws-tbl th{background:#f3f8fd;text-transform:uppercase;letter-spacing:.08em
   .ws-ol{width:19px;height:19px;font-size:9px;flex:0 0 19px}
   .ws-expl{font-size:8.5px;padding:3px 6px;margin-top:4px;margin-left:24px}
   /* ── Word bank / fill-in ── */
-  .ws-bank{padding:5px 9px;gap:3px 5px;margin-bottom:7px;border-radius:7px}
-  .ws-blbl{font-size:8px}
-  .ws-chip{padding:3px 8px;font-size:9px;border-radius:999px}
-  .ws-fr{margin-bottom:5px;font-size:10.5px;gap:6px;line-height:1.55}
+  .ws-bank{padding:4px 8px;gap:3px 5px;margin-bottom:5px;border-radius:7px}
+  .ws-blbl{font-size:7.5px}
+  .ws-chip{padding:2px 7px;font-size:8.5px;border-radius:999px}
+  .ws-fr{margin-bottom:4px;font-size:10px;gap:6px;line-height:1.4}
   .ws-fn{font-size:9px}
   /* ── Writing practice ── */
-  .ws-wb{margin-bottom:8px;break-inside:avoid;page-break-inside:avoid}
-  .ws-wi{font-size:8.5px;margin:2px 0 3px 24px}
-  .ws-lines{gap:6px;margin-top:4px}
-  .ws-line{height:18px;border-bottom-width:1.5px}
+  .ws-wb{margin-bottom:6px;break-inside:avoid;page-break-inside:avoid}
+  .ws-wi{font-size:8px;margin:2px 0 3px 24px}
+  .ws-lines{gap:4px;margin-top:3px}
+  .ws-line{height:15px;border-bottom-width:1.2px}
   .ws-ab{padding:4px 8px;margin-left:24px;border-radius:5px}
   .ws-ma{font-size:9.5px;margin-bottom:1px}
   /* ── Match ── */
@@ -862,13 +863,13 @@ table.ws-tbl th{background:#f3f8fd;text-transform:uppercase;letter-spacing:.08em
   .mc-img-opt .mc-frame img{max-width:100%;max-height:68px;width:auto;height:auto;object-fit:contain;display:block}
   .mc-qimg img{max-height:75px;border-radius:5px}
   /* ── Dictation ── */
-  .dt-item{padding:5px 0;gap:8px;break-inside:avoid;page-break-inside:avoid}
-  .dt-num{font-size:11px;min-width:20px}
-  .dt-img{width:52px;height:40px;border-radius:6px}
-  .dt-write{gap:5px}
-  .dt-answer{font-size:10px;padding:3px 7px;border-radius:5px}
-  .dt-lines{gap:6px}
-  .dt-line{border-bottom-width:1.5px}
+  .dt-item{padding:4px 0;gap:7px;break-inside:avoid;page-break-inside:avoid}
+  .dt-num{font-size:10px;min-width:18px}
+  .dt-img{width:48px;height:36px;border-radius:6px}
+  .dt-write{gap:4px}
+  .dt-answer{font-size:9.5px;padding:2px 6px;border-radius:5px}
+  .dt-lines{gap:4px}
+  .dt-line{border-bottom-width:1.2px}
   /* ── Pronunciation ── */
   .pr-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
   .pr-card{border-radius:10px}
@@ -881,13 +882,14 @@ table.ws-tbl th{background:#f3f8fd;text-transform:uppercase;letter-spacing:.08em
   .pr-blank{height:14px}
   .pr-ans{font-size:9.5px;padding:1px 5px;border-radius:3px}
   /* ── Notes box ── */
-  .act-notes-box{min-height:200px;border-radius:8px}
+  .act-notes-box{min-height:140px;border-radius:8px}
   /* ── Placeholder / empty ── */
-  .ws-hold{padding:12px;font-size:9.5px;border-radius:8px}
-  .ws-empty{font-size:9.5px}
+  .ws-hold{padding:10px;font-size:9px;border-radius:8px}
+  .ws-empty{font-size:9px}
   /* ── Break control ── */
-  .card,.fc-card,.mc-card,.pr-card{break-inside:avoid;page-break-inside:avoid}
+  .card,.fc-card,.mc-card,.pr-card{break-inside:auto;page-break-inside:auto}
   .ws-qb,.ws-wb,.ws-or,.dt-item{break-inside:avoid;page-break-inside:avoid}
+  .fc-grid,.mc-grid,.pr-grid,.ws-mcols,.ws-opts{break-inside:auto;page-break-inside:auto}
   /* ── Color exact ── */
   .section-head,.num,.ws-qn,.ws-ol,.ws-ck,.ws-ck .ws-ol,.key-tag,
   table.ws-tbl th,.tr-a td,.ws-bank,.ws-chip,.ws-expl,.ws-ab,.ws-ob,
