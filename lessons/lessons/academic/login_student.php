@@ -114,18 +114,40 @@ function verify_student_password(array $account, string $password): bool
     return false;
 }
 
-function update_student_password_in_database(string $username, string $newPassword, bool $mustChangePassword): bool
+function find_student_account(array $accounts, string $identifier): ?array
+{
+    $identifier = trim($identifier);
+    if ($identifier === '') {
+        return null;
+    }
+
+    foreach ($accounts as $account) {
+        $username = trim((string) ($account['username'] ?? ''));
+        $studentId = trim((string) ($account['student_id'] ?? ''));
+
+        if (($username !== '' && strcasecmp($username, $identifier) === 0)
+            || ($studentId !== '' && strcasecmp($studentId, $identifier) === 0)) {
+            return $account;
+        }
+    }
+
+    return null;
+}
+
+function update_student_password_in_database(string $identifier, string $newPassword, bool $mustChangePassword): bool
 {
     $pdo = get_pdo_connection();
     if (!$pdo) {
         return false;
     }
 
+    $identifier = trim($identifier);
+
     $setParts = [
         'updated_at = NOW()',
     ];
     $params = [
-        'username' => $username,
+        'identifier_username' => $identifier,
     ];
 
     if (table_has_column($pdo, 'student_accounts', 'password')) {
@@ -153,7 +175,11 @@ function update_student_password_in_database(string $username, string $newPasswo
     }
 
     try {
-        $sql = 'UPDATE student_accounts SET ' . implode(', ', $setParts) . ' WHERE username = :username';
+        $sql = 'UPDATE student_accounts SET ' . implode(', ', $setParts) . ' WHERE username = :identifier_username';
+        if (table_has_column($pdo, 'student_accounts', 'student_id')) {
+            $sql .= ' OR CAST(student_id AS TEXT) = :identifier_student_id';
+            $params['identifier_student_id'] = $identifier;
+        }
         $stmt = $pdo->prepare($sql);
         $stmt->execute($params);
         return $stmt->rowCount() > 0;
@@ -162,13 +188,17 @@ function update_student_password_in_database(string $username, string $newPasswo
     }
 }
 
-function update_student_password_in_json(string $username, string $newPassword, bool $mustChangePassword): bool
+function update_student_password_in_json(string $identifier, string $newPassword, bool $mustChangePassword): bool
 {
     $accounts = load_student_accounts_from_json();
     $updated = false;
+    $identifier = trim($identifier);
 
     foreach ($accounts as $index => $account) {
-        if ((string) ($account['username'] ?? '') !== $username) {
+        $username = trim((string) ($account['username'] ?? ''));
+        $studentId = trim((string) ($account['student_id'] ?? ''));
+        if (!(($username !== '' && strcasecmp($username, $identifier) === 0)
+            || ($studentId !== '' && strcasecmp($studentId, $identifier) === 0))) {
             continue;
         }
 
@@ -207,7 +237,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $recoveryUsername = trim((string) ($_POST['recovery_username'] ?? ''));
 
         if ($recoveryUsername === '') {
-            $error = 'Ingresa tu usuario para recuperar la clave.';
+            $error = 'Ingresa tu usuario o tu ID para recuperar la clave.';
         } else {
             $temporaryPassword = '1234';
             $recovered = false;
@@ -221,7 +251,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($recovered) {
                 $success = 'Tu contraseña temporal fue restablecida. Usa 1234 para ingresar y cámbiala de inmediato.';
             } else {
-                $error = 'No encontramos un estudiante con ese usuario.';
+                $error = 'No encontramos un estudiante con ese usuario o ID.';
             }
         }
     } else {
@@ -231,20 +261,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $username = trim((string) ($_POST['username'] ?? ''));
         $password = (string) ($_POST['password'] ?? '');
+        $account = find_student_account($accounts, $username);
 
-        foreach ($accounts as $account) {
-            if ((string) ($account['username'] ?? '') !== $username) {
-                continue;
-            }
-
-            if (!verify_student_password($account, $password)) {
-                continue;
-            }
-
+        if ($account && verify_student_password($account, $password)) {
             $_SESSION['student_logged'] = true;
             $_SESSION['student_id'] = (string) ($account['student_id'] ?? '');
             $_SESSION['student_name'] = (string) ($account['student_name'] ?? 'Estudiante');
-            $_SESSION['student_username'] = $username;
+            $_SESSION['student_username'] = (string) ($account['username'] ?? $username);
             $_SESSION['student_permission'] = ((string) ($account['permission'] ?? 'viewer')) === 'editor' ? 'editor' : 'viewer';
             $_SESSION['student_photo'] = (string) ($account['student_photo'] ?? '');
 
@@ -264,7 +287,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             exit;
         }
 
-        $error = 'Usuario o contraseña inválidos.';
+        $error = 'Usuario/ID o contraseña inválidos.';
     }
 }
 ?>
@@ -541,8 +564,8 @@ input:focus{
                 <input type="hidden" name="action" value="login">
 
                 <div class="field">
-                    <label for="username">Usuario</label>
-                    <input id="username" type="text" name="username" placeholder="Usuario" required>
+                    <label for="username">Usuario o ID</label>
+                    <input id="username" type="text" name="username" placeholder="Usuario o ID del estudiante" required>
                 </div>
 
                 <div class="field">
@@ -576,8 +599,8 @@ input:focus{
             <div class="recover-card" id="recoverCard">
                 <form method="post" autocomplete="off">
                     <input type="hidden" name="action" value="recover_password">
-                    <label for="recovery_username">Usuario estudiante</label>
-                    <input id="recovery_username" type="text" name="recovery_username" placeholder="Ej: maria.1020" required>
+                    <label for="recovery_username">Usuario o ID del estudiante</label>
+                    <input id="recovery_username" type="text" name="recovery_username" placeholder="Ej: maria.1020 o 1020" required>
                     <button type="submit" class="recover-btn">Restablecer a 1234</button>
                 </form>
             </div>

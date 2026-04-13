@@ -633,19 +633,30 @@ function ensure_student_account(string $studentId, array $students, array &$acco
 
     foreach ($accounts as &$account) {
         if ((string) ($account['student_id'] ?? '') === $studentId) {
-            // Always enforce canonical username for this student_id (nombre.apellido)
-            $existingUsername = (string) ($account['username'] ?? '');
             $studentData = find_student_by_id($students, $studentId);
-            if ($studentData) {
+            $existingUsername = trim((string) ($account['username'] ?? ''));
+            $currentName = trim((string) ($account['student_name'] ?? ''));
+            $dirty = false;
+
+            if ($studentData && $currentName === '') {
+                $account['student_name'] = (string) ($studentData['name'] ?? 'Estudiante');
+                $dirty = true;
+            }
+
+            if ($existingUsername === '' && $studentData) {
                 $newUsername = canonical_student_username($studentData, $accounts, $studentId);
-                if ($newUsername !== '' && $existingUsername !== $newUsername) {
+                if ($newUsername !== '') {
                     $account['username'] = $newUsername;
-                    $account['student_name'] = (string) ($studentData['name'] ?? ($account['student_name'] ?? 'Estudiante'));
-                    $account['updated_at'] = date('Y-m-d H:i:s');
-                    save_student_account_to_database($account);
-                    save_json_file($accountsFile, $accounts);
+                    $dirty = true;
                 }
             }
+
+            if ($dirty) {
+                $account['updated_at'] = date('Y-m-d H:i:s');
+                save_student_account_to_database($account);
+                save_json_file($accountsFile, $accounts);
+            }
+
             return $account;
         }
     }
@@ -1116,25 +1127,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($postAction === 'reset_student_password') {
         $resetStudentId = trim((string) ($_POST['reset_student_id'] ?? ''));
         $newPassword    = trim((string) ($_POST['new_password'] ?? ''));
+        $resetOk        = false;
 
         if ($resetStudentId !== '' && $newPassword !== '') {
-            $pdo2      = get_pdo_connection();
-            $resetOk   = false;
+            $accountRecord = ensure_student_account($resetStudentId, $students, $studentAccounts, $studentAccountsFile);
+            $pdo2 = get_pdo_connection();
 
-            if ($pdo2) {
+            if ($accountRecord && $pdo2) {
                 $setParts2   = ['updated_at = NOW()'];
                 $resetParams = ['student_id' => $resetStudentId];
 
                 if (table_has_column($pdo2, 'student_accounts', 'password_hash')) {
-                    $setParts2[]         = 'password_hash = :password_hash';
+                    $setParts2[] = 'password_hash = :password_hash';
                     $resetParams['password_hash'] = password_hash($newPassword, PASSWORD_DEFAULT);
                 }
                 if (table_has_column($pdo2, 'student_accounts', 'temp_password')) {
-                    $setParts2[]         = 'temp_password = :temp_password';
+                    $setParts2[] = 'temp_password = :temp_password';
                     $resetParams['temp_password'] = $newPassword;
                 }
                 if (table_has_column($pdo2, 'student_accounts', 'must_change_password')) {
-                    $setParts2[]         = 'must_change_password = :must_change_password';
+                    $setParts2[] = 'must_change_password = :must_change_password';
                     $resetParams['must_change_password'] = true;
                 }
 
@@ -1150,13 +1162,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
             }
 
-            if (!$resetOk) {
+            if (!$resetOk && $accountRecord) {
                 $jsonAccs = load_json_array($studentAccountsFile);
                 foreach ($jsonAccs as $i => $acc) {
                     if ((string) ($acc['student_id'] ?? '') === $resetStudentId) {
                         $jsonAccs[$i]['password_hash']        = password_hash($newPassword, PASSWORD_DEFAULT);
                         $jsonAccs[$i]['temp_password']        = $newPassword;
                         $jsonAccs[$i]['must_change_password'] = true;
+                        $jsonAccs[$i]['updated_at']           = date('Y-m-d H:i:s');
                         $resetOk = true;
                         break;
                     }
@@ -1166,7 +1179,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
             }
         }
-        header('Location: student_assignments.php?pwd_reset=1');
+        header('Location: student_assignments.php?pwd_reset=' . ($resetOk ? '1' : '0'));
         exit;
     }
 
@@ -1325,6 +1338,7 @@ if ($selectedProgram === 'technical' && $editRecord) {
         .notice{border-radius:12px;padding:12px 16px;margin-bottom:16px;font-size:14px;font-weight:600}
         .notice-ok{background:#ecfdf3;border:1px solid #b9eacb;color:#166534}
         .notice-pwd{background:#fef9c3;border:1px solid #fde68a;color:#92400e}
+        .notice-warn{background:#fff4f4;border:1px solid #fecaca;color:#b42318}
         /* Stack & Cards */
         .stack{display:flex;flex-direction:column;gap:18px}
         .card{background:var(--card);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);overflow:hidden}
@@ -1397,8 +1411,10 @@ if ($selectedProgram === 'technical' && $editRecord) {
     <?php if (isset($_GET['saved'])): ?>
         <div class="notice notice-ok">✅ Guardado correctamente.</div>
     <?php endif; ?>
-    <?php if (isset($_GET['pwd_reset'])): ?>
-        <div class="notice notice-pwd">🔑 Contraseña actualizada. El estudiante deberá cambiarla al ingresar.</div>
+    <?php if (isset($_GET['pwd_reset']) && (string) $_GET['pwd_reset'] === '1'): ?>
+        <div class="notice notice-pwd">🔑 Contraseña actualizada. El estudiante quedó habilitado y deberá cambiarla al ingresar.</div>
+    <?php elseif (isset($_GET['pwd_reset'])): ?>
+        <div class="notice notice-warn">⚠️ No fue posible actualizar la cuenta del estudiante. Verifica que tenga una asignación válida.</div>
     <?php endif; ?>
 
     <div class="stack">
