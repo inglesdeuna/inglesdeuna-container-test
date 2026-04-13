@@ -261,24 +261,111 @@ function ws_dragdrop(array $d, int $n, bool $k): string {
     return $out.ws_foot();
 }
 
+function ws_blank_span(string $seed = ''): string {
+    $len = max(8, min(26, mb_strlen(trim($seed), 'UTF-8') + 4));
+    return '<span class="ws-inline-blank" style="--blank-ch:'.$len.'"></span>';
+}
+
+function ws_render_prompt_with_blanks(string $rawText, array $answers, string $type): string {
+    $rawText = str_replace(["\r\n", "\r"], "\n", (string) $rawText);
+    $answers = array_values(array_filter(array_map(function ($a) {
+        return trim((string) $a);
+    }, $answers), function ($a) {
+        return $a !== '';
+    }));
+
+    $boxClass = $type === 'fill_sentence'
+        ? 'ws-fill-prompt ws-fill-sentence-prompt'
+        : 'ws-fill-prompt ws-fill-paragraph-prompt';
+
+    if ($rawText === '') {
+        $fallback = !empty($answers) ? implode(' ', array_fill(0, count($answers), ws_blank_span('answer'))) : ws_blank_span('answer');
+        return '<div class="'.$boxClass.'">'.$fallback.'</div>';
+    }
+
+    $html = '';
+
+    if (preg_match('/_{2,}/', $rawText)) {
+        $parts = preg_split('/(_{2,})/', $rawText, -1, PREG_SPLIT_DELIM_CAPTURE);
+        $blankIndex = 0;
+        foreach ($parts as $part) {
+            if ($part === '') {
+                continue;
+            }
+            if (preg_match('/^_{2,}$/', $part)) {
+                $html .= ws_blank_span($answers[$blankIndex] ?? 'answer');
+                $blankIndex++;
+            } else {
+                $html .= nl2br(h($part));
+            }
+        }
+    } elseif (!empty($answers)) {
+        $remaining = $rawText;
+        foreach ($answers as $answer) {
+            $pattern = '/' . preg_quote($answer, '/') . '/iu';
+            if (preg_match($pattern, $remaining, $match, PREG_OFFSET_CAPTURE)) {
+                $foundText = (string) ($match[0][0] ?? '');
+                $offset = (int) ($match[0][1] ?? 0);
+                $before = substr($remaining, 0, $offset);
+                $after  = substr($remaining, $offset + strlen($foundText));
+                $html .= nl2br(h($before)) . ws_blank_span($answer);
+                $remaining = $after;
+            } else {
+                $html .= nl2br(h($remaining));
+                $remaining = '';
+                $html .= ' ' . ws_blank_span($answer);
+            }
+        }
+        if ($remaining !== '') {
+            $html .= nl2br(h($remaining));
+        }
+    } else {
+        $html = nl2br(h($rawText)) . ' ' . ws_blank_span('answer');
+    }
+
+    return '<div class="'.$boxClass.'">'.$html.'</div>';
+}
+
 /* WRITING PRACTICE */
 function ws_writing(array $d, int $n, bool $k): string {
     $desc = trim((string)($d['description'] ?? ''));
     $qs   = is_array($d['questions'] ?? null) ? $d['questions'] : [];
     $out  = ws_head($n,'writing_practice',$d['title']??'',$desc?:'Write your answers in complete sentences.',$k);
     foreach ($qs as $qi => $q) {
-        $qt = trim((string)($q['question']    ?? ''));
-        $in = trim((string)($q['instruction'] ?? ''));
-        $an = is_array($q['correct_answers'] ?? null) ? $q['correct_answers'] : [];
-        $out .= '<div class="ws-wb"><div class="ws-qt"><span class="ws-qn">'.($qi+1).'</span>'.h($qt).'</div>';
-        if ($in !== '') $out .= '<div class="ws-wi">'.h($in).'</div>';
-        if ($k && !empty($an)) {
-            $out .= '<div class="ws-ab">';
-            foreach ($an as $a) { $a=trim((string)$a); if($a!=='') $out .= '<div class="ws-ma">&#10003; '.h($a).'</div>'; }
-            $out .= '</div>';
+        $qt   = trim((string)($q['question']    ?? ''));
+        $in   = trim((string)($q['instruction'] ?? ''));
+        $an   = is_array($q['correct_answers'] ?? null) ? $q['correct_answers'] : [];
+        $type = trim((string)($q['type'] ?? 'writing'));
+
+        $out .= '<div class="ws-wb">';
+
+        if ($type === 'fill_sentence' || $type === 'fill_paragraph' || $type === 'listen_write') {
+            $out .= '<div class="ws-qt"><span class="ws-qn">'.($qi+1).'</span>'
+                 .  h($type === 'listen_write' ? 'Complete the audio prompt.' : 'Complete the text.')
+                 .  '</div>';
+            if ($in !== '') {
+                $out .= '<div class="ws-wi">'.h($in).'</div>';
+            }
+            $out .= ws_render_prompt_with_blanks($qt, $an, $type);
         } else {
-            $out .= '<div class="ws-lines">'.str_repeat('<div class="ws-line"></div>',4).'</div>';
+            $out .= '<div class="ws-qt"><span class="ws-qn">'.($qi+1).'</span>'.h($qt).'</div>';
+            if ($in !== '') {
+                $out .= '<div class="ws-wi">'.h($in).'</div>';
+            }
+            if ($type === 'writing' && $k && !empty($an)) {
+                $out .= '<div class="ws-ab">';
+                foreach ($an as $a) {
+                    $a = trim((string)$a);
+                    if ($a !== '') {
+                        $out .= '<div class="ws-ma">&#10003; '.h($a).'</div>';
+                    }
+                }
+                $out .= '</div>';
+            } else {
+                $out .= '<div class="ws-lines">'.str_repeat('<div class="ws-line"></div>',4).'</div>';
+            }
         }
+
         $out .= '</div>';
     }
     return $out.ws_foot();
@@ -691,6 +778,10 @@ table.ws-tbl th{background:#f3f8fd;text-transform:uppercase;letter-spacing:.08em
 .ws-wi{font-size:11px;color:var(--muted);font-style:italic;margin:3px 0 6px 34px}
 .ws-lines{display:flex;flex-direction:column;gap:9px;margin-top:8px}
 .ws-line{height:26px;border-bottom:2px solid var(--line);width:100%}
+.ws-fill-prompt{margin-left:34px;background:#f8fbff;border:1px solid #d9e8fb;border-radius:10px;padding:10px 12px;color:var(--navy);font-size:12.5px;line-height:2;word-break:break-word}
+.ws-fill-paragraph-prompt{white-space:normal}
+.ws-fill-sentence-prompt{text-align:left}
+.ws-inline-blank{display:inline-block;min-width:calc(var(--blank-ch, 10) * 0.62ch);height:1.15em;border-bottom:2px solid #94a3b8;vertical-align:baseline;margin:0 4px}
 .ws-ab{background:var(--answer-bg);border:1px solid var(--answer-border);border-radius:10px;padding:7px 10px;margin-left:34px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 .ws-ma{font-size:12px;color:#166534;font-weight:600;margin-bottom:2px}
 .ws-ma:last-child{margin-bottom:0}
@@ -832,6 +923,8 @@ table.ws-tbl th{background:#f3f8fd;text-transform:uppercase;letter-spacing:.08em
   .ws-wi{font-size:8px;margin:2px 0 3px 24px}
   .ws-lines{gap:4px;margin-top:3px}
   .ws-line{height:15px;border-bottom-width:1.2px}
+  .ws-fill-prompt{margin-left:24px;padding:6px 8px;font-size:9px;line-height:1.9;border-radius:6px}
+  .ws-inline-blank{min-width:calc(var(--blank-ch, 10) * 0.58ch);border-bottom-width:1.5px;margin:0 3px}
   .ws-ab{padding:4px 8px;margin-left:24px;border-radius:5px}
   .ws-ma{font-size:9.5px;margin-bottom:1px}
   /* ── Match ── */
