@@ -531,12 +531,70 @@ function load_quiz_fallback_from_multiple_choice(PDO $pdo, string $unit): array
   }
 }
 
-function build_fixed_quiz_question_set(array $questions, int $targetCount = 6): array
+function quiz_compute_target_count(int $available, float $ratio = 0.75): int
 {
-  if ($targetCount <= 0) {
+  if ($available <= 0) {
+    return 0;
+  }
+
+  if ($available === 1) {
+    return 1;
+  }
+
+  $target = (int) floor($available * $ratio);
+  if ($target < 1) {
+    $target = 1;
+  }
+
+  return min($available, $target);
+}
+
+function quiz_take_random_subset(array $items, ?int $targetCount = null, float $ratio = 0.75): array
+{
+  $clean = array_values($items);
+  if (empty($clean)) {
     return [];
   }
 
+  if ($targetCount === null) {
+    $targetCount = quiz_compute_target_count(count($clean), $ratio);
+  }
+
+  shuffle($clean);
+  return array_slice($clean, 0, min($targetCount, count($clean)));
+}
+
+function quiz_load_all_activity_data(PDO $pdo, string $unit, string $type): array
+{
+  if ($unit === '' || $type === '') {
+    return [];
+  }
+
+  try {
+    $stmt = $pdo->prepare('SELECT id, data FROM activities WHERE unit_id::text = :unit AND type = :type ORDER BY id ASC');
+    $stmt->execute(['unit' => $unit, 'type' => $type]);
+    $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+    $decodedRows = [];
+    foreach ($rows as $row) {
+      $raw = $row['data'] ?? null;
+      $decoded = is_string($raw) ? json_decode($raw, true) : $raw;
+      if (is_array($decoded)) {
+        $decodedRows[] = [
+          'id' => (string) ($row['id'] ?? ''),
+          'data' => $decoded,
+        ];
+      }
+    }
+
+    return $decodedRows;
+  } catch (Throwable $e) {
+    return [];
+  }
+}
+
+function build_fixed_quiz_question_set(array $questions, int $targetCount = 0): array
+{
   $normalized = [];
   foreach ($questions as $item) {
     if (!is_array($item)) {
@@ -580,28 +638,11 @@ function build_fixed_quiz_question_set(array $questions, int $targetCount = 6): 
     return [];
   }
 
-  $pool = $normalized;
-  shuffle($pool);
-  $selected = array_slice($pool, 0, min($targetCount, count($pool)));
-
-  while (count($selected) < $targetCount) {
-    try {
-      $index = random_int(0, count($pool) - 1);
-    } catch (Throwable $e) {
-      $index = 0;
-    }
-    $picked = $pool[$index];
-    $selected[] = [
-      'question'    => (string) ($picked['question'] ?? ''),
-      'options'     => isset($picked['options']) && is_array($picked['options']) ? array_values($picked['options']) : [],
-      'correct'     => (int) ($picked['correct'] ?? 0),
-      'explanation' => (string) ($picked['explanation'] ?? ''),
-      'option_type' => isset($picked['option_type']) && $picked['option_type'] === 'image' ? 'image' : 'text',
-      'image'       => isset($picked['image']) ? (string) $picked['image'] : '',
-    ];
+  if ($targetCount <= 0) {
+    $targetCount = quiz_compute_target_count(count($normalized));
   }
 
-  return $selected;
+  return quiz_take_random_subset($normalized, $targetCount);
 }
 
 function load_quiz_activity(PDO $pdo, string $activityId, string $unit): array
@@ -684,109 +725,132 @@ function quiz_load_random_activity(PDO $pdo, string $unit, string $type): ?array
 
 function load_quiz_writing_questions(PDO $pdo, string $unit): array
 {
-  $picked = quiz_load_random_activity($pdo, $unit, 'writing_practice');
-  if (!$picked) return [];
-  $decoded = $picked['data'];
+  $rows = quiz_load_all_activity_data($pdo, $unit, 'writing_practice');
+  if (empty($rows)) return [];
+
   $fillTypes = ['fill_sentence', 'fill_paragraph', 'listen_write'];
+  $scoreableTypes = ['fill_sentence', 'fill_paragraph', 'listen_write', 'video_writing'];
   $questions = [];
-  foreach ((array) ($decoded['questions'] ?? []) as $item) {
-    if (!is_array($item)) continue;
-    $q = trim((string) ($item['question'] ?? ''));
-    if ($q === '') continue;
-    $type = strtolower(trim((string) ($item['type'] ?? 'writing')));
-    $answers = [];
-    foreach ((array) ($item['correct_answers'] ?? []) as $a) {
-      $v = trim((string) $a);
-      if ($v !== '') $answers[] = $v;
-    }
 
-    // For fill questions with more than 2 blanks: keep 2/3 randomly,
-    // replace remaining blanks in the question text with the actual answer.
-    if (in_array($type, $fillTypes, true) && count($answers) > 2) {
-      $total    = count($answers);
-      $keepCount = (int) ceil($total * 2 / 3);
-      if ($keepCount < 1) $keepCount = 1;
-      $indices  = range(0, $total - 1);
-      try { shuffle($indices); } catch (Throwable $e) {}
-      $keepSet  = array_flip(array_slice($indices, 0, $keepCount));
+  foreach ($rows as $picked) {
+    $decoded = isset($picked['data']) && is_array($picked['data']) ? $picked['data'] : [];
+    foreach ((array) ($decoded['questions'] ?? []) as $item) {
+      if (!is_array($item)) continue;
 
-      // Walk through the question text replacing ___ or ... markers one-by-one
-      $blankIdx = 0;
-      $newQ = preg_replace_callback('/_{2,}|\.{3}/', function () use (&$blankIdx, $keepSet, $answers) {
-        $idx = $blankIdx++;
-        if (isset($keepSet[$idx])) {
-          return '___'; // keep as an input blank
-        }
-        // Replace with the answer so it reads naturally
-        return $answers[$idx] ?? '___';
-      }, $q);
-
-      // Re-index correct_answers to only those kept, in original order
-      $newAnswers = [];
-      foreach ($keepSet as $ki => $_) {
-        $newAnswers[$ki] = $answers[$ki];
+      $q = trim((string) ($item['question'] ?? ''));
+      $type = strtolower(trim((string) ($item['type'] ?? 'writing')));
+      if (!in_array($type, $scoreableTypes, true)) {
+        continue;
       }
-      ksort($newAnswers);
-      $newAnswers = array_values($newAnswers);
 
-      $q       = $newQ;
-      $answers = $newAnswers;
+      $answers = [];
+      foreach ((array) ($item['correct_answers'] ?? []) as $a) {
+        $v = trim((string) $a);
+        if ($v !== '') $answers[] = $v;
+      }
+
+      if (empty($answers)) {
+        continue;
+      }
+
+      if ($q === '') {
+        continue;
+      }
+
+      if (in_array($type, $fillTypes, true) && count($answers) > 1) {
+        $total = count($answers);
+        $keepCount = quiz_compute_target_count($total);
+        $indices = range(0, $total - 1);
+        try { shuffle($indices); } catch (Throwable $e) {}
+        $keepSet = array_flip(array_slice($indices, 0, $keepCount));
+
+        $blankIdx = 0;
+        $newQ = preg_replace_callback('/_{2,}|\.{3}/', function () use (&$blankIdx, $keepSet, $answers) {
+          $idx = $blankIdx++;
+          if (isset($keepSet[$idx])) {
+            return '___';
+          }
+          return $answers[$idx] ?? '___';
+        }, $q);
+
+        if (is_string($newQ) && $newQ !== '') {
+          $q = $newQ;
+        }
+
+        $newAnswers = [];
+        foreach (array_keys($keepSet) as $ki) {
+          if (isset($answers[$ki])) {
+            $newAnswers[$ki] = $answers[$ki];
+          }
+        }
+        ksort($newAnswers);
+        $answers = array_values($newAnswers);
+      }
+
+      $questions[] = [
+        'id'              => trim((string) ($item['id'] ?? uniqid('wp_'))),
+        'type'            => $type,
+        'question'        => $q,
+        'instruction'     => trim((string) ($item['instruction'] ?? '')),
+        'placeholder'     => trim((string) ($item['placeholder'] ?? 'Write your answer here...')),
+        'media'           => trim((string) ($item['media'] ?? '')),
+        'correct_answers' => $answers,
+      ];
     }
-
-    $questions[] = [
-      'id'              => trim((string) ($item['id'] ?? uniqid('wp_'))),
-      'type'            => $type,
-      'question'        => $q,
-      'instruction'     => trim((string) ($item['instruction'] ?? '')),
-      'placeholder'     => trim((string) ($item['placeholder'] ?? 'Write your answer here...')),
-      'media'           => trim((string) ($item['media'] ?? '')),
-      'correct_answers' => $answers,
-    ];
   }
-  return $questions;
+
+  return quiz_take_random_subset($questions);
 }
 
 function load_quiz_dictation_items(PDO $pdo, string $unit): array
 {
-  $picked = quiz_load_random_activity($pdo, $unit, 'dictation');
-  if (!$picked) return [];
-  $decoded = $picked['data'];
-  $src = isset($decoded['items']) && is_array($decoded['items']) ? $decoded['items']
-       : (isset($decoded['data']) && is_array($decoded['data']) ? $decoded['data']
-       : (isset($decoded['words']) && is_array($decoded['words']) ? $decoded['words'] : []));
+  $rows = quiz_load_all_activity_data($pdo, $unit, 'dictation');
+  if (empty($rows)) return [];
+
   $items = [];
-  foreach ($src as $item) {
-    if (!is_array($item)) continue;
-    $en = trim((string) ($item['en'] ?? ($item['word'] ?? ($item['sentence'] ?? ''))));
-    if ($en === '') continue;
-    $items[] = [
-      'en' => $en,
-      'img' => trim((string) ($item['img'] ?? ($item['image'] ?? ''))),
-      'audio' => trim((string) ($item['audio'] ?? '')),
-    ];
+  foreach ($rows as $picked) {
+    $decoded = isset($picked['data']) && is_array($picked['data']) ? $picked['data'] : [];
+    $src = isset($decoded['items']) && is_array($decoded['items']) ? $decoded['items']
+         : (isset($decoded['data']) && is_array($decoded['data']) ? $decoded['data']
+         : (isset($decoded['words']) && is_array($decoded['words']) ? $decoded['words'] : []));
+    foreach ($src as $item) {
+      if (!is_array($item)) continue;
+      $en = trim((string) ($item['en'] ?? ($item['word'] ?? ($item['sentence'] ?? ''))));
+      if ($en === '') continue;
+      $items[] = [
+        'en' => $en,
+        'img' => trim((string) ($item['img'] ?? ($item['image'] ?? ''))),
+        'audio' => trim((string) ($item['audio'] ?? '')),
+      ];
+    }
   }
-  return $items;
+
+  return quiz_take_random_subset($items);
 }
 
 function load_quiz_listen_order_blocks(PDO $pdo, string $unit): array
 {
-  $picked = quiz_load_random_activity($pdo, $unit, 'listen_order');
-  if (!$picked) return [];
-  $decoded = $picked['data'];
-  $src = isset($decoded['blocks']) && is_array($decoded['blocks']) ? $decoded['blocks'] : [];
+  $rows = quiz_load_all_activity_data($pdo, $unit, 'listen_order');
+  if (empty($rows)) return [];
+
   $blocks = [];
-  foreach ($src as $block) {
-    if (!is_array($block)) continue;
-    $sentence = trim((string) ($block['sentence'] ?? ''));
-    if ($sentence === '') continue;
-    $images = [];
-    foreach ((array) ($block['images'] ?? []) as $img) {
-      $v = trim((string) $img);
-      if ($v !== '') $images[] = $v;
+  foreach ($rows as $picked) {
+    $decoded = isset($picked['data']) && is_array($picked['data']) ? $picked['data'] : [];
+    $src = isset($decoded['blocks']) && is_array($decoded['blocks']) ? $decoded['blocks'] : [];
+    foreach ($src as $block) {
+      if (!is_array($block)) continue;
+      $sentence = trim((string) ($block['sentence'] ?? ''));
+      if ($sentence === '') continue;
+      $images = [];
+      foreach ((array) ($block['images'] ?? []) as $img) {
+        $v = trim((string) $img);
+        if ($v !== '') $images[] = $v;
+      }
+      $blocks[] = ['sentence' => $sentence, 'images' => $images];
     }
-    $blocks[] = ['sentence' => $sentence, 'images' => $images];
   }
-  return $blocks;
+
+  return quiz_take_random_subset($blocks);
 }
 
 function load_quiz_match_pairs(PDO $pdo, string $unit): array
@@ -796,46 +860,48 @@ function load_quiz_match_pairs(PDO $pdo, string $unit): array
   }
 
   try {
-    $picked = quiz_load_random_activity($pdo, $unit, 'match');
-    if (!$picked) return [];
-    $decoded = $picked['data'];
-
-    $pairsSource = $decoded;
-    if (isset($decoded['pairs']) && is_array($decoded['pairs'])) {
-      $pairsSource = $decoded['pairs'];
-    } elseif (isset($decoded['items']) && is_array($decoded['items'])) {
-      $pairsSource = $decoded['items'];
-    } elseif (isset($decoded['data']) && is_array($decoded['data'])) {
-      $pairsSource = $decoded['data'];
-    }
+    $rows = quiz_load_all_activity_data($pdo, $unit, 'match');
+    if (empty($rows)) return [];
 
     $pairs = [];
-    foreach ($pairsSource as $item) {
-      if (!is_array($item)) {
-        continue;
+    foreach ($rows as $picked) {
+      $decoded = isset($picked['data']) && is_array($picked['data']) ? $picked['data'] : [];
+      $pairsSource = $decoded;
+      if (isset($decoded['pairs']) && is_array($decoded['pairs'])) {
+        $pairsSource = $decoded['pairs'];
+      } elseif (isset($decoded['items']) && is_array($decoded['items'])) {
+        $pairsSource = $decoded['items'];
+      } elseif (isset($decoded['data']) && is_array($decoded['data'])) {
+        $pairsSource = $decoded['data'];
       }
 
-      $legacyText = isset($item['text']) ? trim((string) $item['text']) : (isset($item['word']) ? trim((string) $item['word']) : '');
-      $legacyImage = isset($item['image']) ? trim((string) $item['image']) : (isset($item['img']) ? trim((string) $item['img']) : '');
+      foreach ($pairsSource as $item) {
+        if (!is_array($item)) {
+          continue;
+        }
 
-      $leftText = isset($item['left_text']) ? trim((string) $item['left_text']) : '';
-      $leftImage = isset($item['left_image']) ? trim((string) $item['left_image']) : $legacyImage;
-      $rightText = isset($item['right_text']) ? trim((string) $item['right_text']) : $legacyText;
-      $rightImage = isset($item['right_image']) ? trim((string) $item['right_image']) : '';
+        $legacyText = isset($item['text']) ? trim((string) $item['text']) : (isset($item['word']) ? trim((string) $item['word']) : '');
+        $legacyImage = isset($item['image']) ? trim((string) $item['image']) : (isset($item['img']) ? trim((string) $item['img']) : '');
 
-      if ($leftText === '' && $leftImage === '' && $rightText === '' && $rightImage === '') {
-        continue;
+        $leftText = isset($item['left_text']) ? trim((string) $item['left_text']) : '';
+        $leftImage = isset($item['left_image']) ? trim((string) $item['left_image']) : $legacyImage;
+        $rightText = isset($item['right_text']) ? trim((string) $item['right_text']) : $legacyText;
+        $rightImage = isset($item['right_image']) ? trim((string) $item['right_image']) : '';
+
+        if ($leftText === '' && $leftImage === '' && $rightText === '' && $rightImage === '') {
+          continue;
+        }
+
+        $pairs[] = [
+          'left_text' => $leftText,
+          'left_image' => $leftImage,
+          'right_text' => $rightText,
+          'right_image' => $rightImage,
+        ];
       }
-
-      $pairs[] = [
-        'left_text' => $leftText,
-        'left_image' => $leftImage,
-        'right_text' => $rightText,
-        'right_image' => $rightImage,
-      ];
     }
 
-    return $pairs;
+    return quiz_take_random_subset($pairs);
   } catch (Throwable $e) {
     return [];
   }
@@ -848,41 +914,44 @@ function load_quiz_pronunciation_items(PDO $pdo, string $unit): array
   }
 
   try {
-    $picked = quiz_load_random_activity($pdo, $unit, 'pronunciation');
-    if (!$picked) return [];
-    $decoded = $picked['data'];
-
-    $itemsSource = $decoded;
-    if (isset($decoded['items']) && is_array($decoded['items'])) {
-      $itemsSource = $decoded['items'];
-    } elseif (isset($decoded['data']) && is_array($decoded['data'])) {
-      $itemsSource = $decoded['data'];
-    } elseif (isset($decoded['words']) && is_array($decoded['words'])) {
-      $itemsSource = $decoded['words'];
-    }
+    $rows = quiz_load_all_activity_data($pdo, $unit, 'pronunciation');
+    if (empty($rows)) return [];
 
     $items = [];
-    foreach ($itemsSource as $item) {
-      if (!is_array($item)) {
-        continue;
+    foreach ($rows as $picked) {
+      $decoded = isset($picked['data']) && is_array($picked['data']) ? $picked['data'] : [];
+
+      $itemsSource = $decoded;
+      if (isset($decoded['items']) && is_array($decoded['items'])) {
+        $itemsSource = $decoded['items'];
+      } elseif (isset($decoded['data']) && is_array($decoded['data'])) {
+        $itemsSource = $decoded['data'];
+      } elseif (isset($decoded['words']) && is_array($decoded['words'])) {
+        $itemsSource = $decoded['words'];
       }
 
-      $word = trim((string) ($item['en'] ?? ($item['word'] ?? '')));
-      $image = trim((string) ($item['img'] ?? ($item['image'] ?? '')));
-      $audio = trim((string) ($item['audio'] ?? ''));
+      foreach ($itemsSource as $item) {
+        if (!is_array($item)) {
+          continue;
+        }
 
-      if ($word === '' && $image === '' && $audio === '') {
-        continue;
+        $word = trim((string) ($item['en'] ?? ($item['word'] ?? '')));
+        $image = trim((string) ($item['img'] ?? ($item['image'] ?? '')));
+        $audio = trim((string) ($item['audio'] ?? ''));
+
+        if ($word === '' && $image === '' && $audio === '') {
+          continue;
+        }
+
+        $items[] = [
+          'en' => $word,
+          'img' => $image,
+          'audio' => $audio,
+        ];
       }
-
-      $items[] = [
-        'en' => $word,
-        'img' => $image,
-        'audio' => $audio,
-      ];
     }
 
-    return $items;
+    return quiz_take_random_subset($items);
   } catch (Throwable $e) {
     return [];
   }
@@ -1004,7 +1073,7 @@ if ($isTeacher || $isAdmin) {
 $activity = load_quiz_activity($pdo, $activityId, $unit);
 $viewerTitle = (string) ($activity['title'] ?? 'Unit Quiz');
 $questions = isset($activity['questions']) && is_array($activity['questions']) ? $activity['questions'] : [];
-$questions = build_fixed_quiz_question_set($questions, 6);
+$questions = build_fixed_quiz_question_set($questions);
 $description = (string) ($activity['description'] ?? '');
 $quizMatchPairs = load_quiz_match_pairs($pdo, $unit);
 $quizPronunciationItems = load_quiz_pronunciation_items($pdo, $unit);
@@ -2137,12 +2206,12 @@ window.QUIZ_LISTEN_ORDER_DATA = <?php echo json_encode($quizListenOrderBlocks, J
 
   const randomizedQuestions = buildRandomizedQuiz(rawQuizData);
 
-  function buildFixedMatchPairs(rawPairs, targetCount) {
-    if (!Array.isArray(rawPairs) || rawPairs.length === 0 || targetCount <= 0) {
+  function buildFixedMatchPairs(rawPairs) {
+    if (!Array.isArray(rawPairs) || rawPairs.length === 0) {
       return [];
     }
 
-    const cleaned = rawPairs
+    return rawPairs
       .map(function (item) {
         return {
           left_text: String(item.left_text || ''),
@@ -2154,17 +2223,9 @@ window.QUIZ_LISTEN_ORDER_DATA = <?php echo json_encode($quizListenOrderBlocks, J
       .filter(function (item) {
         return item.left_text !== '' || item.left_image !== '' || item.right_text !== '' || item.right_image !== '';
       });
-
-    if (cleaned.length === 0) {
-      return [];
-    }
-
-    const shuffled = shuffleArray(cleaned.slice());
-    // Never exceed available unique pairs — no duplicates.
-    return shuffled.slice(0, Math.min(targetCount, shuffled.length));
   }
 
-  const fixedMatchPairs = buildFixedMatchPairs(quizMatchData, 9);
+  const fixedMatchPairs = buildFixedMatchPairs(quizMatchData);
   function normalizeWord(value) {
     return String(value || '')
       .normalize('NFD')
@@ -2180,8 +2241,7 @@ window.QUIZ_LISTEN_ORDER_DATA = <?php echo json_encode($quizListenOrderBlocks, J
       return [];
     }
 
-    const targetCount = window.matchMedia && window.matchMedia('(max-width: 1100px)').matches ? 8 : 6;
-    const cleaned = rawItems
+    return rawItems
       .map(function (item) {
         return {
           en: String(item.en || item.word || '').trim(),
@@ -2192,25 +2252,6 @@ window.QUIZ_LISTEN_ORDER_DATA = <?php echo json_encode($quizListenOrderBlocks, J
       .filter(function (item) {
         return item.en !== '' || item.img !== '' || item.audio !== '';
       });
-
-    if (cleaned.length === 0) {
-      return [];
-    }
-
-    const shuffled = shuffleArray(cleaned.slice());
-    const selected = shuffled.slice(0, Math.min(targetCount, shuffled.length));
-
-    while (selected.length < targetCount) {
-      const source = selected.length > 0 ? selected : shuffled;
-      const idx = Math.floor(Math.random() * source.length);
-      selected.push({
-        en: source[idx].en,
-        img: source[idx].img,
-        audio: source[idx].audio,
-      });
-    }
-
-    return selected;
   }
 
   const pronunciationItems = buildFixedPronunciationSet(quizPronunciationData);
@@ -2232,7 +2273,13 @@ window.QUIZ_LISTEN_ORDER_DATA = <?php echo json_encode($quizListenOrderBlocks, J
     done: {},
   };
 
-  const writingItems = quizWritingData.filter(function(q) { return !!(q.question && String(q.question).trim()); });
+  const writingItems = quizWritingData.filter(function(q) {
+    const type = String((q && q.type) || 'writing').trim().toLowerCase();
+    const answers = Array.isArray(q && q.correct_answers)
+      ? q.correct_answers.map(function (ans) { return String(ans || '').trim(); }).filter(function (ans) { return ans !== ''; })
+      : [];
+    return type !== 'writing' && !!(q && q.question && String(q.question).trim()) && answers.length > 0;
+  });
   const writingState = {
     enabled: writingItems.length > 0,
     total: writingItems.length,
@@ -2242,7 +2289,7 @@ window.QUIZ_LISTEN_ORDER_DATA = <?php echo json_encode($quizListenOrderBlocks, J
     fillInputs: {},
   };
 
-  const dictItems = quizDictData.slice(0, 5);
+  const dictItems = Array.isArray(quizDictData) ? quizDictData.slice() : [];
   const dictState = {
     enabled: dictItems.length > 0,
     total: dictItems.length,
@@ -2251,7 +2298,7 @@ window.QUIZ_LISTEN_ORDER_DATA = <?php echo json_encode($quizListenOrderBlocks, J
     answers: {},
   };
 
-  const loBlocks = shuffleArray(quizListenOrderData.slice()).slice(0, Math.min(3, quizListenOrderData.length));
+  const loBlocks = shuffleArray(Array.isArray(quizListenOrderData) ? quizListenOrderData.slice() : []);
   const loState = {
     enabled: loBlocks.length > 0,
     total: loBlocks.length,
@@ -3132,8 +3179,7 @@ window.QUIZ_LISTEN_ORDER_DATA = <?php echo json_encode($quizListenOrderBlocks, J
           const typed = normalizeWord(writingState.answers[idx] || '');
           if (!typed) return;
           const cas = q.correct_answers || [];
-          if (cas.length === 0) { correct += 1; }
-          else if (cas.some(function(ca) { return normalizeWord(ca) === typed; })) { correct += 1; }
+          if (cas.length > 0 && cas.some(function(ca) { return normalizeWord(ca) === typed; })) { correct += 1; }
         }
       });
     }
