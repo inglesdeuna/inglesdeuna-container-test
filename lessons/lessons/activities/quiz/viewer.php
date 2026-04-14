@@ -1415,46 +1415,74 @@ ob_start();
 }
 
 .qz-match-rows {
-  display: flex;
-  flex-direction: column;
-  gap: var(--qz-gap-sm);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.qz-match-col {
+  min-width: 0;
+}
+
+.qz-match-col-title {
+  font-family: var(--qz-font-body);
+  font-size: var(--qz-text-sm);
+  font-weight: 800;
+  margin: 0 0 8px;
+  padding: 7px 10px;
+  border-radius: var(--qz-r-xs);
+}
+
+.qz-match-top-label {
+  color: #92400e;
+  background: #fef3c7;
+  border: 1px solid #fcd34d;
+}
+
+.qz-match-bottom-label {
+  color: #1d4ed8;
+  background: #dbeafe;
+  border: 1px solid var(--qz-blue-border);
 }
 
 .qz-match-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--qz-gap-sm);
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
 }
 
 .qz-match-tile {
+  width: 100%;
   border: 1.5px solid var(--qz-purple-border);
   border-radius: var(--qz-r-sm);
   background: var(--qz-purple-bg);
-  padding: 8px 10px;
-  min-height: 64px;
-  flex: 1 1 88px;
+  padding: 12px 14px;
+  min-height: 78px;
   display: flex;
   align-items: center;
   justify-content: center;
   text-align: center;
   font-family: var(--qz-font-body);
-  font-size: var(--qz-text-sm);
+  font-size: clamp(13px, 1.4vw, 16px);
   font-weight: 800;
   color: var(--qz-text);
   cursor: pointer;
   user-select: none;
-  transition: border-color .15s, background .15s, transform .1s;
+  transition: border-color .15s, background .15s, transform .1s, box-shadow .15s;
+  box-shadow: var(--qz-shadow-sm);
 }
 
 .qz-match-tile:hover:not(.is-matched) {
   border-color: var(--qz-purple);
   background: #ede9ff;
   transform: translateY(-1px);
+  box-shadow: var(--qz-shadow-md);
 }
 
 .qz-match-tile img {
   max-width: 100%;
-  max-height: 48px;
+  max-height: 74px;
   object-fit: contain;
   border-radius: var(--qz-r-xs);
 }
@@ -2016,7 +2044,8 @@ ob_start();
   .qz-pron-grid,
   .qz-pron-grid-6,
   .qz-pron-grid-8 { grid-template-columns: repeat(2, 1fr); }
-  .qz-match-tile  { min-width: 64px; flex: 1 1 64px; font-size: 11px; padding: 5px 7px; min-height: 52px; }
+  .qz-match-rows { grid-template-columns: 1fr; }
+  .qz-match-tile  { min-height: 64px; font-size: 12px; padding: 10px 12px; }
   .qz-completed-screen { padding: 24px 16px; }
   .qz-completed-title  { font-size: var(--qz-text-xl); }
 }
@@ -2990,18 +3019,24 @@ window.QUIZ_LISTEN_ORDER_DATA = <?php echo json_encode($quizListenOrderBlocks, J
 
     const title = document.createElement('div');
     title.className = 'qz-q';
-    title.textContent = quizBlockIndex + '. Match the cards (Top with Bottom)';
+    title.textContent = quizBlockIndex + '. Match the cards';
     matchCard.appendChild(title);
     quizBlockIndex++;
 
     const wrap = document.createElement('div');
     wrap.className = 'qz-match-wrap';
     wrap.innerHTML = ''
-      + '<div class="qz-match-help">Top row matches with bottom row. Choose a top card, then its correct card below.</div>'
+      + '<div class="qz-match-help">Choose a card on the left and then click its correct pair on the right.</div>'
       + '<div class="qz-match-status" id="qz-match-status">Matched: 0/' + String(matchState.total) + '</div>'
       + '<div class="qz-match-rows">'
-      + '  <div class="qz-match-row qz-match-top" id="qz-match-top"></div>'
-      + '  <div class="qz-match-row qz-match-bottom" id="qz-match-bottom"></div>'
+      + '  <div class="qz-match-col">'
+      + '    <div class="qz-match-col-title qz-match-top-label">Left column</div>'
+      + '    <div class="qz-match-row qz-match-top" id="qz-match-top"></div>'
+      + '  </div>'
+      + '  <div class="qz-match-col">'
+      + '    <div class="qz-match-col-title qz-match-bottom-label">Right column</div>'
+      + '    <div class="qz-match-row qz-match-bottom" id="qz-match-bottom"></div>'
+      + '  </div>'
       + '</div>';
     matchCard.appendChild(wrap);
     listEl.appendChild(matchCard);
