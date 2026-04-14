@@ -2636,51 +2636,78 @@ window.QUIZ_LISTEN_ORDER_DATA = <?php echo json_encode($quizListenOrderBlocks, J
         const fillBox = document.createElement('div');
         fillBox.className = 'qz-wp-fill-box' + (isPara ? ' para' : '');
         const rawText = String(q.question || '');
-        const answers = q.correct_answers || [];
+        const answers = Array.isArray(q.correct_answers) ? q.correct_answers : [];
         writingState.fillInputs[idx] = [];
         const blankRe = /_{2,}|\.{3}/;
         const blankReG = /_{2,}|\.{3}/g;
+
+        function createWpInlineInput(expectedAns) {
+          const inp = document.createElement('input');
+          const expected = String(expectedAns || '');
+          inp.type = 'text';
+          inp.className = 'qz-wp-fill-input';
+          inp.placeholder = '\u2026';
+          inp.style.width = Math.max(60, (expected.length || 5) * 12 + 24) + 'px';
+          inp.setAttribute('autocomplete', 'off');
+          inp.setAttribute('autocorrect', 'off');
+          inp.setAttribute('autocapitalize', 'off');
+          inp.setAttribute('spellcheck', 'false');
+          inp.addEventListener('input', function() {
+            inp.style.width = Math.max(60, Math.max(expected.length || 5, inp.value.length + 1) * 12 + 24) + 'px';
+            qzWpCheck();
+          });
+          writingState.fillInputs[idx].push(inp);
+          return inp;
+        }
 
         if (blankRe.test(rawText)) {
           rawText.split(blankReG).forEach(function(seg, si, arr) {
             if (seg) fillBox.appendChild(document.createTextNode(seg));
             if (si < arr.length - 1) {
-              const expectedAns = answers[si] ? String(answers[si]) : '';
-              const inp = document.createElement('input');
-              inp.type = 'text';
-              inp.className = 'qz-wp-fill-input';
-              inp.placeholder = '\u2026';
-              inp.style.width = Math.max(60, (expectedAns.length || 5) * 12 + 24) + 'px';
-              inp.setAttribute('autocomplete', 'off');
-              inp.setAttribute('autocorrect', 'off');
-              inp.setAttribute('autocapitalize', 'off');
-              inp.setAttribute('spellcheck', 'false');
-              inp.addEventListener('input', function() {
-                inp.style.width = Math.max(60, Math.max(expectedAns.length || 5, inp.value.length + 1) * 12 + 24) + 'px';
-                qzWpCheck();
-              });
-              fillBox.appendChild(inp);
-              writingState.fillInputs[idx].push(inp);
+              fillBox.appendChild(createWpInlineInput(answers[si] || ''));
+            }
+          });
+        } else if (answers.length > 0 && rawText) {
+          var remaining = rawText;
+          var segments = [];
+
+          answers.forEach(function(answer, answerIdx) {
+            var word = String(answer || '');
+            var escaped = word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            var matcher = new RegExp('(?<![\\w\\\'])' + escaped + '(?![\\w\\\'])', 'i');
+            var found = matcher.exec(remaining);
+
+            if (found) {
+              if (found.index > 0) {
+                segments.push({ type: 'text', value: remaining.substring(0, found.index) });
+              }
+              segments.push({ type: 'input', expected: word, answerIdx: answerIdx });
+              remaining = remaining.substring(found.index + found[0].length);
+            } else {
+              if (remaining) {
+                segments.push({ type: 'text', value: remaining });
+                remaining = '';
+              }
+              segments.push({ type: 'input', expected: word, answerIdx: answerIdx });
+            }
+          });
+
+          if (remaining) {
+            segments.push({ type: 'text', value: remaining });
+          }
+
+          segments.forEach(function(seg) {
+            if (seg.type === 'text') {
+              if (seg.value) {
+                fillBox.appendChild(document.createTextNode(seg.value));
+              }
+            } else {
+              fillBox.appendChild(createWpInlineInput(seg.expected || ''));
             }
           });
         } else {
-          // No blank markers at all — show question + one input at end
           if (rawText) fillBox.appendChild(document.createTextNode(rawText + ' '));
-          const singleAns = answers[0] ? String(answers[0]) : '';
-          const inp = document.createElement('input');
-          inp.type = 'text';
-          inp.className = 'qz-wp-fill-input';
-          inp.placeholder = '\u2026';
-          inp.setAttribute('autocomplete', 'off');
-          inp.setAttribute('autocorrect', 'off');
-          inp.setAttribute('spellcheck', 'false');
-          inp.style.width = Math.max(60, (singleAns.length || 5) * 12 + 24) + 'px';
-          inp.addEventListener('input', function() {
-            inp.style.width = Math.max(60, Math.max(singleAns.length || 5, inp.value.length + 1) * 12 + 24) + 'px';
-            qzWpCheck();
-          });
-          fillBox.appendChild(inp);
-          writingState.fillInputs[idx].push(inp);
+          fillBox.appendChild(createWpInlineInput(answers[0] || ''));
         }
         item.appendChild(fillBox);
 
