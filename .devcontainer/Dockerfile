@@ -1,6 +1,21 @@
-FROM mcr.microsoft.com/devcontainers/php:1-8.3-bullseye
+# Start from the official PHP image
+FROM php:8.2-cli
 
-RUN rm -rf /etc/apt/sources.list.d/* \
-    && apt-get update \
-    && apt-get install -y default-mysql-client \
-    && docker-php-ext-install pdo_mysql
+# Install system packages and MySQL client
+RUN apt-get update && apt-get install -y \
+    default-mysql-client \
+    git \
+    unzip \
+    zip \
+    && docker-php-ext-install pdo_mysql \
+    && docker-php-ext-enable pdo_mysql \
+    && rm -rf /var/lib/apt/lists/*
+
+# Set working directory
+WORKDIR /var/www/html
+
+# Copy your project files into the container
+COPY . .
+
+# Default command when container starts
+CMD ["php", "-a"]
