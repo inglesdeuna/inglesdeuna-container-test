@@ -13,6 +13,7 @@ $unit       = isset($_GET['unit']) ? trim((string) $_GET['unit']) : '';
 $activity      = load_coloring_activity($pdo, $unit, $activityId);
 $images        = isset($activity['images']) && is_array($activity['images']) ? $activity['images'] : array();
 $activityTitle = isset($activity['title']) ? (string) $activity['title'] : default_coloring_title();
+$nextUrl       = isset($_GET['next']) ? trim((string) $_GET['next']) : '';
 
 /* Build a plain array of image URLs for JS */
 $imageUrls = array_values(array_filter(array_map(function($img) {
@@ -34,6 +35,7 @@ ob_start();
 .coloring-reset-btn:hover,.coloring-next-btn:hover { filter: brightness(1.04); transform: translateY(-1px); }
 .coloring-reset-btn { background: linear-gradient(180deg, #f59eb2 0%, #ec4899 100%); }
 .coloring-next-btn  { background: linear-gradient(180deg, #5eead4 0%, #14b8a6 100%); }
+a.coloring-next-btn { display: inline-flex; text-decoration: none; justify-content: center; align-items: center; }
 .coloring-progress  { font-size: 15px; font-weight: 800; color: #7c3aed; }
 /* ── palette ─────────────────────────────────────────── */
 .coloring-palette-wrap { background: #fff; border-radius: 22px; padding: 14px; box-shadow: 0 6px 20px rgba(0,0,0,.08); margin-bottom: 16px; }
@@ -56,6 +58,7 @@ ob_start();
 .coloring-completed-emoji { font-size: 88px; line-height: 1; margin-bottom: 14px; }
 .coloring-completed-title { font-family: 'Fredoka','Trebuchet MS',sans-serif; font-size: clamp(32px,4vw,48px); font-weight: 700; color: #ea580c; margin: 0 0 8px; }
 .coloring-completed-sub { font-size: 17px; font-weight: 700; color: #374151; margin: 0 0 26px; }
+.coloring-completed-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; }
 .coloring-btn-restart { padding: 13px 36px; font-size: 17px; font-weight: 800; font-family: 'Fredoka','Nunito',sans-serif; border: none; border-radius: 999px; cursor: pointer; color: #fff; background: linear-gradient(180deg, #8b5cf6 0%, #7c3aed 100%); box-shadow: 0 10px 24px rgba(0,0,0,.14); }
 .coloring-no-images { text-align: center; padding: 40px 20px; font-size: 16px; font-weight: 700; color: #7c3aed; }
 @media (max-width: 640px) {
@@ -94,7 +97,12 @@ ob_start();
         <div class="coloring-completed-emoji">&#x1F31F;</div>
         <h2 class="coloring-completed-title">Completed!</h2>
         <p class="coloring-completed-sub">Amazing job! You colored all the pages.</p>
-        <button type="button" class="coloring-btn-restart" id="restartBtn">Start Again</button>
+        <div class="coloring-completed-actions">
+            <button type="button" class="coloring-btn-restart" id="restartBtn">Start Again</button>
+            <?php if ($nextUrl !== ''): ?>
+                <a href="<?= htmlspecialchars($nextUrl, ENT_QUOTES, 'UTF-8') ?>" class="coloring-next-btn">Next activity &#x2192;</a>
+            <?php endif; ?>
+        </div>
     </div>
 
 </div><!-- /.coloring-app -->
