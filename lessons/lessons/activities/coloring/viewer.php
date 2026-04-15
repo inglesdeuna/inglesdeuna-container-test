@@ -27,7 +27,7 @@ ob_start();
 * { box-sizing: border-box; }
 .viewer-header { display: none !important; }
 /* ── app wrapper ─────────────────────────────────────── */
-.coloring-app { max-width: 980px; margin: 0 auto; padding: 16px; font-family: 'Nunito','Segoe UI',sans-serif; color: #4b3b47; }
+.coloring-app { max-width: 980px; margin: 0 auto; padding: 16px; font-family: 'Nunito','Segoe UI',sans-serif; color: #4b3b47; background: #ffffff; }
 .coloring-title-bar { text-align: center; font-family: 'Fredoka','Trebuchet MS',sans-serif; font-size: 28px; font-weight: 700; color: #7c3aed; margin-bottom: 14px; }
 /* ── controls ───────────────────────────────────────── */
 .coloring-controls { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; align-items: center; padding: 14px 0 4px; margin-top: 12px; }
@@ -113,6 +113,7 @@ a.coloring-next-btn { display: inline-flex; text-decoration: none; justify-conte
 
     /* ── data from PHP ───────────────────────────────── */
     var uploadedImages = <?= json_encode($imageUrls, JSON_UNESCAPED_UNICODE) ?>;
+    var nextActivityUrl = <?= json_encode($nextUrl, JSON_UNESCAPED_UNICODE) ?>;
 
     /* ── palette colors ──────────────────────────────── */
     var colors = [
@@ -163,7 +164,11 @@ a.coloring-next-btn { display: inline-flex; text-decoration: none; justify-conte
             return;
         }
         progressText.textContent = 'Page ' + (currentIndex + 1) + ' of ' + uploadedImages.length;
-        nextBtn.textContent = (currentIndex < uploadedImages.length - 1) ? 'Next \u2192' : 'Finish \u2713';
+        if (currentIndex < uploadedImages.length - 1) {
+            nextBtn.textContent = 'Next \u2192';
+        } else {
+            nextBtn.textContent = 'Finish \u2713';
+        }
     }
 
     /* ── show / hide sections ────────────────────────── */
@@ -312,7 +317,10 @@ a.coloring-next-btn { display: inline-flex; text-decoration: none; justify-conte
     nextBtn.addEventListener('click', function () {
         if (!uploadedImages.length) return;
         currentIndex++;
-        if (currentIndex >= uploadedImages.length) { showCompleted(); return; }
+        if (currentIndex >= uploadedImages.length) {
+            showCompleted();
+            return;
+        }
         loadImageAt(currentIndex);
     });
     resetBtn.addEventListener('click', resetCurrentPage);
