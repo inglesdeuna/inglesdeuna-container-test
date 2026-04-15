@@ -1,1 +1,16 @@
-
+{
+  "name": "inglesdeuna-php",
+  "build": {
+    "dockerfile": "Dockerfile"
+  },
+  "forwardPorts": [8000],
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "xdebug.php-debug",
+        "bmewburn.vscode-intelephense-client",
+        "GitHub.codespaces"
+      ]
+    }
+  }
+}
