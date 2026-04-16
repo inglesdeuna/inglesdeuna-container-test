@@ -416,6 +416,7 @@ if ($activityId === '' && !empty($activity['id'])) {
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $isAutoSaveRequest = isset($_POST['autosave']) && (string) $_POST['autosave'] === '1';
     $postedTitle = isset($_POST['activity_title']) ? trim((string) $_POST['activity_title']) : '';
     $questions = isset($_POST['question']) && is_array($_POST['question']) ? $_POST['question'] : array();
     $answers = isset($_POST['answer']) && is_array($_POST['answer']) ? $_POST['answer'] : array();
@@ -440,6 +441,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     $savedActivityId = save_qa_activity($pdo, $unit, $activityId, $postedTitle, $sanitized);
+
+    if ($isAutoSaveRequest) {
+        http_response_code(204);
+        exit;
+    }
 
     $params = array(
         'unit=' . urlencode($unit),
@@ -616,6 +622,7 @@ ob_start();
 <script>
 let formChanged = false;
 let formSubmitted = false;
+let autoSaveRequested = false;
 
 function markChanged() {
     formChanged = true;
@@ -669,10 +676,54 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 });
 
-window.addEventListener('beforeunload', function (e) {
-    if (formChanged && !formSubmitted) {
-        e.preventDefault();
-        e.returnValue = '';
+function autoSaveOnExit() {
+    if (formSubmitted || !formChanged || autoSaveRequested) {
+        return;
+    }
+
+    const form = document.getElementById('qaForm');
+    if (!form) {
+        return;
+    }
+
+    const payload = new FormData(form);
+    payload.append('autosave', '1');
+
+    autoSaveRequested = true;
+
+    try {
+        if (navigator.sendBeacon) {
+            const sent = navigator.sendBeacon(window.location.href, payload);
+            if (sent) {
+                formChanged = false;
+                return;
+            }
+        }
+    } catch (e) {}
+
+    fetch(window.location.href, {
+        method: 'POST',
+        body: payload,
+        credentials: 'same-origin',
+        keepalive: true
+    }).then(function () {
+        formChanged = false;
+    }).catch(function () {
+        autoSaveRequested = false;
+    });
+}
+
+window.addEventListener('beforeunload', function () {
+    autoSaveOnExit();
+});
+
+window.addEventListener('pagehide', function () {
+    autoSaveOnExit();
+});
+
+document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'hidden') {
+        autoSaveOnExit();
     }
 });
 </script>
