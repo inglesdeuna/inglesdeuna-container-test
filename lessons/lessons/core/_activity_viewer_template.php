@@ -280,12 +280,11 @@ function render_activity_viewer($title, $icon, $content)
 
         .viewer-content{
             margin-top:0;
-            background:rgba(255, 253, 249, .52);
-            border:1px solid rgba(255, 255, 255, .6);
-            border-radius:30px;
-            padding:18px;
-            box-shadow:var(--viewer-shadow);
-            backdrop-filter:blur(10px);
+            background: var(--viewer-paper);
+            border:1px solid var(--viewer-paper);
+            border-radius:14px;
+            padding:20px;
+            box-shadow: var(--viewer-shadow);
         }
 
         /* Global size normalization for activity viewers */
