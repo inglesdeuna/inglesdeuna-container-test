@@ -314,6 +314,7 @@ body {
     margin: 0 auto;
     padding: 18px;
     background: #e2e8f0;
+    border: 1px solid #dbeafe;
     border-radius: 36px;
 }
 
@@ -325,7 +326,7 @@ body {
     transform-style: preserve-3d;
     transition: transform 0.58s ease;
     border-radius: 28px;
-    box-shadow: var(--shadow);
+    box-shadow: 0 28px 72px rgba(15, 23, 42, 0.12);
     cursor: pointer;
     outline: none;
 }
@@ -429,7 +430,7 @@ body {
     font-size: 1rem;
     font-weight: 700;
     cursor: pointer;
-    box-shadow: 0 16px 36px rgba(14, 165, 233, 0.24);
+    box-shadow: 0 18px 40px rgba(14, 165, 233, 0.18);
     transition: transform 0.16s ease, filter 0.16s ease;
 }
 
@@ -444,19 +445,20 @@ body {
     height: 56px;
     border: none;
     border-radius: 999px;
-    background: #fff;
-    color: var(--accent-strong);
+    background: #eff6ff;
+    color: #1d4ed8;
     font-size: 28px;
     font-weight: 700;
-    box-shadow: var(--shadow);
+    box-shadow: 0 18px 40px rgba(15, 23, 42, 0.12);
     cursor: pointer;
     display: grid;
     place-items: center;
-    transition: transform 0.18s ease, color 0.18s ease;
+    transition: transform 0.18s ease, color 0.18s ease, background 0.18s ease;
 }
 
 .arrow-btn:hover {
     transform: scale(1.05);
+    background: #dbeafe;
 }
 
 .arrow-left {
@@ -490,29 +492,30 @@ body {
 
 .control-btn {
     min-width: 140px;
-    border: none;
+    border: 1px solid #dbeafe;
     border-radius: 999px;
     padding: 14px 20px;
     font-size: 1rem;
     font-weight: 800;
     cursor: pointer;
-    background: #fff;
+    background: #f8fafc;
     color: var(--text-dark);
-    box-shadow: 0 16px 32px rgba(15, 23, 42, 0.12);
-    transition: transform 0.16s ease, filter 0.16s ease;
+    box-shadow: 0 16px 32px rgba(15, 23, 42, 0.08);
+    transition: transform 0.16s ease, filter 0.16s ease, background 0.16s ease;
 }
 
 .control-btn:hover,
 .control-btn:focus {
     transform: translateY(-1px);
-    filter: brightness(1.04);
+    filter: brightness(1.02);
+    background: #e2e8f0;
 }
 
 .progress-text {
     margin-top: 16px;
     text-align: center;
     font-size: 1rem;
-    color: #334155;
+    color: #1e293b;
     font-weight: 700;
 }
 
@@ -520,7 +523,7 @@ body {
     margin-top: 10px;
     font-size: 14px;
     text-align: center;
-    color: #475569;
+    color: #334155;
 }
 
 .completed-screen {
