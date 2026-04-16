@@ -376,6 +376,21 @@ body {
     line-height: 1.02;
     word-break: break-word;
     padding: 12px 8px;
+    background: #ede9fe;
+    color: #5b21b6;
+    border-radius: 24px;
+}
+
+.card-image {
+    max-width: 100%;
+    max-height: calc(55vh - 180px);
+    object-fit: contain;
+    display: block;
+    margin: 0 auto;
+}
+
+.flashcards-controls {
+    margin-top: 16px;
 }
 
 .card-image-container {
@@ -600,15 +615,9 @@ body {
 
     <div class="controls-row flashcards-controls">
         <button class="control-btn" type="button" onclick="previousCard(event)">← Previous</button>
-        <button class="control-btn" id="flipBtn" type="button" onclick="flipCard(event)">🔁 Flip card</button>
+        <button class="control-btn" id="listenBtn" type="button">🔊 Listen</button>
         <button class="control-btn" type="button" onclick="nextCard(event)">Next →</button>
     </div>
-
-    <div class="progress-text">
-        Card <strong><span id="currentIndex">1</span></strong> of <strong><span id="totalCards"><?= count($data) ?></span></strong>
-    </div>
-
-    <div class="flip-hint">Click the card or press Enter/Space to reveal the opposite language side.</div>
 
     <div id="completed-container" class="completed-screen">
         <div class="completed-icon">✅</div>
@@ -622,6 +631,7 @@ body {
 const data = <?= json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
 let index = 0;
 let isCompleted = false;
+let currentCardText = '';
 
 const front = document.getElementById('front');
 const back = document.getElementById('back');
@@ -671,6 +681,7 @@ function loadCard() {
         <button type="button" class="listen-chip" data-text="${escapeHtml(text)}" data-lang="en-US">🔊 Listen</button>
     `;
 
+    currentCardText = text;
     document.getElementById('currentIndex').textContent = String(index + 1);
     document.getElementById('totalCards').textContent = String(data.length);
     card.classList.remove('flip');
@@ -689,7 +700,6 @@ function speakText(text, lang) {
 function showCompleted() {
     isCompleted = true;
     cardsStage.style.display = 'none';
-    document.querySelector('.flip-hint').style.display = 'none';
     completedContainer.classList.add('active');
 }
 
@@ -732,14 +742,8 @@ function flipCard(event) {
     card.classList.toggle('flip');
 }
 
-cardsStage.addEventListener('click', function (event) {
-    const button = event.target.closest('.listen-chip');
-    if (!button) return;
-    event.stopPropagation();
-
-    const text = button.dataset.text || '';
-    const lang = button.dataset.lang || 'en-US';
-    speakText(text, lang);
+document.getElementById('listenBtn').addEventListener('click', function () {
+    speakText(currentCardText, 'en-US');
 });
 
 card.addEventListener('click', function () {
