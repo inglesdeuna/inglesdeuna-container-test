@@ -432,6 +432,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $rightTexts = isset($_POST['right_text']) && is_array($_POST['right_text']) ? $_POST['right_text'] : array();
     $leftImages = isset($_POST['left_image_existing']) && is_array($_POST['left_image_existing']) ? $_POST['left_image_existing'] : array();
     $rightImages = isset($_POST['right_image_existing']) && is_array($_POST['right_image_existing']) ? $_POST['right_image_existing'] : array();
+    $leftRemoveFlags = isset($_POST['left_remove_image']) && is_array($_POST['left_remove_image']) ? $_POST['left_remove_image'] : array();
+    $rightRemoveFlags = isset($_POST['right_remove_image']) && is_array($_POST['right_remove_image']) ? $_POST['right_remove_image'] : array();
     $ids = isset($_POST['pair_id']) && is_array($_POST['pair_id']) ? $_POST['pair_id'] : array();
     $leftImageFiles = isset($_FILES['left_image_file']) ? $_FILES['left_image_file'] : null;
     $rightImageFiles = isset($_FILES['right_image_file']) ? $_FILES['right_image_file'] : null;
@@ -445,7 +447,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $rightText = isset($rightTexts[$i]) ? trim((string) $rightTexts[$i]) : '';
         $leftImage = isset($leftImages[$i]) ? trim((string) $leftImages[$i]) : '';
         $rightImage = isset($rightImages[$i]) ? trim((string) $rightImages[$i]) : '';
+        $leftRemoveImage = isset($leftRemoveFlags[$i]) && (string) $leftRemoveFlags[$i] === '1';
+        $rightRemoveImage = isset($rightRemoveFlags[$i]) && (string) $rightRemoveFlags[$i] === '1';
         $pairId = isset($ids[$i]) && trim((string) $ids[$i]) !== '' ? trim((string) $ids[$i]) : uniqid('match_');
+
+        if ($leftRemoveImage) {
+            $leftImage = '';
+        }
+
+        if ($rightRemoveImage) {
+            $rightImage = '';
+        }
 
         if (
             $leftImageFiles &&
@@ -611,6 +623,28 @@ ob_start();
     border:1px solid #d1d5db;
     background:#fff;
     margin-bottom:10px;
+}
+
+.image-actions{
+    display:flex;
+    gap:8px;
+    margin:0 0 10px;
+    flex-wrap:wrap;
+}
+
+.btn-image-remove{
+    border:1px solid #fecaca;
+    background:#fff1f2;
+    color:#b91c1c;
+    border-radius:8px;
+    padding:6px 10px;
+    font-size:12px;
+    font-weight:800;
+    cursor:pointer;
+}
+
+.btn-image-remove:hover{
+    background:#ffe4e6;
 }
 
 .toolbar-row{
@@ -801,6 +835,8 @@ ob_start();
                 <input type="hidden" name="pair_id[]" value="<?= htmlspecialchars(isset($pair['id']) ? $pair['id'] : uniqid('match_'), ENT_QUOTES, 'UTF-8') ?>">
                 <input type="hidden" name="left_image_existing[]" value="<?= htmlspecialchars(isset($pair['left_image']) ? $pair['left_image'] : '', ENT_QUOTES, 'UTF-8') ?>">
                 <input type="hidden" name="right_image_existing[]" value="<?= htmlspecialchars(isset($pair['right_image']) ? $pair['right_image'] : '', ENT_QUOTES, 'UTF-8') ?>">
+                <input type="hidden" name="left_remove_image[]" value="0">
+                <input type="hidden" name="right_remove_image[]" value="0">
 
                 <div class="match-grid">
                     <div class="match-side">
@@ -809,10 +845,17 @@ ob_start();
                         <input type="text" name="left_text[]" value="<?= htmlspecialchars(isset($pair['left_text']) ? $pair['left_text'] : '', ENT_QUOTES, 'UTF-8') ?>" placeholder="Example: Dog">
 
                         <label>Image</label>
-                        <?php if (!empty($pair['left_image'])) { ?>
-                            <img src="<?= htmlspecialchars($pair['left_image'], ENT_QUOTES, 'UTF-8') ?>" alt="left-match-image" class="image-preview">
-                        <?php } ?>
-                        <input type="file" name="left_image_file[]" accept="image/*">
+                        <?php $leftImage = isset($pair['left_image']) ? trim((string) $pair['left_image']) : ''; ?>
+                        <img
+                            src="<?= htmlspecialchars($leftImage, ENT_QUOTES, 'UTF-8') ?>"
+                            alt="left-match-image"
+                            class="image-preview"
+                            style="<?= $leftImage === '' ? 'display:none;' : '' ?>"
+                        >
+                        <div class="image-actions">
+                            <button type="button" class="btn-image-remove" onclick="clearSideImage(this, 'left')">Remove image</button>
+                        </div>
+                        <input type="file" name="left_image_file[]" accept="image/*" data-side="left">
                     </div>
 
                     <div class="match-side">
@@ -821,10 +864,17 @@ ob_start();
                         <input type="text" name="right_text[]" value="<?= htmlspecialchars(isset($pair['right_text']) ? $pair['right_text'] : '', ENT_QUOTES, 'UTF-8') ?>" placeholder="Example: Perro">
 
                         <label>Image</label>
-                        <?php if (!empty($pair['right_image'])) { ?>
-                            <img src="<?= htmlspecialchars($pair['right_image'], ENT_QUOTES, 'UTF-8') ?>" alt="right-match-image" class="image-preview">
-                        <?php } ?>
-                        <input type="file" name="right_image_file[]" accept="image/*">
+                        <?php $rightImage = isset($pair['right_image']) ? trim((string) $pair['right_image']) : ''; ?>
+                        <img
+                            src="<?= htmlspecialchars($rightImage, ENT_QUOTES, 'UTF-8') ?>"
+                            alt="right-match-image"
+                            class="image-preview"
+                            style="<?= $rightImage === '' ? 'display:none;' : '' ?>"
+                        >
+                        <div class="image-actions">
+                            <button type="button" class="btn-image-remove" onclick="clearSideImage(this, 'right')">Remove image</button>
+                        </div>
+                        <input type="file" name="right_image_file[]" accept="image/*" data-side="right">
                     </div>
                 </div>
 
@@ -887,6 +937,8 @@ function buildPairTemplate(pairType) {
         <input type="hidden" name="pair_id[]" value="match_${Date.now()}_${Math.floor(Math.random() * 1000)}">
         <input type="hidden" name="left_image_existing[]" value="">
         <input type="hidden" name="right_image_existing[]" value="">
+        <input type="hidden" name="left_remove_image[]" value="0">
+        <input type="hidden" name="right_remove_image[]" value="0">
 
         <div class="match-grid">
             <div class="match-side">
@@ -895,7 +947,11 @@ function buildPairTemplate(pairType) {
                 <input type="text" name="left_text[]" placeholder="${leftPlaceholder}">
 
                 <label>Image</label>
-                <input type="file" name="left_image_file[]" accept="image/*">
+                <img src="" alt="left-match-image" class="image-preview" style="display:none;">
+                <div class="image-actions">
+                    <button type="button" class="btn-image-remove" onclick="clearSideImage(this, 'left')">Remove image</button>
+                </div>
+                <input type="file" name="left_image_file[]" accept="image/*" data-side="left">
                 <small>${leftHint}</small>
             </div>
 
@@ -905,13 +961,81 @@ function buildPairTemplate(pairType) {
                 <input type="text" name="right_text[]" placeholder="${rightPlaceholder}">
 
                 <label>Image</label>
-                <input type="file" name="right_image_file[]" accept="image/*">
+                <img src="" alt="right-match-image" class="image-preview" style="display:none;">
+                <div class="image-actions">
+                    <button type="button" class="btn-image-remove" onclick="clearSideImage(this, 'right')">Remove image</button>
+                </div>
+                <input type="file" name="right_image_file[]" accept="image/*" data-side="right">
                 <small>${rightHint}</small>
             </div>
         </div>
 
         <button type="button" class="btn-remove" onclick="removePair(this)">✖ Remove</button>
     `;
+}
+
+function clearSideImage(button, sideKey) {
+    const side = button.closest('.match-side');
+    const item = button.closest('.match-item');
+    if (!side || !item) {
+        return;
+    }
+
+    const preview = side.querySelector('.image-preview');
+    const fileInput = side.querySelector('input[type="file"]');
+    const existingInput = item.querySelector(`input[name="${sideKey}_image_existing[]"]`);
+    const removeFlagInput = item.querySelector(`input[name="${sideKey}_remove_image[]"]`);
+
+    if (fileInput) {
+        fileInput.value = '';
+    }
+
+    if (existingInput) {
+        existingInput.value = '';
+    }
+
+    if (removeFlagInput) {
+        removeFlagInput.value = '1';
+    }
+
+    if (preview) {
+        preview.src = '';
+        preview.style.display = 'none';
+    }
+
+    markChanged();
+}
+
+function bindImageInputs(scope) {
+    const fileInputs = scope.querySelectorAll('input[type="file"][data-side]');
+    fileInputs.forEach(function(input) {
+        input.addEventListener('change', function() {
+            const side = input.closest('.match-side');
+            const item = input.closest('.match-item');
+            if (!side || !item) {
+                return;
+            }
+
+            const preview = side.querySelector('.image-preview');
+            const sideKey = input.getAttribute('data-side') === 'right' ? 'right' : 'left';
+            const removeFlagInput = item.querySelector(`input[name="${sideKey}_remove_image[]"]`);
+
+            if (removeFlagInput) {
+                removeFlagInput.value = '0';
+            }
+
+            if (preview && input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(evt) {
+                    preview.src = String(evt.target && evt.target.result ? evt.target.result : '');
+                    preview.style.display = preview.src ? 'block' : 'none';
+                };
+                reader.readAsDataURL(input.files[0]);
+            }
+
+            markChanged();
+        });
+    });
 }
 
 function addPair(pairType = 'text-text') {
@@ -934,6 +1058,7 @@ function bindChangeTracking(scope) {
 
 document.addEventListener('DOMContentLoaded', function () {
     bindChangeTracking(document);
+    bindImageInputs(document);
 
     const form = document.getElementById('matchForm');
     if (form) {
