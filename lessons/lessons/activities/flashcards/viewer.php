@@ -646,33 +646,29 @@ function getImage(item) {
     return item && typeof item.image === 'string' ? item.image : '';
 }
 
-function getText(item, key) {
-    return item && typeof item[key] === 'string' ? item[key] : '';
-}
-
-function resolveEnglish(item) {
-    return getText(item, 'english_text') || getText(item, 'text') || '';
-}
-
-function resolveSpanish(item) {
-    return getText(item, 'spanish_text') || getText(item, 'text') || '';
-}
-
 function loadCard() {
     const item = data[index] || {};
-    const english = resolveEnglish(item).trim();
-    const spanish = resolveSpanish(item).trim();
+    const text = getText(item).trim();
+    const image = getImage(item).trim();
 
-    front.innerHTML = `
-        <div class="panel-label">English</div>
-        <div class="panel-copy">${escapeHtml(english || 'No English text')}</div>
-        <button type="button" class="listen-chip" data-text="${escapeHtml(english)}" data-lang="en-US">🔊 Listen English</button>
-    `;
+    if (image) {
+        front.innerHTML = `
+            <div class="panel-label">Flashcard</div>
+            <div class="panel-copy"><img src="${escapeHtml(image)}" alt="Flashcard image" class="card-image"></div>
+            <button type="button" class="listen-chip" data-text="${escapeHtml(text)}" data-lang="en-US">🔊 Listen</button>
+        `;
+    } else {
+        front.innerHTML = `
+            <div class="panel-label">Flashcard</div>
+            <div class="panel-copy">${escapeHtml(text || 'No text available')}</div>
+            <button type="button" class="listen-chip" data-text="${escapeHtml(text)}" data-lang="en-US">🔊 Listen</button>
+        `;
+    }
 
     back.innerHTML = `
-        <div class="panel-label">Español</div>
-        <div class="panel-copy">${escapeHtml(spanish || 'No Spanish text')}</div>
-        <button type="button" class="listen-chip" data-text="${escapeHtml(spanish)}" data-lang="es-ES">🔊 Escuchar Español</button>
+        <div class="panel-label">Answer</div>
+        <div class="panel-copy">${escapeHtml(text || 'No text available')}</div>
+        <button type="button" class="listen-chip" data-text="${escapeHtml(text)}" data-lang="en-US">🔊 Listen</button>
     `;
 
     document.getElementById('currentIndex').textContent = String(index + 1);
