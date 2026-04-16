@@ -245,15 +245,15 @@ ob_start();
 ?>
 <style>
 :root {
-    --page-bg: #0f172a;
-    --panel-bg: #f8fafc;
+    --page-bg: #ffffff;
+    --panel-bg: #ffffff;
     --panel-alt: #111827;
-    --panel-border: #e2e8f0;
+    --panel-border: #cbd5e1;
     --text-dark: #0f172a;
     --text-light: #f8fafc;
     --accent: #0ea5e9;
     --accent-strong: #0284c7;
-    --shadow: 0 24px 60px rgba(15, 23, 42, 0.18);
+    --shadow: 0 24px 60px rgba(15, 23, 42, 0.14);
 }
 
 * {
@@ -265,8 +265,7 @@ body {
     min-height: 100vh;
     font-family: 'Nunito', 'Segoe UI', sans-serif;
     color: var(--text-dark);
-    background: radial-gradient(circle at top left, rgba(14, 165, 233, 0.16), transparent 28%),
-                linear-gradient(180deg, #e2e8f0 0%, #f8fafc 45%, #e0f2fe 100%);
+    background: #f0f4fb;
 }
 
 .flashcards-wrap {
@@ -278,6 +277,7 @@ body {
     align-items: center;
     justify-content: center;
     padding: 24px 18px 32px;
+    background: #ffffff;
 }
 
 .flashcards-intro,
@@ -312,6 +312,9 @@ body {
     max-width: 760px;
     perspective: 1400px;
     margin: 0 auto;
+    padding: 18px;
+    background: #e2e8f0;
+    border-radius: 36px;
 }
 
 .card {
@@ -375,6 +378,12 @@ body {
     background: #ede9fe;
     color: #5b21b6;
     border-radius: 24px;
+}
+
+.back .panel-copy {
+    font-size: clamp(2.25rem, 4.7vw, 5rem);
+    color: #ffffff;
+    background: transparent;
 }
 
 .card-image {
