@@ -270,9 +270,24 @@ body {
 }
 
 .flashcards-wrap {
-    max-width: 1180px;
-    margin: 0 auto;
-    padding: 22px 18px 32px;
+    width: 100%;
+    max-width: 100%;
+    min-height: calc(100vh - 120px);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 24px 18px 32px;
+}
+
+.flashcards-intro,
+.flashcards-stage,
+.flashcards-controls,
+.progress-text,
+.flip-hint {
+    width: min(760px, 100%);
+    margin-left: auto;
+    margin-right: auto;
 }
 
 .viewer-header {
@@ -305,18 +320,19 @@ body {
 }
 
 .flashcards-stage {
-    position: relative;
+    width: 100%;
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 18px;
-    padding: 14px 0;
+    padding: 0;
 }
 
 .card-container {
-    width: 100%;
-    max-width: 1020px;
+    width: min(760px, 100%);
+    max-width: 760px;
     perspective: 1400px;
+    margin: 0 auto;
 }
 
 .card {
@@ -437,7 +453,19 @@ body {
     align-items: center;
     gap: 14px;
     flex-wrap: wrap;
-    margin-top: 22px;
+    margin-top: 12px;
+    margin-bottom: 16px;
+}
+
+.flashcards-controls {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 14px;
+    flex-wrap: wrap;
+    margin-top: 12px;
+    margin-bottom: 16px;
 }
 
 .control-btn {
@@ -562,19 +590,15 @@ body {
     </div>
 
     <div id="cards-stage" class="flashcards-stage">
-        <button class="arrow-btn arrow-left" type="button" onclick="previousCard(event)" aria-label="Previous card">❮</button>
-
         <div class="card-container">
             <div class="card" id="card" role="button" tabindex="0" aria-label="Flashcard">
                 <div class="side front" id="front"></div>
                 <div class="side back" id="back"></div>
             </div>
         </div>
-
-        <button class="arrow-btn arrow-right" type="button" onclick="nextCard(event)" aria-label="Next card">❯</button>
     </div>
 
-    <div class="controls-row">
+    <div class="controls-row flashcards-controls">
         <button class="control-btn" type="button" onclick="previousCard(event)">← Previous</button>
         <button class="control-btn" id="flipBtn" type="button" onclick="flipCard(event)">🔁 Flip card</button>
         <button class="control-btn" type="button" onclick="nextCard(event)">Next →</button>
