@@ -739,6 +739,8 @@ function loadCard() {
     const frontText = resolveFrontText(item).trim();
     const backText = resolveBackText(item).trim();
 
+    front.classList.remove('image-mode');
+
     if (displayMode === 'text') {
         front.innerHTML = `
             <div class="panel-label">Front</div>
