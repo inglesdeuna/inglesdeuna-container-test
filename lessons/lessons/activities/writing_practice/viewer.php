@@ -1356,11 +1356,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
         /* ── open-writing notice ── */
         if (type === 'writing') {
-            var note = document.createElement('div');
-            note.className = 'wp-open-note';
-            note.textContent = 'Free Writing Practice: revision is based on answer keys configured in the editor.';
-            mediaArea.appendChild(note);
-
             var promptItems = parseEnumeratedPrompt(q.question || '');
             var responseCount = getWritingCount(q);
             var rowsCount = getWritingRows(q);
@@ -1382,11 +1377,6 @@ document.addEventListener('DOMContentLoaded', function () {
                     list.appendChild(li);
                 });
                 panel.appendChild(list);
-
-                var keyNote = document.createElement('div');
-                keyNote.className = 'wp-writing-key-note';
-                keyNote.textContent = 'Use Review Text to compare each response with the keys from the editor.';
-                panel.appendChild(keyNote);
 
                 mediaArea.appendChild(panel);
             }
