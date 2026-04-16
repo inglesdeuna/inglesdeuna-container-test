@@ -72,6 +72,8 @@ function wp_normalize_payload($rawData): array
             'instruction'     => trim((string) ($item['instruction'] ?? '')),
             'media'           => trim((string) ($item['media']       ?? '')),
             'correct_answers' => $ans,
+            'writing_rows'    => max(2, min(14, (int) ($item['writing_rows'] ?? 6))),
+            'response_count'  => max(1, min(20, (int) ($item['response_count'] ?? 1))),
             'points'          => 1,
         ];
     }
@@ -157,6 +159,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $instructions= isset($_POST['wp_instr'])    && is_array($_POST['wp_instr'])    ? $_POST['wp_instr']    : [];
     $mediasPost  = isset($_POST['wp_media'])    && is_array($_POST['wp_media'])    ? $_POST['wp_media']    : [];
     $answersList = isset($_POST['wp_answers'])  && is_array($_POST['wp_answers'])  ? $_POST['wp_answers']  : [];
+    $rowsList    = isset($_POST['wp_writing_rows'])   && is_array($_POST['wp_writing_rows'])   ? $_POST['wp_writing_rows']   : [];
+    $countList   = isset($_POST['wp_response_count']) && is_array($_POST['wp_response_count']) ? $_POST['wp_response_count'] : [];
     $videoFiles  = isset($_FILES['wp_video_file']) ? $_FILES['wp_video_file'] : null;
     $audioFiles  = isset($_FILES['wp_audio_file'])  ? $_FILES['wp_audio_file']  : null;
 
@@ -168,6 +172,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $instr  = trim((string) ($instructions[$i] ?? ''));
         $media  = trim((string) ($mediasPost[$i]   ?? ''));
         $rawAns = trim((string) ($answersList[$i]  ?? ''));
+        $rows   = max(2, min(14, (int) ($rowsList[$i]  ?? 6)));
+        $count  = max(1, min(20, (int) ($countList[$i] ?? 1)));
 
         if ($type === 'video_writing' && $videoFiles
             && !empty($videoFiles['name'][$i])
@@ -192,6 +198,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'instruction'     => $instr,
             'media'           => $media,
             'correct_answers' => $ans,
+            'writing_rows'    => $rows,
+            'response_count'  => $count,
             'points'          => 1,
         ];
     }
@@ -307,9 +315,12 @@ ob_start();
 .wp-col-half  { grid-column: span 1; }
 .wp-audio-row { grid-column: span 2; display: none; }
 .wp-video-row { grid-column: span 2; display: none; }
+.wp-writing-row { grid-column: span 2; display: none; }
 .wp-audio-row.visible,
-.wp-video-row.visible { display: block; }
+.wp-video-row.visible,
+.wp-writing-row.visible { display: block; }
 .wp-video-inner { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.wp-writing-inner { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .wp-block-num {
     font-size: 11px; font-weight: 800; color: #7c3aed;
     text-transform: uppercase; letter-spacing: .06em; grid-column: span 2; margin-top: 4px;
@@ -458,6 +469,8 @@ ob_start();
         $instr   = $q['instruction'] ?? '';
         $media   = $q['media']       ?? '';
         $answers = implode("\n", $q['correct_answers'] ?? []);
+        $wRows   = max(2, min(14, (int) ($q['writing_rows'] ?? 6)));
+        $rCount  = max(1, min(20, (int) ($q['response_count'] ?? 1)));
         ?>
         <div class="wp-block">
             <span class="wp-block-num">Pregunta <?= $i + 1 ?></span>
@@ -484,6 +497,24 @@ ob_start();
                 <input type="text" name="wp_instr[]"
                        value="<?= htmlspecialchars($instr, ENT_QUOTES, 'UTF-8') ?>"
                        placeholder="Ej: Escribe al menos 3 oraciones completas.">
+            </div>
+
+            <div class="wp-writing-row<?= $type==='writing' ? ' visible' : '' ?>">
+                <div class="wp-writing-inner">
+                    <div>
+                        <label>Cantidad de respuestas (filas enumeradas)</label>
+                        <input type="number" name="wp_response_count[]" min="1" max="20"
+                               value="<?= htmlspecialchars((string) $rCount, ENT_QUOTES, 'UTF-8') ?>">
+                    </div>
+                    <div>
+                        <label>Alto de cada respuesta (filas)</label>
+                        <input type="number" name="wp_writing_rows[]" min="2" max="14"
+                               value="<?= htmlspecialchars((string) $wRows, ENT_QUOTES, 'UTF-8') ?>">
+                    </div>
+                </div>
+                <p style="font-size:11px;color:#57534e;background:#fefce8;border:1px solid #fde68a;border-radius:8px;padding:8px;margin:8px 0 0;">
+                    Configura cuántas respuestas debe escribir el estudiante y cuántas filas visibles tendrá cada caja de texto.
+                </p>
             </div>
 
             <!-- Audio row – shown for listen_write -->
@@ -555,6 +586,7 @@ function wpToggleMedia(select) {
     var type     = select.value;
     var audioRow = block.querySelector('.wp-audio-row');
     var videoRow = block.querySelector('.wp-video-row');
+    var writingRow = block.querySelector('.wp-writing-row');
     var hidden   = block.querySelector('input[type="hidden"][name="wp_media[]"]');
 
     if (audioRow) {
@@ -565,6 +597,7 @@ function wpToggleMedia(select) {
         videoRow.classList.remove('visible');
         videoRow.querySelectorAll('input').forEach(function(inp){ inp.disabled = true; });
     }
+    if (writingRow) { writingRow.classList.remove('visible'); }
     if (hidden) { hidden.disabled = false; }
 
     if (type === 'listen_write' && audioRow) {
@@ -576,6 +609,9 @@ function wpToggleMedia(select) {
         videoRow.classList.add('visible');
         videoRow.querySelectorAll('input').forEach(function(inp){ inp.disabled = false; });
         if (hidden) { hidden.disabled = true; }
+    }
+    if (type === 'writing' && writingRow) {
+        writingRow.classList.add('visible');
     }
 }
 
@@ -598,6 +634,15 @@ function wpAdd() {
         '<textarea name="wp_question[]" rows="2" placeholder="Escribe la pregunta o el enunciado aqu\u00ED..."></textarea></div>' +
         '<div class="wp-col-full"><label>Instrucci\u00F3n adicional <span style="font-weight:400;font-size:12px;">(opcional)</span></label>' +
         '<input type="text" name="wp_instr[]" placeholder="Ej: Escribe al menos 3 oraciones completas."></div>' +
+        '<div class="wp-writing-row visible"><div class="wp-writing-inner">' +
+        '<div><label>Cantidad de respuestas (filas enumeradas)</label>' +
+        '<input type="number" name="wp_response_count[]" min="1" max="20" value="1"></div>' +
+        '<div><label>Alto de cada respuesta (filas)</label>' +
+        '<input type="number" name="wp_writing_rows[]" min="2" max="14" value="6"></div>' +
+        '</div>' +
+        '<p style="font-size:11px;color:#57534e;background:#fefce8;border:1px solid #fde68a;border-radius:8px;padding:8px;margin:8px 0 0;">' +
+        'Configura cu\u00E1ntas respuestas debe escribir el estudiante y cu\u00E1ntas filas visibles tendr\u00E1 cada caja de texto.' +
+        '</p></div>' +
         '<div class="wp-audio-row"><div class="wp-video-inner">' +
         '<div><label>\uD83C\uDFA7 URL del audio (MP3/OGG)</label>' +
         '<input type="url" name="wp_media[]" disabled placeholder="https://example.com/audio.mp3"></div>' +
