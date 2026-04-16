@@ -376,8 +376,8 @@ body {
     line-height: 1.02;
     word-break: break-word;
     padding: 12px 8px;
-    background: #ede9fe;
-    color: #5b21b6;
+    background: transparent;
+    color: #0f172a;
     border-radius: 24px;
 }
 
