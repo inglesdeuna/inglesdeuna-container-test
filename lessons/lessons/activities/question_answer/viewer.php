@@ -243,15 +243,15 @@ ob_start();
 ?>
 <style>
 :root {
-    --page-bg: #0f172a;
-    --panel-bg: #fffdf9;
-    --panel-alt: #1f2937;
-    --panel-border: #e2e8f0;
+    --page-bg: #eef2f7;
+    --panel-bg: #ffffff;
+    --panel-alt: #eef2ff;
+    --panel-border: #dce4f0;
     --text-dark: #1f2937;
-    --text-light: #f8fafc;
-    --accent: #0f766e;
-    --accent-strong: #0f766e;
-    --shadow: 0 18px 40px rgba(15, 23, 42, 0.12);
+    --text-light: #1f2937;
+    --accent: #1f66cc;
+    --accent-strong: #2f5bb5;
+    --shadow: 0 8px 24px rgba(0,0,0,.08);
 }
 
 * {
@@ -261,13 +261,10 @@ ob_start();
 body {
     margin: 0;
     min-height: 100vh;
-    font-family: 'Nunito', 'Segoe UI', sans-serif;
+    font-family: Arial, sans-serif;
     color: var(--text-dark);
-    background:
-        radial-gradient(circle at top left, rgba(255,255,255,.72), rgba(255,255,255,0) 28%),
-        radial-gradient(circle at top right, rgba(255,255,255,.6), rgba(255,255,255,0) 24%),
-        linear-gradient(135deg, #dff5ff 0%, #fff4db 48%, #f8d9e6 100%);
-    padding: 18px 22px 24px;
+    background: var(--page-bg);
+    padding: 30px;
 }
 
 .qa-wrap {
@@ -283,24 +280,22 @@ body {
 .qa-intro {
     margin-bottom: 22px;
     padding: 24px 28px;
-    border-radius: 28px;
-    border: 1px solid rgba(14, 165, 233, 0.22);
-    background: rgba(255, 255, 255, 0.96);
+    border-radius: 14px;
+    border: 1px solid var(--panel-border);
+    background: var(--panel-bg);
     box-shadow: var(--shadow);
 }
 
 .qa-intro h2 {
     margin: 0 0 10px;
-    font-family: 'Fredoka', 'Trebuchet MS', sans-serif;
-    font-size: clamp(20px, 1.5vw, 26px);
-    line-height: 1.05;
-    letter-spacing: -0.03em;
+    font-size: 22px;
+    font-weight: 600;
     color: var(--text-dark);
 }
 
 .qa-intro p {
     margin: 0;
-    color: #334155;
+    color: #5b6577;
     font-size: 15px;
     line-height: 1.75;
 }
@@ -327,7 +322,7 @@ body {
     position: relative;
     transform-style: preserve-3d;
     transition: transform 0.58s ease;
-    border-radius: 28px;
+    border-radius: 14px;
     box-shadow: var(--shadow);
     cursor: pointer;
     outline: none;
@@ -343,7 +338,7 @@ body {
     width: 100%;
     height: 100%;
     backface-visibility: hidden;
-    border-radius: 28px;
+    border-radius: 14px;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
@@ -386,15 +381,15 @@ body {
 
 .listen-chip {
     align-self: center;
-    padding: 14px 22px;
+    padding: 8px 12px;
     border-radius: 999px;
     border: none;
     background: var(--accent);
     color: #fff;
-    font-size: 1rem;
+    font-size: 14px;
     font-weight: 700;
     cursor: pointer;
-    box-shadow: 0 16px 36px rgba(15, 118, 110, 0.24);
+    box-shadow: 0 8px 24px rgba(31, 102, 204, 0.24);
     transition: transform 0.16s ease, filter 0.16s ease;
 }
 
@@ -444,14 +439,14 @@ body {
 .control-btn {
     min-width: 140px;
     border: none;
-    border-radius: 999px;
-    padding: 14px 20px;
-    font-size: 1rem;
-    font-weight: 800;
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 14px;
+    font-weight: 700;
     cursor: pointer;
-    background: #fff;
-    color: var(--text-dark);
-    box-shadow: 0 16px 32px rgba(15, 23, 42, 0.12);
+    background: var(--accent);
+    color: #fff;
+    box-shadow: 0 8px 24px rgba(31, 102, 204, 0.24);
     transition: transform 0.16s ease, filter 0.16s ease;
 }
 
@@ -512,20 +507,28 @@ body {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    padding: 14px 28px;
+    padding: 8px 12px;
     border: none;
-    border-radius: 999px;
+    border-radius: 8px;
     background: var(--accent-strong);
     color: #fff;
-    font-size: 1rem;
-    font-weight: 800;
+    font-size: 14px;
+    font-weight: 700;
     cursor: pointer;
-    box-shadow: 0 18px 44px rgba(15, 118, 110, 0.26);
+    box-shadow: 0 8px 24px rgba(47, 91, 181, 0.24);
 }
 
 .completed-button:hover {
     filter: brightness(1.05);
     transform: translateY(-1px);
+}
+
+@media (max-width: 768px) {
+  body { padding: 20px; }
+  h1 { font-size: 24px; }
+  h2 { font-size: 20px; }
+  h3 { font-size: 16px; }
+  .btn, .view-btn { font-size: 12px; padding: 6px 10px; }
 }
 
 @media (max-width: 960px) {
@@ -629,13 +632,11 @@ function loadCard() {
     const answer = getAnswer(item).trim();
 
     front.innerHTML = `
-        <div class="panel-label">Question</div>
         <div class="panel-copy">${escapeHtml(question || 'No question available')}</div>
         <button type="button" class="listen-chip" data-speaker="question">🔊 Listen Question</button>
     `;
 
     back.innerHTML = `
-        <div class="panel-label">Answer</div>
         <div class="panel-copy">${escapeHtml(answer || 'No answer available')}</div>
         <button type="button" class="listen-chip" data-speaker="answer">🔊 Listen Answer</button>
     `;

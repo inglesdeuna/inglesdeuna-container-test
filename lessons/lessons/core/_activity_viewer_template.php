@@ -42,16 +42,14 @@ function render_activity_viewer($title, $icon, $content)
         @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@500;700;800&display=swap');
 
         :root{
-            --viewer-bg-a:#dff5ff;
-            --viewer-bg-b:#fff4db;
-            --viewer-bg-c:#f8d9e6;
-            --viewer-paper:#fffdf9;
-            --viewer-text:#1f2937;
-            --viewer-muted:#475569;
-            --viewer-accent:#0f766e;
-            --viewer-accent-2:#14b8a6;
-            --viewer-success:#16a34a;
-            --viewer-shadow:0 18px 40px rgba(15, 23, 42, .12);
+            --viewer-bg: #eef2f7;
+            --viewer-paper: #ffffff;
+            --viewer-text: #1f2937;
+            --viewer-muted: #5b6577;
+            --viewer-accent: #1f66cc;
+            --viewer-accent-2: #2f5bb5;
+            --viewer-success: #16a34a;
+            --viewer-shadow: 0 8px 24px rgba(0,0,0,.08);
         }
 
         *{
@@ -61,13 +59,10 @@ function render_activity_viewer($title, $icon, $content)
         body{
             margin:0;
             min-height:100vh;
-            font-family:'Nunito', 'Segoe UI', sans-serif;
+            font-family: Arial, sans-serif;
             color:var(--viewer-text);
-            background:
-                radial-gradient(circle at top left, rgba(255, 255, 255, .72), rgba(255, 255, 255, 0) 28%),
-                radial-gradient(circle at top right, rgba(255, 255, 255, .6), rgba(255, 255, 255, 0) 24%),
-                linear-gradient(135deg, var(--viewer-bg-a) 0%, var(--viewer-bg-b) 48%, var(--viewer-bg-c) 100%);
-            padding:18px 22px 24px;
+            background: var(--viewer-bg);
+            padding: 30px;
         }
 
         /* ─────────────────────────────────────────────── */
@@ -275,9 +270,9 @@ function render_activity_viewer($title, $icon, $content)
 
         h1{
             margin:0;
-            font-family:'Fredoka', 'Trebuchet MS', sans-serif;
-            color:#0f172a;
-            font-size:clamp(24px, 2vw, 34px);
+            font-family: Arial, sans-serif;
+            color: var(--viewer-text);
+            font-size: 26px;
             line-height:1.12;
             font-weight:700;
             letter-spacing:.02em;
