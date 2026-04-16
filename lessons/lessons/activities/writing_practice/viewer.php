@@ -219,14 +219,14 @@ $cssVer = file_exists(__DIR__ . '/../multiple_choice/multiple_choice.css')
 }
 .wp-writing-panel {
     width: 100%;
-    max-width: 760px;
+    max-width: 900px;
     background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
     border: 1px solid #dbeafe;
-    border-radius: 16px;
-    padding: 14px;
+    border-radius: 18px;
+    padding: 18px;
     box-sizing: border-box;
-    margin-bottom: 12px;
-    box-shadow: 0 10px 24px rgba(15,23,42,.08);
+    margin-bottom: 14px;
+    box-shadow: 0 14px 30px rgba(15,23,42,.10);
 }
 .wp-writing-count {
     font-size: 12px;
@@ -245,26 +245,32 @@ $cssVer = file_exists(__DIR__ . '/../multiple_choice/multiple_choice.css')
 .wp-writing-prompts li { margin: 0 0 4px; }
 .wp-writing-list {
     width: 100%;
-    max-width: 760px;
+    max-width: 900px;
     display: grid;
-    gap: 10px;
-    margin-top: 8px;
+    gap: 14px;
+    margin-top: 10px;
 }
 .wp-writing-item {
     background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
     border: 1px solid #dbeafe;
-    border-radius: 12px;
-    padding: 10px;
+    border-radius: 14px;
+    padding: 14px;
     box-shadow: 0 6px 14px rgba(15,23,42,.05);
 }
 .wp-writing-item-label {
     display: block;
-    font-size: 12px;
+    font-size: 13px;
     font-weight: 800;
     color: #1e40af;
-    margin-bottom: 6px;
+    margin-bottom: 8px;
 }
-.wp-writing-item textarea { width: 100%; max-width: 100%; box-sizing: border-box; }
+.wp-writing-item textarea {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    font-size: 15px;
+    line-height: 1.5;
+}
 .wp-writing-key-note {
     margin-top: 8px;
     font-size: 12px;
@@ -1051,6 +1057,12 @@ document.addEventListener('DOMContentLoaded', function () {
         return parsed.filter(Boolean);
     }
 
+    function getPrimaryPrompt(questionText) {
+        var prompts = parseEnumeratedPrompt(questionText);
+        if (prompts.length > 0) { return prompts[0]; }
+        return String(questionText || '').trim();
+    }
+
     function getWritingValues() {
         return currentWritingInputs.map(function (inp) { return String(inp.value || '').trim(); });
     }
@@ -1247,7 +1259,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         if (coachEl) { coachEl.style.display = ''; }
         if (coachSummaryEl) {
-            coachSummaryEl.textContent = 'Checked against teacher keys: ' + correctCount + ' / ' + resultRows.length + ' (' + pct + '%).';
+            coachSummaryEl.textContent = 'Review completed.';
         }
         if (coachPreviewEl) {
             coachPreviewEl.innerHTML = resultRows.map(function (row) {
@@ -1266,8 +1278,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }).join('') || 'No text to review yet.';
         }
         if (coachListEl) {
-            coachListEl.innerHTML = '<li><strong>Revision source:</strong> 100% based on answer keys configured in the editor.</li>'
-                + '<li><strong>Suggested scoring system:</strong> Score = (matches / total keys) * 100. Current suggested score: <strong>' + pct + '/100</strong>.</li>';
+            coachListEl.innerHTML = '';
         }
         if (rewriteEl) {
             rewriteEl.value = getWritingLatestText();
@@ -1359,25 +1370,11 @@ document.addEventListener('DOMContentLoaded', function () {
             var promptItems = parseEnumeratedPrompt(q.question || '');
             var responseCount = getWritingCount(q);
             var rowsCount = getWritingRows(q);
-
-            if (promptItems.length > 0) {
+            var promptText = getPrimaryPrompt(q.question || '');
+            if (promptText !== '') {
                 var panel = document.createElement('div');
                 panel.className = 'wp-writing-panel';
-
-                var totalHint = document.createElement('div');
-                totalHint.className = 'wp-writing-count';
-                totalHint.textContent = 'Prompts: ' + promptItems.length + ' | Expected responses: ' + responseCount;
-                panel.appendChild(totalHint);
-
-                var list = document.createElement('ol');
-                list.className = 'wp-writing-prompts';
-                promptItems.forEach(function (item) {
-                    var li = document.createElement('li');
-                    li.textContent = item;
-                    list.appendChild(li);
-                });
-                panel.appendChild(list);
-
+                panel.innerHTML = '<div style="font-size:19px;font-weight:800;color:#1e3a8a;line-height:1.45;">' + esc(promptText) + '</div>';
                 mediaArea.appendChild(panel);
             }
 
@@ -1703,7 +1700,7 @@ document.addEventListener('DOMContentLoaded', function () {
         btnPrev.disabled = (index === 0);
         btnNext.textContent = (index < questions.length - 1) ? 'Next' : 'Finish';
         btnShow.style.display = (isAutoGraded(q) || type === 'writing') ? '' : 'none';
-        btnShow.textContent = (type === 'writing') ? 'Review Text' : 'Show Answer';
+        btnShow.textContent = (type === 'writing') ? 'Review Answer' : 'Show Answer';
         btnShow.disabled = !checkedCards[index] && (type === 'writing' ? !hasWritingValue() : isAutoGraded(q));
 
         /* restore state if user navigated back */
