@@ -295,28 +295,7 @@ body {
 }
 
 .flashcards-intro {
-    margin-bottom: 22px;
-    padding: 24px 28px;
-    border-radius: 28px;
-    border: 1px solid rgba(14, 165, 233, 0.22);
-    background: rgba(255, 255, 255, 0.96);
-    box-shadow: var(--shadow);
-}
-
-.flashcards-intro h2 {
-    margin: 0 0 10px;
-    font-family: 'Fredoka', 'Trebuchet MS', sans-serif;
-    font-size: clamp(32px, 4vw, 44px);
-    line-height: 1.05;
-    letter-spacing: -0.03em;
-    color: var(--text-dark);
-}
-
-.flashcards-intro p {
-    margin: 0;
-    color: #334155;
-    font-size: 17px;
-    line-height: 1.75;
+    display: none;
 }
 
 .flashcards-stage {
@@ -338,7 +317,7 @@ body {
 .card {
     width: 100%;
     min-height: 360px;
-    max-height: 440px;
+    max-height: min(68vh, 520px);
     position: relative;
     transform-style: preserve-3d;
     transition: transform 0.58s ease;
@@ -397,6 +376,27 @@ body {
     line-height: 1.02;
     word-break: break-word;
     padding: 12px 8px;
+}
+
+.card-image-container {
+    width: 100%;
+    max-width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 10px 0;
+}
+
+.card-image {
+    max-width: 100%;
+    max-height: calc(65vh - 200px);
+    object-fit: contain;
+    display: block;
+    margin: 0 auto;
+}
+
+.flashcards-controls {
+    margin-top: 16px;
 }
 
 .listen-chip {
@@ -654,7 +654,7 @@ function loadCard() {
     if (image) {
         front.innerHTML = `
             <div class="panel-label">Flashcard</div>
-            <div class="panel-copy"><img src="${escapeHtml(image)}" alt="Flashcard image" class="card-image"></div>
+            <div class="panel-copy"><div class="card-image-container"><img src="${escapeHtml(image)}" alt="Flashcard image" class="card-image"></div></div>
             <button type="button" class="listen-chip" data-text="${escapeHtml(text)}" data-lang="en-US">🔊 Listen</button>
         `;
     } else {
