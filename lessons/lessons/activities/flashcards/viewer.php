@@ -304,40 +304,6 @@ body {
     line-height: 1.75;
 }
 
-.mode-switcher {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: center;
-    gap: 10px;
-    margin-bottom: 20px;
-}
-
-.mode-switcher label {
-    font-weight: 800;
-    letter-spacing: .12em;
-    text-transform: uppercase;
-    color: #475569;
-    font-size: .9rem;
-}
-
-.mode-btn {
-    border: 1px solid rgba(15,23,42,.12);
-    background: #fff;
-    color: var(--text-dark);
-    padding: 12px 20px;
-    border-radius: 999px;
-    font-weight: 800;
-    cursor: pointer;
-    transition: background .18s ease, color .18s ease, transform .18s ease;
-}
-
-.mode-btn.active {
-    background: var(--accent);
-    color: #fff;
-    border-color: transparent;
-}
-
 .flashcards-stage {
     position: relative;
     display: flex;
@@ -415,55 +381,6 @@ body {
     line-height: 1.02;
     word-break: break-word;
     padding: 12px 8px;
-}
-
-.card {
-    overflow: hidden;
-}
-
-.front.image-mode {
-    padding: 0;
-}
-
-.image-frame {
-    position: relative;
-    width: 100%;
-    height: 100%;
-    overflow: hidden;
-    border-radius: 28px;
-}
-
-.card-image {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    aspect-ratio: 3 / 4;
-    display: block;
-}
-
-.image-label {
-    position: absolute;
-    top: 14px;
-    left: 14px;
-    background: rgba(255, 255, 255, 0.92);
-    color: var(--text-dark);
-    font-size: 0.85rem;
-    font-weight: 800;
-    letter-spacing: 0.08em;
-    padding: 6px 10px;
-    border-radius: 999px;
-    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
-    z-index: 1;
-}
-
-.image-button {
-    position: absolute;
-    right: 14px;
-    bottom: 14px;
-    padding: 8px 14px;
-    font-size: 0.95rem;
-    border-radius: 999px;
-    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.15);
 }
 
 .listen-chip {
@@ -641,13 +558,7 @@ body {
 <div class="flashcards-wrap">
     <div class="flashcards-intro">
         <h2><?= htmlspecialchars($viewerTitle, ENT_QUOTES, 'UTF-8') ?></h2>
-        <p>Advanced English ↔ Spanish flashcards for classroom projection. Toggle between the existing image+text layout and a new text-text mode with TTS on both sides.</p>
-    </div>
-
-    <div class="mode-switcher" role="radiogroup" aria-label="Flashcard display mode">
-        <label>Display mode</label>
-        <button type="button" class="mode-btn active" data-mode="image" onclick="setMode('image')">Image + Text</button>
-        <button type="button" class="mode-btn" data-mode="text" onclick="setMode('text')">Text + Text</button>
+        <p>Advanced English ↔ Spanish flashcards designed for classroom projection. Flip between formal expressions and nuanced translations while using dedicated listen buttons for each side.</p>
     </div>
 
     <div id="cards-stage" class="flashcards-stage">
@@ -673,12 +584,12 @@ body {
         Card <strong><span id="currentIndex">1</span></strong> of <strong><span id="totalCards"><?= count($data) ?></span></strong>
     </div>
 
-    <div class="flip-hint">Tap or click the card to flip it. Press Enter or Space when the card is focused.</div>
+    <div class="flip-hint">Click the card or press Enter/Space to reveal the opposite language side.</div>
 
     <div id="completed-container" class="completed-screen">
         <div class="completed-icon">✅</div>
         <h2 class="completed-title">Completed</h2>
-        <p class="completed-text">You've finished the flashcards. Great job practicing advanced vocabulary.</p>
+        <p class="completed-text">You've reviewed all flashcards. Excellent work with advanced vocabulary and idiomatic language.</p>
         <button class="completed-button" onclick="goBackToCards()">Back to Cards</button>
     </div>
 </div>
@@ -687,7 +598,6 @@ body {
 const data = <?= json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
 let index = 0;
 let isCompleted = false;
-let displayMode = 'image';
 
 const front = document.getElementById('front');
 const back = document.getElementById('back');
@@ -708,79 +618,38 @@ function getText(item) {
     return item && typeof item.text === 'string' ? item.text : '';
 }
 
-function getTextKey(item, key) {
-    return item && typeof item[key] === 'string' ? item[key] : '';
-}
-
 function getImage(item) {
     return item && typeof item.image === 'string' ? item.image : '';
 }
 
-function resolveFrontText(item) {
-    return getTextKey(item, 'english_text') || getTextKey(item, 'spanish_text') || getText(item) || 'No text available';
+function getText(item, key) {
+    return item && typeof item[key] === 'string' ? item[key] : '';
 }
 
-function resolveBackText(item) {
-    return getTextKey(item, 'spanish_text') || getTextKey(item, 'english_text') || getText(item) || 'No text available';
+function resolveEnglish(item) {
+    return getText(item, 'english_text') || getText(item, 'text') || '';
 }
 
-function setMode(mode) {
-    displayMode = mode === 'text' ? 'text' : 'image';
-    document.querySelectorAll('.mode-btn').forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.mode === displayMode);
-    });
-    card.classList.remove('flip');
-    loadCard();
+function resolveSpanish(item) {
+    return getText(item, 'spanish_text') || getText(item, 'text') || '';
 }
 
 function loadCard() {
     const item = data[index] || {};
-    const image = getImage(item).trim();
-    const frontText = resolveFrontText(item).trim();
-    const backText = resolveBackText(item).trim();
+    const english = resolveEnglish(item).trim();
+    const spanish = resolveSpanish(item).trim();
 
-    front.classList.remove('image-mode');
+    front.innerHTML = `
+        <div class="panel-label">English</div>
+        <div class="panel-copy">${escapeHtml(english || 'No English text')}</div>
+        <button type="button" class="listen-chip" data-text="${escapeHtml(english)}" data-lang="en-US">🔊 Listen English</button>
+    `;
 
-    if (displayMode === 'text') {
-        front.innerHTML = `
-            <div class="panel-label">Front</div>
-            <div class="panel-copy">${escapeHtml(frontText)}</div>
-            <button type="button" class="listen-chip" data-text="${escapeHtml(frontText)}" data-lang="en-US">🔊 Listen Front</button>
-        `;
-        back.innerHTML = `
-            <div class="panel-label">Back</div>
-            <div class="panel-copy">${escapeHtml(backText)}</div>
-            <button type="button" class="listen-chip" data-text="${escapeHtml(backText)}" data-lang="es-ES">🔊 Listen Back</button>
-        `;
-    } else {
-        const frontHtml = image
-            ? `<img src="${escapeHtml(image)}" alt="Flashcard image" class="card-image">`
-            : `<div class="panel-copy">${escapeHtml(frontText)}</div>`;
-
-        front.classList.toggle('image-mode', image !== '');
-
-        if (image) {
-            front.innerHTML = `
-                <div class="image-frame">
-                    <span class="image-label">Flashcard</span>
-                    ${frontHtml}
-                    <button type="button" class="listen-chip image-button" data-text="${escapeHtml(frontText)}" data-lang="en-US">🔊 Listen</button>
-                </div>
-            `;
-        } else {
-            front.innerHTML = `
-                <div class="panel-label">Image</div>
-                ${frontHtml}
-                <button type="button" class="listen-chip" data-text="${escapeHtml(frontText)}" data-lang="en-US">🔊 Listen Front</button>
-            `;
-        }
-
-        back.innerHTML = `
-            <div class="panel-label">Answer</div>
-            <div class="panel-copy">${escapeHtml(backText)}</div>
-            <button type="button" class="listen-chip" data-text="${escapeHtml(backText)}" data-lang="en-US">🔊 Listen Back</button>
-        `;
-    }
+    back.innerHTML = `
+        <div class="panel-label">Español</div>
+        <div class="panel-copy">${escapeHtml(spanish || 'No Spanish text')}</div>
+        <button type="button" class="listen-chip" data-text="${escapeHtml(spanish)}" data-lang="es-ES">🔊 Escuchar Español</button>
+    `;
 
     document.getElementById('currentIndex').textContent = String(index + 1);
     document.getElementById('totalCards').textContent = String(data.length);
@@ -793,12 +662,14 @@ function speakText(text, lang) {
     const utter = new SpeechSynthesisUtterance(text);
     utter.lang = lang;
     utter.rate = 0.92;
+    utter.pitch = 1;
     window.speechSynthesis.speak(utter);
 }
 
 function showCompleted() {
     isCompleted = true;
     cardsStage.style.display = 'none';
+    document.querySelector('.listen-row').style.display = 'none';
     document.querySelector('.flip-hint').style.display = 'none';
     completedContainer.classList.add('active');
 }
@@ -806,7 +677,8 @@ function showCompleted() {
 function goBackToCards() {
     isCompleted = false;
     index = 0;
-    cardsStage.style.display = 'flex';
+    cardsStage.style.display = 'block';
+    document.querySelector('.listen-row').style.display = 'block';
     document.querySelector('.flip-hint').style.display = 'block';
     completedContainer.classList.remove('active');
     card.classList.remove('flip');
@@ -816,13 +688,13 @@ function goBackToCards() {
 function nextCard(event) {
     if (event) event.stopPropagation();
     if (isCompleted) return;
-
+    
     card.classList.remove('flip');
-
+    
     if (index >= data.length - 1) {
         showCompleted();
     } else {
-        index += 1;
+        index = index + 1;
         loadCard();
     }
 }
@@ -830,7 +702,7 @@ function nextCard(event) {
 function previousCard(event) {
     if (event) event.stopPropagation();
     if (isCompleted) return;
-
+    
     card.classList.remove('flip');
     index = (index - 1 + data.length) % data.length;
     loadCard();
