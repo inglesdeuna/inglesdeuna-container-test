@@ -417,13 +417,53 @@ body {
     padding: 12px 8px;
 }
 
+.card {
+    overflow: hidden;
+}
+
+.front.image-mode {
+    padding: 0;
+}
+
+.image-frame {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    border-radius: 28px;
+}
+
 .card-image {
-    width: auto;
-    max-height: calc(100% - 82px);
-    max-width: 100%;
-    object-fit: contain;
-    border-radius: 20px;
-    margin: auto;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    aspect-ratio: 3 / 4;
+    display: block;
+}
+
+.image-label {
+    position: absolute;
+    top: 14px;
+    left: 14px;
+    background: rgba(255, 255, 255, 0.92);
+    color: var(--text-dark);
+    font-size: 0.85rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    padding: 6px 10px;
+    border-radius: 999px;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
+    z-index: 1;
+}
+
+.image-button {
+    position: absolute;
+    right: 14px;
+    bottom: 14px;
+    padding: 8px 14px;
+    font-size: 0.95rem;
+    border-radius: 999px;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.15);
 }
 
 .listen-chip {
@@ -715,11 +755,23 @@ function loadCard() {
             ? `<img src="${escapeHtml(image)}" alt="Flashcard image" class="card-image">`
             : `<div class="panel-copy">${escapeHtml(frontText)}</div>`;
 
-        front.innerHTML = `
-            <div class="panel-label">Image</div>
-            ${frontHtml}
-            <button type="button" class="listen-chip" data-text="${escapeHtml(frontText)}" data-lang="en-US">🔊 Listen Front</button>
-        `;
+        front.classList.toggle('image-mode', image !== '');
+
+        if (image) {
+            front.innerHTML = `
+                <div class="image-frame">
+                    <span class="image-label">Flashcard</span>
+                    ${frontHtml}
+                    <button type="button" class="listen-chip image-button" data-text="${escapeHtml(frontText)}" data-lang="en-US">🔊 Listen</button>
+                </div>
+            `;
+        } else {
+            front.innerHTML = `
+                <div class="panel-label">Image</div>
+                ${frontHtml}
+                <button type="button" class="listen-chip" data-text="${escapeHtml(frontText)}" data-lang="en-US">🔊 Listen Front</button>
+            `;
+        }
 
         back.innerHTML = `
             <div class="panel-label">Answer</div>
