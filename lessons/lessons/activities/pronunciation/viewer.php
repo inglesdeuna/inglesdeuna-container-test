@@ -393,14 +393,25 @@ ob_start();
     min-height:calc(100vh - 120px);
     display:flex;
     flex-direction:column;
+    align-items:center;
     justify-content:center;
+    padding: 24px 18px 32px;
+    background: #f0f4fb;
 }
 
 #pron-card{
+    width: min(760px, 100%);
+    max-width: 760px;
     display:flex;
     flex-direction:column;
     align-items:center;
     justify-content:flex-start;
+    gap: 18px;
+    padding: 32px 28px;
+    background: #ffffff;
+    border: 1px solid #dbeafe;
+    border-radius: 28px;
+    box-shadow: 0 28px 72px rgba(15, 23, 42, 0.12);
 }
 
 #pron-controls{
