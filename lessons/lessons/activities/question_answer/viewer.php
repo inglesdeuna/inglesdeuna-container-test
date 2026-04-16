@@ -244,14 +244,14 @@ ob_start();
 <style>
 :root {
     --page-bg: #0f172a;
-    --panel-bg: #f8fafc;
-    --panel-alt: #111827;
+    --panel-bg: #fffdf9;
+    --panel-alt: #1f2937;
     --panel-border: #e2e8f0;
-    --text-dark: #0f172a;
+    --text-dark: #1f2937;
     --text-light: #f8fafc;
-    --accent: #0ea5e9;
-    --accent-strong: #0284c7;
-    --shadow: 0 24px 60px rgba(15, 23, 42, 0.18);
+    --accent: #0f766e;
+    --accent-strong: #0f766e;
+    --shadow: 0 18px 40px rgba(15, 23, 42, 0.12);
 }
 
 * {
@@ -263,8 +263,11 @@ body {
     min-height: 100vh;
     font-family: 'Nunito', 'Segoe UI', sans-serif;
     color: var(--text-dark);
-    background: radial-gradient(circle at top left, rgba(14, 165, 233, 0.16), transparent 28%),
-                linear-gradient(180deg, #e2e8f0 0%, #f8fafc 45%, #e0f2fe 100%);
+    background:
+        radial-gradient(circle at top left, rgba(255,255,255,.72), rgba(255,255,255,0) 28%),
+        radial-gradient(circle at top right, rgba(255,255,255,.6), rgba(255,255,255,0) 24%),
+        linear-gradient(135deg, #dff5ff 0%, #fff4db 48%, #f8d9e6 100%);
+    padding: 18px 22px 24px;
 }
 
 .qa-wrap {
@@ -289,7 +292,7 @@ body {
 .qa-intro h2 {
     margin: 0 0 10px;
     font-family: 'Fredoka', 'Trebuchet MS', sans-serif;
-    font-size: clamp(32px, 4vw, 44px);
+    font-size: clamp(20px, 1.5vw, 26px);
     line-height: 1.05;
     letter-spacing: -0.03em;
     color: var(--text-dark);
@@ -298,7 +301,7 @@ body {
 .qa-intro p {
     margin: 0;
     color: #334155;
-    font-size: 17px;
+    font-size: 15px;
     line-height: 1.75;
 }
 
@@ -391,7 +394,7 @@ body {
     font-size: 1rem;
     font-weight: 700;
     cursor: pointer;
-    box-shadow: 0 16px 36px rgba(14, 165, 233, 0.24);
+    box-shadow: 0 16px 36px rgba(15, 118, 110, 0.24);
     transition: transform 0.16s ease, filter 0.16s ease;
 }
 
@@ -517,7 +520,7 @@ body {
     font-size: 1rem;
     font-weight: 800;
     cursor: pointer;
-    box-shadow: 0 18px 44px rgba(2, 132, 199, 0.26);
+    box-shadow: 0 18px 44px rgba(15, 118, 110, 0.26);
 }
 
 .completed-button:hover {
@@ -708,8 +711,8 @@ qaStage.addEventListener('click', function (event) {
     speakText(text, 'en-US');
 });
 
-card.addEventListener('click', function () {
-    if (!isCompleted) {
+card.addEventListener('click', function (event) {
+    if (!isCompleted && !event.target.closest('.listen-chip')) {
         card.classList.toggle('reveal');
     }
 });
