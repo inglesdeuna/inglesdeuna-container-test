@@ -420,23 +420,17 @@ if ($activityId === '' && !empty($activity['id'])) {
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $postedTitle = isset($_POST['activity_title']) ? trim((string) $_POST['activity_title']) : '';
-    $englishTexts = isset($_POST['english_text']) && is_array($_POST['english_text']) ? $_POST['english_text'] : array();
-    $spanishTexts = isset($_POST['spanish_text']) && is_array($_POST['spanish_text']) ? $_POST['spanish_text'] : array();
+    $texts = isset($_POST['text']) && is_array($_POST['text']) ? $_POST['text'] : array();
     $images = isset($_POST['image_existing']) && is_array($_POST['image_existing']) ? $_POST['image_existing'] : array();
     $ids = isset($_POST['card_id']) && is_array($_POST['card_id']) ? $_POST['card_id'] : array();
     $imageFiles = isset($_FILES['image_file']) ? $_FILES['image_file'] : null;
 
     $sanitized = array();
 
-    foreach ($ids as $i => $cardIdRaw) {
-        $cardId = trim((string) $cardIdRaw);
-        if ($cardId === '') {
-            $cardId = uniqid('flashcard_');
-        }
-
-        $english = trim((string) ($englishTexts[$i] ?? ''));
-        $spanish = trim((string) ($spanishTexts[$i] ?? ''));
+    foreach ($texts as $i => $textRaw) {
+        $text = trim((string) $textRaw);
         $image = isset($images[$i]) ? trim((string) $images[$i]) : '';
+        $cardId = isset($ids[$i]) && trim((string) $ids[$i]) !== '' ? trim((string) $ids[$i]) : uniqid('flashcard_');
 
         if (
             $imageFiles &&
@@ -451,15 +445,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
 
-        if ($english === '' && $spanish === '' && $image === '') {
+        if ($text === '' && $image === '') {
             continue;
         }
 
         $sanitized[] = array(
             'id' => $cardId,
-            'english_text' => $english,
-            'spanish_text' => $spanish,
-            'text' => $english !== '' ? $english : $spanish,
+            'text' => $text,
             'image' => $image,
         );
     }
@@ -624,11 +616,14 @@ ob_start();
                 <input type="hidden" name="card_id[]" value="<?= htmlspecialchars(isset($card['id']) ? $card['id'] : uniqid('flashcard_'), ENT_QUOTES, 'UTF-8') ?>">
                 <input type="hidden" name="image_existing[]" value="<?= htmlspecialchars(isset($card['image']) ? $card['image'] : '', ENT_QUOTES, 'UTF-8') ?>">
 
-                <label>English expression</label>
-                <input type="text" name="english_text[]" value="<?= htmlspecialchars(isset($card['english_text']) ? $card['english_text'] : '', ENT_QUOTES, 'UTF-8') ?>" placeholder="Formal academic English example" required>
+                <label>Word / text</label>
+                <input type="text" name="text[]" value="<?= htmlspecialchars(isset($card['text']) ? $card['text'] : '', ENT_QUOTES, 'UTF-8') ?>" placeholder="Write the word" required>
 
-                <label>Spanish translation</label>
-                <input type="text" name="spanish_text[]" value="<?= htmlspecialchars(isset($card['spanish_text']) ? $card['spanish_text'] : '', ENT_QUOTES, 'UTF-8') ?>" placeholder="Traducción al español precisa" required>
+                <label>Image (optional)</label>
+                <?php if (!empty($card['image'])) { ?>
+                    <img src="<?= htmlspecialchars($card['image'], ENT_QUOTES, 'UTF-8') ?>" alt="flashcard-image" class="image-preview">
+                <?php } ?>
+                <input type="file" name="image_file[]" accept="image/*">
 
                 <button type="button" class="btn-remove" onclick="removeCard(this)">✖ Remove</button>
             </div>
@@ -665,11 +660,11 @@ function addCard() {
         <input type="hidden" name="card_id[]" value="flashcard_${Date.now()}_${Math.floor(Math.random() * 1000)}">
         <input type="hidden" name="image_existing[]" value="">
 
-        <label>English expression</label>
-        <input type="text" name="english_text[]" placeholder="Formal academic English example" required>
+        <label>Word / text</label>
+        <input type="text" name="text[]" placeholder="Write the word" required>
 
-        <label>Spanish translation</label>
-        <input type="text" name="spanish_text[]" placeholder="Traducción al español precisa" required>
+        <label>Image (optional)</label>
+        <input type="file" name="image_file[]" accept="image/*">
 
         <button type="button" class="btn-remove" onclick="removeCard(this)">✖ Remove</button>
     `;
