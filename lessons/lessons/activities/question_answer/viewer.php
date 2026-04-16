@@ -632,6 +632,7 @@ const front = document.getElementById('front');
 const back = document.getElementById('back');
 const card = document.getElementById('card');
 const qaStage = document.getElementById('qa-stage');
+const controlsRow = document.querySelector('.controls-row');
 const completedContainer = document.getElementById('completed-container');
 
 function escapeHtml(value) {
@@ -683,6 +684,9 @@ function speakText(text, lang) {
 function showCompleted() {
     isCompleted = true;
     qaStage.style.display = 'none';
+    if (controlsRow) {
+        controlsRow.style.display = 'none';
+    }
     document.querySelector('.reveal-hint').style.display = 'none';
     completedContainer.classList.add('active');
 }
@@ -691,6 +695,9 @@ function goBackToCards() {
     isCompleted = false;
     index = 0;
     qaStage.style.display = 'flex';
+    if (controlsRow) {
+        controlsRow.style.display = 'flex';
+    }
     document.querySelector('.reveal-hint').style.display = 'block';
     completedContainer.classList.remove('active');
     card.classList.remove('reveal');
