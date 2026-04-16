@@ -408,7 +408,7 @@ ob_start();
 <form class="wp-form" id="wpForm" method="post" enctype="multipart/form-data">
     <section class="wp-intro">
         <h3>Writing Practice &mdash; Editor</h3>
-        <p>Agrega una pregunta por bloque. Elige el tipo, escribe el enunciado y agrega las respuestas correctas (una por línea). La opción <strong>Escritura libre</strong> funciona como práctica con corrector y reescritura, <strong>sin puntaje</strong>.</p>
+        <p>Agrega una pregunta por bloque. Elige el tipo, escribe el enunciado y agrega las respuestas correctas (una por línea). En <strong>Escritura libre</strong>, la revisión en el viewer se hace comparando con esas respuestas clave del editor.</p>
     </section>
 
     <div class="wp-title-box">
@@ -562,7 +562,7 @@ ob_start();
             <?php endif; ?>
 
             <div class="wp-col-full">
-                <label>Respuestas correctas <span style="font-weight:400;font-size:12px;">(una por línea  deja vacío para escritura libre)</span></label>
+                <label>Respuestas correctas <span style="font-weight:400;font-size:12px;">(una por línea; en escritura libre se usan para la revisión)</span></label>
                 <textarea name="wp_answers[]" rows="3"
                           placeholder="Respuesta 1&#10;Variante aceptada&#10;Otra forma válida"><?= htmlspecialchars($answers, ENT_QUOTES, 'UTF-8') ?></textarea>
             </div>
@@ -660,7 +660,7 @@ function wpAdd() {
         '<input type="file" name="wp_video_file[]" accept="video/*" disabled></div>' +
         '</div></div>' +
         '<input type="hidden" name="wp_media[]" value="">' +
-        '<div class="wp-col-full"><label>Respuestas correctas <span style="font-weight:400;font-size:12px;">(una por l\u00EDnea \u2014 deja vac\u00EDo para escritura libre)</span></label>' +
+        '<div class="wp-col-full"><label>Respuestas correctas <span style="font-weight:400;font-size:12px;">(una por l\u00EDnea; en escritura libre se usan para la revisi\u00F3n)</span></label>' +
         '<textarea name="wp_answers[]" rows="3" placeholder="Respuesta 1&#10;Variante aceptada&#10;Otra forma v\u00E1lida"></textarea></div>' +
         '<button type="button" class="btn-remove-wp" onclick="wpRemove(this)">\u2716 Eliminar</button>';
     container.appendChild(div);

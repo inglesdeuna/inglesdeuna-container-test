@@ -220,24 +220,25 @@ $cssVer = file_exists(__DIR__ . '/../multiple_choice/multiple_choice.css')
 .wp-writing-panel {
     width: 100%;
     max-width: 760px;
-    background: #fffbeb;
-    border: 1px solid #fde68a;
-    border-radius: 14px;
-    padding: 12px;
+    background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+    border: 1px solid #dbeafe;
+    border-radius: 16px;
+    padding: 14px;
     box-sizing: border-box;
     margin-bottom: 12px;
+    box-shadow: 0 10px 24px rgba(15,23,42,.08);
 }
 .wp-writing-count {
     font-size: 12px;
     font-weight: 800;
-    color: #a16207;
+    color: #1d4ed8;
     margin-bottom: 8px;
     text-align: center;
 }
 .wp-writing-prompts {
     margin: 0;
     padding-left: 22px;
-    color: #b45309;
+    color: #1e3a8a;
     font-weight: 700;
     line-height: 1.5;
 }
@@ -250,19 +251,30 @@ $cssVer = file_exists(__DIR__ . '/../multiple_choice/multiple_choice.css')
     margin-top: 8px;
 }
 .wp-writing-item {
-    background: #ffffff;
-    border: 1px solid #e5e7eb;
+    background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+    border: 1px solid #dbeafe;
     border-radius: 12px;
     padding: 10px;
+    box-shadow: 0 6px 14px rgba(15,23,42,.05);
 }
 .wp-writing-item-label {
     display: block;
     font-size: 12px;
     font-weight: 800;
-    color: #475569;
+    color: #1e40af;
     margin-bottom: 6px;
 }
 .wp-writing-item textarea { width: 100%; max-width: 100%; box-sizing: border-box; }
+.wp-writing-key-note {
+    margin-top: 8px;
+    font-size: 12px;
+    color: #334155;
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    border-radius: 10px;
+    padding: 8px 10px;
+    text-align: center;
+}
 .wp-writing-coach {
     width: 100%; max-width: 760px; margin-top: 12px;
     background: #fffaf0; border: 1px solid #fde68a; border-radius: 14px;
@@ -991,9 +1003,19 @@ document.addEventListener('DOMContentLoaded', function () {
         return Math.max(2, Math.min(14, rows));
     }
 
+    function stripLeadingNumbering(text) {
+        return String(text || '').replace(/^\s*\d+[\.)-]?\s*/, '').trim();
+    }
+
+    function getWritingExpectedList(q) {
+        return getExpectedAnswerList(q).map(stripLeadingNumbering).filter(function (v) { return v !== ''; });
+    }
+
     function getWritingCount(q) {
         var c = parseInt((q && q.response_count), 10);
         if (!isFinite(c)) { c = 1; }
+        var expectedLen = getWritingExpectedList(q).length;
+        if (expectedLen > c) { c = expectedLen; }
         return Math.max(1, Math.min(20, c));
     }
 
@@ -1028,6 +1050,33 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function hasWritingValue() {
         return getWritingValues().some(function (t) { return t !== ''; });
+    }
+
+    function similarity(a, b) {
+        var s1 = normalize(a);
+        var s2 = normalize(b);
+        if (s1 === '' && s2 === '') { return 1; }
+        if (s1 === '' || s2 === '') { return 0; }
+        var m = s1.length;
+        var n = s2.length;
+        var dp = new Array(m + 1);
+        for (var i = 0; i <= m; i++) {
+            dp[i] = new Array(n + 1);
+            dp[i][0] = i;
+        }
+        for (var j = 0; j <= n; j++) { dp[0][j] = j; }
+        for (var ii = 1; ii <= m; ii++) {
+            for (var jj = 1; jj <= n; jj++) {
+                var cost = s1.charAt(ii - 1) === s2.charAt(jj - 1) ? 0 : 1;
+                dp[ii][jj] = Math.min(
+                    dp[ii - 1][jj] + 1,
+                    dp[ii][jj - 1] + 1,
+                    dp[ii - 1][jj - 1] + cost
+                );
+            }
+        }
+        var dist = dp[m][n];
+        return 1 - (dist / Math.max(m, n));
     }
 
     function resetWritingCoach() {
@@ -1143,11 +1192,15 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function reviewWriting(forceFocus) {
-        var blocks = [];
-        if (currentWritingInputs.length > 0) {
-            blocks = getWritingValues();
-        } else {
-            blocks = [getWritingLatestText()];
+        var q = questions[index] || {};
+        var expectedList = getWritingExpectedList(q);
+        var blocks = currentWritingInputs.length > 0 ? getWritingValues() : [getWritingLatestText()];
+
+        if (expectedList.length === 0) {
+            feedbackEl.textContent = 'This free-writing review needs answer keys from the editor (one answer per line).';
+            feedbackEl.className = 'mc-feedback bad';
+            if (coachEl) { coachEl.style.display = 'none'; }
+            return false;
         }
 
         if (!blocks.some(function (t) { return String(t || '').trim() !== ''; })) {
@@ -1158,38 +1211,53 @@ document.addEventListener('DOMContentLoaded', function () {
             return false;
         }
 
-        var aggregate = { ok: true, issues: [], marks: [], wordCount: 0 };
-        var previewHtml = [];
-        blocks.forEach(function (text, bi) {
-            var clean = String(text || '').trim();
-            if (clean === '') { return; }
-            var local = analyzeWritingText(clean);
-            aggregate.ok = aggregate.ok && local.ok;
-            aggregate.wordCount += local.wordCount;
-            local.issues.forEach(function (issue) {
-                aggregate.issues.push({ type: issue.type, message: 'Response ' + (bi + 1) + ': ' + issue.message });
+        var resultRows = [];
+        var correctCount = 0;
+        var total = Math.max(expectedList.length, blocks.length);
+        for (var i = 0; i < total; i++) {
+            var userText = String(blocks[i] || '').trim();
+            var expectedText = String(expectedList[i] || '').trim();
+            if (expectedText === '' && userText === '') {
+                continue;
+            }
+            var ok = expectedText !== '' && checkCorrect(userText, [expectedText]);
+            var sim = expectedText !== '' ? similarity(userText, expectedText) : 0;
+            if (ok) { correctCount++; }
+            resultRows.push({
+                idx: i + 1,
+                ok: ok,
+                similarity: sim,
+                userText: userText,
+                expectedText: expectedText
             });
-            previewHtml.push('<div style="margin-bottom:8px;"><strong>' + (bi + 1) + '.</strong> ' + renderHighlightedText(clean, local.marks) + '</div>');
-        });
+        }
 
-        var issueCount = aggregate.issues.length;
-        var writingScore = Math.max(0, 100 - (issueCount * 5));
+        var pct = resultRows.length > 0 ? Math.round((correctCount / resultRows.length) * 100) : 0;
         writingReviewed[index] = true;
 
         if (coachEl) { coachEl.style.display = ''; }
         if (coachSummaryEl) {
-            coachSummaryEl.textContent = aggregate.ok
-                ? '✅ Your text looks good. You can continue or improve it a little more.'
-                : '⚠️ We found ' + issueCount + ' item(s) to improve in your writing.';
+            coachSummaryEl.textContent = 'Checked against teacher keys: ' + correctCount + ' / ' + resultRows.length + ' (' + pct + '%).';
         }
         if (coachPreviewEl) {
-            coachPreviewEl.innerHTML = previewHtml.join('') || 'No text to review yet.';
+            coachPreviewEl.innerHTML = resultRows.map(function (row) {
+                var status = row.ok ? '<span style="color:#166534;font-weight:800;">Match</span>' : '<span style="color:#b91c1c;font-weight:800;">No match</span>';
+                var expected = row.expectedText !== '' ? esc(row.expectedText) : 'No key configured';
+                var user = row.userText !== '' ? esc(row.userText) : '(empty)';
+                var near = (!row.ok && row.expectedText !== '' && row.similarity >= 0.6)
+                    ? '<div style="margin-top:4px;color:#92400e;font-size:12px;">Close answer detected. Check spelling or missing words.</div>'
+                    : '';
+                return '<div style="margin-bottom:10px;padding:8px;border:1px solid #e2e8f0;border-radius:10px;background:#fff;">'
+                    + '<div><strong>' + row.idx + '.</strong> ' + status + '</div>'
+                    + '<div style="margin-top:4px;"><strong>Your answer:</strong> ' + user + '</div>'
+                    + '<div style="margin-top:2px;"><strong>Expected:</strong> ' + expected + '</div>'
+                    + near
+                    + '</div>';
+            }).join('') || 'No text to review yet.';
         }
         if (coachListEl) {
-            coachListEl.innerHTML = aggregate.issues.length
-                ? aggregate.issues.map(function (issue) { return '<li><strong>' + esc(issue.type) + ':</strong> ' + esc(issue.message) + '</li>'; }).join('')
-                : '<li><strong>Great job:</strong> the checker did not find common spelling, punctuation, or capitalization issues.</li>';
-            coachListEl.innerHTML += '<li><strong>Suggested score model:</strong> Start at 100 and subtract 5 points per detected issue. Suggested score: <strong>' + writingScore + '/100</strong>.</li>';
+            coachListEl.innerHTML = '<li><strong>Revision source:</strong> 100% based on answer keys configured in the editor.</li>'
+                + '<li><strong>Suggested scoring system:</strong> Score = (matches / total keys) * 100. Current suggested score: <strong>' + pct + '/100</strong>.</li>';
         }
         if (rewriteEl) {
             rewriteEl.value = getWritingLatestText();
@@ -1197,18 +1265,16 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         if (rewriteWrapEl) { rewriteWrapEl.style.display = currentWritingInputs.length > 0 ? 'none' : 'block'; }
 
-        feedbackEl.textContent = aggregate.ok
-            ? 'Your revised text looks good. This practice does not generate a score.'
-            : (currentWritingInputs.length > 0
-                ? 'Review the suggestions and fix each response box, then use Review Text again.'
-                : 'Review the suggestions and rewrite your text below. Then use Review Text again.');
-        feedbackEl.className = 'mc-feedback ' + (aggregate.ok ? 'good' : 'bad');
+        feedbackEl.textContent = pct === 100
+            ? 'All responses match the keys from the editor.'
+            : 'Some responses do not match the keys. Review and try again.';
+        feedbackEl.className = 'mc-feedback ' + (pct === 100 ? 'good' : 'bad');
         if (forceFocus && currentWritingInputs.length > 0) {
             currentWritingInputs[0].focus();
         } else if (forceFocus && rewriteEl) {
             rewriteEl.focus();
         }
-        return aggregate.ok;
+        return pct === 100;
     }
 
     /* ── createFillInput helper ───────────────────────── */
@@ -1282,7 +1348,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (type === 'writing') {
             var note = document.createElement('div');
             note.className = 'wp-open-note';
-            note.textContent = 'Free Writing Practice: use Review Text to check spelling and writing before continuing.';
+            note.textContent = 'Free Writing Practice: revision is based on answer keys configured in the editor.';
             mediaArea.appendChild(note);
 
             var promptItems = parseEnumeratedPrompt(q.question || '');
@@ -1306,6 +1372,12 @@ document.addEventListener('DOMContentLoaded', function () {
                     list.appendChild(li);
                 });
                 panel.appendChild(list);
+
+                var keyNote = document.createElement('div');
+                keyNote.className = 'wp-writing-key-note';
+                keyNote.textContent = 'Use Review Text to compare each response with the keys from the editor.';
+                panel.appendChild(keyNote);
+
                 mediaArea.appendChild(panel);
             }
 
