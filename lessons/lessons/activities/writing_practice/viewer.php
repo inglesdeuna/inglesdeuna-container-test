@@ -913,7 +913,9 @@ document.addEventListener('DOMContentLoaded', function () {
     function getQuestionInputTotal(q) {
         var qt = String((q && q.type) || 'writing');
         var answers = getExpectedAnswerList(q);
-        if (qt === 'writing') { return 0; }
+        if (qt === 'writing') {
+            return getWritingExpectedList(q).length;
+        }
         if ((qt === 'fill_paragraph' || qt === 'fill_sentence' || qt === 'listen_write') && answers.length > 0) {
             return answers.length;
         }
@@ -922,7 +924,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function getQuestionCorrectUnits(q, qi) {
         var qt = String((q && q.type) || 'writing');
-        if (qt === 'writing') { return 0; }
+        if (qt === 'writing') {
+            var totalW = getWritingExpectedList(q).length;
+            var savedCorrect = parseInt(checkedCards[qi + '_writing_correct'] || 0, 10);
+            if (!isFinite(savedCorrect)) { savedCorrect = 0; }
+            return Math.max(0, Math.min(totalW, savedCorrect));
+        }
         if (qt === 'fill_paragraph' || qt === 'fill_sentence' || qt === 'listen_write') {
             var perInput = checkedCards[qi + '_perInput'] || [];
             return perInput.filter(Boolean).length;
@@ -1234,6 +1241,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
         var pct = resultRows.length > 0 ? Math.round((correctCount / resultRows.length) * 100) : 0;
         writingReviewed[index] = true;
+        checkedCards[index + '_writing_correct'] = correctCount;
+        checkedCards[index + '_writing_total'] = resultRows.length;
+        checkedCards[index + '_writing_pct'] = pct;
 
         if (coachEl) { coachEl.style.display = ''; }
         if (coachSummaryEl) {
@@ -1733,18 +1743,23 @@ document.addEventListener('DOMContentLoaded', function () {
                     revealEl.textContent   = checkedCards[index + '_reveal'] || '';
                     if (revealEl.textContent) { revealEl.classList.add('show'); }
                 } else if (type === 'writing') {
-                    feedbackEl.textContent = '\u2714 Practice saved — no score for free writing.';
-                    feedbackEl.className   = 'mc-feedback good';
+                    var rwTotal = Math.max(0, parseInt(checkedCards[index + '_writing_total'] || getWritingExpectedList(q).length, 10));
+                    var rwCorrect = Math.max(0, parseInt(checkedCards[index + '_writing_correct'] || 0, 10));
+                    feedbackEl.textContent = '\u2714 Writing saved. Score by keys: ' + rwCorrect + ' / ' + rwTotal + '.';
+                    feedbackEl.className   = 'mc-feedback ' + (rwTotal > 0 && rwCorrect >= rwTotal ? 'good' : 'bad');
                     if (coachEl) { coachEl.style.display = ''; }
                     if (coachSummaryEl) { coachSummaryEl.textContent = 'Last saved practice version'; }
                     if (coachPreviewEl) { coachPreviewEl.innerHTML = renderHighlightedText(answerEl.value, []); }
-                    if (coachListEl) { coachListEl.innerHTML = '<li><strong>Practice only:</strong> this text was checked for revision support and is not graded.</li>'; }
+                    if (coachListEl) { coachListEl.innerHTML = '<li><strong>Scoring:</strong> this free-writing item is scored by the keys defined in the editor.</li>'; }
                     if (rewriteEl) { rewriteEl.value = answerEl.value; rewriteEl.disabled = true; }
                     if (Array.isArray(checkedCards[index + '_lines']) && currentWritingInputs.length > 0) {
                         var savedLines = checkedCards[index + '_lines'];
+                        var rwExpected = getWritingExpectedList(q);
                         currentWritingInputs.forEach(function (inp, li) {
                             inp.value = savedLines[li] || '';
                             inp.disabled = true;
+                            var okLine = rwExpected[li] ? checkCorrect(String(inp.value || ''), [rwExpected[li]]) : false;
+                            inp.className = 'dict-answer-box ' + (okLine ? 'ok' : 'bad');
                         });
                     }
                 } else {
@@ -1898,7 +1913,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
             if (!checkedCards[index]) { return; }
         } else if (type === 'writing') {
-            /* free writing – practice only, no score */
+            /* free writing – scoreable by editor keys */
             var writingLines = currentWritingInputs.length > 0
                 ? getWritingValues()
                 : [getWritingLatestText()];
@@ -1908,7 +1923,10 @@ document.addEventListener('DOMContentLoaded', function () {
                 return;
             }
             if (!checkedCards[index]) {
-                checkedCards[index] = 'open';
+                var expectedLines = getWritingExpectedList(q);
+                var wTotal = Math.max(0, parseInt(checkedCards[index + '_writing_total'] || expectedLines.length, 10));
+                var wCorrect = Math.max(0, parseInt(checkedCards[index + '_writing_correct'] || 0, 10));
+                checkedCards[index] = (wTotal > 0 && wCorrect >= wTotal) ? 'correct' : 'wrong';
                 checkedCards[index + '_text'] = val;
                 checkedCards[index + '_lines'] = writingLines;
                 if (val !== '') {
@@ -1918,15 +1936,19 @@ document.addEventListener('DOMContentLoaded', function () {
                         question_type: String(q.type || 'writing'),
                         response_text: val,
                         response_lines: writingLines,
-                        max_points:    0,
+                        max_points:    Math.max(1, wTotal),
                     });
                 }
-                feedbackEl.textContent = '\u2714 Practice saved — no score for free writing.';
-                feedbackEl.className   = 'mc-feedback good';
+                feedbackEl.textContent = '\u2714 Writing saved. Score by keys: ' + wCorrect + ' / ' + wTotal + '.';
+                feedbackEl.className   = 'mc-feedback ' + (wTotal > 0 && wCorrect >= wTotal ? 'good' : 'bad');
                 answerEl.value         = val;
                 answerEl.disabled      = true;
                 if (currentWritingInputs.length > 0) {
-                    currentWritingInputs.forEach(function (inp) { inp.disabled = true; });
+                    currentWritingInputs.forEach(function (inp, wi) {
+                        inp.disabled = true;
+                        var okLine = expectedLines[wi] ? checkCorrect(String(inp.value || ''), [expectedLines[wi]]) : false;
+                        inp.className = 'dict-answer-box ' + (okLine ? 'ok' : 'bad');
+                    });
                 }
                 if (rewriteEl) { rewriteEl.value = val; rewriteEl.disabled = true; }
             }
@@ -2124,6 +2146,7 @@ document.addEventListener('DOMContentLoaded', function () {
         checkedCards      = {};
         attemptsMap       = {};
         openResponses     = [];
+        writingReviewed   = {};
         correctCount      = 0;
         index             = 0;
         finished          = false;
