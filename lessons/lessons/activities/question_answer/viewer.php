@@ -720,12 +720,6 @@ function previousCard(event) {
     loadCard();
 }
 
-function revealAnswer(event) {
-    if (event) event.stopPropagation();
-    if (isCompleted) return;
-    card.classList.toggle('reveal');
-}
-
 function listenCurrent(event) {
     if (event) event.stopPropagation();
     if (isCompleted) return;
