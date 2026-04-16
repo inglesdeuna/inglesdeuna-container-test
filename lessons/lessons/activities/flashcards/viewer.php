@@ -669,7 +669,6 @@ function speakText(text, lang) {
 function showCompleted() {
     isCompleted = true;
     cardsStage.style.display = 'none';
-    document.querySelector('.listen-row').style.display = 'none';
     document.querySelector('.flip-hint').style.display = 'none';
     completedContainer.classList.add('active');
 }
@@ -678,7 +677,6 @@ function goBackToCards() {
     isCompleted = false;
     index = 0;
     cardsStage.style.display = 'block';
-    document.querySelector('.listen-row').style.display = 'block';
     document.querySelector('.flip-hint').style.display = 'block';
     completedContainer.classList.remove('active');
     card.classList.remove('flip');
@@ -740,5 +738,6 @@ card.addEventListener('keydown', function (event) {
 
 loadCard();
 </script>
+<?php
 $content = ob_get_clean();
 render_activity_viewer($viewerTitle, '🃏', $content);
