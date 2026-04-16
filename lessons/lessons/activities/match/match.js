@@ -19,9 +19,15 @@ document.addEventListener("DOMContentLoaded", () => {
     const rightImage = String(item.right_image || "").trim();
     return leftImage === "" && rightImage === "";
   });
+  const hasImageMode = normalizedData.some((item) => {
+    const leftImage = String(item.left_image || "").trim();
+    const rightImage = String(item.right_image || "").trim();
+    return leftImage !== "" || rightImage !== "";
+  });
 
   if (matchStage) {
     matchStage.classList.toggle("text-only-mode", isTextOnlyMode);
+    matchStage.classList.toggle("match-image-mode", hasImageMode);
   }
 
   const shuffle = (arr) => [...arr].sort(() => Math.random() - 0.5);
@@ -90,6 +96,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function getBoardConfig(count) {
     const vw = window.innerWidth;
+    const preferLargeImageTiles = isPhase12Mode || hasImageMode;
 
     if (isTextOnlyMode) {
       const cols = vw <= 640 ? 1 : 2;
@@ -99,16 +106,16 @@ document.addEventListener("DOMContentLoaded", () => {
     // Base columns by number of pairs
     let cols;
     if (count <= 4) cols = 2;
-    else if (isPhase12Mode && count <= 8) cols = 3;
-    else if (!isPhase12Mode && count <= 6) cols = 3;
-    else if (isPhase12Mode && count <= 12) cols = 4;
-    else if (!isPhase12Mode && count <= 10) cols = 4;
+    else if (preferLargeImageTiles && count <= 8) cols = 3;
+    else if (!preferLargeImageTiles && count <= 6) cols = 3;
+    else if (preferLargeImageTiles && count <= 12) cols = 4;
+    else if (!preferLargeImageTiles && count <= 10) cols = 4;
     else cols = 5;
 
     // Adapt columns to actual container width so tiles don't become tiny
     const boardRect = leftBoard.getBoundingClientRect();
     const boardWidth = boardRect && boardRect.width ? boardRect.width : 0;
-    const minTileWidth = isPhase12Mode
+    const minTileWidth = preferLargeImageTiles
       ? (vw <= 760 ? 84 : 102)
       : (vw <= 760 ? 74 : 90);
     const gapH = 14;
@@ -128,7 +135,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const colW = boardWidth > 0 ? boardWidth : 260;
     const tileWFromW = Math.floor((colW - gapH * (cols - 1)) / cols);
 
-    const tileMin = isPhase12Mode ? 72 : 60;
+    const tileMin = preferLargeImageTiles ? 72 : 60;
     const tileSize = Math.max(tileMin, Math.min(tileHFromH, tileWFromW, 180));
     return { cols, tileSize };
   }
