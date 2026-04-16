@@ -77,6 +77,102 @@ function resolve_unit_from_activity(PDO $pdo, string $activityId): string
     return '';
 }
 
+function table_columns(PDO $pdo, string $tableName): array
+{
+    static $cache = array();
+
+    if (isset($cache[$tableName])) {
+        return $cache[$tableName];
+    }
+
+    $stmt = $pdo->prepare(
+        "SELECT column_name
+         FROM information_schema.columns
+         WHERE table_schema = 'public'
+           AND table_name = :table_name"
+    );
+    $stmt->execute(array('table_name' => $tableName));
+
+    $cols = array();
+    foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+        if (isset($row['column_name'])) {
+            $cols[] = (string) $row['column_name'];
+        }
+    }
+
+    $cache[$tableName] = $cols;
+    return $cols;
+}
+
+function is_phase_one_or_two_course(PDO $pdo, string $unit, string $returnTo): bool
+{
+    $matchPhaseLabel = static function (string $value): bool {
+        if ($value === '') {
+            return false;
+        }
+
+        return (bool) preg_match('/\bPHASE\s*[12]\b/i', $value);
+    };
+
+    $decodedReturnTo = trim(rawurldecode($returnTo));
+    if ($matchPhaseLabel($decodedReturnTo)) {
+        return true;
+    }
+
+    if ($unit === '') {
+        return false;
+    }
+
+    $unitCols = table_columns($pdo, 'units');
+    if (empty($unitCols)) {
+        return false;
+    }
+
+    $hasName = in_array('name', $unitCols, true);
+    $hasPhaseId = in_array('phase_id', $unitCols, true);
+    $phaseCols = table_columns($pdo, 'english_phases');
+    $hasPhaseName = in_array('name', $phaseCols, true);
+
+    if (!$hasName && !($hasPhaseId && $hasPhaseName)) {
+        return false;
+    }
+
+    $selectParts = array();
+    if ($hasName) {
+        $selectParts[] = 'u.name AS unit_name';
+    }
+    if ($hasPhaseId && $hasPhaseName) {
+        $selectParts[] = 'p.name AS phase_name';
+    }
+
+    $joinPhase = ($hasPhaseId && $hasPhaseName)
+        ? ' LEFT JOIN english_phases p ON p.id::text = u.phase_id::text '
+        : ' ';
+
+    $sql =
+        'SELECT ' . implode(', ', $selectParts)
+        . ' FROM units u '
+        . $joinPhase
+        . 'WHERE (u.id::text = :unit_id OR u.name = :unit_name) '
+        . 'LIMIT 1';
+
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute(array(
+        'unit_id' => $unit,
+        'unit_name' => $unit,
+    ));
+
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+    if (!is_array($row)) {
+        return false;
+    }
+
+    $unitName = isset($row['unit_name']) ? trim((string) $row['unit_name']) : '';
+    $phaseName = isset($row['phase_name']) ? trim((string) $row['phase_name']) : '';
+
+    return $matchPhaseLabel($unitName) || $matchPhaseLabel($phaseName);
+}
+
 function default_match_title(): string
 {
     return 'Match';
@@ -275,6 +371,7 @@ if ($unit === '' && $activityId !== '') {
 }
 
 $activity = load_match_activity($pdo, $activityId, $unit);
+$isPhaseOneOrTwo = is_phase_one_or_two_course($pdo, $unit, $returnTo);
 $viewerTitle = isset($activity['title']) ? (string) $activity['title'] : default_match_title();
 $pairs = isset($activity['pairs']) && is_array($activity['pairs']) ? $activity['pairs'] : array();
 $matchCssVersion = (string) (@filemtime(__DIR__ . '/match.css') ?: time());
@@ -327,21 +424,16 @@ ob_start();
     display:grid;
     grid-template-columns:minmax(0,1fr) minmax(0,1fr);
     gap:clamp(12px, 2vw, 26px);
-    background:#e2e8f0;
-    border:1px solid #dbeafe;
-    border-radius:36px;
-    padding:18px;
-    box-shadow:0 20px 46px rgba(15, 23, 42, .10);
 }
 
 .match-column-card{
     position:relative;
     background:#ffffff;
     border:1px solid #dbe7f5;
-    border-radius:30px;
+    border-radius:24px;
     /* 24px top = 8px accent bar + 16px clearance; 16px on other 3 sides */
     padding:24px 16px 16px;
-    box-shadow:0 18px 36px rgba(15, 23, 42, .10);
+    box-shadow:0 14px 28px rgba(15, 23, 42, .07);
     overflow:hidden;
     min-width:0;
     box-sizing:border-box;
@@ -355,7 +447,7 @@ ob_start();
 }
 
 .match-column-left{
-    background:linear-gradient(180deg, #fffaf0 0%, #ffffff 100%);
+    background:linear-gradient(180deg, #fffdf7 0%, #ffffff 100%);
 }
 
 .match-column-left::before{
@@ -363,7 +455,7 @@ ob_start();
 }
 
 .match-column-right{
-    background:linear-gradient(180deg, #f0f9ff 0%, #ffffff 100%);
+    background:linear-gradient(180deg, #f8fdff 0%, #ffffff 100%);
 }
 
 .match-column-right::before{
@@ -383,6 +475,27 @@ ob_start();
     font-weight:700;
 }
 
+.match-stage.match-phase-12 .match-columns{
+    background:#e2e8f0;
+    border:1px solid #dbeafe;
+    border-radius:36px;
+    padding:18px;
+    box-shadow:0 20px 46px rgba(15, 23, 42, .10);
+}
+
+.match-stage.match-phase-12 .match-column-card{
+    border-radius:30px;
+    box-shadow:0 18px 36px rgba(15, 23, 42, .10);
+}
+
+.match-stage.match-phase-12 .match-column-left{
+    background:linear-gradient(180deg, #fffaf0 0%, #ffffff 100%);
+}
+
+.match-stage.match-phase-12 .match-column-right{
+    background:linear-gradient(180deg, #f0f9ff 0%, #ffffff 100%);
+}
+
 @media (max-width: 760px){
     .match-columns{
         grid-template-columns:1fr;
@@ -394,7 +507,7 @@ ob_start();
 <?php if (empty($pairs)) { ?>
     <div class="match-empty">No match data available.</div>
 <?php } else { ?>
-    <div class="match-stage">
+    <div class="match-stage<?= $isPhaseOneOrTwo ? ' match-phase-12' : '' ?>">
         <div class="match-columns">
             <section class="match-column-card match-column-left">
                 <div class="board-column" id="match-left"></div>
@@ -484,6 +597,7 @@ ob_start();
     const MATCH_DATA = <?= json_encode($pairs, JSON_UNESCAPED_UNICODE) ?>;
     const MATCH_RETURN_TO = <?= json_encode($returnTo, JSON_UNESCAPED_UNICODE) ?>;
     const MATCH_ACTIVITY_ID = <?= json_encode((string) ($activity['id'] ?? ''), JSON_UNESCAPED_UNICODE) ?>;
+    const MATCH_PHASE12 = <?= json_encode($isPhaseOneOrTwo) ?>;
     </script>
 
     <script src="match.js?v=<?= htmlspecialchars($matchJsVersion, ENT_QUOTES, 'UTF-8') ?>"></script>
