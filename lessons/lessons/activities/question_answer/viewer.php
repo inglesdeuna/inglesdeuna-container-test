@@ -295,6 +295,10 @@ body {
     box-shadow: var(--shadow);
 }
 
+.qa-intro {
+    display: none;
+}
+
 .qa-intro h2 {
     margin: 0 0 10px;
     font-family: 'Fredoka', 'Trebuchet MS', sans-serif;
@@ -410,6 +414,10 @@ body {
     transition: transform 0.16s ease, filter 0.16s ease;
 }
 
+.side .listen-chip {
+    display: none;
+}
+
 .listen-chip:hover,
 .listen-chip:focus {
     transform: translateY(-1px);
@@ -489,6 +497,15 @@ body {
     text-align: center;
     color: #115e59;
     width: min(760px, 100%);
+}
+
+.progress-text,
+.reveal-hint {
+    display: none;
+}
+
+.reveal-hint:empty {
+    display: none !important;
 }
 
 .completed-screen {
@@ -572,11 +589,6 @@ body {
 </style>
 
 <div class="qa-wrap">
-    <div class="qa-intro">
-        <h2><?= htmlspecialchars($viewerTitle, ENT_QUOTES, 'UTF-8') ?></h2>
-        <p>Advanced English & Spanish question-answer pairs for fluency practice. Read the question and think before revealing the answer. Use TTS to hear pronunciation.</p>
-    </div>
-
     <div id="qa-stage" class="qa-stage">
         <button class="arrow-btn arrow-left" type="button" onclick="previousCard(event)" aria-label="Previous question">❮</button>
 
@@ -592,15 +604,16 @@ body {
 
     <div class="controls-row">
         <button class="control-btn" type="button" onclick="previousCard(event)">← Previous</button>
-        <button class="control-btn" id="revealBtn" type="button" onclick="revealAnswer(event)">👁️ Show Answer</button>
+        <button class="control-btn" type="button" onclick="listenCurrent(event)">🔊 Listen</button>
         <button class="control-btn" type="button" onclick="nextCard(event)">Next →</button>
     </div>
 
     <div class="progress-text">
-        Question <strong><span id="currentIndex">1</span></strong> of <strong><span id="totalCards"><?= count($data) ?></span></strong>
+        <span id="currentIndex">1</span>
+        <span id="totalCards"><?= count($data) ?></span>
     </div>
 
-    <div class="reveal-hint">Tap or click the card to reveal the answer. Press Enter or Space when the card is focused.</div>
+    <div class="reveal-hint"></div>
 
     <div id="completed-container" class="completed-screen">
         <div class="completed-icon">✅</div>
@@ -711,6 +724,15 @@ function revealAnswer(event) {
     if (event) event.stopPropagation();
     if (isCompleted) return;
     card.classList.toggle('reveal');
+}
+
+function listenCurrent(event) {
+    if (event) event.stopPropagation();
+    if (isCompleted) return;
+
+    const item = data[index] || {};
+    const visibleText = card.classList.contains('reveal') ? getAnswer(item) : getQuestion(item);
+    speakText(visibleText, 'en-US');
 }
 
 qaStage.addEventListener('click', function (event) {
