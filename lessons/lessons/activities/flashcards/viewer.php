@@ -351,18 +351,14 @@ body {
 }
 
 .back {
-    background: var(--panel-alt);
+    background: #7c3aed;
     color: var(--text-light);
     transform: rotateY(180deg);
-    border: 1px solid rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.18);
 }
 
 .panel-label {
-    text-transform: uppercase;
-    letter-spacing: 0.22em;
-    font-size: 0.85rem;
-    font-weight: 800;
-    opacity: 0.88;
+    display: none;
 }
 
 .panel-copy {
@@ -619,6 +615,11 @@ body {
         <button class="control-btn" type="button" onclick="nextCard(event)">Next →</button>
     </div>
 
+    <div class="progress-text" style="display:none;">
+        Card <strong><span id="currentIndex">1</span></strong> of <strong><span id="totalCards"><?= count($data) ?></span></strong>
+    </div>
+    <div class="flip-hint" style="display:none;">Click the card or press Enter/Space to reveal the opposite language side.</div>
+
     <div id="completed-container" class="completed-screen">
         <div class="completed-icon">✅</div>
         <h2 class="completed-title">Completed</h2>
@@ -663,22 +664,16 @@ function loadCard() {
 
     if (image) {
         front.innerHTML = `
-            <div class="panel-label">Flashcard</div>
             <div class="panel-copy"><div class="card-image-container"><img src="${escapeHtml(image)}" alt="Flashcard image" class="card-image"></div></div>
-            <button type="button" class="listen-chip" data-text="${escapeHtml(text)}" data-lang="en-US">🔊 Listen</button>
         `;
     } else {
         front.innerHTML = `
-            <div class="panel-label">Flashcard</div>
             <div class="panel-copy">${escapeHtml(text || 'No text available')}</div>
-            <button type="button" class="listen-chip" data-text="${escapeHtml(text)}" data-lang="en-US">🔊 Listen</button>
         `;
     }
 
     back.innerHTML = `
-        <div class="panel-label">Answer</div>
         <div class="panel-copy">${escapeHtml(text || 'No text available')}</div>
-        <button type="button" class="listen-chip" data-text="${escapeHtml(text)}" data-lang="en-US">🔊 Listen</button>
     `;
 
     currentCardText = text;
