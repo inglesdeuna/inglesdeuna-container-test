@@ -2076,7 +2076,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (compTitleEl) { compTitleEl.textContent = actTitle; }
         if (compTextEl)  { compTextEl.textContent  = "You've completed " + actTitle + ". Great job!"; }
 
-        /* score summary: free writing does not count; fill/listen blocks count by input slot */
+        /* score summary: all scoreable blocks, including free writing keys, count by input slot */
         var totalCount = questions.reduce(function (sum, qq) {
             return sum + getQuestionInputTotal(qq);
         }, 0);
@@ -2104,11 +2104,11 @@ document.addEventListener('DOMContentLoaded', function () {
             openNoteEl.style.display = '';
             openNoteEl.innerHTML     = '\uD83D\uDCCA ' + totalWords + ' palabras escritas';
             if (openResponses.length > 0) {
-                openNoteEl.innerHTML += ' &nbsp;&middot;&nbsp; \u270D\uFE0F ' + openResponses.length + ' practice response(s) reviewed.';
+                openNoteEl.innerHTML += ' &nbsp;&middot;&nbsp; \u270D\uFE0F ' + openResponses.length + ' response(s) reviewed.';
             }
         } else if (openNoteEl && openResponses.length > 0) {
             openNoteEl.style.display = '';
-            openNoteEl.textContent   = '\u270D\uFE0F ' + openResponses.length + ' practice response(s) reviewed.';
+            openNoteEl.textContent   = '\u270D\uFE0F ' + openResponses.length + ' response(s) reviewed.';
         }
 
         /* save open-writing responses */
