@@ -60,6 +60,7 @@ $activityTypes = [
     "tracing" => "Tracing",
     "coloring" => "Coloring Page",
     "writing_practice" => "Writing Practice",
+    "question_answer" => "Question Answer",
 ];
 
 /* ===============================
