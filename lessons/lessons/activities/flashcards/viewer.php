@@ -124,6 +124,8 @@ function normalize_flashcards_payload($rawData): array
 
             $cards[] = array(
                 'id' => isset($item['id']) ? trim((string) $item['id']) : uniqid('flashcard_'),
+                'english_text' => isset($item['english_text']) ? trim((string) $item['english_text']) : '',
+                'spanish_text' => isset($item['spanish_text']) ? trim((string) $item['spanish_text']) : '',
                 'text' => isset($item['text']) ? trim((string) $item['text']) : '',
                 'image' => isset($item['image']) ? trim((string) $item['image']) : '',
             );
@@ -242,266 +244,323 @@ if (count($data) === 0) {
 ob_start();
 ?>
 <style>
-:root{
-    --bg:#fff6f0;
-    --card-front:#fffdf9;
-    --card-back:#ec4899;
-    --text:#1f2937;
-    --white:#ffffff;
-    --arrow:#db2777;
-    --arrow-hover:#9d174d;
-    --shadow:0 16px 34px rgba(15, 23, 42, .14);
+:root {
+    --page-bg: #0f172a;
+    --panel-bg: #f8fafc;
+    --panel-alt: #111827;
+    --panel-border: #e2e8f0;
+    --text-dark: #0f172a;
+    --text-light: #f8fafc;
+    --accent: #0ea5e9;
+    --accent-strong: #0284c7;
+    --shadow: 0 24px 60px rgba(15, 23, 42, 0.18);
 }
 
-*{ box-sizing:border-box; }
-
-body{
-    color:var(--text);
+* {
+    box-sizing: border-box;
 }
 
-.flashcards-wrap{
-    max-width:980px;
-    margin:0 auto;
-    text-align:center;
-    padding:4px 0 4px;
+body {
+    margin: 0;
+    min-height: 100vh;
+    font-family: 'Nunito', 'Segoe UI', sans-serif;
+    color: var(--text-dark);
+    background: radial-gradient(circle at top left, rgba(14, 165, 233, 0.16), transparent 28%),
+                linear-gradient(180deg, #e2e8f0 0%, #f8fafc 45%, #e0f2fe 100%);
 }
 
-.viewer-header{ display:none !important; }
-
-.flashcards-intro{
-    margin-bottom:18px;
-    padding:24px 26px;
-    border-radius:26px;
-    border:1px solid #f8c9dd;
-    background:linear-gradient(135deg, #fff1f2 0%, #fff7ed 52%, #fff8cc 100%);
-    box-shadow:0 16px 34px rgba(15, 23, 42, .09);
+.flashcards-wrap {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 22px 18px 32px;
 }
 
-.flashcards-intro h2{
-    margin:0 0 8px;
-    font-family:'Fredoka', 'Trebuchet MS', sans-serif;
-    font-size:30px;
-    line-height:1.1;
-    color:#be185d;
+.viewer-header {
+    display: none !important;
 }
 
-.flashcards-intro p{
-    margin:0;
-    color:#6b4b5f;
-    font-size:16px;
-    line-height:1.6;
+.flashcards-intro {
+    margin-bottom: 22px;
+    padding: 24px 28px;
+    border-radius: 28px;
+    border: 1px solid rgba(14, 165, 233, 0.22);
+    background: rgba(255, 255, 255, 0.96);
+    box-shadow: var(--shadow);
 }
 
-.flashcards-stage{
-    position:relative;
-    max-width:820px;
-    margin:0 auto;
-    padding:0 70px;
+.flashcards-intro h2 {
+    margin: 0 0 10px;
+    font-family: 'Fredoka', 'Trebuchet MS', sans-serif;
+    font-size: clamp(32px, 4vw, 44px);
+    line-height: 1.05;
+    letter-spacing: -0.03em;
+    color: var(--text-dark);
 }
 
-.card-container{
-    perspective:1200px;
-    display:flex;
-    justify-content:center;
-    align-items:center;
+.flashcards-intro p {
+    margin: 0;
+    color: #334155;
+    font-size: 17px;
+    line-height: 1.75;
 }
 
-.card{
-    width:100%;
-    max-width:460px;
-    height:460px;
-    position:relative;
-    transform-style:preserve-3d;
-    transition:transform .65s ease;
-    cursor:pointer;
+.flashcards-stage {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 18px;
+    padding: 14px 0;
 }
 
-.card.flip{
-    transform:rotateY(180deg);
+.card-container {
+    width: 100%;
+    max-width: 1020px;
+    perspective: 1400px;
 }
 
-.side{
-    position:absolute;
-    inset:0;
-    width:100%;
-    height:100%;
-    backface-visibility:hidden;
-    border-radius:22px;
-    box-shadow:var(--shadow);
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    padding:20px;
+.card {
+    width: 100%;
+    min-height: 360px;
+    max-height: 440px;
+    position: relative;
+    transform-style: preserve-3d;
+    transition: transform 0.58s ease;
+    border-radius: 28px;
+    box-shadow: var(--shadow);
+    cursor: pointer;
+    outline: none;
 }
 
-.front{
-    background:var(--card-front);
-    border:1px solid #f8d7e6;
-    flex-direction:column;
+.card.flip {
+    transform: rotateY(180deg);
 }
 
-.front img{
-    max-width:300px;
-    max-height:280px;
-    object-fit:contain;
-    display:block;
+.side {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    backface-visibility: hidden;
+    border-radius: 28px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 28px 36px;
 }
 
-.back{
-    transform:rotateY(180deg);
-    background:var(--card-back);
-    color:var(--white);
-    text-align:center;
+.front {
+    background: var(--panel-bg);
+    color: var(--text-dark);
+    border: 1px solid var(--panel-border);
 }
 
-.back-word{
-    width:100%;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    min-height:100%;
-    padding:10px;
-    font-family:'Fredoka', 'Trebuchet MS', sans-serif;
-    font-size:42px;
-    font-weight:700;
-    line-height:1.15;
-    word-break:break-word;
-    text-align:center;
+.back {
+    background: var(--panel-alt);
+    color: var(--text-light);
+    transform: rotateY(180deg);
+    border: 1px solid rgba(255, 255, 255, 0.12);
 }
 
-.listen-row{
-    margin-top:16px;
+.panel-label {
+    text-transform: uppercase;
+    letter-spacing: 0.22em;
+    font-size: 0.85rem;
+    font-weight: 800;
+    opacity: 0.88;
 }
 
-.flash-btn{
-    display:inline-block;
-    padding:10px 18px;
-    border:none;
-    border-radius:999px;
-    background:linear-gradient(180deg, #f59e0b 0%, #ea580c 100%);
-    color:#fff;
-    font-weight:700;
-    font-size:15px;
-    cursor:pointer;
-    box-shadow:0 8px 18px rgba(0,0,0,.12);
+.panel-copy {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    font-size: clamp(2rem, 4.5vw, 4.8rem);
+    font-weight: 800;
+    line-height: 1.02;
+    word-break: break-word;
+    padding: 12px 8px;
 }
 
-.arrow-btn{
-    position:absolute;
-    top:50%;
-    transform:translateY(-50%);
-    width:56px;
-    height:56px;
-    border:none;
-    border-radius:999px;
-    background:#ffffff;
-    color:var(--arrow);
-    font-size:28px;
-    font-weight:700;
-    cursor:pointer;
-    box-shadow:0 10px 24px rgba(0,0,0,.14);
-    transition:transform .18s ease, color .18s ease;
+.listen-chip {
+    align-self: center;
+    padding: 14px 22px;
+    border-radius: 999px;
+    border: none;
+    background: var(--accent);
+    color: #fff;
+    font-size: 1rem;
+    font-weight: 700;
+    cursor: pointer;
+    box-shadow: 0 16px 36px rgba(14, 165, 233, 0.24);
+    transition: transform 0.16s ease, filter 0.16s ease;
 }
 
-.arrow-btn:hover{
-    transform:translateY(-50%) scale(1.05);
-    color:var(--arrow-hover);
+.listen-chip:hover,
+.listen-chip:focus {
+    transform: translateY(-1px);
+    filter: brightness(1.05);
 }
 
-.arrow-left{
-    left:0;
+.arrow-btn {
+    width: 56px;
+    height: 56px;
+    border: none;
+    border-radius: 999px;
+    background: #fff;
+    color: var(--accent-strong);
+    font-size: 28px;
+    font-weight: 700;
+    box-shadow: var(--shadow);
+    cursor: pointer;
+    display: grid;
+    place-items: center;
+    transition: transform 0.18s ease, color 0.18s ease;
 }
 
-.arrow-right{
-    right:0;
+.arrow-btn:hover {
+    transform: scale(1.05);
 }
 
-.flip-hint{
-    margin-top:10px;
-    font-size:14px;
-    color:#7a5c68;
+.arrow-left {
+    flex-shrink: 0;
 }
 
-.completed-screen{
-    display:none;
-    text-align:center;
-    max-width:600px;
-    margin:0 auto;
-    padding:40px 20px;
+.arrow-right {
+    flex-shrink: 0;
 }
 
-.completed-screen.active{
-    display:block;
+.controls-row {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 14px;
+    flex-wrap: wrap;
+    margin-top: 22px;
 }
 
-.completed-icon{
-    font-size:80px;
-    margin-bottom:20px;
+.control-btn {
+    min-width: 140px;
+    border: none;
+    border-radius: 999px;
+    padding: 14px 20px;
+    font-size: 1rem;
+    font-weight: 800;
+    cursor: pointer;
+    background: #fff;
+    color: var(--text-dark);
+    box-shadow: 0 16px 32px rgba(15, 23, 42, 0.12);
+    transition: transform 0.16s ease, filter 0.16s ease;
 }
 
-.completed-title{
-    font-family:'Fredoka', 'Trebuchet MS', sans-serif;
-    font-size:36px;
-    font-weight:700;
-    color:#be185d;
-    margin:0 0 16px;
-    line-height:1.2;
+.control-btn:hover,
+.control-btn:focus {
+    transform: translateY(-1px);
+    filter: brightness(1.04);
 }
 
-.completed-text{
-    font-size:16px;
-    color:#6b4b5f;
-    line-height:1.6;
-    margin:0 0 32px;
+.progress-text {
+    margin-top: 16px;
+    text-align: center;
+    font-size: 1rem;
+    color: #334155;
+    font-weight: 700;
 }
 
-.completed-button{
-    display:inline-block;
-    padding:12px 24px;
-    border:none;
-    border-radius:999px;
-    background:linear-gradient(180deg, #db2777 0%, #be185d 100%);
-    color:#fff;
-    font-weight:700;
-    font-size:16px;
-    cursor:pointer;
-    box-shadow:0 10px 24px rgba(0,0,0,.14);
-    transition:transform .18s ease, filter .18s ease;
+.flip-hint {
+    margin-top: 10px;
+    font-size: 14px;
+    text-align: center;
+    color: #475569;
 }
 
-.completed-button:hover{
-    transform:scale(1.05);
-    filter:brightness(1.07);
+.completed-screen {
+    display: none;
+    text-align: center;
+    max-width: 600px;
+    margin: 0 auto;
+    padding: 40px 20px;
 }
 
-@media (max-width:768px){
-    .flashcards-stage{
-        padding:0 56px;
+.completed-screen.active {
+    display: block;
+}
+
+.completed-icon {
+    font-size: 72px;
+    margin-bottom: 16px;
+}
+
+.completed-title {
+    font-family: 'Fredoka', 'Trebuchet MS', sans-serif;
+    font-size: clamp(32px, 4vw, 40px);
+    font-weight: 800;
+    margin: 0 0 14px;
+    color: var(--accent-strong);
+}
+
+.completed-text {
+    font-size: 1rem;
+    line-height: 1.8;
+    color: #475569;
+    margin: 0 0 22px;
+}
+
+.completed-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 14px 28px;
+    border: none;
+    border-radius: 999px;
+    background: var(--accent-strong);
+    color: #fff;
+    font-size: 1rem;
+    font-weight: 800;
+    cursor: pointer;
+    box-shadow: 0 18px 44px rgba(2, 132, 199, 0.26);
+}
+
+.completed-button:hover {
+    filter: brightness(1.05);
+    transform: translateY(-1px);
+}
+
+@media (max-width: 960px) {
+    .flashcards-stage {
+        flex-direction: column;
+        padding: 0;
     }
 
-    .card{
-        max-width:360px;
-        height:360px;
+    .arrow-btn {
+        width: 52px;
+        height: 52px;
+        font-size: 24px;
+    }
+}
+
+@media (max-width: 720px) {
+    .card {
+        min-height: 320px;
     }
 
-    .front img{
-        max-width:220px;
-        max-height:210px;
+    .panel-copy {
+        font-size: clamp(1.6rem, 6vw, 3.6rem);
     }
 
-    .back-word{
-        font-size:30px;
-    }
-
-    .arrow-btn{
-        width:48px;
-        height:48px;
-        font-size:24px;
+    .controls-row {
+        gap: 10px;
     }
 }
 </style>
 
 <div class="flashcards-wrap">
+    <div class="flashcards-intro">
+        <h2><?= htmlspecialchars($viewerTitle, ENT_QUOTES, 'UTF-8') ?></h2>
+        <p>Advanced English ↔ Spanish flashcards designed for classroom projection. Flip between formal expressions and nuanced translations while using dedicated listen buttons for each side.</p>
+    </div>
+
     <div id="cards-stage" class="flashcards-stage">
         <button class="arrow-btn arrow-left" type="button" onclick="previousCard(event)" aria-label="Previous card">❮</button>
 
@@ -515,16 +574,22 @@ body{
         <button class="arrow-btn arrow-right" type="button" onclick="nextCard(event)" aria-label="Next card">❯</button>
     </div>
 
-    <div class="listen-row">
-        <button class="flash-btn" id="listenBtn" type="button" onclick="speak(event)">🔊 Listen</button>
+    <div class="controls-row">
+        <button class="control-btn" type="button" onclick="previousCard(event)">← Previous</button>
+        <button class="control-btn" id="flipBtn" type="button" onclick="flipCard(event)">🔁 Flip card</button>
+        <button class="control-btn" type="button" onclick="nextCard(event)">Next →</button>
     </div>
 
-    <div class="flip-hint">Tap or click the card to flip it.</div>
+    <div class="progress-text">
+        Card <strong><span id="currentIndex">1</span></strong> of <strong><span id="totalCards"><?= count($data) ?></span></strong>
+    </div>
+
+    <div class="flip-hint">Click the card or press Enter/Space to reveal the opposite language side.</div>
 
     <div id="completed-container" class="completed-screen">
         <div class="completed-icon">✅</div>
         <h2 class="completed-title">Completed</h2>
-        <p class="completed-text">You've reviewed all flashcards! Great job practicing.</p>
+        <p class="completed-text">You've reviewed all flashcards. Excellent work with advanced vocabulary and idiomatic language.</p>
         <button class="completed-button" onclick="goBackToCards()">Back to Cards</button>
     </div>
 </div>
@@ -557,30 +622,47 @@ function getImage(item) {
     return item && typeof item.image === 'string' ? item.image : '';
 }
 
-function loadCard() {
-    const item = data[index] || {};
-    const image = getImage(item);
-    const text = getText(item);
-
-    front.innerHTML = `
-        ${image ? `<img src="${escapeHtml(image)}" alt="flashcard-image">` : `<div style="font-size:20px;color:#64748b;">No image</div>`}
-    `;
-
-    back.innerHTML = `<div class="back-word">${escapeHtml(text || 'No text')}</div>`;
+function getText(item, key) {
+    return item && typeof item[key] === 'string' ? item[key] : '';
 }
 
-function speak(event) {
-    if (event) event.stopPropagation();
-    if (!('speechSynthesis' in window)) return;
+function resolveEnglish(item) {
+    return getText(item, 'english_text') || getText(item, 'text') || '';
+}
 
-    window.speechSynthesis.cancel();
+function resolveSpanish(item) {
+    return getText(item, 'spanish_text') || getText(item, 'text') || '';
+}
+
+function loadCard() {
     const item = data[index] || {};
-    let text = getText(item);
-    if (!text) return;
+    const english = resolveEnglish(item).trim();
+    const spanish = resolveSpanish(item).trim();
 
+    front.innerHTML = `
+        <div class="panel-label">English</div>
+        <div class="panel-copy">${escapeHtml(english || 'No English text')}</div>
+        <button type="button" class="listen-chip" data-text="${escapeHtml(english)}" data-lang="en-US">🔊 Listen English</button>
+    `;
+
+    back.innerHTML = `
+        <div class="panel-label">Español</div>
+        <div class="panel-copy">${escapeHtml(spanish || 'No Spanish text')}</div>
+        <button type="button" class="listen-chip" data-text="${escapeHtml(spanish)}" data-lang="es-ES">🔊 Escuchar Español</button>
+    `;
+
+    document.getElementById('currentIndex').textContent = String(index + 1);
+    document.getElementById('totalCards').textContent = String(data.length);
+    card.classList.remove('flip');
+}
+
+function speakText(text, lang) {
+    if (!text || !('speechSynthesis' in window)) return;
+    window.speechSynthesis.cancel();
     const utter = new SpeechSynthesisUtterance(text);
-    utter.lang = 'en-US';
-    utter.rate = 0.9;
+    utter.lang = lang;
+    utter.rate = 0.92;
+    utter.pitch = 1;
     window.speechSynthesis.speak(utter);
 }
 
@@ -626,6 +708,22 @@ function previousCard(event) {
     loadCard();
 }
 
+function flipCard(event) {
+    if (event) event.stopPropagation();
+    if (isCompleted) return;
+    card.classList.toggle('flip');
+}
+
+cardsStage.addEventListener('click', function (event) {
+    const button = event.target.closest('.listen-chip');
+    if (!button) return;
+    event.stopPropagation();
+
+    const text = button.dataset.text || '';
+    const lang = button.dataset.lang || 'en-US';
+    speakText(text, lang);
+});
+
 card.addEventListener('click', function () {
     if (!isCompleted) {
         card.classList.toggle('flip');
@@ -642,6 +740,5 @@ card.addEventListener('keydown', function (event) {
 
 loadCard();
 </script>
-<?php
 $content = ob_get_clean();
 render_activity_viewer($viewerTitle, '🃏', $content);
