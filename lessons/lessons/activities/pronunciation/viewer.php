@@ -415,7 +415,12 @@ ob_start();
 }
 
 #pron-controls{
-    margin-top: 3mm;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    gap:14px;
+    flex-wrap:wrap;
+    margin-top: 18px;
     margin-bottom: 4mm;
 }
 
