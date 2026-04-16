@@ -306,22 +306,22 @@ function render_activity_viewer($title, $icon, $content)
         }
 
         .viewer-content :is(.mc-intro h2, .dd-intro h2, .lo-intro h2, .vc-intro h2, .dict-intro h2, .pron-intro h2, .match-intro h2, .flashcards-intro h2, .flipbook-intro h2, .ex-intro h2, .ppt-intro h2){
-            font-size:clamp(26px, 2.2vw, 30px) !important;
+            font-size: 22px !important;
             line-height:1.1 !important;
             margin:0 0 8px !important;
-            font-family:'Fredoka', 'Trebuchet MS', sans-serif !important;
-            font-weight:700 !important;
+            font-family: Arial, sans-serif !important;
+            font-weight:600 !important;
             text-align:center !important;
-            color:#5b21b6 !important;
+            color: var(--viewer-text) !important;
         }
 
         .viewer-content :is(.ppt-slide-title){
-            font-size:clamp(26px, 2.2vw, 30px) !important;
+            font-size: 22px !important;
             line-height:1.1 !important;
             text-align:center !important;
-            color:#5b21b6 !important;
-            font-family:'Fredoka', 'Trebuchet MS', sans-serif !important;
-            font-weight:700 !important;
+            color: var(--viewer-text) !important;
+            font-family: Arial, sans-serif !important;
+            font-weight:600 !important;
         }
 
         .viewer-content :is(.mc-card, #sentenceBox, .vc-panel, .flipbook-viewer__card){
@@ -339,11 +339,14 @@ function render_activity_viewer($title, $icon, $content)
         }
 
         .viewer-content :is(.mc-btn, .dd-btn, .lo-btn, .vc-btn, .action-btn, .qz-btn, .ppt-btn, .ex-btn, .flash-btn, .flipbook-btn, .dict-stage .btn, .pron-stage .btn){
-            padding:11px 18px !important;
+            padding:8px 12px !important;
             min-width:142px !important;
             font-size:14px !important;
-            font-weight:800 !important;
-            border-radius:999px !important;
+            font-weight:700 !important;
+            border-radius:8px !important;
+            background: var(--viewer-accent) !important;
+            color: #fff !important;
+            border: none !important;
         }
 
         @media (max-width: 768px){
@@ -387,7 +390,7 @@ function render_activity_viewer($title, $icon, $content)
 
         @media (max-width: 900px){
             body{
-                padding:12px 12px 18px;
+                padding:20px;
             }
 
             .top-row{
@@ -400,7 +403,7 @@ function render_activity_viewer($title, $icon, $content)
             }
 
             h1{
-                font-size:22px;
+                font-size:24px;
             }
 
             .back-btn{
@@ -409,14 +412,14 @@ function render_activity_viewer($title, $icon, $content)
             }
 
             .viewer-content{
-                border-radius:24px;
-                padding:14px;
+                border-radius:14px;
+                padding:20px;
             }
         }
 
         @media (max-width: 640px){
             h1{
-                font-size:20px;
+                font-size:24px;
             }
 
             .top-row{
@@ -424,8 +427,8 @@ function render_activity_viewer($title, $icon, $content)
             }
 
             .viewer-content{
-                border-radius:20px;
-                padding:12px;
+                border-radius:14px;
+                padding:20px;
             }
         }
     </style>
