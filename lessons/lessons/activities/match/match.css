@@ -73,17 +73,19 @@ body{
   align-items: center;
   justify-content: center;
   gap: 8px;
+  padding: 4px;
   text-align: center;
 }
 
 .match-media{
-  width: min(100%, calc(var(--tile-height, 92px) * 0.76));
-  height: calc(var(--tile-height, 92px) * 0.76);
+  width: min(100%, calc(var(--tile-height, 92px) * 0.92));
+  height: calc(var(--tile-height, 92px) * 0.92);
   object-fit: contain;
   user-select: none;
   -webkit-user-drag: none;
-  border-radius: 12px;
+  border-radius: 14px;
   background: #ffffff;
+  filter: drop-shadow(0 8px 14px rgba(15, 23, 42, .12));
 }
 
 .match-text{
@@ -103,8 +105,18 @@ body{
   text-align: center;
 }
 
-.has-image.has-text .match-media{
-  height: calc(var(--tile-height, 92px) * 0.5);
+.match-tile-inner.has-image.has-text .match-media{
+  height: calc(var(--tile-height, 92px) * 0.64);
+}
+
+.match-tile-inner.has-image.has-text .match-text{
+  width: auto;
+  max-width: 100%;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  font-size: clamp(10px, calc(var(--tile-height, 92px) * 0.12), 16px);
 }
 
 .text-only-mode .board-column{

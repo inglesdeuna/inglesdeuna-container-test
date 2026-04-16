@@ -98,14 +98,14 @@ document.addEventListener("DOMContentLoaded", () => {
     // Base columns by number of pairs
     let cols;
     if (count <= 4) cols = 2;
-    else if (count <= 6) cols = 3;
-    else if (count <= 10) cols = 4;
+    else if (count <= 8) cols = 3;
+    else if (count <= 12) cols = 4;
     else cols = 5;
 
     // Adapt columns to actual container width so tiles don't become tiny
     const boardRect = leftBoard.getBoundingClientRect();
     const boardWidth = boardRect && boardRect.width ? boardRect.width : 0;
-    const minTileWidth = vw <= 760 ? 74 : 90;
+    const minTileWidth = vw <= 760 ? 84 : 102;
     const gapH = 14;
     if (boardWidth > 0) {
       const maxColsByWidth = Math.max(1, Math.floor((boardWidth + gapH) / (minTileWidth + gapH)));
@@ -123,7 +123,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const colW = boardWidth > 0 ? boardWidth : 260;
     const tileWFromW = Math.floor((colW - gapH * (cols - 1)) / cols);
 
-    const tileSize = Math.max(60, Math.min(tileHFromH, tileWFromW, 180));
+    const tileSize = Math.max(72, Math.min(tileHFromH, tileWFromW, 180));
     return { cols, tileSize };
   }
 
