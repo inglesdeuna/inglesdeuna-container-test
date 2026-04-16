@@ -422,39 +422,23 @@ body {
 }
 
 .front.image-mode {
-    padding: 16px;
+    padding: 0;
 }
 
 .image-frame {
     position: relative;
     width: 100%;
     height: 100%;
-    padding: 14px;
-    box-sizing: border-box;
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-    gap: 14px;
+    overflow: hidden;
+    border-radius: 28px;
 }
 
 .card-image {
     width: 100%;
-    flex: 1 1 auto;
-    object-fit: contain;
-    border-radius: 20px;
+    height: 100%;
+    object-fit: cover;
+    aspect-ratio: 3 / 4;
     display: block;
-    background: #f8fafc;
-}
-
-.image-caption {
-    padding: 12px 14px;
-    border-radius: 18px;
-    background: rgba(255, 255, 255, 0.9);
-    color: var(--text-dark);
-    font-size: 1rem;
-    font-weight: 700;
-    text-align: center;
-    line-height: 1.4;
 }
 
 .image-label {
@@ -473,7 +457,9 @@ body {
 }
 
 .image-button {
-    align-self: flex-end;
+    position: absolute;
+    right: 14px;
+    bottom: 14px;
     padding: 8px 14px;
     font-size: 0.95rem;
     border-radius: 999px;
@@ -756,7 +742,6 @@ function loadCard() {
     front.classList.remove('image-mode');
 
     if (displayMode === 'text') {
-        front.classList.remove('image-mode');
         front.innerHTML = `
             <div class="panel-label">Front</div>
             <div class="panel-copy">${escapeHtml(frontText)}</div>
@@ -768,21 +753,24 @@ function loadCard() {
             <button type="button" class="listen-chip" data-text="${escapeHtml(backText)}" data-lang="es-ES">🔊 Listen Back</button>
         `;
     } else {
+        const frontHtml = image
+            ? `<img src="${escapeHtml(image)}" alt="Flashcard image" class="card-image">`
+            : `<div class="panel-copy">${escapeHtml(frontText)}</div>`;
+
         front.classList.toggle('image-mode', image !== '');
 
         if (image) {
             front.innerHTML = `
                 <div class="image-frame">
                     <span class="image-label">Flashcard</span>
-                    <img src="${escapeHtml(image)}" alt="Flashcard image" class="card-image">
-                    <div class="image-caption">${escapeHtml(frontText)}</div>
+                    ${frontHtml}
                     <button type="button" class="listen-chip image-button" data-text="${escapeHtml(frontText)}" data-lang="en-US">🔊 Listen</button>
                 </div>
             `;
         } else {
             front.innerHTML = `
                 <div class="panel-label">Image</div>
-                <div class="panel-copy">${escapeHtml(frontText)}</div>
+                ${frontHtml}
                 <button type="button" class="listen-chip" data-text="${escapeHtml(frontText)}" data-lang="en-US">🔊 Listen Front</button>
             `;
         }
