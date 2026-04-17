@@ -57,9 +57,11 @@ function load_student_accounts_from_database(): array
 
     try {
         $hasMustChangePassword = table_has_column($pdo, 'student_accounts', 'must_change_password');
+        $hasLegacyPassword = table_has_column($pdo, 'student_accounts', 'password');
         $selectMustChangePassword = $hasMustChangePassword ? 'must_change_password' : 'FALSE AS must_change_password';
+        $selectLegacyPassword = $hasLegacyPassword ? 'password' : "'' AS password";
 
-        $select = "id, student_id, student_name, username, password_hash, temp_password, {$selectMustChangePassword}, updated_at";
+        $select = "id, student_id, student_name, username, {$selectLegacyPassword}, password_hash, temp_password, {$selectMustChangePassword}, updated_at";
         if (table_has_column($pdo, 'student_accounts', 'permission')) {
             $select .= ', permission';
         }
@@ -229,6 +231,7 @@ if (empty($accounts)) {
 $error = '';
 $success = '';
 $temporaryPassword = '';
+$usernameValue = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = (string) ($_POST['action'] ?? 'login');
@@ -260,6 +263,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         session_start();
 
         $username = trim((string) ($_POST['username'] ?? ''));
+        $usernameValue = $username;
         $password = (string) ($_POST['password'] ?? '');
         $account = find_student_account($accounts, $username);
 
@@ -531,7 +535,7 @@ input:focus{
     cursor:pointer;
 }
 
-.error{margin-top:10px;color:var(--danger);font-weight:700;font-size:14px;}
+.error{margin-top:12px;padding:10px 12px;border-radius:10px;border:1px solid #f7c7c2;background:#fef2f2;color:var(--danger);font-weight:700;font-size:14px;}
 .success{margin-top:10px;color:var(--ok);font-weight:700;font-size:14px;}
 
 @media (max-width: 900px){
@@ -565,7 +569,7 @@ input:focus{
 
                 <div class="field">
                     <label for="username">Usuario o ID</label>
-                    <input id="username" type="text" name="username" placeholder="Usuario o ID del estudiante" required>
+                    <input id="username" type="text" name="username" value="<?php echo h($usernameValue); ?>" placeholder="Usuario o ID del estudiante" required>
                 </div>
 
                 <div class="field">
@@ -606,7 +610,7 @@ input:focus{
             </div>
 
             <?php if ($error): ?>
-                <div class="error"><?php echo h($error); ?></div>
+                <div class="error" role="alert" aria-live="assertive"><?php echo h($error); ?></div>
             <?php endif; ?>
 
             <?php if ($success): ?>
