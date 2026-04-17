@@ -137,10 +137,8 @@ $viewerTitle = (string) ($activity['title']       ?? 'Writing Practice');
 $description = (string) ($activity['description'] ?? '');
 $questions   = (array)  ($activity['questions']   ?? []);
 
-/* video layout mode: all questions are video_writing */
-$isVideoMode = !empty($questions) && count(array_filter(
-    $questions, function ($q) { return ($q['type'] ?? '') === 'video_writing'; }
-)) === count($questions);
+/* force standard card-by-card flow so Next/Show Answer/score behave like other activities */
+$isVideoMode = false;
 
 /* grab first video URL for the fixed video banner */
 $videoMediaUrl = '';
@@ -202,6 +200,15 @@ $cssVer = file_exists(__DIR__ . '/../multiple_choice/multiple_choice.css')
 .wp-video-wrap-iframe iframe {
     position: absolute; top: 0; left: 0;
     width: 100%; height: 100%; border: none;
+}
+.wp-video-fixed-wrap {
+    width: 100%;
+    max-width: 920px;
+    margin: 0 auto 12px;
+}
+.wp-video-fixed-wrap .wp-video-wrap,
+.wp-video-fixed-wrap .wp-video-wrap-iframe {
+    margin-bottom: 0;
 }
 .wp-audio-wrap { margin-bottom: 12px; text-align: center; }
 .wp-audio-wrap audio { width: 100%; max-width: 500px; border-radius: 10px; outline: none; }
@@ -873,6 +880,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
 <div class="mc-viewer" id="wpViewer">
     <div class="mc-status" id="wpStatus"></div>
+    <div id="wpVideoInstruction" class="wp-instruction-top" style="display:none;"></div>
+    <div id="wpVideoFixed" class="wp-video-fixed-wrap" style="display:none;"></div>
 
     <div class="mc-card" id="wpCard">
         <!-- media injected by JS -->
@@ -948,6 +957,8 @@ document.addEventListener('DOMContentLoaded', function () {
     var mediaArea   = document.getElementById('wpMediaArea');
     var qtextEl     = document.getElementById('wpQtext');
     var instrEl     = document.getElementById('wpInstruction');
+    var videoInstrEl = document.getElementById('wpVideoInstruction');
+    var videoFixedEl = document.getElementById('wpVideoFixed');
     var answerGuideEl = document.getElementById('wpAnswerGuide');
     var answerEl    = document.getElementById('wpAnswer');
     var writingListEl = document.getElementById('wpWritingList');
@@ -1097,6 +1108,53 @@ document.addEventListener('DOMContentLoaded', function () {
         var m2 = url.match(/youtube\.com\/watch\?(?:.*&)?v=([A-Za-z0-9_-]{11})/);
         if (m2) { return 'https://www.youtube-nocookie.com/embed/' + m2[1]; }
         return url;
+    }
+
+    function renderFixedVideo(mediaUrl) {
+        var rawUrl = String(mediaUrl || '').trim();
+        if (!videoFixedEl) { return; }
+        if (rawUrl === '') {
+            videoFixedEl.style.display = 'none';
+            videoFixedEl.innerHTML = '';
+            videoFixedEl.removeAttribute('data-src');
+            return;
+        }
+
+        if (videoFixedEl.getAttribute('data-src') === rawUrl && videoFixedEl.innerHTML.trim() !== '') {
+            videoFixedEl.style.display = '';
+            return;
+        }
+
+        videoFixedEl.innerHTML = '';
+        var embedUrl = toEmbedUrl(rawUrl);
+        var isDirectVideo = /\.(mp4|webm|ogg)(\?|$)/i.test(rawUrl)
+            || /cloudinary\.com\/.+\/video\//i.test(rawUrl);
+
+        if (isDirectVideo) {
+            var videoWrap = document.createElement('div');
+            videoWrap.className = 'wp-video-wrap';
+            var vid = document.createElement('video');
+            vid.controls = true;
+            vid.preload = 'metadata';
+            var vs = document.createElement('source');
+            vs.src = rawUrl;
+            vid.appendChild(vs);
+            videoWrap.appendChild(vid);
+            videoFixedEl.appendChild(videoWrap);
+        } else {
+            var iframeWrap = document.createElement('div');
+            iframeWrap.className = 'wp-video-wrap-iframe';
+            var fr = document.createElement('iframe');
+            fr.src = embedUrl;
+            fr.loading = 'lazy';
+            fr.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture';
+            fr.allowFullscreen = true;
+            iframeWrap.appendChild(fr);
+            videoFixedEl.appendChild(iframeWrap);
+        }
+
+        videoFixedEl.setAttribute('data-src', rawUrl);
+        videoFixedEl.style.display = '';
     }
 
     function esc(s) {
@@ -1756,32 +1814,10 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         /* ── video_writing: embed ── */
-        if (type === 'video_writing' && q.media) {
-            var rawUrl   = String(q.media);
-            var embedUrl = toEmbedUrl(rawUrl);
-            var isDirectVideo = /\.(mp4|webm|ogg)(\?|$)/i.test(rawUrl)
-                             || /cloudinary\.com\/.+\/video\//i.test(rawUrl);
-            if (isDirectVideo) {
-                var videoWrap = document.createElement('div');
-                videoWrap.className = 'wp-video-wrap';
-                var vid = document.createElement('video');
-                vid.controls = true;
-                vid.preload  = 'metadata';
-                var vs = document.createElement('source');
-                vs.src = rawUrl;
-                vid.appendChild(vs);
-                videoWrap.appendChild(vid);
-                mediaArea.appendChild(videoWrap);
-            } else {
-                var videoWrap = document.createElement('div');
-                videoWrap.className = 'wp-video-wrap-iframe';
-                var fr = document.createElement('iframe');
-                fr.src = embedUrl; fr.loading = 'lazy';
-                fr.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture';
-                fr.allowFullscreen = true;
-                videoWrap.appendChild(fr);
-                mediaArea.appendChild(videoWrap);
-            }
+        if (type === 'video_writing') {
+            renderFixedVideo(q.media || '');
+        } else {
+            renderFixedVideo('');
         }
 
         /* ── question text ── */
@@ -1868,10 +1904,24 @@ document.addEventListener('DOMContentLoaded', function () {
 
         /* ── instruction ── */
         if (q.instruction) {
-            instrEl.style.cssText = 'font-size:clamp(16px,2.2vw,20px);color:#5b21b6;font-weight:800;margin-bottom:12px;text-align:center;line-height:1.45;';
-            instrEl.textContent = String(q.instruction);
+            if (type === 'video_writing' && videoInstrEl) {
+                videoInstrEl.style.display = '';
+                videoInstrEl.textContent = String(q.instruction);
+                instrEl.textContent = '';
+            } else {
+                if (videoInstrEl) {
+                    videoInstrEl.style.display = 'none';
+                    videoInstrEl.textContent = '';
+                }
+                instrEl.style.cssText = 'font-size:clamp(16px,2.2vw,20px);color:#5b21b6;font-weight:800;margin-bottom:12px;text-align:center;line-height:1.45;';
+                instrEl.textContent = String(q.instruction);
+            }
         } else {
             instrEl.textContent = '';
+            if (videoInstrEl) {
+                videoInstrEl.style.display = 'none';
+                videoInstrEl.textContent = '';
+            }
         }
 
         renderAnswerGuide(type, q);
@@ -2240,6 +2290,11 @@ document.addEventListener('DOMContentLoaded', function () {
     /* ── showCompleted ────────────────────────────────── */
     async function showCompleted() {
         finished = true;
+        renderFixedVideo('');
+        if (videoInstrEl) {
+            videoInstrEl.style.display = 'none';
+            videoInstrEl.textContent = '';
+        }
         cardEl.style.display     = 'none';
         controlsEl.style.display = 'none';
         feedbackEl.textContent   = '';
