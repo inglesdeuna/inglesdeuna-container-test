@@ -1264,6 +1264,9 @@ table.ws-tbl th{background:#f3f8fd;text-transform:uppercase;letter-spacing:.08em
     .ins-ico{width:14px;height:14px;flex:0 0 14px;font-size:8px}
     .ins-label{font-size:6.8px}
     .ins-text{font-size:8.3px}
+        /* Keep instruction attached to the first activity block when near a page boundary */
+        .instruction{break-after:avoid-page;page-break-after:avoid}
+        .instruction + *{break-before:avoid-page;page-break-before:avoid}
   /* ── Tables ── */
   table.ws-tbl{font-size:9px}
   table.ws-tbl th,table.ws-tbl td{padding:4px 7px}
@@ -1366,6 +1369,8 @@ table.ws-tbl th{background:#f3f8fd;text-transform:uppercase;letter-spacing:.08em
   .card,.fc-card,.mc-card,.pr-card{break-inside:auto;page-break-inside:auto}
   .ws-qb,.ws-wb,.ws-or,.dt-item{break-inside:avoid;page-break-inside:avoid}
   .fc-grid,.mc-grid,.pr-grid,.ws-mcols,.ws-opts{break-inside:auto;page-break-inside:auto}
+    /* Ensure media-heavy blocks stay complete when moved to next page */
+    .fc-card,.mc-card,.pr-card,.mc-img-opt,.fc-img,.mc-frame,.pr-img,.mc-qimg,.dt-img,.cw-grid-shell{break-inside:avoid;page-break-inside:avoid}
   /* ── Color exact ── */
   .section-head,.num,.ws-qn,.ws-ol,.ws-ck,.ws-ck .ws-ol,.key-tag,
   table.ws-tbl th,.tr-a td,.ws-bank,.ws-chip,.ws-expl,.ws-ab,.ws-ob,
