@@ -102,7 +102,7 @@ function ws_head(int $n, string $type, string $title, string $instr, bool $isKey
     $lbl = h($cfg['label']);
     $t   = trim($title);
     $i   = trim($instr);
-    $out = '<div class="ws-sec ws-sec-'.h($type).'"><div class="section-head '.$cls.'"><div class="num">'.$n.'</div>';
+    $out = '<div class="ws-sec ws-sec-'.h($type).' ws-sec-n-'.$n.'"><div class="section-head '.$cls.'"><div class="num">'.$n.'</div>';
     $out .= '<div><div class="section-kicker">'.$lbl;
     if ($isKey) $out .= '<span class="key-tag">Answer Key</span>';
     $out .= '</div>';
@@ -1373,6 +1373,9 @@ table.ws-tbl th{background:#f3f8fd;text-transform:uppercase;letter-spacing:.08em
     .fc-card,.mc-card,.pr-card,.mc-img-opt,.fc-img,.mc-frame,.pr-img,.mc-qimg,.dt-img,.cw-grid-shell{break-inside:avoid;page-break-inside:avoid}
     /* Keep short activities together to avoid orphan single lines/inputs */
     .ws-sec-match,.ws-sec-order_sentences,.ws-sec-listen_order{break-inside:avoid;page-break-inside:avoid}
+    /* Requested fixed pagination: keep activities 7 and 9 complete */
+    .ws-sec-n-7,.ws-sec-n-9{break-inside:avoid;page-break-inside:avoid}
+    .ws-sec-n-7 .card,.ws-sec-n-9 .card,.ws-sec-n-7 .act-notes-box,.ws-sec-n-9 .act-notes-box{break-inside:avoid;page-break-inside:avoid}
   /* ── Color exact ── */
   .section-head,.num,.ws-qn,.ws-ol,.ws-ck,.ws-ck .ws-ol,.key-tag,
   table.ws-tbl th,.tr-a td,.ws-bank,.ws-chip,.ws-expl,.ws-ab,.ws-ob,
