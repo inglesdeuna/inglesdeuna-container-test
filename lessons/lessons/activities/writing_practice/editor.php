@@ -162,7 +162,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $rowsList    = isset($_POST['wp_writing_rows'])   && is_array($_POST['wp_writing_rows'])   ? $_POST['wp_writing_rows']   : [];
     $countList   = isset($_POST['wp_response_count']) && is_array($_POST['wp_response_count']) ? $_POST['wp_response_count'] : [];
     $videoFiles  = isset($_FILES['wp_video_file']) ? $_FILES['wp_video_file'] : null;
-    $audioFiles  = isset($_FILES['wp_audio_file'])  ? $_FILES['wp_audio_file']  : null;
 
     $allowed = ['video_writing'];
     $sanitized = [];
@@ -447,7 +446,7 @@ ob_start();
                     El puntaje final = base &minus; (errores_ortografía × penalización_ortografía)
                     &minus; (errores_gramática × penalización_gramática)
                     &minus; (errores_puntuación × penalización_puntuación), mínimo 0.
-                    <strong>No aplica a la opción de escritura libre</strong>, porque esa se usa solo como corrector y práctica sin nota.
+                    <strong>En video + escritura</strong>, la calificación automática usa las respuestas correctas definidas en cada pregunta.
                 </p>
             </div>
         </div>
@@ -505,27 +504,6 @@ ob_start();
                 </p>
             </div>
 
-            <!-- Audio row – shown for listen_write -->
-            <div class="wp-audio-row">
-                <div class="wp-video-inner">
-                    <div>
-                        <label>🎧 URL del audio (MP3/OGG)</label>
-                           <input type="url" name="wp_media[]"
-                               value=""
-                               disabled
-                               placeholder="https://example.com/audio.mp3">
-                    </div>
-                    <div>
-                        <label>— o sube MP3/OGG</label>
-                           <input type="file" name="wp_audio_file[]" accept="audio/*" disabled>
-                    </div>
-                </div>
-                <p style="font-size:11px;color:#0369a1;background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;padding:8px;margin:8px 0 0;">
-                    <strong>💡 Formato:</strong> En <em>Pregunta / enunciado</em> escribe la oración con <strong>___</strong> en cada espacio en blanco.<br>
-                    Ej: <em>"I ___ to school every ___ by bus."</em> &mdash; En <em>Respuestas correctas</em>: una respuesta por línea, una por cada ___.
-                </p>
-            </div>
-
             <!-- Video  only video_writing -->
             <div class="wp-video-row<?= $type==='video_writing' ? ' visible' : '' ?>">
                 <div class="wp-video-inner">
@@ -545,7 +523,7 @@ ob_start();
             </div>
 
             <div class="wp-col-full">
-                <label>Respuestas correctas <span style="font-weight:400;font-size:12px;">(una por línea; en escritura libre se usan para la revisión)</span></label>
+                <label>Respuestas correctas <span style="font-weight:400;font-size:12px;">(una por línea; se usan para Show Answer y calificación automática)</span></label>
                 <textarea name="wp_answers[]" rows="3"
                           placeholder="Respuesta 1&#10;Variante aceptada&#10;Otra forma válida"><?= htmlspecialchars($answers, ENT_QUOTES, 'UTF-8') ?></textarea>
             </div>
@@ -566,15 +544,10 @@ var wpCount = <?= count($questions) ?>;
 
 function wpToggleMedia(select) {
     var block    = select.closest('.wp-block');
-    var audioRow = block.querySelector('.wp-audio-row');
     var videoRow = block.querySelector('.wp-video-row');
     var writingRow = block.querySelector('.wp-writing-row');
     var hidden   = block.querySelector('input[type="hidden"][name="wp_media[]"]');
 
-    if (audioRow) {
-        audioRow.classList.remove('visible');
-        audioRow.querySelectorAll('input').forEach(function(inp){ inp.disabled = true; });
-    }
     if (videoRow) {
         videoRow.classList.remove('visible');
         videoRow.querySelectorAll('input').forEach(function(inp){ inp.disabled = true; });
@@ -613,23 +586,13 @@ function wpAdd() {
         '<p style="font-size:11px;color:#57534e;background:#fefce8;border:1px solid #fde68a;border-radius:8px;padding:8px;margin:8px 0 0;">' +
         'Configura cu\u00E1ntas respuestas debe escribir el estudiante y cu\u00E1ntas filas visibles tendr\u00E1 cada caja de texto.' +
         '</p></div>' +
-        '<div class="wp-audio-row"><div class="wp-video-inner">' +
-        '<div><label>\uD83C\uDFA7 URL del audio (MP3/OGG)</label>' +
-        '<input type="url" name="wp_media[]" disabled placeholder="https://example.com/audio.mp3"></div>' +
-        '<div><label>\u2014 o sube MP3/OGG</label>' +
-        '<input type="file" name="wp_audio_file[]" accept="audio/*" disabled></div>' +
-        '</div>' +
-        '<p style="font-size:11px;color:#0369a1;background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;padding:8px;margin:8px 0 0;">' +
-        '<strong>\uD83D\uDCA1 Formato:</strong> En <em>Pregunta / enunciado</em> escribe la oraci\u00F3n con <strong>___</strong> en cada espacio. ' +
-        'Ej: <em>\'I ___ to school every ___.\'</em> \u2014 En <em>Respuestas correctas</em>: una por l\u00EDnea, una por cada ___.' +
-        '</p></div>' +
         '<div class="wp-video-row"><div class="wp-video-inner">' +
         '<div><label>\uD83C\uDFAC URL del video (YouTube / MP4)</label>' +
         '<input type="url" name="wp_media[]" disabled placeholder="https://youtube.com/watch?v=..."></div>' +
         '<div><label>\u2014 o sube un video</label>' +
         '<input type="file" name="wp_video_file[]" accept="video/*" disabled></div>' +
         '</div></div>' +
-        '<div class="wp-col-full"><label>Respuestas correctas <span style="font-weight:400;font-size:12px;">(una por l\u00EDnea; en escritura libre se usan para la revisi\u00F3n)</span></label>' +
+        '<div class="wp-col-full"><label>Respuestas correctas <span style="font-weight:400;font-size:12px;">(una por l\u00EDnea; se usan para Show Answer y calificaci\u00F3n autom\u00E1tica)</span></label>' +
         '<textarea name="wp_answers[]" rows="3" placeholder="Respuesta 1&#10;Variante aceptada&#10;Otra forma v\u00E1lida"></textarea></div>' +
         '<button type="button" class="btn-remove-wp" onclick="wpRemove(this)">\u2716 Eliminar</button>';
     container.appendChild(div);
