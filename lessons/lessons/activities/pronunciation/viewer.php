@@ -92,13 +92,6 @@ function normalize_pronunciation_payload($rawData): array
 {
     $default = array(
         'title' => default_pronunciation_title(),
-            .mc-btn-check {
-                 background: linear-gradient(180deg, #c084fc 0%, #a855f7 100%);
-                 box-shadow: 0 8px 18px rgba(168, 85, 247, 0.25);
-            }
-
-            .mc-btn-show {
-                 background: linear-gradient(180deg, #c084fc 0%, #a855f7 100%);
         'items' => array(),
     );
 
@@ -504,73 +497,6 @@ ob_start();
 .mc-status{
     font-size:14px;
     margin-bottom:8px;
-}
-/* Button styles - vibrant Unscramble color scheme */
-.mc-btn {
-     border: none;
-     border-radius: 999px;
-     min-height: 40px;
-     padding: 0 16px;
-     color: #fff;
-     font-weight: 700;
-     font-size: 13px;
-     box-shadow: 0 8px 18px rgba(15, 23, 42, 0.15);
-     transition: transform 0.12s ease, filter 0.12s ease, box-shadow 0.12s ease;
-     cursor: pointer;
-}
-
-.mc-btn:hover,
-.mc-btn:focus {
-     transform: translateY(-2px);
-     filter: brightness(1.08);
-}
-
-.mc-btn-listen {
-     background: linear-gradient(180deg, #14b8a6 0%, #0d9488 100%);
-     box-shadow: 0 8px 18px rgba(20, 184, 166, 0.25);
-}
-
-.mc-btn-check {
-     background: linear-gradient(180deg, #c084fc 0%, #a855f7 100%);
-     box-shadow: 0 8px 18px rgba(168, 85, 247, 0.25);
-}
-
-.mc-btn-show {
-     background: linear-gradient(180deg, #c084fc 0%, #a855f7 100%);
-     box-shadow: 0 8px 18px rgba(168, 85, 247, 0.25);
-}
-
-.mc-btn-next {
-     background: linear-gradient(180deg, #14b8a6 0%, #0d9488 100%);
-     box-shadow: 0 8px 18px rgba(20, 184, 166, 0.25);
-}
-
-.mc-btn-speak {
-     background: linear-gradient(180deg, #e9d5ff 0%, #d8b4fe 100%);
-     color: #5b21b6;
-     box-shadow: 0 8px 18px rgba(168, 85, 247, 0.2);
-}
-
-.mc-btn-listen:hover,
-.mc-btn-listen:focus {
-     box-shadow: 0 12px 28px rgba(20, 184, 166, 0.35);
-}
-
-.mc-btn-check:hover,
-.mc-btn-check:focus,
-.mc-btn-show:hover,
-.mc-btn-show:focus {
-     box-shadow: 0 12px 28px rgba(168, 85, 247, 0.35);
-}
-
-.mc-btn-next:hover,
-.mc-btn-next:focus {
-     box-shadow: 0 12px 28px rgba(20, 184, 166, 0.35);
-}
-
-.mc-btn-speak:hover,
-.mc-btn-speak:focus {
-     box-shadow: 0 12px 28px rgba(168, 85, 247, 0.3);
 }
 .mc-btn{
     border: none;
