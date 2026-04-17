@@ -521,6 +521,17 @@ $cssVer = file_exists(__DIR__ . '/../multiple_choice/multiple_choice.css')
     text-align: center;
 }
 
+.wp-input-question {
+    width: 100%;
+    max-width: 620px;
+    margin: 0 0 6px;
+    font-size: 20px;
+    line-height: 1.35;
+    color: #f14902;
+    font-weight: 800;
+    text-align: center;
+}
+
 /* ─────────────────── PRESENTATION MODE ──────────────────── */
 body.presentation-mode .wp-viewer-wrap,
 body.presentation-mode .mc-viewer {
@@ -905,6 +916,7 @@ document.addEventListener('DOMContentLoaded', function () {
         <div id="wpInstruction" class="wp-instruction-top"></div>
         <!-- question text injected by JS -->
         <div id="wpQtext"></div>
+        <div id="wpInputQuestion" class="wp-input-question" style="display:none;"></div>
         <!-- fill guide answers injected by JS -->
         <div id="wpAnswerGuide" class="wp-answer-guide" style="display:none;"></div>
         <!-- answer input -->
@@ -971,6 +983,7 @@ document.addEventListener('DOMContentLoaded', function () {
     var statusEl    = document.getElementById('wpStatus');
     var mediaArea   = document.getElementById('wpMediaArea');
     var qtextEl     = document.getElementById('wpQtext');
+    var inputQuestionEl = document.getElementById('wpInputQuestion');
     var instrEl     = document.getElementById('wpInstruction');
     var videoQuestionEl = document.getElementById('wpVideoQuestion');
     var videoInstrEl = document.getElementById('wpVideoInstruction');
@@ -1592,6 +1605,10 @@ document.addEventListener('DOMContentLoaded', function () {
         currentWritingInputs  = [];
         mediaArea.innerHTML   = '';
         qtextEl.innerHTML     = '';
+        if (inputQuestionEl) {
+            inputQuestionEl.textContent = '';
+            inputQuestionEl.style.display = 'none';
+        }
         if (videoQuestionEl) {
             videoQuestionEl.textContent = '';
             videoQuestionEl.style.display = 'none';
@@ -1929,8 +1946,13 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
                 if (videoQuestionEl) {
                     videoQuestionEl.textContent = videoPrompt;
-                    videoQuestionEl.style.display = '';
+                    videoQuestionEl.style.display = 'block';
                 }
+                if (inputQuestionEl) {
+                    inputQuestionEl.textContent = videoPrompt;
+                    inputQuestionEl.style.display = 'block';
+                }
+                statusEl.textContent = (index + 1) + ' / ' + questions.length + ' - ' + videoPrompt;
             } else if (q.question && type !== 'listen_write' && type !== 'writing') {
                 var qp = document.createElement('div');
                 qp.style.cssText = 'font-weight:800;color:#f14902;font-size:clamp(16px,2vw,22px);margin-bottom:10px;line-height:1.4;text-align:center;';
