@@ -748,11 +748,8 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         if (showBtn) { showBtn.disabled = true; }
 
-        var wrote = ansEl ? ansEl.value.trim() : '';
         if (revealEl) {
-            revealEl.textContent = wrote !== ''
-                ? 'You wrote: "' + wrote + '" \u2192 Correct: ' + shown
-                : 'Correct: ' + shown;
+            revealEl.textContent = 'Correct: ' + shown;
             revealEl.classList.add('show');
         }
     }
@@ -2198,7 +2195,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 ? getWritingValues()
                 : [getWritingLatestText()];
             var val = getWritingLatestText();
-            if (!writingReviewed[index]) {
+            if (!writingReviewed[index] && !checkedCards[index]) {
                 reviewWriting(true);
                 return;
             }
@@ -2273,7 +2270,49 @@ document.addEventListener('DOMContentLoaded', function () {
         var q    = questions[index];
         var type = String(q.type || 'writing');
         if (type === 'writing') {
-            reviewWriting(true);
+            var writingAnswers = getWritingExpectedList(q);
+            if (writingAnswers.length === 0) {
+                feedbackEl.textContent = 'This activity has no correct answers configured yet.';
+                feedbackEl.className = 'mc-feedback bad';
+                return;
+            }
+
+            var writingLines = currentWritingInputs.length > 0
+                ? getWritingValues()
+                : [getWritingLatestText()];
+            var val = getWritingLatestText();
+
+            if (!checkedCards[index]) {
+                checkedCards[index] = 'wrong';
+                checkedCards[index + '_text'] = val;
+                checkedCards[index + '_lines'] = writingLines;
+                checkedCards[index + '_writing_correct'] = 0;
+                checkedCards[index + '_writing_total'] = writingAnswers.length;
+                checkedCards[index + '_writing_pct'] = 0;
+                writingReviewed[index] = true;
+
+                if (currentWritingInputs.length > 0) {
+                    currentWritingInputs.forEach(function (inp, wi) {
+                        var ans = writingAnswers[wi] || '';
+                        if (ans !== '') {
+                            inp.value = ans;
+                        }
+                        inp.disabled = true;
+                        inp.className = 'dict-answer-box bad';
+                    });
+                } else {
+                    answerEl.value = writingAnswers.slice(0, 2).join(' / ');
+                    answerEl.disabled = true;
+                    answerEl.className = 'dict-answer-box bad';
+                }
+
+                feedbackEl.textContent = '\u2718 Wrong';
+                feedbackEl.className = 'mc-feedback bad';
+                playSound(sndBad);
+            }
+
+            revealEl.textContent = 'Correct: ' + writingAnswers.slice(0, 2).join(' / ');
+            revealEl.classList.add('show');
             return;
         }
         if (!isAutoGraded(q)) { return; }
@@ -2323,7 +2362,7 @@ document.addEventListener('DOMContentLoaded', function () {
             playSound(sndBad);
         }
         if (answerEl.value.trim() !== '') {
-            revealEl.textContent = 'You wrote: "' + answerEl.value + '" \u2192 Correct: ' + shown;
+            revealEl.textContent = 'Correct: ' + shown;
         } else {
             revealEl.textContent = 'Correct: ' + shown;
         }
