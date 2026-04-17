@@ -652,6 +652,7 @@ window.WP_ACTIVITY_ID = <?= json_encode((string) ($activity['id'] ?? ''), JSON_U
 window.WP_UNIT_ID     = <?= json_encode($unit, JSON_UNESCAPED_UNICODE) ?>;
 window.WP_ASSIGNMENT_ID = <?= json_encode((string) ($_GET['assignment'] ?? ''), JSON_UNESCAPED_UNICODE) ?>;
 window.WP_TITLE       = <?= json_encode($viewerTitle, JSON_UNESCAPED_UNICODE) ?>;
+window.WP_GLOBAL_VIDEO = <?= json_encode($videoMediaUrl, JSON_UNESCAPED_UNICODE) ?>;
 </script>
 
 <script>
@@ -663,6 +664,7 @@ document.addEventListener('DOMContentLoaded', function () {
     var unitId      = String(window.WP_UNIT_ID     || '');
     var assignId    = String(window.WP_ASSIGNMENT_ID || '');
     var actTitle    = String(window.WP_TITLE       || 'Writing Practice');
+    var globalVideoUrl = String(window.WP_GLOBAL_VIDEO || '');
     if (!questions.length) { return; }
 
     var wrapEl      = document.getElementById('wpvlWrap');
@@ -1815,7 +1817,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
         /* ── video_writing: embed ── */
         if (type === 'video_writing') {
-            renderFixedVideo(q.media || '');
+            var videoForCard = String(q.media || '').trim();
+            if (videoForCard === '') {
+                videoForCard = globalVideoUrl;
+            }
+            renderFixedVideo(videoForCard);
         } else {
             renderFixedVideo('');
         }
