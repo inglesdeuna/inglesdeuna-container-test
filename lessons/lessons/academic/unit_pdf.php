@@ -102,7 +102,7 @@ function ws_head(int $n, string $type, string $title, string $instr, bool $isKey
     $lbl = h($cfg['label']);
     $t   = trim($title);
     $i   = trim($instr);
-    $out = '<div class="ws-sec"><div class="section-head '.$cls.'"><div class="num">'.$n.'</div>';
+    $out = '<div class="ws-sec ws-sec-'.h($type).'"><div class="section-head '.$cls.'"><div class="num">'.$n.'</div>';
     $out .= '<div><div class="section-kicker">'.$lbl;
     if ($isKey) $out .= '<span class="key-tag">Answer Key</span>';
     $out .= '</div>';
@@ -1371,6 +1371,8 @@ table.ws-tbl th{background:#f3f8fd;text-transform:uppercase;letter-spacing:.08em
   .fc-grid,.mc-grid,.pr-grid,.ws-mcols,.ws-opts{break-inside:auto;page-break-inside:auto}
     /* Ensure media-heavy blocks stay complete when moved to next page */
     .fc-card,.mc-card,.pr-card,.mc-img-opt,.fc-img,.mc-frame,.pr-img,.mc-qimg,.dt-img,.cw-grid-shell{break-inside:avoid;page-break-inside:avoid}
+    /* Keep short activities together to avoid orphan single lines/inputs */
+    .ws-sec-match,.ws-sec-order_sentences,.ws-sec-listen_order{break-inside:avoid;page-break-inside:avoid}
   /* ── Color exact ── */
   .section-head,.num,.ws-qn,.ws-ol,.ws-ck,.ws-ck .ws-ol,.key-tag,
   table.ws-tbl th,.tr-a td,.ws-bank,.ws-chip,.ws-expl,.ws-ab,.ws-ob,
