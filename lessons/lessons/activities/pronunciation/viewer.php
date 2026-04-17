@@ -613,6 +613,16 @@ ob_start();
     box-shadow: 0 20px 48px rgba(92, 33, 182, 0.12);
 }
 
+#pron-image{
+    display: block;
+    width: min(100%, 460px);
+    max-width: 100%;
+    max-height: 360px;
+    margin: 0 auto 10px;
+    object-fit: contain;
+    object-position: center;
+}
+
 #pron-controls{
     display:flex;
     justify-content:center;
