@@ -572,7 +572,7 @@ ob_start();
 .pron-listen-row{
     display:flex;
     justify-content:center;
-    margin: 0 0 8px 0;
+    margin: 0 0 12px 0;
     gap:8px;
 }
 
@@ -679,11 +679,12 @@ ob_start();
 <div class="mc-viewer" id="pron-viewer">
         <div class="mc-status" id="pron-status"></div>
 
+        <div class="pron-listen-row" id="pron-listen-row">
+            <button type="button" class="mc-btn mc-btn-listen" id="pron-listen">Listen</button>
+            <button type="button" class="mc-btn mc-btn-speak" id="pron-speak">Speaker</button>
+        </div>
+
         <div class="mc-card" id="pron-card">
-            <div class="pron-listen-row" id="pron-listen-row">
-                <button type="button" class="mc-btn mc-btn-listen" id="pron-listen">Listen</button>
-                <button type="button" class="mc-btn mc-btn-speak" id="pron-speak">Speaker</button>
-            </div>
                 <img id="pron-image" class="pron-image" alt="">
             <div class="pron-prompt" id="pron-prompt"></div>
             <div class="pron-hint" id="pron-hint"></div>
@@ -719,9 +720,9 @@ ob_start();
 
 #pron-viewer #pron-show,
 #pron-viewer #pron-next {
-    background: linear-gradient(180deg, #f9a8d4 0%, #ec4899 100%) !important;
+    background: linear-gradient(180deg, #c084fc 0%, #a855f7 100%) !important;
     color: #ffffff !important;
-    box-shadow: 0 8px 18px rgba(236, 72, 153, 0.25) !important;
+    box-shadow: 0 8px 18px rgba(168, 85, 247, 0.25) !important;
 }
 
 #pron-viewer #pron-listen:hover,
@@ -735,7 +736,7 @@ ob_start();
 #pron-viewer #pron-show:focus,
 #pron-viewer #pron-next:hover,
 #pron-viewer #pron-next:focus {
-    box-shadow: 0 12px 28px rgba(236, 72, 153, 0.35) !important;
+    box-shadow: 0 12px 28px rgba(168, 85, 247, 0.35) !important;
 }
 </style>
 <script>
