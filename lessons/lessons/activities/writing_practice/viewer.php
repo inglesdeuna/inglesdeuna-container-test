@@ -391,6 +391,89 @@ $cssVer = file_exists(__DIR__ . '/../multiple_choice/multiple_choice.css')
 .wp-fill-input.ok  { border-bottom-color: #22c55e; background: rgba(34,197,94,.07);  color: #166534; }
 .wp-fill-input.bad { border-bottom-color: #ef4444; background: rgba(239,68,68,.07);   color: #dc2626; }
 
+.wp-instruction-top {
+    width: 100%;
+    max-width: 920px;
+    margin: 0 0 10px;
+    font-size: clamp(16px, 2.2vw, 20px);
+    line-height: 1.45;
+    color: #5b21b6;
+    font-weight: 800;
+    text-align: center;
+}
+
+.wp-answer-guide {
+    width: 100%;
+    max-width: 920px;
+    margin: 6px 0 12px;
+    background: linear-gradient(145deg, #ffffff 0%, #fef9ff 48%, #eef6ff 100%);
+    border: 1px solid #ddd6fe;
+    border-radius: 18px;
+    box-shadow: 0 10px 26px rgba(76, 29, 149, 0.12);
+    padding: 12px 14px;
+    box-sizing: border-box;
+}
+
+.wp-answer-guide-title {
+    font-size: 12px;
+    font-weight: 900;
+    letter-spacing: .05em;
+    text-transform: uppercase;
+    color: #6d28d9;
+    margin-bottom: 10px;
+}
+
+.wp-answer-guide-subtitle {
+    font-size: 13px;
+    color: #334155;
+    margin-bottom: 10px;
+    font-weight: 700;
+}
+
+.wp-answer-guide-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.wp-answer-chip {
+    border: 1px solid #c4b5fd;
+    background: linear-gradient(180deg, #f8f5ff 0%, #ede9fe 100%);
+    color: #4c1d95;
+    border-radius: 999px;
+    padding: 8px 12px;
+    font-size: 14px;
+    font-weight: 800;
+    cursor: pointer;
+    line-height: 1.2;
+    box-shadow: 0 4px 10px rgba(124, 58, 237, 0.15);
+    transition: transform .12s ease, filter .12s ease;
+    max-width: 100%;
+    white-space: normal;
+    word-break: break-word;
+}
+
+.wp-answer-chip:hover {
+    transform: translateY(-1px);
+    filter: brightness(1.03);
+}
+
+.wp-answer-chip:active {
+    transform: translateY(0);
+}
+
+@media (max-width: 640px) {
+    .wp-answer-guide {
+        padding: 10px;
+        border-radius: 14px;
+    }
+
+    .wp-answer-chip {
+        font-size: 13px;
+        padding: 7px 10px;
+    }
+}
+
 /* ── Video Layout mode ───────────────────────────────────── */
 .wpvl-wrap        { max-width: 1200px; margin: 0 auto; font-family: 'Nunito','Segoe UI',sans-serif; }
 .wpvl-qs          { display: flex; flex-direction: column; gap: 14px; margin-bottom: 18px; }
@@ -794,10 +877,12 @@ document.addEventListener('DOMContentLoaded', function () {
     <div class="mc-card" id="wpCard">
         <!-- media injected by JS -->
         <div id="wpMediaArea"></div>
+        <!-- instruction injected by JS -->
+        <div id="wpInstruction" class="wp-instruction-top"></div>
         <!-- question text injected by JS -->
         <div id="wpQtext"></div>
-        <!-- instruction injected by JS -->
-        <div id="wpInstruction"></div>
+        <!-- fill guide answers injected by JS -->
+        <div id="wpAnswerGuide" class="wp-answer-guide" style="display:none;"></div>
         <!-- answer input -->
         <textarea id="wpAnswer" class="dict-answer-box" style="width:100%;max-width:620px;" placeholder="Write your answer here..."></textarea>
         <div id="wpWritingList" class="wp-writing-list" style="display:none;"></div>
@@ -863,6 +948,7 @@ document.addEventListener('DOMContentLoaded', function () {
     var mediaArea   = document.getElementById('wpMediaArea');
     var qtextEl     = document.getElementById('wpQtext');
     var instrEl     = document.getElementById('wpInstruction');
+    var answerGuideEl = document.getElementById('wpAnswerGuide');
     var answerEl    = document.getElementById('wpAnswer');
     var writingListEl = document.getElementById('wpWritingList');
     var revealEl    = document.getElementById('wpReveal');
@@ -900,6 +986,7 @@ document.addEventListener('DOMContentLoaded', function () {
     var correctCount      = 0;    // correct answers from scoreable items only
     var openResponses     = [];   // collected writing responses
     var currentFillInputs = [];   // inline <input> elements for fill_sentence / fill_paragraph
+    var activeFillInput   = null; // focused fill input for guide chip insertion
     var currentWritingInputs = []; // textarea elements for free writing enumerated responses
     var writingReviewed   = {};   // index -> true after using the writing helper
 
@@ -1015,6 +1102,72 @@ document.addEventListener('DOMContentLoaded', function () {
     function esc(s) {
         return String(s || '')
             .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    function shuffleAnswers(list) {
+        var out = Array.isArray(list) ? list.slice() : [];
+        for (var i = out.length - 1; i > 0; i--) {
+            var j = Math.floor(Math.random() * (i + 1));
+            var t = out[i];
+            out[i] = out[j];
+            out[j] = t;
+        }
+        return out;
+    }
+
+    function getGuideTargetInput() {
+        if (activeFillInput && currentFillInputs.indexOf(activeFillInput) !== -1 && !activeFillInput.disabled) {
+            return activeFillInput;
+        }
+        for (var i = 0; i < currentFillInputs.length; i++) {
+            if (!currentFillInputs[i].disabled && currentFillInputs[i].value.trim() === '') {
+                return currentFillInputs[i];
+            }
+        }
+        for (var j = 0; j < currentFillInputs.length; j++) {
+            if (!currentFillInputs[j].disabled) {
+                return currentFillInputs[j];
+            }
+        }
+        return null;
+    }
+
+    function renderAnswerGuide(type, q) {
+        if (!answerGuideEl) { return; }
+        if (!(type === 'fill_sentence' || type === 'fill_paragraph')) {
+            answerGuideEl.style.display = 'none';
+            answerGuideEl.innerHTML = '';
+            return;
+        }
+
+        var answers = getExpectedAnswerList(q);
+        if (answers.length === 0) {
+            answerGuideEl.style.display = 'none';
+            answerGuideEl.innerHTML = '';
+            return;
+        }
+
+        var shuffled = shuffleAnswers(answers);
+        var title = type === 'fill_paragraph' ? 'Answer Guide - Paragraph' : 'Answer Guide - Sentence';
+        var chipsHtml = shuffled.map(function (ans) {
+            return '<button type="button" class="wp-answer-chip" data-answer="' + esc(ans) + '">' + esc(ans) + '</button>';
+        }).join('');
+
+        answerGuideEl.innerHTML = ''
+            + '<div class="wp-answer-guide-title">' + title + '</div>'
+            + '<div class="wp-answer-guide-subtitle">Click a word to place it in a blank. Answers are shuffled as a hint.</div>'
+            + '<div class="wp-answer-guide-chips">' + chipsHtml + '</div>';
+        answerGuideEl.style.display = '';
+
+        Array.prototype.forEach.call(answerGuideEl.querySelectorAll('.wp-answer-chip'), function (chip) {
+            chip.addEventListener('click', function () {
+                var target = getGuideTargetInput();
+                if (!target) { return; }
+                target.value = String(chip.getAttribute('data-answer') || '');
+                target.dispatchEvent(new Event('input', { bubbles: true }));
+                target.focus();
+            });
+        });
     }
 
     var PLACEHOLDERS = {
@@ -1332,6 +1485,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 btnShow.disabled = !anyFilled;
             }
         });
+        inp.addEventListener('focus', function () {
+            activeFillInput = inp;
+        });
         inp.addEventListener('blur',    function ()  { autoCheck(); });
         inp.addEventListener('keydown', function (e) {
             if (e.key === 'Enter') { e.preventDefault(); autoCheck(); }
@@ -1358,10 +1514,15 @@ document.addEventListener('DOMContentLoaded', function () {
 
         /* clear previous content */
         currentFillInputs     = [];
+        activeFillInput       = null;
         currentWritingInputs  = [];
         mediaArea.innerHTML   = '';
         qtextEl.innerHTML     = '';
         instrEl.innerHTML     = '';
+        if (answerGuideEl) {
+            answerGuideEl.style.display = 'none';
+            answerGuideEl.innerHTML = '';
+        }
         if (writingListEl) {
             writingListEl.innerHTML = '';
             writingListEl.style.display = 'none';
@@ -1707,9 +1868,13 @@ document.addEventListener('DOMContentLoaded', function () {
 
         /* ── instruction ── */
         if (q.instruction) {
-            instrEl.style.cssText = 'font-size:14px;color:#7c3aed;font-weight:700;margin-bottom:10px;text-align:center;';
+            instrEl.style.cssText = 'font-size:clamp(16px,2.2vw,20px);color:#5b21b6;font-weight:800;margin-bottom:12px;text-align:center;line-height:1.45;';
             instrEl.textContent = String(q.instruction);
+        } else {
+            instrEl.textContent = '';
         }
+
+        renderAnswerGuide(type, q);
 
         /* ── buttons state ── */
         btnPrev.disabled = (index === 0);
