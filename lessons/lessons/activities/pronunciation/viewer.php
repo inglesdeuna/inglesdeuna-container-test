@@ -30,30 +30,14 @@ function activities_columns(PDO $pdo): array
     foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
         if (isset($row['column_name'])) {
             $cache[] = (string) $row['column_name'];
-        }
-    }
-
     return $cache;
 }
-
-function resolve_unit_from_activity(PDO $pdo, string $activityId): string
-{
     if ($activityId === '') {
         return '';
-    }
-
-    $columns = activities_columns($pdo);
 
     if (in_array('unit_id', $columns, true)) {
-        $stmt = $pdo->prepare(
-            "SELECT unit_id
-             FROM activities
              WHERE id = :id
              LIMIT 1"
-        );
-        $stmt->execute(array('id' => $activityId));
-        $row = $stmt->fetch(PDO::FETCH_ASSOC);
-
         if ($row && isset($row['unit_id'])) {
             return (string) $row['unit_id'];
         }
@@ -305,6 +289,22 @@ ob_start();
     font-weight: 700;
     margin-bottom: 10px;
 }
+.pron-prompt{
+    font-family: 'Fredoka', 'Trebuchet MS', sans-serif;
+    font-size: clamp(28px, 3.5vw, 48px);
+    font-weight: 900;
+    color: #5b21b6;
+    line-height: 1.15;
+    margin-bottom: 10px;
+    letter-spacing: -0.01em;
+}
+
+.pron-hint{
+    color: #7c4dba;
+    font-weight: 600;
+    margin-bottom: 10px;
+    font-size: clamp(11px, 1.2vw, 13px);
+}
 
 .pron-image{
     display: none;
@@ -326,6 +326,19 @@ ob_start();
     border-radius: 14px;
     padding: 10px;
     background: #fff;
+    color: #312e81;
+    font-weight: 700;
+}
+.pron-captured{
+    margin-top: 8px;
+    max-width: 620px;
+    width: 100%;
+    margin-left: auto;
+    margin-right: auto;
+    border: 2px solid #ddd6fe;
+    border-radius: 14px;
+    padding: 10px 12px;
+    background: linear-gradient(180deg, #faf5ff 0%, #f5f3ff 100%);
     color: #312e81;
     font-weight: 700;
 }
@@ -370,6 +383,72 @@ ob_start();
 .mc-btn-check{background:linear-gradient(180deg, #8b5cf6 0%, #7c3aed 100%)}
 .mc-btn-show{background:linear-gradient(180deg, #f9a8d4 0%, #ec4899 100%)}
 .mc-btn-next{background:linear-gradient(180deg, #2dd4bf 0%, #0f766e 100%)}
+.mc-btn {
+    border: none;
+    border-radius: 999px;
+    min-height: 40px;
+    padding: 0 16px;
+    color: #fff;
+    font-weight: 700;
+    font-size: 13px;
+    box-shadow: 0 8px 18px rgba(15, 23, 42, 0.15);
+    transition: transform 0.12s ease, filter 0.12s ease, box-shadow 0.12s ease;
+    cursor: pointer;
+}
+
+.mc-btn:hover,
+.mc-btn:focus {
+    transform: translateY(-2px);
+    filter: brightness(1.08);
+}
+
+.mc-btn-listen {
+    background: linear-gradient(180deg, #14b8a6 0%, #0d9488 100%);
+    box-shadow: 0 8px 18px rgba(20, 184, 166, 0.25);
+}
+
+.mc-btn-check {
+    background: linear-gradient(180deg, #c084fc 0%, #a855f7 100%);
+    box-shadow: 0 8px 18px rgba(168, 85, 247, 0.25);
+}
+
+.mc-btn-show {
+    background: linear-gradient(180deg, #c084fc 0%, #a855f7 100%);
+    box-shadow: 0 8px 18px rgba(168, 85, 247, 0.25);
+}
+
+.mc-btn-next {
+    background: linear-gradient(180deg, #14b8a6 0%, #0d9488 100%);
+    box-shadow: 0 8px 18px rgba(20, 184, 166, 0.25);
+}
+
+.mc-btn-speak {
+    background: linear-gradient(180deg, #e9d5ff 0%, #d8b4fe 100%);
+    color: #5b21b6;
+    box-shadow: 0 8px 18px rgba(168, 85, 247, 0.2);
+}
+
+.mc-btn-listen:hover,
+.mc-btn-listen:focus {
+    box-shadow: 0 12px 28px rgba(20, 184, 166, 0.35);
+}
+
+.mc-btn-check:hover,
+.mc-btn-check:focus,
+.mc-btn-show:hover,
+.mc-btn-show:focus {
+    box-shadow: 0 12px 28px rgba(168, 85, 247, 0.35);
+}
+
+.mc-btn-next:hover,
+.mc-btn-next:focus {
+    box-shadow: 0 12px 28px rgba(20, 184, 166, 0.35);
+}
+
+.mc-btn-speak:hover,
+.mc-btn-speak:focus {
+    box-shadow: 0 12px 28px rgba(168, 85, 247, 0.3);
+}
 
 .mc-status{
     font-size:14px;
@@ -410,6 +489,32 @@ ob_start();
     padding: 32px 28px;
     background: #ffffff;
     border: 1px solid #dbeafe;
+    border-radius: 28px;
+    box-shadow: 0 28px 72px rgba(15, 23, 42, 0.12);
+}
+#pron-viewer {
+    width: 100%;
+    max-width: 100%;
+    min-height: calc(100vh - 120px);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 24px 18px 32px;
+    background: linear-gradient(135deg, #f5f3ff 0%, #ede9fe 52%, #e9d5ff 100%);
+}
+
+#pron-card {
+    width: min(760px, 100%);
+    max-width: 760px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 12px;
+    padding: 28px;
+    background: #ffffff;
+    border: 1px solid #ddd6fe;
     border-radius: 28px;
     box-shadow: 0 28px 72px rgba(15, 23, 42, 0.12);
 }
