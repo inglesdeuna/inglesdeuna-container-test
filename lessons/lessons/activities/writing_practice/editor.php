@@ -158,10 +158,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $questions   = isset($_POST['wp_question']) && is_array($_POST['wp_question']) ? $_POST['wp_question'] : [];
     $instructions= isset($_POST['wp_instr'])    && is_array($_POST['wp_instr'])    ? $_POST['wp_instr']    : [];
     $mediasPost  = isset($_POST['wp_media'])    && is_array($_POST['wp_media'])    ? $_POST['wp_media']    : [];
+    $mediaExisting = isset($_POST['wp_media_existing']) && is_array($_POST['wp_media_existing']) ? $_POST['wp_media_existing'] : [];
     $answersList = isset($_POST['wp_answers'])  && is_array($_POST['wp_answers'])  ? $_POST['wp_answers']  : [];
     $rowsList    = isset($_POST['wp_writing_rows'])   && is_array($_POST['wp_writing_rows'])   ? $_POST['wp_writing_rows']   : [];
     $countList   = isset($_POST['wp_response_count']) && is_array($_POST['wp_response_count']) ? $_POST['wp_response_count'] : [];
     $videoFiles  = isset($_FILES['wp_video_file']) ? $_FILES['wp_video_file'] : null;
+    $audioFiles  = isset($_FILES['wp_audio_file']) ? $_FILES['wp_audio_file'] : null;
 
     $allowed = ['writing', 'fill_sentence', 'fill_paragraph', 'listen_write', 'video_writing'];
     $sanitized = [];
@@ -170,15 +172,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $q      = trim((string) $qRaw);
         $instr  = trim((string) ($instructions[$i] ?? ''));
         $media  = trim((string) ($mediasPost[$i]   ?? ''));
+        $mediaOld = trim((string) ($mediaExisting[$i] ?? ''));
         $rawAns = trim((string) ($answersList[$i]  ?? ''));
         $rows   = max(2, min(14, (int) ($rowsList[$i]  ?? 6)));
         $count  = max(1, min(20, (int) ($countList[$i] ?? 1)));
 
-        if ($type === 'video_writing' && $videoFiles
-            && !empty($videoFiles['name'][$i])
-            && !empty($videoFiles['tmp_name'][$i])) {
-            $uploaded = upload_video_to_cloudinary($videoFiles['tmp_name'][$i]);
-            if ($uploaded) { $media = $uploaded; }
+        if ($type === 'video_writing') {
+            if ($media === '' && $mediaOld !== '') {
+                $media = $mediaOld;
+            }
+            if ($videoFiles
+                && !empty($videoFiles['name'][$i])
+                && !empty($videoFiles['tmp_name'][$i])) {
+                $uploaded = upload_video_to_cloudinary($videoFiles['tmp_name'][$i]);
+                if ($uploaded) { $media = $uploaded; }
+            }
+        } elseif ($type === 'listen_write') {
+            $media = $mediaOld;
+            if ($audioFiles
+                && !empty($audioFiles['name'][$i])
+                && !empty($audioFiles['tmp_name'][$i])) {
+                $uploadedAudio = upload_audio_to_cloudinary($audioFiles['tmp_name'][$i]);
+                if ($uploadedAudio) { $media = $uploadedAudio; }
+            }
+        } else {
+            $media = '';
         }
         if ($q === '' && $instr === '') { continue; }
         $ans = array_values(array_filter(array_map('trim', explode("\n", $rawAns))));
@@ -512,17 +530,20 @@ ob_start();
 
             <div class="wp-video-row<?= in_array($type, ['video_writing', 'listen_write'], true) ? ' visible' : '' ?>">
                 <div class="wp-video-inner">
+                    <input type="hidden" name="wp_media_existing[]" value="<?= htmlspecialchars($media, ENT_QUOTES, 'UTF-8') ?>">
                     <div>
-                        <label><?= $type === 'listen_write' ? 'URL de audio (MP3) o texto para TTS' : 'URL del video (YouTube / MP4)' ?></label>
+                        <label><?= $type === 'listen_write' ? 'Audio MP3 actual' : 'URL del video (YouTube / MP4)' ?></label>
                         <input type="url" name="wp_media[]"
-                               value="<?= in_array($type, ['video_writing', 'listen_write'], true) ? htmlspecialchars($media, ENT_QUOTES, 'UTF-8') : '' ?>"
-                               <?= !in_array($type, ['video_writing', 'listen_write'], true) ? 'disabled' : '' ?>
-                               placeholder="<?= $type === 'listen_write' ? 'https://.../audio.mp3' : 'https://youtube.com/watch?v=...' ?>">
+                               value="<?= $type === 'video_writing' ? htmlspecialchars($media, ENT_QUOTES, 'UTF-8') : '' ?>"
+                               <?= $type !== 'video_writing' ? 'disabled' : '' ?>
+                               placeholder="https://youtube.com/watch?v=...">
                     </div>
                     <div>
-                        <label>o sube un video</label>
+                        <label><?= $type === 'listen_write' ? 'Subir audio MP3 (opcional)' : 'o sube un video' ?></label>
                         <input type="file" name="wp_video_file[]" accept="video/*"
                                <?= $type!=='video_writing' ? 'disabled' : '' ?>>
+                        <input type="file" name="wp_audio_file[]" accept="audio/mpeg,audio/mp3,audio/*"
+                               <?= $type!=='listen_write' ? 'disabled' : '' ?> style="margin-top:8px;">
                     </div>
                 </div>
             </div>
@@ -555,6 +576,7 @@ function wpToggleMedia(select) {
     var mediaUrlInput = block.querySelector('input[name="wp_media[]"]');
     var mediaUrlLabel = mediaUrlInput ? mediaUrlInput.closest('div').querySelector('label') : null;
     var fileInput = block.querySelector('input[name="wp_video_file[]"]');
+    var audioInput = block.querySelector('input[name="wp_audio_file[]"]');
     var fileLabel = fileInput ? fileInput.closest('div').querySelector('label') : null;
 
     if (videoRow) {
@@ -568,26 +590,54 @@ function wpToggleMedia(select) {
             videoRow.classList.add('visible');
         }
         if (mediaUrlInput) {
-            mediaUrlInput.disabled = false;
-            mediaUrlInput.placeholder = typeVal === 'listen_write' ? 'https://.../audio.mp3' : 'https://youtube.com/watch?v=...';
+            mediaUrlInput.disabled = (typeVal !== 'video_writing');
+            mediaUrlInput.style.display = typeVal === 'video_writing' ? '' : 'none';
+            mediaUrlInput.placeholder = 'https://youtube.com/watch?v=...';
         }
         if (mediaUrlLabel) {
-            mediaUrlLabel.textContent = typeVal === 'listen_write' ? 'URL de audio (MP3) o texto para TTS' : 'URL del video (YouTube / MP4)';
+            mediaUrlLabel.textContent = typeVal === 'listen_write' ? 'Audio MP3 actual' : 'URL del video (YouTube / MP4)';
         }
     }
 
     if (typeVal === 'video_writing') {
         if (fileInput) {
             fileInput.disabled = false;
+            fileInput.style.display = '';
+        }
+        if (audioInput) {
+            audioInput.disabled = true;
+            audioInput.style.display = 'none';
+            audioInput.value = '';
         }
         if (fileLabel) {
             fileLabel.textContent = 'o sube un video';
         }
-    } else if (fileInput) {
-        fileInput.disabled = true;
-        fileInput.value = '';
+    } else if (typeVal === 'listen_write') {
+        if (fileInput) {
+            fileInput.disabled = true;
+            fileInput.style.display = 'none';
+            fileInput.value = '';
+        }
+        if (audioInput) {
+            audioInput.disabled = false;
+            audioInput.style.display = '';
+        }
         if (fileLabel) {
-            fileLabel.textContent = 'Subida de video disponible solo para Video + escritura';
+            fileLabel.textContent = 'Subir audio MP3 (opcional)';
+        }
+    } else {
+        if (fileInput) {
+            fileInput.disabled = true;
+            fileInput.style.display = 'none';
+            fileInput.value = '';
+        }
+        if (audioInput) {
+            audioInput.disabled = true;
+            audioInput.style.display = 'none';
+            audioInput.value = '';
+        }
+        if (fileLabel) {
+            fileLabel.textContent = 'Subida disponible para Listen + escritura o Video + escritura';
         }
     }
 
@@ -633,10 +683,12 @@ function wpAdd() {
         'Configura cu\u00E1ntas respuestas debe escribir el estudiante y cu\u00E1ntas filas visibles tendr\u00E1 cada caja de texto.' +
         '</p></div>' +
         '<div class="wp-video-row"><div class="wp-video-inner">' +
+        '<input type="hidden" name="wp_media_existing[]" value="">' +
         '<div><label>URL del video (YouTube / MP4)</label>' +
         '<input type="url" name="wp_media[]" disabled placeholder="https://youtube.com/watch?v=..."></div>' +
         '<div><label>o sube un video</label>' +
-        '<input type="file" name="wp_video_file[]" accept="video/*" disabled></div>' +
+        '<input type="file" name="wp_video_file[]" accept="video/*" disabled>' +
+        '<input type="file" name="wp_audio_file[]" accept="audio/mpeg,audio/mp3,audio/*" disabled style="margin-top:8px;display:none;"></div>' +
         '</div></div>' +
         '<div class="wp-col-full"><label>Respuestas correctas <span style="font-weight:400;font-size:12px;">(una por l\u00EDnea; se usan para Show Answer y calificaci\u00F3n autom\u00E1tica)</span></label>' +
         '<textarea name="wp_answers[]" rows="3" placeholder="Respuesta 1&#10;Variante aceptada&#10;Otra forma v\u00E1lida"></textarea></div>' +
