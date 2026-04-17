@@ -510,6 +510,17 @@ $cssVer = file_exists(__DIR__ . '/../multiple_choice/multiple_choice.css')
 .wpvl-btn-show:hover  { filter: brightness(1.08); transform: translateY(-1px); }
 .wpvl-btn-show:disabled { opacity: .38; cursor: default; filter: none; transform: none; }
 
+.wp-video-question {
+    width: 100%;
+    max-width: 620px;
+    margin: 0 0 10px;
+    font-size: clamp(16px, 2vw, 22px);
+    line-height: 1.4;
+    color: #f14902;
+    font-weight: 800;
+    text-align: center;
+}
+
 /* ─────────────────── PRESENTATION MODE ──────────────────── */
 body.presentation-mode .wp-viewer-wrap,
 body.presentation-mode .mc-viewer {
@@ -1900,7 +1911,16 @@ document.addEventListener('DOMContentLoaded', function () {
             qtextEl.appendChild(fillBox);
         } else {
             /* listen_write: question text is read aloud by TTS – do NOT show it visually */
-            if (q.question && type !== 'listen_write' && type !== 'writing') {
+            if (type === 'video_writing') {
+                var videoPrompt = String(q.question || '').trim();
+                if (videoPrompt === '') {
+                    videoPrompt = 'Question ' + (index + 1);
+                }
+                var vp = document.createElement('div');
+                vp.className = 'wp-video-question';
+                vp.textContent = videoPrompt;
+                qtextEl.appendChild(vp);
+            } else if (q.question && type !== 'listen_write' && type !== 'writing') {
                 var qp = document.createElement('div');
                 qp.style.cssText = 'font-weight:800;color:#f14902;font-size:clamp(16px,2vw,22px);margin-bottom:10px;line-height:1.4;text-align:center;';
                 qp.textContent = String(q.question);
