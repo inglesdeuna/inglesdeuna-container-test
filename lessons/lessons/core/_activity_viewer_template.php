@@ -418,17 +418,66 @@ function render_activity_viewer($title, $icon, $content)
         }
 
         @media (max-width: 640px){
+            body{
+                padding:12px;
+            }
+
             h1{
-                font-size:24px;
+                font-size:22px;
             }
 
             .top-row{
                 min-height:32px;
             }
 
+            .back-btn{
+                padding:8px 12px;
+                font-size:12px;
+                border-radius:9px;
+            }
+
             .viewer-content{
-                border-radius:14px;
-                padding:20px;
+                border-radius:12px;
+                padding:14px;
+            }
+
+            .viewer-content > :is(div, section){
+                max-width:100%;
+            }
+
+            .viewer-content :is(.mc-intro, .dd-intro, .lo-intro, .vc-intro, .dict-intro, .pron-intro, .match-intro, .flashcards-intro, .flipbook-intro, .ex-intro, .ppt-intro){
+                padding:12px 12px !important;
+            }
+
+            .viewer-content :is(.mc-intro h2, .dd-intro h2, .lo-intro h2, .vc-intro h2, .dict-intro h2, .pron-intro h2, .match-intro h2, .flashcards-intro h2, .flipbook-intro h2, .ex-intro h2, .ppt-intro h2){
+                font-size:20px !important;
+            }
+
+            .viewer-content :is(.mc-question, #promptText, .lo-prompt, .vc-question){
+                font-size:clamp(18px, 5.8vw, 24px) !important;
+                line-height:1.25 !important;
+            }
+
+            .viewer-content :is(.mc-card, #sentenceBox, .vc-panel, .flipbook-viewer__card){
+                padding:10px !important;
+            }
+        }
+
+        @media (max-width: 420px){
+            body{
+                padding:8px;
+            }
+
+            h1{
+                font-size:20px;
+            }
+
+            .viewer-content{
+                padding:10px;
+            }
+
+            .top-row{
+                min-height:30px;
             }
         }
     </style>

@@ -259,7 +259,24 @@ ob_start();
   background:linear-gradient(180deg, #fed7aa 0%, #fdba74 100%);
   box-shadow:0 10px 20px rgba(251, 146, 60, .18);
   user-select:none;
+  touch-action:manipulation;
 }
+
+.word.selected-touch{
+  outline:3px solid #0ea5e9;
+  outline-offset:1px;
+  filter:brightness(1.03);
+}
+
+.dd-touch-hint{
+  text-align:center;
+  color:#7c2d12;
+  font-size:13px;
+  font-weight:700;
+  margin:6px 0 10px;
+}
+
+.dd-touch-hint.hidden{display:none}
 
 .dd-btn{
   padding:11px 18px;
@@ -359,6 +376,10 @@ ob_start();
   .dd-intro{padding:20px 18px}
   .dd-intro h2{font-size:26px}
   #sentenceBox{padding:18px}
+  #promptText{line-height:1.9}
+  .blank{min-width:86px;min-height:42px;margin:3px 4px;padding:5px 9px}
+  .word{padding:10px 14px;font-size:15px}
+  #wordBank{gap:10px}
   .controls{display:flex;flex-direction:column;align-items:center}
   .dd-btn{width:100%;max-width:320px}
 }
@@ -371,6 +392,7 @@ ob_start();
   </div>
 
   <div id="wordBank"></div>
+<div id="ddTouchHint" class="dd-touch-hint hidden">Tap a word, then tap a blank space to place it.</div>
 
   <div class="controls">
     <button class="dd-btn dd-btn-show" type="button" onclick="showAnswer()">Show Answer</button>
@@ -433,6 +455,13 @@ const completedEl = document.getElementById('dd-completed');
 const completedTitleEl = document.getElementById('dd-completed-title');
 const completedTextEl = document.getElementById('dd-completed-text');
 const scoreTextEl = document.getElementById('dd-score-text');
+const ddTouchHint = document.getElementById('ddTouchHint');
+
+const isTouchLike = (window.matchMedia && window.matchMedia('(pointer: coarse)').matches)
+  || ('ontouchstart' in window)
+  || (navigator.maxTouchPoints > 0);
+
+let selectedWordChip = null;
 
 if (completedTitleEl) {
   completedTitleEl.textContent = 'Completed';
@@ -550,12 +579,48 @@ function createWordChip(word) {
   chip.className = 'word';
   chip.draggable = true;
   chip.dataset.word = word;
+  chip.setAttribute('role', 'button');
+  chip.setAttribute('tabindex', '0');
 
   chip.addEventListener('dragstart', function () {
     dragged = chip;
   });
 
+  chip.addEventListener('click', function () {
+    if (!isTouchLike || finished || blockFinished) return;
+    toggleSelectedChip(chip);
+  });
+
+  chip.addEventListener('keydown', function (event) {
+    if (event.key !== 'Enter' && event.key !== ' ') return;
+    if (finished || blockFinished) return;
+    event.preventDefault();
+    if (isTouchLike) {
+      toggleSelectedChip(chip);
+    }
+  });
+
   return chip;
+}
+
+function clearSelectedChip() {
+  if (!selectedWordChip) return;
+  selectedWordChip.classList.remove('selected-touch');
+  selectedWordChip = null;
+}
+
+function toggleSelectedChip(chip) {
+  if (selectedWordChip === chip) {
+    clearSelectedChip();
+    return;
+  }
+
+  if (selectedWordChip) {
+    selectedWordChip.classList.remove('selected-touch');
+  }
+
+  selectedWordChip = chip;
+  selectedWordChip.classList.add('selected-touch');
 }
 
 function createBlank(indexBlank) {
@@ -593,6 +658,30 @@ function createBlank(indexBlank) {
   blank.addEventListener('click', function () {
     if (finished || blockFinished) return;
 
+    if (isTouchLike && selectedWordChip) {
+      const selectedWord = selectedWordChip.dataset.word || '';
+      const existingWord = blank.dataset.word || '';
+      if (!selectedWord) {
+        clearSelectedChip();
+        return;
+      }
+
+      if (existingWord) {
+        wordBank.appendChild(createWordChip(existingWord));
+      }
+
+      blank.dataset.word = selectedWord;
+      blank.textContent = selectedWord;
+      blank.classList.add('filled');
+      blank.classList.remove('incorrect');
+
+      selectedWordChip.remove();
+      clearSelectedChip();
+
+      setTimeout(autoCheckIfNeeded, 40);
+      return;
+    }
+
     const existing = blank.dataset.word || '';
     if (!existing) return;
 
@@ -614,6 +703,7 @@ function loadSentence() {
   speechSourceText = '';
   speechSegmentStart = 0;
   dragged = null;
+  clearSelectedChip();
   finished = false;
   blockFinished = false;
 
@@ -627,6 +717,10 @@ function loadSentence() {
 
   if (wordBank) {
     wordBank.style.display = 'flex';
+  }
+
+  if (ddTouchHint) {
+    ddTouchHint.classList.toggle('hidden', !isTouchLike);
   }
 
   if (promptText) {
@@ -869,6 +963,7 @@ function restartActivity() {
   checkedBlocks = {};
   attemptsByBlock = {};
   scoredWordsByBlock = {};
+  clearSelectedChip();
   loadSentence();
 }
 
