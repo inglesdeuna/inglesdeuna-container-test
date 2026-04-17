@@ -14,6 +14,20 @@ if (isset($_SESSION['student_logged']) && $_SESSION['student_logged']) {
 
 // Accept admin OR teacher session
 $isLoggedIn = !empty($_SESSION['academic_logged']) || !empty($_SESSION['admin_logged']);
+
+// Keepalive endpoint for long editing sessions.
+if (isset($_GET['keepalive']) && (string) $_GET['keepalive'] === '1') {
+    if (!$isLoggedIn) {
+        http_response_code(401);
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode(array('ok' => false));
+        exit;
+    }
+
+    http_response_code(204);
+    exit;
+}
+
 if (!$isLoggedIn) {
     header('Location: /lessons/lessons/academic/login.php');
     exit;
@@ -623,6 +637,7 @@ ob_start();
 let formChanged = false;
 let formSubmitted = false;
 let autoSaveRequested = false;
+let periodicAutoSaveRunning = false;
 
 function markChanged() {
     formChanged = true;
@@ -713,6 +728,49 @@ function autoSaveOnExit() {
     });
 }
 
+function autoSavePeriodically() {
+    if (formSubmitted || !formChanged || periodicAutoSaveRunning) {
+        return;
+    }
+
+    const form = document.getElementById('qaForm');
+    if (!form) {
+        return;
+    }
+
+    const payload = new FormData(form);
+    payload.append('autosave', '1');
+
+    periodicAutoSaveRunning = true;
+
+    fetch(window.location.href, {
+        method: 'POST',
+        body: payload,
+        credentials: 'same-origin',
+        keepalive: true
+    }).then(function () {
+        formChanged = false;
+    }).catch(function () {
+        // Keep current dirty state to retry later.
+    }).finally(function () {
+        periodicAutoSaveRunning = false;
+    });
+}
+
+function keepSessionAlive() {
+    const url = new URL(window.location.href);
+    url.searchParams.set('keepalive', '1');
+
+    fetch(url.toString(), {
+        method: 'GET',
+        credentials: 'same-origin',
+        cache: 'no-store',
+        keepalive: true
+    }).catch(function () {
+        // Ignore transient network issues.
+    });
+}
+
 window.addEventListener('beforeunload', function () {
     autoSaveOnExit();
 });
@@ -726,6 +784,10 @@ document.addEventListener('visibilitychange', function () {
         autoSaveOnExit();
     }
 });
+
+// Reduce data loss risk if user edits for long periods without manual save.
+setInterval(keepSessionAlive, 120000);
+setInterval(autoSavePeriodically, 45000);
 </script>
 
 <?php

@@ -708,6 +708,36 @@ ob_start();
 </div>
 
 <link rel="stylesheet" href="../multiple_choice/multiple_choice.css?v=<?php echo urlencode($cssVersion); ?>">
+<style>
+/* Final visual override: no blue buttons in Pronunciation */
+#pron-viewer #pron-listen,
+#pron-viewer #pron-speak {
+    background: linear-gradient(180deg, #14b8a6 0%, #0d9488 100%) !important;
+    color: #ffffff !important;
+    box-shadow: 0 8px 18px rgba(20, 184, 166, 0.25) !important;
+}
+
+#pron-viewer #pron-show,
+#pron-viewer #pron-next {
+    background: linear-gradient(180deg, #f9a8d4 0%, #ec4899 100%) !important;
+    color: #ffffff !important;
+    box-shadow: 0 8px 18px rgba(236, 72, 153, 0.25) !important;
+}
+
+#pron-viewer #pron-listen:hover,
+#pron-viewer #pron-listen:focus,
+#pron-viewer #pron-speak:hover,
+#pron-viewer #pron-speak:focus {
+    box-shadow: 0 12px 28px rgba(20, 184, 166, 0.35) !important;
+}
+
+#pron-viewer #pron-show:hover,
+#pron-viewer #pron-show:focus,
+#pron-viewer #pron-next:hover,
+#pron-viewer #pron-next:focus {
+    box-shadow: 0 12px 28px rgba(236, 72, 153, 0.35) !important;
+}
+</style>
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     var sourceData = Array.isArray(<?php echo json_encode($items, JSON_UNESCAPED_UNICODE); ?>) ? <?php echo json_encode($items, JSON_UNESCAPED_UNICODE); ?> : [];
