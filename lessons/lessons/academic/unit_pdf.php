@@ -108,7 +108,12 @@ function ws_head(int $n, string $type, string $title, string $instr, bool $isKey
     $out .= '</div>';
     if ($t !== '' && $t !== $cfg['label']) $out .= '<div class="section-title">'.h($t).'</div>';
     $out .= '</div></div><div class="card">';
-    if ($i !== '') $out .= '<div class="instruction">'.h($i).'</div>';
+    if ($i !== '') {
+        $out .= '<div class="instruction">';
+        $out .= '<span class="ins-ico">&#9432;</span>';
+        $out .= '<div class="ins-copy"><span class="ins-label">Instructions</span><span class="ins-text">'.h($i).'</span></div>';
+        $out .= '</div>';
+    }
     return $out;
 }
 function ws_foot(): string { return '</div></div>'; }
@@ -410,19 +415,352 @@ function ws_listenorder(array $d, int $n, bool $k): string {
     return $out.ws_foot();
 }
 
+function ws_cw_key(int $r, int $c): string {
+    return $r . ',' . $c;
+}
+
+function ws_cw_can_place_word(array $grid, string $word, int $row, int $col, string $direction): array {
+    $len = strlen($word);
+    $overlaps = 0;
+
+    $dr = $direction === 'across' ? 0 : 1;
+    $dc = $direction === 'across' ? 1 : 0;
+
+    $beforeKey = ws_cw_key($row - $dr, $col - $dc);
+    $afterKey = ws_cw_key($row + $dr * $len, $col + $dc * $len);
+    if (isset($grid[$beforeKey]) || isset($grid[$afterKey])) {
+        return [false, 0];
+    }
+
+    for ($i = 0; $i < $len; $i++) {
+        $r = $row + $dr * $i;
+        $c = $col + $dc * $i;
+        $key = ws_cw_key($r, $c);
+        $ch = $word[$i];
+
+        if (isset($grid[$key])) {
+            if (($grid[$key]['letter'] ?? '') !== $ch) {
+                return [false, 0];
+            }
+            $overlaps++;
+            continue;
+        }
+
+        if ($direction === 'across') {
+            if (isset($grid[ws_cw_key($r - 1, $c)]) || isset($grid[ws_cw_key($r + 1, $c)])) {
+                return [false, 0];
+            }
+        } else {
+            if (isset($grid[ws_cw_key($r, $c - 1)]) || isset($grid[ws_cw_key($r, $c + 1)])) {
+                return [false, 0];
+            }
+        }
+    }
+
+    return [true, $overlaps];
+}
+
+function ws_cw_place_word(array &$grid, array $placedWord): void {
+    $word = $placedWord['word'];
+    $len = strlen($word);
+    $row = (int) $placedWord['row'];
+    $col = (int) $placedWord['col'];
+    $dir = $placedWord['direction'];
+
+    for ($i = 0; $i < $len; $i++) {
+        $r = $dir === 'across' ? $row : $row + $i;
+        $c = $dir === 'across' ? $col + $i : $col;
+        $key = ws_cw_key($r, $c);
+        if (!isset($grid[$key])) {
+            $grid[$key] = ['letter' => $word[$i], 'wordIdxs' => []];
+        }
+        $grid[$key]['wordIdxs'][] = $placedWord['idx'];
+    }
+}
+
+function ws_cw_generate_layout(array $words): array {
+    if (empty($words)) {
+        return [[], []];
+    }
+
+    $indexed = [];
+    foreach ($words as $idx => $w) {
+        $indexed[] = ['idx' => $idx, 'word' => $w['word']];
+    }
+
+    usort($indexed, function ($a, $b) {
+        $lenCmp = strlen($b['word']) <=> strlen($a['word']);
+        if ($lenCmp !== 0) return $lenCmp;
+        return $a['idx'] <=> $b['idx'];
+    });
+
+    $grid = [];
+    $placed = [];
+
+    $first = $indexed[0];
+    $firstPlaced = [
+        'idx' => $first['idx'],
+        'word' => $first['word'],
+        'row' => 0,
+        'col' => 0,
+        'direction' => 'across',
+    ];
+    $placed[] = $firstPlaced;
+    ws_cw_place_word($grid, $firstPlaced);
+
+    for ($p = 1; $p < count($indexed); $p++) {
+        $candidateWord = $indexed[$p];
+        $word = $candidateWord['word'];
+        $len = strlen($word);
+
+        $best = null;
+        $bestScore = -1000000;
+
+        foreach ($grid as $key => $cell) {
+            $parts = explode(',', $key);
+            $r0 = (int) $parts[0];
+            $c0 = (int) $parts[1];
+            $gridCh = $cell['letter'];
+
+            for ($i = 0; $i < $len; $i++) {
+                if ($word[$i] !== $gridCh) continue;
+
+                foreach (['across', 'down'] as $dir) {
+                    $startRow = $dir === 'across' ? $r0 : $r0 - $i;
+                    $startCol = $dir === 'across' ? $c0 - $i : $c0;
+                    [$ok, $overlaps] = ws_cw_can_place_word($grid, $word, $startRow, $startCol, $dir);
+                    if (!$ok || $overlaps < 1) continue;
+
+                    $minR = $startRow;
+                    $maxR = $dir === 'down' ? $startRow + $len - 1 : $startRow;
+                    $minC = $startCol;
+                    $maxC = $dir === 'across' ? $startCol + $len - 1 : $startCol;
+                    $areaPenalty = ($maxR - $minR + 1) * ($maxC - $minC + 1);
+                    $score = ($overlaps * 1000) - $areaPenalty;
+
+                    if ($score > $bestScore) {
+                        $bestScore = $score;
+                        $best = [
+                            'idx' => $candidateWord['idx'],
+                            'word' => $word,
+                            'row' => $startRow,
+                            'col' => $startCol,
+                            'direction' => $dir,
+                        ];
+                    }
+                }
+            }
+        }
+
+        if ($best === null) {
+            $bounds = ['minR' => 0, 'maxR' => 0, 'minC' => 0, 'maxC' => 0];
+            $firstBound = true;
+            foreach ($grid as $key => $_cell) {
+                $parts = explode(',', $key);
+                $r = (int) $parts[0];
+                $c = (int) $parts[1];
+                if ($firstBound) {
+                    $bounds = ['minR' => $r, 'maxR' => $r, 'minC' => $c, 'maxC' => $c];
+                    $firstBound = false;
+                } else {
+                    $bounds['minR'] = min($bounds['minR'], $r);
+                    $bounds['maxR'] = max($bounds['maxR'], $r);
+                    $bounds['minC'] = min($bounds['minC'], $c);
+                    $bounds['maxC'] = max($bounds['maxC'], $c);
+                }
+            }
+
+            $preferDown = ($p % 2) === 1;
+            $fallback = [
+                'idx' => $candidateWord['idx'],
+                'word' => $word,
+                'row' => $bounds['maxR'] + 2,
+                'col' => $bounds['minC'],
+                'direction' => $preferDown ? 'down' : 'across',
+            ];
+            [$okFallback] = ws_cw_can_place_word($grid, $word, $fallback['row'], $fallback['col'], $fallback['direction']);
+            if (!$okFallback) {
+                $fallback['direction'] = $fallback['direction'] === 'across' ? 'down' : 'across';
+            }
+            $best = $fallback;
+        }
+
+        $placed[] = $best;
+        ws_cw_place_word($grid, $best);
+    }
+
+    $minRow = 0;
+    $minCol = 0;
+    $firstCell = true;
+    foreach ($grid as $key => $_cell) {
+        [$r, $c] = array_map('intval', explode(',', $key));
+        if ($firstCell) {
+            $minRow = $r;
+            $minCol = $c;
+            $firstCell = false;
+        } else {
+            $minRow = min($minRow, $r);
+            $minCol = min($minCol, $c);
+        }
+    }
+
+    if ($minRow !== 0 || $minCol !== 0) {
+        foreach ($placed as &$pw) {
+            $pw['row'] -= $minRow;
+            $pw['col'] -= $minCol;
+        }
+        unset($pw);
+    }
+
+    return [$placed, $grid];
+}
+
 /* CROSSWORD */
 function ws_crossword(array $d, int $n, bool $k): string {
-    $words = is_array($d['words'] ?? null) ? $d['words'] : [];
-    $out   = ws_head($n,'crossword',$d['title']??'Crossword','Use the clues to complete the crossword puzzle.',$k);
-    $out  .= '<table class="ws-tbl"><thead><tr><th class="tc-hn">#</th><th>Clue</th><th>Answer</th></tr></thead><tbody>';
-    foreach ($words as $i => $w) {
-        $cl = trim((string)($w['clue']??$w['raw_clue']??''));
-        $wo = trim((string)($w['word']??''));
-        $le = mb_strlen($wo,'UTF-8');
-        $out .= '<tr class="'.($i%2===0?'tr-a':'tr-b').'"><td class="tc-n">'.($i+1).'</td><td>'.h($cl).'</td>';
-        $out .= '<td class="tc-bl">'.($k?'<b class="tc-ak">'.h($wo).'</b>':str_repeat('_ ',$le)).'</td></tr>';
+    $rawWords = is_array($d['words'] ?? null) ? $d['words'] : [];
+    $words = [];
+    foreach ($rawWords as $w) {
+        if (!is_array($w)) continue;
+        $word = strtoupper(trim((string)($w['word'] ?? '')));
+        $word = preg_replace('/[^A-Z0-9]/', '', $word);
+        if ($word === '' || strlen($word) < 2) continue;
+        $words[] = [
+            'word' => $word,
+            'clue' => trim((string)($w['clue'] ?? $w['raw_clue'] ?? '')),
+        ];
     }
-    return $out.'</tbody></table>'.ws_foot();
+
+    $instruction = $k
+        ? 'Use the numbered clues and grid as a teaching key. Correct letters are shown in each square.'
+        : 'Read Across and Down clues. Write one letter per square and use intersections to check your answers.';
+    $out = ws_head($n, 'crossword', $d['title'] ?? 'Crossword', $instruction, $k);
+
+    if (empty($words)) {
+        return $out . '<p class="ws-empty">No crossword words configured.</p>' . ws_foot();
+    }
+
+    [$placedWords, $_generatedGrid] = ws_cw_generate_layout($words);
+    if (empty($placedWords)) {
+        return $out . '<p class="ws-empty">Crossword layout unavailable.</p>' . ws_foot();
+    }
+
+    $maxRow = 0;
+    $maxCol = 0;
+    foreach ($placedWords as $pw) {
+        $len = strlen((string) $pw['word']);
+        if ($pw['direction'] === 'across') {
+            $maxRow = max($maxRow, (int) $pw['row']);
+            $maxCol = max($maxCol, (int) $pw['col'] + $len - 1);
+        } else {
+            $maxRow = max($maxRow, (int) $pw['row'] + $len - 1);
+            $maxCol = max($maxCol, (int) $pw['col']);
+        }
+    }
+
+    $gridRows = $maxRow + 1;
+    $gridCols = $maxCol + 1;
+    $cellMap = [];
+    for ($r = 0; $r < $gridRows; $r++) {
+        for ($c = 0; $c < $gridCols; $c++) {
+            $cellMap[$r][$c] = ['active' => false, 'letter' => '', 'numLabel' => 0];
+        }
+    }
+
+    foreach ($placedWords as $idx => $pw) {
+        $word = (string) $pw['word'];
+        $len = strlen($word);
+        for ($i = 0; $i < $len; $i++) {
+            $r = $pw['direction'] === 'across' ? (int) $pw['row'] : (int) $pw['row'] + $i;
+            $c = $pw['direction'] === 'across' ? (int) $pw['col'] + $i : (int) $pw['col'];
+            $cellMap[$r][$c]['active'] = true;
+            $cellMap[$r][$c]['letter'] = $word[$i];
+        }
+    }
+
+    $startNumberByCell = [];
+    $nextNum = 1;
+    for ($r = 0; $r < $gridRows; $r++) {
+        for ($c = 0; $c < $gridCols; $c++) {
+            if (!$cellMap[$r][$c]['active']) continue;
+            $startsAcross = ($c === 0 || !$cellMap[$r][$c - 1]['active']) && ($c + 1 < $gridCols && $cellMap[$r][$c + 1]['active']);
+            $startsDown = ($r === 0 || !$cellMap[$r - 1][$c]['active']) && ($r + 1 < $gridRows && $cellMap[$r + 1][$c]['active']);
+            if ($startsAcross || $startsDown) {
+                $startNumberByCell[$r . ',' . $c] = $nextNum++;
+            }
+        }
+    }
+
+    $acrossWords = [];
+    $downWords = [];
+    foreach ($placedWords as $idx => $pw) {
+        $key = ((int)$pw['row']) . ',' . ((int)$pw['col']);
+        $num = $startNumberByCell[$key] ?? 0;
+        $cellMap[(int)$pw['row']][(int)$pw['col']]['numLabel'] = $num;
+        $entry = [
+            'num' => $num,
+            'clue' => trim((string)($words[(int)$pw['idx']]['clue'] ?? '')),
+            'word' => (string) $pw['word'],
+            'len' => strlen((string) $pw['word']),
+        ];
+        if ($pw['direction'] === 'across') $acrossWords[] = $entry;
+        else $downWords[] = $entry;
+    }
+
+    usort($acrossWords, fn($a, $b) => ($a['num'] <=> $b['num']));
+    usort($downWords, fn($a, $b) => ($a['num'] <=> $b['num']));
+
+    $cellPx = 30;
+    if (max($gridRows, $gridCols) > 15) $cellPx = 24;
+    if (max($gridRows, $gridCols) > 20) $cellPx = 20;
+
+    $out .= '<div class="cw-print-wrap">';
+    $out .= '<div class="cw-grid-shell">';
+    $out .= '<table class="cw-grid-table" style="--cw-cell:'.$cellPx.'px">';
+    for ($r = 0; $r < $gridRows; $r++) {
+        $out .= '<tr>';
+        for ($c = 0; $c < $gridCols; $c++) {
+            $cell = $cellMap[$r][$c];
+            if (!$cell['active']) {
+                $out .= '<td class="cw-cell-block"></td>';
+                continue;
+            }
+            $out .= '<td class="cw-cell-on">';
+            if ((int)$cell['numLabel'] > 0) {
+                $out .= '<span class="cw-num">'.(int)$cell['numLabel'].'</span>';
+            }
+            if ($k) {
+                $out .= '<span class="cw-letter cw-letter-key">'.h((string)$cell['letter']).'</span>';
+            } else {
+                $out .= '<span class="cw-letter cw-letter-blank"></span>';
+            }
+            $out .= '</td>';
+        }
+        $out .= '</tr>';
+    }
+    $out .= '</table>';
+    $out .= '</div>';
+
+    $out .= '<div class="cw-clues">';
+    $out .= '<div class="cw-clue-card"><h4>&#8594; Across</h4><ol>';
+    foreach ($acrossWords as $entry) {
+        $cl = $entry['clue'] !== '' ? h($entry['clue']) : '<em>No clue provided.</em>';
+        $out .= '<li><span class="cw-clue-line"><strong>'.(int)$entry['num'].'.</strong> '.$cl.' <span class="cw-len">('.(int)$entry['len'].')</span></span>';
+        if ($k) $out .= '<span class="cw-clue-key">'.h((string)$entry['word']).'</span>';
+        $out .= '</li>';
+    }
+    $out .= '</ol></div>';
+
+    $out .= '<div class="cw-clue-card"><h4>&#8595; Down</h4><ol>';
+    foreach ($downWords as $entry) {
+        $cl = $entry['clue'] !== '' ? h($entry['clue']) : '<em>No clue provided.</em>';
+        $out .= '<li><span class="cw-clue-line"><strong>'.(int)$entry['num'].'.</strong> '.$cl.' <span class="cw-len">('.(int)$entry['len'].')</span></span>';
+        if ($k) $out .= '<span class="cw-clue-key">'.h((string)$entry['word']).'</span>';
+        $out .= '</li>';
+    }
+    $out .= '</ol></div>';
+    $out .= '</div></div>';
+
+    return $out.ws_foot();
 }
 
 /* MEMORY CARDS */
@@ -667,17 +1005,17 @@ $isKey  = $isTeacher;
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Poppins:wght@400;500;600;700;800&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
 <style>
 /* ── Page setup (top-level, NOT inside @media print) ── */
-@page{size:letter;margin:10mm 9mm}
+@page{size:letter;margin:11mm 10mm}
 /* ── Design tokens ─────────────────────────────────────────── */
 :root{
-  --navy:#20324d; --text:#223046; --muted:#66758a; --line:#d9e4ef;
-  --paper:#f7fbff; --white:#ffffff; --bg:#f8fcff;
-  --blue:#dfeeff;    --blue-strong:#3d7cf4;
-  --cyan:#dff6ff;    --cyan-strong:#1e9ecb;
-  --green:#e6f7ef;   --green-strong:#13a06f;
-  --orange:#fff0e3;  --orange-strong:#ef7c2b;
-  --purple:#f1e8ff;  --purple-strong:#8b5cf6;
-  --pink:#ffe7ef;    --pink-strong:#e64b7b;
+    --navy:#0f2f5f; --text:#223046; --muted:#5f6f85; --line:#d4dfec;
+    --paper:#f4f9ff; --white:#ffffff; --bg:#f7fbff;
+    --blue:#deebff;    --blue-strong:#0b5ed7;
+    --cyan:#ddf5ff;    --cyan-strong:#0ea5e9;
+    --green:#e6f7ef;   --green-strong:#16a34a;
+    --orange:#fff2e2;  --orange-strong:#ea7a1a;
+    --purple:#ede9ff;  --purple-strong:#6d28d9;
+    --pink:#ffe8f2;    --pink-strong:#db2777;
   --answer:#10b981;  --answer-bg:#f0fdf4; --answer-border:#86efac;
   --border:#dce7f0;  --border2:#cfdceb;
   --shadow:0 10px 30px rgba(31,61,111,.08);
@@ -686,7 +1024,7 @@ $isKey  = $isTeacher;
 /* ── Reset ── */
 *{box-sizing:border-box;margin:0;padding:0}
 html{-webkit-print-color-adjust:exact;print-color-adjust:exact}
-body{font-family:'Inter','Poppins','Segoe UI',Arial,sans-serif;font-size:13px;line-height:1.55;color:var(--text);background:radial-gradient(circle at top left,#eef6ff 0,transparent 28%),linear-gradient(180deg,#f5faff 0%,#eef6ff 100%);padding:0}
+body{font-family:'Inter','Poppins','Segoe UI',Arial,sans-serif;font-size:13px;line-height:1.58;color:var(--text);background:radial-gradient(circle at top left,#eef6ff 0,transparent 28%),linear-gradient(180deg,#f4f9ff 0%,#eaf2ff 100%);padding:0}
 /* ── Toolbar ── */
 .toolbar{position:sticky;top:0;z-index:100;background:var(--navy);display:flex;align-items:center;gap:12px;padding:10px 24px;box-shadow:0 2px 16px rgba(31,61,111,.3);-webkit-print-color-adjust:exact;print-color-adjust:exact}
 .tb-brand{font-size:14px;font-weight:800;color:rgba(255,255,255,.80);margin-right:auto;letter-spacing:-.02em}
@@ -745,7 +1083,11 @@ body{font-family:'Inter','Poppins','Segoe UI',Arial,sans-serif;font-size:13px;li
 .key-tag{background:var(--answer);color:#fff;font-size:9px;padding:2px 7px;border-radius:10px;margin-left:6px;vertical-align:middle;font-weight:700;letter-spacing:.04em;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 /* ── Card ── */
 .card{border:1px solid #e1ebf4;background:#fff;border-radius:14px;padding:14px 16px}
-.instruction{color:var(--muted);font-style:italic;margin-bottom:10px;line-height:1.6;font-size:12px}
+.instruction{display:flex;align-items:flex-start;gap:10px;margin-bottom:12px;padding:9px 11px;border:1px solid #d9e8fb;border-radius:10px;background:#f8fbff;line-height:1.55;font-size:12px;color:#284261}
+.ins-ico{display:grid;place-items:center;flex:0 0 22px;width:22px;height:22px;border-radius:50%;background:var(--blue-strong);color:#fff;font-size:12px;font-weight:700;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.ins-copy{display:flex;flex-direction:column;gap:2px}
+.ins-label{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#476184;font-weight:800}
+.ins-text{font-size:12px;color:#2c4564}
 /* ── Tables ── */
 table.ws-tbl{width:100%;border-collapse:collapse;overflow:hidden;border-radius:10px;border:1px solid var(--border);font-size:12px;margin-top:4px}
 table.ws-tbl th,table.ws-tbl td{border:1px solid var(--border);padding:8px 12px;text-align:left;vertical-align:middle}
@@ -795,6 +1137,26 @@ table.ws-tbl th{background:#f3f8fd;text-transform:uppercase;letter-spacing:.08em
 .ws-or{display:flex;align-items:center;gap:12px;padding:10px 4px;border-bottom:1px solid #e5edf5;font-size:14px;break-inside:avoid}
 .ws-ob{width:34px;height:28px;min-width:34px;border:2px solid var(--line);border-radius:8px;background:var(--bg);-webkit-print-color-adjust:exact;print-color-adjust:exact}
 .ws-ot{flex:1;line-height:1.4}
+/* ── Crossword print layout ── */
+.cw-print-wrap{display:grid;grid-template-columns:minmax(280px,1fr) minmax(240px,1fr);gap:14px;align-items:start}
+.cw-grid-shell{padding:8px;border:1px solid var(--border);border-radius:12px;background:#fbfdff}
+.cw-grid-table{border-collapse:separate;border-spacing:2px;table-layout:fixed;margin:0 auto}
+.cw-grid-table td{width:var(--cw-cell);height:var(--cw-cell);padding:0;position:relative}
+.cw-cell-block{background:#dde6f1;border:1px solid #c9d7e7;border-radius:3px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.cw-cell-on{background:#fff;border:1.6px solid #7f96b3;border-radius:3px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.cw-num{position:absolute;top:1px;left:2px;font-size:8px;font-weight:800;color:#314d73;line-height:1}
+.cw-letter{display:flex;align-items:center;justify-content:center;height:100%;font-weight:800;font-size:14px;color:#1f3555;letter-spacing:.04em}
+.cw-letter-blank::after{content:'';display:block;width:70%;border-bottom:1.6px solid #a8b8cc;margin-top:8px}
+.cw-letter-key{color:#166534;font-size:13px}
+.cw-clues{display:grid;grid-template-columns:1fr;gap:10px}
+.cw-clue-card{border:1px solid #dbe6f3;border-radius:12px;background:#fff;padding:10px 12px}
+.cw-clue-card h4{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#36537a;font-weight:800;margin:0 0 8px}
+.cw-clue-card ol{margin:0;padding-left:18px}
+.cw-clue-card li{margin-bottom:7px;color:#243950;font-size:12px;line-height:1.45}
+.cw-clue-card li:last-child{margin-bottom:0}
+.cw-clue-line{display:block}
+.cw-len{color:#5f7593;font-size:11px;font-weight:600}
+.cw-clue-key{display:inline-block;margin-top:2px;padding:1px 6px;border-radius:8px;background:var(--answer-bg);border:1px solid var(--answer-border);color:#166534;font-size:10px;font-weight:700;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 /* ── Flashcard image grid ── */
 .fc-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:4px}
 .fc-card{border:1px solid var(--border);border-radius:16px;overflow:hidden;background:#fff;break-inside:avoid;page-break-inside:avoid}
@@ -857,11 +1219,12 @@ table.ws-tbl th{background:#f3f8fd;text-transform:uppercase;letter-spacing:.08em
   .badge-row{justify-content:flex-start}
   .meta-grid,.ws-mcols,.ws-opts{grid-template-columns:1fr}
   .fc-grid,.mc-grid,.pr-grid{grid-template-columns:repeat(2,1fr)}
+    .cw-print-wrap{grid-template-columns:1fr}
 }
 /* ── Print (must be LAST — overrides responsive breakpoint) ── */
 @media print{
   html,body{width:100%;height:auto}
-  body{background:#fff!important;font-size:10px;line-height:1.35;padding:0;color:#223046}
+    body{background:#fff!important;font-size:10.4px;line-height:1.38;padding:0;color:#223046}
   .toolbar,.ws-pdiv,.ws-plbl{display:none!important}
   .ws-doc{box-shadow:none;border-radius:0;max-width:100%;width:100%;margin:0}
   /* ── Cover ── */
@@ -897,7 +1260,10 @@ table.ws-tbl th{background:#f3f8fd;text-transform:uppercase;letter-spacing:.08em
   .key-tag{font-size:7.5px;padding:1px 5px}
   /* ── Card ── */
   .card{padding:6px 8px;border-radius:7px}
-  .instruction{font-size:8.5px;margin-bottom:4px;line-height:1.3}
+    .instruction{font-size:8.4px;margin-bottom:4px;line-height:1.28;padding:5px 6px;gap:6px;border-radius:6px}
+    .ins-ico{width:14px;height:14px;flex:0 0 14px;font-size:8px}
+    .ins-label{font-size:6.8px}
+    .ins-text{font-size:8.3px}
   /* ── Tables ── */
   table.ws-tbl{font-size:9px}
   table.ws-tbl th,table.ws-tbl td{padding:4px 7px}
@@ -936,6 +1302,23 @@ table.ws-tbl th{background:#f3f8fd;text-transform:uppercase;letter-spacing:.08em
   /* ── Order ── */
   .ws-or{padding:5px 4px;font-size:11px;border-bottom-width:1px;gap:10px}
   .ws-ob{width:26px;height:20px;min-width:26px;border-radius:5px;border-width:1.5px}
+    /* ── Crossword ── */
+    .cw-print-wrap{grid-template-columns:1fr;gap:6px}
+    .cw-grid-shell{padding:4px;border-radius:7px}
+    .cw-grid-table{border-spacing:1.2px}
+    .cw-grid-table td{width:17px;height:17px}
+    .cw-cell-on{border-width:1.1px;border-radius:2px}
+    .cw-cell-block{border-width:1px;border-radius:2px}
+    .cw-num{font-size:5.8px;top:0;left:1px}
+    .cw-letter{font-size:8.3px}
+    .cw-letter-blank::after{border-bottom-width:1.1px;margin-top:5px}
+    .cw-clues{grid-template-columns:1fr 1fr;gap:6px}
+    .cw-clue-card{padding:6px 7px;border-radius:7px}
+    .cw-clue-card h4{font-size:7.4px;margin-bottom:4px}
+    .cw-clue-card ol{padding-left:12px}
+    .cw-clue-card li{font-size:8.1px;line-height:1.25;margin-bottom:3px}
+    .cw-len{font-size:7.2px}
+    .cw-clue-key{font-size:6.9px;padding:1px 4px}
   /* ── Flashcard grid ── */
   .fc-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
   .fc-card{border-radius:10px;break-inside:avoid;page-break-inside:avoid}
@@ -987,7 +1370,8 @@ table.ws-tbl th{background:#f3f8fd;text-transform:uppercase;letter-spacing:.08em
   .section-head,.num,.ws-qn,.ws-ol,.ws-ck,.ws-ck .ws-ol,.key-tag,
   table.ws-tbl th,.tr-a td,.ws-bank,.ws-chip,.ws-expl,.ws-ab,.ws-ob,
   .hero,.ws-hdr,.badge,.meta-card,.intro-card,.fc-card,.mc-card,.pr-card,
-  .mc-img-opt,.act-notes-box,.dt-answer,.pr-ans,.ws-hold{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    .mc-img-opt,.act-notes-box,.dt-answer,.pr-ans,.ws-hold,.instruction,
+    .ins-ico,.cw-cell-block,.cw-cell-on,.cw-clue-card,.cw-clue-key{-webkit-print-color-adjust:exact;print-color-adjust:exact}
   img{max-width:100%;height:auto;-webkit-print-color-adjust:exact;print-color-adjust:exact}
   a{color:inherit;text-decoration:none}
 }
