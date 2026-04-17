@@ -899,6 +899,8 @@ document.addEventListener('DOMContentLoaded', function () {
     <div class="mc-card" id="wpCard">
         <!-- media injected by JS -->
         <div id="wpMediaArea"></div>
+        <!-- dedicated per-card prompt for video + writing -->
+        <div id="wpVideoQuestion" class="wp-video-question" style="display:none;"></div>
         <!-- instruction injected by JS -->
         <div id="wpInstruction" class="wp-instruction-top"></div>
         <!-- question text injected by JS -->
@@ -970,6 +972,7 @@ document.addEventListener('DOMContentLoaded', function () {
     var mediaArea   = document.getElementById('wpMediaArea');
     var qtextEl     = document.getElementById('wpQtext');
     var instrEl     = document.getElementById('wpInstruction');
+    var videoQuestionEl = document.getElementById('wpVideoQuestion');
     var videoInstrEl = document.getElementById('wpVideoInstruction');
     var videoFixedEl = document.getElementById('wpVideoFixed');
     var answerGuideEl = document.getElementById('wpAnswerGuide');
@@ -1589,6 +1592,14 @@ document.addEventListener('DOMContentLoaded', function () {
         currentWritingInputs  = [];
         mediaArea.innerHTML   = '';
         qtextEl.innerHTML     = '';
+        if (videoQuestionEl) {
+            videoQuestionEl.textContent = '';
+            videoQuestionEl.style.display = 'none';
+        }
+        if (videoInstrEl) {
+            videoInstrEl.textContent = '';
+            videoInstrEl.style.display = 'none';
+        }
         instrEl.innerHTML     = '';
         if (answerGuideEl) {
             answerGuideEl.style.display = 'none';
@@ -1916,10 +1927,10 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (videoPrompt === '') {
                     videoPrompt = 'Question ' + (index + 1);
                 }
-                var vp = document.createElement('div');
-                vp.className = 'wp-video-question';
-                vp.textContent = videoPrompt;
-                qtextEl.appendChild(vp);
+                if (videoQuestionEl) {
+                    videoQuestionEl.textContent = videoPrompt;
+                    videoQuestionEl.style.display = '';
+                }
             } else if (q.question && type !== 'listen_write' && type !== 'writing') {
                 var qp = document.createElement('div');
                 qp.style.cssText = 'font-weight:800;color:#f14902;font-size:clamp(16px,2vw,22px);margin-bottom:10px;line-height:1.4;text-align:center;';
