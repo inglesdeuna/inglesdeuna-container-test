@@ -528,19 +528,19 @@ ob_start();
 }
 
 .mc-btn-show {
-    background: linear-gradient(180deg, #c084fc 0%, #a855f7 100%);
-    box-shadow: 0 8px 18px rgba(168, 85, 247, 0.25);
+    background: linear-gradient(180deg, #f9a8d4 0%, #ec4899 100%);
+    box-shadow: 0 8px 18px rgba(236, 72, 153, 0.25);
 }
 
 .mc-btn-next {
-    background: linear-gradient(180deg, #14b8a6 0%, #0d9488 100%);
-    box-shadow: 0 8px 18px rgba(20, 184, 166, 0.25);
+    background: linear-gradient(180deg, #f9a8d4 0%, #ec4899 100%);
+    box-shadow: 0 8px 18px rgba(236, 72, 153, 0.25);
 }
 
 .mc-btn-speak {
-    background: linear-gradient(180deg, #e9d5ff 0%, #d8b4fe 100%);
-    color: #5b21b6;
-    box-shadow: 0 8px 18px rgba(168, 85, 247, 0.2);
+    background: linear-gradient(180deg, #14b8a6 0%, #0d9488 100%);
+    color: #ffffff;
+    box-shadow: 0 8px 18px rgba(20, 184, 166, 0.25);
 }
 
 .mc-btn-listen:hover,
@@ -552,17 +552,17 @@ ob_start();
 .mc-btn-check:focus,
 .mc-btn-show:hover,
 .mc-btn-show:focus {
-    box-shadow: 0 12px 28px rgba(168, 85, 247, 0.35);
+    box-shadow: 0 12px 28px rgba(236, 72, 153, 0.35);
 }
 
 .mc-btn-next:hover,
 .mc-btn-next:focus {
-    box-shadow: 0 12px 28px rgba(20, 184, 166, 0.35);
+    box-shadow: 0 12px 28px rgba(236, 72, 153, 0.35);
 }
 
 .mc-btn-speak:hover,
 .mc-btn-speak:focus {
-    box-shadow: 0 12px 28px rgba(168, 85, 247, 0.3);
+    box-shadow: 0 12px 28px rgba(20, 184, 166, 0.35);
 }
 
 .mc-status{
