@@ -53,11 +53,11 @@ function wp_normalize_payload($rawData): array
     $decoded = is_string($rawData) ? json_decode($rawData, true) : $rawData;
     if (!is_array($decoded)) { return $default; }
 
-    $allowed   = ['video_writing'];
+    $allowed   = ['writing', 'fill_sentence', 'fill_paragraph', 'listen_write', 'video_writing'];
     $questions = [];
     foreach ((array) ($decoded['questions'] ?? []) as $item) {
         if (!is_array($item)) { continue; }
-        $type   = in_array($item['type'] ?? '', $allowed, true) ? (string) $item['type'] : 'video_writing';
+        $type   = in_array($item['type'] ?? '', $allowed, true) ? (string) $item['type'] : 'writing';
         $rawAns = $item['correct_answers'] ?? [];
         $ans    = [];
         if (is_array($rawAns)) {
@@ -163,10 +163,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $countList   = isset($_POST['wp_response_count']) && is_array($_POST['wp_response_count']) ? $_POST['wp_response_count'] : [];
     $videoFiles  = isset($_FILES['wp_video_file']) ? $_FILES['wp_video_file'] : null;
 
-    $allowed = ['video_writing'];
+    $allowed = ['writing', 'fill_sentence', 'fill_paragraph', 'listen_write', 'video_writing'];
     $sanitized = [];
     foreach ($questions as $i => $qRaw) {
-        $type   = in_array($types[$i] ?? '', $allowed, true) ? $types[$i] : 'video_writing';
+        $type   = in_array($types[$i] ?? '', $allowed, true) ? $types[$i] : 'writing';
         $q      = trim((string) $qRaw);
         $instr  = trim((string) ($instructions[$i] ?? ''));
         $media  = trim((string) ($mediasPost[$i]   ?? ''));
@@ -399,7 +399,7 @@ ob_start();
 <form class="wp-form" id="wpForm" method="post" enctype="multipart/form-data">
     <section class="wp-intro">
         <h3>Writing Practice &mdash; Editor</h3>
-        <p>Agrega una pregunta por bloque en modo <strong>Video + escritura</strong>. Escribe el enunciado, una instrucción y respuestas correctas (una por línea) para habilitar calificación automática.</p>
+        <p>Agrega preguntas en <strong>Escritura oración</strong>, <strong>Escritura párrafo</strong>, <strong>Listen + escritura</strong> y <strong>Video + escritura</strong>. Define respuestas correctas (una por línea) para habilitar puntaje y pantalla final con porcentaje.</p>
     </section>
 
     <div class="wp-title-box">
@@ -455,7 +455,9 @@ ob_start();
     <div id="wpItems">
     <?php foreach ($questions as $i => $q): ?>
         <?php
-        $type    = 'video_writing';
+        $type    = in_array((string)($q['type'] ?? 'writing'), ['writing', 'fill_sentence', 'fill_paragraph', 'listen_write', 'video_writing'], true)
+            ? (string)($q['type'] ?? 'writing')
+            : 'writing';
         $qText   = $q['question']    ?? '';
         $instr   = $q['instruction'] ?? '';
         $media   = $q['media']       ?? '';
@@ -469,7 +471,11 @@ ob_start();
             <div class="wp-col-full">
                 <label>Tipo</label>
                 <select name="wp_type[]" class="wp-type-select" onchange="wpToggleMedia(this)">
-                    <option value="video_writing"  <?= $type==='video_writing'  ?'selected':'' ?>> Video + escritura</option>
+                    <option value="writing"        <?= $type==='writing'        ?'selected':'' ?>>Escritura oración</option>
+                    <option value="fill_sentence"  <?= $type==='fill_sentence'  ?'selected':'' ?>>Escritura oración (completar)</option>
+                    <option value="fill_paragraph" <?= $type==='fill_paragraph' ?'selected':'' ?>>Escritura párrafo</option>
+                    <option value="listen_write"   <?= $type==='listen_write'   ?'selected':'' ?>>Listen + escritura</option>
+                    <option value="video_writing"  <?= $type==='video_writing'  ?'selected':'' ?>>Video + escritura</option>
                 </select>
             </div>
 
@@ -486,7 +492,7 @@ ob_start();
                        placeholder="Ej: Escribe al menos 3 oraciones completas.">
             </div>
 
-            <div class="wp-writing-row">
+            <div class="wp-writing-row<?= in_array($type, ['writing', 'video_writing'], true) ? ' visible' : '' ?>">
                 <div class="wp-writing-inner">
                     <div>
                         <label>Cantidad de respuestas (filas enumeradas)</label>
@@ -504,18 +510,17 @@ ob_start();
                 </p>
             </div>
 
-            <!-- Video  only video_writing -->
-            <div class="wp-video-row<?= $type==='video_writing' ? ' visible' : '' ?>">
+            <div class="wp-video-row<?= in_array($type, ['video_writing', 'listen_write'], true) ? ' visible' : '' ?>">
                 <div class="wp-video-inner">
                     <div>
-                        <label> URL del video (YouTube / MP4)</label>
+                        <label><?= $type === 'listen_write' ? 'URL de audio (MP3) o texto para TTS' : 'URL del video (YouTube / MP4)' ?></label>
                         <input type="url" name="wp_media[]"
-                               value="<?= $type==='video_writing' ? htmlspecialchars($media, ENT_QUOTES, 'UTF-8') : '' ?>"
-                               <?= $type!=='video_writing' ? 'disabled' : '' ?>
-                               placeholder="https://youtube.com/watch?v=...">
+                               value="<?= in_array($type, ['video_writing', 'listen_write'], true) ? htmlspecialchars($media, ENT_QUOTES, 'UTF-8') : '' ?>"
+                               <?= !in_array($type, ['video_writing', 'listen_write'], true) ? 'disabled' : '' ?>
+                               placeholder="<?= $type === 'listen_write' ? 'https://.../audio.mp3' : 'https://youtube.com/watch?v=...' ?>">
                     </div>
                     <div>
-                        <label> o sube un video</label>
+                        <label>o sube un video</label>
                         <input type="file" name="wp_video_file[]" accept="video/*"
                                <?= $type!=='video_writing' ? 'disabled' : '' ?>>
                     </div>
