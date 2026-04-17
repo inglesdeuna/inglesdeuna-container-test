@@ -45,7 +45,7 @@ function wpv_normalize_payload($rawData): array
         return $default;
     }
 
-    $allowedTypes = ['writing', 'listen_write', 'fill_sentence', 'fill_paragraph', 'video_writing'];
+    $allowedTypes = ['video_writing'];
     $questions    = [];
 
     foreach ((array) ($decoded['questions'] ?? []) as $item) {
@@ -53,7 +53,7 @@ function wpv_normalize_payload($rawData): array
             continue;
         }
 
-        $type = in_array($item['type'] ?? '', $allowedTypes, true) ? (string) $item['type'] : 'writing';
+        $type = in_array($item['type'] ?? '', $allowedTypes, true) ? (string) $item['type'] : 'video_writing';
 
         $rawAnswers     = $item['correct_answers'] ?? [];
         $correctAnswers = [];

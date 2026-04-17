@@ -53,11 +53,11 @@ function wp_normalize_payload($rawData): array
     $decoded = is_string($rawData) ? json_decode($rawData, true) : $rawData;
     if (!is_array($decoded)) { return $default; }
 
-    $allowed   = ['writing', 'listen_write', 'fill_sentence', 'fill_paragraph', 'video_writing'];
+    $allowed   = ['video_writing'];
     $questions = [];
     foreach ((array) ($decoded['questions'] ?? []) as $item) {
         if (!is_array($item)) { continue; }
-        $type   = in_array($item['type'] ?? '', $allowed, true) ? (string) $item['type'] : 'writing';
+        $type   = in_array($item['type'] ?? '', $allowed, true) ? (string) $item['type'] : 'video_writing';
         $rawAns = $item['correct_answers'] ?? [];
         $ans    = [];
         if (is_array($rawAns)) {
@@ -164,10 +164,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $videoFiles  = isset($_FILES['wp_video_file']) ? $_FILES['wp_video_file'] : null;
     $audioFiles  = isset($_FILES['wp_audio_file'])  ? $_FILES['wp_audio_file']  : null;
 
-    $allowed = ['writing', 'listen_write', 'fill_sentence', 'fill_paragraph', 'video_writing'];
+    $allowed = ['video_writing'];
     $sanitized = [];
     foreach ($questions as $i => $qRaw) {
-        $type   = in_array($types[$i] ?? '', $allowed, true) ? $types[$i] : 'writing';
+        $type   = in_array($types[$i] ?? '', $allowed, true) ? $types[$i] : 'video_writing';
         $q      = trim((string) $qRaw);
         $instr  = trim((string) ($instructions[$i] ?? ''));
         $media  = trim((string) ($mediasPost[$i]   ?? ''));
@@ -181,14 +181,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $uploaded = upload_video_to_cloudinary($videoFiles['tmp_name'][$i]);
             if ($uploaded) { $media = $uploaded; }
         }
-        if ($type === 'listen_write' && $audioFiles
-            && !empty($audioFiles['name'][$i])
-            && !empty($audioFiles['tmp_name'][$i])
-            && ($audioFiles['error'][$i] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_OK) {
-            $uploaded = upload_audio_to_cloudinary($audioFiles['tmp_name'][$i]);
-            if ($uploaded) { $media = $uploaded; }
-        }
-
         if ($q === '' && $instr === '') { continue; }
         $ans = array_values(array_filter(array_map('trim', explode("\n", $rawAns))));
         $sanitized[] = [
@@ -408,7 +400,7 @@ ob_start();
 <form class="wp-form" id="wpForm" method="post" enctype="multipart/form-data">
     <section class="wp-intro">
         <h3>Writing Practice &mdash; Editor</h3>
-        <p>Agrega una pregunta por bloque. Elige el tipo, escribe el enunciado y agrega las respuestas correctas (una por línea). En <strong>Escritura libre</strong>, la revisión en el viewer se hace comparando con esas respuestas clave del editor.</p>
+        <p>Agrega una pregunta por bloque en modo <strong>Video + escritura</strong>. Escribe el enunciado, una instrucción y respuestas correctas (una por línea) para habilitar calificación automática.</p>
     </section>
 
     <div class="wp-title-box">
@@ -464,7 +456,7 @@ ob_start();
     <div id="wpItems">
     <?php foreach ($questions as $i => $q): ?>
         <?php
-        $type    = $q['type']        ?? 'writing';
+        $type    = 'video_writing';
         $qText   = $q['question']    ?? '';
         $instr   = $q['instruction'] ?? '';
         $media   = $q['media']       ?? '';
@@ -478,10 +470,6 @@ ob_start();
             <div class="wp-col-full">
                 <label>Tipo</label>
                 <select name="wp_type[]" class="wp-type-select" onchange="wpToggleMedia(this)">
-                    <option value="writing"        <?= $type==='writing'        ?'selected':'' ?>> Escritura libre (sin puntaje)</option>
-                    <option value="listen_write"   <?= $type==='listen_write'   ?'selected':'' ?>> Escuchar y escribir</option>
-                    <option value="fill_sentence"  <?= $type==='fill_sentence'  ?'selected':'' ?>> Completar oración</option>
-                    <option value="fill_paragraph" <?= $type==='fill_paragraph' ?'selected':'' ?>> Completar párrafo</option>
                     <option value="video_writing"  <?= $type==='video_writing'  ?'selected':'' ?>> Video + escritura</option>
                 </select>
             </div>
@@ -499,7 +487,7 @@ ob_start();
                        placeholder="Ej: Escribe al menos 3 oraciones completas.">
             </div>
 
-            <div class="wp-writing-row<?= $type==='writing' ? ' visible' : '' ?>">
+            <div class="wp-writing-row">
                 <div class="wp-writing-inner">
                     <div>
                         <label>Cantidad de respuestas (filas enumeradas)</label>
@@ -518,19 +506,18 @@ ob_start();
             </div>
 
             <!-- Audio row – shown for listen_write -->
-            <div class="wp-audio-row<?= $type==='listen_write' ? ' visible' : '' ?>">
+            <div class="wp-audio-row">
                 <div class="wp-video-inner">
                     <div>
                         <label>🎧 URL del audio (MP3/OGG)</label>
-                        <input type="url" name="wp_media[]"
-                               value="<?= $type==='listen_write' ? htmlspecialchars($media, ENT_QUOTES, 'UTF-8') : '' ?>"
-                               <?= $type!=='listen_write' ? 'disabled' : '' ?>
+                           <input type="url" name="wp_media[]"
+                               value=""
+                               disabled
                                placeholder="https://example.com/audio.mp3">
                     </div>
                     <div>
                         <label>— o sube MP3/OGG</label>
-                        <input type="file" name="wp_audio_file[]" accept="audio/*"
-                               <?= $type!=='listen_write' ? 'disabled' : '' ?>>
+                           <input type="file" name="wp_audio_file[]" accept="audio/*" disabled>
                     </div>
                 </div>
                 <p style="font-size:11px;color:#0369a1;background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;padding:8px;margin:8px 0 0;">
@@ -557,10 +544,6 @@ ob_start();
                 </div>
             </div>
 
-            <?php if ($type!=='video_writing' && $type!=='listen_write'): ?>
-                <input type="hidden" name="wp_media[]" value="">
-            <?php endif; ?>
-
             <div class="wp-col-full">
                 <label>Respuestas correctas <span style="font-weight:400;font-size:12px;">(una por línea; en escritura libre se usan para la revisión)</span></label>
                 <textarea name="wp_answers[]" rows="3"
@@ -583,7 +566,6 @@ var wpCount = <?= count($questions) ?>;
 
 function wpToggleMedia(select) {
     var block    = select.closest('.wp-block');
-    var type     = select.value;
     var audioRow = block.querySelector('.wp-audio-row');
     var videoRow = block.querySelector('.wp-video-row');
     var writingRow = block.querySelector('.wp-writing-row');
@@ -600,18 +582,10 @@ function wpToggleMedia(select) {
     if (writingRow) { writingRow.classList.remove('visible'); }
     if (hidden) { hidden.disabled = false; }
 
-    if (type === 'listen_write' && audioRow) {
-        audioRow.classList.add('visible');
-        audioRow.querySelectorAll('input').forEach(function(inp){ inp.disabled = false; });
-        if (hidden) { hidden.disabled = true; }
-    }
-    if (type === 'video_writing' && videoRow) {
+    if (videoRow) {
         videoRow.classList.add('visible');
         videoRow.querySelectorAll('input').forEach(function(inp){ inp.disabled = false; });
         if (hidden) { hidden.disabled = true; }
-    }
-    if (type === 'writing' && writingRow) {
-        writingRow.classList.add('visible');
     }
 }
 
@@ -624,17 +598,13 @@ function wpAdd() {
         '<span class="wp-block-num">Pregunta ' + wpCount + '</span>' +
         '<div class="wp-col-full"><label>Tipo</label>' +
         '<select name="wp_type[]" class="wp-type-select" onchange="wpToggleMedia(this)">' +
-        '<option value="writing">\u270D\uFE0F Escritura libre (sin puntaje)</option>' +
-        '<option value="listen_write">\uD83C\uDFA7 Escuchar y escribir</option>' +
-        '<option value="fill_sentence">\uD83D\uDCDD Completar oraci\u00F3n</option>' +
-        '<option value="fill_paragraph">\uD83D\uDCC4 Completar p\u00E1rrafo</option>' +
         '<option value="video_writing">\uD83C\uDFAC Video + escritura</option>' +
         '</select></div>' +
         '<div class="wp-col-full"><label>Pregunta / enunciado</label>' +
         '<textarea name="wp_question[]" rows="2" placeholder="Escribe la pregunta o el enunciado aqu\u00ED..."></textarea></div>' +
         '<div class="wp-col-full"><label>Instrucci\u00F3n adicional <span style="font-weight:400;font-size:12px;">(opcional)</span></label>' +
         '<input type="text" name="wp_instr[]" placeholder="Ej: Escribe al menos 3 oraciones completas."></div>' +
-        '<div class="wp-writing-row visible"><div class="wp-writing-inner">' +
+        '<div class="wp-writing-row"><div class="wp-writing-inner">' +
         '<div><label>Cantidad de respuestas (filas enumeradas)</label>' +
         '<input type="number" name="wp_response_count[]" min="1" max="20" value="1"></div>' +
         '<div><label>Alto de cada respuesta (filas)</label>' +
@@ -659,7 +629,6 @@ function wpAdd() {
         '<div><label>\u2014 o sube un video</label>' +
         '<input type="file" name="wp_video_file[]" accept="video/*" disabled></div>' +
         '</div></div>' +
-        '<input type="hidden" name="wp_media[]" value="">' +
         '<div class="wp-col-full"><label>Respuestas correctas <span style="font-weight:400;font-size:12px;">(una por l\u00EDnea; en escritura libre se usan para la revisi\u00F3n)</span></label>' +
         '<textarea name="wp_answers[]" rows="3" placeholder="Respuesta 1&#10;Variante aceptada&#10;Otra forma v\u00E1lida"></textarea></div>' +
         '<button type="button" class="btn-remove-wp" onclick="wpRemove(this)">\u2716 Eliminar</button>';
