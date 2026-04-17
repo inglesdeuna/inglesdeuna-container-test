@@ -987,6 +987,21 @@ document.addEventListener('DOMContentLoaded', function () {
         };
     }
 
+    function revealFillParagraphAnswers(inputs, answers, perInput) {
+        if (!Array.isArray(inputs) || inputs.length === 0) { return; }
+        var safeAnswers = Array.isArray(answers) ? answers : [];
+        var safePerInput = Array.isArray(perInput) ? perInput : [];
+        inputs.forEach(function (inp, ii) {
+            var ans = String(safeAnswers[ii] || '').trim();
+            var wasCorrect = !!safePerInput[ii];
+            if (ans !== '') {
+                inp.value = ans;
+            }
+            inp.className = 'wp-fill-input ' + (wasCorrect ? 'ok' : 'bad');
+            inp.disabled = true;
+        });
+    }
+
     function toEmbedUrl(url) {
         if (!url) { return ''; }
         if (/youtube\.com\/embed\/|player\.vimeo\.com\/video\//.test(url)) { return url; }
@@ -1808,10 +1823,14 @@ document.addEventListener('DOMContentLoaded', function () {
             } else if (fillAttempts >= 2) {
                 feedbackEl.textContent = '\u2718 Wrong (2/2)';
                 feedbackEl.className   = 'mc-feedback bad';
-                currentFillInputs.forEach(function (fi, ii) {
-                    fi.className = 'wp-fill-input ' + (matchState.perInput[ii] ? 'ok' : 'bad');
-                    fi.disabled  = true;
-                });
+                if (type === 'fill_paragraph') {
+                    revealFillParagraphAnswers(currentFillInputs, answers, matchState.perInput);
+                } else {
+                    currentFillInputs.forEach(function (fi, ii) {
+                        fi.className = 'wp-fill-input ' + (matchState.perInput[ii] ? 'ok' : 'bad');
+                        fi.disabled  = true;
+                    });
+                }
                 playSound(sndBad);
                 var shownFill = answers.join(', ');
                 revealEl.textContent = 'Correct: ' + shownFill;
@@ -2001,10 +2020,14 @@ document.addEventListener('DOMContentLoaded', function () {
                 checkedCards[index + '_inputs']   = savedVals2;
                 checkedCards[index + '_perInput'] = matchState2.perInput;
                 checkedCards[index + '_reveal']   = 'Correct: ' + shownFill;
-                currentFillInputs.forEach(function (fi, ii) {
-                    fi.className = 'wp-fill-input ' + (matchState2.perInput[ii] ? 'ok' : 'bad');
-                    fi.disabled = true;
-                });
+                if (type === 'fill_paragraph') {
+                    revealFillParagraphAnswers(currentFillInputs, answers, matchState2.perInput);
+                } else {
+                    currentFillInputs.forEach(function (fi, ii) {
+                        fi.className = 'wp-fill-input ' + (matchState2.perInput[ii] ? 'ok' : 'bad');
+                        fi.disabled = true;
+                    });
+                }
                 feedbackEl.textContent = '\u2718 Wrong';
                 feedbackEl.className   = 'mc-feedback bad';
                 playSound(sndBad);
