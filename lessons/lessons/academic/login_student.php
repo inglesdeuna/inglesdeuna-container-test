@@ -56,12 +56,25 @@ function load_student_accounts_from_database(): array
     }
 
     try {
+        $hasStudentId = table_has_column($pdo, 'student_accounts', 'student_id');
+        $hasStudentName = table_has_column($pdo, 'student_accounts', 'student_name');
+        $hasUsername = table_has_column($pdo, 'student_accounts', 'username');
         $hasMustChangePassword = table_has_column($pdo, 'student_accounts', 'must_change_password');
         $hasLegacyPassword = table_has_column($pdo, 'student_accounts', 'password');
+        $hasPasswordHash = table_has_column($pdo, 'student_accounts', 'password_hash');
+        $hasTempPassword = table_has_column($pdo, 'student_accounts', 'temp_password');
+        $hasUpdatedAt = table_has_column($pdo, 'student_accounts', 'updated_at');
+
+        $selectStudentId = $hasStudentId ? 'student_id' : "'' AS student_id";
+        $selectStudentName = $hasStudentName ? 'student_name' : "'' AS student_name";
+        $selectUsername = $hasUsername ? 'username' : "'' AS username";
         $selectMustChangePassword = $hasMustChangePassword ? 'must_change_password' : 'FALSE AS must_change_password';
         $selectLegacyPassword = $hasLegacyPassword ? 'password' : "'' AS password";
+        $selectPasswordHash = $hasPasswordHash ? 'password_hash' : "'' AS password_hash";
+        $selectTempPassword = $hasTempPassword ? 'temp_password' : "'' AS temp_password";
+        $selectUpdatedAt = $hasUpdatedAt ? 'updated_at' : 'NULL AS updated_at';
 
-        $select = "id, student_id, student_name, username, {$selectLegacyPassword}, password_hash, temp_password, {$selectMustChangePassword}, updated_at";
+        $select = "id, {$selectStudentId}, {$selectStudentName}, {$selectUsername}, {$selectLegacyPassword}, {$selectPasswordHash}, {$selectTempPassword}, {$selectMustChangePassword}, {$selectUpdatedAt}";
         if (table_has_column($pdo, 'student_accounts', 'permission')) {
             $select .= ', permission';
         }
@@ -69,7 +82,10 @@ function load_student_accounts_from_database(): array
             $select .= ', student_photo';
         }
 
-        $stmt = $pdo->query("SELECT {$select} FROM student_accounts ORDER BY updated_at DESC NULLS LAST, student_name ASC");
+        $orderBy = $hasUpdatedAt
+            ? 'ORDER BY updated_at DESC NULLS LAST, student_name ASC'
+            : 'ORDER BY student_name ASC, id ASC';
+        $stmt = $pdo->query("SELECT {$select} FROM student_accounts {$orderBy}");
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         return is_array($rows) ? $rows : [];
@@ -126,9 +142,11 @@ function find_student_account(array $accounts, string $identifier): ?array
     foreach ($accounts as $account) {
         $username = trim((string) ($account['username'] ?? ''));
         $studentId = trim((string) ($account['student_id'] ?? ''));
+        $legacyId = trim((string) ($account['id'] ?? ''));
 
         if (($username !== '' && strcasecmp($username, $identifier) === 0)
-            || ($studentId !== '' && strcasecmp($studentId, $identifier) === 0)) {
+            || ($studentId !== '' && strcasecmp($studentId, $identifier) === 0)
+            || ($legacyId !== '' && strcasecmp($legacyId, $identifier) === 0)) {
             return $account;
         }
     }
@@ -265,6 +283,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $username = trim((string) ($_POST['username'] ?? ''));
         $usernameValue = $username;
         $password = (string) ($_POST['password'] ?? '');
+
+        if ($username === '' || $password === '') {
+            $error = 'Ingresa tu usuario/ID y contraseña.';
+        } elseif (empty($accounts)) {
+            $error = 'No hay cuentas estudiantiles disponibles para validar el acceso. Contacta al docente.';
+        } else {
         $account = find_student_account($accounts, $username);
 
         if ($account && verify_student_password($account, $password)) {
@@ -292,6 +316,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         $error = 'Usuario/ID o contraseña inválidos.';
+        }
     }
 }
 ?>
@@ -535,7 +560,7 @@ input:focus{
     cursor:pointer;
 }
 
-.error{margin-top:12px;padding:10px 12px;border-radius:10px;border:1px solid #f7c7c2;background:#fef2f2;color:var(--danger);font-weight:700;font-size:14px;}
+.error{margin-top:12px;padding:12px 14px;border-radius:12px;border:1px solid #f7c7c2;background:#fef2f2;color:var(--danger);font-weight:800;font-size:14px;box-shadow:0 4px 12px rgba(180,35,24,.12)}
 .success{margin-top:10px;color:var(--ok);font-weight:700;font-size:14px;}
 
 @media (max-width: 900px){
