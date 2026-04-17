@@ -549,22 +549,63 @@ var wpCount = <?= count($questions) ?>;
 
 function wpToggleMedia(select) {
     var block    = select.closest('.wp-block');
+    var typeVal  = select.value || 'writing';
     var videoRow = block.querySelector('.wp-video-row');
     var writingRow = block.querySelector('.wp-writing-row');
-    var hidden   = block.querySelector('input[type="hidden"][name="wp_media[]"]');
+    var mediaUrlInput = block.querySelector('input[name="wp_media[]"]');
+    var mediaUrlLabel = mediaUrlInput ? mediaUrlInput.closest('div').querySelector('label') : null;
+    var fileInput = block.querySelector('input[name="wp_video_file[]"]');
+    var fileLabel = fileInput ? fileInput.closest('div').querySelector('label') : null;
 
     if (videoRow) {
         videoRow.classList.remove('visible');
         videoRow.querySelectorAll('input').forEach(function(inp){ inp.disabled = true; });
     }
     if (writingRow) { writingRow.classList.remove('visible'); }
-    if (hidden) { hidden.disabled = false; }
 
-    if (videoRow) {
-        videoRow.classList.add('visible');
-        videoRow.querySelectorAll('input').forEach(function(inp){ inp.disabled = false; });
-        if (hidden) { hidden.disabled = true; }
+    if (typeVal === 'video_writing' || typeVal === 'listen_write') {
+        if (videoRow) {
+            videoRow.classList.add('visible');
+        }
+        if (mediaUrlInput) {
+            mediaUrlInput.disabled = false;
+            mediaUrlInput.placeholder = typeVal === 'listen_write' ? 'https://.../audio.mp3' : 'https://youtube.com/watch?v=...';
+        }
+        if (mediaUrlLabel) {
+            mediaUrlLabel.textContent = typeVal === 'listen_write' ? 'URL de audio (MP3) o texto para TTS' : 'URL del video (YouTube / MP4)';
+        }
     }
+
+    if (typeVal === 'video_writing') {
+        if (fileInput) {
+            fileInput.disabled = false;
+        }
+        if (fileLabel) {
+            fileLabel.textContent = 'o sube un video';
+        }
+    } else if (fileInput) {
+        fileInput.disabled = true;
+        fileInput.value = '';
+        if (fileLabel) {
+            fileLabel.textContent = 'Subida de video disponible solo para Video + escritura';
+        }
+    }
+
+    if (typeVal === 'writing' || typeVal === 'video_writing') {
+        if (writingRow) {
+            writingRow.classList.add('visible');
+        }
+    }
+}
+
+function wpBuildTypeOptions(selected) {
+    var current = selected || 'writing';
+    return ''
+        + '<option value="writing"' + (current === 'writing' ? ' selected' : '') + '>Escritura oración</option>'
+        + '<option value="fill_sentence"' + (current === 'fill_sentence' ? ' selected' : '') + '>Escritura oración (completar)</option>'
+        + '<option value="fill_paragraph"' + (current === 'fill_paragraph' ? ' selected' : '') + '>Escritura párrafo</option>'
+        + '<option value="listen_write"' + (current === 'listen_write' ? ' selected' : '') + '>Listen + escritura</option>'
+        + '<option value="video_writing"' + (current === 'video_writing' ? ' selected' : '') + '>Video + escritura</option>';
 }
 
 function wpAdd() {
@@ -576,13 +617,13 @@ function wpAdd() {
         '<span class="wp-block-num">Pregunta ' + wpCount + '</span>' +
         '<div class="wp-col-full"><label>Tipo</label>' +
         '<select name="wp_type[]" class="wp-type-select" onchange="wpToggleMedia(this)">' +
-        '<option value="video_writing">\uD83C\uDFAC Video + escritura</option>' +
+        wpBuildTypeOptions('writing') +
         '</select></div>' +
         '<div class="wp-col-full"><label>Pregunta / enunciado</label>' +
         '<textarea name="wp_question[]" rows="2" placeholder="Escribe la pregunta o el enunciado aqu\u00ED..."></textarea></div>' +
         '<div class="wp-col-full"><label>Instrucci\u00F3n adicional <span style="font-weight:400;font-size:12px;">(opcional)</span></label>' +
         '<input type="text" name="wp_instr[]" placeholder="Ej: Escribe al menos 3 oraciones completas."></div>' +
-        '<div class="wp-writing-row"><div class="wp-writing-inner">' +
+        '<div class="wp-writing-row visible"><div class="wp-writing-inner">' +
         '<div><label>Cantidad de respuestas (filas enumeradas)</label>' +
         '<input type="number" name="wp_response_count[]" min="1" max="20" value="1"></div>' +
         '<div><label>Alto de cada respuesta (filas)</label>' +
@@ -592,9 +633,9 @@ function wpAdd() {
         'Configura cu\u00E1ntas respuestas debe escribir el estudiante y cu\u00E1ntas filas visibles tendr\u00E1 cada caja de texto.' +
         '</p></div>' +
         '<div class="wp-video-row"><div class="wp-video-inner">' +
-        '<div><label>\uD83C\uDFAC URL del video (YouTube / MP4)</label>' +
+        '<div><label>URL del video (YouTube / MP4)</label>' +
         '<input type="url" name="wp_media[]" disabled placeholder="https://youtube.com/watch?v=..."></div>' +
-        '<div><label>\u2014 o sube un video</label>' +
+        '<div><label>o sube un video</label>' +
         '<input type="file" name="wp_video_file[]" accept="video/*" disabled></div>' +
         '</div></div>' +
         '<div class="wp-col-full"><label>Respuestas correctas <span style="font-weight:400;font-size:12px;">(una por l\u00EDnea; se usan para Show Answer y calificaci\u00F3n autom\u00E1tica)</span></label>' +
@@ -602,6 +643,10 @@ function wpAdd() {
         '<button type="button" class="btn-remove-wp" onclick="wpRemove(this)">\u2716 Eliminar</button>';
     container.appendChild(div);
     div.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    var sel = div.querySelector('.wp-type-select');
+    if (sel) {
+        wpToggleMedia(sel);
+    }
 }
 
 function wpRemove(btn) {
