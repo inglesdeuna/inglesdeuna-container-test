@@ -1651,6 +1651,7 @@ document.addEventListener('DOMContentLoaded', function () {
     function loadCard() {
         var q    = questions[index];
         var type = String(q.type || 'writing');
+        var freeParagraphMode = isFreeParagraphMode(q);
 
         // Stop any active listen_write audio or TTS from previous card
         if (window.wpLwAudio) { window.wpLwAudio.pause(); window.wpLwAudio = null; }
@@ -1660,6 +1661,7 @@ document.addEventListener('DOMContentLoaded', function () {
         completedEl.classList.remove('active');
         cardEl.style.display    = '';
         controlsEl.style.display = '';
+        cardEl.classList.toggle('wp-free-mode', freeParagraphMode);
 
         /* status */
         statusEl.textContent = (index + 1) + ' / ' + questions.length;
@@ -1693,7 +1695,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         answerEl.value        = '';
         answerEl.style.display = '';
-        answerEl.className    = 'dict-answer-box';
+        answerEl.className    = freeParagraphMode ? 'dict-answer-box wp-free-answer-box' : 'dict-answer-box';
         answerEl.disabled     = false;
         answerEl.placeholder  = PLACEHOLDERS[type] || PLACEHOLDERS.writing;
         answerEl.spellcheck   = (type === 'writing');
@@ -1931,7 +1933,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         /* ── question text ── */
-        if (type === 'fill_sentence' || type === 'fill_paragraph') {
+        if (type === 'fill_sentence' || (type === 'fill_paragraph' && !freeParagraphMode)) {
             answerEl.style.display = 'none';
             var rawText = String(q.question || '');
             var fillBox = document.createElement('div');
@@ -2002,6 +2004,19 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             }
             qtextEl.appendChild(fillBox);
+        } else if (type === 'fill_paragraph' && freeParagraphMode) {
+            answerEl.style.display = '';
+            answerEl.className = 'dict-answer-box wp-free-answer-box';
+            answerEl.placeholder = 'Write your paragraph here...';
+            answerEl.spellcheck = true;
+            answerEl.autocapitalize = 'sentences';
+            answerEl.setAttribute('lang', 'en');
+            if (q.question) {
+                var freePanel = document.createElement('div');
+                freePanel.className = 'wp-free-question-box';
+                freePanel.textContent = String(q.question);
+                qtextEl.appendChild(freePanel);
+            }
         } else {
             /* listen_write: question text is read aloud by TTS – do NOT show it visually */
             if (type === 'video_writing') {
@@ -2048,7 +2063,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         }
 
-        renderAnswerGuide(type, q);
+        renderAnswerGuide(type, q, !freeParagraphMode);
 
         /* ── buttons state ── */
         btnPrev.disabled = (index === 0);
@@ -2059,7 +2074,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         /* restore state if user navigated back */
         if (checkedCards[index]) {
-            var isFillType     = (type === 'fill_sentence' || type === 'fill_paragraph' || type === 'listen_write');
+            var isFillType     = isInlineFillMode(q);
             var wasCardCorrect = checkedCards[index] === 'correct';
             if (isFillType && currentFillInputs.length > 0) {
                 var savedVals = checkedCards[index + '_inputs'] || [];
@@ -2133,7 +2148,7 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
-        var isFill = (type === 'fill_sentence' || type === 'fill_paragraph' || type === 'listen_write') && currentFillInputs.length > 0;
+        var isFill = isInlineFillMode(q) && currentFillInputs.length > 0;
 
         if (isFill) {
             var vals    = currentFillInputs.map(function (fi) { return fi.value.trim(); });
@@ -2232,7 +2247,7 @@ document.addEventListener('DOMContentLoaded', function () {
         var q    = questions[index];
         var type = String(q.type || 'writing');
         if (!isAutoGraded(q) || checkedCards[index]) { return; }
-        var isFill = (type === 'fill_sentence' || type === 'fill_paragraph' || type === 'listen_write') && currentFillInputs.length > 0;
+        var isFill = isInlineFillMode(q) && currentFillInputs.length > 0;
         if (isFill) {
             if (currentFillInputs.every(function (fi) { return fi.value.trim() !== ''; })) { checkAnswer(); }
         } else {
@@ -2248,7 +2263,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         if (isAutoGraded(q)) {
             /* must check first */
-            var isFillNext = (type === 'fill_sentence' || type === 'fill_paragraph' || type === 'listen_write') && currentFillInputs.length > 0;
+            var isFillNext = isInlineFillMode(q) && currentFillInputs.length > 0;
             if (!checkedCards[index]) {
                 if (isFillNext) {
                     if (currentFillInputs.some(function (fi) { return fi.value.trim() !== ''; })) { checkAnswer(); }
@@ -2391,7 +2406,7 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
-        var isFill = (type === 'fill_sentence' || type === 'fill_paragraph' || type === 'listen_write') && currentFillInputs.length > 0;
+        var isFill = isInlineFillMode(q) && currentFillInputs.length > 0;
         if (isFill) {
             var shownFill = answers.join(', ');
             if (!checkedCards[index]) {
