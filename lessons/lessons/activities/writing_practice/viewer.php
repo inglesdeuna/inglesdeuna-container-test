@@ -518,6 +518,64 @@ $cssVer = file_exists(__DIR__ . '/../multiple_choice/multiple_choice.css')
         font-size: 13px;
         padding: 7px 10px;
     }
+
+    #wpCard.wp-free-mode {
+        align-items: stretch;
+        gap: 10px;
+        width: 100%;
+        min-width: 0;
+    }
+
+    #wpCard.wp-free-mode #wpQ {
+        width: 100%;
+        min-width: 0;
+    }
+
+    #wpCard.wp-free-mode .wp-free-question-box {
+        padding: 12px 12px;
+        margin-bottom: 8px;
+        border-radius: 12px;
+        font-size: 15px;
+        line-height: 1.5;
+    }
+
+    #wpCard.wp-free-mode .wp-free-answer-box {
+        width: 100%;
+        min-width: 0;
+        margin-top: 0;
+        min-height: 128px;
+        font-size: 15px;
+        line-height: 1.5;
+        padding: 12px;
+    }
+
+    #wpCard.wp-free-mode .wp-answer-guide {
+        margin-top: 6px;
+        width: 100%;
+        box-sizing: border-box;
+    }
+}
+
+@media (max-width: 420px) {
+    #wpCard.wp-free-mode .wp-free-question-box {
+        padding: 10px 10px;
+        font-size: 14px;
+    }
+
+    #wpCard.wp-free-mode .wp-free-answer-box {
+        min-height: 120px;
+        font-size: 14px;
+        padding: 10px;
+    }
+
+    #wpCard.wp-free-mode .wp-answer-guide {
+        padding: 9px;
+        border-radius: 12px;
+    }
+
+    #wpCard.wp-free-mode .wp-answer-guide-subtitle {
+        font-size: 12px;
+    }
 }
 
 /* ── Video Layout mode ───────────────────────────────────── */
