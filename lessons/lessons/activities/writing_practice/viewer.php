@@ -74,6 +74,7 @@ function wpv_normalize_payload($rawData): array
             'placeholder'     => trim((string) ($item['placeholder'] ?? 'Write your answer here...')),
             'media'           => trim((string) ($item['media']       ?? '')),
             'correct_answers' => $correctAnswers,
+            'enable_answer_box' => !empty($item['enable_answer_box']),
             'writing_rows'    => max(2, min(14, (int) ($item['writing_rows'] ?? 6))),
             'response_count'  => max(1, min(20, (int) ($item['response_count'] ?? 1))),
             'points'          => 1,
@@ -1134,7 +1135,12 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function isAutoGraded(q) {
-        return String((q && q.type) || 'writing') !== 'writing';
+        var qt = String((q && q.type) || 'writing');
+        if (qt === 'writing') { return false; }
+        if (qt === 'fill_paragraph' && isFreeParagraphMode(q) && !isFreeParagraphAnswerBoxEnabled(q)) {
+            return false;
+        }
+        return true;
     }
 
     function getQuestionInputTotal(q) {
@@ -1142,6 +1148,9 @@ document.addEventListener('DOMContentLoaded', function () {
         var answers = getExpectedAnswerList(q);
         if (qt === 'writing') {
             return getWritingExpectedList(q).length;
+        }
+        if (qt === 'fill_paragraph' && isFreeParagraphMode(q) && !isFreeParagraphAnswerBoxEnabled(q)) {
+            return 1;
         }
         if ((qt === 'fill_paragraph' || qt === 'fill_sentence' || qt === 'listen_write') && answers.length > 0) {
             return answers.length;
@@ -1156,6 +1165,9 @@ document.addEventListener('DOMContentLoaded', function () {
             var savedCorrect = parseInt(checkedCards[qi + '_writing_correct'] || 0, 10);
             if (!isFinite(savedCorrect)) { savedCorrect = 0; }
             return Math.max(0, Math.min(totalW, savedCorrect));
+        }
+        if (qt === 'fill_paragraph' && isFreeParagraphMode(q) && !isFreeParagraphAnswerBoxEnabled(q)) {
+            return checkedCards[qi] === 'open' ? 1 : 0;
         }
         if (qt === 'fill_paragraph' || qt === 'fill_sentence' || qt === 'listen_write') {
             var perInput = checkedCards[qi + '_perInput'] || [];
@@ -1319,6 +1331,10 @@ document.addEventListener('DOMContentLoaded', function () {
         if (t !== 'fill_paragraph') { return false; }
         var questionText = String(q.question || '');
         return !/_{2,}/.test(questionText);
+    }
+
+    function isFreeParagraphAnswerBoxEnabled(q) {
+        return !!(q && q.enable_answer_box);
     }
 
     function isInlineFillMode(q) {
@@ -1710,6 +1726,7 @@ document.addEventListener('DOMContentLoaded', function () {
         var q    = questions[index];
         var type = String(q.type || 'writing');
         var freeParagraphMode = isFreeParagraphMode(q);
+        var freeAnswerBoxEnabled = isFreeParagraphAnswerBoxEnabled(q);
 
         // Stop any active listen_write audio or TTS from previous card
         if (window.wpLwAudio) { window.wpLwAudio.pause(); window.wpLwAudio = null; }
@@ -2063,12 +2080,16 @@ document.addEventListener('DOMContentLoaded', function () {
             }
             qtextEl.appendChild(fillBox);
         } else if (type === 'fill_paragraph' && freeParagraphMode) {
-            answerEl.style.display = '';
+            answerEl.style.display = freeAnswerBoxEnabled ? '' : 'none';
             answerEl.className = 'dict-answer-box wp-free-answer-box';
             answerEl.placeholder = 'Write your paragraph here...';
             answerEl.spellcheck = true;
             answerEl.autocapitalize = 'sentences';
             answerEl.setAttribute('lang', 'en');
+            if (!freeAnswerBoxEnabled) {
+                answerEl.value = '';
+                answerEl.disabled = true;
+            }
             if (q.question) {
                 var freePanel = document.createElement('div');
                 freePanel.className = 'wp-free-question-box';
@@ -2187,7 +2208,7 @@ document.addEventListener('DOMContentLoaded', function () {
             currentFillInputs[0].focus();
         } else if (currentWritingInputs.length > 0) {
             currentWritingInputs[0].focus();
-        } else {
+        } else if (answerEl.style.display !== 'none' && !answerEl.disabled) {
             answerEl.focus();
         }
     }

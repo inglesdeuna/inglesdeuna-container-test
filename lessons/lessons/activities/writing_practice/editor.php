@@ -72,6 +72,7 @@ function wp_normalize_payload($rawData): array
             'instruction'     => trim((string) ($item['instruction'] ?? '')),
             'media'           => trim((string) ($item['media']       ?? '')),
             'correct_answers' => $ans,
+            'enable_answer_box' => !empty($item['enable_answer_box']),
             'writing_rows'    => max(2, min(14, (int) ($item['writing_rows'] ?? 6))),
             'response_count'  => max(1, min(20, (int) ($item['response_count'] ?? 1))),
             'points'          => 1,
@@ -160,6 +161,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $mediasPost  = isset($_POST['wp_media'])    && is_array($_POST['wp_media'])    ? $_POST['wp_media']    : [];
     $mediaExisting = isset($_POST['wp_media_existing']) && is_array($_POST['wp_media_existing']) ? $_POST['wp_media_existing'] : [];
     $answersList = isset($_POST['wp_answers'])  && is_array($_POST['wp_answers'])  ? $_POST['wp_answers']  : [];
+    $answerBoxList = isset($_POST['wp_enable_answer_box']) && is_array($_POST['wp_enable_answer_box']) ? $_POST['wp_enable_answer_box'] : [];
     $rowsList    = isset($_POST['wp_writing_rows'])   && is_array($_POST['wp_writing_rows'])   ? $_POST['wp_writing_rows']   : [];
     $countList   = isset($_POST['wp_response_count']) && is_array($_POST['wp_response_count']) ? $_POST['wp_response_count'] : [];
     $videoFiles  = isset($_FILES['wp_video_file']) ? $_FILES['wp_video_file'] : null;
@@ -174,6 +176,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $media  = trim((string) ($mediasPost[$i]   ?? ''));
         $mediaOld = trim((string) ($mediaExisting[$i] ?? ''));
         $rawAns = trim((string) ($answersList[$i]  ?? ''));
+        $enableAnswerBox = ($type === 'fill_paragraph')
+            && !empty($answerBoxList[$i])
+            && (string) $answerBoxList[$i] === '1';
         $rows   = max(2, min(14, (int) ($rowsList[$i]  ?? 6)));
         $count  = max(1, min(20, (int) ($countList[$i] ?? 1)));
 
@@ -207,6 +212,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'instruction'     => $instr,
             'media'           => $media,
             'correct_answers' => $ans,
+            'enable_answer_box' => $enableAnswerBox,
             'writing_rows'    => $rows,
             'response_count'  => $count,
             'points'          => 1,
@@ -325,9 +331,11 @@ ob_start();
 .wp-audio-row { grid-column: span 2; display: none; }
 .wp-video-row { grid-column: span 2; display: none; }
 .wp-writing-row { grid-column: span 2; display: none; }
+.wp-free-row { grid-column: span 2; display: none; }
 .wp-audio-row.visible,
 .wp-video-row.visible,
-.wp-writing-row.visible { display: block; }
+.wp-writing-row.visible,
+.wp-free-row.visible { display: block; }
 .wp-video-inner { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .wp-writing-inner { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .wp-block-num {
@@ -480,6 +488,7 @@ ob_start();
         $instr   = $q['instruction'] ?? '';
         $media   = $q['media']       ?? '';
         $answers = implode("\n", $q['correct_answers'] ?? []);
+        $enableAnswerBox = !empty($q['enable_answer_box']);
         $wRows   = max(2, min(14, (int) ($q['writing_rows'] ?? 6)));
         $rCount  = max(1, min(20, (int) ($q['response_count'] ?? 1)));
         ?>
@@ -528,6 +537,17 @@ ob_start();
                 </p>
             </div>
 
+            <div class="wp-free-row<?= $type === 'fill_paragraph' ? ' visible' : '' ?>">
+                <label class="wp-scoring-toggle" style="margin-bottom:6px;">
+                    <input type="hidden" name="wp_enable_answer_box[]" class="wp-free-answer-state" value="<?= $enableAnswerBox ? '1' : '0' ?>">
+                    <input type="checkbox" class="wp-free-answer-toggle" value="1" <?= $enableAnswerBox ? 'checked' : '' ?>>
+                    Activar answer box (textarea) para Escritura libre
+                </label>
+                <p style="font-size:11px;color:#57534e;background:#f8fafc;border:1px solid #cbd5e1;border-radius:8px;padding:8px;margin:0;">
+                    Si est&aacute; desactivado, el estudiante ver&aacute; solo el enunciado y la gu&iacute;a de respuestas. Si est&aacute; activado, ver&aacute; la caja para escribir su p&aacute;rrafo.
+                </p>
+            </div>
+
             <div class="wp-video-row<?= in_array($type, ['video_writing', 'listen_write'], true) ? ' visible' : '' ?>">
                 <div class="wp-video-inner">
                     <input type="hidden" name="wp_media_existing[]" value="<?= htmlspecialchars($media, ENT_QUOTES, 'UTF-8') ?>">
@@ -573,6 +593,9 @@ function wpToggleMedia(select) {
     var typeVal  = select.value || 'writing';
     var videoRow = block.querySelector('.wp-video-row');
     var writingRow = block.querySelector('.wp-writing-row');
+    var freeRow = block.querySelector('.wp-free-row');
+    var freeToggle = freeRow ? freeRow.querySelector('.wp-free-answer-toggle') : null;
+    var freeState = freeRow ? freeRow.querySelector('.wp-free-answer-state') : null;
     var mediaUrlInput = block.querySelector('input[name="wp_media[]"]');
     var mediaUrlLabel = mediaUrlInput ? mediaUrlInput.closest('div').querySelector('label') : null;
     var fileInput = block.querySelector('input[name="wp_video_file[]"]');
@@ -584,6 +607,7 @@ function wpToggleMedia(select) {
         videoRow.querySelectorAll('input').forEach(function(inp){ inp.disabled = true; });
     }
     if (writingRow) { writingRow.classList.remove('visible'); }
+    if (freeRow) { freeRow.classList.remove('visible'); }
 
     if (typeVal === 'video_writing' || typeVal === 'listen_write') {
         if (videoRow) {
@@ -646,6 +670,21 @@ function wpToggleMedia(select) {
             writingRow.classList.add('visible');
         }
     }
+
+    if (typeVal === 'fill_paragraph' && freeRow) {
+        freeRow.classList.add('visible');
+        if (freeToggle) {
+            freeToggle.disabled = false;
+        }
+    } else {
+        if (freeToggle) {
+            freeToggle.checked = false;
+            freeToggle.disabled = true;
+        }
+        if (freeState) {
+            freeState.value = '0';
+        }
+    }
 }
 
 function wpBuildTypeOptions(selected) {
@@ -682,6 +721,12 @@ function wpAdd() {
         '<p style="font-size:11px;color:#57534e;background:#fefce8;border:1px solid #fde68a;border-radius:8px;padding:8px;margin:8px 0 0;">' +
         'Configura cu\u00E1ntas respuestas debe escribir el estudiante y cu\u00E1ntas filas visibles tendr\u00E1 cada caja de texto.' +
         '</p></div>' +
+        '<div class="wp-free-row"><label class="wp-scoring-toggle" style="margin-bottom:6px;">' +
+        '<input type="hidden" name="wp_enable_answer_box[]" class="wp-free-answer-state" value="0">' +
+        '<input type="checkbox" class="wp-free-answer-toggle" value="1" disabled> Activar answer box (textarea) para Escritura libre</label>' +
+        '<p style="font-size:11px;color:#57534e;background:#f8fafc;border:1px solid #cbd5e1;border-radius:8px;padding:8px;margin:0;">' +
+        'Si est\u00E1 desactivado, el estudiante ver\u00E1 solo el enunciado y la gu\u00EDa de respuestas. Si est\u00E1 activado, ver\u00E1 la caja para escribir su p\u00E1rrafo.' +
+        '</p></div>' +
         '<div class="wp-video-row"><div class="wp-video-inner">' +
         '<input type="hidden" name="wp_media_existing[]" value="">' +
         '<div><label>URL del video (YouTube / MP4)</label>' +
@@ -713,6 +758,18 @@ function wpRemove(btn) {
 
 document.querySelectorAll('.wp-type-select').forEach(function(sel) {
     wpToggleMedia(sel);
+});
+
+document.addEventListener('change', function (e) {
+    if (!e.target || !e.target.classList || !e.target.classList.contains('wp-free-answer-toggle')) {
+        return;
+    }
+    var row = e.target.closest('.wp-free-row');
+    if (!row) { return; }
+    var state = row.querySelector('.wp-free-answer-state');
+    if (state) {
+        state.value = e.target.checked ? '1' : '0';
+    }
 });
 </script>
 <?php
