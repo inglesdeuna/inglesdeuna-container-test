@@ -1255,11 +1255,28 @@ document.addEventListener('DOMContentLoaded', function () {
         return null;
     }
 
-    function renderAnswerGuide(type, q) {
+    function isFreeParagraphMode(q) {
+        if (!q) { return false; }
+        var t = String(q.type || '');
+        if (t !== 'fill_paragraph') { return false; }
+        var questionText = String(q.question || '');
+        return !/_{2,}/.test(questionText);
+    }
+
+    function isInlineFillMode(q) {
+        if (!q) { return false; }
+        var t = String(q.type || 'writing');
+        if (t === 'fill_sentence' || t === 'listen_write') { return true; }
+        if (t === 'fill_paragraph') { return !isFreeParagraphMode(q); }
+        return false;
+    }
+
+    function renderAnswerGuide(type, q, interactive) {
         if (!answerGuideEl) { return; }
         if (!(type === 'fill_sentence' || type === 'fill_paragraph')) {
             answerGuideEl.style.display = 'none';
             answerGuideEl.innerHTML = '';
+            answerGuideEl.classList.remove('is-visual');
             return;
         }
 
@@ -1267,20 +1284,32 @@ document.addEventListener('DOMContentLoaded', function () {
         if (answers.length === 0) {
             answerGuideEl.style.display = 'none';
             answerGuideEl.innerHTML = '';
+            answerGuideEl.classList.remove('is-visual');
             return;
         }
 
+        var allowInsert = interactive !== false;
         var shuffled = shuffleAnswers(answers);
         var title = type === 'fill_paragraph' ? 'Answer Guide - Paragraph' : 'Answer Guide - Sentence';
         var chipsHtml = shuffled.map(function (ans) {
-            return '<button type="button" class="wp-answer-chip" data-answer="' + esc(ans) + '">' + esc(ans) + '</button>';
+            if (allowInsert) {
+                return '<button type="button" class="wp-answer-chip" data-answer="' + esc(ans) + '">' + esc(ans) + '</button>';
+            }
+            return '<span class="wp-answer-chip">' + esc(ans) + '</span>';
         }).join('');
 
         answerGuideEl.innerHTML = ''
             + '<div class="wp-answer-guide-title">' + title + '</div>'
-            + '<div class="wp-answer-guide-subtitle">Click a word to place it in a blank. Answers are shuffled as a hint.</div>'
+            + '<div class="wp-answer-guide-subtitle">' + (allowInsert
+                ? 'Click a word to place it in a blank. Answers are shuffled as a hint.'
+                : 'Reference guide only. Use it to compare your answer.') + '</div>'
             + '<div class="wp-answer-guide-chips">' + chipsHtml + '</div>';
         answerGuideEl.style.display = '';
+        answerGuideEl.classList.toggle('is-visual', !allowInsert);
+
+        if (!allowInsert) {
+            return;
+        }
 
         Array.prototype.forEach.call(answerGuideEl.querySelectorAll('.wp-answer-chip'), function (chip) {
             chip.addEventListener('click', function () {
