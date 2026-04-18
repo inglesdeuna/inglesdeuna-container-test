@@ -2152,7 +2152,7 @@ document.addEventListener('DOMContentLoaded', function () {
         /* ── buttons state ── */
         btnPrev.disabled = (index === 0);
         btnNext.textContent = (index < questions.length - 1) ? 'Next' : 'Finish';
-        btnShow.style.display = (isAutoGraded(q) || type === 'writing') ? '' : 'none';
+        btnShow.style.display = (isAutoGraded(q) || type === 'writing' || (type === 'fill_paragraph' && freeParagraphMode)) ? '' : 'none';
         btnShow.textContent = (type === 'writing') ? 'Review Answer' : 'Show Answer';
         btnShow.disabled = !checkedCards[index] && (type === 'writing' ? !hasWritingValue() : isAutoGraded(q));
 
@@ -2479,6 +2479,17 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             revealEl.textContent = 'Correct: ' + writingAnswers.slice(0, 2).join(' / ');
+            revealEl.classList.add('show');
+            return;
+        }
+        if (type === 'fill_paragraph' && isFreeParagraphMode(q)) {
+            var fpAnswers = getExpectedAnswerList(q);
+            if (fpAnswers.length === 0) {
+                feedbackEl.textContent = 'This activity has no correct answers configured yet.';
+                feedbackEl.className = 'mc-feedback bad';
+                return;
+            }
+            revealEl.textContent = 'Correct: ' + fpAnswers.slice(0, 2).join(' / ');
             revealEl.classList.add('show');
             return;
         }
