@@ -1727,6 +1727,7 @@ document.addEventListener('DOMContentLoaded', function () {
         var type = String(q.type || 'writing');
         var freeParagraphMode = isFreeParagraphMode(q);
         var freeAnswerBoxEnabled = isFreeParagraphAnswerBoxEnabled(q);
+        var showAnswerGuide = !(type === 'fill_paragraph' && freeParagraphMode && !freeAnswerBoxEnabled);
 
         // Stop any active listen_write audio or TTS from previous card
         if (window.wpLwAudio) { window.wpLwAudio.pause(); window.wpLwAudio = null; }
@@ -2080,16 +2081,14 @@ document.addEventListener('DOMContentLoaded', function () {
             }
             qtextEl.appendChild(fillBox);
         } else if (type === 'fill_paragraph' && freeParagraphMode) {
-            answerEl.style.display = freeAnswerBoxEnabled ? '' : 'none';
+            answerEl.style.display = '';
             answerEl.className = 'dict-answer-box wp-free-answer-box';
             answerEl.placeholder = 'Write your paragraph here...';
             answerEl.spellcheck = true;
             answerEl.autocapitalize = 'sentences';
             answerEl.setAttribute('lang', 'en');
-            if (!freeAnswerBoxEnabled) {
-                answerEl.value = '';
-                answerEl.disabled = true;
-            }
+            answerEl.value = '';
+            answerEl.disabled = false;
             if (q.question) {
                 var freePanel = document.createElement('div');
                 freePanel.className = 'wp-free-question-box';
@@ -2142,7 +2141,13 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         }
 
-        renderAnswerGuide(type, q, !freeParagraphMode);
+        if (showAnswerGuide) {
+            renderAnswerGuide(type, q, !freeParagraphMode);
+        } else if (answerGuideEl) {
+            answerGuideEl.style.display = 'none';
+            answerGuideEl.innerHTML = '';
+            answerGuideEl.classList.remove('is-visual');
+        }
 
         /* ── buttons state ── */
         btnPrev.disabled = (index === 0);
