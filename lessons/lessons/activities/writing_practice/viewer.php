@@ -321,7 +321,7 @@ $cssVer = file_exists(__DIR__ . '/../multiple_choice/multiple_choice.css')
     width: 100%; max-width: 100%; box-sizing: border-box; min-height: 120px;
 }
 #wpViewer { width: 100%; max-width: 100%; }
-#wpCard { display: flex; flex-direction: column; align-items: center; justify-content: flex-start; }
+#wpCard { display: flex; flex-direction: column; align-items: center; justify-content: flex-start; overflow-x: hidden; }
 .completed-screen { display: none; text-align: center; max-width: 600px; margin: 0 auto; padding: 40px 20px; }
 .completed-screen.active { display: block; }
 .completed-icon  { font-size: 80px; margin-bottom: 20px; }
@@ -467,6 +467,45 @@ $cssVer = file_exists(__DIR__ . '/../multiple_choice/multiple_choice.css')
 
 .wp-answer-chip:active {
     transform: translateY(0);
+}
+
+.wp-free-question-box {
+    width: 100%;
+    max-width: 920px;
+    box-sizing: border-box;
+    background: #f0f6ff;
+    border: 1px solid #bfdbfe;
+    border-radius: 14px;
+    padding: 14px 16px;
+    margin: 0 0 10px;
+    font-size: clamp(15px, 1.8vw, 19px);
+    line-height: 1.6;
+    color: #1e3a5f;
+    font-weight: 700;
+    text-align: left;
+    white-space: pre-wrap;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+}
+
+.wp-free-answer-box {
+    width: 100%;
+    max-width: 920px;
+    box-sizing: border-box;
+    min-height: 140px;
+    margin-top: 2px;
+}
+
+.wp-answer-guide.is-visual .wp-answer-chip {
+    cursor: default;
+    pointer-events: none;
+    box-shadow: none;
+}
+
+.wp-answer-guide.is-visual .wp-answer-chip:hover,
+.wp-answer-guide.is-visual .wp-answer-chip:active {
+    transform: none;
+    filter: none;
 }
 
 @media (max-width: 640px) {
