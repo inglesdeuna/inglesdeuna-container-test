@@ -324,9 +324,9 @@ ob_start();
     </section>
 
     <script>
-    const MATCHING_LINES_DATA = <?= json_encode($boards, JSON_UNESCAPED_UNICODE) ?>;
-    const MATCHING_LINES_RETURN_TO = <?= json_encode($returnTo, JSON_UNESCAPED_UNICODE) ?>;
-    const MATCHING_LINES_ACTIVITY_ID = <?= json_encode((string) ($activity['id'] ?? ''), JSON_UNESCAPED_UNICODE) ?>;
+    window.MATCHING_LINES_DATA = <?= json_encode($boards, JSON_UNESCAPED_UNICODE) ?>;
+    window.MATCHING_LINES_RETURN_TO = <?= json_encode($returnTo, JSON_UNESCAPED_UNICODE) ?>;
+    window.MATCHING_LINES_ACTIVITY_ID = <?= json_encode((string) ($activity['id'] ?? ''), JSON_UNESCAPED_UNICODE) ?>;
     </script>
     <script src="matching_lines.js?v=<?= htmlspecialchars($jsVersion, ENT_QUOTES, 'UTF-8') ?>"></script>
 <?php } ?>
