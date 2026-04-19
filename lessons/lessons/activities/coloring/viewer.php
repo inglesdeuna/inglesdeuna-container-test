@@ -27,52 +27,130 @@ ob_start();
 * { box-sizing: border-box; }
 .viewer-header { display: none !important; }
 /* ── app wrapper ─────────────────────────────────────── */
-.coloring-app { max-width: 980px; margin: 0 auto; padding: 16px; font-family: 'Nunito','Segoe UI',sans-serif; color: #4b3b47; background: #ffffff; }
-.coloring-title-bar { text-align: center; font-family: 'Fredoka','Trebuchet MS',sans-serif; font-size: 28px; font-weight: 700; color: #7c3aed; margin-bottom: 14px; }
+.coloring-app {
+    max-width: 1060px;
+    margin: 0 auto;
+    padding: clamp(8px, 1.4vw, 16px);
+    font-family: 'Nunito','Segoe UI',sans-serif;
+    color: #334155;
+}
+.coloring-intro {
+    background: linear-gradient(135deg, #fff8df 0%, #eef8ff 52%, #f8fbff 100%);
+    border: 1px solid #dbe7f5;
+    border-radius: 26px;
+    padding: 24px 26px;
+    box-shadow: 0 16px 34px rgba(15, 23, 42, .09);
+    margin-bottom: 14px;
+}
+.coloring-intro h2 {
+    margin: 0 0 8px;
+    font-family: 'Fredoka', 'Trebuchet MS', sans-serif;
+    font-size: clamp(24px, 3.2vw, 32px);
+    font-weight: 700;
+    color: #0f172a;
+    letter-spacing: .3px;
+}
+.coloring-intro p {
+    margin: 0;
+    font-size: 16px;
+    color: #334155;
+    line-height: 1.6;
+}
 /* ── controls ───────────────────────────────────────── */
-.coloring-controls { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; align-items: center; padding: 14px 0 4px; margin-top: 12px; }
-.coloring-reset-btn,.coloring-next-btn { border: none; border-radius: 999px; padding: 11px 22px; font-size: 14px; font-weight: 800; cursor: pointer; font-family: inherit; color: #fff; min-width: 130px; box-shadow: 0 10px 22px rgba(15,23,42,.14); transition: transform .15s, filter .15s; }
-.coloring-reset-btn:hover,.coloring-next-btn:hover { filter: brightness(1.04); transform: translateY(-1px); }
-.coloring-reset-btn { background: linear-gradient(180deg, #f59eb2 0%, #ec4899 100%); }
-.coloring-next-btn  { background: linear-gradient(180deg, #5eead4 0%, #14b8a6 100%); }
-a.coloring-next-btn { display: inline-flex; text-decoration: none; justify-content: center; align-items: center; }
-.coloring-progress  { font-size: 15px; font-weight: 800; color: #7c3aed; }
+.coloring-controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: center;
+    align-items: center;
+    padding: 14px 0 4px;
+    margin-top: 12px;
+}
+.coloring-action-btn {
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    min-width: 146px;
+    border: none;
+    border-radius: 999px;
+    padding: 12px 24px;
+    font-size: 15px;
+    font-weight: 800;
+    font-family: inherit;
+    cursor: pointer;
+    color: #fff;
+    text-decoration: none;
+    box-shadow: 0 10px 24px rgba(0,0,0,.14);
+    transition: transform .18s ease, filter .18s ease;
+}
+.coloring-action-btn:hover {
+    transform: scale(1.05);
+    filter: brightness(1.07);
+}
+.coloring-action-btn-secondary { background: linear-gradient(180deg, #60a5fa 0%, #2563eb 100%); }
+.coloring-action-btn-primary { background: linear-gradient(180deg, #db2777 0%, #be185d 100%); }
+.coloring-progress  { font-size: 15px; font-weight: 800; color: #0f172a; }
 /* ── palette ─────────────────────────────────────────── */
-.coloring-palette-wrap { background: #fff; border-radius: 22px; padding: 14px; box-shadow: 0 6px 20px rgba(0,0,0,.08); margin-bottom: 16px; }
-.coloring-palette-heading { text-align: center; font-size: 16px; font-weight: 800; color: #4b3b47; margin-bottom: 10px; }
+.coloring-palette-wrap {
+    background: #ffffff;
+    border: 1px solid #dbe7f5;
+    border-radius: 24px;
+    padding: 16px;
+    box-shadow: 0 14px 28px rgba(15, 23, 42, .07);
+    margin-bottom: 14px;
+}
+.coloring-palette-heading { text-align: center; font-size: 16px; font-weight: 800; color: #0f172a; margin-bottom: 10px; }
 .coloring-palette { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
 .coloring-color-btn {
     width: 50px; height: 50px; border-radius: 50%; border: 4px solid transparent;
     cursor: pointer; transition: transform .15s; -webkit-tap-highlight-color: transparent;
 }
 .coloring-color-btn:hover { transform: scale(1.07); }
-.coloring-color-btn.active { border-color: #444; transform: scale(1.12); }
+.coloring-color-btn.active { border-color: #0f172a; transform: scale(1.12); }
 /* ── stage ───────────────────────────────────────────── */
-.coloring-stage { background: #fff; border-radius: 28px; box-shadow: 0 10px 28px rgba(0,0,0,.08); padding: 16px; }
+.coloring-stage {
+    background: linear-gradient(180deg, #fffdf7 0%, #ffffff 100%);
+    border: 1px solid #dbe7f5;
+    border-radius: 24px;
+    box-shadow: 0 14px 28px rgba(15, 23, 42, .07);
+    padding: 16px;
+}
 .coloring-canvas-wrap { display: flex; justify-content: center; align-items: center; overflow: visible; border-radius: 16px; background: #fff; touch-action: manipulation; }
-#coloringCanvas { max-width: 100%; max-height: calc(100vh - 360px); width: auto; height: auto; display: block; touch-action: manipulation; border-radius: 14px; cursor: default; }
-.coloring-helper { text-align: center; margin-top: 10px; font-size: 14px; color: #7a6874; font-weight: 700; }
+#coloringCanvas {
+    max-width: 100%;
+    max-height: calc(100vh - 360px);
+    width: auto;
+    height: auto;
+    display: block;
+    touch-action: manipulation;
+    border-radius: 14px;
+    cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='36' height='36' viewBox='0 0 36 36'%3E%3Cg transform='rotate(-35 18 18)'%3E%3Crect x='14' y='3' width='8' height='16' rx='2' fill='%23f59e0b'/%3E%3Crect x='13' y='18' width='10' height='10' rx='2' fill='%23fef3c7' stroke='%2392400e' stroke-width='1.3'/%3E%3Cpath d='M13 28h10l-5 6z' fill='%23b45309'/%3E%3C/g%3E%3C/svg%3E") 8 30, pointer;
+}
+.coloring-helper { text-align: center; margin-top: 10px; font-size: 14px; color: #475569; font-weight: 700; }
 /* ── completed ───────────────────────────────────────── */
 .coloring-completed { display: none; text-align: center; padding: 50px 20px 30px; flex-direction: column; align-items: center; }
 .coloring-completed.active { display: flex; }
 .coloring-completed-emoji { font-size: 88px; line-height: 1; margin-bottom: 14px; }
-.coloring-completed-title { font-family: 'Fredoka','Trebuchet MS',sans-serif; font-size: clamp(32px,4vw,48px); font-weight: 700; color: #ea580c; margin: 0 0 8px; }
+.coloring-completed-title { font-family: 'Fredoka','Trebuchet MS',sans-serif; font-size: clamp(32px,4vw,48px); font-weight: 700; color: #be185d; margin: 0 0 8px; }
 .coloring-completed-sub { font-size: 17px; font-weight: 700; color: #374151; margin: 0 0 26px; }
 .coloring-completed-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; }
-.coloring-btn-restart { padding: 13px 36px; font-size: 17px; font-weight: 800; font-family: 'Fredoka','Nunito',sans-serif; border: none; border-radius: 999px; cursor: pointer; color: #fff; background: linear-gradient(180deg, #8b5cf6 0%, #7c3aed 100%); box-shadow: 0 10px 24px rgba(0,0,0,.14); }
-.coloring-no-images { text-align: center; padding: 40px 20px; font-size: 16px; font-weight: 700; color: #7c3aed; }
+.coloring-no-images { text-align: center; padding: 40px 20px; font-size: 16px; font-weight: 700; color: #0f172a; }
 @media (max-width: 640px) {
-    .coloring-title-bar { font-size: 22px; }
-    .coloring-reset-btn,.coloring-next-btn { width: 100%; }
+    .coloring-action-btn { width: 100%; }
     .coloring-color-btn { width: 44px; height: 44px; }
 }
 </style>
 
 <div class="coloring-app">
 
+    <section class="coloring-intro">
+        <h2><?= htmlspecialchars($activityTitle, ENT_QUOTES, 'UTF-8') ?></h2>
+        <p>Pick a crayon color and click inside each shape to paint. Keep going page by page and finish your colorful masterpiece.</p>
+    </section>
+
     <!-- color palette -->
     <div class="coloring-palette-wrap" id="coloringPaletteWrap">
-        <div class="coloring-palette-heading">Choose a color</div>
+        <div class="coloring-palette-heading">Choose a crayon color</div>
         <div class="coloring-palette" id="coloringPalette"></div>
     </div>
 
@@ -87,8 +165,8 @@ a.coloring-next-btn { display: inline-flex; text-decoration: none; justify-conte
             <span class="coloring-progress" id="progressText">
                 <?= count($imageUrls) > 0 ? 'Page 1 of ' . count($imageUrls) : 'No images' ?>
             </span>
-            <button id="resetBtn"  class="coloring-reset-btn" type="button">&#x21BA; Reset Page</button>
-            <button id="nextBtn"   class="coloring-next-btn"  type="button">Next &#x2192;</button>
+            <button id="resetBtn"  class="coloring-action-btn coloring-action-btn-secondary" type="button">&#x21BA; Reset Page</button>
+            <button id="nextBtn"   class="coloring-action-btn coloring-action-btn-primary" type="button">Next &#x2192;</button>
         </div>
     </div>
 
@@ -98,9 +176,9 @@ a.coloring-next-btn { display: inline-flex; text-decoration: none; justify-conte
         <h2 class="coloring-completed-title">Completed!</h2>
         <p class="coloring-completed-sub">Amazing job! You colored all the pages.</p>
         <div class="coloring-completed-actions">
-            <button type="button" class="coloring-btn-restart" id="restartBtn">Start Again</button>
+            <button type="button" class="coloring-action-btn coloring-action-btn-secondary" id="restartBtn">Start Again</button>
             <?php if ($nextUrl !== ''): ?>
-                <a href="<?= htmlspecialchars($nextUrl, ENT_QUOTES, 'UTF-8') ?>" class="coloring-next-btn">Next activity &#x2192;</a>
+                <a href="<?= htmlspecialchars($nextUrl, ENT_QUOTES, 'UTF-8') ?>" class="coloring-action-btn coloring-action-btn-primary">Next activity &#x2192;</a>
             <?php endif; ?>
         </div>
     </div>
@@ -117,9 +195,10 @@ a.coloring-next-btn { display: inline-flex; text-decoration: none; justify-conte
 
     /* ── palette colors ──────────────────────────────── */
     var colors = [
-        '#ff4fa3', '#ff7f50', '#ffd54f', '#7ed957',
-        '#4fc3f7', '#7e57c2', '#ff8a80', '#8d6e63',
-        '#22c55e', '#3b82f6', '#000000', '#ffffff'
+        '#ef4444', '#f97316', '#facc15', '#22c55e', '#14b8a6',
+        '#3b82f6', '#8b5cf6', '#ec4899', '#f43f5e', '#a855f7',
+        '#84cc16', '#06b6d4', '#fb7185', '#9ca3af', '#6b7280',
+        '#111827', '#ffffff'
     ];
     var selectedColor = colors[0];
 
