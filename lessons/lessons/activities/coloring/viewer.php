@@ -381,14 +381,32 @@ ob_start();
 
     /* ── canvas pointer ──────────────────────────────── */
     function getCanvasPoint(event) {
-        var rect    = canvas.getBoundingClientRect();
-        var clientX = event.clientX !== undefined ? event.clientX
-                    : (event.touches && event.touches[0] ? event.touches[0].clientX : 0);
-        var clientY = event.clientY !== undefined ? event.clientY
-                    : (event.touches && event.touches[0] ? event.touches[0].clientY : 0);
+        var pointerX = null;
+        var pointerY = null;
+
+        if (typeof event.offsetX === 'number' && typeof event.offsetY === 'number' && event.target === canvas) {
+            pointerX = event.offsetX;
+            pointerY = event.offsetY;
+        }
+
+        if (pointerX === null || pointerY === null) {
+            var rect    = canvas.getBoundingClientRect();
+            var clientX = event.clientX !== undefined ? event.clientX
+                        : (event.touches && event.touches[0] ? event.touches[0].clientX : 0);
+            var clientY = event.clientY !== undefined ? event.clientY
+                        : (event.touches && event.touches[0] ? event.touches[0].clientY : 0);
+            pointerX = clientX - rect.left;
+            pointerY = clientY - rect.top;
+        }
+
+        var scaleX = canvas.clientWidth > 0 ? (canvas.width / canvas.clientWidth) : 1;
+        var scaleY = canvas.clientHeight > 0 ? (canvas.height / canvas.clientHeight) : 1;
+        var x = Math.round(pointerX * scaleX);
+        var y = Math.round(pointerY * scaleY);
+
         return {
-            x: Math.floor((clientX - rect.left) * canvas.width  / rect.width),
-            y: Math.floor((clientY - rect.top)  * canvas.height / rect.height)
+            x: Math.max(0, Math.min(canvas.width - 1, x)),
+            y: Math.max(0, Math.min(canvas.height - 1, y))
         };
     }
     function handleFill(event) {
