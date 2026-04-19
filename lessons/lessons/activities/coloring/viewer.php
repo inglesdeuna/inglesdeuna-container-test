@@ -129,7 +129,7 @@ ob_start();
     display: block;
     touch-action: manipulation;
     border-radius: 14px;
-    cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='44' height='44' viewBox='0 0 44 44'%3E%3Cg transform='rotate(20 22 22)'%3E%3Crect x='17' y='6' width='10' height='20' rx='4' fill='%23f59e0b'/%3E%3Crect x='16' y='11' width='12' height='7' rx='3.5' fill='%23fde68a' opacity='.9'/%3E%3Crect x='16' y='24' width='12' height='8' rx='2.6' fill='%23fff7ed' stroke='%23b45309' stroke-width='1.4'/%3E%3Cpath d='M16 28h12l-6 10z' fill='%238b5a2b'/%3E%3Cpath d='M21 38l1.2-2.2L23.5 38z' fill='%230ea5e9'/%3E%3C/g%3E%3C/svg%3E") 22 22, pointer;
+    cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40' viewBox='0 0 40 40'%3E%3Cpath d='M20 4l10 12h-6v12h-8V16h-6z' fill='%2322c55e' stroke='%230f172a' stroke-width='2' stroke-linejoin='round'/%3E%3Ccircle cx='20' cy='33' r='4' fill='%23facc15' stroke='%230f172a' stroke-width='2'/%3E%3C/svg%3E") 20 10, pointer;
 }
 .coloring-helper { text-align: center; margin-top: 10px; font-size: 14px; color: #475569; font-weight: 700; }
 /* ── completed ───────────────────────────────────────── */
@@ -224,6 +224,37 @@ ob_start();
     var resetBtn    = document.getElementById('resetBtn');
     var restartBtn  = document.getElementById('restartBtn');
     var paletteEl   = document.getElementById('coloringPalette');
+    var clickAudioCtx = null;
+
+    function playClickSound() {
+        try {
+            var AudioCtx = window.AudioContext || window.webkitAudioContext;
+            if (!AudioCtx) return;
+            if (!clickAudioCtx) clickAudioCtx = new AudioCtx();
+            if (clickAudioCtx.state === 'suspended') {
+                clickAudioCtx.resume();
+            }
+
+            var now = clickAudioCtx.currentTime;
+            var osc = clickAudioCtx.createOscillator();
+            var gain = clickAudioCtx.createGain();
+
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(720, now);
+            osc.frequency.exponentialRampToValueAtTime(980, now + 0.05);
+
+            gain.gain.setValueAtTime(0.0001, now);
+            gain.gain.exponentialRampToValueAtTime(0.12, now + 0.01);
+            gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.08);
+
+            osc.connect(gain);
+            gain.connect(clickAudioCtx.destination);
+            osc.start(now);
+            osc.stop(now + 0.09);
+        } catch (e) {
+            /* no-op if audio is not available */
+        }
+    }
 
     /* ── build palette ───────────────────────────────── */
     function buildPalette() {
@@ -234,6 +265,7 @@ ob_start();
             btn.className = 'coloring-color-btn' + (color === selectedColor ? ' active' : '');
             btn.style.background = color;
             btn.addEventListener('click', function () {
+                playClickSound();
                 selectedColor = color;
                 paletteEl.querySelectorAll('.coloring-color-btn').forEach(function (b) { b.classList.remove('active'); });
                 btn.classList.add('active');
@@ -440,6 +472,7 @@ ob_start();
     function handleFill(event) {
         if (!uploadedImages.length) return;
         event.preventDefault();
+        playClickSound();
         var pt = getCanvasPoint(event);
         floodFill(pt.x, pt.y, hexToRgba(selectedColor));
     }
@@ -447,6 +480,7 @@ ob_start();
     /* ── button events ───────────────────────────────── */
     nextBtn.addEventListener('click', function () {
         if (!uploadedImages.length) return;
+        playClickSound();
         currentIndex++;
         if (currentIndex >= uploadedImages.length) {
             showCompleted();
@@ -454,8 +488,12 @@ ob_start();
         }
         loadImageAt(currentIndex);
     });
-    resetBtn.addEventListener('click', resetCurrentPage);
+    resetBtn.addEventListener('click', function () {
+        playClickSound();
+        resetCurrentPage();
+    });
     restartBtn.addEventListener('click', function () {
+        playClickSound();
         currentIndex = 0;
         showStage();
         loadImageAt(0);
