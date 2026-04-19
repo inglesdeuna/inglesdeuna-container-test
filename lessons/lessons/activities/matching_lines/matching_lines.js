@@ -91,14 +91,33 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   function buildReturnUrl(scorePercent, errors, total) {
-    if (!returnTo) {
+    const pageParams = new URLSearchParams(window.location.search || '');
+
+    let baseReturn = returnTo;
+    if (!baseReturn) {
+      const unit = pageParams.get('unit') || '';
+      const assignment = pageParams.get('assignment') || '';
+      const source = pageParams.get('source') || '';
+      const from = pageParams.get('from') || '';
+
+      if (assignment && unit && (from === 'student_course' || pageParams.get('embedded') === '1')) {
+        baseReturn = '../../academic/student_course.php?assignment=' + encodeURIComponent(assignment) + '&unit=' + encodeURIComponent(unit);
+      } else if (unit) {
+        baseReturn = '../../academic/unit_view.php?unit=' + encodeURIComponent(unit);
+        if (source) {
+          baseReturn += '&source=' + encodeURIComponent(source);
+        }
+      }
+    }
+
+    if (!baseReturn) {
       return '';
     }
 
-    const hasQuery = returnTo.indexOf('?') !== -1;
+    const hasQuery = baseReturn.indexOf('?') !== -1;
     const joiner = hasQuery ? '&' : '?';
 
-    return returnTo
+    return baseReturn
       + joiner + 'activity_percent=' + encodeURIComponent(String(scorePercent))
       + '&activity_errors=' + encodeURIComponent(String(errors))
       + '&activity_total=' + encodeURIComponent(String(total))
