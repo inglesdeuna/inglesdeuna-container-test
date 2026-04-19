@@ -20,8 +20,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
   const stateByBoardId = {};
   let currentIndex = 0;
-  let selectedLeftId = '';
-  let selectedRightId = '';
+  let dragging = null;
   let wrongAttempts = 0;
   let scorePersisted = false;
 
@@ -62,11 +61,12 @@ document.addEventListener('DOMContentLoaded', function () {
     const pairId = esc(pair.id || '');
     const text = side === 'left' ? esc(pair.left_text || '') : esc(pair.right_text || '');
     const image = side === 'left' ? esc(pair.left_image || '') : esc(pair.right_image || '');
-    const media = image !== '' ? '<img class="mlv-media" src="' + image + '" alt="item">' : '';
+    const media = image !== '' ? '<div class="mlv-media-box"><img class="mlv-media" src="' + image + '" alt="item"></div>' : '';
     const label = text !== '' ? '<div class="mlv-text">' + text + '</div>' : '';
     const badge = side === 'left' ? '<span class="mlv-index">' + String(index + 1) + '</span>' : '';
+    const sideClass = side === 'left' ? 'mlv-card-left' : 'mlv-card-right';
 
-    return '<button type="button" class="mlv-card" data-pair-id="' + pairId + '">'
+    return '<button type="button" class="mlv-card ' + sideClass + '" data-pair-id="' + pairId + '">'
       + badge + media + label + '<span class="mlv-anchor" aria-hidden="true"></span></button>';
   }
 
@@ -159,19 +159,57 @@ document.addEventListener('DOMContentLoaded', function () {
     return { x, y };
   }
 
-  function drawLine(x1, y1, x2, y2, color, width, dashArray) {
-    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-    line.setAttribute('x1', String(x1));
-    line.setAttribute('y1', String(y1));
-    line.setAttribute('x2', String(x2));
-    line.setAttribute('y2', String(y2));
-    line.setAttribute('stroke', color);
-    line.setAttribute('stroke-width', String(width));
-    line.setAttribute('stroke-linecap', 'round');
+  function clientPointToStage(clientX, clientY) {
+    const rect = stage.getBoundingClientRect();
+    return {
+      x: clientX - rect.left,
+      y: clientY - rect.top,
+    };
+  }
+
+  function drawPath(x1, y1, x2, y2, color, width, dashArray, temp) {
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    const dx = Math.max(30, Math.abs(x2 - x1) * 0.4);
+    const d = 'M ' + x1 + ' ' + y1 + ' C ' + (x1 + dx) + ' ' + y1 + ', ' + (x2 - dx) + ' ' + y2 + ', ' + x2 + ' ' + y2;
+    path.setAttribute('d', d);
+    path.setAttribute('fill', 'none');
+    path.setAttribute('stroke', color);
+    path.setAttribute('stroke-width', String(width));
+    path.setAttribute('stroke-linecap', 'round');
+    path.setAttribute('stroke-linejoin', 'round');
     if (dashArray) {
-      line.setAttribute('stroke-dasharray', dashArray);
+      path.setAttribute('stroke-dasharray', dashArray);
     }
-    svg.appendChild(line);
+    if (temp) {
+      path.setAttribute('data-temp', '1');
+    }
+    svg.appendChild(path);
+
+    const dot1 = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    dot1.setAttribute('cx', String(x1));
+    dot1.setAttribute('cy', String(y1));
+    dot1.setAttribute('r', String(Math.max(3, Math.floor(width * 0.9))));
+    dot1.setAttribute('fill', color);
+    if (temp) {
+      dot1.setAttribute('data-temp', '1');
+    }
+    svg.appendChild(dot1);
+
+    const dot2 = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    dot2.setAttribute('cx', String(x2));
+    dot2.setAttribute('cy', String(y2));
+    dot2.setAttribute('r', String(Math.max(3, Math.floor(width * 0.9))));
+    dot2.setAttribute('fill', color);
+    if (temp) {
+      dot2.setAttribute('data-temp', '1');
+    }
+    svg.appendChild(dot2);
+  }
+
+  function clearTempPath() {
+    svg.querySelectorAll('[data-temp="1"]').forEach(function (node) {
+      node.remove();
+    });
   }
 
   function renderLines(board, boardState) {
@@ -187,7 +225,7 @@ document.addEventListener('DOMContentLoaded', function () {
       }
       const p1 = getCardCenter(leftCard, true);
       const p2 = getCardCenter(rightCard, false);
-      drawLine(p1.x, p1.y, p2.x, p2.y, '#111827', 4, '');
+      drawPath(p1.x, p1.y, p2.x, p2.y, '#111827', 4, '', false);
     });
 
     if (boardState.showAnswer) {
@@ -203,8 +241,12 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         const p1 = getCardCenter(leftCard, true);
         const p2 = getCardCenter(rightCard, false);
-        drawLine(p1.x, p1.y, p2.x, p2.y, '#7c3aed', 3, '8 6');
+        drawPath(p1.x, p1.y, p2.x, p2.y, '#7c3aed', 3, '8 6', false);
       });
+    }
+
+    if (dragging && dragging.active) {
+      drawPath(dragging.startX, dragging.startY, dragging.endX, dragging.endY, '#2563eb', 4, '', true);
     }
   }
 
@@ -220,17 +262,6 @@ document.addEventListener('DOMContentLoaded', function () {
     progress.textContent = 'Matched ' + done + ' / ' + total;
   }
 
-  function clearSelection() {
-    selectedLeftId = '';
-    selectedRightId = '';
-    leftCol.querySelectorAll('.mlv-card.selected').forEach(function (el) {
-      el.classList.remove('selected');
-    });
-    rightCol.querySelectorAll('.mlv-card.selected').forEach(function (el) {
-      el.classList.remove('selected');
-    });
-  }
-
   function isRightAlreadyUsed(matches, rightId) {
     return Object.values(matches).indexOf(rightId) !== -1;
   }
@@ -244,30 +275,29 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const p1 = getCardCenter(leftCard, true);
     const p2 = getCardCenter(rightCard, false);
-    drawLine(p1.x, p1.y, p2.x, p2.y, '#ef4444', 4, '');
+    drawPath(p1.x, p1.y, p2.x, p2.y, '#ef4444', 4, '', false);
 
     setTimeout(function () {
       renderCurrentBoard();
     }, 420);
   }
 
-  function attemptMatch(board, boardState) {
-    if (!selectedLeftId || !selectedRightId) {
+  function attemptMatch(leftId, rightId, board, boardState) {
+    if (!leftId || !rightId) {
       return;
     }
 
     const matches = boardState.matches;
 
-    if (matches[selectedLeftId] || isRightAlreadyUsed(matches, selectedRightId)) {
-      clearSelection();
+    if (matches[leftId] || isRightAlreadyUsed(matches, rightId)) {
       return;
     }
 
-    const correct = selectedLeftId === selectedRightId;
+    const correct = leftId === rightId;
     if (correct) {
-      matches[selectedLeftId] = selectedRightId;
-      const leftCard = leftCol.querySelector('[data-pair-id="' + CSS.escape(selectedLeftId) + '"]');
-      const rightCard = rightCol.querySelector('[data-pair-id="' + CSS.escape(selectedRightId) + '"]');
+      matches[leftId] = rightId;
+      const leftCard = leftCol.querySelector('[data-pair-id="' + CSS.escape(leftId) + '"]');
+      const rightCard = rightCol.querySelector('[data-pair-id="' + CSS.escape(rightId) + '"]');
       if (leftCard) {
         leftCard.classList.add('matched', 'correct-glow');
       }
@@ -276,52 +306,190 @@ document.addEventListener('DOMContentLoaded', function () {
       }
     } else {
       wrongAttempts += 1;
-      flashWrongLine(selectedLeftId, selectedRightId);
+      flashWrongLine(leftId, rightId);
     }
 
-    clearSelection();
     updateProgress(board, boardState);
     renderLines(board, boardState);
     persistScoreIfCompleted();
   }
 
-  function bindCards(board, boardState) {
+  function clearDragClasses() {
+    stage.querySelectorAll('.drag-source').forEach(function (el) {
+      el.classList.remove('drag-source');
+    });
+    stage.querySelectorAll('.drop-hover').forEach(function (el) {
+      el.classList.remove('drop-hover');
+    });
+    stage.querySelectorAll('.active-anchor').forEach(function (el) {
+      el.classList.remove('active-anchor');
+    });
+  }
+
+  function getRightCardUnderPoint(clientX, clientY) {
+    const hit = document.elementFromPoint(clientX, clientY);
+    if (!hit) {
+      return null;
+    }
+    const card = hit.closest('.mlv-right .mlv-card');
+    if (!card) {
+      return null;
+    }
+    return card;
+  }
+
+  function endDrag(clientX, clientY, board, boardState) {
+    if (!dragging || !dragging.active) {
+      return;
+    }
+
+    const hoveredRight = getRightCardUnderPoint(clientX, clientY);
+    let rightId = '';
+    if (hoveredRight) {
+      rightId = String(hoveredRight.getAttribute('data-pair-id') || '');
+    }
+
+    clearTempPath();
+    clearDragClasses();
+
+    if (rightId) {
+      attemptMatch(dragging.leftId, rightId, board, boardState);
+    } else {
+      renderLines(board, boardState);
+    }
+
+    dragging = null;
+  }
+
+  function beginDrag(ev, leftCard, board, boardState) {
+    const leftId = String(leftCard.getAttribute('data-pair-id') || '');
+    if (!leftId || boardState.matches[leftId]) {
+      return;
+    }
+
+    const startPoint = getCardCenter(leftCard, true);
+    dragging = {
+      active: true,
+      leftId: leftId,
+      startX: startPoint.x,
+      startY: startPoint.y,
+      endX: startPoint.x,
+      endY: startPoint.y,
+    };
+
+    clearDragClasses();
+    leftCard.classList.add('drag-source');
+    const anchor = leftCard.querySelector('.mlv-anchor');
+    if (anchor) {
+      anchor.classList.add('active-anchor');
+    }
+
+    renderLines(board, boardState);
+    ev.preventDefault();
+  }
+
+  function bindDrag(board, boardState) {
     leftCol.querySelectorAll('.mlv-card').forEach(function (card) {
-      card.addEventListener('click', function () {
-        const leftId = String(card.getAttribute('data-pair-id') || '');
-        if (!leftId || boardState.matches[leftId]) {
-          return;
-        }
-
-        leftCol.querySelectorAll('.mlv-card').forEach(function (other) {
-          other.classList.remove('selected');
-        });
-        card.classList.add('selected');
-        selectedLeftId = leftId;
-
-        if (selectedRightId) {
-          attemptMatch(board, boardState);
-        }
+      card.addEventListener('pointerdown', function (ev) {
+        beginDrag(ev, card, board, boardState);
       });
     });
 
-    rightCol.querySelectorAll('.mlv-card').forEach(function (card) {
-      card.addEventListener('click', function () {
-        const rightId = String(card.getAttribute('data-pair-id') || '');
-        if (!rightId || isRightAlreadyUsed(boardState.matches, rightId)) {
-          return;
-        }
+    if (stage.getAttribute('data-drag-bound') === '1') {
+      return;
+    }
 
-        rightCol.querySelectorAll('.mlv-card').forEach(function (other) {
-          other.classList.remove('selected');
-        });
-        card.classList.add('selected');
-        selectedRightId = rightId;
+    stage.setAttribute('data-drag-bound', '1');
 
-        if (selectedLeftId) {
-          attemptMatch(board, boardState);
+    const getCurrent = function () {
+      const currentBoard = boards[currentIndex];
+      return {
+        board: currentBoard,
+        boardState: currentBoard ? getBoardState(currentBoard) : null,
+      };
+    };
+
+    stage.addEventListener('pointermove', function (ev) {
+      if (!dragging || !dragging.active) {
+        return;
+      }
+
+      const current = getCurrent();
+      if (!current.board || !current.boardState) {
+        return;
+      }
+
+      const pos = clientPointToStage(ev.clientX, ev.clientY);
+      dragging.endX = pos.x;
+      dragging.endY = pos.y;
+
+      clearDragClasses();
+      const leftCard = leftCol.querySelector('[data-pair-id="' + CSS.escape(dragging.leftId) + '"]');
+      if (leftCard) {
+        leftCard.classList.add('drag-source');
+        const anchor = leftCard.querySelector('.mlv-anchor');
+        if (anchor) {
+          anchor.classList.add('active-anchor');
         }
-      });
+      }
+
+      const rightCard = getRightCardUnderPoint(ev.clientX, ev.clientY);
+      if (rightCard) {
+        const rightId = String(rightCard.getAttribute('data-pair-id') || '');
+        if (!isRightAlreadyUsed(current.boardState.matches, rightId)) {
+          rightCard.classList.add('drop-hover');
+          const rightAnchor = rightCard.querySelector('.mlv-anchor');
+          if (rightAnchor) {
+            rightAnchor.classList.add('active-anchor');
+          }
+        }
+      }
+
+      renderLines(current.board, current.boardState);
+    });
+
+    stage.addEventListener('pointerup', function (ev) {
+      const current = getCurrent();
+      if (!current.board || !current.boardState) {
+        return;
+      }
+      endDrag(ev.clientX, ev.clientY, current.board, current.boardState);
+    });
+
+    window.addEventListener('pointerup', function (ev) {
+      const current = getCurrent();
+      if (!current.board || !current.boardState) {
+        return;
+      }
+      endDrag(ev.clientX, ev.clientY, current.board, current.boardState);
+    });
+
+    stage.addEventListener('pointercancel', function () {
+      const current = getCurrent();
+      if (!current.board || !current.boardState) {
+        return;
+      }
+      if (!dragging || !dragging.active) {
+        return;
+      }
+      clearTempPath();
+      clearDragClasses();
+      dragging = null;
+      renderLines(current.board, current.boardState);
+    });
+
+    stage.addEventListener('pointerleave', function (ev) {
+      const current = getCurrent();
+      if (!current.board || !current.boardState) {
+        return;
+      }
+      if (!dragging || !dragging.active) {
+        return;
+      }
+      const pos = clientPointToStage(ev.clientX, ev.clientY);
+      dragging.endX = pos.x;
+      dragging.endY = pos.y;
+      renderLines(current.board, current.boardState);
     });
   }
 
@@ -354,7 +522,7 @@ document.addEventListener('DOMContentLoaded', function () {
     boardTitle.textContent = board.title || ('Board ' + (currentIndex + 1));
     updateProgress(board, boardState);
     updateButtonState(boardState);
-    clearSelection();
+    dragging = null;
 
     const matches = boardState.matches || {};
     Object.keys(matches).forEach(function (leftId) {
@@ -369,7 +537,7 @@ document.addEventListener('DOMContentLoaded', function () {
       }
     });
 
-    bindCards(board, boardState);
+    bindDrag(board, boardState);
     renderLines(board, boardState);
     persistScoreIfCompleted();
   }
