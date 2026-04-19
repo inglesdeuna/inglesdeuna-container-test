@@ -276,7 +276,8 @@ ob_start();
         var data = imageData.data;
         for (var i = 0; i < data.length; i += 4) {
             var gray = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
-            var val  = gray > 180 ? 255 : 0;
+            /* Keep only strong/dark strokes as black so enclosed regions stay fillable. */
+            var val  = gray > 115 ? 255 : 0;
             data[i] = data[i + 1] = data[i + 2] = val;
             data[i + 3] = 255;
         }
@@ -345,7 +346,7 @@ ob_start();
         return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255, a: 255 };
     }
     function isBlackPixel(data, idx) {
-        return data[idx] < 40 && data[idx + 1] < 40 && data[idx + 2] < 40;
+        return data[idx] < 30 && data[idx + 1] < 30 && data[idx + 2] < 30;
     }
     function colorsMatch(data, idx, tgt, tol) {
         return Math.abs(data[idx]     - tgt.r) <= tol
@@ -372,7 +373,7 @@ ob_start();
             visited[pos] = 1;
             var i = pos * 4;
             if (isBlackPixel(data, i)) continue;
-            if (!colorsMatch(data, i, tgt, 18)) continue;
+            if (!colorsMatch(data, i, tgt, 24)) continue;
             data[i] = fill.r; data[i+1] = fill.g; data[i+2] = fill.b; data[i+3] = fill.a;
             stack.push([x+1,y],[x-1,y],[x,y+1],[x,y-1]);
         }
