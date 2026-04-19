@@ -11,6 +11,8 @@ document.addEventListener('DOMContentLoaded', function () {
   const nextBtn = document.getElementById('mlvNextBtn');
   const showBtn = document.getElementById('mlvShowBtn');
   const resetBtn = document.getElementById('mlvResetBtn');
+  const returnTo = typeof window.MATCHING_LINES_RETURN_TO === 'string' ? window.MATCHING_LINES_RETURN_TO : '';
+  const activityId = typeof window.MATCHING_LINES_ACTIVITY_ID === 'string' ? window.MATCHING_LINES_ACTIVITY_ID : '';
 
   if (!stage || !leftCol || !rightCol || !svg || boards.length === 0) {
     return;
@@ -20,6 +22,8 @@ document.addEventListener('DOMContentLoaded', function () {
   let currentIndex = 0;
   let selectedLeftId = '';
   let selectedRightId = '';
+  let wrongAttempts = 0;
+  let scorePersisted = false;
 
   function shuffle(items) {
     const copied = items.slice();
@@ -54,15 +58,91 @@ document.addEventListener('DOMContentLoaded', function () {
     return stateByBoardId[boardId];
   }
 
-  function createCardHtml(pair, side) {
+  function createCardHtml(pair, side, index) {
     const pairId = esc(pair.id || '');
     const text = side === 'left' ? esc(pair.left_text || '') : esc(pair.right_text || '');
     const image = side === 'left' ? esc(pair.left_image || '') : esc(pair.right_image || '');
     const media = image !== '' ? '<img class="mlv-media" src="' + image + '" alt="item">' : '';
     const label = text !== '' ? '<div class="mlv-text">' + text + '</div>' : '';
+    const badge = side === 'left' ? '<span class="mlv-index">' + String(index + 1) + '</span>' : '';
 
     return '<button type="button" class="mlv-card" data-pair-id="' + pairId + '">'
-      + media + label + '<span class="mlv-anchor" aria-hidden="true"></span></button>';
+      + badge + media + label + '<span class="mlv-anchor" aria-hidden="true"></span></button>';
+  }
+
+  function buildReturnUrl(scorePercent, errors, total) {
+    if (!returnTo) {
+      return '';
+    }
+
+    const hasQuery = returnTo.indexOf('?') !== -1;
+    const joiner = hasQuery ? '&' : '?';
+
+    return returnTo
+      + joiner + 'activity_percent=' + encodeURIComponent(String(scorePercent))
+      + '&activity_errors=' + encodeURIComponent(String(errors))
+      + '&activity_total=' + encodeURIComponent(String(total))
+      + '&activity_id=' + encodeURIComponent(String(activityId))
+      + '&activity_type=' + encodeURIComponent('matching_lines');
+  }
+
+  function getTotalPairs() {
+    return boards.reduce(function (sum, board) {
+      const n = Array.isArray(board.pairs) ? board.pairs.length : 0;
+      return sum + n;
+    }, 0);
+  }
+
+  function getMatchedTotal() {
+    return boards.reduce(function (sum, board, idx) {
+      const boardId = String(board.id || 'board_' + idx);
+      const boardState = stateByBoardId[boardId];
+      const n = boardState && boardState.matches ? Object.keys(boardState.matches).length : 0;
+      return sum + n;
+    }, 0);
+  }
+
+  function isAllBoardsCompleted() {
+    return boards.every(function (board, idx) {
+      const total = Array.isArray(board.pairs) ? board.pairs.length : 0;
+      const boardId = String(board.id || 'board_' + idx);
+      const boardState = stateByBoardId[boardId] || { matches: {} };
+      return Object.keys(boardState.matches || {}).length >= total;
+    });
+  }
+
+  function persistScoreIfCompleted() {
+    if (scorePersisted || !isAllBoardsCompleted()) {
+      return;
+    }
+
+    const total = getTotalPairs();
+    const matched = getMatchedTotal();
+    if (total <= 0) {
+      return;
+    }
+
+    const percent = Math.round((matched / total) * 100);
+    const safeErrors = Math.max(0, Math.min(total, wrongAttempts));
+    const saveUrl = buildReturnUrl(percent, safeErrors, total);
+
+    if (!saveUrl) {
+      return;
+    }
+
+    scorePersisted = true;
+    try {
+      fetch(saveUrl, {
+        method: 'GET',
+        credentials: 'same-origin',
+        cache: 'no-store',
+        keepalive: true,
+      }).catch(function () {
+        scorePersisted = false;
+      });
+    } catch (e) {
+      scorePersisted = false;
+    }
   }
 
   function getCardCenter(card, isLeft) {
@@ -107,7 +187,7 @@ document.addEventListener('DOMContentLoaded', function () {
       }
       const p1 = getCardCenter(leftCard, true);
       const p2 = getCardCenter(rightCard, false);
-      drawLine(p1.x, p1.y, p2.x, p2.y, '#0f766e', 4, '');
+      drawLine(p1.x, p1.y, p2.x, p2.y, '#111827', 4, '');
     });
 
     if (boardState.showAnswer) {
@@ -195,12 +275,14 @@ document.addEventListener('DOMContentLoaded', function () {
         rightCard.classList.add('matched', 'correct-glow');
       }
     } else {
+      wrongAttempts += 1;
       flashWrongLine(selectedLeftId, selectedRightId);
     }
 
     clearSelection();
     updateProgress(board, boardState);
     renderLines(board, boardState);
+    persistScoreIfCompleted();
   }
 
   function bindCards(board, boardState) {
@@ -261,12 +343,12 @@ document.addEventListener('DOMContentLoaded', function () {
       .map(function (pairId) { return rightMap[String(pairId)]; })
       .filter(Boolean);
 
-    leftCol.innerHTML = leftItems.map(function (pair) {
-      return createCardHtml(pair, 'left');
+    leftCol.innerHTML = leftItems.map(function (pair, idx) {
+      return createCardHtml(pair, 'left', idx);
     }).join('');
 
-    rightCol.innerHTML = orderedRight.map(function (pair) {
-      return createCardHtml(pair, 'right');
+    rightCol.innerHTML = orderedRight.map(function (pair, idx) {
+      return createCardHtml(pair, 'right', idx);
     }).join('');
 
     boardTitle.textContent = board.title || ('Board ' + (currentIndex + 1));
@@ -289,6 +371,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     bindCards(board, boardState);
     renderLines(board, boardState);
+    persistScoreIfCompleted();
   }
 
   prevBtn.addEventListener('click', function () {
@@ -314,6 +397,9 @@ document.addEventListener('DOMContentLoaded', function () {
     }
     const boardState = getBoardState(board);
     boardState.showAnswer = !boardState.showAnswer;
+    if (boardState.showAnswer) {
+      wrongAttempts += 1;
+    }
     updateButtonState(boardState);
     renderLines(board, boardState);
   });
@@ -331,6 +417,7 @@ document.addEventListener('DOMContentLoaded', function () {
       matches: {},
       showAnswer: false,
     };
+    scorePersisted = false;
     renderCurrentBoard();
   });
 
