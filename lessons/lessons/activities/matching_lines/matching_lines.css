@@ -99,7 +99,7 @@ body{
   position:relative;
   z-index:2;
   display:grid;
-  gap:11px;
+  gap:8px;
   align-content:start;
 }
 
@@ -193,7 +193,8 @@ body{
 
 .mlv-card.image-only{
   padding:0;
-  min-height:104px;
+  min-height:76px;
+  height:76px;
   align-items:stretch;
   justify-content:stretch;
 }
@@ -335,5 +336,5 @@ body{
   .mlv-right .mlv-text{ font-size:34px; }
   .mlv-media-left,
   .mlv-media-right{ width:100%; height:100%; }
-  .mlv-card.image-only{ min-height:94px; }
+  .mlv-card.image-only{ min-height:68px; height:68px; }
 }
