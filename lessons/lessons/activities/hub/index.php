@@ -46,6 +46,7 @@ $activityTypes = [
     "flashcards" => "Flashcards",
     "memory_cards" => "Memory Cards",
     "match" => "Match",
+    "matching_lines" => "Matching Lines",
     "multiple_choice" => "Multiple Choice",
     "video_comprehension" => "Video Comprehension",
     "hangman" => "Hangman",

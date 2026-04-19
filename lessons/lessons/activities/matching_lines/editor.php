@@ -470,7 +470,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $leftImages = isset($_POST['left_image_existing']) && is_array($_POST['left_image_existing']) ? $_POST['left_image_existing'] : array();
     $rightImages = isset($_POST['right_image_existing']) && is_array($_POST['right_image_existing']) ? $_POST['right_image_existing'] : array();
     $leftRemoveFlags = isset($_POST['left_remove_image']) && is_array($_POST['left_remove_image']) ? $_POST['left_remove_image'] : array();
-    $rightRemoveFlags = isset($_POST['right_remove_image']) && is_array($_POST['right_remove_image'] ? $_POST['right_remove_image'] : array()) ? $_POST['right_remove_image'] : array();
+    $rightRemoveFlags = isset($_POST['right_remove_image']) && is_array($_POST['right_remove_image']) ? $_POST['right_remove_image'] : array();
 
     $leftImageFiles = isset($_FILES['left_image_file']) ? $_FILES['left_image_file'] : null;
     $rightImageFiles = isset($_FILES['right_image_file']) ? $_FILES['right_image_file'] : null;

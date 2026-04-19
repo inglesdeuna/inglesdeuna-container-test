@@ -1,0 +1,227 @@
+@import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@600;700;800&display=swap');
+
+.mlv-wrap{
+  max-width: 980px;
+  margin: 0 auto;
+}
+
+.viewer-header{
+  display:none !important;
+}
+
+.mlv-hero{
+  border:1px solid #99f6e4;
+  background: linear-gradient(135deg, #ccfbf1 0%, #e0f2fe 50%, #ede9fe 100%);
+  border-radius: 20px;
+  padding: 18px 20px;
+  box-shadow: 0 14px 28px rgba(15, 23, 42, .08);
+}
+
+.mlv-hero h2{
+  margin:0 0 8px;
+  font-family:'Fredoka','Trebuchet MS',sans-serif;
+  color:#0f172a;
+  font-size: clamp(24px, 2vw, 32px);
+}
+
+.mlv-hero p{
+  margin:0;
+  color:#0f766e;
+  font-family:'Nunito','Segoe UI',sans-serif;
+  font-weight:700;
+}
+
+.mlv-board-meta{
+  margin:12px 0;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  flex-wrap:wrap;
+}
+
+.mlv-board-title{
+  background:#ffffff;
+  border:1px solid #c4b5fd;
+  color:#5b21b6;
+  border-radius:999px;
+  padding:8px 14px;
+  font-weight:800;
+}
+
+.mlv-progress{
+  background:#ffffff;
+  border:1px solid #5eead4;
+  color:#0f766e;
+  border-radius:999px;
+  padding:8px 14px;
+  font-weight:800;
+}
+
+.mlv-stage{
+  position:relative;
+  border:2px solid #22d3ee;
+  border-radius:22px;
+  background: linear-gradient(180deg, #ecfeff 0%, #ffffff 100%);
+  min-height: 420px;
+  padding: 14px;
+  display:grid;
+  grid-template-columns:minmax(0, 1fr) minmax(0, 1fr);
+  gap:14px;
+  overflow:hidden;
+}
+
+.mlv-lines{
+  position:absolute;
+  inset:0;
+  width:100%;
+  height:100%;
+  pointer-events:none;
+  z-index:1;
+}
+
+.mlv-col{
+  position:relative;
+  z-index:2;
+  display:grid;
+  gap:10px;
+  align-content:start;
+}
+
+.mlv-card{
+  position:relative;
+  border-radius:14px;
+  border:2px solid transparent;
+  min-height:82px;
+  padding:10px 12px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  text-align:center;
+  font-family:'Nunito','Segoe UI',sans-serif;
+  font-weight:800;
+  color:#0f172a;
+  box-shadow:0 8px 18px rgba(15,23,42,.08);
+  background:#ffffff;
+  cursor:pointer;
+  transition:transform .15s ease, box-shadow .15s ease, border-color .15s ease;
+}
+
+.mlv-card:hover{
+  transform:translateY(-1px);
+  box-shadow:0 12px 20px rgba(15,23,42,.11);
+}
+
+.mlv-left .mlv-card{
+  border-color:#fb923c;
+  background:linear-gradient(180deg, #fff7ed 0%, #ffffff 100%);
+}
+
+.mlv-right .mlv-card{
+  border-color:#22d3ee;
+  background:linear-gradient(180deg, #ecfeff 0%, #ffffff 100%);
+}
+
+.mlv-card.selected{
+  border-color:#8b5cf6 !important;
+  box-shadow:0 0 0 4px rgba(139,92,246,.18);
+}
+
+.mlv-card.matched{
+  opacity:.78;
+}
+
+.mlv-card.correct-glow{
+  animation:mlvGlow .35s ease;
+}
+
+.mlv-media{
+  max-width:100%;
+  max-height:56px;
+  object-fit:contain;
+  display:block;
+  margin:0 auto 6px;
+  border-radius:8px;
+}
+
+.mlv-text{
+  font-size:15px;
+  line-height:1.2;
+}
+
+.mlv-anchor{
+  position:absolute;
+  top:50%;
+  width:12px;
+  height:12px;
+  border-radius:999px;
+  transform:translateY(-50%);
+  border:2px solid #fff;
+  box-shadow:0 1px 4px rgba(0,0,0,.2);
+}
+
+.mlv-left .mlv-anchor{
+  right:-7px;
+  background:#f97316;
+}
+
+.mlv-right .mlv-anchor{
+  left:-7px;
+  background:#06b6d4;
+}
+
+.mlv-toolbar{
+  margin-top:12px;
+  display:flex;
+  justify-content:center;
+  gap:10px;
+  flex-wrap:wrap;
+}
+
+.mlv-btn{
+  border:none;
+  border-radius:999px;
+  padding:10px 16px;
+  font-family:'Nunito','Segoe UI',sans-serif;
+  font-size:14px;
+  font-weight:800;
+  cursor:pointer;
+  min-width:120px;
+}
+
+.mlv-btn-soft{
+  background:linear-gradient(180deg,#14b8a6,#0f766e);
+  color:#fff;
+}
+
+.mlv-btn-accent{
+  background:linear-gradient(180deg,#8b5cf6,#6d28d9);
+  color:#fff;
+}
+
+.mlv-btn:disabled{
+  opacity:.45;
+  cursor:not-allowed;
+}
+
+.mlv-empty{
+  max-width:700px;
+  margin:20px auto;
+  background:#fff;
+  border:1px solid #ddd6fe;
+  border-radius:16px;
+  padding:18px;
+  text-align:center;
+  color:#6b21a8;
+  font-weight:800;
+}
+
+@keyframes mlvGlow{
+  0%{ box-shadow:0 0 0 0 rgba(16,185,129,.1); }
+  50%{ box-shadow:0 0 0 8px rgba(16,185,129,.18); }
+  100%{ box-shadow:0 0 0 0 rgba(16,185,129,0); }
+}
+
+@media (max-width: 760px){
+  .mlv-stage{ grid-template-columns:1fr; min-height:unset; }
+}
