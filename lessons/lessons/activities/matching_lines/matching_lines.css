@@ -204,8 +204,8 @@ body{
 }
 
 .mlv-card.image-only .mlv-media{
-  width:52px;
-  height:52px;
+  width:30px;
+  height:30px;
   object-fit:contain;
   border-radius:10px;
 }
