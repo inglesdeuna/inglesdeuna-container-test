@@ -76,14 +76,14 @@ body{
   min-height: 420px;
   padding: 16px;
   display:grid;
-  grid-template-columns:minmax(0, 1fr) 180px minmax(0, 1fr);
+  grid-template-columns:minmax(0, 1fr) 240px minmax(0, 1fr);
   gap:0;
   overflow:hidden;
   box-shadow: 0 20px 34px rgba(8, 47, 73, .18);
 }
 
 .mlv-lane{
-  min-width:168px;
+  min-width:228px;
 }
 
 .mlv-lines{
@@ -182,23 +182,32 @@ body{
 }
 
 .mlv-media-left{
-  width:132px;
-  height:84px;
+  width:100%;
+  height:100%;
 }
 
 .mlv-media-right{
-  width:132px;
-  height:84px;
+  width:100%;
+  height:100%;
 }
 
 .mlv-card.image-only{
   padding:0;
-  min-height:96px;
+  min-height:104px;
+  align-items:stretch;
+  justify-content:stretch;
 }
 
 .mlv-left .mlv-card.image-only,
 .mlv-right .mlv-card.image-only{
-  background:linear-gradient(180deg, #f8fbff 0%, #eef8ff 100%);
+  background:transparent;
+}
+
+.mlv-card.image-only .mlv-media{
+  width:100%;
+  height:100%;
+  object-fit:cover;
+  border-radius:10px;
 }
 
 .mlv-text{
@@ -325,6 +334,6 @@ body{
   .mlv-text{ font-size:15px; }
   .mlv-right .mlv-text{ font-size:34px; }
   .mlv-media-left,
-  .mlv-media-right{ width:112px; height:72px; }
-  .mlv-card.image-only{ min-height:84px; }
+  .mlv-media-right{ width:100%; height:100%; }
+  .mlv-card.image-only{ min-height:94px; }
 }
