@@ -314,7 +314,6 @@ ob_start();
         <div class="mlv-toolbar">
             <button type="button" class="mlv-btn mlv-btn-soft" id="mlvPrevBtn">Previous</button>
             <button type="button" class="mlv-btn mlv-btn-accent" id="mlvShowBtn">Show Answer</button>
-            <button type="button" class="mlv-btn mlv-btn-soft" id="mlvResetBtn">Reset</button>
             <button type="button" class="mlv-btn mlv-btn-soft" id="mlvNextBtn">Next</button>
         </div>
     </section>

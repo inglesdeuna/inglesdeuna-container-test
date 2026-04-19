@@ -10,7 +10,6 @@ document.addEventListener('DOMContentLoaded', function () {
   const prevBtn = document.getElementById('mlvPrevBtn');
   const nextBtn = document.getElementById('mlvNextBtn');
   const showBtn = document.getElementById('mlvShowBtn');
-  const resetBtn = document.getElementById('mlvResetBtn');
   const returnTo = typeof window.MATCHING_LINES_RETURN_TO === 'string' ? window.MATCHING_LINES_RETURN_TO : '';
   const activityId = typeof window.MATCHING_LINES_ACTIVITY_ID === 'string' ? window.MATCHING_LINES_ACTIVITY_ID : '';
 
@@ -150,24 +149,24 @@ document.addEventListener('DOMContentLoaded', function () {
       return;
     }
 
+    scorePersisted = true;
+
     if (!winPlayed) {
       winPlayed = true;
       playSound(winSound);
     }
 
-    scorePersisted = true;
-    try {
-      fetch(saveUrl, {
-        method: 'GET',
-        credentials: 'same-origin',
-        cache: 'no-store',
-        keepalive: true,
-      }).catch(function () {
-        scorePersisted = false;
-      });
-    } catch (e) {
-      scorePersisted = false;
-    }
+    setTimeout(function () {
+      try {
+        if (window.top && window.top !== window.self) {
+          window.top.location.href = saveUrl;
+          return;
+        }
+      } catch (e) {
+        // Fall back to current frame.
+      }
+      window.location.href = saveUrl;
+    }, 420);
   }
 
   function getCardCenter(card, isLeft) {
@@ -601,24 +600,6 @@ document.addEventListener('DOMContentLoaded', function () {
     }
     updateButtonState(boardState);
     renderLines(board, boardState);
-  });
-
-  resetBtn.addEventListener('click', function () {
-    const board = boards[currentIndex];
-    if (!board) {
-      return;
-    }
-    const boardId = String(board.id || 'board_' + currentIndex);
-    stateByBoardId[boardId] = {
-      rightOrder: shuffle((board.pairs || []).map(function (pair) {
-        return String(pair.id || '');
-      })),
-      matches: {},
-      showAnswer: false,
-    };
-    scorePersisted = false;
-    winPlayed = false;
-    renderCurrentBoard();
   });
 
   window.addEventListener('resize', function () {
