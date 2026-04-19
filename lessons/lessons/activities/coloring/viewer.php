@@ -354,15 +354,31 @@ ob_start();
             && Math.abs(data[idx + 2] - tgt.b) <= tol
             && Math.abs(data[idx + 3] - tgt.a) <= tol;
     }
+    function findNearestFillablePoint(data, w, h, x, y) {
+        var maxRadius = 4;
+        for (var r = 0; r <= maxRadius; r++) {
+            for (var dy = -r; dy <= r; dy++) {
+                for (var dx = -r; dx <= r; dx++) {
+                    if (r !== 0 && Math.abs(dx) !== r && Math.abs(dy) !== r) continue;
+                    var nx = x + dx;
+                    var ny = y + dy;
+                    if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+                    var idx = (ny * w + nx) * 4;
+                    if (!isBlackPixel(data, idx)) {
+                        return { x: nx, y: ny };
+                    }
+                }
+            }
+        }
+        return null;
+    }
     function floodFill(startX, startY, fill) {
         var imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
         var data = imageData.data, w = canvas.width, h = canvas.height;
         if (startX < 0 || startY < 0 || startX >= w || startY >= h) return;
-        var si = (startY * w + startX) * 4;
-        if (isBlackPixel(data, si)) return;
-        var tgt = { r: data[si], g: data[si + 1], b: data[si + 2], a: data[si + 3] };
-        if (tgt.r === fill.r && tgt.g === fill.g && tgt.b === fill.b && tgt.a === fill.a) return;
-        var stack   = [[startX, startY]];
+        var fillStart = findNearestFillablePoint(data, w, h, startX, startY);
+        if (!fillStart) return;
+        var stack   = [[fillStart.x, fillStart.y]];
         var visited = new Uint8Array(w * h);
         while (stack.length) {
             var pt = stack.pop();
@@ -373,8 +389,12 @@ ob_start();
             visited[pos] = 1;
             var i = pos * 4;
             if (isBlackPixel(data, i)) continue;
-            if (!colorsMatch(data, i, tgt, 24)) continue;
-            data[i] = fill.r; data[i+1] = fill.g; data[i+2] = fill.b; data[i+3] = fill.a;
+            if (!(data[i] === fill.r && data[i + 1] === fill.g && data[i + 2] === fill.b && data[i + 3] === fill.a)) {
+                data[i] = fill.r;
+                data[i + 1] = fill.g;
+                data[i + 2] = fill.b;
+                data[i + 3] = fill.a;
+            }
             stack.push([x+1,y],[x-1,y],[x,y+1],[x,y-1]);
         }
         ctx.putImageData(imageData, 0, 0);
