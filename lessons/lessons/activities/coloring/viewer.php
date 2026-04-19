@@ -100,7 +100,12 @@ ob_start();
     margin-bottom: 14px;
 }
 .coloring-palette-heading { text-align: center; font-size: 16px; font-weight: 800; color: #0f172a; margin-bottom: 10px; }
-.coloring-palette { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
+.coloring-palette {
+    display: grid;
+    grid-template-columns: repeat(8, 50px);
+    gap: 10px;
+    justify-content: center;
+}
 .coloring-color-btn {
     width: 50px; height: 50px; border-radius: 50%; border: 4px solid transparent;
     cursor: pointer; transition: transform .15s; -webkit-tap-highlight-color: transparent;
@@ -138,6 +143,9 @@ ob_start();
 @media (max-width: 640px) {
     .coloring-action-btn { width: 100%; }
     .coloring-color-btn { width: 44px; height: 44px; }
+    .coloring-palette {
+        grid-template-columns: repeat(8, 44px);
+    }
 }
 </style>
 
@@ -195,10 +203,8 @@ ob_start();
 
     /* ── palette colors ──────────────────────────────── */
     var colors = [
-        '#ef4444', '#f97316', '#facc15', '#22c55e', '#14b8a6',
-        '#3b82f6', '#8b5cf6', '#ec4899', '#f43f5e', '#a855f7',
-        '#84cc16', '#06b6d4', '#fb7185', '#9ca3af', '#6b7280',
-        '#111827', '#ffffff'
+        '#ef4444', '#f97316', '#cc7722', '#f5e6c8', '#facc15', '#22c55e', '#14b8a6', '#3b82f6',
+        '#8b5cf6', '#c4b5fd', '#ec4899', '#f43f5e', '#84cc16', '#9ca3af', '#111827', '#ffffff'
     ];
     var selectedColor = colors[0];
 
