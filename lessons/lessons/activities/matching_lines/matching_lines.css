@@ -76,14 +76,14 @@ body{
   min-height: 420px;
   padding: 16px;
   display:grid;
-  grid-template-columns:minmax(0, 1fr) 112px minmax(0, 1fr);
+  grid-template-columns:minmax(0, 1fr) 180px minmax(0, 1fr);
   gap:0;
   overflow:hidden;
   box-shadow: 0 20px 34px rgba(8, 47, 73, .18);
 }
 
 .mlv-lane{
-  min-width:96px;
+  min-width:168px;
 }
 
 .mlv-lines{
@@ -182,17 +182,18 @@ body{
 }
 
 .mlv-media-left{
-  width:96px;
-  height:62px;
+  width:132px;
+  height:84px;
 }
 
 .mlv-media-right{
-  width:96px;
-  height:62px;
+  width:132px;
+  height:84px;
 }
 
 .mlv-card.image-only{
-  padding:6px 8px;
+  padding:0;
+  min-height:96px;
 }
 
 .mlv-left .mlv-card.image-only,
@@ -324,5 +325,6 @@ body{
   .mlv-text{ font-size:15px; }
   .mlv-right .mlv-text{ font-size:34px; }
   .mlv-media-left,
-  .mlv-media-right{ width:84px; height:54px; }
+  .mlv-media-right{ width:112px; height:72px; }
+  .mlv-card.image-only{ min-height:84px; }
 }
