@@ -28,6 +28,7 @@ document.addEventListener('DOMContentLoaded', function () {
   let wrongAttempts = 0;
   let scorePersisted = false;
   let winPlayed = false;
+  let completionUrl = '';
 
   function playSound(audio) {
     if (!audio) {
@@ -149,6 +150,7 @@ document.addEventListener('DOMContentLoaded', function () {
       return;
     }
 
+    completionUrl = saveUrl;
     scorePersisted = true;
 
     if (!winPlayed) {
@@ -156,17 +158,25 @@ document.addEventListener('DOMContentLoaded', function () {
       playSound(winSound);
     }
 
-    setTimeout(function () {
-      try {
-        if (window.top && window.top !== window.self) {
-          window.top.location.href = saveUrl;
-          return;
-        }
-      } catch (e) {
-        // Fall back to current frame.
-      }
-      window.location.href = saveUrl;
-    }, 420);
+    // Save score in background so Next can send student to completed page.
+    try {
+      fetch(saveUrl, {
+        method: 'GET',
+        credentials: 'same-origin',
+        cache: 'no-store',
+        keepalive: true,
+      }).catch(function () {
+        scorePersisted = false;
+      });
+    } catch (e) {
+      scorePersisted = false;
+    }
+
+    const board = boards[currentIndex];
+    const boardState = board ? getBoardState(board) : null;
+    if (boardState) {
+      updateButtonState(boardState);
+    }
   }
 
   function getCardCenter(card, isLeft) {
@@ -276,7 +286,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
   function updateButtonState(boardState) {
     prevBtn.disabled = currentIndex <= 0;
-    nextBtn.disabled = currentIndex >= boards.length - 1;
+    const hasCompletionTarget = completionUrl !== '' && isAllBoardsCompleted();
+    nextBtn.disabled = hasCompletionTarget ? false : currentIndex >= boards.length - 1;
+    nextBtn.textContent = hasCompletionTarget ? 'Next' : 'Next';
     showBtn.textContent = boardState.showAnswer ? 'Hide Answer' : 'Show Answer';
   }
 
@@ -581,6 +593,19 @@ document.addEventListener('DOMContentLoaded', function () {
   });
 
   nextBtn.addEventListener('click', function () {
+    if (completionUrl !== '' && isAllBoardsCompleted()) {
+      try {
+        if (window.top && window.top !== window.self) {
+          window.top.location.href = completionUrl;
+          return;
+        }
+      } catch (e) {
+        // Fall back to same frame.
+      }
+      window.location.href = completionUrl;
+      return;
+    }
+
     if (currentIndex >= boards.length - 1) {
       return;
     }

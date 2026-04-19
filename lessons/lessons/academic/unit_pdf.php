@@ -81,6 +81,7 @@ function ws_cfg(string $type): array {
         'drag_drop'           => ['label'=>'Fill in the Blanks',   'cls'=>'cyan'],
         'writing_practice'    => ['label'=>'Writing Practice',     'cls'=>'green'],
         'match'               => ['label'=>'Match the Pairs',      'cls'=>'orange'],
+        'matching_lines'      => ['label'=>'Matching Lines',       'cls'=>'orange'],
         'order_sentences'     => ['label'=>'Order the Sentences',  'cls'=>'orange'],
         'listen_order'        => ['label'=>'Listen & Order',       'cls'=>'cyan'],
         'crossword'           => ['label'=>'Crossword',            'cls'=>'orange'],
@@ -394,6 +395,45 @@ function ws_match(array $d, int $n, bool $k): string {
     foreach ($sh as $i => $it) $out .= '<div class="ws-mr"><span class="ws-ml">'.($ltrs[$i]??'?').'.</span><span class="ws-mt">'.h($it).'</span></div>';
     $out .= '</div></div>';
     return $out.ws_foot();
+}
+
+function ws_matching_lines(array $d, int $n, bool $k): string {
+    $boards = is_array($d['boards'] ?? null) ? $d['boards'] : [];
+    $firstBoard = isset($boards[0]) && is_array($boards[0]) ? $boards[0] : [];
+    $pairs = is_array($firstBoard['pairs'] ?? null) ? $firstBoard['pairs'] : [];
+
+    $normalizedPairs = [];
+    foreach ($pairs as $i => $p) {
+        if (!is_array($p)) {
+            continue;
+        }
+
+        $leftText = trim((string) ($p['left_text'] ?? ''));
+        $rightText = trim((string) ($p['right_text'] ?? ''));
+        $leftImage = trim((string) ($p['left_image'] ?? ''));
+        $rightImage = trim((string) ($p['right_image'] ?? ''));
+
+        if ($leftText === '' && $leftImage !== '') {
+            $leftText = 'Image ' . ($i + 1);
+        }
+        if ($rightText === '' && $rightImage !== '') {
+            $rightText = 'Image ' . ($i + 1);
+        }
+
+        if ($leftText === '' || $rightText === '') {
+            continue;
+        }
+
+        $normalizedPairs[] = [
+            'left_text' => $leftText,
+            'right_text' => $rightText,
+        ];
+    }
+
+    return ws_match([
+        'title' => $d['title'] ?? 'Matching Lines',
+        'pairs' => $normalizedPairs,
+    ], $n, $k);
 }
 
 /* ORDER SENTENCES */
@@ -978,6 +1018,7 @@ foreach ($activities as $act) {
         case 'drag_drop':        $html = ws_dragdrop($data,$actN,$isTeacher);       break;
         case 'writing_practice': $html = ws_writing($data,$actN,$isTeacher);        break;
         case 'match':            $html = ws_match($data,$actN,$isTeacher);          break;
+        case 'matching_lines':   $html = ws_matching_lines($data,$actN,$isTeacher); break;
         case 'order_sentences':  $html = ws_order($data,$actN,$isTeacher);          break;
         case 'listen_order':     $html = ws_listenorder($data,$actN,$isTeacher);    break;
         case 'crossword':        $html = ws_crossword($data,$actN,$isTeacher);      break;
