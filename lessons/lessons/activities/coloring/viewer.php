@@ -204,7 +204,7 @@ ob_start();
     /* ── palette colors ──────────────────────────────── */
     var colors = [
         '#ef4444', '#f97316', '#cc7722', '#f5e6c8', '#facc15', '#22c55e', '#14b8a6', '#3b82f6',
-        '#8b5cf6', '#c4b5fd', '#ec4899', '#f43f5e', '#84cc16', '#9ca3af', '#111827', '#ffffff'
+        '#8b5cf6', '#c4b5fd', '#ec4899', '#8b5a2b', '#84cc16', '#9ca3af', '#111827', '#ffffff'
     ];
     var selectedColor = colors[0];
 
