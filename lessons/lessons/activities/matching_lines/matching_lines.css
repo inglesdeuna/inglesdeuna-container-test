@@ -139,12 +139,12 @@ body{
 
 .mlv-left .mlv-card{
   border-color:#f97316;
-  background:linear-gradient(180deg, #ffffff 0%, #fff7ed 100%);
+  background:#ffffff;
 }
 
 .mlv-right .mlv-card{
   border-color:#d1d5db;
-  background:linear-gradient(180deg, #f9fafb 0%, #ffffff 100%);
+  background:#ffffff;
 }
 
 .mlv-card.selected{
@@ -203,7 +203,7 @@ body{
 
 .mlv-left .mlv-card.image-only,
 .mlv-right .mlv-card.image-only{
-  background:transparent;
+  background:#ffffff;
 }
 
 .mlv-card.image-only .mlv-media{
@@ -211,6 +211,11 @@ body{
   height: calc(var(--tile-height, 92px) * 0.76);
   object-fit:contain;
   border-radius:10px;
+}
+
+.mlv-card.image-only{
+  align-items:center;
+  justify-content:center;
 }
 
 .mlv-text{
