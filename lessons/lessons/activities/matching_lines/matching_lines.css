@@ -106,6 +106,7 @@ body{
 
 .mlv-card{
   position:relative;
+  width: calc(100% - 4px);
   border-radius:12px;
   border:2px solid transparent;
   height: var(--tile-height, 92px);
@@ -122,6 +123,7 @@ body{
   background:#ffffff;
   cursor:default;
   transition:transform .15s ease, box-shadow .15s ease, border-color .15s ease;
+  margin: 0 auto;
 }
 
 .mlv-card:hover{
