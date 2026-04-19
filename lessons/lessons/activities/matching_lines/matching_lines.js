@@ -14,6 +14,11 @@ document.addEventListener('DOMContentLoaded', function () {
   const returnTo = typeof window.MATCHING_LINES_RETURN_TO === 'string' ? window.MATCHING_LINES_RETURN_TO : '';
   const activityId = typeof window.MATCHING_LINES_ACTIVITY_ID === 'string' ? window.MATCHING_LINES_ACTIVITY_ID : '';
 
+  const clickSound = new Audio('../../hangman/assets/pageflip.mp3');
+  const correctSound = new Audio('../../hangman/assets/realcorrect.mp3');
+  const wrongSound = new Audio('../../hangman/assets/lose.mp3');
+  const winSound = new Audio('../../hangman/assets/win.mp3');
+
   if (!stage || !leftCol || !rightCol || !svg || boards.length === 0) {
     return;
   }
@@ -23,6 +28,20 @@ document.addEventListener('DOMContentLoaded', function () {
   let dragging = null;
   let wrongAttempts = 0;
   let scorePersisted = false;
+  let winPlayed = false;
+
+  function playSound(audio) {
+    if (!audio) {
+      return;
+    }
+    try {
+      audio.pause();
+      audio.currentTime = 0;
+      audio.play();
+    } catch (e) {
+      // Ignore autoplay/audio policy errors.
+    }
+  }
 
   function shuffle(items) {
     const copied = items.slice();
@@ -57,19 +76,18 @@ document.addEventListener('DOMContentLoaded', function () {
     return stateByBoardId[boardId];
   }
 
-  function createCardHtml(pair, side, index) {
+  function createCardHtml(pair, side) {
     const pairId = esc(pair.id || '');
     const text = side === 'left' ? esc(pair.left_text || '') : esc(pair.right_text || '');
     const image = side === 'left' ? esc(pair.left_image || '') : esc(pair.right_image || '');
     const mediaClass = side === 'left' ? 'mlv-media mlv-media-left' : 'mlv-media mlv-media-right';
     const media = image !== '' ? '<img class="' + mediaClass + '" src="' + image + '" alt="item">' : '';
     const label = text !== '' ? '<div class="mlv-text">' + text + '</div>' : '';
-    const badge = side === 'left' ? '<span class="mlv-index">' + String(index + 1) + '</span>' : '';
     const sideClass = side === 'left' ? 'mlv-card-left' : 'mlv-card-right';
     const imageOnlyClass = image !== '' && text === '' ? ' image-only' : '';
 
     return '<button type="button" class="mlv-card ' + sideClass + imageOnlyClass + '" data-pair-id="' + pairId + '">'
-      + badge + media + label + '<span class="mlv-anchor" aria-hidden="true"></span></button>';
+      + media + label + '<span class="mlv-anchor" aria-hidden="true"></span></button>';
   }
 
   function buildReturnUrl(scorePercent, errors, total) {
@@ -130,6 +148,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
     if (!saveUrl) {
       return;
+    }
+
+    if (!winPlayed) {
+      winPlayed = true;
+      playSound(winSound);
     }
 
     scorePersisted = true;
@@ -298,6 +321,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const correct = leftId === rightId;
     if (correct) {
       matches[leftId] = rightId;
+      playSound(correctSound);
       const leftCard = leftCol.querySelector('[data-pair-id="' + CSS.escape(leftId) + '"]');
       const rightCard = rightCol.querySelector('[data-pair-id="' + CSS.escape(rightId) + '"]');
       if (leftCard) {
@@ -308,6 +332,7 @@ document.addEventListener('DOMContentLoaded', function () {
       }
     } else {
       wrongAttempts += 1;
+      playSound(wrongSound);
       flashWrongLine(leftId, rightId);
     }
 
@@ -368,6 +393,8 @@ document.addEventListener('DOMContentLoaded', function () {
     if (!leftId || boardState.matches[leftId]) {
       return;
     }
+
+    playSound(clickSound);
 
     const startPoint = getCardCenter(leftCard, true);
     dragging = {
@@ -513,15 +540,17 @@ document.addEventListener('DOMContentLoaded', function () {
       .map(function (pairId) { return rightMap[String(pairId)]; })
       .filter(Boolean);
 
-    leftCol.innerHTML = leftItems.map(function (pair, idx) {
-      return createCardHtml(pair, 'left', idx);
+    leftCol.innerHTML = leftItems.map(function (pair) {
+      return createCardHtml(pair, 'left');
     }).join('');
 
-    rightCol.innerHTML = orderedRight.map(function (pair, idx) {
-      return createCardHtml(pair, 'right', idx);
+    rightCol.innerHTML = orderedRight.map(function (pair) {
+      return createCardHtml(pair, 'right');
     }).join('');
 
-    boardTitle.textContent = board.title || ('Board ' + (currentIndex + 1));
+    if (boardTitle) {
+      boardTitle.textContent = board.title || ('Board ' + (currentIndex + 1));
+    }
     updateProgress(board, boardState);
     updateButtonState(boardState);
     dragging = null;

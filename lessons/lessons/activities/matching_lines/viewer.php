@@ -299,11 +299,6 @@ ob_start();
     <div class="mlv-empty">No matching lines data available.</div>
 <?php } else { ?>
     <section class="mlv-wrap">
-        <header class="mlv-hero">
-            <h2><?= htmlspecialchars($viewerTitle, ENT_QUOTES, 'UTF-8') ?></h2>
-            <p>Tap one card on the left, then one card on the right to draw the line.</p>
-        </header>
-
         <div class="mlv-board-meta">
             <div class="mlv-board-title" id="mlvBoardTitle"></div>
             <div class="mlv-progress" id="mlvProgress"></div>
