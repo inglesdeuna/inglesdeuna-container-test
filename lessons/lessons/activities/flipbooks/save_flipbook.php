@@ -3,6 +3,8 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../../config/db.php';
 
+const FLIPBOOK_MAX_PDF_BYTES = 15 * 1024 * 1024;
+
 header('Content-Type: application/json; charset=utf-8');
 
 function respond_json(array $payload, int $statusCode = 200): void
@@ -96,8 +98,8 @@ try {
                 respond_error('El archivo PDF está vacío.');
             }
 
-            if ($fileSize > 10 * 1024 * 1024) {
-                respond_error('El archivo PDF excede el límite permitido de 10 MB.');
+            if ($fileSize > FLIPBOOK_MAX_PDF_BYTES) {
+                respond_error('El archivo PDF excede el límite permitido de 15 MB.');
             }
 
             $extension = strtolower(pathinfo($originalName, PATHINFO_EXTENSION));

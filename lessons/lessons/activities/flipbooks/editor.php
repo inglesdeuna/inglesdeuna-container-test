@@ -144,6 +144,7 @@ ob_start();
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {
+    const MAX_PDF_BYTES = 15 * 1024 * 1024;
     const dropZone = document.getElementById('drop-zone');
     const fileInput = document.getElementById('pdf-file');
     const fileStatus = document.getElementById('file-status');
@@ -178,6 +179,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
         if (!isPdfByName && !isPdfByMime) {
             return { ok: false, message: 'Only PDF files are allowed.' };
+        }
+
+        if (file.size > MAX_PDF_BYTES) {
+            return { ok: false, message: 'The PDF exceeds the 15 MB limit.' };
         }
 
         return { ok: true };
