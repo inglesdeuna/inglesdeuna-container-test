@@ -209,8 +209,8 @@ body{
 }
 
 .mlv-card.image-only .mlv-media{
-  width: min(100%, calc(var(--tile-height, 92px) * 0.76));
-  height: calc(var(--tile-height, 92px) * 0.76);
+  width: calc(100% - 6px);
+  height: calc(100% - 6px);
   object-fit:contain;
   border-radius:10px;
 }
