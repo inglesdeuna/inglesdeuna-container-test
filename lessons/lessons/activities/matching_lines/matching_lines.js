@@ -617,6 +617,7 @@ document.addEventListener('DOMContentLoaded', function () {
       showAnswer: false,
     };
     scorePersisted = false;
+    winPlayed = false;
     renderCurrentBoard();
   });
 
