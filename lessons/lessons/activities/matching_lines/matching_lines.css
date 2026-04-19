@@ -76,10 +76,14 @@ body{
   min-height: 420px;
   padding: 16px;
   display:grid;
-  grid-template-columns:minmax(0, 1fr) minmax(0, 1fr);
-  gap:16px;
+  grid-template-columns:minmax(0, 1fr) 112px minmax(0, 1fr);
+  gap:0;
   overflow:hidden;
   box-shadow: 0 20px 34px rgba(8, 47, 73, .18);
+}
+
+.mlv-lane{
+  min-width:96px;
 }
 
 .mlv-lines{
@@ -103,7 +107,7 @@ body{
   position:relative;
   border-radius:12px;
   border:2px solid transparent;
-  min-height:78px;
+  min-height:74px;
   padding:10px 12px;
   display:flex;
   align-items:center;
@@ -178,13 +182,22 @@ body{
 }
 
 .mlv-media-left{
-  width:74px;
-  height:48px;
+  width:96px;
+  height:62px;
 }
 
 .mlv-media-right{
-  width:74px;
-  height:48px;
+  width:96px;
+  height:62px;
+}
+
+.mlv-card.image-only{
+  padding:6px 8px;
+}
+
+.mlv-left .mlv-card.image-only,
+.mlv-right .mlv-card.image-only{
+  background:linear-gradient(180deg, #f8fbff 0%, #eef8ff 100%);
 }
 
 .mlv-text{
@@ -306,9 +319,10 @@ body{
 
 @media (max-width: 760px){
   .mlv-stage{ grid-template-columns:1fr; min-height:unset; }
+  .mlv-lane{ display:none; }
   .mlv-card{ min-height:74px; }
   .mlv-text{ font-size:15px; }
   .mlv-right .mlv-text{ font-size:34px; }
   .mlv-media-left,
-  .mlv-media-right{ width:64px; height:42px; }
+  .mlv-media-right{ width:84px; height:54px; }
 }

@@ -312,6 +312,7 @@ ob_start();
         <div class="mlv-stage" id="mlvStage">
             <svg id="mlvLines" class="mlv-lines" aria-hidden="true"></svg>
             <div class="mlv-col mlv-left" id="mlvLeft"></div>
+            <div class="mlv-lane" aria-hidden="true"></div>
             <div class="mlv-col mlv-right" id="mlvRight"></div>
         </div>
 

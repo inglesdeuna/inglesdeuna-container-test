@@ -66,8 +66,9 @@ document.addEventListener('DOMContentLoaded', function () {
     const label = text !== '' ? '<div class="mlv-text">' + text + '</div>' : '';
     const badge = side === 'left' ? '<span class="mlv-index">' + String(index + 1) + '</span>' : '';
     const sideClass = side === 'left' ? 'mlv-card-left' : 'mlv-card-right';
+    const imageOnlyClass = image !== '' && text === '' ? ' image-only' : '';
 
-    return '<button type="button" class="mlv-card ' + sideClass + '" data-pair-id="' + pairId + '">'
+    return '<button type="button" class="mlv-card ' + sideClass + imageOnlyClass + '" data-pair-id="' + pairId + '">'
       + badge + media + label + '<span class="mlv-anchor" aria-hidden="true"></span></button>';
   }
 
