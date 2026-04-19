@@ -178,13 +178,13 @@ body{
 }
 
 .mlv-media-left{
-  width:42px;
-  height:28px;
+  width:74px;
+  height:48px;
 }
 
 .mlv-media-right{
-  width:42px;
-  height:28px;
+  width:74px;
+  height:48px;
 }
 
 .mlv-text{
@@ -310,5 +310,5 @@ body{
   .mlv-text{ font-size:15px; }
   .mlv-right .mlv-text{ font-size:34px; }
   .mlv-media-left,
-  .mlv-media-right{ width:38px; height:24px; }
+  .mlv-media-right{ width:64px; height:42px; }
 }
