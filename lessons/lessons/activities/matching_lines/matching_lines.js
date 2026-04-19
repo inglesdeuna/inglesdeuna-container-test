@@ -61,7 +61,8 @@ document.addEventListener('DOMContentLoaded', function () {
     const pairId = esc(pair.id || '');
     const text = side === 'left' ? esc(pair.left_text || '') : esc(pair.right_text || '');
     const image = side === 'left' ? esc(pair.left_image || '') : esc(pair.right_image || '');
-    const media = image !== '' ? '<div class="mlv-media-box"><img class="mlv-media" src="' + image + '" alt="item"></div>' : '';
+    const mediaClass = side === 'left' ? 'mlv-media mlv-media-left' : 'mlv-media mlv-media-right';
+    const media = image !== '' ? '<img class="' + mediaClass + '" src="' + image + '" alt="item">' : '';
     const label = text !== '' ? '<div class="mlv-text">' + text + '</div>' : '';
     const badge = side === 'left' ? '<span class="mlv-index">' + String(index + 1) + '</span>' : '';
     const sideClass = side === 'left' ? 'mlv-card-left' : 'mlv-card-right';

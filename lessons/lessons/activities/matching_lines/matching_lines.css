@@ -174,19 +174,17 @@ body{
   object-fit:contain;
   display:block;
   margin:0 auto;
-  border-radius:8px;
+  border-radius:6px;
 }
 
-.mlv-media-box{
-  width:56px;
-  height:36px;
-  border-radius:10px;
-  border:1px solid #cbd5e1;
-  background:linear-gradient(180deg, #f8fafc 0%, #ffffff 100%);
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  box-shadow:inset 0 1px 2px rgba(15,23,42,.08);
+.mlv-media-left{
+  width:42px;
+  height:28px;
+}
+
+.mlv-media-right{
+  width:42px;
+  height:28px;
 }
 
 .mlv-text{
@@ -311,5 +309,6 @@ body{
   .mlv-card{ min-height:74px; }
   .mlv-text{ font-size:15px; }
   .mlv-right .mlv-text{ font-size:34px; }
-  .mlv-media-box{ width:50px; height:32px; }
+  .mlv-media-left,
+  .mlv-media-right{ width:38px; height:24px; }
 }
