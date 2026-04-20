@@ -1,6 +1,7 @@
 document.addEventListener('DOMContentLoaded', function () {
   const payload = window.DOT_TO_DOT_DATA || {};
   const points = Array.isArray(payload.points) ? payload.points : [];
+  const labelSettings = payload.labelSettings || {};
 
   const stage = document.getElementById('d2dvStage');
   const canvas = document.getElementById('d2dvCanvas');
@@ -21,7 +22,8 @@ document.addEventListener('DOMContentLoaded', function () {
     .map(function (p) {
       return {
         x: Number(p.x),
-        y: Number(p.y)
+        y: Number(p.y),
+        label: (p && typeof p.label !== 'undefined') ? String(p.label) : ''
       };
     })
     .filter(function (p) {
@@ -30,6 +32,59 @@ document.addEventListener('DOMContentLoaded', function () {
 
   if (normalizedPoints.length < 3) {
     return;
+  }
+
+  function numberToLetters(value) {
+    if (value < 1) {
+      return String(value);
+    }
+    let n = value;
+    let letters = '';
+    while (n > 0) {
+      n -= 1;
+      letters = String.fromCharCode(65 + (n % 26)) + letters;
+      n = Math.floor(n / 26);
+    }
+    return letters;
+  }
+
+  function numberToWordsEn(value) {
+    const ones = ['zero','one','two','three','four','five','six','seven','eight','nine','ten','eleven','twelve','thirteen','fourteen','fifteen','sixteen','seventeen','eighteen','nineteen'];
+    const tens = ['', '', 'twenty', 'thirty', 'forty', 'fifty', 'sixty', 'seventy', 'eighty', 'ninety'];
+    if (value < 20) return ones[value] || String(value);
+    if (value < 100) {
+      const ten = Math.floor(value / 10);
+      const rest = value % 10;
+      return rest === 0 ? tens[ten] : (tens[ten] + '-' + ones[rest]);
+    }
+    if (value < 1000) {
+      const hundred = Math.floor(value / 100);
+      const rest = value % 100;
+      return rest === 0 ? (ones[hundred] + ' hundred') : (ones[hundred] + ' hundred ' + numberToWordsEn(rest));
+    }
+    return String(value);
+  }
+
+  function fallbackLabel(index) {
+    const mode = String(labelSettings.mode || 'number');
+    const start = Math.max(1, Number(labelSettings.start || 1));
+    const step = Math.max(1, Number(labelSettings.step || 1));
+    const value = start + (index * step);
+    if (mode === 'letter') {
+      return numberToLetters(value);
+    }
+    if (mode === 'word') {
+      return numberToWordsEn(value);
+    }
+    return String(value);
+  }
+
+  function pointLabel(index) {
+    const point = normalizedPoints[index];
+    if (point && point.label) {
+      return point.label;
+    }
+    return fallbackLabel(index);
   }
 
   const lineSound = new Audio('../../hangman/assets/pageflip.mp3');
@@ -131,7 +186,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
       ctx.fillStyle = '#111827';
       ctx.font = '700 16px Nunito, sans-serif';
-      ctx.fillText(String(i + 1), p.x + 8, p.y - 8);
+      ctx.fillText(pointLabel(i), p.x + 8, p.y - 8);
     });
   }
 
@@ -166,8 +221,8 @@ document.addEventListener('DOMContentLoaded', function () {
       return;
     }
 
-    const nextA = currentIndex + 1;
-    const nextB = currentIndex + 2;
+    const nextA = pointLabel(currentIndex);
+    const nextB = pointLabel(currentIndex + 1);
     progressEl.textContent = 'Connect ' + nextA + ' to ' + nextB;
     counterEl.textContent = currentIndex + ' / ' + totalSegments + ' lines';
     statusEl.textContent = 'Draw from point ' + nextA + ' to point ' + nextB + '.';
@@ -295,7 +350,7 @@ document.addEventListener('DOMContentLoaded', function () {
     } else {
       errors += 1;
       play(failSound);
-      statusEl.textContent = 'Try again. Start from point ' + (currentIndex + 1) + '.';
+      statusEl.textContent = 'Try again. Start from point ' + pointLabel(currentIndex) + '.';
     }
 
     updateStatus();
@@ -332,8 +387,8 @@ document.addEventListener('DOMContentLoaded', function () {
       return;
     }
     errors += 1;
-    const nextA = currentIndex + 1;
-    const nextB = currentIndex + 2;
+    const nextA = pointLabel(currentIndex);
+    const nextB = pointLabel(currentIndex + 1);
     statusEl.textContent = 'Hint: connect ' + nextA + ' to ' + nextB + '.';
   });
 
