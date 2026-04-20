@@ -432,9 +432,11 @@ ob_start();
         draw();
     }
 
-    // --- Drag and drop support ---
+    // --- Drag and drop/select/create separation ---
     let dragIndex = null;
     let dragOffset = { x: 0, y: 0 };
+    let isDragging = false;
+    let mouseDownOnPoint = false;
 
     function draw() {
         const rect = overlay.getBoundingClientRect();
@@ -491,7 +493,7 @@ ob_start();
     }
 
     // --- Drag and drop, selection, and creation separation ---
-    let isDragging = false;
+    // (Eliminado: duplicado)
 
     overlay.addEventListener('mousedown', function (event) {
         const rect = overlay.getBoundingClientRect();
@@ -504,11 +506,12 @@ ob_start();
             dragOffset.y = y - points[idx].y * rect.height;
             overlay.style.cursor = 'grabbing';
             isDragging = false;
-            // Prevent accidental creation on click
+            mouseDownOnPoint = true;
             event.stopPropagation();
             event.preventDefault();
         } else {
             dragIndex = null;
+            mouseDownOnPoint = false;
         }
     });
 
@@ -534,25 +537,16 @@ ob_start();
             event.stopPropagation();
             event.preventDefault();
         }
+        mouseDownOnPoint = false;
     });
 
-    // Only create a new point if mouseup/click is not on an existing point and not a drag
     overlay.addEventListener('click', function (event) {
-        // If we just finished a drag or clicked on a point, do nothing
-        if (isDragging || dragIndex !== null) {
-            return;
-        }
-        const rect = overlay.getBoundingClientRect();
-        if (!rect.width || !rect.height) {
-            return;
-        }
-        const x = (event.clientX - rect.left) / rect.width;
-        const y = (event.clientY - rect.top) / rect.height;
-        // If click is on a point, do not create
-        if (getPointAt(event.clientX - rect.left, event.clientY - rect.top) !== null) {
-            return;
-        }
-        addPointNormalized(x, y);
+        // Nunca crear punto por click en canvas, solo seleccionar/mover
+        // Si el click fue sobre un punto, solo selecciona
+        // Si fue drag, ignora
+        event.stopPropagation();
+        event.preventDefault();
+        return;
     });
 
     function updatePointList() {
