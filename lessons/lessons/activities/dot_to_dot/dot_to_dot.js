@@ -421,6 +421,11 @@ document.addEventListener('DOMContentLoaded', function () {
     image.addEventListener('load', resizeCanvas);
   }
 
+  // Always start with image hidden and canvas visible
+  image.style.opacity = '0';
+  canvas.style.opacity = '1';
+  canvas.style.pointerEvents = '';
+
   updateStatus();
   draw();
 });
