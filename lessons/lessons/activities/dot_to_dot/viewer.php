@@ -21,10 +21,10 @@ $image = isset($activity['image']) ? (string) $activity['image'] : '';
 $instruction = isset($activity['instruction'])
     ? (string) $activity['instruction']
     : 'Connect the dots in order to reveal the picture.';
+$points = isset($activity['points']) && is_array($activity['points']) ? array_values($activity['points']) : array();
 $labelSettings = isset($activity['label_settings']) && is_array($activity['label_settings'])
     ? normalize_dot_to_dot_label_settings($activity['label_settings'], count($points))
     : default_dot_to_dot_label_settings();
-$points = isset($activity['points']) && is_array($activity['points']) ? array_values($activity['points']) : array();
 
 $cssVersion = (string) (@filemtime(__DIR__ . '/dot_to_dot.css') ?: time());
 $jsVersion = (string) (@filemtime(__DIR__ . '/dot_to_dot.js') ?: time());
