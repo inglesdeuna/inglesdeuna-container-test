@@ -509,6 +509,7 @@ $activityLabels = [
     'drag_drop' => 'Drag & Drop',
     'unscramble' => 'Unscramble',
     'match' => 'Match',
+    'dot_to_dot' => 'Dot to Dot',
     'external' => 'External',
     'build_sentence' => 'Unscramble',
 ];

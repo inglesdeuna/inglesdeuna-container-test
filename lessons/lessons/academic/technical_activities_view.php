@@ -509,6 +509,7 @@ body{
                             'flashcards' => '🃏',
                             'memory_cards' => '🃏',
                             'match' => '🔗',
+                            'dot_to_dot' => '🔢',
                             'multiple_choice' => '✅',
                             'video_comprehension' => '🎬',
                             'listen_order' => '🎧',

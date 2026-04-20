@@ -242,6 +242,7 @@ $activityTypeLabels = [
     'order_sentences' => 'Order the Sentences',
     'drag_drop' => 'Drag & Drop',
     'match' => 'Match',
+    'dot_to_dot' => 'Dot to Dot',
     'external' => 'External',
     'powerpoint' => 'PowerPoint',
     'build_sentence' => 'Build the Sentence',

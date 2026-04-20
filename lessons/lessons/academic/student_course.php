@@ -655,6 +655,7 @@ $activityTypeLabels = [
     'pronunciation' => 'Pronunciation', 'listen_order' => 'Listen & Order',
     'order_sentences' => 'Order the Sentences',
     'drag_drop' => 'Drag & Drop', 'match' => 'Match', 'matching_lines' => 'Matching Lines',
+    'dot_to_dot' => 'Dot to Dot',
     'external' => 'External', 'powerpoint' => 'PowerPoint',
     'crossword' => 'Crossword Puzzle',
 ];

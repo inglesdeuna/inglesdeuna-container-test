@@ -82,6 +82,7 @@ function ws_cfg(string $type): array {
         'writing_practice'    => ['label'=>'Writing Practice',     'cls'=>'green'],
         'match'               => ['label'=>'Match the Pairs',      'cls'=>'orange'],
         'matching_lines'      => ['label'=>'Matching Lines',       'cls'=>'orange'],
+        'dot_to_dot'          => ['label'=>'Dot to Dot',           'cls'=>'orange'],
         'order_sentences'     => ['label'=>'Order the Sentences',  'cls'=>'orange'],
         'listen_order'        => ['label'=>'Listen & Order',       'cls'=>'cyan'],
         'crossword'           => ['label'=>'Crossword',            'cls'=>'orange'],
