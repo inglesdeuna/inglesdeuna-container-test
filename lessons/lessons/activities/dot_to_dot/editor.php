@@ -264,6 +264,10 @@ ob_start();
             </div>
 
             <label style="margin-top:10px;">Point list</label>
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+                <button type="button" class="d2d-btn d2d-btn-soft" id="addPointBtn">+ Add point</button>
+                <span style="font-size:13px;color:#64748b;">(Manual, agrega punto centrado)</span>
+            </div>
             <ul class="d2d-list" id="d2dPointList"></ul>
         </section>
     </div>
@@ -281,6 +285,30 @@ ob_start();
     const clearBtn = document.getElementById('clearPointsBtn');
     const undoBtn = document.getElementById('undoPointBtn');
     const formEl = document.getElementById('d2dEditorForm');
+    const addPointBtn = document.getElementById('addPointBtn');
+        // Botón manual para agregar punto centrado
+        if (addPointBtn) {
+            addPointBtn.addEventListener('click', function () {
+                const settings = normalizeSettings();
+                const max = capacity(settings);
+                if (points.length >= max) {
+                    alert('Ya alcanzaste el límite configurado de ' + max + ' puntos. Cambia End/Step o elimina puntos.');
+                    return;
+                }
+                // Por defecto, agrega punto centrado (0.5, 0.5) o el siguiente disponible si ya existe uno ahí
+                let x = 0.5, y = 0.5;
+                // Si ya existe un punto centrado, busca un lugar cercano libre
+                let offset = 0.05;
+                while (points.some(p => Math.abs(p.x - x) < 0.01 && Math.abs(p.y - y) < 0.01)) {
+                    x = Math.max(0.05, Math.min(0.95, x + offset));
+                    y = Math.max(0.05, Math.min(0.95, y + offset));
+                    offset = -offset * 1.1; // alterna dirección y aumenta
+                }
+                points.push({ x: x, y: y });
+                updatePointList();
+                draw();
+            });
+        }
     const labelModeEl = document.getElementById('label_mode');
     const startEl = document.getElementById('sequence_start');
     const stepEl = document.getElementById('sequence_step');
