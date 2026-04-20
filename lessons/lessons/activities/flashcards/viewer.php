@@ -346,6 +346,7 @@ body {
     flex-direction: column;
     justify-content: space-between;
     padding: 28px 36px;
+    overflow: hidden;
 }
 
 .front {
@@ -381,6 +382,13 @@ body {
     border-radius: 24px;
 }
 
+.panel-copy.panel-copy--image {
+    align-items: stretch;
+    justify-content: stretch;
+    padding: 8px;
+    overflow: hidden;
+}
+
 .back .panel-copy {
     font-size: clamp(2.25rem, 4.7vw, 5rem);
     color: #ffffff;
@@ -401,16 +409,21 @@ body {
 
 .card-image-container {
     width: 100%;
+    height: 100%;
     max-width: 100%;
+    max-height: 100%;
     display: flex;
     justify-content: center;
     align-items: center;
-    padding: 10px 0;
+    padding: 10px;
+    overflow: hidden;
 }
 
 .card-image {
+    width: auto;
+    height: auto;
     max-width: 100%;
-    max-height: calc(65vh - 200px);
+    max-height: 100%;
     object-fit: contain;
     display: block;
     margin: 0 auto;
@@ -676,7 +689,7 @@ function loadCard() {
 
     if (image) {
         front.innerHTML = `
-            <div class="panel-copy"><div class="card-image-container"><img src="${escapeHtml(image)}" alt="Flashcard image" class="card-image"></div></div>
+            <div class="panel-copy panel-copy--image"><div class="card-image-container"><img src="${escapeHtml(image)}" alt="Flashcard image" class="card-image"></div></div>
         `;
     } else {
         front.innerHTML = `
