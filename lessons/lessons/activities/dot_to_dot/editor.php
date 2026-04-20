@@ -490,6 +490,9 @@ ob_start();
         return null;
     }
 
+    // --- Drag and drop, selection, and creation separation ---
+    let isDragging = false;
+
     overlay.addEventListener('mousedown', function (event) {
         const rect = overlay.getBoundingClientRect();
         const x = (event.clientX - rect.left);
@@ -500,11 +503,18 @@ ob_start();
             dragOffset.x = x - points[idx].x * rect.width;
             dragOffset.y = y - points[idx].y * rect.height;
             overlay.style.cursor = 'grabbing';
+            isDragging = false;
+            // Prevent accidental creation on click
+            event.stopPropagation();
+            event.preventDefault();
+        } else {
+            dragIndex = null;
         }
     });
 
     overlay.addEventListener('mousemove', function (event) {
         if (dragIndex === null) return;
+        isDragging = true;
         const rect = overlay.getBoundingClientRect();
         let x = (event.clientX - rect.left - dragOffset.x) / rect.width;
         let y = (event.clientY - rect.top - dragOffset.y) / rect.height;
@@ -516,11 +526,33 @@ ob_start();
         draw();
     });
 
-    window.addEventListener('mouseup', function () {
+    overlay.addEventListener('mouseup', function (event) {
         if (dragIndex !== null) {
-            dragIndex = null;
             overlay.style.cursor = '';
+            dragIndex = null;
+            isDragging = false;
+            event.stopPropagation();
+            event.preventDefault();
         }
+    });
+
+    // Only create a new point if mouseup/click is not on an existing point and not a drag
+    overlay.addEventListener('click', function (event) {
+        // If we just finished a drag or clicked on a point, do nothing
+        if (isDragging || dragIndex !== null) {
+            return;
+        }
+        const rect = overlay.getBoundingClientRect();
+        if (!rect.width || !rect.height) {
+            return;
+        }
+        const x = (event.clientX - rect.left) / rect.width;
+        const y = (event.clientY - rect.top) / rect.height;
+        // If click is on a point, do not create
+        if (getPointAt(event.clientX - rect.left, event.clientY - rect.top) !== null) {
+            return;
+        }
+        addPointNormalized(x, y);
     });
 
     function updatePointList() {
