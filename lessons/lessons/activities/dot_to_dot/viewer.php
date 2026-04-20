@@ -21,6 +21,9 @@ $image = isset($activity['image']) ? (string) $activity['image'] : '';
 $instruction = isset($activity['instruction'])
     ? (string) $activity['instruction']
     : 'Connect the dots in order to reveal the picture.';
+$labelSettings = isset($activity['label_settings']) && is_array($activity['label_settings'])
+    ? normalize_dot_to_dot_label_settings($activity['label_settings'], count($points))
+    : default_dot_to_dot_label_settings();
 $points = isset($activity['points']) && is_array($activity['points']) ? array_values($activity['points']) : array();
 
 $cssVersion = (string) (@filemtime(__DIR__ . '/dot_to_dot.css') ?: time());
@@ -41,7 +44,7 @@ ob_start();
 
         <div class="d2dv-stage-card">
             <div class="d2dv-progress-row">
-                <span class="d2dv-chip" id="d2dvProgress">Connect 1 to 2</span>
+                <span class="d2dv-chip" id="d2dvProgress">Ready to connect</span>
                 <span class="d2dv-chip d2dv-chip-accent" id="d2dvCounter">0 / <?= max(count($points) - 1, 0) ?> lines</span>
             </div>
 
@@ -56,7 +59,7 @@ ob_start();
                 <button type="button" class="d2dv-btn d2dv-btn-next" id="d2dvContinueBtn" style="display:none;">Continue</button>
             </div>
 
-            <p class="d2dv-status" id="d2dvStatus">Draw from point 1 to point 2.</p>
+            <p class="d2dv-status" id="d2dvStatus">Draw from the current point to the next one.</p>
         </div>
     </section>
 
@@ -66,6 +69,7 @@ ob_start();
         image: <?= json_encode($image, JSON_UNESCAPED_UNICODE) ?>,
         title: <?= json_encode($title, JSON_UNESCAPED_UNICODE) ?>,
         points: <?= json_encode($points, JSON_UNESCAPED_UNICODE) ?>,
+        labelSettings: <?= json_encode($labelSettings, JSON_UNESCAPED_UNICODE) ?>,
         returnTo: <?= json_encode($returnTo, JSON_UNESCAPED_UNICODE) ?>
     };
     </script>
