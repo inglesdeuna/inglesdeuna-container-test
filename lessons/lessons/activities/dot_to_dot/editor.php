@@ -431,6 +431,10 @@ ob_start();
         draw();
     }
 
+    // --- Drag and drop support ---
+    let dragIndex = null;
+    let dragOffset = { x: 0, y: 0 };
+
     function draw() {
         const rect = overlay.getBoundingClientRect();
         const ctx = getCtx();
@@ -462,9 +466,9 @@ ob_start();
             const x = p.x * rect.width;
             const y = p.y * rect.height;
 
-            ctx.fillStyle = '#1d4ed8';
+            ctx.fillStyle = dragIndex === index ? '#f59e42' : '#1d4ed8';
             ctx.beginPath();
-            ctx.arc(x, y, 7, 0, Math.PI * 2);
+            ctx.arc(x, y, 9, 0, Math.PI * 2);
             ctx.fill();
 
             ctx.fillStyle = '#111827';
@@ -472,6 +476,51 @@ ob_start();
             ctx.fillText(pointLabel(index, settings), x + 10, y - 10);
         });
     }
+
+    function getPointAt(x, y) {
+        // x, y in canvas pixel coordinates
+        const rect = overlay.getBoundingClientRect();
+        for (let i = 0; i < points.length; i++) {
+            const px = points[i].x * rect.width;
+            const py = points[i].y * rect.height;
+            const dist = Math.sqrt((px - x) * (px - x) + (py - y) * (py - y));
+            if (dist <= 14) return i;
+        }
+        return null;
+    }
+
+    overlay.addEventListener('mousedown', function (event) {
+        const rect = overlay.getBoundingClientRect();
+        const x = (event.clientX - rect.left);
+        const y = (event.clientY - rect.top);
+        const idx = getPointAt(x, y);
+        if (idx !== null) {
+            dragIndex = idx;
+            dragOffset.x = x - points[idx].x * rect.width;
+            dragOffset.y = y - points[idx].y * rect.height;
+            overlay.style.cursor = 'grabbing';
+        }
+    });
+
+    overlay.addEventListener('mousemove', function (event) {
+        if (dragIndex === null) return;
+        const rect = overlay.getBoundingClientRect();
+        let x = (event.clientX - rect.left - dragOffset.x) / rect.width;
+        let y = (event.clientY - rect.top - dragOffset.y) / rect.height;
+        x = Math.max(0, Math.min(1, x));
+        y = Math.max(0, Math.min(1, y));
+        points[dragIndex].x = x;
+        points[dragIndex].y = y;
+        updatePointList();
+        draw();
+    });
+
+    window.addEventListener('mouseup', function () {
+        if (dragIndex !== null) {
+            dragIndex = null;
+            overlay.style.cursor = '';
+        }
+    });
 
     function updatePointList() {
         pointList.innerHTML = '';
