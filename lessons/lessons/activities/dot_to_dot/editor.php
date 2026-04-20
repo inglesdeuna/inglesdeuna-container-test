@@ -217,10 +217,11 @@ ob_start();
             <textarea id="activity_instruction" name="activity_instruction" placeholder="Example: Connect numbers in order from 1 to 24."><?= htmlspecialchars($activityInstruction, ENT_QUOTES, 'UTF-8') ?></textarea>
 
             <label for="label_mode" style="margin-top:10px;">Point labels mode</label>
-            <select id="label_mode" name="label_mode">
-                <option value="number" <?= ($activityLabelSettings['mode'] ?? 'number') === 'number' ? 'selected' : '' ?>>Numbers</option>
-                <option value="letter" <?= ($activityLabelSettings['mode'] ?? 'number') === 'letter' ? 'selected' : '' ?>>Letters</option>
-                <option value="word" <?= ($activityLabelSettings['mode'] ?? 'number') === 'word' ? 'selected' : '' ?>>Number words</option>
+                    <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+                        <button type="button" class="d2d-btn d2d-btn-soft" id="addPointBtn">+ Add point</button>
+                        <button type="button" class="d2d-btn d2d-btn-soft" id="autoPlaceBtn">Auto-place points on outline</button>
+                        <span style="font-size:13px;color:#64748b;">(Manual o automático)</span>
+                    </div>
             </select>
 
             <div class="d2d-row-3" style="margin-top:8px;">
@@ -241,6 +242,73 @@ ob_start();
 
             <label for="main_image" style="margin-top:10px;">Final colored image</label>
             <input id="main_image" name="main_image" type="file" accept="image/*">
+            const autoPlaceBtn = document.getElementById('autoPlaceBtn');
+            // --- Auto-place points on outline ---
+            if (autoPlaceBtn) {
+                autoPlaceBtn.addEventListener('click', function () {
+                    if (!imageEl.complete || !imageEl.naturalWidth) {
+                        alert('Load an image first.');
+                        return;
+                    }
+                    const settings = normalizeSettings();
+                    const numPoints = capacity(settings);
+                    // Create a temp canvas to process the image
+                    const tempCanvas = document.createElement('canvas');
+                    const w = imageEl.naturalWidth;
+                    const h = imageEl.naturalHeight;
+                    tempCanvas.width = w;
+                    tempCanvas.height = h;
+                    const ctx = tempCanvas.getContext('2d');
+                    ctx.drawImage(imageEl, 0, 0, w, h);
+                    // Get grayscale
+                    const imgData = ctx.getImageData(0, 0, w, h);
+                    const gray = new Uint8ClampedArray(w * h);
+                    for (let i = 0; i < w * h; i++) {
+                        const r = imgData.data[i * 4];
+                        const g = imgData.data[i * 4 + 1];
+                        const b = imgData.data[i * 4 + 2];
+                        gray[i] = 0.299 * r + 0.587 * g + 0.114 * b;
+                    }
+                    // Simple edge detection (Sobel)
+                    const edge = new Uint8ClampedArray(w * h);
+                    for (let y = 1; y < h - 1; y++) {
+                        for (let x = 1; x < w - 1; x++) {
+                            const gx =
+                                -gray[(y - 1) * w + (x - 1)] - 2 * gray[y * w + (x - 1)] - gray[(y + 1) * w + (x - 1)]
+                                + gray[(y - 1) * w + (x + 1)] + 2 * gray[y * w + (x + 1)] + gray[(y + 1) * w + (x + 1)];
+                            const gy =
+                                -gray[(y - 1) * w + (x - 1)] - 2 * gray[(y - 1) * w + x] - gray[(y - 1) * w + (x + 1)]
+                                + gray[(y + 1) * w + (x - 1)] + 2 * gray[(y + 1) * w + x] + gray[(y + 1) * w + (x + 1)];
+                            edge[y * w + x] = Math.sqrt(gx * gx + gy * gy) > 100 ? 255 : 0;
+                        }
+                    }
+                    // Find edge pixels
+                    const edgePixels = [];
+                    for (let y = 0; y < h; y++) {
+                        for (let x = 0; x < w; x++) {
+                            if (edge[y * w + x] === 255) {
+                                edgePixels.push({ x, y });
+                            }
+                        }
+                    }
+                    if (edgePixels.length < numPoints) {
+                        alert('Could not detect enough outline points. Try a clearer image.');
+                        return;
+                    }
+                    // Distribute points evenly along the edge pixels (simple sampling)
+                    const step = Math.floor(edgePixels.length / numPoints);
+                    const newPoints = [];
+                    for (let i = 0; i < numPoints; i++) {
+                        const idx = i * step;
+                        const p = edgePixels[idx % edgePixels.length];
+                        // Normalize to [0,1]
+                        newPoints.push({ x: p.x / w, y: p.y / h });
+                    }
+                    points = newPoints;
+                    updatePointList();
+                    draw();
+                });
+            }
             <input type="hidden" name="image_existing" id="image_existing" value="<?= htmlspecialchars($activityImage, ENT_QUOTES, 'UTF-8') ?>">
             <input type="hidden" name="points_json" id="points_json" value="<?= htmlspecialchars(json_encode($activityPoints, JSON_UNESCAPED_UNICODE), ENT_QUOTES, 'UTF-8') ?>">
 
