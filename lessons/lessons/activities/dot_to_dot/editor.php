@@ -359,6 +359,7 @@ ob_start();
     }
 
     function capacity(settings) {
+        // No longer restricts point count; used only for label preview.
         return Math.floor((settings.end - settings.start) / settings.step) + 1;
     }
 
@@ -538,7 +539,13 @@ ob_start();
             const li = document.createElement('li');
             const xPercent = Math.round(p.x * 1000) / 10;
             const yPercent = Math.round(p.y * 1000) / 10;
-            li.innerHTML = '<span>' + pointLabel(index, settings) + '</span><span>X ' + xPercent + '% | Y ' + yPercent + '% <button type="button" class="d2d-list-remove" data-remove-index="' + index + '">x</button></span>';
+            let label = '';
+            // Only assign label if within sequence, else blank
+            const seqMax = capacity(settings);
+            if (index < seqMax) {
+                label = pointLabel(index, settings);
+            }
+            li.innerHTML = '<span>' + label + '</span><span>X ' + xPercent + '% | Y ' + yPercent + '% <button type="button" class="d2d-list-remove" data-remove-index="' + index + '">x</button></span>';
             pointList.appendChild(li);
         });
 
@@ -555,10 +562,11 @@ ob_start();
         });
 
         pointsInput.value = JSON.stringify(points.map(function (p, index) {
+            const seqMax = capacity(settings);
             return {
                 x: Number(p.x.toFixed(6)),
                 y: Number(p.y.toFixed(6)),
-                label: pointLabel(index, settings)
+                label: index < seqMax ? pointLabel(index, settings) : ''
             };
         }));
     }
@@ -574,14 +582,6 @@ ob_start();
         if (x < 0 || x > 1 || y < 0 || y > 1) {
             return;
         }
-
-        const settings = normalizeSettings();
-        const max = capacity(settings);
-        if (points.length >= max) {
-            alert('You already reached the configured limit of ' + max + ' points. Change End/Step or remove points.');
-            return;
-        }
-
         points.push({ x: x, y: y });
         updatePointList();
         draw();
@@ -658,21 +658,12 @@ ob_start();
     });
 
     formEl.addEventListener('submit', function (event) {
-        const settings = normalizeSettings();
-        const max = capacity(settings);
-
         // Ensure hidden field is always up-to-date before server validation.
         updatePointList();
 
         if (!imageEl.getAttribute('src')) {
             event.preventDefault();
             alert('Upload a final colored image before saving.');
-            return;
-        }
-
-        if (points.length > max) {
-            event.preventDefault();
-            alert('You placed ' + points.length + ' points but this setup allows only ' + max + '.');
             return;
         }
 
