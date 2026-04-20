@@ -175,8 +175,8 @@ ob_start();
 .d2d-row-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
 .d2d-stage-wrap{background:linear-gradient(180deg,#ffffff 0%,#f8fafc 100%);border:1px dashed #93c5fd;border-radius:14px;padding:12px}
 .d2d-stage{position:relative;border:2px solid #cbd5e1;border-radius:14px;background:#fff;display:flex;justify-content:center;align-items:center;min-height:280px;overflow:hidden}
-.d2d-stage img{display:block;max-width:100%;height:auto}
-.d2d-overlay{position:absolute;inset:0;width:100%;height:100%;cursor:crosshair}
+.d2d-stage img{display:block;max-width:100%;height:auto;pointer-events:none;position:relative;z-index:1}
+.d2d-overlay{position:absolute;inset:0;width:100%;height:100%;cursor:crosshair;z-index:2}
 .d2d-empty{font-weight:800;color:#64748b;padding:24px;text-align:center}
 .d2d-list{margin:0;padding:0;list-style:none;display:grid;gap:8px;max-height:340px;overflow:auto}
 .d2d-list li{display:flex;justify-content:space-between;align-items:center;padding:8px 10px;border:1px solid #dbeafe;border-radius:10px;background:#f8fafc;font-weight:700;color:#1e3a8a}
@@ -493,15 +493,7 @@ ob_start();
         emptyEl.style.display = hasImage ? 'none' : '';
     }
 
-    overlay.addEventListener('click', function (event) {
-        const rect = overlay.getBoundingClientRect();
-        if (!rect.width || !rect.height) {
-            return;
-        }
-
-        const x = (event.clientX - rect.left) / rect.width;
-        const y = (event.clientY - rect.top) / rect.height;
-
+    function addPointNormalized(x, y) {
         if (x < 0 || x > 1 || y < 0 || y > 1) {
             return;
         }
@@ -516,6 +508,40 @@ ob_start();
         points.push({ x: x, y: y });
         updatePointList();
         draw();
+    }
+
+    overlay.addEventListener('click', function (event) {
+        event.stopPropagation();
+        const rect = overlay.getBoundingClientRect();
+        if (!rect.width || !rect.height) {
+            return;
+        }
+
+        const x = (event.clientX - rect.left) / rect.width;
+        const y = (event.clientY - rect.top) / rect.height;
+
+        if (x < 0 || x > 1 || y < 0 || y > 1) {
+            return;
+        }
+
+        addPointNormalized(x, y);
+    });
+
+    stageEl.addEventListener('click', function (event) {
+        if (!imageEl.getAttribute('src')) {
+            return;
+        }
+
+        // Fallback: if overlay sizing fails in some browsers, allow clicks on stage using image bounds.
+        const rect = imageEl.getBoundingClientRect();
+        if (!rect.width || !rect.height) {
+            return;
+        }
+
+        const x = (event.clientX - rect.left) / rect.width;
+        const y = (event.clientY - rect.top) / rect.height;
+
+        addPointNormalized(x, y);
     });
 
     undoBtn.addEventListener('click', function () {
@@ -557,6 +583,9 @@ ob_start();
     formEl.addEventListener('submit', function (event) {
         const settings = normalizeSettings();
         const max = capacity(settings);
+
+        // Ensure hidden field is always up-to-date before server validation.
+        updatePointList();
 
         if (!imageEl.getAttribute('src')) {
             event.preventDefault();
@@ -601,6 +630,7 @@ ob_start();
     if (imageEl.getAttribute('src')) {
         if (imageEl.complete) {
             syncCanvasSize();
+            setTimeout(syncCanvasSize, 120);
         } else {
             imageEl.onload = syncCanvasSize;
         }
