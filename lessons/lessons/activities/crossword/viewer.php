@@ -408,7 +408,7 @@ ob_start();
     --green: #16a34a;
     --red: #dc2626;
     --text: #1e1b4b;
-    --cell-size: <?= (int)$cellSizes['desktop'] ?>px;
+    --cell-size: <?= (int)$cellSizes['desktop'] - 3 ?>px;
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -426,9 +426,9 @@ ob_start();
 
 .cw-layout {
     display: flex;
-    flex-direction: row;
+    flex-direction: column;
     gap: 24px;
-    align-items: flex-start;
+    align-items: center;
     width: 100%;
 }
 .cw-grid-col {
@@ -440,20 +440,16 @@ ob_start();
 }
 .cw-clues-col {
     display: flex;
-    flex-direction: column;
-    gap: 14px;
-    width: 260px;
-    flex-shrink: 0;
-    max-height: 80vh;
-    overflow-y: auto;
-    position: sticky;
-    top: 20px;
-    scrollbar-width: thin;
-    scrollbar-color: #c4b5fd transparent;
+    flex-direction: row;
+    gap: 24px;
+    width: 100%;
+    justify-content: center;
+    margin-top: 24px;
+    max-width: 900px;
 }
-.cw-clues-col::-webkit-scrollbar { width: 5px; }
-.cw-clues-col::-webkit-scrollbar-track { background: transparent; }
-.cw-clues-col::-webkit-scrollbar-thumb { background: #c4b5fd; border-radius: 99px; }
+.clue-panel {
+    width: min(100%, 360px);
+}
 
 /* ---- GRID ---- */
 .cw-grid-wrap {
@@ -754,28 +750,61 @@ ob_start();
     </div>
     <?php endif; ?>
     <div class="cw-card" id="cwGame">
+
         <div class="cw-layout" id="cwGameLayout">
             <!-- GRID COLUMN -->
             <div class="cw-grid-col">
-        <div class="cw-grid-wrap">
-            <div class="cw-grid" id="cwGrid">
-                <?php for ($r = 0; $r < $gridRows; $r++): ?>
-                    <?php for ($c = 0; $c < $gridCols; $c++): $cell = $cellMap[$r][$c]; ?>
-                        <?php if (!$cell["active"]): ?>
-                            <div class="cw-cell blocked" data-r="<?= $r ?>" data-c="<?= $c ?>"></div>
-                        <?php else: ?>
-                            <div class="cw-cell" data-r="<?= $r ?>" data-c="<?= $c ?>"
-                                 data-word-idxs="<?= htmlspecialchars(implode(',', $cell["wordIdxs"]), ENT_QUOTES, 'UTF-8') ?>"
-                                 data-answer="<?= htmlspecialchars($cell["letter"], ENT_QUOTES, 'UTF-8') ?>">
-                                <?php if ($cell["numLabel"] > 0): ?>
-                                    <span class="num" data-num="<?= $cell['numLabel'] ?>" onclick="cwNumClick(event, <?= $r ?>, <?= $c ?>)"><?= $cell["numLabel"] ?></span>
+                <div class="cw-grid-wrap">
+                    <div class="cw-grid" id="cwGrid">
+                        <?php for ($r = 0; $r < $gridRows; $r++): ?>
+                            <?php for ($c = 0; $c < $gridCols; $c++): $cell = $cellMap[$r][$c]; ?>
+                                <?php if (!$cell["active"]): ?>
+                                    <div class="cw-cell blocked" data-r="<?= $r ?>" data-c="<?= $c ?>"></div>
+                                <?php else: ?>
+                                    <div class="cw-cell" data-r="<?= $r ?>" data-c="<?= $c ?>"
+                                         data-word-idxs="<?= htmlspecialchars(implode(',', $cell["wordIdxs"]), ENT_QUOTES, 'UTF-8') ?>"
+                                         data-answer="<?= htmlspecialchars($cell["letter"], ENT_QUOTES, 'UTF-8') ?>">
+                                        <?php if ($cell["numLabel"] > 0): ?>
+                                            <span class="num" data-num="<?= $cell['numLabel'] ?>" onclick="cwNumClick(event, <?= $r ?>, <?= $c ?>)"><?= $cell["numLabel"] ?></span>
+                                        <?php endif; ?>
+                                        <input type="text" maxlength="1" autocomplete="off"
+                                               autocorrect="off" autocapitalize="characters" spellcheck="false">
+                                    </div>
                                 <?php endif; ?>
-                                <input type="text" maxlength="1" autocomplete="off"
-                                       autocorrect="off" autocapitalize="characters" spellcheck="false">
-                            </div>
-                        <?php endif; ?>
-                    <?php endfor; ?>
-                <?php endfor; ?>
+                            <?php endfor; ?>
+                        <?php endfor; ?>
+                    </div>
+                </div>
+            </div>
+            <!-- CLUES UNDER GRID -->
+            <div class="cw-clues-col">
+                <?php if (!empty($acrossWords)): ?>
+                <div class="clue-panel">
+                    <h3>→ Across</h3>
+                    <ul class="clue-list" id="acrossList">
+                        <?php foreach ($acrossWords as $aw): ?>
+                        <li data-idx="<?= $aw['idx'] ?>" data-dir="across" onclick="jumpToClue(<?= $aw['idx'] ?>)">
+                            <span class="clue-num"><?= $aw['num'] ?>.</span>
+                            <span><?= $aw['clue'] !== '' ? $aw['clue'] : '<em style="color:#9ca3af">No clue</em>' ?></span>
+                        </li>
+                        <?php endforeach; ?>
+                    </ul>
+                </div>
+                <?php endif; ?>
+
+                <?php if (!empty($downWords)): ?>
+                <div class="clue-panel">
+                    <h3>↓ Down</h3>
+                    <ul class="clue-list" id="downList">
+                        <?php foreach ($downWords as $dw): ?>
+                        <li data-idx="<?= $dw['idx'] ?>" data-dir="down" onclick="jumpToClue(<?= $dw['idx'] ?>)">
+                            <span class="clue-num"><?= $dw['num'] ?>.</span>
+                            <span><?= $dw['clue'] !== '' ? $dw['clue'] : '<em style="color:#9ca3af">No clue</em>' ?></span>
+                        </li>
+                        <?php endforeach; ?>
+                    </ul>
+                </div>
+                <?php endif; ?>
             </div>
         </div>
 
