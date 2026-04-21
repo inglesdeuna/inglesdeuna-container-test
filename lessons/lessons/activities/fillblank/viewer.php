@@ -2,11 +2,13 @@
 require_once __DIR__ . '/../../core/_activity_viewer_template.php';
 require_once __DIR__ . '/../../core/db.php';
 
-// Get activity ID and unit from query
+<?php
+require_once __DIR__ . '/../../core/_activity_viewer_template.php';
+require_once __DIR__ . '/../../core/db.php';
+
 $activityId = isset($_GET['id']) ? trim((string)$_GET['id']) : '';
 $unit       = isset($_GET['unit']) ? trim((string)$_GET['unit']) : '';
 
-// Load activity from DB (reuse your load_fillblank_activity function)
 function load_fillblank_activity(PDO $pdo, string $unit, string $activityId): array {
     $fallback = [
         'id' => '',
@@ -38,6 +40,7 @@ function load_fillblank_activity(PDO $pdo, string $unit, string $activityId): ar
 }
 
 $activity = load_fillblank_activity($pdo, $unit, $activityId);
+ob_start();
 ?>
 <style>
 .fbk-card {
@@ -53,12 +56,7 @@ $activity = load_fillblank_activity($pdo, $unit, $activityId);
 }
 .fbk-title {
   font-family: 'Fredoka', 'Trebuchet MS', sans-serif;
-require_once __DIR__ . '/../../core/db.php';
-
-$unit = isset($_GET['unit']) ? trim((string)$_GET['unit']) : '';
-$activityId = isset($_GET['id']) ? trim((string)$_GET['id']) : '';
   font-size: 2rem;
-// Helper to load fillblank activity (copied from editor.php)
   color: #14b8a6;
   font-weight: 800;
   margin-bottom: 8px;
@@ -89,8 +87,6 @@ $activityId = isset($_GET['id']) ? trim((string)$_GET['id']) : '';
 .fbk-blank-input {
   width: 110px;
   border: 2px solid #7dd3fc;
-$activity = load_fillblank_activity($pdo, $unit, $activityId);
-ob_start();
   border-radius: 8px;
   padding: 6px 10px;
   font-size: 1rem;
@@ -134,7 +130,6 @@ ob_start();
   .fbk-blank-input { width: 70px; }
 }
 </style>
-
 <div class="fbk-card">
   <div class="fbk-title">Fill-in-the-Blank Activity</div>
   <div class="fbk-instructions" id="fbk-instructions"></div>
@@ -149,32 +144,21 @@ ob_start();
   </form>
   <div class="fbk-feedback" id="fbk-feedback"></div>
 </div>
-
-=======
 <script>
 // Inject PHP data into JS safely
 const activityData = <?= json_encode($activity, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_QUOT) ?>;
-
-// Render instructions, wordbank, and blanks
 document.getElementById('fbk-instructions').textContent = activityData.instructions;
 if (activityData.wordbank) {
   document.getElementById('fbk-wordbank').textContent = 'Word Bank: ' + activityData.wordbank;
   document.getElementById('fbk-wordbank').style.display = '';
 }
-
 function renderTextWithBlanks(text) {
   let idx = 0;
-  return text.replace(/
-
-\[blank\]
-
-/g, () => {
-    return `<input class="fbk-blank-input" name="blank${++idx}" autocomplete="off" />`;
+  return text.replace(/\[blank\]/g, () => {
+    return `<input class=\"fbk-blank-input\" name=\"blank${++idx}\" autocomplete=\"off\" />`;
   });
 }
 document.getElementById('fbk-text').innerHTML = renderTextWithBlanks(activityData.text);
-
-// Handle form submit
 document.getElementById('fbk-form').onsubmit = function(e) {
   e.preventDefault();
   const answers = (activityData.answerkey || '').split(',');
@@ -184,6 +168,19 @@ document.getElementById('fbk-form').onsubmit = function(e) {
     if (val === answers[i].trim().toLowerCase()) correct++;
   }
   const fb = document.getElementById('fbk-feedback');
+  if (correct === answers.length) {
+    fb.textContent = '✅ All correct!';
+    fb.style.color = '#14b8a6';
+  } else {
+    fb.textContent = `❌ ${correct} of ${answers.length} correct. Try again!`;
+    fb.style.color = '#7c3aed';
+  }
+};
+</script>
+<?php
+$content = ob_get_clean();
+render_activity_viewer('Fill-in-the-Blank Activity', 'fa-solid fa-pen-to-square', $content);
+?>
   if (correct === answers.length) {
     fb.textContent = '✅ All correct!';
     fb.style.color = '#14b8a6';
