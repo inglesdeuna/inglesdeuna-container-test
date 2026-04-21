@@ -301,8 +301,14 @@ foreach ($words as $w) {
         $maxCol = max($maxCol, $w['col']);
     }
 }
-$gridRows = $maxRow + 1;
-$gridCols = $maxCol + 1;
+
+// Limitar tamaño máximo de la cuadrícula
+$MAX_GRID_SIZE = 18; // puedes ajustar este valor
+$gridRows = min($maxRow + 1, $MAX_GRID_SIZE);
+$gridCols = min($maxCol + 1, $MAX_GRID_SIZE);
+
+// Si la cuadrícula es más grande, mostrar advertencia
+$showGridLimitWarning = ($maxRow + 1 > $MAX_GRID_SIZE || $maxCol + 1 > $MAX_GRID_SIZE);
 
 // Build cell map: [r][c] = list of word references
 $cellMap = [];
@@ -452,10 +458,27 @@ ob_start();
 /* ---- GRID ---- */
 .cw-grid-wrap {
     overflow-x: auto;
+    overflow-y: hidden;
     padding: 12px 0 8px;
     width: 100%;
     display: flex;
     justify-content: center;
+    scrollbar-width: thin;
+    scrollbar-color: #a78bfa #ede9fe;
+    background: linear-gradient(90deg, #f8fafc 0%, #ede9fe 100%);
+    border-radius: 16px;
+    box-shadow: 0 2px 12px rgba(124,58,237,.06);
+}
+.cw-grid-wrap::-webkit-scrollbar {
+    height: 10px;
+}
+.cw-grid-wrap::-webkit-scrollbar-thumb {
+    background: #a78bfa;
+    border-radius: 8px;
+}
+.cw-grid-wrap::-webkit-scrollbar-track {
+    background: #ede9fe;
+    border-radius: 8px;
 }
 .cw-grid {
     display: grid;
@@ -731,6 +754,11 @@ ob_start();
 </style>
 
 <div class="cw-viewer" id="cwViewer">
+    <?php if ($showGridLimitWarning): ?>
+    <div style="background:#fef3c7;color:#92400e;padding:10px 18px;border-radius:12px;margin-bottom:18px;font-weight:700;font-size:15px;text-align:center;">
+        This crossword is too large (max <?= $MAX_GRID_SIZE ?>x<?= $MAX_GRID_SIZE ?>). Only the first <?= $MAX_GRID_SIZE ?> rows and columns are shown. Please reduce the number or length of words for best display.
+    </div>
+    <?php endif; ?>
     <div class="cw-card" id="cwGame">
         <div class="cw-layout" id="cwGameLayout">
             <!-- GRID COLUMN -->
