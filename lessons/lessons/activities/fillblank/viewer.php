@@ -134,50 +134,63 @@ ob_start();
   <?php if (!empty($activity['wordbank'])): ?>
     <div class="fbk-wordbank" id="fbk-wordbank">Word Bank: <?= htmlspecialchars($activity['wordbank']) ?></div>
   <?php endif; ?>
-  <form id="fbk-form">
-    <div class="fbk-text" id="fbk-text"><?php
-      // Replace [blank] with input fields
-      $text = $activity['text'];
-      $blankCount = 0;
-      // Only escape HTML outside of [blank] replacement
+  <?php
+    $text = $activity['text'];
+    $answerKey = $activity['answerkey'];
+    $answers = array_map('trim', explode(',', $answerKey));
+    $blankCount = 0;
+    $numBlanks = preg_match_all('/\[blank\]/', $text, $matches);
+    $numAnswers = count(array_filter($answers, fn($a) => $a !== ''));
+    if ($numBlanks === 0) {
+      echo '<div class="fbk-text" id="fbk-text" style="color:#b91c1c;font-weight:bold;">Error: No [blank] tokens found in activity text.</div>';
+    } elseif ($numBlanks !== $numAnswers) {
+      echo '<div class="fbk-text" id="fbk-text" style="color:#b91c1c;font-weight:bold;">Error: Number of blanks (' . $numBlanks . ') does not match number of answers (' . $numAnswers . ').</div>';
+    } else {
       $rendered = preg_replace_callback('/\[blank\]/', function() use (&$blankCount) {
         $blankCount++;
         return '<input class="fbk-blank-input" name="blank' . $blankCount . '" autocomplete="off" />';
       }, htmlspecialchars($text, ENT_QUOTES, 'UTF-8'));
       // Now restore the input fields (unescape them)
       $rendered = preg_replace('/&lt;input class=&quot;fbk-blank-input&quot; name=&quot;blank(\d+)&quot; autocomplete=&quot;off&quot; \/&gt;/', '<input class="fbk-blank-input" name="blank$1" autocomplete="off" />', $rendered);
-      echo $rendered;
-    ?></div>
-    <div class="fbk-btn-row">
-      <button type="button" class="fbk-btn secondary" onclick="window.history.back()">Previous</button>
-      <button type="submit" class="fbk-btn">Submit Answers</button>
-      <button type="button" class="fbk-btn secondary" onclick="window.location.reload()">Next</button>
-    </div>
-  </form>
-  <div class="fbk-feedback" id="fbk-feedback"></div>
+      echo '<form id="fbk-form">';
+      echo '<div class="fbk-text" id="fbk-text">' . $rendered . '</div>';
+      echo '<div class="fbk-btn-row">';
+      echo '<button type="button" class="fbk-btn secondary" onclick="window.history.back()">Previous</button>';
+      echo '<button type="submit" class="fbk-btn">Submit Answers</button>';
+      echo '<button type="button" class="fbk-btn secondary" onclick="window.location.reload()">Next</button>';
+      echo '</div>';
+      echo '</form>';
+      echo '<div class="fbk-feedback" id="fbk-feedback"></div>';
+    }
+  ?>
 </div>
+<?php if ($numBlanks > 0 && $numBlanks === $numAnswers): ?>
 <script>
 const answerKey = <?= json_encode($activity['answerkey']) ?>;
 const answers = (answerKey || '').split(',');
-document.getElementById('fbk-form').onsubmit = function(e) {
-  e.preventDefault();
-  let correct = 0;
-  for (let i = 0; i < answers.length; i++) {
-    const input = document.querySelector(`[name=blank${i+1}]`);
-    if (!input) continue;
-    const val = input.value.trim().toLowerCase();
-    if (val === (answers[i]||'').trim().toLowerCase()) correct++;
-  }
-  const fb = document.getElementById('fbk-feedback');
-  if (correct === answers.length) {
-    fb.textContent = '✅ All correct!';
-    fb.style.color = '#14b8a6';
-  } else {
-    fb.textContent = `❌ ${correct} of ${answers.length} correct. Try again!`;
-    fb.style.color = '#7c3aed';
-  }
-};
+const fbkForm = document.getElementById('fbk-form');
+if (fbkForm) {
+  fbkForm.onsubmit = function(e) {
+    e.preventDefault();
+    let correct = 0;
+    for (let i = 0; i < answers.length; i++) {
+      const input = document.querySelector(`[name=blank${i+1}]`);
+      if (!input) continue;
+      const val = input.value.trim().toLowerCase();
+      if (val === (answers[i]||'').trim().toLowerCase()) correct++;
+    }
+    const fb = document.getElementById('fbk-feedback');
+    if (correct === answers.length) {
+      fb.textContent = '✅ All correct!';
+      fb.style.color = '#14b8a6';
+    } else {
+      fb.textContent = `❌ ${correct} of ${answers.length} correct. Try again!`;
+      fb.style.color = '#7c3aed';
+    }
+  };
+}
 </script>
+<?php endif; ?>
 <?php
 $content = ob_get_clean();
 render_activity_viewer('Fill-in-the-Blank Activity', 'fa-solid fa-pen-to-square', $content);
