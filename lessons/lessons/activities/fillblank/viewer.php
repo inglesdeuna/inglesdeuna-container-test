@@ -2,12 +2,13 @@
 require_once __DIR__ . '/../../core/_activity_viewer_template.php';
 require_once __DIR__ . '/../../core/db.php';
 
+
 <?php
 require_once __DIR__ . '/../../core/_activity_viewer_template.php';
 require_once __DIR__ . '/../../core/db.php';
 
 $activityId = isset($_GET['id']) ? trim((string)$_GET['id']) : '';
-$unit       = isset($_GET['unit']) ? trim((string)$_GET['unit']) : '';
+$unit = isset($_GET['unit']) ? trim((string)$_GET['unit']) : '';
 
 function load_fillblank_activity(PDO $pdo, string $unit, string $activityId): array {
     $fallback = [
@@ -145,7 +146,6 @@ ob_start();
   <div class="fbk-feedback" id="fbk-feedback"></div>
 </div>
 <script>
-// Inject PHP data into JS safely
 const activityData = <?= json_encode($activity, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_QUOT) ?>;
 document.getElementById('fbk-instructions').textContent = activityData.instructions;
 if (activityData.wordbank) {
