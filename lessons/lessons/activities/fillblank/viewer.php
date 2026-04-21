@@ -139,10 +139,13 @@ ob_start();
       // Replace [blank] with input fields
       $text = $activity['text'];
       $blankCount = 0;
-      $rendered = preg_replace_callback('/\\[blank\\]/', function() use (&$blankCount) {
+      // Only escape HTML outside of [blank] replacement
+      $rendered = preg_replace_callback('/\[blank\]/', function() use (&$blankCount) {
         $blankCount++;
         return '<input class="fbk-blank-input" name="blank' . $blankCount . '" autocomplete="off" />';
-      }, htmlspecialchars($text));
+      }, htmlspecialchars($text, ENT_QUOTES, 'UTF-8'));
+      // Now restore the input fields (unescape them)
+      $rendered = preg_replace('/&lt;input class=&quot;fbk-blank-input&quot; name=&quot;blank(\d+)&quot; autocomplete=&quot;off&quot; \/&gt;/', '<input class="fbk-blank-input" name="blank$1" autocomplete="off" />', $rendered);
       echo $rendered;
     ?></div>
     <div class="fbk-btn-row">
@@ -160,7 +163,9 @@ document.getElementById('fbk-form').onsubmit = function(e) {
   e.preventDefault();
   let correct = 0;
   for (let i = 0; i < answers.length; i++) {
-    const val = document.querySelector(`[name=blank${i+1}]`).value.trim().toLowerCase();
+    const input = document.querySelector(`[name=blank${i+1}]`);
+    if (!input) continue;
+    const val = input.value.trim().toLowerCase();
     if (val === (answers[i]||'').trim().toLowerCase()) correct++;
   }
   const fb = document.getElementById('fbk-feedback');
