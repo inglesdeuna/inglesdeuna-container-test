@@ -16,7 +16,12 @@ require_once __DIR__ . '/../../core/_activity_viewer_template.php';
 }
 .fbk-title {
   font-family: 'Fredoka', 'Trebuchet MS', sans-serif;
+require_once __DIR__ . '/../../core/db.php';
+
+$unit = isset($_GET['unit']) ? trim((string)$_GET['unit']) : '';
+$activityId = isset($_GET['id']) ? trim((string)$_GET['id']) : '';
   font-size: 2rem;
+// Helper to load fillblank activity (copied from editor.php)
   color: #14b8a6;
   font-weight: 800;
   margin-bottom: 8px;
@@ -47,6 +52,8 @@ require_once __DIR__ . '/../../core/_activity_viewer_template.php';
 .fbk-blank-input {
   width: 110px;
   border: 2px solid #7dd3fc;
+$activity = load_fillblank_activity($pdo, $unit, $activityId);
+ob_start();
   border-radius: 8px;
   padding: 6px 10px;
   font-size: 1rem;
@@ -107,13 +114,8 @@ require_once __DIR__ . '/../../core/_activity_viewer_template.php';
 </div>
 
 <script>
-// --- Placeholder: Load activity data (simulate) ---
-const activityData = {
-  instructions: 'Write the missing words in the blanks.',
-  text: 'The [blank] jumps over the [blank] dog.',
-  wordbank: 'quick, lazy',
-  answerkey: 'quick,lazy'
-};
+// Injected from PHP
+const activityData = <?= json_encode($activity, JSON_UNESCAPED_UNICODE) ?>;
 
 // Render instructions, wordbank, and blanks
 document.getElementById('fbk-instructions').textContent = activityData.instructions;
@@ -150,3 +152,8 @@ document.getElementById('fbk-form').onsubmit = function(e) {
   }
 };
 </script>
+
+<?php
+$content = ob_get_clean();
+render_activity_viewer('Fill-in-the-Blank Activity', 'fa-solid fa-pen-to-square', $content);
+?>
