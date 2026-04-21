@@ -26,7 +26,6 @@ try {
         [
             PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION
         ]
-    );
-} catch (PDOException $e) {
+<?php
     die("DB Connection failed: " . $e->getMessage());
 }
