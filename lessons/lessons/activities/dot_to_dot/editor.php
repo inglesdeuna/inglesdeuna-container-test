@@ -307,11 +307,8 @@ dotImg.addEventListener('click', function(e) {
 
 document.getElementById('d2dEditorForm').addEventListener('submit', function(e) {
     if (points.length < 3) return;
-    setTimeout(() => {
-        revealImage();
-        // Redirigir a la página completed después de guardar (simulación, ajusta la URL si es necesario)
-        window.location.href = '/lessons/lessons/activities/completed.php';
-    }, 100);
+    // No redirigir, dejar que el formulario se procese normalmente en PHP
+    // revealImage();
 });
 
 // También, si el usuario agrega un punto y ya no puede agregar más (opcional, si quieres bloquear el click)
