@@ -1,11 +1,4 @@
-<?php
-require_once __DIR__ . '/../../core/_activity_viewer_template.php';
-require_once __DIR__ . '/../../core/db.php';
 
-
-<?php
-require_once __DIR__ . '/../../core/_activity_viewer_template.php';
-require_once __DIR__ . '/../../core/db.php';
 
 $activityId = isset($_GET['id']) ? trim((string)$_GET['id']) : '';
 $unit = isset($_GET['unit']) ? trim((string)$_GET['unit']) : '';
