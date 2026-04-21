@@ -11,11 +11,16 @@ if ($unit === '' && $activityId !== '') {
 if ($unit === '') {
     die('Unit not specified');
 }
+
 $activity = load_dot_to_dot_activity($pdo, $unit, $activityId);
 $activityTitle = isset($activity['title']) ? (string) $activity['title'] : 'Dot to Dot';
 $activityInstruction = isset($activity['instruction']) ? (string) $activity['instruction'] : '';
 $activityImage = isset($activity['image']) ? (string) $activity['image'] : '';
-$activityPoints = isset($activity['points']) && is_array($activity['points']) ? $activity['points'] : array();
+$activityLabelSettings = isset($activity['label_settings']) && is_array($activity['label_settings'])
+  ? normalize_dot_to_dot_label_settings($activity['label_settings'], isset($activity['points']) && is_array($activity['points']) ? count($activity['points']) : 0)
+  : default_dot_to_dot_label_settings();
+$activityPoints = isset($activity['points']) && is_array($activity['points']) ? dot_to_dot_apply_labels($activity['points'], $activityLabelSettings) : array();
+
 
 ?><!DOCTYPE html>
 <html lang="es">
@@ -52,16 +57,20 @@ body { margin:0; background:#f5f5f5; }
 <div class="d2d-viewer-container">
   <div class="d2d-title"><?= htmlspecialchars($activityTitle) ?></div>
   <div class="d2d-instruction"><?= htmlspecialchars($activityInstruction) ?></div>
-  <div class="d2d-stage" id="d2dStage">
-    <?php if ($activityImage): ?>
+  <?php if (!$activityImage || count($activityPoints) < 3): ?>
+    <div class="d2d-empty">Esta actividad no tiene imagen o puntos suficientes.<br>Por favor, edítala para agregar contenido.</div>
+  <?php else: ?>
+    <div class="d2d-stage" id="d2dStage">
       <img src="<?= htmlspecialchars($activityImage) ?>" class="d2d-img" id="d2dImg" alt="Imagen final" />
-    <?php endif; ?>
-    <!-- Dots se agregan por JS -->
-  </div>
-  <button class="d2d-btn d2d-btn-reveal" id="revealBtn">Revelar imagen</button>
-  <button class="d2d-btn d2d-btn-next" id="nextBtn" style="display:none;">Siguiente</button>
-  <div class="d2d-completed" id="completedMsg" style="display:none;">¡Actividad completada!</div>
+      <!-- Dots se agregan por JS -->
+    </div>
+    <button class="d2d-btn d2d-btn-reveal" id="revealBtn">Revelar imagen</button>
+    <button class="d2d-btn d2d-btn-next" id="nextBtn" style="display:none;">Siguiente</button>
+    <div class="d2d-completed" id="completedMsg" style="display:none;">¡Actividad completada!</div>
+  <?php endif; ?>
 </div>
+<script>
+<?php if ($activityImage && count($activityPoints) >= 3): ?>
 <script>
 const points = <?= json_encode($activityPoints, JSON_UNESCAPED_UNICODE) ?>;
 const stage = document.getElementById('d2dStage');
@@ -71,7 +80,6 @@ const nextBtn = document.getElementById('nextBtn');
 const completedMsg = document.getElementById('completedMsg');
 
 function renderDots(connectedCount = 0) {
-  // Limpia dots
   stage.querySelectorAll('.d2d-dot').forEach(dot => dot.remove());
   points.forEach((pt, i) => {
     const dot = document.createElement('div');
@@ -86,17 +94,14 @@ function renderDots(connectedCount = 0) {
 let connected = 0;
 renderDots(connected);
 
-// Al hacer click en cada punto, conecta el siguiente
 stage.addEventListener('click', function(e) {
   if (img && img.classList.contains('revealed')) return;
   const rect = stage.getBoundingClientRect();
   const x = (e.clientX - rect.left) / rect.width;
   const y = (e.clientY - rect.top) / rect.height;
-  // Busca el siguiente punto
   if (connected < points.length) {
     const pt = points[connected];
     const px = pt.x, py = pt.y;
-    // Si el click está cerca del punto
     if (Math.abs(x - px) < 0.05 && Math.abs(y - py) < 0.05) {
       connected++;
       renderDots(connected);
@@ -118,6 +123,8 @@ revealBtn.addEventListener('click', function() {
 nextBtn.addEventListener('click', function() {
   window.location.href = '/lessons/lessons/activities/completed.php';
 });
+</script>
+<?php endif; ?>
 </script>
 </body>
 </html>
