@@ -1174,6 +1174,7 @@ body{font-family:Arial,sans-serif;background:var(--bg);color:var(--text);overflo
   font-family:'Fredoka', 'Trebuchet MS', sans-serif;
 }
 
+
 .frame-wrap{
   border-radius:18px;
   overflow:hidden;
@@ -1182,9 +1183,26 @@ body{font-family:Arial,sans-serif;background:var(--bg);color:var(--text);overflo
   box-shadow:var(--shadow-sm);
   flex:1 1 auto;
   min-height:0;
+  width: 100%;
+  max-width: 100%;
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
 }
 
-.frame-wrap iframe{display:block;width:100%;height:100%;border:0;background:#fff}
+.frame-wrap iframe {
+  display: block;
+  width: 100%;
+  max-width: 1020px;
+  min-width: 320px;
+  height: 70vh;
+  min-height: 420px;
+  max-height: 80vh;
+  border: 0;
+  background: #fff;
+  margin: 0 auto;
+  box-sizing: border-box;
+}
 
 .controls{
   display:flex;
