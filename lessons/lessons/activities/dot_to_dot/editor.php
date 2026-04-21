@@ -205,533 +205,115 @@ ob_start();
 <form class="d2d-editor" id="d2dEditorForm" method="post" enctype="multipart/form-data">
     <section class="d2d-intro">
         <h3>Dot to Dot Editor</h3>
-        <p>Upload the final colored drawing, then click over the image to place point numbers in order. The viewer will show a white board with numbered dots and reveal this image after students connect all points.</p>
+        <p>Sube la imagen final y haz clic sobre la imagen para agregar puntos en orden. El viewer mostrará solo los puntos y revelará la imagen al conectar todos.</p>
     </section>
+    <div class="d2d-card" style="max-width:500px;margin:auto;">
+        <label for="activity_title">Título de la actividad</label>
+        <input id="activity_title" name="activity_title" type="text" value="<?= htmlspecialchars($activityTitle, ENT_QUOTES, 'UTF-8') ?>" required>
 
-    <div class="d2d-grid">
-        <aside class="d2d-card">
-            <label for="activity_title">Activity title</label>
-            <input id="activity_title" name="activity_title" type="text" value="<?= htmlspecialchars($activityTitle, ENT_QUOTES, 'UTF-8') ?>" required>
+        <label for="activity_instruction" style="margin-top:10px;">Instrucción</label>
+        <textarea id="activity_instruction" name="activity_instruction" placeholder="Ejemplo: Une los puntos en orden."><?= htmlspecialchars($activityInstruction, ENT_QUOTES, 'UTF-8') ?></textarea>
 
-            <label for="activity_instruction" style="margin-top:10px;">Instruction</label>
-            <textarea id="activity_instruction" name="activity_instruction" placeholder="Example: Connect numbers in order from 1 to 24."><?= htmlspecialchars($activityInstruction, ENT_QUOTES, 'UTF-8') ?></textarea>
+        <label for="main_image" style="margin-top:10px;">Imagen final a ocultar</label>
+        <input id="main_image" name="main_image" type="file" accept="image/*">
+        <input type="hidden" name="image_existing" id="image_existing" value="<?= htmlspecialchars($activityImage, ENT_QUOTES, 'UTF-8') ?>">
+        <input type="hidden" name="points_json" id="points_json" value="<?= htmlspecialchars(json_encode($activityPoints, JSON_UNESCAPED_UNICODE), ENT_QUOTES, 'UTF-8') ?>">
 
-            <label for="label_mode" style="margin-top:10px;">Point labels mode</label>
-                    <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
-                        <button type="button" class="d2d-btn d2d-btn-soft" id="addPointBtn">+ Add point</button>
-                        <button type="button" class="d2d-btn d2d-btn-soft" id="autoPlaceBtn">Auto-place points on outline</button>
-                        <span style="font-size:13px;color:#64748b;">(Manual o automático)</span>
-                    </div>
-            </select>
+        <div id="dotStage" style="position:relative;display:inline-block;margin:18px 0;max-width:100%;">
+            <img id="dotImg" src="<?= htmlspecialchars($activityImage, ENT_QUOTES, 'UTF-8') ?>" alt="dot-to-dot template" style="max-width:400px;display:<?= $activityImage === '' ? 'none' : 'block' ?>;">
+            <!-- Los puntos se agregan aquí -->
+        </div>
 
-            <div class="d2d-row-3" style="margin-top:8px;">
-                <div>
-                    <label for="sequence_start">Start</label>
-                    <input id="sequence_start" name="sequence_start" type="number" min="1" step="1" value="<?= (int) ($activityLabelSettings['start'] ?? 1) ?>">
-                </div>
-                <div>
-                    <label for="sequence_step">Step</label>
-                    <input id="sequence_step" name="sequence_step" type="number" min="1" step="1" value="<?= (int) ($activityLabelSettings['step'] ?? 1) ?>">
-                </div>
-                <div>
-                    <label for="sequence_end">End</label>
-                    <input id="sequence_end" name="sequence_end" type="number" min="1" step="1" value="<?= (int) ($activityLabelSettings['end'] ?? 20) ?>">
-                </div>
-            </div>
-            <p class="d2d-cap" id="d2dCapacityInfo"></p>
-
-            <label for="main_image" style="margin-top:10px;">Final colored image</label>
-            <input id="main_image" name="main_image" type="file" accept="image/*">
-            <input type="hidden" name="image_existing" id="image_existing" value="<?= htmlspecialchars($activityImage, ENT_QUOTES, 'UTF-8') ?>">
-            <input type="hidden" name="points_json" id="points_json" value="<?= htmlspecialchars(json_encode($activityPoints, JSON_UNESCAPED_UNICODE), ENT_QUOTES, 'UTF-8') ?>">
-
-            <p class="d2d-note">Tip: place points across the contour in a continuous path. Minimum: 3 points.</p>
-
-            <div class="d2d-actions">
-                <button type="button" class="d2d-btn d2d-btn-soft" id="undoPointBtn">Undo last point</button>
-                <button type="button" class="d2d-btn d2d-btn-danger" id="clearPointsBtn">Clear points</button>
-                <button type="submit" class="d2d-btn d2d-btn-save">Save activity</button>
-            </div>
-        </aside>
-
-        <section class="d2d-card">
-            <label>Point placement canvas</label>
-            <div class="d2d-stage-wrap">
-                <div class="d2d-stage" id="d2dStage">
-                    <div class="d2d-empty" id="d2dEmptyState">Upload or load an image to place points.</div>
-                    <img id="d2dImage" src="<?= htmlspecialchars($activityImage, ENT_QUOTES, 'UTF-8') ?>" alt="dot-to-dot template" style="<?= $activityImage === '' ? 'display:none;' : '' ?>">
-                    <canvas id="d2dOverlay" class="d2d-overlay" style="<?= $activityImage === '' ? 'display:none;' : '' ?>"></canvas>
-                </div>
-            </div>
-
-            <label style="margin-top:10px;">Point list</label>
-            <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
-                <button type="button" class="d2d-btn d2d-btn-soft" id="addPointBtn">+ Add point</button>
-                <button type="button" class="d2d-btn d2d-btn-soft" id="autoPlaceBtn">Auto-place points on outline</button>
-                <span style="font-size:13px;color:#64748b;">(Manual o automático)</span>
-            </div>
-            <ul class="d2d-list" id="d2dPointList"></ul>
-        </section>
+        <div style="margin-bottom:10px;">
+            <button type="button" class="d2d-btn d2d-btn-soft" id="undoPointBtn">Deshacer último punto</button>
+            <button type="submit" class="d2d-btn d2d-btn-save">Guardar actividad</button>
+        </div>
+        <p class="d2d-note">Haz clic sobre la imagen para agregar puntos en orden. Mínimo: 3 puntos.</p>
     </div>
 </form>
 
+<style>
+.dot {
+  position: absolute;
+  width: 28px;
+  height: 28px;
+  background: #fff;
+  border: 2px solid #2563eb;
+  border-radius: 50%;
+  color: #2563eb;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: auto;
+  user-select: none;
+  cursor: pointer;
+  font-size: 16px;
+  box-shadow: 0 2px 8px #0002;
+}
+</style>
 <script>
-(function () {
-    const imageEl = document.getElementById('d2dImage');
-    const overlay = document.getElementById('d2dOverlay');
-    const stageEl = document.getElementById('d2dStage');
-    const emptyEl = document.getElementById('d2dEmptyState');
-    const pointsInput = document.getElementById('points_json');
-    const pointList = document.getElementById('d2dPointList');
-    const fileInput = document.getElementById('main_image');
-    const clearBtn = document.getElementById('clearPointsBtn');
-    const undoBtn = document.getElementById('undoPointBtn');
-    const formEl = document.getElementById('d2dEditorForm');
-    const addPointBtn = document.getElementById('addPointBtn');
-        // Botón manual para agregar punto centrado
-        if (addPointBtn) {
-            addPointBtn.addEventListener('click', function () {
-                const settings = normalizeSettings();
-                const max = capacity(settings);
-                if (points.length >= max) {
-                    alert('Ya alcanzaste el límite configurado de ' + max + ' puntos. Cambia End/Step o elimina puntos.');
-                    return;
-                }
-                // Por defecto, agrega punto centrado (0.5, 0.5) o el siguiente disponible si ya existe uno ahí
-                let x = 0.5, y = 0.5;
-                // Si ya existe un punto centrado, busca un lugar cercano libre
-                let offset = 0.05;
-                while (points.some(p => Math.abs(p.x - x) < 0.01 && Math.abs(p.y - y) < 0.01)) {
-                    x = Math.max(0.05, Math.min(0.95, x + offset));
-                    y = Math.max(0.05, Math.min(0.95, y + offset));
-                    offset = -offset * 1.1; // alterna dirección y aumenta
-                }
-                points.push({ x: x, y: y });
-                updatePointList();
-                draw();
-            });
-        }
-    const labelModeEl = document.getElementById('label_mode');
-    const startEl = document.getElementById('sequence_start');
-    const stepEl = document.getElementById('sequence_step');
-    const endEl = document.getElementById('sequence_end');
-    const capacityInfoEl = document.getElementById('d2dCapacityInfo');
+let points = [];
+let current = 1;
 
-    let points = [];
+const imgInput = document.getElementById('main_image');
+const dotImg = document.getElementById('dotImg');
+const dotStage = document.getElementById('dotStage');
+const pointsInput = document.getElementById('points_json');
+const undoBtn = document.getElementById('undoPointBtn');
 
-    try {
-        const parsed = JSON.parse(pointsInput.value || '[]');
-        if (Array.isArray(parsed)) {
-            points = parsed
-                .map(function (p) {
-                    return { x: Number(p.x), y: Number(p.y) };
-                })
-                .filter(function (p) {
-                    return Number.isFinite(p.x) && Number.isFinite(p.y) && p.x >= 0 && p.x <= 1 && p.y >= 0 && p.y <= 1;
-                });
-        }
-    } catch (e) {
-        points = [];
-    }
+// Cargar imagen subida
+imgInput.addEventListener('change', function(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(ev) {
+    dotImg.src = ev.target.result;
+    dotImg.style.display = 'block';
+    clearDots();
+  };
+  reader.readAsDataURL(file);
+});
 
-    function getCtx() {
-        return overlay.getContext('2d');
-    }
+// Agregar punto al hacer clic en la imagen
+dotImg.addEventListener('click', function(e) {
+  const rect = dotImg.getBoundingClientRect();
+  const x = (e.clientX - rect.left) / rect.width;
+  const y = (e.clientY - rect.top) / rect.height;
+  addDot(x, y, current);
+  points.push({x, y});
+  current++;
+  updatePointsInput();
+});
 
-    function normalizeSettings() {
-        let start = Number(startEl && startEl.value ? startEl.value : 1);
-        let step = Number(stepEl && stepEl.value ? stepEl.value : 1);
-        let end = Number(endEl && endEl.value ? endEl.value : 20);
-        const mode = labelModeEl && labelModeEl.value ? String(labelModeEl.value) : 'number';
+function addDot(x, y, number) {
+  const dot = document.createElement('div');
+  dot.className = 'dot';
+  dot.textContent = number;
+  dot.style.left = (x * dotImg.width - 14) + 'px';
+  dot.style.top = (y * dotImg.height - 14) + 'px';
+  dotStage.appendChild(dot);
+}
 
-        if (!Number.isFinite(start) || start < 1) start = 1;
-        if (!Number.isFinite(step) || step < 1) step = 1;
-        if (!Number.isFinite(end) || end < start) end = start;
+function clearDots() {
+  points = [];
+  current = 1;
+  document.querySelectorAll('.dot').forEach(dot => dot.remove());
+  updatePointsInput();
+}
 
-        if (startEl) startEl.value = String(Math.round(start));
-        if (stepEl) stepEl.value = String(Math.round(step));
-        if (endEl) endEl.value = String(Math.round(end));
+function updatePointsInput() {
+  pointsInput.value = JSON.stringify(points);
+}
 
-        return {
-            mode: mode,
-            start: Math.round(start),
-            step: Math.round(step),
-            end: Math.round(end)
-        };
-    }
-
-    function capacity(settings) {
-        // No longer restricts point count; used only for label preview.
-        return Math.floor((settings.end - settings.start) / settings.step) + 1;
-    }
-
-    function numberToLetters(value) {
-        if (value < 1) return String(value);
-        let n = value;
-        let letters = '';
-        while (n > 0) {
-            n -= 1;
-            letters = String.fromCharCode(65 + (n % 26)) + letters;
-            n = Math.floor(n / 26);
-        }
-        return letters;
-    }
-
-    function numberToWordsEn(value) {
-        const ones = ['zero','one','two','three','four','five','six','seven','eight','nine','ten','eleven','twelve','thirteen','fourteen','fifteen','sixteen','seventeen','eighteen','nineteen'];
-        const tens = ['', '', 'twenty', 'thirty', 'forty', 'fifty', 'sixty', 'seventy', 'eighty', 'ninety'];
-        if (value < 20) return ones[value] || String(value);
-        if (value < 100) {
-            const ten = Math.floor(value / 10);
-            const rest = value % 10;
-            return rest === 0 ? tens[ten] : (tens[ten] + '-' + ones[rest]);
-        }
-        if (value < 1000) {
-            const hundred = Math.floor(value / 100);
-            const rest = value % 100;
-            return rest === 0 ? (ones[hundred] + ' hundred') : (ones[hundred] + ' hundred ' + numberToWordsEn(rest));
-        }
-        return String(value);
-    }
-
-    function pointValue(index, settings) {
-        return settings.start + (index * settings.step);
-    }
-
-    function pointLabel(index, settings) {
-        const value = pointValue(index, settings);
-        if (settings.mode === 'letter') return numberToLetters(value);
-        if (settings.mode === 'word') return numberToWordsEn(value);
-        return String(value);
-    }
-
-    function refreshCapacityHint() {
-        const settings = normalizeSettings();
-        const max = capacity(settings);
-        if (capacityInfoEl) {
-            capacityInfoEl.textContent = 'This setup allows up to ' + max + ' points.';
-        }
-    }
-
-    function syncCanvasSize() {
-        const rect = imageEl.getBoundingClientRect();
-        if (!rect.width || !rect.height) {
-            return;
-        }
-
-        overlay.style.width = rect.width + 'px';
-        overlay.style.height = rect.height + 'px';
-        overlay.style.left = imageEl.offsetLeft + 'px';
-        overlay.style.top = imageEl.offsetTop + 'px';
-
-        const dpr = window.devicePixelRatio || 1;
-        overlay.width = Math.round(rect.width * dpr);
-        overlay.height = Math.round(rect.height * dpr);
-
-        const ctx = getCtx();
-        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-
-        draw();
-    }
-
-    // --- Drag and drop/select/create separation ---
-    let dragIndex = null;
-    let dragOffset = { x: 0, y: 0 };
-    let isDragging = false;
-    let mouseDownOnPoint = false;
-
-    function draw() {
-        const rect = overlay.getBoundingClientRect();
-        const ctx = getCtx();
-        if (!ctx || !rect.width || !rect.height) {
-            return;
-        }
-
-        ctx.clearRect(0, 0, rect.width, rect.height);
-
-        if (points.length > 1) {
-            ctx.strokeStyle = '#2563eb';
-            ctx.lineWidth = 3;
-            ctx.lineCap = 'round';
-            ctx.beginPath();
-            points.forEach(function (p, index) {
-                const x = p.x * rect.width;
-                const y = p.y * rect.height;
-                if (index === 0) {
-                    ctx.moveTo(x, y);
-                } else {
-                    ctx.lineTo(x, y);
-                }
-            });
-            ctx.stroke();
-        }
-
-        const settings = normalizeSettings();
-        points.forEach(function (p, index) {
-            const x = p.x * rect.width;
-            const y = p.y * rect.height;
-
-            ctx.fillStyle = dragIndex === index ? '#f59e42' : '#1d4ed8';
-            ctx.beginPath();
-            ctx.arc(x, y, 9, 0, Math.PI * 2);
-            ctx.fill();
-
-            ctx.fillStyle = '#111827';
-            ctx.font = '700 16px Nunito, sans-serif';
-            ctx.fillText(pointLabel(index, settings), x + 10, y - 10);
-        });
-    }
-
-    function getPointAt(x, y) {
-        // x, y in canvas pixel coordinates
-        const rect = overlay.getBoundingClientRect();
-        for (let i = 0; i < points.length; i++) {
-            const px = points[i].x * rect.width;
-            const py = points[i].y * rect.height;
-            const dist = Math.sqrt((px - x) * (px - x) + (py - y) * (py - y));
-            if (dist <= 14) return i;
-        }
-        return null;
-    }
-
-    // --- Drag and drop, selection, and creation separation ---
-    // (Eliminado: duplicado)
-
-    overlay.addEventListener('mousedown', function (event) {
-        const rect = overlay.getBoundingClientRect();
-        const x = (event.clientX - rect.left);
-        const y = (event.clientY - rect.top);
-        const idx = getPointAt(x, y);
-        if (idx !== null) {
-            dragIndex = idx;
-            dragOffset.x = x - points[idx].x * rect.width;
-            dragOffset.y = y - points[idx].y * rect.height;
-            overlay.style.cursor = 'grabbing';
-            isDragging = false;
-            mouseDownOnPoint = true;
-            event.stopPropagation();
-            event.preventDefault();
-        } else {
-            dragIndex = null;
-            mouseDownOnPoint = false;
-        }
-    });
-
-    overlay.addEventListener('mousemove', function (event) {
-        if (dragIndex === null) return;
-        isDragging = true;
-        const rect = overlay.getBoundingClientRect();
-        let x = (event.clientX - rect.left - dragOffset.x) / rect.width;
-        let y = (event.clientY - rect.top - dragOffset.y) / rect.height;
-        x = Math.max(0, Math.min(1, x));
-        y = Math.max(0, Math.min(1, y));
-        points[dragIndex].x = x;
-        points[dragIndex].y = y;
-        updatePointList();
-        draw();
-    });
-
-    overlay.addEventListener('mouseup', function (event) {
-        if (dragIndex !== null) {
-            overlay.style.cursor = '';
-            dragIndex = null;
-            isDragging = false;
-            event.stopPropagation();
-            event.preventDefault();
-        }
-        mouseDownOnPoint = false;
-    });
-
-    overlay.addEventListener('click', function (event) {
-        // Nunca crear punto por click en canvas, solo seleccionar/mover
-        // Si el click fue sobre un punto, solo selecciona
-        // Si fue drag, ignora
-        event.stopPropagation();
-        event.preventDefault();
-        return;
-    });
-
-    function updatePointList() {
-        pointList.innerHTML = '';
-
-        if (!points.length) {
-            const li = document.createElement('li');
-            li.textContent = 'No points yet.';
-            pointList.appendChild(li);
-            pointsInput.value = '[]';
-            return;
-        }
-
-        const settings = normalizeSettings();
-        points.forEach(function (p, index) {
-            const li = document.createElement('li');
-            const xPercent = Math.round(p.x * 1000) / 10;
-            const yPercent = Math.round(p.y * 1000) / 10;
-            let label = '';
-            // Only assign label if within sequence, else blank
-            const seqMax = capacity(settings);
-            if (index < seqMax) {
-                label = pointLabel(index, settings);
-            }
-            li.innerHTML = '<span>' + label + '</span><span>X ' + xPercent + '% | Y ' + yPercent + '% <button type="button" class="d2d-list-remove" data-remove-index="' + index + '">x</button></span>';
-            pointList.appendChild(li);
-        });
-
-        pointList.querySelectorAll('[data-remove-index]').forEach(function (btn) {
-            btn.addEventListener('click', function () {
-                const idx = Number(btn.getAttribute('data-remove-index'));
-                if (!Number.isFinite(idx)) {
-                    return;
-                }
-                points.splice(idx, 1);
-                updatePointList();
-                draw();
-            });
-        });
-
-        pointsInput.value = JSON.stringify(points.map(function (p, index) {
-            const seqMax = capacity(settings);
-            return {
-                x: Number(p.x.toFixed(6)),
-                y: Number(p.y.toFixed(6)),
-                label: index < seqMax ? pointLabel(index, settings) : ''
-            };
-        }));
-    }
-
-    function ensureCanvasVisibility() {
-        const hasImage = !!imageEl.getAttribute('src');
-        imageEl.style.display = hasImage ? '' : 'none';
-        overlay.style.display = hasImage ? '' : 'none';
-        emptyEl.style.display = hasImage ? 'none' : '';
-    }
-
-    function addPointNormalized(x, y) {
-        if (x < 0 || x > 1 || y < 0 || y > 1) {
-            return;
-        }
-        points.push({ x: x, y: y });
-        updatePointList();
-        draw();
-    }
-
-    overlay.addEventListener('click', function (event) {
-        event.stopPropagation();
-        const rect = overlay.getBoundingClientRect();
-        if (!rect.width || !rect.height) {
-            return;
-        }
-
-        const x = (event.clientX - rect.left) / rect.width;
-        const y = (event.clientY - rect.top) / rect.height;
-
-        if (x < 0 || x > 1 || y < 0 || y > 1) {
-            return;
-        }
-
-        addPointNormalized(x, y);
-    });
-
-    stageEl.addEventListener('click', function (event) {
-        if (!imageEl.getAttribute('src')) {
-            return;
-        }
-
-        // Fallback: if overlay sizing fails in some browsers, allow clicks on stage using image bounds.
-        const rect = imageEl.getBoundingClientRect();
-        if (!rect.width || !rect.height) {
-            return;
-        }
-
-        const x = (event.clientX - rect.left) / rect.width;
-        const y = (event.clientY - rect.top) / rect.height;
-
-        addPointNormalized(x, y);
-    });
-
-    undoBtn.addEventListener('click', function () {
-        if (!points.length) {
-            return;
-        }
-        points.pop();
-        updatePointList();
-        draw();
-    });
-
-    clearBtn.addEventListener('click', function () {
-        points = [];
-        updatePointList();
-        draw();
-    });
-
-    fileInput.addEventListener('change', function (event) {
-        const file = event.target.files && event.target.files[0] ? event.target.files[0] : null;
-        if (!file) {
-            return;
-        }
-
-        const reader = new FileReader();
-        reader.onload = function (e) {
-            const result = e.target && e.target.result ? String(e.target.result) : '';
-            if (!result) {
-                return;
-            }
-            imageEl.src = result;
-            points = [];
-            updatePointList();
-            ensureCanvasVisibility();
-            imageEl.onload = syncCanvasSize;
-        };
-        reader.readAsDataURL(file);
-    });
-
-    formEl.addEventListener('submit', function (event) {
-        // Ensure hidden field is always up-to-date before server validation.
-        updatePointList();
-
-        if (!imageEl.getAttribute('src')) {
-            event.preventDefault();
-            alert('Upload a final colored image before saving.');
-            return;
-        }
-
-        if (points.length < 3) {
-            event.preventDefault();
-            alert('Add at least 3 points to create a playable dot-to-dot.');
-        }
-    });
-
-    [labelModeEl, startEl, stepEl, endEl].forEach(function (el) {
-        if (!el) {
-            return;
-        }
-        el.addEventListener('change', function () {
-            refreshCapacityHint();
-            updatePointList();
-            draw();
-        });
-        el.addEventListener('input', function () {
-            refreshCapacityHint();
-            updatePointList();
-            draw();
-        });
-    });
-
-    window.addEventListener('resize', syncCanvasSize);
-
-    ensureCanvasVisibility();
-    refreshCapacityHint();
-    updatePointList();
-
-    if (imageEl.getAttribute('src')) {
-        if (imageEl.complete) {
-            syncCanvasSize();
-            setTimeout(syncCanvasSize, 120);
-        } else {
-            imageEl.onload = syncCanvasSize;
-        }
-    }
-})();
+undoBtn.addEventListener('click', function() {
+  if (points.length === 0) return;
+  points.pop();
+  current--;
+  const lastDot = dotStage.querySelector('.dot:last-child');
+  if (lastDot) lastDot.remove();
+  updatePointsInput();
+});
 </script>
 
 <?php
