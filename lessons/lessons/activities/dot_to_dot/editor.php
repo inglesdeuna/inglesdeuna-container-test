@@ -290,11 +290,12 @@ dotImg.addEventListener('click', function(e) {
     const rect = dotImg.getBoundingClientRect();
     const x = (e.clientX - rect.left) / rect.width;
     const y = (e.clientY - rect.top) / rect.height;
+    // Solo permitir puntos dentro de la imagen visible
+    if (x < 0 || x > 1 || y < 0 || y > 1) return;
     addDot(x, y, current);
     points.push({x, y});
     current++;
     updatePointsInput();
-    // Si ya hay al menos 3 puntos, preguntamos si es el último
     if (points.length >= 3) {
         autoMax = points.length;
     }
