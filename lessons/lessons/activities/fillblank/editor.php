@@ -94,20 +94,15 @@ require_once __DIR__ . '/../../core/_activity_editor_template.php';
     <input type="text" name="answerkey" class="fbk-input" />
 
     <div class="fbk-btn-row">
-      <button type="button" class="fbk-btn secondary">Previous</button>
-      <button type="button" class="fbk-btn secondary">Show Answers</button>
+      <button type="button" class="fbk-btn secondary" id="fbk-add-block">+ Add Block</button>
       <button type="submit" class="fbk-btn">Save Activity</button>
-      <button type="button" class="fbk-btn secondary">Next</button>
     </div>
-    <div class="fbk-answers" style="display:none;">Answers: <span id="fbk-answers-list"></span></div>
   </form>
 </div>
 
 <script>
-// Example: Show answers logic (placeholder)
-document.querySelector('.fbk-btn.secondary:nth-child(2)').onclick = function() {
-  var ans = document.querySelector('input[name="answerkey"]').value;
-  document.querySelector('.fbk-answers').style.display = 'block';
-  document.getElementById('fbk-answers-list').textContent = ans;
+// Simulación de "Add Block" (solo UI, no funcionalidad real)
+document.getElementById('fbk-add-block').onclick = function() {
+  alert('Add Block: Aquí puedes implementar la lógica para agregar bloques de texto o preguntas.');
 };
 </script>
