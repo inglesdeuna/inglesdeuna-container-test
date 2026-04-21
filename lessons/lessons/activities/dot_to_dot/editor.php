@@ -326,8 +326,8 @@ function addDot(x, y, number) {
     const dot = document.createElement('div');
     dot.className = 'dot';
     dot.textContent = number;
-    dot.style.left = (x * dotImg.width - 14) + 'px';
-    dot.style.top = (y * dotImg.height - 14) + 'px';
+    dot.style.left = (x * dotImg.width) + 'px';
+    dot.style.top = (y * dotImg.height) + 'px';
     dotStage.appendChild(dot);
 }
 
