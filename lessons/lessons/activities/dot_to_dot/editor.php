@@ -219,8 +219,8 @@ ob_start();
         <input type="hidden" name="image_existing" id="image_existing" value="<?= htmlspecialchars($activityImage, ENT_QUOTES, 'UTF-8') ?>">
         <input type="hidden" name="points_json" id="points_json" value="<?= htmlspecialchars(json_encode($activityPoints, JSON_UNESCAPED_UNICODE), ENT_QUOTES, 'UTF-8') ?>">
 
-        <div id="dotStage" style="position:relative;display:flex;justify-content:center;align-items:center;margin:18px 0;width:100%;height:340px;background:#f8fafc;border-radius:14px;box-shadow:0 2px 8px #0001;overflow:hidden;">
-            <img id="dotImg" src="<?= htmlspecialchars($activityImage, ENT_QUOTES, 'UTF-8') ?>" alt="dot-to-dot template" style="max-width:320px;max-height:320px;display:<?= $activityImage === '' ? 'none' : 'block' ?>;margin:auto;">
+        <div id="dotStage" style="position:relative;width:320px;height:320px;margin:18px auto;background:#f8fafc;border-radius:14px;box-shadow:0 2px 8px #0001;overflow:hidden;">
+            <img id="dotImg" src="<?= htmlspecialchars($activityImage, ENT_QUOTES, 'UTF-8') ?>" alt="dot-to-dot template" style="width:100%;height:100%;object-fit:contain;display:<?= $activityImage === '' ? 'none' : 'block' ?>;position:absolute;left:0;top:0;z-index:1;">
             <!-- Los puntos se agregan aquí -->
         </div>
 
@@ -233,6 +233,7 @@ ob_start();
 </form>
 
 <style>
+#dotStage { position: relative; }
 .dot {
     position: absolute;
     width: 28px;
@@ -252,6 +253,7 @@ ob_start();
     box-shadow: 0 2px 8px #0002;
     opacity: 1;
     z-index: 2;
+    transform: translate(-50%, -50%);
 }
 #dotImg {
     opacity: 1;
@@ -327,8 +329,9 @@ function addDot(x, y, number) {
     const dot = document.createElement('div');
     dot.className = 'dot';
     dot.textContent = number;
-    dot.style.left = (x * dotImg.width) + 'px';
-    dot.style.top = (y * dotImg.height) + 'px';
+    // El contenedor dotStage y la imagen siempre son 320x320
+    dot.style.left = (x * 320) + 'px';
+    dot.style.top = (y * 320) + 'px';
     dotStage.appendChild(dot);
 }
 
