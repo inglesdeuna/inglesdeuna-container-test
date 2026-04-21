@@ -202,12 +202,12 @@ ob_start();
 <p class="d2d-error"><?= htmlspecialchars($errorMessage, ENT_QUOTES, 'UTF-8') ?></p>
 <?php } ?>
 
-<form class="d2d-editor" id="d2dEditorForm" method="post" enctype="multipart/form-data">
-    <section class="d2d-intro">
+<form class="d2d-editor" id="d2dEditorForm" method="post" enctype="multipart/form-data" style="max-width: 900px; margin: 0 auto; min-height: 540px; display: flex; flex-direction: column; justify-content: center; align-items: center;">
+    <section class="d2d-intro" style="width:100%;">
         <h3>Dot to Dot Editor</h3>
         <p>Sube la imagen final y haz clic sobre la imagen para agregar puntos en orden. El viewer mostrará solo los puntos y revelará la imagen al conectar todos.</p>
     </section>
-    <div class="d2d-card" style="max-width:500px;margin:auto;">
+    <div class="d2d-card" style="width:100%;max-width:600px;box-sizing:border-box;">
         <label for="activity_title">Título de la actividad</label>
         <input id="activity_title" name="activity_title" type="text" value="<?= htmlspecialchars($activityTitle, ENT_QUOTES, 'UTF-8') ?>" required>
 
@@ -219,16 +219,16 @@ ob_start();
         <input type="hidden" name="image_existing" id="image_existing" value="<?= htmlspecialchars($activityImage, ENT_QUOTES, 'UTF-8') ?>">
         <input type="hidden" name="points_json" id="points_json" value="<?= htmlspecialchars(json_encode($activityPoints, JSON_UNESCAPED_UNICODE), ENT_QUOTES, 'UTF-8') ?>">
 
-        <div id="dotStage" style="position:relative;display:inline-block;margin:18px 0;max-width:100%;">
-            <img id="dotImg" src="<?= htmlspecialchars($activityImage, ENT_QUOTES, 'UTF-8') ?>" alt="dot-to-dot template" style="max-width:400px;display:<?= $activityImage === '' ? 'none' : 'block' ?>;">
+        <div id="dotStage" style="position:relative;display:flex;justify-content:center;align-items:center;margin:18px 0;width:100%;height:340px;background:#f8fafc;border-radius:14px;box-shadow:0 2px 8px #0001;overflow:hidden;">
+            <img id="dotImg" src="<?= htmlspecialchars($activityImage, ENT_QUOTES, 'UTF-8') ?>" alt="dot-to-dot template" style="max-width:320px;max-height:320px;display:<?= $activityImage === '' ? 'none' : 'block' ?>;margin:auto;">
             <!-- Los puntos se agregan aquí -->
         </div>
 
-        <div style="margin-bottom:10px;">
+        <div style="margin-bottom:10px;display:flex;gap:12px;justify-content:center;">
             <button type="button" class="d2d-btn d2d-btn-soft" id="undoPointBtn">Deshacer último punto</button>
             <button type="submit" class="d2d-btn d2d-btn-save">Guardar actividad</button>
         </div>
-        <p class="d2d-note">Haz clic sobre la imagen para agregar puntos en orden. Mínimo: 3 puntos.</p>
+        <p class="d2d-note" style="text-align:center;">Haz clic sobre la imagen para agregar puntos en orden. Mínimo: 3 puntos.</p>
     </div>
 </form>
 
@@ -309,11 +309,14 @@ dotImg.addEventListener('click', function(e) {
 });
 
 // Al guardar, si hay al menos 3 puntos, revela la imagen y oculta los puntos
+
 document.getElementById('d2dEditorForm').addEventListener('submit', function(e) {
     if (points.length < 3) return;
     setTimeout(() => {
         revealImage();
-    }, 100); // Pequeño delay para que el submit no lo oculte antes
+        // Redirigir a la página completed después de guardar (simulación, ajusta la URL si es necesario)
+        window.location.href = '/lessons/lessons/activities/completed.php';
+    }, 100);
 });
 
 // También, si el usuario agrega un punto y ya no puede agregar más (opcional, si quieres bloquear el click)
