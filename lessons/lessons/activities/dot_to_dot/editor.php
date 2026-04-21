@@ -251,19 +251,11 @@ ob_start();
     font-size: 16px;
     box-shadow: 0 2px 8px #0002;
     opacity: 1;
-    transition: opacity 0.7s;
     z-index: 2;
 }
-.dot.fade {
-    opacity: 0;
-}
 #dotImg {
-    transition: opacity 1s;
-    opacity: 0.15;
-    z-index: 1;
-}
-#dotImg.revealed {
     opacity: 1;
+    z-index: 1;
 }
 </style>
 <script>
@@ -324,13 +316,7 @@ document.getElementById('d2dEditorForm').addEventListener('submit', function(e) 
 
 // Permitir revelar imagen manualmente si no hay máximo definido
 function revealImage() {
-    // Fade out puntos
-    document.querySelectorAll('.dot').forEach(dot => {
-        dot.classList.add('fade');
-    });
-    // Fade in imagen
-    dotImg.classList.add('revealed');
-    // Bloquear más clicks
+    // No hacer fade, solo bloquear más clicks
     dotImg.style.pointerEvents = 'none';
 }
 
