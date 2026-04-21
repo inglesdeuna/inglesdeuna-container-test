@@ -234,22 +234,36 @@ ob_start();
 
 <style>
 .dot {
-  position: absolute;
-  width: 28px;
-  height: 28px;
-  background: #fff;
-  border: 2px solid #2563eb;
-  border-radius: 50%;
-  color: #2563eb;
-  font-weight: bold;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  pointer-events: auto;
-  user-select: none;
-  cursor: pointer;
-  font-size: 16px;
-  box-shadow: 0 2px 8px #0002;
+    position: absolute;
+    width: 28px;
+    height: 28px;
+    background: #fff;
+    border: 2px solid #2563eb;
+    border-radius: 50%;
+    color: #2563eb;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: auto;
+    user-select: none;
+    cursor: pointer;
+    font-size: 16px;
+    box-shadow: 0 2px 8px #0002;
+    opacity: 1;
+    transition: opacity 0.7s;
+    z-index: 2;
+}
+.dot.fade {
+    opacity: 0;
+}
+#dotImg {
+    transition: opacity 1s;
+    opacity: 0.15;
+    z-index: 1;
+}
+#dotImg.revealed {
+    opacity: 1;
 }
 </style>
 <script>
@@ -275,24 +289,42 @@ imgInput.addEventListener('change', function(e) {
   reader.readAsDataURL(file);
 });
 
+
 // Agregar punto al hacer clic en la imagen
 dotImg.addEventListener('click', function(e) {
-  const rect = dotImg.getBoundingClientRect();
-  const x = (e.clientX - rect.left) / rect.width;
-  const y = (e.clientY - rect.top) / rect.height;
-  addDot(x, y, current);
-  points.push({x, y});
-  current++;
-  updatePointsInput();
+    if (dotImg.classList.contains('revealed')) return;
+    const rect = dotImg.getBoundingClientRect();
+    const x = (e.clientX - rect.left) / rect.width;
+    const y = (e.clientY - rect.top) / rect.height;
+    addDot(x, y, current);
+    points.push({x, y});
+    current++;
+    updatePointsInput();
+    // Si ya hay al menos 3 puntos y se llegó al máximo (opcional: puedes definir un máximo)
+    if (points.length >= 3 && typeof window.DOT_TO_DOT_MAX === 'number' && points.length === window.DOT_TO_DOT_MAX) {
+        revealImage();
+    }
 });
 
+// Permitir revelar imagen manualmente si no hay máximo definido
+function revealImage() {
+    // Fade out puntos
+    document.querySelectorAll('.dot').forEach(dot => {
+        dot.classList.add('fade');
+    });
+    // Fade in imagen
+    dotImg.classList.add('revealed');
+}
+
+// Si quieres que la imagen se revele cuando el usuario haga clic en un botón, puedes agregar un botón y llamar a revealImage()
+
 function addDot(x, y, number) {
-  const dot = document.createElement('div');
-  dot.className = 'dot';
-  dot.textContent = number;
-  dot.style.left = (x * dotImg.width - 14) + 'px';
-  dot.style.top = (y * dotImg.height - 14) + 'px';
-  dotStage.appendChild(dot);
+    const dot = document.createElement('div');
+    dot.className = 'dot';
+    dot.textContent = number;
+    dot.style.left = (x * dotImg.width - 14) + 'px';
+    dot.style.top = (y * dotImg.height - 14) + 'px';
+    dotStage.appendChild(dot);
 }
 
 function clearDots() {
@@ -307,13 +339,16 @@ function updatePointsInput() {
 }
 
 undoBtn.addEventListener('click', function() {
-  if (points.length === 0) return;
-  points.pop();
-  current--;
-  const lastDot = dotStage.querySelector('.dot:last-child');
-  if (lastDot) lastDot.remove();
-  updatePointsInput();
+    if (points.length === 0) return;
+    points.pop();
+    current--;
+    const lastDot = dotStage.querySelector('.dot:last-child');
+    if (lastDot) lastDot.remove();
+    updatePointsInput();
 });
+
+// Si quieres que la imagen se revele automáticamente al llegar a cierto número de puntos, define window.DOT_TO_DOT_MAX = N;
+// Ejemplo: window.DOT_TO_DOT_MAX = 10; // para 10 puntos
 </script>
 
 <?php
