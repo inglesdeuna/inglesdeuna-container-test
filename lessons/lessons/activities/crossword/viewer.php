@@ -719,6 +719,14 @@ ob_start();
     :root { --cell-size: <?= (int)$cellSizes['compact'] ?>px; }
     .cw-toolbar button { padding: 10px 18px; min-width: 136px; font-size: 14px; }
 }
+
+/* Ensure any images inside the crossword viewer scale responsively and never overflow */
+.cw-viewer img {
+    max-width: 100%;
+    height: auto;
+    display: block;
+    margin: 0 auto;
+}
 </style>
 
 <div class="cw-viewer" id="cwViewer">
