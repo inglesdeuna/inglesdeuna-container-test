@@ -1,5 +1,4 @@
 
-
 <?php
 // --- Lógica PHP debe ir antes de cualquier salida ---
 if (session_status() === PHP_SESSION_NONE) {
