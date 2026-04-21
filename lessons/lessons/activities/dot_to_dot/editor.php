@@ -290,7 +290,9 @@ imgInput.addEventListener('change', function(e) {
 });
 
 
-// Agregar punto al hacer clic en la imagen
+
+// El máximo se define automáticamente al guardar (último punto agregado)
+let autoMax = null;
 dotImg.addEventListener('click', function(e) {
     if (dotImg.classList.contains('revealed')) return;
     const rect = dotImg.getBoundingClientRect();
@@ -300,11 +302,22 @@ dotImg.addEventListener('click', function(e) {
     points.push({x, y});
     current++;
     updatePointsInput();
-    // Si ya hay al menos 3 puntos y se llegó al máximo (opcional: puedes definir un máximo)
-    if (points.length >= 3 && typeof window.DOT_TO_DOT_MAX === 'number' && points.length === window.DOT_TO_DOT_MAX) {
-        revealImage();
+    // Si ya hay al menos 3 puntos, preguntamos si es el último
+    if (points.length >= 3) {
+        autoMax = points.length;
     }
 });
+
+// Al guardar, si hay al menos 3 puntos, revela la imagen y oculta los puntos
+document.getElementById('d2dEditorForm').addEventListener('submit', function(e) {
+    if (points.length < 3) return;
+    setTimeout(() => {
+        revealImage();
+    }, 100); // Pequeño delay para que el submit no lo oculte antes
+});
+
+// También, si el usuario agrega un punto y ya no puede agregar más (opcional, si quieres bloquear el click)
+// puedes deshabilitar el click en la imagen después del último punto
 
 // Permitir revelar imagen manualmente si no hay máximo definido
 function revealImage() {
@@ -314,6 +327,8 @@ function revealImage() {
     });
     // Fade in imagen
     dotImg.classList.add('revealed');
+    // Bloquear más clicks
+    dotImg.style.pointerEvents = 'none';
 }
 
 // Si quieres que la imagen se revele cuando el usuario haga clic en un botón, puedes agregar un botón y llamar a revealImage()
