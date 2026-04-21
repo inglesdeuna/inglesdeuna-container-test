@@ -828,35 +828,7 @@ ob_start();
             </div>
 
             <!-- CLUES COLUMN -->
-            <div class="cw-clues-col">
-        <?php if (!empty($acrossWords)): ?>
-        <div class="clue-panel">
-            <h3>→ Across</h3>
-            <ul class="clue-list" id="acrossList">
-                <?php foreach ($acrossWords as $aw): ?>
-                <li data-idx="<?= $aw['idx'] ?>" data-dir="across" onclick="jumpToClue(<?= $aw['idx'] ?>)">
-                    <span class="clue-num"><?= $aw['num'] ?>.</span>
-                    <span><?= $aw['clue'] !== '' ? $aw['clue'] : '<em style="color:#9ca3af">No clue</em>' ?></span>
-                </li>
-                <?php endforeach; ?>
-            </ul>
-        </div>
-        <?php endif; ?>
-
-        <?php if (!empty($downWords)): ?>
-        <div class="clue-panel">
-            <h3>↓ Down</h3>
-            <ul class="clue-list" id="downList">
-                <?php foreach ($downWords as $dw): ?>
-                <li data-idx="<?= $dw['idx'] ?>" data-dir="down" onclick="jumpToClue(<?= $dw['idx'] ?>)">
-                    <span class="clue-num"><?= $dw['num'] ?>.</span>
-                    <span><?= $dw['clue'] !== '' ? $dw['clue'] : '<em style="color:#9ca3af">No clue</em>' ?></span>
-                </li>
-                <?php endforeach; ?>
-            </ul>
-        </div>
-        <?php endif; ?>
-            </div>
+            <!-- (Removed duplicate clues container) -->
         </div>
         <div id="cw-completed" class="completed-screen">
             <div class="completed-icon">✅</div>
