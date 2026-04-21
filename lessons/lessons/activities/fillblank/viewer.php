@@ -1,4 +1,7 @@
 
+<?php
+require_once __DIR__ . '/../../core/_activity_viewer_template.php';
+require_once __DIR__ . '/../../core/db.php';
 
 $activityId = isset($_GET['id']) ? trim((string)$_GET['id']) : '';
 $unit = isset($_GET['unit']) ? trim((string)$_GET['unit']) : '';
@@ -34,6 +37,7 @@ function load_fillblank_activity(PDO $pdo, string $unit, string $activityId): ar
 }
 
 $activity = load_fillblank_activity($pdo, $unit, $activityId);
+
 ob_start();
 ?>
 <style>
@@ -126,39 +130,38 @@ ob_start();
 </style>
 <div class="fbk-card">
   <div class="fbk-title">Fill-in-the-Blank Activity</div>
-  <div class="fbk-instructions" id="fbk-instructions"></div>
-  <div class="fbk-wordbank" id="fbk-wordbank" style="display:none;"></div>
+  <div class="fbk-instructions" id="fbk-instructions"><?= htmlspecialchars($activity['instructions']) ?></div>
+  <?php if (!empty($activity['wordbank'])): ?>
+    <div class="fbk-wordbank" id="fbk-wordbank">Word Bank: <?= htmlspecialchars($activity['wordbank']) ?></div>
+  <?php endif; ?>
   <form id="fbk-form">
-    <div class="fbk-text" id="fbk-text"></div>
+    <div class="fbk-text" id="fbk-text"><?php
+      // Replace [blank] with input fields
+      $text = $activity['text'];
+      $blankCount = 0;
+      $rendered = preg_replace_callback('/\\[blank\\]/', function() use (&$blankCount) {
+        $blankCount++;
+        return '<input class="fbk-blank-input" name="blank' . $blankCount . '" autocomplete="off" />';
+      }, htmlspecialchars($text));
+      echo $rendered;
+    ?></div>
     <div class="fbk-btn-row">
-      <button type="button" class="fbk-btn secondary">Previous</button>
+      <button type="button" class="fbk-btn secondary" onclick="window.history.back()">Previous</button>
       <button type="submit" class="fbk-btn">Submit Answers</button>
-      <button type="button" class="fbk-btn secondary">Next</button>
+      <button type="button" class="fbk-btn secondary" onclick="window.location.reload()">Next</button>
     </div>
   </form>
   <div class="fbk-feedback" id="fbk-feedback"></div>
 </div>
 <script>
-const activityData = <?= json_encode($activity, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_QUOT) ?>;
-document.getElementById('fbk-instructions').textContent = activityData.instructions;
-if (activityData.wordbank) {
-  document.getElementById('fbk-wordbank').textContent = 'Word Bank: ' + activityData.wordbank;
-  document.getElementById('fbk-wordbank').style.display = '';
-}
-function renderTextWithBlanks(text) {
-  let idx = 0;
-  return text.replace(/\[blank\]/g, () => {
-    return `<input class=\"fbk-blank-input\" name=\"blank${++idx}\" autocomplete=\"off\" />`;
-  });
-}
-document.getElementById('fbk-text').innerHTML = renderTextWithBlanks(activityData.text);
+const answerKey = <?= json_encode($activity['answerkey']) ?>;
+const answers = (answerKey || '').split(',');
 document.getElementById('fbk-form').onsubmit = function(e) {
   e.preventDefault();
-  const answers = (activityData.answerkey || '').split(',');
   let correct = 0;
   for (let i = 0; i < answers.length; i++) {
     const val = document.querySelector(`[name=blank${i+1}]`).value.trim().toLowerCase();
-    if (val === answers[i].trim().toLowerCase()) correct++;
+    if (val === (answers[i]||'').trim().toLowerCase()) correct++;
   }
   const fb = document.getElementById('fbk-feedback');
   if (correct === answers.length) {
