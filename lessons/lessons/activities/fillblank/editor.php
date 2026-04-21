@@ -79,6 +79,7 @@ require_once __DIR__ . '/../../core/_activity_editor_template.php';
 </style>
 
 <div class="fbk-card">
+  <button type="button" onclick="window.history.back()" style="position:absolute;left:calc(50% - 350px);top:24px;background:linear-gradient(90deg,#7c3aed,#14b8a6);color:#fff;border:none;border-radius:8px;padding:8px 18px;font-weight:800;font-size:15px;box-shadow:0 2px 8px rgba(124,58,237,.13);cursor:pointer;z-index:2;">← Back</button>
   <div class="fbk-title">Fill-in-the-Blank Editor</div>
   <form id="fillblankForm">
     <label class="fbk-label">Instructions:</label>
