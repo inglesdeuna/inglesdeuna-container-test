@@ -418,16 +418,10 @@ ob_start();
 }
 
 .cw-card {
-    background: linear-gradient(135deg, #ede9fe 0%, #f8fafc 100%);
-    border-radius: 28px;
-    padding: 38px 28px 32px 28px;
-    box-shadow: 0 6px 32px rgba(124,58,237,.07);
-    max-width: 1200px;
-    margin: 32px auto;
-    min-height: 480px;
-    display: flex;
-    flex-direction: column;
-    align-items: stretch;
+    background: transparent;
+    border-radius: 0;
+    padding: 0;
+    box-shadow: none;
 }
 
 .cw-layout {
@@ -464,17 +458,10 @@ ob_start();
 /* ---- GRID ---- */
 .cw-grid-wrap {
     overflow-x: auto;
-    overflow-y: hidden;
-    padding: 24px 0 18px 0;
+    padding: 12px 0 8px;
     width: 100%;
-    min-height: 60px;
     display: flex;
     justify-content: center;
-    scrollbar-width: thin;
-    scrollbar-color: #a78bfa #ede9fe;
-    background: transparent;
-    border-radius: 18px;
-    box-shadow: none;
 }
 .cw-grid-wrap::-webkit-scrollbar {
     height: 10px;
@@ -489,16 +476,9 @@ ob_start();
 }
 .cw-grid {
     display: grid;
-    grid-template-columns: repeat(<?= $gridCols ?>, minmax(28px, var(--cell-size)));
-    grid-template-rows:    repeat(<?= $gridRows ?>, minmax(28px, var(--cell-size)));
+    grid-template-columns: repeat(<?= $gridCols ?>, var(--cell-size));
+    grid-template-rows:    repeat(<?= $gridRows ?>, var(--cell-size));
     gap: 3px;
-    background: #ede9fe;
-    border-radius: 16px;
-    padding: 18px;
-    box-shadow: 0 2px 12px rgba(124,58,237,.06);
-    min-width: max-content;
-    max-width: 100vw;
-    transition: padding .2s;
 }
 
 /* Active (word) cells */
@@ -739,20 +719,10 @@ ob_start();
 }
 .completed-button:hover { transform: scale(1.05); filter: brightness(1.07); }
 
-@media (max-width: 1100px) {
-    .cw-card {
-        padding: 18px 6px 18px 6px;
-        max-width: 98vw;
-    }
-    .cw-grid {
-        padding: 10px;
-    }
-}
 @media (max-width: 820px) {
     .cw-layout { flex-direction: column; align-items: center; }
     .cw-clues-col { flex-direction: row; flex-wrap: wrap; width: 100%; max-height: none; position: static; overflow-y: visible; }
     .clue-panel { width: min(100%, 360px); }
-    .cw-card { padding: 10px 2vw; }
 }
 @media (max-width: 640px) {
     :root { --cell-size: <?= (int)$cellSizes['mobile'] ?>px; }
@@ -761,8 +731,6 @@ ob_start();
     .clue-list li { font-size: 13px; }
     .cw-toolbar { flex-wrap: wrap; }
     .cw-toolbar button { width: 100%; min-width: 0; max-width: 300px; }
-    .cw-card { padding: 2vw 0; }
-    .cw-grid { padding: 4px; }
 }
 
 @media (max-height: 900px) and (min-width: 641px) {
