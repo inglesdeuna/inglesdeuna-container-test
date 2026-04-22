@@ -2,10 +2,8 @@
 <?php
 require_once __DIR__ . '/../../core/_activity_viewer_template.php';
 require_once __DIR__ . '/../../core/db.php';
-
 $activityId = isset($_GET['id']) ? trim((string)$_GET['id']) : '';
 $unit = isset($_GET['unit']) ? trim((string)$_GET['unit']) : '';
-
 function load_fillblank_activity(PDO $pdo, string $unit, string $activityId): array {
   $fallback = [
     'id' => '',
@@ -26,7 +24,6 @@ function load_fillblank_activity(PDO $pdo, string $unit, string $activityId): ar
   }
   if (!$row) return $fallback;
   $data = json_decode($row['data'] ?? '', true);
-  // Backward compatibility: if old format, convert to one block
   if (!isset($data['blocks']) && isset($data['text'])) {
     $blocks = [[
       'text' => $data['text'],
@@ -42,127 +39,146 @@ function load_fillblank_activity(PDO $pdo, string $unit, string $activityId): ar
     'wordbank' => $data['wordbank'] ?? '',
   ];
 }
-
 $activity = load_fillblank_activity($pdo, $unit, $activityId);
 ?>
+
 <script>
 const blocks = <?= json_encode($activity['blocks']) ?>;
 let currentBlock = 0;
 const fbkForm = document.getElementById('fbk-form');
-let showAnswers = false;
+const blockEls = document.querySelectorAll('.block-viewer');
+const prevBtn = document.getElementById('prevBtn');
+const nextBtn = document.getElementById('nextBtn');
+const submitBtn = document.getElementById('submitBtn');
+const fb = document.getElementById('fbk-feedback');
+let checkedBlocks = {};
+let attemptsByBlock = {};
+
+function normalizeText(text) {
+  return String(text || '').toLowerCase().trim().replace(/[.,!?;:]/g, '').replace(/\s+/g, ' ');
+}
 
 function showBlock(idx) {
+  blockEls.forEach((el, i) => {
+    el.style.display = (i === idx) ? '' : 'none';
+  });
   prevBtn.style.display = idx > 0 ? '' : 'none';
   nextBtn.style.display = '';
   submitBtn.style.display = '';
   fb.textContent = '';
   submitBtn.textContent = 'Show Answer';
+  // Reset inputs
+  const block = blocks[idx];
+  const answers = Array.isArray(block.answers) ? block.answers : [];
+  for (let i = 0; i < answers.length; i++) {
+    const input = document.querySelector(`[name=blank${idx}_${i+1}]`);
+    if (input) {
+      input.classList.remove('ok', 'bad');
+      input.disabled = false;
+    }
+  }
 }
+
 prevBtn.onclick = function() {
   if (currentBlock > 0) {
     currentBlock--;
+    showBlock(currentBlock);
+  }
+};
+
 nextBtn.onclick = function() {
   if (currentBlock < blocks.length - 1) {
     currentBlock++;
-  // Calcular score real
-  let total = 0, correct = 0;
-  for (let idx = 0; idx < blocks.length; idx++) {
-  const block = blocks[idx];
-  const answers = Array.isArray(block.answers) ? block.answers : [];
-  total += answers.length;
-  const input = document.querySelector(`[name=blank${idx}_${i+1}]`);
-  if (!input) continue;
-  const val = input.value.trim().toLowerCase();
-    // Navegar a completed con score real
+    showBlock(currentBlock);
+  } else {
+    // Calcular score real
+    let total = 0, correct = 0;
+    for (let idx = 0; idx < blocks.length; idx++) {
+      const block = blocks[idx];
+      const answers = Array.isArray(block.answers) ? block.answers : [];
+      total += answers.length;
+      for (let i = 0; i < answers.length; i++) {
+        const input = document.querySelector(`[name=blank${idx}_${i+1}]`);
+        if (!input) continue;
+        const val = normalizeText(input.value);
+        if (val === normalizeText(answers[i]||'')) correct++;
+      }
+    }
     window.location.href = `completed.php?id=<?= urlencode($activityId) ?>&unit=<?= urlencode($unit) ?>&correct=${correct}&total=${total}`;
   }
+};
+
 function checkBlock(idx) {
   const block = blocks[idx];
   const answers = Array.isArray(block.answers) ? block.answers : [];
   let correct = 0, total = answers.length;
+  let allCorrect = true;
+  let currentAttempts = (attemptsByBlock[idx] || 0) + 1;
+  attemptsByBlock[idx] = currentAttempts;
   for (let i = 0; i < answers.length; i++) {
     const input = document.querySelector(`[name=blank${idx}_${i+1}]`);
-  if (!input) continue;
-  const val = input.value.trim().toLowerCase();
-  if (val === (answers[i]||'').trim().toLowerCase()) correct++;
+    if (!input) continue;
+    const val = normalizeText(input.value);
+    const expected = normalizeText(answers[i]||'');
+    if (val === expected) {
+      input.classList.add('ok');
+      input.classList.remove('bad');
+      correct++;
+    } else {
+      input.classList.add('bad');
+      input.classList.remove('ok');
+      allCorrect = false;
+    }
+    if (currentAttempts >= 2) {
+      input.disabled = true;
+    }
+  }
+  checkedBlocks[idx] = allCorrect || currentAttempts >= 2;
+  return {correct, total, allCorrect};
+}
+
 function showBlockAnswers(idx) {
   const block = blocks[idx];
   const answers = Array.isArray(block.answers) ? block.answers : [];
   for (let i = 0; i < answers.length; i++) {
     const input = document.querySelector(`[name=blank${idx}_${i+1}]`);
-    if (input) input.value = answers[i] || '';
-submitBtn.onclick = function(e) {
-  e.preventDefault();
-  if (!showAnswers) {
-    const {correct, total} = checkBlock(currentBlock);
-    if (correct === total) {
-      fb.textContent = '✅ All correct!';
-  fb.textContent = `❌ ${correct} of ${total} correct. Try again!`;
-  fb.style.color = '#7c3aed';
-  showAnswers = true;
-  showBlockAnswers(currentBlock);
-  fb.textContent = '✔ Answers shown.';
-  fb.style.color = '#14b8a6';
-showBlock(currentBlock);
-
-<?php
-require_once __DIR__ . '/../../core/_activity_viewer_template.php';
-require_once __DIR__ . '/../../core/db.php';
-
-$activityId = isset($_GET['id']) ? trim((string)$_GET['id']) : '';
-$unit = isset($_GET['unit']) ? trim((string)$_GET['unit']) : '';
-
-
-function load_fillblank_activity(PDO $pdo, string $unit, string $activityId): array {
-  $fallback = [
-    'id' => '',
-    'instructions' => 'Write the missing words in the blanks.',
-    'blocks' => [],
-    'wordbank' => '',
-  ];
-  $row = null;
-  if ($activityId !== '') {
-    $stmt = $pdo->prepare("SELECT id, data FROM activities WHERE id = :id AND type = 'fillblank' LIMIT 1");
-    $stmt->execute(['id' => $activityId]);
-    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+    if (input) {
+      input.value = answers[i] || '';
+      input.classList.remove('bad');
+      input.classList.add('ok');
+      input.disabled = true;
+    }
   }
-  if (!$row && $unit !== '') {
-    $stmt = $pdo->prepare("SELECT id, data FROM activities WHERE unit_id = :unit AND type = 'fillblank' ORDER BY id ASC LIMIT 1");
-    $stmt->execute(['unit' => $unit]);
-    $row = $stmt->fetch(PDO::FETCH_ASSOC);
-  }
-  if (!$row) return $fallback;
-  $data = json_decode($row['data'] ?? '', true);
-  // Backward compatibility: if old format, convert to one block
-  if (!isset($data['blocks']) && isset($data['text'])) {
-    $blocks = [[
-      'text' => $data['text'],
-      'answers' => array_map('trim', explode(',', $data['answerkey'] ?? '')),
-    ]];
-  } else {
-    $blocks = $data['blocks'] ?? [];
-  }
-  return [
-    'id' => (string)($row['id'] ?? ''),
-    'instructions' => $data['instructions'] ?? $fallback['instructions'],
-    'blocks' => $blocks,
-    'wordbank' => $data['wordbank'] ?? '',
-  ];
 }
 
-$activity = load_fillblank_activity($pdo, $unit, $activityId);
+submitBtn.onclick = function(e) {
+  e.preventDefault();
+  if (checkedBlocks[currentBlock]) {
+    showBlockAnswers(currentBlock);
+    fb.textContent = '✔ Answers shown.';
+    fb.style.color = '#14b8a6';
+    return;
+  }
+  const {correct, total, allCorrect} = checkBlock(currentBlock);
+  if (allCorrect) {
+    fb.textContent = '✅ All correct!';
+    fb.style.color = '#14b8a6';
+    checkedBlocks[currentBlock] = true;
+    submitBtn.textContent = 'Show Answer';
+  } else {
+    if (attemptsByBlock[currentBlock] >= 2) {
+      fb.textContent = `❌ Attempts finished. See correct answers below.`;
+      fb.style.color = '#b91c1c';
+      showBlockAnswers(currentBlock);
+    } else {
+      fb.textContent = `❌ ${correct} of ${total} correct. Try again!`;
+      fb.style.color = '#7c3aed';
+    }
+  }
+};
 
-ob_start();
-?>
-<style>
-.fbk-card {
-  max-width: 700px;
-  margin: 32px auto;
-  background: linear-gradient(135deg, #ede9fe 0%, #f8fafc 100%);
-  border-radius: 22px;
-  box-shadow: 0 6px 32px rgba(124,58,237,.07);
-  padding: 32px 28px 24px 28px;
-  display: flex;
+showBlock(currentBlock);
+// ...existing code...
   flex-direction: column;
   gap: 18px;
 }
