@@ -98,17 +98,8 @@ ob_start();
 }
 .us-btn-show { background: linear-gradient(180deg,#d8b4fe 0%,#a855f7 100%); }
 .us-btn-next { background: linear-gradient(180deg,#818cf8 0%,#6366f1 100%); }
-@media (max-width: 600px) {
-  .fbk-card { padding: 12px 4vw; }
-  .fbk-title { font-size: 1.3rem; }
-  .fbk-blank-input { width: 70px; }
-}
 </style>
-@media (max-width: 600px) {
-  .fbk-card { padding: 12px 4vw; }
-  .fbk-title { font-size: 1.3rem; }
-  .fbk-blank-input { width: 70px; }
-}
+</style>
 </style>
 <div class="fbk-card">
   <div class="fbk-title">Fill-in-the-Blank Activity</div>
