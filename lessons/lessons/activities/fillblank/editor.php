@@ -129,45 +129,148 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     exit;
 }
 
-// --- Render form ---
+
+// --- Render new block-based form ---
 $activity = load_fillblank_activity($pdo, $unit, $activityId);
+$blocks = [];
+if (!empty($activity['text'])) {
+    // For backward compatibility: parse old single-text activities into one block
+    $blocks[] = [
+        'text' => $activity['text'],
+        'answers' => array_map('trim', explode(',', $activity['answerkey'])),
+    ];
+}
 
 ob_start();
 if (isset($_GET['saved'])) {
     echo '<p style="color:green;font-weight:bold;margin-bottom:15px;">✔ Saved successfully</p>';
 }
 ?>
-<form method="post" class="dd-form" id="fillblankForm">
-  <div class="title-box">
-    <label for="instructions">Instructions</label>
-    <input id="instructions" type="text" name="instructions"
-           value="<?= htmlspecialchars($activity['instructions'], ENT_QUOTES, 'UTF-8') ?>"
-           required class="form-control" />
-  </div>
-  <div class="title-box">
-    <label for="text">Text (use [blank] for missing words)</label>
-    <textarea id="text" name="text" rows="6" required class="form-control"><?= htmlspecialchars($activity['text'], ENT_QUOTES, 'UTF-8') ?></textarea>
-  </div>
-  <div class="title-box">
-    <label for="wordbank">Word Bank (optional, comma separated)</label>
-    <input id="wordbank" type="text" name="wordbank"
-           value="<?= htmlspecialchars($activity['wordbank'], ENT_QUOTES, 'UTF-8') ?>"
-           class="form-control" />
-  </div>
-  <div class="title-box">
-    <label for="answerkey">Answer Key (comma separated, in order)</label>
-    <input id="answerkey" type="text" name="answerkey"
-           value="<?= htmlspecialchars($activity['answerkey'], ENT_QUOTES, 'UTF-8') ?>"
-           class="form-control" />
-  </div>
-  <div class="toolbar-row">
-    <button type="button" class="btn-add" id="fbk-add-block">+ Add Block</button>
-    <button type="submit" class="save-btn">💾 Save</button>
-  </div>
+<style>
+.fbk-form {
+    max-width: 860px;
+    margin: 0 auto;
+    text-align: left;
+}
+.block-item {
+    background: #f9fafb;
+    padding: 14px;
+    margin-bottom: 14px;
+    border-radius: 12px;
+    border: 1px solid #e5e7eb;
+}
+.block-item label {
+    display: block;
+    font-weight: 700;
+    margin-bottom: 8px;
+}
+.block-item textarea, .block-item input {
+    width: 100%;
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid #d1d5db;
+    box-sizing: border-box;
+    margin-bottom: 12px;
+    font-size: 14px;
+}
+.toolbar-row {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin-top: 8px;
+}
+.btn-add {
+    background: #16a34a;
+    color: #fff;
+    padding: 10px 14px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 700;
+}
+.btn-remove {
+    background: #ef4444;
+    color: #fff;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 700;
+}
+.save-btn {
+    background: linear-gradient(180deg,#0d9488,#0f766e);
+    color: #fff;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    font-weight: 800;
+    font-family: 'Nunito','Segoe UI',sans-serif;
+    font-size: 15px;
+    transition: transform .15s ease, filter .15s ease;
+    box-shadow: 0 2px 8px rgba(13,148,136,.22);
+}
+.save-btn:hover {
+    filter: brightness(1.07);
+    transform: translateY(-1px);
+}
+</style>
+<form method="post" class="fbk-form" id="fillBlankForm">
+    <div class="title-box">
+        <label for="instructions">Instructions</label>
+        <input id="instructions" type="text" name="instructions" value="<?= htmlspecialchars($activity['instructions'], ENT_QUOTES, 'UTF-8') ?>" required />
+    </div>
+    <div id="blocksContainer">
+        <!-- Blocks will be rendered here by JS -->
+    </div>
+    <div class="toolbar-row">
+        <button type="button" class="btn-add" onclick="addBlock()">+ Add Block</button>
+        <button type="submit" class="save-btn">💾 Save</button>
+    </div>
 </form>
 <script>
-document.getElementById('fbk-add-block').onclick = function() {
-  alert('Add Block: Aquí puedes implementar la lógica para agregar bloques de texto o preguntas.');
+let initialBlocks = <?= json_encode($blocks) ?>;
+function renderBlocks() {
+    const container = document.getElementById('blocksContainer');
+    container.innerHTML = '';
+    if (initialBlocks.length === 0) addBlock();
+    initialBlocks.forEach((block, idx) => {
+        const div = document.createElement('div');
+        div.className = 'block-item';
+        div.innerHTML = `
+            <label>Sentence or paragraph (use <b>___</b> for blanks)</label>
+            <textarea name="text[]" required placeholder="Type your sentence and use ___ for blanks">${block.text ? block.text.replace(/</g,'&lt;').replace(/>/g,'&gt;') : ''}</textarea>
+            <label>Answers for blanks (comma separated, in order)</label>
+            <input type="text" name="answers[]" value="${block.answers ? block.answers.join(', ') : ''}" required placeholder="e.g. apple, banana, orange">
+            <button type="button" class="btn-remove" onclick="removeBlock(this)">✖ Remove</button>
+        `;
+        container.appendChild(div);
+    });
+}
+function addBlock() {
+    initialBlocks.push({text:'',answers:[]});
+    renderBlocks();
+}
+function removeBlock(btn) {
+    const idx = Array.from(document.querySelectorAll('.block-item')).indexOf(btn.closest('.block-item'));
+    if (idx > -1) initialBlocks.splice(idx,1);
+    renderBlocks();
+}
+document.addEventListener('DOMContentLoaded', renderBlocks);
+document.getElementById('fillBlankForm').onsubmit = function(e) {
+    // Validate blanks and answers
+    const blocks = document.querySelectorAll('.block-item');
+    for (let i=0; i<blocks.length; ++i) {
+        const text = blocks[i].querySelector('textarea').value;
+        const answers = blocks[i].querySelector('input').value.split(',').map(s=>s.trim()).filter(Boolean);
+        const blanks = (text.match(/___/g)||[]).length;
+        if (blanks !== answers.length) {
+            alert(`Block ${i+1}: Number of blanks (___) does not match number of answers.`);
+            e.preventDefault();
+            return false;
+        }
+    }
 };
 </script>
 <?php
