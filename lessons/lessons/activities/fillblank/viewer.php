@@ -121,11 +121,11 @@ ob_start();
 .fbk-btn.secondary {
   background: linear-gradient(180deg, #94a3b8 0%, #64748b 100%);
 }
-            echo '<div class="controls" style="margin-top:22px;text-align:center;">';
-            echo '<button type="button" class="us-btn us-btn-show" id="submitBtn">Show Answer</button>';
-            echo '<button type="button" class="us-btn us-btn-next" id="nextBtn">Next</button>';
-            echo '<button type="button" class="us-btn us-btn-next" id="prevBtn" style="display:none">Previous</button>';
-            echo '</div>';
+              echo '<div class="controls" style="margin-top:22px;text-align:center;">';
+              echo '<button type="button" class="us-btn us-btn-show" id="submitBtn">Show Answer</button>';
+              echo '<button type="button" class="us-btn us-btn-next" id="prevBtn" style="display:none">Previous</button>';
+              echo '<button type="button" class="us-btn us-btn-next" id="nextBtn">Next</button>';
+              echo '</div>';
 @media (max-width: 600px) {
   .fbk-card { padding: 12px 4vw; }
   .fbk-title { font-size: 1.3rem; }
@@ -186,7 +186,7 @@ function showBlock(idx) {
   nextBtn.style.display = '';
   submitBtn.style.display = '';
   fb.textContent = '';
-  submitBtn.textContent = showAnswers ? 'Show Answer' : 'Submit Answers';
+  submitBtn.textContent = 'Show Answer';
 }
 
 prevBtn.onclick = function() {
