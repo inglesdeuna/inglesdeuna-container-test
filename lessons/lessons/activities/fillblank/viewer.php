@@ -76,56 +76,34 @@ ob_start();
   margin: 0 4px;
   background: #fff;
   font-family: 'Nunito', 'Segoe UI', sans-serif;
-      /* Botones estilo Unscramble */
-      .us-btn {
-      padding: 11px 18px;
-      border: none;
-      border-radius: 999px;
-      color: white;
-      cursor: pointer;
-      margin: 6px;
-      min-width: 148px;
-      font-weight: 800;
-      font-family: 'Nunito','Segoe UI',sans-serif;
-      font-size: 14px;
-      box-shadow: 0 10px 22px rgba(15,23,42,.12);
-      transition: transform .15s ease, filter .15s ease;
-      }
-      .us-btn:hover {
-      filter: brightness(1.04);
-      transform: translateY(-1px);
-      }
-      .us-btn-show { background: linear-gradient(180deg,#d8b4fe 0%,#a855f7 100%); }
-      .us-btn-next { background: linear-gradient(180deg,#818cf8 0%,#6366f1 100%); }
 }
-.fbk-btn-row {
-  display: flex;
-  gap: 12px;
-  justify-content: flex-end;
-  margin-top: 18px;
-}
-.fbk-btn {
-  padding: 12px 28px;
+/* Botones estilo Unscramble, global */
+.us-btn {
+  padding: 11px 18px;
   border: none;
   border-radius: 999px;
-  font-family: 'Nunito', 'Segoe UI', sans-serif;
-  font-weight: 900;
-  font-size: 15px;
+  color: white;
   cursor: pointer;
-  color: #fff;
-  background: linear-gradient(180deg, #14b8a6 0%, #7c3aed 100%);
-  box-shadow: 0 8px 20px rgba(15, 23, 42, .16);
-  transition: transform .15s, filter .15s;
+  margin: 6px;
+  min-width: 148px;
+  font-weight: 800;
+  font-family: 'Nunito','Segoe UI',sans-serif;
+  font-size: 14px;
+  box-shadow: 0 10px 22px rgba(15,23,42,.12);
+  transition: transform .15s ease, filter .15s ease;
 }
-.fbk-btn:hover { transform: translateY(-2px); filter: brightness(1.06); }
-.fbk-btn.secondary {
-  background: linear-gradient(180deg, #94a3b8 0%, #64748b 100%);
+.us-btn:hover {
+  filter: brightness(1.04);
+  transform: translateY(-1px);
 }
-              echo '<div class="controls" style="margin-top:22px;text-align:center;">';
-              echo '<button type="button" class="us-btn us-btn-show" id="submitBtn">Show Answer</button>';
-              echo '<button type="button" class="us-btn us-btn-next" id="prevBtn" style="display:none">Previous</button>';
-              echo '<button type="button" class="us-btn us-btn-next" id="nextBtn">Next</button>';
-              echo '</div>';
+.us-btn-show { background: linear-gradient(180deg,#d8b4fe 0%,#a855f7 100%); }
+.us-btn-next { background: linear-gradient(180deg,#818cf8 0%,#6366f1 100%); }
+@media (max-width: 600px) {
+  .fbk-card { padding: 12px 4vw; }
+  .fbk-title { font-size: 1.3rem; }
+  .fbk-blank-input { width: 70px; }
+}
+</style>
 @media (max-width: 600px) {
   .fbk-card { padding: 12px 4vw; }
   .fbk-title { font-size: 1.3rem; }
@@ -155,12 +133,10 @@ ob_start();
         $display = $blockIdx === 0 ? '' : 'style="display:none"';
         echo '<div class="fbk-text block-viewer" data-block="' . $blockIdx . '" ' . $display . '>' . $rendered . '</div>';
       }
-      echo '<div class="fbk-btn-row d-flex flex-column align-items-center mt-3">';
-      echo '<div class="d-flex gap-3 justify-content-center">';
-      echo '<button type="button" class="fbk-btn secondary" id="prevBtn" style="display:none">Previous</button>';
-      echo '<button type="button" class="fbk-btn" id="submitBtn">Submit Answers</button>';
-      echo '<button type="button" class="fbk-btn secondary" id="nextBtn">Next</button>';
-      echo '</div>';
+      echo '<div class="controls" style="margin-top:22px;text-align:center;">';
+      echo '<button type="button" class="us-btn us-btn-show" id="submitBtn">Show Answer</button>';
+      echo '<button type="button" class="us-btn us-btn-next" id="prevBtn" style="display:none">Previous</button>';
+      echo '<button type="button" class="us-btn us-btn-next" id="nextBtn">Next</button>';
       echo '</div>';
       echo '</form>';
       echo '<div class="fbk-feedback" id="fbk-feedback"></div>';
