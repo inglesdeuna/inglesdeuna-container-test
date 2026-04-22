@@ -6,34 +6,42 @@ require_once __DIR__ . '/../../core/db.php';
 $activityId = isset($_GET['id']) ? trim((string)$_GET['id']) : '';
 $unit = isset($_GET['unit']) ? trim((string)$_GET['unit']) : '';
 
+
 function load_fillblank_activity(PDO $pdo, string $unit, string $activityId): array {
-    $fallback = [
-        'id' => '',
-        'instructions' => 'Write the missing words in the blanks.',
-        'text' => '',
-        'wordbank' => '',
-        'answerkey' => '',
-    ];
-    $row = null;
-    if ($activityId !== '') {
-        $stmt = $pdo->prepare("SELECT id, data FROM activities WHERE id = :id AND type = 'fillblank' LIMIT 1");
-        $stmt->execute(['id' => $activityId]);
-        $row = $stmt->fetch(PDO::FETCH_ASSOC);
-    }
-    if (!$row && $unit !== '') {
-        $stmt = $pdo->prepare("SELECT id, data FROM activities WHERE unit_id = :unit AND type = 'fillblank' ORDER BY id ASC LIMIT 1");
-        $stmt->execute(['unit' => $unit]);
-        $row = $stmt->fetch(PDO::FETCH_ASSOC);
-    }
-    if (!$row) return $fallback;
-    $data = json_decode($row['data'] ?? '', true);
-    return [
-        'id' => (string)($row['id'] ?? ''),
-        'instructions' => $data['instructions'] ?? $fallback['instructions'],
-        'text' => $data['text'] ?? '',
-        'wordbank' => $data['wordbank'] ?? '',
-        'answerkey' => $data['answerkey'] ?? '',
-    ];
+  $fallback = [
+    'id' => '',
+    'instructions' => 'Write the missing words in the blanks.',
+    'blocks' => [],
+    'wordbank' => '',
+  ];
+  $row = null;
+  if ($activityId !== '') {
+    $stmt = $pdo->prepare("SELECT id, data FROM activities WHERE id = :id AND type = 'fillblank' LIMIT 1");
+    $stmt->execute(['id' => $activityId]);
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+  }
+  if (!$row && $unit !== '') {
+    $stmt = $pdo->prepare("SELECT id, data FROM activities WHERE unit_id = :unit AND type = 'fillblank' ORDER BY id ASC LIMIT 1");
+    $stmt->execute(['unit' => $unit]);
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+  }
+  if (!$row) return $fallback;
+  $data = json_decode($row['data'] ?? '', true);
+  // Backward compatibility: if old format, convert to one block
+  if (!isset($data['blocks']) && isset($data['text'])) {
+    $blocks = [[
+      'text' => $data['text'],
+      'answers' => array_map('trim', explode(',', $data['answerkey'] ?? '')),
+    ]];
+  } else {
+    $blocks = $data['blocks'] ?? [];
+  }
+  return [
+    'id' => (string)($row['id'] ?? ''),
+    'instructions' => $data['instructions'] ?? $fallback['instructions'],
+    'blocks' => $blocks,
+    'wordbank' => $data['wordbank'] ?? '',
+  ];
 }
 
 $activity = load_fillblank_activity($pdo, $unit, $activityId);
@@ -135,25 +143,21 @@ ob_start();
     <div class="fbk-wordbank" id="fbk-wordbank">Word Bank: <?= htmlspecialchars($activity['wordbank']) ?></div>
   <?php endif; ?>
   <?php
-    $text = $activity['text'];
-    $answerKey = $activity['answerkey'];
-    $answers = array_map('trim', explode(',', $answerKey));
-    $blankCount = 0;
-    $numBlanks = preg_match_all('/\[blank\]/', $text, $matches);
-    $numAnswers = count(array_filter($answers, fn($a) => $a !== ''));
-    if ($numBlanks === 0) {
-      echo '<div class="fbk-text" id="fbk-text" style="color:#b91c1c;font-weight:bold;">Error: No [blank] tokens found in activity text.</div>';
-    } elseif ($numBlanks !== $numAnswers) {
-      echo '<div class="fbk-text" id="fbk-text" style="color:#b91c1c;font-weight:bold;">Error: Number of blanks (' . $numBlanks . ') does not match number of answers (' . $numAnswers . ').</div>';
+    $blocks = $activity['blocks'];
+    if (!$blocks || !is_array($blocks)) {
+      echo '<div class="fbk-text" style="color:#b91c1c;font-weight:bold;">No activity blocks found.</div>';
     } else {
-      $rendered = preg_replace_callback('/\[blank\]/', function() use (&$blankCount) {
-        $blankCount++;
-        return '<input class="fbk-blank-input" name="blank' . $blankCount . '" autocomplete="off" />';
-      }, htmlspecialchars($text, ENT_QUOTES, 'UTF-8'));
-      // Now restore the input fields (unescape them)
-      $rendered = preg_replace('/&lt;input class=&quot;fbk-blank-input&quot; name=&quot;blank(\d+)&quot; autocomplete=&quot;off&quot; \/&gt;/', '<input class="fbk-blank-input" name="blank$1" autocomplete="off" />', $rendered);
       echo '<form id="fbk-form">';
-      echo '<div class="fbk-text" id="fbk-text">' . $rendered . '</div>';
+      foreach ($blocks as $blockIdx => $block) {
+        $text = $block['text'] ?? '';
+        $answers = isset($block['answers']) && is_array($block['answers']) ? $block['answers'] : [];
+        $blankCount = 0;
+        $rendered = preg_replace_callback('/___+/', function($m) use (&$blankCount) {
+          $blankCount++;
+          return '<input class="fbk-blank-input" name="blank' . $blockIdx . '_' . $blankCount . '" autocomplete="off" />';
+        }, htmlspecialchars($text, ENT_QUOTES, 'UTF-8'));
+        echo '<div class="fbk-text" data-block="' . $blockIdx . '">' . $rendered . '</div>';
+      }
       echo '<div class="fbk-btn-row">';
       echo '<button type="button" class="fbk-btn secondary" onclick="window.history.back()">Previous</button>';
       echo '<button type="submit" class="fbk-btn">Submit Answers</button>';
@@ -164,33 +168,37 @@ ob_start();
     }
   ?>
 </div>
-<?php if ($numBlanks > 0 && $numBlanks === $numAnswers): ?>
 <script>
-const answerKey = <?= json_encode($activity['answerkey']) ?>;
-const answers = (answerKey || '').split(',');
+const blocks = <?= json_encode($activity['blocks']) ?>;
 const fbkForm = document.getElementById('fbk-form');
-if (fbkForm) {
+if (fbkForm && Array.isArray(blocks)) {
   fbkForm.onsubmit = function(e) {
     e.preventDefault();
-    let correct = 0;
-    for (let i = 0; i < answers.length; i++) {
-      const input = document.querySelector(`[name=blank${i+1}]`);
-      if (!input) continue;
-      const val = input.value.trim().toLowerCase();
-      if (val === (answers[i]||'').trim().toLowerCase()) correct++;
+    let total = 0, correct = 0, blockIdx = 0;
+    for (const block of blocks) {
+      const answers = Array.isArray(block.answers) ? block.answers : [];
+      let blankCount = 0;
+      for (let i = 0; i < answers.length; i++) {
+        blankCount++;
+        total++;
+        const input = document.querySelector(`[name=blank${blockIdx}_${blankCount}]`);
+        if (!input) continue;
+        const val = input.value.trim().toLowerCase();
+        if (val === (answers[i]||'').trim().toLowerCase()) correct++;
+      }
+      blockIdx++;
     }
     const fb = document.getElementById('fbk-feedback');
-    if (correct === answers.length) {
+    if (correct === total) {
       fb.textContent = '✅ All correct!';
       fb.style.color = '#14b8a6';
     } else {
-      fb.textContent = `❌ ${correct} of ${answers.length} correct. Try again!`;
+      fb.textContent = `❌ ${correct} of ${total} correct. Try again!`;
       fb.style.color = '#7c3aed';
     }
   };
 }
 </script>
-<?php endif; ?>
 <?php
 $content = ob_get_clean();
 render_activity_viewer('Fill-in-the-Blank Activity', 'fa-solid fa-pen-to-square', $content);
