@@ -40,57 +40,7 @@ function load_fillblank_activity(PDO $pdo, string $unit, string $activityId): ar
   ];
 }
 $activity = load_fillblank_activity($pdo, $unit, $activityId);
-?>
-
-<script>
-const blocks = <?= json_encode($activity['blocks']) ?>;
-let currentBlock = 0;
-const fbkForm = document.getElementById('fbk-form');
-const blockEls = document.querySelectorAll('.block-viewer');
-const prevBtn = document.getElementById('prevBtn');
-const nextBtn = document.getElementById('nextBtn');
-const submitBtn = document.getElementById('submitBtn');
-const fb = document.getElementById('fbk-feedback');
-let checkedBlocks = {};
-let attemptsByBlock = {};
-
-function normalizeText(text) {
-  return String(text || '').toLowerCase().trim().replace(/[.,!?;:]/g, '').replace(/\s+/g, ' ');
-}
-
-function showBlock(idx) {
-  blockEls.forEach((el, i) => {
-    el.style.display = (i === idx) ? '' : 'none';
-  });
-  prevBtn.style.display = idx > 0 ? '' : 'none';
-  nextBtn.style.display = '';
-  submitBtn.style.display = '';
-  fb.textContent = '';
-  submitBtn.textContent = 'Show Answer';
-  // Reset inputs
-  const block = blocks[idx];
-  const answers = Array.isArray(block.answers) ? block.answers : [];
-  for (let i = 0; i < answers.length; i++) {
-    const input = document.querySelector(`[name=blank${idx}_${i+1}]`);
-    if (input) {
-      input.classList.remove('ok', 'bad');
-      input.disabled = false;
-    }
-  }
-}
-
-prevBtn.onclick = function() {
-  if (currentBlock > 0) {
-    currentBlock--;
-    showBlock(currentBlock);
-  }
-};
-
-nextBtn.onclick = function() {
-  if (currentBlock < blocks.length - 1) {
-    currentBlock++;
-    showBlock(currentBlock);
-  } else {
+// ...existing code...
     // Calcular score real
     let total = 0, correct = 0;
     for (let idx = 0; idx < blocks.length; idx++) {
