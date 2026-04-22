@@ -156,12 +156,15 @@ ob_start();
           $blankCount++;
           return '<input class="fbk-blank-input" name="blank' . $blockIdx . '_' . $blankCount . '" autocomplete="off" />';
         }, htmlspecialchars($text, ENT_QUOTES, 'UTF-8'));
-        echo '<div class="fbk-text" data-block="' . $blockIdx . '">' . $rendered . '</div>';
+        $display = $blockIdx === 0 ? '' : 'style="display:none"';
+        echo '<div class="fbk-text block-viewer" data-block="' . $blockIdx . '" ' . $display . '>' . $rendered . '</div>';
       }
-      echo '<div class="fbk-btn-row">';
-      echo '<button type="button" class="fbk-btn secondary" onclick="window.history.back()">Previous</button>';
-      echo '<button type="submit" class="fbk-btn">Submit Answers</button>';
-      echo '<button type="button" class="fbk-btn secondary" onclick="window.location.reload()">Next</button>';
+      echo '<div class="fbk-btn-row d-flex flex-column align-items-center">';
+      echo '<div class="d-flex gap-3">';
+      echo '<button type="button" class="fbk-btn secondary" id="prevBtn" style="display:none">Previous</button>';
+      echo '<button type="submit" class="fbk-btn" id="submitBtn">Submit Answers</button>';
+      echo '<button type="button" class="fbk-btn secondary" id="nextBtn" style="display:' . (count($blocks) > 1 ? '' : 'none') . '">Next</button>';
+      echo '</div>';
       echo '</div>';
       echo '</form>';
       echo '<div class="fbk-feedback" id="fbk-feedback"></div>';
@@ -170,33 +173,74 @@ ob_start();
 </div>
 <script>
 const blocks = <?= json_encode($activity['blocks']) ?>;
+let currentBlock = 0;
 const fbkForm = document.getElementById('fbk-form');
+const blockEls = document.querySelectorAll('.block-viewer');
+const prevBtn = document.getElementById('prevBtn');
+const nextBtn = document.getElementById('nextBtn');
+const submitBtn = document.getElementById('submitBtn');
+const fb = document.getElementById('fbk-feedback');
+
+function showBlock(idx) {
+  blockEls.forEach((el, i) => {
+    el.style.display = (i === idx) ? '' : 'none';
+  });
+  if (prevBtn) prevBtn.style.display = idx > 0 ? '' : 'none';
+  if (nextBtn) nextBtn.style.display = idx < blocks.length - 1 ? '' : 'none';
+  fb.textContent = '';
+}
+
+if (prevBtn) prevBtn.onclick = function() {
+  if (currentBlock > 0) {
+    currentBlock--;
+    showBlock(currentBlock);
+  }
+};
+if (nextBtn) nextBtn.onclick = function() {
+  if (currentBlock < blocks.length - 1) {
+    currentBlock++;
+    showBlock(currentBlock);
+  }
+};
+
+function checkBlock(idx) {
+  const block = blocks[idx];
+  const answers = Array.isArray(block.answers) ? block.answers : [];
+  let correct = 0, total = answers.length;
+  for (let i = 0; i < answers.length; i++) {
+    const input = document.querySelector(`[name=blank${idx}_${i+1}]`);
+    if (!input) continue;
+    const val = input.value.trim().toLowerCase();
+    if (val === (answers[i]||'').trim().toLowerCase()) correct++;
+  }
+  return {correct, total};
+}
+
+function checkAll() {
+  let correct = 0, total = 0;
+  for (let idx = 0; idx < blocks.length; idx++) {
+    const res = checkBlock(idx);
+    correct += res.correct;
+    total += res.total;
+  }
+  return {correct, total};
+}
+
 if (fbkForm && Array.isArray(blocks)) {
   fbkForm.onsubmit = function(e) {
     e.preventDefault();
-    let total = 0, correct = 0, blockIdx = 0;
-    for (const block of blocks) {
-      const answers = Array.isArray(block.answers) ? block.answers : [];
-      let blankCount = 0;
-      for (let i = 0; i < answers.length; i++) {
-        blankCount++;
-        total++;
-        const input = document.querySelector(`[name=blank${blockIdx}_${blankCount}]`);
-        if (!input) continue;
-        const val = input.value.trim().toLowerCase();
-        if (val === (answers[i]||'').trim().toLowerCase()) correct++;
-      }
-      blockIdx++;
-    }
-    const fb = document.getElementById('fbk-feedback');
+    const {correct, total} = checkBlock(currentBlock);
     if (correct === total) {
       fb.textContent = '✅ All correct!';
       fb.style.color = '#14b8a6';
+      submitBtn.textContent = 'Show Answer';
     } else {
       fb.textContent = `❌ ${correct} of ${total} correct. Try again!`;
       fb.style.color = '#7c3aed';
+      submitBtn.textContent = 'Show Answer';
     }
   };
+  showBlock(currentBlock);
 }
 </script>
 
