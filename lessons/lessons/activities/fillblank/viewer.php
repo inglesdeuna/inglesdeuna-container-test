@@ -142,44 +142,7 @@ function load_fillblank_activity(PDO $pdo, string $unit, string $activityId): ar
   ?>
 </div>
 
-</script>
-</script>
-</style>
-</style>
-</style>
-<div class="fbk-card">
-  <div class="fbk-title">Fill-in-the-Blank Activity</div>
-  <div class="fbk-instructions" id="fbk-instructions"><?= htmlspecialchars($activity['instructions']) ?></div>
-  <?php if (!empty($activity['wordbank'])): ?>
-    <div class="fbk-wordbank" id="fbk-wordbank">Word Bank: <?= htmlspecialchars($activity['wordbank']) ?></div>
-  <?php endif; ?>
-  <?php
-    $blocks = $activity['blocks'];
-    if (!$blocks || !is_array($blocks)) {
-      echo '<div class="fbk-text" style="color:#b91c1c;font-weight:bold;">No activity blocks found.</div>';
-    } else {
-      echo '<form id="fbk-form">';
-      foreach ($blocks as $blockIdx => $block) {
-        $text = $block['text'] ?? '';
-        $answers = isset($block['answers']) && is_array($block['answers']) ? $block['answers'] : [];
-        $blankCount = 0;
-        $rendered = preg_replace_callback('/___+/', function($m) use (&$blankCount, $blockIdx) {
-          $blankCount++;
-          return '<input class="fbk-blank-input" name="blank' . $blockIdx . '_' . $blankCount . '" autocomplete="off" />';
-        }, htmlspecialchars($text, ENT_QUOTES, 'UTF-8'));
-        $display = $blockIdx === 0 ? '' : 'style="display:none"';
-        echo '<div class="fbk-text block-viewer" data-block="' . $blockIdx . '" ' . $display . '>' . $rendered . '</div>';
-      }
-      echo '<div class="controls" style="margin-top:22px;text-align:center;">';
-      echo '<button type="button" class="us-btn us-btn-show" id="submitBtn">Show Answer</button>';
-      echo '<button type="button" class="us-btn us-btn-next" id="prevBtn" style="display:none">Previous</button>';
-      echo '<button type="button" class="us-btn us-btn-next" id="nextBtn">Next</button>';
-      echo '</div>';
-      echo '</form>';
-      echo '<div class="fbk-feedback" id="fbk-feedback"></div>';
-    }
-  ?>
-</div>
+<!-- HTML renderizado más abajo, sin duplicados -->
 <script>
 const blocks = <?= json_encode($activity['blocks']) ?>;
 let currentBlock = 0;
