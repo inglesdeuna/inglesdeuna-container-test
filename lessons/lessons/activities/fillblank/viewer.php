@@ -199,19 +199,6 @@ if (fbkForm && Array.isArray(blocks)) {
   };
 }
 </script>
-<?php
-$content = ob_get_clean();
-render_activity_viewer('Fill-in-the-Blank Activity', 'fa-solid fa-pen-to-square', $content);
-?>
-  if (correct === answers.length) {
-    fb.textContent = '✅ All correct!';
-    fb.style.color = '#14b8a6';
-  } else {
-    fb.textContent = `❌ ${correct} of ${answers.length} correct. Try again!`;
-    fb.style.color = '#7c3aed';
-  }
-};
-</script>
 
 <?php
 $content = ob_get_clean();
