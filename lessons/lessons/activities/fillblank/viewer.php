@@ -171,13 +171,27 @@ prevBtn.onclick = function() {
     showBlock(currentBlock);
   }
 };
+
 nextBtn.onclick = function() {
   if (currentBlock < blocks.length - 1) {
     currentBlock++;
     showBlock(currentBlock);
   } else {
-    // completed: go to completed page (simulate like other activities)
-    window.location.href = 'completed.php?id=<?= urlencode($activityId) ?>&unit=<?= urlencode($unit) ?>';
+    // Calcular score real
+    let total = 0, correct = 0;
+    for (let idx = 0; idx < blocks.length; idx++) {
+      const block = blocks[idx];
+      const answers = Array.isArray(block.answers) ? block.answers : [];
+      total += answers.length;
+      for (let i = 0; i < answers.length; i++) {
+        const input = document.querySelector(`[name=blank${idx}_${i+1}]`);
+        if (!input) continue;
+        const val = input.value.trim().toLowerCase();
+        if (val === (answers[i]||'').trim().toLowerCase()) correct++;
+      }
+    }
+    // Navegar a completed con score real
+    window.location.href = `completed.php?id=<?= urlencode($activityId) ?>&unit=<?= urlencode($unit) ?>&correct=${correct}&total=${total}`;
   }
 };
 

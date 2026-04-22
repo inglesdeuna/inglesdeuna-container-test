@@ -43,15 +43,10 @@ function load_fillblank_activity(PDO $pdo, string $unit, string $activityId): ar
 
 $activity = load_fillblank_activity($pdo, $unit, $activityId);
 
-$total = 0;
-$correct = 0;
-foreach ($activity['blocks'] as $block) {
-	if (!empty($block['answers']) && is_array($block['answers'])) {
-		$total += count($block['answers']);
-		// Simulación: asumimos todas correctas para demo
-		$correct += count($block['answers']);
-	}
-}
+
+// Leer score real de GET
+$correct = isset($_GET['correct']) ? intval($_GET['correct']) : 0;
+$total = isset($_GET['total']) ? intval($_GET['total']) : 0;
 $percent = $total > 0 ? round($correct * 100 / $total) : 0;
 
 ob_start();
@@ -123,22 +118,18 @@ ob_start();
 	transform: translateY(-1px);
 }
 .us-btn-main { background: linear-gradient(180deg,#818cf8 0%,#6366f1 100%); }
-.us-btn-alt { background: linear-gradient(180deg,#d8b4fe 0%,#a855f7 100%); }
 @media (max-width: 600px) {
 	.completed-card { padding: 12px 4vw; }
 	.completed-title { font-size: 1.3rem; }
 }
 </style>
 <div class="completed-card">
-	<div class="completed-icon">✅</div>
+	<div class="completed-icon">🎉</div>
 	<div class="completed-title">Fill-in-the-Blank Activity</div>
-	<div class="completed-score">Correct: <?= $correct ?> / <?= $total ?></div>
-	<div class="completed-percent"><?= $percent ?>%</div>
-	<div class="completed-msg">¡Bien hecho! Puedes revisar tus respuestas o continuar con la siguiente unidad.</div>
+	<div class="completed-score">Score: <?= $correct ?> / <?= $total ?> (<?= $percent ?>%)</div>
+	<div class="completed-msg">You’ve completed Fill-in-the-Blank. Great job practicing.</div>
 	<div class="completed-btns">
-		<a href="../academic/unit_view.php?unit=<?= urlencode($unit) ?>" class="us-btn us-btn-main">Volver a la unidad</a>
-		<a href="../academic/teacher_unit.php?unit=<?= urlencode($unit) ?>" class="us-btn us-btn-alt">Ir al quiz</a>
-		<a href="viewer.php?id=<?= urlencode($activityId) ?>&unit=<?= urlencode($unit) ?>" class="us-btn us-btn-alt">Reintentar actividad</a>
+		<a href="viewer.php?id=<?= urlencode($activityId) ?>&unit=<?= urlencode($unit) ?>" class="us-btn us-btn-main">Reintentar actividad</a>
 	</div>
 </div>
 <?php
