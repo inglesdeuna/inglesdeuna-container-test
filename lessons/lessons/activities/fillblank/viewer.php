@@ -152,7 +152,7 @@ ob_start();
         $text = $block['text'] ?? '';
         $answers = isset($block['answers']) && is_array($block['answers']) ? $block['answers'] : [];
         $blankCount = 0;
-        $rendered = preg_replace_callback('/___+/', function($m) use (&$blankCount) {
+        $rendered = preg_replace_callback('/___+/', function($m) use (&$blankCount, $blockIdx) {
           $blankCount++;
           return '<input class="fbk-blank-input" name="blank' . $blockIdx . '_' . $blankCount . '" autocomplete="off" />';
         }, htmlspecialchars($text, ENT_QUOTES, 'UTF-8'));
