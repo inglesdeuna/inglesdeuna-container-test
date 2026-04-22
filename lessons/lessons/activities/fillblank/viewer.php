@@ -1,12 +1,4 @@
-<?php
-require_once __DIR__ . '/../../core/_activity_viewer_template.php';
-require_once __DIR__ . '/../../core/db.php';
-  }
-  return [
-    'id' => (string)($row['id'] ?? ''),
-      echo '<div class="fbk-feedback" id="fbk-feedback"></div>';
-    }
-  ?>
+
 const blocks = <?= json_encode($activity['blocks']) ?>;
 let currentBlock = 0;
 const fbkForm = document.getElementById('fbk-form');
