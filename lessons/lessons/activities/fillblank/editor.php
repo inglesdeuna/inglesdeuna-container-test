@@ -146,87 +146,15 @@ if (isset($_GET['saved'])) {
     echo '<p style="color:green;font-weight:bold;margin-bottom:15px;">✔ Saved successfully</p>';
 }
 ?>
-<style>
-.fbk-form {
-    max-width: 860px;
-    margin: 0 auto;
-    text-align: left;
-}
-.block-item {
-    background: #f9fafb;
-    padding: 14px;
-    margin-bottom: 14px;
-    border-radius: 12px;
-    border: 1px solid #e5e7eb;
-}
-.block-item label {
-    display: block;
-    font-weight: 700;
-    margin-bottom: 8px;
-}
-.block-item textarea, .block-item input {
-    width: 100%;
-    padding: 10px 12px;
-    border-radius: 8px;
-    border: 1px solid #d1d5db;
-    box-sizing: border-box;
-    margin-bottom: 12px;
-    font-size: 14px;
-}
-.toolbar-row {
-    display: flex;
-    gap: 10px;
-    flex-wrap: wrap;
-    justify-content: center;
-    margin-top: 8px;
-}
-.btn-add {
-    background: #16a34a;
-    color: #fff;
-    padding: 10px 14px;
-    border: none;
-    border-radius: 8px;
-    cursor: pointer;
-    font-weight: 700;
-}
-.btn-remove {
-    background: #ef4444;
-    color: #fff;
-    border: none;
-    padding: 8px 12px;
-    border-radius: 8px;
-    cursor: pointer;
-    font-weight: 700;
-}
-.save-btn {
-    background: linear-gradient(180deg,#0d9488,#0f766e);
-    color: #fff;
-    padding: 10px 20px;
-    border: none;
-    border-radius: 10px;
-    cursor: pointer;
-    font-weight: 800;
-    font-family: 'Nunito','Segoe UI',sans-serif;
-    font-size: 15px;
-    transition: transform .15s ease, filter .15s ease;
-    box-shadow: 0 2px 8px rgba(13,148,136,.22);
-}
-.save-btn:hover {
-    filter: brightness(1.07);
-    transform: translateY(-1px);
-}
-</style>
-<form method="post" class="fbk-form" id="fillBlankForm">
-    <div class="title-box">
-        <label for="instructions">Instructions</label>
-        <input id="instructions" type="text" name="instructions" value="<?= htmlspecialchars($activity['instructions'], ENT_QUOTES, 'UTF-8') ?>" required />
+<form method="post" class="needs-validation" id="fillBlankForm" novalidate>
+    <div class="mb-4">
+        <label for="instructions" class="form-label fw-bold">Instructions</label>
+        <input id="instructions" type="text" name="instructions" value="<?= htmlspecialchars($activity['instructions'], ENT_QUOTES, 'UTF-8') ?>" required class="form-control" />
     </div>
-    <div id="blocksContainer">
-        <!-- Blocks will be rendered here by JS -->
-    </div>
-    <div class="toolbar-row">
-        <button type="button" class="btn-add" onclick="addBlock()">+ Add Block</button>
-        <button type="submit" class="save-btn">💾 Save</button>
+    <div id="blocksContainer"></div>
+    <div class="d-flex gap-2 justify-content-center mt-3">
+        <button type="button" class="btn btn-success" onclick="addBlock()"><i class="fas fa-plus"></i> Add Block</button>
+        <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save</button>
     </div>
 </form>
 <script>
@@ -237,13 +165,19 @@ function renderBlocks() {
     if (initialBlocks.length === 0) addBlock();
     initialBlocks.forEach((block, idx) => {
         const div = document.createElement('div');
-        div.className = 'block-item';
+        div.className = 'card mb-3 block-item';
         div.innerHTML = `
-            <label>Sentence or paragraph (use <b>___</b> for blanks)</label>
-            <textarea name="text[]" required placeholder="Type your sentence and use ___ for blanks">${block.text ? block.text.replace(/</g,'&lt;').replace(/>/g,'&gt;') : ''}</textarea>
-            <label>Answers for blanks (comma separated, in order)</label>
-            <input type="text" name="answers[]" value="${block.answers ? block.answers.join(', ') : ''}" required placeholder="e.g. apple, banana, orange">
-            <button type="button" class="btn-remove" onclick="removeBlock(this)">✖ Remove</button>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Sentence or paragraph <span class="text-muted">(use <b>___</b> for blanks)</span></label>
+                    <textarea name="text[]" required class="form-control" placeholder="Type your sentence and use ___ for blanks">${block.text ? block.text.replace(/</g,'&lt;').replace(/>/g,'&gt;') : ''}</textarea>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Answers for blanks <span class="text-muted">(comma separated, in order)</span></label>
+                    <input type="text" name="answers[]" value="${block.answers ? block.answers.join(', ') : ''}" required class="form-control" placeholder="e.g. apple, banana, orange">
+                </div>
+                <button type="button" class="btn btn-danger" onclick="removeBlock(this)"><i class="fas fa-trash-alt"></i> Remove</button>
+            </div>
         `;
         container.appendChild(div);
     });
