@@ -1021,9 +1021,33 @@ function startSpeechFromOffset() {
   speechSegmentStart = safeOffset;
   utter = new SpeechSynthesisUtterance(remaining);
   utter.lang = 'en-US';
-  utter.rate = 0.9;
+  utter.rate = 0.92;
   utter.pitch = 1;
-  utter.volume = 1;
+  const preferredVoice = getPreferredVoice('en-US');
+  if (preferredVoice) utter.voice = preferredVoice;
+  window.speechSynthesis.speak(utter);
+function getPreferredVoice(lang) {
+  lang = lang || 'en-US';
+  const voices = window.speechSynthesis ? window.speechSynthesis.getVoices() : [];
+  if (!Array.isArray(voices) || voices.length === 0) {
+    return null;
+  }
+  const langPrefix = lang.split('-')[0].toLowerCase();
+  const matchedVoices = voices.filter((voice) => {
+    const vl = String(voice.lang || '').toLowerCase();
+    return vl === lang.toLowerCase() || vl.startsWith(langPrefix + '-') || vl.startsWith(langPrefix + '_');
+  });
+  if (!matchedVoices.length) {
+    return voices[0] || null;
+  }
+  const femaleHints = ['female', 'woman', 'zira', 'samantha', 'karen', 'aria', 'jenny', 'emma', 'olivia', 'ava',
+    'paulina', 'sabina', 'esperanza', 'mónica', 'monica', 'conchita'];
+  const femaleVoice = matchedVoices.find((voice) => {
+    const label = (String(voice.name || '') + ' ' + String(voice.voiceURI || '')).toLowerCase();
+    return femaleHints.some((hint) => label.includes(hint));
+  });
+  return femaleVoice || matchedVoices[0];
+}
 
   utter.onstart = function () {
     isSpeaking = true;

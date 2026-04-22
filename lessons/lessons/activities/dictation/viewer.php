@@ -661,6 +661,30 @@ document.addEventListener('DOMContentLoaded', function () {
         dictUtter = new SpeechSynthesisUtterance(remaining);
         dictUtter.lang = 'en-US';
         dictUtter.rate = 0.9;
+        const preferredVoice = getPreferredVoice('en-US');
+        if (preferredVoice) dictUtter.voice = preferredVoice;
+        function getPreferredVoice(lang) {
+            lang = lang || 'en-US';
+            const voices = window.speechSynthesis ? window.speechSynthesis.getVoices() : [];
+            if (!Array.isArray(voices) || voices.length === 0) {
+                return null;
+            }
+            const langPrefix = lang.split('-')[0].toLowerCase();
+            const matchedVoices = voices.filter((voice) => {
+                const vl = String(voice.lang || '').toLowerCase();
+                return vl === lang.toLowerCase() || vl.startsWith(langPrefix + '-') || vl.startsWith(langPrefix + '_');
+            });
+            if (!matchedVoices.length) {
+                return voices[0] || null;
+            }
+            const femaleHints = ['female', 'woman', 'zira', 'samantha', 'karen', 'aria', 'jenny', 'emma', 'olivia', 'ava',
+                'paulina', 'sabina', 'esperanza', 'mónica', 'monica', 'conchita'];
+            const femaleVoice = matchedVoices.find((voice) => {
+                const label = (String(voice.name || '') + ' ' + String(voice.voiceURI || '')).toLowerCase();
+                return femaleHints.some((hint) => label.includes(hint));
+            });
+            return femaleVoice || matchedVoices[0];
+        }
         dictUtter.onstart   = function () { isSpeaking = true; isPaused = false; };
         dictUtter.onpause   = function () { isPaused = true; isSpeaking = true; };
         dictUtter.onresume  = function () { isPaused = false; isSpeaking = true; };

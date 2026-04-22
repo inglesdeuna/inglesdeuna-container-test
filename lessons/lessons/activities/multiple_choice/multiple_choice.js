@@ -361,12 +361,38 @@
   let userInteracted = false;
   let pendingSpeech = '';
 
+
+  function getPreferredVoice(lang) {
+    lang = lang || 'en-US';
+    var voices = window.speechSynthesis ? window.speechSynthesis.getVoices() : [];
+    if (!Array.isArray(voices) || voices.length === 0) {
+      return null;
+    }
+    var langPrefix = lang.split('-')[0].toLowerCase();
+    var matchedVoices = voices.filter(function(voice) {
+      var vl = String(voice.lang || '').toLowerCase();
+      return vl === lang.toLowerCase() || vl.startsWith(langPrefix + '-') || vl.startsWith(langPrefix + '_');
+    });
+    if (!matchedVoices.length) {
+      return voices[0] || null;
+    }
+    var femaleHints = ['female', 'woman', 'zira', 'samantha', 'karen', 'aria', 'jenny', 'emma', 'olivia', 'ava',
+      'paulina', 'sabina', 'esperanza', 'mónica', 'monica', 'conchita'];
+    var femaleVoice = matchedVoices.find(function(voice) {
+      var label = (String(voice.name || '') + ' ' + String(voice.voiceURI || '')).toLowerCase();
+      return femaleHints.some(function(hint) { return label.includes(hint); });
+    });
+    return femaleVoice || matchedVoices[0];
+  }
+
   function speakText(text) {
     if (!text || !window.speechSynthesis) return;
     window.speechSynthesis.cancel();
     var utt = new SpeechSynthesisUtterance(text);
     utt.lang = 'en-US';
     utt.rate = 0.9;
+    var preferredVoice = getPreferredVoice('en-US');
+    if (preferredVoice) utt.voice = preferredVoice;
     window.speechSynthesis.speak(utt);
   }
 

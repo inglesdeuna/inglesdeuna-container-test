@@ -707,6 +707,30 @@ function loadCard() {
     card.classList.remove('flip');
 }
 
+
+function getPreferredVoice(lang) {
+    lang = lang || 'en-US';
+    const voices = window.speechSynthesis ? window.speechSynthesis.getVoices() : [];
+    if (!Array.isArray(voices) || voices.length === 0) {
+        return null;
+    }
+    const langPrefix = lang.split('-')[0].toLowerCase();
+    const matchedVoices = voices.filter((voice) => {
+        const vl = String(voice.lang || '').toLowerCase();
+        return vl === lang.toLowerCase() || vl.startsWith(langPrefix + '-') || vl.startsWith(langPrefix + '_');
+    });
+    if (!matchedVoices.length) {
+        return voices[0] || null;
+    }
+    const femaleHints = ['female', 'woman', 'zira', 'samantha', 'karen', 'aria', 'jenny', 'emma', 'olivia', 'ava',
+        'paulina', 'sabina', 'esperanza', 'mónica', 'monica', 'conchita'];
+    const femaleVoice = matchedVoices.find((voice) => {
+        const label = (String(voice.name || '') + ' ' + String(voice.voiceURI || '')).toLowerCase();
+        return femaleHints.some((hint) => label.includes(hint));
+    });
+    return femaleVoice || matchedVoices[0];
+}
+
 function speakText(text, lang) {
     if (!text || !('speechSynthesis' in window)) return;
     window.speechSynthesis.cancel();
@@ -714,6 +738,8 @@ function speakText(text, lang) {
     utter.lang = lang;
     utter.rate = 0.92;
     utter.pitch = 1;
+    const preferredVoice = getPreferredVoice(lang);
+    if (preferredVoice) utter.voice = preferredVoice;
     window.speechSynthesis.speak(utter);
 }
 
