@@ -63,29 +63,6 @@ ob_start();
 .fbk-title {
   font-family: 'Fredoka', 'Trebuchet MS', sans-serif;
   font-size: 2rem;
-  color: #14b8a6;
-  font-weight: 800;
-  margin-bottom: 8px;
-  text-align: center;
-}
-.fbk-instructions {
-  font-weight: 700;
-  color: #0e7490;
-  margin-bottom: 8px;
-  text-align: center;
-}
-.fbk-wordbank {
-  background: #f3f0ff;
-  border-radius: 12px;
-  padding: 8px 14px;
-  margin: 10px 0 0 0;
-  color: #5b21b6;
-  font-size: 1rem;
-  text-align: center;
-}
-.fbk-text {
-  font-size: 1.1rem;
-  margin: 18px 0 10px 0;
   color: #334155;
   line-height: 1.7;
   text-align: left;
@@ -99,6 +76,27 @@ ob_start();
   margin: 0 4px;
   background: #fff;
   font-family: 'Nunito', 'Segoe UI', sans-serif;
+      /* Botones estilo Unscramble */
+      .us-btn {
+      padding: 11px 18px;
+      border: none;
+      border-radius: 999px;
+      color: white;
+      cursor: pointer;
+      margin: 6px;
+      min-width: 148px;
+      font-weight: 800;
+      font-family: 'Nunito','Segoe UI',sans-serif;
+      font-size: 14px;
+      box-shadow: 0 10px 22px rgba(15,23,42,.12);
+      transition: transform .15s ease, filter .15s ease;
+      }
+      .us-btn:hover {
+      filter: brightness(1.04);
+      transform: translateY(-1px);
+      }
+      .us-btn-show { background: linear-gradient(180deg,#d8b4fe 0%,#a855f7 100%); }
+      .us-btn-next { background: linear-gradient(180deg,#818cf8 0%,#6366f1 100%); }
 }
 .fbk-btn-row {
   display: flex;
@@ -123,13 +121,11 @@ ob_start();
 .fbk-btn.secondary {
   background: linear-gradient(180deg, #94a3b8 0%, #64748b 100%);
 }
-.fbk-feedback {
-  margin-top: 18px;
-  font-size: 1.1rem;
-  color: #7c3aed;
-  text-align: center;
-  min-height: 24px;
-}
+            echo '<div class="controls" style="margin-top:22px;text-align:center;">';
+            echo '<button type="button" class="us-btn us-btn-show" id="submitBtn">Show Answer</button>';
+            echo '<button type="button" class="us-btn us-btn-next" id="nextBtn">Next</button>';
+            echo '<button type="button" class="us-btn us-btn-next" id="prevBtn" style="display:none">Previous</button>';
+            echo '</div>';
 @media (max-width: 600px) {
   .fbk-card { padding: 12px 4vw; }
   .fbk-title { font-size: 1.3rem; }
