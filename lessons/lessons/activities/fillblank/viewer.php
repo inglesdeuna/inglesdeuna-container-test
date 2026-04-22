@@ -35,51 +35,65 @@ function load_fillblank_activity(PDO $pdo, string $unit, string $activityId): ar
   return [
     'id' => (string)($row['id'] ?? ''),
     'instructions' => $data['instructions'] ?? $fallback['instructions'],
-    'blocks' => $blocks,
-    'wordbank' => $data['wordbank'] ?? '',
-  ];
-}
-$activity = load_fillblank_activity($pdo, $unit, $activityId);
-?>
-
-<style>
-.fbk-card {
-  max-width: 700px;
-  margin: 32px auto;
-  background: linear-gradient(135deg, #ede9fe 0%, #f8fafc 100%);
-  border-radius: 22px;
-  box-shadow: 0 6px 32px rgba(124,58,237,.07);
-  padding: 32px 28px 24px 28px;
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
-}
-.fbk-title {
-  font-family: 'Fredoka', 'Trebuchet MS', sans-serif;
-  font-size: 2rem;
-  color: #334155;
-  line-height: 1.7;
-  text-align: left;
-}
-.fbk-blank-input {
-  width: 110px;
-  border: 2px solid #7dd3fc;
-  border-radius: 8px;
-  padding: 6px 10px;
-  font-size: 1rem;
-  margin: 0 4px;
-  background: #fff;
-  font-family: 'Nunito', 'Segoe UI', sans-serif;
-}
-/* Botones estilo Unscramble, global */
-.us-btn {
-  padding: 11px 18px;
-  border: none;
-  border-radius: 999px;
-  color: white;
-  cursor: pointer;
-  margin: 6px;
-  min-width: 148px;
+    <?php
+    require_once __DIR__ . '/../../core/_activity_viewer_template.php';
+    require_once __DIR__ . '/../../core/db.php';
+    $activityId = isset($_GET['id']) ? trim((string)$_GET['id']) : '';
+    $unit = isset($_GET['unit']) ? trim((string)$_GET['unit']) : '';
+    function load_fillblank_activity(PDO $pdo, string $unit, string $activityId): array {
+      $fallback = [
+        'id' => '',
+        'instructions' => 'Write the missing words in the blanks.',
+        'blocks' => [],
+        'wordbank' => '',
+      ];
+      $row = null;
+      if ($activityId !== '') {
+        $stmt = $pdo->prepare("SELECT id, data FROM activities WHERE id = :id AND type = 'fillblank' LIMIT 1");
+        $stmt->execute(['id' => $activityId]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+      }
+      if (!$row && $unit !== '') {
+        $stmt = $pdo->prepare("SELECT id, data FROM activities WHERE unit_id = :unit AND type = 'fillblank' ORDER BY id ASC LIMIT 1");
+        $stmt->execute(['unit' => $unit]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+      }
+      if (!$row) return $fallback;
+      $data = json_decode($row['data'] ?? '', true);
+      if (!isset($data['blocks']) && isset($data['text'])) {
+        $blocks = [[
+          'text' => $data['text'],
+          'answers' => array_map('trim', explode(',', $data['answerkey'] ?? '')),
+        ]];
+      } else {
+        $blocks = $data['blocks'] ?? [];
+      }
+      return [
+        'id' => (string)($row['id'] ?? ''),
+        'instructions' => $data['instructions'] ?? $fallback['instructions'],
+        'blocks' => $blocks,
+        'wordbank' => $data['wordbank'] ?? '',
+      ];
+    }
+    $activity = load_fillblank_activity($pdo, $unit, $activityId);
+    ?>
+    <style>
+    .mc-feedback.good {
+      color: #16a34a;
+      background: #f0fdf4;
+      border-radius: 8px;
+      padding: 8px 0;
+      font-weight: bold;
+      font-size: 1.1em;
+    }
+    .mc-feedback.bad {
+      color: #dc2626;
+      background: #fef2f2;
+      border-radius: 8px;
+      padding: 8px 0;
+      font-weight: bold;
+      font-size: 1.1em;
+    }
   font-weight: 800;
   font-family: 'Nunito','Segoe UI',sans-serif;
   font-size: 14px;
@@ -244,21 +258,38 @@ submitBtn.onclick = function(e) {
   e.preventDefault();
   if (!showAnswers) {
     const {correct, total} = checkBlock(currentBlock);
-    if (correct === total) {
-      fb.textContent = '✅ All correct!';
-      fb.style.color = '#14b8a6';
-      showAnswers = true;
-      submitBtn.textContent = 'Show Answer';
-    } else {
-      fb.textContent = `❌ ${correct} of ${total} correct. Try again!`;
-      fb.style.color = '#7c3aed';
-      showAnswers = true;
-      submitBtn.textContent = 'Show Answer';
-    }
+      if (correct === total) {
+        fb.textContent = '✔ Correct!';
+        fb.className = 'mc-feedback good';
+        showAnswers = true;
+        submitBtn.textContent = 'Show Answer';
+      } else {
+        fb.textContent = `✗ ${correct} of ${total} correct. Try again!`;
+        fb.className = 'mc-feedback bad';
+        showAnswers = true;
+        submitBtn.textContent = 'Show Answer';
+      }
   } else {
     showBlockAnswers(currentBlock);
-    fb.textContent = '✔ Answers shown.';
-    fb.style.color = '#14b8a6';
+      fb.textContent = '✔ Answers shown.';
+      fb.className = 'mc-feedback good';
+  .mc-feedback.good {
+    color: #16a34a;
+    background: #f0fdf4;
+    border-radius: 8px;
+    padding: 8px 0;
+    font-weight: bold;
+    font-size: 1.1em;
+  }
+  .mc-feedback.bad {
+    color: #dc2626;
+    background: #fef2f2;
+    border-radius: 8px;
+    padding: 8px 0;
+    font-weight: bold;
+    font-size: 1.1em;
+  }
+  <style>
   }
 };
 
