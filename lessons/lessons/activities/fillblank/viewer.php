@@ -1,3 +1,70 @@
+<?php
+require_once __DIR__ . '/../../core/_activity_viewer_template.php';
+require_once __DIR__ . '/../../core/db.php';
+  }
+  return [
+    'id' => (string)($row['id'] ?? ''),
+      echo '<div class="fbk-feedback" id="fbk-feedback"></div>';
+    }
+  ?>
+const blocks = <?= json_encode($activity['blocks']) ?>;
+let currentBlock = 0;
+const fbkForm = document.getElementById('fbk-form');
+let showAnswers = false;
+
+function showBlock(idx) {
+  prevBtn.style.display = idx > 0 ? '' : 'none';
+  nextBtn.style.display = '';
+  submitBtn.style.display = '';
+  fb.textContent = '';
+  submitBtn.textContent = 'Show Answer';
+}
+prevBtn.onclick = function() {
+  if (currentBlock > 0) {
+    currentBlock--;
+nextBtn.onclick = function() {
+  if (currentBlock < blocks.length - 1) {
+    currentBlock++;
+  // Calcular score real
+  let total = 0, correct = 0;
+  for (let idx = 0; idx < blocks.length; idx++) {
+  const block = blocks[idx];
+  const answers = Array.isArray(block.answers) ? block.answers : [];
+  total += answers.length;
+  const input = document.querySelector(`[name=blank${idx}_${i+1}]`);
+  if (!input) continue;
+  const val = input.value.trim().toLowerCase();
+    // Navegar a completed con score real
+    window.location.href = `completed.php?id=<?= urlencode($activityId) ?>&unit=<?= urlencode($unit) ?>&correct=${correct}&total=${total}`;
+  }
+function checkBlock(idx) {
+  const block = blocks[idx];
+  const answers = Array.isArray(block.answers) ? block.answers : [];
+  let correct = 0, total = answers.length;
+  for (let i = 0; i < answers.length; i++) {
+    const input = document.querySelector(`[name=blank${idx}_${i+1}]`);
+  if (!input) continue;
+  const val = input.value.trim().toLowerCase();
+  if (val === (answers[i]||'').trim().toLowerCase()) correct++;
+function showBlockAnswers(idx) {
+  const block = blocks[idx];
+  const answers = Array.isArray(block.answers) ? block.answers : [];
+  for (let i = 0; i < answers.length; i++) {
+    const input = document.querySelector(`[name=blank${idx}_${i+1}]`);
+    if (input) input.value = answers[i] || '';
+submitBtn.onclick = function(e) {
+  e.preventDefault();
+  if (!showAnswers) {
+    const {correct, total} = checkBlock(currentBlock);
+    if (correct === total) {
+      fb.textContent = '✅ All correct!';
+  fb.textContent = `❌ ${correct} of ${total} correct. Try again!`;
+  fb.style.color = '#7c3aed';
+  showAnswers = true;
+  showBlockAnswers(currentBlock);
+  fb.textContent = '✔ Answers shown.';
+  fb.style.color = '#14b8a6';
+showBlock(currentBlock);
 
 <?php
 require_once __DIR__ . '/../../core/_activity_viewer_template.php';
