@@ -129,47 +129,6 @@ submitBtn.onclick = function(e) {
 
 showBlock(currentBlock);
 // ...existing code...
-  flex-direction: column;
-  gap: 18px;
-}
-.fbk-title {
-  font-family: 'Fredoka', 'Trebuchet MS', sans-serif;
-  font-size: 2rem;
-  color: #334155;
-  line-height: 1.7;
-  text-align: left;
-}
-.fbk-blank-input {
-  width: 110px;
-  border: 2px solid #7dd3fc;
-  border-radius: 8px;
-  padding: 6px 10px;
-  font-size: 1rem;
-  margin: 0 4px;
-  background: #fff;
-  font-family: 'Nunito', 'Segoe UI', sans-serif;
-}
-/* Botones estilo Unscramble, global */
-.us-btn {
-  padding: 11px 18px;
-  border: none;
-  border-radius: 999px;
-  color: white;
-  cursor: pointer;
-  margin: 6px;
-  min-width: 148px;
-  font-weight: 800;
-  font-family: 'Nunito','Segoe UI',sans-serif;
-  font-size: 14px;
-  box-shadow: 0 10px 22px rgba(15,23,42,.12);
-  transition: transform .15s ease, filter .15s ease;
-}
-.us-btn:hover {
-  filter: brightness(1.04);
-  transform: translateY(-1px);
-}
-.us-btn-show { background: linear-gradient(180deg,#d8b4fe 0%,#a855f7 100%); }
-.us-btn-next { background: linear-gradient(180deg,#818cf8 0%,#6366f1 100%); }
 </style>
 </style>
 </style>
