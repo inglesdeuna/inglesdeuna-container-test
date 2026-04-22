@@ -1,4 +1,50 @@
 
+<?php
+require_once __DIR__ . '/../../core/_activity_viewer_template.php';
+require_once __DIR__ . '/../../core/db.php';
+
+$activityId = isset($_GET['id']) ? trim((string)$_GET['id']) : '';
+$unit = isset($_GET['unit']) ? trim((string)$_GET['unit']) : '';
+
+function load_fillblank_activity(PDO $pdo, string $unit, string $activityId): array {
+  $fallback = [
+    'id' => '',
+    'instructions' => 'Write the missing words in the blanks.',
+    'blocks' => [],
+    'wordbank' => '',
+  ];
+  $row = null;
+  if ($activityId !== '') {
+    $stmt = $pdo->prepare("SELECT id, data FROM activities WHERE id = :id AND type = 'fillblank' LIMIT 1");
+    $stmt->execute(['id' => $activityId]);
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+  }
+  if (!$row && $unit !== '') {
+    $stmt = $pdo->prepare("SELECT id, data FROM activities WHERE unit_id = :unit AND type = 'fillblank' ORDER BY id ASC LIMIT 1");
+    $stmt->execute(['unit' => $unit]);
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+  }
+  if (!$row) return $fallback;
+  $data = json_decode($row['data'] ?? '', true);
+  // Backward compatibility: if old format, convert to one block
+  if (!isset($data['blocks']) && isset($data['text'])) {
+    $blocks = [[
+      'text' => $data['text'],
+      'answers' => array_map('trim', explode(',', $data['answerkey'] ?? '')),
+    ]];
+  } else {
+    $blocks = $data['blocks'] ?? [];
+  }
+  return [
+    'id' => (string)($row['id'] ?? ''),
+    'instructions' => $data['instructions'] ?? $fallback['instructions'],
+    'blocks' => $blocks,
+    'wordbank' => $data['wordbank'] ?? '',
+  ];
+}
+
+$activity = load_fillblank_activity($pdo, $unit, $activityId);
+?>
 const blocks = <?= json_encode($activity['blocks']) ?>;
 let currentBlock = 0;
 const fbkForm = document.getElementById('fbk-form');
