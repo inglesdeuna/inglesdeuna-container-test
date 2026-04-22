@@ -75,30 +75,8 @@ function ws_decode($raw): array {
 
 function ws_cfg(string $type): array {
     static $map = [
-            'fillblank'           => ['label'=>'Fill in the Blank',   'cls'=>'cyan'],
-        /* FILL IN THE BLANK */
-        function ws_fillblank(array $d, int $n, bool $k): string {
-            $title = trim((string)($d['title'] ?? 'Fill in the Blank'));
-            $instr = trim((string)($d['instructions'] ?? 'Complete the text with the missing words.'));
-            $text  = trim((string)($d['text'] ?? ''));
-            $wordbank = is_array($d['wordbank'] ?? null) ? $d['wordbank'] : [];
-            $answers = is_array($d['answers'] ?? null) ? $d['answers'] : [];
-            $out = ws_head($n, 'fillblank', $title, $instr, $k);
-            if ($text === '') {
-                $out .= '<p class="ws-empty">No fill-in-the-blank text configured.</p>';
-                return $out . ws_foot();
-            }
-            // Render text with blanks (replace [blank] or ____ with underline)
-            $rendered = preg_replace('/\[blank\]|_{2,}/', '<span class="ws-blank">________</span>', h($text));
-            $out .= '<div class="ws-fillblank-text">' . $rendered . '</div>';
-            if (!empty($wordbank)) {
-                $out .= '<div class="ws-fillblank-bank"><strong>Word Bank:</strong> ' . implode(', ', array_map('h', $wordbank)) . '</div>';
-            }
-            if ($k && !empty($answers)) {
-                $out .= '<div class="ws-fillblank-key"><strong>Answers:</strong> ' . implode(', ', array_map('h', $answers)) . '</div>';
-            }
-            return $out . ws_foot();
-        }
+        // 'fillblank'           => ['label'=>'Fill in the Blank',   'cls'=>'cyan'],
+        // Fill in the Blank logic removed as requested
         'flashcards'          => ['label'=>'Vocabulary',           'cls'=>'blue'],
         'quiz'                => ['label'=>'Quiz',                 'cls'=>'purple'],
         'multiple_choice'     => ['label'=>'Multiple Choice',      'cls'=>'purple'],
