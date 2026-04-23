@@ -882,13 +882,14 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (correct) {
                     correctCount++;
                     if (ansEl)  { ansEl.className  = 'dict-answer-box wpvl-answer ok'; }
-                    if (fbEl)   { fbEl.textContent = '\u2714 Right'; fbEl.className = 'mc-feedback good'; }
+                    if (fbEl)   { fbEl.innerHTML = '<span style="color:#22c55e;font-weight:700;">✔ Right</span>'; fbEl.className = 'mc-feedback good'; }
+                    if (revealEl) { revealEl.textContent = ''; revealEl.classList.remove('show'); }
                     playSound(sndOk);
                 } else {
                     if (ansEl)  { ansEl.className  = 'dict-answer-box wpvl-answer bad'; }
-                    if (fbEl)   { fbEl.textContent = '\u2718 Wrong'; fbEl.className = 'mc-feedback bad'; }
                     var shown = (q.correct_answers || []).slice(0, 2).join(' / ');
-                    if (revealEl) { revealEl.textContent = 'Correct: ' + shown; revealEl.classList.add('show'); }
+                    if (fbEl)   { fbEl.innerHTML = '<span style="color:#ef4444;font-weight:700;">✗ Wrong</span> <span style="color:#22c55e;font-weight:700;">' + shown + '</span>'; fbEl.className = 'mc-feedback bad'; }
+                    if (revealEl) { revealEl.textContent = ''; revealEl.classList.remove('show'); }
                     playSound(sndBad);
                 }
             } else {
