@@ -636,6 +636,7 @@ body {
 
     <div class="controls-row flashcards-controls">
         <button class="control-btn" type="button" onclick="previousCard(event)">← Previous</button>
+        <select id="voiceSelect" class="tts-voice-select" style="margin:0 8px; min-width:180px;"></select>
         <button class="control-btn" id="listenBtn" type="button">🔊 Listen</button>
         <button class="control-btn" type="button" onclick="nextCard(event)">Next →</button>
     </div>
@@ -658,6 +659,7 @@ const data = <?= json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLAS
 let index = 0;
 let isCompleted = false;
 let currentCardText = '';
+let selectedVoice = null;
 
 const front = document.getElementById('front');
 const back = document.getElementById('back');
@@ -708,27 +710,30 @@ function loadCard() {
 }
 
 
-function getPreferredVoice(lang) {
-    lang = lang || 'en-US';
-    const voices = window.speechSynthesis ? window.speechSynthesis.getVoices() : [];
-    if (!Array.isArray(voices) || voices.length === 0) {
-        return null;
-    }
-    const langPrefix = lang.split('-')[0].toLowerCase();
-    const matchedVoices = voices.filter((voice) => {
-        const vl = String(voice.lang || '').toLowerCase();
-        return vl === lang.toLowerCase() || vl.startsWith(langPrefix + '-') || vl.startsWith(langPrefix + '_');
+
+function populateVoiceList() {
+    const voiceSelect = document.getElementById('voiceSelect');
+    if (!voiceSelect || !window.speechSynthesis) return;
+    const voices = window.speechSynthesis.getVoices();
+    voiceSelect.innerHTML = '';
+    voices.forEach((voice, i) => {
+        const option = document.createElement('option');
+        option.value = i;
+        option.textContent = `${voice.name} (${voice.lang})${voice.default ? ' [default]' : ''}`;
+        voiceSelect.appendChild(option);
     });
-    if (!matchedVoices.length) {
-        return voices[0] || null;
+    voiceSelect.onchange = function() {
+        selectedVoice = voices[this.value];
+    };
+    // Set default
+    if (voices.length) {
+        selectedVoice = voices[voiceSelect.value];
     }
-    const femaleHints = ['female', 'woman', 'zira', 'samantha', 'karen', 'aria', 'jenny', 'emma', 'olivia', 'ava',
-        'paulina', 'sabina', 'esperanza', 'mónica', 'monica', 'conchita'];
-    const femaleVoice = matchedVoices.find((voice) => {
-        const label = (String(voice.name || '') + ' ' + String(voice.voiceURI || '')).toLowerCase();
-        return femaleHints.some((hint) => label.includes(hint));
-    });
-    return femaleVoice || matchedVoices[0];
+}
+
+if (typeof speechSynthesis !== 'undefined') {
+    speechSynthesis.onvoiceschanged = populateVoiceList;
+    populateVoiceList();
 }
 
 function speakText(text, lang) {
@@ -738,8 +743,7 @@ function speakText(text, lang) {
     utter.lang = lang;
     utter.rate = 0.92;
     utter.pitch = 1;
-    const preferredVoice = getPreferredVoice(lang);
-    if (preferredVoice) utter.voice = preferredVoice;
+    if (selectedVoice) utter.voice = selectedVoice;
     window.speechSynthesis.speak(utter);
 }
 
