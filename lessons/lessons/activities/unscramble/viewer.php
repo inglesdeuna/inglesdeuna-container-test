@@ -913,30 +913,33 @@ function usStartSpeechFromOffset() {
     usUtter.lang = 'en-US';
     usUtter.rate = 0.92;
     usUtter.pitch = 1;
-    const preferredVoice = getPreferredVoice('en-US');
-    if (preferredVoice) usUtter.voice = preferredVoice;
+    if (selectedVoice) usUtter.voice = selectedVoice;
     speechSynthesis.speak(usUtter);
-function getPreferredVoice(lang) {
-    lang = lang || 'en-US';
-    const voices = window.speechSynthesis ? window.speechSynthesis.getVoices() : [];
-    if (!Array.isArray(voices) || voices.length === 0) {
-        return null;
-    }
-    const langPrefix = lang.split('-')[0].toLowerCase();
-    const matchedVoices = voices.filter((voice) => {
-        const vl = String(voice.lang || '').toLowerCase();
-        return vl === lang.toLowerCase() || vl.startsWith(langPrefix + '-') || vl.startsWith(langPrefix + '_');
+
+// Voice dropdown logic
+function populateVoiceList() {
+    const voiceSelect = document.getElementById('voiceSelect');
+    if (!voiceSelect || !window.speechSynthesis) return;
+    const voices = window.speechSynthesis.getVoices();
+    voiceSelect.innerHTML = '';
+    voices.forEach((voice, i) => {
+        const option = document.createElement('option');
+        option.value = i;
+        option.textContent = `${voice.name} (${voice.lang})${voice.default ? ' [default]' : ''}`;
+        voiceSelect.appendChild(option);
     });
-    if (!matchedVoices.length) {
-        return voices[0] || null;
+    voiceSelect.onchange = function() {
+        selectedVoice = voices[this.value];
+    };
+    // Set default
+    if (voices.length) {
+        selectedVoice = voices[voiceSelect.value];
     }
-    const femaleHints = ['female', 'woman', 'zira', 'samantha', 'karen', 'aria', 'jenny', 'emma', 'olivia', 'ava',
-        'paulina', 'sabina', 'esperanza', 'mónica', 'monica', 'conchita'];
-    const femaleVoice = matchedVoices.find((voice) => {
-        const label = (String(voice.name || '') + ' ' + String(voice.voiceURI || '')).toLowerCase();
-        return femaleHints.some((hint) => label.includes(hint));
-    });
-    return femaleVoice || matchedVoices[0];
+}
+
+if (typeof speechSynthesis !== 'undefined') {
+    speechSynthesis.onvoiceschanged = populateVoiceList;
+    populateVoiceList();
 }
 
     usUtter.onstart = function () { usIsSpeaking = true; usIsPaused = false; };
