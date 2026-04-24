@@ -231,6 +231,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'image'   => $finalImg,
             'display' => $display,
         ];
+    }
 
     $payload = [
         'title'        => trim((string) ($_POST['activity_title'] ?? '')) ?: os_default_title(),
