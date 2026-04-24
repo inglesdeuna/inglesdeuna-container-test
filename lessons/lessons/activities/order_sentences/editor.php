@@ -385,15 +385,48 @@ $d = $activity;
                                 <span style="color:#94a3b8;font-size:13px;min-width:22px;"><?= $idx + 1 ?>.</span>
                                 <input type="hidden" name="sentence_id[]"   value="<?= htmlspecialchars($s['id'],   ENT_QUOTES, 'UTF-8') ?>">
                                 <input type="text"   name="sentence_text[]" value="<?= htmlspecialchars($s['text'], ENT_QUOTES, 'UTF-8') ?>"
-                                             placeholder="Type sentence…">
-                                <input type="text"   name="sentence_image_url[]" value="<?= htmlspecialchars($s['image'] ?? '', ENT_QUOTES, 'UTF-8') ?>" placeholder="Image URL (optional)" style="max-width:180px;">
-                                <input type="file"   name="sentence_image_upload[]" accept="image/*" style="max-width:140px;">
+                                             placeholder="Type sentence…" oninput="sentenceTextImageToggle(this)">
+                                <input type="text"   name="sentence_image_url[]" value="<?= htmlspecialchars($s['image'] ?? '', ENT_QUOTES, 'UTF-8') ?>" placeholder="Image URL (optional)" style="max-width:180px;" oninput="sentenceTextImageToggle(this)">
+                                <input type="file"   name="sentence_image_upload[]" accept="image/*" style="max-width:140px;" onchange="sentenceTextImageToggle(this)">
                                 <?php if (!empty($s['image'])): ?>
                                     <a href="<?= htmlspecialchars($s['image'], ENT_QUOTES, 'UTF-8') ?>" target="_blank" style="margin-left:4px;">🖼️</a>
                                 <?php endif; ?>
                                 <button type="button" class="btn-remove-s" onclick="removeSentence(this)">✖</button>
                         </div>
                         <?php endforeach; ?>
+        // Enforce only text or image per sentence
+        function sentenceTextImageToggle(el) {
+            var item = el.closest('.os-sentence-item');
+            if (!item) return;
+            var textInput = item.querySelector('input[name="sentence_text[]"]');
+            var imgUrlInput = item.querySelector('input[name="sentence_image_url[]"]');
+            var imgFileInput = item.querySelector('input[name="sentence_image_upload[]"]');
+            if (textInput && (el === textInput)) {
+                if (textInput.value.trim() !== '') {
+                    if (imgUrlInput) imgUrlInput.disabled = true;
+                    if (imgFileInput) imgFileInput.disabled = true;
+                } else {
+                    if (imgUrlInput) imgUrlInput.disabled = false;
+                    if (imgFileInput) imgFileInput.disabled = false;
+                }
+            } else if ((imgUrlInput && el === imgUrlInput) || (imgFileInput && el === imgFileInput)) {
+                var hasImg = (imgUrlInput && imgUrlInput.value.trim() !== '') || (imgFileInput && imgFileInput.value !== '');
+                if (hasImg) {
+                    if (textInput) textInput.disabled = true;
+                } else {
+                    if (textInput) textInput.disabled = false;
+                }
+            }
+        }
+        // Initialize toggle state on page load
+        document.querySelectorAll('.os-sentence-item').forEach(function(item){
+            var textInput = item.querySelector('input[name="sentence_text[]"]');
+            var imgUrlInput = item.querySelector('input[name="sentence_image_url[]"]');
+            var imgFileInput = item.querySelector('input[name="sentence_image_upload[]"]');
+            if (textInput) sentenceTextImageToggle(textInput);
+            if (imgUrlInput) sentenceTextImageToggle(imgUrlInput);
+            if (imgFileInput) sentenceTextImageToggle(imgFileInput);
+        });
         </div>
 
         <div class="toolbar-row" style="justify-content:flex-start;margin-top:6px;">

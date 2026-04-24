@@ -516,15 +516,16 @@ function osRender() {
     li.className = 'os-item';
     li.dataset.id = s.id;
     li.draggable = true;
-    var imgHtml = '';
-    if (s.image && s.image.length > 0) {
-      imgHtml = '<img src="' + escHtml(s.image) + '" alt="" style="max-width:80px;max-height:60px;margin-right:10px;border-radius:8px;object-fit:contain;vertical-align:middle;">';
+    var contentHtml = '';
+    if (s.image && s.image.length > 0 && (!s.text || s.text.length === 0)) {
+      contentHtml = '<img src="' + escHtml(s.image) + '" alt="" style="max-width:80px;max-height:60px;margin-right:10px;border-radius:8px;object-fit:contain;vertical-align:middle;">';
+    } else {
+      contentHtml = '<span class="sentence-text">' + escHtml(s.text) + '</span>';
     }
     li.innerHTML =
       '<span class="pos-badge">' + (i + 1) + '</span>' +
       '<span class="drag-handle">⠿</span>' +
-      imgHtml +
-      '<span class="sentence-text">' + escHtml(s.text) + '</span>' +
+      contentHtml +
       '<span class="check-icon"></span>';
     ul.appendChild(li);
   });
@@ -797,15 +798,16 @@ function osShowAnswer() {
     li.className = 'os-item correct';
     li.dataset.id = s.id;
     li.draggable = false;
-    var imgHtml = '';
-    if (s.image && s.image.length > 0) {
-      imgHtml = '<img src="' + escHtml(s.image) + '" alt="" style="max-width:80px;max-height:60px;margin-right:10px;border-radius:8px;object-fit:contain;vertical-align:middle;">';
+    var contentHtml = '';
+    if (s.image && s.image.length > 0 && (!s.text || s.text.length === 0)) {
+      contentHtml = '<img src="' + escHtml(s.image) + '" alt="" style="max-width:80px;max-height:60px;margin-right:10px;border-radius:8px;object-fit:contain;vertical-align:middle;">';
+    } else {
+      contentHtml = '<span class="sentence-text">' + escHtml(s.text) + '</span>';
     }
     li.innerHTML =
       '<span class="pos-badge">' + (i + 1) + '</span>' +
       '<span class="drag-handle">⠿</span>' +
-      imgHtml +
-      '<span class="sentence-text">' + escHtml(s.text) + '</span>' +
+      contentHtml +
       '<span class="check-icon">✅</span>';
     ul.appendChild(li);
   });
