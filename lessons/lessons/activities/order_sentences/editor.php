@@ -55,10 +55,12 @@ function os_normalize(mixed $rawData): array
     $sentences = [];
     foreach ((array) ($d['sentences'] ?? []) as $s) {
         $text = trim((string) ($s['text'] ?? ''));
-        if ($text === '') continue;
+        $image = isset($s['image']) ? trim((string) $s['image']) : '';
+        if ($text === '' && $image === '') continue;
         $sentences[] = [
             'id'   => trim((string) ($s['id'] ?? uniqid('os_'))),
             'text' => $text,
+            'image' => $image,
         ];
     }
 
@@ -81,7 +83,13 @@ function os_encode(array $p): string
         'media_type'   => $p['media_type'],
         'media_url'    => $p['media_url'],
         'tts_text'     => $p['tts_text'],
-        'sentences'    => array_values($p['sentences']),
+        'sentences'    => array_map(function($s) {
+            return [
+                'id'    => $s['id'],
+                'text'  => $s['text'],
+                'image' => isset($s['image']) ? $s['image'] : '',
+            ];
+        }, array_values($p['sentences'])),
     ], JSON_UNESCAPED_UNICODE);
 }
 
@@ -359,16 +367,21 @@ $d = $activity;
         <p class="help-text">Students will see them shuffled and must drag them back into this order.</p>
 
         <div id="os-sentences-list">
-            <?php foreach ($d['sentences'] as $idx => $s): ?>
-            <div class="os-sentence-item" draggable="true">
-                <span class="handle">☰</span>
-                <span style="color:#94a3b8;font-size:13px;min-width:22px;"><?= $idx + 1 ?>.</span>
-                <input type="hidden" name="sentence_id[]"   value="<?= htmlspecialchars($s['id'],   ENT_QUOTES, 'UTF-8') ?>">
-                <input type="text"   name="sentence_text[]" value="<?= htmlspecialchars($s['text'], ENT_QUOTES, 'UTF-8') ?>"
-                       placeholder="Type sentence…" required>
-                <button type="button" class="btn-remove-s" onclick="removeSentence(this)">✖</button>
-            </div>
-            <?php endforeach; ?>
+                        <?php foreach ($d['sentences'] as $idx => $s): ?>
+                        <div class="os-sentence-item" draggable="true">
+                                <span class="handle">☰</span>
+                                <span style="color:#94a3b8;font-size:13px;min-width:22px;"><?= $idx + 1 ?>.</span>
+                                <input type="hidden" name="sentence_id[]"   value="<?= htmlspecialchars($s['id'],   ENT_QUOTES, 'UTF-8') ?>">
+                                <input type="text"   name="sentence_text[]" value="<?= htmlspecialchars($s['text'], ENT_QUOTES, 'UTF-8') ?>"
+                                             placeholder="Type sentence…">
+                                <input type="text"   name="sentence_image_url[]" value="<?= htmlspecialchars($s['image'] ?? '', ENT_QUOTES, 'UTF-8') ?>" placeholder="Image URL (optional)" style="max-width:180px;">
+                                <input type="file"   name="sentence_image_upload[]" accept="image/*" style="max-width:140px;">
+                                <?php if (!empty($s['image'])): ?>
+                                    <a href="<?= htmlspecialchars($s['image'], ENT_QUOTES, 'UTF-8') ?>" target="_blank" style="margin-left:4px;">🖼️</a>
+                                <?php endif; ?>
+                                <button type="button" class="btn-remove-s" onclick="removeSentence(this)">✖</button>
+                        </div>
+                        <?php endforeach; ?>
         </div>
 
         <div class="toolbar-row" style="justify-content:flex-start;margin-top:6px;">
@@ -409,7 +422,9 @@ function addSentence() {
         '<span class="handle">☰</span>' +
         '<span style="color:#94a3b8;font-size:13px;min-width:22px;">' + (idx + 1) + '.</span>' +
         '<input type="hidden" name="sentence_id[]" value="os_' + Date.now() + '">' +
-        '<input type="text" name="sentence_text[]" placeholder="Type sentence…" required>' +
+        '<input type="text" name="sentence_text[]" placeholder="Type sentence…">' +
+        '<input type="text" name="sentence_image_url[]" placeholder="Image URL (optional)" style="max-width:180px;">' +
+        '<input type="file" name="sentence_image_upload[]" accept="image/*" style="max-width:140px;">' +
         '<button type="button" class="btn-remove-s" onclick="removeSentence(this)">✖</button>';
     list.appendChild(div);
     attachDrag(div);
