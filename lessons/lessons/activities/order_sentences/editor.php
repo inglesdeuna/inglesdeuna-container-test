@@ -56,11 +56,13 @@ function os_normalize(mixed $rawData): array
     foreach ((array) ($d['sentences'] ?? []) as $s) {
         $text = trim((string) ($s['text'] ?? ''));
         $image = isset($s['image']) ? trim((string) $s['image']) : '';
+        $display = isset($s['display']) ? $s['display'] : 'text';
         if ($text === '' && $image === '') continue;
         $sentences[] = [
             'id'   => trim((string) ($s['id'] ?? uniqid('os_'))),
             'text' => $text,
             'image' => $image,
+            'display' => $display,
         ];
     }
 
@@ -88,6 +90,7 @@ function os_encode(array $p): string
                 'id'    => $s['id'],
                 'text'  => $s['text'],
                 'image' => isset($s['image']) ? $s['image'] : '',
+                'display' => isset($s['display']) ? $s['display'] : 'text',
             ];
         }, array_values($p['sentences'])),
     ], JSON_UNESCAPED_UNICODE);
@@ -213,6 +216,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $text = trim((string) $text);
         $id = trim((string) ($rawIds[$i] ?? '')) ?: uniqid('os_');
         $imgUrl = isset($rawImages[$i]) ? trim((string) $rawImages[$i]) : '';
+        $display = isset($rawDisplays[$i]) ? $rawDisplays[$i] : 'text';
         // Handle image upload if present
         $uploadedImg = '';
         if ($imageUploads && isset($imageUploads['tmp_name'][$i]) && $imageUploads['error'][$i] === UPLOAD_ERR_OK && !empty($imageUploads['name'][$i])) {
@@ -222,11 +226,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $finalImg = $uploadedImg ?: $imgUrl;
         if ($text === '' && $finalImg === '') continue;
         $sentences[] = [
-            'id'    => $id,
-            'text'  => $text,
-            'image' => $finalImg,
+            'id'      => $id,
+            'text'    => $text,
+            'image'   => $finalImg,
+            'display' => $display,
         ];
-    }
 
     $payload = [
         'title'        => trim((string) ($_POST['activity_title'] ?? '')) ?: os_default_title(),

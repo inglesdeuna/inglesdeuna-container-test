@@ -36,11 +36,13 @@ function os_normalize_v(mixed $raw): array
     foreach ((array)($d['sentences'] ?? []) as $s) {
       $text = trim((string)($s['text'] ?? ''));
       $image = isset($s['image']) ? trim((string)$s['image']) : '';
+      $display = isset($s['display']) ? $s['display'] : 'text';
       if ($text === '' && $image === '') continue;
       $sentences[] = [
         'id' => (string)($s['id'] ?? uniqid('os_')),
         'text' => $text,
         'image' => $image,
+        'display' => $display,
       ];
     }
 
@@ -517,8 +519,17 @@ function osRender() {
     li.dataset.id = s.id;
     li.draggable = true;
     var contentHtml = '';
-    if (s.image && s.image.length > 0 && (!s.text || s.text.length === 0)) {
-      contentHtml = '<img src="' + escHtml(s.image) + '" alt="" style="max-width:80px;max-height:60px;margin-right:10px;border-radius:8px;object-fit:contain;vertical-align:middle;">';
+    if (s.display === 'both') {
+      if (s.image && s.image.length > 0) {
+        contentHtml += '<img src="' + escHtml(s.image) + '" alt="" style="max-width:80px;max-height:60px;margin-right:10px;border-radius:8px;object-fit:contain;vertical-align:middle;">';
+      }
+      if (s.text && s.text.length > 0) {
+        contentHtml += '<span class="sentence-text">' + escHtml(s.text) + '</span>';
+      }
+    } else if (s.display === 'image') {
+      if (s.image && s.image.length > 0) {
+        contentHtml = '<img src="' + escHtml(s.image) + '" alt="" style="max-width:80px;max-height:60px;margin-right:10px;border-radius:8px;object-fit:contain;vertical-align:middle;">';
+      }
     } else {
       contentHtml = '<span class="sentence-text">' + escHtml(s.text) + '</span>';
     }
