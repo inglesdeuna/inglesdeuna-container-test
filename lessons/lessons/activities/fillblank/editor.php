@@ -109,11 +109,33 @@ if ($unit === '') {
 
 // --- Handle POST save ---
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    require_once __DIR__ . '/../../core/cloudinary_upload.php';
+    $instructions = trim((string)($_POST['instructions'] ?? ''));
+    $wordbank = trim((string)($_POST['wordbank'] ?? ''));
+    $blockTexts = isset($_POST['text']) && is_array($_POST['text']) ? $_POST['text'] : [];
+    $blockAnswers = isset($_POST['answers']) && is_array($_POST['answers']) ? $_POST['answers'] : [];
+    $blockImages = isset($_POST['image_url']) && is_array($_POST['image_url']) ? $_POST['image_url'] : [];
+    $imageUploads = isset($_FILES['image_upload']) ? $_FILES['image_upload'] : null;
+    $blocks = [];
+    foreach ($blockTexts as $i => $text) {
+        $text = trim((string)$text);
+        $answers = isset($blockAnswers[$i]) ? array_map('trim', explode(',', $blockAnswers[$i])) : [];
+        $imgUrl = isset($blockImages[$i]) ? trim((string)$blockImages[$i]) : '';
+        $uploadedImg = '';
+        if ($imageUploads && isset($imageUploads['tmp_name'][$i]) && $imageUploads['error'][$i] === UPLOAD_ERR_OK && !empty($imageUploads['name'][$i])) {
+            $uploadedImg = upload_to_cloudinary($imageUploads['tmp_name'][$i]);
+        }
+        $finalImg = $uploadedImg ?: $imgUrl;
+        $blocks[] = [
+            'text' => $text,
+            'answers' => $answers,
+            'image' => $finalImg,
+        ];
+    }
     $payload = [
-        'instructions' => trim((string)($_POST['instructions'] ?? '')),
-        'text' => trim((string)($_POST['text'] ?? '')),
-        'wordbank' => trim((string)($_POST['wordbank'] ?? '')),
-        'answerkey' => trim((string)($_POST['answerkey'] ?? '')),
+        'instructions' => $instructions,
+        'blocks' => $blocks,
+        'wordbank' => $wordbank,
     ];
     $savedActivityId = save_fillblank_activity($pdo, $unit, $activityId, $payload);
 
@@ -146,7 +168,7 @@ if (isset($_GET['saved'])) {
     echo '<p style="color:green;font-weight:bold;margin-bottom:15px;">✔ Saved successfully</p>';
 }
 ?>
-<form method="post" class="needs-validation" id="fillBlankForm" novalidate>
+<form method="post" class="needs-validation" id="fillBlankForm" novalidate enctype="multipart/form-data">
     <div class="mb-4">
         <label for="instructions" class="form-label fw-bold">Instructions</label>
         <input id="instructions" type="text" name="instructions" value="<?= htmlspecialchars($activity['instructions'], ENT_QUOTES, 'UTF-8') ?>" required class="form-control" />
@@ -176,6 +198,15 @@ function renderBlocks() {
                     <label class="form-label fw-bold">Answers for blanks <span class="text-muted">(comma separated, in order)</span></label>
                     <input type="text" name="answers[]" value="${block.answers ? block.answers.join(', ') : ''}" required class="form-control" placeholder="e.g. apple, banana, orange">
                 </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Image URL (optional)</label>
+                    <input type="text" name="image_url[]" value="${block.image ? block.image : ''}" class="form-control" placeholder="https://...">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Or upload image</label>
+                    <input type="file" name="image_upload[]" accept="image/*" class="form-control">
+                    ${block.image ? `<div class='mt-2'><a href='${block.image}' target='_blank'>🖼️ View current image</a></div>` : ''}
+                </div>
                 <button type="button" class="btn btn-danger" onclick="removeBlock(this)"><i class="fas fa-trash-alt"></i> Remove</button>
             </div>
         `;
@@ -183,7 +214,7 @@ function renderBlocks() {
     });
 }
 function addBlock() {
-    initialBlocks.push({text:'',answers:[]});
+    initialBlocks.push({text:'',answers:[],image:''});
     renderBlocks();
 }
 function removeBlock(btn) {
@@ -197,7 +228,7 @@ document.getElementById('fillBlankForm').onsubmit = function(e) {
     const blocks = document.querySelectorAll('.block-item');
     for (let i=0; i<blocks.length; ++i) {
         const text = blocks[i].querySelector('textarea').value;
-        const answers = blocks[i].querySelector('input').value.split(',').map(s=>s.trim()).filter(Boolean);
+        const answers = blocks[i].querySelector('input[name="answers[]"]').value.split(',').map(s=>s.trim()).filter(Boolean);
         const blanks = (text.match(/___/g)||[]).length;
         if (blanks !== answers.length) {
             alert(`Block ${i+1}: Number of blanks (___) does not match number of answers.`);

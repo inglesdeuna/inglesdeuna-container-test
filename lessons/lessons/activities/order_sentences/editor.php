@@ -208,14 +208,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ? $_POST['sentence_text'] : [];
     $rawIds   = isset($_POST['sentence_id']) && is_array($_POST['sentence_id'])
                 ? $_POST['sentence_id'] : [];
-    $rawImages = isset($_POST['sentence_image_url']) && is_array($_POST['sentence_image_url'])
-                ? $_POST['sentence_image_url'] : [];
+    // No image URL field, only uploads
     $sentences = [];
     $imageUploads = isset($_FILES['sentence_image_upload']) ? $_FILES['sentence_image_upload'] : null;
     foreach ($rawTexts as $i => $text) {
         $text = trim((string) $text);
         $id = trim((string) ($rawIds[$i] ?? '')) ?: uniqid('os_');
-        $imgUrl = isset($rawImages[$i]) ? trim((string) $rawImages[$i]) : '';
         $display = isset($rawDisplays[$i]) ? $rawDisplays[$i] : 'text';
         // Handle image upload if present
         $uploadedImg = '';
@@ -223,7 +221,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             require_once __DIR__ . '/../../core/cloudinary_upload.php';
             $uploadedImg = upload_to_cloudinary($imageUploads['tmp_name'][$i]);
         }
-        $finalImg = $uploadedImg ?: $imgUrl;
+        $finalImg = $uploadedImg;
         if ($text === '' && $finalImg === '') continue;
         $sentences[] = [
             'id'      => $id,
@@ -439,7 +437,6 @@ function addSentence() {
         '<span style="color:#94a3b8;font-size:13px;min-width:22px;">' + (idx + 1) + '.</span>' +
         '<input type="hidden" name="sentence_id[]" value="os_' + Date.now() + '">' +
         '<input type="text" name="sentence_text[]" placeholder="Type sentence…">' +
-        '<input type="text" name="sentence_image_url[]" placeholder="Image URL (optional)" style="max-width:180px;">' +
         '<input type="file" name="sentence_image_upload[]" accept="image/*" style="max-width:140px;">' +
         '<button type="button" class="btn-remove-s" onclick="removeSentence(this)">✖</button>';
     list.appendChild(div);

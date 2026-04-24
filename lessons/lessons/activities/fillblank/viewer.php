@@ -130,13 +130,18 @@ ob_start();
       foreach ($blocks as $blockIdx => $block) {
         $text = $block['text'] ?? '';
         $answers = isset($block['answers']) && is_array($block['answers']) ? $block['answers'] : [];
+        $image = isset($block['image']) ? trim((string)$block['image']) : '';
         $blankCount = 0;
         $rendered = preg_replace_callback('/___+/', function($m) use (&$blankCount, $blockIdx) {
           $blankCount++;
           return '<input class="fbk-blank-input" name="blank' . $blockIdx . '_' . $blankCount . '" autocomplete="off" />';
         }, htmlspecialchars($text, ENT_QUOTES, 'UTF-8'));
         $display = $blockIdx === 0 ? '' : 'style="display:none"';
-        echo '<div class="fbk-text block-viewer" data-block="' . $blockIdx . '" ' . $display . '>' . $rendered . '</div>';
+        echo '<div class="fbk-text block-viewer" data-block="' . $blockIdx . '" ' . $display . '>';
+        if ($image) {
+          echo '<div style="text-align:center;margin-bottom:12px;"><img src="' . htmlspecialchars($image, ENT_QUOTES, 'UTF-8') . '" alt="Block image" style="max-width:220px;max-height:140px;border-radius:10px;object-fit:contain;box-shadow:0 2px 8px rgba(0,0,0,.08);" /></div>';
+        }
+        echo $rendered . '</div>';
       }
       echo '<div class="controls" style="margin-top:22px;text-align:center;">';
       echo '<button type="button" class="us-btn us-btn-show" id="submitBtn">Show Answer</button>';
