@@ -217,7 +217,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $uploadedImg = '';
         if ($imageUploads && isset($imageUploads['tmp_name'][$i]) && $imageUploads['error'][$i] === UPLOAD_ERR_OK && !empty($imageUploads['name'][$i])) {
             require_once __DIR__ . '/../../core/cloudinary_upload.php';
-            $uploadedImg = upload_image_to_cloudinary($imageUploads['tmp_name'][$i]);
+            $uploadedImg = upload_to_cloudinary($imageUploads['tmp_name'][$i]);
         }
         $finalImg = $uploadedImg ?: $imgUrl;
         if ($text === '' && $finalImg === '') continue;
