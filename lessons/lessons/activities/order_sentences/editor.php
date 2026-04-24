@@ -1,3 +1,4 @@
+
 <?php
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
@@ -201,17 +202,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ? $_POST['sentence_text'] : [];
     $rawIds   = isset($_POST['sentence_id']) && is_array($_POST['sentence_id'])
                 ? $_POST['sentence_id'] : [];
+    // Capture display selection for each sentence ("text" or "image")
+    $rawDisplays = isset($_POST['sentence_display']) && is_array($_POST['sentence_display'])
+                ? $_POST['sentence_display'] : [];
     $sentences = [];
     $imageUploads = isset($_FILES['sentence_image_upload']) ? $_FILES['sentence_image_upload'] : null;
     foreach ($rawTexts as $i => $text) {
         $text = trim((string) $text);
         $id = trim((string) ($rawIds[$i] ?? '')) ?: uniqid('os_');
-        $display = 'text';
+        // Determine whether this sentence should display as text or image
+        $display = isset($rawDisplays[$i]) && $rawDisplays[$i] === 'image' ? 'image' : 'text';
         $uploadedImg = '';
         if ($imageUploads && isset($imageUploads['tmp_name'][$i]) && $imageUploads['error'][$i] === UPLOAD_ERR_OK && !empty($imageUploads['name'][$i])) {
             $uploadedImg = upload_to_cloudinary($imageUploads['tmp_name'][$i]);
         }
         $finalImg = $uploadedImg;
+        // Skip empty sentences unless there is an uploaded image
         if ($text === '' && $finalImg === '') continue;
         $sentences[] = [
             'id'      => $id,
@@ -296,6 +302,20 @@ $d = $activity;
 .help-text{color:#6b7280;font-size:12px;margin:-4px 0 8px;}
 .media-section{display:none;}
 .media-section.active{display:block;}
+/* Style for sentence display selector and child-friendly image mode */
+.os-display-select{
+    padding:4px 8px;
+    border-radius:6px;
+    border:1px solid #cbd5e1;
+    background:#f1f5f9;
+    font-size:13px;
+    color:#1e293b;
+}
+/* When the sentence is set to image display, make the background more playful */
+.os-sentence-item.image-mode{
+    background:#fff7ed;
+    border-color:#fdba74;
+}
 </style>
 
 <form method="post" enctype="multipart/form-data" class="os-form" id="osSentencesForm">
@@ -370,7 +390,7 @@ $d = $activity;
 
         <div id="os-sentences-list">
             <?php foreach ($d['sentences'] as $idx => $s): ?>
-            <div class="os-sentence-item" draggable="true">
+            <div class="os-sentence-item<?= ($s['display'] === 'image') ? ' image-mode' : '' ?>" draggable="true">
                 <span class="handle">☰</span>
                 <span style="color:#94a3b8;font-size:13px;min-width:22px;"><?= $idx + 1 ?>.</span>
                 <input type="hidden" name="sentence_id[]"   value="<?= htmlspecialchars($s['id'],   ENT_QUOTES, 'UTF-8') ?>">
@@ -380,6 +400,11 @@ $d = $activity;
                 <?php if (!empty($s['image'])): ?>
                   <a href="<?= htmlspecialchars($s['image'], ENT_QUOTES, 'UTF-8') ?>" target="_blank" style="margin-left:4px;">🖼️</a>
                 <?php endif; ?>
+                <!-- Display mode selector: Text or Image -->
+                <select name="sentence_display[]" class="os-display-select" onchange="handleDisplaySelectChange(event)">
+                    <option value="text" <?= $s['display'] === 'image' ? '' : 'selected' ?>>Text</option>
+                    <option value="image" <?= $s['display'] === 'image' ? 'selected' : '' ?>>Image</option>
+                </select>
                 <button type="button" class="btn-remove-s" onclick="removeSentence(this)">✖</button>
             </div>
             <?php endforeach; ?>
@@ -414,6 +439,7 @@ function addSentence() {
     var list = document.getElementById('os-sentences-list');
     var idx  = list.children.length;
     var div  = document.createElement('div');
+    // New sentences default to text display
     div.className = 'os-sentence-item';
     div.draggable = true;
     div.innerHTML =
@@ -422,6 +448,7 @@ function addSentence() {
         '<input type="hidden" name="sentence_id[]" value="os_' + Date.now() + '">' +
         '<input type="text" name="sentence_text[]" placeholder="Type sentence…">' +
         '<input type="file" name="sentence_image_upload[]" accept="image/*" style="max-width:140px;">' +
+        '<select name="sentence_display[]" class="os-display-select" onchange="handleDisplaySelectChange(event)"><option value="text" selected>Text</option><option value="image">Image</option></select>' +
         '<button type="button" class="btn-remove-s" onclick="removeSentence(this)">✖</button>';
     list.appendChild(div);
     attachDrag(div);
@@ -474,6 +501,26 @@ function getDragAfter(container, y) {
 }
 
 document.querySelectorAll('#os-sentences-list .os-sentence-item').forEach(attachDrag);
+
+// Handle changes in the display mode selector (text vs image)
+function handleDisplaySelectChange(e) {
+    var item = e.target.closest('.os-sentence-item');
+    if (!item) return;
+    if (e.target.value === 'image') {
+        item.classList.add('image-mode');
+    } else {
+        item.classList.remove('image-mode');
+    }
+}
+
+// Bind change events to existing display selectors and set initial state
+document.querySelectorAll('.os-display-select').forEach(function(el) {
+    el.addEventListener('change', handleDisplaySelectChange);
+    if (el.value === 'image') {
+        var item = el.closest('.os-sentence-item');
+        if (item) item.classList.add('image-mode');
+    }
+});
 
 function syncMediaCaches() {
     var videoInput = document.querySelector('input[name="video_url"]');
