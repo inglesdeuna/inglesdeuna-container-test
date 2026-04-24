@@ -24,8 +24,6 @@ $unit       = isset($_GET['unit']) ? trim((string) $_GET['unit']) : '';
 $source     = isset($_GET['source']) ? trim((string) $_GET['source']) : '';
 $assignment = isset($_GET['assignment']) ? trim((string) $_GET['assignment']) : '';
 
-/* ───────── helpers ───────── */
-
 function os_default_title(): string { return 'Order the Sentences'; }
 
 function os_resolve_unit(PDO $pdo, string $activityId): string
@@ -142,8 +140,7 @@ function os_save(PDO $pdo, string $unit, string $activityId, array $payload): st
     return (string) $stmt->fetchColumn();
 }
 
-/* ───────── bootstrap ───────── */
-
+// Bootstrap
 if ($unit === '' && $activityId !== '') {
     $unit = os_resolve_unit($pdo, $activityId);
 }
@@ -152,8 +149,7 @@ if ($unit === '') die('Unit not specified');
 $activity = os_load($pdo, $unit, $activityId);
 if ($activityId === '' && $activity['id'] !== '') $activityId = $activity['id'];
 
-/* ───────── POST ───────── */
-
+// POST
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $mediaType = $_POST['media_type'] ?? 'tts';
     if (!in_array($mediaType, ['tts', 'video', 'audio', 'none'], true)) $mediaType = 'tts';
@@ -169,7 +165,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $currentAudioUrl = $currentMediaUrl;
     }
 
-    // Pick the URL from the correct named field to avoid both sections overwriting each other
     if ($mediaType === 'video') {
         $mediaUrl = trim((string) ($_POST['video_url'] ?? ''));
     } elseif ($mediaType === 'audio') {
@@ -178,7 +173,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $mediaUrl = '';
     }
 
-    // Upload video/audio file if provided
     $hasNewUpload = false;
     if (isset($_FILES['media_file']) && !empty($_FILES['media_file']['name'])
         && ($_FILES['media_file']['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_OK) {
@@ -191,7 +185,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($uploaded) $mediaUrl = $uploaded;
     }
 
-    // Keep existing media URL if user did not provide a new one.
     if (in_array($mediaType, ['video', 'audio'], true)
         && $mediaUrl === ''
         && !$hasNewUpload) {
@@ -208,17 +201,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ? $_POST['sentence_text'] : [];
     $rawIds   = isset($_POST['sentence_id']) && is_array($_POST['sentence_id'])
                 ? $_POST['sentence_id'] : [];
-    // No image URL field, only uploads
     $sentences = [];
     $imageUploads = isset($_FILES['sentence_image_upload']) ? $_FILES['sentence_image_upload'] : null;
     foreach ($rawTexts as $i => $text) {
         $text = trim((string) $text);
         $id = trim((string) ($rawIds[$i] ?? '')) ?: uniqid('os_');
-        $display = isset($rawDisplays[$i]) ? $rawDisplays[$i] : 'text';
-        // Handle image upload if present
+        $display = 'text';
         $uploadedImg = '';
         if ($imageUploads && isset($imageUploads['tmp_name'][$i]) && $imageUploads['error'][$i] === UPLOAD_ERR_OK && !empty($imageUploads['name'][$i])) {
-            require_once __DIR__ . '/../../core/cloudinary_upload.php';
             $uploadedImg = upload_to_cloudinary($imageUploads['tmp_name'][$i]);
         }
         $finalImg = $uploadedImg;
@@ -249,8 +239,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     exit;
 }
 
-/* ───────── render ───────── */
-
+// Render
 ob_start();
 if (isset($_GET['saved'])) {
     echo '<p style="color:#15803d;font-weight:700;margin-bottom:14px;">✔ Saved successfully</p>';
@@ -262,7 +251,6 @@ $d = $activity;
 @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@600;700;800&display=swap');
 
 .os-form{max-width:860px;margin:0 auto;font-family:'Nunito','Segoe UI',sans-serif;}
-
 .os-card{
     background:#f9fafb;padding:16px;margin-bottom:14px;
     border-radius:14px;border:1px solid #e5e7eb;
@@ -276,7 +264,6 @@ $d = $activity;
     margin-bottom:10px;font-size:14px;font-family:inherit;
 }
 .os-card textarea{min-height:72px;resize:vertical;}
-
 .os-sentence-item{
     display:flex;align-items:center;gap:8px;
     background:#fff;border:1px solid #e2e8f0;
@@ -389,7 +376,6 @@ $d = $activity;
                 <input type="hidden" name="sentence_id[]"   value="<?= htmlspecialchars($s['id'],   ENT_QUOTES, 'UTF-8') ?>">
                 <input type="text"   name="sentence_text[]" value="<?= htmlspecialchars($s['text'], ENT_QUOTES, 'UTF-8') ?>"
                        placeholder="Type sentence…">
-                <input type="text"   name="sentence_image_url[]" value="<?= htmlspecialchars($s['image'] ?? '', ENT_QUOTES, 'UTF-8') ?>" placeholder="Image URL (optional)" style="max-width:180px;">
                 <input type="file"   name="sentence_image_upload[]" accept="image/*" style="max-width:140px;">
                 <?php if (!empty($s['image'])): ?>
                   <a href="<?= htmlspecialchars($s['image'], ENT_QUOTES, 'UTF-8') ?>" target="_blank" style="margin-left:4px;">🖼️</a>
@@ -409,7 +395,6 @@ $d = $activity;
 </form>
 
 <script>
-/* ── media toggle ── */
 function toggleMedia(val) {
     ['tts','video','audio'].forEach(function(id) {
         var el = document.getElementById('ms-' + id);
@@ -417,7 +402,6 @@ function toggleMedia(val) {
     });
 }
 
-/* ── sentence management ── */
 function reindexSentences() {
     var items = document.querySelectorAll('#os-sentences-list .os-sentence-item');
     items.forEach(function(item, i) {
@@ -452,7 +436,6 @@ function removeSentence(btn) {
     }
 }
 
-/* ── drag-to-reorder in editor ── */
 var dragSrc = null;
 
 function attachDrag(el) {
@@ -511,7 +494,6 @@ var _osAudioInput = document.querySelector('input[name="audio_url"]');
 if (_osVideoInput) _osVideoInput.addEventListener('input', syncMediaCaches);
 if (_osAudioInput) _osAudioInput.addEventListener('input', syncMediaCaches);
 
-/* ── disable inputs inside hidden media sections before submit ── */
 document.getElementById('osSentencesForm').addEventListener('submit', function () {
     syncMediaCaches();
     document.querySelectorAll('.media-section:not(.active) input, .media-section:not(.active) textarea').forEach(function (el) {
@@ -522,3 +504,4 @@ document.getElementById('osSentencesForm').addEventListener('submit', function (
 <?php
 $content = ob_get_clean();
 render_activity_editor('Order the Sentences – Editor', '📝', $content);
+?>
