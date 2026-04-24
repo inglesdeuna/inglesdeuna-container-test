@@ -385,15 +385,18 @@ $d = $activity;
                                 <span style="color:#94a3b8;font-size:13px;min-width:22px;"><?= $idx + 1 ?>.</span>
                                 <input type="hidden" name="sentence_id[]"   value="<?= htmlspecialchars($s['id'],   ENT_QUOTES, 'UTF-8') ?>">
                                 <input type="text"   name="sentence_text[]" value="<?= htmlspecialchars($s['text'], ENT_QUOTES, 'UTF-8') ?>"
-                                             placeholder="Type sentence…" oninput="sentenceTextImageToggle(this)">
-                                <input type="text"   name="sentence_image_url[]" value="<?= htmlspecialchars($s['image'] ?? '', ENT_QUOTES, 'UTF-8') ?>" placeholder="Image URL (optional)" style="max-width:180px;" oninput="sentenceTextImageToggle(this)">
-                                <input type="file"   name="sentence_image_upload[]" accept="image/*" style="max-width:140px;" onchange="sentenceTextImageToggle(this)">
+                                             placeholder="Type sentence…">
+                                <input type="text"   name="sentence_image_url[]" value="<?= htmlspecialchars($s['image'] ?? '', ENT_QUOTES, 'UTF-8') ?>" placeholder="Image URL (optional)" style="max-width:180px;">
+                                <input type="file"   name="sentence_image_upload[]" accept="image/*" style="max-width:140px;">
                                 <?php if (!empty($s['image'])): ?>
                                     <a href="<?= htmlspecialchars($s['image'], ENT_QUOTES, 'UTF-8') ?>" target="_blank" style="margin-left:4px;">🖼️</a>
                                 <?php endif; ?>
                                 <button type="button" class="btn-remove-s" onclick="removeSentence(this)">✖</button>
                         </div>
                         <?php endforeach; ?>
+
+        </script>
+        <script>
         // Enforce only text or image per sentence
         function sentenceTextImageToggle(el) {
             var item = el.closest('.os-sentence-item');
@@ -419,13 +422,18 @@ $d = $activity;
             }
         }
         // Initialize toggle state on page load
-        document.querySelectorAll('.os-sentence-item').forEach(function(item){
-            var textInput = item.querySelector('input[name="sentence_text[]"]');
-            var imgUrlInput = item.querySelector('input[name="sentence_image_url[]"]');
-            var imgFileInput = item.querySelector('input[name="sentence_image_upload[]"]');
-            if (textInput) sentenceTextImageToggle(textInput);
-            if (imgUrlInput) sentenceTextImageToggle(imgUrlInput);
-            if (imgFileInput) sentenceTextImageToggle(imgFileInput);
+        document.addEventListener('DOMContentLoaded', function() {
+            document.querySelectorAll('.os-sentence-item').forEach(function(item){
+                var textInput = item.querySelector('input[name="sentence_text[]"]');
+                var imgUrlInput = item.querySelector('input[name="sentence_image_url[]"]');
+                var imgFileInput = item.querySelector('input[name="sentence_image_upload[]"]');
+                if (textInput) textInput.addEventListener('input', function(){ sentenceTextImageToggle(textInput); });
+                if (imgUrlInput) imgUrlInput.addEventListener('input', function(){ sentenceTextImageToggle(imgUrlInput); });
+                if (imgFileInput) imgFileInput.addEventListener('change', function(){ sentenceTextImageToggle(imgFileInput); });
+                if (textInput) sentenceTextImageToggle(textInput);
+                if (imgUrlInput) sentenceTextImageToggle(imgUrlInput);
+                if (imgFileInput) sentenceTextImageToggle(imgFileInput);
+            });
         });
         </div>
 
