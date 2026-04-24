@@ -34,9 +34,14 @@ function os_normalize_v(mixed $raw): array
 
     $sentences = [];
     foreach ((array)($d['sentences'] ?? []) as $s) {
-        $text = trim((string)($s['text'] ?? ''));
-        if ($text === '') continue;
-        $sentences[] = ['id' => (string)($s['id'] ?? uniqid('os_')), 'text' => $text];
+      $text = trim((string)($s['text'] ?? ''));
+      $image = isset($s['image']) ? trim((string)$s['image']) : '';
+      if ($text === '' && $image === '') continue;
+      $sentences[] = [
+        'id' => (string)($s['id'] ?? uniqid('os_')),
+        'text' => $text,
+        'image' => $image,
+      ];
     }
 
     return [
@@ -511,9 +516,14 @@ function osRender() {
     li.className = 'os-item';
     li.dataset.id = s.id;
     li.draggable = true;
+    var imgHtml = '';
+    if (s.image && s.image.length > 0) {
+      imgHtml = '<img src="' + escHtml(s.image) + '" alt="" style="max-width:80px;max-height:60px;margin-right:10px;border-radius:8px;object-fit:contain;vertical-align:middle;">';
+    }
     li.innerHTML =
       '<span class="pos-badge">' + (i + 1) + '</span>' +
       '<span class="drag-handle">⠿</span>' +
+      imgHtml +
       '<span class="sentence-text">' + escHtml(s.text) + '</span>' +
       '<span class="check-icon"></span>';
     ul.appendChild(li);
@@ -787,9 +797,14 @@ function osShowAnswer() {
     li.className = 'os-item correct';
     li.dataset.id = s.id;
     li.draggable = false;
+    var imgHtml = '';
+    if (s.image && s.image.length > 0) {
+      imgHtml = '<img src="' + escHtml(s.image) + '" alt="" style="max-width:80px;max-height:60px;margin-right:10px;border-radius:8px;object-fit:contain;vertical-align:middle;">';
+    }
     li.innerHTML =
       '<span class="pos-badge">' + (i + 1) + '</span>' +
       '<span class="drag-handle">⠿</span>' +
+      imgHtml +
       '<span class="sentence-text">' + escHtml(s.text) + '</span>' +
       '<span class="check-icon">✅</span>';
     ul.appendChild(li);

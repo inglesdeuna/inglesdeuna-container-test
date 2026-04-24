@@ -205,14 +205,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ? $_POST['sentence_text'] : [];
     $rawIds   = isset($_POST['sentence_id']) && is_array($_POST['sentence_id'])
                 ? $_POST['sentence_id'] : [];
-
+    $rawImages = isset($_POST['sentence_image_url']) && is_array($_POST['sentence_image_url'])
+                ? $_POST['sentence_image_url'] : [];
     $sentences = [];
+    $imageUploads = isset($_FILES['sentence_image_upload']) ? $_FILES['sentence_image_upload'] : null;
     foreach ($rawTexts as $i => $text) {
         $text = trim((string) $text);
-        if ($text === '') continue;
+        $id = trim((string) ($rawIds[$i] ?? '')) ?: uniqid('os_');
+        $imgUrl = isset($rawImages[$i]) ? trim((string) $rawImages[$i]) : '';
+        // Handle image upload if present
+        $uploadedImg = '';
+        if ($imageUploads && isset($imageUploads['tmp_name'][$i]) && $imageUploads['error'][$i] === UPLOAD_ERR_OK && !empty($imageUploads['name'][$i])) {
+            require_once __DIR__ . '/../../core/cloudinary_upload.php';
+            $uploadedImg = upload_image_to_cloudinary($imageUploads['tmp_name'][$i]);
+        }
+        $finalImg = $uploadedImg ?: $imgUrl;
+        if ($text === '' && $finalImg === '') continue;
         $sentences[] = [
-            'id'   => trim((string) ($rawIds[$i] ?? '')) ?: uniqid('os_'),
-            'text' => $text,
+            'id'    => $id,
+            'text'  => $text,
+            'image' => $finalImg,
         ];
     }
 
