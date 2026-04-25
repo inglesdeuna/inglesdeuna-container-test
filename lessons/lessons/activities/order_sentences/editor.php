@@ -56,12 +56,13 @@ function os_normalize(mixed $rawData): array
     foreach ((array) ($d['sentences'] ?? []) as $s) {
         $text = trim((string) ($s['text'] ?? ''));
         $image = isset($s['image']) ? trim((string) $s['image']) : '';
+        // Preserve the display mode if provided, default to 'text'
         $display = isset($s['display']) ? $s['display'] : 'text';
         if ($text === '' && $image === '') continue;
         $sentences[] = [
-            'id'   => trim((string) ($s['id'] ?? uniqid('os_'))),
-            'text' => $text,
-            'image' => $image,
+            'id'      => trim((string) ($s['id'] ?? uniqid('os_'))),
+            'text'    => $text,
+            'image'   => $image,
             'display' => $display,
         ];
     }
@@ -87,9 +88,10 @@ function os_encode(array $p): string
         'tts_text'     => $p['tts_text'],
         'sentences'    => array_map(function($s) {
             return [
-                'id'    => $s['id'],
-                'text'  => $s['text'],
-                'image' => isset($s['image']) ? $s['image'] : '',
+                'id'      => $s['id'],
+                'text'    => $s['text'],
+                'image'   => isset($s['image']) ? $s['image'] : '',
+                // Always include display to allow future expansion; default to 'text' if missing
                 'display' => isset($s['display']) ? $s['display'] : 'text',
             ];
         }, array_values($p['sentences'])),
@@ -199,27 +201,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    $rawTexts = isset($_POST['sentence_text']) && is_array($_POST['sentence_text'])
-                ? $_POST['sentence_text'] : [];
-    $rawIds   = isset($_POST['sentence_id']) && is_array($_POST['sentence_id'])
-                ? $_POST['sentence_id'] : [];
+    // Normalize sentences input from the POST request. Support existing images and new uploads.
+    $rawTexts  = isset($_POST['sentence_text']) && is_array($_POST['sentence_text']) ? $_POST['sentence_text'] : [];
+    $rawIds    = isset($_POST['sentence_id']) && is_array($_POST['sentence_id']) ? $_POST['sentence_id'] : [];
+    $rawImages = isset($_POST['sentence_image_existing']) && is_array($_POST['sentence_image_existing']) ? $_POST['sentence_image_existing'] : [];
     $sentences = [];
-    $imageUploads = isset($_FILES['sentence_image_upload']) ? $_FILES['sentence_image_upload'] : null;
+    $imageFiles = isset($_FILES['sentence_image']) ? $_FILES['sentence_image'] : null;
     foreach ($rawTexts as $i => $text) {
         $text = trim((string) $text);
-        $id = trim((string) ($rawIds[$i] ?? '')) ?: uniqid('os_');
-        $display = 'text';
-        $uploadedImg = '';
-        if ($imageUploads && isset($imageUploads['tmp_name'][$i]) && $imageUploads['error'][$i] === UPLOAD_ERR_OK && !empty($imageUploads['name'][$i])) {
-            $uploadedImg = upload_to_cloudinary($imageUploads['tmp_name'][$i]);
+        $id   = trim((string) ($rawIds[$i] ?? '')) ?: uniqid('os_');
+        // Start with any existing image value
+        $image = isset($rawImages[$i]) ? trim((string) $rawImages[$i]) : '';
+        // Handle a new image upload, which overrides the existing image
+        if ($imageFiles && isset($imageFiles['name'][$i]) && $imageFiles['name'][$i] !== '' &&
+            isset($imageFiles['tmp_name'][$i]) && $imageFiles['tmp_name'][$i] !== '') {
+            $uploaded = upload_to_cloudinary($imageFiles['tmp_name'][$i]);
+            if ($uploaded) {
+                $image = $uploaded;
+            }
         }
-        $finalImg = $uploadedImg;
-        if ($text === '' && $finalImg === '') continue;
+        // Skip entries with no text and no image
+        if ($text === '' && $image === '') {
+            continue;
+        }
         $sentences[] = [
             'id'      => $id,
             'text'    => $text,
-            'image'   => $finalImg,
-            'display' => $display,
+            'image'   => $image,
+            'display' => 'text',
         ];
     }
 
@@ -366,9 +375,10 @@ $d = $activity;
     </div>
 
     <!-- Sentences -->
+
     <div class="os-card">
         <label>Sentences — enter them in the <strong>correct order</strong></label>
-        <p class="help-text">Students will see them shuffled and must drag them back into this order.</p>
+        <p class="help-text">Students will see them shuffled and must drag them back into this order. You can add an image for each sentence (optional).</p>
 
         <div id="os-sentences-list">
             <?php foreach ($d['sentences'] as $idx => $s): ?>
@@ -378,9 +388,11 @@ $d = $activity;
                 <input type="hidden" name="sentence_id[]"   value="<?= htmlspecialchars($s['id'],   ENT_QUOTES, 'UTF-8') ?>">
                 <input type="text"   name="sentence_text[]" value="<?= htmlspecialchars($s['text'], ENT_QUOTES, 'UTF-8') ?>"
                        placeholder="Type sentence…">
-                <input type="file"   name="sentence_image_upload[]" accept="image/*" style="max-width:140px;">
+                <input type="hidden" name="sentence_image_existing[]" value="<?= htmlspecialchars(isset($s['image']) ? $s['image'] : '', ENT_QUOTES, 'UTF-8') ?>">
+                <input type="file" name="sentence_image[]" accept="image/*" style="max-width:160px;">
                 <?php if (!empty($s['image'])): ?>
-                  <a href="<?= htmlspecialchars($s['image'], ENT_QUOTES, 'UTF-8') ?>" target="_blank" style="margin-left:4px;">🖼️</a>
+                    <img src="<?= htmlspecialchars($s['image'], ENT_QUOTES, 'UTF-8') ?>" alt="sentence-img"
+                         style="max-width:60px;max-height:60px;border-radius:8px;margin-left:8px;vertical-align:middle;">
                 <?php endif; ?>
                 <button type="button" class="btn-remove-s" onclick="removeSentence(this)">✖</button>
             </div>
@@ -423,7 +435,10 @@ function addSentence() {
         '<span style="color:#94a3b8;font-size:13px;min-width:22px;">' + (idx + 1) + '.</span>' +
         '<input type="hidden" name="sentence_id[]" value="os_' + Date.now() + '">' +
         '<input type="text" name="sentence_text[]" placeholder="Type sentence…">' +
-        '<input type="file" name="sentence_image_upload[]" accept="image/*" style="max-width:140px;">' +
+        // Hidden input to preserve existing images when editing; new rows start with empty existing image
+        '<input type="hidden" name="sentence_image_existing[]" value="">' +
+        // File input for uploading a new image
+        '<input type="file" name="sentence_image[]" accept="image/*" style="max-width:160px;">' +
         '<button type="button" class="btn-remove-s" onclick="removeSentence(this)">✖</button>';
     list.appendChild(div);
     attachDrag(div);
