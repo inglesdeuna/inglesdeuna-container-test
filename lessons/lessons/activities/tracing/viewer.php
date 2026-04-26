@@ -1,7 +1,4 @@
 <?php
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
 
 require_once __DIR__ . '/../../config/db.php';
 require_once __DIR__ . '/tracing_functions.php';
@@ -9,10 +6,21 @@ require_once __DIR__ . '/../../core/_activity_viewer_template.php';
 
 $activityId = isset($_GET['id']) ? trim((string) $_GET['id']) : '';
 $unit = isset($_GET['unit']) ? trim((string) $_GET['unit']) : '';
+$returnTo = isset($_GET['return_to']) ? trim((string) $_GET['return_to']) : '';
+
+if ($activityId === '' && $unit === '') {
+    die('Activity not specified');
+}
 
 $activity = load_tracing_activity($pdo, $unit, $activityId);
 $images = isset($activity['images']) && is_array($activity['images']) ? $activity['images'] : array();
-$activityTitle = isset($activity['title']) ? (string) $activity['title'] : default_tracing_title();
+$viewerTitle = isset($activity['title']) ? (string) $activity['title'] : default_tracing_title();
+if ($activityId === '' && !empty($activity['id'])) {
+    $activityId = (string) $activity['id'];
+}
+if (count($images) === 0) {
+    die('No tracing images found for this activity');
+}
 
 ob_start();
 ?>
@@ -306,15 +314,18 @@ body {
 
         <div class="tracing-completed" id="tracingCompleted">
             <div style="font-size:86px;line-height:1;">✍️</div>
-            <h2>Completed</h2>
-            <p>You finished all tracing pages.</p>
-            <button type="button" class="tracing-btn tracing-btn-next" id="restartBtn">Start Again</button>
+            <h2 id="tracingCompletedTitle"></h2>
+            <p id="tracingCompletedText"></p>
+            <p id="tracingScoreText" style="font-weight:700;font-size:18px;color:#0f766e;"></p>
+            <button type="button" class="tracing-btn tracing-btn-next" id="restartBtn">Restart</button>
+            <a href="#" id="tracingReturnBtn" style="display:none;margin-top:18px;" class="tracing-btn tracing-btn-next">Return</a>
         </div>
     </div>
 </div>
 
 <script>
 (function () {
+
     var images = <?= json_encode(array_values($images), JSON_UNESCAPED_UNICODE); ?>;
     var currentIdx = 0;
     var penSize = 8;
@@ -331,6 +342,14 @@ body {
     var toolbarEl = document.getElementById('tracingToolbar');
     var actionsEl = document.getElementById('tracingActions');
     var completedEl = document.getElementById('tracingCompleted');
+    var completedTitleEl = document.getElementById('tracingCompletedTitle');
+    var completedTextEl = document.getElementById('tracingCompletedText');
+    var scoreTextEl = document.getElementById('tracingScoreText');
+    var returnBtn = document.getElementById('tracingReturnBtn');
+
+    var activityTitle = <?= json_encode($viewerTitle, JSON_UNESCAPED_UNICODE); ?>;
+    var ACTIVITY_ID = <?= json_encode($activityId, JSON_UNESCAPED_UNICODE); ?>;
+    var RETURN_TO = <?= json_encode($returnTo, JSON_UNESCAPED_UNICODE); ?>;
 
     function getScaledPos(e, isTouch) {
         var rect = canvas.getBoundingClientRect();
@@ -373,12 +392,29 @@ body {
         nextBtn.textContent = currentIdx < images.length - 1 ? 'Next' : 'Finish';
     }
 
+
     function showCompleted() {
         counterEl.style.display = 'none';
         wrapEl.style.display = 'none';
         toolbarEl.style.display = 'none';
         actionsEl.style.display = 'none';
         completedEl.classList.add('active');
+        if (completedTitleEl) completedTitleEl.textContent = activityTitle || 'Tracing Practice';
+        if (completedTextEl) completedTextEl.textContent = "You've completed " + (activityTitle || 'this activity') + '. Great job practicing.';
+        if (scoreTextEl) scoreTextEl.textContent = '';
+        if (RETURN_TO && ACTIVITY_ID) {
+            returnBtn.style.display = '';
+            var joiner = RETURN_TO.indexOf('?') !== -1 ? '&' : '?';
+            var saveUrl = RETURN_TO +
+                joiner + 'activity_percent=100' +
+                '&activity_errors=0' +
+                '&activity_total=' + images.length +
+                '&activity_id=' + encodeURIComponent(ACTIVITY_ID) +
+                '&activity_type=tracing';
+            returnBtn.href = saveUrl;
+        } else {
+            returnBtn.style.display = 'none';
+        }
     }
 
     function showTracing() {
@@ -485,4 +521,4 @@ body {
 </script>
 <?php
 $content = ob_get_clean();
-render_activity_viewer($activityTitle, '✏️', $content);
+render_activity_viewer($viewerTitle, '✏️', $content);
