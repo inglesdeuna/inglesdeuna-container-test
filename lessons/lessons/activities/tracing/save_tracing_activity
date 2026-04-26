@@ -1,0 +1,63 @@
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+
+    $postedTitle = trim($_POST['activity_title'] ?? '');
+
+    $ids = $_POST['image_id'] ?? [];
+    $imagesExisting = $_POST['image_existing'] ?? [];
+
+    $files = $_FILES['image_file'] ?? null;
+
+    $sanitized = [];
+
+    // 🔥 Flatten uploaded files safely
+    $uploadedFiles = [];
+
+    if ($files && is_array($files['tmp_name'])) {
+        foreach ($files['tmp_name'] as $k => $tmp) {
+            if (!empty($tmp)) {
+                $uploadedFiles[] = $tmp;
+            }
+        }
+    }
+
+    $filePointer = 0;
+
+    foreach ($ids as $i => $imgId) {
+
+        $imgUrl = trim($imagesExisting[$i] ?? '');
+
+        // ✅ FIX: use sequential pointer, NOT $i
+        if ($imgUrl === '' && isset($uploadedFiles[$filePointer])) {
+
+            $uploaded = upload_to_cloudinary($uploadedFiles[$filePointer]);
+
+            if ($uploaded) {
+                $imgUrl = $uploaded;
+            }
+
+            $filePointer++;
+        }
+
+        if ($imgUrl === '') continue;
+
+        $sanitized[] = [
+            'id' => $imgId ?: uniqid('tracing_'),
+            'image' => $imgUrl
+        ];
+    }
+
+    if (empty($sanitized)) {
+        die('No images processed. Upload failed.');
+    }
+
+    $savedActivityId = save_tracing_activity(
+        $pdo,
+        $unit,
+        $activityId,
+        $postedTitle,
+        $sanitized
+    );
+
+    header('Location: editor.php?unit=' . urlencode($unit) . '&id=' . urlencode($savedActivityId) . '&saved=1');
+    exit;
+}
