@@ -419,6 +419,16 @@ document.addEventListener('DOMContentLoaded', function () {
       stage.classList.add('revealed');
       revealBtn.style.display = 'none';
       continueBtn.style.display = (!isEmbedded && completionUrl) ? '' : 'none';
+
+      const totalSeg = normalizedPoints.length - 1;
+      const safeErrors = Math.min(errors, totalSeg);
+      const correct = Math.max(0, totalSeg - safeErrors);
+      const pct = totalSeg > 0 ? Math.round((correct / totalSeg) * 100) : 0;
+      if (completionScore) {
+        completionScore.textContent = 'Score: ' + correct + ' / ' + totalSeg + ' (' + pct + '%)';
+      }
+      if (completionPanel) completionPanel.style.display = '';
+
       updateStatus();
     });
   }
