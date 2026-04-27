@@ -262,21 +262,6 @@ function dot_to_dot_number_to_words_en(int $value): string
     return (string) $value;
 }
 
-function dot_to_dot_label_text(array $settings, int $index): string
-{
-    $mode = (string) ($settings['mode'] ?? 'number');
-    $value = dot_to_dot_label_value_by_index($settings, $index);
-
-    if ($mode === 'letter') {
-        return dot_to_dot_number_to_letters($value);
-    }
-
-    if ($mode === 'word') {
-        return dot_to_dot_number_to_words_en($value);
-    }
-
-    return (string) $value;
-}
 
 function dot_to_dot_apply_labels(array $points, array $settings): array
 {
