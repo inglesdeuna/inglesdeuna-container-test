@@ -212,23 +212,6 @@ function dot_to_dot_label_value_by_index(array $settings, int $index): int
     return $start + ($index * $step);
 }
 
-function dot_to_dot_number_to_letters(int $value): string
-{
-    if ($value < 1) {
-        return (string) $value;
-    }
-
-    $letters = '';
-    $n = $value;
-
-    while ($n > 0) {
-        $n--;
-        $letters = chr(65 + ($n % 26)) . $letters;
-        $n = (int) floor($n / 26);
-    }
-
-    return $letters;
-}
 
 function dot_to_dot_number_to_words_en(int $value): string
 {
