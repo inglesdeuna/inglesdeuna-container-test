@@ -285,33 +285,35 @@ document.addEventListener('DOMContentLoaded', function () {
       + '&activity_type=' + encodeURIComponent('dot_to_dot');
   }
 
-  function persistCompletion() {
-    if (scoreSaved) {
-      return;
-    }
+  function persistScoreSilently(targetUrl) {
+    if (!targetUrl) return Promise.resolve(false);
+    return fetch(targetUrl, {
+      method: 'GET', credentials: 'same-origin', cache: 'no-store',
+    }).then(function (response) {
+      return !!(response && response.ok);
+    }).catch(function () { return false; });
+  }
 
+  function navigateToReturn(targetUrl) {
+    if (!targetUrl) return;
+    try {
+      if (window.top && window.top !== window.self) {
+        window.top.location.href = targetUrl;
+        return;
+      }
+    } catch (e) {}
+    window.location.href = targetUrl;
+  }
+
+  function persistCompletion() {
+    if (scoreSaved) return;
     const totalSegments = normalizedPoints.length - 1;
     completionUrl = buildReturnUrl(100, errors, totalSegments);
-
-    if (!completionUrl) {
-      scoreSaved = true;
-      return;
-    }
-
+    if (!completionUrl) { scoreSaved = true; return; }
     scoreSaved = true;
-
-    try {
-      fetch(completionUrl, {
-        method: 'GET',
-        credentials: 'same-origin',
-        cache: 'no-store',
-        keepalive: true,
-      }).catch(function () {
-        scoreSaved = false;
-      });
-    } catch (e) {
-      scoreSaved = false;
-    }
+    persistScoreSilently(completionUrl).then(function (ok) {
+      if (!ok) scoreSaved = false;
+    });
   }
 
   function completeActivity() {
@@ -441,20 +443,8 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   continueBtn.addEventListener('click', function () {
-    if (!completionUrl) {
-      return;
-    }
-
-    try {
-      if (window.top && window.top !== window.self) {
-        window.top.location.href = completionUrl;
-        return;
-      }
-    } catch (e) {
-      // fall back to current frame
-    }
-
-    window.location.href = completionUrl;
+    if (!completionUrl) return;
+    navigateToReturn(completionUrl);
   });
 
   window.addEventListener('resize', resizeCanvas);

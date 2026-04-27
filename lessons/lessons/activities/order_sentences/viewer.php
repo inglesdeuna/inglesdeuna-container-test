@@ -233,7 +233,14 @@ body {
                     '&activity_total=' + encodeURIComponent(String(OS_TOTAL)) +
                     '&activity_id=' + encodeURIComponent(OS_ACTIVITY_ID) +
                     '&activity_type=order_sentences';
-                fetch(saveUrl, { method: 'GET', credentials: 'same-origin', cache: 'no-store', keepalive: true }).catch(function () {});
+                fetch(saveUrl, { method: 'GET', credentials: 'same-origin', cache: 'no-store' })
+                    .then(function (r) { if (!r.ok) throw new Error(); })
+                    .catch(function () {
+                        try {
+                            if (window.top && window.top !== window.self) { window.top.location.href = saveUrl; return; }
+                        } catch (e) {}
+                        window.location.href = saveUrl;
+                    });
             }
         } else {
             document.getElementById('result').textContent = '❌ Not correct. Try again.';

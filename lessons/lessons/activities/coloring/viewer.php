@@ -303,7 +303,14 @@ ob_start();
                 'activity_percent=100&activity_errors=0&activity_total=1' +
                 '&activity_id=' + encodeURIComponent(COLORING_ACTIVITY_ID) +
                 '&activity_type=coloring';
-            fetch(saveUrl, { method: 'GET', credentials: 'same-origin', cache: 'no-store', keepalive: true }).catch(function () {});
+            fetch(saveUrl, { method: 'GET', credentials: 'same-origin', cache: 'no-store' })
+                .then(function (r) { if (!r.ok) throw new Error(); })
+                .catch(function () {
+                    try {
+                        if (window.top && window.top !== window.self) { window.top.location.href = saveUrl; return; }
+                    } catch (e) {}
+                    window.location.href = saveUrl;
+                });
         }
     }
     function showStage() {

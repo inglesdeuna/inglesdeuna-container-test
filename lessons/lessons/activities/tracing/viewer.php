@@ -91,22 +91,11 @@ ob_start();
         </div>
 
         <div class="tracing-completed" id="tracingCompleted">
-<<<<<<< HEAD
-            <div style="font-size:86px;">✍️</div>
-            <h2 id="tracingCompletedTitle"></h2>
-            <p id="tracingCompletedText"></p>
-            <p id="tracingScoreText"></p>
-
-            <button type="button" class="tracing-btn tracing-btn-next" id="restartBtn">Restart</button>
-            <a href="#" id="tracingReturnBtn" style="display:none;" class="tracing-btn tracing-btn-next">Return</a>
-=======
             <div style="font-size:86px;line-height:1;">✍️</div>
             <h2 id="tracingCompletedTitle"></h2>
             <p id="tracingCompletedText"></p>
             <p id="tracingScoreText" style="font-weight:700;font-size:18px;color:#0f766e;"></p>
             <button type="button" class="tracing-btn tracing-btn-next" id="restartBtn">Restart</button>
-            <a href="#" id="tracingReturnBtn" style="display:none;margin-top:18px;" class="tracing-btn tracing-btn-next">Return</a>
->>>>>>> codespace-crispy-fortnight-696v9xjxpqwv2xxx9
         </div>
 
     </div>
@@ -114,37 +103,6 @@ ob_start();
 
 <script>
 (function () {
-<<<<<<< HEAD
-    'use strict';
-
-    const images = <?= json_encode($images, JSON_UNESCAPED_UNICODE); ?>;
-    let currentIdx = 0;
-    let penSize = 8;
-    let penColor = '#2563eb';
-    let drawing = false;
-
-    const canvas = document.getElementById('traceCanvas');
-    const ctx = canvas.getContext('2d');
-
-    const counterText = document.getElementById('counterText');
-    const nextBtn = document.getElementById('nextBtn');
-    const restartBtn = document.getElementById('restartBtn');
-
-    const counterEl = document.getElementById('tracingCounter');
-    const wrapEl = document.getElementById('tracingCanvasWrap');
-    const toolbarEl = document.getElementById('tracingToolbar');
-    const actionsEl = document.getElementById('tracingActions');
-    const completedEl = document.getElementById('tracingCompleted');
-
-    const completedTitleEl = document.getElementById('tracingCompletedTitle');
-    const completedTextEl = document.getElementById('tracingCompletedText');
-    const scoreTextEl = document.getElementById('tracingScoreText');
-    const returnBtn = document.getElementById('tracingReturnBtn');
-
-    const activityTitle = <?= json_encode($viewerTitle); ?>;
-    const ACTIVITY_ID = <?= json_encode($activityId); ?>;
-    const RETURN_TO = <?= json_encode($returnTo); ?>;
-=======
 
     var images = <?= json_encode(array_values($images), JSON_UNESCAPED_UNICODE); ?>;
     var currentIdx = 0;
@@ -165,12 +123,30 @@ ob_start();
     var completedTitleEl = document.getElementById('tracingCompletedTitle');
     var completedTextEl = document.getElementById('tracingCompletedText');
     var scoreTextEl = document.getElementById('tracingScoreText');
-    var returnBtn = document.getElementById('tracingReturnBtn');
 
     var activityTitle = <?= json_encode($viewerTitle, JSON_UNESCAPED_UNICODE); ?>;
     var ACTIVITY_ID = <?= json_encode($activityId, JSON_UNESCAPED_UNICODE); ?>;
     var RETURN_TO = <?= json_encode($returnTo, JSON_UNESCAPED_UNICODE); ?>;
->>>>>>> codespace-crispy-fortnight-696v9xjxpqwv2xxx9
+
+    function persistScoreSilently(targetUrl) {
+        if (!targetUrl) return Promise.resolve(false);
+        return fetch(targetUrl, {
+            method: 'GET', credentials: 'same-origin', cache: 'no-store',
+        }).then(function (response) {
+            return !!(response && response.ok);
+        }).catch(function () { return false; });
+    }
+
+    function navigateToReturn(targetUrl) {
+        if (!targetUrl) return;
+        try {
+            if (window.top && window.top !== window.self) {
+                window.top.location.href = targetUrl;
+                return;
+            }
+        } catch (e) {}
+        window.location.href = targetUrl;
+    }
 
     function getScaledPos(e, isTouch) {
         const rect = canvas.getBoundingClientRect();
@@ -214,35 +190,23 @@ ob_start();
         wrapEl.style.display = 'none';
         toolbarEl.style.display = 'none';
         actionsEl.style.display = 'none';
-
         completedEl.classList.add('active');
-<<<<<<< HEAD
 
-        completedTitleEl.textContent = activityTitle || 'Tracing Practice';
-        completedTextEl.textContent = `You've completed ${activityTitle || 'this activity'}.`;
-
-        if (RETURN_TO && ACTIVITY_ID) {
-            returnBtn.style.display = '';
-            const joiner = RETURN_TO.includes('?') ? '&' : '?';
-
-            returnBtn.href = `${RETURN_TO}${joiner}activity_percent=100&activity_total=${images.length}&activity_id=${encodeURIComponent(ACTIVITY_ID)}&activity_type=tracing`;
-=======
         if (completedTitleEl) completedTitleEl.textContent = activityTitle || 'Tracing Practice';
         if (completedTextEl) completedTextEl.textContent = "You've completed " + (activityTitle || 'this activity') + '. Great job practicing.';
-        if (scoreTextEl) scoreTextEl.textContent = '';
+        if (scoreTextEl) scoreTextEl.textContent = 'Score: ' + images.length + ' / ' + images.length + ' (100%)';
+
         if (RETURN_TO && ACTIVITY_ID) {
-            returnBtn.style.display = '';
             var joiner = RETURN_TO.indexOf('?') !== -1 ? '&' : '?';
-            var saveUrl = RETURN_TO +
-                joiner + 'activity_percent=100' +
+            var saveUrl = RETURN_TO + joiner +
+                'activity_percent=100' +
                 '&activity_errors=0' +
                 '&activity_total=' + images.length +
                 '&activity_id=' + encodeURIComponent(ACTIVITY_ID) +
                 '&activity_type=tracing';
-            returnBtn.href = saveUrl;
-        } else {
-            returnBtn.style.display = 'none';
->>>>>>> codespace-crispy-fortnight-696v9xjxpqwv2xxx9
+            persistScoreSilently(saveUrl).then(function (ok) {
+                if (!ok) navigateToReturn(saveUrl);
+            });
         }
     }
 

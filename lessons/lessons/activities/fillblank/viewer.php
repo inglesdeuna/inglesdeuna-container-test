@@ -211,6 +211,10 @@ nextBtn.onclick = function() {
     const percent = total > 0 ? Math.round((correct / total) * 100) : 0;
     const FBK_RETURN_TO = <?= json_encode($returnTo) ?>;
     const FBK_ACTIVITY_ID = <?= json_encode($activityId) ?>;
+    document.querySelector('.fbk-card').style.display = 'none';
+    const panel = document.getElementById('fbk-completion');
+    document.getElementById('fbk-score').textContent = 'Score: ' + correct + ' / ' + total + ' (' + percent + '%)';
+    panel.style.display = '';
     if (FBK_RETURN_TO && FBK_ACTIVITY_ID) {
       const joiner = FBK_RETURN_TO.indexOf('?') !== -1 ? '&' : '?';
       const saveUrl = FBK_RETURN_TO + joiner +
@@ -219,12 +223,15 @@ nextBtn.onclick = function() {
         '&activity_total=' + encodeURIComponent(String(total)) +
         '&activity_id=' + encodeURIComponent(FBK_ACTIVITY_ID) +
         '&activity_type=fillblank';
-      fetch(saveUrl, { method: 'GET', credentials: 'same-origin', cache: 'no-store', keepalive: true }).catch(function () {});
+      fetch(saveUrl, { method: 'GET', credentials: 'same-origin', cache: 'no-store' })
+        .then(function (r) { if (!r.ok) throw new Error(); })
+        .catch(function () {
+          try {
+            if (window.top && window.top !== window.self) { window.top.location.href = saveUrl; return; }
+          } catch (e) {}
+          window.location.href = saveUrl;
+        });
     }
-    document.querySelector('.fbk-card').style.display = 'none';
-    const panel = document.getElementById('fbk-completion');
-    document.getElementById('fbk-score').textContent = 'Score: ' + correct + ' / ' + total + ' (' + percent + '%)';
-    panel.style.display = '';
   }
 };
 
