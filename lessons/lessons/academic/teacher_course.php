@@ -784,16 +784,22 @@ if ($current) {
     $activityPath = get_activity_base_path($type);
 
     if ($activityPath) {
+        $viewerReturnStep = $isLastActivity ? max(9999, $total) : $nextStep;
+        $returnUrl = '../../academic/teacher_course.php?' . http_build_query([
+            'assignment' => $assignmentId,
+            'unit' => $selectedUnitId,
+            'step' => (string) $viewerReturnStep,
+        ]);
         $query = http_build_query([
             'id' => (string) ($current['id'] ?? ''),
             'unit' => (string) ($current['unit_id'] ?? ''),
             'embedded' => '1',
             'from' => 'teacher_course',
             'assignment' => $assignmentId,
+            'return_to' => $returnUrl,
         ]);
 
         $viewerHref = $activityPath . '/viewer.php?' . $query;
-
     }
 
     $currentType = strtolower($type);

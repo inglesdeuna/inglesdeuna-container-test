@@ -100,7 +100,9 @@ document.addEventListener('DOMContentLoaded', function () {
       const source = pageParams.get('source') || '';
       const from = pageParams.get('from') || '';
 
-      if (assignment && unit && (from === 'student_course' || pageParams.get('embedded') === '1')) {
+      if (assignment && unit && from === 'teacher_course') {
+        baseReturn = '../../academic/teacher_course.php?assignment=' + encodeURIComponent(assignment) + '&unit=' + encodeURIComponent(unit);
+      } else if (assignment && unit && (from === 'student_course' || pageParams.get('embedded') === '1')) {
         baseReturn = '../../academic/student_course.php?assignment=' + encodeURIComponent(assignment) + '&unit=' + encodeURIComponent(unit);
       } else if (unit) {
         baseReturn = '../../academic/unit_view.php?unit=' + encodeURIComponent(unit);
