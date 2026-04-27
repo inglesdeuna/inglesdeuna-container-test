@@ -1,3 +1,4 @@
+<?php
 // Helper: Normalize label settings for dot-to-dot
 function dot_to_dot_normalize_label_settings($settings, $numPoints = 0) {
     $defaults = [

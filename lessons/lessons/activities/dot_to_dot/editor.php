@@ -1,7 +1,6 @@
-require_once __DIR__ . '/dot_to_dot_functions.php';
 <?php
-require_once __DIR__ . '/../../config/db.php';
 require_once __DIR__ . '/dot_to_dot_functions.php';
+require_once __DIR__ . '/../../config/db.php';
 
 session_start();
 if (empty($_SESSION['academic_logged']) && empty($_SESSION['admin_logged'])) {
@@ -53,7 +52,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } elseif (count($points) < 3) {
         $error = 'Add at least 3 points.';
     } else {
-        $id = dot_to_dot_save_activity($pdo, $unit, $activityId, $title, $instruction, $image, $points, $labelSettings);
+        $id = save_dot_to_dot_activity($pdo, $unit, $activityId, $title, $instruction, $image, $points, $labelSettings);
         $saved = true;
         $activityId = $id;
     }
