@@ -89,10 +89,10 @@ document.addEventListener('DOMContentLoaded', function () {
     return fallbackLabel(index);
   }
 
-  const lineSound = new Audio('../../hangman/assets/pageflip.mp3');
-  const okSound = new Audio('../../hangman/assets/realcorrect.mp3');
+  const lineSound = new Audio('../../hangman/assets/correct.wav');
+  const okSound   = new Audio('../../hangman/assets/correct.wav');
   const failSound = new Audio('../../hangman/assets/lose.mp3');
-  const winSound = new Audio('../../hangman/assets/win.mp3');
+  const winSound  = new Audio('../../hangman/assets/win.mp3');
 
   let currentIndex = 0;
   let errors = 0;

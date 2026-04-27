@@ -6,6 +6,7 @@ if (session_status() === PHP_SESSION_NONE) {
 require_once __DIR__ . '/dot_to_dot_functions.php';
 require_once __DIR__ . '/../../config/db.php';
 require_once __DIR__ . '/../../core/_activity_editor_template.php';
+require_once __DIR__ . '/../../core/cloudinary_upload.php';
 
 if (empty($_SESSION['academic_logged']) && empty($_SESSION['admin_logged'])) {
     header('Location: /lessons/lessons/academic/login.php');
@@ -43,9 +44,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     ], 0);
 
     if (!empty($_FILES['main_image']['tmp_name'])) {
-        $target = '/tmp/d2d_' . uniqid() . '_' . basename($_FILES['main_image']['name']);
-        if (move_uploaded_file($_FILES['main_image']['tmp_name'], $target)) {
-            $image = '/uploads/' . basename($target);
+        $uploaded = upload_to_cloudinary($_FILES['main_image']['tmp_name']);
+        if ($uploaded) {
+            $image = $uploaded;
         }
     }
 

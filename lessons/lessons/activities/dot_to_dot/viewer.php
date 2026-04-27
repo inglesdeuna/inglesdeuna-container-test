@@ -3,103 +3,79 @@ require_once __DIR__ . '/dot_to_dot_functions.php';
 require_once __DIR__ . '/../../config/db.php';
 require_once __DIR__ . '/../../core/_activity_viewer_template.php';
 
-$unit = isset($_GET['unit']) ? trim((string) $_GET['unit']) : '';
-$activityId = isset($_GET['id']) ? trim((string) $_GET['id']) : '';
-$returnTo = isset($_GET['return_to']) ? trim((string) $_GET['return_to']) : '';
+$unit       = isset($_GET['unit'])      ? trim((string) $_GET['unit'])      : '';
+$activityId = isset($_GET['id'])        ? trim((string) $_GET['id'])        : '';
+$returnTo   = isset($_GET['return_to']) ? trim((string) $_GET['return_to']) : '';
 
 if ($activityId === '' && $unit === '') {
-  die('Activity not specified');
+    die('Activity not specified');
 }
 
-$activity = load_dot_to_dot_activity($pdo, $unit, $activityId);
-$points = $activity['points'] ?? [];
-$image = $activity['image'] ?? '';
-$viewerTitle = !empty($activity['title']) ? (string) $activity['title'] : dot_to_dot_default_title();
+$activity    = load_dot_to_dot_activity($pdo, $unit, $activityId);
+$points      = $activity['points'] ?? [];
+$image       = $activity['image']  ?? '';
+$viewerTitle = ($activity['title'] ?? '') !== '' ? (string) $activity['title'] : dot_to_dot_default_title();
+
 if ($activityId === '' && !empty($activity['id'])) {
-  $activityId = (string) $activity['id'];
+    $activityId = (string) $activity['id'];
 }
+
+$hasActivity = $image !== '' && count($points) >= 3;
 
 ob_start();
 ?>
-<style>
-.d2d-viewer-shell { max-width: 480px; margin: 0 auto; }
-.d2d-stage { position: relative; width: 320px; height: 320px; background: #f8fafc; border-radius: 14px; box-shadow: 0 2px 8px #0001; overflow: hidden; margin: 0 auto 18px; }
-.d2d-img { width: 100%; height: 100%; object-fit: contain; position: absolute; left: 0; top: 0; z-index: 1; opacity: 0; transition: opacity 0.7s; pointer-events: none; }
-.d2d-img.revealed { opacity: 1; }
-.d2d-dot { position: absolute; width: 28px; height: 28px; background: #fff; border: 2px solid #2563eb; border-radius: 50%; color: #2563eb; font-weight: bold; display: flex; align-items: center; justify-content: center; user-select: none; font-size: 16px; box-shadow: 0 2px 8px #0002; z-index: 2; transform: translate(-50%,-50%); transition: background 0.2s; }
-.d2d-dot.connected { background: #a7f3d0; border-color: #059669; color: #059669; }
-.d2d-completed { color: #059669; font-weight: bold; font-size: 20px; margin-top: 18px; text-align: center; display: none; }
-.d2d-btn { border: none; border-radius: 999px; padding: 10px 18px; font-weight: bold; background: #2563eb; color: #fff; cursor: pointer; font-size: 16px; margin-top: 18px; display: none; }
-</style>
+<link rel="stylesheet" href="dot_to_dot.css">
 
-<div class="d2d-viewer-shell">
-  <div class="d2d-intro">
-    <h2><?= htmlspecialchars($viewerTitle) ?></h2>
-    <p><?= htmlspecialchars($activity['instruction'] ?? '') ?></p>
-  </div>
-  <?php if (!$image || count($points) < 3): ?>
-    <div style="color:#be123c;font-weight:bold;margin:24px 0;">This activity has no image or not enough points.</div>
-  <?php else: ?>
-    <div class="d2d-stage" id="d2dStage">
-      <img src="<?= htmlspecialchars($image) ?>" class="d2d-img" id="d2dImg" alt="final image">
-      <!-- Dots rendered by JS -->
+<div class="d2dv-wrap">
+    <div class="d2dv-hero">
+        <h2><?= htmlspecialchars($viewerTitle, ENT_QUOTES, 'UTF-8') ?></h2>
+        <?php if (!empty($activity['instruction'])): ?>
+            <p><?= htmlspecialchars($activity['instruction'], ENT_QUOTES, 'UTF-8') ?></p>
+        <?php endif; ?>
     </div>
-    <div class="d2d-completed" id="completedMsg">Activity completed!</div>
-    <button class="d2d-btn" id="revealBtn">Reveal image</button>
-  <?php endif; ?>
+
+    <?php if (!$hasActivity): ?>
+        <div class="d2dv-empty">
+            This activity has no image or not enough points (minimum 3 required).
+        </div>
+    <?php else: ?>
+        <div class="d2dv-stage-card">
+            <div class="d2dv-progress-row">
+                <span class="d2dv-chip"        id="d2dvProgress">Connect 1 to 2</span>
+                <span class="d2dv-chip d2dv-chip-accent" id="d2dvCounter">0 / <?= count($points) - 1 ?> lines</span>
+            </div>
+
+            <div class="d2dv-stage" id="d2dvStage">
+                <img class="d2dv-final-image"
+                     id="d2dvFinalImage"
+                     src="<?= htmlspecialchars($image, ENT_QUOTES, 'UTF-8') ?>"
+                     alt="<?= htmlspecialchars($viewerTitle, ENT_QUOTES, 'UTF-8') ?>">
+                <canvas id="d2dvCanvas"></canvas>
+            </div>
+
+            <p class="d2dv-status" id="d2dvStatus"></p>
+
+            <div class="d2dv-toolbar">
+                <button class="d2dv-btn d2dv-btn-soft"   id="d2dvResetBtn">Reset</button>
+                <button class="d2dv-btn d2dv-btn-accent"  id="d2dvHintBtn">Hint</button>
+                <button class="d2dv-btn d2dv-btn-next"    id="d2dvContinueBtn" style="display:none">Continue</button>
+            </div>
+        </div>
+    <?php endif; ?>
 </div>
 
-<?php if ($image && count($points) >= 3): ?>
+<?php if ($hasActivity): ?>
 <script>
-const points = <?= json_encode($points, JSON_UNESCAPED_UNICODE) ?>;
-const stage = document.getElementById('d2dStage');
-const img = document.getElementById('d2dImg');
-const revealBtn = document.getElementById('revealBtn');
-const completedMsg = document.getElementById('completedMsg');
-let connected = 0;
-
-function renderDots(connectedCount = 0) {
-  stage.querySelectorAll('.d2d-dot').forEach(dot => dot.remove());
-  points.forEach((pt, i) => {
-    const dot = document.createElement('div');
-    dot.className = 'd2d-dot' + (i < connectedCount ? ' connected' : '');
-    dot.textContent = pt.label || (i+1);
-    dot.style.left = (pt.x * 320) + 'px';
-    dot.style.top = (pt.y * 320) + 'px';
-    stage.appendChild(dot);
-  });
-}
-renderDots(connected);
-
-stage.addEventListener('click', function(e) {
-  if (img.classList.contains('revealed')) return;
-  const rect = stage.getBoundingClientRect();
-  const x = (e.clientX - rect.left) / rect.width;
-  const y = (e.clientY - rect.top) / rect.height;
-  if (connected < points.length) {
-    const pt = points[connected];
-    if (Math.abs(x - pt.x) < 0.05 && Math.abs(y - pt.y) < 0.05) {
-      connected++;
-      renderDots(connected);
-      if (connected === points.length) {
-        revealBtn.style.display = 'inline-block';
-      }
-    }
-  }
-});
-
-revealBtn.addEventListener('click', function() {
-  img.classList.add('revealed');
-  revealBtn.style.display = 'none';
-  completedMsg.style.display = 'block';
-  // Feedback and navigation flow
-  setTimeout(() => {
-    completedMsg.textContent = 'You completed this activity!';
-  }, 500);
-});
+window.DOT_TO_DOT_DATA = {
+    points:        <?= json_encode(array_values($points), JSON_UNESCAPED_UNICODE) ?>,
+    labelSettings: <?= json_encode($activity['label_settings'] ?? [], JSON_UNESCAPED_UNICODE) ?>,
+    returnTo:      <?= json_encode($returnTo, ENT_QUOTES) ?>,
+    activityId:    <?= json_encode($activityId, ENT_QUOTES) ?>
+};
 </script>
+<script src="dot_to_dot.js"></script>
 <?php endif; ?>
 
 <?php
-render_activity_viewer($viewerTitle, '🔵', $content);
-// End of file
+$content = ob_get_clean();
+render_activity_viewer($viewerTitle, '', $content);
