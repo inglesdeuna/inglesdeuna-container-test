@@ -329,6 +329,7 @@ document.addEventListener('DOMContentLoaded', function () {
     stage.classList.remove('revealed');
     if (revealBtn) revealBtn.style.display = 'none';
     continueBtn.style.display = 'none';
+    if (completionPanel) completionPanel.style.display = 'none';
     updateStatus();
     draw();
   }
