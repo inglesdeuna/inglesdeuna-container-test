@@ -59,7 +59,7 @@ ob_start();
                 <button class="d2dv-btn d2dv-btn-soft"   id="d2dvResetBtn">Reset</button>
                 <button class="d2dv-btn d2dv-btn-accent"  id="d2dvHintBtn">Hint</button>
                 <button class="d2dv-btn d2dv-btn-accent"  id="d2dvRevealBtn" style="display:none">Reveal Image</button>
-                <button class="d2dv-btn d2dv-btn-next"    id="d2dvContinueBtn" style="display:none">Continue</button>
+                <button class="d2dv-btn d2dv-btn-next"    id="d2dvContinueBtn" style="display:none">Next</button>
             </div>
         </div>
     <?php endif; ?>
