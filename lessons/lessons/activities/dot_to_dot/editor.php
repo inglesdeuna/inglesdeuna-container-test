@@ -1,5 +1,187 @@
+
 <?php
-// editor.php - erased for full rewrite
+require_once __DIR__ . '/../../config/db.php';
+require_once __DIR__ . '/dot_to_dot_functions.php';
+
+session_start();
+if (empty($_SESSION['academic_logged']) && empty($_SESSION['admin_logged'])) {
+    header('Location: /lessons/lessons/academic/login.php');
+    exit;
+}
+
+$activityId = $_GET['id'] ?? '';
+$unit = $_GET['unit'] ?? '';
+if (!$unit && $activityId) {
+    // Try to resolve unit from activity if needed (not implemented here)
+    $unit = '';
+}
+if (!$unit) die('Unit not specified');
+
+$error = '';
+$saved = false;
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $title = trim($_POST['activity_title'] ?? '');
+    $instruction = trim($_POST['activity_instruction'] ?? '');
+    $pointsRaw = $_POST['points_json'] ?? '[]';
+    $image = trim($_POST['image_existing'] ?? '');
+    $labelMode = $_POST['label_mode'] ?? 'number';
+    $labelStart = (int)($_POST['label_start'] ?? 1);
+    $labelStep = (int)($_POST['label_step'] ?? 1);
+    $labelEnd = (int)($_POST['label_end'] ?? 20);
+
+    $labelSettings = dot_to_dot_normalize_label_settings([
+        'mode' => $labelMode,
+        'start' => $labelStart,
+        'step' => $labelStep,
+        'end' => $labelEnd,
+    ], 0);
+
+    // Handle image upload
+    if (!empty($_FILES['main_image']['tmp_name'])) {
+        $target = '/tmp/d2d_' . uniqid() . '_' . basename($_FILES['main_image']['name']);
+        if (move_uploaded_file($_FILES['main_image']['tmp_name'], $target)) {
+            $image = '/uploads/' . basename($target); // You should move/copy to a public uploads dir in production
+        }
+    }
+
+    $points = json_decode($pointsRaw, true);
+    if (!is_array($points)) $points = [];
+
+    if (!$image) {
+        $error = 'Please upload an image.';
+    } elseif (count($points) < 3) {
+        $error = 'Add at least 3 points.';
+    } else {
+        $id = dot_to_dot_save_activity($pdo, $unit, $activityId, $title, $instruction, $image, $points, $labelSettings);
+        $saved = true;
+        $activityId = $id;
+    }
+}
+
+$activity = $activityId ? dot_to_dot_load_activity($pdo, $unit, $activityId) : [
+    'title' => '',
+    'instruction' => '',
+    'image' => '',
+    'label_settings' => dot_to_dot_default_label_settings(),
+    'points' => [],
+];
+
+?><!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Dot to Dot Editor</title>
+    <style>
+        body { font-family: sans-serif; background: #f5f5f5; }
+        .container { max-width: 700px; margin: 40px auto; background: #fff; border-radius: 12px; box-shadow: 0 4px 24px #0001; padding: 32px; }
+        .stage { position: relative; width: 320px; height: 320px; background: #f8fafc; border-radius: 14px; box-shadow: 0 2px 8px #0001; overflow: hidden; margin: 0 auto 18px; }
+        .stage img { width: 100%; height: 100%; object-fit: contain; position: absolute; left: 0; top: 0; z-index: 1; }
+        .dot { position: absolute; width: 28px; height: 28px; background: #fff; border: 2px solid #2563eb; border-radius: 50%; color: #2563eb; font-weight: bold; display: flex; align-items: center; justify-content: center; user-select: none; font-size: 16px; box-shadow: 0 2px 8px #0002; z-index: 2; transform: translate(-50%,-50%); }
+        .error { background: #fee2e2; color: #be123c; padding: 10px 16px; border-radius: 8px; margin-bottom: 12px; }
+        .success { background: #ecfeff; color: #0f766e; padding: 10px 16px; border-radius: 8px; margin-bottom: 12px; }
+        label { font-weight: bold; display: block; margin-top: 12px; }
+        input[type="text"], textarea { width: 100%; padding: 8px; border-radius: 6px; border: 1px solid #bbb; }
+        input[type="file"] { margin-top: 6px; }
+        .actions { margin-top: 18px; display: flex; gap: 12px; }
+        button { border: none; border-radius: 8px; padding: 10px 18px; font-weight: bold; background: #2563eb; color: #fff; cursor: pointer; }
+        button:disabled { background: #bbb; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h2>Dot to Dot Editor</h2>
+    <?php if ($error): ?><div class="error"><?= htmlspecialchars($error) ?></div><?php endif; ?>
+    <?php if ($saved): ?><div class="success">Activity saved!</div><?php endif; ?>
+    <form method="post" enctype="multipart/form-data" id="d2dEditorForm">
+        <label>Title
+            <input type="text" name="activity_title" value="<?= htmlspecialchars($activity['title']) ?>" required>
+        </label>
+        <label>Instruction
+            <textarea name="activity_instruction" rows="2"><?= htmlspecialchars($activity['instruction']) ?></textarea>
+        </label>
+        <label>Image
+            <input type="file" name="main_image" accept="image/*">
+            <input type="hidden" name="image_existing" id="image_existing" value="<?= htmlspecialchars($activity['image']) ?>">
+        </label>
+        <div class="stage" id="dotStage">
+            <img id="dotImg" src="<?= htmlspecialchars($activity['image']) ?>" alt="dot-to-dot template" style="display:<?= $activity['image'] ? 'block' : 'none' ?>;">
+            <!-- Dots rendered by JS -->
+        </div>
+        <input type="hidden" name="points_json" id="points_json" value="<?= htmlspecialchars(json_encode($activity['points'])) ?>">
+        <label>Label mode
+            <select name="label_mode">
+                <option value="number"<?= $activity['label_settings']['mode']==='number'?' selected':'' ?>>Number</option>
+                <option value="letter"<?= $activity['label_settings']['mode']==='letter'?' selected':'' ?>>Letter</option>
+                <option value="word"<?= $activity['label_settings']['mode']==='word'?' selected':'' ?>>Word</option>
+            </select>
+        </label>
+        <label>Start <input type="number" name="label_start" value="<?= (int)$activity['label_settings']['start'] ?>" min="1"></label>
+        <label>Step <input type="number" name="label_step" value="<?= (int)$activity['label_settings']['step'] ?>" min="1"></label>
+        <label>End <input type="number" name="label_end" value="<?= (int)$activity['label_settings']['end'] ?>" min="1"></label>
+        <div class="actions">
+            <button type="button" id="undoBtn">Undo last point</button>
+            <button type="submit">Save activity</button>
+        </div>
+    </form>
+</div>
+<script>
+const dotStage = document.getElementById('dotStage');
+const dotImg = document.getElementById('dotImg');
+const pointsInput = document.getElementById('points_json');
+const undoBtn = document.getElementById('undoBtn');
+let points = JSON.parse(pointsInput.value || '[]');
+let current = points.length + 1;
+
+function renderDots() {
+    dotStage.querySelectorAll('.dot').forEach(dot => dot.remove());
+    points.forEach((pt, i) => {
+        const dot = document.createElement('div');
+        dot.className = 'dot';
+        dot.textContent = i+1;
+        dot.style.left = (pt.x * 320) + 'px';
+        dot.style.top = (pt.y * 320) + 'px';
+        dotStage.appendChild(dot);
+    });
+}
+renderDots();
+
+dotImg.addEventListener('click', function(e) {
+    const rect = dotImg.getBoundingClientRect();
+    const x = (e.clientX - rect.left) / rect.width;
+    const y = (e.clientY - rect.top) / rect.height;
+    if (x < 0 || x > 1 || y < 0 || y > 1) return;
+    points.push({x, y});
+    current++;
+    pointsInput.value = JSON.stringify(points);
+    renderDots();
+});
+
+undoBtn.addEventListener('click', function() {
+    if (points.length === 0) return;
+    points.pop();
+    current--;
+    pointsInput.value = JSON.stringify(points);
+    renderDots();
+});
+
+document.querySelector('input[type="file"][name="main_image"]').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(ev) {
+        dotImg.src = ev.target.result;
+        dotImg.style.display = 'block';
+        points = [];
+        current = 1;
+        pointsInput.value = '[]';
+        renderDots();
+    };
+    reader.readAsDataURL(file);
+});
+</script>
+</body>
+</html>
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
