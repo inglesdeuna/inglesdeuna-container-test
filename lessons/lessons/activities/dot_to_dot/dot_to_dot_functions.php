@@ -43,7 +43,6 @@ function dot_to_dot_label_text($settings, $index) {
     return (string)$labelNum;
 }
 
-<?php
 // Dot-to-dot activity core functions
 
 function dot_to_dot_default_title(): string {

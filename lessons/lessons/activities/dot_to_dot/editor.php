@@ -59,6 +59,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 // ...existing code...
+// ...existing code...
 $activity = $activityId ? load_dot_to_dot_activity($pdo, $unit, $activityId) : [
     'title' => '',
     'instruction' => '',
@@ -125,61 +126,9 @@ $activity = $activityId ? load_dot_to_dot_activity($pdo, $unit, $activityId) : [
         </div>
     </form>
 </div>
-<script>
-const dotStage = document.getElementById('dotStage');
-const dotImg = document.getElementById('dotImg');
-const pointsInput = document.getElementById('points_json');
-const undoBtn = document.getElementById('undoBtn');
-let points = JSON.parse(pointsInput.value || '[]');
-let current = points.length + 1;
-
-function renderDots() {
-    dotStage.querySelectorAll('.dot').forEach(dot => dot.remove());
-    points.forEach((pt, i) => {
-        const dot = document.createElement('div');
-        dot.className = 'dot';
-        dot.textContent = i+1;
-        dot.style.left = (pt.x * 320) + 'px';
-        dot.style.top = (pt.y * 320) + 'px';
-        dotStage.appendChild(dot);
-    });
-}
-renderDots();
-
 dotImg.addEventListener('click', function(e) {
-    const rect = dotImg.getBoundingClientRect();
-    const x = (e.clientX - rect.left) / rect.width;
-    const y = (e.clientY - rect.top) / rect.height;
-    if (x < 0 || x > 1 || y < 0 || y > 1) return;
-    points.push({x, y});
-    current++;
-    pointsInput.value = JSON.stringify(points);
-    renderDots();
-});
-
-undoBtn.addEventListener('click', function() {
-    if (points.length === 0) return;
-    points.pop();
-    current--;
-    pointsInput.value = JSON.stringify(points);
-    renderDots();
-});
-
 document.querySelector('input[type="file"][name="main_image"]').addEventListener('change', function(e) {
-    const file = e.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = function(ev) {
-        dotImg.src = ev.target.result;
-        dotImg.style.display = 'block';
-        points = [];
-        current = 1;
-        pointsInput.value = '[]';
-        renderDots();
-    };
-    reader.readAsDataURL(file);
-});
-</script>
+// ...existing code...
 </body>
 </html>
 .d2d-card{background:#fff;border:1px solid #dbeafe;border-radius:16px;padding:14px;box-shadow:0 8px 20px rgba(15,23,42,.05)}
