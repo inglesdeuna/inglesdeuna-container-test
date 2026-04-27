@@ -9,6 +9,7 @@ require_once __DIR__ . '/../../core/_activity_viewer_template.php';
 
 $activityId = isset($_GET['id']) ? trim((string) $_GET['id']) : '';
 $unit       = isset($_GET['unit']) ? trim((string) $_GET['unit']) : '';
+$returnTo   = isset($_GET['return_to']) ? trim((string) $_GET['return_to']) : '';
 
 $activity      = load_coloring_activity($pdo, $unit, $activityId);
 $images        = isset($activity['images']) && is_array($activity['images']) ? $activity['images'] : array();
@@ -200,6 +201,8 @@ ob_start();
     /* ── data from PHP ───────────────────────────────── */
     var uploadedImages = <?= json_encode($imageUrls, JSON_UNESCAPED_UNICODE) ?>;
     var nextActivityUrl = <?= json_encode($nextUrl, JSON_UNESCAPED_UNICODE) ?>;
+    var COLORING_RETURN_TO = <?= json_encode($returnTo, JSON_UNESCAPED_UNICODE) ?>;
+    var COLORING_ACTIVITY_ID = <?= json_encode($activityId, JSON_UNESCAPED_UNICODE) ?>;
 
     /* ── palette colors ──────────────────────────────── */
     var colors = [
