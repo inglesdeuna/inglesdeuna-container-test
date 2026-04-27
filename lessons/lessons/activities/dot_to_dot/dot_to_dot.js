@@ -226,11 +226,18 @@ document.addEventListener('DOMContentLoaded', function () {
     const totalSegments = normalizedPoints.length - 1;
 
     if (done) {
-      progressEl.textContent = 'Great job!';
-      counterEl.textContent = totalSegments + ' / ' + totalSegments + ' lines';
-      statusEl.textContent = stage.classList.contains('revealed')
-        ? 'You completed the picture!'
-        : 'All dots connected! Click Reveal Image to see the picture.';
+      if (stage.classList.contains('revealed')) {
+        const safeErr = Math.min(errors, totalSegments);
+        const correct = Math.max(0, totalSegments - safeErr);
+        const pct = totalSegments > 0 ? Math.round((correct / totalSegments) * 100) : 0;
+        progressEl.textContent = 'Score: ' + correct + ' / ' + totalSegments;
+        counterEl.textContent = pct + '%';
+        statusEl.textContent = 'You completed the picture!';
+      } else {
+        progressEl.textContent = 'Great job!';
+        counterEl.textContent = totalSegments + ' / ' + totalSegments + ' lines';
+        statusEl.textContent = 'All dots connected! Click Reveal Image to see the picture.';
+      }
       return;
     }
 
