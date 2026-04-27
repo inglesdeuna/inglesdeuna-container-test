@@ -71,7 +71,6 @@ body { margin:0; background:#f5f5f5; }
 </div>
 <script>
 <?php if ($activityImage && count($activityPoints) >= 3): ?>
-<script>
 const points = <?= json_encode($activityPoints, JSON_UNESCAPED_UNICODE) ?>;
 const stage = document.getElementById('d2dStage');
 const img = document.getElementById('d2dImg');

@@ -53,9 +53,7 @@ function os_normalize(mixed $rawData): array
     if (!is_array($d)) return $default;
 
     $sentences = [];
-    foreach ((array) ($d['sentences'] ?? []) as $s) {
-        $text = trim((string) ($s['text'] ?? ''));
-        $image = isset($s['image']) ? trim((string) $s['image']) : '';
+
         // Preserve the display mode if provided, default to 'text'
         $display = isset($s['display']) ? $s['display'] : 'text';
         if ($text === '' && $image === '') continue;
@@ -88,11 +86,17 @@ function os_encode(array $p): string
         'tts_text'     => $p['tts_text'],
         'sentences'    => array_map(function($s) {
             return [
+<<<<<<< HEAD
                 'id'      => $s['id'],
                 'text'    => $s['text'],
                 'image'   => isset($s['image']) ? $s['image'] : '',
                 // Always include display to allow future expansion; default to 'text' if missing
                 'display' => isset($s['display']) ? $s['display'] : 'text',
+=======
+                'id' => $s['id'],
+                'text' => $s['text'],
+                'image' => isset($s['image']) ? $s['image'] : '',
+>>>>>>> codespace-crispy-fortnight-696v9xjxpqwv2xxx9
             ];
         }, array_values($p['sentences'])),
     ], JSON_UNESCAPED_UNICODE);
@@ -201,14 +205,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
+<<<<<<< HEAD
     // Normalize sentences input from the POST request. Support existing images and new uploads.
     $rawTexts  = isset($_POST['sentence_text']) && is_array($_POST['sentence_text']) ? $_POST['sentence_text'] : [];
     $rawIds    = isset($_POST['sentence_id']) && is_array($_POST['sentence_id']) ? $_POST['sentence_id'] : [];
+=======
+
+    $rawTexts = isset($_POST['sentence_text']) && is_array($_POST['sentence_text']) ? $_POST['sentence_text'] : [];
+    $rawIds   = isset($_POST['sentence_id']) && is_array($_POST['sentence_id']) ? $_POST['sentence_id'] : [];
+>>>>>>> codespace-crispy-fortnight-696v9xjxpqwv2xxx9
     $rawImages = isset($_POST['sentence_image_existing']) && is_array($_POST['sentence_image_existing']) ? $_POST['sentence_image_existing'] : [];
     $sentences = [];
     $imageFiles = isset($_FILES['sentence_image']) ? $_FILES['sentence_image'] : null;
     foreach ($rawTexts as $i => $text) {
         $text = trim((string) $text);
+<<<<<<< HEAD
         $id   = trim((string) ($rawIds[$i] ?? '')) ?: uniqid('os_');
         // Start with any existing image value
         $image = isset($rawImages[$i]) ? trim((string) $rawImages[$i]) : '';
@@ -229,6 +240,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'text'    => $text,
             'image'   => $image,
             'display' => 'text',
+=======
+        $id = trim((string) ($rawIds[$i] ?? '')) ?: uniqid('os_');
+        $image = isset($rawImages[$i]) ? trim((string) $rawImages[$i]) : '';
+        // Handle image upload
+        if ($imageFiles && isset($imageFiles['name'][$i]) && $imageFiles['name'][$i] !== '' && isset($imageFiles['tmp_name'][$i]) && $imageFiles['tmp_name'][$i] !== '') {
+            $uploaded = upload_to_cloudinary($imageFiles['tmp_name'][$i]);
+            if ($uploaded) $image = $uploaded;
+        }
+        if ($text === '' && $image === '') continue;
+        $sentences[] = [
+            'id'   => $id,
+            'text' => $text,
+            'image' => $image,
+>>>>>>> codespace-crispy-fortnight-696v9xjxpqwv2xxx9
         ];
     }
 
@@ -391,8 +416,12 @@ $d = $activity;
                 <input type="hidden" name="sentence_image_existing[]" value="<?= htmlspecialchars(isset($s['image']) ? $s['image'] : '', ENT_QUOTES, 'UTF-8') ?>">
                 <input type="file" name="sentence_image[]" accept="image/*" style="max-width:160px;">
                 <?php if (!empty($s['image'])): ?>
+<<<<<<< HEAD
                     <img src="<?= htmlspecialchars($s['image'], ENT_QUOTES, 'UTF-8') ?>" alt="sentence-img"
                          style="max-width:60px;max-height:60px;border-radius:8px;margin-left:8px;vertical-align:middle;">
+=======
+                    <img src="<?= htmlspecialchars($s['image'], ENT_QUOTES, 'UTF-8') ?>" alt="sentence-img" style="max-width:60px;max-height:60px;border-radius:8px;margin-left:8px;vertical-align:middle;">
+>>>>>>> codespace-crispy-fortnight-696v9xjxpqwv2xxx9
                 <?php endif; ?>
                 <button type="button" class="btn-remove-s" onclick="removeSentence(this)">✖</button>
             </div>
@@ -435,9 +464,13 @@ function addSentence() {
         '<span style="color:#94a3b8;font-size:13px;min-width:22px;">' + (idx + 1) + '.</span>' +
         '<input type="hidden" name="sentence_id[]" value="os_' + Date.now() + '">' +
         '<input type="text" name="sentence_text[]" placeholder="Type sentence…">' +
+<<<<<<< HEAD
         // Hidden input to preserve existing images when editing; new rows start with empty existing image
         '<input type="hidden" name="sentence_image_existing[]" value="">' +
         // File input for uploading a new image
+=======
+        '<input type="hidden" name="sentence_image_existing[]" value="">' +
+>>>>>>> codespace-crispy-fortnight-696v9xjxpqwv2xxx9
         '<input type="file" name="sentence_image[]" accept="image/*" style="max-width:160px;">' +
         '<button type="button" class="btn-remove-s" onclick="removeSentence(this)">✖</button>';
     list.appendChild(div);

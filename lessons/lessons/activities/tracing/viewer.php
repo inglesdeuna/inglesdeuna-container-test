@@ -5,9 +5,10 @@ require_once __DIR__ . '/tracing_functions.php';
 require_once __DIR__ . '/../../core/_activity_viewer_template.php';
 
 // Sanitize inputs
+
+$unit = isset($_GET['unit']) ? trim((string) $_GET['unit']) : '';
+$returnTo = isset($_GET['return_to']) ? trim((string) $_GET['return_to']) : '';
 $activityId = isset($_GET['id']) ? trim((string) $_GET['id']) : '';
-$unit       = isset($_GET['unit']) ? trim((string) $_GET['unit']) : '';
-$returnTo   = isset($_GET['return_to']) ? trim((string) $_GET['return_to']) : '';
 
 // Validate required params
 if ($activityId === '' && $unit === '') {
@@ -16,22 +17,11 @@ if ($activityId === '' && $unit === '') {
 
 // Load activity
 $activity = load_tracing_activity($pdo, $unit, $activityId);
-
-// Safe defaults
-$images = (!empty($activity['images']) && is_array($activity['images']))
-    ? array_values($activity['images'])
-    : [];
-
-$viewerTitle = !empty($activity['title'])
-    ? (string) $activity['title']
-    : default_tracing_title();
-
-// Ensure activity ID fallback
+$images = (!empty($activity['images']) && is_array($activity['images'])) ? array_values($activity['images']) : [];
+$viewerTitle = !empty($activity['title']) ? (string) $activity['title'] : default_tracing_title();
 if ($activityId === '' && !empty($activity['id'])) {
     $activityId = (string) $activity['id'];
 }
-
-// Validate images
 if (empty($images)) {
     die('No tracing images found for this activity');
 }
@@ -101,6 +91,7 @@ ob_start();
         </div>
 
         <div class="tracing-completed" id="tracingCompleted">
+<<<<<<< HEAD
             <div style="font-size:86px;">✍️</div>
             <h2 id="tracingCompletedTitle"></h2>
             <p id="tracingCompletedText"></p>
@@ -108,6 +99,14 @@ ob_start();
 
             <button type="button" class="tracing-btn tracing-btn-next" id="restartBtn">Restart</button>
             <a href="#" id="tracingReturnBtn" style="display:none;" class="tracing-btn tracing-btn-next">Return</a>
+=======
+            <div style="font-size:86px;line-height:1;">✍️</div>
+            <h2 id="tracingCompletedTitle"></h2>
+            <p id="tracingCompletedText"></p>
+            <p id="tracingScoreText" style="font-weight:700;font-size:18px;color:#0f766e;"></p>
+            <button type="button" class="tracing-btn tracing-btn-next" id="restartBtn">Restart</button>
+            <a href="#" id="tracingReturnBtn" style="display:none;margin-top:18px;" class="tracing-btn tracing-btn-next">Return</a>
+>>>>>>> codespace-crispy-fortnight-696v9xjxpqwv2xxx9
         </div>
 
     </div>
@@ -115,6 +114,7 @@ ob_start();
 
 <script>
 (function () {
+<<<<<<< HEAD
     'use strict';
 
     const images = <?= json_encode($images, JSON_UNESCAPED_UNICODE); ?>;
@@ -144,6 +144,33 @@ ob_start();
     const activityTitle = <?= json_encode($viewerTitle); ?>;
     const ACTIVITY_ID = <?= json_encode($activityId); ?>;
     const RETURN_TO = <?= json_encode($returnTo); ?>;
+=======
+
+    var images = <?= json_encode(array_values($images), JSON_UNESCAPED_UNICODE); ?>;
+    var currentIdx = 0;
+    var penSize = 8;
+    var penColor = '#2563eb';
+    var drawing = false;
+
+    var canvas = document.getElementById('traceCanvas');
+    var ctx = canvas.getContext('2d');
+    var counterText = document.getElementById('counterText');
+    var nextBtn = document.getElementById('nextBtn');
+    var restartBtn = document.getElementById('restartBtn');
+    var counterEl = document.getElementById('tracingCounter');
+    var wrapEl = document.getElementById('tracingCanvasWrap');
+    var toolbarEl = document.getElementById('tracingToolbar');
+    var actionsEl = document.getElementById('tracingActions');
+    var completedEl = document.getElementById('tracingCompleted');
+    var completedTitleEl = document.getElementById('tracingCompletedTitle');
+    var completedTextEl = document.getElementById('tracingCompletedText');
+    var scoreTextEl = document.getElementById('tracingScoreText');
+    var returnBtn = document.getElementById('tracingReturnBtn');
+
+    var activityTitle = <?= json_encode($viewerTitle, JSON_UNESCAPED_UNICODE); ?>;
+    var ACTIVITY_ID = <?= json_encode($activityId, JSON_UNESCAPED_UNICODE); ?>;
+    var RETURN_TO = <?= json_encode($returnTo, JSON_UNESCAPED_UNICODE); ?>;
+>>>>>>> codespace-crispy-fortnight-696v9xjxpqwv2xxx9
 
     function getScaledPos(e, isTouch) {
         const rect = canvas.getBoundingClientRect();
@@ -181,6 +208,7 @@ ob_start();
         nextBtn.textContent = currentIdx < images.length - 1 ? 'Next' : 'Finish';
     }
 
+
     function showCompleted() {
         counterEl.style.display = 'none';
         wrapEl.style.display = 'none';
@@ -188,6 +216,7 @@ ob_start();
         actionsEl.style.display = 'none';
 
         completedEl.classList.add('active');
+<<<<<<< HEAD
 
         completedTitleEl.textContent = activityTitle || 'Tracing Practice';
         completedTextEl.textContent = `You've completed ${activityTitle || 'this activity'}.`;
@@ -197,6 +226,23 @@ ob_start();
             const joiner = RETURN_TO.includes('?') ? '&' : '?';
 
             returnBtn.href = `${RETURN_TO}${joiner}activity_percent=100&activity_total=${images.length}&activity_id=${encodeURIComponent(ACTIVITY_ID)}&activity_type=tracing`;
+=======
+        if (completedTitleEl) completedTitleEl.textContent = activityTitle || 'Tracing Practice';
+        if (completedTextEl) completedTextEl.textContent = "You've completed " + (activityTitle || 'this activity') + '. Great job practicing.';
+        if (scoreTextEl) scoreTextEl.textContent = '';
+        if (RETURN_TO && ACTIVITY_ID) {
+            returnBtn.style.display = '';
+            var joiner = RETURN_TO.indexOf('?') !== -1 ? '&' : '?';
+            var saveUrl = RETURN_TO +
+                joiner + 'activity_percent=100' +
+                '&activity_errors=0' +
+                '&activity_total=' + images.length +
+                '&activity_id=' + encodeURIComponent(ACTIVITY_ID) +
+                '&activity_type=tracing';
+            returnBtn.href = saveUrl;
+        } else {
+            returnBtn.style.display = 'none';
+>>>>>>> codespace-crispy-fortnight-696v9xjxpqwv2xxx9
         }
     }
 
