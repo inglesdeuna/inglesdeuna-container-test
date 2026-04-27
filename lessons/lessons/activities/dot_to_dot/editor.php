@@ -52,13 +52,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } elseif (count($points) < 3) {
         $error = 'Add at least 3 points.';
     } else {
-        $id = dot_to_dot_save_activity($pdo, $unit, $activityId, $title, $instruction, $image, $points, $labelSettings);
+        $id = save_dot_to_dot_activity($pdo, $unit, $activityId, $title, $instruction, $image, $points, $labelSettings);
         $saved = true;
         $activityId = $id;
     }
 }
 
-$activity = $activityId ? dot_to_dot_load_activity($pdo, $unit, $activityId) : [
+// ...existing code...
+$activity = $activityId ? load_dot_to_dot_activity($pdo, $unit, $activityId) : [
     'title' => '',
     'instruction' => '',
     'image' => '',
@@ -181,173 +182,6 @@ document.querySelector('input[type="file"][name="main_image"]').addEventListener
 </script>
 </body>
 </html>
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
-
-require_once __DIR__ . '/../../config/db.php';
-require_once __DIR__ . '/../../core/cloudinary_upload.php';
-require_once __DIR__ . '/dot_to_dot_functions.php';
-require_once __DIR__ . '/../../core/_activity_editor_template.php';
-
-if (isset($_SESSION['student_logged']) && $_SESSION['student_logged']) {
-    header('Location: /lessons/lessons/academic/student_dashboard.php?error=access_denied');
-    exit;
-}
-
-$isLoggedIn = !empty($_SESSION['academic_logged']) || !empty($_SESSION['admin_logged']);
-if (!$isLoggedIn) {
-    header('Location: /lessons/lessons/academic/login.php');
-    exit;
-}
-
-$activityId = isset($_GET['id']) ? trim((string) $_GET['id']) : '';
-$unit = isset($_GET['unit']) ? trim((string) $_GET['unit']) : '';
-$source = isset($_GET['source']) ? trim((string) $_GET['source']) : '';
-$assignment = isset($_GET['assignment']) ? trim((string) $_GET['assignment']) : '';
-
-if ($unit === '' && $activityId !== '') {
-    $unit = dot_to_dot_resolve_unit_from_activity($pdo, $activityId);
-}
-
-if ($unit === '') {
-    die('Unit not specified');
-}
-
-$activity = load_dot_to_dot_activity($pdo, $unit, $activityId);
-if ($activityId === '' && !empty($activity['id'])) {
-    $activityId = (string) $activity['id'];
-}
-
-$errorMessage = '';
-
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $postedTitle = isset($_POST['activity_title']) ? trim((string) $_POST['activity_title']) : '';
-    $postedInstruction = isset($_POST['activity_instruction']) ? trim((string) $_POST['activity_instruction']) : '';
-    $postedLabelMode = isset($_POST['label_mode']) ? strtolower(trim((string) $_POST['label_mode'])) : 'number';
-    $postedSequenceStart = isset($_POST['sequence_start']) ? (int) $_POST['sequence_start'] : 1;
-    $postedSequenceStep = isset($_POST['sequence_step']) ? (int) $_POST['sequence_step'] : 1;
-    $postedSequenceEnd = isset($_POST['sequence_end']) ? (int) $_POST['sequence_end'] : 20;
-
-    if (!in_array($postedLabelMode, array('number', 'letter', 'word'), true)) {
-        $postedLabelMode = 'number';
-    }
-    if ($postedSequenceStart < 1) {
-        $postedSequenceStart = 1;
-    }
-    if ($postedSequenceStep < 1) {
-        $postedSequenceStep = 1;
-    }
-    if ($postedSequenceEnd < $postedSequenceStart) {
-        $postedSequenceEnd = $postedSequenceStart;
-    }
-
-    $labelSettings = normalize_dot_to_dot_label_settings(array(
-        'mode' => $postedLabelMode,
-        'start' => $postedSequenceStart,
-        'step' => $postedSequenceStep,
-        'end' => $postedSequenceEnd,
-    ));
-
-    $maxPoints = (int) floor((($labelSettings['end'] - $labelSettings['start']) / $labelSettings['step'])) + 1;
-    if ($maxPoints < 1) {
-        $maxPoints = 1;
-    }
-
-    $existingImage = isset($_POST['image_existing']) ? trim((string) $_POST['image_existing']) : '';
-    $pointsRaw = isset($_POST['points_json']) ? trim((string) $_POST['points_json']) : '[]';
-
-    $image = $existingImage;
-
-    if (isset($_FILES['main_image']) && is_array($_FILES['main_image'])
-        && !empty($_FILES['main_image']['tmp_name']) && !empty($_FILES['main_image']['name'])) {
-        $uploaded = upload_to_cloudinary((string) $_FILES['main_image']['tmp_name']);
-        if ($uploaded) {
-            $image = (string) $uploaded;
-        }
-    }
-
-    $points = array();
-    $decodedPoints = json_decode($pointsRaw, true);
-
-    if (is_array($decodedPoints)) {
-        foreach ($decodedPoints as $point) {
-            if (!is_array($point)) {
-                continue;
-            }
-
-            $x = isset($point['x']) ? (float) $point['x'] : -1;
-            $y = isset($point['y']) ? (float) $point['y'] : -1;
-
-            if ($x < 0 || $x > 1 || $y < 0 || $y > 1) {
-                continue;
-            }
-
-            $points[] = array('x' => round($x, 6), 'y' => round($y, 6));
-        }
-    }
-
-    if (count($points) > $maxPoints) {
-        $errorMessage = 'You placed ' . count($points) . ' points but this sequence allows only ' . $maxPoints . '. Increase end value, reduce step, or remove points.';
-    } elseif ($image === '') {
-        $errorMessage = 'Upload a final colored image before saving.';
-    } elseif (count($points) < 3) {
-        $errorMessage = 'Add at least 3 points to create a playable dot-to-dot.';
-    } else {
-        $savedActivityId = save_dot_to_dot_activity(
-            $pdo,
-            $unit,
-            $activityId,
-            $postedTitle,
-            $postedInstruction,
-            $image,
-            $points,
-            $labelSettings
-        );
-
-        $params = array('unit=' . urlencode($unit), 'saved=1');
-        if ($savedActivityId !== '') {
-            $params[] = 'id=' . urlencode($savedActivityId);
-        }
-        if ($assignment !== '') {
-            $params[] = 'assignment=' . urlencode($assignment);
-        }
-        if ($source !== '') {
-            $params[] = 'source=' . urlencode($source);
-        }
-
-        header('Location: editor.php?' . implode('&', $params));
-        exit;
-    }
-
-    $activity['title'] = $postedTitle !== '' ? $postedTitle : default_dot_to_dot_title();
-    $activity['instruction'] = $postedInstruction !== ''
-        ? $postedInstruction
-        : 'Connect the dots in order to reveal the picture.';
-    $activity['image'] = $image;
-    $activity['label_settings'] = $labelSettings;
-    $activity['points'] = dot_to_dot_apply_labels($points, $labelSettings);
-}
-
-$activityTitle = isset($activity['title']) ? (string) $activity['title'] : default_dot_to_dot_title();
-$activityInstruction = isset($activity['instruction'])
-    ? (string) $activity['instruction']
-    : 'Connect the dots in order to reveal the picture.';
-$activityImage = isset($activity['image']) ? (string) $activity['image'] : '';
-$activityPoints = isset($activity['points']) && is_array($activity['points']) ? $activity['points'] : array();
-$activityLabelSettings = isset($activity['label_settings']) && is_array($activity['label_settings'])
-    ? normalize_dot_to_dot_label_settings($activity['label_settings'], count($activityPoints))
-    : default_dot_to_dot_label_settings();
-$activityPoints = dot_to_dot_apply_labels($activityPoints, $activityLabelSettings);
-
-ob_start();
-?>
-<style>
-.d2d-editor{max-width:1020px;margin:0 auto}
-.d2d-intro{background:linear-gradient(135deg,#ecfeff 0%,#eef2ff 55%,#fff7ed 100%);border:1px solid #bfdbfe;border-radius:18px;padding:16px 18px;margin-bottom:14px;box-shadow:0 14px 28px rgba(15,23,42,.08)}
-.d2d-intro h3{margin:0 0 6px;font-family:'Fredoka','Trebuchet MS',sans-serif;font-size:24px;color:#0f172a}
-.d2d-intro p{margin:0;color:#0f766e;font-weight:700;line-height:1.5}
-.d2d-grid{display:grid;grid-template-columns:340px 1fr;gap:14px}
 .d2d-card{background:#fff;border:1px solid #dbeafe;border-radius:16px;padding:14px;box-shadow:0 8px 20px rgba(15,23,42,.05)}
 .d2d-card label{display:block;font-size:13px;font-weight:800;color:#0f766e;margin:0 0 6px}
 .d2d-card input[type="text"],.d2d-card textarea,.d2d-card input[type="file"]{width:100%;border:1px solid #93c5fd;border-radius:10px;padding:10px 12px;background:#fff}

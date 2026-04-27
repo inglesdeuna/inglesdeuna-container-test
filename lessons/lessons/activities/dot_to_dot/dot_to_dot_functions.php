@@ -1,3 +1,47 @@
+// Helper: Normalize label settings for dot-to-dot
+function dot_to_dot_normalize_label_settings($settings, $numPoints = 0) {
+    $defaults = [
+        'mode' => 'number',
+        'start' => 1,
+        'step' => 1,
+        'end' => max(1, $numPoints),
+    ];
+    if (!is_array($settings)) $settings = [];
+    $out = array_merge($defaults, $settings);
+    if (!in_array($out['mode'], ['number', 'letter', 'word'], true)) $out['mode'] = 'number';
+    $out['start'] = (int)($out['start'] ?? 1);
+    $out['step'] = (int)($out['step'] ?? 1);
+    $out['end'] = (int)($out['end'] ?? max(1, $numPoints));
+    if ($out['step'] < 1) $out['step'] = 1;
+    if ($out['end'] < $out['start']) $out['end'] = $out['start'];
+    return $out;
+}
+
+// Helper: Normalize title for dot-to-dot
+function dot_to_dot_normalize_title($title) {
+    $title = trim((string)$title);
+    return $title !== '' ? $title : dot_to_dot_default_title();
+}
+
+// Helper: Generate label text for a dot
+function dot_to_dot_label_text($settings, $index) {
+    $mode = $settings['mode'] ?? 'number';
+    $start = (int)($settings['start'] ?? 1);
+    $step = (int)($settings['step'] ?? 1);
+    if ($step < 1) $step = 1;
+    $labelNum = $start + $index * $step;
+    if ($mode === 'letter') {
+        $alphabet = range('A', 'Z');
+        $i = ($labelNum - 1) % 26;
+        $repeat = (int)(($labelNum - 1) / 26) + 1;
+        return str_repeat($alphabet[$i], $repeat);
+    } elseif ($mode === 'word') {
+        // For demo, just use numbers as words
+        $words = [1=>'one',2=>'two',3=>'three',4=>'four',5=>'five',6=>'six',7=>'seven',8=>'eight',9=>'nine',10=>'ten'];
+        return $words[$labelNum] ?? (string)$labelNum;
+    }
+    return (string)$labelNum;
+}
 
 <?php
 // Dot-to-dot activity core functions
@@ -48,10 +92,10 @@ function dot_to_dot_apply_labels(array $points, array $settings): array
 function normalize_dot_to_dot_payload($rawData): array
 {
     $default = array(
-        'title' => default_dot_to_dot_title(),
+        'title' => dot_to_dot_default_title(),
         'instruction' => 'Connect the dots in order to reveal the picture.',
         'image' => '',
-        'label_settings' => default_dot_to_dot_label_settings(),
+        'label_settings' => dot_to_dot_default_label_settings(),
         'points' => array(),
     );
 
@@ -69,7 +113,7 @@ function normalize_dot_to_dot_payload($rawData): array
         ? trim((string) $decoded['instruction'])
         : $default['instruction'];
     $image = isset($decoded['image']) ? trim((string) $decoded['image']) : '';
-    $labelSettings = normalize_dot_to_dot_label_settings(
+    $labelSettings = dot_to_dot_normalize_label_settings(
         isset($decoded['label_settings']) ? $decoded['label_settings'] : array(),
         isset($decoded['points']) && is_array($decoded['points']) ? count($decoded['points']) : 0
     );
@@ -97,7 +141,7 @@ function normalize_dot_to_dot_payload($rawData): array
     $points = dot_to_dot_apply_labels($points, $labelSettings);
 
     return array(
-        'title' => normalize_dot_to_dot_title($title),
+        'title' => dot_to_dot_normalize_title($title),
         'instruction' => $instruction !== '' ? $instruction : $default['instruction'],
         'image' => $image,
         'label_settings' => $labelSettings,
@@ -192,10 +236,10 @@ function load_dot_to_dot_activity(PDO $pdo, string $unit, string $activityId): a
 
     $fallback = array(
         'id' => '',
-        'title' => default_dot_to_dot_title(),
+        'title' => dot_to_dot_default_title(),
         'instruction' => 'Connect the dots in order to reveal the picture.',
         'image' => '',
-        'label_settings' => default_dot_to_dot_label_settings(),
+        'label_settings' => dot_to_dot_default_label_settings(),
         'points' => array(),
     );
 
@@ -265,12 +309,12 @@ function load_dot_to_dot_activity(PDO $pdo, string $unit, string $activityId): a
 
     return array(
         'id' => isset($row['id']) ? (string) $row['id'] : '',
-        'title' => normalize_dot_to_dot_title((string) ($payload['title'] ?? '')),
+        'title' => dot_to_dot_normalize_title((string) ($payload['title'] ?? '')),
         'instruction' => (string) ($payload['instruction'] ?? 'Connect the dots in order to reveal the picture.'),
         'image' => (string) ($payload['image'] ?? ''),
         'label_settings' => isset($payload['label_settings']) && is_array($payload['label_settings'])
             ? $payload['label_settings']
-            : default_dot_to_dot_label_settings(),
+            : dot_to_dot_default_label_settings(),
         'points' => isset($payload['points']) && is_array($payload['points']) ? $payload['points'] : array(),
     );
 }
@@ -279,11 +323,11 @@ function save_dot_to_dot_activity(PDO $pdo, string $unit, string $activityId, st
 {
     $columns = dot_to_dot_activities_columns($pdo);
 
-    $title = normalize_dot_to_dot_title($title);
+    $title = dot_to_dot_normalize_title($title);
     $instruction = trim($instruction) !== ''
         ? trim($instruction)
         : 'Connect the dots in order to reveal the picture.';
-    $labelSettings = normalize_dot_to_dot_label_settings($labelSettings, count($points));
+    $labelSettings = dot_to_dot_normalize_label_settings($labelSettings, count($points));
     $points = dot_to_dot_apply_labels($points, $labelSettings);
 
     $json = json_encode(

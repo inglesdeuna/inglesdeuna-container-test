@@ -11,7 +11,7 @@ if ($activityId === '' && $unit === '') {
   die('Activity not specified');
 }
 
-$activity = dot_to_dot_load_activity($pdo, $unit, $activityId);
+$activity = load_dot_to_dot_activity($pdo, $unit, $activityId);
 $points = $activity['points'] ?? [];
 $image = $activity['image'] ?? '';
 $viewerTitle = !empty($activity['title']) ? (string) $activity['title'] : dot_to_dot_default_title();
