@@ -91,7 +91,9 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   const lineSound = new Audio('../../hangman/assets/correct.wav');
+  lineSound.volume = 0.25;
   const okSound   = new Audio('../../hangman/assets/correct.wav');
+  okSound.volume = 0.25;
   const failSound = new Audio('../../hangman/assets/lose.mp3');
   const winSound  = new Audio('../../hangman/assets/win.mp3');
 
