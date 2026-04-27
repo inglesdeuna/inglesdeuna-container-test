@@ -2,7 +2,7 @@ document.addEventListener('DOMContentLoaded', function () {
   const payload = window.DOT_TO_DOT_DATA || {};
   const points = Array.isArray(payload.points) ? payload.points : [];
   const labelSettings = payload.labelSettings || {};
-
+// dot_to_dot.js - erased for full rewrite
   const stage = document.getElementById('d2dvStage');
   const canvas = document.getElementById('d2dvCanvas');
   const image = document.getElementById('d2dvFinalImage');
