@@ -3,7 +3,8 @@ require_once __DIR__ . '/../../core/db.php';
 require_once __DIR__ . '/../../core/_activity_viewer_template.php';
 
 $activityId = isset($_GET['id']) ? trim((string)$_GET['id']) : '';
-$unit = isset($_GET['unit']) ? trim((string)$_GET['unit']) : '';
+$unit       = isset($_GET['unit']) ? trim((string)$_GET['unit']) : '';
+$returnTo   = isset($_GET['return_to']) ? trim((string)$_GET['return_to']) : '';
 
 if ($activityId === '' && $unit === '') {
     die('Activity not specified');
@@ -116,6 +117,11 @@ ob_start();
   font-size: 1.1em;
 }
 </style>
+<div id="fbk-completion" style="display:none;text-align:center;padding:32px 20px;">
+  <div style="font-size:52px;margin-bottom:10px;">✅</div>
+  <p style="font-family:'Fredoka','Trebuchet MS',sans-serif;font-size:28px;font-weight:700;color:#15803d;margin:0 0 8px;">Completed!</p>
+  <p id="fbk-score" style="font-size:18px;font-weight:800;color:#166534;margin:0;"></p>
+</div>
 <div class="fbk-card">
   <div class="fbk-title">Fill-in-the-Blank Activity</div>
   <div class="fbk-instructions" id="fbk-instructions"><?= htmlspecialchars($activity['instructions']) ?></div>
@@ -201,7 +207,24 @@ nextBtn.onclick = function() {
         if (val === (answers[i]||'').trim().toLowerCase()) correct++;
       }
     }
-    window.location.href = `completed.php?id=<?= urlencode($activityId) ?>&unit=<?= urlencode($unit) ?>&correct=${correct}&total=${total}`;
+    const errors = Math.max(0, total - correct);
+    const percent = total > 0 ? Math.round((correct / total) * 100) : 0;
+    const FBK_RETURN_TO = <?= json_encode($returnTo) ?>;
+    const FBK_ACTIVITY_ID = <?= json_encode($activityId) ?>;
+    if (FBK_RETURN_TO && FBK_ACTIVITY_ID) {
+      const joiner = FBK_RETURN_TO.indexOf('?') !== -1 ? '&' : '?';
+      const saveUrl = FBK_RETURN_TO + joiner +
+        'activity_percent=' + encodeURIComponent(String(percent)) +
+        '&activity_errors=' + encodeURIComponent(String(errors)) +
+        '&activity_total=' + encodeURIComponent(String(total)) +
+        '&activity_id=' + encodeURIComponent(FBK_ACTIVITY_ID) +
+        '&activity_type=fillblank';
+      fetch(saveUrl, { method: 'GET', credentials: 'same-origin', cache: 'no-store', keepalive: true }).catch(function () {});
+    }
+    document.querySelector('.fbk-card').style.display = 'none';
+    const panel = document.getElementById('fbk-completion');
+    document.getElementById('fbk-score').textContent = 'Score: ' + correct + ' / ' + total + ' (' + percent + '%)';
+    panel.style.display = '';
   }
 };
 

@@ -19,6 +19,7 @@ require_once __DIR__ . '/../../config/db.php';
 
 // Get the activity ID from the query string
 $activityId = isset($_GET['id']) ? trim((string) $_GET['id']) : '';
+$returnTo   = isset($_GET['return_to']) ? trim((string) $_GET['return_to']) : '';
 if ($activityId === '') {
     die('Activity not specified');
 }
@@ -222,6 +223,18 @@ body {
         if (JSON.stringify(userOrder) === JSON.stringify(correctOrder)) {
             document.getElementById('result').textContent = '✅ Correct! Well done.';
             document.getElementById('result').style.color = '#16a34a';
+            var OS_RETURN_TO = <?= json_encode($returnTo) ?>;
+            var OS_ACTIVITY_ID = <?= json_encode($activityId) ?>;
+            var OS_TOTAL = correctOrder.length;
+            if (OS_RETURN_TO && OS_ACTIVITY_ID && OS_TOTAL > 0) {
+                var joiner = OS_RETURN_TO.indexOf('?') !== -1 ? '&' : '?';
+                var saveUrl = OS_RETURN_TO + joiner +
+                    'activity_percent=100&activity_errors=0' +
+                    '&activity_total=' + encodeURIComponent(String(OS_TOTAL)) +
+                    '&activity_id=' + encodeURIComponent(OS_ACTIVITY_ID) +
+                    '&activity_type=order_sentences';
+                fetch(saveUrl, { method: 'GET', credentials: 'same-origin', cache: 'no-store', keepalive: true }).catch(function () {});
+            }
         } else {
             document.getElementById('result').textContent = '❌ Not correct. Try again.';
             document.getElementById('result').style.color = '#dc2626';

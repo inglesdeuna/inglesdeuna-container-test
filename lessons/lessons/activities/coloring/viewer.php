@@ -297,6 +297,14 @@ ob_start();
         paletteWrap.style.display = 'none';
         stage.style.display       = 'none';
         completedEl.classList.add('active');
+        if (COLORING_RETURN_TO && COLORING_ACTIVITY_ID) {
+            var joiner = COLORING_RETURN_TO.indexOf('?') !== -1 ? '&' : '?';
+            var saveUrl = COLORING_RETURN_TO + joiner +
+                'activity_percent=100&activity_errors=0&activity_total=1' +
+                '&activity_id=' + encodeURIComponent(COLORING_ACTIVITY_ID) +
+                '&activity_type=coloring';
+            fetch(saveUrl, { method: 'GET', credentials: 'same-origin', cache: 'no-store', keepalive: true }).catch(function () {});
+        }
     }
     function showStage() {
         topbar.style.display      = '';
