@@ -1,0 +1,737 @@
+/*
+ * Activity Design System
+ * Palette: Teal · Fuchsia · Blue
+ * Version: 1.0
+ *
+ * Import order in templates:
+ *   1. Google Fonts (Fredoka, Nunito)
+ *   2. This file
+ *   3. Activity-specific overrides (scoped to activity class)
+ *
+ * Usage:
+ *   Viewers  → add class="ds-viewer" to the root wrapper
+ *   Editors  → add class="ds-editor" to the root wrapper
+ *   Buttons  → <button class="ds-btn ds-btn-teal">Next</button>
+ *   Feedback → <div class="ds-feedback ds-feedback-correct">✔ Right!</div>
+ *   Completed→ <div class="ds-completed active"> … </div>
+ */
+
+/* ═══════════════════════════════════════════════════════════════
+   1. CSS Custom Properties
+═══════════════════════════════════════════════════════════════ */
+:root {
+  /* ── Teal (primary actions: Next, Check, Save, Confirm) ── */
+  --ds-teal:         #14b8a6;
+  --ds-teal-dark:    #0f766e;
+  --ds-teal-light:   #ccfbf1;
+  --ds-teal-bg:      #f0fdfa;
+
+  /* ── Fuchsia (accent: Hint, Reveal, Highlight) ─────────── */
+  --ds-fuchsia:      #d946ef;
+  --ds-fuchsia-dark: #a21caf;
+  --ds-fuchsia-light:#fae8ff;
+  --ds-fuchsia-bg:   #fdf4ff;
+
+  /* ── Blue (secondary nav: Previous, Back, Listen) ──────── */
+  --ds-blue:         #2563eb;
+  --ds-blue-dark:    #1d4ed8;
+  --ds-blue-light:   #dbeafe;
+  --ds-blue-bg:      #eff6ff;
+
+  /* ── Status (accessibility-required only) ───────────────── */
+  --ds-success:      #16a34a;
+  --ds-success-light:#dcfce7;
+  --ds-success-border:#86efac;
+  --ds-error:        #dc2626;
+  --ds-error-light:  #fee2e2;
+  --ds-error-border: #fca5a5;
+  --ds-warning:      #d97706;
+  --ds-warning-light:#fef3c7;
+  --ds-warning-border:#fcd34d;
+
+  /* ── Neutrals ────────────────────────────────────────────── */
+  --ds-text:         #0f172a;
+  --ds-text-muted:   #475569;
+  --ds-text-subtle:  #94a3b8;
+  --ds-bg:           #f8fafc;
+  --ds-surface:      #ffffff;
+  --ds-border:       #e2e8f0;
+  --ds-border-light: #f1f5f9;
+
+  /* ── Typography ─────────────────────────────────────────── */
+  --ds-font-display: 'Fredoka', 'Trebuchet MS', sans-serif;
+  --ds-font-body:    'Nunito', 'Segoe UI', Arial, sans-serif;
+
+  /* ── Border radius ───────────────────────────────────────── */
+  --ds-r-xs:   8px;
+  --ds-r-sm:   12px;
+  --ds-r-md:   18px;
+  --ds-r-lg:   24px;
+  --ds-r-xl:   32px;
+  --ds-r-pill: 999px;
+
+  /* ── Shadows ─────────────────────────────────────────────── */
+  --ds-shadow-xs: 0 1px 3px rgba(0,0,0,.06);
+  --ds-shadow-sm: 0 4px 14px rgba(0,0,0,.07);
+  --ds-shadow-md: 0 10px 28px rgba(0,0,0,.09);
+  --ds-shadow-lg: 0 20px 48px rgba(0,0,0,.12);
+
+  /* ── Container widths ────────────────────────────────────── */
+  --ds-viewer-width: 980px;
+  --ds-editor-width: 1100px;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   2. Base reset (minimal — does not conflict with Bootstrap)
+═══════════════════════════════════════════════════════════════ */
+.ds-viewer *,
+.ds-editor *,
+.ds-completed *,
+.ds-btn,
+.ds-feedback,
+.ds-field,
+.ds-chip {
+  box-sizing: border-box;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   3. Layout containers
+═══════════════════════════════════════════════════════════════ */
+
+/* Viewer root wrapper */
+.ds-viewer {
+  max-width: var(--ds-viewer-width);
+  margin-left: auto;
+  margin-right: auto;
+  font-family: var(--ds-font-body);
+  color: var(--ds-text);
+}
+
+/* Editor root wrapper */
+.ds-editor {
+  max-width: var(--ds-editor-width);
+  margin-left: auto;
+  margin-right: auto;
+  font-family: var(--ds-font-body);
+  color: var(--ds-text);
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   4. Intro / header card
+   Used at the top of every viewer to show title + instructions.
+═══════════════════════════════════════════════════════════════ */
+.ds-intro {
+  margin-bottom: 16px;
+  padding: 22px 26px;
+  border-radius: var(--ds-r-xl);
+  border: 1px solid var(--ds-blue-light);
+  background: linear-gradient(
+    135deg,
+    var(--ds-blue-bg)    0%,
+    var(--ds-fuchsia-bg) 50%,
+    var(--ds-teal-bg)    100%
+  );
+  box-shadow: var(--ds-shadow-md);
+}
+
+.ds-intro h2 {
+  margin: 0 0 6px;
+  font-family: var(--ds-font-display);
+  font-size: clamp(22px, 2.8vw, 30px);
+  font-weight: 700;
+  line-height: 1.1;
+  color: var(--ds-blue-dark);
+}
+
+.ds-intro p {
+  margin: 0;
+  color: var(--ds-text-muted);
+  font-size: 15px;
+  line-height: 1.55;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   5. Stage / content card
+   The main interactive area of a viewer.
+═══════════════════════════════════════════════════════════════ */
+.ds-stage {
+  background: var(--ds-surface);
+  border: 1px solid var(--ds-border);
+  border-radius: var(--ds-r-lg);
+  box-shadow: var(--ds-shadow-md);
+  overflow: hidden;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   6. Controls row
+   Horizontal flex row for buttons at the bottom of an activity.
+═══════════════════════════════════════════════════════════════ */
+.ds-controls {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px;
+}
+
+.ds-controls-spread {
+  justify-content: space-between;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   7. Button system
+═══════════════════════════════════════════════════════════════ */
+.ds-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: none;
+  border-radius: var(--ds-r-pill);
+  padding: 11px 22px;
+  min-width: 120px;
+  font-family: var(--ds-font-body);
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1;
+  cursor: pointer;
+  text-decoration: none;
+  white-space: nowrap;
+  box-shadow: var(--ds-shadow-sm);
+  transition: filter .15s ease, transform .15s ease;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.ds-btn:hover,
+.ds-btn:focus-visible {
+  filter: brightness(1.07);
+  transform: translateY(-1px);
+  outline: none;
+  text-decoration: none;
+}
+
+.ds-btn:active {
+  transform: translateY(0);
+  filter: brightness(.95);
+}
+
+.ds-btn:disabled,
+.ds-btn[aria-disabled="true"] {
+  opacity: .4;
+  pointer-events: none;
+  cursor: not-allowed;
+}
+
+/* ── Color variants ── */
+
+/* Teal — primary action (Next, Check, Confirm, Save) */
+.ds-btn-teal {
+  background: linear-gradient(180deg, var(--ds-teal) 0%, var(--ds-teal-dark) 100%);
+  color: #fff;
+}
+
+/* Fuchsia — accent action (Hint, Reveal, Show Answer) */
+.ds-btn-fuchsia {
+  background: linear-gradient(180deg, var(--ds-fuchsia) 0%, var(--ds-fuchsia-dark) 100%);
+  color: #fff;
+}
+
+/* Blue — secondary nav (Previous, Back, Listen) */
+.ds-btn-blue {
+  background: linear-gradient(180deg, var(--ds-blue) 0%, var(--ds-blue-dark) 100%);
+  color: #fff;
+}
+
+/* Success — complete, finish, submit */
+.ds-btn-success {
+  background: linear-gradient(180deg, #22c55e 0%, var(--ds-success) 100%);
+  color: #fff;
+}
+
+/* Soft — secondary / ghost (Reset, Skip) */
+.ds-btn-soft {
+  background: linear-gradient(180deg, #f8fafc 0%, #e2e8f0 100%);
+  color: var(--ds-text);
+  border: 1px solid var(--ds-border);
+  box-shadow: var(--ds-shadow-xs);
+}
+
+.ds-btn-soft:hover {
+  background: linear-gradient(180deg, #e2e8f0 0%, #cbd5e1 100%);
+  filter: none;
+  transform: translateY(-1px);
+}
+
+/* Danger — destructive (Delete) */
+.ds-btn-danger {
+  background: linear-gradient(180deg, #ef4444 0%, var(--ds-error) 100%);
+  color: #fff;
+}
+
+/* ── Size modifiers ── */
+.ds-btn-sm {
+  padding: 8px 16px;
+  font-size: 13px;
+  min-width: 80px;
+}
+
+.ds-btn-lg {
+  padding: 14px 30px;
+  font-size: 16px;
+  min-width: 160px;
+}
+
+.ds-btn-full {
+  width: 100%;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   8. Feedback states
+   Displayed after answer checking or action results.
+═══════════════════════════════════════════════════════════════ */
+.ds-feedback {
+  padding: 10px 14px;
+  border-radius: var(--ds-r-sm);
+  font-family: var(--ds-font-body);
+  font-weight: 800;
+  font-size: 15px;
+  text-align: center;
+  background: var(--ds-bg);
+  border: 1px solid var(--ds-border);
+  color: var(--ds-text-muted);
+  min-height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ds-feedback-correct,
+.ds-feedback.correct,
+.ds-feedback.good {
+  background: var(--ds-success-light);
+  border-color: var(--ds-success-border);
+  color: #166534;
+}
+
+.ds-feedback-wrong,
+.ds-feedback.wrong,
+.ds-feedback.bad {
+  background: var(--ds-error-light);
+  border-color: var(--ds-error-border);
+  color: #991b1b;
+}
+
+.ds-feedback-info {
+  background: var(--ds-blue-bg);
+  border-color: var(--ds-blue-light);
+  color: var(--ds-blue-dark);
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   9. Score & Progress
+═══════════════════════════════════════════════════════════════ */
+.ds-score {
+  font-family: var(--ds-font-body);
+  font-weight: 800;
+  font-size: 18px;
+  color: var(--ds-teal-dark);
+  text-align: center;
+  margin: 0;
+}
+
+.ds-progress {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-family: var(--ds-font-body);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ds-text-muted);
+}
+
+/* Pill chips (e.g. "3 / 9 lines", "Score: 7/9") */
+.ds-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 12px;
+  border-radius: var(--ds-r-pill);
+  font-family: var(--ds-font-body);
+  font-size: 13px;
+  font-weight: 800;
+  background: var(--ds-blue-bg);
+  color: var(--ds-blue-dark);
+  border: 1px solid var(--ds-blue-light);
+}
+
+.ds-chip-teal {
+  background: var(--ds-teal-bg);
+  color: var(--ds-teal-dark);
+  border-color: var(--ds-teal-light);
+}
+
+.ds-chip-fuchsia {
+  background: var(--ds-fuchsia-bg);
+  color: var(--ds-fuchsia-dark);
+  border-color: var(--ds-fuchsia-light);
+}
+
+.ds-chip-success {
+  background: var(--ds-success-light);
+  color: var(--ds-success);
+  border-color: var(--ds-success-border);
+}
+
+.ds-chip-error {
+  background: var(--ds-error-light);
+  color: var(--ds-error);
+  border-color: var(--ds-error-border);
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   10. Completed screen
+   Shown when all activity items are finished.
+   Pattern: icon → title → description → score → restart button
+═══════════════════════════════════════════════════════════════ */
+.ds-completed {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  text-align: center;
+  max-width: 580px;
+  margin: 0 auto;
+  padding: 48px 24px;
+}
+
+.ds-completed.active {
+  display: flex;
+}
+
+.ds-completed-icon {
+  font-size: 72px;
+  line-height: 1;
+  margin-bottom: 4px;
+}
+
+.ds-completed-title {
+  margin: 0;
+  font-family: var(--ds-font-display);
+  font-size: clamp(28px, 4vw, 40px);
+  font-weight: 700;
+  color: var(--ds-teal-dark);
+  line-height: 1.1;
+}
+
+.ds-completed-text {
+  margin: 0;
+  font-size: 16px;
+  line-height: 1.65;
+  color: var(--ds-text-muted);
+  max-width: 440px;
+}
+
+.ds-completed-score {
+  font-family: var(--ds-font-body);
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--ds-blue-dark);
+  margin: 0;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   11. Editor — form elements
+   Used inside render_activity_editor() content areas.
+   These are prefixed ds- so they layer safely over Bootstrap.
+═══════════════════════════════════════════════════════════════ */
+.ds-field {
+  margin-bottom: 18px;
+}
+
+.ds-label {
+  display: block;
+  font-family: var(--ds-font-body);
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--ds-text);
+  margin-bottom: 6px;
+  letter-spacing: .01em;
+}
+
+.ds-label-hint {
+  font-weight: 600;
+  color: var(--ds-text-muted);
+  font-size: 12px;
+  margin-left: 6px;
+}
+
+.ds-input,
+.ds-textarea,
+.ds-select {
+  display: block;
+  width: 100%;
+  padding: 10px 14px;
+  border: 1.5px solid var(--ds-border);
+  border-radius: var(--ds-r-sm);
+  font-family: var(--ds-font-body);
+  font-size: 14px;
+  color: var(--ds-text);
+  background: var(--ds-surface);
+  transition: border-color .15s ease, box-shadow .15s ease;
+  outline: none;
+}
+
+.ds-input:focus,
+.ds-textarea:focus,
+.ds-select:focus {
+  border-color: var(--ds-blue);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, .10);
+}
+
+.ds-textarea {
+  resize: vertical;
+  min-height: 80px;
+  line-height: 1.5;
+}
+
+.ds-select {
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23475569' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 36px;
+}
+
+/* Section heading inside editor body */
+.ds-section {
+  margin-bottom: 28px;
+}
+
+.ds-section-title {
+  font-family: var(--ds-font-display);
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--ds-blue-dark);
+  margin: 0 0 14px;
+  padding-bottom: 10px;
+  border-bottom: 2px solid var(--ds-blue-light);
+}
+
+/* Bottom action bar inside editor */
+.ds-editor-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  padding-top: 20px;
+  border-top: 1px solid var(--ds-border);
+  margin-top: 24px;
+}
+
+/* Repeating item cards (word-pairs, flashcards, etc.) */
+.ds-item-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ds-item-card {
+  background: var(--ds-bg);
+  border: 1px solid var(--ds-border);
+  border-radius: var(--ds-r-md);
+  padding: 14px 16px;
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.ds-item-index {
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--ds-r-pill);
+  background: var(--ds-blue-bg);
+  color: var(--ds-blue-dark);
+  font-weight: 800;
+  font-size: 12px;
+}
+
+/* Image preview in editors */
+.ds-image-preview {
+  max-width: 100%;
+  max-height: 200px;
+  object-fit: contain;
+  border-radius: var(--ds-r-md);
+  border: 1px solid var(--ds-border);
+  background: var(--ds-bg);
+  padding: 8px;
+  display: block;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   12. Alert / notice blocks
+═══════════════════════════════════════════════════════════════ */
+.ds-alert {
+  padding: 12px 16px;
+  border-radius: var(--ds-r-sm);
+  font-family: var(--ds-font-body);
+  font-size: 14px;
+  font-weight: 700;
+  border: 1px solid transparent;
+  margin-bottom: 12px;
+}
+
+.ds-alert-info {
+  background: var(--ds-blue-bg);
+  border-color: var(--ds-blue-light);
+  color: var(--ds-blue-dark);
+}
+
+.ds-alert-success {
+  background: var(--ds-success-light);
+  border-color: var(--ds-success-border);
+  color: #166534;
+}
+
+.ds-alert-error {
+  background: var(--ds-error-light);
+  border-color: var(--ds-error-border);
+  color: #991b1b;
+}
+
+.ds-alert-warning {
+  background: var(--ds-warning-light);
+  border-color: var(--ds-warning-border);
+  color: #92400e;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   13. Editor topbar override
+   Applied to the shared editor template shell.
+═══════════════════════════════════════════════════════════════ */
+.editor-shell {
+  background: linear-gradient(
+    155deg,
+    var(--ds-blue-bg)    0%,
+    var(--ds-fuchsia-bg) 55%,
+    var(--ds-teal-bg)    100%
+  );
+  min-height: 100vh;
+  padding: 24px;
+}
+
+.editor-topbar .back-btn {
+  background: linear-gradient(180deg, var(--ds-teal) 0%, var(--ds-teal-dark) 100%);
+  border-radius: var(--ds-r-pill) !important;
+  font-family: var(--ds-font-body);
+  font-weight: 800;
+  font-size: 13px;
+  padding: 10px 18px;
+  box-shadow: var(--ds-shadow-sm);
+  border: none;
+  transition: filter .15s ease, transform .15s ease;
+  text-decoration: none;
+  color: #fff !important;
+}
+
+.editor-topbar .back-btn:hover {
+  filter: brightness(1.07);
+  transform: translateY(-1px);
+  background: linear-gradient(180deg, var(--ds-teal) 0%, var(--ds-teal-dark) 100%);
+  color: #fff !important;
+  text-decoration: none;
+}
+
+.editor-card {
+  border-radius: var(--ds-r-lg) !important;
+  box-shadow: var(--ds-shadow-lg) !important;
+  border: 1px solid var(--ds-border) !important;
+  overflow: hidden;
+}
+
+.editor-header {
+  background: linear-gradient(180deg, #ffffff 0%, var(--ds-blue-bg) 100%) !important;
+  border-bottom: 2px solid var(--ds-blue-light) !important;
+  padding: 22px 28px !important;
+}
+
+.editor-header h1 {
+  font-family: var(--ds-font-display) !important;
+  font-size: clamp(20px, 2.4vw, 26px) !important;
+  color: var(--ds-blue-dark) !important;
+  font-weight: 700 !important;
+  margin: 0 !important;
+}
+
+.editor-header .subtitle {
+  color: var(--ds-text-muted) !important;
+  font-size: 13px !important;
+  margin-top: 4px !important;
+  font-family: var(--ds-font-body) !important;
+}
+
+.editor-body {
+  padding: 28px !important;
+  background: #fff;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   14. Responsive
+═══════════════════════════════════════════════════════════════ */
+@media (max-width: 680px) {
+  .ds-controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .ds-btn:not(.ds-btn-sm) {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .ds-intro {
+    padding: 16px 18px;
+    border-radius: var(--ds-r-lg);
+  }
+
+  .ds-intro h2 {
+    font-size: 22px;
+  }
+
+  .ds-completed {
+    padding: 36px 16px;
+  }
+
+  .ds-completed-icon {
+    font-size: 56px;
+  }
+
+  .editor-shell {
+    padding: 12px;
+  }
+
+  .editor-body {
+    padding: 16px !important;
+  }
+}
