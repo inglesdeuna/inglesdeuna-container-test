@@ -98,6 +98,7 @@ revealBtn.addEventListener('click', function() {
   setTimeout(() => {
     completedMsg.textContent = 'You completed this activity!';
   }, 500);
+
 });
 </script>
 <?php endif; ?>
@@ -105,20 +106,7 @@ revealBtn.addEventListener('click', function() {
 <?php
 $content = ob_get_clean();
 render_activity_viewer($viewerTitle, '🔵', $content);
-
-<?php
-if (session_status() === PHP_SESSION_NONE) session_start();
-require_once __DIR__ . '/../../config/db.php';
-require_once __DIR__ . '/dot_to_dot_functions.php';
-
-$activityId = isset($_GET['id']) ? trim((string) $_GET['id']) : '';
-$unit = isset($_GET['unit']) ? trim((string) $_GET['unit']) : '';
-if ($unit === '' && $activityId !== '') {
-    $unit = dot_to_dot_resolve_unit_from_activity($pdo, $activityId);
-}
-if ($unit === '') {
-    die('Unit not specified');
-}
+// End of file
 
 $activity = load_dot_to_dot_activity($pdo, $unit, $activityId);
 $activityTitle = isset($activity['title']) ? (string) $activity['title'] : 'Dot to Dot';
