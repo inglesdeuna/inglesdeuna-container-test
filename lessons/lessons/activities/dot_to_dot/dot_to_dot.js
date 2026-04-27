@@ -95,6 +95,11 @@ document.addEventListener('DOMContentLoaded', function () {
   const failSound = new Audio('../../hangman/assets/lose.mp3');
   const winSound  = new Audio('../../hangman/assets/win.mp3');
 
+  const _vp = new URLSearchParams(window.location.search || '');
+  const isEmbedded = _vp.get('embedded') === '1'
+    || _vp.get('from') === 'teacher_course'
+    || _vp.get('from') === 'student_course';
+
   let currentIndex = 0;
   let errors = 0;
   let dragging = false;
@@ -408,7 +413,7 @@ document.addEventListener('DOMContentLoaded', function () {
     revealBtn.addEventListener('click', function () {
       stage.classList.add('revealed');
       revealBtn.style.display = 'none';
-      continueBtn.style.display = completionUrl ? '' : 'none';
+      continueBtn.style.display = (!isEmbedded && completionUrl) ? '' : 'none';
       updateStatus();
     });
   }
