@@ -12,47 +12,11 @@ function dot_to_dot_default_instruction(): string {
 
 function dot_to_dot_default_label_settings(): array {
     return [
-    $ones = array(
-        0 => 'zero', 1 => 'one', 2 => 'two', 3 => 'three', 4 => 'four',
-        5 => 'five', 6 => 'six', 7 => 'seven', 8 => 'eight', 9 => 'nine',
-        10 => 'ten', 11 => 'eleven', 12 => 'twelve', 13 => 'thirteen', 14 => 'fourteen',
-        15 => 'fifteen', 16 => 'sixteen', 17 => 'seventeen', 18 => 'eighteen', 19 => 'nineteen',
-    );
-
-    $tens = array(
-        2 => 'twenty', 3 => 'thirty', 4 => 'forty', 5 => 'fifty',
-        6 => 'sixty', 7 => 'seventy', 8 => 'eighty', 9 => 'ninety',
-    );
-
-    if ($value < 20) {
-        return $ones[$value];
-    }
-
-    if ($value < 100) {
-        $ten = (int) floor($value / 10);
-        $rest = $value % 10;
-        return $rest === 0 ? $tens[$ten] : ($tens[$ten] . '-' . $ones[$rest]);
-    }
-
-    if ($value < 1000) {
-        $hundred = (int) floor($value / 100);
-        $rest = $value % 100;
-        if ($rest === 0) {
-            return $ones[$hundred] . ' hundred';
-        }
-        return $ones[$hundred] . ' hundred ' . dot_to_dot_number_to_words_en($rest);
-    }
-
-    if ($value < 1000000) {
-        $thousand = (int) floor($value / 1000);
-        $rest = $value % 1000;
-        if ($rest === 0) {
-            return dot_to_dot_number_to_words_en($thousand) . ' thousand';
-        }
-        return dot_to_dot_number_to_words_en($thousand) . ' thousand ' . dot_to_dot_number_to_words_en($rest);
-    }
-
-    return (string) $value;
+        'label_type' => 'numbers',
+        'start' => 1,
+        'step' => 1,
+        'format' => 'decimal',
+    ];
 }
 
 
