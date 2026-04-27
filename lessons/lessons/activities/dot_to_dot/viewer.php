@@ -58,6 +58,7 @@ ob_start();
             <div class="d2dv-toolbar">
                 <button class="d2dv-btn d2dv-btn-soft"   id="d2dvResetBtn">Reset</button>
                 <button class="d2dv-btn d2dv-btn-accent"  id="d2dvHintBtn">Hint</button>
+                <button class="d2dv-btn d2dv-btn-accent"  id="d2dvRevealBtn" style="display:none">Reveal Image</button>
                 <button class="d2dv-btn d2dv-btn-next"    id="d2dvContinueBtn" style="display:none">Continue</button>
             </div>
         </div>

@@ -13,6 +13,7 @@ document.addEventListener('DOMContentLoaded', function () {
   const statusEl = document.getElementById('d2dvStatus');
   const resetBtn = document.getElementById('d2dvResetBtn');
   const hintBtn = document.getElementById('d2dvHintBtn');
+  const revealBtn = document.getElementById('d2dvRevealBtn');
   const continueBtn = document.getElementById('d2dvContinueBtn');
 
   if (!stage || !canvas || !image || points.length < 3) {
@@ -218,8 +219,9 @@ document.addEventListener('DOMContentLoaded', function () {
     if (done) {
       progressEl.textContent = 'Great job!';
       counterEl.textContent = totalSegments + ' / ' + totalSegments + ' lines';
-      statusEl.textContent = 'You completed the picture.';
-      continueBtn.style.display = completionUrl ? '' : 'none';
+      statusEl.textContent = stage.classList.contains('revealed')
+        ? 'You completed the picture!'
+        : 'All dots connected! Click Reveal Image to see the picture.';
       return;
     }
 
@@ -298,9 +300,9 @@ document.addEventListener('DOMContentLoaded', function () {
     done = true;
     dragging = false;
     dragPoint = null;
-    stage.classList.add('revealed');
     play(winSound);
     persistCompletion();
+    if (revealBtn) revealBtn.style.display = '';
     updateStatus();
     draw();
   }
@@ -314,6 +316,8 @@ document.addEventListener('DOMContentLoaded', function () {
     scoreSaved = false;
     completionUrl = '';
     stage.classList.remove('revealed');
+    if (revealBtn) revealBtn.style.display = 'none';
+    continueBtn.style.display = 'none';
     updateStatus();
     draw();
   }
@@ -397,6 +401,15 @@ document.addEventListener('DOMContentLoaded', function () {
   resetBtn.addEventListener('click', function () {
     resetActivity();
   });
+
+  if (revealBtn) {
+    revealBtn.addEventListener('click', function () {
+      stage.classList.add('revealed');
+      revealBtn.style.display = 'none';
+      continueBtn.style.display = completionUrl ? '' : 'none';
+      updateStatus();
+    });
+  }
 
   continueBtn.addEventListener('click', function () {
     if (!completionUrl) {
