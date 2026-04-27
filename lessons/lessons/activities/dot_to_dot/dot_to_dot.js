@@ -15,6 +15,8 @@ document.addEventListener('DOMContentLoaded', function () {
   const hintBtn = document.getElementById('d2dvHintBtn');
   const revealBtn = document.getElementById('d2dvRevealBtn');
   const continueBtn = document.getElementById('d2dvContinueBtn');
+  const completionPanel = document.getElementById('d2dvCompletionPanel');
+  const completionScore = document.getElementById('d2dvCompletionScore');
 
   if (!stage || !canvas || !image || points.length < 3) {
     return;

@@ -61,6 +61,12 @@ ob_start();
                 <button class="d2dv-btn d2dv-btn-accent"  id="d2dvRevealBtn" style="display:none">Reveal Image</button>
                 <button class="d2dv-btn d2dv-btn-next"    id="d2dvContinueBtn" style="display:none">Next</button>
             </div>
+
+            <div id="d2dvCompletionPanel" class="d2dv-completion-panel" style="display:none">
+                <div class="d2dv-completion-icon">✅</div>
+                <p class="d2dv-completion-title">Completed!</p>
+                <p class="d2dv-completion-score" id="d2dvCompletionScore"></p>
+            </div>
         </div>
     <?php endif; ?>
 </div>
