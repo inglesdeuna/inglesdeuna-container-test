@@ -1,4 +1,5 @@
 <?php
+// dot_to_dot_functions.php - erased for full rewrite
 
 function default_dot_to_dot_title(): string
 {
