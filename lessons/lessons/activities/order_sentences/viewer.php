@@ -154,124 +154,89 @@ ob_start();
 .os-sentence-list {
     display: flex;
     flex-direction: column;
-    gap: 14px;
+    gap: 18px;
     margin-bottom: 26px;
-    counter-reset: os-step;
+    padding: 4px 0;
 }
 
-/* ── Story card — clean panel, not a rigid UI box ── */
+/* ── Story image card — no box, image floats naturally ── */
 .os-sentence-item {
-    counter-increment: os-step;
     display: flex;
     align-items: center;
-    gap: 16px;
-    /* Barely-there background: airy, not opaque white */
-    background: rgba(252, 251, 255, 0.82);
-    border: 1px solid rgba(196, 181, 253, 0.22);
+    gap: 14px;
+    /* No background, no border — container is invisible by default */
+    background: transparent;
+    border: none;
     border-radius: 24px;
-    padding: 12px 20px 12px 12px;
+    /* Vertical padding creates a comfortable drag target above/below the image */
+    padding: 4px 10px 4px 6px;
     cursor: grab;
     user-select: none;
-    transition:
-        transform .22s cubic-bezier(.34, 1.4, .64, 1),
-        box-shadow .22s ease,
-        border-color .18s ease,
-        background .18s ease;
-    box-shadow:
-        0 2px 10px rgba(15, 23, 42, .06),
-        0 1px 3px  rgba(15, 23, 42, .04);
+    transition: transform .22s cubic-bezier(.34, 1.3, .64, 1);
     position: relative;
 }
 
-/* Step number badge — pure CSS, no JS needed */
-.os-sentence-item::before {
-    content: counter(os-step);
-    position: absolute;
-    top: -9px;
-    left: 16px;
-    min-width: 22px;
-    height: 22px;
-    padding: 0 5px;
-    background: #7c3aed;
-    color: #fff;
-    border-radius: 11px;
-    font-size: 11px;
-    font-weight: 800;
-    font-family: 'Nunito', sans-serif;
-    line-height: 22px;
-    text-align: center;
-    box-shadow: 0 2px 6px rgba(124, 58, 237, .40);
-    z-index: 1;
-    pointer-events: none;
-}
-
-/* Hover: lift without color change */
+/* Hover: item lifts slightly, image does the visual work */
 .os-sentence-item:hover {
-    transform: translateY(-3px) scale(1.008);
-    box-shadow:
-        0 10px 28px rgba(15, 23, 42, .10),
-        0 3px 8px  rgba(124, 58, 237, .07);
-    border-color: rgba(167, 139, 250, 0.42);
-    background: rgba(252, 251, 255, 0.97);
+    transform: translateY(-3px);
 }
 
-/* While being dragged */
+/* Dragging: lifted + slight tilt, reduced opacity */
 .os-sentence-item.dragging {
-    opacity: 0.42;
-    transform: scale(1.04) rotate(0.4deg);
-    box-shadow: 0 18px 40px rgba(124, 58, 237, .22);
-    border-color: rgba(124, 58, 237, .38);
+    opacity: 0.4;
+    transform: scale(1.04) rotate(0.6deg);
 }
 
-/* Drop target */
+/* Drop target: soft ring around the item area — no fill */
 .os-sentence-item.over {
-    border: 2px dashed rgba(124, 58, 237, .55);
-    background: rgba(237, 233, 254, 0.45);
-    box-shadow: 0 0 0 5px rgba(124, 58, 237, .07);
+    box-shadow: 0 0 0 3px rgba(124, 58, 237, .40);
+    border-radius: 24px;
     transform: none;
 }
 
-/* After-check states */
+/* After-check: a gentle tint wash — barely-there, not a box */
 .os-sentence-item.correct-pos {
-    border-color: rgba(22, 163, 74, .38);
-    background: rgba(240, 253, 244, 0.85);
-    box-shadow: 0 2px 12px rgba(22, 163, 74, .10);
+    background: rgba(240, 253, 244, 0.60);
+    border-radius: 24px;
 }
 
 .os-sentence-item.wrong-pos {
-    border-color: rgba(220, 38, 38, .32);
-    background: rgba(254, 242, 242, 0.85);
-    box-shadow: 0 2px 12px rgba(220, 38, 38, .08);
+    background: rgba(254, 242, 242, 0.60);
+    border-radius: 24px;
 }
 
-/* ── Image: story illustration, front and centre ── */
+/* ── Image: the visual hero — shadow replaces the container ── */
 .os-sentence-item img {
-    width: 130px;
-    height: 130px;
-    border-radius: 18px;
+    width: 150px;
+    height: 150px;
+    border-radius: 20px;
     flex-shrink: 0;
     object-fit: cover;
+    /* Shadow gives depth without a surrounding box */
     box-shadow:
-        0 6px 16px rgba(0, 0, 0, .13),
-        0 1px 4px  rgba(0, 0, 0, .08);
+        0 8px 24px rgba(0, 0, 0, .14),
+        0 2px 6px  rgba(0, 0, 0, .09);
     transition: transform .22s ease, box-shadow .22s ease;
+    /* Smooth edge — no harsh clip */
+    -webkit-backface-visibility: hidden;
 }
 
-/* Subtle image scale on card hover */
+/* On hover: image lifts, shadow deepens — no container background */
 .os-sentence-item:hover img {
-    transform: scale(1.04);
+    transform: translateY(-2px) scale(1.04);
     box-shadow:
-        0 10px 22px rgba(0, 0, 0, .16),
-        0 2px 6px  rgba(0, 0, 0, .10);
+        0 16px 32px rgba(0, 0, 0, .17),
+        0 4px 10px  rgba(0, 0, 0, .10);
 }
 
-/* No scale when card is in a finished state */
+/* Suppress image animation when showing result states */
 .os-sentence-item.correct-pos:hover img,
-.os-sentence-item.wrong-pos:hover img {
+.os-sentence-item.wrong-pos:hover img,
+.os-sentence-item.dragging img {
     transform: none;
 }
 
-/* ── Sentence text ── */
+/* ── Sentence text (when shown alongside image) ── */
 .os-sentence-text {
     flex: 1;
     font-family: 'Nunito', 'Segoe UI', sans-serif;
@@ -281,19 +246,19 @@ ob_start();
     line-height: 1.45;
 }
 
-/* ── Drag handle: minimal, integrated ── */
+/* ── Drag handle: barely visible, just enough to signal draggability ── */
 .os-handle {
-    color: rgba(196, 181, 253, 0.65);
-    font-size: 17px;
+    color: rgba(196, 181, 253, 0.45);
+    font-size: 16px;
     cursor: grab;
     flex-shrink: 0;
     letter-spacing: 1px;
     transition: color .15s ease;
-    order: -1; /* keep handle leftmost */
+    order: -1;
 }
 
 .os-sentence-item:hover .os-handle {
-    color: rgba(124, 58, 237, 0.5);
+    color: rgba(124, 58, 237, 0.45);
 }
 
 /* ── Controls ── */
