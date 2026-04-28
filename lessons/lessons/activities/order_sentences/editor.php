@@ -1,5 +1,4 @@
 <?php
-// Start output buffering immediately to prevent accidental whitespace/BOM output before headers
 ob_start();
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
@@ -9,7 +8,6 @@ require_once __DIR__ . '/../../config/db.php';
 require_once __DIR__ . '/../../core/cloudinary_upload.php';
 require_once __DIR__ . '/../../core/_activity_editor_template.php';
 
-// Block student access
 if (isset($_SESSION['student_logged']) && $_SESSION['student_logged']) {
     header('Location: /lessons/lessons/academic/student_dashboard.php?error=access_denied');
     exit;
@@ -21,9 +19,9 @@ if (!$isLoggedIn) {
     exit;
 }
 
-$activityId = isset($_GET['id']) ? trim((string) $_GET['id']) : '';
-$unit       = isset($_GET['unit']) ? trim((string) $_GET['unit']) : '';
-$source     = isset($_GET['source']) ? trim((string) $_GET['source']) : '';
+$activityId = isset($_GET['id'])         ? trim((string) $_GET['id'])         : '';
+$unit       = isset($_GET['unit'])       ? trim((string) $_GET['unit'])       : '';
+$source     = isset($_GET['source'])     ? trim((string) $_GET['source'])     : '';
 $assignment = isset($_GET['assignment']) ? trim((string) $_GET['assignment']) : '';
 
 function os_default_title(): string { return 'Order the Sentences'; }
@@ -53,8 +51,10 @@ function os_normalize(mixed $rawData): array
     if (!is_array($d)) return $default;
 
     $sentences = [];
-
-        // Preserve the display mode if provided, default to 'text'
+    foreach ((array) ($d['sentences'] ?? []) as $s) {
+        if (!is_array($s)) continue;
+        $text  = trim((string) ($s['text']  ?? ''));
+        $image = trim((string) ($s['image'] ?? ''));
         $display = isset($s['display']) ? $s['display'] : 'text';
         if ($text === '' && $image === '') continue;
         $sentences[] = [
@@ -84,19 +84,12 @@ function os_encode(array $p): string
         'media_type'   => $p['media_type'],
         'media_url'    => $p['media_url'],
         'tts_text'     => $p['tts_text'],
-        'sentences'    => array_map(function($s) {
+        'sentences'    => array_map(function ($s) {
             return [
-<<<<<<< HEAD
                 'id'      => $s['id'],
                 'text'    => $s['text'],
                 'image'   => isset($s['image']) ? $s['image'] : '',
-                // Always include display to allow future expansion; default to 'text' if missing
                 'display' => isset($s['display']) ? $s['display'] : 'text',
-=======
-                'id' => $s['id'],
-                'text' => $s['text'],
-                'image' => isset($s['image']) ? $s['image'] : '',
->>>>>>> codespace-crispy-fortnight-696v9xjxpqwv2xxx9
             ];
         }, array_values($p['sentences'])),
     ], JSON_UNESCAPED_UNICODE);
@@ -162,9 +155,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $mediaType = $_POST['media_type'] ?? 'tts';
     if (!in_array($mediaType, ['tts', 'video', 'audio', 'none'], true)) $mediaType = 'tts';
     $currentMediaType = trim((string) ($_POST['current_media_type'] ?? ''));
-    $currentMediaUrl  = trim((string) ($_POST['current_media_url'] ?? ''));
-    $currentVideoUrl  = trim((string) ($_POST['current_video_url'] ?? ''));
-    $currentAudioUrl  = trim((string) ($_POST['current_audio_url'] ?? ''));
+    $currentMediaUrl  = trim((string) ($_POST['current_media_url']  ?? ''));
+    $currentVideoUrl  = trim((string) ($_POST['current_video_url']  ?? ''));
+    $currentAudioUrl  = trim((string) ($_POST['current_audio_url']  ?? ''));
 
     if ($currentVideoUrl === '' && $currentMediaType === 'video' && $currentMediaUrl !== '') {
         $currentVideoUrl = $currentMediaUrl;
@@ -193,9 +186,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($uploaded) $mediaUrl = $uploaded;
     }
 
-    if (in_array($mediaType, ['video', 'audio'], true)
-        && $mediaUrl === ''
-        && !$hasNewUpload) {
+    if (in_array($mediaType, ['video', 'audio'], true) && $mediaUrl === '' && !$hasNewUpload) {
         if ($mediaType === 'video' && $currentVideoUrl !== '') {
             $mediaUrl = $currentVideoUrl;
         } elseif ($mediaType === 'audio' && $currentAudioUrl !== '') {
@@ -205,61 +196,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-<<<<<<< HEAD
-    // Normalize sentences input from the POST request. Support existing images and new uploads.
-    $rawTexts  = isset($_POST['sentence_text']) && is_array($_POST['sentence_text']) ? $_POST['sentence_text'] : [];
-    $rawIds    = isset($_POST['sentence_id']) && is_array($_POST['sentence_id']) ? $_POST['sentence_id'] : [];
-=======
-
-    $rawTexts = isset($_POST['sentence_text']) && is_array($_POST['sentence_text']) ? $_POST['sentence_text'] : [];
-    $rawIds   = isset($_POST['sentence_id']) && is_array($_POST['sentence_id']) ? $_POST['sentence_id'] : [];
->>>>>>> codespace-crispy-fortnight-696v9xjxpqwv2xxx9
+    $rawTexts  = isset($_POST['sentence_text'])           && is_array($_POST['sentence_text'])           ? $_POST['sentence_text']           : [];
+    $rawIds    = isset($_POST['sentence_id'])             && is_array($_POST['sentence_id'])             ? $_POST['sentence_id']             : [];
     $rawImages = isset($_POST['sentence_image_existing']) && is_array($_POST['sentence_image_existing']) ? $_POST['sentence_image_existing'] : [];
-    $sentences = [];
+    $sentences  = [];
     $imageFiles = isset($_FILES['sentence_image']) ? $_FILES['sentence_image'] : null;
+
     foreach ($rawTexts as $i => $text) {
-        $text = trim((string) $text);
-<<<<<<< HEAD
-        $id   = trim((string) ($rawIds[$i] ?? '')) ?: uniqid('os_');
-        // Start with any existing image value
+        $text  = trim((string) $text);
+        $id    = trim((string) ($rawIds[$i] ?? '')) ?: uniqid('os_');
         $image = isset($rawImages[$i]) ? trim((string) $rawImages[$i]) : '';
-        // Handle a new image upload, which overrides the existing image
-        if ($imageFiles && isset($imageFiles['name'][$i]) && $imageFiles['name'][$i] !== '' &&
-            isset($imageFiles['tmp_name'][$i]) && $imageFiles['tmp_name'][$i] !== '') {
-            $uploaded = upload_to_cloudinary($imageFiles['tmp_name'][$i]);
-            if ($uploaded) {
-                $image = $uploaded;
-            }
-        }
-        // Skip entries with no text and no image
-        if ($text === '' && $image === '') {
-            continue;
-        }
-        $sentences[] = [
-            'id'      => $id,
-            'text'    => $text,
-            'image'   => $image,
-            'display' => 'text',
-=======
-        $id = trim((string) ($rawIds[$i] ?? '')) ?: uniqid('os_');
-        $image = isset($rawImages[$i]) ? trim((string) $rawImages[$i]) : '';
-        // Handle image upload
-        if ($imageFiles && isset($imageFiles['name'][$i]) && $imageFiles['name'][$i] !== '' && isset($imageFiles['tmp_name'][$i]) && $imageFiles['tmp_name'][$i] !== '') {
+        if ($imageFiles && isset($imageFiles['name'][$i]) && $imageFiles['name'][$i] !== ''
+            && isset($imageFiles['tmp_name'][$i]) && $imageFiles['tmp_name'][$i] !== '') {
             $uploaded = upload_to_cloudinary($imageFiles['tmp_name'][$i]);
             if ($uploaded) $image = $uploaded;
         }
         if ($text === '' && $image === '') continue;
         $sentences[] = [
-            'id'   => $id,
-            'text' => $text,
-            'image' => $image,
->>>>>>> codespace-crispy-fortnight-696v9xjxpqwv2xxx9
+            'id'      => $id,
+            'text'    => $text,
+            'image'   => $image,
+            'display' => 'text',
         ];
     }
 
     $payload = [
         'title'        => trim((string) ($_POST['activity_title'] ?? '')) ?: os_default_title(),
-        'instructions' => trim((string) ($_POST['instructions'] ?? '')) ?: 'Listen and put the sentences in the correct order.',
+        'instructions' => trim((string) ($_POST['instructions']   ?? '')) ?: 'Listen and put the sentences in the correct order.',
         'media_type'   => $mediaType,
         'media_url'    => $mediaUrl,
         'tts_text'     => trim((string) ($_POST['tts_text'] ?? '')),
@@ -268,9 +231,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $savedId = os_save($pdo, $unit, $activityId, $payload);
     $params  = ['unit=' . urlencode($unit), 'saved=1'];
-    if ($savedId !== '')    $params[] = 'id=' . urlencode($savedId);
+    if ($savedId !== '')    $params[] = 'id='         . urlencode($savedId);
     if ($assignment !== '') $params[] = 'assignment=' . urlencode($assignment);
-    if ($source !== '')     $params[] = 'source=' . urlencode($source);
+    if ($source !== '')     $params[] = 'source='     . urlencode($source);
     header('Location: editor.php?' . implode('&', $params));
     exit;
 }
@@ -336,9 +299,9 @@ $d = $activity;
 
 <form method="post" enctype="multipart/form-data" class="os-form" id="osSentencesForm">
     <input type="hidden" name="current_media_type" value="<?= htmlspecialchars($d['media_type'], ENT_QUOTES, 'UTF-8') ?>">
-    <input type="hidden" name="current_media_url" value="<?= htmlspecialchars($d['media_url'], ENT_QUOTES, 'UTF-8') ?>">
-    <input type="hidden" name="current_video_url" id="os_current_video_url" value="<?= htmlspecialchars($d['media_type']==='video' ? $d['media_url'] : '', ENT_QUOTES, 'UTF-8') ?>">
-    <input type="hidden" name="current_audio_url" id="os_current_audio_url" value="<?= htmlspecialchars($d['media_type']==='audio' ? $d['media_url'] : '', ENT_QUOTES, 'UTF-8') ?>">
+    <input type="hidden" name="current_media_url"  value="<?= htmlspecialchars($d['media_url'],   ENT_QUOTES, 'UTF-8') ?>">
+    <input type="hidden" name="current_video_url"  id="os_current_video_url" value="<?= htmlspecialchars($d['media_type']==='video' ? $d['media_url'] : '', ENT_QUOTES, 'UTF-8') ?>">
+    <input type="hidden" name="current_audio_url"  id="os_current_audio_url" value="<?= htmlspecialchars($d['media_type']==='audio' ? $d['media_url'] : '', ENT_QUOTES, 'UTF-8') ?>">
 
     <!-- Title -->
     <div class="os-card">
@@ -400,7 +363,6 @@ $d = $activity;
     </div>
 
     <!-- Sentences -->
-
     <div class="os-card">
         <label>Sentences — enter them in the <strong>correct order</strong></label>
         <p class="help-text">Students will see them shuffled and must drag them back into this order. You can add an image for each sentence (optional).</p>
@@ -416,16 +378,13 @@ $d = $activity;
                 <input type="hidden" name="sentence_image_existing[]" value="<?= htmlspecialchars(isset($s['image']) ? $s['image'] : '', ENT_QUOTES, 'UTF-8') ?>">
                 <input type="file" name="sentence_image[]" accept="image/*" style="max-width:160px;">
                 <?php if (!empty($s['image'])): ?>
-<<<<<<< HEAD
                     <img src="<?= htmlspecialchars($s['image'], ENT_QUOTES, 'UTF-8') ?>" alt="sentence-img"
                          style="max-width:60px;max-height:60px;border-radius:8px;margin-left:8px;vertical-align:middle;">
-=======
-                    <img src="<?= htmlspecialchars($s['image'], ENT_QUOTES, 'UTF-8') ?>" alt="sentence-img" style="max-width:60px;max-height:60px;border-radius:8px;margin-left:8px;vertical-align:middle;">
->>>>>>> codespace-crispy-fortnight-696v9xjxpqwv2xxx9
                 <?php endif; ?>
                 <button type="button" class="btn-remove-s" onclick="removeSentence(this)">✖</button>
             </div>
             <?php endforeach; ?>
+        </div>
 
         <div class="toolbar-row" style="justify-content:flex-start;margin-top:6px;">
             <button type="button" class="btn-add-s" onclick="addSentence()">+ Add Sentence</button>
@@ -464,13 +423,7 @@ function addSentence() {
         '<span style="color:#94a3b8;font-size:13px;min-width:22px;">' + (idx + 1) + '.</span>' +
         '<input type="hidden" name="sentence_id[]" value="os_' + Date.now() + '">' +
         '<input type="text" name="sentence_text[]" placeholder="Type sentence…">' +
-<<<<<<< HEAD
-        // Hidden input to preserve existing images when editing; new rows start with empty existing image
         '<input type="hidden" name="sentence_image_existing[]" value="">' +
-        // File input for uploading a new image
-=======
-        '<input type="hidden" name="sentence_image_existing[]" value="">' +
->>>>>>> codespace-crispy-fortnight-696v9xjxpqwv2xxx9
         '<input type="file" name="sentence_image[]" accept="image/*" style="max-width:160px;">' +
         '<button type="button" class="btn-remove-s" onclick="removeSentence(this)">✖</button>';
     list.appendChild(div);
@@ -530,7 +483,6 @@ function syncMediaCaches() {
     var audioInput = document.querySelector('input[name="audio_url"]');
     var videoCache = document.getElementById('os_current_video_url');
     var audioCache = document.getElementById('os_current_audio_url');
-
     if (videoInput && videoCache && videoInput.value.trim() !== '') {
         videoCache.value = videoInput.value.trim();
     }
