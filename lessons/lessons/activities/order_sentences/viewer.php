@@ -97,18 +97,17 @@ if (count($sentences) === 0) {
 
 $correctOrder = array_column($sentences, 'id');
 $shuffled     = $sentences;
-// Shuffle until the order differs from correct (avoid trivial already-correct start)
-$attempts = 0;
+$attempt = 0;
 do {
     shuffle($shuffled);
-    $attempts++;
-} while ($attempts < 10 && array_column($shuffled, 'id') === $correctOrder);
+    $attempt++;
+} while ($attempt < 10 && array_column($shuffled, 'id') === $correctOrder);
 
 ob_start();
 ?>
 <style>
 .os-stage {
-    max-width: 680px;
+    max-width: 720px;
     margin: 0 auto;
     font-family: 'Nunito', 'Segoe UI', sans-serif;
 }
@@ -122,7 +121,6 @@ ob_start();
     background: linear-gradient(135deg, #eef4ff 0%, #f8ebff 48%, #e8fff7 100%);
     box-shadow: 0 16px 34px rgba(15, 23, 42, .09);
 }
-
 .os-intro h2 {
     margin: 0 0 6px;
     font-family: 'Fredoka', 'Trebuchet MS', sans-serif;
@@ -130,7 +128,6 @@ ob_start();
     line-height: 1.1;
     color: #4c1d95;
 }
-
 .os-intro p {
     margin: 0;
     color: #5b516f;
@@ -143,122 +140,142 @@ ob_start();
     margin-bottom: 20px;
     text-align: center;
 }
-
 .os-media video,
 .os-media audio {
     width: 100%;
     border-radius: 14px;
 }
 
-/* ── Story sequence list ── */
-.os-sentence-list {
+/* ── Answer zone (where students build their sequence) ── */
+.os-answer-zone {
     display: flex;
-    flex-direction: column;
-    gap: 18px;
-    margin-bottom: 26px;
-    padding: 4px 0;
+    flex-wrap: wrap;
+    gap: 14px;
+    align-items: center;
+    justify-content: center;
+    min-height: 160px;
+    padding: 16px;
+    margin-bottom: 16px;
+    border-radius: 20px;
+    border: 2px dashed rgba(124, 58, 237, .28);
+    background: rgba(245, 243, 255, .35);
+    transition: border-color .18s ease, background .18s ease;
+}
+.os-answer-zone.drag-over {
+    border-color: rgba(124, 58, 237, .55);
+    background: rgba(237, 233, 254, .40);
+}
+.os-answer-placeholder {
+    color: rgba(124, 58, 237, .38);
+    font-size: 14px;
+    font-weight: 600;
+    text-align: center;
+    pointer-events: none;
+    width: 100%;
+    padding: 10px 0;
 }
 
-/* ── Story image card — no box, image floats naturally ── */
-.os-sentence-item {
+/* ── Bank (shuffled chips to drag from) ── */
+.os-bank-zone {
     display: flex;
-    align-items: center;
+    flex-wrap: wrap;
     gap: 14px;
-    /* No background, no border — container is invisible by default */
-    background: transparent;
-    border: none;
-    border-radius: 24px;
-    /* Vertical padding creates a comfortable drag target above/below the image */
-    padding: 4px 10px 4px 6px;
+    justify-content: center;
+    align-items: center;
+    padding: 8px 0 20px;
+    min-height: 40px;
+}
+
+/* ── Chip: the draggable sentence unit ── */
+.os-chip {
     cursor: grab;
     user-select: none;
-    transition: transform .22s cubic-bezier(.34, 1.3, .64, 1);
-    position: relative;
-}
-
-/* Hover: item lifts slightly, image does the visual work */
-.os-sentence-item:hover {
-    transform: translateY(-3px);
-}
-
-/* Dragging: lifted + slight tilt, reduced opacity */
-.os-sentence-item.dragging {
-    opacity: 0.4;
-    transform: scale(1.04) rotate(0.6deg);
-}
-
-/* Drop target: soft ring around the item area — no fill */
-.os-sentence-item.over {
-    box-shadow: 0 0 0 3px rgba(124, 58, 237, .40);
-    border-radius: 24px;
-    transform: none;
-}
-
-/* After-check: a gentle tint wash — barely-there, not a box */
-.os-sentence-item.correct-pos {
-    background: rgba(240, 253, 244, 0.60);
-    border-radius: 24px;
-}
-
-.os-sentence-item.wrong-pos {
-    background: rgba(254, 242, 242, 0.60);
-    border-radius: 24px;
-}
-
-/* ── Image: the visual hero — shadow replaces the container ── */
-.os-sentence-item img {
-    width: 150px;
-    height: 150px;
-    border-radius: 20px;
-    flex-shrink: 0;
-    object-fit: cover;
-    /* Shadow gives depth without a surrounding box */
-    box-shadow:
-        0 8px 24px rgba(0, 0, 0, .14),
-        0 2px 6px  rgba(0, 0, 0, .09);
-    transition: transform .22s ease, box-shadow .22s ease;
-    /* Smooth edge — no harsh clip */
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    background: transparent;
+    border: none;
+    padding: 0;
+    border-radius: 16px;
+    transition: transform .2s cubic-bezier(.34, 1.4, .64, 1), opacity .15s ease;
     -webkit-backface-visibility: hidden;
 }
+.os-chip:hover {
+    transform: translateY(-4px) scale(1.04);
+}
+.os-chip.os-dragging {
+    opacity: 0.35;
+    transform: scale(1.06);
+    cursor: grabbing;
+}
 
-/* On hover: image lifts, shadow deepens — no container background */
-.os-sentence-item:hover img {
-    transform: translateY(-2px) scale(1.04);
+/* Image chip: illustration is the full card */
+.os-chip img {
+    width: 130px;
+    height: 130px;
+    border-radius: 16px;
+    object-fit: cover;
+    display: block;
     box-shadow:
-        0 16px 32px rgba(0, 0, 0, .17),
+        0 6px 20px rgba(0, 0, 0, .14),
+        0 2px 6px  rgba(0, 0, 0, .08);
+    transition: box-shadow .2s ease, transform .2s ease;
+    pointer-events: none;
+}
+.os-chip:hover img {
+    box-shadow:
+        0 14px 30px rgba(0, 0, 0, .18),
         0 4px 10px  rgba(0, 0, 0, .10);
 }
 
-/* Suppress image animation when showing result states */
-.os-sentence-item.correct-pos:hover img,
-.os-sentence-item.wrong-pos:hover img,
-.os-sentence-item.dragging img {
-    transform: none;
-}
-
-/* ── Sentence text (when shown alongside image) ── */
-.os-sentence-text {
-    flex: 1;
+/* Text chip: pill style matching drag_drop word bank */
+.os-chip-text {
+    display: inline-flex;
+    align-items: center;
+    padding: 10px 18px;
+    background: linear-gradient(180deg, #fff 0%, #f5f3ff 100%);
+    border: 1px solid #ddd6fe;
+    border-radius: 999px;
     font-family: 'Nunito', 'Segoe UI', sans-serif;
-    font-size: 17px;
+    font-size: 15px;
     font-weight: 700;
-    color: #1e293b;
-    line-height: 1.45;
+    color: #4c1d95;
+    box-shadow: 0 6px 16px rgba(124, 58, 237, .12);
+    pointer-events: none;
+    white-space: nowrap;
+    transition: box-shadow .2s ease;
+}
+.os-chip:hover .os-chip-text {
+    box-shadow: 0 10px 24px rgba(124, 58, 237, .18);
 }
 
-/* ── Drag handle: barely visible, just enough to signal draggability ── */
-.os-handle {
-    color: rgba(196, 181, 253, 0.45);
-    font-size: 16px;
-    cursor: grab;
-    flex-shrink: 0;
-    letter-spacing: 1px;
-    transition: color .15s ease;
-    order: -1;
+/* Feedback states: ring on chip image / pill */
+.os-chip.correct-pos img {
+    box-shadow: 0 0 0 3px #16a34a,
+                0 6px 20px rgba(22, 163, 74, .22);
+}
+.os-chip.wrong-pos img {
+    box-shadow: 0 0 0 3px #dc2626,
+                0 6px 20px rgba(220, 38, 38, .18);
+}
+.os-chip.correct-pos .os-chip-text {
+    border-color: #16a34a;
+    box-shadow: 0 0 0 2px #16a34a;
+}
+.os-chip.wrong-pos .os-chip-text {
+    border-color: #dc2626;
+    box-shadow: 0 0 0 2px #dc2626;
 }
 
-.os-sentence-item:hover .os-handle {
-    color: rgba(124, 58, 237, 0.45);
+/* Touch-tap selected state */
+.os-chip.os-selected img {
+    box-shadow: 0 0 0 3px #7c3aed,
+                0 8px 22px rgba(124, 58, 237, .28);
+}
+.os-chip.os-selected .os-chip-text {
+    border-color: #7c3aed;
+    box-shadow: 0 0 0 2px #7c3aed;
 }
 
 /* ── Controls ── */
@@ -267,9 +284,8 @@ ob_start();
     flex-wrap: wrap;
     gap: 10px;
     justify-content: center;
-    margin-top: 8px;
+    margin-top: 4px;
 }
-
 .os-btn {
     display: inline-flex;
     align-items: center;
@@ -287,19 +303,8 @@ ob_start();
     box-shadow: 0 10px 22px rgba(15, 23, 42, .12);
     transition: transform .15s ease, filter .15s ease;
 }
-
-.os-btn:hover {
-    filter: brightness(1.04);
-    transform: translateY(-1px);
-}
-
-.os-btn:disabled {
-    opacity: .5;
-    cursor: default;
-    transform: none;
-    filter: none;
-}
-
+.os-btn:hover  { filter: brightness(1.04); transform: translateY(-1px); }
+.os-btn:disabled { opacity: .5; cursor: default; transform: none; filter: none; }
 .os-btn-check { background: linear-gradient(180deg, #8b5cf6 0%, #7c3aed 100%); }
 .os-btn-tts   { background: linear-gradient(180deg, #38bdf8 0%, #0ea5e9 100%); }
 .os-btn-show  { background: linear-gradient(180deg, #d8b4fe 0%, #a855f7 100%); }
@@ -307,13 +312,12 @@ ob_start();
 
 /* ── Feedback ── */
 #os-feedback {
-    font-size: 20px;
+    font-size: 18px;
     font-weight: 800;
     text-align: center;
-    margin-top: 16px;
-    min-height: 28px;
+    margin-top: 14px;
+    min-height: 26px;
 }
-
 #os-feedback.good { color: #16a34a; }
 #os-feedback.bad  { color: #dc2626; }
 
@@ -325,11 +329,8 @@ ob_start();
     margin: 0 auto;
     padding: 44px 20px;
 }
-
 .os-completed-screen.active { display: block; }
-
-.os-completed-icon { font-size: 80px; margin-bottom: 20px; }
-
+.os-completed-icon  { font-size: 80px; margin-bottom: 20px; }
 .os-completed-title {
     font-family: 'Fredoka', 'Trebuchet MS', sans-serif;
     font-size: 36px;
@@ -338,21 +339,18 @@ ob_start();
     margin: 0 0 12px;
     line-height: 1.2;
 }
-
 .os-completed-text {
     font-size: 16px;
     color: #5b516f;
     line-height: 1.6;
     margin: 0 0 12px;
 }
-
 .os-score-text {
     font-weight: 800;
     font-size: 20px;
     color: #4c1d95;
     margin: 0 0 28px;
 }
-
 .os-restart-btn {
     display: inline-block;
     padding: 12px 28px;
@@ -366,17 +364,15 @@ ob_start();
     box-shadow: 0 10px 24px rgba(0,0,0,.14);
     transition: transform .18s ease, filter .18s ease;
 }
-
 .os-restart-btn:hover { transform: scale(1.05); filter: brightness(1.07); }
 
 /* ── Responsive ── */
-@media (max-width: 640px) {
-    .os-sentence-list   { gap: 12px; }
-    .os-controls        { flex-direction: column; align-items: center; }
-    .os-btn             { width: 100%; max-width: 300px; }
-    .os-sentence-item   { padding: 10px 14px 10px 10px; border-radius: 20px; }
-    .os-sentence-item img { width: 100px; height: 100px; border-radius: 14px; }
-    .os-sentence-text   { font-size: 15px; }
+@media (max-width: 600px) {
+    .os-chip img         { width: 100px; height: 100px; border-radius: 12px; }
+    .os-answer-zone      { gap: 10px; padding: 12px; }
+    .os-bank-zone        { gap: 10px; }
+    .os-controls         { flex-direction: column; align-items: center; }
+    .os-btn              { width: 100%; max-width: 300px; }
 }
 </style>
 
@@ -400,30 +396,39 @@ ob_start();
     </div>
     <?php endif; ?>
 
-    <!-- Main activity (hidden when completed) -->
     <div id="os-activity-area">
-        <div id="os-sentence-list" class="os-sentence-list">
+
+        <!-- Answer zone: student builds sequence here -->
+        <div id="os-answer" class="os-answer-zone">
+            <div id="os-answer-placeholder" class="os-answer-placeholder">
+                Drag the pictures here in the correct order
+            </div>
+        </div>
+
+        <!-- Bank: shuffled chips -->
+        <div id="os-bank" class="os-bank-zone">
             <?php foreach ($shuffled as $s):
                 $disp = $s['display'] ?? 'both';
             ?>
-            <div class="os-sentence-item" draggable="true" data-id="<?= htmlspecialchars($s['id'], ENT_QUOTES, 'UTF-8') ?>">
-                <span class="os-handle">☰</span>
+            <div class="os-chip"
+                 data-id="<?= htmlspecialchars($s['id'], ENT_QUOTES, 'UTF-8') ?>">
                 <?php if ($disp !== 'text' && !empty($s['image'])): ?>
                     <img src="<?= htmlspecialchars($s['image'], ENT_QUOTES, 'UTF-8') ?>" alt="">
                 <?php endif; ?>
                 <?php if ($disp !== 'image' && !empty($s['text'])): ?>
-                    <span class="os-sentence-text"><?= htmlspecialchars($s['text'], ENT_QUOTES, 'UTF-8') ?></span>
+                    <span class="os-chip-text"><?= htmlspecialchars($s['text'], ENT_QUOTES, 'UTF-8') ?></span>
                 <?php endif; ?>
             </div>
             <?php endforeach; ?>
         </div>
 
         <div class="os-controls">
-            <button type="button" id="os-check"    class="os-btn os-btn-check">✔ Check Order</button>
+            <button type="button" id="os-check"    class="os-btn os-btn-check" disabled>✔ Check Order</button>
             <button type="button" id="os-show-ans" class="os-btn os-btn-show">👁 Show Answer</button>
             <button type="button" id="os-next"     class="os-btn os-btn-next">Next ▶</button>
         </div>
         <p id="os-feedback"></p>
+
     </div>
 
     <!-- Completed screen -->
@@ -443,320 +448,435 @@ ob_start();
 <script>
 (function () {
 
-    /* ── Data from PHP ── */
-    var correctOrder   = <?= json_encode($correctOrder,   JSON_UNESCAPED_UNICODE) ?>;
-    var OS_RETURN_TO   = <?= json_encode($returnTo,       JSON_UNESCAPED_UNICODE) ?>;
-    var OS_ACTIVITY_ID = <?= json_encode($activityId,     JSON_UNESCAPED_UNICODE) ?>;
-    var OS_TOTAL       = correctOrder.length;   // one point per sentence in right place
+/* ── PHP data ── */
+var correctOrder   = <?= json_encode($correctOrder,   JSON_UNESCAPED_UNICODE) ?>;
+var OS_RETURN_TO   = <?= json_encode($returnTo,       JSON_UNESCAPED_UNICODE) ?>;
+var OS_ACTIVITY_ID = <?= json_encode($activityId,     JSON_UNESCAPED_UNICODE) ?>;
+var OS_TOTAL       = correctOrder.length;
 
-    /* ── DOM refs ── */
-    var list        = document.getElementById('os-sentence-list');
-    var activityArea = document.getElementById('os-activity-area');
-    var completedEl = document.getElementById('os-completed');
-    var feedbackEl  = document.getElementById('os-feedback');
-    var scoreTextEl = document.getElementById('os-score-text');
-    var checkBtn    = document.getElementById('os-check');
-    var showAnsBtn  = document.getElementById('os-show-ans');
-    var nextBtn     = document.getElementById('os-next');
+/* ── DOM ── */
+var answerZone   = document.getElementById('os-answer');
+var bankZone     = document.getElementById('os-bank');
+var placeholder  = document.getElementById('os-answer-placeholder');
+var activityArea = document.getElementById('os-activity-area');
+var completedEl  = document.getElementById('os-completed');
+var feedbackEl   = document.getElementById('os-feedback');
+var scoreTextEl  = document.getElementById('os-score-text');
+var checkBtn     = document.getElementById('os-check');
+var showAnsBtn   = document.getElementById('os-show-ans');
+var nextBtn      = document.getElementById('os-next');
+var winSound     = document.getElementById('os-win-sound');
+var loseSound    = document.getElementById('os-lose-sound');
+var doneSound    = document.getElementById('os-done-sound');
 
-    var winSound  = document.getElementById('os-win-sound');
-    var loseSound = document.getElementById('os-lose-sound');
-    var doneSound = document.getElementById('os-done-sound');
+/* ── State ── */
+var attempts      = 0;
+var blockFinished = false;
+var correctCount  = 0;
+var dragged       = null;   // currently dragged chip
+var touchSelected = null;   // tap-to-move selection on touch devices
 
-    /* ── State ── */
-    var attempts      = 0;
-    var blockFinished = false;
-    var correctCount  = 0;   // sentences in right place when scored
+var isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
 
-    /* ── Helpers ── */
-    function playSound(el) {
-        try { el.pause(); el.currentTime = 0; el.play(); } catch (e) {}
+/* ── Sound ── */
+function playSound(el) {
+    try { el.pause(); el.currentTime = 0; el.play(); } catch (e) {}
+}
+
+/* ── Answer state helpers ── */
+function answerChips() {
+    return Array.prototype.slice.call(answerZone.querySelectorAll('.os-chip'));
+}
+
+function userOrder() {
+    return answerChips().map(function (c) { return c.dataset.id; });
+}
+
+function countCorrect(order) {
+    var n = 0;
+    for (var i = 0; i < correctOrder.length; i++) {
+        if ((order[i] || '') === correctOrder[i]) n++;
     }
+    return n;
+}
 
-    function items() {
-        return Array.prototype.slice.call(list.querySelectorAll('.os-sentence-item'));
-    }
+function updateUI() {
+    var inAnswer = answerChips().length;
+    placeholder.style.display = inAnswer > 0 ? 'none' : '';
+    checkBtn.disabled = (inAnswer < OS_TOTAL) || blockFinished;
+}
 
-    function userOrder() {
-        return items().map(function (el) { return el.dataset.id; });
-    }
+/* ── Score / navigation ── */
+function persistScore(pct, errors, total) {
+    if (!OS_RETURN_TO || !OS_ACTIVITY_ID) return Promise.resolve(false);
+    var j   = OS_RETURN_TO.indexOf('?') !== -1 ? '&' : '?';
+    var url = OS_RETURN_TO + j +
+        'activity_percent=' + pct +
+        '&activity_errors=' + errors +
+        '&activity_total='  + total +
+        '&activity_id='     + encodeURIComponent(OS_ACTIVITY_ID) +
+        '&activity_type=order_sentences';
+    return fetch(url, { method: 'GET', credentials: 'same-origin', cache: 'no-store' })
+        .then(function (r) { return !!(r && r.ok); })
+        .catch(function ()  { return false; });
+}
 
-    function countCorrect(order) {
-        var n = 0;
-        for (var i = 0; i < correctOrder.length; i++) {
-            if (order[i] === correctOrder[i]) n++;
-        }
-        return n;
-    }
+function navigateReturn(pct, errors, total) {
+    if (!OS_RETURN_TO || !OS_ACTIVITY_ID) return;
+    var j   = OS_RETURN_TO.indexOf('?') !== -1 ? '&' : '?';
+    var url = OS_RETURN_TO + j +
+        'activity_percent=' + pct +
+        '&activity_errors=' + errors +
+        '&activity_total='  + total +
+        '&activity_id='     + encodeURIComponent(OS_ACTIVITY_ID) +
+        '&activity_type=order_sentences';
+    try { if (window.top && window.top !== window.self) { window.top.location.href = url; return; } }
+    catch (e) {}
+    window.location.href = url;
+}
 
-    /* ── Score save ── */
-    function persistScore(pct, errors, total) {
-        if (!OS_RETURN_TO || !OS_ACTIVITY_ID) return Promise.resolve(false);
-        var joiner  = OS_RETURN_TO.indexOf('?') !== -1 ? '&' : '?';
-        var saveUrl = OS_RETURN_TO + joiner +
-            'activity_percent=' + pct +
-            '&activity_errors=' + errors +
-            '&activity_total='  + total +
-            '&activity_id='     + encodeURIComponent(OS_ACTIVITY_ID) +
-            '&activity_type=order_sentences';
-        return fetch(saveUrl, { method: 'GET', credentials: 'same-origin', cache: 'no-store' })
-            .then(function (r) { return !!(r && r.ok); })
-            .catch(function () { return false; });
-    }
+/* ── Completion ── */
+async function showCompleted() {
+    blockFinished = true;
+    activityArea.style.display = 'none';
+    completedEl.classList.add('active');
+    playSound(doneSound);
 
-    function navigateReturn(pct, errors, total) {
-        if (!OS_RETURN_TO || !OS_ACTIVITY_ID) return;
-        var joiner  = OS_RETURN_TO.indexOf('?') !== -1 ? '&' : '?';
-        var url = OS_RETURN_TO + joiner +
-            'activity_percent=' + pct +
-            '&activity_errors=' + errors +
-            '&activity_total='  + total +
-            '&activity_id='     + encodeURIComponent(OS_ACTIVITY_ID) +
-            '&activity_type=order_sentences';
-        try {
-            if (window.top && window.top !== window.self) { window.top.location.href = url; return; }
-        } catch (e) {}
-        window.location.href = url;
-    }
+    var pct    = OS_TOTAL > 0 ? Math.round((correctCount / OS_TOTAL) * 100) : 0;
+    var errors = Math.max(0, OS_TOTAL - correctCount);
+    scoreTextEl.textContent = 'Score: ' + correctCount + ' / ' + OS_TOTAL + ' (' + pct + '%)';
 
-    /* ── Completion ── */
-    async function showCompleted() {
-        blockFinished = true;
-        activityArea.style.display  = 'none';
-        completedEl.classList.add('active');
-        playSound(doneSound);
+    var ok = await persistScore(pct, errors, OS_TOTAL);
+    if (!ok) navigateReturn(pct, errors, OS_TOTAL);
+}
 
-        var pct    = OS_TOTAL > 0 ? Math.round((correctCount / OS_TOTAL) * 100) : 0;
-        var errors = Math.max(0, OS_TOTAL - correctCount);
-        scoreTextEl.textContent = 'Score: ' + correctCount + ' / ' + OS_TOTAL + ' (' + pct + '%)';
-
-        var ok = await persistScore(pct, errors, OS_TOTAL);
-        if (!ok) navigateReturn(pct, errors, OS_TOTAL);
-    }
-
-    /* ── Check ── */
-    checkBtn.addEventListener('click', function () {
-        if (blockFinished) return;
-        attempts++;
-        var order = userOrder();
-        var n     = countCorrect(order);
-
-        if (n === OS_TOTAL) {
-            correctCount = n;
-            feedbackEl.textContent = '✅ Correct! Well done!';
-            feedbackEl.className   = 'good';
-            playSound(winSound);
-            markPositions(order);
-            blockFinished = true;
-            checkBtn.disabled = true;
-        } else if (attempts >= 2) {
-            correctCount = n;
-            feedbackEl.textContent = '❌ Wrong (' + n + '/' + OS_TOTAL + ' in place). See correct order below.';
-            feedbackEl.className   = 'bad';
-            playSound(loseSound);
-            markPositions(order);
-            revealOrder();
-            blockFinished = true;
-            checkBtn.disabled = true;
-            showAnsBtn.disabled = true;
-        } else {
-            feedbackEl.textContent = '❌ Not quite — try again! (' + n + '/' + OS_TOTAL + ' in place)';
-            feedbackEl.className   = 'bad';
-            playSound(loseSound);
-            markPositions(order);
-        }
+/* ── Feedback helpers ── */
+function markPositions(order) {
+    answerChips().forEach(function (chip, i) {
+        chip.classList.remove('correct-pos', 'wrong-pos');
+        chip.classList.add((order[i] === correctOrder[i]) ? 'correct-pos' : 'wrong-pos');
     });
+}
 
-    /* ── Show Answer ── */
-    showAnsBtn.addEventListener('click', function () {
-        if (blockFinished) return;
-        correctCount = 0;   // showed answer = 0 score
-        revealOrder();
-        feedbackEl.textContent = '👁 Correct order shown.';
+function revealOrder() {
+    var map = {};
+    document.querySelectorAll('.os-chip').forEach(function (c) { map[c.dataset.id] = c; });
+    correctOrder.forEach(function (id) {
+        if (map[id]) answerZone.insertBefore(map[id], placeholder);
+    });
+    updateUI();
+    markPositions(correctOrder);
+}
+
+/* ── Check button ── */
+checkBtn.addEventListener('click', function () {
+    if (blockFinished) return;
+    if (answerChips().length < OS_TOTAL) {
+        feedbackEl.textContent = 'Place all pictures in the answer area first.';
+        feedbackEl.className   = 'bad';
+        return;
+    }
+
+    attempts++;
+    var order = userOrder();
+    var n     = countCorrect(order);
+
+    if (n === OS_TOTAL) {
+        correctCount = n;
+        feedbackEl.textContent = '✅ Correct! Well done!';
         feedbackEl.className   = 'good';
+        playSound(winSound);
+        markPositions(order);
+        blockFinished    = true;
+        checkBtn.disabled   = true;
+        showAnsBtn.disabled = true;
+    } else if (attempts >= 2) {
+        correctCount = n;
+        feedbackEl.textContent = '❌ Wrong (' + n + '/' + OS_TOTAL + ' correct). Showing the right order.';
+        feedbackEl.className   = 'bad';
+        playSound(loseSound);
+        markPositions(order);
+        revealOrder();
+        blockFinished    = true;
+        checkBtn.disabled   = true;
+        showAnsBtn.disabled = true;
+    } else {
+        feedbackEl.textContent = '❌ Not quite — try again! (' + n + '/' + OS_TOTAL + ' in place)';
+        feedbackEl.className   = 'bad';
+        playSound(loseSound);
+        markPositions(order);
+    }
+});
+
+/* ── Show Answer ── */
+showAnsBtn.addEventListener('click', function () {
+    if (blockFinished) return;
+    correctCount = 0;
+    revealOrder();
+    feedbackEl.textContent = '👁 Correct order shown.';
+    feedbackEl.className   = 'good';
+    blockFinished    = true;
+    checkBtn.disabled   = true;
+    showAnsBtn.disabled = true;
+});
+
+/* ── Next ── */
+nextBtn.addEventListener('click', function () {
+    if (!blockFinished) {
+        correctCount  = countCorrect(userOrder());
         blockFinished = true;
-        checkBtn.disabled    = true;
-        showAnsBtn.disabled  = true;
-    });
+    }
+    showCompleted();
+});
 
-    /* ── Next ── */
-    nextBtn.addEventListener('click', function () {
-        if (!blockFinished) {
-            // Force-score with current arrangement before proceeding
-            correctCount = countCorrect(userOrder());
-            blockFinished = true;
+/* ══════════════════════════════════════════
+   DRAG-AND-DROP  (mirrors listen_order + drag_drop patterns)
+   ══════════════════════════════════════════ */
+
+/* Find where to insert dragged chip inside a flex zone based on cursor X.
+   Matches listen_order's left-half / right-half insertion heuristic. */
+function getDropTarget(zone, clientX) {
+    var chips = Array.prototype.slice.call(zone.querySelectorAll('.os-chip'));
+    for (var i = 0; i < chips.length; i++) {
+        if (chips[i] === dragged) continue;
+        var rect = chips[i].getBoundingClientRect();
+        if (clientX < rect.left + rect.width / 2) {
+            return chips[i];         // insert before this chip
         }
-        showCompleted();
-    });
-
-    /* ── Highlight right/wrong positions ── */
-    function markPositions(order) {
-        items().forEach(function (el, i) {
-            el.classList.remove('correct-pos', 'wrong-pos');
-            if (order[i] === correctOrder[i]) {
-                el.classList.add('correct-pos');
-            } else {
-                el.classList.add('wrong-pos');
-            }
-        });
     }
+    return placeholder || null;      // append (before placeholder sentinel)
+}
 
-    /* ── Reveal correct order by re-sorting the DOM ── */
-    function revealOrder() {
-        var itemMap = {};
-        items().forEach(function (el) { itemMap[el.dataset.id] = el; });
-        correctOrder.forEach(function (id) {
-            if (itemMap[id]) list.appendChild(itemMap[id]);
-        });
-        markPositions(correctOrder);
-    }
+/* Wire drag events onto a chip — called for every chip at init and after restart */
+function attachChip(chip) {
 
-    /* ── Drag-and-drop ── */
-    var dragSrc = null;
-
-    function handleDragStart(e) {
+    /* ── Mouse / pointer drag ── */
+    chip.addEventListener('dragstart', function (e) {
         if (blockFinished) { e.preventDefault(); return; }
-        dragSrc = this;
+        dragged = chip;
         e.dataTransfer.effectAllowed = 'move';
-        e.dataTransfer.setData('text/plain', this.dataset.id);
-        this.classList.add('dragging');
-    }
-    function handleDragEnd() {
-        this.classList.remove('dragging');
-        items().forEach(function (el) { el.classList.remove('over'); });
-    }
-    function handleDragOver(e)  { e.preventDefault(); return false; }
-    function handleDragEnter()  { if (!blockFinished) this.classList.add('over'); }
-    function handleDragLeave()  { this.classList.remove('over'); }
-    function handleDrop(e) {
-        e.stopPropagation();
-        if (blockFinished) return false;
-        var dragId = e.dataTransfer.getData('text/plain');
-        var dropId = this.dataset.id;
-        if (dragId !== dropId) {
-            var dragEl = list.querySelector('[data-id="' + dragId + '"]');
-            var dropEl = list.querySelector('[data-id="' + dropId + '"]');
-            if (dragEl && dropEl) {
-                var next = dragEl.nextSibling === dropEl ? dragEl : dragEl.nextSibling;
-                list.insertBefore(dragEl, dropEl);
-                list.insertBefore(dropEl, next);
-            }
-        }
-        // Clear position highlights when user re-drags
-        items().forEach(function (el) { el.classList.remove('correct-pos', 'wrong-pos'); });
-        feedbackEl.textContent = '';
-        feedbackEl.className   = '';
-        return false;
-    }
-
-    items().forEach(function (el) {
-        el.addEventListener('dragstart',  handleDragStart.bind(el));
-        el.addEventListener('dragend',    handleDragEnd.bind(el));
-        el.addEventListener('dragover',   handleDragOver);
-        el.addEventListener('dragenter',  handleDragEnter.bind(el));
-        el.addEventListener('dragleave',  handleDragLeave.bind(el));
-        el.addEventListener('drop',       handleDrop.bind(el));
+        e.dataTransfer.setData('text/plain', chip.dataset.id);
+        setTimeout(function () { chip.classList.add('os-dragging'); }, 0);
     });
 
-    /* ── Restart ── */
-    window.osRestart = function () {
-        attempts      = 0;
-        blockFinished = false;
-        correctCount  = 0;
-
-        completedEl.classList.remove('active');
-        activityArea.style.display = '';
-        checkBtn.disabled    = false;
-        showAnsBtn.disabled  = false;
-        feedbackEl.textContent = '';
-        feedbackEl.className   = '';
-
-        // Shuffle items back
-        var its = items();
-        for (var i = its.length - 1; i > 0; i--) {
-            var j = Math.floor(Math.random() * (i + 1));
-            list.appendChild(its[j]);
-            its[j] = its[i];
+    chip.addEventListener('dragend', function () {
+        chip.classList.remove('os-dragging');
+        answerZone.classList.remove('drag-over');
+        dragged = null;
+        // Clear position colours when user drags again (before checking)
+        if (!blockFinished) {
+            chip.classList.remove('correct-pos', 'wrong-pos');
         }
-        its.forEach(function (el) { el.classList.remove('correct-pos', 'wrong-pos'); });
+        updateUI();
+    });
+
+    /* Chip-level dragover: live insertion within the same zone
+       (replicates drag_drop's blank-level dragover for reordering) */
+    chip.addEventListener('dragover', function (e) {
+        e.preventDefault();
+        if (!dragged || dragged === chip || blockFinished) return;
+        var rect   = chip.getBoundingClientRect();
+        var before = e.clientX < rect.left + rect.width / 2;
+        chip.parentElement.insertBefore(dragged, before ? chip : chip.nextSibling);
+    });
+
+    /* ── Touch-tap to move (mirrors drag_drop touch select pattern) ── */
+    chip.addEventListener('click', function () {
+        if (blockFinished) return;
+
+        if (isTouchDevice) {
+            // If another chip is already selected, perform the swap/move
+            if (touchSelected && touchSelected !== chip) {
+                // Move touchSelected to just before this chip in its current zone,
+                // or swap if both are already in the answer zone
+                chip.parentElement.insertBefore(touchSelected, chip);
+                touchSelected.classList.remove('os-selected');
+                touchSelected = null;
+                if (!blockFinished) clearPositionClasses();
+                updateUI();
+                return;
+            }
+            // Toggle selection
+            if (touchSelected === chip) {
+                chip.classList.remove('os-selected');
+                touchSelected = null;
+                return;
+            }
+            if (touchSelected) touchSelected.classList.remove('os-selected');
+            touchSelected = chip;
+            chip.classList.add('os-selected');
+            return;
+        }
+
+        // Non-touch: single click moves chip between bank ↔ answer
+        if (chip.parentElement === bankZone) {
+            answerZone.insertBefore(chip, placeholder);
+        } else if (chip.parentElement === answerZone) {
+            bankZone.appendChild(chip);
+        }
+        if (!blockFinished) clearPositionClasses();
+        updateUI();
+    });
+}
+
+function clearPositionClasses() {
+    document.querySelectorAll('.os-chip').forEach(function (c) {
+        c.classList.remove('correct-pos', 'wrong-pos');
+    });
+    feedbackEl.textContent = '';
+    feedbackEl.className   = '';
+}
+
+/* Answer zone: accepts drops from bank or reorders existing chips */
+answerZone.addEventListener('dragover', function (e) {
+    e.preventDefault();
+    if (!dragged || blockFinished) return;
+    answerZone.classList.add('drag-over');
+    // Handle drop on empty zone or below last chip
+    var target = e.target.closest ? e.target.closest('.os-chip') : null;
+    if (!target || target === dragged) {
+        answerZone.insertBefore(dragged, placeholder);
+    }
+});
+
+answerZone.addEventListener('dragleave', function (e) {
+    if (!answerZone.contains(e.relatedTarget)) {
+        answerZone.classList.remove('drag-over');
+    }
+});
+
+answerZone.addEventListener('drop', function (e) {
+    e.preventDefault();
+    answerZone.classList.remove('drag-over');
+    if (!blockFinished) clearPositionClasses();
+    updateUI();
+});
+
+/* Bank zone: accepts chips dropped back from answer */
+bankZone.addEventListener('dragover', function (e) {
+    e.preventDefault();
+    if (!dragged || blockFinished) return;
+    var target = e.target.closest ? e.target.closest('.os-chip') : null;
+    if (!target || target === dragged) {
+        bankZone.appendChild(dragged);
+    }
+});
+
+bankZone.addEventListener('drop', function (e) {
+    e.preventDefault();
+    if (!blockFinished) clearPositionClasses();
+    updateUI();
+});
+
+/* Attach drag to all initial chips */
+document.querySelectorAll('.os-chip').forEach(function (chip) {
+    chip.setAttribute('draggable', 'true');
+    attachChip(chip);
+});
+
+/* ── Restart ── */
+window.osRestart = function () {
+    attempts      = 0;
+    blockFinished = false;
+    correctCount  = 0;
+    touchSelected = null;
+
+    completedEl.classList.remove('active');
+    activityArea.style.display = '';
+    showAnsBtn.disabled = false;
+    feedbackEl.textContent = '';
+    feedbackEl.className   = '';
+
+    // Shuffle all chips back to bank
+    var chips = Array.prototype.slice.call(document.querySelectorAll('.os-chip'));
+    for (var i = chips.length - 1; i > 0; i--) {
+        var j = Math.floor(Math.random() * (i + 1));
+        var tmp = chips[i]; chips[i] = chips[j]; chips[j] = tmp;
+    }
+    chips.forEach(function (chip) {
+        chip.classList.remove('correct-pos', 'wrong-pos', 'os-dragging', 'os-selected');
+        bankZone.appendChild(chip);
+    });
+
+    updateUI();
+};
+
+/* Initial UI state */
+updateUI();
+
+<?php if (($activity['media_type'] ?? '') === 'tts'): ?>
+/* ── TTS (mirrors listen_order playAudio pattern) ── */
+var ttsBtn        = document.getElementById('os-tts-btn');
+var ttsSourceText = <?= json_encode(!empty($activity['tts_text']) ? $activity['tts_text'] : implode('. ', array_column($sentences, 'text')), JSON_UNESCAPED_UNICODE) ?>;
+var ttsUtter      = null;
+var ttsIsSpeaking = false;
+var ttsIsPaused   = false;
+var ttsOffset     = 0;
+var ttsSegStart   = 0;
+
+function ttsGetPreferredVoice(lang) {
+    var voices = window.speechSynthesis ? window.speechSynthesis.getVoices() : [];
+    if (!voices.length) return null;
+    var prefix  = lang.split('-')[0].toLowerCase();
+    var matched = voices.filter(function (v) {
+        var vl = String(v.lang || '').toLowerCase();
+        return vl === lang.toLowerCase() || vl.startsWith(prefix + '-') || vl.startsWith(prefix + '_');
+    });
+    if (!matched.length) return voices[0] || null;
+    var hints  = ['female', 'woman', 'zira', 'samantha', 'karen', 'aria', 'jenny', 'emma', 'olivia', 'ava'];
+    var female = matched.find(function (v) {
+        var label = (String(v.name || '') + ' ' + String(v.voiceURI || '')).toLowerCase();
+        return hints.some(function (h) { return label.indexOf(h) !== -1; });
+    });
+    return female || matched[0];
+}
+
+function ttsStartFromOffset() {
+    var remaining = ttsSourceText.slice(Math.max(0, ttsOffset));
+    if (!remaining.trim()) { ttsIsSpeaking = false; ttsIsPaused = false; ttsOffset = 0; return; }
+    speechSynthesis.cancel();
+    ttsSegStart = ttsOffset;
+    ttsUtter = new SpeechSynthesisUtterance(remaining);
+    ttsUtter.lang   = 'en-US';
+    ttsUtter.rate   = 0.7;
+    ttsUtter.pitch  = 1;
+    ttsUtter.volume = 1;
+    var pref = ttsGetPreferredVoice('en-US');
+    if (pref) ttsUtter.voice = pref;
+    ttsUtter.onstart    = function () { ttsIsSpeaking = true;  ttsIsPaused = false; };
+    ttsUtter.onpause    = function () { ttsIsPaused   = true;  ttsIsSpeaking = true; };
+    ttsUtter.onresume   = function () { ttsIsPaused   = false; ttsIsSpeaking = true; };
+    ttsUtter.onboundary = function (ev) {
+        if (typeof ev.charIndex === 'number')
+            ttsOffset = Math.max(ttsSegStart, Math.min(ttsSourceText.length, ttsSegStart + ev.charIndex));
     };
+    ttsUtter.onend  = function () { if (!ttsIsPaused) { ttsIsSpeaking = false; ttsIsPaused = false; ttsOffset = 0; } };
+    ttsUtter.onerror = function () { ttsIsSpeaking = false; ttsIsPaused = false; ttsOffset = 0; };
+    speechSynthesis.speak(ttsUtter);
+}
 
-    <?php if (($activity['media_type'] ?? '') === 'tts'): ?>
-    /* ── TTS ── */
-    var ttsBtn         = document.getElementById('os-tts-btn');
-    var ttsSourceText  = <?= json_encode(!empty($activity['tts_text']) ? $activity['tts_text'] : implode('. ', array_column($sentences, 'text')), JSON_UNESCAPED_UNICODE) ?>;
-    var ttsUtter       = null;
-    var ttsIsSpeaking  = false;
-    var ttsIsPaused    = false;
-    var ttsOffset      = 0;
-    var ttsSegStart    = 0;
-
-    function ttsGetPreferredVoice(lang) {
-        var voices = window.speechSynthesis ? window.speechSynthesis.getVoices() : [];
-        if (!voices.length) return null;
-        var prefix = lang.split('-')[0].toLowerCase();
-        var matched = voices.filter(function (v) {
-            var vl = String(v.lang || '').toLowerCase();
-            return vl === lang.toLowerCase() || vl.startsWith(prefix + '-') || vl.startsWith(prefix + '_');
-        });
-        if (!matched.length) return voices[0] || null;
-        var hints = ['female', 'woman', 'zira', 'samantha', 'karen', 'aria', 'jenny', 'emma', 'olivia', 'ava'];
-        var female = matched.find(function (v) {
-            var label = (String(v.name || '') + ' ' + String(v.voiceURI || '')).toLowerCase();
-            return hints.some(function (h) { return label.indexOf(h) !== -1; });
-        });
-        return female || matched[0];
-    }
-
-    function ttsStartFromOffset() {
-        var remaining = ttsSourceText.slice(Math.max(0, ttsOffset));
-        if (!remaining.trim()) { ttsIsSpeaking = false; ttsIsPaused = false; ttsOffset = 0; return; }
+if (ttsBtn) {
+    ttsBtn.addEventListener('click', function () {
+        if (!ttsSourceText.trim()) return;
+        if (speechSynthesis.paused || ttsIsPaused) {
+            speechSynthesis.resume();
+            ttsIsSpeaking = true; ttsIsPaused = false;
+            setTimeout(function () {
+                if (!speechSynthesis.speaking && ttsOffset < ttsSourceText.length) ttsStartFromOffset();
+            }, 80);
+            return;
+        }
+        if (speechSynthesis.speaking && !speechSynthesis.paused) {
+            speechSynthesis.pause();
+            ttsIsSpeaking = true; ttsIsPaused = true;
+            return;
+        }
         speechSynthesis.cancel();
-        ttsSegStart = ttsOffset;
-        ttsUtter = new SpeechSynthesisUtterance(remaining);
-        ttsUtter.lang   = 'en-US';
-        ttsUtter.rate   = 0.7;
-        ttsUtter.pitch  = 1;
-        ttsUtter.volume = 1;
-        var preferred = ttsGetPreferredVoice('en-US');
-        if (preferred) ttsUtter.voice = preferred;
-        ttsUtter.onstart   = function () { ttsIsSpeaking = true;  ttsIsPaused = false; };
-        ttsUtter.onpause   = function () { ttsIsPaused   = true;  ttsIsSpeaking = true; };
-        ttsUtter.onresume  = function () { ttsIsPaused   = false; ttsIsSpeaking = true; };
-        ttsUtter.onboundary = function (ev) {
-            if (typeof ev.charIndex === 'number') {
-                ttsOffset = Math.max(ttsSegStart, Math.min(ttsSourceText.length, ttsSegStart + ev.charIndex));
-            }
-        };
-        ttsUtter.onend  = function () { if (!ttsIsPaused) { ttsIsSpeaking = false; ttsIsPaused = false; ttsOffset = 0; } };
-        ttsUtter.onerror = function () { ttsIsSpeaking = false; ttsIsPaused = false; ttsOffset = 0; };
-        speechSynthesis.speak(ttsUtter);
-    }
-
-    if (ttsBtn) {
-        ttsBtn.addEventListener('click', function () {
-            if (!ttsSourceText.trim()) return;
-            if (speechSynthesis.paused || ttsIsPaused) {
-                speechSynthesis.resume();
-                ttsIsSpeaking = true;
-                ttsIsPaused   = false;
-                setTimeout(function () {
-                    if (!speechSynthesis.speaking && ttsOffset < ttsSourceText.length) ttsStartFromOffset();
-                }, 80);
-                return;
-            }
-            if (speechSynthesis.speaking && !speechSynthesis.paused) {
-                speechSynthesis.pause();
-                ttsIsSpeaking = true;
-                ttsIsPaused   = true;
-                return;
-            }
-            speechSynthesis.cancel();
-            ttsOffset = 0;
-            ttsStartFromOffset();
-        });
-    }
-    <?php endif; ?>
+        ttsOffset = 0;
+        ttsStartFromOffset();
+    });
+}
+<?php endif; ?>
 
 })();
 </script>
