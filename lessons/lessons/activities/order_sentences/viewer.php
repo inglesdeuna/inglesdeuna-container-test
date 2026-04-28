@@ -104,28 +104,35 @@ body {
     margin-top: 16px;
 }
 .btn {
-    padding: 10px 18px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 11px 18px;
     border: none;
-    border-radius: 10px;
-    font-weight: 700;
+    border-radius: 999px;
+    color: #fff;
+    font-weight: 800;
+    font-family: 'Nunito', 'Segoe UI', sans-serif;
+    font-size: 14px;
+    min-width: 142px;
+    line-height: 1;
     cursor: pointer;
+    box-shadow: 0 10px 22px rgba(15, 23, 42, .12);
+    transition: transform .15s ease, filter .15s ease;
+}
+.btn:hover {
+    filter: brightness(1.04);
+    transform: translateY(-1px);
 }
 .btn-check {
     background: #2563eb;
-    color: #fff;
 }
 .btn-back {
     background: linear-gradient(180deg, #3d73ee 0%, #2563eb 100%);
-    color: #fff;
-    font-family: 'Nunito', 'Segoe UI', sans-serif;
-    font-size: 13px;
-    line-height: 1;
     box-shadow: 0 10px 22px rgba(37, 99, 235, .28);
-    transition: transform .18s ease, filter .18s ease;
 }
 .btn-back:hover {
     filter: brightness(1.07);
-    transform: translateY(-1px);
 }
 </style>
 </head>

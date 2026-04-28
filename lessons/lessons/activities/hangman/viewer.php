@@ -392,7 +392,6 @@ a.back:hover{
 @media (max-height:900px) and (min-width:761px){
   .hangman-intro{padding:14px 16px;margin-bottom:10px}
   .game-box{padding:14px}
-  .action-btn{padding:10px 16px;min-width:132px;font-size:13px}
 }
 </style>
 </head>
