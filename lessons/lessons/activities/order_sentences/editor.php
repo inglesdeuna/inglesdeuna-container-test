@@ -53,9 +53,10 @@ function os_normalize(mixed $rawData): array
     $sentences = [];
     foreach ((array) ($d['sentences'] ?? []) as $s) {
         if (!is_array($s)) continue;
-        $text  = trim((string) ($s['text']  ?? ''));
-        $image = trim((string) ($s['image'] ?? ''));
-        $display = isset($s['display']) ? $s['display'] : 'text';
+        $text    = trim((string) ($s['text']    ?? ''));
+        $image   = trim((string) ($s['image']   ?? ''));
+        $display = trim((string) ($s['display'] ?? 'both'));
+        if (!in_array($display, ['text', 'image', 'both'], true)) $display = 'both';
         if ($text === '' && $image === '') continue;
         $sentences[] = [
             'id'      => trim((string) ($s['id'] ?? uniqid('os_'))),
@@ -88,8 +89,8 @@ function os_encode(array $p): string
             return [
                 'id'      => $s['id'],
                 'text'    => $s['text'],
-                'image'   => isset($s['image']) ? $s['image'] : '',
-                'display' => isset($s['display']) ? $s['display'] : 'text',
+                'image'   => $s['image'] ?? '',
+                'display' => $s['display'] ?? 'both',
             ];
         }, array_values($p['sentences'])),
     ], JSON_UNESCAPED_UNICODE);
@@ -196,16 +197,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    $rawTexts  = isset($_POST['sentence_text'])           && is_array($_POST['sentence_text'])           ? $_POST['sentence_text']           : [];
-    $rawIds    = isset($_POST['sentence_id'])             && is_array($_POST['sentence_id'])             ? $_POST['sentence_id']             : [];
-    $rawImages = isset($_POST['sentence_image_existing']) && is_array($_POST['sentence_image_existing']) ? $_POST['sentence_image_existing'] : [];
-    $sentences  = [];
-    $imageFiles = isset($_FILES['sentence_image']) ? $_FILES['sentence_image'] : null;
+    $rawTexts    = isset($_POST['sentence_text'])           && is_array($_POST['sentence_text'])           ? $_POST['sentence_text']           : [];
+    $rawIds      = isset($_POST['sentence_id'])             && is_array($_POST['sentence_id'])             ? $_POST['sentence_id']             : [];
+    $rawImages   = isset($_POST['sentence_image_existing']) && is_array($_POST['sentence_image_existing']) ? $_POST['sentence_image_existing'] : [];
+    $rawDisplays = isset($_POST['sentence_display'])        && is_array($_POST['sentence_display'])        ? $_POST['sentence_display']        : [];
+    $sentences   = [];
+    $imageFiles  = isset($_FILES['sentence_image']) ? $_FILES['sentence_image'] : null;
 
     foreach ($rawTexts as $i => $text) {
-        $text  = trim((string) $text);
-        $id    = trim((string) ($rawIds[$i] ?? '')) ?: uniqid('os_');
-        $image = isset($rawImages[$i]) ? trim((string) $rawImages[$i]) : '';
+        $text    = trim((string) $text);
+        $id      = trim((string) ($rawIds[$i] ?? '')) ?: uniqid('os_');
+        $image   = isset($rawImages[$i]) ? trim((string) $rawImages[$i]) : '';
+        $display = isset($rawDisplays[$i]) ? trim((string) $rawDisplays[$i]) : 'both';
+        if (!in_array($display, ['text', 'image', 'both'], true)) $display = 'both';
+
         if ($imageFiles && isset($imageFiles['name'][$i]) && $imageFiles['name'][$i] !== ''
             && isset($imageFiles['tmp_name'][$i]) && $imageFiles['tmp_name'][$i] !== '') {
             $uploaded = upload_to_cloudinary($imageFiles['tmp_name'][$i]);
@@ -216,7 +221,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'id'      => $id,
             'text'    => $text,
             'image'   => $image,
-            'display' => 'text',
+            'display' => $display,
         ];
     }
 
@@ -264,20 +269,42 @@ $d = $activity;
 }
 .os-card textarea{min-height:72px;resize:vertical;}
 .os-sentence-item{
-    display:flex;align-items:center;gap:8px;
     background:#fff;border:1px solid #e2e8f0;
-    border-radius:10px;padding:8px 10px;margin-bottom:8px;
+    border-radius:10px;padding:10px 12px;margin-bottom:8px;
     cursor:grab;
 }
-.os-sentence-item .handle{color:#94a3b8;font-size:18px;cursor:grab;}
-.os-sentence-item input{
-    flex:1;border:none;outline:none;font-size:14px;
-    font-family:inherit;background:transparent;padding:2px 4px;
+.os-sentence-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.os-sentence-item .handle{color:#94a3b8;font-size:18px;cursor:grab;flex-shrink:0;}
+.os-sentence-num{color:#94a3b8;font-size:13px;min-width:22px;flex-shrink:0;}
+.os-sentence-item input[type=text]{
+    flex:1;min-width:160px;border:1px solid #d1d5db;outline:none;font-size:14px;
+    font-family:inherit;background:#f9fafb;padding:7px 10px;
+    border-radius:7px;margin-bottom:0;
 }
 .os-sentence-item input[type=hidden]{display:none;}
+.os-display-select{
+    border:1px solid #d1d5db;border-radius:7px;padding:7px 10px;
+    font-size:13px;font-family:inherit;background:#f9fafb;
+    cursor:pointer;flex-shrink:0;
+}
+.os-sentence-image-row{
+    display:flex;align-items:center;gap:8px;
+    margin-top:8px;padding-top:8px;
+    border-top:1px dashed #e5e7eb;
+    flex-wrap:wrap;
+}
+.os-sentence-image-row label{
+    font-size:12px;font-weight:700;color:#6b7280;margin-bottom:0;
+    flex-shrink:0;white-space:nowrap;
+}
+.os-sentence-item .thumb{
+    max-width:56px;max-height:56px;border-radius:6px;
+    border:1px solid #e5e7eb;object-fit:contain;
+}
 .btn-remove-s{
     background:#ef4444;color:#fff;border:none;
     padding:5px 10px;border-radius:7px;cursor:pointer;font-weight:700;font-size:12px;
+    flex-shrink:0;
 }
 .btn-add-s{
     background:#2563eb;color:#fff;border:none;
@@ -365,23 +392,34 @@ $d = $activity;
     <!-- Sentences -->
     <div class="os-card">
         <label>Sentences — enter them in the <strong>correct order</strong></label>
-        <p class="help-text">Students will see them shuffled and must drag them back into this order. You can add an image for each sentence (optional).</p>
+        <p class="help-text">Students will see them shuffled. Use <strong>Show mode</strong> to control whether they see the text, image, or both in the viewer.</p>
 
         <div id="os-sentences-list">
-            <?php foreach ($d['sentences'] as $idx => $s): ?>
+            <?php foreach ($d['sentences'] as $idx => $s):
+                $disp = $s['display'] ?? 'both';
+            ?>
             <div class="os-sentence-item" draggable="true">
-                <span class="handle">☰</span>
-                <span style="color:#94a3b8;font-size:13px;min-width:22px;"><?= $idx + 1 ?>.</span>
-                <input type="hidden" name="sentence_id[]"   value="<?= htmlspecialchars($s['id'],   ENT_QUOTES, 'UTF-8') ?>">
-                <input type="text"   name="sentence_text[]" value="<?= htmlspecialchars($s['text'], ENT_QUOTES, 'UTF-8') ?>"
-                       placeholder="Type sentence…">
-                <input type="hidden" name="sentence_image_existing[]" value="<?= htmlspecialchars(isset($s['image']) ? $s['image'] : '', ENT_QUOTES, 'UTF-8') ?>">
-                <input type="file" name="sentence_image[]" accept="image/*" style="max-width:160px;">
-                <?php if (!empty($s['image'])): ?>
-                    <img src="<?= htmlspecialchars($s['image'], ENT_QUOTES, 'UTF-8') ?>" alt="sentence-img"
-                         style="max-width:60px;max-height:60px;border-radius:8px;margin-left:8px;vertical-align:middle;">
-                <?php endif; ?>
-                <button type="button" class="btn-remove-s" onclick="removeSentence(this)">✖</button>
+                <div class="os-sentence-row">
+                    <span class="handle">☰</span>
+                    <span class="os-sentence-num"><?= $idx + 1 ?>.</span>
+                    <input type="hidden" name="sentence_id[]" value="<?= htmlspecialchars($s['id'], ENT_QUOTES, 'UTF-8') ?>">
+                    <input type="text"   name="sentence_text[]" value="<?= htmlspecialchars($s['text'], ENT_QUOTES, 'UTF-8') ?>"
+                           placeholder="Sentence text (used for TTS and text display)">
+                    <select name="sentence_display[]" class="os-display-select" title="Show mode in viewer">
+                        <option value="both"  <?= $disp==='both'  ? 'selected' : '' ?>>Text + Image</option>
+                        <option value="text"  <?= $disp==='text'  ? 'selected' : '' ?>>Text only</option>
+                        <option value="image" <?= $disp==='image' ? 'selected' : '' ?>>Image only</option>
+                    </select>
+                    <button type="button" class="btn-remove-s" onclick="removeSentence(this)">✖</button>
+                </div>
+                <div class="os-sentence-image-row">
+                    <label>Image:</label>
+                    <input type="hidden" name="sentence_image_existing[]" value="<?= htmlspecialchars($s['image'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
+                    <input type="file" name="sentence_image[]" accept="image/*" style="font-size:13px;">
+                    <?php if (!empty($s['image'])): ?>
+                        <img class="thumb" src="<?= htmlspecialchars($s['image'], ENT_QUOTES, 'UTF-8') ?>" alt="">
+                    <?php endif; ?>
+                </div>
             </div>
             <?php endforeach; ?>
         </div>
@@ -405,9 +443,8 @@ function toggleMedia(val) {
 }
 
 function reindexSentences() {
-    var items = document.querySelectorAll('#os-sentences-list .os-sentence-item');
-    items.forEach(function(item, i) {
-        var numEl = item.querySelector('span[style]');
+    document.querySelectorAll('#os-sentences-list .os-sentence-item').forEach(function(item, i) {
+        var numEl = item.querySelector('.os-sentence-num');
         if (numEl) numEl.textContent = (i + 1) + '.';
     });
 }
@@ -419,13 +456,23 @@ function addSentence() {
     div.className = 'os-sentence-item';
     div.draggable = true;
     div.innerHTML =
-        '<span class="handle">☰</span>' +
-        '<span style="color:#94a3b8;font-size:13px;min-width:22px;">' + (idx + 1) + '.</span>' +
-        '<input type="hidden" name="sentence_id[]" value="os_' + Date.now() + '">' +
-        '<input type="text" name="sentence_text[]" placeholder="Type sentence…">' +
-        '<input type="hidden" name="sentence_image_existing[]" value="">' +
-        '<input type="file" name="sentence_image[]" accept="image/*" style="max-width:160px;">' +
-        '<button type="button" class="btn-remove-s" onclick="removeSentence(this)">✖</button>';
+        '<div class="os-sentence-row">' +
+            '<span class="handle">☰</span>' +
+            '<span class="os-sentence-num">' + (idx + 1) + '.</span>' +
+            '<input type="hidden" name="sentence_id[]" value="os_' + Date.now() + '">' +
+            '<input type="text" name="sentence_text[]" placeholder="Sentence text (used for TTS and text display)">' +
+            '<select name="sentence_display[]" class="os-display-select" title="Show mode in viewer">' +
+                '<option value="both" selected>Text + Image</option>' +
+                '<option value="text">Text only</option>' +
+                '<option value="image">Image only</option>' +
+            '</select>' +
+            '<button type="button" class="btn-remove-s" onclick="removeSentence(this)">✖</button>' +
+        '</div>' +
+        '<div class="os-sentence-image-row">' +
+            '<label>Image:</label>' +
+            '<input type="hidden" name="sentence_image_existing[]" value="">' +
+            '<input type="file" name="sentence_image[]" accept="image/*" style="font-size:13px;">' +
+        '</div>';
     list.appendChild(div);
     attachDrag(div);
     div.querySelector('input[type=text]').focus();
@@ -433,10 +480,7 @@ function addSentence() {
 
 function removeSentence(btn) {
     var item = btn.closest('.os-sentence-item');
-    if (item) {
-        item.remove();
-        reindexSentences();
-    }
+    if (item) { item.remove(); reindexSentences(); }
 }
 
 var dragSrc = null;
@@ -456,11 +500,8 @@ function attachDrag(el) {
         e.dataTransfer.dropEffect = 'move';
         var list = document.getElementById('os-sentences-list');
         var after = getDragAfter(list, e.clientY);
-        if (after == null) {
-            list.appendChild(dragSrc);
-        } else {
-            list.insertBefore(dragSrc, after);
-        }
+        if (after == null) { list.appendChild(dragSrc); }
+        else { list.insertBefore(dragSrc, after); }
     });
 }
 
@@ -469,9 +510,7 @@ function getDragAfter(container, y) {
     return items.reduce(function(closest, child) {
         var box = child.getBoundingClientRect();
         var offset = y - box.top - box.height / 2;
-        if (offset < 0 && offset > closest.offset) {
-            return { offset: offset, element: child };
-        }
+        if (offset < 0 && offset > closest.offset) return { offset: offset, element: child };
         return closest;
     }, { offset: Number.NEGATIVE_INFINITY }).element;
 }
@@ -483,12 +522,8 @@ function syncMediaCaches() {
     var audioInput = document.querySelector('input[name="audio_url"]');
     var videoCache = document.getElementById('os_current_video_url');
     var audioCache = document.getElementById('os_current_audio_url');
-    if (videoInput && videoCache && videoInput.value.trim() !== '') {
-        videoCache.value = videoInput.value.trim();
-    }
-    if (audioInput && audioCache && audioInput.value.trim() !== '') {
-        audioCache.value = audioInput.value.trim();
-    }
+    if (videoInput && videoCache && videoInput.value.trim() !== '') videoCache.value = videoInput.value.trim();
+    if (audioInput && audioCache && audioInput.value.trim() !== '') audioCache.value = audioInput.value.trim();
 }
 
 var _osVideoInput = document.querySelector('input[name="video_url"]');
