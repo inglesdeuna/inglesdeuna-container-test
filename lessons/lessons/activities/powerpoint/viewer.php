@@ -223,8 +223,8 @@ ob_start();
 .ppt-completed-title{font-family:'Fredoka','Trebuchet MS',sans-serif;font-size:36px;font-weight:700;color:#be185d;margin:0 0 14px;line-height:1.2}
 .ppt-completed-text{font-size:16px;color:#6b4b5f;line-height:1.6;margin:0 0 28px}
 .ppt-completed-actions{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
-.ppt-completed-btn{display:inline-block;padding:12px 24px;border:none;border-radius:999px;background:linear-gradient(180deg,#db2777 0%,#be185d 100%);color:#fff;font-weight:700;font-size:16px;cursor:pointer;box-shadow:0 10px 24px rgba(0,0,0,.14);transition:transform .18s ease,filter .18s ease}
-.ppt-completed-btn:hover{transform:scale(1.05);filter:brightness(1.07)}
+.ppt-completed-btn{display:inline-flex;align-items:center;justify-content:center;padding:10px 14px;border:none;border-radius:10px;background:linear-gradient(180deg,#3d73ee 0%,#2563eb 100%);color:#fff;font-weight:700;font-size:13px;font-family:'Nunito','Segoe UI',sans-serif;line-height:1;cursor:pointer;box-shadow:0 10px 22px rgba(37,99,235,.28);transition:transform .18s ease,filter .18s ease}
+.ppt-completed-btn:hover{filter:brightness(1.07);transform:translateY(-1px)}
 .ppt-stage{background:linear-gradient(180deg,#fffdfc 0%,#f8fbff 100%);border:1px solid #ddd6fe;border-radius:24px;overflow:hidden;box-shadow:0 14px 28px rgba(15,23,42,.1)}
 .ppt-slide{min-height:520px;padding:28px;display:flex;gap:20px;align-items:flex-start}
 .ppt-slide.template-title_text{flex-direction:column}
@@ -327,7 +327,7 @@ ob_start();
     <h2 class="ppt-completed-title"><?php echo htmlspecialchars($viewerTitle, ENT_QUOTES, 'UTF-8'); ?></h2>
     <p class="ppt-completed-text">You've reviewed all the slides. Great job!</p>
     <div class="ppt-completed-actions">
-        <button type="button" class="ppt-completed-btn" id="ppt-restart-btn">Back to Slides</button>
+        <button type="button" class="ppt-completed-btn" id="ppt-restart-btn">Back</button>
     </div>
 </div>
 

@@ -52,8 +52,8 @@ ob_start();
 .flipbook-completed-title{font-family:'Fredoka','Trebuchet MS',sans-serif;font-size:36px;font-weight:700;color:#be185d;margin:0 0 14px;line-height:1.2}
 .flipbook-completed-text{font-size:16px;color:#6b4b5f;line-height:1.6;margin:0 0 28px}
 .flipbook-completed-actions{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
-.flipbook-completed-btn{display:inline-block;padding:12px 24px;border:none;border-radius:999px;background:linear-gradient(180deg,#db2777 0%,#be185d 100%);color:#fff;font-weight:700;font-size:16px;cursor:pointer;box-shadow:0 10px 24px rgba(0,0,0,.14);transition:transform .18s ease,filter .18s ease}
-.flipbook-completed-btn:hover{transform:scale(1.05);filter:brightness(1.07)}
+.flipbook-completed-btn{display:inline-flex;align-items:center;justify-content:center;padding:10px 14px;border:none;border-radius:10px;background:linear-gradient(180deg,#3d73ee 0%,#2563eb 100%);color:#fff;font-weight:700;font-size:13px;font-family:'Nunito','Segoe UI',sans-serif;line-height:1;cursor:pointer;box-shadow:0 10px 22px rgba(37,99,235,.28);transition:transform .18s ease,filter .18s ease}
+.flipbook-completed-btn:hover{filter:brightness(1.07);transform:translateY(-1px)}
 </style>
 
 <?php if ($pdfDisplayUrl === ''): ?>
@@ -177,7 +177,7 @@ ob_start();
     <h2 class="flipbook-completed-title"><?php echo htmlspecialchars($title, ENT_QUOTES, 'UTF-8'); ?></h2>
     <p class="flipbook-completed-text">You've reviewed the material. Great job studying!</p>
     <div class="flipbook-completed-actions">
-        <button type="button" class="flipbook-completed-btn" id="flipbook-restart-btn">Back to Document</button>
+        <button type="button" class="flipbook-completed-btn" id="flipbook-restart-btn">Back</button>
     </div>
 </div>
 

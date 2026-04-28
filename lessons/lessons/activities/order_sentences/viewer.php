@@ -115,8 +115,17 @@ body {
     color: #fff;
 }
 .btn-back {
-    background: #f1f5f9;
-    color: #1e293b;
+    background: linear-gradient(180deg, #3d73ee 0%, #2563eb 100%);
+    color: #fff;
+    font-family: 'Nunito', 'Segoe UI', sans-serif;
+    font-size: 13px;
+    line-height: 1;
+    box-shadow: 0 10px 22px rgba(37, 99, 235, .28);
+    transition: transform .18s ease, filter .18s ease;
+}
+.btn-back:hover {
+    filter: brightness(1.07);
+    transform: translateY(-1px);
 }
 </style>
 </head>
@@ -154,7 +163,7 @@ body {
 
     <div class="buttons">
         <button id="checkOrder" class="btn btn-check">Check Order</button>
-        <button type="button" onclick="history.back()" class="btn btn-back">← Back</button>
+        <button type="button" onclick="history.back()" class="btn btn-back">Back</button>
     </div>
     <p id="result"></p>
 </div>

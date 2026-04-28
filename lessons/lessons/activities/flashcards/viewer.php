@@ -575,19 +575,22 @@ body {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    padding: 14px 28px;
+    padding: 10px 14px;
     border: none;
-    border-radius: 999px;
-    background: var(--accent-strong);
+    border-radius: 10px;
+    background: linear-gradient(180deg, #3d73ee 0%, #2563eb 100%);
     color: #fff;
-    font-size: 1rem;
-    font-weight: 800;
+    font-size: 13px;
+    font-weight: 700;
+    font-family: 'Nunito', 'Segoe UI', sans-serif;
+    line-height: 1;
     cursor: pointer;
-    box-shadow: 0 18px 44px rgba(2, 132, 199, 0.26);
+    box-shadow: 0 10px 22px rgba(37, 99, 235, .28);
+    transition: transform .18s ease, filter .18s ease;
 }
 
 .completed-button:hover {
-    filter: brightness(1.05);
+    filter: brightness(1.07);
     transform: translateY(-1px);
 }
 
@@ -649,7 +652,7 @@ body {
         <div class="completed-icon">✅</div>
         <h2 class="completed-title">Completed</h2>
         <p class="completed-text">You've reviewed all flashcards. Excellent work with advanced vocabulary and idiomatic language.</p>
-        <button class="completed-button" onclick="goBackToCards()">Back to Cards</button>
+        <button class="completed-button" onclick="goBackToCards()">Back</button>
     </div>
 </div>
 

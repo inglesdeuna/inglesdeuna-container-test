@@ -489,7 +489,7 @@ function render_activity_viewer($title, $icon, $content)
 
     <?php if (!$embedded && !$isPresentationMode) { ?>
     <div class="top-row">
-        <a href="<?= htmlspecialchars($backUrl, ENT_QUOTES, 'UTF-8') ?>" class="back-btn">↩ Back</a>
+        <a href="<?= htmlspecialchars($backUrl, ENT_QUOTES, 'UTF-8') ?>" class="back-btn">Back</a>
     </div>
     <?php } ?>
 

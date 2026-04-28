@@ -352,15 +352,25 @@ h1{
 }
 
 a.back{
-  display:inline-block;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
   margin-top:10px;
-  background:linear-gradient(180deg, #34d399 0%, #10b981 100%);
+  background:linear-gradient(180deg, #3d73ee 0%, #2563eb 100%);
   color:#fff;
-  padding:10px 16px;
-  border-radius:999px;
+  padding:10px 14px;
+  border-radius:10px;
   text-decoration:none;
-  font-weight:800;
-  box-shadow:0 10px 22px rgba(16, 185, 129, .24);
+  font-weight:700;
+  font-size:13px;
+  font-family:'Nunito','Segoe UI',sans-serif;
+  line-height:1;
+  box-shadow:0 10px 22px rgba(37, 99, 235, .28);
+  transition:transform .18s ease, filter .18s ease;
+}
+a.back:hover{
+  filter:brightness(1.07);
+  transform:translateY(-1px);
 }
 
 @media (max-width:760px){
@@ -422,9 +432,7 @@ a.back{
 
 </div>
 
-<a class="back" href="../../academic/unit_view.php?unit=<?= urlencode($unit) ?>&source=<?= urlencode($_GET['source'] ?? '') ?>">
-  ↩ Back
-</a>
+<a class="back" href="../../academic/unit_view.php?unit=<?= urlencode($unit) ?>&source=<?= urlencode($_GET['source'] ?? '') ?>">Back</a>
 
 <audio id="correctSound" src="../../hangman/assets/realcorrect.mp3" preload="auto"></audio>
 <audio id="winSound" src="../../hangman/assets/win.mp3" preload="auto"></audio>

@@ -544,19 +544,22 @@ body {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    padding: 8px 12px;
+    padding: 10px 14px;
     border: none;
-    border-radius: 999px;
-    background: linear-gradient(180deg, #14b8a6 0%, #0f766e 100%);
+    border-radius: 10px;
+    background: linear-gradient(180deg, #3d73ee 0%, #2563eb 100%);
     color: #fff;
-    font-size: 15px;
+    font-size: 13px;
     font-weight: 700;
+    font-family: 'Nunito', 'Segoe UI', sans-serif;
+    line-height: 1;
     cursor: pointer;
-    box-shadow: 0 12px 26px rgba(15, 118, 110, .3);
+    box-shadow: 0 10px 22px rgba(37, 99, 235, .28);
+    transition: transform .18s ease, filter .18s ease;
 }
 
 .completed-button:hover {
-    filter: brightness(1.05);
+    filter: brightness(1.07);
     transform: translateY(-1px);
 }
 
@@ -619,7 +622,7 @@ body {
         <div class="completed-icon">✅</div>
         <h2 class="completed-title">Completed</h2>
         <p class="completed-text">You've finished all the questions. Great effort on your fluency practice!</p>
-        <button class="completed-button" onclick="goBackToCards()">Back to Questions</button>
+        <button class="completed-button" onclick="goBackToCards()">Back</button>
     </div>
 </div>
 
