@@ -24,7 +24,7 @@ function os_viewer_resolve_unit(PDO $pdo, string $activityId): string
     return $row ? (string) ($row['unit_id'] ?? '') : '';
 }
 
-function os_viewer_normalize($rawData): array
+function os_viewer_normalize(mixed $rawData): array
 {
     $default = [
         'title'        => 'Order the Sentences',
