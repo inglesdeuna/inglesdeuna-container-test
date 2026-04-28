@@ -108,14 +108,15 @@ ob_start();
 ?>
 <style>
 .os-stage {
-    max-width: 860px;
+    max-width: 680px;
     margin: 0 auto;
     font-family: 'Nunito', 'Segoe UI', sans-serif;
 }
 
+/* ── Header ── */
 .os-intro {
-    margin-bottom: 18px;
-    padding: 20px 22px;
+    margin-bottom: 20px;
+    padding: 20px 24px;
     border-radius: 20px;
     border: 1px solid #d9cff6;
     background: linear-gradient(135deg, #eef4ff 0%, #f8ebff 48%, #e8fff7 100%);
@@ -137,89 +138,162 @@ ob_start();
     line-height: 1.5;
 }
 
+/* ── Media ── */
 .os-media {
-    margin-bottom: 16px;
+    margin-bottom: 20px;
+    text-align: center;
 }
 
 .os-media video,
 .os-media audio {
     width: 100%;
-    border-radius: 10px;
+    border-radius: 14px;
 }
 
-/* ── Sentence list ── */
+/* ── Story sequence list ── */
 .os-sentence-list {
     display: flex;
     flex-direction: column;
-    gap: 10px;
-    margin-bottom: 18px;
+    gap: 14px;
+    margin-bottom: 26px;
+    counter-reset: os-step;
 }
 
+/* ── Story card — clean panel, not a rigid UI box ── */
 .os-sentence-item {
+    counter-increment: os-step;
     display: flex;
     align-items: center;
-    gap: 12px;
-    border: 2px solid #e5e7eb;
-    border-radius: 16px;
-    background: #ffffff;
-    padding: 12px 16px;
+    gap: 16px;
+    /* Barely-there background: airy, not opaque white */
+    background: rgba(252, 251, 255, 0.82);
+    border: 1px solid rgba(196, 181, 253, 0.22);
+    border-radius: 24px;
+    padding: 12px 20px 12px 12px;
     cursor: grab;
     user-select: none;
-    transition: border-color .15s ease, background .15s ease, box-shadow .15s ease, transform .1s ease;
-    min-height: 72px;
+    transition:
+        transform .22s cubic-bezier(.34, 1.4, .64, 1),
+        box-shadow .22s ease,
+        border-color .18s ease,
+        background .18s ease;
+    box-shadow:
+        0 2px 10px rgba(15, 23, 42, .06),
+        0 1px 3px  rgba(15, 23, 42, .04);
+    position: relative;
 }
 
+/* Step number badge — pure CSS, no JS needed */
+.os-sentence-item::before {
+    content: counter(os-step);
+    position: absolute;
+    top: -9px;
+    left: 16px;
+    min-width: 22px;
+    height: 22px;
+    padding: 0 5px;
+    background: #7c3aed;
+    color: #fff;
+    border-radius: 11px;
+    font-size: 11px;
+    font-weight: 800;
+    font-family: 'Nunito', sans-serif;
+    line-height: 22px;
+    text-align: center;
+    box-shadow: 0 2px 6px rgba(124, 58, 237, .40);
+    z-index: 1;
+    pointer-events: none;
+}
+
+/* Hover: lift without color change */
 .os-sentence-item:hover {
-    border-color: #a78bfa;
-    background: #faf5ff;
-    box-shadow: 0 6px 18px rgba(124, 58, 237, .12);
+    transform: translateY(-3px) scale(1.008);
+    box-shadow:
+        0 10px 28px rgba(15, 23, 42, .10),
+        0 3px 8px  rgba(124, 58, 237, .07);
+    border-color: rgba(167, 139, 250, 0.42);
+    background: rgba(252, 251, 255, 0.97);
 }
 
+/* While being dragged */
 .os-sentence-item.dragging {
-    opacity: 0.4;
-    border-color: #7c3aed;
-    transform: scale(1.02);
+    opacity: 0.42;
+    transform: scale(1.04) rotate(0.4deg);
+    box-shadow: 0 18px 40px rgba(124, 58, 237, .22);
+    border-color: rgba(124, 58, 237, .38);
 }
 
+/* Drop target */
 .os-sentence-item.over {
-    border: 2px dashed #7c3aed;
-    background: #ede9fe;
+    border: 2px dashed rgba(124, 58, 237, .55);
+    background: rgba(237, 233, 254, 0.45);
+    box-shadow: 0 0 0 5px rgba(124, 58, 237, .07);
+    transform: none;
 }
 
+/* After-check states */
 .os-sentence-item.correct-pos {
-    border-color: #16a34a;
-    background: #f0fdf4;
+    border-color: rgba(22, 163, 74, .38);
+    background: rgba(240, 253, 244, 0.85);
+    box-shadow: 0 2px 12px rgba(22, 163, 74, .10);
 }
 
 .os-sentence-item.wrong-pos {
-    border-color: #dc2626;
-    background: #fef2f2;
+    border-color: rgba(220, 38, 38, .32);
+    background: rgba(254, 242, 242, 0.85);
+    box-shadow: 0 2px 12px rgba(220, 38, 38, .08);
 }
 
-/* Large image for preschool */
+/* ── Image: story illustration, front and centre ── */
 .os-sentence-item img {
-    width: 120px;
-    height: 120px;
-    border-radius: 12px;
+    width: 130px;
+    height: 130px;
+    border-radius: 18px;
     flex-shrink: 0;
     object-fit: cover;
-    box-shadow: 0 2px 8px rgba(0,0,0,.10);
+    box-shadow:
+        0 6px 16px rgba(0, 0, 0, .13),
+        0 1px 4px  rgba(0, 0, 0, .08);
+    transition: transform .22s ease, box-shadow .22s ease;
 }
 
+/* Subtle image scale on card hover */
+.os-sentence-item:hover img {
+    transform: scale(1.04);
+    box-shadow:
+        0 10px 22px rgba(0, 0, 0, .16),
+        0 2px 6px  rgba(0, 0, 0, .10);
+}
+
+/* No scale when card is in a finished state */
+.os-sentence-item.correct-pos:hover img,
+.os-sentence-item.wrong-pos:hover img {
+    transform: none;
+}
+
+/* ── Sentence text ── */
 .os-sentence-text {
     flex: 1;
     font-family: 'Nunito', 'Segoe UI', sans-serif;
     font-size: 17px;
     font-weight: 700;
     color: #1e293b;
-    line-height: 1.4;
+    line-height: 1.45;
 }
 
+/* ── Drag handle: minimal, integrated ── */
 .os-handle {
-    color: #c4b5fd;
-    font-size: 20px;
+    color: rgba(196, 181, 253, 0.65);
+    font-size: 17px;
     cursor: grab;
     flex-shrink: 0;
+    letter-spacing: 1px;
+    transition: color .15s ease;
+    order: -1; /* keep handle leftmost */
+}
+
+.os-sentence-item:hover .os-handle {
+    color: rgba(124, 58, 237, 0.5);
 }
 
 /* ── Controls ── */
@@ -228,7 +302,7 @@ ob_start();
     flex-wrap: wrap;
     gap: 10px;
     justify-content: center;
-    margin-top: 6px;
+    margin-top: 8px;
 }
 
 .os-btn {
@@ -261,17 +335,17 @@ ob_start();
     filter: none;
 }
 
-.os-btn-check  { background: linear-gradient(180deg, #8b5cf6 0%, #7c3aed 100%); }
-.os-btn-tts    { background: linear-gradient(180deg, #38bdf8 0%, #0ea5e9 100%); }
-.os-btn-show   { background: linear-gradient(180deg, #d8b4fe 0%, #a855f7 100%); }
-.os-btn-next   { background: linear-gradient(180deg, #2dd4bf 0%, #0f766e 100%); }
+.os-btn-check { background: linear-gradient(180deg, #8b5cf6 0%, #7c3aed 100%); }
+.os-btn-tts   { background: linear-gradient(180deg, #38bdf8 0%, #0ea5e9 100%); }
+.os-btn-show  { background: linear-gradient(180deg, #d8b4fe 0%, #a855f7 100%); }
+.os-btn-next  { background: linear-gradient(180deg, #2dd4bf 0%, #0f766e 100%); }
 
 /* ── Feedback ── */
 #os-feedback {
     font-size: 20px;
     font-weight: 800;
     text-align: center;
-    margin-top: 14px;
+    margin-top: 16px;
     min-height: 28px;
 }
 
@@ -282,14 +356,14 @@ ob_start();
 .os-completed-screen {
     display: none;
     text-align: center;
-    max-width: 560px;
+    max-width: 520px;
     margin: 0 auto;
-    padding: 40px 20px;
+    padding: 44px 20px;
 }
 
 .os-completed-screen.active { display: block; }
 
-.os-completed-icon  { font-size: 80px; margin-bottom: 20px; }
+.os-completed-icon { font-size: 80px; margin-bottom: 20px; }
 
 .os-completed-title {
     font-family: 'Fredoka', 'Trebuchet MS', sans-serif;
@@ -330,11 +404,14 @@ ob_start();
 
 .os-restart-btn:hover { transform: scale(1.05); filter: brightness(1.07); }
 
+/* ── Responsive ── */
 @media (max-width: 640px) {
-    .os-controls { flex-direction: column; align-items: center; }
-    .os-btn { width: 100%; max-width: 300px; }
-    .os-sentence-item img { width: 90px; height: 90px; }
-    .os-sentence-text { font-size: 15px; }
+    .os-sentence-list   { gap: 12px; }
+    .os-controls        { flex-direction: column; align-items: center; }
+    .os-btn             { width: 100%; max-width: 300px; }
+    .os-sentence-item   { padding: 10px 14px 10px 10px; border-radius: 20px; }
+    .os-sentence-item img { width: 100px; height: 100px; border-radius: 14px; }
+    .os-sentence-text   { font-size: 15px; }
 }
 </style>
 
