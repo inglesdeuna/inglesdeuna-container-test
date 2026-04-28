@@ -109,17 +109,23 @@ body{
 }
 
 .d2dv-btn{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
   border:none;
   border-radius:999px;
-  padding:10px 16px;
-  min-width:132px;
+  padding:11px 18px;
+  min-width:142px;
   font-weight:800;
   font-family:'Nunito','Segoe UI',sans-serif;
+  font-size:14px;
+  line-height:1;
   cursor:pointer;
+  box-shadow:0 10px 22px rgba(15,23,42,.12);
   transition:transform .15s ease, filter .15s ease;
 }
 
-.d2dv-btn:hover{transform:translateY(-1px);filter:brightness(1.06)}
+.d2dv-btn:hover{transform:translateY(-1px);filter:brightness(1.04)}
 
 .d2dv-btn-soft{background:linear-gradient(180deg,#0ea5e9,#0369a1);color:#fff}
 .d2dv-btn-accent{background:linear-gradient(180deg,#8b5cf6,#6d28d9);color:#fff}
