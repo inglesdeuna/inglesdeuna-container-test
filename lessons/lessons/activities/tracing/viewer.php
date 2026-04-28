@@ -30,7 +30,44 @@ ob_start();
 ?>
 
 <style>
-/* (CSS unchanged for brevity — keep your original styles) */
+.tracing-viewer-shell{max-width:980px;margin:0 auto;padding:0 0 20px}
+.tracing-stage{display:flex;flex-direction:column;gap:14px}
+.tracing-intro{margin-bottom:4px}
+.tracing-intro h2{margin:0 0 4px;font-family:'Fredoka','Trebuchet MS',sans-serif;font-size:26px;font-weight:700;color:#1e293b}
+.tracing-intro p{margin:0;color:#475569;font-size:15px}
+.tracing-counter{display:flex;align-items:center;gap:8px;font-weight:700;font-size:15px;color:#475569}
+.tracing-counter-dot{width:10px;height:10px;border-radius:50%;background:#2563eb;flex-shrink:0}
+.tracing-canvas-wrap{display:flex;justify-content:center}
+.tracing-canvas-shell{border:2px solid #e2e8f0;border-radius:16px;overflow:hidden;background:#fff;box-shadow:0 4px 16px rgba(15,23,42,.08)}
+.tracing-canvas{display:block;cursor:crosshair;touch-action:none}
+.tracing-toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:12px;padding:10px 0}
+.tracing-toolbar-label{font-size:13px;font-weight:700;color:#64748b}
+.tracing-color-group,.tracing-size-group{display:flex;gap:8px;align-items:center}
+.tracing-color-swatch{width:28px;height:28px;border-radius:50%;border:2px solid transparent;cursor:pointer;transition:border-color .15s}
+.tracing-color-swatch.active{border-color:#1e293b}
+.tracing-size-btn{width:36px;height:36px;border-radius:50%;border:2px solid #e2e8f0;background:#f8fafc;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:border-color .15s}
+.tracing-size-btn.active{border-color:#2563eb}
+.tracing-size-btn .dot{border-radius:50%;background:#1e293b;display:block}
+.tracing-actions{display:flex;justify-content:center;gap:10px}
+.tracing-completed{display:none;text-align:center;padding:24px 16px}
+.tracing-btn{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  padding:11px 18px;
+  border:none;
+  border-radius:999px;
+  font-weight:800;
+  font-family:'Nunito','Segoe UI',sans-serif;
+  font-size:14px;
+  min-width:142px;
+  line-height:1;
+  cursor:pointer;
+  box-shadow:0 10px 22px rgba(15,23,42,.12);
+  transition:transform .15s ease, filter .15s ease;
+}
+.tracing-btn:hover{filter:brightness(1.04);transform:translateY(-1px)}
+.tracing-btn-next{background:linear-gradient(180deg,#22c55e,#15803d);color:#fff}
 </style>
 
 <div class="tracing-viewer-shell">
