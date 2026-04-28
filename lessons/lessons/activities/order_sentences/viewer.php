@@ -237,7 +237,7 @@ ob_start();
     justify-content: center;
     padding: 11px 18px;
     border: none;
-    border-radius: 999px;
+    border-radius: 8px;
     color: #fff;
     font-weight: 800;
     font-family: 'Nunito', 'Segoe UI', sans-serif;
@@ -318,7 +318,7 @@ ob_start();
     display: inline-block;
     padding: 12px 28px;
     border: none;
-    border-radius: 999px;
+    border-radius: 8px;
     background: linear-gradient(180deg, #8b5cf6 0%, #7c3aed 100%);
     color: #fff;
     font-weight: 700;
@@ -354,7 +354,7 @@ ob_start();
     </div>
     <?php elseif (($activity['media_type'] ?? '') === 'tts'): ?>
     <div class="os-media">
-        <button type="button" id="os-tts-btn" class="os-btn os-btn-tts">🔊 Play Audio</button>
+        <button type="button" id="os-tts-btn" class="os-btn os-btn-tts">Listen</button>
     </div>
     <?php endif; ?>
 
@@ -641,31 +641,77 @@ ob_start();
 
     <?php if (($activity['media_type'] ?? '') === 'tts'): ?>
     /* ── TTS ── */
-    var ttsBtn      = document.getElementById('os-tts-btn');
-    var ttsText     = <?= json_encode(!empty($activity['tts_text']) ? $activity['tts_text'] : implode('. ', array_column($sentences, 'text')), JSON_UNESCAPED_UNICODE) ?>;
-    var ttsUtter    = null;
-    var ttsSpeaking = false;
+    var ttsBtn         = document.getElementById('os-tts-btn');
+    var ttsSourceText  = <?= json_encode(!empty($activity['tts_text']) ? $activity['tts_text'] : implode('. ', array_column($sentences, 'text')), JSON_UNESCAPED_UNICODE) ?>;
+    var ttsUtter       = null;
+    var ttsIsSpeaking  = false;
+    var ttsIsPaused    = false;
+    var ttsOffset      = 0;
+    var ttsSegStart    = 0;
+
+    function ttsGetPreferredVoice(lang) {
+        var voices = window.speechSynthesis ? window.speechSynthesis.getVoices() : [];
+        if (!voices.length) return null;
+        var prefix = lang.split('-')[0].toLowerCase();
+        var matched = voices.filter(function (v) {
+            var vl = String(v.lang || '').toLowerCase();
+            return vl === lang.toLowerCase() || vl.startsWith(prefix + '-') || vl.startsWith(prefix + '_');
+        });
+        if (!matched.length) return voices[0] || null;
+        var hints = ['female', 'woman', 'zira', 'samantha', 'karen', 'aria', 'jenny', 'emma', 'olivia', 'ava'];
+        var female = matched.find(function (v) {
+            var label = (String(v.name || '') + ' ' + String(v.voiceURI || '')).toLowerCase();
+            return hints.some(function (h) { return label.indexOf(h) !== -1; });
+        });
+        return female || matched[0];
+    }
+
+    function ttsStartFromOffset() {
+        var remaining = ttsSourceText.slice(Math.max(0, ttsOffset));
+        if (!remaining.trim()) { ttsIsSpeaking = false; ttsIsPaused = false; ttsOffset = 0; return; }
+        speechSynthesis.cancel();
+        ttsSegStart = ttsOffset;
+        ttsUtter = new SpeechSynthesisUtterance(remaining);
+        ttsUtter.lang   = 'en-US';
+        ttsUtter.rate   = 0.7;
+        ttsUtter.pitch  = 1;
+        ttsUtter.volume = 1;
+        var preferred = ttsGetPreferredVoice('en-US');
+        if (preferred) ttsUtter.voice = preferred;
+        ttsUtter.onstart   = function () { ttsIsSpeaking = true;  ttsIsPaused = false; };
+        ttsUtter.onpause   = function () { ttsIsPaused   = true;  ttsIsSpeaking = true; };
+        ttsUtter.onresume  = function () { ttsIsPaused   = false; ttsIsSpeaking = true; };
+        ttsUtter.onboundary = function (ev) {
+            if (typeof ev.charIndex === 'number') {
+                ttsOffset = Math.max(ttsSegStart, Math.min(ttsSourceText.length, ttsSegStart + ev.charIndex));
+            }
+        };
+        ttsUtter.onend  = function () { if (!ttsIsPaused) { ttsIsSpeaking = false; ttsIsPaused = false; ttsOffset = 0; } };
+        ttsUtter.onerror = function () { ttsIsSpeaking = false; ttsIsPaused = false; ttsOffset = 0; };
+        speechSynthesis.speak(ttsUtter);
+    }
 
     if (ttsBtn) {
         ttsBtn.addEventListener('click', function () {
-            if (ttsSpeaking && speechSynthesis.speaking && !speechSynthesis.paused) {
-                speechSynthesis.pause();
-                ttsBtn.textContent = '▶ Resume';
+            if (!ttsSourceText.trim()) return;
+            if (speechSynthesis.paused || ttsIsPaused) {
+                speechSynthesis.resume();
+                ttsIsSpeaking = true;
+                ttsIsPaused   = false;
+                setTimeout(function () {
+                    if (!speechSynthesis.speaking && ttsOffset < ttsSourceText.length) ttsStartFromOffset();
+                }, 80);
                 return;
             }
-            if (speechSynthesis.paused) {
-                speechSynthesis.resume();
-                ttsBtn.textContent = '⏸ Pause';
+            if (speechSynthesis.speaking && !speechSynthesis.paused) {
+                speechSynthesis.pause();
+                ttsIsSpeaking = true;
+                ttsIsPaused   = true;
                 return;
             }
             speechSynthesis.cancel();
-            ttsUtter        = new SpeechSynthesisUtterance(ttsText);
-            ttsUtter.lang   = 'en-US';
-            ttsUtter.rate   = 0.85;
-            ttsUtter.onstart = function () { ttsSpeaking = true;  ttsBtn.textContent = '⏸ Pause'; };
-            ttsUtter.onend   = function () { ttsSpeaking = false; ttsBtn.textContent = '🔊 Play Audio'; };
-            ttsUtter.onerror = function () { ttsSpeaking = false; ttsBtn.textContent = '🔊 Play Audio'; };
-            speechSynthesis.speak(ttsUtter);
+            ttsOffset = 0;
+            ttsStartFromOffset();
         });
     }
     <?php endif; ?>
