@@ -245,6 +245,9 @@ h1{
 }
 
 .action-btn{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
   padding:11px 18px;
   border:none;
   border-radius:999px;
@@ -254,6 +257,7 @@ h1{
   font-weight:800;
   font-size:14px;
   font-family:'Nunito', 'Segoe UI', sans-serif;
+  line-height:1;
   box-shadow:0 10px 22px rgba(15, 23, 42, .12);
   transition:transform .15s ease, filter .15s ease;
 }

@@ -463,17 +463,22 @@ body {
 }
 
 .control-btn {
-    min-width: 150px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 142px;
     border: none;
     border-radius: 999px;
-    padding: 12px 18px;
-    font-size: 15px;
-    font-weight: 700;
+    padding: 11px 18px;
+    font-size: 14px;
+    font-weight: 800;
+    font-family: 'Nunito', 'Segoe UI', sans-serif;
+    line-height: 1;
     cursor: pointer;
     background: linear-gradient(180deg, #14b8a6 0%, #0f766e 100%);
     color: #fff;
     box-shadow: 0 12px 26px rgba(15, 118, 110, .3);
-    transition: transform 0.16s ease, filter 0.16s ease;
+    transition: transform 0.15s ease, filter 0.15s ease;
 }
 
 .control-btn:hover,

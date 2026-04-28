@@ -296,16 +296,19 @@ ob_start();
 }
 
 .us-btn{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
     padding:11px 18px;
     border:none;
     border-radius:999px;
     color:white;
     cursor:pointer;
-    margin:6px;
-    min-width:148px;
+    min-width:142px;
     font-weight:800;
     font-family:'Nunito','Segoe UI',sans-serif;
     font-size:14px;
+    line-height:1;
     box-shadow:0 10px 22px rgba(15,23,42,.12);
     transition:transform .15s ease, filter .15s ease;
 }

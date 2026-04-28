@@ -243,7 +243,7 @@ ob_start();
 .ppt-slide-audio-btn:hover{filter:brightness(1.07);transform:translateY(-1px)}
 .ppt-slide-audio-btn.playing{background:linear-gradient(180deg,#10b981 0%,#059669 100%)}
 .ppt-tts-lang{display:none}
-.ppt-btn{border:none;border-radius:999px;padding:11px 16px;font-weight:800;font-family:'Nunito','Segoe UI',sans-serif;font-size:14px;cursor:pointer;box-shadow:0 10px 22px rgba(15,23,42,.12);transition:transform .15s ease,filter .15s ease;text-decoration:none}
+.ppt-btn{display:inline-flex;align-items:center;justify-content:center;border:none;border-radius:999px;padding:11px 18px;font-weight:800;font-family:'Nunito','Segoe UI',sans-serif;font-size:14px;min-width:142px;line-height:1;cursor:pointer;box-shadow:0 10px 22px rgba(15,23,42,.12);transition:transform .15s ease,filter .15s ease;text-decoration:none}
 .ppt-btn:hover{filter:brightness(1.04);transform:translateY(-1px)}
 .ppt-btn-primary{background:linear-gradient(180deg,#8b5cf6 0%,#7c3aed 100%);color:#fff}
 .ppt-btn-light{background:linear-gradient(180deg,#f59eb2 0%,#ec4899 100%);color:#fff}

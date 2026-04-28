@@ -289,14 +289,20 @@ body{
 }
 
 .mlv-btn{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
   border:none;
   border-radius:999px;
-  padding:10px 16px;
+  padding:11px 18px;
   font-family:'Nunito','Segoe UI',sans-serif;
   font-size:14px;
   font-weight:800;
+  line-height:1;
   cursor:pointer;
-  min-width:120px;
+  min-width:142px;
+  box-shadow:0 10px 22px rgba(15,23,42,.12);
+  transition:transform .15s ease, filter .15s ease;
 }
 
 .mlv-btn-soft{
@@ -311,7 +317,7 @@ body{
 
 .mlv-btn:hover{
   transform:translateY(-1px);
-  filter:brightness(1.06);
+  filter:brightness(1.04);
 }
 
 .mlv-btn:disabled{

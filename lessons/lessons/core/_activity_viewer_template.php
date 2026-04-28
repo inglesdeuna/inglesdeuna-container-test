@@ -263,6 +263,37 @@ function render_activity_viewer($title, $icon, $content)
             transform:translateY(-1px);
         }
 
+        /* ── Canonical action button ───────────────────────────
+           Use .viewer-btn on Next / Previous / Show Answer buttons
+           in new activities so they automatically match app style. */
+        .viewer-btn{
+            display:inline-flex;
+            align-items:center;
+            justify-content:center;
+            padding:11px 18px;
+            border:none;
+            border-radius:999px;
+            color:#fff;
+            font-weight:800;
+            font-family:'Nunito','Segoe UI',sans-serif;
+            font-size:14px;
+            min-width:142px;
+            cursor:pointer;
+            box-shadow:0 10px 22px rgba(15,23,42,.12);
+            transition:transform .15s ease, filter .15s ease;
+            line-height:1;
+            text-decoration:none;
+        }
+        .viewer-btn:hover,
+        .viewer-btn:focus-visible{
+            filter:brightness(1.04);
+            transform:translateY(-1px);
+        }
+        .viewer-btn:disabled{
+            opacity:.55;
+            cursor:default;
+        }
+
         .viewer-header{
             text-align:center;
             margin:0 0 10px 0;

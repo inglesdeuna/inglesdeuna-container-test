@@ -391,22 +391,27 @@ ob_start();
 }
 
 .mc-btn{
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     border: none;
     border-radius: 999px;
-    min-height: 40px;
-    padding: 0 16px;
+    padding: 11px 18px;
     color: #fff;
-    font-weight: 700;
-    font-size: 13px;
+    font-weight: 800;
+    font-size: 14px;
+    font-family: 'Nunito', 'Segoe UI', sans-serif;
+    min-width: 142px;
+    line-height: 1;
     box-shadow: 0 8px 16px rgba(92, 33, 182, 0.12);
-    transition: transform 0.12s ease, filter 0.12s ease;
+    transition: transform .15s ease, filter .15s ease;
     cursor: pointer;
 }
 
 .mc-btn:hover,
 .mc-btn:focus {
     transform: translateY(-1px);
-    filter: brightness(1.06);
+    filter: brightness(1.04);
 }
 
 .mc-btn-listen{

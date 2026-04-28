@@ -69,24 +69,25 @@ ob_start();
 }
 .coloring-action-btn {
     display: inline-flex;
-    justify-content: center;
     align-items: center;
-    min-width: 146px;
+    justify-content: center;
+    min-width: 142px;
     border: none;
     border-radius: 999px;
-    padding: 12px 24px;
-    font-size: 15px;
+    padding: 11px 18px;
+    font-size: 14px;
     font-weight: 800;
-    font-family: inherit;
+    font-family: 'Nunito', 'Segoe UI', sans-serif;
     cursor: pointer;
     color: #fff;
     text-decoration: none;
-    box-shadow: 0 10px 24px rgba(0,0,0,.14);
-    transition: transform .18s ease, filter .18s ease;
+    line-height: 1;
+    box-shadow: 0 10px 22px rgba(15, 23, 42, .12);
+    transition: transform .15s ease, filter .15s ease;
 }
 .coloring-action-btn:hover {
-    transform: scale(1.05);
-    filter: brightness(1.07);
+    transform: translateY(-1px);
+    filter: brightness(1.04);
 }
 .coloring-action-btn-secondary { background: linear-gradient(180deg, #60a5fa 0%, #2563eb 100%); }
 .coloring-action-btn-primary { background: linear-gradient(180deg, #db2777 0%, #be185d 100%); }

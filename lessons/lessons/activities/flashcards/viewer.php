@@ -504,17 +504,22 @@ body {
 }
 
 .control-btn {
-    min-width: 140px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 142px;
     border: 1px solid #dbeafe;
     border-radius: 999px;
-    padding: 14px 20px;
-    font-size: 1rem;
+    padding: 11px 18px;
+    font-size: 14px;
     font-weight: 800;
+    font-family: 'Nunito', 'Segoe UI', sans-serif;
+    line-height: 1;
     cursor: pointer;
     background: #f8fafc;
     color: var(--text-dark);
     box-shadow: 0 16px 32px rgba(15, 23, 42, 0.08);
-    transition: transform 0.16s ease, filter 0.16s ease, background 0.16s ease;
+    transition: transform 0.15s ease, filter 0.15s ease, background 0.15s ease;
 }
 
 .control-btn:hover,

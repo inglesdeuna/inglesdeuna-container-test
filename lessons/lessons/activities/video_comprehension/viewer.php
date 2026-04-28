@@ -166,8 +166,8 @@ ob_start();
 .vc-option.correct{border-color:#16a34a;background:#dcfce7;color:#166534}
 .vc-option.wrong{border-color:#dc2626;background:#fee2e2;color:#991b1b}
 .vc-controls{display:flex;gap:10px;flex-wrap:wrap;padding:0 16px 14px}
-.vc-btn{border:none;border-radius:999px;padding:10px 14px;font-weight:800;font-size:13px;cursor:pointer;box-shadow:0 8px 18px rgba(15,23,42,.11);transition:transform .15s ease,filter .15s ease}
-.vc-btn:hover{filter:brightness(1.05);transform:translateY(-1px)}
+.vc-btn{display:inline-flex;align-items:center;justify-content:center;border:none;border-radius:999px;padding:11px 18px;font-weight:800;font-family:'Nunito','Segoe UI',sans-serif;font-size:14px;min-width:142px;line-height:1;cursor:pointer;box-shadow:0 10px 22px rgba(15,23,42,.12);transition:transform .15s ease,filter .15s ease}
+.vc-btn:hover{filter:brightness(1.04);transform:translateY(-1px)}
 .vc-btn-check{background:linear-gradient(180deg,#3b82f6,#1d4ed8);color:#fff}
 .vc-btn-next{background:linear-gradient(180deg,#34d399,#059669);color:#fff}
 .vc-btn-restart{background:linear-gradient(180deg,#fbbf24,#f59e0b);color:#7c2d12}
