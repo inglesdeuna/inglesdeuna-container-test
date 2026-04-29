@@ -340,7 +340,12 @@ tbody tr:last-child td{border-bottom:none}
                 </div>
 
                 <div class="field full">
-                    <button class="button-primary" type="submit">Guardar docente</button>
+                    <button class="button-primary" type="submit">
+                        <?php echo $editingTeacher !== null ? '💾 Guardar cambios' : 'Guardar docente'; ?>
+                    </button>
+                    <?php if ($editingTeacher !== null) { ?>
+                        <a href="teacher_enrollments.php" style="display:block;text-align:center;margin-top:10px;color:#5d7465;font-size:13px;">Cancelar edición</a>
+                    <?php } ?>
                 </div>
             </form>
         </section>
