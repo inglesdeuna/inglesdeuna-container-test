@@ -1194,6 +1194,7 @@ body{font-family:Arial,sans-serif;background:var(--bg);color:var(--text);overflo
   display: flex;
   align-items: stretch;
   justify-content: center;
+  position: relative;
 }
 
 .frame-wrap iframe {
@@ -1208,6 +1209,55 @@ body{font-family:Arial,sans-serif;background:var(--bg);color:var(--text);overflo
   background: #fff;
   margin: 0 auto;
   box-sizing: border-box;
+}
+
+/* ── Fullscreen button ── */
+.fs-btn{
+  position:absolute;bottom:10px;right:10px;z-index:10;
+  width:34px;height:34px;border-radius:8px;border:none;
+  background:rgba(0,0,0,.48);color:#fff;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  transition:background .15s,opacity .15s;opacity:.7;
+  flex-shrink:0;
+}
+.fs-btn:hover{background:rgba(0,0,0,.78);opacity:1}
+
+/* ── Fullscreen states ── */
+.viewer-shell:fullscreen,
+.viewer-shell:-webkit-full-screen{
+  position:fixed;inset:0;
+  width:100vw !important;height:100vh !important;
+  border-radius:0 !important;border:none !important;
+  box-shadow:none !important;padding:0 !important;
+  background:#000 !important;
+  display:flex !important;flex-direction:column !important;
+  overflow:hidden;height:100% !important;
+}
+.viewer-shell:fullscreen .viewer-top,
+.viewer-shell:-webkit-full-screen .viewer-top{
+  padding:6px 14px;background:#111;
+  flex-shrink:0;margin-bottom:0 !important;
+}
+.viewer-shell:fullscreen .frame-wrap,
+.viewer-shell:-webkit-full-screen .frame-wrap{
+  flex:1 1 auto !important;border-radius:0 !important;
+  border:none !important;box-shadow:none !important;
+  min-height:0 !important;
+  align-items:stretch !important;
+}
+.viewer-shell:fullscreen .frame-wrap iframe,
+.viewer-shell:-webkit-full-screen .frame-wrap iframe{
+  height:100% !important;max-height:none !important;
+  min-height:0 !important;max-width:100% !important;flex:1;
+}
+.viewer-shell:fullscreen .controls,
+.viewer-shell:-webkit-full-screen .controls{
+  background:#111 !important;position:static !important;
+  padding:8px 16px !important;flex-shrink:0;
+}
+.viewer-shell:fullscreen .fs-btn,
+.viewer-shell:-webkit-full-screen .fs-btn{
+  background:rgba(255,255,255,.18) !important;opacity:1;
 }
 
 .controls{
@@ -1550,6 +1600,7 @@ body{font-family:Arial,sans-serif;background:var(--bg);color:var(--text);overflo
             src="<?php echo h($viewerHref); ?>"
             title="Activity viewer"
           ></iframe>
+          <button id="fsBtn" class="fs-btn" title="Pantalla completa" aria-label="Pantalla completa"></button>
         </div>
 
         <div class="controls">
@@ -1625,6 +1676,40 @@ body{font-family:Arial,sans-serif;background:var(--bg);color:var(--text);overflo
     }
 
     iframe.addEventListener('load', hideEmbeddedBackButton);
+})();
+
+/* ── Fullscreen ── */
+(function () {
+    const shell = document.querySelector('.viewer-shell');
+    const btn   = document.getElementById('fsBtn');
+    if (!shell || !btn) return;
+
+    const SVG_ENTER = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg>';
+    const SVG_EXIT  = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z"/></svg>';
+
+    function isFs() {
+        return !!(document.fullscreenElement || document.webkitFullscreenElement);
+    }
+
+    function syncBtn() {
+        btn.innerHTML = isFs() ? SVG_EXIT : SVG_ENTER;
+        btn.title     = isFs() ? 'Salir de pantalla completa' : 'Pantalla completa';
+    }
+
+    function toggle() {
+        if (!isFs()) {
+            const req = shell.requestFullscreen || shell.webkitRequestFullscreen;
+            if (req) req.call(shell);
+        } else {
+            const exit = document.exitFullscreen || document.webkitExitFullscreen;
+            if (exit) exit.call(document);
+        }
+    }
+
+    btn.addEventListener('click', toggle);
+    document.addEventListener('fullscreenchange',        syncBtn);
+    document.addEventListener('webkitfullscreenchange', syncBtn);
+    syncBtn();
 })();
 </script>
 </body>
