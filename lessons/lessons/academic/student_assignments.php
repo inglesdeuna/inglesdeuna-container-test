@@ -1734,9 +1734,21 @@ if ($selectedProgram === 'technical' && $editRecord) {
                                 }, $availableUnits))));
                                 $assignedUnitCount = count($gUnitIds);
                                 $hasAllUnits = !empty($availableUnitIds) && count(array_intersect($availableUnitIds, $gUnitIds)) >= count($availableUnitIds);
-                                $deleteQuestion = $assignedUnitCount > 1
-                                    ? '¿Eliminar todas las unidades asignadas a ' . $gStudentName . ' en este curso?' 
-                                    : '¿Eliminar a ' . $gStudentName . '?';
+                                // Verificar si este es el único curso asignado al estudiante
+                                $thisBundleKey = ($gRow['program'] ?? '') . '::' . ($gRow['course_id'] ?? '') . '::' . ($gRow['level_id'] ?? '') . '::' . ($gRow['teacher_id'] ?? '');
+                                $gOtherBundles = array_unique(array_filter(array_map(function ($row) use ($gStudentId, $thisBundleKey) {
+                                    if ((string) ($row['student_id'] ?? '') !== $gStudentId) {
+                                        return null;
+                                    }
+                                    $key = ($row['program'] ?? '') . '::' . ($row['course_id'] ?? '') . '::' . ($row['level_id'] ?? '') . '::' . ($row['teacher_id'] ?? '');
+                                    return $key !== $thisBundleKey ? $key : null;
+                                }, $studentAssignments)));
+                                $isLastAssignment = count($gOtherBundles) === 0;
+                                $deleteQuestion = $isLastAssignment
+                                    ? '¿Eliminar a ' . $gStudentName . '? Es su único curso asignado: se eliminará también de inscripciones y del sistema.'
+                                    : ($assignedUnitCount > 1
+                                        ? '¿Eliminar todas las unidades asignadas a ' . $gStudentName . ' en este curso?'
+                                        : '¿Eliminar a ' . $gStudentName . ' de este curso?');
                                 $deleteUrl = 'student_assignments.php?delete_group=1&student_id=' . urlencode($gStudentId)
                                     . '&program=' . urlencode((string) ($gRow['program'] ?? ''))
                                     . '&course_id=' . urlencode((string) ($gRow['course_id'] ?? ''))
