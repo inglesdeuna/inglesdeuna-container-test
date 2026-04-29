@@ -318,6 +318,13 @@ tbody tr:last-child td{border-bottom:none}
                                     <td><?php echo ((string) ($student['guardian'] ?? '')) !== '' ? h((string) $student['guardian']) : '<span class="small">Sin dato</span>'; ?></td>
                                     <td><?php echo ((string) ($student['contact'] ?? '')) !== '' ? h((string) $student['contact']) : '<span class="small">Sin dato</span>'; ?></td>
                                     <td><?php echo ((string) ($student['eps'] ?? '')) !== '' ? '<span class="badge">' . h((string) $student['eps']) . '</span>' : '<span class="small">Sin dato</span>'; ?></td>
+                                    <td>
+                                        <a class="btn-del"
+                                           href="delete_student.php?id=<?php echo h((string) ($student['id'] ?? '')); ?>"
+                                           onclick="return confirm('¿Eliminar a <?php echo h(addslashes((string) ($student['name'] ?? ''))); ?>? Se borrarán todas sus asignaciones, resultados y cuenta. Esta acción no se puede deshacer.')">
+                                            🗑️ Eliminar
+                                        </a>
+                                    </td>
                                 </tr>
                             <?php } ?>
                         <?php } ?>
