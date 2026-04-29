@@ -138,44 +138,78 @@ function save_student_to_database(array $student): bool
 $students = load_students_from_database();
 
 $errors = [];
+$editingStudent = null;
+$editStudentId = trim((string) ($_GET['edit'] ?? ''));
+
+// Pre-llenar formulario si se viene de editar
+if ($editStudentId !== '') {
+    foreach ($students as $s) {
+        if ((string) ($s['id'] ?? '') === $editStudentId) {
+            $editingStudent = $s;
+            break;
+        }
+    }
+}
+
 $form = [
-    'student_name' => '',
-    'student_guardian' => '',
-    'student_contact' => '',
-    'student_eps' => '',
+    'student_name'     => (string) ($editingStudent['name'] ?? ''),
+    'student_guardian' => (string) ($editingStudent['guardian'] ?? ''),
+    'student_contact'  => (string) ($editingStudent['contact'] ?? ''),
+    'student_eps'      => (string) ($editingStudent['eps'] ?? ''),
 ];
 
 /* ===============================
    GUARDAR
 =============================== */
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $form['student_name'] = trim((string) ($_POST['student_name'] ?? ''));
+    $form['student_name']     = trim((string) ($_POST['student_name'] ?? ''));
     $form['student_guardian'] = trim((string) ($_POST['student_guardian'] ?? ''));
-    $form['student_contact'] = trim((string) ($_POST['student_contact'] ?? ''));
-    $form['student_eps'] = trim((string) ($_POST['student_eps'] ?? ''));
+    $form['student_contact']  = trim((string) ($_POST['student_contact'] ?? ''));
+    $form['student_eps']      = trim((string) ($_POST['student_eps'] ?? ''));
+    $postStudentId            = trim((string) ($_POST['edit_student_id'] ?? ''));
 
     if ($form['student_name'] === '') {
         $errors[] = 'Debe escribir el nombre del estudiante.';
     }
 
-    $existingStudent = find_existing_student($students, $form['student_name'], $form['student_contact']);
-
     if (empty($errors)) {
         $now = date('Y-m-d H:i:s');
 
-        $studentRecord = [
-            'id' => $existingStudent
-                ? (string) ($existingStudent['id'] ?? uniqid('student_', true))
-                : uniqid('student_', true),
-            'name' => $form['student_name'],
-            'guardian' => $form['student_guardian'],
-            'contact' => $form['student_contact'],
-            'eps' => $form['student_eps'],
-            'created_at' => $existingStudent
-                ? (string) ($existingStudent['created_at'] ?? $now)
-                : $now,
-            'updated_at' => $now,
-        ];
+        if ($postStudentId !== '') {
+            // Edición de estudiante existente por ID
+            $existingForEdit = null;
+            foreach ($students as $s) {
+                if ((string) ($s['id'] ?? '') === $postStudentId) {
+                    $existingForEdit = $s;
+                    break;
+                }
+            }
+            $studentRecord = [
+                'id'         => $postStudentId,
+                'name'       => $form['student_name'],
+                'guardian'   => $form['student_guardian'],
+                'contact'    => $form['student_contact'],
+                'eps'        => $form['student_eps'],
+                'created_at' => (string) ($existingForEdit['created_at'] ?? $now),
+                'updated_at' => $now,
+            ];
+        } else {
+            // Creación o deduplicación por nombre/contacto
+            $existingStudent = find_existing_student($students, $form['student_name'], $form['student_contact']);
+            $studentRecord = [
+                'id'         => $existingStudent
+                    ? (string) ($existingStudent['id'] ?? uniqid('student_', true))
+                    : uniqid('student_', true),
+                'name'       => $form['student_name'],
+                'guardian'   => $form['student_guardian'],
+                'contact'    => $form['student_contact'],
+                'eps'        => $form['student_eps'],
+                'created_at' => $existingStudent
+                    ? (string) ($existingStudent['created_at'] ?? $now)
+                    : $now,
+                'updated_at' => $now,
+            ];
+        }
 
         $savedInDb = save_student_to_database($studentRecord);
 
@@ -231,6 +265,8 @@ table{width:100%;min-width:900px;border-collapse:separate;border-spacing:0}
 thead th{background:#f3fbf5;color:var(--text);font-size:12px;font-weight:700;text-transform:uppercase;padding:12px;text-align:left;white-space:nowrap}
 .btn-del{display:inline-block;padding:5px 10px;border-radius:8px;background:linear-gradient(180deg,#e57373,#c62828);color:#fff;font-size:12px;font-weight:700;text-decoration:none;transition:filter .2s,transform .15s}
 .btn-del:hover{filter:brightness(1.1);transform:translateY(-1px)}
+.btn-edit{display:inline-block;padding:5px 10px;border-radius:8px;background:linear-gradient(180deg,#64b5f6,#1976d2);color:#fff;font-size:12px;font-weight:700;text-decoration:none;transition:filter .2s,transform .15s;margin-right:4px}
+.btn-edit:hover{filter:brightness(1.1);transform:translateY(-1px)}
 tbody td{padding:12px;border-bottom:1px solid var(--line);font-size:14px;color:var(--text);vertical-align:top}
 tbody tr:last-child td{border-bottom:none}
 .badge{display:inline-block;padding:4px 8px;border-radius:999px;background:var(--badge-bg);color:var(--badge-text);font-size:12px;font-weight:700}
@@ -247,8 +283,13 @@ tbody tr:last-child td{border-bottom:none}
     <div class="stack">
         <section class="card">
             <div class="card-header">
-                <h2>🧾 Registrar estudiante</h2>
-                <p class="subtitle">La inscripción queda guardada en la base de datos.</p>
+                <?php if ($editingStudent !== null) { ?>
+                    <h2>✏️ Editar estudiante</h2>
+                    <p class="subtitle">Corrigiendo datos de: <strong><?php echo h((string) ($editingStudent['name'] ?? '')); ?></strong></p>
+                <?php } else { ?>
+                    <h2>🧾 Registrar estudiante</h2>
+                    <p class="subtitle">La inscripción queda guardada en la base de datos.</p>
+                <?php } ?>
             </div>
 
             <?php if (isset($_GET['saved'])) { ?>
@@ -264,6 +305,10 @@ tbody tr:last-child td{border-bottom:none}
             <?php } ?>
 
             <form method="post" class="form-grid">
+                <?php if ($editingStudent !== null) { ?>
+                    <input type="hidden" name="edit_student_id" value="<?php echo h((string) ($editingStudent['id'] ?? '')); ?>">
+                <?php } ?>
+
                 <div class="field full">
                     <label for="student_name">Nombre del estudiante</label>
                     <input id="student_name" type="text" name="student_name" placeholder="Nombre completo" value="<?php echo h($form['student_name']); ?>" required>
@@ -285,7 +330,12 @@ tbody tr:last-child td{border-bottom:none}
                 </div>
 
                 <div class="field full">
-                    <button class="button-primary" type="submit">Guardar estudiante</button>
+                    <button class="button-primary" type="submit">
+                        <?php echo $editingStudent !== null ? '💾 Guardar cambios' : 'Guardar estudiante'; ?>
+                    </button>
+                    <?php if ($editingStudent !== null) { ?>
+                        <a href="student_enrollments.php" style="display:block;text-align:center;margin-top:10px;color:#5d7465;font-size:13px;">Cancelar edición</a>
+                    <?php } ?>
                 </div>
             </form>
         </section>
@@ -318,7 +368,11 @@ tbody tr:last-child td{border-bottom:none}
                                     <td><?php echo ((string) ($student['guardian'] ?? '')) !== '' ? h((string) $student['guardian']) : '<span class="small">Sin dato</span>'; ?></td>
                                     <td><?php echo ((string) ($student['contact'] ?? '')) !== '' ? h((string) $student['contact']) : '<span class="small">Sin dato</span>'; ?></td>
                                     <td><?php echo ((string) ($student['eps'] ?? '')) !== '' ? '<span class="badge">' . h((string) $student['eps']) . '</span>' : '<span class="small">Sin dato</span>'; ?></td>
-                                    <td>
+                                    <td style="white-space:nowrap">
+                                        <a class="btn-edit"
+                                           href="student_enrollments.php?edit=<?php echo h((string) ($student['id'] ?? '')); ?>">
+                                            ✏️ Editar
+                                        </a>
                                         <a class="btn-del"
                                            href="delete_student.php?id=<?php echo h((string) ($student['id'] ?? '')); ?>"
                                            onclick="return confirm('¿Eliminar a <?php echo h(addslashes((string) ($student['name'] ?? ''))); ?>? Se borrarán todas sus asignaciones, resultados y cuenta. Esta acción no se puede deshacer.')">
