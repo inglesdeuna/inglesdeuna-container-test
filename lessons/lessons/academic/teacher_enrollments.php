@@ -149,44 +149,77 @@ if (!database_is_available()) {
     $errors[] = 'No hay conexión a la base de datos. Revise la variable de entorno DATABASE_URL y el archivo config/db.php.';
 }
 
+$editingTeacher = null;
+$editTeacherId = trim((string) ($_GET['edit'] ?? ''));
+
+if ($editTeacherId !== '') {
+    foreach ($teachers as $t) {
+        if ((string) ($t['id'] ?? '') === $editTeacherId) {
+            $editingTeacher = $t;
+            break;
+        }
+    }
+}
+
 $form = [
-    'teacher_name' => '',
-    'teacher_id_number' => '',
-    'teacher_phone' => '',
-    'teacher_bank_account' => '',
+    'teacher_name'        => (string) ($editingTeacher['name'] ?? ''),
+    'teacher_id_number'   => (string) ($editingTeacher['id_number'] ?? ''),
+    'teacher_phone'       => (string) ($editingTeacher['phone'] ?? ''),
+    'teacher_bank_account'=> (string) ($editingTeacher['bank_account'] ?? ''),
 ];
 
 /* ===============================
    GUARDAR
 =============================== */
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $form['teacher_name'] = trim((string) ($_POST['teacher_name'] ?? ''));
-    $form['teacher_id_number'] = trim((string) ($_POST['teacher_id_number'] ?? ''));
-    $form['teacher_phone'] = trim((string) ($_POST['teacher_phone'] ?? ''));
+    $form['teacher_name']         = trim((string) ($_POST['teacher_name'] ?? ''));
+    $form['teacher_id_number']    = trim((string) ($_POST['teacher_id_number'] ?? ''));
+    $form['teacher_phone']        = trim((string) ($_POST['teacher_phone'] ?? ''));
     $form['teacher_bank_account'] = trim((string) ($_POST['teacher_bank_account'] ?? ''));
+    $postTeacherId                = trim((string) ($_POST['edit_teacher_id'] ?? ''));
 
     if ($form['teacher_name'] === '') {
         $errors[] = 'Debe escribir el nombre del docente.';
     }
 
-    $existingTeacher = find_existing_teacher($teachers, $form['teacher_name'], $form['teacher_id_number']);
-
     if (empty($errors)) {
         $now = date('Y-m-d H:i:s');
 
-        $teacherRecord = [
-            'id' => $existingTeacher
-                ? (string) ($existingTeacher['id'] ?? uniqid('teacher_', true))
-                : uniqid('teacher_', true),
-            'name' => $form['teacher_name'],
-            'id_number' => $form['teacher_id_number'],
-            'phone' => $form['teacher_phone'],
-            'bank_account' => $form['teacher_bank_account'],
-            'created_at' => $existingTeacher
-                ? (string) ($existingTeacher['created_at'] ?? $now)
-                : $now,
-            'updated_at' => $now,
-        ];
+        if ($postTeacherId !== '') {
+            // Edición por ID directo
+            $existingForEdit = null;
+            foreach ($teachers as $t) {
+                if ((string) ($t['id'] ?? '') === $postTeacherId) {
+                    $existingForEdit = $t;
+                    break;
+                }
+            }
+            $teacherRecord = [
+                'id'           => $postTeacherId,
+                'name'         => $form['teacher_name'],
+                'id_number'    => $form['teacher_id_number'],
+                'phone'        => $form['teacher_phone'],
+                'bank_account' => $form['teacher_bank_account'],
+                'created_at'   => (string) ($existingForEdit['created_at'] ?? $now),
+                'updated_at'   => $now,
+            ];
+        } else {
+            // Creación o deduplicación por nombre/cédula
+            $existingTeacher = find_existing_teacher($teachers, $form['teacher_name'], $form['teacher_id_number']);
+            $teacherRecord = [
+                'id'           => $existingTeacher
+                    ? (string) ($existingTeacher['id'] ?? uniqid('teacher_', true))
+                    : uniqid('teacher_', true),
+                'name'         => $form['teacher_name'],
+                'id_number'    => $form['teacher_id_number'],
+                'phone'        => $form['teacher_phone'],
+                'bank_account' => $form['teacher_bank_account'],
+                'created_at'   => $existingTeacher
+                    ? (string) ($existingTeacher['created_at'] ?? $now)
+                    : $now,
+                'updated_at'   => $now,
+            ];
+        }
 
         $savedInDb = save_teacher_to_database($teacherRecord);
 
@@ -241,6 +274,10 @@ input:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px rgba(47,1
 table{width:100%;min-width:900px;border-collapse:separate;border-spacing:0}
 thead th{background:#f3fbf5;color:var(--text);font-size:12px;font-weight:700;text-transform:uppercase;padding:12px;text-align:left;white-space:nowrap}
 tbody td{padding:12px;border-bottom:1px solid var(--line);font-size:14px;color:var(--text);vertical-align:top}
+.btn-edit{display:inline-block;padding:5px 10px;border-radius:8px;background:linear-gradient(180deg,#64b5f6,#1976d2);color:#fff;font-size:12px;font-weight:700;text-decoration:none;transition:filter .2s,transform .15s;margin-right:4px}
+.btn-edit:hover{filter:brightness(1.1);transform:translateY(-1px)}
+.btn-del{display:inline-block;padding:5px 10px;border-radius:8px;background:linear-gradient(180deg,#e57373,#c62828);color:#fff;font-size:12px;font-weight:700;text-decoration:none;transition:filter .2s,transform .15s}
+.btn-del:hover{filter:brightness(1.1);transform:translateY(-1px)}
 tbody tr:last-child td{border-bottom:none}
 .badge{display:inline-block;padding:4px 8px;border-radius:999px;background:var(--badge-bg);color:var(--badge-text);font-size:12px;font-weight:700}
 .small{font-size:13px;color:var(--muted)}
@@ -256,8 +293,13 @@ tbody tr:last-child td{border-bottom:none}
     <div class="stack">
         <section class="card">
             <div class="card-header">
-                <h2>🧾 Registrar docente</h2>
-                <p class="subtitle">La inscripción queda guardada en la base de datos.</p>
+                <?php if ($editingTeacher !== null) { ?>
+                    <h2>✏️ Editar docente</h2>
+                    <p class="subtitle">Corrigiendo datos de: <strong><?php echo h((string) ($editingTeacher['name'] ?? '')); ?></strong></p>
+                <?php } else { ?>
+                    <h2>🧾 Registrar docente</h2>
+                    <p class="subtitle">La inscripción queda guardada en la base de datos.</p>
+                <?php } ?>
             </div>
 
             <?php if (isset($_GET['saved'])) { ?>
@@ -273,6 +315,10 @@ tbody tr:last-child td{border-bottom:none}
             <?php } ?>
 
             <form method="post" class="form-grid">
+                <?php if ($editingTeacher !== null) { ?>
+                    <input type="hidden" name="edit_teacher_id" value="<?php echo h((string) ($editingTeacher['id'] ?? '')); ?>">
+                <?php } ?>
+
                 <div class="field full">
                     <label for="teacher_name">Nombre del docente</label>
                     <input id="teacher_name" type="text" name="teacher_name" placeholder="Nombre completo" value="<?php echo h($form['teacher_name']); ?>" required>
