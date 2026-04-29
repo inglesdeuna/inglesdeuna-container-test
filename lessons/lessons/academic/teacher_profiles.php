@@ -912,6 +912,13 @@ tbody tr:last-child td{
 .back-to-list{display:inline-flex;align-items:center;padding:7px 14px;border-radius:8px;background:#f3f4f6;color:var(--text);font-size:13px;font-weight:700;text-decoration:none;margin-bottom:16px}
 .back-to-list:hover{background:#e5e7eb;text-decoration:none}
 
+/* Chips de filtro de cursos */
+.fchip{padding:5px 13px;border-radius:999px;border:1px solid var(--line);background:#fff;color:var(--muted);font-size:13px;font-weight:700;cursor:pointer;transition:background .15s,color .15s,border-color .15s;font-family:inherit}
+.fchip:hover{background:#eef7f0;color:var(--blue);border-color:#b8dfc4}
+.fchip-active{background:var(--blue);color:#fff;border-color:var(--blue)}
+.fchip-active:hover{background:var(--blue-hover);color:#fff;border-color:var(--blue-hover)}
+#student-search:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(47,158,68,.15)}
+
 @media (max-width: 768px){
     body{
         padding:20px;
@@ -1123,14 +1130,62 @@ tbody tr:last-child td{
             </div>
 
             <h3 style="margin:0 0 8px;font-size:17px;color:var(--subtitle)">Estudiantes asignados</h3>
-            <p class="student-count">
-                <?php $cnt = count($viewTeacherStudents); echo $cnt === 0 ? 'Sin estudiantes asignados.' : $cnt . ' estudiante' . ($cnt !== 1 ? 's' : '') . ' asignado' . ($cnt !== 1 ? 's' : '') . '.'; ?>
-            </p>
 
-            <?php if (!empty($viewTeacherStudents)): ?>
+            <?php if (!empty($viewTeacherStudents)):
+                // Cursos únicos ordenados para los chips de filtro
+                $uniqueCourses = [];
+                foreach ($viewTeacherStudents as $stu) {
+                    $cn = (string)($stu['course_name'] ?? '');
+                    if ($cn !== '' && !in_array($cn, $uniqueCourses, true)) {
+                        $uniqueCourses[] = $cn;
+                    }
+                }
+                sort($uniqueCourses);
+            ?>
+
+            <!-- Filtros -->
+            <div id="filter-bar" style="margin-bottom:14px;display:flex;flex-direction:column;gap:10px">
+
+                <!-- Buscador de estudiante -->
+                <div style="position:relative;max-width:360px">
+                    <span style="position:absolute;left:11px;top:50%;transform:translateY(-50%);color:#9ca3af;pointer-events:none">🔍</span>
+                    <input id="student-search"
+                           type="text"
+                           placeholder="Buscar estudiante…"
+                           autocomplete="off"
+                           style="width:100%;padding:9px 12px 9px 34px;border:1px solid var(--line);border-radius:10px;font-size:14px;color:var(--text);outline:none;font-family:inherit"
+                           oninput="applyFilters()">
+                </div>
+
+                <!-- Chips de cursos -->
+                <?php if (count($uniqueCourses) > 1): ?>
+                <div id="course-chips" style="display:flex;flex-wrap:wrap;gap:7px;align-items:center">
+                    <span style="font-size:13px;color:var(--muted);font-weight:700">Filtrar por curso:</span>
+                    <button type="button"
+                            class="fchip fchip-active"
+                            data-course=""
+                            onclick="selectCourse(this)">
+                        Todos
+                    </button>
+                    <?php foreach ($uniqueCourses as $uc): ?>
+                    <button type="button"
+                            class="fchip"
+                            data-course="<?php echo h($uc); ?>"
+                            onclick="selectCourse(this)">
+                        <?php echo h($uc); ?>
+                    </button>
+                    <?php endforeach; ?>
+                </div>
+                <?php endif; ?>
+
+            </div>
+
+            <!-- Contador visible -->
+            <p id="visible-count" class="student-count" style="margin-bottom:10px"></p>
+
             <div class="table-wrap">
                 <div class="table-scroll">
-                    <table>
+                    <table id="students-table">
                         <thead>
                             <tr>
                                 <th>Estudiante</th>
@@ -1140,20 +1195,21 @@ tbody tr:last-child td{
                                 <th>Acciones</th>
                             </tr>
                         </thead>
-                        <tbody>
+                        <tbody id="students-tbody">
                         <?php foreach ($viewTeacherStudents as $stu): ?>
                             <?php
-                                $saId      = h((string)($stu['assignment_id'] ?? ''));
-                                $stuName   = h((string)($stu['student_name'] ?? ''));
-                                $stuUser   = (string)($stu['student_username'] ?? '');
-                                $courseName= h((string)($stu['course_name'] ?? '—'));
-                                $prog      = (string)($stu['program'] ?? 'technical');
-                                $progLabel = $prog === 'english' ? 'English' : 'Técnico';
+                                $saId       = h((string)($stu['assignment_id'] ?? ''));
+                                $stuName    = (string)($stu['student_name'] ?? '');
+                                $stuUser    = (string)($stu['student_username'] ?? '');
+                                $courseName = (string)($stu['course_name'] ?? '—');
+                                $prog       = (string)($stu['program'] ?? 'technical');
+                                $progLabel  = $prog === 'english' ? 'English' : 'Técnico';
                             ?>
-                            <tr>
-                                <td><strong><?php echo $stuName; ?></strong></td>
+                            <tr data-student="<?php echo h(mb_strtolower($stuName, 'UTF-8')); ?>"
+                                data-course="<?php echo h($courseName); ?>">
+                                <td><strong><?php echo h($stuName); ?></strong></td>
                                 <td><?php echo $stuUser !== '' ? h($stuUser) : '<span style="color:#aaa">Sin cuenta</span>'; ?></td>
-                                <td><?php echo $courseName; ?></td>
+                                <td><?php echo h($courseName); ?></td>
                                 <td><span class="chip"><?php echo h($progLabel); ?></span></td>
                                 <td style="white-space:nowrap">
                                     <a class="btn-change"
@@ -1163,7 +1219,7 @@ tbody tr:last-child td{
                                     &nbsp;
                                     <a class="btn-remove"
                                        href="teacher_profiles.php?remove_sa=<?php echo $saId; ?>&teacher_id=<?php echo h($viewTeacherId); ?>"
-                                       onclick="return confirm('¿Retirar a <?php echo h(addslashes((string)($stu['student_name'] ?? ''))); ?> de este grupo? Solo se desvincula de este docente.')">
+                                       onclick="return confirm('¿Retirar a <?php echo h(addslashes($stuName)); ?> de este grupo? Solo se desvincula de este docente.')">
                                         ✕ Retirar
                                     </a>
                                 </td>
@@ -1171,8 +1227,13 @@ tbody tr:last-child td{
                         <?php endforeach; ?>
                         </tbody>
                     </table>
+                    <p id="no-results" style="display:none;text-align:center;padding:20px;color:var(--muted);font-size:14px">
+                        Sin resultados para esta búsqueda.
+                    </p>
                 </div>
             </div>
+            <?php else: ?>
+            <p class="student-count">Sin estudiantes asignados.</p>
             <?php endif; ?>
         </div>
         <?php endif; ?>
@@ -1280,6 +1341,64 @@ if (teacherSelect) {
     syncTeacherCredentials();
     teacherSelect.addEventListener('change', syncTeacherCredentials);
 }
+
+/* ── Filtros de curso y estudiante ── */
+let activeCourse = '';
+
+function normalize(str) {
+    return String(str || '')
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[̀-ͯ]/g, '')
+        .trim();
+}
+
+function selectCourse(btn) {
+    activeCourse = btn.dataset.course || '';
+    document.querySelectorAll('.fchip').forEach(c => c.classList.remove('fchip-active'));
+    btn.classList.add('fchip-active');
+    applyFilters();
+}
+
+function applyFilters() {
+    const tbody = document.getElementById('students-tbody');
+    if (!tbody) return;
+
+    const searchRaw = document.getElementById('student-search')?.value || '';
+    const searchTerm = normalize(searchRaw);
+    const rows = tbody.querySelectorAll('tr');
+    let visible = 0;
+
+    rows.forEach(row => {
+        const rowStudent = normalize(row.dataset.student || '');
+        const rowCourse  = row.dataset.course || '';
+
+        const matchesCourse  = activeCourse === '' || rowCourse === activeCourse;
+        const matchesStudent = searchTerm === '' || rowStudent.includes(searchTerm);
+
+        const show = matchesCourse && matchesStudent;
+        row.style.display = show ? '' : 'none';
+        if (show) visible++;
+    });
+
+    // Actualizar contador
+    const counter = document.getElementById('visible-count');
+    if (counter) {
+        const total = rows.length;
+        if (visible === total) {
+            counter.textContent = total + ' estudiante' + (total !== 1 ? 's' : '') + ' asignado' + (total !== 1 ? 's' : '') + '.';
+        } else {
+            counter.textContent = 'Mostrando ' + visible + ' de ' + total + ' estudiante' + (total !== 1 ? 's' : '') + '.';
+        }
+    }
+
+    // Mensaje sin resultados
+    const noResults = document.getElementById('no-results');
+    if (noResults) noResults.style.display = visible === 0 ? '' : 'none';
+}
+
+// Inicializar contador al cargar
+document.addEventListener('DOMContentLoaded', applyFilters);
 </script>
 </body>
 </html>
