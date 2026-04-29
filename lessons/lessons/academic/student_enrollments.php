@@ -229,6 +229,8 @@ input:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px rgba(47,1
 .table-scroll{width:100%;overflow-x:auto}
 table{width:100%;min-width:900px;border-collapse:separate;border-spacing:0}
 thead th{background:#f3fbf5;color:var(--text);font-size:12px;font-weight:700;text-transform:uppercase;padding:12px;text-align:left;white-space:nowrap}
+.btn-del{display:inline-block;padding:5px 10px;border-radius:8px;background:linear-gradient(180deg,#e57373,#c62828);color:#fff;font-size:12px;font-weight:700;text-decoration:none;transition:filter .2s,transform .15s}
+.btn-del:hover{filter:brightness(1.1);transform:translateY(-1px)}
 tbody td{padding:12px;border-bottom:1px solid var(--line);font-size:14px;color:var(--text);vertical-align:top}
 tbody tr:last-child td{border-bottom:none}
 .badge{display:inline-block;padding:4px 8px;border-radius:999px;background:var(--badge-bg);color:var(--badge-text);font-size:12px;font-weight:700}
