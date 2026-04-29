@@ -681,6 +681,27 @@ if ($current) {
     $currentTypeLabel = $activityTypeLabels[$currentType] ?? ucwords(str_replace('_', ' ', $type));
 }
 
+// Pre-compute viewer URLs for every step so the fullscreen JS can navigate without a page reload
+$_fsReturnUrl = '../../academic/student_course.php?assignment=' . urlencode($assignmentId) . '&unit=' . urlencode($selectedUnitId);
+$allViewerHrefs = [];
+foreach ($activities as $_act) {
+    $_type = (string) ($_act['type'] ?? '');
+    $_path = get_activity_base_path($_type);
+    if ($_path) {
+        $_q = http_build_query([
+            'id'         => (string) ($_act['id'] ?? ''),
+            'unit'       => $selectedUnitId,
+            'embedded'   => '1',
+            'from'       => 'student_course',
+            'assignment' => $assignmentId,
+            'return_to'  => $_fsReturnUrl,
+        ]);
+        $allViewerHrefs[] = $_path . '/viewer.php?' . $_q;
+    } else {
+        $allViewerHrefs[] = null;
+    }
+}
+
 $unitResult = $unitResults[$selectedUnitId] ?? ['completion_percent' => 0, 'quiz_errors' => 0, 'quiz_total' => 0];
 $completionPercent = (int) ($unitResult['completion_percent'] ?? 0);
 $quizErrors = (int) ($unitResult['quiz_errors'] ?? 0);
@@ -1184,14 +1205,14 @@ body{margin:0;font-family:'Nunito','Segoe UI',sans-serif;background:linear-gradi
         </div>
 
         <div class="controls">
-            <a class="ctrl-btn blue <?php echo $hasPrev ? '' : 'disabled'; ?>"
+            <a id="prevBtn" class="ctrl-btn blue <?php echo $hasPrev ? '' : 'disabled'; ?>"
                href="student_course.php?assignment=<?php echo urlencode($assignmentId); ?>&unit=<?php echo urlencode($selectedUnitId); ?>&step=<?php echo $hasPrev ? $prevStep : $step; ?>">
                 &larr; Previous
             </a>
             <div class="step-counter">
                 <strong><?php echo ($step + 1); ?></strong> / <?php echo $total; ?>
             </div>
-            <a class="ctrl-btn <?php echo ($hasNext || $isLastActivity) ? '' : 'disabled'; ?>"
+            <a id="nextBtn" class="ctrl-btn <?php echo ($hasNext || $isLastActivity) ? '' : 'disabled'; ?>"
                href="student_course.php?assignment=<?php echo urlencode($assignmentId); ?>&unit=<?php echo urlencode($selectedUnitId); ?>&step=<?php echo $isLastActivity ? $completedStep : ($hasNext ? $nextStep : $step); ?>">
                 <?php echo $isLastActivity ? 'Finish unit' : 'Next &rarr;'; ?>
             </a>
@@ -1245,11 +1266,23 @@ body{margin:0;font-family:'Nunito','Segoe UI',sans-serif;background:linear-gradi
     iframe.addEventListener('load', hideEmbeddedBackButton);
 })();
 
-/* ── Fullscreen ── */
+/* ── Fullscreen + in-place navigation ── */
 (function () {
-    const shell = document.querySelector('.viewer-shell');
-    const btn   = document.getElementById('fsBtn');
-    if (!shell || !btn) return;
+    const shell  = document.querySelector('.viewer-shell');
+    const btn    = document.getElementById('fsBtn');
+    const iframe = document.getElementById('activityViewer');
+    if (!shell || !btn || !iframe) return;
+
+    const SRCS   = <?php echo json_encode(array_values($allViewerHrefs)); ?>;
+    let   step   = <?php echo (int) $step; ?>;
+    const total  = <?php echo (int) $total; ?>;
+    const BASE   = 'student_course.php?assignment=<?php echo urlencode($assignmentId); ?>&unit=<?php echo urlencode($selectedUnitId); ?>&step=';
+    const FINISH = 'student_course.php?assignment=<?php echo urlencode($assignmentId); ?>&unit=<?php echo urlencode($selectedUnitId); ?>&step=<?php echo (int) $completedStep; ?>';
+
+    const prevBtn = document.getElementById('prevBtn');
+    const nextBtn = document.getElementById('nextBtn');
+    const counter = document.querySelector('.step-counter');
+    const badge   = document.querySelector('.act-badge');
 
     const SVG_ENTER = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg>';
     const SVG_EXIT  = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z"/></svg>';
@@ -1272,6 +1305,63 @@ body{margin:0;font-family:'Nunito','Segoe UI',sans-serif;background:linear-gradi
             if (exit) exit.call(document);
         }
     }
+
+    function syncNav() {
+        if (!prevBtn || !nextBtn) return;
+        const hasPrev = step > 0;
+        const hasNext = (step + 1) < total;
+        const isLast  = total > 0 && step === total - 1;
+
+        prevBtn.classList.toggle('disabled', !hasPrev);
+        prevBtn.href = BASE + (hasPrev ? step - 1 : step);
+
+        if (isLast) {
+            nextBtn.classList.remove('disabled');
+            nextBtn.textContent = 'Finish unit';
+            nextBtn.href = FINISH;
+        } else {
+            nextBtn.classList.toggle('disabled', !hasNext);
+            nextBtn.innerHTML = 'Next &rarr;';
+            nextBtn.href = BASE + (hasNext ? step + 1 : step);
+        }
+
+        if (counter) counter.innerHTML = '<strong>' + (step + 1) + '</strong> / ' + total;
+        if (badge)   badge.textContent  = 'Activity ' + (step + 1) + ' / ' + total;
+    }
+
+    function goTo(newStep) {
+        const src = SRCS[newStep];
+        if (!src) {
+            const exit = document.exitFullscreen || document.webkitExitFullscreen;
+            if (exit) exit.call(document);
+            window.location.href = BASE + newStep;
+            return;
+        }
+        step = newStep;
+        iframe.src = src;
+        syncNav();
+    }
+
+    function onPrevClick(e) {
+        if (!isFs()) return;
+        e.preventDefault();
+        if (step > 0) goTo(step - 1);
+    }
+
+    function onNextClick(e) {
+        if (!isFs()) return;
+        e.preventDefault();
+        if (total > 0 && step === total - 1) {
+            const exit = document.exitFullscreen || document.webkitExitFullscreen;
+            if (exit) exit.call(document);
+            window.location.href = FINISH;
+        } else if ((step + 1) < total) {
+            goTo(step + 1);
+        }
+    }
+
+    if (prevBtn) prevBtn.addEventListener('click', onPrevClick);
+    if (nextBtn) nextBtn.addEventListener('click', onNextClick);
 
     btn.addEventListener('click', toggle);
     document.addEventListener('fullscreenchange',        syncBtn);

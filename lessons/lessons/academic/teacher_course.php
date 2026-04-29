@@ -806,6 +806,27 @@ if ($current) {
     $currentTypeLabel = $activityTypeLabels[$currentType] ?? ucwords(str_replace('_', ' ', $type));
 }
 
+// Pre-compute viewer URLs for every step so the fullscreen JS can navigate without a page reload
+$_fsReturnUrl = '../../academic/teacher_course.php?' . http_build_query(['assignment' => $assignmentId, 'unit' => $selectedUnitId]);
+$allViewerHrefs = [];
+foreach ($activities as $_act) {
+    $_type = (string) ($_act['type'] ?? '');
+    $_path = get_activity_base_path($_type);
+    if ($_path) {
+        $_q = http_build_query([
+            'id'         => (string) ($_act['id'] ?? ''),
+            'unit'       => (string) ($_act['unit_id'] ?? ''),
+            'embedded'   => '1',
+            'from'       => 'teacher_course',
+            'assignment' => $assignmentId,
+            'return_to'  => $_fsReturnUrl,
+        ]);
+        $allViewerHrefs[] = $_path . '/viewer.php?' . $_q;
+    } else {
+        $allViewerHrefs[] = null;
+    }
+}
+
 $teacherName    = trim((string) ($_SESSION['teacher_name'] ?? 'Teacher'));
 $teacherInitials = teacher_initials($teacherName);
 $teacherPhotoRaw = trim((string) ($_SESSION['teacher_photo'] ?? ''));
@@ -1604,14 +1625,14 @@ body{font-family:Arial,sans-serif;background:var(--bg);color:var(--text);overflo
         </div>
 
         <div class="controls">
-          <a class="ctrl-btn <?php echo $hasPrev ? '' : 'disabled'; ?>"
+          <a id="prevBtn" class="ctrl-btn <?php echo $hasPrev ? '' : 'disabled'; ?>"
              href="teacher_course.php?assignment=<?php echo urlencode($assignmentId); ?>&unit=<?php echo urlencode($selectedUnitId); ?>&mode=<?php echo urlencode($mode); ?>&step=<?php echo $hasPrev ? $prevStep : $step; ?>">
             &larr; Previous
           </a>
           <div class="step-counter">
             <strong><?php echo ($step + 1); ?></strong> / <?php echo $total; ?>
           </div>
-          <a class="ctrl-btn <?php echo ($hasNext || $isLastActivity) ? '' : 'disabled'; ?>"
+          <a id="nextBtn" class="ctrl-btn <?php echo ($hasNext || $isLastActivity) ? '' : 'disabled'; ?>"
              href="teacher_course.php?assignment=<?php echo urlencode($assignmentId); ?>&unit=<?php echo urlencode($selectedUnitId); ?>&mode=<?php echo urlencode($mode); ?>&step=<?php echo $isLastActivity ? $total : ($hasNext ? $nextStep : $step); ?>">
             <?php echo $isLastActivity ? 'Finish Unit' : 'Next →'; ?>
           </a>
