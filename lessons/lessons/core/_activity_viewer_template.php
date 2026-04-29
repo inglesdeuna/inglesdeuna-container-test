@@ -511,6 +511,34 @@ function render_activity_viewer($title, $icon, $content)
                 min-height:30px;
             }
         }
+
+        /* ── Fullscreen-embedded: parent page has entered fullscreen, iframe fills viewport ── */
+        body.fullscreen-embedded {
+            height: 100vh !important;
+            overflow: hidden !important;
+            padding: 0 !important;
+            background: #0d0d1a !important;
+        }
+        body.fullscreen-embedded .activity-wrapper {
+            height: 100%;
+            max-width: 100%;
+            display: flex;
+            flex-direction: column;
+            padding: 6px 8px 4px;
+        }
+        body.fullscreen-embedded .top-row { display: none !important; }
+        body.fullscreen-embedded .viewer-header { margin: 0 0 4px !important; }
+        body.fullscreen-embedded h1 { font-size: 18px !important; }
+        body.fullscreen-embedded .viewer-content {
+            flex: 1;
+            min-height: 0;
+            overflow-y: auto;
+            border-radius: 8px;
+            padding: 10px 14px;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+        }
     </style>
 </head>
 

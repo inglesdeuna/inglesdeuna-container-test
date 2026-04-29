@@ -1294,6 +1294,7 @@ body{margin:0;font-family:'Nunito','Segoe UI',sans-serif;background:linear-gradi
     function syncBtn() {
         btn.innerHTML = isFs() ? SVG_EXIT : SVG_ENTER;
         btn.title     = isFs() ? 'Salir de pantalla completa' : 'Pantalla completa';
+        try { iframe.contentWindow?.postMessage({ type: isFs() ? 'fs-enter' : 'fs-exit' }, '*'); } catch (_) {}
     }
 
     function toggle() {
@@ -1339,6 +1340,9 @@ body{margin:0;font-family:'Nunito','Segoe UI',sans-serif;background:linear-gradi
         }
         step = newStep;
         iframe.src = src;
+        iframe.addEventListener('load', function () {
+            if (isFs()) try { iframe.contentWindow?.postMessage({ type: 'fs-enter' }, '*'); } catch (_) {}
+        }, { once: true });
         syncNav();
     }
 
