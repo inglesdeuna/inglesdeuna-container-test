@@ -878,6 +878,40 @@ function delete_student_assignment_bundle_from_database(string $studentId, strin
     }
 }
 
+function count_remaining_student_assignments_in_database(string $studentId): int
+{
+    $pdo = get_pdo_connection();
+    if (!$pdo || $studentId === '') {
+        return 0;
+    }
+
+    try {
+        $stmt = $pdo->prepare("SELECT COUNT(*) FROM student_assignments WHERE student_id = :student_id");
+        $stmt->execute(['student_id' => $studentId]);
+        return (int) $stmt->fetchColumn();
+    } catch (Throwable $e) {
+        return 0;
+    }
+}
+
+function delete_student_completely_from_database(string $studentId): void
+{
+    $pdo = get_pdo_connection();
+    if (!$pdo || $studentId === '') {
+        return;
+    }
+
+    try {
+        $pdo->prepare("DELETE FROM student_activity_results WHERE student_id = :id")->execute(['id' => $studentId]);
+        $pdo->prepare("DELETE FROM student_unit_results WHERE student_id = :id")->execute(['id' => $studentId]);
+        $pdo->prepare("DELETE FROM teacher_quiz_unlocks WHERE student_id = :id")->execute(['id' => $studentId]);
+        $pdo->prepare("DELETE FROM student_accounts WHERE student_id = :id")->execute(['id' => $studentId]);
+        $pdo->prepare("DELETE FROM students WHERE id = :id")->execute(['id' => $studentId]);
+    } catch (Throwable $e) {
+        // si la tabla no existe o el registro ya no está, no es error crítico
+    }
+}
+
 /* ===============================
    DB CATÁLOGO TÉCNICO
 =============================== */
@@ -1097,12 +1131,26 @@ if (isset($_GET['delete_group']) && (string) $_GET['delete_group'] === '1') {
         save_json_file($studentAssignmentsFile, $studentAssignments);
     }
 
+    // Si el estudiante ya no tiene ninguna asignación, se elimina completamente del sistema
+    if ($deleteStudentId !== '' && count_remaining_student_assignments_in_database($deleteStudentId) === 0) {
+        delete_student_completely_from_database($deleteStudentId);
+    }
+
     header('Location: student_assignments.php?saved=1');
     exit;
 }
 
 if (isset($_GET['delete']) && $_GET['delete'] !== '') {
     $deleteId = (string) $_GET['delete'];
+
+    // Recuperar el student_id antes de borrar para verificar después
+    $deleteStudentIdForCheck = '';
+    foreach ($studentAssignments as $row) {
+        if ((string) ($row['id'] ?? '') === $deleteId) {
+            $deleteStudentIdForCheck = (string) ($row['student_id'] ?? '');
+            break;
+        }
+    }
 
     $deletedInDb = delete_student_assignment_from_database($deleteId);
 
@@ -1111,6 +1159,11 @@ if (isset($_GET['delete']) && $_GET['delete'] !== '') {
             return (string) ($row['id'] ?? '') !== $deleteId;
         }));
         save_json_file($studentAssignmentsFile, $studentAssignments);
+    }
+
+    // Si el estudiante ya no tiene ninguna asignación, se elimina completamente del sistema
+    if ($deleteStudentIdForCheck !== '' && count_remaining_student_assignments_in_database($deleteStudentIdForCheck) === 0) {
+        delete_student_completely_from_database($deleteStudentIdForCheck);
     }
 
     header('Location: student_assignments.php?saved=1');
