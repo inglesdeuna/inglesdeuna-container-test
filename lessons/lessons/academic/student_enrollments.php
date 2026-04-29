@@ -305,11 +305,12 @@ tbody tr:last-child td{border-bottom:none}
                                 <th>Acudiente</th>
                                 <th>Contacto</th>
                                 <th>EPS</th>
+                                <th>Acciones</th>
                             </tr>
                         </thead>
                         <tbody>
                         <?php if (empty($students)) { ?>
-                            <tr><td colspan="4" class="empty-row">No hay estudiantes inscritos.</td></tr>
+                            <tr><td colspan="5" class="empty-row">No hay estudiantes inscritos.</td></tr>
                         <?php } else { ?>
                             <?php foreach ($students as $student) { ?>
                                 <tr>
