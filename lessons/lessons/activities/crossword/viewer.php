@@ -1347,6 +1347,43 @@ window.addEventListener('beforeunload', function(e) {
         .some(inp => inp.value !== '');
     if (hasInput) { e.preventDefault(); e.returnValue = ''; }
 });
+
+/* ── Fullscreen-embedded: scale grid to fit viewport ── */
+const CW_DEFAULT_CELL = <?= (int)$cellSizes['desktop'] - 3 ?>;
+
+function cwFitToViewport() {
+    requestAnimationFrame(function () {
+        // Available height: full window minus toolbar (~70px), progress+result (~60px), padding (~30px)
+        const availH = Math.max(100, window.innerHeight - 160);
+        // Grid column gets ~58% of viewport width, minus gaps/padding
+        const availW = Math.max(100, window.innerWidth * 0.58 - 24);
+
+        const maxByH = Math.floor((availH - (GRID_ROWS - 1) * 3) / GRID_ROWS);
+        const maxByW = Math.floor((availW - (GRID_COLS - 1) * 3) / GRID_COLS);
+        const size   = Math.max(22, Math.min(maxByH, maxByW, 56));
+
+        document.documentElement.style.setProperty('--cell-size', size + 'px');
+    });
+}
+
+function cwResetCellSize() {
+    document.documentElement.style.setProperty('--cell-size', CW_DEFAULT_CELL + 'px');
+}
+
+document.addEventListener('fullscreen-embedded', function (e) {
+    if (e.detail && e.detail.active) {
+        cwFitToViewport();
+    } else {
+        cwResetCellSize();
+    }
+});
+
+// Re-fit on window resize while in fullscreen-embedded
+window.addEventListener('resize', function () {
+    if (document.body.classList.contains('fullscreen-embedded')) {
+        cwFitToViewport();
+    }
+});
 </script>
 
 <?php
