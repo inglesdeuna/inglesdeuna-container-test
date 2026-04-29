@@ -299,6 +299,79 @@ function delete_teacher_account_from_database(string $id): bool {
     }
 }
 
+function load_teacher_by_id(string $teacherId): ?array
+{
+    $pdo = get_pdo_connection();
+    if (!$pdo || $teacherId === '') {
+        return null;
+    }
+    try {
+        $stmt = $pdo->prepare("
+            SELECT id, name, id_number, phone, bank_account
+            FROM teachers
+            WHERE id = :id
+            LIMIT 1
+        ");
+        $stmt->execute(['id' => $teacherId]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        return is_array($row) ? $row : null;
+    } catch (Throwable $e) {
+        return null;
+    }
+}
+
+function load_students_for_teacher_admin(string $teacherId): array
+{
+    $pdo = get_pdo_connection();
+    if (!$pdo || $teacherId === '') {
+        return [];
+    }
+    try {
+        $stmt = $pdo->prepare("
+            SELECT
+                sa.id            AS assignment_id,
+                sa.student_id,
+                sa.program,
+                sa.course_id,
+                sa.level_id,
+                sa.period,
+                sa.unit_id,
+                COALESCE(NULLIF(TRIM(s.name), ''), sa.student_id) AS student_name,
+                CASE
+                    WHEN sa.program = 'english'
+                    THEN COALESCE(NULLIF(TRIM(ep.name), ''), sa.level_id)
+                    ELSE COALESCE(NULLIF(TRIM(c.name), ''), sa.course_id)
+                END AS course_name,
+                COALESCE(NULLIF(TRIM(acc.username), ''), '') AS student_username
+            FROM student_assignments sa
+            LEFT JOIN students           s   ON s.id::text    = sa.student_id::text
+            LEFT JOIN student_accounts   acc ON acc.student_id::text = sa.student_id::text
+            LEFT JOIN courses            c   ON c.id::text    = sa.course_id::text AND sa.program <> 'english'
+            LEFT JOIN english_phases     ep  ON ep.id::text   = sa.level_id::text  AND sa.program = 'english'
+            WHERE sa.teacher_id = :teacher_id
+            ORDER BY student_name ASC, sa.id ASC
+        ");
+        $stmt->execute(['teacher_id' => $teacherId]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    } catch (Throwable $e) {
+        return [];
+    }
+}
+
+function remove_student_assignment(string $assignmentId): bool
+{
+    $pdo = get_pdo_connection();
+    if (!$pdo || $assignmentId === '') {
+        return false;
+    }
+    try {
+        $stmt = $pdo->prepare("DELETE FROM student_assignments WHERE id = :id");
+        return $stmt->execute(['id' => $assignmentId]);
+    } catch (Throwable $e) {
+        return false;
+    }
+}
+
 /* ===============================
    CARGA INICIAL
    =============================== */
@@ -317,6 +390,44 @@ $form = [
     'username' => '',
     'password' => '1234',
 ];
+
+/* ===============================
+   DESVINCULAR ESTUDIANTE DE GRUPO
+   =============================== */
+if (isset($_GET['remove_sa']) && $_GET['remove_sa'] !== '') {
+    $removeSaId     = trim((string) $_GET['remove_sa']);
+    $returnTeacher  = trim((string) ($_GET['teacher_id'] ?? ''));
+    remove_student_assignment($removeSaId);
+    header('Location: teacher_profiles.php?view=' . urlencode($returnTeacher) . '&saved=1');
+    exit;
+}
+
+/* ===============================
+   VISTA DE DETALLE DEL DOCENTE
+   =============================== */
+$viewTeacherId      = trim((string) ($_GET['view'] ?? ''));
+$viewTeacher        = $viewTeacherId !== '' ? load_teacher_by_id($viewTeacherId) : null;
+$viewTeacherAccount = null;
+$viewTeacherStudents = [];
+
+if ($viewTeacher !== null) {
+    foreach ($accounts as $acc) {
+        if ((string) ($acc['teacher_id'] ?? '') === $viewTeacherId) {
+            $viewTeacherAccount = $acc;
+            break;
+        }
+    }
+    $viewTeacherStudents = load_students_for_teacher_admin($viewTeacherId);
+}
+
+// Mapa teacher_id → account para el directorio
+$accountByTeacherId = [];
+foreach ($accounts as $acc) {
+    $tid = (string) ($acc['teacher_id'] ?? '');
+    if ($tid !== '' && !isset($accountByTeacherId[$tid])) {
+        $accountByTeacherId[$tid] = $acc;
+    }
+}
 
 /* ===============================
    ELIMINAR
@@ -773,6 +884,34 @@ tbody tr:last-child td{
     padding:22px !important;
 }
 
+/* Directorio de docentes */
+.teacher-grid{display:flex;flex-direction:column;gap:0}
+.teacher-row{display:flex;align-items:center;gap:14px;padding:14px 16px;border-bottom:1px solid var(--line);transition:background .15s}
+.teacher-row:last-child{border-bottom:none}
+.teacher-row:hover{background:#f7fbf8}
+.teacher-avatar{width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,#41b95a,#2f9e44);color:#fff;font-weight:700;font-size:16px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.teacher-info{flex:1;min-width:0}
+.teacher-name{font-weight:700;font-size:15px;color:var(--text)}
+.teacher-meta{font-size:13px;color:var(--muted);margin-top:2px;display:flex;flex-wrap:wrap;gap:8px}
+.chip{background:#eef7f0;color:#237a35;border-radius:999px;padding:2px 9px;font-size:12px;font-weight:700}
+.chip.grey{background:#f3f4f6;color:#6b7280}
+.chip.red{background:#fff1f2;color:#dc2626}
+.btn-view{display:inline-flex;align-items:center;padding:7px 14px;border-radius:8px;background:linear-gradient(180deg,#41b95a,#2f9e44);color:#fff;font-size:13px;font-weight:700;text-decoration:none;white-space:nowrap}
+.btn-view:hover{filter:brightness(1.07);text-decoration:none}
+
+/* Vista detalle docente */
+.detail-header{display:flex;align-items:flex-start;gap:16px;margin-bottom:20px;flex-wrap:wrap}
+.detail-avatar{width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,#41b95a,#2f9e44);color:#fff;font-weight:700;font-size:22px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.detail-name{font-size:22px;font-weight:700;margin:0 0 4px}
+.detail-meta{font-size:13px;color:var(--muted);display:flex;flex-wrap:wrap;gap:10px}
+.btn-change{display:inline-flex;align-items:center;padding:5px 10px;border-radius:7px;background:#eef7f0;color:var(--blue);font-size:12px;font-weight:700;text-decoration:none;border:1px solid #b8dfc4}
+.btn-change:hover{background:#d4f0dc;text-decoration:none}
+.btn-remove{display:inline-flex;align-items:center;padding:5px 10px;border-radius:7px;background:#fff1f2;color:var(--danger);font-size:12px;font-weight:700;text-decoration:none;border:1px solid #fecdd3}
+.btn-remove:hover{background:#ffe4e6;text-decoration:none}
+.student-count{font-size:13px;color:var(--muted);margin-bottom:12px}
+.back-to-list{display:inline-flex;align-items:center;padding:7px 14px;border-radius:8px;background:#f3f4f6;color:var(--text);font-size:13px;font-weight:700;text-decoration:none;margin-bottom:16px}
+.back-to-list:hover{background:#e5e7eb;text-decoration:none}
+
 @media (max-width: 768px){
     body{
         padding:20px;
@@ -938,6 +1077,149 @@ tbody tr:last-child td{
                 </div>
             </div>
         </div>
+
+        <?php if ($viewTeacher !== null): ?>
+        <!-- ============================================================
+             VISTA DE DETALLE DEL DOCENTE
+        ============================================================ -->
+        <div class="card">
+            <a class="back-to-list" href="teacher_profiles.php">← Volver al directorio</a>
+
+            <?php if (isset($_GET['saved'])): ?>
+                <div class="notice" style="margin-bottom:16px">Cambio guardado correctamente.</div>
+            <?php endif; ?>
+
+            <div class="detail-header">
+                <div class="detail-avatar"><?php echo h(mb_strtoupper(mb_substr(trim((string)($viewTeacher['name'] ?? 'D')), 0, 1, 'UTF-8'), 'UTF-8')); ?></div>
+                <div>
+                    <div class="detail-name"><?php echo h((string)($viewTeacher['name'] ?? 'Docente')); ?></div>
+                    <div class="detail-meta">
+                        <?php if (($viewTeacher['id_number'] ?? '') !== ''): ?>
+                            <span>📄 CC <?php echo h((string)$viewTeacher['id_number']); ?></span>
+                        <?php endif; ?>
+                        <?php if (($viewTeacher['phone'] ?? '') !== ''): ?>
+                            <span>📞 <?php echo h((string)$viewTeacher['phone']); ?></span>
+                        <?php endif; ?>
+                        <?php if ($viewTeacherAccount !== null): ?>
+                            <span>👤 <?php echo h((string)($viewTeacherAccount['username'] ?? '')); ?></span>
+                            <span class="chip"><?php echo ($viewTeacherAccount['permission'] ?? '') === 'editor' ? 'Puede editar' : 'Solo ver'; ?></span>
+                        <?php else: ?>
+                            <span class="chip red">Sin perfil de acceso</span>
+                        <?php endif; ?>
+                    </div>
+                </div>
+                <div style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap;align-items:flex-start">
+                    <?php if ($viewTeacherAccount !== null): ?>
+                        <a class="action-btn edit-btn" href="teacher_profiles.php?edit=<?php echo h((string)($viewTeacherAccount['id'] ?? '')); ?>">✏️ Editar perfil</a>
+                    <?php else: ?>
+                        <a class="action-btn edit-btn" href="teacher_profiles.php">+ Crear perfil</a>
+                    <?php endif; ?>
+                    <a class="action-btn edit-btn" href="teacher_assignments.php?teacher_id=<?php echo h($viewTeacherId); ?>">📚 Asignar cursos</a>
+                    <a class="action-btn delete-btn" href="delete_teacher.php?id=<?php echo h($viewTeacherId); ?>"
+                       onclick="return confirm('¿Eliminar completamente al docente <?php echo h(addslashes((string)($viewTeacher['name'] ?? ''))); ?>? Se borrarán sus asignaciones, cuenta y estudiantes vinculados.')">
+                        🗑️ Eliminar docente
+                    </a>
+                </div>
+            </div>
+
+            <h3 style="margin:0 0 8px;font-size:17px;color:var(--subtitle)">Estudiantes asignados</h3>
+            <p class="student-count">
+                <?php $cnt = count($viewTeacherStudents); echo $cnt === 0 ? 'Sin estudiantes asignados.' : $cnt . ' estudiante' . ($cnt !== 1 ? 's' : '') . ' asignado' . ($cnt !== 1 ? 's' : '') . '.'; ?>
+            </p>
+
+            <?php if (!empty($viewTeacherStudents)): ?>
+            <div class="table-wrap">
+                <div class="table-scroll">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Estudiante</th>
+                                <th>Usuario</th>
+                                <th>Curso / Grupo</th>
+                                <th>Programa</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        <?php foreach ($viewTeacherStudents as $stu): ?>
+                            <?php
+                                $saId      = h((string)($stu['assignment_id'] ?? ''));
+                                $stuName   = h((string)($stu['student_name'] ?? ''));
+                                $stuUser   = (string)($stu['student_username'] ?? '');
+                                $courseName= h((string)($stu['course_name'] ?? '—'));
+                                $prog      = (string)($stu['program'] ?? 'technical');
+                                $progLabel = $prog === 'english' ? 'English' : 'Técnico';
+                            ?>
+                            <tr>
+                                <td><strong><?php echo $stuName; ?></strong></td>
+                                <td><?php echo $stuUser !== '' ? h($stuUser) : '<span style="color:#aaa">Sin cuenta</span>'; ?></td>
+                                <td><?php echo $courseName; ?></td>
+                                <td><span class="chip"><?php echo h($progLabel); ?></span></td>
+                                <td style="white-space:nowrap">
+                                    <a class="btn-change"
+                                       href="student_assignments.php?edit=<?php echo $saId; ?>">
+                                        🔄 Cambiar grupo
+                                    </a>
+                                    &nbsp;
+                                    <a class="btn-remove"
+                                       href="teacher_profiles.php?remove_sa=<?php echo $saId; ?>&teacher_id=<?php echo h($viewTeacherId); ?>"
+                                       onclick="return confirm('¿Retirar a <?php echo h(addslashes((string)($stu['student_name'] ?? ''))); ?> de este grupo? Solo se desvincula de este docente.')">
+                                        ✕ Retirar
+                                    </a>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <?php endif; ?>
+        </div>
+        <?php endif; ?>
+
+        <!-- ============================================================
+             DIRECTORIO DE DOCENTES
+        ============================================================ -->
+        <div class="card">
+            <div class="card-header">
+                <h2>📋 Directorio de docentes</h2>
+                <p class="subtitle">Haz clic en "Ver" para ver el perfil y los estudiantes asignados a cada docente.</p>
+            </div>
+
+            <?php if (empty($teachers)): ?>
+                <p class="empty">No hay docentes inscritos.</p>
+            <?php else: ?>
+            <div class="teacher-grid">
+                <?php foreach ($teachers as $teacher):
+                    $tid     = (string)($teacher['id'] ?? '');
+                    $tname   = (string)($teacher['name'] ?? 'Docente');
+                    $initial = mb_strtoupper(mb_substr(trim($tname), 0, 1, 'UTF-8'), 'UTF-8');
+                    $acc     = $accountByTeacherId[$tid] ?? null;
+                    $isActive = $viewTeacherId === $tid;
+                ?>
+                <div class="teacher-row" style="<?php echo $isActive ? 'background:#f0fdf4;' : ''; ?>">
+                    <div class="teacher-avatar"><?php echo h($initial); ?></div>
+                    <div class="teacher-info">
+                        <div class="teacher-name"><?php echo h($tname); ?></div>
+                        <div class="teacher-meta">
+                            <?php if ($acc !== null): ?>
+                                <span class="chip">👤 <?php echo h((string)($acc['username'] ?? '')); ?></span>
+                                <span class="chip"><?php echo ($acc['permission'] ?? '') === 'editor' ? 'Puede editar' : 'Solo ver'; ?></span>
+                            <?php else: ?>
+                                <span class="chip red">Sin perfil</span>
+                            <?php endif; ?>
+                            <?php if (($teacher['phone'] ?? '') !== ''): ?>
+                                <span class="chip grey">📞 <?php echo h((string)$teacher['phone']); ?></span>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                    <a class="btn-view" href="teacher_profiles.php?view=<?php echo h($tid); ?>#detalle">Ver</a>
+                </div>
+                <?php endforeach; ?>
+            </div>
+            <?php endif; ?>
+        </div>
+
     </div>
 </div>
 
