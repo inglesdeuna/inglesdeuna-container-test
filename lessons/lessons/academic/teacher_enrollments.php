@@ -365,11 +365,12 @@ tbody tr:last-child td{border-bottom:none}
                                 <th>C.C.</th>
                                 <th>Teléfono</th>
                                 <th>Cuenta bancaria</th>
+                                <th>Acciones</th>
                             </tr>
                         </thead>
                         <tbody>
                         <?php if (empty($teachers)) { ?>
-                            <tr><td colspan="4" class="empty-row">No hay docentes inscritos.</td></tr>
+                            <tr><td colspan="5" class="empty-row">No hay docentes inscritos.</td></tr>
                         <?php } else { ?>
                             <?php foreach ($teachers as $teacher) { ?>
                                 <tr>
@@ -377,6 +378,17 @@ tbody tr:last-child td{border-bottom:none}
                                     <td><?php echo ((string) ($teacher['id_number'] ?? '')) !== '' ? h((string) $teacher['id_number']) : '<span class="small">Sin dato</span>'; ?></td>
                                     <td><?php echo ((string) ($teacher['phone'] ?? '')) !== '' ? h((string) $teacher['phone']) : '<span class="small">Sin dato</span>'; ?></td>
                                     <td><?php echo ((string) ($teacher['bank_account'] ?? '')) !== '' ? '<span class="badge">' . h((string) $teacher['bank_account']) . '</span>' : '<span class="small">Sin dato</span>'; ?></td>
+                                    <td style="white-space:nowrap">
+                                        <a class="btn-edit"
+                                           href="teacher_enrollments.php?edit=<?php echo h((string) ($teacher['id'] ?? '')); ?>">
+                                            ✏️ Editar
+                                        </a>
+                                        <a class="btn-del"
+                                           href="delete_teacher.php?id=<?php echo h((string) ($teacher['id'] ?? '')); ?>"
+                                           onclick="return confirm('¿Eliminar a <?php echo h(addslashes((string) ($teacher['name'] ?? ''))); ?>? Se eliminarán también sus asignaciones y cuenta de acceso. Esta acción no se puede deshacer.')">
+                                            🗑️ Eliminar
+                                        </a>
+                                    </td>
                                 </tr>
                             <?php } ?>
                         <?php } ?>
