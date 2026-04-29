@@ -741,6 +741,72 @@ ob_start();
     display: block;
     margin: 0 auto;
 }
+
+/* ── Fullscreen-embedded crossword layout ── */
+body.fullscreen-embedded .viewer-content {
+    overflow: hidden !important;
+    padding: 6px 8px !important;
+}
+body.fullscreen-embedded .cw-viewer {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    max-width: 100%;
+    overflow: hidden;
+}
+body.fullscreen-embedded #cwGame {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+body.fullscreen-embedded .cw-layout {
+    flex: 1 !important;
+    min-height: 0 !important;
+    flex-direction: row !important;
+    align-items: stretch !important;
+    gap: 10px !important;
+    overflow: hidden !important;
+}
+body.fullscreen-embedded .cw-grid-col {
+    flex: 0 0 auto !important;
+    overflow: auto !important;
+    max-height: 100% !important;
+    align-items: flex-start !important;
+    justify-content: flex-start !important;
+}
+body.fullscreen-embedded .cw-clues-col {
+    flex: 1 1 0 !important;
+    flex-direction: column !important;
+    overflow-y: auto !important;
+    max-height: 100% !important;
+    margin-top: 0 !important;
+    width: auto !important;
+    max-width: none !important;
+    justify-content: flex-start !important;
+}
+body.fullscreen-embedded .cw-grid-wrap {
+    overflow: visible !important;
+    padding: 4px 0 !important;
+}
+body.fullscreen-embedded .cw-toolbar {
+    flex-shrink: 0 !important;
+    margin-top: 4px !important;
+}
+body.fullscreen-embedded .cw-toolbar button {
+    padding: 8px 14px !important;
+    font-size: 13px !important;
+    min-width: 110px !important;
+}
+body.fullscreen-embedded .cw-progress-wrap {
+    flex-shrink: 0 !important;
+    margin-top: 4px !important;
+}
+body.fullscreen-embedded #cw-result {
+    margin-top: 4px !important;
+    font-size: 14px !important;
+}
 </style>
 
 <div class="cw-viewer" id="cwViewer">

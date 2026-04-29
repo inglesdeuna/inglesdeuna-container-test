@@ -574,16 +574,27 @@ window.PRESENTATION_NEXT_URL = <?= json_encode($nextUrl) ?>;
 
 // Prevent automatic scroll to top in presentation mode
 if (window.PRESENTATION_MODE) {
-    // Override window.scrollTo during presentation
     var originalScrollTo = window.scrollTo;
     window.scrollTo = function() {
-        // Allow explicit scrollTo calls but with no animation
         if (arguments.length > 0 && typeof arguments[0] === 'object' && arguments[0].behavior === 'smooth') {
-            return; // Silently ignore smooth scrolls in presentation mode
+            return;
         }
         originalScrollTo.apply(window, arguments);
     };
 }
+
+// Fullscreen-embedded: parent page signals fullscreen state changes via postMessage
+window.addEventListener('message', function (e) {
+    if (!e.data || typeof e.data !== 'object') return;
+    var t = e.data.type;
+    if (t === 'fs-enter') {
+        document.body.classList.add('fullscreen-embedded');
+        document.dispatchEvent(new CustomEvent('fullscreen-embedded', { detail: { active: true } }));
+    } else if (t === 'fs-exit') {
+        document.body.classList.remove('fullscreen-embedded');
+        document.dispatchEvent(new CustomEvent('fullscreen-embedded', { detail: { active: false } }));
+    }
+});
 </script>
 
 </body>
