@@ -271,6 +271,42 @@ ob_start();
   height:auto;
 }
 
+/* ── Free-placement mode: background image fills and sizes the zone ── */
+#answer.lo-free-mode{
+  display:block !important;
+  padding:0 !important;
+  background:#f0eeff !important;
+  border:3px solid #7c3aed !important;
+  border-style:solid !important;
+  /* cap width for readability; JS sets height via aspect ratio */
+  width:min(860px, 100%) !important;
+  max-width:860px !important;
+  margin:0 auto !important;
+  min-height:300px;
+  overflow:hidden;
+  cursor:default;
+}
+/* Image fills the zone completely */
+#answer.lo-free-mode .uploaded-drop-image{
+  position:absolute !important;
+  inset:0 !important;
+  width:100% !important;
+  height:100% !important;
+  max-width:none !important;
+  object-fit:contain;
+  object-position:center;
+  pointer-events:none;
+  z-index:1;
+}
+/* Chips float freely on top of the image */
+#answer.lo-free-mode .word{
+  position:absolute;
+  z-index:3;
+  cursor:grab;
+  margin:0;
+}
+#answer.lo-free-mode .word:active{ cursor:grabbing; }
+
 .lo-controls{
   display:flex;
   flex-wrap:wrap;
@@ -521,6 +557,7 @@ function setListenBtnState(state) {
 let index = 0;
 let correct = [];
 let dragged = null;
+var dragOffsetX = 0, dragOffsetY = 0;
 let currentSentence = '';
 let isSpeaking = false;
 let isPaused = false;
@@ -723,12 +760,21 @@ function createImageChip(src) {
   img.src = src;
 
   div.appendChild(img);
-  div.addEventListener('dragstart', function () {
+
+  div.addEventListener('dragstart', function (e) {
     dragged = div;
+    /* Record cursor offset inside the chip so drop position is exact */
+    var rect = div.getBoundingClientRect();
+    dragOffsetX = (e.clientX || 0) - rect.left;
+    dragOffsetY = (e.clientY || 0) - rect.top;
   });
 
   div.addEventListener('click', function () {
     if (div.parentElement === answerDiv && !finished && !blockFinished) {
+      /* Clear free-placement position before returning to the word bank */
+      div.style.position = '';
+      div.style.left = '';
+      div.style.top  = '';
       wordsDiv.appendChild(div);
     }
   });
