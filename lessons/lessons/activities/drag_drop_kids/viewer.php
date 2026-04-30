@@ -101,60 +101,81 @@ if (empty($pairs) || $bgImage === '') {
 ob_start();
 ?>
 <style>
-/* ── drag drop kids (ddk) ───────────────────────── */
-.ddk-stage { max-width: 900px; margin: 0 auto; }
+/* ── Title header: 25% smaller, centred with stage ─ */
+.act-header {
+    max-width: 900px !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+    margin-bottom: 10px !important;
+    padding: 12px 18px !important;
+    border-radius: 16px !important;
+}
+.act-header h2 { font-size: clamp(18px, 2.6vw, 26px) !important; margin: 0 0 4px !important; }
+.act-header p  { font-size: 13px !important; }
 
+/* ── drag drop kids (ddk) ───────────────────────── */
+.ddk-stage {
+    max-width: 900px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Canvas: shrinks to image size so %-zones align perfectly */
 .ddk-canvas-wrap {
-    border-radius: 20px;
-    overflow: hidden;
-    box-shadow: 0 12px 32px rgba(15,23,42,.14);
-    margin-bottom: 16px;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    margin-bottom: 10px;
     line-height: 0;
 }
 .ddk-canvas {
     position: relative;
-    display: block;
-    width: 100%;
+    display: inline-block;
+    max-width: 100%;
 }
 .ddk-bg {
     display: block;
-    width: 100%;
+    max-width: 100%;
+    /* Constrain height so it fits in the viewport without scrolling */
+    max-height: calc(100vh - 230px);
+    width: auto;
     height: auto;
-    border-radius: 20px;
+    border-radius: 16px;
     user-select: none;
     pointer-events: none;
+    box-shadow: 0 10px 28px rgba(15,23,42,.13);
 }
 
-/* Drop zones */
+/* Drop zones – teal, solid, equal padding, centred text */
 .ddk-zone {
     position: absolute;
-    border: 2.5px dashed #f59e0b;
+    border: 2.5px solid #14b8a6;
     border-radius: 10px;
-    background: rgba(255,247,237,.55);
+    background: rgba(204,251,241,.6);
     display: flex;
     align-items: center;
     justify-content: center;
     font-family: 'Fredoka', 'Trebuchet MS', sans-serif;
-    font-size: clamp(11px, 1.3vw, 17px);
+    font-size: clamp(10px, 1.2vw, 16px);
     font-weight: 700;
-    color: #92400e;
+    color: #134e4a;
     cursor: pointer;
     transition: background .18s, border-color .18s, transform .15s;
     box-sizing: border-box;
     overflow: hidden;
     text-align: center;
-    padding: 3px 5px;
+    padding: 4px;
     line-height: 1.2;
 }
 .ddk-zone.drag-over {
-    background: rgba(254,215,170,.75);
-    border-color: #f97316;
+    background: rgba(153,246,228,.75);
+    border-color: #0d9488;
     transform: scale(1.06);
 }
 .ddk-zone.filled {
-    border-style: solid;
     border-color: #16a34a;
-    background: rgba(220,252,231,.88);
+    background: rgba(220,252,231,.9);
     color: #14532d;
     cursor: default;
 }
@@ -175,20 +196,20 @@ ob_start();
     display: flex;
     flex-wrap: wrap;
     justify-content: center;
-    gap: 10px;
-    margin: 14px 0 10px;
-    min-height: 48px;
+    gap: 8px;
+    margin: 8px 0;
+    min-height: 40px;
 }
 .ddk-chip {
-    padding: 10px 20px;
+    padding: 8px 16px;
     border-radius: 999px;
     color: #7c2d12;
     font-weight: 800;
     font-family: 'Fredoka', 'Trebuchet MS', sans-serif;
-    font-size: clamp(13px, 1.6vw, 17px);
+    font-size: clamp(12px, 1.4vw, 15px);
     cursor: grab;
     background: linear-gradient(180deg, #fed7aa 0%, #fdba74 100%);
-    box-shadow: 0 8px 18px rgba(251,146,60,.22);
+    box-shadow: 0 6px 14px rgba(251,146,60,.2);
     user-select: none;
     touch-action: manipulation;
     transition: filter .15s, transform .15s;
@@ -205,28 +226,28 @@ ob_start();
 .ddk-touch-hint {
     text-align: center;
     color: #7c2d12;
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 700;
-    margin: 0 0 6px;
+    margin: 0 0 4px;
 }
 .ddk-touch-hint.hidden { display: none; }
 
 /* Buttons */
-.ddk-controls { text-align: center; margin: 10px 0 6px; }
+.ddk-controls { text-align: center; margin: 6px 0 4px; }
 .ddk-btn {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    padding: 11px 20px;
+    padding: 9px 18px;
     border: none;
     border-radius: 999px;
     color: #fff;
     cursor: pointer;
-    min-width: 142px;
+    min-width: 130px;
     font-weight: 800;
     font-family: 'Nunito', 'Segoe UI', sans-serif;
-    font-size: 14px;
-    box-shadow: 0 10px 22px rgba(15,23,42,.12);
+    font-size: 13px;
+    box-shadow: 0 8px 18px rgba(15,23,42,.12);
     transition: transform .15s, filter .15s;
     line-height: 1;
 }
@@ -236,47 +257,63 @@ ob_start();
 /* Feedback */
 #ddkFeedback {
     text-align: center;
-    font-size: 18px;
+    font-size: 16px;
     font-weight: 800;
-    min-height: 28px;
-    margin: 6px 0;
+    min-height: 24px;
+    margin: 4px 0;
 }
 .good { color: #15803d; }
 .bad  { color: #dc2626; }
 
 /* Completion */
-.ddk-completed { display: none; text-align: center; padding: 36px 20px; }
+.ddk-completed { display: none; text-align: center; padding: 28px 20px; }
 .ddk-completed.active { display: block; }
-.ddk-completed-icon  { font-size: 70px; margin-bottom: 12px; }
+.ddk-completed-icon  { font-size: 60px; margin-bottom: 10px; }
 .ddk-completed-title {
     font-family: 'Fredoka', 'Trebuchet MS', sans-serif;
-    font-size: 34px;
+    font-size: 30px;
     font-weight: 700;
     color: #9a3412;
-    margin: 0 0 10px;
+    margin: 0 0 8px;
 }
-.ddk-completed-text  { font-size: 15px; color: #6b4f3a; line-height: 1.6; margin: 0 0 6px; }
-.ddk-completed-score { font-size: 18px; font-weight: 800; color: #9a3412; margin: 0 0 24px; }
+.ddk-completed-text  { font-size: 14px; color: #6b4f3a; line-height: 1.5; margin: 0 0 4px; }
+.ddk-completed-score { font-size: 16px; font-weight: 800; color: #9a3412; margin: 0 0 20px; }
 .ddk-completed-btn {
     display: inline-block;
-    padding: 12px 28px;
+    padding: 10px 24px;
     border: none;
     border-radius: 999px;
     background: linear-gradient(180deg, #fb923c 0%, #f97316 100%);
     color: #fff;
     font-weight: 700;
-    font-size: 16px;
+    font-size: 14px;
     cursor: pointer;
-    box-shadow: 0 10px 24px rgba(0,0,0,.14);
+    box-shadow: 0 8px 20px rgba(0,0,0,.13);
     transition: transform .18s, filter .18s;
 }
 .ddk-completed-btn:hover { transform: scale(1.05); filter: brightness(1.07); }
 
 @media (max-width: 640px) {
-    .ddk-chip { padding: 9px 14px; }
-    .ddk-bank { gap: 8px; }
+    .ddk-bg { max-height: calc(100vh - 200px); }
+    .ddk-chip { padding: 7px 12px; }
+    .ddk-bank { gap: 6px; }
     .ddk-controls { display: flex; flex-direction: column; align-items: center; }
-    .ddk-btn { width: 100%; max-width: 300px; }
+    .ddk-btn { width: 100%; max-width: 280px; }
+}
+
+/* Presentation / fullscreen mode */
+body.presentation-mode .ddk-bg,
+body.fullscreen-embedded .ddk-bg {
+    max-height: calc(100vh - 160px);
+}
+body.presentation-mode .act-header,
+body.fullscreen-embedded .act-header {
+    padding: 8px 14px !important;
+    margin-bottom: 6px !important;
+}
+body.presentation-mode .act-header h2,
+body.fullscreen-embedded .act-header h2 {
+    font-size: clamp(16px, 2vw, 22px) !important;
 }
 </style>
 
