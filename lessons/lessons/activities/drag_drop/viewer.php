@@ -388,6 +388,7 @@ ob_start();
 }
 </style>
 
+<?= render_activity_header($viewerTitle) ?>
 <div class="dd-stage">
   <div id="sentenceBox">
     <button id="listenBtn" class="dd-btn dd-btn-listen" type="button" onclick="speak()">Listen</button>

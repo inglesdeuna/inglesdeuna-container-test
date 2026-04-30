@@ -504,6 +504,7 @@ ob_start();
 }
 </style>
 
+<?= render_activity_header($viewerTitle) ?>
 <?php if (empty($pairs)) { ?>
     <div class="match-empty">No match data available.</div>
 <?php } else { ?>

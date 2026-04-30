@@ -173,6 +173,7 @@ $jsVersion = file_exists(__DIR__ . '/multiple_choice.js') ? (string) filemtime(_
 ob_start();
 ?>
 
+<?= render_activity_header($viewerTitle) ?>
 <div class="mc-viewer" id="mc-container">
     <div class="mc-status" id="mc-status"></div>
 

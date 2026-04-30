@@ -355,6 +355,7 @@ ob_start();
 }
 </style>
 
+<?= render_activity_header($viewerTitle) ?>
 <div class="mc-viewer" id="mc-app">
     <?php if (empty($cards)): ?>
         <div class="mc-shell">

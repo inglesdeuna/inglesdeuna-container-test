@@ -628,10 +628,7 @@ body {
 </style>
 
 <div class="flashcards-wrap">
-    <div class="flashcards-intro">
-        <h2><?= htmlspecialchars($viewerTitle, ENT_QUOTES, 'UTF-8') ?></h2>
-        <p>Advanced English ↔ Spanish flashcards designed for classroom projection. Flip between formal expressions and nuanced translations while using dedicated listen buttons for each side.</p>
-    </div>
+    <?= render_activity_header($viewerTitle) ?>
 
     <div id="cards-stage" class="flashcards-stage">
         <div class="card-container">
