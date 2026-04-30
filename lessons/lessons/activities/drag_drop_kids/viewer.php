@@ -203,22 +203,27 @@ ob_start();
 .ddk-chip {
     padding: 8px 16px;
     border-radius: 999px;
-    color: #7c2d12;
+    color: #4c1d95;
     font-weight: 800;
     font-family: 'Fredoka', 'Trebuchet MS', sans-serif;
     font-size: clamp(12px, 1.4vw, 15px);
     cursor: grab;
-    background: linear-gradient(180deg, #fed7aa 0%, #fdba74 100%);
-    box-shadow: 0 6px 14px rgba(251,146,60,.2);
+    background: #ede9fe;
+    border: 2px solid #7c3aed;
+    box-shadow: 0 4px 12px rgba(124,58,237,.18);
     user-select: none;
     touch-action: manipulation;
     transition: filter .15s, transform .15s;
     line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
 }
 .ddk-chip:hover { filter: brightness(1.06); transform: scale(1.04); }
 .ddk-chip.dragging { opacity: .4; cursor: grabbing; }
 .ddk-chip.selected-touch {
-    outline: 3px solid #0ea5e9;
+    outline: 3px solid #7c3aed;
     outline-offset: 2px;
     filter: brightness(1.05);
 }
