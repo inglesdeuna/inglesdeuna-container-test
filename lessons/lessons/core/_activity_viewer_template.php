@@ -536,8 +536,6 @@ function render_activity_viewer($title, $icon, $content)
             border-radius: 8px;
             padding: 10px 14px;
             margin: 0;
-            display: flex;
-            flex-direction: column;
         }
     </style>
 </head>

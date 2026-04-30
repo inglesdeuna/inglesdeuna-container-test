@@ -746,6 +746,8 @@ ob_start();
 body.fullscreen-embedded .viewer-content {
     overflow: hidden !important;
     padding: 6px 8px !important;
+    display: flex !important;
+    flex-direction: column !important;
 }
 body.fullscreen-embedded .cw-viewer {
     height: 100%;
