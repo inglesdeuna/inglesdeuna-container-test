@@ -206,7 +206,7 @@ ob_start();
     color: #4c1d95;
     font-weight: 800;
     font-family: 'Fredoka', 'Trebuchet MS', sans-serif;
-    font-size: clamp(12px, 1.4vw, 15px);
+    font-size: clamp(16px, 1.8vw, 19px);
     cursor: grab;
     background: #ede9fe;
     border: 2px solid #7c3aed;
@@ -299,17 +299,28 @@ ob_start();
 .ddk-completed-btn:hover { transform: scale(1.05); filter: brightness(1.07); }
 
 @media (max-width: 640px) {
-    .ddk-bg { max-height: calc(100vh - 200px); }
-    .ddk-chip { padding: 7px 12px; }
+    .ddk-bg { max-height: calc(100vh - 210px); }
+    .ddk-chip { padding: 7px 12px; font-size: 15px; }
     .ddk-bank { gap: 6px; }
     .ddk-controls { display: flex; flex-direction: column; align-items: center; }
     .ddk-btn { width: 100%; max-width: 280px; }
 }
 
-/* Presentation / fullscreen mode */
+/* Presentation / fullscreen: 1cm margin on all 4 sides, no scroll */
+body.presentation-mode .activity-wrapper,
+body.fullscreen-embedded .activity-wrapper {
+    padding: 10mm !important;
+    box-sizing: border-box !important;
+}
+body.presentation-mode .viewer-content,
+body.fullscreen-embedded .viewer-content {
+    border-radius: 14px !important;
+    overflow: hidden !important;
+}
 body.presentation-mode .ddk-bg,
 body.fullscreen-embedded .ddk-bg {
-    max-height: calc(100vh - 160px);
+    /* 100vh minus 2×1cm margins minus header, bank, controls, feedback */
+    max-height: calc(100vh - 20mm - 190px);
 }
 body.presentation-mode .act-header,
 body.fullscreen-embedded .act-header {
