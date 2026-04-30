@@ -1,5 +1,25 @@
 <?php
 
+/**
+ * Renders the standardised activity header (title + optional instructions).
+ * CSS is injected via the shared <style> block below.
+ */
+function render_activity_header(string $title, string $instructions = ''): string
+{
+    $title        = trim($title);
+    $instructions = trim($instructions);
+    if ($title === '') {
+        return '';
+    }
+    $out  = '<div class="act-header">';
+    $out .= '<h2>' . htmlspecialchars($title, ENT_QUOTES, 'UTF-8') . '</h2>';
+    if ($instructions !== '') {
+        $out .= '<p>' . nl2br(htmlspecialchars($instructions, ENT_QUOTES, 'UTF-8')) . '</p>';
+    }
+    $out .= '</div>';
+    return $out;
+}
+
 function render_activity_viewer($title, $icon, $content)
 {
     $unit = isset($_GET['unit']) ? trim((string) $_GET['unit']) : '';
@@ -511,6 +531,47 @@ function render_activity_viewer($title, $icon, $content)
                 min-height:30px;
             }
         }
+
+        /* ── Shared activity header (.act-header) ─────────────────────────── */
+        @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@500;700;800&display=swap');
+
+        .act-header {
+            margin: 0 auto 18px;
+            padding: 22px 26px;
+            border-radius: 26px;
+            border: 1px solid #d9cff6;
+            background: linear-gradient(135deg, #eef4ff 0%, #f8ebff 48%, #e8fff7 100%);
+            box-shadow: 0 12px 28px rgba(15, 23, 42, .08);
+            max-width: 980px;
+            box-sizing: border-box;
+        }
+        .act-header h2 {
+            margin: 0 0 6px;
+            font-family: 'Fredoka', 'Trebuchet MS', sans-serif;
+            font-size: clamp(22px, 2.8vw, 28px);
+            font-weight: 700;
+            line-height: 1.15;
+            color: #4c1d95;
+            letter-spacing: .2px;
+        }
+        .act-header p {
+            margin: 0;
+            font-size: 15px;
+            color: #5b516f;
+            line-height: 1.6;
+        }
+        @media (max-width: 760px) {
+            .act-header { padding: 16px 16px; border-radius: 18px; margin-bottom: 14px; }
+            .act-header h2 { font-size: 22px; }
+        }
+        body.fullscreen-embedded .act-header {
+            padding: 10px 16px !important;
+            margin-bottom: 8px !important;
+            border-radius: 12px !important;
+            max-width: 100% !important;
+        }
+        body.fullscreen-embedded .act-header h2 { font-size: 18px !important; }
+        body.fullscreen-embedded .act-header p  { font-size: 13px !important; }
 
         /* ── Fullscreen-embedded: parent page has entered fullscreen, iframe fills viewport ── */
         body.fullscreen-embedded {
