@@ -38,6 +38,7 @@ $backUrl = "../../academic/english_structure_units.php?phase=" . urlencode($unit
 =============================== */
 $activityTypes = [
     "drag_drop" => "Drag & Drop",
+    "drag_drop_kids" => "Drag & Drop Kids",
     "unscramble" => "Unscramble",
     "flashcards" => "Flashcards",
     "memory_cards" => "Memory Cards",
