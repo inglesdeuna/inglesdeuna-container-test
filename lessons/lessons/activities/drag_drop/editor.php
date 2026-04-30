@@ -5,6 +5,7 @@ if (session_status() === PHP_SESSION_NONE) {
 
 require_once __DIR__ . '/../../config/db.php';
 require_once __DIR__ . '/../../core/_activity_editor_template.php';
+require_once __DIR__ . '/../../core/cloudinary_upload.php';
 
 // Block student access to editor
 if (isset($_SESSION['student_logged']) && $_SESSION['student_logged']) {
@@ -132,11 +133,14 @@ function normalize_drag_drop_payload($rawData): array
             continue;
         }
 
+        $image = isset($block['image']) && is_string($block['image']) ? trim($block['image']) : '';
+
         $blocks[] = [
             'id' => trim((string) ($block['id'] ?? uniqid('drag_drop_'))),
             'text' => $text,
             'missing_words' => $missingWords,
             'listen_enabled' => (bool) $listenEnabled,
+            'image' => $image,
         ];
     }
 
@@ -148,9 +152,19 @@ function normalize_drag_drop_payload($rawData): array
 
 function encode_drag_drop_payload(array $payload): string
 {
+    $blocks = array_map(function (array $b): array {
+        return [
+            'id'            => $b['id'] ?? '',
+            'text'          => $b['text'] ?? '',
+            'missing_words' => $b['missing_words'] ?? [],
+            'listen_enabled'=> $b['listen_enabled'] ?? true,
+            'image'         => $b['image'] ?? '',
+        ];
+    }, array_values($payload['blocks'] ?? []));
+
     return json_encode([
-        'title' => normalize_drag_drop_title((string) ($payload['title'] ?? '')),
-        'blocks' => array_values($payload['blocks'] ?? []),
+        'title'  => normalize_drag_drop_title((string) ($payload['title'] ?? '')),
+        'blocks' => $blocks,
     ], JSON_UNESCAPED_UNICODE);
 }
 
