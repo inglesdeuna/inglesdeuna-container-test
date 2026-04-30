@@ -412,7 +412,7 @@ ob_start();
 <?= render_activity_header($viewerTitle) ?>
 <div class="lo-stage">
   <div id="sentenceBox">
-    <button class="lo-btn lo-btn-listen" type="button" onclick="playAudio()">Listen</button>
+    <button class="lo-btn lo-btn-listen" type="button" onclick="playAudio()">🔊 Listen</button>
   </div>
 
   <div id="words"></div>
@@ -455,6 +455,68 @@ const loComputedPick = Number.isFinite(loRequestedPick) && loRequestedPick > 0
 const blocks = sourceBlocks.length > 1
   ? shuffle(sourceBlocks).slice(0, loComputedPick)
   : sourceBlocks.slice();
+
+/* ── Voice cache: Chrome loads voices asynchronously; keep a live copy ── */
+var _loVoices = [];
+function _loLoadVoices() {
+  if ('speechSynthesis' in window) {
+    _loVoices = window.speechSynthesis.getVoices() || [];
+  }
+}
+if ('speechSynthesis' in window) {
+  _loLoadVoices();
+  window.speechSynthesis.addEventListener('voiceschanged', _loLoadVoices);
+}
+
+/* Return the best available English voice.
+   Priority: known high-quality names → non-local (neural/online) → first English voice. */
+function getPreferredVoice() {
+  if (!_loVoices.length) _loLoadVoices();
+  var voices = _loVoices;
+  if (!voices.length) return null;
+
+  var enVoices = voices.filter(function (v) {
+    var l = String(v.lang || '').toLowerCase();
+    return l === 'en-us' || l.startsWith('en-') || l.startsWith('en_');
+  });
+  if (!enVoices.length) enVoices = voices;
+
+  /* Well-known high-quality English voices across platforms */
+  var preferred = [
+    'samantha', 'daniel',   'karen',  'moira',  'fiona',
+    'alex',     'aria',     'jenny',  'guy',     'davis',
+    'tony',     'emma',     'olivia', 'ava',     'allison',
+    'victoria', 'kate',     'zira',   'hazel',   'mark',
+  ];
+  for (var p = 0; p < preferred.length; p++) {
+    var hint = preferred[p];
+    var match = null;
+    for (var v = 0; v < enVoices.length; v++) {
+      var label = (String(enVoices[v].name || '') + ' ' + String(enVoices[v].voiceURI || '')).toLowerCase();
+      if (label.indexOf(hint) !== -1) { match = enVoices[v]; break; }
+    }
+    if (match) return match;
+  }
+
+  /* Prefer online/neural voices (non-local) as they tend to sound more natural */
+  for (var v2 = 0; v2 < enVoices.length; v2++) {
+    if (!enVoices[v2].localService) return enVoices[v2];
+  }
+
+  return enVoices[0];
+}
+
+/* ── Button visual state ── */
+function setListenBtnState(state) {
+  if (!listenBtn) return;
+  if (state === 'speaking') {
+    listenBtn.textContent = '⏸ Pause';
+  } else if (state === 'paused') {
+    listenBtn.textContent = '▶ Resume';
+  } else {
+    listenBtn.textContent = '🔊 Listen';
+  }
+}
 
 let index = 0;
 let correct = [];
@@ -550,6 +612,7 @@ function playAudio() {
     speechSynthesis.resume();
     isSpeaking = true;
     isPaused = false;
+    setListenBtnState('speaking');
 
     setTimeout(function () {
       if (!speechSynthesis.speaking && speechOffset < speechSourceText.length) {
@@ -563,6 +626,7 @@ function playAudio() {
     speechSynthesis.pause();
     isSpeaking = true;
     isPaused = true;
+    setListenBtnState('paused');
     return;
   }
 
@@ -592,24 +656,31 @@ function startSpeechFromOffset() {
 
   speechSegmentStart = safeOffset;
   utter = new SpeechSynthesisUtterance(remaining);
-  utter.lang = 'en-US';
-  utter.rate = 0.7;
-  utter.pitch = 1;
+  utter.lang   = 'en-US';
+  utter.rate   = 0.9;   /* 0.9 = natural but still clear for learners (was 0.7) */
+  utter.pitch  = 1;
   utter.volume = 1;
+
+  /* Assign best available English voice */
+  var bestVoice = getPreferredVoice();
+  if (bestVoice) utter.voice = bestVoice;
 
   utter.onstart = function () {
     isSpeaking = true;
     isPaused = false;
+    setListenBtnState('speaking');
   };
 
   utter.onpause = function () {
     isPaused = true;
     isSpeaking = true;
+    setListenBtnState('paused');
   };
 
   utter.onresume = function () {
     isPaused = false;
     isSpeaking = true;
+    setListenBtnState('speaking');
   };
 
   utter.onboundary = function (event) {
@@ -619,12 +690,18 @@ function startSpeechFromOffset() {
   };
 
   utter.onend = function () {
-    if (isPaused) {
-      return;
-    }
+    if (isPaused) return;
     isSpeaking = false;
     isPaused = false;
     speechOffset = 0;
+    setListenBtnState('idle');
+  };
+
+  utter.onerror = function () {
+    isSpeaking = false;
+    isPaused = false;
+    speechOffset = 0;
+    setListenBtnState('idle');
   };
 
   speechSynthesis.speak(utter);
@@ -767,6 +844,7 @@ function loadBlock() {
   if (listenBtn) {
     listenBtn.disabled = false;
   }
+  setListenBtnState('idle');
 
   feedback.textContent = '';
   feedback.className = '';
@@ -880,6 +958,7 @@ function showAnswer() {
   if (listenBtn) {
     listenBtn.disabled = false;
   }
+  setListenBtnState('idle');
 
   blockFinished = true;
 }
