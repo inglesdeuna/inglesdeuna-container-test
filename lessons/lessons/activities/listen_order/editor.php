@@ -54,7 +54,7 @@ function normalize_listen_order_title(string $title): string
     return $title !== "" ? $title : default_listen_order_title();
 }
 
-function normalize_listen_order_payload($rawData): array
+function normalize_listen_order_payload(mixed $rawData): array
 {
     $default = [
         "title" => default_listen_order_title(),
@@ -100,14 +100,35 @@ function normalize_listen_order_payload($rawData): array
             }
         }
 
+        $dropZoneImages = [];
+        if (isset($block["dropZoneImages"]) && is_array($block["dropZoneImages"])) {
+            foreach ($block["dropZoneImages"] as $dzi) {
+                if (!is_array($dzi)) {
+                    continue;
+                }
+                $dzSrc = trim((string) ($dzi["src"] ?? ""));
+                if ($dzSrc === "") {
+                    continue;
+                }
+                $dropZoneImages[] = [
+                    "id"    => trim((string) ($dzi["id"] ?? uniqid("dzi_"))),
+                    "src"   => $dzSrc,
+                    "left"  => (int) ($dzi["left"] ?? 0),
+                    "top"   => (int) ($dzi["top"] ?? 0),
+                    "width" => max(60, min(800, (int) ($dzi["width"] ?? 180))),
+                ];
+            }
+        }
+
         if ($sentence === "") {
             continue;
         }
 
         $blocks[] = [
-            "id" => trim((string) ($block["id"] ?? uniqid("listen_order_"))),
-            "sentence" => $sentence,
-            "images" => $images,
+            "id"             => trim((string) ($block["id"] ?? uniqid("listen_order_"))),
+            "sentence"       => $sentence,
+            "images"         => $images,
+            "dropZoneImages" => $dropZoneImages,
         ];
     }
 
@@ -251,18 +272,27 @@ if ($activityId === "" && !empty($activity["id"])) {
 }
 
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
-    $postedTitle = trim((string) ($_POST["activity_title"] ?? ""));
-    $blockIds = isset($_POST["block_id"]) && is_array($_POST["block_id"]) ? $_POST["block_id"] : [];
-    $sentences = isset($_POST["sentence"]) && is_array($_POST["sentence"]) ? $_POST["sentence"] : [];
+    $postedTitle    = trim((string) ($_POST["activity_title"] ?? ""));
+    $blockIds       = isset($_POST["block_id"])        && is_array($_POST["block_id"])        ? $_POST["block_id"]        : [];
+    $sentences      = isset($_POST["sentence"])        && is_array($_POST["sentence"])        ? $_POST["sentence"]        : [];
     $existingImages = isset($_POST["images_existing"]) && is_array($_POST["images_existing"]) ? $_POST["images_existing"] : [];
-    $imageFiles = isset($_FILES["images"]) ? $_FILES["images"] : null;
+    $imageFiles     = isset($_FILES["images"])         ? $_FILES["images"]                   : null;
+
+    /* Drop zone image POST fields */
+    $dzExistingByBlock = isset($_POST["dz_image_existing"]) && is_array($_POST["dz_image_existing"]) ? $_POST["dz_image_existing"] : [];
+    $dzLeftByBlock     = isset($_POST["dz_image_left"])     && is_array($_POST["dz_image_left"])     ? $_POST["dz_image_left"]     : [];
+    $dzTopByBlock      = isset($_POST["dz_image_top"])      && is_array($_POST["dz_image_top"])      ? $_POST["dz_image_top"]      : [];
+    $dzWidthByBlock    = isset($_POST["dz_image_width"])    && is_array($_POST["dz_image_width"])    ? $_POST["dz_image_width"]    : [];
+    $dzIdByBlock       = isset($_POST["dz_image_id"])       && is_array($_POST["dz_image_id"])       ? $_POST["dz_image_id"]       : [];
+    $dzFileInput       = isset($_FILES["dz_image_file"])    ? $_FILES["dz_image_file"]               : null;
 
     $sanitized = [];
 
     foreach ($sentences as $i => $sentenceRaw) {
         $sentence = trim((string) $sentenceRaw);
-        $blockId = trim((string) ($blockIds[$i] ?? uniqid("listen_order_")));
+        $blockId  = trim((string) ($blockIds[$i] ?? uniqid("listen_order_")));
 
+        /* Chip images */
         $images = [];
         if (isset($existingImages[$i]) && is_array($existingImages[$i])) {
             foreach ($existingImages[$i] as $img) {
@@ -290,14 +320,52 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             }
         }
 
+        /* Drop zone background image */
+        $dzSrc   = trim((string) ($dzExistingByBlock[$i] ?? ""));
+        $dzLeft  = (int) ($dzLeftByBlock[$i]  ?? 0);
+        $dzTop   = (int) ($dzTopByBlock[$i]   ?? 0);
+        $dzWidth = max(60, min(800, (int) ($dzWidthByBlock[$i] ?? 180)));
+        $dzId    = trim((string) ($dzIdByBlock[$i] ?? ""));
+
+        if (
+            $dzFileInput &&
+            isset($dzFileInput["tmp_name"][$i]) &&
+            !empty($dzFileInput["tmp_name"][$i]) &&
+            ($dzFileInput["error"][$i] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_OK
+        ) {
+            $uploadedDz = upload_to_cloudinary($dzFileInput["tmp_name"][$i]);
+            if ($uploadedDz) {
+                $dzSrc = $uploadedDz;
+                $dzId  = uniqid("dzi_");
+            }
+        }
+
+        if ($dzId === "") {
+            $dzId = uniqid("dzi_");
+        }
+
+        $dzImages = [];
+        if ($dzSrc !== "") {
+            $dzImages = [
+                [
+                    "id"    => $dzId,
+                    "src"   => $dzSrc,
+                    "left"  => $dzLeft,
+                    "top"   => $dzTop,
+                    "width" => $dzWidth,
+                ],
+            ];
+        }
+
         if ($sentence === "") {
             continue;
         }
 
         $sanitized[] = [
-            "id" => $blockId !== "" ? $blockId : uniqid("listen_order_"),
-            "sentence" => $sentence,
-            "images" => array_values($images),
+            "id"             => $blockId !== "" ? $blockId : uniqid("listen_order_"),
+            "sentence"       => $sentence,
+            "images"         => array_values($images),
+            "dropZoneImages" => $dzImages,
         ];
     }
 
@@ -406,6 +474,17 @@ if (isset($_GET["saved"])) {
     cursor:pointer;
     font-weight:700;
 }
+.btn-remove-dz{
+    background:#ef4444;
+    color:#fff;
+    border:none;
+    padding:6px 10px;
+    border-radius:8px;
+    cursor:pointer;
+    font-weight:700;
+    font-size:13px;
+    white-space:nowrap;
+}
 .help{
     margin:-6px 0 12px 0;
     color:#6b7280;
@@ -428,6 +507,69 @@ if (isset($_GET["saved"])) {
     filter:brightness(1.07);
     transform:translateY(-1px);
 }
+
+/* ── Drop zone image preview ── */
+.dz-section{
+    margin-top:14px;
+    padding-top:12px;
+    border-top:1px solid #e5e7eb;
+}
+.dz-section > label{
+    font-size:14px;
+    color:#374151;
+}
+.dz-preview-area{
+    position:relative;
+    width:100%;
+    max-width:680px;
+    height:160px;
+    border:2px dashed #7c3aed;
+    border-radius:12px;
+    background:#f5f3ff;
+    overflow:hidden;
+    margin-bottom:8px;
+    cursor:default;
+}
+.dz-preview-hint{
+    position:absolute;
+    inset:0;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    color:#a78bfa;
+    font-size:13px;
+    font-style:italic;
+    pointer-events:none;
+}
+.dz-preview-image{
+    position:absolute;
+    cursor:move;
+    user-select:none;
+    touch-action:none;
+    height:auto;
+    border:2px solid #7c3aed;
+    border-radius:6px;
+    box-shadow:0 2px 8px rgba(0,0,0,.15);
+}
+.dz-controls-row{
+    display:flex;
+    gap:8px;
+    align-items:center;
+    flex-wrap:wrap;
+    margin-bottom:8px;
+}
+.dz-width-control{
+    display:flex;
+    align-items:center;
+    gap:6px;
+    font-size:13px;
+    color:#374151;
+}
+.dz-width-control input{
+    width:70px !important;
+    padding:4px 6px !important;
+    margin-bottom:0 !important;
+}
 </style>
 
 <form method="post" enctype="multipart/form-data" class="lo-form" id="listenOrderForm">
@@ -444,34 +586,79 @@ if (isset($_GET["saved"])) {
     </div>
 
     <div id="blocksContainer">
-        <?php foreach ($blocks as $blockIndex => $block) { ?>
-            <div class="block-item">
-                <input type="hidden" name="block_id[]" value="<?= htmlspecialchars((string) ($block["id"] ?? uniqid("listen_order_")), ENT_QUOTES, 'UTF-8') ?>">
+        <?php foreach ($blocks as $blockIndex => $block):
+            $dzImages  = is_array($block["dropZoneImages"] ?? null) ? $block["dropZoneImages"] : [];
+            $firstDzi  = $dzImages[0] ?? null;
+            $dzSrc     = (string)  ($firstDzi["src"]   ?? "");
+            $dzLeft    = (int)     ($firstDzi["left"]  ?? 10);
+            $dzTop     = (int)     ($firstDzi["top"]   ?? 10);
+            $dzWidth   = max(60, min(800, (int) ($firstDzi["width"] ?? 180)));
+            $dzId      = (string)  ($firstDzi["id"]    ?? uniqid("dzi_"));
+        ?>
+        <div class="block-item">
+            <input type="hidden" name="block_id[]" value="<?= htmlspecialchars((string) ($block["id"] ?? uniqid("listen_order_")), ENT_QUOTES, 'UTF-8') ?>">
 
-                <label>Sentence (what students listen to)</label>
-                <textarea name="sentence[]" required><?= htmlspecialchars((string) ($block["sentence"] ?? ""), ENT_QUOTES, 'UTF-8') ?></textarea>
+            <label>Sentence (what students listen to)</label>
+            <textarea name="sentence[]" required><?= htmlspecialchars((string) ($block["sentence"] ?? ""), ENT_QUOTES, 'UTF-8') ?></textarea>
 
-                <label>Images in the correct order</label>
-                <?php $blockImages = is_array($block["images"] ?? null) ? $block["images"] : []; ?>
-                <?php if (!empty($blockImages)) { ?>
-                    <div class="image-preview-wrap">
-                        <?php foreach ($blockImages as $img) { ?>
-                            <div>
-                                <img src="<?= htmlspecialchars($img, ENT_QUOTES, 'UTF-8') ?>" class="image-preview" alt="listen-order-image">
-                                <input type="hidden" name="images_existing[<?= (int) $blockIndex ?>][]" value="<?= htmlspecialchars($img, ENT_QUOTES, 'UTF-8') ?>">
-                            </div>
-                        <?php } ?>
-                    </div>
-                <?php } else { ?>
-                    <input type="hidden" name="images_existing[<?= (int) $blockIndex ?>][]" value="">
-                <?php } ?>
+            <label>Images in the correct order</label>
+            <?php $blockImages = is_array($block["images"] ?? null) ? $block["images"] : []; ?>
+            <?php if (!empty($blockImages)): ?>
+                <div class="image-preview-wrap">
+                    <?php foreach ($blockImages as $img): ?>
+                        <div>
+                            <img src="<?= htmlspecialchars($img, ENT_QUOTES, 'UTF-8') ?>" class="image-preview" alt="listen-order-image">
+                            <input type="hidden" name="images_existing[<?= (int) $blockIndex ?>][]" value="<?= htmlspecialchars($img, ENT_QUOTES, 'UTF-8') ?>">
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+            <?php else: ?>
+                <input type="hidden" name="images_existing[<?= (int) $blockIndex ?>][]" value="">
+            <?php endif; ?>
 
-                <input type="file" name="images[<?= (int) $blockIndex ?>][]" multiple accept="image/*">
-                <p class="help">Upload the images in the exact correct order.</p>
+            <input type="file" name="images[<?= (int) $blockIndex ?>][]" multiple accept="image/*">
+            <p class="help">Upload the images in the exact correct order.</p>
 
-                <button type="button" class="btn-remove" onclick="removeBlock(this)">✖ Remove</button>
+            <!-- ── Drop zone background image section ── -->
+            <div class="dz-section">
+                <label>🖼 Drop Zone Background Image <span style="font-weight:400;color:#6b7280;">(optional — visible behind the answer chips)</span></label>
+
+                <!-- Hidden state inputs -->
+                <input type="hidden" name="dz_image_existing[<?= (int) $blockIndex ?>]" class="dz-src"   value="<?= htmlspecialchars($dzSrc, ENT_QUOTES, 'UTF-8') ?>">
+                <input type="hidden" name="dz_image_left[<?= (int) $blockIndex ?>]"     class="dz-left"  value="<?= $dzLeft ?>">
+                <input type="hidden" name="dz_image_top[<?= (int) $blockIndex ?>]"      class="dz-top"   value="<?= $dzTop ?>">
+                <input type="hidden" name="dz_image_width[<?= (int) $blockIndex ?>]"    class="dz-width" value="<?= $dzWidth ?>">
+                <input type="hidden" name="dz_image_id[<?= (int) $blockIndex ?>]"       class="dz-imgid" value="<?= htmlspecialchars($dzId, ENT_QUOTES, 'UTF-8') ?>">
+
+                <!-- Visual preview / drag area -->
+                <div class="dz-preview-area" <?= $dzSrc ? '' : 'style="display:none;"' ?>>
+                    <div class="dz-preview-hint">Drag the image to reposition it</div>
+                    <?php if ($dzSrc): ?>
+                    <img
+                        src="<?= htmlspecialchars($dzSrc, ENT_QUOTES, 'UTF-8') ?>"
+                        class="dz-preview-image"
+                        style="left:<?= $dzLeft ?>px;top:<?= $dzTop ?>px;width:<?= $dzWidth ?>px;"
+                        draggable="false"
+                        alt=""
+                    >
+                    <?php endif; ?>
+                </div>
+
+                <div class="dz-controls-row">
+                    <input type="file" name="dz_image_file[<?= (int) $blockIndex ?>]" accept="image/*" class="dz-file-input" style="margin-bottom:0;">
+                    <button type="button" class="btn-remove-dz" onclick="removeDzImage(this)" <?= $dzSrc ? '' : 'style="display:none;"' ?>>✖ Remove BG image</button>
+                </div>
+
+                <div class="dz-width-control" <?= $dzSrc ? '' : 'style="display:none;"' ?>>
+                    <span>Width:</span>
+                    <input type="number" min="60" max="800" value="<?= $dzWidth ?>" class="dz-width-display">
+                    <span>px</span>
+                </div>
             </div>
-        <?php } ?>
+
+            <button type="button" class="btn-remove" onclick="removeBlock(this)" style="margin-top:10px;">✖ Remove block</button>
+        </div>
+        <?php endforeach; ?>
     </div>
 
     <div class="toolbar-row">
@@ -492,15 +679,26 @@ function reindexBlockInputs() {
     const blocks = document.querySelectorAll('#blocksContainer .block-item');
 
     blocks.forEach(function (block, index) {
+        /* Chip image file input */
         const fileInput = block.querySelector('input[type="file"][name^="images["]');
         if (fileInput) {
             fileInput.name = 'images[' + index + '][]';
         }
 
+        /* Existing chip image hidden inputs */
         const existingInputs = block.querySelectorAll('input[type="hidden"][name^="images_existing["]');
         existingInputs.forEach(function (input) {
             input.name = 'images_existing[' + index + '][]';
         });
+
+        /* Drop zone image inputs */
+        var dzFields = ['dz_image_existing', 'dz_image_left', 'dz_image_top', 'dz_image_width', 'dz_image_id'];
+        dzFields.forEach(function (field) {
+            var el = block.querySelector('[name^="' + field + '["]');
+            if (el) el.name = field + '[' + index + ']';
+        });
+        var dzFile = block.querySelector('input[type="file"][name^="dz_image_file["]');
+        if (dzFile) dzFile.name = 'dz_image_file[' + index + ']';
     });
 }
 
@@ -528,18 +726,230 @@ function addBlock() {
         <input type="file" name="images[${index}][]" multiple accept="image/*">
         <p class="help">Upload the images in the exact correct order.</p>
 
-        <button type="button" class="btn-remove" onclick="removeBlock(this)">✖ Remove</button>
+        <div class="dz-section">
+            <label>🖼 Drop Zone Background Image <span style="font-weight:400;color:#6b7280;">(optional — visible behind the answer chips)</span></label>
+
+            <input type="hidden" name="dz_image_existing[${index}]" class="dz-src"   value="">
+            <input type="hidden" name="dz_image_left[${index}]"     class="dz-left"  value="10">
+            <input type="hidden" name="dz_image_top[${index}]"      class="dz-top"   value="10">
+            <input type="hidden" name="dz_image_width[${index}]"    class="dz-width" value="180">
+            <input type="hidden" name="dz_image_id[${index}]"       class="dz-imgid" value="">
+
+            <div class="dz-preview-area" style="display:none;">
+                <div class="dz-preview-hint">Drag the image to reposition it</div>
+            </div>
+
+            <div class="dz-controls-row">
+                <input type="file" name="dz_image_file[${index}]" accept="image/*" class="dz-file-input" style="margin-bottom:0;">
+                <button type="button" class="btn-remove-dz" onclick="removeDzImage(this)" style="display:none;">✖ Remove BG image</button>
+            </div>
+
+            <div class="dz-width-control" style="display:none;">
+                <span>Width:</span>
+                <input type="number" min="60" max="800" value="180" class="dz-width-display">
+                <span>px</span>
+            </div>
+        </div>
+
+        <button type="button" class="btn-remove" onclick="removeBlock(this)" style="margin-top:10px;">✖ Remove block</button>
     `;
     container.appendChild(div);
     reindexBlockInputs();
+    initDzPreview(div);
     bindChangeTracking(div);
     markChanged();
 }
 
+/* ══════════════════════════════════════════
+   Drop Zone Image — preview drag logic
+   ══════════════════════════════════════════ */
+
+function initDzPreview(blockEl) {
+    var previewArea  = blockEl.querySelector('.dz-preview-area');
+    var fileInput    = blockEl.querySelector('.dz-file-input');
+    var removeBtn    = blockEl.querySelector('.btn-remove-dz');
+    var widthControl = blockEl.querySelector('.dz-width-control');
+    var widthDisplay = blockEl.querySelector('.dz-width-display');
+    var srcInput     = blockEl.querySelector('.dz-src');
+    var leftInput    = blockEl.querySelector('.dz-left');
+    var topInput     = blockEl.querySelector('.dz-top');
+    var widthInput   = blockEl.querySelector('.dz-width');
+    var idInput      = blockEl.querySelector('.dz-imgid');
+
+    if (!previewArea) return;
+
+    function getImg() {
+        return previewArea.querySelector('.dz-preview-image');
+    }
+
+    function syncHiddens() {
+        var img = getImg();
+        if (!img) return;
+        leftInput.value  = parseInt(img.style.left,  10) || 0;
+        topInput.value   = parseInt(img.style.top,   10) || 0;
+        widthInput.value = parseInt(img.style.width, 10) || 180;
+    }
+
+    function clamp(img) {
+        var pw = previewArea.offsetWidth;
+        var ph = previewArea.offsetHeight;
+        var iw = img.offsetWidth;
+        var ih = img.offsetHeight;
+        var left = parseInt(img.style.left,  10) || 0;
+        var top  = parseInt(img.style.top,   10) || 0;
+        img.style.left = Math.max(0, Math.min(pw - Math.max(iw, 1), left)) + 'px';
+        img.style.top  = Math.max(0, Math.min(ph - Math.max(ih, 1), top))  + 'px';
+        syncHiddens();
+    }
+
+    function addDragBehavior(img) {
+        var active = false;
+        var startX, startY, startLeft, startTop;
+
+        img.addEventListener('mousedown', function (e) {
+            e.preventDefault();
+            active    = true;
+            startX    = e.clientX;
+            startY    = e.clientY;
+            startLeft = parseInt(img.style.left, 10) || 0;
+            startTop  = parseInt(img.style.top,  10) || 0;
+        });
+
+        document.addEventListener('mousemove', function (e) {
+            if (!active) return;
+            img.style.left = (startLeft + (e.clientX - startX)) + 'px';
+            img.style.top  = (startTop  + (e.clientY - startY)) + 'px';
+        });
+
+        document.addEventListener('mouseup', function () {
+            if (!active) return;
+            active = false;
+            clamp(img);
+            markChanged();
+        });
+
+        img.addEventListener('touchstart', function (e) {
+            e.preventDefault();
+            var t = e.touches[0];
+            active    = true;
+            startX    = t.clientX;
+            startY    = t.clientY;
+            startLeft = parseInt(img.style.left, 10) || 0;
+            startTop  = parseInt(img.style.top,  10) || 0;
+        }, { passive: false });
+
+        document.addEventListener('touchmove', function (e) {
+            if (!active) return;
+            var t = e.touches[0];
+            img.style.left = (startLeft + (t.clientX - startX)) + 'px';
+            img.style.top  = (startTop  + (t.clientY - startY)) + 'px';
+        }, { passive: true });
+
+        document.addEventListener('touchend', function () {
+            if (!active) return;
+            active = false;
+            clamp(img);
+            markChanged();
+        });
+    }
+
+    function showDzUI() {
+        previewArea.style.display  = '';
+        if (removeBtn)    removeBtn.style.display    = '';
+        if (widthControl) widthControl.style.display = '';
+    }
+
+    function createPreviewImg(src, left, top, width) {
+        var img = document.createElement('img');
+        img.className    = 'dz-preview-image';
+        img.src          = src;
+        img.draggable    = false;
+        img.style.left   = (left  || 10)  + 'px';
+        img.style.top    = (top   || 10)  + 'px';
+        img.style.width  = (width || 180) + 'px';
+        img.alt          = '';
+        previewArea.appendChild(img);
+        addDragBehavior(img);
+        return img;
+    }
+
+    /* File selected: show local preview */
+    if (fileInput) {
+        fileInput.addEventListener('change', function () {
+            if (!fileInput.files || !fileInput.files[0]) return;
+            var reader = new FileReader();
+            reader.onload = function (e) {
+                var existingImg = getImg();
+                if (existingImg) existingImg.remove();
+
+                var w = parseInt(widthInput.value, 10) || 180;
+                createPreviewImg(e.target.result, 10, 10, w);
+
+                if (srcInput) srcInput.value = '';   // clear old URL; new file will upload on save
+                if (idInput)  idInput.value  = 'dzi_' + Date.now();
+                if (widthDisplay) widthDisplay.value = w;
+                showDzUI();
+                syncHiddens();
+                markChanged();
+            };
+            reader.readAsDataURL(fileInput.files[0]);
+        });
+    }
+
+    /* Width control */
+    if (widthDisplay) {
+        widthDisplay.addEventListener('input', function () {
+            var img = getImg();
+            if (!img) return;
+            var w = Math.max(60, Math.min(800, parseInt(widthDisplay.value, 10) || 180));
+            img.style.width = w + 'px';
+            widthInput.value = w;
+            markChanged();
+        });
+    }
+
+    /* Init existing image (from saved data) */
+    var existingImg = getImg();
+    if (existingImg) {
+        addDragBehavior(existingImg);
+        showDzUI();
+        if (widthDisplay) widthDisplay.value = parseInt(widthInput.value, 10) || 180;
+    }
+}
+
+function removeDzImage(btn) {
+    var blockEl      = btn.closest('.block-item');
+    if (!blockEl) return;
+    var previewArea  = blockEl.querySelector('.dz-preview-area');
+    var srcInput     = blockEl.querySelector('.dz-src');
+    var leftInput    = blockEl.querySelector('.dz-left');
+    var topInput     = blockEl.querySelector('.dz-top');
+    var widthInput   = blockEl.querySelector('.dz-width');
+    var idInput      = blockEl.querySelector('.dz-imgid');
+    var fileInput    = blockEl.querySelector('.dz-file-input');
+    var widthControl = blockEl.querySelector('.dz-width-control');
+
+    if (previewArea) {
+        var img = previewArea.querySelector('.dz-preview-image');
+        if (img) img.remove();
+        previewArea.style.display = 'none';
+    }
+    if (srcInput)     srcInput.value   = '';
+    if (leftInput)    leftInput.value  = '10';
+    if (topInput)     topInput.value   = '10';
+    if (widthInput)   widthInput.value = '180';
+    if (idInput)      idInput.value    = '';
+    if (fileInput)    fileInput.value  = '';
+    if (widthControl) widthControl.style.display = 'none';
+    btn.style.display = 'none';
+    markChanged();
+}
+
+/* ── Change tracking ── */
 function bindChangeTracking(scope) {
-    const elements = scope.querySelectorAll('input, textarea, select');
-    elements.forEach(function(el) {
-        el.addEventListener('input', markChanged);
+    var elements = scope.querySelectorAll('input, textarea, select');
+    elements.forEach(function (el) {
+        el.addEventListener('input',  markChanged);
         el.addEventListener('change', markChanged);
     });
 }
@@ -548,12 +958,17 @@ document.addEventListener('DOMContentLoaded', function () {
     bindChangeTracking(document);
     reindexBlockInputs();
 
-    const form = document.getElementById('listenOrderForm');
+    /* Init dz preview for all existing blocks */
+    document.querySelectorAll('#blocksContainer .block-item').forEach(function (blockEl) {
+        initDzPreview(blockEl);
+    });
+
+    var form = document.getElementById('listenOrderForm');
     if (form) {
         form.addEventListener('submit', function () {
             reindexBlockInputs();
             formSubmitted = true;
-            formChanged = false;
+            formChanged   = false;
         });
     }
 });

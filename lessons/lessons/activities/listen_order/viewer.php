@@ -74,13 +74,34 @@ function normalize_listen_order_payload($rawData): array
             }
         }
 
+        $dropZoneImages = [];
+        if (isset($block['dropZoneImages']) && is_array($block['dropZoneImages'])) {
+            foreach ($block['dropZoneImages'] as $dzi) {
+                if (!is_array($dzi)) {
+                    continue;
+                }
+                $dzSrc = trim((string) ($dzi['src'] ?? ''));
+                if ($dzSrc === '') {
+                    continue;
+                }
+                $dropZoneImages[] = [
+                    'id'    => trim((string) ($dzi['id'] ?? uniqid('dzi_'))),
+                    'src'   => $dzSrc,
+                    'left'  => (int) ($dzi['left'] ?? 0),
+                    'top'   => (int) ($dzi['top'] ?? 0),
+                    'width' => max(60, min(800, (int) ($dzi['width'] ?? 180))),
+                ];
+            }
+        }
+
         if ($sentence === '') {
             continue;
         }
 
         $blocks[] = [
-            'sentence' => $sentence,
-            'images' => $images,
+            'sentence'       => $sentence,
+            'images'         => $images,
+            'dropZoneImages' => $dropZoneImages,
         ];
     }
 
@@ -147,8 +168,9 @@ if (count($blocks) === 0) {
 ob_start();
 ?>
 <style>
+/* ── Stage: bust out of the 980px template constraint ── */
 .lo-stage{
-  max-width:980px;
+  max-width:100% !important;
   margin:0 auto;
   min-height:calc(100vh - 120px);
   display:flex;
@@ -168,7 +190,7 @@ ob_start();
 .lo-intro h2{
   margin:0 0 8px;
   font-family:'Fredoka', 'Trebuchet MS', sans-serif;
-  font-size:30px;
+  font-size:35px;
   line-height:1.1;
   color:#4c1d95;
 }
@@ -178,7 +200,7 @@ ob_start();
   margin:0;
   text-align:center;
   color:#5b516f;
-  font-size:16px;
+  font-size:21px;
   line-height:1.6;
 }
 
@@ -209,6 +231,8 @@ ob_start();
   border:1px solid #ddd6fe;
   box-shadow:0 10px 20px rgba(124, 58, 237, .1);
   transition: border-color .15s ease, background-color .15s ease;
+  position:relative;
+  z-index:2;
 }
 
 .word.incorrect{
@@ -224,12 +248,27 @@ ob_start();
   border-radius:12px;
 }
 
+/* ── Drop zone: 3× wider ── */
 .drop-zone{
   background:#fff;
   border:2px dashed #7c3aed;
   border-radius:20px;
   padding:18px;
-  min-height:126px;
+  min-height:200px;
+  position:relative;
+  width:min(2280px, 100%) !important;
+  max-width:2280px !important;
+  box-sizing:border-box;
+}
+
+/* ── Uploaded background image (viewer: non-interactive) ── */
+#answer .uploaded-drop-image,
+.drop-zone .uploaded-drop-image{
+  position:absolute;
+  pointer-events:none;
+  user-select:none;
+  z-index:1;
+  height:auto;
 }
 
 .lo-controls{
@@ -346,11 +385,27 @@ ob_start();
 .good{color:#15803d;}
 .bad{color:#dc2626;}
 
+/* ── Title +5px override ── */
+.act-header h2{
+  font-size:clamp(31px, 4vw, 41px) !important;
+}
+/* ── Instructions +5px override ── */
+.act-header p{
+  font-size:23px !important;
+}
+
 @media (max-width:760px){
   .lo-intro{padding:20px 18px}
-  .lo-intro h2{font-size:26px}
+  .lo-intro h2{font-size:31px}
   .lo-controls{flex-direction:column;align-items:center}
   .lo-btn{width:100%;max-width:320px}
+  .act-header h2{font-size:31px !important;}
+  .act-header p{font-size:21px !important;}
+  /* Drop zone: full width on mobile, no horizontal overflow */
+  .drop-zone{
+    width:100% !important;
+    max-width:100% !important;
+  }
 }
 </style>
 
@@ -491,13 +546,11 @@ function playAudio() {
     listenBtn.disabled = false;
   }
 
-  // Resume from paused point first.
   if (speechSynthesis.paused || isPaused) {
     speechSynthesis.resume();
     isSpeaking = true;
     isPaused = false;
 
-    // Some browsers occasionally fail to resume paused utterances after interactions.
     setTimeout(function () {
       if (!speechSynthesis.speaking && speechOffset < speechSourceText.length) {
         startSpeechFromOffset();
@@ -606,6 +659,29 @@ function createImageChip(src) {
   return div;
 }
 
+/* ── Render drop-zone background images for the current block ── */
+function renderDropZoneImages(block) {
+  var images = (block && Array.isArray(block.dropZoneImages)) ? block.dropZoneImages : [];
+  images.forEach(function (dzi) {
+    if (!dzi || !dzi.src) return;
+    var img = document.createElement('img');
+    img.className = 'uploaded-drop-image';
+    img.src = dzi.src;
+    img.draggable = false;
+    img.style.left  = (dzi.left  || 0) + 'px';
+    img.style.top   = (dzi.top   || 0) + 'px';
+    img.style.width = (dzi.width || 180) + 'px';
+    /* Clamp to drop zone bounds after the image loads */
+    img.onload = function () {
+      var maxLeft = Math.max(0, answerDiv.offsetWidth  - img.offsetWidth);
+      var maxTop  = Math.max(0, answerDiv.offsetHeight - img.offsetHeight);
+      img.style.left = Math.min(dzi.left || 0, maxLeft) + 'px';
+      img.style.top  = Math.min(dzi.top  || 0, maxTop)  + 'px';
+    };
+    answerDiv.appendChild(img);
+  });
+}
+
 function updateStatus() {
   statusEl.classList.remove('completed');
   statusEl.textContent = (index + 1) + ' / ' + totalCount;
@@ -616,7 +692,8 @@ function checkAnswerAuto() {
     return;
   }
 
-  const built = Array.prototype.slice.call(answerDiv.children).map(function (node) {
+  /* Use .word selector so uploaded-drop-image elements are excluded */
+  const built = Array.prototype.slice.call(answerDiv.querySelectorAll('.word')).map(function (node) {
     return node.dataset.src;
   });
 
@@ -625,7 +702,7 @@ function checkAnswerAuto() {
   }
 
   if (JSON.stringify(built) === JSON.stringify(correct)) {
-    feedback.textContent = '\u2714 Right';
+    feedback.textContent = '✔ Right';
     feedback.className = 'good';
     playSound(winSound);
     checkedBlocks[index] = true;
@@ -636,21 +713,20 @@ function checkAnswerAuto() {
     attemptsByBlock[index] = currentAttempts;
 
     if (currentAttempts >= 2) {
-      feedback.textContent = '\u2718 Wrong (2/2)';
+      feedback.textContent = '✘ Wrong (2/2)';
       feedback.className = 'bad';
       playSound(loseSound);
       checkedBlocks[index] = true;
       blockFinished = true;
-      
-      const answerChildren = Array.prototype.slice.call(answerDiv.children);
-      answerChildren.forEach(function(child) {
-        const isCorrect = JSON.stringify(Array.prototype.slice.call(answerDiv.children).map(function(n) { return n.dataset.src; }).slice(0, answerChildren.indexOf(child) + 1)) === JSON.stringify(correct.slice(0, answerChildren.indexOf(child) + 1));
-        if (!isCorrect && answerChildren.indexOf(child) < correct.length) {
+
+      const answerChips = Array.prototype.slice.call(answerDiv.querySelectorAll('.word'));
+      answerChips.forEach(function(child, i) {
+        if ((built[i] || '') !== (correct[i] || '')) {
           child.classList.add('incorrect');
         }
       });
     } else {
-      feedback.textContent = '\u2718 Wrong (1/2) - try again';
+      feedback.textContent = '✘ Wrong (1/2) - try again';
       feedback.className = 'bad';
       playSound(loseSound);
     }
@@ -697,6 +773,9 @@ function loadBlock() {
 
   wordsDiv.innerHTML = '';
   answerDiv.innerHTML = '';
+
+  /* Render background images for this block (before chips) */
+  renderDropZoneImages(blocks[index] || {});
 
   const block = blocks[index] || {};
   currentSentence = typeof block.sentence === 'string' ? block.sentence : '';
@@ -769,18 +848,22 @@ answerDiv.addEventListener('dragover', function (event) {
 });
 
 answerDiv.addEventListener('drop', function () {
-  if (dragged && !finished && !blockFinished) {
+  /* Only move chip elements (.word), not background images */
+  if (dragged && dragged.classList.contains('word') && !finished && !blockFinished) {
     answerDiv.appendChild(dragged);
     setTimeout(checkAnswerAuto, 100);
   }
 });
 
 function showAnswer() {
-  const built = Array.prototype.slice.call(answerDiv.children).map(function (node) {
+  /* Read only .word chips, excluding background images */
+  const built = Array.prototype.slice.call(answerDiv.querySelectorAll('.word')).map(function (node) {
     return node.dataset.src;
   });
 
   answerDiv.innerHTML = '';
+  /* Re-render background images */
+  renderDropZoneImages(blocks[index] || {});
   wordsDiv.innerHTML = '';
 
   correct.forEach(function (src, position) {
