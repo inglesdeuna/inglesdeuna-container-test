@@ -568,7 +568,6 @@ function render_activity_viewer($title, $icon, $content)
             padding: 10px 16px !important;
             margin-bottom: 8px !important;
             border-radius: 12px !important;
-            max-width: 100% !important;
         }
         body.fullscreen-embedded .act-header h2 { font-size: 18px !important; }
         body.fullscreen-embedded .act-header p  { font-size: 13px !important; }
