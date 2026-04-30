@@ -785,22 +785,36 @@ function createImageChip(src) {
 /* ── Render drop-zone background images for the current block ── */
 function renderDropZoneImages(block) {
   var images = (block && Array.isArray(block.dropZoneImages)) ? block.dropZoneImages : [];
+
+  if (images.length > 0) {
+    /* Switch to free-placement mode */
+    answerDiv.classList.add('lo-free-mode');
+  }
+
   images.forEach(function (dzi) {
     if (!dzi || !dzi.src) return;
     var img = document.createElement('img');
     img.className = 'uploaded-drop-image';
     img.src = dzi.src;
     img.draggable = false;
-    img.style.left  = (dzi.left  || 0) + 'px';
-    img.style.top   = (dzi.top   || 0) + 'px';
-    img.style.width = (dzi.width || 180) + 'px';
-    /* Clamp to drop zone bounds after the image loads */
+    img.alt = '';
+
     img.onload = function () {
-      var maxLeft = Math.max(0, answerDiv.offsetWidth  - img.offsetWidth);
-      var maxTop  = Math.max(0, answerDiv.offsetHeight - img.offsetHeight);
-      img.style.left = Math.min(dzi.left || 0, maxLeft) + 'px';
-      img.style.top  = Math.min(dzi.top  || 0, maxTop)  + 'px';
+      /* Size the drop zone to the image's natural aspect ratio.
+         Zone width is already set by CSS (min(860px, 100%));
+         compute height from that width to preserve the image proportions. */
+      var nw = img.naturalWidth  || 400;
+      var nh = img.naturalHeight || 300;
+      var zoneW = answerDiv.offsetWidth || 600;
+      var zoneH = Math.round(zoneW * (nh / nw));
+      /* Cap at 78 % of viewport so it stays fully visible */
+      var maxH = Math.round(window.innerHeight * 0.78);
+      answerDiv.style.height = Math.min(zoneH, maxH) + 'px';
     };
+
+    /* If image is already cached it won't fire onload — call manually */
+    if (img.complete && img.naturalWidth) img.onload();
+
     answerDiv.appendChild(img);
   });
 }
@@ -811,18 +825,27 @@ function updateStatus() {
 }
 
 function checkAnswerAuto() {
-  if (finished || blockFinished || checkedBlocks[index]) {
+  if (finished || blockFinished || checkedBlocks[index]) return;
+
+  /* Chips only (.word) — uploaded-drop-image is excluded */
+  var chips = Array.prototype.slice.call(answerDiv.querySelectorAll('.word'));
+
+  /* ── Free-placement mode: just check that all chips are placed ── */
+  if (answerDiv.classList.contains('lo-free-mode')) {
+    if (chips.length < correct.length) return;
+    feedback.textContent = '✔ All placed!';
+    feedback.className = 'good';
+    playSound(winSound);
+    checkedBlocks[index] = true;
+    correctCount++;
+    blockFinished = true;
     return;
   }
 
-  /* Use .word selector so uploaded-drop-image elements are excluded */
-  const built = Array.prototype.slice.call(answerDiv.querySelectorAll('.word')).map(function (node) {
-    return node.dataset.src;
-  });
+  /* ── Ordered mode: original sequence check ── */
+  var built = chips.map(function (node) { return node.dataset.src; });
 
-  if (built.length !== correct.length) {
-    return;
-  }
+  if (built.length !== correct.length) return;
 
   if (JSON.stringify(built) === JSON.stringify(correct)) {
     feedback.textContent = '✔ Right';
@@ -841,12 +864,8 @@ function checkAnswerAuto() {
       playSound(loseSound);
       checkedBlocks[index] = true;
       blockFinished = true;
-
-      const answerChips = Array.prototype.slice.call(answerDiv.querySelectorAll('.word'));
-      answerChips.forEach(function(child, i) {
-        if ((built[i] || '') !== (correct[i] || '')) {
-          child.classList.add('incorrect');
-        }
+      chips.forEach(function (child, i) {
+        if ((built[i] || '') !== (correct[i] || '')) child.classList.add('incorrect');
       });
     } else {
       feedback.textContent = '✘ Wrong (1/2) - try again';
@@ -880,7 +899,8 @@ function loadBlock() {
   }
 
   if (answerDiv) {
-    answerDiv.style.display = 'flex';
+    /* display is managed by CSS (.lo-free-mode overrides to block) */
+    answerDiv.style.display = '';
   }
 
   if (controls) {
@@ -897,8 +917,11 @@ function loadBlock() {
 
   wordsDiv.innerHTML = '';
   answerDiv.innerHTML = '';
+  /* Reset free-placement state between blocks */
+  answerDiv.classList.remove('lo-free-mode');
+  answerDiv.style.height = '';
 
-  /* Render background images for this block (before chips) */
+  /* Render background image (adds lo-free-mode if present, sets height) */
   renderDropZoneImages(blocks[index] || {});
 
   const block = blocks[index] || {};
@@ -971,41 +994,94 @@ answerDiv.addEventListener('dragover', function (event) {
   event.preventDefault();
 });
 
-answerDiv.addEventListener('drop', function () {
-  /* Only move chip elements (.word), not background images */
-  if (dragged && dragged.classList.contains('word') && !finished && !blockFinished) {
+answerDiv.addEventListener('drop', function (e) {
+  e.preventDefault();
+  if (!dragged || !dragged.classList.contains('word') || finished || blockFinished) return;
+
+  if (answerDiv.classList.contains('lo-free-mode')) {
+    /* ── Free-placement: drop chip at exact cursor position ── */
+    var rect    = answerDiv.getBoundingClientRect();
+    var rawLeft = (e.clientX || 0) - rect.left - dragOffsetX;
+    var rawTop  = (e.clientY || 0) - rect.top  - dragOffsetY;
+
+    if (dragged.parentElement !== answerDiv) {
+      answerDiv.appendChild(dragged);
+    }
+    dragged.style.position = 'absolute';
+    dragged.style.left = rawLeft + 'px';
+    dragged.style.top  = rawTop  + 'px';
+
+    /* Clamp to zone bounds after layout — offsetWidth/Height available now */
+    requestAnimationFrame(function () {
+      var zw = answerDiv.offsetWidth;
+      var zh = answerDiv.offsetHeight;
+      var cw = dragged.offsetWidth  || 0;
+      var ch = dragged.offsetHeight || 0;
+      dragged.style.left = Math.max(0, Math.min(zw - cw, parseFloat(dragged.style.left) || 0)) + 'px';
+      dragged.style.top  = Math.max(0, Math.min(zh - ch, parseFloat(dragged.style.top)  || 0)) + 'px';
+      setTimeout(checkAnswerAuto, 50);
+    });
+  } else {
+    /* ── Ordered mode: append and sequence-check ── */
     answerDiv.appendChild(dragged);
     setTimeout(checkAnswerAuto, 100);
   }
 });
 
 function showAnswer() {
-  /* Read only .word chips, excluding background images */
-  const built = Array.prototype.slice.call(answerDiv.querySelectorAll('.word')).map(function (node) {
+  var built = Array.prototype.slice.call(answerDiv.querySelectorAll('.word')).map(function (node) {
     return node.dataset.src;
   });
 
+  var wasFreeMode = answerDiv.classList.contains('lo-free-mode');
+
+  /* Clear zone then re-render background image */
   answerDiv.innerHTML = '';
-  /* Re-render background images */
+  answerDiv.classList.remove('lo-free-mode');
+  answerDiv.style.height = '';
   renderDropZoneImages(blocks[index] || {});
   wordsDiv.innerHTML = '';
 
-  correct.forEach(function (src, position) {
-    const chip = createImageChip(src);
-    if ((built[position] || '') !== src) {
-      chip.classList.add('incorrect');
-    }
-    answerDiv.appendChild(chip);
-  });
+  if (wasFreeMode) {
+    /* Free-placement: spread chips evenly across the centre of the zone.
+       Wait for the background image to set the zone height before positioning. */
+    var count = correct.length;
 
-  feedback.textContent = 'Show Answer';
+    function placeChips() {
+      var zw = answerDiv.offsetWidth  || 600;
+      var zh = answerDiv.offsetHeight || 300;
+      correct.forEach(function (src, i) {
+        var chip = createImageChip(src);
+        chip.style.zIndex = '3';
+        answerDiv.appendChild(chip);
+        /* Distribute horizontally, centre vertically */
+        var gap = zw / (count + 1);
+        var cw  = chip.offsetWidth  || 98;
+        var ch  = chip.offsetHeight || 98;
+        chip.style.left = Math.max(0, gap * (i + 1) - cw / 2) + 'px';
+        chip.style.top  = Math.max(0, (zh - ch) / 2) + 'px';
+      });
+    }
+
+    var bgImg = answerDiv.querySelector('.uploaded-drop-image');
+    if (bgImg && !bgImg.complete) {
+      bgImg.addEventListener('load', placeChips, { once: true });
+    } else {
+      requestAnimationFrame(placeChips);
+    }
+  } else {
+    correct.forEach(function (src, position) {
+      var chip = createImageChip(src);
+      if ((built[position] || '') !== src) chip.classList.add('incorrect');
+      answerDiv.appendChild(chip);
+    });
+  }
+
+  feedback.textContent = wasFreeMode ? '👁 Correct order shown' : 'Show Answer';
   feedback.className = 'good';
 
-  if (listenBtn) {
-    listenBtn.disabled = false;
-  }
+  if (listenBtn) listenBtn.disabled = false;
   setListenBtnState('idle');
-
   blockFinished = true;
 }
 
