@@ -507,6 +507,7 @@ $activityLabels = [
     'listen_order' => 'Listen & Order',
     'order_sentences' => 'Order the Sentences',
     'drag_drop' => 'Drag & Drop',
+    'drag_drop_kids' => 'Drag & Drop Kids',
     'unscramble' => 'Unscramble',
     'match' => 'Match',
     'dot_to_dot' => 'Dot to Dot',

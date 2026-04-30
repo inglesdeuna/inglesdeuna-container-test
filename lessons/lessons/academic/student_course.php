@@ -654,7 +654,7 @@ $activityTypeLabels = [
     'flipbooks' => 'Video Lesson', 'hangman' => 'Hangman',
     'pronunciation' => 'Pronunciation', 'listen_order' => 'Listen & Order',
     'order_sentences' => 'Order the Sentences',
-    'drag_drop' => 'Drag & Drop', 'match' => 'Match', 'matching_lines' => 'Matching Lines',
+    'drag_drop' => 'Drag & Drop', 'drag_drop_kids' => 'Drag & Drop Kids', 'match' => 'Match', 'matching_lines' => 'Matching Lines',
     'dot_to_dot' => 'Dot to Dot',
     'external' => 'External', 'powerpoint' => 'PowerPoint',
     'crossword' => 'Crossword Puzzle',

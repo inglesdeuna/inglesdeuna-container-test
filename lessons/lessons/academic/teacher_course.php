@@ -754,6 +754,7 @@ $activityTypeLabels = [
     'listen_order' => 'Listen & Order',
     'order_sentences' => 'Order the Sentences',
     'drag_drop' => 'Unscramble',
+    'drag_drop_kids' => 'Drag & Drop Kids',
     'match' => 'Match',
     'external' => 'External',
     'powerpoint' => 'PowerPoint',

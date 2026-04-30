@@ -506,6 +506,7 @@ body{
                         $icons = [
                             'hangman' => '🎯',
                             'drag_drop' => '🧩',
+                            'drag_drop_kids' => '🖼️',
                             'flashcards' => '🃏',
                             'memory_cards' => '🃏',
                             'match' => '🔗',
