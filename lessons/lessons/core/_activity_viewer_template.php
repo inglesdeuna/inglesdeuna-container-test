@@ -546,9 +546,9 @@ function render_activity_viewer($title, $icon, $content)
             box-sizing: border-box;
         }
         .act-header h2 {
-            margin: 0 0 6px;
+            margin: 0 0 8px;
             font-family: 'Fredoka', 'Trebuchet MS', sans-serif;
-            font-size: clamp(22px, 2.8vw, 28px);
+            font-size: clamp(26px, 4vw, 36px);
             font-weight: 700;
             line-height: 1.15;
             color: #4c1d95;
@@ -556,21 +556,22 @@ function render_activity_viewer($title, $icon, $content)
         }
         .act-header p {
             margin: 0;
-            font-size: 15px;
+            font-size: 18px;
             color: #5b516f;
             line-height: 1.6;
         }
         @media (max-width: 760px) {
             .act-header { padding: 16px 16px; border-radius: 18px; margin-bottom: 14px; }
-            .act-header h2 { font-size: 22px; }
+            .act-header h2 { font-size: 26px; }
+            .act-header p  { font-size: 16px; }
         }
         body.fullscreen-embedded .act-header {
             padding: 10px 16px !important;
             margin-bottom: 8px !important;
             border-radius: 12px !important;
         }
-        body.fullscreen-embedded .act-header h2 { font-size: 18px !important; }
-        body.fullscreen-embedded .act-header p  { font-size: 13px !important; }
+        body.fullscreen-embedded .act-header h2 { font-size: 22px !important; }
+        body.fullscreen-embedded .act-header p  { font-size: 15px !important; }
 
         /* ── Fullscreen-embedded: parent page has entered fullscreen, iframe fills viewport ── */
         body.fullscreen-embedded {

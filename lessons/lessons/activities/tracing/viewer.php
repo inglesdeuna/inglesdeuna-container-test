@@ -73,10 +73,7 @@ ob_start();
 <div class="tracing-viewer-shell">
     <div class="tracing-stage">
 
-        <div class="tracing-intro">
-            <h2>Trace and Practice</h2>
-            <p>Choose a color, pick a pencil size, and trace each page in order.</p>
-        </div>
+        <?= render_activity_header($viewerTitle, 'Choose a color, pick a pencil size, and trace each page in order.') ?>
 
         <div class="tracing-counter" id="tracingCounter">
             <span class="tracing-counter-dot"></span>

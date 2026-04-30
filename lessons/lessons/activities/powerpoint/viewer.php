@@ -268,6 +268,7 @@ ob_start();
 }
 </style>
 
+<?= render_activity_header($viewerTitle, 'Use the navigation buttons to go through each slide.') ?>
 <div class="ppt-viewer-shell">
   <?php if ($presentationFile !== '') { ?>
     <div class="ppt-file">

@@ -401,6 +401,7 @@ ob_start();
 }
 </style>
 
+<?= render_activity_header($viewerTitle, 'Unscramble the words to form the correct sentence.') ?>
 <div class="us-stage">
     <div id="sentenceBox">
         <button id="listenBtn" class="us-btn us-btn-listen" type="button" onclick="usSpeak()">🔊 Listen</button>

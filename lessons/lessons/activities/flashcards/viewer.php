@@ -628,7 +628,7 @@ body {
 </style>
 
 <div class="flashcards-wrap">
-    <?= render_activity_header($viewerTitle) ?>
+    <?= render_activity_header($viewerTitle, 'Flip each card to reveal the answer and practice your vocabulary.') ?>
 
     <div id="cards-stage" class="flashcards-stage">
         <div class="card-container">
