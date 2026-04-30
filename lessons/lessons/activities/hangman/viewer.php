@@ -129,7 +129,6 @@ h1{
   text-align:center;
 }
 
-.hangman-intro,
 .game-box{
   background:rgba(255,255,255,.86);
   border-radius:24px;
@@ -140,7 +139,21 @@ h1{
 .hangman-intro{
   max-width:980px;
   margin:0 auto 14px;
-  padding:16px 18px;
+  padding:22px 26px;
+  border-radius:26px;
+  border:1px solid #d9cff6;
+  background:linear-gradient(135deg,#eef4ff 0%,#f8ebff 48%,#e8fff7 100%);
+  box-shadow:0 12px 28px rgba(15,23,42,.08);
+  box-sizing:border-box;
+}
+.hangman-intro h2{
+  margin:0 0 6px;
+  font-family:'Fredoka','Trebuchet MS',sans-serif;
+  font-size:clamp(22px,2.8vw,28px);
+  font-weight:700;
+  line-height:1.15;
+  color:#4c1d95;
+  letter-spacing:.2px;
 }
 
 .game-box{
@@ -397,6 +410,10 @@ a.back:hover{
 </head>
 
 <body>
+
+<div class="hangman-intro">
+  <h2><?= htmlspecialchars($title, ENT_QUOTES, 'UTF-8') ?></h2>
+</div>
 
 <div class="game-box">
   <div class="game-layout" id="gameLayout">
