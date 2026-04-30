@@ -295,6 +295,7 @@ ob_start();
 
 <link rel="stylesheet" href="matching_lines.css?v=<?= htmlspecialchars($cssVersion, ENT_QUOTES, 'UTF-8') ?>">
 
+<?= render_activity_header($viewerTitle) ?>
 <?php if (empty($boards)) { ?>
     <div class="mlv-empty">No matching lines data available.</div>
 <?php } else { ?>

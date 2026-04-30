@@ -691,6 +691,7 @@ ob_start();
 }
 </style>
 
+<?= render_activity_header($viewerTitle) ?>
 <div class="mc-viewer" id="pron-viewer">
         <div class="mc-status" id="pron-status"></div>
 

@@ -27,12 +27,7 @@ ob_start();
 <link rel="stylesheet" href="dot_to_dot.css">
 
 <div class="d2dv-wrap">
-    <div class="d2dv-hero">
-        <h2><?= htmlspecialchars($viewerTitle, ENT_QUOTES, 'UTF-8') ?></h2>
-        <?php if (!empty($activity['instruction'])): ?>
-            <p><?= htmlspecialchars($activity['instruction'], ENT_QUOTES, 'UTF-8') ?></p>
-        <?php endif; ?>
-    </div>
+    <?= render_activity_header($viewerTitle, (string)($activity['instruction'] ?? '')) ?>
 
     <?php if (!$hasActivity): ?>
         <div class="d2dv-empty">
