@@ -811,6 +811,7 @@ body.fullscreen-embedded #cw-result {
 }
 </style>
 
+<?= render_activity_header($title) ?>
 <div class="cw-viewer" id="cwViewer">
     <?php if ($showGridLimitWarning): ?>
     <div style="background:#fef3c7;color:#92400e;padding:10px 18px;border-radius:12px;margin-bottom:18px;font-weight:700;font-size:15px;text-align:center;">

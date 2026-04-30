@@ -273,11 +273,7 @@ ob_start();
         <?php if ($url === '') { ?>
             <div class="ex-empty">No URL configured for this activity.</div>
         <?php } else { ?>
-            <div class="ex-banner">
-                <span class="ex-badge">🌐 External Activity</span>
-                <h2 class="ex-heading"><?= htmlspecialchars($viewerTitle, ENT_QUOTES, 'UTF-8') ?></h2>
-                <p class="ex-text"><?= htmlspecialchars($description !== '' ? $description : 'Click the button below to open the external resource for this activity.', ENT_QUOTES, 'UTF-8') ?></p>
-            </div>
+            <?= render_activity_header($viewerTitle, $description !== '' ? $description : 'Click the button below to open the external resource for this activity.') ?>
 
             <div class="ex-body">
                 <div class="ex-url-box">

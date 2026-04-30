@@ -354,6 +354,7 @@ ob_start();
 }
 </style>
 
+<?= render_activity_header($viewerTitle) ?>
 <div class="lo-stage">
   <div id="sentenceBox">
     <button class="lo-btn lo-btn-listen" type="button" onclick="playAudio()">Listen</button>

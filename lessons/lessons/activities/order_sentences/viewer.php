@@ -377,10 +377,7 @@ ob_start();
 </style>
 
 <div class="os-stage">
-    <div class="os-intro">
-        <h2><?= htmlspecialchars($viewerTitle, ENT_QUOTES, 'UTF-8') ?></h2>
-        <p><?= nl2br(htmlspecialchars($activity['instructions'] ?? '', ENT_QUOTES, 'UTF-8')) ?></p>
-    </div>
+    <?= render_activity_header($viewerTitle, (string)($activity['instructions'] ?? '')) ?>
 
     <?php if (($activity['media_type'] ?? '') === 'video' && !empty($activity['media_url'])): ?>
     <div class="os-media">

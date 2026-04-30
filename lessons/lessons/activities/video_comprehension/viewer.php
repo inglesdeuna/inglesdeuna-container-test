@@ -186,6 +186,7 @@ ob_start();
 @media (max-width:860px){.vc-intro{padding:20px 18px}.vc-intro h2{font-size:26px}.vc-question{font-size:18px}}
 </style>
 
+<?= render_activity_header($viewerTitle, $instructions) ?>
 <div class="vc-viewer" id="vc-app">
     <?php
     $hasVideo = $iframeUrl !== '';

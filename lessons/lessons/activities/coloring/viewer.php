@@ -153,10 +153,7 @@ ob_start();
 
 <div class="coloring-app">
 
-    <section class="coloring-intro">
-        <h2><?= htmlspecialchars($activityTitle, ENT_QUOTES, 'UTF-8') ?></h2>
-        <p>Pick a crayon color and click inside each shape to paint. Keep going page by page and finish your colorful masterpiece.</p>
-    </section>
+    <?= render_activity_header($activityTitle, 'Pick a crayon color and click inside each shape to paint. Keep going page by page and finish your colorful masterpiece.') ?>
 
     <!-- color palette -->
     <div class="coloring-palette-wrap" id="coloringPaletteWrap">
