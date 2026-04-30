@@ -100,10 +100,13 @@ function normalize_drag_drop_payload($rawData): array
             ? parse_listen_value($block['listen_enabled'])
             : (array_key_exists('listen', $block) ? parse_listen_value($block['listen']) : true);
 
+        $image = isset($block['image']) && is_string($block['image']) ? trim($block['image']) : '';
+
         $blocks[] = [
             'text' => $text,
             'missing_words' => $missingWords,
             'listen_enabled' => $listenEnabled,
+            'image' => $image,
         ];
     }
 
@@ -206,6 +209,16 @@ ob_start();
   border-radius:24px;
   max-width:920px;
   box-shadow:0 14px 28px rgba(15, 23, 42, .08);
+}
+
+#blockImage{
+  display:block;
+  max-width:320px;
+  max-height:240px;
+  margin:0 auto 18px;
+  border-radius:16px;
+  object-fit:contain;
+  box-shadow:0 6px 18px rgba(15,23,42,.1);
 }
 
 #promptText{
@@ -391,6 +404,7 @@ ob_start();
 <?= render_activity_header($viewerTitle) ?>
 <div class="dd-stage">
   <div id="sentenceBox">
+    <img id="blockImage" src="" alt="" style="display:none;">
     <button id="listenBtn" class="dd-btn dd-btn-listen" type="button" onclick="speak()">Listen</button>
     <div id="promptText"></div>
   </div>
@@ -447,6 +461,7 @@ let attemptsByBlock = {};
 let scoredWordsByBlock = {};
 
 const promptText = document.getElementById('promptText');
+const blockImage = document.getElementById('blockImage');
 const wordBank = document.getElementById('wordBank');
 const feedback = document.getElementById('feedback');
 const listenBtn = document.getElementById('listenBtn');
@@ -746,6 +761,17 @@ function loadSentence() {
   speechSourceText = currentText;
   currentAnswers = getAnswersForBlock(block);
   listenEnabled = !!block.listen_enabled;
+
+  const imgSrc = typeof block.image === 'string' ? block.image.trim() : '';
+  if (blockImage) {
+    if (imgSrc) {
+      blockImage.src = imgSrc;
+      blockImage.style.display = 'block';
+    } else {
+      blockImage.src = '';
+      blockImage.style.display = 'none';
+    }
+  }
 
   setListenVisible(listenEnabled);
 

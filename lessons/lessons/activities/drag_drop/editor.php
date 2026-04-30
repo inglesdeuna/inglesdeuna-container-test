@@ -299,6 +299,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $texts = isset($_POST['text']) && is_array($_POST['text']) ? $_POST['text'] : [];
     $missingWordsRaw = isset($_POST['missing_words']) && is_array($_POST['missing_words']) ? $_POST['missing_words'] : [];
     $listenEnabledValues = isset($_POST['listen_enabled']) && is_array($_POST['listen_enabled']) ? $_POST['listen_enabled'] : [];
+    $existingImages = isset($_POST['image_existing']) && is_array($_POST['image_existing']) ? $_POST['image_existing'] : [];
+    $imageFiles = isset($_FILES['image_file']) ? $_FILES['image_file'] : null;
 
     $sanitized = [];
 
@@ -307,6 +309,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $missingWords = normalize_words($missingWordsRaw[$i] ?? '');
         $listenEnabled = isset($listenEnabledValues[$i]) && (string) $listenEnabledValues[$i] === '1';
         $blockId = trim((string) ($blockIds[$i] ?? uniqid('drag_drop_')));
+        $image = isset($existingImages[$i]) ? trim((string) $existingImages[$i]) : '';
+
+        if (
+            $imageFiles &&
+            isset($imageFiles['name'][$i]) &&
+            $imageFiles['name'][$i] !== '' &&
+            isset($imageFiles['tmp_name'][$i]) &&
+            $imageFiles['tmp_name'][$i] !== ''
+        ) {
+            $uploadedImage = upload_to_cloudinary($imageFiles['tmp_name'][$i]);
+            if ($uploadedImage) {
+                $image = $uploadedImage;
+            }
+        }
 
         if ($text === '') {
             continue;
@@ -317,6 +333,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'text' => $text,
             'missing_words' => $missingWords,
             'listen_enabled' => $listenEnabled,
+            'image' => $image,
         ];
     }
 
@@ -443,9 +460,18 @@ if (isset($_GET['saved'])) {
     width:auto;
     margin:0;
 }
+.image-preview{
+    display:block;
+    max-width:200px;
+    max-height:160px;
+    border-radius:8px;
+    margin-bottom:8px;
+    object-fit:contain;
+    border:1px solid #e5e7eb;
+}
 </style>
 
-<form method="post" class="dd-form" id="dragDropForm">
+<form method="post" enctype="multipart/form-data" class="dd-form" id="dragDropForm">
     <div class="title-box">
         <label for="activity_title">Activity title</label>
         <input
@@ -475,6 +501,13 @@ if (isset($_GET['saved'])) {
                     required
                 >
                 <p class="help">Separate the draggable words with commas.</p>
+
+                <label>Block image (optional)</label>
+                <input type="hidden" name="image_existing[]" value="<?= htmlspecialchars((string) ($block['image'] ?? ''), ENT_QUOTES, 'UTF-8') ?>">
+                <?php if (!empty($block['image'])) { ?>
+                    <img src="<?= htmlspecialchars((string) $block['image'], ENT_QUOTES, 'UTF-8') ?>" alt="block-image" class="image-preview">
+                <?php } ?>
+                <input type="file" name="image_file[]" accept="image/*">
 
                 <label class="checkbox-row">
                     <input type="hidden" name="listen_enabled[]" value="0">
@@ -530,6 +563,10 @@ function addBlock() {
         <label>Words to drag</label>
         <input type="text" name="missing_words[]" placeholder="Example: usually, early, coffee" required>
         <p class="help">Separate the draggable words with commas.</p>
+
+        <label>Block image (optional)</label>
+        <input type="hidden" name="image_existing[]" value="">
+        <input type="file" name="image_file[]" accept="image/*">
 
         <label class="checkbox-row">
             <input type="hidden" name="listen_enabled[]" value="0">
