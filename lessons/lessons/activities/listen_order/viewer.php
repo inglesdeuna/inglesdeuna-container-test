@@ -35,8 +35,9 @@ function default_listen_order_title(): string
 function normalize_listen_order_payload($rawData): array
 {
     $default = [
-        'title' => default_listen_order_title(),
-        'blocks' => [],
+        'title'        => default_listen_order_title(),
+        'instructions' => '',
+        'blocks'       => [],
     ];
 
     if ($rawData === null || $rawData === '') {
@@ -48,7 +49,8 @@ function normalize_listen_order_payload($rawData): array
         return $default;
     }
 
-    $title = trim((string) ($decoded['title'] ?? ''));
+    $title        = trim((string) ($decoded['title']        ?? ''));
+    $instructions = trim((string) ($decoded['instructions'] ?? ''));
     $blocksSource = $decoded;
 
     if (isset($decoded['blocks']) && is_array($decoded['blocks'])) {
@@ -106,16 +108,18 @@ function normalize_listen_order_payload($rawData): array
     }
 
     return [
-        'title' => $title !== '' ? $title : default_listen_order_title(),
-        'blocks' => $blocks,
+        'title'        => $title !== '' ? $title : default_listen_order_title(),
+        'instructions' => $instructions,
+        'blocks'       => $blocks,
     ];
 }
 
 function load_listen_order_activity(PDO $pdo, string $activityId, string $unit): array
 {
     $fallback = [
-        'title' => default_listen_order_title(),
-        'blocks' => [],
+        'title'        => default_listen_order_title(),
+        'instructions' => '',
+        'blocks'       => [],
     ];
 
     $row = null;
@@ -156,10 +160,11 @@ if ($unit === '' && $activityId !== '') {
     $unit = resolve_unit_from_activity($pdo, $activityId);
 }
 
-$activity = load_listen_order_activity($pdo, $activityId, $unit);
-$viewerTitle = (string) ($activity['title'] ?? default_listen_order_title());
-$blocks = is_array($activity['blocks'] ?? null) ? $activity['blocks'] : [];
-$returnTo = isset($_GET['return_to']) ? trim((string) $_GET['return_to']) : '';
+$activity             = load_listen_order_activity($pdo, $activityId, $unit);
+$viewerTitle          = (string) ($activity['title']        ?? default_listen_order_title());
+$viewerInstructions   = (string) ($activity['instructions'] ?? '');
+$blocks               = is_array($activity['blocks'] ?? null) ? $activity['blocks'] : [];
+$returnTo             = isset($_GET['return_to']) ? trim((string) $_GET['return_to']) : '';
 
 if (count($blocks) === 0) {
     die('No activities for this unit');
@@ -445,7 +450,7 @@ ob_start();
 }
 </style>
 
-<?= render_activity_header($viewerTitle) ?>
+<?= render_activity_header($viewerTitle, $viewerInstructions) ?>
 <div class="lo-stage">
   <div id="sentenceBox">
     <button class="lo-btn lo-btn-listen" type="button" onclick="playAudio()">🔊 Listen</button>

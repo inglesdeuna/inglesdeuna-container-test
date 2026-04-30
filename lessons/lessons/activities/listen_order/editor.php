@@ -57,8 +57,9 @@ function normalize_listen_order_title(string $title): string
 function normalize_listen_order_payload(mixed $rawData): array
 {
     $default = [
-        "title" => default_listen_order_title(),
-        "blocks" => [],
+        "title"        => default_listen_order_title(),
+        "instructions" => "",
+        "blocks"       => [],
     ];
 
     if ($rawData === null || $rawData === "") {
@@ -70,12 +71,9 @@ function normalize_listen_order_payload(mixed $rawData): array
         return $default;
     }
 
-    $title = "";
+    $title        = isset($decoded["title"])        ? trim((string) $decoded["title"])        : "";
+    $instructions = isset($decoded["instructions"]) ? trim((string) $decoded["instructions"]) : "";
     $blocksSource = $decoded;
-
-    if (isset($decoded["title"])) {
-        $title = trim((string) $decoded["title"]);
-    }
 
     if (isset($decoded["blocks"]) && is_array($decoded["blocks"])) {
         $blocksSource = $decoded["blocks"];
@@ -133,25 +131,28 @@ function normalize_listen_order_payload(mixed $rawData): array
     }
 
     return [
-        "title" => normalize_listen_order_title($title),
-        "blocks" => $blocks,
+        "title"        => normalize_listen_order_title($title),
+        "instructions" => $instructions,
+        "blocks"       => $blocks,
     ];
 }
 
 function encode_listen_order_payload(array $payload): string
 {
     return json_encode([
-        "title" => normalize_listen_order_title((string) ($payload["title"] ?? "")),
-        "blocks" => array_values($payload["blocks"] ?? []),
+        "title"        => normalize_listen_order_title((string) ($payload["title"]        ?? "")),
+        "instructions" => trim((string) ($payload["instructions"] ?? "")),
+        "blocks"       => array_values($payload["blocks"] ?? []),
     ], JSON_UNESCAPED_UNICODE);
 }
 
 function load_listen_order_activity(PDO $pdo, string $unit, string $activityId): array
 {
     $fallback = [
-        "id" => "",
-        "title" => default_listen_order_title(),
-        "blocks" => [],
+        "id"           => "",
+        "title"        => default_listen_order_title(),
+        "instructions" => "",
+        "blocks"       => [],
     ];
 
     $row = null;
@@ -188,17 +189,19 @@ function load_listen_order_activity(PDO $pdo, string $unit, string $activityId):
     $payload = normalize_listen_order_payload($row["data"] ?? null);
 
     return [
-        "id" => (string) ($row["id"] ?? ""),
-        "title" => (string) ($payload["title"] ?? default_listen_order_title()),
-        "blocks" => is_array($payload["blocks"] ?? null) ? $payload["blocks"] : [],
+        "id"           => (string) ($row["id"] ?? ""),
+        "title"        => (string) ($payload["title"]        ?? default_listen_order_title()),
+        "instructions" => (string) ($payload["instructions"] ?? ""),
+        "blocks"       => is_array($payload["blocks"] ?? null) ? $payload["blocks"] : [],
     ];
 }
 
-function save_listen_order_activity(PDO $pdo, string $unit, string $activityId, string $title, array $blocks): string
+function save_listen_order_activity(PDO $pdo, string $unit, string $activityId, string $title, string $instructions, array $blocks): string
 {
     $json = encode_listen_order_payload([
-        "title" => $title,
-        "blocks" => $blocks,
+        "title"        => $title,
+        "instructions" => $instructions,
+        "blocks"       => $blocks,
     ]);
 
     $targetId = $activityId;
@@ -264,15 +267,17 @@ if ($unit === "") {
 }
 
 $activity = load_listen_order_activity($pdo, $unit, $activityId);
-$activityTitle = (string) ($activity["title"] ?? default_listen_order_title());
-$blocks = is_array($activity["blocks"] ?? null) ? $activity["blocks"] : [];
+$activityTitle        = (string) ($activity["title"]        ?? default_listen_order_title());
+$activityInstructions = (string) ($activity["instructions"] ?? "");
+$blocks               = is_array($activity["blocks"] ?? null) ? $activity["blocks"] : [];
 
 if ($activityId === "" && !empty($activity["id"])) {
     $activityId = (string) $activity["id"];
 }
 
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
-    $postedTitle    = trim((string) ($_POST["activity_title"] ?? ""));
+    $postedTitle        = trim((string) ($_POST["activity_title"]        ?? ""));
+    $postedInstructions = trim((string) ($_POST["activity_instructions"] ?? ""));
     $blockIds       = isset($_POST["block_id"])        && is_array($_POST["block_id"])        ? $_POST["block_id"]        : [];
     $sentences      = isset($_POST["sentence"])        && is_array($_POST["sentence"])        ? $_POST["sentence"]        : [];
     $existingImages = isset($_POST["images_existing"]) && is_array($_POST["images_existing"]) ? $_POST["images_existing"] : [];
@@ -369,7 +374,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         ];
     }
 
-    $savedActivityId = save_listen_order_activity($pdo, $unit, $activityId, $postedTitle, $sanitized);
+    $savedActivityId = save_listen_order_activity($pdo, $unit, $activityId, $postedTitle, $postedInstructions, $sanitized);
 
     $params = [
         "unit=" . urlencode($unit),
@@ -583,6 +588,14 @@ if (isset($_GET["saved"])) {
             placeholder="Example: Listen and order"
             required
         >
+
+        <label for="activity_instructions">Instructions <span style="font-weight:400;color:#6b7280;">(shown below the title)</span></label>
+        <textarea
+            id="activity_instructions"
+            name="activity_instructions"
+            placeholder="Example: Listen to the audio and put the pictures in the correct order."
+            style="min-height:70px;resize:vertical;"
+        ><?= htmlspecialchars($activityInstructions, ENT_QUOTES, 'UTF-8') ?></textarea>
     </div>
 
     <div id="blocksContainer">
