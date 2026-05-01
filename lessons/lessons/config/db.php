@@ -16,10 +16,10 @@ $db   = ltrim($parsed["path"], "/");
 
 try {
 
-    $dsn = "pgsql:host=$host;port=$port;dbname=$db";
+    $dsn = "pgsql:host=$host;port=$port;dbname=$db;sslmode=require;keepalives=1;keepalives_idle=30;keepalives_interval=10;keepalives_count=5";
 
     $pdo = new PDO($dsn, $user, $pass, [
-        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION
+        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
     ]);
 
 } catch (PDOException $e) {

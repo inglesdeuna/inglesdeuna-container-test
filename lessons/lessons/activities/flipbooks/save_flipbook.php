@@ -3,6 +3,9 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../../config/db.php';
 
+set_time_limit(300);
+$pdo->exec("SET statement_timeout = 0");
+
 const FLIPBOOK_MAX_PDF_BYTES = 30 * 1024 * 1024;
 
 header('Content-Type: application/json; charset=utf-8');
