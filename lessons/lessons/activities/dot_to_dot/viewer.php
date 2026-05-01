@@ -32,7 +32,7 @@ ob_start();
 <link rel="stylesheet" href="dot_to_dot.css">
 
 <style>
-/* Shared viewer sizing copied from Drag & Drop Kids */
+/* Match Drag & Drop Kids header sizing */
 .act-header {
     max-width: 900px !important;
     margin-left: auto !important;
@@ -51,153 +51,113 @@ ob_start();
     font-size: 13px !important;
 }
 
-/* Reusable activity viewer layout */
-.activity-stage {
-    max-width: 900px;
-    margin: 0 auto;
-    display: flex;
-    flex-direction: column;
-}
-
-.activity-canvas-wrap {
-    display: flex;
-    justify-content: center;
-    align-items: flex-start;
-    margin-bottom: 10px;
-    line-height: 0;
-}
-
-.activity-canvas {
-    position: relative;
-    display: inline-block;
-    max-width: 100%;
-}
-
-.activity-main-image,
-.activity-main-canvas {
-    display: block;
-    max-width: 100%;
-    max-height: calc(100vh - 230px);
-    width: auto;
-    height: auto;
-    border-radius: 16px;
-    box-shadow: 0 10px 28px rgba(15,23,42,.13);
-}
-
-/* Dot to Dot layout using shared sizing */
+/* Dot to Dot viewer shell */
 .d2dv-wrap {
     width: 100%;
 }
 
 .d2dv-stage-card {
-    max-width: 900px;
-    margin: 0 auto;
+    max-width: 900px !important;
+    margin: 0 auto !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    height: auto !important;
+    min-height: 0 !important;
 }
 
-.d2dv-stage {
-    position: relative;
-    display: inline-block;
-    max-width: 100%;
-}
-
-.d2dv-final-image {
-    display: block;
-    max-width: 100%;
-    max-height: calc(100vh - 230px);
-    width: auto;
-    height: auto;
-    border-radius: 16px;
-    user-select: none;
-    pointer-events: none;
-    box-shadow: 0 10px 28px rgba(15,23,42,.13);
-}
-
-#d2dvCanvas {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    border-radius: 16px;
-    touch-action: none;
-}
-
+/* Keep progress compact, like Drag & Drop Kids word bank area */
 .d2dv-progress-row {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 8px;
-    margin: 8px 0;
-    min-height: 40px;
+    display: flex !important;
+    flex-wrap: wrap !important;
+    justify-content: center !important;
+    gap: 8px !important;
+    margin: 8px 0 !important;
+    min-height: 40px !important;
 }
 
 .d2dv-chip {
-    padding: 8px 16px;
-    border-radius: 999px;
-    color: #4c1d95;
-    font-weight: 800;
-    font-family: 'Fredoka', 'Trebuchet MS', sans-serif;
-    font-size: clamp(16px, 1.8vw, 19px);
-    background: #ede9fe;
-    border: 2px solid #7c3aed;
-    box-shadow: 0 4px 12px rgba(124,58,237,.18);
-    line-height: 1;
+    padding: 8px 16px !important;
+    border-radius: 999px !important;
+    font-weight: 800 !important;
+    font-family: 'Fredoka', 'Trebuchet MS', sans-serif !important;
+    font-size: clamp(16px, 1.8vw, 19px) !important;
+    line-height: 1 !important;
 }
 
-.d2dv-chip-accent {
-    background: #dbeafe;
-    border-color: #2563eb;
-    color: #1e3a8a;
+/* The critical part: stage sizes from the image, not from a forced tall box */
+.d2dv-stage {
+    position: relative !important;
+    display: inline-block !important;
+    width: auto !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-width: 100% !important;
+    line-height: 0 !important;
+}
+
+/* Image determines the real activity size */
+.d2dv-final-image {
+    display: block !important;
+    width: auto !important;
+    height: auto !important;
+    max-width: 100% !important;
+    max-height: calc(100vh - 230px) !important;
+    border-radius: 16px !important;
+    user-select: none !important;
+    pointer-events: none !important;
+    object-fit: contain !important;
+    box-shadow: 0 10px 28px rgba(15,23,42,.13) !important;
+}
+
+/* Canvas overlays the image exactly */
+#d2dvCanvas {
+    position: absolute !important;
+    inset: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    border-radius: 16px !important;
+    touch-action: none !important;
+}
+
+/* Status and buttons */
+.d2dv-status {
+    text-align: center !important;
+    font-size: 16px !important;
+    font-weight: 800 !important;
+    min-height: 24px !important;
+    margin: 4px 0 !important;
+    line-height: 1.3 !important;
 }
 
 .d2dv-toolbar {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 8px;
-    margin: 8px 0 4px;
+    display: flex !important;
+    flex-wrap: wrap !important;
+    justify-content: center !important;
+    gap: 8px !important;
+    margin: 6px 0 4px !important;
 }
 
 .d2dv-btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    padding: 9px 18px;
-    border: none;
-    border-radius: 999px;
-    color: #fff;
-    cursor: pointer;
-    min-width: 130px;
-    font-weight: 800;
-    font-family: 'Nunito', 'Segoe UI', sans-serif;
-    font-size: 13px;
-    box-shadow: 0 8px 18px rgba(15,23,42,.12);
-    transition: transform .15s, filter .15s;
-    line-height: 1;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 9px 18px !important;
+    border: none !important;
+    border-radius: 999px !important;
+    cursor: pointer !important;
+    min-width: 130px !important;
+    font-weight: 800 !important;
+    font-family: 'Nunito', 'Segoe UI', sans-serif !important;
+    font-size: 13px !important;
+    line-height: 1 !important;
+    box-shadow: 0 8px 18px rgba(15,23,42,.12) !important;
+    transition: transform .15s, filter .15s !important;
 }
 
 .d2dv-btn:hover {
     filter: brightness(1.05);
     transform: translateY(-1px);
-}
-
-.d2dv-btn-soft {
-    background: linear-gradient(180deg, #94a3b8 0%, #64748b 100%);
-}
-
-.d2dv-btn-accent {
-    background: linear-gradient(180deg, #d8b4fe 0%, #a855f7 100%);
-}
-
-.d2dv-btn-next {
-    background: linear-gradient(180deg, #60a5fa 0%, #2563eb 100%);
-}
-
-.d2dv-status {
-    text-align: center;
-    font-size: 16px;
-    font-weight: 800;
-    min-height: 24px;
-    margin: 4px 0;
 }
 
 .d2dv-empty {
@@ -211,58 +171,34 @@ ob_start();
     font-weight: 800;
 }
 
-.d2dv-completion-panel {
-    text-align: center;
-    padding: 20px;
-}
-
-.d2dv-completion-icon {
-    font-size: 48px;
-    margin-bottom: 8px;
-}
-
-.d2dv-completion-title {
-    font-family: 'Fredoka', 'Trebuchet MS', sans-serif;
-    font-size: 30px;
-    font-weight: 700;
-    color: #9a3412;
-    margin: 0 0 8px;
-}
-
-.d2dv-completion-score {
-    font-size: 16px;
-    font-weight: 800;
-    color: #9a3412;
-    margin: 0;
-}
-
+/* Mobile */
 @media (max-width: 640px) {
     .d2dv-final-image {
-        max-height: calc(100vh - 210px);
+        max-height: calc(100vh - 210px) !important;
     }
 
     .d2dv-chip {
-        padding: 7px 12px;
-        font-size: 15px;
+        padding: 7px 12px !important;
+        font-size: 15px !important;
     }
 
     .d2dv-progress-row,
     .d2dv-toolbar {
-        gap: 6px;
+        gap: 6px !important;
     }
 
     .d2dv-toolbar {
-        flex-direction: column;
-        align-items: center;
+        flex-direction: column !important;
+        align-items: center !important;
     }
 
     .d2dv-btn {
-        width: 100%;
-        max-width: 280px;
+        width: 100% !important;
+        max-width: 280px !important;
     }
 }
 
-/* Fullscreen / presentation mode */
+/* Fullscreen: same proportions as Drag & Drop Kids */
 body.presentation-mode .activity-wrapper,
 body.fullscreen-embedded .activity-wrapper {
     padding: 10mm !important;
@@ -275,9 +211,38 @@ body.fullscreen-embedded .viewer-content {
     overflow: hidden !important;
 }
 
+body.presentation-mode .d2dv-stage-card,
+body.fullscreen-embedded .d2dv-stage-card {
+    max-width: 900px !important;
+    margin: 0 auto !important;
+    height: auto !important;
+    min-height: 0 !important;
+    align-items: center !important;
+}
+
+body.presentation-mode .d2dv-stage,
+body.fullscreen-embedded .d2dv-stage {
+    width: auto !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-width: 100% !important;
+}
+
 body.presentation-mode .d2dv-final-image,
 body.fullscreen-embedded .d2dv-final-image {
-    max-height: calc(100vh - 20mm - 190px);
+    width: auto !important;
+    height: auto !important;
+    max-width: 100% !important;
+    max-height: calc(100vh - 20mm - 190px) !important;
+    object-fit: contain !important;
+}
+
+body.presentation-mode #d2dvCanvas,
+body.fullscreen-embedded #d2dvCanvas {
+    position: absolute !important;
+    inset: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
 }
 
 body.presentation-mode .act-header,
@@ -290,12 +255,23 @@ body.presentation-mode .act-header h2,
 body.fullscreen-embedded .act-header h2 {
     font-size: clamp(16px, 2vw, 22px) !important;
 }
+
+body.presentation-mode .d2dv-progress-row,
+body.fullscreen-embedded .d2dv-progress-row {
+    margin: 6px 0 !important;
+    min-height: 34px !important;
+}
+
+body.presentation-mode .d2dv-toolbar,
+body.fullscreen-embedded .d2dv-toolbar {
+    margin: 6px 0 4px !important;
+}
 </style>
 
 <div class="d2dv-wrap">
     <?= render_activity_header(
         $viewerTitle,
-        $instruction !== '' ? $instruction : 'Connect the dots in order.'
+        $instruction !== '' ? $instruction : 'Connect the dots in order to reveal the picture.'
     ) ?>
 
     <?php if (!$hasActivity): ?>
@@ -306,7 +282,7 @@ body.fullscreen-embedded .act-header h2 {
 
     <?php else: ?>
 
-        <div class="activity-stage d2dv-stage-card">
+        <div class="d2dv-stage-card">
 
             <div class="d2dv-progress-row">
                 <span class="d2dv-chip" id="d2dvProgress">Connect 1 to 2</span>
@@ -315,14 +291,12 @@ body.fullscreen-embedded .act-header h2 {
                 </span>
             </div>
 
-            <div class="activity-canvas-wrap">
-                <div class="activity-canvas d2dv-stage" id="d2dvStage">
-                    <img class="activity-main-image d2dv-final-image"
-                         id="d2dvFinalImage"
-                         src="<?= htmlspecialchars($image, ENT_QUOTES, 'UTF-8') ?>"
-                         alt="<?= htmlspecialchars($viewerTitle, ENT_QUOTES, 'UTF-8') ?>">
-                    <canvas class="activity-main-canvas" id="d2dvCanvas"></canvas>
-                </div>
+            <div class="d2dv-stage" id="d2dvStage">
+                <img class="d2dv-final-image"
+                     id="d2dvFinalImage"
+                     src="<?= htmlspecialchars($image, ENT_QUOTES, 'UTF-8') ?>"
+                     alt="<?= htmlspecialchars($viewerTitle, ENT_QUOTES, 'UTF-8') ?>">
+                <canvas id="d2dvCanvas"></canvas>
             </div>
 
             <p class="d2dv-status" id="d2dvStatus"></p>
