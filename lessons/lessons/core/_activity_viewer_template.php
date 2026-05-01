@@ -58,6 +58,7 @@ function render_activity_viewer($title, $icon, $content)
 
     <link rel="stylesheet" href="../../assets/css/presentation-mode.css">
     <link rel="stylesheet" href="../../assets/css/video-two-col.css">
+    <link rel="stylesheet" href="../../assets/css/activity-design-system.css">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@500;700;800&display=swap');
 

@@ -735,3 +735,127 @@
     padding: 16px !important;
   }
 }
+
+
+/* ═══════════════════════════════════════════════════════════════
+   15. Image / canvas activity viewer — shared layout
+   ───────────────────────────────────────────────────────────────
+   Usage:
+     Root wrapper  → add class "ds-img-viewer" (900 px, centred column)
+     Centre row    → <div class="ds-media-wrap">
+     Media host    → add class "ds-media"      (inline-block, position:relative)
+     Image / bg    → add class "ds-media-img"  (auto-sized, max-height guarded)
+     Word bank     → <div class="ds-bank">
+
+   Per-activity height override (dot-to-dot has more UI above/below):
+     .my-wrapper { --ds-media-max-h: calc(100vh - 290px); }
+
+   Fullscreen and responsive rules live here — activities only add
+   visual overrides (colours, borders, shadows, animations).
+═══════════════════════════════════════════════════════════════ */
+
+/* Default max-height for the image/canvas area.
+   Activities with more surrounding UI override this variable. */
+:root {
+  --ds-media-max-h: calc(100vh - 230px);
+}
+
+/* ── Stage wrapper ───────────────────────────────────────────── */
+.ds-img-viewer {
+  max-width: 900px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  font-family: var(--ds-font-body);
+}
+
+/* Compact act-header inside an image viewer (overrides template default) */
+.ds-img-viewer .act-header {
+  max-width: 900px !important;
+  margin-left:   auto !important;
+  margin-right:  auto !important;
+  margin-bottom: 10px !important;
+  padding:       12px 18px !important;
+  border-radius: 16px !important;
+}
+.ds-img-viewer .act-header h2 {
+  font-size: clamp(18px, 2.6vw, 26px) !important;
+  margin: 0 0 4px !important;
+}
+.ds-img-viewer .act-header p {
+  font-size: 13px !important;
+  line-height: 1.4 !important;
+}
+
+/* ── Centering row for image / canvas ───────────────────────── */
+.ds-media-wrap {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  margin-bottom: 10px;
+  line-height: 0;
+}
+
+/* ── Inline-block host — shrinks to image size ──────────────── */
+.ds-media {
+  position: relative;
+  display: inline-block;
+  max-width: 100%;
+}
+
+/* ── Image / bitmap — naturally sized, height-capped ────────── */
+.ds-media-img {
+  display: block;
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: var(--ds-media-max-h);
+  user-select: none;
+  pointer-events: none;
+}
+
+/* ── Word bank row ───────────────────────────────────────────── */
+.ds-bank {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin: 8px 0;
+  min-height: 40px;
+}
+
+/* ── Responsive ─────────────────────────────────────────────── */
+@media (max-width: 640px) {
+  .ds-media-img {
+    /* tighten offset on small screens */
+    max-height: calc(100vh - 210px);
+  }
+  .ds-bank { gap: 6px; }
+}
+
+/* ── Fullscreen-embedded / presentation mode ────────────────── */
+/* The template adds body.fullscreen-embedded via postMessage.   */
+body.presentation-mode .ds-img-viewer,
+body.fullscreen-embedded .ds-img-viewer {
+  max-width: 100%;
+  flex: 1;
+  min-height: 0;
+}
+
+body.presentation-mode .ds-img-viewer .act-header,
+body.fullscreen-embedded .ds-img-viewer .act-header {
+  max-width: 100% !important;
+  padding:       8px 14px !important;
+  margin-bottom: 6px !important;
+  border-radius: 12px !important;
+}
+body.presentation-mode .ds-img-viewer .act-header h2,
+body.fullscreen-embedded .ds-img-viewer .act-header h2 {
+  font-size: clamp(16px, 2vw, 22px) !important;
+}
+
+/* Image scales down in fullscreen to stay within 1 cm margins  */
+body.presentation-mode .ds-media-img,
+body.fullscreen-embedded .ds-media-img {
+  max-height: calc(100vh - 20mm - 190px);
+}
