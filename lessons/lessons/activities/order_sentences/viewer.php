@@ -375,6 +375,108 @@ ob_start();
     .os-controls         { flex-direction: column; align-items: center; }
     .os-btn              { width: 100%; max-width: 300px; }
 }
+
+/* ── Fullscreen/embedded modes: fit everything in one view with 1 cm margins ── */
+body.fullscreen-embedded .viewer-content {
+    overflow: hidden !important;
+}
+
+body.embedded-mode .os-stage,
+body.fullscreen-embedded .os-stage,
+body.presentation-mode .os-stage {
+    max-width: 100% !important;
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 1cm;
+    box-sizing: border-box;
+    overflow: hidden;
+}
+
+body.embedded-mode .act-header,
+body.fullscreen-embedded .act-header,
+body.presentation-mode .act-header {
+    flex-shrink: 0 !important;
+    padding: 8px 14px !important;
+    margin-bottom: 0 !important;
+    border-radius: 12px !important;
+}
+
+body.embedded-mode .act-header h2,
+body.fullscreen-embedded .act-header h2,
+body.presentation-mode .act-header h2 {
+    font-size: 18px !important;
+    margin-bottom: 2px !important;
+}
+
+body.embedded-mode .act-header p,
+body.fullscreen-embedded .act-header p,
+body.presentation-mode .act-header p {
+    font-size: 13px !important;
+}
+
+body.embedded-mode .os-media,
+body.fullscreen-embedded .os-media,
+body.presentation-mode .os-media {
+    flex-shrink: 0 !important;
+    margin-bottom: 0 !important;
+    text-align: center;
+}
+
+body.embedded-mode .os-media video,
+body.fullscreen-embedded .os-media video,
+body.presentation-mode .os-media video {
+    max-height: 22vh !important;
+    width: auto !important;
+    max-width: 100% !important;
+    border-radius: 10px;
+}
+
+body.embedded-mode #os-activity-area,
+body.fullscreen-embedded #os-activity-area,
+body.presentation-mode #os-activity-area {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
+    gap: 6px;
+}
+
+body.embedded-mode .os-answer-zone,
+body.fullscreen-embedded .os-answer-zone,
+body.presentation-mode .os-answer-zone {
+    flex: 1 !important;
+    min-height: 60px !important;
+    margin-bottom: 0 !important;
+    overflow-y: auto !important;
+}
+
+body.embedded-mode .os-bank-zone,
+body.fullscreen-embedded .os-bank-zone,
+body.presentation-mode .os-bank-zone {
+    flex-shrink: 0 !important;
+    padding: 4px 0 !important;
+    min-height: 30px !important;
+}
+
+body.embedded-mode .os-controls,
+body.fullscreen-embedded .os-controls,
+body.presentation-mode .os-controls {
+    flex-shrink: 0 !important;
+    margin-top: 0 !important;
+}
+
+body.embedded-mode #os-feedback,
+body.fullscreen-embedded #os-feedback,
+body.presentation-mode #os-feedback {
+    flex-shrink: 0 !important;
+    margin-top: 0 !important;
+    min-height: 16px !important;
+    font-size: 14px !important;
+}
 </style>
 
 <div class="os-stage">
