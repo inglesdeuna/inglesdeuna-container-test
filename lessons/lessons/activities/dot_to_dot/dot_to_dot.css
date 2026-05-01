@@ -181,8 +181,12 @@ body{
 }
 
 /* ── Full-screen layout: 1 cm margin, all elements fit in one view ── */
+/* html+body height:100% is reliable inside iframes; 100vh can resolve to the
+   full page viewport rather than the iframe height in some browsers. */
+html{height:100% !important;overflow:hidden !important}
 body{
-  height:100vh !important;
+  height:100% !important;
+  min-height:unset !important;
   overflow:hidden !important;
   padding:1cm !important;
   display:flex !important;
@@ -245,7 +249,12 @@ body{
   min-height:0 !important;
 }
 
+/* Absolutely positioned so it never drives the stage's flow height.
+   Stage height comes purely from the flex layout above. */
 .d2dv-final-image{
+  position:absolute !important;
+  inset:0 !important;
+  width:100% !important;
   height:100% !important;
   object-fit:contain !important;
 }
