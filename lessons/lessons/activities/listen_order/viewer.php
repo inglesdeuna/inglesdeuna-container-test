@@ -32,7 +32,7 @@ function default_listen_order_title(): string
     return 'Listen & Order';
 }
 
-function normalize_listen_order_payload($rawData): array
+function normalize_listen_order_payload(mixed $rawData): array
 {
     $default = [
         'title'        => default_listen_order_title(),
