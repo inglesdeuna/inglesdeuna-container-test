@@ -378,12 +378,26 @@ ob_start();
     .os-btn              { width: 100%; max-width: 300px; }
 }
 
-/* ── Fullscreen/embedded modes: fit everything in one view with 1 cm margins ── */
-body.fullscreen-embedded .viewer-content {
+/* ── Fullscreen / presentation: 1 cm margins — same as drag-drop kids ── */
+body.fullscreen-embedded .activity-wrapper,
+body.presentation-mode .activity-wrapper {
+    padding: 10mm !important;
+    box-sizing: border-box !important;
+}
+
+/* viewer-content: compact padding, rounded, no scroll */
+body.embedded-mode .viewer-content,
+body.fullscreen-embedded .viewer-content,
+body.presentation-mode .viewer-content {
+    padding: 6px 8px !important;
+    border-radius: 14px !important;
     overflow: hidden !important;
 }
 
-body.embedded-mode .os-stage,
+/* os-stage: fill viewer-content via flex chain.
+   In fullscreen/presentation the activity-wrapper supplies the outer margin,
+   so os-stage needs no extra padding.
+   In plain embedded-mode a small inner padding keeps things tidy. */
 body.fullscreen-embedded .os-stage,
 body.presentation-mode .os-stage {
     max-width: 100% !important;
@@ -392,7 +406,19 @@ body.presentation-mode .os-stage {
     display: flex;
     flex-direction: column;
     gap: 6px;
-    padding: 1cm;
+    padding: 0 !important;
+    box-sizing: border-box;
+    overflow: hidden;
+}
+
+body.embedded-mode .os-stage {
+    max-width: 100% !important;
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 8px !important;
     box-sizing: border-box;
     overflow: hidden;
 }
