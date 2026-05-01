@@ -209,8 +209,14 @@ body.presentation-mode .viewer-content > div[style] {
     align-content: start;
     width: 100%;
     height: 100%;
-    overflow: hidden;
+    overflow-y: auto;
+    overflow-x: hidden;
+    scrollbar-width: thin;
+    scrollbar-color: #c7b7ff #f0eeff;
 }
+.os-inner::-webkit-scrollbar       { width: 6px; }
+.os-inner::-webkit-scrollbar-track { background: #f0eeff; border-radius: 3px; }
+.os-inner::-webkit-scrollbar-thumb { background: #c7b7ff; border-radius: 3px; }
 
 /* Header row */
 .os-inner .act-header {
