@@ -215,8 +215,10 @@ ob_start();
 .os-chip img {
     width: 130px;
     height: 130px;
+    max-width: 100%;
+    max-height: 100%;
     border-radius: 16px;
-    object-fit: cover;
+    object-fit: contain;
     display: block;
     box-shadow:
         0 6px 20px rgba(0, 0, 0, .14),
@@ -423,6 +425,14 @@ body.presentation-mode .os-media {
     flex-shrink: 0 !important;
     margin-bottom: 0 !important;
     text-align: center;
+}
+
+body.embedded-mode .os-chip img,
+body.fullscreen-embedded .os-chip img,
+body.presentation-mode .os-chip img {
+    width: 80px !important;
+    height: 80px !important;
+    border-radius: 10px !important;
 }
 
 body.embedded-mode .os-media video,
