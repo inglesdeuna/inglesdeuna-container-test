@@ -185,58 +185,87 @@ ob_start();
 .completed-button:hover{transform:scale(1.05);filter:brightness(1.07)}
 @media (max-width:860px){.vc-intro{padding:20px 18px}.vc-intro h2{font-size:26px}.vc-question{font-size:18px}}
 
-/* ── Embedded mode: video fills the full iframe ── */
+/* ── Embedded / fullscreen / presentation: video fills iframe like YouTube ── */
+
+/* 1. Remove viewer-content padding so video reaches the edges */
+body.embedded-mode .viewer-content,
+body.fullscreen-embedded .viewer-content,
+body.presentation-mode .viewer-content {
+    padding: 0 !important;
+    background: #fff !important;
+}
+
+/* 2. vc-viewer fills the entire viewer-content via absolute positioning */
+body.embedded-mode .viewer-content,
+body.fullscreen-embedded .viewer-content,
+body.presentation-mode .viewer-content {
+    position: relative !important;
+}
+
 body.embedded-mode .vc-viewer,
 body.fullscreen-embedded .vc-viewer,
 body.presentation-mode .vc-viewer {
-    flex: 1;
-    min-height: 0;
-    display: flex;
-    flex-direction: column;
+    position: absolute !important;
+    inset: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    display: flex !important;
+    flex-direction: column !important;
+    background: #fff !important;
+    margin: 0 !important;
+    max-width: none !important;
 }
 
+/* 3. Hide title header and "Watch And Focus" copy */
 body.embedded-mode .act-header,
 body.fullscreen-embedded .act-header,
-body.presentation-mode .act-header {
-    display: none !important;
-}
-
-body.embedded-mode .vc-video-only,
-body.fullscreen-embedded .vc-video-only,
-body.presentation-mode .vc-video-only {
-    flex: 1;
-    min-height: 0;
-    display: flex;
-    flex-direction: column;
-    border-radius: 0;
-    border: none;
-    box-shadow: none;
-}
-
-body.embedded-mode .vc-video-wrap,
-body.fullscreen-embedded .vc-video-wrap,
-body.presentation-mode .vc-video-wrap {
-    flex: 1;
-    min-height: 0;
-    padding: 0;
-    display: flex;
-    flex-direction: column;
-}
-
-body.embedded-mode .vc-video,
-body.fullscreen-embedded .vc-video,
-body.presentation-mode .vc-video {
-    flex: 1;
-    width: 100%;
-    height: 100%;
-    aspect-ratio: unset;
-    border-radius: 0;
-}
-
+body.presentation-mode .act-header,
+body.embedded-mode .vc-intro,
+body.fullscreen-embedded .vc-intro,
+body.presentation-mode .vc-intro,
 body.embedded-mode .vc-video-copy,
 body.fullscreen-embedded .vc-video-copy,
 body.presentation-mode .vc-video-copy {
-    display: none;
+    display: none !important;
+}
+
+/* 4. video-only container fills remaining space */
+body.embedded-mode .vc-video-only,
+body.fullscreen-embedded .vc-video-only,
+body.presentation-mode .vc-video-only {
+    flex: 1 !important;
+    width: 100% !important;
+    display: flex !important;
+    flex-direction: column !important;
+    border: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    background: #fff !important;
+    overflow: hidden !important;
+}
+
+/* 5. video wrapper fills video-only container */
+body.embedded-mode .vc-video-wrap,
+body.fullscreen-embedded .vc-video-wrap,
+body.presentation-mode .vc-video-wrap {
+    flex: 1 !important;
+    width: 100% !important;
+    padding: 0 !important;
+    background: #fff !important;
+    display: flex !important;
+    flex-direction: column !important;
+}
+
+/* 6. the YouTube iframe fills the wrapper */
+body.embedded-mode .vc-video,
+body.fullscreen-embedded .vc-video,
+body.presentation-mode .vc-video {
+    flex: 1 !important;
+    width: 100% !important;
+    height: 100% !important;
+    aspect-ratio: unset !important;
+    border-radius: 0 !important;
+    border: none !important;
 }
 </style>
 
