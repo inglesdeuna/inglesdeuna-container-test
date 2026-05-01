@@ -200,6 +200,7 @@ ob_start();
     border-radius: 16px;
     transition: transform .2s cubic-bezier(.34, 1.4, .64, 1), opacity .15s ease;
     -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
 }
 .os-chip:hover {
     transform: translateY(-4px) scale(1.04);
@@ -373,82 +374,6 @@ ob_start();
     .os-bank-zone        { gap: 10px; }
     .os-controls         { flex-direction: column; align-items: center; }
     .os-btn              { width: 100%; max-width: 300px; }
-}
-
-/* ── Embedded mode: fill iframe, no scroll ── */
-body.embedded-mode .os-stage{
-  max-width:100%;
-  height:100%;
-  min-height:0;
-  margin:0;
-  display:flex;
-  flex-direction:column;
-}
-body.embedded-mode .os-header{
-  flex-shrink:0;
-  padding:10px 14px 8px;
-  border-radius:14px;
-  margin-bottom:8px;
-}
-body.embedded-mode .os-header h2{font-size:20px;margin-bottom:2px;}
-body.embedded-mode .os-header p.os-instructions{font-size:13px;margin-bottom:8px;}
-body.embedded-mode .os-media{margin-bottom:4px;}
-body.embedded-mode .os-video-wrap{border-radius:10px;}
-body.embedded-mode .os-list-wrap{
-  flex:1;
-  min-height:0;
-  overflow-y:auto;
-  padding:10px 12px;
-  margin-bottom:8px;
-  border-radius:14px;
-}
-body.embedded-mode .os-list-wrap h3{font-size:15px;margin-bottom:8px;}
-body.embedded-mode #os-sortable{gap:6px;}
-body.embedded-mode .os-item{padding:8px 10px;border-radius:10px;}
-body.embedded-mode .os-item .sentence-text{font-size:14px;}
-body.embedded-mode .os-controls{
-  flex-shrink:0;
-  margin-bottom:6px;
-  gap:8px;
-}
-body.embedded-mode .os-btn{
-  padding:9px 16px;
-  font-size:13px;
-  min-width:110px;
-}
-body.embedded-mode #os-feedback{
-  font-size:15px;
-  min-height:20px;
-  margin-bottom:6px;
-}
-
-/* Video layout in embedded: stack vertically, cap video height */
-body.embedded-mode .os-stage.os-video-layout{
-  display:flex;
-  flex-direction:column;
-  grid-template-columns:unset;
-}
-body.embedded-mode .os-stage.os-video-layout .vtc-video-col{
-  position:relative;
-  top:auto;
-  flex-shrink:0;
-  max-height:38vh;
-}
-body.embedded-mode .os-stage.os-video-layout .vtc-video-box{
-  max-height:38vh;
-}
-body.embedded-mode .os-stage.os-video-layout .vtc-video-box video{
-  max-height:38vh;
-  object-fit:contain;
-}
-body.embedded-mode .os-stage.os-video-layout .vtc-content-col{
-  flex:1;
-  min-height:0;
-  overflow-y:auto;
-  max-height:none;
-}
-body.embedded-mode .os-completed{
-  padding:20px 12px;
 }
 </style>
 
