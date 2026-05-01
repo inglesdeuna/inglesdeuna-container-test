@@ -107,7 +107,7 @@ ob_start();
 ?>
 <style>
 .os-stage {
-    max-width: 720px;
+    max-width: 1100px;
     margin: 0 auto;
     font-family: 'Nunito', 'Segoe UI', sans-serif;
 }
@@ -184,6 +184,25 @@ ob_start();
     align-items: center;
     padding: 8px 0 20px;
     min-height: 40px;
+}
+
+/* ── Video + Drop zone two-column layout ── */
+.os-vdz-layout {
+    align-items: stretch !important;
+    margin-bottom: 16px;
+}
+.os-vdz-layout .vtc-content-col {
+    display: flex;
+    flex-direction: column;
+    max-height: none;
+    overflow: visible;
+}
+.os-vdz-layout .vtc-video-box video {
+    aspect-ratio: 16 / 9;
+}
+.os-vdz-layout .os-answer-zone {
+    flex: 1;
+    margin-bottom: 0;
 }
 
 /* ── Chip: the draggable sentence unit ── */
