@@ -128,6 +128,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
   function resizeCanvas() {
     const rect = stageRect();
+    if (!rect.width || !rect.height) return;
     const dpr = window.devicePixelRatio || 1;
 
     canvas.width = Math.round(rect.width * dpr);
@@ -447,7 +448,22 @@ document.addEventListener('DOMContentLoaded', function () {
     navigateToReturn(completionUrl);
   });
 
-  window.addEventListener('resize', resizeCanvas);
+  // Resize canvas whenever the stage changes size (covers window resize,
+  // fullscreen entry/exit, and any other layout change).
+  if (typeof ResizeObserver !== 'undefined') {
+    new ResizeObserver(function () { resizeCanvas(); }).observe(stage);
+  } else {
+    window.addEventListener('resize', resizeCanvas);
+  }
+
+  // Also listen for the fullscreen-embedded custom event dispatched by the
+  // activity template when the parent page sends fs-enter / fs-exit.
+  // Double-rAF ensures CSS layout has settled before we measure.
+  document.addEventListener('fullscreen-embedded', function () {
+    requestAnimationFrame(function () {
+      requestAnimationFrame(resizeCanvas);
+    });
+  });
 
   if (image.complete) {
     resizeCanvas();
