@@ -2,16 +2,10 @@
 
 .viewer-header{display:none !important}
 
-.d2dv-wrap{max-width:980px;margin:0 auto;font-family:'Nunito','Segoe UI',sans-serif}
+.d2dv-wrap{max-width:900px;margin:0 auto;font-family:'Nunito','Segoe UI',sans-serif}
 
 body{
   background:
-html, body {
-  height: 100% !important;
-  min-height: 100% !important;
-  width: 100% !important;
-  box-sizing: border-box !important;
-}
     radial-gradient(circle at 88% 10%, rgba(219,234,254,.54), rgba(219,234,254,0) 35%),
     linear-gradient(155deg,#ecfeff 0%, #eef2ff 46%, #fff7ed 100%);
 }
@@ -67,6 +61,7 @@ html, body {
   color:#5b21b6;
 }
 
+/* ── Stage: sized by image in normal view, capped to avoid overflow ── */
 .d2dv-stage{
   position:relative;
   border-radius:20px;
@@ -74,12 +69,16 @@ html, body {
   border:3px solid #0e7490;
   background:#ffffff;
   box-shadow:inset 0 0 0 2px rgba(255,255,255,.85),0 18px 30px rgba(8,47,73,.16);
+  /* Cap height so the stage never overflows the viewport (same as drag-drop) */
+  max-height:calc(100vh - 280px);
 }
 
+/* Image is in-flow so it gives the stage its height */
 .d2dv-final-image{
   display:block;
   width:100%;
   height:auto;
+  max-height:calc(100vh - 280px);
   opacity:0;
   transform:scale(1.01);
   transition:opacity .45s ease, transform .45s ease;
@@ -90,6 +89,7 @@ html, body {
   transform:scale(1);
 }
 
+/* Canvas overlays the image exactly */
 #d2dvCanvas{
   position:absolute;
   inset:0;
@@ -181,25 +181,29 @@ html, body {
   color:#166534;
 }
 
+/* Title header: smaller, centred with stage (matches drag-drop) */
+.act-header{
+  max-width:900px !important;
+  margin-left:auto !important;
+  margin-right:auto !important;
+  margin-bottom:10px !important;
+  padding:12px 18px !important;
+  border-radius:16px !important;
+}
+.act-header h2{font-size:clamp(18px,2.6vw,26px) !important;margin:0 0 4px !important}
+.act-header p{font-size:13px !important}
+
 @media (max-width:680px){
   .d2dv-btn{width:100%}
+  .d2dv-stage{max-height:calc(100vh - 260px)}
+  .d2dv-final-image{max-height:calc(100vh - 260px)}
 }
 
-/* ── Full-screen layout: 1 cm margin, all elements fit in one view ── */
-/* html+body height:100% is reliable inside iframes; 100vh can resolve to the
-   full page viewport rather than the iframe height in some browsers. */
-html{height:100% !important;overflow:hidden !important}
-body{
-  height:100% !important;
-  min-height:unset !important;
-  overflow:hidden !important;
-  padding:1cm !important;
-  display:flex !important;
-  flex-direction:column !important;
-  box-sizing:border-box !important;
-}
-
-.activity-wrapper{
+/* ── Fullscreen-embedded / presentation mode ────────────────────────
+   The template adds body.fullscreen-embedded via postMessage (fs-enter).
+   Only apply flex-fill layout when that class (or presentation-mode) is present,
+   mirroring the drag-drop approach. */
+:is(body.fullscreen-embedded, body.presentation-mode) .activity-wrapper{
   max-width:100% !important;
   flex:1 !important;
   min-height:0 !important;
@@ -208,9 +212,9 @@ body{
   margin:0 !important;
 }
 
-.top-row{flex-shrink:0 !important}
+:is(body.fullscreen-embedded, body.presentation-mode) .top-row{flex-shrink:0 !important}
 
-.viewer-content{
+:is(body.fullscreen-embedded, body.presentation-mode) .viewer-content{
   flex:1 !important;
   min-height:0 !important;
   display:flex !important;
@@ -220,9 +224,9 @@ body{
   margin-top:4px !important;
 }
 
-.viewer-content > :is(div,section){max-width:100% !important}
+:is(body.fullscreen-embedded, body.presentation-mode) .viewer-content > :is(div,section){max-width:100% !important}
 
-.d2dv-wrap{
+:is(body.fullscreen-embedded, body.presentation-mode) .d2dv-wrap{
   max-width:100% !important;
   flex:1 !important;
   min-height:0 !important;
@@ -230,49 +234,51 @@ body{
   flex-direction:column !important;
 }
 
-.act-header{
+:is(body.fullscreen-embedded, body.presentation-mode) .act-header{
   max-width:100% !important;
   flex-shrink:0 !important;
   padding:8px 14px !important;
   margin-bottom:8px !important;
   border-radius:14px !important;
 }
-.act-header h2{font-size:clamp(16px,2.2vw,24px) !important;margin-bottom:2px !important}
-.act-header p{font-size:13px !important;line-height:1.4 !important}
+:is(body.fullscreen-embedded, body.presentation-mode) .act-header h2{font-size:clamp(16px,2.2vw,24px) !important;margin-bottom:2px !important}
+:is(body.fullscreen-embedded, body.presentation-mode) .act-header p{font-size:13px !important;line-height:1.4 !important}
 
-.d2dv-stage-card{
+:is(body.fullscreen-embedded, body.presentation-mode) .d2dv-stage-card{
   flex:1 !important;
   min-height:0 !important;
   display:flex !important;
   flex-direction:column !important;
 }
 
-.d2dv-progress-row{flex-shrink:0 !important;margin-bottom:8px !important}
+:is(body.fullscreen-embedded, body.presentation-mode) .d2dv-progress-row{flex-shrink:0 !important;margin-bottom:8px !important}
 
-.d2dv-stage{
+:is(body.fullscreen-embedded, body.presentation-mode) .d2dv-stage{
   flex:1 !important;
   min-height:0 !important;
+  max-height:none !important;
 }
 
-/* Absolutely positioned so it never drives the stage's flow height.
-   Stage height comes purely from the flex layout above. */
-.d2dv-final-image{
+/* In fullscreen the image fills the stage absolutely; object-fit:contain
+   letter-boxes it so the stage bg (#fff) shows around portrait images. */
+:is(body.fullscreen-embedded, body.presentation-mode) .d2dv-final-image{
   position:absolute !important;
   inset:0 !important;
   width:100% !important;
   height:100% !important;
+  max-height:none !important;
   object-fit:contain !important;
 }
 
-.d2dv-status{flex-shrink:0 !important;margin:6px 0 0 !important}
+:is(body.fullscreen-embedded, body.presentation-mode) .d2dv-status{flex-shrink:0 !important;margin:6px 0 0 !important}
 
-.d2dv-toolbar{flex-shrink:0 !important;margin-top:8px !important}
+:is(body.fullscreen-embedded, body.presentation-mode) .d2dv-toolbar{flex-shrink:0 !important;margin-top:8px !important}
 
-.d2dv-completion-panel{
+:is(body.fullscreen-embedded, body.presentation-mode) .d2dv-completion-panel{
   flex-shrink:0 !important;
   margin-top:8px !important;
   padding:12px !important;
 }
-.d2dv-completion-icon{font-size:28px !important;margin-bottom:4px !important}
-.d2dv-completion-title{font-size:20px !important}
-.d2dv-completion-score{font-size:15px !important}
+:is(body.fullscreen-embedded, body.presentation-mode) .d2dv-completion-icon{font-size:28px !important;margin-bottom:4px !important}
+:is(body.fullscreen-embedded, body.presentation-mode) .d2dv-completion-title{font-size:20px !important}
+:is(body.fullscreen-embedded, body.presentation-mode) .d2dv-completion-score{font-size:15px !important}
