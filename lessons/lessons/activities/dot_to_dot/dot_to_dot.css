@@ -179,3 +179,86 @@ body{
 @media (max-width:680px){
   .d2dv-btn{width:100%}
 }
+
+/* ── Full-screen layout: 1 cm margin, all elements fit in one view ── */
+body{
+  height:100vh !important;
+  overflow:hidden !important;
+  padding:1cm !important;
+  display:flex !important;
+  flex-direction:column !important;
+  box-sizing:border-box !important;
+}
+
+.activity-wrapper{
+  max-width:100% !important;
+  flex:1 !important;
+  min-height:0 !important;
+  display:flex !important;
+  flex-direction:column !important;
+  margin:0 !important;
+}
+
+.top-row{flex-shrink:0 !important}
+
+.viewer-content{
+  flex:1 !important;
+  min-height:0 !important;
+  display:flex !important;
+  flex-direction:column !important;
+  overflow:hidden !important;
+  padding:10px 12px !important;
+  margin-top:4px !important;
+}
+
+.viewer-content > :is(div,section){max-width:100% !important}
+
+.d2dv-wrap{
+  max-width:100% !important;
+  flex:1 !important;
+  min-height:0 !important;
+  display:flex !important;
+  flex-direction:column !important;
+}
+
+.act-header{
+  max-width:100% !important;
+  flex-shrink:0 !important;
+  padding:8px 14px !important;
+  margin-bottom:8px !important;
+  border-radius:14px !important;
+}
+.act-header h2{font-size:clamp(16px,2.2vw,24px) !important;margin-bottom:2px !important}
+.act-header p{font-size:13px !important;line-height:1.4 !important}
+
+.d2dv-stage-card{
+  flex:1 !important;
+  min-height:0 !important;
+  display:flex !important;
+  flex-direction:column !important;
+}
+
+.d2dv-progress-row{flex-shrink:0 !important;margin-bottom:8px !important}
+
+.d2dv-stage{
+  flex:1 !important;
+  min-height:0 !important;
+}
+
+.d2dv-final-image{
+  height:100% !important;
+  object-fit:contain !important;
+}
+
+.d2dv-status{flex-shrink:0 !important;margin:6px 0 0 !important}
+
+.d2dv-toolbar{flex-shrink:0 !important;margin-top:8px !important}
+
+.d2dv-completion-panel{
+  flex-shrink:0 !important;
+  margin-top:8px !important;
+  padding:12px !important;
+}
+.d2dv-completion-icon{font-size:28px !important;margin-bottom:4px !important}
+.d2dv-completion-title{font-size:20px !important}
+.d2dv-completion-score{font-size:15px !important}
