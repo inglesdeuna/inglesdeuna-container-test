@@ -1,285 +1,249 @@
 @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@600;700;800&display=swap');
 
-.viewer-header{display:none !important}
+/* Hide the default viewer header — activity uses act-header instead */
+.viewer-header { display: none !important; }
 
-.d2dv-wrap{max-width:900px;margin:0 auto;font-family:'Nunito','Segoe UI',sans-serif}
-
-body{
-  background:
-    radial-gradient(circle at 88% 10%, rgba(219,234,254,.54), rgba(219,234,254,0) 35%),
-    linear-gradient(155deg,#ecfeff 0%, #eef2ff 46%, #fff7ed 100%);
+/* ── Page background ── */
+body {
+    background:
+        radial-gradient(circle at 88% 10%, rgba(219,234,254,.54), rgba(219,234,254,0) 35%),
+        linear-gradient(155deg, #ecfeff 0%, #eef2ff 46%, #fff7ed 100%);
 }
 
-.d2dv-hero{
-  background:linear-gradient(135deg,#ffffff 0%,#ecfeff 50%,#fef3c7 100%);
-  border:1px solid #bfdbfe;
-  border-radius:22px;
-  padding:18px 20px;
-  box-shadow:0 16px 32px rgba(15,23,42,.08);
-  margin-bottom:12px;
+/* ── Outer wrapper ── */
+.d2dv-wrap {
+    max-width: 900px;
+    margin: 0 auto;
+    font-family: 'Nunito', 'Segoe UI', sans-serif;
 }
 
-.d2dv-hero h2{
-  margin:0 0 8px;
-  font-family:'Fredoka','Trebuchet MS',sans-serif;
-  font-size:clamp(24px,3vw,32px);
-  color:#0f172a;
+/* ── Activity header override: match drag-drop sizing ── */
+.act-header {
+    max-width: 900px !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+    margin-bottom: 10px !important;
+    padding: 12px 18px !important;
+    border-radius: 16px !important;
+}
+.act-header h2 { font-size: clamp(18px, 2.6vw, 26px) !important; margin: 0 0 4px !important; }
+.act-header p  { font-size: 13px !important; }
+
+/* ── Main card ── */
+.d2dv-main {
+    max-width: 900px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
 }
 
-.d2dv-hero p{margin:0;color:#0f766e;font-weight:700;line-height:1.5}
-
-.d2dv-stage-card{
-  border:1px solid #c7d2fe;
-  border-radius:24px;
-  padding:14px;
-  background:#ffffff;
-  box-shadow:0 16px 34px rgba(15,23,42,.08);
+/* ── Progress row ── */
+.d2dv-progress-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    width: 100%;
+    margin-bottom: 10px;
 }
 
-.d2dv-progress-row{
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-  gap:10px;
-  flex-wrap:wrap;
-  margin-bottom:10px;
+.d2dv-chip {
+    border-radius: 999px;
+    background: #ecfeff;
+    border: 1px solid #67e8f9;
+    color: #0f766e;
+    padding: 8px 14px;
+    font-weight: 800;
+    font-size: clamp(13px, 1.6vw, 16px);
+    font-family: 'Fredoka', 'Trebuchet MS', sans-serif;
+    line-height: 1;
 }
 
-.d2dv-chip{
-  border-radius:999px;
-  background:#ecfeff;
-  border:1px solid #67e8f9;
-  color:#0f766e;
-  padding:8px 12px;
-  font-weight:800;
-  font-size:14px;
+.d2dv-chip-accent {
+    background: #eef2ff;
+    border-color: #c4b5fd;
+    color: #5b21b6;
 }
 
-.d2dv-chip-accent{
-  background:#eef2ff;
-  border-color:#c4b5fd;
-  color:#5b21b6;
+/* ── Canvas wrapper: centres the stage horizontally ── */
+.d2dv-canvas-wrap {
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    width: 100%;
+    margin-bottom: 8px;
+    line-height: 0;
 }
 
-/* ── Stage: sized by image in normal view, capped to avoid overflow ── */
-.d2dv-stage{
-  position:relative;
-  border-radius:20px;
-  overflow:hidden;
-  border:3px solid #0e7490;
-  background:#ffffff;
-  box-shadow:inset 0 0 0 2px rgba(255,255,255,.85),0 18px 30px rgba(8,47,73,.16);
-  /* Cap height so the stage never overflows the viewport (same as drag-drop) */
-  max-height:calc(100vh - 280px);
+/* ── Stage: inline-block so it shrinks to image size ── */
+.d2dv-stage {
+    position: relative;
+    display: inline-block;
+    max-width: 100%;
+    line-height: 0;
 }
 
-/* Image is in-flow so it gives the stage its height */
-.d2dv-final-image{
-  display:block;
-  width:100%;
-  height:auto;
-  max-height:calc(100vh - 280px);
-  opacity:0;
-  transform:scale(1.01);
-  transition:opacity .45s ease, transform .45s ease;
+/* ── Image: the element that drives all dimensions ── */
+.d2dv-img {
+    display: block;
+    max-width: 100%;
+    max-height: calc(100vh - 250px);
+    width: auto;
+    height: auto;
+    border-radius: 14px;
+    opacity: 0;
+    transform: scale(1.01);
+    transition: opacity .45s ease, transform .45s ease;
+    user-select: none;
+    pointer-events: none;
+    box-shadow: 0 10px 28px rgba(15, 23, 42, .13);
 }
 
-.d2dv-stage.revealed .d2dv-final-image{
-  opacity:1;
-  transform:scale(1);
+.d2dv-stage.revealed .d2dv-img {
+    opacity: 1;
+    transform: scale(1);
 }
 
-/* Canvas overlays the image exactly */
-#d2dvCanvas{
-  position:absolute;
-  inset:0;
-  width:100%;
-  height:100%;
-  display:block;
-  touch-action:none;
+/* ── Canvas: absolute overlay on top of the image ── */
+#d2dvCanvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    display: block;
+    border-radius: 14px;
+    touch-action: none;
 }
 
-.d2dv-stage.revealed #d2dvCanvas{
-  opacity:0;
-  transition:opacity .38s ease;
-  pointer-events:none;
+.d2dv-stage.revealed #d2dvCanvas {
+    opacity: 0;
+    transition: opacity .38s ease;
+    pointer-events: none;
 }
 
-.d2dv-toolbar{
-  display:flex;
-  gap:10px;
-  justify-content:center;
-  flex-wrap:wrap;
-  margin-top:12px;
+/* ── Status text ── */
+.d2dv-status {
+    text-align: center;
+    font-weight: 800;
+    font-size: 15px;
+    color: #334155;
+    min-height: 22px;
+    margin: 4px 0;
+    line-height: 1.4;
 }
 
-.d2dv-btn{
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  border:none;
-  border-radius:999px;
-  padding:11px 18px;
-  min-width:142px;
-  font-weight:800;
-  font-family:'Nunito','Segoe UI',sans-serif;
-  font-size:14px;
-  line-height:1;
-  cursor:pointer;
-  box-shadow:0 10px 22px rgba(15,23,42,.12);
-  transition:transform .15s ease, filter .15s ease;
+/* ── Toolbar ── */
+.d2dv-toolbar {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin: 6px 0 4px;
 }
 
-.d2dv-btn:hover{transform:translateY(-1px);filter:brightness(1.04)}
+.d2dv-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    border-radius: 999px;
+    padding: 9px 18px;
+    min-width: 130px;
+    font-weight: 800;
+    font-family: 'Nunito', 'Segoe UI', sans-serif;
+    font-size: 13px;
+    line-height: 1;
+    cursor: pointer;
+    box-shadow: 0 8px 18px rgba(15, 23, 42, .12);
+    transition: transform .15s ease, filter .15s ease;
+}
+.d2dv-btn:hover { transform: translateY(-1px); filter: brightness(1.05); }
 
-.d2dv-btn-soft{background:linear-gradient(180deg,#0ea5e9,#0369a1);color:#fff}
-.d2dv-btn-accent{background:linear-gradient(180deg,#8b5cf6,#6d28d9);color:#fff}
-.d2dv-btn-next{background:linear-gradient(180deg,#22c55e,#15803d);color:#fff}
+.d2dv-btn-soft   { background: linear-gradient(180deg, #0ea5e9, #0369a1); color: #fff; }
+.d2dv-btn-accent { background: linear-gradient(180deg, #8b5cf6, #6d28d9); color: #fff; }
+.d2dv-btn-next   { background: linear-gradient(180deg, #22c55e, #15803d); color: #fff; }
 
-.d2dv-status{
-  margin:10px 0 0;
-  text-align:center;
-  font-weight:800;
-  color:#334155;
+/* ── Empty state ── */
+.d2dv-empty {
+    max-width: 900px;
+    margin: 0 auto;
+    text-align: center;
+    padding: 24px;
+    border: 1px dashed #93c5fd;
+    border-radius: 16px;
+    background: #f8fafc;
+    color: #334155;
+    font-weight: 800;
 }
 
-.d2dv-empty{
-  max-width:900px;
-  margin:0 auto;
-  text-align:center;
-  padding:24px;
-  border:1px dashed #93c5fd;
-  border-radius:16px;
-  background:#f8fafc;
-  color:#334155;
-  font-weight:800;
+/* ── Completion panel ── */
+.d2dv-completion-panel {
+    width: 100%;
+    margin-top: 12px;
+    padding: 16px;
+    border-radius: 18px;
+    background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%);
+    border: 1px solid #86efac;
+    text-align: center;
+    box-sizing: border-box;
+}
+.d2dv-completion-icon  { font-size: 38px; margin-bottom: 6px; }
+.d2dv-completion-title {
+    margin: 0 0 4px;
+    font-family: 'Fredoka', 'Trebuchet MS', sans-serif;
+    font-size: 24px;
+    font-weight: 700;
+    color: #15803d;
+}
+.d2dv-completion-score {
+    margin: 0;
+    font-size: 17px;
+    font-weight: 800;
+    color: #166534;
 }
 
-.d2dv-completion-panel{
-  margin-top:16px;
-  padding:20px 16px;
-  border-radius:18px;
-  background:linear-gradient(135deg,#f0fdf4 0%,#ecfdf5 100%);
-  border:1px solid #86efac;
-  text-align:center;
+/* ── Mobile ── */
+@media (max-width: 640px) {
+    .d2dv-img { max-height: calc(100vh - 220px); }
+    .d2dv-btn { width: 100%; max-width: 280px; }
+    .d2dv-toolbar { flex-direction: column; align-items: center; }
+    .d2dv-chip { padding: 7px 12px; font-size: 14px; }
 }
 
-.d2dv-completion-icon{font-size:42px;margin-bottom:8px}
+/* ────────────────────────────────────────────────────────────
+   Fullscreen / presentation — same pattern as drag-drop kids.
+   The activity-wrapper gets 1 cm margins; the image is capped
+   with a vh-based max-height so it never overflows.
+   No flex chain needed: the image drives the layout.
+   ──────────────────────────────────────────────────────────── */
 
-.d2dv-completion-title{
-  margin:0 0 6px;
-  font-family:'Fredoka','Trebuchet MS',sans-serif;
-  font-size:26px;
-  font-weight:700;
-  color:#15803d;
+body.presentation-mode .activity-wrapper,
+body.fullscreen-embedded .activity-wrapper {
+    padding: 10mm !important;
+    box-sizing: border-box !important;
 }
 
-.d2dv-completion-score{
-  margin:0;
-  font-size:18px;
-  font-weight:800;
-  color:#166534;
+body.presentation-mode .viewer-content,
+body.fullscreen-embedded .viewer-content {
+    border-radius: 14px !important;
+    overflow: hidden !important;
 }
 
-/* Title header: smaller, centred with stage (matches drag-drop) */
-.act-header{
-  max-width:900px !important;
-  margin-left:auto !important;
-  margin-right:auto !important;
-  margin-bottom:10px !important;
-  padding:12px 18px !important;
-  border-radius:16px !important;
-}
-.act-header h2{font-size:clamp(18px,2.6vw,26px) !important;margin:0 0 4px !important}
-.act-header p{font-size:13px !important}
-
-@media (max-width:680px){
-  .d2dv-btn{width:100%}
-  .d2dv-stage{max-height:calc(100vh - 260px)}
-  .d2dv-final-image{max-height:calc(100vh - 260px)}
+body.presentation-mode .act-header,
+body.fullscreen-embedded .act-header {
+    padding: 8px 14px !important;
+    margin-bottom: 6px !important;
 }
 
-/* ── Fullscreen-embedded / presentation mode ────────────────────────
-   The template adds body.fullscreen-embedded via postMessage (fs-enter).
-   Only apply flex-fill layout when that class (or presentation-mode) is present,
-   mirroring the drag-drop approach. */
-:is(body.fullscreen-embedded, body.presentation-mode) .activity-wrapper{
-  max-width:100% !important;
-  flex:1 !important;
-  min-height:0 !important;
-  display:flex !important;
-  flex-direction:column !important;
-  margin:0 !important;
+body.presentation-mode .act-header h2,
+body.fullscreen-embedded .act-header h2 {
+    font-size: clamp(16px, 2vw, 22px) !important;
 }
 
-:is(body.fullscreen-embedded, body.presentation-mode) .top-row{flex-shrink:0 !important}
-
-:is(body.fullscreen-embedded, body.presentation-mode) .viewer-content{
-  flex:1 !important;
-  min-height:0 !important;
-  display:flex !important;
-  flex-direction:column !important;
-  overflow:hidden !important;
-  padding:10px 12px !important;
-  margin-top:4px !important;
+body.presentation-mode .d2dv-img,
+body.fullscreen-embedded .d2dv-img {
+    /* 100vh minus 2×1cm margins minus header + chips + status + toolbar */
+    max-height: calc(100vh - 20mm - 190px) !important;
 }
-
-:is(body.fullscreen-embedded, body.presentation-mode) .viewer-content > :is(div,section){max-width:100% !important}
-
-:is(body.fullscreen-embedded, body.presentation-mode) .d2dv-wrap{
-  max-width:100% !important;
-  flex:1 !important;
-  min-height:0 !important;
-  display:flex !important;
-  flex-direction:column !important;
-}
-
-:is(body.fullscreen-embedded, body.presentation-mode) .act-header{
-  max-width:100% !important;
-  flex-shrink:0 !important;
-  padding:8px 14px !important;
-  margin-bottom:8px !important;
-  border-radius:14px !important;
-}
-:is(body.fullscreen-embedded, body.presentation-mode) .act-header h2{font-size:clamp(16px,2.2vw,24px) !important;margin-bottom:2px !important}
-:is(body.fullscreen-embedded, body.presentation-mode) .act-header p{font-size:13px !important;line-height:1.4 !important}
-
-:is(body.fullscreen-embedded, body.presentation-mode) .d2dv-stage-card{
-  flex:1 !important;
-  min-height:0 !important;
-  display:flex !important;
-  flex-direction:column !important;
-  padding:8px !important;
-}
-
-:is(body.fullscreen-embedded, body.presentation-mode) .d2dv-progress-row{flex-shrink:0 !important;margin-bottom:8px !important}
-
-:is(body.fullscreen-embedded, body.presentation-mode) .d2dv-stage{
-  flex:1 !important;
-  min-height:0 !important;
-  max-height:none !important;
-}
-
-/* In fullscreen the image fills the stage absolutely; object-fit:contain
-   letter-boxes it so the stage bg (#fff) shows around portrait images. */
-:is(body.fullscreen-embedded, body.presentation-mode) .d2dv-final-image{
-  position:absolute !important;
-  inset:0 !important;
-  width:100% !important;
-  height:100% !important;
-  max-height:none !important;
-  object-fit:contain !important;
-}
-
-:is(body.fullscreen-embedded, body.presentation-mode) .d2dv-status{flex-shrink:0 !important;margin:6px 0 0 !important}
-
-:is(body.fullscreen-embedded, body.presentation-mode) .d2dv-toolbar{flex-shrink:0 !important;margin-top:8px !important}
-
-:is(body.fullscreen-embedded, body.presentation-mode) .d2dv-completion-panel{
-  flex-shrink:0 !important;
-  margin-top:8px !important;
-  padding:12px !important;
-}
-:is(body.fullscreen-embedded, body.presentation-mode) .d2dv-completion-icon{font-size:28px !important;margin-bottom:4px !important}
-:is(body.fullscreen-embedded, body.presentation-mode) .d2dv-completion-title{font-size:20px !important}
-:is(body.fullscreen-embedded, body.presentation-mode) .d2dv-completion-score{font-size:15px !important}
