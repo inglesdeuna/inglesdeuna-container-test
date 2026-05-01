@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../../config/db.php';
 
-const FLIPBOOK_MAX_PDF_BYTES = 100 * 1024 * 1024;
+const FLIPBOOK_MAX_PDF_BYTES = 30 * 1024 * 1024;
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -99,7 +99,7 @@ try {
             }
 
             if ($fileSize > FLIPBOOK_MAX_PDF_BYTES) {
-                respond_error('El archivo PDF excede el límite permitido de 100 MB.');
+                respond_error('El archivo PDF excede el límite permitido de 30 MB.');
             }
 
             $extension = strtolower(pathinfo($originalName, PATHINFO_EXTENSION));
