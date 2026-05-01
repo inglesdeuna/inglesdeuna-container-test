@@ -183,6 +183,62 @@ ob_start();
   justify-content:center;
 }
 
+/* ── Embedded mode: fill iframe, no scroll ── */
+body.embedded-mode .lo-stage{
+  max-width:100%;
+  height:100%;
+  min-height:0;
+  margin:0;
+  justify-content:flex-start;
+}
+body.embedded-mode .lo-intro{
+  display:none;
+}
+body.embedded-mode #sentenceBox{
+  flex-shrink:0;
+  margin:0 0 6px;
+  padding:8px 12px;
+  background:linear-gradient(180deg,#fdfcff,#f4f1ff);
+  border:1px solid #d7e6fb;
+  border-radius:14px;
+  text-align:center;
+}
+body.embedded-mode #words{
+  flex-shrink:0;
+  margin:0 0 6px;
+}
+body.embedded-mode #answer.drop-zone{
+  flex:1;
+  min-height:60px;
+  padding:10px 14px;
+  margin:0;
+}
+body.embedded-mode .lo-controls{
+  flex-shrink:0;
+  padding:6px 0 4px;
+}
+body.embedded-mode .lo-btn{
+  min-width:110px;
+  padding:9px 14px;
+  font-size:13px;
+}
+body.embedded-mode #feedback{
+  font-size:16px;
+  min-height:20px;
+  margin:4px 0 2px;
+}
+body.embedded-mode #lo-status{
+  font-size:12px;
+  margin-bottom:4px;
+}
+body.embedded-mode .word img{
+  height:70px;
+}
+body.embedded-mode .lo-completed-screen{
+  flex:1;
+  overflow:auto;
+}
+
 .lo-intro{
   margin-bottom:18px;
   padding:24px 26px;

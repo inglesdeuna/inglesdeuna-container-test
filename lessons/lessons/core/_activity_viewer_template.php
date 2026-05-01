@@ -598,10 +598,56 @@ function render_activity_viewer($title, $icon, $content)
             padding: 10px 14px;
             margin: 0;
         }
+
+        /* ─────────────────────────────────────────────── */
+        /* EMBEDDED MODE – compact, height-constrained, no scroll */
+        /* ─────────────────────────────────────────────── */
+        body.embedded-mode {
+            padding: 0;
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            background: #fff;
+        }
+
+        body.embedded-mode .activity-wrapper {
+            max-width: 100%;
+            flex: 1;
+            min-height: 0;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            margin: 0;
+        }
+
+        body.embedded-mode .top-row,
+        body.embedded-mode .viewer-header {
+            display: none !important;
+        }
+
+        body.embedded-mode .viewer-content {
+            flex: 1;
+            min-height: 0;
+            overflow: hidden;
+            display: flex !important;
+            flex-direction: column !important;
+            border-radius: 0;
+            padding: 10px 12px;
+            margin-top: 0;
+            background: #fff;
+            box-shadow: none;
+            border: none;
+            backdrop-filter: none;
+        }
+
+        body.embedded-mode .viewer-content > :is(div, section) {
+            max-width: 100%;
+        }
     </style>
 </head>
 
-<body<?= $isPresentationMode ? ' class="presentation-mode"' : '' ?>>
+<body<?= $isPresentationMode ? ' class="presentation-mode"' : ($embedded ? ' class="embedded-mode"' : '') ?>>
 
 <div class="activity-wrapper">
 

@@ -742,12 +742,14 @@ $completedHref = 'student_course.php?assignment=' . urlencode($assignmentId) . '
     --radius:18px;
 }
 *{box-sizing:border-box;margin:0;padding:0}
-body{margin:0;font-family:'Nunito','Segoe UI',sans-serif;background:linear-gradient(145deg,#fff8e6 0%,#fdeaff 55%,#f0e0ff 100%);color:var(--text)}
+html,body{height:100%}
+body{margin:0;font-family:'Nunito','Segoe UI',sans-serif;background:linear-gradient(145deg,#fff8e6 0%,#fdeaff 55%,#f0e0ff 100%);color:var(--text);display:flex;flex-direction:column;overflow:hidden}
 
 .topbar{
     background:linear-gradient(180deg,#f14902,#d33d00);
     color:#fff;
-    padding:12px 24px;
+    padding:10px 24px;
+    flex-shrink:0;
 }
 .topbar-inner{
     max-width:1280px;
@@ -776,19 +778,21 @@ body{margin:0;font-family:'Nunito','Segoe UI',sans-serif;background:linear-gradi
 .top-btn:hover{filter:brightness(1.07);transform:translateY(-1px)}
 .topbar-title{font-size:28px;font-weight:700;text-align:center;font-family:'Fredoka','Trebuchet MS',sans-serif;letter-spacing:.01em}
 
-.page{max-width:1280px;margin:0 auto;padding:12px 16px 20px}
-.content{display:flex;flex-direction:column;gap:14px;min-width:0}
+.page{max-width:1280px;margin:0 auto;padding:1cm;width:100%;flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden}
+.content{display:flex;flex-direction:column;gap:10px;min-width:0;flex:1;min-height:0;overflow:hidden}
 
 .viewer-shell{
     background:var(--card);border:1px solid var(--line);
-    border-radius:22px;box-shadow:var(--shadow);padding:18px;
+    border-radius:22px;box-shadow:var(--shadow);padding:14px;
     display:flex;
     flex-direction:column;
     min-height:0;
+    flex:1;
+    overflow:hidden;
 }
 .viewer-top{
     display:flex;align-items:center;justify-content:space-between;
-    gap:14px;margin-bottom:14px;flex-wrap:wrap;
+    gap:10px;margin-bottom:10px;flex-wrap:wrap;flex-shrink:0;
 }
 .section-title{
     display:flex;align-items:center;gap:12px;
@@ -806,11 +810,11 @@ body{margin:0;font-family:'Nunito','Segoe UI',sans-serif;background:linear-gradi
 .frame-wrap{
     border-radius:14px;overflow:hidden;background:#fff;
     border:1px solid var(--line);box-shadow:var(--shadow-sm);
-    min-height:300px;
+    min-height:0;
     flex:1 1 auto;
     position:relative;
 }
-.frame-wrap iframe{display:block;width:100%;height:clamp(260px, calc(100vh - 390px), 640px);min-height:260px;border:0;background:#fff}
+.frame-wrap iframe{display:block;width:100%;height:100%;border:0;background:#fff}
 
 /* ── Fullscreen button ── */
 .fs-btn{
@@ -862,10 +866,9 @@ body{margin:0;font-family:'Nunito','Segoe UI',sans-serif;background:linear-gradi
 
 .controls{
     display:flex;align-items:center;justify-content:space-between;
-    gap:12px;padding-top:12px;padding-bottom:4px;
-    position:sticky;
-    bottom:0;
-    background:linear-gradient(180deg, rgba(255,255,255,0) 0%, var(--card) 14%, var(--card) 100%);
+    gap:12px;padding-top:10px;padding-bottom:2px;
+    flex-shrink:0;
+    background:var(--card);
     z-index:3;
 }
 .step-counter{font-size:13px;font-weight:700;color:var(--muted);text-align:center}
@@ -1053,8 +1056,8 @@ body{margin:0;font-family:'Nunito','Segoe UI',sans-serif;background:linear-gradi
 @media(max-width:768px){
     .topbar-inner{grid-template-columns:1fr;text-align:center}
     .top-actions{justify-content:center;flex-wrap:wrap}
-    .page{padding:8px}
-    .frame-wrap iframe{height:calc(100vh - 320px);min-height:260px}
+    .page{padding:0.5cm}
+    .frame-wrap iframe{height:100%}
     .controls{flex-wrap:wrap}
     .ctrl-btn,.empty-btn{flex:1 1 100%;min-width:0}
     .step-counter{width:100%;order:-1}
