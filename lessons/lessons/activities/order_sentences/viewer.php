@@ -489,6 +489,18 @@ body.presentation-mode .os-media video {
     border-radius: 10px;
 }
 
+body.embedded-mode .os-vdz-layout,
+body.fullscreen-embedded .os-vdz-layout,
+body.presentation-mode .os-vdz-layout {
+    flex-shrink: 0 !important;
+}
+
+body.embedded-mode .os-vdz-layout .vtc-video-box video,
+body.fullscreen-embedded .os-vdz-layout .vtc-video-box video,
+body.presentation-mode .os-vdz-layout .vtc-video-box video {
+    max-height: 30vh !important;
+}
+
 body.embedded-mode #os-activity-area,
 body.fullscreen-embedded #os-activity-area,
 body.presentation-mode #os-activity-area {
@@ -537,11 +549,7 @@ body.presentation-mode #os-feedback {
 <div class="os-stage">
     <?= render_activity_header($viewerTitle, (string)($activity['instructions'] ?? '')) ?>
 
-    <?php if (($activity['media_type'] ?? '') === 'video' && !empty($activity['media_url'])): ?>
-    <div class="os-media">
-        <video controls src="<?= htmlspecialchars($activity['media_url'], ENT_QUOTES, 'UTF-8') ?>"></video>
-    </div>
-    <?php elseif (($activity['media_type'] ?? '') === 'audio' && !empty($activity['media_url'])): ?>
+    <?php if (($activity['media_type'] ?? '') === 'audio' && !empty($activity['media_url'])): ?>
     <div class="os-media">
         <audio controls src="<?= htmlspecialchars($activity['media_url'], ENT_QUOTES, 'UTF-8') ?>"></audio>
     </div>
@@ -553,14 +561,32 @@ body.presentation-mode #os-feedback {
 
     <div id="os-activity-area">
 
-        <!-- Answer zone: student builds sequence here -->
+        <?php if (($activity['media_type'] ?? '') === 'video' && !empty($activity['media_url'])): ?>
+        <!-- Video (left 60%) + Drop zone (right 40%) — same grid as video_comprehension -->
+        <div class="vtc-layout os-vdz-layout">
+            <div class="vtc-video-col">
+                <div class="vtc-video-box">
+                    <video controls src="<?= htmlspecialchars($activity['media_url'], ENT_QUOTES, 'UTF-8') ?>"></video>
+                </div>
+            </div>
+            <div class="vtc-content-col">
+                <div id="os-answer" class="os-answer-zone">
+                    <div id="os-answer-placeholder" class="os-answer-placeholder">
+                        Drag the pictures here in the correct order
+                    </div>
+                </div>
+            </div>
+        </div>
+        <?php else: ?>
+        <!-- Non-video: answer zone full width -->
         <div id="os-answer" class="os-answer-zone">
             <div id="os-answer-placeholder" class="os-answer-placeholder">
                 Drag the pictures here in the correct order
             </div>
         </div>
+        <?php endif; ?>
 
-        <!-- Bank: shuffled chips -->
+        <!-- Bank: chips centered below both columns -->
         <div id="os-bank" class="os-bank-zone">
             <?php foreach ($shuffled as $s):
                 $disp = $s['display'] ?? 'both';
