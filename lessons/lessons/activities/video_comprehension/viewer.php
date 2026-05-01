@@ -184,6 +184,60 @@ ob_start();
 .completed-button{display:inline-block;padding:12px 24px;border:none;border-radius:999px;background:linear-gradient(180deg,#3b82f6,#1d4ed8);color:#fff;font-weight:700;font-size:16px;cursor:pointer;box-shadow:0 10px 24px rgba(0,0,0,.14);transition:transform .18s ease,filter .18s ease}
 .completed-button:hover{transform:scale(1.05);filter:brightness(1.07)}
 @media (max-width:860px){.vc-intro{padding:20px 18px}.vc-intro h2{font-size:26px}.vc-question{font-size:18px}}
+
+/* ── Embedded mode: video fills the full iframe ── */
+body.embedded-mode .vc-viewer,
+body.fullscreen-embedded .vc-viewer,
+body.presentation-mode .vc-viewer {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+body.embedded-mode .act-header,
+body.fullscreen-embedded .act-header,
+body.presentation-mode .act-header {
+    display: none !important;
+}
+
+body.embedded-mode .vc-video-only,
+body.fullscreen-embedded .vc-video-only,
+body.presentation-mode .vc-video-only {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    border-radius: 0;
+    border: none;
+    box-shadow: none;
+}
+
+body.embedded-mode .vc-video-wrap,
+body.fullscreen-embedded .vc-video-wrap,
+body.presentation-mode .vc-video-wrap {
+    flex: 1;
+    min-height: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+body.embedded-mode .vc-video,
+body.fullscreen-embedded .vc-video,
+body.presentation-mode .vc-video {
+    flex: 1;
+    width: 100%;
+    height: 100%;
+    aspect-ratio: unset;
+    border-radius: 0;
+}
+
+body.embedded-mode .vc-video-copy,
+body.fullscreen-embedded .vc-video-copy,
+body.presentation-mode .vc-video-copy {
+    display: none;
+}
 </style>
 
 <?= render_activity_header($viewerTitle, $instructions) ?>
