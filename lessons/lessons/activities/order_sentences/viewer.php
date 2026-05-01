@@ -528,7 +528,13 @@ body.presentation-mode #os-feedback {
 <div class="os-stage">
     <?= render_activity_header($viewerTitle, (string)($activity['instructions'] ?? '')) ?>
 
-    <?php if (($activity['media_type'] ?? '') === 'audio' && !empty($activity['media_url'])): ?>
+    <?php if (($activity['media_type'] ?? '') === 'video' && !empty($activity['media_url'])): ?>
+    <div class="os-media">
+        <div class="vtc-video-box">
+            <video controls src="<?= htmlspecialchars($activity['media_url'], ENT_QUOTES, 'UTF-8') ?>"></video>
+        </div>
+    </div>
+    <?php elseif (($activity['media_type'] ?? '') === 'audio' && !empty($activity['media_url'])): ?>
     <div class="os-media">
         <audio controls src="<?= htmlspecialchars($activity['media_url'], ENT_QUOTES, 'UTF-8') ?>"></audio>
     </div>
@@ -540,30 +546,12 @@ body.presentation-mode #os-feedback {
 
     <div id="os-activity-area">
 
-        <?php if (($activity['media_type'] ?? '') === 'video' && !empty($activity['media_url'])): ?>
-        <!-- Video (left 60%) + Drop zone (right 40%) — same grid as video_comprehension -->
-        <div class="vtc-layout os-vdz-layout">
-            <div class="vtc-video-col">
-                <div class="vtc-video-box">
-                    <video controls src="<?= htmlspecialchars($activity['media_url'], ENT_QUOTES, 'UTF-8') ?>"></video>
-                </div>
-            </div>
-            <div class="vtc-content-col">
-                <div id="os-answer" class="os-answer-zone">
-                    <div id="os-answer-placeholder" class="os-answer-placeholder">
-                        Drag the pictures here in the correct order
-                    </div>
-                </div>
-            </div>
-        </div>
-        <?php else: ?>
-        <!-- Non-video: answer zone full width -->
+        <!-- Answer zone: grows with chip count -->
         <div id="os-answer" class="os-answer-zone">
             <div id="os-answer-placeholder" class="os-answer-placeholder">
                 Drag the pictures here in the correct order
             </div>
         </div>
-        <?php endif; ?>
 
         <!-- Bank: chips centered below both columns -->
         <div id="os-bank" class="os-bank-zone">
