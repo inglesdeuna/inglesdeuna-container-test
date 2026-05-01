@@ -137,24 +137,26 @@ ob_start();
 
 /* ── Media ── */
 .os-media {
-    margin-bottom: 20px;
-    text-align: center;
+    margin-bottom: 16px;
 }
-.os-media video,
 .os-media audio {
     width: 100%;
     border-radius: 14px;
 }
+/* Video: full-width enlarged container matching video_comprehension box style */
+.os-media .vtc-video-box video {
+    aspect-ratio: 16 / 9;
+}
 
-/* ── Answer zone (where students build their sequence) ── */
+/* ── Answer zone: height is responsive to chip count, not fixed ── */
 .os-answer-zone {
     display: flex;
     flex-wrap: wrap;
     gap: 14px;
     align-items: center;
     justify-content: center;
-    min-height: 160px;
-    padding: 16px;
+    min-height: 80px;
+    padding: 14px 16px;
     margin-bottom: 16px;
     border-radius: 20px;
     border: 2px dashed rgba(124, 58, 237, .28);
@@ -186,24 +188,6 @@ ob_start();
     min-height: 40px;
 }
 
-/* ── Video + Drop zone two-column layout ── */
-.os-vdz-layout {
-    align-items: stretch !important;
-    margin-bottom: 16px;
-}
-.os-vdz-layout .vtc-content-col {
-    display: flex;
-    flex-direction: column;
-    max-height: none;
-    overflow: visible;
-}
-.os-vdz-layout .vtc-video-box video {
-    aspect-ratio: 16 / 9;
-}
-.os-vdz-layout .os-answer-zone {
-    flex: 1;
-    margin-bottom: 0;
-}
 
 /* ── Chip: the draggable sentence unit ── */
 .os-chip {
@@ -480,25 +464,20 @@ body.presentation-mode .os-chip img {
     border-radius: 10px !important;
 }
 
-body.embedded-mode .os-media video,
-body.fullscreen-embedded .os-media video,
-body.presentation-mode .os-media video {
+body.embedded-mode .os-media .vtc-video-box,
+body.fullscreen-embedded .os-media .vtc-video-box,
+body.presentation-mode .os-media .vtc-video-box {
+    border-radius: 10px !important;
+    box-shadow: none !important;
+}
+
+body.embedded-mode .os-media .vtc-video-box video,
+body.fullscreen-embedded .os-media .vtc-video-box video,
+body.presentation-mode .os-media .vtc-video-box video {
     max-height: 22vh !important;
     width: auto !important;
     max-width: 100% !important;
-    border-radius: 10px;
-}
-
-body.embedded-mode .os-vdz-layout,
-body.fullscreen-embedded .os-vdz-layout,
-body.presentation-mode .os-vdz-layout {
-    flex-shrink: 0 !important;
-}
-
-body.embedded-mode .os-vdz-layout .vtc-video-box video,
-body.fullscreen-embedded .os-vdz-layout .vtc-video-box video,
-body.presentation-mode .os-vdz-layout .vtc-video-box video {
-    max-height: 30vh !important;
+    border-radius: 10px !important;
 }
 
 body.embedded-mode #os-activity-area,
