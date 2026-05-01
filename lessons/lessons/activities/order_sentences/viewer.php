@@ -106,21 +106,381 @@ do {
 ob_start();
 ?>
 <style>
-/* ═══════════════════════════════════════════════════════
-   ORDER THE SENTENCES — STRICT VERTICAL GRID SYSTEM
-   No component grows in height under any condition.
-   All responsive behaviour is horizontal only.
-   ═══════════════════════════════════════════════════════ */
+/* ══════════════════════════════════════════════════════════════
+   ORDER THE SENTENCES — FULL-VIEWPORT STRICT GRID LAYOUT
+   Card: calc(100vw - 48px) × calc(100vh - 96px)
+   No vertical growth anywhere. Overflow = horizontal only.
+   ══════════════════════════════════════════════════════════════ */
 
-/* ── Stage: rigid flex column, uniform gap ── */
-.os-stage {
-    max-width: 860px;
-    margin: 0 auto;
+/* ── 1. Erase all template visual constraints ── */
+body {
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #080914 !important;
+    min-height: 100vh;
+    overflow-x: hidden;
+}
+.activity-wrapper {
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    min-height: 100vh;
+    display: flex !important;
+    flex-direction: column !important;
+    background: transparent !important;
+}
+.top-row { display: none !important; }
+.viewer-content {
+    flex: 1 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+}
+
+/* ── 2. Page: full-viewport 3-row grid ── */
+.os-page {
+    flex: 1;
+    width: 100vw;
+    min-height: 100vh;
+    background: #080914;
+    display: grid;
+    grid-template-rows: 40px 1fr 48px;
     font-family: 'Nunito', 'Segoe UI', sans-serif;
+}
+
+.os-page-hd {
+    display: flex;
+    align-items: center;
+    padding: 0 24px;
+    gap: 16px;
+}
+.os-back-btn {
+    background: rgba(255,255,255,.1);
+    border: 1px solid rgba(255,255,255,.15);
+    color: rgba(255,255,255,.75);
+    font-size: 12px;
+    font-weight: 700;
+    font-family: 'Nunito', 'Segoe UI', sans-serif;
+    border-radius: 6px;
+    padding: 5px 12px;
+    cursor: pointer;
+    transition: background .15s ease;
+}
+.os-back-btn:hover { background: rgba(255,255,255,.18); }
+body.presentation-mode .os-back-btn,
+body.embedded-mode .os-back-btn { display: none; }
+
+.os-page-ft {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 24px;
+}
+/* Presentation mode: style the template's "siguiente" button */
+body.presentation-mode .viewer-content > div[style] {
+    background: transparent !important;
+    border-top: 1px solid rgba(255,255,255,.08) !important;
+}
+
+/* ── 3. Activity card ── */
+.os-card {
+    width: calc(100vw - 48px);
+    height: calc(100vh - 96px);
+    margin: 0 auto;
+    background: #ffffff;
+    border-radius: 10px;
+    box-sizing: border-box;
+    padding: 24px 32px;
+    position: relative;
+    overflow: hidden;
+    align-self: center;
+}
+
+/* ── 4. Inner 8-row grid ── */
+.os-inner {
+    display: grid;
+    grid-template-rows: auto 32px auto 20px auto 32px auto 1fr;
+    justify-items: center;
+    align-content: start;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+}
+
+/* Header row */
+.os-inner .act-header {
+    width: min(1040px, 100%);
+    max-width: 100%;
+    margin: 0;
+    padding: 12px 20px;
+    border-radius: 12px;
+    justify-self: center;
+}
+.os-inner .act-header h2 { font-size: clamp(16px, 2vw, 24px); margin-bottom: 3px; }
+.os-inner .act-header p  { font-size: 13px; }
+
+/* Explicit gap rows */
+.os-gap-lg { height: 32px; width: 100%; }
+.os-gap-sm { height: 20px; width: 100%; }
+
+/* ── 5. Video wrapper: 560px × 16:9, centered ── */
+.os-video-wrapper {
+    width: min(560px, 48vw);
+    aspect-ratio: 16 / 9;
+    height: auto;
+    border-radius: 8px;
+    overflow: hidden;
+    background: #000;
+    box-shadow: 0 8px 24px rgba(0,0,0,.20);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.os-video-wrapper video,
+.os-video-wrapper iframe {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px;
+    display: block;
+}
+.os-video-wrapper--empty  { background: transparent; box-shadow: none; }
+.os-audio-wrap            { background: transparent; box-shadow: none; }
+.os-audio-wrap audio      { width: 100%; border-radius: 8px; }
+.os-tts-wrap              { background: transparent; box-shadow: none; }
+
+/* ── 6. Drop zone: 1040px × 112px fixed, horizontal scroll ── */
+.os-dropzone {
+    width: min(1040px, 78vw);
+    height: 112px;
+    max-height: 112px;
+    min-height: 112px;
+    box-sizing: border-box;
+    border: 2px dashed #c7b7ff;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 10px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 12px 16px;
+    background: rgba(245,243,255,.35);
+    transition: border-color .18s ease, background .18s ease;
+    scrollbar-width: thin;
+    scrollbar-color: #c7b7ff #f5f3ff;
+}
+.os-dropzone::-webkit-scrollbar       { height: 4px; }
+.os-dropzone::-webkit-scrollbar-track { background: #f5f3ff; border-radius: 2px; }
+.os-dropzone::-webkit-scrollbar-thumb { background: #c7b7ff; border-radius: 2px; }
+.os-dropzone.drag-over {
+    border-color: rgba(124,58,237,.7);
+    background: rgba(237,233,254,.5);
+}
+.os-dropzone__placeholder {
+    flex-shrink: 0;
+    width: 100%;
+    text-align: center;
+    color: rgba(124,58,237,.4);
+    font-size: 13px;
+    font-weight: 600;
+    pointer-events: none;
+}
+
+/* ── 7. Chips row: 1040px wide, centered, horizontal scroll ── */
+.os-chips-row {
+    width: min(1040px, 78vw);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: thin;
+    scrollbar-color: #c7b7ff #f5f3ff;
+}
+.os-chips-row::-webkit-scrollbar       { height: 4px; }
+.os-chips-row::-webkit-scrollbar-track { background: #f5f3ff; border-radius: 2px; }
+.os-chips-row::-webkit-scrollbar-thumb { background: #c7b7ff; border-radius: 2px; }
+
+/* ── 8. Chip: 64 × 64, fixed, no shrink ── */
+.os-chip {
+    flex: 0 0 64px;
+    width: 64px;
+    height: 64px;
+    border-radius: 8px;
+    display: grid;
+    place-items: center;
+    cursor: grab;
+    user-select: none;
+    background: transparent;
+    border: none;
+    padding: 0;
+    transition: transform .18s cubic-bezier(.34,1.4,.64,1), opacity .15s ease;
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+}
+.os-chip:hover       { transform: translateY(-3px) scale(1.07); }
+.os-chip.os-dragging { opacity: .35; transform: scale(1.06); cursor: grabbing; }
+
+.os-chip img {
+    width: 64px;
+    height: 64px;
+    border-radius: 8px;
+    object-fit: contain;
+    display: block;
+    box-shadow: 0 4px 14px rgba(0,0,0,.14), 0 1px 4px rgba(0,0,0,.08);
+    transition: box-shadow .18s ease;
+    pointer-events: none;
+}
+.os-chip:hover img { box-shadow: 0 8px 22px rgba(0,0,0,.18), 0 3px 8px rgba(0,0,0,.10); }
+
+.os-chip-text {
+    display: inline-flex;
+    align-items: center;
+    padding: 5px 10px;
+    background: linear-gradient(180deg, #fff 0%, #f5f3ff 100%);
+    border: 1px solid #ddd6fe;
+    border-radius: 999px;
+    font-family: 'Nunito', 'Segoe UI', sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+    color: #4c1d95;
+    box-shadow: 0 3px 10px rgba(124,58,237,.12);
+    pointer-events: none;
+    white-space: nowrap;
+    max-width: 110px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.os-chip:hover .os-chip-text { box-shadow: 0 5px 16px rgba(124,58,237,.18); }
+
+/* Feedback rings */
+.os-chip.correct-pos img          { box-shadow: 0 0 0 3px #16a34a, 0 4px 14px rgba(22,163,74,.22); }
+.os-chip.wrong-pos img            { box-shadow: 0 0 0 3px #dc2626, 0 4px 14px rgba(220,38,38,.18); }
+.os-chip.correct-pos .os-chip-text { border-color: #16a34a; box-shadow: 0 0 0 2px #16a34a; }
+.os-chip.wrong-pos .os-chip-text   { border-color: #dc2626; box-shadow: 0 0 0 2px #dc2626; }
+.os-chip.os-selected img           { box-shadow: 0 0 0 3px #7c3aed, 0 6px 18px rgba(124,58,237,.28); }
+.os-chip.os-selected .os-chip-text { border-color: #7c3aed; box-shadow: 0 0 0 2px #7c3aed; }
+
+/* ── 9. Card bottom: controls + feedback (row 8, 1fr) ── */
+.os-card-bottom {
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 8px;
+    padding-top: 14px;
+    width: 100%;
 }
+.os-buttons-row {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+/* ── 10. Buttons ── */
+.os-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 8px;
+    color: #fff;
+    font-weight: 800;
+    font-family: 'Nunito', 'Segoe UI', sans-serif;
+    font-size: 14px;
+    min-width: 136px;
+    line-height: 1;
+    cursor: pointer;
+    box-shadow: 0 8px 20px rgba(15,23,42,.12);
+    transition: transform .15s ease, filter .15s ease;
+}
+.os-btn:hover    { filter: brightness(1.06); transform: translateY(-1px); }
+.os-btn:disabled { opacity: .45; cursor: default; transform: none; filter: none; }
+.os-btn-check { background: linear-gradient(180deg, #8b5cf6 0%, #7c3aed 100%); }
+.os-btn-tts   { background: linear-gradient(180deg, #38bdf8 0%, #0ea5e9 100%); }
+.os-btn-show  { background: linear-gradient(180deg, #d8b4fe 0%, #a855f7 100%); }
+.os-btn-next  { background: linear-gradient(180deg, #2dd4bf 0%, #0f766e 100%); }
+
+/* ── 11. Feedback ── */
+#os-feedback {
+    font-size: 15px;
+    font-weight: 800;
+    text-align: center;
+    margin: 0;
+    min-height: 20px;
+}
+#os-feedback.good { color: #16a34a; }
+#os-feedback.bad  { color: #dc2626; }
+
+/* ── 12. Completed: absolute overlay fills the card ── */
+.os-completed-screen {
+    display: none;
+    position: absolute;
+    inset: 0;
+    background: #fff;
+    border-radius: 10px;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 40px 24px;
+    z-index: 10;
+}
+.os-completed-screen.active { display: flex; }
+.os-completed-icon  { font-size: 68px; margin-bottom: 14px; }
+.os-completed-title {
+    font-family: 'Fredoka', 'Trebuchet MS', sans-serif;
+    font-size: 32px;
+    font-weight: 700;
+    color: #4c1d95;
+    margin: 0 0 10px;
+    line-height: 1.2;
+}
+.os-completed-text { font-size: 15px; color: #5b516f; line-height: 1.6; margin: 0 0 8px; }
+.os-score-text     { font-weight: 800; font-size: 18px; color: #4c1d95; margin: 0 0 22px; }
+.os-restart-btn {
+    display: inline-block;
+    padding: 11px 26px;
+    border: none;
+    border-radius: 8px;
+    background: linear-gradient(180deg, #8b5cf6 0%, #7c3aed 100%);
+    color: #fff;
+    font-weight: 700;
+    font-size: 15px;
+    cursor: pointer;
+    box-shadow: 0 10px 24px rgba(0,0,0,.14);
+    transition: transform .18s ease, filter .18s ease;
+}
+.os-restart-btn:hover { transform: scale(1.05); filter: brightness(1.07); }
+
+/* ── 13. Responsive: horizontal adaptation only ── */
+@media (max-width: 900px) {
+    .os-card { padding: 16px 20px; border-radius: 8px; }
+    .os-video-wrapper { width: min(400px, 88vw); }
+    .os-dropzone, .os-chips-row { width: 88vw; }
+    .os-inner .act-header { padding: 10px 14px; }
+}
+@media (max-width: 600px) {
+    .os-page { grid-template-rows: 36px 1fr 40px; }
+    .os-card { width: calc(100vw - 24px); height: calc(100vh - 80px); padding: 12px 14px; }
+    .os-video-wrapper { width: 90vw; }
+    .os-dropzone, .os-chips-row { width: 90vw; }
+    .os-buttons-row { gap: 8px; }
+    .os-btn { min-width: 100px; padding: 9px 12px; font-size: 13px; }
+    .os-inner { grid-template-rows: auto 16px auto 12px auto 16px auto 1fr; }
+}
+</style>
 
 /* Header: zero bottom margin — gap owns all spacing */
 .os-stage .act-header {
@@ -489,69 +849,99 @@ body.presentation-mode #os-feedback {
 }
 </style>
 
-<div class="os-stage">
-    <?= render_activity_header($viewerTitle, (string)($activity['instructions'] ?? '')) ?>
+<div class="os-page">
 
-    <?php if (($activity['media_type'] ?? '') === 'video' && !empty($activity['media_url'])): ?>
-    <div class="os-media">
-        <div class="vtc-video-box">
-            <video controls src="<?= htmlspecialchars($activity['media_url'], ENT_QUOTES, 'UTF-8') ?>"></video>
-        </div>
-    </div>
-    <?php elseif (($activity['media_type'] ?? '') === 'audio' && !empty($activity['media_url'])): ?>
-    <div class="os-media">
-        <audio controls src="<?= htmlspecialchars($activity['media_url'], ENT_QUOTES, 'UTF-8') ?>"></audio>
-    </div>
-    <?php elseif (($activity['media_type'] ?? '') === 'tts'): ?>
-    <div class="os-media">
-        <button type="button" id="os-tts-btn" class="os-btn os-btn-tts">Listen</button>
-    </div>
-    <?php endif; ?>
+    <!-- Row 1 · 40px: page header strip -->
+    <header class="os-page-hd">
+        <button class="os-back-btn" onclick="history.back()">← Back</button>
+    </header>
 
-    <div id="os-activity-area">
+    <!-- Row 2 · 1fr: white activity card -->
+    <main class="os-card">
 
-        <!-- Answer zone: grows with chip count -->
-        <div id="os-answer" class="os-answer-zone">
-            <div id="os-answer-placeholder" class="os-answer-placeholder">
-                Drag the pictures here in the correct order
+        <!-- Inner 8-row grid (visible during activity) -->
+        <div id="os-activity-area" class="os-inner">
+
+            <!-- Row 1 · auto: title + instructions -->
+            <?= render_activity_header($viewerTitle, (string)($activity['instructions'] ?? '')) ?>
+
+            <!-- Row 2 · 32px -->
+            <div class="os-gap-lg"></div>
+
+            <!-- Row 3 · auto: media -->
+            <?php if (($activity['media_type'] ?? '') === 'video' && !empty($activity['media_url'])): ?>
+            <div class="os-video-wrapper">
+                <video controls src="<?= htmlspecialchars($activity['media_url'], ENT_QUOTES, 'UTF-8') ?>"></video>
             </div>
-        </div>
-
-        <!-- Bank: chips centered below both columns -->
-        <div id="os-bank" class="os-bank-zone">
-            <?php foreach ($shuffled as $s):
-                $disp = $s['display'] ?? 'both';
-            ?>
-            <div class="os-chip"
-                 data-id="<?= htmlspecialchars($s['id'], ENT_QUOTES, 'UTF-8') ?>">
-                <?php if ($disp !== 'text' && !empty($s['image'])): ?>
-                    <img src="<?= htmlspecialchars($s['image'], ENT_QUOTES, 'UTF-8') ?>" alt="">
-                <?php endif; ?>
-                <?php if ($disp !== 'image' && !empty($s['text'])): ?>
-                    <span class="os-chip-text"><?= htmlspecialchars($s['text'], ENT_QUOTES, 'UTF-8') ?></span>
-                <?php endif; ?>
+            <?php elseif (($activity['media_type'] ?? '') === 'audio' && !empty($activity['media_url'])): ?>
+            <div class="os-video-wrapper os-audio-wrap">
+                <audio controls src="<?= htmlspecialchars($activity['media_url'], ENT_QUOTES, 'UTF-8') ?>"></audio>
             </div>
-            <?php endforeach; ?>
+            <?php elseif (($activity['media_type'] ?? '') === 'tts'): ?>
+            <div class="os-video-wrapper os-tts-wrap">
+                <button type="button" id="os-tts-btn" class="os-btn os-btn-tts">🔊 Listen</button>
+            </div>
+            <?php else: ?>
+            <div class="os-video-wrapper os-video-wrapper--empty"></div>
+            <?php endif; ?>
+
+            <!-- Row 4 · 20px -->
+            <div class="os-gap-sm"></div>
+
+            <!-- Row 5 · auto: drop zone (112px fixed) -->
+            <div id="os-answer" class="os-dropzone">
+                <div id="os-answer-placeholder" class="os-dropzone__placeholder">
+                    Drag the pictures here in the correct order
+                </div>
+            </div>
+
+            <!-- Row 6 · 32px -->
+            <div class="os-gap-lg"></div>
+
+            <!-- Row 7 · auto: chip bank -->
+            <div id="os-bank" class="os-chips-row">
+                <?php foreach ($shuffled as $s):
+                    $disp = $s['display'] ?? 'both';
+                ?>
+                <div class="os-chip"
+                     data-id="<?= htmlspecialchars($s['id'], ENT_QUOTES, 'UTF-8') ?>">
+                    <?php if ($disp !== 'text' && !empty($s['image'])): ?>
+                        <img src="<?= htmlspecialchars($s['image'], ENT_QUOTES, 'UTF-8') ?>" alt="">
+                    <?php endif; ?>
+                    <?php if ($disp !== 'image' && !empty($s['text'])): ?>
+                        <span class="os-chip-text"><?= htmlspecialchars($s['text'], ENT_QUOTES, 'UTF-8') ?></span>
+                    <?php endif; ?>
+                </div>
+                <?php endforeach; ?>
+            </div>
+
+            <!-- Row 8 · 1fr: controls + feedback (space falls here) -->
+            <div class="os-card-bottom">
+                <div class="os-buttons-row">
+                    <button type="button" id="os-check"    class="os-btn os-btn-check" disabled>✔ Check Order</button>
+                    <button type="button" id="os-show-ans" class="os-btn os-btn-show">👁 Show Answer</button>
+                    <button type="button" id="os-next"     class="os-btn os-btn-next">Next ▶</button>
+                </div>
+                <p id="os-feedback"></p>
+            </div>
+
+        </div><!-- #os-activity-area -->
+
+        <!-- Completed overlay: position:absolute over the card -->
+        <div id="os-completed" class="os-completed-screen">
+            <div class="os-completed-icon">✅</div>
+            <h2 class="os-completed-title"><?= htmlspecialchars($viewerTitle, ENT_QUOTES, 'UTF-8') ?></h2>
+            <p class="os-completed-text">You've completed this activity. Great job!</p>
+            <p class="os-score-text" id="os-score-text"></p>
+            <button type="button" class="os-restart-btn" onclick="osRestart()">↺ Try Again</button>
         </div>
 
-        <div class="os-controls">
-            <button type="button" id="os-check"    class="os-btn os-btn-check" disabled>✔ Check Order</button>
-            <button type="button" id="os-show-ans" class="os-btn os-btn-show">👁 Show Answer</button>
-            <button type="button" id="os-next"     class="os-btn os-btn-next">Next ▶</button>
-        </div>
-        <p id="os-feedback"></p>
+    </main><!-- .os-card -->
 
-    </div>
+    <!-- Row 3 · 48px: page footer strip -->
+    <footer class="os-page-ft"></footer>
 
-    <!-- Completed screen -->
-    <div id="os-completed" class="os-completed-screen">
-        <div class="os-completed-icon">✅</div>
-        <h2 class="os-completed-title"><?= htmlspecialchars($viewerTitle, ENT_QUOTES, 'UTF-8') ?></h2>
-        <p class="os-completed-text">You've completed this activity. Great job!</p>
-        <p class="os-score-text" id="os-score-text"></p>
-        <button type="button" class="os-restart-btn" onclick="osRestart()">↺ Try Again</button>
-    </div>
-</div>
+</div><!-- .os-page -->
 
 <audio id="os-win-sound"  src="../../hangman/assets/win.mp3"      preload="auto"></audio>
 <audio id="os-lose-sound" src="../../hangman/assets/lose.mp3"     preload="auto"></audio>
