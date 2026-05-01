@@ -185,38 +185,39 @@ ob_start();
 .completed-button:hover{transform:scale(1.05);filter:brightness(1.07)}
 @media (max-width:860px){.vc-intro{padding:20px 18px}.vc-intro h2{font-size:26px}.vc-question{font-size:18px}}
 
-/* ── Embedded / fullscreen / presentation: video fills iframe like YouTube ── */
+/* ── Embedded / fullscreen / presentation ── */
 
-/* 1. Remove viewer-content padding so video reaches the edges */
+/* 1 cm margins in fullscreen — same as drag-drop kids */
+body.fullscreen-embedded .activity-wrapper,
+body.presentation-mode .activity-wrapper {
+    padding: 10mm !important;
+    box-sizing: border-box !important;
+}
+
+/* viewer-content: compact padding, white, rounded */
 body.embedded-mode .viewer-content,
 body.fullscreen-embedded .viewer-content,
 body.presentation-mode .viewer-content {
-    padding: 0 !important;
+    padding: 6px 8px !important;
     background: #fff !important;
+    border-radius: 14px !important;
+    overflow: hidden !important;
 }
 
-/* 2. vc-viewer fills the entire viewer-content via absolute positioning */
-body.embedded-mode .viewer-content,
-body.fullscreen-embedded .viewer-content,
-body.presentation-mode .viewer-content {
-    position: relative !important;
-}
-
+/* vc-viewer: fill via flex chain — no position:absolute */
 body.embedded-mode .vc-viewer,
 body.fullscreen-embedded .vc-viewer,
 body.presentation-mode .vc-viewer {
-    position: absolute !important;
-    inset: 0 !important;
-    width: 100% !important;
-    height: 100% !important;
+    flex: 1 !important;
+    min-height: 0 !important;
     display: flex !important;
     flex-direction: column !important;
-    background: #fff !important;
-    margin: 0 !important;
     max-width: none !important;
+    margin: 0 !important;
+    background: #fff !important;
 }
 
-/* 3. Hide title header and "Watch And Focus" copy */
+/* Hide header, intro, and "Watch And Focus" copy */
 body.embedded-mode .act-header,
 body.fullscreen-embedded .act-header,
 body.presentation-mode .act-header,
@@ -229,37 +230,70 @@ body.presentation-mode .vc-video-copy {
     display: none !important;
 }
 
-/* 4. video-only container fills remaining space */
+/* Quiz two-column grid: fill vc-viewer height; keep columns at natural height
+   so the video preserves its 16:9 aspect-ratio (align-items:start, not stretch) */
+body.embedded-mode .vtc-layout,
+body.fullscreen-embedded .vtc-layout,
+body.presentation-mode .vtc-layout {
+    flex: 1 !important;
+    min-height: 0 !important;
+    align-items: start !important;
+    gap: 0 !important;
+    overflow: hidden !important;
+}
+
+/* Left video panel: flush edges */
+body.embedded-mode .vtc-video-col.vc-panel,
+body.fullscreen-embedded .vtc-video-col.vc-panel,
+body.presentation-mode .vtc-video-col.vc-panel {
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    border: none !important;
+    border-right: 1px solid #e2e8f0 !important;
+}
+
+/* Right questions panel: scrollable, flush */
+body.embedded-mode .vtc-content-col.vc-panel,
+body.fullscreen-embedded .vtc-content-col.vc-panel,
+body.presentation-mode .vtc-content-col.vc-panel {
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    border: none !important;
+    max-height: 100vh !important;
+    overflow-y: auto !important;
+}
+
+/* ── Video-only mode ── */
 body.embedded-mode .vc-video-only,
 body.fullscreen-embedded .vc-video-only,
 body.presentation-mode .vc-video-only {
     flex: 1 !important;
-    width: 100% !important;
+    min-height: 0 !important;
     display: flex !important;
     flex-direction: column !important;
     border: none !important;
     border-radius: 0 !important;
     box-shadow: none !important;
-    background: #fff !important;
+    background: #000 !important;
     overflow: hidden !important;
 }
 
-/* 5. video wrapper fills video-only container */
-body.embedded-mode .vc-video-wrap,
-body.fullscreen-embedded .vc-video-wrap,
-body.presentation-mode .vc-video-wrap {
+/* Video-only: wrap fills the section */
+body.embedded-mode .vc-video-only .vc-video-wrap,
+body.fullscreen-embedded .vc-video-only .vc-video-wrap,
+body.presentation-mode .vc-video-only .vc-video-wrap {
     flex: 1 !important;
-    width: 100% !important;
+    min-height: 0 !important;
     padding: 0 !important;
-    background: #fff !important;
+    background: #000 !important;
     display: flex !important;
     flex-direction: column !important;
 }
 
-/* 6. the YouTube iframe fills the wrapper */
-body.embedded-mode .vc-video,
-body.fullscreen-embedded .vc-video,
-body.presentation-mode .vc-video {
+/* Video-only: iframe fills the wrap; drop 16:9 so flex fills space */
+body.embedded-mode .vc-video-only .vc-video,
+body.fullscreen-embedded .vc-video-only .vc-video,
+body.presentation-mode .vc-video-only .vc-video {
     flex: 1 !important;
     width: 100% !important;
     height: 100% !important;
