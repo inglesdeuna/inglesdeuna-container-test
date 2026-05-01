@@ -106,91 +106,120 @@ do {
 ob_start();
 ?>
 <style>
+/* ═══════════════════════════════════════════════════════
+   ORDER THE SENTENCES — STRICT VERTICAL GRID SYSTEM
+   No component grows in height under any condition.
+   All responsive behaviour is horizontal only.
+   ═══════════════════════════════════════════════════════ */
+
+/* ── Stage: rigid flex column, uniform gap ── */
 .os-stage {
-    max-width: 1100px;
+    max-width: 860px;
     margin: 0 auto;
     font-family: 'Nunito', 'Segoe UI', sans-serif;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
 }
 
-/* ── Header ── */
-.os-intro {
-    margin-bottom: 20px;
-    padding: 20px 24px;
-    border-radius: 20px;
-    border: 1px solid #d9cff6;
-    background: linear-gradient(135deg, #eef4ff 0%, #f8ebff 48%, #e8fff7 100%);
-    box-shadow: 0 16px 34px rgba(15, 23, 42, .09);
-}
-.os-intro h2 {
-    margin: 0 0 6px;
-    font-family: 'Fredoka', 'Trebuchet MS', sans-serif;
-    font-size: 26px;
-    line-height: 1.1;
-    color: #4c1d95;
-}
-.os-intro p {
-    margin: 0;
-    color: #5b516f;
-    font-size: 15px;
-    line-height: 1.5;
+/* Header: zero bottom margin — gap owns all spacing */
+.os-stage .act-header {
+    flex-shrink: 0;
+    margin-bottom: 0;
 }
 
-/* ── Media ── */
-.os-media {
-    margin-bottom: 16px;
-}
+/* ── Media container ── */
+.os-media { flex-shrink: 0; }
+
 .os-media audio {
+    display: block;
     width: 100%;
     border-radius: 14px;
 }
-/* Video: full-width enlarged container matching video_comprehension box style */
+
+/* Video: height is capped at 34 vh via max-width math.
+   max-width = 34vh × (16/9) → height never exceeds 34 vh
+   while the video always fills its natural 16:9 ratio. */
+.os-media .vtc-video-box {
+    width: min(100%, calc(34vh * 16 / 9));
+    margin: 0 auto;
+    border-radius: 14px;
+    overflow: hidden;
+    background: #000;
+    box-shadow: 0 10px 28px rgba(15, 23, 42, .22);
+}
 .os-media .vtc-video-box video {
+    display: block;
+    width: 100%;
     aspect-ratio: 16 / 9;
 }
 
-/* ── Answer zone: height is responsive to chip count, not fixed ── */
-.os-answer-zone {
+/* ── Activity area: flex column, no growth ── */
+#os-activity-area {
     display: flex;
-    flex-wrap: wrap;
-    gap: 14px;
+    flex-direction: column;
+    gap: 10px;
+    flex-shrink: 0;
+}
+
+/* ── Drop zone: FIXED 154 px — no vertical growth ever ── */
+.os-answer-zone {
+    flex-shrink: 0;
+    display: flex;
+    flex-wrap: nowrap;          /* horizontal only */
+    gap: 10px;
     align-items: center;
-    justify-content: center;
-    min-height: 40px;
-    padding: 7px 16px;
-    margin-bottom: 16px;
-    border-radius: 20px;
+    justify-content: flex-start;
+    height: 154px;              /* 130 px chip + 24 px breathing */
+    padding: 10px 14px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    border-radius: 16px;
     border: 2px dashed rgba(124, 58, 237, .28);
     background: rgba(245, 243, 255, .35);
     transition: border-color .18s ease, background .18s ease;
+    scrollbar-width: thin;
+    scrollbar-color: #c4b5fd #f5f3ff;
 }
+.os-answer-zone::-webkit-scrollbar       { height: 4px; }
+.os-answer-zone::-webkit-scrollbar-track { background: #f5f3ff; border-radius: 2px; }
+.os-answer-zone::-webkit-scrollbar-thumb { background: #c4b5fd; border-radius: 2px; }
 .os-answer-zone.drag-over {
     border-color: rgba(124, 58, 237, .55);
     background: rgba(237, 233, 254, .40);
 }
 .os-answer-placeholder {
+    flex-shrink: 0;
+    width: 100%;
     color: rgba(124, 58, 237, .38);
     font-size: 14px;
     font-weight: 600;
     text-align: center;
     pointer-events: none;
-    width: 100%;
-    padding: 10px 0;
 }
 
-/* ── Bank (shuffled chips to drag from) ── */
+/* ── Bank: FIXED 154 px — horizontal scroll, no growth ── */
 .os-bank-zone {
+    flex-shrink: 0;
     display: flex;
-    flex-wrap: wrap;
-    gap: 14px;
-    justify-content: center;
+    flex-wrap: nowrap;
+    gap: 10px;
     align-items: center;
-    padding: 8px 0 20px;
-    min-height: 40px;
+    justify-content: flex-start;
+    height: 154px;
+    padding: 10px 14px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: thin;
+    scrollbar-color: #c4b5fd #f5f3ff;
 }
+.os-bank-zone::-webkit-scrollbar       { height: 4px; }
+.os-bank-zone::-webkit-scrollbar-track { background: #f5f3ff; border-radius: 2px; }
+.os-bank-zone::-webkit-scrollbar-thumb { background: #c4b5fd; border-radius: 2px; }
 
-
-/* ── Chip: the draggable sentence unit ── */
+/* ── Chip ── */
 .os-chip {
+    flex-shrink: 0;
     cursor: grab;
     user-select: none;
     display: inline-flex;
@@ -205,37 +234,23 @@ ob_start();
     -webkit-backface-visibility: hidden;
     backface-visibility: hidden;
 }
-.os-chip:hover {
-    transform: translateY(-4px) scale(1.04);
-}
-.os-chip.os-dragging {
-    opacity: 0.35;
-    transform: scale(1.06);
-    cursor: grabbing;
-}
+.os-chip:hover          { transform: translateY(-4px) scale(1.04); }
+.os-chip.os-dragging    { opacity: 0.35; transform: scale(1.06); cursor: grabbing; }
 
-/* Image chip: illustration is the full card */
 .os-chip img {
     width: 130px;
     height: 130px;
-    max-width: 100%;
-    max-height: 100%;
     border-radius: 16px;
     object-fit: contain;
     display: block;
-    box-shadow:
-        0 6px 20px rgba(0, 0, 0, .14),
-        0 2px 6px  rgba(0, 0, 0, .08);
-    transition: box-shadow .2s ease, transform .2s ease;
+    box-shadow: 0 6px 20px rgba(0,0,0,.14), 0 2px 6px rgba(0,0,0,.08);
+    transition: box-shadow .2s ease;
     pointer-events: none;
 }
 .os-chip:hover img {
-    box-shadow:
-        0 14px 30px rgba(0, 0, 0, .18),
-        0 4px 10px  rgba(0, 0, 0, .10);
+    box-shadow: 0 14px 30px rgba(0,0,0,.18), 0 4px 10px rgba(0,0,0,.10);
 }
 
-/* Text chip: pill style matching drag_drop word bank */
 .os-chip-text {
     display: inline-flex;
     align-items: center;
@@ -247,50 +262,28 @@ ob_start();
     font-size: 15px;
     font-weight: 700;
     color: #4c1d95;
-    box-shadow: 0 6px 16px rgba(124, 58, 237, .12);
+    box-shadow: 0 6px 16px rgba(124,58,237,.12);
     pointer-events: none;
     white-space: nowrap;
     transition: box-shadow .2s ease;
 }
-.os-chip:hover .os-chip-text {
-    box-shadow: 0 10px 24px rgba(124, 58, 237, .18);
-}
+.os-chip:hover .os-chip-text { box-shadow: 0 10px 24px rgba(124,58,237,.18); }
 
-/* Feedback states: ring on chip image / pill */
-.os-chip.correct-pos img {
-    box-shadow: 0 0 0 3px #16a34a,
-                0 6px 20px rgba(22, 163, 74, .22);
-}
-.os-chip.wrong-pos img {
-    box-shadow: 0 0 0 3px #dc2626,
-                0 6px 20px rgba(220, 38, 38, .18);
-}
-.os-chip.correct-pos .os-chip-text {
-    border-color: #16a34a;
-    box-shadow: 0 0 0 2px #16a34a;
-}
-.os-chip.wrong-pos .os-chip-text {
-    border-color: #dc2626;
-    box-shadow: 0 0 0 2px #dc2626;
-}
-
-/* Touch-tap selected state */
-.os-chip.os-selected img {
-    box-shadow: 0 0 0 3px #7c3aed,
-                0 8px 22px rgba(124, 58, 237, .28);
-}
-.os-chip.os-selected .os-chip-text {
-    border-color: #7c3aed;
-    box-shadow: 0 0 0 2px #7c3aed;
-}
+/* Feedback rings */
+.os-chip.correct-pos img         { box-shadow: 0 0 0 3px #16a34a, 0 6px 20px rgba(22,163,74,.22); }
+.os-chip.wrong-pos img           { box-shadow: 0 0 0 3px #dc2626, 0 6px 20px rgba(220,38,38,.18); }
+.os-chip.correct-pos .os-chip-text { border-color: #16a34a; box-shadow: 0 0 0 2px #16a34a; }
+.os-chip.wrong-pos .os-chip-text   { border-color: #dc2626; box-shadow: 0 0 0 2px #dc2626; }
+.os-chip.os-selected img           { box-shadow: 0 0 0 3px #7c3aed, 0 8px 22px rgba(124,58,237,.28); }
+.os-chip.os-selected .os-chip-text { border-color: #7c3aed; box-shadow: 0 0 0 2px #7c3aed; }
 
 /* ── Controls ── */
 .os-controls {
+    flex-shrink: 0;
     display: flex;
     flex-wrap: wrap;
     gap: 10px;
     justify-content: center;
-    margin-top: 4px;
 }
 .os-btn {
     display: inline-flex;
@@ -306,10 +299,10 @@ ob_start();
     min-width: 142px;
     line-height: 1;
     cursor: pointer;
-    box-shadow: 0 10px 22px rgba(15, 23, 42, .12);
+    box-shadow: 0 10px 22px rgba(15,23,42,.12);
     transition: transform .15s ease, filter .15s ease;
 }
-.os-btn:hover  { filter: brightness(1.04); transform: translateY(-1px); }
+.os-btn:hover    { filter: brightness(1.04); transform: translateY(-1px); }
 .os-btn:disabled { opacity: .5; cursor: default; transform: none; filter: none; }
 .os-btn-check { background: linear-gradient(180deg, #8b5cf6 0%, #7c3aed 100%); }
 .os-btn-tts   { background: linear-gradient(180deg, #38bdf8 0%, #0ea5e9 100%); }
@@ -318,11 +311,12 @@ ob_start();
 
 /* ── Feedback ── */
 #os-feedback {
-    font-size: 18px;
+    flex-shrink: 0;
+    font-size: 16px;
     font-weight: 800;
     text-align: center;
-    margin-top: 14px;
-    min-height: 26px;
+    margin: 0;
+    min-height: 22px;
 }
 #os-feedback.good { color: #16a34a; }
 #os-feedback.bad  { color: #dc2626; }
@@ -345,18 +339,8 @@ ob_start();
     margin: 0 0 12px;
     line-height: 1.2;
 }
-.os-completed-text {
-    font-size: 16px;
-    color: #5b516f;
-    line-height: 1.6;
-    margin: 0 0 12px;
-}
-.os-score-text {
-    font-weight: 800;
-    font-size: 20px;
-    color: #4c1d95;
-    margin: 0 0 28px;
-}
+.os-completed-text { font-size: 16px; color: #5b516f; line-height: 1.6; margin: 0 0 12px; }
+.os-score-text     { font-weight: 800; font-size: 20px; color: #4c1d95; margin: 0 0 28px; }
 .os-restart-btn {
     display: inline-block;
     padding: 12px 28px;
@@ -372,23 +356,24 @@ ob_start();
 }
 .os-restart-btn:hover { transform: scale(1.05); filter: brightness(1.07); }
 
-/* ── Responsive ── */
+/* ── Responsive: horizontal adaptation only ── */
 @media (max-width: 600px) {
-    .os-chip img         { width: 100px; height: 100px; border-radius: 12px; }
-    .os-answer-zone      { gap: 10px; padding: 12px; }
-    .os-bank-zone        { gap: 10px; }
-    .os-controls         { flex-direction: column; align-items: center; }
-    .os-btn              { width: 100%; max-width: 300px; }
+    .os-chip img { width: 100px; height: 100px; border-radius: 12px; }
+    .os-answer-zone, .os-bank-zone { height: 124px; padding: 10px; }
+    .os-controls { flex-direction: column; align-items: center; }
+    .os-btn { width: 100%; max-width: 300px; }
 }
 
-/* ── Fullscreen / presentation: 1 cm margins — same as drag-drop kids ── */
+/* ═══════════════════════════════════════════════════════
+   EMBEDDED / FULLSCREEN / PRESENTATION
+   Same fixed-height philosophy. No flex:1 on zones.
+   ═══════════════════════════════════════════════════════ */
 body.fullscreen-embedded .activity-wrapper,
 body.presentation-mode .activity-wrapper {
     padding: 10mm !important;
     box-sizing: border-box !important;
 }
 
-/* viewer-content: compact padding, rounded, no scroll */
 body.embedded-mode .viewer-content,
 body.fullscreen-embedded .viewer-content,
 body.presentation-mode .viewer-content {
@@ -397,33 +382,25 @@ body.presentation-mode .viewer-content {
     overflow: hidden !important;
 }
 
-/* os-stage: fill viewer-content via flex chain.
-   In fullscreen/presentation the activity-wrapper supplies the outer margin,
-   so os-stage needs no extra padding.
-   In plain embedded-mode a small inner padding keeps things tidy. */
 body.fullscreen-embedded .os-stage,
 body.presentation-mode .os-stage {
     max-width: 100% !important;
-    flex: 1;
-    min-height: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
+    flex: 1 !important;
+    min-height: 0 !important;
+    gap: 6px !important;
     padding: 0 !important;
-    box-sizing: border-box;
-    overflow: hidden;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
 }
 
 body.embedded-mode .os-stage {
     max-width: 100% !important;
-    flex: 1;
-    min-height: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
+    flex: 1 !important;
+    min-height: 0 !important;
+    gap: 6px !important;
     padding: 8px !important;
-    box-sizing: border-box;
-    overflow: hidden;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
 }
 
 body.embedded-mode .act-header,
@@ -434,28 +411,40 @@ body.presentation-mode .act-header {
     margin-bottom: 0 !important;
     border-radius: 12px !important;
 }
-
 body.embedded-mode .act-header h2,
 body.fullscreen-embedded .act-header h2,
-body.presentation-mode .act-header h2 {
-    font-size: 18px !important;
-    margin-bottom: 2px !important;
-}
-
+body.presentation-mode .act-header h2 { font-size: 18px !important; margin-bottom: 2px !important; }
 body.embedded-mode .act-header p,
 body.fullscreen-embedded .act-header p,
-body.presentation-mode .act-header p {
-    font-size: 13px !important;
-}
+body.presentation-mode .act-header p  { font-size: 13px !important; }
 
 body.embedded-mode .os-media,
 body.fullscreen-embedded .os-media,
-body.presentation-mode .os-media {
+body.presentation-mode .os-media { flex-shrink: 0 !important; }
+
+/* Video height cap in embedded: 22 vh */
+body.embedded-mode .os-media .vtc-video-box,
+body.fullscreen-embedded .os-media .vtc-video-box,
+body.presentation-mode .os-media .vtc-video-box {
+    width: min(100%, calc(22vh * 16 / 9)) !important;
+    border-radius: 10px !important;
+    box-shadow: none !important;
+}
+body.embedded-mode .os-media .vtc-video-box video,
+body.fullscreen-embedded .os-media .vtc-video-box video,
+body.presentation-mode .os-media .vtc-video-box video { border-radius: 10px !important; }
+
+body.embedded-mode #os-activity-area,
+body.fullscreen-embedded #os-activity-area,
+body.presentation-mode #os-activity-area {
+    flex: none !important;
     flex-shrink: 0 !important;
-    margin-bottom: 0 !important;
-    text-align: center;
+    gap: 6px !important;
+    overflow: visible !important;
+    min-height: 0 !important;
 }
 
+/* Chips 80 px in embedded */
 body.embedded-mode .os-chip img,
 body.fullscreen-embedded .os-chip img,
 body.presentation-mode .os-chip img {
@@ -464,64 +453,39 @@ body.presentation-mode .os-chip img {
     border-radius: 10px !important;
 }
 
-body.embedded-mode .os-media .vtc-video-box,
-body.fullscreen-embedded .os-media .vtc-video-box,
-body.presentation-mode .os-media .vtc-video-box {
-    border-radius: 10px !important;
-    box-shadow: none !important;
-}
-
-body.embedded-mode .os-media .vtc-video-box video,
-body.fullscreen-embedded .os-media .vtc-video-box video,
-body.presentation-mode .os-media .vtc-video-box video {
-    max-height: 22vh !important;
-    width: auto !important;
-    max-width: 100% !important;
-    border-radius: 10px !important;
-}
-
-body.embedded-mode #os-activity-area,
-body.fullscreen-embedded #os-activity-area,
-body.presentation-mode #os-activity-area {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    min-height: 0;
-    overflow: hidden;
-    gap: 6px;
-}
-
+/* Fixed zones sized for 80 px chips */
 body.embedded-mode .os-answer-zone,
 body.fullscreen-embedded .os-answer-zone,
 body.presentation-mode .os-answer-zone {
-    flex: 1 !important;
-    min-height: 60px !important;
+    height: 104px !important;
+    flex: none !important;
+    min-height: 0 !important;
     margin-bottom: 0 !important;
-    overflow-y: auto !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
 }
 
 body.embedded-mode .os-bank-zone,
 body.fullscreen-embedded .os-bank-zone,
 body.presentation-mode .os-bank-zone {
+    height: 104px !important;
     flex-shrink: 0 !important;
-    padding: 4px 0 !important;
-    min-height: 30px !important;
+    min-height: 0 !important;
+    padding: 10px !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
 }
 
 body.embedded-mode .os-controls,
 body.fullscreen-embedded .os-controls,
-body.presentation-mode .os-controls {
-    flex-shrink: 0 !important;
-    margin-top: 0 !important;
-}
+body.presentation-mode .os-controls { flex-shrink: 0 !important; }
 
 body.embedded-mode #os-feedback,
 body.fullscreen-embedded #os-feedback,
 body.presentation-mode #os-feedback {
     flex-shrink: 0 !important;
-    margin-top: 0 !important;
-    min-height: 16px !important;
-    font-size: 14px !important;
+    min-height: 14px !important;
+    font-size: 13px !important;
 }
 </style>
 
