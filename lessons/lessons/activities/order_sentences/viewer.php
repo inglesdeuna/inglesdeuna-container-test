@@ -110,20 +110,20 @@ ob_start();
 
 <style>
 /* ══════════════════════════════════════════
-   CSS VARIABLES
+   CSS VARIABLES — TEAL PALETTE
    ══════════════════════════════════════════ */
 :root {
-    --teal-50:  #E1F5EE;
-    --teal-100: #9FE1CB;
-    --teal-200: #5DCAA5;
-    --teal-400: #1D9E75;
-    --teal-600: #0F6E56;
-    --teal-800: #085041;
-    --teal-900: #04342C;
-    --purple:   #7F77DD;
-    --purple-d: #534AB7;
-    --red:      #dc2626;
-    --green:    #16a34a;
+    --teal-50:   #E1F5EE;
+    --teal-100:  #9FE1CB;
+    --teal-200:  #5DCAA5;
+    --teal-400:  #1D9E75;
+    --teal-600:  #0F6E56;
+    --teal-800:  #085041;
+    --teal-900:  #04342C;
+    --purple:    #7F77DD;
+    --purple-d:  #534AB7;
+    --red:       #dc2626;
+    --green:     #16a34a;
     --chip-size: 80px;
 }
 
@@ -131,216 +131,215 @@ ob_start();
    RESET TEMPLATE CHROME
    ══════════════════════════════════════════ */
 body {
-    margin: 0 !important;
-    padding: 0 !important;
-    background: var(--teal-900) !important;
+    margin:      0 !important;
+    padding:     0 !important;
+    background:  #f0faf6 !important;
     font-family: 'Nunito', 'Segoe UI', sans-serif !important;
-    overflow: hidden;
+    overflow:    hidden;
 }
 
 .activity-wrapper {
-    max-width: 100% !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    min-height: 100vh;
-    display: flex !important;
+    max-width:      100% !important;
+    margin:         0 !important;
+    padding:        0 !important;
+    min-height:     100vh;
+    display:        flex !important;
     flex-direction: column !important;
-    background: transparent !important;
+    background:     transparent !important;
 }
 
 .top-row { display: none !important; }
 
 .viewer-content {
-    flex: 1 !important;
-    display: flex !important;
+    flex:           1 !important;
+    display:        flex !important;
     flex-direction: column !important;
-    padding: 0 !important;
-    margin: 0 !important;
-    background: transparent !important;
-    border: none !important;
-    box-shadow: none !important;
-    border-radius: 0 !important;
+    padding:        0 !important;
+    margin:         0 !important;
+    background:     transparent !important;
+    border:         none !important;
+    box-shadow:     none !important;
+    border-radius:  0 !important;
 }
 
 /* ══════════════════════════════════════════
-   PAGE SHELL  — 3-row grid: bar | card | bar
+   PAGE SHELL
    ══════════════════════════════════════════ */
 .os-page {
-    display: flex;
+    display:        flex;
     flex-direction: column;
-    width: 100vw;
-    height: 100vh;
-    min-height: 0;
-    background: var(--teal-900);
+    width:          100vw;
+    height:         100vh;
+    min-height:     0;
+    background:     #f0faf6;
 }
 
-/* Top strip */
+/* ── Top bar ── */
 .os-topbar {
-    flex-shrink: 0;
-    height: 38px;
-    background: var(--teal-800);
-    border-bottom: 1px solid rgba(93,202,165,.2);
-    display: flex;
-    align-items: center;
-    padding: 0 16px;
-    gap: 12px;
+    flex-shrink:   0;
+    height:        38px;
+    background:    var(--teal-50);
+    border-bottom: 1px solid var(--teal-100);
+    display:       flex;
+    align-items:   center;
+    padding:       0 16px;
+    gap:           12px;
 }
 
 .os-back-btn {
-    background: rgba(255,255,255,.1);
-    border: 1px solid rgba(255,255,255,.15);
-    color: rgba(255,255,255,.8);
-    font-size: 12px;
-    font-weight: 800;
-    font-family: 'Nunito', sans-serif;
+    background:    rgba(15,110,86,.12);
+    border:        1px solid var(--teal-100);
+    color:         var(--teal-800);
+    font-size:     12px;
+    font-weight:   800;
+    font-family:   'Nunito', sans-serif;
     border-radius: 7px;
-    padding: 4px 12px;
-    cursor: pointer;
-    transition: background .15s;
+    padding:       4px 12px;
+    cursor:        pointer;
+    transition:    background .15s;
 }
-.os-back-btn:hover { background: rgba(255,255,255,.2); }
+.os-back-btn:hover { background: var(--teal-100); }
+
 body.presentation-mode .os-back-btn,
-body.embedded-mode   .os-back-btn { display: none; }
+body.embedded-mode     .os-back-btn { display: none; }
 
 .os-topbar-title {
-    font-family: 'Nunito', sans-serif;
-    font-size: 12px;
-    font-weight: 800;
-    color: var(--teal-100);
+    font-family:    'Nunito', sans-serif;
+    font-size:      12px;
+    font-weight:    800;
+    color:          var(--teal-600);
     letter-spacing: .1em;
     text-transform: uppercase;
-    margin: 0 auto;
+    margin:         0 auto;
 }
 
-/* Bottom strip */
+/* ── Bottom bar ── */
 .os-bottombar {
     flex-shrink: 0;
-    height: 40px;
-    background: var(--teal-800);
-    border-top: 1px solid rgba(93,202,165,.2);
+    height:      40px;
+    background:  var(--teal-50);
+    border-top:  1px solid var(--teal-100);
 }
 
 /* ══════════════════════════════════════════
    WHITE ACTIVITY CARD
    ══════════════════════════════════════════ */
 .os-card {
-    flex: 1;
-    margin: 8px 12px;
-    background: #fff;
-    border-radius: 14px;
-    display: flex;
+    flex:           1;
+    margin:         8px 12px;
+    background:     #fff;
+    border-radius:  14px;
+    border:         1px solid var(--teal-100);
+    display:        flex;
     flex-direction: column;
-    overflow: hidden;
-    min-height: 0;
-    position: relative;
+    overflow:       hidden;
+    min-height:     0;
+    position:       relative;
+    box-shadow:     0 2px 16px rgba(29,158,117,.08);
 }
 
 /* ── Card header ── */
 .os-card-header {
-    flex-shrink: 0;
-    background: var(--teal-50);
+    flex-shrink:   0;
+    background:    var(--teal-50);
     border-bottom: 1px solid var(--teal-100);
-    padding: 11px 20px 9px;
+    padding:       11px 20px 9px;
 }
 
 .os-card-header h2 {
     font-family: 'Fredoka', sans-serif;
-    font-size: clamp(15px, 2vw, 20px);
+    font-size:   clamp(15px, 2vw, 20px);
     font-weight: 600;
-    color: var(--teal-800);
-    margin: 0 0 2px;
+    color:       var(--teal-800);
+    margin:      0 0 2px;
     line-height: 1.2;
 }
 
 .os-card-header p {
-    font-size: 12px;
+    font-size:   12px;
     font-weight: 600;
-    color: var(--teal-600);
-    margin: 0;
+    color:       var(--teal-600);
+    margin:      0;
 }
 
-/* ── Video / Media area ── */
+/* ── Media area ── */
 .os-media-area {
-    flex-shrink: 0;
-    width: 100%;
-    background: #111;
-    position: relative;
-    display: flex;
-    align-items: center;
+    flex-shrink:     0;
+    width:           100%;
+    background:      #111;
+    display:         flex;
+    align-items:     center;
     justify-content: center;
-    overflow: hidden;
+    overflow:        hidden;
 }
 
-/* Video fills full width, 16:9 */
 .os-media-area video {
-    width: 100%;
+    width:      100%;
     max-height: 42vh;
     object-fit: contain;
-    display: block;
+    display:    block;
     background: #000;
 }
 
 .os-media-area audio {
-    width: 100%;
+    width:      100%;
     background: var(--teal-50);
 }
 
 .os-media-area iframe {
-    width: 100%;
-    height: 42vh;
-    border: none;
+    width:   100%;
+    height:  42vh;
+    border:  none;
     display: block;
 }
 
-/* TTS button styled inline in media area */
 .os-tts-area {
-    width: 100%;
-    background: var(--teal-50);
-    border-bottom: 1px solid var(--teal-100);
-    display: flex;
-    align-items: center;
+    flex-shrink:     0;
+    width:           100%;
+    background:      var(--teal-50);
+    border-bottom:   1px solid var(--teal-100);
+    display:         flex;
+    align-items:     center;
     justify-content: center;
-    padding: 12px;
-    flex-shrink: 0;
+    padding:         12px;
 }
 
-/* ── Game zone: flex-grow to fill remaining space ── */
+/* ── Game zone ── */
 .os-game-zone {
-    flex: 1;
-    display: flex;
+    flex:           1;
+    display:        flex;
     flex-direction: column;
-    padding: 10px 16px 8px;
-    gap: 8px;
-    overflow: hidden;
-    min-height: 0;
+    padding:        10px 16px 8px;
+    gap:            8px;
+    overflow:       hidden;
+    min-height:     0;
 }
 
-/* Zone labels */
 .os-zone-label {
-    font-size: 10px;
-    font-weight: 800;
-    color: var(--teal-600);
+    font-size:      10px;
+    font-weight:    800;
+    color:          var(--teal-600);
     letter-spacing: .1em;
     text-transform: uppercase;
-    font-family: 'Nunito', sans-serif;
-    margin-bottom: 4px;
-    flex-shrink: 0;
+    font-family:    'Nunito', sans-serif;
+    margin-bottom:  4px;
+    flex-shrink:    0;
 }
 
 /* ── Drop zone ── */
 .os-dropzone {
-    flex: 1;
-    min-height: 80px;
-    border: 2px dashed var(--teal-200);
+    flex:          1;
+    min-height:    80px;
+    border:        2px dashed var(--teal-200);
     border-radius: 12px;
-    background: var(--teal-50);
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 8px;
-    padding: 10px 12px;
-    transition: border-color .15s, background .15s;
-    overflow-y: auto;
+    background:    var(--teal-50);
+    display:       flex;
+    align-items:   center;
+    flex-wrap:     wrap;
+    gap:           8px;
+    padding:       10px 12px;
+    transition:    border-color .15s, background .15s;
+    overflow-y:    auto;
     scrollbar-width: thin;
     scrollbar-color: var(--teal-200) var(--teal-50);
 }
@@ -350,150 +349,145 @@ body.embedded-mode   .os-back-btn { display: none; }
 
 .os-dropzone.drag-over {
     border-color: var(--teal-400);
-    background: rgba(29,158,117,.08);
+    background:   rgba(29,158,117,.08);
 }
 
 .os-dz-hint {
-    width: 100%;
-    text-align: center;
-    font-size: 13px;
-    font-weight: 700;
-    color: var(--teal-100);
+    width:          100%;
+    text-align:     center;
+    font-size:      13px;
+    font-weight:    700;
+    color:          var(--teal-100);
     pointer-events: none;
-    font-family: 'Nunito', sans-serif;
+    font-family:    'Nunito', sans-serif;
 }
 
 /* ── Chip bank ── */
 .os-bank {
-    flex-shrink: 0;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
+    flex-shrink:     0;
+    display:         flex;
+    flex-wrap:       wrap;
+    gap:             8px;
     justify-content: center;
-    padding: 4px 0;
-    overflow-x: auto;
+    padding:         4px 0;
+    overflow-x:      auto;
     scrollbar-width: thin;
     scrollbar-color: var(--teal-200) transparent;
 }
 
 /* ── Chips ── */
 .os-chip {
-    width: var(--chip-size);
-    height: var(--chip-size);
-    border-radius: 10px;
-    background: #fff;
-    border: 2px solid var(--teal-100);
-    display: flex;
-    align-items: center;
+    width:           var(--chip-size);
+    height:          var(--chip-size);
+    border-radius:   10px;
+    background:      #fff;
+    border:          2px solid var(--teal-100);
+    display:         flex;
+    align-items:     center;
     justify-content: center;
-    cursor: grab;
-    user-select: none;
-    position: relative;
-    flex-shrink: 0;
-    transition: transform .15s cubic-bezier(.34,1.4,.64,1), border-color .15s, box-shadow .15s;
-    overflow: hidden;
+    cursor:          grab;
+    user-select:     none;
+    position:        relative;
+    flex-shrink:     0;
+    transition:      transform .15s cubic-bezier(.34,1.4,.64,1), border-color .15s, box-shadow .15s;
+    overflow:        hidden;
 }
 
 .os-chip:hover {
-    transform: translateY(-3px) scale(1.06);
+    transform:    translateY(-3px) scale(1.06);
     border-color: var(--teal-400);
-    box-shadow: 0 6px 18px rgba(29,158,117,.20);
+    box-shadow:   0 6px 18px rgba(29,158,117,.20);
 }
 
 .os-chip.os-dragging {
-    opacity: .35;
+    opacity:   .35;
     transform: scale(1.04);
-    cursor: grabbing;
+    cursor:    grabbing;
 }
 
 .os-chip.os-selected {
     border-color: var(--purple);
-    box-shadow: 0 0 0 3px rgba(127,119,221,.25);
+    box-shadow:   0 0 0 3px rgba(127,119,221,.25);
 }
 
 .os-chip img {
-    width: 100%;
-    height: 100%;
-    object-fit: contain;
+    width:          100%;
+    height:         100%;
+    object-fit:     contain;
     pointer-events: none;
-    display: block;
+    display:        block;
 }
 
 .os-chip-label {
     font-family: 'Nunito', sans-serif;
-    font-size: 11px;
+    font-size:   11px;
     font-weight: 800;
-    color: var(--teal-800);
-    text-align: center;
-    padding: 3px 4px;
+    color:       var(--teal-800);
+    text-align:  center;
+    padding:     3px 4px;
     line-height: 1.2;
-    word-break: break-word;
-    hyphens: auto;
+    word-break:  break-word;
+    hyphens:     auto;
 }
 
-/* Position badge */
 .os-chip-badge {
-    position: absolute;
-    top: 3px;
-    left: 3px;
-    width: 18px;
-    height: 18px;
-    background: var(--teal-800);
-    color: #fff;
-    border-radius: 50%;
-    font-size: 10px;
-    font-weight: 800;
-    font-family: 'Nunito', sans-serif;
-    display: none;
-    align-items: center;
+    position:        absolute;
+    top:             3px;
+    left:            3px;
+    width:           18px;
+    height:          18px;
+    background:      var(--teal-800);
+    color:           #fff;
+    border-radius:   50%;
+    font-size:       10px;
+    font-weight:     800;
+    font-family:     'Nunito', sans-serif;
+    display:         none;
+    align-items:     center;
     justify-content: center;
-    z-index: 2;
+    z-index:         2;
 }
 
-.os-chip.in-answer .os-chip-badge {
-    display: flex;
-}
+.os-chip.in-answer .os-chip-badge { display: flex; }
 
-/* Feedback states */
 .os-chip.correct-pos {
     border-color: var(--green);
-    box-shadow: 0 0 0 2px var(--green);
+    box-shadow:   0 0 0 2px var(--green);
 }
 
 .os-chip.wrong-pos {
     border-color: var(--red);
-    box-shadow: 0 0 0 2px var(--red);
+    box-shadow:   0 0 0 2px var(--red);
 }
 
-/* ── Controls bar ── */
+/* ── Controls ── */
 .os-controls {
-    flex-shrink: 0;
-    border-top: 1px solid var(--teal-100);
-    padding: 8px 14px;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    flex-wrap: wrap;
+    flex-shrink:     0;
+    border-top:      1px solid var(--teal-100);
+    padding:         8px 14px;
+    display:         flex;
+    align-items:     center;
+    gap:             10px;
+    flex-wrap:       wrap;
     justify-content: center;
 }
 
-/* Buttons */
 .os-btn {
-    display: inline-flex;
-    align-items: center;
+    display:         inline-flex;
+    align-items:     center;
     justify-content: center;
-    gap: 5px;
-    padding: 9px 18px;
-    border: none;
-    border-radius: 20px;
-    font-family: 'Nunito', sans-serif;
-    font-size: 13px;
-    font-weight: 800;
-    color: #fff;
-    cursor: pointer;
-    transition: transform .12s, filter .12s;
-    box-shadow: 0 3px 10px rgba(0,0,0,.12);
-    white-space: nowrap;
+    gap:             5px;
+    padding:         9px 18px;
+    border:          none;
+    border-radius:   20px;
+    font-family:     'Nunito', sans-serif;
+    font-size:       13px;
+    font-weight:     800;
+    color:           #fff;
+    cursor:          pointer;
+    transition:      transform .12s, filter .12s;
+    box-shadow:      0 3px 10px rgba(0,0,0,.12);
+    white-space:     nowrap;
 }
 .os-btn:hover    { filter: brightness(1.07); transform: translateY(-1px); }
 .os-btn:disabled { opacity: .45; cursor: default; transform: none; filter: none; }
@@ -503,14 +497,13 @@ body.embedded-mode   .os-back-btn { display: none; }
 .os-btn-next  { background: var(--teal-600); }
 .os-btn-tts   { background: var(--teal-400); padding: 10px 24px; font-size: 14px; border-radius: 20px; }
 
-/* Feedback text */
 #os-feedback {
     font-family: 'Nunito', sans-serif;
-    font-size: 13px;
+    font-size:   13px;
     font-weight: 800;
-    text-align: center;
-    min-height: 18px;
-    width: 100%;
+    text-align:  center;
+    min-height:  18px;
+    width:       100%;
 }
 #os-feedback.good { color: var(--green); }
 #os-feedback.bad  { color: var(--red); }
@@ -519,62 +512,58 @@ body.embedded-mode   .os-back-btn { display: none; }
    COMPLETED OVERLAY
    ══════════════════════════════════════════ */
 .os-completed {
-    display: none;
-    position: absolute;
-    inset: 0;
-    background: #fff;
-    border-radius: 14px;
-    flex-direction: column;
-    align-items: center;
+    display:         none;
+    position:        absolute;
+    inset:           0;
+    background:      #fff;
+    border-radius:   14px;
+    flex-direction:  column;
+    align-items:     center;
     justify-content: center;
-    text-align: center;
-    padding: 40px 24px;
-    z-index: 20;
+    text-align:      center;
+    padding:         40px 24px;
+    z-index:         20;
 }
 
 .os-completed.active { display: flex; }
 
-.os-completed-icon {
-    font-size: 64px;
-    margin-bottom: 12px;
-    line-height: 1;
-}
+.os-completed-icon  { font-size: 64px; margin-bottom: 12px; line-height: 1; }
 
 .os-completed-title {
     font-family: 'Fredoka', sans-serif;
-    font-size: 30px;
+    font-size:   30px;
     font-weight: 700;
-    color: var(--teal-800);
-    margin: 0 0 8px;
+    color:       var(--teal-800);
+    margin:      0 0 8px;
 }
 
 .os-completed-text {
-    font-size: 14px;
+    font-size:   14px;
     font-weight: 600;
-    color: #5a7a6a;
-    margin: 0 0 6px;
+    color:       #5a7a6a;
+    margin:      0 0 6px;
 }
 
 .os-score {
     font-family: 'Fredoka', sans-serif;
-    font-size: 20px;
+    font-size:   20px;
     font-weight: 600;
-    color: var(--teal-600);
-    margin: 0 0 24px;
+    color:       var(--teal-600);
+    margin:      0 0 24px;
 }
 
 .os-restart-btn {
-    background: var(--teal-800);
-    color: #fff;
-    border: none;
+    background:    var(--teal-800);
+    color:         #fff;
+    border:        none;
     border-radius: 20px;
-    padding: 11px 28px;
-    font-family: 'Nunito', sans-serif;
-    font-size: 14px;
-    font-weight: 800;
-    cursor: pointer;
-    transition: background .15s, transform .15s;
-    box-shadow: 0 4px 14px rgba(8,80,65,.25);
+    padding:       11px 28px;
+    font-family:   'Nunito', sans-serif;
+    font-size:     14px;
+    font-weight:   800;
+    cursor:        pointer;
+    transition:    background .15s, transform .15s;
+    box-shadow:    0 4px 14px rgba(8,80,65,.25);
 }
 .os-restart-btn:hover { background: var(--teal-900); transform: scale(1.04); }
 
@@ -582,35 +571,30 @@ body.embedded-mode   .os-back-btn { display: none; }
    RESPONSIVE
    ══════════════════════════════════════════ */
 @media (max-width: 600px) {
-    :root { --chip-size: 64px; }
-    .os-card { margin: 6px 8px; border-radius: 10px; }
-    .os-topbar { height: 34px; }
-    .os-bottombar { height: 32px; }
+    :root          { --chip-size: 64px; }
+    .os-card       { margin: 6px 8px; border-radius: 10px; }
+    .os-topbar     { height: 34px; }
+    .os-bottombar  { height: 32px; }
     .os-card-header { padding: 8px 14px 6px; }
-    .os-game-zone { padding: 8px 10px 6px; gap: 6px; }
-    .os-btn { padding: 8px 14px; font-size: 12px; }
+    .os-game-zone  { padding: 8px 10px 6px; gap: 6px; }
+    .os-btn        { padding: 8px 14px; font-size: 12px; }
 }
 </style>
 
-<!-- PAGE SHELL -->
 <div class="os-page">
 
-    <!-- Top bar -->
     <div class="os-topbar">
         <button class="os-back-btn" onclick="history.back()">← Back</button>
         <span class="os-topbar-title">Activity</span>
     </div>
 
-    <!-- White card -->
     <div class="os-card">
 
-        <!-- Header -->
         <div class="os-card-header">
             <h2><?= htmlspecialchars($viewerTitle, ENT_QUOTES, 'UTF-8') ?></h2>
             <p><?= htmlspecialchars((string)($activity['instructions'] ?? ''), ENT_QUOTES, 'UTF-8') ?></p>
         </div>
 
-        <!-- Media -->
         <?php if (($activity['media_type'] ?? '') === 'video' && !empty($activity['media_url'])): ?>
         <div class="os-media-area">
             <video controls preload="metadata"
@@ -629,10 +613,8 @@ body.embedded-mode   .os-back-btn { display: none; }
         </div>
         <?php endif; ?>
 
-        <!-- Game zone -->
         <div class="os-game-zone" id="os-game-zone">
 
-            <!-- Drop zone -->
             <div>
                 <div class="os-zone-label">Your answer — drag here in order</div>
                 <div class="os-dropzone" id="os-dropzone">
@@ -640,7 +622,6 @@ body.embedded-mode   .os-back-btn { display: none; }
                 </div>
             </div>
 
-            <!-- Bank -->
             <div>
                 <div class="os-zone-label">Sentences</div>
                 <div class="os-bank" id="os-bank">
@@ -663,7 +644,6 @@ body.embedded-mode   .os-back-btn { display: none; }
                 </div>
             </div>
 
-            <!-- Controls -->
             <div class="os-controls">
                 <button type="button" class="os-btn os-btn-check" id="os-check" disabled>✔ Check Order</button>
                 <button type="button" class="os-btn os-btn-show"  id="os-show">👁 Show Answer</button>
@@ -671,9 +651,8 @@ body.embedded-mode   .os-back-btn { display: none; }
                 <div id="os-feedback"></div>
             </div>
 
-        </div><!-- .os-game-zone -->
+        </div>
 
-        <!-- Completed overlay -->
         <div class="os-completed" id="os-completed">
             <div class="os-completed-icon">✅</div>
             <h2 class="os-completed-title"><?= htmlspecialchars($viewerTitle, ENT_QUOTES, 'UTF-8') ?></h2>
@@ -682,14 +661,12 @@ body.embedded-mode   .os-back-btn { display: none; }
             <button type="button" class="os-restart-btn" onclick="osRestart()">↺ Try Again</button>
         </div>
 
-    </div><!-- .os-card -->
+    </div>
 
-    <!-- Bottom bar -->
     <div class="os-bottombar"></div>
 
-</div><!-- .os-page -->
+</div>
 
-<!-- Sound effects -->
 <audio id="os-win-sound"  src="../../hangman/assets/win.mp3"     preload="auto"></audio>
 <audio id="os-lose-sound" src="../../hangman/assets/lose.mp3"    preload="auto"></audio>
 <audio id="os-done-sound" src="../../hangman/assets/win (1).mp3" preload="auto"></audio>
@@ -697,13 +674,11 @@ body.embedded-mode   .os-back-btn { display: none; }
 <script>
 (function () {
 
-/* ── PHP data ── */
 var CORRECT_ORDER  = <?= json_encode($correctOrder,  JSON_UNESCAPED_UNICODE) ?>;
 var OS_RETURN_TO   = <?= json_encode($returnTo,      JSON_UNESCAPED_UNICODE) ?>;
 var OS_ACTIVITY_ID = <?= json_encode($activityId,    JSON_UNESCAPED_UNICODE) ?>;
 var OS_TOTAL       = CORRECT_ORDER.length;
 
-/* ── DOM refs ── */
 var dropzone    = document.getElementById('os-dropzone');
 var bank        = document.getElementById('os-bank');
 var hint        = document.getElementById('os-dz-hint');
@@ -717,7 +692,6 @@ var winSound    = document.getElementById('os-win-sound');
 var loseSound   = document.getElementById('os-lose-sound');
 var doneSound   = document.getElementById('os-done-sound');
 
-/* ── State ── */
 var attempts     = 0;
 var done         = false;
 var correctCount = 0;
@@ -725,7 +699,6 @@ var dragged      = null;
 var touchSel     = null;
 var isTouchDev   = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
 
-/* ── Helpers ── */
 function playSound(el) {
     try { el.pause(); el.currentTime = 0; el.play(); } catch(e) {}
 }
@@ -788,7 +761,6 @@ function revealAnswer() {
     markPositions(CORRECT_ORDER);
 }
 
-/* ── Score / Navigation ── */
 function persistScore(pct, errors, total) {
     if (!OS_RETURN_TO || !OS_ACTIVITY_ID) return Promise.resolve(false);
     var sep = OS_RETURN_TO.indexOf('?') !== -1 ? '&' : '?';
@@ -800,7 +772,7 @@ function persistScore(pct, errors, total) {
         '&activity_type=order_sentences';
     return fetch(url, { method: 'GET', credentials: 'same-origin', cache: 'no-store' })
         .then(function(r){ return !!(r && r.ok); })
-        .catch(function(){  return false; });
+        .catch(function(){ return false; });
 }
 
 function navigateReturn(pct, errors, total) {
@@ -822,16 +794,13 @@ async function showCompleted() {
     done = true;
     completedEl.classList.add('active');
     playSound(doneSound);
-
     var pct    = OS_TOTAL > 0 ? Math.round((correctCount / OS_TOTAL) * 100) : 0;
     var errors = Math.max(0, OS_TOTAL - correctCount);
     scoreEl.textContent = 'Score: ' + correctCount + ' / ' + OS_TOTAL + ' (' + pct + '%)';
-
     var ok = await persistScore(pct, errors, OS_TOTAL);
     if (!ok) navigateReturn(pct, errors, OS_TOTAL);
 }
 
-/* ── Button events ── */
 checkBtn.addEventListener('click', function() {
     if (done) return;
     if (answerChips().length < OS_TOTAL) {
@@ -884,7 +853,6 @@ nextBtn.addEventListener('click', function() {
     showCompleted();
 });
 
-/* ── Drag & drop ── */
 function attachChip(chip) {
     chip.addEventListener('dragstart', function(e) {
         if (done) { e.preventDefault(); return; }
@@ -910,7 +878,6 @@ function attachChip(chip) {
         updateUI();
     });
 
-    /* Click / tap to move */
     chip.addEventListener('click', function() {
         if (done) return;
 
@@ -934,7 +901,6 @@ function attachChip(chip) {
             return;
         }
 
-        /* Desktop click toggle */
         if (chip.parentElement === bank) {
             dropzone.insertBefore(chip, hint.nextSibling || null);
             chip.classList.add('in-answer');
@@ -947,7 +913,6 @@ function attachChip(chip) {
     });
 }
 
-/* Drop zone */
 dropzone.addEventListener('dragover', function(e) {
     e.preventDefault();
     if (!dragged || done) return;
@@ -971,7 +936,6 @@ dropzone.addEventListener('drop', function(e) {
     updateUI();
 });
 
-/* Bank */
 bank.addEventListener('dragover', function(e) {
     e.preventDefault();
     if (!dragged || done) return;
@@ -989,12 +953,10 @@ bank.addEventListener('drop', function(e) {
     updateUI();
 });
 
-/* Wire all initial chips */
 document.querySelectorAll('.os-chip').forEach(function(chip) {
     attachChip(chip);
 });
 
-/* ── Restart ── */
 window.osRestart = function() {
     attempts     = 0;
     done         = false;
@@ -1002,14 +964,14 @@ window.osRestart = function() {
     touchSel     = null;
 
     completedEl.classList.remove('active');
-    checkBtn.disabled = false;
-    showBtn.disabled  = false;
+    checkBtn.disabled      = false;
+    showBtn.disabled       = false;
     feedbackEl.textContent = '';
     feedbackEl.className   = '';
 
     var chips = Array.from(document.querySelectorAll('.os-chip'));
     for (var i = chips.length - 1; i > 0; i--) {
-        var j = Math.floor(Math.random() * (i + 1));
+        var j   = Math.floor(Math.random() * (i + 1));
         var tmp = chips[i]; chips[i] = chips[j]; chips[j] = tmp;
     }
     chips.forEach(function(c) {
@@ -1021,9 +983,6 @@ window.osRestart = function() {
 
 updateUI();
 
-/* ══════════════════════════════════════════
-   TTS
-   ══════════════════════════════════════════ */
 <?php if (($activity['media_type'] ?? '') === 'tts'): ?>
 var TTS_TEXT = <?= json_encode(
     !empty($activity['tts_text'])
@@ -1033,16 +992,16 @@ var TTS_TEXT = <?= json_encode(
 ) ?>;
 
 var ttsBtn      = document.getElementById('os-tts-btn');
-var ttsUtter    = null;
 var ttsSpeaking = false;
 var ttsPaused   = false;
 var ttsOffset   = 0;
 var ttsSegStart = 0;
+var ttsUtter    = null;
 
 function ttsPreferredVoice(lang) {
-    var voices = window.speechSynthesis ? window.speechSynthesis.getVoices() : [];
+    var voices  = window.speechSynthesis ? window.speechSynthesis.getVoices() : [];
     if (!voices.length) return null;
-    var pre  = lang.split('-')[0].toLowerCase();
+    var pre     = lang.split('-')[0].toLowerCase();
     var matches = voices.filter(function(v) {
         var vl = String(v.lang || '').toLowerCase();
         return vl === lang.toLowerCase() || vl.startsWith(pre + '-') || vl.startsWith(pre + '_');
@@ -1060,8 +1019,8 @@ function ttsStart() {
     var remaining = TTS_TEXT.slice(Math.max(0, ttsOffset));
     if (!remaining.trim()) { ttsSpeaking = false; ttsPaused = false; ttsOffset = 0; return; }
     speechSynthesis.cancel();
-    ttsSegStart = ttsOffset;
-    ttsUtter = new SpeechSynthesisUtterance(remaining);
+    ttsSegStart     = ttsOffset;
+    ttsUtter        = new SpeechSynthesisUtterance(remaining);
     ttsUtter.lang   = 'en-US';
     ttsUtter.rate   = 0.7;
     ttsUtter.pitch  = 1;
@@ -1075,7 +1034,7 @@ function ttsStart() {
         if (typeof ev.charIndex === 'number')
             ttsOffset = Math.max(ttsSegStart, Math.min(TTS_TEXT.length, ttsSegStart + ev.charIndex));
     };
-    ttsUtter.onend  = function(){ if (!ttsPaused){ ttsSpeaking = false; ttsPaused = false; ttsOffset = 0; } };
+    ttsUtter.onend   = function(){ if (!ttsPaused){ ttsSpeaking = false; ttsPaused = false; ttsOffset = 0; } };
     ttsUtter.onerror = function(){ ttsSpeaking = false; ttsPaused = false; ttsOffset = 0; };
     speechSynthesis.speak(ttsUtter);
 }
