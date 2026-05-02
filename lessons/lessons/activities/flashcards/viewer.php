@@ -133,7 +133,7 @@ body { margin:0 !important; padding:0 !important; background:#f0faf6 !important;
 
 /* ── body area ── */
 .fc-body { flex:1; display:flex; flex-direction:column; align-items:center;
-    padding:12px 14px; gap:8px; min-height:0; }
+    padding:12px 14px; gap:8px; min-height:0; position:relative; }
 
 /* card container — white with purple soft border */
 .fc-card-wrap { width:100%; max-width:960px; background:#fff;
@@ -184,13 +184,53 @@ body { margin:0 !important; padding:0 !important; background:#f0faf6 !important;
 .fc-controls { display:flex; gap:8px; justify-content:center; flex-wrap:wrap;
     padding:10px 14px; border-top:1px solid var(--pl); background:#fff; }
 
-/* completed overlay */
-.fc-completed { display:none; flex-direction:column; align-items:center;
-    justify-content:center; text-align:center; padding:40px 24px; gap:12px; }
+/* ── completed overlay ── */
+.fc-completed { display:none; position:absolute; inset:0; background:#f0faf6;
+    border-radius:20px; flex-direction:column; align-items:center;
+    justify-content:center; padding:20px 16px; z-index:20; }
 .fc-completed.active { display:flex; }
-.fc-done-icon { font-size:56px; line-height:1; }
-.fc-done-title { font-family:'Fredoka',sans-serif; font-size:26px; font-weight:700; color:var(--t800); margin:0; }
-.fc-done-msg { font-size:13px; font-weight:600; color:#5a7a6a; margin:0; }
+
+/* done card */
+.done-card { background:#fff; border-radius:20px; border:1.5px solid var(--pb);
+    box-shadow:0 4px 24px rgba(127,119,221,.10);
+    width:100%; max-width:500px;
+    display:flex; flex-direction:column; align-items:center;
+    padding:28px 24px; gap:14px; text-align:center; }
+.done-confetti { width:100%; height:5px; border-radius:3px;
+    background:linear-gradient(90deg,var(--p) 0%,var(--t400) 35%,#f59e0b 65%,var(--p) 100%);
+    margin-bottom:2px; }
+.done-icon  { font-size:58px; line-height:1; }
+.done-title { font-family:'Fredoka',sans-serif; font-size:26px; font-weight:700; color:var(--t800); margin:0; }
+.done-sub   { font-size:13px; font-weight:600; color:#64748b; max-width:300px; line-height:1.5; margin:0; }
+
+/* cards reviewed bar */
+.done-bar-row { width:100%; display:flex; flex-direction:column; gap:5px; }
+.done-bar-hd  { display:flex; justify-content:space-between; align-items:center; }
+.done-bar-lbl { font-size:12px; font-weight:800; color:var(--pd); }
+.done-bar-val { font-size:12px; font-weight:800; color:var(--p); }
+.done-bar-track { width:100%; height:10px; background:var(--pl); border-radius:6px;
+    border:1px solid var(--pb); overflow:hidden; }
+.done-bar-fill  { height:100%; border-radius:6px;
+    background:linear-gradient(90deg,var(--t400),var(--p)); width:0;
+    transition:width .8s cubic-bezier(.34,1,.64,1); }
+
+/* big stat box */
+.done-stat-box { background:var(--pl); border-radius:16px; border:1.5px solid var(--pb);
+    padding:14px 20px; width:100%; display:flex; align-items:center;
+    justify-content:center; gap:12px; }
+.done-stat-count { font-family:'Fredoka',sans-serif; font-size:24px; font-weight:700; color:var(--pd); }
+.done-stat-lbl   { font-size:11px; font-weight:800; color:var(--p);
+    text-transform:uppercase; letter-spacing:.06em; }
+
+/* buttons */
+.done-btns { display:flex; gap:8px; flex-wrap:wrap; justify-content:center; }
+.done-btn  { display:inline-flex; align-items:center; gap:5px; border:none;
+    border-radius:999px; font-family:'Nunito',sans-serif; font-weight:800;
+    font-size:13px; color:#fff; cursor:pointer; padding:9px 20px; line-height:1;
+    background:var(--p); box-shadow:0 3px 10px rgba(127,119,221,.28);
+    transition:transform .18s cubic-bezier(.34,1.4,.64,1),box-shadow .15s,filter .15s; }
+.done-btn:hover { transform:translateY(-2px) scale(1.04); filter:brightness(1.08); }
+.done-btn.teal  { background:var(--t400); box-shadow:0 3px 10px rgba(29,158,117,.28); }
 
 /* fullscreen / presentation scaling */
 body.fullscreen-embedded .fc-flip-area,
@@ -266,10 +306,35 @@ body.embedded-mode     .fc-topbar { display:none; }
         </div>
 
         <div class="fc-completed" id="fc-completed">
-            <div class="fc-done-icon">&#x2705;</div>
-            <h2 class="fc-done-title">All cards reviewed!</h2>
-            <p class="fc-done-msg">Great job practising your vocabulary.</p>
-            <button type="button" class="act-btn" style="padding:10px 24px;font-size:14px" id="fc-restart">&#8635; Start over</button>
+            <div class="done-card">
+                <div class="done-confetti"></div>
+                <div class="done-icon">&#x2705;</div>
+                <h2 class="done-title">All Done!</h2>
+                <p class="done-sub">You reviewed all the cards. Great work practising your vocabulary!</p>
+
+                <div class="done-bar-row">
+                    <div class="done-bar-hd">
+                        <span class="done-bar-lbl">Cards reviewed</span>
+                        <span class="done-bar-val" id="fc-done-count">0 / 0</span>
+                    </div>
+                    <div class="done-bar-track">
+                        <div class="done-bar-fill" id="fc-done-bar"></div>
+                    </div>
+                </div>
+
+                <div class="done-stat-box">
+                    <span style="font-size:38px">&#x1F9E0;</span>
+                    <div style="text-align:left">
+                        <div class="done-stat-count" id="fc-done-stat">0 cards</div>
+                        <div class="done-stat-lbl">practised today</div>
+                    </div>
+                </div>
+
+                <div class="done-btns">
+                    <button type="button" class="done-btn teal" id="fc-restart">&#8635; Review Again</button>
+                    <button type="button" class="done-btn" onclick="history.back()">Next Activity &#8594;</button>
+                </div>
+            </div>
         </div>
 
     </div>
@@ -297,7 +362,7 @@ var completed = document.getElementById('fc-completed');
 var winSnd    = document.getElementById('fc-win');
 
 function esc(s) {
-    return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
 function getEnglish(card) {
@@ -418,6 +483,14 @@ function showCompleted() {
     done = true;
     wrap.style.display = 'none';
     completed.classList.add('active');
+    var countEl = document.getElementById('fc-done-count');
+    var barEl   = document.getElementById('fc-done-bar');
+    var statEl  = document.getElementById('fc-done-stat');
+    if (countEl) countEl.textContent = total + ' / ' + total;
+    if (statEl)  statEl.textContent  = total + ' card' + (total !== 1 ? 's' : '');
+    setTimeout(function() {
+        if (barEl) barEl.style.width = '100%';
+    }, 100);
     try { winSnd.pause(); winSnd.currentTime = 0; winSnd.play(); } catch(e) {}
 }
 
@@ -460,6 +533,8 @@ document.getElementById('fc-restart').addEventListener('click', function() {
     done = false; idx = 0;
     wrap.style.display = '';
     completed.classList.remove('active');
+    var barEl = document.getElementById('fc-done-bar');
+    if (barEl) barEl.style.width = '0%';
     loadCard();
 });
 
