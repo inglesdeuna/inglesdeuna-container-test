@@ -671,7 +671,7 @@ body.embedded-mode     .fb-back-btn { display: none; }
 <script>
 (function () {
 
-var BLOCKS      = <?= json_encode(array_map(fn($b) => $b['answers'], $renderedBlocks), JSON_UNESCAPED_UNICODE) ?>;
+var BLOCKS      = <?= json_encode(array_map(function($b){ return $b['answers']; }, $renderedBlocks), JSON_UNESCAPED_UNICODE) ?>;
 var RETURN_TO   = <?= json_encode($returnTo,   JSON_UNESCAPED_UNICODE) ?>;
 var ACTIVITY_ID = <?= json_encode($activityId, JSON_UNESCAPED_UNICODE) ?>;
 var TOTAL       = BLOCKS.length;
