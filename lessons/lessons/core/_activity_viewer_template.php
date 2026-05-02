@@ -63,11 +63,11 @@ function render_activity_viewer($title, $icon, $content)
         @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@500;700;800&display=swap');
 
         :root{
-            --viewer-bg: #eef2f7;
+            --viewer-bg: #f0faf6;
             --viewer-paper: #ffffff;
             --viewer-text: #1f2937;
             --viewer-muted: #5b6577;
-            --viewer-accent: #1f66cc;
+            --viewer-accent: #7F77DD;
             --viewer-accent-2: #2f5bb5;
             --viewer-success: #16a34a;
             --viewer-shadow: 0 8px 24px rgba(0,0,0,.08);
@@ -82,7 +82,7 @@ function render_activity_viewer($title, $icon, $content)
             min-height:100vh;
             font-family: Arial, sans-serif;
             color:var(--viewer-text);
-            background: var(--viewer-bg);
+            background: #f0faf6;
             padding: 30px;
         }
 
@@ -116,7 +116,7 @@ function render_activity_viewer($title, $icon, $content)
             margin: 0;
             box-shadow: none;
             border: none;
-            background: #fff;
+            background: #f0faf6;
             overflow: hidden;
             display: flex;
             flex-direction: column;
@@ -207,8 +207,8 @@ function render_activity_viewer($title, $icon, $content)
             gap: 12px !important;
             flex-shrink: 0 !important;
             padding: 12px 16px !important;
-            background: #f8fbff !important;
-            border-top: 1px solid #e5e7eb !important;
+            background: #EEEDFE !important;
+            border-top: 1.5px solid #AFA9EC !important;
             display: flex !important;
             justify-content: center !important;
             flex-wrap: wrap !important;
@@ -258,30 +258,35 @@ function render_activity_viewer($title, $icon, $content)
             display:flex;
             align-items:center;
             justify-content:flex-start;
-            min-height:36px;
-            margin-bottom:2px;
+            min-height:42px;
+            margin-bottom:0;
+            background:#EEEDFE;
+            border-bottom:1.5px solid #AFA9EC;
+            padding:0 16px;
         }
 
         .back-btn{
             display:inline-flex;
             align-items:center;
             justify-content:center;
-            background:linear-gradient(180deg, #3d73ee 0%, #2563eb 100%);
+            gap:5px;
+            background:#7F77DD;
             color:#ffffff;
-            padding:10px 14px;
-            border-radius:10px;
+            padding:10px 18px;
+            border-radius:999px;
             text-decoration:none;
-            font-weight:700;
+            font-weight:800;
             font-size:13px;
             font-family:'Nunito', 'Segoe UI', sans-serif;
             line-height:1;
-            box-shadow:0 10px 22px rgba(37, 99, 235, .28);
-            transition:transform .18s ease, filter .18s ease;
+            box-shadow:0 4px 14px rgba(127,119,221,.30);
+            transition:transform .18s cubic-bezier(.34,1.4,.64,1), box-shadow .15s, filter .15s;
         }
 
         .back-btn:hover{
-            filter:brightness(1.07);
-            transform:translateY(-1px);
+            filter:brightness(1.08);
+            transform:translateY(-2px) scale(1.04);
+            box-shadow:0 8px 22px rgba(127,119,221,.42);
         }
 
         /* ── Canonical action button ───────────────────────────
@@ -300,8 +305,9 @@ function render_activity_viewer($title, $icon, $content)
             font-size:14px;
             min-width:142px;
             cursor:pointer;
-            box-shadow:0 10px 22px rgba(15,23,42,.12);
-            transition:transform .15s ease, filter .15s ease;
+            background:#7F77DD;
+            box-shadow:0 4px 14px rgba(127,119,221,.30);
+            transition:transform .18s cubic-bezier(.34,1.4,.64,1), box-shadow .15s, filter .15s;
             line-height:1;
             text-decoration:none;
         }
@@ -332,11 +338,11 @@ function render_activity_viewer($title, $icon, $content)
 
         .viewer-content{
             margin-top:0;
-            background: var(--viewer-paper);
-            border:1px solid var(--viewer-paper);
-            border-radius:14px;
-            padding:20px;
-            box-shadow: var(--viewer-shadow);
+            background: transparent;
+            border:none;
+            border-radius:0;
+            padding:0;
+            box-shadow: none;
         }
 
         /* Global size normalization for activity viewers */
@@ -396,7 +402,7 @@ function render_activity_viewer($title, $icon, $content)
             font-size:14px !important;
             font-weight:700 !important;
             border-radius:8px !important;
-            background: var(--viewer-accent) !important;
+            background: #7F77DD !important;
             color: #fff !important;
             border: none !important;
         }
@@ -459,8 +465,8 @@ function render_activity_viewer($title, $icon, $content)
             }
 
             .back-btn{
-                padding:9px 13px;
-                font-size:13px;
+                padding:8px 16px;
+                font-size:12px;
             }
 
             .viewer-content{
@@ -483,9 +489,8 @@ function render_activity_viewer($title, $icon, $content)
             }
 
             .back-btn{
-                padding:8px 12px;
+                padding:7px 14px;
                 font-size:12px;
-                border-radius:9px;
             }
 
             .viewer-content{
@@ -579,7 +584,7 @@ function render_activity_viewer($title, $icon, $content)
             height: 100vh !important;
             overflow: hidden !important;
             padding: 0 !important;
-            background: #0d0d1a !important;
+            background: #f0faf6 !important;
         }
         body.fullscreen-embedded .activity-wrapper {
             height: 100%;
@@ -662,7 +667,7 @@ function render_activity_viewer($title, $icon, $content)
         <?= $content ?>
         
         <?php if ($isPresentationMode && $nextUrl !== '') { ?>
-        <div style="flex-shrink: 0; padding: 12px 16px; background: #f8fbff; border-top: 1px solid #e5e7eb; display: flex; justify-content: center; align-items: center; gap: 12px;">
+        <div style="flex-shrink: 0; padding: 12px 16px; background: #EEEDFE; border-top: 1.5px solid #AFA9EC; display: flex; justify-content: center; align-items: center; gap: 12px;">
             <a href="<?= htmlspecialchars($nextUrl, ENT_QUOTES, 'UTF-8') ?>" class="pres-next-button">
                 <span>siguiente actividad</span>
                 <span style="font-size: 18px;">▶</span>
