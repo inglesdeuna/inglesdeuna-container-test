@@ -335,7 +335,7 @@ function fbToggleMedia(val) {
 }
 
 function countBlanks(text) {
-    return (text.match(/___/g) || []).length;
+    return (text.match(/_{3,}/g) || []).length;
 }
 
 function parseAnswers(raw) {
