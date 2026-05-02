@@ -1,3 +1,4 @@
+<?php
 if ($mediaType === 'audio') {
         if (isset($_FILES['media_file'])
             && !empty($_FILES['media_file']['name'])
