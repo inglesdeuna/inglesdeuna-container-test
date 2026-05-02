@@ -207,8 +207,8 @@ body.presentation-mode   .fb-back-btn { padding:8px 18px !important; font-size:1
 @keyframes fbFadeIn { from { opacity:0; transform:translateY(4px); } to { opacity:1; transform:none; } }
 .fb-block-img { display:block; max-width:240px; max-height:140px; object-fit:contain;
     border-radius:10px; margin:0 auto 16px; border:1px solid var(--t100); }
-.fb-text { font-family:'Nunito',sans-serif; font-size:clamp(14px,1.8vw,16px);
-    font-weight:600; color:#1e293b; line-height:2.6; }
+.fb-text { font-family:'Nunito',sans-serif; font-size:clamp(15px,1.8vw,17px);
+    font-weight:600; color:#1e293b; line-height:2.8; }
 .fb-blank-wrap { display:inline-block; position:relative; vertical-align:baseline; margin:0 2px; min-width:60px; }
 .fb-blank-sizer { position:absolute; inset:0; visibility:hidden; white-space:pre;
     font-size:14px; font-weight:800; font-family:'Nunito',sans-serif;
@@ -297,7 +297,13 @@ body.presentation-mode   .fb-back-btn { padding:8px 18px !important; font-size:1
                 Word bank
             </div>
             <div class="fb-wb-chips">
-                <?php foreach (array_filter(array_map('trim', explode('|', $activity['wordbank'])), 'strlen') as $_wbWord): ?>
+                <?php
+                $_wb_raw = $activity['wordbank'];
+                $_wb_items = (strpos($_wb_raw, '|') !== false)
+                    ? explode('|', $_wb_raw)
+                    : explode(',', $_wb_raw);
+                $_wb_items = array_values(array_filter(array_map('trim', $_wb_items), 'strlen'));
+                foreach ($_wb_items as $_wbWord): ?>
                 <span class="fb-wb-chip"><?php echo htmlspecialchars($_wbWord, ENT_QUOTES, 'UTF-8'); ?></span>
                 <?php endforeach; ?>
             </div>
