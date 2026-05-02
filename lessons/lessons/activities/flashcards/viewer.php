@@ -133,13 +133,13 @@ body { margin:0 !important; padding:0 !important; background:#f0faf6 !important;
 
 /* ── body area ── */
 .fc-body { flex:1; display:flex; flex-direction:column; align-items:center;
-    padding:10px 16px 8px; gap:8px; min-height:0; }
+    padding:12px 14px; gap:8px; min-height:0; }
 
 /* card container — white with purple soft border */
 .fc-card-wrap { width:100%; max-width:960px; background:#fff;
     border-radius:20px; border:1.5px solid var(--pb);
     overflow:hidden; box-shadow:0 4px 20px rgba(127,119,221,.10);
-    display:flex; flex-direction:column; flex:1; min-height:0; }
+    display:flex; flex-direction:column; flex:1; min-height:0; max-height:calc(100vh - 130px); }
 
 /* progress bar */
 .fc-prog-row { display:flex; align-items:center; gap:10px; padding:10px 18px 0; }
@@ -163,8 +163,9 @@ body { margin:0 !important; padding:0 !important; background:#f0faf6 !important;
 
 .fc-side-label { display:none; }
 
-.fc-side-text { font-family:'Fredoka',sans-serif; font-size:clamp(26px,5vw,52px);
-    font-weight:600; text-align:center; line-height:1.15; flex:1; }
+.fc-side-text { font-family:'Fredoka',sans-serif; font-size:clamp(36px,7vw,80px);
+    font-weight:600; text-align:center; line-height:1.1; flex:1;
+    display:flex; align-items:center; justify-content:center; }
 .fc-front .fc-side-text { color:var(--pd); }
 .fc-back  .fc-side-text { color:#fff; }
 
