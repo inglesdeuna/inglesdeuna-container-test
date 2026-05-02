@@ -184,13 +184,41 @@ body { margin:0 !important; padding:0 !important; background:#f0faf6 !important;
 .fc-controls { display:flex; gap:8px; justify-content:center; flex-wrap:wrap;
     padding:10px 14px; border-top:1px solid var(--pl); background:#fff; }
 
-/* completed overlay */
-.fc-completed { display:none; flex-direction:column; align-items:center;
-    justify-content:center; text-align:center; padding:40px 24px; gap:12px; }
+/* ── completed overlay — standardised 2025 ── */
+.fc-completed {
+    display:none; position:absolute; inset:0; background:#fff; border-radius:20px;
+    flex-direction:column; align-items:center; justify-content:center;
+    text-align:center; padding:40px 24px; gap:0; z-index:20; }
 .fc-completed.active { display:flex; }
-.fc-done-icon { font-size:56px; line-height:1; }
-.fc-done-title { font-family:'Fredoka',sans-serif; font-size:26px; font-weight:700; color:var(--t800); margin:0; }
-.fc-done-msg { font-size:13px; font-weight:600; color:#5a7a6a; margin:0; }
+
+.fc-done-icon-wrap {
+    width:72px; height:72px; background:#22c074; border-radius:18px;
+    display:flex; align-items:center; justify-content:center; margin-bottom:20px; flex-shrink:0; }
+.fc-done-icon-wrap svg { width:38px; height:38px; }
+
+.fc-done-title {
+    font-family:'Fredoka',sans-serif; font-size:28px; font-weight:700;
+    color:var(--t800); margin:0 0 8px; }
+.fc-done-msg {
+    font-size:14px; font-weight:600; color:#5a7a6a; margin:0 0 28px; }
+
+.fc-done-prog-row {
+    width:100%; max-width:420px; margin-bottom:28px; display:flex; flex-direction:column; gap:6px; }
+.fc-done-prog-label {
+    font-size:13px; color:#5a7a6a; display:flex; justify-content:space-between; }
+.fc-done-prog-label span { font-weight:700; color:var(--t800); }
+.fc-done-prog-track {
+    width:100%; height:8px; background:var(--t50); border-radius:99px;
+    overflow:hidden; border:0.5px solid var(--t100); }
+.fc-done-prog-fill {
+    height:100%; width:100%; background:#22c074; border-radius:99px; }
+
+.fc-done-restart {
+    background:var(--t800); color:#fff; border:none; border-radius:30px;
+    padding:14px 32px; font-size:15px; font-weight:800; cursor:pointer;
+    font-family:'Nunito',sans-serif; display:inline-flex; align-items:center; gap:8px;
+    transition:background .15s; }
+.fc-done-restart:hover { background:var(--t600); }
 
 /* fullscreen / presentation scaling */
 body.fullscreen-embedded .fc-flip-area,
@@ -267,10 +295,18 @@ body.embedded-mode     .fc-topbar { display:none; }
         </div>
 
         <div class="fc-completed" id="fc-completed">
-            <div class="fc-done-icon">&#x2705;</div>
-            <h2 class="fc-done-title">All cards reviewed!</h2>
-            <p class="fc-done-msg">Great job practising your vocabulary.</p>
-            <button type="button" class="act-btn" style="padding:10px 24px;font-size:14px" id="fc-restart">&#8635; Start over</button>
+            <div class="fc-done-icon-wrap">
+                <svg viewBox="0 0 38 38" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M8 20L16 28L30 11" stroke="white" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </div>
+            <h2 class="fc-done-title">Flashcards</h2>
+            <p class="fc-done-msg">You've reviewed all the cards. Great job!</p>
+            <div class="fc-done-prog-row">
+                <div class="fc-done-prog-label">Cards reviewed <span id="fc-done-count"><?php echo count($cards); ?> / <?php echo count($cards); ?></span></div>
+                <div class="fc-done-prog-track"><div class="fc-done-prog-fill"></div></div>
+            </div>
+            <button type="button" class="fc-done-restart" id="fc-restart">↺ &nbsp;Review again</button>
         </div>
 
     </div>
