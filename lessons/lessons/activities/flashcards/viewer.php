@@ -104,14 +104,14 @@ ob_start();
 body { margin:0 !important; padding:0 !important; background:#f0faf6 !important;
     font-family:'Nunito','Segoe UI',sans-serif !important; }
 .activity-wrapper { max-width:100% !important; margin:0 !important; padding:0 !important;
-    min-height:100vh; display:flex !important; flex-direction:column !important; background:transparent !important; }
+    height:100vh; display:flex !important; flex-direction:column !important; background:transparent !important; overflow:hidden !important; }
 .top-row { display:none !important; }
 .viewer-content { flex:1 !important; display:flex !important; flex-direction:column !important;
     padding:0 !important; margin:0 !important; background:transparent !important;
     border:none !important; box-shadow:none !important; border-radius:0 !important; }
 
 /* ── page shell ── */
-.fc-page { display:flex; flex-direction:column; width:100vw; min-height:100vh; background:#f0faf6; }
+.fc-page { display:flex; flex-direction:column; width:100vw; height:100vh; background:#f0faf6; overflow:hidden; }
 
 /* topbar — lavender */
 .fc-topbar { flex-shrink:0; height:42px; background:var(--pl); border-bottom:1.5px solid var(--pb);
@@ -133,12 +133,13 @@ body { margin:0 !important; padding:0 !important; background:#f0faf6 !important;
 
 /* ── body area ── */
 .fc-body { flex:1; display:flex; flex-direction:column; align-items:center;
-    padding:16px 14px 10px; gap:12px; }
+    padding:12px 14px; gap:8px; min-height:0; }
 
 /* card container — white with purple soft border */
-.fc-card-wrap { width:100%; max-width:720px; background:#fff;
+.fc-card-wrap { width:100%; max-width:960px; background:#fff;
     border-radius:20px; border:1.5px solid var(--pb);
-    overflow:hidden; box-shadow:0 4px 20px rgba(127,119,221,.10); }
+    overflow:hidden; box-shadow:0 4px 20px rgba(127,119,221,.10);
+    display:flex; flex-direction:column; flex:1; min-height:0; max-height:calc(100vh - 130px); }
 
 /* progress bar */
 .fc-prog-row { display:flex; align-items:center; gap:10px; padding:10px 18px 0; }
@@ -149,29 +150,28 @@ body { margin:0 !important; padding:0 !important; background:#f0faf6 !important;
 .fc-prog-lbl { font-size:11px; font-weight:800; color:var(--p); white-space:nowrap; font-family:'Nunito',sans-serif; }
 
 /* card flip area */
-.fc-flip-area { min-height:240px; perspective:1200px; padding:14px 18px; cursor:pointer; }
-.fc-card { width:100%; height:220px; position:relative;
+.fc-flip-area { flex:1; min-height:0; perspective:1400px; padding:16px 20px; cursor:pointer; display:flex; align-items:stretch; }
+.fc-card { width:100%; flex:1; min-height:0; position:relative;
     transform-style:preserve-3d; transition:transform .55s ease; border-radius:14px; }
 .fc-card.flipped { transform:rotateY(180deg); }
 .fc-side { position:absolute; inset:0; backface-visibility:hidden; border-radius:14px;
-    display:flex; flex-direction:column; align-items:center; justify-content:center; padding:20px; }
+    display:flex; flex-direction:row; align-items:center; justify-content:center;
+    padding:20px 28px; gap:24px; }
 .fc-front { background:var(--pl); border:1.5px solid var(--pb); }
 .fc-back  { background:var(--pd); border:1.5px solid rgba(255,255,255,.15);
     transform:rotateY(180deg); }
 
-.fc-side-label { font-size:10px; font-weight:800; letter-spacing:.1em;
-    text-transform:uppercase; font-family:'Nunito',sans-serif;
-    margin-bottom:10px; opacity:.7; }
-.fc-front .fc-side-label { color:var(--pd); }
-.fc-back  .fc-side-label { color:rgba(255,255,255,.7); }
+.fc-side-label { display:none; }
 
-.fc-side-text { font-family:'Fredoka',sans-serif; font-size:clamp(22px,4vw,36px);
-    font-weight:600; text-align:center; line-height:1.2; }
+.fc-side-text { font-family:'Fredoka',sans-serif; font-size:clamp(36px,7vw,80px);
+    font-weight:600; text-align:center; line-height:1.1; flex:1;
+    display:flex; align-items:center; justify-content:center; }
 .fc-front .fc-side-text { color:var(--pd); }
 .fc-back  .fc-side-text { color:#fff; }
 
-.fc-side-img { max-width:100%; max-height:160px; object-fit:contain;
-    border-radius:10px; border:1px solid var(--pb); }
+.fc-side-img { width:auto; height:auto; max-width:45%; max-height:80%;
+    min-height:120px; object-fit:contain; border-radius:14px;
+    border:1.5px solid var(--pb); flex-shrink:0; }
 
 /* hint */
 .fc-hint { font-size:11px; font-weight:600; color:var(--pb); text-align:center;
@@ -184,47 +184,19 @@ body { margin:0 !important; padding:0 !important; background:#f0faf6 !important;
 .fc-controls { display:flex; gap:8px; justify-content:center; flex-wrap:wrap;
     padding:10px 14px; border-top:1px solid var(--pl); background:#fff; }
 
-/* ── completed overlay — standardised 2025 ── */
-.fc-completed {
-    display:none; position:absolute; inset:0; background:#fff; border-radius:20px;
-    flex-direction:column; align-items:center; justify-content:center;
-    text-align:center; padding:40px 24px; gap:0; z-index:20; }
+/* completed overlay */
+.fc-completed { display:none; flex-direction:column; align-items:center;
+    justify-content:center; text-align:center; padding:40px 24px; gap:12px; }
 .fc-completed.active { display:flex; }
-
-.fc-done-icon-wrap {
-    width:72px; height:72px; background:#22c074; border-radius:18px;
-    display:flex; align-items:center; justify-content:center; margin-bottom:20px; flex-shrink:0; }
-.fc-done-icon-wrap svg { width:38px; height:38px; }
-
-.fc-done-title {
-    font-family:'Fredoka',sans-serif; font-size:28px; font-weight:700;
-    color:var(--t800); margin:0 0 8px; }
-.fc-done-msg {
-    font-size:14px; font-weight:600; color:#5a7a6a; margin:0 0 28px; }
-
-.fc-done-prog-row {
-    width:100%; max-width:420px; margin-bottom:28px; display:flex; flex-direction:column; gap:6px; }
-.fc-done-prog-label {
-    font-size:13px; color:#5a7a6a; display:flex; justify-content:space-between; }
-.fc-done-prog-label span { font-weight:700; color:var(--t800); }
-.fc-done-prog-track {
-    width:100%; height:8px; background:var(--t50); border-radius:99px;
-    overflow:hidden; border:0.5px solid var(--t100); }
-.fc-done-prog-fill {
-    height:100%; width:100%; background:#22c074; border-radius:99px; }
-
-.fc-done-restart {
-    background:var(--t800); color:#fff; border:none; border-radius:30px;
-    padding:14px 32px; font-size:15px; font-weight:800; cursor:pointer;
-    font-family:'Nunito',sans-serif; display:inline-flex; align-items:center; gap:8px;
-    transition:background .15s; }
-.fc-done-restart:hover { background:var(--t600); }
+.fc-done-icon { font-size:56px; line-height:1; }
+.fc-done-title { font-family:'Fredoka',sans-serif; font-size:26px; font-weight:700; color:var(--t800); margin:0; }
+.fc-done-msg { font-size:13px; font-weight:600; color:#5a7a6a; margin:0; }
 
 /* fullscreen / presentation scaling */
 body.fullscreen-embedded .fc-flip-area,
-body.presentation-mode   .fc-flip-area   { min-height:300px; }
+body.presentation-mode   .fc-flip-area   { min-height:260px; }
 body.fullscreen-embedded .fc-card,
-body.presentation-mode   .fc-card        { height:280px; }
+body.presentation-mode   .fc-card        { min-height:260px; }
 body.fullscreen-embedded .fc-side-text,
 body.presentation-mode   .fc-side-text   { font-size:clamp(26px,4.5vw,44px) !important; }
 body.fullscreen-embedded .act-btn,
@@ -237,8 +209,9 @@ body.embedded-mode     .fc-topbar { display:none; }
 
 @media (max-width:600px) {
     .fc-card-wrap { border-radius:14px; }
-    .fc-flip-area { min-height:180px; padding:10px 12px; }
-    .fc-card { height:160px; }
+    .fc-flip-area { padding:10px 12px; }
+    .fc-side { flex-direction:column; gap:12px; padding:14px; }
+    .fc-side-img { max-width:70%; max-height:40%; }
     .act-btn { padding:7px 14px; font-size:12px; }
 }
 </style>
@@ -273,11 +246,9 @@ body.embedded-mode     .fc-topbar { display:none; }
             <div class="fc-flip-area" id="fc-flip-area">
                 <div class="fc-card" id="fc-card">
                     <div class="fc-side fc-front" id="fc-front">
-                        <span class="fc-side-label">English</span>
                         <div class="fc-side-text" id="fc-front-text"></div>
                     </div>
                     <div class="fc-side fc-back" id="fc-back">
-                        <span class="fc-side-label">Translation</span>
                         <div class="fc-side-text" id="fc-back-text"></div>
                     </div>
                 </div>
@@ -295,18 +266,10 @@ body.embedded-mode     .fc-topbar { display:none; }
         </div>
 
         <div class="fc-completed" id="fc-completed">
-            <div class="fc-done-icon-wrap">
-                <svg viewBox="0 0 38 38" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M8 20L16 28L30 11" stroke="white" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
-                </svg>
-            </div>
-            <h2 class="fc-done-title">Flashcards</h2>
-            <p class="fc-done-msg">You've reviewed all the cards. Great job!</p>
-            <div class="fc-done-prog-row">
-                <div class="fc-done-prog-label">Cards reviewed <span id="fc-done-count"><?php echo count($cards); ?> / <?php echo count($cards); ?></span></div>
-                <div class="fc-done-prog-track"><div class="fc-done-prog-fill"></div></div>
-            </div>
-            <button type="button" class="fc-done-restart" id="fc-restart">↺ &nbsp;Review again</button>
+            <div class="fc-done-icon">&#x2705;</div>
+            <h2 class="fc-done-title">All cards reviewed!</h2>
+            <p class="fc-done-msg">Great job practising your vocabulary.</p>
+            <button type="button" class="act-btn" style="padding:10px 24px;font-size:14px" id="fc-restart">&#8635; Start over</button>
         </div>
 
     </div>
