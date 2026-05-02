@@ -133,12 +133,13 @@ body { margin:0 !important; padding:0 !important; background:#f0faf6 !important;
 
 /* ── body area ── */
 .fc-body { flex:1; display:flex; flex-direction:column; align-items:center;
-    padding:16px 14px 10px; gap:12px; }
+    padding:10px 14px 8px; gap:8px; min-height:0; }
 
 /* card container — white with purple soft border */
 .fc-card-wrap { width:100%; max-width:720px; background:#fff;
     border-radius:20px; border:1.5px solid var(--pb);
-    overflow:hidden; box-shadow:0 4px 20px rgba(127,119,221,.10); }
+    overflow:hidden; box-shadow:0 4px 20px rgba(127,119,221,.10);
+    display:flex; flex-direction:column; flex:1; min-height:0; }
 
 /* progress bar */
 .fc-prog-row { display:flex; align-items:center; gap:10px; padding:10px 18px 0; }
@@ -149,8 +150,8 @@ body { margin:0 !important; padding:0 !important; background:#f0faf6 !important;
 .fc-prog-lbl { font-size:11px; font-weight:800; color:var(--p); white-space:nowrap; font-family:'Nunito',sans-serif; }
 
 /* card flip area */
-.fc-flip-area { min-height:240px; perspective:1200px; padding:14px 18px; cursor:pointer; }
-.fc-card { width:100%; height:220px; position:relative;
+.fc-flip-area { flex:1; min-height:200px; perspective:1200px; padding:14px 18px; cursor:pointer; display:flex; align-items:stretch; }
+.fc-card { width:100%; flex:1; min-height:200px; position:relative;
     transform-style:preserve-3d; transition:transform .55s ease; border-radius:14px; }
 .fc-card.flipped { transform:rotateY(180deg); }
 .fc-side { position:absolute; inset:0; backface-visibility:hidden; border-radius:14px;
@@ -159,11 +160,7 @@ body { margin:0 !important; padding:0 !important; background:#f0faf6 !important;
 .fc-back  { background:var(--pd); border:1.5px solid rgba(255,255,255,.15);
     transform:rotateY(180deg); }
 
-.fc-side-label { font-size:10px; font-weight:800; letter-spacing:.1em;
-    text-transform:uppercase; font-family:'Nunito',sans-serif;
-    margin-bottom:10px; opacity:.7; }
-.fc-front .fc-side-label { color:var(--pd); }
-.fc-back  .fc-side-label { color:rgba(255,255,255,.7); }
+.fc-side-label { display:none; }
 
 .fc-side-text { font-family:'Fredoka',sans-serif; font-size:clamp(22px,4vw,36px);
     font-weight:600; text-align:center; line-height:1.2; }
@@ -194,9 +191,9 @@ body { margin:0 !important; padding:0 !important; background:#f0faf6 !important;
 
 /* fullscreen / presentation scaling */
 body.fullscreen-embedded .fc-flip-area,
-body.presentation-mode   .fc-flip-area   { min-height:300px; }
+body.presentation-mode   .fc-flip-area   { min-height:260px; }
 body.fullscreen-embedded .fc-card,
-body.presentation-mode   .fc-card        { height:280px; }
+body.presentation-mode   .fc-card        { min-height:260px; }
 body.fullscreen-embedded .fc-side-text,
 body.presentation-mode   .fc-side-text   { font-size:clamp(26px,4.5vw,44px) !important; }
 body.fullscreen-embedded .act-btn,
@@ -209,8 +206,8 @@ body.embedded-mode     .fc-topbar { display:none; }
 
 @media (max-width:600px) {
     .fc-card-wrap { border-radius:14px; }
-    .fc-flip-area { min-height:180px; padding:10px 12px; }
-    .fc-card { height:160px; }
+    .fc-flip-area { min-height:160px; padding:10px 12px; }
+    .fc-card { min-height:160px; }
     .act-btn { padding:7px 14px; font-size:12px; }
 }
 </style>
@@ -245,11 +242,9 @@ body.embedded-mode     .fc-topbar { display:none; }
             <div class="fc-flip-area" id="fc-flip-area">
                 <div class="fc-card" id="fc-card">
                     <div class="fc-side fc-front" id="fc-front">
-                        <span class="fc-side-label">English</span>
                         <div class="fc-side-text" id="fc-front-text"></div>
                     </div>
                     <div class="fc-side fc-back" id="fc-back">
-                        <span class="fc-side-label">Translation</span>
                         <div class="fc-side-text" id="fc-back-text"></div>
                     </div>
                 </div>
