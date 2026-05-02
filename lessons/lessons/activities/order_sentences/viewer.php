@@ -105,21 +105,39 @@ do {
 
 ob_start();
 ?>
-<style>
-/* ══════════════════════════════════════════════════════════════
-   ORDER THE SENTENCES — FULL-VIEWPORT STRICT GRID LAYOUT
-   Card: calc(100vw - 48px) × calc(100vh - 96px)
-   No vertical growth anywhere. Overflow = horizontal only.
-   ══════════════════════════════════════════════════════════════ */
 
-/* ── 1. Erase all template visual constraints ── */
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@600;700;800&display=swap" rel="stylesheet">
+
+<style>
+/* ══════════════════════════════════════════
+   CSS VARIABLES
+   ══════════════════════════════════════════ */
+:root {
+    --teal-50:  #E1F5EE;
+    --teal-100: #9FE1CB;
+    --teal-200: #5DCAA5;
+    --teal-400: #1D9E75;
+    --teal-600: #0F6E56;
+    --teal-800: #085041;
+    --teal-900: #04342C;
+    --purple:   #7F77DD;
+    --purple-d: #534AB7;
+    --red:      #dc2626;
+    --green:    #16a34a;
+    --chip-size: 80px;
+}
+
+/* ══════════════════════════════════════════
+   RESET TEMPLATE CHROME
+   ══════════════════════════════════════════ */
 body {
     margin: 0 !important;
     padding: 0 !important;
-    background: #080914 !important;
-    min-height: 100vh;
-    overflow-x: hidden;
+    background: var(--teal-900) !important;
+    font-family: 'Nunito', 'Segoe UI', sans-serif !important;
+    overflow: hidden;
 }
+
 .activity-wrapper {
     max-width: 100% !important;
     margin: 0 !important;
@@ -129,7 +147,9 @@ body {
     flex-direction: column !important;
     background: transparent !important;
 }
+
 .top-row { display: none !important; }
+
 .viewer-content {
     flex: 1 !important;
     display: flex !important;
@@ -142,840 +162,903 @@ body {
     border-radius: 0 !important;
 }
 
-/* ── 2. Page: full-viewport 3-row grid ── */
+/* ══════════════════════════════════════════
+   PAGE SHELL  — 3-row grid: bar | card | bar
+   ══════════════════════════════════════════ */
 .os-page {
-    flex: 1;
+    display: flex;
+    flex-direction: column;
     width: 100vw;
-    min-height: 100vh;
-    background: #080914;
-    display: grid;
-    grid-template-rows: 40px 1fr 48px;
-    font-family: 'Nunito', 'Segoe UI', sans-serif;
+    height: 100vh;
+    min-height: 0;
+    background: var(--teal-900);
 }
 
-.os-page-hd {
+/* Top strip */
+.os-topbar {
+    flex-shrink: 0;
+    height: 38px;
+    background: var(--teal-800);
+    border-bottom: 1px solid rgba(93,202,165,.2);
     display: flex;
     align-items: center;
-    padding: 0 24px;
-    gap: 16px;
+    padding: 0 16px;
+    gap: 12px;
 }
+
 .os-back-btn {
     background: rgba(255,255,255,.1);
     border: 1px solid rgba(255,255,255,.15);
-    color: rgba(255,255,255,.75);
+    color: rgba(255,255,255,.8);
     font-size: 12px;
-    font-weight: 700;
-    font-family: 'Nunito', 'Segoe UI', sans-serif;
-    border-radius: 6px;
-    padding: 5px 12px;
+    font-weight: 800;
+    font-family: 'Nunito', sans-serif;
+    border-radius: 7px;
+    padding: 4px 12px;
     cursor: pointer;
-    transition: background .15s ease;
+    transition: background .15s;
 }
-.os-back-btn:hover { background: rgba(255,255,255,.18); }
+.os-back-btn:hover { background: rgba(255,255,255,.2); }
 body.presentation-mode .os-back-btn,
-body.embedded-mode .os-back-btn { display: none; }
+body.embedded-mode   .os-back-btn { display: none; }
 
-.os-page-ft {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0 24px;
-}
-/* Presentation mode: style the template's "siguiente" button */
-body.presentation-mode .viewer-content > div[style] {
-    background: transparent !important;
-    border-top: 1px solid rgba(255,255,255,.08) !important;
-}
-
-/* ── 3. Activity card ── */
-.os-card {
-    width: calc(100vw - 48px);
-    height: calc(100vh - 96px);
-    margin: 0 auto;
-    background: #ffffff;
-    border-radius: 10px;
-    box-sizing: border-box;
-    padding: 24px 32px;
-    position: relative;
-    overflow: hidden;
-    align-self: center;
-}
-
-/* ── 4. Inner 8-row grid ── */
-.os-inner {
-    display: grid;
-    grid-template-rows: auto 32px auto 20px auto 32px auto 1fr;
-    justify-items: center;
-    align-content: start;
-    width: 100%;
-    height: 100%;
-    overflow-y: auto;
-    overflow-x: hidden;
-    scrollbar-width: thin;
-    scrollbar-color: #c7b7ff #f0eeff;
-}
-.os-inner::-webkit-scrollbar       { width: 6px; }
-.os-inner::-webkit-scrollbar-track { background: #f0eeff; border-radius: 3px; }
-.os-inner::-webkit-scrollbar-thumb { background: #c7b7ff; border-radius: 3px; }
-
-/* Header row */
-.os-inner .act-header {
-    width: min(1040px, 100%);
-    max-width: 100%;
-    margin: 0;
-    padding: 12px 20px;
-    border-radius: 12px;
-    justify-self: center;
-}
-.os-inner .act-header h2 { font-size: clamp(16px, 2vw, 24px); margin-bottom: 3px; }
-.os-inner .act-header p  { font-size: 13px; }
-
-/* Explicit gap rows */
-.os-gap-lg { height: 32px; width: 100%; }
-.os-gap-sm { height: 20px; width: 100%; }
-
-/* ── 5. Video wrapper: 560px × 16:9, centered ── */
-.os-video-wrapper {
-    width: min(560px, 48vw);
-    aspect-ratio: 16 / 9;
-    height: auto;
-    border-radius: 8px;
-    overflow: hidden;
-    background: #000;
-    box-shadow: 0 8px 24px rgba(0,0,0,.20);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-.os-video-wrapper video,
-.os-video-wrapper iframe {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    border-radius: 8px;
-    display: block;
-}
-.os-video-wrapper--empty  { background: transparent; box-shadow: none; }
-.os-audio-wrap            { background: transparent; box-shadow: none; }
-.os-audio-wrap audio      { width: 100%; border-radius: 8px; }
-.os-tts-wrap              { background: transparent; box-shadow: none; }
-
-/* ── 6. Drop zone: 1040px × 112px fixed, horizontal scroll ── */
-.os-dropzone {
-    width: min(1040px, 78vw);
-    height: 112px;
-    max-height: 112px;
-    min-height: 112px;
-    box-sizing: border-box;
-    border: 2px dashed #c7b7ff;
-    border-radius: 12px;
-    display: flex;
-    align-items: center;
-    justify-content: flex-start;
-    gap: 10px;
-    overflow-x: auto;
-    overflow-y: hidden;
-    padding: 12px 16px;
-    background: rgba(245,243,255,.35);
-    transition: border-color .18s ease, background .18s ease;
-    scrollbar-width: thin;
-    scrollbar-color: #c7b7ff #f5f3ff;
-}
-.os-dropzone::-webkit-scrollbar       { height: 4px; }
-.os-dropzone::-webkit-scrollbar-track { background: #f5f3ff; border-radius: 2px; }
-.os-dropzone::-webkit-scrollbar-thumb { background: #c7b7ff; border-radius: 2px; }
-.os-dropzone.drag-over {
-    border-color: rgba(124,58,237,.7);
-    background: rgba(237,233,254,.5);
-}
-.os-dropzone__placeholder {
-    flex-shrink: 0;
-    width: 100%;
-    text-align: center;
-    color: rgba(124,58,237,.4);
-    font-size: 13px;
-    font-weight: 600;
-    pointer-events: none;
-}
-
-/* ── 7. Chips row: 1040px wide, centered, horizontal scroll ── */
-.os-chips-row {
-    width: min(1040px, 78vw);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 10px;
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    overflow-y: hidden;
-    scrollbar-width: thin;
-    scrollbar-color: #c7b7ff #f5f3ff;
-}
-.os-chips-row::-webkit-scrollbar       { height: 4px; }
-.os-chips-row::-webkit-scrollbar-track { background: #f5f3ff; border-radius: 2px; }
-.os-chips-row::-webkit-scrollbar-thumb { background: #c7b7ff; border-radius: 2px; }
-
-/* ── 8. Chip: 64 × 64, fixed, no shrink ── */
-.os-chip {
-    flex: 0 0 64px;
-    width: 64px;
-    height: 64px;
-    border-radius: 8px;
-    display: grid;
-    place-items: center;
-    cursor: grab;
-    user-select: none;
-    background: transparent;
-    border: none;
-    padding: 0;
-    transition: transform .18s cubic-bezier(.34,1.4,.64,1), opacity .15s ease;
-    -webkit-backface-visibility: hidden;
-    backface-visibility: hidden;
-}
-.os-chip:hover       { transform: translateY(-3px) scale(1.07); }
-.os-chip.os-dragging { opacity: .35; transform: scale(1.06); cursor: grabbing; }
-
-.os-chip img {
-    width: 64px;
-    height: 64px;
-    border-radius: 8px;
-    object-fit: contain;
-    display: block;
-    box-shadow: 0 4px 14px rgba(0,0,0,.14), 0 1px 4px rgba(0,0,0,.08);
-    transition: box-shadow .18s ease;
-    pointer-events: none;
-}
-.os-chip:hover img { box-shadow: 0 8px 22px rgba(0,0,0,.18), 0 3px 8px rgba(0,0,0,.10); }
-
-.os-chip-text {
-    display: inline-flex;
-    align-items: center;
-    padding: 5px 10px;
-    background: linear-gradient(180deg, #fff 0%, #f5f3ff 100%);
-    border: 1px solid #ddd6fe;
-    border-radius: 999px;
-    font-family: 'Nunito', 'Segoe UI', sans-serif;
+.os-topbar-title {
+    font-family: 'Nunito', sans-serif;
     font-size: 12px;
-    font-weight: 700;
-    color: #4c1d95;
-    box-shadow: 0 3px 10px rgba(124,58,237,.12);
-    pointer-events: none;
-    white-space: nowrap;
-    max-width: 110px;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    font-weight: 800;
+    color: var(--teal-100);
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    margin: 0 auto;
 }
-.os-chip:hover .os-chip-text { box-shadow: 0 5px 16px rgba(124,58,237,.18); }
 
-/* Feedback rings */
-.os-chip.correct-pos img          { box-shadow: 0 0 0 3px #16a34a, 0 4px 14px rgba(22,163,74,.22); }
-.os-chip.wrong-pos img            { box-shadow: 0 0 0 3px #dc2626, 0 4px 14px rgba(220,38,38,.18); }
-.os-chip.correct-pos .os-chip-text { border-color: #16a34a; box-shadow: 0 0 0 2px #16a34a; }
-.os-chip.wrong-pos .os-chip-text   { border-color: #dc2626; box-shadow: 0 0 0 2px #dc2626; }
-.os-chip.os-selected img           { box-shadow: 0 0 0 3px #7c3aed, 0 6px 18px rgba(124,58,237,.28); }
-.os-chip.os-selected .os-chip-text { border-color: #7c3aed; box-shadow: 0 0 0 2px #7c3aed; }
+/* Bottom strip */
+.os-bottombar {
+    flex-shrink: 0;
+    height: 40px;
+    background: var(--teal-800);
+    border-top: 1px solid rgba(93,202,165,.2);
+}
 
-/* ── 9. Card bottom: controls + feedback (row 8, 1fr) ── */
-.os-card-bottom {
+/* ══════════════════════════════════════════
+   WHITE ACTIVITY CARD
+   ══════════════════════════════════════════ */
+.os-card {
+    flex: 1;
+    margin: 8px 12px;
+    background: #fff;
+    border-radius: 14px;
     display: flex;
     flex-direction: column;
-    align-items: center;
-    justify-content: flex-start;
-    gap: 8px;
-    padding-top: 14px;
-    width: 100%;
-}
-.os-buttons-row {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 12px;
-    flex-wrap: wrap;
+    overflow: hidden;
+    min-height: 0;
+    position: relative;
 }
 
-/* ── 10. Buttons ── */
+/* ── Card header ── */
+.os-card-header {
+    flex-shrink: 0;
+    background: var(--teal-50);
+    border-bottom: 1px solid var(--teal-100);
+    padding: 11px 20px 9px;
+}
+
+.os-card-header h2 {
+    font-family: 'Fredoka', sans-serif;
+    font-size: clamp(15px, 2vw, 20px);
+    font-weight: 600;
+    color: var(--teal-800);
+    margin: 0 0 2px;
+    line-height: 1.2;
+}
+
+.os-card-header p {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--teal-600);
+    margin: 0;
+}
+
+/* ── Video / Media area ── */
+.os-media-area {
+    flex-shrink: 0;
+    width: 100%;
+    background: #111;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+/* Video fills full width, 16:9 */
+.os-media-area video {
+    width: 100%;
+    max-height: 42vh;
+    object-fit: contain;
+    display: block;
+    background: #000;
+}
+
+.os-media-area audio {
+    width: 100%;
+    background: var(--teal-50);
+}
+
+.os-media-area iframe {
+    width: 100%;
+    height: 42vh;
+    border: none;
+    display: block;
+}
+
+/* TTS button styled inline in media area */
+.os-tts-area {
+    width: 100%;
+    background: var(--teal-50);
+    border-bottom: 1px solid var(--teal-100);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 12px;
+    flex-shrink: 0;
+}
+
+/* ── Game zone: flex-grow to fill remaining space ── */
+.os-game-zone {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 10px 16px 8px;
+    gap: 8px;
+    overflow: hidden;
+    min-height: 0;
+}
+
+/* Zone labels */
+.os-zone-label {
+    font-size: 10px;
+    font-weight: 800;
+    color: var(--teal-600);
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    font-family: 'Nunito', sans-serif;
+    margin-bottom: 4px;
+    flex-shrink: 0;
+}
+
+/* ── Drop zone ── */
+.os-dropzone {
+    flex: 1;
+    min-height: 80px;
+    border: 2px dashed var(--teal-200);
+    border-radius: 12px;
+    background: var(--teal-50);
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 10px 12px;
+    transition: border-color .15s, background .15s;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--teal-200) var(--teal-50);
+}
+
+.os-dropzone::-webkit-scrollbar       { width: 4px; }
+.os-dropzone::-webkit-scrollbar-thumb { background: var(--teal-200); border-radius: 2px; }
+
+.os-dropzone.drag-over {
+    border-color: var(--teal-400);
+    background: rgba(29,158,117,.08);
+}
+
+.os-dz-hint {
+    width: 100%;
+    text-align: center;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--teal-100);
+    pointer-events: none;
+    font-family: 'Nunito', sans-serif;
+}
+
+/* ── Chip bank ── */
+.os-bank {
+    flex-shrink: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+    padding: 4px 0;
+    overflow-x: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--teal-200) transparent;
+}
+
+/* ── Chips ── */
+.os-chip {
+    width: var(--chip-size);
+    height: var(--chip-size);
+    border-radius: 10px;
+    background: #fff;
+    border: 2px solid var(--teal-100);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: grab;
+    user-select: none;
+    position: relative;
+    flex-shrink: 0;
+    transition: transform .15s cubic-bezier(.34,1.4,.64,1), border-color .15s, box-shadow .15s;
+    overflow: hidden;
+}
+
+.os-chip:hover {
+    transform: translateY(-3px) scale(1.06);
+    border-color: var(--teal-400);
+    box-shadow: 0 6px 18px rgba(29,158,117,.20);
+}
+
+.os-chip.os-dragging {
+    opacity: .35;
+    transform: scale(1.04);
+    cursor: grabbing;
+}
+
+.os-chip.os-selected {
+    border-color: var(--purple);
+    box-shadow: 0 0 0 3px rgba(127,119,221,.25);
+}
+
+.os-chip img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    pointer-events: none;
+    display: block;
+}
+
+.os-chip-label {
+    font-family: 'Nunito', sans-serif;
+    font-size: 11px;
+    font-weight: 800;
+    color: var(--teal-800);
+    text-align: center;
+    padding: 3px 4px;
+    line-height: 1.2;
+    word-break: break-word;
+    hyphens: auto;
+}
+
+/* Position badge */
+.os-chip-badge {
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 18px;
+    height: 18px;
+    background: var(--teal-800);
+    color: #fff;
+    border-radius: 50%;
+    font-size: 10px;
+    font-weight: 800;
+    font-family: 'Nunito', sans-serif;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 2;
+}
+
+.os-chip.in-answer .os-chip-badge {
+    display: flex;
+}
+
+/* Feedback states */
+.os-chip.correct-pos {
+    border-color: var(--green);
+    box-shadow: 0 0 0 2px var(--green);
+}
+
+.os-chip.wrong-pos {
+    border-color: var(--red);
+    box-shadow: 0 0 0 2px var(--red);
+}
+
+/* ── Controls bar ── */
+.os-controls {
+    flex-shrink: 0;
+    border-top: 1px solid var(--teal-100);
+    padding: 8px 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+/* Buttons */
 .os-btn {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    padding: 10px 20px;
+    gap: 5px;
+    padding: 9px 18px;
     border: none;
-    border-radius: 8px;
-    color: #fff;
+    border-radius: 20px;
+    font-family: 'Nunito', sans-serif;
+    font-size: 13px;
     font-weight: 800;
-    font-family: 'Nunito', 'Segoe UI', sans-serif;
-    font-size: 14px;
-    min-width: 136px;
-    line-height: 1;
+    color: #fff;
     cursor: pointer;
-    box-shadow: 0 8px 20px rgba(15,23,42,.12);
-    transition: transform .15s ease, filter .15s ease;
+    transition: transform .12s, filter .12s;
+    box-shadow: 0 3px 10px rgba(0,0,0,.12);
+    white-space: nowrap;
 }
-.os-btn:hover    { filter: brightness(1.06); transform: translateY(-1px); }
+.os-btn:hover    { filter: brightness(1.07); transform: translateY(-1px); }
 .os-btn:disabled { opacity: .45; cursor: default; transform: none; filter: none; }
-.os-btn-check { background: linear-gradient(180deg, #8b5cf6 0%, #7c3aed 100%); }
-.os-btn-tts   { background: linear-gradient(180deg, #38bdf8 0%, #0ea5e9 100%); }
-.os-btn-show  { background: linear-gradient(180deg, #d8b4fe 0%, #a855f7 100%); }
-.os-btn-next  { background: linear-gradient(180deg, #2dd4bf 0%, #0f766e 100%); }
 
-/* ── 11. Feedback ── */
+.os-btn-check { background: var(--purple); }
+.os-btn-show  { background: var(--teal-400); }
+.os-btn-next  { background: var(--teal-600); }
+.os-btn-tts   { background: var(--teal-400); padding: 10px 24px; font-size: 14px; border-radius: 20px; }
+
+/* Feedback text */
 #os-feedback {
-    font-size: 15px;
+    font-family: 'Nunito', sans-serif;
+    font-size: 13px;
     font-weight: 800;
     text-align: center;
-    margin: 0;
-    min-height: 20px;
+    min-height: 18px;
+    width: 100%;
 }
-#os-feedback.good { color: #16a34a; }
-#os-feedback.bad  { color: #dc2626; }
+#os-feedback.good { color: var(--green); }
+#os-feedback.bad  { color: var(--red); }
 
-/* ── 12. Completed: absolute overlay fills the card ── */
-.os-completed-screen {
+/* ══════════════════════════════════════════
+   COMPLETED OVERLAY
+   ══════════════════════════════════════════ */
+.os-completed {
     display: none;
     position: absolute;
     inset: 0;
     background: #fff;
-    border-radius: 10px;
+    border-radius: 14px;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     text-align: center;
     padding: 40px 24px;
-    z-index: 10;
+    z-index: 20;
 }
-.os-completed-screen.active { display: flex; }
-.os-completed-icon  { font-size: 68px; margin-bottom: 14px; }
-.os-completed-title {
-    font-family: 'Fredoka', 'Trebuchet MS', sans-serif;
-    font-size: 32px;
-    font-weight: 700;
-    color: #4c1d95;
-    margin: 0 0 10px;
-    line-height: 1.2;
-}
-.os-completed-text { font-size: 15px; color: #5b516f; line-height: 1.6; margin: 0 0 8px; }
-.os-score-text     { font-weight: 800; font-size: 18px; color: #4c1d95; margin: 0 0 22px; }
-.os-restart-btn {
-    display: inline-block;
-    padding: 11px 26px;
-    border: none;
-    border-radius: 8px;
-    background: linear-gradient(180deg, #8b5cf6 0%, #7c3aed 100%);
-    color: #fff;
-    font-weight: 700;
-    font-size: 15px;
-    cursor: pointer;
-    box-shadow: 0 10px 24px rgba(0,0,0,.14);
-    transition: transform .18s ease, filter .18s ease;
-}
-.os-restart-btn:hover { transform: scale(1.05); filter: brightness(1.07); }
 
-/* ── 13. Responsive: horizontal adaptation only ── */
-@media (max-width: 900px) {
-    .os-card { padding: 16px 20px; border-radius: 8px; }
-    .os-video-wrapper { width: min(400px, 88vw); }
-    .os-dropzone, .os-chips-row { width: 88vw; }
-    .os-inner .act-header { padding: 10px 14px; }
+.os-completed.active { display: flex; }
+
+.os-completed-icon {
+    font-size: 64px;
+    margin-bottom: 12px;
+    line-height: 1;
 }
+
+.os-completed-title {
+    font-family: 'Fredoka', sans-serif;
+    font-size: 30px;
+    font-weight: 700;
+    color: var(--teal-800);
+    margin: 0 0 8px;
+}
+
+.os-completed-text {
+    font-size: 14px;
+    font-weight: 600;
+    color: #5a7a6a;
+    margin: 0 0 6px;
+}
+
+.os-score {
+    font-family: 'Fredoka', sans-serif;
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--teal-600);
+    margin: 0 0 24px;
+}
+
+.os-restart-btn {
+    background: var(--teal-800);
+    color: #fff;
+    border: none;
+    border-radius: 20px;
+    padding: 11px 28px;
+    font-family: 'Nunito', sans-serif;
+    font-size: 14px;
+    font-weight: 800;
+    cursor: pointer;
+    transition: background .15s, transform .15s;
+    box-shadow: 0 4px 14px rgba(8,80,65,.25);
+}
+.os-restart-btn:hover { background: var(--teal-900); transform: scale(1.04); }
+
+/* ══════════════════════════════════════════
+   RESPONSIVE
+   ══════════════════════════════════════════ */
 @media (max-width: 600px) {
-    .os-page { grid-template-rows: 36px 1fr 40px; }
-    .os-card { width: calc(100vw - 24px); height: calc(100vh - 80px); padding: 12px 14px; }
-    .os-video-wrapper { width: 90vw; }
-    .os-dropzone, .os-chips-row { width: 90vw; }
-    .os-buttons-row { gap: 8px; }
-    .os-btn { min-width: 100px; padding: 9px 12px; font-size: 13px; }
-    .os-inner { grid-template-rows: auto 16px auto 12px auto 16px auto 1fr; }
+    :root { --chip-size: 64px; }
+    .os-card { margin: 6px 8px; border-radius: 10px; }
+    .os-topbar { height: 34px; }
+    .os-bottombar { height: 32px; }
+    .os-card-header { padding: 8px 14px 6px; }
+    .os-game-zone { padding: 8px 10px 6px; gap: 6px; }
+    .os-btn { padding: 8px 14px; font-size: 12px; }
 }
 </style>
 
-
+<!-- PAGE SHELL -->
 <div class="os-page">
 
-    <!-- Row 1 · 40px: page header strip -->
-    <header class="os-page-hd">
+    <!-- Top bar -->
+    <div class="os-topbar">
         <button class="os-back-btn" onclick="history.back()">← Back</button>
-    </header>
+        <span class="os-topbar-title">Activity</span>
+    </div>
 
-    <!-- Row 2 · 1fr: white activity card -->
-    <main class="os-card">
+    <!-- White card -->
+    <div class="os-card">
 
-        <!-- Inner 8-row grid (visible during activity) -->
-        <div id="os-activity-area" class="os-inner">
+        <!-- Header -->
+        <div class="os-card-header">
+            <h2><?= htmlspecialchars($viewerTitle, ENT_QUOTES, 'UTF-8') ?></h2>
+            <p><?= htmlspecialchars((string)($activity['instructions'] ?? ''), ENT_QUOTES, 'UTF-8') ?></p>
+        </div>
 
-            <!-- Row 1 · auto: title + instructions -->
-            <?= render_activity_header($viewerTitle, (string)($activity['instructions'] ?? '')) ?>
+        <!-- Media -->
+        <?php if (($activity['media_type'] ?? '') === 'video' && !empty($activity['media_url'])): ?>
+        <div class="os-media-area">
+            <video controls preload="metadata"
+                   src="<?= htmlspecialchars($activity['media_url'], ENT_QUOTES, 'UTF-8') ?>">
+            </video>
+        </div>
 
-            <!-- Row 2 · 32px -->
-            <div class="os-gap-lg"></div>
+        <?php elseif (($activity['media_type'] ?? '') === 'audio' && !empty($activity['media_url'])): ?>
+        <div class="os-tts-area">
+            <audio controls src="<?= htmlspecialchars($activity['media_url'], ENT_QUOTES, 'UTF-8') ?>"></audio>
+        </div>
 
-            <!-- Row 3 · auto: media -->
-            <?php if (($activity['media_type'] ?? '') === 'video' && !empty($activity['media_url'])): ?>
-            <div class="os-video-wrapper">
-                <video controls src="<?= htmlspecialchars($activity['media_url'], ENT_QUOTES, 'UTF-8') ?>"></video>
-            </div>
-            <?php elseif (($activity['media_type'] ?? '') === 'audio' && !empty($activity['media_url'])): ?>
-            <div class="os-video-wrapper os-audio-wrap">
-                <audio controls src="<?= htmlspecialchars($activity['media_url'], ENT_QUOTES, 'UTF-8') ?>"></audio>
-            </div>
-            <?php elseif (($activity['media_type'] ?? '') === 'tts'): ?>
-            <div class="os-video-wrapper os-tts-wrap">
-                <button type="button" id="os-tts-btn" class="os-btn os-btn-tts">🔊 Listen</button>
-            </div>
-            <?php else: ?>
-            <div class="os-video-wrapper os-video-wrapper--empty"></div>
-            <?php endif; ?>
+        <?php elseif (($activity['media_type'] ?? '') === 'tts'): ?>
+        <div class="os-tts-area">
+            <button type="button" id="os-tts-btn" class="os-btn os-btn-tts">🔊 Listen</button>
+        </div>
+        <?php endif; ?>
 
-            <!-- Row 4 · 20px -->
-            <div class="os-gap-sm"></div>
+        <!-- Game zone -->
+        <div class="os-game-zone" id="os-game-zone">
 
-            <!-- Row 5 · auto: drop zone (112px fixed) -->
-            <div id="os-answer" class="os-dropzone">
-                <div id="os-answer-placeholder" class="os-dropzone__placeholder">
-                    Drag the pictures here in the correct order
+            <!-- Drop zone -->
+            <div>
+                <div class="os-zone-label">Your answer — drag here in order</div>
+                <div class="os-dropzone" id="os-dropzone">
+                    <span class="os-dz-hint" id="os-dz-hint">Drag the pictures here in the correct order</span>
                 </div>
             </div>
 
-            <!-- Row 6 · 32px -->
-            <div class="os-gap-lg"></div>
-
-            <!-- Row 7 · auto: chip bank -->
-            <div id="os-bank" class="os-chips-row">
-                <?php foreach ($shuffled as $s):
-                    $disp = $s['display'] ?? 'both';
-                ?>
-                <div class="os-chip"
-                     data-id="<?= htmlspecialchars($s['id'], ENT_QUOTES, 'UTF-8') ?>">
-                    <?php if ($disp !== 'text' && !empty($s['image'])): ?>
-                        <img src="<?= htmlspecialchars($s['image'], ENT_QUOTES, 'UTF-8') ?>" alt="">
-                    <?php endif; ?>
-                    <?php if ($disp !== 'image' && !empty($s['text'])): ?>
-                        <span class="os-chip-text"><?= htmlspecialchars($s['text'], ENT_QUOTES, 'UTF-8') ?></span>
-                    <?php endif; ?>
+            <!-- Bank -->
+            <div>
+                <div class="os-zone-label">Sentences</div>
+                <div class="os-bank" id="os-bank">
+                    <?php foreach ($shuffled as $s):
+                        $disp = $s['display'] ?? 'both';
+                    ?>
+                    <div class="os-chip"
+                         draggable="true"
+                         data-id="<?= htmlspecialchars($s['id'], ENT_QUOTES, 'UTF-8') ?>">
+                        <div class="os-chip-badge">?</div>
+                        <?php if ($disp !== 'text' && !empty($s['image'])): ?>
+                            <img src="<?= htmlspecialchars($s['image'], ENT_QUOTES, 'UTF-8') ?>"
+                                 alt="<?= htmlspecialchars($s['text'], ENT_QUOTES, 'UTF-8') ?>">
+                        <?php endif; ?>
+                        <?php if ($disp !== 'image' && !empty($s['text'])): ?>
+                            <span class="os-chip-label"><?= htmlspecialchars($s['text'], ENT_QUOTES, 'UTF-8') ?></span>
+                        <?php endif; ?>
+                    </div>
+                    <?php endforeach; ?>
                 </div>
-                <?php endforeach; ?>
             </div>
 
-            <!-- Row 8 · 1fr: controls + feedback (space falls here) -->
-            <div class="os-card-bottom">
-                <div class="os-buttons-row">
-                    <button type="button" id="os-check"    class="os-btn os-btn-check" disabled>✔ Check Order</button>
-                    <button type="button" id="os-show-ans" class="os-btn os-btn-show">👁 Show Answer</button>
-                    <button type="button" id="os-next"     class="os-btn os-btn-next">Next ▶</button>
-                </div>
-                <p id="os-feedback"></p>
+            <!-- Controls -->
+            <div class="os-controls">
+                <button type="button" class="os-btn os-btn-check" id="os-check" disabled>✔ Check Order</button>
+                <button type="button" class="os-btn os-btn-show"  id="os-show">👁 Show Answer</button>
+                <button type="button" class="os-btn os-btn-next"  id="os-next">Next ▶</button>
+                <div id="os-feedback"></div>
             </div>
 
-        </div><!-- #os-activity-area -->
+        </div><!-- .os-game-zone -->
 
-        <!-- Completed overlay: position:absolute over the card -->
-        <div id="os-completed" class="os-completed-screen">
+        <!-- Completed overlay -->
+        <div class="os-completed" id="os-completed">
             <div class="os-completed-icon">✅</div>
             <h2 class="os-completed-title"><?= htmlspecialchars($viewerTitle, ENT_QUOTES, 'UTF-8') ?></h2>
             <p class="os-completed-text">You've completed this activity. Great job!</p>
-            <p class="os-score-text" id="os-score-text"></p>
+            <p class="os-score" id="os-score"></p>
             <button type="button" class="os-restart-btn" onclick="osRestart()">↺ Try Again</button>
         </div>
 
-    </main><!-- .os-card -->
+    </div><!-- .os-card -->
 
-    <!-- Row 3 · 48px: page footer strip -->
-    <footer class="os-page-ft"></footer>
+    <!-- Bottom bar -->
+    <div class="os-bottombar"></div>
 
 </div><!-- .os-page -->
 
-<audio id="os-win-sound"  src="../../hangman/assets/win.mp3"      preload="auto"></audio>
-<audio id="os-lose-sound" src="../../hangman/assets/lose.mp3"     preload="auto"></audio>
-<audio id="os-done-sound" src="../../hangman/assets/win (1).mp3"  preload="auto"></audio>
+<!-- Sound effects -->
+<audio id="os-win-sound"  src="../../hangman/assets/win.mp3"     preload="auto"></audio>
+<audio id="os-lose-sound" src="../../hangman/assets/lose.mp3"    preload="auto"></audio>
+<audio id="os-done-sound" src="../../hangman/assets/win (1).mp3" preload="auto"></audio>
 
 <script>
 (function () {
 
 /* ── PHP data ── */
-var correctOrder   = <?= json_encode($correctOrder,   JSON_UNESCAPED_UNICODE) ?>;
-var OS_RETURN_TO   = <?= json_encode($returnTo,       JSON_UNESCAPED_UNICODE) ?>;
-var OS_ACTIVITY_ID = <?= json_encode($activityId,     JSON_UNESCAPED_UNICODE) ?>;
-var OS_TOTAL       = correctOrder.length;
+var CORRECT_ORDER  = <?= json_encode($correctOrder,  JSON_UNESCAPED_UNICODE) ?>;
+var OS_RETURN_TO   = <?= json_encode($returnTo,      JSON_UNESCAPED_UNICODE) ?>;
+var OS_ACTIVITY_ID = <?= json_encode($activityId,    JSON_UNESCAPED_UNICODE) ?>;
+var OS_TOTAL       = CORRECT_ORDER.length;
 
-/* ── DOM ── */
-var answerZone   = document.getElementById('os-answer');
-var bankZone     = document.getElementById('os-bank');
-var placeholder  = document.getElementById('os-answer-placeholder');
-var activityArea = document.getElementById('os-activity-area');
-var completedEl  = document.getElementById('os-completed');
-var feedbackEl   = document.getElementById('os-feedback');
-var scoreTextEl  = document.getElementById('os-score-text');
-var checkBtn     = document.getElementById('os-check');
-var showAnsBtn   = document.getElementById('os-show-ans');
-var nextBtn      = document.getElementById('os-next');
-var winSound     = document.getElementById('os-win-sound');
-var loseSound    = document.getElementById('os-lose-sound');
-var doneSound    = document.getElementById('os-done-sound');
+/* ── DOM refs ── */
+var dropzone    = document.getElementById('os-dropzone');
+var bank        = document.getElementById('os-bank');
+var hint        = document.getElementById('os-dz-hint');
+var checkBtn    = document.getElementById('os-check');
+var showBtn     = document.getElementById('os-show');
+var nextBtn     = document.getElementById('os-next');
+var feedbackEl  = document.getElementById('os-feedback');
+var completedEl = document.getElementById('os-completed');
+var scoreEl     = document.getElementById('os-score');
+var winSound    = document.getElementById('os-win-sound');
+var loseSound   = document.getElementById('os-lose-sound');
+var doneSound   = document.getElementById('os-done-sound');
 
 /* ── State ── */
-var attempts      = 0;
-var blockFinished = false;
-var correctCount  = 0;
-var dragged       = null;   // currently dragged chip
-var touchSelected = null;   // tap-to-move selection on touch devices
+var attempts     = 0;
+var done         = false;
+var correctCount = 0;
+var dragged      = null;
+var touchSel     = null;
+var isTouchDev   = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
 
-var isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
-
-/* ── Sound ── */
+/* ── Helpers ── */
 function playSound(el) {
-    try { el.pause(); el.currentTime = 0; el.play(); } catch (e) {}
+    try { el.pause(); el.currentTime = 0; el.play(); } catch(e) {}
 }
 
-/* ── Answer state helpers ── */
 function answerChips() {
-    return Array.prototype.slice.call(answerZone.querySelectorAll('.os-chip'));
+    return Array.from(dropzone.querySelectorAll('.os-chip'));
 }
 
 function userOrder() {
-    return answerChips().map(function (c) { return c.dataset.id; });
+    return answerChips().map(function(c){ return c.dataset.id; });
 }
 
 function countCorrect(order) {
     var n = 0;
-    for (var i = 0; i < correctOrder.length; i++) {
-        if ((order[i] || '') === correctOrder[i]) n++;
+    for (var i = 0; i < CORRECT_ORDER.length; i++) {
+        if ((order[i] || '') === CORRECT_ORDER[i]) n++;
     }
     return n;
 }
 
+function updateBadges() {
+    answerChips().forEach(function(c, i) {
+        var b = c.querySelector('.os-chip-badge');
+        if (b) b.textContent = i + 1;
+    });
+}
+
 function updateUI() {
-    var inAnswer = answerChips().length;
-    placeholder.style.display = inAnswer > 0 ? 'none' : '';
-    checkBtn.disabled = (inAnswer < OS_TOTAL) || blockFinished;
+    var n = answerChips().length;
+    hint.style.display = n > 0 ? 'none' : '';
+    checkBtn.disabled  = (n < OS_TOTAL) || done;
+    updateBadges();
 }
 
-/* ── Score / navigation ── */
-function persistScore(pct, errors, total) {
-    if (!OS_RETURN_TO || !OS_ACTIVITY_ID) return Promise.resolve(false);
-    var j   = OS_RETURN_TO.indexOf('?') !== -1 ? '&' : '?';
-    var url = OS_RETURN_TO + j +
-        'activity_percent=' + pct +
-        '&activity_errors=' + errors +
-        '&activity_total='  + total +
-        '&activity_id='     + encodeURIComponent(OS_ACTIVITY_ID) +
-        '&activity_type=order_sentences';
-    return fetch(url, { method: 'GET', credentials: 'same-origin', cache: 'no-store' })
-        .then(function (r) { return !!(r && r.ok); })
-        .catch(function ()  { return false; });
-}
-
-function navigateReturn(pct, errors, total) {
-    if (!OS_RETURN_TO || !OS_ACTIVITY_ID) return;
-    var j   = OS_RETURN_TO.indexOf('?') !== -1 ? '&' : '?';
-    var url = OS_RETURN_TO + j +
-        'activity_percent=' + pct +
-        '&activity_errors=' + errors +
-        '&activity_total='  + total +
-        '&activity_id='     + encodeURIComponent(OS_ACTIVITY_ID) +
-        '&activity_type=order_sentences';
-    try { if (window.top && window.top !== window.self) { window.top.location.href = url; return; } }
-    catch (e) {}
-    window.location.href = url;
-}
-
-/* ── Completion ── */
-async function showCompleted() {
-    blockFinished = true;
-    activityArea.style.display = 'none';
-    completedEl.classList.add('active');
-    playSound(doneSound);
-
-    var pct    = OS_TOTAL > 0 ? Math.round((correctCount / OS_TOTAL) * 100) : 0;
-    var errors = Math.max(0, OS_TOTAL - correctCount);
-    scoreTextEl.textContent = 'Score: ' + correctCount + ' / ' + OS_TOTAL + ' (' + pct + '%)';
-
-    var ok = await persistScore(pct, errors, OS_TOTAL);
-    if (!ok) navigateReturn(pct, errors, OS_TOTAL);
-}
-
-/* ── Feedback helpers ── */
-function markPositions(order) {
-    answerChips().forEach(function (chip, i) {
-        chip.classList.remove('correct-pos', 'wrong-pos');
-        chip.classList.add((order[i] === correctOrder[i]) ? 'correct-pos' : 'wrong-pos');
-    });
-}
-
-function revealOrder() {
-    var map = {};
-    document.querySelectorAll('.os-chip').forEach(function (c) { map[c.dataset.id] = c; });
-    correctOrder.forEach(function (id) {
-        if (map[id]) answerZone.insertBefore(map[id], placeholder);
-    });
-    updateUI();
-    markPositions(correctOrder);
-}
-
-/* ── Check button ── */
-checkBtn.addEventListener('click', function () {
-    if (blockFinished) return;
-    if (answerChips().length < OS_TOTAL) {
-        feedbackEl.textContent = 'Place all pictures in the answer area first.';
-        feedbackEl.className   = 'bad';
-        return;
-    }
-
-    attempts++;
-    var order = userOrder();
-    var n     = countCorrect(order);
-
-    if (n === OS_TOTAL) {
-        correctCount = n;
-        feedbackEl.textContent = '✅ Correct! Well done!';
-        feedbackEl.className   = 'good';
-        playSound(winSound);
-        markPositions(order);
-        blockFinished    = true;
-        checkBtn.disabled   = true;
-        showAnsBtn.disabled = true;
-    } else if (attempts >= 2) {
-        correctCount = n;
-        feedbackEl.textContent = '❌ Wrong (' + n + '/' + OS_TOTAL + ' correct). Showing the right order.';
-        feedbackEl.className   = 'bad';
-        playSound(loseSound);
-        markPositions(order);
-        revealOrder();
-        blockFinished    = true;
-        checkBtn.disabled   = true;
-        showAnsBtn.disabled = true;
-    } else {
-        feedbackEl.textContent = '❌ Not quite — try again! (' + n + '/' + OS_TOTAL + ' in place)';
-        feedbackEl.className   = 'bad';
-        playSound(loseSound);
-        markPositions(order);
-    }
-});
-
-/* ── Show Answer ── */
-showAnsBtn.addEventListener('click', function () {
-    if (blockFinished) return;
-    correctCount = 0;
-    revealOrder();
-    feedbackEl.textContent = '👁 Correct order shown.';
-    feedbackEl.className   = 'good';
-    blockFinished    = true;
-    checkBtn.disabled   = true;
-    showAnsBtn.disabled = true;
-});
-
-/* ── Next ── */
-nextBtn.addEventListener('click', function () {
-    if (!blockFinished) {
-        correctCount  = countCorrect(userOrder());
-        blockFinished = true;
-    }
-    showCompleted();
-});
-
-/* ══════════════════════════════════════════
-   DRAG-AND-DROP  (mirrors listen_order + drag_drop patterns)
-   ══════════════════════════════════════════ */
-
-/* Find where to insert dragged chip inside a flex zone based on cursor X.
-   Matches listen_order's left-half / right-half insertion heuristic. */
-function getDropTarget(zone, clientX) {
-    var chips = Array.prototype.slice.call(zone.querySelectorAll('.os-chip'));
-    for (var i = 0; i < chips.length; i++) {
-        if (chips[i] === dragged) continue;
-        var rect = chips[i].getBoundingClientRect();
-        if (clientX < rect.left + rect.width / 2) {
-            return chips[i];         // insert before this chip
-        }
-    }
-    return placeholder || null;      // append (before placeholder sentinel)
-}
-
-/* Wire drag events onto a chip — called for every chip at init and after restart */
-function attachChip(chip) {
-
-    /* ── Mouse / pointer drag ── */
-    chip.addEventListener('dragstart', function (e) {
-        if (blockFinished) { e.preventDefault(); return; }
-        dragged = chip;
-        e.dataTransfer.effectAllowed = 'move';
-        e.dataTransfer.setData('text/plain', chip.dataset.id);
-        setTimeout(function () { chip.classList.add('os-dragging'); }, 0);
-    });
-
-    chip.addEventListener('dragend', function () {
-        chip.classList.remove('os-dragging');
-        answerZone.classList.remove('drag-over');
-        dragged = null;
-        // Clear position colours when user drags again (before checking)
-        if (!blockFinished) {
-            chip.classList.remove('correct-pos', 'wrong-pos');
-        }
-        updateUI();
-    });
-
-    /* Chip-level dragover: live insertion within the same zone
-       (replicates drag_drop's blank-level dragover for reordering) */
-    chip.addEventListener('dragover', function (e) {
-        e.preventDefault();
-        if (!dragged || dragged === chip || blockFinished) return;
-        var rect   = chip.getBoundingClientRect();
-        var before = e.clientX < rect.left + rect.width / 2;
-        chip.parentElement.insertBefore(dragged, before ? chip : chip.nextSibling);
-    });
-
-    /* ── Touch-tap to move (mirrors drag_drop touch select pattern) ── */
-    chip.addEventListener('click', function () {
-        if (blockFinished) return;
-
-        if (isTouchDevice) {
-            // If another chip is already selected, perform the swap/move
-            if (touchSelected && touchSelected !== chip) {
-                // Move touchSelected to just before this chip in its current zone,
-                // or swap if both are already in the answer zone
-                chip.parentElement.insertBefore(touchSelected, chip);
-                touchSelected.classList.remove('os-selected');
-                touchSelected = null;
-                if (!blockFinished) clearPositionClasses();
-                updateUI();
-                return;
-            }
-            // Toggle selection
-            if (touchSelected === chip) {
-                chip.classList.remove('os-selected');
-                touchSelected = null;
-                return;
-            }
-            if (touchSelected) touchSelected.classList.remove('os-selected');
-            touchSelected = chip;
-            chip.classList.add('os-selected');
-            return;
-        }
-
-        // Non-touch: single click moves chip between bank ↔ answer
-        if (chip.parentElement === bankZone) {
-            answerZone.insertBefore(chip, placeholder);
-        } else if (chip.parentElement === answerZone) {
-            bankZone.appendChild(chip);
-        }
-        if (!blockFinished) clearPositionClasses();
-        updateUI();
-    });
-}
-
-function clearPositionClasses() {
-    document.querySelectorAll('.os-chip').forEach(function (c) {
+function clearFeedbackColors() {
+    document.querySelectorAll('.os-chip').forEach(function(c) {
         c.classList.remove('correct-pos', 'wrong-pos');
     });
     feedbackEl.textContent = '';
     feedbackEl.className   = '';
 }
 
-/* Answer zone: accepts drops from bank or reorders existing chips */
-answerZone.addEventListener('dragover', function (e) {
+function markPositions(order) {
+    answerChips().forEach(function(c, i) {
+        c.classList.remove('correct-pos', 'wrong-pos');
+        c.classList.add(c.dataset.id === CORRECT_ORDER[i] ? 'correct-pos' : 'wrong-pos');
+    });
+}
+
+function revealAnswer() {
+    var map = {};
+    document.querySelectorAll('.os-chip').forEach(function(c){ map[c.dataset.id] = c; });
+    CORRECT_ORDER.forEach(function(id) {
+        if (map[id]) {
+            dropzone.appendChild(map[id]);
+            map[id].classList.add('in-answer');
+        }
+    });
+    updateUI();
+    markPositions(CORRECT_ORDER);
+}
+
+/* ── Score / Navigation ── */
+function persistScore(pct, errors, total) {
+    if (!OS_RETURN_TO || !OS_ACTIVITY_ID) return Promise.resolve(false);
+    var sep = OS_RETURN_TO.indexOf('?') !== -1 ? '&' : '?';
+    var url = OS_RETURN_TO + sep +
+        'activity_percent=' + pct +
+        '&activity_errors=' + errors +
+        '&activity_total='  + total +
+        '&activity_id='     + encodeURIComponent(OS_ACTIVITY_ID) +
+        '&activity_type=order_sentences';
+    return fetch(url, { method: 'GET', credentials: 'same-origin', cache: 'no-store' })
+        .then(function(r){ return !!(r && r.ok); })
+        .catch(function(){  return false; });
+}
+
+function navigateReturn(pct, errors, total) {
+    if (!OS_RETURN_TO || !OS_ACTIVITY_ID) return;
+    var sep = OS_RETURN_TO.indexOf('?') !== -1 ? '&' : '?';
+    var url = OS_RETURN_TO + sep +
+        'activity_percent=' + pct +
+        '&activity_errors=' + errors +
+        '&activity_total='  + total +
+        '&activity_id='     + encodeURIComponent(OS_ACTIVITY_ID) +
+        '&activity_type=order_sentences';
+    try {
+        if (window.top && window.top !== window.self) { window.top.location.href = url; return; }
+    } catch(e) {}
+    window.location.href = url;
+}
+
+async function showCompleted() {
+    done = true;
+    completedEl.classList.add('active');
+    playSound(doneSound);
+
+    var pct    = OS_TOTAL > 0 ? Math.round((correctCount / OS_TOTAL) * 100) : 0;
+    var errors = Math.max(0, OS_TOTAL - correctCount);
+    scoreEl.textContent = 'Score: ' + correctCount + ' / ' + OS_TOTAL + ' (' + pct + '%)';
+
+    var ok = await persistScore(pct, errors, OS_TOTAL);
+    if (!ok) navigateReturn(pct, errors, OS_TOTAL);
+}
+
+/* ── Button events ── */
+checkBtn.addEventListener('click', function() {
+    if (done) return;
+    if (answerChips().length < OS_TOTAL) {
+        feedbackEl.textContent = 'Place all pictures first.';
+        feedbackEl.className   = 'bad';
+        return;
+    }
+    attempts++;
+    var order = userOrder();
+    var n     = countCorrect(order);
+    markPositions(order);
+
+    if (n === OS_TOTAL) {
+        correctCount = n;
+        feedbackEl.textContent = '✅ Correct! Well done!';
+        feedbackEl.className   = 'good';
+        playSound(winSound);
+        done = true;
+        checkBtn.disabled = true;
+        showBtn.disabled  = true;
+    } else if (attempts >= 2) {
+        correctCount = n;
+        feedbackEl.textContent = '❌ ' + n + '/' + OS_TOTAL + ' correct — showing the right order.';
+        feedbackEl.className   = 'bad';
+        playSound(loseSound);
+        revealAnswer();
+        done = true;
+        checkBtn.disabled = true;
+        showBtn.disabled  = true;
+    } else {
+        feedbackEl.textContent = '❌ Not quite — ' + n + '/' + OS_TOTAL + ' in place. Try again!';
+        feedbackEl.className   = 'bad';
+        playSound(loseSound);
+    }
+});
+
+showBtn.addEventListener('click', function() {
+    if (done) return;
+    correctCount = 0;
+    revealAnswer();
+    feedbackEl.textContent = '👁 Correct order shown.';
+    feedbackEl.className   = 'good';
+    done = true;
+    checkBtn.disabled = true;
+    showBtn.disabled  = true;
+});
+
+nextBtn.addEventListener('click', function() {
+    if (!done) correctCount = countCorrect(userOrder());
+    showCompleted();
+});
+
+/* ── Drag & drop ── */
+function attachChip(chip) {
+    chip.addEventListener('dragstart', function(e) {
+        if (done) { e.preventDefault(); return; }
+        dragged = chip;
+        e.dataTransfer.effectAllowed = 'move';
+        setTimeout(function(){ chip.classList.add('os-dragging'); }, 0);
+    });
+
+    chip.addEventListener('dragend', function() {
+        chip.classList.remove('os-dragging');
+        dropzone.classList.remove('drag-over');
+        dragged = null;
+        if (!done) clearFeedbackColors();
+        updateUI();
+    });
+
+    chip.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        if (!dragged || dragged === chip || done) return;
+        var r      = chip.getBoundingClientRect();
+        var before = e.clientX < r.left + r.width / 2;
+        chip.parentElement.insertBefore(dragged, before ? chip : chip.nextSibling);
+        updateUI();
+    });
+
+    /* Click / tap to move */
+    chip.addEventListener('click', function() {
+        if (done) return;
+
+        if (isTouchDev) {
+            if (touchSel && touchSel !== chip) {
+                chip.parentElement.insertBefore(touchSel, chip);
+                touchSel.classList.remove('os-selected');
+                touchSel = null;
+                if (!done) clearFeedbackColors();
+                updateUI();
+                return;
+            }
+            if (touchSel === chip) {
+                chip.classList.remove('os-selected');
+                touchSel = null;
+                return;
+            }
+            if (touchSel) touchSel.classList.remove('os-selected');
+            touchSel = chip;
+            chip.classList.add('os-selected');
+            return;
+        }
+
+        /* Desktop click toggle */
+        if (chip.parentElement === bank) {
+            dropzone.insertBefore(chip, hint.nextSibling || null);
+            chip.classList.add('in-answer');
+        } else {
+            bank.appendChild(chip);
+            chip.classList.remove('in-answer', 'correct-pos', 'wrong-pos');
+        }
+        if (!done) clearFeedbackColors();
+        updateUI();
+    });
+}
+
+/* Drop zone */
+dropzone.addEventListener('dragover', function(e) {
     e.preventDefault();
-    if (!dragged || blockFinished) return;
-    answerZone.classList.add('drag-over');
-    // Handle drop on empty zone or below last chip
+    if (!dragged || done) return;
+    dropzone.classList.add('drag-over');
     var target = e.target.closest ? e.target.closest('.os-chip') : null;
     if (!target || target === dragged) {
-        answerZone.insertBefore(dragged, placeholder);
+        dropzone.appendChild(dragged);
+        dragged.classList.add('in-answer');
+        if (!done) clearFeedbackColors();
     }
-});
-
-answerZone.addEventListener('dragleave', function (e) {
-    if (!answerZone.contains(e.relatedTarget)) {
-        answerZone.classList.remove('drag-over');
-    }
-});
-
-answerZone.addEventListener('drop', function (e) {
-    e.preventDefault();
-    answerZone.classList.remove('drag-over');
-    if (!blockFinished) clearPositionClasses();
     updateUI();
 });
 
-/* Bank zone: accepts chips dropped back from answer */
-bankZone.addEventListener('dragover', function (e) {
-    e.preventDefault();
-    if (!dragged || blockFinished) return;
-    var target = e.target.closest ? e.target.closest('.os-chip') : null;
-    if (!target || target === dragged) {
-        bankZone.appendChild(dragged);
-    }
+dropzone.addEventListener('dragleave', function(e) {
+    if (!dropzone.contains(e.relatedTarget)) dropzone.classList.remove('drag-over');
 });
 
-bankZone.addEventListener('drop', function (e) {
+dropzone.addEventListener('drop', function(e) {
     e.preventDefault();
-    if (!blockFinished) clearPositionClasses();
+    dropzone.classList.remove('drag-over');
     updateUI();
 });
 
-/* Attach drag to all initial chips */
-document.querySelectorAll('.os-chip').forEach(function (chip) {
-    chip.setAttribute('draggable', 'true');
+/* Bank */
+bank.addEventListener('dragover', function(e) {
+    e.preventDefault();
+    if (!dragged || done) return;
+    var target = e.target.closest ? e.target.closest('.os-chip') : null;
+    if (!target || target === dragged) {
+        bank.appendChild(dragged);
+        dragged.classList.remove('in-answer', 'correct-pos', 'wrong-pos');
+        if (!done) clearFeedbackColors();
+    }
+    updateUI();
+});
+
+bank.addEventListener('drop', function(e) {
+    e.preventDefault();
+    updateUI();
+});
+
+/* Wire all initial chips */
+document.querySelectorAll('.os-chip').forEach(function(chip) {
     attachChip(chip);
 });
 
 /* ── Restart ── */
-window.osRestart = function () {
-    attempts      = 0;
-    blockFinished = false;
-    correctCount  = 0;
-    touchSelected = null;
+window.osRestart = function() {
+    attempts     = 0;
+    done         = false;
+    correctCount = 0;
+    touchSel     = null;
 
     completedEl.classList.remove('active');
-    activityArea.style.display = '';
-    showAnsBtn.disabled = false;
+    checkBtn.disabled = false;
+    showBtn.disabled  = false;
     feedbackEl.textContent = '';
     feedbackEl.className   = '';
 
-    // Shuffle all chips back to bank
-    var chips = Array.prototype.slice.call(document.querySelectorAll('.os-chip'));
+    var chips = Array.from(document.querySelectorAll('.os-chip'));
     for (var i = chips.length - 1; i > 0; i--) {
         var j = Math.floor(Math.random() * (i + 1));
         var tmp = chips[i]; chips[i] = chips[j]; chips[j] = tmp;
     }
-    chips.forEach(function (chip) {
-        chip.classList.remove('correct-pos', 'wrong-pos', 'os-dragging', 'os-selected');
-        bankZone.appendChild(chip);
+    chips.forEach(function(c) {
+        c.classList.remove('correct-pos', 'wrong-pos', 'os-dragging', 'os-selected', 'in-answer');
+        bank.appendChild(c);
     });
-
     updateUI();
 };
 
-/* Initial UI state */
 updateUI();
 
+/* ══════════════════════════════════════════
+   TTS
+   ══════════════════════════════════════════ */
 <?php if (($activity['media_type'] ?? '') === 'tts'): ?>
-/* ── TTS (mirrors listen_order playAudio pattern) ── */
-var ttsBtn        = document.getElementById('os-tts-btn');
-var ttsSourceText = <?= json_encode(!empty($activity['tts_text']) ? $activity['tts_text'] : implode('. ', array_column($sentences, 'text')), JSON_UNESCAPED_UNICODE) ?>;
-var ttsUtter      = null;
-var ttsIsSpeaking = false;
-var ttsIsPaused   = false;
-var ttsOffset     = 0;
-var ttsSegStart   = 0;
+var TTS_TEXT = <?= json_encode(
+    !empty($activity['tts_text'])
+        ? $activity['tts_text']
+        : implode('. ', array_column($sentences, 'text')),
+    JSON_UNESCAPED_UNICODE
+) ?>;
 
-function ttsGetPreferredVoice(lang) {
+var ttsBtn      = document.getElementById('os-tts-btn');
+var ttsUtter    = null;
+var ttsSpeaking = false;
+var ttsPaused   = false;
+var ttsOffset   = 0;
+var ttsSegStart = 0;
+
+function ttsPreferredVoice(lang) {
     var voices = window.speechSynthesis ? window.speechSynthesis.getVoices() : [];
     if (!voices.length) return null;
-    var prefix  = lang.split('-')[0].toLowerCase();
-    var matched = voices.filter(function (v) {
+    var pre  = lang.split('-')[0].toLowerCase();
+    var matches = voices.filter(function(v) {
         var vl = String(v.lang || '').toLowerCase();
-        return vl === lang.toLowerCase() || vl.startsWith(prefix + '-') || vl.startsWith(prefix + '_');
+        return vl === lang.toLowerCase() || vl.startsWith(pre + '-') || vl.startsWith(pre + '_');
     });
-    if (!matched.length) return voices[0] || null;
-    var hints  = ['female', 'woman', 'zira', 'samantha', 'karen', 'aria', 'jenny', 'emma', 'olivia', 'ava'];
-    var female = matched.find(function (v) {
-        var label = (String(v.name || '') + ' ' + String(v.voiceURI || '')).toLowerCase();
-        return hints.some(function (h) { return label.indexOf(h) !== -1; });
+    if (!matches.length) return voices[0] || null;
+    var hints  = ['female','woman','zira','samantha','karen','aria','jenny','emma','olivia','ava'];
+    var female = matches.find(function(v) {
+        var label = (String(v.name||'')+' '+String(v.voiceURI||'')).toLowerCase();
+        return hints.some(function(h){ return label.indexOf(h) !== -1; });
     });
-    return female || matched[0];
+    return female || matches[0];
 }
 
-function ttsStartFromOffset() {
-    var remaining = ttsSourceText.slice(Math.max(0, ttsOffset));
-    if (!remaining.trim()) { ttsIsSpeaking = false; ttsIsPaused = false; ttsOffset = 0; return; }
+function ttsStart() {
+    var remaining = TTS_TEXT.slice(Math.max(0, ttsOffset));
+    if (!remaining.trim()) { ttsSpeaking = false; ttsPaused = false; ttsOffset = 0; return; }
     speechSynthesis.cancel();
     ttsSegStart = ttsOffset;
     ttsUtter = new SpeechSynthesisUtterance(remaining);
@@ -983,45 +1066,46 @@ function ttsStartFromOffset() {
     ttsUtter.rate   = 0.7;
     ttsUtter.pitch  = 1;
     ttsUtter.volume = 1;
-    var pref = ttsGetPreferredVoice('en-US');
+    var pref = ttsPreferredVoice('en-US');
     if (pref) ttsUtter.voice = pref;
-    ttsUtter.onstart    = function () { ttsIsSpeaking = true;  ttsIsPaused = false; };
-    ttsUtter.onpause    = function () { ttsIsPaused   = true;  ttsIsSpeaking = true; };
-    ttsUtter.onresume   = function () { ttsIsPaused   = false; ttsIsSpeaking = true; };
-    ttsUtter.onboundary = function (ev) {
+    ttsUtter.onstart    = function(){ ttsSpeaking = true;  ttsPaused = false; };
+    ttsUtter.onpause    = function(){ ttsPaused   = true;  ttsSpeaking = true; };
+    ttsUtter.onresume   = function(){ ttsPaused   = false; ttsSpeaking = true; };
+    ttsUtter.onboundary = function(ev) {
         if (typeof ev.charIndex === 'number')
-            ttsOffset = Math.max(ttsSegStart, Math.min(ttsSourceText.length, ttsSegStart + ev.charIndex));
+            ttsOffset = Math.max(ttsSegStart, Math.min(TTS_TEXT.length, ttsSegStart + ev.charIndex));
     };
-    ttsUtter.onend  = function () { if (!ttsIsPaused) { ttsIsSpeaking = false; ttsIsPaused = false; ttsOffset = 0; } };
-    ttsUtter.onerror = function () { ttsIsSpeaking = false; ttsIsPaused = false; ttsOffset = 0; };
+    ttsUtter.onend  = function(){ if (!ttsPaused){ ttsSpeaking = false; ttsPaused = false; ttsOffset = 0; } };
+    ttsUtter.onerror = function(){ ttsSpeaking = false; ttsPaused = false; ttsOffset = 0; };
     speechSynthesis.speak(ttsUtter);
 }
 
 if (ttsBtn) {
-    ttsBtn.addEventListener('click', function () {
-        if (!ttsSourceText.trim()) return;
-        if (speechSynthesis.paused || ttsIsPaused) {
+    ttsBtn.addEventListener('click', function() {
+        if (!TTS_TEXT.trim()) return;
+        if (speechSynthesis.paused || ttsPaused) {
             speechSynthesis.resume();
-            ttsIsSpeaking = true; ttsIsPaused = false;
-            setTimeout(function () {
-                if (!speechSynthesis.speaking && ttsOffset < ttsSourceText.length) ttsStartFromOffset();
+            ttsSpeaking = true; ttsPaused = false;
+            setTimeout(function(){
+                if (!speechSynthesis.speaking && ttsOffset < TTS_TEXT.length) ttsStart();
             }, 80);
             return;
         }
         if (speechSynthesis.speaking && !speechSynthesis.paused) {
             speechSynthesis.pause();
-            ttsIsSpeaking = true; ttsIsPaused = true;
+            ttsSpeaking = true; ttsPaused = true;
             return;
         }
         speechSynthesis.cancel();
         ttsOffset = 0;
-        ttsStartFromOffset();
+        ttsStart();
     });
 }
 <?php endif; ?>
 
 })();
 </script>
+
 <?php
 $content = ob_get_clean();
 render_activity_viewer($viewerTitle, '🔤', $content);
