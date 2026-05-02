@@ -142,7 +142,6 @@ function os_save(PDO $pdo, string $unit, string $activityId, array $payload): st
     return (string) $stmt->fetchColumn();
 }
 
-// Bootstrap
 if ($unit === '' && $activityId !== '') {
     $unit = os_resolve_unit($pdo, $activityId);
 }
@@ -151,7 +150,6 @@ if ($unit === '') die('Unit not specified');
 $activity = os_load($pdo, $unit, $activityId);
 if ($activityId === '' && $activity['id'] !== '') $activityId = $activity['id'];
 
-// POST
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $mediaType = $_POST['media_type'] ?? 'tts';
     if (!in_array($mediaType, ['tts', 'video', 'audio', 'none'], true)) $mediaType = 'tts';
@@ -243,194 +241,488 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     exit;
 }
 
-// Render
 ob_start();
 if (isset($_GET['saved'])) {
-    echo '<p style="color:#15803d;font-weight:700;margin-bottom:14px;">✔ Saved successfully</p>';
+    echo '<div class="os-saved-banner">✔ Saved successfully</div>';
 }
 
 $d = $activity;
 ?>
-<style>
-@import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@600;700;800&display=swap');
 
-.os-form{max-width:860px;margin:0 auto;font-family:'Nunito','Segoe UI',sans-serif;}
-.os-card{
-    background:#f9fafb;padding:16px;margin-bottom:14px;
-    border-radius:14px;border:1px solid #e5e7eb;
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@600;700;800&display=swap" rel="stylesheet">
+
+<style>
+/* ══════════════════════════════
+   CSS VARIABLES — TEAL PALETTE
+   ══════════════════════════════ */
+:root {
+    --teal-50:  #E1F5EE;
+    --teal-100: #9FE1CB;
+    --teal-200: #5DCAA5;
+    --teal-400: #1D9E75;
+    --teal-600: #0F6E56;
+    --teal-800: #085041;
+    --teal-900: #04342C;
+    --purple:   #7F77DD;
+    --purple-d: #534AB7;
+    --red:      #dc2626;
+    --green:    #16a34a;
+    --radius:   10px;
+    --radius-lg:14px;
+    --shadow:   0 2px 12px rgba(4,52,44,.10);
 }
-.os-card label{display:block;font-weight:700;margin-bottom:6px;color:#1e293b;}
-.os-card input[type=text],
-.os-card textarea,
-.os-card select{
-    width:100%;padding:10px 12px;border-radius:8px;
-    border:1px solid #d1d5db;box-sizing:border-box;
-    margin-bottom:10px;font-size:14px;font-family:inherit;
+
+/* ══════════════════════════════
+   LAYOUT
+   ══════════════════════════════ */
+.os-editor {
+    max-width: 820px;
+    margin: 0 auto;
+    font-family: 'Nunito', 'Segoe UI', sans-serif;
+    padding-bottom: 40px;
 }
-.os-card textarea{min-height:72px;resize:vertical;}
-.os-sentence-item{
-    background:#fff;border:1px solid #e2e8f0;
-    border-radius:10px;padding:10px 12px;margin-bottom:8px;
-    cursor:grab;
+
+.os-saved-banner {
+    background: var(--teal-50);
+    border: 1.5px solid var(--teal-200);
+    color: var(--teal-600);
+    font-weight: 800;
+    font-size: 14px;
+    padding: 10px 16px;
+    border-radius: var(--radius);
+    margin-bottom: 16px;
+    font-family: 'Nunito', sans-serif;
 }
-.os-sentence-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
-.os-sentence-item .handle{color:#94a3b8;font-size:18px;cursor:grab;flex-shrink:0;}
-.os-sentence-num{color:#94a3b8;font-size:13px;min-width:22px;flex-shrink:0;}
-.os-sentence-item input[type=text]{
-    flex:1;min-width:160px;border:1px solid #d1d5db;outline:none;font-size:14px;
-    font-family:inherit;background:#f9fafb;padding:7px 10px;
-    border-radius:7px;margin-bottom:0;
+
+/* ══════════════════════════════
+   SECTION CARDS
+   ══════════════════════════════ */
+.os-section {
+    background: #fff;
+    border: 1px solid var(--teal-100);
+    border-radius: var(--radius-lg);
+    margin-bottom: 16px;
+    overflow: hidden;
+    box-shadow: var(--shadow);
 }
-.os-sentence-item input[type=hidden]{display:none;}
-.os-display-select{
-    border:1px solid #d1d5db;border-radius:7px;padding:7px 10px;
-    font-size:13px;font-family:inherit;background:#f9fafb;
-    cursor:pointer;flex-shrink:0;
+
+.os-section-header {
+    background: var(--teal-50);
+    border-bottom: 1px solid var(--teal-100);
+    padding: 10px 18px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
 }
-.os-sentence-image-row{
-    display:flex;align-items:center;gap:8px;
-    margin-top:8px;padding-top:8px;
-    border-top:1px dashed #e5e7eb;
-    flex-wrap:wrap;
+
+.os-section-header .os-section-icon {
+    font-size: 16px;
 }
-.os-sentence-image-row label{
-    font-size:12px;font-weight:700;color:#6b7280;margin-bottom:0;
-    flex-shrink:0;white-space:nowrap;
+
+.os-section-header h3 {
+    font-family: 'Fredoka', sans-serif;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--teal-800);
+    margin: 0;
 }
-.os-sentence-item .thumb{
-    max-width:56px;max-height:56px;border-radius:6px;
-    border:1px solid #e5e7eb;object-fit:contain;
+
+.os-section-body {
+    padding: 16px 18px;
 }
-.btn-remove-s{
-    background:#ef4444;color:#fff;border:none;
-    padding:5px 10px;border-radius:7px;cursor:pointer;font-weight:700;font-size:12px;
-    flex-shrink:0;
+
+/* ══════════════════════════════
+   FORM ELEMENTS
+   ══════════════════════════════ */
+.os-field {
+    margin-bottom: 14px;
 }
-.btn-add-s{
-    background:#2563eb;color:#fff;border:none;
-    padding:9px 14px;border-radius:8px;cursor:pointer;font-weight:700;
+
+.os-field:last-child {
+    margin-bottom: 0;
 }
-.os-save-btn{
-    background:linear-gradient(180deg,#0d9488,#0f766e);color:#fff;
-    padding:10px 22px;border:none;border-radius:10px;cursor:pointer;
-    font-weight:800;font-size:15px;font-family:inherit;
-    box-shadow:0 2px 8px rgba(13,148,136,.22);
-    transition:transform .15s ease,filter .15s ease;
+
+.os-label {
+    display: block;
+    font-size: 12px;
+    font-weight: 800;
+    color: var(--teal-600);
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    margin-bottom: 5px;
+    font-family: 'Nunito', sans-serif;
 }
-.os-save-btn:hover{filter:brightness(1.07);transform:translateY(-1px);}
-.toolbar-row{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:10px;}
-.help-text{color:#6b7280;font-size:12px;margin:-4px 0 8px;}
-.media-section{display:none;}
-.media-section.active{display:block;}
+
+.os-input,
+.os-textarea,
+.os-select {
+    width: 100%;
+    padding: 9px 12px;
+    border: 1.5px solid var(--teal-100);
+    border-radius: var(--radius);
+    font-size: 14px;
+    font-family: 'Nunito', sans-serif;
+    font-weight: 600;
+    color: #1e293b;
+    background: #fff;
+    box-sizing: border-box;
+    transition: border-color .15s, box-shadow .15s;
+    outline: none;
+}
+
+.os-input:focus,
+.os-textarea:focus,
+.os-select:focus {
+    border-color: var(--teal-400);
+    box-shadow: 0 0 0 3px rgba(29,158,117,.12);
+}
+
+.os-textarea {
+    min-height: 76px;
+    resize: vertical;
+}
+
+.os-select {
+    cursor: pointer;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%230F6E56' stroke-width='1.8' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    padding-right: 32px;
+}
+
+.os-help {
+    font-size: 12px;
+    color: #6b7280;
+    font-weight: 600;
+    margin-top: 4px;
+}
+
+/* ══════════════════════════════
+   MEDIA SECTIONS
+   ══════════════════════════════ */
+.os-media-panel {
+    display: none;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px dashed var(--teal-100);
+}
+
+.os-media-panel.active {
+    display: block;
+}
+
+/* ══════════════════════════════
+   SENTENCE ITEMS
+   ══════════════════════════════ */
+#os-sentences-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.os-sentence-item {
+    background: #f9fffe;
+    border: 1.5px solid var(--teal-100);
+    border-radius: var(--radius);
+    padding: 10px 12px;
+    cursor: grab;
+    transition: border-color .15s, box-shadow .15s;
+}
+
+.os-sentence-item:hover {
+    border-color: var(--teal-200);
+    box-shadow: 0 2px 8px rgba(29,158,117,.10);
+}
+
+.os-sentence-item.dragging-over {
+    border-color: var(--teal-400);
+    box-shadow: 0 0 0 2px rgba(29,158,117,.18);
+}
+
+.os-sentence-top {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.os-handle {
+    color: var(--teal-200);
+    font-size: 18px;
+    cursor: grab;
+    flex-shrink: 0;
+    line-height: 1;
+}
+
+.os-num {
+    font-size: 13px;
+    font-weight: 800;
+    color: var(--teal-400);
+    min-width: 22px;
+    flex-shrink: 0;
+    font-family: 'Nunito', sans-serif;
+}
+
+.os-sentence-top .os-input {
+    flex: 1;
+    min-width: 160px;
+    margin-bottom: 0;
+}
+
+.os-display-select {
+    width: auto;
+    min-width: 130px;
+    flex-shrink: 0;
+}
+
+.os-btn-remove {
+    background: #fee2e2;
+    color: var(--red);
+    border: 1px solid #fca5a5;
+    border-radius: 8px;
+    padding: 6px 10px;
+    font-size: 12px;
+    font-weight: 800;
+    font-family: 'Nunito', sans-serif;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: background .12s;
+}
+
+.os-btn-remove:hover {
+    background: #fecaca;
+}
+
+.os-sentence-image-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px dashed var(--teal-100);
+    flex-wrap: wrap;
+}
+
+.os-sentence-image-row .os-label {
+    margin-bottom: 0;
+    font-size: 11px;
+    flex-shrink: 0;
+}
+
+.os-thumb {
+    width: 52px;
+    height: 52px;
+    border-radius: 8px;
+    object-fit: contain;
+    border: 1.5px solid var(--teal-100);
+    background: var(--teal-50);
+}
+
+/* ══════════════════════════════
+   TOOLBAR
+   ══════════════════════════════ */
+.os-toolbar {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    align-items: center;
+    margin-top: 12px;
+}
+
+.os-btn-add {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--teal-400);
+    color: #fff;
+    border: none;
+    border-radius: var(--radius);
+    padding: 9px 16px;
+    font-size: 13px;
+    font-weight: 800;
+    font-family: 'Nunito', sans-serif;
+    cursor: pointer;
+    transition: background .15s, transform .12s;
+}
+
+.os-btn-add:hover {
+    background: var(--teal-600);
+    transform: translateY(-1px);
+}
+
+.os-btn-save {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--teal-800);
+    color: #fff;
+    border: none;
+    border-radius: var(--radius-lg);
+    padding: 12px 28px;
+    font-size: 15px;
+    font-weight: 800;
+    font-family: 'Fredoka', sans-serif;
+    letter-spacing: .02em;
+    cursor: pointer;
+    transition: background .15s, transform .15s;
+    box-shadow: 0 4px 14px rgba(8,80,65,.25);
+}
+
+.os-btn-save:hover {
+    background: var(--teal-900);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 18px rgba(8,80,65,.30);
+}
+
+.os-save-row {
+    display: flex;
+    justify-content: center;
+    margin-top: 8px;
+}
 </style>
 
-<form method="post" enctype="multipart/form-data" class="os-form" id="osSentencesForm">
+<form method="post" enctype="multipart/form-data" class="os-editor" id="osSentencesForm">
     <input type="hidden" name="current_media_type" value="<?= htmlspecialchars($d['media_type'], ENT_QUOTES, 'UTF-8') ?>">
     <input type="hidden" name="current_media_url"  value="<?= htmlspecialchars($d['media_url'],   ENT_QUOTES, 'UTF-8') ?>">
     <input type="hidden" name="current_video_url"  id="os_current_video_url" value="<?= htmlspecialchars($d['media_type']==='video' ? $d['media_url'] : '', ENT_QUOTES, 'UTF-8') ?>">
     <input type="hidden" name="current_audio_url"  id="os_current_audio_url" value="<?= htmlspecialchars($d['media_type']==='audio' ? $d['media_url'] : '', ENT_QUOTES, 'UTF-8') ?>">
 
-    <!-- Title -->
-    <div class="os-card">
-        <label for="os_title">Activity title</label>
-        <input id="os_title" type="text" name="activity_title"
-               value="<?= htmlspecialchars($d['title'], ENT_QUOTES, 'UTF-8') ?>"
-               placeholder="Order the Sentences" required>
-
-        <label for="os_instructions">Instructions for students</label>
-        <textarea name="instructions" id="os_instructions"
-                  placeholder="Listen and put the sentences in the correct order."
-        ><?= htmlspecialchars($d['instructions'], ENT_QUOTES, 'UTF-8') ?></textarea>
-    </div>
-
-    <!-- Media -->
-    <div class="os-card">
-        <label>Media type</label>
-        <select name="media_type" id="os_media_type" onchange="toggleMedia(this.value)">
-            <option value="tts"   <?= $d['media_type']==='tts'   ? 'selected' : '' ?>>🔊 Text-to-Speech (TTS)</option>
-            <option value="video" <?= $d['media_type']==='video' ? 'selected' : '' ?>>🎬 Video</option>
-            <option value="audio" <?= $d['media_type']==='audio' ? 'selected' : '' ?>>🎵 Audio file</option>
-            <option value="none"  <?= $d['media_type']==='none'  ? 'selected' : '' ?>>— No media</option>
-        </select>
-
-        <!-- TTS -->
-        <div id="ms-tts" class="media-section <?= $d['media_type']==='tts' ? 'active' : '' ?>">
-            <label for="os_tts">Text to read aloud</label>
-            <textarea name="tts_text" id="os_tts"
-                      placeholder="Paste the text or song lyrics that students listen to..."
-            ><?= htmlspecialchars($d['tts_text'], ENT_QUOTES, 'UTF-8') ?></textarea>
-            <p class="help-text">Leave blank to use the sentence list itself as the audio script.</p>
+    <!-- ── SECTION 1: Title & Instructions ── -->
+    <div class="os-section">
+        <div class="os-section-header">
+            <span class="os-section-icon">📝</span>
+            <h3>Activity info</h3>
         </div>
-
-        <!-- Video -->
-        <div id="ms-video" class="media-section <?= $d['media_type']==='video' ? 'active' : '' ?>">
-            <label>Video URL or upload</label>
-            <input type="text" name="video_url"
-                   value="<?= $d['media_type']==='video' ? htmlspecialchars($d['media_url'], ENT_QUOTES, 'UTF-8') : '' ?>"
-                   placeholder="https://... (YouTube embed, Cloudinary, etc.)">
-            <p class="help-text">Or upload a video file:</p>
-            <input type="file" name="media_file" accept="video/*">
-            <?php if ($d['media_url'] !== '' && $d['media_type'] === 'video'): ?>
-                <p class="help-text">Current: <a href="<?= htmlspecialchars($d['media_url'], ENT_QUOTES, 'UTF-8') ?>" target="_blank">View</a></p>
-            <?php endif; ?>
-        </div>
-
-        <!-- Audio -->
-        <div id="ms-audio" class="media-section <?= $d['media_type']==='audio' ? 'active' : '' ?>">
-            <label>Audio URL or upload</label>
-            <input type="text" name="audio_url"
-                   value="<?= $d['media_type']==='audio' ? htmlspecialchars($d['media_url'], ENT_QUOTES, 'UTF-8') : '' ?>"
-                   placeholder="https://...">
-            <p class="help-text">Or upload an audio file:</p>
-            <input type="file" name="media_file" accept="audio/*">
-            <?php if ($d['media_url'] !== '' && $d['media_type'] === 'audio'): ?>
-                <p class="help-text">Current: <a href="<?= htmlspecialchars($d['media_url'], ENT_QUOTES, 'UTF-8') ?>" target="_blank">Listen</a></p>
-            <?php endif; ?>
+        <div class="os-section-body">
+            <div class="os-field">
+                <label class="os-label" for="os_title">Activity title</label>
+                <input id="os_title" class="os-input" type="text" name="activity_title"
+                       value="<?= htmlspecialchars($d['title'], ENT_QUOTES, 'UTF-8') ?>"
+                       placeholder="Order the Sentences" required>
+            </div>
+            <div class="os-field">
+                <label class="os-label" for="os_instructions">Instructions for students</label>
+                <textarea class="os-textarea" name="instructions" id="os_instructions"
+                          placeholder="Listen and put the sentences in the correct order."
+                ><?= htmlspecialchars($d['instructions'], ENT_QUOTES, 'UTF-8') ?></textarea>
+            </div>
         </div>
     </div>
 
-    <!-- Sentences -->
-    <div class="os-card">
-        <label>Sentences — enter them in the <strong>correct order</strong></label>
-        <p class="help-text">Students will see them shuffled. Use <strong>Show mode</strong> to control whether they see the text, image, or both in the viewer.</p>
+    <!-- ── SECTION 2: Media ── -->
+    <div class="os-section">
+        <div class="os-section-header">
+            <span class="os-section-icon">🎬</span>
+            <h3>Media</h3>
+        </div>
+        <div class="os-section-body">
+            <div class="os-field">
+                <label class="os-label" for="os_media_type">Media type</label>
+                <select class="os-select" name="media_type" id="os_media_type" onchange="toggleMedia(this.value)">
+                    <option value="tts"   <?= $d['media_type']==='tts'   ? 'selected' : '' ?>>🔊 Text-to-Speech (TTS)</option>
+                    <option value="video" <?= $d['media_type']==='video' ? 'selected' : '' ?>>🎬 Video</option>
+                    <option value="audio" <?= $d['media_type']==='audio' ? 'selected' : '' ?>>🎵 Audio file</option>
+                    <option value="none"  <?= $d['media_type']==='none'  ? 'selected' : '' ?>>— No media</option>
+                </select>
+            </div>
 
-        <div id="os-sentences-list">
-            <?php foreach ($d['sentences'] as $idx => $s):
-                $disp = $s['display'] ?? 'both';
-            ?>
-            <div class="os-sentence-item" draggable="true">
-                <div class="os-sentence-row">
-                    <span class="handle">☰</span>
-                    <span class="os-sentence-num"><?= $idx + 1 ?>.</span>
-                    <input type="hidden" name="sentence_id[]" value="<?= htmlspecialchars($s['id'], ENT_QUOTES, 'UTF-8') ?>">
-                    <input type="text"   name="sentence_text[]" value="<?= htmlspecialchars($s['text'], ENT_QUOTES, 'UTF-8') ?>"
-                           placeholder="Sentence text (used for TTS and text display)">
-                    <select name="sentence_display[]" class="os-display-select" title="Show mode in viewer">
-                        <option value="both"  <?= $disp==='both'  ? 'selected' : '' ?>>Text + Image</option>
-                        <option value="text"  <?= $disp==='text'  ? 'selected' : '' ?>>Text only</option>
-                        <option value="image" <?= $disp==='image' ? 'selected' : '' ?>>Image only</option>
-                    </select>
-                    <button type="button" class="btn-remove-s" onclick="removeSentence(this)">✖</button>
-                </div>
-                <div class="os-sentence-image-row">
-                    <label>Image:</label>
-                    <input type="hidden" name="sentence_image_existing[]" value="<?= htmlspecialchars($s['image'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
-                    <input type="file" name="sentence_image[]" accept="image/*" style="font-size:13px;">
-                    <?php if (!empty($s['image'])): ?>
-                        <img class="thumb" src="<?= htmlspecialchars($s['image'], ENT_QUOTES, 'UTF-8') ?>" alt="">
-                    <?php endif; ?>
+            <!-- TTS -->
+            <div id="ms-tts" class="os-media-panel <?= $d['media_type']==='tts' ? 'active' : '' ?>">
+                <div class="os-field">
+                    <label class="os-label" for="os_tts">Text to read aloud</label>
+                    <textarea class="os-textarea" name="tts_text" id="os_tts"
+                              placeholder="Paste the text or song lyrics that students listen to..."
+                    ><?= htmlspecialchars($d['tts_text'], ENT_QUOTES, 'UTF-8') ?></textarea>
+                    <p class="os-help">Leave blank to use the sentence list itself as the audio script.</p>
                 </div>
             </div>
-            <?php endforeach; ?>
-        </div>
 
-        <div class="toolbar-row" style="justify-content:flex-start;margin-top:6px;">
-            <button type="button" class="btn-add-s" onclick="addSentence()">+ Add Sentence</button>
+            <!-- Video -->
+            <div id="ms-video" class="os-media-panel <?= $d['media_type']==='video' ? 'active' : '' ?>">
+                <div class="os-field">
+                    <label class="os-label">Video URL</label>
+                    <input class="os-input" type="text" name="video_url"
+                           value="<?= $d['media_type']==='video' ? htmlspecialchars($d['media_url'], ENT_QUOTES, 'UTF-8') : '' ?>"
+                           placeholder="https://... (YouTube embed, Cloudinary, etc.)">
+                </div>
+                <div class="os-field">
+                    <label class="os-label">Or upload a video file</label>
+                    <input type="file" name="media_file" accept="video/*">
+                </div>
+                <?php if ($d['media_url'] !== '' && $d['media_type'] === 'video'): ?>
+                    <p class="os-help">Current: <a href="<?= htmlspecialchars($d['media_url'], ENT_QUOTES, 'UTF-8') ?>" target="_blank" style="color:var(--teal-600);">View video</a></p>
+                <?php endif; ?>
+            </div>
+
+            <!-- Audio -->
+            <div id="ms-audio" class="os-media-panel <?= $d['media_type']==='audio' ? 'active' : '' ?>">
+                <div class="os-field">
+                    <label class="os-label">Audio URL</label>
+                    <input class="os-input" type="text" name="audio_url"
+                           value="<?= $d['media_type']==='audio' ? htmlspecialchars($d['media_url'], ENT_QUOTES, 'UTF-8') : '' ?>"
+                           placeholder="https://...">
+                </div>
+                <div class="os-field">
+                    <label class="os-label">Or upload an audio file</label>
+                    <input type="file" name="media_file" accept="audio/*">
+                </div>
+                <?php if ($d['media_url'] !== '' && $d['media_type'] === 'audio'): ?>
+                    <p class="os-help">Current: <a href="<?= htmlspecialchars($d['media_url'], ENT_QUOTES, 'UTF-8') ?>" target="_blank" style="color:var(--teal-600);">Listen</a></p>
+                <?php endif; ?>
+            </div>
         </div>
     </div>
 
-    <div class="toolbar-row">
-        <button type="submit" class="os-save-btn">💾 Save</button>
+    <!-- ── SECTION 3: Sentences ── -->
+    <div class="os-section">
+        <div class="os-section-header">
+            <span class="os-section-icon">🗂️</span>
+            <h3>Sentences — enter in the correct order</h3>
+        </div>
+        <div class="os-section-body">
+            <p class="os-help" style="margin-bottom:12px;">Students will see them shuffled. Use <strong>Show mode</strong> to control whether they see text, image, or both.</p>
+
+            <div id="os-sentences-list">
+                <?php foreach ($d['sentences'] as $idx => $s):
+                    $disp = $s['display'] ?? 'both';
+                ?>
+                <div class="os-sentence-item" draggable="true">
+                    <div class="os-sentence-top">
+                        <span class="os-handle">☰</span>
+                        <span class="os-num"><?= $idx + 1 ?>.</span>
+                        <input type="hidden" name="sentence_id[]" value="<?= htmlspecialchars($s['id'], ENT_QUOTES, 'UTF-8') ?>">
+                        <input class="os-input" type="text" name="sentence_text[]"
+                               value="<?= htmlspecialchars($s['text'], ENT_QUOTES, 'UTF-8') ?>"
+                               placeholder="Sentence text">
+                        <select name="sentence_display[]" class="os-select os-display-select" title="Show mode">
+                            <option value="both"  <?= $disp==='both'  ? 'selected' : '' ?>>Text + Image</option>
+                            <option value="text"  <?= $disp==='text'  ? 'selected' : '' ?>>Text only</option>
+                            <option value="image" <?= $disp==='image' ? 'selected' : '' ?>>Image only</option>
+                        </select>
+                        <button type="button" class="os-btn-remove" onclick="removeSentence(this)">✖ Remove</button>
+                    </div>
+                    <div class="os-sentence-image-row">
+                        <label class="os-label">Image:</label>
+                        <input type="hidden" name="sentence_image_existing[]" value="<?= htmlspecialchars($s['image'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
+                        <input type="file" name="sentence_image[]" accept="image/*" style="font-size:13px;font-family:'Nunito',sans-serif;">
+                        <?php if (!empty($s['image'])): ?>
+                            <img class="os-thumb" src="<?= htmlspecialchars($s['image'], ENT_QUOTES, 'UTF-8') ?>" alt="">
+                        <?php endif; ?>
+                    </div>
+                </div>
+                <?php endforeach; ?>
+            </div>
+
+            <div class="os-toolbar">
+                <button type="button" class="os-btn-add" onclick="addSentence()">+ Add Sentence</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── SAVE ── -->
+    <div class="os-save-row">
+        <button type="submit" class="os-btn-save">💾 Save Activity</button>
     </div>
 </form>
 
@@ -444,7 +736,7 @@ function toggleMedia(val) {
 
 function reindexSentences() {
     document.querySelectorAll('#os-sentences-list .os-sentence-item').forEach(function(item, i) {
-        var numEl = item.querySelector('.os-sentence-num');
+        var numEl = item.querySelector('.os-num');
         if (numEl) numEl.textContent = (i + 1) + '.';
     });
 }
@@ -456,22 +748,22 @@ function addSentence() {
     div.className = 'os-sentence-item';
     div.draggable = true;
     div.innerHTML =
-        '<div class="os-sentence-row">' +
-            '<span class="handle">☰</span>' +
-            '<span class="os-sentence-num">' + (idx + 1) + '.</span>' +
+        '<div class="os-sentence-top">' +
+            '<span class="os-handle">☰</span>' +
+            '<span class="os-num">' + (idx + 1) + '.</span>' +
             '<input type="hidden" name="sentence_id[]" value="os_' + Date.now() + '">' +
-            '<input type="text" name="sentence_text[]" placeholder="Sentence text (used for TTS and text display)">' +
-            '<select name="sentence_display[]" class="os-display-select" title="Show mode in viewer">' +
+            '<input class="os-input" type="text" name="sentence_text[]" placeholder="Sentence text">' +
+            '<select name="sentence_display[]" class="os-select os-display-select" title="Show mode">' +
                 '<option value="both" selected>Text + Image</option>' +
                 '<option value="text">Text only</option>' +
                 '<option value="image">Image only</option>' +
             '</select>' +
-            '<button type="button" class="btn-remove-s" onclick="removeSentence(this)">✖</button>' +
+            '<button type="button" class="os-btn-remove" onclick="removeSentence(this)">✖ Remove</button>' +
         '</div>' +
         '<div class="os-sentence-image-row">' +
-            '<label>Image:</label>' +
+            '<label class="os-label">Image:</label>' +
             '<input type="hidden" name="sentence_image_existing[]" value="">' +
-            '<input type="file" name="sentence_image[]" accept="image/*" style="font-size:13px;">' +
+            '<input type="file" name="sentence_image[]" accept="image/*" style="font-size:13px;font-family:\'Nunito\',sans-serif;">' +
         '</div>';
     list.appendChild(div);
     attachDrag(div);
@@ -526,18 +818,19 @@ function syncMediaCaches() {
     if (audioInput && audioCache && audioInput.value.trim() !== '') audioCache.value = audioInput.value.trim();
 }
 
-var _osVideoInput = document.querySelector('input[name="video_url"]');
-var _osAudioInput = document.querySelector('input[name="audio_url"]');
-if (_osVideoInput) _osVideoInput.addEventListener('input', syncMediaCaches);
-if (_osAudioInput) _osAudioInput.addEventListener('input', syncMediaCaches);
+var _v = document.querySelector('input[name="video_url"]');
+var _a = document.querySelector('input[name="audio_url"]');
+if (_v) _v.addEventListener('input', syncMediaCaches);
+if (_a) _a.addEventListener('input', syncMediaCaches);
 
 document.getElementById('osSentencesForm').addEventListener('submit', function () {
     syncMediaCaches();
-    document.querySelectorAll('.media-section:not(.active) input, .media-section:not(.active) textarea').forEach(function (el) {
+    document.querySelectorAll('.os-media-panel:not(.active) input, .os-media-panel:not(.active) textarea').forEach(function (el) {
         el.disabled = true;
     });
 });
 </script>
+
 <?php
 $content = ob_get_clean();
 render_activity_editor('Order the Sentences – Editor', '📝', $content);
