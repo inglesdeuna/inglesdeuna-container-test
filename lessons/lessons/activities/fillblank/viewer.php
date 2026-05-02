@@ -10,6 +10,24 @@ $activityId = isset($_GET['id'])        ? trim((string) $_GET['id'])        : ''
 $unit       = isset($_GET['unit'])      ? trim((string) $_GET['unit'])      : '';
 $returnTo   = isset($_GET['return_to']) ? trim((string) $_GET['return_to']) : '';
 
+/* ── Back URL (mirrors _activity_viewer_template.php logic) ── */
+$_fb_assignment  = isset($_GET['assignment']) ? trim((string)$_GET['assignment']) : '';
+$_fb_source      = isset($_GET['source'])     ? trim((string)$_GET['source'])     : '';
+$_fb_returnParam = isset($_GET['return_to'])  ? trim((string)$_GET['return_to'])  : '';
+$_fb_isSafeRelative = $_fb_returnParam !== ''
+    && !preg_match('#^[a-zA-Z][a-zA-Z0-9+\\-.]*://#', $_fb_returnParam)
+    && strpos($_fb_returnParam, '//') !== 0;
+
+if ($_fb_isSafeRelative) {
+    $_fb_backUrl = $_fb_returnParam;
+} elseif ($_fb_assignment !== '') {
+    $_fb_backUrl = '../../academic/teacher_unit.php?assignment=' . urlencode($_fb_assignment) . '&unit=' . urlencode($unit);
+} else {
+    $_fb_backUrl = '../../academic/unit_view.php?unit=' . urlencode($unit);
+    if ($_fb_source !== '') $_fb_backUrl .= '&source=' . urlencode($_fb_source);
+}
+
+
 if ($activityId === '' && $unit === '') {
     die('Activity not specified');
 }
@@ -221,7 +239,7 @@ body.presentation-mode .fb-back-btn, body.embedded-mode .fb-back-btn { display:n
 
 <div class="fb-page">
     <div class="fb-topbar">
-        <button class="fb-back-btn" onclick="history.back()">&#8592; Back</button>
+        <a class="fb-back-btn" href="<?php echo htmlspecialchars($_fb_backUrl, ENT_QUOTES, 'UTF-8'); ?>">&#8592; Back</a>
         <span class="fb-topbar-title">Activity</span>
     </div>
 
