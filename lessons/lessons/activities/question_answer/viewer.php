@@ -2,776 +2,526 @@
 require_once __DIR__ . '/../../config/db.php';
 require_once __DIR__ . '/../../core/_activity_viewer_template.php';
 
-$activityId = isset($_GET['id']) ? trim((string) $_GET['id']) : '';
-$unit = isset($_GET['unit']) ? trim((string) $_GET['unit']) : '';
+$activityId = isset($_GET['id'])   ? trim((string) $_GET['id'])   : '';
+$unit       = isset($_GET['unit']) ? trim((string) $_GET['unit']) : '';
 
 if ($activityId === '' && $unit === '') {
     die('Activity not specified');
 }
 
-function activities_columns(PDO $pdo): array
+function qa_columns(PDO $pdo): array
 {
     static $cache = null;
-
-    if (is_array($cache)) {
-        return $cache;
-    }
-
+    if (is_array($cache)) return $cache;
     $cache = array();
-
-    $stmt = $pdo->query(
-        "SELECT column_name
-         FROM information_schema.columns
-         WHERE table_schema = 'public'
-           AND table_name = 'activities'"
-    );
-
+    $stmt = $pdo->query("SELECT column_name FROM information_schema.columns WHERE table_schema='public' AND table_name='activities'");
     foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
-        if (isset($row['column_name'])) {
-            $cache[] = (string) $row['column_name'];
-        }
+        if (isset($row['column_name'])) $cache[] = (string) $row['column_name'];
     }
-
     return $cache;
 }
 
-function resolve_unit_from_activity(PDO $pdo, string $activityId): string
+function qa_resolve_unit(PDO $pdo, string $activityId): string
 {
-    if ($activityId === '') {
-        return '';
-    }
+    if ($activityId === '') return '';
+    $cols = qa_columns($pdo);
+    $col  = in_array('unit_id', $cols, true) ? 'unit_id' : (in_array('unit', $cols, true) ? 'unit' : '');
+    if ($col === '') return '';
+    $stmt = $pdo->prepare("SELECT {$col} FROM activities WHERE id=:id LIMIT 1");
+    $stmt->execute(array('id' => $activityId));
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+    return $row ? (string)($row[$col] ?? '') : '';
+}
 
-    $columns = activities_columns($pdo);
+function qa_load(PDO $pdo, string $unit, string $activityId): array
+{
+    $empty = array('title' => 'Questions & Answers', 'cards' => array());
+    $cols  = qa_columns($pdo);
 
-    if (in_array('unit_id', $columns, true)) {
-        $stmt = $pdo->prepare(
-            "SELECT unit_id
-             FROM activities
-             WHERE id = :id
-             LIMIT 1"
-        );
+    $fields = array('id');
+    if (in_array('data',         $cols, true)) $fields[] = 'data';
+    if (in_array('content_json', $cols, true)) $fields[] = 'content_json';
+    if (in_array('title',        $cols, true)) $fields[] = 'title';
+    if (in_array('name',         $cols, true)) $fields[] = 'name';
+    $sel = implode(', ', $fields);
+
+    $row = null;
+    if ($activityId !== '') {
+        $stmt = $pdo->prepare("SELECT {$sel} FROM activities WHERE id=:id AND type='question_answer' LIMIT 1");
         $stmt->execute(array('id' => $activityId));
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
-
-        if ($row && isset($row['unit_id'])) {
-            return (string) $row['unit_id'];
-        }
     }
-
-    if (in_array('unit', $columns, true)) {
-        $stmt = $pdo->prepare(
-            "SELECT unit
-             FROM activities
-             WHERE id = :id
-             LIMIT 1"
-        );
-        $stmt->execute(array('id' => $activityId));
+    if (!$row && in_array('unit_id', $cols, true)) {
+        $stmt = $pdo->prepare("SELECT {$sel} FROM activities WHERE unit_id=:unit AND type='question_answer' ORDER BY id ASC LIMIT 1");
+        $stmt->execute(array('unit' => $unit));
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
-
-        if ($row && isset($row['unit'])) {
-            return (string) $row['unit'];
-        }
     }
+    if (!$row) return $empty;
 
-    return '';
-}
+    $raw  = isset($row['data']) ? $row['data'] : (isset($row['content_json']) ? $row['content_json'] : null);
+    $data = is_string($raw) ? json_decode($raw, true) : array();
+    if (!is_array($data)) $data = array();
 
-function default_qa_title(): string
-{
-    return 'Questions & Answers';
-}
-
-function normalize_qa_title(string $title): string
-{
-    $title = trim($title);
-    return $title !== '' ? $title : default_qa_title();
-}
-
-function normalize_qa_payload($rawData): array
-{
-    $default = array(
-        'title' => default_qa_title(),
-        'cards' => array(),
-    );
-
-    if ($rawData === null || $rawData === '') {
-        return $default;
-    }
-
-    $decoded = is_string($rawData) ? json_decode($rawData, true) : $rawData;
-    if (!is_array($decoded)) {
-        return $default;
+    $cardsRaw = isset($data['cards']) && is_array($data['cards']) ? $data['cards'] : $data;
+    $cards    = array();
+    foreach ($cardsRaw as $item) {
+        if (!is_array($item)) continue;
+        $cards[] = array(
+            'question' => isset($item['question']) ? trim((string)$item['question']) : '',
+            'answer'   => isset($item['answer'])   ? trim((string)$item['answer'])   : '',
+        );
     }
 
     $title = '';
-    $cardsSource = $decoded;
+    if (isset($row['title']) && trim((string)$row['title']) !== '') $title = trim((string)$row['title']);
+    if ($title === '' && isset($row['name']) && trim((string)$row['name']) !== '') $title = trim((string)$row['name']);
+    if ($title === '' && isset($data['title'])) $title = trim((string)$data['title']);
+    if ($title === '') $title = 'Questions & Answers';
 
-    if (isset($decoded['title'])) {
-        $title = trim((string) $decoded['title']);
-    }
-
-    if (isset($decoded['cards']) && is_array($decoded['cards'])) {
-        $cardsSource = $decoded['cards'];
-    }
-
-    $cards = array();
-
-    if (is_array($cardsSource)) {
-        foreach ($cardsSource as $item) {
-            if (!is_array($item)) {
-                continue;
-            }
-
-            $cards[] = array(
-                'id' => isset($item['id']) ? trim((string) $item['id']) : uniqid('qa_'),
-                'question' => isset($item['question']) ? trim((string) $item['question']) : '',
-                'answer' => isset($item['answer']) ? trim((string) $item['answer']) : '',
-            );
-        }
-    }
-
-    return array(
-        'title' => normalize_qa_title($title),
-        'cards' => $cards,
-    );
+    return array('title' => $title, 'cards' => $cards);
 }
 
-function load_qa_activity(PDO $pdo, string $unit, string $activityId): array
-{
-    $columns = activities_columns($pdo);
+if ($unit === '' && $activityId !== '') $unit = qa_resolve_unit($pdo, $activityId);
+$activity    = qa_load($pdo, $unit, $activityId);
+$cards       = $activity['cards'];
+$viewerTitle = $activity['title'];
 
-    $selectFields = array('id');
-    if (in_array('data', $columns, true)) {
-        $selectFields[] = 'data';
-    }
-    if (in_array('content_json', $columns, true)) {
-        $selectFields[] = 'content_json';
-    }
-    if (in_array('title', $columns, true)) {
-        $selectFields[] = 'title';
-    }
-    if (in_array('name', $columns, true)) {
-        $selectFields[] = 'name';
-    }
-
-    $row = null;
-
-    if ($activityId !== '') {
-        $stmt = $pdo->prepare(
-            "SELECT " . implode(', ', $selectFields) . "
-             FROM activities
-             WHERE id = :id
-               AND type = 'question_answer'
-             LIMIT 1"
-        );
-        $stmt->execute(array('id' => $activityId));
-        $row = $stmt->fetch(PDO::FETCH_ASSOC);
-    }
-
-    if (!$row && in_array('unit_id', $columns, true)) {
-        $stmt = $pdo->prepare(
-            "SELECT " . implode(', ', $selectFields) . "
-             FROM activities
-             WHERE unit_id = :unit
-               AND type = 'question_answer'
-             ORDER BY id ASC
-             LIMIT 1"
-        );
-        $stmt->execute(array('unit' => $unit));
-        $row = $stmt->fetch(PDO::FETCH_ASSOC);
-    }
-
-    if (!$row && in_array('unit', $columns, true)) {
-        $stmt = $pdo->prepare(
-            "SELECT " . implode(', ', $selectFields) . "
-             FROM activities
-             WHERE unit = :unit
-               AND type = 'question_answer'
-             ORDER BY id ASC
-             LIMIT 1"
-        );
-        $stmt->execute(array('unit' => $unit));
-        $row = $stmt->fetch(PDO::FETCH_ASSOC);
-    }
-
-    if (!$row) {
-        return array(
-            'title' => default_qa_title(),
-            'cards' => array(),
-        );
-    }
-
-    $rawData = null;
-    if (isset($row['data'])) {
-        $rawData = $row['data'];
-    } elseif (isset($row['content_json'])) {
-        $rawData = $row['content_json'];
-    }
-
-    $payload = normalize_qa_payload($rawData);
-
-    $columnTitle = '';
-    if (isset($row['title']) && trim((string) $row['title']) !== '') {
-        $columnTitle = trim((string) $row['title']);
-    } elseif (isset($row['name']) && trim((string) $row['name']) !== '') {
-        $columnTitle = trim((string) $row['name']);
-    }
-
-    if ($columnTitle !== '') {
-        $payload['title'] = $columnTitle;
-    }
-
-    return array(
-        'title' => normalize_qa_title((string) $payload['title']),
-        'cards' => isset($payload['cards']) && is_array($payload['cards']) ? $payload['cards'] : array(),
-    );
-}
-
-if ($unit === '' && $activityId !== '') {
-    $unit = resolve_unit_from_activity($pdo, $activityId);
-}
-
-$activity = load_qa_activity($pdo, $unit, $activityId);
-$data = isset($activity['cards']) && is_array($activity['cards']) ? $activity['cards'] : array();
-$viewerTitle = isset($activity['title']) ? (string) $activity['title'] : default_qa_title();
-
-if (count($data) === 0) {
-    die('No questions found for this activity');
-}
+if (empty($cards)) die('No questions found for this activity');
 
 ob_start();
 ?>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@600;700;800&display=swap" rel="stylesheet">
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@600;700;800&display=swap');
-
 :root {
-    --page-bg: #e6f6f4;
-    --panel-bg: #0f766e;
-    --panel-alt: #115e59;
-    --panel-border: rgba(255, 255, 255, 0.18);
-    --text-dark: #ffffff;
-    --text-light: #ffffff;
-    --accent: #14b8a6;
-    --accent-strong: #0f766e;
-    --shadow: 0 24px 60px rgba(15, 23, 42, .14);
+    --p:#7F77DD; --pd:#534AB7; --pl:#EEEDFE; --pb:#AFA9EC;
+    --t50:#E1F5EE; --t100:#9FE1CB; --t400:#1D9E75; --t600:#0F6E56; --t800:#085041;
+    --green:#16a34a;
 }
 
-* {
-    box-sizing: border-box;
-}
+/* ── template reset ── */
+body { margin:0 !important; padding:0 !important; background:#f0faf6 !important;
+    font-family:'Nunito','Segoe UI',sans-serif !important; }
+.activity-wrapper { max-width:100% !important; margin:0 !important; padding:0 !important;
+    height:100vh; display:flex !important; flex-direction:column !important; background:transparent !important; overflow:hidden !important; }
+.top-row { display:none !important; }
+.viewer-content { flex:1 !important; display:flex !important; flex-direction:column !important;
+    padding:0 !important; margin:0 !important; background:transparent !important;
+    border:none !important; box-shadow:none !important; border-radius:0 !important; }
 
-body {
-    margin: 0;
-    min-height: 100vh;
-    font-family: 'Nunito', 'Segoe UI', sans-serif;
-    color: var(--text-dark);
-    background: var(--page-bg);
-    padding: 24px 18px 32px;
-}
+/* ── page shell ── */
+.qa-page { display:flex; flex-direction:column; width:100vw; height:100vh; background:#f0faf6; overflow:hidden; }
 
-.qa-wrap {
-    width: 100%;
-    max-width: 100%;
-    min-height: calc(100vh - 120px);
-    margin: 0 auto;
-    padding: 10px 0 0;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-}
+/* topbar — lavender */
+.qa-topbar { flex-shrink:0; height:42px; background:var(--pl); border-bottom:1.5px solid var(--pb);
+    display:flex; align-items:center; padding:0 16px; gap:12px; }
+.qa-topbar-title { font-size:12px; font-weight:800; color:var(--pd);
+    letter-spacing:.1em; text-transform:uppercase; margin:0 auto; font-family:'Nunito',sans-serif; }
+.qa-bottombar { flex-shrink:0; height:36px; background:var(--pl); border-top:1.5px solid var(--pb); }
 
-.viewer-header {
-    display: none !important;
-}
+/* shared button */
+.act-btn { display:inline-flex; align-items:center; justify-content:center; gap:5px;
+    border:none; border-radius:999px; font-family:'Nunito',sans-serif; font-weight:800;
+    color:#fff; cursor:pointer; white-space:nowrap; background:var(--p);
+    box-shadow:0 3px 10px rgba(127,119,221,.30); line-height:1; text-decoration:none;
+    transition:transform .18s cubic-bezier(.34,1.4,.64,1), box-shadow .15s, filter .15s; }
+.act-btn:hover { transform:translateY(-2px) scale(1.04); box-shadow:0 7px 18px rgba(127,119,221,.42); filter:brightness(1.08); }
+.act-btn.teal { background:var(--t400); box-shadow:0 3px 10px rgba(29,158,117,.28); }
+.act-btn.teal:hover { box-shadow:0 7px 18px rgba(29,158,117,.38); }
 
-.qa-intro {
-    width: min(760px, 100%);
-    margin: 0 auto 16px;
-    padding: 20px 24px;
-    border-radius: 24px;
-    border: 1px solid rgba(255, 255, 255, 0.16);
-    background: linear-gradient(160deg, #14b8a6 0%, #0f766e 56%, #115e59 100%);
-    box-shadow: var(--shadow);
-}
+/* ── body ── */
+.qa-body { flex:1; display:flex; flex-direction:column; align-items:center; padding:10px 14px 8px; gap:8px; min-height:0; }
 
-.qa-intro {
-    display: none;
-}
+/* card wrap — white with purple border */
+.qa-card-area { width:100%; max-width:900px; display:flex; align-items:center; gap:10px; flex:1; min-height:0; }
+.qa-arrow-btn { flex-shrink:0; width:38px; height:38px; border-radius:50%;
+    background:var(--pl); border:1.5px solid var(--pb); color:var(--pd);
+    font-size:18px; font-weight:800; cursor:pointer;
+    display:flex; align-items:center; justify-content:center;
+    transition:background .15s,transform .15s; }
+.qa-arrow-btn:hover { background:var(--pb); transform:scale(1.08); }
+.qa-card-wrap { flex:1; height:100%; background:#fff;
+    border-radius:20px; border:1.5px solid var(--pb);
+    overflow:hidden; box-shadow:0 4px 20px rgba(127,119,221,.10);
+    display:flex; flex-direction:column; min-height:0; position:relative; }
 
-.qa-intro h2 {
-    margin: 0 0 10px;
-    font-family: 'Fredoka', 'Trebuchet MS', sans-serif;
-    font-size: clamp(28px, 3.2vw, 36px);
-    font-weight: 700;
-    color: #ffffff;
-}
+/* progress */
+.qa-prog-row { display:flex; align-items:center; gap:10px; flex-shrink:0; width:100%; max-width:900px; }
+.qa-prog-track { flex:1; height:5px; background:var(--pl); border-radius:3px;
+    border:1px solid var(--pb); overflow:hidden; }
+.qa-prog-fill { height:100%; background:var(--p); border-radius:3px; transition:width .35s ease; }
+.qa-prog-lbl { font-size:11px; font-weight:800; color:var(--p); white-space:nowrap; font-family:'Nunito',sans-serif; }
 
-.qa-intro p {
-    margin: 0;
-    color: rgba(255, 255, 255, .92);
-    font-size: 15px;
-    line-height: 1.6;
-}
+/* flip area */
+.qa-flip-area { flex:1; min-height:200px; perspective:1200px; padding:14px 18px; cursor:pointer; display:flex; align-items:stretch; }
+.qa-card { width:100%; flex:1; min-height:200px; position:relative;
+    transform-style:preserve-3d; transition:transform .55s ease; border-radius:14px; }
+.qa-card.flipped { transform:rotateY(180deg); }
+.qa-side { position:absolute; inset:0; backface-visibility:hidden; border-radius:14px;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    padding:20px; gap:10px; }
 
-.qa-stage {
-    position: relative;
-    width: min(760px, 100%);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 18px;
-    padding: 0;
-}
+/* question side — lavender */
+.qa-front { background:var(--pl); border:1.5px solid var(--pb); }
+/* answer side — purple dark */
+.qa-back  { background:var(--pd); border:1.5px solid rgba(255,255,255,.15); transform:rotateY(180deg); }
 
-.card-container {
-    width: 100%;
-    max-width: 760px;
-    perspective: 1400px;
-    padding: 18px;
-    background: #d2ebe8;
-    border: 1px solid #bae6e1;
-    border-radius: 36px;
-}
+.qa-side-label { font-size:10px; font-weight:800; letter-spacing:.1em;
+    text-transform:uppercase; font-family:'Nunito',sans-serif; opacity:.7; }
+.qa-front .qa-side-label { color:var(--pd); }
+.qa-back  .qa-side-label { color:rgba(255,255,255,.7); }
 
-.card {
-    width: 100%;
-    min-height: 360px;
-    max-height: min(68vh, 520px);
-    position: relative;
-    transform-style: preserve-3d;
-    transition: transform 0.58s ease;
-    border-radius: 28px;
-    box-shadow: 0 28px 72px rgba(15, 23, 42, 0.2);
-    cursor: pointer;
-    outline: none;
-}
+.qa-side-text { font-family:'Fredoka',sans-serif; font-size:clamp(18px,3.5vw,30px);
+    font-weight:600; text-align:center; line-height:1.3; }
+.qa-front .qa-side-text { color:var(--pd); }
+.qa-back  .qa-side-text { color:#fff; }
 
-.card.reveal {
-    transform: rotateY(180deg);
-}
+/* hint + divider */
+.qa-hint { font-size:10px; font-weight:600; color:var(--pb); text-align:center;
+    font-family:'Nunito',sans-serif; position:absolute; bottom:8px; width:100%; left:0; }
+.qa-divider { display:none; }
 
-.side {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    backface-visibility: hidden;
-    border-radius: 28px;
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-    padding: 28px 36px;
-}
+/* controls */
+.qa-controls { display:flex; gap:8px; justify-content:center; flex-wrap:wrap;
+    padding:8px 14px; flex-shrink:0; width:100%; max-width:900px; }
 
-.front {
-    background: linear-gradient(160deg, #0f766e 0%, #0b5f59 100%);
-    color: #ffffff;
-    border: 1px solid rgba(255, 255, 255, 0.16);
-}
+/* completed */
+.qa-completed { display:none; position:absolute; inset:0; background:#f0faf6;
+    border-radius:20px; flex-direction:column; align-items:center;
+    justify-content:center; padding:20px 16px; z-index:20; }
+.qa-completed.active { display:flex; }
+.done-card { background:#fff; border-radius:20px; border:1.5px solid var(--pb);
+    box-shadow:0 4px 24px rgba(127,119,221,.10);
+    width:100%; max-width:500px;
+    display:flex; flex-direction:column; align-items:center;
+    padding:28px 24px; gap:14px; text-align:center; }
+.done-confetti { width:100%; height:5px; border-radius:3px;
+    background:linear-gradient(90deg,var(--p) 0%,var(--t400) 35%,#f59e0b 65%,var(--p) 100%);
+    margin-bottom:2px; }
+.done-icon  { font-size:58px; line-height:1; }
+.done-title { font-family:'Fredoka',sans-serif; font-size:26px; font-weight:700; color:var(--t800); margin:0; }
+.done-sub   { font-size:13px; font-weight:600; color:#64748b; max-width:300px; line-height:1.5; margin:0; }
+.done-bar-row  { width:100%; display:flex; flex-direction:column; gap:5px; }
+.done-bar-hd   { display:flex; justify-content:space-between; align-items:center; }
+.done-bar-lbl  { font-size:12px; font-weight:800; color:var(--pd); }
+.done-bar-val  { font-size:12px; font-weight:800; color:var(--p); }
+.done-bar-track { width:100%; height:10px; background:var(--pl); border-radius:6px;
+    border:1px solid var(--pb); overflow:hidden; }
+.done-bar-fill  { height:100%; border-radius:6px;
+    background:linear-gradient(90deg,var(--t400),var(--p)); width:0;
+    transition:width .8s cubic-bezier(.34,1,.64,1); }
+.done-stat-box { background:var(--pl); border-radius:16px; border:1.5px solid var(--pb);
+    padding:14px 20px; width:100%; display:flex; align-items:center;
+    justify-content:center; gap:12px; }
+.done-stat-count { font-family:'Fredoka',sans-serif; font-size:24px; font-weight:700; color:var(--pd); }
+.done-stat-lbl   { font-size:11px; font-weight:800; color:var(--p);
+    text-transform:uppercase; letter-spacing:.06em; }
+.done-btns { display:flex; gap:8px; flex-wrap:wrap; justify-content:center; }
+.done-btn  { display:inline-flex; align-items:center; gap:5px; border:none;
+    border-radius:999px; font-family:'Nunito',sans-serif; font-weight:800;
+    font-size:13px; color:#fff; cursor:pointer; padding:9px 20px; line-height:1;
+    background:var(--p); box-shadow:0 3px 10px rgba(127,119,221,.28);
+    transition:transform .18s cubic-bezier(.34,1.4,.64,1),box-shadow .15s,filter .15s; }
+.done-btn:hover { transform:translateY(-2px) scale(1.04); filter:brightness(1.08); }
+.done-btn.teal  { background:var(--t400); box-shadow:0 3px 10px rgba(29,158,117,.28); }
 
-.back {
-    background: linear-gradient(160deg, #0ea5a2 0%, #0f766e 100%);
-    color: #ffffff;
-    transform: rotateY(180deg);
-    border: 1px solid rgba(255, 255, 255, 0.18);
-}
+/* fullscreen scaling */
+body.fullscreen-embedded .qa-flip-area,
+body.presentation-mode   .qa-flip-area  { min-height:300px; }
+body.fullscreen-embedded .qa-card,
+body.presentation-mode   .qa-card       { height:280px; }
+body.fullscreen-embedded .qa-side-text,
+body.presentation-mode   .qa-side-text  { font-size:clamp(22px,4vw,38px) !important; }
+body.fullscreen-embedded .act-btn,
+body.presentation-mode   .act-btn       { padding:10px 22px !important; font-size:14px !important; }
+body.fullscreen-embedded .qa-topbar,
+body.presentation-mode   .qa-topbar     { height:46px !important; }
 
-.panel-label {
-    text-transform: uppercase;
-    letter-spacing: 0.22em;
-    font-size: 0.8rem;
-    font-weight: 800;
-    opacity: 0.82;
-    color: rgba(255, 255, 255, .8);
-}
+body.presentation-mode .qa-topbar,
+body.embedded-mode     .qa-topbar { display:none; }
 
-.panel-copy {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-    font-size: clamp(1.5rem, 3.9vw, 3.2rem);
-    font-weight: 800;
-    line-height: 1.24;
-    word-break: break-word;
-    padding: 12px 8px;
-    color: #ffffff;
-}
-
-.listen-chip {
-    align-self: center;
-    padding: 12px 18px;
-    border-radius: 999px;
-    border: none;
-    background: #ffffff;
-    color: #0f766e;
-    font-size: 15px;
-    font-weight: 700;
-    cursor: pointer;
-    box-shadow: 0 14px 30px rgba(8, 47, 73, .22);
-    transition: transform 0.16s ease, filter 0.16s ease;
-}
-
-.side .listen-chip {
-    display: none;
-}
-
-.listen-chip:hover,
-.listen-chip:focus {
-    transform: translateY(-1px);
-    filter: brightness(1.05);
-}
-
-.arrow-btn {
-    width: 56px;
-    height: 56px;
-    border: none;
-    border-radius: 999px;
-    background: #ffffff;
-    color: #0f766e;
-    font-size: 28px;
-    font-weight: 700;
-    box-shadow: 0 12px 26px rgba(15, 23, 42, .14);
-    cursor: pointer;
-    display: grid;
-    place-items: center;
-    transition: transform 0.18s ease, color 0.18s ease;
-}
-
-.arrow-btn:hover {
-    transform: scale(1.05);
-}
-
-.arrow-left {
-    flex-shrink: 0;
-}
-
-.arrow-right {
-    flex-shrink: 0;
-}
-
-.controls-row {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 14px;
-    flex-wrap: wrap;
-    margin-top: 18px;
-    width: min(760px, 100%);
-}
-
-.control-btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 142px;
-    border: none;
-    border-radius: 999px;
-    padding: 11px 18px;
-    font-size: 14px;
-    font-weight: 800;
-    font-family: 'Nunito', 'Segoe UI', sans-serif;
-    line-height: 1;
-    cursor: pointer;
-    background: linear-gradient(180deg, #14b8a6 0%, #0f766e 100%);
-    color: #fff;
-    box-shadow: 0 12px 26px rgba(15, 118, 110, .3);
-    transition: transform 0.15s ease, filter 0.15s ease;
-}
-
-.control-btn:hover,
-.control-btn:focus {
-    transform: translateY(-1px);
-    filter: brightness(1.04);
-}
-
-.progress-text {
-    margin-top: 14px;
-    text-align: center;
-    font-size: 1rem;
-    color: #0f766e;
-    font-weight: 700;
-    width: min(760px, 100%);
-}
-
-.reveal-hint {
-    margin-top: 10px;
-    font-size: 14px;
-    text-align: center;
-    color: #115e59;
-    width: min(760px, 100%);
-}
-
-.progress-text,
-.reveal-hint {
-    display: none;
-}
-
-.reveal-hint:empty {
-    display: none !important;
-}
-
-.completed-screen {
-    display: none;
-    text-align: center;
-    max-width: 600px;
-    margin: 0 auto;
-    padding: 40px 20px;
-}
-
-.completed-screen.active {
-    display: block;
-}
-
-.completed-icon {
-    font-size: 72px;
-    margin-bottom: 16px;
-}
-
-.completed-title {
-    font-family: 'Fredoka', 'Trebuchet MS', sans-serif;
-    font-size: clamp(32px, 4vw, 40px);
-    font-weight: 800;
-    margin: 0 0 14px;
-    color: #0f766e;
-}
-
-.completed-text {
-    font-size: 1rem;
-    line-height: 1.8;
-    color: #475569;
-    margin: 0 0 22px;
-}
-
-.completed-button {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    padding: 10px 14px;
-    border: none;
-    border-radius: 10px;
-    background: linear-gradient(180deg, #3d73ee 0%, #2563eb 100%);
-    color: #fff;
-    font-size: 13px;
-    font-weight: 700;
-    font-family: 'Nunito', 'Segoe UI', sans-serif;
-    line-height: 1;
-    cursor: pointer;
-    box-shadow: 0 10px 22px rgba(37, 99, 235, .28);
-    transition: transform .18s ease, filter .18s ease;
-}
-
-.completed-button:hover {
-    filter: brightness(1.07);
-    transform: translateY(-1px);
-}
-
-@media (max-width: 960px) {
-    .qa-stage {
-        flex-direction: column;
-        padding: 0;
-    }
-
-    .arrow-btn {
-        width: 52px;
-        height: 52px;
-        font-size: 24px;
-    }
-}
-
-@media (max-width: 720px) {
-    .card {
-        min-height: 320px;
-    }
-
-    .panel-copy {
-        font-size: clamp(1.2rem, 5vw, 3rem);
-    }
-
-    .controls-row {
-        gap: 10px;
-    }
+@media (max-width:600px) {
+    .qa-card-wrap { border-radius:14px; }
+    .qa-flip-area { min-height:180px; padding:10px 12px; }
+    .qa-card { height:160px; }
+    .act-btn { padding:7px 14px; font-size:12px; }
 }
 </style>
 
-<div class="qa-wrap">
-    <div id="qa-stage" class="qa-stage">
-        <button class="arrow-btn arrow-left" type="button" onclick="previousCard(event)" aria-label="Previous question">❮</button>
+<div class="qa-page">
 
-        <div class="card-container">
-            <div class="card" id="card" role="button" tabindex="0" aria-label="Question card">
-                <div class="side front" id="front"></div>
-                <div class="side back" id="back"></div>
+    <div class="qa-topbar">
+        <a class="act-btn" style="padding:6px 14px;font-size:12px"
+           href="<?php echo htmlspecialchars(
+               (isset($_GET['return_to']) && $_GET['return_to'] !== '') ? $_GET['return_to'] :
+               (isset($_GET['assignment']) && $_GET['assignment'] !== ''
+                   ? '../../academic/teacher_unit.php?assignment='.urlencode($_GET['assignment']).'&unit='.urlencode($unit)
+                   : '../../academic/unit_view.php?unit='.urlencode($unit)),
+           ENT_QUOTES, 'UTF-8'); ?>">
+            <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M6.5 1.5L3 5l3.5 3.5" stroke="#fff" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Back
+        </a>
+        <span class="qa-topbar-title">Questions &amp; Answers</span>
+    </div>
+
+    <div class="qa-body">
+
+        <!-- progress row -->
+        <div class="qa-prog-row">
+            <div class="qa-prog-track">
+                <div class="qa-prog-fill" id="qa-prog-fill"
+                     style="width:<?php echo count($cards) > 0 ? round(1/count($cards)*100) : 100; ?>%"></div>
             </div>
+            <span class="qa-prog-lbl" id="qa-prog-lbl">1 / <?php echo count($cards); ?></span>
         </div>
 
-        <button class="arrow-btn arrow-right" type="button" onclick="nextCard(event)" aria-label="Next question">❯</button>
+        <!-- card area with side arrows -->
+        <div class="qa-card-area" id="qa-wrap">
+            <button type="button" class="qa-arrow-btn" id="qa-prev-arrow">&#8249;</button>
+
+            <div class="qa-card-wrap">
+                <div class="qa-flip-area" id="qa-flip-area">
+                    <div class="qa-card" id="qa-card" tabindex="0">
+                        <div class="qa-side qa-front">
+                            <div class="qa-side-text" id="qa-q-text"></div>
+                            <span class="qa-hint">Tap to reveal answer</span>
+                        </div>
+                        <div class="qa-side qa-back">
+                            <div class="qa-side-text" id="qa-a-text"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- completed overlay inside card-wrap -->
+                <div class="qa-completed" id="qa-completed">
+                    <div class="done-card">
+                        <div class="done-confetti"></div>
+                        <div class="done-icon">&#x2705;</div>
+                        <h2 class="done-title">All Done!</h2>
+                        <p class="done-sub">You reviewed all questions. Excellent fluency practice!</p>
+                        <div class="done-bar-row">
+                            <div class="done-bar-hd">
+                                <span class="done-bar-lbl">Questions reviewed</span>
+                                <span class="done-bar-val" id="qa-done-count">0 / 0</span>
+                            </div>
+                            <div class="done-bar-track">
+                                <div class="done-bar-fill" id="qa-done-bar"></div>
+                            </div>
+                        </div>
+                        <div class="done-stat-box">
+                            <span style="font-size:38px">&#x1F4AC;</span>
+                            <div style="text-align:left">
+                                <div class="done-stat-count" id="qa-done-stat">0 questions</div>
+                                <div class="done-stat-lbl">practised today</div>
+                            </div>
+                        </div>
+                        <div class="done-btns">
+                            <button type="button" class="done-btn teal" id="qa-restart">&#8635; Review Again</button>
+                            <button type="button" class="done-btn" onclick="history.back()">Next Activity &#8594;</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <button type="button" class="qa-arrow-btn" id="qa-next-arrow">&#8250;</button>
+        </div>
+
+        <!-- controls -->
+        <div class="qa-controls">
+            <button type="button" class="act-btn" style="padding:8px 16px;font-size:13px" id="qa-prev">&#9664; Prev</button>
+            <button type="button" class="act-btn teal" style="padding:8px 16px;font-size:13px" id="qa-listen">&#x1F50A; Listen</button>
+            <button type="button" class="act-btn" style="padding:8px 16px;font-size:13px" id="qa-next">Next &#9654;</button>
+        </div>
+
+
     </div>
 
-    <div class="controls-row">
-        <button class="control-btn" type="button" onclick="previousCard(event)">← Previous</button>
-        <button class="control-btn" type="button" onclick="listenCurrent(event)">🔊 Listen</button>
-        <button class="control-btn" type="button" onclick="nextCard(event)">Next →</button>
-    </div>
-
-    <div class="progress-text">
-        <span id="currentIndex">1</span>
-        <span id="totalCards"><?= count($data) ?></span>
-    </div>
-
-    <div class="reveal-hint"></div>
-
-    <div id="completed-container" class="completed-screen">
-        <div class="completed-icon">✅</div>
-        <h2 class="completed-title">Completed</h2>
-        <p class="completed-text">You've finished all the questions. Great effort on your fluency practice!</p>
-        <button class="completed-button" onclick="goBackToCards()">Back</button>
-    </div>
+    <div class="qa-bottombar"></div>
 </div>
 
+<audio id="qa-win" src="../../hangman/assets/win.mp3" preload="auto"></audio>
+
 <script>
-const data = <?= json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
-let index = 0;
-let isCompleted = false;
+(function () {
 
-const front = document.getElementById('front');
-const back = document.getElementById('back');
-const card = document.getElementById('card');
-const qaStage = document.getElementById('qa-stage');
-const controlsRow = document.querySelector('.controls-row');
-const completedContainer = document.getElementById('completed-container');
+var CARDS = <?php echo json_encode($cards, JSON_UNESCAPED_UNICODE); ?>;
+var total = CARDS.length;
+var idx   = 0;
+var done  = false;
 
-function escapeHtml(value) {
-    return String(value || '')
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#039;');
-}
+var cardEl   = document.getElementById('qa-card');
+var qText    = document.getElementById('qa-q-text');
+var aText    = document.getElementById('qa-a-text');
+var progFill = document.getElementById('qa-prog-fill');
+var progLbl  = document.getElementById('qa-prog-lbl');
+var wrap     = document.getElementById('qa-wrap');
+var comp     = document.getElementById('qa-completed');
+var winSnd   = document.getElementById('qa-win');
 
-function getQuestion(item) {
-    return item && typeof item.question === 'string' ? item.question : '';
-}
-
-function getAnswer(item) {
-    return item && typeof item.answer === 'string' ? item.answer : '';
+function esc(s) {
+    return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
 function loadCard() {
-    const item = data[index] || {};
-    const question = getQuestion(item).trim();
-    const answer = getAnswer(item).trim();
-
-    front.innerHTML = `
-        <div class="panel-copy">${escapeHtml(question || 'No question available')}</div>
-        <button type="button" class="listen-chip" data-speaker="question">🔊 Listen Question</button>
-    `;
-
-    back.innerHTML = `
-        <div class="panel-copy">${escapeHtml(answer || 'No answer available')}</div>
-        <button type="button" class="listen-chip" data-speaker="answer">🔊 Listen Answer</button>
-    `;
-
-    document.getElementById('currentIndex').textContent = String(index + 1);
-    document.getElementById('totalCards').textContent = String(data.length);
-    card.classList.remove('reveal');
+    var card = CARDS[idx] || {};
+    qText.textContent = card.question || 'No question';
+    aText.textContent = card.answer   || 'No answer';
+    cardEl.classList.remove('flipped');
+    var pct = Math.round((idx + 1) / total * 100);
+    progFill.style.width = pct + '%';
+    progLbl.textContent  = (idx + 1) + ' / ' + total;
 }
 
-function speakText(text, lang) {
-    if (!text || !('speechSynthesis' in window)) return;
-    window.speechSynthesis.cancel();
-    const utter = new SpeechSynthesisUtterance(text);
-    utter.lang = lang || 'en-US';
-    utter.rate = 0.92;
-    window.speechSynthesis.speak(utter);
-}
+/* ═══════════════════════════════════════════════════════════
+   UNIFIED TTS ENGINE — inglesdeuna v2
+   ttsSpeak(text, { gender: 'female'|'male', lang: 'en-US', rate: 0.82 })
+   ═══════════════════════════════════════════════════════════ */
+var TTS = (function () {
+    var FEMALE_HINTS = [
+        'zira','samantha','karen','aria','jenny','emma','ava','siri',
+        'google us english','microsoft zira','microsoft aria','microsoft jenny',
+        'paulina','sabina','monica','conchita','esperanza','female','woman'
+    ];
+    var MALE_HINTS = [
+        'guy','ryan','daniel','liam','google uk english male',
+        'microsoft guy','microsoft ryan','microsoft david',
+        'jorge','diego','carlos','miguel','male','man'
+    ];
+    var _cache = null;
+    var _tries = 0;
+
+    function _load(cb) {
+        if (!window.speechSynthesis) return;
+        var v = window.speechSynthesis.getVoices();
+        if (v && v.length) { _cache = v; cb(v); return; }
+        if (window.speechSynthesis.onvoiceschanged !== undefined) {
+            window.speechSynthesis.onvoiceschanged = function () {
+                _cache = window.speechSynthesis.getVoices();
+                if (_cache.length) cb(_cache);
+            };
+        }
+        if (_tries < 12) { _tries++; setTimeout(function () { _load(cb); }, 150); }
+    }
+
+    function _pick(voices, lang, gender) {
+        if (!voices || !voices.length) return null;
+        var pre = lang.split('-')[0].toLowerCase();
+        var pool = [];
+        for (var i = 0; i < voices.length; i++) {
+            var vl = String(voices[i].lang || '').toLowerCase();
+            if (vl === lang.toLowerCase() || vl.indexOf(pre+'-') === 0 || vl.indexOf(pre+'_') === 0) pool.push(voices[i]);
+        }
+        if (!pool.length) pool = voices;
+        var hints = gender === 'male' ? MALE_HINTS : FEMALE_HINTS;
+        var quality = ['neural','premium','enhanced','natural'];
+        /* Pass 1: quality + gender */
+        for (var q = 0; q < quality.length; q++) {
+            for (var h = 0; h < hints.length; h++) {
+                for (var v = 0; v < pool.length; v++) {
+                    var lbl = (String(pool[v].name||'')+' '+String(pool[v].voiceURI||'')).toLowerCase();
+                    if (lbl.indexOf(quality[q]) !== -1 && lbl.indexOf(hints[h]) !== -1) return pool[v];
+                }
+            }
+        }
+        /* Pass 2: gender only */
+        for (var h2 = 0; h2 < hints.length; h2++) {
+            for (var v2 = 0; v2 < pool.length; v2++) {
+                var lbl2 = (String(pool[v2].name||'')+' '+String(pool[v2].voiceURI||'')).toLowerCase();
+                if (lbl2.indexOf(hints[h2]) !== -1) return pool[v2];
+            }
+        }
+        return pool[0] || null;
+    }
+
+    function speak(text, opts) {
+        if (!text || !window.speechSynthesis) return;
+        opts = opts || {};
+        var lang   = opts.lang   || 'en-US';
+        var gender = opts.gender || 'female';
+        var rate   = typeof opts.rate  !== 'undefined' ? opts.rate  : 0.82;
+        var pitch  = typeof opts.pitch !== 'undefined' ? opts.pitch : 1.0;
+
+        window.speechSynthesis.cancel();
+
+        function _do(voices) {
+            var u = new SpeechSynthesisUtterance(text);
+            u.lang = lang; u.rate = rate; u.pitch = pitch; u.volume = 1;
+            var voice = _pick(voices, lang, gender);
+            if (voice) u.voice = voice;
+            window.speechSynthesis.speak(u);
+        }
+
+        if (_cache && _cache.length) { _do(_cache); }
+        else { _load(function (v) { _do(v); }); }
+    }
+
+    if (window.speechSynthesis) _load(function () {});
+    return { speak: speak };
+})();
+
+function speak(text) { TTS.speak(text, { gender: 'male', rate: 0.82 }); }
 
 function showCompleted() {
-    isCompleted = true;
-    qaStage.style.display = 'none';
-    if (controlsRow) {
-        controlsRow.style.display = 'none';
-    }
-    document.querySelector('.reveal-hint').style.display = 'none';
-    completedContainer.classList.add('active');
+    done = true;
+    comp.classList.add('active');
+    var countEl = document.getElementById('qa-done-count');
+    var barEl   = document.getElementById('qa-done-bar');
+    var statEl  = document.getElementById('qa-done-stat');
+    if (countEl) countEl.textContent = total + ' / ' + total;
+    if (statEl)  statEl.textContent  = total + ' question' + (total !== 1 ? 's' : '');
+    setTimeout(function() { if (barEl) barEl.style.width = '100%'; }, 100);
+    try { winSnd.pause(); winSnd.currentTime = 0; winSnd.play(); } catch(e) {}
 }
 
-function goBackToCards() {
-    isCompleted = false;
-    index = 0;
-    qaStage.style.display = 'flex';
-    if (controlsRow) {
-        controlsRow.style.display = 'flex';
-    }
-    document.querySelector('.reveal-hint').style.display = 'block';
-    completedContainer.classList.remove('active');
-    card.classList.remove('reveal');
+document.getElementById('qa-prev').addEventListener('click', function() {
+    if (done) return;
+    cardEl.classList.remove('flipped');
+    idx = (idx - 1 + total) % total;
     loadCard();
-}
+});
 
-function nextCard(event) {
-    if (event) event.stopPropagation();
-    if (isCompleted) return;
-
-    card.classList.remove('reveal');
-
-    if (index >= data.length - 1) {
-        showCompleted();
-    } else {
-        index += 1;
-        loadCard();
-    }
-}
-
-function previousCard(event) {
-    if (event) event.stopPropagation();
-    if (isCompleted) return;
-
-    card.classList.remove('reveal');
-    index = (index - 1 + data.length) % data.length;
+document.getElementById('qa-next').addEventListener('click', function() {
+    if (done) return;
+    cardEl.classList.remove('flipped');
+    if (idx >= total - 1) { showCompleted(); return; }
+    idx++;
     loadCard();
-}
-
-function listenCurrent(event) {
-    if (event) event.stopPropagation();
-    if (isCompleted) return;
-
-    const item = data[index] || {};
-    const visibleText = card.classList.contains('reveal') ? getAnswer(item) : getQuestion(item);
-    speakText(visibleText, 'en-US');
-}
-
-qaStage.addEventListener('click', function (event) {
-    const button = event.target.closest('.listen-chip');
-    if (!button) return;
-    event.stopPropagation();
-
-    const item = data[index] || {};
-    const speaker = button.dataset.speaker || 'question';
-    const text = speaker === 'answer' ? getAnswer(item) : getQuestion(item);
-    speakText(text, 'en-US');
 });
 
-card.addEventListener('click', function (event) {
-    if (!isCompleted && !event.target.closest('.listen-chip')) {
-        card.classList.toggle('reveal');
-    }
+document.getElementById('qa-listen').addEventListener('click', function() {
+    var card = CARDS[idx] || {};
+    var text = cardEl.classList.contains('flipped') ? card.answer : card.question;
+    speak(text || '');
 });
 
-card.addEventListener('keydown', function (event) {
-    if (isCompleted) return;
-    if (event.key === 'Enter' || event.key === ' ') {
-        event.preventDefault();
-        card.classList.toggle('reveal');
-    }
+document.getElementById('qa-flip-area').addEventListener('click', function() {
+    if (!done) cardEl.classList.toggle('flipped');
 });
+
+cardEl.addEventListener('keydown', function(e) {
+    if (done) return;
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); cardEl.classList.toggle('flipped'); }
+    if (e.key === 'ArrowRight') { document.getElementById('qa-next').click(); }
+    if (e.key === 'ArrowLeft')  { document.getElementById('qa-prev').click(); }
+});
+
+document.getElementById('qa-restart').addEventListener('click', function() {
+    done = false; idx = 0;
+    comp.classList.remove('active');
+    var barEl = document.getElementById('qa-done-bar');
+    if (barEl) barEl.style.width = '0%';
+    loadCard();
+});
+
+/* arrow buttons = same as prev/next */
+var arrowPrev = document.getElementById('qa-prev-arrow');
+var arrowNext = document.getElementById('qa-next-arrow');
+if (arrowPrev) arrowPrev.addEventListener('click', function() { document.getElementById('qa-prev').click(); });
+if (arrowNext) arrowNext.addEventListener('click', function() { document.getElementById('qa-next').click(); });
 
 loadCard();
-</script>
 
+})();
+</script>
 <?php
 $content = ob_get_clean();
-render_activity_viewer($viewerTitle, '❓', $content);
+render_activity_viewer($viewerTitle, 'fa-solid fa-circle-question', $content);
