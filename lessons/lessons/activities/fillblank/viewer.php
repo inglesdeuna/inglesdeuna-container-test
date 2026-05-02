@@ -81,6 +81,7 @@ foreach ($blocks as $bIdx => $block) {
         $blankN++;
         $sizerId  = 's' . $bIdx . '_' . $blankN;
         $inputId  = 'i' . $bIdx . '_' . $blankN;
+        /* sizer text = answer so wrapper pre-sizes correctly */
         $sizerTxt = htmlspecialchars($answers[$blankN - 1] ?? '…', ENT_QUOTES, 'UTF-8');
         return
             '<span class="fb-blank-wrap">' .
@@ -97,9 +98,9 @@ foreach ($blocks as $bIdx => $block) {
     }, htmlspecialchars($text, ENT_QUOTES, 'UTF-8'));
 
     $renderedBlocks[] = [
-        'rendered'   => $rendered,
-        'image'      => $image,
-        'answers'    => $answers,
+        'rendered' => $rendered,
+        'image'    => $image,
+        'answers'  => $answers,
         'blankCount' => $blankN,
     ];
 }
@@ -134,7 +135,7 @@ body {
     padding:     0 !important;
     background:  #f0faf6 !important;
     font-family: 'Nunito', 'Segoe UI', sans-serif !important;
-    /* NO overflow:hidden — blocks button clicks in embedded/iframe mode */
+    overflow:    hidden;
 }
 .activity-wrapper {
     max-width:      100% !important;
@@ -163,7 +164,8 @@ body {
     display:        flex;
     flex-direction: column;
     width:          100vw;
-    min-height:     100vh; /* min instead of fixed height — allows scroll if needed */
+    height:         100vh;
+    min-height:     0;
     background:     #f0faf6;
 }
 
@@ -375,6 +377,7 @@ body.embedded-mode     .fb-back-btn { display: none; }
     min-width:      60px;
 }
 
+/* invisible sizer — mirrors input font, sets wrapper width */
 .fb-blank-sizer {
     position:       absolute;
     inset:          0;
@@ -388,6 +391,7 @@ body.embedded-mode     .fb-back-btn { display: none; }
     border-bottom:  2.5px solid transparent;
 }
 
+/* actual input — fills wrapper width */
 .fb-blank {
     display:        inline-block;
     width:          100%;
@@ -444,10 +448,6 @@ body.embedded-mode     .fb-back-btn { display: none; }
     gap:             10px;
     flex-wrap:       wrap;
     justify-content: center;
-    /* ensure controls are above any overlay and clickable */
-    position:        relative;
-    z-index:         5;
-    background:      #fff;
 }
 .fb-btn {
     display:         inline-flex;
@@ -465,11 +465,6 @@ body.embedded-mode     .fb-back-btn { display: none; }
     background:      var(--purple);
     box-shadow:      0 3px 10px rgba(127,119,221,.30);
     transition:      transform .18s cubic-bezier(.34,1.4,.64,1), box-shadow .15s, filter .15s;
-    /* ensure pointer events work */
-    pointer-events:  auto;
-    user-select:     none;
-    -webkit-user-select: none;
-    touch-action:    manipulation;
 }
 .fb-btn:hover {
     transform:  translateY(-3px) scale(1.05);
@@ -569,12 +564,12 @@ body.embedded-mode     .fb-back-btn { display: none; }
 
 /* ── Responsive ── */
 @media (max-width: 600px) {
-    .fb-card       { margin: 6px 8px; border-radius: 10px; }
-    .fb-topbar     { height: 34px; }
-    .fb-bottombar  { height: 32px; }
+    .fb-card      { margin: 6px 8px; border-radius: 10px; }
+    .fb-topbar    { height: 34px; }
+    .fb-bottombar { height: 32px; }
     .fb-block-area { padding: 12px 14px 6px; }
-    .fb-btn        { padding: 8px 14px; font-size: 12px; }
-    .fb-text       { font-size: 14px; line-height: 2.2; }
+    .fb-btn       { padding: 8px 14px; font-size: 12px; }
+    .fb-text      { font-size: 14px; line-height: 2.2; }
 }
 </style>
 
@@ -642,10 +637,10 @@ body.embedded-mode     .fb-back-btn { display: none; }
 
         <!-- Controls -->
         <div class="fb-controls">
-            <button type="button" class="fb-btn" id="fb-prev" style="display:none">◀ Prev</button>
-            <button type="button" class="fb-btn" id="fb-check">✔ Check</button>
-            <button type="button" class="fb-btn" id="fb-show">Show Answer</button>
-            <button type="button" class="fb-btn" id="fb-next">Next ▶</button>
+            <button type="button" class="fb-btn" id="fb-prev" style="display:none" onclick="fbPrev()">◀ Prev</button>
+            <button type="button" class="fb-btn" id="fb-check" onclick="fbCheck()">✔ Check</button>
+            <button type="button" class="fb-btn" id="fb-show"  onclick="fbShow()">Show Answer</button>
+            <button type="button" class="fb-btn" id="fb-next"  onclick="fbNext()">Next ▶</button>
             <div id="fb-feedback"></div>
         </div>
 
@@ -681,22 +676,11 @@ var RETURN_TO   = <?= json_encode($returnTo,   JSON_UNESCAPED_UNICODE) ?>;
 var ACTIVITY_ID = <?= json_encode($activityId, JSON_UNESCAPED_UNICODE) ?>;
 var TOTAL       = BLOCKS.length;
 
-var cur       = 0;
-var done      = false;
-var winSound  = document.getElementById('fb-win-sound');
-var losSound  = document.getElementById('fb-lose-sound');
-var doneSound = document.getElementById('fb-done-sound');
-
-/* ── Button refs — bound here so onclick attrs not needed ── */
-var btnPrev  = document.getElementById('fb-prev');
-var btnCheck = document.getElementById('fb-check');
-var btnShow  = document.getElementById('fb-show');
-var btnNext  = document.getElementById('fb-next');
-
-btnPrev.addEventListener('click',  function(){ fbPrev(); });
-btnCheck.addEventListener('click', function(){ fbCheck(); });
-btnShow.addEventListener('click',  function(){ fbShow(); });
-btnNext.addEventListener('click',  function(){ fbNext(); });
+var cur      = 0;
+var done     = false;
+var winSound = document.getElementById('fb-win-sound');
+var losSound = document.getElementById('fb-lose-sound');
+var doneSound= document.getElementById('fb-done-sound');
 
 function playSound(el){ try{ el.pause(); el.currentTime=0; el.play(); }catch(e){} }
 
@@ -715,9 +699,9 @@ function initResizers() {
 }
 
 /* ── Block helpers ── */
-function blockEl(b) { return document.getElementById('fb-block-' + b); }
-function blanks(b)  { return Array.from(blockEl(b).querySelectorAll('.fb-blank')); }
-function answers(b) { return JSON.parse(blockEl(b).dataset.answers || '[]'); }
+function blockEl(b)  { return document.getElementById('fb-block-' + b); }
+function blanks(b)   { return Array.from(blockEl(b).querySelectorAll('.fb-blank')); }
+function answers(b)  { return JSON.parse(blockEl(b).dataset.answers || '[]'); }
 
 function setFb(msg, cls) {
     var f = document.getElementById('fb-feedback');
@@ -730,12 +714,12 @@ function setProgress() {
     var pct = Math.round((cur + 1) / TOTAL * 100);
     document.getElementById('fb-prog-fill').style.width  = pct + '%';
     document.getElementById('fb-prog-label').textContent = (cur + 1) + ' / ' + TOTAL;
-    btnPrev.style.display = cur > 0 ? '' : 'none';
+    document.getElementById('fb-prev').style.display     = cur > 0 ? '' : 'none';
 }
 
 function clearColors() {
     document.querySelectorAll('.fb-blank').forEach(function(inp) {
-        inp.classList.remove('correct', 'wrong', 'revealed');
+        inp.classList.remove('correct', 'wrong', 'revealed'); delete inp.dataset.revealed;
     });
 }
 
@@ -745,13 +729,15 @@ function fbCheck() {
     var ans  = answers(cur);
     var inps = blanks(cur);
     var ok   = 0;
+
     inps.forEach(function(inp, i) {
-        inp.classList.remove('correct', 'wrong', 'revealed');
+        inp.classList.remove('correct', 'wrong', 'revealed'); delete inp.dataset.revealed;
         var v = inp.value.trim().toLowerCase();
         var a = (ans[i] || '').trim().toLowerCase();
         if (v === a) { inp.classList.add('correct'); ok++; }
         else           inp.classList.add('wrong');
     });
+
     if (ok === inps.length) {
         setFb('✅ Correct! Well done!', 'good');
         playSound(winSound);
@@ -769,11 +755,11 @@ function fbShow() {
         inp.value = ans[i] || '';
         resizeInput(inp);
         inp.classList.remove('correct', 'wrong');
-        inp.classList.add('revealed');
+        inp.classList.add('revealed'); inp.dataset.revealed = '1';
     });
     setFb('Answers shown.', 'good');
-    btnCheck.disabled = true;
-    btnShow.disabled  = true;
+    document.getElementById('fb-check').disabled = true;
+    document.getElementById('fb-show').disabled  = true;
 }
 
 /* ── Navigation ── */
@@ -784,8 +770,8 @@ function fbNext() {
         blockEl(cur).classList.add('active');
         clearFb();
         clearColors();
-        btnCheck.disabled = false;
-        btnShow.disabled  = false;
+        document.getElementById('fb-check').disabled = false;
+        document.getElementById('fb-show').disabled  = false;
         setProgress();
         var first = blanks(cur)[0];
         if (first) setTimeout(function(){ first.focus(); }, 80);
@@ -800,8 +786,8 @@ function fbPrev() {
         cur--;
         blockEl(cur).classList.add('active');
         clearFb();
-        btnCheck.disabled = false;
-        btnShow.disabled  = false;
+        document.getElementById('fb-check').disabled = false;
+        document.getElementById('fb-show').disabled  = false;
         setProgress();
     }
 }
@@ -811,15 +797,18 @@ async function fbFinish() {
     done = true;
     var totalBlanks   = 0;
     var correctBlanks = 0;
+
     for (var b = 0; b < TOTAL; b++) {
-        var ans = answers(b);
+        var ans  = answers(b);
         blanks(b).forEach(function(inp, i) {
             totalBlanks++;
             var v = inp.value.trim().toLowerCase();
             var a = (ans[i] || '').trim().toLowerCase();
-            if (v === a) correctBlanks++;
+            var wasRevealed = inp.dataset.revealed === '1';
+            if (!wasRevealed && v === a) correctBlanks++;
         });
     }
+
     var pct    = totalBlanks > 0 ? Math.round(correctBlanks / totalBlanks * 100) : 0;
     var errors = Math.max(0, totalBlanks - correctBlanks);
 
@@ -853,14 +842,15 @@ window.fbRestart = function() {
     done = false;
     cur  = 0;
     document.getElementById('fb-completed').classList.remove('active');
-    btnCheck.disabled = false;
-    btnShow.disabled  = false;
+    document.getElementById('fb-check').disabled = false;
+    document.getElementById('fb-show').disabled  = false;
     clearFb();
+
     for (var b = 0; b < TOTAL; b++) {
         blockEl(b).classList.toggle('active', b === 0);
         blanks(b).forEach(function(inp) {
             inp.value = '';
-            inp.classList.remove('correct', 'wrong', 'revealed');
+            inp.classList.remove('correct', 'wrong', 'revealed'); delete inp.dataset.revealed;
             resizeInput(inp);
         });
     }
