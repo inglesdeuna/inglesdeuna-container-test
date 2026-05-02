@@ -140,10 +140,13 @@ body { margin:0 !important; padding:0 !important; background:#f0faf6 !important;
 .fb-page { display:flex; flex-direction:column; width:100vw; min-height:100vh; background:#f0faf6; }
 .fb-topbar { flex-shrink:0; height:38px; background:var(--t50); border-bottom:1px solid var(--t100);
     display:flex; align-items:center; padding:0 16px; gap:12px; }
-.fb-back-btn { background:rgba(15,110,86,.12); border:1px solid var(--t100); color:var(--t800);
-    font-size:12px; font-weight:800; font-family:'Nunito',sans-serif; border-radius:7px;
-    padding:4px 12px; cursor:pointer; transition:background .15s; }
-.fb-back-btn:hover { background:var(--t100); }
+.fb-back-btn { display:inline-flex; align-items:center; justify-content:center; gap:5px;
+    background:var(--purple); border:none; color:#fff;
+    font-size:12px; font-weight:800; font-family:'Nunito',sans-serif; border-radius:999px;
+    padding:6px 14px; cursor:pointer; text-decoration:none;
+    box-shadow:0 3px 8px rgba(127,119,221,.28);
+    transition:transform .18s cubic-bezier(.34,1.4,.64,1),box-shadow .15s,filter .15s; }
+.fb-back-btn:hover { transform:translateY(-2px) scale(1.04); box-shadow:0 6px 16px rgba(127,119,221,.4); filter:brightness(1.08); }
 body.presentation-mode .fb-back-btn, body.embedded-mode .fb-back-btn { display:none; }
 .fb-topbar-title { font-family:'Nunito',sans-serif; font-size:12px; font-weight:800;
     color:var(--t600); letter-spacing:.1em; text-transform:uppercase; margin:0 auto; }
@@ -162,9 +165,37 @@ body.presentation-mode .fb-back-btn, body.embedded-mode .fb-back-btn { display:n
     font-family:'Nunito',sans-serif; cursor:pointer; box-shadow:0 2px 8px rgba(127,119,221,.3);
     transition:transform .18s cubic-bezier(.34,1.4,.64,1),box-shadow .15s; }
 .fb-tts-btn:hover { transform:translateY(-2px) scale(1.05); box-shadow:0 6px 16px rgba(127,119,221,.4); }
-.fb-wordbank { flex-shrink:0; background:var(--purple-l); border-bottom:1px solid var(--purple-b);
-    padding:7px 16px; font-size:12px; font-weight:600; color:var(--purple-d); line-height:1.7; }
-.fb-wordbank b { font-weight:800; color:var(--purple); margin-right:3px; }
+.fb-wordbank { flex-shrink:0; padding:9px 16px 11px; border-bottom:1.5px solid var(--purple-b);
+    background:linear-gradient(135deg,#f5f3ff 0%,var(--purple-l) 100%); }
+.fb-wb-label { font-size:10px; font-weight:800; color:var(--purple-d); letter-spacing:.09em;
+    text-transform:uppercase; font-family:'Nunito',sans-serif;
+    display:flex; align-items:center; gap:5px; margin-bottom:6px; }
+.fb-wb-chips { display:flex; flex-wrap:wrap; gap:5px; }
+.fb-wb-chip { background:#fff; border:1.5px solid var(--purple-b); border-radius:999px;
+    font-family:'Nunito',sans-serif; font-size:12px; font-weight:700;
+    color:var(--purple-d); padding:4px 11px; white-space:nowrap; line-height:1; }
+
+/* fullscreen / presentation — scale up wordbank and text */
+body.fullscreen-embedded .fb-wordbank,
+body.presentation-mode   .fb-wordbank { padding:11px 18px 13px; }
+body.fullscreen-embedded .fb-wb-label,
+body.presentation-mode   .fb-wb-label { font-size:11px; margin-bottom:8px; }
+body.fullscreen-embedded .fb-wb-chip,
+body.presentation-mode   .fb-wb-chip  { font-size:14px; padding:5px 14px; }
+body.fullscreen-embedded .fb-text,
+body.presentation-mode   .fb-text     { font-size:clamp(15px,1.8vw,18px) !important; line-height:3 !important; }
+body.fullscreen-embedded .fb-blank,
+body.presentation-mode   .fb-blank    { font-size:clamp(15px,1.8vw,18px) !important; }
+body.fullscreen-embedded .fb-btn,
+body.presentation-mode   .fb-btn      { padding:11px 24px !important; font-size:14px !important; }
+body.fullscreen-embedded .fb-card-hd h2,
+body.presentation-mode   .fb-card-hd h2 { font-size:clamp(17px,2.2vw,22px) !important; }
+body.fullscreen-embedded .fb-card-hd p,
+body.presentation-mode   .fb-card-hd p  { font-size:13px !important; }
+body.fullscreen-embedded .fb-topbar,
+body.presentation-mode   .fb-topbar   { height:44px !important; }
+body.fullscreen-embedded .fb-back-btn,
+body.presentation-mode   .fb-back-btn { padding:8px 18px !important; font-size:13px !important; }
 .fb-prog-wrap { flex-shrink:0; padding:8px 16px 0; display:flex; align-items:center; gap:10px; }
 .fb-prog-track { flex:1; height:5px; background:var(--purple-l); border-radius:3px;
     border:1px solid var(--purple-b); overflow:hidden; }
@@ -239,7 +270,7 @@ body.presentation-mode .fb-back-btn, body.embedded-mode .fb-back-btn { display:n
 
 <div class="fb-page">
     <div class="fb-topbar">
-        <a class="fb-back-btn" href="<?php echo htmlspecialchars($_fb_backUrl, ENT_QUOTES, 'UTF-8'); ?>">&#8592; Back</a>
+        <a class="fb-back-btn" href="<?php echo htmlspecialchars($_fb_backUrl, ENT_QUOTES, 'UTF-8'); ?>"><svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M6.5 1.5L3 5l3.5 3.5" stroke="#fff" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg> Back</a>
         <span class="fb-topbar-title">Activity</span>
     </div>
 
@@ -261,7 +292,15 @@ body.presentation-mode .fb-back-btn, body.embedded-mode .fb-back-btn { display:n
 
         <?php if (!empty($activity['wordbank'])): ?>
         <div class="fb-wordbank">
-            <b>Word bank:</b> <?php echo htmlspecialchars($activity['wordbank'], ENT_QUOTES, 'UTF-8'); ?>
+            <div class="fb-wb-label">
+                <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><rect x="1" y="1" width="11" height="11" rx="2.5" stroke="#534AB7" stroke-width="1.3"/><path d="M3.5 4.5h6M3.5 6.5h4" stroke="#534AB7" stroke-width="1.3" stroke-linecap="round"/></svg>
+                Word bank
+            </div>
+            <div class="fb-wb-chips">
+                <?php foreach (array_filter(array_map('trim', explode('|', $activity['wordbank'])), 'strlen') as $_wbWord): ?>
+                <span class="fb-wb-chip"><?php echo htmlspecialchars($_wbWord, ENT_QUOTES, 'UTF-8'); ?></span>
+                <?php endforeach; ?>
+            </div>
         </div>
         <?php endif; ?>
 
