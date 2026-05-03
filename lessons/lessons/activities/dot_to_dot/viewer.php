@@ -21,10 +21,11 @@ if ($activityId === '' && !empty($activity['id'])) {
     $activityId = (string) $activity['id'];
 }
 
-$hasActivity = $image !== '' && count($points) >= 3;
+$hasActivity = $image !== '' && is_array($points) && count($points) >= 3;
 
 ob_start();
 ?>
+
 <link rel="stylesheet" href="dot_to_dot.css">
 
 <div class="d2dv-wrap">
@@ -36,7 +37,7 @@ ob_start();
     <?php if (!$hasActivity): ?>
 
         <div class="d2dv-empty">
-            This activity has no image or not enough points (minimum 3 required).
+            This activity has no image or not enough points. Minimum 3 points are required.
         </div>
 
     <?php else: ?>
@@ -44,15 +45,24 @@ ob_start();
         <div class="d2dv-main">
 
             <div class="d2dv-progress-row">
-                <span class="d2dv-chip"                  id="d2dvProgress">Connect 1 to 2</span>
-                <span class="d2dv-chip d2dv-chip-accent" id="d2dvCounter">0 / <?= count($points) - 1 ?> lines</span>
+                <span class="d2dv-chip" id="d2dvProgress">
+                    Connect 1 to 2
+                </span>
+
+                <span class="d2dv-chip d2dv-chip-accent" id="d2dvCounter">
+                    0 / <?= count($points) ?> lines
+                </span>
             </div>
 
             <div class="d2dv-canvas-wrap">
                 <div class="d2dv-stage" id="d2dvStage">
-                    <img class="d2dv-img" id="d2dvImg"
-                         src="<?= htmlspecialchars($image, ENT_QUOTES, 'UTF-8') ?>"
-                         alt="<?= htmlspecialchars($viewerTitle, ENT_QUOTES, 'UTF-8') ?>">
+                    <img
+                        class="d2dv-img"
+                        id="d2dvImg"
+                        src="<?= htmlspecialchars($image, ENT_QUOTES, 'UTF-8') ?>"
+                        alt="<?= htmlspecialchars($viewerTitle, ENT_QUOTES, 'UTF-8') ?>"
+                    >
+
                     <canvas id="d2dvCanvas"></canvas>
                 </div>
             </div>
@@ -60,10 +70,21 @@ ob_start();
             <p class="d2dv-status" id="d2dvStatus"></p>
 
             <div class="d2dv-toolbar">
-                <button class="d2dv-btn d2dv-btn-soft"   id="d2dvResetBtn"    type="button">Reset</button>
-                <button class="d2dv-btn d2dv-btn-accent"  id="d2dvHintBtn"     type="button">Hint</button>
-                <button class="d2dv-btn d2dv-btn-accent"  id="d2dvRevealBtn"   type="button" style="display:none">Reveal Image</button>
-                <button class="d2dv-btn d2dv-btn-next"    id="d2dvContinueBtn" type="button" style="display:none">Next</button>
+                <button class="d2dv-btn d2dv-btn-soft" id="d2dvResetBtn" type="button">
+                    Reset
+                </button>
+
+                <button class="d2dv-btn d2dv-btn-accent" id="d2dvHintBtn" type="button">
+                    Hint
+                </button>
+
+                <button class="d2dv-btn d2dv-btn-accent" id="d2dvRevealBtn" type="button" style="display:none">
+                    Reveal Image
+                </button>
+
+                <button class="d2dv-btn d2dv-btn-next" id="d2dvContinueBtn" type="button" style="display:none">
+                    Next
+                </button>
             </div>
 
             <div id="d2dvCompletionPanel" class="d2dv-completion-panel" style="display:none">
@@ -80,12 +101,14 @@ ob_start();
 <?php if ($hasActivity): ?>
 <script>
 window.DOT_TO_DOT_DATA = {
-    points:        <?= json_encode(array_values($points), JSON_UNESCAPED_UNICODE) ?>,
+    points: <?= json_encode(array_values($points), JSON_UNESCAPED_UNICODE) ?>,
+    image: <?= json_encode($image, JSON_UNESCAPED_UNICODE) ?>,
     labelSettings: <?= json_encode($activity['label_settings'] ?? [], JSON_UNESCAPED_UNICODE) ?>,
-    returnTo:      <?= json_encode($returnTo, JSON_UNESCAPED_UNICODE) ?>,
-    activityId:    <?= json_encode($activityId, JSON_UNESCAPED_UNICODE) ?>
+    returnTo: <?= json_encode($returnTo, JSON_UNESCAPED_UNICODE) ?>,
+    activityId: <?= json_encode($activityId, JSON_UNESCAPED_UNICODE) ?>
 };
 </script>
+
 <script src="dot_to_dot.js"></script>
 <?php endif; ?>
 
