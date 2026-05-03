@@ -15,20 +15,23 @@ $canvasHeight = 320;
 if ($id !== '') {
     $activity = load_dot_to_dot_activity($pdo, $unit, $id);
 
-    $title       = (string)($activity['title'] ?? '');
-    $instruction = (string)($activity['instruction'] ?? '');
-    $image       = (string)($activity['image'] ?? '');
-    $points      = $activity['points'] ?? [];
-    $canvasWidth = (int)($activity['canvas_width'] ?? 320);
+    $title        = (string)($activity['title'] ?? '');
+    $instruction  = (string)($activity['instruction'] ?? '');
+    $image        = (string)($activity['image'] ?? '');
+    $points       = $activity['points'] ?? [];
+    $canvasWidth  = (int)($activity['canvas_width'] ?? 320);
     $canvasHeight = (int)($activity['canvas_height'] ?? 320);
+
+    if (!is_array($points)) {
+        $points = [];
+    }
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $title       = trim((string)($_POST['title'] ?? ''));
-    $instruction = trim((string)($_POST['instruction'] ?? ''));
-    $image       = trim((string)($_POST['image_data'] ?? ''));
-    $pointsJson  = trim((string)($_POST['points'] ?? '[]'));
-
+    $title        = trim((string)($_POST['title'] ?? ''));
+    $instruction  = trim((string)($_POST['instruction'] ?? ''));
+    $image        = trim((string)($_POST['image_data'] ?? ''));
+    $pointsJson   = trim((string)($_POST['points'] ?? '[]'));
     $canvasWidth  = (int)($_POST['canvas_width'] ?? 320);
     $canvasHeight = (int)($_POST['canvas_height'] ?? 320);
 
@@ -38,16 +41,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $points = [];
     }
 
-    $payload = [
-        'title' => $title,
-        'instruction' => $instruction,
-        'image' => $image,
-        'points' => $points,
-        'canvas_width' => $canvasWidth,
-        'canvas_height' => $canvasHeight,
-    ];
-
-    $savedId = save_dot_to_dot_activity($pdo, $unit, $id, $payload);
+    $savedId = save_dot_to_dot_activity(
+        $pdo,
+        $unit,
+        $id,
+        $title,
+        $instruction,
+        $image,
+        $points,
+        $canvasWidth,
+        $canvasHeight
+    );
 
     header('Location: viewer.php?id=' . urlencode((string)$savedId) . '&unit=' . urlencode($unit));
     exit;
