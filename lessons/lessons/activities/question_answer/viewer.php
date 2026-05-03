@@ -93,6 +93,24 @@ ob_start();
 <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@600;700;800&display=swap" rel="stylesheet">
 <style>
 /* ── variables ── */
+/* ── Override template viewer-content background in all modes ── */
+.viewer-content {
+    background: #f0faf6 !important;
+    overflow: hidden !important;
+}
+body.presentation-mode .viewer-content {
+    background: #f0faf6 !important;
+    overflow: hidden !important;
+}
+/* Make our page fill viewer-content completely */
+.qa-page {
+    flex: 1 !important;
+    min-height: 0 !important;
+    height: 100% !important;
+    width: 100% !important;
+    overflow: hidden !important;
+    background: #f0faf6 !important;
+}
 :root{
     --p:#7F77DD; --pd:#534AB7; --pl:#EEEDFE; --pb:#AFA9EC;
     --t50:#E1F5EE; --t100:#9FE1CB; --t400:#1D9E75; --t600:#0F6E56; --t800:#085041;
@@ -101,24 +119,23 @@ ob_start();
 
 /* ── wipe template chrome completely ── */
 *,*::before,*::after { box-sizing:border-box; }
-html,body { margin:0 !important; padding:0 !important; width:100% !important;
-    height:100% !important; overflow:hidden !important;
+html,body { margin:0 !important; padding:0 !important;
     background:#f0faf6 !important; font-family:'Nunito','Segoe UI',sans-serif !important; }
-.activity-wrapper { width:100% !important; height:100% !important;
+.activity-wrapper { width:100% !important; min-height:100vh;
     margin:0 !important; padding:0 !important; max-width:100% !important;
     display:flex !important; flex-direction:column !important;
     background:transparent !important; overflow:hidden !important; }
 .top-row { display:none !important; }
 .viewer-content { flex:1 !important; min-height:0 !important;
     display:flex !important; flex-direction:column !important;
-    padding:0 !important; margin:0 !important; background:transparent !important;
+    padding:0 !important; margin:0 !important; background:#f0faf6 !important;
     border:none !important; box-shadow:none !important; border-radius:0 !important; }
 
 /* ══════════════════════════════
    PAGE SHELL
    ══════════════════════════════ */
-.qa-page { display:flex; flex-direction:column; width:100%; height:100%;
-    background:#f0faf6; overflow:hidden; }
+.qa-page { display:flex; flex-direction:column; width:100%; flex:1;
+    min-height:0; background:#f0faf6; overflow:hidden; }
 
 /* topbar — lavender */
 .qa-topbar { flex-shrink:0; height:42px; background:var(--pl);
@@ -148,7 +165,7 @@ body.embedded-mode     .qa-topbar { display:none !important; }
    MAIN BODY
    ══════════════════════════════ */
 .qa-body { flex:1; min-height:0; display:flex; flex-direction:column;
-    align-items:center; padding:10px 14px 8px; gap:8px; }
+    align-items:center; padding:10px 14px 8px; gap:8px; overflow:hidden; }
 
 /* progress row */
 .qa-prog-row { flex-shrink:0; width:100%; max-width:940px;

@@ -100,18 +100,28 @@ ob_start();
     --green:#16a34a;
 }
 
+
+/* ── override template in all modes ── */
+.viewer-content {
+    background: #f0faf6 !important;
+    overflow: hidden !important;
+}
+body.presentation-mode .viewer-content {
+    background: #f0faf6 !important;
+    overflow: hidden !important;
+}
 /* ── template reset ── */
 body { margin:0 !important; padding:0 !important; background:#f0faf6 !important;
     font-family:'Nunito','Segoe UI',sans-serif !important; }
 .activity-wrapper { max-width:100% !important; margin:0 !important; padding:0 !important;
-    height:100vh; display:flex !important; flex-direction:column !important; background:transparent !important; overflow:hidden !important; }
+    min-height:100%; display:flex !important; flex-direction:column !important; background:transparent !important; overflow:hidden !important; }
 .top-row { display:none !important; }
-.viewer-content { flex:1 !important; display:flex !important; flex-direction:column !important;
-    padding:0 !important; margin:0 !important; background:transparent !important;
+.viewer-content { flex:1 !important; min-height:0 !important; display:flex !important; flex-direction:column !important;
+    padding:0 !important; margin:0 !important; background:#f0faf6 !important;
     border:none !important; box-shadow:none !important; border-radius:0 !important; }
 
 /* ── page shell ── */
-.fc-page { display:flex; flex-direction:column; width:100vw; height:100vh; background:#f0faf6; overflow:hidden; }
+.fc-page { display:flex; flex-direction:column; width:100%; flex:1; min-height:0; background:#f0faf6; overflow:hidden; }
 
 /* topbar — lavender */
 .fc-topbar { flex-shrink:0; height:42px; background:var(--pl); border-bottom:1.5px solid var(--pb);
@@ -133,7 +143,7 @@ body { margin:0 !important; padding:0 !important; background:#f0faf6 !important;
 
 /* ── body area ── */
 .fc-body { flex:1; display:flex; flex-direction:column; align-items:center;
-    padding:12px 14px; gap:8px; min-height:0; position:relative; }
+    padding:12px 14px; gap:8px; min-height:0; }
 
 /* card container — white with purple soft border */
 .fc-card-wrap { width:100%; max-width:960px; background:#fff;
@@ -362,7 +372,7 @@ var completed = document.getElementById('fc-completed');
 var winSnd    = document.getElementById('fc-win');
 
 function esc(s) {
-    return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
 function getEnglish(card) {
@@ -483,6 +493,7 @@ function showCompleted() {
     done = true;
     wrap.style.display = 'none';
     completed.classList.add('active');
+    /* update count and animate bar */
     var countEl = document.getElementById('fc-done-count');
     var barEl   = document.getElementById('fc-done-bar');
     var statEl  = document.getElementById('fc-done-stat');
