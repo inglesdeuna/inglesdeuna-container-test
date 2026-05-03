@@ -1,244 +1,502 @@
 <?php
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
-
 require_once __DIR__ . '/dot_to_dot_functions.php';
 require_once __DIR__ . '/../../config/db.php';
-require_once __DIR__ . '/../../core/_activity_editor_template.php';
-require_once __DIR__ . '/../../core/cloudinary_upload.php';
 
-if (empty($_SESSION['academic_logged']) && empty($_SESSION['admin_logged'])) {
-    header('Location: /lessons/lessons/academic/login.php');
-    exit;
-}
-
-$activityId = isset($_GET['id']) ? trim((string) $_GET['id']) : '';
 $unit = isset($_GET['unit']) ? trim((string) $_GET['unit']) : '';
+$id   = isset($_GET['id'])   ? trim((string) $_GET['id'])   : '';
 
-if ($unit === '' && $activityId !== '') {
-    $unit = dot_to_dot_resolve_unit_from_activity($pdo, $activityId);
-}
-if ($unit === '') {
-    die('Unit not specified');
-}
+$title = '';
+$instruction = '';
+$image = '';
+$points = [];
+$canvasWidth = 320;
+$canvasHeight = 320;
 
-$error = '';
-$saved = false;
+if ($id !== '') {
+    $activity = load_dot_to_dot_activity($pdo, $unit, $id);
+
+    $title       = (string)($activity['title'] ?? '');
+    $instruction = (string)($activity['instruction'] ?? '');
+    $image       = (string)($activity['image'] ?? '');
+    $points      = $activity['points'] ?? [];
+    $canvasWidth = (int)($activity['canvas_width'] ?? 320);
+    $canvasHeight = (int)($activity['canvas_height'] ?? 320);
+}
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $title       = trim($_POST['activity_title'] ?? '');
-    $instruction = trim($_POST['activity_instruction'] ?? '');
-    $pointsRaw   = $_POST['points_json'] ?? '[]';
-    $image       = trim($_POST['image_existing'] ?? '');
-    $labelMode   = $_POST['label_mode'] ?? 'number';
-    $labelStart  = (int) ($_POST['label_start'] ?? 1);
-    $labelStep   = (int) ($_POST['label_step'] ?? 1);
-    $labelEnd    = (int) ($_POST['label_end'] ?? 20);
+    $title       = trim((string)($_POST['title'] ?? ''));
+    $instruction = trim((string)($_POST['instruction'] ?? ''));
+    $image       = trim((string)($_POST['image_data'] ?? ''));
+    $pointsJson  = trim((string)($_POST['points'] ?? '[]'));
 
-    $labelSettings = dot_to_dot_normalize_label_settings([
-        'mode'  => $labelMode,
-        'start' => $labelStart,
-        'step'  => $labelStep,
-        'end'   => $labelEnd,
-    ], 0);
+    $canvasWidth  = (int)($_POST['canvas_width'] ?? 320);
+    $canvasHeight = (int)($_POST['canvas_height'] ?? 320);
 
-    if (!empty($_FILES['main_image']['tmp_name'])) {
-        $uploaded = upload_to_cloudinary($_FILES['main_image']['tmp_name']);
-        if ($uploaded) {
-            $image = $uploaded;
-        }
-    }
+    $points = json_decode($pointsJson, true);
 
-    $points = json_decode($pointsRaw, true);
     if (!is_array($points)) {
         $points = [];
     }
 
-    if ($image === '') {
-        $error = 'Please upload an image.';
-    } elseif (count($points) < 3) {
-        $error = 'Add at least 3 points.';
-    } else {
-        $id        = save_dot_to_dot_activity($pdo, $unit, $activityId, $title, $instruction, $image, $points, $labelSettings);
-        $saved     = true;
-        $activityId = $id;
-    }
-}
-
-$activity = ($activityId !== '')
-    ? load_dot_to_dot_activity($pdo, $unit, $activityId)
-    : [
-        'title'          => '',
-        'instruction'    => '',
-        'image'          => '',
-        'label_settings' => dot_to_dot_default_label_settings(),
-        'points'         => [],
+    $payload = [
+        'title' => $title,
+        'instruction' => $instruction,
+        'image' => $image,
+        'points' => $points,
+        'canvas_width' => $canvasWidth,
+        'canvas_height' => $canvasHeight,
     ];
 
-$activityTitle       = $activity['title'];
-$activityInstruction = $activity['instruction'];
-$activityImage       = $activity['image'];
-$activityPoints      = $activity['points'];
-$activityLabels      = $activity['label_settings'];
-$errorMessage        = $error;
+    $savedId = save_dot_to_dot_activity($pdo, $unit, $id, $payload);
 
-ob_start();
+    header('Location: viewer.php?id=' . urlencode((string)$savedId) . '&unit=' . urlencode($unit));
+    exit;
+}
 ?>
-<style>
-.d2d-card{background:#fff;border:1px solid #dbeafe;border-radius:16px;padding:14px;box-shadow:0 8px 20px rgba(15,23,42,.05)}
-.d2d-card label{display:block;font-size:13px;font-weight:800;color:#0f766e;margin:0 0 6px}
-.d2d-card input[type="text"],.d2d-card textarea,.d2d-card input[type="file"]{width:100%;border:1px solid #93c5fd;border-radius:10px;padding:10px 12px;background:#fff;box-sizing:border-box}
-.d2d-card input[type="number"],.d2d-card select{width:100%;border:1px solid #93c5fd;border-radius:10px;padding:10px 12px;background:#fff;box-sizing:border-box}
-.d2d-card textarea{resize:vertical;min-height:92px}
-.d2d-row-2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.d2d-row-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
-.d2d-stage-wrap{background:linear-gradient(180deg,#ffffff 0%,#f8fafc 100%);border:1px dashed #93c5fd;border-radius:14px;padding:12px}
-.d2d-stage{position:relative;border:2px solid #cbd5e1;border-radius:14px;background:#fff;display:flex;justify-content:center;align-items:center;min-height:280px;overflow:hidden}
-.d2d-stage img{display:block;max-width:100%;height:auto;pointer-events:none;position:relative;z-index:1}
-.d2d-overlay{position:absolute;inset:0;width:100%;height:100%;cursor:crosshair;z-index:2}
-.d2d-empty{font-weight:800;color:#64748b;padding:24px;text-align:center}
-.d2d-list{margin:0;padding:0;list-style:none;display:grid;gap:8px;max-height:340px;overflow:auto}
-.d2d-list li{display:flex;justify-content:space-between;align-items:center;padding:8px 10px;border:1px solid #dbeafe;border-radius:10px;background:#f8fafc;font-weight:700;color:#1e3a8a}
-.d2d-list-remove{border:none;border-radius:8px;background:#fee2e2;color:#be123c;font-weight:800;padding:4px 8px;cursor:pointer}
-.d2d-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
-.d2d-btn{border:none;border-radius:999px;padding:10px 14px;font-weight:800;cursor:pointer}
-.d2d-btn-add{background:linear-gradient(180deg,#22c55e,#15803d);color:#fff}
-.d2d-btn-soft{background:#e0f2fe;color:#075985;border:1px solid #7dd3fc}
-.d2d-btn-danger{background:linear-gradient(180deg,#f43f5e,#be123c);color:#fff}
-.d2d-btn-save{background:linear-gradient(180deg,#0ea5e9,#0369a1);color:#fff}
-.d2d-note{margin-top:8px;font-size:12px;color:#64748b;font-weight:700}
-.d2d-cap{margin-top:8px;font-size:12px;color:#0f766e;font-weight:800}
-.d2d-error,.d2d-ok{max-width:1020px;margin:0 auto 12px;border-radius:12px;padding:10px 14px;font-weight:800}
-.d2d-error{background:#fff1f2;border:1px solid #fecdd3;color:#be123c}
-.d2d-ok{background:#ecfeff;border:1px solid #99f6e4;color:#0f766e}
-#dotStage{position:relative;}
-.dot{position:absolute;width:28px;height:28px;background:#fff;border:2px solid #2563eb;border-radius:50%;color:#2563eb;font-weight:bold;display:flex;align-items:center;justify-content:center;pointer-events:auto;user-select:none;cursor:pointer;font-size:16px;box-shadow:0 2px 8px #0002;z-index:2;transform:translate(-50%,-50%)}
-#dotImg{opacity:1;z-index:1}
-@media (max-width:900px){.d2d-row-2,.d2d-row-3{grid-template-columns:1fr}}
-</style>
 
-<?php if ($saved) { ?>
-<p class="d2d-ok">Guardado correctamente.</p>
-<?php } ?>
-<?php if ($errorMessage !== '') { ?>
-<p class="d2d-error"><?= htmlspecialchars($errorMessage, ENT_QUOTES, 'UTF-8') ?></p>
-<?php } ?>
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Dot to Dot Editor</title>
 
-<form class="d2d-editor" id="d2dEditorForm" method="post" enctype="multipart/form-data" style="max-width:900px;margin:0 auto;">
-    <section class="d2d-intro" style="margin-bottom:16px;">
-        <h3>Dot to Dot Editor</h3>
-        <p>Sube la imagen final y haz clic sobre la imagen para agregar puntos en orden. El viewer mostrará solo los puntos y revelará la imagen al conectar todos.</p>
-    </section>
-
-    <div class="d2d-card" style="max-width:600px;box-sizing:border-box;margin:0 auto;">
-        <label for="activity_title">Título de la actividad</label>
-        <input id="activity_title" name="activity_title" type="text"
-               value="<?= htmlspecialchars($activityTitle, ENT_QUOTES, 'UTF-8') ?>" required>
-
-        <label for="activity_instruction" style="margin-top:10px;">Instrucción</label>
-        <textarea id="activity_instruction" name="activity_instruction"
-                  placeholder="Ejemplo: Une los puntos en orden."><?= htmlspecialchars($activityInstruction, ENT_QUOTES, 'UTF-8') ?></textarea>
-
-        <label for="main_image" style="margin-top:10px;">Imagen final a ocultar</label>
-        <input id="main_image" name="main_image" type="file" accept="image/*">
-        <input type="hidden" name="image_existing" id="image_existing"
-               value="<?= htmlspecialchars($activityImage, ENT_QUOTES, 'UTF-8') ?>">
-        <input type="hidden" name="points_json" id="points_json"
-               value="<?= htmlspecialchars(json_encode($activityPoints, JSON_UNESCAPED_UNICODE), ENT_QUOTES, 'UTF-8') ?>">
-
-        <div id="dotStage" style="position:relative;width:320px;height:320px;margin:18px auto;background:#f8fafc;border-radius:14px;box-shadow:0 2px 8px #0001;overflow:hidden;">
-            <img id="dotImg"
-                 src="<?= htmlspecialchars($activityImage, ENT_QUOTES, 'UTF-8') ?>"
-                 alt="dot-to-dot template"
-                 style="width:100%;height:100%;object-fit:contain;display:<?= $activityImage === '' ? 'none' : 'block' ?>;position:absolute;left:0;top:0;z-index:1;">
-        </div>
-
-        <div style="margin-bottom:10px;display:flex;gap:12px;justify-content:center;">
-            <button type="button" class="d2d-btn d2d-btn-soft" id="undoPointBtn">Deshacer último punto</button>
-            <button type="submit" class="d2d-btn d2d-btn-save">Guardar actividad</button>
-        </div>
-        <p class="d2d-note" style="text-align:center;">Haz clic sobre la imagen para agregar puntos en orden. Mínimo: 3 puntos.</p>
-    </div>
-</form>
-
-<script>
-(function () {
-    var points = <?= json_encode(array_map(function($p) {
-        return ['x' => isset($p['x']) ? (float)$p['x'] : 0, 'y' => isset($p['y']) ? (float)$p['y'] : 0];
-    }, $activityPoints), JSON_UNESCAPED_UNICODE) ?>;
-    var current = points.length + 1;
-
-    var imgInput   = document.getElementById('main_image');
-    var dotImg     = document.getElementById('dotImg');
-    var dotStage   = document.getElementById('dotStage');
-    var pointsInput = document.getElementById('points_json');
-    var undoBtn    = document.getElementById('undoPointBtn');
-
-    // Render existing points on load
-    points.forEach(function(p, i) { addDot(p.x, p.y, i + 1); });
-
-    imgInput.addEventListener('change', function(e) {
-        var file = e.target.files[0];
-        if (!file) return;
-        var reader = new FileReader();
-        reader.onload = function(ev) {
-            dotImg.src = ev.target.result;
-            dotImg.style.display = 'block';
-            clearDots();
-        };
-        reader.readAsDataURL(file);
-    });
-
-    dotImg.addEventListener('click', function(e) {
-        var rect = dotImg.getBoundingClientRect();
-        var x = (e.clientX - rect.left) / rect.width;
-        var y = (e.clientY - rect.top) / rect.height;
-        if (x < 0 || x > 1 || y < 0 || y > 1) return;
-        addDot(x, y, current);
-        points.push({ x: x, y: y });
-        current++;
-        updatePointsInput();
-    });
-
-    document.getElementById('d2dEditorForm').addEventListener('submit', function(e) {
-        if (points.length < 3) {
-            e.preventDefault();
-            alert('Agrega al menos 3 puntos antes de guardar.');
+    <style>
+        body {
+            margin: 0;
+            background: #f3f4f6;
+            font-family: system-ui, sans-serif;
+            color: #111827;
         }
-    });
 
-    undoBtn.addEventListener('click', function() {
-        if (points.length === 0) return;
-        points.pop();
-        current--;
-        var lastDot = dotStage.querySelector('.dot:last-child');
-        if (lastDot) lastDot.remove();
-        updatePointsInput();
-    });
+        .editor-page {
+            max-width: 1050px;
+            margin: 30px auto;
+            padding: 24px;
+        }
 
-    function addDot(x, y, number) {
-        var dot = document.createElement('div');
-        dot.className = 'dot';
-        dot.textContent = number;
-        dot.style.left = (x * 320) + 'px';
-        dot.style.top  = (y * 320) + 'px';
-        dotStage.appendChild(dot);
-    }
+        .editor-card {
+            background: #ffffff;
+            border-radius: 22px;
+            padding: 28px;
+            box-shadow: 0 18px 45px rgba(15, 23, 42, 0.12);
+        }
 
-    function clearDots() {
-        points = [];
-        current = 1;
-        dotStage.querySelectorAll('.dot').forEach(function(d) { d.remove(); });
-        updatePointsInput();
-    }
+        h1 {
+            margin-top: 0;
+            font-size: 32px;
+            color: #111827;
+        }
 
-    function updatePointsInput() {
-        pointsInput.value = JSON.stringify(points);
-    }
-}());
-</script>
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 420px;
+            gap: 28px;
+            align-items: start;
+        }
 
-<?php
-$content = ob_get_clean();
-render_activity_editor('Dot to Dot Editor', 'fas fa-pencil-ruler', $content);
+        label {
+            display: block;
+            font-weight: 700;
+            margin-bottom: 8px;
+            color: #374151;
+        }
+
+        input[type="text"],
+        textarea,
+        input[type="file"] {
+            width: 100%;
+            box-sizing: border-box;
+            border: 1px solid #d1d5db;
+            border-radius: 14px;
+            padding: 12px 14px;
+            font: inherit;
+            background: #ffffff;
+        }
+
+        textarea {
+            min-height: 110px;
+            resize: vertical;
+        }
+
+        .field {
+            margin-bottom: 18px;
+        }
+
+        .preview-box {
+            background: #f8fafc;
+            border: 1px solid #e5e7eb;
+            border-radius: 20px;
+            padding: 18px;
+            text-align: center;
+        }
+
+        .canvas-shell {
+            display: inline-block;
+            border-radius: 18px;
+            overflow: hidden;
+            background: #e5e7eb;
+            border: 1px solid #cbd5e1;
+        }
+
+        canvas {
+            display: block;
+            cursor: crosshair;
+            touch-action: none;
+        }
+
+        .actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-top: 22px;
+        }
+
+        button,
+        .button-link {
+            border: 0;
+            border-radius: 999px;
+            padding: 12px 20px;
+            font-weight: 800;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 15px;
+        }
+
+        .btn-primary {
+            background: #2563eb;
+            color: white;
+        }
+
+        .btn-soft {
+            background: #e5e7eb;
+            color: #111827;
+        }
+
+        .btn-danger {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .help {
+            font-size: 14px;
+            color: #6b7280;
+            line-height: 1.5;
+            margin-top: 12px;
+        }
+
+        @media (max-width: 850px) {
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <main class="editor-page">
+        <form class="editor-card" method="post">
+            <h1>Dot to Dot Editor</h1>
+
+            <div class="form-grid">
+                <section>
+                    <div class="field">
+                        <label for="title">Título</label>
+                        <input
+                            type="text"
+                            id="title"
+                            name="title"
+                            value="<?= htmlspecialchars($title, ENT_QUOTES, 'UTF-8') ?>"
+                            placeholder="Dot to Dot Activity"
+                        >
+                    </div>
+
+                    <div class="field">
+                        <label for="instruction">Instrucción</label>
+                        <textarea
+                            id="instruction"
+                            name="instruction"
+                            placeholder="Connect the dots in order to reveal the picture."
+                        ><?= htmlspecialchars($instruction, ENT_QUOTES, 'UTF-8') ?></textarea>
+                    </div>
+
+                    <div class="field">
+                        <label for="image">Imagen</label>
+                        <input type="file" id="image" accept="image/*">
+                    </div>
+
+                    <input type="hidden" name="image_data" id="image_data">
+                    <input type="hidden" name="points" id="points">
+                    <input type="hidden" name="canvas_width" id="canvas_width">
+                    <input type="hidden" name="canvas_height" id="canvas_height">
+
+                    <div class="actions">
+                        <button type="submit" class="btn-primary">
+                            Guardar actividad
+                        </button>
+
+                        <button type="button" id="undoPoint" class="btn-soft">
+                            Deshacer punto
+                        </button>
+
+                        <button type="button" id="clearPoints" class="btn-danger">
+                            Borrar puntos
+                        </button>
+                    </div>
+
+                    <p class="help">
+                        Sube una imagen y haz clic sobre ella para marcar los puntos en orden.
+                        El viewer aparecerá después de guardar.
+                    </p>
+                </section>
+
+                <section class="preview-box">
+                    <label>Vista del editor</label>
+
+                    <div class="canvas-shell">
+                        <canvas id="dotCanvas"></canvas>
+                    </div>
+
+                    <p class="help">
+                        Línea continua: orden de conexión.<br>
+                        Línea punteada: cierre del último punto al primero.
+                    </p>
+                </section>
+            </div>
+        </form>
+    </main>
+
+    <script>
+        const imageInput = document.getElementById("image");
+        const canvas = document.getElementById("dotCanvas");
+        const ctx = canvas.getContext("2d");
+
+        const pointsInput = document.getElementById("points");
+        const imageDataInput = document.getElementById("image_data");
+        const canvasWidthInput = document.getElementById("canvas_width");
+        const canvasHeightInput = document.getElementById("canvas_height");
+
+        const undoBtn = document.getElementById("undoPoint");
+        const clearBtn = document.getElementById("clearPoints");
+
+        let uploadedImage = null;
+        let uploadedImageData = <?= json_encode($image, JSON_UNESCAPED_UNICODE) ?>;
+        let points = <?= json_encode(array_values($points), JSON_UNESCAPED_UNICODE) ?>;
+
+        canvas.width = <?= json_encode($canvasWidth) ?>;
+        canvas.height = <?= json_encode($canvasHeight) ?>;
+        canvas.style.width = canvas.width + "px";
+        canvas.style.height = canvas.height + "px";
+
+        function resizeCanvasToImage() {
+            if (!uploadedImage) return;
+
+            const maxWidth = 380;
+            const maxHeight = 380;
+            const imageRatio = uploadedImage.width / uploadedImage.height;
+
+            let width = maxWidth;
+            let height = maxWidth / imageRatio;
+
+            if (height > maxHeight) {
+                height = maxHeight;
+                width = maxHeight * imageRatio;
+            }
+
+            canvas.width = Math.round(width);
+            canvas.height = Math.round(height);
+            canvas.style.width = Math.round(width) + "px";
+            canvas.style.height = Math.round(height) + "px";
+        }
+
+        function getPointerPosition(event) {
+            const rect = canvas.getBoundingClientRect();
+
+            let clientX;
+            let clientY;
+
+            if (event.touches && event.touches.length > 0) {
+                clientX = event.touches[0].clientX;
+                clientY = event.touches[0].clientY;
+            } else if (event.changedTouches && event.changedTouches.length > 0) {
+                clientX = event.changedTouches[0].clientX;
+                clientY = event.changedTouches[0].clientY;
+            } else {
+                clientX = event.clientX;
+                clientY = event.clientY;
+            }
+
+            return {
+                x: Math.round((clientX - rect.left) * (canvas.width / rect.width)),
+                y: Math.round((clientY - rect.top) * (canvas.height / rect.height))
+            };
+        }
+
+        function syncHiddenInputs() {
+            pointsInput.value = JSON.stringify(points);
+            imageDataInput.value = uploadedImageData;
+            canvasWidthInput.value = canvas.width;
+            canvasHeightInput.value = canvas.height;
+        }
+
+        function drawEmptyCanvas() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            ctx.fillStyle = "#f8fafc";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            ctx.fillStyle = "#64748b";
+            ctx.font = "14px system-ui";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText("Upload an image first", canvas.width / 2, canvas.height / 2);
+        }
+
+        function drawImage() {
+            if (!uploadedImage) {
+                drawEmptyCanvas();
+                return;
+            }
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(uploadedImage, 0, 0, canvas.width, canvas.height);
+
+            ctx.fillStyle = "rgba(255,255,255,0.45)";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
+
+        function drawEditorLines() {
+            if (points.length < 2) return;
+
+            ctx.strokeStyle = "#38bdf8";
+            ctx.lineWidth = 3;
+            ctx.lineCap = "round";
+            ctx.lineJoin = "round";
+
+            for (let i = 0; i < points.length - 1; i++) {
+                ctx.beginPath();
+                ctx.moveTo(points[i].x, points[i].y);
+                ctx.lineTo(points[i + 1].x, points[i + 1].y);
+                ctx.stroke();
+            }
+
+            if (points.length > 2) {
+                ctx.save();
+                ctx.setLineDash([7, 7]);
+                ctx.beginPath();
+                ctx.moveTo(points[points.length - 1].x, points[points.length - 1].y);
+                ctx.lineTo(points[0].x, points[0].y);
+                ctx.stroke();
+                ctx.restore();
+            }
+        }
+
+        function drawEditorDots() {
+            points.forEach((point, index) => {
+                ctx.beginPath();
+                ctx.arc(point.x, point.y, 13, 0, Math.PI * 2);
+                ctx.fillStyle = "#ffffff";
+                ctx.fill();
+
+                ctx.strokeStyle = "#2563eb";
+                ctx.lineWidth = 3;
+                ctx.stroke();
+
+                ctx.fillStyle = "#1d4ed8";
+                ctx.font = "bold 12px system-ui";
+                ctx.textAlign = "center";
+                ctx.textBaseline = "middle";
+                ctx.fillText(index + 1, point.x, point.y);
+            });
+        }
+
+        function renderEditor() {
+            drawImage();
+            drawEditorLines();
+            drawEditorDots();
+            syncHiddenInputs();
+        }
+
+        function loadExistingImage() {
+            if (!uploadedImageData) {
+                drawEmptyCanvas();
+                syncHiddenInputs();
+                return;
+            }
+
+            uploadedImage = new Image();
+
+            uploadedImage.onload = function () {
+                renderEditor();
+            };
+
+            uploadedImage.src = uploadedImageData;
+        }
+
+        imageInput.addEventListener("change", function () {
+            const file = imageInput.files[0];
+
+            if (!file) return;
+
+            const reader = new FileReader();
+
+            reader.onload = function (event) {
+                uploadedImageData = event.target.result;
+                uploadedImage = new Image();
+
+                uploadedImage.onload = function () {
+                    points = [];
+                    resizeCanvasToImage();
+                    renderEditor();
+                };
+
+                uploadedImage.src = uploadedImageData;
+            };
+
+            reader.readAsDataURL(file);
+        });
+
+        canvas.addEventListener("click", function (event) {
+            if (!uploadedImage) return;
+
+            const point = getPointerPosition(event);
+
+            points.push({
+                x: point.x,
+                y: point.y
+            });
+
+            renderEditor();
+        });
+
+        canvas.addEventListener("touchstart", function (event) {
+            event.preventDefault();
+
+            if (!uploadedImage) return;
+
+            const point = getPointerPosition(event);
+
+            points.push({
+                x: point.x,
+                y: point.y
+            });
+
+            renderEditor();
+        }, { passive: false });
+
+        undoBtn.addEventListener("click", function () {
+            points.pop();
+            renderEditor();
+        });
+
+        clearBtn.addEventListener("click", function () {
+            points = [];
+            renderEditor();
+        });
+
+        loadExistingImage();
+    </script>
+</body>
+</html>
