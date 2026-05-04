@@ -189,7 +189,7 @@ ob_start();
     position:relative;
     width:min(760px,100%);
     margin:0 auto;
-    background:rgba(255,255,255,.88);
+    background:rgba(255,255,255,.84);
     border:1px solid rgba(255,255,255,.86);
     border-radius:34px;
     padding:clamp(14px,2.4vw,26px);
@@ -198,15 +198,14 @@ ob_start();
 }
 
 .fc-premium-title-panel{
-    position:relative;
-    margin:0 auto clamp(14px,2vw,20px);
     width:min(520px,94%);
-    padding:clamp(14px,2.2vw,22px) clamp(18px,3vw,30px);
-    border-radius:26px;
+    margin:0 auto clamp(14px,2vw,20px);
+    padding:clamp(12px,2vw,20px) clamp(18px,3vw,30px);
     text-align:center;
-    background:linear-gradient(135deg,rgba(255,255,255,.92),rgba(238,237,254,.84));
-    border:1.5px solid rgba(127,119,221,.28);
-    box-shadow:0 14px 34px rgba(83,74,183,.16);
+    border-radius:24px;
+    background:linear-gradient(135deg,rgba(255,255,255,.92),rgba(238,237,254,.82));
+    border:1.5px solid rgba(127,119,221,.30);
+    box-shadow:0 14px 34px rgba(83,74,183,.14);
 }
 
 .fc-premium-kicker{
@@ -874,19 +873,4 @@ bind('fc-premium-prev-arrow', 'click', prevCard);
 bind('fc-premium-next-arrow', 'click', nextCard);
 bind('fc-premium-prev', 'click', prevCard);
 bind('fc-premium-next', 'click', nextCard);
-bind('fc-premium-restart', 'click', restart);
-bind('fc-premium-listen', 'click', function(){
-    TTS.speak(getWord(CARDS[idx] || {}));
-});
-
-document.addEventListener('keydown', function(e){
-    if (e.key === 'ArrowRight') nextCard();
-    if (e.key === 'ArrowLeft') prevCard();
-});
-
-loadCard();
-})();
-</script>
-<?php
-$content = ob_get_clean();
-render_activity_viewer($viewerTitle, 'fa-solid fa-clone', $content);
+bind('fc
