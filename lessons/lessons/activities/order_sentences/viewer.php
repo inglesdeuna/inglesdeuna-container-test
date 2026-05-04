@@ -29,7 +29,7 @@ function os_viewer_normalize(mixed $rawData): array
     $default = [
         'title'        => 'Order the Sentences',
         'instructions' => 'Put the words in the correct order.',
-        'media_type'   => 'video',
+        'media_type'   => 'tts',
         'media_url'    => '',
         'tts_text'     => '',
         'sentences'    => [],
@@ -56,7 +56,7 @@ function os_viewer_normalize(mixed $rawData): array
     return [
         'title'        => trim((string) ($d['title']        ?? '')) ?: $default['title'],
         'instructions' => trim((string) ($d['instructions'] ?? '')) ?: $default['instructions'],
-        'media_type'   => in_array($d['media_type'] ?? '', ['tts', 'video', 'audio', 'none'], true) ? $d['media_type'] : 'video',
+        'media_type'   => in_array($d['media_type'] ?? '', ['tts', 'video', 'audio', 'none'], true) ? $d['media_type'] : 'tts',
         'media_url'    => trim((string) ($d['media_url']    ?? '')),
         'tts_text'     => trim((string) ($d['tts_text']     ?? '')),
         'sentences'    => $sentences,
@@ -129,12 +129,18 @@ ob_start();
 }
 
 /* Reset template chrome */
+html,
+body {
+    width: 100%;
+    height: 100%;
+}
+
 body {
     margin: 0 !important;
     padding: 0 !important;
     background: #ffffff !important;
     font-family: 'Nunito', 'Segoe UI', sans-serif !important;
-    overflow: hidden;
+    overflow: hidden !important;
 }
 
 .activity-wrapper {
@@ -142,6 +148,7 @@ body {
     margin: 0 !important;
     padding: 0 !important;
     min-height: 100vh;
+    height: 100vh;
     display: flex !important;
     flex-direction: column !important;
     background: transparent !important;
@@ -153,6 +160,7 @@ body {
 
 .viewer-content {
     flex: 1 !important;
+    height: 100vh !important;
     display: flex !important;
     flex-direction: column !important;
     padding: 0 !important;
@@ -161,33 +169,39 @@ body {
     border: none !important;
     box-shadow: none !important;
     border-radius: 0 !important;
+    min-height: 0 !important;
 }
 
-/* Shell */
+/* Full-screen shell */
 .os-page {
-    width: 100%;
-    min-height: 100vh;
-    padding: clamp(14px, 2.5vw, 34px);
+    width: 100vw;
+    height: 100vh;
+    padding: clamp(10px, 1.8vw, 20px);
     display: flex;
-    align-items: center;
+    align-items: stretch;
     justify-content: center;
     background: #ffffff;
-    overflow-y: auto;
+    overflow: hidden;
     box-sizing: border-box;
 }
 
 .os-app {
-    width: min(860px, 100%);
+    width: min(1120px, 100%);
+    height: 100%;
     margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
 }
 
 /* Top bar */
 .os-topbar {
-    height: 38px;
+    height: 34px;
+    flex: 0 0 auto;
     display: flex;
     align-items: center;
     justify-content: center;
-    margin-bottom: 8px;
+    margin-bottom: 4px;
     position: relative;
 }
 
@@ -201,7 +215,7 @@ body {
     font-weight: 900;
     font-family: 'Nunito', sans-serif;
     border-radius: 999px;
-    padding: 7px 14px;
+    padding: 6px 13px;
     cursor: pointer;
     transition: filter .15s, transform .15s;
 }
@@ -227,15 +241,16 @@ body.embedded-mode .os-back-btn {
 
 /* Hero */
 .os-hero {
+    flex: 0 0 auto;
     text-align: center;
-    margin-bottom: clamp(14px, 2vw, 22px);
+    margin-bottom: 8px;
 }
 
 .os-kicker {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    padding: 7px 14px;
+    padding: 6px 13px;
     border-radius: 999px;
     background: #FFF0E6;
     border: 1px solid #FCDDBF;
@@ -245,49 +260,54 @@ body.embedded-mode .os-back-btn {
     font-weight: 900;
     letter-spacing: .08em;
     text-transform: uppercase;
-    margin-bottom: 10px;
+    margin-bottom: 6px;
 }
 
 .os-hero h1 {
     font-family: 'Fredoka', sans-serif;
-    font-size: clamp(30px, 5.5vw, 58px);
+    font-size: clamp(26px, 4.3vw, 48px);
     font-weight: 700;
     color: #F97316;
     margin: 0;
-    line-height: 1.03;
+    line-height: 1;
 }
 
 .os-hero p {
     font-family: 'Nunito', sans-serif;
-    font-size: clamp(13px, 1.8vw, 17px);
+    font-size: clamp(12px, 1.5vw, 16px);
     font-weight: 800;
     color: #9B94BE;
-    margin: 8px 0 0;
+    margin: 5px 0 0;
 }
 
 /* Board */
 .os-board {
+    flex: 1 1 auto;
+    min-height: 0;
     background: #ffffff;
     border: 1px solid #F0EEF8;
     border-radius: 34px;
-    padding: clamp(16px, 2.6vw, 26px);
+    padding: clamp(12px, 2vw, 20px);
     box-shadow: 0 8px 40px rgba(127,119,221,.13);
-    width: min(760px, 100%);
+    width: 100%;
     margin: 0 auto;
     box-sizing: border-box;
     position: relative;
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+    gap: 10px;
 }
 
-/* Media */
+/* Media / listening */
 .os-media-area,
 .os-tts-area {
     width: 100%;
     border: 1px solid #EDE9FA;
-    border-radius: 28px;
+    border-radius: 26px;
     background: #ffffff;
     box-shadow: 0 12px 36px rgba(127,119,221,.13);
     overflow: hidden;
-    margin-bottom: 16px;
+    box-sizing: border-box;
 }
 
 .os-media-area {
@@ -298,7 +318,7 @@ body.embedded-mode .os-back-btn {
 
 .os-media-area video {
     width: 100%;
-    max-height: 38vh;
+    max-height: 24vh;
     object-fit: contain;
     display: block;
     background: #000000;
@@ -306,7 +326,7 @@ body.embedded-mode .os-back-btn {
 
 .os-media-area iframe {
     width: 100%;
-    height: 38vh;
+    height: 24vh;
     border: none;
     display: block;
     background: #000000;
@@ -316,42 +336,65 @@ body.embedded-mode .os-back-btn {
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 18px;
-    box-sizing: border-box;
+    padding: 12px;
 }
 
 .os-tts-area audio {
     width: 100%;
 }
 
+.os-listen-panel {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.os-listen-text {
+    font-family: 'Nunito', sans-serif;
+    font-size: 13px;
+    font-weight: 900;
+    color: #9B94BE;
+}
+
 /* Game zone */
 .os-game-zone {
+    min-height: 0;
+    display: grid;
+    grid-template-rows: minmax(90px, 0.9fr) minmax(110px, 1.1fr);
+    gap: 10px;
+}
+
+.os-zone-block {
+    min-height: 0;
     display: flex;
     flex-direction: column;
-    gap: 14px;
 }
 
 .os-zone-label {
+    flex: 0 0 auto;
     font-size: 12px;
     font-weight: 900;
     color: #9B94BE;
     letter-spacing: .08em;
     text-transform: uppercase;
     font-family: 'Nunito', sans-serif;
-    margin-bottom: 8px;
+    margin-bottom: 6px;
 }
 
 /* Drop zone */
 .os-dropzone {
-    min-height: 132px;
+    flex: 1 1 auto;
+    min-height: 0;
     border: 2px dashed #EDE9FA;
-    border-radius: 26px;
+    border-radius: 24px;
     background: #ffffff;
     display: flex;
     flex-direction: column;
     align-items: stretch;
-    gap: 9px;
-    padding: 14px;
+    gap: 7px;
+    padding: 10px;
     transition: border-color .15s, background .15s, box-shadow .15s;
     overflow-y: auto;
     scrollbar-width: thin;
@@ -382,24 +425,39 @@ body.embedded-mode .os-back-btn {
     color: #9B94BE;
     pointer-events: none;
     font-family: 'Nunito', sans-serif;
-    padding: 24px 8px;
+    padding: 16px 8px;
     box-sizing: border-box;
 }
 
 /* Sentence bank */
 .os-bank {
+    flex: 1 1 auto;
+    min-height: 0;
     display: flex;
     flex-direction: column;
-    gap: 9px;
+    gap: 7px;
     align-items: stretch;
+    overflow-y: auto;
+    padding-right: 2px;
+    scrollbar-width: thin;
+    scrollbar-color: #C4B5FD #ffffff;
+}
+
+.os-bank::-webkit-scrollbar {
+    width: 4px;
+}
+
+.os-bank::-webkit-scrollbar-thumb {
+    background: #C4B5FD;
+    border-radius: 2px;
 }
 
 /* Sentence cards */
 .os-chip {
     width: 100%;
-    min-height: 48px;
-    padding: 13px 46px 13px 18px;
-    border-radius: 18px;
+    min-height: 38px;
+    padding: 9px 42px 9px 14px;
+    border-radius: 16px;
     background: #ffffff;
     border: 1px solid #EDE9FA;
     display: flex;
@@ -411,17 +469,18 @@ body.embedded-mode .os-back-btn {
     transition: transform .15s cubic-bezier(.34,1.4,.64,1), border-color .15s, box-shadow .15s, background .15s;
     box-shadow: 0 4px 14px rgba(127,119,221,.13);
     box-sizing: border-box;
+    flex: 0 0 auto;
 }
 
 .os-chip:hover {
-    transform: translateY(-2px) scale(1.01);
+    transform: translateY(-2px) scale(1.005);
     border-color: #7F77DD;
     box-shadow: 0 16px 28px rgba(127,119,221,.18);
 }
 
 .os-chip.os-dragging {
     opacity: .35;
-    transform: scale(1.01);
+    transform: scale(1.005);
     cursor: grabbing;
 }
 
@@ -436,11 +495,11 @@ body.embedded-mode .os-back-btn {
 
 .os-chip-label {
     font-family: 'Fredoka', sans-serif;
-    font-size: clamp(17px, 2.4vw, 24px);
+    font-size: clamp(15px, 1.8vw, 20px);
     font-weight: 600;
     color: #534AB7;
     text-align: left;
-    line-height: 1.18;
+    line-height: 1.12;
     padding: 0;
     word-break: normal;
     overflow-wrap: anywhere;
@@ -448,12 +507,12 @@ body.embedded-mode .os-back-btn {
 
 .os-chip-badge {
     position: absolute;
-    right: 14px;
+    right: 12px;
     top: 50%;
     transform: translateY(-50%);
-    min-width: 26px;
-    height: 26px;
-    padding: 0 8px;
+    min-width: 24px;
+    height: 24px;
+    padding: 0 7px;
     background: #7F77DD;
     color: #ffffff;
     border-radius: 999px;
@@ -480,10 +539,11 @@ body.embedded-mode .os-back-btn {
     box-shadow: 0 0 0 2px #dc2626;
 }
 
-/* Controls */
+/* Lower buttons */
 .os-controls {
+    flex: 0 0 auto;
     border-top: 1px solid #F0EEF8;
-    padding-top: 16px;
+    padding-top: 10px;
     display: flex;
     align-items: center;
     gap: 10px;
@@ -496,7 +556,7 @@ body.embedded-mode .os-back-btn {
     align-items: center;
     justify-content: center;
     padding: 13px 20px;
-    min-width: clamp(104px, 16vw, 146px);
+    min-width: clamp(112px, 15vw, 150px);
     border-radius: 999px;
     font-family: 'Nunito', sans-serif;
     font-size: 13px;
@@ -634,72 +694,137 @@ body.embedded-mode .os-back-btn {
 
 /* Responsive */
 @media (max-width: 640px) {
-    body {
-        overflow: auto;
-    }
-
     .os-page {
-        min-height: 100vh;
-        padding: 12px;
-        border-radius: 12px;
-        align-items: flex-start;
-    }
-
-    .os-app {
-        width: 100%;
+        padding: 8px;
     }
 
     .os-topbar {
-        margin-bottom: 4px;
+        height: 30px;
+        margin-bottom: 2px;
     }
 
     .os-back-btn {
-        left: -4px;
-        padding: 6px 11px;
+        left: -2px;
+        padding: 5px 10px;
+        font-size: 11px;
+    }
+
+    .os-kicker {
+        padding: 5px 11px;
+        font-size: 11px;
+        margin-bottom: 4px;
+    }
+
+    .os-hero {
+        margin-bottom: 6px;
+    }
+
+    .os-hero h1 {
+        font-size: clamp(23px, 8vw, 34px);
     }
 
     .os-board {
         border-radius: 26px;
-        padding: 14px;
-        width: 100%;
+        padding: 10px;
+        gap: 8px;
     }
 
     .os-media-area,
     .os-tts-area {
-        border-radius: 22px;
-        margin-bottom: 12px;
+        border-radius: 20px;
     }
 
     .os-media-area video,
     .os-media-area iframe {
-        max-height: 32vh;
-        height: 32vh;
+        max-height: 19vh;
+        height: 19vh;
+    }
+
+    .os-game-zone {
+        grid-template-rows: minmax(82px, 0.9fr) minmax(100px, 1.1fr);
+        gap: 8px;
+    }
+
+    .os-zone-label {
+        font-size: 11px;
+        margin-bottom: 5px;
     }
 
     .os-dropzone {
-        border-radius: 22px;
-        min-height: 120px;
-        padding: 12px;
+        border-radius: 20px;
+        padding: 8px;
+        gap: 6px;
+    }
+
+    .os-bank {
+        gap: 6px;
     }
 
     .os-chip {
-        min-height: 46px;
-        padding: 12px 44px 12px 14px;
-        border-radius: 16px;
+        min-height: 34px;
+        padding: 8px 38px 8px 12px;
+        border-radius: 14px;
+    }
+
+    .os-chip-label {
+        font-size: clamp(14px, 4.2vw, 18px);
     }
 
     .os-controls {
         display: grid;
         grid-template-columns: 1fr;
-        gap: 9px;
+        gap: 7px;
+        padding-top: 8px;
     }
 
     .os-btn {
         width: 100%;
+        padding: 11px 16px;
     }
 
     .os-completed {
         border-radius: 26px;
+    }
+}
+
+@media (max-height: 680px) {
+    .os-topbar {
+        height: 28px;
+    }
+
+    .os-hero h1 {
+        font-size: clamp(22px, 3.5vw, 38px);
+    }
+
+    .os-hero p {
+        font-size: 12px;
+        margin-top: 3px;
+    }
+
+    .os-kicker {
+        padding: 4px 11px;
+        margin-bottom: 4px;
+    }
+
+    .os-media-area video,
+    .os-media-area iframe {
+        max-height: 18vh;
+        height: 18vh;
+    }
+
+    .os-chip {
+        min-height: 32px;
+        padding-top: 7px;
+        padding-bottom: 7px;
+    }
+
+    .os-chip-label {
+        font-size: clamp(14px, 1.6vw, 18px);
+    }
+
+    .os-btn {
+        padding-top: 10px;
+        padding-bottom: 10px;
     }
 }
 </style>
@@ -732,22 +857,25 @@ body.embedded-mode .os-back-btn {
                     <audio controls src="<?= htmlspecialchars($activity['media_url'], ENT_QUOTES, 'UTF-8') ?>"></audio>
                 </div>
 
-            <?php elseif (($activity['media_type'] ?? '') === 'tts'): ?>
+            <?php else: ?>
                 <div class="os-tts-area">
-                    <button type="button" id="os-tts-btn" class="os-btn os-btn-tts">Listen</button>
+                    <div class="os-listen-panel">
+                        <button type="button" id="os-tts-btn" class="os-btn os-btn-tts">Listen</button>
+                        <span class="os-listen-text">Listen and order the sentences.</span>
+                    </div>
                 </div>
             <?php endif; ?>
 
             <div class="os-game-zone" id="os-game-zone">
 
-                <div>
+                <div class="os-zone-block">
                     <div class="os-zone-label">Your answer — drag here in order</div>
                     <div class="os-dropzone" id="os-dropzone">
                         <span class="os-dz-hint" id="os-dz-hint">Drag the sentences here in the correct order</span>
                     </div>
                 </div>
 
-                <div>
+                <div class="os-zone-block">
                     <div class="os-zone-label">Sentences</div>
                     <div class="os-bank" id="os-bank">
                         <?php foreach ($shuffled as $s): ?>
@@ -761,13 +889,13 @@ body.embedded-mode .os-back-btn {
                     </div>
                 </div>
 
-                <div class="os-controls">
-                    <button type="button" class="os-btn os-btn-check" id="os-check" disabled>Check Order</button>
-                    <button type="button" class="os-btn os-btn-show"  id="os-show">Show Answer</button>
-                    <button type="button" class="os-btn os-btn-next"  id="os-next">Next</button>
-                    <div id="os-feedback"></div>
-                </div>
+            </div>
 
+            <div class="os-controls">
+                <button type="button" class="os-btn os-btn-check" id="os-check" disabled>Check Answers</button>
+                <button type="button" class="os-btn os-btn-show"  id="os-show">Show Answer</button>
+                <button type="button" class="os-btn os-btn-next"  id="os-next">Next</button>
+                <div id="os-feedback"></div>
             </div>
 
             <div class="os-completed" id="os-completed">
@@ -1136,7 +1264,6 @@ window.osRestart = function() {
 
 updateUI();
 
-<?php if (($activity['media_type'] ?? '') === 'tts'): ?>
 var TTS_TEXT = <?= json_encode(
     !empty($activity['tts_text'])
         ? $activity['tts_text']
@@ -1199,16 +1326,19 @@ function ttsStart() {
     ttsUtter.onstart = function(){
         ttsSpeaking = true;
         ttsPaused   = false;
+        if (ttsBtn) ttsBtn.textContent = 'Pause';
     };
 
     ttsUtter.onpause = function(){
         ttsPaused   = true;
         ttsSpeaking = true;
+        if (ttsBtn) ttsBtn.textContent = 'Resume';
     };
 
     ttsUtter.onresume = function(){
         ttsPaused   = false;
         ttsSpeaking = true;
+        if (ttsBtn) ttsBtn.textContent = 'Pause';
     };
 
     ttsUtter.onboundary = function(ev) {
@@ -1222,6 +1352,7 @@ function ttsStart() {
             ttsSpeaking = false;
             ttsPaused   = false;
             ttsOffset   = 0;
+            if (ttsBtn) ttsBtn.textContent = 'Listen';
         }
     };
 
@@ -1229,6 +1360,7 @@ function ttsStart() {
         ttsSpeaking = false;
         ttsPaused   = false;
         ttsOffset   = 0;
+        if (ttsBtn) ttsBtn.textContent = 'Listen';
     };
 
     speechSynthesis.speak(ttsUtter);
@@ -1242,6 +1374,7 @@ if (ttsBtn) {
             speechSynthesis.resume();
             ttsSpeaking = true;
             ttsPaused   = false;
+            ttsBtn.textContent = 'Pause';
 
             setTimeout(function(){
                 if (!speechSynthesis.speaking && ttsOffset < TTS_TEXT.length) ttsStart();
@@ -1254,6 +1387,7 @@ if (ttsBtn) {
             speechSynthesis.pause();
             ttsSpeaking = true;
             ttsPaused   = true;
+            ttsBtn.textContent = 'Resume';
             return;
         }
 
@@ -1262,7 +1396,6 @@ if (ttsBtn) {
         ttsStart();
     });
 }
-<?php endif; ?>
 
 })();
 </script>
