@@ -121,230 +121,303 @@ if (count($data) === 0) die('No flashcards found for this unit');
 
 ob_start();
 ?>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@600;700;800&display=swap" rel="stylesheet">
 <style>
+*{box-sizing:border-box}
 :root{
-    --p:#7F77DD;--pd:#534AB7;--pl:#EEEDFE;--pb:#AFA9EC;
-    --t400:#1D9E75;--t800:#085041;
+    --fc-bg-1:#fce4ec;
+    --fc-bg-2:#f3e5f5;
+    --fc-bg-3:#e8eaf6;
+    --fc-card:#ffffff;
+    --fc-line:#e0e0e0;
+    --fc-muted:#9e9e9e;
+    --fc-purple:#7F77DD;
+    --fc-purple-dark:#534AB7;
+    --fc-purple-light:#EEEDFE;
+    --fc-blue:#1f66cc;
+    --fc-blue-hover:#2f5bb5;
+    --fc-fuchsia:#be185d;
+    --fc-fuchsia-hover:#db2777;
+    --fc-shadow:0 4px 20px rgba(0,0,0,.08);
 }
-.fc-viewer-shell{
-    max-width:1100px;
-    width:100%;
-    margin:0 auto;
-    padding:0 clamp(8px,2vw,20px);
-    box-sizing:border-box;
-    font-family:'Nunito','Segoe UI',sans-serif;
-}
-
-/* ── intro ── */
-.fc-intro{
-    margin-bottom:clamp(10px,2vh,18px);
-    padding:clamp(12px,2vw,20px) clamp(14px,3vw,26px);
-    border-radius:clamp(14px,2vw,26px);
-    border:1px solid var(--pb);
-    background:linear-gradient(135deg,var(--pl) 0%,#f5f3ff 50%,var(--pl) 100%);
-    box-shadow:0 8px 24px rgba(127,119,221,.12);
-}
-.fc-intro h2{
-    margin:0 0 4px;
-    font-family:'Fredoka',sans-serif;
-    font-size:clamp(18px,3vw,30px);
-    line-height:1.1;color:var(--pd);
-}
-.fc-intro p{margin:0;color:#6b5fa6;font-size:clamp(12px,1.5vw,15px);line-height:1.5}
-
-/* ── stage ── */
-.fc-stage{
-    background:#fff;
-    border:1.5px solid var(--pb);
-    border-radius:clamp(14px,2vw,24px);
-    overflow:hidden;
-    box-shadow:0 8px 24px rgba(127,119,221,.12);
-}
-
-/* ── progress ── */
-.fc-prog-wrap{
-    padding:clamp(8px,1.5vh,14px) clamp(12px,2vw,20px) 0;
-    display:flex;align-items:center;gap:10px;
-}
-.fc-prog-track{flex:1;height:5px;background:var(--pl);border-radius:3px;
-    border:1px solid var(--pb);overflow:hidden}
-.fc-prog-fill{height:100%;background:var(--p);border-radius:3px;transition:width .35s ease}
-.fc-prog-lbl{font-size:clamp(10px,1.2vw,12px);font-weight:800;color:var(--p);
-    white-space:nowrap;font-family:'Nunito',sans-serif}
-
-/* ── card area ── */
-.fc-card-area{
-    min-height:clamp(240px,45vh,520px);
-    padding:clamp(12px,2vh,20px) clamp(10px,2vw,24px);
-    display:flex;align-items:center;gap:clamp(8px,1.5vw,14px);
-}
-
-/* arrows */
-.fc-arrow{
-    flex-shrink:0;
-    width:clamp(32px,4vw,42px);
-    height:clamp(32px,4vw,42px);
-    border-radius:50%;
-    background:var(--pl);border:1.5px solid var(--pb);color:var(--pd);
-    font-size:clamp(16px,2.5vw,22px);cursor:pointer;
-    display:flex;align-items:center;justify-content:center;
-    transition:background .15s,transform .15s;
-}
-.fc-arrow:hover{background:var(--pb);transform:scale(1.08)}
-
-/* card */
-.fc-card{
-    flex:1;
-    min-height:clamp(200px,38vh,480px);
-    border-radius:clamp(12px,1.5vw,20px);
-    border:1.5px solid var(--pb);
-    box-shadow:0 4px 16px rgba(127,119,221,.10);
-    position:relative;overflow:hidden;cursor:pointer;
-}
-
-/* front — image */
-.fc-face-front{
-    position:absolute;inset:0;border-radius:inherit;
-    background:var(--pl);
-    display:flex;align-items:center;justify-content:center;
-    padding:clamp(16px,3vw,28px);
-    transition:opacity .35s;opacity:1;
-}
-.fc-face-front img{
-    max-width:80%;
-    max-height:clamp(140px,30vh,320px);
-    object-fit:contain;
-    border-radius:clamp(10px,1.5vw,16px);
-    border:1.5px solid var(--pb);background:#fff;
-}
-
-/* back — text */
-.fc-face-back{
-    position:absolute;inset:0;border-radius:inherit;
-    background:var(--pd);
-    display:flex;align-items:center;justify-content:center;
-    padding:clamp(16px,3vw,28px);
-    transition:opacity .35s;opacity:0;
-}
-.fc-back-text{
-    font-family:'Fredoka',sans-serif;
-    font-size:clamp(32px,8vw,96px);
-    font-weight:600;color:#fff;text-align:center;line-height:1.1;
-}
-
-.fc-tap-hint{
-    position:absolute;bottom:clamp(6px,1vh,12px);left:0;right:0;
-    text-align:center;
-    font-size:clamp(9px,1.2vw,11px);font-weight:600;color:var(--pb);
-    font-family:'Nunito',sans-serif;z-index:2;pointer-events:none;
-}
-
-/* toolbar */
-.fc-toolbar{
-    display:flex;flex-direction:column;gap:8px;
-    padding:clamp(10px,1.5vh,14px) clamp(10px,2vw,16px);
-    border-top:1.5px solid var(--pb);
-    background:linear-gradient(180deg,var(--pl) 0%,#f5f3ff 100%);
+.fc-app-page{
+    min-height:480px;
+    display:flex;
+    flex-direction:column;
     align-items:center;
+    justify-content:center;
+    padding:28px 16px;
+    background:linear-gradient(135deg,var(--fc-bg-1) 0%,var(--fc-bg-2) 50%,var(--fc-bg-3) 100%);
+    border-radius:12px;
+    font-family:'Nunito','Segoe UI',Roboto,Arial,sans-serif;
+    gap:6px;
+    width:100%;
 }
-.fc-toolbar-row{display:flex;gap:clamp(6px,1vw,8px);flex-wrap:wrap;
-    justify-content:center;align-items:center}
-
-/* buttons */
-.fc-btn{
-    display:inline-flex;align-items:center;justify-content:center;gap:5px;
-    padding:clamp(8px,1.2vh,11px) clamp(12px,2vw,18px);
-    border:none;border-radius:999px;
-    font-weight:800;font-family:'Nunito',sans-serif;
-    font-size:clamp(11px,1.5vw,14px);
-    min-width:clamp(80px,12vw,130px);
-    line-height:1;cursor:pointer;
-    transition:transform .15s,filter .15s;
+.fc-app-title{
+    font-family:'Fredoka',sans-serif;
+    font-size:clamp(20px,4vw,34px);
+    font-weight:700;
+    color:var(--fc-purple-dark);
+    margin:0;
+    line-height:1.1;
+    text-align:center;
 }
-.fc-btn:hover{filter:brightness(1.06);transform:translateY(-1px)}
-.fc-btn-purple{background:var(--p);color:#fff;box-shadow:0 4px 12px rgba(127,119,221,.20)}
-.fc-btn-teal{background:var(--t400);color:#fff;box-shadow:0 4px 12px rgba(29,158,117,.20)}
-.fc-count{
-    font-weight:800;color:var(--pd);
-    font-size:clamp(11px,1.3vw,13px);
+.fc-app-sub{
+    font-family:'Nunito',sans-serif;
+    font-size:clamp(12px,1.5vw,14px);
+    font-weight:600;
+    color:var(--fc-muted);
+    margin:0 0 8px;
+    text-align:center;
+}
+.fc-prog-wrap{
+    width:700px;
+    max-width:92vw;
+    display:flex;
+    align-items:center;
+    gap:8px;
+    margin-bottom:2px;
+}
+.fc-prog-track{
+    flex:1;
+    height:4px;
+    background:var(--fc-line);
+    border-radius:3px;
+    overflow:hidden;
+}
+.fc-prog-fill{
+    height:100%;
+    width:0%;
+    background:var(--fc-purple);
+    border-radius:3px;
+    transition:width .35s ease;
+}
+.fc-prog-lbl{
+    font-size:11px;
+    font-weight:800;
+    color:var(--fc-muted);
     font-family:'Nunito',sans-serif;
     white-space:nowrap;
 }
-
-/* completed */
-.fc-completed{display:none;text-align:center;max-width:600px;margin:40px auto;
-    padding:clamp(20px,4vh,40px) clamp(14px,3vw,20px)}
-.fc-completed.active{display:block}
-.fc-done-icon{font-size:clamp(48px,8vw,80px);margin-bottom:14px}
-.fc-done-title{font-family:'Fredoka',sans-serif;font-size:clamp(24px,4vw,36px);
-    font-weight:700;color:var(--pd);margin:0 0 10px}
-.fc-done-text{font-size:clamp(13px,1.6vw,16px);color:#6b5fa6;line-height:1.6;margin:0 0 18px}
-.fc-done-bar-row{max-width:400px;margin:0 auto 18px;display:flex;flex-direction:column;gap:6px}
-.fc-done-bar-hd{display:flex;justify-content:space-between}
-.fc-done-bar-lbl{font-size:13px;font-weight:800;color:var(--pd)}
-.fc-done-bar-val{font-size:13px;font-weight:800;color:var(--p)}
-.fc-done-bar-track{height:10px;background:var(--pl);border-radius:6px;
-    border:1px solid var(--pb);overflow:hidden}
-.fc-done-bar-fill{height:100%;border-radius:6px;width:0%;
-    background:linear-gradient(90deg,var(--t400),var(--p));
-    transition:width .8s cubic-bezier(.34,1,.64,1)}
-.fc-done-actions{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
-.fc-done-btn{display:inline-flex;align-items:center;justify-content:center;gap:5px;
-    padding:clamp(8px,1.2vh,10px) clamp(14px,2.5vw,20px);
-    border:none;border-radius:999px;
-    font-weight:800;font-family:'Nunito',sans-serif;
-    font-size:clamp(12px,1.5vw,14px);
-    cursor:pointer;transition:transform .15s,filter .15s}
-.fc-done-btn:hover{filter:brightness(1.06);transform:translateY(-1px)}
-.fc-done-btn-purple{background:var(--p);color:#fff}
-.fc-done-btn-teal{background:var(--t400);color:#fff}
-
-/* mobile */
+.fc-card-frame{
+    position:relative;
+    width:700px;
+    max-width:92vw;
+}
+.fc-game-card{
+    position:relative;
+    width:100%;
+    aspect-ratio:7/5;
+    border-radius:18px;
+    overflow:hidden;
+    background:var(--fc-card);
+    border:1.5px solid var(--fc-line);
+    box-shadow:var(--fc-shadow);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    cursor:pointer;
+}
+.fc-game-card-inner{
+    width:calc(100% - 20px);
+    height:calc(100% - 20px);
+    border-radius:14px;
+    background:#fff;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    gap:10px;
+    padding:20px;
+    position:relative;
+    overflow:hidden;
+}
+.fc-face{
+    position:absolute;
+    inset:0;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:20px;
+    transition:opacity .35s ease;
+}
+.fc-face-front{opacity:1;background:#fff;}
+.fc-face-back{opacity:0;background:var(--fc-purple-dark);}
+.fc-card-img{
+    width:140px;
+    height:140px;
+    max-width:70%;
+    max-height:70%;
+    background:#fff;
+    border-radius:12px;
+    border:1px solid var(--fc-line);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:64px;
+    overflow:hidden;
+    color:var(--fc-purple);
+    font-family:'Fredoka',sans-serif;
+    font-weight:700;
+    text-align:center;
+}
+.fc-card-img img{
+    width:100%;
+    height:100%;
+    object-fit:contain;
+    display:block;
+}
+.fc-back-text{
+    font-family:'Fredoka',sans-serif;
+    font-size:clamp(34px,8vw,86px);
+    font-weight:700;
+    color:#fff;
+    line-height:1.05;
+    text-align:center;
+    overflow-wrap:anywhere;
+}
+.fc-tap-hint{
+    position:absolute;
+    left:0;
+    right:0;
+    bottom:10px;
+    text-align:center;
+    font-family:'Nunito',sans-serif;
+    font-size:11px;
+    font-weight:800;
+    color:var(--fc-muted);
+    pointer-events:none;
+    z-index:4;
+}
+.fc-face-back + .fc-tap-hint{color:#fff;}
+.fc-arrow{
+    position:absolute;
+    top:50%;
+    transform:translateY(-50%);
+    width:32px;
+    height:32px;
+    border-radius:50%;
+    background:#fff;
+    border:1px solid #d0d0d0;
+    color:var(--fc-purple);
+    font-size:16px;
+    cursor:pointer;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    box-shadow:0 2px 6px rgba(0,0,0,.1);
+    z-index:5;
+    transition:filter .15s,transform .15s;
+}
+.fc-arrow:hover{filter:brightness(1.06);transform:translateY(-50%) scale(1.06)}
+.fc-arrow.left{left:8px;}
+.fc-arrow.right{right:8px;}
+.fc-toolbar{
+    width:700px;
+    max-width:92vw;
+    background:#fff;
+    border:1.5px solid var(--fc-line);
+    border-top:none;
+    border-radius:0 0 18px 18px;
+    padding:10px 16px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:10px;
+    flex-wrap:wrap;
+    margin-top:-2px;
+}
+.fc-btn{
+    padding:8px 18px;
+    border-radius:999px;
+    border:none;
+    font-weight:800;
+    font-family:'Nunito',sans-serif;
+    font-size:13px;
+    cursor:pointer;
+    display:inline-flex;
+    align-items:center;
+    gap:5px;
+    min-width:90px;
+    justify-content:center;
+    transition:filter .15s,transform .15s,background .2s ease;
+    color:#fff;
+    line-height:1;
+}
+.fc-btn:hover{filter:brightness(1.08);transform:translateY(-1px)}
+.fc-btn-blue{background:var(--fc-blue);}
+.fc-btn-blue:hover{background:var(--fc-blue-hover);}
+.fc-btn-fuchsia{background:var(--fc-fuchsia);}
+.fc-btn-fuchsia:hover{background:var(--fc-fuchsia-hover);}
+.fc-completed{
+    display:none;
+    width:700px;
+    max-width:92vw;
+    background:#fff;
+    border:1.5px solid var(--fc-line);
+    border-radius:18px;
+    box-shadow:var(--fc-shadow);
+    padding:28px 18px;
+    text-align:center;
+    font-family:'Nunito',sans-serif;
+}
+.fc-completed.active{display:block;}
+.fc-done-icon{font-size:54px;margin-bottom:10px;}
+.fc-done-title{
+    font-family:'Fredoka',sans-serif;
+    color:var(--fc-purple-dark);
+    font-size:clamp(24px,4vw,34px);
+    margin:0 0 8px;
+}
+.fc-done-text{color:var(--fc-muted);font-weight:700;margin:0 0 16px;}
+.fc-done-bar-row{max-width:430px;margin:0 auto 18px;display:flex;flex-direction:column;gap:6px;}
+.fc-done-bar-hd{display:flex;justify-content:space-between;font-size:13px;font-weight:800;color:var(--fc-purple-dark);}
+.fc-done-bar-track{height:8px;background:var(--fc-line);border-radius:999px;overflow:hidden;}
+.fc-done-bar-fill{height:100%;width:0%;background:linear-gradient(90deg,var(--fc-fuchsia),var(--fc-purple));border-radius:999px;transition:width .8s cubic-bezier(.34,1,.64,1);}
+.fc-done-actions{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;}
 @media(max-width:600px){
-    .fc-toolbar-row{flex-direction:column;align-items:stretch}
-    .fc-btn{width:100%;justify-content:center}
-    .fc-arrow{width:32px;height:32px;font-size:18px}
+    .fc-app-page{padding:22px 12px;}
+    .fc-game-card{aspect-ratio:5/4;}
+    .fc-card-img{width:118px;height:118px;font-size:52px;}
+    .fc-toolbar{padding:10px;}
+    .fc-btn{width:100%;}
+    .fc-arrow{width:30px;height:30px;}
 }
 </style>
 
-<?php echo render_activity_header($viewerTitle, 'Tap each card to reveal the word.'); ?>
+<div class="fc-app-page">
+    <h1 class="fc-app-title"><?php echo htmlspecialchars($viewerTitle, ENT_QUOTES, 'UTF-8'); ?></h1>
+    <p class="fc-app-sub">Tap each card to reveal the word.</p>
 
-<div class="fc-viewer-shell">
-    <div class="fc-stage" id="fc-stage">
-
+    <div id="fc-stage">
         <div class="fc-prog-wrap">
             <div class="fc-prog-track">
-                <div class="fc-prog-fill" id="fc-prog-fill"
-                     style="width:<?php echo count($data) > 0 ? round(1/count($data)*100) : 100; ?>%"></div>
+                <div class="fc-prog-fill" id="fc-prog-fill"></div>
             </div>
             <span class="fc-prog-lbl" id="fc-prog-lbl">1 / <?php echo count($data); ?></span>
         </div>
 
-        <div class="fc-card-area">
-            <button type="button" class="fc-arrow" id="fc-arr-prev">&#8249;</button>
-
-            <div class="fc-card" id="fc-card">
-                <div class="fc-face-front" id="fc-front">
-                    <img id="fc-img" src="" alt="" style="display:none">
+        <div class="fc-card-frame">
+            <div class="fc-game-card" id="fc-card" role="button" tabindex="0" aria-label="Tap to reveal word">
+                <div class="fc-game-card-inner">
+                    <div class="fc-face fc-face-front" id="fc-front">
+                        <div class="fc-card-img" id="fc-card-img"><span id="fc-placeholder">?</span></div>
+                    </div>
+                    <div class="fc-face fc-face-back" id="fc-back">
+                        <div class="fc-back-text" id="fc-back-text"></div>
+                    </div>
+                    <span class="fc-tap-hint" id="fc-hint">Tap to reveal word</span>
                 </div>
-                <div class="fc-face-back" id="fc-back">
-                    <div class="fc-back-text" id="fc-back-text"></div>
-                </div>
-                <span class="fc-tap-hint" id="fc-hint">Tap to reveal word</span>
             </div>
-
-            <button type="button" class="fc-arrow" id="fc-arr-next">&#8250;</button>
+            <button type="button" class="fc-arrow left" id="fc-arr-prev" aria-label="Previous card">&#8249;</button>
+            <button type="button" class="fc-arrow right" id="fc-arr-next" aria-label="Next card">&#8250;</button>
         </div>
 
         <div class="fc-toolbar">
-            <div class="fc-toolbar-row">
-                <button type="button" class="fc-btn fc-btn-purple" id="fc-prev">&#9664; Prev</button>
-                <span class="fc-count" id="fc-count">Card 1 / <?php echo count($data); ?></span>
-                <button type="button" class="fc-btn fc-btn-teal" id="fc-listen">&#x1F50A; Listen</button>
-                <button type="button" class="fc-btn fc-btn-purple" id="fc-next">Next &#9654;</button>
-            </div>
+            <button type="button" class="fc-btn fc-btn-blue" id="fc-prev">&#9664; Prev</button>
+            <button type="button" class="fc-btn fc-btn-fuchsia" id="fc-listen">&#x1F50A; Listen</button>
+            <button type="button" class="fc-btn fc-btn-blue" id="fc-next">Next &#9654;</button>
         </div>
-
     </div>
 
     <div class="fc-completed" id="fc-completed">
@@ -353,16 +426,14 @@ ob_start();
         <p class="fc-done-text">You reviewed all the cards. Great vocabulary practice!</p>
         <div class="fc-done-bar-row">
             <div class="fc-done-bar-hd">
-                <span class="fc-done-bar-lbl">Cards reviewed</span>
-                <span class="fc-done-bar-val" id="fc-done-val">0 / 0</span>
+                <span>Cards reviewed</span>
+                <span id="fc-done-val">0 / 0</span>
             </div>
-            <div class="fc-done-bar-track">
-                <div class="fc-done-bar-fill" id="fc-done-bar"></div>
-            </div>
+            <div class="fc-done-bar-track"><div class="fc-done-bar-fill" id="fc-done-bar"></div></div>
         </div>
         <div class="fc-done-actions">
-            <button type="button" class="fc-done-btn fc-done-btn-teal" id="fc-restart">&#8635; Review Again</button>
-            <button type="button" class="fc-done-btn fc-done-btn-purple" onclick="history.back()">&#8592; Back</button>
+            <button type="button" class="fc-btn fc-btn-fuchsia" id="fc-restart">&#8635; Review Again</button>
+            <button type="button" class="fc-btn fc-btn-blue" onclick="history.back()">&#8592; Back</button>
         </div>
     </div>
 </div>
@@ -371,7 +442,7 @@ ob_start();
 
 <script>
 (function(){
-var CARDS=<?php echo json_encode($data, JSON_UNESCAPED_UNICODE); ?>;
+var CARDS=<?php echo json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
 var TOTAL=CARDS.length,idx=0,flipped=false,done=false;
 
 var TTS=(function(){
@@ -406,39 +477,50 @@ var TTS=(function(){
     return{speak:speak};
 })();
 
-function getWord(c){return c.english_text||c.text||'';}
-
+function getWord(c){return c.english_text||c.text||c.spanish_text||'';}
+function getPlaceholder(word){
+    var w=String(word||'?').trim();
+    if(!w)return '?';
+    if(/^\d+$/.test(w))return w;
+    return w.charAt(0).toUpperCase();
+}
+function setFront(c){
+    var box=document.getElementById('fc-card-img');
+    var word=getWord(c);
+    box.innerHTML='';
+    if(c.image){
+        var img=document.createElement('img');
+        img.src=c.image;
+        img.alt=word||'Flashcard image';
+        img.onerror=function(){box.textContent=getPlaceholder(word);};
+        box.appendChild(img);
+    }else{
+        box.textContent=getPlaceholder(word);
+    }
+}
 function loadCard(){
     var c=CARDS[idx]||{};
-    var imgEl=document.getElementById('fc-img');
-    if(c.image){imgEl.src=c.image;imgEl.style.display='';}
-    else{imgEl.style.display='none';imgEl.src='';}
+    setFront(c);
     document.getElementById('fc-back-text').textContent=getWord(c)||'No text';
     flipped=false;
     document.getElementById('fc-front').style.opacity='1';
     document.getElementById('fc-back').style.opacity='0';
     document.getElementById('fc-hint').textContent='Tap to reveal word';
-    var pct=Math.round((idx+1)/TOTAL*100);
+    document.getElementById('fc-card').setAttribute('aria-label','Tap to reveal word');
+    var pct=TOTAL>0?Math.round((idx+1)/TOTAL*100):100;
     document.getElementById('fc-prog-fill').style.width=pct+'%';
     document.getElementById('fc-prog-lbl').textContent=(idx+1)+' / '+TOTAL;
-    document.getElementById('fc-count').textContent='Card '+(idx+1)+' / '+TOTAL;
 }
-
 function doFlip(){
     if(done)return;
     flipped=!flipped;
     document.getElementById('fc-front').style.opacity=flipped?'0':'1';
     document.getElementById('fc-back').style.opacity=flipped?'1':'0';
     document.getElementById('fc-hint').textContent=flipped?'Tap to see image':'Tap to reveal word';
+    document.getElementById('fc-card').setAttribute('aria-label',flipped?'Tap to see image':'Tap to reveal word');
 }
-
 function goPrev(){if(done)return;idx=(idx-1+TOTAL)%TOTAL;loadCard();}
-function goNext(){
-    if(done)return;
-    if(idx>=TOTAL-1){showDone();return;}
-    idx++;loadCard();
-}
-
+function goNext(){if(done)return;if(idx>=TOTAL-1){showDone();return;}idx++;loadCard();}
 function showDone(){
     done=true;
     document.getElementById('fc-stage').style.display='none';
@@ -449,6 +531,7 @@ function showDone(){
 }
 
 document.getElementById('fc-card').addEventListener('click',doFlip);
+document.getElementById('fc-card').addEventListener('keydown',function(e){if(e.key==='Enter'||e.key===' '){e.preventDefault();doFlip();}});
 document.getElementById('fc-arr-prev').addEventListener('click',goPrev);
 document.getElementById('fc-arr-next').addEventListener('click',goNext);
 document.getElementById('fc-prev').addEventListener('click',goPrev);
@@ -462,11 +545,10 @@ document.getElementById('fc-restart').addEventListener('click',function(){
     loadCard();
 });
 document.addEventListener('keydown',function(e){
-    if(e.key==='Enter'||e.key===' '){e.preventDefault();doFlip();}
+    if(e.target&&(/input|textarea|select/i).test(e.target.tagName))return;
     if(e.key==='ArrowRight')goNext();
     if(e.key==='ArrowLeft')goPrev();
 });
-
 loadCard();
 })();
 </script>
