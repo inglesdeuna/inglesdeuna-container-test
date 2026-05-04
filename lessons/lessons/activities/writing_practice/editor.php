@@ -1,19 +1,15 @@
 <?php
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
+if (session_status() === PHP_SESSION_NONE) { session_start(); }
 
 require_once __DIR__ . '/../../config/db.php';
 require_once __DIR__ . '/../../core/cloudinary_upload.php';
 require_once __DIR__ . '/../../core/_activity_editor_template.php';
 
-if (isset($_SESSION['student_logged']) && $_SESSION['student_logged']) {
+if (!empty($_SESSION['student_logged'])) {
     header('Location: /lessons/lessons/academic/student_dashboard.php?error=access_denied');
     exit;
 }
-
-$isLoggedIn = !empty($_SESSION['academic_logged']) || !empty($_SESSION['admin_logged']);
-if (!$isLoggedIn) {
+if (empty($_SESSION['academic_logged']) && empty($_SESSION['admin_logged'])) {
     header('Location: /lessons/lessons/academic/login.php');
     exit;
 }
@@ -23,754 +19,355 @@ $unit       = isset($_GET['unit'])       ? trim((string) $_GET['unit'])       : 
 $source     = isset($_GET['source'])     ? trim((string) $_GET['source'])     : '';
 $assignment = isset($_GET['assignment']) ? trim((string) $_GET['assignment']) : '';
 
-/* 
-   DATA LAYER
- */
+/* ── DATA LAYER ──────────────────────────────────────────── */
 
-function wp_resolve_unit(PDO $pdo, string $activityId): string
-{
-    if ($activityId === '') { return ''; }
-    $stmt = $pdo->prepare("SELECT unit_id FROM activities WHERE id = :id LIMIT 1");
-    $stmt->execute(['id' => $activityId]);
-    $row = $stmt->fetch(PDO::FETCH_ASSOC);
-    return ($row && isset($row['unit_id'])) ? (string) $row['unit_id'] : '';
+function wpe_resolve_unit(PDO $pdo, string $id): string {
+    if ($id === '') return '';
+    $s = $pdo->prepare("SELECT unit_id FROM activities WHERE id=:id LIMIT 1");
+    $s->execute(['id' => $id]);
+    $r = $s->fetch(PDO::FETCH_ASSOC);
+    return ($r && isset($r['unit_id'])) ? (string)$r['unit_id'] : '';
 }
 
-function wp_normalize_payload($rawData): array
-{
-    $default = [
-        'title'        => 'Writing Practice',
-        'description'  => '',
-        'questions'    => [],
-        'word_scoring' => [
-            'enabled'             => false,
-            'penalty_spelling'    => 1,
-            'penalty_grammar'     => 1,
-            'penalty_punctuation' => 1,
-        ],
-    ];
-    if ($rawData === null || $rawData === '') { return $default; }
-    $decoded = is_string($rawData) ? json_decode($rawData, true) : $rawData;
-    if (!is_array($decoded)) { return $default; }
-
-    $allowed   = ['writing', 'fill_sentence', 'fill_paragraph', 'listen_write', 'video_writing'];
-    $questions = [];
-    foreach ((array) ($decoded['questions'] ?? []) as $item) {
-        if (!is_array($item)) { continue; }
-        $type   = in_array($item['type'] ?? '', $allowed, true) ? (string) $item['type'] : 'writing';
-        $rawAns = $item['correct_answers'] ?? [];
-        $ans    = [];
-        if (is_array($rawAns)) {
-            foreach ($rawAns as $a) { $a = trim((string) $a); if ($a !== '') $ans[] = $a; }
-        } elseif (is_string($rawAns) && $rawAns !== '') {
-            $ans = array_values(array_filter(array_map('trim', explode("\n", $rawAns))));
-        }
-        $questions[] = [
-            'id'              => trim((string) ($item['id']          ?? uniqid('wp_'))),
-            'type'            => $type,
-            'question'        => trim((string) ($item['question']    ?? '')),
-            'instruction'     => trim((string) ($item['instruction'] ?? '')),
-            'media'           => trim((string) ($item['media']       ?? '')),
-            'correct_answers' => $ans,
-            'enable_answer_box' => !empty($item['enable_answer_box']),
-            'writing_rows'    => max(2, min(14, (int) ($item['writing_rows'] ?? 6))),
-            'response_count'  => max(1, min(20, (int) ($item['response_count'] ?? 1))),
-            'points'          => 1,
+function wpe_normalize(mixed $payload): array {
+    $allowed = ['writing', 'video_writing'];
+    $qs = [];
+    foreach ((array)($payload['questions'] ?? []) as $item) {
+        if (!is_array($item)) continue;
+        $type = in_array($item['type'] ?? '', $allowed, true) ? (string)$item['type'] : 'writing';
+        $qs[] = [
+            'id'             => trim((string)($item['id'] ?? uniqid('wp_'))),
+            'type'           => $type,
+            'question'       => trim((string)($item['question']    ?? '')),
+            'instruction'    => trim((string)($item['instruction'] ?? '')),
+            'media'          => trim((string)($item['media']       ?? '')),
+            'writing_rows'   => max(2, min(14, (int)($item['writing_rows']   ?? 6))),
+            'response_count' => max(1, min(20, (int)($item['response_count'] ?? 1))),
         ];
     }
-$ws = is_array($decoded['word_scoring'] ?? null) ? $decoded['word_scoring'] : [];
     return [
-        'title'        => trim((string) ($decoded['title']       ?? '')) ?: $default['title'],
-        'description'  => trim((string) ($decoded['description'] ?? '')),
-        'questions'    => $questions,
-        'word_scoring' => [
-            'enabled'             => (bool)  ($ws['enabled']             ?? false),
-            'penalty_spelling'    => max(0, (float) ($ws['penalty_spelling']    ?? 1)),
-            'penalty_grammar'     => max(0, (float) ($ws['penalty_grammar']     ?? 1)),
-            'penalty_punctuation' => max(0, (float) ($ws['penalty_punctuation'] ?? 1)),
-        ],
+        'title'       => trim((string)($payload['title']       ?? '')) ?: 'Writing Practice',
+        'description' => trim((string)($payload['description'] ?? '')),
+        'questions'   => $qs,
     ];
 }
 
-function wp_load_activity(PDO $pdo, string $unit, string $activityId): array
-{
-    $fallback = ['id' => '', 'payload' => wp_normalize_payload(null)];
-    $row      = null;
-    if ($activityId !== '') {
-        $stmt = $pdo->prepare("SELECT id, data FROM activities WHERE id = :id AND type = 'writing_practice' LIMIT 1");
-        $stmt->execute(['id' => $activityId]);
-        $row  = $stmt->fetch(PDO::FETCH_ASSOC);
+function wpe_load(PDO $pdo, string $unit, string $id): array {
+    $fallback = ['id' => '', 'payload' => wpe_normalize([])];
+    $row = null;
+    if ($id !== '') {
+        $s = $pdo->prepare("SELECT id, data FROM activities WHERE id=:id AND type='writing_practice' LIMIT 1");
+        $s->execute(['id' => $id]);
+        $row = $s->fetch(PDO::FETCH_ASSOC);
     }
     if (!$row && $unit !== '') {
-        $stmt = $pdo->prepare("SELECT id, data FROM activities WHERE unit_id = :unit AND type = 'writing_practice' ORDER BY id ASC LIMIT 1");
-        $stmt->execute(['unit' => $unit]);
-        $row  = $stmt->fetch(PDO::FETCH_ASSOC);
+        $s = $pdo->prepare("SELECT id, data FROM activities WHERE unit_id=:u AND type='writing_practice' ORDER BY id ASC LIMIT 1");
+        $s->execute(['u' => $unit]);
+        $row = $s->fetch(PDO::FETCH_ASSOC);
     }
-    if (!$row) { return $fallback; }
-    return ['id' => (string) ($row['id'] ?? ''), 'payload' => wp_normalize_payload($row['data'] ?? null)];
+    if (!$row) return $fallback;
+    $raw = is_string($row['data'] ?? null) ? json_decode((string)$row['data'], true) : [];
+    return ['id' => (string)$row['id'], 'payload' => wpe_normalize(is_array($raw) ? $raw : [])];
 }
 
-function wp_save_activity(PDO $pdo, string $unit, string $activityId, array $payload): string
-{
-    $json     = json_encode(wp_normalize_payload($payload), JSON_UNESCAPED_UNICODE);
-    $targetId = $activityId;
-    if ($targetId === '') {
-        $stmt = $pdo->prepare("SELECT id FROM activities WHERE unit_id = :unit AND type = 'writing_practice' ORDER BY id ASC LIMIT 1");
-        $stmt->execute(['unit' => $unit]);
-        $targetId = trim((string) $stmt->fetchColumn());
+function wpe_save(PDO $pdo, string $unit, string $id, array $payload): string {
+    $json = json_encode(wpe_normalize($payload), JSON_UNESCAPED_UNICODE);
+    $target = $id;
+    if ($target === '') {
+        $s = $pdo->prepare("SELECT id FROM activities WHERE unit_id=:u AND type='writing_practice' ORDER BY id ASC LIMIT 1");
+        $s->execute(['u' => $unit]);
+        $target = trim((string)$s->fetchColumn());
     }
-    if ($targetId !== '') {
-        $stmt = $pdo->prepare("UPDATE activities SET data = :data WHERE id = :id AND type = 'writing_practice'");
-        $stmt->execute(['data' => $json, 'id' => $targetId]);
-        return $targetId;
+    if ($target !== '') {
+        $s = $pdo->prepare("UPDATE activities SET data=:d WHERE id=:id AND type='writing_practice'");
+        $s->execute(['d' => $json, 'id' => $target]);
+        return $target;
     }
-    $stmt = $pdo->prepare("
-        INSERT INTO activities (unit_id, type, data, position, created_at)
-        VALUES (:unit_id, 'writing_practice', :data,
-            (SELECT COALESCE(MAX(position),0)+1 FROM activities WHERE unit_id = :unit_id2),
-            CURRENT_TIMESTAMP)
-        RETURNING id
-    ");
-    $stmt->execute(['unit_id' => $unit, 'unit_id2' => $unit, 'data' => $json]);
-    return (string) $stmt->fetchColumn();
+    $s = $pdo->prepare("INSERT INTO activities (unit_id, type, data, position, created_at)
+        VALUES (:u,'writing_practice',:d,(SELECT COALESCE(MAX(position),0)+1 FROM activities WHERE unit_id=:u2),CURRENT_TIMESTAMP)
+        RETURNING id");
+    $s->execute(['u' => $unit, 'u2' => $unit, 'd' => $json]);
+    return (string)$s->fetchColumn();
 }
 
-/* 
-   BOOTSTRAP
- */
+/* ── BOOTSTRAP ───────────────────────────────────────────── */
+if ($unit === '' && $activityId !== '') $unit = wpe_resolve_unit($pdo, $activityId);
+if ($unit === '') die('Unit not specified');
 
-if ($unit === '' && $activityId !== '') {
-    $unit = wp_resolve_unit($pdo, $activityId);
-}
-if ($unit === '') { die('Unit not specified'); }
-
-$loaded     = wp_load_activity($pdo, $unit, $activityId);
+$loaded     = wpe_load($pdo, $unit, $activityId);
 $payload    = $loaded['payload'];
-if ($activityId === '' && !empty($loaded['id'])) { $activityId = (string) $loaded['id']; }
+if ($activityId === '' && !empty($loaded['id'])) $activityId = $loaded['id'];
 
-/* 
-   HANDLE POST
- */
-
+/* ── HANDLE POST ─────────────────────────────────────────── */
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $title       = trim((string) ($_POST['activity_title'] ?? ''));
-    $description = trim((string) ($_POST['description']    ?? ''));
-    $types       = isset($_POST['wp_type'])     && is_array($_POST['wp_type'])     ? $_POST['wp_type']     : [];
-    $questions   = isset($_POST['wp_question']) && is_array($_POST['wp_question']) ? $_POST['wp_question'] : [];
-    $instructions= isset($_POST['wp_instr'])    && is_array($_POST['wp_instr'])    ? $_POST['wp_instr']    : [];
-    $mediasPost  = isset($_POST['wp_media'])    && is_array($_POST['wp_media'])    ? $_POST['wp_media']    : [];
-    $mediaExisting = isset($_POST['wp_media_existing']) && is_array($_POST['wp_media_existing']) ? $_POST['wp_media_existing'] : [];
-    $answersList = isset($_POST['wp_answers'])  && is_array($_POST['wp_answers'])  ? $_POST['wp_answers']  : [];
-    $answerBoxList = isset($_POST['wp_enable_answer_box']) && is_array($_POST['wp_enable_answer_box']) ? $_POST['wp_enable_answer_box'] : [];
-    $rowsList    = isset($_POST['wp_writing_rows'])   && is_array($_POST['wp_writing_rows'])   ? $_POST['wp_writing_rows']   : [];
-    $countList   = isset($_POST['wp_response_count']) && is_array($_POST['wp_response_count']) ? $_POST['wp_response_count'] : [];
-    $videoFiles  = isset($_FILES['wp_video_file']) ? $_FILES['wp_video_file'] : null;
-    $audioFiles  = isset($_FILES['wp_audio_file']) ? $_FILES['wp_audio_file'] : null;
+    $allowed    = ['writing', 'video_writing'];
+    $types      = (array)($_POST['wp_type']      ?? []);
+    $questions  = (array)($_POST['wp_question']  ?? []);
+    $instrs     = (array)($_POST['wp_instr']      ?? []);
+    $mediaUrls  = (array)($_POST['wp_media']      ?? []);
+    $mediaOld   = (array)($_POST['wp_media_old']  ?? []);
+    $rowsList   = (array)($_POST['wp_rows']        ?? []);
+    $countList  = (array)($_POST['wp_count']       ?? []);
+    $videoFiles = $_FILES['wp_video_file'] ?? null;
 
-    $allowed = ['writing', 'fill_sentence', 'fill_paragraph', 'listen_write', 'video_writing'];
     $sanitized = [];
     foreach ($questions as $i => $qRaw) {
-        $type   = in_array($types[$i] ?? '', $allowed, true) ? $types[$i] : 'writing';
-        $q      = trim((string) $qRaw);
-        $instr  = trim((string) ($instructions[$i] ?? ''));
-        $media  = trim((string) ($mediasPost[$i]   ?? ''));
-        $mediaOld = trim((string) ($mediaExisting[$i] ?? ''));
-        $rawAns = trim((string) ($answersList[$i]  ?? ''));
-        $enableAnswerBox = ($type === 'fill_paragraph')
-            && !empty($answerBoxList[$i])
-            && (string) $answerBoxList[$i] === '1';
-        $rows   = max(2, min(14, (int) ($rowsList[$i]  ?? 6)));
-        $count  = max(1, min(20, (int) ($countList[$i] ?? 1)));
+        $type  = in_array($types[$i] ?? '', $allowed, true) ? $types[$i] : 'writing';
+        $q     = trim((string)$qRaw);
+        $instr = trim((string)($instrs[$i] ?? ''));
+        $media = '';
 
         if ($type === 'video_writing') {
-            if ($media === '' && $mediaOld !== '') {
-                $media = $mediaOld;
+            $media = trim((string)($mediaUrls[$i] ?? ''));
+            if ($media === '') $media = trim((string)($mediaOld[$i] ?? ''));
+            if ($videoFiles && !empty($videoFiles['name'][$i]) && !empty($videoFiles['tmp_name'][$i])) {
+                $up = upload_video_to_cloudinary($videoFiles['tmp_name'][$i]);
+                if ($up) $media = $up;
             }
-            if ($videoFiles
-                && !empty($videoFiles['name'][$i])
-                && !empty($videoFiles['tmp_name'][$i])) {
-                $uploaded = upload_video_to_cloudinary($videoFiles['tmp_name'][$i]);
-                if ($uploaded) { $media = $uploaded; }
-            }
-        } elseif ($type === 'listen_write') {
-            $media = $mediaOld;
-            if ($audioFiles
-                && !empty($audioFiles['name'][$i])
-                && !empty($audioFiles['tmp_name'][$i])) {
-                $uploadedAudio = upload_audio_to_cloudinary($audioFiles['tmp_name'][$i]);
-                if ($uploadedAudio) { $media = $uploadedAudio; }
-            }
-        } else {
-            $media = '';
         }
-        if ($q === '' && $instr === '') { continue; }
-        $ans = array_values(array_filter(array_map('trim', explode("\n", $rawAns))));
+
+        if ($q === '' && $instr === '') continue;
         $sanitized[] = [
-            'id'              => 'wp_' . uniqid(),
-            'type'            => $type,
-            'question'        => $q,
-            'instruction'     => $instr,
-            'media'           => $media,
-            'correct_answers' => $ans,
-            'enable_answer_box' => $enableAnswerBox,
-            'writing_rows'    => $rows,
-            'response_count'  => $count,
-            'points'          => 1,
+            'id'             => 'wp_' . uniqid(),
+            'type'           => $type,
+            'question'       => $q,
+            'instruction'    => $instr,
+            'media'          => $media,
+            'writing_rows'   => max(2, min(14, (int)($rowsList[$i]  ?? 6))),
+            'response_count' => max(1, min(20, (int)($countList[$i] ?? 1))),
         ];
     }
 
-    $wsEnabled  = !empty($_POST['ws_enabled']);
-    $wsPenSpell = max(0, (float) str_replace(',', '.', (string) ($_POST['ws_penalty_spelling']    ?? '1')));
-    $wsPenGram  = max(0, (float) str_replace(',', '.', (string) ($_POST['ws_penalty_grammar']     ?? '1')));
-    $wsPenPunct = max(0, (float) str_replace(',', '.', (string) ($_POST['ws_penalty_punctuation'] ?? '1')));
-
-    $savedId = wp_save_activity($pdo, $unit, $activityId, [
-        'title'        => $title,
-        'description'  => $description,
-        'questions'    => $sanitized,
-        'word_scoring' => [
-            'enabled'             => $wsEnabled,
-            'penalty_spelling'    => $wsPenSpell,
-            'penalty_grammar'     => $wsPenGram,
-            'penalty_punctuation' => $wsPenPunct,
-        ],
+    $savedId = wpe_save($pdo, $unit, $activityId, [
+        'title'       => trim((string)($_POST['activity_title'] ?? '')),
+        'description' => trim((string)($_POST['description']    ?? '')),
+        'questions'   => $sanitized,
     ]);
 
-    $params = ['unit=' . urlencode($unit), 'saved=1'];
-    if ($savedId    !== '') $params[] = 'id='         . urlencode($savedId);
-    if ($assignment !== '') $params[] = 'assignment=' . urlencode($assignment);
-    if ($source     !== '') $params[] = 'source='     . urlencode($source);
-    header('Location: editor.php?' . implode('&', $params));
+    $p = ['unit=' . urlencode($unit), 'saved=1'];
+    if ($savedId    !== '') $p[] = 'id='         . urlencode($savedId);
+    if ($assignment !== '') $p[] = 'assignment=' . urlencode($assignment);
+    if ($source     !== '') $p[] = 'source='     . urlencode($source);
+    header('Location: editor.php?' . implode('&', $p));
     exit;
 }
 
 $questions     = $payload['questions']   ?? [];
 $activityTitle = $payload['title']       ?? 'Writing Practice';
 $description   = $payload['description'] ?? '';
-$wordScoring   = $payload['word_scoring'] ?? ['enabled' => false, 'penalty_spelling' => 1, 'penalty_grammar' => 1, 'penalty_punctuation' => 1];
 
 ob_start();
 ?>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@600;700;800;900&display=swap" rel="stylesheet">
 <style>
-.wp-form {
-    max-width: 900px;
-    margin: 0 auto;
-    font-family: 'Nunito', 'Segoe UI', sans-serif;
+:root {
+    --wp-purple:     #7F77DD;
+    --wp-purple-dk:  #534AB7;
+    --wp-purple-soft:#EEEDFE;
+    --wp-orange:     #F97316;
+    --wp-orange-dk:  #C2580A;
+    --wp-ink:        #271B5D;
+    --wp-muted:      #7C739B;
+    --wp-shadow:     0 8px 28px rgba(83,74,183,.14);
 }
-.wp-intro {
-    background: linear-gradient(135deg, #fdf4ff 0%, #f0e8ff 52%, #fdf4ff 100%);
-    border: 1px solid #e9d5ff;
-    border-radius: 20px;
-    padding: 18px 20px;
-    margin: 0 0 14px;
-    box-shadow: 0 12px 26px rgba(15,23,42,.08);
-}
-.wp-intro h3 {
-    margin: 0 0 6px;
-    font-size: 22px;
-    font-weight: 700;
-    color: #0f172a;
-}
-.wp-intro p { margin: 0; color: #475569; font-size: 14px; line-height: 1.5; }
-.wp-title-box {
-    background: #fff;
-    padding: 14px;
-    margin-bottom: 14px;
-    border-radius: 14px;
-    border: 1px solid #e2e8f0;
-    box-shadow: 0 8px 18px rgba(15,23,42,.04);
-}
-.wp-title-box label { display: block; font-weight: 800; margin-bottom: 6px; color: #1e293b; }
-.wp-title-box input,
-.wp-title-box textarea {
-    width: 100%;
-    padding: 10px 12px;
-    border-radius: 10px;
-    border: 1px solid #cbd5e1;
-    font-size: 14px;
-    font-family: inherit;
-    box-sizing: border-box;
-    margin-bottom: 10px;
-}
-.wp-title-box textarea { min-height: 70px; resize: vertical; margin-bottom: 0; }
-.wp-block {
-    position: relative;
-    overflow: hidden;
-    background: linear-gradient(180deg, #fdf4ff 0%, #fff 100%);
-    padding: 14px;
-    margin-bottom: 12px;
-    border-radius: 16px;
-    border: 1px solid #e9d5ff;
-    box-shadow: 0 10px 22px rgba(15,23,42,.06);
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 8px 10px;
-}
-.wp-block::before {
-    content: '';
-    position: absolute;
-    top: 0; left: 0; right: 0;
-    height: 7px;
-    background: linear-gradient(90deg, #a855f7 0%, #7c3aed 100%);
-}
-.wp-block label { font-weight: 800; color: #0f172a; display: block; margin-bottom: 4px; font-size: 13px; }
-.wp-block input,
-.wp-block select,
-.wp-block textarea {
-    width: 100%;
-    padding: 9px 11px;
-    border-radius: 10px;
-    border: 1px solid #cbd5e1;
-    font-size: 14px;
-    font-family: inherit;
-    box-sizing: border-box;
-}
-.wp-block textarea { min-height: 80px; resize: vertical; }
-.wp-col-full  { grid-column: span 2; }
-.wp-col-half  { grid-column: span 1; }
-.wp-audio-row { grid-column: span 2; display: none; }
-.wp-video-row { grid-column: span 2; display: none; }
-.wp-writing-row { grid-column: span 2; display: none; }
-.wp-free-row { grid-column: span 2; display: none; }
-.wp-audio-row.visible,
-.wp-video-row.visible,
-.wp-writing-row.visible,
-.wp-free-row.visible { display: block; }
-.wp-video-inner { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.wp-writing-inner { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.wp-block-num {
-    font-size: 11px; font-weight: 800; color: #7c3aed;
-    text-transform: uppercase; letter-spacing: .06em; grid-column: span 2; margin-top: 4px;
-}
-.btn-remove-wp {
-    background: #ef4444; color: #fff; border: none;
-    padding: 8px 12px; border-radius: 10px; cursor: pointer;
-    font-weight: 800; font-family: inherit; grid-column: span 2; justify-self: end;
-}
-.actions-row {
-    display: flex; gap: 10px; justify-content: center; margin-top: 10px; flex-wrap: wrap;
-}
-.btn-add-wp, .btn-save-wp {
-    border: none; border-radius: 10px; cursor: pointer;
-    font-weight: 800; font-family: inherit; padding: 10px 14px;
-    transition: transform .15s, filter .15s;
-}
-.btn-add-wp:hover, .btn-save-wp:hover { filter: brightness(1.06); transform: translateY(-1px); }
-.btn-add-wp  { background: #a855f7; color: #fff; }
-.btn-save-wp { background: #7c3aed; color: #fff; }
-.saved-notice {
-    max-width: 900px; margin: 0 auto 14px; padding: 10px 12px;
-    border-radius: 10px; border: 1px solid #c4b5fd;
-    background: #f5f3ff; color: #5b21b6; font-weight: 800;
-}
-.wp-scoring-box {
-    background: #fff;
-    padding: 14px;
-    margin-bottom: 14px;
-    border-radius: 14px;
-    border: 1px solid #bfdbfe;
-    box-shadow: 0 8px 18px rgba(15,23,42,.04);
-}
-.wp-scoring-box legend {
-    font-weight: 800;
-    font-size: 14px;
-    color: #1e40af;
-    padding: 0 6px;
-}
-.wp-scoring-toggle {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-bottom: 10px;
-    font-weight: 800;
-    font-size: 14px;
-    color: #1e293b;
-    cursor: pointer;
-}
-.wp-scoring-toggle input[type="checkbox"] { width: 16px; height: 16px; cursor: pointer; accent-color: #3b82f6; }
-.wp-scoring-fields {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 10px;
-}
-.wp-scoring-fields label { display: block; font-size: 12px; font-weight: 800; color: #1e40af; margin-bottom: 4px; }
-.wp-scoring-fields input {
-    width: 100%;
-    padding: 8px 10px;
-    border-radius: 8px;
-    border: 1px solid #93c5fd;
-    font-size: 14px;
-    font-family: inherit;
-    box-sizing: border-box;
-    text-align: center;
-}
-.wp-scoring-hint {
-    grid-column: span 3;
-    font-size: 12px;
-    color: #64748b;
-    background: #f0f9ff;
-    border: 1px solid #bae6fd;
-    border-radius: 8px;
-    padding: 8px 10px;
-    margin-top: 4px;
-}
-@media (max-width: 680px) { .wp-scoring-fields { grid-template-columns: 1fr; } .wp-scoring-hint { grid-column: span 1; } }
-@media (max-width: 680px) { .wp-block { display: flex; flex-direction: column; } .wp-video-inner { grid-template-columns: 1fr; } }
+*{box-sizing:border-box}
+.wpe-shell{max-width:860px;margin:0 auto;font-family:'Nunito','Segoe UI',sans-serif}
+.wpe-saved{background:#f5f3ff;border:1px solid #c4b5fd;border-radius:10px;padding:10px 14px;
+    color:#5b21b6;font-weight:800;margin-bottom:14px;text-align:center}
+.wpe-intro{background:linear-gradient(135deg,#eeedfe 0%,#f3f0ff 100%);
+    border:1px solid #c4b5fd;border-radius:20px;padding:18px 20px;margin-bottom:16px;
+    box-shadow:var(--wp-shadow)}
+.wpe-intro h3{margin:0 0 4px;font-family:'Fredoka',sans-serif;font-size:22px;color:var(--wp-purple-dk)}
+.wpe-intro p{margin:0;color:var(--wp-muted);font-size:13px}
+.wpe-section{background:#fff;border:1px solid #e2e8f0;border-radius:16px;padding:16px;
+    margin-bottom:14px;box-shadow:0 4px 14px rgba(15,23,42,.05)}
+.wpe-label{display:block;font-weight:800;font-size:13px;color:var(--wp-ink);margin-bottom:5px}
+.wpe-input,.wpe-textarea,.wpe-select{
+    width:100%;padding:9px 12px;border-radius:10px;border:1px solid #d1d5db;
+    font-size:14px;font-family:inherit;box-sizing:border-box}
+.wpe-textarea{min-height:72px;resize:vertical}
+.wpe-block{position:relative;background:linear-gradient(180deg,#fdf4ff,#fff);
+    border:1px solid #e9d5ff;border-radius:16px;padding:16px;margin-bottom:12px;
+    box-shadow:0 6px 18px rgba(15,23,42,.06);display:grid;grid-template-columns:1fr 1fr;gap:8px 12px}
+.wpe-block::before{content:'';position:absolute;top:0;left:0;right:0;height:5px;
+    background:linear-gradient(90deg,var(--wp-purple),var(--wp-purple-dk));border-radius:16px 16px 0 0}
+.wpe-block-num{grid-column:span 2;font-size:11px;font-weight:900;color:var(--wp-purple);
+    text-transform:uppercase;letter-spacing:.07em;margin-top:4px}
+.wpe-full{grid-column:span 2}
+.wpe-video-row{grid-column:span 2;display:none}
+.wpe-video-row.show{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.wpe-rows-row{grid-column:span 2;display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.wpe-hint{font-size:11px;color:#64748b;background:#f8fafc;border:1px solid #e2e8f0;
+    border-radius:8px;padding:7px 10px;margin-top:4px;grid-column:span 2}
+.wpe-btn-remove{background:#ef4444;color:#fff;border:none;padding:8px 12px;border-radius:10px;
+    cursor:pointer;font-weight:800;font-family:inherit;grid-column:span 2;justify-self:end;font-size:13px}
+.wpe-actions{display:flex;gap:10px;justify-content:center;margin-top:10px;flex-wrap:wrap}
+.wpe-btn{border:none;border-radius:10px;cursor:pointer;font-weight:800;font-family:inherit;
+    padding:11px 18px;font-size:14px;transition:filter .15s,transform .15s}
+.wpe-btn:hover{filter:brightness(1.07);transform:translateY(-1px)}
+.wpe-btn-add{background:var(--wp-purple);color:#fff}
+.wpe-btn-save{background:var(--wp-purple-dk);color:#fff}
+@media(max-width:640px){.wpe-block{display:flex;flex-direction:column}.wpe-video-row.show{grid-template-columns:1fr}}
 </style>
 
 <?php if (isset($_GET['saved'])): ?>
-    <p class="saved-notice"> Guardado correctamente</p>
+<p class="wpe-saved">✓ Guardado correctamente</p>
 <?php endif; ?>
 
-<form class="wp-form" id="wpForm" method="post" enctype="multipart/form-data">
-    <section class="wp-intro">
-        <h3>Writing Practice &mdash; Editor</h3>
-        <p>Agrega preguntas en <strong>Escritura oración</strong>, <strong>Escritura párrafo</strong>, <strong>Listen + escritura</strong> y <strong>Video + escritura</strong>. Define respuestas correctas (una por línea) para habilitar puntaje y pantalla final con porcentaje.</p>
-    </section>
+<form class="wpe-shell" id="wpeForm" method="post" enctype="multipart/form-data">
 
-    <div class="wp-title-box">
-        <label for="activity_title">Título de la actividad</label>
-        <input id="activity_title" type="text" name="activity_title"
-               value="<?= htmlspecialchars($activityTitle, ENT_QUOTES, 'UTF-8') ?>"
-               placeholder="Writing Practice" required>
-        <label for="description">Instrucción general <span style="font-weight:400;">(opcional)</span></label>
-        <textarea id="description" name="description"
+    <div class="wpe-intro">
+        <h3>✍️ Writing Practice — Editor</h3>
+        <p>Crea preguntas de <strong>Escritura libre</strong> (el estudiante escribe libremente) o <strong>Video + escritura</strong> (el estudiante ve un video y escribe).</p>
+    </div>
+
+    <div class="wpe-section">
+        <label class="wpe-label" for="activity_title">Título de la actividad</label>
+        <input id="activity_title" class="wpe-input" type="text" name="activity_title"
+               value="<?= htmlspecialchars($activityTitle, ENT_QUOTES, 'UTF-8') ?>" placeholder="Writing Practice" required>
+        <label class="wpe-label" style="margin-top:12px" for="description">Instrucción general <span style="font-weight:400">(opcional)</span></label>
+        <textarea id="description" class="wpe-textarea" name="description"
                   placeholder="Ej: Lee cada pregunta y escribe tu respuesta."><?= htmlspecialchars($description, ENT_QUOTES, 'UTF-8') ?></textarea>
     </div>
 
-    <!-- ── Word Scoring Settings ───────────────────── -->
-    <fieldset class="wp-scoring-box">
-        <legend>📊 Puntuación por palabras</legend>
-        <label class="wp-scoring-toggle">
-            <input type="checkbox" name="ws_enabled" id="wsEnabled" value="1"
-                   <?= !empty($wordScoring['enabled']) ? 'checked' : '' ?>
-                   onchange="document.getElementById('wsFields').style.display=this.checked?'':'none'">
-            Activar puntuación basada en cantidad de palabras
-        </label>
-        <div id="wsFields" style="<?= !empty($wordScoring['enabled']) ? '' : 'display:none' ?>">
-            <div class="wp-scoring-fields">
-                <div>
-                    <label for="ws_penalty_spelling">Penalización &mdash; Ortografía</label>
-                    <input type="number" id="ws_penalty_spelling" name="ws_penalty_spelling"
-                           min="0" step="0.5"
-                           value="<?= htmlspecialchars((string) ($wordScoring['penalty_spelling'] ?? 1), ENT_QUOTES, 'UTF-8') ?>">
-                </div>
-                <div>
-                    <label for="ws_penalty_grammar">Penalización &mdash; Gramática</label>
-                    <input type="number" id="ws_penalty_grammar" name="ws_penalty_grammar"
-                           min="0" step="0.5"
-                           value="<?= htmlspecialchars((string) ($wordScoring['penalty_grammar'] ?? 1), ENT_QUOTES, 'UTF-8') ?>">
-                </div>
-                <div>
-                    <label for="ws_penalty_punctuation">Penalización &mdash; Puntuación</label>
-                    <input type="number" id="ws_penalty_punctuation" name="ws_penalty_punctuation"
-                           min="0" step="0.5"
-                           value="<?= htmlspecialchars((string) ($wordScoring['penalty_punctuation'] ?? 1), ENT_QUOTES, 'UTF-8') ?>">
-                </div>
-                <p class="wp-scoring-hint">
-                    <strong>Cómo funciona:</strong> La base = número de palabras escritas por el estudiante.
-                    El puntaje final = base &minus; (errores_ortografía × penalización_ortografía)
-                    &minus; (errores_gramática × penalización_gramática)
-                    &minus; (errores_puntuación × penalización_puntuación), mínimo 0.
-                    <strong>En video + escritura</strong>, la calificación automática usa las respuestas correctas definidas en cada pregunta.
-                </p>
-            </div>
-        </div>
-    </fieldset>
+    <div id="wpeItems">
+    <?php foreach ($questions as $i => $q):
+        $type  = in_array((string)($q['type'] ?? 'writing'), ['writing','video_writing'], true) ? $q['type'] : 'writing';
+        $qText = $q['question']    ?? '';
+        $instr = $q['instruction'] ?? '';
+        $media = $q['media']       ?? '';
+        $wRows = max(2, min(14, (int)($q['writing_rows']   ?? 6)));
+        $rCount= max(1, min(20, (int)($q['response_count'] ?? 1)));
+    ?>
+        <div class="wpe-block">
+            <span class="wpe-block-num">Pregunta <?= $i + 1 ?></span>
 
-    <div id="wpItems">
-    <?php foreach ($questions as $i => $q): ?>
-        <?php
-        $type    = in_array((string)($q['type'] ?? 'writing'), ['writing', 'fill_sentence', 'fill_paragraph', 'listen_write', 'video_writing'], true)
-            ? (string)($q['type'] ?? 'writing')
-            : 'writing';
-        $qText   = $q['question']    ?? '';
-        $instr   = $q['instruction'] ?? '';
-        $media   = $q['media']       ?? '';
-        $answers = implode("\n", $q['correct_answers'] ?? []);
-        $enableAnswerBox = !empty($q['enable_answer_box']);
-        $wRows   = max(2, min(14, (int) ($q['writing_rows'] ?? 6)));
-        $rCount  = max(1, min(20, (int) ($q['response_count'] ?? 1)));
-        ?>
-        <div class="wp-block">
-            <span class="wp-block-num">Pregunta <?= $i + 1 ?></span>
-
-            <div class="wp-col-full">
-                <label>Tipo</label>
-                <select name="wp_type[]" class="wp-type-select" onchange="wpToggleMedia(this)">
-                    <option value="writing"        <?= $type==='writing'        ?'selected':'' ?>>Escritura oración</option>
-                    <option value="fill_sentence"  <?= $type==='fill_sentence'  ?'selected':'' ?>>Escritura oración (completar)</option>
-                    <option value="fill_paragraph" <?= $type==='fill_paragraph' ?'selected':'' ?>>Escritura párrafo</option>
-                    <option value="listen_write"   <?= $type==='listen_write'   ?'selected':'' ?>>Listen + escritura</option>
-                    <option value="video_writing"  <?= $type==='video_writing'  ?'selected':'' ?>>Video + escritura</option>
+            <div class="wpe-full">
+                <label class="wpe-label">Tipo</label>
+                <select class="wpe-select wpe-type-sel" name="wp_type[]" onchange="wpeToggle(this)">
+                    <option value="writing"       <?= $type==='writing'       ?'selected':'' ?>>✍️ Escritura libre</option>
+                    <option value="video_writing" <?= $type==='video_writing' ?'selected':'' ?>>🎬 Video + escritura</option>
                 </select>
             </div>
 
-            <div class="wp-col-full">
-                <label>Pregunta / enunciado</label>
-                <textarea name="wp_question[]" rows="2"
+            <div class="wpe-full">
+                <label class="wpe-label">Pregunta / enunciado</label>
+                <textarea class="wpe-textarea" name="wp_question[]" rows="2"
                           placeholder="Escribe la pregunta o el enunciado aquí..."><?= htmlspecialchars($qText, ENT_QUOTES, 'UTF-8') ?></textarea>
             </div>
 
-            <div class="wp-col-full">
-                <label>Instrucción adicional <span style="font-weight:400;font-size:12px;">(opcional)</span></label>
-                <input type="text" name="wp_instr[]"
+            <div class="wpe-full">
+                <label class="wpe-label">Instrucción adicional <span style="font-weight:400;font-size:12px">(opcional)</span></label>
+                <input class="wpe-input" type="text" name="wp_instr[]"
                        value="<?= htmlspecialchars($instr, ENT_QUOTES, 'UTF-8') ?>"
                        placeholder="Ej: Escribe al menos 3 oraciones completas.">
             </div>
 
-            <div class="wp-writing-row<?= in_array($type, ['writing', 'video_writing'], true) ? ' visible' : '' ?>">
-                <div class="wp-writing-inner">
-                    <div>
-                        <label>Cantidad de respuestas (filas enumeradas)</label>
-                        <input type="number" name="wp_response_count[]" min="1" max="20"
-                               value="<?= htmlspecialchars((string) $rCount, ENT_QUOTES, 'UTF-8') ?>">
-                    </div>
-                    <div>
-                        <label>Alto de cada respuesta (filas)</label>
-                        <input type="number" name="wp_writing_rows[]" min="2" max="14"
-                               value="<?= htmlspecialchars((string) $wRows, ENT_QUOTES, 'UTF-8') ?>">
-                    </div>
+            <div class="wpe-video-row <?= $type==='video_writing'?'show':'' ?>">
+                <input type="hidden" name="wp_media_old[]" value="<?= htmlspecialchars($media, ENT_QUOTES, 'UTF-8') ?>">
+                <div>
+                    <label class="wpe-label">URL del video (YouTube / MP4)</label>
+                    <input class="wpe-input" type="url" name="wp_media[]"
+                           value="<?= $type==='video_writing' ? htmlspecialchars($media, ENT_QUOTES, 'UTF-8') : '' ?>"
+                           <?= $type!=='video_writing'?'disabled':'' ?>
+                           placeholder="https://youtube.com/watch?v=...">
                 </div>
-                <p style="font-size:11px;color:#57534e;background:#fefce8;border:1px solid #fde68a;border-radius:8px;padding:8px;margin:8px 0 0;">
-                    Configura cuántas respuestas debe escribir el estudiante y cuántas filas visibles tendrá cada caja de texto.
-                </p>
-            </div>
-
-            <div class="wp-free-row<?= $type === 'fill_paragraph' ? ' visible' : '' ?>">
-                <label class="wp-scoring-toggle" style="margin-bottom:6px;">
-                    <input type="hidden" name="wp_enable_answer_box[]" class="wp-free-answer-state" value="<?= $enableAnswerBox ? '1' : '0' ?>">
-                    <input type="checkbox" class="wp-free-answer-toggle" value="1" <?= $enableAnswerBox ? 'checked' : '' ?>>
-                    Activar answer box (textarea) para Escritura libre
-                </label>
-                <p style="font-size:11px;color:#57534e;background:#f8fafc;border:1px solid #cbd5e1;border-radius:8px;padding:8px;margin:0;">
-                    Si est&aacute; desactivado, el estudiante ver&aacute; solo el enunciado y la gu&iacute;a de respuestas. Si est&aacute; activado, ver&aacute; la caja para escribir su p&aacute;rrafo.
-                </p>
-            </div>
-
-            <div class="wp-video-row<?= in_array($type, ['video_writing', 'listen_write'], true) ? ' visible' : '' ?>">
-                <div class="wp-video-inner">
-                    <input type="hidden" name="wp_media_existing[]" value="<?= htmlspecialchars($media, ENT_QUOTES, 'UTF-8') ?>">
-                    <div>
-                        <label><?= $type === 'listen_write' ? 'Audio MP3 actual' : 'URL del video (YouTube / MP4)' ?></label>
-                        <input type="url" name="wp_media[]"
-                               value="<?= $type === 'video_writing' ? htmlspecialchars($media, ENT_QUOTES, 'UTF-8') : '' ?>"
-                               <?= $type !== 'video_writing' ? 'disabled' : '' ?>
-                               placeholder="https://youtube.com/watch?v=...">
-                    </div>
-                    <div>
-                        <label><?= $type === 'listen_write' ? 'Subir audio MP3 (opcional)' : 'o sube un video' ?></label>
-                        <input type="file" name="wp_video_file[]" accept="video/*"
-                               <?= $type!=='video_writing' ? 'disabled' : '' ?>>
-                        <input type="file" name="wp_audio_file[]" accept="audio/mpeg,audio/mp3,audio/*"
-                               <?= $type!=='listen_write' ? 'disabled' : '' ?> style="margin-top:8px;">
-                    </div>
+                <div>
+                    <label class="wpe-label">O sube un video</label>
+                    <input class="wpe-input" type="file" name="wp_video_file[]" accept="video/*"
+                           <?= $type!=='video_writing'?'disabled':'' ?>>
                 </div>
             </div>
 
-            <div class="wp-col-full">
-                <label>Respuestas correctas <span style="font-weight:400;font-size:12px;">(una por línea; se usan para Show Answer y calificación automática)</span></label>
-                <textarea name="wp_answers[]" rows="3"
-                          placeholder="Respuesta 1&#10;Variante aceptada&#10;Otra forma válida"><?= htmlspecialchars($answers, ENT_QUOTES, 'UTF-8') ?></textarea>
+            <div class="wpe-rows-row">
+                <div>
+                    <label class="wpe-label">Respuestas (cantidad)</label>
+                    <input class="wpe-input" type="number" name="wp_count[]" min="1" max="20"
+                           value="<?= htmlspecialchars((string)$rCount, ENT_QUOTES, 'UTF-8') ?>">
+                </div>
+                <div>
+                    <label class="wpe-label">Filas por respuesta</label>
+                    <input class="wpe-input" type="number" name="wp_rows[]" min="2" max="14"
+                           value="<?= htmlspecialchars((string)$wRows, ENT_QUOTES, 'UTF-8') ?>">
+                </div>
             </div>
 
-            <button type="button" class="btn-remove-wp" onclick="wpRemove(this)"> Eliminar</button>
+            <button type="button" class="wpe-btn-remove" onclick="wpeRemove(this)">✕ Eliminar</button>
         </div>
     <?php endforeach; ?>
     </div>
 
-    <div class="actions-row">
-        <button type="button" class="btn-add-wp" onclick="wpAdd()">+ Agregar pregunta</button>
-        <button type="submit" class="btn-save-wp"> Guardar</button>
+    <div class="wpe-actions">
+        <button type="button" class="wpe-btn wpe-btn-add" onclick="wpeAdd()">+ Agregar pregunta</button>
+        <button type="submit" class="wpe-btn wpe-btn-save">💾 Guardar</button>
     </div>
 </form>
 
 <script>
-var wpCount = <?= count($questions) ?>;
+var wpeCount = <?= count($questions) ?>;
 
-function wpToggleMedia(select) {
-    var block    = select.closest('.wp-block');
-    var typeVal  = select.value || 'writing';
-    var videoRow = block.querySelector('.wp-video-row');
-    var writingRow = block.querySelector('.wp-writing-row');
-    var freeRow = block.querySelector('.wp-free-row');
-    var freeToggle = freeRow ? freeRow.querySelector('.wp-free-answer-toggle') : null;
-    var freeState = freeRow ? freeRow.querySelector('.wp-free-answer-state') : null;
-    var mediaUrlInput = block.querySelector('input[name="wp_media[]"]');
-    var mediaUrlLabel = mediaUrlInput ? mediaUrlInput.closest('div').querySelector('label') : null;
-    var fileInput = block.querySelector('input[name="wp_video_file[]"]');
-    var audioInput = block.querySelector('input[name="wp_audio_file[]"]');
-    var fileLabel = fileInput ? fileInput.closest('div').querySelector('label') : null;
+function wpeToggle(sel) {
+    var block = sel.closest('.wpe-block');
+    var type  = sel.value;
+    var vRow  = block.querySelector('.wpe-video-row');
+    var urlIn = block.querySelector('input[name="wp_media[]"]');
+    var fileIn= block.querySelector('input[name="wp_video_file[]"]');
 
-    if (videoRow) {
-        videoRow.classList.remove('visible');
-        videoRow.querySelectorAll('input').forEach(function(inp){ inp.disabled = true; });
-    }
-    if (writingRow) { writingRow.classList.remove('visible'); }
-    if (freeRow) { freeRow.classList.remove('visible'); }
-
-    if (typeVal === 'video_writing' || typeVal === 'listen_write') {
-        if (videoRow) {
-            videoRow.classList.add('visible');
-        }
-        if (mediaUrlInput) {
-            mediaUrlInput.disabled = (typeVal !== 'video_writing');
-            mediaUrlInput.style.display = typeVal === 'video_writing' ? '' : 'none';
-            mediaUrlInput.placeholder = 'https://youtube.com/watch?v=...';
-        }
-        if (mediaUrlLabel) {
-            mediaUrlLabel.textContent = typeVal === 'listen_write' ? 'Audio MP3 actual' : 'URL del video (YouTube / MP4)';
-        }
-    }
-
-    if (typeVal === 'video_writing') {
-        if (fileInput) {
-            fileInput.disabled = false;
-            fileInput.style.display = '';
-        }
-        if (audioInput) {
-            audioInput.disabled = true;
-            audioInput.style.display = 'none';
-            audioInput.value = '';
-        }
-        if (fileLabel) {
-            fileLabel.textContent = 'o sube un video';
-        }
-    } else if (typeVal === 'listen_write') {
-        if (fileInput) {
-            fileInput.disabled = true;
-            fileInput.style.display = 'none';
-            fileInput.value = '';
-        }
-        if (audioInput) {
-            audioInput.disabled = false;
-            audioInput.style.display = '';
-        }
-        if (fileLabel) {
-            fileLabel.textContent = 'Subir audio MP3 (opcional)';
-        }
+    if (type === 'video_writing') {
+        vRow.classList.add('show');
+        if (urlIn)  { urlIn.disabled  = false; }
+        if (fileIn) { fileIn.disabled = false; }
     } else {
-        if (fileInput) {
-            fileInput.disabled = true;
-            fileInput.style.display = 'none';
-            fileInput.value = '';
-        }
-        if (audioInput) {
-            audioInput.disabled = true;
-            audioInput.style.display = 'none';
-            audioInput.value = '';
-        }
-        if (fileLabel) {
-            fileLabel.textContent = 'Subida disponible para Listen + escritura o Video + escritura';
-        }
-    }
-
-    if (typeVal === 'writing' || typeVal === 'video_writing') {
-        if (writingRow) {
-            writingRow.classList.add('visible');
-        }
-    }
-
-    if (typeVal === 'fill_paragraph' && freeRow) {
-        freeRow.classList.add('visible');
-        if (freeToggle) {
-            freeToggle.disabled = false;
-        }
-    } else {
-        if (freeToggle) {
-            freeToggle.checked = false;
-            freeToggle.disabled = true;
-        }
-        if (freeState) {
-            freeState.value = '0';
-        }
+        vRow.classList.remove('show');
+        if (urlIn)  { urlIn.disabled  = true; urlIn.value = ''; }
+        if (fileIn) { fileIn.disabled = true; }
     }
 }
 
-function wpBuildTypeOptions(selected) {
-    var current = selected || 'writing';
-    return ''
-        + '<option value="writing"' + (current === 'writing' ? ' selected' : '') + '>Escritura oración</option>'
-        + '<option value="fill_sentence"' + (current === 'fill_sentence' ? ' selected' : '') + '>Escritura oración (completar)</option>'
-        + '<option value="fill_paragraph"' + (current === 'fill_paragraph' ? ' selected' : '') + '>Escritura párrafo</option>'
-        + '<option value="listen_write"' + (current === 'listen_write' ? ' selected' : '') + '>Listen + escritura</option>'
-        + '<option value="video_writing"' + (current === 'video_writing' ? ' selected' : '') + '>Video + escritura</option>';
+function wpeBuildBlock(num) {
+    return '<span class="wpe-block-num">Pregunta ' + num + '</span>'
+        + '<div class="wpe-full"><label class="wpe-label">Tipo</label>'
+        + '<select class="wpe-select wpe-type-sel" name="wp_type[]" onchange="wpeToggle(this)">'
+        + '<option value="writing" selected>✍️ Escritura libre</option>'
+        + '<option value="video_writing">🎬 Video + escritura</option>'
+        + '</select></div>'
+        + '<div class="wpe-full"><label class="wpe-label">Pregunta / enunciado</label>'
+        + '<textarea class="wpe-textarea" name="wp_question[]" rows="2" placeholder="Escribe la pregunta o el enunciado aquí..."></textarea></div>'
+        + '<div class="wpe-full"><label class="wpe-label">Instrucción adicional <span style="font-weight:400;font-size:12px">(opcional)</span></label>'
+        + '<input class="wpe-input" type="text" name="wp_instr[]" placeholder="Ej: Escribe al menos 3 oraciones completas."></div>'
+        + '<div class="wpe-video-row">'
+        + '<input type="hidden" name="wp_media_old[]" value="">'
+        + '<div><label class="wpe-label">URL del video (YouTube / MP4)</label>'
+        + '<input class="wpe-input" type="url" name="wp_media[]" disabled placeholder="https://youtube.com/watch?v=..."></div>'
+        + '<div><label class="wpe-label">O sube un video</label>'
+        + '<input class="wpe-input" type="file" name="wp_video_file[]" accept="video/*" disabled></div>'
+        + '</div>'
+        + '<div class="wpe-rows-row">'
+        + '<div><label class="wpe-label">Respuestas (cantidad)</label>'
+        + '<input class="wpe-input" type="number" name="wp_count[]" min="1" max="20" value="1"></div>'
+        + '<div><label class="wpe-label">Filas por respuesta</label>'
+        + '<input class="wpe-input" type="number" name="wp_rows[]" min="2" max="14" value="6"></div>'
+        + '</div>'
+        + '<button type="button" class="wpe-btn-remove" onclick="wpeRemove(this)">✕ Eliminar</button>';
 }
 
-function wpAdd() {
-    wpCount++;
-    var container = document.getElementById('wpItems');
+function wpeAdd() {
+    wpeCount++;
     var div = document.createElement('div');
-    div.className = 'wp-block';
-    div.innerHTML =
-        '<span class="wp-block-num">Pregunta ' + wpCount + '</span>' +
-        '<div class="wp-col-full"><label>Tipo</label>' +
-        '<select name="wp_type[]" class="wp-type-select" onchange="wpToggleMedia(this)">' +
-        wpBuildTypeOptions('writing') +
-        '</select></div>' +
-        '<div class="wp-col-full"><label>Pregunta / enunciado</label>' +
-        '<textarea name="wp_question[]" rows="2" placeholder="Escribe la pregunta o el enunciado aqu\u00ED..."></textarea></div>' +
-        '<div class="wp-col-full"><label>Instrucci\u00F3n adicional <span style="font-weight:400;font-size:12px;">(opcional)</span></label>' +
-        '<input type="text" name="wp_instr[]" placeholder="Ej: Escribe al menos 3 oraciones completas."></div>' +
-        '<div class="wp-writing-row visible"><div class="wp-writing-inner">' +
-        '<div><label>Cantidad de respuestas (filas enumeradas)</label>' +
-        '<input type="number" name="wp_response_count[]" min="1" max="20" value="1"></div>' +
-        '<div><label>Alto de cada respuesta (filas)</label>' +
-        '<input type="number" name="wp_writing_rows[]" min="2" max="14" value="6"></div>' +
-        '</div>' +
-        '<p style="font-size:11px;color:#57534e;background:#fefce8;border:1px solid #fde68a;border-radius:8px;padding:8px;margin:8px 0 0;">' +
-        'Configura cu\u00E1ntas respuestas debe escribir el estudiante y cu\u00E1ntas filas visibles tendr\u00E1 cada caja de texto.' +
-        '</p></div>' +
-        '<div class="wp-free-row"><label class="wp-scoring-toggle" style="margin-bottom:6px;">' +
-        '<input type="hidden" name="wp_enable_answer_box[]" class="wp-free-answer-state" value="0">' +
-        '<input type="checkbox" class="wp-free-answer-toggle" value="1" disabled> Activar answer box (textarea) para Escritura libre</label>' +
-        '<p style="font-size:11px;color:#57534e;background:#f8fafc;border:1px solid #cbd5e1;border-radius:8px;padding:8px;margin:0;">' +
-        'Si est\u00E1 desactivado, el estudiante ver\u00E1 solo el enunciado y la gu\u00EDa de respuestas. Si est\u00E1 activado, ver\u00E1 la caja para escribir su p\u00E1rrafo.' +
-        '</p></div>' +
-        '<div class="wp-video-row"><div class="wp-video-inner">' +
-        '<input type="hidden" name="wp_media_existing[]" value="">' +
-        '<div><label>URL del video (YouTube / MP4)</label>' +
-        '<input type="url" name="wp_media[]" disabled placeholder="https://youtube.com/watch?v=..."></div>' +
-        '<div><label>o sube un video</label>' +
-        '<input type="file" name="wp_video_file[]" accept="video/*" disabled>' +
-        '<input type="file" name="wp_audio_file[]" accept="audio/mpeg,audio/mp3,audio/*" disabled style="margin-top:8px;display:none;"></div>' +
-        '</div></div>' +
-        '<div class="wp-col-full"><label>Respuestas correctas <span style="font-weight:400;font-size:12px;">(una por l\u00EDnea; se usan para Show Answer y calificaci\u00F3n autom\u00E1tica)</span></label>' +
-        '<textarea name="wp_answers[]" rows="3" placeholder="Respuesta 1&#10;Variante aceptada&#10;Otra forma v\u00E1lida"></textarea></div>' +
-        '<button type="button" class="btn-remove-wp" onclick="wpRemove(this)">\u2716 Eliminar</button>';
-    container.appendChild(div);
+    div.className = 'wpe-block';
+    div.innerHTML = wpeBuildBlock(wpeCount);
+    document.getElementById('wpeItems').appendChild(div);
     div.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    var sel = div.querySelector('.wp-type-select');
-    if (sel) {
-        wpToggleMedia(sel);
-    }
 }
 
-function wpRemove(btn) {
-    var block = btn.closest('.wp-block');
-    if (block) {
-        block.remove();
-        document.querySelectorAll('.wp-block .wp-block-num').forEach(function(span, idx) {
-            span.textContent = 'Pregunta ' + (idx + 1);
-        });
-    }
+function wpeRemove(btn) {
+    btn.closest('.wpe-block').remove();
+    document.querySelectorAll('.wpe-block .wpe-block-num').forEach(function(s, i) {
+        s.textContent = 'Pregunta ' + (i + 1);
+    });
 }
 
-document.querySelectorAll('.wp-type-select').forEach(function(sel) {
-    wpToggleMedia(sel);
-});
-
-document.addEventListener('change', function (e) {
-    if (!e.target || !e.target.classList || !e.target.classList.contains('wp-free-answer-toggle')) {
-        return;
-    }
-    var row = e.target.closest('.wp-free-row');
-    if (!row) { return; }
-    var state = row.querySelector('.wp-free-answer-state');
-    if (state) {
-        state.value = e.target.checked ? '1' : '0';
-    }
-});
+document.querySelectorAll('.wpe-type-sel').forEach(wpeToggle);
 </script>
 <?php
 $content = ob_get_clean();
