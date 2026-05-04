@@ -703,4 +703,4 @@ window.addEventListener('beforeunload', function (e) {
 
 <?php
 $content = ob_get_clean();
-render_activity_editor('🃏 Flashcards Editor', '🃏', $content);
+render_activity_editor('', '', $content);
