@@ -147,94 +147,21 @@ ob_start();
 <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@600;700;800;900&display=swap" rel="stylesheet">
 
 <style>
-:root {
-    --fc-orange: #F97316;
-    --fc-orange-dark: #C2580A;
-    --fc-orange-soft: #FFF0E6;
-    --fc-purple: #7F77DD;
-    --fc-purple-dark: #534AB7;
-    --fc-purple-soft: #EEEDFE;
-    --fc-lila: rgba(127,119,221,.13);
-    --fc-lila-md: rgba(127,119,221,.18);
+:root{
+    --li-purple:#7F77DD;
+    --li-purple-dark:#534AB7;
+    --li-purple-soft:#EEEDFE;
+    --li-purple-mid:#AFA9EC;
+    --li-blue:#2563EB;
+    --li-blue-dark:#1D4ED8;
+    --li-pink:#EC4899;
+    --li-pink-dark:#BE185D;
+    --li-teal:#1D9E75;
+    --li-ink:#271B5D;
+    --li-muted:#7C739B;
+    --li-white:#FFFFFF;
+    --li-shadow:0 24px 60px rgba(83,74,183,.20);
 }
-
-.fc-premium-shell {
-    width: 100%;
-    min-height: calc(100vh - 90px);
-    padding: clamp(14px,2.5vw,34px);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-family: 'Nunito','Segoe UI',system-ui,sans-serif;
-    background: #ffffff;
-    border-radius: 16px;
-    overflow: hidden;
-}
-
-.fc-premium-board {
-    position: relative;
-    width: min(760px,100%);
-    margin: 0 auto;
-    background: #ffffff;
-    border: 1px solid #F0EEF8;
-    border-radius: 24px;
-    padding: clamp(16px,2.6vw,26px);
-    box-shadow: 0 8px 40px rgba(127,119,221,.13);
-}
-
-.fc-premium-progress-fill {
-    height: 100%;
-    width: 0%;
-    background: linear-gradient(90deg, #F97316, #7F77DD);
-    border-radius: 999px;
-    transition: width .45s cubic-bezier(.2,.9,.2,1);
-}
-
-.fc-premium-progress-count {
-    min-width: 74px;
-    text-align: center;
-    padding: 7px 11px;
-    border-radius: 999px;
-    background: #7F77DD;
-    color: #fff;
-    font-size: 13px;
-    font-weight: 900;
-    box-shadow: 0 10px 20px var(--fc-lila);
-}
-
-.fc-premium-arrow {
-    width: clamp(38px,5vw,54px);
-    height: clamp(38px,5vw,54px);
-    border-radius: 50%;
-    border: 1px solid #E4E1F8;
-    background: #ffffff;
-    color: #534AB7;
-    box-shadow: 0 4px 14px var(--fc-lila);
-    font-size: clamp(24px,4vw,34px);
-    font-weight: 900;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: transform .18s ease, box-shadow .18s ease, background .18s ease;
-    z-index: 3;
-}
-
-.fc-premium-face.fc-premium-front {
-    background: #ffffff;
-    border: 1px solid #EDE9FA;
-}
-
-.fc-premium-btn-blue {
-    background: #F97316;
-    box-shadow: 0 6px 18px rgba(249,115,22,.22);
-}
-
-.fc-premium-btn-pink {
-    background: #7F77DD;
-    box-shadow: 0 6px 18px rgba(127,119,221,.18);
-}
-</style>
 
 *{box-sizing:border-box}
 
@@ -246,7 +173,11 @@ ob_start();
     align-items:center;
     justify-content:center;
     font-family:'Nunito','Segoe UI',system-ui,sans-serif;
-    background:#fff;
+    background:
+    radial-gradient(circle at 18% 18%,rgba(255,255,255,.70) 0 9%,transparent 10%),
+    radial-gradient(circle at 84% 16%,rgba(255,255,255,.45) 0 7%,transparent 8%),
+    radial-gradient(circle at 74% 82%,rgba(255,255,255,.40) 0 10%,transparent 11%),
+    #ffffff;
     border-radius:16px;
     overflow:hidden;
 }
@@ -260,11 +191,8 @@ ob_start();
 
 .fc-premium-hero{
     text-align:center;
-    background:var(--li-white);
-    border-bottom:1.5px solid var(--li-topbar-border);
-    padding-bottom:18px;
-    margin-bottom:18px;
-    box-shadow:none;
+    color:var(--li-white);
+    text-shadow:0 2px 16px rgba(83,74,183,.24);
 }
 
 .fc-premium-kicker{
@@ -635,10 +563,9 @@ ob_start();
 <div class="fc-premium-shell">
     <div class="fc-premium-app" id="fc-premium-app">
         <div class="fc-premium-hero">
-            <div class="fc-premium-kicker" style="background:#FFF0E6; border:1px solid #FCDDBF; color:#C2580A;">Activity <span id="fc-premium-kicker-count">1 / <?php echo count($data); ?></span></div>
-            <h1 class="fc-premium-title" style="color:#F97316;"><?php echo htmlspecialchars($viewerTitle, ENT_QUOTES, 'UTF-8'); ?></h1>
-            <div class="fc-premium-badge" style="display:inline-block;margin-top:8px;background:var(--fc-purple-soft);color:var(--fc-purple-dark);border-radius:999px;padding:4px 14px;font-size:13px;font-weight:900;">Vocabulary</div>
-            <p class="fc-premium-subtitle">Let's learn the new vocabulary</p>
+            <div class="fc-premium-kicker">Activity <span id="fc-premium-kicker-count">1 / <?php echo count($data); ?></span></div>
+            <h1 class="fc-premium-title"><?php echo htmlspecialchars($viewerTitle, ENT_QUOTES, 'UTF-8'); ?></h1>
+            <p class="fc-premium-subtitle">Tap the card to reveal the word.</p>
         </div>
 
         <section class="fc-premium-board" id="fc-premium-board">
