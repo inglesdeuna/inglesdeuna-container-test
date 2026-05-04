@@ -206,7 +206,7 @@ ob_start();
 
 .fc-premium-subtitle{
     margin:8px 0 0;
-    color:#7F77DD;
+    color:#9B94BE;
     font-size:clamp(13px,1.8vw,17px);
     font-weight:800;
 }
@@ -795,7 +795,7 @@ function restart(){
 }
 
 function launchConfetti(){
-    var colors = ['#7F77DD','#EC4899','#2563EB','#1D9E75','#F59E0B','#FFFFFF'];
+    var colors = ['#F97316','#7F77DD','#534AB7','#C2580A','#FFF0E6','#EEEDFE'];
     var amount = 80;
 
     for (var i = 0; i < amount; i++) {
