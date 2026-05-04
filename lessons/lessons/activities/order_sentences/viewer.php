@@ -28,36 +28,35 @@ function os_viewer_normalize(mixed $rawData): array
 {
     $default = [
         'title'        => 'Order the Sentences',
-        'instructions' => 'Listen and put the sentences in the correct order.',
-        'media_type'   => 'tts',
+        'instructions' => 'Put the words in the correct order.',
+        'media_type'   => 'video',
         'media_url'    => '',
         'tts_text'     => '',
         'sentences'    => [],
     ];
+
     if ($rawData === null || $rawData === '') return $default;
+
     $d = is_string($rawData) ? json_decode($rawData, true) : $rawData;
     if (!is_array($d)) return $default;
 
     $sentences = [];
     foreach ((array) ($d['sentences'] ?? []) as $s) {
         if (!is_array($s)) continue;
-        $text    = trim((string) ($s['text']    ?? ''));
-        $image   = trim((string) ($s['image']   ?? ''));
-        $display = trim((string) ($s['display'] ?? 'both'));
-        if (!in_array($display, ['text', 'image', 'both'], true)) $display = 'both';
-        if ($text === '' && $image === '') continue;
+
+        $text = trim((string) ($s['text'] ?? ''));
+        if ($text === '') continue;
+
         $sentences[] = [
-            'id'      => trim((string) ($s['id'] ?? uniqid('os_'))),
-            'text'    => $text,
-            'image'   => $image,
-            'display' => $display,
+            'id'   => trim((string) ($s['id'] ?? uniqid('os_'))),
+            'text' => $text,
         ];
     }
 
     return [
         'title'        => trim((string) ($d['title']        ?? '')) ?: $default['title'],
         'instructions' => trim((string) ($d['instructions'] ?? '')) ?: $default['instructions'],
-        'media_type'   => in_array($d['media_type'] ?? '', ['tts', 'video', 'audio', 'none'], true) ? $d['media_type'] : 'tts',
+        'media_type'   => in_array($d['media_type'] ?? '', ['tts', 'video', 'audio', 'none'], true) ? $d['media_type'] : 'video',
         'media_url'    => trim((string) ($d['media_url']    ?? '')),
         'tts_text'     => trim((string) ($d['tts_text']     ?? '')),
         'sentences'    => $sentences,
@@ -67,17 +66,21 @@ function os_viewer_normalize(mixed $rawData): array
 function os_viewer_load(PDO $pdo, string $activityId, string $unit): array
 {
     $row = null;
+
     if ($activityId !== '') {
         $stmt = $pdo->prepare("SELECT id, data FROM activities WHERE id=:id AND type='order_sentences' LIMIT 1");
         $stmt->execute(['id' => $activityId]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
     }
+
     if (!$row && $unit !== '') {
         $stmt = $pdo->prepare("SELECT id, data FROM activities WHERE unit_id=:u AND type='order_sentences' ORDER BY id ASC LIMIT 1");
         $stmt->execute(['u' => $unit]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
     }
+
     if (!$row) return os_viewer_normalize(null);
+
     $p = os_viewer_normalize($row['data'] ?? null);
     $p['id'] = (string) ($row['id'] ?? '');
     return $p;
@@ -97,6 +100,7 @@ if (count($sentences) === 0) {
 
 $correctOrder = array_column($sentences, 'id');
 $shuffled     = $sentences;
+
 $attempt = 0;
 do {
     shuffle($shuffled);
@@ -110,550 +114,672 @@ ob_start();
 
 <style>
 :root {
-    --chip-size: 80px;
-    --red:   #dc2626;
-    --green: #16a34a;
+    --os-orange: #F97316;
+    --os-orange-dark: #C2580A;
+    --os-orange-soft: #FFF0E6;
+    --os-purple: #7F77DD;
+    --os-purple-dark: #534AB7;
+    --os-purple-soft: #EEEDFE;
+    --os-white: #FFFFFF;
+    --os-lila-border: #EDE9FA;
+    --os-muted: #9B94BE;
+    --os-ink: #271B5D;
+    --os-green: #16a34a;
+    --os-red: #dc2626;
 }
 
-/* ── Reset template chrome ── */
+/* Reset template chrome */
 body {
-    margin:      0 !important;
-    padding:     0 !important;
-    background:  #ffffff !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #ffffff !important;
     font-family: 'Nunito', 'Segoe UI', sans-serif !important;
-    overflow:    hidden;
+    overflow: hidden;
 }
+
 .activity-wrapper {
-    max-width:      100% !important;
-    margin:         0 !important;
-    padding:        0 !important;
-    min-height:     100vh;
-    display:        flex !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    min-height: 100vh;
+    display: flex !important;
     flex-direction: column !important;
-    background:     transparent !important;
+    background: transparent !important;
 }
-.top-row { display: none !important; }
+
+.top-row {
+    display: none !important;
+}
+
 .viewer-content {
-    flex:           1 !important;
-    display:        flex !important;
+    flex: 1 !important;
+    display: flex !important;
     flex-direction: column !important;
-    padding:        0 !important;
-    margin:         0 !important;
-    background:     transparent !important;
-    border:         none !important;
-    box-shadow:     none !important;
-    border-radius:  0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
 }
 
-/* ── Page shell ── */
+/* Shell */
 .os-page {
-    display:        flex;
-    flex-direction: column;
-    width:          100vw;
-    height:         100vh;
-    min-height:     0;
-    background:     #ffffff;
-    overflow-y:     auto;
+    width: 100%;
+    min-height: 100vh;
+    padding: clamp(14px, 2.5vw, 34px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #ffffff;
+    overflow-y: auto;
+    box-sizing: border-box;
 }
 
-/* ── Top bar ── */
+.os-app {
+    width: min(860px, 100%);
+    margin: 0 auto;
+}
+
+/* Top bar */
 .os-topbar {
-    flex-shrink:   0;
-    height:        38px;
-    background:    #ffffff;
-    border-bottom: 1px solid #F0EEF8;
-    display:       flex;
-    align-items:   center;
-    padding:       0 16px;
-    gap:           12px;
+    height: 38px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 8px;
+    position: relative;
 }
 
 .os-back-btn {
-    background:    #EEEDFE;
-    border:        1px solid #C4B5FD;
-    color:         #534AB7;
-    font-size:     12px;
-    font-weight:   900;
-    font-family:   'Nunito', sans-serif;
+    position: absolute;
+    left: 0;
+    background: #EEEDFE;
+    border: 1px solid #EDE9FA;
+    color: #534AB7;
+    font-size: 12px;
+    font-weight: 900;
+    font-family: 'Nunito', sans-serif;
     border-radius: 999px;
-    padding:       4px 12px;
-    cursor:        pointer;
-    transition:    filter .15s;
+    padding: 7px 14px;
+    cursor: pointer;
+    transition: filter .15s, transform .15s;
 }
-.os-back-btn:hover { filter: brightness(.94); }
+
+.os-back-btn:hover {
+    filter: brightness(.96);
+    transform: translateY(-1px);
+}
 
 body.presentation-mode .os-back-btn,
-body.embedded-mode     .os-back-btn { display: none; }
+body.embedded-mode .os-back-btn {
+    display: none;
+}
 
 .os-topbar-title {
-    font-family:    'Nunito', sans-serif;
-    font-size:      12px;
-    font-weight:    900;
-    color:          #9B94BE;
+    font-family: 'Nunito', sans-serif;
+    font-size: 12px;
+    font-weight: 900;
+    color: #9B94BE;
     letter-spacing: .1em;
     text-transform: uppercase;
-    margin:         0 auto;
 }
 
-/* ── Bottom bar ── */
-.os-bottombar {
-    flex-shrink: 0;
-    height:      8px;
-    background:  #ffffff;
-}
-
-/* ── Hero section (title above board) ── */
+/* Hero */
 .os-hero {
-    flex-shrink:  0;
-    text-align:   center;
-    padding:      14px 20px 8px;
+    text-align: center;
+    margin-bottom: clamp(14px, 2vw, 22px);
 }
+
 .os-kicker {
-    display:         inline-flex;
-    align-items:     center;
-    padding:         4px 14px;
-    border-radius:   999px;
-    background:      #FFF0E6;
-    border:          1px solid #FCDDBF;
-    color:           #C2580A;
-    font-family:     'Nunito', sans-serif;
-    font-size:       11px;
-    font-weight:     900;
-    letter-spacing:  .08em;
-    text-transform:  uppercase;
-    margin-bottom:   8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 7px 14px;
+    border-radius: 999px;
+    background: #FFF0E6;
+    border: 1px solid #FCDDBF;
+    color: #C2580A;
+    font-family: 'Nunito', sans-serif;
+    font-size: 12px;
+    font-weight: 900;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    margin-bottom: 10px;
 }
+
 .os-hero h1 {
-    font-family:  'Fredoka', sans-serif;
-    font-size:    clamp(22px, 3.5vw, 38px);
-    font-weight:  700;
-    color:        #F97316;
-    margin:       0 0 4px;
-    line-height:  1.1;
+    font-family: 'Fredoka', sans-serif;
+    font-size: clamp(30px, 5.5vw, 58px);
+    font-weight: 700;
+    color: #F97316;
+    margin: 0;
+    line-height: 1.03;
 }
+
 .os-hero p {
     font-family: 'Nunito', sans-serif;
-    font-size:   clamp(13px, 1.8vw, 16px);
+    font-size: clamp(13px, 1.8vw, 17px);
     font-weight: 800;
-    color:       #9B94BE;
-    margin:      0;
+    color: #9B94BE;
+    margin: 8px 0 0;
 }
 
-/* ── Board (white card) ── */
-.os-card {
-    flex:           1;
-    margin:         0 12px 12px;
-    background:     #ffffff;
-    border-radius:  28px;
-    border:         1px solid #F0EEF8;
-    display:        flex;
-    flex-direction: column;
-    overflow:       visible;
-    min-height:     0;
-    position:       relative;
-    box-shadow:     0 8px 40px rgba(127,119,221,.13);
+/* Board */
+.os-board {
+    background: #ffffff;
+    border: 1px solid #F0EEF8;
+    border-radius: 34px;
+    padding: clamp(16px, 2.6vw, 26px);
+    box-shadow: 0 8px 40px rgba(127,119,221,.13);
+    width: min(760px, 100%);
+    margin: 0 auto;
+    box-sizing: border-box;
+    position: relative;
 }
 
-/* ── Media area ── */
+/* Media */
+.os-media-area,
+.os-tts-area {
+    width: 100%;
+    border: 1px solid #EDE9FA;
+    border-radius: 28px;
+    background: #ffffff;
+    box-shadow: 0 12px 36px rgba(127,119,221,.13);
+    overflow: hidden;
+    margin-bottom: 16px;
+}
+
 .os-media-area {
-    flex-shrink:     0;
-    width:           100%;
-    background:      #000;
-    border-radius:   28px 28px 0 0;
-    overflow:        hidden;
-    display:         flex;
-    align-items:     center;
+    display: flex;
+    align-items: center;
     justify-content: center;
 }
+
 .os-media-area video {
-    width:      100%;
+    width: 100%;
     max-height: 38vh;
     object-fit: contain;
-    display:    block;
-    background: #000;
-}
-.os-media-area audio {
-    width:      100%;
-    background: #FAFAFE;
-}
-.os-media-area iframe {
-    width:   100%;
-    height:  38vh;
-    border:  none;
     display: block;
+    background: #000000;
+}
+
+.os-media-area iframe {
+    width: 100%;
+    height: 38vh;
+    border: none;
+    display: block;
+    background: #000000;
 }
 
 .os-tts-area {
-    flex-shrink:     0;
-    width:           100%;
-    background:      #FAFAFE;
-    border-bottom:   1px solid #F0EEF8;
-    border-radius:   28px 28px 0 0;
-    display:         flex;
-    align-items:     center;
+    display: flex;
+    align-items: center;
     justify-content: center;
-    padding:         12px;
+    padding: 18px;
+    box-sizing: border-box;
 }
 
-/* ── Game zone ── */
+.os-tts-area audio {
+    width: 100%;
+}
+
+/* Game zone */
 .os-game-zone {
-    flex:           1;
-    display:        flex;
+    display: flex;
     flex-direction: column;
-    padding:        12px 16px 4px;
-    gap:            10px;
-    overflow:       visible;
-    min-height:     0;
+    gap: 14px;
 }
 
-/* ── Section labels ── */
 .os-zone-label {
-    font-size:      11px;
-    font-weight:    900;
-    color:          #9B94BE;
-    letter-spacing: .1em;
+    font-size: 12px;
+    font-weight: 900;
+    color: #9B94BE;
+    letter-spacing: .08em;
     text-transform: uppercase;
-    font-family:    'Nunito', sans-serif;
-    margin-bottom:  8px;
-    flex-shrink:    0;
+    font-family: 'Nunito', sans-serif;
+    margin-bottom: 8px;
 }
 
-/* ── Drop zone ── */
+/* Drop zone */
 .os-dropzone {
-    flex:          1;
-    min-height:    90px;
-    border:        2px dashed #EDE9FA;
-    border-radius: 16px;
-    background:    #FAFAFE;
-    display:       flex;
-    align-items:   center;
-    flex-wrap:     wrap;
-    gap:           8px;
-    padding:       10px 12px;
-    transition:    border-color .15s, background .15s;
-    overflow-y:    auto;
+    min-height: 132px;
+    border: 2px dashed #EDE9FA;
+    border-radius: 26px;
+    background: #ffffff;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 9px;
+    padding: 14px;
+    transition: border-color .15s, background .15s, box-shadow .15s;
+    overflow-y: auto;
     scrollbar-width: thin;
-    scrollbar-color: #C4B5FD #FAFAFE;
+    scrollbar-color: #C4B5FD #ffffff;
+    box-sizing: border-box;
 }
-.os-dropzone::-webkit-scrollbar       { width: 4px; }
-.os-dropzone::-webkit-scrollbar-thumb { background: #C4B5FD; border-radius: 2px; }
+
+.os-dropzone::-webkit-scrollbar {
+    width: 4px;
+}
+
+.os-dropzone::-webkit-scrollbar-thumb {
+    background: #C4B5FD;
+    border-radius: 2px;
+}
+
 .os-dropzone.drag-over {
     border-color: #7F77DD;
-    background:   rgba(127,119,221,.06);
+    background: #FAFAFE;
+    box-shadow: 0 8px 24px rgba(127,119,221,.10);
 }
+
 .os-dz-hint {
-    width:          100%;
-    text-align:     center;
-    font-size:      13px;
-    font-weight:    800;
-    color:          #9B94BE;
+    width: 100%;
+    text-align: center;
+    font-size: clamp(13px, 1.8vw, 15px);
+    font-weight: 900;
+    color: #9B94BE;
     pointer-events: none;
-    font-family:    'Nunito', sans-serif;
+    font-family: 'Nunito', sans-serif;
+    padding: 24px 8px;
+    box-sizing: border-box;
 }
 
-/* ── Chip bank ── */
+/* Sentence bank */
 .os-bank {
-    flex-shrink:     0;
-    display:         flex;
-    flex-wrap:       wrap;
-    gap:             8px;
-    justify-content: center;
-    padding:         4px 0;
-    overflow-x:      auto;
-    scrollbar-width: thin;
-    scrollbar-color: #C4B5FD transparent;
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+    align-items: stretch;
 }
 
-/* ── Chips ── */
+/* Sentence cards */
 .os-chip {
-    width:           var(--chip-size);
-    height:          var(--chip-size);
-    border-radius:   12px;
-    background:      #ffffff;
-    border:          1.5px solid #EDE9FA;
-    display:         flex;
-    align-items:     center;
-    justify-content: center;
-    cursor:          grab;
-    user-select:     none;
-    position:        relative;
-    flex-shrink:     0;
-    transition:      transform .15s cubic-bezier(.34,1.4,.64,1), border-color .15s, box-shadow .15s;
-    overflow:        hidden;
-    box-shadow:      0 4px 12px rgba(127,119,221,.10);
+    width: 100%;
+    min-height: 48px;
+    padding: 13px 46px 13px 18px;
+    border-radius: 18px;
+    background: #ffffff;
+    border: 1px solid #EDE9FA;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    cursor: grab;
+    user-select: none;
+    position: relative;
+    transition: transform .15s cubic-bezier(.34,1.4,.64,1), border-color .15s, box-shadow .15s, background .15s;
+    box-shadow: 0 4px 14px rgba(127,119,221,.13);
+    box-sizing: border-box;
 }
+
 .os-chip:hover {
-    transform:    translateY(-3px) scale(1.04);
+    transform: translateY(-2px) scale(1.01);
     border-color: #7F77DD;
-    box-shadow:   0 8px 20px rgba(127,119,221,.18);
+    box-shadow: 0 16px 28px rgba(127,119,221,.18);
 }
+
 .os-chip.os-dragging {
-    opacity:   .35;
-    transform: scale(1.04);
-    cursor:    grabbing;
+    opacity: .35;
+    transform: scale(1.01);
+    cursor: grabbing;
 }
+
 .os-chip.os-selected {
     border-color: #7F77DD;
-    box-shadow:   0 0 0 3px rgba(127,119,221,.25);
+    box-shadow: 0 0 0 3px rgba(127,119,221,.25);
 }
+
 .os-chip.in-answer {
     border-color: #7F77DD;
-    border-width: 2px;
 }
-.os-chip img {
-    width:          100%;
-    height:         100%;
-    object-fit:     contain;
-    pointer-events: none;
-    display:        block;
-}
-.os-chip-label {
-    font-family: 'Nunito', sans-serif;
-    font-size:   11px;
-    font-weight: 800;
-    color:       #534AB7;
-    text-align:  center;
-    padding:     3px 4px;
-    line-height: 1.2;
-    word-break:  break-word;
-    hyphens:     auto;
-}
-.os-chip-badge {
-    position:        absolute;
-    top:             3px;
-    left:            3px;
-    width:           18px;
-    height:          18px;
-    background:      #F97316;
-    color:           #fff;
-    border-radius:   50%;
-    font-size:       10px;
-    font-weight:     900;
-    font-family:     'Nunito', sans-serif;
-    display:         none;
-    align-items:     center;
-    justify-content: center;
-    z-index:         2;
-}
-.os-chip.in-answer .os-chip-badge { display: flex; }
-.os-chip.correct-pos { border-color: var(--green); box-shadow: 0 0 0 2px var(--green); }
-.os-chip.wrong-pos   { border-color: var(--red);   box-shadow: 0 0 0 2px var(--red); }
 
-/* ── Controls ── */
-.os-controls {
-    flex-shrink:     0;
-    border-top:      1px solid #F0EEF8;
-    padding:         10px 14px 14px;
-    display:         flex;
-    align-items:     center;
-    gap:             clamp(8px,1.4vw,12px);
-    flex-wrap:       wrap;
+.os-chip-label {
+    font-family: 'Fredoka', sans-serif;
+    font-size: clamp(17px, 2.4vw, 24px);
+    font-weight: 600;
+    color: #534AB7;
+    text-align: left;
+    line-height: 1.18;
+    padding: 0;
+    word-break: normal;
+    overflow-wrap: anywhere;
+}
+
+.os-chip-badge {
+    position: absolute;
+    right: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    min-width: 26px;
+    height: 26px;
+    padding: 0 8px;
+    background: #7F77DD;
+    color: #ffffff;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 900;
+    font-family: 'Nunito', sans-serif;
+    display: none;
+    align-items: center;
     justify-content: center;
-    overflow:        visible;
-    border-radius:   0 0 28px 28px;
+    box-sizing: border-box;
+}
+
+.os-chip.in-answer .os-chip-badge {
+    display: flex;
+}
+
+.os-chip.correct-pos {
+    border-color: #16a34a;
+    box-shadow: 0 0 0 2px #16a34a;
+}
+
+.os-chip.wrong-pos {
+    border-color: #dc2626;
+    box-shadow: 0 0 0 2px #dc2626;
+}
+
+/* Controls */
+.os-controls {
+    border-top: 1px solid #F0EEF8;
+    padding-top: 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    justify-content: center;
 }
 
 .os-btn {
-    display:         inline-flex;
-    align-items:     center;
+    display: inline-flex;
+    align-items: center;
     justify-content: center;
-    gap:             5px;
-    padding:         9px 20px;
-    border-radius:   999px;
-    font-family:     'Nunito', sans-serif;
-    font-size:       13px;
-    font-weight:     900;
-    cursor:          pointer;
-    transition:      transform .12s, filter .12s;
-    white-space:     nowrap;
+    padding: 13px 20px;
+    min-width: clamp(104px, 16vw, 146px);
+    border-radius: 999px;
+    font-family: 'Nunito', sans-serif;
+    font-size: 13px;
+    font-weight: 900;
+    cursor: pointer;
+    transition: transform .12s, filter .12s, box-shadow .12s;
+    white-space: nowrap;
 }
-.os-btn:hover    { filter: brightness(1.07); transform: translateY(-1px); }
-.os-btn:disabled { opacity: .45; cursor: default; transform: none; filter: none; }
 
-/* Check Order — white with purple border */
+.os-btn:hover {
+    filter: brightness(1.07);
+    transform: translateY(-1px);
+}
+
+.os-btn:disabled {
+    opacity: .45;
+    cursor: default;
+    transform: none;
+    filter: none;
+}
+
 .os-btn-check {
-    background:  #ffffff;
-    color:       #534AB7;
-    border:      1.5px solid #EDE9FA;
-    box-shadow:  0 4px 12px rgba(127,119,221,.10);
-}
-/* Show Answer — purple */
-.os-btn-show {
-    background: #7F77DD;
-    color:      #ffffff;
-    border:     none;
-    box-shadow: 0 6px 18px rgba(127,119,221,.18);
-}
-/* Next — orange */
-.os-btn-next {
     background: #F97316;
-    color:      #ffffff;
-    border:     none;
+    color: #ffffff;
+    border: none;
     box-shadow: 0 6px 18px rgba(249,115,22,.22);
 }
-/* TTS / Listen — purple */
+
+.os-btn-show {
+    background: #7F77DD;
+    color: #ffffff;
+    border: none;
+    box-shadow: 0 6px 18px rgba(127,119,221,.18);
+}
+
+.os-btn-next {
+    background: #F97316;
+    color: #ffffff;
+    border: none;
+    box-shadow: 0 6px 18px rgba(249,115,22,.22);
+}
+
 .os-btn-tts {
-    background:    #7F77DD;
-    color:         #ffffff;
-    border:        none;
-    box-shadow:    0 6px 18px rgba(127,119,221,.18);
-    padding:       10px 24px;
-    font-size:     14px;
+    background: #7F77DD;
+    color: #ffffff;
+    border: none;
+    box-shadow: 0 6px 18px rgba(127,119,221,.18);
 }
 
 #os-feedback {
     font-family: 'Nunito', sans-serif;
-    font-size:   13px;
-    font-weight: 800;
-    text-align:  center;
-    min-height:  18px;
-    width:       100%;
+    font-size: 13px;
+    font-weight: 900;
+    text-align: center;
+    min-height: 18px;
+    width: 100%;
 }
-#os-feedback.good { color: var(--green); }
-#os-feedback.bad  { color: var(--red); }
 
-/* ── Completed overlay ── */
+#os-feedback.good {
+    color: #16a34a;
+}
+
+#os-feedback.bad {
+    color: #dc2626;
+}
+
+/* Completed overlay */
 .os-completed {
-    display:         none;
-    position:        absolute;
-    inset:           0;
-    background:      #ffffff;
-    border-radius:   28px;
-    flex-direction:  column;
-    align-items:     center;
+    display: none;
+    position: absolute;
+    inset: 0;
+    background: #ffffff;
+    border-radius: 34px;
+    flex-direction: column;
+    align-items: center;
     justify-content: center;
-    text-align:      center;
-    padding:         40px 24px;
-    z-index:         20;
+    text-align: center;
+    padding: 40px 24px;
+    z-index: 20;
 }
-.os-completed.active { display: flex; }
-.os-completed-icon   { font-size: 64px; margin-bottom: 12px; line-height: 1; }
-.os-completed-title  {
+
+.os-completed.active {
+    display: flex;
+}
+
+.os-completed-icon {
+    font-size: 64px;
+    margin-bottom: 12px;
+    line-height: 1;
+}
+
+.os-completed-title {
     font-family: 'Fredoka', sans-serif;
-    font-size:   30px;
+    font-size: clamp(30px, 5.5vw, 58px);
     font-weight: 700;
-    color:       #F97316;
-    margin:      0 0 8px;
+    color: #F97316;
+    margin: 0 0 8px;
 }
-.os-completed-text { font-size: 14px; font-weight: 700; color: #9B94BE; margin: 0 0 6px; }
+
+.os-completed-text {
+    font-family: 'Nunito', sans-serif;
+    font-size: clamp(13px, 1.8vw, 17px);
+    font-weight: 800;
+    color: #9B94BE;
+    margin: 0 0 6px;
+}
+
 .os-score {
     font-family: 'Fredoka', sans-serif;
-    font-size:   20px;
+    font-size: clamp(20px, 3vw, 28px);
     font-weight: 700;
-    color:       #534AB7;
-    margin:      0 0 24px;
+    color: #534AB7;
+    margin: 0 0 24px;
 }
-.os-restart-btn {
-    background:    #7F77DD;
-    color:         #fff;
-    border:        none;
-    border-radius: 999px;
-    padding:       11px 28px;
-    font-family:   'Nunito', sans-serif;
-    font-size:     14px;
-    font-weight:   900;
-    cursor:        pointer;
-    transition:    filter .15s, transform .15s;
-    box-shadow:    0 6px 18px rgba(127,119,221,.22);
-}
-.os-restart-btn:hover { filter: brightness(1.07); transform: scale(1.04); }
 
-/* ── Responsive ── */
-@media (max-width: 600px) {
-    :root         { --chip-size: 64px; }
-    .os-card      { margin: 0 8px 10px; border-radius: 20px; }
-    .os-hero      { padding: 10px 16px 6px; }
-    .os-game-zone { padding: 8px 10px 4px; gap: 8px; }
-    .os-btn       { padding: 8px 14px; font-size: 12px; }
+.os-restart-btn {
+    background: #7F77DD;
+    color: #ffffff;
+    border: none;
+    border-radius: 999px;
+    padding: 13px 24px;
+    min-width: clamp(104px, 16vw, 146px);
+    font-family: 'Nunito', sans-serif;
+    font-size: 13px;
+    font-weight: 900;
+    cursor: pointer;
+    transition: filter .15s, transform .15s;
+    box-shadow: 0 6px 18px rgba(127,119,221,.18);
+}
+
+.os-restart-btn:hover {
+    filter: brightness(1.07);
+    transform: scale(1.04);
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+    body {
+        overflow: auto;
+    }
+
+    .os-page {
+        min-height: 100vh;
+        padding: 12px;
+        border-radius: 12px;
+        align-items: flex-start;
+    }
+
+    .os-app {
+        width: 100%;
+    }
+
+    .os-topbar {
+        margin-bottom: 4px;
+    }
+
+    .os-back-btn {
+        left: -4px;
+        padding: 6px 11px;
+    }
+
+    .os-board {
+        border-radius: 26px;
+        padding: 14px;
+        width: 100%;
+    }
+
+    .os-media-area,
+    .os-tts-area {
+        border-radius: 22px;
+        margin-bottom: 12px;
+    }
+
+    .os-media-area video,
+    .os-media-area iframe {
+        max-height: 32vh;
+        height: 32vh;
+    }
+
+    .os-dropzone {
+        border-radius: 22px;
+        min-height: 120px;
+        padding: 12px;
+    }
+
+    .os-chip {
+        min-height: 46px;
+        padding: 12px 44px 12px 14px;
+        border-radius: 16px;
+    }
+
+    .os-controls {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 9px;
+    }
+
+    .os-btn {
+        width: 100%;
+    }
+
+    .os-completed {
+        border-radius: 26px;
+    }
 }
 </style>
 
 <div class="os-page">
+    <div class="os-app">
 
-    <div class="os-topbar">
-        <button class="os-back-btn" onclick="history.back()">← Back</button>
-        <span class="os-topbar-title">Order the Sentences</span>
-    </div>
-
-    <!-- Hero: title above the board -->
-    <div class="os-hero">
-        <div class="os-kicker">✏️ Activity</div>
-        <h1><?= htmlspecialchars($viewerTitle, ENT_QUOTES, 'UTF-8') ?></h1>
-        <p><?= htmlspecialchars((string)($activity['instructions'] ?? 'Put the sentences in the correct order.'), ENT_QUOTES, 'UTF-8') ?></p>
-    </div>
-
-    <div class="os-card">
-
-        <?php if (($activity['media_type'] ?? '') === 'video' && !empty($activity['media_url'])): ?>
-        <div class="os-media-area">
-            <video controls preload="metadata"
-                   src="<?= htmlspecialchars($activity['media_url'], ENT_QUOTES, 'UTF-8') ?>">
-            </video>
+        <div class="os-topbar">
+            <button class="os-back-btn" onclick="history.back()">Back</button>
+            <span class="os-topbar-title">Sentence Ordering</span>
         </div>
 
-        <?php elseif (($activity['media_type'] ?? '') === 'audio' && !empty($activity['media_url'])): ?>
-        <div class="os-tts-area">
-            <audio controls src="<?= htmlspecialchars($activity['media_url'], ENT_QUOTES, 'UTF-8') ?>"></audio>
+        <div class="os-hero">
+            <div class="os-kicker">Activity</div>
+            <h1><?= htmlspecialchars($viewerTitle, ENT_QUOTES, 'UTF-8') ?></h1>
+            <p><?= htmlspecialchars((string)($activity['instructions'] ?? 'Put the words in the correct order.'), ENT_QUOTES, 'UTF-8') ?></p>
         </div>
 
-        <?php elseif (($activity['media_type'] ?? '') === 'tts'): ?>
-        <div class="os-tts-area">
-            <button type="button" id="os-tts-btn" class="os-btn os-btn-tts">🔊 Listen</button>
-        </div>
-        <?php endif; ?>
+        <div class="os-board">
 
-        <div class="os-game-zone" id="os-game-zone">
-
-            <div>
-                <div class="os-zone-label">Your answer — drag here in order</div>
-                <div class="os-dropzone" id="os-dropzone">
-                    <span class="os-dz-hint" id="os-dz-hint">Drag the pictures here in the correct order</span>
+            <?php if (($activity['media_type'] ?? '') === 'video' && !empty($activity['media_url'])): ?>
+                <div class="os-media-area">
+                    <video controls preload="metadata"
+                           src="<?= htmlspecialchars($activity['media_url'], ENT_QUOTES, 'UTF-8') ?>">
+                    </video>
                 </div>
-            </div>
 
-            <div>
-                <div class="os-zone-label">Sentences</div>
-                <div class="os-bank" id="os-bank">
-                    <?php foreach ($shuffled as $s):
-                        $disp = $s['display'] ?? 'both';
-                    ?>
-                    <div class="os-chip"
-                         draggable="true"
-                         data-id="<?= htmlspecialchars($s['id'], ENT_QUOTES, 'UTF-8') ?>">
-                        <div class="os-chip-badge">?</div>
-                        <?php if ($disp !== 'text' && !empty($s['image'])): ?>
-                            <img src="<?= htmlspecialchars($s['image'], ENT_QUOTES, 'UTF-8') ?>"
-                                 alt="<?= htmlspecialchars($s['text'], ENT_QUOTES, 'UTF-8') ?>">
-                        <?php endif; ?>
-                        <?php if ($disp !== 'image' && !empty($s['text'])): ?>
-                            <span class="os-chip-label"><?= htmlspecialchars($s['text'], ENT_QUOTES, 'UTF-8') ?></span>
-                        <?php endif; ?>
+            <?php elseif (($activity['media_type'] ?? '') === 'audio' && !empty($activity['media_url'])): ?>
+                <div class="os-tts-area">
+                    <audio controls src="<?= htmlspecialchars($activity['media_url'], ENT_QUOTES, 'UTF-8') ?>"></audio>
+                </div>
+
+            <?php elseif (($activity['media_type'] ?? '') === 'tts'): ?>
+                <div class="os-tts-area">
+                    <button type="button" id="os-tts-btn" class="os-btn os-btn-tts">Listen</button>
+                </div>
+            <?php endif; ?>
+
+            <div class="os-game-zone" id="os-game-zone">
+
+                <div>
+                    <div class="os-zone-label">Your answer — drag here in order</div>
+                    <div class="os-dropzone" id="os-dropzone">
+                        <span class="os-dz-hint" id="os-dz-hint">Drag the sentences here in the correct order</span>
                     </div>
-                    <?php endforeach; ?>
                 </div>
+
+                <div>
+                    <div class="os-zone-label">Sentences</div>
+                    <div class="os-bank" id="os-bank">
+                        <?php foreach ($shuffled as $s): ?>
+                            <div class="os-chip"
+                                 draggable="true"
+                                 data-id="<?= htmlspecialchars($s['id'], ENT_QUOTES, 'UTF-8') ?>">
+                                <div class="os-chip-badge">?</div>
+                                <span class="os-chip-label"><?= htmlspecialchars($s['text'], ENT_QUOTES, 'UTF-8') ?></span>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+
+                <div class="os-controls">
+                    <button type="button" class="os-btn os-btn-check" id="os-check" disabled>Check Order</button>
+                    <button type="button" class="os-btn os-btn-show"  id="os-show">Show Answer</button>
+                    <button type="button" class="os-btn os-btn-next"  id="os-next">Next</button>
+                    <div id="os-feedback"></div>
+                </div>
+
             </div>
 
-            <div class="os-controls">
-                <button type="button" class="os-btn os-btn-check" id="os-check" disabled>✔ Check Order</button>
-                <button type="button" class="os-btn os-btn-show"  id="os-show">👁 Show Answer</button>
-                <button type="button" class="os-btn os-btn-next"  id="os-next">Next ▶</button>
-                <div id="os-feedback"></div>
+            <div class="os-completed" id="os-completed">
+                <div class="os-completed-icon">✅</div>
+                <h2 class="os-completed-title"><?= htmlspecialchars($viewerTitle, ENT_QUOTES, 'UTF-8') ?></h2>
+                <p class="os-completed-text">You've completed this activity. Great job!</p>
+                <p class="os-score" id="os-score"></p>
+                <button type="button" class="os-restart-btn" onclick="osRestart()">Try Again</button>
             </div>
 
         </div>
-
-        <div class="os-completed" id="os-completed">
-            <div class="os-completed-icon">✅</div>
-            <h2 class="os-completed-title"><?= htmlspecialchars($viewerTitle, ENT_QUOTES, 'UTF-8') ?></h2>
-            <p class="os-completed-text">You've completed this activity. Great job!</p>
-            <p class="os-score" id="os-score"></p>
-            <button type="button" class="os-restart-btn" onclick="osRestart()">↺ Try Again</button>
-        </div>
-
     </div>
-
-    <div class="os-bottombar"></div>
-
 </div>
 
 <audio id="os-win-sound"  src="../../hangman/assets/win.mp3"     preload="auto"></audio>
@@ -759,6 +885,7 @@ function persistScore(pct, errors, total) {
         '&activity_total='  + total +
         '&activity_id='     + encodeURIComponent(OS_ACTIVITY_ID) +
         '&activity_type=order_sentences';
+
     return fetch(url, { method: 'GET', credentials: 'same-origin', cache: 'no-store' })
         .then(function(r){ return !!(r && r.ok); })
         .catch(function(){ return false; });
@@ -773,9 +900,14 @@ function navigateReturn(pct, errors, total) {
         '&activity_total='  + total +
         '&activity_id='     + encodeURIComponent(OS_ACTIVITY_ID) +
         '&activity_type=order_sentences';
+
     try {
-        if (window.top && window.top !== window.self) { window.top.location.href = url; return; }
+        if (window.top && window.top !== window.self) {
+            window.top.location.href = url;
+            return;
+        }
     } catch(e) {}
+
     window.location.href = url;
 }
 
@@ -783,28 +915,34 @@ async function showCompleted() {
     done = true;
     completedEl.classList.add('active');
     playSound(doneSound);
+
     var pct    = OS_TOTAL > 0 ? Math.round((correctCount / OS_TOTAL) * 100) : 0;
     var errors = Math.max(0, OS_TOTAL - correctCount);
+
     scoreEl.textContent = 'Score: ' + correctCount + ' / ' + OS_TOTAL + ' (' + pct + '%)';
+
     var ok = await persistScore(pct, errors, OS_TOTAL);
     if (!ok) navigateReturn(pct, errors, OS_TOTAL);
 }
 
 checkBtn.addEventListener('click', function() {
     if (done) return;
+
     if (answerChips().length < OS_TOTAL) {
-        feedbackEl.textContent = 'Place all pictures first.';
+        feedbackEl.textContent = 'Place all sentences first.';
         feedbackEl.className   = 'bad';
         return;
     }
+
     attempts++;
     var order = userOrder();
     var n     = countCorrect(order);
+
     markPositions(order);
 
     if (n === OS_TOTAL) {
         correctCount = n;
-        feedbackEl.textContent = '✅ Correct! Well done!';
+        feedbackEl.textContent = 'Correct! Well done!';
         feedbackEl.className   = 'good';
         playSound(winSound);
         done = true;
@@ -812,7 +950,7 @@ checkBtn.addEventListener('click', function() {
         showBtn.disabled  = true;
     } else if (attempts >= 2) {
         correctCount = n;
-        feedbackEl.textContent = '❌ ' + n + '/' + OS_TOTAL + ' correct — showing the right order.';
+        feedbackEl.textContent = n + '/' + OS_TOTAL + ' correct — showing the right order.';
         feedbackEl.className   = 'bad';
         playSound(loseSound);
         revealAnswer();
@@ -820,7 +958,7 @@ checkBtn.addEventListener('click', function() {
         checkBtn.disabled = true;
         showBtn.disabled  = true;
     } else {
-        feedbackEl.textContent = '❌ Not quite — ' + n + '/' + OS_TOTAL + ' in place. Try again!';
+        feedbackEl.textContent = 'Not quite — ' + n + '/' + OS_TOTAL + ' in place. Try again!';
         feedbackEl.className   = 'bad';
         playSound(loseSound);
     }
@@ -828,9 +966,10 @@ checkBtn.addEventListener('click', function() {
 
 showBtn.addEventListener('click', function() {
     if (done) return;
+
     correctCount = 0;
     revealAnswer();
-    feedbackEl.textContent = '👁 Correct order shown.';
+    feedbackEl.textContent = 'Correct order shown.';
     feedbackEl.className   = 'good';
     done = true;
     checkBtn.disabled = true;
@@ -844,7 +983,11 @@ nextBtn.addEventListener('click', function() {
 
 function attachChip(chip) {
     chip.addEventListener('dragstart', function(e) {
-        if (done) { e.preventDefault(); return; }
+        if (done) {
+            e.preventDefault();
+            return;
+        }
+
         dragged = chip;
         e.dataTransfer.effectAllowed = 'move';
         setTimeout(function(){ chip.classList.add('os-dragging'); }, 0);
@@ -854,15 +997,19 @@ function attachChip(chip) {
         chip.classList.remove('os-dragging');
         dropzone.classList.remove('drag-over');
         dragged = null;
+
         if (!done) clearFeedbackColors();
         updateUI();
     });
 
     chip.addEventListener('dragover', function(e) {
         e.preventDefault();
+
         if (!dragged || dragged === chip || done) return;
+
         var r      = chip.getBoundingClientRect();
-        var before = e.clientX < r.left + r.width / 2;
+        var before = e.clientY < r.top + r.height / 2;
+
         chip.parentElement.insertBefore(dragged, before ? chip : chip.nextSibling);
         updateUI();
     });
@@ -879,11 +1026,13 @@ function attachChip(chip) {
                 updateUI();
                 return;
             }
+
             if (touchSel === chip) {
                 chip.classList.remove('os-selected');
                 touchSel = null;
                 return;
             }
+
             if (touchSel) touchSel.classList.remove('os-selected');
             touchSel = chip;
             chip.classList.add('os-selected');
@@ -891,12 +1040,13 @@ function attachChip(chip) {
         }
 
         if (chip.parentElement === bank) {
-            dropzone.insertBefore(chip, hint.nextSibling || null);
+            dropzone.appendChild(chip);
             chip.classList.add('in-answer');
         } else {
             bank.appendChild(chip);
             chip.classList.remove('in-answer', 'correct-pos', 'wrong-pos');
         }
+
         if (!done) clearFeedbackColors();
         updateUI();
     });
@@ -904,14 +1054,19 @@ function attachChip(chip) {
 
 dropzone.addEventListener('dragover', function(e) {
     e.preventDefault();
+
     if (!dragged || done) return;
+
     dropzone.classList.add('drag-over');
+
     var target = e.target.closest ? e.target.closest('.os-chip') : null;
+
     if (!target || target === dragged) {
         dropzone.appendChild(dragged);
         dragged.classList.add('in-answer');
         if (!done) clearFeedbackColors();
     }
+
     updateUI();
 });
 
@@ -927,13 +1082,17 @@ dropzone.addEventListener('drop', function(e) {
 
 bank.addEventListener('dragover', function(e) {
     e.preventDefault();
+
     if (!dragged || done) return;
+
     var target = e.target.closest ? e.target.closest('.os-chip') : null;
+
     if (!target || target === dragged) {
         bank.appendChild(dragged);
         dragged.classList.remove('in-answer', 'correct-pos', 'wrong-pos');
         if (!done) clearFeedbackColors();
     }
+
     updateUI();
 });
 
@@ -959,14 +1118,19 @@ window.osRestart = function() {
     feedbackEl.className   = '';
 
     var chips = Array.from(document.querySelectorAll('.os-chip'));
+
     for (var i = chips.length - 1; i > 0; i--) {
         var j   = Math.floor(Math.random() * (i + 1));
-        var tmp = chips[i]; chips[i] = chips[j]; chips[j] = tmp;
+        var tmp = chips[i];
+        chips[i] = chips[j];
+        chips[j] = tmp;
     }
+
     chips.forEach(function(c) {
         c.classList.remove('correct-pos', 'wrong-pos', 'os-dragging', 'os-selected', 'in-answer');
         bank.appendChild(c);
     });
+
     updateUI();
 };
 
@@ -988,62 +1152,111 @@ var ttsSegStart = 0;
 var ttsUtter    = null;
 
 function ttsPreferredVoice(lang) {
-    var voices  = window.speechSynthesis ? window.speechSynthesis.getVoices() : [];
+    var voices = window.speechSynthesis ? window.speechSynthesis.getVoices() : [];
     if (!voices.length) return null;
-    var pre     = lang.split('-')[0].toLowerCase();
+
+    var pre = lang.split('-')[0].toLowerCase();
+
     var matches = voices.filter(function(v) {
         var vl = String(v.lang || '').toLowerCase();
         return vl === lang.toLowerCase() || vl.startsWith(pre + '-') || vl.startsWith(pre + '_');
     });
+
     if (!matches.length) return voices[0] || null;
-    var hints  = ['female','woman','zira','samantha','karen','aria','jenny','emma','olivia','ava'];
+
+    var hints = ['female','woman','zira','samantha','karen','aria','jenny','emma','olivia','ava'];
+
     var female = matches.find(function(v) {
-        var label = (String(v.name||'')+' '+String(v.voiceURI||'')).toLowerCase();
+        var label = (String(v.name || '') + ' ' + String(v.voiceURI || '')).toLowerCase();
         return hints.some(function(h){ return label.indexOf(h) !== -1; });
     });
+
     return female || matches[0];
 }
 
 function ttsStart() {
     var remaining = TTS_TEXT.slice(Math.max(0, ttsOffset));
-    if (!remaining.trim()) { ttsSpeaking = false; ttsPaused = false; ttsOffset = 0; return; }
+
+    if (!remaining.trim()) {
+        ttsSpeaking = false;
+        ttsPaused   = false;
+        ttsOffset   = 0;
+        return;
+    }
+
     speechSynthesis.cancel();
+
     ttsSegStart     = ttsOffset;
     ttsUtter        = new SpeechSynthesisUtterance(remaining);
     ttsUtter.lang   = 'en-US';
     ttsUtter.rate   = 0.7;
     ttsUtter.pitch  = 1;
     ttsUtter.volume = 1;
+
     var pref = ttsPreferredVoice('en-US');
     if (pref) ttsUtter.voice = pref;
-    ttsUtter.onstart    = function(){ ttsSpeaking = true;  ttsPaused = false; };
-    ttsUtter.onpause    = function(){ ttsPaused   = true;  ttsSpeaking = true; };
-    ttsUtter.onresume   = function(){ ttsPaused   = false; ttsSpeaking = true; };
-    ttsUtter.onboundary = function(ev) {
-        if (typeof ev.charIndex === 'number')
-            ttsOffset = Math.max(ttsSegStart, Math.min(TTS_TEXT.length, ttsSegStart + ev.charIndex));
+
+    ttsUtter.onstart = function(){
+        ttsSpeaking = true;
+        ttsPaused   = false;
     };
-    ttsUtter.onend   = function(){ if (!ttsPaused){ ttsSpeaking = false; ttsPaused = false; ttsOffset = 0; } };
-    ttsUtter.onerror = function(){ ttsSpeaking = false; ttsPaused = false; ttsOffset = 0; };
+
+    ttsUtter.onpause = function(){
+        ttsPaused   = true;
+        ttsSpeaking = true;
+    };
+
+    ttsUtter.onresume = function(){
+        ttsPaused   = false;
+        ttsSpeaking = true;
+    };
+
+    ttsUtter.onboundary = function(ev) {
+        if (typeof ev.charIndex === 'number') {
+            ttsOffset = Math.max(ttsSegStart, Math.min(TTS_TEXT.length, ttsSegStart + ev.charIndex));
+        }
+    };
+
+    ttsUtter.onend = function(){
+        if (!ttsPaused) {
+            ttsSpeaking = false;
+            ttsPaused   = false;
+            ttsOffset   = 0;
+        }
+    };
+
+    ttsUtter.onerror = function(){
+        ttsSpeaking = false;
+        ttsPaused   = false;
+        ttsOffset   = 0;
+    };
+
     speechSynthesis.speak(ttsUtter);
 }
 
 if (ttsBtn) {
     ttsBtn.addEventListener('click', function() {
         if (!TTS_TEXT.trim()) return;
+
         if (speechSynthesis.paused || ttsPaused) {
             speechSynthesis.resume();
-            ttsSpeaking = true; ttsPaused = false;
+            ttsSpeaking = true;
+            ttsPaused   = false;
+
             setTimeout(function(){
                 if (!speechSynthesis.speaking && ttsOffset < TTS_TEXT.length) ttsStart();
             }, 80);
+
             return;
         }
+
         if (speechSynthesis.speaking && !speechSynthesis.paused) {
             speechSynthesis.pause();
-            ttsSpeaking = true; ttsPaused = true;
+            ttsSpeaking = true;
+            ttsPaused   = true;
             return;
         }
+
         speechSynthesis.cancel();
         ttsOffset = 0;
         ttsStart();
