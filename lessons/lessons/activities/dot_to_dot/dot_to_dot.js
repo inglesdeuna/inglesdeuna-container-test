@@ -98,7 +98,7 @@ function setImageVisibility() {
 function drawPermanentLines() {
   if (points.length < 2) return;
 
-  ctx.strokeStyle = "#38bdf8";
+  ctx.strokeStyle = "#7F77DD";
   ctx.lineWidth = 5;
   ctx.lineCap = "round";
   ctx.lineJoin = "round";
@@ -124,7 +124,7 @@ function drawDraggingLine() {
   if (!dragging || completed) return;
   if (current >= points.length) return;
 
-  ctx.strokeStyle = "rgba(56,189,248,0.55)";
+  ctx.strokeStyle = "rgba(127,119,221,0.55)";
   ctx.lineWidth = 4;
   ctx.lineCap = "round";
   ctx.setLineDash([10, 8]);
@@ -146,20 +146,20 @@ function drawDots() {
     ctx.arc(point.x, point.y, active ? 20 : 16, 0, Math.PI * 2);
 
     if (done) {
-      ctx.fillStyle = "#22c55e";
+      ctx.fillStyle = "#7F77DD";
     } else if (active) {
-      ctx.fillStyle = "#f97316";
+      ctx.fillStyle = "#F97316";
     } else {
       ctx.fillStyle = "#ffffff";
     }
 
     ctx.fill();
 
-    ctx.strokeStyle = "rgba(255,255,255,0.95)";
+    ctx.strokeStyle = done || active ? "rgba(255,255,255,0.95)" : "#EDE9FA";
     ctx.lineWidth = 3;
     ctx.stroke();
 
-    ctx.fillStyle = done ? "#ffffff" : "#111827";
+    ctx.fillStyle = done || active ? "#ffffff" : "#534AB7";
     ctx.font = "bold 15px system-ui";
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
