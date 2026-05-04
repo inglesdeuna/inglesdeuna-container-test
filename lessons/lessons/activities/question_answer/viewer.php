@@ -376,6 +376,7 @@ ob_start();
     max-width:780px;
     font-family:'Fredoka',sans-serif;
     font-size:clamp(15px,2.2vw,24px);
+    font-size:clamp(20px,3.8vw,38px);
     font-weight:700;
     line-height:1.2;
     text-align:center;
@@ -563,6 +564,7 @@ ob_start();
                 <div class="qa-premium-kicker" style="background:#FFF0E6; border:1px solid #FCDDBF; color:#C2580A;">Activity <span id="qa-premium-kicker-count">1 / <?php echo count($cards); ?></span></div>
                 <h1 class="qa-premium-title" style="color:#F97316;"><?php echo htmlspecialchars($viewerTitle, ENT_QUOTES, 'UTF-8'); ?></h1>
                 <p class="qa-premium-subtitle">Read and answer.</p>
+                <p class="qa-premium-subtitle">Tap each card to reveal the answer.</p>
             </div>
 
             <div class="qa-premium-progress-row">
