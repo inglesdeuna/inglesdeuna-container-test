@@ -558,7 +558,7 @@ ob_start();
 }
 </style>
 
-<?php echo render_activity_header($viewerTitle, 'Tap each card to reveal the word.'); ?>
+<?php echo render_activity_header('', 'Tap each card to reveal the word.'); ?>
 
 <div class="fc-premium-shell">
     <div class="fc-premium-app" id="fc-premium-app">
