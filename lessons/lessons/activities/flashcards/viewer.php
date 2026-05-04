@@ -174,10 +174,10 @@ ob_start();
     justify-content:center;
     font-family:'Nunito','Segoe UI',system-ui,sans-serif;
     background:
-        radial-gradient(circle at 18% 18%,rgba(255,255,255,.70) 0 9%,transparent 10%),
-        radial-gradient(circle at 84% 16%,rgba(255,255,255,.45) 0 7%,transparent 8%),
-        radial-gradient(circle at 74% 82%,rgba(255,255,255,.40) 0 10%,transparent 11%),
-        linear-gradient(135deg,#F8C8DC 0%,#E9D5FF 46%,#C7D2FE 100%);
+    radial-gradient(circle at 18% 18%,rgba(255,255,255,.70) 0 9%,transparent 10%),
+    radial-gradient(circle at 84% 16%,rgba(255,255,255,.45) 0 7%,transparent 8%),
+    radial-gradient(circle at 74% 82%,rgba(255,255,255,.40) 0 10%,transparent 11%),
+    #ffffff;
     border-radius:16px;
     overflow:hidden;
 }
