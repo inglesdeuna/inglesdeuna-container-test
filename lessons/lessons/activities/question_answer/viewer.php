@@ -198,14 +198,8 @@ ob_start();
 }
 
 .qa-premium-title-panel{
-    width:min(520px,94%);
     margin:0 auto clamp(14px,2vw,20px);
-    padding:clamp(12px,2vw,20px) clamp(18px,3vw,30px);
     text-align:center;
-    border-radius:24px;
-    background:linear-gradient(135deg,rgba(255,255,255,.92),rgba(238,237,254,.82));
-    border:1.5px solid rgba(127,119,221,.30);
-    box-shadow:0 14px 34px rgba(83,74,183,.14);
 }
 
 .qa-premium-kicker{
@@ -310,7 +304,7 @@ ob_start();
 
 .qa-premium-card{
     perspective:1200px;
-    min-height:clamp(300px,45vh,470px);
+    min-height:clamp(130px,18vh,170px);
     cursor:pointer;
     outline:none;
 }
@@ -331,14 +325,15 @@ ob_start();
 .qa-premium-face{
     position:absolute;
     inset:0;
-    border-radius:30px;
+    border-radius:20px;
     backface-visibility:hidden;
     overflow:hidden;
     display:flex;
-    flex-direction:column;
+    flex-direction:row;
     align-items:center;
     justify-content:center;
-    padding:clamp(24px,4.4vw,46px);
+    gap:12px;
+    padding:14px clamp(48px,7vw,72px);
     border:1px solid rgba(127,119,221,.16);
     box-shadow:0 18px 36px rgba(39,27,93,.13);
 }
@@ -355,12 +350,12 @@ ob_start();
 
 .qa-premium-label{
     position:absolute;
-    top:clamp(16px,2vw,22px);
-    left:50%;
-    transform:translateX(-50%);
-    padding:6px 13px;
+    top:10px;
+    left:16px;
+    transform:none;
+    padding:4px 10px;
     border-radius:999px;
-    font-size:11px;
+    font-size:10px;
     font-weight:900;
     letter-spacing:.08em;
     text-transform:uppercase;
@@ -378,11 +373,12 @@ ob_start();
 
 .qa-premium-text{
     width:100%;
-    max-width:620px;
+    max-width:780px;
     font-family:'Fredoka',sans-serif;
+    font-size:clamp(15px,2.2vw,24px);
     font-size:clamp(20px,3.8vw,38px);
     font-weight:700;
-    line-height:1.08;
+    line-height:1.2;
     text-align:center;
     overflow-wrap:anywhere;
 }
@@ -533,7 +529,7 @@ ob_start();
 
 @media(max-width:900px){
     .qa-premium-board{width:min(700px,100%)}
-    .qa-premium-card{min-height:clamp(300px,42vh,430px)}
+    .qa-premium-card{min-height:clamp(130px,18vh,170px)}
 }
 
 @media(max-width:640px){
@@ -546,7 +542,7 @@ ob_start();
     .qa-premium-arrow{position:absolute;top:50%;transform:translateY(-50%)}
     .qa-premium-arrow-left{left:-4px}
     .qa-premium-arrow-right{right:-4px}
-    .qa-premium-card{min-height:min(380px,58vh)}
+    .qa-premium-card{min-height:min(130px,20vh)}
     .qa-premium-actions{display:grid;grid-template-columns:1fr;gap:9px}
     .qa-premium-btn{width:100%}
 }
@@ -556,8 +552,8 @@ ob_start();
     .qa-premium-board{padding:10px;border-radius:22px}
     .qa-premium-title{font-size:24px}
     .qa-premium-subtitle{font-size:12px}
-    .qa-premium-card{min-height:340px}
-    .qa-premium-text{font-size:clamp(20px,6vw,32px)}
+    .qa-premium-card{min-height:130px}
+    .qa-premium-text{font-size:clamp(14px,4vw,20px)}
 }
 </style>
 
@@ -567,6 +563,7 @@ ob_start();
             <div class="qa-premium-title-panel">
                 <div class="qa-premium-kicker" style="background:#FFF0E6; border:1px solid #FCDDBF; color:#C2580A;">Activity <span id="qa-premium-kicker-count">1 / <?php echo count($cards); ?></span></div>
                 <h1 class="qa-premium-title" style="color:#F97316;"><?php echo htmlspecialchars($viewerTitle, ENT_QUOTES, 'UTF-8'); ?></h1>
+                <p class="qa-premium-subtitle">Read and answer.</p>
                 <p class="qa-premium-subtitle">Tap each card to reveal the answer.</p>
             </div>
 
