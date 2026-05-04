@@ -304,7 +304,7 @@ ob_start();
 
 .qa-premium-card{
     perspective:1200px;
-    min-height:clamp(130px,18vh,170px);
+    min-height:clamp(180px,26vh,240px);
     cursor:pointer;
     outline:none;
 }
@@ -375,8 +375,7 @@ ob_start();
     width:100%;
     max-width:780px;
     font-family:'Fredoka',sans-serif;
-    font-size:clamp(15px,2.2vw,24px);
-    font-size:clamp(20px,3.8vw,38px);
+    font-size:clamp(13px,1.6vw,18px);
     font-weight:700;
     line-height:1.2;
     text-align:center;
@@ -529,7 +528,7 @@ ob_start();
 
 @media(max-width:900px){
     .qa-premium-board{width:min(700px,100%)}
-    .qa-premium-card{min-height:clamp(130px,18vh,170px)}
+    .qa-premium-card{min-height:clamp(180px,26vh,240px)}
 }
 
 @media(max-width:640px){
@@ -542,7 +541,7 @@ ob_start();
     .qa-premium-arrow{position:absolute;top:50%;transform:translateY(-50%)}
     .qa-premium-arrow-left{left:-4px}
     .qa-premium-arrow-right{right:-4px}
-    .qa-premium-card{min-height:min(130px,20vh)}
+    .qa-premium-card{min-height:min(180px,24vh)}
     .qa-premium-actions{display:grid;grid-template-columns:1fr;gap:9px}
     .qa-premium-btn{width:100%}
 }
@@ -552,8 +551,8 @@ ob_start();
     .qa-premium-board{padding:10px;border-radius:22px}
     .qa-premium-title{font-size:24px}
     .qa-premium-subtitle{font-size:12px}
-    .qa-premium-card{min-height:130px}
-    .qa-premium-text{font-size:clamp(14px,4vw,20px)}
+    .qa-premium-card{min-height:180px}
+    .qa-premium-text{font-size:clamp(12px,3.5vw,16px)}
 }
 </style>
 
