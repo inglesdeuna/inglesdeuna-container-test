@@ -50,7 +50,7 @@ ob_start();
                 </span>
 
                 <span class="d2dv-chip d2dv-chip-accent" id="d2dvCounter">
-                    0 / <?= count($points) ?> lines
+                    0 / <?= max(0, count($points) - 1) ?> lines
                 </span>
             </div>
 
