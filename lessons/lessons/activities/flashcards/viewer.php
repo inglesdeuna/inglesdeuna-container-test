@@ -148,19 +148,18 @@ ob_start();
 
 <style>
 :root{
-    --li-purple:#7F77DD;
-    --li-purple-dark:#534AB7;
-    --li-purple-soft:#EEEDFE;
-    --li-purple-mid:#AFA9EC;
-    --li-blue:#2563EB;
-    --li-blue-dark:#1D4ED8;
-    --li-pink:#EC4899;
-    --li-pink-dark:#BE185D;
-    --li-teal:#1D9E75;
-    --li-ink:#271B5D;
-    --li-muted:#7C739B;
-    --li-white:#FFFFFF;
-    --li-shadow:0 24px 60px rgba(83,74,183,.20);
+    --li-orange: #F97316;
+    --li-orange-dark: #ea580c;
+    --li-orange-light: #FFF0E6;
+    --li-orange-border: #FCDDBF;
+    --li-purple: #7F77DD;
+    --li-purple-dark: #534AB7;
+    --li-purple-soft: #EEEDFE;
+    --li-white: #FFFFFF;
+    --li-shadow: 0 24px 60px rgba(127,119,221,.13);
+    --li-card-border: #EDE9FA;
+    --li-topbar-border: #F0EEF8;
+    --li-progress-gradient: linear-gradient(90deg,#F97316 0%,#7F77DD 100%);
 }
 
 *{box-sizing:border-box}
@@ -173,11 +172,7 @@ ob_start();
     align-items:center;
     justify-content:center;
     font-family:'Nunito','Segoe UI',system-ui,sans-serif;
-    background:
-    radial-gradient(circle at 18% 18%,rgba(255,255,255,.70) 0 9%,transparent 10%),
-    radial-gradient(circle at 84% 16%,rgba(255,255,255,.45) 0 7%,transparent 8%),
-    radial-gradient(circle at 74% 82%,rgba(255,255,255,.40) 0 10%,transparent 11%),
-    #ffffff;
+    background:#fff;
     border-radius:16px;
     overflow:hidden;
 }
@@ -191,8 +186,11 @@ ob_start();
 
 .fc-premium-hero{
     text-align:center;
-    color:var(--li-white);
-    text-shadow:0 2px 16px rgba(83,74,183,.24);
+    background:var(--li-white);
+    border-bottom:1.5px solid var(--li-topbar-border);
+    padding-bottom:18px;
+    margin-bottom:18px;
+    box-shadow:none;
 }
 
 .fc-premium-kicker{
@@ -565,7 +563,8 @@ ob_start();
         <div class="fc-premium-hero">
             <div class="fc-premium-kicker">Activity <span id="fc-premium-kicker-count">1 / <?php echo count($data); ?></span></div>
             <h1 class="fc-premium-title"><?php echo htmlspecialchars($viewerTitle, ENT_QUOTES, 'UTF-8'); ?></h1>
-            <p class="fc-premium-subtitle">Tap the card to reveal the word.</p>
+            <div class="fc-premium-badge" style="display:inline-block;margin-top:8px;background:var(--li-purple-soft);color:var(--li-purple-dark);border-radius:999px;padding:4px 14px;font-size:13px;font-weight:900;">Vocabulary</div>
+            <p class="fc-premium-subtitle">Let's learn the new vocabulary</p>
         </div>
 
         <section class="fc-premium-board" id="fc-premium-board">
