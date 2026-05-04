@@ -304,7 +304,7 @@ ob_start();
 
 .qa-premium-card{
     perspective:1200px;
-    min-height:clamp(180px,26vh,240px);
+    min-height:clamp(220px,30vh,300px);
     cursor:pointer;
     outline:none;
 }
@@ -375,7 +375,7 @@ ob_start();
     width:100%;
     max-width:780px;
     font-family:'Fredoka',sans-serif;
-    font-size:clamp(13px,1.6vw,18px);
+    font-size:clamp(16px,2.4vw,28px);
     font-weight:700;
     line-height:1.2;
     text-align:center;
@@ -419,19 +419,19 @@ ob_start();
 
 .qa-premium-btn{
     border:0;
-    border-radius:12px;
-    min-width:clamp(104px,16vw,146px);
-    padding:13px 20px;
+    border-radius:10px;
+    min-width:clamp(72px,10vw,100px);
+    padding:8px 14px;
     color:#fff;
     font-family:'Nunito',sans-serif;
-    font-size:clamp(13px,1.8vw,15px);
+    font-size:clamp(11px,1.4vw,13px);
     font-weight:900;
     cursor:pointer;
     display:inline-flex;
     align-items:center;
     justify-content:center;
-    gap:7px;
-    box-shadow:0 12px 22px rgba(37,99,235,.20);
+    gap:5px;
+    box-shadow:0 8px 16px rgba(37,99,235,.18);
     transition:transform .18s ease, filter .18s ease, box-shadow .18s ease;
 }
 
@@ -528,7 +528,7 @@ ob_start();
 
 @media(max-width:900px){
     .qa-premium-board{width:min(700px,100%)}
-    .qa-premium-card{min-height:clamp(180px,26vh,240px)}
+    .qa-premium-card{min-height:clamp(220px,30vh,300px)}
 }
 
 @media(max-width:640px){
@@ -541,7 +541,7 @@ ob_start();
     .qa-premium-arrow{position:absolute;top:50%;transform:translateY(-50%)}
     .qa-premium-arrow-left{left:-4px}
     .qa-premium-arrow-right{right:-4px}
-    .qa-premium-card{min-height:min(180px,24vh)}
+    .qa-premium-card{min-height:min(220px,28vh)}
     .qa-premium-actions{display:grid;grid-template-columns:1fr;gap:9px}
     .qa-premium-btn{width:100%}
 }
@@ -551,13 +551,16 @@ ob_start();
     .qa-premium-board{padding:10px;border-radius:22px}
     .qa-premium-title{font-size:24px}
     .qa-premium-subtitle{font-size:12px}
-    .qa-premium-card{min-height:180px}
-    .qa-premium-text{font-size:clamp(12px,3.5vw,16px)}
+    .qa-premium-card{min-height:220px}
+    .qa-premium-text{font-size:clamp(14px,4vw,22px)}
 }
 </style>
 
 <div class="qa-premium-shell">
     <div class="qa-premium-app" id="qa-premium-app">
+        <div style="text-align:center;margin-bottom:10px;">
+            <h1 style="margin:0;font-family:'Fredoka',sans-serif;font-size:clamp(30px,5.5vw,58px);line-height:1;color:#F97316;font-weight:700;"><?php echo htmlspecialchars($viewerTitle, ENT_QUOTES, 'UTF-8'); ?></h1>
+        </div>
         <section class="qa-premium-board" id="qa-premium-board">
             <div class="qa-premium-progress-row">
                 <div class="qa-premium-progress-track">
