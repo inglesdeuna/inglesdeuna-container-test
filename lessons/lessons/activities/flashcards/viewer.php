@@ -221,7 +221,7 @@ ob_start();
 
 .fc-premium-subtitle{
     margin:8px 0 0;
-    color:rgba(255,255,255,.92);
+    color:var(--li-purple);
     font-size:clamp(13px,1.8vw,17px);
     font-weight:800;
 }
