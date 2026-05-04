@@ -167,22 +167,64 @@ ob_start();
 
 .fc-premium-shell{
     width:100%;
-    min-height:clamp(560px,calc(100vh - 90px),900px);
-    padding:clamp(12px,2.5vw,34px);
+    min-height:calc(100vh - 90px);
+    padding:clamp(14px,2.5vw,34px);
     display:flex;
     align-items:center;
     justify-content:center;
     font-family:'Nunito','Segoe UI',system-ui,sans-serif;
-    background:linear-gradient(135deg,#F8C8DC 0%,#E9D5FF 48%,#C7D2FE 100%);
+    background:
+        radial-gradient(circle at 18% 18%,rgba(255,255,255,.70) 0 9%,transparent 10%),
+        radial-gradient(circle at 84% 16%,rgba(255,255,255,.45) 0 7%,transparent 8%),
+        radial-gradient(circle at 74% 82%,rgba(255,255,255,.40) 0 10%,transparent 11%),
+        linear-gradient(135deg,#F8C8DC 0%,#E9D5FF 46%,#C7D2FE 100%);
     border-radius:16px;
     overflow:hidden;
 }
 
 .fc-premium-app{
-    width:min(960px,100%);
+    width:min(980px,100%);
     display:grid;
     grid-template-columns:minmax(0,1fr);
-    gap:0;
+    gap:clamp(12px,2vw,20px);
+}
+
+.fc-premium-hero{
+    text-align:center;
+    color:var(--li-white);
+    text-shadow:0 2px 16px rgba(83,74,183,.24);
+}
+
+.fc-premium-kicker{
+    display:inline-flex;
+    align-items:center;
+    gap:7px;
+    margin-bottom:8px;
+    padding:7px 14px;
+    border-radius:999px;
+    background:rgba(255,255,255,.24);
+    color:#fff;
+    font-size:12px;
+    font-weight:900;
+    letter-spacing:.08em;
+    text-transform:uppercase;
+    backdrop-filter:blur(8px);
+}
+
+.fc-premium-title{
+    margin:0;
+    font-family:'Fredoka',sans-serif;
+    font-size:clamp(30px,5.5vw,58px);
+    line-height:1;
+    color:#fff;
+    font-weight:700;
+}
+
+.fc-premium-subtitle{
+    margin:8px 0 0;
+    color:rgba(255,255,255,.92);
+    font-size:clamp(13px,1.8vw,17px);
+    font-weight:800;
 }
 
 .fc-premium-board{
@@ -190,53 +232,11 @@ ob_start();
     width:min(760px,100%);
     margin:0 auto;
     background:rgba(255,255,255,.84);
-    border:1px solid rgba(255,255,255,.86);
+    border:1px solid rgba(255,255,255,.80);
     border-radius:34px;
-    padding:clamp(14px,2.4vw,26px);
+    padding:clamp(16px,2.6vw,26px);
     box-shadow:var(--li-shadow);
     backdrop-filter:blur(14px);
-}
-
-.fc-premium-title-panel{
-    width:min(520px,94%);
-    margin:0 auto clamp(14px,2vw,20px);
-    padding:clamp(12px,2vw,20px) clamp(18px,3vw,30px);
-    text-align:center;
-    border-radius:24px;
-    background:linear-gradient(135deg,rgba(255,255,255,.92),rgba(238,237,254,.82));
-    border:1.5px solid rgba(127,119,221,.30);
-    box-shadow:0 14px 34px rgba(83,74,183,.14);
-}
-
-.fc-premium-kicker{
-    display:inline-flex;
-    align-items:center;
-    justify-content:center;
-    margin-bottom:6px;
-    padding:5px 12px;
-    border-radius:999px;
-    background:linear-gradient(135deg,var(--li-purple),var(--li-purple-dark));
-    color:#fff;
-    font-size:11px;
-    font-weight:900;
-    letter-spacing:.06em;
-    text-transform:uppercase;
-}
-
-.fc-premium-title{
-    margin:0;
-    font-family:'Fredoka',sans-serif;
-    font-size:clamp(24px,4.8vw,42px);
-    line-height:1.03;
-    color:var(--li-purple-dark);
-    font-weight:700;
-}
-
-.fc-premium-subtitle{
-    margin:6px 0 0;
-    color:#6b5fa6;
-    font-size:clamp(12px,1.7vw,15px);
-    font-weight:800;
 }
 
 .fc-premium-progress-row{
@@ -309,7 +309,7 @@ ob_start();
 
 .fc-premium-card{
     perspective:1200px;
-    min-height:clamp(300px,45vh,470px);
+    min-height:clamp(330px,46vh,470px);
     cursor:pointer;
     outline:none;
 }
@@ -433,7 +433,7 @@ ob_start();
 
 .fc-premium-btn{
     border:0;
-    border-radius:12px;
+    border-radius:999px;
     min-width:clamp(104px,16vw,146px);
     padding:13px 20px;
     color:#fff;
@@ -545,45 +545,30 @@ ob_start();
     to{transform:translateY(110vh) rotate(720deg);opacity:1}
 }
 
-@media(max-width:900px){
-    .fc-premium-board{width:min(700px,100%)}
-    .fc-premium-card{min-height:clamp(300px,42vh,430px)}
-}
-
 @media(max-width:640px){
     .fc-premium-shell{min-height:calc(100vh - 70px);padding:12px;border-radius:12px}
     .fc-premium-board{border-radius:26px;padding:14px}
-    .fc-premium-title-panel{width:100%;border-radius:22px}
-    .fc-premium-progress-row{grid-template-columns:1fr;gap:8px}
-    .fc-premium-progress-count{justify-self:center}
     .fc-premium-card-wrap{grid-template-columns:1fr}
     .fc-premium-arrow{position:absolute;top:50%;transform:translateY(-50%)}
     .fc-premium-arrow-left{left:-4px}
     .fc-premium-arrow-right{right:-4px}
-    .fc-premium-card{min-height:min(380px,58vh)}
+    .fc-premium-card{min-height:360px}
     .fc-premium-actions{display:grid;grid-template-columns:1fr;gap:9px}
     .fc-premium-btn{width:100%}
 }
-
-@media(max-width:390px){
-    .fc-premium-shell{padding:8px}
-    .fc-premium-board{padding:10px;border-radius:22px}
-    .fc-premium-title{font-size:24px}
-    .fc-premium-subtitle{font-size:12px}
-    .fc-premium-card{min-height:340px}
-    .fc-premium-image-box{width:210px;height:210px}
-}
 </style>
+
+<?php echo render_activity_header($viewerTitle, 'Tap each card to reveal the word.'); ?>
 
 <div class="fc-premium-shell">
     <div class="fc-premium-app" id="fc-premium-app">
-        <section class="fc-premium-board" id="fc-premium-board">
-            <div class="fc-premium-title-panel">
-                <div class="fc-premium-kicker">Activity <span id="fc-premium-kicker-count">1 / <?php echo count($data); ?></span></div>
-                <h1 class="fc-premium-title"><?php echo htmlspecialchars($viewerTitle, ENT_QUOTES, 'UTF-8'); ?></h1>
-                <p class="fc-premium-subtitle">Tap each card to reveal the word.</p>
-            </div>
+        <div class="fc-premium-hero">
+            <div class="fc-premium-kicker">Activity <span id="fc-premium-kicker-count">1 / <?php echo count($data); ?></span></div>
+            <h1 class="fc-premium-title"><?php echo htmlspecialchars($viewerTitle, ENT_QUOTES, 'UTF-8'); ?></h1>
+            <p class="fc-premium-subtitle">Tap the card to reveal the word.</p>
+        </div>
 
+        <section class="fc-premium-board" id="fc-premium-board">
             <div class="fc-premium-progress-row">
                 <div class="fc-premium-progress-track">
                     <div class="fc-premium-progress-fill" id="fc-premium-progress-fill"></div>
@@ -873,4 +858,19 @@ bind('fc-premium-prev-arrow', 'click', prevCard);
 bind('fc-premium-next-arrow', 'click', nextCard);
 bind('fc-premium-prev', 'click', prevCard);
 bind('fc-premium-next', 'click', nextCard);
-bind('fc
+bind('fc-premium-restart', 'click', restart);
+bind('fc-premium-listen', 'click', function(){
+    TTS.speak(getWord(CARDS[idx] || {}));
+});
+
+document.addEventListener('keydown', function(e){
+    if (e.key === 'ArrowRight') nextCard();
+    if (e.key === 'ArrowLeft') prevCard();
+});
+
+loadCard();
+})();
+</script>
+<?php
+$content = ob_get_clean();
+render_activity_viewer($viewerTitle, 'fa-solid fa-clone', $content);
