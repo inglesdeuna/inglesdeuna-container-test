@@ -380,7 +380,7 @@ ob_start();
     width:100%;
     max-width:620px;
     font-family:'Fredoka',sans-serif;
-    font-size:clamp(28px,5.8vw,62px);
+    font-size:clamp(20px,3.8vw,38px);
     font-weight:700;
     line-height:1.08;
     text-align:center;
@@ -557,7 +557,7 @@ ob_start();
     .qa-premium-title{font-size:24px}
     .qa-premium-subtitle{font-size:12px}
     .qa-premium-card{min-height:340px}
-    .qa-premium-text{font-size:clamp(24px,8vw,42px)}
+    .qa-premium-text{font-size:clamp(20px,6vw,32px)}
 }
 </style>
 
