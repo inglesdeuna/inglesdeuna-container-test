@@ -173,7 +173,7 @@ ob_start();
     align-items:center;
     justify-content:center;
     font-family:'Nunito','Segoe UI',system-ui,sans-serif;
-    background:linear-gradient(135deg,#F8C8DC 0%,#E9D5FF 48%,#C7D2FE 100%);
+    background:#ffffff;
     border-radius:16px;
     overflow:hidden;
 }
