@@ -128,11 +128,10 @@ ob_start();
     --os-red: #dc2626;
 }
 
-/* Reset template chrome */
 html,
 body {
     width: 100%;
-    height: 100%;
+    min-height: 100%;
 }
 
 body {
@@ -140,7 +139,6 @@ body {
     padding: 0 !important;
     background: #ffffff !important;
     font-family: 'Nunito', 'Segoe UI', sans-serif !important;
-    overflow: hidden !important;
 }
 
 .activity-wrapper {
@@ -148,7 +146,6 @@ body {
     margin: 0 !important;
     padding: 0 !important;
     min-height: 100vh;
-    height: 100vh;
     display: flex !important;
     flex-direction: column !important;
     background: transparent !important;
@@ -160,7 +157,6 @@ body {
 
 .viewer-content {
     flex: 1 !important;
-    height: 100vh !important;
     display: flex !important;
     flex-direction: column !important;
     padding: 0 !important;
@@ -169,39 +165,30 @@ body {
     border: none !important;
     box-shadow: none !important;
     border-radius: 0 !important;
-    min-height: 0 !important;
 }
 
-/* Full-screen shell */
 .os-page {
-    width: 100vw;
-    height: 100vh;
-    padding: clamp(10px, 1.8vw, 20px);
+    width: 100%;
+    min-height: 100vh;
+    padding: clamp(14px, 2.5vw, 34px);
     display: flex;
-    align-items: stretch;
+    align-items: flex-start;
     justify-content: center;
     background: #ffffff;
-    overflow: hidden;
     box-sizing: border-box;
 }
 
 .os-app {
-    width: min(1120px, 100%);
-    height: 100%;
+    width: min(860px, 100%);
     margin: 0 auto;
-    display: flex;
-    flex-direction: column;
-    min-height: 0;
 }
 
-/* Top bar */
 .os-topbar {
-    height: 34px;
-    flex: 0 0 auto;
+    height: 36px;
     display: flex;
     align-items: center;
     justify-content: center;
-    margin-bottom: 4px;
+    margin-bottom: 6px;
     position: relative;
 }
 
@@ -239,18 +226,16 @@ body.embedded-mode .os-back-btn {
     text-transform: uppercase;
 }
 
-/* Hero */
 .os-hero {
-    flex: 0 0 auto;
     text-align: center;
-    margin-bottom: 8px;
+    margin-bottom: clamp(12px, 2vw, 18px);
 }
 
 .os-kicker {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    padding: 6px 13px;
+    padding: 7px 14px;
     border-radius: 999px;
     background: #FFF0E6;
     border: 1px solid #FCDDBF;
@@ -260,53 +245,47 @@ body.embedded-mode .os-back-btn {
     font-weight: 900;
     letter-spacing: .08em;
     text-transform: uppercase;
-    margin-bottom: 6px;
+    margin-bottom: 8px;
 }
 
 .os-hero h1 {
     font-family: 'Fredoka', sans-serif;
-    font-size: clamp(26px, 4.3vw, 48px);
+    font-size: clamp(30px, 5.5vw, 58px);
     font-weight: 700;
     color: #F97316;
     margin: 0;
-    line-height: 1;
+    line-height: 1.03;
 }
 
 .os-hero p {
     font-family: 'Nunito', sans-serif;
-    font-size: clamp(12px, 1.5vw, 16px);
+    font-size: clamp(13px, 1.8vw, 17px);
     font-weight: 800;
     color: #9B94BE;
-    margin: 5px 0 0;
+    margin: 8px 0 0;
 }
 
-/* Board */
 .os-board {
-    flex: 1 1 auto;
-    min-height: 0;
     background: #ffffff;
     border: 1px solid #F0EEF8;
     border-radius: 34px;
-    padding: clamp(12px, 2vw, 20px);
+    padding: clamp(16px, 2.6vw, 26px);
     box-shadow: 0 8px 40px rgba(127,119,221,.13);
-    width: 100%;
+    width: min(760px, 100%);
     margin: 0 auto;
     box-sizing: border-box;
     position: relative;
-    display: grid;
-    grid-template-rows: auto 1fr auto;
-    gap: 10px;
 }
 
-/* Media / listening */
 .os-media-area,
 .os-tts-area {
     width: 100%;
     border: 1px solid #EDE9FA;
-    border-radius: 26px;
+    border-radius: 28px;
     background: #ffffff;
     box-shadow: 0 12px 36px rgba(127,119,221,.13);
     overflow: hidden;
+    margin-bottom: 16px;
     box-sizing: border-box;
 }
 
@@ -318,7 +297,8 @@ body.embedded-mode .os-back-btn {
 
 .os-media-area video {
     width: 100%;
-    max-height: 24vh;
+    height: auto;
+    max-height: 320px;
     object-fit: contain;
     display: block;
     background: #000000;
@@ -326,7 +306,7 @@ body.embedded-mode .os-back-btn {
 
 .os-media-area iframe {
     width: 100%;
-    height: 24vh;
+    height: 320px;
     border: none;
     display: block;
     background: #000000;
@@ -336,7 +316,7 @@ body.embedded-mode .os-back-btn {
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 12px;
+    padding: 18px;
 }
 
 .os-tts-area audio {
@@ -358,106 +338,32 @@ body.embedded-mode .os-back-btn {
     color: #9B94BE;
 }
 
-/* Game zone */
-.os-game-zone {
-    min-height: 0;
-    display: grid;
-    grid-template-rows: minmax(90px, 0.9fr) minmax(110px, 1.1fr);
-    gap: 10px;
-}
-
-.os-zone-block {
-    min-height: 0;
-    display: flex;
-    flex-direction: column;
-}
-
 .os-zone-label {
-    flex: 0 0 auto;
     font-size: 12px;
     font-weight: 900;
     color: #9B94BE;
     letter-spacing: .08em;
     text-transform: uppercase;
     font-family: 'Nunito', sans-serif;
-    margin-bottom: 6px;
-}
-
-/* Drop zone */
-.os-dropzone {
-    flex: 1 1 auto;
-    min-height: 0;
-    border: 2px dashed #EDE9FA;
-    border-radius: 24px;
-    background: #ffffff;
-    display: flex;
-    flex-direction: column;
-    align-items: stretch;
-    gap: 7px;
-    padding: 10px;
-    transition: border-color .15s, background .15s, box-shadow .15s;
-    overflow-y: auto;
-    scrollbar-width: thin;
-    scrollbar-color: #C4B5FD #ffffff;
-    box-sizing: border-box;
-}
-
-.os-dropzone::-webkit-scrollbar {
-    width: 4px;
-}
-
-.os-dropzone::-webkit-scrollbar-thumb {
-    background: #C4B5FD;
-    border-radius: 2px;
-}
-
-.os-dropzone.drag-over {
-    border-color: #7F77DD;
-    background: #FAFAFE;
-    box-shadow: 0 8px 24px rgba(127,119,221,.10);
-}
-
-.os-dz-hint {
-    width: 100%;
+    margin-bottom: 10px;
     text-align: center;
-    font-size: clamp(13px, 1.8vw, 15px);
-    font-weight: 900;
-    color: #9B94BE;
-    pointer-events: none;
-    font-family: 'Nunito', sans-serif;
-    padding: 16px 8px;
-    box-sizing: border-box;
 }
 
-/* Sentence bank */
-.os-bank {
-    flex: 1 1 auto;
-    min-height: 0;
+/* One sentence list only, like the CodePen. There is no separate drag zone. */
+.os-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
     display: flex;
     flex-direction: column;
-    gap: 7px;
-    align-items: stretch;
-    overflow-y: auto;
-    padding-right: 2px;
-    scrollbar-width: thin;
-    scrollbar-color: #C4B5FD #ffffff;
+    gap: 9px;
 }
 
-.os-bank::-webkit-scrollbar {
-    width: 4px;
-}
-
-.os-bank::-webkit-scrollbar-thumb {
-    background: #C4B5FD;
-    border-radius: 2px;
-}
-
-/* Sentence cards */
 .os-chip {
     width: 100%;
-    min-height: 38px;
-    padding: 9px 42px 9px 14px;
-    border-radius: 16px;
+    min-height: 48px;
+    padding: 13px 46px 13px 18px;
+    border-radius: 18px;
     background: #ffffff;
     border: 1px solid #EDE9FA;
     display: flex;
@@ -469,18 +375,17 @@ body.embedded-mode .os-back-btn {
     transition: transform .15s cubic-bezier(.34,1.4,.64,1), border-color .15s, box-shadow .15s, background .15s;
     box-shadow: 0 4px 14px rgba(127,119,221,.13);
     box-sizing: border-box;
-    flex: 0 0 auto;
 }
 
 .os-chip:hover {
-    transform: translateY(-2px) scale(1.005);
+    transform: translateY(-2px) scale(1.01);
     border-color: #7F77DD;
     box-shadow: 0 16px 28px rgba(127,119,221,.18);
 }
 
 .os-chip.os-dragging {
     opacity: .35;
-    transform: scale(1.005);
+    transform: scale(1.01);
     cursor: grabbing;
 }
 
@@ -489,17 +394,13 @@ body.embedded-mode .os-back-btn {
     box-shadow: 0 0 0 3px rgba(127,119,221,.25);
 }
 
-.os-chip.in-answer {
-    border-color: #7F77DD;
-}
-
 .os-chip-label {
     font-family: 'Fredoka', sans-serif;
-    font-size: clamp(15px, 1.8vw, 20px);
+    font-size: clamp(17px, 2.4vw, 24px);
     font-weight: 600;
     color: #534AB7;
     text-align: left;
-    line-height: 1.12;
+    line-height: 1.18;
     padding: 0;
     word-break: normal;
     overflow-wrap: anywhere;
@@ -507,26 +408,22 @@ body.embedded-mode .os-back-btn {
 
 .os-chip-badge {
     position: absolute;
-    right: 12px;
+    right: 14px;
     top: 50%;
     transform: translateY(-50%);
-    min-width: 24px;
-    height: 24px;
-    padding: 0 7px;
+    min-width: 26px;
+    height: 26px;
+    padding: 0 8px;
     background: #7F77DD;
     color: #ffffff;
     border-radius: 999px;
     font-size: 12px;
     font-weight: 900;
     font-family: 'Nunito', sans-serif;
-    display: none;
+    display: flex;
     align-items: center;
     justify-content: center;
     box-sizing: border-box;
-}
-
-.os-chip.in-answer .os-chip-badge {
-    display: flex;
 }
 
 .os-chip.correct-pos {
@@ -539,11 +436,10 @@ body.embedded-mode .os-back-btn {
     box-shadow: 0 0 0 2px #dc2626;
 }
 
-/* Lower buttons */
 .os-controls {
-    flex: 0 0 auto;
     border-top: 1px solid #F0EEF8;
-    padding-top: 10px;
+    margin-top: 16px;
+    padding-top: 16px;
     display: flex;
     align-items: center;
     gap: 10px;
@@ -585,7 +481,8 @@ body.embedded-mode .os-back-btn {
     box-shadow: 0 6px 18px rgba(249,115,22,.22);
 }
 
-.os-btn-show {
+.os-btn-show,
+.os-btn-tts {
     background: #7F77DD;
     color: #ffffff;
     border: none;
@@ -597,13 +494,6 @@ body.embedded-mode .os-back-btn {
     color: #ffffff;
     border: none;
     box-shadow: 0 6px 18px rgba(249,115,22,.22);
-}
-
-.os-btn-tts {
-    background: #7F77DD;
-    color: #ffffff;
-    border: none;
-    box-shadow: 0 6px 18px rgba(127,119,221,.18);
 }
 
 #os-feedback {
@@ -623,7 +513,6 @@ body.embedded-mode .os-back-btn {
     color: #dc2626;
 }
 
-/* Completed overlay */
 .os-completed {
     display: none;
     position: absolute;
@@ -692,15 +581,14 @@ body.embedded-mode .os-back-btn {
     transform: scale(1.04);
 }
 
-/* Responsive */
 @media (max-width: 640px) {
     .os-page {
-        padding: 8px;
+        padding: 12px;
     }
 
     .os-topbar {
         height: 30px;
-        margin-bottom: 2px;
+        margin-bottom: 4px;
     }
 
     .os-back-btn {
@@ -709,122 +597,46 @@ body.embedded-mode .os-back-btn {
         font-size: 11px;
     }
 
-    .os-kicker {
-        padding: 5px 11px;
-        font-size: 11px;
-        margin-bottom: 4px;
-    }
-
-    .os-hero {
-        margin-bottom: 6px;
-    }
-
-    .os-hero h1 {
-        font-size: clamp(23px, 8vw, 34px);
-    }
-
     .os-board {
         border-radius: 26px;
-        padding: 10px;
-        gap: 8px;
+        padding: 14px;
+        width: 100%;
     }
 
     .os-media-area,
     .os-tts-area {
-        border-radius: 20px;
+        border-radius: 22px;
+        margin-bottom: 12px;
     }
 
     .os-media-area video,
     .os-media-area iframe {
-        max-height: 19vh;
-        height: 19vh;
-    }
-
-    .os-game-zone {
-        grid-template-rows: minmax(82px, 0.9fr) minmax(100px, 1.1fr);
-        gap: 8px;
-    }
-
-    .os-zone-label {
-        font-size: 11px;
-        margin-bottom: 5px;
-    }
-
-    .os-dropzone {
-        border-radius: 20px;
-        padding: 8px;
-        gap: 6px;
-    }
-
-    .os-bank {
-        gap: 6px;
+        max-height: 220px;
+        height: 220px;
     }
 
     .os-chip {
-        min-height: 34px;
-        padding: 8px 38px 8px 12px;
-        border-radius: 14px;
+        min-height: 44px;
+        padding: 11px 42px 11px 14px;
+        border-radius: 16px;
     }
 
     .os-chip-label {
-        font-size: clamp(14px, 4.2vw, 18px);
+        font-size: clamp(15px, 4.4vw, 19px);
     }
 
     .os-controls {
         display: grid;
         grid-template-columns: 1fr;
-        gap: 7px;
-        padding-top: 8px;
+        gap: 9px;
     }
 
     .os-btn {
         width: 100%;
-        padding: 11px 16px;
     }
 
     .os-completed {
         border-radius: 26px;
-    }
-}
-
-@media (max-height: 680px) {
-    .os-topbar {
-        height: 28px;
-    }
-
-    .os-hero h1 {
-        font-size: clamp(22px, 3.5vw, 38px);
-    }
-
-    .os-hero p {
-        font-size: 12px;
-        margin-top: 3px;
-    }
-
-    .os-kicker {
-        padding: 4px 11px;
-        margin-bottom: 4px;
-    }
-
-    .os-media-area video,
-    .os-media-area iframe {
-        max-height: 18vh;
-        height: 18vh;
-    }
-
-    .os-chip {
-        min-height: 32px;
-        padding-top: 7px;
-        padding-bottom: 7px;
-    }
-
-    .os-chip-label {
-        font-size: clamp(14px, 1.6vw, 18px);
-    }
-
-    .os-btn {
-        padding-top: 10px;
-        padding-bottom: 10px;
     }
 }
 </style>
@@ -861,38 +673,26 @@ body.embedded-mode .os-back-btn {
                 <div class="os-tts-area">
                     <div class="os-listen-panel">
                         <button type="button" id="os-tts-btn" class="os-btn os-btn-tts">Listen</button>
-                        <span class="os-listen-text">Listen and order the sentences.</span>
+                        <span class="os-listen-text">Listen and put the sentences in order.</span>
                     </div>
                 </div>
             <?php endif; ?>
 
-            <div class="os-game-zone" id="os-game-zone">
+            <div class="os-zone-label">Drag the sentences to change their order</div>
 
-                <div class="os-zone-block">
-                    <div class="os-zone-label">Your answer — drag here in order</div>
-                    <div class="os-dropzone" id="os-dropzone">
-                        <span class="os-dz-hint" id="os-dz-hint">Drag the sentences here in the correct order</span>
-                    </div>
-                </div>
-
-                <div class="os-zone-block">
-                    <div class="os-zone-label">Sentences</div>
-                    <div class="os-bank" id="os-bank">
-                        <?php foreach ($shuffled as $s): ?>
-                            <div class="os-chip"
-                                 draggable="true"
-                                 data-id="<?= htmlspecialchars($s['id'], ENT_QUOTES, 'UTF-8') ?>">
-                                <div class="os-chip-badge">?</div>
-                                <span class="os-chip-label"><?= htmlspecialchars($s['text'], ENT_QUOTES, 'UTF-8') ?></span>
-                            </div>
-                        <?php endforeach; ?>
-                    </div>
-                </div>
-
-            </div>
+            <ul class="os-list" id="os-list">
+                <?php foreach ($shuffled as $index => $s): ?>
+                    <li class="os-chip"
+                        draggable="true"
+                        data-id="<?= htmlspecialchars($s['id'], ENT_QUOTES, 'UTF-8') ?>">
+                        <span class="os-chip-label"><?= htmlspecialchars($s['text'], ENT_QUOTES, 'UTF-8') ?></span>
+                        <span class="os-chip-badge"><?= (int)($index + 1) ?></span>
+                    </li>
+                <?php endforeach; ?>
+            </ul>
 
             <div class="os-controls">
-                <button type="button" class="os-btn os-btn-check" id="os-check" disabled>Check Answers</button>
+                <button type="button" class="os-btn os-btn-check" id="os-check">Check Answers</button>
                 <button type="button" class="os-btn os-btn-show"  id="os-show">Show Answer</button>
                 <button type="button" class="os-btn os-btn-next"  id="os-next">Next</button>
                 <div id="os-feedback"></div>
@@ -922,9 +722,7 @@ var OS_RETURN_TO   = <?= json_encode($returnTo,      JSON_UNESCAPED_UNICODE) ?>;
 var OS_ACTIVITY_ID = <?= json_encode($activityId,    JSON_UNESCAPED_UNICODE) ?>;
 var OS_TOTAL       = CORRECT_ORDER.length;
 
-var dropzone    = document.getElementById('os-dropzone');
-var bank        = document.getElementById('os-bank');
-var hint        = document.getElementById('os-dz-hint');
+var listEl      = document.getElementById('os-list');
 var checkBtn    = document.getElementById('os-check');
 var showBtn     = document.getElementById('os-show');
 var nextBtn     = document.getElementById('os-next');
@@ -946,12 +744,12 @@ function playSound(el) {
     try { el.pause(); el.currentTime = 0; el.play(); } catch(e) {}
 }
 
-function answerChips() {
-    return Array.from(dropzone.querySelectorAll('.os-chip'));
+function sentenceCards() {
+    return Array.from(listEl.querySelectorAll('.os-chip'));
 }
 
 function userOrder() {
-    return answerChips().map(function(c){ return c.dataset.id; });
+    return sentenceCards().map(function(c){ return c.dataset.id; });
 }
 
 function countCorrect(order) {
@@ -963,21 +761,14 @@ function countCorrect(order) {
 }
 
 function updateBadges() {
-    answerChips().forEach(function(c, i) {
+    sentenceCards().forEach(function(c, i) {
         var b = c.querySelector('.os-chip-badge');
         if (b) b.textContent = i + 1;
     });
 }
 
-function updateUI() {
-    var n = answerChips().length;
-    hint.style.display = n > 0 ? 'none' : '';
-    checkBtn.disabled  = (n < OS_TOTAL) || done;
-    updateBadges();
-}
-
 function clearFeedbackColors() {
-    document.querySelectorAll('.os-chip').forEach(function(c) {
+    sentenceCards().forEach(function(c) {
         c.classList.remove('correct-pos', 'wrong-pos');
     });
     feedbackEl.textContent = '';
@@ -985,7 +776,7 @@ function clearFeedbackColors() {
 }
 
 function markPositions(order) {
-    answerChips().forEach(function(c, i) {
+    sentenceCards().forEach(function(c, i) {
         c.classList.remove('correct-pos', 'wrong-pos');
         c.classList.add(c.dataset.id === CORRECT_ORDER[i] ? 'correct-pos' : 'wrong-pos');
     });
@@ -993,14 +784,11 @@ function markPositions(order) {
 
 function revealAnswer() {
     var map = {};
-    document.querySelectorAll('.os-chip').forEach(function(c){ map[c.dataset.id] = c; });
+    sentenceCards().forEach(function(c){ map[c.dataset.id] = c; });
     CORRECT_ORDER.forEach(function(id) {
-        if (map[id]) {
-            dropzone.appendChild(map[id]);
-            map[id].classList.add('in-answer');
-        }
+        if (map[id]) listEl.appendChild(map[id]);
     });
-    updateUI();
+    updateBadges();
     markPositions(CORRECT_ORDER);
 }
 
@@ -1055,12 +843,6 @@ async function showCompleted() {
 
 checkBtn.addEventListener('click', function() {
     if (done) return;
-
-    if (answerChips().length < OS_TOTAL) {
-        feedbackEl.textContent = 'Place all sentences first.';
-        feedbackEl.className   = 'bad';
-        return;
-    }
 
     attempts++;
     var order = userOrder();
@@ -1123,11 +905,10 @@ function attachChip(chip) {
 
     chip.addEventListener('dragend', function() {
         chip.classList.remove('os-dragging');
-        dropzone.classList.remove('drag-over');
         dragged = null;
 
         if (!done) clearFeedbackColors();
-        updateUI();
+        updateBadges();
     });
 
     chip.addEventListener('dragover', function(e) {
@@ -1138,8 +919,8 @@ function attachChip(chip) {
         var r      = chip.getBoundingClientRect();
         var before = e.clientY < r.top + r.height / 2;
 
-        chip.parentElement.insertBefore(dragged, before ? chip : chip.nextSibling);
-        updateUI();
+        listEl.insertBefore(dragged, before ? chip : chip.nextSibling);
+        updateBadges();
     });
 
     chip.addEventListener('click', function() {
@@ -1147,11 +928,17 @@ function attachChip(chip) {
 
         if (isTouchDev) {
             if (touchSel && touchSel !== chip) {
-                chip.parentElement.insertBefore(touchSel, chip);
+                var r1 = touchSel.getBoundingClientRect();
+                var r2 = chip.getBoundingClientRect();
+                if (r1.top < r2.top) {
+                    listEl.insertBefore(touchSel, chip.nextSibling);
+                } else {
+                    listEl.insertBefore(touchSel, chip);
+                }
                 touchSel.classList.remove('os-selected');
                 touchSel = null;
                 if (!done) clearFeedbackColors();
-                updateUI();
+                updateBadges();
                 return;
             }
 
@@ -1164,72 +951,46 @@ function attachChip(chip) {
             if (touchSel) touchSel.classList.remove('os-selected');
             touchSel = chip;
             chip.classList.add('os-selected');
-            return;
         }
-
-        if (chip.parentElement === bank) {
-            dropzone.appendChild(chip);
-            chip.classList.add('in-answer');
-        } else {
-            bank.appendChild(chip);
-            chip.classList.remove('in-answer', 'correct-pos', 'wrong-pos');
-        }
-
-        if (!done) clearFeedbackColors();
-        updateUI();
     });
 }
 
-dropzone.addEventListener('dragover', function(e) {
+listEl.addEventListener('dragover', function(e) {
     e.preventDefault();
 
     if (!dragged || done) return;
 
-    dropzone.classList.add('drag-over');
-
-    var target = e.target.closest ? e.target.closest('.os-chip') : null;
-
-    if (!target || target === dragged) {
-        dropzone.appendChild(dragged);
-        dragged.classList.add('in-answer');
-        if (!done) clearFeedbackColors();
+    var afterElement = getDragAfterElement(listEl, e.clientY);
+    if (afterElement == null) {
+        listEl.appendChild(dragged);
+    } else {
+        listEl.insertBefore(dragged, afterElement);
     }
 
-    updateUI();
+    updateBadges();
 });
 
-dropzone.addEventListener('dragleave', function(e) {
-    if (!dropzone.contains(e.relatedTarget)) dropzone.classList.remove('drag-over');
-});
-
-dropzone.addEventListener('drop', function(e) {
+listEl.addEventListener('drop', function(e) {
     e.preventDefault();
-    dropzone.classList.remove('drag-over');
-    updateUI();
+    updateBadges();
 });
 
-bank.addEventListener('dragover', function(e) {
-    e.preventDefault();
+function getDragAfterElement(container, y) {
+    var draggableElements = Array.from(container.querySelectorAll('.os-chip:not(.os-dragging)'));
 
-    if (!dragged || done) return;
+    return draggableElements.reduce(function(closest, child) {
+        var box = child.getBoundingClientRect();
+        var offset = y - box.top - box.height / 2;
 
-    var target = e.target.closest ? e.target.closest('.os-chip') : null;
+        if (offset < 0 && offset > closest.offset) {
+            return { offset: offset, element: child };
+        }
 
-    if (!target || target === dragged) {
-        bank.appendChild(dragged);
-        dragged.classList.remove('in-answer', 'correct-pos', 'wrong-pos');
-        if (!done) clearFeedbackColors();
-    }
+        return closest;
+    }, { offset: Number.NEGATIVE_INFINITY, element: null }).element;
+}
 
-    updateUI();
-});
-
-bank.addEventListener('drop', function(e) {
-    e.preventDefault();
-    updateUI();
-});
-
-document.querySelectorAll('.os-chip').forEach(function(chip) {
+sentenceCards().forEach(function(chip) {
     attachChip(chip);
 });
 
@@ -1245,7 +1006,7 @@ window.osRestart = function() {
     feedbackEl.textContent = '';
     feedbackEl.className   = '';
 
-    var chips = Array.from(document.querySelectorAll('.os-chip'));
+    var chips = sentenceCards();
 
     for (var i = chips.length - 1; i > 0; i--) {
         var j   = Math.floor(Math.random() * (i + 1));
@@ -1255,14 +1016,14 @@ window.osRestart = function() {
     }
 
     chips.forEach(function(c) {
-        c.classList.remove('correct-pos', 'wrong-pos', 'os-dragging', 'os-selected', 'in-answer');
-        bank.appendChild(c);
+        c.classList.remove('correct-pos', 'wrong-pos', 'os-dragging', 'os-selected');
+        listEl.appendChild(c);
     });
 
-    updateUI();
+    updateBadges();
 };
 
-updateUI();
+updateBadges();
 
 var TTS_TEXT = <?= json_encode(
     !empty($activity['tts_text'])
