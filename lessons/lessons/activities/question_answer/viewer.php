@@ -379,7 +379,8 @@ ob_start();
     font-weight:700;
     line-height:1.2;
     text-align:center;
-    overflow-wrap:anywhere;
+    overflow-wrap:break-word;
+    word-break:normal;
 }
 
 .qa-premium-front .qa-premium-text{
@@ -553,6 +554,78 @@ ob_start();
     .qa-premium-subtitle{font-size:12px}
     .qa-premium-card{min-height:220px}
     .qa-premium-text{font-size:clamp(14px,4vw,22px)}
+}
+
+/* ── Fullscreen / embedded: card fills the iframe ── */
+body.embedded-mode .viewer-content,
+body.fullscreen-embedded .viewer-content,
+body.presentation-mode .viewer-content {
+    padding: 0 !important;
+    position: relative !important;
+}
+
+body.embedded-mode .qa-premium-shell,
+body.fullscreen-embedded .qa-premium-shell,
+body.presentation-mode .qa-premium-shell {
+    position: absolute !important;
+    inset: 0 !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 10px 12px !important;
+    border-radius: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+}
+
+body.embedded-mode .qa-premium-app,
+body.fullscreen-embedded .qa-premium-app,
+body.presentation-mode .qa-premium-app {
+    flex: 1 !important;
+    width: 100% !important;
+    min-height: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 8px !important;
+}
+
+body.embedded-mode .qa-premium-board,
+body.fullscreen-embedded .qa-premium-board,
+body.presentation-mode .qa-premium-board {
+    flex: 1 !important;
+    min-height: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    padding: 14px !important;
+    border-radius: 16px !important;
+}
+
+body.embedded-mode .qa-premium-card-wrap,
+body.fullscreen-embedded .qa-premium-card-wrap,
+body.presentation-mode .qa-premium-card-wrap {
+    flex: 1 !important;
+    min-height: 0 !important;
+    align-items: stretch !important;
+}
+
+body.embedded-mode .qa-premium-card,
+body.fullscreen-embedded .qa-premium-card,
+body.presentation-mode .qa-premium-card {
+    min-height: 0 !important;
+    flex: 1 !important;
+    height: 100% !important;
+}
+
+body.embedded-mode .qa-premium-card-inner,
+body.fullscreen-embedded .qa-premium-card-inner,
+body.presentation-mode .qa-premium-card-inner {
+    height: 100% !important;
+}
+
+body.embedded-mode .qa-premium-text,
+body.fullscreen-embedded .qa-premium-text,
+body.presentation-mode .qa-premium-text {
+    font-size: clamp(18px, 4vh, 36px) !important;
 }
 </style>
 
