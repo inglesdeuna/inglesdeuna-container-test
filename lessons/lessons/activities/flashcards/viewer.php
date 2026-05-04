@@ -161,25 +161,24 @@ ob_start();
     --li-muted:#7C739B;
     --li-white:#FFFFFF;
     --li-shadow:0 24px 60px rgba(83,74,183,.20);
+    --fc-orange: #F97316;
+    --fc-orange-dark: #C2580A;
+    --fc-orange-soft: #FFF0E6;
+    --fc-purple: #7F77DD;
+    --fc-purple-dark: #534AB7;
+    --fc-purple-soft: #EEEDFE;
+    --fc-lila: rgba(127,119,221,.13);
+    --fc-lila-md: rgba(127,119,221,.18);
 }
 
 *{box-sizing:border-box}
 
 .fc-premium-shell{
-    width:100%;
-    min-height:calc(100vh - 90px);
-    padding:clamp(14px,2.5vw,34px);
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    font-family:'Nunito','Segoe UI',system-ui,sans-serif;
-    background:
-    radial-gradient(circle at 18% 18%,rgba(255,255,255,.70) 0 9%,transparent 10%),
-    radial-gradient(circle at 84% 16%,rgba(255,255,255,.45) 0 7%,transparent 8%),
-    radial-gradient(circle at 74% 82%,rgba(255,255,255,.40) 0 10%,transparent 11%),
-    #ffffff;
-    border-radius:16px;
-    overflow:hidden;
+    max-width:980px;
+    margin:16px auto 28px;
+    padding:18px;
+    border-radius:28px;
+    background: #ffffff;
 }
 
 .fc-premium-app{
@@ -229,14 +228,11 @@ ob_start();
 
 .fc-premium-board{
     position:relative;
-    width:min(760px,100%);
-    margin:0 auto;
-    background:rgba(255,255,255,.84);
-    border:1px solid rgba(255,255,255,.80);
     border-radius:34px;
-    padding:clamp(16px,2.6vw,26px);
-    box-shadow:var(--li-shadow);
-    backdrop-filter:blur(14px);
+    background: #ffffff;
+    border: 1px solid #F0EEF8;
+    box-shadow: 0 8px 40px rgba(127,119,221,.13);
+    padding:22px 22px 20px;
 }
 
 .fc-premium-progress-row{
@@ -257,22 +253,23 @@ ob_start();
 
 .fc-premium-progress-fill{
     height:100%;
-    width:0%;
-    background:linear-gradient(90deg,var(--li-purple),#A78BFA,var(--li-pink));
+    width:0;
     border-radius:999px;
-    transition:width .45s cubic-bezier(.2,.9,.2,1);
+    background: linear-gradient(90deg, #F97316, #7F77DD);
+    transition:width .35s ease;
 }
 
 .fc-premium-progress-count{
-    min-width:74px;
+    flex:0 0 auto;
+    min-width:86px;
     text-align:center;
-    padding:7px 11px;
-    border-radius:999px;
-    background:var(--li-purple-dark);
+    font-size:12px;
+    font-weight:800;
+    letter-spacing:.4px;
     color:#fff;
-    font-size:13px;
-    font-weight:900;
-    box-shadow:0 10px 20px rgba(83,74,183,.18);
+    background: #7F77DD;
+    padding:7px 12px;
+    border-radius:999px;
 }
 
 .fc-premium-card-wrap{
@@ -284,21 +281,21 @@ ob_start();
 }
 
 .fc-premium-arrow{
-    width:clamp(38px,5vw,54px);
-    height:clamp(38px,5vw,54px);
-    border-radius:50%;
-    border:0;
-    background:#fff;
-    color:var(--li-purple-dark);
-    box-shadow:0 12px 24px rgba(83,74,183,.18);
-    font-size:clamp(24px,4vw,34px);
-    font-weight:900;
+    width:48px;
+    height:48px;
+    border-radius:999px;
+    border: 1px solid #E4E1F8;
+    background: #ffffff;
+    color: #534AB7;
+    font-size:25px;
+    line-height:1;
+    font-weight:800;
     cursor:pointer;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    transition:transform .18s ease, box-shadow .18s ease, background .18s ease;
-    z-index:3;
+    display:grid;
+    place-items:center;
+    box-shadow: 0 4px 14px rgba(127,119,221,.13);
+    transition:transform .18s ease, box-shadow .18s ease;
+    user-select:none;
 }
 
 .fc-premium-arrow:hover{
@@ -342,11 +339,9 @@ ob_start();
     box-shadow:0 18px 36px rgba(39,27,93,.13);
 }
 
-.fc-premium-front{
-    background:
-        radial-gradient(circle at 20% 18%,rgba(127,119,221,.12),transparent 26%),
-        radial-gradient(circle at 78% 82%,rgba(236,72,153,.10),transparent 28%),
-        #ffffff;
+.fc-premium-face.fc-premium-front{
+    background: #ffffff;
+    border: 1px solid #EDE9FA;
 }
 
 .fc-premium-back{
@@ -454,14 +449,9 @@ ob_start();
     filter:brightness(1.05);
 }
 
-.fc-premium-btn-blue{
-    background:linear-gradient(135deg,var(--li-blue),var(--li-blue-dark));
-}
+.fc-premium-btn-blue{background: #F97316;box-shadow: 0 6px 18px rgba(249,115,22,.22);}
 
-.fc-premium-btn-pink{
-    background:linear-gradient(135deg,var(--li-pink),var(--li-pink-dark));
-    box-shadow:0 12px 22px rgba(190,24,93,.20);
-}
+.fc-premium-btn-pink{background: #7F77DD;box-shadow: 0 6px 18px rgba(127,119,221,.18);}
 
 .fc-premium-btn-purple{
     background:linear-gradient(135deg,var(--li-purple),var(--li-purple-dark));
@@ -563,9 +553,9 @@ ob_start();
 <div class="fc-premium-shell">
     <div class="fc-premium-app" id="fc-premium-app">
         <div class="fc-premium-hero">
-            <div class="fc-premium-kicker">Activity <span id="fc-premium-kicker-count">1 / <?php echo count($data); ?></span></div>
-            <h1 class="fc-premium-title"><?php echo htmlspecialchars($viewerTitle, ENT_QUOTES, 'UTF-8'); ?></h1>
-            <p class="fc-premium-subtitle">Tap the card to reveal the word.</p>
+            <div class="fc-premium-kicker" style="background:#FFF0E6; border:1px solid #FCDDBF; color:#C2580A;">Activity <span id="fc-premium-kicker-count">1 / <?php echo count($data); ?></span></div>
+            <h1 class="fc-premium-title" style="color:#F97316;"><?php echo htmlspecialchars($viewerTitle, ENT_QUOTES, 'UTF-8'); ?></h1>
+            <p class="fc-premium-subtitle">Let's learn the new vocabulary</p>
         </div>
 
         <section class="fc-premium-board" id="fc-premium-board">
