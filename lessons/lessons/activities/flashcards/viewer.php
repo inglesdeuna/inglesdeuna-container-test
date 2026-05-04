@@ -200,7 +200,7 @@ ob_start();
     font-family:'Fredoka',sans-serif;
     font-size:clamp(30px,5.5vw,58px);
     line-height:1;
-    color:#fff;
+    color:#F97316;
     font-weight:700;
 }
 
@@ -450,10 +450,9 @@ ob_start();
     text-align:center;
     padding:clamp(28px,5vw,54px);
     border-radius:34px;
-    background:rgba(255,255,255,.88);
-    border:1px solid rgba(255,255,255,.82);
+    background:#ffffff;
+    border:1px solid #F0EEF8;
     box-shadow:0 8px 40px rgba(127,119,221,.13);
-    backdrop-filter:blur(14px);
 }
 
 .fc-premium-completed.active{
