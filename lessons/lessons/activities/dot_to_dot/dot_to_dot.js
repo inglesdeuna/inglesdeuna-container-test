@@ -1,8 +1,6 @@
 const data = window.DOT_TO_DOT_DATA || {};
 
 const originalPoints = Array.isArray(data.points) ? data.points : [];
-const originalCanvasWidth = Number(data.canvasWidth || data.canvas_width || 360);
-const originalCanvasHeight = Number(data.canvasHeight || data.canvas_height || 360);
 
 const stage = document.getElementById("d2dvStage");
 const img = document.getElementById("d2dvImg");
@@ -35,12 +33,11 @@ function setupCanvas() {
   canvas.style.width = rect.width + "px";
   canvas.style.height = rect.height + "px";
 
-  const scaleX = canvas.width / originalCanvasWidth;
-  const scaleY = canvas.height / originalCanvasHeight;
-
+  // Points are stored as 0-1 normalised fractions of the image size.
   points = originalPoints.map(point => ({
-    x: Math.round(Number(point.x) * scaleX),
-    y: Math.round(Number(point.y) * scaleY)
+    x: Math.round(Number(point.x) * canvas.width),
+    y: Math.round(Number(point.y) * canvas.height),
+    label: point.label != null ? String(point.label) : ""
   }));
 
   render();
@@ -80,13 +77,13 @@ function clearCanvas() {
 function updateUI() {
   if (completed) {
     progress.textContent = "Completed!";
-    counter.textContent = points.length + " / " + points.length + " lines";
+    counter.textContent = (points.length - 1) + " / " + (points.length - 1) + " lines";
     statusText.textContent = "Great job!";
     return;
   }
 
   progress.textContent = "Connect " + current + " to " + (current + 1);
-  counter.textContent = (current - 1) + " / " + points.length + " lines";
+  counter.textContent = (current - 1) + " / " + (points.length - 1) + " lines";
   statusText.textContent = "";
 }
 
@@ -166,7 +163,7 @@ function drawDots() {
     ctx.font = "bold 15px system-ui";
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.fillText(index + 1, point.x, point.y);
+    ctx.fillText(point.label || (index + 1), point.x, point.y);
   });
 }
 
