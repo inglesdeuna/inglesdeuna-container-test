@@ -90,12 +90,17 @@ if (empty($blocks)) {
 }
 
 $renderedBlocks = array();
+$firstImage = '';
 
 foreach ($blocks as $bIdx => $block) {
     $text    = isset($block['text'])  ? $block['text']  : '';
     $image   = isset($block['image']) ? trim((string)$block['image']) : '';
     $answers = isset($block['answers']) && is_array($block['answers']) ? $block['answers'] : array();
     $blankN  = 0;
+
+    if ($firstImage === '' && $image !== '') {
+        $firstImage = $image;
+    }
 
     $rendered = preg_replace_callback('/___+/', function ($m) use (&$blankN, $bIdx) {
         $blankN++;
@@ -198,7 +203,7 @@ body {
 }
 
 .fb-app {
-    width: min(860px, 100%);
+    width: min(920px, 100%);
     margin: 0 auto;
 }
 
@@ -297,7 +302,7 @@ body.embedded-mode .fb-back-btn {
     border-radius: 34px;
     padding: clamp(16px, 2.6vw, 26px);
     box-shadow: 0 8px 40px rgba(127,119,221,.13);
-    width: min(760px, 100%);
+    width: min(860px, 100%);
     margin: 0 auto;
     box-sizing: border-box;
     position: relative;
@@ -390,42 +395,7 @@ body.embedded-mode .fb-back-btn {
     box-shadow: 0 4px 14px rgba(127,119,221,.08);
 }
 
-/* Progress */
-.fb-prog-wrap {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin-bottom: 18px;
-}
-
-.fb-prog-track {
-    flex: 1;
-    height: 12px;
-    background: #F4F2FD;
-    border: 1px solid #E4E1F8;
-    border-radius: 999px;
-    overflow: hidden;
-}
-
-.fb-prog-fill {
-    height: 100%;
-    background: linear-gradient(90deg, #F97316, #7F77DD);
-    border-radius: 999px;
-    transition: width .45s ease;
-}
-
-.fb-prog-label {
-    background: #7F77DD;
-    color: #ffffff;
-    font-size: 12px;
-    font-weight: 900;
-    white-space: nowrap;
-    font-family: 'Nunito', sans-serif;
-    border-radius: 999px;
-    padding: 7px 11px;
-}
-
-/* Block area */
+/* Worksheet area */
 .fb-block-area {
     background: #ffffff;
     border: 1px solid #EDE9FA;
@@ -436,45 +406,55 @@ body.embedded-mode .fb-back-btn {
     box-sizing: border-box;
 }
 
-.fb-block {
-    display: none;
-}
-
-.fb-block.active {
+.fb-worksheet-img {
     display: block;
-    animation: fbFadeIn .2s ease;
-}
-
-@keyframes fbFadeIn {
-    from {
-        opacity: 0;
-        transform: translateY(4px);
-    }
-    to {
-        opacity: 1;
-        transform: none;
-    }
-}
-
-.fb-block-img {
-    display: block;
-    max-width: min(280px, 100%);
-    max-height: 170px;
+    max-width: min(420px, 100%);
+    max-height: 190px;
     object-fit: contain;
     border-radius: 20px;
-    margin: 0 auto 18px;
+    margin: 0 auto 20px;
     border: 1px solid #EDE9FA;
     background: #ffffff;
     box-shadow: 0 8px 24px rgba(127,119,221,.10);
 }
 
+.fb-worksheet-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+}
+
+.fb-block {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    padding: 10px 2px 11px;
+    border-bottom: 1px solid #EDE9FA;
+}
+
+.fb-block:last-child {
+    border-bottom: none;
+}
+
+.fb-sentence-num {
+    flex: 0 0 auto;
+    min-width: 28px;
+    font-family: 'Nunito', sans-serif;
+    font-size: clamp(13px, 1.6vw, 15px);
+    font-weight: 800;
+    color: #9B94BE;
+    line-height: 1.8;
+    text-align: right;
+}
+
 .fb-text {
-    font-family: 'Fredoka', sans-serif;
-    font-size: clamp(22px, 3.2vw, 34px);
-    font-weight: 600;
+    flex: 1 1 auto;
+    font-family: 'Nunito', sans-serif;
+    font-size: clamp(15px, 1.8vw, 18px);
+    font-weight: 700;
     color: #534AB7;
     line-height: 1.8;
-    text-align: center;
+    text-align: left;
 }
 
 /* Blanks */
@@ -491,9 +471,9 @@ body.embedded-mode .fb-back-btn {
     inset: 0;
     visibility: hidden;
     white-space: pre;
-    font-size: clamp(18px, 2.4vw, 26px);
-    font-weight: 600;
-    font-family: 'Fredoka', sans-serif;
+    font-size: clamp(15px, 1.8vw, 18px);
+    font-weight: 800;
+    font-family: 'Nunito', sans-serif;
     padding: 2px 10px;
     pointer-events: none;
     border-bottom: 3px solid transparent;
@@ -507,9 +487,9 @@ body.embedded-mode .fb-back-btn {
     border-bottom: 3px solid #EDE9FA;
     background: transparent;
     padding: 2px 10px;
-    font-size: clamp(18px, 2.4vw, 26px);
-    font-weight: 600;
-    font-family: 'Fredoka', sans-serif;
+    font-size: clamp(15px, 1.8vw, 18px);
+    font-weight: 800;
+    font-family: 'Nunito', sans-serif;
     color: #534AB7;
     outline: none;
     text-align: center;
@@ -599,10 +579,6 @@ body.embedded-mode .fb-back-btn {
     transform: none;
     filter: none;
     box-shadow: none;
-}
-
-#fb-prev {
-    background: #7F77DD;
 }
 
 #fb-check {
@@ -730,28 +706,6 @@ body.embedded-mode .fb-back-btn {
     transform: scale(1.04);
 }
 
-/* Fullscreen / presentation */
-body.fullscreen-embedded .fb-page,
-body.presentation-mode .fb-page {
-    min-height: 100vh;
-    padding: clamp(12px, 2vw, 24px);
-}
-
-body.fullscreen-embedded .fb-text,
-body.presentation-mode .fb-text {
-    font-size: clamp(24px, 3.5vw, 42px) !important;
-}
-
-body.fullscreen-embedded .fb-blank,
-body.presentation-mode .fb-blank {
-    font-size: clamp(20px, 3vw, 34px) !important;
-}
-
-body.fullscreen-embedded .fb-card,
-body.presentation-mode .fb-card {
-    width: min(960px, 100%);
-}
-
 /* Responsive */
 @media (max-width: 640px) {
     .fb-page {
@@ -806,14 +760,24 @@ body.presentation-mode .fb-card {
         min-height: 210px;
     }
 
+    .fb-worksheet-img {
+        max-height: 150px;
+        margin-bottom: 16px;
+    }
+
+    .fb-block {
+        gap: 8px;
+        padding: 9px 0 10px;
+    }
+
+    .fb-sentence-num,
     .fb-text {
-        font-size: clamp(20px, 6.2vw, 28px);
-        line-height: 1.7;
+        font-size: clamp(14px, 4vw, 17px);
     }
 
     .fb-blank,
     .fb-blank-sizer {
-        font-size: clamp(18px, 5.5vw, 24px);
+        font-size: clamp(14px, 4vw, 17px);
     }
 
     .fb-controls {
@@ -848,11 +812,6 @@ body.presentation-mode .fb-card {
 
         <div class="fb-card">
 
-            <div class="fb-card-hd">
-                <h2><?php echo htmlspecialchars($activity['instructions'], ENT_QUOTES, 'UTF-8'); ?></h2>
-                <p>Fill in the blanks with the correct words.</p>
-            </div>
-
             <?php if ($activity['media_type'] === 'tts' && !empty($activity['tts_text'])): ?>
             <div class="fb-tts-bar">
                 <button type="button" id="fb-tts-btn" class="fb-tts-btn">Listen</button>
@@ -880,28 +839,24 @@ body.presentation-mode .fb-card {
             </div>
             <?php endif; ?>
 
-            <div class="fb-prog-wrap">
-                <div class="fb-prog-track">
-                    <div class="fb-prog-fill" id="fb-prog-fill" style="width:<?php echo count($renderedBlocks) > 0 ? round(1/count($renderedBlocks)*100) : 100; ?>%"></div>
-                </div>
-                <span class="fb-prog-label" id="fb-prog-label">1 / <?php echo count($renderedBlocks); ?></span>
-            </div>
-
             <div class="fb-block-area">
-                <?php foreach ($renderedBlocks as $bIdx => $block): ?>
-                <div class="fb-block <?php echo $bIdx === 0 ? 'active' : ''; ?>"
-                     id="fb-block-<?php echo $bIdx; ?>"
-                     data-answers="<?php echo htmlspecialchars(json_encode($block['answers']), ENT_QUOTES, 'UTF-8'); ?>">
-                    <?php if (!empty($block['image'])): ?>
-                    <img class="fb-block-img" src="<?php echo htmlspecialchars($block['image'], ENT_QUOTES, 'UTF-8'); ?>" alt="">
-                    <?php endif; ?>
-                    <div class="fb-text"><?php echo $block['rendered']; ?></div>
+                <?php if ($firstImage !== ''): ?>
+                <img class="fb-worksheet-img" src="<?php echo htmlspecialchars($firstImage, ENT_QUOTES, 'UTF-8'); ?>" alt="">
+                <?php endif; ?>
+
+                <div class="fb-worksheet-list">
+                    <?php foreach ($renderedBlocks as $bIdx => $block): ?>
+                    <div class="fb-block"
+                         id="fb-block-<?php echo $bIdx; ?>"
+                         data-answers="<?php echo htmlspecialchars(json_encode($block['answers']), ENT_QUOTES, 'UTF-8'); ?>">
+                        <span class="fb-sentence-num"><?php echo ($bIdx + 1); ?>.</span>
+                        <div class="fb-text"><?php echo $block['rendered']; ?></div>
+                    </div>
+                    <?php endforeach; ?>
                 </div>
-                <?php endforeach; ?>
             </div>
 
             <div class="fb-controls">
-                <button type="button" class="fb-btn" id="fb-prev" style="display:none">Prev</button>
                 <button type="button" class="fb-btn" id="fb-check">Check</button>
                 <button type="button" class="fb-btn" id="fb-show">Show Answer</button>
                 <button type="button" class="fb-btn" id="fb-next">Next</button>
@@ -936,7 +891,6 @@ var RETURN_TO   = <?php echo json_encode($returnTo,   JSON_UNESCAPED_UNICODE); ?
 var ACTIVITY_ID = <?php echo json_encode($activityId, JSON_UNESCAPED_UNICODE); ?>;
 var TOTAL       = BLOCKS.length;
 
-var cur       = 0;
 var done      = false;
 var revealed  = {};
 
@@ -944,15 +898,13 @@ var winSound  = document.getElementById('fb-win-sound');
 var losSound  = document.getElementById('fb-lose-sound');
 var doneSound = document.getElementById('fb-done-sound');
 
-var btnPrev  = document.getElementById('fb-prev');
 var btnCheck = document.getElementById('fb-check');
 var btnShow  = document.getElementById('fb-show');
 var btnNext  = document.getElementById('fb-next');
 
-btnPrev.addEventListener('click',  function() { fbPrev(); });
-btnCheck.addEventListener('click', function() { fbCheck(); });
-btnShow.addEventListener('click',  function() { fbShow(); });
-btnNext.addEventListener('click',  function() { fbNext(); });
+btnCheck.addEventListener('click', function() { fbCheckAll(); });
+btnShow.addEventListener('click',  function() { fbShowAll(); });
+btnNext.addEventListener('click',  function() { fbFinish(); });
 
 function playSound(el) {
     try { el.pause(); el.currentTime = 0; el.play(); } catch(e) {}
@@ -989,6 +941,10 @@ function blanksOf(b) {
     return Array.prototype.slice.call(el.querySelectorAll('.fb-blank'));
 }
 
+function allBlanks() {
+    return Array.prototype.slice.call(document.querySelectorAll('.fb-blank'));
+}
+
 function answersOf(b) {
     var el = blockEl(b);
     if (!el) return [];
@@ -1016,63 +972,55 @@ function clearFb() {
     setFb('', '');
 }
 
-function setProgress() {
-    var pct = Math.round((cur + 1) / TOTAL * 100);
-    document.getElementById('fb-prog-fill').style.width = pct + '%';
-    document.getElementById('fb-prog-label').textContent = (cur + 1) + ' / ' + TOTAL;
-    btnPrev.style.display = cur > 0 ? '' : 'none';
-}
-
-function clearColors() {
-    var allBlanks = document.querySelectorAll('.fb-blank');
-
-    for (var i = 0; i < allBlanks.length; i++) {
-        allBlanks[i].classList.remove('correct', 'wrong', 'revealed');
-    }
-}
-
-function fbCheck() {
+function fbCheckAll() {
     if (done) return;
 
-    var ans  = answersOf(cur);
-    var inps = blanksOf(cur);
-    var ok   = 0;
+    var total = 0;
+    var ok = 0;
 
-    for (var i = 0; i < inps.length; i++) {
-        inps[i].classList.remove('correct', 'wrong', 'revealed');
+    for (var b = 0; b < TOTAL; b++) {
+        var ans  = answersOf(b);
+        var inps = blanksOf(b);
 
-        var v = normalizeAnswer(inps[i].value);
-        var a = normalizeAnswer(ans[i] || '');
+        for (var i = 0; i < inps.length; i++) {
+            total++;
+            inps[i].classList.remove('correct', 'wrong', 'revealed');
 
-        if (v === a) {
-            inps[i].classList.add('correct');
-            ok++;
-        } else {
-            inps[i].classList.add('wrong');
+            var v = normalizeAnswer(inps[i].value);
+            var a = normalizeAnswer(ans[i] || '');
+
+            if (v === a && v !== '') {
+                inps[i].classList.add('correct');
+                ok++;
+            } else {
+                inps[i].classList.add('wrong');
+            }
         }
     }
 
-    if (ok === inps.length) {
+    if (ok === total) {
         setFb('Correct! Well done!', 'good');
         playSound(winSound);
     } else {
-        setFb(ok + ' / ' + inps.length + ' correct — try again!', 'bad');
+        setFb(ok + ' / ' + total + ' correct — try again!', 'bad');
         playSound(losSound);
     }
 }
 
-function fbShow() {
+function fbShowAll() {
     if (done) return;
 
-    var ans  = answersOf(cur);
-    var inps = blanksOf(cur);
+    for (var b = 0; b < TOTAL; b++) {
+        var ans  = answersOf(b);
+        var inps = blanksOf(b);
 
-    for (var i = 0; i < inps.length; i++) {
-        inps[i].value = ans[i] || '';
-        resizeInput(inps[i]);
-        inps[i].classList.remove('correct', 'wrong');
-        inps[i].classList.add('revealed');
-        revealed[blankKey(cur, i)] = true;
+        for (var i = 0; i < inps.length; i++) {
+            inps[i].value = ans[i] || '';
+            resizeInput(inps[i]);
+            inps[i].classList.remove('correct', 'wrong');
+            inps[i].classList.add('revealed');
+            revealed[blankKey(b, i)] = true;
+        }
     }
 
     setFb('Answers shown.', 'good');
@@ -1080,37 +1028,8 @@ function fbShow() {
     btnShow.disabled  = true;
 }
 
-function fbNext() {
-    if (cur < TOTAL - 1) {
-        blockEl(cur).classList.remove('active');
-        cur++;
-        blockEl(cur).classList.add('active');
-        clearFb();
-        clearColors();
-        btnCheck.disabled = false;
-        btnShow.disabled  = false;
-        setProgress();
-
-        var first = blanksOf(cur)[0];
-        if (first) setTimeout(function() { first.focus(); }, 80);
-    } else {
-        fbFinish();
-    }
-}
-
-function fbPrev() {
-    if (cur > 0) {
-        blockEl(cur).classList.remove('active');
-        cur--;
-        blockEl(cur).classList.add('active');
-        clearFb();
-        btnCheck.disabled = false;
-        btnShow.disabled  = false;
-        setProgress();
-    }
-}
-
 function fbFinish() {
+    if (done) return;
     done = true;
 
     var totalBlanks   = 0;
@@ -1126,7 +1045,7 @@ function fbFinish() {
             if (!revealed[blankKey(b, i)]) {
                 var v = normalizeAnswer(inps[i].value);
                 var a = normalizeAnswer(ans[i] || '');
-                if (v === a) correctBlanks++;
+                if (v === a && v !== '') correctBlanks++;
             }
         }
     }
@@ -1172,7 +1091,6 @@ function navigate(url) {
 
 window.fbRestart = function() {
     done     = false;
-    cur      = 0;
     revealed = {};
 
     document.getElementById('fb-completed').classList.remove('active');
@@ -1182,21 +1100,14 @@ window.fbRestart = function() {
 
     clearFb();
 
-    for (var b = 0; b < TOTAL; b++) {
-        blockEl(b).classList.toggle('active', b === 0);
-
-        var inps = blanksOf(b);
-        for (var i = 0; i < inps.length; i++) {
-            inps[i].value = '';
-            inps[i].classList.remove('correct', 'wrong', 'revealed');
-            resizeInput(inps[i]);
-        }
+    var inps = allBlanks();
+    for (var i = 0; i < inps.length; i++) {
+        inps[i].value = '';
+        inps[i].classList.remove('correct', 'wrong', 'revealed');
+        resizeInput(inps[i]);
     }
 
-    setProgress();
-
-    var first = blanksOf(0)[0];
-    if (first) setTimeout(function() { first.focus(); }, 80);
+    if (inps[0]) setTimeout(function() { inps[0].focus(); }, 80);
 };
 
 document.addEventListener('keydown', function(e) {
@@ -1207,13 +1118,13 @@ document.addEventListener('keydown', function(e) {
 
     e.preventDefault();
 
-    var all = blanksOf(cur);
+    var all = allBlanks();
     var idx = all.indexOf(active);
 
     if (idx !== -1 && idx < all.length - 1) {
         all[idx + 1].focus();
     } else {
-        fbCheck();
+        fbCheckAll();
     }
 });
 
@@ -1354,7 +1265,6 @@ if (ttsBtn) {
 <?php endif; ?>
 
 initResizers();
-setProgress();
 
 })();
 </script>
