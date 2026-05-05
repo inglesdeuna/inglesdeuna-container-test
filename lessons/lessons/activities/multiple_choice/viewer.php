@@ -173,29 +173,490 @@ $jsVersion = file_exists(__DIR__ . '/multiple_choice.js') ? (string) filemtime(_
 ob_start();
 ?>
 
-<?= render_activity_header($viewerTitle) ?>
-<div class="mc-viewer" id="mc-container">
-    <div class="mc-status" id="mc-status"></div>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@600;700;800;900&display=swap" rel="stylesheet">
 
-    <div class="mc-card">
-        <div class="mc-question" id="mc-question"></div>
-        <img id="mc-image" class="mc-image" alt="">
-        <div class="mc-options" id="mc-options"></div>
-    </div>
+<style>
+:root {
+    --mc-orange:#F97316;
+    --mc-purple:#7F77DD;
+    --mc-purple-dark:#534AB7;
+    --mc-purple-soft:#EEEDFE;
+    --mc-lila:#EDE9FA;
+    --mc-muted:#9B94BE;
+    --mc-green:#16a34a;
+    --mc-red:#dc2626;
+}
 
-    <div class="mc-controls">
-        <button type="button" class="mc-btn mc-btn-show" id="mc-show">Show Answer</button>
-        <button type="button" class="mc-btn mc-btn-next" id="mc-next">Next</button>
-    </div>
+html, body {
+    width:100%;
+    min-height:100%;
+}
 
-    <div class="mc-feedback" id="mc-feedback"></div>
+body {
+    margin:0!important;
+    padding:0!important;
+    background:#ffffff!important;
+    font-family:'Nunito','Segoe UI',sans-serif!important;
+}
 
-    <div id="mc-completed" class="mc-completed-screen">
-        <div class="mc-completed-icon">🎉</div>
-        <h2 class="mc-completed-title" id="mc-completed-title"></h2>
-        <p class="mc-completed-text" id="mc-completed-text"></p>
-        <p class="mc-completed-text" id="mc-score-text" style="font-weight:700;font-size:18px;color:#6d28d9;"></p>
-        <button type="button" class="mc-completed-button" id="mc-restart">Restart</button>
+.activity-wrapper {
+    max-width:100%!important;
+    margin:0!important;
+    padding:0!important;
+    min-height:100vh;
+    display:flex!important;
+    flex-direction:column!important;
+    background:transparent!important;
+}
+
+.top-row,
+.activity-header,
+.activity-title,
+.activity-subtitle {
+    display:none!important;
+}
+
+.viewer-content {
+    flex:1!important;
+    display:flex!important;
+    flex-direction:column!important;
+    padding:0!important;
+    margin:0!important;
+    background:transparent!important;
+    border:none!important;
+    box-shadow:none!important;
+    border-radius:0!important;
+}
+
+.mc-page {
+    width:100%;
+    min-height:100vh;
+    padding:clamp(14px,2.5vw,34px);
+    display:flex;
+    align-items:flex-start;
+    justify-content:center;
+    background:#ffffff;
+    box-sizing:border-box;
+}
+
+.mc-app {
+    width:min(860px,100%);
+    margin:0 auto;
+}
+
+.mc-topbar {
+    height:36px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    margin-bottom:8px;
+}
+
+.mc-topbar-title {
+    font-family:'Nunito',sans-serif;
+    font-size:12px;
+    font-weight:900;
+    color:#9B94BE;
+    letter-spacing:.1em;
+    text-transform:uppercase;
+}
+
+.mc-hero {
+    text-align:center;
+    margin-bottom:clamp(14px,2vw,22px);
+}
+
+.mc-kicker {
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    padding:7px 14px;
+    border-radius:999px;
+    background:#FFF0E6;
+    border:1px solid #FCDDBF;
+    color:#C2580A;
+    font-family:'Nunito',sans-serif;
+    font-size:12px;
+    font-weight:900;
+    letter-spacing:.08em;
+    text-transform:uppercase;
+    margin-bottom:10px;
+}
+
+.mc-hero h1 {
+    font-family:'Fredoka',sans-serif;
+    font-size:clamp(30px,5.5vw,58px);
+    font-weight:700;
+    color:#F97316;
+    margin:0;
+    line-height:1.03;
+}
+
+.mc-hero p {
+    font-family:'Nunito',sans-serif;
+    font-size:clamp(13px,1.8vw,17px);
+    font-weight:800;
+    color:#9B94BE;
+    margin:8px 0 0;
+}
+
+.mc-viewer {
+    background:#ffffff!important;
+    border:1px solid #F0EEF8!important;
+    border-radius:34px!important;
+    padding:clamp(16px,2.6vw,26px)!important;
+    box-shadow:0 8px 40px rgba(127,119,221,.13)!important;
+    width:min(760px,100%)!important;
+    margin:0 auto!important;
+    box-sizing:border-box!important;
+    position:relative!important;
+    font-family:'Nunito','Segoe UI',sans-serif!important;
+}
+
+.mc-status {
+    display:inline-flex!important;
+    align-items:center!important;
+    justify-content:center!important;
+    min-width:74px!important;
+    padding:7px 11px!important;
+    border-radius:999px!important;
+    background:#7F77DD!important;
+    color:#ffffff!important;
+    font-family:'Nunito',sans-serif!important;
+    font-size:12px!important;
+    font-weight:900!important;
+    margin:0 auto 18px!important;
+    text-align:center!important;
+}
+
+.mc-card {
+    background:#ffffff!important;
+    border:1px solid #EDE9FA!important;
+    border-radius:28px!important;
+    box-shadow:0 12px 36px rgba(127,119,221,.13)!important;
+    padding:clamp(22px,4vw,42px)!important;
+    min-height:clamp(300px,42vh,430px)!important;
+    box-sizing:border-box!important;
+    display:flex!important;
+    flex-direction:column!important;
+    align-items:center!important;
+    justify-content:center!important;
+    text-align:center!important;
+}
+
+.mc-question {
+    width:100%!important;
+    max-width:640px!important;
+    font-family:'Fredoka',sans-serif!important;
+    font-size:clamp(24px,4vw,42px)!important;
+    font-weight:700!important;
+    color:#534AB7!important;
+    line-height:1.15!important;
+    text-align:center!important;
+    margin:0 0 18px!important;
+    overflow-wrap:anywhere!important;
+}
+
+.mc-image {
+    max-width:min(360px,100%)!important;
+    max-height:240px!important;
+    object-fit:contain!important;
+    border-radius:22px!important;
+    margin:0 auto 18px!important;
+    background:#ffffff!important;
+    border:1px solid #EDE9FA!important;
+    box-shadow:0 8px 24px rgba(127,119,221,.10)!important;
+}
+
+.mc-image[src=""],
+.mc-image:not([src]) {
+    display:none!important;
+}
+
+.mc-options {
+    width:100%!important;
+    max-width:640px!important;
+    display:grid!important;
+    grid-template-columns:1fr!important;
+    gap:10px!important;
+    margin-top:4px!important;
+}
+
+.mc-option,
+.mc-options button,
+.mc-options .option {
+    width:100%!important;
+    min-height:50px!important;
+    padding:13px 18px!important;
+    border-radius:18px!important;
+    background:#ffffff!important;
+    border:1px solid #EDE9FA!important;
+    color:#534AB7!important;
+    font-family:'Fredoka',sans-serif!important;
+    font-size:clamp(17px,2.4vw,24px)!important;
+    font-weight:600!important;
+    text-align:left!important;
+    cursor:pointer!important;
+    box-shadow:0 4px 14px rgba(127,119,221,.13)!important;
+    transition:transform .12s,box-shadow .12s,border-color .12s!important;
+}
+
+.mc-option:hover,
+.mc-options button:hover,
+.mc-options .option:hover {
+    transform:translateY(-1px)!important;
+    border-color:#7F77DD!important;
+    box-shadow:0 12px 24px rgba(127,119,221,.16)!important;
+}
+
+.mc-option.correct,
+.mc-options button.correct,
+.mc-options .option.correct {
+    border-color:#16a34a!important;
+    color:#16a34a!important;
+    box-shadow:0 0 0 2px rgba(22,163,74,.22)!important;
+}
+
+.mc-option.wrong,
+.mc-options button.wrong,
+.mc-options .option.wrong {
+    border-color:#dc2626!important;
+    color:#dc2626!important;
+    box-shadow:0 0 0 2px rgba(220,38,38,.18)!important;
+}
+
+.mc-option.selected,
+.mc-options button.selected,
+.mc-options .option.selected {
+    border-color:#7F77DD!important;
+    color:#534AB7!important;
+    background:#EEEDFE!important;
+}
+
+.mc-options img,
+.mc-option img {
+    max-width:100%!important;
+    max-height:150px!important;
+    object-fit:contain!important;
+    border-radius:14px!important;
+    display:block!important;
+    margin:0 auto!important;
+}
+
+.mc-controls {
+    border-top:1px solid #F0EEF8!important;
+    margin-top:16px!important;
+    padding-top:16px!important;
+    display:flex!important;
+    align-items:center!important;
+    justify-content:center!important;
+    gap:10px!important;
+    flex-wrap:wrap!important;
+    background:#ffffff!important;
+}
+
+.mc-btn,
+.mc-completed-button {
+    display:inline-flex!important;
+    align-items:center!important;
+    justify-content:center!important;
+    padding:13px 20px!important;
+    min-width:clamp(104px,16vw,146px)!important;
+    border:none!important;
+    border-radius:999px!important;
+    font-family:'Nunito',sans-serif!important;
+    font-size:13px!important;
+    font-weight:900!important;
+    color:#ffffff!important;
+    cursor:pointer!important;
+    white-space:nowrap!important;
+    transition:transform .12s,filter .12s,box-shadow .12s!important;
+}
+
+.mc-btn:hover,
+.mc-completed-button:hover {
+    filter:brightness(1.07)!important;
+    transform:translateY(-1px)!important;
+}
+
+.mc-btn-show {
+    background:#7F77DD!important;
+    box-shadow:0 6px 18px rgba(127,119,221,.18)!important;
+}
+
+.mc-btn-next {
+    background:#F97316!important;
+    box-shadow:0 6px 18px rgba(249,115,22,.22)!important;
+}
+
+.mc-feedback {
+    font-family:'Nunito',sans-serif!important;
+    font-size:13px!important;
+    font-weight:900!important;
+    text-align:center!important;
+    min-height:18px!important;
+    width:100%!important;
+    margin-top:10px!important;
+    color:#534AB7!important;
+}
+
+.mc-feedback.good {
+    color:#16a34a!important;
+}
+
+.mc-feedback.bad {
+    color:#dc2626!important;
+}
+
+.mc-completed-screen {
+    display:none;
+    background:#ffffff!important;
+    border:1px solid #EDE9FA!important;
+    border-radius:28px!important;
+    box-shadow:0 12px 36px rgba(127,119,221,.13)!important;
+    min-height:clamp(300px,42vh,430px)!important;
+    flex-direction:column!important;
+    align-items:center!important;
+    justify-content:center!important;
+    text-align:center!important;
+    padding:clamp(28px,5vw,48px) 24px!important;
+    gap:12px!important;
+    box-sizing:border-box!important;
+}
+
+.mc-completed-screen.active,
+.mc-completed-screen[style*="block"],
+.mc-completed-screen[style*="flex"] {
+    display:flex!important;
+}
+
+.mc-completed-icon {
+    font-size:64px!important;
+    line-height:1!important;
+    margin-bottom:4px!important;
+}
+
+.mc-completed-title {
+    font-family:'Fredoka',sans-serif!important;
+    font-size:clamp(30px,5.5vw,58px)!important;
+    font-weight:700!important;
+    color:#F97316!important;
+    margin:0!important;
+    line-height:1.03!important;
+}
+
+.mc-completed-text {
+    font-family:'Nunito',sans-serif!important;
+    font-size:clamp(13px,1.8vw,17px)!important;
+    font-weight:800!important;
+    color:#9B94BE!important;
+    margin:0!important;
+}
+
+#mc-score-text {
+    color:#534AB7!important;
+    font-family:'Nunito',sans-serif!important;
+    font-size:15px!important;
+    font-weight:900!important;
+}
+
+.mc-completed-button {
+    background:#7F77DD!important;
+    box-shadow:0 6px 18px rgba(127,119,221,.18)!important;
+    margin-top:4px!important;
+}
+
+@media(max-width:640px) {
+    .mc-page {
+        padding:12px;
+    }
+
+    .mc-topbar {
+        height:30px;
+        margin-bottom:4px;
+    }
+
+    .mc-kicker {
+        padding:5px 11px;
+        font-size:11px;
+        margin-bottom:6px;
+    }
+
+    .mc-hero h1 {
+        font-size:clamp(26px,8vw,38px);
+    }
+
+    .mc-viewer {
+        border-radius:26px!important;
+        padding:14px!important;
+        width:100%!important;
+    }
+
+    .mc-card {
+        border-radius:22px!important;
+        padding:18px!important;
+        min-height:300px!important;
+    }
+
+    .mc-question {
+        font-size:clamp(22px,7vw,32px)!important;
+    }
+
+    .mc-controls {
+        display:grid!important;
+        grid-template-columns:1fr!important;
+        gap:9px!important;
+    }
+
+    .mc-btn,
+    .mc-completed-button {
+        width:100%!important;
+    }
+
+    .mc-completed-screen {
+        border-radius:26px!important;
+    }
+}
+</style>
+
+<div class="mc-page">
+    <div class="mc-app">
+
+        <div class="mc-topbar">
+            <span class="mc-topbar-title">Multiple Choice</span>
+        </div>
+
+        <div class="mc-hero">
+            <div class="mc-kicker">Activity</div>
+            <h1><?php echo htmlspecialchars($viewerTitle, ENT_QUOTES, 'UTF-8'); ?></h1>
+            <p>Choose the correct answer.</p>
+        </div>
+
+        <div class="mc-viewer" id="mc-container">
+            <div class="mc-status" id="mc-status"></div>
+
+            <div class="mc-card">
+                <div class="mc-question" id="mc-question"></div>
+                <img id="mc-image" class="mc-image" alt="">
+                <div class="mc-options" id="mc-options"></div>
+            </div>
+
+            <div class="mc-controls">
+                <button type="button" class="mc-btn mc-btn-show" id="mc-show">Show Answer</button>
+                <button type="button" class="mc-btn mc-btn-next" id="mc-next">Next</button>
+            </div>
+
+            <div class="mc-feedback" id="mc-feedback"></div>
+
+            <div id="mc-completed" class="mc-completed-screen">
+                <div class="mc-completed-icon">✅</div>
+                <h2 class="mc-completed-title" id="mc-completed-title"></h2>
+                <p class="mc-completed-text" id="mc-completed-text"></p>
+                <p class="mc-completed-text" id="mc-score-text" style="font-weight:900;font-size:15px;color:#534AB7;"></p>
+                <button type="button" class="mc-completed-button" id="mc-restart">Restart</button>
+            </div>
+        </div>
+
     </div>
 </div>
 
