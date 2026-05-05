@@ -409,8 +409,18 @@ body.presentation-mode .wp-shell{
     position:absolute!important;inset:0!important;
     max-width:none!important;margin:0!important;
     padding:10px 12px!important;border-radius:0!important;
-    display:flex!important;flex-direction:column!important;
+    display:flex!important;
+    flex-direction:column!important;
+    align-items:center!important;
+    justify-content:flex-start!important;
     overflow-y:auto!important;overflow-x:hidden!important;
+}
+
+body.embedded-mode .wp-app,
+body.fullscreen-embedded .wp-app,
+body.presentation-mode .wp-app{
+    width:min(860px,100%)!important;
+    margin:0 auto!important;
 }
 body.embedded-mode .wp-board,
 body.fullscreen-embedded .wp-board,
