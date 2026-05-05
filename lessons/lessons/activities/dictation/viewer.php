@@ -564,6 +564,53 @@ body {
     display: block;
 }
 
+.dict-diff {
+    display: grid;
+    gap: 8px;
+    text-align: left;
+}
+
+.dict-diff-row {
+    background: #ffffff;
+    border: 1px solid #EDE9FA;
+    border-radius: 14px;
+    padding: 10px 12px;
+}
+
+.dict-diff-label {
+    display: block;
+    font-family: 'Nunito', sans-serif;
+    font-size: 11px;
+    font-weight: 900;
+    color: #9B94BE;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+}
+
+.dict-word {
+    display: inline-block;
+    border-radius: 8px;
+    padding: 2px 5px;
+    margin: 1px;
+    font-weight: 900;
+}
+
+.dict-word.ok {
+    color: #16a34a;
+    background: rgba(22,163,74,.10);
+}
+
+.dict-word.bad {
+    color: #dc2626;
+    background: rgba(220,38,38,.12);
+}
+
+.dict-word.missing {
+    color: #534AB7;
+    background: #EEEDFE;
+}
+
 .dict-controls {
     border-top: 1px solid #F0EEF8;
     margin-top: 16px;
@@ -618,6 +665,11 @@ body {
     box-shadow: 0 6px 18px rgba(127,119,221,.18);
 }
 
+.dict-btn-check {
+    background: #F97316;
+    box-shadow: 0 6px 18px rgba(249,115,22,.22);
+}
+
 .dict-btn-show {
     background: #7F77DD;
     box-shadow: 0 6px 18px rgba(127,119,221,.18);
@@ -648,17 +700,18 @@ body {
 
 .dict-completed {
     display: none;
-    position: absolute;
-    inset: 0;
     background: #ffffff;
-    border-radius: 34px;
+    border: 1px solid #EDE9FA;
+    border-radius: 28px;
+    box-shadow: 0 12px 36px rgba(127,119,221,.13);
+    min-height: clamp(300px, 42vh, 430px);
     flex-direction: column;
     align-items: center;
     justify-content: center;
     text-align: center;
-    padding: 40px 24px;
+    padding: clamp(28px, 5vw, 48px) 24px;
     gap: 12px;
-    z-index: 20;
+    box-sizing: border-box;
 }
 
 .dict-completed.active {
@@ -677,6 +730,7 @@ body {
     font-weight: 700;
     color: #F97316;
     margin: 0;
+    line-height: 1.03;
 }
 
 .dict-completed-text {
@@ -697,6 +751,7 @@ body {
     flex-direction: column;
     align-items: center;
     justify-content: center;
+    margin-top: 4px;
 }
 
 .dict-score-pct {
@@ -734,6 +789,7 @@ body {
     cursor: pointer;
     box-shadow: 0 6px 18px rgba(127,119,221,.18);
     transition: filter .15s, transform .15s;
+    margin-top: 4px;
 }
 
 .dict-restart:hover {
@@ -813,7 +869,7 @@ body {
 
         <div class="dict-board" id="dict-viewer">
 
-            <div class="dict-progress">
+            <div class="dict-progress" id="dict-progress">
                 <div class="dict-progress-track">
                     <div class="dict-progress-fill" id="dict-progress-fill"></div>
                 </div>
@@ -833,6 +889,7 @@ body {
             </div>
 
             <div class="dict-controls" id="dict-controls">
+                <button type="button" class="dict-btn dict-btn-check" id="dict-check">Check</button>
                 <button type="button" class="dict-btn dict-btn-show" id="dict-show">Show Answer</button>
                 <button type="button" class="dict-btn dict-btn-next" id="dict-next">Next</button>
             </div>
@@ -869,6 +926,7 @@ document.addEventListener('DOMContentLoaded', function () {
     var DICT_RETURN_TO = <?php echo json_encode($returnTo, JSON_UNESCAPED_UNICODE); ?>;
 
     var statusEl = document.getElementById('dict-status');
+    var progressEl = document.getElementById('dict-progress');
     var progressFillEl = document.getElementById('dict-progress-fill');
     var promptEl = document.getElementById('dict-prompt');
     var hintEl = document.getElementById('dict-hint');
@@ -886,6 +944,7 @@ document.addEventListener('DOMContentLoaded', function () {
     var scorePctEl = document.getElementById('dict-score-pct');
 
     var listenBtn = document.getElementById('dict-listen');
+    var checkBtn = document.getElementById('dict-check');
     var showBtn = document.getElementById('dict-show');
     var nextBtn = document.getElementById('dict-next');
     var restartBtn = document.getElementById('dict-restart');
@@ -954,6 +1013,48 @@ document.addEventListener('DOMContentLoaded', function () {
             .trim()
             .replace(/[.,!?;:]/g, '')
             .replace(/\s+/g, ' ');
+    }
+
+    function escapeHtml(text) {
+        return String(text || '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
+
+    function buildDiffHtml(studentText, correctText) {
+        var studentWords = normalizeText(studentText).split(' ').filter(Boolean);
+        var correctWords = normalizeText(correctText).split(' ').filter(Boolean);
+        var max = Math.max(studentWords.length, correctWords.length);
+        var studentHtml = [];
+        var correctHtml = [];
+
+        for (var i = 0; i < max; i++) {
+            var s = studentWords[i] || '';
+            var c = correctWords[i] || '';
+
+            if (s && c && s === c) {
+                studentHtml.push('<span class="dict-word ok">' + escapeHtml(s) + '</span>');
+                correctHtml.push('<span class="dict-word ok">' + escapeHtml(c) + '</span>');
+            } else {
+                if (s) {
+                    studentHtml.push('<span class="dict-word bad">' + escapeHtml(s) + '</span>');
+                } else {
+                    studentHtml.push('<span class="dict-word bad">___</span>');
+                }
+
+                if (c) {
+                    correctHtml.push('<span class="dict-word missing">' + escapeHtml(c) + '</span>');
+                }
+            }
+        }
+
+        return '<div class="dict-diff">' +
+            '<div class="dict-diff-row"><span class="dict-diff-label">You wrote</span>' + studentHtml.join(' ') + '</div>' +
+            '<div class="dict-diff-row"><span class="dict-diff-label">Correct answer</span>' + correctHtml.join(' ') + '</div>' +
+        '</div>';
     }
 
     function playSound(sound) {
@@ -1167,6 +1268,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         finished = false;
         completedEl.classList.remove('active');
+        if (progressEl) progressEl.style.display = 'flex';
         cardEl.style.display = 'flex';
         listenRowEl.style.display = 'flex';
         controlsEl.style.display = 'flex';
@@ -1193,6 +1295,8 @@ document.addEventListener('DOMContentLoaded', function () {
             imageEl.alt = '';
         }
 
+        checkBtn.disabled = false;
+        showBtn.disabled = false;
         nextBtn.disabled = false;
         nextBtn.textContent = index < data.length - 1 ? 'Next' : 'Finish';
 
@@ -1228,12 +1332,17 @@ document.addEventListener('DOMContentLoaded', function () {
             feedbackEl.textContent = 'Right!';
             feedbackEl.className = 'dict-feedback good';
             answerEl.className = 'dict-answer-box ok';
+            revealEl.classList.remove('show');
+            revealEl.textContent = '';
             playSound(correctSound);
             checkedCards[index] = true;
             correctCount++;
             answerEl.disabled = true;
+            checkBtn.disabled = true;
         } else {
             answerEl.className = 'dict-answer-box bad';
+            revealEl.innerHTML = buildDiffHtml(answerEl.value, data[index].en || '');
+            revealEl.classList.add('show');
 
             if (currentAttempts >= 2) {
                 feedbackEl.textContent = 'Wrong (2/2)';
@@ -1241,10 +1350,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 playSound(wrongSound);
                 checkedCards[index] = true;
                 answerEl.disabled = true;
-                revealEl.textContent = 'You wrote: "' + answerEl.value + '"  →  Correct: ' + (data[index].en || '');
-                revealEl.classList.add('show');
+                checkBtn.disabled = true;
             } else {
-                feedbackEl.textContent = 'Wrong (1/2) — try again';
+                feedbackEl.textContent = 'Wrong (1/2) — check the red words and try again';
                 feedbackEl.className = 'dict-feedback bad';
                 playSound(wrongSound);
             }
@@ -1273,9 +1381,13 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         if (answerEl.value.trim() !== '') {
-            revealEl.textContent = 'You wrote: "' + answerEl.value + '"  →  Correct: ' + (data[index].en || '');
+            revealEl.innerHTML = buildDiffHtml(answerEl.value, data[index].en || '');
         } else {
-            revealEl.textContent = 'Correct: ' + (data[index].en || '');
+            revealEl.innerHTML =
+                '<div class="dict-diff">' +
+                    '<div class="dict-diff-row"><span class="dict-diff-label">Correct answer</span>' +
+                    '<span class="dict-word missing">' + escapeHtml(data[index].en || '') + '</span></div>' +
+                '</div>';
         }
 
         revealEl.classList.add('show');
@@ -1286,6 +1398,7 @@ document.addEventListener('DOMContentLoaded', function () {
         cardEl.style.display = 'none';
         listenRowEl.style.display = 'none';
         controlsEl.style.display = 'none';
+        if (progressEl) progressEl.style.display = 'none';
         statusEl.textContent = 'Done';
         progressFillEl.style.width = '100%';
         feedbackEl.textContent = '';
@@ -1365,11 +1478,10 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     listenBtn.addEventListener('click', speakCurrent);
+    checkBtn.addEventListener('click', checkAnswer);
     showBtn.addEventListener('click', showAnswer);
     nextBtn.addEventListener('click', goNext);
     restartBtn.addEventListener('click', restart);
-
-    answerEl.addEventListener('blur', autoCheckIfNeeded);
 
     answerEl.addEventListener('keydown', function (event) {
         if (event.key === 'Enter' && !event.shiftKey) {
