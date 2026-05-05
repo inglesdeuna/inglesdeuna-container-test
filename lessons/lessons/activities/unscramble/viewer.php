@@ -168,270 +168,102 @@ if (count($sentences) === 0) {
 
 ob_start();
 ?>
+
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@600;700;800;900&display=swap" rel="stylesheet">
+
 <style>
-.us-stage{
-    max-width:980px;
-    margin:0 auto;
-}
-
-.us-intro{
-    margin-bottom:18px;
-    padding:24px 26px;
-    border-radius:26px;
-    border:1px solid #ddd6fe;
-    background:linear-gradient(135deg, #f5f3ff 0%, #ede9fe 52%, #e9d5ff 100%);
-    box-shadow:0 16px 34px rgba(15,23,42,.09);
-}
-
-.us-intro h2{
-    margin:0 0 8px;
-    font-family:'Fredoka','Trebuchet MS',sans-serif;
-    font-size:30px;
-    line-height:1.1;
-    color:#5b21b6;
-}
-
-.us-intro p,
-.us-instructions{
-    margin:0;
-    text-align:center;
-    color:#6b21a8;
-    font-size:16px;
-    line-height:1.6;
-}
-
-#sentenceBox{
-    margin:20px auto 0;
-    padding:22px;
-    background:linear-gradient(180deg,#faf9ff 0%,#f5f3ff 100%);
-    border:1px solid #ddd6fe;
-    border-radius:24px;
-    max-width:920px;
-    box-shadow:0 14px 28px rgba(15,23,42,.08);
-}
-
-#buildArea{
-    display:flex;
-    flex-wrap:wrap;
-    align-items:center;
-    min-height:56px;
-    gap:8px;
-    padding:12px;
-    border-radius:16px;
-    border:2px dashed #a78bfa;
-    background:#faf5ff;
-    margin-top:12px;
-}
-
-#buildArea.drag-over{
-    border-color:#7c3aed;
-    background:#ede9fe;
-}
-
-.us-placeholder{
-    color:#a78bfa;
-    font-size:15px;
-    font-style:italic;
-    pointer-events:none;
-}
-
-.us-chip{
-    display:inline-flex;
-    align-items:center;
-    padding:10px 16px;
-    border-radius:999px;
-    font-weight:800;
-    cursor:grab;
-    user-select:none;
-    transition:transform .1s ease, box-shadow .1s ease;
-}
-
-.us-chip:active{
-    cursor:grabbing;
-}
-
-.us-chip.bank-chip{
-    background:linear-gradient(180deg,#c4b5fd 0%,#a78bfa 100%);
-    color:#3b0764;
-    box-shadow:0 6px 14px rgba(167,139,250,.3);
-}
-
-.us-chip.bank-chip:hover{
-    transform:translateY(-2px);
-    box-shadow:0 10px 20px rgba(167,139,250,.4);
-}
-
-.us-chip.built-chip{
-    background:linear-gradient(180deg,#ddd6fe 0%,#c4b5fd 100%);
-    color:#4c1d95;
-    box-shadow:0 4px 10px rgba(167,139,250,.2);
-}
-
-.us-chip.built-chip:hover{
-    transform:translateY(-2px);
-    box-shadow:0 8px 18px rgba(167,139,250,.35);
-}
-
-.us-chip.correct-chip{
-    background:linear-gradient(180deg,#bbf7d0 0%,#86efac 100%);
-    color:#14532d;
-    box-shadow:0 4px 10px rgba(34,197,94,.2);
-    cursor:default;
-}
-
-.us-chip.incorrect-chip{
-    background:linear-gradient(180deg,#fecaca 0%,#f87171 100%);
-    color:#7f1d1d;
-    box-shadow:0 4px 10px rgba(239,68,68,.2);
-    cursor:default;
-}
-
-#wordBank{
-    display:flex;
-    flex-wrap:wrap;
-    justify-content:center;
-    gap:12px;
-    margin:18px 0;
-    min-height:52px;
-}
-
-.us-btn{
-    display:inline-flex;
-    align-items:center;
-    justify-content:center;
-    padding:11px 18px;
-    border:none;
-    border-radius:999px;
-    color:white;
-    cursor:pointer;
-    min-width:142px;
-    font-weight:800;
-    font-family:'Nunito','Segoe UI',sans-serif;
-    font-size:14px;
-    line-height:1;
-    box-shadow:0 10px 22px rgba(15,23,42,.12);
-    transition:transform .15s ease, filter .15s ease;
-}
-
-.us-btn:hover{
-    filter:brightness(1.04);
-    transform:translateY(-1px);
-}
-
-.us-btn-listen{background:linear-gradient(180deg,#14b8a6 0%,#0f766e 100%)}
-.us-btn-show{background:linear-gradient(180deg,#d8b4fe 0%,#a855f7 100%)}
-.us-btn-next{background:linear-gradient(180deg,#818cf8 0%,#6366f1 100%)}
-
-#listenBtn.hidden{ display:none; }
-
-#feedback{
-    text-align:center;
-    font-size:20px;
-    font-weight:800;
-    min-height:32px;
-    margin-top:8px;
-}
-
-.good{ color:#15803d; }
-.bad{ color:#dc2626; }
-
-.controls{
-    margin-top:15px;
-    text-align:center;
-}
-
-.us-completed-screen{
-    display:none;
-    text-align:center;
-    max-width:600px;
-    margin:0 auto;
-    padding:40px 20px;
-}
-
-.us-completed-screen.active{
-    display:block;
-}
-
-.us-completed-icon{
-    font-size:80px;
-    margin-bottom:20px;
-}
-
-.us-completed-title{
-    font-family:'Fredoka','Trebuchet MS',sans-serif;
-    font-size:36px;
-    font-weight:700;
-    color:#5b21b6;
-    margin:0 0 16px;
-    line-height:1.2;
-}
-
-.us-completed-text{
-    font-size:16px;
-    color:#6b21a8;
-    line-height:1.6;
-    margin:0 0 32px;
-}
-
-.us-completed-button{
-    display:inline-block;
-    padding:12px 24px;
-    border:none;
-    border-radius:999px;
-    background:linear-gradient(180deg,#8b5cf6 0%,#7c3aed 100%);
-    color:#fff;
-    font-weight:700;
-    font-size:16px;
-    cursor:pointer;
-    box-shadow:0 10px 24px rgba(0,0,0,.14);
-    transition:transform .18s ease, filter .18s ease;
-}
-
-.us-completed-button:hover{
-    transform:scale(1.05);
-    filter:brightness(1.07);
-}
-
-@media (max-width:760px){
-    .us-intro{padding:20px 18px}
-    .us-intro h2{font-size:26px}
-    #sentenceBox{padding:18px}
-    .controls{display:flex;flex-direction:column;align-items:center}
-    .us-btn{width:100%;max-width:320px}
-}
+:root{--us-orange:#F97316;--us-purple:#7F77DD;--us-purple-dark:#534AB7;--us-purple-soft:#EEEDFE;--us-lila:#EDE9FA;--us-muted:#9B94BE;--us-green:#16a34a;--us-red:#dc2626}
+html,body{width:100%;min-height:100%}
+body{margin:0!important;padding:0!important;background:#fff!important;font-family:'Nunito','Segoe UI',sans-serif!important}
+.activity-wrapper{max-width:100%!important;margin:0!important;padding:0!important;min-height:100vh;display:flex!important;flex-direction:column!important;background:transparent!important}
+.top-row,.activity-header,.activity-title,.activity-subtitle{display:none!important}
+.viewer-content{flex:1!important;display:flex!important;flex-direction:column!important;padding:0!important;margin:0!important;background:transparent!important;border:none!important;box-shadow:none!important;border-radius:0!important}
+.us-page{width:100%;min-height:100vh;padding:clamp(14px,2.5vw,34px);display:flex;align-items:flex-start;justify-content:center;background:#fff;box-sizing:border-box}
+.us-app{width:min(860px,100%);margin:0 auto}
+.us-topbar{height:36px;display:flex;align-items:center;justify-content:center;margin-bottom:8px}
+.us-topbar-title{font-family:'Nunito',sans-serif;font-size:12px;font-weight:900;color:#9B94BE;letter-spacing:.1em;text-transform:uppercase}
+.us-hero{text-align:center;margin-bottom:clamp(14px,2vw,22px)}
+.us-kicker{display:inline-flex;align-items:center;justify-content:center;padding:7px 14px;border-radius:999px;background:#FFF0E6;border:1px solid #FCDDBF;color:#C2580A;font-family:'Nunito',sans-serif;font-size:12px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px}
+.us-hero h1{font-family:'Fredoka',sans-serif;font-size:clamp(30px,5.5vw,58px);font-weight:700;color:#F97316;margin:0;line-height:1.03}
+.us-hero p{font-family:'Nunito',sans-serif;font-size:clamp(13px,1.8vw,17px);font-weight:800;color:#9B94BE;margin:8px 0 0}
+.us-stage{background:#fff;border:1px solid #F0EEF8;border-radius:34px;padding:clamp(16px,2.6vw,26px);box-shadow:0 8px 40px rgba(127,119,221,.13);width:min(760px,100%);margin:0 auto;box-sizing:border-box;position:relative}
+.us-intro{display:none}
+#sentenceBox{margin:0 auto;padding:clamp(18px,3vw,28px);background:#fff;border:1px solid #EDE9FA;border-radius:28px;max-width:100%;min-height:clamp(240px,34vh,380px);box-shadow:0 12px 36px rgba(127,119,221,.13);box-sizing:border-box;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
+#buildArea{width:100%;display:flex;flex-wrap:wrap;align-items:center;justify-content:center;min-height:76px;gap:9px;padding:14px;border-radius:22px;border:2px dashed #EDE9FA;background:#fff;margin-top:12px;box-shadow:0 4px 14px rgba(127,119,221,.08);transition:border-color .15s,background .15s,box-shadow .15s}
+#buildArea.drag-over{border-color:#7F77DD;background:#FAFAFE;box-shadow:0 8px 24px rgba(127,119,221,.12)}
+.us-placeholder{color:#9B94BE;font-size:15px;font-weight:800;font-style:normal;pointer-events:none}
+.us-chip{display:inline-flex;align-items:center;justify-content:center;padding:11px 16px;border-radius:999px;font-family:'Nunito',sans-serif;font-size:14px;font-weight:900;cursor:grab;user-select:none;transition:transform .12s,box-shadow .12s,border-color .12s,background .12s}
+.us-chip:active{cursor:grabbing}
+.us-chip.bank-chip{background:#fff;color:#534AB7;border:1px solid #EDE9FA;box-shadow:0 6px 18px rgba(127,119,221,.13)}
+.us-chip.bank-chip:hover{transform:translateY(-1px);border-color:#7F77DD;box-shadow:0 12px 24px rgba(127,119,221,.16)}
+.us-chip.built-chip{background:#EEEDFE;color:#534AB7;border:1px solid #7F77DD;box-shadow:0 6px 18px rgba(127,119,221,.13)}
+.us-chip.built-chip:hover{transform:translateY(-1px);box-shadow:0 12px 24px rgba(127,119,221,.16)}
+.us-chip.correct-chip{background:#fff;border:1px solid #16a34a;color:#16a34a;box-shadow:0 0 0 2px rgba(22,163,74,.22);cursor:default}
+.us-chip.incorrect-chip{background:#fff;border:1px solid #dc2626;color:#dc2626;box-shadow:0 0 0 2px rgba(220,38,38,.18);cursor:default}
+#wordBank{display:flex;flex-wrap:wrap;justify-content:center;gap:10px;margin:18px 0 0;min-height:52px}
+.us-btn,.us-completed-button{display:inline-flex;align-items:center;justify-content:center;padding:13px 20px;border:none;border-radius:999px;color:#fff;cursor:pointer;min-width:clamp(104px,16vw,146px);font-weight:900;font-family:'Nunito','Segoe UI',sans-serif;font-size:13px;line-height:1;box-shadow:0 6px 18px rgba(127,119,221,.18);transition:transform .12s,filter .12s,box-shadow .12s}
+.us-btn:hover,.us-completed-button:hover{filter:brightness(1.07);transform:translateY(-1px)}
+.us-btn:active,.us-completed-button:active{transform:scale(.98)}
+.us-btn-listen{background:#7F77DD;box-shadow:0 6px 18px rgba(127,119,221,.18);margin-bottom:16px}
+.us-btn-show{background:#7F77DD;box-shadow:0 6px 18px rgba(127,119,221,.18)}
+.us-btn-next{background:#F97316;box-shadow:0 6px 18px rgba(249,115,22,.22)}
+#listenBtn.hidden{display:none}
+#feedback{text-align:center;font-family:'Nunito',sans-serif;font-size:13px;font-weight:900;min-height:18px;margin-top:10px;color:#534AB7}
+.good{color:#16a34a!important}.bad{color:#dc2626!important}
+.controls{border-top:1px solid #F0EEF8;margin-top:16px;padding-top:16px;text-align:center;display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;background:#fff}
+.us-completed-screen{display:none;background:#fff;border:1px solid #EDE9FA;border-radius:28px;box-shadow:0 12px 36px rgba(127,119,221,.13);min-height:clamp(300px,42vh,430px);flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:clamp(28px,5vw,48px) 24px;gap:12px;box-sizing:border-box}
+.us-completed-screen.active{display:flex}
+.us-completed-icon{font-size:64px;line-height:1;margin-bottom:4px}
+.us-completed-title{font-family:'Fredoka','Trebuchet MS',sans-serif;font-size:clamp(30px,5.5vw,58px);font-weight:700;color:#F97316;margin:0;line-height:1.03}
+.us-completed-text{font-family:'Nunito',sans-serif;font-size:clamp(13px,1.8vw,17px);font-weight:800;color:#9B94BE;line-height:1.5;margin:0}
+#us-score-text{color:#534AB7!important;font-family:'Nunito',sans-serif!important;font-size:15px!important;font-weight:900!important}
+.us-completed-button{background:#7F77DD;box-shadow:0 6px 18px rgba(127,119,221,.18);margin-top:4px}
+@media(max-width:760px){.us-page{padding:12px}.us-topbar{height:30px;margin-bottom:4px}.us-kicker{padding:5px 11px;font-size:11px;margin-bottom:6px}.us-hero h1{font-size:clamp(26px,8vw,38px)}.us-stage{border-radius:26px;padding:14px;width:100%}#sentenceBox{border-radius:22px;padding:18px;min-height:260px}#buildArea{border-radius:18px;min-height:68px;padding:12px}.us-chip{padding:10px 14px;font-size:14px}#wordBank{gap:9px}.controls{display:grid;grid-template-columns:1fr;gap:9px}.us-btn,.us-completed-button{width:100%}.us-completed-screen{border-radius:26px}}
 </style>
 
-<?= render_activity_header($viewerTitle, 'Unscramble the words to form the correct sentence.') ?>
-<div class="us-stage">
-    <div id="sentenceBox">
-        <button id="listenBtn" class="us-btn us-btn-listen" type="button" onclick="usSpeak()">🔊 Listen</button>
-        <div id="buildArea">
-            <span class="us-placeholder" id="buildPlaceholder">Drag words here to build the sentence…</span>
+<div class="us-page">
+    <div class="us-app">
+        <div class="us-topbar">
+            <span class="us-topbar-title">Unscramble</span>
         </div>
-    </div>
 
-    <div id="wordBank"></div>
+        <div class="us-hero">
+            <div class="us-kicker">Activity</div>
+            <h1><?php echo htmlspecialchars($viewerTitle, ENT_QUOTES, 'UTF-8'); ?></h1>
+            <p>Unscramble the words to form the correct sentence.</p>
+        </div>
 
-    <div class="controls">
-        <button class="us-btn us-btn-show" type="button" onclick="usShowAnswer()">Show Answer</button>
-        <button class="us-btn us-btn-next" type="button" onclick="usNextSentence()">Next</button>
-    </div>
+        <div class="us-stage">
+            <div id="sentenceBox">
+                <button id="listenBtn" class="us-btn us-btn-listen" type="button" onclick="usSpeak()">Listen</button>
+                <div id="buildArea">
+                    <span class="us-placeholder" id="buildPlaceholder">Drag words here to build the sentence…</span>
+                </div>
+            </div>
 
-    <div id="feedback"></div>
+            <div id="wordBank"></div>
 
-    <div id="us-completed" class="us-completed-screen">
-        <div class="us-completed-icon">✅</div>
-        <h2 class="us-completed-title">Completed!</h2>
-        <p class="us-completed-text" id="us-completed-text"></p>
-        <p class="us-completed-text" id="us-score-text" style="font-weight:700;font-size:18px;color:#5b21b6;"></p>
-        <button type="button" class="us-completed-button" id="us-restart" onclick="usRestartActivity()">Restart</button>
+            <div class="controls">
+                <button class="us-btn us-btn-show" type="button" onclick="usShowAnswer()">Show Answer</button>
+                <button class="us-btn us-btn-next" type="button" onclick="usNextSentence()">Next</button>
+            </div>
+
+            <div id="feedback"></div>
+
+            <div id="us-completed" class="us-completed-screen">
+                <div class="us-completed-icon">✅</div>
+                <h2 class="us-completed-title">Completed!</h2>
+                <p class="us-completed-text" id="us-completed-text"></p>
+                <p class="us-completed-text" id="us-score-text" style="font-weight:900;font-size:15px;color:#534AB7;"></p>
+                <button type="button" class="us-completed-button" id="us-restart" onclick="usRestartActivity()">Restart</button>
+            </div>
+        </div>
     </div>
 </div>
 
 <audio id="winSound" src="../../hangman/assets/win.mp3" preload="auto"></audio>
 <audio id="loseSound" src="../../hangman/assets/lose.mp3" preload="auto"></audio>
 <audio id="doneSound" src="../../hangman/assets/win (1).mp3" preload="auto"></audio>
-
 <script>
 const usSentences = <?= json_encode($sentences, JSON_UNESCAPED_UNICODE) ?>;
 const usActivityTitle = <?= json_encode($viewerTitle, JSON_UNESCAPED_UNICODE) ?>;
