@@ -1,742 +1,651 @@
 <?php
-if (session_status() === PHP_SESSION_NONE) { session_start(); }
 require_once __DIR__ . '/../../config/db.php';
 require_once __DIR__ . '/../../core/_activity_viewer_template.php';
 
-$activityId = isset($_GET['id'])        ? trim((string)$_GET['id'])        : '';
-$unit       = isset($_GET['unit'])      ? trim((string)$_GET['unit'])      : '';
-$returnTo   = isset($_GET['return_to']) ? trim((string)$_GET['return_to']) : '';
-$assignId   = isset($_GET['assignment'])? trim((string)$_GET['assignment']): '';
+$activityId = isset($_GET['id']) ? trim((string) $_GET['id']) : '';
+$unit = isset($_GET['unit']) ? trim((string) $_GET['unit']) : '';
 
-if ($activityId === '' && $unit === '') die('Activity not specified');
-
-/* ── DATA LAYER ──────────────────────────────────────────── */
-
-function wpv_resolve_unit(PDO $pdo, string $id): string {
-    if ($id === '') return '';
-    $s = $pdo->prepare("SELECT unit_id FROM activities WHERE id=:id LIMIT 1");
-    $s->execute(['id' => $id]);
-    $r = $s->fetch(PDO::FETCH_ASSOC);
-    return ($r && isset($r['unit_id'])) ? (string)$r['unit_id'] : '';
+if ($activityId === '' && $unit === '') {
+    die('Activity not specified');
 }
 
-function wpv_normalize(mixed $raw): array {
-    $allowed = ['writing', 'video_writing'];
-    $d = is_string($raw) ? json_decode($raw, true) : $raw;
-    if (!is_array($d)) $d = [];
-    $qs = [];
-    foreach ((array)($d['questions'] ?? []) as $item) {
+function wp_columns(PDO $pdo): array
+{
+    static $cache = null;
+    if (is_array($cache)) return $cache;
+    $cache = array();
+    $stmt = $pdo->query("SELECT column_name FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'activities'");
+    foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+        if (isset($row['column_name'])) $cache[] = (string) $row['column_name'];
+    }
+    return $cache;
+}
+
+function wp_resolve_unit(PDO $pdo, string $activityId): string
+{
+    if ($activityId === '') return '';
+    $columns = wp_columns($pdo);
+    if (in_array('unit_id', $columns, true)) {
+        $stmt = $pdo->prepare("SELECT unit_id FROM activities WHERE id = :id LIMIT 1");
+        $stmt->execute(array('id' => $activityId));
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        if ($row && isset($row['unit_id'])) return (string) $row['unit_id'];
+    }
+    if (in_array('unit', $columns, true)) {
+        $stmt = $pdo->prepare("SELECT unit FROM activities WHERE id = :id LIMIT 1");
+        $stmt->execute(array('id' => $activityId));
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        if ($row && isset($row['unit'])) return (string) $row['unit'];
+    }
+    return '';
+}
+
+function wp_default_title(): string { return 'Writing Practice'; }
+
+function wp_normalize_title(string $title): string
+{
+    $title = trim($title);
+    return $title !== '' ? $title : wp_default_title();
+}
+
+function wp_normalize_payload($rawData): array
+{
+    $default = array('title' => wp_default_title(), 'items' => array());
+    if ($rawData === null || $rawData === '') return $default;
+    $decoded = is_string($rawData) ? json_decode($rawData, true) : $rawData;
+    if (!is_array($decoded)) return $default;
+
+    $title = '';
+    $itemsSource = $decoded;
+    if (isset($decoded['title'])) $title = trim((string) $decoded['title']);
+    if (isset($decoded['items']) && is_array($decoded['items'])) $itemsSource = $decoded['items'];
+
+    $items = array();
+    foreach ($itemsSource as $item) {
         if (!is_array($item)) continue;
-        $type = in_array($item['type'] ?? '', $allowed, true) ? (string)$item['type'] : 'writing';
-        // migrate legacy types → writing
-        if (!in_array($type, $allowed, true)) $type = 'writing';
-        $qs[] = [
-            'id'             => trim((string)($item['id']          ?? uniqid('wp_'))),
-            'type'           => $type,
-            'question'       => trim((string)($item['question']    ?? '')),
-            'instruction'    => trim((string)($item['instruction'] ?? '')),
-            'media'          => trim((string)($item['media']       ?? '')),
-            'writing_rows'   => max(2, min(14, (int)($item['writing_rows']   ?? 6))),
-            'response_count' => max(1, min(20, (int)($item['response_count'] ?? 1))),
-        ];
+        $items[] = array(
+            'id'           => isset($item['id'])           ? trim((string) $item['id'])           : uniqid('wp_'),
+            'instruction'  => isset($item['instruction'])  ? trim((string) $item['instruction'])  : '',
+            'prompt_text'  => isset($item['prompt_text'])  ? trim((string) $item['prompt_text'])  : '',
+            'answer'       => isset($item['answer'])       ? trim((string) $item['answer'])       : '',
+        );
     }
-    return [
-        'title'       => trim((string)($d['title']       ?? '')) ?: 'Writing Practice',
-        'description' => trim((string)($d['description'] ?? '')),
-        'questions'   => $qs,
-    ];
+    return array('title' => wp_normalize_title($title), 'items' => $items);
 }
 
-function wpv_load(PDO $pdo, string $id, string $unit): array {
+function wp_load_activity(PDO $pdo, string $unit, string $activityId): array
+{
+    $columns = wp_columns($pdo);
+    $selectFields = array('id');
+    if (in_array('data', $columns, true)) $selectFields[] = 'data';
+    if (in_array('content_json', $columns, true)) $selectFields[] = 'content_json';
+    if (in_array('title', $columns, true)) $selectFields[] = 'title';
+    if (in_array('name', $columns, true)) $selectFields[] = 'name';
+
     $row = null;
-    if ($id !== '') {
-        $s = $pdo->prepare("SELECT id, data FROM activities WHERE id=:id AND type='writing_practice' LIMIT 1");
-        $s->execute(['id' => $id]);
-        $row = $s->fetch(PDO::FETCH_ASSOC);
+    if ($activityId !== '') {
+        $stmt = $pdo->prepare("SELECT " . implode(', ', $selectFields) . " FROM activities WHERE id = :id AND type = 'writing_practice' LIMIT 1");
+        $stmt->execute(array('id' => $activityId));
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
     }
-    if (!$row && $unit !== '') {
-        $s = $pdo->prepare("SELECT id, data FROM activities WHERE unit_id=:u AND type='writing_practice' ORDER BY id ASC LIMIT 1");
-        $s->execute(['u' => $unit]);
-        $row = $s->fetch(PDO::FETCH_ASSOC);
+    if (!$row && in_array('unit_id', $columns, true)) {
+        $stmt = $pdo->prepare("SELECT " . implode(', ', $selectFields) . " FROM activities WHERE unit_id = :unit AND type = 'writing_practice' ORDER BY id ASC LIMIT 1");
+        $stmt->execute(array('unit' => $unit));
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
     }
-    if (!$row) return ['id' => '', 'title' => 'Writing Practice', 'description' => '', 'questions' => []];
-    $p = wpv_normalize($row['data'] ?? null);
-    return ['id' => (string)$row['id'], 'title' => $p['title'], 'description' => $p['description'], 'questions' => $p['questions']];
+    if (!$row && in_array('unit', $columns, true)) {
+        $stmt = $pdo->prepare("SELECT " . implode(', ', $selectFields) . " FROM activities WHERE unit = :unit AND type = 'writing_practice' ORDER BY id ASC LIMIT 1");
+        $stmt->execute(array('unit' => $unit));
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+    }
+    if (!$row) return array('title' => wp_default_title(), 'items' => array());
+
+    $rawData = null;
+    if (isset($row['data'])) $rawData = $row['data'];
+    elseif (isset($row['content_json'])) $rawData = $row['content_json'];
+
+    $payload = wp_normalize_payload($rawData);
+    $columnTitle = '';
+    if (isset($row['title']) && trim((string) $row['title']) !== '') $columnTitle = trim((string) $row['title']);
+    elseif (isset($row['name']) && trim((string) $row['name']) !== '') $columnTitle = trim((string) $row['name']);
+    if ($columnTitle !== '') $payload['title'] = $columnTitle;
+
+    return array(
+        'title' => wp_normalize_title((string) $payload['title']),
+        'items' => isset($payload['items']) && is_array($payload['items']) ? $payload['items'] : array(),
+    );
 }
 
-/* ── BOOTSTRAP ───────────────────────────────────────────── */
-if ($unit === '' && $activityId !== '') $unit = wpv_resolve_unit($pdo, $activityId);
+if ($unit === '' && $activityId !== '') $unit = wp_resolve_unit($pdo, $activityId);
 
-$activity    = wpv_load($pdo, $activityId, $unit);
-$viewerTitle = $activity['title'];
-$description = $activity['description'];
-$questions   = $activity['questions'];
-if ($activityId === '' && $activity['id'] !== '') $activityId = $activity['id'];
+$activity = wp_load_activity($pdo, $unit, $activityId);
+$items    = isset($activity['items']) && is_array($activity['items']) ? $activity['items'] : array();
+$viewerTitle = isset($activity['title']) ? (string) $activity['title'] : wp_default_title();
 
-if ($returnTo === '') {
-    $returnTo = '../../academic/student_course.php?assignment=' . urlencode($assignId) . '&unit=' . urlencode($unit) . '&step=9999';
-}
+if (count($items) === 0) die('No writing prompts found for this activity');
 
 ob_start();
 ?>
 <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@600;700;800;900&display=swap" rel="stylesheet">
+
 <style>
-:root {
-    --wp-purple:      #7F77DD;
-    --wp-purple-dk:   #534AB7;
-    --wp-purple-soft: #EEEDFE;
-    --wp-orange:      #F97316;
-    --wp-orange-dk:   #C2580A;
-    --wp-teal:        #1D9E75;
-    --wp-ink:         #271B5D;
-    --wp-muted:       #7C739B;
-    --wp-shadow:      0 8px 32px rgba(83,74,183,.16);
+:root{
+    --wp-orange:#F97316;
+    --wp-orange-dark:#C2580A;
+    --wp-orange-soft:#FFF0E6;
+    --wp-purple:#7F77DD;
+    --wp-purple-dark:#534AB7;
+    --wp-purple-soft:#EEEDFE;
+    --wp-lila:rgba(127,119,221,.13);
+    --wp-lila-md:rgba(127,119,221,.18);
+    --wp-ink:#271B5D;
+    --wp-muted:#9B94BE;
+    --wp-green:#1D9E75;
+    --wp-green-soft:#E6F9F2;
+    --wp-green-border:#9FE1CB;
+    --wp-red:#E24B4A;
+    --wp-red-soft:#FCEBEB;
+    --wp-red-border:#F7C1C1;
 }
+
 *{box-sizing:border-box}
 
-/* ── Shell ── */
-.wp-viewer-shell {
-    max-width: 860px;
-    margin: 0 auto;
-    font-family: 'Nunito','Segoe UI',sans-serif;
-    display: flex;
-    flex-direction: column;
-    gap: 14px;
+.wp-shell{
+    width:100%;
+    min-height:calc(100vh - 90px);
+    padding:clamp(14px,2.5vw,34px);
+    display:flex;
+    align-items:flex-start;
+    justify-content:center;
+    font-family:'Nunito','Segoe UI',system-ui,sans-serif;
+    background:#ffffff;
+    border-radius:16px;
+    overflow:visible;
 }
 
-/* ── Header banner ── */
-.wp-header {
-    background: linear-gradient(135deg, #534AB7 0%, #7F77DD 100%);
-    border-radius: 20px;
-    padding: 18px 22px;
-    box-shadow: var(--wp-shadow);
-    color: #fff;
-}
-.wp-header h2 {
-    margin: 0 0 4px;
-    font-family: 'Fredoka', sans-serif;
-    font-size: clamp(22px, 3.5vw, 32px);
-    font-weight: 700;
-    line-height: 1.1;
-}
-.wp-header p {
-    margin: 0;
-    font-size: 14px;
-    opacity: .88;
-    line-height: 1.5;
+.wp-app{
+    width:min(860px,100%);
+    display:grid;
+    grid-template-columns:minmax(0,1fr);
+    gap:clamp(12px,2vw,20px);
 }
 
-/* ── Progress row ── */
-.wp-progress-row {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-}
-.wp-progress-track {
-    flex: 1;
-    height: 8px;
-    background: rgba(127,119,221,.18);
-    border-radius: 999px;
-    overflow: hidden;
-}
-.wp-progress-fill {
-    height: 100%;
-    background: linear-gradient(90deg, var(--wp-purple), var(--wp-orange));
-    border-radius: 999px;
-    transition: width .4s ease;
-    width: 0%;
-}
-.wp-progress-count {
-    font-size: 12px;
-    font-weight: 900;
-    color: var(--wp-purple-dk);
-    white-space: nowrap;
-    min-width: 48px;
-    text-align: right;
+.wp-hero{text-align:center;}
+
+.wp-kicker{
+    display:inline-flex;align-items:center;gap:7px;
+    margin-bottom:8px;padding:7px 14px;border-radius:999px;
+    background:#FFF0E6;border:1px solid #FCDDBF;color:#C2580A;
+    font-size:12px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;
 }
 
-/* ── Card ── */
-.wp-card {
-    background: #fff;
-    border: 1px solid #E4E1F8;
-    border-radius: 24px;
-    padding: 22px;
-    box-shadow: var(--wp-shadow);
-    display: flex;
-    flex-direction: column;
-    gap: 14px;
+.wp-title{
+    margin:0;font-family:'Fredoka',sans-serif;
+    font-size:clamp(30px,5.5vw,58px);line-height:1;
+    color:#F97316;font-weight:700;
 }
 
-/* ── Video area ── */
-.wp-video-wrap {
-    border-radius: 14px;
-    overflow: hidden;
-    background: #000;
-    aspect-ratio: 16/9;
-    width: 100%;
-}
-.wp-video-wrap iframe,
-.wp-video-wrap video {
-    display: block;
-    width: 100%;
-    height: 100%;
-    border: none;
+.wp-subtitle{
+    margin:8px 0 0;color:#9B94BE;
+    font-size:clamp(13px,1.8vw,17px);font-weight:800;
 }
 
-/* ── Prompt ── */
-.wp-prompt {
-    font-family: 'Fredoka', sans-serif;
-    font-size: clamp(18px, 2.8vw, 26px);
-    font-weight: 700;
-    color: var(--wp-ink);
-    line-height: 1.3;
-    text-align: center;
-}
-.wp-instr {
-    font-size: 14px;
-    color: var(--wp-muted);
-    text-align: center;
-    font-weight: 700;
-    line-height: 1.5;
+.wp-board{
+    background:#ffffff;border:1px solid #F0EEF8;
+    border-radius:28px;padding:clamp(16px,2.6vw,26px);
+    box-shadow:0 8px 40px rgba(127,119,221,.13);
+    overflow:visible;
 }
 
-/* ── Writing items ── */
-.wp-writing-list {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-}
-.wp-writing-item {
-    background: linear-gradient(180deg, #fafafe 0%, #f3f1ff 100%);
-    border: 1px solid #ddd6fe;
-    border-radius: 14px;
-    padding: 14px;
-}
-.wp-writing-item-label {
-    display: block;
-    font-size: 12px;
-    font-weight: 900;
-    color: var(--wp-purple-dk);
-    letter-spacing: .04em;
-    text-transform: uppercase;
-    margin-bottom: 8px;
-}
-.wp-writing-item textarea {
-    width: 100%;
-    padding: 10px 12px;
-    border-radius: 10px;
-    border: 1px solid #c4b5fd;
-    font-size: 15px;
-    font-family: inherit;
-    line-height: 1.6;
-    resize: vertical;
-    transition: border-color .15s;
-    background: #fff;
-}
-.wp-writing-item textarea:focus {
-    outline: none;
-    border-color: var(--wp-purple);
-    box-shadow: 0 0 0 3px rgba(127,119,221,.18);
-}
-.wp-writing-item textarea.wp-locked {
-    background: #f5f3ff;
-    color: #4c1d95;
-    cursor: default;
+.wp-progress-row{
+    display:grid;grid-template-columns:1fr auto;
+    gap:12px;align-items:center;margin-bottom:20px;
 }
 
-/* ── Feedback ── */
-.wp-feedback {
-    min-height: 22px;
-    font-size: 14px;
-    font-weight: 800;
-    text-align: center;
-    border-radius: 10px;
-    padding: 6px 12px;
-    transition: all .2s;
+.wp-progress-track{
+    height:10px;background:#F4F2FD;border-radius:999px;
+    overflow:hidden;border:1px solid #E4E1F8;
 }
-.wp-feedback:empty { display: none; }
-.wp-feedback.good { background: #ecfdf5; color: #166534; border: 1px solid #86efac; }
-.wp-feedback.info { background: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe; }
 
-/* ── Answer reveal ── */
-.wp-answer-box {
-    background: #f5f3ff;
-    border: 1px solid #c4b5fd;
-    border-radius: 14px;
-    padding: 14px 16px;
-    display: none;
+.wp-progress-fill{
+    height:100%;width:0%;
+    background:linear-gradient(90deg,#F97316,#7F77DD);
+    border-radius:999px;transition:width .45s cubic-bezier(.2,.9,.2,1);
 }
-.wp-answer-box.show { display: block; }
-.wp-answer-box h4 {
-    margin: 0 0 8px;
-    font-size: 12px;
-    font-weight: 900;
-    color: var(--wp-purple-dk);
-    text-transform: uppercase;
-    letter-spacing: .05em;
-}
-.wp-answer-item {
-    font-size: 15px;
-    color: var(--wp-ink);
-    font-weight: 700;
-    padding: 4px 0;
-    border-bottom: 1px solid #e9d5ff;
-    line-height: 1.5;
-}
-.wp-answer-item:last-child { border-bottom: none; }
 
-/* ── Controls ── */
-.wp-controls {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 10px;
-    flex-wrap: wrap;
+.wp-progress-count{
+    min-width:74px;text-align:center;padding:7px 11px;
+    border-radius:999px;background:#7F77DD;color:#fff;
+    font-size:13px;font-weight:900;
 }
-.wp-btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-    padding: 11px 20px;
-    border: none;
-    border-radius: 999px;
-    font-family: inherit;
-    font-size: 14px;
-    font-weight: 800;
-    cursor: pointer;
-    transition: filter .15s, transform .15s;
-    line-height: 1;
-    text-decoration: none;
-    white-space: nowrap;
-}
-.wp-btn:hover:not(:disabled) { filter: brightness(1.07); transform: translateY(-1px); }
-.wp-btn:disabled { opacity: .45; cursor: default; transform: none; }
-.wp-btn-prev  { background: linear-gradient(180deg,#F97316,#C2580A); color: #fff; }
-.wp-btn-show  { background: linear-gradient(180deg,#7F77DD,#534AB7); color: #fff; }
-.wp-btn-next  { background: linear-gradient(180deg,#1D9E75,#085041); color: #fff; }
 
-/* ── Completion screen ── */
-.wp-done {
-    display: none;
-    text-align: center;
-    padding: 40px 20px;
-    background: #fff;
-    border: 1px solid #E4E1F8;
-    border-radius: 24px;
-    box-shadow: var(--wp-shadow);
+.wp-section-label{
+    font-size:11px;font-weight:900;letter-spacing:.1em;
+    text-transform:uppercase;color:#9B94BE;margin-bottom:8px;
 }
-.wp-done.active { display: block; }
-.wp-done-icon  { font-size: 72px; margin-bottom: 16px; }
-.wp-done-title {
-    font-family: 'Fredoka', sans-serif;
-    font-size: clamp(28px, 4vw, 40px);
-    font-weight: 700;
-    color: var(--wp-purple-dk);
-    margin: 0 0 10px;
-}
-.wp-done-sub {
-    font-size: 15px;
-    color: var(--wp-muted);
-    line-height: 1.6;
-    margin: 0 0 8px;
-}
-.wp-done-words {
-    display: inline-block;
-    background: var(--wp-purple-soft);
-    color: var(--wp-purple-dk);
-    font-weight: 900;
-    font-size: 14px;
-    padding: 6px 14px;
-    border-radius: 999px;
-    margin-bottom: 24px;
-}
-.wp-done-actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
-.wp-btn-restart { background: linear-gradient(180deg,#7F77DD,#534AB7); color: #fff; }
-.wp-btn-continue { background: linear-gradient(180deg,#F97316,#C2580A); color: #fff; }
 
-/* ── Embedded / fullscreen fills iframe ── */
-body.embedded-mode .viewer-content,
-body.fullscreen-embedded .viewer-content,
-body.presentation-mode .viewer-content {
-    overflow-y: auto !important;
+.wp-prompt-box{
+    background:#FAFAFE;border:1px solid #EDE9FA;
+    border-radius:16px;padding:16px 18px;margin-bottom:18px;
 }
-body.embedded-mode .wp-viewer-shell,
-body.fullscreen-embedded .wp-viewer-shell,
-body.presentation-mode .wp-viewer-shell {
-    max-width: 100%;
-}
-body.embedded-mode .wp-header,
-body.fullscreen-embedded .wp-header,
-body.presentation-mode .wp-header {
-    padding: 10px 16px;
-    border-radius: 14px;
-}
-body.embedded-mode .wp-header h2,
-body.fullscreen-embedded .wp-header h2,
-body.presentation-mode .wp-header h2 { font-size: 18px; }
 
-@media (max-width: 600px) {
-    .wp-card { padding: 16px; }
-    .wp-controls { justify-content: center; }
+.wp-instruction-badge{
+    display:inline-block;font-size:12px;font-weight:900;
+    color:#C2580A;background:#FFF0E6;border:1px solid #FCDDBF;
+    border-radius:999px;padding:4px 12px;margin-bottom:10px;
+}
+
+.wp-prompt-text{
+    font-size:15px;font-weight:700;color:#271B5D;line-height:1.7;
+}
+
+.wp-writing-wrap{position:relative;margin-bottom:16px;}
+
+.wp-textarea{
+    width:100%;min-height:120px;
+    border:1.5px solid #EDE9FA;border-radius:16px;
+    padding:14px 16px 32px;
+    font-family:'Nunito',sans-serif;font-size:15px;
+    font-weight:700;color:#271B5D;resize:vertical;
+    outline:none;background:#fff;
+    transition:border-color .18s,box-shadow .18s;
+}
+
+.wp-textarea:focus{
+    border-color:#7F77DD;
+    box-shadow:0 0 0 3px rgba(127,119,221,.10);
+}
+
+.wp-wordcount{
+    position:absolute;bottom:10px;right:14px;
+    font-size:11px;font-weight:900;color:#9B94BE;
+}
+
+.wp-actions{
+    display:flex;justify-content:center;align-items:center;
+    gap:clamp(8px,1.4vw,12px);flex-wrap:wrap;
+    margin-bottom:20px;padding-bottom:4px;flex-shrink:0;
+}
+
+.wp-btn{
+    border:0;border-radius:999px;
+    min-width:clamp(100px,14vw,136px);
+    padding:13px 20px;color:#fff;
+    font-family:'Nunito',sans-serif;
+    font-size:clamp(13px,1.8vw,15px);font-weight:900;
+    cursor:pointer;display:inline-flex;align-items:center;
+    justify-content:center;gap:7px;
+    transition:transform .18s ease,filter .18s ease;
+}
+
+.wp-btn:hover{transform:translateY(-2px);filter:brightness(1.05);}
+
+.wp-btn-orange{background:#F97316;box-shadow:0 6px 18px rgba(249,115,22,.22);}
+.wp-btn-purple{background:#7F77DD;box-shadow:0 6px 18px rgba(127,119,221,.18);}
+
+.wp-btn-outline{
+    background:#fff;color:#534AB7;
+    border:1.5px solid #EDE9FA;
+    box-shadow:0 4px 12px rgba(127,119,221,.10);
+}
+.wp-btn-outline:hover{background:#EEEDFE;}
+
+.wp-answer-reveal{
+    display:none;background:#FAFAFE;
+    border:1.5px solid #9FE1CB;border-radius:16px;
+    padding:14px 18px;margin-bottom:16px;
+}
+.wp-answer-reveal.show{display:block;}
+.wp-answer-title{
+    font-size:11px;font-weight:900;letter-spacing:.1em;
+    text-transform:uppercase;color:#1D9E75;margin-bottom:8px;
+}
+.wp-answer-text{
+    font-size:14px;font-weight:700;color:#271B5D;line-height:1.7;
+}
+
+.wp-result{display:none;margin-top:4px;}
+.wp-result.show{display:block;}
+
+.wp-score-row{
+    display:grid;grid-template-columns:repeat(3,1fr);
+    gap:12px;margin-bottom:18px;
+}
+
+.wp-score-card{
+    background:#FAFAFE;border:1px solid #EDE9FA;
+    border-radius:16px;padding:14px;text-align:center;
+}
+
+.wp-score-num{
+    font-family:'Fredoka',sans-serif;
+    font-size:clamp(28px,5vw,38px);font-weight:700;line-height:1;
+}
+
+.wp-score-num.green{color:#1D9E75;}
+.wp-score-num.orange{color:#F97316;}
+.wp-score-num.purple{color:#7F77DD;}
+.wp-score-lbl{
+    font-size:11px;font-weight:900;color:#9B94BE;
+    text-transform:uppercase;letter-spacing:.06em;margin-top:4px;
+}
+
+.wp-legend{
+    display:flex;gap:14px;flex-wrap:wrap;margin-bottom:14px;
+}
+.wp-leg{display:flex;align-items:center;gap:5px;font-size:12px;font-weight:900;color:#9B94BE;}
+.wp-leg-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
+.wp-leg-dot.match{background:#1D9E75;}
+.wp-leg-dot.miss{background:#E24B4A;}
+.wp-leg-dot.extra{background:#F97316;}
+
+.wp-comparison{
+    background:#FAFAFE;border:1px solid #EDE9FA;
+    border-radius:16px;padding:14px 18px;margin-bottom:14px;
+}
+.wp-comp-label{
+    font-size:11px;font-weight:900;letter-spacing:.08em;
+    text-transform:uppercase;margin-bottom:10px;
+}
+.wp-comp-label.green{color:#1D9E75;}
+.wp-comp-label.purple{color:#534AB7;}
+
+.wp-tokens{display:flex;flex-wrap:wrap;gap:6px;}
+
+.wp-token{
+    display:inline-flex;align-items:center;
+    padding:4px 10px;border-radius:999px;
+    font-size:13px;font-weight:900;
+}
+.wp-token.match{
+    background:#E6F9F2;color:#0F6E56;
+    border:1px solid #9FE1CB;
+}
+.wp-token.miss{
+    background:#FCEBEB;color:#A32D2D;
+    border:1px solid #F7C1C1;
+    text-decoration:line-through;
+}
+.wp-token.extra{
+    background:#FFF0E6;color:#C2580A;
+    border:1px solid #FCDDBF;
+}
+.wp-token.neutral{
+    background:#EEEDFE;color:#534AB7;
+    border:1px solid #CECBF6;
+}
+
+.wp-nav-row{
+    display:flex;justify-content:space-between;
+    align-items:center;margin-top:8px;
+    padding-top:16px;border-top:1px solid #F0EEF8;
+}
+.wp-nav-info{
+    font-size:13px;font-weight:900;color:#9B94BE;
+}
+
+.wp-confetti{
+    position:fixed;width:10px;height:14px;top:-20px;
+    z-index:99999;opacity:.95;
+    animation:wpFall linear forwards;pointer-events:none;
+}
+
+@keyframes wpFall{
+    to{transform:translateY(110vh) rotate(720deg);opacity:1}
+}
+
+@media(max-width:640px){
+    .wp-shell{padding:12px;border-radius:12px;}
+    .wp-board{border-radius:22px;padding:14px;}
+    .wp-score-row{grid-template-columns:1fr 1fr;}
+    .wp-score-row .wp-score-card:last-child{grid-column:span 2;}
+    .wp-actions{display:grid;grid-template-columns:1fr;gap:9px;}
+    .wp-btn{width:100%;}
+}
+
+body.embedded-mode .wp-shell,
+body.fullscreen-embedded .wp-shell,
+body.presentation-mode .wp-shell{
+    position:absolute!important;inset:0!important;
+    max-width:none!important;margin:0!important;
+    padding:10px 12px!important;border-radius:0!important;
+    display:flex!important;flex-direction:column!important;
+    overflow-y:auto!important;overflow-x:hidden!important;
+}
+body.embedded-mode .wp-board,
+body.fullscreen-embedded .wp-board,
+body.presentation-mode .wp-board{
+    overflow:visible!important;
+}
+body.embedded-mode .wp-actions,
+body.fullscreen-embedded .wp-actions,
+body.presentation-mode .wp-actions{
+    flex-shrink:0!important;padding-bottom:12px!important;
 }
 </style>
 
-<?php if (empty($questions)): ?>
-<div style="text-align:center;padding:40px;color:#7C739B;font-family:'Nunito',sans-serif;font-size:16px;font-weight:700;">
-    No hay preguntas configuradas para esta actividad.
-</div>
-<?php else: ?>
+<div class="wp-shell">
+<div class="wp-app" id="wp-app">
 
-<div class="wp-viewer-shell">
-
-    <!-- Header -->
-    <div class="wp-header">
-        <h2><?= htmlspecialchars($viewerTitle, ENT_QUOTES, 'UTF-8') ?></h2>
-        <?php if ($description !== ''): ?>
-        <p><?= htmlspecialchars($description, ENT_QUOTES, 'UTF-8') ?></p>
-        <?php endif; ?>
+    <div class="wp-hero">
+        <div class="wp-kicker">Activity <span id="wp-kicker-count">1 / <?php echo count($items); ?></span></div>
+        <h1 class="wp-title"><?php echo htmlspecialchars($viewerTitle, ENT_QUOTES, 'UTF-8'); ?></h1>
+        <p class="wp-subtitle">Read the text and write your translation in English.</p>
     </div>
 
-    <!-- Progress -->
-    <div class="wp-progress-row">
-        <div class="wp-progress-track">
-            <div class="wp-progress-fill" id="wpFill"></div>
+    <div class="wp-board" id="wp-board">
+
+        <div class="wp-progress-row">
+            <div class="wp-progress-track">
+                <div class="wp-progress-fill" id="wp-progress-fill"></div>
+            </div>
+            <div class="wp-progress-count" id="wp-progress-count">1 / <?php echo count($items); ?></div>
         </div>
-        <span class="wp-progress-count" id="wpCount">1 / <?= count($questions) ?></span>
-    </div>
 
-    <!-- Card -->
-    <div class="wp-card" id="wpCard">
-        <div id="wpVideoArea" style="display:none"></div>
-        <div class="wp-prompt" id="wpPrompt"></div>
-        <div class="wp-instr"  id="wpInstr"  style="display:none"></div>
-        <div class="wp-writing-list" id="wpList"></div>
-        <div class="wp-answer-box" id="wpAnswerBox"></div>
-        <div class="wp-feedback" id="wpFeedback"></div>
-    </div>
-
-    <!-- Controls -->
-    <div class="wp-controls" id="wpControls">
-        <button class="wp-btn wp-btn-prev" id="btnPrev" type="button">← Anterior</button>
-        <button class="wp-btn wp-btn-show" id="btnShow" type="button">👁 Ver respuesta</button>
-        <button class="wp-btn wp-btn-next" id="btnNext" type="button">Siguiente →</button>
-    </div>
-
-    <!-- Completion -->
-    <div class="wp-done" id="wpDone">
-        <div class="wp-done-icon">✅</div>
-        <h2 class="wp-done-title" id="wpDoneTitle"></h2>
-        <p class="wp-done-sub">¡Completaste todas las preguntas! Buen trabajo.</p>
-        <div class="wp-done-words" id="wpDoneWords" style="display:none"></div>
-        <div class="wp-done-actions">
-            <button class="wp-btn wp-btn-restart" id="btnRestart" type="button">↺ Reintentar</button>
-            <?php if ($returnTo !== ''): ?>
-            <button class="wp-btn wp-btn-continue" id="btnContinue" type="button">Continuar →</button>
-            <?php endif; ?>
+        <div class="wp-section-label">Prompt</div>
+        <div class="wp-prompt-box">
+            <div class="wp-instruction-badge" id="wp-instruction"></div>
+            <p class="wp-prompt-text" id="wp-prompt-text"></p>
         </div>
-    </div>
 
+        <div class="wp-section-label">Your answer</div>
+        <div class="wp-writing-wrap">
+            <textarea class="wp-textarea" id="wp-textarea" placeholder="Write your answer here..."></textarea>
+            <div class="wp-wordcount" id="wp-wordcount">0 words</div>
+        </div>
+
+        <div class="wp-actions">
+            <button type="button" class="wp-btn wp-btn-outline" id="wp-btn-reset">&#8635; Reset</button>
+            <button type="button" class="wp-btn wp-btn-purple" id="wp-btn-show">Show Answer</button>
+            <button type="button" class="wp-btn wp-btn-orange" id="wp-btn-check">Check &#10003;</button>
+        </div>
+
+        <div class="wp-answer-reveal" id="wp-answer-reveal">
+            <div class="wp-answer-title">Model answer</div>
+            <p class="wp-answer-text" id="wp-answer-text"></p>
+        </div>
+
+        <div class="wp-result" id="wp-result">
+            <div class="wp-score-row">
+                <div class="wp-score-card">
+                    <div class="wp-score-num green" id="wp-s-correct">0</div>
+                    <div class="wp-score-lbl">correct words</div>
+                </div>
+                <div class="wp-score-card">
+                    <div class="wp-score-num orange" id="wp-s-total">0</div>
+                    <div class="wp-score-lbl">words written</div>
+                </div>
+                <div class="wp-score-card">
+                    <div class="wp-score-num purple" id="wp-s-score">0%</div>
+                    <div class="wp-score-lbl">score</div>
+                </div>
+            </div>
+
+            <div class="wp-legend">
+                <div class="wp-leg"><div class="wp-leg-dot match"></div>Correct word</div>
+                <div class="wp-leg"><div class="wp-leg-dot miss"></div>Missing / wrong</div>
+                <div class="wp-leg"><div class="wp-leg-dot extra"></div>Extra word</div>
+            </div>
+
+            <div class="wp-comparison">
+                <div class="wp-comp-label green">Your answer — word by word</div>
+                <div class="wp-tokens" id="wp-student-tokens"></div>
+            </div>
+            <div class="wp-comparison">
+                <div class="wp-comp-label purple">Model answer — word by word</div>
+                <div class="wp-tokens" id="wp-answer-tokens"></div>
+            </div>
+        </div>
+
+        <div class="wp-nav-row">
+            <button type="button" class="wp-btn wp-btn-outline" id="wp-btn-prev" style="min-width:100px;">&#9664; Prev</button>
+            <span class="wp-nav-info" id="wp-nav-info">1 / <?php echo count($items); ?></span>
+            <button type="button" class="wp-btn wp-btn-orange" id="wp-btn-next" style="min-width:100px;">Next &#9654;</button>
+        </div>
+
+    </div>
+</div>
 </div>
 
-<audio id="wpSndDone" src="../../hangman/assets/win (1).mp3" preload="auto"></audio>
+<audio id="wp-win" src="../../hangman/assets/win.mp3" preload="auto"></audio>
 
 <script>
-(function () {
+(function(){
 'use strict';
 
-/* ── data ── */
-var QUESTIONS   = <?= json_encode(array_values($questions), JSON_UNESCAPED_UNICODE) ?>;
-var RETURN_TO   = <?= json_encode($returnTo,   JSON_UNESCAPED_UNICODE) ?>;
-var ACTIVITY_ID = <?= json_encode($activityId, JSON_UNESCAPED_UNICODE) ?>;
-var UNIT_ID     = <?= json_encode($unit,        JSON_UNESCAPED_UNICODE) ?>;
-var ASSIGN_ID   = <?= json_encode($assignId,    JSON_UNESCAPED_UNICODE) ?>;
+var ITEMS = <?php echo json_encode($items, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
+var TOTAL = ITEMS.length;
+var idx = 0;
 
-/* ── dom ── */
-var fillEl     = document.getElementById('wpFill');
-var countEl    = document.getElementById('wpCount');
-var cardEl     = document.getElementById('wpCard');
-var videoEl    = document.getElementById('wpVideoArea');
-var promptEl   = document.getElementById('wpPrompt');
-var instrEl    = document.getElementById('wpInstr');
-var listEl     = document.getElementById('wpList');
-var ansBoxEl   = document.getElementById('wpAnswerBox');
-var feedbackEl = document.getElementById('wpFeedback');
-var controlsEl = document.getElementById('wpControls');
-var doneEl     = document.getElementById('wpDone');
-var doneTitleEl= document.getElementById('wpDoneTitle');
-var doneWordsEl= document.getElementById('wpDoneWords');
-var btnPrev    = document.getElementById('btnPrev');
-var btnShow    = document.getElementById('btnShow');
-var btnNext    = document.getElementById('btnNext');
-var btnRestart = document.getElementById('btnRestart');
-var btnCont    = document.getElementById('btnContinue');
-var sndDone    = document.getElementById('wpSndDone');
-
-/* ── state ── */
-var idx       = 0;
-var done      = false;
-var inputs    = [];   // current textareas
-var responses = [];   // { question_id, question_text, response_text }
-
-/* ── helpers ── */
-function esc(s) {
-    return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+function normalize(str){
+    return String(str||'').toLowerCase().replace(/[^a-z0-9\s]/g,'').trim().split(/\s+/).filter(Boolean);
 }
 
-function toEmbed(url) {
-    if (!url) return '';
-    if (/youtube\.com\/embed\/|player\.vimeo\.com/.test(url)) return url;
-    var m = url.match(/youtu\.be\/([A-Za-z0-9_-]{11})/);
-    if (m) return 'https://www.youtube-nocookie.com/embed/' + m[1];
-    var m2 = url.match(/[?&]v=([A-Za-z0-9_-]{11})/);
-    if (m2) return 'https://www.youtube-nocookie.com/embed/' + m2[1];
-    return url;
+function el(id){ return document.getElementById(id); }
+
+function loadItem(){
+    var item = ITEMS[idx] || {};
+    el('wp-instruction').textContent = item.instruction || 'Translate to English';
+    el('wp-prompt-text').textContent = item.prompt_text || '';
+    el('wp-textarea').value = '';
+    el('wp-wordcount').textContent = '0 words';
+    el('wp-answer-reveal').classList.remove('show');
+    el('wp-answer-text').textContent = item.answer || '';
+    el('wp-result').classList.remove('show');
+    el('wp-student-tokens').innerHTML = '';
+    el('wp-answer-tokens').innerHTML = '';
+
+    var pct = Math.max(1, Math.round(((idx+1)/TOTAL)*100));
+    el('wp-progress-fill').style.width = pct + '%';
+    var countText = (idx+1) + ' / ' + TOTAL;
+    el('wp-progress-count').textContent = countText;
+    el('wp-kicker-count').textContent = countText;
+    el('wp-nav-info').textContent = countText;
+    el('wp-btn-prev').style.visibility = idx === 0 ? 'hidden' : 'visible';
+    el('wp-btn-next').textContent = idx >= TOTAL-1 ? 'Finish \u2713' : 'Next \u25BA';
 }
 
-function wordCount(s) {
-    return String(s || '').trim().replace(/\s+/g,' ').split(' ').filter(Boolean).length;
+function updateWC(){
+    var words = el('wp-textarea').value.trim().split(/\s+/).filter(Boolean).length;
+    el('wp-wordcount').textContent = words + ' word' + (words!==1?'s':'');
 }
 
-function playSound(el) {
-    try { el.pause(); el.currentTime = 0; el.play(); } catch(e) {}
-}
+function checkAnswer(){
+    var item = ITEMS[idx] || {};
+    var modelWords = normalize(item.answer || '');
+    var studentWords = normalize(el('wp-textarea').value);
 
-/* ── updateProgress ── */
-function updateProgress() {
-    var total = QUESTIONS.length;
-    var pct   = total > 0 ? Math.round(((idx + 1) / total) * 100) : 0;
-    fillEl.style.width = pct + '%';
-    countEl.textContent = (idx + 1) + ' / ' + total;
-    btnPrev.disabled = idx === 0;
-}
+    var modelFreq = {};
+    modelWords.forEach(function(w){ modelFreq[w] = (modelFreq[w]||0)+1; });
+    var studentFreq = {};
+    studentWords.forEach(function(w){ studentFreq[w] = (studentFreq[w]||0)+1; });
 
-/* ── loadCard ── */
-function loadCard() {
-    var q    = QUESTIONS[idx];
-    var type = String(q.type || 'writing');
-
-    feedbackEl.textContent = '';
-    feedbackEl.className   = 'wp-feedback';
-    ansBoxEl.className     = 'wp-answer-box';
-    ansBoxEl.innerHTML     = '';
-    inputs = [];
-
-    /* video */
-    videoEl.innerHTML    = '';
-    videoEl.style.display = 'none';
-    if (type === 'video_writing' && q.media) {
-        var rawUrl  = String(q.media);
-        var isVideo = /\.(mp4|webm|ogg)(\?|$)/i.test(rawUrl) || /cloudinary\.com\/.+\/video\//i.test(rawUrl);
-        var wrap = document.createElement('div');
-        wrap.className = 'wp-video-wrap';
-        if (isVideo) {
-            var vid = document.createElement('video');
-            vid.controls = true; vid.preload = 'metadata';
-            var src = document.createElement('source');
-            src.src = rawUrl;
-            vid.appendChild(src);
-            wrap.appendChild(vid);
-        } else {
-            var iframe = document.createElement('iframe');
-            iframe.src = toEmbed(rawUrl);
-            iframe.allow = 'autoplay; encrypted-media; picture-in-picture';
-            iframe.allowFullscreen = true;
-            wrap.appendChild(iframe);
-        }
-        videoEl.appendChild(wrap);
-        videoEl.style.display = '';
-    }
-
-    /* prompt */
-    promptEl.textContent = q.question || '';
-
-    /* instruction */
-    if (q.instruction) {
-        instrEl.textContent  = q.instruction;
-        instrEl.style.display = '';
-    } else {
-        instrEl.textContent  = '';
-        instrEl.style.display = 'none';
-    }
-
-    /* writing inputs */
-    listEl.innerHTML = '';
-    var count = Math.max(1, Math.min(20, parseInt(q.response_count, 10) || 1));
-    var rows  = Math.max(2, Math.min(14, parseInt(q.writing_rows,   10) || 6));
-    for (var i = 0; i < count; i++) {
-        var item = document.createElement('div');
-        item.className = 'wp-writing-item';
-
-        var lbl = document.createElement('label');
-        lbl.className   = 'wp-writing-item-label';
-        lbl.textContent = count > 1 ? 'Respuesta ' + (i + 1) : 'Tu respuesta';
-        item.appendChild(lbl);
-
-        var ta = document.createElement('textarea');
-        ta.rows        = rows;
-        ta.spellcheck  = true;
-        ta.setAttribute('lang', 'en');
-        ta.setAttribute('autocapitalize', 'sentences');
-        ta.placeholder = 'Escribe tu respuesta aquí…';
-        item.appendChild(ta);
-        listEl.appendChild(item);
-        inputs.push(ta);
-    }
-
-    /* show-answer button: only if there are reference answers */
-    var hasAnswers = Array.isArray(q.correct_answers) && q.correct_answers.length > 0;
-    btnShow.style.display = hasAnswers ? '' : 'none';
-    btnShow.disabled = false;
-
-    updateProgress();
-}
-
-/* ── showAnswer ── */
-function showAnswer() {
-    var q = QUESTIONS[idx];
-    if (!Array.isArray(q.correct_answers) || q.correct_answers.length === 0) return;
-
-    ansBoxEl.innerHTML = '<h4>Respuesta de referencia</h4>';
-    q.correct_answers.forEach(function(a) {
-        if (!a) return;
-        var div = document.createElement('div');
-        div.className   = 'wp-answer-item';
-        div.textContent = a;
-        ansBoxEl.appendChild(div);
+    var correct = 0;
+    var usedCount = {};
+    studentWords.forEach(function(w){
+        usedCount[w] = (usedCount[w]||0)+1;
+        if(modelFreq[w] && usedCount[w] <= modelFreq[w]) correct++;
     });
-    ansBoxEl.className = 'wp-answer-box show';
-    btnShow.disabled   = true;
 
-    feedbackEl.textContent = 'Revisa la respuesta de referencia y compara con la tuya.';
-    feedbackEl.className   = 'wp-feedback info';
-}
+    var pct = modelWords.length > 0 ? Math.round((correct / modelWords.length)*100) : 0;
+    el('wp-s-correct').textContent = correct;
+    el('wp-s-total').textContent = studentWords.length;
+    el('wp-s-score').textContent = pct + '%';
 
-/* ── collectResponses ── */
-function collectCurrentResponses() {
-    var q = QUESTIONS[idx];
-    inputs.forEach(function(ta, i) {
-        var text = ta.value.trim();
-        if (text !== '') {
-            responses.push({
-                question_id:   String(q.id || ''),
-                question_text: String(q.question || ''),
-                response_index: i,
-                response_text: text,
-            });
-        }
-        ta.classList.add('wp-locked');
-        ta.disabled = true;
+    var sTok = el('wp-student-tokens');
+    sTok.innerHTML = '';
+    var usedC2 = {};
+    studentWords.forEach(function(w){
+        usedC2[w] = (usedC2[w]||0)+1;
+        var isMatch = modelFreq[w] && usedC2[w] <= modelFreq[w];
+        var span = document.createElement('span');
+        span.className = 'wp-token ' + (isMatch ? 'match' : 'extra');
+        span.textContent = w;
+        sTok.appendChild(span);
     });
-}
 
-/* ── navigation ── */
-function goPrev() {
-    if (idx === 0 || done) return;
-    idx--;
-    loadCard();
-}
-
-function goNext() {
-    if (done) return;
-    collectCurrentResponses();
-    if (idx < QUESTIONS.length - 1) {
-        idx++;
-        loadCard();
-    } else {
-        showCompleted();
-    }
-}
-
-/* ── completion ── */
-async function showCompleted() {
-    done = true;
-    cardEl.style.display     = 'none';
-    controlsEl.style.display = 'none';
-    doneEl.classList.add('active');
-    if (doneTitleEl) doneTitleEl.textContent = QUESTIONS[0] ? (QUESTIONS[0].question || '✍️ Writing Practice') : '✍️ Writing Practice';
-    playSound(sndDone);
-
-    /* word count */
-    var totalWords = 0;
-    responses.forEach(function(r) { totalWords += wordCount(r.response_text); });
-    if (totalWords > 0 && doneWordsEl) {
-        doneWordsEl.textContent = '📊 ' + totalWords + ' palabra' + (totalWords !== 1 ? 's' : '') + ' escritas';
-        doneWordsEl.style.display = '';
-    }
-
-    /* save responses */
-    if (responses.length > 0) {
-        try {
-            var fd = new FormData();
-            fd.append('activity_id',   ACTIVITY_ID);
-            fd.append('unit_id',       UNIT_ID);
-            fd.append('assignment_id', ASSIGN_ID);
-            fd.append('responses',     JSON.stringify(responses));
-            await fetch('/lessons/lessons/activities/writing_practice/wp_save_response.php', {
-                method: 'POST', body: fd,
-            });
-        } catch(e) { /* non-critical */ }
-    }
-
-    /* persist score */
-    if (RETURN_TO) {
-        var total  = QUESTIONS.length;
-        var pct    = 100;
-        var errors = 0;
-        var joiner = RETURN_TO.indexOf('?') !== -1 ? '&' : '?';
-        var saveUrl = RETURN_TO + joiner
-            + 'activity_percent=' + encodeURIComponent(String(pct))
-            + '&activity_errors='  + encodeURIComponent(String(errors))
-            + '&activity_total='   + encodeURIComponent(String(total))
-            + '&activity_id='      + encodeURIComponent(ACTIVITY_ID)
-            + '&activity_type=writing_practice';
-        try {
-            var r = await fetch(saveUrl, { method: 'GET', credentials: 'same-origin', cache: 'no-store' });
-            if (!r.ok) throw new Error('not ok');
-        } catch(e) {
-            try {
-                if (window.top && window.top !== window.self) { window.top.location.href = saveUrl; }
-                else { window.location.href = saveUrl; }
-            } catch(ex) { window.location.href = saveUrl; }
-        }
-    }
-}
-
-/* ── restart ── */
-function restart() {
-    idx       = 0;
-    done      = false;
-    responses = [];
-    inputs    = [];
-    cardEl.style.display     = '';
-    controlsEl.style.display = '';
-    doneEl.classList.remove('active');
-    if (doneWordsEl) doneWordsEl.style.display = 'none';
-    loadCard();
-}
-
-/* ── events ── */
-btnPrev.addEventListener('click', goPrev);
-btnNext.addEventListener('click', goNext);
-btnShow.addEventListener('click', showAnswer);
-btnRestart.addEventListener('click', restart);
-if (btnCont) {
-    btnCont.addEventListener('click', function() {
-        try {
-            if (window.top && window.top !== window.self) { window.top.location.href = RETURN_TO; }
-            else { window.location.href = RETURN_TO; }
-        } catch(e) { window.location.href = RETURN_TO; }
+    var aTok = el('wp-answer-tokens');
+    aTok.innerHTML = '';
+    var usedM = {};
+    modelWords.forEach(function(w){
+        usedM[w] = (usedM[w]||0)+1;
+        var found = studentFreq[w] && usedM[w] <= studentFreq[w];
+        var span = document.createElement('span');
+        span.className = 'wp-token ' + (found ? 'neutral' : 'miss');
+        span.textContent = w;
+        aTok.appendChild(span);
     });
+
+    el('wp-result').classList.add('show');
+    el('wp-answer-reveal').classList.remove('show');
+
+    if(pct >= 80) launchConfetti();
 }
 
-/* ── init ── */
-loadCard();
+function launchConfetti(){
+    var colors = ['#F97316','#7F77DD','#534AB7','#1D9E75','#FCDDBF','#EEEDFE'];
+    for(var i=0;i<60;i++){
+        (function(n){
+            setTimeout(function(){
+                var p = document.createElement('span');
+                p.className = 'wp-confetti';
+                p.style.left = Math.random()*100+'vw';
+                p.style.background = colors[Math.floor(Math.random()*colors.length)];
+                p.style.animationDuration = (2.2+Math.random()*1.8)+'s';
+                p.style.transform = 'rotate('+(Math.random()*180)+'deg)';
+                p.style.borderRadius = Math.random()>.5?'999px':'3px';
+                document.body.appendChild(p);
+                setTimeout(function(){ p.remove(); },4500);
+            },n*12);
+        })(i);
+    }
+    try{
+        var win = document.getElementById('wp-win');
+        win.pause(); win.currentTime=0; win.play();
+    }catch(e){}
+}
 
+el('wp-textarea').addEventListener('input', updateWC);
+el('wp-btn-reset').addEventListener('click', function(){
+    el('wp-textarea').value='';
+    el('wp-wordcount').textContent='0 words';
+    el('wp-result').classList.remove('show');
+    el('wp-answer-reveal').classList.remove('show');
+});
+el('wp-btn-show').addEventListener('click', function(){
+    el('wp-answer-reveal').classList.toggle('show');
+});
+el('wp-btn-check').addEventListener('click', checkAnswer);
+el('wp-btn-prev').addEventListener('click', function(){
+    if(idx>0){ idx--; loadItem(); }
+});
+el('wp-btn-next').addEventListener('click', function(){
+    if(idx<TOTAL-1){ idx++; loadItem(); }
+});
+
+loadItem();
 })();
 </script>
-
-<?php endif; ?>
 <?php
 $content = ob_get_clean();
-render_activity_viewer($viewerTitle, '✍️', $content);
+render_activity_viewer($viewerTitle, 'fa-solid fa-pen-to-square', $content);
