@@ -400,162 +400,374 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 ob_start();
 
 if (isset($_GET["saved"])) {
-    echo '<p style="color:green;font-weight:bold;margin-bottom:15px;">✔ Saved successfully</p>';
+    echo '<div class="lo-saved">✓ Saved successfully</div>';
 }
 ?>
 
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@600;700;800;900&display=swap" rel="stylesheet">
+
 <style>
+*{box-sizing:border-box}
+
+body{background:#f8f7ff!important;font-family:'Nunito','Segoe UI',sans-serif!important}
+
 .lo-form{
-    max-width:860px;
+    max-width:780px;
     margin:0 auto;
     text-align:left;
+    font-family:'Nunito','Segoe UI',sans-serif;
 }
-.title-box,
-.block-item{
-    background:#f9fafb;
-    padding:14px;
-    margin-bottom:14px;
+
+/* Saved message */
+.lo-saved{
+    background:#E6F9F2;
+    border:1px solid #9FE1CB;
     border-radius:12px;
-    border:1px solid #e5e7eb;
+    padding:10px 16px;
+    color:#0F6E56;
+    font-family:'Nunito',sans-serif;
+    font-size:13px;
+    font-weight:900;
+    margin-bottom:16px;
 }
-.title-box label,
-.block-item label{
+
+/* Cards */
+.lo-card,
+.block-item{
+    background:#ffffff;
+    border:1px solid #F0EEF8;
+    border-radius:20px;
+    padding:20px 22px;
+    margin-bottom:14px;
+    box-shadow:0 4px 18px rgba(127,119,221,.08);
+}
+
+/* Field labels */
+.field-label{
     display:block;
-    font-weight:700;
+    font-size:12px;
+    font-weight:900;
+    letter-spacing:.08em;
+    text-transform:uppercase;
+    color:#9B94BE;
     margin-bottom:8px;
+    font-family:'Nunito',sans-serif;
 }
-.title-box input,
-.block-item input,
-.block-item textarea{
+
+.field-badge{
+    display:inline-block;
+    background:#EEEDFE;
+    color:#534AB7;
+    border-radius:999px;
+    padding:2px 8px;
+    font-size:10px;
+    font-weight:700;
+    letter-spacing:0;
+    text-transform:none;
+    margin-left:6px;
+    vertical-align:middle;
+}
+
+/* Inputs */
+.lo-form input[type="text"],
+.lo-form input[type="url"],
+.lo-form input[type="number"],
+.lo-form textarea{
     width:100%;
-    padding:10px 12px;
-    border-radius:8px;
-    border:1px solid #d1d5db;
-    box-sizing:border-box;
-    margin-bottom:12px;
+    border:1.5px solid #EDE9FA;
+    border-radius:12px;
+    padding:11px 14px;
+    font-family:'Nunito',sans-serif;
     font-size:14px;
+    font-weight:700;
+    color:#271B5D;
+    background:#ffffff;
+    outline:none;
+    margin-bottom:12px;
+    transition:border-color .15s,box-shadow .15s;
 }
-.block-item textarea{
-    min-height:90px;
+
+.lo-form input[type="text"]:focus,
+.lo-form input[type="url"]:focus,
+.lo-form input[type="number"]:focus,
+.lo-form textarea:focus{
+    border-color:#7F77DD;
+    box-shadow:0 0 0 3px rgba(127,119,221,.10);
+}
+
+.lo-form textarea{
+    min-height:60px;
     resize:vertical;
 }
-.image-preview-wrap{
+
+/* Block header */
+.block-header-row{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:16px;
+}
+
+.block-badge{
+    background:#EEEDFE;
+    color:#534AB7;
+    border-radius:999px;
+    padding:4px 14px;
+    font-family:'Nunito',sans-serif;
+    font-size:12px;
+    font-weight:900;
+}
+
+.btn-remove{
+    background:#FCEBEB;
+    color:#E24B4A;
+    border:1px solid #F7C1C1;
+    border-radius:999px;
+    padding:5px 14px;
+    font-family:'Nunito',sans-serif;
+    font-size:12px;
+    font-weight:900;
+    cursor:pointer;
+    transition:transform .12s;
+}
+.btn-remove:hover{transform:translateY(-1px)}
+
+/* Media toggle */
+.media-toggle-row{
     display:flex;
     gap:8px;
     flex-wrap:wrap;
-    margin-bottom:10px;
-}
-.image-preview{
-    display:block;
-    max-width:110px;
-    max-height:110px;
-    object-fit:cover;
-    border-radius:10px;
-    border:1px solid #d1d5db;
-    background:#fff;
-}
-.toolbar-row{
-    display:flex;
-    gap:10px;
-    flex-wrap:wrap;
-    justify-content:center;
-    margin-top:8px;
-}
-.btn-add{
-    background:#16a34a;
-    color:#fff;
-    padding:10px 14px;
-    border:none;
-    border-radius:8px;
-    cursor:pointer;
-    font-weight:700;
-}
-.btn-remove{
-    background:#ef4444;
-    color:#fff;
-    border:none;
-    padding:8px 12px;
-    border-radius:8px;
-    cursor:pointer;
-    font-weight:700;
-}
-.btn-remove-dz{
-    background:#ef4444;
-    color:#fff;
-    border:none;
-    padding:6px 10px;
-    border-radius:8px;
-    cursor:pointer;
-    font-weight:700;
-    font-size:13px;
-    white-space:nowrap;
-}
-.help{
-    margin:-6px 0 12px 0;
-    color:#6b7280;
-    font-size:13px;
-}
-.save-btn{
-    background:linear-gradient(180deg,#0d9488,#0f766e);
-    color:#fff;
-    padding:10px 20px;
-    border:none;
-    border-radius:10px;
-    cursor:pointer;
-    font-weight:800;
-    font-family:'Nunito','Segoe UI',sans-serif;
-    font-size:15px;
-    transition:transform .15s ease, filter .15s ease;
-    box-shadow:0 2px 8px rgba(13,148,136,.22);
-}
-.save-btn:hover{
-    filter:brightness(1.07);
-    transform:translateY(-1px);
+    margin-bottom:14px;
 }
 
-/* ── Drop zone image preview ── */
+.media-tab{
+    border:1.5px solid #EDE9FA;
+    background:#ffffff;
+    color:#534AB7;
+    border-radius:999px;
+    padding:7px 18px;
+    font-family:'Nunito',sans-serif;
+    font-size:12px;
+    font-weight:900;
+    cursor:pointer;
+    transition:all .15s;
+}
+
+.media-tab.active{
+    background:#7F77DD;
+    color:#ffffff;
+    border-color:#7F77DD;
+    box-shadow:0 6px 18px rgba(127,119,221,.22);
+}
+
+/* Audio upload zone */
+.audio-upload-zone{
+    border:2px dashed #EDE9FA;
+    border-radius:14px;
+    background:#FAFAFE;
+    padding:20px;
+    text-align:center;
+    cursor:pointer;
+    margin-bottom:14px;
+    transition:border-color .15s,background .15s;
+}
+.audio-upload-zone:hover{
+    border-color:#7F77DD;
+    background:#EEEDFE;
+}
+.audio-upload-icon{
+    width:40px;
+    height:40px;
+    border-radius:50%;
+    background:#EEEDFE;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    margin:0 auto 8px;
+    font-size:18px;
+}
+.audio-upload-title{
+    font-family:'Nunito',sans-serif;
+    font-size:13px;
+    font-weight:900;
+    color:#534AB7;
+    margin-bottom:3px;
+}
+.audio-upload-sub{
+    font-family:'Nunito',sans-serif;
+    font-size:11px;
+    font-weight:700;
+    color:#9B94BE;
+}
+.audio-file-pill{
+    display:inline-block;
+    background:#EEEDFE;
+    color:#534AB7;
+    border-radius:999px;
+    padding:4px 12px;
+    font-family:'Nunito',sans-serif;
+    font-size:12px;
+    font-weight:900;
+    margin-top:8px;
+}
+
+/* Video URL hint */
+.field-hint{
+    color:#9B94BE;
+    font-family:'Nunito',sans-serif;
+    font-size:12px;
+    font-weight:800;
+    margin:-6px 0 12px;
+}
+
+/* Image grid */
+.img-grid{
+    display:flex;
+    flex-wrap:wrap;
+    gap:10px;
+    margin-bottom:8px;
+    align-items:flex-start;
+}
+
+.img-card{
+    position:relative;
+    width:86px;
+    border-radius:14px;
+    border:1.5px solid #EDE9FA;
+    overflow:visible;
+    background:#ffffff;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+}
+
+.img-card img{
+    width:86px;
+    height:86px;
+    object-fit:cover;
+    border-radius:12px;
+    display:block;
+}
+
+.img-pos-badge{
+    position:absolute;
+    top:4px;
+    left:4px;
+    width:20px;
+    height:20px;
+    border-radius:50%;
+    background:#7F77DD;
+    color:#ffffff;
+    font-size:10px;
+    font-family:'Nunito',sans-serif;
+    font-weight:900;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    z-index:2;
+    pointer-events:none;
+}
+
+.img-remove-btn{
+    border:none;
+    background:none;
+    color:#E24B4A;
+    font-size:10px;
+    font-family:'Nunito',sans-serif;
+    font-weight:900;
+    cursor:pointer;
+    padding:3px 0 2px;
+    text-align:center;
+    width:100%;
+    line-height:1;
+}
+
+.img-add-slot{
+    width:86px;
+    height:86px;
+    border-radius:14px;
+    border:1.5px dashed #EDE9FA;
+    background:#FAFAFE;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    cursor:pointer;
+    transition:border-color .15s,background .15s;
+}
+
+.img-add-slot:hover{
+    border-color:#7F77DD;
+    background:#EEEDFE;
+}
+
+.img-add-slot label{
+    cursor:pointer;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    width:100%;
+    height:100%;
+    font-family:'Nunito',sans-serif;
+    font-size:11px;
+    font-weight:900;
+    color:#9B94BE;
+    gap:4px;
+    margin:0;
+    letter-spacing:0;
+    text-transform:none;
+}
+
+.img-add-slot label .plus{
+    font-size:22px;
+    color:#7F77DD;
+    line-height:1;
+}
+
+/* Drop zone section */
 .dz-section{
     margin-top:14px;
-    padding-top:12px;
-    border-top:1px solid #e5e7eb;
+    padding-top:14px;
+    border-top:1px solid #F0EEF8;
 }
-.dz-section > label{
-    font-size:14px;
-    color:#374151;
-}
+
 .dz-preview-area{
     position:relative;
     width:100%;
     max-width:680px;
     height:160px;
-    border:2px dashed #7c3aed;
-    border-radius:12px;
-    background:#f5f3ff;
+    border:2px dashed #EDE9FA;
+    border-radius:14px;
+    background:#FAFAFE;
     overflow:hidden;
     margin-bottom:8px;
     cursor:default;
 }
+
 .dz-preview-hint{
     position:absolute;
     inset:0;
     display:flex;
     align-items:center;
     justify-content:center;
-    color:#a78bfa;
+    color:#9B94BE;
     font-size:13px;
     font-style:italic;
     pointer-events:none;
+    font-family:'Nunito',sans-serif;
 }
+
 .dz-preview-image{
     position:absolute;
     cursor:move;
     user-select:none;
     touch-action:none;
     height:auto;
-    border:2px solid #7c3aed;
+    border:2px solid #7F77DD;
     border-radius:6px;
     box-shadow:0 2px 8px rgba(0,0,0,.15);
 }
+
 .dz-controls-row{
     display:flex;
     gap:8px;
@@ -563,23 +775,92 @@ if (isset($_GET["saved"])) {
     flex-wrap:wrap;
     margin-bottom:8px;
 }
+
 .dz-width-control{
     display:flex;
     align-items:center;
     gap:6px;
     font-size:13px;
-    color:#374151;
+    color:#534AB7;
+    font-family:'Nunito',sans-serif;
+    font-weight:700;
 }
+
 .dz-width-control input{
-    width:70px !important;
-    padding:4px 6px !important;
-    margin-bottom:0 !important;
+    width:70px!important;
+    padding:4px 6px!important;
+    margin-bottom:0!important;
+}
+
+.btn-remove-dz{
+    background:#FCEBEB;
+    color:#E24B4A;
+    border:1px solid #F7C1C1;
+    border-radius:999px;
+    padding:5px 14px;
+    font-family:'Nunito',sans-serif;
+    font-size:12px;
+    font-weight:900;
+    cursor:pointer;
+    transition:transform .12s;
+    white-space:nowrap;
+}
+.btn-remove-dz:hover{transform:translateY(-1px)}
+
+/* Toolbar */
+.toolbar-row{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+    justify-content:center;
+    padding-top:20px;
+    border-top:1px solid #F0EEF8;
+    margin-top:8px;
+}
+
+.btn-add{
+    background:#ffffff;
+    color:#534AB7;
+    border:1.5px solid #EDE9FA;
+    border-radius:999px;
+    padding:12px 26px;
+    font-family:'Nunito',sans-serif;
+    font-size:13px;
+    font-weight:900;
+    cursor:pointer;
+    transition:transform .12s;
+}
+.btn-add:hover{transform:translateY(-2px)}
+
+.save-btn{
+    background:#F97316;
+    color:#ffffff;
+    border:none;
+    border-radius:999px;
+    padding:12px 26px;
+    font-family:'Nunito',sans-serif;
+    font-size:13px;
+    font-weight:900;
+    cursor:pointer;
+    box-shadow:0 6px 18px rgba(249,115,22,.22);
+    transition:transform .12s,filter .12s;
+}
+.save-btn:hover{transform:translateY(-2px);filter:brightness(1.07)}
+
+@media(max-width:640px){
+    .lo-form{padding:0 4px}
+    .media-toggle-row{gap:6px}
+    .media-tab{padding:6px 12px;font-size:11px}
+    .toolbar-row{flex-direction:column;align-items:center}
+    .btn-add,.save-btn{width:100%;max-width:300px;justify-content:center}
 }
 </style>
 
 <form method="post" enctype="multipart/form-data" class="lo-form" id="listenOrderForm">
-    <div class="title-box">
-        <label for="activity_title">Activity title</label>
+
+    <!-- Activity meta -->
+    <div class="lo-card">
+        <label class="field-label" for="activity_title">Activity title</label>
         <input
             id="activity_title"
             type="text"
@@ -589,12 +870,14 @@ if (isset($_GET["saved"])) {
             required
         >
 
-        <label for="activity_instructions">Instructions <span style="font-weight:400;color:#6b7280;">(shown below the title)</span></label>
+        <label class="field-label" for="activity_instructions">
+            Instructions
+            <span class="field-badge">shown below the title</span>
+        </label>
         <textarea
             id="activity_instructions"
             name="activity_instructions"
             placeholder="Example: Listen to the audio and put the pictures in the correct order."
-            style="min-height:70px;resize:vertical;"
         ><?= htmlspecialchars($activityInstructions, ENT_QUOTES, 'UTF-8') ?></textarea>
     </div>
 
@@ -607,44 +890,96 @@ if (isset($_GET["saved"])) {
             $dzTop     = (int)     ($firstDzi["top"]   ?? 10);
             $dzWidth   = max(60, min(800, (int) ($firstDzi["width"] ?? 180)));
             $dzId      = (string)  ($firstDzi["id"]    ?? uniqid("dzi_"));
+            $blockImages = is_array($block["images"] ?? null) ? $block["images"] : [];
+            $hasSentence = trim((string) ($block["sentence"] ?? "")) !== "";
         ?>
         <div class="block-item">
             <input type="hidden" name="block_id[]" value="<?= htmlspecialchars((string) ($block["id"] ?? uniqid("listen_order_")), ENT_QUOTES, 'UTF-8') ?>">
 
-            <label>Sentence (what students listen to)</label>
-            <textarea name="sentence[]" required><?= htmlspecialchars((string) ($block["sentence"] ?? ""), ENT_QUOTES, 'UTF-8') ?></textarea>
+            <!-- Block header -->
+            <div class="block-header-row">
+                <span class="block-badge">Block <?= (int) $blockIndex + 1 ?></span>
+                <button type="button" class="btn-remove" onclick="removeBlock(this)">✖ Remove</button>
+            </div>
 
-            <label>Images in the correct order</label>
-            <?php $blockImages = is_array($block["images"] ?? null) ? $block["images"] : []; ?>
-            <?php if (!empty($blockImages)): ?>
-                <div class="image-preview-wrap">
-                    <?php foreach ($blockImages as $img): ?>
-                        <div>
-                            <img src="<?= htmlspecialchars($img, ENT_QUOTES, 'UTF-8') ?>" class="image-preview" alt="listen-order-image">
-                            <input type="hidden" name="images_existing[<?= (int) $blockIndex ?>][]" value="<?= htmlspecialchars($img, ENT_QUOTES, 'UTF-8') ?>">
-                        </div>
-                    <?php endforeach; ?>
+            <!-- Media type toggle -->
+            <div class="media-toggle-row">
+                <button type="button" class="media-tab<?= $hasSentence ? ' active' : '' ?>" data-mode="audio" onclick="setMediaMode(this,'audio')">Audio file</button>
+                <button type="button" class="media-tab" data-mode="video" onclick="setMediaMode(this,'video')">Video URL</button>
+                <button type="button" class="media-tab<?= !$hasSentence ? ' active' : '' ?>" data-mode="none" onclick="setMediaMode(this,'none')">No media</button>
+            </div>
+
+            <!-- Audio section -->
+            <div class="media-section audio-section"<?= !$hasSentence ? ' style="display:none"' : '' ?>>
+                <div class="audio-upload-zone" onclick="this.querySelector('input[type=file]').click()">
+                    <div class="audio-upload-icon">🎵</div>
+                    <div class="audio-upload-title">Upload audio file</div>
+                    <div class="audio-upload-sub">MP3, WAV, OGG</div>
+                    <input type="file" accept="audio/*" style="display:none" onchange="showAudioPill(this)">
                 </div>
-            <?php else: ?>
-                <input type="hidden" name="images_existing[<?= (int) $blockIndex ?>][]" value="">
-            <?php endif; ?>
+                <label class="field-label">
+                    Sentence / transcript
+                    <span class="field-badge">optional — shown to students</span>
+                </label>
+                <textarea name="sentence[]"><?= htmlspecialchars((string) ($block["sentence"] ?? ""), ENT_QUOTES, 'UTF-8') ?></textarea>
+            </div>
 
-            <input type="file" name="images[<?= (int) $blockIndex ?>][]" multiple accept="image/*">
-            <p class="help">Upload the images in the exact correct order.</p>
+            <!-- Video section -->
+            <div class="media-section video-section" style="display:none">
+                <label class="field-label">Video URL</label>
+                <input type="url" placeholder="https://youtube.com/watch?v=... or direct video URL">
+                <div class="field-hint">Supports YouTube, Vimeo, or direct MP4 links.</div>
+                <!-- sentence hidden so it still submits when video mode active -->
+                <textarea name="sentence[]" style="display:none"><?= htmlspecialchars((string) ($block["sentence"] ?? ""), ENT_QUOTES, 'UTF-8') ?></textarea>
+            </div>
 
-            <!-- ── Drop zone background image section ── -->
+            <!-- No media section -->
+            <div class="media-section none-section" style="display:none">
+                <textarea name="sentence[]" style="display:none"><?= htmlspecialchars((string) ($block["sentence"] ?? ""), ENT_QUOTES, 'UTF-8') ?></textarea>
+            </div>
+
+            <!-- Images in correct order -->
+            <label class="field-label" style="margin-top:4px;">
+                Images in correct order
+                <span class="field-badge">upload in the exact order students should arrange them</span>
+            </label>
+
+            <div class="img-grid">
+                <?php foreach ($blockImages as $imgIdx => $img): ?>
+                <div class="img-card">
+                    <span class="img-pos-badge"><?= (int) $imgIdx + 1 ?></span>
+                    <img src="<?= htmlspecialchars($img, ENT_QUOTES, 'UTF-8') ?>" alt="image <?= (int) $imgIdx + 1 ?>">
+                    <input type="hidden" name="images_existing[<?= (int) $blockIndex ?>][]" value="<?= htmlspecialchars($img, ENT_QUOTES, 'UTF-8') ?>">
+                    <button type="button" class="img-remove-btn" onclick="removeImgCard(this)">Remove</button>
+                </div>
+                <?php endforeach; ?>
+                <?php if (empty($blockImages)): ?>
+                    <input type="hidden" name="images_existing[<?= (int) $blockIndex ?>][]" value="">
+                <?php endif; ?>
+                <div class="img-add-slot">
+                    <label>
+                        <span class="plus">+</span>
+                        <span>Add more</span>
+                        <input type="file" name="images[<?= (int) $blockIndex ?>][]" multiple accept="image/*" style="display:none">
+                    </label>
+                </div>
+            </div>
+            <div class="field-hint">Upload images in the exact correct order. Students will see them shuffled.</div>
+
+            <!-- Drop zone background image -->
             <div class="dz-section">
-                <label>🖼 Drop Zone Background Image <span style="font-weight:400;color:#6b7280;">(optional — visible behind the answer chips)</span></label>
+                <label class="field-label">
+                    Drop zone background image
+                    <span class="field-badge">optional — visible behind answer chips</span>
+                </label>
 
-                <!-- Hidden state inputs -->
                 <input type="hidden" name="dz_image_existing[<?= (int) $blockIndex ?>]" class="dz-src"   value="<?= htmlspecialchars($dzSrc, ENT_QUOTES, 'UTF-8') ?>">
                 <input type="hidden" name="dz_image_left[<?= (int) $blockIndex ?>]"     class="dz-left"  value="<?= $dzLeft ?>">
                 <input type="hidden" name="dz_image_top[<?= (int) $blockIndex ?>]"      class="dz-top"   value="<?= $dzTop ?>">
                 <input type="hidden" name="dz_image_width[<?= (int) $blockIndex ?>]"    class="dz-width" value="<?= $dzWidth ?>">
                 <input type="hidden" name="dz_image_id[<?= (int) $blockIndex ?>]"       class="dz-imgid" value="<?= htmlspecialchars($dzId, ENT_QUOTES, 'UTF-8') ?>">
 
-                <!-- Visual preview / drag area -->
-                <div class="dz-preview-area" <?= $dzSrc ? '' : 'style="display:none;"' ?>>
+                <div class="dz-preview-area"<?= $dzSrc ? '' : ' style="display:none;"' ?>>
                     <div class="dz-preview-hint">Drag the image to reposition it</div>
                     <?php if ($dzSrc): ?>
                     <img
@@ -659,17 +994,15 @@ if (isset($_GET["saved"])) {
 
                 <div class="dz-controls-row">
                     <input type="file" name="dz_image_file[<?= (int) $blockIndex ?>]" accept="image/*" class="dz-file-input" style="margin-bottom:0;">
-                    <button type="button" class="btn-remove-dz" onclick="removeDzImage(this)" <?= $dzSrc ? '' : 'style="display:none;"' ?>>✖ Remove BG image</button>
+                    <button type="button" class="btn-remove-dz" onclick="removeDzImage(this)"<?= $dzSrc ? '' : ' style="display:none;"' ?>>✖ Remove BG image</button>
                 </div>
 
-                <div class="dz-width-control" <?= $dzSrc ? '' : 'style="display:none;"' ?>>
+                <div class="dz-width-control"<?= $dzSrc ? '' : ' style="display:none;"' ?>>
                     <span>Width:</span>
                     <input type="number" min="60" max="800" value="<?= $dzWidth ?>" class="dz-width-display">
                     <span>px</span>
                 </div>
             </div>
-
-            <button type="button" class="btn-remove" onclick="removeBlock(this)" style="margin-top:10px;">✖ Remove block</button>
         </div>
         <?php endforeach; ?>
     </div>
@@ -681,30 +1014,80 @@ if (isset($_GET["saved"])) {
 </form>
 
 <script>
-let formChanged = false;
-let formSubmitted = false;
+var formChanged = false;
+var formSubmitted = false;
 
 function markChanged() {
     formChanged = true;
 }
 
+/* ── Media mode toggle ── */
+function setMediaMode(btn, mode) {
+    var block = btn.closest('.block-item');
+    if (!block) return;
+    block.querySelectorAll('.media-tab').forEach(function (tab) {
+        tab.classList.remove('active');
+    });
+    btn.classList.add('active');
+    block.querySelectorAll('.media-section').forEach(function (section) {
+        section.style.display = 'none';
+    });
+    var target = block.querySelector('.' + mode + '-section');
+    if (target) target.style.display = '';
+    markChanged();
+}
+
+/* ── Audio file pill ── */
+function showAudioPill(input) {
+    var zone = input.closest('.audio-upload-zone');
+    if (!zone) return;
+    var existing = zone.querySelector('.audio-file-pill');
+    if (existing) existing.remove();
+    if (input.files && input.files[0]) {
+        var pill = document.createElement('div');
+        pill.className = 'audio-file-pill';
+        pill.textContent = input.files[0].name;
+        zone.appendChild(pill);
+    }
+}
+
+/* ── Image card removal ── */
+function removeImgCard(btn) {
+    var card = btn.closest('.img-card');
+    if (!card) return;
+    var grid = card.closest('.img-grid');
+    card.remove();
+    if (grid) {
+        grid.querySelectorAll('.img-card').forEach(function (c, i) {
+            var badge = c.querySelector('.img-pos-badge');
+            if (badge) badge.textContent = String(i + 1);
+        });
+    }
+    markChanged();
+}
+
+/* ── Block badge renumber ── */
+function reindexBlockBadges() {
+    document.querySelectorAll('#blocksContainer .block-item').forEach(function (block, i) {
+        var badge = block.querySelector('.block-badge');
+        if (badge) badge.textContent = 'Block ' + (i + 1);
+    });
+}
+
 function reindexBlockInputs() {
-    const blocks = document.querySelectorAll('#blocksContainer .block-item');
+    var blocks = document.querySelectorAll('#blocksContainer .block-item');
 
     blocks.forEach(function (block, index) {
-        /* Chip image file input */
-        const fileInput = block.querySelector('input[type="file"][name^="images["]');
+        var fileInput = block.querySelector('input[type="file"][name^="images["]');
         if (fileInput) {
             fileInput.name = 'images[' + index + '][]';
         }
 
-        /* Existing chip image hidden inputs */
-        const existingInputs = block.querySelectorAll('input[type="hidden"][name^="images_existing["]');
+        var existingInputs = block.querySelectorAll('input[type="hidden"][name^="images_existing["]');
         existingInputs.forEach(function (input) {
             input.name = 'images_existing[' + index + '][]';
         });
 
-        /* Drop zone image inputs */
         var dzFields = ['dz_image_existing', 'dz_image_left', 'dz_image_top', 'dz_image_width', 'dz_image_id'];
         dzFields.forEach(function (field) {
             var el = block.querySelector('[name^="' + field + '["]');
@@ -716,56 +1099,92 @@ function reindexBlockInputs() {
 }
 
 function removeBlock(button) {
-    const item = button.closest('.block-item');
+    var item = button.closest('.block-item');
     if (item) {
         item.remove();
         reindexBlockInputs();
+        reindexBlockBadges();
         markChanged();
     }
 }
 
 function addBlock() {
-    const container = document.getElementById('blocksContainer');
-    const index = container.querySelectorAll('.block-item').length;
-    const div = document.createElement('div');
+    var container = document.getElementById('blocksContainer');
+    var index = container.querySelectorAll('.block-item').length;
+    var blockNum = index + 1;
+    var div = document.createElement('div');
     div.className = 'block-item';
-    div.innerHTML = `
-        <input type="hidden" name="block_id[]" value="listen_order_${Date.now()}_${Math.floor(Math.random() * 1000)}">
+    div.innerHTML =
+        '<input type="hidden" name="block_id[]" value="listen_order_' + Date.now() + '_' + Math.floor(Math.random() * 1000) + '">' +
 
-        <label>Sentence (what students listen to)</label>
-        <textarea name="sentence[]" required></textarea>
+        '<div class="block-header-row">' +
+            '<span class="block-badge">Block ' + blockNum + '</span>' +
+            '<button type="button" class="btn-remove" onclick="removeBlock(this)">&#x2716; Remove</button>' +
+        '</div>' +
 
-        <label>Images in the correct order</label>
-        <input type="file" name="images[${index}][]" multiple accept="image/*">
-        <p class="help">Upload the images in the exact correct order.</p>
+        '<div class="media-toggle-row">' +
+            '<button type="button" class="media-tab active" data-mode="audio" onclick="setMediaMode(this,\'audio\')">Audio file</button>' +
+            '<button type="button" class="media-tab" data-mode="video" onclick="setMediaMode(this,\'video\')">Video URL</button>' +
+            '<button type="button" class="media-tab" data-mode="none" onclick="setMediaMode(this,\'none\')">No media</button>' +
+        '</div>' +
 
-        <div class="dz-section">
-            <label>🖼 Drop Zone Background Image <span style="font-weight:400;color:#6b7280;">(optional — visible behind the answer chips)</span></label>
+        '<div class="media-section audio-section">' +
+            '<div class="audio-upload-zone" onclick="this.querySelector(\'input[type=file]\').click()">' +
+                '<div class="audio-upload-icon">&#x1F3B5;</div>' +
+                '<div class="audio-upload-title">Upload audio file</div>' +
+                '<div class="audio-upload-sub">MP3, WAV, OGG</div>' +
+                '<input type="file" accept="audio/*" style="display:none" onchange="showAudioPill(this)">' +
+            '</div>' +
+            '<label class="field-label">Sentence / transcript <span class="field-badge">optional — shown to students</span></label>' +
+            '<textarea name="sentence[]" required></textarea>' +
+        '</div>' +
 
-            <input type="hidden" name="dz_image_existing[${index}]" class="dz-src"   value="">
-            <input type="hidden" name="dz_image_left[${index}]"     class="dz-left"  value="10">
-            <input type="hidden" name="dz_image_top[${index}]"      class="dz-top"   value="10">
-            <input type="hidden" name="dz_image_width[${index}]"    class="dz-width" value="180">
-            <input type="hidden" name="dz_image_id[${index}]"       class="dz-imgid" value="">
+        '<div class="media-section video-section" style="display:none">' +
+            '<label class="field-label">Video URL</label>' +
+            '<input type="url" placeholder="https://youtube.com/watch?v=... or direct video URL">' +
+            '<div class="field-hint">Supports YouTube, Vimeo, or direct MP4 links.</div>' +
+            '<textarea name="sentence[]" style="display:none"></textarea>' +
+        '</div>' +
 
-            <div class="dz-preview-area" style="display:none;">
-                <div class="dz-preview-hint">Drag the image to reposition it</div>
-            </div>
+        '<div class="media-section none-section" style="display:none">' +
+            '<textarea name="sentence[]" style="display:none"></textarea>' +
+        '</div>' +
 
-            <div class="dz-controls-row">
-                <input type="file" name="dz_image_file[${index}]" accept="image/*" class="dz-file-input" style="margin-bottom:0;">
-                <button type="button" class="btn-remove-dz" onclick="removeDzImage(this)" style="display:none;">✖ Remove BG image</button>
-            </div>
+        '<label class="field-label" style="margin-top:4px;">Images in correct order <span class="field-badge">upload in the exact order students should arrange them</span></label>' +
 
-            <div class="dz-width-control" style="display:none;">
-                <span>Width:</span>
-                <input type="number" min="60" max="800" value="180" class="dz-width-display">
-                <span>px</span>
-            </div>
-        </div>
+        '<div class="img-grid">' +
+            '<input type="hidden" name="images_existing[' + index + '][]" value="">' +
+            '<div class="img-add-slot">' +
+                '<label>' +
+                    '<span class="plus">+</span>' +
+                    '<span>Add more</span>' +
+                    '<input type="file" name="images[' + index + '][]" multiple accept="image/*" style="display:none">' +
+                '</label>' +
+            '</div>' +
+        '</div>' +
+        '<div class="field-hint">Upload images in the exact correct order. Students will see them shuffled.</div>' +
 
-        <button type="button" class="btn-remove" onclick="removeBlock(this)" style="margin-top:10px;">✖ Remove block</button>
-    `;
+        '<div class="dz-section">' +
+            '<label class="field-label">Drop zone background image <span class="field-badge">optional — visible behind answer chips</span></label>' +
+            '<input type="hidden" name="dz_image_existing[' + index + ']" class="dz-src"   value="">' +
+            '<input type="hidden" name="dz_image_left[' + index + ']"     class="dz-left"  value="10">' +
+            '<input type="hidden" name="dz_image_top[' + index + ']"      class="dz-top"   value="10">' +
+            '<input type="hidden" name="dz_image_width[' + index + ']"    class="dz-width" value="180">' +
+            '<input type="hidden" name="dz_image_id[' + index + ']"       class="dz-imgid" value="">' +
+            '<div class="dz-preview-area" style="display:none;">' +
+                '<div class="dz-preview-hint">Drag the image to reposition it</div>' +
+            '</div>' +
+            '<div class="dz-controls-row">' +
+                '<input type="file" name="dz_image_file[' + index + ']" accept="image/*" class="dz-file-input" style="margin-bottom:0;">' +
+                '<button type="button" class="btn-remove-dz" onclick="removeDzImage(this)" style="display:none;">&#x2716; Remove BG image</button>' +
+            '</div>' +
+            '<div class="dz-width-control" style="display:none;">' +
+                '<span>Width:</span>' +
+                '<input type="number" min="60" max="800" value="180" class="dz-width-display">' +
+                '<span>px</span>' +
+            '</div>' +
+        '</div>';
+
     container.appendChild(div);
     reindexBlockInputs();
     initDzPreview(div);
@@ -886,7 +1305,6 @@ function initDzPreview(blockEl) {
         return img;
     }
 
-    /* File selected: show local preview */
     if (fileInput) {
         fileInput.addEventListener('change', function () {
             if (!fileInput.files || !fileInput.files[0]) return;
@@ -898,7 +1316,7 @@ function initDzPreview(blockEl) {
                 var w = parseInt(widthInput.value, 10) || 180;
                 createPreviewImg(e.target.result, 10, 10, w);
 
-                if (srcInput) srcInput.value = '';   // clear old URL; new file will upload on save
+                if (srcInput) srcInput.value = '';
                 if (idInput)  idInput.value  = 'dzi_' + Date.now();
                 if (widthDisplay) widthDisplay.value = w;
                 showDzUI();
@@ -909,7 +1327,6 @@ function initDzPreview(blockEl) {
         });
     }
 
-    /* Width control */
     if (widthDisplay) {
         widthDisplay.addEventListener('input', function () {
             var img = getImg();
@@ -921,7 +1338,6 @@ function initDzPreview(blockEl) {
         });
     }
 
-    /* Init existing image (from saved data) */
     var existingImg = getImg();
     if (existingImg) {
         addDragBehavior(existingImg);
@@ -958,7 +1374,6 @@ function removeDzImage(btn) {
     markChanged();
 }
 
-/* ── Change tracking ── */
 function bindChangeTracking(scope) {
     var elements = scope.querySelectorAll('input, textarea, select');
     elements.forEach(function (el) {
@@ -971,7 +1386,6 @@ document.addEventListener('DOMContentLoaded', function () {
     bindChangeTracking(document);
     reindexBlockInputs();
 
-    /* Init dz preview for all existing blocks */
     document.querySelectorAll('#blocksContainer .block-item').forEach(function (blockEl) {
         initDzPreview(blockEl);
     });
