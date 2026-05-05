@@ -63,6 +63,32 @@ function os_viewer_normalize(mixed $rawData): array
     ];
 }
 
+
+function os_viewer_video_embed_url(string $url): string
+{
+    $url = trim($url);
+    if ($url === '') return '';
+
+    // YouTube: watch?v=, youtu.be/, shorts/, embed/
+    if (preg_match('~(?:youtube\.com/(?:watch\?v=|embed/|shorts/)|youtu\.be/)([A-Za-z0-9_-]{6,})~i', $url, $m)) {
+        return 'https://www.youtube.com/embed/' . $m[1];
+    }
+
+    // Vimeo
+    if (preg_match('~vimeo\.com/(?:video/)?([0-9]+)~i', $url, $m)) {
+        return 'https://player.vimeo.com/video/' . $m[1];
+    }
+
+    return '';
+}
+
+function os_viewer_is_direct_video(string $url): bool
+{
+    $path = parse_url($url, PHP_URL_PATH);
+    if (!is_string($path)) return false;
+    return (bool) preg_match('~\.(mp4|webm|ogg|mov|m4v)$~i', $path);
+}
+
 function os_viewer_load(PDO $pdo, string $activityId, string $unit): array
 {
     $row = null;
@@ -306,7 +332,8 @@ body.embedded-mode .os-back-btn {
 
 .os-media-area iframe {
     width: 100%;
-    height: 320px;
+    aspect-ratio: 16 / 9;
+    max-height: 320px;
     border: none;
     display: block;
     background: #000000;
@@ -609,10 +636,12 @@ body.embedded-mode .os-back-btn {
         margin-bottom: 12px;
     }
 
-    .os-media-area video,
+    .os-media-area video {
+        max-height: 220px;
+    }
+
     .os-media-area iframe {
         max-height: 220px;
-        height: 220px;
     }
 
     .os-chip {
@@ -658,10 +687,24 @@ body.embedded-mode .os-back-btn {
         <div class="os-board">
 
             <?php if (($activity['media_type'] ?? '') === 'video' && !empty($activity['media_url'])): ?>
+                <?php
+                    $osVideoUrl   = (string)($activity['media_url'] ?? '');
+                    $osEmbedUrl   = os_viewer_video_embed_url($osVideoUrl);
+                    $osDirectVideo = os_viewer_is_direct_video($osVideoUrl);
+                ?>
                 <div class="os-media-area">
-                    <video controls preload="metadata"
-                           src="<?= htmlspecialchars($activity['media_url'], ENT_QUOTES, 'UTF-8') ?>">
-                    </video>
+                    <?php if ($osEmbedUrl !== ''): ?>
+                        <iframe
+                            src="<?= htmlspecialchars($osEmbedUrl, ENT_QUOTES, 'UTF-8') ?>"
+                            title="Activity video"
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                            allowfullscreen>
+                        </iframe>
+                    <?php else: ?>
+                        <video controls preload="metadata"
+                               src="<?= htmlspecialchars($osVideoUrl, ENT_QUOTES, 'UTF-8') ?>">
+                        </video>
+                    <?php endif; ?>
                 </div>
 
             <?php elseif (($activity['media_type'] ?? '') === 'audio' && !empty($activity['media_url'])): ?>
