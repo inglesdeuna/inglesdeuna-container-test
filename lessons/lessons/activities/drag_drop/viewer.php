@@ -169,269 +169,97 @@ if (count($blocks) === 0) {
 
 ob_start();
 ?>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@600;700;800;900&display=swap" rel="stylesheet">
+
 <style>
-.dd-stage{
-  max-width:980px;
-  margin:0 auto;
-}
-
-.dd-intro{
-  margin-bottom:18px;
-  padding:24px 26px;
-  border-radius:26px;
-  border:1px solid #ffd8b8;
-  background:linear-gradient(135deg, #fff2e2 0%, #fff8e7 52%, #f4eadc 100%);
-  box-shadow:0 16px 34px rgba(15, 23, 42, .09);
-}
-
-.dd-intro h2{
-  margin:0 0 8px;
-  font-family:'Fredoka', 'Trebuchet MS', sans-serif;
-  font-size:30px;
-  line-height:1.1;
-  color:#9a3412;
-}
-
-.dd-intro p,
-.instructions{
-  margin:0;
-  text-align:center;
-  color:#6b4f3a;
-  font-size:16px;
-  line-height:1.6;
-}
-
-#sentenceBox{
-  margin:20px auto 0;
-  padding:22px;
-  background:linear-gradient(180deg, #fffdf9 0%, #fff5eb 100%);
-  border:1px solid #f3dcc8;
-  border-radius:24px;
-  max-width:920px;
-  box-shadow:0 14px 28px rgba(15, 23, 42, .08);
-}
-
-#blockImage{
-  display:block;
-  max-width:320px;
-  max-height:240px;
-  margin:0 auto 18px;
-  border-radius:16px;
-  object-fit:contain;
-  box-shadow:0 6px 18px rgba(15,23,42,.1);
-}
-
-#promptText{
-  line-height:2;
-  font-family:'Fredoka', 'Trebuchet MS', sans-serif;
-  font-size:clamp(20px, 2.4vw, 32px);
-  color:#4b2e1c;
-}
-
-.blank{
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  min-width:110px;
-  min-height:48px;
-  padding:6px 12px;
-  margin:4px 6px;
-  border:2px dashed #f59e0b;
-  border-radius:16px;
-  background:#fff7ed;
-  vertical-align:middle;
-  color:#9a3412;
-  font-weight:800;
-}
-
-.blank.filled{
-  border-style:solid;
-  background:#ffedd5;
-}
-
-.blank.incorrect{
-  border-color:#dc2626;
-  background:#fee2e2;
-  color:#991b1b;
-}
-
-#wordBank{
-  display:flex;
-  flex-wrap:wrap;
-  justify-content:center;
-  gap:12px;
-  margin:18px 0;
-}
-
-.word{
-  padding:10px 16px;
-  border-radius:999px;
-  color:#7c2d12;
-  font-weight:800;
-  cursor:grab;
-  background:linear-gradient(180deg, #fed7aa 0%, #fdba74 100%);
-  box-shadow:0 10px 20px rgba(251, 146, 60, .18);
-  user-select:none;
-  touch-action:manipulation;
-}
-
-.word.selected-touch{
-  outline:3px solid #0ea5e9;
-  outline-offset:1px;
-  filter:brightness(1.03);
-}
-
-.dd-touch-hint{
-  text-align:center;
-  color:#7c2d12;
-  font-size:13px;
-  font-weight:700;
-  margin:6px 0 10px;
-}
-
-.dd-touch-hint.hidden{display:none}
-
-.dd-btn{
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  padding:11px 18px;
-  border:none;
-  border-radius:999px;
-  color:white;
-  cursor:pointer;
-  min-width:142px;
-  font-weight:800;
-  font-family:'Nunito', 'Segoe UI', sans-serif;
-  font-size:14px;
-  line-height:1;
-  box-shadow:0 10px 22px rgba(15, 23, 42, .12);
-  transition:transform .15s ease, filter .15s ease;
-}
-
-.dd-btn:hover{
-  filter:brightness(1.04);
-  transform:translateY(-1px);
-}
-
-.dd-btn-listen{background:linear-gradient(180deg, #14b8a6 0%, #0f766e 100%)}
-.dd-btn-show{background:linear-gradient(180deg, #d8b4fe 0%, #a855f7 100%)}
-.dd-btn-next{background:linear-gradient(180deg, #5eead4 0%, #14b8a6 100%)}
-
-#listenBtn.hidden{ display:none; }
-
-#feedback{
-  text-align:center;
-  font-size:20px;
-  font-weight:800;
-  min-height:32px;
-  margin-top:8px;
-}
-
-.good{ color:#15803d; }
-.bad{ color:#dc2626; }
-
-.controls{
-  margin-top:15px;
-  text-align:center;
-}
-
-.dd-completed-screen{
-  display:none;
-  text-align:center;
-  max-width:600px;
-  margin:0 auto;
-  padding:40px 20px;
-}
-
-.dd-completed-screen.active{
-  display:block;
-}
-
-.dd-completed-icon{
-  font-size:80px;
-  margin-bottom:20px;
-}
-
-.dd-completed-title{
-  font-family:'Fredoka', 'Trebuchet MS', sans-serif;
-  font-size:36px;
-  font-weight:700;
-  color:#9a3412;
-  margin:0 0 16px;
-  line-height:1.2;
-}
-
-.dd-completed-text{
-  font-size:16px;
-  color:#6b4f3a;
-  line-height:1.6;
-  margin:0 0 32px;
-}
-
-.dd-completed-button{
-  display:inline-block;
-  padding:12px 24px;
-  border:none;
-  border-radius:999px;
-  background:linear-gradient(180deg, #fb923c 0%, #f97316 100%);
-  color:#fff;
-  font-weight:700;
-  font-size:16px;
-  cursor:pointer;
-  box-shadow:0 10px 24px rgba(0,0,0,.14);
-  transition:transform .18s ease, filter .18s ease;
-}
-
-.dd-completed-button:hover{
-  transform:scale(1.05);
-  filter:brightness(1.07);
-}
-
-@media (max-width:760px){
-  .dd-intro{padding:20px 18px}
-  .dd-intro h2{font-size:26px}
-  #sentenceBox{padding:18px}
-  #promptText{line-height:1.9}
-  .blank{min-width:86px;min-height:42px;margin:3px 4px;padding:5px 9px}
-  .word{padding:10px 14px;font-size:15px}
-  #wordBank{gap:10px}
-  .controls{display:flex;flex-direction:column;align-items:center}
-  .dd-btn{width:100%;max-width:320px}
-}
+:root{--dd-orange:#F97316;--dd-purple:#7F77DD;--dd-purple-dark:#534AB7;--dd-lila:#EDE9FA;--dd-muted:#9B94BE;--dd-green:#16a34a;--dd-red:#dc2626}
+html,body{width:100%;min-height:100%}
+body{margin:0!important;padding:0!important;background:#fff!important;font-family:'Nunito','Segoe UI',sans-serif!important}
+.activity-wrapper{max-width:100%!important;margin:0!important;padding:0!important;min-height:100vh;display:flex!important;flex-direction:column!important;background:transparent!important}
+.top-row,.activity-header,.activity-title,.activity-subtitle{display:none!important}
+.viewer-content{flex:1!important;display:flex!important;flex-direction:column!important;padding:0!important;margin:0!important;background:transparent!important;border:none!important;box-shadow:none!important;border-radius:0!important}
+.dd-page{width:100%;min-height:100vh;padding:clamp(14px,2.5vw,34px);display:flex;align-items:flex-start;justify-content:center;background:#fff;box-sizing:border-box}
+.dd-app{width:min(860px,100%);margin:0 auto}
+.dd-topbar{height:36px;display:flex;align-items:center;justify-content:center;margin-bottom:8px}
+.dd-topbar-title{font-family:'Nunito',sans-serif;font-size:12px;font-weight:900;color:#9B94BE;letter-spacing:.1em;text-transform:uppercase}
+.dd-hero{text-align:center;margin-bottom:clamp(14px,2vw,22px)}
+.dd-kicker{display:inline-flex;align-items:center;justify-content:center;padding:7px 14px;border-radius:999px;background:#FFF0E6;border:1px solid #FCDDBF;color:#C2580A;font-family:'Nunito',sans-serif;font-size:12px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px}
+.dd-hero h1{font-family:'Fredoka',sans-serif;font-size:clamp(30px,5.5vw,58px);font-weight:700;color:#F97316;margin:0;line-height:1.03}
+.dd-hero p{font-family:'Nunito',sans-serif;font-size:clamp(13px,1.8vw,17px);font-weight:800;color:#9B94BE;margin:8px 0 0}
+.dd-stage{background:#fff;border:1px solid #F0EEF8;border-radius:34px;padding:clamp(16px,2.6vw,26px);box-shadow:0 8px 40px rgba(127,119,221,.13);width:min(760px,100%);margin:0 auto;box-sizing:border-box;position:relative}
+.dd-intro{display:none}
+#sentenceBox{margin:0 auto;padding:clamp(18px,3vw,28px);background:#fff;border:1px solid #EDE9FA;border-radius:28px;max-width:100%;min-height:clamp(240px,34vh,380px);box-shadow:0 12px 36px rgba(127,119,221,.13);box-sizing:border-box;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
+#blockImage{display:block;max-width:min(320px,100%);max-height:220px;margin:0 auto 18px;border-radius:22px;object-fit:contain;background:#fff;border:1px solid #EDE9FA;box-shadow:0 8px 24px rgba(127,119,221,.10)}
+#promptText{width:100%;line-height:2;font-family:'Fredoka','Trebuchet MS',sans-serif;font-size:clamp(22px,3.2vw,34px);font-weight:600;color:#534AB7;text-align:center}
+.blank{display:inline-flex;align-items:center;justify-content:center;min-width:110px;min-height:48px;padding:6px 12px;margin:4px 6px;border:2px dashed #EDE9FA;border-radius:16px;background:#fff;vertical-align:middle;color:#9B94BE;font-weight:900;box-shadow:0 4px 14px rgba(127,119,221,.10);transition:border-color .15s,background .15s,box-shadow .15s}
+.blank.filled{border-style:solid;border-color:#7F77DD;background:#EEEDFE;color:#534AB7}
+.blank.incorrect{border-color:#dc2626;background:#fff;color:#dc2626;box-shadow:0 0 0 2px rgba(220,38,38,.18)}
+#wordBank{display:flex;flex-wrap:wrap;justify-content:center;gap:10px;margin:18px 0 0}
+.word{padding:11px 16px;border-radius:999px;color:#534AB7;font-family:'Nunito',sans-serif;font-size:14px;font-weight:900;cursor:grab;background:#fff;border:1px solid #EDE9FA;box-shadow:0 6px 18px rgba(127,119,221,.13);user-select:none;touch-action:manipulation;transition:transform .12s,filter .12s,box-shadow .12s,border-color .12s}
+.word:hover{transform:translateY(-1px);border-color:#7F77DD;box-shadow:0 12px 24px rgba(127,119,221,.16)}
+.word.selected-touch{outline:3px solid rgba(127,119,221,.30);outline-offset:2px;background:#EEEDFE;color:#534AB7}
+.dd-touch-hint{text-align:center;color:#9B94BE;font-size:13px;font-weight:900;margin:10px 0 0}.dd-touch-hint.hidden{display:none}
+.dd-btn,.dd-completed-button{display:inline-flex;align-items:center;justify-content:center;padding:13px 20px;border:none;border-radius:999px;color:#fff;cursor:pointer;min-width:clamp(104px,16vw,146px);font-weight:900;font-family:'Nunito','Segoe UI',sans-serif;font-size:13px;line-height:1;box-shadow:0 6px 18px rgba(127,119,221,.18);transition:transform .12s,filter .12s,box-shadow .12s}
+.dd-btn:hover,.dd-completed-button:hover{filter:brightness(1.07);transform:translateY(-1px)}
+.dd-btn:active,.dd-completed-button:active{transform:scale(.98)}
+.dd-btn-listen{background:#7F77DD;box-shadow:0 6px 18px rgba(127,119,221,.18);margin-bottom:16px}
+.dd-btn-show{background:#7F77DD;box-shadow:0 6px 18px rgba(127,119,221,.18)}
+.dd-btn-next{background:#F97316;box-shadow:0 6px 18px rgba(249,115,22,.22)}
+#listenBtn.hidden{display:none}
+#feedback{text-align:center;font-family:'Nunito',sans-serif;font-size:13px;font-weight:900;min-height:18px;margin-top:10px;color:#534AB7}.good{color:#16a34a!important}.bad{color:#dc2626!important}
+.controls{border-top:1px solid #F0EEF8;margin-top:16px;padding-top:16px;text-align:center;display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;background:#fff}
+.dd-completed-screen{display:none;background:#fff;border:1px solid #EDE9FA;border-radius:28px;box-shadow:0 12px 36px rgba(127,119,221,.13);min-height:clamp(300px,42vh,430px);flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:clamp(28px,5vw,48px) 24px;gap:12px;box-sizing:border-box}
+.dd-completed-screen.active{display:flex}.dd-completed-icon{font-size:64px;line-height:1;margin-bottom:4px}
+.dd-completed-title{font-family:'Fredoka','Trebuchet MS',sans-serif;font-size:clamp(30px,5.5vw,58px);font-weight:700;color:#F97316;margin:0;line-height:1.03}
+.dd-completed-text{font-family:'Nunito',sans-serif;font-size:clamp(13px,1.8vw,17px);font-weight:800;color:#9B94BE;line-height:1.5;margin:0}
+#dd-score-text{color:#534AB7!important;font-family:'Nunito',sans-serif!important;font-size:15px!important;font-weight:900!important}
+.dd-completed-button{background:#7F77DD;box-shadow:0 6px 18px rgba(127,119,221,.18);margin-top:4px}
+@media(max-width:760px){.dd-page{padding:12px}.dd-topbar{height:30px;margin-bottom:4px}.dd-kicker{padding:5px 11px;font-size:11px;margin-bottom:6px}.dd-hero h1{font-size:clamp(26px,8vw,38px)}.dd-stage{border-radius:26px;padding:14px;width:100%}#sentenceBox{border-radius:22px;padding:18px;min-height:260px}#promptText{line-height:1.9;font-size:clamp(20px,6.2vw,28px)}.blank{min-width:86px;min-height:42px;margin:3px 4px;padding:5px 9px}.word{padding:10px 14px;font-size:14px}#wordBank{gap:9px}.controls{display:grid;grid-template-columns:1fr;gap:9px}.dd-btn,.dd-completed-button{width:100%}.dd-completed-screen{border-radius:26px}}
 </style>
 
-<?= render_activity_header($viewerTitle) ?>
-<div class="dd-stage">
-  <div id="sentenceBox">
-    <img id="blockImage" src="" alt="" style="display:none;">
-    <button id="listenBtn" class="dd-btn dd-btn-listen" type="button" onclick="speak()">Listen</button>
-    <div id="promptText"></div>
-  </div>
+<div class="dd-page">
+  <div class="dd-app">
+    <div class="dd-topbar">
+      <span class="dd-topbar-title">Drag and Drop</span>
+    </div>
 
-  <div id="wordBank"></div>
-<div id="ddTouchHint" class="dd-touch-hint hidden">Tap a word, then tap a blank space to place it.</div>
+    <div class="dd-hero">
+      <div class="dd-kicker">Activity</div>
+      <h1><?php echo htmlspecialchars($viewerTitle, ENT_QUOTES, 'UTF-8'); ?></h1>
+      <p>Drag the words into the correct blanks.</p>
+    </div>
 
-  <div class="controls">
-    <button class="dd-btn dd-btn-show" type="button" onclick="showAnswer()">Show Answer</button>
-    <button class="dd-btn dd-btn-next" type="button" onclick="nextSentence()">Next</button>
-  </div>
+    <div class="dd-stage">
+      <div id="sentenceBox">
+        <img id="blockImage" src="" alt="" style="display:none;">
+        <button id="listenBtn" class="dd-btn dd-btn-listen" type="button" onclick="speak()">Listen</button>
+        <div id="promptText"></div>
+      </div>
 
-  <div id="feedback"></div>
+      <div id="wordBank"></div>
+      <div id="ddTouchHint" class="dd-touch-hint hidden">Tap a word, then tap a blank space to place it.</div>
 
-  <div id="dd-completed" class="dd-completed-screen">
-    <div class="dd-completed-icon">✅</div>
-    <h2 class="dd-completed-title" id="dd-completed-title"></h2>
-    <p class="dd-completed-text" id="dd-completed-text"></p>
-    <p class="dd-completed-text" id="dd-score-text" style="font-weight:700;font-size:18px;color:#9a3412;"></p>
-    <button type="button" class="dd-completed-button" id="dd-restart" onclick="restartActivity()">Restart</button>
+      <div class="controls">
+        <button class="dd-btn dd-btn-show" type="button" onclick="showAnswer()">Show Answer</button>
+        <button class="dd-btn dd-btn-next" type="button" onclick="nextSentence()">Next</button>
+      </div>
+
+      <div id="feedback"></div>
+
+      <div id="dd-completed" class="dd-completed-screen">
+        <div class="dd-completed-icon">✅</div>
+        <h2 class="dd-completed-title" id="dd-completed-title"></h2>
+        <p class="dd-completed-text" id="dd-completed-text"></p>
+        <p class="dd-completed-text" id="dd-score-text" style="font-weight:900;font-size:15px;color:#534AB7;"></p>
+        <button type="button" class="dd-completed-button" id="dd-restart" onclick="restartActivity()">Restart</button>
+      </div>
+    </div>
   </div>
 </div>
 
 <audio id="winSound" src="../../hangman/assets/win.mp3" preload="auto"></audio>
 <audio id="loseSound" src="../../hangman/assets/lose.mp3" preload="auto"></audio>
 <audio id="doneSound" src="../../hangman/assets/win (1).mp3" preload="auto"></audio>
-
 <script>
 const sourceBlocks = <?= json_encode($blocks, JSON_UNESCAPED_UNICODE) ?>;
 const blocks = sourceBlocks.length > 1
