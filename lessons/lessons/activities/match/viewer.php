@@ -381,218 +381,618 @@ ob_start();
 ?>
 
 <link rel="stylesheet" href="match.css?v=<?= htmlspecialchars($matchCssVersion, ENT_QUOTES, 'UTF-8') ?>">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@600;700;800;900&display=swap" rel="stylesheet">
 
 <style>
-.match-stage{
-    --match-left-accent:#d97706;
-    --match-left-soft:#fff4cf;
-    --match-right-accent:#0284c7;
-    --match-right-soft:#e0f2fe;
-    max-width:1060px;
-    margin:0 auto;
-    padding:clamp(8px, 1.4vw, 16px);
-}
-
 .viewer-header{ display:none !important; }
 
-.match-intro{
-    background:linear-gradient(135deg, #fff8df 0%, #eef8ff 52%, #f8fbff 100%);
-    border:1px solid #dbe7f5;
-    border-radius:26px;
-    padding:24px 26px;
-    box-shadow:0 16px 34px rgba(15, 23, 42, .09);
-}
-
-.match-intro h2{
-    margin:0 0 8px;
-    font-family:'Fredoka', 'Trebuchet MS', sans-serif;
-    font-size:30px;
-    font-weight:700;
-    color:#0f172a;
-    letter-spacing:.3px;
-}
-
-.match-intro p{
-    margin:0;
-    font-family:'Nunito', 'Segoe UI', sans-serif;
-    color:#334155;
-    font-size:16px;
-    line-height:1.6;
-}
-
-.match-columns{
-    display:grid;
-    grid-template-columns:minmax(0,1fr) minmax(0,1fr);
-    gap:clamp(12px, 2vw, 26px);
-}
-
-.match-column-card{
-    position:relative;
+.match-shell{
     background:#ffffff;
-    border:1px solid #dbe7f5;
-    border-radius:24px;
-    /* 24px top = 8px accent bar + 16px clearance; 16px on other 3 sides */
-    padding:24px 16px 16px;
-    box-shadow:0 14px 28px rgba(15, 23, 42, .07);
-    overflow:hidden;
-    min-width:0;
+    min-height:calc(100vh - 90px);
+    display:flex;
+    align-items:flex-start;
+    justify-content:center;
+    overflow:visible;
+    padding:10px 12px 18px;
     box-sizing:border-box;
 }
 
-.match-column-card::before{
+.match-app{
+    width:min(940px, 100%);
+    display:grid;
+    gap:clamp(12px, 2vw, 20px);
+}
+
+.match-hero{
+    text-align:center;
+    display:grid;
+    justify-items:center;
+    gap:8px;
+}
+
+.match-kicker{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    background:#FFF0E6;
+    border:1px solid #FCDDBF;
+    color:#C2580A;
+    border-radius:999px;
+    padding:5px 14px;
+    font-family:'Nunito','Segoe UI',sans-serif;
+    font-weight:900;
+    font-size:11px;
+    line-height:1;
+    text-transform:uppercase;
+    letter-spacing:.09em;
+}
+
+.match-title{
+    margin:0;
+    font-family:'Fredoka','Trebuchet MS',sans-serif;
+    font-weight:700;
+    color:#F97316;
+    font-size:clamp(30px, 5.5vw, 58px);
+    line-height:1;
+}
+
+.match-subtitle{
+    margin:0;
+    color:#9B94BE;
+    font-family:'Nunito','Segoe UI',sans-serif;
+    font-weight:800;
+    font-size:15px;
+}
+
+.match-board{
+    background:#ffffff;
+    border:1px solid #F0EEF8;
+    border-radius:28px;
+    padding:22px;
+    box-shadow:0 8px 40px rgba(127,119,221,.13);
+    overflow:visible;
+}
+
+.match-progress{
+    display:grid;
+    grid-template-columns:minmax(0,1fr) auto;
+    gap:12px;
+    align-items:center;
+    margin-bottom:14px;
+}
+
+.match-progress-track{
+    height:9px;
+    background:#F4F2FD;
+    border:1px solid #E4E1F8;
+    border-radius:999px;
+    overflow:hidden;
+}
+
+.match-progress-fill{
+    height:100%;
+    width:0%;
+    background:linear-gradient(90deg, #F97316, #7F77DD);
+    border-radius:999px;
+    transition:width .4s ease;
+}
+
+.match-progress-count{
+    background:#7F77DD;
+    color:#fff;
+    border-radius:999px;
+    padding:5px 15px;
+    font-family:'Nunito','Segoe UI',sans-serif;
+    font-weight:900;
+    font-size:12px;
+    white-space:nowrap;
+}
+
+.match-view-toggle{
+    display:flex;
+    justify-content:center;
+    gap:8px;
+    flex-wrap:wrap;
+    margin:4px 0 10px;
+}
+
+.match-view-toggle.is-hidden{
+    display:none;
+}
+
+.match-toggle-btn{
+    border:1.5px solid #EDE9FA;
+    background:#fff;
+    color:#534AB7;
+    border-radius:999px;
+    padding:8px 14px;
+    font-family:'Nunito','Segoe UI',sans-serif;
+    font-weight:900;
+    font-size:12px;
+    cursor:pointer;
+    transition:transform .18s ease, box-shadow .18s ease, background .18s ease;
+}
+
+.match-toggle-btn.is-active{
+    background:#7F77DD;
+    color:#fff;
+    border-color:#7F77DD;
+    box-shadow:0 4px 14px rgba(127,119,221,.22);
+}
+
+.match-hint-wrap{
+    display:flex;
+    justify-content:center;
+    margin:0 0 16px;
+}
+
+.match-hint{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    min-height:24px;
+    background:#FFF0E6;
+    color:#C2580A;
+    border:1px solid #FCDDBF;
+    border-radius:999px;
+    padding:4px 12px;
+    font-family:'Nunito','Segoe UI',sans-serif;
+    font-weight:900;
+    font-size:12px;
+    line-height:1.2;
+    text-align:center;
+}
+
+.match-hint.is-selected{
+    background:#EEEDFE;
+    color:#534AB7;
+    border-color:#CECBF6;
+}
+
+.match-hint.is-correct,
+.match-hint.is-complete{
+    background:#E6F9F2;
+    color:#0F6E56;
+    border-color:#9FE1CB;
+}
+
+.match-hint.is-wrong{
+    background:#FFF0E6;
+    color:#C2580A;
+    border-color:#FCDDBF;
+}
+
+.match-rows{
+    display:grid;
+    gap:14px;
+}
+
+.match-image-row,
+.match-text-column{
+    display:flex;
+    flex-wrap:wrap;
+    gap:12px;
+    justify-content:center;
+}
+
+.match-divider{
+    display:flex;
+    align-items:center;
+    gap:9px;
+    margin:6px 0;
+}
+
+.match-divider::before,
+.match-divider::after{
     content:'';
-    position:absolute;
-    inset:0 0 auto 0;
+    height:1px;
+    background:#F0EEF8;
+    flex:1;
+}
+
+.match-divider-label{
+    display:inline-flex;
+    align-items:center;
+    gap:7px;
+    font-family:'Nunito','Segoe UI',sans-serif;
+    font-weight:900;
+    font-size:11px;
+    text-transform:uppercase;
+    letter-spacing:.1em;
+    color:#9B94BE;
+    white-space:nowrap;
+}
+
+.match-dot{
+    width:8px;
     height:8px;
+    border-radius:50%;
+    background:#F97316;
 }
 
-.match-column-left{
-    background:linear-gradient(180deg, #fffdf7 0%, #ffffff 100%);
+.match-dot.match-dot-purple{
+    background:#7F77DD;
 }
 
-.match-column-left::before{
-    background:linear-gradient(90deg, #f59e0b 0%, #facc15 100%);
+.match-chip{
+    position:relative;
+    border:2px solid #EDE9FA;
+    background:#fff;
+    color:#271B5D;
+    font-family:'Nunito','Segoe UI',sans-serif;
+    font-weight:900;
+    cursor:pointer;
+    transition:transform .18s ease, box-shadow .18s ease, border-color .18s ease, background .18s ease, color .18s ease, opacity .18s ease;
+    box-sizing:border-box;
 }
 
-.match-column-right{
-    background:linear-gradient(180deg, #f8fdff 0%, #ffffff 100%);
+.match-chip:hover{
+    transform:translateY(-3px);
+    box-shadow:0 10px 24px rgba(127,119,221,.16);
 }
 
-.match-column-right::before{
-    background:linear-gradient(90deg, #38bdf8 0%, #0ea5e9 100%);
+.match-card-chip{
+    width:120px;
+    border-radius:18px;
+    box-shadow:0 4px 14px rgba(127,119,221,.08);
+    overflow:hidden;
+    padding:0;
+}
+
+.match-chip-media{
+    height:90px;
+    background:#FAFAFE;
+    border-bottom:1px solid #EDE9FA;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:8px;
+    box-sizing:border-box;
+    font-family:'Fredoka','Trebuchet MS',sans-serif;
+    font-weight:700;
+    color:#271B5D;
+    font-size:15px;
+    line-height:1.15;
+    text-align:center;
+    word-break:break-word;
+}
+
+.match-chip-media img{
+    display:block;
+    max-width:80%;
+    max-height:80%;
+    object-fit:contain;
+}
+
+.match-chip-label{
+    min-height:30px;
+    padding:8px 6px;
+    font-size:12px;
+    color:#271B5D;
+    text-align:center;
+    line-height:1.15;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    box-sizing:border-box;
+}
+
+.match-chip.is-selected-en{
+    border-color:#F97316;
+    background:#FFF8F4;
+    box-shadow:0 0 0 3px rgba(249,115,22,.18);
+    transform:translateY(-4px) scale(1.03);
+}
+
+.match-chip.is-selected-match{
+    border-color:#7F77DD;
+    background:#F5F4FF;
+    box-shadow:0 0 0 3px rgba(127,119,221,.18);
+    transform:translateY(-4px) scale(1.03);
+}
+
+.match-chip.is-matched{
+    border-color:#1D9E75;
+    background:#F0FDF9;
+    box-shadow:0 4px 14px rgba(29,158,117,.18);
+    cursor:default;
+    opacity:.85;
+}
+
+.match-chip.is-wrong{
+    border-color:#E24B4A;
+    background:#FFF5F5;
+    animation:shake .3s ease;
+}
+
+.match-badge{
+    position:absolute;
+    top:6px;
+    right:6px;
+    width:20px;
+    height:20px;
+    border-radius:50%;
+    background:#1D9E75;
+    color:#fff;
+    font-size:11px;
+    font-family:'Nunito','Segoe UI',sans-serif;
+    font-weight:900;
+    display:none;
+    align-items:center;
+    justify-content:center;
+}
+
+.match-chip.is-matched .match-badge{
+    display:flex;
+}
+
+.match-text-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:14px;
+}
+
+.match-text-column{
+    align-content:flex-start;
+}
+
+.match-text-chip{
+    width:100%;
+    padding:14px 18px;
+    border-radius:14px;
+    font-size:14px;
+    text-align:center;
+    box-shadow:0 3px 10px rgba(127,119,221,.06);
+}
+
+.match-text-chip:hover{
+    transform:translateY(-2px);
+    box-shadow:0 8px 20px rgba(127,119,221,.13);
+}
+
+.match-text-chip.is-selected-en{
+    background:#FFF0E6;
+    border-color:#F97316;
+    color:#C2580A;
+    box-shadow:0 0 0 3px rgba(249,115,22,.15);
+}
+
+.match-text-chip.is-selected-match{
+    background:#EEEDFE;
+    border-color:#7F77DD;
+    color:#534AB7;
+    box-shadow:0 0 0 3px rgba(127,119,221,.15);
+}
+
+.match-text-chip.is-matched.match-en{
+    background:linear-gradient(135deg,#F97316,#C2580A);
+    border-color:#F97316;
+    color:#fff;
+    cursor:default;
+}
+
+.match-text-chip.is-matched.match-pair{
+    background:linear-gradient(135deg,#7F77DD,#534AB7);
+    border-color:#7F77DD;
+    color:#fff;
+    cursor:default;
+}
+
+.match-text-chip.is-wrong{
+    background:#FCEBEB;
+    border-color:#E24B4A;
+    color:#A32D2D;
+    animation:shake .3s ease;
+}
+
+.match-score-cards{
+    display:none;
+    grid-template-columns:repeat(3, 1fr);
+    gap:10px;
+    margin-top:16px;
+}
+
+.match-score-cards.is-visible{
+    display:grid;
+}
+
+.match-score-card{
+    background:#FAFAFE;
+    border:1px solid #EDE9FA;
+    border-radius:14px;
+    padding:12px;
+    text-align:center;
+}
+
+.match-score-number{
+    font-family:'Fredoka','Trebuchet MS',sans-serif;
+    font-weight:700;
+    font-size:28px;
+    line-height:1;
+}
+
+.match-score-number.is-correct{ color:#1D9E75; }
+.match-score-number.is-wrong{ color:#F97316; }
+.match-score-number.is-percent{ color:#7F77DD; }
+
+.match-score-label{
+    margin-top:5px;
+    font-family:'Nunito','Segoe UI',sans-serif;
+    font-weight:900;
+    font-size:10px;
+    text-transform:uppercase;
+    color:#9B94BE;
+    letter-spacing:.08em;
+}
+
+.match-actions{
+    display:flex;
+    justify-content:center;
+    gap:10px;
+    flex-wrap:wrap;
+    margin-top:16px;
+}
+
+.match-action-btn{
+    border-radius:999px;
+    padding:11px 18px;
+    font-family:'Nunito','Segoe UI',sans-serif;
+    font-weight:900;
+    font-size:13px;
+    cursor:pointer;
+    transition:transform .18s ease, box-shadow .18s ease, filter .18s ease;
+}
+
+.match-action-btn:hover{
+    transform:translateY(-2px);
+}
+
+.match-reset-btn{
+    background:#fff;
+    color:#534AB7;
+    border:1.5px solid #EDE9FA;
+}
+
+.match-answer-btn{
+    background:#7F77DD;
+    color:#fff;
+    border:1.5px solid #7F77DD;
+}
+
+.match-check-btn{
+    background:#F97316;
+    color:#fff;
+    border:1.5px solid #F97316;
 }
 
 .match-empty{
     max-width:700px;
     margin:30px auto;
     background:#ffffff;
+    border:1px solid #F0EEF8;
     border-radius:18px;
     padding:24px;
     text-align:center;
-    box-shadow:0 8px 24px rgba(0,0,0,.08);
-    color:#4b5563;
+    box-shadow:0 8px 40px rgba(127,119,221,.13);
+    color:#9B94BE;
+    font-family:'Nunito','Segoe UI',sans-serif;
     font-size:18px;
-    font-weight:700;
+    font-weight:900;
 }
 
-.match-stage.match-phase-12 .match-columns{
-    background:#e2e8f0;
-    border:1px solid #dbeafe;
-    border-radius:36px;
-    padding:18px;
-    box-shadow:0 20px 46px rgba(15, 23, 42, .10);
+.match-final-completed-screen{
+    display:none;
 }
 
-.match-stage.match-phase-12 .match-column-card{
-    border-radius:30px;
-    box-shadow:0 18px 36px rgba(15, 23, 42, .10);
+@keyframes shake{
+    0%,100%{transform:translateX(0)}
+    25%{transform:translateX(-6px)}
+    75%{transform:translateX(6px)}
 }
 
-.match-stage.match-phase-12 .match-column-left{
-    background:linear-gradient(180deg, #fffaf0 0%, #ffffff 100%);
+body.embedded-mode .match-shell,
+body.fullscreen-embedded .match-shell,
+body.presentation-mode .match-shell {
+    position:absolute!important;
+    inset:0!important;
+    max-width:none!important;
+    margin:0!important;
+    padding:10px 12px!important;
+    border-radius:0!important;
+    display:flex!important;
+    flex-direction:column!important;
+    align-items:center!important;
+    justify-content:flex-start!important;
+    overflow-y:auto!important;
+    overflow-x:hidden!important;
 }
 
-.match-stage.match-phase-12 .match-column-right{
-    background:linear-gradient(180deg, #f0f9ff 0%, #ffffff 100%);
+body.embedded-mode .match-actions,
+body.fullscreen-embedded .match-actions,
+body.presentation-mode .match-actions {
+    flex-shrink:0!important;
+    padding-bottom:12px!important;
 }
 
-@media (max-width: 760px){
-    .match-columns{
+@media (max-width: 700px){
+    .match-board{
+        padding:16px;
+        border-radius:22px;
+    }
+
+    .match-text-grid{
         grid-template-columns:1fr;
-        gap:18px;
+    }
+
+    .match-score-cards{
+        grid-template-columns:1fr;
     }
 }
 </style>
 
 <?= render_activity_header($viewerTitle) ?>
 <?php if (empty($pairs)) { ?>
-    <div class="match-empty">No match data available.</div>
+    <div class="match-shell">
+        <div class="match-empty">No match data available.</div>
+    </div>
 <?php } else { ?>
-    <div class="match-stage<?= $isPhaseOneOrTwo ? ' match-phase-12' : '' ?>">
-        <div class="match-columns">
-            <section class="match-column-card match-column-left">
-                <div class="board-column" id="match-left"></div>
-            </section>
+    <div class="match-shell">
+        <div class="match-app">
+            <header class="match-hero">
+                <div class="match-kicker">Match Activity</div>
+                <h1 class="match-title"><?= htmlspecialchars($viewerTitle, ENT_QUOTES, 'UTF-8') ?></h1>
+                <p class="match-subtitle">Tap a word, then tap its matching pair.</p>
+            </header>
 
-            <section class="match-column-card match-column-right">
-                <div class="board-column" id="match-right"></div>
-            </section>
+            <main class="match-board" id="match-board">
+                <div class="match-progress">
+                    <div class="match-progress-track" aria-hidden="true">
+                        <div class="match-progress-fill" id="match-progress-fill"></div>
+                    </div>
+                    <div class="match-progress-count" id="match-progress-count">0 / 0</div>
+                </div>
+
+                <div class="match-view-toggle" id="match-view-toggle">
+                    <button type="button" class="match-toggle-btn" data-mode="image">Image + Text</button>
+                    <button type="button" class="match-toggle-btn" data-mode="text">Text only</button>
+                </div>
+
+                <div class="match-hint-wrap">
+                    <div class="match-hint" id="match-hint">Tap a word to start</div>
+                </div>
+
+                <div id="match-stage" class="match-stage<?= $isPhaseOneOrTwo ? ' match-phase-12' : '' ?>"></div>
+
+                <div class="match-score-cards" id="match-score-cards">
+                    <div class="match-score-card">
+                        <div class="match-score-number is-correct" id="match-score-correct">0</div>
+                        <div class="match-score-label">Correct</div>
+                    </div>
+                    <div class="match-score-card">
+                        <div class="match-score-number is-wrong" id="match-score-wrong">0</div>
+                        <div class="match-score-label">Wrong</div>
+                    </div>
+                    <div class="match-score-card">
+                        <div class="match-score-number is-percent" id="match-score-percent">0%</div>
+                        <div class="match-score-label">Score</div>
+                    </div>
+                </div>
+
+                <div class="match-actions">
+                    <button type="button" class="match-action-btn match-reset-btn" id="match-reset-btn">Reset</button>
+                    <button type="button" class="match-action-btn match-answer-btn" id="match-answer-btn">Show Answer</button>
+                    <button type="button" class="match-action-btn match-check-btn" id="match-check-btn">Check</button>
+                </div>
+            </main>
         </div>
     </div>
 
     <div id="match-final-completed" class="match-final-completed-screen">
-        <div class="match-fc-icon">✅</div>
-        <h2 class="match-fc-title"><?= htmlspecialchars($viewerTitle, ENT_QUOTES, 'UTF-8') ?></h2>
         <p class="match-fc-score" id="match-fc-score-text"></p>
         <p class="match-fc-text" id="match-fc-sub-text"></p>
-        <div class="match-fc-actions">
-            <button type="button" class="match-fc-btn match-fc-btn-secondary" id="match-fc-restart-btn">Try Again</button>
-            <button type="button" class="match-fc-btn" id="match-fc-continue-btn" style="display:none;">Continue &rarr;</button>
-        </div>
+        <button type="button" id="match-fc-restart-btn" style="display:none;">Try Again</button>
+        <button type="button" id="match-fc-continue-btn" style="display:none;">Continue &rarr;</button>
     </div>
-
-    <style>
-    .match-final-completed-screen{
-        display:none;
-        text-align:center;
-        max-width:600px;
-        margin:0 auto;
-        padding:40px 20px;
-    }
-    .match-final-completed-screen.active{
-        display:block;
-    }
-    .match-fc-icon{
-        font-size:80px;
-        margin-bottom:20px;
-    }
-    .match-fc-title{
-        font-family:'Fredoka','Trebuchet MS',sans-serif;
-        font-size:36px;
-        font-weight:700;
-        color:#be185d;
-        margin:0 0 14px;
-        line-height:1.2;
-    }
-    .match-fc-score{
-        font-size:20px;
-        font-weight:800;
-        color:#0f172a;
-        margin:0 0 8px;
-    }
-    .match-fc-text{
-        font-size:15px;
-        color:#6b4b5f;
-        line-height:1.6;
-        margin:0 0 28px;
-    }
-    .match-fc-actions{
-        display:flex;
-        gap:10px;
-        justify-content:center;
-        flex-wrap:wrap;
-    }
-    .match-fc-btn{
-        display:inline-block;
-        padding:12px 24px;
-        border:none;
-        border-radius:999px;
-        background:linear-gradient(180deg,#db2777 0%,#be185d 100%);
-        color:#fff;
-        font-weight:700;
-        font-size:16px;
-        cursor:pointer;
-        box-shadow:0 10px 24px rgba(0,0,0,.14);
-        transition:transform .18s ease,filter .18s ease;
-    }
-    .match-fc-btn:hover{
-        transform:scale(1.05);
-        filter:brightness(1.07);
-    }
-    .match-fc-btn-secondary{
-        background:linear-gradient(180deg,#60a5fa 0%,#2563eb 100%);
-    }
-    </style>
 
     <script>
     const MATCH_DATA = <?= json_encode($pairs, JSON_UNESCAPED_UNICODE) ?>;
@@ -601,7 +1001,344 @@ ob_start();
     const MATCH_PHASE12 = <?= json_encode($isPhaseOneOrTwo) ?>;
     </script>
 
-    <script src="match.js?v=<?= htmlspecialchars($matchJsVersion, ENT_QUOTES, 'UTF-8') ?>"></script>
+    <script>
+    (function () {
+        const pairs = Array.isArray(MATCH_DATA) ? MATCH_DATA : [];
+        const total = pairs.length;
+        const hasImages = pairs.some((item) => {
+            return String(item.left_image || item.right_image || item.image || item.img || '').trim() !== '';
+        });
+
+        const stage = document.getElementById('match-stage');
+        const hint = document.getElementById('match-hint');
+        const progressFill = document.getElementById('match-progress-fill');
+        const progressCount = document.getElementById('match-progress-count');
+        const toggle = document.getElementById('match-view-toggle');
+        const scoreCards = document.getElementById('match-score-cards');
+        const scoreCorrect = document.getElementById('match-score-correct');
+        const scoreWrong = document.getElementById('match-score-wrong');
+        const scorePercent = document.getElementById('match-score-percent');
+        const resetBtn = document.getElementById('match-reset-btn');
+        const answerBtn = document.getElementById('match-answer-btn');
+        const checkBtn = document.getElementById('match-check-btn');
+        const continueBtn = document.getElementById('match-fc-continue-btn');
+
+        let selectedEn = null;
+        let selectedMatch = null;
+        let matched = [];
+        let wrongs = 0;
+        let viewMode = hasImages ? 'image' : 'text';
+        let wrongFlash = null;
+        let hintState = 'default';
+        let hintText = 'Tap a word to start';
+        let scoreVisible = false;
+
+        const escapeHtml = (value) => String(value || '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+
+        const getLeftText = (item) => String(item.left_text || item.text || item.word || 'Word').trim();
+        const getRightText = (item) => String(item.right_text || item.translation || item.text || item.word || 'Match').trim();
+        const getImage = (item) => String(item.right_image || item.left_image || item.image || item.img || '').trim();
+
+        function setHint(text, state) {
+            hintText = text;
+            hintState = state || 'default';
+            if (hint) {
+                hint.textContent = hintText;
+                hint.className = 'match-hint' + (hintState !== 'default' ? ' is-' + hintState : '');
+            }
+        }
+
+        function isMatched(id) {
+            return matched.indexOf(id) !== -1;
+        }
+
+        function updateProgress() {
+            const count = matched.length;
+            const percent = total > 0 ? Math.round((count / total) * 100) : 0;
+            if (progressFill) {
+                progressFill.style.width = percent + '%';
+            }
+            if (progressCount) {
+                progressCount.textContent = count + ' / ' + total;
+            }
+        }
+
+        function updateScores(show) {
+            const attempts = matched.length + wrongs;
+            const percent = attempts > 0 ? Math.round((matched.length / attempts) * 100) : 0;
+
+            if (scoreCorrect) {
+                scoreCorrect.textContent = matched.length;
+            }
+            if (scoreWrong) {
+                scoreWrong.textContent = wrongs;
+            }
+            if (scorePercent) {
+                scorePercent.textContent = percent + '%';
+            }
+            if (scoreCards) {
+                scoreCards.classList.toggle('is-visible', !!show);
+            }
+        }
+
+        function chipClasses(item, side, baseClass) {
+            const id = String(item.id);
+            const classes = ['match-chip', baseClass || ''];
+            if (side === 'en') {
+                classes.push('match-en');
+                if (selectedEn === id) {
+                    classes.push('is-selected-en');
+                }
+            } else {
+                classes.push('match-pair');
+                if (selectedMatch === id) {
+                    classes.push('is-selected-match');
+                }
+            }
+            if (isMatched(id)) {
+                classes.push('is-matched');
+            }
+            if (wrongFlash && wrongFlash.id === id && wrongFlash.side === side) {
+                classes.push('is-wrong');
+            }
+            return classes.filter(Boolean).join(' ');
+        }
+
+        function renderDivider(label, purple) {
+            return '<div class="match-divider"><span class="match-divider-label"><span class="match-dot' + (purple ? ' match-dot-purple' : '') + '"></span>' + escapeHtml(label) + '</span></div>';
+        }
+
+        function renderImageMode() {
+            const english = pairs.map((item) => {
+                const id = escapeHtml(item.id);
+                const word = escapeHtml(getLeftText(item));
+                return '<button type="button" class="' + chipClasses(item, 'en', 'match-card-chip') + '" data-side="en" data-id="' + id + '">' +
+                    '<span class="match-badge">✓</span>' +
+                    '<div class="match-chip-media">' + word + '</div>' +
+                    '<div class="match-chip-label">' + word + '</div>' +
+                    '</button>';
+            }).join('');
+
+            const images = pairs.map((item) => {
+                const id = escapeHtml(item.id);
+                const label = escapeHtml(getRightText(item));
+                const image = getImage(item);
+                const media = image
+                    ? '<img src="' + escapeHtml(image) + '" alt="' + label + '">'
+                    : label;
+                return '<button type="button" class="' + chipClasses(item, 'match', 'match-card-chip') + '" data-side="match" data-id="' + id + '">' +
+                    '<span class="match-badge">✓</span>' +
+                    '<div class="match-chip-media">' + media + '</div>' +
+                    '<div class="match-chip-label">' + label + '</div>' +
+                    '</button>';
+            }).join('');
+
+            stage.innerHTML = '<div class="match-rows">' +
+                renderDivider('English Words', false) +
+                '<div class="match-image-row">' + english + '</div>' +
+                renderDivider('Images / Matches', true) +
+                '<div class="match-image-row">' + images + '</div>' +
+                '</div>';
+        }
+
+        function renderTextMode() {
+            const english = pairs.map((item) => {
+                const id = escapeHtml(item.id);
+                return '<button type="button" class="' + chipClasses(item, 'en', 'match-text-chip') + '" data-side="en" data-id="' + id + '">' +
+                    '<span class="match-badge">✓</span>' + escapeHtml(getLeftText(item)) + '</button>';
+            }).join('');
+
+            const matches = pairs.map((item) => {
+                const id = escapeHtml(item.id);
+                return '<button type="button" class="' + chipClasses(item, 'match', 'match-text-chip') + '" data-side="match" data-id="' + id + '">' +
+                    '<span class="match-badge">✓</span>' + escapeHtml(getRightText(item)) + '</button>';
+            }).join('');
+
+            stage.innerHTML = '<div class="match-text-grid">' +
+                '<section>' + renderDivider('English', false) + '<div class="match-text-column">' + english + '</div></section>' +
+                '<section>' + renderDivider('Spanish / Match', true) + '<div class="match-text-column">' + matches + '</div></section>' +
+                '</div>';
+        }
+
+        function renderToggle() {
+            if (!toggle) {
+                return;
+            }
+
+            toggle.classList.toggle('is-hidden', !hasImages);
+            toggle.querySelectorAll('[data-mode]').forEach((btn) => {
+                btn.classList.toggle('is-active', btn.getAttribute('data-mode') === viewMode);
+            });
+        }
+
+        function render() {
+            updateProgress();
+            updateScores(scoreVisible);
+            renderToggle();
+
+            if (!stage) {
+                return;
+            }
+
+            if (viewMode === 'image') {
+                renderImageMode();
+            } else {
+                renderTextMode();
+            }
+
+            stage.querySelectorAll('[data-side][data-id]').forEach((btn) => {
+                btn.addEventListener('click', () => handleTap(btn.getAttribute('data-side'), btn.getAttribute('data-id')));
+            });
+        }
+
+        function handleTap(side, id) {
+            if (isMatched(id)) {
+                return;
+            }
+
+            if (side === 'en') {
+                selectedEn = id;
+                selectedMatch = null;
+                const item = pairs.find((pair) => String(pair.id) === String(id));
+                setHint((item ? getLeftText(item) : 'Word') + ' selected — tap its match', 'selected');
+                render();
+                return;
+            }
+
+            if (selectedEn === null) {
+                setHint('Tap an English word first', 'wrong');
+                return;
+            }
+
+            selectedMatch = id;
+            render();
+            tryMatch();
+        }
+
+        function tryMatch() {
+            const enId = selectedEn;
+            const matchId = selectedMatch;
+
+            if (enId === null || matchId === null) {
+                return;
+            }
+
+            if (String(enId) === String(matchId)) {
+                matched.push(enId);
+                selectedEn = null;
+                selectedMatch = null;
+
+                if (matched.length === total) {
+                    setHint('🎉 All pairs matched!', 'complete');
+                    scoreVisible = true;
+                    render();
+                    showScore();
+                } else {
+                    setHint('Correct! Keep going ✓', 'correct');
+                    render();
+                }
+                return;
+            }
+
+            wrongs += 1;
+            wrongFlash = { id: enId, side: 'en' };
+            setHint('Not a match — try again', 'wrong');
+            render();
+
+            window.setTimeout(() => {
+                wrongFlash = { id: matchId, side: 'match' };
+                render();
+            }, 150);
+
+            window.setTimeout(() => {
+                selectedEn = null;
+                selectedMatch = null;
+                wrongFlash = null;
+                setHint('Tap a word to start', 'default');
+                render();
+            }, 700);
+        }
+
+        function showScore() {
+            scoreVisible = true;
+            updateScores(true);
+
+            const scoreText = document.getElementById('match-fc-score-text');
+            const subText = document.getElementById('match-fc-sub-text');
+            const attempts = matched.length + wrongs;
+            const percent = attempts > 0 ? Math.round((matched.length / attempts) * 100) : 0;
+
+            if (scoreText) {
+                scoreText.textContent = matched.length + ' correct · ' + wrongs + ' wrong · ' + percent + '%';
+            }
+            if (subText) {
+                subText.textContent = matched.length === total ? 'Great job! You matched every pair.' : 'Keep practicing and try again.';
+            }
+            if (continueBtn && MATCH_RETURN_TO) {
+                continueBtn.style.display = 'inline-block';
+            }
+        }
+
+        function resetGame() {
+            selectedEn = null;
+            selectedMatch = null;
+            matched = [];
+            wrongs = 0;
+            wrongFlash = null;
+            scoreVisible = false;
+            setHint('Tap a word to start', 'default');
+            render();
+        }
+
+        function showAnswers() {
+            matched = pairs.map((item) => String(item.id));
+            selectedEn = null;
+            selectedMatch = null;
+            wrongFlash = null;
+            scoreVisible = true;
+            setHint('🎉 All pairs matched!', 'complete');
+            render();
+            showScore();
+        }
+
+        if (toggle) {
+            toggle.querySelectorAll('[data-mode]').forEach((btn) => {
+                btn.addEventListener('click', () => {
+                    viewMode = btn.getAttribute('data-mode') === 'image' && hasImages ? 'image' : 'text';
+                    selectedEn = null;
+                    selectedMatch = null;
+                    wrongFlash = null;
+                    setHint('Tap a word to start', 'default');
+                    render();
+                });
+            });
+        }
+
+        if (resetBtn) {
+            resetBtn.addEventListener('click', resetGame);
+        }
+        if (answerBtn) {
+            answerBtn.addEventListener('click', showAnswers);
+        }
+        if (checkBtn) {
+            checkBtn.addEventListener('click', showScore);
+        }
+        if (continueBtn) {
+            continueBtn.addEventListener('click', () => {
+                if (MATCH_RETURN_TO) {
+                    window.location.href = MATCH_RETURN_TO;
+                }
+            });
+        }
+
+        render();
+    })();
+    </script>
 <?php } ?>
 
 <?php
