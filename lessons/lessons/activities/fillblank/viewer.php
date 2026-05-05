@@ -10,7 +10,7 @@ $activityId = isset($_GET['id'])        ? trim((string) $_GET['id'])        : ''
 $unit       = isset($_GET['unit'])      ? trim((string) $_GET['unit'])      : '';
 $returnTo   = isset($_GET['return_to']) ? trim((string) $_GET['return_to']) : '';
 
-/* ── Back URL (mirrors _activity_viewer_template.php logic) ── */
+/* Back URL */
 $_fb_assignment  = isset($_GET['assignment']) ? trim((string)$_GET['assignment']) : '';
 $_fb_source      = isset($_GET['source'])     ? trim((string)$_GET['source'])     : '';
 $_fb_returnParam = isset($_GET['return_to'])  ? trim((string)$_GET['return_to'])  : '';
@@ -27,7 +27,6 @@ if ($_fb_isSafeRelative) {
     if ($_fb_source !== '') $_fb_backUrl .= '&source=' . urlencode($_fb_source);
 }
 
-
 if ($activityId === '' && $unit === '') {
     die('Activity not specified');
 }
@@ -43,17 +42,21 @@ function fb_load(PDO $pdo, string $unit, string $activityId): array
         'media_url'    => '',
         'tts_text'     => '',
     );
+
     $row = null;
+
     if ($activityId !== '') {
         $stmt = $pdo->prepare("SELECT id, data FROM activities WHERE id = :id AND type = 'fillblank' LIMIT 1");
         $stmt->execute(array('id' => $activityId));
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
     }
+
     if (!$row && $unit !== '') {
         $stmt = $pdo->prepare("SELECT id, data FROM activities WHERE unit_id = :unit AND type = 'fillblank' ORDER BY id ASC LIMIT 1");
         $stmt->execute(array('unit' => $unit));
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
     }
+
     if (!$row) return $fallback;
 
     $data = json_decode($row['data'] ?? '', true);
@@ -87,6 +90,7 @@ if (empty($blocks)) {
 }
 
 $renderedBlocks = array();
+
 foreach ($blocks as $bIdx => $block) {
     $text    = isset($block['text'])  ? $block['text']  : '';
     $image   = isset($block['image']) ? trim((string)$block['image']) : '';
@@ -97,6 +101,7 @@ foreach ($blocks as $bIdx => $block) {
         $blankN++;
         $sizerId = 's' . $bIdx . '_' . $blankN;
         $inputId = 'i' . $bIdx . '_' . $blankN;
+
         return
             '<span class="fb-blank-wrap">' .
                 '<span class="fb-blank-sizer" id="' . $sizerId . '">...</span>' .
@@ -121,237 +126,802 @@ foreach ($blocks as $bIdx => $block) {
 
 ob_start();
 ?>
-<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@600;700;800&display=swap" rel="stylesheet">
+
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@600;700;800;900&display=swap" rel="stylesheet">
+
 <style>
 :root {
-    --t50:#E1F5EE; --t100:#9FE1CB; --t200:#5DCAA5;
-    --t400:#1D9E75; --t600:#0F6E56; --t800:#085041; --t900:#04342C;
-    --purple:#7F77DD; --purple-d:#534AB7; --purple-l:#EEEDFE; --purple-b:#AFA9EC;
-    --green:#16a34a; --red:#dc2626;
+    --fb-orange: #F97316;
+    --fb-orange-dark: #C2580A;
+    --fb-orange-soft: #FFF0E6;
+    --fb-purple: #7F77DD;
+    --fb-purple-dark: #534AB7;
+    --fb-purple-soft: #EEEDFE;
+    --fb-white: #FFFFFF;
+    --fb-lila-border: #EDE9FA;
+    --fb-muted: #9B94BE;
+    --fb-ink: #271B5D;
+    --fb-green: #16a34a;
+    --fb-red: #dc2626;
 }
-body { margin:0 !important; padding:0 !important; background:#f0faf6 !important;
-    font-family:'Nunito','Segoe UI',sans-serif !important; }
-.activity-wrapper { max-width:100% !important; margin:0 !important; padding:0 !important;
-    min-height:100vh; display:flex !important; flex-direction:column !important; background:transparent !important; }
-.top-row { display:none !important; }
-.viewer-content { flex:1 !important; display:flex !important; flex-direction:column !important;
-    padding:0 !important; margin:0 !important; background:transparent !important;
-    border:none !important; box-shadow:none !important; border-radius:0 !important; }
-.fb-page { display:flex; flex-direction:column; width:100vw; min-height:100vh; background:#f0faf6; }
-.fb-topbar { flex-shrink:0; height:38px; background:var(--t50); border-bottom:1px solid var(--t100);
-    display:flex; align-items:center; padding:0 16px; gap:12px; }
-.fb-back-btn { display:inline-flex; align-items:center; justify-content:center; gap:5px;
-    background:var(--purple); border:none; color:#fff;
-    font-size:12px; font-weight:800; font-family:'Nunito',sans-serif; border-radius:999px;
-    padding:6px 14px; cursor:pointer; text-decoration:none;
-    box-shadow:0 3px 8px rgba(127,119,221,.28);
-    transition:transform .18s cubic-bezier(.34,1.4,.64,1),box-shadow .15s,filter .15s; }
-.fb-back-btn:hover { transform:translateY(-2px) scale(1.04); box-shadow:0 6px 16px rgba(127,119,221,.4); filter:brightness(1.08); }
-body.presentation-mode .fb-back-btn, body.embedded-mode .fb-back-btn { display:none; }
-.fb-topbar-title { font-family:'Nunito',sans-serif; font-size:12px; font-weight:800;
-    color:var(--t600); letter-spacing:.1em; text-transform:uppercase; margin:0 auto; }
-.fb-bottombar { flex-shrink:0; height:40px; background:var(--t50); border-top:1px solid var(--t100); }
-.fb-card { flex:1; margin:8px 12px; background:#fff; border-radius:14px; border:1px solid var(--t100);
-    display:flex; flex-direction:column; overflow:hidden; min-height:0; position:relative;
-    box-shadow:0 2px 16px rgba(29,158,117,.08); }
-.fb-card-hd { flex-shrink:0; background:var(--t50); border-bottom:1px solid var(--t100); padding:11px 20px 9px; }
-.fb-card-hd h2 { font-family:'Fredoka',sans-serif; font-size:clamp(15px,2vw,20px); font-weight:600;
-    color:var(--t800); margin:0 0 2px; line-height:1.2; }
-.fb-card-hd p { font-size:12px; font-weight:600; color:var(--t600); margin:0; }
-.fb-tts-bar { flex-shrink:0; background:var(--t50); border-bottom:1px solid var(--t100);
-    padding:8px 16px; display:flex; align-items:center; gap:10px; }
-.fb-tts-btn { display:inline-flex; align-items:center; gap:6px; background:var(--purple); color:#fff;
-    border:none; border-radius:20px; padding:7px 16px; font-size:12px; font-weight:800;
-    font-family:'Nunito',sans-serif; cursor:pointer; box-shadow:0 2px 8px rgba(127,119,221,.3);
-    transition:transform .18s cubic-bezier(.34,1.4,.64,1),box-shadow .15s; }
-.fb-tts-btn:hover { transform:translateY(-2px) scale(1.05); box-shadow:0 6px 16px rgba(127,119,221,.4); }
-.fb-wordbank { flex-shrink:0; padding:9px 16px 11px; border-bottom:1.5px solid var(--purple-b);
-    background:linear-gradient(135deg,#f5f3ff 0%,var(--purple-l) 100%); }
-.fb-wb-label { font-size:10px; font-weight:800; color:var(--purple-d); letter-spacing:.09em;
-    text-transform:uppercase; font-family:'Nunito',sans-serif;
-    display:flex; align-items:center; gap:5px; margin-bottom:6px; }
-.fb-wb-chips { display:flex; flex-wrap:wrap; gap:5px; }
-.fb-wb-chip { background:#fff; border:1.5px solid var(--purple-b); border-radius:999px;
-    font-family:'Nunito',sans-serif; font-size:12px; font-weight:700;
-    color:var(--purple-d); padding:4px 11px; white-space:nowrap; line-height:1; }
 
-/* fullscreen / presentation — scale up wordbank and text */
-body.fullscreen-embedded .fb-wordbank,
-body.presentation-mode   .fb-wordbank { padding:11px 18px 13px; }
-body.fullscreen-embedded .fb-wb-label,
-body.presentation-mode   .fb-wb-label { font-size:11px; margin-bottom:8px; }
-body.fullscreen-embedded .fb-wb-chip,
-body.presentation-mode   .fb-wb-chip  { font-size:14px; padding:5px 14px; }
+/* Reset template chrome */
+html,
+body {
+    width: 100%;
+    min-height: 100%;
+}
+
+body {
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #ffffff !important;
+    font-family: 'Nunito', 'Segoe UI', sans-serif !important;
+}
+
+.activity-wrapper {
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    min-height: 100vh;
+    display: flex !important;
+    flex-direction: column !important;
+    background: transparent !important;
+}
+
+.top-row {
+    display: none !important;
+}
+
+.viewer-content {
+    flex: 1 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+}
+
+/* Page shell */
+.fb-page {
+    width: 100%;
+    min-height: 100vh;
+    padding: clamp(14px, 2.5vw, 34px);
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    background: #ffffff;
+    box-sizing: border-box;
+}
+
+.fb-app {
+    width: min(860px, 100%);
+    margin: 0 auto;
+}
+
+/* Top bar */
+.fb-topbar {
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 8px;
+    position: relative;
+}
+
+.fb-back-btn {
+    position: absolute;
+    left: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: #EEEDFE;
+    border: 1px solid #EDE9FA;
+    color: #534AB7;
+    font-size: 12px;
+    font-weight: 900;
+    font-family: 'Nunito', sans-serif;
+    border-radius: 999px;
+    padding: 7px 14px;
+    cursor: pointer;
+    text-decoration: none;
+    transition: filter .15s, transform .15s;
+}
+
+.fb-back-btn:hover {
+    filter: brightness(.96);
+    transform: translateY(-1px);
+}
+
+body.presentation-mode .fb-back-btn,
+body.embedded-mode .fb-back-btn {
+    display: none;
+}
+
+.fb-topbar-title {
+    font-family: 'Nunito', sans-serif;
+    font-size: 12px;
+    font-weight: 900;
+    color: #9B94BE;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+}
+
+/* Hero */
+.fb-hero {
+    text-align: center;
+    margin-bottom: clamp(14px, 2vw, 22px);
+}
+
+.fb-kicker {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 7px 14px;
+    border-radius: 999px;
+    background: #FFF0E6;
+    border: 1px solid #FCDDBF;
+    color: #C2580A;
+    font-family: 'Nunito', sans-serif;
+    font-size: 12px;
+    font-weight: 900;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+}
+
+.fb-hero h1 {
+    font-family: 'Fredoka', sans-serif;
+    font-size: clamp(30px, 5.5vw, 58px);
+    font-weight: 700;
+    color: #F97316;
+    margin: 0;
+    line-height: 1.03;
+}
+
+.fb-hero p {
+    font-family: 'Nunito', sans-serif;
+    font-size: clamp(13px, 1.8vw, 17px);
+    font-weight: 800;
+    color: #9B94BE;
+    margin: 8px 0 0;
+}
+
+/* Board */
+.fb-card {
+    background: #ffffff;
+    border: 1px solid #F0EEF8;
+    border-radius: 34px;
+    padding: clamp(16px, 2.6vw, 26px);
+    box-shadow: 0 8px 40px rgba(127,119,221,.13);
+    width: min(760px, 100%);
+    margin: 0 auto;
+    box-sizing: border-box;
+    position: relative;
+}
+
+.fb-card-hd {
+    display: none;
+}
+
+/* Media */
+.fb-tts-bar {
+    width: 100%;
+    border: 1px solid #EDE9FA;
+    border-radius: 28px;
+    background: #ffffff;
+    box-shadow: 0 12px 36px rgba(127,119,221,.13);
+    overflow: hidden;
+    margin-bottom: 16px;
+    padding: 18px;
+    text-align: center;
+    box-sizing: border-box;
+}
+
+.fb-tts-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: #7F77DD;
+    color: #ffffff;
+    border: none;
+    border-radius: 999px;
+    padding: 13px 24px;
+    min-width: clamp(104px, 16vw, 146px);
+    font-size: 13px;
+    font-weight: 900;
+    font-family: 'Nunito', sans-serif;
+    cursor: pointer;
+    box-shadow: 0 6px 18px rgba(127,119,221,.18);
+    transition: transform .12s, filter .12s, box-shadow .12s;
+}
+
+.fb-tts-btn:hover {
+    filter: brightness(1.07);
+    transform: translateY(-1px);
+}
+
+.fb-tts-bar audio {
+    width: 100%;
+}
+
+/* Word bank */
+.fb-wordbank {
+    background: #EEEDFE;
+    border: 1px solid #EDE9FA;
+    border-radius: 22px;
+    padding: 13px 14px;
+    margin-bottom: 16px;
+}
+
+.fb-wb-label {
+    font-size: 12px;
+    font-weight: 900;
+    color: #534AB7;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    font-family: 'Nunito', sans-serif;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 9px;
+}
+
+.fb-wb-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.fb-wb-chip {
+    background: #ffffff;
+    border: 1px solid #EDE9FA;
+    border-radius: 999px;
+    font-family: 'Nunito', sans-serif;
+    font-size: 13px;
+    font-weight: 900;
+    color: #534AB7;
+    padding: 7px 13px;
+    white-space: nowrap;
+    line-height: 1;
+    box-shadow: 0 4px 14px rgba(127,119,221,.08);
+}
+
+/* Progress */
+.fb-prog-wrap {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 18px;
+}
+
+.fb-prog-track {
+    flex: 1;
+    height: 12px;
+    background: #F4F2FD;
+    border: 1px solid #E4E1F8;
+    border-radius: 999px;
+    overflow: hidden;
+}
+
+.fb-prog-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #F97316, #7F77DD);
+    border-radius: 999px;
+    transition: width .45s ease;
+}
+
+.fb-prog-label {
+    background: #7F77DD;
+    color: #ffffff;
+    font-size: 12px;
+    font-weight: 900;
+    white-space: nowrap;
+    font-family: 'Nunito', sans-serif;
+    border-radius: 999px;
+    padding: 7px 11px;
+}
+
+/* Block area */
+.fb-block-area {
+    background: #ffffff;
+    border: 1px solid #EDE9FA;
+    border-radius: 28px;
+    box-shadow: 0 12px 36px rgba(127,119,221,.13);
+    padding: clamp(18px, 3vw, 28px);
+    min-height: clamp(220px, 30vh, 330px);
+    box-sizing: border-box;
+}
+
+.fb-block {
+    display: none;
+}
+
+.fb-block.active {
+    display: block;
+    animation: fbFadeIn .2s ease;
+}
+
+@keyframes fbFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(4px);
+    }
+    to {
+        opacity: 1;
+        transform: none;
+    }
+}
+
+.fb-block-img {
+    display: block;
+    max-width: min(280px, 100%);
+    max-height: 170px;
+    object-fit: contain;
+    border-radius: 20px;
+    margin: 0 auto 18px;
+    border: 1px solid #EDE9FA;
+    background: #ffffff;
+    box-shadow: 0 8px 24px rgba(127,119,221,.10);
+}
+
+.fb-text {
+    font-family: 'Fredoka', sans-serif;
+    font-size: clamp(22px, 3.2vw, 34px);
+    font-weight: 600;
+    color: #534AB7;
+    line-height: 1.8;
+    text-align: center;
+}
+
+/* Blanks */
+.fb-blank-wrap {
+    display: inline-block;
+    position: relative;
+    vertical-align: baseline;
+    margin: 0 4px;
+    min-width: 74px;
+}
+
+.fb-blank-sizer {
+    position: absolute;
+    inset: 0;
+    visibility: hidden;
+    white-space: pre;
+    font-size: clamp(18px, 2.4vw, 26px);
+    font-weight: 600;
+    font-family: 'Fredoka', sans-serif;
+    padding: 2px 10px;
+    pointer-events: none;
+    border-bottom: 3px solid transparent;
+}
+
+.fb-blank {
+    display: inline-block;
+    width: 100%;
+    min-width: 74px;
+    border: none;
+    border-bottom: 3px solid #EDE9FA;
+    background: transparent;
+    padding: 2px 10px;
+    font-size: clamp(18px, 2.4vw, 26px);
+    font-weight: 600;
+    font-family: 'Fredoka', sans-serif;
+    color: #534AB7;
+    outline: none;
+    text-align: center;
+    vertical-align: baseline;
+    transition: border-color .15s, box-shadow .15s, background .15s;
+}
+
+.fb-blank:hover {
+    border-bottom-color: #7F77DD;
+}
+
+.fb-blank:focus {
+    border-bottom-color: #7F77DD;
+    box-shadow: 0 4px 0 rgba(127,119,221,.18);
+}
+
+.fb-blank.correct {
+    border-bottom-color: #16a34a;
+    color: #16a34a;
+}
+
+.fb-blank.wrong {
+    border-bottom-color: #dc2626;
+    color: #dc2626;
+    animation: fbShake .3s ease;
+}
+
+.fb-blank.revealed {
+    border-bottom-color: #7F77DD;
+    color: #534AB7;
+    background: #EEEDFE;
+    border-radius: 10px;
+}
+
+@keyframes fbShake {
+    0%,100% { transform: translateX(0); }
+    25% { transform: translateX(-5px); }
+    75% { transform: translateX(5px); }
+}
+
+/* Controls */
+.fb-controls {
+    border-top: 1px solid #F0EEF8;
+    margin-top: 16px;
+    padding-top: 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    justify-content: center;
+    background: #ffffff;
+    position: relative;
+    z-index: 5;
+}
+
+.fb-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 13px 20px;
+    min-width: clamp(104px, 16vw, 146px);
+    border: none;
+    border-radius: 999px;
+    font-family: 'Nunito', sans-serif;
+    font-size: 13px;
+    font-weight: 900;
+    color: #ffffff;
+    cursor: pointer;
+    white-space: nowrap;
+    box-shadow: 0 6px 18px rgba(127,119,221,.18);
+    pointer-events: auto;
+    transition: transform .12s, filter .12s, box-shadow .12s;
+}
+
+.fb-btn:hover {
+    filter: brightness(1.07);
+    transform: translateY(-1px);
+}
+
+.fb-btn:active {
+    transform: scale(.98);
+}
+
+.fb-btn:disabled {
+    opacity: .45;
+    cursor: default;
+    transform: none;
+    filter: none;
+    box-shadow: none;
+}
+
+#fb-prev {
+    background: #7F77DD;
+}
+
+#fb-check {
+    background: #F97316;
+    box-shadow: 0 6px 18px rgba(249,115,22,.22);
+}
+
+#fb-show {
+    background: #7F77DD;
+}
+
+#fb-next {
+    background: #F97316;
+    box-shadow: 0 6px 18px rgba(249,115,22,.22);
+}
+
+#fb-feedback {
+    font-family: 'Nunito', sans-serif;
+    font-size: 13px;
+    font-weight: 900;
+    text-align: center;
+    min-height: 18px;
+    width: 100%;
+}
+
+#fb-feedback.good {
+    color: #16a34a;
+}
+
+#fb-feedback.bad {
+    color: #dc2626;
+}
+
+/* Completed */
+.fb-completed {
+    display: none;
+    position: absolute;
+    inset: 0;
+    background: #ffffff;
+    border-radius: 34px;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 40px 24px;
+    gap: 12px;
+    z-index: 20;
+}
+
+.fb-completed.active {
+    display: flex;
+}
+
+.fb-completed-icon {
+    font-size: 64px;
+    line-height: 1;
+    margin-bottom: 4px;
+}
+
+.fb-completed-title {
+    font-family: 'Fredoka', sans-serif;
+    font-size: clamp(30px, 5.5vw, 58px);
+    font-weight: 700;
+    color: #F97316;
+    margin: 0;
+}
+
+.fb-completed-msg {
+    font-family: 'Nunito', sans-serif;
+    font-size: clamp(13px, 1.8vw, 17px);
+    font-weight: 800;
+    color: #9B94BE;
+    margin: 0;
+}
+
+.fb-score-ring {
+    width: 96px;
+    height: 96px;
+    border-radius: 50%;
+    background: #EEEDFE;
+    border: 3px solid #EDE9FA;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.fb-score-pct {
+    font-family: 'Fredoka', sans-serif;
+    font-size: 28px;
+    font-weight: 700;
+    color: #534AB7;
+    line-height: 1;
+}
+
+.fb-score-lbl {
+    font-size: 10px;
+    font-weight: 900;
+    color: #7F77DD;
+    letter-spacing: .04em;
+}
+
+.fb-score-frac {
+    font-size: 15px;
+    font-weight: 900;
+    color: #534AB7;
+}
+
+.fb-restart-btn {
+    background: #7F77DD;
+    color: #ffffff;
+    border: none;
+    border-radius: 999px;
+    padding: 13px 28px;
+    font-family: 'Nunito', sans-serif;
+    font-size: 13px;
+    font-weight: 900;
+    cursor: pointer;
+    box-shadow: 0 6px 18px rgba(127,119,221,.18);
+    transition: filter .15s, transform .15s;
+}
+
+.fb-restart-btn:hover {
+    filter: brightness(1.07);
+    transform: scale(1.04);
+}
+
+/* Fullscreen / presentation */
+body.fullscreen-embedded .fb-page,
+body.presentation-mode .fb-page {
+    min-height: 100vh;
+    padding: clamp(12px, 2vw, 24px);
+}
+
 body.fullscreen-embedded .fb-text,
-body.presentation-mode   .fb-text     { font-size:clamp(15px,1.8vw,18px) !important; line-height:3 !important; }
+body.presentation-mode .fb-text {
+    font-size: clamp(24px, 3.5vw, 42px) !important;
+}
+
 body.fullscreen-embedded .fb-blank,
-body.presentation-mode   .fb-blank    { font-size:clamp(15px,1.8vw,18px) !important; }
-body.fullscreen-embedded .fb-btn,
-body.presentation-mode   .fb-btn      { padding:11px 24px !important; font-size:14px !important; }
-body.fullscreen-embedded .fb-card-hd h2,
-body.presentation-mode   .fb-card-hd h2 { font-size:clamp(17px,2.2vw,22px) !important; }
-body.fullscreen-embedded .fb-card-hd p,
-body.presentation-mode   .fb-card-hd p  { font-size:13px !important; }
-body.fullscreen-embedded .fb-topbar,
-body.presentation-mode   .fb-topbar   { height:44px !important; }
-body.fullscreen-embedded .fb-back-btn,
-body.presentation-mode   .fb-back-btn { padding:8px 18px !important; font-size:13px !important; }
-.fb-prog-wrap { flex-shrink:0; padding:8px 16px 0; display:flex; align-items:center; gap:10px; }
-.fb-prog-track { flex:1; height:5px; background:var(--purple-l); border-radius:3px;
-    border:1px solid var(--purple-b); overflow:hidden; }
-.fb-prog-fill { height:100%; background:var(--purple); border-radius:3px; transition:width .35s ease; }
-.fb-prog-label { font-size:11px; font-weight:800; color:var(--purple); white-space:nowrap; font-family:'Nunito',sans-serif; }
-.fb-block-area { flex:1; overflow-y:auto; padding:16px 20px 8px; }
-.fb-block { display:none; }
-.fb-block.active { display:block; animation:fbFadeIn .2s ease; }
-@keyframes fbFadeIn { from { opacity:0; transform:translateY(4px); } to { opacity:1; transform:none; } }
-.fb-block-img { display:block; max-width:240px; max-height:140px; object-fit:contain;
-    border-radius:10px; margin:0 auto 16px; border:1px solid var(--t100); }
-.fb-text { font-family:'Nunito',sans-serif; font-size:clamp(15px,1.8vw,17px);
-    font-weight:600; color:#1e293b; line-height:2.8; }
-.fb-blank-wrap { display:inline-block; position:relative; vertical-align:baseline; margin:0 2px; min-width:60px; }
-.fb-blank-sizer { position:absolute; inset:0; visibility:hidden; white-space:pre;
-    font-size:14px; font-weight:800; font-family:'Nunito',sans-serif;
-    padding:0 10px; pointer-events:none; border-bottom:2.5px solid transparent; }
-.fb-blank { display:inline-block; width:100%; min-width:60px; border:none;
-    border-bottom:2.5px solid var(--purple-b); background:transparent; padding:1px 8px;
-    font-size:14px; font-weight:800; font-family:'Nunito',sans-serif; color:var(--purple-d);
-    outline:none; text-align:center; vertical-align:baseline;
-    transition:border-color .15s,box-shadow .15s; }
-.fb-blank:hover { border-bottom-color:var(--purple); }
-.fb-blank:focus { border-bottom-color:var(--purple); box-shadow:0 3px 0 rgba(127,119,221,.18); }
-.fb-blank.correct { border-bottom-color:var(--green); border-bottom-width:3px; color:var(--green); }
-.fb-blank.wrong { border-bottom-color:var(--red); border-bottom-width:3px; color:var(--red); animation:fbShake .3s ease; }
-.fb-blank.revealed { border-bottom-color:var(--purple); color:var(--purple-d);
-    background:var(--purple-l); border-radius:4px; padding:1px 10px; }
-@keyframes fbShake { 0%,100% { transform:translateX(0); } 25% { transform:translateX(-5px); } 75% { transform:translateX(5px); } }
-.fb-controls { flex-shrink:0; border-top:1px solid var(--t100); padding:8px 14px;
-    display:flex; align-items:center; gap:10px; flex-wrap:wrap; justify-content:center;
-    position:relative; z-index:5; background:#fff; }
-.fb-btn { display:inline-flex; align-items:center; justify-content:center; padding:9px 18px;
-    border:none; border-radius:20px; font-family:'Nunito',sans-serif; font-size:13px;
-    font-weight:800; color:#fff; cursor:pointer; white-space:nowrap; background:var(--purple);
-    box-shadow:0 3px 10px rgba(127,119,221,.30); pointer-events:auto;
-    transition:transform .18s cubic-bezier(.34,1.4,.64,1),box-shadow .15s,filter .15s; }
-.fb-btn:hover { transform:translateY(-3px) scale(1.05); box-shadow:0 8px 22px rgba(127,119,221,.45); filter:brightness(1.08); }
-.fb-btn:active { transform:scale(.97); box-shadow:none; }
-.fb-btn:disabled { opacity:.45; cursor:default; transform:none; filter:none; box-shadow:none; }
-#fb-feedback { font-family:'Nunito',sans-serif; font-size:13px; font-weight:800;
-    text-align:center; min-height:18px; width:100%; }
-#fb-feedback.good { color:var(--green); }
-#fb-feedback.bad  { color:var(--red); }
-.fb-completed { display:none; position:absolute; inset:0; background:#fff; border-radius:14px;
-    flex-direction:column; align-items:center; justify-content:center; text-align:center;
-    padding:40px 24px; gap:12px; z-index:20; }
-.fb-completed.active { display:flex; }
-.fb-completed-icon { font-size:60px; line-height:1; margin-bottom:4px; }
-.fb-completed-title { font-family:'Fredoka',sans-serif; font-size:28px; font-weight:700; color:var(--t800); margin:0; }
-.fb-completed-msg { font-size:14px; font-weight:600; color:#5a7a6a; margin:0; }
-.fb-score-ring { width:88px; height:88px; border-radius:50%; background:var(--purple-l);
-    border:3px solid var(--purple-b); display:flex; flex-direction:column;
-    align-items:center; justify-content:center; }
-.fb-score-pct { font-family:'Fredoka',sans-serif; font-size:24px; font-weight:700; color:var(--purple-d); line-height:1; }
-.fb-score-lbl { font-size:10px; font-weight:800; color:var(--purple); letter-spacing:.04em; }
-.fb-score-frac { font-size:15px; font-weight:800; color:var(--purple-d); }
-.fb-restart-btn { background:var(--purple); color:#fff; border:none; border-radius:20px;
-    padding:11px 28px; font-family:'Nunito',sans-serif; font-size:14px; font-weight:800;
-    cursor:pointer; box-shadow:0 4px 14px rgba(127,119,221,.3);
-    transition:transform .18s cubic-bezier(.34,1.4,.64,1),box-shadow .15s; }
-.fb-restart-btn:hover { transform:translateY(-2px) scale(1.04); box-shadow:0 8px 22px rgba(127,119,221,.4); }
-@media (max-width:600px) {
-    .fb-card { margin:6px 8px; border-radius:10px; }
-    .fb-topbar { height:34px; }
-    .fb-bottombar { height:32px; }
-    .fb-block-area { padding:12px 14px 6px; }
-    .fb-btn { padding:8px 14px; font-size:12px; }
-    .fb-text { font-size:14px; line-height:2.2; }
+body.presentation-mode .fb-blank {
+    font-size: clamp(20px, 3vw, 34px) !important;
+}
+
+body.fullscreen-embedded .fb-card,
+body.presentation-mode .fb-card {
+    width: min(960px, 100%);
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+    .fb-page {
+        padding: 12px;
+    }
+
+    .fb-topbar {
+        height: 30px;
+        margin-bottom: 4px;
+    }
+
+    .fb-back-btn {
+        left: -2px;
+        padding: 5px 10px;
+        font-size: 11px;
+    }
+
+    .fb-hero {
+        margin-bottom: 12px;
+    }
+
+    .fb-kicker {
+        padding: 5px 11px;
+        font-size: 11px;
+        margin-bottom: 6px;
+    }
+
+    .fb-hero h1 {
+        font-size: clamp(26px, 8vw, 38px);
+    }
+
+    .fb-card {
+        border-radius: 26px;
+        padding: 14px;
+        width: 100%;
+    }
+
+    .fb-tts-bar {
+        border-radius: 22px;
+        margin-bottom: 12px;
+        padding: 14px;
+    }
+
+    .fb-wordbank {
+        border-radius: 18px;
+        margin-bottom: 12px;
+    }
+
+    .fb-block-area {
+        border-radius: 22px;
+        padding: 16px;
+        min-height: 210px;
+    }
+
+    .fb-text {
+        font-size: clamp(20px, 6.2vw, 28px);
+        line-height: 1.7;
+    }
+
+    .fb-blank,
+    .fb-blank-sizer {
+        font-size: clamp(18px, 5.5vw, 24px);
+    }
+
+    .fb-controls {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 9px;
+    }
+
+    .fb-btn {
+        width: 100%;
+    }
+
+    .fb-completed {
+        border-radius: 26px;
+    }
 }
 </style>
 
 <div class="fb-page">
-    <div class="fb-topbar">
-        <a class="fb-back-btn" href="<?php echo htmlspecialchars($_fb_backUrl, ENT_QUOTES, 'UTF-8'); ?>"><svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M6.5 1.5L3 5l3.5 3.5" stroke="#fff" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg> Back</a>
-        <span class="fb-topbar-title">Activity</span>
-    </div>
+    <div class="fb-app">
 
-    <div class="fb-card">
-        <div class="fb-card-hd">
-            <h2><?php echo htmlspecialchars($activity['instructions'], ENT_QUOTES, 'UTF-8'); ?></h2>
-            <p>Fill in the blanks with the correct words.</p>
+        <div class="fb-topbar">
+            <a class="fb-back-btn" href="<?php echo htmlspecialchars($_fb_backUrl, ENT_QUOTES, 'UTF-8'); ?>">Back</a>
+            <span class="fb-topbar-title">Fill in the Blank</span>
         </div>
 
-        <?php if ($activity['media_type'] === 'tts' && !empty($activity['tts_text'])): ?>
-        <div class="fb-tts-bar">
-            <button type="button" id="fb-tts-btn" class="fb-tts-btn">&#x1F50A; Listen</button>
+        <div class="fb-hero">
+            <div class="fb-kicker">Activity</div>
+            <h1>Fill in the Blank</h1>
+            <p><?php echo htmlspecialchars($activity['instructions'], ENT_QUOTES, 'UTF-8'); ?></p>
         </div>
-        <?php elseif ($activity['media_type'] === 'audio' && !empty($activity['media_url'])): ?>
-        <div class="fb-tts-bar">
-            <audio controls src="<?php echo htmlspecialchars($activity['media_url'], ENT_QUOTES, 'UTF-8'); ?>" style="width:100%;border-radius:8px"></audio>
-        </div>
-        <?php endif; ?>
 
-        <?php if (!empty($activity['wordbank'])): ?>
-        <div class="fb-wordbank">
-            <div class="fb-wb-label">
-                <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><rect x="1" y="1" width="11" height="11" rx="2.5" stroke="#534AB7" stroke-width="1.3"/><path d="M3.5 4.5h6M3.5 6.5h4" stroke="#534AB7" stroke-width="1.3" stroke-linecap="round"/></svg>
-                Word bank
+        <div class="fb-card">
+
+            <div class="fb-card-hd">
+                <h2><?php echo htmlspecialchars($activity['instructions'], ENT_QUOTES, 'UTF-8'); ?></h2>
+                <p>Fill in the blanks with the correct words.</p>
             </div>
-            <div class="fb-wb-chips">
-                <?php
-                $_wb_raw = $activity['wordbank'];
-                $_wb_items = (strpos($_wb_raw, '|') !== false)
-                    ? explode('|', $_wb_raw)
-                    : explode(',', $_wb_raw);
-                $_wb_items = array_values(array_filter(array_map('trim', $_wb_items), 'strlen'));
-                foreach ($_wb_items as $_wbWord): ?>
-                <span class="fb-wb-chip"><?php echo htmlspecialchars($_wbWord, ENT_QUOTES, 'UTF-8'); ?></span>
+
+            <?php if ($activity['media_type'] === 'tts' && !empty($activity['tts_text'])): ?>
+            <div class="fb-tts-bar">
+                <button type="button" id="fb-tts-btn" class="fb-tts-btn">Listen</button>
+            </div>
+            <?php elseif ($activity['media_type'] === 'audio' && !empty($activity['media_url'])): ?>
+            <div class="fb-tts-bar">
+                <audio controls src="<?php echo htmlspecialchars($activity['media_url'], ENT_QUOTES, 'UTF-8'); ?>"></audio>
+            </div>
+            <?php endif; ?>
+
+            <?php if (!empty($activity['wordbank'])): ?>
+            <div class="fb-wordbank">
+                <div class="fb-wb-label">Word bank</div>
+                <div class="fb-wb-chips">
+                    <?php
+                    $_wb_raw = $activity['wordbank'];
+                    $_wb_items = (strpos($_wb_raw, '|') !== false)
+                        ? explode('|', $_wb_raw)
+                        : explode(',', $_wb_raw);
+                    $_wb_items = array_values(array_filter(array_map('trim', $_wb_items), 'strlen'));
+                    foreach ($_wb_items as $_wbWord): ?>
+                    <span class="fb-wb-chip"><?php echo htmlspecialchars($_wbWord, ENT_QUOTES, 'UTF-8'); ?></span>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+            <?php endif; ?>
+
+            <div class="fb-prog-wrap">
+                <div class="fb-prog-track">
+                    <div class="fb-prog-fill" id="fb-prog-fill" style="width:<?php echo count($renderedBlocks) > 0 ? round(1/count($renderedBlocks)*100) : 100; ?>%"></div>
+                </div>
+                <span class="fb-prog-label" id="fb-prog-label">1 / <?php echo count($renderedBlocks); ?></span>
+            </div>
+
+            <div class="fb-block-area">
+                <?php foreach ($renderedBlocks as $bIdx => $block): ?>
+                <div class="fb-block <?php echo $bIdx === 0 ? 'active' : ''; ?>"
+                     id="fb-block-<?php echo $bIdx; ?>"
+                     data-answers="<?php echo htmlspecialchars(json_encode($block['answers']), ENT_QUOTES, 'UTF-8'); ?>">
+                    <?php if (!empty($block['image'])): ?>
+                    <img class="fb-block-img" src="<?php echo htmlspecialchars($block['image'], ENT_QUOTES, 'UTF-8'); ?>" alt="">
+                    <?php endif; ?>
+                    <div class="fb-text"><?php echo $block['rendered']; ?></div>
+                </div>
                 <?php endforeach; ?>
             </div>
-        </div>
-        <?php endif; ?>
 
-        <div class="fb-prog-wrap">
-            <div class="fb-prog-track">
-                <div class="fb-prog-fill" id="fb-prog-fill" style="width:<?php echo count($renderedBlocks) > 0 ? round(1/count($renderedBlocks)*100) : 100; ?>%"></div>
+            <div class="fb-controls">
+                <button type="button" class="fb-btn" id="fb-prev" style="display:none">Prev</button>
+                <button type="button" class="fb-btn" id="fb-check">Check</button>
+                <button type="button" class="fb-btn" id="fb-show">Show Answer</button>
+                <button type="button" class="fb-btn" id="fb-next">Next</button>
+                <div id="fb-feedback"></div>
             </div>
-            <span class="fb-prog-label" id="fb-prog-label">1 / <?php echo count($renderedBlocks); ?></span>
-        </div>
 
-        <div class="fb-block-area">
-            <?php foreach ($renderedBlocks as $bIdx => $block): ?>
-            <div class="fb-block <?php echo $bIdx === 0 ? 'active' : ''; ?>"
-                 id="fb-block-<?php echo $bIdx; ?>"
-                 data-answers="<?php echo htmlspecialchars(json_encode($block['answers']), ENT_QUOTES, 'UTF-8'); ?>">
-                <?php if (!empty($block['image'])): ?>
-                <img class="fb-block-img" src="<?php echo htmlspecialchars($block['image'], ENT_QUOTES, 'UTF-8'); ?>" alt="">
-                <?php endif; ?>
-                <div class="fb-text"><?php echo $block['rendered']; ?></div>
+            <div class="fb-completed" id="fb-completed">
+                <div class="fb-completed-icon">&#x2705;</div>
+                <h2 class="fb-completed-title">Fill in the Blank</h2>
+                <p class="fb-completed-msg">Activity completed. Great job!</p>
+                <div class="fb-score-ring">
+                    <span class="fb-score-pct" id="fb-score-pct">&#8212;</span>
+                    <span class="fb-score-lbl">SCORE</span>
+                </div>
+                <div class="fb-score-frac" id="fb-score-frac"></div>
+                <button type="button" class="fb-restart-btn" onclick="fbRestart()">Try Again</button>
             </div>
-            <?php endforeach; ?>
-        </div>
 
-        <div class="fb-controls">
-            <button type="button" class="fb-btn" id="fb-prev" style="display:none">&#9664; Prev</button>
-            <button type="button" class="fb-btn" id="fb-check">&#10004; Check</button>
-            <button type="button" class="fb-btn" id="fb-show">Show Answer</button>
-            <button type="button" class="fb-btn" id="fb-next">Next &#9654;</button>
-            <div id="fb-feedback"></div>
-        </div>
-
-        <div class="fb-completed" id="fb-completed">
-            <div class="fb-completed-icon">&#x2705;</div>
-            <h2 class="fb-completed-title">Fill-in-the-Blank</h2>
-            <p class="fb-completed-msg">Activity completed. Great job!</p>
-            <div class="fb-score-ring">
-                <span class="fb-score-pct" id="fb-score-pct">&#8212;</span>
-                <span class="fb-score-lbl">SCORE</span>
-            </div>
-            <div class="fb-score-frac" id="fb-score-frac"></div>
-            <button type="button" class="fb-restart-btn" onclick="fbRestart()">&#8635; Try Again</button>
         </div>
     </div>
-
-    <div class="fb-bottombar"></div>
 </div>
 
 <audio id="fb-win-sound"  src="../../hangman/assets/win.mp3"     preload="auto"></audio>
@@ -368,7 +938,6 @@ var TOTAL       = BLOCKS.length;
 
 var cur       = 0;
 var done      = false;
-/* Track per-blank whether student answered it or it was revealed */
 var revealed  = {};
 
 var winSound  = document.getElementById('fb-win-sound');
@@ -385,16 +954,23 @@ btnCheck.addEventListener('click', function() { fbCheck(); });
 btnShow.addEventListener('click',  function() { fbShow(); });
 btnNext.addEventListener('click',  function() { fbNext(); });
 
-function playSound(el) { try { el.pause(); el.currentTime = 0; el.play(); } catch(e) {} }
+function playSound(el) {
+    try { el.pause(); el.currentTime = 0; el.play(); } catch(e) {}
+}
 
 function resizeInput(inp) {
     var sizer = document.getElementById(inp.getAttribute('data-sizer'));
     if (!sizer) return;
+
     sizer.textContent = inp.value || inp.getAttribute('placeholder') || '...';
+
+    var width = Math.max(74, sizer.offsetWidth + 12);
+    inp.style.width = width + 'px';
 }
 
 function initResizers() {
     var blanks = document.querySelectorAll('.fb-blank');
+
     for (var i = 0; i < blanks.length; i++) {
         (function(inp) {
             resizeInput(inp);
@@ -403,7 +979,9 @@ function initResizers() {
     }
 }
 
-function blockEl(b) { return document.getElementById('fb-block-' + b); }
+function blockEl(b) {
+    return document.getElementById('fb-block-' + b);
+}
 
 function blanksOf(b) {
     var el = blockEl(b);
@@ -417,14 +995,26 @@ function answersOf(b) {
     try { return JSON.parse(el.getAttribute('data-answers') || '[]'); } catch(e) { return []; }
 }
 
-function blankKey(b, i) { return b + '_' + i; }
+function normalizeAnswer(value) {
+    return String(value || '')
+        .trim()
+        .replace(/\s+/g, ' ')
+        .toLowerCase();
+}
+
+function blankKey(b, i) {
+    return b + '_' + i;
+}
 
 function setFb(msg, cls) {
     var f = document.getElementById('fb-feedback');
     f.textContent = msg;
     f.className = cls || '';
 }
-function clearFb() { setFb('', ''); }
+
+function clearFb() {
+    setFb('', '');
+}
 
 function setProgress() {
     var pct = Math.round((cur + 1) / TOTAL * 100);
@@ -435,6 +1025,7 @@ function setProgress() {
 
 function clearColors() {
     var allBlanks = document.querySelectorAll('.fb-blank');
+
     for (var i = 0; i < allBlanks.length; i++) {
         allBlanks[i].classList.remove('correct', 'wrong', 'revealed');
     }
@@ -442,37 +1033,48 @@ function clearColors() {
 
 function fbCheck() {
     if (done) return;
+
     var ans  = answersOf(cur);
     var inps = blanksOf(cur);
     var ok   = 0;
+
     for (var i = 0; i < inps.length; i++) {
         inps[i].classList.remove('correct', 'wrong', 'revealed');
-        var v = inps[i].value.trim().toLowerCase();
-        var a = (ans[i] || '').trim().toLowerCase();
-        if (v === a) { inps[i].classList.add('correct'); ok++; }
-        else           inps[i].classList.add('wrong');
+
+        var v = normalizeAnswer(inps[i].value);
+        var a = normalizeAnswer(ans[i] || '');
+
+        if (v === a) {
+            inps[i].classList.add('correct');
+            ok++;
+        } else {
+            inps[i].classList.add('wrong');
+        }
     }
+
     if (ok === inps.length) {
-        setFb('&#x2705; Correct! Well done!', 'good');
+        setFb('Correct! Well done!', 'good');
         playSound(winSound);
     } else {
-        setFb('&#x274C; ' + ok + ' / ' + inps.length + ' correct &#8212; try again!', 'bad');
+        setFb(ok + ' / ' + inps.length + ' correct — try again!', 'bad');
         playSound(losSound);
     }
 }
 
 function fbShow() {
     if (done) return;
+
     var ans  = answersOf(cur);
     var inps = blanksOf(cur);
+
     for (var i = 0; i < inps.length; i++) {
         inps[i].value = ans[i] || '';
         resizeInput(inps[i]);
         inps[i].classList.remove('correct', 'wrong');
         inps[i].classList.add('revealed');
-        /* Mark this blank as revealed so score counts it as wrong */
         revealed[blankKey(cur, i)] = true;
     }
+
     setFb('Answers shown.', 'good');
     btnCheck.disabled = true;
     btnShow.disabled  = true;
@@ -488,6 +1090,7 @@ function fbNext() {
         btnCheck.disabled = false;
         btnShow.disabled  = false;
         setProgress();
+
         var first = blanksOf(cur)[0];
         if (first) setTimeout(function() { first.focus(); }, 80);
     } else {
@@ -509,18 +1112,20 @@ function fbPrev() {
 
 function fbFinish() {
     done = true;
+
     var totalBlanks   = 0;
     var correctBlanks = 0;
 
     for (var b = 0; b < TOTAL; b++) {
         var ans  = answersOf(b);
         var inps = blanksOf(b);
+
         for (var i = 0; i < inps.length; i++) {
             totalBlanks++;
-            /* Only count as correct if student typed it (not revealed by Show Answer) */
+
             if (!revealed[blankKey(b, i)]) {
-                var v = inps[i].value.trim().toLowerCase();
-                var a = (ans[i] || '').trim().toLowerCase();
+                var v = normalizeAnswer(inps[i].value);
+                var a = normalizeAnswer(ans[i] || '');
                 if (v === a) correctBlanks++;
             }
         }
@@ -542,6 +1147,7 @@ function fbFinish() {
             '&activity_total='  + totalBlanks +
             '&activity_id='     + encodeURIComponent(ACTIVITY_ID) +
             '&activity_type=fillblank';
+
         var xhr = new XMLHttpRequest();
         xhr.open('GET', url, true);
         xhr.withCredentials = true;
@@ -555,8 +1161,12 @@ function fbFinish() {
 
 function navigate(url) {
     try {
-        if (window.top && window.top !== window.self) { window.top.location.href = url; return; }
+        if (window.top && window.top !== window.self) {
+            window.top.location.href = url;
+            return;
+        }
     } catch(e) {}
+
     window.location.href = url;
 }
 
@@ -564,12 +1174,17 @@ window.fbRestart = function() {
     done     = false;
     cur      = 0;
     revealed = {};
+
     document.getElementById('fb-completed').classList.remove('active');
+
     btnCheck.disabled = false;
     btnShow.disabled  = false;
+
     clearFb();
+
     for (var b = 0; b < TOTAL; b++) {
         blockEl(b).classList.toggle('active', b === 0);
+
         var inps = blanksOf(b);
         for (var i = 0; i < inps.length; i++) {
             inps[i].value = '';
@@ -577,18 +1192,24 @@ window.fbRestart = function() {
             resizeInput(inps[i]);
         }
     }
+
     setProgress();
+
     var first = blanksOf(0)[0];
     if (first) setTimeout(function() { first.focus(); }, 80);
 };
 
 document.addEventListener('keydown', function(e) {
     if (e.key !== 'Enter') return;
+
     var active = document.activeElement;
     if (!active || !active.classList.contains('fb-blank')) return;
+
     e.preventDefault();
+
     var all = blanksOf(cur);
     var idx = all.indexOf(active);
+
     if (idx !== -1 && idx < all.length - 1) {
         all[idx + 1].focus();
     } else {
@@ -608,61 +1229,126 @@ var ttsUtter    = null;
 function ttsVoice(lang) {
     var voices = window.speechSynthesis ? window.speechSynthesis.getVoices() : [];
     if (!voices.length) return null;
+
     var pre = lang.split('-')[0].toLowerCase();
     var m = [];
+
     for (var i = 0; i < voices.length; i++) {
         var vl = String(voices[i].lang || '').toLowerCase();
         if (vl === lang.toLowerCase() || vl.indexOf(pre + '-') === 0 || vl.indexOf(pre + '_') === 0) {
             m.push(voices[i]);
         }
     }
+
     if (!m.length) return voices[0] || null;
+
     var hints = ['female','woman','zira','samantha','karen','aria','jenny','emma'];
+
     for (var j = 0; j < m.length; j++) {
         var label = (String(m[j].name || '') + ' ' + String(m[j].voiceURI || '')).toLowerCase();
+
         for (var k = 0; k < hints.length; k++) {
             if (label.indexOf(hints[k]) !== -1) return m[j];
         }
     }
+
     return m[0];
 }
 
 function ttsStart() {
     var rem = TTS_TEXT.slice(Math.max(0, ttsOffset));
-    if (!rem.trim()) { ttsSpeaking = false; ttsPaused = false; ttsOffset = 0; return; }
+
+    if (!rem.trim()) {
+        ttsSpeaking = false;
+        ttsPaused = false;
+        ttsOffset = 0;
+        if (ttsBtn) ttsBtn.textContent = 'Listen';
+        return;
+    }
+
     speechSynthesis.cancel();
+
     ttsSegStart = ttsOffset;
     ttsUtter    = new SpeechSynthesisUtterance(rem);
     ttsUtter.lang   = 'en-US';
     ttsUtter.rate   = 0.7;
     ttsUtter.pitch  = 1;
     ttsUtter.volume = 1;
+
     var pref = ttsVoice('en-US');
     if (pref) ttsUtter.voice = pref;
-    ttsUtter.onstart    = function() { ttsSpeaking = true;  ttsPaused = false; };
-    ttsUtter.onpause    = function() { ttsPaused   = true;  ttsSpeaking = true; };
-    ttsUtter.onresume   = function() { ttsPaused   = false; ttsSpeaking = true; };
-    ttsUtter.onboundary = function(ev) {
-        if (typeof ev.charIndex === 'number')
-            ttsOffset = Math.max(ttsSegStart, Math.min(TTS_TEXT.length, ttsSegStart + ev.charIndex));
+
+    ttsUtter.onstart = function() {
+        ttsSpeaking = true;
+        ttsPaused = false;
+        if (ttsBtn) ttsBtn.textContent = 'Pause';
     };
-    ttsUtter.onend   = function() { if (!ttsPaused) { ttsSpeaking = false; ttsPaused = false; ttsOffset = 0; } };
-    ttsUtter.onerror = function() { ttsSpeaking = false; ttsPaused = false; ttsOffset = 0; };
+
+    ttsUtter.onpause = function() {
+        ttsPaused = true;
+        ttsSpeaking = true;
+        if (ttsBtn) ttsBtn.textContent = 'Resume';
+    };
+
+    ttsUtter.onresume = function() {
+        ttsPaused = false;
+        ttsSpeaking = true;
+        if (ttsBtn) ttsBtn.textContent = 'Pause';
+    };
+
+    ttsUtter.onboundary = function(ev) {
+        if (typeof ev.charIndex === 'number') {
+            ttsOffset = Math.max(ttsSegStart, Math.min(TTS_TEXT.length, ttsSegStart + ev.charIndex));
+        }
+    };
+
+    ttsUtter.onend = function() {
+        if (!ttsPaused) {
+            ttsSpeaking = false;
+            ttsPaused = false;
+            ttsOffset = 0;
+            if (ttsBtn) ttsBtn.textContent = 'Listen';
+        }
+    };
+
+    ttsUtter.onerror = function() {
+        ttsSpeaking = false;
+        ttsPaused = false;
+        ttsOffset = 0;
+        if (ttsBtn) ttsBtn.textContent = 'Listen';
+    };
+
     speechSynthesis.speak(ttsUtter);
 }
 
 if (ttsBtn) {
     ttsBtn.addEventListener('click', function() {
         if (!TTS_TEXT.trim()) return;
+
         if (speechSynthesis.paused || ttsPaused) {
-            speechSynthesis.resume(); ttsSpeaking = true; ttsPaused = false;
-            setTimeout(function() { if (!speechSynthesis.speaking && ttsOffset < TTS_TEXT.length) ttsStart(); }, 80);
+            speechSynthesis.resume();
+            ttsSpeaking = true;
+            ttsPaused = false;
+            ttsBtn.textContent = 'Pause';
+
+            setTimeout(function() {
+                if (!speechSynthesis.speaking && ttsOffset < TTS_TEXT.length) ttsStart();
+            }, 80);
+
             return;
         }
+
         if (speechSynthesis.speaking && !speechSynthesis.paused) {
-            speechSynthesis.pause(); ttsSpeaking = true; ttsPaused = true; return;
+            speechSynthesis.pause();
+            ttsSpeaking = true;
+            ttsPaused = true;
+            ttsBtn.textContent = 'Resume';
+            return;
         }
-        speechSynthesis.cancel(); ttsOffset = 0; ttsStart();
+
+        speechSynthesis.cancel();
+        ttsOffset = 0;
+        ttsStart();
     });
 }
 <?php endif; ?>
@@ -672,6 +1358,7 @@ setProgress();
 
 })();
 </script>
+
 <?php
 $content = ob_get_clean();
 render_activity_viewer('Fill-in-the-Blank', 'fa-solid fa-pen-to-square', $content);
