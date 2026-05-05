@@ -197,6 +197,7 @@ body{margin:0!important;padding:0!important;background:#ffffff!important;font-fa
 
 .lo-app{
     width:min(860px,100%);
+    margin:0 auto;
     display:flex;
     flex-direction:column;
     gap:0;
@@ -243,6 +244,8 @@ body{margin:0!important;padding:0!important;background:#ffffff!important;font-fa
 
 /* Board */
 .lo-board{
+    width:min(760px,100%);
+    margin:0 auto;
     background:#ffffff;
     border:1px solid #F0EEF8;
     border-radius:28px;
@@ -652,10 +655,17 @@ body.embedded-mode .lo-shell,
 body.fullscreen-embedded .lo-shell,
 body.presentation-mode .lo-shell{
     position:absolute!important;inset:0!important;
-    max-width:none!important;margin:0!important;
+    width:100%!important;max-width:none!important;margin:0!important;
     padding:10px 12px!important;border-radius:0!important;
     display:flex!important;flex-direction:column!important;
+    align-items:center!important;justify-content:flex-start!important;
     overflow-y:auto!important;overflow-x:hidden!important;
+}
+body.embedded-mode .lo-app,
+body.fullscreen-embedded .lo-app,
+body.presentation-mode .lo-app{
+    width:min(860px,100%)!important;
+    margin:0 auto!important;
 }
 body.embedded-mode .lo-board,
 body.fullscreen-embedded .lo-board,
