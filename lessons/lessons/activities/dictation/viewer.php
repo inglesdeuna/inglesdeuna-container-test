@@ -281,227 +281,595 @@ if ($unit === '' && $activityId !== '') {
 $activity = load_dictation_activity($pdo, $activityId, $unit);
 $items = isset($activity['items']) && is_array($activity['items']) ? $activity['items'] : array();
 $viewerTitle = isset($activity['title']) ? (string) $activity['title'] : default_dictation_title();
-$cssVersion = file_exists(__DIR__ . '/../multiple_choice/multiple_choice.css') ? (string) filemtime(__DIR__ . '/../multiple_choice/multiple_choice.css') : (string) time();
 
 ob_start();
 ?>
 
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@600;700;800;900&display=swap" rel="stylesheet">
+
 <style>
-.dict-prompt,
-.dict-hint,
-.dict-answer-reveal,
-.dict-transcript{
-    text-align: center;
+:root {
+    --dict-orange: #F97316;
+    --dict-orange-dark: #C2580A;
+    --dict-orange-soft: #FFF0E6;
+    --dict-purple: #7F77DD;
+    --dict-purple-dark: #534AB7;
+    --dict-purple-soft: #EEEDFE;
+    --dict-white: #FFFFFF;
+    --dict-lila-border: #EDE9FA;
+    --dict-muted: #9B94BE;
+    --dict-ink: #271B5D;
+    --dict-green: #16a34a;
+    --dict-red: #dc2626;
 }
 
-.dict-prompt{
-    font-family: 'Fredoka', 'Trebuchet MS', sans-serif;
-    font-size: clamp(20px, 2.1vw, 30px);
-    font-weight: 800;
-    color: #0f172a;
-    line-height: 1.12;
+html,
+body {
+    width: 100%;
+    min-height: 100%;
+}
+
+body {
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #ffffff !important;
+    font-family: 'Nunito', 'Segoe UI', sans-serif !important;
+}
+
+.activity-wrapper {
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    min-height: 100vh;
+    display: flex !important;
+    flex-direction: column !important;
+    background: transparent !important;
+}
+
+.top-row {
+    display: none !important;
+}
+
+.viewer-content {
+    flex: 1 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+}
+
+.dict-page {
+    width: 100%;
+    min-height: 100vh;
+    padding: clamp(14px, 2.5vw, 34px);
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    background: #ffffff;
+    box-sizing: border-box;
+}
+
+.dict-app {
+    width: min(860px, 100%);
+    margin: 0 auto;
+}
+
+.dict-topbar {
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     margin-bottom: 8px;
+    position: relative;
 }
 
-.dict-hint{
-    color: #5b516f;
-    font-weight: 700;
+.dict-topbar-title {
+    font-family: 'Nunito', sans-serif;
+    font-size: 12px;
+    font-weight: 900;
+    color: #9B94BE;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+}
+
+.dict-hero {
+    text-align: center;
+    margin-bottom: clamp(14px, 2vw, 22px);
+}
+
+.dict-kicker {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 7px 14px;
+    border-radius: 999px;
+    background: #FFF0E6;
+    border: 1px solid #FCDDBF;
+    color: #C2580A;
+    font-family: 'Nunito', sans-serif;
+    font-size: 12px;
+    font-weight: 900;
+    letter-spacing: .08em;
+    text-transform: uppercase;
     margin-bottom: 10px;
 }
 
-.dict-image{
+.dict-hero h1 {
+    font-family: 'Fredoka', sans-serif;
+    font-size: clamp(30px, 5.5vw, 58px);
+    font-weight: 700;
+    color: #F97316;
+    margin: 0;
+    line-height: 1.03;
+}
+
+.dict-hero p {
+    font-family: 'Nunito', sans-serif;
+    font-size: clamp(13px, 1.8vw, 17px);
+    font-weight: 800;
+    color: #9B94BE;
+    margin: 8px 0 0;
+}
+
+.dict-board {
+    background: #ffffff;
+    border: 1px solid #F0EEF8;
+    border-radius: 34px;
+    padding: clamp(16px, 2.6vw, 26px);
+    box-shadow: 0 8px 40px rgba(127,119,221,.13);
+    width: min(760px, 100%);
+    margin: 0 auto;
+    box-sizing: border-box;
+    position: relative;
+}
+
+.dict-progress {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 18px;
+}
+
+.dict-progress-track {
+    flex: 1;
+    height: 12px;
+    background: #F4F2FD;
+    border: 1px solid #E4E1F8;
+    border-radius: 999px;
+    overflow: hidden;
+}
+
+.dict-progress-fill {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, #F97316, #7F77DD);
+    border-radius: 999px;
+    transition: width .45s ease;
+}
+
+.dict-status {
+    background: #7F77DD;
+    color: #ffffff;
+    font-family: 'Nunito', sans-serif;
+    font-size: 12px;
+    font-weight: 900;
+    border-radius: 999px;
+    padding: 7px 11px;
+    white-space: nowrap;
+}
+
+.dict-card {
+    background: #ffffff;
+    border: 1px solid #EDE9FA;
+    border-radius: 28px;
+    box-shadow: 0 12px 36px rgba(127,119,221,.13);
+    padding: clamp(18px, 3vw, 28px);
+    min-height: clamp(260px, 35vh, 390px);
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.dict-listen-row {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 16px;
+}
+
+.dict-image {
     display: none;
-    width: min(100%, 172px);
+    width: min(100%, 220px);
     max-width: 100%;
-    border-radius: 18px;
-    margin: 8px auto 12px auto;
-    background: #fff;
-    box-shadow: 0 10px 24px rgba(15, 23, 42, .08);
+    max-height: 170px;
+    object-fit: contain;
+    border-radius: 22px;
+    margin: 0 auto 18px auto;
+    background: #ffffff;
+    border: 1px solid #EDE9FA;
+    box-shadow: 0 8px 24px rgba(127,119,221,.10);
 }
 
 .dict-prompt,
-.dict-hint{
-    display:none;
+.dict-hint {
+    display: none;
 }
 
-.dict-answer-box{
+.dict-answer-box {
     width: 100%;
     max-width: 620px;
-    min-height: 120px;
-    padding: 12px;
-    border: 2px solid #ead8ff;
-    background: #fff;
-    border-radius: 16px;
-    font: 700 16px/1.35 'Nunito', 'Segoe UI', sans-serif;
-    color: #312e81;
+    min-height: 130px;
+    padding: 16px;
+    border: 1.5px solid #EDE9FA;
+    background: #ffffff;
+    border-radius: 22px;
+    font-family: 'Nunito', 'Segoe UI', sans-serif;
+    font-size: clamp(16px, 2vw, 19px);
+    line-height: 1.45;
+    font-weight: 800;
+    color: #534AB7;
     resize: vertical;
-    transition: border-color .15s ease, background-color .15s ease;
+    transition: border-color .15s ease, background-color .15s ease, box-shadow .15s ease;
     box-sizing: border-box;
     margin: 0 auto;
     display: block;
+    outline: none;
+    box-shadow: 0 4px 14px rgba(127,119,221,.08);
 }
 
-.dict-answer-box.ok{
-    border-color: #166534;
-    background: #dcfce7;
+.dict-answer-box::placeholder {
+    color: #9B94BE;
+    font-weight: 800;
 }
 
-.dict-answer-box.bad{
-    border-color: #b91c1c;
-    background: #fee2e2;
+.dict-answer-box:focus {
+    border-color: #7F77DD;
+    box-shadow: 0 0 0 3px rgba(127,119,221,.18);
 }
 
-.dict-answer-reveal{
+.dict-answer-box.ok {
+    border-color: #16a34a;
+    background: #ffffff;
+    color: #16a34a;
+}
+
+.dict-answer-box.bad {
+    border-color: #dc2626;
+    background: #ffffff;
+    color: #dc2626;
+}
+
+.dict-answer-reveal {
     display: none;
-    margin-top: 10px;
-    border-radius: 14px;
-    border: 1px solid #fecdd3;
-    background: #fff1f2;
-    color: #9f1239;
-    padding: 10px;
-    font-weight: 700;
+    margin-top: 12px;
+    border-radius: 18px;
+    border: 1px solid #EDE9FA;
+    background: #EEEDFE;
+    color: #534AB7;
+    padding: 12px 14px;
+    font-family: 'Nunito', sans-serif;
+    font-size: 13px;
+    font-weight: 900;
+    text-align: center;
+    width: 100%;
+    box-sizing: border-box;
 }
 
-.dict-answer-reveal.show{
+.dict-answer-reveal.show {
     display: block;
 }
 
-.mc-btn-listen{
-    background:linear-gradient(180deg, #38bdf8 0%, #0ea5e9 100%);
+.dict-controls {
+    border-top: 1px solid #F0EEF8;
+    margin-top: 16px;
+    padding-top: 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    justify-content: center;
+    background: #ffffff;
+    position: relative;
+    z-index: 5;
 }
 
-.mc-btn-check{background:linear-gradient(180deg, #8b5cf6 0%, #7c3aed 100%)}
-.mc-btn-show{background:linear-gradient(180deg, #f9a8d4 0%, #ec4899 100%)}
-.mc-btn-next{background:linear-gradient(180deg, #2dd4bf 0%, #0f766e 100%)}
-
-.mc-status{
-    font-size:14px;
-    margin-bottom:8px;
+.dict-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 13px 20px;
+    min-width: clamp(112px, 16vw, 154px);
+    border: none;
+    border-radius: 999px;
+    font-family: 'Nunito', sans-serif;
+    font-size: 13px;
+    font-weight: 900;
+    color: #ffffff;
+    cursor: pointer;
+    white-space: nowrap;
+    pointer-events: auto;
+    transition: transform .12s, filter .12s, box-shadow .12s;
 }
 
-.dict-listen-row{
-    display:flex;
-    justify-content:center;
-    margin: 2mm 0 4mm 0;
+.dict-btn:hover {
+    filter: brightness(1.07);
+    transform: translateY(-1px);
 }
 
-.dict-listen-row .mc-btn{
-    min-width:160px;
+.dict-btn:active {
+    transform: scale(.98);
 }
 
-#dict-viewer{
-    width:100%;
-    max-width:100%;
+.dict-btn:disabled {
+    opacity: .45;
+    cursor: default;
+    transform: none;
+    filter: none;
+    box-shadow: none;
 }
 
-#dict-card{
-    display:flex;
-    flex-direction:column;
-    align-items:center;
-    justify-content:flex-start;
+.dict-btn-listen {
+    background: #7F77DD;
+    box-shadow: 0 6px 18px rgba(127,119,221,.18);
 }
 
-#dict-controls{
-    margin-top: 3mm;
-    margin-bottom: 4mm;
+.dict-btn-show {
+    background: #7F77DD;
+    box-shadow: 0 6px 18px rgba(127,119,221,.18);
 }
 
-.completed-screen{
-    display:none;
-    text-align:center;
-    max-width:600px;
-    margin:0 auto;
-    padding:40px 20px;
+.dict-btn-next {
+    background: #F97316;
+    box-shadow: 0 6px 18px rgba(249,115,22,.22);
 }
 
-.completed-screen.active{
-    display:block;
+.dict-feedback {
+    font-family: 'Nunito', sans-serif;
+    font-size: 13px;
+    font-weight: 900;
+    text-align: center;
+    min-height: 18px;
+    width: 100%;
+    margin-top: 10px;
 }
 
-.completed-icon{
-    font-size:80px;
-    margin-bottom:20px;
+.dict-feedback.good {
+    color: #16a34a;
 }
 
-.completed-title{
-    font-family:'Fredoka', 'Trebuchet MS', sans-serif;
-    font-size:36px;
-    font-weight:700;
-    color:#0f766e;
-    margin:0 0 16px;
-    line-height:1.2;
+.dict-feedback.bad {
+    color: #dc2626;
 }
 
-.completed-text{
-    font-size:16px;
-    color:#1f2937;
-    line-height:1.6;
-    margin:0 0 32px;
+.dict-completed {
+    display: none;
+    position: absolute;
+    inset: 0;
+    background: #ffffff;
+    border-radius: 34px;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 40px 24px;
+    gap: 12px;
+    z-index: 20;
 }
 
-.completed-button{
-    display:inline-block;
-    padding:12px 24px;
-    border:none;
-    border-radius:999px;
-    background:linear-gradient(180deg, #14b8a6 0%, #0f766e 100%);
-    color:#fff;
-    font-weight:700;
-    font-size:16px;
-    cursor:pointer;
-    box-shadow:0 10px 24px rgba(0,0,0,.14);
-    transition:transform .18s ease, filter .18s ease;
+.dict-completed.active {
+    display: flex;
 }
 
-.completed-button:hover{
-    transform:scale(1.05);
-    filter:brightness(1.07);
+.dict-completed-icon {
+    font-size: 64px;
+    line-height: 1;
+    margin-bottom: 4px;
+}
+
+.dict-completed-title {
+    font-family: 'Fredoka', sans-serif;
+    font-size: clamp(30px, 5.5vw, 58px);
+    font-weight: 700;
+    color: #F97316;
+    margin: 0;
+}
+
+.dict-completed-text {
+    font-family: 'Nunito', sans-serif;
+    font-size: clamp(13px, 1.8vw, 17px);
+    font-weight: 800;
+    color: #9B94BE;
+    margin: 0;
+}
+
+.dict-score-ring {
+    width: 96px;
+    height: 96px;
+    border-radius: 50%;
+    background: #EEEDFE;
+    border: 3px solid #EDE9FA;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.dict-score-pct {
+    font-family: 'Fredoka', sans-serif;
+    font-size: 28px;
+    font-weight: 700;
+    color: #534AB7;
+    line-height: 1;
+}
+
+.dict-score-lbl {
+    font-size: 10px;
+    font-weight: 900;
+    color: #7F77DD;
+    letter-spacing: .04em;
+}
+
+.dict-score-text {
+    font-family: 'Nunito', sans-serif;
+    font-size: 15px;
+    font-weight: 900;
+    color: #534AB7;
+    margin: 0;
+}
+
+.dict-restart {
+    background: #7F77DD;
+    color: #ffffff;
+    border: none;
+    border-radius: 999px;
+    padding: 13px 28px;
+    font-family: 'Nunito', sans-serif;
+    font-size: 13px;
+    font-weight: 900;
+    cursor: pointer;
+    box-shadow: 0 6px 18px rgba(127,119,221,.18);
+    transition: filter .15s, transform .15s;
+}
+
+.dict-restart:hover {
+    filter: brightness(1.07);
+    transform: scale(1.04);
+}
+
+@media (max-width: 640px) {
+    .dict-page {
+        padding: 12px;
+    }
+
+    .dict-topbar {
+        height: 30px;
+        margin-bottom: 4px;
+    }
+
+    .dict-kicker {
+        padding: 5px 11px;
+        font-size: 11px;
+        margin-bottom: 6px;
+    }
+
+    .dict-hero h1 {
+        font-size: clamp(26px, 8vw, 38px);
+    }
+
+    .dict-board {
+        border-radius: 26px;
+        padding: 14px;
+        width: 100%;
+    }
+
+    .dict-card {
+        border-radius: 22px;
+        padding: 16px;
+        min-height: 250px;
+    }
+
+    .dict-image {
+        max-height: 140px;
+    }
+
+    .dict-answer-box {
+        min-height: 120px;
+        border-radius: 18px;
+    }
+
+    .dict-controls {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 9px;
+    }
+
+    .dict-btn {
+        width: 100%;
+    }
+
+    .dict-completed {
+        border-radius: 26px;
+    }
 }
 </style>
 
-<div class="mc-viewer" id="dict-viewer">
-        <div class="mc-status" id="dict-status"></div>
+<div class="dict-page">
+    <div class="dict-app">
 
-        <div class="mc-card" id="dict-card">
-            <div class="dict-listen-row" id="dict-listen-row">
-                <button type="button" class="mc-btn mc-btn-listen" id="dict-listen">Listen</button>
+        <div class="dict-topbar">
+            <span class="dict-topbar-title">Dictation</span>
+        </div>
+
+        <div class="dict-hero">
+            <div class="dict-kicker">Activity</div>
+            <h1><?php echo htmlspecialchars($viewerTitle, ENT_QUOTES, 'UTF-8'); ?></h1>
+            <p>Listen carefully and write what you hear.</p>
+        </div>
+
+        <div class="dict-board" id="dict-viewer">
+
+            <div class="dict-progress">
+                <div class="dict-progress-track">
+                    <div class="dict-progress-fill" id="dict-progress-fill"></div>
+                </div>
+                <div class="dict-status" id="dict-status"></div>
             </div>
+
+            <div class="dict-card" id="dict-card">
+                <div class="dict-listen-row" id="dict-listen-row">
+                    <button type="button" class="dict-btn dict-btn-listen" id="dict-listen">Listen</button>
+                </div>
+
                 <div class="dict-prompt" id="dict-prompt"></div>
                 <div class="dict-hint" id="dict-hint"></div>
                 <img id="dict-image" class="dict-image" alt="">
                 <textarea id="dict-answer" class="dict-answer-box" placeholder="Write what you hear..."></textarea>
                 <div id="dict-reveal" class="dict-answer-reveal"></div>
-        </div>
+            </div>
 
-        <div class="mc-controls" id="dict-controls">
-                <button type="button" class="mc-btn mc-btn-show" id="dict-show">Show Answer</button>
-                <button type="button" class="mc-btn mc-btn-next" id="dict-next">Next</button>
-        </div>
+            <div class="dict-controls" id="dict-controls">
+                <button type="button" class="dict-btn dict-btn-show" id="dict-show">Show Answer</button>
+                <button type="button" class="dict-btn dict-btn-next" id="dict-next">Next</button>
+            </div>
 
-        <div class="mc-feedback" id="dict-feedback"></div>
+            <div class="dict-feedback" id="dict-feedback"></div>
 
-        <div id="dict-completed" class="completed-screen">
-            <div class="completed-icon">✅</div>
-            <h2 class="completed-title" id="dict-completed-title"></h2>
-            <p class="completed-text" id="dict-completed-text"></p>
-            <p class="completed-text" id="dict-score-text" style="font-weight:700;font-size:18px;color:#0f766e;"></p>
-            <button type="button" class="completed-button" id="dict-restart">Restart</button>
+            <div id="dict-completed" class="dict-completed">
+                <div class="dict-completed-icon">✅</div>
+                <h2 class="dict-completed-title" id="dict-completed-title"></h2>
+                <p class="dict-completed-text" id="dict-completed-text"></p>
+                <div class="dict-score-ring">
+                    <span class="dict-score-pct" id="dict-score-pct">—</span>
+                    <span class="dict-score-lbl">SCORE</span>
+                </div>
+                <p class="dict-score-text" id="dict-score-text"></p>
+                <button type="button" class="dict-restart" id="dict-restart">Restart</button>
+            </div>
+
         </div>
+    </div>
 </div>
 
-<link rel="stylesheet" href="../multiple_choice/multiple_choice.css?v=<?php echo urlencode($cssVersion); ?>">
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     var sourceData = Array.isArray(<?php echo json_encode($items, JSON_UNESCAPED_UNICODE); ?>) ? <?php echo json_encode($items, JSON_UNESCAPED_UNICODE); ?> : [];
     var data = sourceData.slice();
+
     if (data.length > 1) {
         data = data.sort(function () { return Math.random() - 0.5; }).slice(0, Math.max(1, Math.ceil(data.length * 0.75)));
     }
+
     var activityTitle = <?php echo json_encode($viewerTitle, JSON_UNESCAPED_UNICODE); ?>;
     var DICT_ACTIVITY_ID = <?php echo json_encode($activity['id'] ?? '', JSON_UNESCAPED_UNICODE); ?>;
     var DICT_RETURN_TO = <?php echo json_encode($returnTo, JSON_UNESCAPED_UNICODE); ?>;
 
     var statusEl = document.getElementById('dict-status');
+    var progressFillEl = document.getElementById('dict-progress-fill');
     var promptEl = document.getElementById('dict-prompt');
     var hintEl = document.getElementById('dict-hint');
     var imageEl = document.getElementById('dict-image');
@@ -515,6 +883,7 @@ document.addEventListener('DOMContentLoaded', function () {
     var completedTitleEl = document.getElementById('dict-completed-title');
     var completedTextEl = document.getElementById('dict-completed-text');
     var scoreTextEl = document.getElementById('dict-score-text');
+    var scorePctEl = document.getElementById('dict-score-pct');
 
     var listenBtn = document.getElementById('dict-listen');
     var showBtn = document.getElementById('dict-show');
@@ -541,7 +910,7 @@ document.addEventListener('DOMContentLoaded', function () {
     var dictCurrentAudio = null;
 
     if (completedTitleEl) {
-        completedTitleEl.textContent = activityTitle || 'Dictation Practice';
+        completedTitleEl.textContent = activityTitle || 'Dictation';
     }
 
     if (completedTextEl) {
@@ -595,30 +964,54 @@ document.addEventListener('DOMContentLoaded', function () {
         } catch (e) {}
     }
 
+    function setListenButtonLabel() {
+        if (!listenBtn) return;
+        if (isPaused) {
+            listenBtn.textContent = 'Resume';
+        } else if (isSpeaking) {
+            listenBtn.textContent = 'Pause';
+        } else {
+            listenBtn.textContent = 'Listen';
+        }
+    }
+
     function speakCurrent() {
         if (!data[index]) {
             return;
         }
 
-        // --- Audio file path ---
         if (data[index].audio) {
             var audioSrc = data[index].audio;
             if (!dictCurrentAudio || dictCurrentAudio.getAttribute('data-src') !== audioSrc) {
                 if (dictCurrentAudio) { dictCurrentAudio.pause(); }
                 dictCurrentAudio = new Audio(audioSrc);
                 dictCurrentAudio.setAttribute('data-src', audioSrc);
-                dictCurrentAudio.onended = function () { dictCurrentAudio = null; };
+                dictCurrentAudio.onended = function () {
+                    dictCurrentAudio = null;
+                    isSpeaking = false;
+                    isPaused = false;
+                    setListenButtonLabel();
+                };
             }
+
             if (!dictCurrentAudio.paused) {
                 dictCurrentAudio.pause();
+                isSpeaking = true;
+                isPaused = true;
             } else {
-                dictCurrentAudio.play().catch(function () {});
+                dictCurrentAudio.play().then(function () {
+                    isSpeaking = true;
+                    isPaused = false;
+                    setListenButtonLabel();
+                }).catch(function () {});
             }
+
+            setListenButtonLabel();
             return;
         }
 
-        // --- TTS path ---
         if (!window.speechSynthesis) { return; }
+
         var text = data[index].en || '';
         if (!text) { return; }
 
@@ -626,11 +1019,14 @@ document.addEventListener('DOMContentLoaded', function () {
             speechSynthesis.resume();
             isSpeaking = true;
             isPaused = false;
+            setListenButtonLabel();
+
             setTimeout(function () {
                 if (!speechSynthesis.speaking && speechOffset < speechSourceText.length) {
                     dictStartSpeechFromOffset();
                 }
             }, 80);
+
             return;
         }
 
@@ -638,6 +1034,7 @@ document.addEventListener('DOMContentLoaded', function () {
             speechSynthesis.pause();
             isSpeaking = true;
             isPaused = true;
+            setListenButtonLabel();
             return;
         }
 
@@ -650,77 +1047,139 @@ document.addEventListener('DOMContentLoaded', function () {
     function dictStartSpeechFromOffset() {
         var source = speechSourceText;
         if (!source) { return; }
+
         var safeOffset = Math.max(0, Math.min(speechOffset, source.length));
         var remaining = source.slice(safeOffset);
+
         if (!remaining.trim()) {
-            isSpeaking = false; isPaused = false; speechOffset = 0;
+            isSpeaking = false;
+            isPaused = false;
+            speechOffset = 0;
+            setListenButtonLabel();
             return;
         }
+
         speechSynthesis.cancel();
+
         speechSegmentStart = safeOffset;
         dictUtter = new SpeechSynthesisUtterance(remaining);
         dictUtter.lang = 'en-US';
         dictUtter.rate = 0.9;
-        const preferredVoice = getPreferredVoice('en-US');
+
+        var preferredVoice = getPreferredVoice('en-US');
         if (preferredVoice) dictUtter.voice = preferredVoice;
-        function getPreferredVoice(lang) {
-            lang = lang || 'en-US';
-            const voices = window.speechSynthesis ? window.speechSynthesis.getVoices() : [];
-            if (!Array.isArray(voices) || voices.length === 0) {
-                return null;
-            }
-            const langPrefix = lang.split('-')[0].toLowerCase();
-            const matchedVoices = voices.filter((voice) => {
-                const vl = String(voice.lang || '').toLowerCase();
-                return vl === lang.toLowerCase() || vl.startsWith(langPrefix + '-') || vl.startsWith(langPrefix + '_');
-            });
-            if (!matchedVoices.length) {
-                return voices[0] || null;
-            }
-            const femaleHints = ['female', 'woman', 'zira', 'samantha', 'karen', 'aria', 'jenny', 'emma', 'olivia', 'ava',
-                'paulina', 'sabina', 'esperanza', 'mónica', 'monica', 'conchita'];
-            const femaleVoice = matchedVoices.find((voice) => {
-                const label = (String(voice.name || '') + ' ' + String(voice.voiceURI || '')).toLowerCase();
-                return femaleHints.some((hint) => label.includes(hint));
-            });
-            return femaleVoice || matchedVoices[0];
-        }
-        dictUtter.onstart   = function () { isSpeaking = true; isPaused = false; };
-        dictUtter.onpause   = function () { isPaused = true; isSpeaking = true; };
-        dictUtter.onresume  = function () { isPaused = false; isSpeaking = true; };
+
+        dictUtter.onstart = function () {
+            isSpeaking = true;
+            isPaused = false;
+            setListenButtonLabel();
+        };
+
+        dictUtter.onpause = function () {
+            isPaused = true;
+            isSpeaking = true;
+            setListenButtonLabel();
+        };
+
+        dictUtter.onresume = function () {
+            isPaused = false;
+            isSpeaking = true;
+            setListenButtonLabel();
+        };
+
         dictUtter.onboundary = function (event) {
             if (typeof event.charIndex === 'number') {
                 speechOffset = Math.max(speechSegmentStart, Math.min(source.length, speechSegmentStart + event.charIndex));
             }
         };
+
         dictUtter.onend = function () {
             if (isPaused) { return; }
-            isSpeaking = false; isPaused = false; speechOffset = 0;
+            isSpeaking = false;
+            isPaused = false;
+            speechOffset = 0;
+            setListenButtonLabel();
         };
+
+        dictUtter.onerror = function () {
+            isSpeaking = false;
+            isPaused = false;
+            speechOffset = 0;
+            setListenButtonLabel();
+        };
+
         speechSynthesis.speak(dictUtter);
+    }
+
+    function getPreferredVoice(lang) {
+        lang = lang || 'en-US';
+        var voices = window.speechSynthesis ? window.speechSynthesis.getVoices() : [];
+
+        if (!Array.isArray(voices) || voices.length === 0) {
+            return null;
+        }
+
+        var langPrefix = lang.split('-')[0].toLowerCase();
+        var matchedVoices = voices.filter(function (voice) {
+            var vl = String(voice.lang || '').toLowerCase();
+            return vl === lang.toLowerCase() || vl.indexOf(langPrefix + '-') === 0 || vl.indexOf(langPrefix + '_') === 0;
+        });
+
+        if (!matchedVoices.length) {
+            return voices[0] || null;
+        }
+
+        var femaleHints = ['female', 'woman', 'zira', 'samantha', 'karen', 'aria', 'jenny', 'emma', 'olivia', 'ava',
+            'paulina', 'sabina', 'esperanza', 'mónica', 'monica', 'conchita'];
+
+        var femaleVoice = matchedVoices.find(function (voice) {
+            var label = (String(voice.name || '') + ' ' + String(voice.voiceURI || '')).toLowerCase();
+            return femaleHints.some(function (hint) { return label.indexOf(hint) !== -1; });
+        });
+
+        return femaleVoice || matchedVoices[0];
+    }
+
+    function updateProgress() {
+        var pct = data.length > 0 ? Math.round(((index + 1) / data.length) * 100) : 0;
+        statusEl.textContent = (index + 1) + ' / ' + data.length;
+        progressFillEl.style.width = pct + '%';
     }
 
     function loadCard() {
         var item = data[index] || {};
 
         if (window.speechSynthesis) { speechSynthesis.cancel(); }
-        isSpeaking = false; isPaused = false; speechOffset = 0; speechSourceText = ''; speechSegmentStart = 0; dictUtter = null;
-        if (dictCurrentAudio) { dictCurrentAudio.pause(); dictCurrentAudio = null; }
+
+        isSpeaking = false;
+        isPaused = false;
+        speechOffset = 0;
+        speechSourceText = '';
+        speechSegmentStart = 0;
+        dictUtter = null;
+
+        if (dictCurrentAudio) {
+            dictCurrentAudio.pause();
+            dictCurrentAudio = null;
+        }
+
+        setListenButtonLabel();
 
         finished = false;
         completedEl.classList.remove('active');
-        cardEl.style.display = 'block';
+        cardEl.style.display = 'flex';
         listenRowEl.style.display = 'flex';
         controlsEl.style.display = 'flex';
 
-        statusEl.textContent = (index + 1) + ' / ' + data.length;
+        updateProgress();
+
         promptEl.textContent = '';
         hintEl.textContent = '';
         answerEl.value = '';
         answerEl.className = 'dict-answer-box';
         answerEl.disabled = false;
         feedbackEl.textContent = '';
-        feedbackEl.className = 'mc-feedback';
+        feedbackEl.className = 'dict-feedback';
         revealEl.classList.remove('show');
         revealEl.textContent = item.en || '';
 
@@ -736,6 +1195,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
         nextBtn.disabled = false;
         nextBtn.textContent = index < data.length - 1 ? 'Next' : 'Finish';
+
+        setTimeout(function () {
+            answerEl.focus();
+        }, 80);
     }
 
     function checkAnswer() {
@@ -745,7 +1208,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         if (checkedCards[index]) {
             feedbackEl.textContent = 'Already graded. Press Next.';
-            feedbackEl.className = 'mc-feedback good';
+            feedbackEl.className = 'dict-feedback good';
             return;
         }
 
@@ -754,7 +1217,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         if (answer === '') {
             feedbackEl.textContent = 'Write an answer first.';
-            feedbackEl.className = 'mc-feedback bad';
+            feedbackEl.className = 'dict-feedback bad';
             return;
         }
 
@@ -762,8 +1225,8 @@ document.addEventListener('DOMContentLoaded', function () {
         attemptsByCard[index] = currentAttempts;
 
         if (answer === expected) {
-            feedbackEl.textContent = '\u2714 Right';
-            feedbackEl.className = 'mc-feedback good';
+            feedbackEl.textContent = 'Right!';
+            feedbackEl.className = 'dict-feedback good';
             answerEl.className = 'dict-answer-box ok';
             playSound(correctSound);
             checkedCards[index] = true;
@@ -773,16 +1236,16 @@ document.addEventListener('DOMContentLoaded', function () {
             answerEl.className = 'dict-answer-box bad';
 
             if (currentAttempts >= 2) {
-                feedbackEl.textContent = '\u2718 Wrong (2/2)';
-                feedbackEl.className = 'mc-feedback bad';
+                feedbackEl.textContent = 'Wrong (2/2)';
+                feedbackEl.className = 'dict-feedback bad';
                 playSound(wrongSound);
                 checkedCards[index] = true;
                 answerEl.disabled = true;
-                revealEl.textContent = 'You wrote: "' + answerEl.value + '"  ->  Correct: ' + (data[index].en || '');
+                revealEl.textContent = 'You wrote: "' + answerEl.value + '"  →  Correct: ' + (data[index].en || '');
                 revealEl.classList.add('show');
             } else {
-                feedbackEl.textContent = '\u2718 Wrong (1/2) - try again';
-                feedbackEl.className = 'mc-feedback bad';
+                feedbackEl.textContent = 'Wrong (1/2) — try again';
+                feedbackEl.className = 'dict-feedback bad';
                 playSound(wrongSound);
             }
         }
@@ -810,10 +1273,11 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         if (answerEl.value.trim() !== '') {
-            revealEl.textContent = 'You wrote: "' + answerEl.value + '"  ->  Correct: ' + (data[index].en || '');
+            revealEl.textContent = 'You wrote: "' + answerEl.value + '"  →  Correct: ' + (data[index].en || '');
         } else {
             revealEl.textContent = 'Correct: ' + (data[index].en || '');
         }
+
         revealEl.classList.add('show');
     }
 
@@ -822,7 +1286,8 @@ document.addEventListener('DOMContentLoaded', function () {
         cardEl.style.display = 'none';
         listenRowEl.style.display = 'none';
         controlsEl.style.display = 'none';
-        statusEl.textContent = 'Completed';
+        statusEl.textContent = 'Done';
+        progressFillEl.style.width = '100%';
         feedbackEl.textContent = '';
         completedEl.classList.add('active');
         playSound(doneSound);
@@ -833,8 +1298,13 @@ document.addEventListener('DOMContentLoaded', function () {
         if (completedTextEl) {
             completedTextEl.textContent = "You've completed " + (activityTitle || 'this activity') + '. Great job practicing.';
         }
+
         if (scoreTextEl) {
-            scoreTextEl.textContent = 'Score: ' + correctCount + ' / ' + totalCount + ' (' + pct + '%)';
+            scoreTextEl.textContent = correctCount + ' / ' + totalCount + ' correct';
+        }
+
+        if (scorePctEl) {
+            scorePctEl.textContent = pct + '%';
         }
 
         if (DICT_ACTIVITY_ID && DICT_RETURN_TO) {
@@ -882,13 +1352,15 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     if (!data.length) {
-        promptEl.textContent = 'No dictation data available.';
-        hintEl.textContent = '';
+        cardEl.style.display = 'flex';
         listenRowEl.style.display = 'none';
         controlsEl.style.display = 'none';
         statusEl.textContent = '';
+        progressFillEl.style.width = '0%';
         answerEl.style.display = 'none';
         imageEl.style.display = 'none';
+        feedbackEl.textContent = 'No dictation data available.';
+        feedbackEl.className = 'dict-feedback bad';
         return;
     }
 
@@ -896,7 +1368,9 @@ document.addEventListener('DOMContentLoaded', function () {
     showBtn.addEventListener('click', showAnswer);
     nextBtn.addEventListener('click', goNext);
     restartBtn.addEventListener('click', restart);
+
     answerEl.addEventListener('blur', autoCheckIfNeeded);
+
     answerEl.addEventListener('keydown', function (event) {
         if (event.key === 'Enter' && !event.shiftKey) {
             event.preventDefault();
