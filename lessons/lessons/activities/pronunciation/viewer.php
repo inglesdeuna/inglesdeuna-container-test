@@ -1219,7 +1219,7 @@ function checkAnswer() {
     var expected = normalizeText(getCurrentWord());
 
     if (said === '') {
-        els.feedback.textContent = 'You didn't record your voice.';
+        els.feedback.textContent = "You didn't record your voice.";
         els.feedback.className = 'pron-premium-feedback bad';
         return;
     }
