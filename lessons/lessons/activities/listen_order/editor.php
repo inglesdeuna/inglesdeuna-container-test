@@ -328,6 +328,20 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             }
         }
 
+        /* Video file upload */
+        $videoUrl = trim((string) ($videoExisting[$i] ?? ""));
+        if (
+            $videoFiles &&
+            isset($videoFiles["tmp_name"][$i]) &&
+            !empty($videoFiles["tmp_name"][$i]) &&
+            ($videoFiles["error"][$i] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_OK
+        ) {
+            $uploadedVideo = upload_to_cloudinary($videoFiles["tmp_name"][$i]);
+            if ($uploadedVideo) {
+                $videoUrl = $uploadedVideo;
+            }
+        }
+
         /* Drop zone background image */
         $dzSrc   = trim((string) ($dzExistingByBlock[$i] ?? ""));
         $dzLeft  = (int) ($dzLeftByBlock[$i]  ?? 0);
@@ -372,6 +386,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         $sanitized[] = [
             "id"             => $blockId !== "" ? $blockId : uniqid("listen_order_"),
             "sentence"       => $sentence,
+            "video_url"      => $videoUrl,
             "images"         => array_values($images),
             "dropZoneImages" => $dzImages,
         ];
