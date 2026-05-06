@@ -184,7 +184,7 @@ function normalize_match_title(string $title): string
     return $title !== '' ? $title : default_match_title();
 }
 
-function normalize_match_payload($rawData): array
+function normalize_match_payload(mixed $rawData): array
 {
     $default = array(
         'title' => default_match_title(),
@@ -370,46 +370,30 @@ if ($unit === '' && $activityId !== '') {
     $unit = resolve_unit_from_activity($pdo, $activityId);
 }
 
-$activity = load_match_activity($pdo, $activityId, $unit);
-$isPhaseOneOrTwo = is_phase_one_or_two_course($pdo, $unit, $returnTo);
+$activity    = load_match_activity($pdo, $activityId, $unit);
 $viewerTitle = isset($activity['title']) ? (string) $activity['title'] : default_match_title();
-$pairs = isset($activity['pairs']) && is_array($activity['pairs']) ? $activity['pairs'] : array();
-$matchCssVersion = (string) (@filemtime(__DIR__ . '/match.css') ?: time());
-$matchJsVersion = (string) (@filemtime(__DIR__ . '/match.js') ?: time());
-
-ob_start();
+$pairs       = isset($activity['pairs']) && is_array($activity['pairs']) ? $activity['pairs'] : array();
 
 $hasImages = array_reduce($pairs, function ($carry, $item) {
     return $carry || trim((string) ($item['right_image'] ?? $item['left_image'] ?? '')) !== '';
 }, false);
+
+ob_start();
 ?>
-
 <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@600;700;800;900&display=swap" rel="stylesheet">
-
 <style>
 :root{
-    --mc-orange:#F97316;
-    --mc-orange-soft:#FFF0E6;
-    --mc-orange-dark:#C2580A;
-    --mc-purple:#7F77DD;
-    --mc-purple-dark:#534AB7;
-    --mc-purple-soft:#EEEDFE;
-    --mc-green:#22c55e;
-    --mc-green-soft:#f0fdf4;
-    --mc-red:#ef4444;
-    --mc-red-soft:#fef2f2;
-    --mc-bg:#F5F3FF;
-    --mc-border:#EDE9FA;
-    --mc-ink:#271B5D;
-    --mc-muted:#9B94BE;
+    --mc-orange:#F97316;--mc-orange-soft:#FFF0E6;--mc-orange-dark:#C2580A;
+    --mc-purple:#7F77DD;--mc-purple-dark:#534AB7;--mc-purple-soft:#EEEDFE;
+    --mc-green:#22c55e;--mc-green-soft:#f0fdf4;
+    --mc-red:#ef4444;--mc-red-soft:#fef2f2;
+    --mc-bg:#F5F3FF;--mc-border:#EDE9FA;--mc-ink:#271B5D;--mc-muted:#9B94BE;
 }
 html,body{width:100%;min-height:100%;}
 body{margin:0!important;padding:0!important;background:var(--mc-bg)!important;font-family:'Nunito','Segoe UI',sans-serif!important;}
 .activity-wrapper{max-width:100%!important;margin:0!important;padding:0!important;min-height:100vh;display:flex!important;flex-direction:column!important;background:transparent!important;}
-.top-row,.activity-header,.activity-title,.activity-subtitle{display:none!important;}
+.top-row,.activity-header,.activity-title,.activity-subtitle,.viewer-header{display:none!important;}
 .viewer-content{flex:1!important;display:flex!important;flex-direction:column!important;padding:0!important;margin:0!important;background:transparent!important;border:none!important;box-shadow:none!important;border-radius:0!important;}
-.viewer-header{display:none!important;}
-
 .mc-page{width:100%;min-height:100vh;padding:clamp(16px,3vw,40px);box-sizing:border-box;display:flex;justify-content:center;align-items:flex-start;background:var(--mc-bg);}
 .mc-app{width:min(900px,100%);display:grid;gap:clamp(16px,2vw,22px);}
 .mc-hero{text-align:center;display:grid;gap:8px;justify-items:center;}
@@ -420,17 +404,17 @@ body{margin:0!important;padding:0!important;background:var(--mc-bg)!important;fo
 .mc-progress-row{display:grid;grid-template-columns:1fr auto;gap:12px;align-items:center;}
 .mc-progress-track{height:10px;background:#F4F2FD;border:1px solid #E4E1F8;border-radius:999px;overflow:hidden;}
 .mc-progress-fill{height:100%;width:0%;background:linear-gradient(90deg,var(--mc-orange),var(--mc-purple));border-radius:999px;transition:width .4s ease;}
-.mc-score-badge{background:var(--mc-purple);color:#fff;border-radius:999px;padding:5px 16px;font-size:12px;font-weight:900;white-space:nowrap;font-family:'Nunito',sans-serif;}
+.mc-score-badge{background:var(--mc-purple);color:#fff;border-radius:999px;padding:5px 16px;font-size:12px;font-weight:900;white-space:nowrap;}
 .mc-toggle{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;}
 .mc-mode-btn{padding:8px 18px;border-radius:999px;border:1.5px solid var(--mc-border);background:#fff;color:var(--mc-purple-dark);font-family:'Nunito',sans-serif;font-size:12px;font-weight:900;cursor:pointer;transition:background .18s,border-color .18s,color .18s;}
 .mc-mode-btn.active{background:var(--mc-purple);border-color:var(--mc-purple);color:#fff;}
 .mc-hint-wrap{display:flex;justify-content:center;}
-.mc-hint{display:inline-flex;align-items:center;padding:5px 14px;border-radius:999px;background:var(--mc-orange-soft);border:1px solid #FCDDBF;color:var(--mc-orange-dark);font-size:12px;font-weight:900;font-family:'Nunito',sans-serif;transition:background .2s,border-color .2s,color .2s;}
+.mc-hint{display:inline-flex;align-items:center;padding:5px 14px;border-radius:999px;background:var(--mc-orange-soft);border:1px solid #FCDDBF;color:var(--mc-orange-dark);font-size:12px;font-weight:900;transition:background .2s,border-color .2s,color .2s;}
 .mc-hint.hint-selected{background:var(--mc-purple-soft);border-color:#C5C0F0;color:var(--mc-purple-dark);}
 .mc-hint.hint-correct{background:#E6F9F2;border-color:#9FE1CB;color:#0F6E56;}
 .mc-hint.hint-wrong{background:#FEF2F2;border-color:#FECACA;color:#B91C1C;}
 .mc-hint.hint-complete{background:#E6F9F2;border-color:#9FE1CB;color:#0F6E56;}
-.mc-section-label{font-size:11px;font-weight:900;color:var(--mc-muted);text-transform:uppercase;letter-spacing:.09em;font-family:'Nunito',sans-serif;text-align:center;margin-bottom:6px;}
+.mc-section-label{font-size:11px;font-weight:900;color:var(--mc-muted);text-transform:uppercase;letter-spacing:.09em;text-align:center;margin-bottom:6px;}
 .mc-words-row{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;}
 .mc-word-card{padding:12px 22px;border:2px solid var(--mc-border);border-radius:14px;background:#fff;font-family:'Fredoka',sans-serif;font-size:clamp(16px,2.2vw,20px);font-weight:600;color:var(--mc-ink);cursor:pointer;transition:transform .18s,box-shadow .18s,border-color .18s,background .18s;user-select:none;min-width:80px;text-align:center;box-shadow:0 3px 10px rgba(127,119,221,.07);}
 .mc-word-card:hover:not(.matched):not(.wrong){transform:translateY(-3px);box-shadow:0 8px 22px rgba(127,119,221,.16);}
@@ -461,942 +445,283 @@ body{margin:0!important;padding:0!important;background:var(--mc-bg)!important;fo
 .mc-score-lbl{margin-top:5px;font-size:10px;font-weight:900;color:var(--mc-muted);text-transform:uppercase;letter-spacing:.08em;}
 .mc-empty{text-align:center;padding:48px 24px;color:var(--mc-muted);font-size:17px;font-weight:800;}
 @media(max-width:600px){.mc-board{padding:16px;border-radius:22px;}.mc-score-grid{grid-template-columns:1fr;}.mc-img-card{width:clamp(80px,25vw,100px);height:clamp(80px,25vw,100px);}}
-
-/* legacy classes kept empty to avoid conflicts */
-.match-shell,.match-app,.match-chip,.match-card-chip,.match-text-chip{}
-
-/* end styles */
-
-.match-kicker{
-    display:inline-flex;
-    align-items:center;
-    justify-content:center;
-    background:#FFF0E6;
-    border:1px solid #FCDDBF;
-    color:#C2580A;
-    border-radius:999px;
-    padding:5px 14px;
-    font-family:'Nunito','Segoe UI',sans-serif;
-    font-weight:900;
-    font-size:11px;
-    line-height:1;
-    text-transform:uppercase;
-    letter-spacing:.09em;
-}
-
-.match-title{
-    margin:0;
-    font-family:'Fredoka','Trebuchet MS',sans-serif;
-    font-weight:700;
-    color:#F97316;
-    font-size:clamp(30px, 5.5vw, 58px);
-    line-height:1;
-}
-
-.match-subtitle{
-    margin:0;
-    color:#9B94BE;
-    font-family:'Nunito','Segoe UI',sans-serif;
-    font-weight:800;
-    font-size:15px;
-}
-
-.match-board{
-    background:#ffffff;
-    border:1px solid #F0EEF8;
-    border-radius:28px;
-    padding:22px;
-    box-shadow:0 8px 40px rgba(127,119,221,.13);
-    overflow:visible;
-}
-
-.match-progress{
-    display:grid;
-    grid-template-columns:minmax(0,1fr) auto;
-    gap:12px;
-    align-items:center;
-    margin-bottom:14px;
-}
-
-.match-progress-track{
-    height:9px;
-    background:#F4F2FD;
-    border:1px solid #E4E1F8;
-    border-radius:999px;
-    overflow:hidden;
-}
-
-.match-progress-fill{
-    height:100%;
-    width:0%;
-    background:linear-gradient(90deg, #F97316, #7F77DD);
-    border-radius:999px;
-    transition:width .4s ease;
-}
-
-.match-progress-count{
-    background:#7F77DD;
-    color:#fff;
-    border-radius:999px;
-    padding:5px 15px;
-    font-family:'Nunito','Segoe UI',sans-serif;
-    font-weight:900;
-    font-size:12px;
-    white-space:nowrap;
-}
-
-.match-view-toggle{
-    display:flex;
-    justify-content:center;
-    gap:8px;
-    flex-wrap:wrap;
-    margin:4px 0 10px;
-}
-
-.match-view-toggle.is-hidden{
-    display:none;
-}
-
-.match-toggle-btn{
-    border:1.5px solid #EDE9FA;
-    background:#fff;
-    color:#534AB7;
-    border-radius:999px;
-    padding:8px 14px;
-    font-family:'Nunito','Segoe UI',sans-serif;
-    font-weight:900;
-    font-size:12px;
-    cursor:pointer;
-    transition:transform .18s ease, box-shadow .18s ease, background .18s ease;
-}
-
-.match-toggle-btn.is-active{
-    background:#7F77DD;
-    color:#fff;
-    border-color:#7F77DD;
-    box-shadow:0 4px 14px rgba(127,119,221,.22);
-}
-
-.match-hint-wrap{
-    display:flex;
-    justify-content:center;
-    margin:0 0 16px;
-}
-
-.match-hint{
-    display:inline-flex;
-    align-items:center;
-    justify-content:center;
-    min-height:24px;
-    background:#FFF0E6;
-    color:#C2580A;
-    border:1px solid #FCDDBF;
-    border-radius:999px;
-    padding:4px 12px;
-    font-family:'Nunito','Segoe UI',sans-serif;
-    font-weight:900;
-    font-size:12px;
-    line-height:1.2;
-    text-align:center;
-}
-
-.match-hint.is-selected{
-    background:#EEEDFE;
-    color:#534AB7;
-    border-color:#CECBF6;
-}
-
-.match-hint.is-correct,
-.match-hint.is-complete{
-    background:#E6F9F2;
-    color:#0F6E56;
-    border-color:#9FE1CB;
-}
-
-.match-hint.is-wrong{
-    background:#FFF0E6;
-    color:#C2580A;
-    border-color:#FCDDBF;
-}
-
-.match-rows{
-    display:grid;
-    gap:14px;
-}
-
-.match-image-row,
-.match-text-column{
-    display:flex;
-    flex-wrap:wrap;
-    gap:12px;
-    justify-content:center;
-}
-
-.match-divider{
-    display:flex;
-    align-items:center;
-    gap:9px;
-    margin:6px 0;
-}
-
-.match-divider::before,
-.match-divider::after{
-    content:'';
-    height:1px;
-    background:#F0EEF8;
-    flex:1;
-}
-
-.match-divider-label{
-    display:inline-flex;
-    align-items:center;
-    gap:7px;
-    font-family:'Nunito','Segoe UI',sans-serif;
-    font-weight:900;
-    font-size:11px;
-    text-transform:uppercase;
-    letter-spacing:.1em;
-    color:#9B94BE;
-    white-space:nowrap;
-}
-
-.match-dot{
-    width:8px;
-    height:8px;
-    border-radius:50%;
-    background:#F97316;
-}
-
-.match-dot.match-dot-purple{
-    background:#7F77DD;
-}
-
-.match-chip{
-    position:relative;
-    border:2px solid #EDE9FA;
-    background:#fff;
-    color:#271B5D;
-    font-family:'Nunito','Segoe UI',sans-serif;
-    font-weight:900;
-    cursor:pointer;
-    transition:transform .18s ease, box-shadow .18s ease, border-color .18s ease, background .18s ease, color .18s ease, opacity .18s ease;
-    box-sizing:border-box;
-}
-
-.match-chip:hover{
-    transform:translateY(-3px);
-    box-shadow:0 10px 24px rgba(127,119,221,.16);
-}
-
-.match-card-chip{
-    width:120px;
-    border-radius:18px;
-    box-shadow:0 4px 14px rgba(127,119,221,.08);
-    overflow:hidden;
-    padding:0;
-}
-
-.match-chip-media{
-    height:90px;
-    background:#FAFAFE;
-    border-bottom:1px solid #EDE9FA;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    padding:8px;
-    box-sizing:border-box;
-    font-family:'Fredoka','Trebuchet MS',sans-serif;
-    font-weight:700;
-    color:#271B5D;
-    font-size:15px;
-    line-height:1.15;
-    text-align:center;
-    word-break:break-word;
-}
-
-.match-chip-media img{
-    display:block;
-    max-width:80%;
-    max-height:80%;
-    object-fit:contain;
-}
-
-.match-chip-label{
-    min-height:30px;
-    padding:8px 6px;
-    font-size:12px;
-    color:#271B5D;
-    text-align:center;
-    line-height:1.15;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    box-sizing:border-box;
-}
-
-.match-chip.is-selected-en{
-    border-color:#F97316;
-    background:#FFF8F4;
-    box-shadow:0 0 0 3px rgba(249,115,22,.18);
-    transform:translateY(-4px) scale(1.03);
-}
-
-.match-chip.is-selected-match{
-    border-color:#7F77DD;
-    background:#F5F4FF;
-    box-shadow:0 0 0 3px rgba(127,119,221,.18);
-    transform:translateY(-4px) scale(1.03);
-}
-
-.match-chip.is-matched{
-    border-color:#1D9E75;
-    background:#F0FDF9;
-    box-shadow:0 4px 14px rgba(29,158,117,.18);
-    cursor:default;
-    opacity:.85;
-}
-
-.match-chip.is-wrong{
-    border-color:#E24B4A;
-    background:#FFF5F5;
-    animation:shake .3s ease;
-}
-
-.match-badge{
-    position:absolute;
-    top:6px;
-    right:6px;
-    width:20px;
-    height:20px;
-    border-radius:50%;
-    background:#1D9E75;
-    color:#fff;
-    font-size:11px;
-    font-family:'Nunito','Segoe UI',sans-serif;
-    font-weight:900;
-    display:none;
-    align-items:center;
-    justify-content:center;
-}
-
-.match-chip.is-matched .match-badge{
-    display:flex;
-}
-
-.match-text-grid{
-    display:grid;
-    grid-template-columns:1fr 1fr;
-    gap:14px;
-}
-
-.match-text-column{
-    align-content:flex-start;
-}
-
-.match-text-chip{
-    width:100%;
-    padding:14px 18px;
-    border-radius:14px;
-    font-size:14px;
-    text-align:center;
-    box-shadow:0 3px 10px rgba(127,119,221,.06);
-}
-
-.match-text-chip:hover{
-    transform:translateY(-2px);
-    box-shadow:0 8px 20px rgba(127,119,221,.13);
-}
-
-.match-text-chip.is-selected-en{
-    background:#FFF0E6;
-    border-color:#F97316;
-    color:#C2580A;
-    box-shadow:0 0 0 3px rgba(249,115,22,.15);
-}
-
-.match-text-chip.is-selected-match{
-    background:#EEEDFE;
-    border-color:#7F77DD;
-    color:#534AB7;
-    box-shadow:0 0 0 3px rgba(127,119,221,.15);
-}
-
-.match-text-chip.is-matched.match-en{
-    background:linear-gradient(135deg,#F97316,#C2580A);
-    border-color:#F97316;
-    color:#fff;
-    cursor:default;
-}
-
-.match-text-chip.is-matched.match-pair{
-    background:linear-gradient(135deg,#7F77DD,#534AB7);
-    border-color:#7F77DD;
-    color:#fff;
-    cursor:default;
-}
-
-.match-text-chip.is-wrong{
-    background:#FCEBEB;
-    border-color:#E24B4A;
-    color:#A32D2D;
-    animation:shake .3s ease;
-}
-
-.match-score-cards{
-    display:none;
-    grid-template-columns:repeat(3, 1fr);
-    gap:10px;
-    margin-top:16px;
-}
-
-.match-score-cards.is-visible{
-    display:grid;
-}
-
-.match-score-card{
-    background:#FAFAFE;
-    border:1px solid #EDE9FA;
-    border-radius:14px;
-    padding:12px;
-    text-align:center;
-}
-
-.match-score-number{
-    font-family:'Fredoka','Trebuchet MS',sans-serif;
-    font-weight:700;
-    font-size:28px;
-    line-height:1;
-}
-
-.match-score-number.is-correct{ color:#1D9E75; }
-.match-score-number.is-wrong{ color:#F97316; }
-.match-score-number.is-percent{ color:#7F77DD; }
-
-.match-score-label{
-    margin-top:5px;
-    font-family:'Nunito','Segoe UI',sans-serif;
-    font-weight:900;
-    font-size:10px;
-    text-transform:uppercase;
-    color:#9B94BE;
-    letter-spacing:.08em;
-}
-
-.match-actions{
-    display:flex;
-    justify-content:center;
-    gap:10px;
-    flex-wrap:wrap;
-    margin-top:16px;
-}
-
-.match-action-btn{
-    border-radius:999px;
-    padding:11px 18px;
-    font-family:'Nunito','Segoe UI',sans-serif;
-    font-weight:900;
-    font-size:13px;
-    cursor:pointer;
-    transition:transform .18s ease, box-shadow .18s ease, filter .18s ease;
-}
-
-.match-action-btn:hover{
-    transform:translateY(-2px);
-}
-
-.match-reset-btn{
-    background:#fff;
-    color:#534AB7;
-    border:1.5px solid #EDE9FA;
-}
-
-.match-answer-btn{
-    background:#7F77DD;
-    color:#fff;
-    border:1.5px solid #7F77DD;
-}
-
-.match-check-btn{
-    background:#F97316;
-    color:#fff;
-    border:1.5px solid #F97316;
-}
-
-.match-empty{
-    max-width:700px;
-    margin:30px auto;
-    background:#ffffff;
-    border:1px solid #F0EEF8;
-    border-radius:18px;
-    padding:24px;
-    text-align:center;
-    box-shadow:0 8px 40px rgba(127,119,221,.13);
-    color:#9B94BE;
-    font-family:'Nunito','Segoe UI',sans-serif;
-    font-size:18px;
-    font-weight:900;
-}
-
-.match-final-completed-screen{
-    display:none;
-}
-
-@keyframes shake{
-    0%,100%{transform:translateX(0)}
-    25%{transform:translateX(-6px)}
-    75%{transform:translateX(6px)}
-}
-
-body.embedded-mode .match-shell,
-body.fullscreen-embedded .match-shell,
-body.presentation-mode .match-shell {
-    position:absolute!important;
-    inset:0!important;
-    max-width:none!important;
-    margin:0!important;
-    padding:10px 12px!important;
-    border-radius:0!important;
-    display:flex!important;
-    flex-direction:column!important;
-    align-items:center!important;
-    justify-content:flex-start!important;
-    overflow-y:auto!important;
-    overflow-x:hidden!important;
-}
-
-body.embedded-mode .match-actions,
-body.fullscreen-embedded .match-actions,
-body.presentation-mode .match-actions {
-    flex-shrink:0!important;
-    padding-bottom:12px!important;
-}
-
-@media (max-width: 700px){
-    .match-board{
-        padding:16px;
-        border-radius:22px;
-    }
-
-    .match-text-grid{
-        grid-template-columns:1fr;
-    }
-
-    .match-score-cards{
-        grid-template-columns:1fr;
-    }
-}
 </style>
 
-<?= render_activity_header($viewerTitle) ?>
-<?php if (empty($pairs)) { ?>
-    <div class="match-shell">
-        <div class="match-empty">No match data available.</div>
+<?php if (empty($pairs)): ?>
+<div class="mc-page"><div class="mc-app"><div class="mc-empty">No match data available.</div></div></div>
+<?php else: ?>
+
+<div class="mc-page">
+    <div class="mc-app">
+
+        <header class="mc-hero">
+            <div class="mc-kicker">Match Activity</div>
+            <h1 class="mc-title"><?= htmlspecialchars($viewerTitle, ENT_QUOTES, 'UTF-8') ?></h1>
+            <p class="mc-subtitle">Tap a word, then tap its matching pair.</p>
+        </header>
+
+        <main class="mc-board">
+
+            <div class="mc-progress-row">
+                <div class="mc-progress-track">
+                    <div class="mc-progress-fill" id="mc-fill"></div>
+                </div>
+                <div class="mc-score-badge" id="mc-badge">0 / <?= count($pairs) ?></div>
+            </div>
+
+            <?php if ($hasImages): ?>
+            <div class="mc-toggle">
+                <button type="button" class="mc-mode-btn active" data-mode="image">Image only</button>
+                <button type="button" class="mc-mode-btn" data-mode="text">Text only</button>
+            </div>
+            <?php endif; ?>
+
+            <div class="mc-hint-wrap">
+                <div class="mc-hint" id="mc-hint">Tap a word to start</div>
+            </div>
+
+            <div>
+                <div class="mc-section-label">Words</div>
+                <div class="mc-words-row" id="mc-words"></div>
+            </div>
+
+            <div class="mc-divider"></div>
+
+            <div>
+                <div class="mc-section-label" id="mc-img-label">Match</div>
+                <div class="mc-imgs-row" id="mc-imgs"></div>
+            </div>
+
+            <div class="mc-score-grid" id="mc-score-grid">
+                <div class="mc-score-card">
+                    <div class="mc-score-num is-correct" id="mc-s-correct">0</div>
+                    <div class="mc-score-lbl">Correct</div>
+                </div>
+                <div class="mc-score-card">
+                    <div class="mc-score-num is-wrong" id="mc-s-wrong">0</div>
+                    <div class="mc-score-lbl">Wrong</div>
+                </div>
+                <div class="mc-score-card">
+                    <div class="mc-score-num is-pct" id="mc-s-pct">0%</div>
+                    <div class="mc-score-lbl">Score</div>
+                </div>
+            </div>
+
+            <div class="mc-actions">
+                <button type="button" class="mc-btn mc-btn-check" id="mc-check">Check</button>
+                <button type="button" class="mc-btn mc-btn-answer" id="mc-answer">Show Answer</button>
+                <button type="button" class="mc-btn mc-btn-reset" id="mc-reset">Reset</button>
+            </div>
+
+        </main>
     </div>
-<?php } else { ?>
-    <div class="match-shell">
-        <div class="match-app">
-            <header class="match-hero">
-                <div class="match-kicker">Match Activity</div>
-                <h1 class="match-title"><?= htmlspecialchars($viewerTitle, ENT_QUOTES, 'UTF-8') ?></h1>
-                <p class="match-subtitle">Tap a word, then tap its matching pair.</p>
-            </header>
+</div>
 
-            <main class="match-board" id="match-board">
-                <div class="match-progress">
-                    <div class="match-progress-track" aria-hidden="true">
-                        <div class="match-progress-fill" id="match-progress-fill"></div>
-                    </div>
-                    <div class="match-progress-count" id="match-progress-count">0 / 0</div>
-                </div>
+<script>
+(function () {
+const PAIRS     = <?= json_encode(array_values($pairs), JSON_UNESCAPED_UNICODE) ?>;
+const RETURN_TO = <?= json_encode($returnTo, JSON_UNESCAPED_UNICODE) ?>;
+const ACT_ID    = <?= json_encode((string) ($activity['id'] ?? ''), JSON_UNESCAPED_UNICODE) ?>;
+const TOTAL     = PAIRS.length;
+const HAS_IMG   = <?= $hasImages ? 'true' : 'false' ?>;
 
-                <div class="match-view-toggle" id="match-view-toggle">
-                    <button type="button" class="match-toggle-btn" data-mode="image">Image + Text</button>
-                    <button type="button" class="match-toggle-btn" data-mode="text">Text only</button>
-                </div>
+const fillEl    = document.getElementById('mc-fill');
+const badgeEl   = document.getElementById('mc-badge');
+const hintEl    = document.getElementById('mc-hint');
+const wordsEl   = document.getElementById('mc-words');
+const imgsEl    = document.getElementById('mc-imgs');
+const imgLabel  = document.getElementById('mc-img-label');
+const scoreGrid = document.getElementById('mc-score-grid');
+const sCorrect  = document.getElementById('mc-s-correct');
+const sWrong    = document.getElementById('mc-s-wrong');
+const sPct      = document.getElementById('mc-s-pct');
 
-                <div class="match-hint-wrap">
-                    <div class="match-hint" id="match-hint">Tap a word to start</div>
-                </div>
+let mode      = HAS_IMG ? 'image' : 'text';
+let matched   = new Set();
+let wrongs    = 0;
+let selWord   = null;
+let animating = false;
+let wordOrder = [];
+let imgOrder  = [];
 
-                <div id="match-stage" class="match-stage<?= $isPhaseOneOrTwo ? ' match-phase-12' : '' ?>"></div>
+const esc   = s => String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const byId  = id => PAIRS.find(p => String(p.id) === String(id));
+const word  = p => String(p.left_text  || p.right_text || p.text || p.word || '').trim();
+const match = p => String(p.right_text || p.left_text  || p.text || p.word || '').trim();
+const img   = p => String(p.right_image || p.left_image || p.image || p.img || '').trim();
 
-                <div class="match-score-cards" id="match-score-cards">
-                    <div class="match-score-card">
-                        <div class="match-score-number is-correct" id="match-score-correct">0</div>
-                        <div class="match-score-label">Correct</div>
-                    </div>
-                    <div class="match-score-card">
-                        <div class="match-score-number is-wrong" id="match-score-wrong">0</div>
-                        <div class="match-score-label">Wrong</div>
-                    </div>
-                    <div class="match-score-card">
-                        <div class="match-score-number is-percent" id="match-score-percent">0%</div>
-                        <div class="match-score-label">Score</div>
-                    </div>
-                </div>
+function shuffle(arr) {
+    const a = [...arr];
+    for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+}
 
-                <div class="match-actions">
-                    <button type="button" class="match-action-btn match-reset-btn" id="match-reset-btn">Reset</button>
-                    <button type="button" class="match-action-btn match-answer-btn" id="match-answer-btn">Show Answer</button>
-                    <button type="button" class="match-action-btn match-check-btn" id="match-check-btn">Check</button>
-                </div>
-            </main>
-        </div>
-    </div>
+function setHint(text, cls) {
+    hintEl.textContent = text;
+    hintEl.className = 'mc-hint' + (cls ? ' hint-' + cls : '');
+}
 
-    <div id="match-final-completed" class="match-final-completed-screen">
-        <p class="match-fc-score" id="match-fc-score-text"></p>
-        <p class="match-fc-text" id="match-fc-sub-text"></p>
-        <button type="button" id="match-fc-restart-btn" style="display:none;">Try Again</button>
-        <button type="button" id="match-fc-continue-btn" style="display:none;">Continue &rarr;</button>
-    </div>
+function updateProgress() {
+    const pct = TOTAL > 0 ? Math.round((matched.size / TOTAL) * 100) : 0;
+    fillEl.style.width = pct + '%';
+    badgeEl.textContent = matched.size + ' / ' + TOTAL;
+}
 
-    <script>
-    const MATCH_DATA = <?= json_encode($pairs, JSON_UNESCAPED_UNICODE) ?>;
-    const MATCH_RETURN_TO = <?= json_encode($returnTo, JSON_UNESCAPED_UNICODE) ?>;
-    const MATCH_ACTIVITY_ID = <?= json_encode((string) ($activity['id'] ?? ''), JSON_UNESCAPED_UNICODE) ?>;
-    const MATCH_PHASE12 = <?= json_encode($isPhaseOneOrTwo) ?>;
-    </script>
+function updateScores(show) {
+    const attempts = matched.size + wrongs;
+    const pct = attempts > 0 ? Math.round((matched.size / attempts) * 100) : 0;
+    sCorrect.textContent = matched.size;
+    sWrong.textContent   = wrongs;
+    sPct.textContent     = pct + '%';
+    scoreGrid.classList.toggle('visible', !!show);
+}
 
-    <script>
-    (function () {
-        const pairs = Array.isArray(MATCH_DATA) ? MATCH_DATA : [];
-        const total = pairs.length;
-        const hasImages = pairs.some((item) => {
-            return String(item.left_image || item.right_image || item.image || item.img || '').trim() !== '';
-        });
+function renderWords() {
+    wordsEl.innerHTML = wordOrder.map(id => {
+        const p = byId(id);
+        if (!p) return '';
+        const cls = ['mc-word-card', matched.has(id) ? 'matched' : '', selWord === id ? 'selected' : ''].filter(Boolean).join(' ');
+        return `<button type="button" class="${cls}" data-id="${esc(id)}">${esc(word(p))}</button>`;
+    }).join('');
+    wordsEl.querySelectorAll('[data-id]').forEach(btn => btn.addEventListener('click', () => tapWord(btn.dataset.id)));
+}
 
-        const stage = document.getElementById('match-stage');
-        const hint = document.getElementById('match-hint');
-        const progressFill = document.getElementById('match-progress-fill');
-        const progressCount = document.getElementById('match-progress-count');
-        const toggle = document.getElementById('match-view-toggle');
-        const scoreCards = document.getElementById('match-score-cards');
-        const scoreCorrect = document.getElementById('match-score-correct');
-        const scoreWrong = document.getElementById('match-score-wrong');
-        const scorePercent = document.getElementById('match-score-percent');
-        const resetBtn = document.getElementById('match-reset-btn');
-        const answerBtn = document.getElementById('match-answer-btn');
-        const checkBtn = document.getElementById('match-check-btn');
-        const continueBtn = document.getElementById('match-fc-continue-btn');
-
-        let selectedEn = null;
-        let selectedMatch = null;
-        let matched = [];
-        let wrongs = 0;
-        let viewMode = hasImages ? 'image' : 'text';
-        let wrongFlash = null;
-        let hintState = 'default';
-        let hintText = 'Tap a word to start';
-        let scoreVisible = false;
-
-        const escapeHtml = (value) => String(value || '')
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#039;');
-
-        const getLeftText = (item) => String(item.left_text || item.text || item.word || 'Word').trim();
-        const getRightText = (item) => String(item.right_text || item.translation || item.text || item.word || 'Match').trim();
-        const getImage = (item) => String(item.right_image || item.left_image || item.image || item.img || '').trim();
-
-        function setHint(text, state) {
-            hintText = text;
-            hintState = state || 'default';
-            if (hint) {
-                hint.textContent = hintText;
-                hint.className = 'match-hint' + (hintState !== 'default' ? ' is-' + hintState : '');
-            }
-        }
-
-        function isMatched(id) {
-            return matched.indexOf(id) !== -1;
-        }
-
-        function updateProgress() {
-            const count = matched.length;
-            const percent = total > 0 ? Math.round((count / total) * 100) : 0;
-            if (progressFill) {
-                progressFill.style.width = percent + '%';
-            }
-            if (progressCount) {
-                progressCount.textContent = count + ' / ' + total;
-            }
-        }
-
-        function updateScores(show) {
-            const attempts = matched.length + wrongs;
-            const percent = attempts > 0 ? Math.round((matched.length / attempts) * 100) : 0;
-
-            if (scoreCorrect) {
-                scoreCorrect.textContent = matched.length;
-            }
-            if (scoreWrong) {
-                scoreWrong.textContent = wrongs;
-            }
-            if (scorePercent) {
-                scorePercent.textContent = percent + '%';
-            }
-            if (scoreCards) {
-                scoreCards.classList.toggle('is-visible', !!show);
-            }
-        }
-
-        function chipClasses(item, side, baseClass) {
-            const id = String(item.id);
-            const classes = ['match-chip', baseClass || ''];
-            if (side === 'en') {
-                classes.push('match-en');
-                if (selectedEn === id) {
-                    classes.push('is-selected-en');
-                }
+function renderImgs() {
+    imgLabel.textContent = mode === 'image' ? 'Images' : 'Match';
+    imgsEl.innerHTML = imgOrder.map(id => {
+        const p = byId(id);
+        if (!p) return '';
+        const cls = ['mc-img-card', matched.has(id) ? 'matched' : ''].filter(Boolean).join(' ');
+        let inner = '';
+        if (mode === 'image') {
+            const src = img(p);
+            if (src) {
+                inner = src.match(/\.(mp4|webm|ogg|mov|m4v)$/i)
+                    ? `<video src="${esc(src)}" autoplay muted loop playsinline></video>`
+                    : `<img src="${esc(src)}" alt="${esc(match(p))}">`;
             } else {
-                classes.push('match-pair');
-                if (selectedMatch === id) {
-                    classes.push('is-selected-match');
-                }
+                inner = esc(match(p));
             }
-            if (isMatched(id)) {
-                classes.push('is-matched');
-            }
-            if (wrongFlash && wrongFlash.id === id && wrongFlash.side === side) {
-                classes.push('is-wrong');
-            }
-            return classes.filter(Boolean).join(' ');
+        } else {
+            inner = esc(match(p));
         }
+        return `<button type="button" class="${cls}" data-id="${esc(id)}">${inner}</button>`;
+    }).join('');
+    imgsEl.querySelectorAll('[data-id]').forEach(btn => btn.addEventListener('click', () => tapImg(btn.dataset.id)));
+}
 
-        function renderDivider(label, purple) {
-            return '<div class="match-divider"><span class="match-divider-label"><span class="match-dot' + (purple ? ' match-dot-purple' : '') + '"></span>' + escapeHtml(label) + '</span></div>';
-        }
+function render() {
+    renderWords();
+    renderImgs();
+    updateProgress();
+}
 
-        function renderImageMode() {
-            const english = pairs.map((item) => {
-                const id = escapeHtml(item.id);
-                const word = escapeHtml(getLeftText(item));
-                return '<button type="button" class="' + chipClasses(item, 'en', 'match-card-chip') + '" data-side="en" data-id="' + id + '">' +
-                    '<span class="match-badge">✓</span>' +
-                    '<div class="match-chip-media">' + word + '</div>' +
-                    '<div class="match-chip-label">' + word + '</div>' +
-                    '</button>';
-            }).join('');
+function tapWord(id) {
+    if (animating || matched.has(id)) return;
+    selWord = id;
+    setHint((word(byId(id)) || 'Word') + ' selected — tap its match', 'selected');
+    render();
+}
 
-            const images = pairs.map((item) => {
-                const id = escapeHtml(item.id);
-                const label = escapeHtml(getRightText(item));
-                const image = getImage(item);
-                const media = image
-                    ? '<img src="' + escapeHtml(image) + '" alt="' + label + '">'
-                    : label;
-                return '<button type="button" class="' + chipClasses(item, 'match', 'match-card-chip') + '" data-side="match" data-id="' + id + '">' +
-                    '<span class="match-badge">✓</span>' +
-                    '<div class="match-chip-media">' + media + '</div>' +
-                    '<div class="match-chip-label">' + label + '</div>' +
-                    '</button>';
-            }).join('');
-
-            stage.innerHTML = '<div class="match-rows">' +
-                renderDivider('English Words', false) +
-                '<div class="match-image-row">' + english + '</div>' +
-                renderDivider('Images / Matches', true) +
-                '<div class="match-image-row">' + images + '</div>' +
-                '</div>';
-        }
-
-        function renderTextMode() {
-            const english = pairs.map((item) => {
-                const id = escapeHtml(item.id);
-                return '<button type="button" class="' + chipClasses(item, 'en', 'match-text-chip') + '" data-side="en" data-id="' + id + '">' +
-                    '<span class="match-badge">✓</span>' + escapeHtml(getLeftText(item)) + '</button>';
-            }).join('');
-
-            const matches = pairs.map((item) => {
-                const id = escapeHtml(item.id);
-                return '<button type="button" class="' + chipClasses(item, 'match', 'match-text-chip') + '" data-side="match" data-id="' + id + '">' +
-                    '<span class="match-badge">✓</span>' + escapeHtml(getRightText(item)) + '</button>';
-            }).join('');
-
-            stage.innerHTML = '<div class="match-text-grid">' +
-                '<section>' + renderDivider('English', false) + '<div class="match-text-column">' + english + '</div></section>' +
-                '<section>' + renderDivider('Spanish / Match', true) + '<div class="match-text-column">' + matches + '</div></section>' +
-                '</div>';
-        }
-
-        function renderToggle() {
-            if (!toggle) {
-                return;
-            }
-
-            toggle.classList.toggle('is-hidden', !hasImages);
-            toggle.querySelectorAll('[data-mode]').forEach((btn) => {
-                btn.classList.toggle('is-active', btn.getAttribute('data-mode') === viewMode);
-            });
-        }
-
-        function render() {
-            updateProgress();
-            updateScores(scoreVisible);
-            renderToggle();
-
-            if (!stage) {
-                return;
-            }
-
-            if (viewMode === 'image') {
-                renderImageMode();
-            } else {
-                renderTextMode();
-            }
-
-            stage.querySelectorAll('[data-side][data-id]').forEach((btn) => {
-                btn.addEventListener('click', () => handleTap(btn.getAttribute('data-side'), btn.getAttribute('data-id')));
-            });
-        }
-
-        function handleTap(side, id) {
-            if (isMatched(id)) {
-                return;
-            }
-
-            if (side === 'en') {
-                selectedEn = id;
-                selectedMatch = null;
-                const item = pairs.find((pair) => String(pair.id) === String(id));
-                setHint((item ? getLeftText(item) : 'Word') + ' selected — tap its match', 'selected');
-                render();
-                return;
-            }
-
-            if (selectedEn === null) {
-                setHint('Tap an English word first', 'wrong');
-                return;
-            }
-
-            selectedMatch = id;
-            render();
-            tryMatch();
-        }
-
-        function tryMatch() {
-            const enId = selectedEn;
-            const matchId = selectedMatch;
-
-            if (enId === null || matchId === null) {
-                return;
-            }
-
-            if (String(enId) === String(matchId)) {
-                matched.push(enId);
-                selectedEn = null;
-                selectedMatch = null;
-
-                if (matched.length === total) {
-                    setHint('🎉 All pairs matched!', 'complete');
-                    scoreVisible = true;
-                    render();
-                    showScore();
-                } else {
-                    setHint('Correct! Keep going ✓', 'correct');
-                    render();
-                }
-                return;
-            }
-
-            wrongs += 1;
-            wrongFlash = { id: enId, side: 'en' };
-            setHint('Not a match — try again', 'wrong');
-            render();
-
-            window.setTimeout(() => {
-                wrongFlash = { id: matchId, side: 'match' };
-                render();
-            }, 150);
-
-            window.setTimeout(() => {
-                selectedEn = null;
-                selectedMatch = null;
-                wrongFlash = null;
-                setHint('Tap a word to start', 'default');
-                render();
-            }, 700);
-        }
-
-        function showScore() {
-            scoreVisible = true;
-            updateScores(true);
-
-            const scoreText = document.getElementById('match-fc-score-text');
-            const subText = document.getElementById('match-fc-sub-text');
-            const attempts = matched.length + wrongs;
-            const percent = attempts > 0 ? Math.round((matched.length / attempts) * 100) : 0;
-
-            if (scoreText) {
-                scoreText.textContent = matched.length + ' correct · ' + wrongs + ' wrong · ' + percent + '%';
-            }
-            if (subText) {
-                subText.textContent = matched.length === total ? 'Great job! You matched every pair.' : 'Keep practicing and try again.';
-            }
-            if (continueBtn && MATCH_RETURN_TO) {
-                continueBtn.style.display = 'inline-block';
-            }
-        }
-
-        function resetGame() {
-            selectedEn = null;
-            selectedMatch = null;
-            matched = [];
-            wrongs = 0;
-            wrongFlash = null;
-            scoreVisible = false;
-            setHint('Tap a word to start', 'default');
-            render();
-        }
-
-        function showAnswers() {
-            matched = pairs.map((item) => String(item.id));
-            selectedEn = null;
-            selectedMatch = null;
-            wrongFlash = null;
-            scoreVisible = true;
+function tapImg(id) {
+    if (animating || matched.has(id)) return;
+    if (!selWord) { setHint('Tap a word first', 'wrong'); return; }
+    if (String(selWord) === String(id)) {
+        matched.add(selWord);
+        selWord = null;
+        updateProgress();
+        if (matched.size === TOTAL) {
             setHint('🎉 All pairs matched!', 'complete');
+            updateScores(true);
             render();
-            showScore();
+            persistScore();
+        } else {
+            setHint('Correct! Keep going ✓', 'correct');
+            render();
         }
+    } else {
+        wrongs++;
+        animating = true;
+        setHint('Not a match — try again', 'wrong');
+        const wBtn = wordsEl.querySelector(`[data-id="${CSS.escape(selWord)}"]`);
+        const iBtn = imgsEl.querySelector(`[data-id="${CSS.escape(id)}"]`);
+        if (wBtn) { wBtn.classList.add('wrong'); wBtn.classList.remove('selected'); }
+        if (iBtn) iBtn.classList.add('wrong');
+        setTimeout(() => {
+            animating = false;
+            selWord   = null;
+            setHint('Tap a word to start');
+            render();
+        }, 600);
+    }
+}
 
-        if (toggle) {
-            toggle.querySelectorAll('[data-mode]').forEach((btn) => {
-                btn.addEventListener('click', () => {
-                    viewMode = btn.getAttribute('data-mode') === 'image' && hasImages ? 'image' : 'text';
-                    selectedEn = null;
-                    selectedMatch = null;
-                    wrongFlash = null;
-                    setHint('Tap a word to start', 'default');
-                    render();
-                });
-            });
-        }
+function checkUnmatched() {
+    if (matched.size === TOTAL) { updateScores(true); return; }
+    wordsEl.querySelectorAll('.mc-word-card:not(.matched)').forEach(b => { b.classList.add('wrong'); b.style.pointerEvents = 'none'; });
+    imgsEl.querySelectorAll('.mc-img-card:not(.matched)').forEach(b => { b.classList.add('wrong'); b.style.pointerEvents = 'none'; });
+    setHint((TOTAL - matched.size) + ' pair(s) still unmatched', 'wrong');
+    setTimeout(() => {
+        wordsEl.querySelectorAll('.mc-word-card.wrong').forEach(b => { b.classList.remove('wrong'); b.style.pointerEvents = ''; });
+        imgsEl.querySelectorAll('.mc-img-card.wrong').forEach(b => { b.classList.remove('wrong'); b.style.pointerEvents = ''; });
+        setHint('Tap a word to start');
+    }, 700);
+}
 
-        if (resetBtn) {
-            resetBtn.addEventListener('click', resetGame);
-        }
-        if (answerBtn) {
-            answerBtn.addEventListener('click', showAnswers);
-        }
-        if (checkBtn) {
-            checkBtn.addEventListener('click', showScore);
-        }
-        if (continueBtn) {
-            continueBtn.addEventListener('click', () => {
-                if (MATCH_RETURN_TO) {
-                    window.location.href = MATCH_RETURN_TO;
-                }
-            });
-        }
+function showAnswers() {
+    PAIRS.forEach(p => matched.add(String(p.id)));
+    selWord = null; animating = false;
+    setHint('🎉 All pairs shown!', 'complete');
+    updateScores(true);
+    render();
+}
 
+function resetGame() {
+    matched   = new Set();
+    wrongs    = 0;
+    selWord   = null;
+    animating = false;
+    wordOrder = shuffle(PAIRS.map(p => String(p.id)));
+    imgOrder  = shuffle(PAIRS.map(p => String(p.id)));
+    setHint('Tap a word to start');
+    updateScores(false);
+    render();
+}
+
+async function persistScore() {
+    if (!RETURN_TO || !ACT_ID) return;
+    const attempts = matched.size + wrongs;
+    const pct      = attempts > 0 ? Math.round((matched.size / attempts) * 100) : 100;
+    const sep      = RETURN_TO.includes('?') ? '&' : '?';
+    const url      = RETURN_TO + sep + 'activity_percent=' + pct + '&activity_errors=' + wrongs + '&activity_total=' + TOTAL + '&activity_id=' + encodeURIComponent(ACT_ID) + '&activity_type=match';
+    try {
+        const r = await fetch(url, { method: 'GET', credentials: 'same-origin', cache: 'no-store' });
+        if (!r.ok) window.location.href = url;
+    } catch (e) { window.location.href = url; }
+}
+
+document.querySelectorAll('.mc-mode-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        mode = btn.dataset.mode;
+        document.querySelectorAll('.mc-mode-btn').forEach(b => b.classList.toggle('active', b === btn));
+        selWord = null;
+        setHint('Tap a word to start');
         render();
-    })();
-    </script>
-<?php } ?>
+    });
+});
+
+document.getElementById('mc-check').addEventListener('click', checkUnmatched);
+document.getElementById('mc-answer').addEventListener('click', showAnswers);
+document.getElementById('mc-reset').addEventListener('click', resetGame);
+
+resetGame();
+})();
+</script>
+
+<?php endif; ?>
 
 <?php
 $content = ob_get_clean();
