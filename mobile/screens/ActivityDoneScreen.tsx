@@ -2,11 +2,14 @@
  * ActivityDoneScreen
  * Shown after completing any of the 16 activities in "Conocer Inglés".
  *
+ * TYPE A (scored)      — animated ring showing %, score row, 3-star row
+ * TYPE B (completion)  — ring animates to full, ✓ center, no score, no stars
+ *
  * Dependencies:
  *   expo-linear-gradient · react-native-svg
  *   Fonts loaded at app level:
  *     @expo-google-fonts/fredoka  → Fredoka_500Medium, Fredoka_600SemiBold
- *     @expo-google-fonts/nunito  → Nunito_500Medium, Nunito_700Bold, Nunito_800ExtraBold
+ *     @expo-google-fonts/nunito  → Nunito_500Medium, Nunito_700Bold
  */
 
 import React, { useEffect, useRef } from 'react';
@@ -22,6 +25,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Circle, G } from 'react-native-svg';
+import type { ActivityConfig } from './activityConfigs';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -29,23 +33,20 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const RING_R = 44;
 const CIRCUMFERENCE = 2 * Math.PI * RING_R; // ≈ 276.46
 const CONFETTI_COLORS = ['#F97316', '#7F77DD', '#FFD700', '#E1F5EE', '#FFF0E6'];
-const STAR_DELAYS = [100, 250, 400];
+const STAR_DELAYS = [100, 250, 400] as const;
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export interface ActivityDoneProps {
+  config: ActivityConfig;
   activityIndex: number;
   totalActivities: number;
-  activityName: string;
-  completionTitle: string;
-  completionSubtitle: string;
-  emoji: string;
-  accentColor: string;
+  /** TYPE A: real score 0–100. TYPE B: ignored — pass 0. */
   scoreValue: number;
+  /** TYPE A: correct item count. TYPE B: ignored — pass 0. */
   correctItems: number;
-  totalItems: number;
   unitName: string;
   unitProgressBefore: number;
   unitProgressAfter: number;
@@ -72,6 +73,18 @@ function starsEarned(score: number): number {
   return 1;
 }
 
+/**
+ * Unit progress delta awarded by this activity.
+ * TYPE A: score-weighted, max 5 pts.
+ * TYPE B: fixed completion bonus from config.
+ */
+function computeDelta(config: ActivityConfig, scoreValue: number): number {
+  if (config.type === 'A') {
+    return Math.round((scoreValue / 100) * 5);
+  }
+  return config.progressBonus ?? 3;
+}
+
 function makeConfettiItems(): ConfettiItem[] {
   return Array.from({ length: 20 }, () => ({
     translateY: new Animated.Value(0),
@@ -86,16 +99,11 @@ function makeConfettiItems(): ConfettiItem[] {
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function ActivityDoneScreen({
+  config,
   activityIndex,
   totalActivities,
-  activityName,
-  completionTitle,
-  completionSubtitle,
-  emoji,
-  accentColor,
   scoreValue,
   correctItems,
-  totalItems,
   unitName,
   unitProgressBefore,
   unitProgressAfter,
@@ -104,10 +112,12 @@ export default function ActivityDoneScreen({
   onNext,
   onPrevious,
 }: ActivityDoneProps) {
+  const isTypeA = config.type === 'A';
   const earned = starsEarned(scoreValue);
-  const progressDelta = unitProgressAfter - unitProgressBefore;
+  const delta = computeDelta(config, scoreValue);
 
   // ── Animated values ──────────────────────────────────────────
+  // Ring starts empty (CIRCUMFERENCE = no arc visible) for both types.
   const ringOffset = useRef(new Animated.Value(CIRCUMFERENCE)).current;
 
   const barAnim = useRef(new Animated.Value(unitProgressBefore)).current;
@@ -123,15 +133,21 @@ export default function ActivityDoneScreen({
 
   // ── Mount animations ─────────────────────────────────────────
   useEffect(() => {
-    // Score ring: start empty, fill to scoreValue %
+    // Ring target:
+    //   TYPE A → partial fill based on score
+    //   TYPE B → 0 (fully filled — completion ring)
+    const ringTarget = isTypeA
+      ? CIRCUMFERENCE * (1 - scoreValue / 100)
+      : 0;
+
     Animated.timing(ringOffset, {
-      toValue: CIRCUMFERENCE * (1 - scoreValue / 100),
+      toValue: ringTarget,
       duration: 900,
       easing: Easing.inOut(Easing.ease),
       useNativeDriver: false, // SVG props cannot use native driver
     }).start();
 
-    // Unit progress bar
+    // Unit progress bar (both types)
     Animated.timing(barAnim, {
       toValue: unitProgressAfter,
       duration: 800,
@@ -140,24 +156,26 @@ export default function ActivityDoneScreen({
       useNativeDriver: false,
     }).start();
 
-    // Stars — staggered spring
-    starAnims.forEach(({ scale, opacity }, i) => {
-      Animated.parallel([
-        Animated.spring(scale, {
-          toValue: 1,
-          delay: STAR_DELAYS[i],
-          useNativeDriver: true,
-        }),
-        Animated.timing(opacity, {
-          toValue: 1,
-          duration: 200,
-          delay: STAR_DELAYS[i],
-          useNativeDriver: true,
-        }),
-      ]).start();
-    });
+    // Stars — TYPE A only
+    if (isTypeA) {
+      starAnims.forEach(({ scale, opacity }, i) => {
+        Animated.parallel([
+          Animated.spring(scale, {
+            toValue: 1,
+            delay: STAR_DELAYS[i],
+            useNativeDriver: true,
+          }),
+          Animated.timing(opacity, {
+            toValue: 1,
+            duration: 200,
+            delay: STAR_DELAYS[i],
+            useNativeDriver: true,
+          }),
+        ]).start();
+      });
+    }
 
-    // Confetti — random stagger, fall + fade
+    // Confetti — both types
     confettiItems.forEach(({ translateY, opacity, delay, duration }) => {
       Animated.parallel([
         Animated.timing(translateY, {
@@ -202,7 +220,7 @@ export default function ActivityDoneScreen({
         </View>
       </View>
 
-      {/* ── Confetti layer (absolute, above scroll) ── */}
+      {/* ── Confetti layer — fires for all 16 activities ── */}
       <View pointerEvents="none" style={styles.confettiLayer}>
         {confettiItems.map((item, i) => (
           <Animated.View
@@ -226,29 +244,31 @@ export default function ActivityDoneScreen({
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.card}>
-          {/* a) Kicker pill */}
+          {/* Kicker pill */}
           <View style={styles.kickerPill}>
             <Text style={styles.kickerText}>ACTIVITY COMPLETE</Text>
           </View>
 
-          {/* b) Big title */}
-          <Text style={styles.bigTitle}>{completionTitle}</Text>
+          {/* Big title — from config */}
+          <Text style={styles.bigTitle}>{config.completionTitle}</Text>
 
-          {/* c) Emoji badge */}
-          <Text style={styles.emojiText}>{emoji}</Text>
+          {/* Emoji badge — from config */}
+          <Text style={styles.emojiText}>{config.emoji}</Text>
 
-          {/* d) Activity name tag */}
-          <Text style={styles.activityTag}>{activityName}</Text>
+          {/* Activity name tag — from config */}
+          <Text style={styles.activityTag}>{config.name}</Text>
 
-          {/* e) Subtitle */}
-          <Text style={styles.subtitle}>{completionSubtitle}</Text>
+          {/* Subtitle — from config */}
+          <Text style={styles.subtitle}>{config.completionSubtitle}</Text>
 
-          {/* f) Score row */}
-          <Text style={styles.scoreRow}>
-            Score: {correctItems} / {totalItems} ({scoreValue}%)
-          </Text>
+          {/* Score row — TYPE A only */}
+          {isTypeA && (
+            <Text style={styles.scoreRow}>
+              Score: {correctItems} / {config.totalItems} ({scoreValue}%)
+            </Text>
+          )}
 
-          {/* g) Score ring */}
+          {/* Score / completion ring */}
           <View style={styles.ringWrap}>
             <Svg width={110} height={110} viewBox="0 0 110 110">
               {/* Background track */}
@@ -260,13 +280,13 @@ export default function ActivityDoneScreen({
                 strokeWidth={9}
                 fill="none"
               />
-              {/* Animated progress arc — rotated so 0° is at 12 o'clock */}
+              {/* Animated arc — origin at 12 o'clock */}
               <G rotation={-90} originX={55} originY={55}>
                 <AnimatedCircle
                   cx={55}
                   cy={55}
                   r={RING_R}
-                  stroke={accentColor}
+                  stroke={config.accentColor}
                   strokeWidth={9}
                   strokeLinecap="round"
                   strokeDasharray={CIRCUMFERENCE}
@@ -275,32 +295,43 @@ export default function ActivityDoneScreen({
                 />
               </G>
             </Svg>
-            {/* Center label */}
+
+            {/* Ring center: % + "score" label for TYPE A, ✓ for TYPE B */}
             <View style={styles.ringCenter}>
-              <Text style={[styles.ringScore, { color: accentColor }]}>
-                {scoreValue}%
-              </Text>
-              <Text style={styles.ringLabel}>score</Text>
+              {isTypeA ? (
+                <>
+                  <Text style={[styles.ringScore, { color: config.accentColor }]}>
+                    {scoreValue}%
+                  </Text>
+                  <Text style={styles.ringLabel}>score</Text>
+                </>
+              ) : (
+                <Text style={[styles.ringCheck, { color: config.accentColor }]}>
+                  ✓
+                </Text>
+              )}
             </View>
           </View>
 
-          {/* h) Stars row */}
-          <View style={styles.starsRow}>
-            {starAnims.map(({ scale, opacity }, i) => (
-              <Animated.Text
-                key={i}
-                style={[
-                  styles.star,
-                  i >= earned && styles.starEmpty,
-                  { transform: [{ scale }], opacity },
-                ]}
-              >
-                {i < earned ? '⭐' : '☆'}
-              </Animated.Text>
-            ))}
-          </View>
+          {/* Stars — TYPE A only */}
+          {isTypeA && (
+            <View style={styles.starsRow}>
+              {starAnims.map(({ scale, opacity }, i) => (
+                <Animated.Text
+                  key={i}
+                  style={[
+                    styles.star,
+                    i >= earned && styles.starEmpty,
+                    { transform: [{ scale }], opacity },
+                  ]}
+                >
+                  {i < earned ? '⭐' : '☆'}
+                </Animated.Text>
+              ))}
+            </View>
+          )}
 
-          {/* i) Unit progress box */}
+          {/* Unit progress box — both types */}
           <View style={styles.progressBox}>
             <Text style={styles.progressLabel}>
               {unitName.toUpperCase()} PROGRESS
@@ -318,12 +349,13 @@ export default function ActivityDoneScreen({
               </View>
               <Text style={styles.progressPct}>{unitProgressAfter}%</Text>
             </View>
+            {/* Delta label — computed per type, not raw subtraction */}
             <Text style={styles.progressSub}>
-              +{progressDelta}% from this activity
+              +{delta}% from this activity
             </Text>
           </View>
 
-          {/* j) Action buttons */}
+          {/* Action buttons */}
           <View style={styles.buttonsRow}>
             <TouchableOpacity
               style={[styles.actionBtn, { backgroundColor: '#F97316' }]}
@@ -436,7 +468,7 @@ const styles = StyleSheet.create({
     borderRadius: 3.5,
   },
 
-  // ── ScrollView content ──────────────────────────────────────
+  // ── ScrollView ───────────────────────────────────────────────
   scrollContent: {
     alignItems: 'center',
     paddingTop: 24,
@@ -479,7 +511,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.6,
   },
 
-  // ── Titles / labels ─────────────────────────────────────────
+  // ── Content labels ───────────────────────────────────────────
   bigTitle: {
     fontFamily: 'Fredoka_600SemiBold',
     fontSize: 38,
@@ -508,6 +540,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 20,
   },
+  // TYPE A only
   scoreRow: {
     fontFamily: 'Nunito_700Bold',
     fontSize: 13,
@@ -529,6 +562,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  // TYPE A center
   ringScore: {
     fontFamily: 'Fredoka_600SemiBold',
     fontSize: 26,
@@ -538,8 +572,13 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#aaa',
   },
+  // TYPE B center
+  ringCheck: {
+    fontSize: 28,
+    fontFamily: 'Fredoka_600SemiBold',
+  },
 
-  // ── Stars ───────────────────────────────────────────────────
+  // ── Stars (TYPE A only) ──────────────────────────────────────
   starsRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -554,7 +593,7 @@ const styles = StyleSheet.create({
     color: '#ccc',
   },
 
-  // ── Unit progress box ───────────────────────────────────────
+  // ── Unit progress box ────────────────────────────────────────
   progressBox: {
     width: '100%',
     backgroundColor: '#F7F5FF',
@@ -598,7 +637,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
 
-  // ── Action buttons ──────────────────────────────────────────
+  // ── Action buttons ───────────────────────────────────────────
   buttonsRow: {
     flexDirection: 'row',
     gap: 10,
@@ -618,7 +657,7 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
 
-  // ── BottomBar ───────────────────────────────────────────────
+  // ── BottomBar ────────────────────────────────────────────────
   bottomBar: {
     position: 'absolute',
     bottom: 0,
