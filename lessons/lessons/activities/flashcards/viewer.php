@@ -9,181 +9,120 @@ if ($activityId === '' && $unit === '') {
     die('Activity not specified');
 }
 
-function activities_columns(PDO $pdo): array
-{
+function activities_columns(PDO $pdo): array {
     static $cache = null;
+
     if (is_array($cache)) return $cache;
 
-    $cache = array();
-    $stmt = $pdo->query("SELECT column_name FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'activities'");
+    $cache = [];
+
+    $stmt = $pdo->query("
+        SELECT column_name
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+        AND table_name = 'activities'
+    ");
+
     foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
-        if (isset($row['column_name'])) $cache[] = (string) $row['column_name'];
+        if (isset($row['column_name'])) {
+            $cache[] = (string)$row['column_name'];
+        }
     }
+
     return $cache;
 }
 
-function resolve_unit_from_activity(PDO $pdo, string $activityId): string
-{
-    if ($activityId === '') return '';
-    $columns = activities_columns($pdo);
+function load_flashcards(PDO $pdo, string $activityId): array {
 
-    if (in_array('unit_id', $columns, true)) {
-        $stmt = $pdo->prepare("SELECT unit_id FROM activities WHERE id = :id LIMIT 1");
-        $stmt->execute(array('id' => $activityId));
-        $row = $stmt->fetch(PDO::FETCH_ASSOC);
-        if ($row && isset($row['unit_id'])) return (string) $row['unit_id'];
+    $stmt = $pdo->prepare("
+        SELECT *
+        FROM activities
+        WHERE id = :id
+        LIMIT 1
+    ");
+
+    $stmt->execute([
+        'id' => $activityId
+    ]);
+
+    $activity = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$activity) {
+        return [];
     }
 
-    if (in_array('unit', $columns, true)) {
-        $stmt = $pdo->prepare("SELECT unit FROM activities WHERE id = :id LIMIT 1");
-        $stmt->execute(array('id' => $activityId));
-        $row = $stmt->fetch(PDO::FETCH_ASSOC);
-        if ($row && isset($row['unit'])) return (string) $row['unit'];
+    $raw = $activity['data'] ?? $activity['content_json'] ?? '[]';
+
+    $decoded = json_decode($raw, true);
+
+    if (!is_array($decoded)) {
+        return [];
     }
 
-    return '';
+    if (isset($decoded['cards']) && is_array($decoded['cards'])) {
+        return $decoded['cards'];
+    }
+
+    return $decoded;
 }
 
-function default_flashcards_title(): string
-{
-    return 'Flashcards';
+$data = load_flashcards($pdo, $activityId);
+
+if (!$data || !count($data)) {
+    die('No flashcards found');
 }
 
-function normalize_flashcards_title(string $title): string
-{
-    $title = trim($title);
-    return $title !== '' ? $title : default_flashcards_title();
-}
+$title = 'Flashcards';
 
-function normalize_flashcards_payload($rawData): array
-{
-    $default = array('title' => default_flashcards_title(), 'cards' => array());
-    if ($rawData === null || $rawData === '') return $default;
-
-    $decoded = is_string($rawData) ? json_decode($rawData, true) : $rawData;
-    if (!is_array($decoded)) return $default;
-
-    $title = '';
-    $cardsSource = $decoded;
-
-    if (isset($decoded['title'])) $title = trim((string) $decoded['title']);
-    if (isset($decoded['cards']) && is_array($decoded['cards'])) $cardsSource = $decoded['cards'];
-
-    $cards = array();
-    foreach ($cardsSource as $item) {
-        if (!is_array($item)) continue;
-        $cards[] = array(
-            'id'           => isset($item['id'])           ? trim((string) $item['id'])           : uniqid('fc_'),
-            'english_text' => isset($item['english_text']) ? trim((string) $item['english_text']) : '',
-            'spanish_text' => isset($item['spanish_text']) ? trim((string) $item['spanish_text']) : '',
-            'text'         => isset($item['text'])         ? trim((string) $item['text'])         : '',
-            'image'        => isset($item['image'])        ? trim((string) $item['image'])        : '',
-        );
-    }
-
-    return array('title' => normalize_flashcards_title($title), 'cards' => $cards);
-}
-
-function load_flashcards_activity(PDO $pdo, string $unit, string $activityId): array
-{
-    $columns = activities_columns($pdo);
-    $selectFields = array('id');
-
-    if (in_array('data', $columns, true)) $selectFields[] = 'data';
-    if (in_array('content_json', $columns, true)) $selectFields[] = 'content_json';
-    if (in_array('title', $columns, true)) $selectFields[] = 'title';
-    if (in_array('name', $columns, true)) $selectFields[] = 'name';
-
-    $row = null;
-
-    if ($activityId !== '') {
-        $stmt = $pdo->prepare("SELECT " . implode(', ', $selectFields) . " FROM activities WHERE id = :id AND type = 'flashcards' LIMIT 1");
-        $stmt->execute(array('id' => $activityId));
-        $row = $stmt->fetch(PDO::FETCH_ASSOC);
-    }
-
-    if (!$row && in_array('unit_id', $columns, true)) {
-        $stmt = $pdo->prepare("SELECT " . implode(', ', $selectFields) . " FROM activities WHERE unit_id = :unit AND type = 'flashcards' ORDER BY id ASC LIMIT 1");
-        $stmt->execute(array('unit' => $unit));
-        $row = $stmt->fetch(PDO::FETCH_ASSOC);
-    }
-
-    if (!$row && in_array('unit', $columns, true)) {
-        $stmt = $pdo->prepare("SELECT " . implode(', ', $selectFields) . " FROM activities WHERE unit = :unit AND type = 'flashcards' ORDER BY id ASC LIMIT 1");
-        $stmt->execute(array('unit' => $unit));
-        $row = $stmt->fetch(PDO::FETCH_ASSOC);
-    }
-
-    if (!$row) return array('title' => default_flashcards_title(), 'cards' => array());
-
-    $rawData = null;
-    if (isset($row['data'])) $rawData = $row['data'];
-    elseif (isset($row['content_json'])) $rawData = $row['content_json'];
-
-    $payload = normalize_flashcards_payload($rawData);
-
-    $columnTitle = '';
-    if (isset($row['title']) && trim((string) $row['title']) !== '') $columnTitle = trim((string) $row['title']);
-    elseif (isset($row['name']) && trim((string) $row['name']) !== '') $columnTitle = trim((string) $row['name']);
-
-    if ($columnTitle !== '') $payload['title'] = $columnTitle;
-
-    return array(
-        'title' => normalize_flashcards_title((string) $payload['title']),
-        'cards' => isset($payload['cards']) && is_array($payload['cards']) ? $payload['cards'] : array(),
-    );
-}
-
-if ($unit === '' && $activityId !== '') $unit = resolve_unit_from_activity($pdo, $activityId);
-
-$activity = load_flashcards_activity($pdo, $unit, $activityId);
-$data = isset($activity['cards']) && is_array($activity['cards']) ? $activity['cards'] : array();
-$viewerTitle = isset($activity['title']) ? (string) $activity['title'] : default_flashcards_title();
-
-if (count($data) === 0) die('No flashcards found for this unit');
-
-ob_start();
 ?>
-<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@600;700;800;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600&family=Nunito:wght@500;600;700;800&display=swap" rel="stylesheet">
 
 <style>
+
 :root{
-    --fc-orange:      #F97316;
-    --fc-orange-dark: #C2580A;
-    --fc-orange-soft: #FFF0E6;
-    --fc-purple:      #7F77DD;
-    --fc-purple-dark: #534AB7;
-    --fc-purple-soft: #EEEDFE;
-    --fc-lila:        rgba(127,119,221,.13);
-    --fc-lila-md:     rgba(127,119,221,.18);
+    --orange:#F97316;
+    --purple:#7F77DD;
+    --purple-dark:#534AB7;
+    --muted:#9B94BE;
+    --soft:#F4F2FD;
+    --card:#FFFFFF;
+    --border:#ECE9FA;
 }
 
-*{box-sizing:border-box}
+*{
+    box-sizing:border-box;
+}
 
-.fc-premium-shell{
-    max-width:980px;
-    margin:16px auto 28px;
+html,
+body{
+    margin:0;
+    padding:0;
+    background:#fff;
+    font-family:'Nunito',sans-serif;
+}
+
+.fc-shell{
+    width:100%;
+    min-height:100vh;
     padding:18px;
-    border-radius:28px;
-    background: #ffffff;
+    background:#fff;
+    display:flex;
+    justify-content:center;
 }
 
-.fc-premium-app{
-    width:min(980px,100%);
-    display:grid;
-    grid-template-columns:minmax(0,1fr);
-    gap:clamp(12px,2vw,20px);
+.fc-app{
+    width:min(760px,100%);
 }
 
-.fc-premium-hero{
+.fc-header{
     text-align:center;
+    margin-bottom:18px;
 }
 
-.fc-premium-kicker{
+.fc-kicker{
     display:inline-flex;
     align-items:center;
-    gap:7px;
-    margin-bottom:8px;
+    justify-content:center;
     padding:7px 14px;
     border-radius:999px;
     background:#FFF0E6;
@@ -193,658 +132,586 @@ ob_start();
     font-weight:900;
     letter-spacing:.08em;
     text-transform:uppercase;
+    margin-bottom:10px;
 }
 
-.fc-premium-title{
+.fc-title{
     margin:0;
     font-family:'Fredoka',sans-serif;
-    font-size:clamp(30px,5.5vw,58px);
+    font-size:clamp(30px,5vw,54px);
     line-height:1;
-    color:#F97316;
+    color:var(--orange);
+    font-weight:600;
+}
+
+.fc-subtitle{
+    margin-top:10px;
+    color:var(--muted);
+    font-size:14px;
     font-weight:700;
 }
 
-.fc-premium-subtitle{
-    margin:8px 0 0;
-    color:#9B94BE;
-    font-size:clamp(13px,1.8vw,17px);
-    font-weight:800;
+.fc-board{
+    background:#fff;
+    border:1px solid var(--border);
+    border-radius:32px;
+    padding:18px;
+    box-shadow:0 8px 40px rgba(127,119,221,.12);
 }
 
-.fc-premium-board{
-    position:relative;
-    border-radius:34px;
-    background: #ffffff;
-    border: 1px solid #F0EEF8;
-    box-shadow: 0 8px 40px rgba(127,119,221,.13);
-    padding:22px 22px 20px;
-}
-
-.fc-premium-progress-row{
-    display:grid;
-    grid-template-columns:1fr auto;
-    gap:12px;
+.fc-progress{
+    display:flex;
     align-items:center;
-    margin-bottom:clamp(14px,2vw,20px);
+    gap:10px;
+    margin-bottom:18px;
 }
 
-.fc-premium-progress-track{
+.fc-track{
+    flex:1;
     height:12px;
-    background:#ECEAFB;
+    background:var(--soft);
     border-radius:999px;
     overflow:hidden;
-    border:1px solid rgba(127,119,221,.18);
 }
 
-.fc-premium-progress-fill{
+.fc-fill{
     height:100%;
-    width:0;
+    width:0%;
+    background:linear-gradient(90deg,var(--orange),var(--purple));
     border-radius:999px;
-    background: linear-gradient(90deg, #F97316, #7F77DD);
-    transition:width .35s ease;
+    transition:.35s;
 }
 
-.fc-premium-progress-count{
-    flex:0 0 auto;
-    min-width:86px;
+.fc-count{
+    min-width:74px;
     text-align:center;
-    font-size:12px;
-    font-weight:800;
-    letter-spacing:.4px;
+    padding:7px 10px;
+    border-radius:999px;
+    background:var(--purple);
     color:#fff;
-    background: #7F77DD;
-    padding:7px 12px;
-    border-radius:999px;
+    font-size:12px;
+    font-weight:900;
 }
 
-.fc-premium-card-wrap{
+.fc-card{
     position:relative;
-    display:grid;
-    grid-template-columns:auto minmax(0,1fr) auto;
-    align-items:center;
-    gap:clamp(8px,1.6vw,18px);
+    min-height:480px;
+    border-radius:30px;
+    overflow:hidden;
+    perspective:1000px;
 }
 
-.fc-premium-arrow{
-    width:48px;
-    height:48px;
-    border-radius:999px;
-    border: 1px solid #E4E1F8;
-    background: #ffffff;
-    color: #534AB7;
-    font-size:25px;
-    line-height:1;
-    font-weight:800;
-    cursor:pointer;
-    display:grid;
-    place-items:center;
-    box-shadow: 0 4px 14px rgba(127,119,221,.13);
-    transition:transform .18s ease, box-shadow .18s ease;
-    user-select:none;
-}
-
-.fc-premium-arrow:hover{
-    transform:translateY(-2px) scale(1.05);
-    background:#EEEDFE;
-    box-shadow:0 16px 28px rgba(83,74,183,.24);
-}
-
-.fc-premium-card{
-    perspective:1200px;
-    min-height:clamp(330px,46vh,470px);
-    cursor:pointer;
-    outline:none;
-}
-
-.fc-premium-card-inner{
+.fc-inner{
     position:relative;
     width:100%;
-    height:100%;
-    min-height:inherit;
+    height:480px;
     transform-style:preserve-3d;
-    transition:transform .65s cubic-bezier(.2,.8,.2,1);
+    transition:transform .45s ease;
 }
 
-.fc-premium-card.is-flipped .fc-premium-card-inner{
+.fc-card.flipped .fc-inner{
     transform:rotateY(180deg);
 }
 
-.fc-premium-face{
+.fc-face{
     position:absolute;
     inset:0;
-    border-radius:30px;
     backface-visibility:hidden;
+    border-radius:30px;
     overflow:hidden;
+}
+
+.fc-front{
+    background:#fff;
+    border:1px solid var(--border);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:18px;
+}
+
+.fc-back{
+    background:#fff;
+    border:1px solid var(--border);
+    transform:rotateY(180deg);
     display:flex;
     flex-direction:column;
     align-items:center;
     justify-content:center;
-    padding:clamp(22px,4vw,42px);
-    border:1px solid rgba(127,119,221,.16);
-    box-shadow:0 18px 36px rgba(39,27,93,.13);
+    padding:32px;
+    text-align:center;
 }
 
-.fc-premium-face.fc-premium-front{
-    background: #ffffff;
-    border: 1px solid #EDE9FA;
-}
-
-.fc-premium-back{
-    transform:rotateY(180deg);
-    background:
-        radial-gradient(circle at 20% 20%,rgba(255,255,255,.22),transparent 26%),
-        radial-gradient(circle at 80% 80%,rgba(255,255,255,.14),transparent 30%),
-        linear-gradient(135deg,#7F77DD 0%,#534AB7 58%,#3B2E91 100%);
-}
-
-.fc-premium-image-box{
-    width:min(270px,64vw);
-    height:min(270px,64vw);
-    max-height:290px;
-    border-radius:28px;
-    background:#fff;
-    border:1.5px solid rgba(127,119,221,.18);
-    box-shadow:0 16px 34px rgba(83,74,183,.14);
+.fc-image-wrap{
+    width:100%;
+    height:100%;
     display:flex;
     align-items:center;
     justify-content:center;
-    overflow:hidden;
 }
 
-.fc-premium-image-box img{
-    max-width:82%;
-    max-height:82%;
+.fc-image{
+    width:100%;
+    height:100%;
     object-fit:contain;
-    display:block;
+    border-radius:24px;
 }
 
-.fc-premium-placeholder{
-    font-family:'Fredoka',sans-serif;
-    font-size:clamp(76px,16vw,150px);
-    color:#7F77DD;
-    font-weight:700;
-}
-
-.fc-premium-word{
-    font-family:'Fredoka',sans-serif;
-    font-size:clamp(46px,9vw,96px);
-    color:#fff;
-    font-weight:700;
-    line-height:1.05;
-    text-align:center;
-    text-shadow:0 8px 22px rgba(0,0,0,.18);
-}
-
-.fc-premium-translation{
-    margin-top:12px;
-    padding:8px 15px;
-    border-radius:999px;
-    background:rgba(255,255,255,.18);
-    color:#fff;
-    font-size:clamp(14px,2vw,20px);
-    font-weight:900;
-}
-
-.fc-premium-hint{
-    position:absolute;
-    left:50%;
-    bottom:clamp(14px,2vw,22px);
-    transform:translateX(-50%);
-    color:#9B94BE;
-    font-size:12px;
-    font-weight:900;
-    letter-spacing:.02em;
-    text-align:center;
-    pointer-events:none;
-}
-
-.fc-premium-back .fc-premium-hint{
-    color:rgba(255,255,255,.78);
-}
-
-.fc-premium-actions{
-    margin-top:clamp(16px,2.4vw,24px);
+.fc-placeholder{
+    width:100%;
+    height:100%;
+    border-radius:24px;
+    background:#FAFAFD;
+    border:1px solid var(--border);
     display:flex;
-    justify-content:center;
-    align-items:center;
-    gap:clamp(8px,1.4vw,12px);
-    flex-wrap:wrap;
-}
-
-.fc-premium-btn{
-    border:0;
-    border-radius:999px;
-    min-width:clamp(104px,16vw,146px);
-    padding:13px 20px;
-    color:#fff;
-    font-family:'Nunito',sans-serif;
-    font-size:clamp(13px,1.8vw,15px);
-    font-weight:900;
-    cursor:pointer;
-    display:inline-flex;
     align-items:center;
     justify-content:center;
-    gap:7px;
-    box-shadow:0 12px 22px rgba(37,99,235,.20);
-    transition:transform .18s ease, filter .18s ease, box-shadow .18s ease;
+    color:#D5D0F0;
 }
 
-.fc-premium-btn:hover{
-    transform:translateY(-2px);
-    filter:brightness(1.05);
+.fc-placeholder svg{
+    width:84px;
+    height:84px;
 }
 
-.fc-premium-btn-blue{background: #F97316;box-shadow: 0 6px 18px rgba(249,115,22,.22);}
-
-.fc-premium-btn-pink{background: #7F77DD;box-shadow: 0 6px 18px rgba(127,119,221,.18);}
-
-.fc-premium-btn-purple{
-    background:linear-gradient(135deg,#7F77DD,#534AB7);
-    box-shadow:0 12px 22px rgba(83,74,183,.22);
+.fc-word{
+    color:var(--purple);
+    font-size:clamp(30px,5vw,52px);
+    font-weight:700;
+    line-height:1.1;
 }
 
-.fc-premium-completed{
-    display:none;
-    width:min(680px,100%);
-    margin:0 auto;
-    text-align:center;
-    padding:clamp(28px,5vw,54px);
-    border-radius:34px;
-    background:#ffffff;
-    border:1px solid #F0EEF8;
-    box-shadow:0 8px 40px rgba(127,119,221,.13);
-}
-
-.fc-premium-completed.active{
-    display:block;
-    animation:fcPop .45s cubic-bezier(.2,.9,.2,1);
-}
-
-.fc-premium-done-icon{
-    font-size:clamp(66px,12vw,112px);
-    margin-bottom:12px;
-}
-
-.fc-premium-done-title{
-    margin:0 0 10px;
-    font-family:'Fredoka',sans-serif;
-    font-size:clamp(34px,6vw,62px);
-    color:#F97316;
-    line-height:1;
-}
-
-.fc-premium-done-text{
-    margin:0 auto 22px;
-    max-width:520px;
-    color:#9B94BE;
-    font-size:clamp(14px,2vw,18px);
-    font-weight:800;
+.fc-translation{
+    margin-top:14px;
+    color:var(--muted);
+    font-size:18px;
+    font-weight:700;
     line-height:1.5;
 }
 
-.fc-premium-done-track{
-    height:14px;
-    max-width:420px;
+.fc-actions{
+    display:flex;
+    justify-content:center;
+    gap:10px;
+    flex-wrap:wrap;
+    margin-top:18px;
+}
+
+.fc-btn{
+    border:0;
+    border-radius:999px;
+    padding:13px 20px;
+    min-width:120px;
+    color:#fff;
+    cursor:pointer;
+    font-family:'Nunito',sans-serif;
+    font-size:14px;
+    font-weight:900;
+    transition:.18s;
+    box-shadow:0 6px 18px rgba(127,119,221,.15);
+}
+
+.fc-btn:hover{
+    transform:translateY(-1px);
+}
+
+.fc-btn-purple{
+    background:var(--purple);
+}
+
+.fc-btn-orange{
+    background:var(--orange);
+}
+
+.fc-completed{
+    display:none;
+    text-align:center;
+    padding:42px 20px;
+}
+
+.fc-completed.active{
+    display:block;
+}
+
+.fc-check{
+    width:72px;
+    height:72px;
     margin:0 auto 18px;
     border-radius:999px;
-    background:#ECEAFB;
-    overflow:hidden;
+    background:#F4F2FD;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    color:var(--purple);
+    font-size:34px;
+    font-weight:900;
 }
 
-.fc-premium-done-fill{
-    height:100%;
-    width:0%;
-    border-radius:999px;
-    background:linear-gradient(90deg,#F97316,#7F77DD);
-    transition:width .8s cubic-bezier(.2,.9,.2,1);
+.fc-done-title{
+    margin:0;
+    color:var(--orange);
+    font-family:'Fredoka',sans-serif;
+    font-size:42px;
 }
 
-.fc-premium-confetti{
-    position:fixed;
-    width:10px;
-    height:14px;
-    top:-20px;
-    z-index:99999;
-    opacity:.95;
-    animation:fcFall linear forwards;
-    pointer-events:none;
-}
-
-@keyframes fcPop{
-    from{opacity:0;transform:translateY(12px) scale(.96)}
-    to{opacity:1;transform:translateY(0) scale(1)}
-}
-
-@keyframes fcFall{
-    to{transform:translateY(110vh) rotate(720deg);opacity:1}
+.fc-done-text{
+    margin-top:12px;
+    color:var(--muted);
+    font-size:16px;
+    font-weight:700;
 }
 
 @media(max-width:640px){
-    .fc-premium-shell{min-height:calc(100vh - 70px);padding:12px;border-radius:12px}
-    .fc-premium-board{border-radius:26px;padding:14px}
-    .fc-premium-card-wrap{grid-template-columns:1fr}
-    .fc-premium-arrow{position:absolute;top:50%;transform:translateY(-50%)}
-    .fc-premium-arrow-left{left:-4px}
-    .fc-premium-arrow-right{right:-4px}
-    .fc-premium-card{min-height:360px}
-    .fc-premium-actions{display:grid;grid-template-columns:1fr;gap:9px}
-    .fc-premium-btn{width:100%}
+
+    .fc-shell{
+        padding:12px;
+    }
+
+    .fc-board{
+        border-radius:24px;
+        padding:14px;
+    }
+
+    .fc-card{
+        min-height:420px;
+    }
+
+    .fc-inner{
+        height:420px;
+    }
+
+    .fc-actions{
+        display:grid;
+        grid-template-columns:1fr;
+    }
+
+    .fc-btn{
+        width:100%;
+    }
+
 }
+
 </style>
 
-<?php // render_activity_header removed ?>
+<div class="fc-shell">
 
-<div class="fc-premium-shell">
-    <div class="fc-premium-app" id="fc-premium-app">
-        <div class="fc-premium-hero">
-            <div class="fc-premium-kicker" style="background:#FFF0E6; border:1px solid #FCDDBF; color:#C2580A;">Activity <span id="fc-premium-kicker-count">1 / <?php echo count($data); ?></span></div>
-            <h1 class="fc-premium-title" style="color:#F97316;"><?php echo htmlspecialchars($viewerTitle, ENT_QUOTES, 'UTF-8'); ?></h1>
-            <p class="fc-premium-subtitle">Let's learn the new vocabulary</p>
+    <div class="fc-app">
+
+        <div class="fc-header">
+            <div class="fc-kicker">
+                Flashcards
+            </div>
+
+            <h1 class="fc-title">
+                <?php echo htmlspecialchars($title); ?>
+            </h1>
+
+            <div class="fc-subtitle">
+                Listen carefully and repeat naturally
+            </div>
         </div>
 
-        <section class="fc-premium-board" id="fc-premium-board">
-            <div class="fc-premium-progress-row">
-                <div class="fc-premium-progress-track">
-                    <div class="fc-premium-progress-fill" id="fc-premium-progress-fill"></div>
+        <div class="fc-board" id="fc-board">
+
+            <div class="fc-progress">
+                <div class="fc-track">
+                    <div class="fc-fill" id="fc-fill"></div>
                 </div>
-                <div class="fc-premium-progress-count" id="fc-premium-progress-count">1 / <?php echo count($data); ?></div>
+
+                <div class="fc-count" id="fc-count">
+                    1 / <?php echo count($data); ?>
+                </div>
             </div>
 
-            <div class="fc-premium-card-wrap">
-                <button type="button" class="fc-premium-arrow fc-premium-arrow-left" id="fc-premium-prev-arrow" aria-label="Previous card">&#8249;</button>
+            <div class="fc-card" id="fc-card">
 
-                <div class="fc-premium-card" id="fc-premium-card" role="button" tabindex="0" aria-label="Tap to reveal word">
-                    <div class="fc-premium-card-inner">
-                        <div class="fc-premium-face fc-premium-front">
-                            <div class="fc-premium-image-box" id="fc-premium-image-box">
-                                <img id="fc-premium-img" src="" alt="" style="display:none;">
-                                <div class="fc-premium-placeholder" id="fc-premium-placeholder">?</div>
+                <div class="fc-inner">
+
+                    <div class="fc-face fc-front" id="fc-front">
+                        <div class="fc-image-wrap">
+
+                            <img
+                                id="fc-image"
+                                class="fc-image"
+                                src=""
+                                alt=""
+                                style="display:none;"
+                            >
+
+                            <div class="fc-placeholder" id="fc-placeholder">
+                                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4-4 4 4 8-8"/>
+                                </svg>
                             </div>
-                            <div class="fc-premium-hint" id="fc-premium-front-hint">Tap to reveal word</div>
-                        </div>
 
-                        <div class="fc-premium-face fc-premium-back">
-                            <div class="fc-premium-word" id="fc-premium-word"></div>
-                            <div class="fc-premium-translation" id="fc-premium-translation" style="display:none;"></div>
-                            <div class="fc-premium-hint">Tap to see image</div>
                         </div>
                     </div>
+
+                    <div class="fc-face fc-back">
+
+                        <div class="fc-word" id="fc-word"></div>
+
+                        <div class="fc-translation" id="fc-translation"></div>
+
+                    </div>
+
                 </div>
 
-                <button type="button" class="fc-premium-arrow fc-premium-arrow-right" id="fc-premium-next-arrow" aria-label="Next card">&#8250;</button>
             </div>
 
-            <div class="fc-premium-actions">
-                <button type="button" class="fc-premium-btn fc-premium-btn-blue" id="fc-premium-prev">&#9664; Prev</button>
-                <button type="button" class="fc-premium-btn fc-premium-btn-pink" id="fc-premium-listen">&#x1F50A; Listen</button>
-                <button type="button" class="fc-premium-btn fc-premium-btn-blue" id="fc-premium-next">Next &#9654;</button>
-            </div>
-        </section>
+            <div class="fc-actions">
 
-        <section class="fc-premium-completed" id="fc-premium-completed">
-            <div class="fc-premium-done-icon">🎉</div>
-            <h2 class="fc-premium-done-title">All Done!</h2>
-            <p class="fc-premium-done-text">You reviewed all the cards. Great vocabulary practice!</p>
-            <div class="fc-premium-done-track">
-                <div class="fc-premium-done-fill" id="fc-premium-done-fill"></div>
+                <button class="fc-btn fc-btn-purple" id="fc-repeat">
+                    Repeat
+                </button>
+
+                <button class="fc-btn fc-btn-purple" id="fc-flip">
+                    Show Text
+                </button>
+
+                <button class="fc-btn fc-btn-orange" id="fc-next">
+                    Next
+                </button>
+
             </div>
-            <div class="fc-premium-actions">
-                <button type="button" class="fc-premium-btn fc-premium-btn-pink" id="fc-premium-restart">&#8635; Review Again</button>
-                <button type="button" class="fc-premium-btn fc-premium-btn-purple" onclick="history.back()">&#8592; Back</button>
+
+        </div>
+
+        <div class="fc-completed" id="fc-completed">
+
+            <div class="fc-check">
+                ✓
             </div>
-        </section>
+
+            <h2 class="fc-done-title">
+                Complete
+            </h2>
+
+            <div class="fc-done-text">
+                Great listening and pronunciation practice.
+            </div>
+
+            <div class="fc-actions" style="margin-top:24px;">
+
+                <button class="fc-btn fc-btn-orange" id="fc-restart">
+                    Restart
+                </button>
+
+            </div>
+
+        </div>
+
     </div>
+
 </div>
 
-<audio id="fc-premium-win" src="../../hangman/assets/win.mp3" preload="auto"></audio>
-
 <script>
+
 (function(){
+
 'use strict';
 
-var CARDS = <?php echo json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
-var TOTAL = CARDS.length;
-var idx = 0;
+var cards = <?php echo json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
+
+var current = 0;
 var flipped = false;
-var done = false;
 
-var els = {
-    board: document.getElementById('fc-premium-board'),
-    completed: document.getElementById('fc-premium-completed'),
-    card: document.getElementById('fc-premium-card'),
-    img: document.getElementById('fc-premium-img'),
-    placeholder: document.getElementById('fc-premium-placeholder'),
-    word: document.getElementById('fc-premium-word'),
-    translation: document.getElementById('fc-premium-translation'),
-    progressFill: document.getElementById('fc-premium-progress-fill'),
-    progressCount: document.getElementById('fc-premium-progress-count'),
-    kickerCount: document.getElementById('fc-premium-kicker-count'),
-    doneFill: document.getElementById('fc-premium-done-fill'),
-    win: document.getElementById('fc-premium-win')
-};
+var cardEl = document.getElementById('fc-card');
+var imageEl = document.getElementById('fc-image');
+var placeholderEl = document.getElementById('fc-placeholder');
+var wordEl = document.getElementById('fc-word');
+var translationEl = document.getElementById('fc-translation');
 
-var TTS = (function(){
-    var preferred = ['zira','samantha','karen','aria','jenny','emma','ava','siri','google us english','female','woman'];
-    var cache = null;
-    var attempts = 0;
+var fillEl = document.getElementById('fc-fill');
+var countEl = document.getElementById('fc-count');
 
-    function load(cb){
-        if (!window.speechSynthesis) return;
-        var voices = window.speechSynthesis.getVoices();
-        if (voices && voices.length) {
-            cache = voices;
-            cb(voices);
-            return;
-        }
-        if (window.speechSynthesis.onvoiceschanged !== undefined) {
-            window.speechSynthesis.onvoiceschanged = function(){
-                cache = window.speechSynthesis.getVoices();
-                if (cache.length) cb(cache);
-            };
-        }
-        if (attempts < 12) {
-            attempts++;
-            setTimeout(function(){ load(cb); }, 150);
-        }
-    }
+var completedEl = document.getElementById('fc-completed');
+var boardEl = document.getElementById('fc-board');
 
-    function pick(voices){
-        if (!voices || !voices.length) return null;
-        var pool = [];
-        voices.forEach(function(v){
-            var lang = String(v.lang || '').toLowerCase();
-            if (lang.indexOf('en') === 0) pool.push(v);
-        });
-        if (!pool.length) pool = voices;
-
-        for (var i = 0; i < preferred.length; i++) {
-            for (var j = 0; j < pool.length; j++) {
-                var label = (String(pool[j].name || '') + ' ' + String(pool[j].voiceURI || '')).toLowerCase();
-                if (label.indexOf(preferred[i]) !== -1) return pool[j];
-            }
-        }
-        return pool[0] || null;
-    }
-
-    function speak(text){
-        text = String(text || '').trim();
-        if (!text || !window.speechSynthesis) return;
-
-        window.speechSynthesis.cancel();
-
-        function run(voices){
-            var utterance = new SpeechSynthesisUtterance(text);
-            utterance.lang = 'en-US';
-            utterance.rate = 0.84;
-            utterance.pitch = 1.08;
-            utterance.volume = 1;
-            var voice = pick(voices);
-            if (voice) utterance.voice = voice;
-            window.speechSynthesis.speak(utterance);
-        }
-
-        if (cache && cache.length) run(cache);
-        else load(run);
-    }
-
-    if (window.speechSynthesis) load(function(){});
-    return { speak: speak };
-})();
+function getCard(){
+    return cards[current] || {};
+}
 
 function getWord(card){
-    return String((card && (card.english_text || card.text)) || '').trim();
+    return String(
+        card.english_text ||
+        card.text ||
+        ''
+    ).trim();
 }
 
-function getSpanish(card){
-    return String((card && card.spanish_text) || '').trim();
+function getTranslation(card){
+    return String(
+        card.spanish_text ||
+        ''
+    ).trim();
 }
 
-function getPlaceholder(word){
-    if (!word) return '?';
-    var first = word.charAt(0).toUpperCase();
-    return first || '?';
+function updateProgress(){
+
+    var total = cards.length;
+    var pct = ((current + 1) / total) * 100;
+
+    fillEl.style.width = pct + '%';
+
+    countEl.textContent =
+        (current + 1) +
+        ' / ' +
+        total;
 }
 
-function setFlipped(value){
-    flipped = !!value;
-    if (flipped) els.card.classList.add('is-flipped');
-    else els.card.classList.remove('is-flipped');
-}
+function renderCard(){
 
-function loadCard(){
-    if (!TOTAL) return;
+    var card = getCard();
 
-    var card = CARDS[idx] || {};
-    var word = getWord(card) || 'No text';
-    var spanish = getSpanish(card);
-    var image = String(card.image || '').trim();
+    var word = getWord(card);
+    var translation = getTranslation(card);
 
-    els.word.textContent = word;
+    wordEl.textContent = word;
+    translationEl.textContent = translation;
 
-    if (spanish) {
-        els.translation.textContent = spanish;
-        els.translation.style.display = '';
-    } else {
-        els.translation.textContent = '';
-        els.translation.style.display = 'none';
+    if(card.image){
+
+        imageEl.src = card.image;
+        imageEl.style.display = 'block';
+
+        placeholderEl.style.display = 'none';
+
+    }else{
+
+        imageEl.style.display = 'none';
+        placeholderEl.style.display = 'flex';
+
     }
 
-    if (image) {
-        els.img.src = image;
-        els.img.alt = word;
-        els.img.style.display = '';
-        els.placeholder.style.display = 'none';
-    } else {
-        els.img.removeAttribute('src');
-        els.img.alt = '';
-        els.img.style.display = 'none';
-        els.placeholder.textContent = getPlaceholder(word);
-        els.placeholder.style.display = '';
+    flipped = false;
+    cardEl.classList.remove('flipped');
+
+    updateProgress();
+
+    playAudio();
+}
+
+function flip(){
+
+    flipped = !flipped;
+
+    if(flipped){
+        cardEl.classList.add('flipped');
+    }else{
+        cardEl.classList.remove('flipped');
     }
-
-    setFlipped(false);
-
-    var countText = (idx + 1) + ' / ' + TOTAL;
-    var pct = Math.max(1, Math.round(((idx + 1) / TOTAL) * 100));
-    els.progressFill.style.width = pct + '%';
-    els.progressCount.textContent = countText;
-    els.kickerCount.textContent = countText;
 }
 
-function flipCard(){
-    if (done) return;
-    setFlipped(!flipped);
-}
+function next(){
 
-function prevCard(){
-    if (done) return;
-    idx = (idx - 1 + TOTAL) % TOTAL;
-    loadCard();
-}
+    if(current >= cards.length - 1){
 
-function nextCard(){
-    if (done) return;
-    if (idx >= TOTAL - 1) {
-        showDone();
+        boardEl.style.display = 'none';
+        completedEl.classList.add('active');
+
         return;
     }
-    idx++;
-    loadCard();
-}
 
-function showDone(){
-    done = true;
-    els.board.style.display = 'none';
-    els.completed.classList.add('active');
-    setTimeout(function(){ els.doneFill.style.width = '100%'; }, 120);
-    launchConfetti();
-    try {
-        els.win.pause();
-        els.win.currentTime = 0;
-        els.win.play();
-    } catch(e) {}
+    current++;
+
+    renderCard();
 }
 
 function restart(){
-    done = false;
-    idx = 0;
-    els.doneFill.style.width = '0%';
-    els.completed.classList.remove('active');
-    els.board.style.display = '';
-    loadCard();
+
+    current = 0;
+
+    completedEl.classList.remove('active');
+    boardEl.style.display = '';
+
+    renderCard();
 }
 
-function launchConfetti(){
-    var colors = ['#F97316','#7F77DD','#534AB7','#C2580A','#FFF0E6','#EEEDFE'];
-    var amount = 80;
+function pickVoice(voices){
 
-    for (var i = 0; i < amount; i++) {
-        (function(n){
-            setTimeout(function(){
-                var piece = document.createElement('span');
-                piece.className = 'fc-premium-confetti';
-                piece.style.left = Math.random() * 100 + 'vw';
-                piece.style.background = colors[Math.floor(Math.random() * colors.length)];
-                piece.style.animationDuration = (2.2 + Math.random() * 1.8) + 's';
-                piece.style.transform = 'rotate(' + (Math.random() * 180) + 'deg)';
-                piece.style.borderRadius = Math.random() > .5 ? '999px' : '3px';
-                document.body.appendChild(piece);
-                setTimeout(function(){ piece.remove(); }, 4500);
-            }, n * 10);
-        })(i);
+    var preferred = [
+        'jenny',
+        'aria',
+        'guy',
+        'sonia',
+        'ryan'
+    ];
+
+    var english = voices.filter(function(v){
+        return String(v.lang || '').toLowerCase().indexOf('en') === 0;
+    });
+
+    for(var i = 0; i < preferred.length; i++){
+
+        for(var j = 0; j < english.length; j++){
+
+            var label =
+                String(english[j].name || '') +
+                ' ' +
+                String(english[j].voiceURI || '');
+
+            label = label.toLowerCase();
+
+            if(label.indexOf(preferred[i]) !== -1){
+                return english[j];
+            }
+        }
     }
+
+    return english[0] || null;
 }
 
-function bind(id, eventName, handler){
-    var el = document.getElementById(id);
-    if (el) el.addEventListener(eventName, handler);
-}
+function playAudio(){
 
-els.card.addEventListener('click', flipCard);
-els.card.addEventListener('keydown', function(e){
-    if (e.key === 'Enter' || e.key === ' ') {
-        e.preventDefault();
-        flipCard();
+    var text = getWord(getCard());
+
+    if(!text) return;
+
+    if(!window.speechSynthesis) return;
+
+    window.speechSynthesis.cancel();
+
+    var utter = new SpeechSynthesisUtterance(text);
+
+    utter.lang = 'en-US';
+    utter.rate = 0.92;
+    utter.pitch = 0;
+    utter.volume = 1;
+
+    var voices = speechSynthesis.getVoices();
+
+    var voice = pickVoice(voices);
+
+    if(voice){
+        utter.voice = voice;
     }
-});
 
-bind('fc-premium-prev-arrow', 'click', prevCard);
-bind('fc-premium-next-arrow', 'click', nextCard);
-bind('fc-premium-prev', 'click', prevCard);
-bind('fc-premium-next', 'click', nextCard);
-bind('fc-premium-restart', 'click', restart);
-bind('fc-premium-listen', 'click', function(){
-    TTS.speak(getWord(CARDS[idx] || {}));
-});
+    speechSynthesis.speak(utter);
+}
 
-document.addEventListener('keydown', function(e){
-    if (e.key === 'ArrowRight') nextCard();
-    if (e.key === 'ArrowLeft') prevCard();
-});
+document
+.getElementById('fc-repeat')
+.addEventListener('click', playAudio);
 
-loadCard();
+document
+.getElementById('fc-flip')
+.addEventListener('click', flip);
+
+document
+.getElementById('fc-next')
+.addEventListener('click', next);
+
+document
+.getElementById('fc-restart')
+.addEventListener('click', restart);
+
+document
+.getElementById('fc-front')
+.addEventListener('click', playAudio);
+
+renderCard();
+
 })();
+
 </script>
-<?php
-$content = ob_get_clean();
-render_activity_viewer($viewerTitle, 'fa-solid fa-clone', $content);
