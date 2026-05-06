@@ -380,10 +380,32 @@ body.embedded-mode .os-back-btn {
 .os-list {
     list-style: none;
     margin: 0;
-    padding: 0;
+    padding: 4px 4px 4px 0;
     display: flex;
     flex-direction: column;
     gap: 9px;
+    max-height: clamp(260px, 50vh, 480px);
+    overflow-y: auto;
+    overflow-x: hidden;
+    scroll-behavior: smooth;
+}
+
+.os-list::-webkit-scrollbar {
+    width: 6px;
+}
+
+.os-list::-webkit-scrollbar-track {
+    background: #F4F2FD;
+    border-radius: 999px;
+}
+
+.os-list::-webkit-scrollbar-thumb {
+    background: #C4BFEE;
+    border-radius: 999px;
+}
+
+.os-list::-webkit-scrollbar-thumb:hover {
+    background: #7F77DD;
 }
 
 .os-chip {
