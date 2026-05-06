@@ -29,6 +29,21 @@
       return String(item.left_image || item.right_image || item.image || item.img || '').trim() !== '';
     });
 
+    function shuffle(items) {
+      const copy = items.slice();
+
+      for (let i = copy.length - 1; i > 0; i -= 1) {
+        const j = Math.floor(Math.random() * (i + 1));
+        const temp = copy[i];
+        copy[i] = copy[j];
+        copy[j] = temp;
+      }
+
+      return copy;
+    }
+
+    let englishOrder = shuffle(pairs);
+    let matchOrder = shuffle(pairs);
     let selectedEn = null;
     let selectedMatch = null;
     let matched = [];
@@ -38,6 +53,11 @@
     let hintState = 'default';
     let hintText = 'Tap a word to start';
     let scoreVisible = false;
+
+    function reshuffleBoard() {
+      englishOrder = shuffle(pairs);
+      matchOrder = shuffle(pairs);
+    }
 
     function escapeHtml(value) {
       return String(value || '')
@@ -148,7 +168,7 @@
     }
 
     function renderImageMode() {
-      const english = pairs.map((item) => {
+      const english = englishOrder.map((item) => {
         const id = escapeHtml(item.id);
         const word = escapeHtml(getLeftText(item));
 
@@ -159,7 +179,7 @@
           '</button>';
       }).join('');
 
-      const images = pairs.map((item) => {
+      const images = matchOrder.map((item) => {
         const id = escapeHtml(item.id);
         const label = escapeHtml(getRightText(item));
         const image = getImage(item);
@@ -183,14 +203,14 @@
     }
 
     function renderTextMode() {
-      const english = pairs.map((item) => {
+      const english = englishOrder.map((item) => {
         const id = escapeHtml(item.id);
 
         return '<button type="button" class="' + chipClasses(item, 'en', 'match-text-chip') + '" data-side="en" data-id="' + id + '">' +
           '<span class="match-badge">✓</span>' + escapeHtml(getLeftText(item)) + '</button>';
       }).join('');
 
-      const matches = pairs.map((item) => {
+      const matches = matchOrder.map((item) => {
         const id = escapeHtml(item.id);
 
         return '<button type="button" class="' + chipClasses(item, 'match', 'match-text-chip') + '" data-side="match" data-id="' + id + '">' +
@@ -333,6 +353,7 @@
       wrongs = 0;
       wrongFlash = null;
       scoreVisible = false;
+      reshuffleBoard();
       setHint('Tap a word to start', 'default');
       render();
     }
@@ -386,6 +407,7 @@
     }
 
     function init() {
+      reshuffleBoard();
       bindControls();
       render();
     }
@@ -397,6 +419,10 @@
       showAnswers,
       showScore,
       setMode,
+      reshuffle: function () {
+        reshuffleBoard();
+        render();
+      },
       getState: function () {
         return {
           selectedEn,
@@ -405,7 +431,9 @@
           wrongs,
           viewMode,
           scoreVisible,
-          total
+          total,
+          englishOrder: englishOrder.map((item) => String(item.id)),
+          matchOrder: matchOrder.map((item) => String(item.id))
         };
       }
     };
