@@ -1,25 +1,28 @@
-<?php // TEST SYNC 2026-04-21 ?>
 <?php
 require_once __DIR__ . "/../../config/db.php";
 require_once __DIR__ . "/../../core/_activity_viewer_template.php";
 
-$unit       = isset($_GET['unit']) ? trim((string)$_GET['unit']) : "";
-$activityId = isset($_GET['id'])   ? trim((string)$_GET['id'])   : "";
-$returnTo   = isset($_GET['return_to']) ? trim((string)$_GET['return_to']) : "";
+$unit = isset($_GET['unit']) ? trim((string)$_GET['unit']) : "";
+$activityId = isset($_GET['id']) ? trim((string)$_GET['id']) : "";
+$returnTo = isset($_GET['return_to']) ? trim((string)$_GET['return_to']) : "";
 
-// Load activity row
 $row = null;
+
 if ($activityId !== "") {
     $stmt = $pdo->prepare("SELECT id, data FROM activities WHERE id = :id AND type = 'crossword' LIMIT 1");
     $stmt->execute(["id" => $activityId]);
     $row = $stmt->fetch(PDO::FETCH_ASSOC);
 }
+
 if (!$row && $unit !== "") {
     $stmt = $pdo->prepare("SELECT id, data FROM activities WHERE unit_id = :unit AND type = 'crossword' ORDER BY id ASC LIMIT 1");
     $stmt->execute(["unit" => $unit]);
     $row = $stmt->fetch(PDO::FETCH_ASSOC);
 }
+
 if (!$row) die("Activity not found.");
+
+$activityId = isset($row['id']) ? (string)$row['id'] : $activityId;
 
 $raw = json_decode($row["data"] ?? "{}", true);
 if (!is_array($raw)) $raw = [];
@@ -28,36 +31,48 @@ $title = trim((string)($raw["title"] ?? "Crossword Puzzle"));
 if ($title === "") $title = "Crossword Puzzle";
 
 $rawWords = is_array($raw["words"] ?? null) ? $raw["words"] : [];
-$words = [];
+$sourceWords = [];
+
 foreach ($rawWords as $w) {
     if (!is_array($w)) continue;
+
     $word = strtoupper(trim((string)($w["word"] ?? "")));
     $word = preg_replace('/[^A-Z0-9]/', '', $word);
+
     if ($word === "" || strlen($word) < 2) continue;
-    $words[] = [
-        "word"      => $word,
-        "clue"      => htmlspecialchars(trim((string)($w["clue"] ?? "")), ENT_QUOTES, "UTF-8"),
-        "raw_clue"  => trim((string)($w["clue"] ?? "")),
+
+    $image = "";
+    foreach (["image", "clue_image", "img", "picture"] as $key) {
+        if (isset($w[$key]) && trim((string)$w[$key]) !== "") {
+            $image = trim((string)$w[$key]);
+            break;
+        }
+    }
+
+    $sourceWords[] = [
+        "word" => $word,
+        "clue" => trim((string)($w["clue"] ?? "")),
+        "image" => $image,
     ];
 }
 
-function cw_key(int $r, int $c): string {
-    return $r . ',' . $c;
+if (empty($sourceWords)) {
+    die("Crossword has no valid words. Please add at least one word with 2+ letters.");
 }
 
-function cw_can_place_word(array $grid, string $word, int $row, int $col, string $direction): array
-{
+function cw_key(int $r, int $c): string {
+    return $r . "," . $c;
+}
+
+function cw_can_place_word(array $grid, string $word, int $row, int $col, string $direction): array {
     $len = strlen($word);
     $overlaps = 0;
 
-    $dr = $direction === 'across' ? 0 : 1;
-    $dc = $direction === 'across' ? 1 : 0;
+    $dr = $direction === "across" ? 0 : 1;
+    $dc = $direction === "across" ? 1 : 0;
 
-    $beforeKey = cw_key($row - $dr, $col - $dc);
-    $afterKey = cw_key($row + $dr * $len, $col + $dc * $len);
-    if (isset($grid[$beforeKey]) || isset($grid[$afterKey])) {
-        return [false, 0];
-    }
+    if (isset($grid[cw_key($row - $dr, $col - $dc)])) return [false, 0];
+    if (isset($grid[cw_key($row + $dr * $len, $col + $dc * $len)])) return [false, 0];
 
     for ($i = 0; $i < $len; $i++) {
         $r = $row + $dr * $i;
@@ -66,61 +81,51 @@ function cw_can_place_word(array $grid, string $word, int $row, int $col, string
         $ch = $word[$i];
 
         if (isset($grid[$key])) {
-            if (($grid[$key]['letter'] ?? '') !== $ch) {
-                return [false, 0];
-            }
+            if (($grid[$key]["letter"] ?? "") !== $ch) return [false, 0];
             $overlaps++;
             continue;
         }
 
-        if ($direction === 'across') {
-            if (isset($grid[cw_key($r - 1, $c)]) || isset($grid[cw_key($r + 1, $c)])) {
-                return [false, 0];
-            }
+        if ($direction === "across") {
+            if (isset($grid[cw_key($r - 1, $c)]) || isset($grid[cw_key($r + 1, $c)])) return [false, 0];
         } else {
-            if (isset($grid[cw_key($r, $c - 1)]) || isset($grid[cw_key($r, $c + 1)])) {
-                return [false, 0];
-            }
+            if (isset($grid[cw_key($r, $c - 1)]) || isset($grid[cw_key($r, $c + 1)])) return [false, 0];
         }
     }
 
     return [true, $overlaps];
 }
 
-function cw_place_word(array &$grid, array $placedWord): void
-{
-    $word = $placedWord['word'];
+function cw_place_word(array &$grid, array $placed): void {
+    $word = $placed["word"];
     $len = strlen($word);
-    $row = (int)$placedWord['row'];
-    $col = (int)$placedWord['col'];
-    $dir = $placedWord['direction'];
+    $row = (int)$placed["row"];
+    $col = (int)$placed["col"];
+    $dir = $placed["direction"];
 
     for ($i = 0; $i < $len; $i++) {
-        $r = $dir === 'across' ? $row : $row + $i;
-        $c = $dir === 'across' ? $col + $i : $col;
+        $r = $dir === "across" ? $row : $row + $i;
+        $c = $dir === "across" ? $col + $i : $col;
         $key = cw_key($r, $c);
+
         if (!isset($grid[$key])) {
-            $grid[$key] = ['letter' => $word[$i], 'wordIdxs' => []];
+            $grid[$key] = ["letter" => $word[$i], "wordIdxs" => []];
         }
-        $grid[$key]['wordIdxs'][] = $placedWord['idx'];
+
+        $grid[$key]["wordIdxs"][] = $placed["idx"];
     }
 }
 
-function cw_generate_layout(array $words): array
-{
-    if (empty($words)) {
-        return [[], []];
-    }
-
+function cw_generate_layout(array $words): array {
     $indexed = [];
+
     foreach ($words as $idx => $w) {
-        $indexed[] = ['idx' => $idx, 'word' => $w['word']];
+        $indexed[] = ["idx" => $idx, "word" => $w["word"]];
     }
 
     usort($indexed, function ($a, $b) {
-        $lenCmp = strlen($b['word']) <=> strlen($a['word']);
-        if ($lenCmp !== 0) return $lenCmp;
-        return $a['idx'] <=> $b['idx'];
+        $lenCmp = strlen($b["word"]) <=> strlen($a["word"]);
+        return $lenCmp !== 0 ? $lenCmp : ($a["idx"] <=> $b["idx"]);
     });
 
     $grid = [];
@@ -128,53 +133,47 @@ function cw_generate_layout(array $words): array
 
     $first = $indexed[0];
     $firstPlaced = [
-        'idx' => $first['idx'],
-        'word' => $first['word'],
-        'row' => 0,
-        'col' => 0,
-        'direction' => 'across',
+        "idx" => $first["idx"],
+        "word" => $first["word"],
+        "row" => 0,
+        "col" => 0,
+        "direction" => "across",
     ];
+
     $placed[] = $firstPlaced;
     cw_place_word($grid, $firstPlaced);
 
     for ($p = 1; $p < count($indexed); $p++) {
-        $candidateWord = $indexed[$p];
-        $word = $candidateWord['word'];
+        $candidate = $indexed[$p];
+        $word = $candidate["word"];
         $len = strlen($word);
-
         $best = null;
         $bestScore = -1000000;
 
         foreach ($grid as $key => $cell) {
-            $parts = explode(',', $key);
-            $r0 = (int)$parts[0];
-            $c0 = (int)$parts[1];
-            $gridCh = $cell['letter'];
+            [$r0, $c0] = array_map("intval", explode(",", $key));
+            $gridCh = $cell["letter"];
 
             for ($i = 0; $i < $len; $i++) {
                 if ($word[$i] !== $gridCh) continue;
 
-                foreach (['across', 'down'] as $dir) {
-                    $startRow = $dir === 'across' ? $r0 : $r0 - $i;
-                    $startCol = $dir === 'across' ? $c0 - $i : $c0;
+                foreach (["across", "down"] as $dir) {
+                    $startRow = $dir === "across" ? $r0 : $r0 - $i;
+                    $startCol = $dir === "across" ? $c0 - $i : $c0;
+
                     [$ok, $overlaps] = cw_can_place_word($grid, $word, $startRow, $startCol, $dir);
                     if (!$ok || $overlaps < 1) continue;
 
-                    $minR = $startRow;
-                    $maxR = $dir === 'down' ? $startRow + $len - 1 : $startRow;
-                    $minC = $startCol;
-                    $maxC = $dir === 'across' ? $startCol + $len - 1 : $startCol;
-                    $areaPenalty = ($maxR - $minR + 1) * ($maxC - $minC + 1);
-                    $score = ($overlaps * 1000) - $areaPenalty;
+                    $score = ($overlaps * 1000) - abs($startRow) - abs($startCol);
 
                     if ($score > $bestScore) {
                         $bestScore = $score;
                         $best = [
-                            'idx' => $candidateWord['idx'],
-                            'word' => $word,
-                            'row' => $startRow,
-                            'col' => $startCol,
-                            'direction' => $dir,
+                            "idx" => $candidate["idx"],
+                            "word" => $word,
+                            "row" => $startRow,
+                            "col" => $startCol,
+                            "direction" => $dir,
                         ];
                     }
                 }
@@ -182,55 +181,22 @@ function cw_generate_layout(array $words): array
         }
 
         if ($best === null) {
-            $bounds = ['minR' => 0, 'maxR' => 0, 'minC' => 0, 'maxC' => 0];
-            $firstBound = true;
+            $maxR = 0;
+            $minC = 0;
+
             foreach ($grid as $key => $_cell) {
-                $parts = explode(',', $key);
-                $r = (int)$parts[0];
-                $c = (int)$parts[1];
-                if ($firstBound) {
-                    $bounds = ['minR' => $r, 'maxR' => $r, 'minC' => $c, 'maxC' => $c];
-                    $firstBound = false;
-                } else {
-                    $bounds['minR'] = min($bounds['minR'], $r);
-                    $bounds['maxR'] = max($bounds['maxR'], $r);
-                    $bounds['minC'] = min($bounds['minC'], $c);
-                    $bounds['maxC'] = max($bounds['maxC'], $c);
-                }
+                [$r, $c] = array_map("intval", explode(",", $key));
+                $maxR = max($maxR, $r);
+                $minC = min($minC, $c);
             }
 
-            $preferDown = ($p % 2) === 1;
-            if ($preferDown) {
-                $fallback = [
-                    'idx' => $candidateWord['idx'],
-                    'word' => $word,
-                    'row' => $bounds['maxR'] + 2,
-                    'col' => $bounds['minC'],
-                    'direction' => 'down',
-                ];
-                [$okFallback] = cw_can_place_word($grid, $word, $fallback['row'], $fallback['col'], $fallback['direction']);
-                if (!$okFallback) {
-                    $fallback['direction'] = 'across';
-                    $fallback['row'] = $bounds['maxR'] + 2;
-                    $fallback['col'] = $bounds['minC'];
-                }
-                $best = $fallback;
-            } else {
-                $fallback = [
-                    'idx' => $candidateWord['idx'],
-                    'word' => $word,
-                    'row' => $bounds['maxR'] + 2,
-                    'col' => $bounds['minC'],
-                    'direction' => 'across',
-                ];
-                [$okFallback] = cw_can_place_word($grid, $word, $fallback['row'], $fallback['col'], $fallback['direction']);
-                if (!$okFallback) {
-                    $fallback['direction'] = 'down';
-                    $fallback['row'] = $bounds['maxR'] + 2;
-                    $fallback['col'] = $bounds['minC'];
-                }
-                $best = $fallback;
-            }
+            $best = [
+                "idx" => $candidate["idx"],
+                "word" => $word,
+                "row" => $maxR + 2,
+                "col" => $minC,
+                "direction" => ($p % 2 ? "down" : "across"),
+            ];
         }
 
         $placed[] = $best;
@@ -240,8 +206,10 @@ function cw_generate_layout(array $words): array
     $minRow = 0;
     $minCol = 0;
     $firstCell = true;
+
     foreach ($grid as $key => $_cell) {
-        [$r, $c] = array_map('intval', explode(',', $key));
+        [$r, $c] = array_map("intval", explode(",", $key));
+
         if ($firstCell) {
             $minRow = $r;
             $minCol = $c;
@@ -254,1141 +222,1358 @@ function cw_generate_layout(array $words): array
 
     if ($minRow !== 0 || $minCol !== 0) {
         foreach ($placed as &$pw) {
-            $pw['row'] -= $minRow;
-            $pw['col'] -= $minCol;
+            $pw["row"] -= $minRow;
+            $pw["col"] -= $minCol;
         }
         unset($pw);
     }
 
-    return [$placed, $grid];
-}
-
-[$placedWords, $_generatedGrid] = cw_generate_layout($words);
+    return $placed;
+}$placedWords = cw_generate_layout($sourceWords);
 
 $wordsByIdx = [];
-foreach ($words as $idx => $w) {
+foreach ($sourceWords as $idx => $w) {
     $wordsByIdx[$idx] = $w;
 }
 
-$words = [];
+$placed = [];
+
 foreach ($placedWords as $pw) {
-    $idx = (int)$pw['idx'];
+    $idx = (int)$pw["idx"];
+
     if (!isset($wordsByIdx[$idx])) continue;
-    $words[] = [
-        'idx' => $idx,
-        'word' => $wordsByIdx[$idx]['word'],
-        'clue' => $wordsByIdx[$idx]['clue'],
-        'raw_clue' => $wordsByIdx[$idx]['raw_clue'],
-        'direction' => $pw['direction'],
-        'row' => (int)$pw['row'],
-        'col' => (int)$pw['col'],
+
+    $placed[] = [
+        "idx" => $idx,
+        "word" => $wordsByIdx[$idx]["word"],
+        "clue" => $wordsByIdx[$idx]["clue"],
+        "image" => $wordsByIdx[$idx]["image"],
+        "direction" => $pw["direction"],
+        "row" => (int)$pw["row"],
+        "col" => (int)$pw["col"],
     ];
 }
 
-if (empty($words)) {
-    die('Crossword has no valid words. Please add at least one word with 2+ letters.');
-}
-
-// Compute grid dimensions from generated placement
 $maxRow = 0;
 $maxCol = 0;
-foreach ($words as $w) {
-    if ($w['direction'] === 'across') {
-        $maxRow = max($maxRow, $w['row']);
-        $maxCol = max($maxCol, $w['col'] + strlen($w['word']) - 1);
+
+foreach ($placed as $w) {
+    if ($w["direction"] === "across") {
+        $maxRow = max($maxRow, $w["row"]);
+        $maxCol = max($maxCol, $w["col"] + strlen($w["word"]) - 1);
     } else {
-        $maxRow = max($maxRow, $w['row'] + strlen($w['word']) - 1);
-        $maxCol = max($maxCol, $w['col']);
+        $maxRow = max($maxRow, $w["row"] + strlen($w["word"]) - 1);
+        $maxCol = max($maxCol, $w["col"]);
     }
 }
 
-// Limitar tamaño máximo de la cuadrícula
-$MAX_GRID_SIZE = 18; // puedes ajustar este valor
+$MAX_GRID_SIZE = 18;
+
 $gridRows = min($maxRow + 1, $MAX_GRID_SIZE);
 $gridCols = min($maxCol + 1, $MAX_GRID_SIZE);
 
-// Si la cuadrícula es más grande, mostrar advertencia
-$showGridLimitWarning = ($maxRow + 1 > $MAX_GRID_SIZE || $maxCol + 1 > $MAX_GRID_SIZE);
-
-// Build cell map: [r][c] = list of word references
 $cellMap = [];
+
 for ($r = 0; $r < $gridRows; $r++) {
     for ($c = 0; $c < $gridCols; $c++) {
-        $cellMap[$r][$c] = ["active" => false, "letter" => "", "wordIdxs" => [], "numLabel" => 0];
+        $cellMap[$r][$c] = [
+            "active" => false,
+            "letter" => "",
+            "wordIdxs" => [],
+            "numLabel" => 0,
+        ];
     }
 }
 
-foreach ($words as $idx => $w) {
+foreach ($placed as $idx => $w) {
     $len = strlen($w["word"]);
+
     for ($i = 0; $i < $len; $i++) {
         $r = $w["direction"] === "across" ? $w["row"] : $w["row"] + $i;
         $c = $w["direction"] === "across" ? $w["col"] + $i : $w["col"];
+
         if ($r < $gridRows && $c < $gridCols) {
-            $cellMap[$r][$c]["active"]   = true;
-            $cellMap[$r][$c]["letter"]   = $w["word"][$i];
+            $cellMap[$r][$c]["active"] = true;
+            $cellMap[$r][$c]["letter"] = $w["word"][$i];
             $cellMap[$r][$c]["wordIdxs"][] = $idx;
         }
     }
 }
 
-// Assign clue numbers by crossword starts (scan top-left to bottom-right)
 $startNumberByCell = [];
 $nextNum = 1;
+
 for ($r = 0; $r < $gridRows; $r++) {
     for ($c = 0; $c < $gridCols; $c++) {
-        if (!$cellMap[$r][$c]['active']) continue;
-        $startsAcross = ($c === 0 || !$cellMap[$r][$c - 1]['active']) && ($c + 1 < $gridCols && $cellMap[$r][$c + 1]['active']);
-        $startsDown   = ($r === 0 || !$cellMap[$r - 1][$c]['active']) && ($r + 1 < $gridRows && $cellMap[$r + 1][$c]['active']);
+
+        if (!$cellMap[$r][$c]["active"]) continue;
+
+        $startsAcross =
+            ($c === 0 || !$cellMap[$r][$c - 1]["active"]) &&
+            ($c + 1 < $gridCols && $cellMap[$r][$c + 1]["active"]);
+
+        $startsDown =
+            ($r === 0 || !$cellMap[$r - 1][$c]["active"]) &&
+            ($r + 1 < $gridRows && $cellMap[$r + 1][$c]["active"]);
+
         if ($startsAcross || $startsDown) {
-            $startNumberByCell[$r . ',' . $c] = $nextNum++;
+            $startNumberByCell[$r . "," . $c] = $nextNum++;
         }
     }
 }
 
 $wordNumber = [];
-foreach ($words as $idx => $w) {
-    $key = $w['row'] . ',' . $w['col'];
-    $wordNumber[$idx] = $startNumberByCell[$key] ?? 0;
-    $cellMap[$w['row']][$w['col']]['numLabel'] = $wordNumber[$idx];
+
+foreach ($placed as $idx => $w) {
+
+    $key = $w["row"] . "," . $w["col"];
+
+    $wordNumber[$idx] =
+        $startNumberByCell[$key] ?? ($idx + 1);
+
+    if (isset($cellMap[$w["row"]][$w["col"]])) {
+        $cellMap[$w["row"]][$w["col"]]["numLabel"] =
+            $wordNumber[$idx];
+    }
+
+    $placed[$idx]["num"] = $wordNumber[$idx];
 }
 
-// Build across and down lists
-$acrossWords = [];
-$downWords   = [];
-foreach ($words as $idx => $w) {
-    $entry = ["idx" => $idx, "num" => $wordNumber[$idx], "clue" => $w["clue"], "word" => $w["word"], "row" => $w["row"], "col" => $w["col"], "dir" => $w["direction"]];
-    if ($w["direction"] === "across") $acrossWords[] = $entry;
-    else $downWords[] = $entry;
-}
-usort($acrossWords, fn($a,$b) => $a["num"] - $b["num"]);
-usort($downWords,   fn($a,$b) => $a["num"] - $b["num"]);
+$largestSide = max($gridRows, $gridCols);
 
-$activeCellCount = 0;
-for ($r = 0; $r < $gridRows; $r++) {
-    for ($c = 0; $c < $gridCols; $c++) {
-        if ($cellMap[$r][$c]['active']) $activeCellCount++;
-    }
-}
+$cellSize =
+    $largestSide >= 15 ? 42 :
+    ($largestSide >= 12 ? 48 : 54);
 
-function cw_compute_cell_sizes(int $rows, int $cols): array
-{
-    $largestSide = max($rows, $cols);
-
-    if ($largestSide >= 22) {
-        return ['desktop' => 36, 'compact' => 32, 'mobile' => 28];
-    }
-    if ($largestSide >= 18) {
-        return ['desktop' => 42, 'compact' => 38, 'mobile' => 32];
-    }
-    if ($largestSide >= 15) {
-        return ['desktop' => 48, 'compact' => 44, 'mobile' => 36];
-    }
-    if ($largestSide >= 12) {
-        return ['desktop' => 54, 'compact' => 48, 'mobile' => 40];
-    }
-
-    return ['desktop' => 60, 'compact' => 54, 'mobile' => 44];
-}
-
-$cellSizes = cw_compute_cell_sizes($gridRows, $gridCols);
-
-// Pass data to JS
-$jsWords = json_encode(array_values($words), JSON_UNESCAPED_UNICODE);
-$jsCellMap = json_encode($cellMap, JSON_UNESCAPED_UNICODE);
-$jsWordNumbers = json_encode($wordNumber, JSON_UNESCAPED_UNICODE);
+$mobileCellSize =
+    $largestSide >= 15 ? 32 : 38;
 
 ob_start();
 ?>
+
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@600;700;800;900&display=swap" rel="stylesheet">
+
 <style>
-:root {
-    --purple: #7c3aed;
-    --purple-soft: #ede9fe;
-    --purple-mid: #a78bfa;
-    --purple-dark: #5b21b6;
-    --green: #16a34a;
-    --red: #dc2626;
-    --text: #1e1b4b;
-    --cell-size: <?= (int)$cellSizes['desktop'] - 3 ?>px;
-}
-* { box-sizing: border-box; margin: 0; padding: 0; }
 
-.cw-viewer {
-    max-width: 1020px;
-    margin: 0 auto;
-}
+:root{
+    --cw-orange:#F97316;
+    --cw-orange-dark:#C2580A;
+    --cw-orange-soft:#FFF0E6;
 
-.cw-card {
-    background: transparent;
-    border-radius: 0;
-    padding: 0;
-    box-shadow: none;
+    --cw-purple:#7F77DD;
+    --cw-purple-dark:#534AB7;
+    --cw-purple-soft:#EEEDFE;
+
+    --cw-muted:#9B94BE;
+    --cw-border:#F0EEF8;
+    --cw-track:#F4F2FD;
+
+    --cw-green:#16a34a;
+    --cw-red:#dc2626;
+
+    --cw-cell:<?= (int)$cellSize ?>px;
 }
 
-.cw-layout {
-    display: flex;
-    flex-direction: column;
-    gap: 24px;
-    align-items: center;
-    width: 100%;
-}
-.cw-grid-col {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    min-width: 0;
-    flex: 1 1 auto;
-}
-.cw-clues-col {
-    display: flex;
-    flex-direction: row;
-    gap: 24px;
-    width: 100%;
-    justify-content: center;
-    margin-top: 24px;
-    max-width: 900px;
-}
-.clue-panel {
-    width: min(100%, 360px);
+html,
+body{
+    width:100%;
+    min-height:100%;
 }
 
-/* ---- GRID ---- */
-.cw-grid-wrap {
-    overflow-x: auto;
-    padding: 12px 0 8px;
-    width: 100%;
-    display: flex;
-    justify-content: center;
-}
-.cw-grid-wrap::-webkit-scrollbar {
-    height: 10px;
-}
-.cw-grid-wrap::-webkit-scrollbar-thumb {
-    background: #a78bfa;
-    border-radius: 8px;
-}
-.cw-grid-wrap::-webkit-scrollbar-track {
-    background: #ede9fe;
-    border-radius: 8px;
-}
-.cw-grid {
-    display: grid;
-    grid-template-columns: repeat(<?= $gridCols ?>, var(--cell-size));
-    grid-template-rows:    repeat(<?= $gridRows ?>, var(--cell-size));
-    gap: 3px;
+body{
+    margin:0!important;
+    padding:0!important;
+    background:#fff!important;
+    font-family:'Nunito','Segoe UI',sans-serif!important;
 }
 
-/* Active (word) cells */
-.cw-cell {
-    width: var(--cell-size);
-    height: var(--cell-size);
-    position: relative;
-    background: #fff;
-    border: 2.5px solid #c4b5fd;
-    border-radius: 12px;
-    display: flex; align-items: center; justify-content: center;
-    cursor: pointer;
-    transition: background .15s, border-color .15s, box-shadow .15s;
-    box-shadow: 0 3px 8px rgba(124,58,237,.10);
+.activity-wrapper{
+    max-width:100%!important;
+    margin:0!important;
+    padding:0!important;
+    min-height:100vh;
+    display:flex!important;
+    flex-direction:column!important;
+    background:transparent!important;
 }
 
-/* Blocked cells: fully invisible */
-.cw-cell.blocked {
-    background: transparent;
-    border-color: transparent;
-    box-shadow: none;
-    cursor: default;
-    pointer-events: none;
+.top-row,
+.activity-header,
+.activity-title,
+.activity-subtitle{
+    display:none!important;
 }
 
-.cw-cell .num {
-    position: absolute;
-    top: 3px; left: 4px;
-    font-size: 11px; font-weight: 900;
-    color: var(--purple);
-    line-height: 1;
-    pointer-events: auto;
-    user-select: none;
-    cursor: pointer;
-    z-index: 3;
-    font-family: 'Nunito', 'Segoe UI', sans-serif;
-    padding: 2px 1px;
-}
-.cw-cell .num:hover { color: var(--purple-dark); text-decoration: underline; }
-
-.cw-cell input {
-    width: 100%; height: 100%;
-    border: none;
-    background: transparent;
-    text-align: center;
-    font-size: calc(var(--cell-size) * 0.46);
-    font-weight: 900;
-    font-family: 'Fredoka', 'Nunito', 'Segoe UI', sans-serif;
-    color: var(--text);
-    text-transform: uppercase;
-    caret-color: var(--purple);
-    outline: none;
-    padding: 0;
-    padding-top: 6px;
-    letter-spacing: 0;
+.viewer-content{
+    flex:1!important;
+    display:flex!important;
+    flex-direction:column!important;
+    padding:0!important;
+    margin:0!important;
+    background:transparent!important;
+    border:none!important;
+    box-shadow:none!important;
+    border-radius:0!important;
 }
 
-.cw-cell:hover:not(.blocked) { background: #f3f0ff; border-color: var(--purple-mid); }
-.cw-cell.selected {
-    background: linear-gradient(135deg, #ede9fe, #ddd6fe);
-    border-color: var(--purple);
-    box-shadow: 0 0 0 3px rgba(124,58,237,.25);
-    z-index: 2;
-}
-.cw-cell.word-hl  { background: #f5f3ff; border-color: #c4b5fd; }
-.cw-cell.correct  { background: linear-gradient(135deg,#dcfce7,#bbf7d0); border-color: #4ade80; }
-.cw-cell.correct input { color: var(--green); }
-.cw-cell.wrong    { background: linear-gradient(135deg,#fee2e2,#fecaca); border-color: #f87171; }
-.cw-cell.wrong input { color: var(--red); }
-.cw-cell.revealed { background: linear-gradient(135deg,#fef9c3,#fef08a); border-color: #facc15; }
-.cw-cell.revealed input { color: #92400e; }
-
-/* ---- TOOLBAR ---- */
-.cw-toolbar {
-    display: flex; gap: 10px; flex-wrap: wrap;
-    justify-content: center;
-    margin-top: 16px;
-    width: 100%;
-}
-.cw-toolbar button {
-    padding: 12px 22px;
-    border: none; border-radius: 999px;
-    font-family: 'Nunito', 'Segoe UI', sans-serif;
-    font-weight: 900; font-size: 15px;
-    min-width: 148px;
-    cursor: pointer;
-    color: #fff;
-    box-shadow: 0 8px 20px rgba(15, 23, 42, .16);
-    transition: transform .15s ease, filter .15s ease;
-    letter-spacing: .2px;
-}
-.cw-toolbar button:hover { transform: translateY(-2px); filter: brightness(1.06); }
-.btn-check      { background: linear-gradient(180deg, #8b5cf6 0%, #7c3aed 100%); }
-.btn-reveal     { background: linear-gradient(180deg, #fbbf24 0%, #f59e0b 100%); color: #1c1917; }
-.btn-reveal-all { background: linear-gradient(180deg, #f9a8d4 0%, #ec4899 100%); }
-.btn-clear      { background: linear-gradient(180deg, #94a3b8 0%, #64748b 100%); }
-
-/* ---- RESULT BANNER ---- */
-#cw-result {
-    margin-top: 10px;
-    font-size: 16px; font-weight: 800;
-    min-height: 24px; text-align: center;
-    font-family: 'Fredoka', 'Nunito', sans-serif;
+.cw-page{
+    width:100%;
+    min-height:100vh;
+    padding:clamp(14px,2.5vw,34px);
+    display:flex;
+    align-items:flex-start;
+    justify-content:center;
+    background:#fff;
+    box-sizing:border-box;
 }
 
-/* ---- CLUE PANELS ---- */
-.clue-panel {
-    background: #fff;
-    border-radius: 20px;
-    border: 2px solid #ede9fe;
-    padding: 16px 18px;
-    box-shadow: 0 8px 24px rgba(124, 58, 237, .09);
-    width: 100%;
-}
-.clue-panel h3 {
-    font-family: 'Fredoka', 'Trebuchet MS', sans-serif;
-    font-size: 17px;
-    color: var(--purple-dark);
-    margin-bottom: 10px;
-    padding-bottom: 8px;
-    border-bottom: 2px solid #ede9fe;
-    display: flex; align-items: center; gap: 6px;
-}
-.clue-list { list-style: none; }
-.clue-list li {
-    padding: 6px 4px;
-    font-size: 14px;
-    border-bottom: 1px solid #f3f4f6;
-    cursor: pointer;
-    transition: background .12s, color .12s;
-    display: flex; gap: 8px;
-    line-height: 1.45;
-    border-radius: 8px;
-}
-.clue-list li:last-child { border-bottom: none; }
-.clue-list li:hover { background: #f5f3ff; color: var(--purple); }
-.clue-list li.active {
-    background: #ede9fe;
-    color: var(--purple-dark);
-    font-weight: 900;
-    border-radius: 8px;
-}
-.clue-num {
-    font-weight: 900; color: var(--purple);
-    min-width: 22px; text-align: right;
-    font-size: 13px;
-    flex-shrink: 0;
+.cw-app{
+    width:min(1080px,100%);
+    margin:0 auto;
 }
 
-/* ---- CLUE TOOLTIP (shown on number click) ---- */
-#cw-clue-tooltip {
-    position: fixed;
-    z-index: 9999;
-    background: #fff;
-    border: 2.5px solid var(--purple);
-    border-radius: 16px;
-    padding: 10px 14px;
-    box-shadow: 0 8px 28px rgba(124,58,237,.22);
-    font-family: 'Nunito', 'Fredoka', sans-serif;
-    font-size: 14px;
-    font-weight: 700;
-    color: var(--text);
-    max-width: 240px;
-    line-height: 1.4;
-    pointer-events: none;
-    display: none;
-    transition: opacity .15s;
-}
-#cw-clue-tooltip .tt-dir {
-    font-size: 11px;
-    font-weight: 900;
-    color: var(--purple);
-    text-transform: uppercase;
-    letter-spacing: .5px;
-    margin-bottom: 4px;
-    display: block;
-}
-#cw-clue-tooltip .tt-num {
-    color: var(--purple-dark);
+.cw-hero{
+    text-align:center;
+    margin-bottom:clamp(14px,2vw,22px);
 }
 
-/* ---- PROGRESS BAR ---- */
-.cw-progress-wrap {
-    width: 100%;
-    margin-top: 18px;
-}
-.cw-progress-label {
-    font-size: 14px; color: #5b516f;
-    margin-bottom: 6px; text-align: center;
-    font-weight: 800;
-    font-family: 'Nunito', sans-serif;
-}
-.cw-progress-bar-bg {
-    background: #ede9fe; border-radius: 999px; height: 12px; overflow: hidden;
-}
-.cw-progress-bar {
-    height: 100%;
-    background: linear-gradient(90deg, #8b5cf6, var(--purple-mid));
-    border-radius: 50px;
-    transition: width .4s;
-    width: 0%;
+.cw-kicker{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    padding:7px 14px;
+    border-radius:999px;
+    background:var(--cw-orange-soft);
+    border:1px solid #FCDDBF;
+    color:var(--cw-orange-dark);
+    font-size:12px;
+    font-weight:900;
+    letter-spacing:.08em;
+    text-transform:uppercase;
+    margin-bottom:10px;
 }
 
-/* ---- Completed screen ---- */
-.completed-screen {
-    display: none;
-    text-align: center;
-    max-width: 600px;
-    margin: 0 auto;
-    padding: 40px 20px 24px;
-}
-.completed-screen.active { display: block; }
-
-.cw-card.is-completed #cwGameLayout { display: none; }
-.cw-card.is-completed {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    min-height: 420px;
+.cw-hero h1{
+    font-family:'Fredoka',sans-serif;
+    font-size:clamp(30px,5.5vw,58px);
+    font-weight:700;
+    color:var(--cw-orange);
+    margin:0;
+    line-height:1.03;
 }
 
-.completed-icon { font-size: 80px; margin-bottom: 20px; }
-.completed-title {
-    font-family: 'Fredoka', 'Trebuchet MS', sans-serif;
-    font-size: 36px; font-weight: 700;
-    color: #6d28d9; margin: 0 0 16px; line-height: 1.2;
-}
-.completed-text { font-size: 16px; color: #5b516f; line-height: 1.6; margin: 0 0 32px; }
-.completed-button {
-    display: inline-block; padding: 12px 28px;
-    border: none; border-radius: 999px;
-    background: linear-gradient(180deg, #8b5cf6 0%, #7c3aed 100%);
-    color: #fff; font-weight: 800; font-size: 17px;
-    cursor: pointer;
-    box-shadow: 0 10px 24px rgba(0,0,0,.15);
-    transition: transform .18s ease, filter .18s ease;
-    font-family: 'Fredoka','Nunito',sans-serif;
-}
-.completed-button:hover { transform: scale(1.05); filter: brightness(1.07); }
-
-@media (max-width: 820px) {
-    .cw-layout { flex-direction: column; align-items: center; }
-    .cw-clues-col { flex-direction: row; flex-wrap: wrap; width: 100%; max-height: none; position: static; overflow-y: visible; }
-    .clue-panel { width: min(100%, 360px); }
-}
-@media (max-width: 640px) {
-    :root { --cell-size: <?= (int)$cellSizes['mobile'] ?>px; }
-    .cw-clues-col { flex-direction: column; align-items: stretch; }
-    .clue-panel { width: 100%; }
-    .clue-list li { font-size: 13px; }
-    .cw-toolbar { flex-wrap: wrap; }
-    .cw-toolbar button { width: 100%; min-width: 0; max-width: 300px; }
+.cw-hero p{
+    font-size:clamp(13px,1.8vw,17px);
+    font-weight:800;
+    color:var(--cw-muted);
+    margin:8px 0 0;
 }
 
-@media (max-height: 900px) and (min-width: 641px) {
-    :root { --cell-size: <?= (int)$cellSizes['compact'] ?>px; }
-    .cw-toolbar button { padding: 10px 18px; min-width: 136px; font-size: 14px; }
+.cw-stage{
+    background:#fff;
+    border:1px solid var(--cw-border);
+    border-radius:34px;
+    padding:clamp(16px,2.6vw,26px);
+    box-shadow:0 8px 40px rgba(127,119,221,.13);
+    box-sizing:border-box;
 }
 
-/* Ensure any images inside the crossword viewer scale responsively and never overflow */
-.cw-viewer img {
-    max-width: 100%;
-    height: auto;
-    display: block;
-    margin: 0 auto;
+.cw-layout{
+    display:grid;
+    grid-template-columns:minmax(0,1fr) minmax(260px,330px);
+    gap:clamp(16px,2.4vw,24px);
+    align-items:start;
 }
 
-/* ── Fullscreen-embedded crossword layout ── */
-body.fullscreen-embedded .viewer-content {
-    overflow: hidden !important;
-    padding: 6px 8px !important;
-    display: flex !important;
-    flex-direction: column !important;
+.cw-grid-card,
+.cw-clue-card{
+    background:#fff;
+    border:1px solid #EDE9FA;
+    border-radius:30px;
+    box-shadow:0 8px 24px rgba(127,119,221,.09);
+    padding:clamp(14px,2vw,20px);
+}.cw-status{
+    display:grid;
+    grid-template-columns:1fr auto;
+    gap:10px;
+    align-items:center;
+    margin-bottom:14px;
 }
-body.fullscreen-embedded .cw-viewer {
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-    max-width: 100%;
-    overflow: hidden;
-}
-body.fullscreen-embedded #cwGame {
-    flex: 1;
-    min-height: 0;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-}
-body.fullscreen-embedded .cw-layout {
-    flex: 1 !important;
-    min-height: 0 !important;
-    flex-direction: row !important;
-    align-items: stretch !important;
-    gap: 10px !important;
-    overflow: hidden !important;
-}
-body.fullscreen-embedded .cw-grid-col {
-    flex: 0 0 auto !important;
-    overflow: auto !important;
-    max-height: 100% !important;
-    align-items: flex-start !important;
-    justify-content: flex-start !important;
-}
-body.fullscreen-embedded .cw-clues-col {
-    flex: 1 1 0 !important;
-    flex-direction: column !important;
-    overflow-y: auto !important;
-    max-height: 100% !important;
-    margin-top: 0 !important;
-    width: auto !important;
-    max-width: none !important;
-    justify-content: flex-start !important;
-}
-body.fullscreen-embedded .cw-grid-wrap {
-    overflow: visible !important;
-    padding: 4px 0 !important;
-}
-body.fullscreen-embedded .cw-toolbar {
-    flex-shrink: 0 !important;
-    margin-top: 4px !important;
-}
-body.fullscreen-embedded .cw-toolbar button {
-    padding: 8px 14px !important;
-    font-size: 13px !important;
-    min-width: 110px !important;
-}
-body.fullscreen-embedded .cw-progress-wrap {
-    flex-shrink: 0 !important;
-    margin-top: 4px !important;
-}
-body.fullscreen-embedded #cw-result {
-    margin-top: 4px !important;
-    font-size: 14px !important;
-}
-</style>
 
-<?= render_activity_header($title) ?>
-<div class="cw-viewer" id="cwViewer">
-    <?php if ($showGridLimitWarning): ?>
-    <div style="background:#fef3c7;color:#92400e;padding:10px 18px;border-radius:12px;margin-bottom:18px;font-weight:700;font-size:15px;text-align:center;">
-        This crossword is too large (max <?= $MAX_GRID_SIZE ?>x<?= $MAX_GRID_SIZE ?>). Only the first <?= $MAX_GRID_SIZE ?> rows and columns are shown. Please reduce the number or length of words for best display.
-    </div>
-    <?php endif; ?>
-    <div class="cw-card" id="cwGame">
+.cw-track{
+    height:12px;
+    background:var(--cw-track);
+    border:1px solid #E4E1F8;
+    border-radius:999px;
+    overflow:hidden;
+}
 
-        <div class="cw-layout" id="cwGameLayout">
-            <!-- GRID COLUMN -->
-            <div class="cw-grid-col">
-                <div class="cw-grid-wrap">
-                    <div class="cw-grid" id="cwGrid">
-                        <?php for ($r = 0; $r < $gridRows; $r++): ?>
-                            <?php for ($c = 0; $c < $gridCols; $c++): $cell = $cellMap[$r][$c]; ?>
-                                <?php if (!$cell["active"]): ?>
-                                    <div class="cw-cell blocked" data-r="<?= $r ?>" data-c="<?= $c ?>"></div>
-                                <?php else: ?>
-                                    <div class="cw-cell" data-r="<?= $r ?>" data-c="<?= $c ?>"
-                                         data-word-idxs="<?= htmlspecialchars(implode(',', $cell["wordIdxs"]), ENT_QUOTES, 'UTF-8') ?>"
-                                         data-answer="<?= htmlspecialchars($cell["letter"], ENT_QUOTES, 'UTF-8') ?>">
-                                        <?php if ($cell["numLabel"] > 0): ?>
-                                            <span class="num" data-num="<?= $cell['numLabel'] ?>" onclick="cwNumClick(event, <?= $r ?>, <?= $c ?>)"><?= $cell["numLabel"] ?></span>
-                                        <?php endif; ?>
-                                        <input type="text" maxlength="1" autocomplete="off"
-                                               autocorrect="off" autocapitalize="characters" spellcheck="false">
-                                    </div>
-                                <?php endif; ?>
-                            <?php endfor; ?>
-                        <?php endfor; ?>
+.cw-fill{
+    height:100%;
+    width:0;
+    border-radius:999px;
+    background:linear-gradient(90deg,var(--cw-orange),var(--cw-purple));
+    transition:width .35s ease;
+}
+
+.cw-count{
+    min-width:74px;
+    text-align:center;
+    padding:7px 11px;
+    border-radius:999px;
+    background:var(--cw-purple);
+    color:#fff;
+    font-size:12px;
+    font-weight:900;
+}
+
+.cw-grid-wrap{
+    width:100%;
+    overflow:auto;
+    padding:6px 2px 10px;
+    display:flex;
+    justify-content:center;
+}
+
+.cw-grid{
+    display:grid;
+    grid-template-columns:repeat(<?= $gridCols ?>,var(--cw-cell));
+    grid-template-rows:repeat(<?= $gridRows ?>,var(--cw-cell));
+    gap:4px;
+}
+
+.cw-cell{
+    width:var(--cw-cell);
+    height:var(--cw-cell);
+    position:relative;
+    background:#fff;
+    border:1.5px solid #DCD8F8;
+    border-radius:12px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    box-shadow:0 4px 12px rgba(127,119,221,.10);
+    transition:.15s;
+}
+
+.cw-cell.blocked{
+    background:transparent;
+    border-color:transparent;
+    box-shadow:none;
+    pointer-events:none;
+}
+
+.cw-cell .num{
+    position:absolute;
+    top:3px;
+    left:5px;
+    color:var(--cw-purple);
+    font-size:10px;
+    font-weight:900;
+    line-height:1;
+}
+
+.cw-cell input{
+    width:100%;
+    height:100%;
+    border:0;
+    background:transparent;
+    text-align:center;
+    text-transform:uppercase;
+    outline:0;
+    color:var(--cw-purple-dark);
+    font-family:'Fredoka','Nunito',sans-serif;
+    font-size:calc(var(--cw-cell) * .44);
+    font-weight:700;
+    padding-top:5px;
+}
+
+.cw-cell.selected,
+.cw-cell.word-hl{
+    background:var(--cw-purple-soft);
+    border-color:var(--cw-purple);
+}
+
+.cw-cell.correct{
+    background:#f0fdf4;
+    border-color:#86efac;
+}
+
+.cw-cell.correct input{
+    color:var(--cw-green);
+}
+
+.cw-cell.wrong{
+    background:#fff0e6;
+    border-color:#fdba74;
+}
+
+.cw-cell.wrong input{
+    color:var(--cw-orange-dark);
+}
+
+.cw-cell.revealed{
+    background:#FFF0E6;
+    border-color:#F97316;
+}
+
+.cw-cell.revealed input{
+    color:var(--cw-orange-dark);
+}
+
+.cw-toolbar{
+    display:flex;
+    justify-content:center;
+    gap:10px;
+    flex-wrap:wrap;
+    margin-top:16px;
+    padding-top:16px;
+    border-top:1px solid var(--cw-border);
+}
+
+.cw-btn{
+    border:0;
+    border-radius:999px;
+    min-width:clamp(104px,16vw,146px);
+    padding:13px 20px;
+    color:#fff;
+    font-family:'Nunito',sans-serif;
+    font-size:13px;
+    font-weight:900;
+    cursor:pointer;
+    box-shadow:0 6px 18px rgba(127,119,221,.18);
+    transition:filter .15s,transform .15s;
+}
+
+.cw-btn:hover{
+    filter:brightness(1.07);
+    transform:translateY(-1px);
+}
+
+.cw-btn-purple{
+    background:var(--cw-purple);
+}
+
+.cw-btn-orange{
+    background:var(--cw-orange);
+    box-shadow:0 6px 18px rgba(249,115,22,.22);
+}
+
+#cw-result{
+    min-height:22px;
+    margin-top:12px;
+    text-align:center;
+    font-size:14px;
+    font-weight:900;
+    color:var(--cw-muted);
+}
+
+.good{
+    color:var(--cw-green)!important;
+}
+
+.bad{
+    color:var(--cw-orange-dark)!important;
+}
+
+.cw-clue-title{
+    font-family:'Fredoka',sans-serif;
+    color:var(--cw-orange);
+    font-size:clamp(22px,3vw,30px);
+    line-height:1;
+    margin:0 0 6px;
+}
+
+.cw-clue-sub{
+    color:var(--cw-muted);
+    font-weight:800;
+    font-size:13px;
+    margin:0 0 14px;
+}
+
+.cw-visual-list{
+    display:grid;
+    grid-template-columns:1fr;
+    gap:10px;
+    max-height:620px;
+    overflow:auto;
+    padding-right:2px;
+}
+
+.cw-visual-clue{
+    width:100%;
+    border:1px solid #EDE9FA;
+    border-radius:22px;
+    background:#fff;
+    padding:10px;
+    display:grid;
+    grid-template-columns:86px minmax(0,1fr);
+    gap:10px;
+    align-items:center;
+    text-align:left;
+    cursor:pointer;
+    box-shadow:0 5px 14px rgba(127,119,221,.08);
+    transition:.15s;
+}
+
+.cw-visual-clue:hover,
+.cw-visual-clue.active{
+    background:#FAFAFE;
+    border-color:var(--cw-purple);
+    transform:translateY(-1px);
+}
+
+.cw-thumb{
+    width:86px;
+    height:74px;
+    border-radius:18px;
+    background:#FAFAFD;
+    border:1px solid #EDE9FA;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    overflow:hidden;
+    color:#D5D0F0;
+    font-size:28px;
+    font-weight:900;
+}
+
+.cw-thumb img{
+    width:100%;
+    height:100%;
+    object-fit:contain;
+    display:block;
+}
+
+.cw-clue-meta{
+    min-width:0;
+}
+
+.cw-clue-number{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    min-width:30px;
+    height:24px;
+    border-radius:999px;
+    background:var(--cw-purple-soft);
+    color:var(--cw-purple-dark);
+    font-size:12px;
+    font-weight:900;
+    margin-bottom:6px;
+}
+
+.cw-clue-dir{
+    color:var(--cw-muted);
+    font-size:11px;
+    font-weight:900;
+    text-transform:uppercase;
+    letter-spacing:.08em;
+}
+
+.cw-clue-text{
+    margin-top:4px;
+    color:var(--cw-muted);
+    font-size:12px;
+    font-weight:800;
+    line-height:1.35;
+    overflow:hidden;
+    display:-webkit-box;
+    -webkit-line-clamp:2;
+    -webkit-box-orient:vertical;
+}
+
+.cw-completed{
+    display:none;
+    min-height:360px;
+    align-items:center;
+    justify-content:center;
+    text-align:center;
+    flex-direction:column;
+    padding:clamp(28px,5vw,48px);
+}
+
+.cw-completed.active{
+    display:flex;
+}
+
+.cw-completed-icon{
+    width:72px;
+    height:72px;
+    border-radius:999px;
+    background:var(--cw-purple-soft);
+    color:var(--cw-purple);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:34px;
+    font-weight:900;
+    margin-bottom:16px;
+}
+
+.cw-completed-title{
+    font-family:'Fredoka',sans-serif;
+    font-size:clamp(30px,5.5vw,58px);
+    color:var(--cw-orange);
+    margin:0;
+    line-height:1.03;
+}
+
+.cw-completed-text{
+    color:var(--cw-muted);
+    font-size:clamp(13px,1.8vw,17px);
+    font-weight:800;
+    line-height:1.5;
+    margin:10px 0 18px;
+}
+
+.cw-game.hide{
+    display:none;
+}
+
+@media(max-width:860px){
+
+    :root{
+        --cw-cell:<?= (int)$mobileCellSize ?>px;
+    }
+
+    .cw-page{
+        padding:12px;
+    }
+
+    .cw-stage{
+        border-radius:26px;
+        padding:14px;
+    }
+
+    .cw-layout{
+        grid-template-columns:1fr;
+    }
+
+    .cw-clue-card{
+        order:-1;
+    }
+
+    .cw-visual-list{
+        grid-template-columns:1fr 1fr;
+        max-height:none;
+    }
+
+    .cw-visual-clue{
+        grid-template-columns:70px 1fr;
+    }
+
+    .cw-thumb{
+        width:70px;
+        height:62px;
+    }
+
+    .cw-toolbar{
+        display:grid;
+        grid-template-columns:1fr;
+        gap:9px;
+    }
+
+    .cw-btn{
+        width:100%;
+    }
+}
+
+@media(max-width:560px){
+
+    .cw-visual-list{
+        grid-template-columns:1fr;
+    }
+
+    .cw-cell{
+        border-radius:9px;
+    }
+
+    .cw-cell .num{
+        font-size:9px;
+        top:2px;
+        left:3px;
+    }
+}
+
+</style><div class="cw-page">
+    <div class="cw-app">
+
+        <div class="cw-hero">
+            <div class="cw-kicker">
+                Activity
+            </div>
+
+            <h1>
+                <?= htmlspecialchars($title, ENT_QUOTES, 'UTF-8') ?>
+            </h1>
+
+            <p>
+                Use the visual clues. Fill the crossword.
+            </p>
+        </div>
+
+        <section class="cw-stage">
+
+            <div class="cw-game" id="cw-game">
+
+                <div class="cw-layout">
+
+                    <div class="cw-grid-card">
+
+                        <div class="cw-status">
+
+                            <div class="cw-track">
+                                <div class="cw-fill" id="cw-progress"></div>
+                            </div>
+
+                            <div class="cw-count" id="cw-count">
+                                0%
+                            </div>
+
+                        </div>
+
+                        <div class="cw-grid-wrap">
+
+                            <div class="cw-grid" id="cw-grid">
+
+                                <?php for ($r = 0; $r < $gridRows; $r++): ?>
+                                    <?php for ($c = 0; $c < $gridCols; $c++): ?>
+
+                                        <?php $cell = $cellMap[$r][$c]; ?>
+
+                                        <div
+                                            class="cw-cell<?= $cell['active'] ? '' : ' blocked' ?>"
+                                            data-r="<?= $r ?>"
+                                            data-c="<?= $c ?>"
+                                            data-letter="<?= htmlspecialchars($cell['letter'], ENT_QUOTES, 'UTF-8') ?>"
+                                            data-word-idxs="<?= htmlspecialchars(implode(',', $cell['wordIdxs']), ENT_QUOTES, 'UTF-8') ?>"
+                                        >
+
+                                            <?php if ($cell['active']): ?>
+
+                                                <?php if ((int)$cell['numLabel'] > 0): ?>
+                                                    <span class="num">
+                                                        <?= (int)$cell['numLabel'] ?>
+                                                    </span>
+                                                <?php endif; ?>
+
+                                                <input
+                                                    maxlength="1"
+                                                    autocomplete="off"
+                                                    inputmode="text"
+                                                    aria-label="Crossword cell"
+                                                >
+
+                                            <?php endif; ?>
+
+                                        </div>
+
+                                    <?php endfor; ?>
+                                <?php endfor; ?>
+
+                            </div>
+
+                        </div>
+
+                        <div class="cw-toolbar">
+
+                            <button
+                                type="button"
+                                class="cw-btn cw-btn-purple"
+                                onclick="cwCheck()"
+                            >
+                                Check
+                            </button>
+
+                            <button
+                                type="button"
+                                class="cw-btn cw-btn-purple"
+                                onclick="cwRevealSelected()"
+                            >
+                                Show Text
+                            </button>
+
+                            <button
+                                type="button"
+                                class="cw-btn cw-btn-purple"
+                                onclick="cwClear()"
+                            >
+                                Clear
+                            </button>
+
+                            <button
+                                type="button"
+                                class="cw-btn cw-btn-orange"
+                                onclick="cwFinish()"
+                            >
+                                Finish
+                            </button>
+
+                        </div>
+
+                        <div id="cw-result"></div>
+
                     </div>
+
+                    <aside class="cw-clue-card">
+
+                        <h2 class="cw-clue-title">
+                            Visual Clues
+                        </h2>
+
+                        <p class="cw-clue-sub">
+                            Tap a clue to highlight its word.
+                        </p>
+
+                        <div class="cw-visual-list" id="cw-clues">
+
+                            <?php foreach ($placed as $idx => $w): ?>
+
+                                <button
+                                    type="button"
+                                    class="cw-visual-clue"
+                                    data-word-idx="<?= $idx ?>"
+                                >
+
+                                    <span class="cw-thumb">
+
+                                        <?php if (trim((string)$w['image']) !== ''): ?>
+
+                                            <img
+                                                src="<?= htmlspecialchars($w['image'], ENT_QUOTES, 'UTF-8') ?>"
+                                                alt="visual clue <?= (int)$w['num'] ?>"
+                                            >
+
+                                        <?php else: ?>
+
+                                            <?= (int)$w['num'] ?>
+
+                                        <?php endif; ?>
+
+                                    </span>
+
+                                    <span class="cw-clue-meta">
+
+                                        <span class="cw-clue-number">
+                                            <?= (int)$w['num'] ?>
+                                        </span>
+
+                                        <span class="cw-clue-dir">
+                                            <?= htmlspecialchars($w['direction'], ENT_QUOTES, 'UTF-8') ?>
+                                        </span>
+
+                                        <?php if (trim((string)$w['clue']) !== ''): ?>
+
+                                            <span class="cw-clue-text">
+                                                <?= htmlspecialchars($w['clue'], ENT_QUOTES, 'UTF-8') ?>
+                                            </span>
+
+                                        <?php endif; ?>
+
+                                    </span>
+
+                                </button>
+
+                            <?php endforeach; ?>
+
+                        </div>
+
+                    </aside>
+
                 </div>
+
             </div>
-            <!-- CLUES UNDER GRID -->
-            <div class="cw-clues-col">
-                <?php if (!empty($acrossWords)): ?>
-                <div class="clue-panel">
-                    <h3>→ Across</h3>
-                    <ul class="clue-list" id="acrossList">
-                        <?php foreach ($acrossWords as $aw): ?>
-                        <li data-idx="<?= $aw['idx'] ?>" data-dir="across" onclick="jumpToClue(<?= $aw['idx'] ?>)">
-                            <span class="clue-num"><?= $aw['num'] ?>.</span>
-                            <span><?= $aw['clue'] !== '' ? $aw['clue'] : '<em style="color:#9ca3af">No clue</em>' ?></span>
-                        </li>
-                        <?php endforeach; ?>
-                    </ul>
+
+            <div class="cw-completed" id="cw-completed">
+
+                <div class="cw-completed-icon">
+                    ✓
                 </div>
-                <?php endif; ?>
 
-                <?php if (!empty($downWords)): ?>
-                <div class="clue-panel">
-                    <h3>↓ Down</h3>
-                    <ul class="clue-list" id="downList">
-                        <?php foreach ($downWords as $dw): ?>
-                        <li data-idx="<?= $dw['idx'] ?>" data-dir="down" onclick="jumpToClue(<?= $dw['idx'] ?>)">
-                            <span class="clue-num"><?= $dw['num'] ?>.</span>
-                            <span><?= $dw['clue'] !== '' ? $dw['clue'] : '<em style="color:#9ca3af">No clue</em>' ?></span>
-                        </li>
-                        <?php endforeach; ?>
-                    </ul>
-                </div>
-                <?php endif; ?>
-            </div>
-        </div>
+                <h2 class="cw-completed-title">
+                    Complete
+                </h2>
 
-        <!-- Toolbar -->
-        <div class="cw-toolbar">
-            <button class="btn-check"      onclick="checkAll()">✔ Check</button>
-            <button class="btn-reveal"     onclick="revealSelected()">💡 Reveal Word</button>
-            <button class="btn-reveal-all" onclick="revealAll()">🔓 Reveal All</button>
-            <button class="btn-clear"      onclick="clearAll()">🗑 Clear</button>
-        </div>
+                <p class="cw-completed-text" id="cw-score-text">
+                    Great crossword practice.
+                </p>
 
-        <div id="cw-result"></div>
+                <button
+                    type="button"
+                    class="cw-btn cw-btn-orange"
+                    onclick="cwRestart()"
+                >
+                    Restart
+                </button>
 
-        <!-- Progress -->
-        <div class="cw-progress-wrap">
-            <div class="cw-progress-label" id="progressLabel">0 / <?= $activeCellCount ?> letters</div>
-            <div class="cw-progress-bar-bg">
-                <div class="cw-progress-bar" id="progressBar"></div>
-            </div>
-        </div>
             </div>
 
-            <!-- CLUES COLUMN -->
-            <!-- (Removed duplicate clues container) -->
-        </div>
-        <div id="cw-completed" class="completed-screen">
-            <div class="completed-icon">✅</div>
-            <h2 class="completed-title" id="cw-completed-title"></h2>
-            <p class="completed-text" id="cw-completed-text"></p>
-            <p class="completed-text" id="cw-score-text" style="font-weight:700;font-size:18px;color:#6d28d9;"></p>
-            <button type="button" class="completed-button" onclick="restartCrossword()">Restart</button>
-        </div>
+        </section>
+
     </div>
 </div>
 
-<!-- Clue tooltip -->
-<div id="cw-clue-tooltip"><span class="tt-dir" id="tt-dir"></span><span id="tt-body"></span></div>
+<audio
+    id="cw-win"
+    src="../../hangman/assets/win.mp3"
+    preload="auto"
+></audio>
+
+<audio
+    id="cw-lose"
+    src="../../hangman/assets/lose.mp3"
+    preload="auto"
+></audio>
 
 <script>
-/* ===== DATA from PHP ===== */
-const WORDS = <?= $jsWords ?>;
-const WORD_NUMBERS = <?= $jsWordNumbers ?>;  // idx→number
-const GRID_ROWS = <?= $gridRows ?>;
-const GRID_COLS = <?= $gridCols ?>;
-const TOTAL_LETTERS = <?= $activeCellCount ?>;
-const CW_RETURN_TO = <?= json_encode($returnTo, JSON_UNESCAPED_UNICODE) ?>;
-const CW_ACTIVITY_ID = <?= json_encode((string) ($row['id'] ?? ''), JSON_UNESCAPED_UNICODE) ?>;
 
-/* ===== STATE ===== */
-let selectedCell = null;     // {r, c}
-let currentWordIdx = -1;     // which word is active
-let currentDir = 'across';   // 'across' | 'down'
-const assistedCells = new Set();
-let cwScorePersisted = false;
+const CW_WORDS =
+<?= json_encode(array_values($placed), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
 
-/* ===== CELL LOOKUP ===== */
-function cellEl(r, c) {
-    return document.querySelector(`.cw-cell[data-r="${r}"][data-c="${c}"]`);
+const CW_ACTIVITY_ID =
+<?= json_encode($activityId, JSON_UNESCAPED_UNICODE) ?>;
+
+const CW_RETURN_TO =
+<?= json_encode($returnTo, JSON_UNESCAPED_UNICODE) ?>;
+
+let cwSelectedWord = null;
+
+const cwResult =
+document.getElementById('cw-result');
+
+const cwProgress =
+document.getElementById('cw-progress');
+
+const cwCount =
+document.getElementById('cw-count');
+
+const cwWin =
+document.getElementById('cw-win');
+
+const cwLose =
+document.getElementById('cw-lose');
+
+function cwCells(){
+    return Array.from(
+        document.querySelectorAll('.cw-cell:not(.blocked)')
+    );
 }
-function cellInput(r, c) {
-    const el = cellEl(r, c);
-    return el ? el.querySelector('input') : null;
+
+function cwPlay(audio){
+    try{
+        audio.pause();
+        audio.currentTime = 0;
+        audio.play();
+    }catch(e){}
 }
 
-/* ===== WORD CELLS ===== */
-function wordCells(idx) {
-    const w = WORDS[idx];
-    if (!w) return [];
-    const cells = [];
-    for (let i = 0; i < w.word.length; i++) {
-        const r = w.direction === 'across' ? w.row : w.row + i;
-        const c = w.direction === 'across' ? w.col + i : w.col;
-        const el = cellEl(r, c);
-        if (el) cells.push({ el, r, c, letter: w.word[i] });
+function cwCellFor(r,c){
+    return document.querySelector(
+        '.cw-cell[data-r="' + r + '"][data-c="' + c + '"]'
+    );
+}function cwWordCells(idx){
+    const word = CW_WORDS[idx];
+
+    if(!word) return [];
+
+    let cells = [];
+
+    for(let i = 0; i < word.word.length; i++){
+
+        let r =
+            word.direction === 'across'
+                ? word.row
+                : word.row + i;
+
+        let c =
+            word.direction === 'across'
+                ? word.col + i
+                : word.col;
+
+        let cell = cwCellFor(r,c);
+
+        if(cell) cells.push(cell);
     }
+
     return cells;
 }
 
-/* ===== HIGHLIGHT ===== */
-function clearHighlights() {
-    document.querySelectorAll('.cw-cell.selected, .cw-cell.word-hl').forEach(el => {
-        el.classList.remove('selected', 'word-hl');
-    });
-    document.querySelectorAll('.clue-list li.active').forEach(el => el.classList.remove('active'));
-}
+function cwSelectWord(idx){
 
-function highlightWord(idx) {
-    wordCells(idx).forEach(({ el, r, c }) => {
-        if (selectedCell && selectedCell.r === r && selectedCell.c === c) {
-            el.classList.add('selected');
-        } else {
-            el.classList.add('word-hl');
-        }
-    });
-    // highlight clue
-    document.querySelectorAll(`.clue-list li[data-idx="${idx}"]`).forEach(li => li.classList.add('active'));
-    // scroll clue into view
-    const activeLi = document.querySelector(`.clue-list li[data-idx="${idx}"].active`);
-    if (activeLi) activeLi.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-}
+    cwSelectedWord = Number(idx);
 
-/* ===== SELECT WORD for a cell ===== */
-function selectWordForCell(r, c, preferDir) {
-    const el = cellEl(r, c);
-    if (!el || el.classList.contains('blocked')) return;
-    const idxsRaw = el.dataset.wordIdxs || '';
-    const idxs = idxsRaw.split(',').map(Number).filter(n => !isNaN(n));
-    if (!idxs.length) return;
-
-    let chosen = idxs[0];
-    // try preferred dir
-    const preferred = idxs.find(i => WORDS[i] && WORDS[i].direction === preferDir);
-    if (preferred !== undefined) chosen = preferred;
-    // if already on this cell+word, toggle direction
-    if (currentWordIdx !== -1 && idxs.includes(currentWordIdx) && selectedCell &&
-        selectedCell.r === r && selectedCell.c === c) {
-        const other = idxs.find(i => i !== currentWordIdx);
-        if (other !== undefined) chosen = other;
-    }
-
-    currentWordIdx = chosen;
-    currentDir     = WORDS[chosen] ? WORDS[chosen].direction : 'across';
-    selectedCell   = { r, c };
-
-    clearHighlights();
-    el.classList.add('selected');
-    highlightWord(chosen);
-}
-
-/* ===== CLUE TOOLTIP ===== */
-const cwTooltip    = document.getElementById('cw-clue-tooltip');
-const ttDir        = document.getElementById('tt-dir');
-const ttBody       = document.getElementById('tt-body');
-let tooltipTimer   = null;
-
-function cwNumClick(event, r, c) {
-    event.stopPropagation();
-
-    // Collect all words that start at this cell
-    const el = cellEl(r, c);
-    if (!el) return;
-    const idxsRaw = el.dataset.wordIdxs || '';
-    const idxs = idxsRaw.split(',').map(Number).filter(n => !isNaN(n));
-
-    // Only show words whose start cell is r,c
-    const starters = idxs.filter(i => WORDS[i] && WORDS[i].row === r && WORDS[i].col === c);
-    if (!starters.length) return;
-
-    const lines = starters.map(i => {
-        const w = WORDS[i];
-        const num = WORD_NUMBERS[i] || '';
-        const dir = w.direction === 'across' ? '→ Across' : '↓ Down';
-        const clueText = w.clue || '—';
-        return `<span class="tt-dir">${num}. ${dir}</span>${clueText}`;
+    document
+    .querySelectorAll('.cw-cell')
+    .forEach(function(cell){
+        cell.classList.remove('word-hl','selected');
     });
 
-    ttDir.innerHTML  = '';
-    ttBody.innerHTML = lines.join('<hr style="border:none;border-top:1px solid #ede9fe;margin:6px 0">');
-
-    // Position near the number, but keep inside viewport
-    const rect = event.target.getBoundingClientRect();
-    cwTooltip.style.display = 'block';
-    cwTooltip.style.opacity = '0';
-
-    // measure then place
-    requestAnimationFrame(() => {
-        const tw = cwTooltip.offsetWidth;
-        const th = cwTooltip.offsetHeight;
-        let left = rect.left + window.scrollX;
-        let top  = rect.bottom + window.scrollY + 6;
-
-        if (left + tw > window.innerWidth - 12) left = window.innerWidth - tw - 12;
-        if (top + th > window.innerHeight + window.scrollY - 12) top = rect.top + window.scrollY - th - 8;
-
-        cwTooltip.style.left = left + 'px';
-        cwTooltip.style.top  = top + 'px';
-        cwTooltip.style.opacity = '1';
+    document
+    .querySelectorAll('.cw-visual-clue')
+    .forEach(function(clue){
+        clue.classList.toggle(
+            'active',
+            Number(clue.dataset.wordIdx) === cwSelectedWord
+        );
     });
 
-    clearTimeout(tooltipTimer);
-    tooltipTimer = setTimeout(cwHideTooltip, 3200);
-}
+    const cells = cwWordCells(cwSelectedWord);
 
-function cwHideTooltip() {
-    if (cwTooltip) { cwTooltip.style.display = 'none'; }
-}
+    cells.forEach(function(cell,i){
+        cell.classList.add(i === 0 ? 'selected' : 'word-hl');
+    });
 
-document.addEventListener('click', function(e) {
-    if (!e.target.closest('#cw-clue-tooltip') && !e.target.classList.contains('num')) {
-        cwHideTooltip();
-    }
-});
+    const first = cells[0];
 
-/* ===== CLICK CELL ===== */
-document.getElementById('cwGrid').addEventListener('click', function(e) {
-    if (e.target.classList.contains('num')) return; // handled by cwNumClick
-    const cell = e.target.closest('.cw-cell:not(.blocked)');
-    if (!cell) return;
-    const r = parseInt(cell.dataset.r);
-    const c = parseInt(cell.dataset.c);
-    selectWordForCell(r, c, currentDir);
-    const inp = cell.querySelector('input');
-    if (inp) inp.focus();
-});
+    if(first){
+        const input = first.querySelector('input');
 
-/* ===== KEYBOARD INPUT ===== */
-document.getElementById('cwGrid').addEventListener('keydown', function(e) {
-    if (!selectedCell) return;
-    const { r, c } = selectedCell;
-
-    if (e.key === 'Backspace') {
-        e.preventDefault();
-        const inp = cellInput(r, c);
-        if (inp && inp.value !== '') {
-            inp.value = '';
-            const cell = cellEl(r, c);
-            if (cell) { cell.classList.remove('correct','wrong','revealed'); }
-            updateProgress();
-        } else {
-            // move backward
-            moveFocus(r, c, -1);
-        }
-        return;
-    }
-
-    if (e.key === 'Tab') {
-        e.preventDefault();
-        nextWord(e.shiftKey ? -1 : 1);
-        return;
-    }
-
-    if (e.key === 'ArrowRight') { e.preventDefault(); selectWordForCell(r, c, 'across'); cellInput(r,c)?.focus(); return; }
-    if (e.key === 'ArrowDown')  { e.preventDefault(); selectWordForCell(r, c, 'down');   cellInput(r,c)?.focus(); return; }
-
-    if (e.key.length === 1 && /[a-zA-Z]/.test(e.key)) {
-        e.preventDefault();
-        const inp = cellInput(r, c);
-        if (inp) {
-            const cell = cellEl(r, c);
-            if (cell) { cell.classList.remove('correct','wrong','revealed'); }
-            inp.value = e.key.toUpperCase();
-            updateProgress();
-            moveFocus(r, c, 1);
-        }
-    }
-});
-
-function moveFocus(r, c, delta) {
-    const word = WORDS[currentWordIdx];
-    if (!word) return;
-    const cells = wordCells(currentWordIdx);
-    const curPos = cells.findIndex(cell => cell.r === r && cell.c === c);
-    const nextPos = curPos + delta;
-    if (nextPos >= 0 && nextPos < cells.length) {
-        const next = cells[nextPos];
-        selectedCell = { r: next.r, c: next.c };
-        clearHighlights();
-        next.el.classList.add('selected');
-        highlightWord(currentWordIdx);
-        const inp = next.el.querySelector('input');
-        if (inp) inp.focus();
-    } else if (delta === 1 && nextPos >= cells.length) {
-        nextWord(1);
+        if(input) input.focus();
     }
 }
 
-function nextWord(delta) {
-    const total = WORDS.length;
-    if (total === 0) return;
-    let next = ((currentWordIdx + delta) % total + total) % total;
-    const w = WORDS[next];
-    if (!w) return;
-    selectedCell = { r: w.row, c: w.col };
-    currentWordIdx = next;
-    currentDir = w.direction;
-    clearHighlights();
-    const firstCell = cellEl(w.row, w.col);
-    if (firstCell) { firstCell.classList.add('selected'); firstCell.querySelector('input')?.focus(); }
-    highlightWord(next);
+function cwUpdateProgress(){
+
+    const cells = cwCells();
+
+    const filled = cells.filter(function(cell){
+        const input = cell.querySelector('input');
+        return input && input.value.trim() !== '';
+    }).length;
+
+    const pct =
+        cells.length
+            ? Math.round((filled / cells.length) * 100)
+            : 0;
+
+    cwProgress.style.width = pct + '%';
+    cwCount.textContent = pct + '%';
 }
 
-/* ===== JUMP TO CLUE (from sidebar) ===== */
-function jumpToClue(idx) {
-    const w = WORDS[idx];
-    if (!w) return;
-    selectedCell = { r: w.row, c: w.col };
-    currentWordIdx = idx;
-    currentDir = w.direction;
-    clearHighlights();
-    const cell = cellEl(w.row, w.col);
-    if (cell) { cell.classList.add('selected'); cell.querySelector('input')?.focus(); }
-    highlightWord(idx);
-}
+function cwCheck(){
 
-/* ===== PROGRESS ===== */
-function updateProgress() {
+    let allCorrect = true;
     let filled = 0;
-    document.querySelectorAll('.cw-cell:not(.blocked) input').forEach(inp => {
-        if (inp.value.trim() !== '') filled++;
-    });
-    const pct = TOTAL_LETTERS > 0 ? Math.round(filled / TOTAL_LETTERS * 100) : 0;
-    document.getElementById('progressBar').style.width = pct + '%';
-    document.getElementById('progressLabel').textContent = filled + ' / ' + TOTAL_LETTERS + ' letters';
-}
 
-function persistScoreSilently(targetUrl) {
-    if (!targetUrl) {
-        return Promise.resolve(false);
+    cwCells().forEach(function(cell){
+
+        const input = cell.querySelector('input');
+        const expected = cell.dataset.letter;
+        const value = (input.value || '').toUpperCase();
+
+        cell.classList.remove('correct','wrong','revealed');
+
+        if(value){
+
+            filled++;
+
+            if(value === expected){
+                cell.classList.add('correct');
+            }else{
+                cell.classList.add('wrong');
+                allCorrect = false;
+            }
+
+        }else{
+            allCorrect = false;
+        }
+    });
+
+    cwUpdateProgress();
+
+    if(allCorrect){
+
+        cwResult.textContent = 'Correct';
+        cwResult.className = 'good';
+
+        cwPlay(cwWin);
+
+        setTimeout(cwFinish,450);
+
+    }else{
+
+        cwResult.textContent =
+            filled
+                ? 'Keep going'
+                : 'Add letters first';
+
+        cwResult.className =
+            filled
+                ? 'bad'
+                : '';
+
+        if(filled) cwPlay(cwLose);
     }
-
-    return fetch(targetUrl, {
-        method: 'GET',
-        credentials: 'same-origin',
-        cache: 'no-store',
-    }).then(function (response) {
-        return !!(response && response.ok);
-    }).catch(function () {
-        return false;
-    });
 }
 
-function navigateToReturn(targetUrl) {
-    if (!targetUrl) {
+function cwRevealSelected(){
+
+    if(cwSelectedWord === null){
+
+        cwResult.textContent =
+            'Choose a visual clue first';
+
         return;
     }
 
-    try {
-        if (window.top && window.top !== window.self) {
-            window.top.location.href = targetUrl;
-            return;
-        }
-    } catch (e) {}
+    cwWordCells(cwSelectedWord).forEach(function(cell){
 
-    window.location.href = targetUrl;
-}
+        const input = cell.querySelector('input');
 
-/* ===== CHECK ===== */
-function checkAll() {
-    let wrong = 0, correct = 0;
-    document.querySelectorAll('.cw-cell:not(.blocked)').forEach(cell => {
-        const inp = cell.querySelector('input');
-        if (!inp || inp.value.trim() === '') return;
-        const answer = (cell.dataset.answer || '').toUpperCase();
-        cell.classList.remove('correct','wrong','revealed');
-        if (inp.value.toUpperCase() === answer) { cell.classList.add('correct'); correct++; }
-        else { cell.classList.add('wrong'); wrong++; }
-    });
-    const result = document.getElementById('cw-result');
-    if (wrong === 0 && correct > 0) {
-        result.innerHTML = '<span style="color:#16a34a">✅ All correct! Well done!</span>';
-        checkComplete();
-    } else if (wrong > 0) {
-        result.innerHTML = `<span style="color:#dc2626">❌ ${wrong} mistake${wrong>1?'s':''} found. Keep going!</span>`;
-    } else {
-        result.innerHTML = '';
-    }
-}
+        input.value = cell.dataset.letter;
 
-async function checkComplete() {
-    const cells = document.querySelectorAll('.cw-cell:not(.blocked)');
-    let allDone = true;
-    cells.forEach(cell => {
-        const inp = cell.querySelector('input');
-        if (!inp || inp.value.trim() === '' || !cell.classList.contains('correct')) allDone = false;
-    });
-    if (allDone) {
-        const gameCard = document.getElementById('cwGame');
-        const completed = document.getElementById('cw-completed');
-        const scoreEl = document.getElementById('cw-score-text');
-        const earned = Math.max(0, TOTAL_LETTERS - assistedCells.size);
-        const percent = TOTAL_LETTERS > 0 ? Math.round((earned / TOTAL_LETTERS) * 100) : 0;
-        const errors = Math.max(0, TOTAL_LETTERS - earned);
-        if (gameCard) gameCard.classList.add('is-completed');
-        if (completed) {
-            completed.classList.add('active');
-            setTimeout(() => completed.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
-        }
-        if (scoreEl) {
-            scoreEl.textContent = 'Score: ' + earned + ' / ' + TOTAL_LETTERS + ' (' + percent + '%)';
-        }
-
-        if (!cwScorePersisted && CW_ACTIVITY_ID && CW_RETURN_TO) {
-            const joiner = CW_RETURN_TO.indexOf('?') !== -1 ? '&' : '?';
-            const saveUrl = CW_RETURN_TO
-                + joiner + 'activity_percent=' + percent
-                + '&activity_errors=' + errors
-                + '&activity_total=' + TOTAL_LETTERS
-                + '&activity_id=' + encodeURIComponent(CW_ACTIVITY_ID)
-                + '&activity_type=crossword';
-
-            const ok = await persistScoreSilently(saveUrl);
-            if (ok) {
-                cwScorePersisted = true;
-            } else {
-                navigateToReturn(saveUrl);
-            }
-        }
-    }
-}
-
-function restartCrossword() {
-    clearAll();
-    const gameCard = document.getElementById('cwGame');
-    const completed = document.getElementById('cw-completed');
-    if (gameCard) gameCard.classList.remove('is-completed');
-    if (completed) completed.classList.remove('active');
-}
-
-/* ===== REVEAL ===== */
-function revealSelected() {
-    if (currentWordIdx === -1) return;
-    wordCells(currentWordIdx).forEach(({ el, letter }) => {
-        assistedCells.add(el.dataset.r + ',' + el.dataset.c);
-        const inp = el.querySelector('input');
-        if (inp) inp.value = letter;
-        el.classList.remove('correct','wrong');
-        el.classList.add('revealed');
-    });
-    updateProgress();
-    document.getElementById('cw-result').innerHTML = '<span style="color:#92400e">💡 Word revealed.</span>';
-}
-
-function revealAll() {
-    document.querySelectorAll('.cw-cell:not(.blocked)').forEach(cell => {
-        assistedCells.add(cell.dataset.r + ',' + cell.dataset.c);
-        const inp = cell.querySelector('input');
-        const answer = cell.dataset.answer || '';
-        if (inp) inp.value = answer;
-        cell.classList.remove('correct','wrong');
+        cell.classList.remove('wrong');
         cell.classList.add('revealed');
     });
-    updateProgress();
-    document.getElementById('cw-result').innerHTML = '<span style="color:#92400e">🔓 All revealed.</span>';
+
+    cwUpdateProgress();
+
+    cwResult.textContent = 'Text shown';
+    cwResult.className = 'good';
 }
 
-/* ===== CLEAR ===== */
-function clearAll() {
-    assistedCells.clear();
-    cwScorePersisted = false;
-    document.querySelectorAll('.cw-cell:not(.blocked)').forEach(cell => {
-        const inp = cell.querySelector('input');
-        if (inp) inp.value = '';
-        cell.classList.remove('correct','wrong','revealed');
+function cwClear(){
+
+    cwCells().forEach(function(cell){
+
+        const input = cell.querySelector('input');
+
+        input.value = '';
+
+        cell.classList.remove(
+            'correct',
+            'wrong',
+            'revealed',
+            'word-hl',
+            'selected'
+        );
     });
-    clearHighlights();
-    selectedCell = null;
-    currentWordIdx = -1;
-    updateProgress();
-    document.getElementById('cw-result').innerHTML = '';
-    const completed = document.getElementById('cw-completed');
-    const gameCard = document.getElementById('cwGame');
-    if (completed) completed.classList.remove('active');
-    if (gameCard) gameCard.classList.remove('is-completed');
-}
 
-/* ===== INIT ===== */
-function init() {
-    const completedTitle = document.getElementById('cw-completed-title');
-    const completedText = document.getElementById('cw-completed-text');
-    if (completedTitle) completedTitle.textContent = <?= json_encode($title, JSON_UNESCAPED_UNICODE) ?> || 'Crossword Puzzle';
-    if (completedText) completedText.textContent = "You've completed " + (<?= json_encode($title, JSON_UNESCAPED_UNICODE) ?> || 'this activity') + '. Great job practicing.';
-
-    updateProgress();
-    // auto-select first word
-    if (WORDS.length > 0) {
-        setTimeout(() => { jumpToClue(0); }, 100);
-    }
-}
-init();
-
-// prevent accidental page leave
-window.addEventListener('beforeunload', function(e) {
-    const hasInput = [...document.querySelectorAll('.cw-cell:not(.blocked) input')]
-        .some(inp => inp.value !== '');
-    if (hasInput) { e.preventDefault(); e.returnValue = ''; }
-});
-
-/* ── Fullscreen-embedded: scale grid to fit viewport ── */
-const CW_DEFAULT_CELL = <?= (int)$cellSizes['desktop'] - 3 ?>;
-
-function cwFitToViewport() {
-    requestAnimationFrame(function () {
-        // Available height: full window minus toolbar (~70px), progress+result (~60px), padding (~30px)
-        const availH = Math.max(100, window.innerHeight - 160);
-        // Grid column gets ~58% of viewport width, minus gaps/padding
-        const availW = Math.max(100, window.innerWidth * 0.58 - 24);
-
-        const maxByH = Math.floor((availH - (GRID_ROWS - 1) * 3) / GRID_ROWS);
-        const maxByW = Math.floor((availW - (GRID_COLS - 1) * 3) / GRID_COLS);
-        const size   = Math.max(22, Math.min(maxByH, maxByW, 56));
-
-        document.documentElement.style.setProperty('--cell-size', size + 'px');
+    document
+    .querySelectorAll('.cw-visual-clue')
+    .forEach(function(clue){
+        clue.classList.remove('active');
     });
+
+    cwSelectedWord = null;
+
+    cwResult.textContent = '';
+    cwResult.className = '';
+
+    cwUpdateProgress();
 }
 
-function cwResetCellSize() {
-    document.documentElement.style.setProperty('--cell-size', CW_DEFAULT_CELL + 'px');
+async function cwPersistScore(pct,total,errors){
+
+    if(!CW_ACTIVITY_ID || !CW_RETURN_TO) return;
+
+    const joiner =
+        CW_RETURN_TO.indexOf('?') !== -1
+            ? '&'
+            : '?';
+
+    const url =
+        CW_RETURN_TO +
+        joiner +
+        'activity_percent=' + pct +
+        '&activity_errors=' + errors +
+        '&activity_total=' + total +
+        '&activity_id=' + encodeURIComponent(CW_ACTIVITY_ID) +
+        '&activity_type=crossword';
+
+    try{
+
+        const response = await fetch(url,{
+            method:'GET',
+            credentials:'same-origin',
+            cache:'no-store'
+        });
+
+        if(!response.ok){
+            window.location.href = url;
+        }
+
+    }catch(e){
+        window.location.href = url;
+    }
 }
 
-document.addEventListener('fullscreen-embedded', function (e) {
-    if (e.detail && e.detail.active) {
-        cwFitToViewport();
-    } else {
-        cwResetCellSize();
-    }
+function cwFinish(){
+
+    const cells = cwCells();
+
+    let correct = 0;
+
+    cells.forEach(function(cell){
+
+        const input = cell.querySelector('input');
+
+        if(
+            ((input.value || '').toUpperCase()) ===
+            cell.dataset.letter
+        ){
+            correct++;
+        }
+    });
+
+    const pct =
+        cells.length
+            ? Math.round((correct / cells.length) * 100)
+            : 0;
+
+    document
+    .getElementById('cw-game')
+    .classList
+    .add('hide');
+
+    document
+    .getElementById('cw-completed')
+    .classList
+    .add('active');
+
+    document
+    .getElementById('cw-score-text')
+    .textContent =
+        'Score: ' +
+        correct +
+        ' / ' +
+        cells.length +
+        ' (' +
+        pct +
+        '%)';
+
+    cwPlay(cwWin);
+
+    cwPersistScore(
+        pct,
+        cells.length,
+        Math.max(0,cells.length - correct)
+    );
+}
+
+function cwRestart(){
+
+    document
+    .getElementById('cw-game')
+    .classList
+    .remove('hide');
+
+    document
+    .getElementById('cw-completed')
+    .classList
+    .remove('active');
+
+    cwClear();
+}
+
+document
+.querySelectorAll('.cw-visual-clue')
+.forEach(function(btn){
+
+    btn.addEventListener('click',function(){
+        cwSelectWord(btn.dataset.wordIdx);
+    });
 });
 
-// Re-fit on window resize while in fullscreen-embedded
-window.addEventListener('resize', function () {
-    if (document.body.classList.contains('fullscreen-embedded')) {
-        cwFitToViewport();
-    }
+cwCells().forEach(function(cell){
+
+    const input = cell.querySelector('input');
+
+    cell.addEventListener('click',function(){
+
+        const ids =
+            (cell.dataset.wordIdxs || '')
+            .split(',')
+            .filter(Boolean);
+
+        if(ids.length){
+            cwSelectWord(ids[0]);
+        }
+    });
+
+    input.addEventListener('input',function(){
+
+        input.value =
+            (input.value || '')
+            .toUpperCase()
+            .replace(/[^A-Z0-9]/g,'')
+            .slice(0,1);
+
+        cell.classList.remove(
+            'correct',
+            'wrong',
+            'revealed'
+        );
+
+        cwUpdateProgress();
+
+        if(input.value){
+
+            const ids =
+                (cell.dataset.wordIdxs || '')
+                .split(',')
+                .filter(Boolean);
+
+            const active =
+                ids.length
+                    ? Number(ids[0])
+                    : cwSelectedWord;
+
+            const cells =
+                active !== null
+                    ? cwWordCells(active)
+                    : [];
+
+            const pos = cells.indexOf(cell);
+            const next = cells[pos + 1];
+
+            if(next){
+                const nextInput =
+                    next.querySelector('input');
+
+                if(nextInput) nextInput.focus();
+            }
+        }
+    });
+
+    input.addEventListener('keydown',function(e){
+
+        if(e.key === 'Backspace' && !input.value){
+
+            const ids =
+                (cell.dataset.wordIdxs || '')
+                .split(',')
+                .filter(Boolean);
+
+            const active =
+                ids.length
+                    ? Number(ids[0])
+                    : cwSelectedWord;
+
+            const cells =
+                active !== null
+                    ? cwWordCells(active)
+                    : [];
+
+            const pos = cells.indexOf(cell);
+            const prev = cells[pos - 1];
+
+            if(prev){
+                const prevInput =
+                    prev.querySelector('input');
+
+                if(prevInput) prevInput.focus();
+            }
+        }
+    });
 });
+
+cwUpdateProgress();
+
 </script>
 
 <?php
 $content = ob_get_clean();
-render_activity_viewer($title, '🧩', $content);
+render_activity_viewer($title, 'crossword', $content);
+?>
