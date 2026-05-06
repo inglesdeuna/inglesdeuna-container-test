@@ -125,6 +125,7 @@ function normalize_listen_order_payload(mixed $rawData): array
         $blocks[] = [
             "id"             => trim((string) ($block["id"] ?? uniqid("listen_order_"))),
             "sentence"       => $sentence,
+            "video_url"      => trim((string) ($block["video_url"] ?? "")),
             "images"         => $images,
             "dropZoneImages" => $dropZoneImages,
         ];
@@ -278,10 +279,12 @@ if ($activityId === "" && !empty($activity["id"])) {
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $postedTitle        = trim((string) ($_POST["activity_title"]        ?? ""));
     $postedInstructions = trim((string) ($_POST["activity_instructions"] ?? ""));
-    $blockIds       = isset($_POST["block_id"])        && is_array($_POST["block_id"])        ? $_POST["block_id"]        : [];
-    $sentences      = isset($_POST["sentence"])        && is_array($_POST["sentence"])        ? $_POST["sentence"]        : [];
-    $existingImages = isset($_POST["images_existing"]) && is_array($_POST["images_existing"]) ? $_POST["images_existing"] : [];
-    $imageFiles     = isset($_FILES["images"])         ? $_FILES["images"]                   : null;
+    $blockIds        = isset($_POST["block_id"])           && is_array($_POST["block_id"])           ? $_POST["block_id"]           : [];
+    $sentences       = isset($_POST["sentence"])           && is_array($_POST["sentence"])           ? $_POST["sentence"]           : [];
+    $existingImages  = isset($_POST["images_existing"])    && is_array($_POST["images_existing"])    ? $_POST["images_existing"]    : [];
+    $videoExisting   = isset($_POST["video_url_existing"]) && is_array($_POST["video_url_existing"]) ? $_POST["video_url_existing"] : [];
+    $imageFiles      = isset($_FILES["images"])            ? $_FILES["images"]                       : null;
+    $videoFiles      = isset($_FILES["video_file"])        ? $_FILES["video_file"]                   : null;
 
     /* Drop zone image POST fields */
     $dzExistingByBlock = isset($_POST["dz_image_existing"]) && is_array($_POST["dz_image_existing"]) ? $_POST["dz_image_existing"] : [];
