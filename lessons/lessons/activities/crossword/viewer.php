@@ -229,7 +229,9 @@ function cw_generate_layout(array $words): array {
     }
 
     return $placed;
-}$placedWords = cw_generate_layout($sourceWords);
+}
+
+$placedWords = cw_generate_layout($sourceWords);
 
 $wordsByIdx = [];
 foreach ($sourceWords as $idx => $w) {
@@ -240,7 +242,6 @@ $placed = [];
 
 foreach ($placedWords as $pw) {
     $idx = (int)$pw["idx"];
-
     if (!isset($wordsByIdx[$idx])) continue;
 
     $placed[] = [
@@ -267,10 +268,8 @@ foreach ($placed as $w) {
     }
 }
 
-$MAX_GRID_SIZE = 18;
-
-$gridRows = min($maxRow + 1, $MAX_GRID_SIZE);
-$gridCols = min($maxCol + 1, $MAX_GRID_SIZE);
+$gridRows = $maxRow + 1;
+$gridCols = $maxCol + 1;
 
 $cellMap = [];
 
@@ -292,7 +291,7 @@ foreach ($placed as $idx => $w) {
         $r = $w["direction"] === "across" ? $w["row"] : $w["row"] + $i;
         $c = $w["direction"] === "across" ? $w["col"] + $i : $w["col"];
 
-        if ($r < $gridRows && $c < $gridCols) {
+        if ($r >= 0 && $c >= 0 && $r < $gridRows && $c < $gridCols) {
             $cellMap[$r][$c]["active"] = true;
             $cellMap[$r][$c]["letter"] = $w["word"][$i];
             $cellMap[$r][$c]["wordIdxs"][] = $idx;
@@ -305,7 +304,6 @@ $nextNum = 1;
 
 for ($r = 0; $r < $gridRows; $r++) {
     for ($c = 0; $c < $gridCols; $c++) {
-
         if (!$cellMap[$r][$c]["active"]) continue;
 
         $startsAcross =
@@ -322,31 +320,18 @@ for ($r = 0; $r < $gridRows; $r++) {
     }
 }
 
-$wordNumber = [];
-
 foreach ($placed as $idx => $w) {
-
     $key = $w["row"] . "," . $w["col"];
-
-    $wordNumber[$idx] =
-        $startNumberByCell[$key] ?? ($idx + 1);
+    $placed[$idx]["num"] = $startNumberByCell[$key] ?? ($idx + 1);
 
     if (isset($cellMap[$w["row"]][$w["col"]])) {
-        $cellMap[$w["row"]][$w["col"]]["numLabel"] =
-            $wordNumber[$idx];
+        $cellMap[$w["row"]][$w["col"]]["numLabel"] = $placed[$idx]["num"];
     }
-
-    $placed[$idx]["num"] = $wordNumber[$idx];
 }
 
 $largestSide = max($gridRows, $gridCols);
-
-$cellSize =
-    $largestSide >= 15 ? 42 :
-    ($largestSide >= 12 ? 48 : 54);
-
-$mobileCellSize =
-    $largestSide >= 15 ? 32 : 38;
+$cellSize = $largestSide >= 15 ? 42 : ($largestSide >= 12 ? 48 : 54);
+$mobileCellSize = $largestSide >= 15 ? 32 : 38;
 
 ob_start();
 ?>
@@ -354,810 +339,205 @@ ob_start();
 <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@600;700;800;900&display=swap" rel="stylesheet">
 
 <style>
-
 :root{
     --cw-orange:#F97316;
     --cw-orange-dark:#C2580A;
     --cw-orange-soft:#FFF0E6;
-
     --cw-purple:#7F77DD;
     --cw-purple-dark:#534AB7;
     --cw-purple-soft:#EEEDFE;
-
     --cw-muted:#9B94BE;
     --cw-border:#F0EEF8;
     --cw-track:#F4F2FD;
-
     --cw-green:#16a34a;
     --cw-red:#dc2626;
-
     --cw-cell:<?= (int)$cellSize ?>px;
 }
 
-html,
-body{
-    width:100%;
-    min-height:100%;
-}
+html,body{width:100%;min-height:100%}
+body{margin:0!important;padding:0!important;background:#fff!important;font-family:'Nunito','Segoe UI',sans-serif!important}
 
-body{
-    margin:0!important;
-    padding:0!important;
-    background:#fff!important;
-    font-family:'Nunito','Segoe UI',sans-serif!important;
-}
+.activity-wrapper{max-width:100%!important;margin:0!important;padding:0!important;min-height:100vh;display:flex!important;flex-direction:column!important;background:transparent!important}
+.top-row,.activity-header,.activity-title,.activity-subtitle{display:none!important}
+.viewer-content{flex:1!important;display:flex!important;flex-direction:column!important;padding:0!important;margin:0!important;background:transparent!important;border:none!important;box-shadow:none!important;border-radius:0!important}
 
-.activity-wrapper{
-    max-width:100%!important;
-    margin:0!important;
-    padding:0!important;
-    min-height:100vh;
-    display:flex!important;
-    flex-direction:column!important;
-    background:transparent!important;
-}
+.cw-page{width:100%;min-height:100vh;padding:clamp(14px,2.5vw,34px);display:flex;align-items:flex-start;justify-content:center;background:#fff;box-sizing:border-box}
+.cw-app{width:min(1080px,100%);margin:0 auto}
+.cw-hero{text-align:center;margin-bottom:clamp(14px,2vw,22px)}
+.cw-kicker{display:inline-flex;align-items:center;justify-content:center;padding:7px 14px;border-radius:999px;background:var(--cw-orange-soft);border:1px solid #FCDDBF;color:var(--cw-orange-dark);font-size:12px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px}
+.cw-hero h1{font-family:'Fredoka',sans-serif;font-size:clamp(30px,5.5vw,58px);font-weight:700;color:var(--cw-orange);margin:0;line-height:1.03}
+.cw-hero p{font-size:clamp(13px,1.8vw,17px);font-weight:800;color:var(--cw-muted);margin:8px 0 0}
 
-.top-row,
-.activity-header,
-.activity-title,
-.activity-subtitle{
-    display:none!important;
-}
+.cw-stage{background:#fff;border:1px solid var(--cw-border);border-radius:34px;padding:clamp(16px,2.6vw,26px);box-shadow:0 8px 40px rgba(127,119,221,.13);box-sizing:border-box}
+.cw-layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(260px,330px);gap:clamp(16px,2.4vw,24px);align-items:start}
+.cw-grid-card,.cw-clue-card{background:#fff;border:1px solid #EDE9FA;border-radius:30px;box-shadow:0 8px 24px rgba(127,119,221,.09);padding:clamp(14px,2vw,20px)}
 
-.viewer-content{
-    flex:1!important;
-    display:flex!important;
-    flex-direction:column!important;
-    padding:0!important;
-    margin:0!important;
-    background:transparent!important;
-    border:none!important;
-    box-shadow:none!important;
-    border-radius:0!important;
-}
+.cw-status{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;margin-bottom:14px}
+.cw-track{height:12px;background:var(--cw-track);border:1px solid #E4E1F8;border-radius:999px;overflow:hidden}
+.cw-fill{height:100%;width:0;border-radius:999px;background:linear-gradient(90deg,var(--cw-orange),var(--cw-purple));transition:width .35s ease}
+.cw-count{min-width:74px;text-align:center;padding:7px 11px;border-radius:999px;background:var(--cw-purple);color:#fff;font-size:12px;font-weight:900}
 
-.cw-page{
-    width:100%;
-    min-height:100vh;
-    padding:clamp(14px,2.5vw,34px);
-    display:flex;
-    align-items:flex-start;
-    justify-content:center;
-    background:#fff;
-    box-sizing:border-box;
-}
+.cw-grid-wrap{width:100%;overflow:auto;padding:6px 2px 10px;display:flex;justify-content:center}
+.cw-grid{display:grid;grid-template-columns:repeat(<?= $gridCols ?>,var(--cw-cell));grid-template-rows:repeat(<?= $gridRows ?>,var(--cw-cell));gap:4px}
+.cw-cell{width:var(--cw-cell);height:var(--cw-cell);position:relative;background:#fff;border:1.5px solid #DCD8F8;border-radius:12px;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(127,119,221,.10);transition:.15s}
+.cw-cell.blocked{background:transparent;border-color:transparent;box-shadow:none;pointer-events:none}
+.cw-cell .num{position:absolute;top:3px;left:5px;color:var(--cw-purple);font-size:10px;font-weight:900;line-height:1}
+.cw-cell input{width:100%;height:100%;border:0;background:transparent;text-align:center;text-transform:uppercase;outline:0;color:var(--cw-purple-dark);font-family:'Fredoka','Nunito',sans-serif;font-size:calc(var(--cw-cell) * .44);font-weight:700;padding-top:5px}
+.cw-cell.selected,.cw-cell.word-hl{background:var(--cw-purple-soft);border-color:var(--cw-purple)}
+.cw-cell.correct{background:#f0fdf4;border-color:#86efac}
+.cw-cell.correct input{color:var(--cw-green)}
+.cw-cell.wrong{background:#fff0e6;border-color:#fdba74}
+.cw-cell.wrong input{color:var(--cw-orange-dark)}
+.cw-cell.revealed{background:#FFF0E6;border-color:#F97316}
+.cw-cell.revealed input{color:var(--cw-orange-dark)}
 
-.cw-app{
-    width:min(1080px,100%);
-    margin:0 auto;
-}
+.cw-toolbar{display:flex;justify-content:center;gap:10px;flex-wrap:wrap;margin-top:16px;padding-top:16px;border-top:1px solid var(--cw-border)}
+.cw-btn{border:0;border-radius:999px;min-width:clamp(104px,16vw,146px);padding:13px 20px;color:#fff;font-family:'Nunito',sans-serif;font-size:13px;font-weight:900;cursor:pointer;box-shadow:0 6px 18px rgba(127,119,221,.18);transition:filter .15s,transform .15s}
+.cw-btn:hover{filter:brightness(1.07);transform:translateY(-1px)}
+.cw-btn-purple{background:var(--cw-purple)}
+.cw-btn-orange{background:var(--cw-orange);box-shadow:0 6px 18px rgba(249,115,22,.22)}
+#cw-result{min-height:22px;margin-top:12px;text-align:center;font-size:14px;font-weight:900;color:var(--cw-muted)}
+.good{color:var(--cw-green)!important}
+.bad{color:var(--cw-orange-dark)!important}
 
-.cw-hero{
-    text-align:center;
-    margin-bottom:clamp(14px,2vw,22px);
-}
+.cw-clue-title{font-family:'Fredoka',sans-serif;color:var(--cw-orange);font-size:clamp(22px,3vw,30px);line-height:1;margin:0 0 6px}
+.cw-clue-sub{color:var(--cw-muted);font-weight:800;font-size:13px;margin:0 0 14px}
+.cw-visual-list{display:grid;grid-template-columns:1fr;gap:10px;max-height:620px;overflow:auto;padding-right:2px}
+.cw-visual-clue{width:100%;border:1px solid #EDE9FA;border-radius:22px;background:#fff;padding:10px;display:grid;grid-template-columns:86px minmax(0,1fr);gap:10px;align-items:center;text-align:left;cursor:pointer;box-shadow:0 5px 14px rgba(127,119,221,.08);transition:.15s}
+.cw-visual-clue:hover,.cw-visual-clue.active{background:#FAFAFE;border-color:var(--cw-purple);transform:translateY(-1px)}
+.cw-thumb{width:86px;height:74px;border-radius:18px;background:#FAFAFD;border:1px solid #EDE9FA;display:flex;align-items:center;justify-content:center;overflow:hidden;color:#D5D0F0;font-size:28px;font-weight:900}
+.cw-thumb img{width:100%;height:100%;object-fit:contain;display:block}
+.cw-clue-meta{min-width:0}
+.cw-clue-number{display:inline-flex;align-items:center;justify-content:center;min-width:30px;height:24px;border-radius:999px;background:var(--cw-purple-soft);color:var(--cw-purple-dark);font-size:12px;font-weight:900;margin-bottom:6px}
+.cw-clue-dir{color:var(--cw-muted);font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:.08em}
+.cw-clue-text{display:none!important}
 
-.cw-kicker{
-    display:inline-flex;
-    align-items:center;
-    justify-content:center;
-    padding:7px 14px;
-    border-radius:999px;
-    background:var(--cw-orange-soft);
-    border:1px solid #FCDDBF;
-    color:var(--cw-orange-dark);
-    font-size:12px;
-    font-weight:900;
-    letter-spacing:.08em;
-    text-transform:uppercase;
-    margin-bottom:10px;
-}
-
-.cw-hero h1{
-    font-family:'Fredoka',sans-serif;
-    font-size:clamp(30px,5.5vw,58px);
-    font-weight:700;
-    color:var(--cw-orange);
-    margin:0;
-    line-height:1.03;
-}
-
-.cw-hero p{
-    font-size:clamp(13px,1.8vw,17px);
-    font-weight:800;
-    color:var(--cw-muted);
-    margin:8px 0 0;
-}
-
-.cw-stage{
-    background:#fff;
-    border:1px solid var(--cw-border);
-    border-radius:34px;
-    padding:clamp(16px,2.6vw,26px);
-    box-shadow:0 8px 40px rgba(127,119,221,.13);
-    box-sizing:border-box;
-}
-
-.cw-layout{
-    display:grid;
-    grid-template-columns:minmax(0,1fr) minmax(260px,330px);
-    gap:clamp(16px,2.4vw,24px);
-    align-items:start;
-}
-
-.cw-grid-card,
-.cw-clue-card{
-    background:#fff;
-    border:1px solid #EDE9FA;
-    border-radius:30px;
-    box-shadow:0 8px 24px rgba(127,119,221,.09);
-    padding:clamp(14px,2vw,20px);
-}.cw-status{
-    display:grid;
-    grid-template-columns:1fr auto;
-    gap:10px;
-    align-items:center;
-    margin-bottom:14px;
-}
-
-.cw-track{
-    height:12px;
-    background:var(--cw-track);
-    border:1px solid #E4E1F8;
-    border-radius:999px;
-    overflow:hidden;
-}
-
-.cw-fill{
-    height:100%;
-    width:0;
-    border-radius:999px;
-    background:linear-gradient(90deg,var(--cw-orange),var(--cw-purple));
-    transition:width .35s ease;
-}
-
-.cw-count{
-    min-width:74px;
-    text-align:center;
-    padding:7px 11px;
-    border-radius:999px;
-    background:var(--cw-purple);
-    color:#fff;
-    font-size:12px;
-    font-weight:900;
-}
-
-.cw-grid-wrap{
-    width:100%;
-    overflow:auto;
-    padding:6px 2px 10px;
-    display:flex;
-    justify-content:center;
-}
-
-.cw-grid{
-    display:grid;
-    grid-template-columns:repeat(<?= $gridCols ?>,var(--cw-cell));
-    grid-template-rows:repeat(<?= $gridRows ?>,var(--cw-cell));
-    gap:4px;
-}
-
-.cw-cell{
-    width:var(--cw-cell);
-    height:var(--cw-cell);
-    position:relative;
-    background:#fff;
-    border:1.5px solid #DCD8F8;
-    border-radius:12px;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    box-shadow:0 4px 12px rgba(127,119,221,.10);
-    transition:.15s;
-}
-
-.cw-cell.blocked{
-    background:transparent;
-    border-color:transparent;
-    box-shadow:none;
-    pointer-events:none;
-}
-
-.cw-cell .num{
-    position:absolute;
-    top:3px;
-    left:5px;
-    color:var(--cw-purple);
-    font-size:10px;
-    font-weight:900;
-    line-height:1;
-}
-
-.cw-cell input{
-    width:100%;
-    height:100%;
-    border:0;
-    background:transparent;
-    text-align:center;
-    text-transform:uppercase;
-    outline:0;
-    color:var(--cw-purple-dark);
-    font-family:'Fredoka','Nunito',sans-serif;
-    font-size:calc(var(--cw-cell) * .44);
-    font-weight:700;
-    padding-top:5px;
-}
-
-.cw-cell.selected,
-.cw-cell.word-hl{
-    background:var(--cw-purple-soft);
-    border-color:var(--cw-purple);
-}
-
-.cw-cell.correct{
-    background:#f0fdf4;
-    border-color:#86efac;
-}
-
-.cw-cell.correct input{
-    color:var(--cw-green);
-}
-
-.cw-cell.wrong{
-    background:#fff0e6;
-    border-color:#fdba74;
-}
-
-.cw-cell.wrong input{
-    color:var(--cw-orange-dark);
-}
-
-.cw-cell.revealed{
-    background:#FFF0E6;
-    border-color:#F97316;
-}
-
-.cw-cell.revealed input{
-    color:var(--cw-orange-dark);
-}
-
-.cw-toolbar{
-    display:flex;
-    justify-content:center;
-    gap:10px;
-    flex-wrap:wrap;
-    margin-top:16px;
-    padding-top:16px;
-    border-top:1px solid var(--cw-border);
-}
-
-.cw-btn{
-    border:0;
-    border-radius:999px;
-    min-width:clamp(104px,16vw,146px);
-    padding:13px 20px;
-    color:#fff;
-    font-family:'Nunito',sans-serif;
-    font-size:13px;
-    font-weight:900;
-    cursor:pointer;
-    box-shadow:0 6px 18px rgba(127,119,221,.18);
-    transition:filter .15s,transform .15s;
-}
-
-.cw-btn:hover{
-    filter:brightness(1.07);
-    transform:translateY(-1px);
-}
-
-.cw-btn-purple{
-    background:var(--cw-purple);
-}
-
-.cw-btn-orange{
-    background:var(--cw-orange);
-    box-shadow:0 6px 18px rgba(249,115,22,.22);
-}
-
-#cw-result{
-    min-height:22px;
-    margin-top:12px;
-    text-align:center;
-    font-size:14px;
-    font-weight:900;
-    color:var(--cw-muted);
-}
-
-.good{
-    color:var(--cw-green)!important;
-}
-
-.bad{
-    color:var(--cw-orange-dark)!important;
-}
-
-.cw-clue-title{
-    font-family:'Fredoka',sans-serif;
-    color:var(--cw-orange);
-    font-size:clamp(22px,3vw,30px);
-    line-height:1;
-    margin:0 0 6px;
-}
-
-.cw-clue-sub{
-    color:var(--cw-muted);
-    font-weight:800;
-    font-size:13px;
-    margin:0 0 14px;
-}
-
-.cw-visual-list{
-    display:grid;
-    grid-template-columns:1fr;
-    gap:10px;
-    max-height:620px;
-    overflow:auto;
-    padding-right:2px;
-}
-
-.cw-visual-clue{
-    width:100%;
-    border:1px solid #EDE9FA;
-    border-radius:22px;
-    background:#fff;
-    padding:10px;
-    display:grid;
-    grid-template-columns:86px minmax(0,1fr);
-    gap:10px;
-    align-items:center;
-    text-align:left;
-    cursor:pointer;
-    box-shadow:0 5px 14px rgba(127,119,221,.08);
-    transition:.15s;
-}
-
-.cw-visual-clue:hover,
-.cw-visual-clue.active{
-    background:#FAFAFE;
-    border-color:var(--cw-purple);
-    transform:translateY(-1px);
-}
-
-.cw-thumb{
-    width:86px;
-    height:74px;
-    border-radius:18px;
-    background:#FAFAFD;
-    border:1px solid #EDE9FA;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    overflow:hidden;
-    color:#D5D0F0;
-    font-size:28px;
-    font-weight:900;
-}
-
-.cw-thumb img{
-    width:100%;
-    height:100%;
-    object-fit:contain;
-    display:block;
-}
-
-.cw-clue-meta{
-    min-width:0;
-}
-
-.cw-clue-number{
-    display:inline-flex;
-    align-items:center;
-    justify-content:center;
-    min-width:30px;
-    height:24px;
-    border-radius:999px;
-    background:var(--cw-purple-soft);
-    color:var(--cw-purple-dark);
-    font-size:12px;
-    font-weight:900;
-    margin-bottom:6px;
-}
-
-.cw-clue-dir{
-    color:var(--cw-muted);
-    font-size:11px;
-    font-weight:900;
-    text-transform:uppercase;
-    letter-spacing:.08em;
-}
-
-.cw-clue-text{
-    margin-top:4px;
-    color:var(--cw-muted);
-    font-size:12px;
-    font-weight:800;
-    line-height:1.35;
-    overflow:hidden;
-    display:-webkit-box;
-    -webkit-line-clamp:2;
-    -webkit-box-orient:vertical;
-}
-
-.cw-completed{
-    display:none;
-    min-height:360px;
-    align-items:center;
-    justify-content:center;
-    text-align:center;
-    flex-direction:column;
-    padding:clamp(28px,5vw,48px);
-}
-
-.cw-completed.active{
-    display:flex;
-}
-
-.cw-completed-icon{
-    width:72px;
-    height:72px;
-    border-radius:999px;
-    background:var(--cw-purple-soft);
-    color:var(--cw-purple);
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    font-size:34px;
-    font-weight:900;
-    margin-bottom:16px;
-}
-
-.cw-completed-title{
-    font-family:'Fredoka',sans-serif;
-    font-size:clamp(30px,5.5vw,58px);
-    color:var(--cw-orange);
-    margin:0;
-    line-height:1.03;
-}
-
-.cw-completed-text{
-    color:var(--cw-muted);
-    font-size:clamp(13px,1.8vw,17px);
-    font-weight:800;
-    line-height:1.5;
-    margin:10px 0 18px;
-}
-
-.cw-game.hide{
-    display:none;
-}
+.cw-completed{display:none;min-height:360px;align-items:center;justify-content:center;text-align:center;flex-direction:column;padding:clamp(28px,5vw,48px)}
+.cw-completed.active{display:flex}
+.cw-completed-icon{width:72px;height:72px;border-radius:999px;background:var(--cw-purple-soft);color:var(--cw-purple);display:flex;align-items:center;justify-content:center;font-size:34px;font-weight:900;margin-bottom:16px}
+.cw-completed-title{font-family:'Fredoka',sans-serif;font-size:clamp(30px,5.5vw,58px);color:var(--cw-orange);margin:0;line-height:1.03}
+.cw-completed-text{color:var(--cw-muted);font-size:clamp(13px,1.8vw,17px);font-weight:800;line-height:1.5;margin:10px 0 18px}
+.cw-game.hide{display:none}
 
 @media(max-width:860px){
-
-    :root{
-        --cw-cell:<?= (int)$mobileCellSize ?>px;
-    }
-
-    .cw-page{
-        padding:12px;
-    }
-
-    .cw-stage{
-        border-radius:26px;
-        padding:14px;
-    }
-
-    .cw-layout{
-        grid-template-columns:1fr;
-    }
-
-    .cw-clue-card{
-        order:-1;
-    }
-
-    .cw-visual-list{
-        grid-template-columns:1fr 1fr;
-        max-height:none;
-    }
-
-    .cw-visual-clue{
-        grid-template-columns:70px 1fr;
-    }
-
-    .cw-thumb{
-        width:70px;
-        height:62px;
-    }
-
-    .cw-toolbar{
-        display:grid;
-        grid-template-columns:1fr;
-        gap:9px;
-    }
-
-    .cw-btn{
-        width:100%;
-    }
+    :root{--cw-cell:<?= (int)$mobileCellSize ?>px}
+    .cw-page{padding:12px}
+    .cw-stage{border-radius:26px;padding:14px}
+    .cw-layout{grid-template-columns:1fr}
+    .cw-clue-card{order:-1}
+    .cw-visual-list{grid-template-columns:1fr 1fr;max-height:none}
+    .cw-visual-clue{grid-template-columns:70px 1fr}
+    .cw-thumb{width:70px;height:62px}
+    .cw-toolbar{display:grid;grid-template-columns:1fr;gap:9px}
+    .cw-btn{width:100%}
 }
 
 @media(max-width:560px){
-
-    .cw-visual-list{
-        grid-template-columns:1fr;
-    }
-
-    .cw-cell{
-        border-radius:9px;
-    }
-
-    .cw-cell .num{
-        font-size:9px;
-        top:2px;
-        left:3px;
-    }
+    .cw-visual-list{grid-template-columns:1fr}
+    .cw-cell{border-radius:9px}
+    .cw-cell .num{font-size:9px;top:2px;left:3px}
 }
+</style>
 
-</style><div class="cw-page">
+<div class="cw-page">
     <div class="cw-app">
-
         <div class="cw-hero">
-            <div class="cw-kicker">
-                Activity
-            </div>
-
-            <h1>
-                <?= htmlspecialchars($title, ENT_QUOTES, 'UTF-8') ?>
-            </h1>
-
-            <p>
-                Use the visual clues. Fill the crossword.
-            </p>
+            <div class="cw-kicker">Activity</div>
+            <h1><?= htmlspecialchars($title, ENT_QUOTES, 'UTF-8') ?></h1>
+            <p>Use the visual clues. Fill the crossword.</p>
         </div>
 
         <section class="cw-stage">
-
             <div class="cw-game" id="cw-game">
-
                 <div class="cw-layout">
-
                     <div class="cw-grid-card">
-
                         <div class="cw-status">
-
-                            <div class="cw-track">
-                                <div class="cw-fill" id="cw-progress"></div>
-                            </div>
-
-                            <div class="cw-count" id="cw-count">
-                                0%
-                            </div>
-
+                            <div class="cw-track"><div class="cw-fill" id="cw-progress"></div></div>
+                            <div class="cw-count" id="cw-count">0%</div>
                         </div>
 
                         <div class="cw-grid-wrap">
-
                             <div class="cw-grid" id="cw-grid">
-
                                 <?php for ($r = 0; $r < $gridRows; $r++): ?>
                                     <?php for ($c = 0; $c < $gridCols; $c++): ?>
-
                                         <?php $cell = $cellMap[$r][$c]; ?>
-
-                                        <div
-                                            class="cw-cell<?= $cell['active'] ? '' : ' blocked' ?>"
-                                            data-r="<?= $r ?>"
-                                            data-c="<?= $c ?>"
-                                            data-letter="<?= htmlspecialchars($cell['letter'], ENT_QUOTES, 'UTF-8') ?>"
-                                            data-word-idxs="<?= htmlspecialchars(implode(',', $cell['wordIdxs']), ENT_QUOTES, 'UTF-8') ?>"
-                                        >
-
+                                        <div class="cw-cell<?= $cell['active'] ? '' : ' blocked' ?>" data-r="<?= $r ?>" data-c="<?= $c ?>" data-letter="<?= htmlspecialchars($cell['letter'], ENT_QUOTES, 'UTF-8') ?>" data-word-idxs="<?= htmlspecialchars(implode(',', $cell['wordIdxs']), ENT_QUOTES, 'UTF-8') ?>">
                                             <?php if ($cell['active']): ?>
-
                                                 <?php if ((int)$cell['numLabel'] > 0): ?>
-                                                    <span class="num">
-                                                        <?= (int)$cell['numLabel'] ?>
-                                                    </span>
+                                                    <span class="num"><?= (int)$cell['numLabel'] ?></span>
                                                 <?php endif; ?>
-
-                                                <input
-                                                    maxlength="1"
-                                                    autocomplete="off"
-                                                    inputmode="text"
-                                                    aria-label="Crossword cell"
-                                                >
-
+                                                <input maxlength="1" autocomplete="off" inputmode="text" aria-label="Crossword cell">
                                             <?php endif; ?>
-
                                         </div>
-
                                     <?php endfor; ?>
                                 <?php endfor; ?>
-
                             </div>
-
                         </div>
 
                         <div class="cw-toolbar">
-
-                            <button
-                                type="button"
-                                class="cw-btn cw-btn-purple"
-                                onclick="cwCheck()"
-                            >
-                                Check
-                            </button>
-
-                            <button
-                                type="button"
-                                class="cw-btn cw-btn-purple"
-                                onclick="cwRevealSelected()"
-                            >
-                                Show Text
-                            </button>
-
-                            <button
-                                type="button"
-                                class="cw-btn cw-btn-purple"
-                                onclick="cwClear()"
-                            >
-                                Clear
-                            </button>
-
-                            <button
-                                type="button"
-                                class="cw-btn cw-btn-orange"
-                                onclick="cwFinish()"
-                            >
-                                Finish
-                            </button>
-
+                            <button type="button" class="cw-btn cw-btn-purple" onclick="cwCheck()">Check</button>
+                            <button type="button" class="cw-btn cw-btn-purple" onclick="cwRevealSelected()">Show Text</button>
+                            <button type="button" class="cw-btn cw-btn-purple" onclick="cwClear()">Clear</button>
+                            <button type="button" class="cw-btn cw-btn-orange" onclick="cwFinish()">Finish</button>
                         </div>
 
                         <div id="cw-result"></div>
-
                     </div>
 
                     <aside class="cw-clue-card">
-
-                        <h2 class="cw-clue-title">
-                            Visual Clues
-                        </h2>
-
-                        <p class="cw-clue-sub">
-                            Tap a clue to highlight its word.
-                        </p>
+                        <h2 class="cw-clue-title">Visual Clues</h2>
+                        <p class="cw-clue-sub">Tap a clue to highlight its word.</p>
 
                         <div class="cw-visual-list" id="cw-clues">
-
                             <?php foreach ($placed as $idx => $w): ?>
-
-                                <button
-                                    type="button"
-                                    class="cw-visual-clue"
-                                    data-word-idx="<?= $idx ?>"
-                                >
-
+                                <button type="button" class="cw-visual-clue" data-word-idx="<?= $idx ?>" aria-label="Visual clue <?= (int)$w['num'] ?>">
                                     <span class="cw-thumb">
-
                                         <?php if (trim((string)$w['image']) !== ''): ?>
-
-                                            <img
-                                                src="<?= htmlspecialchars($w['image'], ENT_QUOTES, 'UTF-8') ?>"
-                                                alt="visual clue <?= (int)$w['num'] ?>"
-                                            >
-
+                                            <img src="<?= htmlspecialchars($w['image'], ENT_QUOTES, 'UTF-8') ?>" alt="visual clue <?= (int)$w['num'] ?>">
                                         <?php else: ?>
-
                                             <?= (int)$w['num'] ?>
-
                                         <?php endif; ?>
-
                                     </span>
 
                                     <span class="cw-clue-meta">
-
-                                        <span class="cw-clue-number">
-                                            <?= (int)$w['num'] ?>
-                                        </span>
-
-                                        <span class="cw-clue-dir">
-                                            <?= htmlspecialchars($w['direction'], ENT_QUOTES, 'UTF-8') ?>
-                                        </span>
-
-                                        <?php if (trim((string)$w['clue']) !== ''): ?>
-
-                                            <span class="cw-clue-text">
-                                                <?= htmlspecialchars($w['clue'], ENT_QUOTES, 'UTF-8') ?>
-                                            </span>
-
-                                        <?php endif; ?>
-
+                                        <span class="cw-clue-number"><?= (int)$w['num'] ?></span>
+                                        <span class="cw-clue-dir"><?= htmlspecialchars($w['direction'], ENT_QUOTES, 'UTF-8') ?></span>
                                     </span>
-
                                 </button>
-
                             <?php endforeach; ?>
-
                         </div>
-
                     </aside>
-
                 </div>
-
             </div>
 
             <div class="cw-completed" id="cw-completed">
-
-                <div class="cw-completed-icon">
-                    ✓
-                </div>
-
-                <h2 class="cw-completed-title">
-                    Complete
-                </h2>
-
-                <p class="cw-completed-text" id="cw-score-text">
-                    Great crossword practice.
-                </p>
-
-                <button
-                    type="button"
-                    class="cw-btn cw-btn-orange"
-                    onclick="cwRestart()"
-                >
-                    Restart
-                </button>
-
+                <div class="cw-completed-icon">✓</div>
+                <h2 class="cw-completed-title">Complete</h2>
+                <p class="cw-completed-text" id="cw-score-text">Great crossword practice.</p>
+                <button type="button" class="cw-btn cw-btn-orange" onclick="cwRestart()">Restart</button>
             </div>
-
         </section>
-
     </div>
 </div>
 
-<audio
-    id="cw-win"
-    src="../../hangman/assets/win.mp3"
-    preload="auto"
-></audio>
-
-<audio
-    id="cw-lose"
-    src="../../hangman/assets/lose.mp3"
-    preload="auto"
-></audio>
+<audio id="cw-win" src="../../hangman/assets/win.mp3" preload="auto"></audio>
+<audio id="cw-lose" src="../../hangman/assets/lose.mp3" preload="auto"></audio>
 
 <script>
-
-const CW_WORDS =
-<?= json_encode(array_values($placed), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
-
-const CW_ACTIVITY_ID =
-<?= json_encode($activityId, JSON_UNESCAPED_UNICODE) ?>;
-
-const CW_RETURN_TO =
-<?= json_encode($returnTo, JSON_UNESCAPED_UNICODE) ?>;
+const CW_WORDS = <?= json_encode(array_values($placed), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+const CW_ACTIVITY_ID = <?= json_encode($activityId, JSON_UNESCAPED_UNICODE) ?>;
+const CW_RETURN_TO = <?= json_encode($returnTo, JSON_UNESCAPED_UNICODE) ?>;
 
 let cwSelectedWord = null;
 
-const cwResult =
-document.getElementById('cw-result');
-
-const cwProgress =
-document.getElementById('cw-progress');
-
-const cwCount =
-document.getElementById('cw-count');
-
-const cwWin =
-document.getElementById('cw-win');
-
-const cwLose =
-document.getElementById('cw-lose');
+const cwResult = document.getElementById('cw-result');
+const cwProgress = document.getElementById('cw-progress');
+const cwCount = document.getElementById('cw-count');
+const cwWin = document.getElementById('cw-win');
+const cwLose = document.getElementById('cw-lose');
 
 function cwCells(){
-    return Array.from(
-        document.querySelectorAll('.cw-cell:not(.blocked)')
-    );
+    return Array.from(document.querySelectorAll('.cw-cell:not(.blocked)'));
 }
 
 function cwPlay(audio){
@@ -1169,30 +549,19 @@ function cwPlay(audio){
 }
 
 function cwCellFor(r,c){
-    return document.querySelector(
-        '.cw-cell[data-r="' + r + '"][data-c="' + c + '"]'
-    );
-}function cwWordCells(idx){
-    const word = CW_WORDS[idx];
+    return document.querySelector('.cw-cell[data-r="' + r + '"][data-c="' + c + '"]');
+}
 
+function cwWordCells(idx){
+    const word = CW_WORDS[idx];
     if(!word) return [];
 
     let cells = [];
 
     for(let i = 0; i < word.word.length; i++){
-
-        let r =
-            word.direction === 'across'
-                ? word.row
-                : word.row + i;
-
-        let c =
-            word.direction === 'across'
-                ? word.col + i
-                : word.col;
-
+        let r = word.direction === 'across' ? word.row : word.row + i;
+        let c = word.direction === 'across' ? word.col + i : word.col;
         let cell = cwCellFor(r,c);
-
         if(cell) cells.push(cell);
     }
 
@@ -1200,22 +569,14 @@ function cwCellFor(r,c){
 }
 
 function cwSelectWord(idx){
-
     cwSelectedWord = Number(idx);
 
-    document
-    .querySelectorAll('.cw-cell')
-    .forEach(function(cell){
+    document.querySelectorAll('.cw-cell').forEach(function(cell){
         cell.classList.remove('word-hl','selected');
     });
 
-    document
-    .querySelectorAll('.cw-visual-clue')
-    .forEach(function(clue){
-        clue.classList.toggle(
-            'active',
-            Number(clue.dataset.wordIdx) === cwSelectedWord
-        );
+    document.querySelectorAll('.cw-visual-clue').forEach(function(clue){
+        clue.classList.toggle('active', Number(clue.dataset.wordIdx) === cwSelectedWord);
     });
 
     const cells = cwWordCells(cwSelectedWord);
@@ -1224,17 +585,18 @@ function cwSelectWord(idx){
         cell.classList.add(i === 0 ? 'selected' : 'word-hl');
     });
 
-    const first = cells[0];
+    const firstEmpty = cells.find(function(cell){
+        const input = cell.querySelector('input');
+        return input && !input.value;
+    }) || cells[0];
 
-    if(first){
-        const input = first.querySelector('input');
-
+    if(firstEmpty){
+        const input = firstEmpty.querySelector('input');
         if(input) input.focus();
     }
 }
 
 function cwUpdateProgress(){
-
     const cells = cwCells();
 
     const filled = cells.filter(function(cell){
@@ -1242,22 +604,17 @@ function cwUpdateProgress(){
         return input && input.value.trim() !== '';
     }).length;
 
-    const pct =
-        cells.length
-            ? Math.round((filled / cells.length) * 100)
-            : 0;
+    const pct = cells.length ? Math.round((filled / cells.length) * 100) : 0;
 
     cwProgress.style.width = pct + '%';
     cwCount.textContent = pct + '%';
 }
 
 function cwCheck(){
-
     let allCorrect = true;
     let filled = 0;
 
     cwCells().forEach(function(cell){
-
         const input = cell.querySelector('input');
         const expected = cell.dataset.letter;
         const value = (input.value || '').toUpperCase();
@@ -1265,7 +622,6 @@ function cwCheck(){
         cell.classList.remove('correct','wrong','revealed');
 
         if(value){
-
             filled++;
 
             if(value === expected){
@@ -1274,7 +630,6 @@ function cwCheck(){
                 cell.classList.add('wrong');
                 allCorrect = false;
             }
-
         }else{
             allCorrect = false;
         }
@@ -1283,46 +638,26 @@ function cwCheck(){
     cwUpdateProgress();
 
     if(allCorrect){
-
         cwResult.textContent = 'Correct';
         cwResult.className = 'good';
-
         cwPlay(cwWin);
-
         setTimeout(cwFinish,450);
-
     }else{
-
-        cwResult.textContent =
-            filled
-                ? 'Keep going'
-                : 'Add letters first';
-
-        cwResult.className =
-            filled
-                ? 'bad'
-                : '';
-
+        cwResult.textContent = filled ? 'Keep going' : 'Add letters first';
+        cwResult.className = filled ? 'bad' : '';
         if(filled) cwPlay(cwLose);
     }
 }
 
 function cwRevealSelected(){
-
     if(cwSelectedWord === null){
-
-        cwResult.textContent =
-            'Choose a visual clue first';
-
+        cwResult.textContent = 'Choose a visual clue first';
         return;
     }
 
     cwWordCells(cwSelectedWord).forEach(function(cell){
-
         const input = cell.querySelector('input');
-
         input.value = cell.dataset.letter;
-
         cell.classList.remove('wrong');
         cell.classList.add('revealed');
     });
@@ -1334,9 +669,7 @@ function cwRevealSelected(){
 }
 
 function cwClear(){
-
     cwCells().forEach(function(cell){
-
         const input = cell.querySelector('input');
 
         input.value = '';
@@ -1350,9 +683,7 @@ function cwClear(){
         );
     });
 
-    document
-    .querySelectorAll('.cw-visual-clue')
-    .forEach(function(clue){
+    document.querySelectorAll('.cw-visual-clue').forEach(function(clue){
         clue.classList.remove('active');
     });
 
@@ -1365,13 +696,9 @@ function cwClear(){
 }
 
 async function cwPersistScore(pct,total,errors){
-
     if(!CW_ACTIVITY_ID || !CW_RETURN_TO) return;
 
-    const joiner =
-        CW_RETURN_TO.indexOf('?') !== -1
-            ? '&'
-            : '?';
+    const joiner = CW_RETURN_TO.indexOf('?') !== -1 ? '&' : '?';
 
     const url =
         CW_RETURN_TO +
@@ -1383,7 +710,6 @@ async function cwPersistScore(pct,total,errors){
         '&activity_type=crossword';
 
     try{
-
         const response = await fetch(url,{
             method:'GET',
             credentials:'same-origin',
@@ -1393,176 +719,111 @@ async function cwPersistScore(pct,total,errors){
         if(!response.ok){
             window.location.href = url;
         }
-
     }catch(e){
         window.location.href = url;
     }
 }
 
 function cwFinish(){
-
     const cells = cwCells();
-
     let correct = 0;
 
     cells.forEach(function(cell){
-
         const input = cell.querySelector('input');
 
-        if(
-            ((input.value || '').toUpperCase()) ===
-            cell.dataset.letter
-        ){
+        if(((input.value || '').toUpperCase()) === cell.dataset.letter){
             correct++;
         }
     });
 
-    const pct =
-        cells.length
-            ? Math.round((correct / cells.length) * 100)
-            : 0;
+    const pct = cells.length ? Math.round((correct / cells.length) * 100) : 0;
 
-    document
-    .getElementById('cw-game')
-    .classList
-    .add('hide');
+    document.getElementById('cw-game').classList.add('hide');
+    document.getElementById('cw-completed').classList.add('active');
 
-    document
-    .getElementById('cw-completed')
-    .classList
-    .add('active');
-
-    document
-    .getElementById('cw-score-text')
-    .textContent =
-        'Score: ' +
-        correct +
-        ' / ' +
-        cells.length +
-        ' (' +
-        pct +
-        '%)';
+    document.getElementById('cw-score-text').textContent =
+        'Score: ' + correct + ' / ' + cells.length + ' (' + pct + '%)';
 
     cwPlay(cwWin);
 
-    cwPersistScore(
-        pct,
-        cells.length,
-        Math.max(0,cells.length - correct)
-    );
+    cwPersistScore(pct,cells.length,Math.max(0,cells.length - correct));
 }
 
 function cwRestart(){
-
-    document
-    .getElementById('cw-game')
-    .classList
-    .remove('hide');
-
-    document
-    .getElementById('cw-completed')
-    .classList
-    .remove('active');
-
+    document.getElementById('cw-game').classList.remove('hide');
+    document.getElementById('cw-completed').classList.remove('active');
     cwClear();
 }
 
-document
-.querySelectorAll('.cw-visual-clue')
-.forEach(function(btn){
-
+document.querySelectorAll('.cw-visual-clue').forEach(function(btn){
     btn.addEventListener('click',function(){
         cwSelectWord(btn.dataset.wordIdx);
     });
 });
 
 cwCells().forEach(function(cell){
-
     const input = cell.querySelector('input');
 
     cell.addEventListener('click',function(){
+        const ids = (cell.dataset.wordIdxs || '').split(',').filter(Boolean);
 
-        const ids =
-            (cell.dataset.wordIdxs || '')
-            .split(',')
-            .filter(Boolean);
+        if(ids.length && cwSelectedWord === null){
+            cwSelectWord(ids[0]);
+        }
+    });
 
-        if(ids.length){
+    input.addEventListener('focus',function(){
+        const ids = (cell.dataset.wordIdxs || '').split(',').filter(Boolean);
+
+        if(cwSelectedWord === null && ids.length){
             cwSelectWord(ids[0]);
         }
     });
 
     input.addEventListener('input',function(){
-
-        input.value =
-            (input.value || '')
+        input.value = (input.value || '')
             .toUpperCase()
             .replace(/[^A-Z0-9]/g,'')
             .slice(0,1);
 
-        cell.classList.remove(
-            'correct',
-            'wrong',
-            'revealed'
-        );
+        cell.classList.remove('correct','wrong','revealed');
 
         cwUpdateProgress();
 
         if(input.value){
-
-            const ids =
-                (cell.dataset.wordIdxs || '')
-                .split(',')
-                .filter(Boolean);
+            const ids = (cell.dataset.wordIdxs || '').split(',').filter(Boolean);
 
             const active =
-                ids.length
-                    ? Number(ids[0])
-                    : cwSelectedWord;
+                cwSelectedWord !== null
+                    ? cwSelectedWord
+                    : (ids.length ? Number(ids[0]) : null);
 
-            const cells =
-                active !== null
-                    ? cwWordCells(active)
-                    : [];
-
+            const cells = active !== null ? cwWordCells(active) : [];
             const pos = cells.indexOf(cell);
             const next = cells[pos + 1];
 
             if(next){
-                const nextInput =
-                    next.querySelector('input');
-
+                const nextInput = next.querySelector('input');
                 if(nextInput) nextInput.focus();
             }
         }
     });
 
     input.addEventListener('keydown',function(e){
-
         if(e.key === 'Backspace' && !input.value){
-
-            const ids =
-                (cell.dataset.wordIdxs || '')
-                .split(',')
-                .filter(Boolean);
+            const ids = (cell.dataset.wordIdxs || '').split(',').filter(Boolean);
 
             const active =
-                ids.length
-                    ? Number(ids[0])
-                    : cwSelectedWord;
+                cwSelectedWord !== null
+                    ? cwSelectedWord
+                    : (ids.length ? Number(ids[0]) : null);
 
-            const cells =
-                active !== null
-                    ? cwWordCells(active)
-                    : [];
-
+            const cells = active !== null ? cwWordCells(active) : [];
             const pos = cells.indexOf(cell);
             const prev = cells[pos - 1];
 
             if(prev){
-                const prevInput =
-                    prev.querySelector('input');
-
+                const prevInput = prev.querySelector('input');
                 if(prevInput) prevInput.focus();
             }
         }
@@ -1570,7 +831,6 @@ cwCells().forEach(function(cell){
 });
 
 cwUpdateProgress();
-
 </script>
 
 <?php
