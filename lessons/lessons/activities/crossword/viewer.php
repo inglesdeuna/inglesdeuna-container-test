@@ -780,7 +780,6 @@ body{
     overflow:hidden;
     display:-webkit-box;
     -webkit-line-clamp:2;
-    /* stylelint-disable-next-line */
     -webkit-box-orient:vertical;
 }
 
