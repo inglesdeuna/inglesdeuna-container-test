@@ -1071,6 +1071,7 @@ body{
                                     type="button"
                                     class="cw-visual-clue"
                                     data-word-idx="<?= $idx ?>"
+                                    data-direction="<?= htmlspecialchars($w['direction'], ENT_QUOTES, 'UTF-8') ?>"
                                 >
 
                                     <span class="cw-thumb">
@@ -1175,6 +1176,7 @@ const CW_RETURN_TO =
 <?= json_encode($returnTo, JSON_UNESCAPED_UNICODE) ?>;
 
 let cwSelectedWord = null;
+let cwActiveTab = 'across';
 
 const cwResult =
 document.getElementById('cw-result');
