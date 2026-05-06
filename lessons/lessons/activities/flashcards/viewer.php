@@ -628,38 +628,32 @@ function restart(){
     renderCard();
 }
 
-function pickVoice(voices){
+function speakText(text) {
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
 
-    var preferred = [
-        'jenny',
-        'aria',
-        'guy',
-        'sonia',
-        'ryan'
-    ];
+    const setVoiceAndSpeak = () => {
+        const voices = window.speechSynthesis.getVoices();
+        const maleVoice =
+            voices.find(v => v.name.includes("Microsoft David")) ||
+            voices.find(v => v.name.includes("Google UK English Male")) ||
+            voices.find(v => v.name.toLowerCase().includes("male")) ||
+            voices.find(v => v.name.includes("Daniel")) ||
+            voices.find(v => v.lang === "en-US") ||
+            voices[0];
 
-    var english = voices.filter(function(v){
-        return String(v.lang || '').toLowerCase().indexOf('en') === 0;
-    });
+        utterance.voice = maleVoice;
+        utterance.rate = 0.88;
+        utterance.pitch = 0.95;
+        utterance.volume = 1;
+        window.speechSynthesis.speak(utterance);
+    };
 
-    for(var i = 0; i < preferred.length; i++){
-
-        for(var j = 0; j < english.length; j++){
-
-            var label =
-                String(english[j].name || '') +
-                ' ' +
-                String(english[j].voiceURI || '');
-
-            label = label.toLowerCase();
-
-            if(label.indexOf(preferred[i]) !== -1){
-                return english[j];
-            }
-        }
+    if (window.speechSynthesis.getVoices().length === 0) {
+        window.speechSynthesis.onvoiceschanged = setVoiceAndSpeak;
+    } else {
+        setVoiceAndSpeak();
     }
-
-    return english[0] || null;
 }
 
 function playAudio(){
@@ -670,24 +664,7 @@ function playAudio(){
 
     if(!window.speechSynthesis) return;
 
-    window.speechSynthesis.cancel();
-
-    var utter = new SpeechSynthesisUtterance(text);
-
-    utter.lang = 'en-US';
-    utter.rate = 0.92;
-    utter.pitch = 0;
-    utter.volume = 1;
-
-    var voices = speechSynthesis.getVoices();
-
-    var voice = pickVoice(voices);
-
-    if(voice){
-        utter.voice = voice;
-    }
-
-    speechSynthesis.speak(utter);
+    speakText(text);
 }
 
 document
