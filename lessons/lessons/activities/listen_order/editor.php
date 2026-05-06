@@ -629,6 +629,88 @@ body{background:#f8f7ff!important;font-family:'Nunito','Segoe UI',sans-serif!imp
     margin-top:8px;
 }
 
+/* Video upload zone (mirrors audio) */
+.video-upload-zone{
+    border:2px dashed #EDE9FA;
+    border-radius:14px;
+    background:#FAFAFE;
+    padding:20px;
+    text-align:center;
+    cursor:pointer;
+    margin-bottom:14px;
+    transition:border-color .15s,background .15s;
+}
+.video-upload-zone:hover{
+    border-color:#7F77DD;
+    background:#EEEDFE;
+}
+.video-upload-icon{
+    width:40px;
+    height:40px;
+    border-radius:50%;
+    background:#EEEDFE;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    margin:0 auto 8px;
+    font-size:18px;
+}
+.video-upload-title{
+    font-family:'Nunito',sans-serif;
+    font-size:13px;
+    font-weight:900;
+    color:#534AB7;
+    margin-bottom:3px;
+}
+.video-upload-sub{
+    font-family:'Nunito',sans-serif;
+    font-size:11px;
+    font-weight:700;
+    color:#9B94BE;
+}
+.video-file-pill{
+    display:inline-block;
+    background:#EEEDFE;
+    color:#534AB7;
+    border-radius:999px;
+    padding:4px 12px;
+    font-family:'Nunito',sans-serif;
+    font-size:12px;
+    font-weight:900;
+    margin-top:8px;
+}
+.video-preview-wrap{
+    position:relative;
+    border-radius:12px;
+    overflow:hidden;
+    background:#000;
+    margin-bottom:10px;
+    max-height:220px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+}
+.video-preview-wrap video{
+    width:100%;
+    max-height:220px;
+    object-fit:contain;
+    display:block;
+}
+.btn-remove-video{
+    background:#FCEBEB;
+    color:#E24B4A;
+    border:1px solid #F7C1C1;
+    border-radius:999px;
+    padding:5px 14px;
+    font-family:'Nunito',sans-serif;
+    font-size:12px;
+    font-weight:900;
+    cursor:pointer;
+    transition:transform .12s;
+    margin-bottom:10px;
+}
+.btn-remove-video:hover{transform:translateY(-1px)}
+
 /* Video URL hint */
 .field-hint{
     color:#9B94BE;
@@ -921,10 +1003,15 @@ body{background:#f8f7ff!important;font-family:'Nunito','Segoe UI',sans-serif!imp
             </div>
 
             <!-- Media type toggle -->
+            <?php
+                $blockVideoUrl = trim((string) ($block["video_url"] ?? ""));
+                $activeMode = $blockVideoUrl !== "" ? "video-file" : ($hasSentence ? "audio" : "none");
+            ?>
             <div class="media-toggle-row">
-                <button type="button" class="media-tab<?= $hasSentence ? ' active' : '' ?>" data-mode="audio" onclick="setMediaMode(this,'audio')">Audio file</button>
-                <button type="button" class="media-tab" data-mode="video" onclick="setMediaMode(this,'video')">Video URL</button>
-                <button type="button" class="media-tab<?= !$hasSentence ? ' active' : '' ?>" data-mode="none" onclick="setMediaMode(this,'none')">No media</button>
+                <button type="button" class="media-tab<?= $activeMode === 'audio'      ? ' active' : '' ?>" data-mode="audio"      onclick="setMediaMode(this,'audio')">Audio file</button>
+                <button type="button" class="media-tab<?= $activeMode === 'video-file' ? ' active' : '' ?>" data-mode="video-file" onclick="setMediaMode(this,'video-file')">Video file</button>
+                <button type="button" class="media-tab<?= $activeMode === 'video'      ? ' active' : '' ?>" data-mode="video"      onclick="setMediaMode(this,'video')">Video URL</button>
+                <button type="button" class="media-tab<?= $activeMode === 'none'       ? ' active' : '' ?>" data-mode="none"       onclick="setMediaMode(this,'none')">No media</button>
             </div>
 
             <!-- Audio section -->
@@ -942,12 +1029,37 @@ body{background:#f8f7ff!important;font-family:'Nunito','Segoe UI',sans-serif!imp
                 <textarea name="sentence[]"><?= htmlspecialchars((string) ($block["sentence"] ?? ""), ENT_QUOTES, 'UTF-8') ?></textarea>
             </div>
 
-            <!-- Video section -->
-            <div class="media-section video-section" style="display:none">
+            <!-- Video file section -->
+            <div class="media-section video-file-section"<?= $activeMode !== 'video-file' ? ' style="display:none"' : '' ?>>
+                <input type="hidden" name="video_url_existing[]" class="vf-url-existing" value="<?= htmlspecialchars($blockVideoUrl, ENT_QUOTES, 'UTF-8') ?>">
+
+                <?php if ($blockVideoUrl !== ""): ?>
+                <div class="video-preview-wrap">
+                    <video src="<?= htmlspecialchars($blockVideoUrl, ENT_QUOTES, 'UTF-8') ?>" controls preload="metadata"></video>
+                </div>
+                <button type="button" class="btn-remove-video" onclick="removeVideoFile(this)">✖ Remove video</button>
+                <?php else: ?>
+                <div class="video-upload-zone" onclick="this.querySelector('input[type=file]').click()">
+                    <div class="video-upload-icon">🎬</div>
+                    <div class="video-upload-title">Upload video file</div>
+                    <div class="video-upload-sub">MP4, MOV, WEBM</div>
+                    <input type="file" name="video_file[]" accept="video/*" style="display:none" onchange="showVideoPreview(this)">
+                </div>
+                <?php endif; ?>
+
+                <label class="field-label" style="margin-top:4px;">
+                    Transcript
+                    <span class="field-badge">optional — shown to students</span>
+                </label>
+                <textarea name="sentence[]"><?= htmlspecialchars((string) ($block["sentence"] ?? ""), ENT_QUOTES, 'UTF-8') ?></textarea>
+            </div>
+
+            <!-- Video URL section -->
+            <div class="media-section video-section"<?= $activeMode !== 'video' ? ' style="display:none"' : '' ?>>
                 <label class="field-label">Video URL</label>
                 <input type="url" placeholder="https://youtube.com/watch?v=... or direct video URL">
                 <div class="field-hint">Supports YouTube, Vimeo, or direct MP4 links.</div>
-                <!-- sentence hidden so it still submits when video mode active -->
+                <input type="hidden" name="video_url_existing[]" class="vf-url-existing" value="">
                 <textarea name="sentence[]" style="display:none"><?= htmlspecialchars((string) ($block["sentence"] ?? ""), ENT_QUOTES, 'UTF-8') ?></textarea>
             </div>
 
