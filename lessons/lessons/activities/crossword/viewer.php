@@ -1238,7 +1238,22 @@ function cwCellFor(r,c){
     return cells;
 }
 
-function cwSelectWord(idx){
+function cwSwitchTab(dir){
+    cwActiveTab = dir;
+
+    document.querySelectorAll('.cw-tab').forEach(function(btn){
+        btn.classList.toggle('active', btn.dataset.dir === dir);
+    });
+
+    document.querySelectorAll('.cw-visual-clue').forEach(function(clue){
+        clue.style.display =
+            (!clue.dataset.direction || clue.dataset.direction === dir)
+                ? ''
+                : 'none';
+    });
+}
+
+function cwSelectWord(idx, activeCell){
 
     cwSelectedWord = Number(idx);
 
@@ -1258,18 +1273,22 @@ function cwSelectWord(idx){
     });
 
     const cells = cwWordCells(cwSelectedWord);
+    const target = activeCell || cells[0];
 
-    cells.forEach(function(cell,i){
-        cell.classList.add(i === 0 ? 'selected' : 'word-hl');
+    cells.forEach(function(cell){
+        cell.classList.add(cell === target ? 'selected' : 'word-hl');
     });
 
-    const first = cells[0];
-
-    if(first){
-        const input = first.querySelector('input');
-
+    if(target){
+        const input = target.querySelector('input');
         if(input) input.focus();
     }
+
+    const activeClue = document.querySelector('.cw-visual-clue.active');
+    if(activeClue) activeClue.scrollIntoView({ behavior:'smooth', block:'nearest' });
+
+    const word = CW_WORDS[cwSelectedWord];
+    if(word) cwSwitchTab(word.direction);
 }
 
 function cwUpdateProgress(){
@@ -1526,8 +1545,17 @@ cwCells().forEach(function(cell){
             .split(',')
             .filter(Boolean);
 
-        if(ids.length){
-            cwSelectWord(ids[0]);
+        if(!ids.length) return;
+
+        if(ids.length === 1){
+            cwSelectWord(ids[0], cell);
+        } else {
+            // Toggle between the two words on repeated taps
+            const next =
+                (String(cwSelectedWord) === ids[0])
+                    ? ids[1]
+                    : ids[0];
+            cwSelectWord(next, cell);
         }
     });
 
