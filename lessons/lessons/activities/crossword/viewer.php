@@ -1583,9 +1583,9 @@ cwCells().forEach(function(cell){
                 .filter(Boolean);
 
             const active =
-                ids.length
-                    ? Number(ids[0])
-                    : cwSelectedWord;
+                (cwSelectedWord !== null && ids.includes(String(cwSelectedWord)))
+                    ? cwSelectedWord
+                    : (ids.length ? Number(ids[0]) : null);
 
             const cells =
                 active !== null
@@ -1614,9 +1614,9 @@ cwCells().forEach(function(cell){
                 .filter(Boolean);
 
             const active =
-                ids.length
-                    ? Number(ids[0])
-                    : cwSelectedWord;
+                (cwSelectedWord !== null && ids.includes(String(cwSelectedWord)))
+                    ? cwSelectedWord
+                    : (ids.length ? Number(ids[0]) : null);
 
             const cells =
                 active !== null
@@ -1637,6 +1637,16 @@ cwCells().forEach(function(cell){
 });
 
 cwUpdateProgress();
+
+document
+.querySelectorAll('.cw-tab')
+.forEach(function(btn){
+    btn.addEventListener('click',function(){
+        cwSwitchTab(btn.dataset.dir);
+    });
+});
+
+cwSwitchTab('across');
 
 </script>
 
