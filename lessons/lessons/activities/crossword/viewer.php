@@ -896,6 +896,38 @@ body{
     }
 }
 
+.cw-dir-tabs{
+    display:flex;
+    gap:8px;
+    margin-bottom:12px;
+}
+
+.cw-tab{
+    flex:1;
+    padding:8px 12px;
+    border-radius:999px;
+    border:1.5px solid var(--cw-purple);
+    background:transparent;
+    color:var(--cw-purple);
+    font-family:'Nunito',sans-serif;
+    font-size:12px;
+    font-weight:900;
+    text-transform:uppercase;
+    letter-spacing:.06em;
+    cursor:pointer;
+    transition:.15s;
+}
+
+.cw-tab.active{
+    background:var(--cw-purple);
+    color:#fff;
+}
+
+.cw-cell.selected{
+    border-color:var(--cw-orange);
+    border-width:2px;
+}
+
 </style><div class="cw-page">
     <div class="cw-app">
 
@@ -1025,6 +1057,11 @@ body{
                         <p class="cw-clue-sub">
                             Tap a clue to highlight its word.
                         </p>
+
+                        <div class="cw-dir-tabs">
+                            <button type="button" class="cw-tab active" data-dir="across">Across</button>
+                            <button type="button" class="cw-tab" data-dir="down">Down</button>
+                        </div>
 
                         <div class="cw-visual-list" id="cw-clues">
 
