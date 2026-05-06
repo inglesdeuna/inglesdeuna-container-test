@@ -1078,6 +1078,13 @@ body{margin:0;font-family:'Nunito','Segoe UI',sans-serif;background:linear-gradi
                target="_blank"
                rel="noopener noreferrer">📄 PDF</a>
             <?php endif; ?>
+            <?php if ($topWorksheetDownloadUrl !== ''): ?>
+            <a class="top-btn"
+               style="background:linear-gradient(180deg,#10b981,#059669);"
+               href="<?php echo h($topWorksheetDownloadUrl); ?>"
+               target="_blank"
+               rel="noopener noreferrer">📥 Downloadable</a>
+            <?php endif; ?>
         </div>
     </div>
 </header>
@@ -1101,31 +1108,6 @@ body{margin:0;font-family:'Nunito','Segoe UI',sans-serif;background:linear-gradi
     </div>
     <?php endif; ?>
 
-    <?php if (!empty($worksheets)): ?>
-    <!-- Worksheet (Downloadable PDF) panel -->
-    <details class="ws-panel" open>
-        <summary class="ws-panel-header">
-            <span class="ws-panel-icon">📄</span>
-            <span class="ws-panel-label">Worksheets</span>
-            <span class="ws-panel-count"><?php echo count($worksheets); ?></span>
-            <span class="ws-panel-arrow">▼</span>
-        </summary>
-        <div class="ws-items">
-            <?php foreach ($worksheets as $_ws): ?>
-            <div class="ws-item">
-                <span class="ws-item-icon">📄</span>
-                <span class="ws-item-title" title="<?php echo h($_ws['title']); ?>"><?php echo h($_ws['title']); ?></span>
-                <div class="ws-item-actions">
-                    <a class="ws-btn ws-btn-view"
-                       href="<?php echo h($_ws['serve_url']); ?>"
-                       target="_blank"
-                       rel="noopener noreferrer">View</a>
-                </div>
-            </div>
-            <?php endforeach; ?>
-        </div>
-    </details>
-    <?php endif; ?>
 
     <?php if ($isCompleted): ?>
     <!-- COMPLETED -->
