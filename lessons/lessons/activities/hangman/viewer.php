@@ -96,106 +96,206 @@ if (empty($normalizedItems)) {
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title><?= htmlspecialchars($title) ?></title>
+<title><?= htmlspecialchars($title, ENT_QUOTES, 'UTF-8') ?></title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@600;700;800;900&display=swap');
 
-*{ box-sizing:border-box; }
+:root{
+  --hg-orange:#F97316;
+  --hg-orange-dark:#C2580A;
+  --hg-orange-soft:#FFF0E6;
+  --hg-purple:#7F77DD;
+  --hg-purple-dark:#534AB7;
+  --hg-purple-soft:#EEEDFE;
+  --hg-muted:#9B94BE;
+  --hg-border:#F0EEF8;
+  --hg-track:#F4F2FD;
+  --hg-white:#FFFFFF;
+}
+
+*{box-sizing:border-box}
+
+html,body{width:100%;min-height:100%}
 
 body{
-  margin:0;
+  margin:0!important;
+  padding:0!important;
   min-height:100vh;
-  font-family:'Nunito', 'Segoe UI', sans-serif;
-  background:linear-gradient(135deg, #fff8db 0%, #fff0de 50%, #f2f7e9 100%);
-  text-align:center;
-  padding:18px 22px 24px;
-  color:#3f3a2b;
-}
-
-h1{
-  color:#9a3412;
-  font-family:'Fredoka', 'Trebuchet MS', sans-serif;
-  font-size:clamp(26px, 2.2vw, 30px);
-  margin:0 0 4px;
+  font-family:'Nunito','Segoe UI',sans-serif;
+  background:#ffffff;
+  color:#534AB7;
   text-align:center;
 }
 
-.subtitle{
-  color:#6b5b41;
+.hg-shell{
+  width:100%;
+  min-height:100vh;
+  padding:clamp(14px,2.5vw,34px);
+  display:flex;
+  justify-content:center;
+  align-items:flex-start;
+  background:#ffffff;
+}
+
+.hg-app{
+  width:min(900px,100%);
+  display:grid;
+  gap:clamp(12px,2vw,18px);
+}
+
+.hg-header{text-align:center}
+
+.hg-kicker{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:7px;
+  margin-bottom:8px;
+  padding:7px 14px;
+  border-radius:999px;
+  background:var(--hg-orange-soft);
+  border:1px solid #FCDDBF;
+  color:var(--hg-orange-dark);
+  font-size:12px;
+  font-weight:900;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+}
+
+.hg-title{
   margin:0;
-  font-size:15px;
-  text-align:center;
-}
-
-.game-box{
-  background:rgba(255,255,255,.86);
-  border-radius:24px;
-  border:1px solid rgba(255,255,255,.8);
-  box-shadow:0 16px 34px rgba(15, 23, 42, .1);
-}
-
-.hangman-intro{
-  max-width:980px;
-  margin:0 auto 14px;
-  padding:22px 26px;
-  border-radius:26px;
-  border:1px solid #d9cff6;
-  background:linear-gradient(135deg,#eef4ff 0%,#f8ebff 48%,#e8fff7 100%);
-  box-shadow:0 12px 28px rgba(15,23,42,.08);
-  box-sizing:border-box;
-}
-.hangman-intro h2{
-  margin:0 0 6px;
   font-family:'Fredoka','Trebuchet MS',sans-serif;
-  font-size:clamp(22px,2.8vw,28px);
+  font-size:clamp(30px,5.5vw,58px);
+  line-height:1.03;
+  color:var(--hg-orange);
   font-weight:700;
-  line-height:1.15;
-  color:#4c1d95;
-  letter-spacing:.2px;
+}
+
+.hg-subtitle{
+  margin:8px 0 0;
+  color:var(--hg-muted);
+  font-size:clamp(13px,1.8vw,17px);
+  font-weight:800;
 }
 
 .game-box{
-  padding:16px;
-  max-width:980px;
-  margin:0 auto 14px;
+  width:100%;
+  margin:0 auto;
+  padding:clamp(16px,2.6vw,26px);
+  border-radius:34px;
+  background:var(--hg-white);
+  border:1px solid var(--hg-border);
+  box-shadow:0 8px 40px rgba(127,119,221,.13);
   position:relative;
 }
 
 .game-layout{
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-  position:relative;
+  display:grid;
+  grid-template-columns:minmax(0,1fr) minmax(150px,210px);
+  gap:clamp(14px,2.4vw,24px);
+  align-items:start;
 }
 
 .left-panel{
-  width:100%;
+  min-width:0;
   display:flex;
   flex-direction:column;
   align-items:center;
 }
 
 .right-panel{
-  position:absolute;
-  top:0;
-  right:0;
+  width:100%;
+  display:flex;
+  align-items:flex-start;
+  justify-content:center;
+}
+
+.hg-visual-card{
+  width:100%;
+  max-width:620px;
+  border:1px solid #EDE9FA;
+  border-radius:30px;
+  background:#ffffff;
+  box-shadow:0 8px 24px rgba(127,119,221,.09);
+  padding:clamp(16px,2.4vw,22px);
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+}
+
+.hg-status-row{
+  width:100%;
+  display:grid;
+  grid-template-columns:1fr auto;
+  gap:10px;
+  align-items:center;
+  margin-bottom:14px;
+}
+
+.hg-track{
+  height:12px;
+  background:var(--hg-track);
+  border:1px solid #E4E1F8;
+  border-radius:999px;
+  overflow:hidden;
+}
+
+.hg-fill{
+  height:100%;
+  width:0%;
+  border-radius:999px;
+  background:linear-gradient(90deg,var(--hg-orange),var(--hg-purple));
+  transition:width .35s ease;
+}
+
+.hg-count{
+  min-width:74px;
+  text-align:center;
+  padding:7px 11px;
+  border-radius:999px;
+  background:var(--hg-purple);
+  color:#fff;
+  font-size:12px;
+  font-weight:900;
 }
 
 .hangman-wrap{
   display:flex;
   justify-content:center;
+  align-items:center;
+  width:min(210px,58vw);
+  height:min(210px,58vw);
+  max-height:220px;
+  margin:0 auto 10px;
+  border-radius:26px;
+  background:#ffffff;
+  border:1px solid #EDE9FA;
+  box-shadow:0 10px 28px rgba(127,119,221,.10);
+  overflow:hidden;
 }
 
 #hangmanImg{
-  width:200px;
-  max-width:100%;
+  width:78%;
+  max-width:170px;
+  object-fit:contain;
+  display:block;
+}
+
+.hint{
+  width:100%;
+  min-height:20px;
+  margin:4px 0 10px;
+  color:var(--hg-muted);
+  font-size:13px;
+  font-weight:800;
+  line-height:1.45;
 }
 
 .word{
-  font-size:clamp(22px, 2.4vw, 30px);
-  margin:8px 0 12px;
+  width:100%;
+  margin:8px 0 14px;
   display:flex;
   flex-wrap:wrap;
   justify-content:center;
@@ -204,255 +304,265 @@ h1{
 
 .word-char{
   min-width:28px;
+  height:38px;
   display:inline-flex;
-  justify-content:center;
   align-items:center;
-  border-bottom:2px solid #111827;
+  justify-content:center;
+  border-bottom:2px solid #D7D3F3;
+  color:var(--hg-purple);
+  font-size:clamp(20px,3vw,30px);
+  font-weight:900;
   line-height:1;
-  padding-bottom:4px;
-  font-weight:bold;
-  color:#111827;
 }
 
-.word-space{
-  min-width:22px;
-  border-bottom:none;
-}
+.word-space{min-width:18px;border-bottom:none}
+.word-char.revealed{color:var(--hg-orange);font-style:normal}
 
 .keyboard{
-  margin-top:12px;
+  width:100%;
+  max-width:590px;
+  margin:10px auto 0;
   display:flex;
   flex-wrap:wrap;
   justify-content:center;
   gap:8px;
-  max-width:560px;
-  margin-left:auto;
-  margin-right:auto;
 }
 
 .keyboard button{
   width:40px;
   height:40px;
-  border:none;
-  border-radius:10px;
-  background:linear-gradient(180deg, #fde68a 0%, #fbbf24 100%);
-  color:#7c2d12;
-  font-weight:800;
+  border:1px solid #EDE9FA;
+  border-radius:14px;
+  background:#ffffff;
+  color:var(--hg-purple-dark);
+  font-family:'Nunito','Segoe UI',sans-serif;
+  font-weight:900;
   font-size:13px;
-  box-shadow:0 8px 18px rgba(251, 191, 36, .18);
+  box-shadow:0 5px 14px rgba(127,119,221,.12);
   cursor:pointer;
+  transition:transform .16s ease, background .16s ease, color .16s ease, box-shadow .16s ease;
+}
+
+.keyboard button:hover:not(:disabled){
+  transform:translateY(-1px);
+  background:var(--hg-purple-soft);
+  box-shadow:0 9px 18px rgba(127,119,221,.18);
 }
 
 .keyboard button:disabled{
-  background:#d6d3d1;
-  color:#78716c;
+  background:#F4F2FD;
+  color:#B8B2D5;
   box-shadow:none;
+  cursor:not-allowed;
 }
 
 .controls{
-  margin-top:10px;
+  margin-top:16px;
   display:flex;
   flex-wrap:wrap;
   justify-content:center;
   gap:10px;
 }
 
-.action-btn{
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  padding:11px 18px;
-  border:none;
-  border-radius:999px;
-  color:white;
-  cursor:pointer;
-  min-width:142px;
-  font-weight:800;
-  font-size:14px;
-  font-family:'Nunito', 'Segoe UI', sans-serif;
-  line-height:1;
-  box-shadow:0 10px 22px rgba(15, 23, 42, .12);
-  transition:transform .15s ease, filter .15s ease;
-}
-
-.action-btn:hover{
-  filter:brightness(1.04);
-  transform:translateY(-1px);
-}
-
-.action-check{background:linear-gradient(180deg, #f59e0b 0%, #ea580c 100%)}
-.action-hint{background:linear-gradient(180deg, #2dd4bf 0%, #0f766e 100%)}
-.action-answer{background:linear-gradient(180deg, #f9a8d4 0%, #ec4899 100%)}
-.action-next{background:linear-gradient(180deg, #84cc16 0%, #4d7c0f 100%)}
-
-#feedback{
-  font-size:18px;
-  font-weight:800;
-  margin-top:10px;
-  min-height:22px;
-}
-
-.good{ color:#15803d; }
-.bad{ color:#dc2626; }
-.word-char.revealed{ color:#dc2626; font-style:italic; }
-
-.hint{
-  font-size:14px;
-  font-weight:800;
-  color:#0f766e;
-  margin:8px 0;
-  min-height:18px;
-}
-
-.hint-image{
-  width:140px;
-  max-width:140px;
-  max-height:110px;
-  object-fit:contain;
-  border-radius:10px;
-  border:1px solid #e2e8f0;
-  background:#fff;
-  margin:0;
-  display:none;
-}
-
-.hg-completed-screen{
-  display:none;
-  text-align:center;
-  max-width:600px;
-  margin:0 auto;
-  padding:40px 20px;
-}
-
-.hg-completed-screen.active{
-  display:block;
-}
-
-.hg-completed-icon{
-  font-size:80px;
-  margin-bottom:20px;
-}
-
-.hg-completed-title{
-  font-family:'Fredoka', 'Trebuchet MS', sans-serif;
-  font-size:36px;
-  font-weight:700;
-  color:#9a3412;
-  margin:0 0 16px;
-  line-height:1.2;
-}
-
-.hg-completed-text{
-  font-size:16px;
-  color:#6b5b41;
-  line-height:1.6;
-  margin:0 0 32px;
-}
-
-.hg-completed-button{
-  display:inline-block;
-  padding:12px 24px;
-  border:none;
-  border-radius:999px;
-  background:linear-gradient(180deg, #f59e0b 0%, #ea580c 100%);
-  color:#fff;
-  font-weight:700;
-  font-size:16px;
-  cursor:pointer;
-  box-shadow:0 10px 24px rgba(0,0,0,.14);
-  transition:transform .18s ease, filter .18s ease;
-}
-
-.hg-completed-button:hover{
-  transform:scale(1.05);
-  filter:brightness(1.07);
-}
-
+.action-btn,
+.hg-completed-button,
 a.back{
   display:inline-flex;
   align-items:center;
   justify-content:center;
-  margin-top:10px;
-  background:linear-gradient(180deg, #3d73ee 0%, #2563eb 100%);
-  color:#fff;
-  padding:10px 14px;
-  border-radius:10px;
-  text-decoration:none;
-  font-weight:700;
-  font-size:13px;
+  min-width:clamp(104px,16vw,146px);
+  padding:13px 20px;
+  border:0;
+  border-radius:999px;
+  color:#ffffff;
   font-family:'Nunito','Segoe UI',sans-serif;
+  font-size:13px;
+  font-weight:900;
   line-height:1;
-  box-shadow:0 10px 22px rgba(37, 99, 235, .28);
-  transition:transform .18s ease, filter .18s ease;
+  text-decoration:none;
+  cursor:pointer;
+  transition:filter .15s ease, transform .15s ease;
 }
+
+.action-btn:hover,
+.hg-completed-button:hover,
 a.back:hover{
-  filter:brightness(1.07);
+  filter:brightness(1.06);
   transform:translateY(-1px);
 }
 
-@media (max-width:760px){
-  body{padding:12px}
-  h1{font-size:24px}
-  .subtitle{font-size:13px}
-  .hangman-intro,
-  .game-box{padding:16px}
-  .hint-image{max-width:120px;max-height:96px}
-  #hangmanImg{width:160px}
-  .keyboard button{width:36px;height:36px}
-  .action-btn{width:calc(50% - 8px);min-width:0}
+.action-hint,.action-answer{background:var(--hg-purple);box-shadow:0 6px 18px rgba(127,119,221,.18)}
+.action-next,.hg-completed-button{background:var(--hg-orange);box-shadow:0 6px 18px rgba(249,115,22,.22)}
+a.back{background:var(--hg-purple);box-shadow:0 6px 18px rgba(127,119,221,.18);justify-self:center;margin:2px auto 0}
+
+#feedback{
+  min-height:24px;
+  margin-top:12px;
+  color:var(--hg-muted);
+  font-size:15px;
+  font-weight:900;
 }
 
-@media (max-height:900px) and (min-width:761px){
-  .hangman-intro{padding:14px 16px;margin-bottom:10px}
-  .game-box{padding:14px}
+.good{color:var(--hg-purple-dark)!important}
+.bad{color:var(--hg-orange-dark)!important}
+
+.hint-image-card{
+  width:100%;
+  min-height:190px;
+  border-radius:28px;
+  border:1px solid #EDE9FA;
+  background:#ffffff;
+  box-shadow:0 8px 24px rgba(127,119,221,.09);
+  padding:14px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+
+.hint-image{
+  width:100%;
+  max-width:180px;
+  max-height:170px;
+  object-fit:contain;
+  border-radius:20px;
+  display:none;
+}
+
+.hg-placeholder{
+  width:100%;
+  min-height:150px;
+  border-radius:22px;
+  background:#FAFAFD;
+  color:#D5D0F0;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:42px;
+  font-weight:900;
+}
+
+.hg-completed-screen{
+  display:none;
+  width:min(680px,100%);
+  margin:0 auto;
+  text-align:center;
+  padding:clamp(34px,5vw,54px) clamp(18px,4vw,34px);
+  border-radius:34px;
+  background:#ffffff;
+}
+
+.hg-completed-screen.active{display:block;animation:hgPop .35s ease}
+
+.hg-completed-icon{
+  width:72px;
+  height:72px;
+  margin:0 auto 16px;
+  border-radius:999px;
+  background:var(--hg-purple-soft);
+  color:var(--hg-purple);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:34px;
+  font-weight:900;
+}
+
+.hg-completed-title{
+  margin:0 0 10px;
+  font-family:'Fredoka','Trebuchet MS',sans-serif;
+  font-size:clamp(30px,5.5vw,58px);
+  color:var(--hg-orange);
+  line-height:1.03;
+  font-weight:700;
+}
+
+.hg-completed-text,
+#hg-score-text{
+  margin:0 auto 14px!important;
+  max-width:520px;
+  color:var(--hg-muted)!important;
+  font-size:clamp(13px,1.8vw,17px)!important;
+  font-weight:800!important;
+  line-height:1.5;
+}
+
+@keyframes hgPop{from{opacity:0;transform:translateY(10px) scale(.97)}to{opacity:1;transform:none}}
+
+@media(max-width:760px){
+  .hg-shell{padding:12px}
+  .game-box{border-radius:26px;padding:14px}
+  .game-layout{grid-template-columns:1fr;gap:14px}
+  .right-panel{order:-1}
+  .hint-image-card{min-height:128px;padding:10px;border-radius:24px}
+  .hint-image{max-height:112px;max-width:150px}
+  .hg-placeholder{min-height:104px;font-size:34px}
+  .hangman-wrap{width:150px;height:150px;border-radius:22px}
+  #hangmanImg{max-width:122px}
+  .word-char{min-width:24px;height:34px;font-size:20px}
+  .keyboard{gap:7px}
+  .keyboard button{width:34px;height:34px;border-radius:12px;font-size:12px}
+  .controls{display:grid;grid-template-columns:1fr;gap:9px;width:100%}
+  .action-btn{width:100%}
 }
 </style>
 </head>
 
 <body>
+<div class="hg-shell">
+  <main class="hg-app">
+    <header class="hg-header">
+      <div class="hg-kicker">Activity <span id="hg-kicker-count">1 / <?= count($normalizedItems) ?></span></div>
+      <h1 class="hg-title"><?= htmlspecialchars($title, ENT_QUOTES, 'UTF-8') ?></h1>
+      <p class="hg-subtitle">Guess the word with clean, focused practice.</p>
+    </header>
 
-<div class="hangman-intro">
-  <h2><?= htmlspecialchars($title, ENT_QUOTES, 'UTF-8') ?></h2>
-</div>
+    <section class="game-box">
+      <div class="game-layout" id="gameLayout">
+        <div class="left-panel">
+          <div class="hg-visual-card">
+            <div class="hg-status-row">
+              <div class="hg-track"><div class="hg-fill" id="hg-progress-fill"></div></div>
+              <div class="hg-count" id="hg-progress-count">1 / <?= count($normalizedItems) ?></div>
+            </div>
 
-<div class="game-box">
-  <div class="game-layout" id="gameLayout">
-    <div class="left-panel">
-      <div class="hangman-wrap">
-        <img id="hangmanImg" src="../../hangman/assets/hangman0.png" width="200" alt="hangman">
+            <div class="hangman-wrap">
+              <img id="hangmanImg" src="../../hangman/assets/hangman0.png" width="200" alt="hangman">
+            </div>
+
+            <div id="hint" class="hint"></div>
+            <div id="word" class="word"></div>
+            <div id="keyboard" class="keyboard"></div>
+
+            <div class="controls">
+              <button class="action-btn action-hint" type="button" onclick="showHint()">Hint</button>
+              <button class="action-btn action-answer" type="button" onclick="showAnswer()">Show Text</button>
+              <button class="action-btn action-next" type="button" onclick="nextWord()">Next</button>
+            </div>
+
+            <div id="feedback"></div>
+          </div>
+        </div>
+
+        <aside class="right-panel">
+          <div class="hint-image-card">
+            <img id="hintImage" class="hint-image" alt="hint image">
+            <div class="hg-placeholder" id="hintPlaceholder">?</div>
+          </div>
+        </aside>
       </div>
 
-      <div id="hint" class="hint"></div>
-
-      <div id="word" class="word"></div>
-
-      <div id="keyboard" class="keyboard"></div>
-
-      <div class="controls">
-        <button class="action-btn action-hint" type="button" onclick="showHint()">Hint</button>
-        <button class="action-btn action-answer" type="button" onclick="showAnswer()">Show Answer</button>
-        <button class="action-btn action-next" type="button" onclick="nextWord()">Next</button>
+      <div id="hg-completed" class="hg-completed-screen">
+        <div class="hg-completed-icon">✓</div>
+        <h2 class="hg-completed-title" id="hg-completed-title"></h2>
+        <p class="hg-completed-text" id="hg-completed-text"></p>
+        <p class="hg-completed-text" id="hg-score-text"></p>
+        <button type="button" class="hg-completed-button" id="hg-restart" onclick="restartActivity()">Restart</button>
       </div>
+    </section>
 
-      <div id="feedback"></div>
-    </div>
-
-    <aside class="right-panel">
-      <img id="hintImage" class="hint-image" alt="hint image">
-    </aside>
-  </div>
-
-  <div id="hg-completed" class="hg-completed-screen">
-    <div class="hg-completed-icon">✅</div>
-    <h2 class="hg-completed-title" id="hg-completed-title"></h2>
-    <p class="hg-completed-text" id="hg-completed-text"></p>
-    <p class="hg-completed-text" id="hg-score-text" style="font-weight:700;font-size:18px;color:#9a3412;"></p>
-    <button type="button" class="hg-completed-button" id="hg-restart" onclick="restartActivity()">Restart</button>
-  </div>
-
+    <a class="back" href="../../academic/unit_view.php?unit=<?= urlencode($unit) ?>&source=<?= urlencode($_GET['source'] ?? '') ?>">Back</a>
+  </main>
 </div>
-
-<a class="back" href="../../academic/unit_view.php?unit=<?= urlencode($unit) ?>&source=<?= urlencode($_GET['source'] ?? '') ?>">Back</a>
 
 <audio id="correctSound" src="../../hangman/assets/realcorrect.mp3" preload="auto"></audio>
 <audio id="winSound" src="../../hangman/assets/win.mp3" preload="auto"></audio>
@@ -465,7 +575,6 @@ const activityTitle = <?= json_encode($title, JSON_UNESCAPED_UNICODE) ?>;
 const HG_RETURN_TO = <?= json_encode($returnTo, JSON_UNESCAPED_UNICODE) ?>;
 const HG_ACTIVITY_ID = <?= json_encode($resolvedActivityId, JSON_UNESCAPED_UNICODE) ?>;
 
-// Preload hangman images to avoid delay
 const preloadedHangmanImages = [];
 for (let i = 0; i <= 7; i++) {
   const img = new Image();
@@ -476,6 +585,7 @@ for (let i = 0; i <= 7; i++) {
 const feedback = document.getElementById("feedback");
 const hintEl = document.getElementById("hint");
 const hintImageEl = document.getElementById("hintImage");
+const hintPlaceholderEl = document.getElementById("hintPlaceholder");
 const hangmanImg = document.getElementById("hangmanImg");
 const correctSound = document.getElementById("correctSound");
 const winSound = document.getElementById("winSound");
@@ -486,14 +596,12 @@ const completedEl = document.getElementById("hg-completed");
 const completedTitleEl = document.getElementById("hg-completed-title");
 const completedTextEl = document.getElementById("hg-completed-text");
 const scoreTextEl = document.getElementById("hg-score-text");
+const progressFillEl = document.getElementById("hg-progress-fill");
+const progressCountEl = document.getElementById("hg-progress-count");
+const kickerCountEl = document.getElementById("hg-kicker-count");
 
-if (completedTitleEl) {
-  completedTitleEl.textContent = activityTitle || 'Hangman';
-}
-
-if (completedTextEl) {
-  completedTextEl.textContent = "You've completed " + (activityTitle || 'this activity') + '. Great job practicing.';
-}
+if (completedTitleEl) completedTitleEl.textContent = activityTitle || 'Hangman';
+if (completedTextEl) completedTextEl.textContent = "You've completed " + (activityTitle || 'this activity') + '. Great job practicing.';
 
 let index = 0;
 let word = "";
@@ -508,57 +616,44 @@ let correctCount = 0;
 let totalCount = items.length;
 let scoredWordsByIndex = {};
 
+function updateProgress(){
+  const countText = (index + 1) + ' / ' + totalCount;
+  const pct = totalCount > 0 ? Math.max(1, Math.round(((index + 1) / totalCount) * 100)) : 0;
+  if (progressFillEl) progressFillEl.style.width = pct + '%';
+  if (progressCountEl) progressCountEl.textContent = countText;
+  if (kickerCountEl) kickerCountEl.textContent = countText;
+}
+
 function setKeyboardDisabled(disabledState) {
-  const keys = document.querySelectorAll('#keyboard button');
-  keys.forEach((keyButton) => {
+  document.querySelectorAll('#keyboard button').forEach((keyButton) => {
     keyButton.disabled = !!disabledState;
   });
 }
 
 function playSound(audio) {
-  try {
-    audio.pause();
-    audio.currentTime = 0;
-    audio.play();
-  } catch (e) {}
+  try { audio.pause(); audio.currentTime = 0; audio.play(); } catch (e) {}
 }
 
 function persistScoreSilently(targetUrl) {
-  if (!targetUrl) {
-    return Promise.resolve(false);
-  }
-
-  return fetch(targetUrl, {
-    method: 'GET',
-    credentials: 'same-origin',
-    cache: 'no-store',
-  }).then(function (response) {
-    return !!(response && response.ok);
-  }).catch(function () {
-    return false;
-  });
+  if (!targetUrl) return Promise.resolve(false);
+  return fetch(targetUrl, { method:'GET', credentials:'same-origin', cache:'no-store' })
+    .then(function (response) { return !!(response && response.ok); })
+    .catch(function () { return false; });
 }
 
 function navigateToReturn(targetUrl) {
-  if (!targetUrl) {
-    return;
-  }
-
+  if (!targetUrl) return;
   try {
     if (window.top && window.top !== window.self) {
       window.top.location.href = targetUrl;
       return;
     }
   } catch (e) {}
-
   window.location.href = targetUrl;
 }
 
 function registerSolvedWord() {
-  if (scoredWordsByIndex[index]) {
-    return;
-  }
-
+  if (scoredWordsByIndex[index]) return;
   scoredWordsByIndex[index] = true;
   correctCount += 1;
 }
@@ -569,28 +664,23 @@ function loadWord(){
   gameFinished = false;
   hintVisible = false;
 
-  if (completedEl) {
-    completedEl.classList.remove('active');
-  }
+  if (completedEl) completedEl.classList.remove('active');
+  if (gameLayout) gameLayout.style.display = 'grid';
 
-  if (gameLayout) {
-    gameLayout.style.display = 'grid';
-  }
-
-  const current = items[index] || { word: "TEST", hint: "", image: "" };
+  const current = items[index] || { word:"TEST", hint:"", image:"" };
   word = String(current.word || "TEST").toUpperCase();
   hint = String(current.hint || "");
   hintImage = String(current.image || "");
 
   feedback.textContent = "";
   feedback.className = "";
-
   hintEl.textContent = "";
   hintImageEl.style.display = "none";
   hintImageEl.removeAttribute("src");
-
+  if (hintPlaceholderEl) hintPlaceholderEl.style.display = "flex";
   hangmanImg.src = "../../hangman/assets/hangman0.png";
 
+  updateProgress();
   buildKeyboard();
   renderWord();
 }
@@ -604,18 +694,9 @@ async function showCompleted() {
   const pct = totalCount > 0 ? Math.round((correctCount / totalCount) * 100) : 0;
   const errors = Math.max(0, totalCount - correctCount);
 
-  if (gameLayout) {
-    gameLayout.style.display = 'none';
-  }
-
-  if (completedEl) {
-    completedEl.classList.add('active');
-  }
-
-  if (scoreTextEl) {
-    scoreTextEl.textContent = 'Score: ' + correctCount + ' / ' + totalCount + ' (' + pct + '%)';
-  }
-
+  if (gameLayout) gameLayout.style.display = 'none';
+  if (completedEl) completedEl.classList.add('active');
+  if (scoreTextEl) scoreTextEl.textContent = 'Score: ' + correctCount + ' / ' + totalCount + ' (' + pct + '%)';
   playSound(winSound);
 
   if (HG_ACTIVITY_ID && HG_RETURN_TO) {
@@ -628,9 +709,7 @@ async function showCompleted() {
       + '&activity_type=hangman';
 
     const ok = await persistScoreSilently(saveUrl);
-    if (!ok) {
-      navigateToReturn(saveUrl);
-    }
+    if (!ok) navigateToReturn(saveUrl);
   }
 }
 
@@ -644,36 +723,27 @@ function restartActivity() {
 
 function renderWord(revealMissing = false){
   let html = "";
-
   for (let l of word) {
-    if (l === " ") {
-      html += `<span class="word-char word-space">&nbsp;</span>`;
-    } else if (guessed.includes(l)) {
-      html += `<span class="word-char">${l}</span>`;
-    } else if (revealMissing) {
-      html += `<span class="word-char revealed">${l}</span>`;
-    } else {
-      html += `<span class="word-char">&nbsp;</span>`;
-    }
+    if (l === " ") html += `<span class="word-char word-space">&nbsp;</span>`;
+    else if (guessed.includes(l)) html += `<span class="word-char">${l}</span>`;
+    else if (revealMissing) html += `<span class="word-char revealed">${l}</span>`;
+    else html += `<span class="word-char">&nbsp;</span>`;
   }
-
   document.getElementById("word").innerHTML = html;
 }
 
 function showHint(){
   hintVisible = true;
-  hintEl.textContent = hint ? `💡 Hint: ${hint}` : "💡 No hint available.";
-
+  hintEl.textContent = hint ? `Hint: ${hint}` : "No hint available.";
   if (hintImage) {
     hintImageEl.src = hintImage;
     hintImageEl.style.display = "block";
+    if (hintPlaceholderEl) hintPlaceholderEl.style.display = "none";
   }
 }
 
 function guess(letter){
-  if (gameFinished) return;
-  if (guessed.includes(letter)) return;
-
+  if (gameFinished || guessed.includes(letter)) return;
   guessed.push(letter);
 
   const btn = document.querySelector(`button[data-letter="${letter}"]`);
@@ -681,10 +751,9 @@ function guess(letter){
 
   if (!word.includes(letter)) {
     mistakes++;
-    // already preloaded
     hangmanImg.src = `../../hangman/assets/hangman${mistakes}.png`;
     if (mistakes >= maxMistakes) {
-      feedback.textContent = "❌ Try Again!";
+      feedback.textContent = "Try Again";
       feedback.className = "bad";
       playSound(loseSound);
       gameFinished = true;
@@ -694,13 +763,11 @@ function guess(letter){
     }
   } else {
     playSound(correctSound);
-
     if (isSolved()) {
       registerSolvedWord();
-      if (index === items.length - 1) {
-        showCompleted();
-      } else {
-        feedback.textContent = "Correct!";
+      if (index === items.length - 1) showCompleted();
+      else {
+        feedback.textContent = "Correct";
         feedback.className = "good";
       }
       gameFinished = true;
@@ -719,39 +786,9 @@ function isSolved(){
   return true;
 }
 
-function checkGame(){
-  if (gameFinished) return;
-
-  if (isSolved()) {
-    registerSolvedWord();
-    if (index === items.length - 1) {
-      showCompleted();
-    } else {
-      feedback.textContent = "Correct!";
-      feedback.className = "good";
-      playSound(correctSound);
-    }
-    gameFinished = true;
-    setKeyboardDisabled(true);
-    return;
-  }
-
-  if (mistakes >= maxMistakes) {
-    feedback.textContent = "❌ Try Again!";
-    feedback.className = "bad";
-    playSound(loseSound);
-    gameFinished = true;
-    setKeyboardDisabled(true);
-    return;
-  }
-
-  feedback.textContent = "Try Again";
-  feedback.className = "bad";
-}
-
 function showAnswer(){
   renderWord(true);
-  feedback.textContent = "Show The Answer";
+  feedback.textContent = "Text shown";
   feedback.className = "good";
   gameFinished = true;
   setKeyboardDisabled(true);
@@ -762,7 +799,6 @@ function nextWord(){
     showCompleted();
     return;
   }
-
   index++;
   loadWord();
 }
@@ -778,6 +814,5 @@ function buildKeyboard(){
 
 loadWord();
 </script>
-
 </body>
 </html>
