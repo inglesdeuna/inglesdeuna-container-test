@@ -465,12 +465,7 @@ body{margin:0!important;padding:0!important;background:var(--mc-bg)!important;fo
 /* legacy classes kept empty to avoid conflicts */
 .match-shell,.match-app,.match-chip,.match-card-chip,.match-text-chip{}
 
-.match-hero{
-    text-align:center;
-    display:grid;
-    justify-items:center;
-    gap:8px;
-}
+/* end styles */
 
 .match-kicker{
     display:inline-flex;
