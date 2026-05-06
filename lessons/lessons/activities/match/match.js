@@ -42,8 +42,30 @@
       return copy;
     }
 
+    function makeUnalignedOrder(referenceOrder) {
+      const count = referenceOrder.length;
+
+      if (count <= 1) {
+        return referenceOrder.slice();
+      }
+
+      let shuffled = shuffle(referenceOrder);
+      let attempts = 0;
+
+      while (attempts < 25 && shuffled.some((item, index) => String(item.id) === String(referenceOrder[index].id))) {
+        shuffled = shuffle(referenceOrder);
+        attempts += 1;
+      }
+
+      if (!shuffled.some((item, index) => String(item.id) === String(referenceOrder[index].id))) {
+        return shuffled;
+      }
+
+      return referenceOrder.slice(1).concat(referenceOrder[0]);
+    }
+
     let englishOrder = shuffle(pairs);
-    let matchOrder = shuffle(pairs);
+    let matchOrder = makeUnalignedOrder(englishOrder);
     let selectedEn = null;
     let selectedMatch = null;
     let matched = [];
@@ -56,7 +78,7 @@
 
     function reshuffleBoard() {
       englishOrder = shuffle(pairs);
-      matchOrder = shuffle(pairs);
+      matchOrder = makeUnalignedOrder(englishOrder);
     }
 
     function escapeHtml(value) {
