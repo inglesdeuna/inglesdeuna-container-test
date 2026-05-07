@@ -212,7 +212,7 @@ function save_listen_order_activity(PDO $pdo, string $unit, string $activityId, 
             SELECT id
             FROM activities
             WHERE unit_id = :unit
-              AND type = 'listen_order'
+              AND type IN ('listen_order','listen_and_order','listenorder')
             ORDER BY id ASC
             LIMIT 1
         ");
@@ -223,9 +223,8 @@ function save_listen_order_activity(PDO $pdo, string $unit, string $activityId, 
     if ($targetId !== "") {
         $stmt = $pdo->prepare("
             UPDATE activities
-            SET data = :data
+            SET data = :data, type = 'listen_order'
             WHERE id = :id
-              AND type = 'listen_order'
         ");
         $stmt->execute([
             "data" => $json,
@@ -379,7 +378,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             ];
         }
 
-        if ($sentence === "" && $videoUrl === "") {
+        if ($sentence === "" && $videoUrl === "" && empty($images)) {
             continue;
         }
 
@@ -1155,6 +1154,11 @@ function setMediaMode(btn, mode) {
     });
     var target = block.querySelector('.' + mode + '-section');
     if (target) target.style.display = '';
+    block.querySelectorAll('.media-section textarea[name="sentence[]"]').forEach(function (ta) {
+        ta.disabled = true;
+    });
+    var activeTa = target ? target.querySelector('textarea[name="sentence[]"]') : null;
+    if (activeTa) activeTa.disabled = false;
     markChanged();
 }
 
@@ -1163,12 +1167,14 @@ function showVideoPreview(input) {
     if (!input.files || !input.files[0]) return;
     var section = input.closest('.video-file-section');
     if (!section) return;
-    var file = input.files[0];
-    var url  = URL.createObjectURL(file);
+    var url = URL.createObjectURL(input.files[0]);
 
-    // Replace the upload zone with a preview + remove button
-    var zone = input.closest('.video-upload-zone');
+    var zone = section.querySelector('.video-upload-zone');
     if (zone) zone.remove();
+    var oldWrap = section.querySelector('.video-preview-wrap');
+    if (oldWrap) oldWrap.remove();
+    var oldBtn = section.querySelector('.btn-remove-video');
+    if (oldBtn) oldBtn.remove();
 
     var wrap = document.createElement('div');
     wrap.className = 'video-preview-wrap';
@@ -1180,42 +1186,33 @@ function showVideoPreview(input) {
     removeBtn.textContent = '✖ Remove video';
     removeBtn.onclick = function () { removeVideoFile(removeBtn); };
 
-    var labelEl = section.querySelector('.field-label');
-    section.insertBefore(removeBtn, labelEl);
-    section.insertBefore(wrap, removeBtn);
-
-    // Move the file input outside the zone so it still submits
-    section.insertBefore(input, wrap);
-    input.style.display = 'none';
+    section.appendChild(removeBtn);
+    section.appendChild(wrap);
     markChanged();
 }
 
 function removeVideoFile(btn) {
     var section = btn.closest('.video-file-section');
+    var blockEl = btn.closest('.block-item');
     if (!section) return;
 
     var preview = section.querySelector('.video-preview-wrap');
     if (preview) preview.remove();
     btn.remove();
 
-    var blockEl = btn.closest('.block-item') || section.closest('.block-item');
+    var realInput = section.querySelector('.vf-real-input');
+    if (realInput) realInput.value = '';
     var urlInput = blockEl ? blockEl.querySelector('.lo-block-vidurl') : null;
     if (urlInput) urlInput.value = '';
 
-    var fileInput = section.querySelector('input[type="file"][name^="video_file["]');
-    var savedName = fileInput ? fileInput.name : 'video_file[0]';
-    if (fileInput) { fileInput.value = ''; fileInput.remove(); }
-
-    // Restore the upload zone with the same indexed name
     var zone = document.createElement('div');
     zone.className = 'video-upload-zone';
-    zone.onclick = function () { zone.querySelector('input[type=file]').click(); };
+    zone.onclick = function () { section.querySelector('.vf-real-input').click(); };
     zone.innerHTML =
-        '<div class="video-upload-icon">🎬</div>' +
+        '<div class="video-upload-icon">&#x1F3AC;</div>' +
         '<div class="video-upload-title">Upload video file</div>' +
-        '<div class="video-upload-sub">MP4, MOV, WEBM</div>' +
-        '<input type="file" name="' + savedName + '" accept="video/*" style="display:none" onchange="showVideoPreview(this)">';
-    section.insertBefore(zone, section.firstChild);
+        '<div class="video-upload-sub">MP4, MOV, WEBM</div>';
+    section.appendChild(zone);
     markChanged();
 }
 
@@ -1231,6 +1228,52 @@ function showAudioPill(input) {
         pill.textContent = input.files[0].name;
         zone.appendChild(pill);
     }
+}
+
+/* ── Image preview (new uploads) ── */
+function previewNewImages(input, _blockIndex) {
+    if (!input.files || !input.files.length) return;
+    var grid = input.closest('.img-grid');
+    var slot = input.closest('.img-add-slot');
+    if (!grid) return;
+
+    var blockEl    = input.closest('.block-item');
+    var allBlocks  = Array.from(document.querySelectorAll('#blocksContainer .block-item'));
+    var blockIndex = blockEl ? allBlocks.indexOf(blockEl) : (_blockIndex || 0);
+    if (blockIndex < 0) blockIndex = _blockIndex || 0;
+
+    var existingCount = grid.querySelectorAll('.img-card').length;
+
+    Array.from(input.files).forEach(function (file, fi) {
+        var reader = new FileReader();
+        reader.onload = function (e) {
+            var pos  = existingCount + fi + 1;
+            var card = document.createElement('div');
+            card.className = 'img-card';
+            card.innerHTML =
+                '<span class="img-pos-badge">' + pos + '</span>' +
+                '<img src="' + e.target.result + '" alt="image ' + pos + '">' +
+                '<button type="button" class="img-remove-btn" onclick="removeImgCard(this)">Remove</button>';
+            grid.insertBefore(card, slot || null);
+        };
+        reader.readAsDataURL(file);
+    });
+
+    input.name          = 'images[' + blockIndex + '][]';
+    input.style.display = 'none';
+    input.onchange      = null;
+    if (slot) grid.insertBefore(input, slot);
+
+    var clone      = document.createElement('input');
+    clone.type     = 'file';
+    clone.name     = 'images[' + blockIndex + '][]';
+    clone.multiple = true;
+    clone.accept   = 'image/*';
+    clone.style.display = 'none';
+    clone.onchange = function () { previewNewImages(clone, blockIndex); };
+    if (slot) { var lbl = slot.querySelector('label'); if (lbl) lbl.appendChild(clone); }
+
+    markChanged();
 }
 
 /* ── Image card removal ── */
@@ -1260,10 +1303,9 @@ function reindexBlockInputs() {
     var blocks = document.querySelectorAll('#blocksContainer .block-item');
 
     blocks.forEach(function (block, index) {
-        var fileInput = block.querySelector('input[type="file"][name^="images["]');
-        if (fileInput) {
-            fileInput.name = 'images[' + index + '][]';
-        }
+        block.querySelectorAll('input[type="file"][name^="images["]').forEach(function (inp) {
+            inp.name = 'images[' + index + '][]';
+        });
 
         var existingInputs = block.querySelectorAll('input[type="hidden"][name^="images_existing["]');
         existingInputs.forEach(function (input) {
@@ -1327,21 +1369,25 @@ function addBlock() {
         '</div>' +
 
         '<div class="media-section video-file-section" style="display:none">' +
-            '<div class="video-upload-zone" onclick="this.querySelector(\'input[type=file]\').click()">' +
+            '<textarea name="sentence[]" disabled style="display:none"></textarea>' +
+            '<input type="file" name="video_file[' + index + ']" accept="video/*" style="display:none" class="vf-real-input" onchange="showVideoPreview(this)">' +
+            '<div class="video-upload-zone" onclick="this.closest(\'.video-file-section\').querySelector(\'.vf-real-input\').click()">' +
                 '<div class="video-upload-icon">&#x1F3AC;</div>' +
                 '<div class="video-upload-title">Upload video file</div>' +
                 '<div class="video-upload-sub">MP4, MOV, WEBM</div>' +
-                '<input type="file" name="video_file[' + index + ']" accept="video/*" style="display:none" onchange="showVideoPreview(this)">' +
             '</div>' +
         '</div>' +
 
         '<div class="media-section video-section" style="display:none">' +
+            '<textarea name="sentence[]" disabled style="display:none"></textarea>' +
             '<label class="field-label">Video URL</label>' +
             '<input type="url" placeholder="https://youtube.com/watch?v=... or direct video URL">' +
             '<div class="field-hint">Supports YouTube, Vimeo, or direct MP4 links.</div>' +
         '</div>' +
 
-        '<div class="media-section none-section" style="display:none"></div>' +
+        '<div class="media-section none-section" style="display:none">' +
+            '<textarea name="sentence[]" disabled style="display:none"></textarea>' +
+        '</div>' +
 
         '<label class="field-label" style="margin-top:4px;">Images in correct order <span class="field-badge">upload in the exact order students should arrange them</span></label>' +
 
