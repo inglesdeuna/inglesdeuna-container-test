@@ -181,22 +181,8 @@ function cw_generate_layout(array $words): array {
         }
 
         if ($best === null) {
-            $maxR = 0;
-            $minC = 0;
-
-            foreach ($grid as $key => $_cell) {
-                [$r, $c] = array_map("intval", explode(",", $key));
-                $maxR = max($maxR, $r);
-                $minC = min($minC, $c);
-            }
-
-            $best = [
-                "idx" => $candidate["idx"],
-                "word" => $word,
-                "row" => $maxR + 2,
-                "col" => $minC,
-                "direction" => ($p % 2 ? "down" : "across"),
-            ];
+            // Keep crossword as a connected graph: skip words that cannot intersect.
+            continue;
         }
 
         $placed[] = $best;
@@ -339,14 +325,23 @@ foreach ($placed as $idx => $w) {
     $placed[$idx]["num"] = $wordNumber[$idx];
 }
 
-$largestSide = max($gridRows, $gridCols);
+$gridGap = ($gridCols >= 15 || $gridRows >= 15) ? 3 : 4;
 
-$cellSize =
-    $largestSide >= 15 ? 42 :
-    ($largestSide >= 12 ? 48 : 54);
+$desktopGridMaxW = 700;
+$desktopGridMaxH = 520;
 
-$mobileCellSize =
-    $largestSide >= 15 ? 32 : 38;
+$cellByDesktopW = (int) floor(($desktopGridMaxW - (($gridCols - 1) * $gridGap)) / max(1, $gridCols));
+$cellByDesktopH = (int) floor(($desktopGridMaxH - (($gridRows - 1) * $gridGap)) / max(1, $gridRows));
+
+$cellSize = max(24, min(54, $cellByDesktopW, $cellByDesktopH));
+
+$mobileGridMaxW = 320;
+$mobileGridMaxH = 360;
+
+$cellByMobileW = (int) floor(($mobileGridMaxW - (($gridCols - 1) * $gridGap)) / max(1, $gridCols));
+$cellByMobileH = (int) floor(($mobileGridMaxH - (($gridRows - 1) * $gridGap)) / max(1, $gridRows));
+
+$mobileCellSize = max(20, min($cellSize, $cellByMobileW, $cellByMobileH));
 
 ob_start();
 ?>
@@ -372,6 +367,7 @@ ob_start();
     --cw-red:#dc2626;
 
     --cw-cell:<?= (int)$cellSize ?>px;
+    --cw-gap:<?= (int)$gridGap ?>px;
 }
 
 html,
@@ -428,7 +424,7 @@ body{
 }
 
 .cw-app{
-    width:min(1080px,100%);
+    width:min(1180px,100%);
     margin:0 auto;
 }
 
@@ -480,7 +476,7 @@ body{
 
 .cw-layout{
     display:grid;
-    grid-template-columns:minmax(0,1fr) minmax(260px,330px);
+    grid-template-columns:minmax(0,1fr) minmax(240px,300px);
     gap:clamp(16px,2.4vw,24px);
     align-items:start;
 }
@@ -539,7 +535,7 @@ body{
     display:grid;
     grid-template-columns:repeat(<?= $gridCols ?>,var(--cw-cell));
     grid-template-rows:repeat(<?= $gridRows ?>,var(--cw-cell));
-    gap:4px;
+    gap:var(--cw-gap);
 }
 
 .cw-cell{
@@ -685,7 +681,7 @@ body{
 .cw-visual-list{
     display:grid;
     grid-template-columns:1fr;
-    gap:10px;
+    gap:8px;
     max-height:620px;
     overflow:auto;
     padding-right:2px;
@@ -694,12 +690,12 @@ body{
 .cw-visual-clue{
     width:100%;
     border:1px solid #EDE9FA;
-    border-radius:22px;
+    border-radius:16px;
     background:#fff;
-    padding:10px;
+    padding:8px;
     display:grid;
-    grid-template-columns:86px minmax(0,1fr);
-    gap:10px;
+    grid-template-columns:64px minmax(0,1fr);
+    gap:8px;
     align-items:center;
     text-align:left;
     cursor:pointer;
@@ -715,9 +711,9 @@ body{
 }
 
 .cw-thumb{
-    width:86px;
-    height:74px;
-    border-radius:18px;
+    width:64px;
+    height:56px;
+    border-radius:12px;
     background:#FAFAFD;
     border:1px solid #EDE9FA;
     display:flex;
@@ -765,13 +761,11 @@ body{
 .cw-clue-text{
     margin-top:4px;
     color:var(--cw-muted);
-    font-size:12px;
+    font-size:11px;
     font-weight:800;
     line-height:1.35;
-    overflow:hidden;
-    display:-webkit-box;
-    -webkit-line-clamp:2;
-    -webkit-box-orient:vertical;
+    white-space:normal;
+    overflow:visible;
 }
 
 .cw-completed{
@@ -851,12 +845,12 @@ body{
     }
 
     .cw-visual-clue{
-        grid-template-columns:70px 1fr;
+        grid-template-columns:56px 1fr;
     }
 
     .cw-thumb{
-        width:70px;
-        height:62px;
+        width:56px;
+        height:50px;
     }
 
     .btn-row{
