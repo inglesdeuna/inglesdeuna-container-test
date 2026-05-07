@@ -1055,10 +1055,7 @@ body{background:#f8f7ff!important;font-family:'Nunito','Segoe UI',sans-serif!imp
             </div>
 
             <!-- No media section -->
-            <div class="media-section none-section"<?= $activeMode !== 'none' ? ' style="display:none"' : '' ?>>
-                <input type="hidden" name="video_url_existing[]" class="vf-url-existing" value="">
-                <textarea name="sentence[]" style="display:none"><?= htmlspecialchars((string) ($block["sentence"] ?? ""), ENT_QUOTES, 'UTF-8') ?></textarea>
-            </div>
+            <div class="media-section none-section"<?= $activeMode !== 'none' ? ' style="display:none"' : '' ?>></div>
 
             <!-- Images in correct order -->
             <label class="field-label" style="margin-top:4px;">
