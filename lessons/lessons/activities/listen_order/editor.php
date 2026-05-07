@@ -1015,7 +1015,8 @@ body{background:#f8f7ff!important;font-family:'Nunito','Segoe UI',sans-serif!imp
             </div>
 
             <!-- Audio section -->
-            <div class="media-section audio-section"<?= !$hasSentence ? ' style="display:none"' : '' ?>>
+            <div class="media-section audio-section"<?= $activeMode !== 'audio' ? ' style="display:none"' : '' ?>>
+                <input type="hidden" name="video_url_existing[]" class="vf-url-existing" value="">
                 <div class="audio-upload-zone" onclick="this.querySelector('input[type=file]').click()">
                     <div class="audio-upload-icon">🎵</div>
                     <div class="audio-upload-title">Upload audio file</div>
@@ -1064,7 +1065,8 @@ body{background:#f8f7ff!important;font-family:'Nunito','Segoe UI',sans-serif!imp
             </div>
 
             <!-- No media section -->
-            <div class="media-section none-section" style="display:none">
+            <div class="media-section none-section"<?= $activeMode !== 'none' ? ' style="display:none"' : '' ?>>
+                <input type="hidden" name="video_url_existing[]" class="vf-url-existing" value="">
                 <textarea name="sentence[]" style="display:none"><?= htmlspecialchars((string) ($block["sentence"] ?? ""), ENT_QUOTES, 'UTF-8') ?></textarea>
             </div>
 
@@ -1167,6 +1169,66 @@ function setMediaMode(btn, mode) {
     markChanged();
 }
 
+/* ── Video file preview ── */
+function showVideoPreview(input) {
+    if (!input.files || !input.files[0]) return;
+    var section = input.closest('.video-file-section');
+    if (!section) return;
+    var file = input.files[0];
+    var url  = URL.createObjectURL(file);
+
+    // Replace the upload zone with a preview + remove button
+    var zone = input.closest('.video-upload-zone');
+    if (zone) zone.remove();
+
+    var wrap = document.createElement('div');
+    wrap.className = 'video-preview-wrap';
+    wrap.innerHTML = '<video src="' + url + '" controls preload="metadata"></video>';
+
+    var removeBtn = document.createElement('button');
+    removeBtn.type = 'button';
+    removeBtn.className = 'btn-remove-video';
+    removeBtn.textContent = '✖ Remove video';
+    removeBtn.onclick = function () { removeVideoFile(removeBtn); };
+
+    var labelEl = section.querySelector('.field-label');
+    section.insertBefore(removeBtn, labelEl);
+    section.insertBefore(wrap, removeBtn);
+
+    // Move the file input outside the zone so it still submits
+    section.insertBefore(input, wrap);
+    input.style.display = 'none';
+    markChanged();
+}
+
+function removeVideoFile(btn) {
+    var section = btn.closest('.video-file-section');
+    if (!section) return;
+
+    var preview = section.querySelector('.video-preview-wrap');
+    if (preview) preview.remove();
+    btn.remove();
+
+    var existingInput = section.querySelector('.vf-url-existing');
+    if (existingInput) existingInput.value = '';
+
+    var fileInput = section.querySelector('input[type="file"][name="video_file[]"]');
+    if (fileInput) { fileInput.value = ''; fileInput.remove(); }
+
+    // Restore the upload zone
+    var zone = document.createElement('div');
+    zone.className = 'video-upload-zone';
+    zone.onclick = function () { zone.querySelector('input[type=file]').click(); };
+    zone.innerHTML =
+        '<div class="video-upload-icon">🎬</div>' +
+        '<div class="video-upload-title">Upload video file</div>' +
+        '<div class="video-upload-sub">MP4, MOV, WEBM</div>' +
+        '<input type="file" name="video_file[]" accept="video/*" style="display:none" onchange="showVideoPreview(this)">';
+    var labelEl = section.querySelector('.field-label');
+    section.insertBefore(zone, labelEl);
+    markChanged();
+}
+
 /* ── Audio file pill ── */
 function showAudioPill(input) {
     var zone = input.closest('.audio-upload-zone');
@@ -1225,6 +1287,9 @@ function reindexBlockInputs() {
         });
         var dzFile = block.querySelector('input[type="file"][name^="dz_image_file["]');
         if (dzFile) dzFile.name = 'dz_image_file[' + index + ']';
+
+        var vfFile = block.querySelector('input[type="file"][name="video_file[]"]');
+        if (vfFile) vfFile.name = 'video_file[]';
     });
 }
 
@@ -1253,12 +1318,14 @@ function addBlock() {
         '</div>' +
 
         '<div class="media-toggle-row">' +
-            '<button type="button" class="media-tab active" data-mode="audio" onclick="setMediaMode(this,\'audio\')">Audio file</button>' +
-            '<button type="button" class="media-tab" data-mode="video" onclick="setMediaMode(this,\'video\')">Video URL</button>' +
-            '<button type="button" class="media-tab" data-mode="none" onclick="setMediaMode(this,\'none\')">No media</button>' +
+            '<button type="button" class="media-tab active" data-mode="audio"      onclick="setMediaMode(this,\'audio\')">Audio file</button>' +
+            '<button type="button" class="media-tab"        data-mode="video-file" onclick="setMediaMode(this,\'video-file\')">Video file</button>' +
+            '<button type="button" class="media-tab"        data-mode="video"      onclick="setMediaMode(this,\'video\')">Video URL</button>' +
+            '<button type="button" class="media-tab"        data-mode="none"       onclick="setMediaMode(this,\'none\')">No media</button>' +
         '</div>' +
 
         '<div class="media-section audio-section">' +
+            '<input type="hidden" name="video_url_existing[]" class="vf-url-existing" value="">' +
             '<div class="audio-upload-zone" onclick="this.querySelector(\'input[type=file]\').click()">' +
                 '<div class="audio-upload-icon">&#x1F3B5;</div>' +
                 '<div class="audio-upload-title">Upload audio file</div>' +
@@ -1269,7 +1336,20 @@ function addBlock() {
             '<textarea name="sentence[]" required></textarea>' +
         '</div>' +
 
+        '<div class="media-section video-file-section" style="display:none">' +
+            '<input type="hidden" name="video_url_existing[]" class="vf-url-existing" value="">' +
+            '<div class="video-upload-zone" onclick="this.querySelector(\'input[type=file]\').click()">' +
+                '<div class="video-upload-icon">&#x1F3AC;</div>' +
+                '<div class="video-upload-title">Upload video file</div>' +
+                '<div class="video-upload-sub">MP4, MOV, WEBM</div>' +
+                '<input type="file" name="video_file[]" accept="video/*" style="display:none" onchange="showVideoPreview(this)">' +
+            '</div>' +
+            '<label class="field-label">Transcript <span class="field-badge">optional — shown to students</span></label>' +
+            '<textarea name="sentence[]"></textarea>' +
+        '</div>' +
+
         '<div class="media-section video-section" style="display:none">' +
+            '<input type="hidden" name="video_url_existing[]" class="vf-url-existing" value="">' +
             '<label class="field-label">Video URL</label>' +
             '<input type="url" placeholder="https://youtube.com/watch?v=... or direct video URL">' +
             '<div class="field-hint">Supports YouTube, Vimeo, or direct MP4 links.</div>' +
@@ -1277,6 +1357,7 @@ function addBlock() {
         '</div>' +
 
         '<div class="media-section none-section" style="display:none">' +
+            '<input type="hidden" name="video_url_existing[]" class="vf-url-existing" value="">' +
             '<textarea name="sentence[]" style="display:none"></textarea>' +
         '</div>' +
 

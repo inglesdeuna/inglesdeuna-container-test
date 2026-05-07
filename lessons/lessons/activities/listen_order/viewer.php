@@ -96,12 +96,13 @@ function normalize_listen_order_payload(mixed $rawData): array
             }
         }
 
-        if ($sentence === '') {
+        if ($sentence === '' && trim((string) ($block['video_url'] ?? '')) === '') {
             continue;
         }
 
         $blocks[] = [
             'sentence'       => $sentence,
+            'video_url'      => trim((string) ($block['video_url'] ?? '')),
             'images'         => $images,
             'dropZoneImages' => $dropZoneImages,
         ];
@@ -1135,6 +1136,18 @@ function loadBlock() {
     userOrder = shuffle(correct);
 
     if (audioNameEl) audioNameEl.textContent = currentSentence || activityTitle || 'Listen & Order';
+
+    /* Load video_url if present */
+    var videoUrl = typeof block.video_url === 'string' ? block.video_url.trim() : '';
+    var loVideoEl = document.querySelector('#lo-video-player video');
+    if (videoUrl && loVideoEl) {
+        loVideoEl.src = videoUrl;
+        loVideoEl.load();
+        document.getElementById('lo-tab-video').click();
+    } else if (loVideoEl) {
+        loVideoEl.src = '';
+        document.getElementById('lo-tab-audio').click();
+    }
 
     updateStatus();
     renderGrid(null);
