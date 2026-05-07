@@ -204,7 +204,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $postedInstr = trim((string)($_POST["activity_instructions"] ?? ""));
 
     $blockIds      = is_array($_POST["block_id"] ?? null) ? $_POST["block_id"] : [];
-    $sentences     = is_array($_POST["sentence"] ?? null) ? $_POST["sentence"] : [];
     $videoExisting = is_array($_POST["video_url_existing"] ?? null) ? $_POST["video_url_existing"] : [];
     $imagesExisting = is_array($_POST["images_existing"] ?? null) ? $_POST["images_existing"] : [];
 
@@ -213,7 +212,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
     $blockCount = max(
         count($blockIds),
-        count($sentences),
         count($videoExisting),
         count($imagesExisting),
         is_array($videoFiles["name"] ?? null) ? count($videoFiles["name"]) : 0,
@@ -224,7 +222,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
     for ($i = 0; $i < $blockCount; $i++) {
         $blockId  = trim((string)($blockIds[$i] ?? uniqid("lo_")));
-        $sentence = trim((string)($sentences[$i] ?? ""));
 
         $videoUrl = trim((string)($videoExisting[$i] ?? ""));
 
@@ -261,13 +258,13 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             }
         }
 
-        if ($sentence === "" && $videoUrl === "" && empty($images)) {
+        if ($videoUrl === "" && empty($images)) {
             continue;
         }
 
         $sanitized[] = [
             "id"             => $blockId !== "" ? $blockId : uniqid("lo_"),
-            "sentence"       => $sentence,
+            "sentence"       => "",
             "video_url"      => $videoUrl,
             "images"         => array_values($images),
             "dropZoneImages" => [],
@@ -345,7 +342,6 @@ body{background:#f8f7ff!important;font-family:'Nunito',sans-serif!important}
     <div id="blocksContainer">
         <?php foreach ($blocks as $bi => $block):
             $bVideoUrl = trim((string)($block["video_url"] ?? ""));
-            $bSentence = trim((string)($block["sentence"] ?? ""));
             $bImages   = is_array($block["images"] ?? null) ? $block["images"] : [];
         ?>
         <div class="block-item">
@@ -375,8 +371,7 @@ body{background:#f8f7ff!important;font-family:'Nunito',sans-serif!important}
                     </div>
                 <?php endif; ?>
 
-                <label class="field-label">Sentence / transcript <span class="field-badge">optional</span></label>
-                <textarea name="sentence[]" placeholder="Optional transcript or note"><?= htmlspecialchars($bSentence, ENT_QUOTES, 'UTF-8') ?></textarea>
+                <div class="js-video-anchor"></div>
             </div>
 
             <label class="field-label">Images in correct order <span class="field-badge">students see them shuffled</span></label>
@@ -451,8 +446,14 @@ function loVideoPreview(input){
     btn.textContent = '✖ Remove video';
     btn.onclick = function(){ loRemoveVideo(btn); };
 
-    box.insertBefore(wrap, box.querySelector('label.field-label:nth-of-type(2)'));
-    box.insertBefore(btn, box.querySelector('label.field-label:nth-of-type(2)'));
+    var anchor = box.querySelector('.js-video-anchor');
+    if (anchor) {
+        box.insertBefore(wrap, anchor);
+        box.insertBefore(btn, anchor);
+    } else {
+        box.appendChild(wrap);
+        box.appendChild(btn);
+    }
 
     loMark();
 }
@@ -483,7 +484,12 @@ function loRemoveVideo(btn){
             '<div class="upload-zone-title">Upload video file</div>'+
             '<div class="upload-zone-sub">MP4, MOV, WEBM</div>';
 
-        box.insertBefore(zone, box.querySelector('label.field-label:nth-of-type(2)'));
+        var anchor = box.querySelector('.js-video-anchor');
+        if (anchor) {
+            box.insertBefore(zone, anchor);
+        } else {
+            box.appendChild(zone);
+        }
     }
 
     loMark();
@@ -588,10 +594,6 @@ function loReindex(){
         var videoInput = block.querySelector('.js-vf-input');
         if (videoInput) videoInput.name = 'video_file['+idx+']';
 
-        block.querySelectorAll('textarea[name="sentence[]"]').forEach(function(ta){
-            ta.name = 'sentence[]';
-        });
-
         block.querySelectorAll('input[type="file"][name^="images["]').forEach(function(input){
             input.name = 'images['+idx+'][]';
         });
@@ -643,8 +645,7 @@ function loAddBlock(){
                 '<div class="upload-zone-title">Upload video file</div>'+
                 '<div class="upload-zone-sub">MP4, MOV, WEBM</div>'+
             '</div>'+
-            '<label class="field-label">Sentence / transcript <span class="field-badge">optional</span></label>'+
-            '<textarea name="sentence[]" placeholder="Optional transcript or note"></textarea>'+
+            '<div class="js-video-anchor"></div>'+
         '</div>'+
 
         '<label class="field-label">Images in correct order <span class="field-badge">students see them shuffled</span></label>'+
