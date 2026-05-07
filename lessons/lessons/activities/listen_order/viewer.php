@@ -135,6 +135,7 @@ body{margin:0!important;padding:0!important;background:#fff!important;font-famil
 .lo-completed.active{display:flex}
 .lo-done-icon{font-size:64px;line-height:1}
 .lo-done-title{margin:0;font-family:'Fredoka',sans-serif;font-size:clamp(30px,5.5vw,58px);color:#F97316;font-weight:700}
+.lo-completed .lo-done-title{display:none}
 .lo-done-text{margin:0;max-width:520px;color:#9B94BE;font-size:clamp(13px,1.8vw,17px);font-weight:800;line-height:1.5}
 .lo-done-score{margin:0;color:#534AB7;font-size:15px;font-weight:900}
 .lo-done-track{height:12px;width:min(420px,100%);margin:4px auto;border-radius:999px;background:#F4F2FD;border:1px solid #E4E1F8;overflow:hidden}
