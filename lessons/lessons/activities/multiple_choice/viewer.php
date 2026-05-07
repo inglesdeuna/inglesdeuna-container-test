@@ -377,7 +377,7 @@ body {
     width:100%!important;
     max-width:640px!important;
     display:grid!important;
-    grid-template-columns:1fr!important;
+    grid-template-columns:repeat(3,minmax(0,1fr))!important;
     gap:10px!important;
     margin-top:4px!important;
 }
@@ -386,16 +386,16 @@ body {
 .mc-options button,
 .mc-options .option {
     width:100%!important;
-    min-height:50px!important;
-    padding:13px 18px!important;
+    min-height:64px!important;
+    padding:12px 10px!important;
     border-radius:18px!important;
     background:#ffffff!important;
     border:1px solid #EDE9FA!important;
     color:#534AB7!important;
     font-family:'Fredoka',sans-serif!important;
-    font-size:clamp(17px,2.4vw,24px)!important;
+    font-size:clamp(14px,1.9vw,20px)!important;
     font-weight:600!important;
-    text-align:left!important;
+    text-align:center!important;
     cursor:pointer!important;
     box-shadow:0 4px 14px rgba(127,119,221,.13)!important;
     transition:transform .12s,box-shadow .12s,border-color .12s!important;
@@ -436,7 +436,7 @@ body {
 .mc-options img,
 .mc-option img {
     max-width:100%!important;
-    max-height:150px!important;
+    max-height:130px!important;
     object-fit:contain!important;
     border-radius:14px!important;
     display:block!important;
@@ -600,6 +600,19 @@ body {
 
     .mc-question {
         font-size:clamp(22px,7vw,32px)!important;
+    }
+
+    .mc-options {
+        grid-template-columns:repeat(3,minmax(0,1fr))!important;
+        gap:8px!important;
+    }
+
+    .mc-option,
+    .mc-options button,
+    .mc-options .option {
+        min-height:58px!important;
+        font-size:clamp(12px,3.3vw,16px)!important;
+        padding:10px 8px!important;
     }
 
     .mc-controls {
