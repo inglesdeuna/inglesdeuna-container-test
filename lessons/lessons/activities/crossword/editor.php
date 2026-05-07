@@ -247,6 +247,17 @@ ob_start();
 .cw-preview-title {
     font-size:14px; font-weight:700; color:#6d28d9; margin-bottom:14px;
 }
+.cw-preview-note {
+    margin:0 0 12px;
+    padding:9px 12px;
+    border-radius:10px;
+    border:1px solid #fcd34d;
+    background:#fffbeb;
+    color:#92400e;
+    font-size:12px;
+    font-weight:700;
+}
+.cw-preview-note.hidden { display:none; }
 #cwPreviewGrid { display:inline-block; }
 #cwPreviewGrid table {
     border-collapse:collapse;
@@ -278,6 +289,7 @@ ob_start();
 <!-- Live preview -->
 <div class="cw-preview-wrap">
     <div class="cw-preview-title">📐 Auto Grid Preview (updates as you type)</div>
+    <div id="cwPreviewNote" class="cw-preview-note hidden"></div>
     <div id="cwPreviewGrid"></div>
 </div>
 
@@ -511,12 +523,29 @@ function generateLayout(words){
 function renderPreview(){
     const words = collectWords();
     const grid = document.getElementById('cwPreviewGrid');
-    if(!words.length){ grid.innerHTML = '<span style="color:#9ca3af;font-size:13px;">Add words to see the grid preview.</span>'; return; }
+    const note = document.getElementById('cwPreviewNote');
+    if(!words.length){
+        if(note){ note.classList.add('hidden'); note.textContent = ''; }
+        grid.innerHTML = '<span style="color:#9ca3af;font-size:13px;">Add words to see the grid preview.</span>';
+        return;
+    }
 
     const placed = generateLayout(words);
     if(!placed.length){
+        if(note){ note.classList.add('hidden'); note.textContent = ''; }
         grid.innerHTML = '<span style="color:#9ca3af;font-size:13px;">Unable to build crossword from current words.</span>';
         return;
+    }
+
+    const unplaced = Math.max(0, words.length - placed.length);
+    if(note){
+        if(unplaced > 0){
+            note.textContent = unplaced + ' word(s) could not be placed because they do not intersect the connected crossword.';
+            note.classList.remove('hidden');
+        } else {
+            note.classList.add('hidden');
+            note.textContent = '';
+        }
     }
 
     let maxR = 0, maxC = 0;
