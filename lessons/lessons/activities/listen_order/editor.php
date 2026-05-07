@@ -983,6 +983,7 @@ body{background:#f8f7ff!important;font-family:'Nunito','Segoe UI',sans-serif!imp
 
     <div id="blocksContainer">
         <?php foreach ($blocks as $blockIndex => $block):
+            $blockVideoUrl = trim((string) ($block["video_url"] ?? ""));
             $dzImages  = is_array($block["dropZoneImages"] ?? null) ? $block["dropZoneImages"] : [];
             $firstDzi  = $dzImages[0] ?? null;
             $dzSrc     = (string)  ($firstDzi["src"]   ?? "");
@@ -992,6 +993,7 @@ body{background:#f8f7ff!important;font-family:'Nunito','Segoe UI',sans-serif!imp
             $dzId      = (string)  ($firstDzi["id"]    ?? uniqid("dzi_"));
             $blockImages = is_array($block["images"] ?? null) ? $block["images"] : [];
             $hasSentence = trim((string) ($block["sentence"] ?? "")) !== "";
+            $activeMode = $blockVideoUrl !== "" ? "video-file" : ($hasSentence ? "audio" : "none");
         ?>
         <div class="block-item">
             <input type="hidden" name="block_id[]" value="<?= htmlspecialchars((string) ($block["id"] ?? uniqid("listen_order_")), ENT_QUOTES, 'UTF-8') ?>">
@@ -1004,10 +1006,6 @@ body{background:#f8f7ff!important;font-family:'Nunito','Segoe UI',sans-serif!imp
             </div>
 
             <!-- Media type toggle -->
-            <?php
-                $blockVideoUrl = trim((string) ($block["video_url"] ?? ""));
-                $activeMode = $blockVideoUrl !== "" ? "video-file" : ($hasSentence ? "audio" : "none");
-            ?>
             <div class="media-toggle-row">
                 <button type="button" class="media-tab<?= $activeMode === 'audio'      ? ' active' : '' ?>" data-mode="audio"      onclick="setMediaMode(this,'audio')">Audio file</button>
                 <button type="button" class="media-tab<?= $activeMode === 'video-file' ? ' active' : '' ?>" data-mode="video-file" onclick="setMediaMode(this,'video-file')">Video file</button>
