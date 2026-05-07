@@ -557,9 +557,9 @@ body{
 }
 
 .cw-cell.blocked{
-    background:transparent;
-    border-color:transparent;
-    box-shadow:none;
+    background:transparent !important;
+    border:none !important;
+    box-shadow:none !important;
     pointer-events:none;
 }
 
@@ -659,22 +659,6 @@ body{
     box-shadow:0 6px 18px rgba(249,115,22,.22);
 }
 
-#cw-result{
-    min-height:22px;
-    margin-top:12px;
-    text-align:center;
-    font-size:14px;
-    font-weight:900;
-    color:var(--cw-muted);
-}
-
-.good{
-    color:var(--cw-green)!important;
-}
-
-.bad{
-    color:var(--cw-orange-dark)!important;
-}
 
 .cw-clue-title{
     font-family:'Fredoka',sans-serif;
@@ -1044,7 +1028,6 @@ body{
 
                         </div>
 
-                        <div id="cw-result"></div>
 
                     </div>
 
@@ -1177,9 +1160,6 @@ const CW_RETURN_TO =
 
 let cwSelectedWord = null;
 let cwActiveTab = 'across';
-
-const cwResult =
-document.getElementById('cw-result');
 
 const cwProgress =
 document.getElementById('cw-progress');
@@ -1342,24 +1322,11 @@ function cwCheck(){
 
     if(allCorrect){
 
-        cwResult.textContent = 'Correct';
-        cwResult.className = 'good';
-
         cwPlay(cwWin);
 
         setTimeout(cwFinish,450);
 
     }else{
-
-        cwResult.textContent =
-            filled
-                ? 'Keep going'
-                : 'Add letters first';
-
-        cwResult.className =
-            filled
-                ? 'bad'
-                : '';
 
         if(filled) cwPlay(cwLose);
     }
@@ -1368,10 +1335,6 @@ function cwCheck(){
 function cwRevealSelected(){
 
     if(cwSelectedWord === null){
-
-        cwResult.textContent =
-            'Choose a visual clue first';
-
         return;
     }
 
@@ -1386,9 +1349,6 @@ function cwRevealSelected(){
     });
 
     cwUpdateProgress();
-
-    cwResult.textContent = 'Text shown';
-    cwResult.className = 'good';
 }
 
 function cwClear(){
@@ -1415,9 +1375,6 @@ function cwClear(){
     });
 
     cwSelectedWord = null;
-
-    cwResult.textContent = '';
-    cwResult.className = '';
 
     cwUpdateProgress();
 }
