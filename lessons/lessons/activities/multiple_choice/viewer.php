@@ -358,8 +358,9 @@ body {
 }
 
 .mc-image {
-    max-width:min(360px,100%)!important;
-    max-height:240px!important;
+    width:min(100%,540px)!important;
+    max-width:min(540px,100%)!important;
+    max-height:340px!important;
     object-fit:contain!important;
     border-radius:22px!important;
     margin:0 auto 18px!important;
@@ -600,6 +601,12 @@ body {
 
     .mc-question {
         font-size:clamp(22px,7vw,32px)!important;
+    }
+
+    .mc-image {
+        width:min(100%,420px)!important;
+        max-width:min(420px,100%)!important;
+        max-height:260px!important;
     }
 
     .mc-options {
