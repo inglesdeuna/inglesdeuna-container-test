@@ -242,7 +242,13 @@ function bestVoice(){
 // state
 var idx=0, correct=[], userOrder=[], selIdx=null, curSentence='';
 var speaking=false, paused=false, utter=null, spOffset=0, spSrc='', spSegStart=0;
-var done=false, blockDone=false, correctCount=0, total=BLOCKS.length;
+var done=false, blockDone=false, totalBlocks=BLOCKS.length;
+var totalImages=Math.max(1,BLOCKS.reduce(function(sum,b){
+    var imgs = Array.isArray(b&&b.images) ? b.images.length : 0;
+    return sum + imgs;
+},0));
+var correctImagesCount=0;
+var blockScored={};
 var attempts={}, checked={};
 
 // DOM
@@ -326,6 +332,14 @@ function renderGrid(states){
     });
 }
 
+function lockBlockScore(score){
+    if (blockScored[idx]) return;
+    var blockTotal = Array.isArray(correct) ? correct.length : 0;
+    var safe = Math.max(0, Math.min(blockTotal, Number(score) || 0));
+    blockScored[idx] = true;
+    correctImagesCount += safe;
+}
+
 function onTap(i){
     if(blockDone||done) return;
     if(selIdx===null){ selIdx=i; }
@@ -345,14 +359,14 @@ function checkAnswer(){
     if(scPctEl) scPctEl.textContent=pct+'%';
     if(scoresEl) scoresEl.style.display='flex';
     var att=(attempts[idx]||0)+1; attempts[idx]=att;
-    if(all){ feedEl.textContent='✔ Correct!'; feedEl.className='good'; playSound(sndWin); checked[idx]=true; correctCount++; blockDone=true; renderGrid(states); }
-    else if(att>=2){ feedEl.textContent='✘ Wrong — correct order shown below'; feedEl.className='bad'; playSound(sndLose); checked[idx]=true; blockDone=true; renderGrid(states); }
+    if(all){ feedEl.textContent='✔ Correct!'; feedEl.className='good'; playSound(sndWin); checked[idx]=true; blockDone=true; lockBlockScore(ok); renderGrid(states); }
+    else if(att>=2){ feedEl.textContent='✘ Wrong — correct order shown below'; feedEl.className='bad'; playSound(sndLose); checked[idx]=true; blockDone=true; lockBlockScore(ok); renderGrid(states); }
     else{ feedEl.textContent='✘ Not quite — try again (1/2)'; feedEl.className='bad'; playSound(sndLose); renderGrid(states); }
 }
 
-function showAnswer(){ userOrder=correct.slice(); selIdx=null; feedEl.textContent='👁 Correct order shown'; feedEl.className='good'; blockDone=true; if(scoresEl) scoresEl.style.display='none'; renderGrid(null); updateHint(); }
+function showAnswer(){ userOrder=correct.slice(); selIdx=null; feedEl.textContent='👁 Correct order shown'; feedEl.className='good'; blockDone=true; checked[idx]=true; lockBlockScore(0); if(scoresEl) scoresEl.style.display='none'; renderGrid(null); updateHint(); }
 function resetBlock(){ userOrder=shuffle(correct); selIdx=null; blockDone=false; feedEl.textContent=''; feedEl.className=''; if(scoresEl) scoresEl.style.display='none'; renderGrid(null); updateHint(); }
-function updateStatus(){ var t=(idx+1)+' / '+total; if(statusEl) statusEl.textContent=t; if(kickerEl) kickerEl.textContent=t; }
+function updateStatus(){ var t=(idx+1)+' / '+totalBlocks; if(statusEl) statusEl.textContent=t; if(kickerEl) kickerEl.textContent=t; }
 
 function loadBlock(){
     if(window.speechSynthesis) speechSynthesis.cancel();
@@ -393,12 +407,12 @@ async function showCompleted(){
     if(compEl)  compEl.classList.add('active');
     setTimeout(function(){ if(doneFillEl) doneFillEl.style.width='100%'; },120);
     playSound(sndDone);
-    var pct=total>0?Math.round(correctCount/total*100):0;
-    var err=Math.max(0,total-correctCount);
-    if(doneScoreEl) doneScoreEl.textContent='Score: '+correctCount+' / '+total+' ('+pct+'%)';
+    var pct=totalImages>0?Math.round(correctImagesCount/totalImages*100):0;
+    var err=Math.max(0,totalImages-correctImagesCount);
+    if(doneScoreEl) doneScoreEl.textContent='Score: '+correctImagesCount+' / '+totalImages+' ('+pct+'%)';
     if(ACT_ID&&RETURN_TO){
         var j=RETURN_TO.indexOf('?')!==-1?'&':'?';
-        var url=RETURN_TO+j+'activity_percent='+pct+'&activity_errors='+err+'&activity_total='+total+'&activity_id='+encodeURIComponent(ACT_ID)+'&activity_type=listen_order';
+        var url=RETURN_TO+j+'activity_percent='+pct+'&activity_errors='+err+'&activity_total='+totalImages+'&activity_id='+encodeURIComponent(ACT_ID)+'&activity_type=listen_order';
         var ok=await fetch(url,{method:'GET',credentials:'same-origin',cache:'no-store'}).then(function(r){return !!(r&&r.ok);}).catch(function(){ return false; });
         if(!ok){ try{ if(window.top&&window.top!==window.self){ window.top.location.href=url; return; } }catch(e){} window.location.href=url; }
     }
@@ -410,7 +424,7 @@ function nextBlock(){
 }
 
 function loRestart(){
-    idx=0; correctCount=0; total=BLOCKS.length; attempts={}; checked={};
+    idx=0; totalBlocks=BLOCKS.length; correctImagesCount=0; blockScored={}; attempts={}; checked={};
     if(doneFillEl) doneFillEl.style.width='0%';
     if(compEl) compEl.classList.remove('active');
     loadBlock();
