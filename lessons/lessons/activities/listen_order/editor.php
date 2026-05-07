@@ -379,7 +379,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             ];
         }
 
-        if ($sentence === "") {
+        if ($sentence === "" && $videoUrl === "") {
             continue;
         }
 
@@ -995,6 +995,7 @@ body{background:#f8f7ff!important;font-family:'Nunito','Segoe UI',sans-serif!imp
         ?>
         <div class="block-item">
             <input type="hidden" name="block_id[]" value="<?= htmlspecialchars((string) ($block["id"] ?? uniqid("listen_order_")), ENT_QUOTES, 'UTF-8') ?>">
+            <input type="hidden" name="video_url_existing[]" class="lo-block-vidurl" value="<?= htmlspecialchars($blockVideoUrl, ENT_QUOTES, 'UTF-8') ?>">
 
             <!-- Block header -->
             <div class="block-header-row">
