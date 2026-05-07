@@ -621,42 +621,49 @@ body{
     color:var(--cw-orange-dark);
 }
 
-.cw-toolbar{
+.btn-row{
     display:flex;
-    justify-content:center;
     gap:10px;
-    flex-wrap:wrap;
+    justify-content:center;
     margin-top:16px;
     padding-top:16px;
     border-top:1px solid var(--cw-border);
+    flex-wrap:wrap;
 }
 
-.cw-btn{
-    border:0;
-    border-radius:999px;
-    min-width:clamp(104px,16vw,146px);
-    padding:13px 20px;
+.btn-purple{
+    background:#7F77DD;
     color:#fff;
+    border:none;
+    border-radius:999px;
+    padding:13px clamp(20px,3vw,32px);
     font-family:'Nunito',sans-serif;
-    font-size:13px;
     font-weight:900;
+    font-size:clamp(13px,1.8vw,15px);
     cursor:pointer;
+    min-width:clamp(104px,16vw,146px);
     box-shadow:0 6px 18px rgba(127,119,221,.18);
     transition:filter .15s,transform .15s;
 }
 
-.cw-btn:hover{
+.btn-orange{
+    background:#F97316;
+    color:#fff;
+    border:none;
+    border-radius:999px;
+    padding:13px clamp(20px,3vw,32px);
+    font-family:'Nunito',sans-serif;
+    font-weight:900;
+    font-size:clamp(13px,1.8vw,15px);
+    cursor:pointer;
+    min-width:clamp(104px,16vw,146px);
+    box-shadow:0 6px 18px rgba(249,115,22,.22);
+    transition:filter .15s,transform .15s;
+}
+
+.btn-purple:hover,.btn-orange:hover{
     filter:brightness(1.07);
     transform:translateY(-1px);
-}
-
-.cw-btn-purple{
-    background:var(--cw-purple);
-}
-
-.cw-btn-orange{
-    background:var(--cw-orange);
-    box-shadow:0 6px 18px rgba(249,115,22,.22);
 }
 
 
@@ -852,13 +859,12 @@ body{
         height:62px;
     }
 
-    .cw-toolbar{
-        display:grid;
-        grid-template-columns:1fr;
-        gap:9px;
+    .btn-row{
+        flex-direction:column;
+        align-items:stretch;
     }
 
-    .cw-btn{
+    .btn-purple,.btn-orange{
         width:100%;
     }
 }
@@ -992,40 +998,10 @@ body{
 
                         </div>
 
-                        <div class="cw-toolbar">
-
-                            <button
-                                type="button"
-                                class="cw-btn cw-btn-purple"
-                                onclick="cwCheck()"
-                            >
-                                Check
-                            </button>
-
-                            <button
-                                type="button"
-                                class="cw-btn cw-btn-purple"
-                                onclick="cwRevealSelected()"
-                            >
-                                Show Text
-                            </button>
-
-                            <button
-                                type="button"
-                                class="cw-btn cw-btn-purple"
-                                onclick="cwClear()"
-                            >
-                                Clear
-                            </button>
-
-                            <button
-                                type="button"
-                                class="cw-btn cw-btn-orange"
-                                onclick="cwFinish()"
-                            >
-                                Finish
-                            </button>
-
+                        <div class="btn-row">
+                            <button type="button" id="btn-check"       class="btn-purple">Check</button>
+                            <button type="button" id="btn-show-answer" class="btn-purple">Show Answer</button>
+                            <button type="button" id="btn-next"        class="btn-orange">Next →</button>
                         </div>
 
 
@@ -1604,6 +1580,20 @@ document
 });
 
 cwSwitchTab('across');
+
+function cwShowAllAnswers(){
+    cwCells().forEach(function(cell){
+        const input = cell.querySelector('input');
+        input.value = cell.dataset.letter;
+        cell.classList.remove('wrong','selected','word-hl');
+        cell.classList.add('correct');
+    });
+    cwUpdateProgress();
+}
+
+document.getElementById('btn-check').onclick       = cwCheck;
+document.getElementById('btn-show-answer').onclick  = cwShowAllAnswers;
+document.getElementById('btn-next').onclick         = cwFinish;
 
 </script>
 
