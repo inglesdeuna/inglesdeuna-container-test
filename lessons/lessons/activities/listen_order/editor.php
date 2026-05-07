@@ -1017,7 +1017,6 @@ body{background:#f8f7ff!important;font-family:'Nunito','Segoe UI',sans-serif!imp
 
             <!-- Audio section -->
             <div class="media-section audio-section"<?= $activeMode !== 'audio' ? ' style="display:none"' : '' ?>>
-                <input type="hidden" name="video_url_existing[]" class="vf-url-existing" value="">
                 <div class="audio-upload-zone" onclick="this.querySelector('input[type=file]').click()">
                     <div class="audio-upload-icon">🎵</div>
                     <div class="audio-upload-title">Upload audio file</div>
