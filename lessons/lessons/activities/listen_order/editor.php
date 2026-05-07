@@ -1025,35 +1025,39 @@ body{background:#f8f7ff!important;font-family:'Nunito','Segoe UI',sans-serif!imp
                     Sentence / transcript
                     <span class="field-badge">optional — shown to students</span>
                 </label>
-                <textarea name="sentence[]"><?= htmlspecialchars((string) ($block["sentence"] ?? ""), ENT_QUOTES, 'UTF-8') ?></textarea>
+                <textarea name="sentence[]"<?= $activeMode !== 'audio' ? ' disabled' : '' ?>><?= htmlspecialchars((string) ($block["sentence"] ?? ""), ENT_QUOTES, 'UTF-8') ?></textarea>
             </div>
 
             <!-- Video file section -->
             <div class="media-section video-file-section"<?= $activeMode !== 'video-file' ? ' style="display:none"' : '' ?>>
+                <textarea name="sentence[]"<?= $activeMode !== 'video-file' ? ' disabled' : '' ?> style="display:none"><?= htmlspecialchars((string) ($block["sentence"] ?? ""), ENT_QUOTES, 'UTF-8') ?></textarea>
+                <input type="file" name="video_file[<?= (int) $blockIndex ?>]" accept="video/*" style="display:none" class="vf-real-input" onchange="showVideoPreview(this)">
                 <?php if ($blockVideoUrl !== ""): ?>
                 <div class="video-preview-wrap">
                     <video src="<?= htmlspecialchars($blockVideoUrl, ENT_QUOTES, 'UTF-8') ?>" controls preload="metadata"></video>
                 </div>
                 <button type="button" class="btn-remove-video" onclick="removeVideoFile(this)">✖ Remove video</button>
                 <?php else: ?>
-                <div class="video-upload-zone" onclick="this.querySelector('input[type=file]').click()">
+                <div class="video-upload-zone" onclick="this.closest('.video-file-section').querySelector('.vf-real-input').click()">
                     <div class="video-upload-icon">🎬</div>
                     <div class="video-upload-title">Upload video file</div>
                     <div class="video-upload-sub">MP4, MOV, WEBM</div>
-                    <input type="file" name="video_file[<?= (int) $blockIndex ?>]" accept="video/*" style="display:none" onchange="showVideoPreview(this)">
                 </div>
                 <?php endif; ?>
             </div>
 
             <!-- Video URL section -->
             <div class="media-section video-section"<?= $activeMode !== 'video' ? ' style="display:none"' : '' ?>>
+                <textarea name="sentence[]"<?= $activeMode !== 'video' ? ' disabled' : '' ?> style="display:none"></textarea>
                 <label class="field-label">Video URL</label>
                 <input type="url" placeholder="https://youtube.com/watch?v=... or direct video URL">
                 <div class="field-hint">Supports YouTube, Vimeo, or direct MP4 links.</div>
             </div>
 
             <!-- No media section -->
-            <div class="media-section none-section"<?= $activeMode !== 'none' ? ' style="display:none"' : '' ?>></div>
+            <div class="media-section none-section"<?= $activeMode !== 'none' ? ' style="display:none"' : '' ?>>
+                <textarea name="sentence[]"<?= $activeMode !== 'none' ? ' disabled' : '' ?> style="display:none"></textarea>
+            </div>
 
             <!-- Images in correct order -->
             <label class="field-label" style="margin-top:4px;">
@@ -1077,7 +1081,7 @@ body{background:#f8f7ff!important;font-family:'Nunito','Segoe UI',sans-serif!imp
                     <label>
                         <span class="plus">+</span>
                         <span>Add more</span>
-                        <input type="file" name="images[<?= (int) $blockIndex ?>][]" multiple accept="image/*" style="display:none">
+                        <input type="file" name="images[<?= (int) $blockIndex ?>][]" multiple accept="image/*" style="display:none" onchange="previewNewImages(this, <?= (int) $blockIndex ?>)">
                     </label>
                 </div>
             </div>
