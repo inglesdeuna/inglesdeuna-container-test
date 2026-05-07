@@ -760,7 +760,7 @@ body{
 
 .cw-clue-text{
     margin-top:4px;
-    color:var(--cw-muted);
+    color:#111111;
     font-size:11px;
     font-weight:800;
     line-height:1.35;
@@ -1050,10 +1050,6 @@ body{
                                             <?= (int)$w['num'] ?>
                                         </span>
 
-                                        <span class="cw-clue-dir">
-                                            <?= htmlspecialchars($w['direction'], ENT_QUOTES, 'UTF-8') ?>
-                                        </span>
-
                                         <?php if (trim((string)$w['clue']) !== ''): ?>
 
                                             <span class="cw-clue-text">
@@ -1223,7 +1219,14 @@ function cwSelectWord(idx, activeCell){
     });
 
     const cells = cwWordCells(cwSelectedWord);
-    const target = activeCell || cells[0];
+    let target = activeCell || null;
+
+    if(!target && cells.length){
+        target = cells.find(function(c){
+            const input = c.querySelector('input');
+            return input && !String(input.value || '').trim();
+        }) || cells[0];
+    }
 
     cells.forEach(function(cell){
         cell.classList.add(cell === target ? 'selected' : 'word-hl');
@@ -1520,7 +1523,20 @@ cwCells().forEach(function(cell){
                     : [];
 
             const pos = cells.indexOf(cell);
-            const next = cells[pos + 1];
+            let next = null;
+
+            for(let i = pos + 1; i < cells.length; i++){
+                const cand = cells[i];
+                const candInput = cand ? cand.querySelector('input') : null;
+                if(candInput && !String(candInput.value || '').trim()){
+                    next = cand;
+                    break;
+                }
+            }
+
+            if(!next){
+                next = cells[pos + 1] || null;
+            }
 
             if(next){
                 const nextInput =
