@@ -30,66 +30,107 @@ function lo_resolve_unit(PDO $pdo, string $id): string {
 function lo_normalize(mixed $raw): array {
     $def = ["title" => lo_default_title(), "instructions" => "", "blocks" => []];
     if (!$raw) return $def;
+
     $d = is_string($raw) ? json_decode($raw, true) : $raw;
     if (!is_array($d)) return $def;
+
     $title = trim((string)($d["title"] ?? ""));
     $instr = trim((string)($d["instructions"] ?? ""));
     $src   = isset($d["blocks"]) && is_array($d["blocks"]) ? $d["blocks"] : $d;
     $out   = [];
+
     foreach ($src as $b) {
         if (!is_array($b)) continue;
+
         $sentence  = trim((string)($b["sentence"]  ?? ""));
         $video_url = trim((string)($b["video_url"] ?? ""));
+
         $images = [];
         foreach ((array)($b["images"] ?? []) as $img) {
-            $u = trim((string)$img); if ($u !== "") $images[] = $u;
+            $u = trim((string)$img);
+            if ($u !== "") $images[] = $u;
         }
+
         $dzImages = [];
         foreach ((array)($b["dropZoneImages"] ?? []) as $dzi) {
             if (!is_array($dzi)) continue;
+
             $dzSrc = trim((string)($dzi["src"] ?? ""));
             if ($dzSrc === "") continue;
-            $dzImages[] = ["id" => trim((string)($dzi["id"] ?? uniqid("dzi_"))), "src" => $dzSrc,
-                "left" => (int)($dzi["left"] ?? 0), "top" => (int)($dzi["top"] ?? 0),
-                "width" => max(60, min(800, (int)($dzi["width"] ?? 180)))];
+
+            $dzImages[] = [
+                "id"    => trim((string)($dzi["id"] ?? uniqid("dzi_"))),
+                "src"   => $dzSrc,
+                "left"  => (int)($dzi["left"] ?? 0),
+                "top"   => (int)($dzi["top"] ?? 0),
+                "width" => max(60, min(800, (int)($dzi["width"] ?? 180))),
+            ];
         }
+
         if ($sentence === "" && $video_url === "" && empty($images)) continue;
-        $out[] = ["id" => trim((string)($b["id"] ?? uniqid("lo_"))), "sentence" => $sentence,
-            "video_url" => $video_url, "images" => $images, "dropZoneImages" => $dzImages];
+
+        $out[] = [
+            "id"             => trim((string)($b["id"] ?? uniqid("lo_"))),
+            "sentence"       => $sentence,
+            "video_url"      => $video_url,
+            "images"         => $images,
+            "dropZoneImages" => $dzImages,
+        ];
     }
-    return ["title" => $title !== "" ? $title : lo_default_title(), "instructions" => $instr, "blocks" => $out];
+
+    return [
+        "title"        => $title !== "" ? $title : lo_default_title(),
+        "instructions" => $instr,
+        "blocks"       => $out,
+    ];
 }
 
 function lo_load(PDO $pdo, string $unit, string $activityId): array {
     $fallback = ["id" => "", "title" => lo_default_title(), "instructions" => "", "blocks" => []];
     $row = null;
+
     if ($activityId !== "") {
         $st = $pdo->prepare("SELECT id,data FROM activities WHERE id=:id AND type IN ('listen_order','listen_and_order') LIMIT 1");
-        $st->execute(["id" => $activityId]); $row = $st->fetch(PDO::FETCH_ASSOC);
+        $st->execute(["id" => $activityId]);
+        $row = $st->fetch(PDO::FETCH_ASSOC);
     }
+
     if (!$row && $unit !== "") {
         $st = $pdo->prepare("SELECT id,data FROM activities WHERE unit_id=:unit AND type IN ('listen_order','listen_and_order') ORDER BY id ASC LIMIT 1");
-        $st->execute(["unit" => $unit]); $row = $st->fetch(PDO::FETCH_ASSOC);
+        $st->execute(["unit" => $unit]);
+        $row = $st->fetch(PDO::FETCH_ASSOC);
     }
+
     if (!$row) return $fallback;
+
     $p = lo_normalize($row["data"] ?? null);
     return array_merge($p, ["id" => (string)($row["id"] ?? "")]);
 }
 
 function lo_save(PDO $pdo, string $unit, string $actId, string $title, string $instr, array $blocks): string {
-    $json = json_encode(["title" => $title !== "" ? $title : lo_default_title(),
-        "instructions" => $instr, "blocks" => array_values($blocks)], JSON_UNESCAPED_UNICODE);
+    $json = json_encode([
+        "title"        => $title !== "" ? $title : lo_default_title(),
+        "instructions" => $instr,
+        "blocks"       => array_values($blocks),
+    ], JSON_UNESCAPED_UNICODE);
+
     $tid = $actId;
+
     if ($tid === "") {
         $st = $pdo->prepare("SELECT id FROM activities WHERE unit_id=:unit AND type IN ('listen_order','listen_and_order') ORDER BY id ASC LIMIT 1");
-        $st->execute(["unit" => $unit]); $tid = trim((string)$st->fetchColumn());
+        $st->execute(["unit" => $unit]);
+        $tid = trim((string)$st->fetchColumn());
     }
+
     if ($tid !== "") {
         $st = $pdo->prepare("UPDATE activities SET data=:data, type='listen_order' WHERE id=:id");
-        $st->execute(["data" => $json, "id" => $tid]); return $tid;
+        $st->execute(["data" => $json, "id" => $tid]);
+        return $tid;
     }
+
     $st = $pdo->prepare("INSERT INTO activities (unit_id,type,data,position,created_at) VALUES (:u,'listen_order',:d,(SELECT COALESCE(MAX(position),0)+1 FROM activities WHERE unit_id=:u2),CURRENT_TIMESTAMP) RETURNING id");
     $st->execute(["u" => $unit, "u2" => $unit, "d" => $json]);
+
     return (string)$st->fetchColumn();
 }
 
@@ -100,18 +141,22 @@ $activity   = lo_load($pdo, $unit, $activityId);
 $edTitle    = (string)($activity["title"]        ?? lo_default_title());
 $edInstr    = (string)($activity["instructions"] ?? "");
 $blocks     = is_array($activity["blocks"] ?? null) ? $activity["blocks"] : [];
+
 if ($activityId === "" && !empty($activity["id"])) $activityId = (string)$activity["id"];
 
 // ── POST ──────────────────────────────────────────────────────────────────────
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $postedTitle    = trim((string)($_POST["activity_title"]        ?? ""));
     $postedInstr    = trim((string)($_POST["activity_instructions"] ?? ""));
+
     $blockIds       = (array)($_POST["block_id"]           ?? []);
     $sentences      = (array)($_POST["sentence"]           ?? []);
     $existingImages = (array)($_POST["images_existing"]    ?? []);
     $videoExisting  = (array)($_POST["video_url_existing"] ?? []);
+
     $imageFiles     = $_FILES["images"]         ?? null;
     $videoFiles     = $_FILES["video_file"]     ?? null;
+
     $dzExisting     = (array)($_POST["dz_image_existing"]  ?? []);
     $dzLeftArr      = (array)($_POST["dz_image_left"]      ?? []);
     $dzTopArr       = (array)($_POST["dz_image_top"]       ?? []);
@@ -119,28 +164,54 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $dzIdArr        = (array)($_POST["dz_image_id"]        ?? []);
     $dzFiles        = $_FILES["dz_image_file"]  ?? null;
 
+    $videoFileCount = is_array($videoFiles["name"] ?? null) ? count($videoFiles["name"]) : 0;
+    $imageFileCount = is_array($imageFiles["name"] ?? null) ? count($imageFiles["name"]) : 0;
+    $dzFileCount    = is_array($dzFiles["name"] ?? null) ? count($dzFiles["name"]) : 0;
+
+    $blockCount = max(
+        count($blockIds),
+        count($sentences),
+        count($existingImages),
+        count($videoExisting),
+        count($dzExisting),
+        $videoFileCount,
+        $imageFileCount,
+        $dzFileCount
+    );
+
     $sanitized = [];
-    foreach ($sentences as $i => $rawSentence) {
-        $sentence = trim((string)$rawSentence);
+
+    for ($i = 0; $i < $blockCount; $i++) {
+        $sentence = trim((string)($sentences[$i] ?? ""));
         $blockId  = trim((string)($blockIds[$i] ?? uniqid("lo_")));
 
         $images = [];
+
         if (isset($existingImages[$i]) && is_array($existingImages[$i])) {
-            foreach ($existingImages[$i] as $img) { $u=trim((string)$img); if($u!=="") $images[]=$u; }
+            foreach ($existingImages[$i] as $img) {
+                $u = trim((string)$img);
+                if ($u !== "") $images[] = $u;
+            }
         }
+
         if ($imageFiles && isset($imageFiles["name"][$i]) && is_array($imageFiles["name"][$i])) {
             foreach ($imageFiles["name"][$i] as $k => $name) {
                 if (!$name || empty($imageFiles["tmp_name"][$i][$k])) continue;
                 if (($imageFiles["error"][$i][$k] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) continue;
+
                 $up = upload_to_cloudinary($imageFiles["tmp_name"][$i][$k]);
                 if ($up) $images[] = $up;
             }
         }
 
+        // Uploaded video is indexed by block position after loReindex() on submit.
+        // This loop now runs by block count, not only by sentence[], so video-only
+        // blocks are not skipped.
         $videoUrl = trim((string)($videoExisting[$i] ?? ""));
-        // video_file is indexed by block position — same as $i after loReindex() on submit
+
         $vTmp   = $videoFiles["tmp_name"][$i] ?? "";
         $vError = $videoFiles["error"][$i]    ?? UPLOAD_ERR_NO_FILE;
+
         if ($videoFiles && $vTmp !== "" && $vError === UPLOAD_ERR_OK) {
             $up = upload_to_cloudinary($vTmp);
             if ($up) $videoUrl = $up;
@@ -151,25 +222,45 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         $dzT   = (int)($dzTopArr[$i]   ?? 0);
         $dzW   = max(60, min(800, (int)($dzWidthArr[$i] ?? 180)));
         $dzId  = trim((string)($dzIdArr[$i] ?? ""));
+
         if ($dzFiles && !empty($dzFiles["tmp_name"][$i]) && ($dzFiles["error"][$i] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_OK) {
             $up = upload_to_cloudinary($dzFiles["tmp_name"][$i]);
-            if ($up) { $dzSrc=$up; $dzId=uniqid("dzi_"); }
+            if ($up) {
+                $dzSrc = $up;
+                $dzId  = uniqid("dzi_");
+            }
         }
+
         if ($dzId === "") $dzId = uniqid("dzi_");
-        $dzImages = $dzSrc !== "" ? [["id"=>$dzId,"src"=>$dzSrc,"left"=>$dzL,"top"=>$dzT,"width"=>$dzW]] : [];
+
+        $dzImages = $dzSrc !== "" ? [[
+            "id"    => $dzId,
+            "src"   => $dzSrc,
+            "left"  => $dzL,
+            "top"   => $dzT,
+            "width" => $dzW,
+        ]] : [];
 
         if ($sentence === "" && $videoUrl === "" && empty($images)) continue;
-        $sanitized[] = ["id" => $blockId !== "" ? $blockId : uniqid("lo_"),
-            "sentence" => $sentence, "video_url" => $videoUrl,
-            "images" => array_values($images), "dropZoneImages" => $dzImages];
+
+        $sanitized[] = [
+            "id"             => $blockId !== "" ? $blockId : uniqid("lo_"),
+            "sentence"       => $sentence,
+            "video_url"      => $videoUrl,
+            "images"         => array_values($images),
+            "dropZoneImages" => $dzImages,
+        ];
     }
 
     $savedId = lo_save($pdo, $unit, $activityId, $postedTitle, $postedInstr, $sanitized);
+
     $qs = "unit=".urlencode($unit)."&saved=1";
     if ($savedId    !== "") $qs .= "&id=".urlencode($savedId);
     if ($assignment !== "") $qs .= "&assignment=".urlencode($assignment);
     if ($source     !== "") $qs .= "&source=".urlencode($source);
-    header("Location: editor.php?".$qs); exit;
+
+    header("Location: editor.php?".$qs);
+    exit;
 }
 
 ob_start();
@@ -250,13 +341,14 @@ body{background:#f8f7ff!important;font-family:'Nunito',sans-serif!important}
     $mode      = $bVideoUrl !== "" ? "video-file" : ($bSentence !== "" ? "audio" : "none");
 ?>
 <div class="block-item">
-    <input type="hidden" name="block_id[]"           value="<?= htmlspecialchars((string)($block["id"] ?? uniqid("lo_")),ENT_QUOTES) ?>">
+    <input type="hidden" name="block_id[]" value="<?= htmlspecialchars((string)($block["id"] ?? uniqid("lo_")),ENT_QUOTES) ?>">
     <input type="hidden" name="video_url_existing[]" class="js-vidurl" value="<?= htmlspecialchars($bVideoUrl,ENT_QUOTES) ?>">
 
     <div class="block-header-row">
         <span class="block-badge">Block <?= $bi+1 ?></span>
         <button type="button" class="btn-remove" onclick="loRemoveBlock(this)">✖ Remove</button>
     </div>
+
     <div class="media-toggle-row">
         <button type="button" class="media-tab<?= $mode==='audio'      ?' active':'' ?>" onclick="loSetMode(this,'audio')">Audio file</button>
         <button type="button" class="media-tab<?= $mode==='video-file' ?' active':'' ?>" onclick="loSetMode(this,'video-file')">Video file</button>
@@ -275,9 +367,8 @@ body{background:#f8f7ff!important;font-family:'Nunito',sans-serif!important}
 
     <div class="media-section video-file-section"<?= $mode!=='video-file'?' style="display:none"':'' ?>>
         <textarea name="sentence[]"<?= $mode!=='video-file'?' disabled':'' ?> style="display:none"><?= htmlspecialchars($bSentence,ENT_QUOTES) ?></textarea>
-        <!-- KEY FIX: opacity:0 + size 1px instead of display:none so browser always submits this input -->
         <input type="file" name="video_file[<?= $bi ?>]" accept="video/*" class="js-vf-input"
-               style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none"
+               style="position:absolute;width:1px;height:1px;opacity:0;left:-9999px"
                onchange="loVideoPreview(this)">
         <?php if ($bVideoUrl !== ""): ?>
         <div class="video-preview-wrap"><video src="<?= htmlspecialchars($bVideoUrl,ENT_QUOTES) ?>" controls preload="metadata"></video></div>
@@ -317,6 +408,7 @@ body{background:#f8f7ff!important;font-family:'Nunito',sans-serif!important}
             </label>
         </div>
     </div>
+
     <div class="field-hint">Upload in correct order — students will see them shuffled.</div>
 
     <div class="dz-section">
@@ -326,6 +418,7 @@ body{background:#f8f7ff!important;font-family:'Nunito',sans-serif!important}
         <input type="hidden" name="dz_image_top[<?= $bi ?>]"      class="js-dz-top"   value="<?= $dzTop ?>">
         <input type="hidden" name="dz_image_width[<?= $bi ?>]"    class="js-dz-width" value="<?= $dzWidth ?>">
         <input type="hidden" name="dz_image_id[<?= $bi ?>]"       class="js-dz-id"    value="<?= htmlspecialchars($dzId,ENT_QUOTES) ?>">
+
         <div class="dz-preview-area"<?= $dzSrc?'':' style="display:none"' ?>>
             <div class="dz-preview-hint">Drag to reposition</div>
             <?php if ($dzSrc): ?>
@@ -333,10 +426,12 @@ body{background:#f8f7ff!important;font-family:'Nunito',sans-serif!important}
                 style="left:<?= $dzLeft ?>px;top:<?= $dzTop ?>px;width:<?= $dzWidth ?>px" draggable="false" alt="">
             <?php endif; ?>
         </div>
+
         <div class="dz-controls-row">
             <input type="file" name="dz_image_file[<?= $bi ?>]" accept="image/*" class="js-dz-file" style="margin-bottom:0">
             <button type="button" class="btn-remove-dz" onclick="loDzRemove(this)"<?= $dzSrc?'':' style="display:none"' ?>>✖ Remove</button>
         </div>
+
         <div class="dz-width-control"<?= $dzSrc?'':' style="display:none"' ?>>
             <span>Width:</span><input type="number" min="60" max="800" value="<?= $dzWidth ?>" class="js-dz-wdisplay"><span>px</span>
         </div>
@@ -360,59 +455,100 @@ function loSetMode(btn,mode){
     b.querySelectorAll('.media-tab').forEach(function(t){ t.classList.remove('active'); });
     btn.classList.add('active');
     b.querySelectorAll('.media-section').forEach(function(s){ s.style.display='none'; });
+
     var active=b.querySelector('.'+mode+'-section');
     if (active) active.style.display='';
+
     b.querySelectorAll('.media-section textarea[name="sentence[]"]').forEach(function(ta){ ta.disabled=true; });
-    if (active){ var ta=active.querySelector('textarea[name="sentence[]"]'); if(ta) ta.disabled=false; }
+    if (active){
+        var ta=active.querySelector('textarea[name="sentence[]"]');
+        if(ta) ta.disabled=false;
+    }
+
     loMark();
 }
 
 function loVideoPreview(input){
     if (!input.files||!input.files[0]) return;
+
     var sec=input.closest('.video-file-section');
     var z=sec.querySelector('.js-vf-zone'); if(z) z.remove();
     var ow=sec.querySelector('.video-preview-wrap'); if(ow) ow.remove();
     var ob=sec.querySelector('.btn-remove-video'); if(ob) ob.remove();
-    var wrap=document.createElement('div'); wrap.className='video-preview-wrap';
+
+    var wrap=document.createElement('div');
+    wrap.className='video-preview-wrap';
     wrap.innerHTML='<video src="'+URL.createObjectURL(input.files[0])+'" controls preload="metadata"></video>';
-    var btn=document.createElement('button'); btn.type='button'; btn.className='btn-remove-video';
-    btn.textContent='✖ Remove video'; btn.onclick=function(){ loRemoveVideo(btn); };
-    sec.appendChild(btn); sec.appendChild(wrap); loMark();
+
+    var btn=document.createElement('button');
+    btn.type='button';
+    btn.className='btn-remove-video';
+    btn.textContent='✖ Remove video';
+    btn.onclick=function(){ loRemoveVideo(btn); };
+
+    sec.appendChild(btn);
+    sec.appendChild(wrap);
+
+    loMark();
 }
 
 function loRemoveVideo(btn){
     var sec=btn.closest('.video-file-section'),bl=btn.closest('.block-item');
-    var w=sec.querySelector('.video-preview-wrap'); if(w) w.remove();
+
+    var w=sec.querySelector('.video-preview-wrap');
+    if(w) w.remove();
+
     btn.remove();
-    var vi=sec.querySelector('.js-vf-input'); if(vi) vi.value='';
-    var hu=bl?bl.querySelector('.js-vidurl'):null; if(hu) hu.value='';
-    var z=document.createElement('div'); z.className='upload-zone js-vf-zone';
+
+    var vi=sec.querySelector('.js-vf-input');
+    if(vi) vi.value='';
+
+    var hu=bl?bl.querySelector('.js-vidurl'):null;
+    if(hu) hu.value='';
+
+    var z=document.createElement('div');
+    z.className='upload-zone js-vf-zone';
     z.onclick=function(){ sec.querySelector('.js-vf-input').click(); };
     z.innerHTML='<div class="upload-zone-icon">&#x1F3AC;</div><div class="upload-zone-title">Upload video file</div><div class="upload-zone-sub">MP4, MOV, WEBM</div>';
-    sec.appendChild(z); loMark();
+
+    sec.appendChild(z);
+
+    loMark();
 }
 
 function loAudioPill(input){
-    var z=input.closest('.upload-zone'); if(!z) return;
-    var p=z.querySelector('.file-pill'); if(p) p.remove();
+    var z=input.closest('.upload-zone');
+    if(!z) return;
+
+    var p=z.querySelector('.file-pill');
+    if(p) p.remove();
+
     if (input.files&&input.files[0]){
-        var pill=document.createElement('div'); pill.className='file-pill';
-        pill.textContent=input.files[0].name; z.appendChild(pill);
+        var pill=document.createElement('div');
+        pill.className='file-pill';
+        pill.textContent=input.files[0].name;
+        z.appendChild(pill);
     }
 }
 
 function loPreviewImages(input){
     if (!input.files||!input.files.length) return;
+
     var grid=input.closest('.img-grid'),slot=input.closest('.img-add-slot');
     if (!grid) return;
+
     var bl=input.closest('.block-item');
     var allBl=Array.from(document.querySelectorAll('#blocksContainer .block-item'));
-    var bi=bl?allBl.indexOf(bl):0; if(bi<0) bi=0;
+    var bi=bl?allBl.indexOf(bl):0;
+    if(bi<0) bi=0;
+
     var base=grid.querySelectorAll('.img-card').length;
+
     Array.from(input.files).forEach(function(file,fi){
         var r=new FileReader();
         r.onload=function(e){
-            var card=document.createElement('div'); card.className='img-card';
+            var card=document.createElement('div');
+            card.className='img-card';
             card.innerHTML='<span class="img-pos-badge">'+(base+fi+1)+'</span>'+
                 '<img src="'+e.target.result+'" alt="">'+
                 '<button type="button" class="img-remove-btn" onclick="loRemoveImg(this)">Remove</button>';
@@ -420,22 +556,36 @@ function loPreviewImages(input){
         };
         r.readAsDataURL(file);
     });
-    input.name='images['+bi+'][]'; input.style.display='none'; input.onchange=null;
+
+    input.name='images['+bi+'][]';
+    input.style.display='none';
+    input.onchange=null;
     grid.insertBefore(input,slot);
+
     var clone=document.createElement('input');
-    clone.type='file'; clone.multiple=true; clone.accept='image/*';
-    clone.name='images['+bi+'][]'; clone.style.display='none';
+    clone.type='file';
+    clone.multiple=true;
+    clone.accept='image/*';
+    clone.name='images['+bi+'][]';
+    clone.style.display='none';
     clone.onchange=function(){ loPreviewImages(clone); };
-    var lbl=slot?slot.querySelector('label'):null; if(lbl) lbl.appendChild(clone);
+
+    var lbl=slot?slot.querySelector('label'):null;
+    if(lbl) lbl.appendChild(clone);
+
     loMark();
 }
 
 function loRemoveImg(btn){
     var card=btn.closest('.img-card'),grid=card?card.closest('.img-grid'):null;
+
     if(card) card.remove();
+
     if(grid) grid.querySelectorAll('.img-card').forEach(function(c,i){
-        var b=c.querySelector('.img-pos-badge'); if(b) b.textContent=String(i+1);
+        var b=c.querySelector('.img-pos-badge');
+        if(b) b.textContent=String(i+1);
     });
+
     loMark();
 }
 
@@ -443,29 +593,43 @@ function loReindex(){
     document.querySelectorAll('#blocksContainer .block-item').forEach(function(block,idx){
         block.querySelectorAll('input[type="file"][name^="images["]').forEach(function(i){ i.name='images['+idx+'][]'; });
         block.querySelectorAll('input[type="hidden"][name^="images_existing["]').forEach(function(i){ i.name='images_existing['+idx+'][]'; });
+
         ['dz_image_existing','dz_image_left','dz_image_top','dz_image_width','dz_image_id'].forEach(function(f){
-            var el=block.querySelector('[name^="'+f+'["]'); if(el) el.name=f+'['+idx+']';
+            var el=block.querySelector('[name^="'+f+'["]');
+            if(el) el.name=f+'['+idx+']';
         });
-        var dzf=block.querySelector('input[type="file"][name^="dz_image_file["]'); if(dzf) dzf.name='dz_image_file['+idx+']';
-        var vf=block.querySelector('.js-vf-input'); if(vf) vf.name='video_file['+idx+']';
+
+        var dzf=block.querySelector('input[type="file"][name^="dz_image_file["]');
+        if(dzf) dzf.name='dz_image_file['+idx+']';
+
+        var vf=block.querySelector('.js-vf-input');
+        if(vf) vf.name='video_file['+idx+']';
     });
 }
 
 function loRenumber(){
     document.querySelectorAll('#blocksContainer .block-item').forEach(function(b,i){
-        var badge=b.querySelector('.block-badge'); if(badge) badge.textContent='Block '+(i+1);
+        var badge=b.querySelector('.block-badge');
+        if(badge) badge.textContent='Block '+(i+1);
     });
 }
 
 function loRemoveBlock(btn){
     var item=btn.closest('.block-item');
-    if(item){ item.remove(); loReindex(); loRenumber(); loMark(); }
+    if(item){
+        item.remove();
+        loReindex();
+        loRenumber();
+        loMark();
+    }
 }
 
 function loAddBlock(){
     var c=document.getElementById('blocksContainer');
     var idx=c.querySelectorAll('.block-item').length;
-    var div=document.createElement('div'); div.className='block-item';
+    var div=document.createElement('div');
+
+    div.className='block-item';
     div.innerHTML=
         '<input type="hidden" name="block_id[]" value="lo_'+Date.now()+'_'+(Math.random()*1e4|0)+'">'+
         '<input type="hidden" name="video_url_existing[]" class="js-vidurl" value="">'+
@@ -488,7 +652,7 @@ function loAddBlock(){
         '<div class="media-section video-file-section" style="display:none">'+
             '<textarea name="sentence[]" disabled style="display:none"></textarea>'+
             '<input type="file" name="video_file['+idx+']" accept="video/*" class="js-vf-input"'+
-                ' style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none"'+
+                ' style="position:absolute;width:1px;height:1px;opacity:0;left:-9999px"'+
                 ' onchange="loVideoPreview(this)">'+
             '<div class="upload-zone js-vf-zone" onclick="this.closest(\'.video-file-section\').querySelector(\'.js-vf-input\').click()">'+
                 '<div class="upload-zone-icon">&#x1F3AC;</div><div class="upload-zone-title">Upload video file</div><div class="upload-zone-sub">MP4, MOV, WEBM</div>'+
@@ -526,7 +690,11 @@ function loAddBlock(){
                 '<span>Width:</span><input type="number" min="60" max="800" value="180" class="js-dz-wdisplay"><span>px</span>'+
             '</div>'+
         '</div>';
-    c.appendChild(div); loReindex(); loDzInit(div); loMark();
+
+    c.appendChild(div);
+    loReindex();
+    loDzInit(div);
+    loMark();
 }
 
 function loDzInit(blockEl){
@@ -535,52 +703,175 @@ function loDzInit(blockEl){
     var wDisp=blockEl.querySelector('.js-dz-wdisplay'),srcH=blockEl.querySelector('.js-dz-src');
     var leftH=blockEl.querySelector('.js-dz-left'),topH=blockEl.querySelector('.js-dz-top');
     var widH=blockEl.querySelector('.js-dz-width'),idH=blockEl.querySelector('.js-dz-id');
+
     if (!area) return;
+
     function getImg(){ return area.querySelector('.dz-preview-image'); }
-    function sync(){ var img=getImg(); if(!img) return; leftH.value=parseInt(img.style.left,10)||0; topH.value=parseInt(img.style.top,10)||0; widH.value=parseInt(img.style.width,10)||180; }
-    function clamp(img){ img.style.left=Math.max(0,Math.min(area.offsetWidth-img.offsetWidth,parseInt(img.style.left,10)||0))+'px'; img.style.top=Math.max(0,Math.min(area.offsetHeight-img.offsetHeight,parseInt(img.style.top,10)||0))+'px'; sync(); }
+
+    function sync(){
+        var img=getImg();
+        if(!img) return;
+        leftH.value=parseInt(img.style.left,10)||0;
+        topH.value=parseInt(img.style.top,10)||0;
+        widH.value=parseInt(img.style.width,10)||180;
+    }
+
+    function clamp(img){
+        img.style.left=Math.max(0,Math.min(area.offsetWidth-img.offsetWidth,parseInt(img.style.left,10)||0))+'px';
+        img.style.top=Math.max(0,Math.min(area.offsetHeight-img.offsetHeight,parseInt(img.style.top,10)||0))+'px';
+        sync();
+    }
+
     function addDrag(img){
         var on=false,sx,sy,sl,st;
-        img.addEventListener('mousedown',function(e){ e.preventDefault(); on=true; sx=e.clientX; sy=e.clientY; sl=parseInt(img.style.left,10)||0; st=parseInt(img.style.top,10)||0; });
-        document.addEventListener('mousemove',function(e){ if(!on) return; img.style.left=(sl+e.clientX-sx)+'px'; img.style.top=(st+e.clientY-sy)+'px'; });
-        document.addEventListener('mouseup',function(){ if(!on) return; on=false; clamp(img); loMark(); });
-        img.addEventListener('touchstart',function(e){ e.preventDefault(); on=true; sx=e.touches[0].clientX; sy=e.touches[0].clientY; sl=parseInt(img.style.left,10)||0; st=parseInt(img.style.top,10)||0; },{passive:false});
-        document.addEventListener('touchmove',function(e){ if(!on) return; img.style.left=(sl+e.touches[0].clientX-sx)+'px'; img.style.top=(st+e.touches[0].clientY-sy)+'px'; },{passive:true});
-        document.addEventListener('touchend',function(){ if(!on) return; on=false; clamp(img); loMark(); });
+
+        img.addEventListener('mousedown',function(e){
+            e.preventDefault();
+            on=true;
+            sx=e.clientX;
+            sy=e.clientY;
+            sl=parseInt(img.style.left,10)||0;
+            st=parseInt(img.style.top,10)||0;
+        });
+
+        document.addEventListener('mousemove',function(e){
+            if(!on) return;
+            img.style.left=(sl+e.clientX-sx)+'px';
+            img.style.top=(st+e.clientY-sy)+'px';
+        });
+
+        document.addEventListener('mouseup',function(){
+            if(!on) return;
+            on=false;
+            clamp(img);
+            loMark();
+        });
+
+        img.addEventListener('touchstart',function(e){
+            e.preventDefault();
+            on=true;
+            sx=e.touches[0].clientX;
+            sy=e.touches[0].clientY;
+            sl=parseInt(img.style.left,10)||0;
+            st=parseInt(img.style.top,10)||0;
+        },{passive:false});
+
+        document.addEventListener('touchmove',function(e){
+            if(!on) return;
+            img.style.left=(sl+e.touches[0].clientX-sx)+'px';
+            img.style.top=(st+e.touches[0].clientY-sy)+'px';
+        },{passive:true});
+
+        document.addEventListener('touchend',function(){
+            if(!on) return;
+            on=false;
+            clamp(img);
+            loMark();
+        });
     }
-    function showUI(){ area.style.display=''; if(rBtn) rBtn.style.display=''; if(wCtrl) wCtrl.style.display=''; }
+
+    function showUI(){
+        area.style.display='';
+        if(rBtn) rBtn.style.display='';
+        if(wCtrl) wCtrl.style.display='';
+    }
+
     if (file) file.addEventListener('change',function(){
         if (!file.files||!file.files[0]) return;
-        var r=new FileReader(); r.onload=function(e){
-            var old=getImg(); if(old) old.remove();
+
+        var r=new FileReader();
+        r.onload=function(e){
+            var old=getImg();
+            if(old) old.remove();
+
             var w=parseInt(widH.value,10)||180;
-            var img=document.createElement('img'); img.className='dz-preview-image'; img.src=e.target.result; img.draggable=false; img.alt='';
-            img.style.left='10px'; img.style.top='10px'; img.style.width=w+'px';
-            area.appendChild(img); addDrag(img);
-            if(srcH) srcH.value=''; if(idH) idH.value='dzi_'+Date.now(); if(wDisp) wDisp.value=w;
-            showUI(); sync(); loMark();
-        }; r.readAsDataURL(file.files[0]);
+
+            var img=document.createElement('img');
+            img.className='dz-preview-image';
+            img.src=e.target.result;
+            img.draggable=false;
+            img.alt='';
+            img.style.left='10px';
+            img.style.top='10px';
+            img.style.width=w+'px';
+
+            area.appendChild(img);
+            addDrag(img);
+
+            if(srcH) srcH.value='';
+            if(idH) idH.value='dzi_'+Date.now();
+            if(wDisp) wDisp.value=w;
+
+            showUI();
+            sync();
+            loMark();
+        };
+
+        r.readAsDataURL(file.files[0]);
     });
-    if (wDisp) wDisp.addEventListener('input',function(){ var img=getImg(); if(!img) return; var w=Math.max(60,Math.min(800,parseInt(wDisp.value,10)||180)); img.style.width=w+'px'; widH.value=w; loMark(); });
-    var ex=getImg(); if(ex){ addDrag(ex); showUI(); if(wDisp) wDisp.value=parseInt(widH.value,10)||180; }
+
+    if (wDisp) wDisp.addEventListener('input',function(){
+        var img=getImg();
+        if(!img) return;
+
+        var w=Math.max(60,Math.min(800,parseInt(wDisp.value,10)||180));
+        img.style.width=w+'px';
+        widH.value=w;
+
+        loMark();
+    });
+
+    var ex=getImg();
+    if(ex){
+        addDrag(ex);
+        showUI();
+        if(wDisp) wDisp.value=parseInt(widH.value,10)||180;
+    }
 }
 
 function loDzRemove(btn){
-    var b=btn.closest('.block-item'); if(!b) return;
-    var img=b.querySelector('.dz-preview-image'); if(img) img.remove();
-    var area=b.querySelector('.dz-preview-area'); if(area) area.style.display='none';
-    [['js-dz-src',''],['js-dz-left','10'],['js-dz-top','10'],['js-dz-width','180'],['js-dz-id','']].forEach(function(p){ var el=b.querySelector('.'+p[0]); if(el) el.value=p[1]; });
-    var fi=b.querySelector('.js-dz-file'); if(fi) fi.value='';
-    var wc=b.querySelector('.dz-width-control'); if(wc) wc.style.display='none';
-    btn.style.display='none'; loMark();
+    var b=btn.closest('.block-item');
+    if(!b) return;
+
+    var img=b.querySelector('.dz-preview-image');
+    if(img) img.remove();
+
+    var area=b.querySelector('.dz-preview-area');
+    if(area) area.style.display='none';
+
+    [['js-dz-src',''],['js-dz-left','10'],['js-dz-top','10'],['js-dz-width','180'],['js-dz-id','']].forEach(function(p){
+        var el=b.querySelector('.'+p[0]);
+        if(el) el.value=p[1];
+    });
+
+    var fi=b.querySelector('.js-dz-file');
+    if(fi) fi.value='';
+
+    var wc=b.querySelector('.dz-width-control');
+    if(wc) wc.style.display='none';
+
+    btn.style.display='none';
+
+    loMark();
 }
 
 document.addEventListener('DOMContentLoaded',function(){
     document.querySelectorAll('#blocksContainer .block-item').forEach(loDzInit);
+
     var form=document.getElementById('loForm');
-    if(form) form.addEventListener('submit',function(){ loReindex(); loSubmitted=true; loChanged=false; });
+    if(form) form.addEventListener('submit',function(){
+        loReindex();
+        loSubmitted=true;
+        loChanged=false;
+    });
 });
-window.addEventListener('beforeunload',function(e){ if(loChanged&&!loSubmitted){ e.preventDefault(); e.returnValue=''; } });
+
+window.addEventListener('beforeunload',function(e){
+    if(loChanged&&!loSubmitted){
+        e.preventDefault();
+        e.returnValue='';
+    }
+});
 </script>
 <?php
 $content=ob_get_clean();
