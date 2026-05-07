@@ -357,6 +357,13 @@ body {
     overflow-wrap:anywhere!important;
 }
 
+.mc-card.has-image .mc-question {
+    max-width:560px!important;
+    font-size:clamp(18px,2.4vw,28px)!important;
+    line-height:1.08!important;
+    margin:0 0 10px!important;
+}
+
 .mc-image {
     width:min(100%,540px)!important;
     max-width:min(540px,100%)!important;
@@ -601,6 +608,11 @@ body {
 
     .mc-question {
         font-size:clamp(22px,7vw,32px)!important;
+    }
+
+    .mc-card.has-image .mc-question {
+        font-size:clamp(16px,4.8vw,22px)!important;
+        margin:0 0 8px!important;
     }
 
     .mc-image {
