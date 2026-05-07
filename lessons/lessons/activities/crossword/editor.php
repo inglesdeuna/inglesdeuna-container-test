@@ -479,30 +479,8 @@ function generateLayout(words){
         });
 
         if(!best){
-            let minC = 0;
-            let maxR = 0;
-            let firstBound = true;
-            Object.keys(grid).forEach(function(key){
-                const parts = key.split(',');
-                const r = parseInt(parts[0], 10);
-                const c = parseInt(parts[1], 10);
-                if(firstBound){ minC = c; maxR = r; firstBound = false; }
-                else { minC = Math.min(minC, c); maxR = Math.max(maxR, r); }
-            });
-
-            const preferDown = (p % 2) === 1;
-            best = {
-                idx:candidate.idx,
-                word,
-                row:maxR + 2,
-                col:minC,
-                direction: preferDown ? 'down' : 'across'
-            };
-
-            const fallbackCheck = canPlaceWord(grid, best.word, best.row, best.col, best.direction);
-            if(!fallbackCheck.ok){
-                best.direction = best.direction === 'across' ? 'down' : 'across';
-            }
+            // Keep crossword connected: skip words that cannot intersect existing grid.
+            continue;
         }
 
         placed.push(best);
