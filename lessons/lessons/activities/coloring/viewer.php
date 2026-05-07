@@ -23,106 +23,171 @@ $imageUrls = array_values(array_filter(array_map(function($img) {
 
 ob_start();
 ?>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@600;700;800;900&display=swap" rel="stylesheet">
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@600;700;800&display=swap');
 * { box-sizing: border-box; }
 .viewer-header { display: none !important; }
-/* ── app wrapper ─────────────────────────────────────── */
-.coloring-app {
-    max-width: 1060px;
-    margin: 0 auto;
-    padding: clamp(8px, 1.4vw, 16px);
-    font-family: 'Nunito','Segoe UI',sans-serif;
-    color: #334155;
-}
-.coloring-intro {
-    background: linear-gradient(135deg, #fff8df 0%, #eef8ff 52%, #f8fbff 100%);
-    border: 1px solid #dbe7f5;
-    border-radius: 26px;
-    padding: 24px 26px;
-    box-shadow: 0 16px 34px rgba(15, 23, 42, .09);
-    margin-bottom: 14px;
-}
-.coloring-intro h2 {
-    margin: 0 0 8px;
-    font-family: 'Fredoka', 'Trebuchet MS', sans-serif;
-    font-size: clamp(24px, 3.2vw, 32px);
-    font-weight: 700;
-    color: #0f172a;
-    letter-spacing: .3px;
-}
-.coloring-intro p {
-    margin: 0;
-    font-size: 16px;
-    color: #334155;
-    line-height: 1.6;
-}
-/* ── controls ───────────────────────────────────────── */
-.coloring-controls {
+
+.shell {
+    width: 100%;
+    min-height: calc(100vh - 90px);
+    padding: clamp(14px, 2.5vw, 34px);
     display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-    justify-content: center;
+    flex-direction: column;
     align-items: center;
-    padding: 14px 0 4px;
-    margin-top: 12px;
-}
-.coloring-action-btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 142px;
-    border: none;
-    border-radius: 999px;
-    padding: 11px 18px;
-    font-size: 14px;
-    font-weight: 800;
-    font-family: 'Nunito', 'Segoe UI', sans-serif;
-    cursor: pointer;
-    color: #fff;
-    text-decoration: none;
-    line-height: 1;
-    box-shadow: 0 10px 22px rgba(15, 23, 42, .12);
-    transition: transform .15s ease, filter .15s ease;
-}
-.coloring-action-btn:hover {
-    transform: translateY(-1px);
-    filter: brightness(1.04);
-}
-.coloring-action-btn-secondary { background: linear-gradient(180deg, #60a5fa 0%, #2563eb 100%); }
-.coloring-action-btn-primary { background: linear-gradient(180deg, #db2777 0%, #be185d 100%); }
-.coloring-progress  { font-size: 15px; font-weight: 800; color: #0f172a; }
-/* ── palette ─────────────────────────────────────────── */
-.coloring-palette-wrap {
     background: #ffffff;
-    border: 1px solid #dbe7f5;
-    border-radius: 24px;
-    padding: 16px;
-    box-shadow: 0 14px 28px rgba(15, 23, 42, .07);
+}
+
+.hero {
+    text-align: center;
+    margin-bottom: 14px;
+    width: min(760px, 100%);
+}
+.kicker {
+    display: inline-block;
+    background: #FFF0E6;
+    border: 1px solid #FCDDBF;
+    color: #C2580A;
+    border-radius: 999px;
+    padding: 4px 14px;
+    font-size: 12px;
+    font-family: 'Nunito', sans-serif;
+    font-weight: 900;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+}
+.act-title {
+    font-family: 'Fredoka', sans-serif;
+    font-weight: 700;
+    font-size: clamp(26px, 4vw, 38px);
+    color: #F97316;
+    margin: 0;
+}
+.act-sub {
+    font-family: 'Nunito', sans-serif;
+    font-weight: 800;
+    font-size: clamp(13px, 1.8vw, 15px);
+    color: #9B94BE;
+    margin: 4px 0 0;
+}
+
+.board {
+    background: #ffffff;
+    border: 1px solid #F0EEF8;
+    border-radius: 34px;
+    padding: clamp(16px, 2.6vw, 26px);
+    box-shadow: 0 8px 40px rgba(127,119,221,.13);
+    width: min(760px, 100%);
+    margin: 0 auto;
+}
+
+/* progress */
+.prog-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 18px;
+}
+.prog-track {
+    flex: 1;
+    height: 12px;
+    background: #F4F2FD;
+    border: 1px solid #E4E1F8;
+    border-radius: 999px;
+    overflow: hidden;
+}
+.prog-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #F97316, #7F77DD);
+    border-radius: 999px;
+    transition: width .45s ease;
+    width: 0%;
+}
+.prog-badge {
+    background: #7F77DD;
+    color: #fff;
+    font-family: 'Nunito', sans-serif;
+    font-weight: 900;
+    font-size: 12px;
+    border-radius: 999px;
+    padding: 5px 11px;
+    white-space: nowrap;
+}
+
+/* picker */
+.picker-section {
+    background: #F5F3FF;
+    border: 1px solid #EDE9FA;
+    border-radius: 20px;
+    padding: 14px 16px;
     margin-bottom: 14px;
 }
-.coloring-palette-heading { text-align: center; font-size: 16px; font-weight: 800; color: #0f172a; margin-bottom: 10px; }
-.coloring-palette {
+.picker-label {
+    font-size: 11px;
+    font-weight: 900;
+    font-family: 'Nunito', sans-serif;
+    color: #9B94BE;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    text-align: center;
+    margin-bottom: 12px;
+}
+.colors-grid {
     display: grid;
-    grid-template-columns: repeat(8, 50px);
+    grid-template-columns: repeat(8, 1fr);
     gap: 10px;
+    justify-items: center;
+}
+.swatch {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    cursor: pointer;
+    border: 3px solid transparent;
+    transition: transform .15s, box-shadow .15s;
+    box-shadow: 0 2px 8px rgba(0,0,0,.12);
+    -webkit-tap-highlight-color: transparent;
+}
+.swatch:hover { transform: scale(1.15); box-shadow: 0 4px 12px rgba(0,0,0,.2); }
+.swatch.active { border-color: #271B5D; box-shadow: 0 0 0 3px #fff inset, 0 4px 12px rgba(0,0,0,.2); }
+
+/* sel bar */
+.sel-bar {
+    display: flex;
+    align-items: center;
     justify-content: center;
+    gap: 10px;
+    margin-bottom: 14px;
 }
-.coloring-color-btn {
-    width: 50px; height: 50px; border-radius: 50%; border: 4px solid transparent;
-    cursor: pointer; transition: transform .15s; -webkit-tap-highlight-color: transparent;
+.sel-dot {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: 2px solid #EDE9FA;
+    transition: background .2s;
+    flex-shrink: 0;
+    background: #ef4444;
 }
-.coloring-color-btn:hover { transform: scale(1.07); }
-.coloring-color-btn.active { border-color: #0f172a; transform: scale(1.12); }
-/* ── stage ───────────────────────────────────────────── */
-.coloring-stage {
-    background: linear-gradient(180deg, #fffdf7 0%, #ffffff 100%);
-    border: 1px solid #dbe7f5;
-    border-radius: 24px;
-    box-shadow: 0 14px 28px rgba(15, 23, 42, .07);
-    padding: 16px;
+.sel-label {
+    font-size: 13px;
+    font-weight: 900;
+    font-family: 'Nunito', sans-serif;
+    color: #534AB7;
 }
-.coloring-canvas-wrap { display: flex; justify-content: center; align-items: center; overflow: visible; border-radius: 16px; background: #fff; touch-action: manipulation; }
+
+/* canvas */
+.canvas-wrap {
+    background: #ffffff;
+    border: 1px solid #EDE9FA;
+    border-radius: 20px;
+    overflow: hidden;
+    margin-bottom: 10px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    touch-action: manipulation;
+}
 #coloringCanvas {
     max-width: 100%;
     max-height: calc(100vh - 360px);
@@ -130,67 +195,165 @@ ob_start();
     height: auto;
     display: block;
     touch-action: manipulation;
-    border-radius: 14px;
     cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40' viewBox='0 0 40 40'%3E%3Cpath d='M20 4l10 12h-6v12h-8V16h-6z' fill='%2322c55e' stroke='%230f172a' stroke-width='2' stroke-linejoin='round'/%3E%3Ccircle cx='20' cy='33' r='4' fill='%23facc15' stroke='%230f172a' stroke-width='2'/%3E%3C/svg%3E") 20 10, pointer;
 }
-.coloring-helper { text-align: center; margin-top: 10px; font-size: 14px; color: #475569; font-weight: 700; }
-/* ── completed ───────────────────────────────────────── */
-.coloring-completed { display: none; text-align: center; padding: 50px 20px 30px; flex-direction: column; align-items: center; }
+.canvas-hint {
+    text-align: center;
+    font-size: 12px;
+    font-weight: 700;
+    font-family: 'Nunito', sans-serif;
+    color: #9B94BE;
+    margin-bottom: 14px;
+}
+
+/* bottom row */
+.bottom-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+    padding-top: 16px;
+    border-top: 1px solid #F0EEF8;
+}
+.page-info {
+    font-size: 13px;
+    font-weight: 900;
+    font-family: 'Nunito', sans-serif;
+    color: #9B94BE;
+}
+.btns { display: flex; gap: 10px; flex-wrap: wrap; }
+.btn-purple {
+    background: #7F77DD;
+    color: #fff;
+    border: none;
+    border-radius: 999px;
+    padding: 13px clamp(20px, 3vw, 32px);
+    font-family: 'Nunito', sans-serif;
+    font-weight: 900;
+    font-size: clamp(13px, 1.8vw, 15px);
+    cursor: pointer;
+    min-width: clamp(104px, 16vw, 146px);
+    box-shadow: 0 6px 18px rgba(127,119,221,.18);
+    transition: transform .15s, filter .15s;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+.btn-orange {
+    background: #F97316;
+    color: #fff;
+    border: none;
+    border-radius: 999px;
+    padding: 13px clamp(20px, 3vw, 32px);
+    font-family: 'Nunito', sans-serif;
+    font-weight: 900;
+    font-size: clamp(13px, 1.8vw, 15px);
+    cursor: pointer;
+    min-width: clamp(104px, 16vw, 146px);
+    box-shadow: 0 6px 18px rgba(249,115,22,.22);
+    transition: transform .15s, filter .15s;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+.btn-purple:hover, .btn-orange:hover { transform: translateY(-1px); filter: brightness(1.07); }
+
+/* completed */
+.coloring-completed {
+    display: none;
+    text-align: center;
+    padding: 50px 20px 30px;
+    flex-direction: column;
+    align-items: center;
+    width: min(760px, 100%);
+}
 .coloring-completed.active { display: flex; }
 .coloring-completed-emoji { font-size: 88px; line-height: 1; margin-bottom: 14px; }
-.coloring-completed-title { font-family: 'Fredoka','Trebuchet MS',sans-serif; font-size: clamp(32px,4vw,48px); font-weight: 700; color: #be185d; margin: 0 0 8px; }
-.coloring-completed-sub { font-size: 17px; font-weight: 700; color: #374151; margin: 0 0 26px; }
+.coloring-completed-title {
+    font-family: 'Fredoka', sans-serif;
+    font-size: clamp(32px, 4vw, 48px);
+    font-weight: 700;
+    color: #F97316;
+    margin: 0 0 8px;
+}
+.coloring-completed-sub {
+    font-size: 17px;
+    font-weight: 700;
+    font-family: 'Nunito', sans-serif;
+    color: #9B94BE;
+    margin: 0 0 26px;
+}
 .coloring-completed-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; }
-.coloring-no-images { text-align: center; padding: 40px 20px; font-size: 16px; font-weight: 700; color: #0f172a; }
+
 @media (max-width: 640px) {
-    .coloring-action-btn { width: 100%; }
-    .coloring-color-btn { width: 44px; height: 44px; }
-    .coloring-palette {
-        grid-template-columns: repeat(8, 44px);
-    }
+    .bottom-row { justify-content: center; }
+    .btns { width: 100%; justify-content: center; }
+    .btn-purple, .btn-orange { flex: 1; }
+    .swatch { width: 36px; height: 36px; }
+    .colors-grid { gap: 8px; }
 }
 </style>
 
-<div class="coloring-app">
+<div class="shell">
 
-    <?= render_activity_header($activityTitle, 'Pick a crayon color and click inside each shape to paint. Keep going page by page and finish your colorful masterpiece.') ?>
-
-    <!-- color palette -->
-    <div class="coloring-palette-wrap" id="coloringPaletteWrap">
-        <div class="coloring-palette-heading">Choose a crayon color</div>
-        <div class="coloring-palette" id="coloringPalette"></div>
+    <div class="hero">
+        <span class="kicker">Activity</span>
+        <h1 class="act-title"><?= htmlspecialchars($activityTitle, ENT_QUOTES, 'UTF-8') ?></h1>
+        <p class="act-sub">Pick a color and tap inside each shape to paint your masterpiece.</p>
     </div>
 
-    <!-- canvas stage -->
-    <div class="coloring-stage" id="coloringStage">
-        <div class="coloring-canvas-wrap">
+    <div class="board" id="coloringStage">
+
+        <div class="prog-row">
+            <div class="prog-track"><div class="prog-fill" id="progFill"></div></div>
+            <div class="prog-badge" id="progBadge">
+                <?= count($imageUrls) > 0 ? '1 / ' . count($imageUrls) : '—' ?>
+            </div>
+        </div>
+
+        <div class="picker-section">
+            <div class="picker-label">Choose a color</div>
+            <div class="colors-grid" id="coloringPalette"></div>
+        </div>
+
+        <div class="sel-bar">
+            <div class="sel-dot" id="sel-dot"></div>
+            <span class="sel-label" id="sel-label">Red selected</span>
+        </div>
+
+        <div class="canvas-wrap">
             <canvas id="coloringCanvas"></canvas>
         </div>
-        <div class="coloring-helper">Tap or click inside a closed area to fill it with color.</div>
-        <!-- controls below image -->
-        <div class="coloring-controls" id="coloringTopbar">
-            <span class="coloring-progress" id="progressText">
+        <p class="canvas-hint">Tap or click inside a closed area to fill it with color.</p>
+
+        <div class="bottom-row">
+            <span class="page-info" id="progressText">
                 <?= count($imageUrls) > 0 ? 'Page 1 of ' . count($imageUrls) : 'No images' ?>
             </span>
-            <button id="resetBtn"  class="coloring-action-btn coloring-action-btn-secondary" type="button">&#x21BA; Reset Page</button>
-            <button id="nextBtn"   class="coloring-action-btn coloring-action-btn-primary" type="button">Next &#x2192;</button>
+            <div class="btns">
+                <button class="btn-purple" id="btn-reset" type="button">Reset</button>
+                <button class="btn-orange" id="btn-finish" type="button">Finish</button>
+            </div>
         </div>
+
     </div>
 
-    <!-- completed screen -->
     <div class="coloring-completed" id="coloringCompleted">
         <div class="coloring-completed-emoji">&#x1F31F;</div>
         <h2 class="coloring-completed-title">Completed!</h2>
         <p class="coloring-completed-sub">Amazing job! You colored all the pages.</p>
         <div class="coloring-completed-actions">
-            <button type="button" class="coloring-action-btn coloring-action-btn-secondary" id="restartBtn">Start Again</button>
+            <button type="button" class="btn-purple" id="restartBtn">Start Again</button>
             <?php if ($nextUrl !== ''): ?>
-                <a href="<?= htmlspecialchars($nextUrl, ENT_QUOTES, 'UTF-8') ?>" class="coloring-action-btn coloring-action-btn-primary">Next activity &#x2192;</a>
+                <a href="<?= htmlspecialchars($nextUrl, ENT_QUOTES, 'UTF-8') ?>" class="btn-orange">Next activity &#x2192;</a>
             <?php endif; ?>
         </div>
     </div>
 
-</div><!-- /.coloring-app -->
+</div>
 
 <script>
 (function () {
