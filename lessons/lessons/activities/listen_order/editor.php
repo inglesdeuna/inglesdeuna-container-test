@@ -1032,8 +1032,6 @@ body{background:#f8f7ff!important;font-family:'Nunito','Segoe UI',sans-serif!imp
 
             <!-- Video file section -->
             <div class="media-section video-file-section"<?= $activeMode !== 'video-file' ? ' style="display:none"' : '' ?>>
-                <input type="hidden" name="video_url_existing[]" class="vf-url-existing" value="<?= htmlspecialchars($blockVideoUrl, ENT_QUOTES, 'UTF-8') ?>">
-
                 <?php if ($blockVideoUrl !== ""): ?>
                 <div class="video-preview-wrap">
                     <video src="<?= htmlspecialchars($blockVideoUrl, ENT_QUOTES, 'UTF-8') ?>" controls preload="metadata"></video>
@@ -1044,15 +1042,9 @@ body{background:#f8f7ff!important;font-family:'Nunito','Segoe UI',sans-serif!imp
                     <div class="video-upload-icon">🎬</div>
                     <div class="video-upload-title">Upload video file</div>
                     <div class="video-upload-sub">MP4, MOV, WEBM</div>
-                    <input type="file" name="video_file[]" accept="video/*" style="display:none" onchange="showVideoPreview(this)">
+                    <input type="file" name="video_file[<?= (int) $blockIndex ?>]" accept="video/*" style="display:none" onchange="showVideoPreview(this)">
                 </div>
                 <?php endif; ?>
-
-                <label class="field-label" style="margin-top:4px;">
-                    Transcript
-                    <span class="field-badge">optional — shown to students</span>
-                </label>
-                <textarea name="sentence[]"><?= htmlspecialchars((string) ($block["sentence"] ?? ""), ENT_QUOTES, 'UTF-8') ?></textarea>
             </div>
 
             <!-- Video URL section -->
@@ -1060,8 +1052,6 @@ body{background:#f8f7ff!important;font-family:'Nunito','Segoe UI',sans-serif!imp
                 <label class="field-label">Video URL</label>
                 <input type="url" placeholder="https://youtube.com/watch?v=... or direct video URL">
                 <div class="field-hint">Supports YouTube, Vimeo, or direct MP4 links.</div>
-                <input type="hidden" name="video_url_existing[]" class="vf-url-existing" value="">
-                <textarea name="sentence[]" style="display:none"><?= htmlspecialchars((string) ($block["sentence"] ?? ""), ENT_QUOTES, 'UTF-8') ?></textarea>
             </div>
 
             <!-- No media section -->
