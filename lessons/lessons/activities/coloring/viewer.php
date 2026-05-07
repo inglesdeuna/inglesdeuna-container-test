@@ -376,18 +376,28 @@ ob_start();
     var currentIndex      = 0;
     var originalImageData = null;
 
+    /* ── color names ─────────────────────────────────── */
+    var colorNames = {
+        '#ef4444':'Red','#f97316':'Orange','#cc7722':'Brown','#f5e6c8':'Cream',
+        '#facc15':'Yellow','#22c55e':'Green','#14b8a6':'Teal','#3b82f6':'Blue',
+        '#8b5cf6':'Violet','#c4b5fd':'Lavender','#ec4899':'Pink','#8b5a2b':'Dark Brown',
+        '#84cc16':'Lime','#9ca3af':'Gray','#111827':'Black','#ffffff':'White'
+    };
+
     /* ── DOM refs ────────────────────────────────────── */
-    var canvas      = document.getElementById('coloringCanvas');
-    var ctx         = canvas.getContext('2d', { willReadFrequently: true });
-    var progressText= document.getElementById('progressText');
-    var topbar      = document.getElementById('coloringTopbar');
-    var paletteWrap = document.getElementById('coloringPaletteWrap');
-    var stage       = document.getElementById('coloringStage');
-    var completedEl = document.getElementById('coloringCompleted');
-    var nextBtn     = document.getElementById('nextBtn');
-    var resetBtn    = document.getElementById('resetBtn');
-    var restartBtn  = document.getElementById('restartBtn');
-    var paletteEl   = document.getElementById('coloringPalette');
+    var canvas       = document.getElementById('coloringCanvas');
+    var ctx          = canvas.getContext('2d', { willReadFrequently: true });
+    var progressText = document.getElementById('progressText');
+    var progFill     = document.getElementById('progFill');
+    var progBadge    = document.getElementById('progBadge');
+    var selDot       = document.getElementById('sel-dot');
+    var selLabel     = document.getElementById('sel-label');
+    var stage        = document.getElementById('coloringStage');
+    var completedEl  = document.getElementById('coloringCompleted');
+    var finishBtn    = document.getElementById('btn-finish');
+    var resetBtn     = document.getElementById('btn-reset');
+    var restartBtn   = document.getElementById('restartBtn');
+    var paletteEl    = document.getElementById('coloringPalette');
     var clickAudioCtx = null;
 
     function playClickSound() {
@@ -426,13 +436,15 @@ ob_start();
         colors.forEach(function (color) {
             var btn = document.createElement('button');
             btn.type = 'button';
-            btn.className = 'coloring-color-btn' + (color === selectedColor ? ' active' : '');
+            btn.className = 'swatch' + (color === selectedColor ? ' active' : '');
             btn.style.background = color;
             btn.addEventListener('click', function () {
                 playClickSound();
                 selectedColor = color;
-                paletteEl.querySelectorAll('.coloring-color-btn').forEach(function (b) { b.classList.remove('active'); });
+                paletteEl.querySelectorAll('.swatch').forEach(function (b) { b.classList.remove('active'); });
                 btn.classList.add('active');
+                selDot.style.background = color;
+                selLabel.textContent = (colorNames[color] || color) + ' selected';
             });
             paletteEl.appendChild(btn);
         });
@@ -442,21 +454,19 @@ ob_start();
     function updateProgress() {
         if (!uploadedImages.length) {
             progressText.textContent = 'No images';
+            progBadge.textContent = '\u2014';
+            progFill.style.width = '0%';
             return;
         }
         progressText.textContent = 'Page ' + (currentIndex + 1) + ' of ' + uploadedImages.length;
-        if (currentIndex < uploadedImages.length - 1) {
-            nextBtn.textContent = 'Next \u2192';
-        } else {
-            nextBtn.textContent = 'Finish \u2713';
-        }
+        progBadge.textContent = (currentIndex + 1) + ' / ' + uploadedImages.length;
+        progFill.style.width = (((currentIndex + 1) / uploadedImages.length) * 100) + '%';
+        finishBtn.textContent = currentIndex < uploadedImages.length - 1 ? 'Next →' : 'Finish ✓';
     }
 
     /* ── show / hide sections ────────────────────────── */
     function showCompleted() {
-        topbar.style.display      = 'none';
-        paletteWrap.style.display = 'none';
-        stage.style.display       = 'none';
+        stage.style.display = 'none';
         completedEl.classList.add('active');
         if (COLORING_RETURN_TO && COLORING_ACTIVITY_ID) {
             var joiner = COLORING_RETURN_TO.indexOf('?') !== -1 ? '&' : '?';
@@ -475,9 +485,7 @@ ob_start();
         }
     }
     function showStage() {
-        topbar.style.display      = '';
-        paletteWrap.style.display = '';
-        stage.style.display       = '';
+        stage.style.display = '';
         completedEl.classList.remove('active');
     }
 
@@ -657,15 +665,15 @@ ob_start();
     }
 
     /* ── button events ───────────────────────────────── */
-    nextBtn.addEventListener('click', function () {
+    finishBtn.addEventListener('click', function () {
         if (!uploadedImages.length) return;
         playClickSound();
-        currentIndex++;
-        if (currentIndex >= uploadedImages.length) {
+        if (currentIndex >= uploadedImages.length - 1) {
             showCompleted();
-            return;
+        } else {
+            currentIndex++;
+            loadImageAt(currentIndex);
         }
-        loadImageAt(currentIndex);
     });
     resetBtn.addEventListener('click', function () {
         playClickSound();
