@@ -1275,8 +1275,8 @@ function reindexBlockInputs() {
         var dzFile = block.querySelector('input[type="file"][name^="dz_image_file["]');
         if (dzFile) dzFile.name = 'dz_image_file[' + index + ']';
 
-        var vfFile = block.querySelector('input[type="file"][name="video_file[]"]');
-        if (vfFile) vfFile.name = 'video_file[]';
+        var vfFile = block.querySelector('input[type="file"][name^="video_file["]');
+        if (vfFile) vfFile.name = 'video_file[' + index + ']';
     });
 }
 
@@ -1298,6 +1298,7 @@ function addBlock() {
     div.className = 'block-item';
     div.innerHTML =
         '<input type="hidden" name="block_id[]" value="listen_order_' + Date.now() + '_' + Math.floor(Math.random() * 1000) + '">' +
+        '<input type="hidden" name="video_url_existing[]" class="lo-block-vidurl" value="">' +
 
         '<div class="block-header-row">' +
             '<span class="block-badge">Block ' + blockNum + '</span>' +
@@ -1312,7 +1313,6 @@ function addBlock() {
         '</div>' +
 
         '<div class="media-section audio-section">' +
-            '<input type="hidden" name="video_url_existing[]" class="vf-url-existing" value="">' +
             '<div class="audio-upload-zone" onclick="this.querySelector(\'input[type=file]\').click()">' +
                 '<div class="audio-upload-icon">&#x1F3B5;</div>' +
                 '<div class="audio-upload-title">Upload audio file</div>' +
@@ -1320,33 +1320,25 @@ function addBlock() {
                 '<input type="file" accept="audio/*" style="display:none" onchange="showAudioPill(this)">' +
             '</div>' +
             '<label class="field-label">Sentence / transcript <span class="field-badge">optional — shown to students</span></label>' +
-            '<textarea name="sentence[]" required></textarea>' +
+            '<textarea name="sentence[]"></textarea>' +
         '</div>' +
 
         '<div class="media-section video-file-section" style="display:none">' +
-            '<input type="hidden" name="video_url_existing[]" class="vf-url-existing" value="">' +
             '<div class="video-upload-zone" onclick="this.querySelector(\'input[type=file]\').click()">' +
                 '<div class="video-upload-icon">&#x1F3AC;</div>' +
                 '<div class="video-upload-title">Upload video file</div>' +
                 '<div class="video-upload-sub">MP4, MOV, WEBM</div>' +
-                '<input type="file" name="video_file[]" accept="video/*" style="display:none" onchange="showVideoPreview(this)">' +
+                '<input type="file" name="video_file[' + index + ']" accept="video/*" style="display:none" onchange="showVideoPreview(this)">' +
             '</div>' +
-            '<label class="field-label">Transcript <span class="field-badge">optional — shown to students</span></label>' +
-            '<textarea name="sentence[]"></textarea>' +
         '</div>' +
 
         '<div class="media-section video-section" style="display:none">' +
-            '<input type="hidden" name="video_url_existing[]" class="vf-url-existing" value="">' +
             '<label class="field-label">Video URL</label>' +
             '<input type="url" placeholder="https://youtube.com/watch?v=... or direct video URL">' +
             '<div class="field-hint">Supports YouTube, Vimeo, or direct MP4 links.</div>' +
-            '<textarea name="sentence[]" style="display:none"></textarea>' +
         '</div>' +
 
-        '<div class="media-section none-section" style="display:none">' +
-            '<input type="hidden" name="video_url_existing[]" class="vf-url-existing" value="">' +
-            '<textarea name="sentence[]" style="display:none"></textarea>' +
-        '</div>' +
+        '<div class="media-section none-section" style="display:none"></div>' +
 
         '<label class="field-label" style="margin-top:4px;">Images in correct order <span class="field-badge">upload in the exact order students should arrange them</span></label>' +
 
