@@ -46,11 +46,15 @@ function lo_viewer_load(PDO $pdo, string $activityId, string $unit): array {
     $fallback = ['title'=>'Listen & Order','instructions'=>'','blocks'=>[]];
     $row = null;
     if ($activityId !== '') {
-        $st = $pdo->prepare("SELECT data FROM activities WHERE id=:id AND type IN ('listen_order','listen_and_order') LIMIT 1");
+        $st = $pdo->prepare("SELECT data FROM activities WHERE id=:id AND type IN ('listen_order','listen_and_order','listenorder') LIMIT 1");
         $st->execute(['id'=>$activityId]); $row=$st->fetch(PDO::FETCH_ASSOC);
     }
     if (!$row && $unit !== '') {
-        $st = $pdo->prepare("SELECT data FROM activities WHERE unit_id=:unit AND type IN ('listen_order','listen_and_order') ORDER BY id ASC LIMIT 1");
+        $st = $pdo->prepare("SELECT data FROM activities WHERE unit_id=:unit AND type IN ('listen_order','listen_and_order','listenorder') ORDER BY id ASC LIMIT 1");
+        $st->execute(['unit'=>$unit]); $row=$st->fetch(PDO::FETCH_ASSOC);
+    }
+    if (!$row && $unit !== '') {
+        $st = $pdo->prepare("SELECT data FROM activities WHERE unit=:unit AND type IN ('listen_order','listen_and_order','listenorder') ORDER BY id ASC LIMIT 1");
         $st->execute(['unit'=>$unit]); $row=$st->fetch(PDO::FETCH_ASSOC);
     }
     if (!$row) return $fallback;

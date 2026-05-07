@@ -234,7 +234,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             !empty($videoFiles["tmp_name"][$i]) &&
             ($videoFiles["error"][$i] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_OK
         ) {
-            $uploadedVideo = upload_to_cloudinary($videoFiles["tmp_name"][$i]);
+            $uploadedVideo = upload_video_to_cloudinary($videoFiles["tmp_name"][$i]);
             if ($uploadedVideo) {
                 $videoUrl = $uploadedVideo;
             }
@@ -416,7 +416,17 @@ body{background:#f8f7ff!important;font-family:'Nunito',sans-serif!important}
 
 <script>
 var loChanged=false, loSubmitted=false;
+var loInputSeq=0;
 function loMark(){ loChanged=true; }
+
+function loEnsureInputId(input){
+    if (!input) return '';
+    if (!input.dataset.inputId) {
+        loInputSeq += 1;
+        input.dataset.inputId = 'lo_img_input_' + Date.now() + '_' + loInputSeq;
+    }
+    return input.dataset.inputId;
+}
 
 function loVideoPreview(input){
     if (!input.files || !input.files[0]) return;
@@ -492,12 +502,15 @@ function loPreviewImages(input){
     if (bi < 0) bi = 0;
 
     var base = grid.querySelectorAll('.img-card').length;
+    var inputId = loEnsureInputId(input);
 
     Array.from(input.files).forEach(function(file, idx){
         var r = new FileReader();
         r.onload = function(e){
             var card = document.createElement('div');
             card.className = 'img-card';
+            card.dataset.fileInputId = inputId;
+            card.dataset.fileIndex = String(idx);
             card.innerHTML =
                 '<span class="img-pos-badge">'+(base + idx + 1)+'</span>'+
                 '<img src="'+e.target.result+'" alt="">'+
@@ -528,12 +541,42 @@ function loRemoveImg(btn){
     var card = btn.closest('.img-card');
     var grid = card ? card.closest('.img-grid') : null;
 
+    if (card && grid && card.dataset.fileInputId) {
+        var fileInputId = card.dataset.fileInputId;
+        var fileIndex = parseInt(card.dataset.fileIndex || '-1', 10);
+        var fileInput = grid.querySelector('input[type="file"][data-input-id="'+fileInputId+'"]');
+
+        if (fileInput && fileInput.files && fileInput.files.length && fileIndex >= 0 && typeof DataTransfer !== 'undefined') {
+            try {
+                var dt = new DataTransfer();
+                Array.from(fileInput.files).forEach(function(file, idx){
+                    if (idx !== fileIndex) dt.items.add(file);
+                });
+                fileInput.files = dt.files;
+            } catch (e) {
+                // If browser blocks DataTransfer mutation, keep UI removal only.
+            }
+        }
+    }
+
     if (card) card.remove();
 
     if (grid) {
         grid.querySelectorAll('.img-card').forEach(function(c, i){
             var badge = c.querySelector('.img-pos-badge');
             if (badge) badge.textContent = String(i + 1);
+        });
+
+        var groupedCards = {};
+        grid.querySelectorAll('.img-card[data-file-input-id]').forEach(function(c){
+            var id = c.dataset.fileInputId;
+            if (!groupedCards[id]) groupedCards[id] = [];
+            groupedCards[id].push(c);
+        });
+        Object.keys(groupedCards).forEach(function(id){
+            groupedCards[id].forEach(function(c, idx){
+                c.dataset.fileIndex = String(idx);
+            });
         });
     }
 
@@ -624,6 +667,10 @@ function loAddBlock(){
 }
 
 document.addEventListener('DOMContentLoaded', function(){
+    document.querySelectorAll('#blocksContainer input[type="file"][name^="images["]').forEach(function(input){
+        loEnsureInputId(input);
+    });
+
     var form = document.getElementById('loForm');
     if (form) {
         form.addEventListener('submit', function(){
