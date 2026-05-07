@@ -1201,9 +1201,10 @@ function removeVideoFile(btn) {
     if (urlInput) urlInput.value = '';
 
     var fileInput = section.querySelector('input[type="file"][name^="video_file["]');
+    var savedName = fileInput ? fileInput.name : 'video_file[0]';
     if (fileInput) { fileInput.value = ''; fileInput.remove(); }
 
-    // Restore the upload zone
+    // Restore the upload zone with the same indexed name
     var zone = document.createElement('div');
     zone.className = 'video-upload-zone';
     zone.onclick = function () { zone.querySelector('input[type=file]').click(); };
@@ -1211,9 +1212,8 @@ function removeVideoFile(btn) {
         '<div class="video-upload-icon">🎬</div>' +
         '<div class="video-upload-title">Upload video file</div>' +
         '<div class="video-upload-sub">MP4, MOV, WEBM</div>' +
-        '<input type="file" name="video_file[]" accept="video/*" style="display:none" onchange="showVideoPreview(this)">';
-    var labelEl = section.querySelector('.field-label');
-    section.insertBefore(zone, labelEl);
+        '<input type="file" name="' + savedName + '" accept="video/*" style="display:none" onchange="showVideoPreview(this)">';
+    section.insertBefore(zone, section.firstChild);
     markChanged();
 }
 
