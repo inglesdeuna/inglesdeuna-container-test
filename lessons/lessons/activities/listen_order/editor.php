@@ -83,7 +83,8 @@ function normalize_listen_order_payload(mixed $rawData): array
             }
         }
 
-        if ($sentence === "" && trim((string) ($block["video_url"] ?? "")) === "") continue;
+        // Skip only truly empty blocks
+        if ($sentence === "" && trim((string) ($block["video_url"] ?? "")) === "" && empty($images)) continue;
 
         $blocks[] = [
             "id"             => trim((string) ($block["id"] ?? uniqid("listen_order_"))),
@@ -139,14 +140,25 @@ function save_listen_order_activity(PDO $pdo, string $unit, string $activityId, 
     $json     = encode_listen_order_payload(["title" => $title, "instructions" => $instructions, "blocks" => $blocks]);
     $targetId = $activityId;
 
+    // If no ID passed, find by unit (any type variant for robustness)
     if ($targetId === "") {
-        $stmt = $pdo->prepare("SELECT id FROM activities WHERE unit_id = :unit AND type = 'listen_order' ORDER BY id ASC LIMIT 1");
+        $stmt = $pdo->prepare("
+            SELECT id FROM activities
+            WHERE unit_id = :unit
+              AND type IN ('listen_order','listen_and_order','listenorder')
+            ORDER BY id ASC LIMIT 1
+        ");
         $stmt->execute(["unit" => $unit]);
         $targetId = trim((string) $stmt->fetchColumn());
     }
 
     if ($targetId !== "") {
-        $stmt = $pdo->prepare("UPDATE activities SET data = :data WHERE id = :id AND type = 'listen_order'");
+        // FIX: UPDATE without type filter — also normalise type to 'listen_order'
+        $stmt = $pdo->prepare("
+            UPDATE activities
+            SET data = :data, type = 'listen_order'
+            WHERE id = :id
+        ");
         $stmt->execute(["data" => $json, "id" => $targetId]);
         return $targetId;
     }
@@ -270,8 +282,9 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             ]];
         }
 
-        // FIX: allow blocks that have only a video (no sentence text required)
-        if ($sentence === "" && $videoUrl === "") continue;
+        // Allow blocks that have images even without sentence/video
+        // Only skip truly empty blocks (no sentence, no video, no images)
+        if ($sentence === "" && $videoUrl === "" && empty($images)) continue;
 
         $sanitized[] = [
             "id"             => $blockId !== "" ? $blockId : uniqid("listen_order_"),
@@ -440,11 +453,13 @@ body{background:#f8f7ff!important;font-family:'Nunito','Segoe UI',sans-serif!imp
                     Sentence / transcript
                     <span class="field-badge">optional — shown to students</span>
                 </label>
-                <textarea name="sentence[]"><?= htmlspecialchars((string) ($block["sentence"] ?? ""), ENT_QUOTES, 'UTF-8') ?></textarea>
+                <textarea name="sentence[]"<?= $activeMode !== 'audio' ? ' disabled' : '' ?>><?= htmlspecialchars((string) ($block["sentence"] ?? ""), ENT_QUOTES, 'UTF-8') ?></textarea>
             </div>
 
             <!-- Video file section -->
             <div class="media-section video-file-section"<?= $activeMode !== 'video-file' ? ' style="display:none"' : '' ?>>
+                <!-- sentence[] placeholder — keeps array index in sync regardless of active mode -->
+                <textarea name="sentence[]"<?= $activeMode !== 'video-file' ? ' disabled' : '' ?> style="display:none"><?= htmlspecialchars((string) ($block["sentence"] ?? ""), ENT_QUOTES, 'UTF-8') ?></textarea>
                 <?php if ($blockVideoUrl !== ""): ?>
                 <div class="video-preview-wrap">
                     <video src="<?= htmlspecialchars($blockVideoUrl, ENT_QUOTES, 'UTF-8') ?>" controls preload="metadata"></video>
@@ -462,6 +477,8 @@ body{background:#f8f7ff!important;font-family:'Nunito','Segoe UI',sans-serif!imp
 
             <!-- Video URL section -->
             <div class="media-section video-section"<?= $activeMode !== 'video' ? ' style="display:none"' : '' ?>>
+                <!-- sentence[] placeholder -->
+                <textarea name="sentence[]"<?= $activeMode !== 'video' ? ' disabled' : '' ?> style="display:none"><?= htmlspecialchars((string) ($block["sentence"] ?? ""), ENT_QUOTES, 'UTF-8') ?></textarea>
                 <label class="field-label">Video URL</label>
                 <input type="url" placeholder="https://youtube.com/watch?v=... or direct video URL">
                 <div class="field-hint">Supports YouTube, Vimeo, or direct MP4 links.</div>
@@ -469,8 +486,8 @@ body{background:#f8f7ff!important;font-family:'Nunito','Segoe UI',sans-serif!imp
 
             <!-- No media section -->
             <div class="media-section none-section"<?= $activeMode !== 'none' ? ' style="display:none"' : '' ?>>
-                <!-- FIX Bug 3: hidden sentence textarea so the block is never silently dropped on save -->
-                <textarea name="sentence[]" style="display:none"><?= htmlspecialchars((string) ($block["sentence"] ?? ""), ENT_QUOTES, 'UTF-8') ?></textarea>
+                <!-- sentence[] placeholder -->
+                <textarea name="sentence[]"<?= $activeMode !== 'none' ? ' disabled' : '' ?> style="display:none"><?= htmlspecialchars((string) ($block["sentence"] ?? ""), ENT_QUOTES, 'UTF-8') ?></textarea>
             </div>
 
             <!-- Images in correct order -->
@@ -564,6 +581,16 @@ function setMediaMode(btn, mode) {
     block.querySelectorAll('.media-section').forEach(function(s) { s.style.display = 'none'; });
     var target = block.querySelector('.' + mode + '-section');
     if (target) target.style.display = '';
+
+    // Only the active section's sentence[] textarea should be enabled so the
+    // POST array always has exactly one entry per block (no index drift).
+    block.querySelectorAll('.media-section textarea[name="sentence[]"]').forEach(function(ta) {
+        ta.disabled = true;
+    });
+    if (target) {
+        var activeTa = target.querySelector('textarea[name="sentence[]"]');
+        if (activeTa) activeTa.disabled = false;
+    }
     markChanged();
 }
 
@@ -755,7 +782,9 @@ function addBlock() {
             '<textarea name="sentence[]"></textarea>' +
         '</div>' +
 
+        /* sentence[] placeholder in every non-audio section keeps array indices in sync */
         '<div class="media-section video-file-section" style="display:none">' +
+            '<textarea name="sentence[]" style="display:none" disabled></textarea>' +
             '<div class="video-upload-zone" onclick="this.querySelector(\'input[type=file]\').click()">' +
                 '<div class="video-upload-icon">&#x1F3AC;</div>' +
                 '<div class="video-upload-title">Upload video file</div>' +
@@ -765,14 +794,14 @@ function addBlock() {
         '</div>' +
 
         '<div class="media-section video-section" style="display:none">' +
+            '<textarea name="sentence[]" style="display:none" disabled></textarea>' +
             '<label class="field-label">Video URL</label>' +
             '<input type="url" placeholder="https://youtube.com/watch?v=... or direct video URL">' +
             '<div class="field-hint">Supports YouTube, Vimeo, or direct MP4 links.</div>' +
         '</div>' +
 
-        /* FIX Bug 3: none-section includes a hidden sentence textarea so blocks aren't dropped */
         '<div class="media-section none-section" style="display:none">' +
-            '<textarea name="sentence[]" style="display:none"></textarea>' +
+            '<textarea name="sentence[]" style="display:none" disabled></textarea>' +
         '</div>' +
 
         '<label class="field-label" style="margin-top:4px;">Images in correct order <span class="field-badge">upload in the exact order students should arrange them</span></label>' +
