@@ -1196,10 +1196,11 @@ function removeVideoFile(btn) {
     if (preview) preview.remove();
     btn.remove();
 
-    var existingInput = section.querySelector('.vf-url-existing');
-    if (existingInput) existingInput.value = '';
+    var blockEl = btn.closest('.block-item') || section.closest('.block-item');
+    var urlInput = blockEl ? blockEl.querySelector('.lo-block-vidurl') : null;
+    if (urlInput) urlInput.value = '';
 
-    var fileInput = section.querySelector('input[type="file"][name="video_file[]"]');
+    var fileInput = section.querySelector('input[type="file"][name^="video_file["]');
     if (fileInput) { fileInput.value = ''; fileInput.remove(); }
 
     // Restore the upload zone
