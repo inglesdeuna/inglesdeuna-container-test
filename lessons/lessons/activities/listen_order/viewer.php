@@ -96,7 +96,7 @@ function normalize_listen_order_payload(mixed $rawData): array
             }
         }
 
-        if ($sentence === '' && trim((string) ($block['video_url'] ?? '')) === '') {
+        if ($sentence === '' && trim((string) ($block['video_url'] ?? '')) === '' && empty($images)) {
             continue;
         }
 
@@ -130,7 +130,7 @@ function load_listen_order_activity(PDO $pdo, string $activityId, string $unit):
             SELECT data
             FROM activities
             WHERE id = :id
-              AND type = 'listen_order'
+              AND type IN ('listen_order','listen_and_order','listenorder')
             LIMIT 1
         ");
         $stmt->execute(['id' => $activityId]);
@@ -142,7 +142,7 @@ function load_listen_order_activity(PDO $pdo, string $activityId, string $unit):
             SELECT data
             FROM activities
             WHERE unit_id = :unit
-              AND type = 'listen_order'
+              AND type IN ('listen_order','listen_and_order','listenorder')
             ORDER BY id ASC
             LIMIT 1
         ");

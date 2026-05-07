@@ -1397,7 +1397,7 @@ function addBlock() {
                 '<label>' +
                     '<span class="plus">+</span>' +
                     '<span>Add more</span>' +
-                    '<input type="file" name="images[' + index + '][]" multiple accept="image/*" style="display:none">' +
+                    '<input type="file" name="images[' + index + '][]" multiple accept="image/*" style="display:none" onchange="previewNewImages(this,' + index + ')">' +
                 '</label>' +
             '</div>' +
         '</div>' +
