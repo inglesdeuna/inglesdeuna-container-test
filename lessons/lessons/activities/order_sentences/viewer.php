@@ -735,16 +735,17 @@ body.embedded-mode .os-back-btn {
                     <audio controls src="<?= htmlspecialchars($activity['media_url'], ENT_QUOTES, 'UTF-8') ?>"></audio>
                 </div>
 
+            <?php elseif (!empty($activity['tts_audio_url'])): ?>
+                <div class="os-tts-area">
+                    <audio id="os-tts-audio" src="<?= htmlspecialchars($activity['tts_audio_url'], ENT_QUOTES, 'UTF-8') ?>" controls preload="none" style="width:100%;height:42px"></audio>
+                </div>
+
             <?php else: ?>
                 <div class="os-tts-area">
                     <div class="os-listen-panel">
                         <button type="button" id="os-tts-btn" class="os-btn os-btn-tts">Listen</button>
                         <span class="os-listen-text">Listen and put the sentences in order.</span>
                     </div>
-                </div>
-            <?php elseif (!empty($activity['tts_audio_url'])): ?>
-                <div class="os-tts-area">
-                    <audio id="os-tts-audio" src="<?= htmlspecialchars($activity['tts_audio_url'], ENT_QUOTES, 'UTF-8') ?>" controls preload="none" style="width:100%;height:42px"></audio>
                 </div>
             <?php endif; ?>
 
