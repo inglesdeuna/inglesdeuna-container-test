@@ -972,10 +972,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
     var isSpeaking = false;
     var isPaused = false;
-    var speechOffset = 0;
-    var speechSourceText = '';
-    var speechSegmentStart = 0;
-    var dictUtter = null;
     var dictCurrentAudio = null;
     var DICT_TTS_URL = 'tts.php';
     var DICT_VOICE_ID = <?php echo json_encode($activityVoiceId, JSON_UNESCAPED_UNICODE); ?>;
@@ -1096,10 +1092,6 @@ document.addEventListener('DOMContentLoaded', function () {
         // Always stop browser TTS to avoid overlapping with ElevenLabs audio.
         if (window.speechSynthesis) {
             speechSynthesis.cancel();
-            dictUtter = null;
-            speechOffset = 0;
-            speechSourceText = '';
-            speechSegmentStart = 0;
         }
 
         // If a pre-generated audio is stored, play it (toggle pause/resume)
@@ -1200,102 +1192,6 @@ document.addEventListener('DOMContentLoaded', function () {
             });
     }
 
-    function dictStartSpeechFromOffset() {
-        var source = speechSourceText;
-        if (!source) { return; }
-
-        var safeOffset = Math.max(0, Math.min(speechOffset, source.length));
-        var remaining = source.slice(safeOffset);
-
-        if (!remaining.trim()) {
-            isSpeaking = false;
-            isPaused = false;
-            speechOffset = 0;
-            setListenButtonLabel();
-            return;
-        }
-
-        speechSynthesis.cancel();
-
-        speechSegmentStart = safeOffset;
-        dictUtter = new SpeechSynthesisUtterance(remaining);
-        dictUtter.lang = 'en-US';
-        dictUtter.rate = 0.9;
-
-        var preferredVoice = getPreferredVoice('en-US');
-        if (preferredVoice) dictUtter.voice = preferredVoice;
-
-        dictUtter.onstart = function () {
-            isSpeaking = true;
-            isPaused = false;
-            setListenButtonLabel();
-        };
-
-        dictUtter.onpause = function () {
-            isPaused = true;
-            isSpeaking = true;
-            setListenButtonLabel();
-        };
-
-        dictUtter.onresume = function () {
-            isPaused = false;
-            isSpeaking = true;
-            setListenButtonLabel();
-        };
-
-        dictUtter.onboundary = function (event) {
-            if (typeof event.charIndex === 'number') {
-                speechOffset = Math.max(speechSegmentStart, Math.min(source.length, speechSegmentStart + event.charIndex));
-            }
-        };
-
-        dictUtter.onend = function () {
-            if (isPaused) { return; }
-            isSpeaking = false;
-            isPaused = false;
-            speechOffset = 0;
-            setListenButtonLabel();
-        };
-
-        dictUtter.onerror = function () {
-            isSpeaking = false;
-            isPaused = false;
-            speechOffset = 0;
-            setListenButtonLabel();
-        };
-
-        speechSynthesis.speak(dictUtter);
-    }
-
-    function getPreferredVoice(lang) {
-        lang = lang || 'en-US';
-        var voices = window.speechSynthesis ? window.speechSynthesis.getVoices() : [];
-
-        if (!Array.isArray(voices) || voices.length === 0) {
-            return null;
-        }
-
-        var langPrefix = lang.split('-')[0].toLowerCase();
-        var matchedVoices = voices.filter(function (voice) {
-            var vl = String(voice.lang || '').toLowerCase();
-            return vl === lang.toLowerCase() || vl.indexOf(langPrefix + '-') === 0 || vl.indexOf(langPrefix + '_') === 0;
-        });
-
-        if (!matchedVoices.length) {
-            return voices[0] || null;
-        }
-
-        var femaleHints = ['female', 'woman', 'zira', 'samantha', 'karen', 'aria', 'jenny', 'emma', 'olivia', 'ava',
-            'paulina', 'sabina', 'esperanza', 'mónica', 'monica', 'conchita'];
-
-        var femaleVoice = matchedVoices.find(function (voice) {
-            var label = (String(voice.name || '') + ' ' + String(voice.voiceURI || '')).toLowerCase();
-            return femaleHints.some(function (hint) { return label.indexOf(hint) !== -1; });
-        });
-
-        return femaleVoice || matchedVoices[0];
-    }
-
     function updateProgress() {
         var pct = data.length > 0 ? Math.round(((index + 1) / data.length) * 100) : 0;
         statusEl.textContent = (index + 1) + ' / ' + data.length;
@@ -1309,10 +1205,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
         isSpeaking = false;
         isPaused = false;
-        speechOffset = 0;
-        speechSourceText = '';
-        speechSegmentStart = 0;
-        dictUtter = null;
 
         if (dictCurrentAudio) {
             dictCurrentAudio.pause();
