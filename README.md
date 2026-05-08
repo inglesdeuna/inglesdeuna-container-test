@@ -57,6 +57,10 @@ Si no exportas `ELEVENLABS_API_KEY`, el generador mostrara:
 Tambien puedes crear un archivo `.env` en la raiz del proyecto con esas mismas variables.
 El script `scripts/deploy_docker.sh` lo carga automaticamente si existe.
 
+Si tu hosting no expone bien variables de entorno al proceso PHP web, puedes crear
+`lessons/lessons/config/tts_secrets.php` (basado en `lessons/lessons/config/tts_secrets.example.php`)
+y definir ahi las claves de ElevenLabs y Cloudinary para los endpoints `tts.php`.
+
 Ademas, las actividades viewer que usan browser TTS ahora muestran un selector global de voz
 (`Adult Male`, `Adult Female`, `Child`) en la barra superior. Esa preferencia se guarda por navegador.
 

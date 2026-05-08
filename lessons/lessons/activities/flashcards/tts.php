@@ -16,19 +16,43 @@ function tts_env(string $key): string
         static $dotEnv = null;
         if ($dotEnv === null) {
             $dotEnv = [];
-            $envPath = __DIR__ . '/../../../../.env';
-            if (is_file($envPath) && is_readable($envPath)) {
+            $envCandidates = [
+                __DIR__ . '/../../../../../.env',
+                __DIR__ . '/../../../../.env',
+                __DIR__ . '/../../../.env',
+            ];
+            foreach ($envCandidates as $envPath) {
+                if (!is_file($envPath) || !is_readable($envPath)) continue;
                 $lines = @file($envPath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [];
                 foreach ($lines as $line) {
                     $line = trim((string) $line);
                     if ($line === '' || $line[0] === '#' || strpos($line, '=') === false) continue;
                     [$k, $val] = array_map('trim', explode('=', $line, 2));
-                    if ($k !== '') $dotEnv[$k] = trim($val, " \t\n\r\0\x0B\"'");
+                    if ($k !== '' && !isset($dotEnv[$k])) {
+                        $dotEnv[$k] = trim($val, " \t\n\r\0\x0B\"'");
+                    }
                 }
             }
         }
         if (isset($dotEnv[$key]) && is_string($dotEnv[$key])) {
             $v = $dotEnv[$key];
+        }
+    }
+
+    if (!is_string($v) || trim($v) === '') {
+        static $fileSecrets = null;
+        if ($fileSecrets === null) {
+            $fileSecrets = [];
+            $secretFile = __DIR__ . '/../../config/tts_secrets.php';
+            if (is_file($secretFile) && is_readable($secretFile)) {
+                $loaded = require $secretFile;
+                if (is_array($loaded)) {
+                    $fileSecrets = $loaded;
+                }
+            }
+        }
+        if (isset($fileSecrets[$key]) && is_string($fileSecrets[$key])) {
+            $v = $fileSecrets[$key];
         }
     }
     return is_string($v) ? trim($v) : '';
