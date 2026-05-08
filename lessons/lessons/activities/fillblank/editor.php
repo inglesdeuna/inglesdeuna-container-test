@@ -869,6 +869,21 @@ function fbRemoveBlock(btn) {
 document.getElementById('fbEditorForm').addEventListener('submit', function(e) {
     fbSyncHiddenAnswers();
 
+    var mediaTypeEl = document.getElementById('fb-media-type');
+    if (mediaTypeEl && mediaTypeEl.value === 'tts') {
+        var panel = document.getElementById('fb-panel-tts');
+        var ttsTextEl = panel ? panel.querySelector('textarea[name="tts_text"]') : null;
+        var ttsAudioEl = panel ? panel.querySelector('.js-fb-audiourl') : null;
+        var ttsText = ttsTextEl ? ttsTextEl.value.trim() : '';
+        var ttsAudio = ttsAudioEl ? String(ttsAudioEl.value || '').trim() : '';
+        if (ttsText !== '' && ttsAudio === '') {
+            alert('Generate ElevenLabs audio before saving this TTS activity.');
+            if (ttsTextEl) ttsTextEl.focus();
+            e.preventDefault();
+            return false;
+        }
+    }
+
     var cards = document.querySelectorAll('.fb-block-item');
 
     for (var i = 0; i < cards.length; i++) {

@@ -854,6 +854,19 @@ if (_v) _v.addEventListener('input', syncMediaCaches);
 if (_a) _a.addEventListener('input', syncMediaCaches);
 
 document.getElementById('osSentencesForm').addEventListener('submit', function () {
+    var mediaTypeEl = document.getElementById('os-media-type');
+    if (mediaTypeEl && mediaTypeEl.value === 'tts') {
+        var panel = document.getElementById('ms-tts');
+        var textEl = panel ? panel.querySelector('textarea[name="tts_text"]') : null;
+        var audioEl = panel ? panel.querySelector('.js-os-audiourl') : null;
+        var text = textEl ? textEl.value.trim() : '';
+        var audio = audioEl ? String(audioEl.value || '').trim() : '';
+        if (text !== '' && audio === '') {
+            alert('Generate ElevenLabs audio before saving this TTS activity.');
+            if (textEl) textEl.focus();
+            return false;
+        }
+    }
     syncMediaCaches();
     document.querySelectorAll('.os-media-panel:not(.active) input, .os-media-panel:not(.active) textarea').forEach(function (el) {
         el.disabled = true;

@@ -800,6 +800,18 @@ document.addEventListener('DOMContentLoaded', function(){
     var form = document.getElementById('loForm');
     if (form) {
         form.addEventListener('submit', function(){
+            var blocks = Array.from(document.querySelectorAll('#blocksContainer .block-item'));
+            for (var i = 0; i < blocks.length; i++) {
+                var sentenceEl = blocks[i].querySelector('textarea[name="sentence[]"]');
+                var audioEl = blocks[i].querySelector('.js-audiourl');
+                var sentence = sentenceEl ? sentenceEl.value.trim() : '';
+                var audioUrl = audioEl ? String(audioEl.value || '').trim() : '';
+                if (sentence !== '' && audioUrl === '') {
+                    alert('Block ' + (i + 1) + ': Generate ElevenLabs audio before saving.');
+                    if (sentenceEl) sentenceEl.focus();
+                    return false;
+                }
+            }
             loReindex();
             loSubmitted = true;
             loChanged = false;

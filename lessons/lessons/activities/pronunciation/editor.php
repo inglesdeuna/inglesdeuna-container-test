@@ -1002,7 +1002,20 @@ document.addEventListener('DOMContentLoaded', function () {
 
     var form = document.getElementById('pronunciationForm');
     if (form) {
-        form.addEventListener('submit', function () {
+        form.addEventListener('submit', function (e) {
+            var blocks = Array.from(document.querySelectorAll('#items .pron-block'));
+            for (var i = 0; i < blocks.length; i++) {
+                var enEl = blocks[i].querySelector('input[name="en[]"]');
+                var audioEl = blocks[i].querySelector('input[name="audio[]"]');
+                var en = enEl ? enEl.value.trim() : '';
+                var audio = audioEl ? String(audioEl.value || '').trim() : '';
+                if (en !== '' && audio === '') {
+                    alert('Card ' + (i + 1) + ': Generate ElevenLabs audio before saving.');
+                    if (enEl) enEl.focus();
+                    e.preventDefault();
+                    return false;
+                }
+            }
             formSubmitted = true;
             formChanged = false;
         });
