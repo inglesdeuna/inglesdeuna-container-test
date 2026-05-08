@@ -889,14 +889,6 @@ body {
             <div class="dict-card" id="dict-card">
                 <div class="dict-listen-row" id="dict-listen-row">
                     <button type="button" class="dict-btn dict-btn-listen" id="dict-listen">Listen</button>
-                    <div class="dict-voice-row">
-                        <label class="dict-voice-label" for="dict-voice-select">Voice</label>
-                        <select id="dict-voice-select" class="dict-voice-select">
-                            <option value="nzFihrBIvB34imQBuxub">Adult Male (Josh)</option>
-                            <option value="NoOVOzCQFLOvtsMoNcdT">Adult Female (Lily)</option>
-                            <option value="Nggzl2QAXh3OijoXD116">Child (Candy)</option>
-                        </select>
-                    </div>
                 </div>
 
                 <div class="dict-prompt" id="dict-prompt"></div>
@@ -985,8 +977,8 @@ document.addEventListener('DOMContentLoaded', function () {
     var speechSegmentStart = 0;
     var dictUtter = null;
     var dictCurrentAudio = null;
-    var dictVoiceSelect = document.getElementById('dict-voice-select');
     var DICT_TTS_URL = 'tts.php';
+    var DICT_VOICE_ID = <?php echo json_encode($activityVoiceId, JSON_UNESCAPED_UNICODE); ?>;
 
     if (completedTitleEl) {
         completedTitleEl.textContent = activityTitle || 'Dictation';
@@ -1152,7 +1144,7 @@ document.addEventListener('DOMContentLoaded', function () {
         // Call ElevenLabs TTS endpoint
         var text = data[index].en || '';
         if (!text) { return; }
-        var voiceId = dictVoiceSelect ? dictVoiceSelect.value : 'nzFihrBIvB34imQBuxub';
+        var voiceId = DICT_VOICE_ID || 'nzFihrBIvB34imQBuxub';
 
         isSpeaking = true;
         isPaused = false;
