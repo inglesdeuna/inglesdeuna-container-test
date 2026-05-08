@@ -57,6 +57,9 @@ Si no exportas `ELEVENLABS_API_KEY`, el generador mostrara:
 Tambien puedes crear un archivo `.env` en la raiz del proyecto con esas mismas variables.
 El script `scripts/deploy_docker.sh` lo carga automaticamente si existe.
 
+Ademas, las actividades viewer que usan browser TTS ahora muestran un selector global de voz
+(`Adult Male`, `Adult Female`, `Child`) en la barra superior. Esa preferencia se guarda por navegador.
+
 ### Diagnostico rapido en navegador
 
 Con sesion de admin iniciada, abre:

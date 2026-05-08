@@ -265,6 +265,32 @@ function render_activity_viewer($title, $icon, $content)
             padding:0 16px;
         }
 
+        .tts-global-controls{
+            margin-left:auto;
+            display:inline-flex;
+            align-items:center;
+            gap:8px;
+        }
+
+        .tts-global-label{
+            color:#5b6577;
+            font-size:11px;
+            font-weight:900;
+            text-transform:uppercase;
+            letter-spacing:.04em;
+        }
+
+        .tts-global-select{
+            border:1px solid #d8dbe4;
+            border-radius:999px;
+            background:#fff;
+            color:#4338ca;
+            font-family:'Nunito','Segoe UI',sans-serif;
+            font-size:12px;
+            font-weight:800;
+            padding:7px 12px;
+        }
+
         .back-btn{
             display:inline-flex;
             align-items:center;
@@ -660,6 +686,15 @@ function render_activity_viewer($title, $icon, $content)
     <?php if (!$embedded && !$isPresentationMode) { ?>
     <div class="top-row">
         <a href="<?= htmlspecialchars($backUrl, ENT_QUOTES, 'UTF-8') ?>" class="back-btn">Back</a>
+
+        <div class="tts-global-controls" id="tts-global-controls">
+            <label class="tts-global-label" for="tts-global-voice">Voice</label>
+            <select class="tts-global-select" id="tts-global-voice">
+                <option value="male">Adult Male</option>
+                <option value="female">Adult Female</option>
+                <option value="child">Child</option>
+            </select>
+        </div>
     </div>
     <?php } ?>
 
@@ -706,6 +741,100 @@ window.addEventListener('message', function (e) {
         document.dispatchEvent(new CustomEvent('fullscreen-embedded', { detail: { active: false } }));
     }
 });
+
+// Global browser-TTS voice selector for activities that use SpeechSynthesis.
+(function () {
+    if (!('speechSynthesis' in window) || typeof window.SpeechSynthesisUtterance !== 'function') {
+        var noSupportControls = document.getElementById('tts-global-controls');
+        if (noSupportControls) noSupportControls.style.display = 'none';
+        return;
+    }
+
+    var localVoiceSelector = document.querySelector('#fc-voice-profile, #fc-premium-voice');
+    var controls = document.getElementById('tts-global-controls');
+    var selectEl = document.getElementById('tts-global-voice');
+
+    if (localVoiceSelector && controls) {
+        controls.style.display = 'none';
+    }
+
+    var profile = localStorage.getItem('viewer_tts_voice_profile') || 'male';
+    if (selectEl) {
+        selectEl.value = profile;
+        selectEl.addEventListener('change', function () {
+            profile = this.value || 'male';
+            localStorage.setItem('viewer_tts_voice_profile', profile);
+        });
+    }
+
+    var voicesCache = [];
+    function refreshVoices() {
+        try { voicesCache = window.speechSynthesis.getVoices() || []; }
+        catch (e) { voicesCache = []; }
+    }
+
+    refreshVoices();
+    if (window.speechSynthesis.addEventListener) {
+        window.speechSynthesis.addEventListener('voiceschanged', refreshVoices);
+    }
+
+    function pickVoice(voices, currentProfile) {
+        if (!Array.isArray(voices) || voices.length === 0) return null;
+
+        var keysByProfile = {
+            male: [' male', 'david', 'guy', 'daniel', 'george', 'matthew'],
+            female: [' female', 'zira', 'jenny', 'aria', 'samantha', 'susan', 'rachel'],
+            child: ['child', 'kid', 'junior', 'young', 'lily']
+        };
+        var keys = keysByProfile[currentProfile] || keysByProfile.male;
+
+        var best = null;
+        var bestScore = -999;
+
+        for (var i = 0; i < voices.length; i++) {
+            var v = voices[i];
+            var name = String(v.name || '').toLowerCase();
+            var uri = String(v.voiceURI || '').toLowerCase();
+            var lang = String(v.lang || '').toLowerCase();
+            var score = 0;
+
+            if (lang.indexOf('en') === 0) score += 5;
+
+            for (var k = 0; k < keys.length; k++) {
+                if (name.indexOf(keys[k]) !== -1 || uri.indexOf(keys[k]) !== -1) {
+                    score += 6;
+                }
+            }
+
+            if (currentProfile === 'male' && name.indexOf('female') !== -1) score -= 4;
+            if (currentProfile === 'female' && name.indexOf('male') !== -1) score -= 4;
+
+            if (score > bestScore) {
+                best = v;
+                bestScore = score;
+            }
+        }
+
+        return best || voices[0] || null;
+    }
+
+    var nativeSpeak = window.speechSynthesis.speak.bind(window.speechSynthesis);
+
+    window.speechSynthesis.speak = function (utterance) {
+        try {
+            if (!(localVoiceSelector) && utterance && typeof utterance.text === 'string') {
+                var lang = String(utterance.lang || '').toLowerCase();
+                if (lang === '' || lang.indexOf('en') === 0) {
+                    var voice = pickVoice(voicesCache, profile);
+                    if (voice) utterance.voice = voice;
+                    if (lang === '') utterance.lang = 'en-US';
+                }
+            }
+        } catch (e) {}
+
+        return nativeSpeak(utterance);
+    };
+})();
 </script>
 
 </body>
