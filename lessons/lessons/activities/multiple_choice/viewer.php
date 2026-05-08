@@ -357,11 +357,25 @@ body {
     overflow-wrap:anywhere!important;
 }
 
+.mc-card.has-image {
+    justify-content:center!important;
+    gap:10px!important;
+}
+
 .mc-card.has-image .mc-question {
     max-width:560px!important;
     font-size:clamp(18px,2.4vw,28px)!important;
     line-height:1.08!important;
-    margin:0 0 10px!important;
+    margin:0 0 6px!important;
+}
+
+.mc-card.has-image .mc-image {
+    margin:0 auto 8px!important;
+}
+
+.mc-card.has-image .mc-options {
+    max-width:560px!important;
+    margin-top:0!important;
 }
 
 .mc-image {
