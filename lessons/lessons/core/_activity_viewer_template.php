@@ -183,39 +183,40 @@ function render_activity_viewer($title, $icon, $content)
             line-height: 1.2 !important;
             margin: 0 !important;
             padding: 16px !important;
-            text-align: center !important;
-        }
+                /* Removed global voice toggle UI */
+                /* .tts-global-controls{
+                    position:fixed;
+                    top:12px;
+                    right:12px;
+                    z-index:9999;
+                    display:inline-flex;
+                    align-items:center;
+                    gap:8px;
+                    background:#ffffff;
+                    border:1px solid #d8dbe4;
+                    border-radius:999px;
+                    padding:6px 8px;
+                    box-shadow:0 4px 14px rgba(0,0,0,.12);
+                }
 
-        body.presentation-mode .viewer-content :is(.mc-options, .vc-options) {
-            max-height: none !important;
-            flex: 1 !important;
-            overflow-y: auto !important;
-            padding: 12px 16px !important;
-            display: flex !important;
-            flex-direction: column !important;
-            justify-content: center !important;
-        }
+                .tts-global-label{
+                    color:#5b6577;
+                    font-size:11px;
+                    font-weight:900;
+                    text-transform:uppercase;
+                    letter-spacing:.04em;
+                }
 
-        body.presentation-mode .viewer-content :is(.mc-option, .vc-option) {
-            min-height: 60px !important;
-            font-size: clamp(18px, 2vw, 28px) !important;
-            padding: 14px 16px !important;
-            margin-bottom: 10px !important;
-        }
-
-        body.presentation-mode .viewer-content :is(.mc-controls, .controls, .lo-controls, .vc-controls, .qz-actions, .ex-actions, .flipbook-toolbar__right) {
-            gap: 12px !important;
-            flex-shrink: 0 !important;
-            padding: 12px 16px !important;
-            background: #EEEDFE !important;
-            border-top: 1.5px solid #AFA9EC !important;
-            display: flex !important;
-            justify-content: center !important;
-            flex-wrap: wrap !important;
-        }
-
-        body.presentation-mode .viewer-content :is(.mc-btn, .dd-btn, .lo-btn, .vc-btn, .action-btn, .qz-btn, .ppt-btn, .ex-btn, .flash-btn, .flipbook-btn, .dict-stage .btn, .pron-stage .btn) {
-            padding: 14px 20px !important;
+                .tts-global-select{
+                    border:1px solid #d8dbe4;
+                    border-radius:999px;
+                    background:#fff;
+                    color:#4338ca;
+                    font-family:'Nunito','Segoe UI',sans-serif;
+                    font-size:12px;
+                    font-weight:800;
+                    padding:7px 12px;
+                } */
             min-width: 160px !important;
             font-size: 16px !important;
             font-weight: 800 !important;
@@ -712,15 +713,6 @@ function render_activity_viewer($title, $icon, $content)
 
 </div>
 
-<div class="tts-global-controls" id="tts-global-controls">
-    <label class="tts-global-label" for="tts-global-voice">Voice</label>
-    <select class="tts-global-select" id="tts-global-voice">
-        <option value="male">Adult Male</option>
-        <option value="female">Adult Female</option>
-        <option value="child">Child</option>
-    </select>
-</div>
-
 <script>
 // Presentation mode configuration
 window.PRESENTATION_MODE = <?= json_encode($isPresentationMode) ?>;
@@ -750,94 +742,7 @@ window.addEventListener('message', function (e) {
     }
 });
 
-// Global browser-TTS voice selector for activities that use SpeechSynthesis.
-(function () {
-    if (!('speechSynthesis' in window) || typeof window.SpeechSynthesisUtterance !== 'function') {
-        var noSupportControls = document.getElementById('tts-global-controls');
-        if (noSupportControls) noSupportControls.style.display = 'none';
-        return;
-    }
-
-    var controls = document.getElementById('tts-global-controls');
-    var selectEl = document.getElementById('tts-global-voice');
-
-    var profile = localStorage.getItem('viewer_tts_voice_profile') || 'male';
-    if (selectEl) {
-        selectEl.value = profile;
-        selectEl.addEventListener('change', function () {
-            profile = this.value || 'male';
-            localStorage.setItem('viewer_tts_voice_profile', profile);
-        });
-    }
-
-    var voicesCache = [];
-    function refreshVoices() {
-        try { voicesCache = window.speechSynthesis.getVoices() || []; }
-        catch (e) { voicesCache = []; }
-    }
-
-    refreshVoices();
-    if (window.speechSynthesis.addEventListener) {
-        window.speechSynthesis.addEventListener('voiceschanged', refreshVoices);
-    }
-
-    function pickVoice(voices, currentProfile) {
-        if (!Array.isArray(voices) || voices.length === 0) return null;
-
-        var keysByProfile = {
-            male: [' male', 'david', 'guy', 'daniel', 'george', 'matthew'],
-            female: [' female', 'zira', 'jenny', 'aria', 'samantha', 'susan', 'rachel'],
-            child: ['child', 'kid', 'junior', 'young', 'lily']
-        };
-        var keys = keysByProfile[currentProfile] || keysByProfile.male;
-
-        var best = null;
-        var bestScore = -999;
-
-        for (var i = 0; i < voices.length; i++) {
-            var v = voices[i];
-            var name = String(v.name || '').toLowerCase();
-            var uri = String(v.voiceURI || '').toLowerCase();
-            var lang = String(v.lang || '').toLowerCase();
-            var score = 0;
-
-            if (lang.indexOf('en') === 0) score += 5;
-
-            for (var k = 0; k < keys.length; k++) {
-                if (name.indexOf(keys[k]) !== -1 || uri.indexOf(keys[k]) !== -1) {
-                    score += 6;
-                }
-            }
-
-            if (currentProfile === 'male' && name.indexOf('female') !== -1) score -= 4;
-            if (currentProfile === 'female' && name.indexOf('male') !== -1) score -= 4;
-
-            if (score > bestScore) {
-                best = v;
-                bestScore = score;
-            }
-        }
-
-        return best || voices[0] || null;
-    }
-
-    var nativeSpeak = window.speechSynthesis.speak.bind(window.speechSynthesis);
-
-    window.speechSynthesis.speak = function (utterance) {
-        try {
-            if (utterance && typeof utterance.text === 'string') {
-                var lang = String(utterance.lang || '').toLowerCase();
-                if (lang === '' || lang.indexOf('en') === 0) {
-                    var voice = pickVoice(voicesCache, profile);
-                    if (voice) utterance.voice = voice;
-                    if (lang === '') utterance.lang = 'en-US';
-                }
-            }
-        } catch (e) {}
-
-        return nativeSpeak(utterance);
-    };
-})();
+// Global browser-TTS voice selection removed for viewers.
 </script>
 
 </body>
