@@ -56,6 +56,15 @@ function resolve_unit_from_activity(PDO $pdo, string $activityId): string
 
 function default_match_title(): string { return 'Match'; }
 
+function normalize_match_mode(string $mode): string
+{
+    $mode = trim(strtolower($mode));
+    if (in_array($mode, array('text_text', 'image_image', 'image_text'), true)) {
+        return $mode;
+    }
+    return 'image_text';
+}
+
 function normalize_match_title(string $title): string
 {
     $title = trim($title);
@@ -64,12 +73,13 @@ function normalize_match_title(string $title): string
 
 function normalize_match_payload(mixed $rawData): array
 {
-    $default = array('title' => default_match_title(), 'pairs' => array());
+    $default = array('title' => default_match_title(), 'mode' => 'image_text', 'pairs' => array());
     if ($rawData === null || $rawData === '') return $default;
     $decoded = is_string($rawData) ? json_decode($rawData, true) : $rawData;
     if (!is_array($decoded)) return $default;
 
     $title = isset($decoded['title']) ? trim((string) $decoded['title']) : '';
+    $mode = isset($decoded['mode']) ? normalize_match_mode((string) $decoded['mode']) : 'image_text';
     $pairsSource = $decoded;
     if (isset($decoded['pairs']) && is_array($decoded['pairs'])) $pairsSource = $decoded['pairs'];
     elseif (isset($decoded['items']) && is_array($decoded['items'])) $pairsSource = $decoded['items'];
@@ -90,13 +100,14 @@ function normalize_match_payload(mixed $rawData): array
             );
         }
     }
-    return array('title' => normalize_match_title($title), 'pairs' => $pairs);
+    return array('title' => normalize_match_title($title), 'mode' => $mode, 'pairs' => $pairs);
 }
 
 function encode_match_payload(array $payload): string
 {
     return json_encode(array(
         'title' => normalize_match_title(isset($payload['title']) ? (string) $payload['title'] : ''),
+        'mode' => normalize_match_mode(isset($payload['mode']) ? (string) $payload['mode'] : 'image_text'),
         'pairs' => isset($payload['pairs']) && is_array($payload['pairs']) ? array_values($payload['pairs']) : array(),
     ), JSON_UNESCAPED_UNICODE);
 }
@@ -110,7 +121,7 @@ function load_match_activity(PDO $pdo, string $unit, string $activityId): array
     if (in_array('title', $columns, true))        $selectFields[] = 'title';
     if (in_array('name', $columns, true))         $selectFields[] = 'name';
 
-    $fallback = array('id' => '', 'title' => default_match_title(), 'pairs' => array());
+    $fallback = array('id' => '', 'title' => default_match_title(), 'mode' => 'image_text', 'pairs' => array());
     $row = null;
 
     if ($activityId !== '') {
@@ -141,15 +152,16 @@ function load_match_activity(PDO $pdo, string $unit, string $activityId): array
     return array(
         'id'    => isset($row['id']) ? (string) $row['id'] : '',
         'title' => normalize_match_title((string) $payload['title']),
+        'mode'  => normalize_match_mode((string) ($payload['mode'] ?? 'image_text')),
         'pairs' => isset($payload['pairs']) && is_array($payload['pairs']) ? $payload['pairs'] : array(),
     );
 }
 
-function save_match_activity(PDO $pdo, string $unit, string $activityId, string $title, array $pairs): string
+function save_match_activity(PDO $pdo, string $unit, string $activityId, string $title, string $mode, array $pairs): string
 {
     $columns = activities_columns($pdo);
     $title   = normalize_match_title($title);
-    $json    = encode_match_payload(array('title' => $title, 'pairs' => $pairs));
+    $json    = encode_match_payload(array('title' => $title, 'mode' => $mode, 'pairs' => $pairs));
 
     $hasUnitId      = in_array('unit_id',      $columns, true);
     $hasUnit        = in_array('unit',          $columns, true);
@@ -211,10 +223,12 @@ if ($unit === '') die('Unit not specified');
 $activity      = load_match_activity($pdo, $unit, $activityId);
 $pairs         = isset($activity['pairs']) && is_array($activity['pairs']) ? $activity['pairs'] : array();
 $activityTitle = isset($activity['title']) ? (string) $activity['title'] : default_match_title();
+$matchMode     = normalize_match_mode((string) ($activity['mode'] ?? 'image_text'));
 if ($activityId === '' && !empty($activity['id'])) $activityId = (string) $activity['id'];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $postedTitle      = trim((string) ($_POST['activity_title']       ?? ''));
+    $postedMode       = normalize_match_mode((string) ($_POST['match_mode'] ?? 'image_text'));
     $leftTexts        = (array) ($_POST['left_text']                  ?? []);
     $rightTexts       = (array) ($_POST['right_text']                 ?? []);
     $leftImages       = (array) ($_POST['left_image_existing']        ?? []);
@@ -253,7 +267,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $sanitized[] = array('id' => $pairId, 'left_text' => $leftText, 'left_image' => $leftImage, 'right_text' => $rightText, 'right_image' => $rightImage);
     }
 
-    $savedId = save_match_activity($pdo, $unit, $activityId, $postedTitle, $sanitized);
+    $savedId = save_match_activity($pdo, $unit, $activityId, $postedTitle, $postedMode, $sanitized);
     $params  = array('unit=' . urlencode($unit), 'saved=1');
     if ($savedId !== '')    $params[] = 'id='         . urlencode($savedId);
     elseif ($activityId !== '') $params[] = 'id='    . urlencode($activityId);
@@ -272,23 +286,38 @@ ob_start();
 .me-title-wrap label{display:block;font-weight:900;font-size:13px;color:#534AB7;margin-bottom:8px;text-transform:uppercase;letter-spacing:.06em;}
 .me-title-wrap input{width:100%;padding:10px 14px;border:1.5px solid #EDE9FA;border-radius:10px;font-size:15px;font-family:'Fredoka',sans-serif;font-weight:500;box-sizing:border-box;color:#271B5D;outline:none;}
 .me-title-wrap input:focus{border-color:#7F77DD;}
+.me-mode-wrap{background:#fff;border:1px solid #EDE9FA;border-radius:16px;padding:14px 20px;margin-bottom:16px;box-shadow:0 2px 10px rgba(127,119,221,.07);}
+.me-mode-wrap label{display:block;font-weight:900;font-size:13px;color:#534AB7;margin-bottom:8px;text-transform:uppercase;letter-spacing:.06em;}
+.me-mode-toggle{display:flex;gap:8px;flex-wrap:wrap;}
+.me-mode-toggle input{display:none;}
+.me-mode-pill{display:inline-flex;align-items:center;justify-content:center;padding:8px 14px;border:1.5px solid #EDE9FA;border-radius:999px;font-size:12px;font-weight:900;color:#534AB7;background:#fff;cursor:pointer;transition:.15s border-color,.15s background,.15s color;}
+.me-mode-toggle input:checked + .me-mode-pill{border-color:#7F77DD;background:#EEEDFE;color:#534AB7;}
 .me-pairs-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;}
-.me-pair{display:flex;align-items:center;gap:10px;background:#fff;border:1px solid #EDE9FA;border-radius:14px;padding:10px 12px;box-shadow:0 2px 8px rgba(127,119,221,.07);}
+.me-pair{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:10px;background:#fff;border:1px solid #EDE9FA;border-radius:14px;padding:10px 12px;box-shadow:0 2px 8px rgba(127,119,221,.07);}
 .me-num{width:28px;height:28px;flex-shrink:0;border-radius:50%;background:#F97316;color:#fff;font-size:12px;font-weight:900;display:flex;align-items:center;justify-content:center;font-family:'Nunito',sans-serif;}
-.me-word-input{flex:1;min-width:0;padding:8px 12px;border:1.5px solid #EDE9FA;border-radius:10px;font-size:14px;font-family:'Fredoka',sans-serif;font-weight:500;color:#271B5D;outline:none;box-sizing:border-box;}
+.me-pair-sides{display:grid;grid-template-columns:1fr 1fr;gap:10px;min-width:0;}
+.me-side{display:grid;grid-template-columns:minmax(0,1fr) 52px;gap:8px;align-items:center;}
+.me-word-input{width:100%;min-width:0;padding:8px 12px;border:1.5px solid #EDE9FA;border-radius:10px;font-size:14px;font-family:'Fredoka',sans-serif;font-weight:500;color:#271B5D;outline:none;box-sizing:border-box;}
 .me-word-input:focus{border-color:#7F77DD;}
 .me-img-box{width:52px;height:52px;flex-shrink:0;border:2px dashed #C4BFEE;border-radius:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;overflow:hidden;background:#FAFAFD;transition:border-color .15s;}
 .me-img-box:hover{border-color:#7F77DD;}
 .me-img-box img,.me-img-box video{width:100%;height:100%;object-fit:cover;display:block;}
 .me-del{width:28px;height:28px;flex-shrink:0;background:transparent;border:1.5px solid #EDE9FA;border-radius:50%;color:#9B94BE;font-size:16px;font-weight:900;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:border-color .15s,color .15s;padding:0;line-height:1;}
 .me-del:hover{border-color:#ef4444;color:#ef4444;}
+.me-pair.me-mode-text_text .me-side-left .me-img-box,
+.me-pair.me-mode-text_text .me-side-right .me-img-box,
+.me-pair.me-mode-image_text .me-side-left .me-img-box,
+.me-pair.me-mode-image_text .me-side-right .me-word-input,
+.me-pair.me-mode-image_image .me-side-left .me-word-input,
+.me-pair.me-mode-image_image .me-side-right .me-word-input{display:none;}
 .me-add-btn{width:100%;padding:14px;border:2px dashed #C4BFEE;border-radius:14px;background:transparent;color:#7F77DD;font-family:'Nunito',sans-serif;font-size:14px;font-weight:900;cursor:pointer;transition:border-color .15s,background .15s;margin-bottom:20px;}
 .me-add-btn:hover{border-color:#7F77DD;background:#FAFAFD;}
 .me-toolbar{display:flex;justify-content:center;margin-top:4px;}
 .me-save-btn{background:linear-gradient(180deg,#7F77DD,#534AB7);color:#fff;padding:12px 28px;border:none;border-radius:999px;cursor:pointer;font-weight:900;font-family:'Nunito',sans-serif;font-size:14px;box-shadow:0 4px 14px rgba(127,119,221,.3);transition:filter .15s,transform .15s;}
 .me-save-btn:hover{filter:brightness(1.07);transform:translateY(-1px);}
 .me-saved{color:#16a34a;font-weight:900;text-align:center;margin-bottom:14px;}
-@media(max-width:640px){.me-pairs-grid{grid-template-columns:1fr;}}
+@media(max-width:880px){.me-pairs-grid{grid-template-columns:1fr;}}
+@media(max-width:640px){.me-pair-sides{grid-template-columns:1fr;}}
 </style>
 
 <?php if (isset($_GET['saved'])): ?>
@@ -304,6 +333,24 @@ ob_start();
                placeholder="e.g. Match the animals" required>
     </div>
 
+    <div class="me-mode-wrap">
+        <label>Pair mode</label>
+        <div class="me-mode-toggle" id="meModeToggle">
+            <label>
+                <input type="radio" name="match_mode" value="text_text" <?= $matchMode === 'text_text' ? 'checked' : '' ?>>
+                <span class="me-mode-pill">Text + Text</span>
+            </label>
+            <label>
+                <input type="radio" name="match_mode" value="image_image" <?= $matchMode === 'image_image' ? 'checked' : '' ?>>
+                <span class="me-mode-pill">Image + Image</span>
+            </label>
+            <label>
+                <input type="radio" name="match_mode" value="image_text" <?= $matchMode === 'image_text' ? 'checked' : '' ?>>
+                <span class="me-mode-pill">Image + Text</span>
+            </label>
+        </div>
+    </div>
+
     <div class="me-pairs-grid" id="mePairs">
         <?php foreach ($pairs as $i => $pair):
             $pId    = htmlspecialchars(isset($pair['id'])          ? $pair['id']          : uniqid('match_'), ENT_QUOTES, 'UTF-8');
@@ -314,27 +361,42 @@ ob_start();
             $riVal  = htmlspecialchars($riRaw, ENT_QUOTES, 'UTF-8');
             $isVid  = (bool) preg_match('/\.(mp4|webm|ogg|mov|m4v)$/i', $riRaw);
         ?>
-        <div class="me-pair">
+        <div class="me-pair me-mode-<?= htmlspecialchars($matchMode, ENT_QUOTES, 'UTF-8') ?>">
             <div class="me-num"><?= $i + 1 ?></div>
             <input type="hidden" name="pair_id[]"             value="<?= $pId ?>">
             <input type="hidden" name="left_image_existing[]" value="<?= $liVal ?>">
             <input type="hidden" name="left_remove_image[]"   value="0">
             <input type="hidden" name="right_image_existing[]" class="me-ri-existing" value="<?= $riVal ?>">
             <input type="hidden" name="right_remove_image[]"  class="me-ri-remove"   value="0">
-            <input type="hidden" name="right_text[]"          class="me-rt"           value="<?= $rtVal ?>">
-            <input type="text"   name="left_text[]"           class="me-word-input"   value="<?= $wVal ?>" placeholder="Word…">
-            <div class="me-img-box" onclick="meOpenFile(this)">
-                <?php if ($riRaw !== ''): ?>
-                    <?php if ($isVid): ?>
-                        <video src="<?= $riVal ?>" autoplay muted loop playsinline></video>
-                    <?php else: ?>
-                        <img src="<?= $riVal ?>" alt="">
-                    <?php endif; ?>
-                <?php else: ?>
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C4BFEE" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-                <?php endif; ?>
+            <div class="me-pair-sides">
+                <div class="me-side me-side-left">
+                    <input type="text" name="left_text[]" class="me-word-input" value="<?= $wVal ?>" placeholder="Left text…">
+                    <div class="me-img-box" onclick="meOpenFile(this)">
+                        <?php if (trim((string) $liVal) !== ''): ?>
+                            <img src="<?= $liVal ?>" alt="">
+                        <?php else: ?>
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C4BFEE" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                        <?php endif; ?>
+                    </div>
+                    <input type="file" name="left_image_file[]" accept="image/*,video/*" class="me-file-in me-file-left" style="display:none">
+                </div>
+
+                <div class="me-side me-side-right">
+                    <input type="text" name="right_text[]" class="me-word-input me-rt" value="<?= $rtVal ?>" placeholder="Right text…">
+                    <div class="me-img-box" onclick="meOpenFile(this)">
+                        <?php if ($riRaw !== ''): ?>
+                            <?php if ($isVid): ?>
+                                <video src="<?= $riVal ?>" autoplay muted loop playsinline></video>
+                            <?php else: ?>
+                                <img src="<?= $riVal ?>" alt="">
+                            <?php endif; ?>
+                        <?php else: ?>
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C4BFEE" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                        <?php endif; ?>
+                    </div>
+                    <input type="file" name="right_image_file[]" accept="image/*,video/*" class="me-file-in me-file-right" style="display:none">
+                </div>
             </div>
-            <input type="file" name="right_image_file[]" accept="image/*,video/*" class="me-file-in" style="display:none">
             <button type="button" class="me-del" onclick="meDel(this)" title="Remove">×</button>
         </div>
         <?php endforeach; ?>
@@ -352,8 +414,23 @@ ob_start();
 let meChanged = false, meSubmitted = false;
 const meMark = () => meChanged = true;
 
+function meCurrentMode() {
+    const checked = document.querySelector('input[name="match_mode"]:checked');
+    return checked ? checked.value : 'image_text';
+}
+
+function meApplyModeToPair(pair, mode) {
+    pair.classList.remove('me-mode-text_text', 'me-mode-image_image', 'me-mode-image_text');
+    pair.classList.add('me-mode-' + mode);
+}
+
+function meApplyModeToAll() {
+    const mode = meCurrentMode();
+    document.querySelectorAll('#mePairs .me-pair').forEach((pair) => meApplyModeToPair(pair, mode));
+}
+
 function meOpenFile(box) {
-    const input = box.parentElement.querySelector('.me-file-in');
+    const input = box.parentElement.querySelector('input[type="file"]');
     if (input) input.click();
 }
 
@@ -373,9 +450,10 @@ function meRenumber() {
 function meAdd() {
     const grid = document.getElementById('mePairs');
     const n    = grid.querySelectorAll('.me-pair').length + 1;
+    const mode = meCurrentMode();
     const id   = 'match_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
     const div  = document.createElement('div');
-    div.className = 'me-pair';
+    div.className = 'me-pair me-mode-' + mode;
     div.innerHTML = `
         <div class="me-num">${n}</div>
         <input type="hidden" name="pair_id[]" value="${id}">
@@ -383,12 +461,22 @@ function meAdd() {
         <input type="hidden" name="left_remove_image[]" value="0">
         <input type="hidden" name="right_image_existing[]" class="me-ri-existing" value="">
         <input type="hidden" name="right_remove_image[]" class="me-ri-remove" value="0">
-        <input type="hidden" name="right_text[]" class="me-rt" value="">
-        <input type="text" name="left_text[]" class="me-word-input" placeholder="Word…">
-        <div class="me-img-box" onclick="meOpenFile(this)">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C4BFEE" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+        <div class="me-pair-sides">
+            <div class="me-side me-side-left">
+                <input type="text" name="left_text[]" class="me-word-input" placeholder="Left text…">
+                <div class="me-img-box" onclick="meOpenFile(this)">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C4BFEE" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                </div>
+                <input type="file" name="left_image_file[]" accept="image/*,video/*" class="me-file-in me-file-left" style="display:none">
+            </div>
+            <div class="me-side me-side-right">
+                <input type="text" name="right_text[]" class="me-word-input me-rt" placeholder="Right text…">
+                <div class="me-img-box" onclick="meOpenFile(this)">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C4BFEE" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                </div>
+                <input type="file" name="right_image_file[]" accept="image/*,video/*" class="me-file-in me-file-right" style="display:none">
+            </div>
         </div>
-        <input type="file" name="right_image_file[]" accept="image/*,video/*" class="me-file-in" style="display:none">
         <button type="button" class="me-del" onclick="meDel(this)" title="Remove">×</button>
     `;
     grid.appendChild(div);
@@ -397,24 +485,46 @@ function meAdd() {
 }
 
 function meBindPair(pair) {
-    const fileIn  = pair.querySelector('.me-file-in');
-    const wordIn  = pair.querySelector('.me-word-input');
-    const rtIn    = pair.querySelector('.me-rt');
-    const imgBox  = pair.querySelector('.me-img-box');
+    const leftFileIn  = pair.querySelector('.me-file-left');
+    const rightFileIn = pair.querySelector('.me-file-right');
+    const leftWordIn  = pair.querySelector('input[name="left_text[]"]');
+    const rightWordIn = pair.querySelector('input[name="right_text[]"]');
+    const leftImgBox  = pair.querySelector('.me-side-left .me-img-box');
+    const rightImgBox = pair.querySelector('.me-side-right .me-img-box');
+    const liExist     = pair.querySelector('input[name="left_image_existing[]"]');
+    const liRem       = pair.querySelector('input[name="left_remove_image[]"]');
     const riExist = pair.querySelector('.me-ri-existing');
     const riRem   = pair.querySelector('.me-ri-remove');
 
-    if (wordIn && rtIn) {
-        wordIn.addEventListener('input', () => { rtIn.value = wordIn.value; meMark(); });
+    if (leftWordIn) {
+        leftWordIn.addEventListener('input', meMark);
+    }
+    if (rightWordIn) {
+        rightWordIn.addEventListener('input', meMark);
     }
 
-    if (fileIn && imgBox) {
-        fileIn.addEventListener('change', () => {
-            const file = fileIn.files && fileIn.files[0];
+    if (leftFileIn && leftImgBox) {
+        leftFileIn.addEventListener('change', () => {
+            const file = leftFileIn.files && leftFileIn.files[0];
             if (!file) return;
             const url  = URL.createObjectURL(file);
             const isVid = file.type.startsWith('video/');
-            imgBox.innerHTML = isVid
+            leftImgBox.innerHTML = isVid
+                ? `<video src="${url}" autoplay muted loop playsinline></video>`
+                : `<img src="${url}" alt="">`;
+            if (liExist) liExist.value = '';
+            if (liRem)   liRem.value   = '0';
+            meMark();
+        });
+    }
+
+    if (rightFileIn && rightImgBox) {
+        rightFileIn.addEventListener('change', () => {
+            const file = rightFileIn.files && rightFileIn.files[0];
+            if (!file) return;
+            const url  = URL.createObjectURL(file);
+            const isVid = file.type.startsWith('video/');
+            rightImgBox.innerHTML = isVid
                 ? `<video src="${url}" autoplay muted loop playsinline></video>`
                 : `<img src="${url}" alt="">`;
             if (riExist) riExist.value = '';
@@ -431,6 +541,13 @@ function meBindPair(pair) {
 
 document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('#mePairs .me-pair').forEach(meBindPair);
+    document.querySelectorAll('input[name="match_mode"]').forEach((input) => {
+        input.addEventListener('change', () => {
+            meApplyModeToAll();
+            meMark();
+        });
+    });
+    meApplyModeToAll();
     const form = document.getElementById('meForm');
     if (form) form.addEventListener('submit', () => { meSubmitted = true; meChanged = false; });
 });
