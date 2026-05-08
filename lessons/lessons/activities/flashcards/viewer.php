@@ -166,34 +166,6 @@ body{
     margin-bottom:18px;
 }
 
-.fc-voice-row{
-    display:flex;
-    align-items:center;
-    justify-content:flex-end;
-    gap:8px;
-    margin-bottom:12px;
-    flex-wrap:wrap;
-}
-
-.fc-voice-label{
-    color:var(--muted);
-    font-size:12px;
-    font-weight:800;
-    text-transform:uppercase;
-    letter-spacing:.05em;
-}
-
-.fc-voice-select{
-    border:1px solid var(--border);
-    border-radius:999px;
-    padding:7px 12px;
-    font-family:'Nunito',sans-serif;
-    font-size:13px;
-    font-weight:800;
-    color:var(--purple);
-    background:#fff;
-}
-
 .fc-track{
     flex:1;
     height:12px;
@@ -451,15 +423,6 @@ body{
                 </div>
             </div>
 
-            <div class="fc-voice-row">
-                <label class="fc-voice-label" for="fc-voice-profile">Voice</label>
-                <select id="fc-voice-profile" class="fc-voice-select">
-                    <option value="male">Adult Male</option>
-                    <option value="female">Adult Female</option>
-                    <option value="child">Child</option>
-                </select>
-            </div>
-
             <div class="fc-card" id="fc-card">
 
                 <div class="fc-inner">
@@ -564,8 +527,6 @@ var countEl = document.getElementById('fc-count');
 
 var completedEl = document.getElementById('fc-completed');
 var boardEl = document.getElementById('fc-board');
-var voiceProfileEl = document.getElementById('fc-voice-profile');
-var selectedVoiceProfile = 'male';
 
 function voiceProfileFromId(voiceId) {
     var id = String(voiceId || '').trim();
@@ -721,7 +682,7 @@ function speakText(text, profile) {
 
     const setVoiceAndSpeak = () => {
         const voices = window.speechSynthesis.getVoices();
-        const selectedVoice = pickVoice(voices, profile || selectedVoiceProfile);
+        const selectedVoice = pickVoice(voices, profile || 'male');
 
         utterance.voice = selectedVoice;
         utterance.rate = 0.88;
@@ -758,7 +719,6 @@ function playAudio(){
     var card2 = getCard();
     var text = getWord(card2);
     var perCardProfile = voiceProfileFromId(card2.voice_id);
-    if (voiceProfileEl) voiceProfileEl.value = perCardProfile;
 
     if(!text) return;
 
@@ -786,13 +746,6 @@ document
 document
 .getElementById('fc-front')
 .addEventListener('click', playAudio);
-
-if (voiceProfileEl) {
-    voiceProfileEl.addEventListener('change', function () {
-        selectedVoiceProfile = this.value || 'male';
-        playAudio();
-    });
-}
 
 renderCard();
 
