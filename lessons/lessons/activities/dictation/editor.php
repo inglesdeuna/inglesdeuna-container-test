@@ -303,15 +303,16 @@ function load_dictation_activity(PDO $pdo, string $unit, string $activityId): ar
     return array(
         'id' => isset($row['id']) ? (string) $row['id'] : '',
         'title' => normalize_activity_title((string) ($payload['title'] ?? '')),
+        'voice_id' => isset($payload['voice_id']) && $payload['voice_id'] !== '' ? (string) $payload['voice_id'] : 'nzFihrBIvB34imQBuxub',
         'items' => isset($payload['items']) && is_array($payload['items']) ? $payload['items'] : array(),
     );
 }
 
-function save_dictation_activity(PDO $pdo, string $unit, string $activityId, string $title, array $items): string
+function save_dictation_activity(PDO $pdo, string $unit, string $activityId, string $title, string $voiceId, array $items): string
 {
     $columns = activities_columns($pdo);
     $title = normalize_activity_title($title);
-    $json = encode_dictation_payload($title, $items);
+    $json = encode_dictation_payload_with_voice($title, $voiceId, $items);
 
     $hasUnitId = in_array('unit_id', $columns, true);
     $hasUnit = in_array('unit', $columns, true);
