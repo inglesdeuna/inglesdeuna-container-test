@@ -198,6 +198,7 @@ body{margin:0!important;padding:0!important;background:#ffffff!important;font-fa
 .pron-card.image-only .pron-word{display:none}
 .pron-card.text-only .pron-image{display:none}
 .pron-card.text-only .pron-placeholder{display:none}
+.pron-card.text-only{justify-content:center}
 .pron-card.text-only .pron-word{font-size:clamp(30px,5.4vw,52px)}
 
 .pron-phonetic{display:none;margin-top:8px;padding:0;color:#4B5563;font-size:17px;font-weight:800;font-family:'Nunito',sans-serif;line-height:1.35}
