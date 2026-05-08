@@ -1093,6 +1093,15 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
+        // Always stop browser TTS to avoid overlapping with ElevenLabs audio.
+        if (window.speechSynthesis) {
+            speechSynthesis.cancel();
+            dictUtter = null;
+            speechOffset = 0;
+            speechSourceText = '';
+            speechSegmentStart = 0;
+        }
+
         // If a pre-generated audio is stored, play it (toggle pause/resume)
         if (data[index].audio) {
             var audioSrc = data[index].audio;
@@ -1189,39 +1198,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (listenBtn) listenBtn.disabled = false;
                 setListenButtonLabel();
             });
-
-        if (!window.speechSynthesis) { return; }
-
-        var text = data[index].en || '';
-        if (!text) { return; }
-
-        if (speechSynthesis.paused || isPaused) {
-            speechSynthesis.resume();
-            isSpeaking = true;
-            isPaused = false;
-            setListenButtonLabel();
-
-            setTimeout(function () {
-                if (!speechSynthesis.speaking && speechOffset < speechSourceText.length) {
-                    dictStartSpeechFromOffset();
-                }
-            }, 80);
-
-            return;
-        }
-
-        if (speechSynthesis.speaking && !speechSynthesis.paused) {
-            speechSynthesis.pause();
-            isSpeaking = true;
-            isPaused = true;
-            setListenButtonLabel();
-            return;
-        }
-
-        speechSynthesis.cancel();
-        speechSourceText = text;
-        speechOffset = 0;
-        dictStartSpeechFromOffset();
     }
 
     function dictStartSpeechFromOffset() {
