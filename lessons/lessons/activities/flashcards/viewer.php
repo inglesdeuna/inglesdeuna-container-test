@@ -166,6 +166,34 @@ body{
     margin-bottom:18px;
 }
 
+.fc-voice-row{
+    display:flex;
+    align-items:center;
+    justify-content:flex-end;
+    gap:8px;
+    margin-bottom:12px;
+    flex-wrap:wrap;
+}
+
+.fc-voice-label{
+    color:var(--muted);
+    font-size:12px;
+    font-weight:800;
+    text-transform:uppercase;
+    letter-spacing:.05em;
+}
+
+.fc-voice-select{
+    border:1px solid var(--border);
+    border-radius:999px;
+    padding:7px 12px;
+    font-family:'Nunito',sans-serif;
+    font-size:13px;
+    font-weight:800;
+    color:var(--purple);
+    background:#fff;
+}
+
 .fc-track{
     flex:1;
     height:12px;
@@ -423,6 +451,15 @@ body{
                 </div>
             </div>
 
+            <div class="fc-voice-row">
+                <label class="fc-voice-label" for="fc-voice-profile">Voice</label>
+                <select id="fc-voice-profile" class="fc-voice-select">
+                    <option value="male">Adult Male</option>
+                    <option value="female">Adult Female</option>
+                    <option value="child">Child</option>
+                </select>
+            </div>
+
             <div class="fc-card" id="fc-card">
 
                 <div class="fc-inner">
@@ -527,6 +564,45 @@ var countEl = document.getElementById('fc-count');
 
 var completedEl = document.getElementById('fc-completed');
 var boardEl = document.getElementById('fc-board');
+var voiceProfileEl = document.getElementById('fc-voice-profile');
+var selectedVoiceProfile = 'male';
+
+function pickVoice(voices, profile) {
+    if (!Array.isArray(voices) || voices.length === 0) return null;
+
+    var profileKeywords = {
+        male: [' male', 'david', 'guy', 'daniel', 'george', 'matthew'],
+        female: [' female', 'zira', 'jenny', 'susan', 'aria', 'sara', 'rachel'],
+        child: ['child', 'kid', 'junior', 'young', 'lily']
+    };
+
+    var keys = profileKeywords[profile] || profileKeywords.male;
+    var best = null;
+    var bestScore = -1;
+
+    for (var i = 0; i < voices.length; i++) {
+        var v = voices[i];
+        var name = String(v.name || '').toLowerCase();
+        var lang = String(v.lang || '').toLowerCase();
+        var score = 0;
+
+        if (lang.indexOf('en') === 0) score += 4;
+        for (var k = 0; k < keys.length; k++) {
+            if (name.indexOf(keys[k]) !== -1) score += 6;
+        }
+
+        if (profile === 'child' && name.indexOf('female') !== -1) score += 1;
+        if (profile === 'male' && name.indexOf('female') !== -1) score -= 3;
+        if (profile === 'female' && name.indexOf('male') !== -1) score -= 3;
+
+        if (score > bestScore) {
+            best = v;
+            bestScore = score;
+        }
+    }
+
+    return best || voices[0] || null;
+}
 
 function getCard(){
     return cards[current] || {};
@@ -634,15 +710,9 @@ function speakText(text) {
 
     const setVoiceAndSpeak = () => {
         const voices = window.speechSynthesis.getVoices();
-        const maleVoice =
-            voices.find(v => v.name.includes("Microsoft David")) ||
-            voices.find(v => v.name.includes("Google UK English Male")) ||
-            voices.find(v => v.name.toLowerCase().includes("male")) ||
-            voices.find(v => v.name.includes("Daniel")) ||
-            voices.find(v => v.lang === "en-US") ||
-            voices[0];
+        const selectedVoice = pickVoice(voices, selectedVoiceProfile);
 
-        utterance.voice = maleVoice;
+        utterance.voice = selectedVoice;
         utterance.rate = 0.88;
         utterance.pitch = 0.95;
         utterance.volume = 1;
@@ -686,6 +756,13 @@ document
 document
 .getElementById('fc-front')
 .addEventListener('click', playAudio);
+
+if (voiceProfileEl) {
+    voiceProfileEl.addEventListener('change', function () {
+        selectedVoiceProfile = this.value || 'male';
+        playAudio();
+    });
+}
 
 renderCard();
 
