@@ -686,6 +686,27 @@ function loRemoveAudio(btn){
     loMark();
 }
 
+function loInvalidateGeneratedAudio(box, reason){
+    if (!box) return;
+
+    var blockItem = box.closest('.block-item');
+    var hidden = blockItem ? blockItem.querySelector('.js-audiourl') : null;
+    var preview = box.querySelector('.tts-preview');
+    var statusEl = box.querySelector('.tts-status');
+
+    if (!hidden || String(hidden.value || '').trim() === '') {
+        return;
+    }
+
+    hidden.value = '';
+    if (preview) preview.remove();
+    if (statusEl) {
+        statusEl.textContent = reason || 'Voice/text changed. Generate audio again.';
+        statusEl.className = 'tts-status';
+    }
+    loMark();
+}
+
 function loGenerateTTS(btn){
     var box = btn.closest('.tts-box');
     if (!box) return;
@@ -799,10 +820,32 @@ document.addEventListener('DOMContentLoaded', function(){
 
     var form = document.getElementById('loForm');
     if (form) {
+        form.addEventListener('input', function(e){
+            loMark();
+
+            var target = e.target;
+            if (!target || !target.matches('.js-sentence')) return;
+
+            var box = target.closest('.tts-box');
+            loInvalidateGeneratedAudio(box, 'Voice/text changed. Generate audio again.');
+        });
+
+        form.addEventListener('change', function(e){
+            loMark();
+
+            var target = e.target;
+            if (!target) return;
+
+            if (target.matches('.js-voiceid')) {
+                var box = target.closest('.tts-box');
+                loInvalidateGeneratedAudio(box, 'Voice/text changed. Generate audio again.');
+            }
+        });
+
         form.addEventListener('submit', function(){
             var blocks = Array.from(document.querySelectorAll('#blocksContainer .block-item'));
             for (var i = 0; i < blocks.length; i++) {
-                var sentenceEl = blocks[i].querySelector('textarea[name="sentence[]"]');
+                var sentenceEl = blocks[i].querySelector('.js-sentence');
                 var audioEl = blocks[i].querySelector('.js-audiourl');
                 var sentence = sentenceEl ? sentenceEl.value.trim() : '';
                 var audioUrl = audioEl ? String(audioEl.value || '').trim() : '';
@@ -816,9 +859,6 @@ document.addEventListener('DOMContentLoaded', function(){
             loSubmitted = true;
             loChanged = false;
         });
-
-        form.addEventListener('input', loMark);
-        form.addEventListener('change', loMark);
     }
 
     if (document.querySelectorAll('#blocksContainer .block-item').length === 0) {
