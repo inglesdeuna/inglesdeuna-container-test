@@ -174,11 +174,12 @@ function normalize_dictation_payload($rawData): array
     );
 }
 
-function encode_dictation_payload(string $title, array $items): string
+function encode_dictation_payload(string $title, string $voiceId, array $items): string
 {
     return json_encode(
         array(
             'title' => normalize_activity_title($title),
+            'voice_id' => $voiceId,
             'items' => array_values($items),
         ),
         JSON_UNESCAPED_UNICODE
@@ -312,7 +313,7 @@ function save_dictation_activity(PDO $pdo, string $unit, string $activityId, str
 {
     $columns = activities_columns($pdo);
     $title = normalize_activity_title($title);
-    $json = encode_dictation_payload_with_voice($title, $voiceId, $items);
+    $json = encode_dictation_payload($title, $voiceId, $items);
 
     $hasUnitId = in_array('unit_id', $columns, true);
     $hasUnit = in_array('unit', $columns, true);
@@ -865,20 +866,7 @@ document.addEventListener('DOMContentLoaded', function () {
     var form = document.getElementById('dictationForm');
     if (form) {
         form.addEventListener('submit', function () {
-
-    function encode_dictation_payload_with_voice(string $title, string $voiceId, array $items): string
-    {
-        return json_encode(
-            array(
-                'title' => normalize_activity_title($title),
-                'voice_id' => $voiceId,
-                'items' => array_values($items),
-            ),
-            JSON_UNESCAPED_UNICODE
-        );
-    }
-
-    function load_dictation_activity
+            formSubmitted = true;
         });
     }
 });
