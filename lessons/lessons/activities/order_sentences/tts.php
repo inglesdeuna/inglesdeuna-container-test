@@ -3,6 +3,18 @@ if (session_status() === PHP_SESSION_NONE) session_start();
 
 header('Content-Type: application/json');
 
+function tts_env(string $key): string
+{
+    $v = $_ENV[$key] ?? getenv($key) ?? ($_SERVER[$key] ?? '');
+    if ((!is_string($v) || trim($v) === '') && function_exists('apache_getenv')) {
+        $ap = apache_getenv($key, true);
+        if (is_string($ap) && trim($ap) !== '') {
+            $v = $ap;
+        }
+    }
+    return is_string($v) ? trim($v) : '';
+}
+
 // Only teachers / admins may generate TTS
 if (
     (empty($_SESSION['academic_logged']) || !$_SESSION['academic_logged']) &&
@@ -41,7 +53,7 @@ if (!preg_match('/^[A-Za-z0-9]+$/', $voiceId)) {
     exit;
 }
 
-$apiKey = trim((string)(getenv('ELEVENLABS_API_KEY') ?: ($_ENV['ELEVENLABS_API_KEY'] ?? '')));
+$apiKey = tts_env('ELEVENLABS_API_KEY');
 if ($apiKey === '') {
     http_response_code(500);
     echo json_encode(['error' => 'ElevenLabs API key not configured. Set the ELEVENLABS_API_KEY environment variable.']);
@@ -87,9 +99,9 @@ if ($curlErr !== '' || $httpCode !== 200 || !is_string($audio) || strlen($audio)
 }
 
 // ── Upload MP3 to Cloudinary (raw resource type) ─────────────────────────────
-$cloudName = trim((string)(getenv('CLOUDINARY_CLOUD_NAME') ?: ($_ENV['CLOUDINARY_CLOUD_NAME'] ?? '')));
-$cloudKey  = trim((string)(getenv('CLOUDINARY_API_KEY')    ?: ($_ENV['CLOUDINARY_API_KEY']    ?? '')));
-$cloudSec  = trim((string)(getenv('CLOUDINARY_API_SECRET') ?: ($_ENV['CLOUDINARY_API_SECRET'] ?? '')));
+$cloudName = tts_env('CLOUDINARY_CLOUD_NAME');
+$cloudKey  = tts_env('CLOUDINARY_API_KEY');
+$cloudSec  = tts_env('CLOUDINARY_API_SECRET');
 
 if ($cloudName === '' || $cloudKey === '' || $cloudSec === '') {
     http_response_code(500);

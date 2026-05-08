@@ -25,10 +25,18 @@ if docker ps -a --format '{{.Names}}' | grep -q "^${APP_NAME}$"; then
 fi
 
 printf '\n[4/5] Levantar contenedor nuevo\n'
+ENV_ARGS=()
+for key in ELEVENLABS_API_KEY CLOUDINARY_CLOUD_NAME CLOUDINARY_API_KEY CLOUDINARY_API_SECRET DATABASE_URL; do
+  if [[ -n "${!key:-}" ]]; then
+    ENV_ARGS+=("-e" "$key=${!key}")
+  fi
+done
+
 docker run -d \
   --name "$APP_NAME" \
   -p "${PORT}:${CONTAINER_PORT}" \
   --restart unless-stopped \
+  "${ENV_ARGS[@]}" \
   "$IMAGE_NAME"
 
 printf '\n[5/5] Estado y acceso\n'
