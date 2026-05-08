@@ -277,6 +277,7 @@ function load_dictation_activity(PDO $pdo, string $activityId, string $unit): ar
     return array(
         'id' => isset($row['id']) ? (string) $row['id'] : '',
         'title' => normalize_activity_title((string) ($payload['title'] ?? '')),
+        'voice_id' => isset($payload['voice_id']) && $payload['voice_id'] !== '' ? (string) $payload['voice_id'] : 'nzFihrBIvB34imQBuxub',
         'items' => isset($payload['items']) && is_array($payload['items']) ? $payload['items'] : array(),
     );
 }
@@ -288,6 +289,7 @@ if ($unit === '' && $activityId !== '') {
 $activity = load_dictation_activity($pdo, $activityId, $unit);
 $items = isset($activity['items']) && is_array($activity['items']) ? $activity['items'] : array();
 $viewerTitle = isset($activity['title']) ? (string) $activity['title'] : default_dictation_title();
+$activityVoiceId = isset($activity['voice_id']) ? (string) $activity['voice_id'] : 'nzFihrBIvB34imQBuxub';
 
 ob_start();
 ?>
@@ -485,36 +487,9 @@ body {
 
 .dict-listen-row {
     display: flex;
-    flex-direction: column;
     align-items: center;
-    gap: 10px;
+    justify-content: center;
     margin-bottom: 16px;
-}
-
-.dict-voice-row {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.dict-voice-label {
-    font-family: 'Nunito', sans-serif;
-    font-size: 12px;
-    font-weight: 900;
-    color: #9B94BE;
-    text-transform: uppercase;
-    letter-spacing: .05em;
-}
-
-.dict-voice-select {
-    border: 1px solid #EDE9FA;
-    border-radius: 999px;
-    background: #fff;
-    color: #534AB7;
-    padding: 7px 12px;
-    font-family: 'Nunito', sans-serif;
-    font-size: 13px;
-    font-weight: 800;
 }
 
 .dict-image {
