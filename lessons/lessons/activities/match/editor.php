@@ -262,7 +262,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         if ($leftText === '' && $leftImage === '' && $rightText === '' && $rightImage === '') continue;
-        if (($leftText === '' && $leftImage === '') || ($rightText === '' && $rightImage === '')) continue;
+
+        if ($postedMode === 'text_text') {
+            if ($leftText === '' || $rightText === '') continue;
+        } elseif ($postedMode === 'image_image') {
+            if ($leftImage === '' || $rightImage === '') continue;
+        } else {
+            if ($leftText === '' || $rightImage === '') continue;
+        }
 
         $sanitized[] = array('id' => $pairId, 'left_text' => $leftText, 'left_image' => $leftImage, 'right_text' => $rightText, 'right_image' => $rightImage);
     }
@@ -304,6 +311,9 @@ ob_start();
 .me-img-box img,.me-img-box video{width:100%;height:100%;object-fit:cover;display:block;}
 .me-del{width:28px;height:28px;flex-shrink:0;background:transparent;border:1.5px solid #EDE9FA;border-radius:50%;color:#9B94BE;font-size:16px;font-weight:900;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:border-color .15s,color .15s;padding:0;line-height:1;}
 .me-del:hover{border-color:#ef4444;color:#ef4444;}
+.me-pair.is-invalid{border-color:#fca5a5;box-shadow:0 0 0 2px rgba(239,68,68,.14);}
+.me-pair.is-invalid .me-word-input,
+.me-pair.is-invalid .me-img-box{border-color:#ef4444!important;}
 .me-pair.me-mode-text_text .me-side-left .me-img-box,
 .me-pair.me-mode-text_text .me-side-right .me-img-box,
 .me-pair.me-mode-image_text .me-side-left .me-img-box,
@@ -312,6 +322,8 @@ ob_start();
 .me-pair.me-mode-image_image .me-side-right .me-word-input{display:none;}
 .me-add-btn{width:100%;padding:14px;border:2px dashed #C4BFEE;border-radius:14px;background:transparent;color:#7F77DD;font-family:'Nunito',sans-serif;font-size:14px;font-weight:900;cursor:pointer;transition:border-color .15s,background .15s;margin-bottom:20px;}
 .me-add-btn:hover{border-color:#7F77DD;background:#FAFAFD;}
+.me-error{display:none;margin:-10px 0 14px;padding:10px 12px;border:1px solid #fecaca;background:#fef2f2;color:#b91c1c;border-radius:10px;font-weight:800;font-size:13px;}
+.me-error.show{display:block;}
 .me-toolbar{display:flex;justify-content:center;margin-top:4px;}
 .me-save-btn{background:linear-gradient(180deg,#7F77DD,#534AB7);color:#fff;padding:12px 28px;border:none;border-radius:999px;cursor:pointer;font-weight:900;font-family:'Nunito',sans-serif;font-size:14px;box-shadow:0 4px 14px rgba(127,119,221,.3);transition:filter .15s,transform .15s;}
 .me-save-btn:hover{filter:brightness(1.07);transform:translateY(-1px);}
@@ -404,6 +416,8 @@ ob_start();
 
     <button type="button" class="me-add-btn" onclick="meAdd()">+ Add pair</button>
 
+    <div id="meError" class="me-error" role="alert" aria-live="polite"></div>
+
     <div class="me-toolbar">
         <button type="submit" class="me-save-btn">💾 Save</button>
     </div>
@@ -413,6 +427,20 @@ ob_start();
 <script>
 let meChanged = false, meSubmitted = false;
 const meMark = () => meChanged = true;
+
+function meShowError(message) {
+    const box = document.getElementById('meError');
+    if (!box) return;
+    box.textContent = message || '';
+    box.classList.toggle('show', !!message);
+}
+
+function meClearValidationUI() {
+    document.querySelectorAll('#mePairs .me-pair.is-invalid').forEach((pair) => {
+        pair.classList.remove('is-invalid');
+    });
+    meShowError('');
+}
 
 function meCurrentMode() {
     const checked = document.querySelector('input[name="match_mode"]:checked');
@@ -427,6 +455,69 @@ function meApplyModeToPair(pair, mode) {
 function meApplyModeToAll() {
     const mode = meCurrentMode();
     document.querySelectorAll('#mePairs .me-pair').forEach((pair) => meApplyModeToPair(pair, mode));
+    meClearValidationUI();
+}
+
+function mePairHasImage(pair, side) {
+    const existing = pair.querySelector(side === 'left' ? 'input[name="left_image_existing[]"]' : 'input[name="right_image_existing[]"]');
+    const remove = pair.querySelector(side === 'left' ? 'input[name="left_remove_image[]"]' : 'input[name="right_remove_image[]"]');
+    const file = pair.querySelector(side === 'left' ? '.me-file-left' : '.me-file-right');
+
+    const existingVal = existing ? String(existing.value || '').trim() : '';
+    const removeVal = remove ? String(remove.value || '').trim() : '0';
+    const hasFile = !!(file && file.files && file.files.length > 0);
+
+    if (hasFile) return true;
+    return existingVal !== '' && removeVal !== '1';
+}
+
+function meValidateBeforeSubmit() {
+    const mode = meCurrentMode();
+    const rows = Array.from(document.querySelectorAll('#mePairs .me-pair'));
+    let invalidCount = 0;
+    let validCount = 0;
+
+    meClearValidationUI();
+
+    rows.forEach((pair) => {
+        const leftTextEl = pair.querySelector('input[name="left_text[]"]');
+        const rightTextEl = pair.querySelector('input[name="right_text[]"]');
+        const leftText = leftTextEl ? String(leftTextEl.value || '').trim() : '';
+        const rightText = rightTextEl ? String(rightTextEl.value || '').trim() : '';
+        const hasLeftImage = mePairHasImage(pair, 'left');
+        const hasRightImage = mePairHasImage(pair, 'right');
+
+        const emptyRow = leftText === '' && rightText === '' && !hasLeftImage && !hasRightImage;
+        if (emptyRow) return;
+
+        let rowValid = false;
+        if (mode === 'text_text') {
+            rowValid = leftText !== '' && rightText !== '';
+        } else if (mode === 'image_image') {
+            rowValid = hasLeftImage && hasRightImage;
+        } else {
+            rowValid = leftText !== '' && hasRightImage;
+        }
+
+        if (!rowValid) {
+            invalidCount += 1;
+            pair.classList.add('is-invalid');
+        } else {
+            validCount += 1;
+        }
+    });
+
+    if (invalidCount > 0) {
+        meShowError('Fix ' + invalidCount + ' invalid pair(s) before saving.');
+        return false;
+    }
+
+    if (validCount === 0) {
+        meShowError('Add at least 1 valid pair before saving.');
+        return false;
+    }
+
+    return true;
 }
 
 function meOpenFile(box) {
@@ -437,6 +528,7 @@ function meOpenFile(box) {
 function meDel(btn) {
     btn.closest('.me-pair').remove();
     meRenumber();
+    meClearValidationUI();
     meMark();
 }
 
@@ -481,6 +573,7 @@ function meAdd() {
     `;
     grid.appendChild(div);
     meBindPair(div);
+    meClearValidationUI();
     meMark();
 }
 
@@ -534,8 +627,14 @@ function meBindPair(pair) {
     }
 
     pair.querySelectorAll('input[type=text],input[type=hidden]').forEach(el => {
-        el.addEventListener('input', meMark);
-        el.addEventListener('change', meMark);
+        el.addEventListener('input', () => {
+            meClearValidationUI();
+            meMark();
+        });
+        el.addEventListener('change', () => {
+            meClearValidationUI();
+            meMark();
+        });
     });
 }
 
@@ -549,7 +648,16 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     meApplyModeToAll();
     const form = document.getElementById('meForm');
-    if (form) form.addEventListener('submit', () => { meSubmitted = true; meChanged = false; });
+    if (form) {
+        form.addEventListener('submit', (e) => {
+            if (!meValidateBeforeSubmit()) {
+                e.preventDefault();
+                return;
+            }
+            meSubmitted = true;
+            meChanged = false;
+        });
+    }
 });
 
 window.addEventListener('beforeunload', e => {
