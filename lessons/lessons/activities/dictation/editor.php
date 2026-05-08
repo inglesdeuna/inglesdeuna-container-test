@@ -458,6 +458,7 @@ if ($unit === '') {
 $activity = load_dictation_activity($pdo, $unit, $activityId);
 $items = isset($activity['items']) && is_array($activity['items']) ? $activity['items'] : array();
 $activityTitle = isset($activity['title']) ? (string) $activity['title'] : default_dictation_title();
+$activityVoiceId = isset($activity['voice_id']) ? (string) $activity['voice_id'] : 'nzFihrBIvB34imQBuxub';
 
 if ($activityId === '' && !empty($activity['id'])) {
     $activityId = (string) $activity['id'];
@@ -465,6 +466,10 @@ if ($activityId === '' && !empty($activity['id'])) {
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $postedTitle = isset($_POST['activity_title']) ? trim((string) $_POST['activity_title']) : '';
+    $allowedVoices = array('nzFihrBIvB34imQBuxub', 'NoOVOzCQFLOvtsMoNcdT', 'Nggzl2QAXh3OijoXD116');
+    $postedVoiceId = isset($_POST['voice_id']) && in_array(trim((string) $_POST['voice_id']), $allowedVoices, true)
+        ? trim((string) $_POST['voice_id'])
+        : 'nzFihrBIvB34imQBuxub';
     $ens = isset($_POST['en']) && is_array($_POST['en']) ? $_POST['en'] : array();
     $phs = isset($_POST['ph']) && is_array($_POST['ph']) ? $_POST['ph'] : array();
     $ess = isset($_POST['es']) && is_array($_POST['es']) ? $_POST['es'] : array();
@@ -509,7 +514,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         );
     }
 
-    $savedActivityId = save_dictation_activity($pdo, $unit, $activityId, $postedTitle, $sanitized);
+    $savedActivityId = save_dictation_activity($pdo, $unit, $activityId, $postedTitle, $postedVoiceId, $sanitized);
 
     $redirectParams = array(
         'unit=' . urlencode($unit),
@@ -748,6 +753,15 @@ ob_start();
             placeholder="Example: Basic Sentences"
             required
         >
+    </div>
+
+    <div class="title-box">
+        <label for="voice_id">Voice for students</label>
+        <select id="voice_id" name="voice_id">
+            <option value="nzFihrBIvB34imQBuxub"<?php echo $activityVoiceId === 'nzFihrBIvB34imQBuxub' ? ' selected' : ''; ?>>Adult Male (Josh)</option>
+            <option value="NoOVOzCQFLOvtsMoNcdT"<?php echo $activityVoiceId === 'NoOVOzCQFLOvtsMoNcdT' ? ' selected' : ''; ?>>Adult Female (Lily)</option>
+            <option value="Nggzl2QAXh3OijoXD116"<?php echo $activityVoiceId === 'Nggzl2QAXh3OijoXD116' ? ' selected' : ''; ?>>Child (Candy)</option>
+        </select>
     </div>
 
     <div id="items">
