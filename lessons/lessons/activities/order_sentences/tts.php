@@ -78,7 +78,7 @@ if (!preg_match('/^[A-Za-z0-9]+$/', $voiceId)) {
 $apiKey = tts_env('ELEVENLABS_API_KEY');
 if ($apiKey === '') {
     http_response_code(500);
-    echo json_encode(['error' => 'ElevenLabs API key not configured. Set the ELEVENLABS_API_KEY environment variable.']);
+    echo json_encode(['error' => 'ElevenLabs API key not configured. Set ELEVENLABS_API_KEY in server env or project .env file.']);
     exit;
 }
 
