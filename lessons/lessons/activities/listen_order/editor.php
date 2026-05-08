@@ -78,8 +78,8 @@ function lo_normalize(mixed $raw): array {
         }
 
         $audioUrl = trim((string)($b["audio_url"] ?? ""));
-        $voiceId  = trim((string)($b["voice_id"]  ?? "JBFqnCBsd6RMkjVDRZzb"));
-        if ($voiceId === "") $voiceId = "JBFqnCBsd6RMkjVDRZzb";
+        $voiceId  = trim((string)($b["voice_id"]  ?? "nzFihrBIvB34imQBuxub"));
+        if ($voiceId === "") $voiceId = "nzFihrBIvB34imQBuxub";
 
         if ($sentence === "" && $videoUrl === "" && empty($images)) continue;
 
@@ -391,9 +391,9 @@ body{background:#f8f7ff!important;font-family:'Nunito',sans-serif!important}
                 <div class="tts-row">
                     <input type="text" name="sentence[]" class="js-sentence" value="<?= htmlspecialchars($bSentence, ENT_QUOTES, 'UTF-8') ?>" placeholder="Type the sentence students will hear…">
                     <select name="voice_id[]" class="js-voiceid tts-voice">
-                        <option value="JBFqnCBsd6RMkjVDRZzb"<?= ($block["voice_id"]??"JBFqnCBsd6RMkjVDRZzb")==="JBFqnCBsd6RMkjVDRZzb"?" selected":"" ?>>👨 Adult Male (George)</option>
-                        <option value="21m00Tcm4TlvDq8ikWAM"<?= ($block["voice_id"]??"")==="21m00Tcm4TlvDq8ikWAM"?" selected":"" ?>>👩 Adult Female (Rachel)</option>
-                        <option value="pFZP5JQG7iQjIQuC4Bku"<?= ($block["voice_id"]??"")==="pFZP5JQG7iQjIQuC4Bku"?" selected":"" ?>>🧒 Child (Lily)</option>
+                        <option value="nzFihrBIvB34imQBuxub"<?= ($block["voice_id"]??"nzFihrBIvB34imQBuxub")==="nzFihrBIvB34imQBuxub"?" selected":"" ?>>👨 Adult Male (Josh)</option>
+                        <option value="NoOVOzCQFLOvtsMoNcdT"<?= ($block["voice_id"]??"")==="NoOVOzCQFLOvtsMoNcdT"?" selected":"" ?>>👩 Adult Female (Lily)</option>
+                        <option value="Nggzl2QAXh3OijoXD116"<?= ($block["voice_id"]??"")==="Nggzl2QAXh3OijoXD116"?" selected":"" ?>>🧒 Child (Candy)</option>
                     </select>
                     <button type="button" class="btn-tts" onclick="loGenerateTTS(this)">🔊 Generate audio</button>
                 </div>
@@ -693,7 +693,7 @@ function loGenerateTTS(btn){
     var text = sentenceInput ? sentenceInput.value.trim() : '';
     if (!text) { alert('Please enter a sentence first.'); return; }
     var voiceSelect = box.querySelector('.js-voiceid');
-    var voiceId = voiceSelect ? voiceSelect.value : 'JBFqnCBsd6RMkjVDRZzb';
+    var voiceId = voiceSelect ? voiceSelect.value : 'nzFihrBIvB34imQBuxub';
     var statusEl  = box.querySelector('.tts-status');
     var blockItem = btn.closest('.block-item');
     var audioHidden = blockItem ? blockItem.querySelector('.js-audiourl') : null;
