@@ -478,8 +478,36 @@ body {
 
 .dict-listen-row {
     display: flex;
-    justify-content: center;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
     margin-bottom: 16px;
+}
+
+.dict-voice-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.dict-voice-label {
+    font-family: 'Nunito', sans-serif;
+    font-size: 12px;
+    font-weight: 900;
+    color: #9B94BE;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+}
+
+.dict-voice-select {
+    border: 1px solid #EDE9FA;
+    border-radius: 999px;
+    background: #fff;
+    color: #534AB7;
+    padding: 7px 12px;
+    font-family: 'Nunito', sans-serif;
+    font-size: 13px;
+    font-weight: 800;
 }
 
 .dict-image {
@@ -879,6 +907,14 @@ body {
             <div class="dict-card" id="dict-card">
                 <div class="dict-listen-row" id="dict-listen-row">
                     <button type="button" class="dict-btn dict-btn-listen" id="dict-listen">Listen</button>
+                    <div class="dict-voice-row">
+                        <label class="dict-voice-label" for="dict-voice-select">Voice</label>
+                        <select id="dict-voice-select" class="dict-voice-select">
+                            <option value="nzFihrBIvB34imQBuxub">Adult Male (Josh)</option>
+                            <option value="NoOVOzCQFLOvtsMoNcdT">Adult Female (Lily)</option>
+                            <option value="Nggzl2QAXh3OijoXD116">Child (Candy)</option>
+                        </select>
+                    </div>
                 </div>
 
                 <div class="dict-prompt" id="dict-prompt"></div>
@@ -967,6 +1003,8 @@ document.addEventListener('DOMContentLoaded', function () {
     var speechSegmentStart = 0;
     var dictUtter = null;
     var dictCurrentAudio = null;
+    var dictVoiceSelect = document.getElementById('dict-voice-select');
+    var DICT_TTS_URL = 'tts.php';
 
     if (completedTitleEl) {
         completedTitleEl.textContent = activityTitle || 'Dictation';
@@ -1081,6 +1119,7 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
+        // If a pre-generated audio is stored, play it (toggle pause/resume)
         if (data[index].audio) {
             var audioSrc = data[index].audio;
             if (!dictCurrentAudio || dictCurrentAudio.getAttribute('data-src') !== audioSrc) {
@@ -1110,6 +1149,72 @@ document.addEventListener('DOMContentLoaded', function () {
             setListenButtonLabel();
             return;
         }
+
+        // Toggle pause/resume on ElevenLabs audio if already loaded
+        if (dictCurrentAudio && dictCurrentAudio.getAttribute('data-tts') === '1') {
+            if (!dictCurrentAudio.paused) {
+                dictCurrentAudio.pause();
+                isSpeaking = true;
+                isPaused = true;
+                setListenButtonLabel();
+            } else {
+                dictCurrentAudio.play().then(function () {
+                    isSpeaking = true;
+                    isPaused = false;
+                    setListenButtonLabel();
+                }).catch(function () {});
+            }
+            return;
+        }
+
+        // Call ElevenLabs TTS endpoint
+        var text = data[index].en || '';
+        if (!text) { return; }
+        var voiceId = dictVoiceSelect ? dictVoiceSelect.value : 'nzFihrBIvB34imQBuxub';
+
+        isSpeaking = true;
+        isPaused = false;
+        if (listenBtn) listenBtn.textContent = '...';
+        if (listenBtn) listenBtn.disabled = true;
+
+        var fd = new FormData();
+        fd.append('text', text);
+        fd.append('voice_id', voiceId);
+
+        fetch(DICT_TTS_URL, { method: 'POST', body: fd, credentials: 'same-origin' })
+            .then(function (res) {
+                if (!res.ok) { throw new Error('TTS error ' + res.status); }
+                return res.blob();
+            })
+            .then(function (blob) {
+                var url = URL.createObjectURL(blob);
+                if (dictCurrentAudio) { dictCurrentAudio.pause(); }
+                dictCurrentAudio = new Audio(url);
+                dictCurrentAudio.setAttribute('data-tts', '1');
+                dictCurrentAudio.onended = function () {
+                    URL.revokeObjectURL(url);
+                    dictCurrentAudio = null;
+                    isSpeaking = false;
+                    isPaused = false;
+                    setListenButtonLabel();
+                };
+                if (listenBtn) listenBtn.disabled = false;
+                dictCurrentAudio.play().then(function () {
+                    isSpeaking = true;
+                    isPaused = false;
+                    setListenButtonLabel();
+                }).catch(function () {
+                    isSpeaking = false;
+                    isPaused = false;
+                    setListenButtonLabel();
+                });
+            })
+            .catch(function () {
+                isSpeaking = false;
+                isPaused = false;
+                if (listenBtn) listenBtn.disabled = false;
+                setListenButtonLabel();
+            });
 
         if (!window.speechSynthesis) { return; }
 
@@ -1261,6 +1366,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
         if (dictCurrentAudio) {
             dictCurrentAudio.pause();
+            if (dictCurrentAudio.getAttribute('data-tts') === '1') {
+                try { URL.revokeObjectURL(dictCurrentAudio.src); } catch (e) {}
+            }
             dictCurrentAudio = null;
         }
 
