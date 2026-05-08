@@ -78,7 +78,7 @@ function normalize_flashcards_payload($rawData): array
             'spanish_text' => isset($item['spanish_text']) ? trim((string) $item['spanish_text']) : '',
             'text'         => isset($item['text'])         ? trim((string) $item['text'])         : '',
             'image'        => isset($item['image'])        ? trim((string) $item['image'])        : '',
-            'voice_id'     => isset($item['voice_id'])     ? trim((string) $item['voice_id'])     : 'JBFqnCBsd6RMkjVDRZzb',
+            'voice_id'     => isset($item['voice_id'])     ? trim((string) $item['voice_id'])     : 'nzFihrBIvB34imQBuxub',
             'audio'        => isset($item['audio'])        ? trim((string) $item['audio'])        : '',
         );
     }
@@ -899,8 +899,8 @@ bind('fc-premium-listen', 'click', function(){
         else window.__fcPremiumAudio.play().catch(function(){});
         return;
     }
-    var vid = String(card.voice_id || 'JBFqnCBsd6RMkjVDRZzb');
-    var prof = vid === 'EXAVITQu4vr4xnSDxMaL' ? 'female' : (vid === 'pFZP5JQG7iQjIQuC4Bku' ? 'child' : 'male');
+    var vid = String(card.voice_id || 'nzFihrBIvB34imQBuxub');
+    var prof = vid === 'NoOVOzCQFLOvtsMoNcdT' ? 'female' : (vid === 'Nggzl2QAXh3OijoXD116' ? 'child' : 'male');
     TTS.setProfile(prof);
     var voiceSelect = document.getElementById('fc-premium-voice');
     if (voiceSelect) voiceSelect.value = prof;

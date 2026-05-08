@@ -144,7 +144,7 @@ function normalize_flashcards_payload($rawData): array
                 'spanish_text' => isset($item['spanish_text']) ? trim((string) $item['spanish_text']) : '',
                 'text' => isset($item['text']) ? trim((string) $item['text']) : '',
                 'image' => isset($item['image']) ? trim((string) $item['image']) : '',
-                'voice_id' => isset($item['voice_id']) ? trim((string) $item['voice_id']) : 'JBFqnCBsd6RMkjVDRZzb',
+                'voice_id' => isset($item['voice_id']) ? trim((string) $item['voice_id']) : 'nzFihrBIvB34imQBuxub',
                 'audio' => isset($item['audio']) ? trim((string) $item['audio']) : '',
             );
         }
@@ -435,8 +435,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $text = trim((string) $textRaw);
         $image = isset($images[$i]) ? trim((string) $images[$i]) : '';
         $audio = isset($audios[$i]) ? trim((string) $audios[$i]) : '';
-        $voiceId = isset($voiceIds[$i]) ? trim((string) $voiceIds[$i]) : 'JBFqnCBsd6RMkjVDRZzb';
-        if ($voiceId === '' || !preg_match('/^[A-Za-z0-9]+$/', $voiceId)) $voiceId = 'JBFqnCBsd6RMkjVDRZzb';
+        $voiceId = isset($voiceIds[$i]) ? trim((string) $voiceIds[$i]) : 'nzFihrBIvB34imQBuxub';
+        if ($voiceId === '' || !preg_match('/^[A-Za-z0-9]+$/', $voiceId)) $voiceId = 'nzFihrBIvB34imQBuxub';
         $cardId = isset($ids[$i]) && trim((string) $ids[$i]) !== '' ? trim((string) $ids[$i]) : uniqid('flashcard_');
 
         if (
@@ -640,9 +640,9 @@ ob_start();
                     <div>
                         <label>Voice</label>
                         <select name="voice_id[]" class="js-fc-voiceid">
-                            <option value="JBFqnCBsd6RMkjVDRZzb"<?= ((isset($card['voice_id']) ? $card['voice_id'] : 'JBFqnCBsd6RMkjVDRZzb') === 'JBFqnCBsd6RMkjVDRZzb') ? ' selected' : '' ?>>Adult Male (George)</option>
-                            <option value="EXAVITQu4vr4xnSDxMaL"<?= ((isset($card['voice_id']) ? $card['voice_id'] : '') === 'EXAVITQu4vr4xnSDxMaL') ? ' selected' : '' ?>>Adult Female (Sarah)</option>
-                            <option value="pFZP5JQG7iQjIQuC4Bku"<?= ((isset($card['voice_id']) ? $card['voice_id'] : '') === 'pFZP5JQG7iQjIQuC4Bku') ? ' selected' : '' ?>>Child (Lily)</option>
+                            <option value="nzFihrBIvB34imQBuxub"<?= ((isset($card['voice_id']) ? $card['voice_id'] : 'nzFihrBIvB34imQBuxub') === 'nzFihrBIvB34imQBuxub') ? ' selected' : '' ?>>Adult Male (Josh)</option>
+                            <option value="NoOVOzCQFLOvtsMoNcdT"<?= ((isset($card['voice_id']) ? $card['voice_id'] : '') === 'NoOVOzCQFLOvtsMoNcdT') ? ' selected' : '' ?>>Adult Female (Lily)</option>
+                            <option value="Nggzl2QAXh3OijoXD116"<?= ((isset($card['voice_id']) ? $card['voice_id'] : '') === 'Nggzl2QAXh3OijoXD116') ? ' selected' : '' ?>>Child (Candy)</option>
                         </select>
                     </div>
                     <button type="button" class="fc-tts-btn js-fc-generate-tts">Generate audio</button>
@@ -716,9 +716,9 @@ function addCard() {
             <div>
                 <label>Voice</label>
                 <select name="voice_id[]" class="js-fc-voiceid">
-                    <option value="JBFqnCBsd6RMkjVDRZzb">Adult Male (George)</option>
-                    <option value="EXAVITQu4vr4xnSDxMaL">Adult Female (Sarah)</option>
-                    <option value="pFZP5JQG7iQjIQuC4Bku">Child (Lily)</option>
+                    <option value="nzFihrBIvB34imQBuxub">Adult Male (Josh)</option>
+                    <option value="NoOVOzCQFLOvtsMoNcdT">Adult Female (Lily)</option>
+                    <option value="Nggzl2QAXh3OijoXD116">Child (Candy)</option>
                 </select>
             </div>
             <button type="button" class="fc-tts-btn js-fc-generate-tts">Generate audio</button>
@@ -773,7 +773,7 @@ document.addEventListener('DOMContentLoaded', function () {
             if (statusEl) { statusEl.textContent = 'Generating...'; statusEl.style.color = ''; }
             var fd = new FormData();
             fd.append('text', text);
-            fd.append('voice_id', voiceSelect ? voiceSelect.value : 'JBFqnCBsd6RMkjVDRZzb');
+            fd.append('voice_id', voiceSelect ? voiceSelect.value : 'nzFihrBIvB34imQBuxub');
             fetch('tts.php', { method: 'POST', body: fd, credentials: 'same-origin' })
                 .then(function (r) { return r.json(); })
                 .then(function (data) {

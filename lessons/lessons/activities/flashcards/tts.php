@@ -74,7 +74,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 }
 
 $text = trim((string) ($_POST['text'] ?? ''));
-$voiceId = trim((string) ($_POST['voice_id'] ?? 'JBFqnCBsd6RMkjVDRZzb'));
+$voiceId = trim((string) ($_POST['voice_id'] ?? 'nzFihrBIvB34imQBuxub'));
 
 if ($text === '') {
     http_response_code(400);

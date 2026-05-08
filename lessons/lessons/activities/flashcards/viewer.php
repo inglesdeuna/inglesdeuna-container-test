@@ -569,8 +569,8 @@ var selectedVoiceProfile = 'male';
 
 function voiceProfileFromId(voiceId) {
     var id = String(voiceId || '').trim();
-    if (id === 'EXAVITQu4vr4xnSDxMaL') return 'female';
-    if (id === 'pFZP5JQG7iQjIQuC4Bku') return 'child';
+    if (id === 'NoOVOzCQFLOvtsMoNcdT') return 'female';
+    if (id === 'Nggzl2QAXh3OijoXD116') return 'child';
     return 'male';
 }
 
