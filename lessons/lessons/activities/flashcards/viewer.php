@@ -499,7 +499,7 @@ body{
             <div class="fc-actions">
 
                 <button class="fc-btn fc-btn-purple" id="fc-repeat">
-                    Repeat
+                    Listen
                 </button>
 
                 <button class="fc-btn fc-btn-purple" id="fc-flip">
