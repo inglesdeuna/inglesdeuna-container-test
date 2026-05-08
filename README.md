@@ -36,3 +36,20 @@ El error `database "inglesdeuna" does not exist` aparece cuando se corre `GRANT`
 ```bash
 DATABASE_URL=postgres://inglesdeuna_user:cambia_esta_clave@localhost:5432/inglesdeuna
 ```
+
+## Variables para TTS (ElevenLabs + Cloudinary)
+
+Para generar audio desde actividades como listen_order, fillblank y order_sentences, define estas variables antes de desplegar:
+
+```bash
+export ELEVENLABS_API_KEY="tu_api_key_de_elevenlabs"
+export CLOUDINARY_CLOUD_NAME="tu_cloud_name"
+export CLOUDINARY_API_KEY="tu_cloudinary_api_key"
+export CLOUDINARY_API_SECRET="tu_cloudinary_api_secret"
+export DATABASE_URL="postgres://inglesdeuna_user:cambia_esta_clave@localhost:5432/inglesdeuna"
+
+bash scripts/deploy_docker.sh
+```
+
+Si no exportas `ELEVENLABS_API_KEY`, el generador mostrara:
+`ElevenLabs API key not configured. Set the ELEVENLABS_API_KEY environment variable.`
