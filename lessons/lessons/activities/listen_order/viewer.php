@@ -183,7 +183,6 @@ body{margin:0!important;padding:0!important;background:#fff!important;font-famil
         <div id="lo-feedback"></div>
 
         <div class="lo-actions" id="lo-actions">
-            <button type="button" class="lo-btn lo-btn-reset" id="lo-btn-reset">Reset</button>
             <button type="button" class="lo-btn lo-btn-show"  id="lo-btn-show">Show Answer</button>
             <button type="button" class="lo-btn lo-btn-check" id="lo-btn-check">Check</button>
             <button type="button" class="lo-btn lo-btn-next"  id="lo-btn-next">Next</button>
