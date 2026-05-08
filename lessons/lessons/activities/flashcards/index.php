@@ -265,6 +265,35 @@ ob_start();
     box-shadow:0 8px 18px rgba(127,119,221,.22);
 }
 
+.fc-premium-voice-row{
+    display:flex;
+    justify-content:flex-end;
+    align-items:center;
+    gap:8px;
+    margin-top:-6px;
+    margin-bottom:12px;
+    flex-wrap:wrap;
+}
+
+.fc-premium-voice-label{
+    color:#9B94BE;
+    font-size:12px;
+    font-weight:900;
+    text-transform:uppercase;
+    letter-spacing:.05em;
+}
+
+.fc-premium-voice-select{
+    border:1px solid #E4E1F8;
+    border-radius:999px;
+    background:#fff;
+    color:#534AB7;
+    padding:7px 12px;
+    font-family:'Nunito',sans-serif;
+    font-size:13px;
+    font-weight:800;
+}
+
 .fc-premium-card-wrap{
     position:relative;
     display:grid;
@@ -556,6 +585,15 @@ ob_start();
                 <div class="fc-premium-progress-count" id="fc-premium-progress-count">1 / <?php echo count($data); ?></div>
             </div>
 
+            <div class="fc-premium-voice-row">
+                <label class="fc-premium-voice-label" for="fc-premium-voice">Voice</label>
+                <select id="fc-premium-voice" class="fc-premium-voice-select">
+                    <option value="male">Adult Male</option>
+                    <option value="female">Adult Female</option>
+                    <option value="child">Child</option>
+                </select>
+            </div>
+
             <div class="fc-premium-card-wrap">
                 <button type="button" class="fc-premium-arrow fc-premium-arrow-left" id="fc-premium-prev-arrow" aria-label="Previous card">&#8249;</button>
 
@@ -630,7 +668,12 @@ var els = {
 };
 
 var TTS = (function(){
-    var preferred = ['zira','samantha','karen','aria','jenny','emma','ava','siri','google us english','female','woman'];
+    var profile = 'male';
+    var preferredByProfile = {
+        male: ['microsoft david', 'google uk english male', 'male', 'daniel', 'george', 'matthew'],
+        female: ['zira', 'samantha', 'karen', 'aria', 'jenny', 'emma', 'ava', 'siri', 'female', 'woman'],
+        child: ['child', 'kid', 'junior', 'young', 'lily']
+    };
     var cache = null;
     var attempts = 0;
 
@@ -656,6 +699,7 @@ var TTS = (function(){
 
     function pick(voices){
         if (!voices || !voices.length) return null;
+        var preferred = preferredByProfile[profile] || preferredByProfile.male;
         var pool = [];
         voices.forEach(function(v){
             var lang = String(v.lang || '').toLowerCase();
@@ -690,8 +734,13 @@ var TTS = (function(){
         else load(run);
     }
 
+    function setProfile(nextProfile){
+        if (!preferredByProfile[nextProfile]) return;
+        profile = nextProfile;
+    }
+
     if (window.speechSynthesis) load(function(){});
-    return { speak: speak };
+    return { speak: speak, setProfile: setProfile };
 })();
 
 function getWord(card){
@@ -836,6 +885,12 @@ bind('fc-premium-prev', 'click', prevCard);
 bind('fc-premium-next', 'click', nextCard);
 bind('fc-premium-restart', 'click', restart);
 bind('fc-premium-listen', 'click', function(){
+    TTS.speak(getWord(CARDS[idx] || {}));
+});
+
+bind('fc-premium-voice', 'change', function(e){
+    var profile = e && e.target ? String(e.target.value || 'male') : 'male';
+    TTS.setProfile(profile);
     TTS.speak(getWord(CARDS[idx] || {}));
 });
 
