@@ -56,3 +56,14 @@ Si no exportas `ELEVENLABS_API_KEY`, el generador mostrara:
 
 Tambien puedes crear un archivo `.env` en la raiz del proyecto con esas mismas variables.
 El script `scripts/deploy_docker.sh` lo carga automaticamente si existe.
+
+### Diagnostico rapido en navegador
+
+Con sesion de admin iniciada, abre:
+
+- `lessons/lessons/academic/env_health.php`
+
+Muestra el estado `present`/`missing` para variables requeridas sin exponer valores secretos.
+Version JSON:
+
+- `lessons/lessons/academic/env_health.php?format=json`
