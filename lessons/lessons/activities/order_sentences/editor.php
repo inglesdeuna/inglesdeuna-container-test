@@ -859,6 +859,66 @@ document.getElementById('osSentencesForm').addEventListener('submit', function (
         el.disabled = true;
     });
 });
+
+// ── ElevenLabs TTS for order_sentences ───────────────────────────────────────
+(function () {
+    var panel = document.getElementById('ms-tts');
+    if (!panel) return;
+
+    var generateBtn = panel.querySelector('.js-os-generate-tts');
+    if (generateBtn) {
+        generateBtn.addEventListener('click', function () {
+            var textarea = panel.querySelector('textarea[name="tts_text"]');
+            var text = textarea ? textarea.value.trim() : '';
+            if (!text) { alert('Please enter TTS text first.'); return; }
+            var voiceSelect = panel.querySelector('.js-os-voiceid');
+            var voiceId = voiceSelect ? voiceSelect.value : 'JBFqnCBsd6RMkjVDRZzb';
+            var statusEl = panel.querySelector('.js-os-tts-status');
+            var audioHidden = panel.querySelector('.js-os-audiourl');
+
+            generateBtn.disabled = true;
+            if (statusEl) { statusEl.textContent = 'Generating…'; statusEl.style.color = ''; }
+
+            var fd = new FormData();
+            fd.append('text', text);
+            fd.append('voice_id', voiceId);
+
+            fetch('tts.php', { method: 'POST', body: fd, credentials: 'same-origin' })
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    if (data.error) throw new Error(data.error);
+                    if (audioHidden) audioHidden.value = data.url;
+
+                    var old = panel.querySelector('.js-os-tts-preview');
+                    if (old) old.remove();
+
+                    var div = document.createElement('div');
+                    div.className = 'js-os-tts-preview';
+                    div.style.cssText = 'margin-top:10px;display:flex;align-items:center;gap:10px';
+                    div.innerHTML = '<audio src="' + data.url + '" controls preload="none" style="flex:1;height:36px"></audio>' +
+                        '<button type="button" class="js-os-remove-tts" style="background:none;border:none;color:#E24B4A;font-size:11px;font-weight:900;cursor:pointer">✖ Remove</button>';
+                    panel.appendChild(div);
+
+                    if (statusEl) { statusEl.textContent = '✓ Audio generated successfully'; statusEl.style.color = '#1D9E75'; }
+                })
+                .catch(function (err) {
+                    if (statusEl) { statusEl.textContent = '✘ ' + (err.message || 'Generation failed'); statusEl.style.color = '#E24B4A'; }
+                })
+                .finally(function () { generateBtn.disabled = false; });
+        });
+    }
+
+    panel.addEventListener('click', function (e) {
+        if (e.target && e.target.classList.contains('js-os-remove-tts')) {
+            var audioHidden = panel.querySelector('.js-os-audiourl');
+            if (audioHidden) audioHidden.value = '';
+            var preview = panel.querySelector('.js-os-tts-preview');
+            if (preview) preview.remove();
+            var statusEl = panel.querySelector('.js-os-tts-status');
+            if (statusEl) { statusEl.textContent = 'Audio removed.'; statusEl.style.color = ''; }
+        }
+    });
+}());
 </script>
 
 <?php
