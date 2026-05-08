@@ -53,3 +53,6 @@ bash scripts/deploy_docker.sh
 
 Si no exportas `ELEVENLABS_API_KEY`, el generador mostrara:
 `ElevenLabs API key not configured. Set the ELEVENLABS_API_KEY environment variable.`
+
+Tambien puedes crear un archivo `.env` en la raiz del proyecto con esas mismas variables.
+El script `scripts/deploy_docker.sh` lo carga automaticamente si existe.

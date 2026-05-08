@@ -15,6 +15,14 @@ CONTAINER_PORT="${CONTAINER_PORT:-80}"
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
+if [[ -f "$ROOT_DIR/.env" ]]; then
+  printf '[0/5] Cargando variables desde .env\n'
+  set -a
+  # shellcheck disable=SC1091
+  source "$ROOT_DIR/.env"
+  set +a
+fi
+
 printf '\n[1/5] Proyecto: %s\n' "$ROOT_DIR"
 printf '[2/5] Build imagen: %s\n' "$IMAGE_NAME"
 docker build -t "$IMAGE_NAME" "$ROOT_DIR"
