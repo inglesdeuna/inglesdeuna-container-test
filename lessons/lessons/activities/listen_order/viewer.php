@@ -278,7 +278,25 @@ var doneFillEl  = document.getElementById('lo-done-fill');
 if(doneTitleEl) doneTitleEl.textContent = ACTIVITY_TTL||'Listen & Order';
 if(doneTextEl)  doneTextEl.textContent  = "You've completed "+(ACTIVITY_TTL||'this activity')+'. Great job!';
 
-function shuffle(a){ return a.slice().sort(function(){ return Math.random()-.5; }); }
+function randomFloat(){
+    if (window.crypto && typeof window.crypto.getRandomValues === 'function') {
+        var buf = new Uint32Array(1);
+        window.crypto.getRandomValues(buf);
+        return buf[0] / 4294967296;
+    }
+    return Math.random();
+}
+
+function shuffle(a){
+    var arr = a.slice();
+    for (var i = arr.length - 1; i > 0; i--) {
+        var j = Math.floor(randomFloat() * (i + 1));
+        var tmp = arr[i];
+        arr[i] = arr[j];
+        arr[j] = tmp;
+    }
+    return arr;
+}
 function playSound(a){ try{ a.pause(); a.currentTime=0; a.play(); }catch(e){} }
 
 function setListenState(s){
