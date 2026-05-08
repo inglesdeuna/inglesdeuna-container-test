@@ -107,6 +107,7 @@ function normalize_dictation_payload($rawData): array
 {
     $default = array(
         'title' => default_dictation_title(),
+        'voice_id' => 'nzFihrBIvB34imQBuxub',
         'items' => array(),
     );
 
@@ -125,6 +126,11 @@ function normalize_dictation_payload($rawData): array
 
     if (isset($decoded['title'])) {
         $title = trim((string) $decoded['title']);
+    }
+
+    $voiceId = 'nzFihrBIvB34imQBuxub';
+    if (isset($decoded['voice_id']) && trim((string) $decoded['voice_id']) !== '') {
+        $voiceId = trim((string) $decoded['voice_id']);
     }
 
     if (isset($decoded['items']) && is_array($decoded['items'])) {
@@ -163,6 +169,7 @@ function normalize_dictation_payload($rawData): array
 
     return array(
         'title' => normalize_activity_title($title),
+        'voice_id' => $voiceId,
         'items' => $normalizedItems,
     );
 }
@@ -830,8 +837,20 @@ document.addEventListener('DOMContentLoaded', function () {
     var form = document.getElementById('dictationForm');
     if (form) {
         form.addEventListener('submit', function () {
-            formSubmitted = true;
-            formChanged = false;
+
+    function encode_dictation_payload_with_voice(string $title, string $voiceId, array $items): string
+    {
+        return json_encode(
+            array(
+                'title' => normalize_activity_title($title),
+                'voice_id' => $voiceId,
+                'items' => array_values($items),
+            ),
+            JSON_UNESCAPED_UNICODE
+        );
+    }
+
+    function load_dictation_activity
         });
     }
 });
