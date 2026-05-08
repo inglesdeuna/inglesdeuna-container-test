@@ -40,6 +40,8 @@ function fb_ed_load(PDO $pdo, string $unit, string $activityId): array
         'media_type'   => 'none',
         'media_url'    => '',
         'tts_text'     => '',
+        'voice_id'     => 'JBFqnCBsd6RMkjVDRZzb',
+        'tts_audio_url'=> '',
     );
 
     $row = null;
@@ -78,6 +80,8 @@ function fb_ed_load(PDO $pdo, string $unit, string $activityId): array
         'media_type'   => isset($data['media_type']) ? $data['media_type'] : 'none',
         'media_url'    => isset($data['media_url'])  ? $data['media_url']  : '',
         'tts_text'     => isset($data['tts_text'])   ? $data['tts_text']   : '',
+        'voice_id'     => isset($data['voice_id'])      ? $data['voice_id']      : 'JBFqnCBsd6RMkjVDRZzb',
+        'tts_audio_url'=> isset($data['tts_audio_url']) ? $data['tts_audio_url'] : '',
     );
 }
 
@@ -117,6 +121,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $mediaType = in_array($_POST['media_type'] ?? '', array('tts','audio','none'), true) ? $_POST['media_type'] : 'none';
     $mediaUrl  = trim((string)($_POST['media_url'] ?? ''));
     $ttsText   = trim((string)($_POST['tts_text']  ?? ''));
+    $voiceId   = trim((string)($_POST['voice_id']  ?? 'JBFqnCBsd6RMkjVDRZzb'));
+    if ($voiceId === '' || !preg_match('/^[A-Za-z0-9]+$/', $voiceId)) $voiceId = 'JBFqnCBsd6RMkjVDRZzb';
+    $ttsAudioUrl = trim((string)($_POST['tts_audio_url'] ?? ''));
 
     if ($mediaType === 'audio') {
         if (isset($_FILES['media_file'])
@@ -169,6 +176,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'media_type'   => $mediaType,
         'media_url'    => $mediaUrl,
         'tts_text'     => $ttsText,
+        'voice_id'     => $voiceId,
+        'tts_audio_url'=> $ttsAudioUrl,
         'blocks'       => $blocks,
     ));
 
@@ -641,6 +650,25 @@ if (isset($_GET['saved'])) {
                     ><?php echo htmlspecialchars($activity['tts_text'], ENT_QUOTES, 'UTF-8'); ?></textarea>
                     <p class="fb-help">Leave blank to auto-read all block texts in order.</p>
                 </div>
+                <div class="fb-field" style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin-top:4px">
+                    <div style="flex:0 0 auto">
+                        <label class="fb-label">Voice</label>
+                        <select name="voice_id" class="fb-select js-fb-voiceid" style="min-width:210px">
+                            <option value="JBFqnCBsd6RMkjVDRZzb"<?php echo ($activity['voice_id']??'JBFqnCBsd6RMkjVDRZzb')==='JBFqnCBsd6RMkjVDRZzb'?' selected':''; ?>>👨 Adult Male (George)</option>
+                            <option value="21m00Tcm4TlvDq8ikWAM"<?php echo ($activity['voice_id']??'')==='21m00Tcm4TlvDq8ikWAM'?' selected':''; ?>>👩 Adult Female (Rachel)</option>
+                            <option value="pFZP5JQG7iQjIQuC4Bku"<?php echo ($activity['voice_id']??'')==='pFZP5JQG7iQjIQuC4Bku'?' selected':''; ?>>🧒 Child (Lily)</option>
+                        </select>
+                    </div>
+                    <button type="button" class="js-fb-generate-tts" style="background:#7F77DD;color:#fff;border:none;border-radius:999px;padding:11px 18px;font-size:12px;font-weight:900;cursor:pointer;white-space:nowrap;flex-shrink:0">🔊 Generate audio</button>
+                    <input type="hidden" name="tts_audio_url" class="js-fb-audiourl" value="<?php echo htmlspecialchars($activity['tts_audio_url'] ?? '', ENT_QUOTES, 'UTF-8'); ?>">
+                </div>
+                <div class="js-fb-tts-status" style="font-size:12px;font-weight:800;margin-top:6px;min-height:18px"></div>
+                <?php if (!empty($activity['tts_audio_url'])): ?>
+                <div class="js-fb-tts-preview" style="margin-top:10px;display:flex;align-items:center;gap:10px">
+                    <audio src="<?php echo htmlspecialchars($activity['tts_audio_url'], ENT_QUOTES, 'UTF-8'); ?>" controls preload="none" style="flex:1;height:36px"></audio>
+                    <button type="button" class="js-fb-remove-tts" style="background:none;border:none;color:#E24B4A;font-size:11px;font-weight:900;cursor:pointer">✖ Remove</button>
+                </div>
+                <?php endif; ?>
             </div>
 
             <div id="fb-panel-audio" class="fb-media-panel <?php echo $activity['media_type']==='audio' ? 'active' : ''; ?>">
@@ -873,6 +901,66 @@ document.getElementById('fbEditorForm').addEventListener('submit', function(e) {
 });
 
 document.addEventListener('DOMContentLoaded', fbRenderBlocks);
+
+// ── ElevenLabs TTS for fillblank ──────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', function () {
+    var panel = document.getElementById('fb-panel-tts');
+    if (!panel) return;
+
+    var generateBtn = panel.querySelector('.js-fb-generate-tts');
+    if (generateBtn) {
+        generateBtn.addEventListener('click', function () {
+            var textarea = panel.querySelector('textarea[name="tts_text"]');
+            var text = textarea ? textarea.value.trim() : '';
+            if (!text) { alert('Please enter TTS text first.'); return; }
+            var voiceSelect = panel.querySelector('.js-fb-voiceid');
+            var voiceId = voiceSelect ? voiceSelect.value : 'JBFqnCBsd6RMkjVDRZzb';
+            var statusEl = panel.querySelector('.js-fb-tts-status');
+            var audioHidden = panel.querySelector('.js-fb-audiourl');
+
+            generateBtn.disabled = true;
+            if (statusEl) { statusEl.textContent = 'Generating…'; statusEl.style.color = ''; }
+
+            var fd = new FormData();
+            fd.append('text', text);
+            fd.append('voice_id', voiceId);
+
+            fetch('tts.php', { method: 'POST', body: fd, credentials: 'same-origin' })
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    if (data.error) throw new Error(data.error);
+                    if (audioHidden) audioHidden.value = data.url;
+
+                    var old = panel.querySelector('.js-fb-tts-preview');
+                    if (old) old.remove();
+
+                    var div = document.createElement('div');
+                    div.className = 'js-fb-tts-preview';
+                    div.style.cssText = 'margin-top:10px;display:flex;align-items:center;gap:10px';
+                    div.innerHTML = '<audio src="' + data.url + '" controls preload="none" style="flex:1;height:36px"></audio>' +
+                        '<button type="button" class="js-fb-remove-tts" style="background:none;border:none;color:#E24B4A;font-size:11px;font-weight:900;cursor:pointer">✖ Remove</button>';
+                    panel.appendChild(div);
+
+                    if (statusEl) { statusEl.textContent = '✓ Audio generated successfully'; statusEl.style.color = '#1D9E75'; }
+                })
+                .catch(function (err) {
+                    if (statusEl) { statusEl.textContent = '✘ ' + (err.message || 'Generation failed'); statusEl.style.color = '#E24B4A'; }
+                })
+                .finally(function () { generateBtn.disabled = false; });
+        });
+    }
+
+    panel.addEventListener('click', function (e) {
+        if (e.target && e.target.classList.contains('js-fb-remove-tts')) {
+            var audioHidden = panel.querySelector('.js-fb-audiourl');
+            if (audioHidden) audioHidden.value = '';
+            var preview = panel.querySelector('.js-fb-tts-preview');
+            if (preview) preview.remove();
+            var statusEl = panel.querySelector('.js-fb-tts-status');
+            if (statusEl) { statusEl.textContent = 'Audio removed.'; statusEl.style.color = ''; }
+        }
+    });
+});
 </script>
 
 <?php
