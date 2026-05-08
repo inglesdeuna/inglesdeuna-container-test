@@ -78,12 +78,15 @@ function lo_normalize(mixed $raw): array {
         }
 
         $audioUrl = trim((string)($b["audio_url"] ?? ""));
+        $voiceId  = trim((string)($b["voice_id"]  ?? "JBFqnCBsd6RMkjVDRZzb"));
+        if ($voiceId === "") $voiceId = "JBFqnCBsd6RMkjVDRZzb";
 
         if ($sentence === "" && $videoUrl === "" && empty($images)) continue;
 
         $blocks[] = [
             "id"             => trim((string)($b["id"] ?? uniqid("lo_"))),
             "sentence"       => $sentence,
+            "voice_id"       => $voiceId,
             "audio_url"      => $audioUrl,
             "video_url"      => $videoUrl,
             "images"         => $images,
@@ -210,6 +213,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $videoExisting  = is_array($_POST["video_url_existing"] ?? null) ? $_POST["video_url_existing"] : [];
     $audioExisting  = is_array($_POST["audio_url_existing"] ?? null) ? $_POST["audio_url_existing"] : [];
     $sentences      = is_array($_POST["sentence"] ?? null) ? $_POST["sentence"] : [];
+    $voiceIds       = is_array($_POST["voice_id"] ?? null) ? $_POST["voice_id"] : [];
     $imagesExisting = is_array($_POST["images_existing"] ?? null) ? $_POST["images_existing"] : [];
 
     $videoFiles = $_FILES["video_file"] ?? null;
@@ -220,6 +224,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         count($videoExisting),
         count($audioExisting),
         count($sentences),
+        count($voiceIds),
         count($imagesExisting),
         is_array($videoFiles["name"] ?? null) ? count($videoFiles["name"]) : 0,
         is_array($imageFiles["name"] ?? null) ? count($imageFiles["name"]) : 0
@@ -233,6 +238,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         $sentence = trim((string)($sentences[$i] ?? ""));
         $audioUrl = trim((string)($audioExisting[$i] ?? ""));
         $videoUrl = trim((string)($videoExisting[$i] ?? ""));
+        $voiceId  = trim((string)($voiceIds[$i] ?? "JBFqnCBsd6RMkjVDRZzb"));
+        if ($voiceId === "" || !preg_match('/^[A-Za-z0-9]+$/', $voiceId)) $voiceId = "JBFqnCBsd6RMkjVDRZzb";
 
         if (
             $videoFiles &&
@@ -274,6 +281,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         $sanitized[] = [
             "id"             => $blockId !== "" ? $blockId : uniqid("lo_"),
             "sentence"       => $sentence,
+            "voice_id"       => $voiceId,
             "audio_url"      => $audioUrl,
             "video_url"      => $videoUrl,
             "images"         => array_values($images),
@@ -337,6 +345,8 @@ body{background:#f8f7ff!important;font-family:'Nunito',sans-serif!important}
 .tts-box{border:1.5px solid #EDE9FA;border-radius:16px;padding:14px;margin-bottom:16px;background:#FAFAFE}
 .tts-row{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap}
 .tts-row input[type=text]{flex:1;min-width:160px;margin-bottom:0!important}
+.tts-voice{border:1.5px solid #EDE9FA;border-radius:12px;padding:10px 12px;font-family:'Nunito',sans-serif;font-size:13px;font-weight:700;color:#271B5D;background:#fff;outline:none;cursor:pointer;margin-bottom:0!important}
+.tts-voice:focus{border-color:#7F77DD;box-shadow:0 0 0 3px rgba(127,119,221,.1)}
 .btn-tts{background:#7F77DD;color:#fff;border:none;border-radius:999px;padding:11px 18px;font-size:12px;font-weight:900;cursor:pointer;white-space:nowrap;flex-shrink:0;display:inline-flex;align-items:center;gap:6px}
 .btn-tts:disabled{opacity:.55;cursor:not-allowed}
 .tts-status{font-size:12px;font-weight:800;margin-top:8px;min-height:18px}
@@ -380,6 +390,11 @@ body{background:#f8f7ff!important;font-family:'Nunito',sans-serif!important}
                 <label class="field-label">Sentence to speak <span class="field-badge">ElevenLabs TTS</span></label>
                 <div class="tts-row">
                     <input type="text" name="sentence[]" class="js-sentence" value="<?= htmlspecialchars($bSentence, ENT_QUOTES, 'UTF-8') ?>" placeholder="Type the sentence students will hear…">
+                    <select name="voice_id[]" class="js-voiceid tts-voice">
+                        <option value="JBFqnCBsd6RMkjVDRZzb"<?= ($block["voice_id"]??"JBFqnCBsd6RMkjVDRZzb")==="JBFqnCBsd6RMkjVDRZzb"?" selected":"" ?>>👨 Adult Male (George)</option>
+                        <option value="21m00Tcm4TlvDq8ikWAM"<?= ($block["voice_id"]??"")==="21m00Tcm4TlvDq8ikWAM"?" selected":"" ?>>👩 Adult Female (Rachel)</option>
+                        <option value="pFZP5JQG7iQjIQuC4Bku"<?= ($block["voice_id"]??"")==="pFZP5JQG7iQjIQuC4Bku"?" selected":"" ?>>🧒 Child (Lily)</option>
+                    </select>
                     <button type="button" class="btn-tts" onclick="loGenerateTTS(this)">🔊 Generate audio</button>
                 </div>
                 <div class="tts-status"></div>
@@ -677,6 +692,8 @@ function loGenerateTTS(btn){
     var sentenceInput = box.querySelector('.js-sentence');
     var text = sentenceInput ? sentenceInput.value.trim() : '';
     if (!text) { alert('Please enter a sentence first.'); return; }
+    var voiceSelect = box.querySelector('.js-voiceid');
+    var voiceId = voiceSelect ? voiceSelect.value : 'JBFqnCBsd6RMkjVDRZzb';
     var statusEl  = box.querySelector('.tts-status');
     var blockItem = btn.closest('.block-item');
     var audioHidden = blockItem ? blockItem.querySelector('.js-audiourl') : null;
@@ -686,6 +703,7 @@ function loGenerateTTS(btn){
 
     var fd = new FormData();
     fd.append('text', text);
+    fd.append('voice_id', voiceId);
 
     fetch('tts.php', { method: 'POST', body: fd, credentials: 'same-origin' })
         .then(function(r){ return r.json(); })
@@ -734,7 +752,12 @@ function loAddBlock(){
             '<label class="field-label">Sentence to speak <span class="field-badge">ElevenLabs TTS</span></label>'+
             '<div class="tts-row">'+
                 '<input type="text" name="sentence[]" class="js-sentence" value="" placeholder="Type the sentence students will hear…">'+
-                '<button type="button" class="btn-tts" onclick="loGenerateTTS(this)">🔊 Generate audio</button>'+
+                '<select name="voice_id[]" class="js-voiceid tts-voice">'+
+                    '<option value="JBFqnCBsd6RMkjVDRZzb" selected>\u{1F468} Adult Male (George)</option>'+
+                    '<option value="21m00Tcm4TlvDq8ikWAM">\u{1F469} Adult Female (Rachel)</option>'+
+                    '<option value="pFZP5JQG7iQjIQuC4Bku">\u{1F9D2} Child (Lily)</option>'+
+                '</select>'+
+                '<button type="button" class="btn-tts" onclick="loGenerateTTS(this)">\uD83D\uDD0A Generate audio</button>'+
             '</div>'+
             '<div class="tts-status"></div>'+
         '</div>'+
