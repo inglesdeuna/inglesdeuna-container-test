@@ -567,6 +567,13 @@ var boardEl = document.getElementById('fc-board');
 var voiceProfileEl = document.getElementById('fc-voice-profile');
 var selectedVoiceProfile = 'male';
 
+function voiceProfileFromId(voiceId) {
+    var id = String(voiceId || '').trim();
+    if (id === '21m00Tcm4TlvDq8ikWAM') return 'female';
+    if (id === 'pFZP5JQG7iQjIQuC4Bku') return 'child';
+    return 'male';
+}
+
 function pickVoice(voices, profile) {
     if (!Array.isArray(voices) || voices.length === 0) return null;
 
@@ -708,13 +715,13 @@ function restart(){
     renderCard();
 }
 
-function speakText(text) {
+function speakText(text, profile) {
     window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(text);
 
     const setVoiceAndSpeak = () => {
         const voices = window.speechSynthesis.getVoices();
-        const selectedVoice = pickVoice(voices, selectedVoiceProfile);
+        const selectedVoice = pickVoice(voices, profile || selectedVoiceProfile);
 
         utterance.voice = selectedVoice;
         utterance.rate = 0.88;
@@ -748,13 +755,16 @@ function playAudio(){
         return;
     }
 
-    var text = getWord(getCard());
+    var card2 = getCard();
+    var text = getWord(card2);
+    var perCardProfile = voiceProfileFromId(card2.voice_id);
+    if (voiceProfileEl) voiceProfileEl.value = perCardProfile;
 
     if(!text) return;
 
     if(!window.speechSynthesis) return;
 
-    speakText(text);
+    speakText(text, perCardProfile);
 }
 
 document

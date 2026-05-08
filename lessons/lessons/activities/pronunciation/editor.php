@@ -975,7 +975,16 @@ document.addEventListener('DOMContentLoaded', function () {
                     markAsChanged();
                 })
                 .catch(function (err) {
-                    if (statusEl) { statusEl.textContent = '✘ ' + (err.message || 'Generation failed'); statusEl.style.color = '#E24B4A'; }
+                    var msg = err && err.message ? err.message : 'Generation failed';
+                    if (statusEl) {
+                        if (/api key not configured/i.test(msg)) {
+                            statusEl.textContent = 'API key missing: this item will use browser voice profile on playback.';
+                            statusEl.style.color = '#b45309';
+                        } else {
+                            statusEl.textContent = '✘ ' + msg;
+                            statusEl.style.color = '#E24B4A';
+                        }
+                    }
                 })
                 .finally(function () { generateBtn.disabled = false; });
         }
