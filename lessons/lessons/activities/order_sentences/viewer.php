@@ -59,6 +59,7 @@ function os_viewer_normalize(mixed $rawData): array
         'media_type'   => in_array($d['media_type'] ?? '', ['tts', 'video', 'audio', 'none'], true) ? $d['media_type'] : 'tts',
         'media_url'    => trim((string) ($d['media_url']    ?? '')),
         'tts_text'     => trim((string) ($d['tts_text']     ?? '')),
+        'tts_audio_url'=> trim((string) ($d['tts_audio_url'] ?? '')),
         'sentences'    => $sentences,
     ];
 }
@@ -741,6 +742,10 @@ body.embedded-mode .os-back-btn {
                         <span class="os-listen-text">Listen and put the sentences in order.</span>
                     </div>
                 </div>
+            <?php elseif (!empty($activity['tts_audio_url'])): ?>
+                <div class="os-tts-area">
+                    <audio id="os-tts-audio" src="<?= htmlspecialchars($activity['tts_audio_url'], ENT_QUOTES, 'UTF-8') ?>" controls preload="none" style="width:100%;height:42px"></audio>
+                </div>
             <?php endif; ?>
 
             <div class="os-zone-label">Drag the sentences to change their order</div>
@@ -1106,12 +1111,12 @@ window.osRestart = function() {
 updateBadges();
 
 var TTS_TEXT = <?= json_encode(
-    !empty($activity['tts_text'])
-        ? $activity['tts_text']
-        : implode('. ', array_column($sentences, 'text')),
+    !empty($activity['tts_audio_url']) ? ''
+        : (!empty($activity['tts_text'])
+            ? $activity['tts_text']
+            : implode('. ', array_column($sentences, 'text'))),
     JSON_UNESCAPED_UNICODE
 ) ?>;
-
 var ttsBtn      = document.getElementById('os-tts-btn');
 var ttsSpeaking = false;
 var ttsPaused   = false;
