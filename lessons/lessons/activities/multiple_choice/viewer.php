@@ -362,6 +362,36 @@ body {
     gap:10px!important;
 }
 
+/* ── Text-only variant (no image): more mature look for advanced students ── */
+.mc-card.text-only {
+    min-height:clamp(320px,46vh,480px)!important;
+    padding:clamp(28px,5vw,52px) clamp(28px,6vw,72px)!important;
+    gap:28px!important;
+}
+
+.mc-card.text-only .mc-question {
+    font-size:clamp(28px,4vw,48px)!important;
+    line-height:1.2!important;
+    letter-spacing:-.01em!important;
+    max-width:720px!important;
+    margin:0!important;
+}
+
+.mc-card.text-only .mc-options {
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+    max-width:680px!important;
+    gap:12px!important;
+}
+
+.mc-card.text-only .mc-options button,
+.mc-card.text-only .mc-options .option,
+.mc-card.text-only .mc-option {
+    min-height:72px!important;
+    padding:14px 18px!important;
+    font-size:clamp(16px,2vw,22px)!important;
+    border-radius:20px!important;
+}
+
 .mc-card.has-image .mc-question {
     max-width:560px!important;
     font-size:clamp(18px,2.4vw,28px)!important;

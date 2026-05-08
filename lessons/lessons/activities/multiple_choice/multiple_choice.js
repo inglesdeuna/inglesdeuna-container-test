@@ -206,12 +206,14 @@
     if (item.image) {
       if (cardEl) {
         cardEl.classList.add('has-image');
+        cardEl.classList.remove('text-only');
       }
       imageEl.style.display = 'block';
       imageEl.src = item.image;
     } else {
       if (cardEl) {
         cardEl.classList.remove('has-image');
+        cardEl.classList.add('text-only');
       }
       imageEl.style.display = 'none';
       imageEl.removeAttribute('src');
