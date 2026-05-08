@@ -12,6 +12,28 @@ function tts_env(string $key): string
             $v = $ap;
         }
     }
+    if (!is_string($v) || trim($v) === '') {
+        static $dotEnv = null;
+        if ($dotEnv === null) {
+            $dotEnv = [];
+            $envPath = __DIR__ . '/../../../../.env';
+            if (is_file($envPath) && is_readable($envPath)) {
+                $lines = @file($envPath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [];
+                foreach ($lines as $line) {
+                    $line = trim((string)$line);
+                    if ($line === '' || $line[0] === '#' || strpos($line, '=') === false) continue;
+                    [$k, $val] = array_map('trim', explode('=', $line, 2));
+                    if ($k !== '') {
+                        $dotEnv[$k] = trim($val, " \t\n\r\0\x0B\"'");
+                    }
+                }
+            }
+        }
+        if (isset($dotEnv[$key]) && is_string($dotEnv[$key])) {
+            $v = $dotEnv[$key];
+        }
+    }
+
     return is_string($v) ? trim($v) : '';
 }
 

@@ -266,10 +266,18 @@ function render_activity_viewer($title, $icon, $content)
         }
 
         .tts-global-controls{
-            margin-left:auto;
+            position:fixed;
+            top:12px;
+            right:12px;
+            z-index:9999;
             display:inline-flex;
             align-items:center;
             gap:8px;
+            background:#ffffff;
+            border:1px solid #d8dbe4;
+            border-radius:999px;
+            padding:6px 8px;
+            box-shadow:0 4px 14px rgba(0,0,0,.12);
         }
 
         .tts-global-label{
@@ -686,15 +694,6 @@ function render_activity_viewer($title, $icon, $content)
     <?php if (!$embedded && !$isPresentationMode) { ?>
     <div class="top-row">
         <a href="<?= htmlspecialchars($backUrl, ENT_QUOTES, 'UTF-8') ?>" class="back-btn">Back</a>
-
-        <div class="tts-global-controls" id="tts-global-controls">
-            <label class="tts-global-label" for="tts-global-voice">Voice</label>
-            <select class="tts-global-select" id="tts-global-voice">
-                <option value="male">Adult Male</option>
-                <option value="female">Adult Female</option>
-                <option value="child">Child</option>
-            </select>
-        </div>
     </div>
     <?php } ?>
 
@@ -711,6 +710,15 @@ function render_activity_viewer($title, $icon, $content)
         <?php } ?>
     </div>
 
+</div>
+
+<div class="tts-global-controls" id="tts-global-controls">
+    <label class="tts-global-label" for="tts-global-voice">Voice</label>
+    <select class="tts-global-select" id="tts-global-voice">
+        <option value="male">Adult Male</option>
+        <option value="female">Adult Female</option>
+        <option value="child">Child</option>
+    </select>
 </div>
 
 <script>
@@ -750,13 +758,8 @@ window.addEventListener('message', function (e) {
         return;
     }
 
-    var localVoiceSelector = document.querySelector('#fc-voice-profile, #fc-premium-voice');
     var controls = document.getElementById('tts-global-controls');
     var selectEl = document.getElementById('tts-global-voice');
-
-    if (localVoiceSelector && controls) {
-        controls.style.display = 'none';
-    }
 
     var profile = localStorage.getItem('viewer_tts_voice_profile') || 'male';
     if (selectEl) {
@@ -822,7 +825,7 @@ window.addEventListener('message', function (e) {
 
     window.speechSynthesis.speak = function (utterance) {
         try {
-            if (!(localVoiceSelector) && utterance && typeof utterance.text === 'string') {
+            if (utterance && typeof utterance.text === 'string') {
                 var lang = String(utterance.lang || '').toLowerCase();
                 if (lang === '' || lang.indexOf('en') === 0) {
                     var voice = pickVoice(voicesCache, profile);
