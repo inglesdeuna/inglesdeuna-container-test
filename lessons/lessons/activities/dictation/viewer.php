@@ -92,6 +92,7 @@ function normalize_dictation_payload($rawData): array
 {
     $default = array(
         'title' => default_dictation_title(),
+        'voice_id' => 'nzFihrBIvB34imQBuxub',
         'items' => array(),
     );
 
@@ -110,6 +111,11 @@ function normalize_dictation_payload($rawData): array
 
     if (isset($decoded['title'])) {
         $title = trim((string) $decoded['title']);
+    }
+
+    $voiceId = 'nzFihrBIvB34imQBuxub';
+    if (isset($decoded['voice_id']) && trim((string) $decoded['voice_id']) !== '') {
+        $voiceId = trim((string) $decoded['voice_id']);
     }
 
     if (isset($decoded['items']) && is_array($decoded['items'])) {
@@ -148,6 +154,7 @@ function normalize_dictation_payload($rawData): array
 
     return array(
         'title' => normalize_activity_title($title),
+        'voice_id' => $voiceId,
         'items' => $normalizedItems,
     );
 }
