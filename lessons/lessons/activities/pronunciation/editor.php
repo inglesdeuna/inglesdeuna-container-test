@@ -734,6 +734,7 @@ ob_start();
     font-size:12px;
     font-weight:800;
 }
+.pron-tts-status.stale{color:#b45309}
 
 .pron-tts-preview{
     grid-column:span 2;
@@ -862,6 +863,21 @@ function markAsChanged() {
     formChanged = true;
 }
 
+function markPronAudioStale(block) {
+    if (!block) return;
+    var audioInput = block.querySelector('input[name="audio[]"]');
+    var preview = block.querySelector('.js-pron-tts-preview');
+    var statusEl = block.querySelector('.js-pron-tts-status');
+    if (audioInput && audioInput.value) {
+        audioInput.value = '';
+        if (preview) preview.remove();
+        if (statusEl) {
+            statusEl.textContent = 'Voice/text changed. Generate audio again.';
+            statusEl.classList.add('stale');
+        }
+    }
+}
+
 function addItem() {
     var container = document.getElementById('items');
     var div = document.createElement('div');
@@ -915,6 +931,18 @@ function bindChangeTracking(scope) {
 document.addEventListener('DOMContentLoaded', function () {
     bindChangeTracking(document);
 
+    document.getElementById('items').addEventListener('input', function (e) {
+        if (e.target.matches('input[name="en[]"]')) {
+            markPronAudioStale(e.target.closest('.pron-block'));
+        }
+    });
+
+    document.getElementById('items').addEventListener('change', function (e) {
+        if (e.target.matches('.js-pron-voiceid')) {
+            markPronAudioStale(e.target.closest('.pron-block'));
+        }
+    });
+
     document.getElementById('items').addEventListener('click', function (e) {
         var generateBtn = e.target.closest('.js-pron-generate-tts');
         var removeBtn = e.target.closest('.js-pron-remove-tts');
@@ -943,6 +971,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     preview.innerHTML = '<audio src="' + data.url + '" controls preload="none"></audio><button type="button" class="pron-tts-remove js-pron-remove-tts">✖ Remove</button>';
                     block.insertBefore(preview, block.querySelector('.btn-remove'));
                     if (statusEl) { statusEl.textContent = 'Audio generated successfully'; statusEl.style.color = '#1D9E75'; }
+                    if (statusEl) statusEl.classList.remove('stale');
                     markAsChanged();
                 })
                 .catch(function (err) {
@@ -957,7 +986,7 @@ document.addEventListener('DOMContentLoaded', function () {
             if (audioInput2) audioInput2.value = '';
             var preview2 = block2 ? block2.querySelector('.js-pron-tts-preview') : null;
             if (preview2) preview2.remove();
-            if (statusEl2) { statusEl2.textContent = 'Audio removed.'; statusEl2.style.color = ''; }
+            if (statusEl2) { statusEl2.textContent = 'Audio removed.'; statusEl2.style.color = ''; statusEl2.classList.remove('stale'); }
             markAsChanged();
         }
     });

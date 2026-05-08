@@ -606,6 +606,7 @@ ob_start();
 .fc-tts-btn{background:#1E9A7A;color:#fff;border:none;border-radius:999px;padding:11px 18px;font-size:12px;font-weight:900;cursor:pointer}
 .fc-tts-status{font-size:12px;font-weight:800;min-height:18px;margin-bottom:8px}
 .fc-tts-preview{display:flex;align-items:center;gap:10px;margin-bottom:10px}.fc-tts-preview audio{flex:1;height:36px}.fc-tts-remove{background:none;border:none;color:#E24B4A;font-size:11px;font-weight:900;cursor:pointer}
+.fc-tts-status.stale{color:#b45309}
 </style>
 
 <?php if (isset($_GET['saved'])) { ?>
@@ -676,6 +677,21 @@ function markChanged() {
     formChanged = true;
 }
 
+function markCardAudioStale(card) {
+    if (!card) return;
+    var audioInput = card.querySelector('input[name="audio[]"]');
+    var preview = card.querySelector('.js-fc-tts-preview');
+    var statusEl = card.querySelector('.js-fc-tts-status');
+    if (audioInput && audioInput.value) {
+        audioInput.value = '';
+        if (preview) preview.remove();
+        if (statusEl) {
+            statusEl.textContent = 'Voice/text changed. Generate audio again.';
+            statusEl.classList.add('stale');
+        }
+    }
+}
+
 function removeCard(button) {
     const item = button.closest('.card-item');
     if (item) {
@@ -730,6 +746,18 @@ function bindChangeTracking(scope) {
 document.addEventListener('DOMContentLoaded', function () {
     bindChangeTracking(document);
 
+    document.getElementById('cardsContainer').addEventListener('input', function (e) {
+        if (e.target.matches('input[name="text[]"]')) {
+            markCardAudioStale(e.target.closest('.card-item'));
+        }
+    });
+
+    document.getElementById('cardsContainer').addEventListener('change', function (e) {
+        if (e.target.matches('.js-fc-voiceid')) {
+            markCardAudioStale(e.target.closest('.card-item'));
+        }
+    });
+
     document.getElementById('cardsContainer').addEventListener('click', function (e) {
         var generateBtn = e.target.closest('.js-fc-generate-tts');
         var removeBtn = e.target.closest('.js-fc-remove-tts');
@@ -758,6 +786,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     preview.innerHTML = '<audio src="' + data.url + '" controls preload="none"></audio><button type="button" class="fc-tts-remove js-fc-remove-tts">✖ Remove</button>';
                     card.insertBefore(preview, card.querySelector('label:nth-of-type(2)'));
                     if (statusEl) { statusEl.textContent = 'Audio generated successfully'; statusEl.style.color = '#1D9E75'; }
+                    if (statusEl) statusEl.classList.remove('stale');
                     markChanged();
                 })
                 .catch(function (err) {
@@ -772,7 +801,7 @@ document.addEventListener('DOMContentLoaded', function () {
             if (audioInput2) audioInput2.value = '';
             var preview2 = card2 ? card2.querySelector('.js-fc-tts-preview') : null;
             if (preview2) preview2.remove();
-            if (statusEl2) { statusEl2.textContent = 'Audio removed.'; statusEl2.style.color = ''; }
+            if (statusEl2) { statusEl2.textContent = 'Audio removed.'; statusEl2.style.color = ''; statusEl2.classList.remove('stale'); }
             markChanged();
         }
     });
