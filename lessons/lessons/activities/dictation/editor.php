@@ -602,6 +602,19 @@ ob_start();
     box-sizing:border-box;
 }
 
+.title-box select{
+    width:100%;
+    padding:10px 12px;
+    border-radius:10px;
+    border:1px solid #cbd5e1;
+    font-size:15px;
+    font-family:'Nunito', 'Segoe UI', sans-serif;
+    box-sizing:border-box;
+    background:#fff;
+    color:#1e293b;
+    cursor:pointer;
+}
+
 .dict-block{
     position:relative;
     overflow:hidden;
