@@ -102,9 +102,9 @@ body{margin:0!important;padding:0!important;background:#fff!important;font-famil
 .lo-video-player video{width:100%;display:block;max-height:340px;object-fit:contain}
 /* image grid */
 .lo-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(clamp(130px,16vw,190px),1fr));gap:16px;justify-content:center;margin-bottom:14px}
-.lo-card{width:100%;aspect-ratio:1/1;border-radius:18px;border:2px solid #EDE9FA;background:#fff;box-shadow:0 4px 14px rgba(127,119,221,.10);cursor:pointer;position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;transition:border-color .15s,background .15s,box-shadow .15s,transform .15s;overflow:hidden;padding:10px 10px 24px}
+.lo-card{width:100%;aspect-ratio:1/1;border-radius:18px;border:2px solid #EDE9FA;background:#fff;box-shadow:0 4px 14px rgba(127,119,221,.10);cursor:pointer;position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;transition:border-color .15s,background .15s,box-shadow .15s,transform .15s;overflow:hidden;padding:4px 4px 12px}
 .lo-card:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(127,119,221,.16)}
-.lo-card img{max-width:86%;max-height:82%;object-fit:contain;display:block;border-radius:10px}
+.lo-card img{width:100%;height:100%;object-fit:cover;display:block;border-radius:12px}
 .lo-card-badge{position:absolute;top:8px;left:8px;width:26px;height:26px;border-radius:50%;background:#EEEDFE;color:#534AB7;font-size:12px;font-family:'Nunito',sans-serif;font-weight:900;display:flex;align-items:center;justify-content:center;line-height:1;transition:background .15s,color .15s;z-index:2}
 .lo-card.selected{border-color:#F97316;background:#FFF8F4;box-shadow:0 0 0 3px rgba(249,115,22,.18);transform:translateY(-4px) scale(1.04)}
 .lo-card.selected .lo-card-badge{background:#F97316;color:#fff}
@@ -143,7 +143,7 @@ body{margin:0!important;padding:0!important;background:#fff!important;font-famil
 @media(max-width:640px){
     .lo-shell{padding:12px}.lo-board{border-radius:22px;padding:14px}
     .lo-grid{grid-template-columns:repeat(auto-fit,minmax(96px,1fr));gap:10px}
-    .lo-card{border-radius:14px;padding:7px 7px 18px}
+    .lo-card{border-radius:14px;padding:3px 3px 10px}
     .lo-card-badge{top:6px;left:6px;width:22px;height:22px;font-size:11px}
     .lo-actions{flex-direction:column;align-items:center}.lo-btn{width:100%;max-width:280px}
     .lo-audio-player{flex-wrap:wrap;gap:10px}
