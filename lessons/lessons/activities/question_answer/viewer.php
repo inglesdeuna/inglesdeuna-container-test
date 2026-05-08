@@ -569,12 +569,13 @@ body.fullscreen-embedded .qa-premium-shell,
 body.presentation-mode .qa-premium-shell {
     position: absolute !important;
     inset: 0 !important;
-    max-width: none !important;
-    margin: 0 !important;
-    padding: 10px 12px !important;
+    max-width: 100% !important;
+    margin: 0 auto !important;
+    padding: 16px clamp(16px,4vw,48px) !important;
     border-radius: 0 !important;
     display: flex !important;
     flex-direction: column !important;
+    align-items: center !important;
     overflow: hidden !important;
 }
 
@@ -582,11 +583,11 @@ body.embedded-mode .qa-premium-app,
 body.fullscreen-embedded .qa-premium-app,
 body.presentation-mode .qa-premium-app {
     flex: 1 !important;
-    width: 100% !important;
+    width: min(100%, 1100px) !important;
     min-height: 0 !important;
     display: flex !important;
     flex-direction: column !important;
-    gap: 8px !important;
+    gap: 10px !important;
 }
 
 body.embedded-mode .qa-premium-board,
@@ -596,8 +597,9 @@ body.presentation-mode .qa-premium-board {
     min-height: 0 !important;
     display: flex !important;
     flex-direction: column !important;
-    padding: 14px !important;
-    border-radius: 16px !important;
+    padding: 20px 24px !important;
+    border-radius: 24px !important;
+    width: 100% !important;
 }
 
 body.embedded-mode .qa-premium-card-wrap,
@@ -625,7 +627,8 @@ body.presentation-mode .qa-premium-card-inner {
 body.embedded-mode .qa-premium-text,
 body.fullscreen-embedded .qa-premium-text,
 body.presentation-mode .qa-premium-text {
-    font-size: clamp(18px, 4vh, 36px) !important;
+    font-size: clamp(20px, 3.5vh, 42px) !important;
+    max-width: 860px !important;
 }
 </style>
 
