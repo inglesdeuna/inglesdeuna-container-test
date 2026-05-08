@@ -900,7 +900,7 @@ bind('fc-premium-listen', 'click', function(){
         return;
     }
     var vid = String(card.voice_id || 'JBFqnCBsd6RMkjVDRZzb');
-    var prof = vid === '21m00Tcm4TlvDq8ikWAM' ? 'female' : (vid === 'pFZP5JQG7iQjIQuC4Bku' ? 'child' : 'male');
+    var prof = vid === 'EXAVITQu4vr4xnSDxMaL' ? 'female' : (vid === 'pFZP5JQG7iQjIQuC4Bku' ? 'child' : 'male');
     TTS.setProfile(prof);
     var voiceSelect = document.getElementById('fc-premium-voice');
     if (voiceSelect) voiceSelect.value = prof;

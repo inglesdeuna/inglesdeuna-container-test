@@ -569,7 +569,7 @@ var selectedVoiceProfile = 'male';
 
 function voiceProfileFromId(voiceId) {
     var id = String(voiceId || '').trim();
-    if (id === '21m00Tcm4TlvDq8ikWAM') return 'female';
+    if (id === 'EXAVITQu4vr4xnSDxMaL') return 'female';
     if (id === 'pFZP5JQG7iQjIQuC4Bku') return 'child';
     return 'male';
 }

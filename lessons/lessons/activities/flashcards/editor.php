@@ -641,7 +641,7 @@ ob_start();
                         <label>Voice</label>
                         <select name="voice_id[]" class="js-fc-voiceid">
                             <option value="JBFqnCBsd6RMkjVDRZzb"<?= ((isset($card['voice_id']) ? $card['voice_id'] : 'JBFqnCBsd6RMkjVDRZzb') === 'JBFqnCBsd6RMkjVDRZzb') ? ' selected' : '' ?>>Adult Male (George)</option>
-                            <option value="21m00Tcm4TlvDq8ikWAM"<?= ((isset($card['voice_id']) ? $card['voice_id'] : '') === '21m00Tcm4TlvDq8ikWAM') ? ' selected' : '' ?>>Adult Female (Rachel)</option>
+                            <option value="EXAVITQu4vr4xnSDxMaL"<?= ((isset($card['voice_id']) ? $card['voice_id'] : '') === 'EXAVITQu4vr4xnSDxMaL') ? ' selected' : '' ?>>Adult Female (Sarah)</option>
                             <option value="pFZP5JQG7iQjIQuC4Bku"<?= ((isset($card['voice_id']) ? $card['voice_id'] : '') === 'pFZP5JQG7iQjIQuC4Bku') ? ' selected' : '' ?>>Child (Lily)</option>
                         </select>
                     </div>
@@ -717,7 +717,7 @@ function addCard() {
                 <label>Voice</label>
                 <select name="voice_id[]" class="js-fc-voiceid">
                     <option value="JBFqnCBsd6RMkjVDRZzb">Adult Male (George)</option>
-                    <option value="21m00Tcm4TlvDq8ikWAM">Adult Female (Rachel)</option>
+                    <option value="EXAVITQu4vr4xnSDxMaL">Adult Female (Sarah)</option>
                     <option value="pFZP5JQG7iQjIQuC4Bku">Child (Lily)</option>
                 </select>
             </div>
