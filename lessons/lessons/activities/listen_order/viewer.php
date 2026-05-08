@@ -210,6 +210,7 @@ body{margin:0!important;padding:0!important;background:#fff!important;font-famil
 <audio id="snd-win"  src="../../hangman/assets/win.mp3"     preload="auto"></audio>
 <audio id="snd-lose" src="../../hangman/assets/lose.mp3"    preload="auto"></audio>
 <audio id="snd-done" src="../../hangman/assets/win (1).mp3" preload="auto"></audio>
+<audio id="lo-tts-audio" preload="none"></audio>
 
 <script>
 var SRC_BLOCKS   = <?= json_encode($blocks,      JSON_UNESCAPED_UNICODE) ?>;
@@ -240,7 +241,7 @@ function bestVoice(){
 }
 
 // state
-var idx=0, correct=[], userOrder=[], selIdx=null, curSentence='';
+var idx=0, correct=[], userOrder=[], selIdx=null, curSentence='', curAudioUrl='';
 var speaking=false, paused=false, utter=null, spOffset=0, spSrc='', spSegStart=0;
 var done=false, blockDone=false, totalBlocks=BLOCKS.length;
 var totalImages=Math.max(1,BLOCKS.reduce(function(sum,b){
@@ -270,9 +271,11 @@ var sndDone   = document.getElementById('snd-done');
 var listenBtn = document.getElementById('lo-listen-btn');
 var fillEl    = document.getElementById('lo-audio-fill');
 var nameEl    = document.getElementById('lo-audio-name');
+var timeEl    = document.getElementById('lo-audio-time');
 var audioPlEl = document.getElementById('lo-audio-player');
 var videoPEl  = document.getElementById('lo-video-player');
 var videoEl   = document.getElementById('lo-video-el');
+var ttsAudio  = document.getElementById('lo-tts-audio');
 var doneTitleEl = document.getElementById('lo-done-title');
 var doneTextEl  = document.getElementById('lo-done-text');
 var doneScoreEl = document.getElementById('lo-done-score');
@@ -290,9 +293,33 @@ function setListenState(s){
     if(fillEl) fillEl.style.width = s==='speaking'?'50%':'0%';
 }
 
-// TTS
+// TTS / real audio
+function fmtTime(s){ var m=Math.floor(s/60)|0; return m+':'+(('0'+(Math.floor(s)%60)).slice(-2)); }
+
+if(ttsAudio){
+    ttsAudio.addEventListener('timeupdate',function(){
+        if(!ttsAudio.duration) return;
+        var pct=ttsAudio.currentTime/ttsAudio.duration*100;
+        if(fillEl) fillEl.style.width=pct+'%';
+        if(timeEl) timeEl.textContent=fmtTime(ttsAudio.currentTime);
+    });
+    ttsAudio.addEventListener('ended',function(){
+        setListenState('idle');
+        if(fillEl) fillEl.style.width='0%';
+        if(timeEl) timeEl.textContent='0:00';
+    });
+    ttsAudio.addEventListener('pause', function(){ setListenState('idle'); });
+    ttsAudio.addEventListener('play',  function(){ setListenState('speaking'); });
+}
+
 function playAudio(){
-    if(done||!curSentence) return;
+    if(done) return;
+    if(curAudioUrl && ttsAudio){
+        if(!ttsAudio.paused){ ttsAudio.pause(); return; }
+        ttsAudio.play().catch(function(){});
+        return;
+    }
+    if(!curSentence) return;
     if(speechSynthesis.paused||paused){ speechSynthesis.resume(); speaking=true; paused=false; setListenState('speaking');
         setTimeout(function(){ if(!speechSynthesis.speaking&&spOffset<spSrc.length) doSpeak(); },80); return; }
     if(speechSynthesis.speaking&&!speechSynthesis.paused){ speechSynthesis.pause(); paused=true; setListenState('idle'); return; }
@@ -370,6 +397,7 @@ function updateStatus(){ var t=(idx+1)+' / '+totalBlocks; if(statusEl) statusEl.
 
 function loadBlock(){
     if(window.speechSynthesis) speechSynthesis.cancel();
+    if(ttsAudio){ ttsAudio.pause(); ttsAudio.src=''; }
     speaking=false; paused=false; spOffset=0; spSrc=''; spSegStart=0;
     done=false; blockDone=false; selIdx=null;
     if(compEl)    compEl.classList.remove('active');
@@ -381,10 +409,19 @@ function loadBlock(){
 
     var block    = BLOCKS[idx]||{};
     curSentence  = typeof block.sentence==='string' ? block.sentence : '';
+    curAudioUrl  = typeof block.audio_url==='string' ? block.audio_url.trim() : '';
     spSrc        = curSentence;
     correct      = Array.isArray(block.images) ? block.images.slice() : [];
     userOrder    = shuffle(correct);
     var videoUrl = typeof block.video_url==='string' ? block.video_url.trim() : '';
+
+    // Load ElevenLabs audio element if audio_url is present
+    if(ttsAudio && curAudioUrl){
+        ttsAudio.src = curAudioUrl;
+        ttsAudio.load();
+        if(fillEl) fillEl.style.width='0%';
+        if(timeEl) timeEl.textContent='0:00';
+    }
 
     // AUTO: show video player if video_url exists, otherwise audio player
     if(videoUrl){
@@ -394,7 +431,7 @@ function loadBlock(){
     } else {
         if(videoEl){ videoEl.src=''; }
         if(videoPEl) videoPEl.style.display='none';
-        if(audioPlEl) audioPlEl.style.display = curSentence ? '' : 'none';
+        if(audioPlEl) audioPlEl.style.display = (curAudioUrl||curSentence) ? '' : 'none';
         if(nameEl) nameEl.textContent = curSentence || ACTIVITY_TTL || 'Listen & Order';
     }
 
