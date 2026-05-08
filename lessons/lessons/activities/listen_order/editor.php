@@ -238,8 +238,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         $sentence = trim((string)($sentences[$i] ?? ""));
         $audioUrl = trim((string)($audioExisting[$i] ?? ""));
         $videoUrl = trim((string)($videoExisting[$i] ?? ""));
-        $voiceId  = trim((string)($voiceIds[$i] ?? "JBFqnCBsd6RMkjVDRZzb"));
-        if ($voiceId === "" || !preg_match('/^[A-Za-z0-9]+$/', $voiceId)) $voiceId = "JBFqnCBsd6RMkjVDRZzb";
+        $voiceId  = trim((string)($voiceIds[$i] ?? "nzFihrBIvB34imQBuxub"));
+        if ($voiceId === "" || !preg_match('/^[A-Za-z0-9]+$/', $voiceId)) $voiceId = "nzFihrBIvB34imQBuxub";
 
         if (
             $videoFiles &&
@@ -753,9 +753,9 @@ function loAddBlock(){
             '<div class="tts-row">'+
                 '<input type="text" name="sentence[]" class="js-sentence" value="" placeholder="Type the sentence students will hear…">'+
                 '<select name="voice_id[]" class="js-voiceid tts-voice">'+
-                    '<option value="JBFqnCBsd6RMkjVDRZzb" selected>\u{1F468} Adult Male (George)</option>'+
-                    '<option value="21m00Tcm4TlvDq8ikWAM">\u{1F469} Adult Female (Rachel)</option>'+
-                    '<option value="pFZP5JQG7iQjIQuC4Bku">\u{1F9D2} Child (Lily)</option>'+
+                    '<option value="nzFihrBIvB34imQBuxub" selected>\u{1F468} Adult Male (Josh)</option>'+ 
+                    '<option value="NoOVOzCQFLOvtsMoNcdT">\u{1F469} Adult Female (Lily)</option>'+ 
+                    '<option value="Nggzl2QAXh3OijoXD116">\u{1F9D2} Child (Candy)</option>'+ 
                 '</select>'+
                 '<button type="button" class="btn-tts" onclick="loGenerateTTS(this)">\uD83D\uDD0A Generate audio</button>'+
             '</div>'+
