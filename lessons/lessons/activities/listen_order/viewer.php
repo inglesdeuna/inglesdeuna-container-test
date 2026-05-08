@@ -89,9 +89,7 @@ body{margin:0!important;padding:0!important;background:#fff!important;font-famil
 .lo-board{width:min(920px,100%);margin:0 auto;background:#fff;border:1px solid #F0EEF8;border-radius:28px;padding:clamp(18px,2.8vw,30px);box-shadow:0 8px 40px rgba(127,119,221,.13);overflow:visible}
 /* audio player */
 .lo-audio-player{background:#FAFAFE;border:1px solid #EDE9FA;border-radius:18px;padding:20px 22px;display:flex;align-items:center;gap:14px;margin-bottom:18px}
-.lo-audio-icon{width:48px;height:48px;border-radius:50%;background:#7F77DD;box-shadow:0 6px 20px rgba(127,119,221,.28);display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#fff;font-size:20px}
-.lo-audio-info{flex:1;min-width:0}
-.lo-audio-name{font-family:'Fredoka',sans-serif;font-weight:700;color:#271B5D;font-size:16px;margin-bottom:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lo-audio-info{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center}
 .lo-audio-track{height:7px;background:#E4E1F8;border-radius:999px;overflow:hidden}
 .lo-audio-fill{height:100%;width:0%;background:linear-gradient(90deg,#F97316,#7F77DD);border-radius:999px;transition:width .3s linear}
 .lo-audio-time{font-family:'Nunito',sans-serif;font-weight:900;color:#9B94BE;font-size:12px;margin-top:4px}
@@ -126,7 +124,6 @@ body{margin:0!important;padding:0!important;background:#fff!important;font-famil
 .lo-btn{padding:11px 24px;border-radius:999px;font-family:'Nunito',sans-serif;font-size:13px;font-weight:900;cursor:pointer;border:0;min-width:clamp(90px,12vw,120px);display:inline-flex;align-items:center;justify-content:center;transition:transform .12s,filter .12s}
 .lo-btn:hover{transform:translateY(-2px);filter:brightness(1.07)}
 .lo-btn:disabled{opacity:.55;cursor:not-allowed;transform:none;filter:none}
-.lo-btn-reset{background:#fff;color:#534AB7;border:1.5px solid #EDE9FA}
 .lo-btn-show{background:#7F77DD;color:#fff;box-shadow:0 6px 18px rgba(127,119,221,.22)}
 .lo-btn-check{background:#F97316;color:#fff;box-shadow:0 6px 18px rgba(249,115,22,.22)}
 .lo-btn-next{background:#7F77DD;color:#fff;box-shadow:0 6px 18px rgba(127,119,221,.22)}
@@ -160,9 +157,7 @@ body{margin:0!important;padding:0!important;background:#fff!important;font-famil
     <div class="lo-board" id="lo-board">
         <!-- media area: only one is shown at a time, switched by JS based on block data -->
         <div id="lo-audio-player" class="lo-audio-player" style="display:none">
-            <div class="lo-audio-icon">🎵</div>
             <div class="lo-audio-info">
-                <div class="lo-audio-name" id="lo-audio-name"><?= htmlspecialchars($viewerTitle,ENT_QUOTES,'UTF-8') ?></div>
                 <div class="lo-audio-track"><div class="lo-audio-fill" id="lo-audio-fill"></div></div>
                 <div class="lo-audio-time" id="lo-audio-time">0:00</div>
             </div>
@@ -203,7 +198,6 @@ body{margin:0!important;padding:0!important;background:#fff!important;font-famil
         <p class="lo-done-score" id="lo-done-score"></p>
         <div class="lo-done-track"><div class="lo-done-fill" id="lo-done-fill"></div></div>
         <div class="lo-actions">
-            <button type="button" class="lo-btn lo-btn-check" onclick="loRestart()">Restart</button>
             <button type="button" class="lo-btn lo-btn-next"  onclick="history.back()">Back</button>
         </div>
     </div>
@@ -272,7 +266,6 @@ var sndLose   = document.getElementById('snd-lose');
 var sndDone   = document.getElementById('snd-done');
 var listenBtn = document.getElementById('lo-listen-btn');
 var fillEl    = document.getElementById('lo-audio-fill');
-var nameEl    = document.getElementById('lo-audio-name');
 var timeEl    = document.getElementById('lo-audio-time');
 var audioPlEl = document.getElementById('lo-audio-player');
 var videoPEl  = document.getElementById('lo-video-player');
@@ -434,7 +427,6 @@ function loadBlock(){
         if(videoEl){ videoEl.src=''; }
         if(videoPEl) videoPEl.style.display='none';
         if(audioPlEl) audioPlEl.style.display = (curAudioUrl||curSentence) ? '' : 'none';
-        if(nameEl) nameEl.textContent = curSentence || ACTIVITY_TTL || 'Listen & Order';
     }
 
     updateStatus(); renderGrid(null); updateHint();
@@ -470,7 +462,6 @@ function loRestart(){
 }
 
 if(listenBtn) listenBtn.addEventListener('click',playAudio);
-document.getElementById('lo-btn-reset').addEventListener('click',resetBlock);
 document.getElementById('lo-btn-show').addEventListener('click',showAnswer);
 document.getElementById('lo-btn-check').addEventListener('click',checkAnswer);
 document.getElementById('lo-btn-next').addEventListener('click',nextBlock);
