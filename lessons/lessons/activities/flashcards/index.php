@@ -78,6 +78,7 @@ function normalize_flashcards_payload($rawData): array
             'spanish_text' => isset($item['spanish_text']) ? trim((string) $item['spanish_text']) : '',
             'text'         => isset($item['text'])         ? trim((string) $item['text'])         : '',
             'image'        => isset($item['image'])        ? trim((string) $item['image'])        : '',
+            'audio'        => isset($item['audio'])        ? trim((string) $item['audio'])        : '',
         );
     }
 
@@ -885,7 +886,19 @@ bind('fc-premium-prev', 'click', prevCard);
 bind('fc-premium-next', 'click', nextCard);
 bind('fc-premium-restart', 'click', restart);
 bind('fc-premium-listen', 'click', function(){
-    TTS.speak(getWord(CARDS[idx] || {}));
+    var card = CARDS[idx] || {};
+    var audioUrl = String(card.audio || '').trim();
+    if (audioUrl) {
+        if (!window.__fcPremiumAudio || window.__fcPremiumAudio.getAttribute('data-src') !== audioUrl) {
+            if (window.__fcPremiumAudio) window.__fcPremiumAudio.pause();
+            window.__fcPremiumAudio = new Audio(audioUrl);
+            window.__fcPremiumAudio.setAttribute('data-src', audioUrl);
+        }
+        if (!window.__fcPremiumAudio.paused) window.__fcPremiumAudio.pause();
+        else window.__fcPremiumAudio.play().catch(function(){});
+        return;
+    }
+    TTS.speak(getWord(card));
 });
 
 bind('fc-premium-voice', 'change', function(e){

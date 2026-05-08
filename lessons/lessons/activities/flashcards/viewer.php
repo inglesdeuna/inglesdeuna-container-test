@@ -616,6 +616,10 @@ function getWord(card){
     ).trim();
 }
 
+function getAudio(card){
+    return String((card && card.audio) || '').trim();
+}
+
 function getTranslation(card){
     return String(
         card.spanish_text ||
@@ -727,6 +731,22 @@ function speakText(text) {
 }
 
 function playAudio(){
+
+    var card = getCard();
+    var audioUrl = getAudio(card);
+    if (audioUrl) {
+        if (!playAudio._audio || playAudio._audio.getAttribute('data-src') !== audioUrl) {
+            if (playAudio._audio) playAudio._audio.pause();
+            playAudio._audio = new Audio(audioUrl);
+            playAudio._audio.setAttribute('data-src', audioUrl);
+        }
+        if (!playAudio._audio.paused) {
+            playAudio._audio.pause();
+        } else {
+            playAudio._audio.play().catch(function(){});
+        }
+        return;
+    }
 
     var text = getWord(getCard());
 

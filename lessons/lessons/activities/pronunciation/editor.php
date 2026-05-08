@@ -153,6 +153,7 @@ function normalize_pronunciation_payload($rawData): array
                 'en' => $en,
                 'ph' => isset($item['ph']) ? trim((string) $item['ph']) : '',
                 'es' => isset($item['es']) ? trim((string) $item['es']) : '',
+                'voice_id' => isset($item['voice_id']) ? trim((string) $item['voice_id']) : 'JBFqnCBsd6RMkjVDRZzb',
                 'audio' => isset($item['audio']) ? trim((string) $item['audio']) : '',
             );
         }
@@ -459,6 +460,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $ess = isset($_POST['es']) && is_array($_POST['es']) ? $_POST['es'] : array();
     $imgs = isset($_POST['img']) && is_array($_POST['img']) ? $_POST['img'] : array();
     $audios = isset($_POST['audio']) && is_array($_POST['audio']) ? $_POST['audio'] : array();
+    $voiceIds = isset($_POST['voice_id']) && is_array($_POST['voice_id']) ? $_POST['voice_id'] : array();
 
     $imageFiles = isset($_FILES['img_file']) ? $_FILES['img_file'] : null;
 
@@ -471,6 +473,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $img = isset($imgs[$i]) ? trim((string) $imgs[$i]) : '';
         $audio = isset($audios[$i]) ? trim((string) $audios[$i]) : '';
+        $voiceId = isset($voiceIds[$i]) ? trim((string) $voiceIds[$i]) : 'JBFqnCBsd6RMkjVDRZzb';
+        if ($voiceId === '' || !preg_match('/^[A-Za-z0-9]+$/', $voiceId)) {
+            $voiceId = 'JBFqnCBsd6RMkjVDRZzb';
+        }
 
         if (
             $imageFiles &&
@@ -494,6 +500,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'en' => $en,
             'ph' => $ph,
             'es' => $es,
+            'voice_id' => $voiceId,
             'audio' => $audio,
         );
     }
@@ -693,6 +700,59 @@ ob_start();
     grid-column:span 2;
 }
 
+.pron-tts-row{
+    grid-column:span 2;
+    display:flex;
+    gap:10px;
+    align-items:flex-end;
+    flex-wrap:wrap;
+}
+
+.pron-tts-row select{
+    min-width:220px;
+    padding:9px 11px;
+    border-radius:10px;
+    border:1px solid #cbd5e1;
+    font-size:14px;
+    font-family:'Nunito', 'Segoe UI', sans-serif;
+}
+
+.pron-tts-btn{
+    background:#1E9A7A;
+    color:#fff;
+    border:none;
+    border-radius:999px;
+    padding:11px 18px;
+    font-size:12px;
+    font-weight:900;
+    cursor:pointer;
+}
+
+.pron-tts-status{
+    grid-column:span 2;
+    min-height:18px;
+    font-size:12px;
+    font-weight:800;
+}
+
+.pron-tts-preview{
+    grid-column:span 2;
+    display:flex;
+    align-items:center;
+    gap:10px;
+}
+
+.pron-tts-preview audio{flex:1;height:36px}
+
+.pron-tts-remove{
+    background:none;
+    border:none;
+    color:#E24B4A;
+    font-size:11px;
+    font-weight:900;
+    cursor:pointer;
+}
+
 .saved-notice{
     max-width:900px;
     margin:0 auto 14px;
@@ -755,6 +815,18 @@ ob_start();
                 <input type="file" name="img_file[]" accept="image/*">
                 <input type="hidden" name="img[]" value="<?php echo htmlspecialchars(isset($item['img']) ? $item['img'] : '', ENT_QUOTES, 'UTF-8'); ?>">
 
+                <div class="pron-tts-row">
+                    <div>
+                        <label>Voice</label>
+                        <select name="voice_id[]" class="js-pron-voiceid">
+                            <option value="JBFqnCBsd6RMkjVDRZzb"<?php echo ((isset($item['voice_id']) ? $item['voice_id'] : 'JBFqnCBsd6RMkjVDRZzb') === 'JBFqnCBsd6RMkjVDRZzb') ? ' selected' : ''; ?>>Adult Male (George)</option>
+                            <option value="21m00Tcm4TlvDq8ikWAM"<?php echo ((isset($item['voice_id']) ? $item['voice_id'] : '') === '21m00Tcm4TlvDq8ikWAM') ? ' selected' : ''; ?>>Adult Female (Rachel)</option>
+                            <option value="pFZP5JQG7iQjIQuC4Bku"<?php echo ((isset($item['voice_id']) ? $item['voice_id'] : '') === 'pFZP5JQG7iQjIQuC4Bku') ? ' selected' : ''; ?>>Child (Lily)</option>
+                        </select>
+                    </div>
+                    <button type="button" class="pron-tts-btn js-pron-generate-tts">Generate audio</button>
+                </div>
+
                 <?php if (!empty($item['img'])) { ?>
                     <div class="image-preview-wrap">
                         <p class="preview-label">Current image:</p>
@@ -763,6 +835,13 @@ ob_start();
                 <?php } ?>
 
                 <input type="hidden" name="audio[]" value="<?php echo htmlspecialchars(isset($item['audio']) ? $item['audio'] : '', ENT_QUOTES, 'UTF-8'); ?>">
+                <div class="pron-tts-status js-pron-tts-status"></div>
+                <?php if (!empty($item['audio'])) { ?>
+                    <div class="pron-tts-preview js-pron-tts-preview">
+                        <audio src="<?php echo htmlspecialchars($item['audio'], ENT_QUOTES, 'UTF-8'); ?>" controls preload="none"></audio>
+                        <button type="button" class="pron-tts-remove js-pron-remove-tts">✖ Remove</button>
+                    </div>
+                <?php } ?>
 
                 <button type="button" onclick="removeItem(this)" class="btn-remove">✖ Remove</button>
             </div>
@@ -797,7 +876,19 @@ function addItem() {
       '<label>Image (optional)</label>' +
       '<input type="file" name="img_file[]" accept="image/*">' +
       '<input type="hidden" name="img[]" value="">' +
+    '<div class="pron-tts-row">' +
+    '  <div>' +
+    '    <label>Voice</label>' +
+    '    <select name="voice_id[]" class="js-pron-voiceid">' +
+    '      <option value="JBFqnCBsd6RMkjVDRZzb">Adult Male (George)</option>' +
+    '      <option value="21m00Tcm4TlvDq8ikWAM">Adult Female (Rachel)</option>' +
+    '      <option value="pFZP5JQG7iQjIQuC4Bku">Child (Lily)</option>' +
+    '    </select>' +
+    '  </div>' +
+    '  <button type="button" class="pron-tts-btn js-pron-generate-tts">Generate audio</button>' +
+    '</div>' +
       '<input type="hidden" name="audio[]" value="">' +
+    '<div class="pron-tts-status js-pron-tts-status"></div>' +
       '<button type="button" onclick="removeItem(this)" class="btn-remove">✖ Remove</button>';
 
     container.appendChild(div);
@@ -823,6 +914,53 @@ function bindChangeTracking(scope) {
 
 document.addEventListener('DOMContentLoaded', function () {
     bindChangeTracking(document);
+
+    document.getElementById('items').addEventListener('click', function (e) {
+        var generateBtn = e.target.closest('.js-pron-generate-tts');
+        var removeBtn = e.target.closest('.js-pron-remove-tts');
+        if (generateBtn) {
+            var block = generateBtn.closest('.pron-block');
+            var textInput = block ? block.querySelector('input[name="en[]"]') : null;
+            var voiceSelect = block ? block.querySelector('.js-pron-voiceid') : null;
+            var statusEl = block ? block.querySelector('.js-pron-tts-status') : null;
+            var audioInput = block ? block.querySelector('input[name="audio[]"]') : null;
+            var text = textInput ? textInput.value.trim() : '';
+            if (!text) { alert('Please enter the English text first.'); return; }
+            generateBtn.disabled = true;
+            if (statusEl) { statusEl.textContent = 'Generating...'; statusEl.style.color = ''; }
+            var fd = new FormData();
+            fd.append('text', text);
+            fd.append('voice_id', voiceSelect ? voiceSelect.value : 'JBFqnCBsd6RMkjVDRZzb');
+            fetch('tts.php', { method: 'POST', body: fd, credentials: 'same-origin' })
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    if (data.error) throw new Error(data.error);
+                    if (audioInput) audioInput.value = data.url;
+                    var old = block.querySelector('.js-pron-tts-preview');
+                    if (old) old.remove();
+                    var preview = document.createElement('div');
+                    preview.className = 'pron-tts-preview js-pron-tts-preview';
+                    preview.innerHTML = '<audio src="' + data.url + '" controls preload="none"></audio><button type="button" class="pron-tts-remove js-pron-remove-tts">✖ Remove</button>';
+                    block.insertBefore(preview, block.querySelector('.btn-remove'));
+                    if (statusEl) { statusEl.textContent = 'Audio generated successfully'; statusEl.style.color = '#1D9E75'; }
+                    markAsChanged();
+                })
+                .catch(function (err) {
+                    if (statusEl) { statusEl.textContent = '✘ ' + (err.message || 'Generation failed'); statusEl.style.color = '#E24B4A'; }
+                })
+                .finally(function () { generateBtn.disabled = false; });
+        }
+        if (removeBtn) {
+            var block2 = removeBtn.closest('.pron-block');
+            var audioInput2 = block2 ? block2.querySelector('input[name="audio[]"]') : null;
+            var statusEl2 = block2 ? block2.querySelector('.js-pron-tts-status') : null;
+            if (audioInput2) audioInput2.value = '';
+            var preview2 = block2 ? block2.querySelector('.js-pron-tts-preview') : null;
+            if (preview2) preview2.remove();
+            if (statusEl2) { statusEl2.textContent = 'Audio removed.'; statusEl2.style.color = ''; }
+            markAsChanged();
+        }
+    });
 
     var form = document.getElementById('pronunciationForm');
     if (form) {
