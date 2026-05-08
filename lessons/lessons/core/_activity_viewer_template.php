@@ -183,40 +183,6 @@ function render_activity_viewer($title, $icon, $content)
             line-height: 1.2 !important;
             margin: 0 !important;
             padding: 16px !important;
-                /* Removed global voice toggle UI */
-                /* .tts-global-controls{
-                    position:fixed;
-                    top:12px;
-                    right:12px;
-                    z-index:9999;
-                    display:inline-flex;
-                    align-items:center;
-                    gap:8px;
-                    background:#ffffff;
-                    border:1px solid #d8dbe4;
-                    border-radius:999px;
-                    padding:6px 8px;
-                    box-shadow:0 4px 14px rgba(0,0,0,.12);
-                }
-
-                .tts-global-label{
-                    color:#5b6577;
-                    font-size:11px;
-                    font-weight:900;
-                    text-transform:uppercase;
-                    letter-spacing:.04em;
-                }
-
-                .tts-global-select{
-                    border:1px solid #d8dbe4;
-                    border-radius:999px;
-                    background:#fff;
-                    color:#4338ca;
-                    font-family:'Nunito','Segoe UI',sans-serif;
-                    font-size:12px;
-                    font-weight:800;
-                    padding:7px 12px;
-                } */
             min-width: 160px !important;
             font-size: 16px !important;
             font-weight: 800 !important;
