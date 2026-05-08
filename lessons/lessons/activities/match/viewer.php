@@ -395,123 +395,213 @@ body{margin:0!important;padding:0!important;background:var(--m-bg)!important;fon
 .activity-wrapper{max-width:100%!important;margin:0!important;padding:0!important;min-height:100vh;display:flex!important;flex-direction:column!important;background:transparent!important;}
 .top-row,.activity-header,.activity-title,.activity-subtitle,.viewer-header{display:none!important;}
 .viewer-content{flex:1!important;display:flex!important;flex-direction:column!important;padding:0!important;margin:0!important;background:transparent!important;border:none!important;box-shadow:none!important;border-radius:0!important;}
-.mc-page{width:100%;min-height:100vh;padding:clamp(16px,3vw,40px);box-sizing:border-box;display:flex;justify-content:center;align-items:flex-start;background:var(--mc-bg);}
-.mc-app{width:min(900px,100%);display:grid;gap:clamp(16px,2vw,22px);}
-.mc-hero{text-align:center;display:grid;gap:8px;justify-items:center;}
-.mc-kicker{display:inline-flex;align-items:center;padding:6px 16px;border-radius:999px;background:var(--mc-orange-soft);border:1px solid #FCDDBF;color:var(--mc-orange-dark);font-size:11px;font-weight:900;letter-spacing:.09em;text-transform:uppercase;}
-.mc-title{margin:0;font-family:'Fredoka',sans-serif;font-weight:700;font-size:clamp(30px,5.5vw,56px);color:var(--mc-orange);line-height:1.05;}
-.mc-subtitle{margin:0;font-size:clamp(13px,1.8vw,16px);font-weight:800;color:var(--mc-muted);}
-.mc-board{background:#fff;border:1px solid #F0EEF8;border-radius:28px;padding:clamp(16px,3vw,28px);box-shadow:0 8px 40px rgba(127,119,221,.12);display:grid;gap:16px;}
-.mc-progress-row{display:grid;grid-template-columns:1fr auto;gap:12px;align-items:center;}
-.mc-progress-track{height:10px;background:#F4F2FD;border:1px solid #E4E1F8;border-radius:999px;overflow:hidden;}
-.mc-progress-fill{height:100%;width:0%;background:linear-gradient(90deg,var(--mc-orange),var(--mc-purple));border-radius:999px;transition:width .4s ease;}
-.mc-score-badge{background:var(--mc-purple);color:#fff;border-radius:999px;padding:5px 16px;font-size:12px;font-weight:900;white-space:nowrap;}
-.mc-toggle{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;}
-.mc-mode-btn{padding:8px 18px;border-radius:999px;border:1.5px solid var(--mc-border);background:#fff;color:var(--mc-purple-dark);font-family:'Nunito',sans-serif;font-size:12px;font-weight:900;cursor:pointer;transition:background .18s,border-color .18s,color .18s;}
-.mc-mode-btn.active{background:var(--mc-purple);border-color:var(--mc-purple);color:#fff;}
-.mc-hint-wrap{display:flex;justify-content:center;}
-.mc-hint{display:inline-flex;align-items:center;padding:5px 14px;border-radius:999px;background:var(--mc-orange-soft);border:1px solid #FCDDBF;color:var(--mc-orange-dark);font-size:12px;font-weight:900;transition:background .2s,border-color .2s,color .2s;}
-.mc-hint.hint-selected{background:var(--mc-purple-soft);border-color:#C5C0F0;color:var(--mc-purple-dark);}
-.mc-hint.hint-correct{background:#E6F9F2;border-color:#9FE1CB;color:#0F6E56;}
-.mc-hint.hint-wrong{background:#FEF2F2;border-color:#FECACA;color:#B91C1C;}
-.mc-hint.hint-complete{background:#E6F9F2;border-color:#9FE1CB;color:#0F6E56;}
-.mc-section-label{font-size:11px;font-weight:900;color:var(--mc-muted);text-transform:uppercase;letter-spacing:.09em;text-align:center;margin-bottom:6px;}
-.mc-words-row{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;}
-.mc-word-card{padding:12px 22px;border:2px solid var(--mc-border);border-radius:14px;background:#fff;font-family:'Fredoka',sans-serif;font-size:clamp(16px,2.2vw,20px);font-weight:600;color:var(--mc-ink);cursor:pointer;transition:transform .18s,box-shadow .18s,border-color .18s,background .18s;user-select:none;min-width:80px;text-align:center;box-shadow:0 3px 10px rgba(127,119,221,.07);}
-.mc-word-card:hover:not(.matched):not(.wrong){transform:translateY(-3px);box-shadow:0 8px 22px rgba(127,119,221,.16);}
-.mc-word-card.selected{border-color:var(--mc-orange);background:var(--mc-orange-soft);box-shadow:0 0 0 3px rgba(249,115,22,.18);transform:translateY(-2px);}
-.mc-word-card.matched{border-color:var(--mc-green);background:var(--mc-green-soft);cursor:default;pointer-events:none;color:#15803d;}
-.mc-word-card.wrong{border-color:var(--mc-red);background:var(--mc-red-soft);animation:mc-shake .3s ease;pointer-events:none;}
-.mc-divider{display:flex;align-items:center;gap:10px;}
-.mc-divider::before,.mc-divider::after{content:'';flex:1;height:1px;background:var(--mc-border);}
-.mc-imgs-row{display:flex;flex-wrap:wrap;gap:12px;justify-content:center;}
-.mc-img-card{width:clamp(90px,12vw,120px);height:clamp(90px,12vw,120px);border:2px solid var(--mc-border);border-radius:14px;background:#fff;cursor:pointer;overflow:hidden;display:flex;align-items:center;justify-content:center;transition:transform .18s,box-shadow .18s,border-color .18s,background .18s;user-select:none;font-family:'Fredoka',sans-serif;font-size:clamp(14px,2vw,18px);font-weight:600;color:var(--mc-ink);text-align:center;padding:8px;box-sizing:border-box;box-shadow:0 4px 14px rgba(127,119,221,.08);}
-.mc-img-card img,.mc-img-card video{width:100%;height:100%;object-fit:cover;display:block;border-radius:12px;}
-.mc-img-card:hover:not(.matched):not(.wrong){transform:translateY(-3px);box-shadow:0 8px 24px rgba(127,119,221,.18);}
-.mc-img-card.selected{border-color:var(--mc-purple);box-shadow:0 0 0 3px rgba(127,119,221,.2);transform:translateY(-2px);}
-.mc-img-card.matched{border-color:var(--mc-green);background:var(--mc-green-soft);cursor:default;pointer-events:none;}
-.mc-img-card.wrong{border-color:var(--mc-red);background:var(--mc-red-soft);animation:mc-shake .3s ease;pointer-events:none;}
-@keyframes mc-shake{0%,100%{transform:translateX(0);}20%{transform:translateX(-8px);}40%{transform:translateX(8px);}60%{transform:translateX(-6px);}80%{transform:translateX(6px);}}
-.mc-actions{display:flex;justify-content:center;gap:10px;flex-wrap:wrap;}
-.mc-btn{padding:12px 22px;border-radius:999px;font-family:'Nunito',sans-serif;font-size:13px;font-weight:900;cursor:pointer;transition:transform .15s,filter .15s;border:none;min-width:120px;}
-.mc-btn:hover{transform:translateY(-2px);filter:brightness(1.07);}
-.mc-btn-check{background:var(--mc-orange);color:#fff;box-shadow:0 6px 18px rgba(249,115,22,.22);}
-.mc-btn-answer{background:var(--mc-purple);color:#fff;box-shadow:0 6px 18px rgba(127,119,221,.18);}
-.mc-btn-reset{background:#fff;color:var(--mc-purple-dark);border:1.5px solid var(--mc-border)!important;}
-.mc-score-grid{display:none;grid-template-columns:repeat(3,1fr);gap:10px;}
-.mc-score-grid.visible{display:grid;}
-.mc-score-card{background:#FAFAFE;border:1px solid var(--mc-border);border-radius:14px;padding:12px;text-align:center;}
-.mc-score-num{font-family:'Fredoka',sans-serif;font-weight:700;font-size:28px;line-height:1;}
-.mc-score-num.is-correct{color:#16a34a;}.mc-score-num.is-wrong{color:var(--mc-orange);}.mc-score-num.is-pct{color:var(--mc-purple);}
-.mc-score-lbl{margin-top:5px;font-size:10px;font-weight:900;color:var(--mc-muted);text-transform:uppercase;letter-spacing:.08em;}
-.mc-empty{text-align:center;padding:48px 24px;color:var(--mc-muted);font-size:17px;font-weight:800;}
-@media(max-width:600px){.mc-board{padding:16px;border-radius:22px;}.mc-score-grid{grid-template-columns:1fr;}.mc-img-card{width:clamp(80px,25vw,100px);height:clamp(80px,25vw,100px);}}
+
+/* ── Page shell ── */
+.m-page{width:100%;min-height:100vh;padding:clamp(16px,3vw,36px);display:flex;justify-content:center;align-items:flex-start;background:var(--m-bg);}
+.m-app{width:min(960px,100%);display:grid;gap:clamp(14px,2vw,20px);}
+
+/* ── Header ── */
+.m-hero{text-align:center;display:grid;gap:6px;justify-items:center;}
+.m-kicker{display:inline-flex;align-items:center;padding:5px 14px;border-radius:999px;background:var(--m-orange-soft);border:1px solid #FCDDBF;color:var(--m-orange-dark);font-size:11px;font-weight:900;letter-spacing:.09em;text-transform:uppercase;}
+.m-title{margin:0;font-family:'Fredoka',sans-serif;font-weight:700;font-size:clamp(28px,5vw,52px);color:var(--m-orange);line-height:1.05;}
+.m-subtitle{margin:0;font-size:clamp(12px,1.6vw,15px);font-weight:800;color:var(--m-muted);}
+
+/* ── Board ── */
+.m-board{background:#fff;border:1px solid #F0EEF8;border-radius:28px;padding:clamp(16px,3vw,28px);box-shadow:0 8px 40px rgba(127,119,221,.12);display:grid;gap:18px;}
+
+/* ── Progress ── */
+.m-progress-row{display:grid;grid-template-columns:1fr auto;gap:12px;align-items:center;}
+.m-progress-track{height:10px;background:#F4F2FD;border:1px solid #E4E1F8;border-radius:999px;overflow:hidden;}
+.m-progress-fill{height:100%;width:0%;background:linear-gradient(90deg,var(--m-orange),var(--m-purple));border-radius:999px;transition:width .4s ease;}
+.m-badge{background:var(--m-purple);color:#fff;border-radius:999px;padding:5px 16px;font-size:12px;font-weight:900;white-space:nowrap;}
+
+/* ── Hint ── */
+.m-hint-wrap{display:flex;justify-content:center;}
+.m-hint{display:inline-flex;align-items:center;padding:5px 14px;border-radius:999px;background:var(--m-orange-soft);border:1px solid #FCDDBF;color:var(--m-orange-dark);font-size:12px;font-weight:900;transition:background .2s,border-color .2s,color .2s;}
+.m-hint.is-correct{background:#E6F9F2;border-color:#9FE1CB;color:#0F6E56;}
+.m-hint.is-wrong{background:#FEF2F2;border-color:#FECACA;color:#B91C1C;}
+.m-hint.is-complete{background:#E6F9F2;border-color:#9FE1CB;color:#0F6E56;}
+
+/* ── Pairs table (prompt + slot) ── */
+.m-pairs{display:grid;gap:10px;}
+.m-pair-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:center;}
+.m-pair-row.has-images{grid-template-columns:1fr 1fr;}
+
+/* ── Prompt card (left, fixed) ── */
+.m-prompt{
+    display:flex;align-items:center;justify-content:center;
+    min-height:clamp(64px,10vw,90px);padding:10px 14px;
+    border:2px solid var(--m-border);border-radius:18px;
+    background:#FAFAFE;
+    font-family:'Fredoka',sans-serif;font-size:clamp(15px,2vw,20px);font-weight:600;
+    color:var(--m-ink);text-align:center;gap:8px;
+    user-select:none;
+}
+.m-prompt img{max-width:min(100%,140px);max-height:100px;object-fit:contain;border-radius:10px;}
+
+/* ── Drop slot (right, target) ── */
+.m-slot{
+    position:relative;
+    display:flex;align-items:center;justify-content:center;
+    min-height:clamp(64px,10vw,90px);padding:8px;
+    border:2px dashed #C5C0F0;border-radius:18px;
+    background:#FAFAFE;
+    transition:border-color .18s,background .18s,box-shadow .18s;
+    cursor:default;
+}
+.m-slot::before{
+    content:'Drop here';
+    position:absolute;
+    font-size:11px;font-weight:900;color:var(--m-muted);letter-spacing:.05em;
+    pointer-events:none;
+}
+.m-slot:not(:empty)::before{display:none;}
+.m-slot.drag-over{border-color:var(--m-purple);background:var(--m-purple-soft);box-shadow:0 0 0 3px rgba(127,119,221,.18);}
+.m-slot.is-correct{border-color:var(--m-green)!important;border-style:solid!important;background:var(--m-green-soft)!important;}
+.m-slot.is-wrong{border-color:var(--m-red)!important;border-style:solid!important;background:var(--m-red-soft)!important;animation:m-shake .32s ease;}
+.m-slot.is-answered{border-style:solid;border-color:var(--m-border);cursor:not-allowed;}
+
+/* ── Draggable tile ── */
+.m-tile{
+    display:inline-flex;align-items:center;justify-content:center;flex-direction:column;gap:6px;
+    padding:10px 14px;min-height:clamp(56px,9vw,80px);
+    border:2px solid var(--m-border);border-radius:16px;
+    background:#fff;cursor:grab;user-select:none;
+    font-family:'Fredoka',sans-serif;font-size:clamp(14px,1.9vw,19px);font-weight:600;
+    color:var(--m-ink);text-align:center;
+    box-shadow:0 3px 12px rgba(127,119,221,.09);
+    transition:transform .18s,box-shadow .18s,border-color .18s,opacity .18s;
+    touch-action:none;
+}
+.m-tile:active,.m-tile.dragging{cursor:grabbing;opacity:.5;transform:scale(.96);}
+.m-tile:hover:not(.is-placed){transform:translateY(-3px);box-shadow:0 8px 22px rgba(127,119,221,.18);border-color:var(--m-purple);}
+.m-tile.is-placed{cursor:default;border-color:var(--m-purple-dark);background:var(--m-purple-soft);color:var(--m-purple-dark);}
+.m-tile.is-correct{border-color:var(--m-green);background:var(--m-green-soft);color:var(--m-green-dark);cursor:default;}
+.m-tile.is-wrong-flash{border-color:var(--m-red);background:var(--m-red-soft);animation:m-shake .32s ease;}
+.m-tile img{max-width:min(100%,100px);max-height:80px;object-fit:contain;border-radius:8px;pointer-events:none;}
+.m-tile.has-image{min-width:clamp(90px,12vw,120px);min-height:clamp(90px,12vw,120px);}
+.m-tile.has-image img{max-width:min(100%,110px);max-height:90px;}
+
+/* ── Pool ── */
+.m-pool-label{font-size:11px;font-weight:900;color:var(--m-muted);text-transform:uppercase;letter-spacing:.08em;text-align:center;margin-bottom:8px;}
+.m-pool{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;min-height:56px;padding:14px;border:2px dashed #DDD9F8;border-radius:20px;background:#FAFAFE;transition:background .18s,border-color .18s;}
+.m-pool.drag-over{background:var(--m-purple-soft);border-color:var(--m-purple);}
+
+/* ── Score ── */
+.m-score-grid{display:none;grid-template-columns:repeat(3,1fr);gap:10px;}
+.m-score-grid.visible{display:grid;}
+.m-score-card{background:#FAFAFE;border:1px solid var(--m-border);border-radius:14px;padding:12px;text-align:center;}
+.m-score-num{font-family:'Fredoka',sans-serif;font-weight:700;font-size:28px;line-height:1;}
+.m-score-num.c{color:#16a34a;}.m-score-num.w{color:var(--m-orange);}.m-score-num.p{color:var(--m-purple);}
+.m-score-lbl{margin-top:5px;font-size:10px;font-weight:900;color:var(--m-muted);text-transform:uppercase;letter-spacing:.08em;}
+
+/* ── Buttons ── */
+.m-actions{display:flex;justify-content:center;gap:10px;flex-wrap:wrap;}
+.m-btn{padding:12px 24px;border-radius:999px;font-family:'Nunito',sans-serif;font-size:13px;font-weight:900;cursor:pointer;transition:transform .15s,filter .15s;border:none;min-width:120px;}
+.m-btn:hover{transform:translateY(-2px);filter:brightness(1.07);}
+.m-btn-check{background:var(--m-orange);color:#fff;box-shadow:0 6px 18px rgba(249,115,22,.22);}
+.m-btn-answer{background:var(--m-purple);color:#fff;box-shadow:0 6px 18px rgba(127,119,221,.18);}
+.m-btn-reset{background:#fff;color:var(--m-purple-dark);border:1.5px solid var(--m-border)!important;}
+
+/* ── Ghost tile for touch drag ── */
+#m-ghost{
+    position:fixed;pointer-events:none;z-index:9999;opacity:.82;
+    transform:rotate(-3deg) scale(1.06);
+    border:2px solid var(--m-purple);background:#fff;
+    border-radius:16px;padding:10px 14px;
+    font-family:'Fredoka',sans-serif;font-size:clamp(14px,1.9vw,19px);font-weight:600;
+    color:var(--m-ink);text-align:center;
+    box-shadow:0 16px 40px rgba(127,119,221,.22);
+    display:none;
+    max-width:160px;
+    align-items:center;justify-content:center;flex-direction:column;gap:6px;
+}
+#m-ghost img{max-width:100px;max-height:80px;object-fit:contain;border-radius:8px;}
+
+/* ── Empty ── */
+.m-empty{text-align:center;padding:48px 24px;color:var(--m-muted);font-size:17px;font-weight:800;}
+
+/* ── Animations ── */
+@keyframes m-shake{0%,100%{transform:translateX(0);}20%{transform:translateX(-7px);}40%{transform:translateX(7px);}60%{transform:translateX(-5px);}80%{transform:translateX(5px);}}
+@keyframes m-pop{from{transform:scale(.88);opacity:0;}to{transform:scale(1);opacity:1;}}
+.m-tile.popped{animation:m-pop .22s ease;}
+
+@media(max-width:640px){
+    .m-pair-row{grid-template-columns:1fr 1fr;}
+    .m-board{padding:14px;border-radius:22px;}
+    .m-score-grid{grid-template-columns:1fr;}
+}
+@media(max-width:420px){
+    .m-pair-row{grid-template-columns:1fr;}
+    .m-slot{min-height:54px;}
+    .m-prompt{min-height:54px;}
+}
 </style>
 
 <?php if (empty($pairs)): ?>
-<div class="mc-page"><div class="mc-app"><div class="mc-empty">No match data available.</div></div></div>
+<div class="m-page"><div class="m-app"><div class="m-empty">No match data available.</div></div></div>
 <?php else: ?>
 
-<div class="mc-page">
-    <div class="mc-app">
+<?php
+/* Build pair data for JS */
+$pairsJson = json_encode(array_values($pairs), JSON_UNESCAPED_UNICODE);
+$leftHasImages  = (bool) array_reduce($pairs, fn($c,$p) => $c || trim((string)($p['left_image']??''))!=='', false);
+$rightHasImages = (bool) array_reduce($pairs, fn($c,$p) => $c || trim((string)($p['right_image']??''))!=='', false);
+?>
 
-        <header class="mc-hero">
-            <div class="mc-kicker">Match Activity</div>
-            <h1 class="mc-title"><?= htmlspecialchars($viewerTitle, ENT_QUOTES, 'UTF-8') ?></h1>
-            <p class="mc-subtitle">Tap a word, then tap its matching pair.</p>
+<div id="m-ghost"></div>
+
+<div class="m-page">
+    <div class="m-app">
+
+        <header class="m-hero">
+            <div class="m-kicker">Match Activity</div>
+            <h1 class="m-title"><?= htmlspecialchars($viewerTitle, ENT_QUOTES, 'UTF-8') ?></h1>
+            <p class="m-subtitle">Drag each answer to its matching prompt.</p>
         </header>
 
-        <main class="mc-board">
+        <main class="m-board">
 
-            <div class="mc-progress-row">
-                <div class="mc-progress-track">
-                    <div class="mc-progress-fill" id="mc-fill"></div>
+            <div class="m-progress-row">
+                <div class="m-progress-track">
+                    <div class="m-progress-fill" id="m-fill"></div>
                 </div>
-                <div class="mc-score-badge" id="mc-badge">0 / <?= count($pairs) ?></div>
+                <div class="m-badge" id="m-badge">0 / <?= count($pairs) ?></div>
             </div>
 
-            <?php if ($hasImages): ?>
-            <div class="mc-toggle">
-                <button type="button" class="mc-mode-btn active" data-mode="image">Image only</button>
-                <button type="button" class="mc-mode-btn" data-mode="text">Text only</button>
-            </div>
-            <?php endif; ?>
-
-            <div class="mc-hint-wrap">
-                <div class="mc-hint" id="mc-hint">Tap a word to start</div>
+            <div class="m-hint-wrap">
+                <div class="m-hint" id="m-hint">Drag an answer onto its prompt</div>
             </div>
 
+            <!-- Pair rows: prompt (left) + drop slot (right) -->
+            <div class="m-pairs" id="m-pairs"></div>
+
+            <!-- Answer pool -->
             <div>
-                <div class="mc-section-label">Words</div>
-                <div class="mc-words-row" id="mc-words"></div>
+                <div class="m-pool-label">Answers — drag to the matching prompt</div>
+                <div class="m-pool" id="m-pool"></div>
             </div>
 
-            <div class="mc-divider"></div>
-
-            <div>
-                <div class="mc-section-label" id="mc-img-label">Match</div>
-                <div class="mc-imgs-row" id="mc-imgs"></div>
-            </div>
-
-            <div class="mc-score-grid" id="mc-score-grid">
-                <div class="mc-score-card">
-                    <div class="mc-score-num is-correct" id="mc-s-correct">0</div>
-                    <div class="mc-score-lbl">Correct</div>
+            <!-- Score -->
+            <div class="m-score-grid" id="m-score-grid">
+                <div class="m-score-card">
+                    <div class="m-score-num c" id="m-s-correct">0</div>
+                    <div class="m-score-lbl">Correct</div>
                 </div>
-                <div class="mc-score-card">
-                    <div class="mc-score-num is-wrong" id="mc-s-wrong">0</div>
-                    <div class="mc-score-lbl">Wrong</div>
+                <div class="m-score-card">
+                    <div class="m-score-num w" id="m-s-wrong">0</div>
+                    <div class="m-score-lbl">Wrong</div>
                 </div>
-                <div class="mc-score-card">
-                    <div class="mc-score-num is-pct" id="mc-s-pct">0%</div>
-                    <div class="mc-score-lbl">Score</div>
+                <div class="m-score-card">
+                    <div class="m-score-num p" id="m-s-pct">0%</div>
+                    <div class="m-score-lbl">Score</div>
                 </div>
             </div>
 
-            <div class="mc-actions">
-                <button type="button" class="mc-btn mc-btn-check" id="mc-check">Check</button>
-                <button type="button" class="mc-btn mc-btn-answer" id="mc-answer">Show Answer</button>
-                <button type="button" class="mc-btn mc-btn-reset" id="mc-reset">Reset</button>
+            <div class="m-actions">
+                <button type="button" class="m-btn m-btn-check"  id="m-check">Check</button>
+                <button type="button" class="m-btn m-btn-answer" id="m-answer">Show Answer</button>
+                <button type="button" class="m-btn m-btn-reset"  id="m-reset">Reset</button>
             </div>
 
         </main>
@@ -520,36 +610,20 @@ body{margin:0!important;padding:0!important;background:var(--m-bg)!important;fon
 
 <script>
 (function () {
-const PAIRS     = <?= json_encode(array_values($pairs), JSON_UNESCAPED_UNICODE) ?>;
+'use strict';
+
+const PAIRS     = <?= $pairsJson ?>;
 const RETURN_TO = <?= json_encode($returnTo, JSON_UNESCAPED_UNICODE) ?>;
-const ACT_ID    = <?= json_encode((string) ($activity['id'] ?? ''), JSON_UNESCAPED_UNICODE) ?>;
+const ACT_ID    = <?= json_encode((string)($activity['id']??''), JSON_UNESCAPED_UNICODE) ?>;
 const TOTAL     = PAIRS.length;
-const HAS_IMG   = <?= $hasImages ? 'true' : 'false' ?>;
 
-const fillEl    = document.getElementById('mc-fill');
-const badgeEl   = document.getElementById('mc-badge');
-const hintEl    = document.getElementById('mc-hint');
-const wordsEl   = document.getElementById('mc-words');
-const imgsEl    = document.getElementById('mc-imgs');
-const imgLabel  = document.getElementById('mc-img-label');
-const scoreGrid = document.getElementById('mc-score-grid');
-const sCorrect  = document.getElementById('mc-s-correct');
-const sWrong    = document.getElementById('mc-s-wrong');
-const sPct      = document.getElementById('mc-s-pct');
-
-let mode      = HAS_IMG ? 'image' : 'text';
-let matched   = new Set();
-let wrongs    = 0;
-let selWord   = null;
-let animating = false;
-let wordOrder = [];
-let imgOrder  = [];
-
-const esc   = s => String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-const byId  = id => PAIRS.find(p => String(p.id) === String(id));
-const word  = p => String(p.left_text  || p.right_text || p.text || p.word || '').trim();
-const match = p => String(p.right_text || p.left_text  || p.text || p.word || '').trim();
-const img   = p => String(p.right_image || p.left_image || p.image || p.img || '').trim();
+/* ── helpers ── */
+const esc = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const byId = id => PAIRS.find(p => String(p.id) === String(id));
+const leftText  = p => String(p.left_text  || p.text || p.word || '').trim();
+const rightText = p => String(p.right_text || p.text || p.word || '').trim();
+const leftImg   = p => String(p.left_image  || '').trim();
+const rightImg  = p => String(p.right_image || p.image || p.img || '').trim();
 
 function shuffle(arr) {
     const a = [...arr];
@@ -560,163 +634,352 @@ function shuffle(arr) {
     return a;
 }
 
-function setHint(text, cls) {
-    hintEl.textContent = text;
-    hintEl.className = 'mc-hint' + (cls ? ' hint-' + cls : '');
+/* ── DOM refs ── */
+const fillEl   = document.getElementById('m-fill');
+const badgeEl  = document.getElementById('m-badge');
+const hintEl   = document.getElementById('m-hint');
+const pairsEl  = document.getElementById('m-pairs');
+const poolEl   = document.getElementById('m-pool');
+const scoreGrid= document.getElementById('m-score-grid');
+const sCorrect = document.getElementById('m-s-correct');
+const sWrong   = document.getElementById('m-s-wrong');
+const sPct     = document.getElementById('m-s-pct');
+const ghost    = document.getElementById('m-ghost');
+
+/* ── State ── */
+let slots   = {};   // pairId → placed tileId (or null)
+let wrongs  = 0;
+let checked = new Set(); // pairIds that passed check
+let answered= false;
+
+/* ── Build tile HTML ── */
+function tileHTML(p, extraClass) {
+    const ri = rightImg(p);
+    const rt = esc(rightText(p));
+    const hasImg = ri !== '';
+    let inner = '';
+    if (hasImg) {
+        inner = `<img src="${esc(ri)}" alt="${rt}" draggable="false">${rt ? '<span>'+rt+'</span>' : ''}`;
+    } else {
+        inner = rt;
+    }
+    const cls = ['m-tile', hasImg ? 'has-image' : '', extraClass||''].filter(Boolean).join(' ');
+    return `<div class="${cls}" draggable="true" data-tile="${esc(String(p.id))}">${inner}</div>`;
 }
 
-function updateProgress() {
-    const pct = TOTAL > 0 ? Math.round((matched.size / TOTAL) * 100) : 0;
+/* ── Build prompt HTML (left side) ── */
+function promptHTML(p) {
+    const li = leftImg(p);
+    const lt = esc(leftText(p));
+    let inner = '';
+    if (li) inner += `<img src="${esc(li)}" alt="${lt}">`;
+    if (lt) inner += `<span>${lt}</span>`;
+    return `<div class="m-prompt">${inner}</div>`;
+}
+
+/* ── Render ── */
+function render() {
+    /* pairs */
+    pairsEl.innerHTML = PAIRS.map(p => {
+        const pid = String(p.id);
+        const placedId = slots[pid];
+        const isCheckedOk = checked.has(pid);
+        const slotCls = ['m-slot', isCheckedOk ? 'is-correct' : '', answered&&!isCheckedOk&&placedId ? 'is-correct' : ''].filter(Boolean).join(' ');
+        let slotContent = '';
+        if (placedId !== undefined && placedId !== null) {
+            const tp = byId(placedId);
+            if (tp) {
+                const ri = rightImg(tp);
+                const rt = esc(rightText(tp));
+                const hasImg = ri !== '';
+                let inner = hasImg ? `<img src="${esc(ri)}" alt="${rt}" draggable="false">${rt?'<span>'+rt+'</span>':''}` : rt;
+                const tc = ['m-tile', hasImg?'has-image':'', isCheckedOk||answered?'is-correct':'is-placed'].filter(Boolean).join(' ');
+                slotContent = `<div class="${tc}" data-tile="${esc(placedId)}" data-in-slot="${esc(pid)}" draggable="true">${inner}</div>`;
+            }
+        }
+        return `<div class="m-pair-row" data-pair-row="${esc(pid)}">
+            ${promptHTML(p)}
+            <div class="${slotCls}" data-slot="${esc(pid)}">${slotContent}</div>
+        </div>`;
+    }).join('');
+
+    /* pool */
+    const placedTiles = new Set(Object.values(slots).filter(v => v !== null));
+    const poolPairs = PAIRS.filter(p => !placedTiles.has(String(p.id)));
+    poolEl.innerHTML = poolPairs.map(p => tileHTML(p, 'popped')).join('') || '<span style="color:var(--m-muted);font-size:13px;font-weight:800;">All placed ✓</span>';
+
+    /* progress */
+    const placed = Object.values(slots).filter(v => v !== null).length;
+    const pct = TOTAL > 0 ? Math.round((placed / TOTAL) * 100) : 0;
     fillEl.style.width = pct + '%';
-    badgeEl.textContent = matched.size + ' / ' + TOTAL;
+    badgeEl.textContent = placed + ' / ' + TOTAL;
+
+    bindDrag();
+    bindTouch();
 }
 
+/* ── Drag (desktop) ── */
+let dragTileId = null;
+let dragFromSlot = null; // pairId if dragged from a slot, else null
+
+function bindDrag() {
+    document.querySelectorAll('.m-tile[draggable]').forEach(el => {
+        el.addEventListener('dragstart', e => {
+            dragTileId = el.dataset.tile;
+            dragFromSlot = el.dataset.inSlot || null;
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/plain', dragTileId);
+            setTimeout(() => el.classList.add('dragging'), 0);
+        });
+        el.addEventListener('dragend', () => {
+            dragTileId = null;
+            dragFromSlot = null;
+            document.querySelectorAll('.m-tile.dragging').forEach(t => t.classList.remove('dragging'));
+        });
+    });
+
+    document.querySelectorAll('.m-slot').forEach(slot => {
+        slot.addEventListener('dragover', e => {
+            if (slot.classList.contains('is-correct')) return;
+            e.preventDefault();
+            slot.classList.add('drag-over');
+        });
+        slot.addEventListener('dragleave', () => slot.classList.remove('drag-over'));
+        slot.addEventListener('drop', e => {
+            e.preventDefault();
+            slot.classList.remove('drag-over');
+            const tileId = e.dataTransfer.getData('text/plain') || dragTileId;
+            if (!tileId) return;
+            dropTileOnSlot(tileId, slot.dataset.slot, dragFromSlot);
+        });
+    });
+
+    /* drop back on pool */
+    poolEl.addEventListener('dragover', e => {
+        e.preventDefault();
+        poolEl.classList.add('drag-over');
+    });
+    poolEl.addEventListener('dragleave', () => poolEl.classList.remove('drag-over'));
+    poolEl.addEventListener('drop', e => {
+        e.preventDefault();
+        poolEl.classList.remove('drag-over');
+        const tileId = e.dataTransfer.getData('text/plain') || dragTileId;
+        if (!tileId || !dragFromSlot) return;
+        /* return to pool */
+        if (!checked.has(dragFromSlot)) {
+            slots[dragFromSlot] = null;
+            render();
+        }
+    });
+}
+
+/* ── Drop logic ── */
+function dropTileOnSlot(tileId, targetPairId, fromSlot) {
+    if (checked.has(targetPairId)) return; /* locked */
+
+    /* if target slot is occupied, displace that tile back to pool */
+    if (slots[targetPairId] !== null && slots[targetPairId] !== undefined) {
+        const displaced = slots[targetPairId];
+        /* find the original slot of the displaced tile and clear it */
+        Object.keys(slots).forEach(pid => {
+            if (slots[pid] === displaced && pid !== targetPairId) slots[pid] = null;
+        });
+    }
+
+    /* clear source slot */
+    if (fromSlot && fromSlot !== targetPairId) {
+        slots[fromSlot] = null;
+    }
+
+    slots[targetPairId] = tileId;
+    render();
+    setHint('Placed! Keep going…', null);
+}
+
+/* ── Touch drag ── */
+let touchTileEl = null;
+let touchFromSlot = null;
+let touchTileId = null;
+
+function bindTouch() {
+    document.querySelectorAll('.m-tile[draggable]').forEach(el => {
+        el.addEventListener('touchstart', onTouchStart, {passive:false});
+    });
+}
+
+function onTouchStart(e) {
+    if (e.touches.length !== 1) return;
+    const el = e.currentTarget;
+    if (el.closest('.m-slot')?.classList.contains('is-correct')) return;
+    e.preventDefault();
+    touchTileId   = el.dataset.tile;
+    touchFromSlot = el.dataset.inSlot || null;
+    touchTileEl   = el;
+
+    /* build ghost */
+    ghost.innerHTML = el.innerHTML;
+    ghost.style.display = 'flex';
+    ghost.style.width   = el.offsetWidth + 'px';
+    moveGhost(e.touches[0]);
+
+    el.classList.add('dragging');
+    document.addEventListener('touchmove', onTouchMove, {passive:false});
+    document.addEventListener('touchend',  onTouchEnd,  {passive:false});
+}
+
+function moveGhost(touch) {
+    ghost.style.left = (touch.clientX - ghost.offsetWidth  / 2) + 'px';
+    ghost.style.top  = (touch.clientY - ghost.offsetHeight / 2) + 'px';
+}
+
+function onTouchMove(e) {
+    if (!touchTileEl) return;
+    e.preventDefault();
+    moveGhost(e.touches[0]);
+    /* highlight slot under finger */
+    document.querySelectorAll('.m-slot.drag-over').forEach(s => s.classList.remove('drag-over'));
+    const slot = slotFromPoint(e.touches[0].clientX, e.touches[0].clientY);
+    if (slot) slot.classList.add('drag-over');
+    poolEl.classList.toggle('drag-over', !!poolFromPoint(e.touches[0].clientX, e.touches[0].clientY));
+}
+
+function onTouchEnd(e) {
+    document.removeEventListener('touchmove', onTouchMove);
+    document.removeEventListener('touchend',  onTouchEnd);
+    ghost.style.display = 'none';
+    document.querySelectorAll('.m-slot.drag-over').forEach(s => s.classList.remove('drag-over'));
+    poolEl.classList.remove('drag-over');
+    if (!touchTileEl) return;
+    touchTileEl.classList.remove('dragging');
+
+    const t = e.changedTouches[0];
+    const slot = slotFromPoint(t.clientX, t.clientY);
+    if (slot) {
+        dropTileOnSlot(touchTileId, slot.dataset.slot, touchFromSlot);
+    } else if (poolFromPoint(t.clientX, t.clientY) && touchFromSlot) {
+        if (!checked.has(touchFromSlot)) {
+            slots[touchFromSlot] = null;
+            render();
+        }
+    }
+    touchTileEl   = null;
+    touchTileId   = null;
+    touchFromSlot = null;
+}
+
+function slotFromPoint(x, y) {
+    return [...document.querySelectorAll('.m-slot')].find(s => {
+        const r = s.getBoundingClientRect();
+        return x >= r.left && x <= r.right && y >= r.top && y <= r.bottom;
+    }) || null;
+}
+function poolFromPoint(x, y) {
+    const r = poolEl.getBoundingClientRect();
+    return x >= r.left && x <= r.right && y >= r.top && y <= r.bottom;
+}
+
+/* ── Hint ── */
+function setHint(text, state) {
+    hintEl.textContent = text;
+    hintEl.className = 'm-hint' + (state ? ' is-' + state : '');
+}
+
+/* ── Check ── */
+function checkAnswers() {
+    let anyNew = false;
+    PAIRS.forEach(p => {
+        const pid = String(p.id);
+        if (checked.has(pid)) return;
+        const placed = slots[pid];
+        if (!placed) return;
+        anyNew = true;
+        if (String(placed) === String(p.id)) {
+            checked.add(pid);
+        } else {
+            wrongs++;
+            /* flash wrong on slot */
+            const slotEl = document.querySelector(`[data-slot="${CSS.escape(pid)}"]`);
+            if (slotEl) {
+                slotEl.classList.add('is-wrong');
+                setTimeout(() => {
+                    slotEl.classList.remove('is-wrong');
+                    slots[pid] = null;
+                    render();
+                }, 500);
+            } else {
+                slots[pid] = null;
+                render();
+            }
+        }
+    });
+
+    if (!anyNew) {
+        setHint('Place all answers first', 'wrong');
+        return;
+    }
+
+    updateScores(checked.size === TOTAL);
+    if (checked.size === TOTAL) {
+        setHint('🎉 All matched!', 'complete');
+        render();
+        persistScore();
+    } else {
+        setHint(checked.size + ' correct, keep going…', 'correct');
+        render();
+    }
+}
+
+/* ── Show Answer ── */
+function showAnswers() {
+    answered = true;
+    PAIRS.forEach(p => {
+        slots[String(p.id)] = String(p.id);
+        checked.add(String(p.id));
+    });
+    setHint('🎉 All answers shown!', 'complete');
+    updateScores(true);
+    render();
+}
+
+/* ── Reset ── */
+function resetGame() {
+    slots   = {};
+    wrongs  = 0;
+    checked = new Set();
+    answered= false;
+    PAIRS.forEach(p => { slots[String(p.id)] = null; });
+    setHint('Drag an answer onto its prompt');
+    updateScores(false);
+    render();
+}
+
+/* ── Scores ── */
 function updateScores(show) {
-    const attempts = matched.size + wrongs;
-    const pct = attempts > 0 ? Math.round((matched.size / attempts) * 100) : 0;
-    sCorrect.textContent = matched.size;
+    const attempts = checked.size + wrongs;
+    const pct = attempts > 0 ? Math.round((checked.size / attempts) * 100) : 0;
+    sCorrect.textContent = checked.size;
     sWrong.textContent   = wrongs;
     sPct.textContent     = pct + '%';
     scoreGrid.classList.toggle('visible', !!show);
 }
 
-function renderWords() {
-    wordsEl.innerHTML = wordOrder.map(id => {
-        const p = byId(id);
-        if (!p) return '';
-        const cls = ['mc-word-card', matched.has(id) ? 'matched' : '', selWord === id ? 'selected' : ''].filter(Boolean).join(' ');
-        return `<button type="button" class="${cls}" data-id="${esc(id)}">${esc(word(p))}</button>`;
-    }).join('');
-    wordsEl.querySelectorAll('[data-id]').forEach(btn => btn.addEventListener('click', () => tapWord(btn.dataset.id)));
-}
-
-function renderImgs() {
-    imgLabel.textContent = mode === 'image' ? 'Images' : 'Match';
-    imgsEl.innerHTML = imgOrder.map(id => {
-        const p = byId(id);
-        if (!p) return '';
-        const cls = ['mc-img-card', matched.has(id) ? 'matched' : ''].filter(Boolean).join(' ');
-        let inner = '';
-        if (mode === 'image') {
-            const src = img(p);
-            if (src) {
-                inner = src.match(/\.(mp4|webm|ogg|mov|m4v)$/i)
-                    ? `<video src="${esc(src)}" autoplay muted loop playsinline></video>`
-                    : `<img src="${esc(src)}" alt="${esc(match(p))}">`;
-            } else {
-                inner = esc(match(p));
-            }
-        } else {
-            inner = esc(match(p));
-        }
-        return `<button type="button" class="${cls}" data-id="${esc(id)}">${inner}</button>`;
-    }).join('');
-    imgsEl.querySelectorAll('[data-id]').forEach(btn => btn.addEventListener('click', () => tapImg(btn.dataset.id)));
-}
-
-function render() {
-    renderWords();
-    renderImgs();
-    updateProgress();
-}
-
-function tapWord(id) {
-    if (animating || matched.has(id)) return;
-    selWord = id;
-    setHint((word(byId(id)) || 'Word') + ' selected — tap its match', 'selected');
-    render();
-}
-
-function tapImg(id) {
-    if (animating || matched.has(id)) return;
-    if (!selWord) { setHint('Tap a word first', 'wrong'); return; }
-    if (String(selWord) === String(id)) {
-        matched.add(selWord);
-        selWord = null;
-        updateProgress();
-        if (matched.size === TOTAL) {
-            setHint('🎉 All pairs matched!', 'complete');
-            updateScores(true);
-            render();
-            persistScore();
-        } else {
-            setHint('Correct! Keep going ✓', 'correct');
-            render();
-        }
-    } else {
-        wrongs++;
-        animating = true;
-        setHint('Not a match — try again', 'wrong');
-        const wBtn = wordsEl.querySelector(`[data-id="${CSS.escape(selWord)}"]`);
-        const iBtn = imgsEl.querySelector(`[data-id="${CSS.escape(id)}"]`);
-        if (wBtn) { wBtn.classList.add('wrong'); wBtn.classList.remove('selected'); }
-        if (iBtn) iBtn.classList.add('wrong');
-        setTimeout(() => {
-            animating = false;
-            selWord   = null;
-            setHint('Tap a word to start');
-            render();
-        }, 600);
-    }
-}
-
-function checkUnmatched() {
-    if (matched.size === TOTAL) { updateScores(true); return; }
-    wordsEl.querySelectorAll('.mc-word-card:not(.matched)').forEach(b => { b.classList.add('wrong'); b.style.pointerEvents = 'none'; });
-    imgsEl.querySelectorAll('.mc-img-card:not(.matched)').forEach(b => { b.classList.add('wrong'); b.style.pointerEvents = 'none'; });
-    setHint((TOTAL - matched.size) + ' pair(s) still unmatched', 'wrong');
-    setTimeout(() => {
-        wordsEl.querySelectorAll('.mc-word-card.wrong').forEach(b => { b.classList.remove('wrong'); b.style.pointerEvents = ''; });
-        imgsEl.querySelectorAll('.mc-img-card.wrong').forEach(b => { b.classList.remove('wrong'); b.style.pointerEvents = ''; });
-        setHint('Tap a word to start');
-    }, 700);
-}
-
-function showAnswers() {
-    PAIRS.forEach(p => matched.add(String(p.id)));
-    selWord = null; animating = false;
-    setHint('🎉 All pairs shown!', 'complete');
-    updateScores(true);
-    render();
-}
-
-function resetGame() {
-    matched   = new Set();
-    wrongs    = 0;
-    selWord   = null;
-    animating = false;
-    wordOrder = shuffle(PAIRS.map(p => String(p.id)));
-    imgOrder  = shuffle(PAIRS.map(p => String(p.id)));
-    setHint('Tap a word to start');
-    updateScores(false);
-    render();
-}
-
+/* ── Persist ── */
 async function persistScore() {
     if (!RETURN_TO || !ACT_ID) return;
-    const attempts = matched.size + wrongs;
-    const pct      = attempts > 0 ? Math.round((matched.size / attempts) * 100) : 100;
-    const sep      = RETURN_TO.includes('?') ? '&' : '?';
-    const url      = RETURN_TO + sep + 'activity_percent=' + pct + '&activity_errors=' + wrongs + '&activity_total=' + TOTAL + '&activity_id=' + encodeURIComponent(ACT_ID) + '&activity_type=match';
+    const attempts = checked.size + wrongs;
+    const pct = attempts > 0 ? Math.round((checked.size / attempts) * 100) : 100;
+    const sep = RETURN_TO.includes('?') ? '&' : '?';
+    const url = RETURN_TO + sep + 'activity_percent=' + pct + '&activity_errors=' + wrongs + '&activity_total=' + TOTAL + '&activity_id=' + encodeURIComponent(ACT_ID) + '&activity_type=match';
     try {
-        const r = await fetch(url, { method: 'GET', credentials: 'same-origin', cache: 'no-store' });
+        const r = await fetch(url, {method:'GET',credentials:'same-origin',cache:'no-store'});
         if (!r.ok) window.location.href = url;
-    } catch (e) { window.location.href = url; }
+    } catch(e) { window.location.href = url; }
 }
 
-document.querySelectorAll('.mc-mode-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-        mode = btn.dataset.mode;
-        document.querySelectorAll('.mc-mode-btn').forEach(b => b.classList.toggle('active', b === btn));
-        selWord = null;
-        setHint('Tap a word to start');
-        render();
-    });
-});
-
-document.getElementById('mc-check').addEventListener('click', checkUnmatched);
-document.getElementById('mc-answer').addEventListener('click', showAnswers);
-document.getElementById('mc-reset').addEventListener('click', resetGame);
+/* ── Wire buttons ── */
+document.getElementById('m-check') .addEventListener('click', checkAnswers);
+document.getElementById('m-answer').addEventListener('click', showAnswers);
+document.getElementById('m-reset') .addEventListener('click', resetGame);
 
 resetGame();
 })();
