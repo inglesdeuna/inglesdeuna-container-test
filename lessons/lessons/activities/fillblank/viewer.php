@@ -79,6 +79,7 @@ function fb_load(PDO $pdo, string $unit, string $activityId): array
         'media_type'   => isset($data['media_type']) ? $data['media_type'] : 'none',
         'media_url'    => isset($data['media_url'])  ? $data['media_url']  : '',
         'tts_text'     => isset($data['tts_text'])   ? $data['tts_text']   : '',
+        'tts_audio_url'=> isset($data['tts_audio_url']) ? $data['tts_audio_url'] : '',
     );
 }
 
@@ -814,7 +815,11 @@ body.embedded-mode .fb-back-btn {
 
             <?php if ($activity['media_type'] === 'tts' && !empty($activity['tts_text'])): ?>
             <div class="fb-tts-bar">
+                <?php if (!empty($activity['tts_audio_url'])): ?>
+                <audio id="fb-tts-audio" src="<?php echo htmlspecialchars($activity['tts_audio_url'], ENT_QUOTES, 'UTF-8'); ?>" controls preload="none" style="height:36px;flex:1;min-width:0"></audio>
+                <?php else: ?>
                 <button type="button" id="fb-tts-btn" class="fb-tts-btn">Listen</button>
+                <?php endif; ?>
             </div>
             <?php elseif ($activity['media_type'] === 'audio' && !empty($activity['media_url'])): ?>
             <div class="fb-tts-bar">
@@ -1129,8 +1134,9 @@ document.addEventListener('keydown', function(e) {
 });
 
 <?php if ($activity['media_type'] === 'tts' && !empty($activity['tts_text'])): ?>
-var TTS_TEXT    = <?php echo json_encode($activity['tts_text'], JSON_UNESCAPED_UNICODE); ?>;
-var ttsBtn      = document.getElementById('fb-tts-btn');
+var TTS_AUDIO_URL = <?php echo json_encode($activity['tts_audio_url'] ?? '', JSON_UNESCAPED_UNICODE); ?>;
+var TTS_TEXT    = TTS_AUDIO_URL ? '' : <?php echo json_encode($activity['tts_text'], JSON_UNESCAPED_UNICODE); ?>;
+var ttsBtn      = TTS_AUDIO_URL ? null : document.getElementById('fb-tts-btn');
 var ttsSpeaking = false;
 var ttsPaused   = false;
 var ttsOffset   = 0;
