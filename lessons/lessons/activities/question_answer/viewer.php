@@ -57,7 +57,7 @@ function qa_normalize_title(string $title): string
 
 function qa_normalize_payload($rawData): array
 {
-    $default = array('title' => qa_default_title(), 'cards' => array());
+    $default = array('title' => qa_default_title(), 'voice_id' => 'nzFihrBIvB34imQBuxub', 'cards' => array());
     if ($rawData === null || $rawData === '') return $default;
 
     $decoded = is_string($rawData) ? json_decode($rawData, true) : $rawData;
@@ -79,7 +79,11 @@ function qa_normalize_payload($rawData): array
         );
     }
 
-    return array('title' => qa_normalize_title($title), 'cards' => $cards);
+    return array(
+        'title' => qa_normalize_title($title),
+        'voice_id' => trim((string) ($decoded['voice_id'] ?? 'nzFihrBIvB34imQBuxub')) ?: 'nzFihrBIvB34imQBuxub',
+        'cards' => $cards
+    );
 }
 
 function qa_load_activity(PDO $pdo, string $unit, string $activityId): array
@@ -128,6 +132,7 @@ function qa_load_activity(PDO $pdo, string $unit, string $activityId): array
 
     return array(
         'title' => qa_normalize_title((string) $payload['title']),
+        'voice_id' => isset($payload['voice_id']) ? (string) $payload['voice_id'] : 'nzFihrBIvB34imQBuxub',
         'cards' => isset($payload['cards']) && is_array($payload['cards']) ? $payload['cards'] : array(),
     );
 }
@@ -697,6 +702,8 @@ body.presentation-mode .qa-premium-text {
 
 var CARDS = <?php echo json_encode($cards, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
 var TOTAL = CARDS.length;
+var QA_VOICE_ID = <?php echo json_encode((string) ($activity['voice_id'] ?? 'nzFihrBIvB34imQBuxub'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
+var QA_TTS_URL = 'tts.php';
 var idx = 0;
 var flipped = false;
 var done = false;
@@ -715,71 +722,61 @@ var els = {
 };
 
 var TTS = (function(){
-    var preferred = ['zira','samantha','karen','aria','jenny','emma','ava','siri','google us english','female','woman'];
-    var cache = null;
-    var attempts = 0;
+    var audio = null;
+    var audioUrl = '';
 
-    function load(cb){
-        if (!window.speechSynthesis) return;
-        var voices = window.speechSynthesis.getVoices();
-        if (voices && voices.length) {
-            cache = voices;
-            cb(voices);
-            return;
+    function cleanup() {
+        if (audio) {
+            try { audio.pause(); } catch (e) {}
+            try { audio.currentTime = 0; } catch (e) {}
+            audio = null;
         }
-        if (window.speechSynthesis.onvoiceschanged !== undefined) {
-            window.speechSynthesis.onvoiceschanged = function(){
-                cache = window.speechSynthesis.getVoices();
-                if (cache.length) cb(cache);
-            };
+        if (audioUrl) {
+            try { URL.revokeObjectURL(audioUrl); } catch (e) {}
+            audioUrl = '';
         }
-        if (attempts < 12) {
-            attempts++;
-            setTimeout(function(){ load(cb); }, 150);
-        }
-    }
-
-    function pick(voices){
-        if (!voices || !voices.length) return null;
-        var pool = [];
-        voices.forEach(function(v){
-            var lang = String(v.lang || '').toLowerCase();
-            if (lang.indexOf('en') === 0) pool.push(v);
-        });
-        if (!pool.length) pool = voices;
-
-        for (var i = 0; i < preferred.length; i++) {
-            for (var j = 0; j < pool.length; j++) {
-                var label = (String(pool[j].name || '') + ' ' + String(pool[j].voiceURI || '')).toLowerCase();
-                if (label.indexOf(preferred[i]) !== -1) return pool[j];
-            }
-        }
-        return pool[0] || null;
     }
 
     function speak(text){
         text = String(text || '').trim();
-        if (!text || !window.speechSynthesis) return;
+        if (!text) return;
 
-        window.speechSynthesis.cancel();
-
-        function run(voices){
-            var utterance = new SpeechSynthesisUtterance(text);
-            utterance.lang = 'en-US';
-            utterance.rate = 0.84;
-            utterance.pitch = 1.08;
-            utterance.volume = 1;
-            var voice = pick(voices);
-            if (voice) utterance.voice = voice;
-            window.speechSynthesis.speak(utterance);
+        if (audio) {
+            if (!audio.paused) {
+                audio.pause();
+            } else {
+                audio.play().catch(function(){});
+            }
+            return;
         }
 
-        if (cache && cache.length) run(cache);
-        else load(run);
+        var fd = new FormData();
+        fd.append('text', text);
+        fd.append('voice_id', QA_VOICE_ID || 'nzFihrBIvB34imQBuxub');
+
+        fetch(QA_TTS_URL, { method: 'POST', body: fd, credentials: 'same-origin' })
+            .then(function (res) {
+                if (!res.ok) throw new Error('TTS error ' + res.status);
+                return res.blob();
+            })
+            .then(function (blob) {
+                audioUrl = URL.createObjectURL(blob);
+                audio = new Audio(audioUrl);
+
+                audio.onended = function () {
+                    cleanup();
+                };
+
+                audio.play().catch(function () {
+                    cleanup();
+                });
+            })
+            .catch(function () {
+                cleanup();
+            });
     }
 
-    if (window.speechSynthesis) load(function(){});
-    return { speak: speak };
+    return { speak: speak, stop: cleanup };
 })();
 
 function getQuestion(card){
@@ -835,6 +832,7 @@ function nextCard(){
 
 function showDone(){
     done = true;
+    TTS.stop();
     els.board.style.display = 'none';
     els.completed.classList.add('active');
     setTimeout(function(){ els.doneFill.style.width = '100%'; }, 120);
@@ -848,6 +846,7 @@ function showDone(){
 
 function restart(){
     done = false;
+    TTS.stop();
     idx = 0;
     els.doneFill.style.width = '0%';
     els.completed.classList.remove('active');
