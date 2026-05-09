@@ -1,57 +1,136 @@
 @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@600;700;800;900&display=swap');
 
-/* Hide the default viewer header — activity uses act-header instead */
 .viewer-header { display: none !important; }
 
-/* ── Page background ── */
+:root{
+    --d2d-orange:#F97316;
+    --d2d-orange-dark:#C2580A;
+    --d2d-orange-soft:#FFF0E6;
+    --d2d-purple:#7F77DD;
+    --d2d-purple-dark:#534AB7;
+    --d2d-purple-soft:#EEEDFE;
+    --d2d-muted:#9B94BE;
+    --d2d-border:#F0EEF8;
+}
+
+html,
+body{width:100%;min-height:100%}
+
 body {
-    background: #ffffff;
+    margin:0!important;
+    padding:0!important;
+    background:#ffffff!important;
+    font-family:'Nunito','Segoe UI',sans-serif!important;
 }
 
-/* ── Outer wrapper ── */
+.activity-wrapper{
+    max-width:100%!important;
+    margin:0!important;
+    padding:0!important;
+    min-height:100vh;
+    display:flex!important;
+    flex-direction:column!important;
+    background:transparent!important;
+}
+
+.top-row,
+.activity-header,
+.activity-title,
+.activity-subtitle{
+    display:none!important;
+}
+
+.viewer-content{
+    flex:1!important;
+    display:flex!important;
+    flex-direction:column!important;
+    padding:0!important;
+    margin:0!important;
+    background:transparent!important;
+    border:none!important;
+    box-shadow:none!important;
+    border-radius:0!important;
+}
+
+.d2dv-page{
+    width:100%;
+    min-height:100vh;
+    padding:clamp(14px,2.5vw,34px);
+    display:flex;
+    align-items:flex-start;
+    justify-content:center;
+    background:#fff;
+    box-sizing:border-box;
+}
+
+.d2dv-app{
+    width:min(1120px,100%);
+    margin:0 auto;
+}
+
+.d2dv-hero{
+    text-align:center;
+    margin-bottom:clamp(14px,2vw,22px);
+}
+
+.d2dv-kicker{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    padding:7px 14px;
+    border-radius:999px;
+    background:var(--d2d-orange-soft);
+    border:1px solid #FCDDBF;
+    color:var(--d2d-orange-dark);
+    font-size:12px;
+    font-weight:900;
+    letter-spacing:.08em;
+    text-transform:uppercase;
+    margin-bottom:10px;
+}
+
+.d2dv-hero h1{
+    font-family:'Fredoka',sans-serif;
+    font-size:clamp(30px,5.5vw,58px);
+    font-weight:700;
+    color:var(--d2d-orange);
+    margin:0;
+    line-height:1.03;
+}
+
+.d2dv-hero p{
+    font-size:clamp(13px,1.8vw,17px);
+    font-weight:800;
+    color:var(--d2d-muted);
+    margin:8px 0 0;
+}
+
+.d2dv-stage-shell{
+    background:#fff;
+    border:1px solid var(--d2d-border);
+    border-radius:34px;
+    padding:clamp(16px,2.6vw,26px);
+    box-shadow:0 8px 40px rgba(127,119,221,.13);
+    box-sizing:border-box;
+}
+
 .d2dv-wrap {
-    max-width: 900px;
-    margin: 0 auto;
-    font-family: 'Nunito', 'Segoe UI', sans-serif;
-}
-
-/* ── Activity header: Fredoka title, orange, platform style ── */
-.act-header {
-    max-width: 900px !important;
-    margin-left: auto !important;
-    margin-right: auto !important;
-    margin-bottom: 10px !important;
-    padding: 12px 18px !important;
-    border-radius: 16px !important;
-    background: #ffffff !important;
-    border: 1px solid #F0EEF8 !important;
-    box-shadow: 0 8px 40px rgba(127,119,221,.13) !important;
-}
-.act-header h2 {
-    font-family: 'Fredoka', 'Trebuchet MS', sans-serif !important;
-    font-size: clamp(18px, 2.6vw, 26px) !important;
-    font-weight: 700 !important;
-    color: #F97316 !important;
-    margin: 0 0 4px !important;
-}
-.act-header p {
-    font-family: 'Nunito', 'Segoe UI', sans-serif !important;
-    font-size: 13px !important;
-    font-weight: 800 !important;
-    color: #9B94BE !important;
+    max-width:100%;
+    margin:0 auto;
+    font-family:'Nunito','Segoe UI',sans-serif;
 }
 
 /* ── Main card / board ── */
 .d2dv-main {
-    max-width: 900px;
+    max-width: 980px;
     margin: 0 auto;
     display: flex;
     flex-direction: column;
     align-items: center;
     background: #ffffff;
-    border: 1px solid #F0EEF8;
-    border-radius: 28px;
-    box-shadow: 0 8px 40px rgba(127,119,221,.13);
+    border: 1px solid #EDE9FA;
+    border-radius: 30px;
+    box-shadow: 0 8px 24px rgba(127,119,221,.09);
     padding: 18px 18px 16px;
 }
 
@@ -69,9 +148,9 @@ body {
 /* "Connect 1 to 2" instruction chip */
 .d2dv-chip {
     border-radius: 999px;
-    background: #FFF0E6;
+    background: var(--d2d-orange-soft);
     border: 1px solid #FCDDBF;
-    color: #C2580A;
+    color: var(--d2d-orange-dark);
     padding: 8px 14px;
     font-weight: 900;
     font-size: clamp(13px, 1.6vw, 15px);
@@ -81,7 +160,7 @@ body {
 
 /* "0 / 3 lines" counter chip */
 .d2dv-chip-accent {
-    background: #7F77DD;
+    background: var(--d2d-purple);
     border: none;
     color: #ffffff;
 }
@@ -108,16 +187,16 @@ body {
 .d2dv-img {
     display: block;
     max-width: 100%;
-    max-height: calc(100vh - 250px);
+    max-height: min(70vh, 680px);
     width: auto;
     height: auto;
-    border-radius: 14px;
+    border-radius: 18px;
     opacity: 0;
     transform: scale(1.01);
     transition: opacity .45s ease, transform .45s ease;
     user-select: none;
     pointer-events: none;
-    box-shadow: 0 8px 40px rgba(127,119,221,.13);
+    box-shadow: 0 12px 36px rgba(127,119,221,.13);
 }
 
 .d2dv-stage.revealed .d2dv-img {
@@ -147,7 +226,7 @@ body {
     text-align: center;
     font-weight: 800;
     font-size: 15px;
-    color: #9B94BE;
+    color: var(--d2d-muted);
     min-height: 22px;
     margin: 4px 0;
     line-height: 1.4;
@@ -169,11 +248,11 @@ body {
     justify-content: center;
     border: none;
     border-radius: 999px;
-    padding: 9px 18px;
-    min-width: 130px;
+    padding: 13px clamp(20px,3vw,32px);
+    min-width: clamp(104px,16vw,146px);
     font-weight: 900;
     font-family: 'Nunito', 'Segoe UI', sans-serif;
-    font-size: 13px;
+    font-size: clamp(13px, 1.8vw, 15px);
     line-height: 1;
     cursor: pointer;
     transition: transform .15s ease, filter .15s ease;
@@ -182,35 +261,35 @@ body {
 
 /* Reset — orange (primary action) */
 .d2dv-btn-soft {
-    background: #F97316;
+    background: var(--d2d-orange);
     color: #ffffff;
     box-shadow: 0 6px 18px rgba(249,115,22,.22);
 }
 
 /* Hint / Reveal — purple (secondary action) */
 .d2dv-btn-accent {
-    background: #7F77DD;
+    background: var(--d2d-purple);
     color: #ffffff;
     box-shadow: 0 6px 18px rgba(127,119,221,.18);
 }
 
 /* Next / Continue — orange (primary action) */
 .d2dv-btn-next {
-    background: #F97316;
+    background: var(--d2d-orange);
     color: #ffffff;
     box-shadow: 0 6px 18px rgba(249,115,22,.22);
 }
 
 /* ── Empty state ── */
 .d2dv-empty {
-    max-width: 900px;
+    max-width: 980px;
     margin: 0 auto;
     text-align: center;
     padding: 24px;
-    border: 1px solid #F0EEF8;
+    border: 1px solid #EDE9FA;
     border-radius: 28px;
     background: #ffffff;
-    color: #9B94BE;
+    color: var(--d2d-muted);
     font-weight: 800;
     font-family: 'Nunito', 'Segoe UI', sans-serif;
     box-shadow: 0 8px 40px rgba(127,119,221,.13);
@@ -223,7 +302,7 @@ body {
     padding: 16px;
     border-radius: 18px;
     background: #ffffff;
-    border: 1px solid #F0EEF8;
+    border: 1px solid #EDE9FA;
     text-align: center;
     box-sizing: border-box;
     box-shadow: 0 8px 40px rgba(127,119,221,.13);
@@ -234,56 +313,22 @@ body {
     font-family: 'Fredoka', 'Trebuchet MS', sans-serif;
     font-size: 24px;
     font-weight: 700;
-    color: #F97316;
+    color: var(--d2d-orange);
 }
 .d2dv-completion-score {
     margin: 0;
     font-size: 17px;
     font-weight: 900;
-    color: #534AB7;
+    color: var(--d2d-purple-dark);
     font-family: 'Nunito', 'Segoe UI', sans-serif;
 }
 
 /* ── Mobile ── */
 @media (max-width: 640px) {
-    .d2dv-img { max-height: calc(100vh - 220px); }
+    .d2dv-page{padding:12px}
+    .d2dv-stage-shell{border-radius:26px;padding:14px}
+    .d2dv-img { max-height: min(62vh, 520px); }
     .d2dv-btn { width: 100%; max-width: 280px; }
     .d2dv-toolbar { flex-direction: column; align-items: center; }
     .d2dv-chip { padding: 7px 12px; font-size: 14px; }
-}
-
-/* ────────────────────────────────────────────────────────────
-   Fullscreen / presentation — same pattern as drag-drop kids.
-   The activity-wrapper gets 1 cm margins; the image is capped
-   with a vh-based max-height so it never overflows.
-   No flex chain needed: the image drives the layout.
-   ──────────────────────────────────────────────────────────── */
-
-body.presentation-mode .activity-wrapper,
-body.fullscreen-embedded .activity-wrapper {
-    padding: 10mm !important;
-    box-sizing: border-box !important;
-}
-
-body.presentation-mode .viewer-content,
-body.fullscreen-embedded .viewer-content {
-    border-radius: 14px !important;
-    overflow: hidden !important;
-}
-
-body.presentation-mode .act-header,
-body.fullscreen-embedded .act-header {
-    padding: 8px 14px !important;
-    margin-bottom: 6px !important;
-}
-
-body.presentation-mode .act-header h2,
-body.fullscreen-embedded .act-header h2 {
-    font-size: clamp(16px, 2vw, 22px) !important;
-}
-
-body.presentation-mode .d2dv-img,
-body.fullscreen-embedded .d2dv-img {
-    /* 100vh minus 2×1cm margins minus header + chips + status + toolbar */
-    max-height: calc(100vh - 20mm - 190px) !important;
 }
