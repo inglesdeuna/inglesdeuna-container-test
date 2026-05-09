@@ -958,7 +958,7 @@ document.addEventListener('DOMContentLoaded', function () {
             if (statusEl) { statusEl.textContent = 'Generating...'; statusEl.style.color = ''; }
             var fd = new FormData();
             fd.append('text', text);
-            fd.append('voice_id', voiceSelect ? voiceSelect.value : 'JBFqnCBsd6RMkjVDRZzb');
+            fd.append('voice_id', voiceSelect ? voiceSelect.value : 'nzFihrBIvB34imQBuxub');
             fetch('tts.php', { method: 'POST', body: fd, credentials: 'same-origin' })
                 .then(function (r) { return r.json(); })
                 .then(function (data) {
