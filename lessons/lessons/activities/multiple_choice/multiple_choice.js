@@ -196,9 +196,10 @@
       listenBtn.type = 'button';
       listenBtn.className = 'mc-listen-btn';
       listenBtn.innerHTML = '&#128266; Listen';
-      listenBtn.addEventListener('click', function () { speakText(cleanQuestion); });
+      const voiceId = String(item.voice_id || 'josh');
+      listenBtn.addEventListener('click', function () { speakText(cleanQuestion, voiceId); });
       questionEl.appendChild(listenBtn);
-      speakWhenReady(cleanQuestion);
+      speakWhenReady(cleanQuestion, voiceId);
     } else {
       questionEl.textContent = cleanQuestion;
     }
@@ -368,55 +369,71 @@
 
   let userInteracted = false;
   let pendingSpeech = '';
+  let currentAudioElement = null;
+  let ttsAbortController = null;
 
-
-  function getPreferredVoice(lang) {
-    lang = lang || 'en-US';
-    var voices = window.speechSynthesis ? window.speechSynthesis.getVoices() : [];
-    if (!Array.isArray(voices) || voices.length === 0) {
-      return null;
+  function stopSpeech() {
+    if (ttsAbortController) {
+      ttsAbortController.abort();
+      ttsAbortController = null;
     }
-    var langPrefix = lang.split('-')[0].toLowerCase();
-    var matchedVoices = voices.filter(function(voice) {
-      var vl = String(voice.lang || '').toLowerCase();
-      return vl === lang.toLowerCase() || vl.startsWith(langPrefix + '-') || vl.startsWith(langPrefix + '_');
-    });
-    if (!matchedVoices.length) {
-      return voices[0] || null;
+    if (currentAudioElement) {
+      currentAudioElement.pause();
+      currentAudioElement.currentTime = 0;
+      currentAudioElement = null;
     }
-    var femaleHints = ['female', 'woman', 'zira', 'samantha', 'karen', 'aria', 'jenny', 'emma', 'olivia', 'ava',
-      'paulina', 'sabina', 'esperanza', 'mónica', 'monica', 'conchita'];
-    var femaleVoice = matchedVoices.find(function(voice) {
-      var label = (String(voice.name || '') + ' ' + String(voice.voiceURI || '')).toLowerCase();
-      return femaleHints.some(function(hint) { return label.includes(hint); });
-    });
-    return femaleVoice || matchedVoices[0];
   }
 
-  function speakText(text) {
-    if (!text || !window.speechSynthesis) return;
-    window.speechSynthesis.cancel();
-    var utt = new SpeechSynthesisUtterance(text);
-    utt.lang = 'en-US';
-    utt.rate = 0.9;
-    var preferredVoice = getPreferredVoice('en-US');
-    if (preferredVoice) utt.voice = preferredVoice;
-    window.speechSynthesis.speak(utt);
+  function speakText(text, voiceId) {
+    if (!text) return;
+    
+    voiceId = voiceId || 'josh';
+    stopSpeech();
+
+    ttsAbortController = new AbortController();
+    const signal = ttsAbortController.signal;
+
+    const formData = new FormData();
+    formData.append('text', text);
+    formData.append('voice_id', voiceId);
+
+    fetch('tts.php', {
+      method: 'POST',
+      body: formData,
+      signal: signal,
+    })
+    .then(function(response) {
+      if (!response.ok) throw new Error('TTS request failed: ' + response.status);
+      return response.blob();
+    })
+    .then(function(audioBlob) {
+      if (signal.aborted) return;
+      
+      const audioUrl = URL.createObjectURL(audioBlob);
+      currentAudioElement = new Audio(audioUrl);
+      currentAudioElement.play().catch(function(e) {
+        console.error('Audio playback error:', e);
+      });
+    })
+    .catch(function(error) {
+      if (signal.aborted) return;
+      console.error('TTS error:', error);
+    });
   }
 
-  function speakWhenReady(text) {
+  function speakWhenReady(text, voiceId) {
     if (!text) return;
     if (userInteracted) {
-      speakText(text);
+      speakText(text, voiceId);
     } else {
-      pendingSpeech = text;
+      pendingSpeech = { text: text, voiceId: voiceId };
     }
   }
 
   document.addEventListener('click', function onFirstInteraction() {
     userInteracted = true;
-    if (pendingSpeech) {
-      speakText(pendingSpeech);
+    if (pendingSpeech && typeof pendingSpeech === 'object') {
+      speakText(pendingSpeech.text, pendingSpeech.voiceId);
       pendingSpeech = '';
     }
     document.removeEventListener('click', onFirstInteraction);
