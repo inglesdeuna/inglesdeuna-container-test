@@ -818,6 +818,9 @@ const PPT_TTS_URL = 'tts.php';
 let slideIndex = 0;
 let currentAudio = null;
 let currentTtsAudio = null;
+let currentTtsAudioUrl = '';
+let ttsAbortController = null;
+let ttsRequestToken = 0;
 
 function escapeHtml(rawValue) {
     return String(rawValue)
@@ -945,33 +948,68 @@ function speakSlide() {
 
     stopSpeech();
 
+    ttsRequestToken += 1;
+    const requestToken = ttsRequestToken;
+
+    if (ttsAbortController) {
+        ttsAbortController.abort();
+    }
+    ttsAbortController = new AbortController();
+
     const fd = new FormData();
     fd.append('text', textToRead);
     fd.append('voice_id', selectedVoiceId);
 
-    fetch(PPT_TTS_URL, { method: 'POST', body: fd, credentials: 'same-origin' })
+    const btn = document.getElementById('btnTts');
+    if (btn) {
+        btn.textContent = 'Reading...';
+        btn.disabled = true;
+    }
+
+    fetch(PPT_TTS_URL, { method: 'POST', body: fd, credentials: 'same-origin', signal: ttsAbortController.signal })
         .then((res) => {
             if (!res.ok) throw new Error('TTS error ' + res.status);
             return res.blob();
         })
         .then((blob) => {
+            if (requestToken !== ttsRequestToken) return;
             if (!blob || blob.size < 100) throw new Error('Empty audio');
-            currentTtsAudio = new Audio(URL.createObjectURL(blob));
+
+            if (currentTtsAudio) {
+                currentTtsAudio.pause();
+                currentTtsAudio = null;
+            }
+            if (currentTtsAudioUrl) {
+                URL.revokeObjectURL(currentTtsAudioUrl);
+                currentTtsAudioUrl = '';
+            }
+
+            currentTtsAudioUrl = URL.createObjectURL(blob);
+            currentTtsAudio = new Audio(currentTtsAudioUrl);
             currentTtsAudio.onended = function () {
-                const btn = document.getElementById('btnTts');
-                if (btn) btn.textContent = 'Read';
+                const endBtn = document.getElementById('btnTts');
+                if (endBtn) {
+                    endBtn.textContent = 'Read';
+                    endBtn.disabled = false;
+                }
             };
             currentTtsAudio.onerror = function () {
-                const btn = document.getElementById('btnTts');
-                if (btn) btn.textContent = 'Read';
+                const errBtn = document.getElementById('btnTts');
+                if (errBtn) {
+                    errBtn.textContent = 'Read';
+                    errBtn.disabled = false;
+                }
             };
-            const btn = document.getElementById('btnTts');
-            if (btn) btn.textContent = 'Reading...';
             return currentTtsAudio.play();
         })
-        .catch(() => {
-            const btn = document.getElementById('btnTts');
-            if (btn) btn.textContent = 'Read';
+        .catch((err) => {
+            if (requestToken !== ttsRequestToken) return;
+            const failBtn = document.getElementById('btnTts');
+            if (failBtn) {
+                failBtn.textContent = 'Read';
+                failBtn.disabled = false;
+            }
+            if (err && err.name === 'AbortError') return;
             alert('No se pudo reproducir el TTS en este momento.');
         });
 }
@@ -995,8 +1033,19 @@ function stopSpeech() {
         currentTtsAudio.pause();
         currentTtsAudio = null;
     }
+    if (currentTtsAudioUrl) {
+        URL.revokeObjectURL(currentTtsAudioUrl);
+        currentTtsAudioUrl = '';
+    }
+    if (ttsAbortController) {
+        ttsAbortController.abort();
+        ttsAbortController = null;
+    }
     const btn = document.getElementById('btnTts');
-    if (btn) btn.textContent = 'Read';
+    if (btn) {
+        btn.textContent = 'Read';
+        btn.disabled = false;
+    }
 }
 
 document.getElementById('btnPrev')?.addEventListener('click', function () {
