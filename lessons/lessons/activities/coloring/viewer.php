@@ -28,16 +28,6 @@ ob_start();
 * { box-sizing: border-box; }
 .viewer-header { display: none !important; }
 
-.shell {
-    width: 100%;
-    min-height: calc(100vh - 90px);
-    padding: clamp(14px, 2.5vw, 34px);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    background: #ffffff;
-}
-
 body, html {
     margin: 0 !important;
     padding: 0 !important;
@@ -118,10 +108,271 @@ body, html {
 .board {
     background: #ffffff;
     flex: 1;
-    body, html {
-        </div>
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border: none;
+    border-radius: 0;
+    padding: 0;
+    box-shadow: none;
+    width: 100%;
+    margin: 0;
+}
+
+/* progress */
+.prog-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: clamp(10px, 1.5vw, 14px) clamp(12px, 2vw, 16px);
+    flex-shrink: 0;
+    border-bottom: 1px solid #F0EEF8;
+}
+
+.prog-track {
+    flex: 1;
+    height: 10px;
+    background: #F4F2FD;
+    border: 1px solid #E4E1F8;
+    border-radius: 999px;
+    overflow: hidden;
+}
+
+.prog-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #F97316, #7F77DD);
+    border-radius: 999px;
+    transition: width .45s ease;
+    width: 0%;
+}
+
+.prog-badge {
+    background: #7F77DD;
+    color: #fff;
+    font-family: 'Nunito', sans-serif;
+    font-weight: 900;
+    font-size: 11px;
+    border-radius: 999px;
+    padding: 4px 10px;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+/* picker */
+.picker-section {
+    background: #F5F3FF;
+    border-bottom: 1px solid #EDE9FA;
+    padding: clamp(10px, 1.5vw, 14px) clamp(12px, 2vw, 16px);
+    flex-shrink: 0;
+}
+
+.picker-label {
+    font-size: 10px;
+    font-weight: 900;
+    font-family: 'Nunito', sans-serif;
+    color: #9B94BE;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    text-align: center;
+    margin-bottom: 10px;
+}
+
+.colors-grid {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    gap: 8px;
+    justify-items: center;
+}
+
+.swatch {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    cursor: pointer;
+    border: 3px solid transparent;
+    transition: transform .15s, box-shadow .15s;
+    box-shadow: 0 2px 8px rgba(0,0,0,.12);
+    -webkit-tap-highlight-color: transparent;
+}
+
+.swatch:hover { transform: scale(1.15); box-shadow: 0 4px 12px rgba(0,0,0,.2); }
+.swatch.active { border-color: #271B5D; box-shadow: 0 0 0 3px #fff inset, 0 4px 12px rgba(0,0,0,.2); }
+
+/* sel bar */
+.sel-bar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: clamp(8px, 1.2vw, 12px) clamp(12px, 2vw, 16px);
+    flex-shrink: 0;
+    border-bottom: 1px solid #F0EEF8;
+}
+
+.sel-dot {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    border: 2px solid #EDE9FA;
+    transition: background .2s;
+    flex-shrink: 0;
+    background: #ef4444;
+}
+
+.sel-label {
+    font-size: 12px;
+    font-weight: 900;
+    font-family: 'Nunito', sans-serif;
+    color: #534AB7;
+}
+
+/* canvas */
+.canvas-wrap {
+    background: #ffffff;
+    flex: 1;
+    overflow: auto;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    touch-action: manipulation;
+}
+
+#coloringCanvas {
+    max-width: 100%;
+    max-height: 100%;
+    width: auto;
+    height: auto;
+    display: block;
+    touch-action: manipulation;
+    cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40' viewBox='0 0 40 40'%3E%3Cpath d='M20 4l10 12h-6v12h-8V16h-6z' fill='%2322c55e' stroke='%230f172a' stroke-width='2' stroke-linejoin='round'/%3E%3Ccircle cx='20' cy='33' r='4' fill='%23facc15' stroke='%230f172a' stroke-width='2'/%3E%3C/svg%3E") 20 10, pointer;
+}
+
+.canvas-hint {
+    text-align: center;
+    font-size: 11px;
+    font-weight: 700;
+    font-family: 'Nunito', sans-serif;
+    color: #9B94BE;
+    padding: clamp(8px, 1.2vw, 12px) clamp(12px, 2vw, 16px);
+    flex-shrink: 0;
+    display: none;
+}
+
+/* bottom row */
+.bottom-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+    padding: clamp(10px, 1.5vw, 14px) clamp(12px, 2vw, 16px);
+    flex-shrink: 0;
+    border-top: 1px solid #F0EEF8;
+    background: #ffffff;
+}
+
+.page-info {
+    font-size: 12px;
+    font-weight: 900;
+    font-family: 'Nunito', sans-serif;
+    color: #9B94BE;
+}
+
+.btns { display: flex; gap: 10px; flex-wrap: wrap; }
+
+.btn-purple {
+    background: #7F77DD;
+    color: #fff;
+    border: none;
+    border-radius: 999px;
+    padding: 11px clamp(16px, 2.5vw, 26px);
+    font-family: 'Nunito', sans-serif;
+    font-weight: 900;
+    font-size: clamp(12px, 1.6vw, 14px);
+    cursor: pointer;
+    min-width: clamp(90px, 14vw, 130px);
+    box-shadow: 0 6px 18px rgba(127,119,221,.18);
+    transition: transform .15s, filter .15s;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.btn-orange {
+    background: #F97316;
+    color: #fff;
+    border: none;
+    border-radius: 999px;
+    padding: 11px clamp(16px, 2.5vw, 26px);
+    font-family: 'Nunito', sans-serif;
+    font-weight: 900;
+    font-size: clamp(12px, 1.6vw, 14px);
+    cursor: pointer;
+    min-width: clamp(90px, 14vw, 130px);
+    box-shadow: 0 6px 18px rgba(249,115,22,.22);
+    transition: transform .15s, filter .15s;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.btn-purple:hover, .btn-orange:hover { transform: translateY(-1px); filter: brightness(1.07); }
+
+/* completed */
+.coloring-completed {
+    display: none;
+    text-align: center;
+    padding: 50px 20px 30px;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+}
+</style>
+
+<div class="shell">
+    <div class="hero">
+        <span class="kicker">drawing</span>
+        <h1 class="act-title"><?= htmlspecialchars($activityTitle, ENT_QUOTES, 'UTF-8') ?></h1>
+        <p class="act-sub">Color the page below</p>
     </div>
 
+    <div class="board">
+        <div class="prog-row">
+            <div class="prog-track"><div class="prog-fill" id="progFill"></div></div>
+            <span class="prog-badge" id="progBadge">0/0</span>
+        </div>
+
+        <div class="picker-section">
+            <div class="picker-label">Select a color</div>
+            <div class="colors-grid" id="coloringPalette"></div>
+        </div>
+
+        <div class="sel-bar">
+            <div class="sel-dot" id="sel-dot"></div>
+            <span class="sel-label" id="sel-label">Red selected</span>
+        </div>
+
+        <div class="canvas-wrap">
+            <canvas id="coloringCanvas" width="600" height="600"></canvas>
+        </div>
+
+        <div class="coloring-completed" id="coloringCompleted">
+            <h2 style="font-family:'Fredoka';font-weight:700;font-size:28px;color:#F97316;margin:0 0 12px;">🎉 Perfect!</h2>
+            <p style="font-family:'Nunito';font-weight:700;font-size:14px;color:#9B94BE;margin:0;">You've finished coloring!</p>
+        </div>
+
+        <div id="coloringStage"></div>
+    </div>
+
+    <div class="bottom-row">
+        <span class="page-info" id="progressText">Page 1 of 1</span>
+        <div class="btns">
+            <button class="btn-orange" id="btn-reset" type="button">↺ Clear</button>
+            <button class="btn-purple" id="btn-finish" type="button">Next →</button>
+        </div>
+    </div>
 </div>
 
 <script>
@@ -248,215 +499,137 @@ body, html {
                 .catch(function () {
                     try {
                         if (window.top && window.top !== window.self) { window.top.location.href = saveUrl; return; }
-                    } catch (e) {}
-                    window.location.href = saveUrl;
+                    } catch (e) { /* no-op */ }
                 });
         }
     }
-    function showStage() {
-        stage.style.display = '';
-        completedEl.classList.remove('active');
+
+    /* ── resize canvas on window resize ──────────────– */
+    function resizeCanvas() {
+        if (!uploadedImages.length || currentIndex >= uploadedImages.length) return;
+        loadImageAt(currentIndex);
     }
 
-    /* ── image to coloring page ──────────────────────── */
-    function convertToColoringPage() {
-        var imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        var data = imageData.data;
-        for (var i = 0; i < data.length; i += 4) {
-            var gray = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
-            /* Keep only strong/dark strokes as black so enclosed regions stay fillable. */
-            var val  = gray > 115 ? 255 : 0;
-            data[i] = data[i + 1] = data[i + 2] = val;
-            data[i + 3] = 255;
+    /* ── paint system ────────────────────────────────– */
+    function getPixels(x, y) {
+        if (!ctx || !canvas) return null;
+        try {
+            var imgData = ctx.getImageData(x, y, 1, 1);
+            return imgData.data;
+        } catch (e) {
+            return null;
         }
-        ctx.putImageData(imageData, 0, 0);
-        thickenBlackLines();
     }
 
-    function thickenBlackLines() {
-        var imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        var src = new Uint8ClampedArray(imageData.data);
-        var dst = imageData.data;
-        var w = canvas.width, h = canvas.height;
-        function isBlack(idx) { return src[idx] < 30 && src[idx + 1] < 30 && src[idx + 2] < 30; }
-        for (var y = 1; y < h - 1; y++) {
-            for (var x = 1; x < w - 1; x++) {
-                var idx = (y * w + x) * 4;
-                var nearBlack = false;
-                outer: for (var dy = -1; dy <= 1; dy++) {
-                    for (var dx = -1; dx <= 1; dx++) {
-                        if (isBlack(((y + dy) * w + (x + dx)) * 4)) { nearBlack = true; break outer; }
-                    }
-                }
-                if (nearBlack) {
-                    dst[idx] = dst[idx + 1] = dst[idx + 2] = 0; dst[idx + 3] = 255;
-                } else {
-                    dst[idx] = dst[idx + 1] = dst[idx + 2] = 255; dst[idx + 3] = 255;
-                }
-            }
+    function hex2rgb(hex) {
+        var result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+        return result ? [
+            parseInt(result[1], 16),
+            parseInt(result[2], 16),
+            parseInt(result[3], 16)
+        ] : [0, 0, 0];
+    }
+
+    function pixelsMatch(px, rgb, tolerance) {
+        if (!px) return false;
+        tolerance = tolerance || 30;
+        return Math.abs(px[0] - rgb[0]) < tolerance &&
+               Math.abs(px[1] - rgb[1]) < tolerance &&
+               Math.abs(px[2] - rgb[2]) < tolerance;
+    }
+
+    function floodFill(x, y, newColor) {
+        if (!ctx || !canvas) return;
+        x = Math.floor(x);
+        y = Math.floor(y);
+        if (x < 0 || y < 0 || x >= canvas.width || y >= canvas.height) return;
+        
+        var newRgb = hex2rgb(newColor);
+        var targetPixels = getPixels(x, y);
+        if (!targetPixels || pixelsMatch(targetPixels, newRgb, 10)) return;
+
+        var imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        var data = imgData.data;
+        var stack = [[x, y]];
+        var visited = {};
+
+        while (stack.length) {
+            var coord = stack.pop();
+            var cx = coord[0];
+            var cy = coord[1];
+            var key = cx + ',' + cy;
+            if (visited[key]) continue;
+            visited[key] = true;
+
+            if (cx < 0 || cy < 0 || cx >= canvas.width || cy >= canvas.height) continue;
+            var idx = (cy * canvas.width + cx) * 4;
+            var px = [data[idx], data[idx+1], data[idx+2], data[idx+3]];
+            if (!pixelsMatch(px, targetPixels)) continue;
+
+            data[idx] = newRgb[0];
+            data[idx+1] = newRgb[1];
+            data[idx+2] = newRgb[2];
+            stack.push([cx+1, cy], [cx-1, cy], [cx, cy+1], [cx, cy-1]);
         }
-        ctx.putImageData(imageData, 0, 0);
+        ctx.putImageData(imgData, 0, 0);
     }
 
-    /* ── load image ──────────────────────────────────── */
-    function loadImageAt(index) {
-        if (index >= uploadedImages.length) { showCompleted(); return; }
-        showStage();
+    function handleFill(e) {
+        if (!canvas || !ctx) return;
+        var rect = canvas.getBoundingClientRect();
+        var x = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
+        var y = (e.touches ? e.touches[0].clientY : e.clientY) - rect.top;
+        floodFill(x, y, selectedColor);
+        if (e.preventDefault) e.preventDefault();
+    }
+
+    /* ── load image ──────────────────────────────────– */
+    function loadImageAt(idx) {
+        if (!uploadedImages.length || idx >= uploadedImages.length || !ctx || !canvas) return;
+        
         var img = new Image();
         img.crossOrigin = 'anonymous';
         img.onload = function () {
-            var maxWidth  = Math.min(800, window.innerWidth - 60);
-            var maxHeight = Math.max(300, window.innerHeight - 360);
-            var scaleW    = img.width  > maxWidth  ? maxWidth  / img.width  : 1;
-            var scaleH    = img.height > maxHeight ? maxHeight / img.height : 1;
-            var scale     = Math.min(scaleW, scaleH);
-            canvas.width  = Math.round(img.width  * scale);
-            canvas.height = Math.round(img.height * scale);
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-            convertToColoringPage();
-            originalImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-            updateProgress();
-        };
-        img.onerror = function () { loadImageAt(index + 1); };
-        img.src = uploadedImages[index];
-    }
-
-    /* ── reset page ──────────────────────────────────── */
-    function resetCurrentPage() {
-        if (originalImageData) ctx.putImageData(originalImageData, 0, 0);
-    }
-
-    /* ── flood fill ──────────────────────────────────── */
-    function hexToRgba(hex) {
-        var clean  = hex.replace('#', '');
-        var n      = parseInt(clean, 16);
-        return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255, a: 255 };
-    }
-    function isBlackPixel(data, idx) {
-        return data[idx] < 30 && data[idx + 1] < 30 && data[idx + 2] < 30;
-    }
-    function colorsMatch(data, idx, tgt, tol) {
-        return Math.abs(data[idx]     - tgt.r) <= tol
-            && Math.abs(data[idx + 1] - tgt.g) <= tol
-            && Math.abs(data[idx + 2] - tgt.b) <= tol
-            && Math.abs(data[idx + 3] - tgt.a) <= tol;
-    }
-    function findNearestFillablePoint(data, w, h, x, y, fill) {
-        var maxRadius = 12;
-        var fallback = null;
-        for (var r = 0; r <= maxRadius; r++) {
-            for (var dy = -r; dy <= r; dy++) {
-                for (var dx = -r; dx <= r; dx++) {
-                    if (r !== 0 && Math.abs(dx) !== r && Math.abs(dy) !== r) continue;
-                    var nx = x + dx;
-                    var ny = y + dy;
-                    if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
-                    var idx = (ny * w + nx) * 4;
-                    if (!isBlackPixel(data, idx)) {
-                        var alreadyFill = data[idx] === fill.r && data[idx + 1] === fill.g && data[idx + 2] === fill.b && data[idx + 3] === fill.a;
-                        if (!alreadyFill) {
-                            return { x: nx, y: ny };
-                        }
-                        if (!fallback) {
-                            fallback = { x: nx, y: ny };
-                        }
-                    }
-                }
+            var ratio = img.width / img.height;
+            var maxW = canvas.parentElement.clientWidth - 20;
+            var maxH = canvas.parentElement.clientHeight - 20;
+            var w = Math.min(600, maxW);
+            var h = w / ratio;
+            if (h > maxH) {
+                h = maxH;
+                w = h * ratio;
             }
-        }
-        return fallback;
-    }
-    function floodFill(startX, startY, fill) {
-        var imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        var data = imageData.data, w = canvas.width, h = canvas.height;
-        if (startX < 0 || startY < 0 || startX >= w || startY >= h) return;
-        var fillStart = findNearestFillablePoint(data, w, h, startX, startY, fill);
-        if (!fillStart) return;
-        var stack   = [[fillStart.x, fillStart.y]];
-        var visited = new Uint8Array(w * h);
-        while (stack.length) {
-            var pt = stack.pop();
-            var x = pt[0], y = pt[1];
-            if (x < 0 || y < 0 || x >= w || y >= h) continue;
-            var pos = y * w + x;
-            if (visited[pos]) continue;
-            visited[pos] = 1;
-            var i = pos * 4;
-            if (isBlackPixel(data, i)) continue;
-            if (!(data[i] === fill.r && data[i + 1] === fill.g && data[i + 2] === fill.b && data[i + 3] === fill.a)) {
-                data[i] = fill.r;
-                data[i + 1] = fill.g;
-                data[i + 2] = fill.b;
-                data[i + 3] = fill.a;
-            }
-            stack.push([x+1,y],[x-1,y],[x,y+1],[x,y-1]);
-        }
-        ctx.putImageData(imageData, 0, 0);
-    }
-
-    /* ── canvas pointer ──────────────────────────────── */
-    function getCanvasPoint(event) {
-        var pointerX = null;
-        var pointerY = null;
-
-        if (typeof event.offsetX === 'number' && typeof event.offsetY === 'number' && event.target === canvas) {
-            pointerX = event.offsetX;
-            pointerY = event.offsetY;
-        }
-
-        if (pointerX === null || pointerY === null) {
-            var rect    = canvas.getBoundingClientRect();
-            var clientX = event.clientX !== undefined ? event.clientX
-                        : (event.touches && event.touches[0] ? event.touches[0].clientX : 0);
-            var clientY = event.clientY !== undefined ? event.clientY
-                        : (event.touches && event.touches[0] ? event.touches[0].clientY : 0);
-            pointerX = clientX - rect.left;
-            pointerY = clientY - rect.top;
-        }
-
-        var scaleX = canvas.clientWidth > 0 ? (canvas.width / canvas.clientWidth) : 1;
-        var scaleY = canvas.clientHeight > 0 ? (canvas.height / canvas.clientHeight) : 1;
-        var x = Math.round(pointerX * scaleX);
-        var y = Math.round(pointerY * scaleY);
-
-        return {
-            x: Math.max(0, Math.min(canvas.width - 1, x)),
-            y: Math.max(0, Math.min(canvas.height - 1, y))
+            canvas.width = w;
+            canvas.height = h;
+            ctx.drawImage(img, 0, 0, w, h);
+            try {
+                originalImageData = ctx.getImageData(0, 0, w, h);
+            } catch (e) { /* no-op */ }
         };
-    }
-    function handleFill(event) {
-        if (!uploadedImages.length) return;
-        event.preventDefault();
-        playClickSound();
-        var pt = getCanvasPoint(event);
-        floodFill(pt.x, pt.y, hexToRgba(selectedColor));
+        img.onerror = function () {
+            console.warn('Failed to load image:', uploadedImages[idx]);
+        };
+        img.src = uploadedImages[idx];
     }
 
-    /* ── button events ───────────────────────────────── */
+    /* ── button handlers ─────────────────────────────– */
     finishBtn.addEventListener('click', function () {
-        if (!uploadedImages.length) return;
-        playClickSound();
-        if (currentIndex >= uploadedImages.length - 1) {
-            showCompleted();
-        } else {
+        if (currentIndex < uploadedImages.length - 1) {
             currentIndex++;
+            loadImageAt(currentIndex);
+            updateProgress();
+        } else if (nextActivityUrl) {
+            window.location.href = nextActivityUrl;
+        } else {
+            showCompleted();
+        }
+    });
+
+    resetBtn.addEventListener('click', function () {
+        if (uploadedImages.length && currentIndex < uploadedImages.length) {
             loadImageAt(currentIndex);
         }
     });
-    resetBtn.addEventListener('click', function () {
-        playClickSound();
-        resetCurrentPage();
-    });
-    restartBtn.addEventListener('click', function () {
-        playClickSound();
-        currentIndex = 0;
-        showStage();
-        loadImageAt(0);
-    });
-
-    canvas.addEventListener('click',      handleFill);
-    canvas.addEventListener('touchstart', handleFill, { passive: false });
 
     window.addEventListener('resize', function () {
         if (!uploadedImages.length || currentIndex >= uploadedImages.length) return;
@@ -475,3 +648,4 @@ body, html {
 <?php
 $content = ob_get_clean();
 render_activity_viewer($activityTitle, '&#x1F3A8;', $content);
+?>
