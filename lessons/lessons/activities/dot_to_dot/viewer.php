@@ -28,11 +28,16 @@ ob_start();
 
 <link rel="stylesheet" href="dot_to_dot.css">
 
+<div class="d2dv-page">
+<div class="d2dv-app">
+    <div class="d2dv-hero">
+        <div class="d2dv-kicker">Activity</div>
+        <h1><?= htmlspecialchars($viewerTitle, ENT_QUOTES, 'UTF-8') ?></h1>
+        <p><?= htmlspecialchars($instruction !== '' ? $instruction : 'Connect the dots in order to reveal the picture.', ENT_QUOTES, 'UTF-8') ?></p>
+    </div>
+
+    <div class="d2dv-stage-shell">
 <div class="d2dv-wrap">
-    <?= render_activity_header(
-        $viewerTitle,
-        $instruction !== '' ? $instruction : 'Connect the dots in order to reveal the picture.'
-    ) ?>
 
     <?php if (!$hasActivity): ?>
 
@@ -96,6 +101,9 @@ ob_start();
         </div>
 
     <?php endif; ?>
+</div>
+    </div>
+</div>
 </div>
 
 <?php if ($hasActivity): ?>
