@@ -37,7 +37,40 @@ ob_start();
     align-items: center;
     background: #ffffff;
 }
+body, html {
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100%;
+    height: 100%;
+}
 
+.activity-wrapper {
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100%;
+    min-height: 100vh;
+}
+
+.top-row, .activity-header, .activity-title, .activity-subtitle {
+    display: none !important;
+}
+
+.viewer-content {
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100%;
+    height: auto;
+}
+
+.shell {
+    width: 100%;
+    height: 100vh;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    background: #ffffff;
+    overflow: hidden;
+}
 .hero {
     text-align: center;
     margin-bottom: 14px;
