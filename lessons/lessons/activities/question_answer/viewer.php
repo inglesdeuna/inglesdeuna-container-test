@@ -602,7 +602,8 @@ body.presentation-mode .qa-premium-board {
     min-height: 0 !important;
     display: flex !important;
     flex-direction: column !important;
-    padding: 20px 24px !important;
+    justify-content: flex-start !important;
+    padding: 14px 20px !important;
     border-radius: 24px !important;
     width: 100% !important;
 }
@@ -610,23 +611,28 @@ body.presentation-mode .qa-premium-board {
 body.embedded-mode .qa-premium-card-wrap,
 body.fullscreen-embedded .qa-premium-card-wrap,
 body.presentation-mode .qa-premium-card-wrap {
-    flex: 1 !important;
+    flex: 0 0 auto !important;
     min-height: 0 !important;
-    align-items: stretch !important;
+    align-items: center !important;
+    grid-template-columns: auto minmax(0, 760px) auto !important;
+    margin: 0 auto !important;
 }
 
 body.embedded-mode .qa-premium-card,
 body.fullscreen-embedded .qa-premium-card,
 body.presentation-mode .qa-premium-card {
-    min-height: 0 !important;
-    flex: 1 !important;
-    height: 100% !important;
+    min-height: clamp(180px, 24vh, 260px) !important;
+    max-width: 760px !important;
+    width: 100% !important;
+    flex: 0 0 auto !important;
+    height: auto !important;
 }
 
 body.embedded-mode .qa-premium-card-inner,
 body.fullscreen-embedded .qa-premium-card-inner,
 body.presentation-mode .qa-premium-card-inner {
-    height: 100% !important;
+    height: auto !important;
+    min-height: inherit !important;
 }
 
 body.embedded-mode .qa-premium-text,
