@@ -311,22 +311,135 @@ $totalPairs = (int) floor(count($cards) / 2);
 
 ob_start();
 ?>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@600;700;800;900&display=swap" rel="stylesheet">
 <style>
-.viewer-header{display:none !important}
-.mc-viewer{max-width:1160px;margin:0 auto}
-.mc-intro{margin-bottom:16px;padding:24px 26px;border-radius:26px;border:1px solid #dbeafe;background:linear-gradient(135deg,#eff6ff 0%,#f0fdf4 45%,#fff7ed 100%);box-shadow:0 16px 34px rgba(15,23,42,.08)}
-.mc-intro h2{margin:0 0 8px;color:#1d4ed8;font-family:'Fredoka','Trebuchet MS',sans-serif;font-size:30px;line-height:1.1}
-.mc-intro p{margin:0;color:#475569;font-size:15px;line-height:1.6}
-.mc-shell{background:#fff;border:1px solid #dbeafe;border-radius:24px;box-shadow:0 14px 30px rgba(15,23,42,.08);padding:18px;overflow-x:auto}
+:root{
+    --mc-orange:#F97316;
+    --mc-orange-dark:#C2580A;
+    --mc-orange-soft:#FFF0E6;
+    --mc-purple:#7F77DD;
+    --mc-purple-dark:#534AB7;
+    --mc-purple-soft:#EEEDFE;
+    --mc-muted:#9B94BE;
+    --mc-border:#F0EEF8;
+}
+
+html,
+body{
+    width:100%;
+    min-height:100%;
+}
+
+body{
+    margin:0!important;
+    padding:0!important;
+    background:#fff!important;
+    font-family:'Nunito','Segoe UI',sans-serif!important;
+}
+
+.activity-wrapper{
+    max-width:100%!important;
+    margin:0!important;
+    padding:0!important;
+    min-height:100vh;
+    display:flex!important;
+    flex-direction:column!important;
+    background:transparent!important;
+}
+
+.top-row,
+.viewer-header,
+.activity-header,
+.activity-title,
+.activity-subtitle{
+    display:none!important;
+}
+
+.viewer-content{
+    flex:1!important;
+    display:flex!important;
+    flex-direction:column!important;
+    padding:0!important;
+    margin:0!important;
+    background:transparent!important;
+    border:none!important;
+    box-shadow:none!important;
+    border-radius:0!important;
+}
+
+.mc-page{
+    width:100%;
+    min-height:100vh;
+    padding:clamp(14px,2.5vw,34px);
+    display:flex;
+    align-items:flex-start;
+    justify-content:center;
+    background:#fff;
+    box-sizing:border-box;
+}
+
+.mc-app{
+    width:min(1160px,100%);
+    margin:0 auto;
+}
+
+.mc-hero{
+    text-align:center;
+    margin-bottom:clamp(14px,2vw,22px);
+}
+
+.mc-kicker{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    padding:7px 14px;
+    border-radius:999px;
+    background:var(--mc-orange-soft);
+    border:1px solid #FCDDBF;
+    color:var(--mc-orange-dark);
+    font-size:12px;
+    font-weight:900;
+    letter-spacing:.08em;
+    text-transform:uppercase;
+    margin-bottom:10px;
+}
+
+.mc-hero h1{
+    font-family:'Fredoka',sans-serif;
+    font-size:clamp(30px,5.5vw,58px);
+    font-weight:700;
+    color:var(--mc-orange);
+    margin:0;
+    line-height:1.03;
+}
+
+.mc-hero p{
+    font-size:clamp(13px,1.8vw,17px);
+    font-weight:800;
+    color:var(--mc-muted);
+    margin:8px 0 0;
+}
+
+.mc-stage{
+    background:#fff;
+    border:1px solid var(--mc-border);
+    border-radius:34px;
+    padding:clamp(16px,2.6vw,26px);
+    box-shadow:0 8px 40px rgba(127,119,221,.13);
+    box-sizing:border-box;
+}
+
+.mc-viewer{max-width:100%;margin:0 auto}
+.mc-shell{background:#fff;border:1px solid #EDE9FA;border-radius:30px;box-shadow:0 8px 24px rgba(127,119,221,.09);padding:18px;overflow-x:auto}
 .mc-status{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px}
-.mc-pill{display:inline-flex;align-items:center;gap:6px;background:#eff6ff;border:1px solid #bfdbfe;color:#1e3a8a;font-weight:800;font-size:13px;padding:8px 12px;border-radius:999px}
+.mc-pill{display:inline-flex;align-items:center;gap:6px;background:var(--mc-purple-soft);border:1px solid #d8d3f5;color:var(--mc-purple-dark);font-weight:800;font-size:13px;padding:8px 12px;border-radius:999px}
 .mc-board{display:grid;grid-template-columns:repeat(4,150px);justify-content:center;gap:12px;min-width:max-content}
 .viewer-content .mc-card{position:relative;perspective:900px;border:none;background:transparent;padding:0 !important;cursor:pointer;min-height:180px;width:150px}
 .mc-card:disabled{cursor:default}
 .mc-card-inner{display:block;position:relative;width:100%;height:100%;min-height:180px;transform-style:preserve-3d;transition:transform .4s ease}
 .mc-card.is-flipped .mc-card-inner{transform:rotateY(180deg)}
-.mc-card-face{position:absolute;inset:0;backface-visibility:hidden;border-radius:16px;border:1px solid #dbeafe;display:flex;align-items:center;justify-content:center;overflow:hidden}
-.mc-card-front{background:linear-gradient(145deg,#3b82f6,#1d4ed8);color:#dbeafe;font-family:'Fredoka','Trebuchet MS',sans-serif;font-size:46px;box-shadow:0 14px 24px rgba(37,99,235,.35)}
+.mc-card-face{position:absolute;inset:0;backface-visibility:hidden;border-radius:16px;border:1px solid #EDE9FA;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.mc-card-front{background:linear-gradient(145deg,var(--mc-purple),var(--mc-purple-dark));color:#e9e7fb;font-family:'Fredoka','Trebuchet MS',sans-serif;font-size:46px;box-shadow:0 14px 24px rgba(127,119,221,.35)}
 .mc-card-back{transform:rotateY(180deg);background:#fff;padding:4px;box-shadow:0 10px 20px rgba(15,23,42,.08);display:flex;align-items:center;justify-content:center}
 .mc-card-back p{margin:0;text-align:center;color:#1e293b;font-weight:800;font-size:18px;line-height:1.35;word-break:break-word}
 .mc-card-back img{width:100%;height:100%;object-fit:contain;border-radius:10px}
@@ -335,14 +448,14 @@ ob_start();
 .mc-card.is-vanishing .mc-card-inner{animation:mcVanish .34s ease forwards}
 .mc-card.is-hidden{opacity:0;visibility:hidden;pointer-events:none}
 .mc-controls{display:flex;justify-content:center;margin-top:18px}
-.mc-btn{border:none;border-radius:999px;padding:10px 16px;font-weight:800;font-size:14px;cursor:pointer;box-shadow:0 8px 18px rgba(15,23,42,.1);background:linear-gradient(180deg,#fbbf24,#f59e0b);color:#7c2d12}
+.mc-btn{border:none;border-radius:999px;padding:10px 16px;font-weight:800;font-size:14px;cursor:pointer;box-shadow:0 8px 18px rgba(127,119,221,.18);background:var(--mc-orange);color:#fff}
 .mc-empty{text-align:center;padding:28px;font-weight:800;color:#b91c1c}
 .completed-screen{display:none;text-align:center;max-width:600px;margin:0 auto;padding:40px 20px}
 .completed-screen.active{display:block}
 .completed-icon{font-size:80px;margin-bottom:20px}
-.completed-title{font-family:'Fredoka','Trebuchet MS',sans-serif;font-size:36px;font-weight:700;color:#1d4ed8;margin:0 0 16px;line-height:1.2}
-.completed-text{font-size:16px;color:#475569;line-height:1.6;margin:0 0 32px}
-.completed-button{display:inline-block;padding:12px 24px;border:none;border-radius:999px;background:linear-gradient(180deg,#3b82f6,#1d4ed8);color:#fff;font-weight:700;font-size:16px;cursor:pointer;box-shadow:0 10px 24px rgba(0,0,0,.14);transition:transform .18s ease,filter .18s ease}
+.completed-title{font-family:'Fredoka','Trebuchet MS',sans-serif;font-size:36px;font-weight:700;color:var(--mc-orange);margin:0 0 16px;line-height:1.2}
+.completed-text{font-size:16px;color:var(--mc-muted);line-height:1.6;margin:0 0 32px}
+.completed-button{display:inline-block;padding:12px 24px;border:none;border-radius:999px;background:var(--mc-purple);color:#fff;font-weight:700;font-size:16px;cursor:pointer;box-shadow:0 10px 24px rgba(127,119,221,.24);transition:transform .18s ease,filter .18s ease}
 .completed-button:hover{transform:scale(1.05);filter:brightness(1.07)}
 .mc-activity.is-hidden{display:none}
 @keyframes mcVanish{
@@ -350,12 +463,20 @@ ob_start();
     100%{opacity:0;transform:scale(.7)}
 }
 @media (max-width:900px){
-    .mc-intro{padding:20px 18px}
-    .mc-intro h2{font-size:26px}
+    .mc-page{padding:12px}
+    .mc-stage{border-radius:26px;padding:14px}
 }
 </style>
 
-<?= render_activity_header($viewerTitle) ?>
+<div class="mc-page">
+<div class="mc-app">
+    <div class="mc-hero">
+        <div class="mc-kicker">Activity</div>
+        <h1><?= htmlspecialchars($viewerTitle, ENT_QUOTES, 'UTF-8') ?></h1>
+        <p>Match every pair to complete the memory challenge.</p>
+    </div>
+
+    <div class="mc-stage">
 <div class="mc-viewer" id="mc-app">
     <?php if (empty($cards)): ?>
         <div class="mc-shell">
@@ -678,6 +799,9 @@ ob_start();
         })();
         </script>
     <?php endif; ?>
+</div>
+    </div>
+</div>
 </div>
 <?php
 $content = ob_get_clean();
