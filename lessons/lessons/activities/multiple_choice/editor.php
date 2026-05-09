@@ -769,6 +769,14 @@ function addQuestion() {
                     <option value="image">🖼 Images</option>
                 </select>
             </div>
+            <div>
+                <label>Voice</label>
+                <select name="voice_id[]">
+                    <option value="josh">Josh</option>
+                    <option value="lily">Lily</option>
+                    <option value="candy">Candy</option>
+                </select>
+            </div>
         </div>
 
         <div class="q-tts-hint" style="display:none"><span class="q-tts-badge">🔊 Will be spoken via TTS — text hidden from student</span></div>
