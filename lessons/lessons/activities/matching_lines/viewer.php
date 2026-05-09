@@ -295,37 +295,46 @@ ob_start();
 
 <link rel="stylesheet" href="matching_lines.css?v=<?= htmlspecialchars($cssVersion, ENT_QUOTES, 'UTF-8') ?>">
 
-<?= render_activity_header($viewerTitle) ?>
-<?php if (empty($boards)) { ?>
-    <div class="mlv-empty">No matching lines data available.</div>
-<?php } else { ?>
-    <section class="mlv-wrap">
-        <div class="mlv-board-meta">
-            <div class="mlv-board-title" id="mlvBoardTitle"></div>
-            <div class="mlv-progress" id="mlvProgress"></div>
+<div class="mlv-page">
+    <div class="mlv-app">
+        <div class="mlv-hero">
+            <div class="mlv-kicker">Activity</div>
+            <h1><?= htmlspecialchars($viewerTitle, ENT_QUOTES, 'UTF-8') ?></h1>
+            <p>Match each item with its correct pair.</p>
         </div>
 
-        <div class="mlv-stage" id="mlvStage">
-            <svg id="mlvLines" class="mlv-lines" aria-hidden="true"></svg>
-            <div class="mlv-col mlv-left" id="mlvLeft"></div>
-            <div class="mlv-lane" aria-hidden="true"></div>
-            <div class="mlv-col mlv-right" id="mlvRight"></div>
-        </div>
+        <?php if (empty($boards)) { ?>
+            <div class="mlv-empty">No matching lines data available.</div>
+        <?php } else { ?>
+            <section class="mlv-wrap">
+                <div class="mlv-board-meta">
+                    <div class="mlv-board-title" id="mlvBoardTitle"></div>
+                    <div class="mlv-progress" id="mlvProgress"></div>
+                </div>
 
-        <div class="mlv-toolbar">
-            <button type="button" class="mlv-btn mlv-btn-soft" id="mlvPrevBtn">Previous</button>
-            <button type="button" class="mlv-btn mlv-btn-accent" id="mlvShowBtn">Show Answer</button>
-            <button type="button" class="mlv-btn mlv-btn-soft" id="mlvNextBtn">Next</button>
-        </div>
-    </section>
+                <div class="mlv-stage" id="mlvStage">
+                    <svg id="mlvLines" class="mlv-lines" aria-hidden="true"></svg>
+                    <div class="mlv-col mlv-left" id="mlvLeft"></div>
+                    <div class="mlv-lane" aria-hidden="true"></div>
+                    <div class="mlv-col mlv-right" id="mlvRight"></div>
+                </div>
 
-    <script>
-    window.MATCHING_LINES_DATA = <?= json_encode($boards, JSON_UNESCAPED_UNICODE) ?>;
-    window.MATCHING_LINES_RETURN_TO = <?= json_encode($returnTo, JSON_UNESCAPED_UNICODE) ?>;
-    window.MATCHING_LINES_ACTIVITY_ID = <?= json_encode((string) ($activity['id'] ?? ''), JSON_UNESCAPED_UNICODE) ?>;
-    </script>
-    <script src="matching_lines.js?v=<?= htmlspecialchars($jsVersion, ENT_QUOTES, 'UTF-8') ?>"></script>
-<?php } ?>
+                <div class="mlv-toolbar">
+                    <button type="button" class="mlv-btn mlv-btn-soft" id="mlvPrevBtn">Previous</button>
+                    <button type="button" class="mlv-btn mlv-btn-accent" id="mlvShowBtn">Show Answer</button>
+                    <button type="button" class="mlv-btn mlv-btn-soft" id="mlvNextBtn">Next</button>
+                </div>
+            </section>
+
+            <script>
+            window.MATCHING_LINES_DATA = <?= json_encode($boards, JSON_UNESCAPED_UNICODE) ?>;
+            window.MATCHING_LINES_RETURN_TO = <?= json_encode($returnTo, JSON_UNESCAPED_UNICODE) ?>;
+            window.MATCHING_LINES_ACTIVITY_ID = <?= json_encode((string) ($activity['id'] ?? ''), JSON_UNESCAPED_UNICODE) ?>;
+            </script>
+            <script src="matching_lines.js?v=<?= htmlspecialchars($jsVersion, ENT_QUOTES, 'UTF-8') ?>"></script>
+        <?php } ?>
+    </div>
+</div>
 
 <?php
 $content = ob_get_clean();
