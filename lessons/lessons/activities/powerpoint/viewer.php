@@ -152,6 +152,11 @@ function normalize_powerpoint_payload($rawData): array
 
             $allowedAlign = ['left','center','right'];
             $allowedImgPos = ['right','left','top','bottom'];
+            $allowedVoices = ['nzFihrBIvB34imQBuxub', 'NoOVOzCQFLOvtsMoNcdT', 'Nggzl2QAXh3OijoXD116'];
+            $voiceId = trim((string) ($slide['voice_id'] ?? 'nzFihrBIvB34imQBuxub'));
+            if (!in_array($voiceId, $allowedVoices, true)) {
+                $voiceId = 'nzFihrBIvB34imQBuxub';
+            }
 
             $slides[] = [
                 'template'       => normalize_template((string) ($slide['template'] ?? 'title_text')),
@@ -174,6 +179,7 @@ function normalize_powerpoint_payload($rawData): array
                 'music_name'     => trim((string) ($slide['music_name'] ?? '')),
                 'tts_text'       => trim((string) ($slide['tts_text'] ?? '')),
                 'tts_lang'       => in_array($slide['tts_lang'] ?? '', ['en-US','es-MX'], true) ? $slide['tts_lang'] : 'en-US',
+                'voice_id'       => $voiceId,
             ];
         }
     }
@@ -807,9 +813,11 @@ const PPT_PRESENTATION_FILE = <?php echo json_encode($presentationFile, JSON_UNE
 const PPT_PRESENTATION_NAME = <?php echo json_encode($presentationName, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
 const PPT_CANVA_LINK = <?php echo json_encode($canvaLink, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
 const PPT_CANVA_OPEN_LINK = <?php echo json_encode($canvaOpenLink, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
+const PPT_TTS_URL = 'tts.php';
 
 let slideIndex = 0;
 let currentAudio = null;
+let currentTtsAudio = null;
 
 function escapeHtml(rawValue) {
     return String(rawValue)
@@ -880,6 +888,11 @@ function renderSlide() {
         currentAudio = null;
     }
 
+    if (currentTtsAudio) {
+        currentTtsAudio.pause();
+        currentTtsAudio = null;
+    }
+
     if (slide.music) {
         const audioWrap = document.createElement('div');
         audioWrap.className = 'ppt-slide-audio-wrap';
@@ -925,46 +938,42 @@ function speakSlide() {
     const textToRead = String(slide.tts_text || '').trim() || String(slide.text || '').trim() || String(slide.title || '').trim();
     if (!textToRead) return;
 
-    const ttsLang = String(slide.tts_lang || '').trim() || 'en-US';
-    const utterance = new SpeechSynthesisUtterance(textToRead);
-    utterance.lang = ttsLang;
-    utterance.rate = 1;
+    const allowedVoices = ['nzFihrBIvB34imQBuxub', 'NoOVOzCQFLOvtsMoNcdT', 'Nggzl2QAXh3OijoXD116'];
+    const selectedVoiceId = allowedVoices.includes(String(slide.voice_id || '').trim())
+        ? String(slide.voice_id).trim()
+        : 'nzFihrBIvB34imQBuxub';
 
-    const selectedVoice = getPreferredVoice(ttsLang);
-    if (selectedVoice) {
-        utterance.voice = selectedVoice;
-    }
+    stopSpeech();
 
-    speechSynthesis.cancel();
-    speechSynthesis.speak(utterance);
-}
+    const fd = new FormData();
+    fd.append('text', textToRead);
+    fd.append('voice_id', selectedVoiceId);
 
-function getPreferredVoice(lang) {
-    lang = lang || 'en-US';
-    const voices = window.speechSynthesis ? window.speechSynthesis.getVoices() : [];
-    if (!Array.isArray(voices) || voices.length === 0) {
-        return null;
-    }
-
-    const langPrefix = lang.split('-')[0].toLowerCase();
-    const matchedVoices = voices.filter((voice) => {
-        const vl = String(voice.lang || '').toLowerCase();
-        return vl === lang.toLowerCase() || vl.startsWith(langPrefix + '-') || vl.startsWith(langPrefix + '_');
-    });
-
-    if (!matchedVoices.length) {
-        return voices[0] || null;
-    }
-
-    const femaleHints = ['female', 'woman', 'zira', 'samantha', 'karen', 'aria', 'jenny', 'emma', 'olivia', 'ava',
-        'paulina', 'sabina', 'esperanza', 'mónica', 'monica', 'conchita'];
-
-    const femaleVoice = matchedVoices.find((voice) => {
-        const label = (String(voice.name || '') + ' ' + String(voice.voiceURI || '')).toLowerCase();
-        return femaleHints.some((hint) => label.includes(hint));
-    });
-
-    return femaleVoice || matchedVoices[0];
+    fetch(PPT_TTS_URL, { method: 'POST', body: fd, credentials: 'same-origin' })
+        .then((res) => {
+            if (!res.ok) throw new Error('TTS error ' + res.status);
+            return res.blob();
+        })
+        .then((blob) => {
+            if (!blob || blob.size < 100) throw new Error('Empty audio');
+            currentTtsAudio = new Audio(URL.createObjectURL(blob));
+            currentTtsAudio.onended = function () {
+                const btn = document.getElementById('btnTts');
+                if (btn) btn.textContent = 'Read';
+            };
+            currentTtsAudio.onerror = function () {
+                const btn = document.getElementById('btnTts');
+                if (btn) btn.textContent = 'Read';
+            };
+            const btn = document.getElementById('btnTts');
+            if (btn) btn.textContent = 'Reading...';
+            return currentTtsAudio.play();
+        })
+        .catch(() => {
+            const btn = document.getElementById('btnTts');
+            if (btn) btn.textContent = 'Read';
+            alert('No se pudo reproducir el TTS en este momento.');
+        });
 }
 
 function openPresentation() {
@@ -979,7 +988,15 @@ function openCanva() {
 }
 
 function stopSpeech() {
-    speechSynthesis.cancel();
+    if (window.speechSynthesis) {
+        speechSynthesis.cancel();
+    }
+    if (currentTtsAudio) {
+        currentTtsAudio.pause();
+        currentTtsAudio = null;
+    }
+    const btn = document.getElementById('btnTts');
+    if (btn) btn.textContent = 'Read';
 }
 
 document.getElementById('btnPrev')?.addEventListener('click', function () {
@@ -1020,10 +1037,6 @@ document.getElementById('btnTts')?.addEventListener('click', speakSlide);
 document.getElementById('btnStopTts')?.addEventListener('click', stopSpeech);
 document.getElementById('btnOpenPresentation')?.addEventListener('click', openPresentation);
 document.getElementById('btnOpenCanva')?.addEventListener('click', openCanva);
-
-if (window.speechSynthesis) {
-    window.speechSynthesis.onvoiceschanged = function () {};
-}
 
 if (Array.isArray(PPT_SLIDES) && PPT_SLIDES.length) {
     renderSlide();

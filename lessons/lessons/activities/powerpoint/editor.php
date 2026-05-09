@@ -98,6 +98,7 @@ function default_slide(): array
         'music_name'     => '',
         'tts_text'       => '',
         'tts_lang'       => 'en-US',
+        'voice_id'       => 'nzFihrBIvB34imQBuxub',
     ];
 }
 
@@ -228,6 +229,11 @@ function normalize_powerpoint_payload($rawData): array
             if ($imageSize > 100) { $imageSize = 100; }
             $allowedAlign  = ['left', 'center', 'right'];
             $allowedImgPos = ['right', 'left', 'top', 'bottom'];
+            $allowedVoices = ['nzFihrBIvB34imQBuxub', 'NoOVOzCQFLOvtsMoNcdT', 'Nggzl2QAXh3OijoXD116'];
+            $voiceId = trim((string) ($slide['voice_id'] ?? 'nzFihrBIvB34imQBuxub'));
+            if (!in_array($voiceId, $allowedVoices, true)) {
+              $voiceId = 'nzFihrBIvB34imQBuxub';
+            }
             $slides[] = [
                 'template'       => normalize_template((string) ($slide['template'] ?? 'title_text')),
                 'title'          => trim((string) ($slide['title'] ?? '')),
@@ -249,6 +255,7 @@ function normalize_powerpoint_payload($rawData): array
                 'music_name'     => trim((string) ($slide['music_name'] ?? '')),
                 'tts_text'       => trim((string) ($slide['tts_text'] ?? '')),
                 'tts_lang'       => in_array($slide['tts_lang'] ?? '', ['en-US','es-MX'], true) ? $slide['tts_lang'] : 'en-US',
+                'voice_id'       => $voiceId,
             ];
         }
     }
@@ -614,12 +621,15 @@ function createSlideModel(tpl) {
     music: '',
     music_name: '',
     tts_text: '',
-    tts_lang: 'en-US'
+    tts_lang: 'en-US',
+    voice_id: 'nzFihrBIvB34imQBuxub'
   };
 }
 
 function normalizeSlideState(s) {
   const fs = Number(s.font_size||28), ts = Number(s.title_size||36), is = Number(s.image_size||50);
+  const allowedVoices = ['nzFihrBIvB34imQBuxub','NoOVOzCQFLOvtsMoNcdT','Nggzl2QAXh3OijoXD116'];
+  const voiceId = String(s.voice_id || 'nzFihrBIvB34imQBuxub');
   return {
     template:       ['title_text','text_image','image_full'].includes(s.template) ? s.template : 'title_text',
     title:          String(s.title||''),
@@ -640,7 +650,8 @@ function normalizeSlideState(s) {
     music:          String(s.music||''),
     music_name:     String(s.music_name||''),
     tts_text:       String(s.tts_text||''),
-    tts_lang:       ['en-US','es-MX'].includes(s.tts_lang) ? s.tts_lang : 'en-US'
+    tts_lang:       ['en-US','es-MX'].includes(s.tts_lang) ? s.tts_lang : 'en-US',
+    voice_id:       allowedVoices.includes(voiceId) ? voiceId : 'nzFihrBIvB34imQBuxub'
   };
 }
 
@@ -887,11 +898,20 @@ function renderSlides() {
           '<div><label class="ppt-label">🔊 Texto TTS <span style="font-weight:400;font-size:11px">(opcional &mdash; se lee en voz alta)</span></label>'+
             '<textarea class="ppt-textarea" data-field="tts_text" style="min-height:60px" placeholder="Deja vacío para usar el texto del slide...">'+escapeHtml(slide.tts_text)+'</textarea>'+
           '</div>'+
-          '<div><label class="ppt-label">🌐 Idioma del TTS</label>'+
-            '<select class="ppt-select" data-field="tts_lang">'+
-              '<option value="en-US"'+(slide.tts_lang==='en-US'?' selected':'')+'>🇺🇸 English</option>'+
-              '<option value="es-MX"'+(slide.tts_lang==='es-MX'?' selected':'')+'>🌎 Español (neutro)</option>'+
-            '</select>'+
+          '<div style="display:flex;flex-direction:column;gap:10px">'+
+            '<div><label class="ppt-label">🌐 Idioma del TTS</label>'+
+              '<select class="ppt-select" data-field="tts_lang">'+
+                '<option value="en-US"'+(slide.tts_lang==='en-US'?' selected':'')+'>🇺🇸 English</option>'+
+                '<option value="es-MX"'+(slide.tts_lang==='es-MX'?' selected':'')+'>🌎 Español (neutro)</option>'+
+              '</select>'+
+            '</div>'+
+            '<div><label class="ppt-label">🗣️ Voz ElevenLabs</label>'+
+              '<select class="ppt-select" data-field="voice_id">'+
+                '<option value="nzFihrBIvB34imQBuxub"'+(slide.voice_id==='nzFihrBIvB34imQBuxub'?' selected':'')+'>Adult Male (Josh)</option>'+
+                '<option value="NoOVOzCQFLOvtsMoNcdT"'+(slide.voice_id==='NoOVOzCQFLOvtsMoNcdT'?' selected':'')+'>Adult Female (Lily)</option>'+
+                '<option value="Nggzl2QAXh3OijoXD116"'+(slide.voice_id==='Nggzl2QAXh3OijoXD116'?' selected':'')+'>Child (Candy)</option>'+
+              '</select>'+
+            '</div>'+
           '</div>'+
         '</div>'+
 
