@@ -37,6 +37,7 @@ ob_start();
     align-items: center;
     background: #ffffff;
 }
+
 body, html {
     margin: 0 !important;
     padding: 0 !important;
@@ -65,54 +66,67 @@ body, html {
 .shell {
     width: 100%;
     height: 100vh;
-    padding: 0;
+    padding: 0 !important;
     display: flex;
     flex-direction: column;
     background: #ffffff;
     overflow: hidden;
 }
+
 .hero {
+    padding: clamp(12px, 1.5vw, 18px) clamp(12px, 2vw, 24px);
+    width: 100%;
+    flex-shrink: 0;
+    background: #ffffff;
+    border-bottom: 1px solid #F0EEF8;
     text-align: center;
-    margin-bottom: 14px;
-    width: min(760px, 100%);
 }
+
 .kicker {
     display: inline-block;
     background: #FFF0E6;
     border: 1px solid #FCDDBF;
     color: #C2580A;
     border-radius: 999px;
-    padding: 4px 14px;
-    font-size: 12px;
+    padding: 4px 12px;
+    font-size: 10px;
     font-family: 'Nunito', sans-serif;
     font-weight: 900;
     letter-spacing: .08em;
     text-transform: uppercase;
-    margin-bottom: 6px;
+    margin-bottom: 4px;
 }
+
 .act-title {
     font-family: 'Fredoka', sans-serif;
     font-weight: 700;
-    font-size: clamp(26px, 4vw, 38px);
+    font-size: clamp(20px, 3vw, 28px);
     color: #F97316;
     margin: 0;
+    line-height: 1.1;
 }
+
 .act-sub {
     font-family: 'Nunito', sans-serif;
-    font-weight: 800;
-    font-size: clamp(13px, 1.8vw, 15px);
+    font-weight: 700;
+    font-size: clamp(11px, 1.4vw, 13px);
     color: #9B94BE;
-    margin: 4px 0 0;
+    margin: 3px 0 0;
+    line-height: 1.2;
 }
 
 .board {
     background: #ffffff;
-    border: 1px solid #F0EEF8;
-    border-radius: 34px;
-    padding: clamp(16px, 2.6vw, 26px);
-    box-shadow: 0 8px 40px rgba(127,119,221,.13);
-    width: min(760px, 100%);
-    margin: 0 auto;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border: none;
+    border-radius: 0;
+    padding: 0;
+    box-shadow: none;
+    width: 100%;
+    margin: 0;
 }
 
 /* progress */
@@ -120,16 +134,20 @@ body, html {
     display: flex;
     align-items: center;
     gap: 10px;
-    margin-bottom: 18px;
+    padding: clamp(10px, 1.5vw, 14px) clamp(12px, 2vw, 16px);
+    flex-shrink: 0;
+    border-bottom: 1px solid #F0EEF8;
 }
+
 .prog-track {
     flex: 1;
-    height: 12px;
+    height: 10px;
     background: #F4F2FD;
     border: 1px solid #E4E1F8;
     border-radius: 999px;
     overflow: hidden;
 }
+
 .prog-fill {
     height: 100%;
     background: linear-gradient(90deg, #F97316, #7F77DD);
@@ -137,44 +155,48 @@ body, html {
     transition: width .45s ease;
     width: 0%;
 }
+
 .prog-badge {
     background: #7F77DD;
     color: #fff;
     font-family: 'Nunito', sans-serif;
     font-weight: 900;
-    font-size: 12px;
+    font-size: 11px;
     border-radius: 999px;
-    padding: 5px 11px;
+    padding: 4px 10px;
     white-space: nowrap;
+    flex-shrink: 0;
 }
 
 /* picker */
 .picker-section {
     background: #F5F3FF;
-    border: 1px solid #EDE9FA;
-    border-radius: 20px;
-    padding: 14px 16px;
-    margin-bottom: 14px;
+    border-bottom: 1px solid #EDE9FA;
+    padding: clamp(10px, 1.5vw, 14px) clamp(12px, 2vw, 16px);
+    flex-shrink: 0;
 }
+
 .picker-label {
-    font-size: 11px;
+    font-size: 10px;
     font-weight: 900;
     font-family: 'Nunito', sans-serif;
     color: #9B94BE;
     letter-spacing: .08em;
     text-transform: uppercase;
     text-align: center;
-    margin-bottom: 12px;
+    margin-bottom: 10px;
 }
+
 .colors-grid {
     display: grid;
     grid-template-columns: repeat(8, 1fr);
-    gap: 10px;
+    gap: 8px;
     justify-items: center;
 }
+
 .swatch {
-    width: 44px;
-    height: 44px;
+    width: 36px;
+    height: 36px;
     border-radius: 50%;
     cursor: pointer;
     border: 3px solid transparent;
@@ -182,6 +204,7 @@ body, html {
     box-shadow: 0 2px 8px rgba(0,0,0,.12);
     -webkit-tap-highlight-color: transparent;
 }
+
 .swatch:hover { transform: scale(1.15); box-shadow: 0 4px 12px rgba(0,0,0,.2); }
 .swatch.active { border-color: #271B5D; box-shadow: 0 0 0 3px #fff inset, 0 4px 12px rgba(0,0,0,.2); }
 
@@ -190,20 +213,24 @@ body, html {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 10px;
-    margin-bottom: 14px;
+    gap: 8px;
+    padding: clamp(8px, 1.2vw, 12px) clamp(12px, 2vw, 16px);
+    flex-shrink: 0;
+    border-bottom: 1px solid #F0EEF8;
 }
+
 .sel-dot {
-    width: 28px;
-    height: 28px;
+    width: 24px;
+    height: 24px;
     border-radius: 50%;
     border: 2px solid #EDE9FA;
     transition: background .2s;
     flex-shrink: 0;
     background: #ef4444;
 }
+
 .sel-label {
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 900;
     font-family: 'Nunito', sans-serif;
     color: #534AB7;
@@ -212,31 +239,33 @@ body, html {
 /* canvas */
 .canvas-wrap {
     background: #ffffff;
-    border: 1px solid #EDE9FA;
-    border-radius: 20px;
-    overflow: hidden;
-    margin-bottom: 10px;
+    flex: 1;
+    overflow: auto;
     display: flex;
     justify-content: center;
     align-items: center;
     touch-action: manipulation;
 }
+
 #coloringCanvas {
     max-width: 100%;
-    max-height: calc(100vh - 360px);
+    max-height: 100%;
     width: auto;
     height: auto;
     display: block;
     touch-action: manipulation;
     cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40' viewBox='0 0 40 40'%3E%3Cpath d='M20 4l10 12h-6v12h-8V16h-6z' fill='%2322c55e' stroke='%230f172a' stroke-width='2' stroke-linejoin='round'/%3E%3Ccircle cx='20' cy='33' r='4' fill='%23facc15' stroke='%230f172a' stroke-width='2'/%3E%3C/svg%3E") 20 10, pointer;
 }
+
 .canvas-hint {
     text-align: center;
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 700;
     font-family: 'Nunito', sans-serif;
     color: #9B94BE;
-    margin-bottom: 14px;
+    padding: clamp(8px, 1.2vw, 12px) clamp(12px, 2vw, 16px);
+    flex-shrink: 0;
+    display: none;
 }
 
 /* bottom row */
@@ -246,27 +275,32 @@ body, html {
     justify-content: space-between;
     gap: 10px;
     flex-wrap: wrap;
-    padding-top: 16px;
+    padding: clamp(10px, 1.5vw, 14px) clamp(12px, 2vw, 16px);
+    flex-shrink: 0;
     border-top: 1px solid #F0EEF8;
+    background: #ffffff;
 }
+
 .page-info {
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 900;
     font-family: 'Nunito', sans-serif;
     color: #9B94BE;
 }
+
 .btns { display: flex; gap: 10px; flex-wrap: wrap; }
+
 .btn-purple {
     background: #7F77DD;
     color: #fff;
     border: none;
     border-radius: 999px;
-    padding: 13px clamp(20px, 3vw, 32px);
+    padding: 11px clamp(16px, 2.5vw, 26px);
     font-family: 'Nunito', sans-serif;
     font-weight: 900;
-    font-size: clamp(13px, 1.8vw, 15px);
+    font-size: clamp(12px, 1.6vw, 14px);
     cursor: pointer;
-    min-width: clamp(104px, 16vw, 146px);
+    min-width: clamp(90px, 14vw, 130px);
     box-shadow: 0 6px 18px rgba(127,119,221,.18);
     transition: transform .15s, filter .15s;
     text-decoration: none;
@@ -274,17 +308,18 @@ body, html {
     align-items: center;
     justify-content: center;
 }
+
 .btn-orange {
     background: #F97316;
     color: #fff;
     border: none;
     border-radius: 999px;
-    padding: 13px clamp(20px, 3vw, 32px);
+    padding: 11px clamp(16px, 2.5vw, 26px);
     font-family: 'Nunito', sans-serif;
     font-weight: 900;
-    font-size: clamp(13px, 1.8vw, 15px);
+    font-size: clamp(12px, 1.6vw, 14px);
     cursor: pointer;
-    min-width: clamp(104px, 16vw, 146px);
+    min-width: clamp(90px, 14vw, 130px);
     box-shadow: 0 6px 18px rgba(249,115,22,.22);
     transition: transform .15s, filter .15s;
     text-decoration: none;
@@ -292,6 +327,7 @@ body, html {
     align-items: center;
     justify-content: center;
 }
+
 .btn-purple:hover, .btn-orange:hover { transform: translateY(-1px); filter: brightness(1.07); }
 
 /* completed */
@@ -301,7 +337,7 @@ body, html {
     padding: 50px 20px 30px;
     flex-direction: column;
     align-items: center;
-    width: min(760px, 100%);
+    width: 100%;
 }
 .coloring-completed.active { display: flex; }
 .coloring-completed-emoji { font-size: 88px; line-height: 1; margin-bottom: 14px; }
