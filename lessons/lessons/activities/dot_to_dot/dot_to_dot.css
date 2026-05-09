@@ -54,10 +54,10 @@ body {
 
 .d2dv-page{
     width:100%;
-    min-height:100vh;
+    min-height:calc(100vh - 90px);
     padding:clamp(14px,2.5vw,34px);
     display:flex;
-    align-items:flex-start;
+    align-items:center;
     justify-content:center;
     background:#fff;
     box-sizing:border-box;
@@ -122,16 +122,16 @@ body {
 
 /* ── Main card / board ── */
 .d2dv-main {
-    max-width: 980px;
+    width:min(760px,100%);
     margin: 0 auto;
     display: flex;
     flex-direction: column;
     align-items: center;
     background: #ffffff;
-    border: 1px solid #EDE9FA;
-    border-radius: 30px;
-    box-shadow: 0 8px 24px rgba(127,119,221,.09);
-    padding: 18px 18px 16px;
+    border: 1px solid #F0EEF8;
+    border-radius: 34px;
+    box-shadow: 0 8px 40px rgba(127,119,221,.13);
+    padding: clamp(16px,2.6vw,26px);
 }
 
 /* ── Progress row ── */

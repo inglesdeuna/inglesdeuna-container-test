@@ -330,6 +330,34 @@ continueBtn.addEventListener("click", function () {
   }
 });
 
+document.addEventListener("keydown", function (event) {
+  if (!event) return;
+  const key = String(event.key || "");
+
+  if (key === "h" || key === "H" || key === "Enter") {
+    event.preventDefault();
+    if (!completed) showHint();
+    return;
+  }
+
+  if (key === "r" || key === "R" || key === "ArrowLeft") {
+    event.preventDefault();
+    resetGame();
+    return;
+  }
+
+  if (key === "ArrowRight") {
+    event.preventDefault();
+    if (completed && data.returnTo) {
+      window.location.href = data.returnTo;
+      return;
+    }
+    if (!completed) {
+      showHint();
+    }
+  }
+});
+
 img.addEventListener("load", function () {
   setupCanvas();
 });

@@ -26,6 +26,7 @@ $hasActivity = $image !== '' && is_array($points) && count($points) >= 3;
 ob_start();
 ?>
 
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@600;700;800;900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="dot_to_dot.css">
 
 <div class="d2dv-page">
