@@ -204,10 +204,10 @@ body{margin:0!important;padding:0!important;background:#fff!important;font-famil
 .us-placeholder{color:#9B94BE;font-size:15px;font-weight:800;font-style:normal;pointer-events:none}
 .us-chip{display:inline-flex;align-items:center;justify-content:center;padding:14px 20px;min-height:48px;min-width:74px;border-radius:999px;font-family:'Nunito',sans-serif;font-size:clamp(15px,1.9vw,18px);font-weight:900;letter-spacing:.01em;cursor:grab;user-select:none;transition:transform .12s,box-shadow .12s,border-color .12s,background .12s}
 .us-chip:active{cursor:grabbing}
-.us-chip.bank-chip{background:#fff;color:#534AB7;border:2px solid #EDE9FA;box-shadow:0 10px 22px rgba(127,119,221,.18)}
-.us-chip.bank-chip:hover{transform:translateY(-2px) scale(1.02);border-color:#7F77DD;box-shadow:0 16px 28px rgba(127,119,221,.18)}
-.us-chip.built-chip{background:#EEEDFE;color:#534AB7;border:2px solid #7F77DD;box-shadow:0 10px 22px rgba(127,119,221,.18)}
-.us-chip.built-chip:hover{transform:translateY(-1px);box-shadow:0 12px 24px rgba(127,119,221,.16)}
+.us-chip.bank-chip{background:#7F77DD;color:#FFFFFF;border:2px solid #7F77DD;box-shadow:0 10px 22px rgba(127,119,221,.18)}
+.us-chip.bank-chip:hover{transform:translateY(-2px) scale(1.02);border-color:#534AB7;background:#534AB7;box-shadow:0 16px 28px rgba(127,119,221,.18)}
+.us-chip.built-chip{background:#534AB7;color:#FFFFFF;border:2px solid #534AB7;box-shadow:0 10px 22px rgba(127,119,221,.18)}
+.us-chip.built-chip:hover{transform:translateY(-1px);filter:brightness(1.06);box-shadow:0 12px 24px rgba(127,119,221,.16)}
 .us-chip.correct-chip{background:#fff;border:2px solid #16a34a;color:#16a34a;box-shadow:0 0 0 2px rgba(22,163,74,.22);cursor:default}
 .us-chip.incorrect-chip{background:#fff;border:2px solid #dc2626;color:#dc2626;box-shadow:0 0 0 2px rgba(220,38,38,.18);cursor:default}
 #wordBank{display:flex;flex-wrap:wrap;justify-content:center;gap:12px;margin:20px 0 0;min-height:64px}
