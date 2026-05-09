@@ -26,6 +26,8 @@ function lo_viewer_normalize(mixed $raw): array {
         if (!is_array($b)) continue;
         $sentence  = trim((string)($b['sentence']  ?? ''));
         $video_url = trim((string)($b['video_url'] ?? ''));
+        $audio_url = trim((string)($b['audio_url'] ?? ($b['audio'] ?? '')));
+        $voice_id  = trim((string)($b['voice_id']  ?? ''));
         $images = [];
         foreach ((array)($b['images'] ?? []) as $img) { $u=trim((string)$img); if($u!=='') $images[]=$u; }
         $dzImages = [];
@@ -37,7 +39,14 @@ function lo_viewer_normalize(mixed $raw): array {
                 'width'=>max(60,min(800,(int)($dzi['width']??180)))];
         }
         if ($sentence==='' && $video_url==='' && empty($images)) continue;
-        $out[] = ['sentence'=>$sentence,'video_url'=>$video_url,'images'=>$images,'dropZoneImages'=>$dzImages];
+        $out[] = [
+            'sentence'=>$sentence,
+            'voice_id'=>$voice_id,
+            'audio_url'=>$audio_url,
+            'video_url'=>$video_url,
+            'images'=>$images,
+            'dropZoneImages'=>$dzImages
+        ];
     }
     return ['title'=>$title!==''?$title:'Listen & Order','instructions'=>$instr,'blocks'=>$out];
 }
