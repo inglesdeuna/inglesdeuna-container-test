@@ -15,6 +15,20 @@ if (isset($_SESSION['student_logged']) && $_SESSION['student_logged']) {
 
 // Accept admin OR teacher session
 $isLoggedIn = !empty($_SESSION['academic_logged']) || !empty($_SESSION['admin_logged']);
+
+// Keepalive endpoint for long editing sessions.
+if (isset($_GET['keepalive']) && (string) $_GET['keepalive'] === '1') {
+    if (!$isLoggedIn) {
+        http_response_code(401);
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode(array('ok' => false));
+        exit;
+    }
+
+    http_response_code(204);
+    exit;
+}
+
 if (!$isLoggedIn) {
     header('Location: /lessons/lessons/academic/login.php');
     exit;
@@ -863,6 +877,28 @@ function markAsChanged() {
     formChanged = true;
 }
 
+function redirectToLogin() {
+    window.location.href = '/lessons/lessons/academic/login.php?error=session_expired';
+}
+
+function keepSessionAlive() {
+    var url = new URL(window.location.href);
+    url.searchParams.set('keepalive', '1');
+
+    fetch(url.toString(), {
+        method: 'GET',
+        credentials: 'same-origin',
+        cache: 'no-store',
+        keepalive: true
+    }).then(function (res) {
+        if (res.status === 401 || res.status === 403) {
+            redirectToLogin();
+        }
+    }).catch(function () {
+        // Ignore transient network issues.
+    });
+}
+
 function markPronAudioStale(block) {
     if (!block) return;
     var audioInput = block.querySelector('input[name="audio[]"]');
@@ -960,9 +996,23 @@ document.addEventListener('DOMContentLoaded', function () {
             fd.append('text', text);
             fd.append('voice_id', voiceSelect ? voiceSelect.value : 'nzFihrBIvB34imQBuxub');
             fetch('tts.php', { method: 'POST', body: fd, credentials: 'same-origin' })
-                .then(function (r) { return r.json(); })
+                .then(function (r) {
+                    if (r.status === 401 || r.status === 403) {
+                        var unauthorizedError = new Error('Unauthorized');
+                        unauthorizedError.code = 'UNAUTHORIZED';
+                        throw unauthorizedError;
+                    }
+                    return r.json();
+                })
                 .then(function (data) {
-                    if (data.error) throw new Error(data.error);
+                    if (data.error) {
+                        if (/unauthorized/i.test(String(data.error))) {
+                            var unauthorizedPayloadError = new Error('Unauthorized');
+                            unauthorizedPayloadError.code = 'UNAUTHORIZED';
+                            throw unauthorizedPayloadError;
+                        }
+                        throw new Error(data.error);
+                    }
                     if (audioInput) audioInput.value = data.url;
                     var old = block.querySelector('.js-pron-tts-preview');
                     if (old) old.remove();
@@ -975,6 +1025,15 @@ document.addEventListener('DOMContentLoaded', function () {
                     markAsChanged();
                 })
                 .catch(function (err) {
+                    if (err && err.code === 'UNAUTHORIZED') {
+                        if (statusEl) {
+                            statusEl.textContent = 'Session expired. Redirecting to login...';
+                            statusEl.style.color = '#E24B4A';
+                        }
+                        setTimeout(redirectToLogin, 700);
+                        return;
+                    }
+
                     var msg = err && err.message ? err.message : 'Generation failed';
                     if (statusEl) {
                         if (/api key not configured/i.test(msg)) {
@@ -1028,6 +1087,9 @@ window.addEventListener('beforeunload', function (e) {
         e.returnValue = '';
     }
 });
+
+// Avoid session expiry while editing pronunciation cards for long periods.
+setInterval(keepSessionAlive, 120000);
 </script>
 
 <?php
