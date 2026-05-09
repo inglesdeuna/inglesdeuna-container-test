@@ -28,20 +28,123 @@ if (empty($images)) {
 
 ob_start();
 ?>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@600;700;800;900&display=swap" rel="stylesheet">
 
 <style>
-.tracing-viewer-shell{max-width:980px;margin:0 auto;padding:0 0 20px}
+:root{
+    --tr-orange:#F97316;
+    --tr-orange-dark:#C2580A;
+    --tr-orange-soft:#FFF0E6;
+    --tr-purple:#7F77DD;
+    --tr-purple-dark:#534AB7;
+    --tr-purple-soft:#EEEDFE;
+    --tr-muted:#9B94BE;
+    --tr-border:#F0EEF8;
+}
+
+html,
+body{width:100%;min-height:100%}
+
+body{
+    margin:0!important;
+    padding:0!important;
+    background:#fff!important;
+    font-family:'Nunito','Segoe UI',sans-serif!important;
+}
+
+.activity-wrapper{
+    max-width:100%!important;
+    margin:0!important;
+    padding:0!important;
+    min-height:100vh;
+    display:flex!important;
+    flex-direction:column!important;
+    background:transparent!important;
+}
+
+.top-row,
+.viewer-header,
+.activity-header,
+.activity-title,
+.activity-subtitle{display:none!important}
+
+.viewer-content{
+    flex:1!important;
+    display:flex!important;
+    flex-direction:column!important;
+    padding:0!important;
+    margin:0!important;
+    background:transparent!important;
+    border:none!important;
+    box-shadow:none!important;
+    border-radius:0!important;
+}
+
+.tr-page{
+    width:100%;
+    min-height:100vh;
+    padding:clamp(14px,2.5vw,34px);
+    display:flex;
+    align-items:flex-start;
+    justify-content:center;
+    background:#fff;
+    box-sizing:border-box;
+}
+
+.tr-app{width:min(1120px,100%);margin:0 auto}
+
+.tr-hero{text-align:center;margin-bottom:clamp(14px,2vw,22px)}
+
+.tr-kicker{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    padding:7px 14px;
+    border-radius:999px;
+    background:var(--tr-orange-soft);
+    border:1px solid #FCDDBF;
+    color:var(--tr-orange-dark);
+    font-size:12px;
+    font-weight:900;
+    letter-spacing:.08em;
+    text-transform:uppercase;
+    margin-bottom:10px;
+}
+
+.tr-hero h1{
+    font-family:'Fredoka',sans-serif;
+    font-size:clamp(30px,5.5vw,58px);
+    font-weight:700;
+    color:var(--tr-orange);
+    margin:0;
+    line-height:1.03;
+}
+
+.tr-hero p{
+    font-size:clamp(13px,1.8vw,17px);
+    font-weight:800;
+    color:var(--tr-muted);
+    margin:8px 0 0;
+}
+
+.tr-stage{
+    background:#fff;
+    border:1px solid var(--tr-border);
+    border-radius:34px;
+    padding:clamp(16px,2.6vw,26px);
+    box-shadow:0 8px 40px rgba(127,119,221,.13);
+    box-sizing:border-box;
+}
+
+.tracing-viewer-shell{max-width:100%;margin:0 auto}
 .tracing-stage{display:flex;flex-direction:column;gap:14px}
-.tracing-intro{margin-bottom:4px}
-.tracing-intro h2{margin:0 0 4px;font-family:'Fredoka','Trebuchet MS',sans-serif;font-size:26px;font-weight:700;color:#1e293b}
-.tracing-intro p{margin:0;color:#475569;font-size:15px}
-.tracing-counter{display:flex;align-items:center;gap:8px;font-weight:700;font-size:15px;color:#475569}
+.tracing-counter{display:flex;align-items:center;gap:8px;font-weight:800;font-size:15px;color:var(--tr-muted)}
 .tracing-counter-dot{width:10px;height:10px;border-radius:50%;background:#2563eb;flex-shrink:0}
 .tracing-canvas-wrap{display:flex;justify-content:center}
-.tracing-canvas-shell{border:2px solid #e2e8f0;border-radius:16px;overflow:hidden;background:#fff;box-shadow:0 4px 16px rgba(15,23,42,.08)}
-.tracing-canvas{display:block;cursor:crosshair;touch-action:none}
-.tracing-toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:12px;padding:10px 0}
-.tracing-toolbar-label{font-size:13px;font-weight:700;color:#64748b}
+.tracing-canvas-shell{width:min(100%,980px);border:1px solid #EDE9FA;border-radius:24px;overflow:hidden;background:#fff;box-shadow:0 10px 28px rgba(127,119,221,.12)}
+.tracing-canvas{display:block;cursor:crosshair;touch-action:none;width:100%;height:auto;aspect-ratio:68 / 50}
+.tracing-toolbar{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:12px;padding:10px 0}
+.tracing-toolbar-label{font-size:13px;font-weight:800;color:var(--tr-muted)}
 .tracing-color-group,.tracing-size-group{display:flex;gap:8px;align-items:center}
 .tracing-color-swatch{width:28px;height:28px;border-radius:50%;border:2px solid transparent;cursor:pointer;transition:border-color .15s}
 .tracing-color-swatch.active{border-color:#1e293b}
@@ -50,6 +153,8 @@ ob_start();
 .tracing-size-btn .dot{border-radius:50%;background:#1e293b;display:block}
 .tracing-actions{display:flex;justify-content:center;gap:10px}
 .tracing-completed{display:none;text-align:center;padding:24px 16px}
+.tracing-completed.active{display:block}
+.is-hidden{display:none!important}
 .tracing-btn{
   display:inline-flex;
   align-items:center;
@@ -67,13 +172,25 @@ ob_start();
   transition:transform .15s ease, filter .15s ease;
 }
 .tracing-btn:hover{filter:brightness(1.04);transform:translateY(-1px)}
-.tracing-btn-next{background:linear-gradient(180deg,#22c55e,#15803d);color:#fff}
+.tracing-btn-next{background:var(--tr-purple);color:#fff;box-shadow:0 10px 24px rgba(127,119,221,.24)}
+
+@media (max-width:900px){
+  .tr-page{padding:12px}
+  .tr-stage{border-radius:26px;padding:14px}
+}
 </style>
 
+<div class="tr-page">
+<div class="tr-app">
+    <div class="tr-hero">
+        <div class="tr-kicker">Activity</div>
+        <h1><?= htmlspecialchars($viewerTitle, ENT_QUOTES, 'UTF-8') ?></h1>
+        <p>Choose a color, pick a pencil size, and trace each page in order.</p>
+    </div>
+
+    <div class="tr-stage">
 <div class="tracing-viewer-shell">
     <div class="tracing-stage">
-
-        <?= render_activity_header($viewerTitle, 'Choose a color, pick a pencil size, and trace each page in order.') ?>
 
         <div class="tracing-counter" id="tracingCounter">
             <span class="tracing-counter-dot"></span>
@@ -133,6 +250,9 @@ ob_start();
         </div>
 
     </div>
+</div>
+</div>
+</div>
 </div>
 
 <script>
@@ -220,10 +340,10 @@ ob_start();
 
 
     function showCompleted() {
-        counterEl.style.display = 'none';
-        wrapEl.style.display = 'none';
-        toolbarEl.style.display = 'none';
-        actionsEl.style.display = 'none';
+        counterEl.classList.add('is-hidden');
+        wrapEl.classList.add('is-hidden');
+        toolbarEl.classList.add('is-hidden');
+        actionsEl.classList.add('is-hidden');
         completedEl.classList.add('active');
 
         if (completedTitleEl) completedTitleEl.textContent = activityTitle || 'Tracing Practice';
@@ -298,6 +418,10 @@ ob_start();
 
     restartBtn.addEventListener('click', () => {
         currentIdx = 0;
+        counterEl.classList.remove('is-hidden');
+        wrapEl.classList.remove('is-hidden');
+        toolbarEl.classList.remove('is-hidden');
+        actionsEl.classList.remove('is-hidden');
         completedEl.classList.remove('active');
         renderPage();
     });
