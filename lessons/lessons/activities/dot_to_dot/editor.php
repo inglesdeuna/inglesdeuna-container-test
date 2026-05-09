@@ -49,8 +49,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $instruction,
         $image,
         $points,
-        $canvasWidth,
-        $canvasHeight
+        dot_to_dot_default_label_settings()
     );
 
     header('Location: viewer.php?id=' . urlencode((string)$savedId) . '&unit=' . urlencode($unit));
