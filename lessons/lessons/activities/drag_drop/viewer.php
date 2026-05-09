@@ -49,6 +49,7 @@ function normalize_drag_drop_payload($rawData): array
 {
     $default = [
         'title' => default_drag_drop_title(),
+    'voice_id' => 'nzFihrBIvB34imQBuxub',
         'blocks' => [],
     ];
 
@@ -112,6 +113,7 @@ function normalize_drag_drop_payload($rawData): array
 
     return [
         'title' => $title !== '' ? $title : default_drag_drop_title(),
+      'voice_id' => trim((string) ($decoded['voice_id'] ?? 'nzFihrBIvB34imQBuxub')) ?: 'nzFihrBIvB34imQBuxub',
         'blocks' => $blocks,
     ];
 }
@@ -121,6 +123,7 @@ function load_drag_drop_activity(PDO $pdo, string $activityId, string $unit): ar
     $fallback = [
         'id' => '',
         'title' => default_drag_drop_title(),
+    'voice_id' => 'nzFihrBIvB34imQBuxub',
         'blocks' => [],
     ];
 
@@ -147,6 +150,7 @@ function load_drag_drop_activity(PDO $pdo, string $activityId, string $unit): ar
     return [
         'id' => isset($row['id']) ? (string) $row['id'] : '',
         'title' => (string) ($payload['title'] ?? default_drag_drop_title()),
+      'voice_id' => (string) ($payload['voice_id'] ?? 'nzFihrBIvB34imQBuxub'),
         'blocks' => is_array($payload['blocks'] ?? null) ? $payload['blocks'] : [],
     ];
 }
@@ -268,6 +272,8 @@ const blocks = sourceBlocks.length > 1
 const activityTitle = <?= json_encode($viewerTitle, JSON_UNESCAPED_UNICODE) ?>;
 const DD_ACTIVITY_ID = <?= json_encode($activityId, JSON_UNESCAPED_UNICODE) ?>;
 const DD_RETURN_TO = <?= json_encode($returnTo, JSON_UNESCAPED_UNICODE) ?>;
+const DD_VOICE_ID = <?= json_encode((string) ($activity['voice_id'] ?? 'nzFihrBIvB34imQBuxub'), JSON_UNESCAPED_UNICODE) ?>;
+const DD_TTS_URL = 'tts.php';
 
 let index = 0;
 let dragged = null;
@@ -276,10 +282,8 @@ let currentAnswers = [];
 let listenEnabled = true;
 let isSpeaking = false;
 let isPaused = false;
-let utter = null;
-let speechOffset = 0;
-let speechSourceText = '';
-let speechSegmentStart = 0;
+let currentAudio = null;
+let currentAudioUrl = '';
 let finished = false;
 let blockFinished = false;
 let correctCount = 0;
@@ -362,12 +366,17 @@ function setListenVisible(visible) {
     listenBtn.classList.remove('hidden');
   } else {
     listenBtn.classList.add('hidden');
-    speechSynthesis.cancel();
+    if (currentAudio) {
+      currentAudio.pause();
+      currentAudio.currentTime = 0;
+      currentAudio = null;
+    }
+    if (currentAudioUrl) {
+      try { URL.revokeObjectURL(currentAudioUrl); } catch (e) {}
+      currentAudioUrl = '';
+    }
     isSpeaking = false;
     isPaused = false;
-    speechOffset = 0;
-    speechSourceText = '';
-    speechSegmentStart = 0;
   }
 }
 
@@ -543,12 +552,17 @@ function createBlank(indexBlank) {
 }
 
 function loadSentence() {
-  speechSynthesis.cancel();
+  if (currentAudio) {
+    currentAudio.pause();
+    currentAudio.currentTime = 0;
+    currentAudio = null;
+  }
+  if (currentAudioUrl) {
+    try { URL.revokeObjectURL(currentAudioUrl); } catch (e) {}
+    currentAudioUrl = '';
+  }
   isSpeaking = false;
   isPaused = false;
-  speechOffset = 0;
-  speechSourceText = '';
-  speechSegmentStart = 0;
   dragged = null;
   clearSelectedChip();
   finished = false;
@@ -586,7 +600,6 @@ function loadSentence() {
 
   const block = blocks[index] || {};
   currentText = typeof block.text === 'string' ? block.text.trim() : '';
-  speechSourceText = currentText;
   currentAnswers = getAnswersForBlock(block);
   listenEnabled = !!block.listen_enabled;
 
@@ -650,12 +663,17 @@ function loadSentence() {
 async function showCompleted() {
   finished = true;
   blockFinished = true;
-  speechSynthesis.cancel();
+  if (currentAudio) {
+    currentAudio.pause();
+    currentAudio.currentTime = 0;
+    currentAudio = null;
+  }
+  if (currentAudioUrl) {
+    try { URL.revokeObjectURL(currentAudioUrl); } catch (e) {}
+    currentAudioUrl = '';
+  }
   isSpeaking = false;
   isPaused = false;
-  speechOffset = 0;
-  speechSourceText = '';
-  speechSegmentStart = 0;
   feedback.textContent = '';
   feedback.className = '';
 
@@ -832,112 +850,66 @@ function speak() {
     return;
   }
 
-  if (speechSynthesis.paused || isPaused) {
-    speechSynthesis.resume();
-    isSpeaking = true;
-    isPaused = false;
-
-    setTimeout(function () {
-      if (!speechSynthesis.speaking && speechOffset < speechSourceText.length) {
-        startSpeechFromOffset();
-      }
-    }, 80);
-    return;
-  }
-
-  if (speechSynthesis.speaking && !speechSynthesis.paused) {
-    speechSynthesis.pause();
-    isSpeaking = true;
-    isPaused = true;
-    return;
-  }
-
-  speechSynthesis.cancel();
-  speechSourceText = currentText || '';
-  speechOffset = 0;
-  startSpeechFromOffset();
-}
-
-function startSpeechFromOffset() {
-  const source = speechSourceText || currentText || '';
-  if (!source) {
-    return;
-  }
-
-  const safeOffset = Math.max(0, Math.min(speechOffset, source.length));
-  const remaining = source.slice(safeOffset);
-
-  if (!remaining.trim()) {
-    isSpeaking = false;
-    isPaused = false;
-    speechOffset = 0;
-    return;
-  }
-
-  speechSynthesis.cancel();
-
-  speechSegmentStart = safeOffset;
-  utter = new SpeechSynthesisUtterance(remaining);
-  utter.lang = 'en-US';
-  utter.rate = 0.92;
-  utter.pitch = 1;
-  const preferredVoice = getPreferredVoice('en-US');
-  if (preferredVoice) utter.voice = preferredVoice;
-  window.speechSynthesis.speak(utter);
-function getPreferredVoice(lang) {
-  lang = lang || 'en-US';
-  const voices = window.speechSynthesis ? window.speechSynthesis.getVoices() : [];
-  if (!Array.isArray(voices) || voices.length === 0) {
-    return null;
-  }
-  const langPrefix = lang.split('-')[0].toLowerCase();
-  const matchedVoices = voices.filter((voice) => {
-    const vl = String(voice.lang || '').toLowerCase();
-    return vl === lang.toLowerCase() || vl.startsWith(langPrefix + '-') || vl.startsWith(langPrefix + '_');
-  });
-  if (!matchedVoices.length) {
-    return voices[0] || null;
-  }
-  const femaleHints = ['female', 'woman', 'zira', 'samantha', 'karen', 'aria', 'jenny', 'emma', 'olivia', 'ava',
-    'paulina', 'sabina', 'esperanza', 'mónica', 'monica', 'conchita'];
-  const femaleVoice = matchedVoices.find((voice) => {
-    const label = (String(voice.name || '') + ' ' + String(voice.voiceURI || '')).toLowerCase();
-    return femaleHints.some((hint) => label.includes(hint));
-  });
-  return femaleVoice || matchedVoices[0];
-}
-
-  utter.onstart = function () {
-    isSpeaking = true;
-    isPaused = false;
-  };
-
-  utter.onpause = function () {
-    isPaused = true;
-    isSpeaking = true;
-  };
-
-  utter.onresume = function () {
-    isPaused = false;
-    isSpeaking = true;
-  };
-
-  utter.onboundary = function (event) {
-    if (typeof event.charIndex === 'number') {
-      speechOffset = Math.max(speechSegmentStart, Math.min(source.length, speechSegmentStart + event.charIndex));
+  if (currentAudio) {
+    if (!currentAudio.paused) {
+      currentAudio.pause();
+      isSpeaking = true;
+      isPaused = true;
+    } else {
+      currentAudio.play().then(function () {
+        isSpeaking = true;
+        isPaused = false;
+      }).catch(function () {});
     }
-  };
+    return;
+  }
 
-  utter.onend = function () {
-    if (isPaused) {
-      return;
-    }
-    isSpeaking = false;
-    isPaused = false;
-    speechOffset = 0;
-  };
+  listenBtn.disabled = true;
+  listenBtn.textContent = '...';
 
-  speechSynthesis.speak(utter);
+  const fd = new FormData();
+  fd.append('text', currentText);
+  fd.append('voice_id', DD_VOICE_ID || 'nzFihrBIvB34imQBuxub');
+
+  fetch(DD_TTS_URL, { method: 'POST', body: fd, credentials: 'same-origin' })
+    .then(function (res) {
+      if (!res.ok) throw new Error('TTS error ' + res.status);
+      return res.blob();
+    })
+    .then(function (blob) {
+      currentAudioUrl = URL.createObjectURL(blob);
+      currentAudio = new Audio(currentAudioUrl);
+
+      currentAudio.onended = function () {
+        isSpeaking = false;
+        isPaused = false;
+        if (currentAudioUrl) {
+          try { URL.revokeObjectURL(currentAudioUrl); } catch (e) {}
+          currentAudioUrl = '';
+        }
+        currentAudio = null;
+      };
+
+      currentAudio.onpause = function () {
+        if (currentAudio && currentAudio.currentTime < (currentAudio.duration || Infinity)) {
+          isSpeaking = true;
+          isPaused = true;
+        }
+      };
+
+      return currentAudio.play().then(function () {
+        isSpeaking = true;
+        isPaused = false;
+      });
+    })
+    .catch(function () {
+      isSpeaking = false;
+      isPaused = false;
+    })
+    .finally(function () {
+      listenBtn.disabled = false;
+      listenBtn.textContent = 'Listen';
+    });
 }
 
 totalCount = blocks.reduce(function (sum, block) {
