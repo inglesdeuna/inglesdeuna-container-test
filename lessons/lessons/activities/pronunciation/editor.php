@@ -153,7 +153,7 @@ function normalize_pronunciation_payload($rawData): array
                 'en' => $en,
                 'ph' => isset($item['ph']) ? trim((string) $item['ph']) : '',
                 'es' => isset($item['es']) ? trim((string) $item['es']) : '',
-                'voice_id' => isset($item['voice_id']) ? trim((string) $item['voice_id']) : 'JBFqnCBsd6RMkjVDRZzb',
+                'voice_id' => isset($item['voice_id']) ? trim((string) $item['voice_id']) : 'nzFihrBIvB34imQBuxub',
                 'audio' => isset($item['audio']) ? trim((string) $item['audio']) : '',
             );
         }
@@ -473,9 +473,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $img = isset($imgs[$i]) ? trim((string) $imgs[$i]) : '';
         $audio = isset($audios[$i]) ? trim((string) $audios[$i]) : '';
-        $voiceId = isset($voiceIds[$i]) ? trim((string) $voiceIds[$i]) : 'JBFqnCBsd6RMkjVDRZzb';
+        $voiceId = isset($voiceIds[$i]) ? trim((string) $voiceIds[$i]) : 'nzFihrBIvB34imQBuxub';
         if ($voiceId === '' || !preg_match('/^[A-Za-z0-9]+$/', $voiceId)) {
-            $voiceId = 'JBFqnCBsd6RMkjVDRZzb';
+            $voiceId = 'nzFihrBIvB34imQBuxub';
         }
 
         if (
@@ -820,9 +820,9 @@ ob_start();
                     <div>
                         <label>Voice</label>
                         <select name="voice_id[]" class="js-pron-voiceid">
-                            <option value="JBFqnCBsd6RMkjVDRZzb"<?php echo ((isset($item['voice_id']) ? $item['voice_id'] : 'JBFqnCBsd6RMkjVDRZzb') === 'JBFqnCBsd6RMkjVDRZzb') ? ' selected' : ''; ?>>Adult Male (George)</option>
-                            <option value="21m00Tcm4TlvDq8ikWAM"<?php echo ((isset($item['voice_id']) ? $item['voice_id'] : '') === '21m00Tcm4TlvDq8ikWAM') ? ' selected' : ''; ?>>Adult Female (Rachel)</option>
-                            <option value="pFZP5JQG7iQjIQuC4Bku"<?php echo ((isset($item['voice_id']) ? $item['voice_id'] : '') === 'pFZP5JQG7iQjIQuC4Bku') ? ' selected' : ''; ?>>Child (Lily)</option>
+                            <option value="nzFihrBIvB34imQBuxub"<?php echo ((isset($item['voice_id']) ? $item['voice_id'] : 'nzFihrBIvB34imQBuxub') === 'nzFihrBIvB34imQBuxub') ? ' selected' : ''; ?>>Adult Male (Josh)</option>
+                            <option value="NoOVOzCQFLOvtsMoNcdT"<?php echo ((isset($item['voice_id']) ? $item['voice_id'] : '') === 'NoOVOzCQFLOvtsMoNcdT') ? ' selected' : ''; ?>>Adult Female (Lily)</option>
+                            <option value="Nggzl2QAXh3OijoXD116"<?php echo ((isset($item['voice_id']) ? $item['voice_id'] : '') === 'Nggzl2QAXh3OijoXD116') ? ' selected' : ''; ?>>Child (Candy)</option>
                         </select>
                     </div>
                     <button type="button" class="pron-tts-btn js-pron-generate-tts">Generate audio</button>
@@ -896,9 +896,9 @@ function addItem() {
     '  <div>' +
     '    <label>Voice</label>' +
     '    <select name="voice_id[]" class="js-pron-voiceid">' +
-    '      <option value="JBFqnCBsd6RMkjVDRZzb">Adult Male (George)</option>' +
-    '      <option value="21m00Tcm4TlvDq8ikWAM">Adult Female (Rachel)</option>' +
-    '      <option value="pFZP5JQG7iQjIQuC4Bku">Child (Lily)</option>' +
+    '      <option value="nzFihrBIvB34imQBuxub">Adult Male (Josh)</option>' +
+    '      <option value="NoOVOzCQFLOvtsMoNcdT">Adult Female (Lily)</option>' +
+    '      <option value="Nggzl2QAXh3OijoXD116">Child (Candy)</option>' +
     '    </select>' +
     '  </div>' +
     '  <button type="button" class="pron-tts-btn js-pron-generate-tts">Generate audio</button>' +
