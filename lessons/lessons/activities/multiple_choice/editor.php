@@ -110,6 +110,7 @@ function normalize_multiple_choice_payload($rawData): array
             'question_type' => (isset($item['question_type']) && $item['question_type'] === 'listen') ? 'listen' : 'text',
             'question'      => isset($item['question']) ? trim((string) $item['question']) : '',
             'audio'         => isset($item['audio']) ? trim((string) $item['audio']) : '',
+            'voice_id'      => (isset($item['voice_id']) && in_array($item['voice_id'], array('josh', 'lily', 'candy'), true)) ? $item['voice_id'] : 'josh',
             'image'         => isset($item['image']) ? trim((string) $item['image']) : '',
             'option_type'   => (isset($item['option_type']) && $item['option_type'] === 'image') ? 'image' : 'text',
             'options'       => array(
@@ -277,6 +278,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $imageFiles = isset($_FILES['image_file']) ? $_FILES['image_file'] : null;
 
     $questionTypes   = isset($_POST['question_type']) && is_array($_POST['question_type']) ? $_POST['question_type'] : array();
+    $voiceIds        = isset($_POST['voice_id']) && is_array($_POST['voice_id']) ? $_POST['voice_id'] : array();
     $optionTypes     = isset($_POST['option_type']) && is_array($_POST['option_type']) ? $_POST['option_type'] : array();
     $optAImgExisting = isset($_POST['option_a_img_existing']) && is_array($_POST['option_a_img_existing']) ? $_POST['option_a_img_existing'] : array();
     $optBImgExisting = isset($_POST['option_b_img_existing']) && is_array($_POST['option_b_img_existing']) ? $_POST['option_b_img_existing'] : array();
@@ -340,10 +342,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             continue;
         }
 
+        $voiceId = (isset($voiceIds[$i]) && in_array($voiceIds[$i], array('josh', 'lily', 'candy'), true)) ? $voiceIds[$i] : 'josh';
+
         $sanitized[] = array(
             'id'            => $qid,
             'question_type' => $questionType,
             'question'      => $question,
+            'voice_id'      => $voiceId,
             'image'         => $image,
             'option_type'   => $optionType,
             'options'       => array($a, $b, $c),
@@ -611,6 +616,14 @@ ob_start();
                         <select name="option_type[]" onchange="onOptionTypeChange(this)">
                             <option value="text" <?= $optType === 'text' ? 'selected' : '' ?>>Text</option>
                             <option value="image" <?= $optType === 'image' ? 'selected' : '' ?>>🖼 Images</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label>Voice</label>
+                        <select name="voice_id[]">
+                            <option value="josh" <?= (isset($question['voice_id']) && $question['voice_id'] === 'josh') ? 'selected' : '' ?>>Josh</option>
+                            <option value="lily" <?= (isset($question['voice_id']) && $question['voice_id'] === 'lily') ? 'selected' : '' ?>>Lily</option>
+                            <option value="candy" <?= (isset($question['voice_id']) && $question['voice_id'] === 'candy') ? 'selected' : '' ?>>Candy</option>
                         </select>
                     </div>
                 </div>

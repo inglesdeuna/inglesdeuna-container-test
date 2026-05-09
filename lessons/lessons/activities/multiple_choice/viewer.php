@@ -94,6 +94,7 @@ function normalize_multiple_choice_payload($rawData): array
             'question_type' => (isset($item['question_type']) && $item['question_type'] === 'listen') ? 'listen' : 'text',
             'question' => isset($item['question']) ? trim((string) $item['question']) : '',
             'audio'   => isset($item['audio']) ? trim((string) $item['audio']) : '',
+            'voice_id' => (isset($item['voice_id']) && in_array($item['voice_id'], array('josh', 'lily', 'candy'), true)) ? $item['voice_id'] : 'josh',
             'image'   => isset($item['image']) ? trim((string) $item['image']) : '',
             'option_type' => (isset($item['option_type']) && $item['option_type'] === 'image') ? 'image' : 'text',
             'options' => array(
