@@ -40,7 +40,7 @@ function fb_ed_load(PDO $pdo, string $unit, string $activityId): array
         'media_type'   => 'none',
         'media_url'    => '',
         'tts_text'     => '',
-        'voice_id'     => 'JBFqnCBsd6RMkjVDRZzb',
+        'voice_id'     => 'nzFihrBIvB34imQBuxub',
         'tts_audio_url'=> '',
     );
 
@@ -80,7 +80,7 @@ function fb_ed_load(PDO $pdo, string $unit, string $activityId): array
         'media_type'   => isset($data['media_type']) ? $data['media_type'] : 'none',
         'media_url'    => isset($data['media_url'])  ? $data['media_url']  : '',
         'tts_text'     => isset($data['tts_text'])   ? $data['tts_text']   : '',
-        'voice_id'     => isset($data['voice_id'])      ? $data['voice_id']      : 'JBFqnCBsd6RMkjVDRZzb',
+        'voice_id'     => isset($data['voice_id'])      ? $data['voice_id']      : 'nzFihrBIvB34imQBuxub',
         'tts_audio_url'=> isset($data['tts_audio_url']) ? $data['tts_audio_url'] : '',
     );
 }
@@ -121,8 +121,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $mediaType = in_array($_POST['media_type'] ?? '', array('tts','audio','none'), true) ? $_POST['media_type'] : 'none';
     $mediaUrl  = trim((string)($_POST['media_url'] ?? ''));
     $ttsText   = trim((string)($_POST['tts_text']  ?? ''));
-    $voiceId   = trim((string)($_POST['voice_id']  ?? 'JBFqnCBsd6RMkjVDRZzb'));
-    if ($voiceId === '' || !preg_match('/^[A-Za-z0-9]+$/', $voiceId)) $voiceId = 'JBFqnCBsd6RMkjVDRZzb';
+    $allowedVoices = array('nzFihrBIvB34imQBuxub', 'NoOVOzCQFLOvtsMoNcdT', 'Nggzl2QAXh3OijoXD116');
+    $voiceId   = trim((string)($_POST['voice_id']  ?? 'nzFihrBIvB34imQBuxub'));
+    if (!in_array($voiceId, $allowedVoices, true)) $voiceId = 'nzFihrBIvB34imQBuxub';
     $ttsAudioUrl = trim((string)($_POST['tts_audio_url'] ?? ''));
 
     if ($mediaType === 'audio') {
@@ -654,9 +655,9 @@ if (isset($_GET['saved'])) {
                     <div style="flex:0 0 auto">
                         <label class="fb-label">Voice</label>
                         <select name="voice_id" class="fb-select js-fb-voiceid" style="min-width:210px">
-                            <option value="JBFqnCBsd6RMkjVDRZzb"<?php echo ($activity['voice_id']??'JBFqnCBsd6RMkjVDRZzb')==='JBFqnCBsd6RMkjVDRZzb'?' selected':''; ?>>👨 Adult Male (George)</option>
-                            <option value="21m00Tcm4TlvDq8ikWAM"<?php echo ($activity['voice_id']??'')==='21m00Tcm4TlvDq8ikWAM'?' selected':''; ?>>👩 Adult Female (Rachel)</option>
-                            <option value="pFZP5JQG7iQjIQuC4Bku"<?php echo ($activity['voice_id']??'')==='pFZP5JQG7iQjIQuC4Bku'?' selected':''; ?>>🧒 Child (Lily)</option>
+                            <option value="nzFihrBIvB34imQBuxub"<?php echo ($activity['voice_id'] ?? 'nzFihrBIvB34imQBuxub') === 'nzFihrBIvB34imQBuxub' ? ' selected' : ''; ?>>👨 Adult Male (Josh)</option>
+                            <option value="NoOVOzCQFLOvtsMoNcdT"<?php echo ($activity['voice_id'] ?? '') === 'NoOVOzCQFLOvtsMoNcdT' ? ' selected' : ''; ?>>👩 Adult Female (Lily)</option>
+                            <option value="Nggzl2QAXh3OijoXD116"<?php echo ($activity['voice_id'] ?? '') === 'Nggzl2QAXh3OijoXD116' ? ' selected' : ''; ?>>🧒 Child (Candy)</option>
                         </select>
                     </div>
                     <button type="button" class="js-fb-generate-tts" style="background:#7F77DD;color:#fff;border:none;border-radius:999px;padding:11px 18px;font-size:12px;font-weight:900;cursor:pointer;white-space:nowrap;flex-shrink:0">🔊 Generate audio</button>
@@ -929,7 +930,7 @@ document.addEventListener('DOMContentLoaded', function () {
             var text = textarea ? textarea.value.trim() : '';
             if (!text) { alert('Please enter TTS text first.'); return; }
             var voiceSelect = panel.querySelector('.js-fb-voiceid');
-            var voiceId = voiceSelect ? voiceSelect.value : 'JBFqnCBsd6RMkjVDRZzb';
+            var voiceId = voiceSelect ? voiceSelect.value : 'nzFihrBIvB34imQBuxub';
             var statusEl = panel.querySelector('.js-fb-tts-status');
             var audioHidden = panel.querySelector('.js-fb-audiourl');
 

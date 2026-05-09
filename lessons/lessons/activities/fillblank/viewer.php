@@ -41,6 +41,7 @@ function fb_load(PDO $pdo, string $unit, string $activityId): array
         'media_type'   => 'none',
         'media_url'    => '',
         'tts_text'     => '',
+        'voice_id'     => 'nzFihrBIvB34imQBuxub',
     );
 
     $row = null;
@@ -79,6 +80,7 @@ function fb_load(PDO $pdo, string $unit, string $activityId): array
         'media_type'   => isset($data['media_type']) ? $data['media_type'] : 'none',
         'media_url'    => isset($data['media_url'])  ? $data['media_url']  : '',
         'tts_text'     => isset($data['tts_text'])   ? $data['tts_text']   : '',
+        'voice_id'     => isset($data['voice_id'])   ? $data['voice_id']   : 'nzFihrBIvB34imQBuxub',
         'tts_audio_url'=> isset($data['tts_audio_url']) ? $data['tts_audio_url'] : '',
     );
 }
@@ -895,6 +897,7 @@ var BLOCKS      = <?php echo json_encode(array_map(function($b) { return $b['ans
 var RETURN_TO   = <?php echo json_encode($returnTo,   JSON_UNESCAPED_UNICODE); ?>;
 var ACTIVITY_ID = <?php echo json_encode($activityId, JSON_UNESCAPED_UNICODE); ?>;
 var TOTAL       = BLOCKS.length;
+var FB_VOICE_ID = <?php echo json_encode((string)($activity['voice_id'] ?? 'nzFihrBIvB34imQBuxub'), JSON_UNESCAPED_UNICODE); ?>;
 
 var done      = false;
 var revealed  = {};
@@ -1137,135 +1140,80 @@ document.addEventListener('keydown', function(e) {
 var TTS_AUDIO_URL = <?php echo json_encode($activity['tts_audio_url'] ?? '', JSON_UNESCAPED_UNICODE); ?>;
 var TTS_TEXT    = TTS_AUDIO_URL ? '' : <?php echo json_encode($activity['tts_text'], JSON_UNESCAPED_UNICODE); ?>;
 var ttsBtn      = TTS_AUDIO_URL ? null : document.getElementById('fb-tts-btn');
-var ttsSpeaking = false;
-var ttsPaused   = false;
-var ttsOffset   = 0;
-var ttsSegStart = 0;
-var ttsUtter    = null;
+var ttsAudio    = null;
+var ttsAudioUrl = '';
 
-function ttsVoice(lang) {
-    var voices = window.speechSynthesis ? window.speechSynthesis.getVoices() : [];
-    if (!voices.length) return null;
-
-    var pre = lang.split('-')[0].toLowerCase();
-    var m = [];
-
-    for (var i = 0; i < voices.length; i++) {
-        var vl = String(voices[i].lang || '').toLowerCase();
-        if (vl === lang.toLowerCase() || vl.indexOf(pre + '-') === 0 || vl.indexOf(pre + '_') === 0) {
-            m.push(voices[i]);
-        }
+function ttsCleanup() {
+    if (ttsAudio) {
+        try { ttsAudio.pause(); } catch (e) {}
+        try { ttsAudio.currentTime = 0; } catch (e) {}
+        ttsAudio = null;
     }
-
-    if (!m.length) return voices[0] || null;
-
-    var hints = ['female','woman','zira','samantha','karen','aria','jenny','emma'];
-
-    for (var j = 0; j < m.length; j++) {
-        var label = (String(m[j].name || '') + ' ' + String(m[j].voiceURI || '')).toLowerCase();
-
-        for (var k = 0; k < hints.length; k++) {
-            if (label.indexOf(hints[k]) !== -1) return m[j];
-        }
+    if (ttsAudioUrl) {
+        try { URL.revokeObjectURL(ttsAudioUrl); } catch (e) {}
+        ttsAudioUrl = '';
     }
-
-    return m[0];
-}
-
-function ttsStart() {
-    var rem = TTS_TEXT.slice(Math.max(0, ttsOffset));
-
-    if (!rem.trim()) {
-        ttsSpeaking = false;
-        ttsPaused = false;
-        ttsOffset = 0;
-        if (ttsBtn) ttsBtn.textContent = 'Listen';
-        return;
+    if (ttsBtn) {
+        ttsBtn.disabled = false;
+        ttsBtn.textContent = 'Listen';
     }
-
-    speechSynthesis.cancel();
-
-    ttsSegStart = ttsOffset;
-    ttsUtter    = new SpeechSynthesisUtterance(rem);
-    ttsUtter.lang   = 'en-US';
-    ttsUtter.rate   = 0.7;
-    ttsUtter.pitch  = 1;
-    ttsUtter.volume = 1;
-
-    var pref = ttsVoice('en-US');
-    if (pref) ttsUtter.voice = pref;
-
-    ttsUtter.onstart = function() {
-        ttsSpeaking = true;
-        ttsPaused = false;
-        if (ttsBtn) ttsBtn.textContent = 'Pause';
-    };
-
-    ttsUtter.onpause = function() {
-        ttsPaused = true;
-        ttsSpeaking = true;
-        if (ttsBtn) ttsBtn.textContent = 'Resume';
-    };
-
-    ttsUtter.onresume = function() {
-        ttsPaused = false;
-        ttsSpeaking = true;
-        if (ttsBtn) ttsBtn.textContent = 'Pause';
-    };
-
-    ttsUtter.onboundary = function(ev) {
-        if (typeof ev.charIndex === 'number') {
-            ttsOffset = Math.max(ttsSegStart, Math.min(TTS_TEXT.length, ttsSegStart + ev.charIndex));
-        }
-    };
-
-    ttsUtter.onend = function() {
-        if (!ttsPaused) {
-            ttsSpeaking = false;
-            ttsPaused = false;
-            ttsOffset = 0;
-            if (ttsBtn) ttsBtn.textContent = 'Listen';
-        }
-    };
-
-    ttsUtter.onerror = function() {
-        ttsSpeaking = false;
-        ttsPaused = false;
-        ttsOffset = 0;
-        if (ttsBtn) ttsBtn.textContent = 'Listen';
-    };
-
-    speechSynthesis.speak(ttsUtter);
 }
 
 if (ttsBtn) {
     ttsBtn.addEventListener('click', function() {
         if (!TTS_TEXT.trim()) return;
 
-        if (speechSynthesis.paused || ttsPaused) {
-            speechSynthesis.resume();
-            ttsSpeaking = true;
-            ttsPaused = false;
-            ttsBtn.textContent = 'Pause';
-
-            setTimeout(function() {
-                if (!speechSynthesis.speaking && ttsOffset < TTS_TEXT.length) ttsStart();
-            }, 80);
-
+        if (ttsAudio) {
+            if (!ttsAudio.paused) {
+                ttsAudio.pause();
+                ttsBtn.textContent = 'Resume';
+            } else {
+                ttsAudio.play().then(function() {
+                    ttsBtn.textContent = 'Pause';
+                }).catch(function() {});
+            }
             return;
         }
 
-        if (speechSynthesis.speaking && !speechSynthesis.paused) {
-            speechSynthesis.pause();
-            ttsSpeaking = true;
-            ttsPaused = true;
-            ttsBtn.textContent = 'Resume';
-            return;
-        }
+        ttsBtn.disabled = true;
+        ttsBtn.textContent = '...';
 
-        speechSynthesis.cancel();
-        ttsOffset = 0;
-        ttsStart();
+        var fd = new FormData();
+        fd.append('text', TTS_TEXT);
+        fd.append('voice_id', FB_VOICE_ID || 'nzFihrBIvB34imQBuxub');
+        fd.append('response_type', 'stream');
+
+        fetch('tts.php', { method: 'POST', body: fd, credentials: 'same-origin' })
+            .then(function(res) {
+                if (!res.ok) throw new Error('TTS error ' + res.status);
+                return res.blob();
+            })
+            .then(function(blob) {
+                ttsAudioUrl = URL.createObjectURL(blob);
+                ttsAudio = new Audio(ttsAudioUrl);
+
+                ttsAudio.onended = function() {
+                    ttsCleanup();
+                };
+
+                ttsAudio.onpause = function() {
+                    if (ttsAudio && ttsAudio.currentTime < (ttsAudio.duration || Infinity) && ttsBtn) {
+                        ttsBtn.textContent = 'Resume';
+                    }
+                };
+
+                ttsAudio.play().then(function() {
+                    if (ttsBtn) {
+                        ttsBtn.disabled = false;
+                        ttsBtn.textContent = 'Pause';
+                    }
+                }).catch(function() {
+                    ttsCleanup();
+                });
+            })
+            .catch(function() {
+                ttsCleanup();
+            });
     });
 }
 <?php endif; ?>
