@@ -1,8 +1,6 @@
 <?php
 if (session_status() === PHP_SESSION_NONE) session_start();
 
-header('Content-Type: application/json');
-
 function tts_env(string $key): string
 {
     $v = $_ENV[$key] ?? getenv($key) ?? ($_SERVER[$key] ?? '');
@@ -59,33 +57,39 @@ function tts_env(string $key): string
     return is_string($v) ? trim($v) : '';
 }
 
-// Only teachers / admins may generate TTS
+// Allow teachers, admins, and students
 if (
     (empty($_SESSION['academic_logged']) || !$_SESSION['academic_logged']) &&
-    (empty($_SESSION['admin_logged'])    || !$_SESSION['admin_logged'])
+    (empty($_SESSION['admin_logged'])    || !$_SESSION['admin_logged']) &&
+    (empty($_SESSION['student_logged'])  || !$_SESSION['student_logged'])
 ) {
     http_response_code(403);
+    header('Content-Type: application/json');
     echo json_encode(['error' => 'Unauthorized']);
     exit;
 }
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     http_response_code(405);
+    header('Content-Type: application/json');
     echo json_encode(['error' => 'Method not allowed']);
     exit;
 }
 
 $text    = trim((string)($_POST['text']     ?? ''));
-$voiceId = trim((string)($_POST['voice_id'] ?? 'JBFqnCBsd6RMkjVDRZzb'));
+$voiceId = trim((string)($_POST['voice_id'] ?? 'nzFihrBIvB34imQBuxub'));
+$responseType = trim((string) ($_POST['response_type'] ?? 'json'));
 
 if ($text === '') {
     http_response_code(400);
+    header('Content-Type: application/json');
     echo json_encode(['error' => 'Text is required']);
     exit;
 }
 
 if (mb_strlen($text) > 2500) {
     http_response_code(400);
+    header('Content-Type: application/json');
     echo json_encode(['error' => 'Text too long (max 2500 characters)']);
     exit;
 }
@@ -93,6 +97,7 @@ if (mb_strlen($text) > 2500) {
 // Allow only safe characters in voice_id (alphanumeric)
 if (!preg_match('/^[A-Za-z0-9]+$/', $voiceId)) {
     http_response_code(400);
+    header('Content-Type: application/json');
     echo json_encode(['error' => 'Invalid voice ID']);
     exit;
 }
@@ -100,6 +105,7 @@ if (!preg_match('/^[A-Za-z0-9]+$/', $voiceId)) {
 $apiKey = tts_env('ELEVENLABS_API_KEY');
 if ($apiKey === '') {
     http_response_code(500);
+    header('Content-Type: application/json');
     echo json_encode(['error' => 'ElevenLabs API key not configured. Set ELEVENLABS_API_KEY in server env or project .env file.']);
     exit;
 }
@@ -138,7 +144,16 @@ if ($curlErr !== '' || $httpCode !== 200 || !is_string($audio) || strlen($audio)
         }
     }
     http_response_code(502);
+    header('Content-Type: application/json');
     echo json_encode(['error' => $msg]);
+    exit;
+}
+
+if ($responseType === 'stream') {
+    header('Content-Type: audio/mpeg');
+    header('Content-Length: ' . strlen($audio));
+    header('Cache-Control: no-store');
+    echo $audio;
     exit;
 }
 
@@ -149,6 +164,7 @@ $cloudSec  = tts_env('CLOUDINARY_API_SECRET');
 
 if ($cloudName === '' || $cloudKey === '' || $cloudSec === '') {
     http_response_code(500);
+    header('Content-Type: application/json');
     echo json_encode(['error' => 'Cloudinary is not configured']);
     exit;
 }
@@ -156,6 +172,7 @@ if ($cloudName === '' || $cloudKey === '' || $cloudSec === '') {
 $tmpFile = tempnam(sys_get_temp_dir(), 'lo_tts_') . '.mp3';
 if (file_put_contents($tmpFile, $audio) === false) {
     http_response_code(500);
+    header('Content-Type: application/json');
     echo json_encode(['error' => 'Failed to write temporary file']);
     exit;
 }
@@ -183,8 +200,10 @@ $url = isset($uploadResponse['secure_url']) ? (string)$uploadResponse['secure_ur
 
 if ($url === '') {
     http_response_code(500);
+    header('Content-Type: application/json');
     echo json_encode(['error' => 'Failed to upload audio to storage']);
     exit;
 }
 
+header('Content-Type: application/json');
 echo json_encode(['url' => $url]);

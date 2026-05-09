@@ -43,7 +43,7 @@ function os_normalize(mixed $rawData): array
         'media_type'   => 'tts',
         'media_url'    => '',
         'tts_text'     => '',
-        'voice_id'     => 'JBFqnCBsd6RMkjVDRZzb',
+        'voice_id'     => 'nzFihrBIvB34imQBuxub',
         'tts_audio_url'=> '',
         'sentences'    => [],
     ];
@@ -75,7 +75,7 @@ function os_normalize(mixed $rawData): array
                             ? $d['media_type'] : 'tts',
         'media_url'    => trim((string) ($d['media_url'] ?? '')),
         'tts_text'     => trim((string) ($d['tts_text'] ?? '')),
-        'voice_id'     => trim((string) ($d['voice_id'] ?? 'JBFqnCBsd6RMkjVDRZzb')) ?: 'JBFqnCBsd6RMkjVDRZzb',
+        'voice_id'     => trim((string) ($d['voice_id'] ?? 'nzFihrBIvB34imQBuxub')) ?: 'nzFihrBIvB34imQBuxub',
         'tts_audio_url'=> trim((string) ($d['tts_audio_url'] ?? '')),
         'sentences'    => $sentences,
     ];
@@ -236,8 +236,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'media_url'    => $mediaUrl,
         'tts_text'     => trim((string) ($_POST['tts_text'] ?? '')),
         'voice_id'     => (function() {
-            $v = trim((string)($_POST['voice_id'] ?? 'JBFqnCBsd6RMkjVDRZzb'));
-            return ($v !== '' && preg_match('/^[A-Za-z0-9]+$/', $v)) ? $v : 'JBFqnCBsd6RMkjVDRZzb';
+            $allowedVoices = ['nzFihrBIvB34imQBuxub', 'NoOVOzCQFLOvtsMoNcdT', 'Nggzl2QAXh3OijoXD116'];
+            $v = trim((string) ($_POST['voice_id'] ?? 'nzFihrBIvB34imQBuxub'));
+            return in_array($v, $allowedVoices, true) ? $v : 'nzFihrBIvB34imQBuxub';
         })(),
         'tts_audio_url'=> trim((string) ($_POST['tts_audio_url'] ?? '')),
         'sentences'    => $sentences,
@@ -651,9 +652,9 @@ $d = $activity;
                     <div style="flex:0 0 auto">
                         <label class="os-label">Voice</label>
                         <select name="voice_id" class="os-select js-os-voiceid" style="min-width:210px">
-                            <option value="JBFqnCBsd6RMkjVDRZzb"<?= ($d['voice_id']??'JBFqnCBsd6RMkjVDRZzb')==='JBFqnCBsd6RMkjVDRZzb'?' selected':'' ?>>👨 Adult Male (George)</option>
-                            <option value="21m00Tcm4TlvDq8ikWAM"<?= ($d['voice_id']??'')==='21m00Tcm4TlvDq8ikWAM'?' selected':'' ?>>👩 Adult Female (Rachel)</option>
-                            <option value="pFZP5JQG7iQjIQuC4Bku"<?= ($d['voice_id']??'')==='pFZP5JQG7iQjIQuC4Bku'?' selected':'' ?>>🧒 Child (Lily)</option>
+                            <option value="nzFihrBIvB34imQBuxub"<?= ($d['voice_id'] ?? 'nzFihrBIvB34imQBuxub') === 'nzFihrBIvB34imQBuxub' ? ' selected' : '' ?>>👨 Adult Male (Josh)</option>
+                            <option value="NoOVOzCQFLOvtsMoNcdT"<?= ($d['voice_id'] ?? '') === 'NoOVOzCQFLOvtsMoNcdT' ? ' selected' : '' ?>>👩 Adult Female (Lily)</option>
+                            <option value="Nggzl2QAXh3OijoXD116"<?= ($d['voice_id'] ?? '') === 'Nggzl2QAXh3OijoXD116' ? ' selected' : '' ?>>🧒 Child (Candy)</option>
                         </select>
                     </div>
                     <button type="button" class="js-os-generate-tts" style="background:#1E9A7A;color:#fff;border:none;border-radius:999px;padding:11px 18px;font-size:12px;font-weight:900;cursor:pointer;white-space:nowrap;flex-shrink:0">🔊 Generate audio</button>
@@ -885,7 +886,7 @@ document.getElementById('osSentencesForm').addEventListener('submit', function (
             var text = textarea ? textarea.value.trim() : '';
             if (!text) { alert('Please enter TTS text first.'); return; }
             var voiceSelect = panel.querySelector('.js-os-voiceid');
-            var voiceId = voiceSelect ? voiceSelect.value : 'JBFqnCBsd6RMkjVDRZzb';
+            var voiceId = voiceSelect ? voiceSelect.value : 'nzFihrBIvB34imQBuxub';
             var statusEl = panel.querySelector('.js-os-tts-status');
             var audioHidden = panel.querySelector('.js-os-audiourl');
 

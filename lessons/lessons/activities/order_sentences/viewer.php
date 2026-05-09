@@ -32,6 +32,7 @@ function os_viewer_normalize(mixed $rawData): array
         'media_type'   => 'tts',
         'media_url'    => '',
         'tts_text'     => '',
+        'voice_id'     => 'nzFihrBIvB34imQBuxub',
         'sentences'    => [],
     ];
 
@@ -59,6 +60,7 @@ function os_viewer_normalize(mixed $rawData): array
         'media_type'   => in_array($d['media_type'] ?? '', ['tts', 'video', 'audio', 'none'], true) ? $d['media_type'] : 'tts',
         'media_url'    => trim((string) ($d['media_url']    ?? '')),
         'tts_text'     => trim((string) ($d['tts_text']     ?? '')),
+        'voice_id'     => trim((string) ($d['voice_id']     ?? 'nzFihrBIvB34imQBuxub')) ?: 'nzFihrBIvB34imQBuxub',
         'tts_audio_url'=> trim((string) ($d['tts_audio_url'] ?? '')),
         'sentences'    => $sentences,
     ];
@@ -792,6 +794,8 @@ var CORRECT_ORDER  = <?= json_encode($correctOrder,  JSON_UNESCAPED_UNICODE) ?>;
 var OS_RETURN_TO   = <?= json_encode($returnTo,      JSON_UNESCAPED_UNICODE) ?>;
 var OS_ACTIVITY_ID = <?= json_encode($activityId,    JSON_UNESCAPED_UNICODE) ?>;
 var OS_TOTAL       = CORRECT_ORDER.length;
+var OS_VOICE_ID    = <?= json_encode((string) ($activity['voice_id'] ?? 'nzFihrBIvB34imQBuxub'), JSON_UNESCAPED_UNICODE) ?>;
+var OS_TTS_URL     = 'tts.php';
 
 var listEl      = document.getElementById('os-list');
 var checkBtn    = document.getElementById('os-check');
@@ -1119,128 +1123,80 @@ var TTS_TEXT = <?= json_encode(
     JSON_UNESCAPED_UNICODE
 ) ?>;
 var ttsBtn      = document.getElementById('os-tts-btn');
-var ttsSpeaking = false;
-var ttsPaused   = false;
-var ttsOffset   = 0;
-var ttsSegStart = 0;
-var ttsUtter    = null;
+var ttsAudio    = null;
+var ttsAudioUrl = '';
 
-function ttsPreferredVoice(lang) {
-    var voices = window.speechSynthesis ? window.speechSynthesis.getVoices() : [];
-    if (!voices.length) return null;
-
-    var pre = lang.split('-')[0].toLowerCase();
-
-    var matches = voices.filter(function(v) {
-        var vl = String(v.lang || '').toLowerCase();
-        return vl === lang.toLowerCase() || vl.startsWith(pre + '-') || vl.startsWith(pre + '_');
-    });
-
-    if (!matches.length) return voices[0] || null;
-
-    var hints = ['female','woman','zira','samantha','karen','aria','jenny','emma','olivia','ava'];
-
-    var female = matches.find(function(v) {
-        var label = (String(v.name || '') + ' ' + String(v.voiceURI || '')).toLowerCase();
-        return hints.some(function(h){ return label.indexOf(h) !== -1; });
-    });
-
-    return female || matches[0];
-}
-
-function ttsStart() {
-    var remaining = TTS_TEXT.slice(Math.max(0, ttsOffset));
-
-    if (!remaining.trim()) {
-        ttsSpeaking = false;
-        ttsPaused   = false;
-        ttsOffset   = 0;
-        return;
+function ttsCleanup() {
+    if (ttsAudio) {
+        try { ttsAudio.pause(); } catch(e) {}
+        try { ttsAudio.currentTime = 0; } catch(e) {}
+        ttsAudio = null;
     }
-
-    speechSynthesis.cancel();
-
-    ttsSegStart     = ttsOffset;
-    ttsUtter        = new SpeechSynthesisUtterance(remaining);
-    ttsUtter.lang   = 'en-US';
-    ttsUtter.rate   = 0.7;
-    ttsUtter.pitch  = 1;
-    ttsUtter.volume = 1;
-
-    var pref = ttsPreferredVoice('en-US');
-    if (pref) ttsUtter.voice = pref;
-
-    ttsUtter.onstart = function(){
-        ttsSpeaking = true;
-        ttsPaused   = false;
-        if (ttsBtn) ttsBtn.textContent = 'Pause';
-    };
-
-    ttsUtter.onpause = function(){
-        ttsPaused   = true;
-        ttsSpeaking = true;
-        if (ttsBtn) ttsBtn.textContent = 'Resume';
-    };
-
-    ttsUtter.onresume = function(){
-        ttsPaused   = false;
-        ttsSpeaking = true;
-        if (ttsBtn) ttsBtn.textContent = 'Pause';
-    };
-
-    ttsUtter.onboundary = function(ev) {
-        if (typeof ev.charIndex === 'number') {
-            ttsOffset = Math.max(ttsSegStart, Math.min(TTS_TEXT.length, ttsSegStart + ev.charIndex));
-        }
-    };
-
-    ttsUtter.onend = function(){
-        if (!ttsPaused) {
-            ttsSpeaking = false;
-            ttsPaused   = false;
-            ttsOffset   = 0;
-            if (ttsBtn) ttsBtn.textContent = 'Listen';
-        }
-    };
-
-    ttsUtter.onerror = function(){
-        ttsSpeaking = false;
-        ttsPaused   = false;
-        ttsOffset   = 0;
-        if (ttsBtn) ttsBtn.textContent = 'Listen';
-    };
-
-    speechSynthesis.speak(ttsUtter);
+    if (ttsAudioUrl) {
+        try { URL.revokeObjectURL(ttsAudioUrl); } catch(e) {}
+        ttsAudioUrl = '';
+    }
+    if (ttsBtn) {
+        ttsBtn.disabled = false;
+        ttsBtn.textContent = 'Listen';
+    }
 }
 
 if (ttsBtn) {
     ttsBtn.addEventListener('click', function() {
         if (!TTS_TEXT.trim()) return;
 
-        if (speechSynthesis.paused || ttsPaused) {
-            speechSynthesis.resume();
-            ttsSpeaking = true;
-            ttsPaused   = false;
-            ttsBtn.textContent = 'Pause';
-
-            setTimeout(function(){
-                if (!speechSynthesis.speaking && ttsOffset < TTS_TEXT.length) ttsStart();
-            }, 80);
-
+        if (ttsAudio) {
+            if (!ttsAudio.paused) {
+                ttsAudio.pause();
+                ttsBtn.textContent = 'Resume';
+            } else {
+                ttsAudio.play().then(function(){
+                    ttsBtn.textContent = 'Pause';
+                }).catch(function(){});
+            }
             return;
         }
 
-        if (speechSynthesis.speaking && !speechSynthesis.paused) {
-            speechSynthesis.pause();
-            ttsSpeaking = true;
-            ttsPaused   = true;
-            ttsBtn.textContent = 'Resume';
-            return;
-        }
+        ttsBtn.disabled = true;
+        ttsBtn.textContent = '...';
 
-        speechSynthesis.cancel();
-        ttsOffset = 0;
-        ttsStart();
+        var fd = new FormData();
+        fd.append('text', TTS_TEXT);
+        fd.append('voice_id', OS_VOICE_ID || 'nzFihrBIvB34imQBuxub');
+        fd.append('response_type', 'stream');
+
+        fetch(OS_TTS_URL, { method: 'POST', body: fd, credentials: 'same-origin' })
+            .then(function(res) {
+                if (!res.ok) throw new Error('TTS error ' + res.status);
+                return res.blob();
+            })
+            .then(function(blob) {
+                ttsAudioUrl = URL.createObjectURL(blob);
+                ttsAudio = new Audio(ttsAudioUrl);
+
+                ttsAudio.onended = function() {
+                    ttsCleanup();
+                };
+
+                ttsAudio.onpause = function() {
+                    if (ttsAudio && ttsAudio.currentTime < (ttsAudio.duration || Infinity) && ttsBtn) {
+                        ttsBtn.textContent = 'Resume';
+                    }
+                };
+
+                ttsAudio.play().then(function() {
+                    if (ttsBtn) {
+                        ttsBtn.disabled = false;
+                        ttsBtn.textContent = 'Pause';
+                    }
+                }).catch(function() {
+                    ttsCleanup();
+                });
+            })
+            .catch(function() {
+                ttsCleanup();
+            });
     });
 }
 
