@@ -52,7 +52,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         dot_to_dot_default_label_settings()
     );
 
-    header('Location: viewer.php?id=' . urlencode((string)$savedId) . '&unit=' . urlencode($unit));
+    $params = ['unit=' . urlencode($unit), 'saved=1'];
+    if ($savedId !== '') {
+        $params[] = 'id=' . urlencode((string)$savedId);
+    } elseif ($id !== '') {
+        $params[] = 'id=' . urlencode($id);
+    }
+    header('Location: editor.php?' . implode('&', $params));
     exit;
 }
 ?>
@@ -200,6 +206,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 <body>
     <main class="editor-page">
+        <?php if (isset($_GET['saved'])): ?>
+        <p style="color:#16a34a;font-weight:900;margin-bottom:12px;">✔ Saved successfully</p>
+        <?php endif; ?>
         <form class="editor-card" method="post">
             <h1>Dot to Dot Editor</h1>
 
