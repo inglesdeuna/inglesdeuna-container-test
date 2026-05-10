@@ -25,113 +25,145 @@ ob_start();
 ?>
 <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@600;700;800;900&display=swap" rel="stylesheet">
 <style>
+:root {
+    --col-orange: #F97316;
+    --col-orange-dark: #C2580A;
+    --col-orange-soft: #FFF0E6;
+    --col-purple: #7F77DD;
+    --col-purple-dark: #534AB7;
+    --col-muted: #9B94BE;
+    --col-border: #F0EEF8;
+}
+
 * { box-sizing: border-box; }
 .viewer-header { display: none !important; }
 
-body, html {
+html,
+body {
+    width: 100%;
+    min-height: 100%;
+}
+
+body {
     margin: 0 !important;
     padding: 0 !important;
-    width: 100%;
-    height: 100%;
+    background: #fff !important;
+    font-family: 'Nunito', 'Segoe UI', sans-serif !important;
 }
 
 .activity-wrapper {
+    max-width: 100% !important;
     margin: 0 !important;
     padding: 0 !important;
-    width: 100%;
     min-height: 100vh;
+    display: flex !important;
+    flex-direction: column !important;
+    background: transparent !important;
 }
 
-.top-row, .activity-header, .activity-title, .activity-subtitle {
+.top-row,
+.viewer-header,
+.activity-header,
+.activity-title,
+.activity-subtitle {
     display: none !important;
 }
 
 .viewer-content {
+    flex: 1 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    padding: 0 !important;
     margin: 0 !important;
-    padding: 0 !important;
-    width: 100%;
-    height: auto;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
 }
 
-.shell {
+.col-page {
     width: 100%;
-    height: 100vh;
-    padding: 0 !important;
+    min-height: 100vh;
+    padding: clamp(14px, 2.5vw, 34px);
     display: flex;
-    flex-direction: column;
-    background: #ffffff;
-    overflow: hidden;
+    align-items: flex-start;
+    justify-content: center;
+    background: #fff;
 }
 
-.hero {
-    padding: clamp(12px, 1.5vw, 18px) clamp(12px, 2vw, 24px);
-    width: 100%;
-    flex-shrink: 0;
-    background: #ffffff;
-    border-bottom: 1px solid #F0EEF8;
+.col-app {
+    width: min(1120px, 100%);
+    margin: 0 auto;
+}
+
+.col-hero {
     text-align: center;
+    margin-bottom: clamp(14px, 2vw, 22px);
 }
 
-.kicker {
-    display: inline-block;
-    background: #FFF0E6;
-    border: 1px solid #FCDDBF;
-    color: #C2580A;
+.col-kicker {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 7px 14px;
     border-radius: 999px;
-    padding: 4px 12px;
-    font-size: 10px;
-    font-family: 'Nunito', sans-serif;
+    background: var(--col-orange-soft);
+    border: 1px solid #FCDDBF;
+    color: var(--col-orange-dark);
+    font-size: 12px;
     font-weight: 900;
     letter-spacing: .08em;
     text-transform: uppercase;
-    margin-bottom: 4px;
+    margin-bottom: 10px;
 }
 
-.act-title {
+.col-hero h1 {
     font-family: 'Fredoka', sans-serif;
+    font-size: clamp(30px, 5.5vw, 58px);
     font-weight: 700;
-    font-size: clamp(20px, 3vw, 28px);
-    color: #F97316;
+    color: var(--col-orange);
     margin: 0;
-    line-height: 1.1;
+    line-height: 1.03;
 }
 
-.act-sub {
-    font-family: 'Nunito', sans-serif;
-    font-weight: 700;
-    font-size: clamp(11px, 1.4vw, 13px);
-    color: #9B94BE;
-    margin: 3px 0 0;
-    line-height: 1.2;
+.col-hero p {
+    font-size: clamp(13px, 1.8vw, 17px);
+    font-weight: 800;
+    color: var(--col-muted);
+    margin: 8px 0 0;
+}
+
+.col-stage-shell {
+    background: #fff;
+    border: 1px solid var(--col-border);
+    border-radius: 34px;
+    padding: clamp(16px, 2.6vw, 26px);
+    box-shadow: 0 8px 40px rgba(127, 119, 221, .13);
 }
 
 .board {
-    background: #ffffff;
-    flex: 1;
+    width: min(100%, 980px);
+    margin: 0 auto;
+    border: 1px solid #EDE9FA;
+    border-radius: 28px;
+    background: #fff;
+    box-shadow: 0 12px 36px rgba(127, 119, 221, .13);
+    padding: clamp(14px, 2vw, 20px);
     display: flex;
     flex-direction: column;
-    overflow: hidden;
-    border: none;
-    border-radius: 0;
-    padding: 0;
-    box-shadow: none;
-    width: 100%;
-    margin: 0;
+    gap: 12px;
 }
 
-/* progress */
 .prog-row {
     display: flex;
     align-items: center;
+    justify-content: space-between;
     gap: 10px;
-    padding: clamp(10px, 1.5vw, 14px) clamp(12px, 2vw, 16px);
-    flex-shrink: 0;
-    border-bottom: 1px solid #F0EEF8;
 }
 
 .prog-track {
     flex: 1;
-    height: 10px;
+    height: 12px;
     background: #F4F2FD;
     border: 1px solid #E4E1F8;
     border-radius: 999px;
@@ -147,66 +179,61 @@ body, html {
 }
 
 .prog-badge {
-    background: #7F77DD;
+    background: var(--col-purple);
     color: #fff;
     font-family: 'Nunito', sans-serif;
     font-weight: 900;
-    font-size: 11px;
+    font-size: 12px;
     border-radius: 999px;
-    padding: 4px 10px;
+    padding: 5px 11px;
     white-space: nowrap;
-    flex-shrink: 0;
 }
 
-/* picker */
 .picker-section {
     background: #F5F3FF;
-    border-bottom: 1px solid #EDE9FA;
-    padding: clamp(10px, 1.5vw, 14px) clamp(12px, 2vw, 16px);
-    flex-shrink: 0;
+    border: 1px solid #EDE9FA;
+    border-radius: 18px;
+    padding: 14px 16px;
 }
 
 .picker-label {
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 900;
     font-family: 'Nunito', sans-serif;
-    color: #9B94BE;
+    color: var(--col-muted);
     letter-spacing: .08em;
     text-transform: uppercase;
     text-align: center;
-    margin-bottom: 10px;
+    margin-bottom: 12px;
 }
 
 .colors-grid {
     display: grid;
-    grid-template-columns: repeat(8, 1fr);
-    gap: 8px;
+    grid-template-columns: repeat(8, minmax(36px, 1fr));
+    gap: 10px;
     justify-items: center;
 }
 
 .swatch {
-    width: 36px;
-    height: 36px;
+    width: 40px;
+    height: 40px;
     border-radius: 50%;
     cursor: pointer;
     border: 3px solid transparent;
     transition: transform .15s, box-shadow .15s;
-    box-shadow: 0 2px 8px rgba(0,0,0,.12);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, .12);
     -webkit-tap-highlight-color: transparent;
 }
 
-.swatch:hover { transform: scale(1.15); box-shadow: 0 4px 12px rgba(0,0,0,.2); }
-.swatch.active { border-color: #271B5D; box-shadow: 0 0 0 3px #fff inset, 0 4px 12px rgba(0,0,0,.2); }
+.swatch:hover { transform: scale(1.12); box-shadow: 0 4px 12px rgba(0, 0, 0, .2); }
+.swatch.active { border-color: #271B5D; box-shadow: 0 0 0 3px #fff inset, 0 4px 12px rgba(0, 0, 0, .2); }
 
-/* sel bar */
 .sel-bar {
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 8px;
-    padding: clamp(8px, 1.2vw, 12px) clamp(12px, 2vw, 16px);
-    flex-shrink: 0;
-    border-bottom: 1px solid #F0EEF8;
+    padding: 2px 0;
 }
 
 .sel-dot {
@@ -223,18 +250,21 @@ body, html {
     font-size: 12px;
     font-weight: 900;
     font-family: 'Nunito', sans-serif;
-    color: #534AB7;
+    color: var(--col-purple-dark);
 }
 
-/* canvas */
 .canvas-wrap {
-    background: #ffffff;
-    flex: 1;
+    border: 1px solid #EDE9FA;
+    border-radius: 20px;
+    background: #fff;
     overflow: auto;
+    min-height: clamp(360px, 52vw, 520px);
+    max-height: clamp(380px, 56vw, 560px);
     display: flex;
     justify-content: center;
     align-items: center;
     touch-action: manipulation;
+    padding: 10px;
 }
 
 #coloringCanvas {
@@ -247,130 +277,127 @@ body, html {
     cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40' viewBox='0 0 40 40'%3E%3Cpath d='M20 4l10 12h-6v12h-8V16h-6z' fill='%2322c55e' stroke='%230f172a' stroke-width='2' stroke-linejoin='round'/%3E%3Ccircle cx='20' cy='33' r='4' fill='%23facc15' stroke='%230f172a' stroke-width='2'/%3E%3C/svg%3E") 20 10, pointer;
 }
 
-.canvas-hint {
-    text-align: center;
-    font-size: 11px;
-    font-weight: 700;
-    font-family: 'Nunito', sans-serif;
-    color: #9B94BE;
-    padding: clamp(8px, 1.2vw, 12px) clamp(12px, 2vw, 16px);
-    flex-shrink: 0;
-    display: none;
-}
-
-/* bottom row */
 .bottom-row {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 10px;
     flex-wrap: wrap;
-    padding: clamp(10px, 1.5vw, 14px) clamp(12px, 2vw, 16px);
-    flex-shrink: 0;
-    border-top: 1px solid #F0EEF8;
-    background: #ffffff;
+    padding-top: 6px;
 }
 
 .page-info {
-    font-size: 12px;
+    font-size: 13px;
     font-weight: 900;
     font-family: 'Nunito', sans-serif;
-    color: #9B94BE;
+    color: var(--col-muted);
 }
 
 .btns { display: flex; gap: 10px; flex-wrap: wrap; }
 
-.btn-purple {
-    background: #7F77DD;
-    color: #fff;
+.btn-purple,
+.btn-orange {
     border: none;
     border-radius: 999px;
-    padding: 11px clamp(16px, 2.5vw, 26px);
+    padding: 13px clamp(20px, 3vw, 32px);
     font-family: 'Nunito', sans-serif;
     font-weight: 900;
-    font-size: clamp(12px, 1.6vw, 14px);
+    font-size: clamp(13px, 1.8vw, 15px);
     cursor: pointer;
-    min-width: clamp(90px, 14vw, 130px);
-    box-shadow: 0 6px 18px rgba(127,119,221,.18);
+    min-width: clamp(104px, 16vw, 146px);
     transition: transform .15s, filter .15s;
     text-decoration: none;
     display: inline-flex;
     align-items: center;
     justify-content: center;
+}
+
+.btn-purple {
+    background: var(--col-purple);
+    color: #fff;
+    box-shadow: 0 6px 18px rgba(127, 119, 221, .18);
 }
 
 .btn-orange {
-    background: #F97316;
+    background: var(--col-orange);
     color: #fff;
-    border: none;
-    border-radius: 999px;
-    padding: 11px clamp(16px, 2.5vw, 26px);
-    font-family: 'Nunito', sans-serif;
-    font-weight: 900;
-    font-size: clamp(12px, 1.6vw, 14px);
-    cursor: pointer;
-    min-width: clamp(90px, 14vw, 130px);
-    box-shadow: 0 6px 18px rgba(249,115,22,.22);
-    transition: transform .15s, filter .15s;
-    text-decoration: none;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
+    box-shadow: 0 6px 18px rgba(249, 115, 22, .22);
 }
 
-.btn-purple:hover, .btn-orange:hover { transform: translateY(-1px); filter: brightness(1.07); }
+.btn-purple:hover,
+.btn-orange:hover { transform: translateY(-1px); filter: brightness(1.07); }
 
-/* completed */
 .coloring-completed {
     display: none;
     text-align: center;
-    padding: 50px 20px 30px;
+    padding: 36px 20px 28px;
     flex-direction: column;
     align-items: center;
-    width: 100%;
+}
+
+.coloring-completed.active {
+    display: flex;
+}
+
+.board.is-completed .prog-row,
+.board.is-completed .picker-section,
+.board.is-completed .sel-bar,
+.board.is-completed .canvas-wrap,
+.board.is-completed .bottom-row {
+    display: none;
+}
+
+@media (max-width: 900px) {
+    .col-page { padding: 12px; }
+    .col-stage-shell { border-radius: 26px; padding: 14px; }
+    .board { border-radius: 22px; padding: 12px; }
+    .colors-grid { grid-template-columns: repeat(4, minmax(36px, 1fr)); }
+    .canvas-wrap { min-height: 300px; }
 }
 </style>
 
-<div class="shell">
-    <div class="hero">
-        <span class="kicker">drawing</span>
-        <h1 class="act-title"><?= htmlspecialchars($activityTitle, ENT_QUOTES, 'UTF-8') ?></h1>
-        <p class="act-sub">Color the page below</p>
-    </div>
-
-    <div class="board">
-        <div class="prog-row">
-            <div class="prog-track"><div class="prog-fill" id="progFill"></div></div>
-            <span class="prog-badge" id="progBadge">0/0</span>
+<div class="col-page">
+    <div class="col-app">
+        <div class="col-hero">
+            <div class="col-kicker">Activity</div>
+            <h1><?= htmlspecialchars($activityTitle, ENT_QUOTES, 'UTF-8') ?></h1>
+            <p>Color the page below</p>
         </div>
 
-        <div class="picker-section">
-            <div class="picker-label">Select a color</div>
-            <div class="colors-grid" id="coloringPalette"></div>
-        </div>
+        <div class="col-stage-shell">
+            <div class="board" id="coloringStage">
+                <div class="prog-row">
+                    <div class="prog-track"><div class="prog-fill" id="progFill"></div></div>
+                    <span class="prog-badge" id="progBadge">0/0</span>
+                </div>
 
-        <div class="sel-bar">
-            <div class="sel-dot" id="sel-dot"></div>
-            <span class="sel-label" id="sel-label">Red selected</span>
-        </div>
+                <div class="picker-section">
+                    <div class="picker-label">Select a color</div>
+                    <div class="colors-grid" id="coloringPalette"></div>
+                </div>
 
-        <div class="canvas-wrap">
-            <canvas id="coloringCanvas" width="600" height="600"></canvas>
-        </div>
+                <div class="sel-bar">
+                    <div class="sel-dot" id="sel-dot"></div>
+                    <span class="sel-label" id="sel-label">Red selected</span>
+                </div>
 
-        <div class="coloring-completed" id="coloringCompleted">
-            <h2 style="font-family:'Fredoka';font-weight:700;font-size:28px;color:#F97316;margin:0 0 12px;">🎉 Perfect!</h2>
-            <p style="font-family:'Nunito';font-weight:700;font-size:14px;color:#9B94BE;margin:0;">You've finished coloring!</p>
-        </div>
+                <div class="canvas-wrap">
+                    <canvas id="coloringCanvas" width="600" height="600"></canvas>
+                </div>
 
-        <div id="coloringStage"></div>
-    </div>
+                <div class="bottom-row">
+                    <span class="page-info" id="progressText">Page 1 of 1</span>
+                    <div class="btns">
+                        <button class="btn-orange" id="btn-reset" type="button">Clear</button>
+                        <button class="btn-purple" id="btn-finish" type="button">Next</button>
+                    </div>
+                </div>
 
-    <div class="bottom-row">
-        <span class="page-info" id="progressText">Page 1 of 1</span>
-        <div class="btns">
-            <button class="btn-orange" id="btn-reset" type="button">↺ Clear</button>
-            <button class="btn-purple" id="btn-finish" type="button">Next →</button>
+                <div class="coloring-completed" id="coloringCompleted">
+                    <h2 style="font-family:'Fredoka';font-weight:700;font-size:28px;color:#F97316;margin:0 0 12px;">Perfect!</h2>
+                    <p style="font-family:'Nunito';font-weight:700;font-size:14px;color:#9B94BE;margin:0;">You've finished coloring!</p>
+                </div>
+            </div>
         </div>
     </div>
 </div>
@@ -486,7 +513,7 @@ body, html {
 
     /* ── show / hide sections ────────────────────────── */
     function showCompleted() {
-        stage.style.display = 'none';
+        stage.classList.add('is-completed');
         completedEl.classList.add('active');
         if (COLORING_RETURN_TO && COLORING_ACTIVITY_ID) {
             var joiner = COLORING_RETURN_TO.indexOf('?') !== -1 ? '&' : '?';
