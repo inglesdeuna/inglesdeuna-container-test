@@ -426,6 +426,8 @@ body{margin:0!important;padding:0!important;background:var(--m-bg)!important;fon
 .m-pairs{display:grid;gap:10px;min-height:0;overflow:auto;padding-right:4px;align-content:start;}
 .m-pair-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:center;}
 .m-pair-row.has-images{grid-template-columns:1fr 1fr;}
+.m-pair-row.has-images .m-prompt,
+.m-pair-row.has-images .m-slot{min-height:clamp(90px,14vw,130px);padding:10px;}
 
 /* ── Prompt card (left, fixed) ── */
 .m-prompt{
@@ -479,8 +481,8 @@ body{margin:0!important;padding:0!important;background:var(--m-bg)!important;fon
 .m-tile.is-correct{border-color:var(--m-green);background:var(--m-green-soft);color:var(--m-green-dark);cursor:default;}
 .m-tile.is-wrong-flash{border-color:var(--m-red);background:var(--m-red-soft);animation:m-shake .32s ease;}
 .m-tile img{max-width:min(100%,100px);max-height:80px;object-fit:contain;border-radius:8px;pointer-events:none;}
-.m-tile.has-image{min-width:clamp(90px,12vw,120px);min-height:clamp(90px,12vw,120px);}
-.m-tile.has-image img{max-width:min(100%,110px);max-height:90px;}
+.m-tile.has-image{min-width:clamp(96px,13vw,132px);min-height:clamp(96px,13vw,132px);}
+.m-tile.has-image img{width:auto;height:auto;max-width:min(100%,120px);max-height:110px;object-fit:contain;}
 
 /* ── Pool ── */
 .m-pool-label{font-size:11px;font-weight:900;color:var(--m-muted);text-transform:uppercase;letter-spacing:.08em;text-align:center;margin-bottom:8px;}
@@ -688,6 +690,7 @@ function render() {
     /* pairs */
     pairsEl.innerHTML = PAIRS.map(p => {
         const pid = String(p.id);
+        const pairHasImages = leftImg(p) !== '' || rightImg(p) !== '';
         const placedId = slots[pid];
         const isCheckedOk = checked.has(pid);
         const slotCls = ['m-slot', isCheckedOk ? 'is-correct' : '', answered&&!isCheckedOk&&placedId ? 'is-correct' : ''].filter(Boolean).join(' ');
@@ -703,7 +706,7 @@ function render() {
                 slotContent = `<div class="${tc}" data-tile="${esc(placedId)}" data-in-slot="${esc(pid)}" draggable="true">${inner}</div>`;
             }
         }
-        return `<div class="m-pair-row" data-pair-row="${esc(pid)}">
+        return `<div class="m-pair-row ${pairHasImages ? 'has-images' : ''}" data-pair-row="${esc(pid)}">
             ${promptHTML(p)}
             <div class="${slotCls}" data-slot="${esc(pid)}">${slotContent}</div>
         </div>`;
