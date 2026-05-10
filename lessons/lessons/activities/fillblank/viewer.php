@@ -220,35 +220,6 @@ body {
     position: relative;
 }
 
-.fb-back-btn {
-    position: absolute;
-    left: 0;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    background: #EEEDFE;
-    border: 1px solid #EDE9FA;
-    color: #534AB7;
-    font-size: 12px;
-    font-weight: 900;
-    font-family: 'Nunito', sans-serif;
-    border-radius: 999px;
-    padding: 7px 14px;
-    cursor: pointer;
-    text-decoration: none;
-    transition: filter .15s, transform .15s;
-}
-
-.fb-back-btn:hover {
-    filter: brightness(.96);
-    transform: translateY(-1px);
-}
-
-body.presentation-mode .fb-back-btn,
-body.embedded-mode .fb-back-btn {
-    display: none;
-}
-
 .fb-topbar-title {
     font-family: 'Nunito', sans-serif;
     font-size: 12px;
@@ -718,12 +689,6 @@ body.embedded-mode .fb-back-btn {
     .fb-topbar {
         height: 30px;
         margin-bottom: 4px;
-    }
-
-    .fb-back-btn {
-        left: -2px;
-        padding: 5px 10px;
-        font-size: 11px;
     }
 
     .fb-hero {

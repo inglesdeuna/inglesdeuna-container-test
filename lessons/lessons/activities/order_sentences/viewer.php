@@ -221,31 +221,6 @@ body {
     position: relative;
 }
 
-.os-back-btn {
-    position: absolute;
-    left: 0;
-    background: #EEEDFE;
-    border: 1px solid #EDE9FA;
-    color: #534AB7;
-    font-size: 12px;
-    font-weight: 900;
-    font-family: 'Nunito', sans-serif;
-    border-radius: 999px;
-    padding: 6px 13px;
-    cursor: pointer;
-    transition: filter .15s, transform .15s;
-}
-
-.os-back-btn:hover {
-    filter: brightness(.96);
-    transform: translateY(-1px);
-}
-
-body.presentation-mode .os-back-btn,
-body.embedded-mode .os-back-btn {
-    display: none;
-}
-
 .os-topbar-title {
     font-family: 'Nunito', sans-serif;
     font-size: 12px;
