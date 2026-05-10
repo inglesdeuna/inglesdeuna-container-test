@@ -205,9 +205,6 @@ body{margin:0!important;padding:0!important;background:#fff!important;font-famil
         <p class="lo-done-text" id="lo-done-text"></p>
         <p class="lo-done-score" id="lo-done-score"></p>
         <div class="lo-done-track"><div class="lo-done-fill" id="lo-done-fill"></div></div>
-        <div class="lo-actions">
-            <button type="button" class="lo-btn lo-btn-next"  onclick="history.back()">Back</button>
-        </div>
     </div>
 </div></div>
 

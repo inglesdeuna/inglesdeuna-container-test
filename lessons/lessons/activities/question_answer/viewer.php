@@ -694,7 +694,6 @@ body.presentation-mode .qa-premium-text {
             </div>
             <div class="qa-premium-actions">
                 <button type="button" class="qa-premium-btn qa-premium-btn-teal" id="qa-premium-restart">&#8635; Review Again</button>
-                <button type="button" class="qa-premium-btn qa-premium-btn-blue" onclick="history.back()">&#8592; Back</button>
             </div>
         </section>
     </div>

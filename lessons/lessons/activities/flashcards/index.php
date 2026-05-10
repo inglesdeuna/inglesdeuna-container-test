@@ -598,7 +598,6 @@ ob_start();
             </div>
             <div class="fc-premium-actions">
                 <button type="button" class="fc-premium-btn fc-premium-btn-pink" id="fc-premium-restart">&#8635; Review Again</button>
-                <button type="button" class="fc-premium-btn fc-premium-btn-purple" onclick="history.back()">&#8592; Back</button>
             </div>
         </section>
     </div>

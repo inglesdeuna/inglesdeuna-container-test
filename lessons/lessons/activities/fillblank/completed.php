@@ -93,7 +93,6 @@ body { margin:0!important; padding:0!important; background:#f0faf6!important;
             <div class="fb-done-btns">
                 <a href="viewer.php?id=<?= urlencode($activityId) ?>&unit=<?= urlencode($unit) ?>"
                    class="fb-done-btn">↺ Try Again</a>
-                <button onclick="history.back()" class="fb-done-btn">← Back</button>
             </div>
 
         </div>
