@@ -607,7 +607,6 @@ $rightHasImages = (bool) array_reduce($pairs, fn($c,$p) => $c || trim((string)($
             <div class="m-actions">
                 <button type="button" class="m-btn m-btn-check"  id="m-check">Check</button>
                 <button type="button" class="m-btn m-btn-answer" id="m-answer">Show Answer</button>
-                <button type="button" class="m-btn m-btn-reset"  id="m-reset">Reset</button>
             </div>
 
         </main>
@@ -657,6 +656,7 @@ let slots   = {};   // pairId → placed tileId (or null)
 let wrongs  = 0;
 let checked = new Set(); // pairIds that passed check
 let answered= false;
+let poolOrder = [];  // shuffled ids for answer pool rendering
 
 /* ── Build tile HTML ── */
 function tileHTML(p, extraClass) {
@@ -711,7 +711,11 @@ function render() {
 
     /* pool */
     const placedTiles = new Set(Object.values(slots).filter(v => v !== null));
-    const poolPairs = PAIRS.filter(p => !placedTiles.has(String(p.id)));
+    const pairById = new Map(PAIRS.map(p => [String(p.id), p]));
+    const poolPairs = poolOrder
+        .filter(id => !placedTiles.has(id))
+        .map(id => pairById.get(id))
+        .filter(Boolean);
     poolEl.innerHTML = poolPairs.map(p => tileHTML(p, 'popped')).join('') || '<span style="color:var(--m-muted);font-size:13px;font-weight:800;">All placed ✓</span>';
 
     /* progress */
@@ -953,6 +957,7 @@ function resetGame() {
     wrongs  = 0;
     checked = new Set();
     answered= false;
+    poolOrder = shuffle(PAIRS.map(p => String(p.id)));
     PAIRS.forEach(p => { slots[String(p.id)] = null; });
     setHint('Drag an answer onto its prompt');
     updateScores(false);
@@ -985,7 +990,6 @@ async function persistScore() {
 /* ── Wire buttons ── */
 document.getElementById('m-check') .addEventListener('click', checkAnswers);
 document.getElementById('m-answer').addEventListener('click', showAnswers);
-document.getElementById('m-reset') .addEventListener('click', resetGame);
 
 resetGame();
 })();
