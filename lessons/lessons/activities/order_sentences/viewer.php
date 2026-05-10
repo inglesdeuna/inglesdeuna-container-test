@@ -618,12 +618,6 @@ body {
         margin-bottom: 4px;
     }
 
-    .os-back-btn {
-        left: -2px;
-        padding: 5px 10px;
-        font-size: 11px;
-    }
-
     .os-board {
         border-radius: 26px;
         padding: 14px;
