@@ -1,11 +1,15 @@
-﻿document.addEventListener('DOMContentLoaded', function () {
+document.addEventListener('DOMContentLoaded', function () {
   const questions = Array.isArray(window.MULTIPLE_CHOICE_DATA) ? window.MULTIPLE_CHOICE_DATA : [];
 
-  const statusEl = document.getElementById('mc-status');
+  const progressLabelEl = document.getElementById('mc-progress-label');
+  const progressFillEl = document.getElementById('mc-progress-fill');
+  const progressBadgeEl = document.getElementById('mc-progress-badge');
   const questionEl = document.getElementById('mc-question');
+  const imageBoxEl = document.getElementById('mc-image-box');
   const imageEl = document.getElementById('mc-image');
   const optionsEl = document.getElementById('mc-options');
   const feedbackEl = document.getElementById('mc-feedback');
+  const listenBtn = document.getElementById('mc-listen');
   const showBtn = document.getElementById('mc-show');
   const nextBtn = document.getElementById('mc-next');
   const cardEl = document.querySelector('.mc-card');
@@ -15,6 +19,7 @@
   const completedTextEl = document.getElementById('mc-completed-text');
   const scoreTextEl = document.getElementById('mc-score-text');
   const restartBtn = document.getElementById('mc-restart');
+
   const activityTitle = window.MULTIPLE_CHOICE_TITLE || 'Multiple Choice';
   const returnTo = window.MULTIPLE_CHOICE_RETURN_TO || '';
   const activityId = window.MULTIPLE_CHOICE_ACTIVITY_ID || '';
@@ -31,14 +36,19 @@
     if (nextBtn) {
       nextBtn.disabled = true;
     }
+    if (listenBtn) {
+      listenBtn.disabled = true;
+    }
     return;
   }
 
   let index = 0;
   let selected = null;
-  let checked = false;
+  let revealed = false;
   let finished = false;
   let questionScores = questions.map(function () { return 0; });
+  let activeListenText = '';
+  let activeVoiceId = 'josh';
 
   if (completedTitleEl) {
     completedTitleEl.textContent = activityTitle;
@@ -121,52 +131,81 @@
     return item && Array.isArray(item.options) ? item.options : [];
   }
 
-  function checkAnswer() {
-    if (finished) {
-      return;
+  function normalizeQuestion(item) {
+    const rawQuestion = String((item && item.question) || '');
+    return rawQuestion.replace(/^Choose the correct basic command:\s*/i, '').trim();
+  }
+
+  function updateProgress() {
+    const total = questions.length;
+    const current = index + 1;
+    const percent = total > 0 ? Math.round((current / total) * 100) : 0;
+
+    if (progressLabelEl) {
+      progressLabelEl.textContent = current + ' / ' + total;
     }
 
+    if (progressBadgeEl) {
+      progressBadgeEl.textContent = 'Q ' + current + ' of ' + total;
+    }
+
+    if (progressFillEl) {
+      progressFillEl.style.width = percent + '%';
+    }
+  }
+
+  function renderOptions() {
     const item = questions[index] || {};
     const correct = Number.isInteger(item.correct) ? item.correct : 0;
-    const options = optionsEl.querySelectorAll('.mc-option');
+    const isImageOpts = item.option_type === 'image';
 
-    if (selected === null) {
-      feedbackEl.textContent = 'Select an option first.';
-      feedbackEl.className = 'mc-feedback bad';
-      return;
-    }
+    optionsEl.innerHTML = '';
 
-    checked = true;
+    safeOptions(item).forEach(function (optionText, optIndex) {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'mc-option';
 
-    Array.prototype.forEach.call(options, function (node, optIndex) {
-      node.classList.remove('correct', 'wrong');
-
-      if (optIndex === correct) {
-        node.classList.add('correct');
+      if (selected === optIndex) {
+        button.classList.add('selected');
       }
 
-      if (optIndex === selected && selected !== correct) {
-        node.classList.add('wrong');
+      if (revealed && optIndex === correct) {
+        button.classList.add('correct');
       }
+
+      if (isImageOpts && optionText !== '') {
+        const img = document.createElement('img');
+        img.src = optionText;
+        img.alt = 'Option ' + String.fromCharCode(65 + optIndex);
+        button.appendChild(img);
+      } else {
+        button.textContent = optionText;
+      }
+
+      button.addEventListener('click', function () {
+        if (finished) {
+          return;
+        }
+
+        selected = optIndex;
+        renderOptions();
+      });
+
+      optionsEl.appendChild(button);
     });
-
-    if (selected === correct) {
-      questionScores[index] = 1;
-      feedbackEl.textContent = '\u2714 Right';
-      feedbackEl.className = 'mc-feedback good';
-    } else {
-      questionScores[index] = 0;
-      feedbackEl.textContent = '\u2718 Wrong';
-      feedbackEl.className = 'mc-feedback bad';
-    }
   }
 
   function loadQuestion() {
     const item = questions[index] || {};
+    const cleanQuestion = normalizeQuestion(item);
+    const isListen = item.question_type === 'listen';
 
     selected = null;
-    checked = false;
+    revealed = false;
     finished = false;
+    activeListenText = cleanQuestion;
+    activeVoiceId = String(item.voice_id || 'josh');
 
     if (completedEl) {
       completedEl.classList.remove('active');
@@ -180,89 +219,33 @@
       controlsEl.style.display = 'flex';
     }
 
-    feedbackEl.textContent = '';
-    feedbackEl.className = 'mc-feedback';
+    if (feedbackEl) {
+      feedbackEl.textContent = '';
+      feedbackEl.className = 'mc-feedback';
+    }
 
-    statusEl.textContent = 'Question ' + (index + 1) + ' of ' + questions.length;
-    const rawQuestion = String(item.question || '');
-    const cleanQuestion = rawQuestion.replace(/^Choose the correct basic command:\s*/i, '');
+    updateProgress();
 
-    const isListen = item.question_type === 'listen';
-    const isImageOpts = item.option_type === 'image';
+    if (questionEl) {
+      questionEl.textContent = cleanQuestion || 'Choose the correct answer.';
+    }
 
-    if (isListen) {
-      questionEl.innerHTML = '';
-      const listenBtn = document.createElement('button');
-      listenBtn.type = 'button';
-      listenBtn.className = 'mc-listen-btn';
-      listenBtn.innerHTML = '&#128266; Listen';
-      const voiceId = String(item.voice_id || 'josh');
-      listenBtn.addEventListener('click', function () { speakText(cleanQuestion, voiceId); });
-      questionEl.appendChild(listenBtn);
-      speakWhenReady(cleanQuestion, voiceId);
-    } else {
-      questionEl.textContent = cleanQuestion;
+    if (listenBtn) {
+      listenBtn.disabled = !isListen || cleanQuestion === '';
     }
 
     if (item.image) {
-      if (cardEl) {
-        cardEl.classList.add('has-image');
-        cardEl.classList.remove('text-only');
-      }
-      imageEl.style.display = 'block';
       imageEl.src = item.image;
+      imageBoxEl.classList.remove('is-empty');
     } else {
-      if (cardEl) {
-        cardEl.classList.remove('has-image');
-        cardEl.classList.add('text-only');
-      }
-      imageEl.style.display = 'none';
       imageEl.removeAttribute('src');
+      imageBoxEl.classList.add('is-empty');
     }
 
-    optionsEl.innerHTML = '';
-    optionsEl.classList.toggle('mc-options-images', isImageOpts);
-
-    safeOptions(item).forEach(function (optionText, optIndex) {
-      const button = document.createElement('button');
-      button.type = 'button';
-      button.className = 'mc-option';
-
-      if (isImageOpts && optionText !== '') {
-        const img = document.createElement('img');
-        img.src = optionText;
-        img.alt = 'Option ' + String.fromCharCode(65 + optIndex);
-        img.className = 'mc-option-img';
-        button.appendChild(img);
-      } else {
-        button.textContent = optionText;
-      }
-
-      button.addEventListener('click', function () {
-        if (checked || finished) {
-          return;
-        }
-
-        selected = optIndex;
-
-        Array.prototype.forEach.call(optionsEl.querySelectorAll('.mc-option'), function (node) {
-          node.classList.remove('selected');
-        });
-
-        button.classList.add('selected');
-        checkAnswer();
-      });
-
-      optionsEl.appendChild(button);
-    });
-
-    if (showBtn) {
-      showBtn.disabled = false;
-    }
+    renderOptions();
 
     if (nextBtn) {
-      nextBtn.disabled = false;
-      nextBtn.textContent = index < questions.length - 1 ? 'Next' : 'Finish';
+      nextBtn.textContent = index < questions.length - 1 ? 'Next →' : 'Finish';
     }
   }
 
@@ -271,31 +254,21 @@
       return;
     }
 
-    const item = questions[index] || {};
-    const correct = Number.isInteger(item.correct) ? item.correct : 0;
-    const options = optionsEl.querySelectorAll('.mc-option');
+    revealed = true;
+    renderOptions();
 
-    checked = true;
-    selected = correct;
-
-    Array.prototype.forEach.call(options, function (node, optIndex) {
-      node.classList.remove('selected', 'wrong');
-      if (optIndex === correct) {
-        node.classList.add('selected', 'correct');
-      }
-    });
-
-    feedbackEl.textContent = 'Show The Answer';
-    feedbackEl.className = 'mc-feedback good';
-    if (questionScores[index] !== 1) {
-      questionScores[index] = 0;
+    if (feedbackEl) {
+      feedbackEl.textContent = 'Correct option highlighted.';
     }
   }
 
   async function showCompleted() {
     finished = true;
-    feedbackEl.textContent = '';
-    feedbackEl.className = 'mc-feedback';
+
+    if (feedbackEl) {
+      feedbackEl.textContent = '';
+      feedbackEl.className = 'mc-feedback';
+    }
 
     const result = computeScore();
 
@@ -307,26 +280,12 @@
       controlsEl.style.display = 'none';
     }
 
-    if (statusEl) {
-      statusEl.textContent = 'Completed';
-    }
-
     if (completedEl) {
       completedEl.classList.add('active');
     }
 
     if (scoreTextEl) {
       scoreTextEl.textContent = 'Score: ' + result.correct + ' / ' + result.total + ' (' + result.percent + '%)';
-    }
-
-    if (showBtn) {
-      showBtn.disabled = true;
-      showBtn.textContent = 'Show Answer';
-    }
-
-    if (nextBtn) {
-      nextBtn.disabled = true;
-      nextBtn.textContent = 'Completed';
     }
 
     playCompletedSound();
@@ -345,6 +304,11 @@
       return;
     }
 
+    const item = questions[index] || {};
+    const correct = Number.isInteger(item.correct) ? item.correct : 0;
+    const isCorrectPick = selected !== null && selected === correct && !revealed;
+    questionScores[index] = isCorrectPick ? 1 : 0;
+
     if (index < questions.length - 1) {
       index += 1;
       loadQuestion();
@@ -356,15 +320,32 @@
 
   function restartActivity() {
     index = 0;
+    selected = null;
+    revealed = false;
+    finished = false;
     questionScores = questions.map(function () { return 0; });
     loadQuestion();
   }
 
-  showBtn.addEventListener('click', showAnswer);
-  nextBtn.addEventListener('click', nextQuestion);
+  if (showBtn) {
+    showBtn.addEventListener('click', showAnswer);
+  }
+
+  if (nextBtn) {
+    nextBtn.addEventListener('click', nextQuestion);
+  }
 
   if (restartBtn) {
     restartBtn.addEventListener('click', restartActivity);
+  }
+
+  if (listenBtn) {
+    listenBtn.addEventListener('click', function () {
+      if (!activeListenText) {
+        return;
+      }
+      speakText(activeListenText, activeVoiceId);
+    });
   }
 
   let userInteracted = false;
@@ -385,8 +366,10 @@
   }
 
   function speakText(text, voiceId) {
-    if (!text) return;
-    
+    if (!text) {
+      return;
+    }
+
     voiceId = voiceId || 'josh';
     stopSpeech();
 
@@ -402,27 +385,33 @@
       body: formData,
       signal: signal,
     })
-    .then(function(response) {
-      if (!response.ok) throw new Error('TTS request failed: ' + response.status);
-      return response.blob();
-    })
-    .then(function(audioBlob) {
-      if (signal.aborted) return;
-      
-      const audioUrl = URL.createObjectURL(audioBlob);
-      currentAudioElement = new Audio(audioUrl);
-      currentAudioElement.play().catch(function(e) {
-        console.error('Audio playback error:', e);
+      .then(function (response) {
+        if (!response.ok) {
+          throw new Error('TTS request failed: ' + response.status);
+        }
+        return response.blob();
+      })
+      .then(function (audioBlob) {
+        if (signal.aborted) {
+          return;
+        }
+
+        const audioUrl = URL.createObjectURL(audioBlob);
+        currentAudioElement = new Audio(audioUrl);
+        currentAudioElement.play().catch(function () {});
+      })
+      .catch(function (error) {
+        if (signal.aborted) {
+          return;
+        }
+        console.error('TTS error:', error);
       });
-    })
-    .catch(function(error) {
-      if (signal.aborted) return;
-      console.error('TTS error:', error);
-    });
   }
 
   function speakWhenReady(text, voiceId) {
-    if (!text) return;
+    if (!text) {
+      return;
+    }
     if (userInteracted) {
       speakText(text, voiceId);
     } else {
@@ -440,4 +429,7 @@
   }, { once: true });
 
   loadQuestion();
+  if ((questions[0] || {}).question_type === 'listen') {
+    speakWhenReady(activeListenText, activeVoiceId);
+  }
 });
