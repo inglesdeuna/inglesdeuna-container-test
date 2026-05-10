@@ -48,6 +48,17 @@ function render_activity_viewer($title, $icon, $content)
             $backUrl .= '&source=' . urlencode($source);
         }
     }
+
+    // Teacher back button: shown when mode=edit or mode=view
+    $mode = isset($_GET['mode']) ? trim((string) $_GET['mode']) : '';
+    $isTeacher = ($mode === 'edit' || $mode === 'view');
+    $teacherBackParams = http_build_query(array_filter([
+        'assignment' => $assignment,
+        'unit'       => $unit,
+        'mode'       => $mode,
+    ]));
+    $teacherBackUrl = '/lessons/lessons/academic/teacher_unit.php'
+                    . ($teacherBackParams !== '' ? '?' . $teacherBackParams : '');
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -254,6 +265,35 @@ function render_activity_viewer($title, $icon, $content)
             filter:brightness(1.08);
             transform:translateY(-2px) scale(1.04);
             box-shadow:0 8px 22px rgba(127,119,221,.42);
+        }
+
+        /* Teacher back bar — shown when mode=edit|view */
+        .viewer-back-bar {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            padding: 10px 20px;
+            background: #ffffff;
+            border-bottom: 1px solid #F0EEF8;
+        }
+
+        .viewer-back-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: #F97316;
+            color: #ffffff;
+            font-family: 'Nunito', sans-serif;
+            font-size: 14px;
+            font-weight: 700;
+            border-radius: 99px;
+            padding: 8px 20px;
+            text-decoration: none;
+            transition: opacity 0.15s;
+        }
+
+        .viewer-back-btn:hover {
+            opacity: 0.88;
         }
 
         /* ── Canonical action button ───────────────────────────
@@ -624,11 +664,18 @@ function render_activity_viewer($title, $icon, $content)
 
 <div class="activity-wrapper">
 
-    <?php if (!$embedded && !$isPresentationMode) { ?>
+    <?php if ($isTeacher && !$embedded && !$isPresentationMode): ?>
+    <div class="viewer-back-bar">
+        <a href="<?= htmlspecialchars($teacherBackUrl, ENT_QUOTES, 'UTF-8') ?>"
+           class="viewer-back-btn">
+            &larr; Back to Unit
+        </a>
+    </div>
+    <?php elseif (!$embedded && !$isPresentationMode): ?>
     <div class="top-row">
         <a href="<?= htmlspecialchars($backUrl, ENT_QUOTES, 'UTF-8') ?>" class="back-btn">Back</a>
     </div>
-    <?php } ?>
+    <?php endif; ?>
 
     <div class="viewer-content">
         <?= $content ?>
