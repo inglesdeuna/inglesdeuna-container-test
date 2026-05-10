@@ -803,7 +803,6 @@ body.embedded-mode .fb-back-btn {
     <div class="fb-app">
 
         <div class="fb-topbar">
-            <a class="fb-back-btn" href="<?php echo htmlspecialchars($_fb_backUrl, ENT_QUOTES, 'UTF-8'); ?>">Back</a>
             <span class="fb-topbar-title">Fill in the Blank</span>
         </div>
 

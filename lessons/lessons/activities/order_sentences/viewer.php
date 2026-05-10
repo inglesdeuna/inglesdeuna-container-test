@@ -699,7 +699,6 @@ body.embedded-mode .os-back-btn {
     <div class="os-app">
 
         <div class="os-topbar">
-            <button class="os-back-btn" onclick="history.back()">Back</button>
             <span class="os-topbar-title">Sentence Ordering</span>
         </div>
 

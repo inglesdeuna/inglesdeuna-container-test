@@ -560,7 +560,6 @@ a.back{background:var(--hg-purple);box-shadow:0 6px 18px rgba(127,119,221,.18);j
       </div>
     </section>
 
-    <a class="back" href="../../academic/unit_view.php?unit=<?= urlencode($unit) ?>&source=<?= urlencode($_GET['source'] ?? '') ?>">Back</a>
   </main>
 </div>
 
