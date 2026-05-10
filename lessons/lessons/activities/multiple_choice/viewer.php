@@ -301,14 +301,25 @@ body {
     margin:8px 0 0;
 }
 
+.mc-stage-shell {
+    background:#ffffff;
+    border:1px solid #F0EEF8;
+    border-radius:34px;
+    padding:clamp(16px,2.6vw,26px);
+    box-shadow:0 8px 40px rgba(127,119,221,.13);
+    width:min(760px,100%);
+    margin:0 auto clamp(14px,2vw,22px);
+    box-sizing:border-box;
+}
+
 .mc-viewer {
     background:#ffffff!important;
-    border:1px solid #F0EEF8!important;
-    border-radius:34px!important;
-    padding:clamp(16px,2.6vw,26px)!important;
-    box-shadow:0 8px 40px rgba(127,119,221,.13)!important;
-    width:min(760px,100%)!important;
-    margin:0 auto!important;
+    border:none!important;
+    border-radius:0!important;
+    padding:0!important;
+    box-shadow:none!important;
+    width:100%!important;
+    margin:0!important;
     box-sizing:border-box!important;
     position:relative!important;
     font-family:'Nunito','Segoe UI',sans-serif!important;
@@ -326,8 +337,9 @@ body {
     font-family:'Nunito',sans-serif!important;
     font-size:12px!important;
     font-weight:900!important;
-    margin:0 auto 18px!important;
+    margin:0 auto 12px!important;
     text-align:center!important;
+    display:block!important;
 }
 
 .mc-card {
@@ -709,28 +721,30 @@ body {
             <p>Choose the correct answer.</p>
         </div>
 
-        <div class="mc-viewer" id="mc-container">
-            <div class="mc-status" id="mc-status"></div>
+        <div class="mc-stage-shell">
+            <div class="mc-viewer" id="mc-container">
+                <div class="mc-status" id="mc-status"></div>
 
-            <div class="mc-card">
-                <div class="mc-question" id="mc-question"></div>
-                <img id="mc-image" class="mc-image" alt="">
-                <div class="mc-options" id="mc-options"></div>
-            </div>
+                <div class="mc-card">
+                    <div class="mc-question" id="mc-question"></div>
+                    <img id="mc-image" class="mc-image" alt="">
+                    <div class="mc-options" id="mc-options"></div>
+                </div>
 
-            <div class="mc-controls">
-                <button type="button" class="mc-btn mc-btn-show" id="mc-show">Show Answer</button>
-                <button type="button" class="mc-btn mc-btn-next" id="mc-next">Next</button>
-            </div>
+                <div class="mc-controls">
+                    <button type="button" class="mc-btn mc-btn-show" id="mc-show">Show Answer</button>
+                    <button type="button" class="mc-btn mc-btn-next" id="mc-next">Next</button>
+                </div>
 
-            <div class="mc-feedback" id="mc-feedback"></div>
+                <div class="mc-feedback" id="mc-feedback"></div>
 
-            <div id="mc-completed" class="mc-completed-screen">
-                <div class="mc-completed-icon">✅</div>
-                <h2 class="mc-completed-title" id="mc-completed-title"></h2>
-                <p class="mc-completed-text" id="mc-completed-text"></p>
-                <p class="mc-completed-text" id="mc-score-text" style="font-weight:900;font-size:15px;color:#534AB7;"></p>
-                <button type="button" class="mc-completed-button" id="mc-restart">Restart</button>
+                <div id="mc-completed" class="mc-completed-screen">
+                    <div class="mc-completed-icon">✅</div>
+                    <h2 class="mc-completed-title" id="mc-completed-title"></h2>
+                    <p class="mc-completed-text" id="mc-completed-text"></p>
+                    <p class="mc-completed-text" id="mc-score-text" style="font-weight:900;font-size:15px;color:#534AB7;"></p>
+                    <button type="button" class="mc-completed-button" id="mc-restart">Restart</button>
+                </div>
             </div>
         </div>
 
