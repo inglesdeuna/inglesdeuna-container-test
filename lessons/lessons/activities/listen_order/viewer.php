@@ -111,7 +111,7 @@ body{margin:0!important;padding:0!important;background:#fff!important;font-famil
 .lo-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(clamp(130px,16vw,190px),1fr));gap:16px;justify-content:center;margin-bottom:14px}
 .lo-card{width:100%;aspect-ratio:1/1;border-radius:18px;border:2px solid #EDE9FA;background:#fff;box-shadow:0 4px 14px rgba(127,119,221,.10);cursor:pointer;position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;transition:border-color .15s,background .15s,box-shadow .15s,transform .15s;overflow:hidden;padding:4px 4px 12px}
 .lo-card:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(127,119,221,.16)}
-.lo-card img{width:100%;height:calc(100% - 2mm);margin:1mm 0;object-fit:cover;display:block;border-radius:12px}
+.lo-card img{width:100%;height:calc(100% - 2mm)!important;margin:1mm 0!important;object-fit:contain!important;object-position:center;display:block;border-radius:12px}
 .lo-card-badge{position:absolute;top:8px;left:8px;width:26px;height:26px;border-radius:50%;background:#EEEDFE;color:#534AB7;font-size:12px;font-family:'Nunito',sans-serif;font-weight:900;display:flex;align-items:center;justify-content:center;line-height:1;transition:background .15s,color .15s;z-index:2}
 .lo-card.selected{border-color:#F97316;background:#FFF8F4;box-shadow:0 0 0 3px rgba(249,115,22,.18);transform:translateY(-4px) scale(1.04)}
 .lo-card.selected .lo-card-badge{background:#F97316;color:#fff}
