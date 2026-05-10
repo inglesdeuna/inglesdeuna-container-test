@@ -461,7 +461,7 @@ body{
 
             <div class="fc-actions">
 
-                <button class="fc-btn fc-btn-purple" id="fc-repeat">
+                <button class="fc-btn fc-btn-orange" id="fc-repeat">
                     Listen
                 </button>
 

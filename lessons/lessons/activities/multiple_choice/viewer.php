@@ -232,7 +232,7 @@ body {
 .mc-page {
     width:100%;
     min-height:100vh;
-    padding:clamp(14px,2.5vw,34px);
+    padding:clamp(10px,1.8vw,20px) clamp(14px,2.5vw,34px) clamp(14px,2.5vw,34px);
     display:flex;
     align-items:flex-start;
     justify-content:center;
@@ -246,11 +246,11 @@ body {
 }
 
 .mc-topbar {
-    height:36px;
+    height:20px;
     display:flex;
     align-items:center;
     justify-content:center;
-    margin-bottom:8px;
+    margin-bottom:4px;
 }
 
 .mc-topbar-title {
@@ -264,7 +264,7 @@ body {
 
 .mc-hero {
     text-align:center;
-    margin-bottom:clamp(14px,2vw,22px);
+    margin-bottom:clamp(10px,1.5vw,16px);
 }
 
 .mc-kicker {
