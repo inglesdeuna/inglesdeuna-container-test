@@ -144,6 +144,7 @@ function normalize_flashcards_payload($rawData): array
                 'spanish_text' => isset($item['spanish_text']) ? trim((string) $item['spanish_text']) : '',
                 'text' => isset($item['text']) ? trim((string) $item['text']) : '',
                 'image' => isset($item['image']) ? trim((string) $item['image']) : '',
+                'back_image' => isset($item['back_image']) ? trim((string) $item['back_image']) : '',
                 'voice_id' => isset($item['voice_id']) ? trim((string) $item['voice_id']) : 'nzFihrBIvB34imQBuxub',
                 'audio' => isset($item['audio']) ? trim((string) $item['audio']) : '',
             );
@@ -428,12 +429,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $voiceIds = isset($_POST['voice_id']) && is_array($_POST['voice_id']) ? $_POST['voice_id'] : array();
     $ids = isset($_POST['card_id']) && is_array($_POST['card_id']) ? $_POST['card_id'] : array();
     $imageFiles = isset($_FILES['image_file']) ? $_FILES['image_file'] : null;
+    $backImages = isset($_POST['back_image_existing']) && is_array($_POST['back_image_existing']) ? $_POST['back_image_existing'] : array();
+    $backImageFiles = isset($_FILES['back_image_file']) ? $_FILES['back_image_file'] : null;
 
     $sanitized = array();
 
     foreach ($texts as $i => $textRaw) {
         $text = trim((string) $textRaw);
         $image = isset($images[$i]) ? trim((string) $images[$i]) : '';
+        $backImage = isset($backImages[$i]) ? trim((string) $backImages[$i]) : '';
         $audio = isset($audios[$i]) ? trim((string) $audios[$i]) : '';
         $voiceId = isset($voiceIds[$i]) ? trim((string) $voiceIds[$i]) : 'nzFihrBIvB34imQBuxub';
         if ($voiceId === '' || !preg_match('/^[A-Za-z0-9]+$/', $voiceId)) $voiceId = 'nzFihrBIvB34imQBuxub';
@@ -452,6 +456,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
 
+        if (
+            $backImageFiles &&
+            isset($backImageFiles['name'][$i]) &&
+            $backImageFiles['name'][$i] !== '' &&
+            isset($backImageFiles['tmp_name'][$i]) &&
+            $backImageFiles['tmp_name'][$i] !== ''
+        ) {
+            $uploadedBackImage = upload_to_cloudinary($backImageFiles['tmp_name'][$i]);
+            if ($uploadedBackImage) {
+                $backImage = $uploadedBackImage;
+            }
+        }
+
         if ($text === '' && $image === '') {
             continue;
         }
@@ -460,6 +477,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'id' => $cardId,
             'text' => $text,
             'image' => $image,
+            'back_image' => $backImage,
             'voice_id' => $voiceId,
             'audio' => $audio,
         );
@@ -658,6 +676,13 @@ ob_start();
                 <?php } ?>
                 <input type="file" name="image_file[]" accept="image/*">
 
+                <input type="hidden" name="back_image_existing[]" value="<?= htmlspecialchars($card['back_image'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
+                <label>Back image (optional)</label>
+                <?php if (!empty($card['back_image'])): ?>
+                    <img src="<?= htmlspecialchars($card['back_image'], ENT_QUOTES, 'UTF-8') ?>" alt="back image preview" class="image-preview">
+                <?php endif; ?>
+                <input type="file" name="back_image_file[]" accept="image/*">
+
                 <button type="button" class="btn-remove" onclick="removeCard(this)">✖ Remove</button>
             </div>
         <?php } ?>
@@ -727,6 +752,10 @@ function addCard() {
 
         <label>Image (optional)</label>
         <input type="file" name="image_file[]" accept="image/*">
+
+        <input type="hidden" name="back_image_existing[]" value="">
+        <label>Back image (optional)</label>
+        <input type="file" name="back_image_file[]" accept="image/*">
 
         <button type="button" class="btn-remove" onclick="removeCard(this)">✖ Remove</button>
     `;

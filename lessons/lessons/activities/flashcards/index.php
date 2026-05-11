@@ -78,6 +78,7 @@ function normalize_flashcards_payload($rawData): array
             'spanish_text' => isset($item['spanish_text']) ? trim((string) $item['spanish_text']) : '',
             'text'         => isset($item['text'])         ? trim((string) $item['text'])         : '',
             'image'        => isset($item['image'])        ? trim((string) $item['image'])        : '',
+            'back_image'   => isset($item['back_image'])   ? trim((string) $item['back_image'])   : '',
             'voice_id'     => isset($item['voice_id'])     ? trim((string) $item['voice_id'])     : 'nzFihrBIvB34imQBuxub',
             'audio'        => isset($item['audio'])        ? trim((string) $item['audio'])        : '',
         );
@@ -572,6 +573,9 @@ ob_start();
                         </div>
 
                         <div class="fc-premium-face fc-premium-back">
+                            <img id="fc-back-image" class="fc-image" src="" alt=""
+                                 style="display:none;max-width:260px;max-height:200px;object-fit:contain;border-radius:18px;margin-bottom:16px;">
+                            <div id="fc-back-placeholder" style="display:none;"></div>
                             <div class="fc-premium-word" id="fc-premium-word"></div>
                             <div class="fc-premium-translation" id="fc-premium-translation" style="display:none;"></div>
                             <div class="fc-premium-hint">Tap to see image</div>
@@ -627,7 +631,9 @@ var els = {
     progressCount: document.getElementById('fc-premium-progress-count'),
     kickerCount: document.getElementById('fc-premium-kicker-count'),
     doneFill: document.getElementById('fc-premium-done-fill'),
-    win: document.getElementById('fc-premium-win')
+    win: document.getElementById('fc-premium-win'),
+    backImg: document.getElementById('fc-back-image'),
+    backPlaceholder: document.getElementById('fc-back-placeholder')
 };
 
 var TTS = (function(){
@@ -733,6 +739,7 @@ function loadCard(){
     var word = getWord(card) || 'No text';
     var spanish = getSpanish(card);
     var image = String(card.image || '').trim();
+    var backImage = String(card.back_image || '').trim();
 
     els.word.textContent = word;
 
@@ -755,6 +762,17 @@ function loadCard(){
         els.img.style.display = 'none';
         els.placeholder.textContent = getPlaceholder(word);
         els.placeholder.style.display = '';
+    }
+
+    if (els.backImg && els.backPlaceholder) {
+        if (backImage) {
+            els.backImg.src = backImage;
+            els.backImg.style.display = 'block';
+            els.backPlaceholder.style.display = 'none';
+        } else {
+            els.backImg.style.display = 'none';
+            els.backPlaceholder.style.display = 'none';
+        }
     }
 
     setFlipped(false);
