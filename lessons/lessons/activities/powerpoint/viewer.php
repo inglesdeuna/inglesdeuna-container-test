@@ -283,9 +283,6 @@ body {
     background: transparent !important;
 }
 
-.top-row {
-    display: none !important;
-}
 
 .viewer-content {
     flex: 1 !important;
