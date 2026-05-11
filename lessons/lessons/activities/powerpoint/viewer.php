@@ -237,7 +237,9 @@ $canvaLink = (string) ($activity['canva_link'] ?? '');
 $canvaOpenLink = powerpoint_open_url($canvaLink);
 $showCanvaBlock = $canvaLink !== '';
 $showSlidesBlock = !$showCanvaBlock && !empty($slides);
-$showEmptyBlock = !$showCanvaBlock && !$showSlidesBlock && $presentationFile === '';
+$showEmptyBlock    = !$showCanvaBlock && !$showSlidesBlock && $presentationFile === '';
+$isPresentationPdf = $presentationFile !== '' && stripos($presentationFile, 'data:application/pdf') === 0;
+$serveUrl          = '/lessons/lessons/activities/powerpoint/serve.php?id=' . urlencode($activityId);
 
 ob_start();
 ?>
@@ -739,13 +741,19 @@ body {
                 <div class="ppt-file">
                     <span class="ppt-file-name">Uploaded presentation: <?php echo htmlspecialchars($presentationName !== '' ? $presentationName : 'presentation.pptx', ENT_QUOTES, 'UTF-8'); ?></span>
                     <div class="ppt-actions">
-                        <button type="button" class="ppt-btn ppt-btn-primary" id="btnOpenPresentation">Open File</button>
+                        <a href="<?= htmlspecialchars($serveUrl, ENT_QUOTES, 'UTF-8') ?>"
+                           target="_blank"
+                           class="ppt-btn ppt-btn-primary"
+                           <?= !$isPresentationPdf ? 'download' : '' ?>>
+                            <?= $isPresentationPdf ? 'Open PDF' : 'Download File' ?>
+                        </a>
                     </div>
                 </div>
 
-                <?php if (stripos($presentationFile, 'data:application/pdf') === 0) { ?>
+                <?php if ($isPresentationPdf) { ?>
                     <div class="ppt-embedded-file">
-                        <iframe src="<?php echo htmlspecialchars($presentationFile, ENT_QUOTES, 'UTF-8'); ?>" title="Uploaded presentation PDF"></iframe>
+                        <iframe src="<?= htmlspecialchars($serveUrl, ENT_QUOTES, 'UTF-8') ?>"
+                                title="Uploaded presentation PDF"></iframe>
                     </div>
                 <?php } ?>
             <?php } ?>
@@ -809,7 +817,7 @@ body {
 
 <script>
 const PPT_SLIDES = <?php echo json_encode($slides, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
-const PPT_PRESENTATION_FILE = <?php echo json_encode($presentationFile, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
+const PPT_SERVE_URL = <?php echo json_encode($presentationFile !== '' ? $serveUrl : '', JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
 const PPT_PRESENTATION_NAME = <?php echo json_encode($presentationName, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
 const PPT_CANVA_LINK = <?php echo json_encode($canvaLink, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
 const PPT_CANVA_OPEN_LINK = <?php echo json_encode($canvaOpenLink, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
@@ -1015,8 +1023,8 @@ function speakSlide() {
 }
 
 function openPresentation() {
-    if (!PPT_PRESENTATION_FILE) return;
-    window.open(PPT_PRESENTATION_FILE, '_blank');
+    if (!PPT_SERVE_URL) return;
+    window.open(PPT_SERVE_URL, '_blank');
 }
 
 function openCanva() {
@@ -1084,7 +1092,6 @@ document.getElementById('ppt-restart-btn')?.addEventListener('click', function (
 
 document.getElementById('btnTts')?.addEventListener('click', speakSlide);
 document.getElementById('btnStopTts')?.addEventListener('click', stopSpeech);
-document.getElementById('btnOpenPresentation')?.addEventListener('click', openPresentation);
 document.getElementById('btnOpenCanva')?.addEventListener('click', openCanva);
 
 if (Array.isArray(PPT_SLIDES) && PPT_SLIDES.length) {
