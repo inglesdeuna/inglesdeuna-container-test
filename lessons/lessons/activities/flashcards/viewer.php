@@ -470,8 +470,8 @@ body{
 
                     <div class="fc-face fc-back">
 
-                        <div class="fc-back-image-wrap" id="fc-back-image-wrap" style="width:100%;max-height:220px;display:none;align-items:center;justify-content:center;flex-shrink:0;">
-                            <img id="fc-back-image" class="fc-image" src="" alt="" style="max-width:100%;max-height:220px;object-fit:contain;border-radius:18px;">
+                        <div class="fc-back-image-wrap" id="fc-back-image-wrap" style="width:100%;height:100%;display:none;align-items:center;justify-content:center;">
+                            <img id="fc-back-image" class="fc-image" src="" alt="" style="max-width:100%;max-height:100%;object-fit:contain;border-radius:18px;">
                         </div>
 
                         <div class="fc-word" id="fc-word"></div>
@@ -676,8 +676,6 @@ function renderCard(){
     cardEl.classList.remove('flipped');
 
     updateProgress();
-
-    playAudio();
 }
 
 function flip(){
