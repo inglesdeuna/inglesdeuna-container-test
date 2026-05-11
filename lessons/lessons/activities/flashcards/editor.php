@@ -469,7 +469,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
 
-        if ($text === '' && $image === '') {
+        if ($text === '' && $image === '' && $backImage === '') {
             continue;
         }
 
@@ -652,7 +652,7 @@ ob_start();
                 <input type="hidden" name="audio[]" value="<?= htmlspecialchars(isset($card['audio']) ? $card['audio'] : '', ENT_QUOTES, 'UTF-8') ?>">
 
                 <label>Word / text</label>
-                <input type="text" name="text[]" value="<?= htmlspecialchars(isset($card['text']) ? $card['text'] : '', ENT_QUOTES, 'UTF-8') ?>" placeholder="Write the word" required>
+                <input type="text" name="text[]" value="<?= htmlspecialchars(isset($card['text']) ? $card['text'] : '', ENT_QUOTES, 'UTF-8') ?>" placeholder="Write the word">
 
                 <div class="fc-tts-row">
                     <div>
@@ -735,7 +735,7 @@ function addCard() {
         <input type="hidden" name="audio[]" value="">
 
         <label>Word / text</label>
-        <input type="text" name="text[]" placeholder="Write the word" required>
+        <input type="text" name="text[]" placeholder="Write the word">
 
         <div class="fc-tts-row">
             <div>
