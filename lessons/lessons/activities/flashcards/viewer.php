@@ -221,6 +221,7 @@ body{
 }
 
 .fc-front{
+    position:relative;
     background:#fff;
     border:1px solid var(--border);
     display:flex;
@@ -228,6 +229,7 @@ body{
     justify-content:center;
     padding:32px;
     text-align:center;
+    cursor:pointer;
 }
 
 .fc-back{
@@ -241,22 +243,22 @@ body{
     padding:24px;
     text-align:center;
     gap:14px;
+    cursor:pointer;
 }
 
 .fc-image-wrap{
     width:100%;
-    max-height:260px;
+    height:100%;
     display:flex;
     align-items:center;
     justify-content:center;
-    flex-shrink:0;
 }
 
 .fc-image{
-    max-width:100%;
-    max-height:260px;
+    width:100%;
+    height:100%;
     object-fit:contain;
-    border-radius:18px;
+    border-radius:24px;
 }
 
 .fc-placeholder{
@@ -274,6 +276,22 @@ body{
 .fc-placeholder svg{
     width:84px;
     height:84px;
+}
+
+.fc-flip-hint{
+    position:absolute;
+    bottom:18px;
+    left:50%;
+    transform:translateX(-50%);
+    color:#C4BEF0;
+    font-size:12px;
+    font-weight:800;
+    letter-spacing:.02em;
+    pointer-events:none;
+}
+
+.fc-card.flipped .fc-flip-hint{
+    display:none;
 }
 
 .fc-word{
@@ -430,12 +448,7 @@ body{
                 <div class="fc-inner">
 
                     <div class="fc-face fc-front" id="fc-front">
-                        <div class="fc-word" id="fc-word-front" style="text-align:center;"></div>
-                    </div>
-
-                    <div class="fc-face fc-back">
-
-                        <div class="fc-image-wrap" id="fc-image-wrap">
+                        <div class="fc-image-wrap">
 
                             <img
                                 id="fc-image"
@@ -445,12 +458,20 @@ body{
                                 style="display:none;"
                             >
 
-                            <div class="fc-placeholder" id="fc-placeholder" style="display:none;">
+                            <div class="fc-placeholder" id="fc-placeholder">
                                 <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4-4 4 4 8-8"/>
                                 </svg>
                             </div>
 
+                        </div>
+                        <div class="fc-flip-hint" id="fc-flip-hint">Tap to flip</div>
+                    </div>
+
+                    <div class="fc-face fc-back">
+
+                        <div class="fc-back-image-wrap" id="fc-back-image-wrap" style="width:100%;max-height:220px;display:none;align-items:center;justify-content:center;flex-shrink:0;">
+                            <img id="fc-back-image" class="fc-image" src="" alt="" style="max-width:100%;max-height:220px;object-fit:contain;border-radius:18px;">
                         </div>
 
                         <div class="fc-word" id="fc-word"></div>
@@ -470,7 +491,7 @@ body{
                 </button>
 
                 <button class="fc-btn fc-btn-purple" id="fc-flip">
-                    Show Text
+                    Flip
                 </button>
 
                 <button class="fc-btn fc-btn-orange" id="fc-next">
@@ -523,7 +544,8 @@ var flipped = false;
 var cardEl = document.getElementById('fc-card');
 var imageEl = document.getElementById('fc-image');
 var placeholderEl = document.getElementById('fc-placeholder');
-var wordFrontEl = document.getElementById('fc-word-front');
+var backImageWrapEl = document.getElementById('fc-back-image-wrap');
+var backImageEl = document.getElementById('fc-back-image');
 var wordEl = document.getElementById('fc-word');
 var translationEl = document.getElementById('fc-translation');
 
@@ -620,7 +642,6 @@ function renderCard(){
     var word = getWord(card);
     var translation = getTranslation(card);
 
-    wordFrontEl.textContent = word;
     wordEl.textContent = word;
     translationEl.textContent = translation;
 
@@ -634,8 +655,17 @@ function renderCard(){
     }else{
 
         imageEl.style.display = 'none';
-        placeholderEl.style.display = 'none';
+        placeholderEl.style.display = 'flex';
 
+    }
+
+    var backImg = String((card && card.back_image) || '').trim();
+    if (backImg) {
+        backImageEl.src = backImg;
+        backImageWrapEl.style.display = 'flex';
+    } else {
+        backImageEl.src = '';
+        backImageWrapEl.style.display = 'none';
     }
 
     flipped = false;
@@ -750,8 +780,8 @@ document
 .addEventListener('click', restart);
 
 document
-.getElementById('fc-front')
-.addEventListener('click', playAudio);
+.getElementById('fc-card')
+.addEventListener('click', flip);
 
 renderCard();
 
