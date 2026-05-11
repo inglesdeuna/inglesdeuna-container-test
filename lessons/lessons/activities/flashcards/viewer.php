@@ -117,7 +117,6 @@ body{
 .fc-header{
     text-align:center;
     margin-bottom:18px;
-    position:relative;
 }
 
 .fc-kicker{
@@ -150,32 +149,6 @@ body{
     color:var(--muted);
     font-size:14px;
     font-weight:700;
-}
-
-.fc-back-btn {
-    position: absolute;
-    left: 0;
-    top: 50%;
-    transform: translateY(-50%);
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    background: none;
-    border: none;
-    cursor: pointer;
-    font-family: 'Nunito', sans-serif;
-    font-size: 12px;
-    font-weight: 900;
-    color: #7F77DD;
-    text-decoration: none;
-    padding: 4px 8px;
-    border-radius: 999px;
-    transition: background .12s, color .12s;
-}
-
-.fc-back-btn:hover {
-    background: #EEEDFE;
-    color: #534AB7;
 }
 
 .fc-board{
@@ -445,7 +418,6 @@ body{
     <div class="fc-app">
 
         <div class="fc-header">
-            <button type="button" class="fc-back-btn" onclick="history.back()">&#8592; Back</button>
             <div class="fc-kicker">
                 Flashcards
             </div>
