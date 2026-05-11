@@ -197,7 +197,6 @@ body{
     position:relative;
     min-height:480px;
     border-radius:30px;
-    overflow:hidden;
     perspective:1000px;
 }
 
