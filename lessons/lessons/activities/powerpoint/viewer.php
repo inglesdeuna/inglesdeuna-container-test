@@ -330,6 +330,30 @@ body {
     text-transform: uppercase;
 }
 
+.ppt-back-btn {
+    position: absolute;
+    left: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-family: 'Nunito', sans-serif;
+    font-size: 12px;
+    font-weight: 900;
+    color: #7F77DD;
+    text-decoration: none;
+    padding: 4px 8px;
+    border-radius: 999px;
+    transition: background .12s, color .12s;
+}
+
+.ppt-back-btn:hover {
+    background: #EEEDFE;
+    color: #534AB7;
+}
+
 .ppt-hero {
     text-align: center;
     margin-bottom: clamp(14px, 2vw, 22px);
@@ -723,6 +747,7 @@ body {
     <div class="ppt-app">
 
         <div class="ppt-topbar">
+            <button type="button" class="ppt-back-btn" onclick="history.back()">&#8592; Back</button>
             <span class="ppt-topbar-title">PowerPoint</span>
         </div>
 
