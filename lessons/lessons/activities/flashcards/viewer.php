@@ -226,7 +226,8 @@ body{
     display:flex;
     align-items:center;
     justify-content:center;
-    padding:18px;
+    padding:32px;
+    text-align:center;
 }
 
 .fc-back{
@@ -237,23 +238,25 @@ body{
     flex-direction:column;
     align-items:center;
     justify-content:center;
-    padding:32px;
+    padding:24px;
     text-align:center;
+    gap:14px;
 }
 
 .fc-image-wrap{
     width:100%;
-    height:100%;
+    max-height:260px;
     display:flex;
     align-items:center;
     justify-content:center;
+    flex-shrink:0;
 }
 
 .fc-image{
-    width:100%;
-    height:100%;
+    max-width:100%;
+    max-height:260px;
     object-fit:contain;
-    border-radius:24px;
+    border-radius:18px;
 }
 
 .fc-placeholder{
@@ -427,7 +430,12 @@ body{
                 <div class="fc-inner">
 
                     <div class="fc-face fc-front" id="fc-front">
-                        <div class="fc-image-wrap">
+                        <div class="fc-word" id="fc-word-front" style="text-align:center;"></div>
+                    </div>
+
+                    <div class="fc-face fc-back">
+
+                        <div class="fc-image-wrap" id="fc-image-wrap">
 
                             <img
                                 id="fc-image"
@@ -437,16 +445,13 @@ body{
                                 style="display:none;"
                             >
 
-                            <div class="fc-placeholder" id="fc-placeholder">
+                            <div class="fc-placeholder" id="fc-placeholder" style="display:none;">
                                 <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4-4 4 4 8-8"/>
                                 </svg>
                             </div>
 
                         </div>
-                    </div>
-
-                    <div class="fc-face fc-back">
 
                         <div class="fc-word" id="fc-word"></div>
 
@@ -518,6 +523,7 @@ var flipped = false;
 var cardEl = document.getElementById('fc-card');
 var imageEl = document.getElementById('fc-image');
 var placeholderEl = document.getElementById('fc-placeholder');
+var wordFrontEl = document.getElementById('fc-word-front');
 var wordEl = document.getElementById('fc-word');
 var translationEl = document.getElementById('fc-translation');
 
@@ -614,6 +620,7 @@ function renderCard(){
     var word = getWord(card);
     var translation = getTranslation(card);
 
+    wordFrontEl.textContent = word;
     wordEl.textContent = word;
     translationEl.textContent = translation;
 
@@ -627,7 +634,7 @@ function renderCard(){
     }else{
 
         imageEl.style.display = 'none';
-        placeholderEl.style.display = 'flex';
+        placeholderEl.style.display = 'none';
 
     }
 
