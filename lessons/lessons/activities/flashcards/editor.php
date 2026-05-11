@@ -846,20 +846,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const form = document.getElementById('flashcardsForm');
     if (form) {
-        form.addEventListener('submit', function (e) {
-            var cards = Array.from(document.querySelectorAll('#cardsContainer .card-item'));
-            for (var i = 0; i < cards.length; i++) {
-                var textEl = cards[i].querySelector('input[name="text[]"]');
-                var audioEl = cards[i].querySelector('input[name="audio[]"]');
-                var text = textEl ? textEl.value.trim() : '';
-                var audio = audioEl ? String(audioEl.value || '').trim() : '';
-                if (text !== '' && audio === '') {
-                    alert('Card ' + (i + 1) + ': Generate ElevenLabs audio before saving.');
-                    if (textEl) textEl.focus();
-                    e.preventDefault();
-                    return false;
-                }
-            }
+        form.addEventListener('submit', function () {
             formSubmitted = true;
             formChanged = false;
         });
