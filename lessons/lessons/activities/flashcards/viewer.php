@@ -663,9 +663,13 @@ function renderCard(){
     if (backImg) {
         backImageEl.src = backImg;
         backImageWrapEl.style.display = 'flex';
+        wordEl.style.display = 'none';
+        translationEl.style.display = 'none';
     } else {
         backImageEl.src = '';
         backImageWrapEl.style.display = 'none';
+        wordEl.style.display = '';
+        translationEl.style.display = '';
     }
 
     flipped = false;
