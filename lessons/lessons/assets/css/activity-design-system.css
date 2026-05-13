@@ -859,3 +859,96 @@ body.presentation-mode .ds-media-img,
 body.fullscreen-embedded .ds-media-img {
   max-height: calc(100vh - 20mm - 190px);
 }
+
+
+/* ═══════════════════════════════════════════════════════════════
+   FULLSCREEN LAYOUT — Universal shell rules
+   Every viewer shell fills 100 % of .viewer-content so the page
+   never scrolls and buttons are always visible.
+═══════════════════════════════════════════════════════════════ */
+
+.fc-shell,
+.flashcards-wrap,
+.mc-viewer,
+.dd-stage,
+.lo-stage,
+.vc-viewer,
+.dict-stage,
+.pron-stage,
+.match-stage,
+.qz-wrap,
+.flipbook-viewer,
+.ppt-viewer-shell,
+.ex-viewer,
+.wp-viewer-wrap,
+.roleplay-shell,
+.unscramble-shell,
+.hangman-shell,
+.order-shell,
+.memory-shell,
+.coloring-shell,
+.dot-shell,
+.tracing-shell,
+.crossword-shell,
+.qa-shell {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
+}
+
+/* Inner scrollable content areas — grow to fill, allow scroll */
+.fc-shell .cards-area,
+.flashcards-wrap .cards-area,
+.mc-viewer .mc-card,
+.dd-stage .drop-zone-wrap,
+.dd-stage .stage-board,
+.lo-stage .lo-board,
+.vc-viewer .vc-panel,
+.dict-stage .dict-board,
+.pron-stage .pron-board,
+.match-stage .match-board,
+.qz-wrap .qz-body,
+.flipbook-viewer .flipbook-viewer__card,
+.ppt-viewer-shell .ppt-body,
+.ex-viewer .ex-body,
+.wp-viewer-wrap .wp-body,
+.roleplay-shell .roleplay-body,
+.unscramble-shell .unscramble-board,
+.hangman-shell .hangman-board,
+.order-shell .order-board,
+.memory-shell .memory-board,
+.coloring-shell .coloring-board,
+.dot-shell .dot-board,
+.tracing-shell .tracing-board,
+.crossword-shell .crossword-board,
+.qa-shell .qa-body {
+  flex: 1;
+  overflow: auto;
+  min-height: 0;
+}
+
+/* Button bars / nav rows — never shrink, always visible */
+.fc-shell .fc-nav,
+.mc-viewer .mc-controls,
+.dd-stage .dd-controls,
+.lo-stage .lo-controls,
+.vc-viewer .vc-controls,
+.dict-stage .dict-controls,
+.pron-stage .pron-controls,
+.match-stage .match-controls,
+.qz-wrap .qz-actions,
+.flipbook-viewer .flipbook-toolbar,
+.ppt-viewer-shell .ppt-controls,
+.ex-viewer .ex-actions,
+.wp-viewer-wrap .wp-controls,
+.roleplay-shell .roleplay-controls,
+.unscramble-shell .unscramble-controls,
+.hangman-shell .hangman-controls,
+.order-shell .order-controls,
+.memory-shell .memory-controls,
+.qa-shell .qa-controls {
+  flex-shrink: 0;
+}

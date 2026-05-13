@@ -76,10 +76,13 @@ body.presentation-mode .viewer-content > :is(div, section) {
     width: 100%;
 }
 
-body.presentation-mode .viewer-content 
-:is(.mc-viewer, .dd-stage, .lo-stage, .vc-viewer, .dict-stage, 
-    .pron-stage, .match-stage, .flashcards-wrap, .qz-wrap, 
-    .flipbook-viewer, .ppt-viewer-shell, .ex-viewer, .wp-viewer-wrap) {
+body.presentation-mode .viewer-content
+:is(.mc-viewer, .dd-stage, .lo-stage, .vc-viewer, .dict-stage,
+    .pron-stage, .match-stage, .flashcards-wrap, .fc-shell, .qz-wrap,
+    .flipbook-viewer, .ppt-viewer-shell, .ex-viewer, .wp-viewer-wrap,
+    .roleplay-shell, .unscramble-shell, .hangman-shell, .order-shell,
+    .memory-shell, .coloring-shell, .dot-shell, .tracing-shell,
+    .crossword-shell, .qa-shell) {
     max-width: 100% !important;
     width: 100% !important;
     height: 100% !important;
@@ -395,5 +398,5 @@ body.presentation-mode .activity-wrapper,
 body.presentation-mode .viewer-content {
     width: 100vw !important;
     max-width: 100vw !important;
-    overflow: visible !important;
+    overflow: hidden !important;
 }
