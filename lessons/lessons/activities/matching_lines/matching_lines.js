@@ -82,18 +82,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const image = side === 'left' ? esc(pair.left_image || '') : esc(pair.right_image || '');
     const mediaClass = side === 'left' ? 'mlv-media mlv-media-left' : 'mlv-media mlv-media-right';
     const media = image !== '' ? '<img class="' + mediaClass + '" src="' + image + '" alt="item">' : '';
-    const plainText = String(side === 'left' ? (pair.left_text || '') : (pair.right_text || '')).trim();
-    const wordCount = plainText === '' ? 0 : plainText.split(/\s+/).length;
-    const textLength = plainText.length;
-    let sizeClass = 'mlv-text-word';
-
-    if (wordCount >= 4 || textLength >= 28) {
-      sizeClass = 'mlv-text-sentence';
-    } else if (wordCount >= 2 || textLength >= 14) {
-      sizeClass = 'mlv-text-phrase';
-    }
-
-    const label = text !== '' ? '<div class="mlv-text ' + sizeClass + '">' + text + '</div>' : '';
+    const label = text !== '' ? '<div class="mlv-text">' + text + '</div>' : '';
     const sideClass = side === 'left' ? 'mlv-card-left' : 'mlv-card-right';
     const imageOnlyClass = image !== '' && text === '' ? ' image-only' : '';
 
