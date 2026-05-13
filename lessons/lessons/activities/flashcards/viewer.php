@@ -119,6 +119,7 @@ body{
     display:flex;
     flex-direction:column;
     gap:18px;
+    min-height:100%;
 }
 
 .fc-header{
@@ -165,15 +166,17 @@ body{
     border-radius:32px;
     padding:18px;
     box-shadow:0 8px 40px rgba(127,119,221,.12);
-    display:flex;
-    flex-direction:column;
+    display:grid;
+    grid-template-rows:auto minmax(0,1fr) auto;
+    gap:14px;
+    flex:1;
+    min-height:0;
 }
 
 .fc-progress{
     display:flex;
     align-items:center;
     gap:10px;
-    margin-bottom:18px;
     flex-shrink:0;
 }
 
@@ -208,7 +211,10 @@ body{
     position:relative;
     border-radius:30px;
     perspective:1000px;
-    height:clamp(260px,40vh,420px);
+    height:100%;
+    min-height:clamp(220px,34vh,320px);
+    max-height:min(420px,calc(100vh - 320px));
+    min-width:0;
 }
 
 .fc-inner{
@@ -238,7 +244,7 @@ body{
     display:flex;
     align-items:center;
     justify-content:center;
-    padding:32px;
+    padding:clamp(16px,2.4vw,28px);
     text-align:center;
     cursor:pointer;
 }
@@ -251,7 +257,7 @@ body{
     flex-direction:column;
     align-items:center;
     justify-content:center;
-    padding:24px;
+    padding:clamp(16px,2.2vw,24px);
     text-align:center;
     gap:14px;
     cursor:pointer;
@@ -263,11 +269,14 @@ body{
     display:flex;
     align-items:center;
     justify-content:center;
+    min-height:0;
 }
 
 .fc-image{
-    width:100%;
-    height:100%;
+    max-width:100%;
+    max-height:100%;
+    width:auto;
+    height:auto;
     object-fit:contain;
     border-radius:24px;
 }
@@ -325,7 +334,6 @@ body{
     justify-content:center;
     gap:10px;
     flex-wrap:wrap;
-    margin-top:18px;
     flex-shrink:0;
 }
 
@@ -402,10 +410,12 @@ body{
     .fc-board{
         border-radius:24px;
         padding:14px;
+        gap:12px;
     }
 
     .fc-card{
-        min-height:0;
+        min-height:190px;
+        max-height:min(320px,calc(100vh - 280px));
     }
 
     .fc-inner{
