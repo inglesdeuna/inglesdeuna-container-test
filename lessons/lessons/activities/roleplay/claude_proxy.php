@@ -8,6 +8,17 @@ if (session_status() === PHP_SESSION_NONE) session_start();
 
 header('Content-Type: application/json');
 
+$isAuth = !empty($_SESSION['admin_logged'])
+    || !empty($_SESSION['academic_logged'])
+    || !empty($_SESSION['teacher_logged'])
+    || !empty($_SESSION['student_logged']);
+
+if (!$isAuth) {
+    http_response_code(403);
+    echo json_encode(['error' => 'Unauthorized']);
+    exit;
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(204);
     exit;
@@ -102,7 +113,7 @@ curl_setopt_array($ch, [
 $result   = curl_exec($ch);
 $httpCode = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
 $curlErr  = curl_error($ch);
-curl_close($ch);
+unset($ch);
 
 if ($curlErr !== '') {
     http_response_code(502);

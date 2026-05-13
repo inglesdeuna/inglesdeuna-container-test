@@ -1,5 +1,24 @@
 <?php
+require_once __DIR__ . '/../../config/db.php';
 require_once __DIR__ . '/../../core/_activity_viewer_template.php';
+
+$activityId = isset($_GET['id']) ? trim((string) $_GET['id']) : '';
+
+$savedScene = null;
+$savedTurns = null;
+
+if ($activityId !== '') {
+    $stmt = $pdo->prepare("SELECT data FROM activities WHERE id = :id LIMIT 1");
+    $stmt->execute(['id' => $activityId]);
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+    if ($row && !empty($row['data'])) {
+        $parsed = json_decode($row['data'], true);
+        if (is_array($parsed)) {
+            $savedScene = $parsed['scene'] ?? null;
+            $savedTurns = $parsed['turns'] ?? null;
+        }
+    }
+}
 
 ob_start();
 ?>
@@ -15,6 +34,12 @@ ob_start();
 <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+<script>
+window.ROLEPLAY_ACTIVITY_ID = <?= json_encode($activityId) ?>;
+window.ROLEPLAY_SAVED_SCENE  = <?= json_encode($savedScene) ?>;
+window.ROLEPLAY_SAVED_TURNS  = <?= json_encode($savedTurns) ?>;
+</script>
 
 <script type="text/babel">
 const { useState, useRef, useEffect, useCallback } = React;
@@ -303,7 +328,25 @@ const inputStyle = {
   outline: "none", background: C.bgCard, boxSizing: "border-box",
 };
 
+async function saveActivity(scene, turns) {
+  const id = window.ROLEPLAY_ACTIVITY_ID;
+  if (!id) return { ok: false, error: "No activity ID" };
+  try {
+    const r = await fetch("save.php", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, scene, turns }),
+    });
+    return await r.json();
+  } catch (e) {
+    return { ok: false, error: String(e) };
+  }
+}
+
 function EditorView({ scene, turns, onSceneChange, onTurnsChange, onStart }) {
+  const [saving, setSaving] = useState(false);
+  const [saveMsg, setSaveMsg] = useState("");
+
   const addTurn = () => onTurnsChange([...turns, { agent: "", hint: "", ideal: "", criteria: "" }]);
   const deleteTurn = i => {
     if (turns.length <= 1) return;
@@ -311,6 +354,14 @@ function EditorView({ scene, turns, onSceneChange, onTurnsChange, onStart }) {
   };
   const updateTurn = (i, key, val) => {
     const t = [...turns]; t[i] = { ...t[i], [key]: val }; onTurnsChange(t);
+  };
+
+  const handleSave = async () => {
+    setSaving(true); setSaveMsg("");
+    const res = await saveActivity(scene, turns);
+    setSaving(false);
+    setSaveMsg(res.ok ? "✓ Guardado" : "✗ Error al guardar");
+    setTimeout(() => setSaveMsg(""), 3000);
   };
 
   return (
@@ -393,6 +444,19 @@ function EditorView({ scene, turns, onSceneChange, onTurnsChange, onStart }) {
           background: "transparent", cursor: "pointer", fontFamily: "'Nunito', sans-serif",
           fontSize: 13, fontWeight: 800, color: C.purpleSub, marginBottom: 14,
         }}>＋ Add Turn</button>
+
+        {window.ROLEPLAY_ACTIVITY_ID && (
+          <div style={{ display: "flex", gap: 8, marginBottom: 10, alignItems: "center" }}>
+            <Btn onClick={handleSave} color={C.purple} disabled={saving} style={{ flex: 1 }}>
+              {saving ? "Guardando…" : "💾 Guardar"}
+            </Btn>
+            {saveMsg && (
+              <span style={{ fontSize: 13, fontWeight: 700, color: saveMsg.startsWith("✓") ? C.greenText : "#DC2626" }}>
+                {saveMsg}
+              </span>
+            )}
+          </div>
+        )}
 
         <Btn onClick={onStart}>▶ Start Roleplay</Btn>
       </div>
@@ -802,8 +866,8 @@ function ReplayView({ scene, turns, results, onBack }) {
 // ── ROOT APP ──────────────────────────────────────────────────
 function RoleplayActivity() {
   const [view, setView] = useState("editor");
-  const [scene, setScene] = useState(DEFAULT_SCENE);
-  const [turns, setTurns] = useState(JSON.parse(JSON.stringify(DEFAULT_TURNS)));
+  const [scene, setScene] = useState(window.ROLEPLAY_SAVED_SCENE || DEFAULT_SCENE);
+  const [turns, setTurns] = useState(window.ROLEPLAY_SAVED_TURNS || JSON.parse(JSON.stringify(DEFAULT_TURNS)));
   const [results, setResults] = useState([]);
 
   return (
