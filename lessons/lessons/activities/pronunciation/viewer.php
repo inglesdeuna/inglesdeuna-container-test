@@ -173,11 +173,11 @@ ob_start();
 *{box-sizing:border-box}
 html,body{width:100%;min-height:100%}
 body{margin:0!important;padding:0!important;background:#ffffff!important;font-family:'Nunito','Segoe UI',sans-serif!important}
-.activity-wrapper{max-width:100%!important;margin:0!important;padding:0!important;min-height:100vh;display:flex!important;flex-direction:column!important;background:transparent!important}
+.activity-wrapper{max-width:100%!important;margin:0!important;padding:0!important;min-height:0;display:flex!important;flex-direction:column!important;background:transparent!important}
 .top-row{display:none!important}
-.viewer-content{flex:1!important;display:flex!important;flex-direction:column!important;padding:0!important;margin:0!important;background:transparent!important;border:none!important;box-shadow:none!important;border-radius:0!important}
+.viewer-content{flex:1!important;display:flex!important;flex-direction:column!important;min-height:0!important;padding:0!important;margin:0!important;background:transparent!important;border:none!important;box-shadow:none!important;border-radius:0!important}
 
-.pron-shell{width:100%;min-height:calc(100vh - 90px);padding:clamp(14px,2.5vw,34px);display:flex;align-items:flex-start;justify-content:center;background:#ffffff;font-family:'Nunito','Segoe UI',sans-serif}
+.pron-shell{width:100%;flex:1;min-height:0;overflow-y:auto;padding:clamp(14px,2.5vw,34px);display:flex;align-items:flex-start;justify-content:center;background:#ffffff;font-family:'Nunito','Segoe UI',sans-serif}
 .pron-app{width:min(760px,100%);margin:0 auto}
 .pron-board{width:min(760px,100%);margin:0 auto;background:#ffffff;border:1px solid #F0EEF8;border-radius:34px;padding:clamp(16px,2.6vw,26px);box-shadow:0 8px 40px rgba(127,119,221,.13)}
 .pron-header{text-align:center;margin-bottom:14px}

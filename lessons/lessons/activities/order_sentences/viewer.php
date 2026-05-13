@@ -174,7 +174,7 @@ body {
     max-width: 100% !important;
     margin: 0 !important;
     padding: 0 !important;
-    min-height: 100vh;
+    min-height: 0;
     display: flex !important;
     flex-direction: column !important;
     background: transparent !important;
@@ -188,6 +188,7 @@ body {
     flex: 1 !important;
     display: flex !important;
     flex-direction: column !important;
+    min-height: 0 !important;
     padding: 0 !important;
     margin: 0 !important;
     background: transparent !important;
@@ -198,7 +199,9 @@ body {
 
 .os-page {
     width: 100%;
-    min-height: 100vh;
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
     padding: clamp(14px, 2.5vw, 34px);
     display: flex;
     align-items: flex-start;

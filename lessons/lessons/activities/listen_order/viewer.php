@@ -86,10 +86,10 @@ ob_start();
 *{box-sizing:border-box}
 html,body{width:100%;min-height:100%}
 body{margin:0!important;padding:0!important;background:#fff!important;font-family:'Nunito',sans-serif!important}
-.activity-wrapper{max-width:100%!important;margin:0!important;padding:0!important;min-height:100vh;display:flex!important;flex-direction:column!important;background:transparent!important}
+.activity-wrapper{max-width:100%!important;margin:0!important;padding:0!important;min-height:0;display:flex!important;flex-direction:column!important;background:transparent!important}
 .top-row{display:none!important}
-.viewer-content{flex:1!important;display:flex!important;flex-direction:column!important;padding:0!important;margin:0!important;background:transparent!important;border:none!important;box-shadow:none!important;border-radius:0!important}
-.lo-shell{width:100%;min-height:calc(100vh - 90px);padding:clamp(14px,2.5vw,34px);display:flex;align-items:flex-start;justify-content:center;background:#fff;overflow:visible}
+.viewer-content{flex:1!important;display:flex!important;flex-direction:column!important;min-height:0!important;padding:0!important;margin:0!important;background:transparent!important;border:none!important;box-shadow:none!important;border-radius:0!important}
+.lo-shell{width:100%;flex:1;min-height:0;overflow-y:auto;padding:clamp(14px,2.5vw,34px);display:flex;align-items:flex-start;justify-content:center;background:#fff}
 .lo-app{width:min(980px,100%);margin:0 auto;display:flex;flex-direction:column}
 .lo-hero{text-align:center;margin-bottom:clamp(14px,2vw,22px)}
 .lo-kicker{display:inline-flex;align-items:center;justify-content:center;margin-bottom:10px;padding:7px 14px;border-radius:999px;background:#FFF0E6;border:1px solid #FCDDBF;color:#C2580A;font-size:12px;font-weight:900;letter-spacing:.08em;text-transform:uppercase}

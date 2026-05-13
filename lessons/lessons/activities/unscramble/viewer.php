@@ -185,10 +185,10 @@ ob_start();
 :root{--us-orange:#F97316;--us-purple:#7F77DD;--us-purple-dark:#534AB7;--us-purple-soft:#EEEDFE;--us-lila:#EDE9FA;--us-muted:#9B94BE;--us-green:#16a34a;--us-red:#dc2626}
 html,body{width:100%;min-height:100%}
 body{margin:0!important;padding:0!important;background:#fff!important;font-family:'Nunito','Segoe UI',sans-serif!important}
-.activity-wrapper{max-width:100%!important;margin:0!important;padding:0!important;min-height:100vh;display:flex!important;flex-direction:column!important;background:transparent!important}
+.activity-wrapper{max-width:100%!important;margin:0!important;padding:0!important;min-height:0;display:flex!important;flex-direction:column!important;background:transparent!important}
 .top-row,.activity-header,.activity-title,.activity-subtitle{display:none!important}
-.viewer-content{flex:1!important;display:flex!important;flex-direction:column!important;padding:0!important;margin:0!important;background:transparent!important;border:none!important;box-shadow:none!important;border-radius:0!important}
-.us-page{width:100%;min-height:100vh;padding:clamp(14px,2.5vw,34px);display:flex;align-items:flex-start;justify-content:center;background:#fff;box-sizing:border-box}
+.viewer-content{flex:1!important;display:flex!important;flex-direction:column!important;min-height:0!important;padding:0!important;margin:0!important;background:transparent!important;border:none!important;box-shadow:none!important;border-radius:0!important}
+.us-page{width:100%;flex:1;min-height:0;overflow-y:auto;padding:clamp(14px,2.5vw,34px);display:flex;align-items:flex-start;justify-content:center;background:#fff;box-sizing:border-box}
 .us-app{width:min(860px,100%);margin:0 auto}
 .us-topbar{height:36px;display:flex;align-items:center;justify-content:center;margin-bottom:8px}
 .us-topbar-title{font-family:'Nunito',sans-serif;font-size:12px;font-weight:900;color:#9B94BE;letter-spacing:.1em;text-transform:uppercase}

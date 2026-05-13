@@ -122,7 +122,7 @@ html,body{width:100%;min-height:100%}
 body{
   margin:0!important;
   padding:0!important;
-  min-height:100vh;
+  min-height:0;
   font-family:'Nunito','Segoe UI',sans-serif;
   background:#ffffff;
   color:#534AB7;
@@ -131,7 +131,9 @@ body{
 
 .hg-shell{
   width:100%;
-  min-height:100vh;
+  flex:1;
+  min-height:0;
+  overflow-y:auto;
   padding:clamp(14px,2.5vw,34px);
   display:flex;
   justify-content:center;
