@@ -611,6 +611,43 @@ function PlayerView({ scene, turns, onComplete, onBack }) {
   const [feedback, setFeedback] = useState(null);
   const [lastTranscript, setLastTranscript] = useState("");
   const [results, setResults] = useState([]);
+  const [voiceId, setVoiceId] = useState("nzFihrBIvB34imQBuxub");
+  const [ttsState, setTtsState] = useState("idle"); // "idle" | "loading" | "playing"
+  const currentAudioRef = useRef(null);
+
+  const speakAgentLine = useCallback(async (text) => {
+    if (currentAudioRef.current) {
+      currentAudioRef.current.pause();
+      currentAudioRef.current = null;
+    }
+    setTtsState("loading");
+    try {
+      const fd = new FormData();
+      fd.append("text", text);
+      fd.append("voice_id", voiceId);
+      const res = await fetch("tts.php", { method: "POST", body: fd, credentials: "same-origin" });
+      if (!res.ok) throw new Error("TTS error " + res.status);
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const audio = new Audio(url);
+      currentAudioRef.current = audio;
+      setTtsState("playing");
+      audio.onended = () => { URL.revokeObjectURL(url); setTtsState("idle"); currentAudioRef.current = null; };
+      audio.onerror = () => { URL.revokeObjectURL(url); setTtsState("idle"); currentAudioRef.current = null; };
+      audio.play();
+    } catch (e) {
+      setTtsState("idle");
+    }
+  }, [voiceId]);
+
+  // Auto-play agent line whenever a new AI message is added
+  useEffect(() => {
+    const last = messages[messages.length - 1];
+    if (last && last.role === "ai") speakAgentLine(last.text);
+  }, [messages.length]); // eslint-disable-line
+
+  // Stop audio on unmount
+  useEffect(() => () => { if (currentAudioRef.current) currentAudioRef.current.pause(); }, []);
 
   const handleSubmit = async (transcript) => {
     setMessages(m => [...m, { role: "you", text: transcript }]);
@@ -633,7 +670,25 @@ function PlayerView({ scene, turns, onComplete, onBack }) {
 
   return (
     <div style={{ background: C.bg, minHeight: "100%" }}>
-      <Topbar title="🎭 Roleplay" right={<ProgressBar value={currentTurn} total={turns.length} />} />
+      <Topbar title="🎭 Roleplay" right={
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <select
+            value={voiceId}
+            onChange={e => setVoiceId(e.target.value)}
+            style={{
+              background: C.white, border: `1.5px solid #EDE9FA`,
+              borderRadius: 10, fontFamily: "'Nunito', sans-serif",
+              fontSize: 13, color: C.purple, padding: "6px 12px",
+              outline: "none", cursor: "pointer",
+            }}
+          >
+            <option value="nzFihrBIvB34imQBuxub">🎙 Adult Male</option>
+            <option value="NoOVOzCQFLOvtsMoNcdT">🎙 Adult Female</option>
+            <option value="Nggzl2QAXh3OijoXD116">🎙 Child</option>
+          </select>
+          <ProgressBar value={currentTurn} total={turns.length} />
+        </div>
+      } />
       <div style={{ maxWidth: 680, margin: "0 auto", padding: "20px 16px 60px" }}>
         <Kicker>Speaking activity</Kicker>
 
@@ -670,8 +725,23 @@ function PlayerView({ scene, turns, onComplete, onBack }) {
 
         {phase === "record" && (
           <>
-            <div style={{ background: C.bg, border: `1.5px dashed ${C.purpleMid}`, borderRadius: 14, padding: "10px 16px", textAlign: "center", fontSize: 13, fontWeight: 700, color: C.purple, marginBottom: 14 }}>
-              🎙️ Your turn — speak your response below
+            <div style={{ background: C.bg, border: `1.5px dashed ${C.purpleMid}`, borderRadius: 14, padding: "10px 16px", fontSize: 13, fontWeight: 700, color: C.purple, marginBottom: 14, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+              <span>🎙️ Your turn — speak your response below</span>
+              <button
+                onClick={() => speakAgentLine(turns[currentTurn].agent)}
+                disabled={ttsState !== "idle"}
+                style={{
+                  background: ttsState !== "idle" ? C.purpleLight : C.purple,
+                  color: ttsState !== "idle" ? C.purpleSub : C.white,
+                  border: "none", borderRadius: 10, padding: "6px 14px",
+                  fontFamily: "'Nunito', sans-serif", fontWeight: 700, fontSize: 12,
+                  cursor: ttsState !== "idle" ? "not-allowed" : "pointer",
+                  display: "flex", alignItems: "center", gap: 5, flexShrink: 0,
+                  transition: "background .15s",
+                }}
+              >
+                {ttsState === "loading" ? "⏳ Loading…" : ttsState === "playing" ? "🔊 Playing…" : "🔊 Listen"}
+              </button>
             </div>
             <RecorderCard turn={turns[currentTurn]} turnIndex={currentTurn} totalTurns={turns.length} onSubmit={handleSubmit} />
           </>
