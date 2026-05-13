@@ -669,60 +669,105 @@ function Messages({ messages }) {
 }
 
 // ── RECORDER CARD ─────────────────────────────────────────────
-function RecorderCard({ turn, turnIndex, totalTurns, onSubmit }) {
+function RecorderCard({ turn, turnIndex, totalTurns, onSubmit, scene, ttsState, speakAgentLine, onBack }) {
   const rec = useRecorder();
+  const [showTyping, setShowTyping] = useState(false);
+  const [typedText, setTypedText] = useState("");
   const displayText = (rec.finalText + rec.interimText).trim();
-  const fmt = s => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+  const canSubmit = rec.hasRecorded || typedText.trim() !== "";
+  const muted = "#9B8FCC";
+  const ink = "#1e1b2e";
 
   const handleSubmit = () => {
-    const t = displayText || "";
-    if (!t) { alert("No speech detected. Please record again."); rec.reset(); return; }
+    const t = displayText || typedText.trim();
+    if (!t) { alert("Please speak or type your response."); return; }
     onSubmit(t);
   };
 
   return (
-    <Card>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-        <span style={{ fontSize: 12, fontWeight: 800, color: C.purple, textTransform: "uppercase", letterSpacing: ".05em" }}>🎙️ Your response</span>
-        <span style={{ fontSize: 11, color: C.purpleSub, fontWeight: 700 }}>Turn {turnIndex + 1} of {totalTurns}</span>
-      </div>
+    <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
 
-      <div style={{ background: C.orangeLight, borderRadius: 12, padding: "8px 12px", fontSize: 13, color: C.orangeMid, fontWeight: 600, marginBottom: 10, display: "flex", gap: 8 }}>
-        <span>💬</span><span>{turn.hint}</span>
-      </div>
-
-      <div style={{ background: C.bg, border: `1.5px solid ${C.cardBorder}`, borderRadius: 12, minHeight: 52, padding: "8px 12px", marginBottom: 10 }}>
-        <div style={{ fontSize: 10, fontWeight: 800, color: C.purpleSub, textTransform: "uppercase", letterSpacing: ".05em", marginBottom: 3, display: "flex", alignItems: "center", gap: 5 }}>
-          <span style={{ width: 6, height: 6, borderRadius: "50%", background: rec.isRecording ? C.orange : C.purpleMid, display: "inline-block", animation: rec.isRecording ? "rp-pulse .8s infinite" : "none" }} />
-          {rec.isRecording ? "Listening…" : rec.hasRecorded ? "Speech captured" : "Tap record to start speaking"}
+      {/* 1. PROGRESS BAR */}
+      <div>
+        <div style={{ height: 7, background: C.purpleLight, borderRadius: 999 }}>
+          <div style={{ height: "100%", width: `${((turnIndex + 1) / totalTurns) * 100}%`, background: `linear-gradient(90deg,${C.orange},${C.purple})`, borderRadius: 999, transition: "width .4s" }} />
         </div>
-        <div style={{ fontSize: 13, fontWeight: 600, color: rec.interimText ? C.purpleSub : "#333", fontStyle: rec.interimText ? "italic" : "normal", minHeight: 20, lineHeight: 1.5 }}>
-          {displayText || ""}
+        <div style={{ textAlign: "right", fontSize: 11, fontWeight: 800, color: muted, marginTop: 4 }}>
+          {turnIndex + 1} of {totalTurns} turns
         </div>
       </div>
 
-      <Waveform active={rec.isRecording} analyserRef={rec.analyserRef} />
+      {/* 2. AGENT CARD */}
+      <div style={{ background: C.purpleLight, borderRadius: 18, border: `1.5px solid ${C.cardBorder}`, padding: "14px 16px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
+          <div style={{ width: 32, height: 32, borderRadius: "50%", background: C.purple, color: C.white, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Fredoka',sans-serif", fontSize: 15, fontWeight: 700, flexShrink: 0 }}>
+            {(scene.agentName || "A")[0].toUpperCase()}
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontFamily: "'Fredoka',sans-serif", fontSize: 14, color: C.purple, fontWeight: 600, lineHeight: 1.2 }}>{scene.agentName || "Agent"}</div>
+            <div style={{ fontSize: 10, fontWeight: 800, color: muted, textTransform: "uppercase", letterSpacing: ".05em" }}>{scene.agentRole || "Character"}</div>
+          </div>
+          <button onClick={() => speakAgentLine(turn.agent)} disabled={ttsState !== "idle"} style={{ background: ttsState !== "idle" ? C.purpleMid : C.purple, color: C.white, border: "none", borderRadius: 12, padding: "8px 14px", fontSize: 12, fontWeight: 800, fontFamily: "'Nunito',sans-serif", cursor: ttsState !== "idle" ? "not-allowed" : "pointer", display: "flex", alignItems: "center", gap: 5, flexShrink: 0 }}>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            {ttsState === "loading" ? "Loading…" : ttsState === "playing" ? "Playing…" : "Listen"}
+          </button>
+        </div>
+        <div style={{ background: C.white, border: `1.5px solid ${C.cardBorder}`, borderRadius: "0 16px 16px 16px", padding: "12px 14px", fontSize: 13, fontWeight: 700, color: ink, lineHeight: 1.6 }}>
+          {turn.agent}
+        </div>
+      </div>
 
-      {rec.isRecording && (
-        <div style={{ textAlign: "right", fontSize: 11, fontWeight: 700, color: C.purple, marginBottom: 8, marginTop: -4 }}>
-          {fmt(rec.recSecs)}
+      {/* 3. HINT BOX */}
+      {turn.hint !== "" && (
+        <div style={{ background: "#FFF0E6", border: "1.5px solid #FCDDBF", borderRadius: 14, padding: "10px 14px", display: "flex", gap: 10, alignItems: "flex-start" }}>
+          <span style={{ fontSize: 18, flexShrink: 0, lineHeight: 1.2 }}>💡</span>
+          <div>
+            <div style={{ fontSize: 10, fontWeight: 800, color: C.orange, textTransform: "uppercase", letterSpacing: ".05em", marginBottom: 2 }}>HINT</div>
+            <div style={{ fontSize: 12, fontWeight: 700, color: "#C2580A", lineHeight: 1.5 }}>{turn.hint}</div>
+          </div>
         </div>
       )}
 
-      <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-        {!rec.hasRecorded ? (
-          <Btn onClick={rec.isRecording ? rec.stop : rec.start}
-            color={rec.isRecording ? "#EF4444" : C.purple}>
-            {rec.isRecording ? "⏹️ Stop recording" : "🎙️ Start speaking"}
-          </Btn>
-        ) : (
-          <>
-            <Btn color={C.purpleLight} disabled style={{ flex: 1, color: C.purpleSub }}>✓ Recorded</Btn>
-            <Btn onClick={handleSubmit} style={{ flex: 1 }}>Submit →</Btn>
-          </>
-        )}
+      {/* 4. STUDENT AREA */}
+      <div style={{ background: C.white, border: `1.5px solid ${C.cardBorder}`, borderRadius: 18, padding: "14px 16px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+          <div style={{ width: 32, height: 32, borderRadius: "50%", background: C.orangeLight, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, flexShrink: 0 }}>🎓</div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontFamily: "'Fredoka',sans-serif", fontSize: 14, color: C.orange, fontWeight: 600 }}>Your turn</div>
+            <div style={{ fontSize: 10, fontWeight: 800, color: muted, textTransform: "uppercase", letterSpacing: ".05em" }}>{scene.studentRole || "Student"}</div>
+          </div>
+        </div>
+        <div style={{ background: "#F9F8FF", border: "2px dashed #EDE9FA", borderRadius: 16, padding: 20, display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
+          <button onClick={rec.isRecording ? rec.stop : rec.start} style={{ width: 60, height: 60, borderRadius: "50%", border: "none", cursor: "pointer", background: rec.isRecording ? "#EF4444" : C.purple, boxShadow: rec.isRecording ? "0 4px 16px rgba(239,68,68,.3)" : "0 4px 16px rgba(127,119,221,.3)", display: "flex", alignItems: "center", justifyContent: "center", transition: "background .2s" }}>
+            {rec.isRecording
+              ? <svg width="22" height="22" viewBox="0 0 24 24" fill="white"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>
+              : <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+            }
+          </button>
+          <div style={{ fontSize: 12, fontWeight: 800, color: rec.isRecording ? C.orange : muted, textAlign: "center" }}>
+            {rec.isRecording ? "🔴 Listening..." : rec.hasRecorded ? `✓ "${displayText.slice(0, 42)}${displayText.length > 42 ? "…" : ""}"` : "Tap to speak your response"}
+          </div>
+          <div style={{ fontSize: 11, fontWeight: 800, color: muted }}>— or —</div>
+          <button onClick={() => setShowTyping(v => !v)} style={{ background: C.white, border: `1.5px solid ${C.cardBorder}`, borderRadius: 12, padding: "8px 18px", fontSize: 12, fontWeight: 800, color: C.purple, fontFamily: "'Nunito',sans-serif", cursor: "pointer" }}>
+            {showTyping ? "Hide keyboard" : "Type instead"}
+          </button>
+          {showTyping && (
+            <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: 8 }}>
+              <textarea value={typedText} onChange={e => setTypedText(e.target.value)} placeholder="Type your response here..." rows={3} style={{ width: "100%", background: C.white, border: `1.5px solid ${C.cardBorder}`, borderRadius: 14, padding: "10px 14px", fontSize: 13, fontWeight: 700, color: ink, fontFamily: "'Nunito',sans-serif", resize: "none", outline: "none", boxSizing: "border-box", lineHeight: 1.5 }} />
+              <button onClick={() => { if (typedText.trim()) onSubmit(typedText.trim()); }} disabled={!typedText.trim()} style={{ background: typedText.trim() ? C.orange : "#ddd", color: typedText.trim() ? C.white : "#aaa", border: "none", borderRadius: 12, padding: "10px 20px", fontSize: 13, fontWeight: 800, fontFamily: "'Nunito',sans-serif", cursor: typedText.trim() ? "pointer" : "not-allowed" }}>Submit</button>
+            </div>
+          )}
+        </div>
       </div>
-    </Card>
+
+      {/* 5. NAV ROW */}
+      <div style={{ borderTop: `1.5px solid ${C.cardBorder}`, padding: "12px 0 0", display: "flex", justifyContent: "space-between", alignItems: "center", background: C.white, gap: 10 }}>
+        <button onClick={onBack} style={{ background: C.white, border: `1.5px solid ${C.cardBorder}`, color: C.purple, borderRadius: 12, padding: "10px 20px", fontSize: 13, fontWeight: 800, fontFamily: "'Nunito',sans-serif", cursor: "pointer" }}>← Back</button>
+        {!canSubmit && <span style={{ fontSize: 12, fontWeight: 800, color: muted }}>Speak or type to continue</span>}
+        <button onClick={handleSubmit} disabled={!canSubmit} style={{ background: canSubmit ? C.orange : "#ddd", color: canSubmit ? C.white : "#aaa", opacity: canSubmit ? 1 : 0.4, cursor: canSubmit ? "pointer" : "not-allowed", border: "none", borderRadius: 12, padding: "10px 20px", fontSize: 13, fontWeight: 800, fontFamily: "'Nunito',sans-serif" }}>Next →</button>
+      </div>
+
+    </div>
   );
 }
 
