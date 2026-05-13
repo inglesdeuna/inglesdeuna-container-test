@@ -494,6 +494,8 @@ body{
 
 </style>
 
+<div class="flashcards-wrap" style="width:100%;height:100%;min-height:0;display:flex;flex-direction:column;">
+
 <div class="fc-shell">
 
     <div class="fc-app">
@@ -611,6 +613,8 @@ body{
 
 </div>
 
+</div>
+
 <div class="fc-size-warning" id="fc-size-warning" hidden>
     <button class="fc-size-warning-close" id="fc-size-warning-close" aria-label="Close image size warning">&times;</button>
     <p class="fc-size-warning-title">Image too large</p>
@@ -699,7 +703,7 @@ function syncLayout(){
     var boardBorderY = num(boardStyles.borderTopWidth) + num(boardStyles.borderBottomWidth);
     var boardGap = num(boardStyles.gap);
 
-    var viewportHeight = window.innerHeight;
+    var viewportHeight = shellEl && shellEl.clientHeight ? shellEl.clientHeight : window.innerHeight;
     var boardTargetHeight = Math.floor(
         viewportHeight
         - shellPaddingY
