@@ -118,6 +118,7 @@ body{
     margin:0 auto;
     display:flex;
     flex-direction:column;
+    gap:18px;
 }
 
 .fc-header{
@@ -164,8 +165,6 @@ body{
     border-radius:32px;
     padding:18px;
     box-shadow:0 8px 40px rgba(127,119,221,.12);
-    flex:1;
-    min-height:0;
     display:flex;
     flex-direction:column;
 }
@@ -209,6 +208,7 @@ body{
     position:relative;
     border-radius:30px;
     perspective:1000px;
+    height:clamp(260px,40vh,420px);
 }
 
 .fc-inner{
