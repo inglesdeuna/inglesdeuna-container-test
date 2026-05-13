@@ -3,6 +3,9 @@ require_once __DIR__ . '/../../config/db.php';
 require_once __DIR__ . '/../../core/_activity_viewer_template.php';
 
 $activityId = isset($_GET['id']) ? trim((string) $_GET['id']) : '';
+$mode = isset($_GET['mode']) ? trim((string) $_GET['mode']) : '';
+$allowEditor = ($mode === 'edit');
+$startView = $allowEditor ? 'editor' : 'player';
 
 $savedScene = null;
 $savedTurns = null;
@@ -39,6 +42,8 @@ ob_start();
 window.ROLEPLAY_ACTIVITY_ID = <?= json_encode($activityId) ?>;
 window.ROLEPLAY_SAVED_SCENE  = <?= json_encode($savedScene) ?>;
 window.ROLEPLAY_SAVED_TURNS  = <?= json_encode($savedTurns) ?>;
+window.ROLEPLAY_ALLOW_EDITOR = <?= json_encode($allowEditor) ?>;
+window.ROLEPLAY_START_VIEW = <?= json_encode($startView) ?>;
 </script>
 
 <script type="text/babel">
@@ -675,6 +680,7 @@ function RecorderCard({ turn, turnIndex, totalTurns, onSubmit, scene, ttsState, 
   const [typedText, setTypedText] = useState("");
   const displayText = (rec.finalText + rec.interimText).trim();
   const canSubmit = rec.hasRecorded || typedText.trim() !== "";
+  const canGoBack = typeof onBack === "function";
   const muted = "#9B8FCC";
   const ink = "#1e1b2e";
 
@@ -761,8 +767,10 @@ function RecorderCard({ turn, turnIndex, totalTurns, onSubmit, scene, ttsState, 
       </div>
 
       {/* 5. NAV ROW */}
-      <div style={{ borderTop: `1.5px solid ${C.cardBorder}`, padding: "12px 0 0", display: "flex", justifyContent: "space-between", alignItems: "center", background: C.white, gap: 10 }}>
-        <button onClick={onBack} style={{ background: C.white, border: `1.5px solid ${C.cardBorder}`, color: C.purple, borderRadius: 12, padding: "10px 20px", fontSize: 13, fontWeight: 800, fontFamily: "'Nunito',sans-serif", cursor: "pointer" }}>← Back</button>
+      <div style={{ borderTop: `1.5px solid ${C.cardBorder}`, padding: "12px 0 0", display: "flex", justifyContent: canGoBack ? "space-between" : "flex-end", alignItems: "center", background: C.white, gap: 10 }}>
+        {canGoBack && (
+          <button onClick={onBack} style={{ background: C.white, border: `1.5px solid ${C.cardBorder}`, color: C.purple, borderRadius: 12, padding: "10px 20px", fontSize: 13, fontWeight: 800, fontFamily: "'Nunito',sans-serif", cursor: "pointer" }}>← Back</button>
+        )}
         {!canSubmit && <span style={{ fontSize: 12, fontWeight: 800, color: muted }}>Speak or type to continue</span>}
         <button onClick={handleSubmit} disabled={!canSubmit} style={{ background: canSubmit ? C.orange : "#ddd", color: canSubmit ? C.white : "#aaa", opacity: canSubmit ? 1 : 0.4, cursor: canSubmit ? "pointer" : "not-allowed", border: "none", borderRadius: 12, padding: "10px 20px", fontSize: 13, fontWeight: 800, fontFamily: "'Nunito',sans-serif" }}>Next →</button>
       </div>
@@ -1139,14 +1147,16 @@ function ReplayView({ scene, turns, results, onBack }) {
 
 // ── ROOT APP ──────────────────────────────────────────────────
 function RoleplayActivity() {
-  const [view, setView] = useState("editor");
+  const allowEditor = !!window.ROLEPLAY_ALLOW_EDITOR;
+  const initialView = window.ROLEPLAY_START_VIEW === "editor" && allowEditor ? "editor" : "player";
+  const [view, setView] = useState(initialView);
   const [scene, setScene] = useState(window.ROLEPLAY_SAVED_SCENE || DEFAULT_SCENE);
   const [turns, setTurns] = useState(window.ROLEPLAY_SAVED_TURNS || JSON.parse(JSON.stringify(DEFAULT_TURNS)));
   const [results, setResults] = useState([]);
 
   return (
     <div>
-      {view === "editor" && (
+      {allowEditor && view === "editor" && (
         <EditorView
           scene={scene} turns={turns}
           onSceneChange={setScene} onTurnsChange={setTurns}
@@ -1157,7 +1167,7 @@ function RoleplayActivity() {
         <PlayerView
           scene={scene} turns={turns}
           onComplete={r => { setResults(r); setView("completion"); }}
-          onBack={() => setView("editor")}
+          onBack={allowEditor ? () => setView("editor") : null}
         />
       )}
       {view === "completion" && (
