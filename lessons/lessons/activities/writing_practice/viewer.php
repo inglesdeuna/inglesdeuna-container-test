@@ -152,7 +152,9 @@ ob_start();
 
 .wp-shell{
     width:100%;
-    min-height:calc(100vh - 90px);
+    flex:1;
+    min-height:0;
+    overflow-y:auto;
     padding:clamp(14px,2.5vw,34px);
     display:flex;
     align-items:flex-start;
@@ -160,7 +162,6 @@ ob_start();
     font-family:'Nunito','Segoe UI',system-ui,sans-serif;
     background:#ffffff;
     border-radius:16px;
-    overflow:visible;
 }
 
 .wp-app{
