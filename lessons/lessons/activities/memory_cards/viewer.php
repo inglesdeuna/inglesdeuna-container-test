@@ -395,7 +395,7 @@ body{
 }
 
 .mc-app{
-    width:min(1160px,100%);
+    width:min(980px,100%);
     height:100%;
     min-height:0;
     margin:0 auto;
