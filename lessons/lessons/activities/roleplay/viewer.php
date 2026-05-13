@@ -906,87 +906,50 @@ function PlayerView({ scene, turns, onComplete, onBack }) {
   return (
     <div style={{ background: C.bg, minHeight: "100%" }}>
       <Topbar title="🎭 Roleplay" right={
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <select
-            value={voiceId}
-            onChange={e => setVoiceId(e.target.value)}
-            style={{
-              background: C.white, border: `1.5px solid #EDE9FA`,
-              borderRadius: 10, fontFamily: "'Nunito', sans-serif",
-              fontSize: 13, color: C.purple, padding: "6px 12px",
-              outline: "none", cursor: "pointer",
-            }}
-          >
-            <option value="nzFihrBIvB34imQBuxub">🎙 Adult Male</option>
-            <option value="NoOVOzCQFLOvtsMoNcdT">🎙 Adult Female</option>
-            <option value="Nggzl2QAXh3OijoXD116">🎙 Child</option>
-          </select>
-          <ProgressBar value={currentTurn} total={turns.length} />
-        </div>
+        <select value={voiceId} onChange={e => setVoiceId(e.target.value)} style={{ background: C.white, border: "1.5px solid #EDE9FA", borderRadius: 10, fontFamily: "'Nunito',sans-serif", fontSize: 13, color: C.purple, padding: "6px 12px", outline: "none", cursor: "pointer" }}>
+          <option value="nzFihrBIvB34imQBuxub">🎙 Adult Male</option>
+          <option value="NoOVOzCQFLOvtsMoNcdT">🎙 Adult Female</option>
+          <option value="Nggzl2QAXh3OijoXD116">🎙 Child</option>
+        </select>
       } />
-      <div style={{ maxWidth: 680, margin: "0 auto", padding: "20px 16px 60px" }}>
-        <Kicker>Speaking activity</Kicker>
 
-        <Card style={{ marginBottom: 14 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
-            <div style={{ width: 44, height: 44, background: C.purpleLight, borderRadius: 14, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, flexShrink: 0 }}>
-              {scene.icon}
-            </div>
-            <div>
-              <div style={{ fontFamily: "'Fredoka', sans-serif", fontSize: 18, fontWeight: 600, color: C.orange }}>{scene.title}</div>
-              <div style={{ fontSize: 12, color: C.purpleSub, fontWeight: 600, marginTop: 2 }}>Real-life conversation practice</div>
+      {/* Scene info strip — record phase only */}
+      {phase === "record" && (
+        <div style={{ background: C.white, borderBottom: "1.5px solid #F0EEF8", padding: "10px 18px", display: "flex", alignItems: "center", gap: 12 }}>
+          <div style={{ width: 32, height: 32, borderRadius: "50%", background: C.orangeLight, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>{scene.icon}</div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontFamily: "'Fredoka',sans-serif", fontSize: 16, color: C.orange, fontWeight: 600, lineHeight: 1.2 }}>{scene.title}</div>
+            <div style={{ fontSize: 11, fontWeight: 800, color: "#9B8FCC" }}>
+              {scene.agentName}{scene.agentRole ? ` · ${scene.agentRole}` : ""}{"  |  "}{scene.studentRole || "Student"} · You
             </div>
           </div>
-          <div style={{ fontSize: 14, color: "#444", lineHeight: 1.7, background: C.bg, borderRadius: 14, padding: "12px 14px", borderLeft: `4px solid ${C.purple}`, fontWeight: 600 }}>
-            {scene.desc}
+          <div style={{ background: C.purple, color: C.white, borderRadius: 20, padding: "4px 12px", fontSize: 11, fontWeight: 800, flexShrink: 0 }}>
+            Turn {currentTurn + 1} / {turns.length}
           </div>
-        </Card>
-
-        <div style={{ display: "flex", gap: 10, marginBottom: 14 }}>
-          {[{ av: "🤖", nm: scene.agentName, rl: "AI character", bg: C.purpleLight, c: C.purple },
-            { av: "🙋", nm: "You", rl: scene.studentRole, bg: C.orangeLight, c: C.orange }].map((ch, i) => (
-            <div key={i} style={{ background: C.white, border: `1.5px solid ${C.cardBorder}`, borderRadius: 16, padding: "8px 14px", display: "flex", alignItems: "center", gap: 9, flex: 1 }}>
-              <div style={{ width: 32, height: 32, borderRadius: "50%", background: ch.bg, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, flexShrink: 0 }}>{ch.av}</div>
-              <div>
-                <div style={{ fontSize: 13, fontWeight: 700, color: "#333" }}>{ch.nm}</div>
-                <div style={{ fontSize: 11, color: C.purpleSub, fontWeight: 600 }}>{ch.rl}</div>
-              </div>
-            </div>
-          ))}
         </div>
+      )}
 
-        <div style={{ fontSize: 11, fontWeight: 800, color: C.purpleSub, letterSpacing: ".06em", textTransform: "uppercase", marginBottom: 10 }}>Conversation</div>
+      <div style={{ maxWidth: 680, margin: "0 auto", padding: "18px 16px 60px" }}>
         <Messages messages={messages} />
 
         {phase === "record" && (
-          <>
-            <div style={{ background: C.bg, border: `1.5px dashed ${C.purpleMid}`, borderRadius: 14, padding: "10px 16px", fontSize: 13, fontWeight: 700, color: C.purple, marginBottom: 14, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
-              <span>🎙️ Your turn — speak your response below</span>
-              <button
-                onClick={() => speakAgentLine(turns[currentTurn].agent)}
-                disabled={ttsState !== "idle"}
-                style={{
-                  background: ttsState !== "idle" ? C.purpleLight : C.purple,
-                  color: ttsState !== "idle" ? C.purpleSub : C.white,
-                  border: "none", borderRadius: 10, padding: "6px 14px",
-                  fontFamily: "'Nunito', sans-serif", fontWeight: 700, fontSize: 12,
-                  cursor: ttsState !== "idle" ? "not-allowed" : "pointer",
-                  display: "flex", alignItems: "center", gap: 5, flexShrink: 0,
-                  transition: "background .15s",
-                }}
-              >
-                {ttsState === "loading" ? "⏳ Loading…" : ttsState === "playing" ? "🔊 Playing…" : "🔊 Listen"}
-              </button>
-            </div>
-            <RecorderCard turn={turns[currentTurn]} turnIndex={currentTurn} totalTurns={turns.length} onSubmit={handleSubmit} />
-          </>
+          <RecorderCard
+            turn={turns[currentTurn]}
+            turnIndex={currentTurn}
+            totalTurns={turns.length}
+            onSubmit={handleSubmit}
+            scene={scene}
+            ttsState={ttsState}
+            speakAgentLine={speakAgentLine}
+            onBack={onBack}
+          />
         )}
 
         {phase === "loading" && (
-          <Card style={{ marginTop: 14, textAlign: "center", padding: 28 }}>
+          <div style={{ background: C.white, border: `1.5px solid ${C.cardBorder}`, borderRadius: 18, padding: 28, textAlign: "center", marginTop: 14 }}>
             <div style={{ width: 36, height: 36, border: `3px solid ${C.purpleLight}`, borderTop: `3px solid ${C.purple}`, borderRadius: "50%", animation: "rp-spin .8s linear infinite", margin: "0 auto 12px" }} />
             <div style={{ fontSize: 13, fontWeight: 700, color: C.purple }}>Reviewing your response…</div>
-          </Card>
+          </div>
         )}
 
         {phase === "feedback" && feedback && (
@@ -1009,35 +972,41 @@ function CompletionView({ scene, turns, results, onReview, onRetry }) {
   const total = results.reduce((s, r) => s + r.feedback.total, 0);
   const avg = k => Math.round(results.reduce((s, r) => s + r.feedback[k], 0) / results.length);
 
+  const muted = "#9B8FCC";
   return (
     <div style={{ background: C.bg, minHeight: "100%" }}>
-      <div style={{ background: "linear-gradient(160deg,#EDE9FA 0%,#FFF0E6 100%)", padding: "40px 20px 32px", textAlign: "center" }}>
-        <div style={{ fontSize: 52, marginBottom: 10 }}>🎉</div>
-        <div style={{ fontFamily: "'Fredoka', sans-serif", fontSize: 26, fontWeight: 700, color: C.purple, marginBottom: 6 }}>
-          Roleplay complete!
-        </div>
-        <div style={{ fontSize: 14, color: C.purpleSub, fontWeight: 600 }}>
-          You finished "{scene.title}"
-        </div>
-      </div>
+      <div style={{ maxWidth: 680, margin: "0 auto", padding: "18px 16px 60px", display: "flex", flexDirection: "column", gap: 14 }}>
 
-      <div style={{ maxWidth: 680, margin: "0 auto", padding: "20px 16px 60px", display: "flex", flexDirection: "column", gap: 12 }}>
-        <div style={{ background: C.white, border: `1.5px solid ${C.cardBorder}`, borderRadius: 20, padding: "20px", textAlign: "center" }}>
-          <div style={{ fontFamily: "'Fredoka', sans-serif", fontSize: 52, fontWeight: 700, color: C.orange, lineHeight: 1 }}>{total}</div>
-          <div style={{ fontSize: 12, color: "#888", fontWeight: 600, marginTop: 5 }}>out of {turns.length * 100} points</div>
+        {/* HERO CARD */}
+        <div style={{ background: "linear-gradient(160deg,#EDE9FA,#FFF0E6)", borderRadius: 18, padding: "24px 18px", textAlign: "center" }}>
+          <div style={{ fontFamily: "'Fredoka',sans-serif", fontSize: 22, color: C.purple, fontWeight: 600, marginBottom: 4 }}>
+            Conversation complete!
+          </div>
+          <div style={{ fontSize: 12, fontWeight: 800, color: muted, marginBottom: 14 }}>
+            You completed all {turns.length} turns
+          </div>
+          <div style={{ fontFamily: "'Fredoka',sans-serif", fontSize: 52, color: C.orange, lineHeight: 1 }}>{total}</div>
+          <div style={{ fontSize: 14, fontWeight: 800, color: muted }}>out of {turns.length * 100} points</div>
+
+          {/* Chips */}
+          <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 8, marginTop: 14 }}>
+            {[
+              `${turns.length} turns`,
+              `Avg Grammar: ${avg("grammar")}`,
+              `Avg Vocab: ${avg("vocabulary")}`,
+              `Avg Fluency: ${avg("fluency")}`,
+            ].map(lbl => (
+              <span key={lbl} style={{ background: C.white, border: `1.5px solid ${C.cardBorder}`, borderRadius: 20, padding: "6px 14px", fontSize: 12, fontWeight: 800, color: C.purple }}>{lbl}</span>
+            ))}
+          </div>
+
+          {/* Buttons */}
+          <div style={{ display: "flex", justifyContent: "center", gap: 10, marginTop: 14 }}>
+            <button onClick={onReview} style={{ background: C.purple, color: C.white, border: "none", borderRadius: 14, padding: "11px 22px", fontSize: 13, fontWeight: 800, fontFamily: "'Nunito',sans-serif", cursor: "pointer" }}>See review</button>
+            <button onClick={onRetry} style={{ background: C.white, border: `1.5px solid ${C.cardBorder}`, color: C.purple, borderRadius: 14, padding: "11px 22px", fontSize: 13, fontWeight: 800, fontFamily: "'Nunito',sans-serif", cursor: "pointer" }}>Try again</button>
+          </div>
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
-          {[["Avg grammar", avg("grammar")], ["Avg vocab", avg("vocabulary")], ["Avg fluency", avg("fluency")]].map(([lbl, val]) => (
-            <div key={lbl} style={{ background: C.white, border: `1.5px solid ${C.cardBorder}`, borderRadius: 14, padding: "10px 8px", textAlign: "center" }}>
-              <div style={{ fontFamily: "'Fredoka', sans-serif", fontSize: 22, fontWeight: 700, color: C.purple }}>{val}</div>
-              <div style={{ fontSize: 10, color: C.purpleSub, fontWeight: 700, marginTop: 2 }}>{lbl}</div>
-            </div>
-          ))}
-        </div>
-
-        <Btn onClick={onReview} color={C.purple}>📋 See full conversation review</Btn>
-        <OutlineBtn onClick={onRetry}>🔄 Try again</OutlineBtn>
       </div>
     </div>
   );
