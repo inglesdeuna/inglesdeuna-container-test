@@ -180,14 +180,20 @@ ob_start();
 
 .qa-premium-shell{
     max-width:980px;
-    margin:16px auto 28px;
+    margin:0 auto;
     padding:18px;
     border-radius:28px;
     background: #ffffff;
+    min-height:100%;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    box-sizing:border-box;
 }
 
 .qa-premium-app{
     width:min(960px,100%);
+    margin:0 auto;
     display:grid;
     grid-template-columns:minmax(0,1fr);
     gap:0;
