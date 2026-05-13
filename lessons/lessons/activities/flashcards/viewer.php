@@ -329,6 +329,7 @@ body{
     gap:10px;
     flex-wrap:wrap;
     margin-top:18px;
+    flex-shrink:0;
 }
 
 .fc-btn{
@@ -407,11 +408,11 @@ body{
     }
 
     .fc-card{
-        min-height:420px;
+        min-height:0;
     }
 
     .fc-inner{
-        height:420px;
+        height:100%;
     }
 
     .fc-actions{

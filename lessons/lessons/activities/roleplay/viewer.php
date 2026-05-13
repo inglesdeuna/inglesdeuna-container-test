@@ -24,12 +24,12 @@ ob_start();
 ?>
 <style>
 #roleplay-root * { box-sizing: border-box; margin: 0; padding: 0; }
-#roleplay-root { font-family: 'Nunito', sans-serif; min-height: calc(100vh - 44px); }
+#roleplay-root { font-family: 'Nunito', sans-serif; flex: 1; min-height: 0; overflow-y: auto; }
 @keyframes rp-spin { to { transform: rotate(360deg); } }
 @keyframes rp-pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
 </style>
 
-<div id="roleplay-root" style="min-height:calc(100vh - 44px);"></div>
+<div id="roleplay-root" style="flex:1;min-height:0;overflow-y:auto;"></div>
 
 <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>

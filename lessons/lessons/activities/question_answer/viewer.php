@@ -538,7 +538,7 @@ ob_start();
 }
 
 @media(max-width:640px){
-    .qa-premium-shell{min-height:calc(100vh - 70px);padding:12px;border-radius:12px}
+    .qa-premium-shell{min-height:0;padding:12px;border-radius:12px}
     .qa-premium-board{border-radius:26px;padding:14px}
     .qa-premium-title-panel{width:100%;border-radius:22px}
     .qa-premium-progress-row{grid-template-columns:1fr;gap:8px}
