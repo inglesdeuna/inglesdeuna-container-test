@@ -338,7 +338,7 @@ ob_start();
     --mc-muted:#9B94BE;
     --mc-border:#F0EEF8;
     --mc-cols:<?= (int) $desktopCols ?>;
-    --mc-gap:clamp(8px,1.2vw,12px);
+    --mc-gap:clamp(10px,1.5vw,16px);
 }
 
 html,body{width:100%;height:100%;}
@@ -383,15 +383,14 @@ body{
 
 .mc-page{
     width:100%;
-    height:100%;
+    flex:1;
     min-height:0;
-    padding:clamp(10px,2vw,20px);
     display:flex;
-    justify-content:center;
-    align-items:stretch;
-    background:#fff;
-    box-sizing:border-box;
+    flex-direction:column;
+    padding:clamp(10px,2vw,18px);
+    gap:10px;
     overflow:hidden;
+    box-sizing:border-box;
 }
 
 .mc-app{
@@ -453,10 +452,10 @@ body{
 
 .mc-viewer{max-width:100%;flex:1;min-height:0;display:flex;flex-direction:column;}
 .mc-shell{background:#fff;border:1px solid #EDE9FA;border-radius:30px;box-shadow:0 8px 24px rgba(127,119,221,.09);padding:18px;flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden;}
-.mc-status{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;flex-shrink:0;}
+.mc-status{flex-shrink:0;display:flex;gap:8px;flex-wrap:wrap;}
 .mc-pill{display:inline-flex;align-items:center;gap:6px;background:var(--mc-purple-soft);border:1px solid #d8d3f5;color:var(--mc-purple-dark);font-weight:800;font-size:13px;padding:8px 12px;border-radius:999px}
-.mc-board{display:grid;grid-template-columns:repeat(var(--mc-cols),1fr);gap:var(--mc-gap);flex:1;min-height:0;overflow-y:auto;align-content:start;width:100%;}
-.viewer-content .mc-card{position:relative;perspective:900px;border:none;background:transparent;padding:0!important;cursor:pointer;width:100%;aspect-ratio:1;height:auto;}
+.mc-board{display:grid;grid-template-columns:repeat(var(--mc-cols),1fr);gap:var(--mc-gap);flex:1;min-height:0;width:100%;box-sizing:border-box;}
+.viewer-content .mc-card{position:relative;perspective:900px;border:none;background:transparent;padding:0!important;cursor:pointer;aspect-ratio:3/4;width:100%;min-height:0;}
 .mc-card:disabled{cursor:default}
 .mc-card-inner{display:block;position:relative;width:100%;height:100%;transform-style:preserve-3d;transition:transform .4s ease;}
 .mc-card.is-flipped .mc-card-inner{transform:rotateY(180deg)}
@@ -469,7 +468,7 @@ body{
 .mc-card.is-vanishing{pointer-events:none}
 .mc-card.is-vanishing .mc-card-inner{animation:mcVanish .34s ease forwards}
 .mc-card.is-hidden{opacity:0;visibility:hidden;pointer-events:none}
-.mc-controls{display:flex;justify-content:center;margin-top:14px;flex-shrink:0;}
+.mc-controls{flex-shrink:0;display:flex;justify-content:center;padding:4px 0 0;}
 .mc-btn{border:none;border-radius:999px;padding:10px 16px;font-weight:800;font-size:14px;cursor:pointer;box-shadow:0 8px 18px rgba(127,119,221,.18);background:var(--mc-orange);color:#fff}
 .mc-empty{text-align:center;padding:28px;font-weight:800;color:#b91c1c}
 .completed-screen{display:none;text-align:center;max-width:600px;margin:0 auto;padding:40px 20px}
@@ -798,6 +797,8 @@ body{
 
                     board.appendChild(btn);
                 });
+
+                resizeBoard();
             }
 
             function restart() {
@@ -824,7 +825,43 @@ body{
             ensureAudioFallback('flip', flipAudioEl);
             ensureAudioFallback('match', matchAudioEl);
 
+            function resizeBoard() {
+                var page = document.querySelector('.mc-page');
+                var boardEl = document.querySelector('.mc-board');
+                var stats = document.querySelector('.mc-status');
+                var restartRow = document.querySelector('.mc-controls');
+                if (!page || !boardEl) return;
+
+                var statsH = stats ? stats.offsetHeight : 0;
+                var restartH = restartRow ? restartRow.offsetHeight : 0;
+                var gap = parseFloat(getComputedStyle(document.documentElement)
+                    .getPropertyValue('--mc-gap')) || 12;
+                var cols = parseInt(getComputedStyle(document.documentElement)
+                    .getPropertyValue('--mc-cols')) || 4;
+
+                var pageStyle = getComputedStyle(page);
+                var padTop = parseFloat(pageStyle.paddingTop) || 10;
+                var padBot = parseFloat(pageStyle.paddingBottom) || 10;
+
+                var availH = page.clientHeight - statsH - restartH
+                             - padTop - padBot - gap * 3;
+                var rows = Math.ceil(boardEl.children.length / cols);
+                var cardH = Math.floor((availH - gap * (rows - 1)) / rows);
+                var cardW = Math.floor((boardEl.clientWidth
+                             - gap * (cols - 1)) / cols);
+
+                var finalH = Math.min(cardH, Math.floor(cardW * 4 / 3));
+                if (finalH > 0) {
+                    boardEl.style.gridTemplateRows =
+                        'repeat(' + rows + ', ' + finalH + 'px)';
+                }
+                boardEl.style.alignContent = 'start';
+            }
+
+            window.addEventListener('resize', resizeBoard);
+
             restart();
+            resizeBoard();
         })();
         </script>
     <?php endif; ?>
