@@ -567,6 +567,7 @@ a.back{background:var(--hg-purple);box-shadow:0 6px 18px rgba(127,119,221,.18);j
 
 <audio id="correctSound" src="../../hangman/assets/realcorrect.mp3" preload="auto"></audio>
 <audio id="winSound" src="../../hangman/assets/win.mp3" preload="auto"></audio>
+<audio id="winClapsSound" src="../../hangman/assets/WINNING%20CLAPS.mp3" preload="auto"></audio>
 <audio id="loseSound" src="../../hangman/assets/losefun.mp3" preload="auto"></audio>
 <audio id="wrongSound" src="assets/wrong.wav" preload="auto"></audio>
 
@@ -590,6 +591,7 @@ const hintPlaceholderEl = document.getElementById("hintPlaceholder");
 const hangmanImg = document.getElementById("hangmanImg");
 const correctSound = document.getElementById("correctSound");
 const winSound = document.getElementById("winSound");
+const winClapsSound = document.getElementById("winClapsSound");
 const loseSound = document.getElementById("loseSound");
 const wrongSound = document.getElementById("wrongSound");
 const gameLayout = document.getElementById("gameLayout");
@@ -633,6 +635,22 @@ function setKeyboardDisabled(disabledState) {
 
 function playSound(audio) {
   try { audio.pause(); audio.currentTime = 0; audio.play(); } catch (e) {}
+}
+
+function playCorrectForLetter(letter) {
+  if (!letter) return;
+  const matches = word.split("").filter(function (ch) { return ch === letter; }).length;
+  const times = Math.max(1, matches);
+
+  for (let i = 0; i < times; i++) {
+    setTimeout(function () {
+      try {
+        const sound = i === 0 ? correctSound : correctSound.cloneNode();
+        sound.currentTime = 0;
+        sound.play();
+      } catch (e) {}
+    }, i * 110);
+  }
 }
 
 function persistScoreSilently(targetUrl) {
@@ -763,8 +781,9 @@ function guess(letter){
       playSound(wrongSound);
     }
   } else {
-    playSound(correctSound);
+    playCorrectForLetter(letter);
     if (isSolved()) {
+      playSound(winClapsSound);
       registerSolvedWord();
       if (index === items.length - 1) showCompleted();
       else {
