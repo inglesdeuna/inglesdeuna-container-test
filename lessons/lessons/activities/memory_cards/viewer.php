@@ -387,6 +387,7 @@ body{
     min-height:0;
     display:flex;
     flex-direction:column;
+    align-items:center;
     padding:clamp(10px,2vw,18px);
     gap:10px;
     overflow:hidden;
@@ -397,6 +398,7 @@ body{
     width:min(1160px,100%);
     height:100%;
     min-height:0;
+    margin:0 auto;
     display:grid;
     grid-template-rows:auto minmax(0,1fr);
     gap:clamp(10px,1.5vw,14px);
