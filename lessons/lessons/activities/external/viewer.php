@@ -129,9 +129,7 @@ ob_start();
 .ex-viewer{
     max-width:860px;
     margin:0 auto;
-    flex:1;
-    min-height:0;
-    overflow-y:auto;
+    min-height:calc(100vh - 120px);
     display:flex;
     flex-direction:column;
     justify-content:center;
