@@ -103,20 +103,28 @@ body{
 
 .fc-shell{
     width:100%;
-    min-height:100vh;
+    flex:1;
+    min-height:0;
     padding:18px;
     background:#fff;
     display:flex;
-    justify-content:center;
+    flex-direction:column;
+    overflow:hidden;
 }
 
 .fc-app{
     width:min(760px,100%);
+    flex:1;
+    min-height:0;
+    display:flex;
+    flex-direction:column;
+    align-self:center;
 }
 
 .fc-header{
     text-align:center;
     margin-bottom:18px;
+    flex-shrink:0;
 }
 
 .fc-kicker{
@@ -157,6 +165,10 @@ body{
     border-radius:32px;
     padding:18px;
     box-shadow:0 8px 40px rgba(127,119,221,.12);
+    flex:1;
+    min-height:0;
+    display:flex;
+    flex-direction:column;
 }
 
 .fc-progress{
