@@ -105,20 +105,19 @@ body{
     width:100%;
     flex:1;
     min-height:0;
-    padding:18px;
+    overflow-y:auto;
+    padding:clamp(14px,2.5vw,34px);
     background:#fff;
     display:flex;
     flex-direction:column;
-    overflow:hidden;
+    align-items:center;
 }
 
 .fc-app{
     width:min(760px,100%);
-    flex:1;
-    min-height:0;
+    margin:0 auto;
     display:flex;
     flex-direction:column;
-    align-self:center;
 }
 
 .fc-header{
@@ -208,8 +207,6 @@ body{
 
 .fc-card{
     position:relative;
-    flex:1;
-    min-height:0;
     border-radius:30px;
     perspective:1000px;
 }
