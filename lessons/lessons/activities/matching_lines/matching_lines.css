@@ -287,6 +287,8 @@ body {
   padding:0;
   height: var(--tile-height, 92px);
   min-height: var(--tile-height, 92px);
+  width:min(var(--tile-height, 92px), calc(100% - 4px));
+  aspect-ratio:1 / 1;
   align-items:stretch;
   justify-content:stretch;
 }
@@ -313,7 +315,7 @@ body {
   width:100%;
   max-width:100%;
   margin:0 auto;
-  font-size:clamp(15px,1.8vw,22px);
+  font-size:18px;
   line-height:1.16;
   font-weight:800;
   letter-spacing:.01em;
@@ -332,32 +334,9 @@ body {
 }
 
 .mlv-right .mlv-text{
-  font-size:clamp(18px,2.7vw,34px);
-  line-height:1.08;
   color:#ea580c;
   text-shadow:0 2px 0 rgba(15,23,42,.16), 0 6px 12px rgba(15,23,42,.08);
   font-family:'Fredoka','Trebuchet MS',sans-serif;
-}
-
-.mlv-text.mlv-text-phrase{
-  font-size:clamp(14px,1.6vw,19px);
-  line-height:1.2;
-}
-
-.mlv-right .mlv-text.mlv-text-phrase{
-  font-size:clamp(16px,2.2vw,28px);
-  line-height:1.12;
-}
-
-.mlv-text.mlv-text-sentence{
-  font-size:clamp(13px,1.35vw,17px);
-  line-height:1.24;
-  font-weight:900;
-}
-
-.mlv-right .mlv-text.mlv-text-sentence{
-  font-size:clamp(12px,1.45vw,21px);
-  line-height:1.2;
 }
 
 .mlv-card:hover .mlv-text{
@@ -473,15 +452,14 @@ body {
     .mlv-stage-shell { border-radius:26px; padding:14px }
     .mlv-stage { --tile-height: 82px; }
     .mlv-card { min-height: var(--tile-height, 82px); height: var(--tile-height, 82px); }
-  .mlv-text { font-size:clamp(13px,3.8vw,16px); line-height:1.18; }
-  .mlv-right .mlv-text { font-size:clamp(15px,5.8vw,24px); line-height:1.1; }
-  .mlv-text.mlv-text-phrase { font-size:clamp(12px,3.3vw,15px); }
-  .mlv-right .mlv-text.mlv-text-phrase { font-size:clamp(13px,4.5vw,19px); }
-  .mlv-text.mlv-text-sentence { font-size:clamp(11px,2.9vw,14px); line-height:1.2; }
-  .mlv-right .mlv-text.mlv-text-sentence { font-size:clamp(11px,3.6vw,16px); line-height:1.16; }
+  .mlv-text { font-size:15px; line-height:1.18; }
     .mlv-media-left,
     .mlv-media-right { width:100%; height:100%; }
-    .mlv-card.image-only { min-height: var(--tile-height, 82px); height: var(--tile-height, 82px); }
+    .mlv-card.image-only {
+      min-height: var(--tile-height, 82px);
+      height: var(--tile-height, 82px);
+      width:min(var(--tile-height, 82px), calc(100% - 4px));
+    }
     .mlv-btn { width:100%; max-width:280px; }
     .mlv-toolbar { flex-direction:column; align-items:center; }
 }
