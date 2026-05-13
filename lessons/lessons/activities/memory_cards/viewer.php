@@ -385,6 +385,19 @@ body{
     border-radius:0!important;
 }
 
+body{
+    height:auto!important;
+    overflow:auto!important;
+}
+.activity-wrapper{
+    height:auto!important;
+    overflow:visible!important;
+}
+.viewer-content{
+    overflow:visible!important;
+    flex:none!important;
+}
+
 .mc-page{
     width:100%;
     min-height:100vh;
