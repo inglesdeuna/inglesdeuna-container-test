@@ -774,54 +774,67 @@ function RecorderCard({ turn, turnIndex, totalTurns, onSubmit, scene, ttsState, 
 // ── FEEDBACK CARD ─────────────────────────────────────────────
 function FeedbackCard({ data, transcript, turnIndex, isLast, onNext, onFinish }) {
   const diff = data.corrected?.toLowerCase().trim() !== transcript.toLowerCase().trim();
+  const muted = "#9B8FCC";
+  const ink = "#1e1b2e";
   return (
-    <Card style={{ marginTop: 14 }}>
-      <div style={{ fontFamily: "'Fredoka', sans-serif", fontSize: 17, fontWeight: 600, color: C.purple, marginBottom: 14 }}>
-        🎯 Feedback — Turn {turnIndex + 1}
+    <div style={{ display: "flex", flexDirection: "column", gap: 14, padding: 18, background: C.white, borderRadius: 18, border: `1.5px solid ${C.cardBorder}`, marginTop: 14 }}>
+
+      {/* 1. YOU SAID */}
+      <div style={{ background: "#F5F3FF", borderLeft: "3px solid #7F77DD", borderRadius: "0 14px 14px 0", padding: "12px 14px" }}>
+        <div style={{ fontSize: 10, fontWeight: 800, textTransform: "uppercase", color: "#7F77DD", letterSpacing: ".05em", marginBottom: 4 }}>YOU SAID</div>
+        <div style={{ fontSize: 13, fontWeight: 700, color: ink, lineHeight: 1.6 }}>"{transcript}"</div>
       </div>
 
-      <MiniLabel>You said</MiniLabel>
-      <div style={{ background: C.bg, borderLeft: `3px solid ${C.purple}`, padding: "9px 13px", fontSize: 13, color: "#333", lineHeight: 1.55, marginBottom: 10, fontWeight: 600 }}>
-        "{transcript}"
-      </div>
-
-      {diff && <>
-        <MiniLabel color={C.orange}>Suggested improvement</MiniLabel>
-        <div style={{ background: C.orangeLight, borderLeft: `3px solid ${C.orange}`, padding: "9px 13px", fontSize: 13, color: C.orangeMid, lineHeight: 1.55, marginBottom: 10, fontWeight: 600 }}>
-          "{data.corrected}"
+      {/* 2. SUGGESTION */}
+      {diff && (
+        <div style={{ background: "#FFF0E6", borderLeft: "3px solid #F97316", borderRadius: "0 14px 14px 0", padding: "12px 14px" }}>
+          <div style={{ fontSize: 10, fontWeight: 800, textTransform: "uppercase", color: C.orange, letterSpacing: ".05em", marginBottom: 4 }}>SUGGESTION</div>
+          <div style={{ fontSize: 13, fontWeight: 700, color: "#9A3412", lineHeight: 1.6 }}>"{data.corrected}"</div>
         </div>
-      </>}
+      )}
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: 10 }}>
-        {[["Grammar", data.grammar], ["Vocabulary", data.vocabulary], ["Fluency", data.fluency]].map(([lbl, val]) => (
-          <div key={lbl} style={{ background: C.bgCard, border: `1.5px solid ${C.cardBorder}`, borderRadius: 14, padding: "9px 7px", textAlign: "center" }}>
-            <div style={{ fontFamily: "'Fredoka', sans-serif", fontSize: 22, fontWeight: 700, color: C.purple }}>{val}</div>
-            <div style={{ fontSize: 10, color: C.purpleSub, fontWeight: 700, marginTop: 2 }}>{lbl}</div>
+      {/* 3. SCORE CHIPS */}
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+        {[["Fluency", data.fluency], ["Vocabulary", data.vocabulary], ["Grammar", data.grammar], ["Response", data.total]].map(([lbl, val]) => (
+          <div key={lbl} style={{ background: "#F9F8FF", border: `1.5px solid ${C.cardBorder}`, borderRadius: 12, padding: "8px 12px", textAlign: "center", flex: 1, minWidth: 70 }}>
+            <div style={{ fontSize: 10, fontWeight: 800, color: muted, textTransform: "uppercase", letterSpacing: ".05em", marginBottom: 2 }}>{lbl}</div>
+            <div style={{ fontFamily: "'Fredoka',sans-serif", fontSize: 20, color: C.purple }}>{val}</div>
           </div>
         ))}
       </div>
 
-      <div style={{ background: `linear-gradient(135deg,${C.orange},${C.purple})`, borderRadius: 16, padding: "11px", textAlign: "center", color: C.white, marginBottom: 10 }}>
-        <div style={{ fontSize: 11, fontWeight: 700, opacity: .9 }}>Turn score</div>
-        <div style={{ fontFamily: "'Fredoka', sans-serif", fontSize: 30, fontWeight: 700 }}>{data.total} / 100</div>
+      {/* 4. TOTAL SCORE BAR */}
+      <div style={{ background: "linear-gradient(90deg,#F97316,#7F77DD)", borderRadius: 14, padding: "12px 16px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div>
+          <div style={{ fontSize: 12, fontWeight: 800, color: "rgba(255,255,255,0.85)" }}>TURN SCORE</div>
+          {data.praise && <div style={{ fontSize: 11, color: "rgba(255,255,255,0.7)", marginTop: 2 }}>{data.praise.slice(0, 52)}{data.praise.length > 52 ? "…" : ""}</div>}
+        </div>
+        <div style={{ fontFamily: "'Fredoka',sans-serif", fontSize: 26, color: C.white, fontWeight: 600 }}>{data.total} / 100</div>
       </div>
 
-      <div style={{ background: C.green, borderRadius: 12, padding: "9px 13px", fontSize: 13, color: C.greenText, fontWeight: 700, marginBottom: 10 }}>
-        ✨ {data.praise}
+      {/* 5. PRAISE */}
+      {data.praise && (
+        <div style={{ background: "#F0FDF4", borderRadius: 14, padding: "10px 14px", fontSize: 12, fontWeight: 800, color: "#166534" }}>
+          ⭐ {data.praise}
+        </div>
+      )}
+
+      {/* 6. TIP */}
+      {data.tips && data.tips[0] && (
+        <div style={{ background: "#F5F3FF", borderRadius: 14, padding: "10px 14px", fontSize: 12, fontWeight: 700, color: "#534AB7", lineHeight: 1.55 }}>
+          💬 Tip: {data.tips[0]}
+        </div>
+      )}
+
+      {/* 7. NAV ROW */}
+      <div style={{ borderTop: `1.5px solid ${C.cardBorder}`, paddingTop: 12, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
+        <button onClick={() => {}} style={{ background: C.white, border: `1.5px solid ${C.cardBorder}`, color: C.purple, borderRadius: 12, padding: "10px 20px", fontSize: 13, fontWeight: 800, fontFamily: "'Nunito',sans-serif", cursor: "pointer" }}>← Review</button>
+        <button onClick={isLast ? onFinish : onNext} style={{ background: C.orange, color: C.white, border: "none", borderRadius: 12, padding: "10px 20px", fontSize: 13, fontWeight: 800, fontFamily: "'Nunito',sans-serif", cursor: "pointer" }}>
+          {isLast ? "See Results →" : "Next Turn →"}
+        </button>
       </div>
 
-      <ul style={{ listStyle: "none", display: "flex", flexDirection: "column", gap: 5, marginBottom: 12 }}>
-        {data.tips.map((tip, i) => (
-          <li key={i} style={{ fontSize: 13, color: "#444", fontWeight: 600, padding: "6px 10px", background: C.bg, borderRadius: 10, display: "flex", gap: 7 }}>
-            💡 {tip}
-          </li>
-        ))}
-      </ul>
-
-      <Btn onClick={isLast ? onFinish : onNext}>
-        {isLast ? "🏆 See results" : "Next turn →"}
-      </Btn>
-    </Card>
+    </div>
   );
 }
 
