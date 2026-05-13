@@ -95,17 +95,22 @@ $title = 'Flashcards';
 
 html,
 body{
+    width:100%;
+    height:100%;
+    min-height:100%;
     margin:0;
     padding:0;
     background:#fff;
     font-family:'Nunito',sans-serif;
+    overflow:hidden;
 }
 
 .fc-shell{
     width:100%;
     flex:1;
+    height:100%;
     min-height:0;
-    overflow-y:auto;
+    overflow:hidden;
     padding:clamp(14px,2.5vw,34px);
     background:#fff;
     display:flex;
@@ -116,15 +121,15 @@ body{
 .fc-app{
     width:min(760px,100%);
     margin:0 auto;
-    display:flex;
-    flex-direction:column;
-    gap:18px;
-    min-height:100%;
+    height:100%;
+    min-height:0;
+    display:grid;
+    grid-template-rows:auto minmax(0,1fr) auto;
+    gap:16px;
 }
 
 .fc-header{
     text-align:center;
-    margin-bottom:18px;
     flex-shrink:0;
 }
 
@@ -161,6 +166,8 @@ body{
 }
 
 .fc-board{
+    height:100%;
+    min-height:0;
     background:#fff;
     border:1px solid var(--border);
     border-radius:32px;
@@ -169,8 +176,7 @@ body{
     display:grid;
     grid-template-rows:auto minmax(0,1fr) auto;
     gap:14px;
-    flex:1;
-    min-height:0;
+    overflow:hidden;
 }
 
 .fc-progress{
@@ -212,8 +218,8 @@ body{
     border-radius:30px;
     perspective:1000px;
     height:100%;
-    min-height:clamp(220px,34vh,320px);
-    max-height:min(420px,calc(100vh - 320px));
+    min-height:0;
+    max-height:none;
     min-width:0;
 }
 
@@ -235,6 +241,7 @@ body{
     backface-visibility:hidden;
     border-radius:30px;
     overflow:hidden;
+    min-height:0;
 }
 
 .fc-front{
@@ -273,10 +280,10 @@ body{
 }
 
 .fc-image{
+    width:100%;
+    height:100%;
     max-width:100%;
     max-height:100%;
-    width:auto;
-    height:auto;
     object-fit:contain;
     border-radius:24px;
 }
@@ -369,6 +376,52 @@ body{
     padding:42px 20px;
 }
 
+.fc-size-warning{
+    position:fixed;
+    right:16px;
+    bottom:16px;
+    width:min(92vw,360px);
+    background:#fff;
+    border:1px solid #FCDDBF;
+    border-left:6px solid var(--orange);
+    border-radius:14px;
+    box-shadow:0 12px 34px rgba(0,0,0,.16);
+    padding:12px 12px 10px;
+    z-index:9999;
+}
+
+.fc-size-warning[hidden]{
+    display:none;
+}
+
+.fc-size-warning-title{
+    margin:0 0 4px;
+    color:#C2580A;
+    font-weight:900;
+    font-size:13px;
+    letter-spacing:.02em;
+}
+
+.fc-size-warning-text{
+    margin:0;
+    color:#5f5a80;
+    font-size:13px;
+    line-height:1.4;
+    font-weight:700;
+}
+
+.fc-size-warning-close{
+    position:absolute;
+    top:6px;
+    right:8px;
+    border:0;
+    background:transparent;
+    color:#9B94BE;
+    cursor:pointer;
+    font-size:18px;
+    line-height:1;
+}
+
 .fc-completed.active{
     display:block;
 }
@@ -407,15 +460,14 @@ body{
         padding:12px;
     }
 
+    .fc-app{
+        gap:12px;
+    }
+
     .fc-board{
         border-radius:24px;
         padding:14px;
         gap:12px;
-    }
-
-    .fc-card{
-        min-height:190px;
-        max-height:min(320px,calc(100vh - 280px));
     }
 
     .fc-inner{
@@ -429,6 +481,13 @@ body{
 
     .fc-btn{
         width:100%;
+    }
+
+    .fc-size-warning{
+        left:10px;
+        right:10px;
+        width:auto;
+        bottom:10px;
     }
 
 }
@@ -552,6 +611,12 @@ body{
 
 </div>
 
+<div class="fc-size-warning" id="fc-size-warning" hidden>
+    <button class="fc-size-warning-close" id="fc-size-warning-close" aria-label="Close image size warning">&times;</button>
+    <p class="fc-size-warning-title">Image too large</p>
+    <p class="fc-size-warning-text" id="fc-size-warning-text"></p>
+</div>
+
 <script>
 
 (function(){
@@ -573,9 +638,97 @@ var translationEl = document.getElementById('fc-translation');
 
 var fillEl = document.getElementById('fc-fill');
 var countEl = document.getElementById('fc-count');
+var shellEl = document.querySelector('.fc-shell');
+var appEl = document.querySelector('.fc-app');
+var headerEl = document.querySelector('.fc-header');
+var actionsEl = document.querySelector('.fc-actions');
+var progressEl = document.querySelector('.fc-progress');
+var sizeWarningEl = document.getElementById('fc-size-warning');
+var sizeWarningTextEl = document.getElementById('fc-size-warning-text');
+var sizeWarningCloseEl = document.getElementById('fc-size-warning-close');
 
 var completedEl = document.getElementById('fc-completed');
 var boardEl = document.getElementById('fc-board');
+var warningDismissed = false;
+
+function num(v){
+    return parseFloat(v) || 0;
+}
+
+function showSizeWarning(message){
+    if (warningDismissed || !sizeWarningEl || !sizeWarningTextEl) return;
+    sizeWarningTextEl.textContent = message;
+    sizeWarningEl.hidden = false;
+}
+
+function hideSizeWarning(){
+    if (!sizeWarningEl) return;
+    sizeWarningEl.hidden = true;
+}
+
+function evaluateImageSize(imgEl){
+    if (!imgEl || !imgEl.src || !imgEl.naturalWidth || !imgEl.naturalHeight) {
+        hideSizeWarning();
+        return;
+    }
+
+    var cardRect = cardEl.getBoundingClientRect();
+    var recommendedWidth = Math.max(900, Math.round(cardRect.width * 2));
+    var recommendedHeight = Math.max(900, Math.round(cardRect.height * 2));
+
+    if (imgEl.naturalWidth > recommendedWidth || imgEl.naturalHeight > recommendedHeight) {
+        showSizeWarning(
+            'Current image: ' + imgEl.naturalWidth + 'x' + imgEl.naturalHeight + ' px. '
+            + 'Recommended max: ' + recommendedWidth + 'x' + recommendedHeight + ' px.'
+        );
+    } else {
+        hideSizeWarning();
+    }
+}
+
+function syncLayout(){
+    if (!boardEl || !cardEl || boardEl.style.display === 'none') return;
+
+    var shellStyles = window.getComputedStyle(shellEl);
+    var appStyles = window.getComputedStyle(appEl);
+    var boardStyles = window.getComputedStyle(boardEl);
+
+    var shellPaddingY = num(shellStyles.paddingTop) + num(shellStyles.paddingBottom);
+    var appGap = num(appStyles.gap);
+    var boardPaddingY = num(boardStyles.paddingTop) + num(boardStyles.paddingBottom);
+    var boardBorderY = num(boardStyles.borderTopWidth) + num(boardStyles.borderBottomWidth);
+    var boardGap = num(boardStyles.gap);
+
+    var viewportHeight = window.innerHeight;
+    var boardTargetHeight = Math.floor(
+        viewportHeight
+        - shellPaddingY
+        - headerEl.offsetHeight
+        - appGap
+        - 12
+    );
+
+    boardTargetHeight = Math.max(250, boardTargetHeight);
+    boardEl.style.height = boardTargetHeight + 'px';
+
+    var actionsHeight = actionsEl ? actionsEl.offsetHeight : 0;
+    var progressHeight = progressEl ? progressEl.offsetHeight : 0;
+    var cardHeight = Math.floor(
+        boardTargetHeight
+        - boardPaddingY
+        - boardBorderY
+        - progressHeight
+        - actionsHeight
+        - (boardGap * 2)
+    );
+
+    cardHeight = Math.max(150, cardHeight);
+    cardEl.style.height = cardHeight + 'px';
+
+    if (imageEl && imageEl.style.display !== 'none') {
+        evaluateImageSize(imageEl);
+    }
+}
 
 function voiceProfileFromId(voiceId) {
     var id = String(voiceId || '').trim();
@@ -698,6 +851,8 @@ function renderCard(){
     cardEl.classList.remove('flipped');
 
     updateProgress();
+
+    window.requestAnimationFrame(syncLayout);
 }
 
 function flip(){
@@ -717,6 +872,7 @@ function next(){
 
         boardEl.style.display = 'none';
         completedEl.classList.add('active');
+        hideSizeWarning();
 
         return;
     }
@@ -735,6 +891,25 @@ function restart(){
 
     renderCard();
 }
+
+imageEl.addEventListener('load', function(){
+    evaluateImageSize(imageEl);
+});
+
+if (sizeWarningCloseEl) {
+    sizeWarningCloseEl.addEventListener('click', function(){
+        warningDismissed = true;
+        hideSizeWarning();
+    });
+}
+
+window.addEventListener('resize', function(){
+    window.requestAnimationFrame(syncLayout);
+});
+
+document.addEventListener('fullscreen-embedded', function(){
+    window.requestAnimationFrame(syncLayout);
+});
 
 function speakText(text, profile) {
     window.speechSynthesis.cancel();
@@ -808,6 +983,7 @@ document
 .addEventListener('click', flip);
 
 renderCard();
+syncLayout();
 
 })();
 
