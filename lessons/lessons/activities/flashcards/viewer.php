@@ -176,6 +176,7 @@ body{
     align-items:center;
     gap:10px;
     margin-bottom:18px;
+    flex-shrink:0;
 }
 
 .fc-track{
@@ -207,7 +208,8 @@ body{
 
 .fc-card{
     position:relative;
-    min-height:480px;
+    flex:1;
+    min-height:0;
     border-radius:30px;
     perspective:1000px;
 }
@@ -215,7 +217,7 @@ body{
 .fc-inner{
     position:relative;
     width:100%;
-    height:480px;
+    height:100%;
     transform-style:preserve-3d;
     transition:transform .45s ease;
 }
