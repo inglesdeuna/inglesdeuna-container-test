@@ -62,39 +62,11 @@ const C = {
 };
 
 const DEFAULT_TURNS = [
-  {
-    agent: "Good morning! Welcome to AirGlobal check-in. May I have your name and destination, please?",
-    hint: "Greet the agent, give your name, and mention you're flying to London.",
-    ideal: "Good morning! My name is [Name] and I have a flight to London today.",
-    criteria: "greeting used, name given, destination mentioned, complete sentence",
-  },
-  {
-    agent: "Thank you! Can I see your passport, and do you have any bags to check in today?",
-    hint: "Offer your passport and say how many bags you have.",
-    ideal: "Here is my passport. I have two bags to check in, please.",
-    criteria: "passport offered, number of bags stated, polite language, complete response",
-  },
-  {
-    agent: "Perfect. Would you prefer a window seat or an aisle seat?",
-    hint: "State your seat preference clearly and optionally give a brief reason.",
-    ideal: "I'd prefer a window seat, please. I love looking at the view.",
-    criteria: "preference clearly stated, please used, natural phrasing, complete answer",
-  },
-  {
-    agent: "Great! Your boarding gate is B12, and boarding starts at 10:45 AM. Is there anything else I can help you with?",
-    hint: "Thank the agent and confirm you understood the gate and boarding time.",
-    ideal: "Thank you so much! Gate B12, boarding at 10:45 — I've got it. Have a great day!",
-    criteria: "thank you expressed, gate or time confirmed, polite closing phrase, natural tone",
-  },
+  { agent: "", hint: "", ideal: "", criteria: "" },
 ];
 
 const DEFAULT_SCENE = {
-  title: "At the Airport",
-  icon: "✈️",
-  desc: "You are a traveler at an international airport checking in for a flight to London. The airline agent will ask you questions. Respond naturally and completely in English.",
-  agentName: "Alex",
-  agentRole: "Agent",
-  studentRole: "Traveler",
+  title: "", icon: "🎭", desc: "", agentName: "", agentRole: "", studentRole: "",
 };
 
 // ── SHARED COMPONENTS ─────────────────────────────────────────
@@ -343,9 +315,70 @@ async function saveActivity(scene, turns) {
   }
 }
 
+const TEMPLATES = [
+  { icon: "🍽", label: "Restaurant",
+    scene: { title: "At the Restaurant", icon: "🍽", desc: "You are a customer at a restaurant. The waiter will take your order. Respond politely and completely in English.", agentName: "", agentRole: "Waiter", studentRole: "Customer" },
+    turns: [
+      { agent: "Good evening! Are you ready to order?", hint: "Greet the waiter and say what you'd like to eat.", ideal: "Good evening! Yes, I'd like the grilled chicken, please.", criteria: "polite greeting, order stated, please used" },
+      { agent: "Great choice! Would you like anything to drink?", hint: "Order a drink and optionally ask for water.", ideal: "I'll have an orange juice, please. And some water.", criteria: "drink ordered, polite language, complete sentence" },
+    ],
+  },
+  { icon: "🏥", label: "Doctor",
+    scene: { title: "At the Doctor", icon: "🏥", desc: "You are a patient visiting the doctor. Describe your symptoms clearly and answer the doctor's questions in English.", agentName: "", agentRole: "Doctor", studentRole: "Patient" },
+    turns: [
+      { agent: "Good morning! What brings you in today?", hint: "Describe your main symptom and how long you've had it.", ideal: "Good morning, Doctor. I've had a bad headache for two days.", criteria: "symptom described, duration mentioned, polite language" },
+      { agent: "I see. Do you have any other symptoms — fever or nausea?", hint: "Mention any other symptoms you have, or say you don't.", ideal: "I've also had a slight fever, but no nausea.", criteria: "additional symptoms addressed, complete response" },
+    ],
+  },
+  { icon: "🏨", label: "Hotel",
+    scene: { title: "At the Hotel", icon: "🏨", desc: "You are a guest checking in to a hotel. Communicate clearly and politely in English.", agentName: "", agentRole: "Receptionist", studentRole: "Guest" },
+    turns: [
+      { agent: "Welcome! Do you have a reservation?", hint: "Confirm your reservation and give your name.", ideal: "Yes, I have a reservation under the name [Your Name].", criteria: "confirmation given, name provided, polite tone" },
+      { agent: "Perfect. Could I see some ID, please?", hint: "Offer your ID and ask for the room number.", ideal: "Of course, here is my passport. What is my room number?", criteria: "ID offered, question asked, polite and complete" },
+    ],
+  },
+  { icon: "✈️", label: "Airport",
+    scene: { title: "At the Airport", icon: "✈️", desc: "You are a traveler checking in at an international airport. Respond naturally and completely in English.", agentName: "", agentRole: "Agent", studentRole: "Traveler" },
+    turns: [
+      { agent: "Good morning! May I have your name and destination, please?", hint: "Greet the agent, give your name, and mention your destination.", ideal: "Good morning! My name is [Name] and I'm flying to London.", criteria: "greeting used, name given, destination mentioned" },
+      { agent: "Thank you! Do you have any bags to check in today?", hint: "Say how many bags you have and offer your passport.", ideal: "I have two bags. Here is my passport.", criteria: "bags stated, passport mentioned, complete response" },
+    ],
+  },
+  { icon: "🛒", label: "Shopping",
+    scene: { title: "Shopping", icon: "🛒", desc: "You are a customer in a shop. The assistant will help you find something. Use polite English throughout.", agentName: "", agentRole: "Shop assistant", studentRole: "Customer" },
+    turns: [
+      { agent: "Hello! Can I help you with anything today?", hint: "Say what you are looking for.", ideal: "Hi! Yes, I'm looking for a birthday gift for my friend.", criteria: "clear request made, polite greeting, complete sentence" },
+      { agent: "Great! What's your budget?", hint: "State your budget clearly.", ideal: "I'd like to spend around twenty pounds, please.", criteria: "budget stated, please used, natural phrasing" },
+    ],
+  },
+  { icon: "📞", label: "Phone call",
+    scene: { title: "Phone Call", icon: "📞", desc: "You are calling a company's customer service line. Communicate clearly and politely in English.", agentName: "", agentRole: "Customer service", studentRole: "Caller" },
+    turns: [
+      { agent: "Thank you for calling. How can I help you today?", hint: "State why you are calling and give your name.", ideal: "Hello, my name is [Name]. I'm calling about my order.", criteria: "name given, reason stated, polite opening" },
+      { agent: "Of course! Could I have your order number, please?", hint: "Provide your order number or say you don't have it.", ideal: "Yes, it's order number 45892.", criteria: "order number provided, polite response" },
+    ],
+  },
+  { icon: "🏫", label: "Classroom",
+    scene: { title: "In the Classroom", icon: "🏫", desc: "You are a student in an English class. Your teacher will ask you questions. Answer clearly and in complete sentences.", agentName: "", agentRole: "Teacher", studentRole: "Student" },
+    turns: [
+      { agent: "Good morning! Can you tell me about your weekend?", hint: "Describe one thing you did at the weekend.", ideal: "Good morning! I went to the park with my family on Saturday.", criteria: "past tense used, activity described, complete sentence" },
+      { agent: "That sounds lovely! Did you enjoy it?", hint: "Give your opinion and add a detail or reason.", ideal: "Yes, I really enjoyed it. The weather was sunny and we had a picnic.", criteria: "opinion expressed, reason given, natural phrasing" },
+    ],
+  },
+  { icon: "🏦", label: "Bank",
+    scene: { title: "At the Bank", icon: "🏦", desc: "You are a client at a bank. The teller will assist you. Use polite and clear English.", agentName: "", agentRole: "Teller", studentRole: "Client" },
+    turns: [
+      { agent: "Good morning! How can I help you today?", hint: "Explain what you would like to do at the bank.", ideal: "Good morning! I'd like to open a savings account, please.", criteria: "polite greeting, clear request, please used" },
+      { agent: "Of course! Could I see some identification, please?", hint: "Confirm you have your ID and say what you've brought.", ideal: "Yes, here is my passport.", criteria: "ID offered, polite and direct, complete sentence" },
+    ],
+  },
+];
+
 function EditorView({ scene, turns, onSceneChange, onTurnsChange, onStart }) {
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState("");
+  const [showTemplates, setShowTemplates] = useState(false);
+  const [activeTemplate, setActiveTemplate] = useState(null);
 
   const addTurn = () => onTurnsChange([...turns, { agent: "", hint: "", ideal: "", criteria: "" }]);
   const deleteTurn = i => {
@@ -354,6 +387,19 @@ function EditorView({ scene, turns, onSceneChange, onTurnsChange, onStart }) {
   };
   const updateTurn = (i, key, val) => {
     const t = [...turns]; t[i] = { ...t[i], [key]: val }; onTurnsChange(t);
+  };
+  const moveTurnUp = i => {
+    if (i === 0) return;
+    const t = [...turns]; [t[i - 1], t[i]] = [t[i], t[i - 1]]; onTurnsChange(t);
+  };
+  const moveTurnDown = i => {
+    if (i === turns.length - 1) return;
+    const t = [...turns]; [t[i], t[i + 1]] = [t[i + 1], t[i]]; onTurnsChange(t);
+  };
+  const applyTemplate = tpl => {
+    setActiveTemplate(tpl.label);
+    onSceneChange({ ...tpl.scene });
+    onTurnsChange(tpl.turns.map(t => ({ ...t })));
   };
 
   const handleSave = async () => {
@@ -364,6 +410,13 @@ function EditorView({ scene, turns, onSceneChange, onTurnsChange, onStart }) {
     setTimeout(() => setSaveMsg(""), 3000);
   };
 
+  const arrowBtnStyle = disabled => ({
+    background: "none", border: `1.5px solid ${disabled ? C.purpleLight : C.purpleMid}`,
+    borderRadius: 6, cursor: disabled ? "default" : "pointer",
+    color: disabled ? C.purpleLight : C.purpleSub,
+    fontSize: 10, padding: "2px 5px", lineHeight: 1, fontWeight: 800,
+  });
+
   return (
     <div style={{ background: C.bg, minHeight: "100%" }}>
       <Topbar title="🎭 Roleplay" right={
@@ -372,68 +425,122 @@ function EditorView({ scene, turns, onSceneChange, onTurnsChange, onStart }) {
       <div style={{ maxWidth: 680, margin: "0 auto", padding: "20px 16px 60px" }}>
         <Kicker>Activity Builder</Kicker>
 
+        {/* Quick Templates */}
+        <div style={{ marginBottom: 14 }}>
+          <button onClick={() => setShowTemplates(v => !v)} style={{
+            background: "none", border: "none", cursor: "pointer",
+            fontFamily: "'Nunito', sans-serif", fontWeight: 800, fontSize: 13,
+            color: C.purple, display: "flex", alignItems: "center", gap: 6, padding: "4px 0",
+          }}>
+            💡 Quick Templates {showTemplates ? "▲" : "▼"}
+          </button>
+          {showTemplates && (
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 7, marginTop: 10 }}>
+              {TEMPLATES.map(tpl => {
+                const active = activeTemplate === tpl.label;
+                return (
+                  <button key={tpl.label} onClick={() => applyTemplate(tpl)} style={{
+                    background: active ? C.purple : C.purpleLight,
+                    color: active ? C.white : C.purple,
+                    border: `1.5px solid ${C.cardBorder}`,
+                    borderRadius: 20, fontFamily: "'Nunito', sans-serif",
+                    fontSize: 12, fontWeight: 800, padding: "6px 14px", cursor: "pointer",
+                  }}>
+                    {tpl.icon} {tpl.label}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Scene Setup */}
         <Card style={{ marginBottom: 16, borderRadius: 20 }}>
           <div style={{ fontFamily: "'Fredoka', sans-serif", fontSize: 16, fontWeight: 600, color: C.orange, marginBottom: 14 }}>
-            🎭 Scene Settings
+            🎭 Scene Setup
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 80px", gap: 10, marginBottom: 10 }}>
+
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 72px", gap: 10, marginBottom: 10 }}>
             <div>
-              <MiniLabel>Scenario title</MiniLabel>
+              <MiniLabel>Activity title</MiniLabel>
               <input value={scene.title} onChange={e => onSceneChange({ ...scene, title: e.target.value })}
                 style={inputStyle} placeholder="e.g. At the Restaurant" />
             </div>
             <div>
-              <MiniLabel>Icon</MiniLabel>
+              <MiniLabel>Scene icon</MiniLabel>
               <input value={scene.icon} onChange={e => onSceneChange({ ...scene, icon: e.target.value })}
-                style={inputStyle} placeholder="✈️" />
+                maxLength={2} style={inputStyle} placeholder="🎭" />
             </div>
           </div>
+
           <div style={{ marginBottom: 10 }}>
-            <MiniLabel>Scenario description</MiniLabel>
-            <textarea value={scene.desc} onChange={e => onSceneChange({ ...scene, desc: e.target.value })}
-              style={{ ...inputStyle, resize: "none", minHeight: 60, lineHeight: 1.5 }} />
+            <MiniLabel>Situation description</MiniLabel>
+            <textarea
+              value={scene.desc}
+              onChange={e => onSceneChange({ ...scene, desc: e.target.value })}
+              rows={3}
+              placeholder={"Describe the situation the student is in.\ne.g. You are a customer at a busy café ordering lunch..."}
+              style={{ ...inputStyle, resize: "none", lineHeight: 1.55 }}
+            />
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 10 }}>
             <div>
               <MiniLabel>Agent name</MiniLabel>
               <input value={scene.agentName} onChange={e => onSceneChange({ ...scene, agentName: e.target.value })}
-                style={inputStyle} />
+                style={inputStyle} placeholder="e.g. Maria, Dr. Smith" />
             </div>
             <div>
-              <MiniLabel>Student role</MiniLabel>
-              <input value={scene.studentRole} onChange={e => onSceneChange({ ...scene, studentRole: e.target.value })}
-                style={inputStyle} />
+              <MiniLabel>Agent role</MiniLabel>
+              <input value={scene.agentRole} onChange={e => onSceneChange({ ...scene, agentRole: e.target.value })}
+                style={inputStyle} placeholder="e.g. Waiter, Doctor, Receptionist" />
             </div>
+          </div>
+
+          <div>
+            <MiniLabel>Student role</MiniLabel>
+            <input value={scene.studentRole} onChange={e => onSceneChange({ ...scene, studentRole: e.target.value })}
+              style={inputStyle} placeholder="e.g. Customer, Patient, Tourist" />
           </div>
         </Card>
 
+        {/* Turn Cards */}
         {turns.map((t, i) => (
           <Card key={i} style={{ marginBottom: 10, borderRadius: 20 }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
               <span style={{ background: C.purpleLight, color: C.purple, fontSize: 11, fontWeight: 800, padding: "3px 10px", borderRadius: 20 }}>
                 Turn {i + 1}
               </span>
-              <button onClick={() => deleteTurn(i)} style={{ background: "none", border: "none", cursor: "pointer", color: "#ccc", fontSize: 16, padding: "2px 6px", borderRadius: 6 }}>✕</button>
+              <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                <button onClick={() => moveTurnUp(i)} disabled={i === 0} style={arrowBtnStyle(i === 0)}>▲</button>
+                <button onClick={() => moveTurnDown(i)} disabled={i === turns.length - 1} style={arrowBtnStyle(i === turns.length - 1)}>▼</button>
+                {turns.length > 1 && (
+                  <button onClick={() => deleteTurn(i)} style={{ background: "none", border: "none", cursor: "pointer", color: "#ccc", fontSize: 15, padding: "2px 6px", borderRadius: 6, fontWeight: 800 }}>✕</button>
+                )}
+              </div>
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
               <div>
                 <MiniLabel>Agent says</MiniLabel>
                 <textarea value={t.agent} onChange={e => updateTurn(i, "agent", e.target.value)}
-                  style={{ ...inputStyle, resize: "none", minHeight: 56, lineHeight: 1.5 }} placeholder="What the agent says…" />
+                  rows={2} placeholder="What the agent/character says to the student"
+                  style={{ ...inputStyle, resize: "none", lineHeight: 1.55 }} />
               </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 9 }}>
-                <div>
-                  <MiniLabel>Student hint</MiniLabel>
-                  <input value={t.hint} onChange={e => updateTurn(i, "hint", e.target.value)} style={inputStyle} placeholder="Tip for the student" />
-                </div>
-                <div>
-                  <MiniLabel>Evaluation criteria</MiniLabel>
-                  <input value={t.criteria} onChange={e => updateTurn(i, "criteria", e.target.value)} style={inputStyle} placeholder="What to check" />
-                </div>
+              <div>
+                <MiniLabel>Student hint</MiniLabel>
+                <input value={t.hint} onChange={e => updateTurn(i, "hint", e.target.value)}
+                  style={inputStyle} placeholder="Hint shown to help the student respond" />
               </div>
               <div>
                 <MiniLabel>Ideal response</MiniLabel>
-                <input value={t.ideal} onChange={e => updateTurn(i, "ideal", e.target.value)} style={inputStyle} placeholder="Model answer" />
+                <textarea value={t.ideal} onChange={e => updateTurn(i, "ideal", e.target.value)}
+                  rows={2} placeholder="The ideal answer the student should give"
+                  style={{ ...inputStyle, resize: "none", lineHeight: 1.55 }} />
+              </div>
+              <div>
+                <MiniLabel>Grading criteria</MiniLabel>
+                <input value={t.criteria} onChange={e => updateTurn(i, "criteria", e.target.value)}
+                  style={inputStyle} placeholder="e.g. polite greeting used, verb tense correct, complete sentence" />
               </div>
             </div>
           </Card>
@@ -442,7 +549,7 @@ function EditorView({ scene, turns, onSceneChange, onTurnsChange, onStart }) {
         <button onClick={addTurn} style={{
           width: "100%", padding: 11, borderRadius: 16, border: `2px dashed ${C.purpleMid}`,
           background: "transparent", cursor: "pointer", fontFamily: "'Nunito', sans-serif",
-          fontSize: 13, fontWeight: 800, color: C.purpleSub, marginBottom: 14,
+          fontSize: 13, fontWeight: 800, color: C.purple, marginBottom: 14,
         }}>＋ Add Turn</button>
 
         {window.ROLEPLAY_ACTIVITY_ID && (
