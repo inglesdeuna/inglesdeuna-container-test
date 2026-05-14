@@ -382,16 +382,16 @@ body{
 }
 
 .mc-page{
-    width:100%;
     flex:1;
     min-height:0;
+    overflow:hidden;
     display:flex;
     flex-direction:column;
-    align-items:center;
-    padding:clamp(10px,2vw,18px);
+    padding:clamp(10px,1.5vw,16px);
     gap:10px;
-    overflow:hidden;
     box-sizing:border-box;
+    width:100%;
+    align-items:center;
 }
 
 .mc-app{
@@ -456,8 +456,8 @@ body{
 .mc-shell{background:#fff;border:1px solid #EDE9FA;border-radius:30px;box-shadow:0 8px 24px rgba(127,119,221,.09);padding:18px;flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden;}
 .mc-status{flex-shrink:0;display:flex;gap:8px;flex-wrap:wrap;}
 .mc-pill{display:inline-flex;align-items:center;gap:6px;background:var(--mc-purple-soft);border:1px solid #d8d3f5;color:var(--mc-purple-dark);font-weight:800;font-size:13px;padding:8px 12px;border-radius:999px}
-.mc-board{display:grid;grid-template-columns:repeat(var(--mc-cols),1fr);gap:var(--mc-gap);flex:1;min-height:0;width:100%;box-sizing:border-box;}
-.viewer-content .mc-card{position:relative;perspective:900px;border:none;background:transparent;padding:0!important;cursor:pointer;aspect-ratio:3/4;width:100%;min-height:0;}
+.mc-board{display:grid;grid-template-columns:repeat(var(--mc-cols),1fr);gap:var(--mc-gap);flex:1;min-height:0;width:100%;box-sizing:border-box;overflow:hidden;align-content:start;}
+.viewer-content .mc-card{position:relative;perspective:900px;border:none;background:transparent;padding:0!important;cursor:pointer;width:100%;height:100%;min-height:0;}
 .mc-card:disabled{cursor:default}
 .mc-card-inner{display:block;position:relative;width:100%;height:100%;transform-style:preserve-3d;transition:transform .4s ease;}
 .mc-card.is-flipped .mc-card-inner{transform:rotateY(180deg)}
@@ -828,42 +828,59 @@ body{
             ensureAudioFallback('match', matchAudioEl);
 
             function resizeBoard() {
-                var page = document.querySelector('.mc-page');
-                var boardEl = document.querySelector('.mc-board');
-                var stats = document.querySelector('.mc-status');
-                var restartRow = document.querySelector('.mc-controls');
-                if (!page || !boardEl) return;
+              var boardEl  = document.getElementById('mc-board');
+              var pageEl   = document.querySelector('.mc-page');
+              var statsEl  = document.querySelector('.mc-stats');
+              var restartEl= document.querySelector('.mc-restart-row');
+              if (!boardEl || !pageEl) return;
 
-                var statsH = stats ? stats.offsetHeight : 0;
-                var restartH = restartRow ? restartRow.offsetHeight : 0;
-                var gap = parseFloat(getComputedStyle(document.documentElement)
-                    .getPropertyValue('--mc-gap')) || 12;
-                var cols = parseInt(getComputedStyle(document.documentElement)
-                    .getPropertyValue('--mc-cols')) || 4;
+              /* total available height inside .mc-page */
+              var pageH    = pageEl.clientHeight;
+              var statsH   = statsEl  ? statsEl.offsetHeight  : 0;
+              var restartH = restartEl? restartEl.offsetHeight : 0;
+              var gapPx    = 10; /* gap between stat row and board */
 
-                var pageStyle = getComputedStyle(page);
-                var padTop = parseFloat(pageStyle.paddingTop) || 10;
-                var padBot = parseFloat(pageStyle.paddingBottom) || 10;
+              var boardH   = pageH - statsH - restartH - gapPx * 3;
+              if (boardH < 80) return; /* too small, skip */
 
-                var availH = page.clientHeight - statsH - restartH
-                             - padTop - padBot - gap * 3;
-                var rows = Math.ceil(boardEl.children.length / cols);
-                var cardH = Math.floor((availH - gap * (rows - 1)) / rows);
-                var cardW = Math.floor((boardEl.clientWidth
-                             - gap * (cols - 1)) / cols);
+              var cols = parseInt(
+                getComputedStyle(document.documentElement)
+                  .getPropertyValue('--mc-cols')
+              ) || 4;
 
-                var finalH = Math.min(cardH, Math.floor(cardW * 4 / 3));
-                if (finalH > 0) {
-                    boardEl.style.gridTemplateRows =
-                        'repeat(' + rows + ', ' + finalH + 'px)';
-                }
-                boardEl.style.alignContent = 'start';
+              var totalCards = boardEl.children.length;
+              var rows = Math.ceil(totalCards / cols);
+              if (rows < 1) rows = 1;
+
+              var gap = parseInt(
+                getComputedStyle(document.documentElement)
+                  .getPropertyValue('--mc-gap')
+              ) || 12;
+
+              /* height each card row gets */
+              var rowH = Math.floor((boardH - gap * (rows - 1)) / rows);
+
+              /* cap by aspect-ratio 3:4 so cards don't get too wide */
+              var boardW   = boardEl.clientWidth;
+              var colW     = Math.floor((boardW - gap * (cols - 1)) / cols);
+              var maxH     = Math.floor(colW * 4 / 3);
+              rowH = Math.min(rowH, maxH);
+
+              /* enforce minimum readable height */
+              rowH = Math.max(rowH, 80);
+
+              boardEl.style.gridTemplateRows =
+                'repeat(' + rows + ', ' + rowH + 'px)';
+              boardEl.style.alignContent = 'start';
             }
 
             window.addEventListener('resize', resizeBoard);
 
             restart();
             resizeBoard();
+            requestAnimationFrame(function(){
+              resizeBoard();
+            });
         })();
         </script>
     <?php endif; ?>
