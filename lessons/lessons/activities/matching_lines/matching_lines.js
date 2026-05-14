@@ -1,661 +1,287 @@
 document.addEventListener('DOMContentLoaded', function () {
-  const boards = Array.isArray(window.MATCHING_LINES_DATA) ? window.MATCHING_LINES_DATA : [];
+  var AF = window.ActivityFeedback;
+  var questions = Array.isArray(window.MATCHING_DATA) ? window.MATCHING_DATA : [];
 
-  const stage = document.getElementById('mlvStage');
-  const leftCol = document.getElementById('mlvLeft');
-  const rightCol = document.getElementById('mlvRight');
-  const svg = document.getElementById('mlvLines');
-  const boardTitle = document.getElementById('mlvBoardTitle');
-  const progress = document.getElementById('mlvProgress');
-  const prevBtn = document.getElementById('mlvPrevBtn');
-  const nextBtn = document.getElementById('mlvNextBtn');
-  const showBtn = document.getElementById('mlvShowBtn');
-  const returnTo = typeof window.MATCHING_LINES_RETURN_TO === 'string' ? window.MATCHING_LINES_RETURN_TO : '';
-  const activityId = typeof window.MATCHING_LINES_ACTIVITY_ID === 'string' ? window.MATCHING_LINES_ACTIVITY_ID : '';
+  var progressLabelEl = document.getElementById('ml-progress-label');
+  var progressFillEl  = document.getElementById('ml-progress-fill');
+  var progressBadgeEl = document.getElementById('ml-progress-badge');
+  var promptEl        = document.getElementById('ml-prompt');
+  var leftColEl       = document.getElementById('ml-left');
+  var rightColEl      = document.getElementById('ml-right');
+  var svgEl           = document.getElementById('ml-lines');
+  var checkBtn        = document.getElementById('ml-check');
+  var showBtn         = document.getElementById('ml-show');
+  var nextBtn         = document.getElementById('ml-next');
+  var feedbackEl      = document.getElementById('ml-feedback');
+  var activityEl      = document.getElementById('ml-activity');
+  var completedEl     = document.getElementById('ml-completed');
+  var winAudio        = new Audio('../../hangman/assets/win.mp3');
 
-  const clickSound = new Audio('../../hangman/assets/pageflip.mp3');
-  const correctSound = new Audio('../../hangman/assets/realcorrect.mp3');
-  const wrongSound = new Audio('../../hangman/assets/lose.mp3');
-  const winSound = new Audio('../../hangman/assets/win.mp3');
+  var activityTitle = window.MATCHING_TITLE || 'Matching';
+  var returnTo      = window.MATCHING_RETURN_TO || '';
+  var activityId    = window.MATCHING_ACTIVITY_ID || '';
 
-  if (!stage || !leftCol || !rightCol || !svg || boards.length === 0) {
+  if (!questions.length) {
+    if (promptEl) promptEl.textContent = 'No questions available.';
     return;
   }
 
-  const stateByBoardId = {};
-  let currentIndex = 0;
-  let dragging = null;
-  let wrongAttempts = 0;
-  let scorePersisted = false;
-  let winPlayed = false;
-  let completionUrl = '';
+  var index       = 0;
+  var answered    = false;
+  var selectedLeft  = null;  /* element */
+  var selectedRight = null;
+  var connections   = [];    /* [{leftId, rightId}] */
+  var scores        = questions.map(function () { return 0; });
+  var reviewItems   = questions.map(function () { return {}; });
 
-  function playSound(audio) {
-    if (!audio) {
-      return;
+  /* Color pool for connection lines */
+  var COLORS = ['#7F77DD','#F97316','#22c55e','#f43f5e','#0ea5e9','#a855f7','#14b8a6','#fb923c'];
+
+  function updateProgress() {
+    var total   = questions.length;
+    var current = index + 1;
+    var pct     = Math.round((current / total) * 100);
+    if (progressLabelEl) progressLabelEl.textContent = current + ' / ' + total;
+    if (progressBadgeEl) progressBadgeEl.textContent = 'Q ' + current + ' of ' + total;
+    if (progressFillEl)  progressFillEl.style.width  = pct + '%';
+  }
+
+  function shuffle(arr) {
+    var a = arr.slice();
+    for (var i = a.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var t = a[i]; a[i] = a[j]; a[j] = t;
     }
-    try {
-      audio.pause();
-      audio.currentTime = 0;
-      audio.play();
-    } catch (e) {
-      // Ignore autoplay/audio policy errors.
-    }
+    return a;
   }
 
-  function shuffle(items) {
-    const copied = items.slice();
-    for (let i = copied.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      const temp = copied[i];
-      copied[i] = copied[j];
-      copied[j] = temp;
-    }
-    return copied;
+  function loadQuestion() {
+    var q = questions[index] || {};
+    answered    = false;
+    selectedLeft  = null;
+    selectedRight = null;
+    connections   = [];
+
+    if (completedEl) completedEl.style.display = 'none';
+    if (activityEl)  activityEl.style.display  = '';
+    if (feedbackEl)  AF.clearFeedback(feedbackEl);
+
+    updateProgress();
+    if (promptEl) promptEl.textContent = q.prompt || 'Match each item on the left with the right.';
+
+    renderColumns(q);
+    drawLines();
+
+    if (checkBtn) checkBtn.disabled = false;
+    if (showBtn)  { showBtn.style.display = ''; showBtn.disabled = false; }
+    if (nextBtn)  { nextBtn.disabled = true; nextBtn.textContent = index < questions.length - 1 ? 'Next \u2192' : 'Finish'; }
   }
 
-  function esc(value) {
-    return String(value || '')
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#039;');
-  }
+  function renderColumns(q) {
+    var pairs = Array.isArray(q.pairs) ? q.pairs : [];
+    var leftItems  = pairs.map(function (p, i) { return { id: 'l' + i, text: p.left,  pairId: i }; });
+    var rightItems = shuffle(pairs.map(function (p, i) { return { id: 'r' + i, text: p.right, pairId: i }; }));
 
-  function getBoardState(board) {
-    const boardId = String(board.id || 'board_' + currentIndex);
-    if (!stateByBoardId[boardId]) {
-      const rightOrder = shuffle((board.pairs || []).map((pair) => String(pair.id || '')));
-      stateByBoardId[boardId] = {
-        rightOrder,
-        matches: {},
-        showAnswer: false,
-      };
-    }
-    return stateByBoardId[boardId];
-  }
-
-  function createCardHtml(pair, side) {
-    const pairId = esc(pair.id || '');
-    const text = side === 'left' ? esc(pair.left_text || '') : esc(pair.right_text || '');
-    const image = side === 'left' ? esc(pair.left_image || '') : esc(pair.right_image || '');
-    const mediaClass = side === 'left' ? 'mlv-media mlv-media-left' : 'mlv-media mlv-media-right';
-    const media = image !== '' ? '<img class="' + mediaClass + '" src="' + image + '" alt="item">' : '';
-    const label = text !== '' ? '<div class="mlv-text">' + text + '</div>' : '';
-    const sideClass = side === 'left' ? 'mlv-card-left' : 'mlv-card-right';
-    const imageOnlyClass = image !== '' && text === '' ? ' image-only' : '';
-
-    return '<button type="button" class="mlv-card ' + sideClass + imageOnlyClass + '" data-pair-id="' + pairId + '">'
-      + media + label + '<span class="mlv-anchor" aria-hidden="true"></span></button>';
-  }
-
-  function buildReturnUrl(scorePercent, errors, total) {
-    const pageParams = new URLSearchParams(window.location.search || '');
-
-    let baseReturn = returnTo;
-    if (!baseReturn) {
-      const unit = pageParams.get('unit') || '';
-      const assignment = pageParams.get('assignment') || '';
-      const source = pageParams.get('source') || '';
-      const from = pageParams.get('from') || '';
-
-      if (assignment && unit && from === 'teacher_course') {
-        baseReturn = '../../academic/teacher_course.php?assignment=' + encodeURIComponent(assignment) + '&unit=' + encodeURIComponent(unit);
-      } else if (assignment && unit && (from === 'student_course' || pageParams.get('embedded') === '1')) {
-        baseReturn = '../../academic/student_course.php?assignment=' + encodeURIComponent(assignment) + '&unit=' + encodeURIComponent(unit);
-      } else if (unit) {
-        baseReturn = '../../academic/unit_view.php?unit=' + encodeURIComponent(unit);
-        if (source) {
-          baseReturn += '&source=' + encodeURIComponent(source);
-        }
-      }
+    if (leftColEl) {
+      leftColEl.innerHTML = '';
+      leftItems.forEach(function (it) {
+        var btn = document.createElement('button');
+        btn.type      = 'button';
+        btn.className = 'ml-item ml-item--left';
+        btn.id        = 'ml-' + it.id;
+        btn.dataset.id     = it.id;
+        btn.dataset.pairId = String(it.pairId);
+        btn.textContent    = it.text;
+        btn.addEventListener('click', function () { handleLeftClick(btn); });
+        leftColEl.appendChild(btn);
+      });
     }
 
-    if (!baseReturn) {
-      return '';
+    if (rightColEl) {
+      rightColEl.innerHTML = '';
+      rightItems.forEach(function (it) {
+        var btn = document.createElement('button');
+        btn.type      = 'button';
+        btn.className = 'ml-item ml-item--right';
+        btn.id        = 'ml-' + it.id;
+        btn.dataset.id     = it.id;
+        btn.dataset.pairId = String(it.pairId);
+        btn.textContent    = it.text;
+        btn.addEventListener('click', function () { handleRightClick(btn); });
+        rightColEl.appendChild(btn);
+      });
     }
-
-    const hasQuery = baseReturn.indexOf('?') !== -1;
-    const joiner = hasQuery ? '&' : '?';
-
-    return baseReturn
-      + joiner + 'activity_percent=' + encodeURIComponent(String(scorePercent))
-      + '&activity_errors=' + encodeURIComponent(String(errors))
-      + '&activity_total=' + encodeURIComponent(String(total))
-      + '&activity_id=' + encodeURIComponent(String(activityId))
-      + '&activity_type=' + encodeURIComponent('matching_lines');
   }
 
-  function getTotalPairs() {
-    return boards.reduce(function (sum, board) {
-      const n = Array.isArray(board.pairs) ? board.pairs.length : 0;
-      return sum + n;
-    }, 0);
+  function handleLeftClick(btn) {
+    if (answered) return;
+    document.querySelectorAll('.ml-item--left').forEach(function (b) { b.classList.remove('ml-item--selected'); });
+    selectedLeft = btn;
+    btn.classList.add('ml-item--selected');
+    tryConnect();
   }
 
-  function getMatchedTotal() {
-    return boards.reduce(function (sum, board, idx) {
-      const boardId = String(board.id || 'board_' + idx);
-      const boardState = stateByBoardId[boardId];
-      const n = boardState && boardState.matches ? Object.keys(boardState.matches).length : 0;
-      return sum + n;
-    }, 0);
+  function handleRightClick(btn) {
+    if (answered) return;
+    document.querySelectorAll('.ml-item--right').forEach(function (b) { b.classList.remove('ml-item--selected'); });
+    selectedRight = btn;
+    btn.classList.add('ml-item--selected');
+    tryConnect();
   }
 
-  function isAllBoardsCompleted() {
-    return boards.every(function (board, idx) {
-      const total = Array.isArray(board.pairs) ? board.pairs.length : 0;
-      const boardId = String(board.id || 'board_' + idx);
-      const boardState = stateByBoardId[boardId] || { matches: {} };
-      return Object.keys(boardState.matches || {}).length >= total;
+  function tryConnect() {
+    if (!selectedLeft || !selectedRight) return;
+    var leftId  = selectedLeft.dataset.id;
+    var rightId = selectedRight.dataset.id;
+
+    /* remove any existing connection from this left item */
+    connections = connections.filter(function (c) { return c.leftId !== leftId && c.rightId !== rightId; });
+    connections.push({ leftId: leftId, rightId: rightId, color: COLORS[connections.length % COLORS.length] });
+
+    selectedLeft.classList.remove('ml-item--selected');
+    selectedRight.classList.remove('ml-item--selected');
+    selectedLeft  = null;
+    selectedRight = null;
+    drawLines();
+  }
+
+  function drawLines() {
+    if (!svgEl) return;
+    svgEl.innerHTML = '';
+    var containerRect = svgEl.getBoundingClientRect();
+
+    connections.forEach(function (conn) {
+      var leftEl  = document.getElementById('ml-' + conn.leftId);
+      var rightEl = document.getElementById('ml-' + conn.rightId);
+      if (!leftEl || !rightEl) return;
+
+      var lr = leftEl.getBoundingClientRect();
+      var rr = rightEl.getBoundingClientRect();
+
+      var x1 = lr.right  - containerRect.left;
+      var y1 = lr.top    - containerRect.top + lr.height / 2;
+      var x2 = rr.left   - containerRect.left;
+      var y2 = rr.top    - containerRect.top + rr.height / 2;
+
+      var line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      line.setAttribute('x1', String(x1));
+      line.setAttribute('y1', String(y1));
+      line.setAttribute('x2', String(x2));
+      line.setAttribute('y2', String(y2));
+      line.setAttribute('stroke', conn.color || '#7F77DD');
+      line.setAttribute('stroke-width', '3');
+      line.setAttribute('stroke-linecap', 'round');
+      svgEl.appendChild(line);
     });
   }
 
-  function persistScoreIfCompleted() {
-    if (scorePersisted || !isAllBoardsCompleted()) {
-      return;
-    }
+  function checkAnswers() {
+    if (answered) return;
+    var q     = questions[index] || {};
+    var pairs = Array.isArray(q.pairs) ? q.pairs : [];
+    var correct = 0;
+    answered   = true;
 
-    const total = getTotalPairs();
-    const matched = getMatchedTotal();
-    if (total <= 0) {
-      return;
-    }
+    connections.forEach(function (conn) {
+      var leftEl  = document.getElementById('ml-' + conn.leftId);
+      var rightEl = document.getElementById('ml-' + conn.rightId);
+      if (!leftEl || !rightEl) return;
+      var isRight = leftEl.dataset.pairId === rightEl.dataset.pairId;
+      if (isRight) {
+        correct++;
+        AF.highlightOption(leftEl,  'correct');
+        AF.highlightOption(rightEl, 'correct');
+      } else {
+        AF.highlightOption(leftEl,  'wrong');
+        AF.highlightOption(rightEl, 'wrong');
+      }
+    });
 
-    const percent = Math.round((matched / total) * 100);
-    const safeErrors = Math.max(0, Math.min(total, wrongAttempts));
-    const saveUrl = buildReturnUrl(percent, safeErrors, total);
-
-    if (!saveUrl) {
-      return;
-    }
-
-    completionUrl = saveUrl;
-    scorePersisted = true;
-
-    if (!winPlayed) {
-      winPlayed = true;
-      playSound(winSound);
-    }
-
-    // Save score in background so Next can send student to completed page.
-    try {
-      fetch(saveUrl, {
-        method: 'GET',
-        credentials: 'same-origin',
-        cache: 'no-store',
-        keepalive: true,
-      }).catch(function () {
-        scorePersisted = false;
-      });
-    } catch (e) {
-      scorePersisted = false;
-    }
-
-    const board = boards[currentIndex];
-    const boardState = board ? getBoardState(board) : null;
-    if (boardState) {
-      updateButtonState(boardState);
-    }
-  }
-
-  function getCardCenter(card, isLeft) {
-    const stageRect = stage.getBoundingClientRect();
-    const anchor = card.querySelector('.mlv-anchor') || card;
-    const rect = anchor.getBoundingClientRect();
-
-    const x = isLeft
-      ? rect.right - stageRect.left
-      : rect.left - stageRect.left;
-
-    const y = rect.top + rect.height / 2 - stageRect.top;
-
-    return { x, y };
-  }
-
-  function clientPointToStage(clientX, clientY) {
-    const rect = stage.getBoundingClientRect();
-    return {
-      x: clientX - rect.left,
-      y: clientY - rect.top,
+    var allRight = correct === pairs.length && connections.length === pairs.length;
+    scores[index] = allRight ? 1 : 0;
+    reviewItems[index] = {
+      question:      q.prompt || ('Question ' + (index + 1)),
+      yourAnswer:    correct + '/' + pairs.length + ' correct',
+      correctAnswer: pairs.map(function (p) { return p.left + ' \u2192 ' + p.right; }).join(', '),
+      score:         scores[index]
     };
+
+    if (feedbackEl) AF.showFeedback(feedbackEl, allRight, pairs.map(function (p) { return p.left + '\u2192' + p.right; }).join(' | '), false);
+    if (checkBtn) checkBtn.disabled = true;
+    if (showBtn)  showBtn.style.display = 'none';
+    if (nextBtn)  nextBtn.disabled = false;
   }
 
-  function drawPath(x1, y1, x2, y2, color, width, dashArray, temp) {
-    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-    const dx = Math.max(30, Math.abs(x2 - x1) * 0.4);
-    const d = 'M ' + x1 + ' ' + y1 + ' C ' + (x1 + dx) + ' ' + y1 + ', ' + (x2 - dx) + ' ' + y2 + ', ' + x2 + ' ' + y2;
-    path.setAttribute('d', d);
-    path.setAttribute('fill', 'none');
-    path.setAttribute('stroke', color);
-    path.setAttribute('stroke-width', String(width));
-    path.setAttribute('stroke-linecap', 'round');
-    path.setAttribute('stroke-linejoin', 'round');
-    if (dashArray) {
-      path.setAttribute('stroke-dasharray', dashArray);
-    }
-    if (temp) {
-      path.setAttribute('data-temp', '1');
-    }
-    svg.appendChild(path);
+  function showAnswers() {
+    if (answered) return;
+    var q     = questions[index] || {};
+    var pairs = Array.isArray(q.pairs) ? q.pairs : [];
+    answered  = true;
+    scores[index] = -1;
 
-    const dot1 = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-    dot1.setAttribute('cx', String(x1));
-    dot1.setAttribute('cy', String(y1));
-    dot1.setAttribute('r', String(Math.max(3, Math.floor(width * 0.9))));
-    dot1.setAttribute('fill', color);
-    if (temp) {
-      dot1.setAttribute('data-temp', '1');
-    }
-    svg.appendChild(dot1);
-
-    const dot2 = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-    dot2.setAttribute('cx', String(x2));
-    dot2.setAttribute('cy', String(y2));
-    dot2.setAttribute('r', String(Math.max(3, Math.floor(width * 0.9))));
-    dot2.setAttribute('fill', color);
-    if (temp) {
-      dot2.setAttribute('data-temp', '1');
-    }
-    svg.appendChild(dot2);
-  }
-
-  function clearTempPath() {
-    svg.querySelectorAll('[data-temp="1"]').forEach(function (node) {
-      node.remove();
-    });
-  }
-
-  function renderLines(board, boardState) {
-    svg.innerHTML = '';
-
-    const matches = boardState.matches || {};
-    Object.keys(matches).forEach(function (leftId) {
-      const rightId = matches[leftId];
-      const leftCard = leftCol.querySelector('[data-pair-id="' + CSS.escape(leftId) + '"]');
-      const rightCard = rightCol.querySelector('[data-pair-id="' + CSS.escape(rightId) + '"]');
-      if (!leftCard || !rightCard) {
-        return;
-      }
-      const p1 = getCardCenter(leftCard, true);
-      const p2 = getCardCenter(rightCard, false);
-      drawPath(p1.x, p1.y, p2.x, p2.y, '#111827', 4, '', false);
+    /* show correct connections */
+    connections = pairs.map(function (p, i) { return { leftId: 'l' + i, rightId: 'r' + i, color: COLORS[i % COLORS.length] }; });
+    drawLines();
+    pairs.forEach(function (p, i) {
+      var leftEl  = document.getElementById('ml-l' + i);
+      var rightEl = document.getElementById('ml-r' + i);
+      if (leftEl)  leftEl.style.borderColor  = COLORS[i % COLORS.length];
+      if (rightEl) rightEl.style.borderColor = COLORS[i % COLORS.length];
     });
 
-    if (boardState.showAnswer) {
-      (board.pairs || []).forEach(function (pair) {
-        const id = String(pair.id || '');
-        if (matches[id]) {
-          return;
-        }
-        const leftCard = leftCol.querySelector('[data-pair-id="' + CSS.escape(id) + '"]');
-        const rightCard = rightCol.querySelector('[data-pair-id="' + CSS.escape(id) + '"]');
-        if (!leftCard || !rightCard) {
-          return;
-        }
-        const p1 = getCardCenter(leftCard, true);
-        const p2 = getCardCenter(rightCard, false);
-        drawPath(p1.x, p1.y, p2.x, p2.y, '#7c3aed', 3, '8 6', false);
-      });
-    }
-
-    if (dragging && dragging.active) {
-      drawPath(dragging.startX, dragging.startY, dragging.endX, dragging.endY, '#2563eb', 4, '', true);
-    }
+    reviewItems[index] = { question: q.prompt || '', yourAnswer: '(revealed)', correctAnswer: '', score: -1 };
+    if (feedbackEl) AF.showFeedback(feedbackEl, false, null, true);
+    if (checkBtn) checkBtn.disabled = true;
+    if (showBtn)  showBtn.style.display = 'none';
+    if (nextBtn)  nextBtn.disabled = false;
   }
 
-  function updateButtonState(boardState) {
-    prevBtn.disabled = currentIndex <= 0;
-    const hasCompletionTarget = completionUrl !== '' && isAllBoardsCompleted();
-    nextBtn.disabled = hasCompletionTarget ? false : currentIndex >= boards.length - 1;
-    nextBtn.textContent = hasCompletionTarget ? 'Next' : 'Next';
-    showBtn.textContent = boardState.showAnswer ? 'Hide Answer' : 'Show Answer';
-  }
-
-  function updateProgress(board, boardState) {
-    const total = Array.isArray(board.pairs) ? board.pairs.length : 0;
-    const done = Object.keys(boardState.matches || {}).length;
-    progress.textContent = 'Matched ' + done + ' / ' + total;
-  }
-
-  function isRightAlreadyUsed(matches, rightId) {
-    return Object.values(matches).indexOf(rightId) !== -1;
-  }
-
-  function flashWrongLine(leftId, rightId) {
-    const leftCard = leftCol.querySelector('[data-pair-id="' + CSS.escape(leftId) + '"]');
-    const rightCard = rightCol.querySelector('[data-pair-id="' + CSS.escape(rightId) + '"]');
-    if (!leftCard || !rightCard) {
-      return;
-    }
-
-    const p1 = getCardCenter(leftCard, true);
-    const p2 = getCardCenter(rightCard, false);
-    drawPath(p1.x, p1.y, p2.x, p2.y, '#ef4444', 4, '', false);
-
-    setTimeout(function () {
-      renderCurrentBoard();
-    }, 420);
-  }
-
-  function attemptMatch(leftId, rightId, board, boardState) {
-    if (!leftId || !rightId) {
-      return;
-    }
-
-    const matches = boardState.matches;
-
-    if (matches[leftId] || isRightAlreadyUsed(matches, rightId)) {
-      return;
-    }
-
-    const correct = leftId === rightId;
-    if (correct) {
-      matches[leftId] = rightId;
-      playSound(correctSound);
-      const leftCard = leftCol.querySelector('[data-pair-id="' + CSS.escape(leftId) + '"]');
-      const rightCard = rightCol.querySelector('[data-pair-id="' + CSS.escape(rightId) + '"]');
-      if (leftCard) {
-        leftCard.classList.add('matched', 'correct-glow');
-      }
-      if (rightCard) {
-        rightCard.classList.add('matched', 'correct-glow');
-      }
+  function nextQuestion() {
+    if (index < questions.length - 1) {
+      index++;
+      loadQuestion();
     } else {
-      wrongAttempts += 1;
-      playSound(wrongSound);
-      flashWrongLine(leftId, rightId);
+      showCompleted();
     }
-
-    updateProgress(board, boardState);
-    renderLines(board, boardState);
-    persistScoreIfCompleted();
   }
 
-  function clearDragClasses() {
-    stage.querySelectorAll('.drag-source').forEach(function (el) {
-      el.classList.remove('drag-source');
+  function showCompleted() {
+    if (!completedEl) return;
+    if (activityEl) activityEl.style.display = 'none';
+    completedEl.style.display = '';
+
+    AF.showCompleted({
+      target:        completedEl,
+      scores:        scores,
+      title:         activityTitle,
+      activityType:  'Matching',
+      questionCount: questions.length,
+      winAudio:      winAudio,
+      onRetry:       restartActivity,
+      onReview:      function () { AF.showReview({ target: completedEl, items: reviewItems, onRetry: restartActivity }); }
     });
-    stage.querySelectorAll('.drop-hover').forEach(function (el) {
-      el.classList.remove('drop-hover');
-    });
-    stage.querySelectorAll('.active-anchor').forEach(function (el) {
-      el.classList.remove('active-anchor');
-    });
+
+    var result = AF.computeScore(scores);
+    if (returnTo && activityId) {
+      var sep = returnTo.indexOf('?') !== -1 ? '&' : '?';
+      fetch(returnTo + sep + 'activity_percent=' + result.percent + '&activity_errors=' + result.wrong + '&activity_total=' + result.total + '&activity_id=' + encodeURIComponent(activityId) + '&activity_type=matching_lines',
+        { method: 'GET', credentials: 'same-origin', cache: 'no-store' }).catch(function () {});
+    }
   }
 
-  function getRightCardUnderPoint(clientX, clientY) {
-    const hit = document.elementFromPoint(clientX, clientY);
-    if (!hit) {
-      return null;
-    }
-    const card = hit.closest('.mlv-right .mlv-card');
-    if (!card) {
-      return null;
-    }
-    return card;
+  function restartActivity() {
+    index       = 0;
+    scores      = questions.map(function () { return 0; });
+    reviewItems = questions.map(function () { return {}; });
+    loadQuestion();
   }
 
-  function endDrag(clientX, clientY, board, boardState) {
-    if (!dragging || !dragging.active) {
-      return;
-    }
+  /* redraw lines on window resize */
+  window.addEventListener('resize', drawLines);
 
-    const hoveredRight = getRightCardUnderPoint(clientX, clientY);
-    let rightId = '';
-    if (hoveredRight) {
-      rightId = String(hoveredRight.getAttribute('data-pair-id') || '');
-    }
+  if (checkBtn) checkBtn.addEventListener('click', checkAnswers);
+  if (showBtn)  showBtn.addEventListener('click', showAnswers);
+  if (nextBtn)  nextBtn.addEventListener('click', nextQuestion);
 
-    clearTempPath();
-    clearDragClasses();
-
-    if (rightId) {
-      attemptMatch(dragging.leftId, rightId, board, boardState);
-    } else {
-      renderLines(board, boardState);
-    }
-
-    dragging = null;
-  }
-
-  function beginDrag(ev, leftCard, board, boardState) {
-    const leftId = String(leftCard.getAttribute('data-pair-id') || '');
-    if (!leftId || boardState.matches[leftId]) {
-      return;
-    }
-
-    playSound(clickSound);
-
-    const startPoint = getCardCenter(leftCard, true);
-    dragging = {
-      active: true,
-      leftId: leftId,
-      startX: startPoint.x,
-      startY: startPoint.y,
-      endX: startPoint.x,
-      endY: startPoint.y,
-    };
-
-    clearDragClasses();
-    leftCard.classList.add('drag-source');
-    const anchor = leftCard.querySelector('.mlv-anchor');
-    if (anchor) {
-      anchor.classList.add('active-anchor');
-    }
-
-    renderLines(board, boardState);
-    ev.preventDefault();
-  }
-
-  function bindDrag(board, boardState) {
-    leftCol.querySelectorAll('.mlv-card').forEach(function (card) {
-      card.addEventListener('pointerdown', function (ev) {
-        beginDrag(ev, card, board, boardState);
-      });
-    });
-
-    if (stage.getAttribute('data-drag-bound') === '1') {
-      return;
-    }
-
-    stage.setAttribute('data-drag-bound', '1');
-
-    const getCurrent = function () {
-      const currentBoard = boards[currentIndex];
-      return {
-        board: currentBoard,
-        boardState: currentBoard ? getBoardState(currentBoard) : null,
-      };
-    };
-
-    stage.addEventListener('pointermove', function (ev) {
-      if (!dragging || !dragging.active) {
-        return;
-      }
-
-      const current = getCurrent();
-      if (!current.board || !current.boardState) {
-        return;
-      }
-
-      const pos = clientPointToStage(ev.clientX, ev.clientY);
-      dragging.endX = pos.x;
-      dragging.endY = pos.y;
-
-      clearDragClasses();
-      const leftCard = leftCol.querySelector('[data-pair-id="' + CSS.escape(dragging.leftId) + '"]');
-      if (leftCard) {
-        leftCard.classList.add('drag-source');
-        const anchor = leftCard.querySelector('.mlv-anchor');
-        if (anchor) {
-          anchor.classList.add('active-anchor');
-        }
-      }
-
-      const rightCard = getRightCardUnderPoint(ev.clientX, ev.clientY);
-      if (rightCard) {
-        const rightId = String(rightCard.getAttribute('data-pair-id') || '');
-        if (!isRightAlreadyUsed(current.boardState.matches, rightId)) {
-          rightCard.classList.add('drop-hover');
-          const rightAnchor = rightCard.querySelector('.mlv-anchor');
-          if (rightAnchor) {
-            rightAnchor.classList.add('active-anchor');
-          }
-        }
-      }
-
-      renderLines(current.board, current.boardState);
-    });
-
-    stage.addEventListener('pointerup', function (ev) {
-      const current = getCurrent();
-      if (!current.board || !current.boardState) {
-        return;
-      }
-      endDrag(ev.clientX, ev.clientY, current.board, current.boardState);
-    });
-
-    window.addEventListener('pointerup', function (ev) {
-      const current = getCurrent();
-      if (!current.board || !current.boardState) {
-        return;
-      }
-      endDrag(ev.clientX, ev.clientY, current.board, current.boardState);
-    });
-
-    stage.addEventListener('pointercancel', function () {
-      const current = getCurrent();
-      if (!current.board || !current.boardState) {
-        return;
-      }
-      if (!dragging || !dragging.active) {
-        return;
-      }
-      clearTempPath();
-      clearDragClasses();
-      dragging = null;
-      renderLines(current.board, current.boardState);
-    });
-
-    stage.addEventListener('pointerleave', function (ev) {
-      const current = getCurrent();
-      if (!current.board || !current.boardState) {
-        return;
-      }
-      if (!dragging || !dragging.active) {
-        return;
-      }
-      const pos = clientPointToStage(ev.clientX, ev.clientY);
-      dragging.endX = pos.x;
-      dragging.endY = pos.y;
-      renderLines(current.board, current.boardState);
-    });
-  }
-
-  function renderCurrentBoard() {
-    const board = boards[currentIndex];
-    if (!board || !Array.isArray(board.pairs)) {
-      return;
-    }
-
-    const boardState = getBoardState(board);
-    const leftItems = board.pairs.slice();
-
-    const rightMap = {};
-    board.pairs.forEach(function (pair) {
-      rightMap[String(pair.id || '')] = pair;
-    });
-
-    const orderedRight = boardState.rightOrder
-      .map(function (pairId) { return rightMap[String(pairId)]; })
-      .filter(Boolean);
-
-    leftCol.innerHTML = leftItems.map(function (pair) {
-      return createCardHtml(pair, 'left');
-    }).join('');
-
-    rightCol.innerHTML = orderedRight.map(function (pair) {
-      return createCardHtml(pair, 'right');
-    }).join('');
-
-    if (boardTitle) {
-      boardTitle.textContent = board.title || ('Board ' + (currentIndex + 1));
-    }
-    updateProgress(board, boardState);
-    updateButtonState(boardState);
-    dragging = null;
-
-    const matches = boardState.matches || {};
-    Object.keys(matches).forEach(function (leftId) {
-      const rightId = matches[leftId];
-      const leftCard = leftCol.querySelector('[data-pair-id="' + CSS.escape(leftId) + '"]');
-      const rightCard = rightCol.querySelector('[data-pair-id="' + CSS.escape(rightId) + '"]');
-      if (leftCard) {
-        leftCard.classList.add('matched');
-      }
-      if (rightCard) {
-        rightCard.classList.add('matched');
-      }
-    });
-
-    bindDrag(board, boardState);
-    renderLines(board, boardState);
-    persistScoreIfCompleted();
-  }
-
-  prevBtn.addEventListener('click', function () {
-    if (currentIndex <= 0) {
-      return;
-    }
-    currentIndex -= 1;
-    renderCurrentBoard();
-  });
-
-  nextBtn.addEventListener('click', function () {
-    if (completionUrl !== '' && isAllBoardsCompleted()) {
-      try {
-        if (window.top && window.top !== window.self) {
-          window.top.location.href = completionUrl;
-          return;
-        }
-      } catch (e) {
-        // Fall back to same frame.
-      }
-      window.location.href = completionUrl;
-      return;
-    }
-
-    if (currentIndex >= boards.length - 1) {
-      return;
-    }
-    currentIndex += 1;
-    renderCurrentBoard();
-  });
-
-  showBtn.addEventListener('click', function () {
-    const board = boards[currentIndex];
-    if (!board) {
-      return;
-    }
-    const boardState = getBoardState(board);
-    boardState.showAnswer = !boardState.showAnswer;
-    if (boardState.showAnswer) {
-      wrongAttempts += 1;
-    }
-    updateButtonState(boardState);
-    renderLines(board, boardState);
-  });
-
-  window.addEventListener('resize', function () {
-    const board = boards[currentIndex];
-    if (!board) {
-      return;
-    }
-    const boardState = getBoardState(board);
-    renderLines(board, boardState);
-  });
-
-  renderCurrentBoard();
+  loadQuestion();
 });
