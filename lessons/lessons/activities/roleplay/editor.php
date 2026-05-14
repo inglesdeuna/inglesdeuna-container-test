@@ -16,5 +16,13 @@ if (!$isLoggedIn) {
 // The Roleplay component manages its own editor view internally.
 // Forward to viewer.php preserving all URL params.
 $params = $_SERVER['QUERY_STRING'] ?? '';
-header('Location: viewer.php' . ($params !== '' ? '?' . $params : ''));
+// Always force mode=edit so viewer opens EditorView
+if ($params === '') {
+    $params = 'mode=edit';
+} elseif (strpos($params, 'mode=') === false) {
+    $params .= '&mode=edit';
+} else {
+    $params = preg_replace('/mode=[^&]*/', 'mode=edit', $params);
+}
+header('Location: viewer.php?' . $params);
 exit;
