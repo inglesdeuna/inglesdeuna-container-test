@@ -515,7 +515,7 @@ body{
         </div>
     <?php else: ?>
         <section class="mc-shell mc-activity" id="mc-activity">
-            <div class="mc-status">
+            <div class="mc-stats">
                 <div class="mc-pill">Pairs: <span id="mc-total"><?= (int) $totalPairs ?></span></div>
                 <div class="mc-pill">Matched: <span id="mc-matched">0</span></div>
                 <div class="mc-pill">Moves: <span id="mc-moves">0</span></div>
@@ -523,7 +523,7 @@ body{
 
             <div id="mc-board" class="mc-board"></div>
 
-            <div class="mc-controls">
+            <div class="mc-restart-row">
                 <button type="button" class="mc-btn" id="mc-restart">Restart</button>
             </div>
         </section>
@@ -800,8 +800,6 @@ body{
 
                     board.appendChild(btn);
                 });
-
-                resizeBoard();
             }
 
             function restart() {
@@ -828,60 +826,7 @@ body{
             ensureAudioFallback('flip', flipAudioEl);
             ensureAudioFallback('match', matchAudioEl);
 
-            function resizeBoard() {
-              var boardEl  = document.getElementById('mc-board');
-              var pageEl   = document.querySelector('.mc-page');
-              var statsEl  = document.querySelector('.mc-stats');
-              var restartEl= document.querySelector('.mc-restart-row');
-              if (!boardEl || !pageEl) return;
-
-              /* total available height inside .mc-page */
-              var pageH    = pageEl.clientHeight;
-              var statsH   = statsEl  ? statsEl.offsetHeight  : 0;
-              var restartH = restartEl? restartEl.offsetHeight : 0;
-              var gapPx    = 10; /* gap between stat row and board */
-
-              var boardH   = pageH - statsH - restartH - gapPx * 3;
-              if (boardH < 80) return; /* too small, skip */
-
-              var cols = parseInt(
-                getComputedStyle(document.documentElement)
-                  .getPropertyValue('--mc-cols')
-              ) || 4;
-
-              var totalCards = boardEl.children.length;
-              var rows = Math.ceil(totalCards / cols);
-              if (rows < 1) rows = 1;
-
-              var gap = parseInt(
-                getComputedStyle(document.documentElement)
-                  .getPropertyValue('--mc-gap')
-              ) || 12;
-
-              /* height each card row gets */
-              var rowH = Math.floor((boardH - gap * (rows - 1)) / rows);
-
-              /* cap by aspect-ratio 3:4 so cards don't get too wide */
-              var boardW   = boardEl.clientWidth;
-              var colW     = Math.floor((boardW - gap * (cols - 1)) / cols);
-              var maxH     = Math.floor(colW * 4 / 3);
-              rowH = Math.min(rowH, maxH);
-
-              /* enforce minimum readable height */
-              rowH = Math.max(rowH, 80);
-
-              boardEl.style.gridTemplateRows =
-                'repeat(' + rows + ', ' + rowH + 'px)';
-              boardEl.style.alignContent = 'start';
-            }
-
-            window.addEventListener('resize', resizeBoard);
-
             restart();
-            resizeBoard();
-            requestAnimationFrame(function(){
-              resizeBoard();
-            });
         })();
         </script>
     <?php endif; ?>
