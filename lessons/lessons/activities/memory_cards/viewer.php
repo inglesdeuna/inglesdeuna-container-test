@@ -338,7 +338,7 @@ ob_start();
     --mc-muted:#9B94BE;
     --mc-border:#F0EEF8;
     --mc-cols:<?= (int) $desktopCols ?>;
-    --mc-gap:clamp(10px,1.5vw,16px);
+    --mc-gap:clamp(8px,1.2vw,14px);
 }
 
 html,body{width:100%;height:100%;}
@@ -373,6 +373,7 @@ body{
     flex:1!important;
     display:flex!important;
     flex-direction:column!important;
+    min-height:0!important;
     padding:0!important;
     margin:0!important;
     background:transparent!important;
@@ -382,16 +383,15 @@ body{
 }
 
 .mc-page{
-    flex:1;
-    min-height:0;
-    overflow:hidden;
     display:flex;
     flex-direction:column;
-    padding:clamp(10px,1.5vw,16px);
-    gap:10px;
-    box-sizing:border-box;
+    flex:1;
+    min-height:0;
     width:100%;
-    align-items:center;
+    padding:clamp(8px,1.5vw,14px);
+    gap:8px;
+    box-sizing:border-box;
+    overflow:hidden;
 }
 
 .mc-app{
@@ -454,14 +454,15 @@ body{
 
 .mc-viewer{max-width:100%;flex:1;min-height:0;display:flex;flex-direction:column;}
 .mc-shell{background:#fff;border:1px solid #EDE9FA;border-radius:30px;box-shadow:0 8px 24px rgba(127,119,221,.09);padding:18px;flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden;}
-.mc-status{flex-shrink:0;display:flex;gap:8px;flex-wrap:wrap;}
+.mc-stats{display:flex;gap:8px;flex-wrap:wrap;flex-shrink:0;}
 .mc-pill{display:inline-flex;align-items:center;gap:6px;background:var(--mc-purple-soft);border:1px solid #d8d3f5;color:var(--mc-purple-dark);font-weight:800;font-size:13px;padding:8px 12px;border-radius:999px}
-.mc-board{display:grid;grid-template-columns:repeat(var(--mc-cols),1fr);gap:var(--mc-gap);flex:1;min-height:0;width:100%;box-sizing:border-box;overflow:hidden;align-content:start;}
-.viewer-content .mc-card{position:relative;perspective:900px;border:none;background:transparent;padding:0!important;cursor:pointer;width:100%;height:100%;min-height:0;}
+.mc-board{display:grid;grid-template-columns:repeat(var(--mc-cols),1fr);grid-auto-rows:1fr;gap:var(--mc-gap);flex:1;min-height:0;width:100%;box-sizing:border-box;overflow:hidden;}
+.mc-card,.viewer-content .mc-card{position:relative;width:100%;height:100%;cursor:pointer;border:none;background:transparent;padding:0;perspective:900px;}
 .mc-card:disabled{cursor:default}
-.mc-card-inner{display:block;position:relative;width:100%;height:100%;transform-style:preserve-3d;transition:transform .4s ease;}
+.mc-card-inner{position:relative;width:100%;height:100%;transform-style:preserve-3d;transition:transform .45s ease;}
 .mc-card.is-flipped .mc-card-inner{transform:rotateY(180deg)}
-.mc-card-face{position:absolute;inset:0;backface-visibility:hidden;border-radius:16px;border:1px solid #EDE9FA;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.mc-card-face,.mc-card-back{position:absolute;inset:0;width:100%;height:100%;backface-visibility:hidden;border-radius:16px;display:flex;align-items:center;justify-content:center;}
+.mc-card-face{border:1px solid #EDE9FA;overflow:hidden;}
 .mc-card-front{background:linear-gradient(145deg,var(--mc-purple),var(--mc-purple-dark));color:#e9e7fb;font-family:'Fredoka','Trebuchet MS',sans-serif;font-size:clamp(22px,4vw,46px);box-shadow:0 14px 24px rgba(127,119,221,.35)}
 .mc-card-back{transform:rotateY(180deg);background:#fff;padding:4px;box-shadow:0 10px 20px rgba(15,23,42,.08);display:flex;align-items:center;justify-content:center}
 .mc-card-back p{margin:0;text-align:center;color:#1e293b;font-weight:800;font-size:clamp(11px,1.8vw,18px);line-height:1.35;word-break:break-word}
@@ -470,7 +471,7 @@ body{
 .mc-card.is-vanishing{pointer-events:none}
 .mc-card.is-vanishing .mc-card-inner{animation:mcVanish .34s ease forwards}
 .mc-card.is-hidden{opacity:0;visibility:hidden;pointer-events:none}
-.mc-controls{flex-shrink:0;display:flex;justify-content:center;padding:4px 0 0;}
+.mc-restart-row{flex-shrink:0;display:flex;justify-content:center;padding:4px 0 0;}
 .mc-btn{border:none;border-radius:999px;padding:10px 16px;font-weight:800;font-size:14px;cursor:pointer;box-shadow:0 8px 18px rgba(127,119,221,.18);background:var(--mc-orange);color:#fff}
 .mc-empty{text-align:center;padding:28px;font-weight:800;color:#b91c1c}
 .completed-screen{display:none;text-align:center;max-width:600px;margin:0 auto;padding:40px 20px}
