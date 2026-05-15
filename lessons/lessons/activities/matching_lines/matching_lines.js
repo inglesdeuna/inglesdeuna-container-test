@@ -189,7 +189,20 @@ document.addEventListener('DOMContentLoaded', function () {
       rightColEl.appendChild(card);
     });
 
+    /* Equalize immediately, then again after all images load */
     equalizeRowHeights();
+    var imgs = leftColEl ? leftColEl.querySelectorAll('img') : [];
+    if (imgs.length) {
+      var loaded = 0;
+      function onImgLoad() {
+        loaded++;
+        if (loaded >= imgs.length) { equalizeRowHeights(); drawLines(); }
+      }
+      Array.prototype.forEach.call(imgs, function (img) {
+        if (img.complete) { onImgLoad(); }
+        else { img.addEventListener('load', onImgLoad); img.addEventListener('error', onImgLoad); }
+      });
+    }
   }
 
   function equalizeRowHeights() {
@@ -273,8 +286,15 @@ document.addEventListener('DOMContentLoaded', function () {
     if (!svgEl) return;
     svgEl.innerHTML = '';
 
+    /* Sync SVG size to its parent stage */
+    var stage = svgEl.parentElement;
+    if (stage) {
+      svgEl.setAttribute('width',  stage.offsetWidth);
+      svgEl.setAttribute('height', stage.offsetHeight);
+    }
+
     var svgRect = svgEl.getBoundingClientRect();
-    if (!svgRect.width && !svgRect.height) return;
+    if (!svgRect.width || !svgRect.height) return;
 
     connections.forEach(function (conn) {
       var dotR = leftColEl  ? leftColEl.querySelector('.ml-dot-r[data-left-idx="' + conn.leftIdx + '"]') : null;

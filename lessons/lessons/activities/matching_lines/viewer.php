@@ -305,25 +305,32 @@ body { margin: 0 !important; padding: 0 !important; background: #fff !important;
 
 /* ── Stage ── */
 .ml-stage {
-    display: grid;
-    grid-template-columns: 1fr 40px 1fr;
-    gap: 0;
+    display: flex;
+    gap: 44px;
     position: relative;
     margin-bottom: 16px;
+    align-items: flex-start;
+}
+.ml-left-col, .ml-right-col {
+    flex: 1;
+    min-width: 0;
 }
 #ml-svg {
     position: absolute;
-    inset: 0;
+    top: 0;
+    left: 0;
     width: 100%;
     height: 100%;
     pointer-events: none;
     overflow: visible;
+    z-index: 1;
 }
 
 /* ── Left cards ── */
 .ml-left-col, .ml-right-col {
     display: flex;
     flex-direction: column;
+    gap: 10px;
 }
 .ml-lcard, .ml-rcard {
     background: #fff;
@@ -331,7 +338,6 @@ body { margin: 0 !important; padding: 0 !important; background: #fff !important;
     border-radius: 20px;
     box-shadow: 0 8px 40px rgba(127,119,221,.13);
     padding: 14px;
-    margin-bottom: 10px;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -480,9 +486,7 @@ body { margin: 0 !important; padding: 0 !important; background: #fff !important;
       <div id="ml-activity">
         <div class="ml-stage">
           <div class="ml-left-col" id="ml-left-col"></div>
-          <div class="ml-svg-lane">
-            <svg id="ml-svg" aria-hidden="true"></svg>
-          </div>
+          <svg id="ml-svg" aria-hidden="true"></svg>
           <div class="ml-right-col" id="ml-right-col"></div>
         </div>
 
