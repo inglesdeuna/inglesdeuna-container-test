@@ -130,9 +130,22 @@ document.addEventListener('DOMContentLoaded', function () {
       var icon = document.createElement('div');
       icon.className = 'ml-lcard-icon';
 
-      var label = document.createElement('div');
-      label.className = 'ml-lcard-label';
-      label.textContent = pair.left;
+      /* Detect image URL vs plain text */
+      var leftVal = String(pair.left || '').trim();
+      var isUrl   = /^https?:\/\//i.test(leftVal) || /\.(png|jpg|jpeg|gif|webp|svg)(\?|$)/i.test(leftVal);
+
+      if (isUrl) {
+        var img = document.createElement('img');
+        img.src = leftVal;
+        img.alt = '';
+        img.className = 'ml-lcard-img';
+        icon.appendChild(img);
+      } else {
+        var label = document.createElement('div');
+        label.className = 'ml-lcard-label';
+        label.textContent = leftVal;
+        icon.appendChild(label);
+      }
 
       var dot = document.createElement('div');
       dot.className = 'ml-dot-r';
@@ -142,7 +155,6 @@ document.addEventListener('DOMContentLoaded', function () {
         handleDotLeftClick(i);
       });
 
-      icon.appendChild(label);
       card.appendChild(icon);
       card.appendChild(dot);
       leftColEl.appendChild(card);

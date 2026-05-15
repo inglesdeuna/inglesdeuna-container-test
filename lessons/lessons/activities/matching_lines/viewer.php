@@ -340,10 +340,19 @@ body { margin: 0 !important; padding: 0 !important; background: #fff !important;
     min-height: 70px;
 }
 .ml-lcard-icon, .ml-rcard-icon {
-    height: 58px;
+    min-height: 58px;
     display: flex;
     align-items: center;
     justify-content: center;
+}
+.ml-lcard-img {
+    max-width: 100%;
+    max-height: 140px;
+    width: auto;
+    height: auto;
+    border-radius: 12px;
+    object-fit: contain;
+    display: block;
 }
 .ml-lcard-label {
     font-family: 'Fredoka', sans-serif;
