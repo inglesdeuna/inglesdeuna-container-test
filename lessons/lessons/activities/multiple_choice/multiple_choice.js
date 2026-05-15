@@ -19,6 +19,10 @@ document.addEventListener('DOMContentLoaded', function () {
   const completedTextEl = document.getElementById('mc-completed-text');
   const scoreTextEl = document.getElementById('mc-score-text');
   const restartBtn = document.getElementById('mc-restart');
+  const scoreGridEl = document.getElementById('mc-score-grid');
+  const scoreCorrectEl = document.getElementById('mc-s-correct');
+  const scoreWrongEl = document.getElementById('mc-s-wrong');
+  const scorePctEl = document.getElementById('mc-s-pct');
 
   const activityTitle = window.MULTIPLE_CHOICE_TITLE || 'Multiple Choice';
   const returnTo = window.MULTIPLE_CHOICE_RETURN_TO || '';
@@ -46,6 +50,7 @@ document.addEventListener('DOMContentLoaded', function () {
   let selected = null;
   let revealed = false;
   let finished = false;
+  let scoreVisible = false;
   let questionScores = questions.map(function () { return 0; });
   let activeListenText = '';
   let activeVoiceId = 'josh';
@@ -116,15 +121,41 @@ document.addEventListener('DOMContentLoaded', function () {
     const correct = questionScores.reduce(function (sum, value) {
       return sum + (value ? 1 : 0);
     }, 0);
-    const errors = Math.max(0, total - correct);
-    const percent = total > 0 ? Math.round((correct / total) * 100) : 0;
+    const wrong = Math.max(0, total - correct);
+    const attempts = correct + wrong;
+    const percent = attempts > 0 ? Math.round((correct / attempts) * 100) : 0;
 
     return {
       correct: correct,
       total: total,
-      errors: errors,
+      wrong: wrong,
+      errors: wrong,
       percent: percent,
     };
+  }
+
+  function updateScoreCards(show) {
+    if (typeof show === 'boolean') {
+      scoreVisible = show;
+    }
+
+    const result = computeScore();
+
+    if (scoreCorrectEl) {
+      scoreCorrectEl.textContent = String(result.correct);
+    }
+
+    if (scoreWrongEl) {
+      scoreWrongEl.textContent = String(result.wrong);
+    }
+
+    if (scorePctEl) {
+      scorePctEl.textContent = result.percent + '%';
+    }
+
+    if (scoreGridEl) {
+      scoreGridEl.classList.toggle('visible', !!scoreVisible);
+    }
   }
 
   function safeOptions(item) {
@@ -284,8 +315,10 @@ document.addEventListener('DOMContentLoaded', function () {
       completedEl.classList.add('active');
     }
 
+    updateScoreCards(true);
+
     if (scoreTextEl) {
-      scoreTextEl.textContent = 'Score: ' + result.correct + ' / ' + result.total + ' (' + result.percent + '%)';
+      scoreTextEl.textContent = result.correct + ' correct · ' + result.wrong + ' wrong · ' + result.percent + '%';
     }
 
     playCompletedSound();
@@ -308,6 +341,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const correct = Number.isInteger(item.correct) ? item.correct : 0;
     const isCorrectPick = selected !== null && selected === correct && !revealed;
     questionScores[index] = isCorrectPick ? 1 : 0;
+    updateScoreCards(true);
 
     if (index < questions.length - 1) {
       index += 1;
@@ -323,7 +357,9 @@ document.addEventListener('DOMContentLoaded', function () {
     selected = null;
     revealed = false;
     finished = false;
+    scoreVisible = false;
     questionScores = questions.map(function () { return 0; });
+    updateScoreCards(false);
     loadQuestion();
   }
 

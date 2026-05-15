@@ -182,9 +182,14 @@ ob_start();
     --mc-purple:#7F77DD;
     --mc-purple-soft:#EEEDFE;
     --mc-lila:#EDE9FA;
-    --mc-muted:#aaa;
+    --mc-muted:#9B94BE;
     --mc-bg:#F8F7FE;
-    --mc-green:#22c55e;
+    --mc-green:#16a34a;
+    --mc-green-soft:#f0fdf4;
+    --mc-green-dark:#15803d;
+    --mc-red:#ef4444;
+    --mc-red-soft:#fef2f2;
+    --mc-red-dark:#b91c1c;
 }
 
 html, body {
@@ -402,33 +407,53 @@ body {
 
 .mc-option {
     min-height:96px;
-    border:2px solid var(--mc-lila);
-    border-radius:16px;
+    border:1.5px solid #CDC7F3;
+    border-bottom-width:4px;
+    border-radius:10px;
     background:#fff;
-    color:#444;
+    color:#4338CA;
     font-family:'Nunito',sans-serif;
     font-size:16px;
-    font-weight:700;
+    font-weight:800;
     display:flex;
     align-items:center;
     justify-content:center;
     text-align:center;
     cursor:pointer;
     padding:10px;
+    box-shadow:0 2px 0 rgba(127,119,221,.18);
+    transition:transform .12s,box-shadow .12s,border-color .12s,background .12s,color .12s;
 }
 
 .mc-option:hover {
-    border-color:var(--mc-purple);
-    background:#F3F2FD;
+    transform:translateY(-1px);
+    border-color:#AFA6EA;
+    border-bottom-color:#6A60D4;
+    background:#F8F7FF;
+    box-shadow:0 6px 16px rgba(127,119,221,.18);
 }
 
 .mc-option.selected {
-    border-color:var(--mc-purple);
-    background:var(--mc-purple-soft);
+    border-color:#BDB5EE;
+    border-bottom-color:#7F77DD;
+    background:#F8F7FF;
+    color:#4338CA;
 }
 
 .mc-option.correct {
     border-color:var(--mc-green);
+    border-bottom-color:var(--mc-green);
+    background:var(--mc-green-soft);
+    color:var(--mc-green-dark);
+    box-shadow:none;
+}
+
+.mc-option.wrong {
+    border-color:var(--mc-red);
+    border-bottom-color:var(--mc-red);
+    background:var(--mc-red-soft);
+    color:var(--mc-red-dark);
+    box-shadow:none;
 }
 
 .mc-option img {
@@ -475,7 +500,62 @@ body {
     text-align:center;
     color:var(--mc-muted);
     font-size:13px;
-    font-weight:700;
+    font-weight:800;
+}
+
+.mc-feedback.good {
+    color:var(--mc-green-dark);
+}
+
+.mc-feedback.bad {
+    color:var(--mc-red-dark);
+}
+
+.mc-score-grid {
+    display:none;
+    grid-template-columns:repeat(3,1fr);
+    gap:10px;
+    margin-top:12px;
+}
+
+.mc-score-grid.visible {
+    display:grid;
+}
+
+.mc-score-card {
+    background:#FAFAFE;
+    border:1px solid var(--mc-lila);
+    border-radius:14px;
+    padding:12px;
+    text-align:center;
+}
+
+.mc-score-num {
+    font-family:'Fredoka One',sans-serif;
+    font-size:26px;
+    line-height:1;
+    font-weight:400;
+}
+
+.mc-score-num.c {
+    color:var(--mc-green);
+}
+
+.mc-score-num.w {
+    color:var(--mc-red);
+}
+
+.mc-score-num.p {
+    color:var(--mc-purple);
+}
+
+.mc-score-lbl {
+    margin-top:5px;
+    font-size:10px;
+    font-weight:900;
+    color:var(--mc-muted);
+    text-transform:uppercase;
+    letter-spacing:.08em;
 }
 
 .mc-completed-screen {
@@ -512,6 +592,7 @@ body {
     .mc-stage-shell { padding:14px; }
     .mc-progress-row { grid-template-columns:1fr; gap:8px; }
     .mc-options { grid-template-columns:repeat(2,minmax(0,1fr)); }
+    .mc-score-grid { grid-template-columns:1fr; }
 }
 
 @media(max-width:480px) {
@@ -550,6 +631,21 @@ body {
                 </div>
 
                 <div class="mc-feedback" id="mc-feedback"></div>
+
+                <div id="mc-score-grid" class="mc-score-grid">
+                    <div class="mc-score-card">
+                        <div class="mc-score-num c" id="mc-s-correct">0</div>
+                        <div class="mc-score-lbl">Correct</div>
+                    </div>
+                    <div class="mc-score-card">
+                        <div class="mc-score-num w" id="mc-s-wrong">0</div>
+                        <div class="mc-score-lbl">Wrong</div>
+                    </div>
+                    <div class="mc-score-card">
+                        <div class="mc-score-num p" id="mc-s-pct">0%</div>
+                        <div class="mc-score-lbl">Score</div>
+                    </div>
+                </div>
 
                 <div id="mc-completed" class="mc-completed-screen">
                     <div class="mc-completed-icon">✅</div>
