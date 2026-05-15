@@ -27,56 +27,46 @@ document.addEventListener('DOMContentLoaded', function () {
 
   var index = 0;
   var wordVisible = false;
+  var ttsCache = {};   /* key: voice_id + '|' + text → audio URL */
+  var currentAudio = null;
 
-  /* ── Voice helpers ─────────────────────────────────────────── */
-  function voiceProfile(voiceId) {
-    var id = String(voiceId || '').trim();
-    if (id === 'NoOVOzCQFLOvtsMoNcdT') return 'female';
-    if (id === 'Nggzl2QAXh3OijoXD116') return 'child';
-    return 'male';
+  /* ── ElevenLabs TTS via tts.php ────────────────────────────── */
+  function playElevenLabs(text, voiceId, onError) {
+    var cacheKey = (voiceId || '') + '|' + text;
+    if (ttsCache[cacheKey]) {
+      playUrl(ttsCache[cacheKey]);
+      return;
+    }
+
+    if (listenBtn) { listenBtn.disabled = true; listenBtn.textContent = '⏳ Loading…'; }
+
+    var fd = new FormData();
+    fd.append('text', text);
+    if (voiceId) fd.append('voice_id', voiceId);
+
+    fetch('tts.php', { method: 'POST', body: fd, credentials: 'same-origin' })
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        if (listenBtn) { listenBtn.disabled = false; listenBtn.textContent = '🔊 Listen'; }
+        if (data.url) {
+          ttsCache[cacheKey] = data.url;
+          playUrl(data.url);
+        } else {
+          console.warn('TTS error:', data.error);
+          if (onError) onError();
+        }
+      })
+      .catch(function (err) {
+        if (listenBtn) { listenBtn.disabled = false; listenBtn.textContent = '🔊 Listen'; }
+        console.warn('TTS fetch failed:', err);
+        if (onError) onError();
+      });
   }
 
-  function pickVoice(voices, profile) {
-    if (!voices || !voices.length) return null;
-    var keys = {
-      male:   [' male','david','guy','daniel','george','matthew'],
-      female: [' female','zira','jenny','susan','aria','sara','rachel'],
-      child:  ['child','kid','junior','young','lily']
-    }[profile] || [];
-    var best = null, bestScore = -1;
-    for (var i = 0; i < voices.length; i++) {
-      var v = voices[i];
-      var name = (v.name || '').toLowerCase();
-      var lang = (v.lang || '').toLowerCase();
-      var score = 0;
-      if (lang.indexOf('en') === 0) score += 4;
-      for (var k = 0; k < keys.length; k++) {
-        if (name.indexOf(keys[k]) !== -1) score += 6;
-      }
-      if (profile === 'male'   && name.indexOf('female') !== -1) score -= 3;
-      if (profile === 'female' && name.indexOf('male')   !== -1) score -= 3;
-      if (score > bestScore) { best = v; bestScore = score; }
-    }
-    return best || voices[0];
-  }
-
-  function speakText(text, profile) {
-    if (!window.speechSynthesis) return;
-    window.speechSynthesis.cancel();
-    var utt = new SpeechSynthesisUtterance(text);
-    function go() {
-      var voices = window.speechSynthesis.getVoices();
-      utt.voice  = pickVoice(voices, profile || 'male');
-      utt.rate   = 0.88;
-      utt.pitch  = 0.95;
-      utt.volume = 1;
-      window.speechSynthesis.speak(utt);
-    }
-    if (window.speechSynthesis.getVoices().length === 0) {
-      window.speechSynthesis.onvoiceschanged = go;
-    } else {
-      go();
-    }
+  function playUrl(url) {
+    if (currentAudio) { currentAudio.pause(); currentAudio = null; }
+    currentAudio = new Audio(url);
+    currentAudio.play().catch(function (e) { console.warn('Audio play failed:', e); });
   }
 
   /* ── Progress ───────────────────────────────────────────────── */
@@ -125,22 +115,27 @@ document.addEventListener('DOMContentLoaded', function () {
     updateProgress();
   }
 
-  /* ── Listen ─────────────────────────────────────────────────── */
+  /* ── Listen (always ElevenLabs) ────────────────────────────── */
   function listen() {
     var card = cards[index] || {};
-    /* Reveal word */
+
+    /* Reveal word when user listens */
     if (wordEl) wordEl.style.display = 'block';
     wordVisible = true;
     if (showBtn) showBtn.textContent = 'Hide Word';
 
+    /* If card already has a pre-generated audio URL, play it directly */
     if (card.audio) {
-      var aud = new Audio(card.audio);
-      aud.play().catch(function () {
-        speakText(card.text || '', voiceProfile(card.voice_id));
-      });
-    } else {
-      speakText(card.text || '', voiceProfile(card.voice_id));
+      playUrl(card.audio);
+      return;
     }
+
+    /* Otherwise request ElevenLabs via tts.php */
+    var text    = card.text    || '';
+    var voiceId = card.voice_id || '';
+    if (!text) return;
+
+    playElevenLabs(text, voiceId);
   }
 
   /* ── Show/Hide word ─────────────────────────────────────────── */
