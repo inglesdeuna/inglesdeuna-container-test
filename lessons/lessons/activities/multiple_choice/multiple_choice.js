@@ -464,6 +464,7 @@ document.addEventListener('DOMContentLoaded', function () {
     document.removeEventListener('click', onFirstInteraction);
   }, { once: true });
 
+  updateScoreCards(false);
   loadQuestion();
   if ((questions[0] || {}).question_type === 'listen') {
     speakWhenReady(activeListenText, activeVoiceId);
