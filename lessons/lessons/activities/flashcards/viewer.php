@@ -36,11 +36,13 @@ if (!$rawCards || !count($rawCards)) {
     die('No flashcards found');
 }
 
-/* Map to {front, back} format expected by flashcards.js */
+/* Map to {image, text, audio, voice_id} — learning activity (no score) */
 $jsCards = array_values(array_map(function ($card) {
     return [
-        'front' => (string) ($card['english_text'] ?? $card['text'] ?? ''),
-        'back'  => (string) ($card['spanish_text'] ?? ''),
+        'image'    => (string) ($card['image']        ?? ''),
+        'text'     => (string) ($card['english_text'] ?? $card['text'] ?? ''),
+        'audio'    => (string) ($card['audio']        ?? ''),
+        'voice_id' => (string) ($card['voice_id']     ?? ''),
     ];
 }, $rawCards));
 
@@ -60,28 +62,23 @@ ob_start();
     --border: #ECE9FA;
 }
 * { box-sizing: border-box; }
-html, body { width: 100%; min-height: 100%; margin: 0; padding: 0; background: #fff; font-family: 'Nunito', sans-serif; }
-body { margin: 0 !important; padding: 0 !important; background: #fff !important; }
-.activity-wrapper { max-width: 100% !important; margin: 0 !important; padding: 0 !important; display: flex !important; flex-direction: column !important; background: transparent !important; }
-.top-row, .activity-header { display: none !important; }
-.viewer-content { flex: 1 !important; display: flex !important; flex-direction: column !important; padding: 0 !important; margin: 0 !important; background: transparent !important; border: none !important; box-shadow: none !important; border-radius: 0 !important; }
+html, body { width: 100%; margin: 0; padding: 0; background: #fff; font-family: 'Nunito', sans-serif; }
 
 .fc-page {
     width: 100%;
-    flex: 1;
-    min-height: 0;
-    overflow-y: auto;
+    min-height: 100vh;
     padding: clamp(14px, 2.5vw, 34px);
     display: flex;
     align-items: flex-start;
     justify-content: center;
     background: #fff;
-    box-sizing: border-box;
 }
 .fc-app {
-    width: min(760px, 100%);
+    width: min(700px, 100%);
     margin: 0 auto;
 }
+
+/* Hero */
 .fc-hero {
     text-align: center;
     margin-bottom: clamp(14px, 2vw, 22px);
@@ -103,17 +100,11 @@ body { margin: 0 !important; padding: 0 !important; background: #fff !important;
 }
 .fc-hero h1 {
     font-family: 'Fredoka', sans-serif;
-    font-size: clamp(30px, 5.5vw, 54px);
+    font-size: clamp(28px, 5vw, 48px);
     font-weight: 600;
     color: var(--orange);
     margin: 0;
     line-height: 1;
-}
-.fc-hero p {
-    font-size: clamp(13px, 1.8vw, 15px);
-    font-weight: 700;
-    color: var(--muted);
-    margin: 8px 0 0;
 }
 
 /* Progress */
@@ -127,11 +118,11 @@ body { margin: 0 !important; padding: 0 !important; background: #fff !important;
     font-size: 12px;
     font-weight: 900;
     color: var(--muted);
-    min-width: 48px;
+    min-width: 44px;
 }
 .fc-track {
     flex: 1;
-    height: 12px;
+    height: 10px;
     background: var(--soft);
     border-radius: 999px;
     overflow: hidden;
@@ -144,9 +135,9 @@ body { margin: 0 !important; padding: 0 !important; background: #fff !important;
     transition: width .35s;
 }
 .fc-badge {
-    min-width: 74px;
+    min-width: 72px;
     text-align: center;
-    padding: 7px 10px;
+    padding: 6px 10px;
     border-radius: 999px;
     background: var(--purple);
     color: #fff;
@@ -158,57 +149,41 @@ body { margin: 0 !important; padding: 0 !important; background: #fff !important;
 .fc-card-shell {
     background: #fff;
     border: 1px solid var(--border);
-    border-radius: 32px;
-    padding: clamp(16px, 2.6vw, 26px);
+    border-radius: 28px;
+    padding: clamp(16px, 2.4vw, 24px);
     box-shadow: 0 8px 40px rgba(127,119,221,.12);
-    margin-bottom: 16px;
+    margin-bottom: 14px;
 }
-.fc-card {
-    perspective: 1000px;
-    min-height: clamp(200px, 30vh, 320px);
-    margin-bottom: 16px;
-    cursor: pointer;
-}
-.fc-card-inner {
-    position: relative;
+.fc-image-wrap {
     width: 100%;
-    height: 100%;
-    min-height: inherit;
-    transform-style: preserve-3d;
-    transition: transform .45s ease;
-}
-.fc-card.is-flipped .fc-card-inner {
-    transform: rotateY(180deg);
-}
-.fc-face {
-    position: absolute;
-    inset: 0;
-    backface-visibility: hidden;
-    border-radius: 24px;
-    border: 1px solid var(--border);
+    aspect-ratio: 16/9;
+    border-radius: 18px;
+    overflow: hidden;
+    background: var(--soft);
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: clamp(16px, 2.4vw, 28px);
+    margin-bottom: 14px;
+}
+.fc-image-wrap img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+.fc-image-placeholder {
+    color: #D5D0F0;
+}
+.fc-image-placeholder svg { width: 64px; height: 64px; }
+
+.fc-word {
     text-align: center;
-    min-height: inherit;
-    background: #fff;
-}
-.fc-face-back {
-    transform: rotateY(180deg);
-}
-#fc-front {
     font-family: 'Fredoka', sans-serif;
-    font-size: clamp(26px, 4vw, 44px);
+    font-size: clamp(28px, 5vw, 48px);
     font-weight: 600;
     color: var(--purple-dark);
+    min-height: 1.2em;
     line-height: 1.2;
-}
-#fc-back {
-    font-size: clamp(20px, 3vw, 34px);
-    font-weight: 700;
-    color: var(--muted);
-    line-height: 1.3;
+    display: none; /* shown by JS after Listen or flip */
 }
 
 /* Buttons */
@@ -217,12 +192,13 @@ body { margin: 0 !important; padding: 0 !important; background: #fff !important;
     justify-content: center;
     gap: 10px;
     flex-wrap: wrap;
+    margin-top: 12px;
 }
 .fc-btn {
     border: 0;
     border-radius: 999px;
-    padding: 13px 20px;
-    min-width: 120px;
+    padding: 12px 22px;
+    min-width: 110px;
     color: #fff;
     cursor: pointer;
     font-family: 'Nunito', sans-serif;
@@ -232,22 +208,16 @@ body { margin: 0 !important; padding: 0 !important; background: #fff !important;
     box-shadow: 0 6px 18px rgba(127,119,221,.15);
 }
 .fc-btn:hover { transform: translateY(-1px); }
+.fc-btn:disabled { opacity: .45; cursor: default; transform: none; }
 .fc-btn-purple { background: var(--purple); }
 .fc-btn-orange { background: var(--orange); }
-.fc-btn-outline {
-    background: transparent;
-    border: 2px solid var(--border);
-    color: var(--purple);
-    box-shadow: none;
-}
-.fc-btn-outline:hover { border-color: var(--purple); }
 
 #fc-feedback { margin-top: 8px; }
-#fc-completed { }
+#fc-completed { margin-top: 16px; }
 
-@media (max-width: 640px) {
+@media (max-width: 560px) {
     .fc-page { padding: 12px; }
-    .fc-actions { display: grid; grid-template-columns: 1fr; }
+    .fc-actions { grid-template-columns: 1fr 1fr; display: grid; }
     .fc-btn { width: 100%; }
 }
 </style>
@@ -258,36 +228,34 @@ body { margin: 0 !important; padding: 0 !important; background: #fff !important;
         <div class="fc-hero">
             <div class="fc-kicker">Flashcards</div>
             <h1><?php echo htmlspecialchars($viewerTitle, ENT_QUOTES, 'UTF-8'); ?></h1>
-            <p>Tap the card to flip it. Mark what you know!</p>
         </div>
 
         <div id="fc-activity">
-            <div class="fc-card-shell">
-                <div class="fc-progress">
-                    <span class="fc-progress-label" id="fc-progress-label">1 / <?php echo count($jsCards); ?></span>
-                    <div class="fc-track">
-                        <div class="fc-fill" id="fc-progress-fill"></div>
-                    </div>
-                    <div class="fc-badge" id="fc-progress-badge">Card 1 of <?php echo count($jsCards); ?></div>
+            <div class="fc-progress">
+                <span class="fc-progress-label" id="fc-progress-label"></span>
+                <div class="fc-track">
+                    <div class="fc-fill" id="fc-progress-fill"></div>
                 </div>
-
-                <div class="fc-card" id="fc-card">
-                    <div class="fc-card-inner">
-                        <div class="fc-face fc-face-front" id="fc-front"></div>
-                        <div class="fc-face fc-face-back" id="fc-back"></div>
-                    </div>
-                </div>
-
-                <div class="fc-actions">
-                    <button class="fc-btn fc-btn-outline" id="fc-show">Show Answer</button>
-                    <button class="fc-btn fc-btn-purple" id="fc-flip">Flip</button>
-                    <button class="fc-btn fc-btn-orange" id="fc-next">Next</button>
-                </div>
+                <div class="fc-badge" id="fc-progress-badge"></div>
             </div>
 
-            <div class="fc-actions" style="justify-content:center;gap:10px;flex-wrap:wrap;">
-                <button class="fc-btn fc-btn-purple" id="fc-review" style="display:none;">Review</button>
-                <button class="fc-btn fc-btn-orange" id="fc-knew" style="display:none;">I knew this!</button>
+            <div class="fc-card-shell">
+                <div class="fc-image-wrap" id="fc-image-wrap">
+                    <div class="fc-image-placeholder" id="fc-image-placeholder">
+                        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4-4 4 4 8-8"/>
+                        </svg>
+                    </div>
+                    <img id="fc-img" src="" alt="" style="display:none;">
+                </div>
+
+                <div class="fc-word" id="fc-word"></div>
+            </div>
+
+            <div class="fc-actions">
+                <button class="fc-btn fc-btn-purple" id="fc-listen">🔊 Listen</button>
+                <button class="fc-btn fc-btn-orange" id="fc-show">Show Word</button>
+                <button class="fc-btn fc-btn-orange" id="fc-next">Next →</button>
             </div>
 
             <div id="fc-feedback"></div>
@@ -300,10 +268,10 @@ body { margin: 0 !important; padding: 0 !important; background: #fff !important;
 
 <script src="../../core/_activity_feedback.js"></script>
 <script>
-window.FLASHCARD_DATA       = <?php echo json_encode($jsCards,      JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
-window.FLASHCARD_TITLE      = <?php echo json_encode($viewerTitle,  JSON_UNESCAPED_UNICODE); ?>;
-window.FLASHCARD_RETURN_TO  = <?php echo json_encode($returnTo,     JSON_UNESCAPED_UNICODE); ?>;
-window.FLASHCARD_ACTIVITY_ID= <?php echo json_encode($activityId,   JSON_UNESCAPED_UNICODE); ?>;
+window.FLASHCARD_DATA        = <?php echo json_encode($jsCards,     JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
+window.FLASHCARD_TITLE       = <?php echo json_encode($viewerTitle, JSON_UNESCAPED_UNICODE); ?>;
+window.FLASHCARD_RETURN_TO   = <?php echo json_encode($returnTo,    JSON_UNESCAPED_UNICODE); ?>;
+window.FLASHCARD_ACTIVITY_ID = <?php echo json_encode($activityId,  JSON_UNESCAPED_UNICODE); ?>;
 </script>
 <script src="flashcards.js"></script>
 <?php

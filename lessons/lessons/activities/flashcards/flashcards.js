@@ -1,16 +1,14 @@
 document.addEventListener('DOMContentLoaded', function () {
-  var AF = window.ActivityFeedback;
-  var cards = Array.isArray(window.FLASHCARD_DATA) ? window.FLASHCARD_DATA : [];
+  var AF      = window.ActivityFeedback;
+  var cards   = Array.isArray(window.FLASHCARD_DATA) ? window.FLASHCARD_DATA : [];
 
   var progressLabelEl = document.getElementById('fc-progress-label');
   var progressFillEl  = document.getElementById('fc-progress-fill');
   var progressBadgeEl = document.getElementById('fc-progress-badge');
-  var frontEl         = document.getElementById('fc-front');
-  var backEl          = document.getElementById('fc-back');
-  var cardEl          = document.getElementById('fc-card');
-  var flipBtn         = document.getElementById('fc-flip');
-  var knewBtn         = document.getElementById('fc-knew');
-  var reviewBtn       = document.getElementById('fc-review');
+  var imgEl           = document.getElementById('fc-img');
+  var imgPlaceholder  = document.getElementById('fc-image-placeholder');
+  var wordEl          = document.getElementById('fc-word');
+  var listenBtn       = document.getElementById('fc-listen');
   var showBtn         = document.getElementById('fc-show');
   var nextBtn         = document.getElementById('fc-next');
   var feedbackEl      = document.getElementById('fc-feedback');
@@ -18,21 +16,70 @@ document.addEventListener('DOMContentLoaded', function () {
   var completedEl     = document.getElementById('fc-completed');
   var winAudio        = new Audio('../../hangman/assets/win.mp3');
 
-  var activityTitle = window.FLASHCARD_TITLE || 'Flashcards';
-  var returnTo      = window.FLASHCARD_RETURN_TO || '';
+  var activityTitle = window.FLASHCARD_TITLE       || 'Flashcards';
+  var returnTo      = window.FLASHCARD_RETURN_TO   || '';
   var activityId    = window.FLASHCARD_ACTIVITY_ID || '';
 
   if (!cards.length) {
-    if (frontEl) frontEl.textContent = 'No cards available.';
+    if (wordEl) wordEl.textContent = 'No cards available.';
     return;
   }
 
-  var index    = 0;
-  var flipped  = false;
-  var answered = false;
-  var scores   = cards.map(function () { return 0; });   // 1=knew -1=review 0=skipped
-  var reviewItems = cards.map(function () { return {}; });
+  var index = 0;
+  var wordVisible = false;
 
+  /* ── Voice helpers ─────────────────────────────────────────── */
+  function voiceProfile(voiceId) {
+    var id = String(voiceId || '').trim();
+    if (id === 'NoOVOzCQFLOvtsMoNcdT') return 'female';
+    if (id === 'Nggzl2QAXh3OijoXD116') return 'child';
+    return 'male';
+  }
+
+  function pickVoice(voices, profile) {
+    if (!voices || !voices.length) return null;
+    var keys = {
+      male:   [' male','david','guy','daniel','george','matthew'],
+      female: [' female','zira','jenny','susan','aria','sara','rachel'],
+      child:  ['child','kid','junior','young','lily']
+    }[profile] || [];
+    var best = null, bestScore = -1;
+    for (var i = 0; i < voices.length; i++) {
+      var v = voices[i];
+      var name = (v.name || '').toLowerCase();
+      var lang = (v.lang || '').toLowerCase();
+      var score = 0;
+      if (lang.indexOf('en') === 0) score += 4;
+      for (var k = 0; k < keys.length; k++) {
+        if (name.indexOf(keys[k]) !== -1) score += 6;
+      }
+      if (profile === 'male'   && name.indexOf('female') !== -1) score -= 3;
+      if (profile === 'female' && name.indexOf('male')   !== -1) score -= 3;
+      if (score > bestScore) { best = v; bestScore = score; }
+    }
+    return best || voices[0];
+  }
+
+  function speakText(text, profile) {
+    if (!window.speechSynthesis) return;
+    window.speechSynthesis.cancel();
+    var utt = new SpeechSynthesisUtterance(text);
+    function go() {
+      var voices = window.speechSynthesis.getVoices();
+      utt.voice  = pickVoice(voices, profile || 'male');
+      utt.rate   = 0.88;
+      utt.pitch  = 0.95;
+      utt.volume = 1;
+      window.speechSynthesis.speak(utt);
+    }
+    if (window.speechSynthesis.getVoices().length === 0) {
+      window.speechSynthesis.onvoiceschanged = go;
+    } else {
+      go();
+    }
+  }
+
+  /* ── Progress ───────────────────────────────────────────────── */
   function updateProgress() {
     var total   = cards.length;
     var current = index + 1;
@@ -42,70 +89,69 @@ document.addEventListener('DOMContentLoaded', function () {
     if (progressFillEl)  progressFillEl.style.width  = pct + '%';
   }
 
+  /* ── Load card ──────────────────────────────────────────────── */
   function loadCard() {
-    var card = cards[index] || {};
-    flipped  = false;
-    answered = false;
+    var card    = cards[index] || {};
+    wordVisible = false;
 
     if (completedEl) completedEl.style.display = 'none';
     if (activityEl)  activityEl.style.display  = '';
     if (feedbackEl)  AF.clearFeedback(feedbackEl);
 
-    if (cardEl)  cardEl.classList.remove('is-flipped');
-    if (frontEl) frontEl.textContent = card.front || '';
-    if (backEl)  backEl.textContent  = card.back  || '';
+    /* Image */
+    if (card.image) {
+      imgEl.src = card.image;
+      imgEl.style.display = 'block';
+      if (imgPlaceholder) imgPlaceholder.style.display = 'none';
+    } else {
+      imgEl.src = '';
+      imgEl.style.display = 'none';
+      if (imgPlaceholder) imgPlaceholder.style.display = 'flex';
+    }
+
+    /* Word hidden until Listen or Show */
+    if (wordEl) {
+      wordEl.textContent   = card.text || '';
+      wordEl.style.display = 'none';
+    }
+
+    if (listenBtn) listenBtn.disabled = false;
+    if (showBtn)   { showBtn.disabled = false; showBtn.textContent = 'Show Word'; }
+    if (nextBtn)   {
+      nextBtn.disabled    = false;
+      nextBtn.textContent = index < cards.length - 1 ? 'Next →' : 'Finish';
+    }
 
     updateProgress();
+  }
 
-    [knewBtn, reviewBtn].forEach(function (b) { if (b) b.disabled = true; });
-    if (flipBtn) flipBtn.disabled = false;
-    if (showBtn) { showBtn.style.display = ''; showBtn.disabled = false; }
-    if (nextBtn) {
-      nextBtn.disabled  = true;
-      nextBtn.textContent = index < cards.length - 1 ? 'Next \u2192' : 'Finish';
+  /* ── Listen ─────────────────────────────────────────────────── */
+  function listen() {
+    var card = cards[index] || {};
+    /* Reveal word */
+    if (wordEl) wordEl.style.display = 'block';
+    wordVisible = true;
+    if (showBtn) showBtn.textContent = 'Hide Word';
+
+    if (card.audio) {
+      var aud = new Audio(card.audio);
+      aud.play().catch(function () {
+        speakText(card.text || '', voiceProfile(card.voice_id));
+      });
+    } else {
+      speakText(card.text || '', voiceProfile(card.voice_id));
     }
   }
 
-  function flipCard() {
-    if (!cardEl) return;
-    flipped = !flipped;
-    cardEl.classList.toggle('is-flipped', flipped);
-    if (flipped) {
-      [knewBtn, reviewBtn].forEach(function (b) { if (b) b.disabled = false; });
-      if (flipBtn) flipBtn.disabled = true;
-    }
+  /* ── Show/Hide word ─────────────────────────────────────────── */
+  function toggleWord() {
+    if (!wordEl) return;
+    wordVisible = !wordVisible;
+    wordEl.style.display = wordVisible ? 'block' : 'none';
+    if (showBtn) showBtn.textContent = wordVisible ? 'Hide Word' : 'Show Word';
   }
 
-  function grade(knew) {
-    if (answered) return;
-    answered = true;
-    var card = cards[index] || {};
-    scores[index] = knew ? 1 : -1;
-    reviewItems[index] = {
-      question:      card.front || '',
-      yourAnswer:    knew ? 'I knew it' : 'Need to review',
-      correctAnswer: card.back || '',
-      score:         knew ? 1 : -1
-    };
-    if (feedbackEl) AF.showFeedback(feedbackEl, knew, card.back || '', false);
-    [knewBtn, reviewBtn].forEach(function (b) { if (b) b.disabled = true; });
-    if (showBtn) showBtn.style.display = 'none';
-    if (nextBtn) nextBtn.disabled = false;
-  }
-
-  function showAnswer() {
-    if (!cardEl.classList.contains('is-flipped')) flipCard();
-    if (answered) return;
-    answered = true;
-    var card = cards[index] || {};
-    scores[index] = -1;
-    reviewItems[index] = { question: card.front || '', yourAnswer: '(revealed)', correctAnswer: card.back || '', score: -1 };
-    if (feedbackEl) AF.showFeedback(feedbackEl, false, null, true);
-    [knewBtn, reviewBtn].forEach(function (b) { if (b) b.disabled = true; });
-    if (showBtn) showBtn.style.display = 'none';
-    if (nextBtn) nextBtn.disabled = false;
-  }
-
+  /* ── Next ───────────────────────────────────────────────────── */
   function nextCard() {
     if (index < cards.length - 1) {
       index++;
@@ -115,60 +161,47 @@ document.addEventListener('DOMContentLoaded', function () {
     }
   }
 
+  /* ── Completed ──────────────────────────────────────────────── */
   function showCompleted() {
     if (!completedEl) return;
     if (activityEl) activityEl.style.display = 'none';
     completedEl.style.display = '';
 
-    // Remap: for flashcards, "knew" = correct, "review" = wrong, "revealed" = revealed
-    var afScores = scores.map(function (s) {
-      if (s === 1)  return 1;
-      if (s === -1) return -1; // revealed or "need review" — both don't count
-      return 0;
-    });
+    /* Learning activity — no graded scores; pass all as 1 */
+    var fakeScores = cards.map(function () { return 1; });
 
     AF.showCompleted({
       target:        completedEl,
-      scores:        afScores,
+      scores:        fakeScores,
       title:         activityTitle,
       activityType:  'Flashcards',
       questionCount: cards.length,
       winAudio:      winAudio,
-      onRetry:       restartActivity,
-      onReview:      function () {
-        AF.showReview({
-          target:  completedEl,
-          items:   reviewItems,
-          onRetry: restartActivity
-        });
-      }
+      onRetry:       restart,
+      onReview:      null
     });
 
-    // Persist
-    var result  = AF.computeScore(afScores);
     if (returnTo && activityId) {
       var sep = returnTo.indexOf('?') !== -1 ? '&' : '?';
-      var url = returnTo + sep +
-        'activity_percent=' + encodeURIComponent(String(result.percent)) +
-        '&activity_errors='  + encodeURIComponent(String(result.wrong)) +
-        '&activity_total='   + encodeURIComponent(String(result.total)) +
-        '&activity_id='      + encodeURIComponent(String(activityId)) +
-        '&activity_type=flashcards';
-      fetch(url, { method: 'GET', credentials: 'same-origin', cache: 'no-store' }).catch(function () {});
+      fetch(
+        returnTo + sep +
+        'activity_percent=100&activity_errors=0&activity_total=' + cards.length +
+        '&activity_id=' + encodeURIComponent(activityId) +
+        '&activity_type=flashcards',
+        { method: 'GET', credentials: 'same-origin', cache: 'no-store' }
+      ).catch(function () {});
     }
   }
 
-  function restartActivity() {
-    index       = 0;
-    scores      = cards.map(function () { return 0; });
-    reviewItems = cards.map(function () { return {}; });
+  /* ── Restart ────────────────────────────────────────────────── */
+  function restart() {
+    index = 0;
     loadCard();
   }
 
-  if (flipBtn)   flipBtn.addEventListener('click', flipCard);
-  if (knewBtn)   knewBtn.addEventListener('click', function () { grade(true); });
-  if (reviewBtn) reviewBtn.addEventListener('click', function () { grade(false); });
-  if (showBtn)   showBtn.addEventListener('click', showAnswer);
+  /* ── Events ─────────────────────────────────────────────────── */
+  if (listenBtn) listenBtn.addEventListener('click', listen);
+  if (showBtn)   showBtn.addEventListener('click', toggleWord);
   if (nextBtn)   nextBtn.addEventListener('click', nextCard);
 
   loadCard();
