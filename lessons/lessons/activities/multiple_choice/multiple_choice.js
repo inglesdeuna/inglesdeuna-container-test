@@ -29,6 +29,8 @@ document.addEventListener('DOMContentLoaded', function () {
   const activityId = window.MULTIPLE_CHOICE_ACTIVITY_ID || '';
 
   const completedSound = new Audio('../../hangman/assets/win.mp3');
+  const correctSound = new Audio('../../hangman/assets/realcorrect.mp3');
+  const wrongSound = new Audio('../../hangman/assets/lose.mp3');
 
   if (!questions.length) {
     if (questionEl) {
@@ -49,11 +51,20 @@ document.addEventListener('DOMContentLoaded', function () {
   let index = 0;
   let selected = null;
   let revealed = false;
+  let answeredCurrent = false;
   let finished = false;
   let scoreVisible = false;
-  let questionScores = questions.map(function () { return 0; });
+  let questionScores = questions.map(function () { return null; });
   let activeListenText = '';
   let activeVoiceId = 'josh';
+
+  function playSound(audio) {
+    try {
+      audio.pause();
+      audio.currentTime = 0;
+      audio.play();
+    } catch (e) {}
+  }
 
   if (completedTitleEl) {
     completedTitleEl.textContent = activityTitle;
@@ -64,11 +75,7 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   function playCompletedSound() {
-    try {
-      completedSound.pause();
-      completedSound.currentTime = 0;
-      completedSound.play();
-    } catch (e) {}
+    playSound(completedSound);
   }
 
   function persistScoreSilently(targetUrl) {
@@ -118,18 +125,29 @@ document.addEventListener('DOMContentLoaded', function () {
 
   function computeScore() {
     const total = questions.length;
-    const correct = questionScores.reduce(function (sum, value) {
-      return sum + (value ? 1 : 0);
-    }, 0);
-    const wrong = Math.max(0, total - correct);
-    const attempts = correct + wrong;
-    const percent = attempts > 0 ? Math.round((correct / attempts) * 100) : 0;
+    let correct = 0;
+    let wrong = 0;
+    let revealedCount = 0;
+
+    questionScores.forEach(function (value) {
+      if (value === 1) {
+        correct += 1;
+      } else if (value === 0) {
+        wrong += 1;
+      } else if (value === -1) {
+        revealedCount += 1;
+      }
+    });
+
+    const scorable = correct + wrong;
+    const percent = scorable > 0 ? Math.round((correct / scorable) * 100) : 0;
 
     return {
       correct: correct,
       total: total,
       wrong: wrong,
       errors: wrong,
+      revealed: revealedCount,
       percent: percent,
     };
   }
@@ -185,10 +203,19 @@ document.addEventListener('DOMContentLoaded', function () {
     }
   }
 
+  function getCorrectIndex(item) {
+    const raw = parseInt(item && item.correct, 10);
+    if (!Number.isFinite(raw)) {
+      return 0;
+    }
+    return Math.max(0, Math.min(2, raw));
+  }
+
   function renderOptions() {
     const item = questions[index] || {};
-    const correct = Number.isInteger(item.correct) ? item.correct : 0;
+    const correct = getCorrectIndex(item);
     const isImageOpts = item.option_type === 'image';
+    const score = questionScores[index];
 
     optionsEl.innerHTML = '';
 
@@ -201,8 +228,21 @@ document.addEventListener('DOMContentLoaded', function () {
         button.classList.add('selected');
       }
 
-      if (revealed && optIndex === correct) {
+      if ((revealed || score === -1) && optIndex === correct) {
         button.classList.add('correct');
+      }
+
+      if (score === 1 && selected === optIndex) {
+        button.classList.add('correct');
+      }
+
+      if (score === 0) {
+        if (selected === optIndex) {
+          button.classList.add('wrong');
+        }
+        if (optIndex === correct) {
+          button.classList.add('correct');
+        }
       }
 
       if (isImageOpts && optionText !== '') {
@@ -215,16 +255,55 @@ document.addEventListener('DOMContentLoaded', function () {
       }
 
       button.addEventListener('click', function () {
-        if (finished) {
+        if (finished || answeredCurrent) {
           return;
         }
 
-        selected = optIndex;
-        renderOptions();
+        validateSelection(optIndex);
       });
+
+      button.disabled = finished || answeredCurrent;
 
       optionsEl.appendChild(button);
     });
+  }
+
+  function validateSelection(optIndex) {
+    if (finished || answeredCurrent) {
+      return;
+    }
+
+    const item = questions[index] || {};
+    const correct = getCorrectIndex(item);
+    const isCorrectPick = optIndex === correct;
+
+    selected = optIndex;
+    revealed = false;
+    answeredCurrent = true;
+    questionScores[index] = isCorrectPick ? 1 : 0;
+
+    renderOptions();
+    updateScoreCards(true);
+
+    if (feedbackEl) {
+      if (isCorrectPick) {
+        feedbackEl.textContent = 'Correct! Great job.';
+        feedbackEl.className = 'mc-feedback good';
+      } else {
+        feedbackEl.textContent = 'Incorrect. Correct option highlighted.';
+        feedbackEl.className = 'mc-feedback bad';
+      }
+    }
+
+    if (showBtn) {
+      showBtn.disabled = true;
+    }
+
+    if (nextBtn) {
+      nextBtn.disabled = false;
+    }
+
+    playSound(isCorrectPick ? correctSound : wrongSound);
   }
 
   function loadQuestion() {
@@ -234,6 +313,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     selected = null;
     revealed = false;
+    answeredCurrent = false;
     finished = false;
     activeListenText = cleanQuestion;
     activeVoiceId = String(item.voice_id || 'josh');
@@ -275,21 +355,39 @@ document.addEventListener('DOMContentLoaded', function () {
 
     renderOptions();
 
+    if (showBtn) {
+      showBtn.disabled = false;
+    }
+
     if (nextBtn) {
       nextBtn.textContent = index < questions.length - 1 ? 'Next →' : 'Finish';
+      nextBtn.disabled = true;
     }
   }
 
   function showAnswer() {
-    if (finished) {
+    if (finished || answeredCurrent) {
       return;
     }
 
+    selected = null;
     revealed = true;
+    answeredCurrent = true;
+    questionScores[index] = -1;
     renderOptions();
+    updateScoreCards(true);
 
     if (feedbackEl) {
-      feedbackEl.textContent = 'Correct option highlighted.';
+      feedbackEl.textContent = 'Answer revealed — this question does not affect score.';
+      feedbackEl.className = 'mc-feedback';
+    }
+
+    if (showBtn) {
+      showBtn.disabled = true;
+    }
+
+    if (nextBtn) {
+      nextBtn.disabled = false;
     }
   }
 
@@ -337,11 +435,13 @@ document.addEventListener('DOMContentLoaded', function () {
       return;
     }
 
-    const item = questions[index] || {};
-    const correct = Number.isInteger(item.correct) ? item.correct : 0;
-    const isCorrectPick = selected !== null && selected === correct && !revealed;
-    questionScores[index] = isCorrectPick ? 1 : 0;
-    updateScoreCards(true);
+    if (!answeredCurrent) {
+      if (feedbackEl) {
+        feedbackEl.textContent = 'Select an option or tap Show Answer first.';
+        feedbackEl.className = 'mc-feedback bad';
+      }
+      return;
+    }
 
     if (index < questions.length - 1) {
       index += 1;
@@ -356,9 +456,10 @@ document.addEventListener('DOMContentLoaded', function () {
     index = 0;
     selected = null;
     revealed = false;
+    answeredCurrent = false;
     finished = false;
     scoreVisible = false;
-    questionScores = questions.map(function () { return 0; });
+    questionScores = questions.map(function () { return null; });
     updateScoreCards(false);
     loadQuestion();
   }
