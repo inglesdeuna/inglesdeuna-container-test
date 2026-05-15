@@ -642,6 +642,10 @@ body {
         img.src = uploadedImages[idx];
     }
 
+    /* ── canvas fill handlers ───────────────────────── */
+    canvas.addEventListener('click',      handleFill);
+    canvas.addEventListener('touchstart', handleFill, { passive: false });
+
     /* ── button handlers ─────────────────────────────– */
     finishBtn.addEventListener('click', function () {
         if (currentIndex < uploadedImages.length - 1) {
