@@ -444,7 +444,7 @@ function checkAnswer(){
     else{ feedEl.textContent='✘ Not quite — try again (1/2)'; feedEl.className='bad'; playSound(sndLose); renderGrid(states); }
 }
 
-function showAnswer(){ userOrder=correct.slice(); selIdx=null; feedEl.textContent='👁 Correct order shown'; feedEl.className='good'; blockDone=true; checked[idx]=true; setBlockScores(revealedScores(correct.length)); if(scoresEl) scoresEl.style.display='none'; renderGrid(null); updateHint(); }
+function showAnswer(){ userOrder=correct.slice(); selIdx=null; feedEl.textContent='Answer revealed — this activity does not affect score.'; feedEl.className='good'; blockDone=true; checked[idx]=true; setBlockScores(revealedScores(correct.length)); if(scoresEl) scoresEl.style.display='none'; renderGrid(null); updateHint(); }
 function resetBlock(){ userOrder=shuffle(correct); selIdx=null; blockDone=false; feedEl.textContent=''; feedEl.className=''; if(scoresEl) scoresEl.style.display='none'; renderGrid(null); updateHint(); }
 function updateStatus(){ var t=(idx+1)+' / '+totalBlocks; if(statusEl) statusEl.textContent=t; if(kickerEl) kickerEl.textContent=t; }
 
@@ -497,7 +497,7 @@ async function showCompleted(){
     setTimeout(function(){ if(doneFillEl) doneFillEl.style.width='100%'; },120);
     playSound(sndDone);
     var result = computeFinalScore();
-    if(doneScoreEl) doneScoreEl.textContent='Score: '+result.correct+' / '+result.total+' ('+result.percent+'%)';
+    if(doneScoreEl) doneScoreEl.textContent=result.correct+' correct · '+result.wrong+' wrong · '+result.percent+'%';
     if(ACT_ID&&RETURN_TO){
         var j=RETURN_TO.indexOf('?')!==-1?'&':'?';
         var url=RETURN_TO+j+'activity_percent='+result.percent+'&activity_errors='+result.errors+'&activity_total='+result.total+'&activity_id='+encodeURIComponent(ACT_ID)+'&activity_type=listen_order';

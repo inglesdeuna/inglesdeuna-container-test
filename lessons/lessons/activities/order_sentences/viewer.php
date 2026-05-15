@@ -916,7 +916,7 @@ async function showCompleted() {
 
     var result = computeScore();
 
-    scoreEl.textContent = 'Score: ' + result.correct + ' / ' + result.total + ' (' + result.percent + '%)';
+    scoreEl.textContent = result.correct + ' correct · ' + result.wrong + ' wrong · ' + result.percent + '%';
 
     var ok = await persistScore(result.percent, result.errors, result.total);
     if (!ok) navigateReturn(result.percent, result.errors, result.total);
@@ -960,7 +960,7 @@ showBtn.addEventListener('click', function() {
 
     positionScores = revealedScores();
     revealAnswer();
-    feedbackEl.textContent = 'Correct order shown.';
+    feedbackEl.textContent = 'Answer revealed — this activity does not affect score.';
     feedbackEl.className   = 'good';
     done = true;
     checkBtn.disabled = true;
