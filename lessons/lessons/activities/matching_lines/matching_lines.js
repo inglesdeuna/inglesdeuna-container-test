@@ -1,14 +1,20 @@
 document.addEventListener('DOMContentLoaded', function () {
-  var AF = window.ActivityFeedback;
-  var questions = Array.isArray(window.MATCHING_DATA) ? window.MATCHING_DATA : [];
 
+  /* ── Globals ── */
+  var AF           = window.ActivityFeedback;
+  var boards       = Array.isArray(window.MATCHING_LINES_DATA)        ? window.MATCHING_LINES_DATA        : [];
+  var activityTitle= window.MATCHING_LINES_TITLE       || 'Matching Lines';
+  var returnTo     = window.MATCHING_LINES_RETURN_TO   || '';
+  var activityId   = window.MATCHING_LINES_ACTIVITY_ID || '';
+
+  /* ── DOM refs ── */
   var progressLabelEl = document.getElementById('ml-progress-label');
   var progressFillEl  = document.getElementById('ml-progress-fill');
   var progressBadgeEl = document.getElementById('ml-progress-badge');
-  var promptEl        = document.getElementById('ml-prompt');
-  var leftColEl       = document.getElementById('ml-left');
-  var rightColEl      = document.getElementById('ml-right');
-  var svgEl           = document.getElementById('ml-lines');
+  var ptsNumEl        = document.getElementById('ml-pts-num');
+  var leftColEl       = document.getElementById('ml-left-col');
+  var rightColEl      = document.getElementById('ml-right-col');
+  var svgEl           = document.getElementById('ml-svg');
   var checkBtn        = document.getElementById('ml-check');
   var showBtn         = document.getElementById('ml-show');
   var nextBtn         = document.getElementById('ml-next');
@@ -17,35 +23,26 @@ document.addEventListener('DOMContentLoaded', function () {
   var completedEl     = document.getElementById('ml-completed');
   var winAudio        = new Audio('../../hangman/assets/win.mp3');
 
-  var activityTitle = window.MATCHING_TITLE || 'Matching';
-  var returnTo      = window.MATCHING_RETURN_TO || '';
-  var activityId    = window.MATCHING_ACTIVITY_ID || '';
-
-  if (!questions.length) {
-    if (promptEl) promptEl.textContent = 'No questions available.';
+  if (!boards.length) {
+    if (feedbackEl) feedbackEl.textContent = 'No boards available.';
     return;
   }
 
+  /* ── State ── */
   var index       = 0;
   var answered    = false;
-  var selectedLeft  = null;  /* element */
-  var selectedRight = null;
-  var connections   = [];    /* [{leftId, rightId}] */
-  var scores        = questions.map(function () { return 0; });
-  var reviewItems   = questions.map(function () { return {}; });
+  var selectedLeft  = null;   /* left card index (0-based) or null */
+  var selectedRight = null;   /* visual row index of right card or null */
+  var connections   = [];     /* [{leftIdx, rightIdx, color}] */
+  var shuffleMap    = [];     /* shuffleMap[originalIdx] = visualRowIdx */
+  var reverseMap    = [];     /* reverseMap[visualRowIdx] = originalIdx */
+  var scores        = boards.map(function () { return 0; });
+  var reviewItems   = boards.map(function () { return {}; });
+  var feedbackTimer = null;
 
-  /* Color pool for connection lines */
-  var COLORS = ['#7F77DD','#F97316','#22c55e','#f43f5e','#0ea5e9','#a855f7','#14b8a6','#fb923c'];
+  var LINE_COLORS = ['#7F77DD', '#F97316', '#534AB7', '#C2580A'];
 
-  function updateProgress() {
-    var total   = questions.length;
-    var current = index + 1;
-    var pct     = Math.round((current / total) * 100);
-    if (progressLabelEl) progressLabelEl.textContent = current + ' / ' + total;
-    if (progressBadgeEl) progressBadgeEl.textContent = 'Q ' + current + ' of ' + total;
-    if (progressFillEl)  progressFillEl.style.width  = pct + '%';
-  }
-
+  /* ── Helpers ── */
   function shuffle(arr) {
     var a = arr.slice();
     for (var i = a.length - 1; i > 0; i--) {
@@ -55,196 +52,338 @@ document.addEventListener('DOMContentLoaded', function () {
     return a;
   }
 
-  function loadQuestion() {
-    var q = questions[index] || {};
-    answered    = false;
+  function updateProgress() {
+    var total   = boards.length;
+    var current = index + 1;
+    var pct     = Math.round((current / total) * 100);
+    if (progressLabelEl) progressLabelEl.textContent = current + ' / ' + total;
+    if (progressBadgeEl) progressBadgeEl.textContent = 'Q ' + current + ' of ' + total;
+    if (progressFillEl)  progressFillEl.style.width  = pct + '%';
+  }
+
+  function setPts(val) {
+    if (ptsNumEl) ptsNumEl.textContent = String(val);
+  }
+
+  function showFeedbackText(text, color, autoClear) {
+    if (!feedbackEl) return;
+    if (feedbackTimer) { clearTimeout(feedbackTimer); feedbackTimer = null; }
+    feedbackEl.textContent = text;
+    feedbackEl.style.color = color || '#F97316';
+    if (autoClear) {
+      feedbackTimer = setTimeout(function () {
+        feedbackEl.textContent = '';
+      }, 2000);
+    }
+  }
+
+  /* ── Render board ── */
+  function loadBoard() {
+    var board = boards[index] || {};
+    var pairs = Array.isArray(board.pairs) ? board.pairs : [];
+
+    answered      = false;
     selectedLeft  = null;
     selectedRight = null;
     connections   = [];
 
     if (completedEl) completedEl.style.display = 'none';
     if (activityEl)  activityEl.style.display  = '';
-    if (feedbackEl)  AF.clearFeedback(feedbackEl);
+    if (feedbackEl)  { feedbackEl.textContent = ''; }
 
     updateProgress();
-    if (promptEl) promptEl.textContent = q.prompt || 'Match each item on the left with the right.';
+    setPts(0);
 
-    renderColumns(q);
+    /* build shuffle map */
+    var indices = pairs.map(function (_, i) { return i; });
+    var shuffled = shuffle(indices);
+    shuffleMap  = new Array(pairs.length);
+    reverseMap  = new Array(pairs.length);
+    for (var i = 0; i < shuffled.length; i++) {
+      /* shuffled[i] = original pair index placed at visual row i */
+      reverseMap[i]          = shuffled[i];
+      shuffleMap[shuffled[i]] = i;
+    }
+
+    renderColumns(pairs, shuffled);
     drawLines();
 
-    if (checkBtn) checkBtn.disabled = false;
-    if (showBtn)  { showBtn.style.display = ''; showBtn.disabled = false; }
-    if (nextBtn)  { nextBtn.disabled = true; nextBtn.textContent = index < questions.length - 1 ? 'Next \u2192' : 'Finish'; }
-  }
-
-  function renderColumns(q) {
-    var pairs = Array.isArray(q.pairs) ? q.pairs : [];
-    var leftItems  = pairs.map(function (p, i) { return { id: 'l' + i, text: p.left,  pairId: i }; });
-    var rightItems = shuffle(pairs.map(function (p, i) { return { id: 'r' + i, text: p.right, pairId: i }; }));
-
-    if (leftColEl) {
-      leftColEl.innerHTML = '';
-      leftItems.forEach(function (it) {
-        var btn = document.createElement('button');
-        btn.type      = 'button';
-        btn.className = 'ml-item ml-item--left';
-        btn.id        = 'ml-' + it.id;
-        btn.dataset.id     = it.id;
-        btn.dataset.pairId = String(it.pairId);
-        btn.textContent    = it.text;
-        btn.addEventListener('click', function () { handleLeftClick(btn); });
-        leftColEl.appendChild(btn);
-      });
-    }
-
-    if (rightColEl) {
-      rightColEl.innerHTML = '';
-      rightItems.forEach(function (it) {
-        var btn = document.createElement('button');
-        btn.type      = 'button';
-        btn.className = 'ml-item ml-item--right';
-        btn.id        = 'ml-' + it.id;
-        btn.dataset.id     = it.id;
-        btn.dataset.pairId = String(it.pairId);
-        btn.textContent    = it.text;
-        btn.addEventListener('click', function () { handleRightClick(btn); });
-        rightColEl.appendChild(btn);
-      });
+    if (checkBtn) { checkBtn.disabled = false; }
+    if (showBtn)  { showBtn.disabled = false; }
+    if (nextBtn)  {
+      nextBtn.disabled = true;
+      nextBtn.textContent = index < boards.length - 1 ? 'Next →' : 'Finish';
     }
   }
 
-  function handleLeftClick(btn) {
-    if (answered) return;
-    document.querySelectorAll('.ml-item--left').forEach(function (b) { b.classList.remove('ml-item--selected'); });
-    selectedLeft = btn;
-    btn.classList.add('ml-item--selected');
-    tryConnect();
+  function renderColumns(pairs, shuffled) {
+    if (!leftColEl || !rightColEl) return;
+    leftColEl.innerHTML  = '';
+    rightColEl.innerHTML = '';
+
+    /* Left cards — in original order */
+    pairs.forEach(function (pair, i) {
+      var card = document.createElement('div');
+      card.className = 'ml-lcard';
+      card.dataset.idx = String(i);
+
+      var icon = document.createElement('div');
+      icon.className = 'ml-lcard-icon';
+
+      var label = document.createElement('div');
+      label.className = 'ml-lcard-label';
+      label.textContent = pair.left;
+
+      var dot = document.createElement('div');
+      dot.className = 'ml-dot-r';
+      dot.dataset.leftIdx = String(i);
+      dot.addEventListener('click', function (e) {
+        e.stopPropagation();
+        handleDotLeftClick(i);
+      });
+
+      icon.appendChild(label);
+      card.appendChild(icon);
+      card.appendChild(dot);
+      leftColEl.appendChild(card);
+    });
+
+    /* Right cards — in shuffled order */
+    shuffled.forEach(function (origIdx, visualRow) {
+      var pair = pairs[origIdx];
+      var card = document.createElement('div');
+      card.className = 'ml-rcard';
+      card.dataset.visualRow = String(visualRow);
+      card.dataset.origIdx   = String(origIdx);
+
+      var icon = document.createElement('div');
+      icon.className = 'ml-rcard-icon';
+
+      var label = document.createElement('div');
+      label.className = 'ml-rcard-label';
+      label.textContent = pair.right;
+
+      var dot = document.createElement('div');
+      dot.className = 'ml-dot-l';
+      dot.dataset.visualRow = String(visualRow);
+      dot.addEventListener('click', function (e) {
+        e.stopPropagation();
+        handleDotRightClick(visualRow);
+      });
+
+      icon.appendChild(label);
+      card.appendChild(icon);
+      card.appendChild(dot);
+      rightColEl.appendChild(card);
+    });
+
+    equalizeRowHeights();
   }
 
-  function handleRightClick(btn) {
+  function equalizeRowHeights() {
+    if (!leftColEl || !rightColEl) return;
+    var lcards = leftColEl.querySelectorAll('.ml-lcard');
+    var rcards = rightColEl.querySelectorAll('.ml-rcard');
+    var count  = Math.min(lcards.length, rcards.length);
+    for (var i = 0; i < count; i++) {
+      /* reset first so natural height is measured */
+      lcards[i].style.minHeight = '';
+      rcards[i].style.minHeight = '';
+    }
+    for (var i = 0; i < count; i++) {
+      var h = Math.max(lcards[i].offsetHeight, rcards[i].offsetHeight);
+      lcards[i].style.minHeight = h + 'px';
+      rcards[i].style.minHeight = h + 'px';
+    }
+  }
+
+  /* ── Connection logic ── */
+  function handleDotLeftClick(leftIdx) {
     if (answered) return;
-    document.querySelectorAll('.ml-item--right').forEach(function (b) { b.classList.remove('ml-item--selected'); });
-    selectedRight = btn;
-    btn.classList.add('ml-item--selected');
-    tryConnect();
+
+    /* deselect previous left selection */
+    document.querySelectorAll('.ml-dot-r.ml-selected').forEach(function (d) {
+      d.classList.remove('ml-selected');
+    });
+
+    selectedLeft = leftIdx;
+    var dot = leftColEl.querySelector('.ml-dot-r[data-left-idx="' + leftIdx + '"]');
+    if (dot) dot.classList.add('ml-selected');
+
+    if (selectedRight !== null) {
+      tryConnect();
+    }
+  }
+
+  function handleDotRightClick(visualRow) {
+    if (answered) return;
+
+    /* deselect previous right selection */
+    document.querySelectorAll('.ml-dot-l.ml-selected').forEach(function (d) {
+      d.classList.remove('ml-selected');
+    });
+
+    selectedRight = visualRow;
+    var dot = rightColEl.querySelector('.ml-dot-l[data-visual-row="' + visualRow + '"]');
+    if (dot) dot.classList.add('ml-selected');
+
+    if (selectedLeft !== null) {
+      tryConnect();
+    }
   }
 
   function tryConnect() {
-    if (!selectedLeft || !selectedRight) return;
-    var leftId  = selectedLeft.dataset.id;
-    var rightId = selectedRight.dataset.id;
+    if (selectedLeft === null || selectedRight === null) return;
+
+    var li = selectedLeft;
+    var ri = selectedRight;
 
     /* remove any existing connection from this left item */
-    connections = connections.filter(function (c) { return c.leftId !== leftId && c.rightId !== rightId; });
-    connections.push({ leftId: leftId, rightId: rightId, color: COLORS[connections.length % COLORS.length] });
+    connections = connections.filter(function (c) { return c.leftIdx !== li; });
+    /* remove any existing connection from this right item */
+    connections = connections.filter(function (c) { return c.rightIdx !== ri; });
 
-    selectedLeft.classList.remove('ml-item--selected');
-    selectedRight.classList.remove('ml-item--selected');
+    var color = LINE_COLORS[connections.length % LINE_COLORS.length];
+    connections.push({ leftIdx: li, rightIdx: ri, color: color });
+
+    /* clear selection */
+    document.querySelectorAll('.ml-dot-r.ml-selected, .ml-dot-l.ml-selected').forEach(function (d) {
+      d.classList.remove('ml-selected');
+    });
     selectedLeft  = null;
     selectedRight = null;
+
     drawLines();
   }
 
+  /* ── SVG bezier lines ── */
   function drawLines() {
     if (!svgEl) return;
     svgEl.innerHTML = '';
-    var containerRect = svgEl.getBoundingClientRect();
+
+    var svgRect = svgEl.getBoundingClientRect();
+    if (!svgRect.width && !svgRect.height) return;
 
     connections.forEach(function (conn) {
-      var leftEl  = document.getElementById('ml-' + conn.leftId);
-      var rightEl = document.getElementById('ml-' + conn.rightId);
-      if (!leftEl || !rightEl) return;
+      var dotR = leftColEl  ? leftColEl.querySelector('.ml-dot-r[data-left-idx="' + conn.leftIdx + '"]') : null;
+      var dotL = rightColEl ? rightColEl.querySelector('.ml-dot-l[data-visual-row="' + conn.rightIdx + '"]') : null;
+      if (!dotR || !dotL) return;
 
-      var lr = leftEl.getBoundingClientRect();
-      var rr = rightEl.getBoundingClientRect();
+      var rR = dotR.getBoundingClientRect();
+      var rL = dotL.getBoundingClientRect();
 
-      var x1 = lr.right  - containerRect.left;
-      var y1 = lr.top    - containerRect.top + lr.height / 2;
-      var x2 = rr.left   - containerRect.left;
-      var y2 = rr.top    - containerRect.top + rr.height / 2;
+      var x1 = rR.left + rR.width  / 2 - svgRect.left;
+      var y1 = rR.top  + rR.height / 2 - svgRect.top;
+      var x2 = rL.left + rL.width  / 2 - svgRect.left;
+      var y2 = rL.top  + rL.height / 2 - svgRect.top;
 
-      var line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-      line.setAttribute('x1', String(x1));
-      line.setAttribute('y1', String(y1));
-      line.setAttribute('x2', String(x2));
-      line.setAttribute('y2', String(y2));
-      line.setAttribute('stroke', conn.color || '#7F77DD');
-      line.setAttribute('stroke-width', '3');
-      line.setAttribute('stroke-linecap', 'round');
-      svgEl.appendChild(line);
+      var cx1 = x1 + 60;
+      var cx2 = x2 - 60;
+
+      var path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      path.setAttribute('d', 'M ' + x1 + ',' + y1 + ' C ' + cx1 + ',' + y1 + ' ' + cx2 + ',' + y2 + ' ' + x2 + ',' + y2);
+      path.setAttribute('stroke', conn.overrideColor || conn.color || '#7F77DD');
+      path.setAttribute('stroke-width', '3.5');
+      path.setAttribute('fill', 'none');
+      path.setAttribute('stroke-linecap', 'round');
+      svgEl.appendChild(path);
     });
   }
 
+  /* ── Check ── */
   function checkAnswers() {
     if (answered) return;
-    var q     = questions[index] || {};
-    var pairs = Array.isArray(q.pairs) ? q.pairs : [];
+    var board = boards[index] || {};
+    var pairs = Array.isArray(board.pairs) ? board.pairs : [];
+    var total   = pairs.length;
     var correct = 0;
-    answered   = true;
 
+    answered = true;
+
+    /* evaluate connections */
     connections.forEach(function (conn) {
-      var leftEl  = document.getElementById('ml-' + conn.leftId);
-      var rightEl = document.getElementById('ml-' + conn.rightId);
-      if (!leftEl || !rightEl) return;
-      var isRight = leftEl.dataset.pairId === rightEl.dataset.pairId;
-      if (isRight) {
+      /* a connection is correct when leftIdx === original pair index that matches rightIdx visual row */
+      var origRight = reverseMap[conn.rightIdx]; /* which original pair is at this visual row */
+      var isCorrect = (conn.leftIdx === origRight);
+      if (isCorrect) {
         correct++;
-        AF.highlightOption(leftEl,  'correct');
-        AF.highlightOption(rightEl, 'correct');
+        conn.overrideColor = '#22c55e';
       } else {
-        AF.highlightOption(leftEl,  'wrong');
-        AF.highlightOption(rightEl, 'wrong');
+        conn.overrideColor = '#E24B4A';
       }
     });
 
-    var allRight = correct === pairs.length && connections.length === pairs.length;
-    scores[index] = allRight ? 1 : 0;
+    drawLines();
+
+    /* pts */
+    var pts = Math.round((correct / total) * 1000);
+    setPts(pts);
+
+    /* score */
+    var allCorrect = correct === total && connections.length === total;
+    scores[index] = allCorrect ? 1 : 0;
+
     reviewItems[index] = {
-      question:      q.prompt || ('Question ' + (index + 1)),
-      yourAnswer:    correct + '/' + pairs.length + ' correct',
-      correctAnswer: pairs.map(function (p) { return p.left + ' \u2192 ' + p.right; }).join(', '),
+      question:      board.prompt || ('Board ' + (index + 1)),
+      yourAnswer:    correct + '/' + total + ' correct',
+      correctAnswer: pairs.map(function (p) { return p.left + ' → ' + p.right; }).join(', '),
       score:         scores[index]
     };
 
-    if (feedbackEl) AF.showFeedback(feedbackEl, allRight, pairs.map(function (p) { return p.left + '\u2192' + p.right; }).join(' | '), false);
+    /* feedback */
+    if (allCorrect) {
+      showFeedbackText('Perfect! 🎉', '#22c55e', true);
+    } else {
+      showFeedbackText(correct + ' / ' + total + ' correct', '#F97316', true);
+    }
+
     if (checkBtn) checkBtn.disabled = true;
-    if (showBtn)  showBtn.style.display = 'none';
-    if (nextBtn)  nextBtn.disabled = false;
+    if (showBtn)  showBtn.disabled  = true;
+    if (nextBtn)  nextBtn.disabled  = false;
   }
 
+  /* ── Show Answers ── */
   function showAnswers() {
     if (answered) return;
-    var q     = questions[index] || {};
-    var pairs = Array.isArray(q.pairs) ? q.pairs : [];
-    answered  = true;
+    var board = boards[index] || {};
+    var pairs = Array.isArray(board.pairs) ? board.pairs : [];
+
+    answered = true;
     scores[index] = -1;
 
-    /* show correct connections */
-    connections = pairs.map(function (p, i) { return { leftId: 'l' + i, rightId: 'r' + i, color: COLORS[i % COLORS.length] }; });
-    drawLines();
-    pairs.forEach(function (p, i) {
-      var leftEl  = document.getElementById('ml-l' + i);
-      var rightEl = document.getElementById('ml-r' + i);
-      if (leftEl)  leftEl.style.borderColor  = COLORS[i % COLORS.length];
-      if (rightEl) rightEl.style.borderColor = COLORS[i % COLORS.length];
+    /* build correct connections using shuffleMap */
+    connections = pairs.map(function (p, origIdx) {
+      return { leftIdx: origIdx, rightIdx: shuffleMap[origIdx], color: '#7F77DD' };
     });
 
-    reviewItems[index] = { question: q.prompt || '', yourAnswer: '(revealed)', correctAnswer: '', score: -1 };
-    if (feedbackEl) AF.showFeedback(feedbackEl, false, null, true);
+    drawLines();
+
+    reviewItems[index] = {
+      question:      board.prompt || ('Board ' + (index + 1)),
+      yourAnswer:    '(revealed)',
+      correctAnswer: pairs.map(function (p) { return p.left + ' → ' + p.right; }).join(', '),
+      score:         -1
+    };
+
+    showFeedbackText('Answers shown', '#7F77DD', true);
+    setPts(0);
+
     if (checkBtn) checkBtn.disabled = true;
-    if (showBtn)  showBtn.style.display = 'none';
-    if (nextBtn)  nextBtn.disabled = false;
+    if (showBtn)  showBtn.disabled  = true;
+    if (nextBtn)  nextBtn.disabled  = false;
   }
 
-  function nextQuestion() {
-    if (index < questions.length - 1) {
+  /* ── Next ── */
+  function nextBoard() {
+    if (index < boards.length - 1) {
       index++;
-      loadQuestion();
+      loadBoard();
     } else {
       showCompleted();
     }
   }
 
+  /* ── Completed ── */
   function showCompleted() {
     if (!completedEl) return;
     if (activityEl) activityEl.style.display = 'none';
@@ -254,34 +393,52 @@ document.addEventListener('DOMContentLoaded', function () {
       target:        completedEl,
       scores:        scores,
       title:         activityTitle,
-      activityType:  'Matching',
-      questionCount: questions.length,
+      activityType:  'Matching Lines',
+      questionCount: boards.length,
       winAudio:      winAudio,
       onRetry:       restartActivity,
-      onReview:      function () { AF.showReview({ target: completedEl, items: reviewItems, onRetry: restartActivity }); }
+      onReview: function () {
+        AF.showReview({ target: completedEl, items: reviewItems, onRetry: restartActivity });
+      }
     });
 
     var result = AF.computeScore(scores);
     if (returnTo && activityId) {
       var sep = returnTo.indexOf('?') !== -1 ? '&' : '?';
-      fetch(returnTo + sep + 'activity_percent=' + result.percent + '&activity_errors=' + result.wrong + '&activity_total=' + result.total + '&activity_id=' + encodeURIComponent(activityId) + '&activity_type=matching_lines',
-        { method: 'GET', credentials: 'same-origin', cache: 'no-store' }).catch(function () {});
+      fetch(returnTo + sep +
+        'activity_percent=' + result.percent +
+        '&activity_errors=' + result.wrong +
+        '&activity_total='  + result.total +
+        '&activity_id='     + encodeURIComponent(activityId) +
+        '&activity_type=matching_lines',
+        { method: 'GET', credentials: 'same-origin', cache: 'no-store' }
+      ).catch(function () {});
     }
   }
 
+  /* ── Restart ── */
   function restartActivity() {
     index       = 0;
-    scores      = questions.map(function () { return 0; });
-    reviewItems = questions.map(function () { return {}; });
-    loadQuestion();
+    scores      = boards.map(function () { return 0; });
+    reviewItems = boards.map(function () { return {}; });
+    loadBoard();
   }
 
-  /* redraw lines on window resize */
-  window.addEventListener('resize', drawLines);
+  /* ── Resize → redraw ── */
+  var resizeTimer;
+  window.addEventListener('resize', function () {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(function () {
+      equalizeRowHeights();
+      drawLines();
+    }, 80);
+  });
 
+  /* ── Button listeners ── */
   if (checkBtn) checkBtn.addEventListener('click', checkAnswers);
-  if (showBtn)  showBtn.addEventListener('click', showAnswers);
-  if (nextBtn)  nextBtn.addEventListener('click', nextQuestion);
+  if (showBtn)  showBtn.addEventListener('click',  showAnswers);
+  if (nextBtn)  nextBtn.addEventListener('click',  nextBoard);
 
-  loadQuestion();
+  /* ── Boot ── */
+  loadBoard();
 });

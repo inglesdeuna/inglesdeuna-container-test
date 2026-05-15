@@ -159,22 +159,12 @@ if (empty($jsQuestions)) {
 }
 
 $jsVersion  = (string) (@filemtime(__DIR__ . '/matching_lines.js') ?: time());
-$cssVersion = (string) (@filemtime(__DIR__ . '/matching_lines.css') ?: time());
 
 ob_start();
 ?>
 <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@600;700;800;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="matching_lines.css?v=<?php echo htmlspecialchars($cssVersion, ENT_QUOTES, 'UTF-8'); ?>">
 
 <style>
-:root {
-    --orange: #F97316;
-    --purple: #7F77DD;
-    --purple-dark: #534AB7;
-    --muted: #9B94BE;
-    --soft: #F4F2FD;
-    --border: #ECE9FA;
-}
 * { box-sizing: border-box; }
 html, body { width: 100%; min-height: 100%; margin: 0; padding: 0; background: #fff; font-family: 'Nunito', sans-serif; }
 body { margin: 0 !important; padding: 0 !important; background: #fff !important; }
@@ -182,6 +172,7 @@ body { margin: 0 !important; padding: 0 !important; background: #fff !important;
 .top-row, .activity-header { display: none !important; }
 .viewer-content { flex: 1 !important; display: flex !important; flex-direction: column !important; padding: 0 !important; margin: 0 !important; background: transparent !important; border: none !important; box-shadow: none !important; border-radius: 0 !important; }
 
+/* ── Page shell ── */
 .ml-page {
     width: 100%;
     flex: 1;
@@ -191,16 +182,18 @@ body { margin: 0 !important; padding: 0 !important; background: #fff !important;
     display: flex;
     align-items: flex-start;
     justify-content: center;
-    background: #fff;
+    background: #ffffff;
     box-sizing: border-box;
 }
 .ml-app {
-    width: min(760px, 100%);
+    width: min(780px, 100%);
     margin: 0 auto;
 }
+
+/* ── Hero ── */
 .ml-hero {
     text-align: center;
-    margin-bottom: clamp(14px, 2vw, 22px);
+    margin-bottom: clamp(14px, 2vw, 24px);
 }
 .ml-kicker {
     display: inline-flex;
@@ -211,6 +204,7 @@ body { margin: 0 !important; padding: 0 !important; background: #fff !important;
     background: #FFF0E6;
     border: 1px solid #FCDDBF;
     color: #C2580A;
+    font-family: 'Nunito', sans-serif;
     font-size: 12px;
     font-weight: 900;
     letter-spacing: .08em;
@@ -221,18 +215,28 @@ body { margin: 0 !important; padding: 0 !important; background: #fff !important;
     font-family: 'Fredoka', sans-serif;
     font-size: clamp(30px, 5.5vw, 54px);
     font-weight: 700;
-    color: var(--orange);
+    color: #F97316;
     margin: 0;
     line-height: 1;
 }
 .ml-hero p {
     font-size: clamp(13px, 1.8vw, 15px);
-    font-weight: 700;
-    color: var(--muted);
+    font-weight: 800;
+    color: #9B94BE;
     margin: 8px 0 0;
+    font-family: 'Nunito', sans-serif;
 }
 
-/* Progress */
+/* ── Board ── */
+.ml-board {
+    background: #ffffff;
+    border: 1px solid #F0EEF8;
+    border-radius: 34px;
+    box-shadow: 0 8px 40px rgba(127,119,221,.13);
+    padding: clamp(16px, 2.4vw, 26px);
+}
+
+/* ── Progress ── */
 .ml-progress {
     display: flex;
     align-items: center;
@@ -242,64 +246,72 @@ body { margin: 0 !important; padding: 0 !important; background: #fff !important;
 .ml-progress-label {
     font-size: 12px;
     font-weight: 900;
-    color: var(--muted);
+    color: #9B94BE;
     min-width: 48px;
+    font-family: 'Nunito', sans-serif;
 }
 .ml-track {
     flex: 1;
     height: 12px;
-    background: var(--soft);
+    background: #F4F2FD;
+    border: 1px solid #E4E1F8;
     border-radius: 999px;
     overflow: hidden;
 }
 .ml-fill {
     height: 100%;
     width: 0%;
-    background: linear-gradient(90deg, var(--orange), var(--purple));
+    background: linear-gradient(90deg, #F97316, #7F77DD);
     border-radius: 999px;
     transition: width .35s;
 }
 .ml-badge {
     min-width: 74px;
     text-align: center;
-    padding: 7px 10px;
+    padding: 6px 11px;
     border-radius: 999px;
-    background: var(--purple);
+    background: #7F77DD;
     color: #fff;
     font-size: 12px;
     font-weight: 900;
+    font-family: 'Nunito', sans-serif;
 }
 
-/* Card shell */
-.ml-card-shell {
-    background: #fff;
-    border: 1px solid var(--border);
-    border-radius: 32px;
-    padding: clamp(16px, 2.6vw, 26px);
-    box-shadow: 0 8px 40px rgba(127,119,221,.12);
+/* ── Points chip ── */
+.ml-pts-chip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: #FFF0E6;
+    border: 1px solid #FCDDBF;
+    border-radius: 999px;
+    padding: 8px 18px;
     margin-bottom: 16px;
 }
-
-/* Prompt */
-#ml-prompt {
-    font-size: clamp(14px, 1.8vw, 16px);
+.ml-pts-num {
+    font-family: 'Fredoka', sans-serif;
     font-weight: 700;
-    color: var(--muted);
-    text-align: center;
-    margin-bottom: 16px;
-    min-height: 20px;
+    font-size: clamp(22px, 3.5vw, 32px);
+    color: #F97316;
+    line-height: 1;
+}
+.ml-pts-label {
+    font-family: 'Nunito', sans-serif;
+    font-weight: 900;
+    font-size: 13px;
+    color: #C2580A;
+    margin-left: 4px;
 }
 
-/* Matching stage */
+/* ── Stage ── */
 .ml-stage {
-    position: relative;
     display: grid;
-    grid-template-columns: 1fr auto 1fr;
-    gap: 16px;
-    align-items: start;
+    grid-template-columns: 1fr 40px 1fr;
+    gap: 0;
+    position: relative;
     margin-bottom: 16px;
 }
-#ml-lines {
+#ml-svg {
     position: absolute;
     inset: 0;
     width: 100%;
@@ -307,122 +319,186 @@ body { margin: 0 !important; padding: 0 !important; background: #fff !important;
     pointer-events: none;
     overflow: visible;
 }
-#ml-left, #ml-right {
+
+/* ── Left cards ── */
+.ml-left-col, .ml-right-col {
     display: flex;
     flex-direction: column;
-    gap: 10px;
 }
-.ml-lane {
-    width: 40px;
-}
-
-/* Matching items */
-.ml-item {
-    padding: 12px 16px;
-    border-radius: 16px;
-    border: 2px solid var(--border);
+.ml-lcard, .ml-rcard {
     background: #fff;
-    font-size: 15px;
-    font-weight: 700;
-    color: var(--purple-dark);
-    cursor: pointer;
-    transition: border-color .15s, background .15s, box-shadow .15s;
-    text-align: center;
-    user-select: none;
+    border: 1px solid #EDE9FA;
+    border-radius: 20px;
+    box-shadow: 0 8px 40px rgba(127,119,221,.13);
+    padding: 14px;
+    margin-bottom: 10px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    min-height: 70px;
 }
-.ml-item:hover { border-color: var(--purple); background: var(--soft); }
-.ml-item.selected { border-color: var(--purple); background: var(--soft); box-shadow: 0 0 0 3px rgba(127,119,221,.2); }
-.ml-item.matched  { border-color: #22c55e; background: #f0fdf4; color: #166534; cursor: default; }
-.ml-item.wrong    { border-color: #ef4444; background: #fef2f2; color: #991b1b; }
+.ml-lcard-icon, .ml-rcard-icon {
+    height: 58px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.ml-lcard-label {
+    font-family: 'Fredoka', sans-serif;
+    font-weight: 600;
+    font-size: clamp(13px, 1.8vw, 16px);
+    color: #534AB7;
+    text-align: center;
+    margin-top: 4px;
+}
+.ml-rcard-label {
+    font-family: 'Fredoka', sans-serif;
+    font-weight: 600;
+    font-size: clamp(14px, 2vw, 17px);
+    color: #F97316;
+    text-align: center;
+    margin-top: 4px;
+}
 
-/* Buttons */
+/* Connection dots */
+.ml-dot-r {
+    position: absolute;
+    right: -7px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: #7F77DD;
+    cursor: pointer;
+    z-index: 2;
+    transition: background .15s, transform .15s;
+}
+.ml-dot-l {
+    position: absolute;
+    left: -7px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: #7F77DD;
+    cursor: pointer;
+    z-index: 2;
+    transition: background .15s, transform .15s;
+}
+.ml-dot-r:hover, .ml-dot-l:hover { transform: translateY(-50%) scale(1.25); }
+.ml-dot-r.ml-selected, .ml-dot-l.ml-selected { background: #F97316; transform: translateY(-50%) scale(1.3); }
+
+/* SVG lane */
+.ml-svg-lane { position: relative; }
+
+/* ── Buttons ── */
 .ml-actions {
     display: flex;
     justify-content: center;
     gap: 10px;
     flex-wrap: wrap;
-    border-top: 1px solid var(--border);
+    border-top: 1px solid #EDE9FA;
     padding-top: 16px;
     margin-top: 8px;
 }
 .ml-btn {
     border: 0;
     border-radius: 999px;
-    padding: 13px 20px;
-    min-width: 120px;
-    color: #fff;
-    cursor: pointer;
     font-family: 'Nunito', sans-serif;
     font-size: 14px;
     font-weight: 900;
-    transition: .18s;
-    box-shadow: 0 6px 18px rgba(127,119,221,.15);
+    color: #fff;
+    padding: 12px 22px;
+    min-width: 110px;
+    cursor: pointer;
+    transition: transform .18s, opacity .18s;
 }
 .ml-btn:hover { transform: translateY(-1px); }
 .ml-btn:disabled { opacity: .45; cursor: default; transform: none; }
-.ml-btn-orange { background: var(--orange); box-shadow: 0 6px 18px rgba(249,115,22,.22); }
-.ml-btn-purple { background: var(--purple); }
+.ml-btn-orange { background: #F97316; box-shadow: 0 6px 18px rgba(249,115,22,.22); }
+.ml-btn-purple { background: #7F77DD; box-shadow: 0 6px 18px rgba(127,119,221,.20); }
 
-#ml-feedback { margin-top: 8px; }
-#ml-completed { }
+/* ── Feedback ── */
+#ml-feedback {
+    font-family: 'Fredoka', sans-serif;
+    font-weight: 600;
+    text-align: center;
+    font-size: clamp(15px, 2vw, 18px);
+    margin-top: 12px;
+    min-height: 24px;
+}
 
-@media (max-width: 640px) {
-    .ml-page { padding: 12px; }
+#ml-completed {}
+
+@media (max-width: 600px) {
+    .ml-page { padding: 10px; }
+    .ml-stage { grid-template-columns: 1fr 24px 1fr; }
     .ml-actions { display: grid; grid-template-columns: 1fr; gap: 9px; }
     .ml-btn { width: 100%; }
-    .ml-stage { grid-template-columns: 1fr 20px 1fr; gap: 8px; }
 }
 </style>
 
 <div class="ml-page">
-    <div class="ml-app">
+  <div class="ml-app">
 
-        <div class="ml-hero">
-            <div class="ml-kicker">Activity</div>
-            <h1><?php echo htmlspecialchars($viewerTitle, ENT_QUOTES, 'UTF-8'); ?></h1>
-            <p>Match each item with its correct pair.</p>
-        </div>
-
-        <div id="ml-activity">
-            <div class="ml-card-shell">
-                <div class="ml-progress">
-                    <span class="ml-progress-label" id="ml-progress-label">1 / <?php echo count($jsQuestions); ?></span>
-                    <div class="ml-track">
-                        <div class="ml-fill" id="ml-progress-fill"></div>
-                    </div>
-                    <div class="ml-badge" id="ml-progress-badge">Q 1 of <?php echo count($jsQuestions); ?></div>
-                </div>
-
-                <div id="ml-prompt"></div>
-
-                <div class="ml-stage">
-                    <svg id="ml-lines" aria-hidden="true"></svg>
-                    <div id="ml-left"></div>
-                    <div class="ml-lane"></div>
-                    <div id="ml-right"></div>
-                </div>
-
-                <div class="ml-actions">
-                    <button class="ml-btn ml-btn-orange" id="ml-check">Check</button>
-                    <button class="ml-btn ml-btn-purple" id="ml-show">Show Answer</button>
-                    <button class="ml-btn ml-btn-orange" id="ml-next">Next</button>
-                </div>
-            </div>
-
-            <div id="ml-feedback"></div>
-        </div>
-
-        <div id="ml-completed"></div>
-
+    <div class="ml-hero">
+      <div class="ml-kicker">Activity</div>
+      <h1><?php echo htmlspecialchars($viewerTitle, ENT_QUOTES, 'UTF-8'); ?></h1>
+      <p>Match each item with its correct pair.</p>
     </div>
+
+    <div class="ml-board">
+
+      <div class="ml-progress">
+        <span class="ml-progress-label" id="ml-progress-label">1 / <?php echo count($jsQuestions); ?></span>
+        <div class="ml-track">
+          <div class="ml-fill" id="ml-progress-fill"></div>
+        </div>
+        <div class="ml-badge" id="ml-progress-badge">Q 1 of <?php echo count($jsQuestions); ?></div>
+      </div>
+
+      <div style="text-align:center">
+        <div class="ml-pts-chip">
+          <span class="ml-pts-num" id="ml-pts-num">0</span>
+          <span class="ml-pts-label">PTS</span>
+        </div>
+      </div>
+
+      <div id="ml-activity">
+        <div class="ml-stage">
+          <div class="ml-left-col" id="ml-left-col"></div>
+          <div class="ml-svg-lane">
+            <svg id="ml-svg" aria-hidden="true"></svg>
+          </div>
+          <div class="ml-right-col" id="ml-right-col"></div>
+        </div>
+
+        <div class="ml-actions">
+          <button class="ml-btn ml-btn-orange" id="ml-check">Check</button>
+          <button class="ml-btn ml-btn-purple" id="ml-show">Show Answers</button>
+          <button class="ml-btn ml-btn-orange" id="ml-next">Next</button>
+        </div>
+      </div>
+
+      <div id="ml-feedback"></div>
+
+    </div><!-- /.ml-board -->
+
+    <div id="ml-completed"></div>
+
+  </div>
 </div>
 
 <script src="../../core/_activity_feedback.js"></script>
 <script>
-window.MATCHING_DATA        = <?php echo json_encode($jsQuestions, JSON_UNESCAPED_UNICODE); ?>;
-window.MATCHING_TITLE       = <?php echo json_encode($viewerTitle, JSON_UNESCAPED_UNICODE); ?>;
-window.MATCHING_RETURN_TO   = <?php echo json_encode($returnTo,    JSON_UNESCAPED_UNICODE); ?>;
-window.MATCHING_ACTIVITY_ID = <?php echo json_encode((string) ($activity['id'] ?? ''), JSON_UNESCAPED_UNICODE); ?>;
+window.MATCHING_LINES_DATA        = <?php echo json_encode($jsQuestions, JSON_UNESCAPED_UNICODE); ?>;
+window.MATCHING_LINES_TITLE       = <?php echo json_encode($viewerTitle, JSON_UNESCAPED_UNICODE); ?>;
+window.MATCHING_LINES_RETURN_TO   = <?php echo json_encode($returnTo,    JSON_UNESCAPED_UNICODE); ?>;
+window.MATCHING_LINES_ACTIVITY_ID = <?php echo json_encode((string) ($activity['id'] ?? ''), JSON_UNESCAPED_UNICODE); ?>;
 </script>
 <script src="matching_lines.js?v=<?php echo htmlspecialchars($jsVersion, ENT_QUOTES, 'UTF-8'); ?>"></script>
 <?php
