@@ -781,7 +781,7 @@ var doneSound   = document.getElementById('os-done-sound');
 
 var attempts     = 0;
 var done         = false;
-var correctCount = 0;
+var positionScores = Array(OS_TOTAL).fill(null);
 var dragged      = null;
 var touchSel     = null;
 var isTouchDev   = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
@@ -804,6 +804,42 @@ function countCorrect(order) {
         if ((order[i] || '') === CORRECT_ORDER[i]) n++;
     }
     return n;
+}
+
+function mapOrderToScores(order) {
+    var scores = [];
+    for (var i = 0; i < OS_TOTAL; i++) {
+        scores.push((order[i] || '') === CORRECT_ORDER[i] ? 1 : 0);
+    }
+    return scores;
+}
+
+function revealedScores() {
+    return Array(OS_TOTAL).fill(-1);
+}
+
+function computeScore() {
+    var correct = 0;
+    var wrong = 0;
+    var revealed = 0;
+
+    positionScores.forEach(function (value) {
+        if (value === 1) correct++;
+        else if (value === 0) wrong++;
+        else if (value === -1) revealed++;
+    });
+
+    var scorable = correct + wrong;
+    var pct = scorable > 0 ? Math.round((correct / scorable) * 100) : 0;
+
+    return {
+        correct: correct,
+        wrong: wrong,
+        revealed: revealed,
+        total: OS_TOTAL,
+        errors: wrong,
+        percent: pct
+    };
 }
 
 function updateBadges() {
@@ -878,13 +914,12 @@ async function showCompleted() {
     completedEl.classList.add('active');
     playSound(doneSound);
 
-    var pct    = OS_TOTAL > 0 ? Math.round((correctCount / OS_TOTAL) * 100) : 0;
-    var errors = Math.max(0, OS_TOTAL - correctCount);
+    var result = computeScore();
 
-    scoreEl.textContent = 'Score: ' + correctCount + ' / ' + OS_TOTAL + ' (' + pct + '%)';
+    scoreEl.textContent = 'Score: ' + result.correct + ' / ' + result.total + ' (' + result.percent + '%)';
 
-    var ok = await persistScore(pct, errors, OS_TOTAL);
-    if (!ok) navigateReturn(pct, errors, OS_TOTAL);
+    var ok = await persistScore(result.percent, result.errors, result.total);
+    if (!ok) navigateReturn(result.percent, result.errors, result.total);
 }
 
 checkBtn.addEventListener('click', function() {
@@ -897,7 +932,7 @@ checkBtn.addEventListener('click', function() {
     markPositions(order);
 
     if (n === OS_TOTAL) {
-        correctCount = n;
+        positionScores = mapOrderToScores(order);
         feedbackEl.textContent = 'Correct! Well done!';
         feedbackEl.className   = 'good';
         playSound(winSound);
@@ -905,7 +940,7 @@ checkBtn.addEventListener('click', function() {
         checkBtn.disabled = true;
         showBtn.disabled  = true;
     } else if (attempts >= 2) {
-        correctCount = n;
+        positionScores = mapOrderToScores(order);
         feedbackEl.textContent = n + '/' + OS_TOTAL + ' correct — showing the right order.';
         feedbackEl.className   = 'bad';
         playSound(loseSound);
@@ -923,7 +958,7 @@ checkBtn.addEventListener('click', function() {
 showBtn.addEventListener('click', function() {
     if (done) return;
 
-    correctCount = 0;
+    positionScores = revealedScores();
     revealAnswer();
     feedbackEl.textContent = 'Correct order shown.';
     feedbackEl.className   = 'good';
@@ -933,7 +968,11 @@ showBtn.addEventListener('click', function() {
 });
 
 nextBtn.addEventListener('click', function() {
-    if (!done) correctCount = countCorrect(userOrder());
+    if (!done) {
+        feedbackEl.textContent = 'Check answers or show answer first.';
+        feedbackEl.className = 'bad';
+        return;
+    }
     showCompleted();
 });
 
@@ -1043,7 +1082,7 @@ sentenceCards().forEach(function(chip) {
 window.osRestart = function() {
     attempts     = 0;
     done         = false;
-    correctCount = 0;
+    positionScores = Array(OS_TOTAL).fill(null);
     touchSel     = null;
 
     completedEl.classList.remove('active');
