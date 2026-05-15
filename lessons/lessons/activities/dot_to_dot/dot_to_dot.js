@@ -223,11 +223,51 @@ function completeGame() {
   canvas.style.cursor = "default";
 
   revealBtn.style.display = "none";
-  continueBtn.style.display = "inline-flex";
+  continueBtn.style.display = "none";
   completionPanel.style.display = "block";
-  completionScore.textContent = "You connected all the dots.";
 
   fadeInImage();
+
+  showPassiveDone(completionPanel, {
+    text: 'You connected all the dots! Great job!',
+    restartLabel: 'Play Again',
+    onRestart: function () {
+      completionPanel.style.display = "none";
+      completionPanel.innerHTML = "";
+      resetGame();
+    },
+    returnTo: data.returnTo,
+    activityId: data.activityId,
+    activityType: 'dot_to_dot',
+    total: points.length
+  });
+}
+
+function showPassiveDone(containerEl, opts) {
+  containerEl.innerHTML =
+    '<div class="passive-done" id="passive-done-card">' +
+    '  <div class="passive-done-icon">🎉</div>' +
+    '  <h2 class="passive-done-title">All Done!</h2>' +
+    '  <p class="passive-done-text">' + (opts.text || 'Great work!') + '</p>' +
+    '  <div class="passive-done-track"><div class="passive-done-fill" id="passive-fill"></div></div>' +
+    '  <div><button class="passive-done-btn" id="passive-restart-btn">&#8635; ' + (opts.restartLabel || 'Play Again') + '</button></div>' +
+    '</div>';
+  var card = document.getElementById('passive-done-card');
+  var fill = document.getElementById('passive-fill');
+  var btn  = document.getElementById('passive-restart-btn');
+  requestAnimationFrame(function () {
+    card.classList.add('active');
+    setTimeout(function () { if (fill) fill.style.width = '100%'; }, 80);
+  });
+  if (btn && opts.onRestart) btn.addEventListener('click', opts.onRestart);
+  if (opts.winAudio) { try { opts.winAudio.currentTime = 0; opts.winAudio.play(); } catch(e){} }
+  if (opts.returnTo && opts.activityId) {
+    var sep = opts.returnTo.indexOf('?') !== -1 ? '&' : '?';
+    fetch(opts.returnTo + sep + 'activity_percent=100&activity_errors=0&activity_total=' + (opts.total||1) +
+      '&activity_id=' + encodeURIComponent(opts.activityId) +
+      '&activity_type=' + encodeURIComponent(opts.activityType || 'activity'),
+      { method: 'GET', credentials: 'same-origin', cache: 'no-store' }).catch(function(){});
+  }
 }
 
 function startDrag(event) {
@@ -324,6 +364,7 @@ resetBtn.addEventListener("click", resetGame);
 hintBtn.addEventListener("click", showHint);
 revealBtn.addEventListener("click", revealImage);
 
+// continueBtn is hidden in the new All Done screen; handled by showPassiveDone
 continueBtn.addEventListener("click", function () {
   if (data.returnTo) {
     window.location.href = data.returnTo;

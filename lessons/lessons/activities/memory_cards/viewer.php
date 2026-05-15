@@ -581,14 +581,29 @@ body{
 
 .mc-empty{text-align:center;padding:28px;font-weight:800;color:#b91c1c;}
 
-.completed-screen{display:none;text-align:center;max-width:600px;margin:0 auto;padding:40px 20px;}
+.completed-screen{display:none;}
 .completed-screen.active{display:block;}
-.completed-icon{font-size:80px;margin-bottom:20px;}
-.completed-title{font-family:'Fredoka','Trebuchet MS',sans-serif;font-size:36px;font-weight:700;color:var(--mc-orange);margin:0 0 16px;line-height:1.2;}
-.completed-text{font-size:16px;color:var(--mc-muted);line-height:1.6;margin:0 0 32px;}
-.completed-button{display:inline-block;padding:12px 24px;border:none;border-radius:999px;background:var(--mc-purple);color:#fff;font-weight:700;font-size:16px;cursor:pointer;box-shadow:0 10px 24px rgba(127,119,221,.24);transition:transform .18s ease,filter .18s ease;}
-.completed-button:hover{transform:scale(1.05);filter:brightness(1.07);}
 .mc-activity.is-hidden{display:none;}
+.passive-done {
+    display: none;
+    width: min(680px, 100%);
+    margin: 24px auto 0;
+    text-align: center;
+    padding: clamp(28px, 5vw, 54px);
+    border-radius: 34px;
+    background: #fff;
+    border: 1px solid #E2F7EF;
+    box-shadow: 0 8px 40px rgba(8,80,65,.12);
+}
+.passive-done.active { display: block; animation: passivePop .45s cubic-bezier(.2,.9,.2,1); }
+@keyframes passivePop { from { opacity:0; transform:scale(.92); } to { opacity:1; transform:scale(1); } }
+.passive-done-icon { font-size: clamp(66px,12vw,100px); margin-bottom: 12px; }
+.passive-done-title { margin: 0 0 10px; font-family: 'Fredoka', sans-serif; font-size: clamp(34px,6vw,60px); color: #085041; line-height: 1; }
+.passive-done-text { margin: 0 auto 22px; max-width: 520px; color: #7C739B; font-size: clamp(14px,2vw,17px); font-weight: 800; line-height: 1.5; }
+.passive-done-track { height: 14px; max-width: 420px; margin: 0 auto 18px; border-radius: 999px; background: #E2F7EF; overflow: hidden; }
+.passive-done-fill { height: 100%; width: 0%; border-radius: 999px; background: linear-gradient(90deg, #1D9E75, #7F77DD, #EC4899); transition: width .8s cubic-bezier(.2,.9,.2,1); }
+.passive-done-btn { display: inline-flex; align-items: center; gap: 8px; padding: 13px 28px; border-radius: 999px; border: 0; background: #1D9E75; color: #fff; font-family: 'Nunito', sans-serif; font-size: 15px; font-weight: 900; cursor: pointer; box-shadow: 0 6px 18px rgba(29,158,117,.30); transition: .18s; }
+.passive-done-btn:hover { transform: translateY(-2px); }
 
 @keyframes mcVanish{
     0%  {opacity:1;transform:scale(1);}
@@ -637,12 +652,7 @@ body{
         </div>
       </section>
 
-      <div id="mc-complete" class="completed-screen">
-        <div class="completed-icon">&#x2705;</div>
-        <h2 class="completed-title" id="mc-completed-title"></h2>
-        <p class="completed-text" id="mc-completed-text"></p>
-        <button type="button" class="completed-button" id="mc-completed-restart">Play Again</button>
-      </div>
+      <div id="mc-complete" class="completed-screen"></div>
 
       <audio id="mc-audio-flip"  preload="auto" src="../../hangman/assets/card%20flip.mp3.mp3"></audio>
       <audio id="mc-audio-match" preload="auto" src="../../hangman/assets/swoosh%20sound.mp3"></audio>
@@ -661,9 +671,6 @@ body{
     const restartBtn          = document.getElementById('mc-restart');
     const completeEl          = document.getElementById('mc-complete');
     const activityEl          = document.getElementById('mc-activity');
-    const completedTitleEl    = document.getElementById('mc-completed-title');
-    const completedTextEl     = document.getElementById('mc-completed-text');
-    const completedRestartBtn = document.getElementById('mc-completed-restart');
     const matchAudioEl        = document.getElementById('mc-audio-match');
     const loseAudioEl         = document.getElementById('mc-audio-lose');
     const winAudioEl          = document.getElementById('mc-audio-win');
@@ -721,13 +728,50 @@ body{
         else if (kind === 'win')   playAudio(winAudioEl,   0.9);
     }
 
+    function showPassiveDone(containerEl, opts) {
+        containerEl.innerHTML =
+            '<div class="passive-done" id="passive-done-card">' +
+            '  <div class="passive-done-icon">🎉</div>' +
+            '  <h2 class="passive-done-title">All Done!</h2>' +
+            '  <p class="passive-done-text">' + (opts.text || 'Great work!') + '</p>' +
+            '  <div class="passive-done-track"><div class="passive-done-fill" id="passive-fill"></div></div>' +
+            '  <div><button class="passive-done-btn" id="passive-restart-btn">&#8635; ' + (opts.restartLabel || 'Play Again') + '</button></div>' +
+            '</div>';
+        var card = document.getElementById('passive-done-card');
+        var fill = document.getElementById('passive-fill');
+        var btn  = document.getElementById('passive-restart-btn');
+        requestAnimationFrame(function () {
+            card.classList.add('active');
+            setTimeout(function () { if (fill) fill.style.width = '100%'; }, 80);
+        });
+        if (btn && opts.onRestart) btn.addEventListener('click', opts.onRestart);
+        if (opts.winAudio) { try { opts.winAudio.currentTime = 0; opts.winAudio.play(); } catch(e){} }
+        if (opts.returnTo && opts.activityId) {
+            var sep = opts.returnTo.indexOf('?') !== -1 ? '&' : '?';
+            fetch(opts.returnTo + sep + 'activity_percent=100&activity_errors=0&activity_total=' + (opts.total||1) +
+                '&activity_id=' + encodeURIComponent(opts.activityId) +
+                '&activity_type=' + encodeURIComponent(opts.activityType || 'activity'),
+                { method: 'GET', credentials: 'same-origin', cache: 'no-store' }).catch(function(){});
+        }
+    }
+
     function showCompleted() {
-        if (completedTitleEl) completedTitleEl.textContent = activityTitle || 'Memory Cards';
-        if (completedTextEl)  completedTextEl.textContent  = 'Great job! You matched all pairs in ' + moves + ' moves.';
         playSound('win');
         if (activityEl) activityEl.classList.add('is-hidden');
         window.setTimeout(function () {
-            if (completeEl) completeEl.classList.add('active');
+            if (completeEl) {
+                completeEl.classList.add('active');
+                showPassiveDone(completeEl, {
+                    text: 'You matched all ' + totalPairs + ' pairs in ' + moves + ' moves!',
+                    restartLabel: 'Play Again',
+                    onRestart: function () {
+                        completeEl.classList.remove('active');
+                        completeEl.innerHTML = '';
+                        restart();
+                    },
+                    winAudio: winAudioEl
+                });
+            }
         }, completedDelayMs);
     }
 
@@ -815,8 +859,8 @@ body{
         updateStats();
     }
 
-    if (restartBtn)          restartBtn.addEventListener('click', restart);
-    if (completedRestartBtn) completedRestartBtn.addEventListener('click', restart);
+    if (restartBtn) restartBtn.addEventListener('click', restart);
+    // completedRestartBtn is now injected by showPassiveDone
 
     restart();
 })();

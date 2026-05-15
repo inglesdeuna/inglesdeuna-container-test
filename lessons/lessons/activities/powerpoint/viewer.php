@@ -643,58 +643,32 @@ body {
 
 .ppt-completed-screen {
     display: none;
-    background: #ffffff;
-    border: 1px solid #EDE9FA;
-    border-radius: 28px;
-    box-shadow: 0 12px 36px rgba(127,119,221,.13);
-    min-height: clamp(300px, 42vh, 430px);
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-    padding: clamp(28px, 5vw, 48px) 24px;
-    gap: 12px;
-    box-sizing: border-box;
 }
 
 .ppt-completed-screen.active {
-    display: flex;
+    display: block;
 }
 
-.ppt-completed-icon {
-    font-size: 64px;
-    line-height: 1;
-    margin-bottom: 4px;
+.passive-done {
+    display: none;
+    width: min(680px, 100%);
+    margin: 24px auto 0;
+    text-align: center;
+    padding: clamp(28px, 5vw, 54px);
+    border-radius: 34px;
+    background: #fff;
+    border: 1px solid #E2F7EF;
+    box-shadow: 0 8px 40px rgba(8,80,65,.12);
 }
-
-.ppt-completed-title {
-    font-family: 'Fredoka', 'Trebuchet MS', sans-serif;
-    font-size: clamp(30px, 5.5vw, 58px);
-    font-weight: 700;
-    color: #F97316;
-    margin: 0;
-    line-height: 1.03;
-}
-
-.ppt-completed-text {
-    font-family: 'Nunito', sans-serif;
-    font-size: clamp(13px, 1.8vw, 17px);
-    font-weight: 800;
-    color: #9B94BE;
-    margin: 0;
-}
-
-.ppt-completed-actions {
-    display: flex;
-    gap: 10px;
-    justify-content: center;
-    flex-wrap: wrap;
-}
-
-.ppt-completed-btn {
-    background: #7F77DD;
-    box-shadow: 0 6px 18px rgba(127,119,221,.18);
-}
+.passive-done.active { display: block; animation: passivePop .45s cubic-bezier(.2,.9,.2,1); }
+@keyframes passivePop { from { opacity:0; transform:scale(.92); } to { opacity:1; transform:scale(1); } }
+.passive-done-icon { font-size: clamp(66px,12vw,100px); margin-bottom: 12px; }
+.passive-done-title { margin: 0 0 10px; font-family: 'Fredoka', sans-serif; font-size: clamp(34px,6vw,60px); color: #085041; line-height: 1; }
+.passive-done-text { margin: 0 auto 22px; max-width: 520px; color: #7C739B; font-size: clamp(14px,2vw,17px); font-weight: 800; line-height: 1.5; }
+.passive-done-track { height: 14px; max-width: 420px; margin: 0 auto 18px; border-radius: 999px; background: #E2F7EF; overflow: hidden; }
+.passive-done-fill { height: 100%; width: 0%; border-radius: 999px; background: linear-gradient(90deg, #1D9E75, #7F77DD, #EC4899); transition: width .8s cubic-bezier(.2,.9,.2,1); }
+.passive-done-btn { display: inline-flex; align-items: center; gap: 8px; padding: 13px 28px; border-radius: 999px; border: 0; background: #1D9E75; color: #fff; font-family: 'Nunito', sans-serif; font-size: 15px; font-weight: 900; cursor: pointer; box-shadow: 0 6px 18px rgba(29,158,117,.30); transition: .18s; }
+.passive-done-btn:hover { transform: translateY(-2px); }
 
 @media (max-width: 900px) {
     .ppt-page {
@@ -827,14 +801,7 @@ body {
                 </div>
             <?php } ?>
 
-            <div id="ppt-completed-screen" class="ppt-completed-screen">
-                <div class="ppt-completed-icon">✅</div>
-                <h2 class="ppt-completed-title"><?php echo htmlspecialchars($viewerTitle, ENT_QUOTES, 'UTF-8'); ?></h2>
-                <p class="ppt-completed-text">You've reviewed all the slides. Great job!</p>
-                <div class="ppt-completed-actions">
-                    <button type="button" class="ppt-completed-btn" id="ppt-restart-btn">Back</button>
-                </div>
-            </div>
+            <div id="ppt-completed-screen" class="ppt-completed-screen"></div>
 
         </div>
     </div>
@@ -1095,7 +1062,20 @@ document.getElementById('btnNext')?.addEventListener('click', function () {
         const completedEl = document.getElementById('ppt-completed-screen');
 
         if (stageEl) stageEl.style.display = 'none';
-        if (completedEl) completedEl.classList.add('active');
+        if (completedEl) {
+            completedEl.classList.add('active');
+            showPassiveDone(completedEl, {
+                text: 'You reviewed all ' + PPT_SLIDES.length + ' slides. Great job!',
+                restartLabel: 'Review Again',
+                onRestart: function () {
+                    completedEl.classList.remove('active');
+                    completedEl.innerHTML = '';
+                    if (stageEl) stageEl.style.display = '';
+                    slideIndex = 0;
+                    renderSlide();
+                }
+            });
+        }
 
         return;
     }
@@ -1104,16 +1084,32 @@ document.getElementById('btnNext')?.addEventListener('click', function () {
     renderSlide();
 });
 
-document.getElementById('ppt-restart-btn')?.addEventListener('click', function () {
-    const stageEl = document.querySelector('.ppt-stage');
-    const completedEl = document.getElementById('ppt-completed-screen');
-
-    if (completedEl) completedEl.classList.remove('active');
-    if (stageEl) stageEl.style.display = '';
-
-    slideIndex = 0;
-    renderSlide();
-});
+function showPassiveDone(containerEl, opts) {
+    containerEl.innerHTML =
+        '<div class="passive-done" id="passive-done-card">' +
+        '  <div class="passive-done-icon">🎉</div>' +
+        '  <h2 class="passive-done-title">All Done!</h2>' +
+        '  <p class="passive-done-text">' + (opts.text || 'Great work!') + '</p>' +
+        '  <div class="passive-done-track"><div class="passive-done-fill" id="passive-fill"></div></div>' +
+        '  <div><button class="passive-done-btn" id="passive-restart-btn">&#8635; ' + (opts.restartLabel || 'Play Again') + '</button></div>' +
+        '</div>';
+    var card = document.getElementById('passive-done-card');
+    var fill = document.getElementById('passive-fill');
+    var btn  = document.getElementById('passive-restart-btn');
+    requestAnimationFrame(function () {
+        card.classList.add('active');
+        setTimeout(function () { if (fill) fill.style.width = '100%'; }, 80);
+    });
+    if (btn && opts.onRestart) btn.addEventListener('click', opts.onRestart);
+    if (opts.winAudio) { try { opts.winAudio.currentTime = 0; opts.winAudio.play(); } catch(e){} }
+    if (opts.returnTo && opts.activityId) {
+        var sep = opts.returnTo.indexOf('?') !== -1 ? '&' : '?';
+        fetch(opts.returnTo + sep + 'activity_percent=100&activity_errors=0&activity_total=' + (opts.total||1) +
+            '&activity_id=' + encodeURIComponent(opts.activityId) +
+            '&activity_type=' + encodeURIComponent(opts.activityType || 'activity'),
+            { method: 'GET', credentials: 'same-origin', cache: 'no-store' }).catch(function(){});
+    }
+}
 
 document.getElementById('btnTts')?.addEventListener('click', speakSlide);
 document.getElementById('btnStopTts')?.addEventListener('click', stopSpeech);

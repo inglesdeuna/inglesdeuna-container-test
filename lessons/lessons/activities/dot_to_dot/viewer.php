@@ -29,6 +29,29 @@ ob_start();
 <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@600;700;800;900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="dot_to_dot.css">
 
+<style>
+.passive-done {
+    display: none;
+    width: min(680px, 100%);
+    margin: 24px auto 0;
+    text-align: center;
+    padding: clamp(28px, 5vw, 54px);
+    border-radius: 34px;
+    background: #fff;
+    border: 1px solid #E2F7EF;
+    box-shadow: 0 8px 40px rgba(8,80,65,.12);
+}
+.passive-done.active { display: block; animation: passivePop .45s cubic-bezier(.2,.9,.2,1); }
+@keyframes passivePop { from { opacity:0; transform:scale(.92); } to { opacity:1; transform:scale(1); } }
+.passive-done-icon { font-size: clamp(66px,12vw,100px); margin-bottom: 12px; }
+.passive-done-title { margin: 0 0 10px; font-family: 'Fredoka', sans-serif; font-size: clamp(34px,6vw,60px); color: #085041; line-height: 1; }
+.passive-done-text { margin: 0 auto 22px; max-width: 520px; color: #7C739B; font-size: clamp(14px,2vw,17px); font-weight: 800; line-height: 1.5; }
+.passive-done-track { height: 14px; max-width: 420px; margin: 0 auto 18px; border-radius: 999px; background: #E2F7EF; overflow: hidden; }
+.passive-done-fill { height: 100%; width: 0%; border-radius: 999px; background: linear-gradient(90deg, #1D9E75, #7F77DD, #EC4899); transition: width .8s cubic-bezier(.2,.9,.2,1); }
+.passive-done-btn { display: inline-flex; align-items: center; gap: 8px; padding: 13px 28px; border-radius: 999px; border: 0; background: #1D9E75; color: #fff; font-family: 'Nunito', sans-serif; font-size: 15px; font-weight: 900; cursor: pointer; box-shadow: 0 6px 18px rgba(29,158,117,.30); transition: .18s; }
+.passive-done-btn:hover { transform: translateY(-2px); }
+</style>
+
 <div class="d2dv-page">
 <div class="d2dv-app">
     <div class="d2dv-hero">
@@ -93,11 +116,7 @@ ob_start();
                 </button>
             </div>
 
-            <div id="d2dvCompletionPanel" class="d2dv-completion-panel" style="display:none">
-                <div class="d2dv-completion-icon">&#x2705;</div>
-                <p class="d2dv-completion-title">Completed!</p>
-                <p class="d2dv-completion-score" id="d2dvCompletionScore"></p>
-            </div>
+            <div id="d2dvCompletionPanel" style="display:none"></div>
 
         </div>
 
