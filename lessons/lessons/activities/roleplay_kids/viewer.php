@@ -83,10 +83,10 @@ const AVATARS = [
 function avatarSrc(id) { return `assets/avatars/${id}.svg`; }
 
 // ── DEFAULT DATA ───────────────────────────────────────────────
-const DEFAULT_TURNS = [{ cue: "", hint: "" }];
+const DEFAULT_TURNS = [{ teacherLine: "", studentLine: "" }];
 const DEFAULT_SCENE = {
   title: "Kids Roleplay", desc: "Practice speaking English!",
-  sceneImage: "", agentName: "Teacher", studentRole: "",
+  sceneImage: "", agentName: "Teacher",
 };
 
 // ── TTS ────────────────────────────────────────────────────────
@@ -245,7 +245,7 @@ function SceneImageUpload({ value, onChange }) {
 // ══════════════════════════════════════════════════════════════
 // EDITOR VIEW
 // ══════════════════════════════════════════════════════════════
-function EditorView({ scene: initScene, turns: initTurns, activityId, onSave, onPreview }) {
+function EditorView({ scene: initScene, turns: initTurns, activityId, onSave }) {
   const [scene, setScene]   = useState(initScene || DEFAULT_SCENE);
   const [turns, setTurns]   = useState(initTurns && initTurns.length ? initTurns : DEFAULT_TURNS);
   const [toast, setToast]   = useState(null);
@@ -253,7 +253,7 @@ function EditorView({ scene: initScene, turns: initTurns, activityId, onSave, on
 
   function sc(key, val) { setScene(s => ({ ...s, [key]: val })); }
 
-  function addTurn() { setTurns(t => [...t, { cue: "", hint: "" }]); }
+  function addTurn() { setTurns(t => [...t, { teacherLine: "", studentLine: "" }]); }
   function removeTurn(i) { setTurns(t => t.filter((_, idx) => idx !== i)); }
   function updateTurn(i, key, val) { setTurns(t => t.map((r, idx) => idx === i ? { ...r, [key]: val } : r)); }
 
@@ -290,16 +290,11 @@ function EditorView({ scene: initScene, turns: initTurns, activityId, onSave, on
 
   return (
     <div style={{ maxWidth: 680, margin: "0 auto", padding: "20px 16px" }}>
-      {/* Topbar */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
+      {/* Header — no preview button */}
+      <div style={{ marginBottom: 18 }}>
         <div style={{ fontFamily: "'Fredoka',sans-serif", fontSize: 24, fontWeight: 700, color: C.orange }}>
           🎭 Roleplay Kids — Editor
         </div>
-        <button onClick={onPreview} style={{
-          background: C.purpleSoft, color: C.purpleDark, border: `1px solid ${C.purpleBorder}`,
-          borderRadius: 999, padding: "8px 16px", fontWeight: 800, fontSize: 13,
-          fontFamily: "'Nunito',sans-serif", cursor: "pointer",
-        }}>Preview ▶</button>
       </div>
 
       {/* Scene */}
@@ -308,8 +303,7 @@ function EditorView({ scene: initScene, turns: initTurns, activityId, onSave, on
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
           <div>{label("Activity Title")}{inp(scene.title, v => sc("title", v), "e.g. At the Café")}</div>
           <div>{label("Scene Description")}{inp(scene.desc, v => sc("desc", v), "Short subtitle")}</div>
-          <div>{label("Teacher / Agent Name")}{inp(scene.agentName, v => sc("agentName", v), "Teacher")}</div>
-          <div>{label("Student Role Label")}{inp(scene.studentRole, v => sc("studentRole", v), "e.g. Customer")}</div>
+          <div style={{ gridColumn: "1/-1" }}>{label("Teacher / Agent Name")}{inp(scene.agentName, v => sc("agentName", v), "Teacher")}</div>
           <div style={{ gridColumn: "1/-1" }}>
             {label("Scene Background Image")}
             <SceneImageUpload value={scene.sceneImage} onChange={v => sc("sceneImage", v)} />
@@ -322,8 +316,10 @@ function EditorView({ scene: initScene, turns: initTurns, activityId, onSave, on
         Turns <span style={{ color: C.muted, fontWeight: 700 }}>({turns.length})</span>
       </div>
       {turns.map((turn, i) => card(<>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-          <div style={{ fontWeight: 800, color: C.purpleDark, fontSize: 13 }}>Turn {i + 1}</div>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={{ fontWeight: 800, color: C.purpleDark, fontSize: 13 }}>Turn {i + 1}</span>
+          </div>
           {turns.length > 1 && (
             <button onClick={() => removeTurn(i)} style={{
               background: "#FEF2F2", color: "#B91C1C", border: "1px solid #FECACA",
@@ -333,18 +329,28 @@ function EditorView({ scene: initScene, turns: initTurns, activityId, onSave, on
           )}
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          <div>
-            {label("Cue — sentence the student repeats")}
-            <textarea value={turn.cue} onChange={e => updateTurn(i, "cue", e.target.value)}
-              placeholder="e.g. Can I have a coffee, please?" rows={2} style={{
-                width: "100%", padding: "9px 12px", border: `1.5px solid ${C.purpleBorder}`,
-                borderRadius: 10, fontSize: 14, fontFamily: "'Nunito',sans-serif",
-                fontWeight: 700, resize: "vertical", outline: "none", color: C.ink,
+          {/* Teacher line */}
+          <div style={{ background: C.orangeSoft, border: `1px solid ${C.orangeBorder}`, borderRadius: 12, padding: "10px 12px" }}>
+            {label("🧑‍🏫 Teacher says")}
+            <textarea value={turn.teacherLine} onChange={e => updateTurn(i, "teacherLine", e.target.value)}
+              placeholder="e.g. Hello! What would you like to order?" rows={2} style={{
+                width: "100%", padding: "8px 10px", border: `1.5px solid ${C.orangeBorder}`,
+                borderRadius: 8, fontSize: 14, fontFamily: "'Nunito',sans-serif",
+                fontWeight: 700, resize: "vertical", outline: "none", color: C.ink, background: C.white,
               }} />
           </div>
-          <div>
-            {label("Hint (optional)")}
-            {inp(turn.hint, v => updateTurn(i, "hint", v), "e.g. Use polite form")}
+          {/* Student line */}
+          <div style={{ background: C.purpleSoft, border: `1px solid ${C.purpleBorder}`, borderRadius: 12, padding: "10px 12px" }}>
+            {label("🎤 Student should say")}
+            <textarea value={turn.studentLine} onChange={e => updateTurn(i, "studentLine", e.target.value)}
+              placeholder="e.g. I would like a coffee, please." rows={2} style={{
+                width: "100%", padding: "8px 10px", border: `1.5px solid ${C.purpleBorder}`,
+                borderRadius: 8, fontSize: 14, fontFamily: "'Nunito',sans-serif",
+                fontWeight: 700, resize: "vertical", outline: "none", color: C.ink, background: C.white,
+              }} />
+            <div style={{ fontSize: 11, color: C.muted, fontWeight: 700, marginTop: 6 }}>
+              The system will compare what the student says against this sentence and give a score.
+            </div>
           </div>
         </div>
       </>, 10))}
@@ -390,7 +396,8 @@ function PlayerView({ scene: sc, turns, activityId }) {
   const [pronScore,  setPronScore]  = useState(null);
   const recRef = useRef(null);
 
-  const turn  = safeT[turnIndex] || { cue: "", hint: "" };
+  const turn      = safeT[turnIndex] || { teacherLine: "", studentLine: "" };
+  const avatarLabel = AVATARS.find(a => a.id === avatarId)?.label || "You";
   const total = safeT.length;
 
   // ── Mic ──────────────────────────────────────────────────────
@@ -411,7 +418,7 @@ function PlayerView({ scene: sc, turns, activityId }) {
       const text = e.results[0][0].transcript;
       setTranscript(text);
       setMicState("processing");
-      scorePronunciation(text, turn.cue);
+      scorePronunciation(text, turn.studentLine);
     };
     rec.onerror = () => { setMicState("idle"); };
     rec.onend   = () => { if (micState === "recording") setMicState("idle"); };
@@ -460,7 +467,7 @@ function PlayerView({ scene: sc, turns, activityId }) {
 
   function handleListen() {
     setTtsLoading(true);
-    playElevenLabs(turn.cue, null, () => setTtsLoading(false), () => setTtsLoading(false));
+    playElevenLabs(turn.studentLine, null, () => setTtsLoading(false), () => setTtsLoading(false));
   }
 
   function handleTryAgain() {
@@ -635,7 +642,7 @@ function PlayerView({ scene: sc, turns, activityId }) {
             fontSize: 12, fontFamily: "'Fredoka',sans-serif",
             fontWeight: 600, color: C.purpleDark, lineHeight: 1.4,
           }}>
-            {turn.cue || "…"}
+            {turn.teacherLine || "…"}
           </div>
 
           {/* Student avatar (bottom-left) */}
@@ -646,7 +653,7 @@ function PlayerView({ scene: sc, turns, activityId }) {
             <div style={{
               background: "rgba(83,74,183,.75)", color: C.white,
               borderRadius: 999, padding: "2px 10px", fontSize: 10, fontWeight: 800,
-            }}>{scene.studentRole || "You"}</div>
+            }}>{avatarLabel}</div>
           </div>
 
           {/* Teacher avatar (bottom-right) */}
@@ -674,12 +681,7 @@ function PlayerView({ scene: sc, turns, activityId }) {
           <div style={{
             fontFamily: "'Fredoka',sans-serif", fontSize: "clamp(17px,3.5vw,22px)",
             fontWeight: 600, color: C.purpleDark, textAlign: "center", lineHeight: 1.35,
-          }}>{turn.cue || "—"}</div>
-          {turn.hint && (
-            <div style={{ fontSize: 12, fontWeight: 700, color: C.muted, textAlign: "center", marginTop: 6 }}>
-              💡 {turn.hint}
-            </div>
-          )}
+          }}>{turn.studentLine || "—"}</div>
           {/* Listen button */}
           <button onClick={handleListen} disabled={ttsLoading} style={{
             position: "absolute", top: 12, right: 12,
@@ -707,7 +709,7 @@ function PlayerView({ scene: sc, turns, activityId }) {
               borderRadius: 12, padding: "10px 14px",
             }}>
               <div style={{ fontSize: 10, fontWeight: 900, color: C.orange, textTransform: "uppercase", marginBottom: 4 }}>Try saying</div>
-              <div style={{ fontFamily: "'Fredoka',sans-serif", fontSize: 15, fontWeight: 600, color: C.orangeDark }}>{turn.cue}</div>
+              <div style={{ fontFamily: "'Fredoka',sans-serif", fontSize: 15, fontWeight: 600, color: C.orangeDark }}>{turn.studentLine}</div>
             </div>
             {/* Score bar */}
             <div style={{ background: C.purpleSoft, borderRadius: 12, padding: "10px 14px" }}>
@@ -761,7 +763,7 @@ function PlayerView({ scene: sc, turns, activityId }) {
                 borderRadius: 999, background: C.white, color: C.purple,
                 fontFamily: "'Nunito',sans-serif", fontWeight: 900, fontSize: 13, cursor: "pointer",
               }}>Try Again</button>
-              <button onClick={() => { playElevenLabs(turn.cue, null); }} style={{
+              <button onClick={() => { playElevenLabs(turn.studentLine, null); }} style={{
                 flex: 1, minWidth: 100, padding: "11px 8px", border: "none",
                 borderRadius: 999, background: C.purple, color: C.white,
                 fontFamily: "'Nunito',sans-serif", fontWeight: 900, fontSize: 13, cursor: "pointer",
@@ -801,7 +803,6 @@ function App() {
         scene={scene} turns={turns}
         activityId={window.RK_ACTIVITY_ID}
         onSave={(s, t) => { setScene(s); setTurns(t); }}
-        onPreview={() => setView("player")}
       />
     );
   }
