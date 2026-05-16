@@ -265,68 +265,45 @@ body { margin: 0 !important; padding: 0 !important; background: #fff !important;
     margin-bottom: 16px;
 }
 
-/* Instruction */
+/* Instruction paragraph — inline drop zones live inside here */
 #dd-instruction {
     font-size: clamp(16px, 2.2vw, 20px);
     font-weight: 700;
     color: var(--purple-dark);
     text-align: center;
-    margin-bottom: 16px;
-    line-height: 1.6;
+    line-height: 2.4;
     background: var(--soft);
     border-radius: 16px;
-    padding: 16px;
-}
-
-/* Slots area */
-#dd-slots {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
+    padding: 20px;
     margin-bottom: 16px;
 }
-.dd-slot {
-    display: flex;
-    align-items: center;
-    gap: 12px;
+
+/* Inline drop zone replacing ___ in the paragraph */
+.dd-inline-drop {
+    display: inline-block;
+    min-width: 90px;
+    height: 36px;
+    line-height: 36px;
+    border: 2px dashed #d8d3f5;
+    border-radius: 8px;
+    padding: 0 10px;
+    text-align: center;
+    vertical-align: middle;
+    font-size: 14px;
+    font-weight: 800;
+    color: var(--muted);
     background: #fff;
-    border: 1px solid var(--border);
-    border-radius: 16px;
-    padding: 12px 16px;
-}
-.dd-slot__num {
-    font-size: 13px;
-    font-weight: 900;
-    color: var(--muted);
-    min-width: 20px;
-}
-.dd-slot__label {
-    flex: 1;
-    font-size: 15px;
-    font-weight: 700;
-    color: var(--purple-dark);
-}
-.dd-dropzone {
-    min-width: 120px;
-    min-height: 40px;
-    border: 2px dashed var(--border);
-    border-radius: 12px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 13px;
-    font-weight: 700;
-    color: var(--muted);
     transition: border-color .15s, background .15s;
-    padding: 6px 12px;
+    margin: 0 3px;
     cursor: default;
 }
-.dd-dropzone--over { border-color: var(--purple); background: var(--soft); }
-.dd-dropzone--filled { border-style: solid; border-color: var(--purple); color: var(--purple-dark); background: var(--soft); }
-.dd-dropzone--correct { border-color: var(--green); background: #f0fdf4; color: var(--green); }
-.dd-dropzone--wrong { border-color: var(--red); background: #fef2f2; color: var(--red); }
+.dd-inline-drop--over    { border-color: var(--purple); background: #EEEDFE; }
+.dd-inline-drop--filled  { border-style: solid; border-color: #d8d3f5; color: var(--purple-dark); background: #EEEDFE; cursor: pointer; }
+.dd-inline-drop--correct { border-color: var(--green)!important; background: #f0fdf4!important; color: var(--green)!important; }
+.dd-inline-drop--wrong   { border-color: var(--red)!important; background: #fef2f2!important; color: var(--red)!important; }
+.dd-inline-drop--revealed{ border-color: var(--orange)!important; background: #FFF9F5!important; color: #C2580A!important; }
 
-/* Words area */
+/* Words bank */
 #dd-words {
     display: flex;
     flex-wrap: wrap;
@@ -335,22 +312,25 @@ body { margin: 0 !important; padding: 0 !important; background: #fff !important;
     margin-bottom: 16px;
     min-height: 48px;
 }
+
+/* Option B chips — pastel fill, no shadow */
 .dd-chip {
-    padding: 11px 16px;
+    display: inline-block;
+    padding: 8px 18px;
     border-radius: 999px;
-    background: #fff;
-    border: 1px solid var(--border);
+    background: #EEEDFE;
+    border: 1px solid #d8d3f5;
     color: var(--purple-dark);
     font-family: 'Nunito', sans-serif;
     font-size: 14px;
     font-weight: 900;
     cursor: grab;
     user-select: none;
-    box-shadow: 0 6px 18px rgba(127,119,221,.12);
-    transition: transform .12s, border-color .12s;
+    transition: transform .12s, opacity .12s;
 }
-.dd-chip:hover { transform: translateY(-1px); border-color: var(--purple); }
-.dd-chip.dd-chip--used { opacity: 0.35; cursor: default; }
+.dd-chip:active { cursor: grabbing; }
+.dd-chip:hover  { transform: translateY(-2px); }
+.dd-chip.dd-chip--dragging { opacity: .45; transform: scale(.95); }
 
 /* Buttons */
 .dd-actions {
@@ -412,7 +392,6 @@ body { margin: 0 !important; padding: 0 !important; background: #fff !important;
                 </div>
 
                 <div id="dd-instruction"></div>
-                <div id="dd-slots"></div>
                 <div id="dd-words"></div>
 
                 <div class="dd-actions">
