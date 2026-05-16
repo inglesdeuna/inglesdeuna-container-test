@@ -157,6 +157,91 @@ function AvatarImg({ id, size = 68, style = {} }) {
   );
 }
 
+// ── SCENE IMAGE UPLOAD ────────────────────────────────────────
+function SceneImageUpload({ value, onChange }) {
+  const [uploading, setUploading] = useState(false);
+  const [error, setError]         = useState(null);
+  const inputRef                  = useRef(null);
+
+  function handleFile(file) {
+    if (!file) return;
+    setError(null);
+    setUploading(true);
+    const fd = new FormData();
+    fd.append("file", file);
+    fetch("upload.php", { method: "POST", body: fd, credentials: "same-origin" })
+      .then(r => r.json())
+      .then(data => {
+        if (data.url) { onChange(data.url); }
+        else { setError(data.error || "Upload failed"); }
+        setUploading(false);
+      })
+      .catch(() => { setError("Upload failed"); setUploading(false); });
+  }
+
+  function handleDrop(e) {
+    e.preventDefault();
+    const file = e.dataTransfer.files[0];
+    if (file) handleFile(file);
+  }
+
+  return (
+    <div>
+      {/* Drop zone */}
+      <div
+        onClick={() => !uploading && inputRef.current && inputRef.current.click()}
+        onDragOver={e => e.preventDefault()}
+        onDrop={handleDrop}
+        style={{
+          border: `2px dashed ${value ? C.orange : C.purpleBorder}`,
+          borderRadius: 14, padding: "14px 16px", cursor: uploading ? "default" : "pointer",
+          background: value ? C.orangeSoft : "#FAFAFE",
+          display: "flex", alignItems: "center", gap: 14, transition: "all .15s",
+        }}
+      >
+        {value ? (
+          <img src={value} alt="Scene" style={{
+            width: 80, height: 52, objectFit: "cover", borderRadius: 8,
+            border: `1.5px solid ${C.orangeBorder}`, flexShrink: 0,
+          }} />
+        ) : (
+          <div style={{
+            width: 80, height: 52, borderRadius: 8, background: C.purpleSoft,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            fontSize: 24, flexShrink: 0,
+          }}>🖼️</div>
+        )}
+        <div>
+          <div style={{ fontWeight: 800, fontSize: 13, color: value ? C.orangeDark : C.purpleDark }}>
+            {uploading ? "Uploading…" : value ? "Change image" : "Click or drag image here"}
+          </div>
+          <div style={{ fontSize: 11, fontWeight: 700, color: C.muted, marginTop: 2 }}>
+            JPG, PNG, GIF, WebP · uploads to Cloudinary
+          </div>
+        </div>
+        {value && !uploading && (
+          <button
+            onClick={e => { e.stopPropagation(); onChange(""); }}
+            style={{
+              marginLeft: "auto", background: "#FEF2F2", color: "#B91C1C",
+              border: "1px solid #FECACA", borderRadius: 999, padding: "4px 10px",
+              fontSize: 11, fontWeight: 800, fontFamily: "'Nunito',sans-serif",
+              cursor: "pointer", flexShrink: 0,
+            }}>✕ Remove</button>
+        )}
+      </div>
+      <input
+        ref={inputRef} type="file" accept="image/*"
+        style={{ display: "none" }}
+        onChange={e => handleFile(e.target.files[0])}
+      />
+      {error && (
+        <div style={{ marginTop: 6, fontSize: 12, fontWeight: 700, color: "#B91C1C" }}>⚠ {error}</div>
+      )}
+    </div>
+  );
+}
+
 // ══════════════════════════════════════════════════════════════
 // EDITOR VIEW
 // ══════════════════════════════════════════════════════════════
@@ -226,8 +311,8 @@ function EditorView({ scene: initScene, turns: initTurns, activityId, onSave, on
           <div>{label("Teacher / Agent Name")}{inp(scene.agentName, v => sc("agentName", v), "Teacher")}</div>
           <div>{label("Student Role Label")}{inp(scene.studentRole, v => sc("studentRole", v), "e.g. Customer")}</div>
           <div style={{ gridColumn: "1/-1" }}>
-            {label("Scene Background Image URL")}
-            {inp(scene.sceneImage, v => sc("sceneImage", v), "https://...")}
+            {label("Scene Background Image")}
+            <SceneImageUpload value={scene.sceneImage} onChange={v => sc("sceneImage", v)} />
           </div>
         </div>
       </>)}
