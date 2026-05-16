@@ -104,46 +104,46 @@ const DEFAULT_SCENE = {
   voiceId: "nzFihrBIvB34imQBuxub",
 };
 
-// ── TTS ────────────────────────────────────────────────────────
-// tts.php (flashcards version) returns JSON { url: "cloudinary_url" }
-const ttsCache = {};
-let currentAudio = null;
-function playUrl(url) {
-  if (currentAudio) { currentAudio.pause(); currentAudio = null; }
-  currentAudio = new Audio(url);
-  currentAudio.play().catch(() => {});
-}
+// ── TTS — mirrors roleplay/viewer.php speakAgentLine exactly ──
+// tts.php returns raw audio/mpeg blob (no Cloudinary dependency)
+let currentAudioRef = null;
 function playElevenLabs(text, voiceId, onDone, onError) {
   if (!text) return;
-  const key = (voiceId || "") + "|" + text;
-  if (ttsCache[key]) { playUrl(ttsCache[key]); if (onDone) onDone(); return; }
+  if (currentAudioRef) { currentAudioRef.pause(); currentAudioRef = null; }
   const fd = new FormData();
   fd.append("text", text);
-  if (voiceId) fd.append("voice_id", voiceId);
+  fd.append("voice_id", voiceId || "nzFihrBIvB34imQBuxub");
   fetch("tts.php", { method: "POST", body: fd, credentials: "same-origin" })
-    .then(r => r.json())
-    .then(data => {
-      if (data.error) throw new Error(data.error);
-      if (!data.url) throw new Error("No URL returned");
-      ttsCache[key] = data.url;
-      playUrl(data.url);
-      if (onDone) onDone();
+    .then(r => {
+      if (!r.ok) throw new Error("TTS " + r.status);
+      return r.blob();
     })
-    .catch(err => {
-      console.warn("TTS error:", err);
-      if (onError) onError();
-    });
+    .then(blob => {
+      const url = URL.createObjectURL(blob);
+      const audio = new Audio(url);
+      currentAudioRef = audio;
+      audio.onended = () => { URL.revokeObjectURL(url); currentAudioRef = null; if (onDone) onDone(); };
+      audio.onerror = () => { URL.revokeObjectURL(url); currentAudioRef = null; if (onError) onError(); };
+      audio.play().catch(() => {});
+    })
+    .catch(e => { console.warn("TTS error:", e); if (onError) onError(); });
 }
 
-// ── SAVE ───────────────────────────────────────────────────────
-function saveActivity(activityId, scene, turns) {
-  if (!activityId) return Promise.resolve({ ok: false, error: "No activity ID" });
-  return fetch("save.php", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    credentials: "same-origin",
-    body: JSON.stringify({ id: activityId, scene, turns }),
-  }).then(r => r.json());
+// ── SAVE — mirrors roleplay/save.php + roleplay saveActivity exactly ──
+async function saveActivity(scene, turns) {
+  const id = window.RK_ACTIVITY_ID;
+  if (!id) return { ok: false, error: "No activity ID" };
+  try {
+    const r = await fetch("save.php", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "same-origin",
+      body: JSON.stringify({ id, scene, turns }),
+    });
+    return await r.json();
+  } catch (e) {
+    return { ok: false, error: String(e) };
+  }
 }
 
 // ── TEACHER IMG ────────────────────────────────────────────────
@@ -257,7 +257,7 @@ function SceneImageUpload({ value, onChange }) {
 // ══════════════════════════════════════════════════════════════
 // EDITOR VIEW
 // ══════════════════════════════════════════════════════════════
-function EditorView({ scene: initScene, turns: initTurns, activityId, onSave }) {
+function EditorView({ scene: initScene, turns: initTurns, onSave }) {
   const [scene, setScene]   = useState(initScene || DEFAULT_SCENE);
   const [turns, setTurns]   = useState(initTurns && initTurns.length ? initTurns : DEFAULT_TURNS);
   const [toast, setToast]   = useState(null);
@@ -271,13 +271,11 @@ function EditorView({ scene: initScene, turns: initTurns, activityId, onSave }) 
 
   async function handleSave() {
     setSaving(true);
-    try {
-      const res = await saveActivity(activityId, scene, turns);
-      setToast(res && res.ok !== false ? "Saved successfully." : "Error saving. Please try again.");
-      if (res && res.ok !== false) onSave(scene, turns);
-    } catch { setToast("Save failed"); }
+    const res = await saveActivity(scene, turns);
     setSaving(false);
-    setTimeout(() => setToast(null), 2500);
+    setToast(res.ok ? "Saved successfully." : "Error saving. Please try again.");
+    if (res.ok) onSave(scene, turns);
+    setTimeout(() => setToast(null), 3000);
   }
 
   const inp = (val, onChange, placeholder = "") => (
@@ -796,7 +794,6 @@ function App() {
     return (
       <EditorView
         scene={scene} turns={turns}
-        activityId={window.RK_ACTIVITY_ID}
         onSave={(s, t) => { setScene(s); setTurns(t); }}
       />
     );
