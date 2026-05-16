@@ -306,11 +306,11 @@ $desktopCols = 4;
 if ($totalCards > 0) {
     $desktopCols = (int) ceil(sqrt($totalCards));
     if ($desktopCols < 2) { $desktopCols = 2; }
-    if ($desktopCols > 6) { $desktopCols = 6; }
+    if ($desktopCols > 4) { $desktopCols = 4; }
 }
 
-$tabletCols = min(4, $desktopCols);
-$mobileCols = min(3, $desktopCols);
+$tabletCols = min(3, $desktopCols);
+$mobileCols = min(2, $desktopCols);
 
 ob_start();
 ?>
@@ -326,10 +326,10 @@ ob_start();
     --mc-muted:#9B94BE;
     --mc-border:#F0EEF8;
     --mc-cols:<?= (int) $desktopCols ?>;
-    --mc-gap:clamp(8px,1.2vw,14px);
+    --mc-gap:1cm;
 }
 
-html,body{width:100%;height:100%;}
+html,body{width:100%;height:100%;margin:0;padding:0;}
 
 body{
     margin:0!important;
@@ -343,7 +343,6 @@ body{
     margin:0!important;
     padding:0!important;
     height:100%!important;
-    min-height:0!important;
     display:flex!important;
     flex-direction:column!important;
     background:transparent!important;
@@ -359,114 +358,55 @@ body{
     flex:1!important;
     display:flex!important;
     flex-direction:column!important;
-    min-height:0!important;
     padding:0!important;
     margin:0!important;
     background:transparent!important;
     border:none!important;
     box-shadow:none!important;
     border-radius:0!important;
+    overflow:auto!important;
 }
 
 .mc-page{
     display:flex;
     flex-direction:column;
-    flex:1;
-    min-height:0;
+    min-height:100%;
     width:100%;
-    padding:clamp(8px,1.5vw,14px);
-    gap:8px;
+    padding:1cm;
+    gap:0.6cm;
     box-sizing:border-box;
-    overflow:hidden;
 }
 
-.mc-app{
-    width:min(980px,100%);
-    height:100%;
-    min-height:0;
-    margin:0 auto;
-    display:grid;
-    grid-template-rows:auto minmax(0,1fr);
-    gap:clamp(10px,1.5vw,14px);
-}
-
-.mc-hero{text-align:center;}
-
-.mc-kicker{
-    display:inline-flex;
-    align-items:center;
-    justify-content:center;
-    padding:7px 14px;
-    border-radius:999px;
-    background:var(--mc-orange-soft);
-    border:1px solid #FCDDBF;
-    color:var(--mc-orange-dark);
-    font-size:12px;
-    font-weight:900;
-    letter-spacing:.08em;
-    text-transform:uppercase;
-    margin-bottom:8px;
-}
-
-.mc-hero h1{
+.mc-title{
     font-family:'Fredoka',sans-serif;
-    font-size:clamp(26px,4.5vw,50px);
+    font-size:clamp(20px,3vw,38px);
     font-weight:700;
     color:var(--mc-orange);
     margin:0;
-    line-height:1.03;
+    text-align:center;
+    line-height:1.1;
+    flex-shrink:0;
 }
 
-.mc-hero p{
-    font-size:clamp(12px,1.6vw,15px);
-    font-weight:800;
-    color:var(--mc-muted);
-    margin:6px 0 0;
-}
-
-.mc-stage{
-    height:100%;
-    min-height:0;
-    background:#fff;
-    border:1px solid var(--mc-border);
-    border-radius:34px;
-    padding:clamp(14px,2.2vw,22px);
-    box-shadow:0 8px 40px rgba(127,119,221,.13);
-    box-sizing:border-box;
+.mc-stats{
     display:flex;
-    flex-direction:column;
-    overflow:hidden;
+    gap:0.4cm;
+    align-items:center;
+    justify-content:center;
+    flex-wrap:wrap;
+    flex-shrink:0;
 }
-
-.mc-viewer{max-width:100%;flex:1;min-height:0;display:flex;flex-direction:column;}
-
-.mc-shell{
-    background:#fff;
-    border:1px solid #EDE9FA;
-    border-radius:30px;
-    box-shadow:0 8px 24px rgba(127,119,221,.09);
-    padding:18px;
-    flex:1;
-    min-height:0;
-    display:flex;
-    flex-direction:column;
-    gap:8px;
-    overflow:hidden;
-    box-sizing:border-box;
-}
-
-.mc-stats{display:flex;gap:8px;flex-wrap:wrap;flex-shrink:0;}
 
 .mc-pill{
     display:inline-flex;
     align-items:center;
-    gap:6px;
+    gap:5px;
     background:var(--mc-purple-soft);
     border:1px solid #d8d3f5;
     color:var(--mc-purple-dark);
     font-weight:800;
     font-size:13px;
-    padding:8px 12px;
+    padding:6px 14px;
     border-radius:999px;
 }
 
@@ -474,16 +414,11 @@ body{
     display:grid;
     grid-template-columns:repeat(var(--mc-cols),1fr);
     gap:var(--mc-gap);
-    flex:1;
-    min-height:0;
     width:100%;
     box-sizing:border-box;
-    overflow:hidden;
 }
 
-/* KEY FIX: cards use aspect-ratio so they always have visible height */
-.mc-card,
-.viewer-content .mc-card{
+.mc-card{
     position:relative;
     width:100%;
     aspect-ratio:1/1;
@@ -508,34 +443,32 @@ body{
 
 .mc-card.is-flipped .mc-card-inner{transform:rotateY(180deg);}
 
-.mc-card-face,
-.mc-card-back{
+.mc-card-face{
     position:absolute;
     inset:0;
-    width:100%;
-    height:100%;
     backface-visibility:hidden;
     border-radius:16px;
     display:flex;
     align-items:center;
     justify-content:center;
+    overflow:hidden;
 }
-
-.mc-card-face{border:1px solid #EDE9FA;overflow:hidden;}
 
 .mc-card-front{
     background:linear-gradient(145deg,var(--mc-purple),var(--mc-purple-dark));
     color:#e9e7fb;
     font-family:'Fredoka','Trebuchet MS',sans-serif;
     font-size:clamp(22px,4vw,46px);
-    box-shadow:0 14px 24px rgba(127,119,221,.35);
+    box-shadow:0 6px 20px rgba(127,119,221,.35);
+    border:2px solid transparent;
 }
 
 .mc-card-back{
     transform:rotateY(180deg);
     background:#fff;
-    padding:4px;
-    box-shadow:0 10px 20px rgba(15,23,42,.08);
+    border:2px solid var(--mc-border);
+    padding:6px;
+    box-shadow:0 6px 18px rgba(15,23,42,.08);
 }
 
 .mc-card-back p{
@@ -555,40 +488,84 @@ body{
     border-radius:10px;
 }
 
-.mc-card.is-matched .mc-card-face{border-color:#34d399;}
+.mc-card.is-matched .mc-card-front{border-color:#34d399;box-shadow:0 6px 20px rgba(52,211,153,.3);}
 .mc-card.is-vanishing{pointer-events:none;}
 .mc-card.is-vanishing .mc-card-inner{animation:mcVanish .34s ease forwards;}
 .mc-card.is-hidden{opacity:0;visibility:hidden;pointer-events:none;}
 
-.mc-restart-row{
-    flex-shrink:0;
+.mc-btn-row{
     display:flex;
+    gap:0.4cm;
     justify-content:center;
-    padding:4px 0 0;
+    flex-wrap:wrap;
+    flex-shrink:0;
+    padding-top:0.2cm;
 }
 
 .mc-btn{
     border:none;
     border-radius:999px;
-    padding:10px 16px;
+    padding:10px 24px;
     font-weight:800;
     font-size:14px;
     cursor:pointer;
-    box-shadow:0 8px 18px rgba(127,119,221,.18);
-    background:var(--mc-orange);
-    color:#fff;
+    font-family:'Nunito',sans-serif;
+    transition:transform .15s ease,filter .15s ease;
+}
+.mc-btn:hover{transform:scale(1.04);filter:brightness(1.06);}
+
+.mc-btn-restart{
+    background:#f1f5f9;
+    color:#475569;
+    box-shadow:0 2px 8px rgba(0,0,0,.08);
 }
 
-.mc-empty{text-align:center;padding:28px;font-weight:800;color:#b91c1c;}
+.mc-btn-finish{
+    background:var(--mc-orange);
+    color:#fff;
+    box-shadow:0 4px 16px rgba(249,115,22,.28);
+}
 
-.completed-screen{display:none;text-align:center;max-width:600px;margin:0 auto;padding:40px 20px;}
-.completed-screen.active{display:block;}
-.completed-icon{font-size:80px;margin-bottom:20px;}
-.completed-title{font-family:'Fredoka','Trebuchet MS',sans-serif;font-size:36px;font-weight:700;color:var(--mc-orange);margin:0 0 16px;line-height:1.2;}
-.completed-text{font-size:16px;color:var(--mc-muted);line-height:1.6;margin:0 0 32px;}
-.completed-button{display:inline-block;padding:12px 24px;border:none;border-radius:999px;background:var(--mc-purple);color:#fff;font-weight:700;font-size:16px;cursor:pointer;box-shadow:0 10px 24px rgba(127,119,221,.24);transition:transform .18s ease,filter .18s ease;}
-.completed-button:hover{transform:scale(1.05);filter:brightness(1.07);}
+.mc-empty{text-align:center;padding:2cm;font-weight:800;color:#b91c1c;}
+
+.mc-activity{display:flex;flex-direction:column;gap:0.6cm;}
 .mc-activity.is-hidden{display:none;}
+
+.completed-screen{
+    display:none;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    text-align:center;
+    padding:2cm 1cm;
+    gap:0.7cm;
+    min-height:60vh;
+}
+.completed-screen.active{display:flex;}
+.completed-icon{font-size:80px;line-height:1;}
+.completed-title{
+    font-family:'Fredoka',sans-serif;
+    font-size:clamp(28px,5vw,48px);
+    font-weight:700;
+    color:var(--mc-orange);
+    margin:0;
+    line-height:1.1;
+}
+.completed-text{font-size:16px;color:var(--mc-muted);margin:0;font-weight:700;line-height:1.6;}
+.completed-button{
+    padding:12px 28px;
+    border:none;
+    border-radius:999px;
+    background:var(--mc-purple);
+    color:#fff;
+    font-weight:700;
+    font-size:16px;
+    cursor:pointer;
+    font-family:'Nunito',sans-serif;
+    box-shadow:0 4px 16px rgba(127,119,221,.3);
+    transition:transform .18s ease,filter .18s ease;
+}
+.completed-button:hover{transform:scale(1.05);filter:brightness(1.07);}
 
 @keyframes mcVanish{
     0%  {opacity:1;transform:scale(1);}
@@ -596,60 +573,51 @@ body{
 }
 
 @media(max-width:900px){
-    :root{--mc-cols:<?= (int) $tabletCols ?>;--mc-gap:10px;}
-    .mc-page{padding:10px;}
-    .mc-stage{border-radius:26px;padding:12px;}
+    :root{--mc-cols:<?= (int) $tabletCols ?>;--mc-gap:0.6cm;}
+    .mc-page{padding:0.6cm;gap:0.4cm;}
 }
 @media(max-width:640px){
-    :root{--mc-cols:<?= (int) $mobileCols ?>;--mc-gap:8px;}
+    :root{--mc-cols:<?= (int) $mobileCols ?>;--mc-gap:0.4cm;}
+    .mc-page{padding:0.4cm;gap:0.3cm;}
 }
 @media(max-width:420px){
-    :root{--mc-cols:2;}
+    :root{--mc-cols:2;--mc-gap:0.3cm;}
+    .mc-page{padding:0.3cm;}
 }
 </style>
 
 <div class="mc-page">
-<div class="mc-app">
-  <div class="mc-hero">
-    <div class="mc-kicker">Activity</div>
-    <h1><?= htmlspecialchars($viewerTitle, ENT_QUOTES, 'UTF-8') ?></h1>
-    <p>Match every pair to complete the memory challenge.</p>
+<?php if (empty($cards)): ?>
+  <div class="mc-empty">No pairs configured yet for this activity.</div>
+<?php else: ?>
+  <section class="mc-activity" id="mc-activity">
+    <h1 class="mc-title"><?= htmlspecialchars($viewerTitle, ENT_QUOTES, 'UTF-8') ?></h1>
+
+    <div class="mc-stats">
+      <div class="mc-pill">&#x1F3AF; Pairs: <span id="mc-total"><?= (int) $totalPairs ?></span></div>
+      <div class="mc-pill">&#x2705; Matched: <span id="mc-matched">0</span></div>
+    </div>
+
+    <div id="mc-board" class="mc-board"></div>
+
+    <div class="mc-btn-row">
+      <button type="button" class="mc-btn mc-btn-restart" id="mc-restart">&#x21BA; Restart</button>
+      <button type="button" class="mc-btn mc-btn-finish" id="mc-finish">Finished &#x2192;</button>
+    </div>
+  </section>
+
+  <div id="mc-complete" class="completed-screen">
+    <div class="completed-icon">&#x2705;</div>
+    <h2 class="completed-title" id="mc-completed-title"></h2>
+    <p class="completed-text" id="mc-completed-text"></p>
+    <button type="button" class="completed-button" id="mc-completed-restart">&#x21BA; Play Again</button>
   </div>
 
-  <div class="mc-stage">
-    <div class="mc-viewer" id="mc-app">
-<?php if (empty($cards)): ?>
-      <div class="mc-shell">
-        <div class="mc-empty">No pairs configured yet for this activity.</div>
-      </div>
-<?php else: ?>
-      <section class="mc-shell mc-activity" id="mc-activity">
-        <div class="mc-stats">
-          <div class="mc-pill">Pairs: <span id="mc-total"><?= (int) $totalPairs ?></span></div>
-          <div class="mc-pill">Matched: <span id="mc-matched">0</span></div>
-          <div class="mc-pill">Moves: <span id="mc-moves">0</span></div>
-        </div>
+  <audio id="mc-audio-match" preload="auto" src="../../hangman/assets/swoosh%20sound.mp3"></audio>
+  <audio id="mc-audio-lose"  preload="auto" src="../../hangman/assets/losefun.mp3"></audio>
+  <audio id="mc-audio-win"   preload="auto" src="../../hangman/assets/win.mp3"></audio>
 
-        <div id="mc-board" class="mc-board"></div>
-
-        <div class="mc-restart-row">
-          <button type="button" class="mc-btn" id="mc-restart">Restart</button>
-        </div>
-      </section>
-
-      <div id="mc-complete" class="completed-screen">
-        <div class="completed-icon">&#x2705;</div>
-        <h2 class="completed-title" id="mc-completed-title"></h2>
-        <p class="completed-text" id="mc-completed-text"></p>
-        <button type="button" class="completed-button" id="mc-completed-restart">Play Again</button>
-      </div>
-
-      <audio id="mc-audio-flip"  preload="auto" src="../../hangman/assets/card%20flip.mp3.mp3"></audio>
-      <audio id="mc-audio-match" preload="auto" src="../../hangman/assets/swoosh%20sound.mp3"></audio>
-      <audio id="mc-audio-lose"  preload="auto" src="../../hangman/assets/losefun.mp3"></audio>
-      <audio id="mc-audio-win"   preload="auto" src="../../hangman/assets/win.mp3"></audio>
-
-      <script>
+  <script>
 (function () {
     const seedCards     = <?= json_encode($cards, JSON_UNESCAPED_UNICODE) ?>;
     const totalPairs    = <?= (int) $totalPairs ?>;
@@ -657,8 +625,8 @@ body{
 
     const board               = document.getElementById('mc-board');
     const matchedEl           = document.getElementById('mc-matched');
-    const movesEl             = document.getElementById('mc-moves');
     const restartBtn          = document.getElementById('mc-restart');
+    const finishBtn           = document.getElementById('mc-finish');
     const completeEl          = document.getElementById('mc-complete');
     const activityEl          = document.getElementById('mc-activity');
     const completedTitleEl    = document.getElementById('mc-completed-title');
@@ -674,12 +642,11 @@ body{
     let selected  = [];
     let matched   = new Set();
     let lockBoard = false;
-    let moves     = 0;
 
     const matchDelayMs            = 620;
     const vanishDurationMs        = 340;
     const mismatchFlipBackDelayMs = 760;
-    const completedDelayMs        = 900;
+    const completedDelayMs        = 600;
 
     function shuffle(list) {
         const copy = list.slice();
@@ -705,7 +672,6 @@ body{
 
     function updateStats() {
         if (matchedEl) matchedEl.textContent = String(Math.floor(matched.size / 2));
-        if (movesEl)   movesEl.textContent   = String(moves);
     }
 
     function playAudio(el, vol) {
@@ -721,14 +687,19 @@ body{
         else if (kind === 'win')   playAudio(winAudioEl,   0.9);
     }
 
-    function showCompleted() {
+    function showCompleted(isAutomatic) {
         if (completedTitleEl) completedTitleEl.textContent = activityTitle || 'Memory Cards';
-        if (completedTextEl)  completedTextEl.textContent  = 'Great job! You matched all pairs in ' + moves + ' moves.';
+        if (completedTextEl) {
+            const pairsMatched = Math.floor(matched.size / 2);
+            completedTextEl.textContent = isAutomatic
+                ? 'Amazing! You matched all ' + totalPairs + ' pairs!'
+                : 'You matched ' + pairsMatched + ' of ' + totalPairs + ' pairs. Great work!';
+        }
         playSound('win');
         if (activityEl) activityEl.classList.add('is-hidden');
         window.setTimeout(function () {
             if (completeEl) completeEl.classList.add('active');
-        }, completedDelayMs);
+        }, isAutomatic ? completedDelayMs : 0);
     }
 
     function handleCardClick(index) {
@@ -740,9 +711,6 @@ body{
         if (node) node.classList.add('is-flipped');
 
         if (selected.length < 2) return;
-
-        moves++;
-        updateStats();
 
         const ai = selected[0], bi = selected[1];
         const a  = deck[ai],    b  = deck[bi];
@@ -762,13 +730,12 @@ body{
 
             const isFinal = matched.size === deck.length;
             window.setTimeout(function () {
-                playSound('match');
                 if (an) an.classList.add('is-vanishing');
                 if (bn) bn.classList.add('is-vanishing');
                 window.setTimeout(function () {
                     if (an) an.classList.add('is-hidden');
                     if (bn) bn.classList.add('is-hidden');
-                    if (isFinal) { showCompleted(); } else { lockBoard = false; }
+                    if (isFinal) { showCompleted(true); } else { lockBoard = false; }
                 }, vanishDurationMs);
             }, matchDelayMs);
             return;
@@ -789,11 +756,11 @@ body{
     function renderBoard() {
         board.innerHTML = '';
         deck.forEach(function (card, index) {
-            const btn         = document.createElement('button');
-            btn.type          = 'button';
-            btn.className     = 'mc-card';
+            const btn             = document.createElement('button');
+            btn.type              = 'button';
+            btn.className         = 'mc-card';
             btn.dataset.cardIndex = String(index);
-            btn.innerHTML     =
+            btn.innerHTML =
                 '<span class="mc-card-inner">' +
                     '<span class="mc-card-face mc-card-front">?</span>' +
                     '<span class="mc-card-face mc-card-back">' + cardBackMarkup(card) + '</span>' +
@@ -808,7 +775,6 @@ body{
         selected  = [];
         matched   = new Set();
         lockBoard = false;
-        moves     = 0;
         if (activityEl) activityEl.classList.remove('is-hidden');
         if (completeEl) completeEl.classList.remove('active');
         renderBoard();
@@ -816,15 +782,13 @@ body{
     }
 
     if (restartBtn)          restartBtn.addEventListener('click', restart);
+    if (finishBtn)           finishBtn.addEventListener('click', function () { showCompleted(false); });
     if (completedRestartBtn) completedRestartBtn.addEventListener('click', restart);
 
     restart();
 })();
-      </script>
+  </script>
 <?php endif; ?>
-    </div>
-  </div>
-</div>
 </div>
 <?php
 $content = ob_get_clean();
