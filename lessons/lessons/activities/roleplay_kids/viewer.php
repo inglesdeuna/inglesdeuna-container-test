@@ -89,11 +89,19 @@ const AVATARS = [
 const TEACHER_IMG = "assets/avatars/TEACHER.png";
 function avatarSrc(id) { return `assets/avatars/${encodeURIComponent(id)}.png`; }
 
+// ── VOICES ─────────────────────────────────────────────────────
+const VOICES = [
+  { id: "nzFihrBIvB34imQBuxub", label: "🎙 Adult Male"   },
+  { id: "NoOVOzCQFLOvtsMoNcdT", label: "🎙 Adult Female" },
+  { id: "Nggzl2QAXh3OijoXD116", label: "🎙 Child"        },
+];
+
 // ── DEFAULT DATA ───────────────────────────────────────────────
 const DEFAULT_TURNS = [{ teacherLine: "", studentLine: "" }];
 const DEFAULT_SCENE = {
   title: "Kids Roleplay", desc: "Practice speaking English!",
   sceneImage: "", agentName: "Teacher",
+  voiceId: "nzFihrBIvB34imQBuxub",
 };
 
 // ── TTS ────────────────────────────────────────────────────────
@@ -305,7 +313,21 @@ function EditorView({ scene: initScene, turns: initTurns, activityId, onSave }) 
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
           <div>{label("Activity Title")}{inp(scene.title, v => sc("title", v), "e.g. At the Café")}</div>
           <div>{label("Scene Description")}{inp(scene.desc, v => sc("desc", v), "Short subtitle")}</div>
-          <div style={{ gridColumn: "1/-1" }}>{label("Teacher / Agent Name")}{inp(scene.agentName, v => sc("agentName", v), "Teacher")}</div>
+          <div>{label("Teacher / Agent Name")}{inp(scene.agentName, v => sc("agentName", v), "Teacher")}</div>
+          <div>
+            {label("Teacher Voice")}
+            <select
+              value={scene.voiceId || VOICES[0].id}
+              onChange={e => sc("voiceId", e.target.value)}
+              style={{
+                width: "100%", padding: "9px 12px", border: `1.5px solid ${C.purpleBorder}`,
+                borderRadius: 10, fontSize: 14, fontFamily: "'Nunito',sans-serif",
+                fontWeight: 700, outline: "none", color: C.ink, background: C.white, cursor: "pointer",
+              }}
+            >
+              {VOICES.map(v => <option key={v.id} value={v.id}>{v.label}</option>)}
+            </select>
+          </div>
           <div style={{ gridColumn: "1/-1" }}>
             {label("Scene Background Image")}
             <SceneImageUpload value={scene.sceneImage} onChange={v => sc("sceneImage", v)} />
@@ -406,10 +428,12 @@ function PlayerView({ scene: sc, turns, activityId }) {
   const total       = safeT.length;
   const pct         = total > 0 ? Math.round(((turnIndex + (phase === "done" ? 1 : 0)) / total) * 100) : 0;
 
+  const voiceId = scene.voiceId || VOICES[0].id;
+
   // ── Auto-play teacher when turn starts ───────────────────────
   useEffect(() => {
     if (phase === "playing" && subPhase === "teacher" && turn.teacherLine) {
-      playElevenLabs(turn.teacherLine, null, null, null);
+      playElevenLabs(turn.teacherLine, voiceId, null, null);
     }
   }, [turnIndex, phase, subPhase]);
 
@@ -442,29 +466,27 @@ function PlayerView({ scene: sc, turns, activityId }) {
     setMicState("idle");
   }
 
+  // ── Client-side pronunciation scoring (same as pronunciation activity) ──
+  function normalizeStr(s) {
+    return String(s || "").toLowerCase().trim()
+      .replace(/[.,!?;:'"]/g, "").replace(/\s+/g, " ");
+  }
+  function wordOverlapScore(a, b) {
+    const wa = a.split(" ").filter(Boolean);
+    const wb = b.split(" ").filter(Boolean);
+    if (!wa.length || !wb.length) return 0;
+    const matches = wa.filter(w => wb.includes(w)).length;
+    return matches / Math.max(wa.length, wb.length);
+  }
   function scorePronunciation(text, expected) {
-    const fd = new FormData();
-    fd.append("transcript", text);
-    fd.append("expected",   expected);
-    fetch("score.php", { method: "POST", body: fd, credentials: "same-origin" })
-      .then(r => r.json())
-      .then(data => {
-        const score = Number(data.score ?? 0);
-        setPts(prev => prev + Math.round(score * 10));
-        setPronScore(score);
-        setMicState("idle");
-        setSubPhase("feedback");
-      })
-      .catch(() => {
-        const wa = text.toLowerCase().split(/\s+/);
-        const wb = expected.toLowerCase().split(/\s+/);
-        const m  = wa.filter(w => wb.includes(w)).length;
-        const sim = Math.round((m / Math.max(wb.length, 1)) * 100);
-        setPts(prev => prev + Math.round(sim * 10));
-        setPronScore(sim);
-        setMicState("idle");
-        setSubPhase("feedback");
-      });
+    const said = normalizeStr(text);
+    const exp  = normalizeStr(expected);
+    const overlap = wordOverlapScore(said, exp);
+    const score   = Math.round(overlap * 100);
+    setPts(prev => prev + score);
+    setPronScore(score);
+    setMicState("idle");
+    setSubPhase("feedback");
   }
 
   function goToNextTurn() {
@@ -655,7 +677,7 @@ function PlayerView({ scene: sc, turns, activityId }) {
               🔊 Teacher is speaking… listen carefully!
             </div>
             <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
-              {ghostBtn("🔊 Play again", () => playElevenLabs(turn.teacherLine, null, null, null))}
+              {ghostBtn("🔊 Play again", () => playElevenLabs(turn.teacherLine, voiceId, null, null))}
               {btn("Write my answer →", () => setSubPhase("writing"), C.orange)}
             </div>
           </div>
@@ -680,7 +702,7 @@ function PlayerView({ scene: sc, turns, activityId }) {
               }}
             />
             <div style={{ display: "flex", gap: 8 }}>
-              {ghostBtn("← Listen again", () => { setSubPhase("teacher"); playElevenLabs(turn.teacherLine, null, null, null); })}
+              {ghostBtn("← Listen again", () => { setSubPhase("teacher"); playElevenLabs(turn.teacherLine, voiceId, null, null); })}
               {btn("Now say it 🎤", () => setSubPhase("recording"), C.purple, written.trim() === "")}
             </div>
           </div>
