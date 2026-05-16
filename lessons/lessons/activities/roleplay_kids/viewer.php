@@ -74,13 +74,20 @@ const C = {
 
 // ── AVATARS ────────────────────────────────────────────────────
 const AVATARS = [
-  { id: "alex",  label: "Alex",  emoji: "🧑‍🚀" },
-  { id: "sofia", label: "Sofia", emoji: "👸" },
-  { id: "dino",  label: "Dino",  emoji: "🦕" },
-  { id: "jack",  label: "Jack",  emoji: "🏴‍☠️" },
-  { id: "hero",  label: "Hero",  emoji: "🦸" },
+  { id: "ANGIE",    label: "Angie"    },
+  { id: "ANY",      label: "Any"      },
+  { id: "BENNY",    label: "Benny"    },
+  { id: "JAY JAY",  label: "Jay Jay"  },
+  { id: "JESUS",    label: "Jesus"    },
+  { id: "JOHN",     label: "John"     },
+  { id: "LeeAnn",   label: "LeeAnn"  },
+  { id: "MARY JAY", label: "Mary Jay" },
+  { id: "NELLA",    label: "Nella"    },
+  { id: "VICTOR",   label: "Victor"   },
+  { id: "VIOLET",   label: "Violet"   },
 ];
-function avatarSrc(id) { return `assets/avatars/${id}.svg`; }
+const TEACHER_IMG = "assets/avatars/TEACHER.png";
+function avatarSrc(id) { return `assets/avatars/${encodeURIComponent(id)}.png`; }
 
 // ── DEFAULT DATA ───────────────────────────────────────────────
 const DEFAULT_TURNS = [{ teacherLine: "", studentLine: "" }];
@@ -129,36 +136,25 @@ function saveActivity(activityId, scene, turns) {
     .then(r => r.json());
 }
 
-// ── TEACHER ICON (inline SVG) ──────────────────────────────────
-function TeacherIcon({ size = 68 }) {
+// ── TEACHER IMG ────────────────────────────────────────────────
+function TeacherImg({ size = 68, style = {} }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 68 68" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="34" cy="34" r="34" fill="#FFF0E6"/>
-      <circle cx="34" cy="26" r="13" fill="#FCDDBF"/>
-      <ellipse cx="34" cy="52" rx="18" ry="12" fill="#F97316"/>
-      <circle cx="29" cy="24" r="2" fill="#C2580A"/>
-      <circle cx="39" cy="24" r="2" fill="#C2580A"/>
-      <path d="M29 30 Q34 34 39 30" stroke="#C2580A" strokeWidth="1.5" strokeLinecap="round" fill="none"/>
-    </svg>
+    <img src={TEACHER_IMG} alt="Teacher" style={{
+      width: size, height: size, borderRadius: "50%", objectFit: "cover",
+      objectPosition: "top", ...style,
+    }} />
   );
 }
 
-// ── AVATAR IMG with emoji fallback ─────────────────────────────
+// ── AVATAR IMG ─────────────────────────────────────────────────
 function AvatarImg({ id, size = 68, style = {} }) {
   const av = AVATARS.find(a => a.id === id) || AVATARS[0];
-  const [useFallback, setUseFallback] = useState(false);
-  return useFallback ? (
-    <div style={{
-      width: size, height: size, borderRadius: "50%",
-      background: C.purpleSoft, display: "flex", alignItems: "center",
-      justifyContent: "center", fontSize: size * 0.5, ...style,
-    }}>{av.emoji}</div>
-  ) : (
+  return (
     <img
       src={avatarSrc(id)}
       alt={av.label}
-      onError={() => setUseFallback(true)}
-      style={{ width: size, height: size, borderRadius: "50%", objectFit: "cover", ...style }}
+      style={{ width: size, height: size, borderRadius: "50%", objectFit: "cover",
+        objectPosition: "top", ...style }}
     />
   );
 }
@@ -267,7 +263,7 @@ function EditorView({ scene: initScene, turns: initTurns, activityId, onSave }) 
     setSaving(true);
     try {
       const res = await saveActivity(activityId, scene, turns);
-      setToast(res && res.ok !== false ? "Saved ✓" : "Save failed");
+      setToast(res && res.ok !== false ? "Saved successfully." : "Error saving. Please try again.");
       if (res && res.ok !== false) onSave(scene, turns);
     } catch { setToast("Save failed"); }
     setSaving(false);
@@ -392,19 +388,30 @@ function PlayerView({ scene: sc, turns, activityId }) {
   const scene = sc || DEFAULT_SCENE;
   const safeT = (turns && turns.length) ? turns : DEFAULT_TURNS;
 
-  const [phase,      setPhase]      = useState("avatar"); // avatar | playing | feedback | done
+  // phase: "avatar" | "playing" | "done"
+  // subPhase: "teacher" | "writing" | "recording" | "feedback"
+  const [phase,      setPhase]      = useState("avatar");
+  const [subPhase,   setSubPhase]   = useState("teacher");
   const [avatarId,   setAvatarId]   = useState(null);
   const [turnIndex,  setTurnIndex]  = useState(0);
   const [pts,        setPts]        = useState(0);
-  const [ttsLoading, setTtsLoading] = useState(false);
-  const [micState,   setMicState]   = useState("idle"); // idle | recording | processing
+  const [written,    setWritten]    = useState("");
+  const [micState,   setMicState]   = useState("idle");
   const [transcript, setTranscript] = useState("");
   const [pronScore,  setPronScore]  = useState(null);
   const recRef = useRef(null);
 
-  const turn      = safeT[turnIndex] || { teacherLine: "", studentLine: "" };
+  const turn        = safeT[turnIndex] || { teacherLine: "", studentLine: "" };
   const avatarLabel = AVATARS.find(a => a.id === avatarId)?.label || "You";
-  const total = safeT.length;
+  const total       = safeT.length;
+  const pct         = total > 0 ? Math.round(((turnIndex + (phase === "done" ? 1 : 0)) / total) * 100) : 0;
+
+  // ── Auto-play teacher when turn starts ───────────────────────
+  useEffect(() => {
+    if (phase === "playing" && subPhase === "teacher" && turn.teacherLine) {
+      playElevenLabs(turn.teacherLine, null, null, null);
+    }
+  }, [turnIndex, phase, subPhase]);
 
   // ── Mic ──────────────────────────────────────────────────────
   const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -419,14 +426,13 @@ function PlayerView({ scene: sc, turns, activityId }) {
     setMicState("recording");
     setTranscript("");
     setPronScore(null);
-
     rec.onresult = (e) => {
       const text = e.results[0][0].transcript;
       setTranscript(text);
       setMicState("processing");
       scorePronunciation(text, turn.studentLine);
     };
-    rec.onerror = () => { setMicState("idle"); };
+    rec.onerror = () => setMicState("idle");
     rec.onend   = () => { if (micState === "recording") setMicState("idle"); };
     rec.start();
   }
@@ -447,52 +453,36 @@ function PlayerView({ scene: sc, turns, activityId }) {
         setPts(prev => prev + Math.round(score * 10));
         setPronScore(score);
         setMicState("idle");
-        setPhase("feedback");
+        setSubPhase("feedback");
       })
       .catch(() => {
-        // fallback: basic similarity score
-        const sim = simpleSim(text, expected);
+        const wa = text.toLowerCase().split(/\s+/);
+        const wb = expected.toLowerCase().split(/\s+/);
+        const m  = wa.filter(w => wb.includes(w)).length;
+        const sim = Math.round((m / Math.max(wb.length, 1)) * 100);
         setPts(prev => prev + Math.round(sim * 10));
         setPronScore(sim);
         setMicState("idle");
-        setPhase("feedback");
+        setSubPhase("feedback");
       });
   }
 
-  function simpleSim(a, b) {
-    const wa = a.toLowerCase().split(/\s+/);
-    const wb = b.toLowerCase().split(/\s+/);
-    const matches = wa.filter(w => wb.includes(w)).length;
-    return Math.round((matches / Math.max(wb.length, 1)) * 100);
-  }
-
-  function handleMicClick() {
-    if (micState === "recording") stopRecording();
-    else if (micState === "idle") startRecording();
-  }
-
-  function handleListen() {
-    setTtsLoading(true);
-    playElevenLabs(turn.studentLine, null, () => setTtsLoading(false), () => setTtsLoading(false));
-  }
-
-  function handleTryAgain() {
-    setTranscript(""); setPronScore(null); setMicState("idle"); setPhase("playing");
-  }
-
-  function handleNext() {
-    setTranscript(""); setPronScore(null); setMicState("idle");
-    if (turnIndex < total - 1) { setTurnIndex(i => i + 1); setPhase("playing"); }
-    else { setPhase("done"); }
+  function goToNextTurn() {
+    setWritten(""); setTranscript(""); setPronScore(null); setMicState("idle");
+    if (turnIndex < total - 1) {
+      setTurnIndex(i => i + 1);
+      setSubPhase("teacher");
+    } else {
+      setPhase("done");
+    }
   }
 
   function handleRestart() {
-    setPhase("avatar"); setAvatarId(null); setTurnIndex(0);
-    setPts(0); setTranscript(""); setPronScore(null); setMicState("idle");
+    setPhase("avatar"); setAvatarId(null); setTurnIndex(0); setPts(0);
+    setSubPhase("teacher"); setWritten(""); setTranscript(""); setPronScore(null); setMicState("idle");
   }
 
-  // ── Progress pct ─────────────────────────────────────────────
-  const pct = total > 0 ? Math.round(((turnIndex + (phase === "done" ? 1 : 0)) / total) * 100) : 0;
+  function startPlaying() { setPhase("playing"); setSubPhase("teacher"); }
 
   // ════════════════════════════════════════════════════════════
   // AVATAR PICKER
@@ -539,7 +529,7 @@ function PlayerView({ scene: sc, turns, activityId }) {
         })}
       </div>
 
-      <button onClick={() => setPhase("playing")} disabled={!avatarId} style={{
+      <button onClick={startPlaying} disabled={!avatarId} style={{
         background: avatarId ? C.orange : C.purpleSoft,
         color: avatarId ? C.white : C.muted,
         border: "none", borderRadius: 999, padding: "14px 40px",
@@ -589,206 +579,181 @@ function PlayerView({ scene: sc, turns, activityId }) {
   );
 
   // ════════════════════════════════════════════════════════════
-  // PLAYING + FEEDBACK
+  // PLAYING SCREEN
   // ════════════════════════════════════════════════════════════
+  const btn = (label, onClick, bg = C.orange, disabled = false, extra = {}) => (
+    <button onClick={onClick} disabled={disabled} style={{
+      flex: 1, minWidth: 110, padding: "11px 10px", border: "none",
+      borderRadius: 999, background: disabled ? C.purpleSoft : bg, color: disabled ? C.muted : C.white,
+      fontFamily: "'Nunito',sans-serif", fontWeight: 900, fontSize: 13,
+      cursor: disabled ? "default" : "pointer",
+      boxShadow: disabled ? "none" : `0 4px 14px rgba(0,0,0,.12)`,
+      transition: "all .15s", ...extra,
+    }}>{label}</button>
+  );
+  const ghostBtn = (label, onClick) => (
+    <button onClick={onClick} style={{
+      flex: 1, minWidth: 110, padding: "11px 10px",
+      border: `1.5px solid ${C.purpleBorder}`, borderRadius: 999,
+      background: C.white, color: C.purple,
+      fontFamily: "'Nunito',sans-serif", fontWeight: 900, fontSize: 13, cursor: "pointer",
+    }}>{label}</button>
+  );
+
   return (
     <div style={{ maxWidth: 640, margin: "0 auto", padding: "16px" }}>
-
-      {/* ── Board card ─────────────────────────────────────── */}
       <div style={{
         background: C.white, border: `1px solid #F0EEF8`, borderRadius: 34,
         boxShadow: "0 8px 40px rgba(127,119,221,.13)", padding: "18px 18px 20px",
       }}>
 
-        {/* Header row */}
+        {/* Header */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-          <div style={{
-            background: C.purpleSoft, border: `1px solid ${C.purpleBorder}`,
-            borderRadius: 999, padding: "5px 14px", fontSize: 12, fontWeight: 800, color: C.purpleDark,
-          }}>Turn {turnIndex + 1} / {total}</div>
-          <div style={{
-            background: C.orangeSoft, border: `1.5px solid ${C.orangeBorder}`,
-            borderRadius: 999, padding: "5px 14px",
-            fontFamily: "'Fredoka',sans-serif", fontSize: 16, fontWeight: 700, color: C.orange,
-          }}>{pts} pts</div>
+          <div style={{ background: C.purpleSoft, border: `1px solid ${C.purpleBorder}`, borderRadius: 999, padding: "5px 14px", fontSize: 12, fontWeight: 800, color: C.purpleDark }}>
+            Turn {turnIndex + 1} / {total}
+          </div>
+          <div style={{ background: C.orangeSoft, border: `1.5px solid ${C.orangeBorder}`, borderRadius: 999, padding: "5px 14px", fontFamily: "'Fredoka',sans-serif", fontSize: 16, fontWeight: 700, color: C.orange }}>
+            {pts} pts
+          </div>
         </div>
 
         {/* Progress bar */}
-        <div style={{
-          height: 12, background: "#F4F2FD", border: "1px solid #E4E1F8",
-          borderRadius: 999, overflow: "hidden", marginBottom: 14,
-        }}>
-          <div style={{
-            height: "100%", width: `${pct}%`,
-            background: `linear-gradient(90deg,${C.orange},${C.purple})`,
-            borderRadius: 999, transition: "width .4s",
-          }} />
+        <div style={{ height: 12, background: "#F4F2FD", border: "1px solid #E4E1F8", borderRadius: 999, overflow: "hidden", marginBottom: 14 }}>
+          <div style={{ height: "100%", width: `${pct}%`, background: `linear-gradient(90deg,${C.orange},${C.purple})`, borderRadius: 999, transition: "width .4s" }} />
         </div>
 
         {/* Scene card */}
-        <div style={{
-          position: "relative", borderRadius: 20, height: 180,
-          overflow: "hidden", marginBottom: 16,
-          background: scene.sceneImage
-            ? "transparent"
-            : "linear-gradient(160deg,#EDE9FA,#FFF0E6)",
-        }}>
-          {scene.sceneImage && (
-            <img src={scene.sceneImage} alt="" style={{
-              width: "100%", height: "100%", objectFit: "cover",
-            }} />
-          )}
+        <div style={{ position: "relative", borderRadius: 20, height: 170, overflow: "hidden", marginBottom: 16, background: scene.sceneImage ? "transparent" : "linear-gradient(160deg,#EDE9FA,#FFF0E6)" }}>
+          {scene.sceneImage && <img src={scene.sceneImage} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
 
-          {/* Teacher speech bubble (top-right) */}
-          <div style={{
-            position: "absolute", top: 10, right: 10,
-            background: C.white, borderRadius: "16px 16px 4px 16px",
-            padding: "8px 12px", maxWidth: 180,
-            boxShadow: "0 4px 14px rgba(0,0,0,.12)",
-            fontSize: 12, fontFamily: "'Fredoka',sans-serif",
-            fontWeight: 600, color: C.purpleDark, lineHeight: 1.4,
-          }}>
+          {/* Teacher speech bubble */}
+          <div style={{ position: "absolute", top: 10, right: 76, background: C.white, borderRadius: "14px 14px 4px 14px", padding: "8px 12px", maxWidth: 180, boxShadow: "0 4px 14px rgba(0,0,0,.12)", fontSize: 12, fontFamily: "'Fredoka',sans-serif", fontWeight: 600, color: C.purpleDark, lineHeight: 1.4 }}>
             {turn.teacherLine || "…"}
           </div>
 
           {/* Student avatar (bottom-left) */}
-          <div style={{ position: "absolute", bottom: 10, left: 12, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+          <div style={{ position: "absolute", bottom: 8, left: 10, display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}>
             <div style={{ border: "3px solid white", borderRadius: "50%", boxShadow: "0 4px 12px rgba(0,0,0,.18)" }}>
-              <AvatarImg id={avatarId} size={56} />
+              <AvatarImg id={avatarId} size={52} />
             </div>
-            <div style={{
-              background: "rgba(83,74,183,.75)", color: C.white,
-              borderRadius: 999, padding: "2px 10px", fontSize: 10, fontWeight: 800,
-            }}>{avatarLabel}</div>
+            <div style={{ background: "rgba(83,74,183,.8)", color: C.white, borderRadius: 999, padding: "2px 8px", fontSize: 10, fontWeight: 800 }}>{avatarLabel}</div>
           </div>
 
           {/* Teacher avatar (bottom-right) */}
-          <div style={{ position: "absolute", bottom: 10, right: 12, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+          <div style={{ position: "absolute", bottom: 8, right: 10, display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}>
             <div style={{ border: "3px solid white", borderRadius: "50%", boxShadow: "0 4px 12px rgba(0,0,0,.18)" }}>
-              <TeacherIcon size={56} />
+              <TeacherImg size={52} />
             </div>
-            <div style={{
-              background: "rgba(194,88,10,.75)", color: C.white,
-              borderRadius: 999, padding: "2px 10px", fontSize: 10, fontWeight: 800,
-            }}>{scene.agentName || "Teacher"}</div>
+            <div style={{ background: "rgba(194,88,10,.8)", color: C.white, borderRadius: 999, padding: "2px 8px", fontSize: 10, fontWeight: 800 }}>{scene.agentName || "Teacher"}</div>
           </div>
         </div>
 
-        {/* CUE box */}
-        <div style={{
-          position: "relative", background: C.purpleSoft,
-          border: `1.5px solid ${C.purpleBorder}`, borderRadius: 20,
-          padding: "16px 56px 16px 18px", marginBottom: 16,
-        }}>
-          <div style={{
-            fontSize: 10, fontWeight: 900, color: C.purple, textTransform: "uppercase",
-            letterSpacing: ".07em", marginBottom: 6,
-          }}>🗣 Say this:</div>
-          <div style={{
-            fontFamily: "'Fredoka',sans-serif", fontSize: "clamp(17px,3.5vw,22px)",
-            fontWeight: 600, color: C.purpleDark, textAlign: "center", lineHeight: 1.35,
-          }}>{turn.studentLine || "—"}</div>
-          {/* Listen button */}
-          <button onClick={handleListen} disabled={ttsLoading} style={{
-            position: "absolute", top: 12, right: 12,
-            background: ttsLoading ? C.muted : C.purple, color: C.white, border: "none",
-            borderRadius: 999, padding: "6px 10px", fontSize: 13, fontWeight: 900,
-            fontFamily: "'Nunito',sans-serif", cursor: ttsLoading ? "default" : "pointer",
-            boxShadow: "0 4px 12px rgba(127,119,221,.28)",
-          }}>{ttsLoading ? "…" : "🔊"}</button>
-        </div>
+        {/* ── STEP 1: Teacher just spoke — student listens ── */}
+        {subPhase === "teacher" && (
+          <div style={{ textAlign: "center", padding: "8px 0 16px" }}>
+            <div style={{ fontSize: 13, fontWeight: 800, color: C.muted, marginBottom: 16 }}>
+              🔊 Teacher is speaking… listen carefully!
+            </div>
+            <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
+              {ghostBtn("🔊 Play again", () => playElevenLabs(turn.teacherLine, null, null, null))}
+              {btn("Write my answer →", () => setSubPhase("writing"), C.orange)}
+            </div>
+          </div>
+        )}
 
-        {/* FEEDBACK bubble (phase === "feedback") */}
-        {phase === "feedback" && pronScore !== null && (
-          <div style={{ marginBottom: 16, display: "flex", flexDirection: "column", gap: 8 }}>
-            {transcript && (
-              <div style={{
-                background: C.purpleSoft, borderLeft: `3px solid ${C.purple}`,
-                borderRadius: 12, padding: "10px 14px",
-              }}>
-                <div style={{ fontSize: 10, fontWeight: 900, color: C.purple, textTransform: "uppercase", marginBottom: 4 }}>You said</div>
-                <div style={{ fontFamily: "'Fredoka',sans-serif", fontSize: 15, fontWeight: 600, color: C.ink }}>"{transcript}"</div>
+        {/* ── STEP 2: Student writes their answer ── */}
+        {subPhase === "writing" && (
+          <div style={{ marginBottom: 0 }}>
+            <div style={{ fontSize: 11, fontWeight: 900, color: C.purple, textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 8 }}>
+              ✏️ Write your answer:
+            </div>
+            <textarea
+              value={written}
+              onChange={e => setWritten(e.target.value)}
+              placeholder="Type what you would say…"
+              rows={3}
+              style={{
+                width: "100%", padding: "12px 14px", border: `2px solid ${C.purpleBorder}`,
+                borderRadius: 14, fontSize: 15, fontFamily: "'Nunito',sans-serif",
+                fontWeight: 700, resize: "none", outline: "none", color: C.ink,
+                background: C.purpleSoft, marginBottom: 12,
+              }}
+            />
+            <div style={{ display: "flex", gap: 8 }}>
+              {ghostBtn("← Listen again", () => { setSubPhase("teacher"); playElevenLabs(turn.teacherLine, null, null, null); })}
+              {btn("Now say it 🎤", () => setSubPhase("recording"), C.purple, written.trim() === "")}
+            </div>
+          </div>
+        )}
+
+        {/* ── STEP 3: Record pronunciation ── */}
+        {subPhase === "recording" && (
+          <div>
+            {/* Show expected sentence */}
+            <div style={{ background: C.purpleSoft, border: `1.5px solid ${C.purpleBorder}`, borderRadius: 16, padding: "12px 16px", marginBottom: 14, textAlign: "center" }}>
+              <div style={{ fontSize: 10, fontWeight: 900, color: C.purple, textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 6 }}>🗣 Say this:</div>
+              <div style={{ fontFamily: "'Fredoka',sans-serif", fontSize: "clamp(16px,3vw,21px)", fontWeight: 600, color: C.purpleDark, lineHeight: 1.35 }}>{turn.studentLine || "—"}</div>
+            </div>
+
+            {/* Mic button */}
+            <div style={{ textAlign: "center", marginBottom: 14 }}>
+              <button
+                onClick={() => micState === "recording" ? stopRecording() : startRecording()}
+                disabled={micState === "processing"}
+                style={{
+                  width: 72, height: 72, borderRadius: "50%", border: "none",
+                  background: micState === "recording" ? "#E24B4A" : C.orange,
+                  color: C.white, fontSize: 28, cursor: micState === "processing" ? "default" : "pointer",
+                  boxShadow: micState === "recording" ? "0 0 0 8px rgba(226,75,74,.2), 0 6px 18px rgba(226,75,74,.4)" : "0 6px 18px rgba(249,115,22,.32)",
+                  animation: micState === "recording" ? "rk-pulse 1s ease-in-out infinite" : "none",
+                }}>
+                {micState === "processing" ? "⏳" : micState === "recording" ? "⏹" : "🎤"}
+              </button>
+              <div style={{ marginTop: 8, fontSize: 12, fontWeight: 800, color: micState === "recording" ? "#E24B4A" : C.muted }}>
+                {micState === "processing" ? "Processing…" : micState === "recording" ? "Recording… tap to stop" : "Tap the mic and speak!"}
+              </div>
+            </div>
+
+            {ghostBtn("← Back to writing", () => setSubPhase("writing"))}
+          </div>
+        )}
+
+        {/* ── STEP 4: Feedback ── */}
+        {subPhase === "feedback" && (
+          <div>
+            {written.trim() && (
+              <div style={{ background: C.purpleSoft, borderLeft: `3px solid ${C.purple}`, borderRadius: 12, padding: "10px 14px", marginBottom: 8 }}>
+                <div style={{ fontSize: 10, fontWeight: 900, color: C.purple, textTransform: "uppercase", marginBottom: 4 }}>You wrote</div>
+                <div style={{ fontFamily: "'Fredoka',sans-serif", fontSize: 14, fontWeight: 600, color: C.ink }}>"{written}"</div>
               </div>
             )}
-            <div style={{
-              background: C.orangeSoft, borderLeft: `3px solid ${C.orange}`,
-              borderRadius: 12, padding: "10px 14px",
-            }}>
-              <div style={{ fontSize: 10, fontWeight: 900, color: C.orange, textTransform: "uppercase", marginBottom: 4 }}>Try saying</div>
-              <div style={{ fontFamily: "'Fredoka',sans-serif", fontSize: 15, fontWeight: 600, color: C.orangeDark }}>{turn.studentLine}</div>
+            {transcript && (
+              <div style={{ background: "#F0F9FF", borderLeft: `3px solid #38BDF8`, borderRadius: 12, padding: "10px 14px", marginBottom: 8 }}>
+                <div style={{ fontSize: 10, fontWeight: 900, color: "#0369A1", textTransform: "uppercase", marginBottom: 4 }}>You said</div>
+                <div style={{ fontFamily: "'Fredoka',sans-serif", fontSize: 14, fontWeight: 600, color: C.ink }}>"{transcript}"</div>
+              </div>
+            )}
+            <div style={{ background: C.orangeSoft, borderLeft: `3px solid ${C.orange}`, borderRadius: 12, padding: "10px 14px", marginBottom: 8 }}>
+              <div style={{ fontSize: 10, fontWeight: 900, color: C.orange, textTransform: "uppercase", marginBottom: 4 }}>Correct answer</div>
+              <div style={{ fontFamily: "'Fredoka',sans-serif", fontSize: 14, fontWeight: 600, color: C.orangeDark }}>{turn.studentLine}</div>
             </div>
-            {/* Score bar */}
-            <div style={{ background: C.purpleSoft, borderRadius: 12, padding: "10px 14px" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                <div style={{ fontSize: 11, fontWeight: 900, color: C.muted, textTransform: "uppercase" }}>Pronunciation score</div>
-                <div style={{ fontFamily: "'Fredoka',sans-serif", fontSize: 18, fontWeight: 700, color: C.orange }}>{pronScore} pts</div>
+            {pronScore !== null && (
+              <div style={{ background: C.purpleSoft, borderRadius: 12, padding: "10px 14px", marginBottom: 12 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                  <div style={{ fontSize: 11, fontWeight: 900, color: C.muted, textTransform: "uppercase" }}>Pronunciation score</div>
+                  <div style={{ fontFamily: "'Fredoka',sans-serif", fontSize: 18, fontWeight: 700, color: C.orange }}>{pronScore} pts</div>
+                </div>
+                <div style={{ height: 8, background: "#F4F2FD", borderRadius: 999, overflow: "hidden" }}>
+                  <div style={{ height: "100%", width: `${pronScore}%`, background: `linear-gradient(90deg,${C.orange},${C.purple})`, borderRadius: 999, transition: "width .5s" }} />
+                </div>
               </div>
-              <div style={{ height: 8, background: "#F4F2FD", borderRadius: 999, overflow: "hidden" }}>
-                <div style={{
-                  height: "100%", width: `${pronScore}%`,
-                  background: `linear-gradient(90deg,${C.orange},${C.purple})`,
-                  borderRadius: 999, transition: "width .5s",
-                }} />
-              </div>
+            )}
+            <div style={{ display: "flex", gap: 8 }}>
+              {ghostBtn("Try Again ↺", () => { setSubPhase("recording"); setTranscript(""); setPronScore(null); })}
+              {btn(turnIndex < total - 1 ? "Next →" : "Finish 🎉", goToNextTurn, C.orange)}
             </div>
           </div>
         )}
-
-        {/* Mic button + label (playing phase only) */}
-        {phase === "playing" && (
-          <div style={{ textAlign: "center", marginBottom: 16 }}>
-            <button onClick={handleMicClick} disabled={micState === "processing"} style={{
-              width: 72, height: 72, borderRadius: "50%", border: "none",
-              background: micState === "recording" ? "#E24B4A" : C.orange,
-              color: C.white, fontSize: 28, cursor: micState === "processing" ? "default" : "pointer",
-              boxShadow: micState === "recording"
-                ? "0 0 0 8px rgba(226,75,74,.2), 0 6px 18px rgba(226,75,74,.4)"
-                : "0 6px 18px rgba(249,115,22,.32)",
-              transition: "all .2s",
-              animation: micState === "recording" ? "rk-pulse 1s ease-in-out infinite" : "none",
-            }}>
-              {micState === "processing" ? "⏳" : micState === "recording" ? "⏹" : "🎤"}
-            </button>
-            <div style={{
-              marginTop: 8, fontSize: 12, fontWeight: 800,
-              color: micState === "recording" ? "#E24B4A" : C.muted,
-            }}>
-              {micState === "processing" ? "Processing…" :
-               micState === "recording" ? "Recording… tap to stop" :
-               "Tap the mic and speak!"}
-            </div>
-          </div>
-        )}
-
-        {/* Action buttons */}
-        <div style={{ display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap" }}>
-          {phase === "feedback" ? (
-            <>
-              <button onClick={handleTryAgain} style={{
-                flex: 1, minWidth: 100, padding: "11px 8px", border: `1.5px solid ${C.purpleBorder}`,
-                borderRadius: 999, background: C.white, color: C.purple,
-                fontFamily: "'Nunito',sans-serif", fontWeight: 900, fontSize: 13, cursor: "pointer",
-              }}>Try Again</button>
-              <button onClick={() => { playElevenLabs(turn.studentLine, null); }} style={{
-                flex: 1, minWidth: 100, padding: "11px 8px", border: "none",
-                borderRadius: 999, background: C.purple, color: C.white,
-                fontFamily: "'Nunito',sans-serif", fontWeight: 900, fontSize: 13, cursor: "pointer",
-              }}>Show Answer</button>
-              <button onClick={handleNext} style={{
-                flex: 1, minWidth: 100, padding: "11px 8px", border: "none",
-                borderRadius: 999, background: C.orange, color: C.white,
-                fontFamily: "'Nunito',sans-serif", fontWeight: 900, fontSize: 13, cursor: "pointer",
-                boxShadow: "0 4px 14px rgba(249,115,22,.28)",
-              }}>{turnIndex < total - 1 ? "Next →" : "Finish 🎉"}</button>
-            </>
-          ) : (
-            <button onClick={() => setPhase("feedback")} style={{
-              padding: "11px 24px", border: `1.5px solid ${C.purpleBorder}`,
-              borderRadius: 999, background: C.white, color: C.muted,
-              fontFamily: "'Nunito',sans-serif", fontWeight: 800, fontSize: 13, cursor: "pointer",
-            }}>Skip this turn</button>
-          )}
-        </div>
 
       </div>
     </div>
