@@ -306,7 +306,7 @@ body { margin: 0 !important; padding: 0 !important; background: #fff !important;
 /* ── Stage ── */
 .ml-stage {
     display: grid;
-    grid-template-columns: 1fr clamp(80px, 12vw, 140px) 1fr;
+    grid-template-columns: 1fr clamp(100px, 15vw, 180px) 1fr;
     grid-template-rows: auto;
     position: relative;
     margin-bottom: 16px;
@@ -334,14 +334,21 @@ body { margin: 0 !important; padding: 0 !important; background: #fff !important;
     background: #fff;
     border: 1px solid #EDE9FA;
     border-radius: 20px;
-    box-shadow: 0 8px 40px rgba(127,119,221,.13);
-    padding: 14px;
+    box-shadow: 0 4px 18px rgba(127,119,221,.13);
+    padding: 16px 18px;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     position: relative;
-    min-height: 70px;
+    min-height: 80px;
+    cursor: default;
+    transition: box-shadow .22s, transform .22s, border-color .22s;
+}
+.ml-lcard:hover, .ml-rcard:hover {
+    box-shadow: 0 12px 44px rgba(127,119,221,.28);
+    transform: translateY(-3px);
+    border-color: #C4BEF0;
 }
 .ml-lcard-icon, .ml-rcard-icon {
     min-height: 58px;
@@ -351,28 +358,34 @@ body { margin: 0 !important; padding: 0 !important; background: #fff !important;
 }
 .ml-lcard-img {
     max-width: 100%;
-    max-height: 140px;
+    max-height: 160px;
     width: auto;
     height: auto;
-    border-radius: 12px;
+    border-radius: 14px;
     object-fit: contain;
     display: block;
+    transition: transform .25s, box-shadow .25s;
+}
+.ml-lcard:hover .ml-lcard-img {
+    transform: scale(1.06);
+    box-shadow: 0 8px 28px rgba(127,119,221,.22);
 }
 .ml-lcard-label {
     font-family: 'Fredoka', sans-serif;
     font-weight: 600;
-    font-size: clamp(13px, 1.8vw, 16px);
+    font-size: clamp(17px, 2.2vw, 22px);
     color: #534AB7;
     text-align: center;
-    margin-top: 4px;
+    margin-top: 6px;
+    line-height: 1.2;
 }
 .ml-rcard-label {
     font-family: 'Fredoka', sans-serif;
     font-weight: 600;
-    font-size: clamp(14px, 2vw, 17px);
+    font-size: clamp(17px, 2.4vw, 24px);
     color: #F97316;
     text-align: center;
-    margin-top: 4px;
+    line-height: 1.2;
 }
 
 /* Connection dots */
