@@ -236,27 +236,39 @@ document.addEventListener('DOMContentLoaded', function () {
 
       var icon = document.createElement('div');
       icon.className = 'ml-rcard-icon';
-      var lbl = document.createElement('div');
-      lbl.className = 'ml-rcard-label';
-      lbl.textContent = String(pair.right || '').trim();
-      icon.appendChild(lbl);
+
+      var rightVal = String(pair.right || '').trim();
+      var rightIsUrl = /^https?:\/\//i.test(rightVal) || /\.(png|jpg|jpeg|gif|webp|svg)(\?|$)/i.test(rightVal);
+      if (rightIsUrl) {
+        var rimg = document.createElement('img');
+        rimg.src = rightVal;
+        rimg.alt = '';
+        rimg.className = 'ml-rcard-img';
+        icon.appendChild(rimg);
+      } else {
+        var lbl = document.createElement('div');
+        lbl.className = 'ml-rcard-label';
+        lbl.textContent = rightVal;
+        icon.appendChild(lbl);
+      }
 
       card.appendChild(dot);
       card.appendChild(icon);
       rightColEl.appendChild(card);
     });
 
-    /* Equalize heights after render + after images load */
+    /* Equalize heights after render + after ALL images (left and right) load */
     equalizeRowHeights();
 
-    var imgs = leftColEl.querySelectorAll('img');
+    var imgs = Array.prototype.slice.call(leftColEl.querySelectorAll('img'))
+                 .concat(Array.prototype.slice.call(rightColEl.querySelectorAll('img')));
     if (imgs.length) {
       var loaded = 0, total = imgs.length;
       function onLoad() {
         loaded++;
         if (loaded >= total) { equalizeRowHeights(); drawLines(); }
       }
-      Array.prototype.forEach.call(imgs, function (img) {
+      imgs.forEach(function (img) {
         if (img.complete) { onLoad(); }
         else { img.addEventListener('load', onLoad); img.addEventListener('error', onLoad); }
       });

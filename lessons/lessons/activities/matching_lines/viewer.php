@@ -356,7 +356,8 @@ body { margin: 0 !important; padding: 0 !important; background: #fff !important;
     align-items: center;
     justify-content: center;
 }
-.ml-lcard-img {
+.ml-lcard-img,
+.ml-rcard-img {
     max-width: 100%;
     max-height: 160px;
     width: auto;
@@ -366,7 +367,8 @@ body { margin: 0 !important; padding: 0 !important; background: #fff !important;
     display: block;
     transition: transform .25s, box-shadow .25s;
 }
-.ml-lcard:hover .ml-lcard-img {
+.ml-lcard:hover .ml-lcard-img,
+.ml-rcard:hover .ml-rcard-img {
     transform: scale(1.06);
     box-shadow: 0 8px 28px rgba(127,119,221,.22);
 }
