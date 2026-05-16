@@ -137,12 +137,13 @@ function playElevenLabs(text, voiceId, onDone, onError) {
 
 // ── SAVE ───────────────────────────────────────────────────────
 function saveActivity(activityId, scene, turns) {
-  if (!activityId) return Promise.resolve({ ok: false });
-  const body = new FormData();
-  body.append("id", activityId);
-  body.append("data", JSON.stringify({ scene, turns }));
-  return fetch("../../core/save_activity.php", { method: "POST", body, credentials: "same-origin" })
-    .then(r => r.json());
+  if (!activityId) return Promise.resolve({ ok: false, error: "No activity ID" });
+  return fetch("save.php", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "same-origin",
+    body: JSON.stringify({ id: activityId, scene, turns }),
+  }).then(r => r.json());
 }
 
 // ── TEACHER IMG ────────────────────────────────────────────────
