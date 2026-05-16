@@ -10,6 +10,7 @@ document.addEventListener('DOMContentLoaded', function () {
   const optionsEl = document.getElementById('mc-options');
   const feedbackEl = document.getElementById('mc-feedback');
   const listenBtn = document.getElementById('mc-listen');
+  const checkBtn = document.getElementById('mc-check');
   const showBtn = document.getElementById('mc-show');
   const nextBtn = document.getElementById('mc-next');
   const cardEl = document.querySelector('.mc-card');
@@ -44,6 +45,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
   let index = 0;
   let selected = null;
+  let checked = false;   /* true after Check is clicked */
   let revealed = false;
   let finished = false;
   let questionScores = questions.map(function () { return 0; });
@@ -158,6 +160,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const item = questions[index] || {};
     const correct = Number.isInteger(item.correct) ? item.correct : 0;
     const isImageOpts = item.option_type === 'image';
+    const locked = checked || revealed || finished;
 
     optionsEl.innerHTML = '';
 
@@ -166,12 +169,26 @@ document.addEventListener('DOMContentLoaded', function () {
       button.type = 'button';
       button.className = 'mc-option';
 
-      if (selected === optIndex) {
+      if (selected === optIndex && !checked && !revealed) {
         button.classList.add('selected');
       }
 
+      /* After Check: green = correct answer, red = wrong selection */
+      if (checked) {
+        if (optIndex === correct) {
+          button.classList.add('correct');
+        } else if (selected === optIndex) {
+          button.classList.add('wrong');
+        }
+      }
+
+      /* After Show Answer: highlight correct */
       if (revealed && optIndex === correct) {
         button.classList.add('correct');
+      }
+
+      if (locked) {
+        button.disabled = true;
       }
 
       if (isImageOpts && optionText !== '') {
@@ -184,12 +201,10 @@ document.addEventListener('DOMContentLoaded', function () {
       }
 
       button.addEventListener('click', function () {
-        if (finished) {
-          return;
-        }
-
+        if (locked) return;
         selected = optIndex;
         renderOptions();
+        if (checkBtn) checkBtn.disabled = false;
       });
 
       optionsEl.appendChild(button);
@@ -202,6 +217,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const isListen = item.question_type === 'listen';
 
     selected = null;
+    checked  = false;
     revealed = false;
     finished = false;
     activeListenText = cleanQuestion;
@@ -223,6 +239,10 @@ document.addEventListener('DOMContentLoaded', function () {
       feedbackEl.textContent = '';
       feedbackEl.className = 'mc-feedback';
     }
+
+    if (checkBtn) { checkBtn.disabled = true; checkBtn.style.display = ''; }
+    if (showBtn)  { showBtn.style.display = ''; showBtn.disabled = false; }
+    if (nextBtn)  nextBtn.disabled = false;
 
     updateProgress();
 
@@ -249,17 +269,38 @@ document.addEventListener('DOMContentLoaded', function () {
     }
   }
 
-  function showAnswer() {
-    if (finished) {
-      return;
-    }
+  function checkAnswer() {
+    if (finished || checked || revealed) return;
+    if (selected === null) return;
 
+    const item    = questions[index] || {};
+    const correct = Number.isInteger(item.correct) ? item.correct : 0;
+    const isRight = selected === correct;
+
+    checked = true;
+    renderOptions();
+
+    if (feedbackEl) {
+      feedbackEl.textContent = isRight ? '✅ Correct!' : '❌ Incorrect!';
+      feedbackEl.className   = 'mc-feedback ' + (isRight ? 'good' : 'bad');
+    }
+    if (checkBtn) checkBtn.style.display = 'none';
+    if (showBtn)  showBtn.style.display  = 'none';
+  }
+
+  function showAnswer() {
+    if (finished) return;
+
+    checked  = false;
     revealed = true;
     renderOptions();
 
     if (feedbackEl) {
       feedbackEl.textContent = 'Correct option highlighted.';
+      feedbackEl.className   = 'mc-feedback';
     }
+    if (checkBtn) checkBtn.style.display = 'none';
+    if (showBtn)  showBtn.style.display  = 'none';
   }
 
   async function showCompleted() {
@@ -304,9 +345,10 @@ document.addEventListener('DOMContentLoaded', function () {
       return;
     }
 
-    const item = questions[index] || {};
+    const item    = questions[index] || {};
     const correct = Number.isInteger(item.correct) ? item.correct : 0;
-    const isCorrectPick = selected !== null && selected === correct && !revealed;
+    /* Score 1 only if user checked and got it right (not revealed) */
+    const isCorrectPick = checked && selected === correct;
     questionScores[index] = isCorrectPick ? 1 : 0;
 
     if (index < questions.length - 1) {
@@ -319,12 +361,17 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   function restartActivity() {
-    index = 0;
+    index    = 0;
     selected = null;
+    checked  = false;
     revealed = false;
     finished = false;
     questionScores = questions.map(function () { return 0; });
     loadQuestion();
+  }
+
+  if (checkBtn) {
+    checkBtn.addEventListener('click', checkAnswer);
   }
 
   if (showBtn) {
