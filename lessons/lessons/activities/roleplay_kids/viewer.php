@@ -90,6 +90,7 @@ const DEFAULT_SCENE = {
 };
 
 // ── TTS ────────────────────────────────────────────────────────
+// tts.php returns raw audio/mpeg — handle as blob, cache as object URL
 const ttsCache = {};
 let currentAudio = null;
 function playUrl(url) {
@@ -105,10 +106,15 @@ function playElevenLabs(text, voiceId, onDone, onError) {
   fd.append("text", text);
   if (voiceId) fd.append("voice_id", voiceId);
   fetch("tts.php", { method: "POST", body: fd, credentials: "same-origin" })
-    .then(r => r.json())
-    .then(data => {
-      if (data.url) { ttsCache[key] = data.url; playUrl(data.url); if (onDone) onDone(); }
-      else { if (onError) onError(); }
+    .then(r => {
+      if (!r.ok) throw new Error("TTS " + r.status);
+      return r.blob();
+    })
+    .then(blob => {
+      const url = URL.createObjectURL(blob);
+      ttsCache[key] = url;
+      playUrl(url);
+      if (onDone) onDone();
     })
     .catch(() => { if (onError) onError(); });
 }
@@ -434,7 +440,7 @@ function PlayerView({ scene: sc, turns, activityId }) {
     const fd = new FormData();
     fd.append("transcript", text);
     fd.append("expected",   expected);
-    fetch("../../core/pronunciation_score.php", { method: "POST", body: fd, credentials: "same-origin" })
+    fetch("score.php", { method: "POST", body: fd, credentials: "same-origin" })
       .then(r => r.json())
       .then(data => {
         const score = Number(data.score ?? 0);
