@@ -186,7 +186,7 @@ body { margin: 0 !important; padding: 0 !important; background: #fff !important;
     box-sizing: border-box;
 }
 .ml-app {
-    width: min(960px, 100%);
+    width: min(1100px, 100%);
     margin: 0 auto;
 }
 
@@ -305,16 +305,13 @@ body { margin: 0 !important; padding: 0 !important; background: #fff !important;
 
 /* ── Stage ── */
 .ml-stage {
-    display: flex;
-    gap: 18px;
+    display: grid;
+    grid-template-columns: 1fr clamp(80px, 12vw, 140px) 1fr;
+    grid-template-rows: auto;
     position: relative;
     margin-bottom: 16px;
-    align-items: flex-start;
 }
-.ml-left-col, .ml-right-col {
-    flex: 1;
-    min-width: 0;
-}
+/* SVG spans all 3 columns as a full-stage overlay */
 #ml-svg {
     position: absolute;
     top: 0;
@@ -323,15 +320,16 @@ body { margin: 0 !important; padding: 0 !important; background: #fff !important;
     height: 100%;
     pointer-events: none;
     overflow: visible;
-    z-index: 1;
+    z-index: 2;
 }
+/* Left column in grid slot 1, right in slot 3 */
+.ml-left-col  { grid-column: 1; display: flex; flex-direction: column; gap: 10px; }
+.ml-right-col { grid-column: 3; display: flex; flex-direction: column; gap: 10px; }
+/* Center lane (slot 2) — empty, just provides visual space */
+.ml-center-lane { grid-column: 2; }
 
 /* ── Left cards ── */
-.ml-left-col, .ml-right-col {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-}
+/* (column styles set individually in grid layout above) */
 .ml-lcard, .ml-rcard {
     background: #fff;
     border: 1px solid #EDE9FA;
@@ -380,33 +378,37 @@ body { margin: 0 !important; padding: 0 !important; background: #fff !important;
 /* Connection dots */
 .ml-dot-r {
     position: absolute;
-    right: -8px;
+    right: -9px;
     top: 50%;
     transform: translateY(-50%);
-    width: 16px;
-    height: 16px;
+    width: 18px;
+    height: 18px;
     border-radius: 50%;
     background: #7F77DD;
     cursor: crosshair;
     z-index: 3;
-    transition: background .15s, transform .15s;
+    box-shadow: 0 0 0 3px rgba(127,119,221,.2);
+    transition: background .15s, transform .15s, box-shadow .15s;
     user-select: none;
 }
+.ml-dot-r:hover { background: #534AB7; box-shadow: 0 0 0 5px rgba(127,119,221,.25); }
 .ml-dot-r.ml-dot-active {
     background: #F97316;
-    transform: translateY(-50%) scale(1.3);
+    transform: translateY(-50%) scale(1.35);
+    box-shadow: 0 0 0 5px rgba(249,115,22,.25);
 }
 .ml-dot-l {
     position: absolute;
-    left: -8px;
+    left: -9px;
     top: 50%;
     transform: translateY(-50%);
-    width: 16px;
-    height: 16px;
+    width: 18px;
+    height: 18px;
     border-radius: 50%;
     background: #7F77DD;
     cursor: pointer;
-    z-index: 2;
+    z-index: 3;
+    box-shadow: 0 0 0 3px rgba(127,119,221,.2);
     transition: background .15s, transform .15s;
 }
 .ml-dot-r:hover, .ml-dot-l:hover { transform: translateY(-50%) scale(1.25); }
@@ -490,9 +492,10 @@ body { margin: 0 !important; padding: 0 !important; background: #fff !important;
 
       <div id="ml-activity">
         <div class="ml-stage">
-          <div class="ml-left-col" id="ml-left-col"></div>
+          <div class="ml-left-col"   id="ml-left-col"></div>
+          <div class="ml-center-lane" aria-hidden="true"></div>
+          <div class="ml-right-col"  id="ml-right-col"></div>
           <svg id="ml-svg" aria-hidden="true"></svg>
-          <div class="ml-right-col" id="ml-right-col"></div>
         </div>
 
         <div class="ml-actions">
