@@ -89,11 +89,11 @@ const AVATARS = [
 const TEACHER_IMG = "assets/avatars/TEACHER.png";
 function avatarSrc(id) { return `assets/avatars/${encodeURIComponent(id)}.png`; }
 
-// ── VOICES ─────────────────────────────────────────────────────
+// ── VOICES (same IDs as flashcards/pronunciation editors) ──────
 const VOICES = [
-  { id: "nzFihrBIvB34imQBuxub", label: "🎙 Adult Male"   },
-  { id: "NoOVOzCQFLOvtsMoNcdT", label: "🎙 Adult Female" },
-  { id: "Nggzl2QAXh3OijoXD116", label: "🎙 Child"        },
+  { id: "nzFihrBIvB34imQBuxub", label: "Adult Male (Josh)"   },
+  { id: "NoOVOzCQFLOvtsMoNcdT", label: "Adult Female (Lily)" },
+  { id: "Nggzl2QAXh3OijoXD116", label: "Child (Candy)"       },
 ];
 
 // ── DEFAULT DATA ───────────────────────────────────────────────
@@ -105,7 +105,7 @@ const DEFAULT_SCENE = {
 };
 
 // ── TTS ────────────────────────────────────────────────────────
-// tts.php returns raw audio/mpeg — handle as blob, cache as object URL
+// tts.php (flashcards version) returns JSON { url: "cloudinary_url" }
 const ttsCache = {};
 let currentAudio = null;
 function playUrl(url) {
@@ -121,17 +121,18 @@ function playElevenLabs(text, voiceId, onDone, onError) {
   fd.append("text", text);
   if (voiceId) fd.append("voice_id", voiceId);
   fetch("tts.php", { method: "POST", body: fd, credentials: "same-origin" })
-    .then(r => {
-      if (!r.ok) throw new Error("TTS " + r.status);
-      return r.blob();
-    })
-    .then(blob => {
-      const url = URL.createObjectURL(blob);
-      ttsCache[key] = url;
-      playUrl(url);
+    .then(r => r.json())
+    .then(data => {
+      if (data.error) throw new Error(data.error);
+      if (!data.url) throw new Error("No URL returned");
+      ttsCache[key] = data.url;
+      playUrl(data.url);
       if (onDone) onDone();
     })
-    .catch(() => { if (onError) onError(); });
+    .catch(err => {
+      console.warn("TTS error:", err);
+      if (onError) onError();
+    });
 }
 
 // ── SAVE ───────────────────────────────────────────────────────
