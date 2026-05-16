@@ -2,10 +2,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
   /* ── Globals ── */
   var AF           = window.ActivityFeedback;
-  var boards       = Array.isArray(window.MATCHING_LINES_DATA)        ? window.MATCHING_LINES_DATA        : [];
-  var activityTitle= window.MATCHING_LINES_TITLE       || 'Matching Lines';
-  var returnTo     = window.MATCHING_LINES_RETURN_TO   || '';
-  var activityId   = window.MATCHING_LINES_ACTIVITY_ID || '';
+  var boards       = Array.isArray(window.MATCHING_LINES_DATA)   ? window.MATCHING_LINES_DATA   : [];
+  var activityTitle= window.MATCHING_LINES_TITLE                 || 'Matching Lines';
+  var returnTo     = window.MATCHING_LINES_RETURN_TO             || '';
+  var activityId   = window.MATCHING_LINES_ACTIVITY_ID          || '';
 
   /* ── DOM refs ── */
   var progressLabelEl = document.getElementById('ml-progress-label');
@@ -21,6 +21,7 @@ document.addEventListener('DOMContentLoaded', function () {
   var feedbackEl      = document.getElementById('ml-feedback');
   var activityEl      = document.getElementById('ml-activity');
   var completedEl     = document.getElementById('ml-completed');
+  var stageEl         = svgEl ? svgEl.parentElement : null;
   var winAudio        = new Audio('../../hangman/assets/win.mp3');
 
   if (!boards.length) {
@@ -31,14 +32,15 @@ document.addEventListener('DOMContentLoaded', function () {
   /* ── State ── */
   var index       = 0;
   var answered    = false;
-  var selectedLeft  = null;   /* left card index (0-based) or null */
-  var selectedRight = null;   /* visual row index of right card or null */
-  var connections   = [];     /* [{leftIdx, rightIdx, color}] */
-  var shuffleMap    = [];     /* shuffleMap[originalIdx] = visualRowIdx */
-  var reverseMap    = [];     /* reverseMap[visualRowIdx] = originalIdx */
-  var scores        = boards.map(function () { return 0; });
-  var reviewItems   = boards.map(function () { return {}; });
-  var feedbackTimer = null;
+  var connections = [];   /* [{leftIdx, shuffledRight, color, overrideColor}] */
+  var shuffleMap  = [];   /* shuffleMap[origIdx] = visualRow */
+  var reverseMap  = [];   /* reverseMap[visualRow] = origIdx */
+  var scores      = boards.map(function () { return 0; });
+  var reviewItems = boards.map(function () { return {}; });
+  var feedbackTimer  = null;
+
+  /* drag state */
+  var drag = null;  /* {leftIdx, startX, startY, curX, curY} */
 
   var LINE_COLORS = ['#7F77DD', '#F97316', '#534AB7', '#C2580A'];
 
@@ -65,75 +67,132 @@ document.addEventListener('DOMContentLoaded', function () {
     if (ptsNumEl) ptsNumEl.textContent = String(val);
   }
 
-  function showFeedbackText(text, color, autoClear) {
+  function showFeedbackText(text, color) {
     if (!feedbackEl) return;
     if (feedbackTimer) { clearTimeout(feedbackTimer); feedbackTimer = null; }
     feedbackEl.textContent = text;
     feedbackEl.style.color = color || '#F97316';
-    if (autoClear) {
-      feedbackTimer = setTimeout(function () {
-        feedbackEl.textContent = '';
-      }, 2000);
-    }
+    feedbackTimer = setTimeout(function () { feedbackEl.textContent = ''; }, 2000);
   }
 
-  /* ── Render board ── */
+  /* ── SVG sync ── */
+  function syncSvg() {
+    if (!svgEl || !stageEl) return;
+    svgEl.setAttribute('width',  stageEl.offsetWidth);
+    svgEl.setAttribute('height', stageEl.offsetHeight);
+  }
+
+  /* Get center of a dot in stage-relative coords */
+  function dotCenter(dotEl) {
+    var sr = stageEl.getBoundingClientRect();
+    var dr = dotEl.getBoundingClientRect();
+    return {
+      x: dr.left + dr.width  / 2 - sr.left,
+      y: dr.top  + dr.height / 2 - sr.top
+    };
+  }
+
+  /* Get client point from mouse or touch event */
+  function clientPoint(e) {
+    if (e.touches && e.touches.length) {
+      return { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    }
+    return { x: e.clientX, y: e.clientY };
+  }
+
+  /* ── Drawing ── */
+  function makePath(x1, y1, x2, y2, color, temp) {
+    var dx  = Math.max(40, Math.abs(x2 - x1) * 0.45);
+    var d   = 'M ' + x1 + ' ' + y1
+            + ' C ' + (x1 + dx) + ' ' + y1
+            + ',' + (x2 - dx) + ' ' + y2
+            + ',' + x2 + ' ' + y2;
+    var p = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    p.setAttribute('d', d);
+    p.setAttribute('stroke', color);
+    p.setAttribute('stroke-width', '3.5');
+    p.setAttribute('fill', 'none');
+    p.setAttribute('stroke-linecap', 'round');
+    if (temp) p.setAttribute('data-temp', '1');
+    svgEl.appendChild(p);
+  }
+
+  function drawLines() {
+    if (!svgEl) return;
+    syncSvg();
+    /* remove permanent lines, keep temp drag line */
+    Array.prototype.forEach.call(svgEl.querySelectorAll('path:not([data-temp])'), function (n) { n.remove(); });
+
+    connections.forEach(function (conn) {
+      var dotR = leftColEl  ? leftColEl.querySelector('.ml-dot-r[data-left-idx="'   + conn.leftIdx      + '"]') : null;
+      var dotL = rightColEl ? rightColEl.querySelector('.ml-dot-l[data-visual-row="' + conn.shuffledRight + '"]') : null;
+      if (!dotR || !dotL) return;
+      var p1 = dotCenter(dotR);
+      var p2 = dotCenter(dotL);
+      makePath(p1.x, p1.y, p2.x, p2.y, conn.overrideColor || conn.color);
+    });
+  }
+
+  function updateDragLine(curX, curY) {
+    if (!svgEl) return;
+    /* remove old temp path */
+    Array.prototype.forEach.call(svgEl.querySelectorAll('[data-temp]'), function (n) { n.remove(); });
+    if (!drag) return;
+    var sr = stageEl.getBoundingClientRect();
+    var x2 = curX - sr.left;
+    var y2 = curY - sr.top;
+    makePath(drag.startX, drag.startY, x2, y2, '#7F77DD', true);
+  }
+
+  /* ── Load board ── */
   function loadBoard() {
     var board = boards[index] || {};
     var pairs = Array.isArray(board.pairs) ? board.pairs : [];
 
-    answered      = false;
-    selectedLeft  = null;
-    selectedRight = null;
-    connections   = [];
+    answered    = false;
+    connections = [];
+    drag        = null;
 
     if (completedEl) completedEl.style.display = 'none';
     if (activityEl)  activityEl.style.display  = '';
-    if (feedbackEl)  { feedbackEl.textContent = ''; }
+    if (feedbackEl)  feedbackEl.textContent     = '';
 
     updateProgress();
     setPts(0);
 
-    /* build shuffle map */
+    /* Build shuffle map */
     var indices = pairs.map(function (_, i) { return i; });
     var shuffled = shuffle(indices);
-    shuffleMap  = new Array(pairs.length);
-    reverseMap  = new Array(pairs.length);
+    shuffleMap = new Array(pairs.length);
+    reverseMap = new Array(pairs.length);
     for (var i = 0; i < shuffled.length; i++) {
-      /* shuffled[i] = original pair index placed at visual row i */
-      reverseMap[i]          = shuffled[i];
+      reverseMap[i]           = shuffled[i];
       shuffleMap[shuffled[i]] = i;
     }
 
     renderColumns(pairs, shuffled);
-    drawLines();
 
     if (checkBtn) { checkBtn.disabled = false; }
     if (showBtn)  { showBtn.disabled = false; }
-    if (nextBtn)  {
-      nextBtn.disabled = true;
-      nextBtn.textContent = index < boards.length - 1 ? 'Next →' : 'Finish';
-    }
+    if (nextBtn)  { nextBtn.disabled = true; nextBtn.textContent = index < boards.length - 1 ? 'Next →' : 'Finish'; }
   }
 
+  /* ── Render columns ── */
   function renderColumns(pairs, shuffled) {
     if (!leftColEl || !rightColEl) return;
     leftColEl.innerHTML  = '';
     rightColEl.innerHTML = '';
 
-    /* Left cards — in original order */
+    /* Left cards */
     pairs.forEach(function (pair, i) {
       var card = document.createElement('div');
       card.className = 'ml-lcard';
-      card.dataset.idx = String(i);
 
       var icon = document.createElement('div');
       icon.className = 'ml-lcard-icon';
 
-      /* Detect image URL vs plain text */
       var leftVal = String(pair.left || '').trim();
       var isUrl   = /^https?:\/\//i.test(leftVal) || /\.(png|jpg|jpeg|gif|webp|svg)(\?|$)/i.test(leftVal);
-
       if (isUrl) {
         var img = document.createElement('img');
         img.src = leftVal;
@@ -141,26 +200,22 @@ document.addEventListener('DOMContentLoaded', function () {
         img.className = 'ml-lcard-img';
         icon.appendChild(img);
       } else {
-        var label = document.createElement('div');
-        label.className = 'ml-lcard-label';
-        label.textContent = leftVal;
-        icon.appendChild(label);
+        var lbl = document.createElement('div');
+        lbl.className = 'ml-lcard-label';
+        lbl.textContent = leftVal;
+        icon.appendChild(lbl);
       }
 
       var dot = document.createElement('div');
       dot.className = 'ml-dot-r';
       dot.dataset.leftIdx = String(i);
-      dot.addEventListener('click', function (e) {
-        e.stopPropagation();
-        handleDotLeftClick(i);
-      });
 
       card.appendChild(icon);
       card.appendChild(dot);
       leftColEl.appendChild(card);
     });
 
-    /* Right cards — in shuffled order */
+    /* Right cards — shuffled */
     shuffled.forEach(function (origIdx, visualRow) {
       var pair = pairs[origIdx];
       var card = document.createElement('div');
@@ -168,157 +223,157 @@ document.addEventListener('DOMContentLoaded', function () {
       card.dataset.visualRow = String(visualRow);
       card.dataset.origIdx   = String(origIdx);
 
-      var icon = document.createElement('div');
-      icon.className = 'ml-rcard-icon';
-
-      var label = document.createElement('div');
-      label.className = 'ml-rcard-label';
-      label.textContent = pair.right;
-
       var dot = document.createElement('div');
       dot.className = 'ml-dot-l';
       dot.dataset.visualRow = String(visualRow);
-      dot.addEventListener('click', function (e) {
-        e.stopPropagation();
-        handleDotRightClick(visualRow);
-      });
 
-      icon.appendChild(label);
-      card.appendChild(icon);
+      var icon = document.createElement('div');
+      icon.className = 'ml-rcard-icon';
+      var lbl = document.createElement('div');
+      lbl.className = 'ml-rcard-label';
+      lbl.textContent = String(pair.right || '').trim();
+      icon.appendChild(lbl);
+
       card.appendChild(dot);
+      card.appendChild(icon);
       rightColEl.appendChild(card);
     });
 
-    /* Equalize immediately, then again after all images load */
+    /* Equalize heights after render + after images load */
     equalizeRowHeights();
-    var imgs = leftColEl ? leftColEl.querySelectorAll('img') : [];
+
+    var imgs = leftColEl.querySelectorAll('img');
     if (imgs.length) {
-      var loaded = 0;
-      function onImgLoad() {
+      var loaded = 0, total = imgs.length;
+      function onLoad() {
         loaded++;
-        if (loaded >= imgs.length) { equalizeRowHeights(); drawLines(); }
+        if (loaded >= total) { equalizeRowHeights(); drawLines(); }
       }
       Array.prototype.forEach.call(imgs, function (img) {
-        if (img.complete) { onImgLoad(); }
-        else { img.addEventListener('load', onImgLoad); img.addEventListener('error', onImgLoad); }
+        if (img.complete) { onLoad(); }
+        else { img.addEventListener('load', onLoad); img.addEventListener('error', onLoad); }
       });
+    } else {
+      drawLines();
     }
   }
 
   function equalizeRowHeights() {
     if (!leftColEl || !rightColEl) return;
-    var lcards = leftColEl.querySelectorAll('.ml-lcard');
-    var rcards = rightColEl.querySelectorAll('.ml-rcard');
-    var count  = Math.min(lcards.length, rcards.length);
-    for (var i = 0; i < count; i++) {
-      /* reset first so natural height is measured */
-      lcards[i].style.minHeight = '';
-      rcards[i].style.minHeight = '';
-    }
-    for (var i = 0; i < count; i++) {
-      var h = Math.max(lcards[i].offsetHeight, rcards[i].offsetHeight);
-      lcards[i].style.minHeight = h + 'px';
-      rcards[i].style.minHeight = h + 'px';
+    var lc = leftColEl.querySelectorAll('.ml-lcard');
+    var rc = rightColEl.querySelectorAll('.ml-rcard');
+    var n  = Math.min(lc.length, rc.length);
+    /* Reset */
+    for (var i = 0; i < n; i++) { lc[i].style.minHeight = ''; rc[i].style.minHeight = ''; }
+    /* Sync */
+    for (var i = 0; i < n; i++) {
+      var h = Math.max(lc[i].offsetHeight, rc[i].offsetHeight);
+      lc[i].style.minHeight = h + 'px';
+      rc[i].style.minHeight = h + 'px';
     }
   }
 
-  /* ── Connection logic ── */
-  function handleDotLeftClick(leftIdx) {
+  /* ── Drag logic ── */
+  function startDrag(e, leftIdx) {
     if (answered) return;
+    e.preventDefault();
 
-    /* deselect previous left selection */
-    document.querySelectorAll('.ml-dot-r.ml-selected').forEach(function (d) {
-      d.classList.remove('ml-selected');
-    });
-
-    selectedLeft = leftIdx;
     var dot = leftColEl.querySelector('.ml-dot-r[data-left-idx="' + leftIdx + '"]');
-    if (dot) dot.classList.add('ml-selected');
+    if (!dot) return;
 
-    if (selectedRight !== null) {
-      tryConnect();
-    }
+    syncSvg();
+    var p = dotCenter(dot);
+    var cp = clientPoint(e);
+
+    drag = { leftIdx: leftIdx, startX: p.x, startY: p.y, curX: cp.x, curY: cp.y };
+
+    /* highlight source dot */
+    dot.classList.add('ml-dot-active');
   }
 
-  function handleDotRightClick(visualRow) {
-    if (answered) return;
-
-    /* deselect previous right selection */
-    document.querySelectorAll('.ml-dot-l.ml-selected').forEach(function (d) {
-      d.classList.remove('ml-selected');
-    });
-
-    selectedRight = visualRow;
-    var dot = rightColEl.querySelector('.ml-dot-l[data-visual-row="' + visualRow + '"]');
-    if (dot) dot.classList.add('ml-selected');
-
-    if (selectedLeft !== null) {
-      tryConnect();
-    }
+  function moveDrag(e) {
+    if (!drag) return;
+    e.preventDefault();
+    var cp = clientPoint(e);
+    drag.curX = cp.x;
+    drag.curY = cp.y;
+    updateDragLine(cp.x, cp.y);
   }
 
-  function tryConnect() {
-    if (selectedLeft === null || selectedRight === null) return;
+  function endDrag(e) {
+    if (!drag) return;
 
-    var li = selectedLeft;
-    var ri = selectedRight;
+    /* Clear temp line and dot highlight */
+    Array.prototype.forEach.call(svgEl.querySelectorAll('[data-temp]'), function (n) { n.remove(); });
+    var srcDot = leftColEl.querySelector('.ml-dot-r[data-left-idx="' + drag.leftIdx + '"]');
+    if (srcDot) srcDot.classList.remove('ml-dot-active');
 
-    /* remove any existing connection from this left item */
-    connections = connections.filter(function (c) { return c.leftIdx !== li; });
-    /* remove any existing connection from this right item */
-    connections = connections.filter(function (c) { return c.rightIdx !== ri; });
+    /* Find which right card / dot is under the pointer */
+    var cp     = clientPoint(e.changedTouches ? e : e);
+    if (e.changedTouches && e.changedTouches.length) { cp = { x: e.changedTouches[0].clientX, y: e.changedTouches[0].clientY }; }
+    var target = document.elementFromPoint(cp.x, cp.y);
+
+    /* Walk up to find .ml-rcard or .ml-dot-l */
+    var rcard = null;
+    var el = target;
+    while (el && el !== document.body) {
+      if (el.classList && (el.classList.contains('ml-rcard') || el.classList.contains('ml-dot-l'))) {
+        rcard = el.classList.contains('ml-rcard') ? el : el.closest('.ml-rcard');
+        break;
+      }
+      el = el.parentElement;
+    }
+
+    if (rcard) {
+      var visualRow = parseInt(rcard.dataset.visualRow, 10);
+      connect(drag.leftIdx, visualRow);
+    }
+
+    drag = null;
+  }
+
+  function connect(leftIdx, visualRow) {
+    /* Remove old connection from this left or this right */
+    connections = connections.filter(function (c) { return c.leftIdx !== leftIdx && c.shuffledRight !== visualRow; });
 
     var color = LINE_COLORS[connections.length % LINE_COLORS.length];
-    connections.push({ leftIdx: li, rightIdx: ri, color: color });
-
-    /* clear selection */
-    document.querySelectorAll('.ml-dot-r.ml-selected, .ml-dot-l.ml-selected').forEach(function (d) {
-      d.classList.remove('ml-selected');
-    });
-    selectedLeft  = null;
-    selectedRight = null;
+    connections.push({ leftIdx: leftIdx, shuffledRight: visualRow, color: color });
 
     drawLines();
   }
 
-  /* ── SVG bezier lines ── */
-  function drawLines() {
-    if (!svgEl) return;
-    svgEl.innerHTML = '';
+  /* ── Bind drag events to stage ── */
+  function bindDragEvents() {
+    if (!stageEl) return;
 
-    /* Sync SVG size to its parent stage */
-    var stage = svgEl.parentElement;
-    if (stage) {
-      svgEl.setAttribute('width',  stage.offsetWidth);
-      svgEl.setAttribute('height', stage.offsetHeight);
-    }
+    /* mousedown on left dot */
+    stageEl.addEventListener('mousedown', function (e) {
+      var dot = e.target.closest ? e.target.closest('.ml-dot-r') : null;
+      if (!dot) return;
+      startDrag(e, parseInt(dot.dataset.leftIdx, 10));
+    });
 
-    var svgRect = svgEl.getBoundingClientRect();
-    if (!svgRect.width || !svgRect.height) return;
+    window.addEventListener('mousemove', function (e) {
+      if (drag) moveDrag(e);
+    });
 
-    connections.forEach(function (conn) {
-      var dotR = leftColEl  ? leftColEl.querySelector('.ml-dot-r[data-left-idx="' + conn.leftIdx + '"]') : null;
-      var dotL = rightColEl ? rightColEl.querySelector('.ml-dot-l[data-visual-row="' + conn.rightIdx + '"]') : null;
-      if (!dotR || !dotL) return;
+    window.addEventListener('mouseup', function (e) {
+      if (drag) endDrag(e);
+    });
 
-      var rR = dotR.getBoundingClientRect();
-      var rL = dotL.getBoundingClientRect();
+    /* touch */
+    stageEl.addEventListener('touchstart', function (e) {
+      var dot = e.target.closest ? e.target.closest('.ml-dot-r') : null;
+      if (!dot) return;
+      startDrag(e, parseInt(dot.dataset.leftIdx, 10));
+    }, { passive: false });
 
-      var x1 = rR.left + rR.width  / 2 - svgRect.left;
-      var y1 = rR.top  + rR.height / 2 - svgRect.top;
-      var x2 = rL.left + rL.width  / 2 - svgRect.left;
-      var y2 = rL.top  + rL.height / 2 - svgRect.top;
+    window.addEventListener('touchmove', function (e) {
+      if (drag) moveDrag(e);
+    }, { passive: false });
 
-      var cx1 = x1 + 60;
-      var cx2 = x2 - 60;
-
-      var path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-      path.setAttribute('d', 'M ' + x1 + ',' + y1 + ' C ' + cx1 + ',' + y1 + ' ' + cx2 + ',' + y2 + ' ' + x2 + ',' + y2);
-      path.setAttribute('stroke', conn.overrideColor || conn.color || '#7F77DD');
-      path.setAttribute('stroke-width', '3.5');
-      path.setAttribute('fill', 'none');
-      path.setAttribute('stroke-linecap', 'round');
-      svgEl.appendChild(path);
+    window.addEventListener('touchend', function (e) {
+      if (drag) endDrag(e);
     });
   }
 
@@ -332,28 +387,20 @@ document.addEventListener('DOMContentLoaded', function () {
 
     answered = true;
 
-    /* evaluate connections */
     connections.forEach(function (conn) {
-      /* a connection is correct when leftIdx === original pair index that matches rightIdx visual row */
-      var origRight = reverseMap[conn.rightIdx]; /* which original pair is at this visual row */
-      var isCorrect = (conn.leftIdx === origRight);
-      if (isCorrect) {
-        correct++;
-        conn.overrideColor = '#22c55e';
-      } else {
-        conn.overrideColor = '#E24B4A';
-      }
+      var origRight = reverseMap[conn.shuffledRight];
+      var ok = (conn.leftIdx === origRight);
+      conn.overrideColor = ok ? '#22c55e' : '#E24B4A';
+      if (ok) correct++;
     });
 
     drawLines();
 
-    /* pts */
     var pts = Math.round((correct / total) * 1000);
     setPts(pts);
 
-    /* score */
-    var allCorrect = correct === total && connections.length === total;
-    scores[index] = allCorrect ? 1 : 0;
+    var allOk = correct === total && connections.length === total;
+    scores[index] = allOk ? 1 : 0;
 
     reviewItems[index] = {
       question:      board.prompt || ('Board ' + (index + 1)),
@@ -362,12 +409,8 @@ document.addEventListener('DOMContentLoaded', function () {
       score:         scores[index]
     };
 
-    /* feedback */
-    if (allCorrect) {
-      showFeedbackText('Perfect! 🎉', '#22c55e', true);
-    } else {
-      showFeedbackText(correct + ' / ' + total + ' correct', '#F97316', true);
-    }
+    if (allOk) { showFeedbackText('Perfect! 🎉', '#22c55e'); }
+    else        { showFeedbackText(correct + ' / ' + total + ' correct', '#F97316'); }
 
     if (checkBtn) checkBtn.disabled = true;
     if (showBtn)  showBtn.disabled  = true;
@@ -379,13 +422,11 @@ document.addEventListener('DOMContentLoaded', function () {
     if (answered) return;
     var board = boards[index] || {};
     var pairs = Array.isArray(board.pairs) ? board.pairs : [];
-
     answered = true;
     scores[index] = -1;
 
-    /* build correct connections using shuffleMap */
     connections = pairs.map(function (p, origIdx) {
-      return { leftIdx: origIdx, rightIdx: shuffleMap[origIdx], color: '#7F77DD' };
+      return { leftIdx: origIdx, shuffledRight: shuffleMap[origIdx], color: '#7F77DD' };
     });
 
     drawLines();
@@ -397,25 +438,19 @@ document.addEventListener('DOMContentLoaded', function () {
       score:         -1
     };
 
-    showFeedbackText('Answers shown', '#7F77DD', true);
+    showFeedbackText('Answers shown', '#7F77DD');
     setPts(0);
-
     if (checkBtn) checkBtn.disabled = true;
     if (showBtn)  showBtn.disabled  = true;
     if (nextBtn)  nextBtn.disabled  = false;
   }
 
-  /* ── Next ── */
+  /* ── Next / Completed ── */
   function nextBoard() {
-    if (index < boards.length - 1) {
-      index++;
-      loadBoard();
-    } else {
-      showCompleted();
-    }
+    if (index < boards.length - 1) { index++; loadBoard(); }
+    else { showCompleted(); }
   }
 
-  /* ── Completed ── */
   function showCompleted() {
     if (!completedEl) return;
     if (activityEl) activityEl.style.display = 'none';
@@ -437,18 +472,17 @@ document.addEventListener('DOMContentLoaded', function () {
     var result = AF.computeScore(scores);
     if (returnTo && activityId) {
       var sep = returnTo.indexOf('?') !== -1 ? '&' : '?';
-      fetch(returnTo + sep +
-        'activity_percent=' + result.percent +
-        '&activity_errors=' + result.wrong +
-        '&activity_total='  + result.total +
-        '&activity_id='     + encodeURIComponent(activityId) +
-        '&activity_type=matching_lines',
+      fetch(returnTo + sep
+        + 'activity_percent=' + result.percent
+        + '&activity_errors=' + result.wrong
+        + '&activity_total='  + result.total
+        + '&activity_id='     + encodeURIComponent(activityId)
+        + '&activity_type=matching_lines',
         { method: 'GET', credentials: 'same-origin', cache: 'no-store' }
       ).catch(function () {});
     }
   }
 
-  /* ── Restart ── */
   function restartActivity() {
     index       = 0;
     scores      = boards.map(function () { return 0; });
@@ -456,21 +490,19 @@ document.addEventListener('DOMContentLoaded', function () {
     loadBoard();
   }
 
-  /* ── Resize → redraw ── */
+  /* ── Resize ── */
   var resizeTimer;
   window.addEventListener('resize', function () {
     clearTimeout(resizeTimer);
-    resizeTimer = setTimeout(function () {
-      equalizeRowHeights();
-      drawLines();
-    }, 80);
+    resizeTimer = setTimeout(function () { equalizeRowHeights(); drawLines(); }, 80);
   });
 
-  /* ── Button listeners ── */
+  /* ── Button events ── */
   if (checkBtn) checkBtn.addEventListener('click', checkAnswers);
   if (showBtn)  showBtn.addEventListener('click',  showAnswers);
   if (nextBtn)  nextBtn.addEventListener('click',  nextBoard);
 
   /* ── Boot ── */
+  bindDragEvents();
   loadBoard();
 });

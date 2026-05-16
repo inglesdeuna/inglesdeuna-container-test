@@ -186,7 +186,7 @@ body { margin: 0 !important; padding: 0 !important; background: #fff !important;
     box-sizing: border-box;
 }
 .ml-app {
-    width: min(780px, 100%);
+    width: min(960px, 100%);
     margin: 0 auto;
 }
 
@@ -306,7 +306,7 @@ body { margin: 0 !important; padding: 0 !important; background: #fff !important;
 /* ── Stage ── */
 .ml-stage {
     display: flex;
-    gap: 44px;
+    gap: 18px;
     position: relative;
     margin-bottom: 16px;
     align-items: flex-start;
@@ -380,24 +380,29 @@ body { margin: 0 !important; padding: 0 !important; background: #fff !important;
 /* Connection dots */
 .ml-dot-r {
     position: absolute;
-    right: -7px;
+    right: -8px;
     top: 50%;
     transform: translateY(-50%);
-    width: 14px;
-    height: 14px;
+    width: 16px;
+    height: 16px;
     border-radius: 50%;
     background: #7F77DD;
-    cursor: pointer;
-    z-index: 2;
+    cursor: crosshair;
+    z-index: 3;
     transition: background .15s, transform .15s;
+    user-select: none;
+}
+.ml-dot-r.ml-dot-active {
+    background: #F97316;
+    transform: translateY(-50%) scale(1.3);
 }
 .ml-dot-l {
     position: absolute;
-    left: -7px;
+    left: -8px;
     top: 50%;
     transform: translateY(-50%);
-    width: 14px;
-    height: 14px;
+    width: 16px;
+    height: 16px;
     border-radius: 50%;
     background: #7F77DD;
     cursor: pointer;
