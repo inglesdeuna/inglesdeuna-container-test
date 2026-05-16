@@ -23,6 +23,13 @@ document.addEventListener('DOMContentLoaded', function () {
   var completedEl     = document.getElementById('ml-completed');
   var stageEl         = svgEl ? svgEl.parentElement : null;
   var winAudio        = new Audio('../../hangman/assets/win.mp3');
+  var dropAudio       = new Audio('../../hangman/assets/pageflip.mp3');
+  var correctAudio    = new Audio('../../hangman/assets/realcorrect.mp3');
+  var wrongAudio      = new Audio('../../hangman/assets/lose.mp3');
+
+  function playSound(aud) {
+    try { aud.pause(); aud.currentTime = 0; aud.play(); } catch (e) {}
+  }
 
   if (!boards.length) {
     if (feedbackEl) feedbackEl.textContent = 'No boards available.';
@@ -339,6 +346,7 @@ document.addEventListener('DOMContentLoaded', function () {
     var color = LINE_COLORS[connections.length % LINE_COLORS.length];
     connections.push({ leftIdx: leftIdx, shuffledRight: visualRow, color: color });
 
+    playSound(dropAudio);
     drawLines();
   }
 
@@ -387,11 +395,15 @@ document.addEventListener('DOMContentLoaded', function () {
 
     answered = true;
 
-    connections.forEach(function (conn) {
+    connections.forEach(function (conn, ci) {
       var origRight = reverseMap[conn.shuffledRight];
       var ok = (conn.leftIdx === origRight);
       conn.overrideColor = ok ? '#22c55e' : '#E24B4A';
       if (ok) correct++;
+      /* stagger sounds slightly so they don't all fire at once */
+      setTimeout(function () {
+        playSound(ok ? correctAudio : wrongAudio);
+      }, ci * 180);
     });
 
     drawLines();
