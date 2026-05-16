@@ -60,6 +60,7 @@ $activityTypes = [
     "writing_practice" => "Writing Practice",
     "question_answer" => "Question Answer",
     "roleplay" => "Roleplay",
+    "roleplay_kids" => "Roleplay (Kids)",
 ];
 
 /* ===============================
