@@ -139,15 +139,15 @@
 }
 
 .mc-option.correct{
-  border-color: #166534;
-  background: #dcfce7;
-  color: #166534;
+  border-color: #22c55e;
+  background: #f0fdf4;
+  color: #15803d;
 }
 
 .mc-option.wrong{
-  border-color: #b91c1c;
-  background: #fee2e2;
-  color: #991b1b;
+  border-color: #ef4444;
+  background: #fef2f2;
+  color: #b91c1c;
 }
 
 .mc-controls{
@@ -207,11 +207,11 @@
 }
 
 .mc-feedback.good{
-  color: #166534;
+  color: #0F6E56;
 }
 
 .mc-feedback.bad{
-  color: #b91c1c;
+  color: #B91C1C;
 }
 
 .mc-feedback.completed{
