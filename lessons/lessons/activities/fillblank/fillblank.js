@@ -100,15 +100,15 @@ document.addEventListener('DOMContentLoaded', function () {
   function attachInputListeners() {
     var inputs = sentenceEl.querySelectorAll('.fb-input');
     inputs.forEach(function (input, idx) {
-      input.addEventListener('keypress', function (e) {
-        if (e.key === 'Enter') {
-          checkAnswer();
-        }
-      });
-      
-      if (idx === 0) {
-        setTimeout(function () { input.focus(); }, 0);
+      function resize() {
+        input.style.width = Math.max(60, Math.min(200, input.value.length * 11 + 24)) + 'px';
       }
+      input.addEventListener('input', resize);
+      input.addEventListener('keypress', function (e) {
+        if (e.key === 'Enter') { checkAnswer(); }
+      });
+      resize();
+      if (idx === 0) { setTimeout(function () { input.focus(); }, 0); }
     });
   }
 

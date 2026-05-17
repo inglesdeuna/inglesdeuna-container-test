@@ -266,18 +266,28 @@ body { margin: 0 !important; padding: 0 !important; background: #fff !important;
     border: none;
     border-bottom: 2.5px solid var(--purple);
     background: transparent;
-    padding: 2px 8px;
+    padding: 2px 4px;
     font-size: 16px;
     font-weight: 600;
     font-family: 'Nunito', sans-serif;
     color: var(--medium-purple);
     outline: none;
     text-align: center;
-    min-width: 110px;
+    min-width: 60px;
+    width: auto;
+    max-width: 200px;
     height: 28px;
     margin: 0 6px;
     vertical-align: bottom;
     transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+@media (max-width: 640px) {
+    .fb-input {
+        font-size: 14px;
+        min-width: 48px;
+        max-width: 140px;
+    }
 }
 
 .fb-input:focus {
