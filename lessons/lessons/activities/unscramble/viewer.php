@@ -274,46 +274,55 @@ body { margin: 0 !important; padding: 0 !important; background: #fff !important;
     margin-bottom: 16px;
 }
 
-/* Chips */
+/* ── Option B chip style — pastel fill, pill shape, no shadow ── */
+.us-word,
+.us-answer-word {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px 18px;
+    border-radius: 999px;
+    font-family: 'Nunito', sans-serif;
+    font-size: clamp(14px, 1.8vw, 16px);
+    font-weight: 900;
+    cursor: pointer;
+    user-select: none;
+    transition: transform .12s, opacity .12s;
+    border: 1px solid #d8d3f5;
+    background: #EEEDFE;
+    color: #534AB7;
+    box-shadow: none;
+}
+.us-word:hover    { transform: translateY(-2px); }
+.us-answer-word:hover { transform: translateY(-2px); }
+.us-answer-word {
+    background: #FFF0E6;
+    border-color: #FCDDBF;
+    color: #C2580A;
+}
+
+/* Legacy chip classes (kept for backwards compat) */
 .us-chip {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    padding: 12px 18px;
+    padding: 8px 18px;
     border-radius: 999px;
     font-family: 'Nunito', sans-serif;
-    font-size: clamp(16px, 2vw, 19px);
+    font-size: clamp(14px, 1.8vw, 16px);
     font-weight: 900;
-    cursor: grab;
+    cursor: pointer;
     user-select: none;
-    transition: transform .12s, box-shadow .12s;
+    background: #EEEDFE;
+    border: 1px solid #d8d3f5;
+    color: #534AB7;
+    box-shadow: none;
+    transition: transform .12s;
 }
-.us-chip:active { cursor: grabbing; }
-.us-chip--bank {
-    background: var(--purple);
-    color: #fff;
-    border: 2px solid var(--purple);
-    box-shadow: 0 8px 20px rgba(127,119,221,.18);
-}
-.us-chip--bank:hover { transform: translateY(-2px); }
-.us-chip--built {
-    background: var(--purple-dark);
-    color: #fff;
-    border: 2px solid var(--purple-dark);
-    box-shadow: 0 8px 20px rgba(127,119,221,.18);
-}
-.us-chip--correct {
-    background: #fff;
-    border: 2px solid #22c55e;
-    color: #166534;
-    cursor: default;
-}
-.us-chip--wrong {
-    background: #fff;
-    border: 2px solid #ef4444;
-    color: #991b1b;
-    cursor: default;
-}
+.us-chip--bank  { background: #EEEDFE; border-color: #d8d3f5; color: #534AB7; }
+.us-chip--built { background: #FFF0E6; border-color: #FCDDBF; color: #C2580A; }
+.us-chip--correct { background: #f0fdf4 !important; border-color: #22c55e !important; color: #166534 !important; cursor: default; }
+.us-chip--wrong   { background: #fef2f2 !important; border-color: #ef4444 !important; color: #991b1b !important; cursor: default; }
 
 /* Buttons */
 .us-actions {
