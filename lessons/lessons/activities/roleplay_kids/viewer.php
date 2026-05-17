@@ -2,8 +2,9 @@
 require_once __DIR__ . '/../../config/db.php';
 require_once __DIR__ . '/../../core/_activity_viewer_template.php';
 
-$activityId  = isset($_GET['id'])   ? trim((string) $_GET['id'])   : '';
-$mode        = isset($_GET['mode']) ? trim((string) $_GET['mode']) : '';
+$activityId  = isset($_GET['id'])        ? trim((string) $_GET['id'])        : '';
+$mode        = isset($_GET['mode'])      ? trim((string) $_GET['mode'])      : '';
+$returnTo    = isset($_GET['return_to']) ? trim((string) $_GET['return_to']) : '';
 $allowEditor = ($mode === 'edit');
 $startView   = $allowEditor ? 'editor' : 'player';
 
@@ -44,12 +45,14 @@ ob_start();
 
 <script>
 window.RK_ACTIVITY_ID  = <?= json_encode($activityId) ?>;
+window.RK_RETURN_TO    = <?= json_encode($returnTo) ?>;
 window.RK_SAVED_SCENE  = <?= json_encode($savedScene) ?>;
 window.RK_SAVED_TURNS  = <?= json_encode($savedTurns) ?>;
 window.RK_ALLOW_EDITOR = <?= json_encode($allowEditor) ?>;
 window.RK_START_VIEW   = <?= json_encode($startView) ?>;
 </script>
 
+<script src="../../core/_activity_feedback.js"></script>
 <script type="text/babel">
 const { useState, useRef, useEffect, useCallback } = React;
 
@@ -199,7 +202,7 @@ function SceneImageUpload({ value, onChange }) {
 
   return (
     <div>
-      {/* Drop zone */}
+      {/* Drop zone — 0.2cm margin on all sides */}
       <div
         onClick={() => !uploading && inputRef.current && inputRef.current.click()}
         onDragOver={e => e.preventDefault()}
@@ -209,6 +212,7 @@ function SceneImageUpload({ value, onChange }) {
           borderRadius: 14, padding: "14px 16px", cursor: uploading ? "default" : "pointer",
           background: value ? C.orangeSoft : "#FAFAFE",
           display: "flex", alignItems: "center", gap: 14, transition: "all .15s",
+          margin: "0.2cm",
         }}
       >
         {value ? (
@@ -412,16 +416,19 @@ function PlayerView({ scene: sc, turns, activityId }) {
 
   // phase: "avatar" | "playing" | "done"
   // subPhase: "teacher" | "writing" | "recording" | "feedback"
-  const [phase,      setPhase]      = useState("avatar");
-  const [subPhase,   setSubPhase]   = useState("teacher");
-  const [avatarId,   setAvatarId]   = useState(null);
-  const [turnIndex,  setTurnIndex]  = useState(0);
-  const [pts,        setPts]        = useState(0);
-  const [written,    setWritten]    = useState("");
-  const [micState,   setMicState]   = useState("idle");
-  const [transcript, setTranscript] = useState("");
-  const [pronScore,  setPronScore]  = useState(null);
-  const recRef = useRef(null);
+  const [phase,       setPhase]      = useState("avatar");
+  const [subPhase,    setSubPhase]   = useState("teacher");
+  const [avatarId,    setAvatarId]   = useState(null);
+  const [turnIndex,   setTurnIndex]  = useState(0);
+  const [pts,         setPts]        = useState(0);
+  const [written,     setWritten]    = useState("");
+  const [micState,    setMicState]   = useState("idle");
+  const [transcript,  setTranscript] = useState("");
+  const [pronScore,   setPronScore]  = useState(null);
+  const [turnScores,  setTurnScores] = useState([]);
+  const [reviewItems, setReviewItems]= useState([]);
+  const completedRef = useRef(null);
+  const recRef       = useRef(null);
 
   const turn        = safeT[turnIndex] || { teacherLine: "", studentLine: "" };
   const avatarLabel = AVATARS.find(a => a.id === avatarId)?.label || "You";
@@ -466,7 +473,7 @@ function PlayerView({ scene: sc, turns, activityId }) {
     setMicState("idle");
   }
 
-  // ── Client-side pronunciation scoring (same as pronunciation activity) ──
+  // ── Client-side pronunciation scoring ────────────────────────
   function normalizeStr(s) {
     return String(s || "").toLowerCase().trim()
       .replace(/[.,!?;:'"]/g, "").replace(/\s+/g, " ");
@@ -479,14 +486,22 @@ function PlayerView({ scene: sc, turns, activityId }) {
     return matches / Math.max(wa.length, wb.length);
   }
   function scorePronunciation(text, expected) {
-    const said = normalizeStr(text);
-    const exp  = normalizeStr(expected);
+    const said    = normalizeStr(text);
+    const exp     = normalizeStr(expected);
     const overlap = wordOverlapScore(said, exp);
     const score   = Math.round(overlap * 100);
+    const pass    = score >= 50 ? 1 : 0;
     setPts(prev => prev + score);
     setPronScore(score);
     setMicState("idle");
     setSubPhase("feedback");
+    setTurnScores(prev => [...prev, pass]);
+    setReviewItems(prev => [...prev, {
+      question:      turn.teacherLine || ("Turn " + (turnIndex + 1)),
+      yourAnswer:    text || "(no recording)",
+      correctAnswer: expected,
+      score:         pass,
+    }]);
   }
 
   function goToNextTurn() {
@@ -499,9 +514,39 @@ function PlayerView({ scene: sc, turns, activityId }) {
     }
   }
 
+  // ── AF.showCompleted when done ────────────────────────────────
+  useEffect(() => {
+    if (phase !== "done" || !completedRef.current) return;
+    const AF = window.ActivityFeedback;
+    if (!AF) return;
+    const winAudio  = new Audio("../../hangman/assets/win.mp3");
+    const returnTo  = window.RK_RETURN_TO  || "";
+    const actId     = window.RK_ACTIVITY_ID || "";
+    const snapScores = turnScores.slice();
+    AF.showCompleted({
+      target:        completedRef.current,
+      scores:        snapScores,
+      title:         scene.title || "Roleplay Kids",
+      activityType:  "Roleplay (Kids)",
+      questionCount: total,
+      winAudio:      winAudio,
+      onRetry:       handleRestart,
+      onReview: function () {
+        AF.showReview({ target: completedRef.current, items: reviewItems, onRetry: handleRestart });
+      },
+    });
+    const result = AF.computeScore(snapScores);
+    if (returnTo && actId) {
+      const sep = returnTo.includes("?") ? "&" : "?";
+      fetch(returnTo + sep + "activity_percent=" + result.percent + "&activity_errors=" + result.wrong + "&activity_total=" + result.total + "&activity_id=" + encodeURIComponent(actId) + "&activity_type=roleplay_kids",
+        { method: "GET", credentials: "same-origin", cache: "no-store" }).catch(() => {});
+    }
+  }, [phase]);
+
   function handleRestart() {
     setPhase("avatar"); setAvatarId(null); setTurnIndex(0); setPts(0);
-    setSubPhase("teacher"); setWritten(""); setTranscript(""); setPronScore(null); setMicState("idle");
+    setSubPhase("teacher"); setWritten(""); setTranscript(""); setPronScore(null);
+    setMicState("idle"); setTurnScores([]); setReviewItems([]);
   }
 
   function startPlaying() { setPhase("playing"); setSubPhase("teacher"); }
@@ -564,40 +609,10 @@ function PlayerView({ scene: sc, turns, activityId }) {
   );
 
   // ════════════════════════════════════════════════════════════
-  // DONE SCREEN
+  // DONE — AF.showCompleted populates this div via useEffect
   // ════════════════════════════════════════════════════════════
   if (phase === "done") return (
-    <div style={{ maxWidth: 500, margin: "0 auto", padding: "28px 16px", textAlign: "center" }}>
-      <div style={{
-        background: "linear-gradient(160deg,#EEEDFE,#FFF0E6)", borderRadius: 24,
-        padding: "40px 28px", marginBottom: 20,
-        boxShadow: "0 8px 32px rgba(127,119,221,.14)",
-      }}>
-        <div style={{ fontSize: 64, marginBottom: 12 }}>🎉</div>
-        <h2 style={{
-          fontFamily: "'Fredoka',sans-serif", fontSize: "clamp(26px,5vw,38px)",
-          fontWeight: 700, color: C.purple, marginBottom: 12,
-        }}>Great job!</h2>
-        <div style={{ marginBottom: 20 }}>
-          <div style={{ fontSize: 13, fontWeight: 800, color: C.muted, textTransform: "uppercase",
-            letterSpacing: ".06em", marginBottom: 4 }}>Total Score</div>
-          <div style={{
-            display: "inline-block", background: C.orangeSoft, border: `1.5px solid ${C.orangeBorder}`,
-            borderRadius: 999, padding: "8px 24px",
-            fontFamily: "'Fredoka',sans-serif", fontSize: 32, fontWeight: 700, color: C.orange,
-          }}>{pts} pts</div>
-        </div>
-        <p style={{ fontSize: 14, fontWeight: 700, color: C.muted }}>
-          You completed {total} {total === 1 ? "turn" : "turns"}. Keep practicing!
-        </p>
-      </div>
-      <button onClick={handleRestart} style={{
-        background: C.orange, color: C.white, border: "none", borderRadius: 999,
-        padding: "13px 36px", fontFamily: "'Nunito',sans-serif",
-        fontWeight: 900, fontSize: 15, cursor: "pointer",
-        boxShadow: "0 6px 18px rgba(249,115,22,.28)",
-      }}>Try Again ↺</button>
-    </div>
+    <div ref={completedRef} style={{ maxWidth: 760, margin: "0 auto", padding: "20px 16px" }}></div>
   );
 
   // ════════════════════════════════════════════════════════════
@@ -623,10 +638,10 @@ function PlayerView({ scene: sc, turns, activityId }) {
   );
 
   return (
-    <div style={{ maxWidth: 640, margin: "0 auto", padding: "16px" }}>
+    <div style={{ maxWidth: 820, margin: "0 auto", padding: "16px" }}>
       <div style={{
         background: C.white, border: `1px solid #F0EEF8`, borderRadius: 34,
-        boxShadow: "0 8px 40px rgba(127,119,221,.13)", padding: "18px 18px 20px",
+        boxShadow: "0 8px 40px rgba(127,119,221,.13)", padding: "20px 22px 22px",
       }}>
 
         {/* Header */}
@@ -645,7 +660,7 @@ function PlayerView({ scene: sc, turns, activityId }) {
         </div>
 
         {/* Scene card */}
-        <div style={{ position: "relative", borderRadius: 20, height: 170, overflow: "hidden", marginBottom: 16, background: scene.sceneImage ? "transparent" : "linear-gradient(160deg,#EDE9FA,#FFF0E6)" }}>
+        <div style={{ position: "relative", borderRadius: 20, height: 220, overflow: "hidden", marginBottom: 16, background: scene.sceneImage ? "transparent" : "linear-gradient(160deg,#EDE9FA,#FFF0E6)" }}>
           {scene.sceneImage && <img src={scene.sceneImage} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
 
           {/* Teacher speech bubble */}
