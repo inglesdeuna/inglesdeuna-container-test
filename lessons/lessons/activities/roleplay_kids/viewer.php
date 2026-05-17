@@ -415,7 +415,7 @@ function PlayerView({ scene: sc, turns, activityId }) {
   const safeT = (turns && turns.length) ? turns : DEFAULT_TURNS;
 
   // phase: "avatar" | "playing" | "done"
-  // subPhase: "teacher" | "writing" | "recording" | "feedback"
+  // subPhase: "teacher" | "feedback"
   const [phase,       setPhase]      = useState("avatar");
   const [subPhase,    setSubPhase]   = useState("teacher");
   const [avatarId,    setAvatarId]   = useState(null);
@@ -427,6 +427,8 @@ function PlayerView({ scene: sc, turns, activityId }) {
   const [pronScore,   setPronScore]  = useState(null);
   const [turnScores,  setTurnScores] = useState([]);
   const [reviewItems, setReviewItems]= useState([]);
+  const [ttsPlaying,  setTtsPlaying] = useState(false);
+  const [showTyping,  setShowTyping] = useState(false);
   const completedRef = useRef(null);
   const recRef       = useRef(null);
 
@@ -440,8 +442,12 @@ function PlayerView({ scene: sc, turns, activityId }) {
   // ── Auto-play teacher when turn starts ───────────────────────
   useEffect(() => {
     if (phase === "playing" && subPhase === "teacher" && turn.teacherLine) {
-      playElevenLabs(turn.teacherLine, voiceId, null, null);
+      setTtsPlaying(true);
+      playElevenLabs(turn.teacherLine, voiceId,
+        () => setTtsPlaying(false),
+        () => setTtsPlaying(false));
     }
+    if (subPhase !== "teacher") setTtsPlaying(false);
   }, [turnIndex, phase, subPhase]);
 
   // ── Mic ──────────────────────────────────────────────────────
@@ -506,12 +512,57 @@ function PlayerView({ scene: sc, turns, activityId }) {
 
   function goToNextTurn() {
     setWritten(""); setTranscript(""); setPronScore(null); setMicState("idle");
+    setShowTyping(false);
     if (turnIndex < total - 1) {
       setTurnIndex(i => i + 1);
       setSubPhase("teacher");
     } else {
       setPhase("done");
     }
+  }
+
+  function scoreWritten(text) {
+    if (!text.trim()) return;
+    const said    = normalizeStr(text);
+    const exp     = normalizeStr(turn.studentLine);
+    const overlap = wordOverlapScore(said, exp);
+    const score   = Math.round(overlap * 100);
+    const pass    = score >= 50 ? 1 : 0;
+    setPts(prev => prev + score);
+    setPronScore(score);
+    setTranscript("");
+    setMicState("idle");
+    setSubPhase("feedback");
+    setTurnScores(prev => [...prev, pass]);
+    setReviewItems(prev => [...prev, {
+      question:      turn.teacherLine || ("Turn " + (turnIndex + 1)),
+      yourAnswer:    text,
+      correctAnswer: turn.studentLine,
+      score:         pass,
+    }]);
+  }
+
+  function handleNext() {
+    if (subPhase === "feedback") { goToNextTurn(); return; }
+    if (showTyping && written.trim()) { scoreWritten(written); return; }
+    setTurnScores(prev => [...prev, 0]);
+    setReviewItems(prev => [...prev, {
+      question: turn.teacherLine || ("Turn " + (turnIndex + 1)),
+      yourAnswer: "(skipped)", correctAnswer: turn.studentLine, score: 0,
+    }]);
+    goToNextTurn();
+  }
+
+  function replayTTS() {
+    setTtsPlaying(true);
+    playElevenLabs(turn.teacherLine, voiceId,
+      () => setTtsPlaying(false),
+      () => setTtsPlaying(false));
+  }
+
+  function stopTTS() {
+    if (currentAudioRef) { currentAudioRef.pause(); currentAudioRef = null; }
+    setTtsPlaying(false);
   }
 
   // ── AF.showCompleted when done ────────────────────────────────
@@ -616,199 +667,316 @@ function PlayerView({ scene: sc, turns, activityId }) {
   );
 
   // ════════════════════════════════════════════════════════════
-  // PLAYING SCREEN
+  // PLAYING SCREEN — redesigned
   // ════════════════════════════════════════════════════════════
-  const btn = (label, onClick, bg = C.orange, disabled = false, extra = {}) => (
+  const voiceLabelShort = (VOICES.find(v => v.id === voiceId)?.label || "Adult Male")
+    .split("(")[0].trim();
+  const agentInitial  = (scene.agentName || "T")[0].toUpperCase();
+  const studentInitial = (avatarLabel || "Y")[0].toUpperCase();
+
+  const outlinedBtn = (label, onClick, disabled = false) => (
     <button onClick={onClick} disabled={disabled} style={{
-      flex: 1, minWidth: 110, padding: "11px 10px", border: "none",
-      borderRadius: 999, background: disabled ? C.purpleSoft : bg, color: disabled ? C.muted : C.white,
-      fontFamily: "'Nunito',sans-serif", fontWeight: 900, fontSize: 13,
-      cursor: disabled ? "default" : "pointer",
-      boxShadow: disabled ? "none" : `0 4px 14px rgba(0,0,0,.12)`,
-      transition: "all .15s", ...extra,
-    }}>{label}</button>
-  );
-  const ghostBtn = (label, onClick) => (
-    <button onClick={onClick} style={{
-      flex: 1, minWidth: 110, padding: "11px 10px",
-      border: `1.5px solid ${C.purpleBorder}`, borderRadius: 999,
-      background: C.white, color: C.purple,
-      fontFamily: "'Nunito',sans-serif", fontWeight: 900, fontSize: 13, cursor: "pointer",
+      padding: "9px 18px", border: `1.5px solid ${disabled ? C.purpleBorder : C.purpleBorder}`,
+      borderRadius: 999, background: disabled ? "#fafafe" : C.white,
+      color: disabled ? C.muted : C.purpleDark,
+      fontFamily: "'Nunito',sans-serif", fontWeight: 800, fontSize: 13,
+      cursor: disabled ? "default" : "pointer", transition: "all .15s",
     }}>{label}</button>
   );
 
   return (
-    <div style={{ maxWidth: 960, margin: "0 auto", padding: "16px" }}>
+    <div style={{ maxWidth: 640, margin: "0 auto", padding: "20px 16px 24px" }}>
+
+      {/* ── Hero ── */}
+      <div style={{ textAlign: "center", marginBottom: 20 }}>
+        <div style={{
+          display: "inline-flex", alignItems: "center", padding: "5px 14px",
+          borderRadius: 999, background: C.orangeSoft, border: `1px solid ${C.orangeBorder}`,
+          color: C.orangeDark, fontSize: 11, fontWeight: 900,
+          letterSpacing: ".08em", textTransform: "uppercase", marginBottom: 10,
+        }}>ACTIVITY</div>
+        <h1 style={{
+          fontFamily: "'Fredoka',sans-serif", fontSize: "clamp(32px,6vw,44px)",
+          fontWeight: 700, color: C.orange, margin: "0 0 6px", lineHeight: 1.05,
+        }}>{scene.title || "Roleplay"}</h1>
+        <p style={{ fontSize: 15, fontWeight: 700, color: C.muted, margin: 0 }}>
+          {scene.desc || "Practice real conversations in English."}
+        </p>
+      </div>
+
+      {/* ── Main card ── */}
       <div style={{
-        background: C.white, border: `1px solid #F0EEF8`, borderRadius: 34,
-        boxShadow: "0 8px 40px rgba(127,119,221,.13)", padding: "20px 22px 22px",
+        background: C.white, border: `1px solid #EDE9FA`,
+        borderRadius: 24, boxShadow: "0 8px 40px rgba(127,119,221,.12)",
+        overflow: "hidden",
       }}>
 
-        {/* Header */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-          <div style={{ background: C.purpleSoft, border: `1px solid ${C.purpleBorder}`, borderRadius: 999, padding: "5px 14px", fontSize: 12, fontWeight: 800, color: C.purpleDark }}>
-            Turn {turnIndex + 1} / {total}
-          </div>
-          <div style={{ background: C.orangeSoft, border: `1.5px solid ${C.orangeBorder}`, borderRadius: 999, padding: "5px 14px", fontFamily: "'Fredoka',sans-serif", fontSize: 16, fontWeight: 700, color: C.orange }}>
-            {pts} pts
-          </div>
-        </div>
-
-        {/* Progress bar */}
-        <div style={{ height: 12, background: "#F4F2FD", border: "1px solid #E4E1F8", borderRadius: 999, overflow: "hidden", marginBottom: 14 }}>
-          <div style={{ height: "100%", width: `${pct}%`, background: `linear-gradient(90deg,${C.orange},${C.purple})`, borderRadius: 999, transition: "width .4s" }} />
-        </div>
-
-        {/* Scene card — image shows full size, avatars overlay at bottom */}
+        {/* Top bar */}
         <div style={{
-          position: "relative", borderRadius: 20, marginBottom: 16, overflow: "hidden",
-          background: "linear-gradient(160deg,#EDE9FA,#FFF0E6)",
-          minHeight: 120,
+          display: "flex", alignItems: "center", gap: 8,
+          padding: "12px 16px", borderBottom: `1px solid #F0EEF8`,
         }}>
-          {scene.sceneImage && (
-            <img src={scene.sceneImage} alt="" style={{
-              width: "100%", height: "auto", display: "block",
-              objectFit: "contain", borderRadius: 20,
+          <button onClick={handleRestart} style={{
+            display: "flex", alignItems: "center", gap: 6,
+            padding: "7px 14px", border: `1.5px solid #E4E0F8`,
+            borderRadius: 999, background: C.white, color: C.ink,
+            fontFamily: "'Nunito',sans-serif", fontWeight: 800, fontSize: 13,
+            cursor: "pointer",
+          }}>◁ Back</button>
+          <span style={{ fontWeight: 800, fontSize: 16, color: C.orange }}>
+            {scene.title || "Roleplay"}
+          </span>
+          <div style={{ marginLeft: "auto", display: "flex", gap: 8, alignItems: "center" }}>
+            <div style={{
+              display: "flex", alignItems: "center", gap: 4,
+              padding: "6px 12px", border: `1.5px solid #E4E0F8`,
+              borderRadius: 999, fontSize: 12, fontWeight: 800, color: C.ink,
+            }}>
+              <span style={{ fontSize: 10, color: C.muted }}>□</span> {voiceLabelShort} <span style={{ fontSize: 10, color: C.muted }}>□</span>
+            </div>
+            <div style={{
+              background: C.purple, color: C.white,
+              borderRadius: 999, padding: "6px 14px",
+              fontSize: 12, fontWeight: 900,
+            }}>Turn {turnIndex + 1} / {total}</div>
+          </div>
+        </div>
+
+        {/* Scene bar */}
+        <div style={{
+          display: "flex", justifyContent: "space-between", alignItems: "center",
+          padding: "8px 16px", background: C.orangeSoft,
+          borderBottom: `1px solid ${C.orangeBorder}`,
+        }}>
+          <span style={{ display: "flex", alignItems: "center", gap: 6, fontWeight: 800, fontSize: 13, color: C.orangeDark }}>
+            <span style={{ fontSize: 10 }}>□</span>
+            {scene.title || "Scene"}{scene.desc ? ` — ${scene.desc}` : ""}
+          </span>
+          <span style={{ fontSize: 12, fontWeight: 700, color: C.orangeDark }}>
+            {scene.agentName || "Teacher"} · Teacher | {avatarLabel} · You
+          </span>
+        </div>
+
+        {/* Progress row */}
+        <div style={{
+          display: "flex", alignItems: "center", gap: 10,
+          padding: "10px 16px", borderBottom: `1px solid #F0EEF8`,
+        }}>
+          <span style={{ fontSize: 12, fontWeight: 800, color: C.muted, minWidth: 30 }}>
+            {turnIndex + 1} / {total}
+          </span>
+          <div style={{ flex: 1, height: 10, background: "#F4F2FD", borderRadius: 999, overflow: "hidden" }}>
+            <div style={{
+              height: "100%", width: `${pct}%`,
+              background: `linear-gradient(90deg,${C.orange},${C.purple})`,
+              borderRadius: 999, transition: "width .4s",
             }} />
+          </div>
+          <div style={{
+            background: C.purple, color: C.white, borderRadius: 999,
+            padding: "5px 12px", fontSize: 12, fontWeight: 900,
+          }}>Turn {turnIndex + 1} of {total}</div>
+        </div>
+
+        {/* Content */}
+        <div style={{ padding: "14px 16px 0" }}>
+
+          {/* Teacher dialog card */}
+          <div style={{
+            background: "#F5F3FF", border: `1px solid ${C.purpleBorder}`,
+            borderRadius: 18, padding: "14px 16px", marginBottom: 10,
+          }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
+              <div style={{
+                width: 42, height: 42, borderRadius: "50%",
+                background: C.purpleSoft, border: `2px solid ${C.purple}`,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                fontWeight: 900, fontSize: 18, color: C.purpleDark, flexShrink: 0,
+              }}>{agentInitial}</div>
+              <div>
+                <div style={{ fontWeight: 800, fontSize: 14, color: C.purpleDark }}>
+                  {scene.agentName || "Teacher"}
+                </div>
+                <div style={{ fontSize: 10, fontWeight: 900, color: C.muted, textTransform: "uppercase", letterSpacing: ".06em" }}>
+                  TEACHER
+                </div>
+              </div>
+              <div style={{ marginLeft: "auto" }}>
+                {ttsPlaying ? (
+                  <button onClick={stopTTS} style={{
+                    display: "flex", alignItems: "center", gap: 5,
+                    padding: "6px 12px", border: `1.5px solid #E4E0F8`,
+                    borderRadius: 999, background: C.white, color: C.ink,
+                    fontFamily: "'Nunito',sans-serif", fontWeight: 800, fontSize: 12,
+                    cursor: "pointer",
+                  }}>■ Playing…</button>
+                ) : (
+                  <button onClick={replayTTS} style={{
+                    display: "flex", alignItems: "center", gap: 5,
+                    padding: "6px 12px", border: `1.5px solid #E4E0F8`,
+                    borderRadius: 999, background: C.white, color: C.muted,
+                    fontFamily: "'Nunito',sans-serif", fontWeight: 800, fontSize: 12,
+                    cursor: "pointer",
+                  }}>▶ Play</button>
+                )}
+              </div>
+            </div>
+            <div style={{ fontWeight: 800, fontSize: 15, color: C.ink, lineHeight: 1.55 }}>
+              {turn.teacherLine || "…"}
+            </div>
+          </div>
+
+          {/* Hint card — shown when not yet in feedback */}
+          {turn.studentLine && subPhase !== "feedback" && (
+            <div style={{
+              background: "#FFF7ED", border: `1px solid ${C.orangeBorder}`,
+              borderRadius: 14, padding: "11px 16px", marginBottom: 10,
+            }}>
+              <div style={{ fontSize: 10, fontWeight: 900, color: C.orange, textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 4 }}>
+                HINT
+              </div>
+              <div style={{ fontWeight: 800, fontSize: 14, color: C.orangeDark, lineHeight: 1.5 }}>
+                {turn.studentLine}
+              </div>
+            </div>
           )}
 
-          {/* Teacher speech bubble */}
-          <div style={{
-            position: "absolute", top: 10, right: 90,
-            background: C.white, borderRadius: "14px 14px 4px 14px",
-            padding: "8px 12px", maxWidth: 200,
-            boxShadow: "0 4px 14px rgba(0,0,0,.12)",
-            fontSize: 12, fontFamily: "'Fredoka',sans-serif",
-            fontWeight: 600, color: C.purpleDark, lineHeight: 1.4,
+          {/* Feedback section */}
+          {subPhase === "feedback" && (
+            <div style={{ marginBottom: 10 }}>
+              {(written.trim() || transcript) && (
+                <div style={{ background: C.purpleSoft, borderLeft: `3px solid ${C.purple}`, borderRadius: 12, padding: "10px 14px", marginBottom: 8 }}>
+                  <div style={{ fontSize: 10, fontWeight: 900, color: C.purple, textTransform: "uppercase", marginBottom: 4 }}>
+                    {transcript ? "You said" : "You wrote"}
+                  </div>
+                  <div style={{ fontFamily: "'Fredoka',sans-serif", fontSize: 14, fontWeight: 600, color: C.ink }}>
+                    "{transcript || written}"
+                  </div>
+                </div>
+              )}
+              <div style={{ background: C.orangeSoft, borderLeft: `3px solid ${C.orange}`, borderRadius: 12, padding: "10px 14px", marginBottom: 8 }}>
+                <div style={{ fontSize: 10, fontWeight: 900, color: C.orange, textTransform: "uppercase", marginBottom: 4 }}>Correct answer</div>
+                <div style={{ fontFamily: "'Fredoka',sans-serif", fontSize: 14, fontWeight: 600, color: C.orangeDark }}>{turn.studentLine}</div>
+              </div>
+              {pronScore !== null && (
+                <div style={{ background: C.purpleSoft, borderRadius: 12, padding: "10px 14px", marginBottom: 4 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                    <div style={{ fontSize: 11, fontWeight: 900, color: C.muted, textTransform: "uppercase" }}>Score</div>
+                    <div style={{ fontFamily: "'Fredoka',sans-serif", fontSize: 18, fontWeight: 700, color: C.orange }}>{pronScore} pts</div>
+                  </div>
+                  <div style={{ height: 8, background: "#F4F2FD", borderRadius: 999, overflow: "hidden" }}>
+                    <div style={{ height: "100%", width: `${pronScore}%`, background: `linear-gradient(90deg,${C.orange},${C.purple})`, borderRadius: 999, transition: "width .5s" }} />
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Your turn card */}
+          {subPhase !== "feedback" && (
+            <div style={{
+              background: C.white, border: `1px solid ${C.purpleBorder}`,
+              borderRadius: 18, padding: "14px 16px",
+            }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
+                <div style={{
+                  width: 42, height: 42, borderRadius: "50%",
+                  background: C.orangeSoft, border: `2px solid ${C.orange}`,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  fontWeight: 900, fontSize: 18, color: C.orangeDark, flexShrink: 0,
+                }}>{studentInitial}</div>
+                <div>
+                  <div style={{ fontWeight: 800, fontSize: 14, color: C.orange }}>Your turn</div>
+                  <div style={{ fontSize: 10, fontWeight: 900, color: C.muted, textTransform: "uppercase", letterSpacing: ".06em" }}>
+                    {avatarLabel.toUpperCase()}
+                  </div>
+                </div>
+              </div>
+
+              {!showTyping ? (
+                <div style={{ textAlign: "center" }}>
+                  <button
+                    onClick={() => micState === "recording" ? stopRecording() : startRecording()}
+                    disabled={micState === "processing"}
+                    style={{
+                      width: 110, height: 110, borderRadius: 22,
+                      background: micState === "recording" ? "rgba(226,75,74,.07)" : C.white,
+                      border: micState === "recording"
+                        ? "2px solid #E24B4A"
+                        : `2px solid ${C.purpleBorder}`,
+                      cursor: micState === "processing" ? "default" : "pointer",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      margin: "0 auto 10px", fontSize: 38,
+                      boxShadow: "0 2px 10px rgba(127,119,221,.08)",
+                      animation: micState === "recording" ? "rk-pulse 1s ease-in-out infinite" : "none",
+                      transition: "border-color .15s",
+                    }}>
+                    {micState === "processing" ? "⏳" : micState === "recording" ? "⏹" : "🎤"}
+                  </button>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: C.muted, marginBottom: 12 }}>
+                    {micState === "processing" ? "Processing…"
+                      : micState === "recording" ? "Recording… tap to stop"
+                      : "Tap to speak your response"}
+                  </div>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: C.muted, margin: "0 0 10px" }}>— or —</div>
+                  <button onClick={() => { stopTTS(); setShowTyping(true); }} style={{
+                    padding: "9px 24px", border: `1.5px solid #E4E0F8`,
+                    borderRadius: 999, background: C.white, color: C.ink,
+                    fontFamily: "'Nunito',sans-serif", fontWeight: 800, fontSize: 13,
+                    cursor: "pointer",
+                  }}>Type instead</button>
+                </div>
+              ) : (
+                <div>
+                  <textarea
+                    value={written}
+                    onChange={e => setWritten(e.target.value)}
+                    placeholder="Type your response here…"
+                    rows={3}
+                    style={{
+                      width: "100%", padding: "12px 14px",
+                      border: `1.5px solid ${C.purpleBorder}`,
+                      borderRadius: 14, fontSize: 15,
+                      fontFamily: "'Nunito',sans-serif", fontWeight: 700,
+                      resize: "none", outline: "none", color: C.ink,
+                      background: "#FAFAFE", marginBottom: 10,
+                    }}
+                  />
+                  <button onClick={() => setShowTyping(false)} style={{
+                    padding: "8px 18px", border: `1.5px solid #E4E0F8`,
+                    borderRadius: 999, background: C.white, color: C.muted,
+                    fontFamily: "'Nunito',sans-serif", fontWeight: 800, fontSize: 12,
+                    cursor: "pointer",
+                  }}>🎤 Speak instead</button>
+                </div>
+              )}
+            </div>
+          )}
+
+        </div>{/* end content */}
+
+        {/* Bottom bar */}
+        <div style={{
+          display: "flex", justifyContent: "space-between", alignItems: "center",
+          padding: "12px 16px", marginTop: 14,
+          borderTop: `1px solid #F0EEF8`,
+        }}>
+          <span style={{ fontSize: 13, fontWeight: 700, color: C.muted }}>
+            {subPhase === "feedback" ? "Nice work!" : "Speak or type to continue"}
+          </span>
+          <button onClick={handleNext} style={{
+            padding: "9px 22px", border: `1.5px solid #E4E0F8`,
+            borderRadius: 999, background: C.white, color: C.ink,
+            fontFamily: "'Nunito',sans-serif", fontWeight: 800, fontSize: 14,
+            cursor: "pointer",
           }}>
-            {turn.teacherLine || "…"}
-          </div>
-
-          {/* Student avatar (bottom-left) */}
-          <div style={{ position: "absolute", bottom: 10, left: 12, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
-            <div style={{ border: "3px solid white", borderRadius: "50%", boxShadow: "0 4px 14px rgba(0,0,0,.22)" }}>
-              <AvatarImg id={avatarId} size={72} />
-            </div>
-            <div style={{ background: "rgba(83,74,183,.85)", color: C.white, borderRadius: 999, padding: "3px 10px", fontSize: 11, fontWeight: 800 }}>{avatarLabel}</div>
-          </div>
-
-          {/* Teacher avatar (bottom-right) */}
-          <div style={{ position: "absolute", bottom: 10, right: 12, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
-            <div style={{ border: "3px solid white", borderRadius: "50%", boxShadow: "0 4px 14px rgba(0,0,0,.22)" }}>
-              <TeacherImg size={72} />
-            </div>
-            <div style={{ background: "rgba(194,88,10,.85)", color: C.white, borderRadius: 999, padding: "3px 10px", fontSize: 11, fontWeight: 800 }}>{scene.agentName || "Teacher"}</div>
-          </div>
+            {subPhase === "feedback"
+              ? (turnIndex < total - 1 ? "Next →" : "Finish 🎉")
+              : "Next →"}
+          </button>
         </div>
 
-        {/* ── STEP 1: Teacher just spoke — student listens ── */}
-        {subPhase === "teacher" && (
-          <div style={{ textAlign: "center", padding: "8px 0 16px" }}>
-            <div style={{ fontSize: 13, fontWeight: 800, color: C.muted, marginBottom: 16 }}>
-              🔊 Teacher is speaking… listen carefully!
-            </div>
-            <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
-              {ghostBtn("🔊 Play again", () => playElevenLabs(turn.teacherLine, voiceId, null, null))}
-              {btn("Write my answer →", () => setSubPhase("writing"), C.orange)}
-            </div>
-          </div>
-        )}
-
-        {/* ── STEP 2: Student writes their answer ── */}
-        {subPhase === "writing" && (
-          <div style={{ marginBottom: 0 }}>
-            <div style={{ fontSize: 11, fontWeight: 900, color: C.purple, textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 8 }}>
-              ✏️ Write your answer:
-            </div>
-            <textarea
-              value={written}
-              onChange={e => setWritten(e.target.value)}
-              placeholder="Type what you would say…"
-              rows={3}
-              style={{
-                width: "100%", padding: "12px 14px", border: `2px solid ${C.purpleBorder}`,
-                borderRadius: 14, fontSize: 15, fontFamily: "'Nunito',sans-serif",
-                fontWeight: 700, resize: "none", outline: "none", color: C.ink,
-                background: C.purpleSoft, marginBottom: 12,
-              }}
-            />
-            <div style={{ display: "flex", gap: 8 }}>
-              {ghostBtn("← Listen again", () => { setSubPhase("teacher"); playElevenLabs(turn.teacherLine, voiceId, null, null); })}
-              {btn("Now say it 🎤", () => setSubPhase("recording"), C.purple, written.trim() === "")}
-            </div>
-          </div>
-        )}
-
-        {/* ── STEP 3: Record pronunciation ── */}
-        {subPhase === "recording" && (
-          <div>
-            {/* Show expected sentence */}
-            <div style={{ background: C.purpleSoft, border: `1.5px solid ${C.purpleBorder}`, borderRadius: 16, padding: "12px 16px", marginBottom: 14, textAlign: "center" }}>
-              <div style={{ fontSize: 10, fontWeight: 900, color: C.purple, textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 6 }}>🗣 Say this:</div>
-              <div style={{ fontFamily: "'Fredoka',sans-serif", fontSize: "clamp(16px,3vw,21px)", fontWeight: 600, color: C.purpleDark, lineHeight: 1.35 }}>{turn.studentLine || "—"}</div>
-            </div>
-
-            {/* Mic button */}
-            <div style={{ textAlign: "center", marginBottom: 14 }}>
-              <button
-                onClick={() => micState === "recording" ? stopRecording() : startRecording()}
-                disabled={micState === "processing"}
-                style={{
-                  width: 72, height: 72, borderRadius: "50%", border: "none",
-                  background: micState === "recording" ? "#E24B4A" : C.orange,
-                  color: C.white, fontSize: 28, cursor: micState === "processing" ? "default" : "pointer",
-                  boxShadow: micState === "recording" ? "0 0 0 8px rgba(226,75,74,.2), 0 6px 18px rgba(226,75,74,.4)" : "0 6px 18px rgba(249,115,22,.32)",
-                  animation: micState === "recording" ? "rk-pulse 1s ease-in-out infinite" : "none",
-                }}>
-                {micState === "processing" ? "⏳" : micState === "recording" ? "⏹" : "🎤"}
-              </button>
-              <div style={{ marginTop: 8, fontSize: 12, fontWeight: 800, color: micState === "recording" ? "#E24B4A" : C.muted }}>
-                {micState === "processing" ? "Processing…" : micState === "recording" ? "Recording… tap to stop" : "Tap the mic and speak!"}
-              </div>
-            </div>
-
-            {ghostBtn("← Back to writing", () => setSubPhase("writing"))}
-          </div>
-        )}
-
-        {/* ── STEP 4: Feedback ── */}
-        {subPhase === "feedback" && (
-          <div>
-            {written.trim() && (
-              <div style={{ background: C.purpleSoft, borderLeft: `3px solid ${C.purple}`, borderRadius: 12, padding: "10px 14px", marginBottom: 8 }}>
-                <div style={{ fontSize: 10, fontWeight: 900, color: C.purple, textTransform: "uppercase", marginBottom: 4 }}>You wrote</div>
-                <div style={{ fontFamily: "'Fredoka',sans-serif", fontSize: 14, fontWeight: 600, color: C.ink }}>"{written}"</div>
-              </div>
-            )}
-            {transcript && (
-              <div style={{ background: "#F0F9FF", borderLeft: `3px solid #38BDF8`, borderRadius: 12, padding: "10px 14px", marginBottom: 8 }}>
-                <div style={{ fontSize: 10, fontWeight: 900, color: "#0369A1", textTransform: "uppercase", marginBottom: 4 }}>You said</div>
-                <div style={{ fontFamily: "'Fredoka',sans-serif", fontSize: 14, fontWeight: 600, color: C.ink }}>"{transcript}"</div>
-              </div>
-            )}
-            <div style={{ background: C.orangeSoft, borderLeft: `3px solid ${C.orange}`, borderRadius: 12, padding: "10px 14px", marginBottom: 8 }}>
-              <div style={{ fontSize: 10, fontWeight: 900, color: C.orange, textTransform: "uppercase", marginBottom: 4 }}>Correct answer</div>
-              <div style={{ fontFamily: "'Fredoka',sans-serif", fontSize: 14, fontWeight: 600, color: C.orangeDark }}>{turn.studentLine}</div>
-            </div>
-            {pronScore !== null && (
-              <div style={{ background: C.purpleSoft, borderRadius: 12, padding: "10px 14px", marginBottom: 12 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                  <div style={{ fontSize: 11, fontWeight: 900, color: C.muted, textTransform: "uppercase" }}>Pronunciation score</div>
-                  <div style={{ fontFamily: "'Fredoka',sans-serif", fontSize: 18, fontWeight: 700, color: C.orange }}>{pronScore} pts</div>
-                </div>
-                <div style={{ height: 8, background: "#F4F2FD", borderRadius: 999, overflow: "hidden" }}>
-                  <div style={{ height: "100%", width: `${pronScore}%`, background: `linear-gradient(90deg,${C.orange},${C.purple})`, borderRadius: 999, transition: "width .5s" }} />
-                </div>
-              </div>
-            )}
-            <div style={{ display: "flex", gap: 8 }}>
-              {ghostBtn("Try Again ↺", () => { setSubPhase("recording"); setTranscript(""); setPronScore(null); })}
-              {btn(turnIndex < total - 1 ? "Next →" : "Finish 🎉", goToNextTurn, C.orange)}
-            </div>
-          </div>
-        )}
-
-      </div>
+      </div>{/* end main card */}
     </div>
   );
 }
