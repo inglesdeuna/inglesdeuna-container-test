@@ -260,42 +260,33 @@ body { margin: 0 !important; padding: 0 !important; background: #fff !important;
     font-family: 'Nunito', sans-serif;
 }
 
-/* Blank empty state */
-.fb-blank {
+/* Blank input field */
+.fb-input {
     display: inline-block;
+    border: none;
     border-bottom: 2.5px solid var(--purple);
-    min-width: 110px;
-    height: 24px;
-    margin: 0 6px;
-    vertical-align: bottom;
-}
-
-/* Blank filled state */
-.fb-blank-filled {
-    display: inline-flex;
-    align-items: center;
-    background: var(--purple);
-    color: #fff;
-    border-radius: 8px;
-    padding: 2px 12px;
-    font-weight: 700;
-    font-size: 14px;
-    gap: 6px;
-    vertical-align: bottom;
-    margin: 0 6px;
-    cursor: pointer;
+    background: transparent;
+    padding: 2px 8px;
+    font-size: 16px;
+    font-weight: 600;
     font-family: 'Nunito', sans-serif;
+    color: var(--medium-purple);
+    outline: none;
+    text-align: center;
+    min-width: 110px;
+    height: 28px;
+    margin: 0 6px;
+    vertical-align: bottom;
+    transition: border-color 0.15s, box-shadow 0.15s;
 }
 
-.fb-blank-filled .fb-blank-remove {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 18px;
-    height: 18px;
-    margin-left: 2px;
-    cursor: pointer;
-    font-size: 12px;
+.fb-input:focus {
+    border-bottom-color: var(--orange);
+    box-shadow: 0 2px 0 rgba(249, 115, 22, 0.2);
+}
+
+.fb-input::placeholder {
+    color: #ddd;
 }
 
 /* Word Bank */
@@ -324,24 +315,13 @@ body { margin: 0 !important; padding: 0 !important; background: #fff !important;
     font: 700 14px 'Nunito', sans-serif;
     padding: 7px 16px;
     border-radius: 10px;
-    cursor: pointer;
     background: #fff;
     color: var(--medium-purple);
     border: 1.5px solid var(--chip-border);
-    box-shadow: 0 3px 0 var(--chip-border);
-    transition: transform 0.1s, box-shadow 0.1s;
-}
-
-.fb-chip:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 5px 0 var(--chip-border);
-}
-
-.fb-chip.used {
-    opacity: 0.35;
+    box-shadow: 0 2px 0 var(--chip-border);
     cursor: default;
-    box-shadow: none;
-    text-decoration: line-through;
+    pointer-events: none;
+    opacity: 0.8;
 }
 
 /* Buttons */

@@ -29,8 +29,6 @@ document.addEventListener('DOMContentLoaded', function () {
   var revealed    = false;
   var scores      = questions.map(function () { return 0; });
   var reviewItems = questions.map(function () { return {}; });
-  var userAnswers = questions.map(function (q) { return Array(q.answers ? q.answers.length : 1).fill(''); });
-  var usedChips   = questions.map(function () { return {}; });
 
   function normalize(s) {
     return String(s || '').trim().toLowerCase().replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, ' ');
@@ -53,22 +51,20 @@ document.addEventListener('DOMContentLoaded', function () {
     
     var html = text.replace(/___+/g, function () {
       var idx = blankCount++;
-      var filled = userAnswers[index] && userAnswers[index][idx] ? userAnswers[index][idx] : '';
+      var correct = answers[idx] || '';
       
       if (!isAnswered) {
-        if (filled) {
-          return '<span class="fb-blank-filled" data-blank-idx="' + idx + '"><span class="fb-blank-text">' + escHtml(filled) + '</span><span class="fb-blank-remove">✕</span></span>';
-        } else {
-          return '<span class="fb-blank" data-blank-idx="' + idx + '"></span>';
-        }
+        return '<input type="text" class="fb-input" data-blank-idx="' + idx + '" placeholder="Type..." autocomplete="off" spellcheck="false">';
       } else {
-        var correct = answers[idx] || '';
+        var inputEl = sentenceEl.querySelector('[data-blank-idx="' + idx + '"]');
+        var filled = inputEl ? inputEl.value.trim() : '';
         var isRight = normalize(filled) === normalize(correct);
+        
         if (isRight) {
-          return '<span class="fb-blank-filled" style="background: #22c55e; cursor: default;"><span class="fb-blank-text">' + escHtml(filled) + '</span></span>';
+          return '<span class="fb-answer-correct">' + escHtml(filled) + '</span>';
         } else {
-          return '<span class="fb-blank-filled" style="background: #ef4444; cursor: default;"><span class="fb-blank-text" style="text-decoration: line-through;">' + escHtml(filled || '\u2014') + '</span></span>'
-                + ' <span style="background: #EDE9FA; color: #7F77DD; border-radius: 8px; padding: 2px 8px; font-weight: 800; display: inline-flex; align-items: center; vertical-align: bottom; margin: 0 6px;">' + escHtml(correct) + '</span>';
+          return '<span class="fb-answer-wrong">' + escHtml(filled || '\u2014') + '</span>'
+                + ' <span class="fb-answer-hint">' + escHtml(correct) + '</span>';
         }
       }
     });
@@ -76,7 +72,7 @@ document.addEventListener('DOMContentLoaded', function () {
     sentenceEl.innerHTML = html;
     
     if (!isAnswered) {
-      attachRemoveListeners();
+      attachInputListeners();
     }
   }
 
@@ -90,84 +86,28 @@ document.addEventListener('DOMContentLoaded', function () {
     if (!wordBankWordsEl) return;
     wordBankWordsEl.innerHTML = '';
     
-    options.forEach(function (option, idx) {
+    options.forEach(function (option) {
       var chip = document.createElement('div');
       chip.className = 'fb-chip';
       chip.textContent = option;
-      chip.dataset.index = idx;
-      chip.dataset.option = option;
-      
-      if (usedChips[index] && usedChips[index][idx]) {
-        chip.classList.add('used');
-      }
-      
-      chip.addEventListener('click', function () {
-        if (answered || revealed || chip.classList.contains('used')) return;
-        selectWordFromBank(option, idx);
-      });
-      
+      chip.style.cursor = 'default';
+      chip.style.opacity = '1';
+      chip.style.pointerEvents = 'none';
       wordBankWordsEl.appendChild(chip);
     });
   }
 
-  function selectWordFromBank(option, chipIndex) {
-    if (answered || revealed) return;
-    
-    var nextBlankIdx = findNextEmptyBlank();
-    if (nextBlankIdx === -1) return;
-    
-    userAnswers[index][nextBlankIdx] = option;
-    if (!usedChips[index]) usedChips[index] = {};
-    usedChips[index][chipIndex] = true;
-    
-    renderSentence(questions[index], false);
-    updateWordBankUI();
-  }
-
-  function findNextEmptyBlank() {
-    for (var i = 0; i < userAnswers[index].length; i++) {
-      if (!userAnswers[index][i]) return i;
-    }
-    return -1;
-  }
-
-  function attachRemoveListeners() {
-    var removeButtons = sentenceEl.querySelectorAll('.fb-blank-remove');
-    removeButtons.forEach(function (btn) {
-      btn.addEventListener('click', function (e) {
-        e.stopPropagation();
-        clearBlank(parseInt(btn.closest('.fb-blank-filled').dataset.blankIdx, 10));
+  function attachInputListeners() {
+    var inputs = sentenceEl.querySelectorAll('.fb-input');
+    inputs.forEach(function (input, idx) {
+      input.addEventListener('keypress', function (e) {
+        if (e.key === 'Enter') {
+          checkAnswer();
+        }
       });
-    });
-  }
-
-  function clearBlank(blankIdx) {
-    if (answered || revealed) return;
-    
-    var answer = userAnswers[index][blankIdx];
-    if (!answer) return;
-    
-    var chipIndex = Object.keys(usedChips[index] || {}).find(function (k) {
-      return questions[index].options[k] === answer;
-    });
-    
-    if (chipIndex !== undefined) {
-      delete usedChips[index][chipIndex];
-    }
-    
-    userAnswers[index][blankIdx] = '';
-    renderSentence(questions[index], false);
-    updateWordBankUI();
-  }
-
-  function updateWordBankUI() {
-    var chips = wordBankWordsEl ? wordBankWordsEl.querySelectorAll('.fb-chip') : [];
-    chips.forEach(function (chip) {
-      var idx = parseInt(chip.dataset.index, 10);
-      if (usedChips[index] && usedChips[index][idx]) {
-        chip.classList.add('used');
-      } else {
-        chip.classList.remove('used');
+      
+      if (idx === 0) {
+        setTimeout(function () { input.focus(); }, 0);
       }
     });
   }
@@ -195,31 +135,40 @@ document.addEventListener('DOMContentLoaded', function () {
     renderWordBank(options);
   }
 
+  function getAnswers() {
+    var inputs = sentenceEl.querySelectorAll('.fb-input');
+    var answers = [];
+    inputs.forEach(function (input) {
+      answers.push(input.value.trim());
+    });
+    return answers;
+  }
+
   function checkAnswer() {
     if (answered) return;
     var q       = questions[index] || {};
-    var answers = q.answers || [];
-    var correct = true;
+    var correct = q.answers || [];
+    var user    = getAnswers();
+    var isRight = true;
     
-    for (var i = 0; i < answers.length; i++) {
-      var user = userAnswers[index][i] || '';
-      if (normalize(user) !== normalize(answers[i])) {
-        correct = false;
+    for (var i = 0; i < correct.length; i++) {
+      if (normalize(user[i] || '') !== normalize(correct[i])) {
+        isRight = false;
         break;
       }
     }
 
     answered    = true;
-    scores[index] = correct ? 1 : 0;
+    scores[index] = isRight ? 1 : 0;
     reviewItems[index] = { 
       question: q.text || '', 
-      yourAnswer: userAnswers[index].join(', '), 
-      correctAnswer: answers.join(', '), 
+      yourAnswer: user.join(', '), 
+      correctAnswer: correct.join(', '), 
       score: scores[index] 
     };
 
     renderSentence(q, true);
-    if (feedbackEl) AF.showFeedback(feedbackEl, correct, null, false);
+    if (feedbackEl) AF.showFeedback(feedbackEl, isRight, null, false);
     if (checkBtn)   checkBtn.disabled = true;
     if (showBtn)    showBtn.style.display = 'none';
     if (nextBtn)    nextBtn.disabled = false;
@@ -228,18 +177,23 @@ document.addEventListener('DOMContentLoaded', function () {
   function showAnswer() {
     if (answered) return;
     var q = questions[index] || {};
-    var answers = q.answers || [];
+    var correct = q.answers || [];
     answered = true;
     revealed = true;
     scores[index] = -1;
     reviewItems[index] = { 
       question: q.text || '', 
       yourAnswer: '(revealed)', 
-      correctAnswer: answers.join(', '), 
+      correctAnswer: correct.join(', '), 
       score: -1 
     };
 
-    userAnswers[index] = answers.slice();
+    var inputs = sentenceEl.querySelectorAll('.fb-input');
+    inputs.forEach(function (input, idx) {
+      input.value = correct[idx] || '';
+      input.disabled = true;
+    });
+    
     renderSentence(q, true);
     if (feedbackEl) AF.showFeedback(feedbackEl, false, null, true);
     if (checkBtn)   checkBtn.disabled = true;
@@ -286,8 +240,6 @@ document.addEventListener('DOMContentLoaded', function () {
     index       = 0;
     scores      = questions.map(function () { return 0; });
     reviewItems = questions.map(function () { return {}; });
-    userAnswers = questions.map(function (q) { return Array(q.answers ? q.answers.length : 1).fill(''); });
-    usedChips   = questions.map(function () { return {}; });
     loadQuestion();
   }
 
@@ -296,10 +248,9 @@ document.addEventListener('DOMContentLoaded', function () {
     var st = document.createElement('style');
     st.id = 'fb-blank-css';
     st.textContent =
-      '.fb-blank{display:inline-block;padding:2px 8px;border-radius:6px;font-weight:800}' +
-      '.fb-blank--correct{background:#f0fdf4;border-bottom:2px solid #22c55e;color:#166534}' +
-      '.fb-blank--wrong{background:#fef2f2;border-bottom:2px solid #ef4444;color:#991b1b;text-decoration:line-through;margin-right:4px}' +
-      '.fb-blank--hint{background:#EDE9FA;color:#7F77DD;border-radius:6px;padding:2px 8px;font-weight:800}';
+      '.fb-answer-correct{display:inline-block;padding:2px 8px;border-radius:6px;font-weight:700;background:#f0fdf4;color:#166534;font-size:16px;vertical-align:bottom;margin:0 6px}' +
+      '.fb-answer-wrong{display:inline-block;padding:2px 8px;border-radius:6px;font-weight:700;background:#fef2f2;color:#991b1b;text-decoration:line-through;font-size:16px;vertical-align:bottom;margin:0 6px}' +
+      '.fb-answer-hint{display:inline-block;background:#EDE9FA;color:#7F77DD;border-radius:6px;padding:2px 8px;font-weight:800;font-size:14px;vertical-align:bottom;margin:0 6px}';
     document.head.appendChild(st);
   }
 
