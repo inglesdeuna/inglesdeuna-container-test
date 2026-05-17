@@ -1,5 +1,5 @@
 FROM php:8.2-apache
-# Force rebuild at 2026-04-21
+# Force rebuild at 2026-05-17
 
 # =============================
 # INSTALAR DEPENDENCIAS SISTEMA
