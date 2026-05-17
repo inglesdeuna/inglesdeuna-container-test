@@ -156,41 +156,57 @@ document.addEventListener('DOMContentLoaded', function () {
     }
   }
 
+  /* ── showPassiveDone helper ─────────────────────────────────── */
+  function showPassiveDone(containerEl, opts) {
+    containerEl.innerHTML =
+      '<div class="passive-done" id="passive-done-card">' +
+      '  <div class="passive-done-icon">🎉</div>' +
+      '  <h2 class="passive-done-title">All Done!</h2>' +
+      '  <p class="passive-done-text">' + (opts.text || 'Great work!') + '</p>' +
+      '  <div class="passive-done-track"><div class="passive-done-fill" id="passive-fill"></div></div>' +
+      '  <div><button class="passive-done-btn" id="passive-restart-btn">&#8635; ' + (opts.restartLabel || 'Play Again') + '</button></div>' +
+      '</div>';
+    var card = document.getElementById('passive-done-card');
+    var fill = document.getElementById('passive-fill');
+    var btn  = document.getElementById('passive-restart-btn');
+    requestAnimationFrame(function () {
+      card.classList.add('active');
+      setTimeout(function () { if (fill) fill.style.width = '100%'; }, 80);
+    });
+    if (btn && opts.onRestart) btn.addEventListener('click', opts.onRestart);
+    if (opts.winAudio) { try { opts.winAudio.currentTime = 0; opts.winAudio.play(); } catch(e){} }
+    if (opts.returnTo && opts.activityId) {
+      var sep = opts.returnTo.indexOf('?') !== -1 ? '&' : '?';
+      fetch(opts.returnTo + sep + 'activity_percent=100&activity_errors=0&activity_total=' + (opts.total||1) +
+        '&activity_id=' + encodeURIComponent(opts.activityId) +
+        '&activity_type=' + encodeURIComponent(opts.activityType || 'activity'),
+        { method: 'GET', credentials: 'same-origin', cache: 'no-store' }).catch(function(){});
+    }
+  }
+
   /* ── Completed ──────────────────────────────────────────────── */
   function showCompleted() {
     if (!completedEl) return;
     if (activityEl) activityEl.style.display = 'none';
     completedEl.style.display = '';
 
-    /* Learning activity — no graded scores; pass all as 1 */
-    var fakeScores = cards.map(function () { return 1; });
-
-    AF.showCompleted({
-      target:        completedEl,
-      scores:        fakeScores,
-      title:         activityTitle,
-      activityType:  'Flashcards',
-      questionCount: cards.length,
-      winAudio:      winAudio,
-      onRetry:       restart,
-      onReview:      null
+    showPassiveDone(completedEl, {
+      text: 'You studied all ' + cards.length + ' cards. Keep it up!',
+      restartLabel: 'Review Again',
+      onRestart: restart,
+      winAudio: winAudio,
+      returnTo: returnTo,
+      activityId: activityId,
+      activityType: 'flashcards',
+      total: cards.length
     });
-
-    if (returnTo && activityId) {
-      var sep = returnTo.indexOf('?') !== -1 ? '&' : '?';
-      fetch(
-        returnTo + sep +
-        'activity_percent=100&activity_errors=0&activity_total=' + cards.length +
-        '&activity_id=' + encodeURIComponent(activityId) +
-        '&activity_type=flashcards',
-        { method: 'GET', credentials: 'same-origin', cache: 'no-store' }
-      ).catch(function () {});
-    }
   }
 
   /* ── Restart ────────────────────────────────────────────────── */
   function restart() {
     index = 0;
+    completedEl.innerHTML = '';
+    completedEl.style.display = 'none';
     loadCard();
   }
 

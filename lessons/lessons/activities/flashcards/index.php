@@ -454,61 +454,26 @@ ob_start();
     box-shadow:0 12px 22px rgba(127,119,221,.22);
 }
 
-.fc-premium-completed{
-    display:none;
-    width:min(680px,100%);
-    margin:0 auto;
-    text-align:center;
-    padding:clamp(28px,5vw,54px);
-    border-radius:34px;
-    background:#ffffff;
-    border:1px solid #EDE9FA;
-    box-shadow:0 8px 40px rgba(127,119,221,.13);
+.passive-done {
+    display: none;
+    width: min(680px, 100%);
+    margin: 24px auto 0;
+    text-align: center;
+    padding: clamp(28px, 5vw, 54px);
+    border-radius: 34px;
+    background: #fff;
+    border: 1px solid #E2F7EF;
+    box-shadow: 0 8px 40px rgba(8,80,65,.12);
 }
-
-.fc-premium-completed.active{
-    display:block;
-    animation:fcPop .45s cubic-bezier(.2,.9,.2,1);
-}
-
-.fc-premium-done-icon{
-    font-size:clamp(66px,12vw,112px);
-    margin-bottom:12px;
-}
-
-.fc-premium-done-title{
-    margin:0 0 10px;
-    font-family:'Fredoka',sans-serif;
-    font-size:clamp(34px,6vw,62px);
-    color:#F97316;
-    line-height:1;
-}
-
-.fc-premium-done-text{
-    margin:0 auto 22px;
-    max-width:520px;
-    color:#9B94BE;
-    font-size:clamp(14px,2vw,18px);
-    font-weight:800;
-    line-height:1.5;
-}
-
-.fc-premium-done-track{
-    height:14px;
-    max-width:420px;
-    margin:0 auto 18px;
-    border-radius:999px;
-    background:#F4F2FD;
-    overflow:hidden;
-}
-
-.fc-premium-done-fill{
-    height:100%;
-    width:0%;
-    border-radius:999px;
-    background:linear-gradient(90deg,#F97316,#7F77DD);
-    transition:width .8s cubic-bezier(.2,.9,.2,1);
-}
+.passive-done.active { display: block; animation: passivePop .45s cubic-bezier(.2,.9,.2,1); }
+@keyframes passivePop { from { opacity:0; transform:scale(.92); } to { opacity:1; transform:scale(1); } }
+.passive-done-icon { font-size: clamp(66px,12vw,100px); margin-bottom: 12px; }
+.passive-done-title { margin: 0 0 10px; font-family: 'Fredoka', sans-serif; font-size: clamp(34px,6vw,60px); color: #085041; line-height: 1; }
+.passive-done-text { margin: 0 auto 22px; max-width: 520px; color: #7C739B; font-size: clamp(14px,2vw,17px); font-weight: 800; line-height: 1.5; }
+.passive-done-track { height: 14px; max-width: 420px; margin: 0 auto 18px; border-radius: 999px; background: #E2F7EF; overflow: hidden; }
+.passive-done-fill { height: 100%; width: 0%; border-radius: 999px; background: linear-gradient(90deg, #1D9E75, #7F77DD, #EC4899); transition: width .8s cubic-bezier(.2,.9,.2,1); }
+.passive-done-btn { display: inline-flex; align-items: center; gap: 8px; padding: 13px 28px; border-radius: 999px; border: 0; background: #1D9E75; color: #fff; font-family: 'Nunito', sans-serif; font-size: 15px; font-weight: 900; cursor: pointer; box-shadow: 0 6px 18px rgba(29,158,117,.30); transition: .18s; }
+.passive-done-btn:hover { transform: translateY(-2px); }
 
 .fc-premium-confetti{
     position:fixed;
@@ -593,17 +558,7 @@ ob_start();
             </div>
         </section>
 
-        <section class="fc-premium-completed" id="fc-premium-completed">
-            <div class="fc-premium-done-icon">🎉</div>
-            <h2 class="fc-premium-done-title">All Done!</h2>
-            <p class="fc-premium-done-text">You reviewed all the cards. Great vocabulary practice!</p>
-            <div class="fc-premium-done-track">
-                <div class="fc-premium-done-fill" id="fc-premium-done-fill"></div>
-            </div>
-            <div class="fc-premium-actions">
-                <button type="button" class="fc-premium-btn fc-premium-btn-pink" id="fc-premium-restart">&#8635; Review Again</button>
-            </div>
-        </section>
+        <div id="fc-premium-completed"></div>
     </div>
 </div>
 
@@ -621,7 +576,7 @@ var done = false;
 
 var els = {
     board: document.getElementById('fc-premium-board'),
-    completed: document.getElementById('fc-premium-completed'),
+    completedContainer: document.getElementById('fc-premium-completed'),
     card: document.getElementById('fc-premium-card'),
     img: document.getElementById('fc-premium-img'),
     placeholder: document.getElementById('fc-premium-placeholder'),
@@ -630,7 +585,6 @@ var els = {
     progressFill: document.getElementById('fc-premium-progress-fill'),
     progressCount: document.getElementById('fc-premium-progress-count'),
     kickerCount: document.getElementById('fc-premium-kicker-count'),
-    doneFill: document.getElementById('fc-premium-done-fill'),
     win: document.getElementById('fc-premium-win'),
     backImg: document.getElementById('fc-back-image'),
     backPlaceholder: document.getElementById('fc-back-placeholder')
@@ -808,21 +762,19 @@ function nextCard(){
 function showDone(){
     done = true;
     els.board.style.display = 'none';
-    els.completed.classList.add('active');
-    setTimeout(function(){ els.doneFill.style.width = '100%'; }, 120);
+    showPassiveDone(els.completedContainer, {
+        text: 'You studied all ' + CARDS.length + ' cards. Keep it up!',
+        restartLabel: 'Review Again',
+        onRestart: restart,
+        winAudio: els.win
+    });
     launchConfetti();
-    try {
-        els.win.pause();
-        els.win.currentTime = 0;
-        els.win.play();
-    } catch(e) {}
 }
 
 function restart(){
     done = false;
     idx = 0;
-    els.doneFill.style.width = '0%';
-    els.completed.classList.remove('active');
+    els.completedContainer.innerHTML = '';
     els.board.style.display = '';
     loadCard();
 }
@@ -864,7 +816,6 @@ bind('fc-premium-prev-arrow', 'click', prevCard);
 bind('fc-premium-next-arrow', 'click', nextCard);
 bind('fc-premium-prev', 'click', prevCard);
 bind('fc-premium-next', 'click', nextCard);
-bind('fc-premium-restart', 'click', restart);
 bind('fc-premium-listen', 'click', function(){
     var card = CARDS[idx] || {};
     var audioUrl = String(card.audio || '').trim();
@@ -890,6 +841,26 @@ document.addEventListener('keydown', function(e){
 });
 
 loadCard();
+
+function showPassiveDone(containerEl, opts) {
+    containerEl.innerHTML =
+        '<div class="passive-done" id="passive-done-card">' +
+        '  <div class="passive-done-icon">🎉</div>' +
+        '  <h2 class="passive-done-title">All Done!</h2>' +
+        '  <p class="passive-done-text">' + (opts.text || 'Great work!') + '</p>' +
+        '  <div class="passive-done-track"><div class="passive-done-fill" id="passive-fill"></div></div>' +
+        '  <div><button class="passive-done-btn" id="passive-restart-btn">&#8635; ' + (opts.restartLabel || 'Play Again') + '</button></div>' +
+        '</div>';
+    var card = document.getElementById('passive-done-card');
+    var fill = document.getElementById('passive-fill');
+    var btn  = document.getElementById('passive-restart-btn');
+    requestAnimationFrame(function () {
+        card.classList.add('active');
+        setTimeout(function () { if (fill) fill.style.width = '100%'; }, 80);
+    });
+    if (btn && opts.onRestart) btn.addEventListener('click', opts.onRestart);
+    if (opts.winAudio) { try { opts.winAudio.currentTime = 0; opts.winAudio.play(); } catch(e){} }
+}
 })();
 </script>
 <?php

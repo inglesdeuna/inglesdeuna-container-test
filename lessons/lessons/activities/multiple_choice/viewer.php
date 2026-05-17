@@ -1,4 +1,4 @@
-h<?php
+<?php
 require_once __DIR__ . '/../../config/db.php';
 require_once __DIR__ . '/../../core/_activity_viewer_template.php';
 
@@ -182,9 +182,14 @@ ob_start();
     --mc-purple:#7F77DD;
     --mc-purple-soft:#EEEDFE;
     --mc-lila:#EDE9FA;
-    --mc-muted:#aaa;
+    --mc-muted:#9B94BE;
     --mc-bg:#F8F7FE;
-    --mc-green:#22c55e;
+    --mc-green:#16a34a;
+    --mc-green-soft:#f0fdf4;
+    --mc-green-dark:#15803d;
+    --mc-red:#ef4444;
+    --mc-red-soft:#fef2f2;
+    --mc-red-dark:#b91c1c;
 }
 
 html, body {
@@ -402,33 +407,53 @@ body {
 
 .mc-option {
     min-height:96px;
-    border:2px solid var(--mc-lila);
-    border-radius:16px;
+    border:1.5px solid #CDC7F3;
+    border-bottom-width:4px;
+    border-radius:10px;
     background:#fff;
-    color:#444;
+    color:#4338CA;
     font-family:'Nunito',sans-serif;
     font-size:16px;
-    font-weight:700;
+    font-weight:800;
     display:flex;
     align-items:center;
     justify-content:center;
     text-align:center;
     cursor:pointer;
     padding:10px;
+    box-shadow:0 2px 0 rgba(127,119,221,.18);
+    transition:transform .12s,box-shadow .12s,border-color .12s,background .12s,color .12s;
 }
 
 .mc-option:hover {
-    border-color:var(--mc-purple);
-    background:#F3F2FD;
+    transform:translateY(-1px);
+    border-color:#AFA6EA;
+    border-bottom-color:#6A60D4;
+    background:#F8F7FF;
+    box-shadow:0 6px 16px rgba(127,119,221,.18);
 }
 
 .mc-option.selected {
-    border-color:var(--mc-purple);
-    background:var(--mc-purple-soft);
+    border-color:#BDB5EE;
+    border-bottom-color:#7F77DD;
+    background:#F8F7FF;
+    color:#4338CA;
 }
 
 .mc-option.correct {
     border-color:var(--mc-green);
+    border-bottom-color:var(--mc-green);
+    background:var(--mc-green-soft);
+    color:var(--mc-green-dark);
+    box-shadow:none;
+}
+
+.mc-option.wrong {
+    border-color:var(--mc-red);
+    border-bottom-color:var(--mc-red);
+    background:var(--mc-red-soft);
+    color:var(--mc-red-dark);
+    box-shadow:none;
 }
 
 .mc-option img {
@@ -460,10 +485,6 @@ body {
     cursor:pointer;
 }
 
-.mc-btn-check {
-    background:var(--mc-orange);
-}
-
 .mc-btn-show,
 .mc-completed-button {
     background:var(--mc-purple);
@@ -479,14 +500,99 @@ body {
     text-align:center;
     color:var(--mc-muted);
     font-size:13px;
+    font-weight:800;
+}
+
+.mc-feedback.good {
+    color:var(--mc-green-dark);
+}
+
+.mc-feedback.bad {
+    color:var(--mc-red-dark);
+}
+
+.mc-score-grid {
+    display:none;
+    grid-template-columns:repeat(3,1fr);
+    gap:10px;
+    margin-top:12px;
+}
+
+.mc-score-grid.visible {
+    display:grid;
+}
+
+.mc-score-card {
+    background:#FAFAFE;
+    border:1px solid var(--mc-lila);
+    border-radius:14px;
+    padding:12px;
+    text-align:center;
+}
+
+.mc-score-num {
+    font-family:'Fredoka One',sans-serif;
+    font-size:26px;
+    line-height:1;
+    font-weight:400;
+}
+
+.mc-score-num.c {
+    color:var(--mc-green);
+}
+
+.mc-score-num.w {
+    color:var(--mc-red);
+}
+
+.mc-score-num.p {
+    color:var(--mc-purple);
+}
+
+.mc-score-lbl {
+    margin-top:5px;
+    font-size:10px;
+    font-weight:900;
+    color:var(--mc-muted);
+    text-transform:uppercase;
+    letter-spacing:.08em;
+}
+
+.mc-completed-screen {
+    display:none;
+    text-align:center;
+    padding:24px 12px;
+}
+
+.mc-completed-screen.active {
+    display:block;
+}
+
+.mc-completed-title {
+    margin:0;
+    color:var(--mc-orange);
+    font-family:'Fredoka One',sans-serif;
+    font-size:32px;
+    font-weight:400;
+}
+
+.mc-completed-text {
+    color:var(--mc-muted);
+    font-size:14px;
     font-weight:700;
 }
 
-/* completed screen handled by _activity_feedback.js */
+#mc-score-text {
+    color:#666;
+    font-size:14px;
+    font-weight:800;
+}
+
 @media(max-width:760px) {
     .mc-stage-shell { padding:14px; }
     .mc-progress-row { grid-template-columns:1fr; gap:8px; }
     .mc-options { grid-template-columns:repeat(2,minmax(0,1fr)); }
+    .mc-score-grid { grid-template-columns:1fr; }
 }
 
 @media(max-width:480px) {
@@ -520,22 +626,45 @@ body {
                 </div>
 
                 <div class="mc-controls">
-                    <button type="button" class="mc-btn mc-btn-check" id="mc-check">Check</button>
                     <button type="button" class="mc-btn mc-btn-show" id="mc-show">Show Answer</button>
                     <button type="button" class="mc-btn mc-btn-next" id="mc-next">Next →</button>
                 </div>
 
                 <div class="mc-feedback" id="mc-feedback"></div>
 
-                <div id="mc-completed"></div>
+                <div id="mc-score-grid" class="mc-score-grid">
+                    <div class="mc-score-card">
+                        <div class="mc-score-num c" id="mc-s-correct">0</div>
+                        <div class="mc-score-lbl">Correct</div>
+                    </div>
+                    <div class="mc-score-card">
+                        <div class="mc-score-num w" id="mc-s-wrong">0</div>
+                        <div class="mc-score-lbl">Wrong</div>
+                    </div>
+                    <div class="mc-score-card">
+                        <div class="mc-score-num p" id="mc-s-pct">0%</div>
+                        <div class="mc-score-lbl">Score</div>
+                    </div>
+                </div>
+
+                <div id="mc-completed" class="mc-completed-screen">
+                    <div class="mc-completed-icon">✅</div>
+                    <h2 class="mc-completed-title" id="mc-completed-title"></h2>
+                    <p class="mc-completed-text" id="mc-completed-text"></p>
+                    <p class="mc-completed-text" id="mc-score-text" style="font-weight:900;font-size:15px;color:#534AB7;"></p>
+                    <button type="button" class="mc-completed-button" id="mc-restart">Restart</button>
+                </div>
+            </div>
+        </div>
+
+    </div>
 </div>
- = <?php echo json_encode($questions, JSON_UNESCAPED_UNICODE); ?>;
+<script>
+window.MULTIPLE_CHOICE_DATA = <?php echo json_encode($questions, JSON_UNESCAPED_UNICODE); ?>;
 window.MULTIPLE_CHOICE_TITLE = <?php echo json_encode($viewerTitle, JSON_UNESCAPED_UNICODE); ?>;
 window.MULTIPLE_CHOICE_RETURN_TO = <?php echo json_encode($returnTo, JSON_UNESCAPED_UNICODE); ?>;
 window.MULTIPLE_CHOICE_ACTIVITY_ID = <?php echo json_encode((string) ($activity['id'] ?? ''), JSON_UNESCAPED_UNICODE); ?>;
 </script>
-<script src="../../core/_activity_feedback.js"></script>
-<script src="../../core/_activity_feedback.js"></script>
 <script src="multiple_choice.js?v=<?php echo urlencode($jsVersion); ?>"></script>
 
 <?php

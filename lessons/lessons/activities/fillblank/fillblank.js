@@ -2,23 +2,21 @@ document.addEventListener('DOMContentLoaded', function () {
   var AF = window.ActivityFeedback;
   var questions = Array.isArray(window.FILLBLANK_DATA) ? window.FILLBLANK_DATA : [];
 
-  var progressLabelEl  = document.getElementById('fb-progress-label');
-  var progressFillEl   = document.getElementById('fb-progress-fill');
-  var progressBadgeEl  = document.getElementById('fb-progress-badge');
-  var sentenceEl       = document.getElementById('fb-sentence');
-  var inputEl          = document.getElementById('fb-input');
-  var wordbankWrapEl   = document.getElementById('fb-wordbank-wrap');
-  var wordbankEl       = document.getElementById('fb-wordbank');
-  var checkBtn         = document.getElementById('fb-check');
-  var showBtn          = document.getElementById('fb-show');
-  var nextBtn          = document.getElementById('fb-next');
-  var feedbackEl       = document.getElementById('fb-feedback');
-  var activityEl       = document.getElementById('fb-activity');
-  var completedEl      = document.getElementById('fb-completed');
-  var winAudio         = new Audio('../../hangman/assets/win.mp3');
+  var progressLabelEl = document.getElementById('fb-progress-label');
+  var progressFillEl  = document.getElementById('fb-progress-fill');
+  var progressBadgeEl = document.getElementById('fb-progress-badge');
+  var sentenceEl      = document.getElementById('fb-sentence');
+  var wordBankWordsEl = document.getElementById('fb-wb-words');
+  var checkBtn        = document.getElementById('fb-check');
+  var showBtn         = document.getElementById('fb-show');
+  var nextBtn         = document.getElementById('fb-next');
+  var feedbackEl      = document.getElementById('fb-feedback');
+  var activityEl      = document.getElementById('fb-activity');
+  var completedEl     = document.getElementById('fb-completed');
+  var winAudio        = new Audio('../../hangman/assets/win.mp3');
 
-  var activityTitle = window.FILLBLANK_TITLE      || 'Fill in the Blank';
-  var returnTo      = window.FILLBLANK_RETURN_TO  || '';
+  var activityTitle = window.FILLBLANK_TITLE || 'Fill in the Blank';
+  var returnTo      = window.FILLBLANK_RETURN_TO || '';
   var activityId    = window.FILLBLANK_ACTIVITY_ID || '';
 
   if (!questions.length) {
@@ -26,165 +24,16 @@ document.addEventListener('DOMContentLoaded', function () {
     return;
   }
 
-  var index        = 0;
-  var answered     = false;
-  var revealed     = false;
-  var selectedWord = '';          /* current word from word bank */
-  var scores       = questions.map(function () { return 0; });
-  var reviewItems  = questions.map(function () { return {}; });
+  var index       = 0;
+  var answered    = false;
+  var revealed    = false;
+  var scores      = questions.map(function () { return 0; });
+  var reviewItems = questions.map(function () { return {}; });
+  var userAnswers = questions.map(function () { return ''; });
+  var usedChips   = questions.map(function () { return {}; });
 
   function normalize(s) {
     return String(s || '').trim().toLowerCase().replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, ' ');
-  }
-
-  function escHtml(s) {
-    return String(s || '')
-      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
-      .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
-  }
-
-  function hasWordBank(q) {
-    return Array.isArray(q.options) && q.options.length > 0;
-  }
-
-  /* ── Render sentence ─────────────────────────────────────── */
-  function renderSentence(q, userAnswer, isAnswered) {
-    if (!sentenceEl) return;
-    var before  = q.before  || '';
-    var after   = q.after   || '';
-    var correct = q.answer  || '';
-
-    if (!isAnswered) {
-      if (hasWordBank(q)) {
-        /* word-bank mode: show a clickable chip or underline placeholder */
-        sentenceEl.innerHTML = escHtml(before) + ' <span id="fb-blank-wrap"></span> ' + escHtml(after);
-        updateBlankDisplay(q);
-      } else {
-        /* text-input mode */
-        sentenceEl.innerHTML = escHtml(before) + ' <span id="fb-blank-wrap"></span> ' + escHtml(after);
-        var wrap = document.getElementById('fb-blank-wrap');
-        if (wrap && inputEl) wrap.appendChild(inputEl);
-      }
-      return;
-    }
-
-    var isRight  = normalize(userAnswer) === normalize(correct);
-    var blankHtml = '';
-    if (isRight) {
-      blankHtml = '<span class="fb-blank fb-blank--correct">' + escHtml(userAnswer) + '</span>';
-    } else {
-      blankHtml = '<span class="fb-blank fb-blank--wrong">' + escHtml(userAnswer || '—') + '</span>'
-                + ' <span class="fb-blank fb-blank--hint">' + escHtml(correct) + '</span>';
-    }
-    sentenceEl.innerHTML = escHtml(before) + ' ' + blankHtml + ' ' + escHtml(after);
-  }
-
-  /* Update the inline blank — either a chip or an underline placeholder */
-  function updateBlankDisplay(q) {
-    var wrap = document.getElementById('fb-blank-wrap');
-    if (!wrap) return;
-    wrap.innerHTML = '';
-    if (selectedWord) {
-      /* show selected word as a chip — click returns it to bank */
-      var chip = document.createElement('button');
-      chip.type      = 'button';
-      chip.className = 'fb-blank-chip';
-      chip.textContent = selectedWord;
-      chip.addEventListener('click', function () {
-        if (answered) return;
-        returnWordToBank(selectedWord);
-      });
-      wrap.appendChild(chip);
-    } else {
-      /* placeholder underline */
-      var ph = document.createElement('span');
-      ph.style.cssText = 'display:inline-block;min-width:90px;border-bottom:3px solid #7F77DD;height:28px;vertical-align:middle;margin:0 4px;';
-      wrap.appendChild(ph);
-    }
-  }
-
-  /* ── Word bank ────────────────────────────────────────────── */
-  function renderWordBank(q) {
-    if (!wordbankEl || !wordbankWrapEl) return;
-    if (!hasWordBank(q)) {
-      wordbankWrapEl.style.display = 'none';
-      wordbankEl.innerHTML = '';
-      return;
-    }
-    wordbankWrapEl.style.display = '';
-    wordbankEl.innerHTML = '';
-    var words = shuffleArr(q.options.slice());
-    words.forEach(function (word) { addChipToBank(word, q); });
-  }
-
-  function addChipToBank(word, q) {
-    if (!wordbankEl) return;
-    var chip = document.createElement('button');
-    chip.type        = 'button';
-    chip.className   = 'fb-chip';
-    chip.textContent = word;
-    chip.dataset.word = word;
-    chip.addEventListener('click', function () {
-      if (answered) return;
-      /* if another word already selected, return it first */
-      if (selectedWord && selectedWord !== word) {
-        addChipToBank(selectedWord, q);
-      }
-      selectedWord = word;
-      if (inputEl) inputEl.value = word;
-      chip.remove();
-      updateBlankDisplay(q || questions[index]);
-    });
-    wordbankEl.appendChild(chip);
-  }
-
-  function returnWordToBank(word) {
-    var q = questions[index] || {};
-    selectedWord = '';
-    if (inputEl) inputEl.value = '';
-    updateBlankDisplay(q);
-    addChipToBank(word, q);
-  }
-
-  function shuffleArr(arr) {
-    for (var i = arr.length - 1; i > 0; i--) {
-      var j = Math.floor(Math.random() * (i + 1));
-      var t = arr[i]; arr[i] = arr[j]; arr[j] = t;
-    }
-    return arr;
-  }
-
-  /* ── Load question ────────────────────────────────────────── */
-  function loadQuestion() {
-    var q = questions[index] || {};
-    answered     = false;
-    revealed     = false;
-    selectedWord = '';
-
-    if (completedEl) completedEl.style.display = 'none';
-    if (activityEl)  activityEl.style.display  = '';
-    if (feedbackEl)  AF.clearFeedback(feedbackEl);
-
-    if (hasWordBank(q)) {
-      /* word-bank mode: hide text input */
-      if (inputEl) { inputEl.value = ''; inputEl.style.display = 'none'; }
-    } else {
-      /* text-input mode */
-      if (inputEl) { inputEl.value = ''; inputEl.disabled = false; inputEl.style.display = ''; }
-    }
-
-    if (checkBtn) checkBtn.disabled = false;
-    if (showBtn)  { showBtn.style.display = ''; showBtn.disabled = false; }
-    if (nextBtn)  {
-      nextBtn.disabled    = true;
-      nextBtn.textContent = index < questions.length - 1 ? 'Next →' : 'Finish';
-    }
-
-    updateProgress();
-    renderSentence(q, '', false);
-    renderWordBank(q);
-
-    if (!hasWordBank(q) && inputEl) inputEl.focus();
   }
 
   function updateProgress() {
@@ -196,59 +45,169 @@ document.addEventListener('DOMContentLoaded', function () {
     if (progressFillEl)  progressFillEl.style.width  = pct + '%';
   }
 
-  /* ── Check ────────────────────────────────────────────────── */
+  function renderSentence(q, userAnswer, isAnswered) {
+    if (!sentenceEl) return;
+    var before = q.before || '';
+    var after  = q.after  || '';
+    var correct = q.answer || '';
+
+    if (!isAnswered) {
+      if (userAnswer) {
+        sentenceEl.innerHTML = escHtml(before) + ' <span class="fb-blank-filled"><span class="fb-blank-text">' + escHtml(userAnswer) + '</span><span class="fb-blank-remove">✕</span></span> ' + escHtml(after);
+      } else {
+        sentenceEl.innerHTML = escHtml(before) + ' <span class="fb-blank"></span> ' + escHtml(after);
+      }
+      return;
+    }
+
+    var isRight = normalize(userAnswer) === normalize(correct);
+    var blankHtml = '';
+    if (isRight) {
+      blankHtml = '<span class="fb-blank-filled" style="background: #22c55e; cursor: default;"><span class="fb-blank-text">' + escHtml(userAnswer) + '</span></span>';
+    } else {
+      blankHtml = '<span class="fb-blank-filled" style="background: #ef4444; cursor: default;"><span class="fb-blank-text" style="text-decoration: line-through;">' + escHtml(userAnswer || '\u2014') + '</span></span>'
+                + ' <span style="background: #EDE9FA; color: #7F77DD; border-radius: 8px; padding: 2px 8px; font-weight: 800; display: inline-flex; align-items: center; vertical-align: bottom; margin: 0 6px;">' + escHtml(correct) + '</span>';
+    }
+    sentenceEl.innerHTML = escHtml(before) + ' ' + blankHtml + ' ' + escHtml(after);
+  }
+
+  function escHtml(s) {
+    return String(s || '')
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+      .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+  }
+
+  function renderWordBank(answers) {
+    if (!wordBankWordsEl) return;
+    wordBankWordsEl.innerHTML = '';
+    
+    answers.forEach(function (answer, idx) {
+      var chip = document.createElement('div');
+      chip.className = 'fb-chip';
+      chip.textContent = answer;
+      chip.dataset.index = idx;
+      chip.dataset.answer = answer;
+      
+      if (usedChips[index] && usedChips[index][idx]) {
+        chip.classList.add('used');
+      }
+      
+      chip.addEventListener('click', function () {
+        if (answered || revealed || chip.classList.contains('used')) return;
+        selectWordFromBank(answer, idx);
+      });
+      
+      wordBankWordsEl.appendChild(chip);
+    });
+  }
+
+  function selectWordFromBank(answer, chipIndex) {
+    userAnswers[index] = answer;
+    if (!usedChips[index]) usedChips[index] = {};
+    usedChips[index][chipIndex] = true;
+    
+    renderSentence(questions[index], answer, false);
+    attachRemoveListener();
+    updateWordBankUI();
+  }
+
+  function attachRemoveListener() {
+    var removeBtn = sentenceEl.querySelector('.fb-blank-remove');
+    if (removeBtn) {
+      removeBtn.addEventListener('click', function () {
+        clearAnswer();
+      });
+    }
+  }
+
+  function clearAnswer() {
+    if (answered || revealed) return;
+    var chipIndex = Object.keys(usedChips[index] || {}).find(function (k) { return usedChips[index][k]; });
+    if (chipIndex !== undefined) {
+      delete usedChips[index][chipIndex];
+    }
+    userAnswers[index] = '';
+    renderSentence(questions[index], '', false);
+    updateWordBankUI();
+  }
+
+  function updateWordBankUI() {
+    var chips = wordBankWordsEl ? wordBankWordsEl.querySelectorAll('.fb-chip') : [];
+    chips.forEach(function (chip) {
+      var idx = parseInt(chip.dataset.index, 10);
+      if (usedChips[index] && usedChips[index][idx]) {
+        chip.classList.add('used');
+      } else {
+        chip.classList.remove('used');
+      }
+    });
+  }
+
+  function loadQuestion() {
+    var q = questions[index] || {};
+    var answers = q.answer ? [q.answer] : [];
+    
+    answered = false;
+    revealed = false;
+
+    if (completedEl) completedEl.style.display = 'none';
+    if (activityEl)  activityEl.style.display  = '';
+    if (feedbackEl)  AF.clearFeedback(feedbackEl);
+
+    if (checkBtn) checkBtn.disabled = false;
+    if (showBtn)  { showBtn.style.display = ''; showBtn.disabled = false; }
+    if (nextBtn)  {
+      nextBtn.disabled    = true;
+      nextBtn.textContent = index < questions.length - 1 ? 'Next \u2192' : 'Finish';
+    }
+
+    updateProgress();
+    renderSentence(q, userAnswers[index] || '', false);
+    renderWordBank(answers);
+    attachRemoveListener();
+  }
+
   function checkAnswer() {
     if (answered) return;
     var q       = questions[index] || {};
     var correct = q.answer || '';
-    var user    = inputEl ? inputEl.value.trim() : '';
+    var user    = userAnswers[index] || '';
     var isRight = normalize(user) === normalize(correct);
 
-    answered      = true;
+    answered    = true;
     scores[index] = isRight ? 1 : 0;
-    reviewItems[index] = {
-      question:      (q.before || '') + ' ___ ' + (q.after || ''),
-      yourAnswer:    user,
-      correctAnswer: correct,
-      score:         scores[index]
-    };
+    reviewItems[index] = { question: (q.before || '') + ' ___ ' + (q.after || ''), yourAnswer: user, correctAnswer: correct, score: scores[index] };
 
     renderSentence(q, user, true);
-    if (wordbankWrapEl) wordbankWrapEl.style.display = 'none';
-    if (feedbackEl)  AF.showFeedback(feedbackEl, isRight, correct, false);
-    if (inputEl)     inputEl.disabled = true;
-    if (checkBtn)    checkBtn.disabled = true;
-    if (showBtn)     showBtn.style.display = 'none';
-    if (nextBtn)     nextBtn.disabled = false;
+    if (feedbackEl) AF.showFeedback(feedbackEl, isRight, correct, false);
+    if (checkBtn)   checkBtn.disabled = true;
+    if (showBtn)    showBtn.style.display = 'none';
+    if (nextBtn)    nextBtn.disabled = false;
   }
 
-  /* ── Show answer ──────────────────────────────────────────── */
   function showAnswer() {
     if (answered) return;
-    var q       = questions[index] || {};
+    var q = questions[index] || {};
     var correct = q.answer || '';
-    answered      = true;
-    revealed      = true;
+    answered = true;
+    revealed = true;
     scores[index] = -1;
-    reviewItems[index] = {
-      question:      (q.before || '') + ' ___ ' + (q.after || ''),
-      yourAnswer:    '(revealed)',
-      correctAnswer: correct,
-      score:         -1
-    };
+    reviewItems[index] = { question: (q.before || '') + ' ___ ' + (q.after || ''), yourAnswer: '(revealed)', correctAnswer: correct, score: -1 };
 
     renderSentence(q, correct, true);
-    if (wordbankWrapEl) wordbankWrapEl.style.display = 'none';
-    if (feedbackEl)  AF.showFeedback(feedbackEl, false, null, true);
-    if (inputEl)     inputEl.disabled = true;
-    if (checkBtn)    checkBtn.disabled = true;
-    if (showBtn)     showBtn.style.display = 'none';
-    if (nextBtn)     nextBtn.disabled = false;
+    if (feedbackEl) AF.showFeedback(feedbackEl, false, null, true);
+    if (checkBtn)   checkBtn.disabled = true;
+    if (showBtn)    showBtn.style.display = 'none';
+    if (nextBtn)    nextBtn.disabled = false;
   }
 
   function nextQuestion() {
-    if (index < questions.length - 1) { index++; loadQuestion(); }
-    else { showCompleted(); }
+    if (index < questions.length - 1) {
+      index++;
+      loadQuestion();
+    } else {
+      showCompleted();
+    }
   }
 
   function showCompleted() {
@@ -272,14 +231,8 @@ document.addEventListener('DOMContentLoaded', function () {
     var result = AF.computeScore(scores);
     if (returnTo && activityId) {
       var sep = returnTo.indexOf('?') !== -1 ? '&' : '?';
-      fetch(returnTo + sep
-        + 'activity_percent=' + result.percent
-        + '&activity_errors='  + result.wrong
-        + '&activity_total='   + result.total
-        + '&activity_id='      + encodeURIComponent(activityId)
-        + '&activity_type=fillblank',
-        { method: 'GET', credentials: 'same-origin', cache: 'no-store' }
-      ).catch(function () {});
+      fetch(returnTo + sep + 'activity_percent=' + result.percent + '&activity_errors=' + result.wrong + '&activity_total=' + result.total + '&activity_id=' + encodeURIComponent(activityId) + '&activity_type=fillblank',
+        { method: 'GET', credentials: 'same-origin', cache: 'no-store' }).catch(function () {});
     }
   }
 
@@ -287,6 +240,8 @@ document.addEventListener('DOMContentLoaded', function () {
     index       = 0;
     scores      = questions.map(function () { return 0; });
     reviewItems = questions.map(function () { return {}; });
+    userAnswers = questions.map(function () { return ''; });
+    usedChips   = questions.map(function () { return {}; });
     loadQuestion();
   }
 
@@ -303,9 +258,8 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   if (checkBtn) checkBtn.addEventListener('click', checkAnswer);
-  if (showBtn)  showBtn.addEventListener('click',  showAnswer);
-  if (nextBtn)  nextBtn.addEventListener('click',  nextQuestion);
-  if (inputEl)  inputEl.addEventListener('keydown', function (e) { if (e.key === 'Enter') checkAnswer(); });
+  if (showBtn)  showBtn.addEventListener('click', showAnswer);
+  if (nextBtn)  nextBtn.addEventListener('click', nextQuestion);
 
   loadQuestion();
 });
