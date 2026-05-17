@@ -6,7 +6,7 @@ document.addEventListener('DOMContentLoaded', function () {
   var progressFillEl  = document.getElementById('fb-progress-fill');
   var progressBadgeEl = document.getElementById('fb-progress-badge');
   var sentenceEl      = document.getElementById('fb-sentence');
-  var inputEl         = document.getElementById('fb-input');
+  var wordBankWordsEl = document.getElementById('fb-wb-words');
   var checkBtn        = document.getElementById('fb-check');
   var showBtn         = document.getElementById('fb-show');
   var nextBtn         = document.getElementById('fb-next');
@@ -29,6 +29,8 @@ document.addEventListener('DOMContentLoaded', function () {
   var revealed    = false;
   var scores      = questions.map(function () { return 0; });
   var reviewItems = questions.map(function () { return {}; });
+  var userAnswers = questions.map(function () { return ''; });
+  var usedChips   = questions.map(function () { return {}; });
 
   function normalize(s) {
     return String(s || '').trim().toLowerCase().replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, ' ');
@@ -50,19 +52,21 @@ document.addEventListener('DOMContentLoaded', function () {
     var correct = q.answer || '';
 
     if (!isAnswered) {
-      sentenceEl.innerHTML = escHtml(before) + ' <span id="fb-blank-wrap"></span> ' + escHtml(after);
-      var wrap = document.getElementById('fb-blank-wrap');
-      if (wrap && inputEl) wrap.appendChild(inputEl);
+      if (userAnswer) {
+        sentenceEl.innerHTML = escHtml(before) + ' <span class="fb-blank-filled"><span class="fb-blank-text">' + escHtml(userAnswer) + '</span><span class="fb-blank-remove">✕</span></span> ' + escHtml(after);
+      } else {
+        sentenceEl.innerHTML = escHtml(before) + ' <span class="fb-blank"></span> ' + escHtml(after);
+      }
       return;
     }
 
     var isRight = normalize(userAnswer) === normalize(correct);
     var blankHtml = '';
     if (isRight) {
-      blankHtml = '<span class="fb-blank fb-blank--correct">' + escHtml(userAnswer) + '</span>';
+      blankHtml = '<span class="fb-blank-filled" style="background: #22c55e; cursor: default;"><span class="fb-blank-text">' + escHtml(userAnswer) + '</span></span>';
     } else {
-      blankHtml = '<span class="fb-blank fb-blank--wrong">' + escHtml(userAnswer || '\u2014') + '</span>'
-                + ' <span class="fb-blank fb-blank--hint">' + escHtml(correct) + '</span>';
+      blankHtml = '<span class="fb-blank-filled" style="background: #ef4444; cursor: default;"><span class="fb-blank-text" style="text-decoration: line-through;">' + escHtml(userAnswer || '\u2014') + '</span></span>'
+                + ' <span style="background: #EDE9FA; color: #7F77DD; border-radius: 8px; padding: 2px 8px; font-weight: 800; display: inline-flex; align-items: center; vertical-align: bottom; margin: 0 6px;">' + escHtml(correct) + '</span>';
     }
     sentenceEl.innerHTML = escHtml(before) + ' ' + blankHtml + ' ' + escHtml(after);
   }
@@ -73,8 +77,76 @@ document.addEventListener('DOMContentLoaded', function () {
       .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
   }
 
+  function renderWordBank(answers) {
+    if (!wordBankWordsEl) return;
+    wordBankWordsEl.innerHTML = '';
+    
+    answers.forEach(function (answer, idx) {
+      var chip = document.createElement('div');
+      chip.className = 'fb-chip';
+      chip.textContent = answer;
+      chip.dataset.index = idx;
+      chip.dataset.answer = answer;
+      
+      if (usedChips[index] && usedChips[index][idx]) {
+        chip.classList.add('used');
+      }
+      
+      chip.addEventListener('click', function () {
+        if (answered || revealed || chip.classList.contains('used')) return;
+        selectWordFromBank(answer, idx);
+      });
+      
+      wordBankWordsEl.appendChild(chip);
+    });
+  }
+
+  function selectWordFromBank(answer, chipIndex) {
+    userAnswers[index] = answer;
+    if (!usedChips[index]) usedChips[index] = {};
+    usedChips[index][chipIndex] = true;
+    
+    renderSentence(questions[index], answer, false);
+    attachRemoveListener();
+    updateWordBankUI();
+  }
+
+  function attachRemoveListener() {
+    var removeBtn = sentenceEl.querySelector('.fb-blank-remove');
+    if (removeBtn) {
+      removeBtn.addEventListener('click', function () {
+        clearAnswer();
+      });
+    }
+  }
+
+  function clearAnswer() {
+    if (answered || revealed) return;
+    var chipIndex = Object.keys(usedChips[index] || {}).find(function (k) { return usedChips[index][k]; });
+    if (chipIndex !== undefined) {
+      delete usedChips[index][chipIndex];
+    }
+    userAnswers[index] = '';
+    renderSentence(questions[index], '', false);
+    updateWordBankUI();
+  }
+
+  function updateWordBankUI() {
+    var chips = wordBankWordsEl ? wordBankWordsEl.querySelectorAll('.fb-chip') : [];
+    chips.forEach(function (chip) {
+      var idx = parseInt(chip.dataset.index, 10);
+      if (usedChips[index] && usedChips[index][idx]) {
+        chip.classList.add('used');
+      } else {
+        chip.classList.remove('used');
+      }
+    });
+  }
+
   function loadQuestion() {
     var q = questions[index] || {};
+    var answers = q.answer ? [q.answer] : [];
+    
     answered = false;
     revealed = false;
 
@@ -82,7 +154,6 @@ document.addEventListener('DOMContentLoaded', function () {
     if (activityEl)  activityEl.style.display  = '';
     if (feedbackEl)  AF.clearFeedback(feedbackEl);
 
-    if (inputEl) { inputEl.value = ''; inputEl.disabled = false; }
     if (checkBtn) checkBtn.disabled = false;
     if (showBtn)  { showBtn.style.display = ''; showBtn.disabled = false; }
     if (nextBtn)  {
@@ -91,15 +162,16 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     updateProgress();
-    renderSentence(q, '', false);
-    if (inputEl) inputEl.focus();
+    renderSentence(q, userAnswers[index] || '', false);
+    renderWordBank(answers);
+    attachRemoveListener();
   }
 
   function checkAnswer() {
     if (answered) return;
     var q       = questions[index] || {};
     var correct = q.answer || '';
-    var user    = inputEl ? inputEl.value.trim() : '';
+    var user    = userAnswers[index] || '';
     var isRight = normalize(user) === normalize(correct);
 
     answered    = true;
@@ -108,7 +180,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
     renderSentence(q, user, true);
     if (feedbackEl) AF.showFeedback(feedbackEl, isRight, correct, false);
-    if (inputEl)    inputEl.disabled = true;
     if (checkBtn)   checkBtn.disabled = true;
     if (showBtn)    showBtn.style.display = 'none';
     if (nextBtn)    nextBtn.disabled = false;
@@ -125,7 +196,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
     renderSentence(q, correct, true);
     if (feedbackEl) AF.showFeedback(feedbackEl, false, null, true);
-    if (inputEl)    inputEl.disabled = true;
     if (checkBtn)   checkBtn.disabled = true;
     if (showBtn)    showBtn.style.display = 'none';
     if (nextBtn)    nextBtn.disabled = false;
@@ -170,6 +240,8 @@ document.addEventListener('DOMContentLoaded', function () {
     index       = 0;
     scores      = questions.map(function () { return 0; });
     reviewItems = questions.map(function () { return {}; });
+    userAnswers = questions.map(function () { return ''; });
+    usedChips   = questions.map(function () { return {}; });
     loadQuestion();
   }
 
@@ -188,7 +260,6 @@ document.addEventListener('DOMContentLoaded', function () {
   if (checkBtn) checkBtn.addEventListener('click', checkAnswer);
   if (showBtn)  showBtn.addEventListener('click', showAnswer);
   if (nextBtn)  nextBtn.addEventListener('click', nextQuestion);
-  if (inputEl)  inputEl.addEventListener('keydown', function (e) { if (e.key === 'Enter') checkAnswer(); });
 
   loadQuestion();
 });

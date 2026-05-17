@@ -122,10 +122,13 @@ ob_start();
 :root {
     --orange: #F97316;
     --purple: #7F77DD;
-    --purple-dark: #534AB7;
-    --muted: #9B94BE;
-    --soft: #F4F2FD;
-    --border: #ECE9FA;
+    --muted: #9B8FCC;
+    --light-purple-bg: #F9F8FF;
+    --border: #EDE9FA;
+    --kicker-bg: #FFF0E6;
+    --chip-border: #B8B2E8;
+    --medium-purple: #5A51C0;
+    --inactive: #C5C1ED;
 }
 * { box-sizing: border-box; }
 html, body { width: 100%; min-height: 100%; margin: 0; padding: 0; background: #fff; font-family: 'Nunito', sans-serif; }
@@ -147,7 +150,7 @@ body { margin: 0 !important; padding: 0 !important; background: #fff !important;
     box-sizing: border-box;
 }
 .fb-app {
-    width: min(760px, 100%);
+    width: min(580px, 100%);
     margin: 0 auto;
 }
 .fb-hero {
@@ -158,30 +161,32 @@ body { margin: 0 !important; padding: 0 !important; background: #fff !important;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    padding: 7px 14px;
-    border-radius: 999px;
-    background: #FFF0E6;
-    border: 1px solid #FCDDBF;
-    color: #C2580A;
-    font-size: 12px;
-    font-weight: 900;
-    letter-spacing: .08em;
+    padding: 3px 14px;
+    border-radius: 99px;
+    background: var(--kicker-bg);
+    border: none;
+    color: var(--orange);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
     text-transform: uppercase;
     margin-bottom: 10px;
+    font-family: 'Nunito', sans-serif;
 }
 .fb-hero h1 {
     font-family: 'Fredoka', sans-serif;
-    font-size: clamp(30px, 5.5vw, 54px);
+    font-size: 32px;
     font-weight: 700;
     color: var(--orange);
     margin: 0;
     line-height: 1;
 }
 .fb-hero p {
-    font-size: clamp(13px, 1.8vw, 15px);
-    font-weight: 700;
+    font-size: 13px;
+    font-weight: 400;
     color: var(--muted);
     margin: 8px 0 0;
+    font-family: 'Nunito', sans-serif;
 }
 
 /* Progress */
@@ -192,83 +197,151 @@ body { margin: 0 !important; padding: 0 !important; background: #fff !important;
     margin-bottom: 16px;
 }
 .fb-progress-label {
-    font-size: 12px;
-    font-weight: 900;
+    font-size: 13px;
+    font-weight: 700;
     color: var(--muted);
     min-width: 48px;
+    font-family: 'Nunito', sans-serif;
 }
 .fb-track {
     flex: 1;
-    height: 12px;
-    background: var(--soft);
-    border-radius: 999px;
+    height: 6px;
+    background: var(--border);
+    border-radius: 99px;
     overflow: hidden;
 }
 .fb-fill {
     height: 100%;
     width: 0%;
     background: linear-gradient(90deg, var(--orange), var(--purple));
-    border-radius: 999px;
-    transition: width .35s;
+    border-radius: 99px;
+    transition: width 0.35s;
 }
 .fb-badge {
-    min-width: 74px;
+    min-width: auto;
     text-align: center;
-    padding: 7px 10px;
-    border-radius: 999px;
+    padding: 3px 12px;
+    border-radius: 99px;
     background: var(--purple);
     color: #fff;
     font-size: 12px;
-    font-weight: 900;
+    font-weight: 700;
+    font-family: 'Nunito', sans-serif;
 }
 
 /* Card */
 .fb-card-shell {
     background: #fff;
     border: 1px solid var(--border);
-    border-radius: 32px;
-    padding: clamp(16px, 2.6vw, 26px);
-    box-shadow: 0 8px 40px rgba(127,119,221,.12);
+    border-radius: 24px;
+    padding: 1.5rem;
+    box-shadow: 0 2px 8px rgba(127, 119, 221, 0.08);
     margin-bottom: 16px;
 }
 
 /* Sentence */
 #fb-sentence {
-    background: var(--soft);
-    border: 1px solid var(--border);
-    border-radius: 20px;
-    padding: clamp(18px, 3vw, 28px);
-    font-size: clamp(17px, 2.4vw, 22px);
-    font-weight: 700;
-    color: var(--purple-dark);
-    line-height: 1.8;
+    background: var(--light-purple-bg);
+    border-radius: 14px;
+    padding: 18px 20px;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--medium-purple);
+    line-height: 1.6;
     text-align: center;
-    margin-bottom: 16px;
-    min-height: 80px;
+    margin-bottom: 1.25rem;
+    min-height: auto;
     display: flex;
     align-items: center;
     justify-content: center;
     flex-wrap: wrap;
-    gap: 4px;
+    gap: 6px;
+    font-family: 'Nunito', sans-serif;
 }
 
-/* Input */
-#fb-input {
+/* Blank empty state */
+.fb-blank {
     display: inline-block;
-    border: none;
-    border-bottom: 3px solid var(--border);
-    background: transparent;
-    padding: 2px 10px;
-    font-size: clamp(17px, 2.4vw, 22px);
-    font-weight: 800;
-    font-family: 'Nunito', sans-serif;
-    color: var(--purple-dark);
-    outline: none;
-    text-align: center;
-    min-width: 120px;
-    transition: border-color .15s;
+    border-bottom: 2.5px solid var(--purple);
+    min-width: 110px;
+    height: 24px;
+    margin: 0 6px;
+    vertical-align: bottom;
 }
-#fb-input:focus { border-bottom-color: var(--purple); }
+
+/* Blank filled state */
+.fb-blank-filled {
+    display: inline-flex;
+    align-items: center;
+    background: var(--purple);
+    color: #fff;
+    border-radius: 8px;
+    padding: 2px 12px;
+    font-weight: 700;
+    font-size: 14px;
+    gap: 6px;
+    vertical-align: bottom;
+    margin: 0 6px;
+    cursor: pointer;
+    font-family: 'Nunito', sans-serif;
+}
+
+.fb-blank-filled .fb-blank-remove {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    margin-left: 2px;
+    cursor: pointer;
+    font-size: 12px;
+}
+
+/* Word Bank */
+.fb-wordbank {
+    border: 1.5px dashed var(--inactive);
+    border-radius: 14px;
+    padding: 14px 16px;
+    margin-bottom: 1.25rem;
+}
+
+.fb-wb-label {
+    font: 700 11px 'Nunito', sans-serif;
+    color: var(--inactive);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin: 0 0 8px 0;
+}
+
+.fb-wb-words {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.fb-chip {
+    font: 700 14px 'Nunito', sans-serif;
+    padding: 7px 16px;
+    border-radius: 10px;
+    cursor: pointer;
+    background: #fff;
+    color: var(--medium-purple);
+    border: 1.5px solid var(--chip-border);
+    box-shadow: 0 3px 0 var(--chip-border);
+    transition: transform 0.1s, box-shadow 0.1s;
+}
+
+.fb-chip:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 0 var(--chip-border);
+}
+
+.fb-chip.used {
+    opacity: 0.35;
+    cursor: default;
+    box-shadow: none;
+    text-decoration: line-through;
+}
 
 /* Buttons */
 .fb-actions {
@@ -276,34 +349,71 @@ body { margin: 0 !important; padding: 0 !important; background: #fff !important;
     justify-content: center;
     gap: 10px;
     flex-wrap: wrap;
-    border-top: 1px solid var(--border);
-    padding-top: 16px;
-    margin-top: 8px;
 }
+
 .fb-btn {
-    border: 0;
-    border-radius: 999px;
-    padding: 13px 20px;
-    min-width: 120px;
+    border: none;
+    border-radius: 99px;
+    padding: 10px 24px;
     color: #fff;
     cursor: pointer;
     font-family: 'Nunito', sans-serif;
     font-size: 14px;
-    font-weight: 900;
-    transition: .18s;
-    box-shadow: 0 6px 18px rgba(127,119,221,.15);
+    font-weight: 700;
+    transition: 0.18s;
 }
-.fb-btn:hover { transform: translateY(-1px); }
-.fb-btn-orange { background: var(--orange); box-shadow: 0 6px 18px rgba(249,115,22,.22); }
-.fb-btn-purple { background: var(--purple); }
+
+.fb-btn-check {
+    background: var(--orange);
+}
+
+.fb-btn-check:hover {
+    opacity: 0.9;
+}
+
+.fb-btn-check:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.fb-btn-show {
+    background: var(--purple);
+}
+
+.fb-btn-show:hover {
+    opacity: 0.9;
+}
+
+.fb-btn-show:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.fb-btn-next {
+    background: var(--orange);
+}
+
+.fb-btn-next:hover:not(:disabled) {
+    opacity: 0.9;
+}
+
+.fb-btn-next:disabled {
+    background: var(--border);
+    color: var(--inactive);
+    cursor: not-allowed;
+}
 
 #fb-feedback { margin-top: 8px; }
 #fb-completed { }
 
 @media (max-width: 640px) {
     .fb-page { padding: 12px; }
+    .fb-app { width: 100%; }
+    .fb-card-shell { padding: 1rem; }
     .fb-actions { display: grid; grid-template-columns: 1fr; gap: 9px; }
     .fb-btn { width: 100%; }
+    .fb-wb-words { gap: 6px; }
+    .fb-chip { padding: 6px 12px; font-size: 12px; }
 }
 </style>
 
@@ -327,12 +437,16 @@ body { margin: 0 !important; padding: 0 !important; background: #fff !important;
                 </div>
 
                 <div id="fb-sentence"></div>
-                <input type="text" id="fb-input" autocomplete="off" spellcheck="false" placeholder="Type here…">
+                
+                <div class="fb-wordbank">
+                    <p class="fb-wb-label">Word bank</p>
+                    <div class="fb-wb-words" id="fb-wb-words"></div>
+                </div>
 
                 <div class="fb-actions">
-                    <button class="fb-btn fb-btn-orange" id="fb-check">Check</button>
-                    <button class="fb-btn fb-btn-purple" id="fb-show">Show Answer</button>
-                    <button class="fb-btn fb-btn-orange" id="fb-next">Next</button>
+                    <button class="fb-btn fb-btn-check" id="fb-check">Check</button>
+                    <button class="fb-btn fb-btn-show" id="fb-show">Show Answer</button>
+                    <button class="fb-btn fb-btn-next" id="fb-next">Next</button>
                 </div>
             </div>
 
