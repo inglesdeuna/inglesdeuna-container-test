@@ -145,7 +145,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
   function loadQuestion() {
     var q = questions[index] || {};
-    var answers = q.answer ? [q.answer] : [];
+    var answers = (q.options && q.options.length > 0) ? q.options : (q.answer ? [q.answer] : []);
     
     answered = false;
     revealed = false;
