@@ -638,7 +638,7 @@ function PlayerView({ scene: sc, turns, activityId }) {
   );
 
   return (
-    <div style={{ maxWidth: 820, margin: "0 auto", padding: "16px" }}>
+    <div style={{ maxWidth: 960, margin: "0 auto", padding: "16px" }}>
       <div style={{
         background: C.white, border: `1px solid #F0EEF8`, borderRadius: 34,
         boxShadow: "0 8px 40px rgba(127,119,221,.13)", padding: "20px 22px 22px",
@@ -659,29 +659,45 @@ function PlayerView({ scene: sc, turns, activityId }) {
           <div style={{ height: "100%", width: `${pct}%`, background: `linear-gradient(90deg,${C.orange},${C.purple})`, borderRadius: 999, transition: "width .4s" }} />
         </div>
 
-        {/* Scene card */}
-        <div style={{ position: "relative", borderRadius: 20, height: 220, overflow: "hidden", marginBottom: 16, background: scene.sceneImage ? "transparent" : "linear-gradient(160deg,#EDE9FA,#FFF0E6)" }}>
-          {scene.sceneImage && <img src={scene.sceneImage} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
+        {/* Scene card — image shows full size, avatars overlay at bottom */}
+        <div style={{
+          position: "relative", borderRadius: 20, marginBottom: 16, overflow: "hidden",
+          background: "linear-gradient(160deg,#EDE9FA,#FFF0E6)",
+          minHeight: 120,
+        }}>
+          {scene.sceneImage && (
+            <img src={scene.sceneImage} alt="" style={{
+              width: "100%", height: "auto", display: "block",
+              objectFit: "contain", borderRadius: 20,
+            }} />
+          )}
 
           {/* Teacher speech bubble */}
-          <div style={{ position: "absolute", top: 10, right: 76, background: C.white, borderRadius: "14px 14px 4px 14px", padding: "8px 12px", maxWidth: 180, boxShadow: "0 4px 14px rgba(0,0,0,.12)", fontSize: 12, fontFamily: "'Fredoka',sans-serif", fontWeight: 600, color: C.purpleDark, lineHeight: 1.4 }}>
+          <div style={{
+            position: "absolute", top: 10, right: 90,
+            background: C.white, borderRadius: "14px 14px 4px 14px",
+            padding: "8px 12px", maxWidth: 200,
+            boxShadow: "0 4px 14px rgba(0,0,0,.12)",
+            fontSize: 12, fontFamily: "'Fredoka',sans-serif",
+            fontWeight: 600, color: C.purpleDark, lineHeight: 1.4,
+          }}>
             {turn.teacherLine || "…"}
           </div>
 
           {/* Student avatar (bottom-left) */}
-          <div style={{ position: "absolute", bottom: 8, left: 10, display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}>
-            <div style={{ border: "3px solid white", borderRadius: "50%", boxShadow: "0 4px 12px rgba(0,0,0,.18)" }}>
-              <AvatarImg id={avatarId} size={52} />
+          <div style={{ position: "absolute", bottom: 10, left: 12, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+            <div style={{ border: "3px solid white", borderRadius: "50%", boxShadow: "0 4px 14px rgba(0,0,0,.22)" }}>
+              <AvatarImg id={avatarId} size={72} />
             </div>
-            <div style={{ background: "rgba(83,74,183,.8)", color: C.white, borderRadius: 999, padding: "2px 8px", fontSize: 10, fontWeight: 800 }}>{avatarLabel}</div>
+            <div style={{ background: "rgba(83,74,183,.85)", color: C.white, borderRadius: 999, padding: "3px 10px", fontSize: 11, fontWeight: 800 }}>{avatarLabel}</div>
           </div>
 
           {/* Teacher avatar (bottom-right) */}
-          <div style={{ position: "absolute", bottom: 8, right: 10, display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}>
-            <div style={{ border: "3px solid white", borderRadius: "50%", boxShadow: "0 4px 12px rgba(0,0,0,.18)" }}>
-              <TeacherImg size={52} />
+          <div style={{ position: "absolute", bottom: 10, right: 12, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+            <div style={{ border: "3px solid white", borderRadius: "50%", boxShadow: "0 4px 14px rgba(0,0,0,.22)" }}>
+              <TeacherImg size={72} />
             </div>
-            <div style={{ background: "rgba(194,88,10,.8)", color: C.white, borderRadius: 999, padding: "2px 8px", fontSize: 10, fontWeight: 800 }}>{scene.agentName || "Teacher"}</div>
+            <div style={{ background: "rgba(194,88,10,.85)", color: C.white, borderRadius: 999, padding: "3px 10px", fontSize: 11, fontWeight: 800 }}>{scene.agentName || "Teacher"}</div>
           </div>
         </div>
 
