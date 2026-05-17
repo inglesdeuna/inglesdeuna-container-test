@@ -429,7 +429,7 @@ window.FILLBLANK_TITLE       = <?php echo json_encode($viewerTitle, JSON_UNESCAP
 window.FILLBLANK_RETURN_TO   = <?php echo json_encode($returnTo,    JSON_UNESCAPED_UNICODE); ?>;
 window.FILLBLANK_ACTIVITY_ID = <?php echo json_encode($activityId,  JSON_UNESCAPED_UNICODE); ?>;
 </script>
-<script src="fillblank.js"></script>
+<script src="fillblank.js?v=<?php echo filemtime(__FILE__); ?>"></script>
 <?php
 $content = ob_get_clean();
 render_activity_viewer($viewerTitle, 'fa-solid fa-pen-to-square', $content);
