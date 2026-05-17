@@ -66,10 +66,18 @@ function fb2_load(PDO $pdo, string $unit, string $activityId): array
         $blocks = isset($data['blocks']) ? $data['blocks'] : [];
     }
 
+    /* Parse wordbank: "nearby | closed | open" → ['nearby','closed','open'] */
+    $wordbank = isset($data['wordbank']) ? trim((string)$data['wordbank']) : '';
+    $options  = [];
+    if ($wordbank !== '') {
+        $options = array_values(array_filter(array_map('trim', explode('|', $wordbank))));
+    }
+
     return [
         'id'           => (string)($row['id'] ?? ''),
         'instructions' => isset($data['instructions']) ? $data['instructions'] : $fallback['instructions'],
         'blocks'       => $blocks,
+        'options'      => $options,
     ];
 }
 
@@ -105,6 +113,7 @@ foreach ($blocks as $block) {
         'before'      => $before,
         'after'       => $after,
         'answer'      => $answer,
+        'options'     => $activity['options'] ?? [],
     ];
 }
 
@@ -406,6 +415,69 @@ body { margin: 0 !important; padding: 0 !important; background: #fff !important;
 #fb-feedback { margin-top: 8px; }
 #fb-completed { }
 
+/* ── Word bank — Option A chip style (same as unscramble) ── */
+#fb-wordbank-wrap {
+    border: 1.5px dashed var(--border);
+    border-radius: 16px;
+    padding: 10px 14px 14px;
+    margin-bottom: 16px;
+    display: none; /* shown by JS when options exist */
+}
+.fb-wordbank-label {
+    font-size: 10px;
+    font-weight: 900;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    margin-bottom: 10px;
+    display: block;
+}
+#fb-wordbank {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+    min-height: 40px;
+}
+.fb-chip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px 16px;
+    border-radius: 10px;
+    font-family: 'Nunito', sans-serif;
+    font-size: clamp(14px, 1.8vw, 16px);
+    font-weight: 900;
+    cursor: pointer;
+    user-select: none;
+    background: #fff;
+    border: 1.5px solid #7F77DD;
+    color: #534AB7;
+    box-shadow: 0 3px 0 #534AB7;
+    transition: transform .12s, box-shadow .12s;
+}
+.fb-chip:hover  { transform: translateY(-1px); box-shadow: 0 4px 0 #534AB7; }
+.fb-chip:active { transform: translateY(2px);  box-shadow: 0 1px 0 #534AB7; }
+
+/* Inline chip shown inside the sentence when a word is selected */
+.fb-blank-chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 14px;
+    border-radius: 10px;
+    background: #F5F3FF;
+    border: 1.5px solid #7F77DD;
+    color: #534AB7;
+    box-shadow: 0 3px 0 #534AB7;
+    font-weight: 900;
+    font-family: 'Nunito', sans-serif;
+    font-size: clamp(15px, 2vw, 19px);
+    cursor: pointer;
+    vertical-align: middle;
+    transition: transform .12s;
+}
+.fb-blank-chip:hover { transform: translateY(-1px); }
+
 @media (max-width: 640px) {
     .fb-page { padding: 12px; }
     .fb-app { width: 100%; }
@@ -443,6 +515,12 @@ body { margin: 0 !important; padding: 0 !important; background: #fff !important;
                     <div class="fb-wb-words" id="fb-wb-words"></div>
                 </div>
 
+                <!-- Word bank — shown by JS when question has options -->
+                <div id="fb-wordbank-wrap">
+                    <span class="fb-wordbank-label">Word Bank</span>
+                    <div id="fb-wordbank"></div>
+                </div>
+
                 <div class="fb-actions">
                     <button class="fb-btn fb-btn-check" id="fb-check">Check</button>
                     <button class="fb-btn fb-btn-show" id="fb-show">Show Answer</button>
@@ -465,7 +543,7 @@ window.FILLBLANK_TITLE       = <?php echo json_encode($viewerTitle, JSON_UNESCAP
 window.FILLBLANK_RETURN_TO   = <?php echo json_encode($returnTo,    JSON_UNESCAPED_UNICODE); ?>;
 window.FILLBLANK_ACTIVITY_ID = <?php echo json_encode($activityId,  JSON_UNESCAPED_UNICODE); ?>;
 </script>
-<script src="fillblank.js"></script>
+<script src="fillblank.js?v=<?php echo filemtime(__FILE__); ?>"></script>
 <?php
 $content = ob_get_clean();
 render_activity_viewer($viewerTitle, 'fa-solid fa-pen-to-square', $content);

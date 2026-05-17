@@ -66,6 +66,7 @@ $activityTypes = [
     "question_answer" => "Question Answer",
     "fillblank" => "Fill in the Blank",
     "roleplay" => "Roleplay",
+    "roleplay_kids" => "Roleplay (Kids)",
 ];
 
 /* ===============================

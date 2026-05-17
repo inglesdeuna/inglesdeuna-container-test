@@ -6,7 +6,6 @@ document.addEventListener('DOMContentLoaded', function () {
   var progressFillEl  = document.getElementById('dd-progress-fill');
   var progressBadgeEl = document.getElementById('dd-progress-badge');
   var instructionEl   = document.getElementById('dd-instruction');
-  var slotsEl         = document.getElementById('dd-slots');
   var wordsEl         = document.getElementById('dd-words');
   var checkBtn        = document.getElementById('dd-check');
   var showBtn         = document.getElementById('dd-show');
@@ -16,8 +15,8 @@ document.addEventListener('DOMContentLoaded', function () {
   var completedEl     = document.getElementById('dd-completed');
   var winAudio        = new Audio('../../hangman/assets/win.mp3');
 
-  var activityTitle = window.DRAGDROP_TITLE || 'Drag & Drop';
-  var returnTo      = window.DRAGDROP_RETURN_TO || '';
+  var activityTitle = window.DRAGDROP_TITLE      || 'Drag & Drop';
+  var returnTo      = window.DRAGDROP_RETURN_TO  || '';
   var activityId    = window.DRAGDROP_ACTIVITY_ID || '';
 
   if (!questions.length) {
@@ -27,11 +26,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
   var index        = 0;
   var answered     = false;
-  var dragging     = null;
-  var slotContents = {};   /* slotId -> word */
+  var dragging     = null;  /* currently dragged chip element */
+  var slotContents = {};    /* slotIndex (number) -> word (string) */
   var scores       = questions.map(function () { return 0; });
   var reviewItems  = questions.map(function () { return {}; });
 
+  /* ── progress ─────────────────────────────── */
   function updateProgress() {
     var total   = questions.length;
     var current = index + 1;
@@ -39,11 +39,6 @@ document.addEventListener('DOMContentLoaded', function () {
     if (progressLabelEl) progressLabelEl.textContent = current + ' / ' + total;
     if (progressBadgeEl) progressBadgeEl.textContent = 'Q ' + current + ' of ' + total;
     if (progressFillEl)  progressFillEl.style.width  = pct + '%';
-  }
-
-  function escHtml(s) {
-    return String(s || '')
-      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   }
 
   function shuffle(arr) {
@@ -55,128 +50,144 @@ document.addEventListener('DOMContentLoaded', function () {
     return a;
   }
 
+  /* ── load question ────────────────────────── */
   function loadQuestion() {
-    var q = questions[index] || {};
-    answered    = false;
+    var q    = questions[index] || {};
+    answered     = false;
     slotContents = {};
-    dragging    = null;
+    dragging     = null;
 
     if (completedEl) completedEl.style.display = 'none';
     if (activityEl)  activityEl.style.display  = '';
     if (feedbackEl)  AF.clearFeedback(feedbackEl);
 
     updateProgress();
-    if (instructionEl) instructionEl.textContent = q.instruction || 'Fill in the blanks:';
-
-    renderSlots(q);
+    renderInstruction(q);
     renderWords(q);
 
     if (checkBtn) checkBtn.disabled = false;
     if (showBtn)  { showBtn.style.display = ''; showBtn.disabled = false; }
-    if (nextBtn)  { nextBtn.disabled = true; nextBtn.textContent = index < questions.length - 1 ? 'Next \u2192' : 'Finish'; }
+    if (nextBtn)  {
+      nextBtn.disabled    = true;
+      nextBtn.textContent = index < questions.length - 1 ? 'Next →' : 'Finish';
+    }
   }
 
-  function renderSlots(q) {
-    if (!slotsEl) return;
-    slotsEl.innerHTML = '';
-    var slots = Array.isArray(q.slots) ? q.slots : [];
-    slots.forEach(function (slot, i) {
-      var slotId = 'slot-' + i;
-      var div = document.createElement('div');
-      div.className = 'dd-slot';
-      div.dataset.slotId = slotId;
-      div.dataset.answer = slot.answer || '';
+  /* ── render instruction with inline drop zones ── */
+  function renderInstruction(q) {
+    if (!instructionEl) return;
+    instructionEl.innerHTML = '';
 
-      var numEl = document.createElement('span');
-      numEl.className = 'dd-slot__num';
-      numEl.textContent = String(i + 1);
-      div.appendChild(numEl);
+    var text  = q.instruction || '';
+    var parts = text.split('___');
 
-      var labelEl = document.createElement('span');
-      labelEl.className = 'dd-slot__label';
-      labelEl.textContent = slot.label || '';
-      div.appendChild(labelEl);
-
-      var dropzone = document.createElement('div');
-      dropzone.className = 'dd-dropzone';
-      dropzone.dataset.slotId = slotId;
-      dropzone.textContent = 'Drop here';
-      div.appendChild(dropzone);
-
-      /* drop events */
-      dropzone.addEventListener('dragover', function (e) { e.preventDefault(); dropzone.classList.add('dd-dropzone--over'); });
-      dropzone.addEventListener('dragleave', function () { dropzone.classList.remove('dd-dropzone--over'); });
-      dropzone.addEventListener('drop', function (e) {
-        e.preventDefault();
-        dropzone.classList.remove('dd-dropzone--over');
-        if (!dragging || answered) return;
-        var word = dragging.dataset.word;
-        /* if slot already has a word, return it to word bank */
-        var prevWord = slotContents[slotId];
-        if (prevWord) returnWordToBank(prevWord);
-        slotContents[slotId] = word;
-        dropzone.textContent = word;
-        dropzone.classList.add('dd-dropzone--filled');
-        dragging.remove();
-        dragging = null;
-      });
-
-      slotsEl.appendChild(div);
+    parts.forEach(function (part, i) {
+      if (part) {
+        instructionEl.appendChild(document.createTextNode(part));
+      }
+      /* add a drop zone between every pair of parts */
+      if (i < parts.length - 1) {
+        var drop = document.createElement('span');
+        drop.className    = 'dd-inline-drop';
+        drop.dataset.slot = String(i);
+        drop.textContent  = '___';
+        bindDropZone(drop, i);
+        instructionEl.appendChild(drop);
+      }
     });
   }
 
+  function bindDropZone(drop, slotIndex) {
+    drop.addEventListener('dragover', function (e) {
+      e.preventDefault();
+      if (!answered) drop.classList.add('dd-inline-drop--over');
+    });
+    drop.addEventListener('dragleave', function () {
+      drop.classList.remove('dd-inline-drop--over');
+    });
+    drop.addEventListener('drop', function (e) {
+      e.preventDefault();
+      drop.classList.remove('dd-inline-drop--over');
+      if (!dragging || answered) return;
+
+      var word = dragging.dataset.word;
+
+      /* if slot already filled, return old word to bank */
+      if (slotContents[slotIndex] !== undefined) {
+        addWordChip(slotContents[slotIndex]);
+      }
+
+      slotContents[slotIndex] = word;
+      drop.textContent = word;
+      drop.classList.add('dd-inline-drop--filled');
+
+      /* remove chip from bank */
+      if (dragging.parentNode) dragging.parentNode.removeChild(dragging);
+      dragging = null;
+    });
+
+    /* click filled drop to return word to bank */
+    drop.addEventListener('click', function () {
+      if (answered) return;
+      if (slotContents[slotIndex] === undefined) return;
+      var word = slotContents[slotIndex];
+      delete slotContents[slotIndex];
+      drop.textContent = '___';
+      drop.classList.remove('dd-inline-drop--filled');
+      addWordChip(word);
+    });
+  }
+
+  /* ── word chips ───────────────────────────── */
   function renderWords(q) {
     if (!wordsEl) return;
     wordsEl.innerHTML = '';
     var words = shuffle(Array.isArray(q.words) ? q.words : []);
-    words.forEach(function (w) {
-      addWordChip(w);
-    });
+    words.forEach(addWordChip);
   }
 
   function addWordChip(word) {
     if (!wordsEl) return;
-    var chip = document.createElement('div');
-    chip.className = 'dd-word';
-    chip.draggable  = true;
+    var chip          = document.createElement('div');
+    chip.className    = 'dd-chip';
+    chip.draggable    = true;
     chip.dataset.word = word;
     chip.textContent  = word;
-    chip.addEventListener('dragstart', function () { dragging = chip; chip.classList.add('dd-word--dragging'); });
-    chip.addEventListener('dragend',   function () { chip.classList.remove('dd-word--dragging'); dragging = null; });
+
+    chip.addEventListener('dragstart', function (e) {
+      dragging = chip;
+      chip.classList.add('dd-chip--dragging');
+      e.dataTransfer.effectAllowed = 'move';
+    });
+    chip.addEventListener('dragend', function () {
+      chip.classList.remove('dd-chip--dragging');
+      dragging = null;
+    });
+
     wordsEl.appendChild(chip);
   }
 
-  function returnWordToBank(word) {
-    /* find and delete any slot content for this word first */
-    Object.keys(slotContents).forEach(function (k) {
-      if (slotContents[k] === word) delete slotContents[k];
-    });
-    addWordChip(word);
-    /* clear the dropzone */
-    slotsEl && slotsEl.querySelectorAll('.dd-dropzone').forEach(function (dz) {
-      if (dz.textContent === word) { dz.textContent = 'Drop here'; dz.classList.remove('dd-dropzone--filled'); }
-    });
-  }
-
+  /* ── check ────────────────────────────────── */
   function checkAnswers() {
     if (answered) return;
-    var q = questions[index] || {};
+    var q     = questions[index] || {};
     var slots = Array.isArray(q.slots) ? q.slots : [];
     var correct = 0;
     answered = true;
 
-    /* highlight each slot */
-    slotsEl && slotsEl.querySelectorAll('.dd-slot').forEach(function (slotDiv, i) {
-      var slotId   = 'slot-' + i;
-      var expected = slots[i] ? (slots[i].answer || '') : '';
-      var given    = slotContents[slotId] || '';
-      var isRight  = given.trim().toLowerCase() === expected.trim().toLowerCase();
-      if (isRight) correct++;
-      slotDiv.classList.add(isRight ? 'dd-slot--correct' : 'dd-slot--wrong');
-    });
+    if (instructionEl) {
+      instructionEl.querySelectorAll('.dd-inline-drop').forEach(function (drop, i) {
+        var expected = slots[i] ? (slots[i].answer || '').trim().toLowerCase() : '';
+        var given    = (slotContents[i] !== undefined ? slotContents[i] : '').trim().toLowerCase();
+        var isRight  = given !== '' && given === expected;
+        if (isRight) correct++;
+        drop.classList.remove('dd-inline-drop--filled');
+        drop.classList.add(isRight ? 'dd-inline-drop--correct' : 'dd-inline-drop--wrong');
+      });
+    }
 
-    var allRight = correct === slots.length;
-    scores[index] = allRight ? 1 : 0;
+    var allRight = correct === slots.length && slots.length > 0;
+    scores[index]      = allRight ? 1 : 0;
     reviewItems[index] = {
       question:      q.instruction || ('Question ' + (index + 1)),
       yourAnswer:    correct + '/' + slots.length + ' correct',
@@ -190,20 +201,22 @@ document.addEventListener('DOMContentLoaded', function () {
     if (nextBtn)  nextBtn.disabled = false;
   }
 
+  /* ── show answer ──────────────────────────── */
   function showAnswers() {
     if (answered) return;
-    var q = questions[index] || {};
+    var q     = questions[index] || {};
     var slots = Array.isArray(q.slots) ? q.slots : [];
-    answered = true;
+    answered      = true;
     scores[index] = -1;
 
-    /* fill all slots with correct answers */
-    slotsEl && slotsEl.querySelectorAll('.dd-slot').forEach(function (slotDiv, i) {
-      var dropzone = slotDiv.querySelector('.dd-dropzone');
-      var expected = slots[i] ? (slots[i].answer || '') : '';
-      if (dropzone) { dropzone.textContent = expected; dropzone.classList.add('dd-dropzone--filled'); }
-      slotDiv.classList.add('dd-slot--revealed');
-    });
+    if (instructionEl) {
+      instructionEl.querySelectorAll('.dd-inline-drop').forEach(function (drop, i) {
+        var expected = slots[i] ? (slots[i].answer || '') : '';
+        drop.textContent = expected;
+        drop.classList.remove('dd-inline-drop--filled');
+        drop.classList.add('dd-inline-drop--revealed');
+      });
+    }
 
     reviewItems[index] = { question: q.instruction || '', yourAnswer: '(revealed)', correctAnswer: '', score: -1 };
     if (feedbackEl) AF.showFeedback(feedbackEl, false, null, true);
@@ -212,6 +225,7 @@ document.addEventListener('DOMContentLoaded', function () {
     if (nextBtn)  nextBtn.disabled = false;
   }
 
+  /* ── next / complete ──────────────────────── */
   function nextQuestion() {
     if (index < questions.length - 1) {
       index++;
@@ -240,33 +254,28 @@ document.addEventListener('DOMContentLoaded', function () {
     var result = AF.computeScore(scores);
     if (returnTo && activityId) {
       var sep = returnTo.indexOf('?') !== -1 ? '&' : '?';
-      fetch(returnTo + sep + 'activity_percent=' + result.percent + '&activity_errors=' + result.wrong + '&activity_total=' + result.total + '&activity_id=' + encodeURIComponent(activityId) + '&activity_type=drag_drop',
-        { method: 'GET', credentials: 'same-origin', cache: 'no-store' }).catch(function () {});
+      fetch(
+        returnTo + sep +
+        'activity_percent=' + result.percent +
+        '&activity_errors='  + result.wrong   +
+        '&activity_total='   + result.total   +
+        '&activity_id='      + encodeURIComponent(activityId) +
+        '&activity_type=drag_drop',
+        { method: 'GET', credentials: 'same-origin', cache: 'no-store' }
+      ).catch(function () {});
     }
   }
 
   function restartActivity() {
-    index        = 0;
-    scores       = questions.map(function () { return 0; });
-    reviewItems  = questions.map(function () { return {}; });
+    index       = 0;
+    scores      = questions.map(function () { return 0; });
+    reviewItems = questions.map(function () { return {}; });
     loadQuestion();
   }
 
-  /* inject slot/word CSS */
-  if (!document.getElementById('dd-feedback-css')) {
-    var st = document.createElement('style');
-    st.id = 'dd-feedback-css';
-    st.textContent =
-      '.dd-slot--correct{border-color:#22c55e!important;background:#f0fdf4!important}' +
-      '.dd-slot--wrong{border-color:#ef4444!important;background:#fef2f2!important}' +
-      '.dd-slot--revealed{border-color:#F97316!important;background:#FFF9F5!important}' +
-      '.dd-dropzone--over{border-color:#7F77DD!important;background:#EEEDFE!important}';
-    document.head.appendChild(st);
-  }
-
   if (checkBtn) checkBtn.addEventListener('click', checkAnswers);
-  if (showBtn)  showBtn.addEventListener('click', showAnswers);
-  if (nextBtn)  nextBtn.addEventListener('click', nextQuestion);
+  if (showBtn)  showBtn.addEventListener('click',  showAnswers);
+  if (nextBtn)  nextBtn.addEventListener('click',  nextQuestion);
 
   loadQuestion();
 });
