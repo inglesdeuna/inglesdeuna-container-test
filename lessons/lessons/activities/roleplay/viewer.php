@@ -59,7 +59,7 @@ const C = {
   orangeLight: "#FFF0E6",
   orangeMid: "#bf521a",
   cardBorder: "#EDE9FA",
-  bg: "#F5F3FF",
+  bg: "#F9F8FF",
   bgCard: "#F9F8FF",
   white: "#ffffff",
   green: "#F0FDF4",
@@ -94,7 +94,7 @@ const Card = ({ children, style = {} }) => (
 const Btn = ({ children, onClick, color = C.orange, style = {}, disabled = false }) => (
   <button onClick={onClick} disabled={disabled} style={{
     background: disabled ? C.purpleLight : color, color: disabled ? C.purpleSub : C.white,
-    border: "none", borderRadius: 14, padding: "12px 0", width: "100%",
+    border: "none", borderRadius: 999, padding: "12px 0", width: "100%",
     fontFamily: "'Nunito', sans-serif", fontWeight: 800, fontSize: 14,
     cursor: disabled ? "not-allowed" : "pointer", display: "flex",
     alignItems: "center", justifyContent: "center", gap: 7, ...style,
@@ -104,7 +104,7 @@ const Btn = ({ children, onClick, color = C.orange, style = {}, disabled = false
 const OutlineBtn = ({ children, onClick, style = {} }) => (
   <button onClick={onClick} style={{
     background: C.white, color: C.purple, border: `1.5px solid ${C.cardBorder}`,
-    borderRadius: 14, padding: "12px 0", width: "100%",
+    borderRadius: 999, padding: "12px 0", width: "100%",
     fontFamily: "'Nunito', sans-serif", fontWeight: 800, fontSize: 14,
     cursor: "pointer", display: "flex", alignItems: "center",
     justifyContent: "center", gap: 7, ...style,
@@ -119,7 +119,7 @@ const MiniLabel = ({ children, color = C.purpleSub }) => (
 
 const Topbar = ({ title, right }) => (
   <div style={{
-    background: C.white, borderBottom: `2px solid #F0EEF8`,
+    background: C.white, borderBottom: `1px solid #F0EEF8`,
     padding: "12px 20px", display: "flex", alignItems: "center",
     justifyContent: "space-between", position: "sticky", top: 0, zIndex: 100,
   }}>
@@ -695,56 +695,56 @@ function RecorderCard({ turn, turnIndex, totalTurns, onSubmit, scene, ttsState, 
 
       {/* 1. PROGRESS BAR */}
       <div>
-        <div style={{ height: 7, background: C.purpleLight, borderRadius: 999 }}>
+        <div style={{ height: 6, background: "#EDE9FA", borderRadius: 999 }}>
           <div style={{ height: "100%", width: `${((turnIndex + 1) / totalTurns) * 100}%`, background: `linear-gradient(90deg,${C.orange},${C.purple})`, borderRadius: 999, transition: "width .4s" }} />
         </div>
-        <div style={{ textAlign: "right", fontSize: 11, fontWeight: 800, color: muted, marginTop: 4 }}>
+        <div style={{ textAlign: "right", fontSize: 13, fontWeight: 700, color: "#9B8FCC", marginTop: 4 }}>
           {turnIndex + 1} of {totalTurns} turns
         </div>
       </div>
 
       {/* 2. AGENT CARD */}
-      <div style={{ background: C.purpleLight, borderRadius: 18, border: `1.5px solid ${C.cardBorder}`, padding: "14px 16px" }}>
+      <div style={{ background: "#F9F8FF", borderRadius: "18px 18px 18px 4px", border: "1px solid #EDE9FA", padding: "14px 16px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
-          <div style={{ width: 32, height: 32, borderRadius: "50%", background: C.purple, color: C.white, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Fredoka',sans-serif", fontSize: 15, fontWeight: 700, flexShrink: 0 }}>
+          <div style={{ width: 32, height: 32, borderRadius: "50%", background: "#EDE9FA", color: "#5A51C0", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Nunito',sans-serif", fontSize: 15, fontWeight: 700, flexShrink: 0 }}>
             {(scene.agentName || "A")[0].toUpperCase()}
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontFamily: "'Fredoka',sans-serif", fontSize: 14, color: C.purple, fontWeight: 600, lineHeight: 1.2 }}>{scene.agentName || "Agent"}</div>
+            <div style={{ fontFamily: "'Nunito',sans-serif", fontSize: 14, color: "#5A51C0", fontWeight: 800, lineHeight: 1.2 }}>{scene.agentName || "Agent"}</div>
             <div style={{ fontSize: 10, fontWeight: 800, color: muted, textTransform: "uppercase", letterSpacing: ".05em" }}>{scene.agentRole || "Character"}</div>
           </div>
-          <button onClick={() => speakAgentLine(turn.agent)} disabled={ttsState !== "idle"} style={{ background: ttsState !== "idle" ? C.purpleMid : C.purple, color: C.white, border: "none", borderRadius: 12, padding: "8px 14px", fontSize: 12, fontWeight: 800, fontFamily: "'Nunito',sans-serif", cursor: ttsState !== "idle" ? "not-allowed" : "pointer", display: "flex", alignItems: "center", gap: 5, flexShrink: 0 }}>
+          <button onClick={() => speakAgentLine(turn.agent)} disabled={ttsState !== "idle"} style={{ background: ttsState !== "idle" ? "#C5C1ED" : "#7F77DD", color: "#fff", border: "none", borderRadius: 999, padding: "8px 14px", fontSize: 12, fontWeight: 800, fontFamily: "'Nunito',sans-serif", cursor: ttsState !== "idle" ? "not-allowed" : "pointer", display: "flex", alignItems: "center", gap: 5, flexShrink: 0 }}>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
             {ttsState === "loading" ? "Loading…" : ttsState === "playing" ? "Playing…" : "Listen"}
           </button>
         </div>
-        <div style={{ background: C.white, border: `1.5px solid ${C.cardBorder}`, borderRadius: "0 16px 16px 16px", padding: "12px 14px", fontSize: 13, fontWeight: 700, color: ink, lineHeight: 1.6 }}>
+        <div style={{ background: "#fff", border: "1px solid #EDE9FA", borderRadius: "0 16px 16px 16px", padding: "12px 14px", fontSize: 14, fontWeight: 700, color: "#3C3489", lineHeight: 1.6 }}>
           {turn.agent}
         </div>
       </div>
 
       {/* 3. HINT BOX */}
       {turn.hint !== "" && (
-        <div style={{ background: "#FFF0E6", border: "1.5px solid #FCDDBF", borderRadius: 14, padding: "10px 14px", display: "flex", gap: 10, alignItems: "flex-start" }}>
+        <div style={{ background: "#FFF0E6", border: "1px solid #FDDCBE", borderRadius: 12, padding: "10px 14px", display: "flex", gap: 10, alignItems: "flex-start" }}>
           <span style={{ fontSize: 18, flexShrink: 0, lineHeight: 1.2 }}>💡</span>
           <div>
             <div style={{ fontSize: 10, fontWeight: 800, color: C.orange, textTransform: "uppercase", letterSpacing: ".05em", marginBottom: 2 }}>HINT</div>
-            <div style={{ fontSize: 12, fontWeight: 700, color: "#C2580A", lineHeight: 1.5 }}>{turn.hint}</div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: "#C1682B", lineHeight: 1.5 }}>{turn.hint}</div>
           </div>
         </div>
       )}
 
       {/* 4. STUDENT AREA */}
-      <div style={{ background: C.white, border: `1.5px solid ${C.cardBorder}`, borderRadius: 18, padding: "14px 16px" }}>
+      <div style={{ background: "#fff", border: "1.5px solid #EDE9FA", borderRadius: 20, padding: "14px 16px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
-          <div style={{ width: 32, height: 32, borderRadius: "50%", background: C.orangeLight, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, flexShrink: 0 }}>🎓</div>
+          <div style={{ width: 32, height: 32, borderRadius: "50%", background: "#FFF0E6", color: "#F97316", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, flexShrink: 0 }}>🎓</div>
           <div style={{ flex: 1 }}>
-            <div style={{ fontFamily: "'Fredoka',sans-serif", fontSize: 14, color: C.orange, fontWeight: 600 }}>Your turn</div>
+            <div style={{ fontFamily: "'Nunito',sans-serif", fontSize: 14, color: "#F97316", fontWeight: 800 }}>Your turn</div>
             <div style={{ fontSize: 10, fontWeight: 800, color: muted, textTransform: "uppercase", letterSpacing: ".05em" }}>{scene.studentRole || "Student"}</div>
           </div>
         </div>
         <div style={{ background: "#F9F8FF", border: "2px dashed #EDE9FA", borderRadius: 16, padding: 20, display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
-          <button onClick={rec.isRecording ? rec.stop : rec.start} style={{ width: 60, height: 60, borderRadius: "50%", border: "none", cursor: "pointer", background: rec.isRecording ? "#EF4444" : C.purple, boxShadow: rec.isRecording ? "0 4px 16px rgba(239,68,68,.3)" : "0 4px 16px rgba(127,119,221,.3)", display: "flex", alignItems: "center", justifyContent: "center", transition: "background .2s" }}>
+          <button onClick={rec.isRecording ? rec.stop : rec.start} style={{ width: 64, height: 64, borderRadius: "50%", border: "none", cursor: "pointer", background: rec.isRecording ? "#EF4444" : C.purple, boxShadow: rec.isRecording ? "0 4px 16px rgba(239,68,68,.3)" : "0 4px 16px rgba(127,119,221,.3)", display: "flex", alignItems: "center", justifyContent: "center", transition: "background .2s" }}>
             {rec.isRecording
               ? <svg width="22" height="22" viewBox="0 0 24 24" fill="white"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>
               : <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
@@ -754,7 +754,7 @@ function RecorderCard({ turn, turnIndex, totalTurns, onSubmit, scene, ttsState, 
             {rec.isRecording ? "🔴 Listening..." : rec.hasRecorded ? `✓ "${displayText.slice(0, 42)}${displayText.length > 42 ? "…" : ""}"` : "Tap to speak your response"}
           </div>
           <div style={{ fontSize: 11, fontWeight: 800, color: muted }}>— or —</div>
-          <button onClick={() => setShowTyping(v => !v)} style={{ background: C.white, border: `1.5px solid ${C.cardBorder}`, borderRadius: 12, padding: "8px 18px", fontSize: 12, fontWeight: 800, color: C.purple, fontFamily: "'Nunito',sans-serif", cursor: "pointer" }}>
+          <button onClick={() => setShowTyping(v => !v)} style={{ background: "#fff", border: "1.5px solid #EDE9FA", borderRadius: 999, padding: "8px 18px", fontSize: 12, fontWeight: 800, color: "#7F77DD", fontFamily: "'Nunito',sans-serif", cursor: "pointer" }}>
             {showTyping ? "Hide keyboard" : "Type instead"}
           </button>
           {showTyping && (
@@ -767,12 +767,12 @@ function RecorderCard({ turn, turnIndex, totalTurns, onSubmit, scene, ttsState, 
       </div>
 
       {/* 5. NAV ROW */}
-      <div style={{ borderTop: `1.5px solid ${C.cardBorder}`, padding: "12px 0 0", display: "flex", justifyContent: canGoBack ? "space-between" : "flex-end", alignItems: "center", background: C.white, gap: 10 }}>
+      <div style={{ borderTop: "1px solid #F0EEF8", padding: "12px 0 0", display: "flex", justifyContent: canGoBack ? "space-between" : "flex-end", alignItems: "center", background: "#fff", gap: 10 }}>
         {canGoBack && (
-          <button onClick={onBack} style={{ background: C.white, border: `1.5px solid ${C.cardBorder}`, color: C.purple, borderRadius: 12, padding: "10px 20px", fontSize: 13, fontWeight: 800, fontFamily: "'Nunito',sans-serif", cursor: "pointer" }}>← Back</button>
+          <button onClick={onBack} style={{ background: "#fff", border: "1.5px solid #EDE9FA", color: "#7F77DD", borderRadius: 999, padding: "10px 20px", fontSize: 13, fontWeight: 800, fontFamily: "'Nunito',sans-serif", cursor: "pointer" }}>← Back</button>
         )}
-        {!canSubmit && <span style={{ fontSize: 12, fontWeight: 800, color: muted }}>Speak or type to continue</span>}
-        <button onClick={handleSubmit} disabled={!canSubmit} style={{ background: canSubmit ? C.orange : "#ddd", color: canSubmit ? C.white : "#aaa", opacity: canSubmit ? 1 : 0.4, cursor: canSubmit ? "pointer" : "not-allowed", border: "none", borderRadius: 12, padding: "10px 20px", fontSize: 13, fontWeight: 800, fontFamily: "'Nunito',sans-serif" }}>Next →</button>
+        {!canSubmit && <span style={{ fontSize: 12, fontWeight: 700, color: "#C5C1ED", fontFamily: "'Nunito',sans-serif" }}>Speak or type to continue</span>}
+        <button onClick={handleSubmit} disabled={!canSubmit} style={{ background: canSubmit ? "#F97316" : "#EDE9FA", color: canSubmit ? "#fff" : "#C5C1ED", cursor: canSubmit ? "pointer" : "not-allowed", border: "none", borderRadius: 999, padding: "10px 20px", fontSize: 13, fontWeight: 800, fontFamily: "'Nunito',sans-serif" }}>Next →</button>
       </div>
 
     </div>
@@ -835,9 +835,9 @@ function FeedbackCard({ data, transcript, turnIndex, isLast, onNext, onFinish })
       )}
 
       {/* 7. NAV ROW */}
-      <div style={{ borderTop: `1.5px solid ${C.cardBorder}`, paddingTop: 12, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
-        <button onClick={() => {}} style={{ background: C.white, border: `1.5px solid ${C.cardBorder}`, color: C.purple, borderRadius: 12, padding: "10px 20px", fontSize: 13, fontWeight: 800, fontFamily: "'Nunito',sans-serif", cursor: "pointer" }}>← Review</button>
-        <button onClick={isLast ? onFinish : onNext} style={{ background: C.orange, color: C.white, border: "none", borderRadius: 12, padding: "10px 20px", fontSize: 13, fontWeight: 800, fontFamily: "'Nunito',sans-serif", cursor: "pointer" }}>
+      <div style={{ borderTop: "1px solid #F0EEF8", paddingTop: 12, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
+        <button onClick={() => {}} style={{ background: "#fff", border: "1.5px solid #EDE9FA", color: "#7F77DD", borderRadius: 999, padding: "10px 20px", fontSize: 13, fontWeight: 800, fontFamily: "'Nunito',sans-serif", cursor: "pointer" }}>← Review</button>
+        <button onClick={isLast ? onFinish : onNext} style={{ background: "#F97316", color: "#fff", border: "none", borderRadius: 999, padding: "10px 20px", fontSize: 13, fontWeight: 800, fontFamily: "'Nunito',sans-serif", cursor: "pointer" }}>
           {isLast ? "See Results →" : "Next Turn →"}
         </button>
       </div>
@@ -912,32 +912,42 @@ function PlayerView({ scene, turns, onComplete, onBack }) {
   };
 
   return (
-    <div style={{ background: C.bg, minHeight: "100%" }}>
+    <div style={{ background: "#F9F8FF", minHeight: "100%" }}>
       <Topbar title="🎭 Roleplay" right={
-        <select value={voiceId} onChange={e => setVoiceId(e.target.value)} style={{ background: C.white, border: "1.5px solid #EDE9FA", borderRadius: 10, fontFamily: "'Nunito',sans-serif", fontSize: 13, color: C.purple, padding: "6px 12px", outline: "none", cursor: "pointer" }}>
+        <select value={voiceId} onChange={e => setVoiceId(e.target.value)} style={{ background: "#F9F8FF", border: "1.5px solid #EDE9FA", borderRadius: 999, fontFamily: "'Nunito',sans-serif", fontSize: 13, color: "#9B8FCC", padding: "6px 14px", outline: "none", cursor: "pointer" }}>
           <option value="nzFihrBIvB34imQBuxub">🎙 Adult Male</option>
           <option value="NoOVOzCQFLOvtsMoNcdT">🎙 Adult Female</option>
           <option value="Nggzl2QAXh3OijoXD116">🎙 Child</option>
         </select>
       } />
 
-      {/* Scene info strip — record phase only */}
-      {phase === "record" && (
-        <div style={{ background: C.white, borderBottom: "1.5px solid #F0EEF8", padding: "10px 18px", display: "flex", alignItems: "center", gap: 12 }}>
-          <div style={{ width: 32, height: 32, borderRadius: "50%", background: C.orangeLight, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>{scene.icon}</div>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontFamily: "'Fredoka',sans-serif", fontSize: 16, color: C.orange, fontWeight: 600, lineHeight: 1.2 }}>{scene.title}</div>
-            <div style={{ fontSize: 11, fontWeight: 800, color: "#9B8FCC" }}>
-              {scene.agentName}{scene.agentRole ? ` · ${scene.agentRole}` : ""}{"  |  "}{scene.studentRole || "Student"} · You
+      {/* Page header */}
+      <div style={{ maxWidth: 680, margin: "0 auto", padding: "16px 16px 0", textAlign: "center" }}>
+        <span style={{ display: "inline-block", background: "#FFF0E6", color: "#F97316", fontSize: 11, fontWeight: 800, letterSpacing: ".07em", padding: "3px 12px", borderRadius: 999, textTransform: "uppercase", marginBottom: 8 }}>Activity</span>
+        <div style={{ fontFamily: "'Fredoka', sans-serif", fontSize: 32, color: "#F97316", lineHeight: 1.1, marginBottom: 4 }}>{scene.title || "Roleplay"}</div>
+        <div style={{ fontFamily: "'Nunito', sans-serif", fontSize: 13, color: "#9B8FCC", fontWeight: 700, marginBottom: 4 }}>Practice your English conversation skills</div>
+      </div>
+
+      <div style={{ maxWidth: 680, margin: "0 auto", padding: "12px 16px 60px" }}>
+        <div style={{ background: "#fff", border: "1px solid #EDE9FA", borderRadius: 24, overflow: "hidden" }}>
+
+        {/* Scene bar — record phase only */}
+        {phase === "record" && (
+          <div style={{ background: "#FFF0E6", borderBottom: "1px solid #EDE9FA", padding: "10px 18px", display: "flex", alignItems: "center", gap: 12 }}>
+            <div style={{ width: 32, height: 32, borderRadius: "50%", background: "#FFF0E6", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>{scene.icon}</div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontFamily: "'Nunito',sans-serif", fontSize: 14, color: "#F97316", fontWeight: 800, lineHeight: 1.2 }}>{scene.title}</div>
+              <div style={{ fontFamily: "'Nunito',sans-serif", fontSize: 11, fontWeight: 700, color: "#9B8FCC" }}>
+                {scene.agentName}{scene.agentRole ? ` · ${scene.agentRole}` : ""}{"  |  "}{scene.studentRole || "Student"} · You
+              </div>
+            </div>
+            <div style={{ background: "#7F77DD", color: "#fff", borderRadius: 999, padding: "4px 12px", fontSize: 12, fontWeight: 800, fontFamily: "'Nunito',sans-serif", flexShrink: 0 }}>
+              Turn {currentTurn + 1} / {turns.length}
             </div>
           </div>
-          <div style={{ background: C.purple, color: C.white, borderRadius: 20, padding: "4px 12px", fontSize: 11, fontWeight: 800, flexShrink: 0 }}>
-            Turn {currentTurn + 1} / {turns.length}
-          </div>
-        </div>
-      )}
+        )}
 
-      <div style={{ maxWidth: 680, margin: "0 auto", padding: "18px 16px 60px" }}>
+        <div style={{ padding: "18px 16px 24px" }}>
         <Messages messages={messages} />
 
         {phase === "record" && (
@@ -970,6 +980,8 @@ function PlayerView({ scene, turns, onComplete, onBack }) {
             onFinish={() => onComplete(results)}
           />
         )}
+        </div>
+        </div>
       </div>
     </div>
   );
