@@ -206,9 +206,9 @@ document.addEventListener('DOMContentLoaded', function () {
     var st = document.createElement('style');
     st.id = 'us-feedback-css';
     st.textContent =
-      '.us-answer-word--correct{background:#f0fdf4!important;border-color:#22c55e!important;color:#166534!important;cursor:default!important}' +
-      '.us-answer-word--wrong{background:#fef2f2!important;border-color:#ef4444!important;color:#991b1b!important;cursor:default!important}' +
-      '.us-answer-word--revealed{background:#EEEDFE!important;color:#534AB7!important;border-color:#d8d3f5!important;border-radius:999px!important;padding:8px 18px!important;font-weight:900!important;font-family:"Nunito",sans-serif!important}';
+      '.us-answer-word--correct{background:#f0fdf4!important;border-color:#22c55e!important;color:#166534!important;box-shadow:0 3px 0 #16a34a!important;cursor:default!important}' +
+      '.us-answer-word--wrong{background:#fef2f2!important;border-color:#ef4444!important;color:#991b1b!important;box-shadow:0 3px 0 #dc2626!important;cursor:default!important}' +
+      '.us-answer-word--revealed{background:#EDE9FA!important;border-color:#7F77DD!important;color:#534AB7!important;box-shadow:0 3px 0 #534AB7!important;border-radius:10px!important;padding:8px 16px!important;font-weight:900!important;font-family:"Nunito",sans-serif!important}';
     document.head.appendChild(st);
   }
 

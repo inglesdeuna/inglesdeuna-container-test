@@ -274,55 +274,42 @@ body { margin: 0 !important; padding: 0 !important; background: #fff !important;
     margin-bottom: 16px;
 }
 
-/* ── Option B chip style — pastel fill, pill shape, no shadow ── */
+/* ── Option A chip style — depth shadow, rounded corners, purple border ── */
+/* Applied to both .us-word (bank) and .us-answer-word (answer area) */
 .us-word,
-.us-answer-word {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    padding: 8px 18px;
-    border-radius: 999px;
-    font-family: 'Nunito', sans-serif;
-    font-size: clamp(14px, 1.8vw, 16px);
-    font-weight: 900;
-    cursor: pointer;
-    user-select: none;
-    transition: transform .12s, opacity .12s;
-    border: 1px solid #d8d3f5;
-    background: #EEEDFE;
-    color: #534AB7;
-    box-shadow: none;
-}
-.us-word:hover    { transform: translateY(-2px); }
-.us-answer-word:hover { transform: translateY(-2px); }
-.us-answer-word {
-    background: #FFF0E6;
-    border-color: #FCDDBF;
-    color: #C2580A;
-}
-
-/* Legacy chip classes (kept for backwards compat) */
+.us-answer-word,
 .us-chip {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    padding: 8px 18px;
-    border-radius: 999px;
+    padding: 8px 16px;
+    border-radius: 10px;
     font-family: 'Nunito', sans-serif;
     font-size: clamp(14px, 1.8vw, 16px);
     font-weight: 900;
     cursor: pointer;
     user-select: none;
-    background: #EEEDFE;
-    border: 1px solid #d8d3f5;
+    transition: transform .12s, box-shadow .12s;
+    background: #fff;
+    border: 1.5px solid #7F77DD;
     color: #534AB7;
-    box-shadow: none;
-    transition: transform .12s;
+    box-shadow: 0 3px 0 #534AB7;
 }
-.us-chip--bank  { background: #EEEDFE; border-color: #d8d3f5; color: #534AB7; }
-.us-chip--built { background: #FFF0E6; border-color: #FCDDBF; color: #C2580A; }
-.us-chip--correct { background: #f0fdf4 !important; border-color: #22c55e !important; color: #166534 !important; cursor: default; }
-.us-chip--wrong   { background: #fef2f2 !important; border-color: #ef4444 !important; color: #991b1b !important; cursor: default; }
+.us-word:hover,
+.us-answer-word:hover,
+.us-chip:hover         { transform: translateY(-1px); box-shadow: 0 4px 0 #534AB7; }
+.us-word:active,
+.us-answer-word:active,
+.us-chip:active        { transform: translateY(2px);  box-shadow: 0 1px 0 #534AB7; }
+
+/* Answer-area chips get a slightly different tint */
+.us-answer-word        { background: #F5F3FF; }
+
+/* Legacy modifier states */
+.us-chip--bank  {}
+.us-chip--built { background: #F5F3FF; }
+.us-chip--correct { background: #f0fdf4 !important; border-color: #22c55e !important; color: #166534 !important; box-shadow: 0 3px 0 #16a34a !important; cursor: default !important; }
+.us-chip--wrong   { background: #fef2f2 !important; border-color: #ef4444 !important; color: #991b1b !important; box-shadow: 0 3px 0 #dc2626 !important; cursor: default !important; }
 
 /* Buttons */
 .us-actions {
