@@ -359,18 +359,26 @@ body {
 }
 
 .fb-wb-chip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     background: #ffffff;
-    border: 1px solid #EDE9FA;
-    border-radius: 999px;
+    border: 1.5px solid #7F77DD;
+    border-radius: 10px;
     font-family: 'Nunito', sans-serif;
-    font-size: 13px;
+    font-size: 14px;
     font-weight: 900;
     color: #534AB7;
-    padding: 7px 13px;
+    padding: 8px 16px;
     white-space: nowrap;
     line-height: 1;
-    box-shadow: 0 4px 14px rgba(127,119,221,.08);
+    box-shadow: 0 3px 0 #534AB7;
+    cursor: pointer;
+    user-select: none;
+    transition: transform .12s, box-shadow .12s;
 }
+.fb-wb-chip:hover  { transform: translateY(-1px); box-shadow: 0 4px 0 #534AB7; }
+.fb-wb-chip:active { transform: translateY(2px);  box-shadow: 0 1px 0 #534AB7; }
 
 /* Worksheet area */
 .fb-block-area {
@@ -807,7 +815,7 @@ body {
                         : explode(',', $_wb_raw);
                     $_wb_items = array_values(array_filter(array_map('trim', $_wb_items), 'strlen'));
                     foreach ($_wb_items as $_wbWord): ?>
-                    <span class="fb-wb-chip"><?php echo htmlspecialchars($_wbWord, ENT_QUOTES, 'UTF-8'); ?></span>
+                    <button type="button" class="fb-wb-chip"><?php echo htmlspecialchars($_wbWord, ENT_QUOTES, 'UTF-8'); ?></button>
                     <?php endforeach; ?>
                 </div>
             </div>
@@ -1184,6 +1192,37 @@ if (ttsBtn) {
     });
 }
 <?php endif; ?>
+
+/* ── Word bank: click chip → fill focused blank (or first empty blank) ── */
+(function() {
+    var chips = document.querySelectorAll('.fb-wb-chip');
+    for (var ci = 0; ci < chips.length; ci++) {
+        (function(chip) {
+            chip.addEventListener('click', function() {
+                if (done) return;
+                var target = null;
+                var active = document.activeElement;
+                if (active && active.classList.contains('fb-blank') && !active.disabled && !active.readOnly) {
+                    target = active;
+                } else {
+                    var blanks = allBlanks();
+                    for (var j = 0; j < blanks.length; j++) {
+                        if (!blanks[j].disabled && !blanks[j].readOnly && blanks[j].value.trim() === '') {
+                            target = blanks[j];
+                            break;
+                        }
+                    }
+                }
+                if (!target) return;
+                target.value = chip.textContent.trim();
+                resizeInput(target);
+                target.classList.remove('correct', 'wrong', 'revealed');
+                target.focus();
+                clearFb();
+            });
+        })(chips[ci]);
+    }
+})();
 
 initResizers();
 

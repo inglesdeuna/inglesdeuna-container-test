@@ -11,6 +11,7 @@ document.addEventListener('DOMContentLoaded', function () {
   var optionsEl       = document.getElementById('mc-options');
   var feedbackEl      = document.getElementById('mc-feedback');
   var listenBtn       = document.getElementById('mc-listen');
+  var checkBtn        = document.getElementById('mc-check');
   var showBtn         = document.getElementById('mc-show');
   var nextBtn         = document.getElementById('mc-next');
   var cardEl          = document.querySelector('.mc-card');
@@ -118,8 +119,29 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     renderOptions();
-    if (nextBtn) nextBtn.textContent = (index < questions.length - 1) ? 'Next →' : 'Finish';
-    if (showBtn) showBtn.style.display = '';
+    if (nextBtn)  nextBtn.textContent = (index < questions.length - 1) ? 'Next →' : 'Finish';
+    if (checkBtn) checkBtn.style.display = '';
+    if (showBtn)  showBtn.style.display  = '';
+  }
+
+  function checkAnswer() {
+    if (answered || revealed || selected === null) return;
+    var item    = questions[index] || {};
+    var correct = Number.isInteger(item.correct) ? item.correct : 0;
+    var opts    = safeOptions(item);
+    var isRight = selected === correct;
+    scores[index] = isRight ? 1 : 0;
+    reviewItems[index] = {
+      question:      normalizeQuestion(item),
+      yourAnswer:    opts[selected] || '',
+      correctAnswer: opts[correct] || '',
+      score:         scores[index]
+    };
+    answered = true;
+    renderOptions();
+    if (feedbackEl) AF.showFeedback(feedbackEl, isRight, opts[correct] || '', false);
+    if (checkBtn) checkBtn.style.display = 'none';
+    if (showBtn)  showBtn.style.display  = 'none';
   }
 
   function showAnswer() {
@@ -132,7 +154,8 @@ document.addEventListener('DOMContentLoaded', function () {
     reviewItems[index] = { question: normalizeQuestion(item), yourAnswer: '(revealed)', correctAnswer: opts[correct] || '', score: -1 };
     renderOptions();
     if (feedbackEl) AF.showFeedback(feedbackEl, false, null, true);
-    if (showBtn) showBtn.style.display = 'none';
+    if (checkBtn) checkBtn.style.display = 'none';
+    if (showBtn)  showBtn.style.display  = 'none';
   }
 
   function nextQuestion() {
@@ -152,7 +175,8 @@ document.addEventListener('DOMContentLoaded', function () {
       answered = true;
       renderOptions();
       if (feedbackEl) AF.showFeedback(feedbackEl, isRight, opts[correct] || '', false);
-      if (showBtn) showBtn.style.display = 'none';
+      if (checkBtn) checkBtn.style.display = 'none';
+      if (showBtn)  showBtn.style.display  = 'none';
 
       /* short pause before advancing */
       setTimeout(advance, 900);
@@ -222,8 +246,9 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   /* ── button listeners ── */
-  if (showBtn) showBtn.addEventListener('click', showAnswer);
-  if (nextBtn) nextBtn.addEventListener('click', nextQuestion);
+  if (checkBtn) checkBtn.addEventListener('click', checkAnswer);
+  if (showBtn)  showBtn.addEventListener('click', showAnswer);
+  if (nextBtn)  nextBtn.addEventListener('click', nextQuestion);
 
   /* ── TTS ── */
   var currentAudio = null;

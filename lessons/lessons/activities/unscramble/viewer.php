@@ -202,12 +202,12 @@ body{margin:0!important;padding:0!important;background:#fff!important;font-famil
 #buildArea{width:100%;display:flex;flex-wrap:wrap;align-items:center;justify-content:center;min-height:86px;gap:12px;padding:16px;border-radius:22px;border:2px dashed #EDE9FA;background:#fff;margin-top:12px;box-shadow:0 4px 14px rgba(127,119,221,.08);transition:border-color .15s,background .15s,box-shadow .15s}
 #buildArea.drag-over{border-color:#7F77DD;background:#FAFAFE;box-shadow:0 8px 24px rgba(127,119,221,.12)}
 .us-placeholder{color:#9B94BE;font-size:15px;font-weight:800;font-style:normal;pointer-events:none}
-.us-chip{display:inline-flex;align-items:center;justify-content:center;padding:14px 20px;min-height:48px;min-width:74px;border-radius:999px;font-family:'Nunito',sans-serif;font-size:clamp(18px,2.2vw,21px);font-weight:900;letter-spacing:.01em;cursor:grab;user-select:none;transition:transform .12s,box-shadow .12s,border-color .12s,background .12s}
-.us-chip:active{cursor:grabbing}
-.us-chip.bank-chip{background:#7F77DD;color:#FFFFFF;border:2px solid #7F77DD;box-shadow:0 10px 22px rgba(127,119,221,.18)}
-.us-chip.bank-chip:hover{transform:translateY(-2px) scale(1.02);border-color:#534AB7;background:#534AB7;box-shadow:0 16px 28px rgba(127,119,221,.18)}
-.us-chip.built-chip{background:#534AB7;color:#FFFFFF;border:2px solid #534AB7;box-shadow:0 10px 22px rgba(127,119,221,.18)}
-.us-chip.built-chip:hover{transform:translateY(-1px);filter:brightness(1.06);box-shadow:0 12px 24px rgba(127,119,221,.16)}
+.us-chip{display:inline-flex;align-items:center;justify-content:center;padding:8px 16px;border-radius:10px;font-family:'Nunito',sans-serif;font-size:clamp(14px,1.8vw,16px);font-weight:900;cursor:grab;user-select:none;transition:transform .12s,box-shadow .12s}
+.us-chip:active{cursor:grabbing;transform:translateY(2px)}
+.us-chip.bank-chip{background:#fff;color:#534AB7;border:1.5px solid #7F77DD;box-shadow:0 3px 0 #534AB7}
+.us-chip.bank-chip:hover{transform:translateY(-1px);box-shadow:0 4px 0 #534AB7}
+.us-chip.built-chip{background:#F5F3FF;color:#534AB7;border:1.5px solid #7F77DD;box-shadow:0 3px 0 #534AB7}
+.us-chip.built-chip:hover{transform:translateY(-1px);box-shadow:0 4px 0 #534AB7}
 .us-chip.correct-chip{background:#fff;border:2px solid #16a34a;color:#16a34a;box-shadow:0 0 0 2px rgba(22,163,74,.22);cursor:default}
 .us-chip.incorrect-chip{background:#fff;border:2px solid #dc2626;color:#dc2626;box-shadow:0 0 0 2px rgba(220,38,38,.18);cursor:default}
 #wordBank{display:flex;flex-wrap:wrap;justify-content:center;gap:12px;margin:20px 0 0;min-height:64px}
@@ -228,7 +228,7 @@ body{margin:0!important;padding:0!important;background:#fff!important;font-famil
 .us-completed-text{font-family:'Nunito',sans-serif;font-size:clamp(13px,1.8vw,17px);font-weight:800;color:#9B94BE;line-height:1.5;margin:0}
 #us-score-text{color:#534AB7!important;font-family:'Nunito',sans-serif!important;font-size:15px!important;font-weight:900!important}
 .us-completed-button{background:#7F77DD;box-shadow:0 6px 18px rgba(127,119,221,.18);margin-top:4px}
-@media(max-width:760px){.us-page{padding:12px}.us-topbar{height:30px;margin-bottom:4px}.us-kicker{padding:5px 11px;font-size:11px;margin-bottom:6px}.us-hero h1{font-size:clamp(26px,8vw,38px)}.us-stage{border-radius:26px;padding:14px;width:100%}#sentenceBox{border-radius:22px;padding:18px;min-height:260px}#buildArea{border-radius:18px;min-height:74px;padding:12px;gap:10px}.us-chip{padding:12px 16px;min-height:44px;min-width:68px;font-size:clamp(17px,4.6vw,19px)}#wordBank{gap:10px;min-height:58px}.controls{display:grid;grid-template-columns:1fr;gap:9px}.us-btn,.us-completed-button{width:100%}.us-completed-screen{border-radius:26px}}
+@media(max-width:760px){.us-page{padding:12px}.us-topbar{height:30px;margin-bottom:4px}.us-kicker{padding:5px 11px;font-size:11px;margin-bottom:6px}.us-hero h1{font-size:clamp(26px,8vw,38px)}.us-stage{border-radius:26px;padding:14px;width:100%}#sentenceBox{border-radius:22px;padding:18px;min-height:260px}#buildArea{border-radius:18px;min-height:74px;padding:12px;gap:10px}.us-chip{padding:8px 14px;font-size:clamp(14px,4vw,16px)}#wordBank{gap:10px;min-height:58px}.controls{display:grid;grid-template-columns:1fr;gap:9px}.us-btn,.us-completed-button{width:100%}.us-completed-screen{border-radius:26px}}
 </style>
 
 <div class="us-page">

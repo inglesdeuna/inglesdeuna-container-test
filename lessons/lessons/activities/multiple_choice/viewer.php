@@ -460,6 +460,10 @@ body {
     cursor:pointer;
 }
 
+.mc-btn-check {
+    background:var(--mc-orange);
+}
+
 .mc-btn-show,
 .mc-completed-button {
     background:var(--mc-purple);
@@ -516,6 +520,7 @@ body {
                 </div>
 
                 <div class="mc-controls">
+                    <button type="button" class="mc-btn mc-btn-check" id="mc-check">Check</button>
                     <button type="button" class="mc-btn mc-btn-show" id="mc-show">Show Answer</button>
                     <button type="button" class="mc-btn mc-btn-next" id="mc-next">Next →</button>
                 </div>
