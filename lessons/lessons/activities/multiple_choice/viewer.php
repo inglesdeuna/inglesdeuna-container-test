@@ -1,4 +1,4 @@
-h<?php
+<?php
 require_once __DIR__ . '/../../config/db.php';
 require_once __DIR__ . '/../../core/_activity_viewer_template.php';
 
@@ -528,16 +528,20 @@ body {
                 <div class="mc-feedback" id="mc-feedback"></div>
 
                 <div id="mc-completed"></div>
+            </div>
+        </div>
+    </div>
 </div>
- = <?php echo json_encode($questions, JSON_UNESCAPED_UNICODE); ?>;
+
+<script src="../../core/_activity_feedback.js"></script>
+<script>
+window.MULTIPLE_CHOICE_DATA = <?php echo json_encode($questions, JSON_UNESCAPED_UNICODE); ?>;
 window.MULTIPLE_CHOICE_TITLE = <?php echo json_encode($viewerTitle, JSON_UNESCAPED_UNICODE); ?>;
 window.MULTIPLE_CHOICE_RETURN_TO = <?php echo json_encode($returnTo, JSON_UNESCAPED_UNICODE); ?>;
 window.MULTIPLE_CHOICE_ACTIVITY_ID = <?php echo json_encode((string) ($activity['id'] ?? ''), JSON_UNESCAPED_UNICODE); ?>;
 </script>
-<script src="../../core/_activity_feedback.js"></script>
-<script src="../../core/_activity_feedback.js"></script>
 <script src="multiple_choice.js?v=<?php echo urlencode($jsVersion); ?>"></script>
 
 <?php
 $content = ob_get_clean();
-render_activity_viewer($viewerTitle, '­ƒôØ', $content);
+render_activity_viewer($viewerTitle, 'fa-solid fa-list-ul', $content);
