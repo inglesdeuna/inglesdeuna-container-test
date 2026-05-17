@@ -1,4 +1,4 @@
-<?php
+h<?php
 require_once __DIR__ . '/../../config/db.php';
 require_once __DIR__ . '/../../core/_activity_viewer_template.php';
 
@@ -460,6 +460,10 @@ body {
     cursor:pointer;
 }
 
+.mc-btn-check {
+    background:var(--mc-orange);
+}
+
 .mc-btn-show,
 .mc-completed-button {
     background:var(--mc-purple);
@@ -478,36 +482,7 @@ body {
     font-weight:700;
 }
 
-.mc-completed-screen {
-    display:none;
-    text-align:center;
-    padding:24px 12px;
-}
-
-.mc-completed-screen.active {
-    display:block;
-}
-
-.mc-completed-title {
-    margin:0;
-    color:var(--mc-orange);
-    font-family:'Fredoka One',sans-serif;
-    font-size:32px;
-    font-weight:400;
-}
-
-.mc-completed-text {
-    color:var(--mc-muted);
-    font-size:14px;
-    font-weight:700;
-}
-
-#mc-score-text {
-    color:#666;
-    font-size:14px;
-    font-weight:800;
-}
-
+/* completed screen handled by _activity_feedback.js */
 @media(max-width:760px) {
     .mc-stage-shell { padding:14px; }
     .mc-progress-row { grid-template-columns:1fr; gap:8px; }
@@ -552,24 +527,15 @@ body {
 
                 <div class="mc-feedback" id="mc-feedback"></div>
 
-                <div id="mc-completed" class="mc-completed-screen">
-                    <div class="mc-completed-icon">✅</div>
-                    <h2 class="mc-completed-title" id="mc-completed-title"></h2>
-                    <p class="mc-completed-text" id="mc-completed-text"></p>
-                    <p class="mc-completed-text" id="mc-score-text" style="font-weight:900;font-size:15px;color:#534AB7;"></p>
-                    <button type="button" class="mc-completed-button" id="mc-restart">Restart</button>
-                </div>
-            </div>
-        </div>
-
-    </div>
+                <div id="mc-completed"></div>
 </div>
-<script>
-window.MULTIPLE_CHOICE_DATA = <?php echo json_encode($questions, JSON_UNESCAPED_UNICODE); ?>;
+ = <?php echo json_encode($questions, JSON_UNESCAPED_UNICODE); ?>;
 window.MULTIPLE_CHOICE_TITLE = <?php echo json_encode($viewerTitle, JSON_UNESCAPED_UNICODE); ?>;
 window.MULTIPLE_CHOICE_RETURN_TO = <?php echo json_encode($returnTo, JSON_UNESCAPED_UNICODE); ?>;
 window.MULTIPLE_CHOICE_ACTIVITY_ID = <?php echo json_encode((string) ($activity['id'] ?? ''), JSON_UNESCAPED_UNICODE); ?>;
 </script>
+<script src="../../core/_activity_feedback.js"></script>
+<script src="../../core/_activity_feedback.js"></script>
 <script src="multiple_choice.js?v=<?php echo urlencode($jsVersion); ?>"></script>
 
 <?php
