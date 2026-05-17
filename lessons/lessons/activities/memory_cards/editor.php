@@ -620,6 +620,9 @@ ob_start();
 .memory-btn-add{background:linear-gradient(180deg,#34d399,#059669);color:#ecfdf5}
 .memory-btn-save{background:linear-gradient(180deg,#3b82f6,#1d4ed8);color:#fff}
 .memory-hint{margin:0 0 10px;color:#64748b;font-size:13px;font-weight:700}
+.memory-counter{font-size:13px;font-weight:800;color:#64748b;padding:6px 0;display:inline-flex;align-items:center;gap:6px}
+.memory-counter.at-max{color:#dc2626}
+.memory-btn-add:disabled{opacity:.45;cursor:not-allowed;box-shadow:none}
 @media (max-width:960px){.memory-pair-grid{grid-template-columns:1fr}}
 </style>
 
@@ -633,7 +636,7 @@ ob_start();
         <input id="activity_title" type="text" name="activity_title" required value="<?= htmlspecialchars($activityTitle, ENT_QUOTES, 'UTF-8') ?>" placeholder="e.g. Memory Cards - Unit 1">
     </div>
 
-    <p class="memory-hint">Create pairs with text/text, image/image, or mixed image/text. Cards are shuffled automatically in the viewer.</p>
+    <p class="memory-hint">Create pairs with text/text, image/image, or mixed image/text. Cards are shuffled automatically in the viewer. Maximum 6 pairs (12 cards) so all cards are always visible in full screen.</p>
 
     <div id="pairsContainer" class="memory-pairs">
         <?php foreach ($pairs as $idx => $pair): ?>
@@ -701,14 +704,27 @@ ob_start();
     </div>
 
     <div class="memory-tools">
-        <button type="button" class="memory-btn memory-btn-add" onclick="addPair()">Add Pair</button>
+        <button type="button" class="memory-btn memory-btn-add" id="addPairBtn" onclick="addPair()">Add Pair</button>
         <button type="submit" class="memory-btn memory-btn-save">Save Memory Cards</button>
+        <span class="memory-counter" id="pairCounter"></span>
     </div>
 </form>
 
 <script>
+const MAX_PAIRS = 6;
 let formChanged = false;
 let formSubmitted = false;
+
+function updatePairCounter() {
+    const count = document.querySelectorAll('.memory-pair').length;
+    const counter = document.getElementById('pairCounter');
+    const btn = document.getElementById('addPairBtn');
+    if (counter) {
+        counter.textContent = count + ' / ' + MAX_PAIRS + ' pairs';
+        counter.classList.toggle('at-max', count >= MAX_PAIRS);
+    }
+    if (btn) btn.disabled = count >= MAX_PAIRS;
+}
 
 function renumberPairs() {
     document.querySelectorAll('.memory-pair').forEach(function (pair, index) {
@@ -716,6 +732,7 @@ function renumberPairs() {
         const number = pair.querySelector('.pair-number');
         if (number) number.textContent = String(index + 1);
     });
+    updatePairCounter();
 }
 
 function toggleSideInputs(selectEl) {
@@ -793,6 +810,10 @@ function removePair(btn) {
 function addPair() {
     const container = document.getElementById('pairsContainer');
     const index = container.querySelectorAll('.memory-pair').length;
+    if (index >= MAX_PAIRS) {
+        alert('Maximum of ' + MAX_PAIRS + ' pairs (12 cards) reached. All cards are always visible in full screen with this limit.');
+        return;
+    }
     const pairId = 'pair_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
 
     const wrapper = document.createElement('div');
@@ -858,11 +879,13 @@ function addPair() {
     container.appendChild(wrapper);
     bindPairEvents(wrapper);
     renumberPairs();
+    updatePairCounter();
     formChanged = true;
 }
 
 document.addEventListener('DOMContentLoaded', function () {
     document.querySelectorAll('.memory-pair').forEach(bindPairEvents);
+    updatePairCounter();
 
     const form = document.getElementById('memoryForm');
     if (form) {

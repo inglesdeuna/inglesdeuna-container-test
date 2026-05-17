@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 52 52">
+  <!-- Alex — Astronaut kid -->
+  <circle cx="26" cy="26" r="26" fill="#EEEDFE"/>
+  <!-- Helmet -->
+  <circle cx="26" cy="22" r="13" fill="#C5BFEE" stroke="#7F77DD" stroke-width="2"/>
+  <circle cx="26" cy="22" r="9" fill="#E8F4FD"/>
+  <!-- Visor reflection -->
+  <ellipse cx="23" cy="19" rx="3" ry="2" fill="white" opacity=".5"/>
+  <!-- Face -->
+  <circle cx="24" cy="22" r="1.5" fill="#534AB7"/>
+  <circle cx="28" cy="22" r="1.5" fill="#534AB7"/>
+  <path d="M23 25 Q26 27 29 25" stroke="#534AB7" stroke-width="1.2" stroke-linecap="round" fill="none"/>
+  <!-- Suit -->
+  <rect x="14" y="33" width="24" height="12" rx="6" fill="#7F77DD"/>
+  <circle cx="26" cy="36" r="3" fill="#F97316"/>
+</svg>
