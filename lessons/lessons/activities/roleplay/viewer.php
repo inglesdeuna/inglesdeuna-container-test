@@ -914,12 +914,12 @@ function PlayerView({ scene, turns, onComplete, onBack }) {
   };
 
   return (
-    <div style={{ background: "#F9F8FF", minHeight: "100%" }}>
-        <div style={{ maxWidth: 680, margin: "0 auto", padding: "12px 16px 60px" }}>
+    <div style={{ background: "#ffffff", minHeight: "100%" }}>
+        <div style={{ maxWidth: 680, margin: "0 auto", padding: "12px 16px 60px", background: "#fff", border: "1px solid #EDE9FA", borderRadius: 24, boxShadow: "0 4px 24px rgba(127,119,221,.13)", overflow: "hidden" }}>
           {/* Header bar with Back, Title, Voice selector, Turn info */}
           <div style={{ textAlign: "center", padding: "8px 0 4px" }}>
             <span style={{ display: "inline-block", background: "#FFF0E6", color: "#F97316", fontFamily: "'Nunito', sans-serif", fontSize: 11, fontWeight: 800, letterSpacing: ".07em", textTransform: "uppercase", borderRadius: 99, padding: "3px 14px", marginBottom: 6 }}>Activity</span>
-            <div style={{ fontFamily: "'Fredoka', sans-serif", fontSize: 32, fontWeight: 600, color: "#F97316", lineHeight: 1.1 }}>Roleplay</div>
+            <div style={{ fontFamily: "'Fredoka', sans-serif", fontSize: 28, fontWeight: 600, color: "#F97316", lineHeight: 1.2 }}>Roleplay</div>
             <div style={{ fontFamily: "'Nunito', sans-serif", fontSize: 13, color: "#9B8FCC", fontWeight: 600 }}>Practice real conversations in English.</div>
           </div>
 
