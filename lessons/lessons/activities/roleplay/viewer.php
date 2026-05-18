@@ -25,9 +25,11 @@ if ($activityId !== '') {
 
 ob_start();
 ?>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
 #roleplay-root * { box-sizing: border-box; margin: 0; padding: 0; }
 #roleplay-root { font-family: 'Nunito', sans-serif; flex: 1; min-height: 0; overflow-y: auto; }
+body { background: #ffffff; font-family: 'Nunito', sans-serif; }
 @keyframes rp-spin { to { transform: rotate(360deg); } }
 @keyframes rp-pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
 </style>
@@ -54,12 +56,12 @@ const C = {
   orange: "#F97316",
   purple: "#7F77DD",
   purpleLight: "#EDE9FA",
-  purpleMid: "#C5BFEE",
+  purpleMid: "#9B8FCC",
   purpleSub: "#9B8FCC",
   orangeLight: "#FFF0E6",
   orangeMid: "#bf521a",
   cardBorder: "#EDE9FA",
-  bg: "#F5F3FF",
+  bg: "#ffffff",
   bgCard: "#F9F8FF",
   white: "#ffffff",
   green: "#F0FDF4",
