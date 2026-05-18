@@ -917,19 +917,10 @@ function PlayerView({ scene, turns, onComplete, onBack }) {
     <div style={{ background: "#F9F8FF", minHeight: "100%" }}>
         <div style={{ maxWidth: 680, margin: "0 auto", padding: "12px 16px 60px" }}>
           {/* Header bar with Back, Title, Voice selector, Turn info */}
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 12 }}>
-            <button onClick={onBack} style={{ background: C.white, border: "1.5px solid #EDE9FA", color: "#7F77DD", borderRadius: 8, padding: "8px 14px", fontSize: 13, fontWeight: 800, fontFamily: "'Nunito',sans-serif", cursor: "pointer" }}>← Back</button>
-            <div style={{ flex: 1, fontFamily: "'Nunito', sans-serif", fontSize: 16, fontWeight: 800, color: "#F97316" }}>{scene.title || "Roleplay"}</div>
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <select value={voiceId} onChange={e => setVoiceId(e.target.value)} style={{ background: C.white, border: "1.5px solid #EDE9FA", borderRadius: 8, fontFamily: "'Nunito',sans-serif", fontSize: 13, color: "#9B8FCC", padding: "6px 12px", outline: "none", cursor: "pointer" }}>
-          <option value="nzFihrBIvB34imQBuxub">🎙 Adult Male</option>
-          <option value="NoOVOzCQFLOvtsMoNcdT">🎙 Adult Female</option>
-          <option value="Nggzl2QAXh3OijoXD116">🎙 Child</option>
-              </select>
-              <button style={{ background: "#7F77DD", color: "#fff", border: "none", borderRadius: 8, padding: "6px 14px", fontSize: 13, fontWeight: 800, fontFamily: "'Nunito',sans-serif", cursor: "default" }}>
-                Turn {currentTurn + 1} / {turns.length}
-              </button>
-            </div>
+          <div style={{ textAlign: "center", padding: "8px 0 4px" }}>
+            <span style={{ display: "inline-block", background: "#FFF0E6", color: "#F97316", fontFamily: "'Nunito', sans-serif", fontSize: 11, fontWeight: 800, letterSpacing: ".07em", textTransform: "uppercase", borderRadius: 99, padding: "3px 14px", marginBottom: 6 }}>Activity</span>
+            <div style={{ fontFamily: "'Fredoka', sans-serif", fontSize: 32, fontWeight: 600, color: "#F97316", lineHeight: 1.1 }}>Roleplay</div>
+            <div style={{ fontFamily: "'Nunito', sans-serif", fontSize: 13, color: "#9B8FCC", fontWeight: 600 }}>Practice real conversations in English.</div>
           </div>
 
         <div style={{ background: "#fff", border: "1px solid #EDE9FA", borderRadius: 24, overflow: "hidden" }}>
