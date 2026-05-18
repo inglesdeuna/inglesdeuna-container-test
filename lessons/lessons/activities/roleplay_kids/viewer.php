@@ -29,12 +29,150 @@ ob_start();
 <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@600;700;800;900&display=swap" rel="stylesheet">
 
 <style>
-#roleplay-kids-root * { box-sizing: border-box; margin: 0; padding: 0; }
-#roleplay-kids-root { font-family: 'Nunito', sans-serif; flex: 1; min-height: 0; overflow-y: auto; background: #fff; }
-@keyframes rk-spin  { to { transform: rotate(360deg); } }
-@keyframes rk-pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
-@keyframes rk-bounce { 0%,100%{transform:scale(1)} 50%{transform:scale(1.12)} }
-@keyframes rk-shake  { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-6px)} 75%{transform:translateX(6px)} }
+/* ── Reset ──────────────────────────────────────────────── */
+#roleplay-kids-root *{box-sizing:border-box;margin:0;padding:0;}
+#roleplay-kids-root{font-family:'Nunito','Segoe UI',system-ui,sans-serif;flex:1;min-height:0;overflow-y:auto;background:#fff;}
+
+/* ── Keyframes ──────────────────────────────────────────── */
+@keyframes rk-spin   {to{transform:rotate(360deg)}}
+@keyframes rk-pulse  {0%,100%{opacity:1}50%{opacity:.3}}
+@keyframes rk-bounce {0%,100%{transform:scale(1)}50%{transform:scale(1.12)}}
+@keyframes rk-shake  {0%,100%{transform:translateX(0)}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+
+/* ── Shell & layout ─────────────────────────────────────── */
+.rk-shell{width:100%;flex:1;min-height:0;overflow-y:auto;padding:clamp(14px,2.5vw,34px);display:flex;align-items:flex-start;justify-content:center;background:#fff;}
+.rk-app{width:min(680px,100%);display:grid;grid-template-columns:minmax(0,1fr);gap:clamp(10px,2vw,18px);}
+
+/* ── Hero ───────────────────────────────────────────────── */
+.rk-hero{text-align:center;}
+.rk-kicker{display:inline-flex;align-items:center;gap:7px;margin-bottom:8px;padding:7px 14px;border-radius:999px;background:#FFF0E6;border:1px solid #FCDDBF;color:#C2580A;font-size:12px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;}
+.rk-title{margin:0;font-family:'Fredoka',sans-serif;font-size:clamp(28px,5.5vw,52px);line-height:1.05;color:#F97316;font-weight:700;}
+.rk-subtitle{margin:8px 0 0;color:#9B94BE;font-size:clamp(13px,1.8vw,16px);font-weight:800;}
+
+/* ── Board ──────────────────────────────────────────────── */
+.rk-board{background:#fff;border:1px solid #EDE9FA;border-radius:28px;overflow:hidden;box-shadow:0 8px 40px rgba(127,119,221,.13);}
+.rk-board-padded{padding:clamp(16px,2.6vw,26px);}
+
+/* ── Top bar ────────────────────────────────────────────── */
+.rk-topbar{display:flex;align-items:center;gap:8px;padding:12px 18px;border-bottom:1px solid #F0EEF8;flex-wrap:wrap;}
+.rk-back-btn{display:inline-flex;align-items:center;gap:5px;padding:7px 14px;border:1.5px solid #EDE9FA;border-radius:999px;background:#fff;color:#271B5D;font-family:'Nunito',sans-serif;font-weight:800;font-size:13px;cursor:pointer;flex-shrink:0;transition:background .15s;}
+.rk-back-btn:hover{background:#FAFAFE;}
+.rk-scene-title{font-weight:800;font-size:16px;color:#F97316;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.rk-topbar-right{margin-left:auto;display:flex;align-items:center;gap:8px;flex-shrink:0;}
+.rk-voice-chip{display:inline-flex;align-items:center;gap:4px;padding:6px 12px;border:1.5px solid #EDE9FA;border-radius:999px;background:#fff;font-size:12px;font-weight:800;color:#9B94BE;}
+.rk-turn-badge{padding:6px 14px;border-radius:999px;background:#7F77DD;color:#fff;font-size:12px;font-weight:900;white-space:nowrap;}
+
+/* ── Scene bar ──────────────────────────────────────────── */
+.rk-scene-bar{display:flex;justify-content:space-between;align-items:center;padding:8px 18px;background:#FFF0E6;border-bottom:1px solid #FCDDBF;flex-wrap:wrap;gap:4px;}
+.rk-scene-bar-left{display:flex;align-items:center;gap:6px;font-weight:800;font-size:13px;color:#C2580A;}
+.rk-scene-bar-right{font-size:12px;font-weight:700;color:#C2580A;}
+
+/* ── Progress ───────────────────────────────────────────── */
+.rk-progress-row{display:flex;align-items:center;gap:10px;padding:10px 18px;border-bottom:1px solid #F0EEF8;}
+.rk-progress-counter{font-size:12px;font-weight:900;color:#9B94BE;min-width:28px;flex-shrink:0;}
+.rk-progress-track{flex:1;height:10px;background:#F4F2FD;border-radius:999px;overflow:hidden;border:1px solid #E4E1F8;}
+.rk-progress-fill{height:100%;width:0%;background:linear-gradient(90deg,#F97316,#7F77DD);border-radius:999px;transition:width .45s cubic-bezier(.2,.9,.2,1);}
+.rk-progress-badge{min-width:90px;text-align:center;padding:6px 12px;border-radius:999px;background:#7F77DD;color:#fff;font-size:12px;font-weight:900;white-space:nowrap;flex-shrink:0;}
+
+/* ── Content wrapper ────────────────────────────────────── */
+.rk-content{padding:14px 18px 0;}
+
+/* ── Shared card header ─────────────────────────────────── */
+.rk-card-header{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+.rk-avatar{width:42px;height:42px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:18px;flex-shrink:0;}
+.rk-avatar-purple{background:#EEEDFE;border:2px solid #7F77DD;color:#534AB7;}
+.rk-avatar-orange{background:#FFF0E6;border:2px solid #F97316;color:#C2580A;}
+.rk-speaker-name{font-weight:800;font-size:14px;color:#534AB7;}
+.rk-speaker-name-you{color:#F97316;}
+.rk-speaker-role{font-size:10px;font-weight:900;color:#9B94BE;text-transform:uppercase;letter-spacing:.06em;}
+
+/* ── Teacher card ───────────────────────────────────────── */
+.rk-teacher-card{background:#F5F3FF;border:1px solid #EDE9FA;border-radius:18px;padding:14px 16px;margin-bottom:10px;}
+.rk-tts-btn{margin-left:auto;display:inline-flex;align-items:center;gap:5px;padding:6px 14px;border:1.5px solid #EDE9FA;border-radius:999px;background:#fff;font-family:'Nunito',sans-serif;font-weight:800;font-size:12px;cursor:pointer;color:#9B94BE;flex-shrink:0;transition:background .15s,color .15s,border-color .15s;}
+.rk-tts-btn:hover{background:#FAFAFE;}
+.rk-tts-btn.is-playing{color:#534AB7;border-color:#7F77DD;}
+.rk-dialog-text{font-weight:800;font-size:15px;color:#271B5D;line-height:1.65;}
+
+/* ── Hint card ──────────────────────────────────────────── */
+.rk-hint-card{background:#FFF7ED;border:1px solid #FCDDBF;border-radius:14px;padding:11px 16px;margin-bottom:10px;}
+.rk-hint-label{font-size:10px;font-weight:900;color:#F97316;text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px;display:flex;align-items:center;gap:5px;}
+.rk-hint-text{font-weight:800;font-size:14px;color:#C2580A;line-height:1.55;}
+
+/* ── Your turn card ─────────────────────────────────────── */
+.rk-your-turn-card{background:#fff;border:1px solid #EDE9FA;border-radius:18px;padding:14px 16px;}
+
+/* ── Mic area ───────────────────────────────────────────── */
+.rk-mic-area{text-align:center;padding:6px 0 8px;}
+.rk-mic-btn{width:96px;height:96px;border-radius:20px;background:#fff;border:1.5px solid #EDE9FA;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;margin-bottom:10px;font-size:36px;box-shadow:0 4px 14px rgba(127,119,221,.08);transition:border-color .15s,box-shadow .15s;}
+.rk-mic-btn:hover:not(:disabled){border-color:#7F77DD;box-shadow:0 6px 18px rgba(127,119,221,.14);}
+.rk-mic-btn:disabled{cursor:default;opacity:.6;}
+.rk-mic-btn.rk-recording{border-color:#E24B4A;background:rgba(226,75,74,.05);box-shadow:0 4px 18px rgba(226,75,74,.16);}
+.rk-mic-hint{font-size:13px;font-weight:700;color:#9B94BE;margin-bottom:12px;}
+.rk-mic-hint.rk-recording{color:#E24B4A;}
+.rk-or-divider{font-size:12px;font-weight:700;color:#9B94BE;margin:0 0 10px;}
+
+/* ── Buttons ────────────────────────────────────────────── */
+.rk-btn{border:0;border-radius:999px;padding:11px 20px;color:#fff;font-family:'Nunito',sans-serif;font-size:13px;font-weight:900;cursor:pointer;transition:transform .18s,filter .18s;display:inline-flex;align-items:center;justify-content:center;gap:6px;}
+.rk-btn:hover:not(:disabled){transform:translateY(-1px);filter:brightness(1.05);}
+.rk-btn:disabled{opacity:.45;cursor:default;transform:none;filter:none;}
+.rk-btn-orange{background:#F97316;box-shadow:0 6px 18px rgba(249,115,22,.22);}
+.rk-btn-purple{background:#7F77DD;box-shadow:0 6px 18px rgba(127,119,221,.18);}
+.rk-btn-outline{background:#fff;color:#534AB7;border:1.5px solid #EDE9FA;box-shadow:0 4px 12px rgba(127,119,221,.10);}
+.rk-btn-outline:hover:not(:disabled){background:#EEEDFE;}
+.rk-btn-ghost{background:#fff;color:#9B94BE;border:1.5px solid #EDE9FA;font-family:'Nunito',sans-serif;font-weight:800;font-size:13px;cursor:pointer;border-radius:999px;padding:9px 20px;transition:background .15s;}
+.rk-btn-ghost:hover{background:#FAFAFE;}
+
+/* ── Textarea ───────────────────────────────────────────── */
+.rk-textarea{width:100%;min-height:96px;border:1.5px solid #EDE9FA;border-radius:14px;padding:12px 14px;font-family:'Nunito',sans-serif;font-size:15px;font-weight:700;color:#271B5D;resize:none;outline:none;background:#FAFAFE;transition:border-color .18s,box-shadow .18s;margin-bottom:10px;}
+.rk-textarea:focus{border-color:#7F77DD;box-shadow:0 0 0 3px rgba(127,119,221,.10);}
+
+/* ── Bottom bar ─────────────────────────────────────────── */
+.rk-bottombar{display:flex;justify-content:space-between;align-items:center;padding:12px 18px;margin-top:14px;border-top:1px solid #F0EEF8;}
+.rk-status-text{font-size:13px;font-weight:700;color:#9B94BE;}
+
+/* ── Feedback ───────────────────────────────────────────── */
+.rk-feedback-wrap{margin-bottom:10px;}
+.rk-feedback-block{border-radius:14px;padding:10px 14px;margin-bottom:8px;}
+.rk-feedback-block.rk-fb-purple{background:#EEEDFE;border-left:3px solid #7F77DD;}
+.rk-feedback-block.rk-fb-orange{background:#FFF0E6;border-left:3px solid #F97316;}
+.rk-feedback-label{font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.08em;margin-bottom:5px;}
+.rk-feedback-label.purple{color:#534AB7;}
+.rk-feedback-label.orange{color:#F97316;}
+.rk-feedback-text{font-family:'Fredoka',sans-serif;font-size:15px;font-weight:600;color:#271B5D;line-height:1.45;}
+.rk-feedback-text.orange{color:#C2580A;}
+.rk-score-wrap{background:#EEEDFE;border-radius:14px;padding:10px 14px;margin-bottom:4px;}
+.rk-score-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:7px;}
+.rk-score-lbl{font-size:11px;font-weight:900;color:#9B94BE;text-transform:uppercase;}
+.rk-score-pts{font-family:'Fredoka',sans-serif;font-size:20px;font-weight:700;color:#F97316;}
+.rk-score-track{height:8px;background:#F4F2FD;border-radius:999px;overflow:hidden;}
+.rk-score-fill{height:100%;background:linear-gradient(90deg,#F97316,#7F77DD);border-radius:999px;transition:width .5s;}
+
+/* ── Avatar picker grid ─────────────────────────────────── */
+.rk-avatar-grid{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-bottom:24px;}
+.rk-avatar-card{background:#fff;border:2px solid #EDE9FA;border-radius:18px;padding:12px 10px;cursor:pointer;transition:all .15s;min-width:72px;text-align:center;font-family:'Nunito',sans-serif;}
+.rk-avatar-card:hover{border-color:#7F77DD;transform:translateY(-2px);box-shadow:0 4px 14px rgba(127,119,221,.14);}
+.rk-avatar-card.rk-selected{background:#FFF0E6;border-color:#F97316;box-shadow:0 0 0 3px rgba(249,115,22,.14);transform:scale(1.04);}
+.rk-avatar-lbl{margin-top:7px;font-weight:800;font-size:12px;color:#9B94BE;}
+.rk-avatar-card.rk-selected .rk-avatar-lbl{color:#C2580A;}
+.rk-avatar-start{text-align:center;}
+
+/* ── Responsive ─────────────────────────────────────────── */
+@media(max-width:640px){
+  .rk-shell{padding:10px;}
+  .rk-board{border-radius:22px;}
+  .rk-topbar,.rk-scene-bar,.rk-progress-row,.rk-content,.rk-bottombar{padding-left:14px;padding-right:14px;}
+  .rk-scene-bar-right{display:none;}
+  .rk-title{font-size:clamp(26px,8vw,36px);}
+}
+
+/* ── Embedded / presentation modes ─────────────────────── */
+body.embedded-mode .rk-shell,body.fullscreen-embedded .rk-shell,body.presentation-mode .rk-shell{
+  position:absolute!important;inset:0!important;max-width:none!important;margin:0!important;
+  padding:8px 12px!important;flex-direction:column!important;align-items:center!important;overflow-y:auto!important;
+}
+body.embedded-mode .rk-app,body.fullscreen-embedded .rk-app,body.presentation-mode .rk-app{
+  width:min(680px,100%)!important;margin:0 auto!important;
+}
 </style>
 
 <div id="roleplay-kids-root" style="flex:1;min-height:0;overflow-y:auto;"></div>
@@ -606,56 +744,36 @@ function PlayerView({ scene: sc, turns, activityId }) {
   // AVATAR PICKER
   // ════════════════════════════════════════════════════════════
   if (phase === "avatar") return (
-    <div style={{ maxWidth: 600, margin: "0 auto", padding: "28px 16px", textAlign: "center" }}>
-      {/* Kicker */}
-      <div style={{
-        display: "inline-flex", alignItems: "center", padding: "6px 14px",
-        borderRadius: 999, background: C.orangeSoft, border: `1px solid ${C.orangeBorder}`,
-        color: C.orangeDark, fontSize: 11, fontWeight: 900, letterSpacing: ".08em",
-        textTransform: "uppercase", marginBottom: 12,
-      }}>🎭 Roleplay Activity</div>
-
-      <h1 style={{
-        fontFamily: "'Fredoka',sans-serif", fontSize: "clamp(28px,6vw,44px)",
-        fontWeight: 700, color: C.orange, marginBottom: 6, lineHeight: 1.1,
-      }}>{scene.title || "Kids Roleplay"}</h1>
-
-      <p style={{ fontSize: 15, fontWeight: 700, color: C.muted, marginBottom: 28 }}>
-        Choose your character!
-      </p>
-
-      {/* Avatar grid */}
-      <div style={{ display: "flex", gap: 14, justifyContent: "center", flexWrap: "wrap", marginBottom: 32 }}>
-        {AVATARS.map(av => {
-          const selected = avatarId === av.id;
-          return (
-            <button key={av.id} onClick={() => setAvatarId(av.id)} style={{
-              background: selected ? C.orangeSoft : C.white,
-              border: selected ? `3px solid ${C.orange}` : `2px solid ${C.purpleBorder}`,
-              borderRadius: 20, padding: "14px 12px", cursor: "pointer",
-              boxShadow: selected ? `0 0 0 3px rgba(249,115,22,.22)` : "0 2px 8px rgba(127,119,221,.08)",
-              transition: "all .15s", minWidth: 80,
-              transform: selected ? "scale(1.06)" : "scale(1)",
-            }}>
-              <AvatarImg id={av.id} size={62} />
-              <div style={{
-                marginTop: 8, fontWeight: 800, fontSize: 13,
-                color: selected ? C.orangeDark : C.muted,
-              }}>{av.label}</div>
-            </button>
-          );
-        })}
+    <div className="rk-shell">
+      <div className="rk-app">
+        <div className="rk-hero">
+          <div className="rk-kicker">🎭 Activity</div>
+          <h1 className="rk-title">{scene.title || "Roleplay"}</h1>
+          <p className="rk-subtitle">Choose your character to get started!</p>
+        </div>
+        <div className="rk-board rk-board-padded">
+          <div className="rk-avatar-grid">
+            {AVATARS.map(av => (
+              <button
+                key={av.id}
+                className={`rk-avatar-card${avatarId === av.id ? " rk-selected" : ""}`}
+                onClick={() => setAvatarId(av.id)}
+              >
+                <AvatarImg id={av.id} size={58} />
+                <div className="rk-avatar-lbl">{av.label}</div>
+              </button>
+            ))}
+          </div>
+          <div className="rk-avatar-start">
+            <button
+              className="rk-btn rk-btn-orange"
+              onClick={startPlaying}
+              disabled={!avatarId}
+              style={{ minWidth: 180, padding: "13px 32px", fontSize: 15 }}
+            >Let's go! →</button>
+          </div>
+        </div>
       </div>
-
-      <button onClick={startPlaying} disabled={!avatarId} style={{
-        background: avatarId ? C.orange : C.purpleSoft,
-        color: avatarId ? C.white : C.muted,
-        border: "none", borderRadius: 999, padding: "14px 40px",
-        fontFamily: "'Nunito',sans-serif", fontWeight: 900, fontSize: 16,
-        cursor: avatarId ? "pointer" : "not-allowed",
-        boxShadow: avatarId ? "0 6px 20px rgba(249,115,22,.3)" : "none",
-        transition: "all .15s",
-      }}>Let's go! →</button>
     </div>
   );
 
@@ -663,320 +781,186 @@ function PlayerView({ scene: sc, turns, activityId }) {
   // DONE — AF.showCompleted populates this div via useEffect
   // ════════════════════════════════════════════════════════════
   if (phase === "done") return (
-    <div ref={completedRef} style={{ maxWidth: 760, margin: "0 auto", padding: "20px 16px" }}></div>
+    <div className="rk-shell">
+      <div className="rk-app">
+        <div ref={completedRef} />
+      </div>
+    </div>
   );
 
   // ════════════════════════════════════════════════════════════
-  // PLAYING SCREEN — redesigned
+  // PLAYING SCREEN
   // ════════════════════════════════════════════════════════════
   const voiceLabelShort = (VOICES.find(v => v.id === voiceId)?.label || "Adult Male")
     .split("(")[0].trim();
-  const agentInitial  = (scene.agentName || "T")[0].toUpperCase();
+  const agentInitial   = (scene.agentName || "T")[0].toUpperCase();
   const studentInitial = (avatarLabel || "Y")[0].toUpperCase();
 
-  const outlinedBtn = (label, onClick, disabled = false) => (
-    <button onClick={onClick} disabled={disabled} style={{
-      padding: "9px 18px", border: `1.5px solid ${disabled ? C.purpleBorder : C.purpleBorder}`,
-      borderRadius: 999, background: disabled ? "#fafafe" : C.white,
-      color: disabled ? C.muted : C.purpleDark,
-      fontFamily: "'Nunito',sans-serif", fontWeight: 800, fontSize: 13,
-      cursor: disabled ? "default" : "pointer", transition: "all .15s",
-    }}>{label}</button>
-  );
-
   return (
-    <div style={{ maxWidth: 640, margin: "0 auto", padding: "20px 16px 24px" }}>
+    <div className="rk-shell">
+      <div className="rk-app">
 
-      {/* ── Hero ── */}
-      <div style={{ textAlign: "center", marginBottom: 20 }}>
-        <div style={{
-          display: "inline-flex", alignItems: "center", padding: "5px 14px",
-          borderRadius: 999, background: C.orangeSoft, border: `1px solid ${C.orangeBorder}`,
-          color: C.orangeDark, fontSize: 11, fontWeight: 900,
-          letterSpacing: ".08em", textTransform: "uppercase", marginBottom: 10,
-        }}>ACTIVITY</div>
-        <h1 style={{
-          fontFamily: "'Fredoka',sans-serif", fontSize: "clamp(32px,6vw,44px)",
-          fontWeight: 700, color: C.orange, margin: "0 0 6px", lineHeight: 1.05,
-        }}>{scene.title || "Roleplay"}</h1>
-        <p style={{ fontSize: 15, fontWeight: 700, color: C.muted, margin: 0 }}>
-          {scene.desc || "Practice real conversations in English."}
-        </p>
-      </div>
+        {/* Hero */}
+        <div className="rk-hero">
+          <div className="rk-kicker">ACTIVITY</div>
+          <h1 className="rk-title">{scene.title || "Roleplay"}</h1>
+          <p className="rk-subtitle">{scene.desc || "Practice real conversations in English."}</p>
+        </div>
 
-      {/* ── Main card ── */}
-      <div style={{
-        background: C.white, border: `1px solid #EDE9FA`,
-        borderRadius: 24, boxShadow: "0 8px 40px rgba(127,119,221,.12)",
-        overflow: "hidden",
-      }}>
+        {/* Main board */}
+        <div className="rk-board">
 
-        {/* Top bar */}
-        <div style={{
-          display: "flex", alignItems: "center", gap: 8,
-          padding: "12px 16px", borderBottom: `1px solid #F0EEF8`,
-        }}>
-          <button onClick={handleRestart} style={{
-            display: "flex", alignItems: "center", gap: 6,
-            padding: "7px 14px", border: `1.5px solid #E4E0F8`,
-            borderRadius: 999, background: C.white, color: C.ink,
-            fontFamily: "'Nunito',sans-serif", fontWeight: 800, fontSize: 13,
-            cursor: "pointer",
-          }}>◁ Back</button>
-          <span style={{ fontWeight: 800, fontSize: 16, color: C.orange }}>
-            {scene.title || "Roleplay"}
-          </span>
-          <div style={{ marginLeft: "auto", display: "flex", gap: 8, alignItems: "center" }}>
-            <div style={{
-              display: "flex", alignItems: "center", gap: 4,
-              padding: "6px 12px", border: `1.5px solid #E4E0F8`,
-              borderRadius: 999, fontSize: 12, fontWeight: 800, color: C.ink,
-            }}>
-              <span style={{ fontSize: 10, color: C.muted }}>□</span> {voiceLabelShort} <span style={{ fontSize: 10, color: C.muted }}>□</span>
+          {/* Top bar */}
+          <div className="rk-topbar">
+            <button className="rk-back-btn" onClick={handleRestart}>◁ Back</button>
+            <span className="rk-scene-title">{scene.title || "Roleplay"}</span>
+            <div className="rk-topbar-right">
+              <div className="rk-voice-chip">{voiceLabelShort}</div>
+              <div className="rk-turn-badge">Turn {turnIndex + 1} / {total}</div>
             </div>
-            <div style={{
-              background: C.purple, color: C.white,
-              borderRadius: 999, padding: "6px 14px",
-              fontSize: 12, fontWeight: 900,
-            }}>Turn {turnIndex + 1} / {total}</div>
           </div>
-        </div>
 
-        {/* Scene bar */}
-        <div style={{
-          display: "flex", justifyContent: "space-between", alignItems: "center",
-          padding: "8px 16px", background: C.orangeSoft,
-          borderBottom: `1px solid ${C.orangeBorder}`,
-        }}>
-          <span style={{ display: "flex", alignItems: "center", gap: 6, fontWeight: 800, fontSize: 13, color: C.orangeDark }}>
-            <span style={{ fontSize: 10 }}>□</span>
-            {scene.title || "Scene"}{scene.desc ? ` — ${scene.desc}` : ""}
-          </span>
-          <span style={{ fontSize: 12, fontWeight: 700, color: C.orangeDark }}>
-            {scene.agentName || "Teacher"} · Teacher | {avatarLabel} · You
-          </span>
-        </div>
-
-        {/* Progress row */}
-        <div style={{
-          display: "flex", alignItems: "center", gap: 10,
-          padding: "10px 16px", borderBottom: `1px solid #F0EEF8`,
-        }}>
-          <span style={{ fontSize: 12, fontWeight: 800, color: C.muted, minWidth: 30 }}>
-            {turnIndex + 1} / {total}
-          </span>
-          <div style={{ flex: 1, height: 10, background: "#F4F2FD", borderRadius: 999, overflow: "hidden" }}>
-            <div style={{
-              height: "100%", width: `${pct}%`,
-              background: `linear-gradient(90deg,${C.orange},${C.purple})`,
-              borderRadius: 999, transition: "width .4s",
-            }} />
+          {/* Scene bar */}
+          <div className="rk-scene-bar">
+            <span className="rk-scene-bar-left">
+              ▣ {scene.title || "Scene"}{scene.desc ? ` — ${scene.desc}` : ""}
+            </span>
+            <span className="rk-scene-bar-right">
+              {scene.agentName || "Teacher"} · Teacher | {avatarLabel} · You
+            </span>
           </div>
-          <div style={{
-            background: C.purple, color: C.white, borderRadius: 999,
-            padding: "5px 12px", fontSize: 12, fontWeight: 900,
-          }}>Turn {turnIndex + 1} of {total}</div>
-        </div>
 
-        {/* Content */}
-        <div style={{ padding: "14px 16px 0" }}>
+          {/* Progress */}
+          <div className="rk-progress-row">
+            <span className="rk-progress-counter">{turnIndex + 1} / {total}</span>
+            <div className="rk-progress-track">
+              <div className="rk-progress-fill" style={{ width: `${pct}%` }} />
+            </div>
+            <div className="rk-progress-badge">Turn {turnIndex + 1} of {total}</div>
+          </div>
 
-          {/* Teacher dialog card */}
-          <div style={{
-            background: "#F5F3FF", border: `1px solid ${C.purpleBorder}`,
-            borderRadius: 18, padding: "14px 16px", marginBottom: 10,
-          }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
-              <div style={{
-                width: 42, height: 42, borderRadius: "50%",
-                background: C.purpleSoft, border: `2px solid ${C.purple}`,
-                display: "flex", alignItems: "center", justifyContent: "center",
-                fontWeight: 900, fontSize: 18, color: C.purpleDark, flexShrink: 0,
-              }}>{agentInitial}</div>
-              <div>
-                <div style={{ fontWeight: 800, fontSize: 14, color: C.purpleDark }}>
-                  {scene.agentName || "Teacher"}
+          {/* Content */}
+          <div className="rk-content">
+
+            {/* Teacher card */}
+            <div className="rk-teacher-card">
+              <div className="rk-card-header">
+                <div className="rk-avatar rk-avatar-purple">{agentInitial}</div>
+                <div>
+                  <div className="rk-speaker-name">{scene.agentName || "Teacher"}</div>
+                  <div className="rk-speaker-role">TEACHER</div>
                 </div>
-                <div style={{ fontSize: 10, fontWeight: 900, color: C.muted, textTransform: "uppercase", letterSpacing: ".06em" }}>
-                  TEACHER
-                </div>
+                <button
+                  className={`rk-tts-btn${ttsPlaying ? " is-playing" : ""}`}
+                  onClick={ttsPlaying ? stopTTS : replayTTS}
+                >
+                  {ttsPlaying ? "■ Playing…" : "▶ Play"}
+                </button>
               </div>
-              <div style={{ marginLeft: "auto" }}>
-                {ttsPlaying ? (
-                  <button onClick={stopTTS} style={{
-                    display: "flex", alignItems: "center", gap: 5,
-                    padding: "6px 12px", border: `1.5px solid #E4E0F8`,
-                    borderRadius: 999, background: C.white, color: C.ink,
-                    fontFamily: "'Nunito',sans-serif", fontWeight: 800, fontSize: 12,
-                    cursor: "pointer",
-                  }}>■ Playing…</button>
-                ) : (
-                  <button onClick={replayTTS} style={{
-                    display: "flex", alignItems: "center", gap: 5,
-                    padding: "6px 12px", border: `1.5px solid #E4E0F8`,
-                    borderRadius: 999, background: C.white, color: C.muted,
-                    fontFamily: "'Nunito',sans-serif", fontWeight: 800, fontSize: 12,
-                    cursor: "pointer",
-                  }}>▶ Play</button>
+              <div className="rk-dialog-text">{turn.teacherLine || "…"}</div>
+            </div>
+
+            {/* Hint card */}
+            {turn.studentLine && subPhase !== "feedback" && (
+              <div className="rk-hint-card">
+                <div className="rk-hint-label">💡 HINT</div>
+                <div className="rk-hint-text">{turn.studentLine}</div>
+              </div>
+            )}
+
+            {/* Feedback */}
+            {subPhase === "feedback" && (
+              <div className="rk-feedback-wrap">
+                {(written.trim() || transcript) && (
+                  <div className="rk-feedback-block rk-fb-purple">
+                    <div className="rk-feedback-label purple">
+                      {transcript ? "You said" : "You wrote"}
+                    </div>
+                    <div className="rk-feedback-text">"{transcript || written}"</div>
+                  </div>
+                )}
+                <div className="rk-feedback-block rk-fb-orange">
+                  <div className="rk-feedback-label orange">Correct answer</div>
+                  <div className="rk-feedback-text orange">{turn.studentLine}</div>
+                </div>
+                {pronScore !== null && (
+                  <div className="rk-score-wrap">
+                    <div className="rk-score-header">
+                      <span className="rk-score-lbl">Score</span>
+                      <span className="rk-score-pts">{pronScore} pts</span>
+                    </div>
+                    <div className="rk-score-track">
+                      <div className="rk-score-fill" style={{ width: `${pronScore}%` }} />
+                    </div>
+                  </div>
                 )}
               </div>
-            </div>
-            <div style={{ fontWeight: 800, fontSize: 15, color: C.ink, lineHeight: 1.55 }}>
-              {turn.teacherLine || "…"}
-            </div>
+            )}
+
+            {/* Your turn card */}
+            {subPhase !== "feedback" && (
+              <div className="rk-your-turn-card">
+                <div className="rk-card-header">
+                  <div className="rk-avatar rk-avatar-orange">{studentInitial}</div>
+                  <div>
+                    <div className="rk-speaker-name rk-speaker-name-you">Your turn</div>
+                    <div className="rk-speaker-role">{avatarLabel.toUpperCase()}</div>
+                  </div>
+                </div>
+
+                {!showTyping ? (
+                  <div className="rk-mic-area">
+                    <button
+                      className={`rk-mic-btn${micState === "recording" ? " rk-recording" : ""}`}
+                      onClick={() => micState === "recording" ? stopRecording() : startRecording()}
+                      disabled={micState === "processing"}
+                      style={micState === "recording" ? { animation: "rk-pulse 1s ease-in-out infinite" } : {}}
+                    >
+                      {micState === "processing" ? "⏳" : micState === "recording" ? "⏹" : "🎤"}
+                    </button>
+                    <div className={`rk-mic-hint${micState === "recording" ? " rk-recording" : ""}`}>
+                      {micState === "processing" ? "Processing…"
+                        : micState === "recording" ? "Recording… tap to stop"
+                        : "Tap to speak your response"}
+                    </div>
+                    <div className="rk-or-divider">— or —</div>
+                    <button className="rk-btn-ghost" onClick={() => { stopTTS(); setShowTyping(true); }}>
+                      Type instead
+                    </button>
+                  </div>
+                ) : (
+                  <div>
+                    <textarea
+                      className="rk-textarea"
+                      value={written}
+                      onChange={e => setWritten(e.target.value)}
+                      placeholder="Type your response here…"
+                      rows={3}
+                    />
+                    <button className="rk-btn-ghost" onClick={() => setShowTyping(false)}>
+                      🎤 Speak instead
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
+          </div>{/* end rk-content */}
+
+          {/* Bottom bar */}
+          <div className="rk-bottombar">
+            <span className="rk-status-text">
+              {subPhase === "feedback" ? "Nice work!" : "Speak or type to continue"}
+            </span>
+            <button className="rk-btn rk-btn-outline" onClick={handleNext}>
+              {subPhase === "feedback"
+                ? (turnIndex < total - 1 ? "Next →" : "Finish 🎉")
+                : "Next →"}
+            </button>
           </div>
 
-          {/* Hint card — shown when not yet in feedback */}
-          {turn.studentLine && subPhase !== "feedback" && (
-            <div style={{
-              background: "#FFF7ED", border: `1px solid ${C.orangeBorder}`,
-              borderRadius: 14, padding: "11px 16px", marginBottom: 10,
-            }}>
-              <div style={{ fontSize: 10, fontWeight: 900, color: C.orange, textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 4 }}>
-                HINT
-              </div>
-              <div style={{ fontWeight: 800, fontSize: 14, color: C.orangeDark, lineHeight: 1.5 }}>
-                {turn.studentLine}
-              </div>
-            </div>
-          )}
-
-          {/* Feedback section */}
-          {subPhase === "feedback" && (
-            <div style={{ marginBottom: 10 }}>
-              {(written.trim() || transcript) && (
-                <div style={{ background: C.purpleSoft, borderLeft: `3px solid ${C.purple}`, borderRadius: 12, padding: "10px 14px", marginBottom: 8 }}>
-                  <div style={{ fontSize: 10, fontWeight: 900, color: C.purple, textTransform: "uppercase", marginBottom: 4 }}>
-                    {transcript ? "You said" : "You wrote"}
-                  </div>
-                  <div style={{ fontFamily: "'Fredoka',sans-serif", fontSize: 14, fontWeight: 600, color: C.ink }}>
-                    "{transcript || written}"
-                  </div>
-                </div>
-              )}
-              <div style={{ background: C.orangeSoft, borderLeft: `3px solid ${C.orange}`, borderRadius: 12, padding: "10px 14px", marginBottom: 8 }}>
-                <div style={{ fontSize: 10, fontWeight: 900, color: C.orange, textTransform: "uppercase", marginBottom: 4 }}>Correct answer</div>
-                <div style={{ fontFamily: "'Fredoka',sans-serif", fontSize: 14, fontWeight: 600, color: C.orangeDark }}>{turn.studentLine}</div>
-              </div>
-              {pronScore !== null && (
-                <div style={{ background: C.purpleSoft, borderRadius: 12, padding: "10px 14px", marginBottom: 4 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                    <div style={{ fontSize: 11, fontWeight: 900, color: C.muted, textTransform: "uppercase" }}>Score</div>
-                    <div style={{ fontFamily: "'Fredoka',sans-serif", fontSize: 18, fontWeight: 700, color: C.orange }}>{pronScore} pts</div>
-                  </div>
-                  <div style={{ height: 8, background: "#F4F2FD", borderRadius: 999, overflow: "hidden" }}>
-                    <div style={{ height: "100%", width: `${pronScore}%`, background: `linear-gradient(90deg,${C.orange},${C.purple})`, borderRadius: 999, transition: "width .5s" }} />
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Your turn card */}
-          {subPhase !== "feedback" && (
-            <div style={{
-              background: C.white, border: `1px solid ${C.purpleBorder}`,
-              borderRadius: 18, padding: "14px 16px",
-            }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
-                <div style={{
-                  width: 42, height: 42, borderRadius: "50%",
-                  background: C.orangeSoft, border: `2px solid ${C.orange}`,
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  fontWeight: 900, fontSize: 18, color: C.orangeDark, flexShrink: 0,
-                }}>{studentInitial}</div>
-                <div>
-                  <div style={{ fontWeight: 800, fontSize: 14, color: C.orange }}>Your turn</div>
-                  <div style={{ fontSize: 10, fontWeight: 900, color: C.muted, textTransform: "uppercase", letterSpacing: ".06em" }}>
-                    {avatarLabel.toUpperCase()}
-                  </div>
-                </div>
-              </div>
-
-              {!showTyping ? (
-                <div style={{ textAlign: "center" }}>
-                  <button
-                    onClick={() => micState === "recording" ? stopRecording() : startRecording()}
-                    disabled={micState === "processing"}
-                    style={{
-                      width: 110, height: 110, borderRadius: 22,
-                      background: micState === "recording" ? "rgba(226,75,74,.07)" : C.white,
-                      border: micState === "recording"
-                        ? "2px solid #E24B4A"
-                        : `2px solid ${C.purpleBorder}`,
-                      cursor: micState === "processing" ? "default" : "pointer",
-                      display: "flex", alignItems: "center", justifyContent: "center",
-                      margin: "0 auto 10px", fontSize: 38,
-                      boxShadow: "0 2px 10px rgba(127,119,221,.08)",
-                      animation: micState === "recording" ? "rk-pulse 1s ease-in-out infinite" : "none",
-                      transition: "border-color .15s",
-                    }}>
-                    {micState === "processing" ? "⏳" : micState === "recording" ? "⏹" : "🎤"}
-                  </button>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: C.muted, marginBottom: 12 }}>
-                    {micState === "processing" ? "Processing…"
-                      : micState === "recording" ? "Recording… tap to stop"
-                      : "Tap to speak your response"}
-                  </div>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: C.muted, margin: "0 0 10px" }}>— or —</div>
-                  <button onClick={() => { stopTTS(); setShowTyping(true); }} style={{
-                    padding: "9px 24px", border: `1.5px solid #E4E0F8`,
-                    borderRadius: 999, background: C.white, color: C.ink,
-                    fontFamily: "'Nunito',sans-serif", fontWeight: 800, fontSize: 13,
-                    cursor: "pointer",
-                  }}>Type instead</button>
-                </div>
-              ) : (
-                <div>
-                  <textarea
-                    value={written}
-                    onChange={e => setWritten(e.target.value)}
-                    placeholder="Type your response here…"
-                    rows={3}
-                    style={{
-                      width: "100%", padding: "12px 14px",
-                      border: `1.5px solid ${C.purpleBorder}`,
-                      borderRadius: 14, fontSize: 15,
-                      fontFamily: "'Nunito',sans-serif", fontWeight: 700,
-                      resize: "none", outline: "none", color: C.ink,
-                      background: "#FAFAFE", marginBottom: 10,
-                    }}
-                  />
-                  <button onClick={() => setShowTyping(false)} style={{
-                    padding: "8px 18px", border: `1.5px solid #E4E0F8`,
-                    borderRadius: 999, background: C.white, color: C.muted,
-                    fontFamily: "'Nunito',sans-serif", fontWeight: 800, fontSize: 12,
-                    cursor: "pointer",
-                  }}>🎤 Speak instead</button>
-                </div>
-              )}
-            </div>
-          )}
-
-        </div>{/* end content */}
-
-        {/* Bottom bar */}
-        <div style={{
-          display: "flex", justifyContent: "space-between", alignItems: "center",
-          padding: "12px 16px", marginTop: 14,
-          borderTop: `1px solid #F0EEF8`,
-        }}>
-          <span style={{ fontSize: 13, fontWeight: 700, color: C.muted }}>
-            {subPhase === "feedback" ? "Nice work!" : "Speak or type to continue"}
-          </span>
-          <button onClick={handleNext} style={{
-            padding: "9px 22px", border: `1.5px solid #E4E0F8`,
-            borderRadius: 999, background: C.white, color: C.ink,
-            fontFamily: "'Nunito',sans-serif", fontWeight: 800, fontSize: 14,
-            cursor: "pointer",
-          }}>
-            {subPhase === "feedback"
-              ? (turnIndex < total - 1 ? "Next →" : "Finish 🎉")
-              : "Next →"}
-          </button>
-        </div>
-
-      </div>{/* end main card */}
+        </div>{/* end rk-board */}
+      </div>{/* end rk-app */}
     </div>
   );
 }
