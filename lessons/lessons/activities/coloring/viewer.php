@@ -630,12 +630,12 @@ body {
         
         var newRgb = hex2rgb(newColor);
         var targetPixels = getPixels(x, y);
-        if (!targetPixels || pixelsMatch(targetPixels, newRgb, 8)) return;
+        if (!targetPixels || pixelsMatch(targetPixels, newRgb, 10)) return;
 
         var imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
         var data = imgData.data;
         
-        var targetTolerance = 32;
+        var targetTolerance = 50;
         var visited = {};
         var stack = [[x, y]];
 
