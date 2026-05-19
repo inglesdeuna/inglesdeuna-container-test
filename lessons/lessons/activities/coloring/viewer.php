@@ -624,22 +624,22 @@ body {
 
     function floodFill(x, y, newColor) {
         if (!ctx || !canvas) return;
-        x = Math.floor(x);
-        y = Math.floor(y);
+        x = Math.round(x);
+        y = Math.round(y);
         if (x < 0 || y < 0 || x >= canvas.width || y >= canvas.height) return;
         
-        var targetTolerance = 24;
-        var newColorTolerance = 8;
         var newRgb = hex2rgb(newColor);
         var targetPixels = getPixels(x, y);
-        if (!targetPixels || pixelsMatch(targetPixels, newRgb, newColorTolerance)) return;
+        if (!targetPixels || pixelsMatch(targetPixels, newRgb, 8)) return;
 
         var imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
         var data = imgData.data;
-        var stack = [[x, y]];
+        
+        var targetTolerance = 32;
         var visited = {};
+        var stack = [[x, y]];
 
-        while (stack.length) {
+        while (stack.length > 0) {
             var coord = stack.pop();
             var cx = coord[0];
             var cy = coord[1];
@@ -655,7 +655,8 @@ body {
             data[idx] = newRgb[0];
             data[idx+1] = newRgb[1];
             data[idx+2] = newRgb[2];
-            stack.push([cx+1, cy], [cx-1, cy], [cx, cy+1], [cx, cy-1]);
+            
+            stack.push([cx+1, cy], [cx-1, cy], [cx, cy+1], [cx, cy-1], [cx+1, cy+1], [cx-1, cy-1], [cx+1, cy-1], [cx-1, cy+1]);
         }
         ctx.putImageData(imgData, 0, 0);
     }
@@ -664,10 +665,11 @@ body {
         if (!canvas || !ctx) return;
         var rect = canvas.getBoundingClientRect();
         var point = e.touches ? e.touches[0] : e;
-        var scaleX = canvas.width / rect.width;
-        var scaleY = canvas.height / rect.height;
-        var x = (point.clientX - rect.left) * scaleX;
-        var y = (point.clientY - rect.top) * scaleY;
+        var dpr = window.devicePixelRatio || 1;
+        var scaleX = (canvas.width * dpr) / rect.width;
+        var scaleY = (canvas.height * dpr) / rect.height;
+        var x = (point.clientX - rect.left) * scaleX / dpr;
+        var y = (point.clientY - rect.top) * scaleY / dpr;
         floodFill(x, y, selectedColor);
         saveCurrentSnapshot();
         if (e.preventDefault) e.preventDefault();
