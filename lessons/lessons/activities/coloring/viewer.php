@@ -670,6 +670,18 @@ body {
         var scaleY = (canvas.height * dpr) / rect.height;
         var x = (point.clientX - rect.left) * scaleX / dpr;
         var y = (point.clientY - rect.top) * scaleY / dpr;
+        
+        console.log('Click:', {
+            clientX: point.clientX,
+            clientY: point.clientY,
+            rect: { left: rect.left, top: rect.top, width: rect.width, height: rect.height },
+            canvas: { width: canvas.width, height: canvas.height },
+            dpr: dpr,
+            x: x,
+            y: y,
+            pixel: getPixels(x, y)
+        });
+        
         floodFill(x, y, selectedColor);
         saveCurrentSnapshot();
         if (e.preventDefault) e.preventDefault();
