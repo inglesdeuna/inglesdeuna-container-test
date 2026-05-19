@@ -635,7 +635,7 @@ body {
         var imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
         var data = imgData.data;
         
-        var targetTolerance = 50;
+        var targetTolerance = 20;
         var visited = {};
         var stack = [[x, y]];
 
