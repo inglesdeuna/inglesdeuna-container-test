@@ -98,6 +98,7 @@ $instruction = $activity['instructions'];
 foreach ($blocks as $block) {
     $text    = isset($block['text']) ? $block['text'] : '';
     $answers = isset($block['answers']) && is_array($block['answers']) ? $block['answers'] : [];
+    $image   = isset($block['image']) ? trim((string) $block['image']) : '';
 
     if (empty($answers)) continue;
 
@@ -105,6 +106,7 @@ foreach ($blocks as $block) {
         'instruction' => $instruction,
         'text'        => $text,
         'answers'     => array_map('trim', $answers),
+        'image_url'   => $image,
         'options'     => $activity['options'] ?? [],
     ];
 }
@@ -407,6 +409,24 @@ body { margin: 0 !important; padding: 0 !important; background: #fff !important;
 #fb-feedback { margin-top: 8px; }
 #fb-completed { }
 
+.fb-image-wrap {
+    display: none;
+    margin: 0 auto 16px;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 8px;
+    background: #fff;
+    max-width: 100%;
+}
+
+.fb-image-wrap img {
+    width: 100%;
+    max-height: 280px;
+    object-fit: contain;
+    border-radius: 10px;
+    display: block;
+}
+
 /* ── Word bank — Option A chip style (same as unscramble) ── */
 #fb-wordbank-wrap {
     border: 1.5px dashed var(--border);
@@ -501,16 +521,14 @@ body { margin: 0 !important; padding: 0 !important; background: #fff !important;
                 </div>
 
                 <div id="fb-sentence"></div>
+
+                <div class="fb-image-wrap" id="fb-image-wrap" aria-live="polite">
+                    <img id="fb-image" src="" alt="Question image">
+                </div>
                 
                 <div class="fb-wordbank">
                     <p class="fb-wb-label">Word bank</p>
                     <div class="fb-wb-words" id="fb-wb-words"></div>
-                </div>
-
-                <!-- Word bank — shown by JS when question has options -->
-                <div id="fb-wordbank-wrap">
-                    <span class="fb-wordbank-label">Word Bank</span>
-                    <div id="fb-wordbank"></div>
                 </div>
 
                 <div class="fb-actions">
