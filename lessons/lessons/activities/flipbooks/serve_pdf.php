@@ -39,6 +39,13 @@ if ($pdfUrl === '') {
     exit('No hay PDF guardado para esta actividad.');
 }
 
+// Handle remote URL storage (Cloudinary/raw) through the proxy.
+if (preg_match('/^https?:\/\//i', $pdfUrl)) {
+    $proxyUrl = '/lessons/lessons/activities/flipbooks/pdf_proxy.php?url=' . rawurlencode($pdfUrl);
+    header('Location: ' . $proxyUrl, true, 302);
+    exit;
+}
+
 // Handle base64 data URI (new storage method)
 if (str_starts_with($pdfUrl, 'data:application/pdf;base64,')) {
     $base64 = substr($pdfUrl, strlen('data:application/pdf;base64,'));
