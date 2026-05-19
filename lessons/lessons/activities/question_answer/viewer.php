@@ -585,7 +585,7 @@ body.presentation-mode .qa-premium-shell {
     inset: 0 !important;
     max-width: 100% !important;
     margin: 0 auto !important;
-    padding: 16px clamp(16px,4vw,48px) !important;
+    padding: clamp(12px,2vw,24px) !important;
     border-radius: 0 !important;
     display: flex !important;
     flex-direction: column !important;
@@ -620,11 +620,12 @@ body.presentation-mode .qa-premium-board {
 body.embedded-mode .qa-premium-card-wrap,
 body.fullscreen-embedded .qa-premium-card-wrap,
 body.presentation-mode .qa-premium-card-wrap {
-    flex: 0 0 auto !important;
+    flex: 1 !important;
     min-height: 0 !important;
     align-items: center !important;
     grid-template-columns: auto minmax(0, 760px) auto !important;
-    margin: 0 auto !important;
+    grid-template-rows: 1fr !important;
+    width: 100% !important;
 }
 
 body.embedded-mode .qa-premium-card,
@@ -633,8 +634,8 @@ body.presentation-mode .qa-premium-card {
     min-height: clamp(180px, 24vh, 260px) !important;
     max-width: 760px !important;
     width: 100% !important;
-    flex: 0 0 auto !important;
-    height: auto !important;
+    align-self: stretch !important;
+    height: 100% !important;
 }
 
 body.embedded-mode .qa-premium-card-inner,
