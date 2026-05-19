@@ -570,7 +570,7 @@ ob_start();
     .qa-premium-text{font-size:clamp(14px,4vw,22px)}
 }
 
-/* ── Fullscreen / embedded: card fills the iframe ── */
+/* ── Fullscreen / embedded: equal margin on all 4 sides ── */
 body.embedded-mode .viewer-content,
 body.fullscreen-embedded .viewer-content,
 body.presentation-mode .viewer-content {
@@ -578,43 +578,75 @@ body.presentation-mode .viewer-content {
     position: relative !important;
 }
 
+/* Shell fills the iframe completely */
 body.embedded-mode .qa-premium-shell,
 body.fullscreen-embedded .qa-premium-shell,
 body.presentation-mode .qa-premium-shell {
     position: absolute !important;
     inset: 0 !important;
-    max-width: 100% !important;
-    margin: 0 auto !important;
-    padding: clamp(12px,2vw,24px) !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
     border-radius: 0 !important;
-    display: flex !important;
-    flex-direction: column !important;
-    align-items: center !important;
+    display: block !important;
     overflow: hidden !important;
+    align-items: unset !important;
+    justify-content: unset !important;
 }
 
+/* App is a positioning context that also fills the iframe */
 body.embedded-mode .qa-premium-app,
 body.fullscreen-embedded .qa-premium-app,
 body.presentation-mode .qa-premium-app {
-    flex: 1 !important;
-    width: min(100%, 1100px) !important;
+    position: absolute !important;
+    inset: 0 !important;
+    flex: none !important;
+    width: auto !important;
     min-height: 0 !important;
-    display: flex !important;
-    flex-direction: column !important;
-    gap: 10px !important;
+    display: block !important;
+    gap: 0 !important;
 }
 
+/* Title floats at the top, centered, at the same offset as the board margin */
+body.embedded-mode .qa-premium-app > div:first-child,
+body.fullscreen-embedded .qa-premium-app > div:first-child,
+body.presentation-mode .qa-premium-app > div:first-child {
+    position: absolute !important;
+    top: clamp(14px,2vw,26px) !important;
+    left: 0 !important;
+    right: 0 !important;
+    z-index: 10 !important;
+    margin: 0 !important;
+    pointer-events: none !important;
+}
+
+/* Board: equal inset from all 4 iframe edges */
 body.embedded-mode .qa-premium-board,
 body.fullscreen-embedded .qa-premium-board,
 body.presentation-mode .qa-premium-board {
-    flex: 1 !important;
-    min-height: 0 !important;
+    position: absolute !important;
+    inset: clamp(14px,2vw,26px) !important;
+    flex: none !important;
     display: flex !important;
     flex-direction: column !important;
     justify-content: flex-start !important;
-    padding: 14px 20px !important;
+    padding: clamp(58px,9vh,80px) 20px 16px !important;
     border-radius: 24px !important;
-    width: 100% !important;
+    width: auto !important;
+    height: auto !important;
+}
+
+/* Completed screen fills the same space as board */
+body.embedded-mode .qa-premium-completed,
+body.fullscreen-embedded .qa-premium-completed,
+body.presentation-mode .qa-premium-completed {
+    position: absolute !important;
+    inset: clamp(14px,2vw,26px) !important;
+    width: auto !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: clamp(28px,5vw,54px) !important;
+    border-radius: 24px !important;
 }
 
 body.embedded-mode .qa-premium-card-wrap,
@@ -641,7 +673,7 @@ body.presentation-mode .qa-premium-card {
 body.embedded-mode .qa-premium-card-inner,
 body.fullscreen-embedded .qa-premium-card-inner,
 body.presentation-mode .qa-premium-card-inner {
-    height: auto !important;
+    height: 100% !important;
     min-height: inherit !important;
 }
 
