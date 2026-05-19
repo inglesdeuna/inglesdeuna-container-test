@@ -801,6 +801,54 @@ function usRestartActivity() {
     usLoadSentence();
 }
 
+/* ── Web Speech API fallback ── */
+var usBrowserTTS = (function () {
+    var preferred = ['zira','samantha','karen','aria','jenny','emma','ava','google us english'];
+    var cache = null;
+
+    function loadVoices(cb) {
+        if (!window.speechSynthesis) return;
+        var v = window.speechSynthesis.getVoices();
+        if (v && v.length) { cache = v; cb(v); return; }
+        if (window.speechSynthesis.onvoiceschanged !== undefined) {
+            window.speechSynthesis.onvoiceschanged = function () {
+                cache = window.speechSynthesis.getVoices();
+                if (cache.length) cb(cache);
+            };
+        }
+    }
+
+    function pickVoice(voices) {
+        var pool = voices.filter(function (v) { return String(v.lang).toLowerCase().indexOf('en') === 0; });
+        if (!pool.length) pool = voices;
+        for (var i = 0; i < preferred.length; i++) {
+            for (var j = 0; j < pool.length; j++) {
+                if ((pool[j].name + ' ' + pool[j].voiceURI).toLowerCase().indexOf(preferred[i]) !== -1) return pool[j];
+            }
+        }
+        return pool[0] || null;
+    }
+
+    function speak(text) {
+        if (!window.speechSynthesis) return;
+        window.speechSynthesis.cancel();
+        function run(voices) {
+            var u = new SpeechSynthesisUtterance(text);
+            u.lang = 'en-US'; u.rate = 0.88; u.pitch = 1.05; u.volume = 1;
+            var voice = pickVoice(voices);
+            if (voice) u.voice = voice;
+            u.onend = function () { usIsSpeaking = false; usIsPaused = false; usSetListenLabel(); };
+            window.speechSynthesis.speak(u);
+            usIsSpeaking = true; usIsPaused = false; usSetListenLabel();
+        }
+        if (cache && cache.length) run(cache);
+        else loadVoices(run);
+    }
+
+    if (window.speechSynthesis) loadVoices(function () {});
+    return { speak: speak };
+})();
+
 function usSpeak() {
     if (!usListenEnabled) return;
     if (!usCurrentSentence || String(usCurrentSentence).trim() === '') return;
@@ -870,9 +918,9 @@ function usSpeak() {
             });
         })
         .catch(function () {
-            usIsSpeaking = false;
-            usIsPaused = false;
-            usSetListenLabel();
+            /* ElevenLabs failed — fall back to browser Web Speech API */
+            usListenBtn.disabled = false;
+            usBrowserTTS.speak(usCurrentSentence);
         })
         .finally(function () {
             usListenBtn.disabled = false;
