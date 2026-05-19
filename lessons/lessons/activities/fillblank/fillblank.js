@@ -39,8 +39,6 @@ document.addEventListener('DOMContentLoaded', function () {
     return new Array(Math.max(1, answerCount)).fill('');
   });
 
-  var usedOptionIndexes = questions.map(function () { return {}; });
-
   function normalize(s) {
     return String(s || '')
       .trim()
@@ -74,7 +72,7 @@ document.addEventListener('DOMContentLoaded', function () {
     if (Array.isArray(q.options) && q.options.length) {
       return q.options.slice();
     }
-    return Array.isArray(q.answers) ? q.answers.slice() : [];
+    return [];
   }
 
   function updateProgress() {
@@ -109,15 +107,6 @@ document.addEventListener('DOMContentLoaded', function () {
     imageWrapEl.style.display = 'block';
   }
 
-  function findFirstEmptyBlank(values) {
-    for (var i = 0; i < values.length; i++) {
-      if (!String(values[i] || '').trim()) {
-        return i;
-      }
-    }
-    return -1;
-  }
-
   function renderSentence(q, values, isAnswered) {
     if (!sentenceEl) {
       return;
@@ -135,11 +124,7 @@ document.addEventListener('DOMContentLoaded', function () {
       var value = String(values[i] || '');
 
       if (!isAnswered) {
-        if (value) {
-          html += ' <span class="fb-blank-filled" data-blank-index="' + i + '"><span class="fb-blank-text">' + escHtml(value) + '</span><span class="fb-blank-remove" title="Clear">✕</span></span> ';
-        } else {
-          html += ' <span class="fb-blank" data-blank-index="' + i + '"></span> ';
-        }
+        html += ' <input class="fb-blank" data-blank-input="' + i + '" type="text" autocomplete="off" value="' + escHtml(value) + '" style="border:none;border-bottom:2.5px solid #7F77DD;border-radius:0;background:transparent;outline:none;text-align:center;font:700 16px Nunito,sans-serif;color:#5A51C0;padding:0 4px;"> ';
       } else {
         var correct = String(answers[i] || '');
         var ok = normalize(value) === normalize(correct);
@@ -165,86 +150,27 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     wordBankWordsEl.innerHTML = '';
+    var wordBankWrap = wordBankWordsEl.closest('.fb-wordbank');
 
     var options = getOptionsForQuestion(q);
     if (!options.length) {
+      if (wordBankWrap) {
+        wordBankWrap.style.display = 'none';
+      }
       return;
     }
 
-    options.forEach(function (word, optionIndex) {
-      var chip = document.createElement('button');
-      chip.type = 'button';
+    if (wordBankWrap) {
+      wordBankWrap.style.display = '';
+    }
+
+    options.forEach(function (word) {
+      var chip = document.createElement('span');
       chip.className = 'fb-chip';
       chip.textContent = word;
-      chip.dataset.optionIndex = String(optionIndex);
-
-      if (usedOptionIndexes[index] && usedOptionIndexes[index][optionIndex]) {
-        chip.classList.add('used');
-        chip.disabled = true;
-      }
-
-      chip.addEventListener('click', function () {
-        if (answered || revealed || chip.disabled) {
-          return;
-        }
-
-        var blankIdx = findFirstEmptyBlank(selectedAnswers[index]);
-        if (blankIdx === -1) {
-          return;
-        }
-
-        selectedAnswers[index][blankIdx] = word;
-        usedOptionIndexes[index][optionIndex] = true;
-        renderSentence(questions[index], selectedAnswers[index], false);
-        attachSentenceListeners();
-        updateWordBankUI();
-      });
 
       wordBankWordsEl.appendChild(chip);
     });
-  }
-
-  function updateWordBankUI() {
-    if (!wordBankWordsEl) {
-      return;
-    }
-
-    var chips = wordBankWordsEl.querySelectorAll('.fb-chip');
-    chips.forEach(function (chip) {
-      var optionIdx = Number(chip.dataset.optionIndex || '-1');
-      var used = !!(usedOptionIndexes[index] && usedOptionIndexes[index][optionIdx]);
-      chip.classList.toggle('used', used);
-      chip.disabled = answered || revealed || used;
-    });
-  }
-
-  function releaseUsedOption(optionText) {
-    var q = questions[index] || {};
-    var options = getOptionsForQuestion(q);
-
-    for (var i = 0; i < options.length; i++) {
-      if (String(options[i]) === String(optionText) && usedOptionIndexes[index][i]) {
-        delete usedOptionIndexes[index][i];
-        return;
-      }
-    }
-  }
-
-  function clearBlank(blankIndex) {
-    if (answered || revealed) {
-      return;
-    }
-
-    var current = String(selectedAnswers[index][blankIndex] || '');
-    if (!current) {
-      return;
-    }
-
-    releaseUsedOption(current);
-    selectedAnswers[index][blankIndex] = '';
-    renderSentence(questions[index], selectedAnswers[index], false);
-    attachSentenceListeners();
-    updateWordBankUI();
   }
 
   function attachSentenceListeners() {
@@ -252,26 +178,29 @@ document.addEventListener('DOMContentLoaded', function () {
       return;
     }
 
-    var removeButtons = sentenceEl.querySelectorAll('.fb-blank-remove');
-    removeButtons.forEach(function (btn) {
-      btn.addEventListener('click', function (evt) {
-        evt.stopPropagation();
-        var parent = btn.closest('[data-blank-index]');
-        if (!parent) {
+    var inputEls = sentenceEl.querySelectorAll('input[data-blank-input]');
+    inputEls.forEach(function (input, idx) {
+      input.addEventListener('input', function () {
+        if (answered || revealed) {
           return;
         }
-        var blankIdx = Number(parent.getAttribute('data-blank-index'));
-        clearBlank(blankIdx);
+        selectedAnswers[index][idx] = input.value;
+      });
+
+      input.addEventListener('keydown', function (evt) {
+        if (evt.key === 'Enter') {
+          evt.preventDefault();
+          if (!answered && !revealed) {
+            checkAnswer();
+          }
+        }
       });
     });
 
-    var filled = sentenceEl.querySelectorAll('.fb-blank-filled[data-blank-index]');
-    filled.forEach(function (node) {
-      node.addEventListener('click', function () {
-        var blankIdx = Number(node.getAttribute('data-blank-index'));
-        clearBlank(blankIdx);
-      });
-    });
+    if (inputEls.length) {
+      inputEls[0].focus();
+      inputEls[0].select();
+    }
   }
 
   function isAllCorrect(q, values) {
@@ -328,7 +257,6 @@ document.addEventListener('DOMContentLoaded', function () {
     renderSentence(q, selectedAnswers[index], false);
     renderWordBank(q);
     attachSentenceListeners();
-    updateWordBankUI();
   }
 
   function checkAnswer() {
@@ -352,7 +280,6 @@ document.addEventListener('DOMContentLoaded', function () {
     };
 
     renderSentence(q, user, true);
-    updateWordBankUI();
 
     if (feedbackEl && AF && typeof AF.showFeedback === 'function') {
       AF.showFeedback(feedbackEl, allCorrect, buildAnswerSummary(correct), false);
@@ -389,7 +316,6 @@ document.addEventListener('DOMContentLoaded', function () {
     };
 
     renderSentence(q, correct, true);
-    updateWordBankUI();
 
     if (feedbackEl && AF && typeof AF.showFeedback === 'function') {
       AF.showFeedback(feedbackEl, false, null, true);
@@ -470,7 +396,6 @@ document.addEventListener('DOMContentLoaded', function () {
       var answerCount = Array.isArray(q.answers) ? q.answers.length : 1;
       return new Array(Math.max(1, answerCount)).fill('');
     });
-    usedOptionIndexes = questions.map(function () { return {}; });
 
     loadQuestion();
   }
