@@ -68,7 +68,6 @@ document.addEventListener('DOMContentLoaded', function () {
       blankHtml = '<span class="fb-blank-filled" style="background: #ef4444; cursor: default;"><span class="fb-blank-text" style="text-decoration: line-through;">' + escHtml(userAnswer || '\u2014') + '</span></span>'
                 + ' <span style="background: #EDE9FA; color: #7F77DD; border-radius: 8px; padding: 2px 8px; font-weight: 800; display: inline-flex; align-items: center; vertical-align: bottom; margin: 0 6px;">' + escHtml(correct) + '</span>';
     }
-    sentenceEl.innerHTML = escHtml(before) + ' ' + blankHtml + ' ' + escHtml(after);
   }
 
   function escHtml(s) {
@@ -250,10 +249,9 @@ document.addEventListener('DOMContentLoaded', function () {
     var st = document.createElement('style');
     st.id = 'fb-blank-css';
     st.textContent =
-      '.fb-blank{display:inline-block;padding:2px 8px;border-radius:6px;font-weight:800}' +
-      '.fb-blank--correct{background:#f0fdf4;border-bottom:2px solid #22c55e;color:#166534}' +
-      '.fb-blank--wrong{background:#fef2f2;border-bottom:2px solid #ef4444;color:#991b1b;text-decoration:line-through;margin-right:4px}' +
-      '.fb-blank--hint{background:#EDE9FA;color:#7F77DD;border-radius:6px;padding:2px 8px;font-weight:800}';
+      '.fb-answer-correct{display:inline-block;padding:2px 8px;border-radius:6px;font-weight:700;background:#f0fdf4;color:#166534;font-size:16px;vertical-align:bottom;margin:0 6px}' +
+      '.fb-answer-wrong{display:inline-block;padding:2px 8px;border-radius:6px;font-weight:700;background:#fef2f2;color:#991b1b;text-decoration:line-through;font-size:16px;vertical-align:bottom;margin:0 6px}' +
+      '.fb-answer-hint{display:inline-block;background:#EDE9FA;color:#7F77DD;border-radius:6px;padding:2px 8px;font-weight:800;font-size:14px;vertical-align:bottom;margin:0 6px}';
     document.head.appendChild(st);
   }
 

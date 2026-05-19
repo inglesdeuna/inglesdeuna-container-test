@@ -89,9 +89,8 @@ if (empty($blocks)) {
 }
 
 /*
- * Map each block to {instruction, before, after, answer}
- * fillblank.js expects one question per block with a single blank.
- * We split the text at the first ___ occurrence.
+ * Map each block to support MULTIPLE blanks per block
+ * Text contains multiple ___ markers, answers array has one answer per blank
  */
 $jsQuestions = [];
 $instruction = $activity['instructions'];
@@ -100,19 +99,12 @@ foreach ($blocks as $block) {
     $text    = isset($block['text']) ? $block['text'] : '';
     $answers = isset($block['answers']) && is_array($block['answers']) ? $block['answers'] : [];
 
-    /* Split at first blank sequence */
-    $parts = preg_split('/___+/', $text, 2);
-    $before = isset($parts[0]) ? trim($parts[0]) : $text;
-    $after  = isset($parts[1]) ? trim($parts[1]) : '';
-    $answer = isset($answers[0]) ? trim((string)$answers[0]) : '';
-
-    if ($answer === '') continue;
+    if (empty($answers)) continue;
 
     $jsQuestions[] = [
         'instruction' => $instruction,
-        'before'      => $before,
-        'after'       => $after,
-        'answer'      => $answer,
+        'text'        => $text,
+        'answers'     => array_map('trim', $answers),
         'options'     => $activity['options'] ?? [],
     ];
 }

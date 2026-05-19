@@ -669,4 +669,4 @@ window.MULTIPLE_CHOICE_ACTIVITY_ID = <?php echo json_encode((string) ($activity[
 
 <?php
 $content = ob_get_clean();
-render_activity_viewer($viewerTitle, '­ƒôØ', $content);
+render_activity_viewer($viewerTitle, 'fa-solid fa-list-ul', $content);
