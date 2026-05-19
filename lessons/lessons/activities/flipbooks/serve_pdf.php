@@ -66,7 +66,8 @@ if (str_starts_with($pdfUrl, 'data:application/pdf;base64,')) {
 
 // Handle legacy local file path (fallback for any previously uploaded files)
 if (str_starts_with($pdfUrl, '/')) {
-    $localPath = __DIR__ . '/../../../../..' . $pdfUrl;
+    // Repo root from this file: flipbooks -> activities -> lessons -> lessons -> repo root
+    $localPath = __DIR__ . '/../../../../' . $pdfUrl;
     $realLocal = realpath($localPath);
 
     // Security: ensure the resolved path is inside the uploads directory
