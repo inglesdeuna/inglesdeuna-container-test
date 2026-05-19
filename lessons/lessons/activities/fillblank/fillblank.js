@@ -124,7 +124,7 @@ document.addEventListener('DOMContentLoaded', function () {
       var value = String(values[i] || '');
 
       if (!isAnswered) {
-        html += ' <input class="fb-blank" data-blank-input="' + i + '" type="text" autocomplete="off" value="' + escHtml(value) + '" style="border:none;border-bottom:2.5px solid #7F77DD;border-radius:0;background:transparent;outline:none;text-align:center;font:700 16px Nunito,sans-serif;color:#5A51C0;padding:0 4px;"> ';
+        html += ' <input class="fb-blank" data-blank-input="' + i + '" type="text" autocomplete="off" value="' + escHtml(value) + '" style="border:none;border-bottom:2.5px solid #7F77DD;border-radius:0;background:transparent;outline:none;text-align:center;font:700 16px Nunito,sans-serif;color:#5A51C0;padding:0 4px;min-width:44px;max-width:100%;width:4ch;height:24px;"> ';
       } else {
         var correct = String(answers[i] || '');
         var ok = normalize(value) === normalize(correct);
@@ -180,11 +180,14 @@ document.addEventListener('DOMContentLoaded', function () {
 
     var inputEls = sentenceEl.querySelectorAll('input[data-blank-input]');
     inputEls.forEach(function (input, idx) {
+      resizeBlankInput(input);
+
       input.addEventListener('input', function () {
         if (answered || revealed) {
           return;
         }
         selectedAnswers[index][idx] = input.value;
+        resizeBlankInput(input);
       });
 
       input.addEventListener('keydown', function (evt) {
@@ -201,6 +204,14 @@ document.addEventListener('DOMContentLoaded', function () {
       inputEls[0].focus();
       inputEls[0].select();
     }
+  }
+
+  function resizeBlankInput(input) {
+    var typed = String(input.value || '').trim();
+    var minChars = 4;
+    var maxChars = 20;
+    var targetChars = Math.min(maxChars, Math.max(minChars, typed.length + 1));
+    input.style.width = targetChars + 'ch';
   }
 
   function isAllCorrect(q, values) {
