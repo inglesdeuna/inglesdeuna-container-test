@@ -29,12 +29,150 @@ ob_start();
 <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@600;700;800;900&display=swap" rel="stylesheet">
 
 <style>
-#roleplay-kids-root * { box-sizing: border-box; margin: 0; padding: 0; }
-#roleplay-kids-root { font-family: 'Nunito', sans-serif; flex: 1; min-height: 0; overflow-y: auto; background: #fff; }
-@keyframes rk-spin  { to { transform: rotate(360deg); } }
-@keyframes rk-pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
-@keyframes rk-bounce { 0%,100%{transform:scale(1)} 50%{transform:scale(1.12)} }
-@keyframes rk-shake  { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-6px)} 75%{transform:translateX(6px)} }
+/* ── Reset ──────────────────────────────────────────────── */
+#roleplay-kids-root *{box-sizing:border-box;margin:0;padding:0;}
+#roleplay-kids-root{font-family:'Nunito','Segoe UI',system-ui,sans-serif;flex:1;min-height:0;overflow-y:auto;background:#fff;}
+
+/* ── Keyframes ──────────────────────────────────────────── */
+@keyframes rk-spin   {to{transform:rotate(360deg)}}
+@keyframes rk-pulse  {0%,100%{opacity:1}50%{opacity:.3}}
+@keyframes rk-bounce {0%,100%{transform:scale(1)}50%{transform:scale(1.12)}}
+@keyframes rk-shake  {0%,100%{transform:translateX(0)}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+
+/* ── Shell & layout ─────────────────────────────────────── */
+.rk-shell{width:100%;flex:1;min-height:0;overflow-y:auto;padding:clamp(14px,2.5vw,34px);display:flex;align-items:flex-start;justify-content:center;background:#fff;}
+.rk-app{width:min(680px,100%);display:grid;grid-template-columns:minmax(0,1fr);gap:clamp(10px,2vw,18px);}
+
+/* ── Hero ───────────────────────────────────────────────── */
+.rk-hero{text-align:center;}
+.rk-kicker{display:inline-flex;align-items:center;gap:7px;margin-bottom:8px;padding:7px 14px;border-radius:999px;background:#FFF0E6;border:1px solid #FCDDBF;color:#C2580A;font-size:12px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;}
+.rk-title{margin:0;font-family:'Fredoka',sans-serif;font-size:clamp(28px,5.5vw,52px);line-height:1.05;color:#F97316;font-weight:700;}
+.rk-subtitle{margin:8px 0 0;color:#9B94BE;font-size:clamp(13px,1.8vw,16px);font-weight:800;}
+
+/* ── Board ──────────────────────────────────────────────── */
+.rk-board{background:#fff;border:1px solid #EDE9FA;border-radius:28px;overflow:hidden;box-shadow:0 8px 40px rgba(127,119,221,.13);}
+.rk-board-padded{padding:clamp(16px,2.6vw,26px);}
+
+/* ── Top bar ────────────────────────────────────────────── */
+.rk-topbar{display:flex;align-items:center;gap:8px;padding:12px 18px;border-bottom:1px solid #F0EEF8;flex-wrap:wrap;}
+.rk-back-btn{display:inline-flex;align-items:center;gap:5px;padding:7px 14px;border:1.5px solid #EDE9FA;border-radius:999px;background:#fff;color:#271B5D;font-family:'Nunito',sans-serif;font-weight:800;font-size:13px;cursor:pointer;flex-shrink:0;transition:background .15s;}
+.rk-back-btn:hover{background:#FAFAFE;}
+.rk-scene-title{font-weight:800;font-size:16px;color:#F97316;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.rk-topbar-right{margin-left:auto;display:flex;align-items:center;gap:8px;flex-shrink:0;}
+.rk-voice-chip{display:inline-flex;align-items:center;gap:4px;padding:6px 12px;border:1.5px solid #EDE9FA;border-radius:999px;background:#fff;font-size:12px;font-weight:800;color:#9B94BE;}
+.rk-turn-badge{padding:6px 14px;border-radius:999px;background:#7F77DD;color:#fff;font-size:12px;font-weight:900;white-space:nowrap;}
+
+/* ── Scene bar ──────────────────────────────────────────── */
+.rk-scene-bar{display:flex;justify-content:space-between;align-items:center;padding:8px 18px;background:#FFF0E6;border-bottom:1px solid #FCDDBF;flex-wrap:wrap;gap:4px;}
+.rk-scene-bar-left{display:flex;align-items:center;gap:6px;font-weight:800;font-size:13px;color:#C2580A;}
+.rk-scene-bar-right{font-size:12px;font-weight:700;color:#C2580A;}
+
+/* ── Progress ───────────────────────────────────────────── */
+.rk-progress-row{display:flex;align-items:center;gap:10px;padding:10px 18px;border-bottom:1px solid #F0EEF8;}
+.rk-progress-counter{font-size:12px;font-weight:900;color:#9B94BE;min-width:28px;flex-shrink:0;}
+.rk-progress-track{flex:1;height:10px;background:#F4F2FD;border-radius:999px;overflow:hidden;border:1px solid #E4E1F8;}
+.rk-progress-fill{height:100%;width:0%;background:linear-gradient(90deg,#F97316,#7F77DD);border-radius:999px;transition:width .45s cubic-bezier(.2,.9,.2,1);}
+.rk-progress-badge{min-width:90px;text-align:center;padding:6px 12px;border-radius:999px;background:#7F77DD;color:#fff;font-size:12px;font-weight:900;white-space:nowrap;flex-shrink:0;}
+
+/* ── Content wrapper ────────────────────────────────────── */
+.rk-content{padding:14px 18px 0;}
+
+/* ── Shared card header ─────────────────────────────────── */
+.rk-card-header{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+.rk-avatar{width:42px;height:42px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:18px;flex-shrink:0;}
+.rk-avatar-purple{background:#EEEDFE;border:2px solid #7F77DD;color:#534AB7;}
+.rk-avatar-orange{background:#FFF0E6;border:2px solid #F97316;color:#C2580A;}
+.rk-speaker-name{font-weight:800;font-size:14px;color:#534AB7;}
+.rk-speaker-name-you{color:#F97316;}
+.rk-speaker-role{font-size:10px;font-weight:900;color:#9B94BE;text-transform:uppercase;letter-spacing:.06em;}
+
+/* ── Teacher card ───────────────────────────────────────── */
+.rk-teacher-card{background:#F5F3FF;border:1px solid #EDE9FA;border-radius:18px;padding:14px 16px;margin-bottom:10px;}
+.rk-tts-btn{margin-left:auto;display:inline-flex;align-items:center;gap:5px;padding:6px 14px;border:1.5px solid #EDE9FA;border-radius:999px;background:#fff;font-family:'Nunito',sans-serif;font-weight:800;font-size:12px;cursor:pointer;color:#9B94BE;flex-shrink:0;transition:background .15s,color .15s,border-color .15s;}
+.rk-tts-btn:hover{background:#FAFAFE;}
+.rk-tts-btn.is-playing{color:#534AB7;border-color:#7F77DD;}
+.rk-dialog-text{font-weight:800;font-size:15px;color:#271B5D;line-height:1.65;}
+
+/* ── Hint card ──────────────────────────────────────────── */
+.rk-hint-card{background:#FFF7ED;border:1px solid #FCDDBF;border-radius:14px;padding:11px 16px;margin-bottom:10px;}
+.rk-hint-label{font-size:10px;font-weight:900;color:#F97316;text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px;display:flex;align-items:center;gap:5px;}
+.rk-hint-text{font-weight:800;font-size:14px;color:#C2580A;line-height:1.55;}
+
+/* ── Your turn card ─────────────────────────────────────── */
+.rk-your-turn-card{background:#fff;border:1px solid #EDE9FA;border-radius:18px;padding:14px 16px;}
+
+/* ── Mic area ───────────────────────────────────────────── */
+.rk-mic-area{text-align:center;padding:6px 0 8px;}
+.rk-mic-btn{width:96px;height:96px;border-radius:20px;background:#fff;border:1.5px solid #EDE9FA;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;margin-bottom:10px;font-size:36px;box-shadow:0 4px 14px rgba(127,119,221,.08);transition:border-color .15s,box-shadow .15s;}
+.rk-mic-btn:hover:not(:disabled){border-color:#7F77DD;box-shadow:0 6px 18px rgba(127,119,221,.14);}
+.rk-mic-btn:disabled{cursor:default;opacity:.6;}
+.rk-mic-btn.rk-recording{border-color:#E24B4A;background:rgba(226,75,74,.05);box-shadow:0 4px 18px rgba(226,75,74,.16);}
+.rk-mic-hint{font-size:13px;font-weight:700;color:#9B94BE;margin-bottom:12px;}
+.rk-mic-hint.rk-recording{color:#E24B4A;}
+.rk-or-divider{font-size:12px;font-weight:700;color:#9B94BE;margin:0 0 10px;}
+
+/* ── Buttons ────────────────────────────────────────────── */
+.rk-btn{border:0;border-radius:999px;padding:11px 20px;color:#fff;font-family:'Nunito',sans-serif;font-size:13px;font-weight:900;cursor:pointer;transition:transform .18s,filter .18s;display:inline-flex;align-items:center;justify-content:center;gap:6px;}
+.rk-btn:hover:not(:disabled){transform:translateY(-1px);filter:brightness(1.05);}
+.rk-btn:disabled{opacity:.45;cursor:default;transform:none;filter:none;}
+.rk-btn-orange{background:#F97316;box-shadow:0 6px 18px rgba(249,115,22,.22);}
+.rk-btn-purple{background:#7F77DD;box-shadow:0 6px 18px rgba(127,119,221,.18);}
+.rk-btn-outline{background:#fff;color:#534AB7;border:1.5px solid #EDE9FA;box-shadow:0 4px 12px rgba(127,119,221,.10);}
+.rk-btn-outline:hover:not(:disabled){background:#EEEDFE;}
+.rk-btn-ghost{background:#fff;color:#9B94BE;border:1.5px solid #EDE9FA;font-family:'Nunito',sans-serif;font-weight:800;font-size:13px;cursor:pointer;border-radius:999px;padding:9px 20px;transition:background .15s;}
+.rk-btn-ghost:hover{background:#FAFAFE;}
+
+/* ── Textarea ───────────────────────────────────────────── */
+.rk-textarea{width:100%;min-height:96px;border:1.5px solid #EDE9FA;border-radius:14px;padding:12px 14px;font-family:'Nunito',sans-serif;font-size:15px;font-weight:700;color:#271B5D;resize:none;outline:none;background:#FAFAFE;transition:border-color .18s,box-shadow .18s;margin-bottom:10px;}
+.rk-textarea:focus{border-color:#7F77DD;box-shadow:0 0 0 3px rgba(127,119,221,.10);}
+
+/* ── Bottom bar ─────────────────────────────────────────── */
+.rk-bottombar{display:flex;justify-content:space-between;align-items:center;padding:12px 18px;margin-top:14px;border-top:1px solid #F0EEF8;}
+.rk-status-text{font-size:13px;font-weight:700;color:#9B94BE;}
+
+/* ── Feedback ───────────────────────────────────────────── */
+.rk-feedback-wrap{margin-bottom:10px;}
+.rk-feedback-block{border-radius:14px;padding:10px 14px;margin-bottom:8px;}
+.rk-feedback-block.rk-fb-purple{background:#EEEDFE;border-left:3px solid #7F77DD;}
+.rk-feedback-block.rk-fb-orange{background:#FFF0E6;border-left:3px solid #F97316;}
+.rk-feedback-label{font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.08em;margin-bottom:5px;}
+.rk-feedback-label.purple{color:#534AB7;}
+.rk-feedback-label.orange{color:#F97316;}
+.rk-feedback-text{font-family:'Fredoka',sans-serif;font-size:15px;font-weight:600;color:#271B5D;line-height:1.45;}
+.rk-feedback-text.orange{color:#C2580A;}
+.rk-score-wrap{background:#EEEDFE;border-radius:14px;padding:10px 14px;margin-bottom:4px;}
+.rk-score-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:7px;}
+.rk-score-lbl{font-size:11px;font-weight:900;color:#9B94BE;text-transform:uppercase;}
+.rk-score-pts{font-family:'Fredoka',sans-serif;font-size:20px;font-weight:700;color:#F97316;}
+.rk-score-track{height:8px;background:#F4F2FD;border-radius:999px;overflow:hidden;}
+.rk-score-fill{height:100%;background:linear-gradient(90deg,#F97316,#7F77DD);border-radius:999px;transition:width .5s;}
+
+/* ── Avatar picker grid ─────────────────────────────────── */
+.rk-avatar-grid{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-bottom:24px;}
+.rk-avatar-card{background:#fff;border:2px solid #EDE9FA;border-radius:18px;padding:12px 10px;cursor:pointer;transition:all .15s;min-width:72px;text-align:center;font-family:'Nunito',sans-serif;}
+.rk-avatar-card:hover{border-color:#7F77DD;transform:translateY(-2px);box-shadow:0 4px 14px rgba(127,119,221,.14);}
+.rk-avatar-card.rk-selected{background:#FFF0E6;border-color:#F97316;box-shadow:0 0 0 3px rgba(249,115,22,.14);transform:scale(1.04);}
+.rk-avatar-lbl{margin-top:7px;font-weight:800;font-size:12px;color:#9B94BE;}
+.rk-avatar-card.rk-selected .rk-avatar-lbl{color:#C2580A;}
+.rk-avatar-start{text-align:center;}
+
+/* ── Responsive ─────────────────────────────────────────── */
+@media(max-width:640px){
+  .rk-shell{padding:10px;}
+  .rk-board{border-radius:22px;}
+  .rk-topbar,.rk-scene-bar,.rk-progress-row,.rk-content,.rk-bottombar{padding-left:14px;padding-right:14px;}
+  .rk-scene-bar-right{display:none;}
+  .rk-title{font-size:clamp(26px,8vw,36px);}
+}
+
+/* ── Embedded / presentation modes ─────────────────────── */
+body.embedded-mode .rk-shell,body.fullscreen-embedded .rk-shell,body.presentation-mode .rk-shell{
+  position:absolute!important;inset:0!important;max-width:none!important;margin:0!important;
+  padding:8px 12px!important;flex-direction:column!important;align-items:center!important;overflow-y:auto!important;
+}
+body.embedded-mode .rk-app,body.fullscreen-embedded .rk-app,body.presentation-mode .rk-app{
+  width:min(680px,100%)!important;margin:0 auto!important;
+}
 </style>
 
 <div id="roleplay-kids-root" style="flex:1;min-height:0;overflow-y:auto;"></div>
@@ -415,7 +553,7 @@ function PlayerView({ scene: sc, turns, activityId }) {
   const safeT = (turns && turns.length) ? turns : DEFAULT_TURNS;
 
   // phase: "avatar" | "playing" | "done"
-  // subPhase: "teacher" | "writing" | "recording" | "feedback"
+  // subPhase: "teacher" | "feedback"
   const [phase,       setPhase]      = useState("avatar");
   const [subPhase,    setSubPhase]   = useState("teacher");
   const [avatarId,    setAvatarId]   = useState(null);
@@ -427,6 +565,8 @@ function PlayerView({ scene: sc, turns, activityId }) {
   const [pronScore,   setPronScore]  = useState(null);
   const [turnScores,  setTurnScores] = useState([]);
   const [reviewItems, setReviewItems]= useState([]);
+  const [ttsPlaying,  setTtsPlaying] = useState(false);
+  const [showTyping,  setShowTyping] = useState(false);
   const completedRef = useRef(null);
   const recRef       = useRef(null);
 
@@ -440,8 +580,12 @@ function PlayerView({ scene: sc, turns, activityId }) {
   // ── Auto-play teacher when turn starts ───────────────────────
   useEffect(() => {
     if (phase === "playing" && subPhase === "teacher" && turn.teacherLine) {
-      playElevenLabs(turn.teacherLine, voiceId, null, null);
+      setTtsPlaying(true);
+      playElevenLabs(turn.teacherLine, voiceId,
+        () => setTtsPlaying(false),
+        () => setTtsPlaying(false));
     }
+    if (subPhase !== "teacher") setTtsPlaying(false);
   }, [turnIndex, phase, subPhase]);
 
   // ── Mic ──────────────────────────────────────────────────────
@@ -506,12 +650,57 @@ function PlayerView({ scene: sc, turns, activityId }) {
 
   function goToNextTurn() {
     setWritten(""); setTranscript(""); setPronScore(null); setMicState("idle");
+    setShowTyping(false);
     if (turnIndex < total - 1) {
       setTurnIndex(i => i + 1);
       setSubPhase("teacher");
     } else {
       setPhase("done");
     }
+  }
+
+  function scoreWritten(text) {
+    if (!text.trim()) return;
+    const said    = normalizeStr(text);
+    const exp     = normalizeStr(turn.studentLine);
+    const overlap = wordOverlapScore(said, exp);
+    const score   = Math.round(overlap * 100);
+    const pass    = score >= 50 ? 1 : 0;
+    setPts(prev => prev + score);
+    setPronScore(score);
+    setTranscript("");
+    setMicState("idle");
+    setSubPhase("feedback");
+    setTurnScores(prev => [...prev, pass]);
+    setReviewItems(prev => [...prev, {
+      question:      turn.teacherLine || ("Turn " + (turnIndex + 1)),
+      yourAnswer:    text,
+      correctAnswer: turn.studentLine,
+      score:         pass,
+    }]);
+  }
+
+  function handleNext() {
+    if (subPhase === "feedback") { goToNextTurn(); return; }
+    if (showTyping && written.trim()) { scoreWritten(written); return; }
+    setTurnScores(prev => [...prev, 0]);
+    setReviewItems(prev => [...prev, {
+      question: turn.teacherLine || ("Turn " + (turnIndex + 1)),
+      yourAnswer: "(skipped)", correctAnswer: turn.studentLine, score: 0,
+    }]);
+    goToNextTurn();
+  }
+
+  function replayTTS() {
+    setTtsPlaying(true);
+    playElevenLabs(turn.teacherLine, voiceId,
+      () => setTtsPlaying(false),
+      () => setTtsPlaying(false));
+  }
+
+  function stopTTS() {
+    if (currentAudioRef) { currentAudioRef.pause(); currentAudioRef = null; }
+    setTtsPlaying(false);
   }
 
   // ── AF.showCompleted when done ────────────────────────────────
@@ -555,56 +744,36 @@ function PlayerView({ scene: sc, turns, activityId }) {
   // AVATAR PICKER
   // ════════════════════════════════════════════════════════════
   if (phase === "avatar") return (
-    <div style={{ maxWidth: 600, margin: "0 auto", padding: "28px 16px", textAlign: "center" }}>
-      {/* Kicker */}
-      <div style={{
-        display: "inline-flex", alignItems: "center", padding: "6px 14px",
-        borderRadius: 999, background: C.orangeSoft, border: `1px solid ${C.orangeBorder}`,
-        color: C.orangeDark, fontSize: 11, fontWeight: 900, letterSpacing: ".08em",
-        textTransform: "uppercase", marginBottom: 12,
-      }}>🎭 Roleplay Activity</div>
-
-      <h1 style={{
-        fontFamily: "'Fredoka',sans-serif", fontSize: "clamp(28px,6vw,44px)",
-        fontWeight: 700, color: C.orange, marginBottom: 6, lineHeight: 1.1,
-      }}>{scene.title || "Kids Roleplay"}</h1>
-
-      <p style={{ fontSize: 15, fontWeight: 700, color: C.muted, marginBottom: 28 }}>
-        Choose your character!
-      </p>
-
-      {/* Avatar grid */}
-      <div style={{ display: "flex", gap: 14, justifyContent: "center", flexWrap: "wrap", marginBottom: 32 }}>
-        {AVATARS.map(av => {
-          const selected = avatarId === av.id;
-          return (
-            <button key={av.id} onClick={() => setAvatarId(av.id)} style={{
-              background: selected ? C.orangeSoft : C.white,
-              border: selected ? `3px solid ${C.orange}` : `2px solid ${C.purpleBorder}`,
-              borderRadius: 20, padding: "14px 12px", cursor: "pointer",
-              boxShadow: selected ? `0 0 0 3px rgba(249,115,22,.22)` : "0 2px 8px rgba(127,119,221,.08)",
-              transition: "all .15s", minWidth: 80,
-              transform: selected ? "scale(1.06)" : "scale(1)",
-            }}>
-              <AvatarImg id={av.id} size={62} />
-              <div style={{
-                marginTop: 8, fontWeight: 800, fontSize: 13,
-                color: selected ? C.orangeDark : C.muted,
-              }}>{av.label}</div>
-            </button>
-          );
-        })}
+    <div className="rk-shell">
+      <div className="rk-app">
+        <div className="rk-hero">
+          <div className="rk-kicker">🎭 Activity</div>
+          <h1 className="rk-title">{scene.title || "Roleplay"}</h1>
+          <p className="rk-subtitle">Choose your character to get started!</p>
+        </div>
+        <div className="rk-board rk-board-padded">
+          <div className="rk-avatar-grid">
+            {AVATARS.map(av => (
+              <button
+                key={av.id}
+                className={`rk-avatar-card${avatarId === av.id ? " rk-selected" : ""}`}
+                onClick={() => setAvatarId(av.id)}
+              >
+                <AvatarImg id={av.id} size={58} />
+                <div className="rk-avatar-lbl">{av.label}</div>
+              </button>
+            ))}
+          </div>
+          <div className="rk-avatar-start">
+            <button
+              className="rk-btn rk-btn-orange"
+              onClick={startPlaying}
+              disabled={!avatarId}
+              style={{ minWidth: 180, padding: "13px 32px", fontSize: 15 }}
+            >Let's go! →</button>
+          </div>
+        </div>
       </div>
-
-      <button onClick={startPlaying} disabled={!avatarId} style={{
-        background: avatarId ? C.orange : C.purpleSoft,
-        color: avatarId ? C.white : C.muted,
-        border: "none", borderRadius: 999, padding: "14px 40px",
-        fontFamily: "'Nunito',sans-serif", fontWeight: 900, fontSize: 16,
-        cursor: avatarId ? "pointer" : "not-allowed",
-        boxShadow: avatarId ? "0 6px 20px rgba(249,115,22,.3)" : "none",
-        transition: "all .15s",
-      }}>Let's go! →</button>
     </div>
   );
 
@@ -612,203 +781,186 @@ function PlayerView({ scene: sc, turns, activityId }) {
   // DONE — AF.showCompleted populates this div via useEffect
   // ════════════════════════════════════════════════════════════
   if (phase === "done") return (
-    <div ref={completedRef} style={{ maxWidth: 760, margin: "0 auto", padding: "20px 16px" }}></div>
+    <div className="rk-shell">
+      <div className="rk-app">
+        <div ref={completedRef} />
+      </div>
+    </div>
   );
 
   // ════════════════════════════════════════════════════════════
   // PLAYING SCREEN
   // ════════════════════════════════════════════════════════════
-  const btn = (label, onClick, bg = C.orange, disabled = false, extra = {}) => (
-    <button onClick={onClick} disabled={disabled} style={{
-      flex: 1, minWidth: 110, padding: "11px 10px", border: "none",
-      borderRadius: 999, background: disabled ? C.purpleSoft : bg, color: disabled ? C.muted : C.white,
-      fontFamily: "'Nunito',sans-serif", fontWeight: 900, fontSize: 13,
-      cursor: disabled ? "default" : "pointer",
-      boxShadow: disabled ? "none" : `0 4px 14px rgba(0,0,0,.12)`,
-      transition: "all .15s", ...extra,
-    }}>{label}</button>
-  );
-  const ghostBtn = (label, onClick) => (
-    <button onClick={onClick} style={{
-      flex: 1, minWidth: 110, padding: "11px 10px",
-      border: `1.5px solid ${C.purpleBorder}`, borderRadius: 999,
-      background: C.white, color: C.purple,
-      fontFamily: "'Nunito',sans-serif", fontWeight: 900, fontSize: 13, cursor: "pointer",
-    }}>{label}</button>
-  );
+  const voiceLabelShort = (VOICES.find(v => v.id === voiceId)?.label || "Adult Male")
+    .split("(")[0].trim();
+  const agentInitial   = (scene.agentName || "T")[0].toUpperCase();
+  const studentInitial = (avatarLabel || "Y")[0].toUpperCase();
 
   return (
-    <div style={{ maxWidth: 960, margin: "0 auto", padding: "16px" }}>
-      <div style={{
-        background: C.white, border: `1px solid #F0EEF8`, borderRadius: 34,
-        boxShadow: "0 8px 40px rgba(127,119,221,.13)", padding: "20px 22px 22px",
-      }}>
+    <div className="rk-shell">
+      <div className="rk-app">
 
-        {/* Header */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-          <div style={{ background: C.purpleSoft, border: `1px solid ${C.purpleBorder}`, borderRadius: 999, padding: "5px 14px", fontSize: 12, fontWeight: 800, color: C.purpleDark }}>
-            Turn {turnIndex + 1} / {total}
-          </div>
-          <div style={{ background: C.orangeSoft, border: `1.5px solid ${C.orangeBorder}`, borderRadius: 999, padding: "5px 14px", fontFamily: "'Fredoka',sans-serif", fontSize: 16, fontWeight: 700, color: C.orange }}>
-            {pts} pts
-          </div>
+        {/* Hero */}
+        <div className="rk-hero">
+          <div className="rk-kicker">ACTIVITY</div>
+          <h1 className="rk-title">{scene.title || "Roleplay"}</h1>
+          <p className="rk-subtitle">{scene.desc || "Practice real conversations in English."}</p>
         </div>
 
-        {/* Progress bar */}
-        <div style={{ height: 12, background: "#F4F2FD", border: "1px solid #E4E1F8", borderRadius: 999, overflow: "hidden", marginBottom: 14 }}>
-          <div style={{ height: "100%", width: `${pct}%`, background: `linear-gradient(90deg,${C.orange},${C.purple})`, borderRadius: 999, transition: "width .4s" }} />
-        </div>
+        {/* Main board */}
+        <div className="rk-board">
 
-        {/* Scene card — image shows full size, avatars overlay at bottom */}
-        <div style={{
-          position: "relative", borderRadius: 20, marginBottom: 16, overflow: "hidden",
-          background: "linear-gradient(160deg,#EDE9FA,#FFF0E6)",
-          minHeight: 120,
-        }}>
-          {scene.sceneImage && (
-            <img src={scene.sceneImage} alt="" style={{
-              width: "100%", height: "auto", display: "block",
-              objectFit: "contain", borderRadius: 20,
-            }} />
-          )}
-
-          {/* Teacher speech bubble */}
-          <div style={{
-            position: "absolute", top: 10, right: 90,
-            background: C.white, borderRadius: "14px 14px 4px 14px",
-            padding: "8px 12px", maxWidth: 200,
-            boxShadow: "0 4px 14px rgba(0,0,0,.12)",
-            fontSize: 12, fontFamily: "'Fredoka',sans-serif",
-            fontWeight: 600, color: C.purpleDark, lineHeight: 1.4,
-          }}>
-            {turn.teacherLine || "…"}
-          </div>
-
-          {/* Student avatar (bottom-left) */}
-          <div style={{ position: "absolute", bottom: 10, left: 12, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
-            <div style={{ border: "3px solid white", borderRadius: "50%", boxShadow: "0 4px 14px rgba(0,0,0,.22)" }}>
-              <AvatarImg id={avatarId} size={72} />
-            </div>
-            <div style={{ background: "rgba(83,74,183,.85)", color: C.white, borderRadius: 999, padding: "3px 10px", fontSize: 11, fontWeight: 800 }}>{avatarLabel}</div>
-          </div>
-
-          {/* Teacher avatar (bottom-right) */}
-          <div style={{ position: "absolute", bottom: 10, right: 12, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
-            <div style={{ border: "3px solid white", borderRadius: "50%", boxShadow: "0 4px 14px rgba(0,0,0,.22)" }}>
-              <TeacherImg size={72} />
-            </div>
-            <div style={{ background: "rgba(194,88,10,.85)", color: C.white, borderRadius: 999, padding: "3px 10px", fontSize: 11, fontWeight: 800 }}>{scene.agentName || "Teacher"}</div>
-          </div>
-        </div>
-
-        {/* ── STEP 1: Teacher just spoke — student listens ── */}
-        {subPhase === "teacher" && (
-          <div style={{ textAlign: "center", padding: "8px 0 16px" }}>
-            <div style={{ fontSize: 13, fontWeight: 800, color: C.muted, marginBottom: 16 }}>
-              🔊 Teacher is speaking… listen carefully!
-            </div>
-            <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
-              {ghostBtn("🔊 Play again", () => playElevenLabs(turn.teacherLine, voiceId, null, null))}
-              {btn("Write my answer →", () => setSubPhase("writing"), C.orange)}
+          {/* Top bar */}
+          <div className="rk-topbar">
+            <button className="rk-back-btn" onClick={handleRestart}>◁ Back</button>
+            <span className="rk-scene-title">{scene.title || "Roleplay"}</span>
+            <div className="rk-topbar-right">
+              <div className="rk-voice-chip">{voiceLabelShort}</div>
+              <div className="rk-turn-badge">Turn {turnIndex + 1} / {total}</div>
             </div>
           </div>
-        )}
 
-        {/* ── STEP 2: Student writes their answer ── */}
-        {subPhase === "writing" && (
-          <div style={{ marginBottom: 0 }}>
-            <div style={{ fontSize: 11, fontWeight: 900, color: C.purple, textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 8 }}>
-              ✏️ Write your answer:
-            </div>
-            <textarea
-              value={written}
-              onChange={e => setWritten(e.target.value)}
-              placeholder="Type what you would say…"
-              rows={3}
-              style={{
-                width: "100%", padding: "12px 14px", border: `2px solid ${C.purpleBorder}`,
-                borderRadius: 14, fontSize: 15, fontFamily: "'Nunito',sans-serif",
-                fontWeight: 700, resize: "none", outline: "none", color: C.ink,
-                background: C.purpleSoft, marginBottom: 12,
-              }}
-            />
-            <div style={{ display: "flex", gap: 8 }}>
-              {ghostBtn("← Listen again", () => { setSubPhase("teacher"); playElevenLabs(turn.teacherLine, voiceId, null, null); })}
-              {btn("Now say it 🎤", () => setSubPhase("recording"), C.purple, written.trim() === "")}
-            </div>
+          {/* Scene bar */}
+          <div className="rk-scene-bar">
+            <span className="rk-scene-bar-left">
+              ▣ {scene.title || "Scene"}{scene.desc ? ` — ${scene.desc}` : ""}
+            </span>
+            <span className="rk-scene-bar-right">
+              {scene.agentName || "Teacher"} · Teacher | {avatarLabel} · You
+            </span>
           </div>
-        )}
 
-        {/* ── STEP 3: Record pronunciation ── */}
-        {subPhase === "recording" && (
-          <div>
-            {/* Show expected sentence */}
-            <div style={{ background: C.purpleSoft, border: `1.5px solid ${C.purpleBorder}`, borderRadius: 16, padding: "12px 16px", marginBottom: 14, textAlign: "center" }}>
-              <div style={{ fontSize: 10, fontWeight: 900, color: C.purple, textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 6 }}>🗣 Say this:</div>
-              <div style={{ fontFamily: "'Fredoka',sans-serif", fontSize: "clamp(16px,3vw,21px)", fontWeight: 600, color: C.purpleDark, lineHeight: 1.35 }}>{turn.studentLine || "—"}</div>
+          {/* Progress */}
+          <div className="rk-progress-row">
+            <span className="rk-progress-counter">{turnIndex + 1} / {total}</span>
+            <div className="rk-progress-track">
+              <div className="rk-progress-fill" style={{ width: `${pct}%` }} />
             </div>
-
-            {/* Mic button */}
-            <div style={{ textAlign: "center", marginBottom: 14 }}>
-              <button
-                onClick={() => micState === "recording" ? stopRecording() : startRecording()}
-                disabled={micState === "processing"}
-                style={{
-                  width: 72, height: 72, borderRadius: "50%", border: "none",
-                  background: micState === "recording" ? "#E24B4A" : C.orange,
-                  color: C.white, fontSize: 28, cursor: micState === "processing" ? "default" : "pointer",
-                  boxShadow: micState === "recording" ? "0 0 0 8px rgba(226,75,74,.2), 0 6px 18px rgba(226,75,74,.4)" : "0 6px 18px rgba(249,115,22,.32)",
-                  animation: micState === "recording" ? "rk-pulse 1s ease-in-out infinite" : "none",
-                }}>
-                {micState === "processing" ? "⏳" : micState === "recording" ? "⏹" : "🎤"}
-              </button>
-              <div style={{ marginTop: 8, fontSize: 12, fontWeight: 800, color: micState === "recording" ? "#E24B4A" : C.muted }}>
-                {micState === "processing" ? "Processing…" : micState === "recording" ? "Recording… tap to stop" : "Tap the mic and speak!"}
-              </div>
-            </div>
-
-            {ghostBtn("← Back to writing", () => setSubPhase("writing"))}
+            <div className="rk-progress-badge">Turn {turnIndex + 1} of {total}</div>
           </div>
-        )}
 
-        {/* ── STEP 4: Feedback ── */}
-        {subPhase === "feedback" && (
-          <div>
-            {written.trim() && (
-              <div style={{ background: C.purpleSoft, borderLeft: `3px solid ${C.purple}`, borderRadius: 12, padding: "10px 14px", marginBottom: 8 }}>
-                <div style={{ fontSize: 10, fontWeight: 900, color: C.purple, textTransform: "uppercase", marginBottom: 4 }}>You wrote</div>
-                <div style={{ fontFamily: "'Fredoka',sans-serif", fontSize: 14, fontWeight: 600, color: C.ink }}>"{written}"</div>
-              </div>
-            )}
-            {transcript && (
-              <div style={{ background: "#F0F9FF", borderLeft: `3px solid #38BDF8`, borderRadius: 12, padding: "10px 14px", marginBottom: 8 }}>
-                <div style={{ fontSize: 10, fontWeight: 900, color: "#0369A1", textTransform: "uppercase", marginBottom: 4 }}>You said</div>
-                <div style={{ fontFamily: "'Fredoka',sans-serif", fontSize: 14, fontWeight: 600, color: C.ink }}>"{transcript}"</div>
-              </div>
-            )}
-            <div style={{ background: C.orangeSoft, borderLeft: `3px solid ${C.orange}`, borderRadius: 12, padding: "10px 14px", marginBottom: 8 }}>
-              <div style={{ fontSize: 10, fontWeight: 900, color: C.orange, textTransform: "uppercase", marginBottom: 4 }}>Correct answer</div>
-              <div style={{ fontFamily: "'Fredoka',sans-serif", fontSize: 14, fontWeight: 600, color: C.orangeDark }}>{turn.studentLine}</div>
-            </div>
-            {pronScore !== null && (
-              <div style={{ background: C.purpleSoft, borderRadius: 12, padding: "10px 14px", marginBottom: 12 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                  <div style={{ fontSize: 11, fontWeight: 900, color: C.muted, textTransform: "uppercase" }}>Pronunciation score</div>
-                  <div style={{ fontFamily: "'Fredoka',sans-serif", fontSize: 18, fontWeight: 700, color: C.orange }}>{pronScore} pts</div>
+          {/* Content */}
+          <div className="rk-content">
+
+            {/* Teacher card */}
+            <div className="rk-teacher-card">
+              <div className="rk-card-header">
+                <div className="rk-avatar rk-avatar-purple">{agentInitial}</div>
+                <div>
+                  <div className="rk-speaker-name">{scene.agentName || "Teacher"}</div>
+                  <div className="rk-speaker-role">TEACHER</div>
                 </div>
-                <div style={{ height: 8, background: "#F4F2FD", borderRadius: 999, overflow: "hidden" }}>
-                  <div style={{ height: "100%", width: `${pronScore}%`, background: `linear-gradient(90deg,${C.orange},${C.purple})`, borderRadius: 999, transition: "width .5s" }} />
-                </div>
+                <button
+                  className={`rk-tts-btn${ttsPlaying ? " is-playing" : ""}`}
+                  onClick={ttsPlaying ? stopTTS : replayTTS}
+                >
+                  {ttsPlaying ? "■ Playing…" : "▶ Play"}
+                </button>
+              </div>
+              <div className="rk-dialog-text">{turn.teacherLine || "…"}</div>
+            </div>
+
+            {/* Hint card */}
+            {turn.studentLine && subPhase !== "feedback" && (
+              <div className="rk-hint-card">
+                <div className="rk-hint-label">💡 HINT</div>
+                <div className="rk-hint-text">{turn.studentLine}</div>
               </div>
             )}
-            <div style={{ display: "flex", gap: 8 }}>
-              {ghostBtn("Try Again ↺", () => { setSubPhase("recording"); setTranscript(""); setPronScore(null); })}
-              {btn(turnIndex < total - 1 ? "Next →" : "Finish 🎉", goToNextTurn, C.orange)}
-            </div>
-          </div>
-        )}
 
-      </div>
+            {/* Feedback */}
+            {subPhase === "feedback" && (
+              <div className="rk-feedback-wrap">
+                {(written.trim() || transcript) && (
+                  <div className="rk-feedback-block rk-fb-purple">
+                    <div className="rk-feedback-label purple">
+                      {transcript ? "You said" : "You wrote"}
+                    </div>
+                    <div className="rk-feedback-text">"{transcript || written}"</div>
+                  </div>
+                )}
+                <div className="rk-feedback-block rk-fb-orange">
+                  <div className="rk-feedback-label orange">Correct answer</div>
+                  <div className="rk-feedback-text orange">{turn.studentLine}</div>
+                </div>
+                {pronScore !== null && (
+                  <div className="rk-score-wrap">
+                    <div className="rk-score-header">
+                      <span className="rk-score-lbl">Score</span>
+                      <span className="rk-score-pts">{pronScore} pts</span>
+                    </div>
+                    <div className="rk-score-track">
+                      <div className="rk-score-fill" style={{ width: `${pronScore}%` }} />
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Your turn card */}
+            {subPhase !== "feedback" && (
+              <div className="rk-your-turn-card">
+                <div className="rk-card-header">
+                  <div className="rk-avatar rk-avatar-orange">{studentInitial}</div>
+                  <div>
+                    <div className="rk-speaker-name rk-speaker-name-you">Your turn</div>
+                    <div className="rk-speaker-role">{avatarLabel.toUpperCase()}</div>
+                  </div>
+                </div>
+
+                {!showTyping ? (
+                  <div className="rk-mic-area">
+                    <button
+                      className={`rk-mic-btn${micState === "recording" ? " rk-recording" : ""}`}
+                      onClick={() => micState === "recording" ? stopRecording() : startRecording()}
+                      disabled={micState === "processing"}
+                      style={micState === "recording" ? { animation: "rk-pulse 1s ease-in-out infinite" } : {}}
+                    >
+                      {micState === "processing" ? "⏳" : micState === "recording" ? "⏹" : "🎤"}
+                    </button>
+                    <div className={`rk-mic-hint${micState === "recording" ? " rk-recording" : ""}`}>
+                      {micState === "processing" ? "Processing…"
+                        : micState === "recording" ? "Recording… tap to stop"
+                        : "Tap to speak your response"}
+                    </div>
+                    <div className="rk-or-divider">— or —</div>
+                    <button className="rk-btn-ghost" onClick={() => { stopTTS(); setShowTyping(true); }}>
+                      Type instead
+                    </button>
+                  </div>
+                ) : (
+                  <div>
+                    <textarea
+                      className="rk-textarea"
+                      value={written}
+                      onChange={e => setWritten(e.target.value)}
+                      placeholder="Type your response here…"
+                      rows={3}
+                    />
+                    <button className="rk-btn-ghost" onClick={() => setShowTyping(false)}>
+                      🎤 Speak instead
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
+          </div>{/* end rk-content */}
+
+          {/* Bottom bar */}
+          <div className="rk-bottombar">
+            <span className="rk-status-text">
+              {subPhase === "feedback" ? "Nice work!" : "Speak or type to continue"}
+            </span>
+            <button className="rk-btn rk-btn-outline" onClick={handleNext}>
+              {subPhase === "feedback"
+                ? (turnIndex < total - 1 ? "Next →" : "Finish 🎉")
+                : "Next →"}
+            </button>
+          </div>
+
+        </div>{/* end rk-board */}
+      </div>{/* end rk-app */}
     </div>
   );
 }

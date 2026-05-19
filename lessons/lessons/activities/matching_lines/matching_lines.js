@@ -1,532 +1,661 @@
-document.addEventListener('DOMContentLoaded', function () {
+﻿document.addEventListener('DOMContentLoaded', function () {
+  const boards = Array.isArray(window.MATCHING_LINES_DATA) ? window.MATCHING_LINES_DATA : [];
 
-  /* ── Globals ── */
-  var AF           = window.ActivityFeedback;
-  var boards       = Array.isArray(window.MATCHING_LINES_DATA)   ? window.MATCHING_LINES_DATA   : [];
-  var activityTitle= window.MATCHING_LINES_TITLE                 || 'Matching Lines';
-  var returnTo     = window.MATCHING_LINES_RETURN_TO             || '';
-  var activityId   = window.MATCHING_LINES_ACTIVITY_ID          || '';
+  const stage = document.getElementById('mlvStage');
+  const leftCol = document.getElementById('mlvLeft');
+  const rightCol = document.getElementById('mlvRight');
+  const svg = document.getElementById('mlvLines');
+  const boardTitle = document.getElementById('mlvBoardTitle');
+  const progress = document.getElementById('mlvProgress');
+  const prevBtn = document.getElementById('mlvPrevBtn');
+  const nextBtn = document.getElementById('mlvNextBtn');
+  const showBtn = document.getElementById('mlvShowBtn');
+  const returnTo = typeof window.MATCHING_LINES_RETURN_TO === 'string' ? window.MATCHING_LINES_RETURN_TO : '';
+  const activityId = typeof window.MATCHING_LINES_ACTIVITY_ID === 'string' ? window.MATCHING_LINES_ACTIVITY_ID : '';
 
-  /* ── DOM refs ── */
-  var progressLabelEl = document.getElementById('ml-progress-label');
-  var progressFillEl  = document.getElementById('ml-progress-fill');
-  var progressBadgeEl = document.getElementById('ml-progress-badge');
-  var ptsNumEl        = document.getElementById('ml-pts-num');
-  var leftColEl       = document.getElementById('ml-left-col');
-  var rightColEl      = document.getElementById('ml-right-col');
-  var svgEl           = document.getElementById('ml-svg');
-  var checkBtn        = document.getElementById('ml-check');
-  var showBtn         = document.getElementById('ml-show');
-  var nextBtn         = document.getElementById('ml-next');
-  var feedbackEl      = document.getElementById('ml-feedback');
-  var activityEl      = document.getElementById('ml-activity');
-  var completedEl     = document.getElementById('ml-completed');
-  var stageEl         = svgEl ? svgEl.parentElement : null;
-  var winAudio        = new Audio('../../hangman/assets/win.mp3');
-  var dropAudio       = new Audio('../../hangman/assets/pageflip.mp3');
-  var correctAudio    = new Audio('../../hangman/assets/realcorrect.mp3');
-  var wrongAudio      = new Audio('../../hangman/assets/lose.mp3');
+  const clickSound = new Audio('../../hangman/assets/pageflip.mp3');
+  const correctSound = new Audio('../../hangman/assets/realcorrect.mp3');
+  const wrongSound = new Audio('../../hangman/assets/lose.mp3');
+  const winSound = new Audio('../../hangman/assets/win.mp3');
 
-  function playSound(aud) {
-    try { aud.pause(); aud.currentTime = 0; aud.play(); } catch (e) {}
-  }
-
-  if (!boards.length) {
-    if (feedbackEl) feedbackEl.textContent = 'No boards available.';
+  if (!stage || !leftCol || !rightCol || !svg || boards.length === 0) {
     return;
   }
 
-  /* ── State ── */
-  var index       = 0;
-  var answered    = false;
-  var connections = [];   /* [{leftIdx, shuffledRight, color, overrideColor}] */
-  var shuffleMap  = [];   /* shuffleMap[origIdx] = visualRow */
-  var reverseMap  = [];   /* reverseMap[visualRow] = origIdx */
-  var scores      = boards.map(function () { return 0; });
-  var reviewItems = boards.map(function () { return {}; });
-  var feedbackTimer  = null;
+  const stateByBoardId = {};
+  let currentIndex = 0;
+  let dragging = null;
+  let wrongAttempts = 0;
+  let scorePersisted = false;
+  let winPlayed = false;
+  let completionUrl = '';
 
-  /* drag state */
-  var drag = null;  /* {leftIdx, startX, startY, curX, curY} */
-
-  var LINE_COLORS = ['#7F77DD', '#F97316', '#534AB7', '#C2580A'];
-
-  /* ── Helpers ── */
-  function shuffle(arr) {
-    var a = arr.slice();
-    for (var i = a.length - 1; i > 0; i--) {
-      var j = Math.floor(Math.random() * (i + 1));
-      var t = a[i]; a[i] = a[j]; a[j] = t;
+  function playSound(audio) {
+    if (!audio) {
+      return;
     }
-    return a;
-  }
-
-  function updateProgress() {
-    var total   = boards.length;
-    var current = index + 1;
-    var pct     = Math.round((current / total) * 100);
-    if (progressLabelEl) progressLabelEl.textContent = current + ' / ' + total;
-    if (progressBadgeEl) progressBadgeEl.textContent = 'Q ' + current + ' of ' + total;
-    if (progressFillEl)  progressFillEl.style.width  = pct + '%';
-  }
-
-  function setPts(val) {
-    if (ptsNumEl) ptsNumEl.textContent = String(val);
-  }
-
-  function showFeedbackText(text, color) {
-    if (!feedbackEl) return;
-    if (feedbackTimer) { clearTimeout(feedbackTimer); feedbackTimer = null; }
-    feedbackEl.textContent = text;
-    feedbackEl.style.color = color || '#F97316';
-    feedbackTimer = setTimeout(function () { feedbackEl.textContent = ''; }, 2000);
-  }
-
-  /* ── SVG sync ── */
-  function syncSvg() {
-    if (!svgEl || !stageEl) return;
-    svgEl.setAttribute('width',  stageEl.offsetWidth);
-    svgEl.setAttribute('height', stageEl.offsetHeight);
-  }
-
-  /* Get center of a dot in stage-relative coords */
-  function dotCenter(dotEl) {
-    var sr = stageEl.getBoundingClientRect();
-    var dr = dotEl.getBoundingClientRect();
-    return {
-      x: dr.left + dr.width  / 2 - sr.left,
-      y: dr.top  + dr.height / 2 - sr.top
-    };
-  }
-
-  /* Get client point from mouse or touch event */
-  function clientPoint(e) {
-    if (e.touches && e.touches.length) {
-      return { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    try {
+      audio.pause();
+      audio.currentTime = 0;
+      audio.play();
+    } catch (e) {
+      // Ignore autoplay/audio policy errors.
     }
-    return { x: e.clientX, y: e.clientY };
   }
 
-  /* ── Drawing ── */
-  function makePath(x1, y1, x2, y2, color, temp) {
-    var dx  = Math.max(40, Math.abs(x2 - x1) * 0.45);
-    var d   = 'M ' + x1 + ' ' + y1
-            + ' C ' + (x1 + dx) + ' ' + y1
-            + ',' + (x2 - dx) + ' ' + y2
-            + ',' + x2 + ' ' + y2;
-    var p = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-    p.setAttribute('d', d);
-    p.setAttribute('stroke', color);
-    p.setAttribute('stroke-width', '3.5');
-    p.setAttribute('fill', 'none');
-    p.setAttribute('stroke-linecap', 'round');
-    if (temp) p.setAttribute('data-temp', '1');
-    svgEl.appendChild(p);
+  function shuffle(items) {
+    const copied = items.slice();
+    for (let i = copied.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      const temp = copied[i];
+      copied[i] = copied[j];
+      copied[j] = temp;
+    }
+    return copied;
   }
 
-  function drawLines() {
-    if (!svgEl) return;
-    syncSvg();
-    /* remove permanent lines, keep temp drag line */
-    Array.prototype.forEach.call(svgEl.querySelectorAll('path:not([data-temp])'), function (n) { n.remove(); });
+  function esc(value) {
+    return String(value || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
 
-    connections.forEach(function (conn) {
-      var dotR = leftColEl  ? leftColEl.querySelector('.ml-dot-r[data-left-idx="'   + conn.leftIdx      + '"]') : null;
-      var dotL = rightColEl ? rightColEl.querySelector('.ml-dot-l[data-visual-row="' + conn.shuffledRight + '"]') : null;
-      if (!dotR || !dotL) return;
-      var p1 = dotCenter(dotR);
-      var p2 = dotCenter(dotL);
-      makePath(p1.x, p1.y, p2.x, p2.y, conn.overrideColor || conn.color);
+  function getBoardState(board) {
+    const boardId = String(board.id || 'board_' + currentIndex);
+    if (!stateByBoardId[boardId]) {
+      const rightOrder = shuffle((board.pairs || []).map((pair) => String(pair.id || '')));
+      stateByBoardId[boardId] = {
+        rightOrder,
+        matches: {},
+        showAnswer: false,
+      };
+    }
+    return stateByBoardId[boardId];
+  }
+
+  function createCardHtml(pair, side) {
+    const pairId = esc(pair.id || '');
+    const text = side === 'left' ? esc(pair.left_text || '') : esc(pair.right_text || '');
+    const image = side === 'left' ? esc(pair.left_image || '') : esc(pair.right_image || '');
+    const mediaClass = side === 'left' ? 'mlv-media mlv-media-left' : 'mlv-media mlv-media-right';
+    const media = image !== '' ? '<img class="' + mediaClass + '" src="' + image + '" alt="item">' : '';
+    const label = text !== '' ? '<div class="mlv-text">' + text + '</div>' : '';
+    const sideClass = side === 'left' ? 'mlv-card-left' : 'mlv-card-right';
+    const imageOnlyClass = image !== '' && text === '' ? ' image-only' : '';
+
+    return '<button type="button" class="mlv-card ' + sideClass + imageOnlyClass + '" data-pair-id="' + pairId + '">'
+      + media + label + '<span class="mlv-anchor" aria-hidden="true"></span></button>';
+  }
+
+  function buildReturnUrl(scorePercent, errors, total) {
+    const pageParams = new URLSearchParams(window.location.search || '');
+
+    let baseReturn = returnTo;
+    if (!baseReturn) {
+      const unit = pageParams.get('unit') || '';
+      const assignment = pageParams.get('assignment') || '';
+      const source = pageParams.get('source') || '';
+      const from = pageParams.get('from') || '';
+
+      if (assignment && unit && from === 'teacher_course') {
+        baseReturn = '../../academic/teacher_course.php?assignment=' + encodeURIComponent(assignment) + '&unit=' + encodeURIComponent(unit);
+      } else if (assignment && unit && (from === 'student_course' || pageParams.get('embedded') === '1')) {
+        baseReturn = '../../academic/student_course.php?assignment=' + encodeURIComponent(assignment) + '&unit=' + encodeURIComponent(unit);
+      } else if (unit) {
+        baseReturn = '../../academic/unit_view.php?unit=' + encodeURIComponent(unit);
+        if (source) {
+          baseReturn += '&source=' + encodeURIComponent(source);
+        }
+      }
+    }
+
+    if (!baseReturn) {
+      return '';
+    }
+
+    const hasQuery = baseReturn.indexOf('?') !== -1;
+    const joiner = hasQuery ? '&' : '?';
+
+    return baseReturn
+      + joiner + 'activity_percent=' + encodeURIComponent(String(scorePercent))
+      + '&activity_errors=' + encodeURIComponent(String(errors))
+      + '&activity_total=' + encodeURIComponent(String(total))
+      + '&activity_id=' + encodeURIComponent(String(activityId))
+      + '&activity_type=' + encodeURIComponent('matching_lines');
+  }
+
+  function getTotalPairs() {
+    return boards.reduce(function (sum, board) {
+      const n = Array.isArray(board.pairs) ? board.pairs.length : 0;
+      return sum + n;
+    }, 0);
+  }
+
+  function getMatchedTotal() {
+    return boards.reduce(function (sum, board, idx) {
+      const boardId = String(board.id || 'board_' + idx);
+      const boardState = stateByBoardId[boardId];
+      const n = boardState && boardState.matches ? Object.keys(boardState.matches).length : 0;
+      return sum + n;
+    }, 0);
+  }
+
+  function isAllBoardsCompleted() {
+    return boards.every(function (board, idx) {
+      const total = Array.isArray(board.pairs) ? board.pairs.length : 0;
+      const boardId = String(board.id || 'board_' + idx);
+      const boardState = stateByBoardId[boardId] || { matches: {} };
+      return Object.keys(boardState.matches || {}).length >= total;
     });
   }
 
-  function updateDragLine(curX, curY) {
-    if (!svgEl) return;
-    /* remove old temp path */
-    Array.prototype.forEach.call(svgEl.querySelectorAll('[data-temp]'), function (n) { n.remove(); });
-    if (!drag) return;
-    var sr = stageEl.getBoundingClientRect();
-    var x2 = curX - sr.left;
-    var y2 = curY - sr.top;
-    makePath(drag.startX, drag.startY, x2, y2, '#7F77DD', true);
-  }
-
-  /* ── Load board ── */
-  function loadBoard() {
-    var board = boards[index] || {};
-    var pairs = Array.isArray(board.pairs) ? board.pairs : [];
-
-    answered    = false;
-    connections = [];
-    drag        = null;
-
-    if (completedEl) completedEl.style.display = 'none';
-    if (activityEl)  activityEl.style.display  = '';
-    if (feedbackEl)  feedbackEl.textContent     = '';
-
-    updateProgress();
-    setPts(0);
-
-    /* Build shuffle map */
-    var indices = pairs.map(function (_, i) { return i; });
-    var shuffled = shuffle(indices);
-    shuffleMap = new Array(pairs.length);
-    reverseMap = new Array(pairs.length);
-    for (var i = 0; i < shuffled.length; i++) {
-      reverseMap[i]           = shuffled[i];
-      shuffleMap[shuffled[i]] = i;
+  function persistScoreIfCompleted() {
+    if (scorePersisted || !isAllBoardsCompleted()) {
+      return;
     }
 
-    renderColumns(pairs, shuffled);
+    const total = getTotalPairs();
+    const matched = getMatchedTotal();
+    if (total <= 0) {
+      return;
+    }
 
-    if (checkBtn) { checkBtn.disabled = false; }
-    if (showBtn)  { showBtn.disabled = false; }
-    if (nextBtn)  { nextBtn.disabled = true; nextBtn.textContent = index < boards.length - 1 ? 'Next →' : 'Finish'; }
-  }
+    const percent = Math.round((matched / total) * 100);
+    const safeErrors = Math.max(0, Math.min(total, wrongAttempts));
+    const saveUrl = buildReturnUrl(percent, safeErrors, total);
 
-  /* ── Render columns ── */
-  function renderColumns(pairs, shuffled) {
-    if (!leftColEl || !rightColEl) return;
-    leftColEl.innerHTML  = '';
-    rightColEl.innerHTML = '';
+    if (!saveUrl) {
+      return;
+    }
 
-    /* Left cards */
-    pairs.forEach(function (pair, i) {
-      var card = document.createElement('div');
-      card.className = 'ml-lcard';
+    completionUrl = saveUrl;
+    scorePersisted = true;
 
-      var icon = document.createElement('div');
-      icon.className = 'ml-lcard-icon';
+    if (!winPlayed) {
+      winPlayed = true;
+      playSound(winSound);
+    }
 
-      var leftVal = String(pair.left || '').trim();
-      var isUrl   = /^https?:\/\//i.test(leftVal) || /\.(png|jpg|jpeg|gif|webp|svg)(\?|$)/i.test(leftVal);
-      if (isUrl) {
-        var img = document.createElement('img');
-        img.src = leftVal;
-        img.alt = '';
-        img.className = 'ml-lcard-img';
-        icon.appendChild(img);
-      } else {
-        var lbl = document.createElement('div');
-        lbl.className = 'ml-lcard-label';
-        lbl.textContent = leftVal;
-        icon.appendChild(lbl);
-      }
-
-      var dot = document.createElement('div');
-      dot.className = 'ml-dot-r';
-      dot.dataset.leftIdx = String(i);
-
-      card.appendChild(icon);
-      card.appendChild(dot);
-      leftColEl.appendChild(card);
-    });
-
-    /* Right cards — shuffled */
-    shuffled.forEach(function (origIdx, visualRow) {
-      var pair = pairs[origIdx];
-      var card = document.createElement('div');
-      card.className = 'ml-rcard';
-      card.dataset.visualRow = String(visualRow);
-      card.dataset.origIdx   = String(origIdx);
-
-      var dot = document.createElement('div');
-      dot.className = 'ml-dot-l';
-      dot.dataset.visualRow = String(visualRow);
-
-      var icon = document.createElement('div');
-      icon.className = 'ml-rcard-icon';
-
-      var rightVal = String(pair.right || '').trim();
-      var rightIsUrl = /^https?:\/\//i.test(rightVal) || /\.(png|jpg|jpeg|gif|webp|svg)(\?|$)/i.test(rightVal);
-      if (rightIsUrl) {
-        var rimg = document.createElement('img');
-        rimg.src = rightVal;
-        rimg.alt = '';
-        rimg.className = 'ml-rcard-img';
-        icon.appendChild(rimg);
-      } else {
-        var lbl = document.createElement('div');
-        lbl.className = 'ml-rcard-label';
-        lbl.textContent = rightVal;
-        icon.appendChild(lbl);
-      }
-
-      card.appendChild(dot);
-      card.appendChild(icon);
-      rightColEl.appendChild(card);
-    });
-
-    /* Equalize heights after render + after ALL images (left and right) load */
-    equalizeRowHeights();
-
-    var imgs = Array.prototype.slice.call(leftColEl.querySelectorAll('img'))
-                 .concat(Array.prototype.slice.call(rightColEl.querySelectorAll('img')));
-    if (imgs.length) {
-      var loaded = 0, total = imgs.length;
-      function onLoad() {
-        loaded++;
-        if (loaded >= total) { equalizeRowHeights(); drawLines(); }
-      }
-      imgs.forEach(function (img) {
-        if (img.complete) { onLoad(); }
-        else { img.addEventListener('load', onLoad); img.addEventListener('error', onLoad); }
+    // Save score in background so Next can send student to completed page.
+    try {
+      fetch(saveUrl, {
+        method: 'GET',
+        credentials: 'same-origin',
+        cache: 'no-store',
+        keepalive: true,
+      }).catch(function () {
+        scorePersisted = false;
       });
+    } catch (e) {
+      scorePersisted = false;
+    }
+
+    const board = boards[currentIndex];
+    const boardState = board ? getBoardState(board) : null;
+    if (boardState) {
+      updateButtonState(boardState);
+    }
+  }
+
+  function getCardCenter(card, isLeft) {
+    const stageRect = stage.getBoundingClientRect();
+    const anchor = card.querySelector('.mlv-anchor') || card;
+    const rect = anchor.getBoundingClientRect();
+
+    const x = isLeft
+      ? rect.right - stageRect.left
+      : rect.left - stageRect.left;
+
+    const y = rect.top + rect.height / 2 - stageRect.top;
+
+    return { x, y };
+  }
+
+  function clientPointToStage(clientX, clientY) {
+    const rect = stage.getBoundingClientRect();
+    return {
+      x: clientX - rect.left,
+      y: clientY - rect.top,
+    };
+  }
+
+  function drawPath(x1, y1, x2, y2, color, width, dashArray, temp) {
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    const dx = Math.max(30, Math.abs(x2 - x1) * 0.4);
+    const d = 'M ' + x1 + ' ' + y1 + ' C ' + (x1 + dx) + ' ' + y1 + ', ' + (x2 - dx) + ' ' + y2 + ', ' + x2 + ' ' + y2;
+    path.setAttribute('d', d);
+    path.setAttribute('fill', 'none');
+    path.setAttribute('stroke', color);
+    path.setAttribute('stroke-width', String(width));
+    path.setAttribute('stroke-linecap', 'round');
+    path.setAttribute('stroke-linejoin', 'round');
+    if (dashArray) {
+      path.setAttribute('stroke-dasharray', dashArray);
+    }
+    if (temp) {
+      path.setAttribute('data-temp', '1');
+    }
+    svg.appendChild(path);
+
+    const dot1 = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    dot1.setAttribute('cx', String(x1));
+    dot1.setAttribute('cy', String(y1));
+    dot1.setAttribute('r', String(Math.max(3, Math.floor(width * 0.9))));
+    dot1.setAttribute('fill', color);
+    if (temp) {
+      dot1.setAttribute('data-temp', '1');
+    }
+    svg.appendChild(dot1);
+
+    const dot2 = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    dot2.setAttribute('cx', String(x2));
+    dot2.setAttribute('cy', String(y2));
+    dot2.setAttribute('r', String(Math.max(3, Math.floor(width * 0.9))));
+    dot2.setAttribute('fill', color);
+    if (temp) {
+      dot2.setAttribute('data-temp', '1');
+    }
+    svg.appendChild(dot2);
+  }
+
+  function clearTempPath() {
+    svg.querySelectorAll('[data-temp="1"]').forEach(function (node) {
+      node.remove();
+    });
+  }
+
+  function renderLines(board, boardState) {
+    svg.innerHTML = '';
+
+    const matches = boardState.matches || {};
+    Object.keys(matches).forEach(function (leftId) {
+      const rightId = matches[leftId];
+      const leftCard = leftCol.querySelector('[data-pair-id="' + CSS.escape(leftId) + '"]');
+      const rightCard = rightCol.querySelector('[data-pair-id="' + CSS.escape(rightId) + '"]');
+      if (!leftCard || !rightCard) {
+        return;
+      }
+      const p1 = getCardCenter(leftCard, true);
+      const p2 = getCardCenter(rightCard, false);
+      drawPath(p1.x, p1.y, p2.x, p2.y, '#111827', 4, '', false);
+    });
+
+    if (boardState.showAnswer) {
+      (board.pairs || []).forEach(function (pair) {
+        const id = String(pair.id || '');
+        if (matches[id]) {
+          return;
+        }
+        const leftCard = leftCol.querySelector('[data-pair-id="' + CSS.escape(id) + '"]');
+        const rightCard = rightCol.querySelector('[data-pair-id="' + CSS.escape(id) + '"]');
+        if (!leftCard || !rightCard) {
+          return;
+        }
+        const p1 = getCardCenter(leftCard, true);
+        const p2 = getCardCenter(rightCard, false);
+        drawPath(p1.x, p1.y, p2.x, p2.y, '#7c3aed', 3, '8 6', false);
+      });
+    }
+
+    if (dragging && dragging.active) {
+      drawPath(dragging.startX, dragging.startY, dragging.endX, dragging.endY, '#2563eb', 4, '', true);
+    }
+  }
+
+  function updateButtonState(boardState) {
+    prevBtn.disabled = currentIndex <= 0;
+    const hasCompletionTarget = completionUrl !== '' && isAllBoardsCompleted();
+    nextBtn.disabled = hasCompletionTarget ? false : currentIndex >= boards.length - 1;
+    nextBtn.textContent = hasCompletionTarget ? 'Next' : 'Next';
+    showBtn.textContent = boardState.showAnswer ? 'Hide Answer' : 'Show Answer';
+  }
+
+  function updateProgress(board, boardState) {
+    const total = Array.isArray(board.pairs) ? board.pairs.length : 0;
+    const done = Object.keys(boardState.matches || {}).length;
+    progress.textContent = 'Matched ' + done + ' / ' + total;
+  }
+
+  function isRightAlreadyUsed(matches, rightId) {
+    return Object.values(matches).indexOf(rightId) !== -1;
+  }
+
+  function flashWrongLine(leftId, rightId) {
+    const leftCard = leftCol.querySelector('[data-pair-id="' + CSS.escape(leftId) + '"]');
+    const rightCard = rightCol.querySelector('[data-pair-id="' + CSS.escape(rightId) + '"]');
+    if (!leftCard || !rightCard) {
+      return;
+    }
+
+    const p1 = getCardCenter(leftCard, true);
+    const p2 = getCardCenter(rightCard, false);
+    drawPath(p1.x, p1.y, p2.x, p2.y, '#ef4444', 4, '', false);
+
+    setTimeout(function () {
+      renderCurrentBoard();
+    }, 420);
+  }
+
+  function attemptMatch(leftId, rightId, board, boardState) {
+    if (!leftId || !rightId) {
+      return;
+    }
+
+    const matches = boardState.matches;
+
+    if (matches[leftId] || isRightAlreadyUsed(matches, rightId)) {
+      return;
+    }
+
+    const correct = leftId === rightId;
+    if (correct) {
+      matches[leftId] = rightId;
+      playSound(correctSound);
+      const leftCard = leftCol.querySelector('[data-pair-id="' + CSS.escape(leftId) + '"]');
+      const rightCard = rightCol.querySelector('[data-pair-id="' + CSS.escape(rightId) + '"]');
+      if (leftCard) {
+        leftCard.classList.add('matched', 'correct-glow');
+      }
+      if (rightCard) {
+        rightCard.classList.add('matched', 'correct-glow');
+      }
     } else {
-      drawLines();
-    }
-  }
-
-  function equalizeRowHeights() {
-    if (!leftColEl || !rightColEl) return;
-    var lc = leftColEl.querySelectorAll('.ml-lcard');
-    var rc = rightColEl.querySelectorAll('.ml-rcard');
-    var n  = Math.min(lc.length, rc.length);
-    /* Reset */
-    for (var i = 0; i < n; i++) { lc[i].style.minHeight = ''; rc[i].style.minHeight = ''; }
-    /* Sync */
-    for (var i = 0; i < n; i++) {
-      var h = Math.max(lc[i].offsetHeight, rc[i].offsetHeight);
-      lc[i].style.minHeight = h + 'px';
-      rc[i].style.minHeight = h + 'px';
-    }
-  }
-
-  /* ── Drag logic ── */
-  function startDrag(e, leftIdx) {
-    if (answered) return;
-    e.preventDefault();
-
-    var dot = leftColEl.querySelector('.ml-dot-r[data-left-idx="' + leftIdx + '"]');
-    if (!dot) return;
-
-    syncSvg();
-    var p = dotCenter(dot);
-    var cp = clientPoint(e);
-
-    drag = { leftIdx: leftIdx, startX: p.x, startY: p.y, curX: cp.x, curY: cp.y };
-
-    /* highlight source dot */
-    dot.classList.add('ml-dot-active');
-  }
-
-  function moveDrag(e) {
-    if (!drag) return;
-    e.preventDefault();
-    var cp = clientPoint(e);
-    drag.curX = cp.x;
-    drag.curY = cp.y;
-    updateDragLine(cp.x, cp.y);
-  }
-
-  function endDrag(e) {
-    if (!drag) return;
-
-    /* Clear temp line and dot highlight */
-    Array.prototype.forEach.call(svgEl.querySelectorAll('[data-temp]'), function (n) { n.remove(); });
-    var srcDot = leftColEl.querySelector('.ml-dot-r[data-left-idx="' + drag.leftIdx + '"]');
-    if (srcDot) srcDot.classList.remove('ml-dot-active');
-
-    /* Find which right card / dot is under the pointer */
-    var cp     = clientPoint(e.changedTouches ? e : e);
-    if (e.changedTouches && e.changedTouches.length) { cp = { x: e.changedTouches[0].clientX, y: e.changedTouches[0].clientY }; }
-    var target = document.elementFromPoint(cp.x, cp.y);
-
-    /* Walk up to find .ml-rcard or .ml-dot-l */
-    var rcard = null;
-    var el = target;
-    while (el && el !== document.body) {
-      if (el.classList && (el.classList.contains('ml-rcard') || el.classList.contains('ml-dot-l'))) {
-        rcard = el.classList.contains('ml-rcard') ? el : el.closest('.ml-rcard');
-        break;
-      }
-      el = el.parentElement;
+      wrongAttempts += 1;
+      playSound(wrongSound);
+      flashWrongLine(leftId, rightId);
     }
 
-    if (rcard) {
-      var visualRow = parseInt(rcard.dataset.visualRow, 10);
-      connect(drag.leftIdx, visualRow);
+    updateProgress(board, boardState);
+    renderLines(board, boardState);
+    persistScoreIfCompleted();
+  }
+
+  function clearDragClasses() {
+    stage.querySelectorAll('.drag-source').forEach(function (el) {
+      el.classList.remove('drag-source');
+    });
+    stage.querySelectorAll('.drop-hover').forEach(function (el) {
+      el.classList.remove('drop-hover');
+    });
+    stage.querySelectorAll('.active-anchor').forEach(function (el) {
+      el.classList.remove('active-anchor');
+    });
+  }
+
+  function getRightCardUnderPoint(clientX, clientY) {
+    const hit = document.elementFromPoint(clientX, clientY);
+    if (!hit) {
+      return null;
+    }
+    const card = hit.closest('.mlv-right .mlv-card');
+    if (!card) {
+      return null;
+    }
+    return card;
+  }
+
+  function endDrag(clientX, clientY, board, boardState) {
+    if (!dragging || !dragging.active) {
+      return;
     }
 
-    drag = null;
+    const hoveredRight = getRightCardUnderPoint(clientX, clientY);
+    let rightId = '';
+    if (hoveredRight) {
+      rightId = String(hoveredRight.getAttribute('data-pair-id') || '');
+    }
+
+    clearTempPath();
+    clearDragClasses();
+
+    if (rightId) {
+      attemptMatch(dragging.leftId, rightId, board, boardState);
+    } else {
+      renderLines(board, boardState);
+    }
+
+    dragging = null;
   }
 
-  function connect(leftIdx, visualRow) {
-    /* Remove old connection from this left or this right */
-    connections = connections.filter(function (c) { return c.leftIdx !== leftIdx && c.shuffledRight !== visualRow; });
+  function beginDrag(ev, leftCard, board, boardState) {
+    const leftId = String(leftCard.getAttribute('data-pair-id') || '');
+    if (!leftId || boardState.matches[leftId]) {
+      return;
+    }
 
-    var color = LINE_COLORS[connections.length % LINE_COLORS.length];
-    connections.push({ leftIdx: leftIdx, shuffledRight: visualRow, color: color });
+    playSound(clickSound);
 
-    playSound(dropAudio);
-    drawLines();
-  }
-
-  /* ── Bind drag events to stage ── */
-  function bindDragEvents() {
-    if (!stageEl) return;
-
-    /* mousedown on left dot */
-    stageEl.addEventListener('mousedown', function (e) {
-      var dot = e.target.closest ? e.target.closest('.ml-dot-r') : null;
-      if (!dot) return;
-      startDrag(e, parseInt(dot.dataset.leftIdx, 10));
-    });
-
-    window.addEventListener('mousemove', function (e) {
-      if (drag) moveDrag(e);
-    });
-
-    window.addEventListener('mouseup', function (e) {
-      if (drag) endDrag(e);
-    });
-
-    /* touch */
-    stageEl.addEventListener('touchstart', function (e) {
-      var dot = e.target.closest ? e.target.closest('.ml-dot-r') : null;
-      if (!dot) return;
-      startDrag(e, parseInt(dot.dataset.leftIdx, 10));
-    }, { passive: false });
-
-    window.addEventListener('touchmove', function (e) {
-      if (drag) moveDrag(e);
-    }, { passive: false });
-
-    window.addEventListener('touchend', function (e) {
-      if (drag) endDrag(e);
-    });
-  }
-
-  /* ── Check ── */
-  function checkAnswers() {
-    if (answered) return;
-    var board = boards[index] || {};
-    var pairs = Array.isArray(board.pairs) ? board.pairs : [];
-    var total   = pairs.length;
-    var correct = 0;
-
-    answered = true;
-
-    connections.forEach(function (conn, ci) {
-      var origRight = reverseMap[conn.shuffledRight];
-      var ok = (conn.leftIdx === origRight);
-      conn.overrideColor = ok ? '#22c55e' : '#E24B4A';
-      if (ok) correct++;
-      /* stagger sounds slightly so they don't all fire at once */
-      setTimeout(function () {
-        playSound(ok ? correctAudio : wrongAudio);
-      }, ci * 180);
-    });
-
-    drawLines();
-
-    var pts = Math.round((correct / total) * 1000);
-    setPts(pts);
-
-    var allOk = correct === total && connections.length === total;
-    scores[index] = allOk ? 1 : 0;
-
-    reviewItems[index] = {
-      question:      board.prompt || ('Board ' + (index + 1)),
-      yourAnswer:    correct + '/' + total + ' correct',
-      correctAnswer: pairs.map(function (p) { return p.left + ' → ' + p.right; }).join(', '),
-      score:         scores[index]
+    const startPoint = getCardCenter(leftCard, true);
+    dragging = {
+      active: true,
+      leftId: leftId,
+      startX: startPoint.x,
+      startY: startPoint.y,
+      endX: startPoint.x,
+      endY: startPoint.y,
     };
 
-    if (allOk) { showFeedbackText('Perfect! 🎉', '#22c55e'); }
-    else        { showFeedbackText(correct + ' / ' + total + ' correct', '#F97316'); }
+    clearDragClasses();
+    leftCard.classList.add('drag-source');
+    const anchor = leftCard.querySelector('.mlv-anchor');
+    if (anchor) {
+      anchor.classList.add('active-anchor');
+    }
 
-    if (checkBtn) checkBtn.disabled = true;
-    if (showBtn)  showBtn.disabled  = true;
-    if (nextBtn)  nextBtn.disabled  = false;
+    renderLines(board, boardState);
+    ev.preventDefault();
   }
 
-  /* ── Show Answers ── */
-  function showAnswers() {
-    if (answered) return;
-    var board = boards[index] || {};
-    var pairs = Array.isArray(board.pairs) ? board.pairs : [];
-    answered = true;
-    scores[index] = -1;
-
-    connections = pairs.map(function (p, origIdx) {
-      return { leftIdx: origIdx, shuffledRight: shuffleMap[origIdx], color: '#7F77DD' };
+  function bindDrag(board, boardState) {
+    leftCol.querySelectorAll('.mlv-card').forEach(function (card) {
+      card.addEventListener('pointerdown', function (ev) {
+        beginDrag(ev, card, board, boardState);
+      });
     });
 
-    drawLines();
+    if (stage.getAttribute('data-drag-bound') === '1') {
+      return;
+    }
 
-    reviewItems[index] = {
-      question:      board.prompt || ('Board ' + (index + 1)),
-      yourAnswer:    '(revealed)',
-      correctAnswer: pairs.map(function (p) { return p.left + ' → ' + p.right; }).join(', '),
-      score:         -1
+    stage.setAttribute('data-drag-bound', '1');
+
+    const getCurrent = function () {
+      const currentBoard = boards[currentIndex];
+      return {
+        board: currentBoard,
+        boardState: currentBoard ? getBoardState(currentBoard) : null,
+      };
     };
 
-    showFeedbackText('Answers shown', '#7F77DD');
-    setPts(0);
-    if (checkBtn) checkBtn.disabled = true;
-    if (showBtn)  showBtn.disabled  = true;
-    if (nextBtn)  nextBtn.disabled  = false;
+    stage.addEventListener('pointermove', function (ev) {
+      if (!dragging || !dragging.active) {
+        return;
+      }
+
+      const current = getCurrent();
+      if (!current.board || !current.boardState) {
+        return;
+      }
+
+      const pos = clientPointToStage(ev.clientX, ev.clientY);
+      dragging.endX = pos.x;
+      dragging.endY = pos.y;
+
+      clearDragClasses();
+      const leftCard = leftCol.querySelector('[data-pair-id="' + CSS.escape(dragging.leftId) + '"]');
+      if (leftCard) {
+        leftCard.classList.add('drag-source');
+        const anchor = leftCard.querySelector('.mlv-anchor');
+        if (anchor) {
+          anchor.classList.add('active-anchor');
+        }
+      }
+
+      const rightCard = getRightCardUnderPoint(ev.clientX, ev.clientY);
+      if (rightCard) {
+        const rightId = String(rightCard.getAttribute('data-pair-id') || '');
+        if (!isRightAlreadyUsed(current.boardState.matches, rightId)) {
+          rightCard.classList.add('drop-hover');
+          const rightAnchor = rightCard.querySelector('.mlv-anchor');
+          if (rightAnchor) {
+            rightAnchor.classList.add('active-anchor');
+          }
+        }
+      }
+
+      renderLines(current.board, current.boardState);
+    });
+
+    stage.addEventListener('pointerup', function (ev) {
+      const current = getCurrent();
+      if (!current.board || !current.boardState) {
+        return;
+      }
+      endDrag(ev.clientX, ev.clientY, current.board, current.boardState);
+    });
+
+    window.addEventListener('pointerup', function (ev) {
+      const current = getCurrent();
+      if (!current.board || !current.boardState) {
+        return;
+      }
+      endDrag(ev.clientX, ev.clientY, current.board, current.boardState);
+    });
+
+    stage.addEventListener('pointercancel', function () {
+      const current = getCurrent();
+      if (!current.board || !current.boardState) {
+        return;
+      }
+      if (!dragging || !dragging.active) {
+        return;
+      }
+      clearTempPath();
+      clearDragClasses();
+      dragging = null;
+      renderLines(current.board, current.boardState);
+    });
+
+    stage.addEventListener('pointerleave', function (ev) {
+      const current = getCurrent();
+      if (!current.board || !current.boardState) {
+        return;
+      }
+      if (!dragging || !dragging.active) {
+        return;
+      }
+      const pos = clientPointToStage(ev.clientX, ev.clientY);
+      dragging.endX = pos.x;
+      dragging.endY = pos.y;
+      renderLines(current.board, current.boardState);
+    });
   }
 
-  /* ── Next / Completed ── */
-  function nextBoard() {
-    if (index < boards.length - 1) { index++; loadBoard(); }
-    else { showCompleted(); }
-  }
+  function renderCurrentBoard() {
+    const board = boards[currentIndex];
+    if (!board || !Array.isArray(board.pairs)) {
+      return;
+    }
 
-  function showCompleted() {
-    if (!completedEl) return;
-    if (activityEl) activityEl.style.display = 'none';
-    completedEl.style.display = '';
+    const boardState = getBoardState(board);
+    const leftItems = board.pairs.slice();
 
-    AF.showCompleted({
-      target:        completedEl,
-      scores:        scores,
-      title:         activityTitle,
-      activityType:  'Matching Lines',
-      questionCount: boards.length,
-      winAudio:      winAudio,
-      onRetry:       restartActivity,
-      onReview: function () {
-        AF.showReview({ target: completedEl, items: reviewItems, onRetry: restartActivity });
+    const rightMap = {};
+    board.pairs.forEach(function (pair) {
+      rightMap[String(pair.id || '')] = pair;
+    });
+
+    const orderedRight = boardState.rightOrder
+      .map(function (pairId) { return rightMap[String(pairId)]; })
+      .filter(Boolean);
+
+    leftCol.innerHTML = leftItems.map(function (pair) {
+      return createCardHtml(pair, 'left');
+    }).join('');
+
+    rightCol.innerHTML = orderedRight.map(function (pair) {
+      return createCardHtml(pair, 'right');
+    }).join('');
+
+    if (boardTitle) {
+      boardTitle.textContent = board.title || ('Board ' + (currentIndex + 1));
+    }
+    updateProgress(board, boardState);
+    updateButtonState(boardState);
+    dragging = null;
+
+    const matches = boardState.matches || {};
+    Object.keys(matches).forEach(function (leftId) {
+      const rightId = matches[leftId];
+      const leftCard = leftCol.querySelector('[data-pair-id="' + CSS.escape(leftId) + '"]');
+      const rightCard = rightCol.querySelector('[data-pair-id="' + CSS.escape(rightId) + '"]');
+      if (leftCard) {
+        leftCard.classList.add('matched');
+      }
+      if (rightCard) {
+        rightCard.classList.add('matched');
       }
     });
 
-    var result = AF.computeScore(scores);
-    if (returnTo && activityId) {
-      var sep = returnTo.indexOf('?') !== -1 ? '&' : '?';
-      fetch(returnTo + sep
-        + 'activity_percent=' + result.percent
-        + '&activity_errors=' + result.wrong
-        + '&activity_total='  + result.total
-        + '&activity_id='     + encodeURIComponent(activityId)
-        + '&activity_type=matching_lines',
-        { method: 'GET', credentials: 'same-origin', cache: 'no-store' }
-      ).catch(function () {});
+    bindDrag(board, boardState);
+    renderLines(board, boardState);
+    persistScoreIfCompleted();
+  }
+
+  prevBtn.addEventListener('click', function () {
+    if (currentIndex <= 0) {
+      return;
     }
-  }
-
-  function restartActivity() {
-    index       = 0;
-    scores      = boards.map(function () { return 0; });
-    reviewItems = boards.map(function () { return {}; });
-    loadBoard();
-  }
-
-  /* ── Resize ── */
-  var resizeTimer;
-  window.addEventListener('resize', function () {
-    clearTimeout(resizeTimer);
-    resizeTimer = setTimeout(function () { equalizeRowHeights(); drawLines(); }, 80);
+    currentIndex -= 1;
+    renderCurrentBoard();
   });
 
-  /* ── Button events ── */
-  if (checkBtn) checkBtn.addEventListener('click', checkAnswers);
-  if (showBtn)  showBtn.addEventListener('click',  showAnswers);
-  if (nextBtn)  nextBtn.addEventListener('click',  nextBoard);
+  nextBtn.addEventListener('click', function () {
+    if (completionUrl !== '' && isAllBoardsCompleted()) {
+      try {
+        if (window.top && window.top !== window.self) {
+          window.top.location.href = completionUrl;
+          return;
+        }
+      } catch (e) {
+        // Fall back to same frame.
+      }
+      window.location.href = completionUrl;
+      return;
+    }
 
-  /* ── Boot ── */
-  bindDragEvents();
-  loadBoard();
+    if (currentIndex >= boards.length - 1) {
+      return;
+    }
+    currentIndex += 1;
+    renderCurrentBoard();
+  });
+
+  showBtn.addEventListener('click', function () {
+    const board = boards[currentIndex];
+    if (!board) {
+      return;
+    }
+    const boardState = getBoardState(board);
+    boardState.showAnswer = !boardState.showAnswer;
+    if (boardState.showAnswer) {
+      wrongAttempts += 1;
+    }
+    updateButtonState(boardState);
+    renderLines(board, boardState);
+  });
+
+  window.addEventListener('resize', function () {
+    const board = boards[currentIndex];
+    if (!board) {
+      return;
+    }
+    const boardState = getBoardState(board);
+    renderLines(board, boardState);
+  });
+
+  renderCurrentBoard();
 });

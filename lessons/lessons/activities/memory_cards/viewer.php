@@ -306,15 +306,11 @@ $desktopCols = 4;
 if ($totalCards > 0) {
     $desktopCols = (int) ceil(sqrt($totalCards));
     if ($desktopCols < 2) { $desktopCols = 2; }
-    if ($desktopCols > 4) { $desktopCols = 4; }
+    if ($desktopCols > 6) { $desktopCols = 6; }
 }
 
-$tabletCols  = min(3, $desktopCols);
-$mobileCols  = min(2, $desktopCols);
-
-$desktopRows = $totalCards > 0 ? (int) ceil($totalCards / $desktopCols) : 2;
-$tabletRows  = $totalCards > 0 ? (int) ceil($totalCards / $tabletCols)  : 2;
-$mobileRows  = $totalCards > 0 ? (int) ceil($totalCards / $mobileCols)  : 2;
+$tabletCols = min(4, $desktopCols);
+$mobileCols = min(3, $desktopCols);
 
 ob_start();
 ?>
@@ -330,11 +326,10 @@ ob_start();
     --mc-muted:#9B94BE;
     --mc-border:#F0EEF8;
     --mc-cols:<?= (int) $desktopCols ?>;
-    --mc-rows:<?= (int) $desktopRows ?>;
-    --mc-gap:1cm;
+    --mc-gap:clamp(8px,1.2vw,14px);
 }
 
-html,body{width:100%;height:100%;margin:0;padding:0;}
+html,body{width:100%;height:100%;}
 
 body{
     margin:0!important;
@@ -362,88 +357,142 @@ body{
 
 .viewer-content{
     flex:1!important;
-    min-height:0!important;
     display:flex!important;
     flex-direction:column!important;
+    min-height:0!important;
     padding:0!important;
     margin:0!important;
     background:transparent!important;
     border:none!important;
     box-shadow:none!important;
     border-radius:0!important;
-    overflow:hidden!important;
 }
 
-/* mc-page fills whatever height the viewer gives it */
 .mc-page{
     display:flex;
     flex-direction:column;
     flex:1;
     min-height:0;
     width:100%;
-    padding:0.5cm 1cm;
-    gap:0.4cm;
+    padding:clamp(8px,1.5vw,14px);
+    gap:8px;
     box-sizing:border-box;
     overflow:hidden;
 }
 
-.mc-title{
+.mc-app{
+    width:min(980px,100%);
+    height:100%;
+    min-height:0;
+    margin:0 auto;
+    display:grid;
+    grid-template-rows:auto minmax(0,1fr);
+    gap:clamp(10px,1.5vw,14px);
+}
+
+.mc-hero{text-align:center;}
+
+.mc-kicker{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    padding:7px 14px;
+    border-radius:999px;
+    background:var(--mc-orange-soft);
+    border:1px solid #FCDDBF;
+    color:var(--mc-orange-dark);
+    font-size:12px;
+    font-weight:900;
+    letter-spacing:.08em;
+    text-transform:uppercase;
+    margin-bottom:8px;
+}
+
+.mc-hero h1{
     font-family:'Fredoka',sans-serif;
-    font-size:clamp(16px,2.5vw,30px);
+    font-size:clamp(26px,4.5vw,50px);
     font-weight:700;
     color:var(--mc-orange);
     margin:0;
-    text-align:center;
-    line-height:1.1;
-    flex-shrink:0;
+    line-height:1.03;
 }
 
-.mc-stats{
-    display:flex;
-    gap:0.3cm;
-    align-items:center;
-    justify-content:center;
-    flex-wrap:wrap;
-    flex-shrink:0;
+.mc-hero p{
+    font-size:clamp(12px,1.6vw,15px);
+    font-weight:800;
+    color:var(--mc-muted);
+    margin:6px 0 0;
 }
+
+.mc-stage{
+    height:100%;
+    min-height:0;
+    background:#fff;
+    border:1px solid var(--mc-border);
+    border-radius:34px;
+    padding:clamp(14px,2.2vw,22px);
+    box-shadow:0 8px 40px rgba(127,119,221,.13);
+    box-sizing:border-box;
+    display:flex;
+    flex-direction:column;
+    overflow:hidden;
+}
+
+.mc-viewer{max-width:100%;flex:1;min-height:0;display:flex;flex-direction:column;}
+
+.mc-shell{
+    background:#fff;
+    border:1px solid #EDE9FA;
+    border-radius:30px;
+    box-shadow:0 8px 24px rgba(127,119,221,.09);
+    padding:18px;
+    flex:1;
+    min-height:0;
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+    overflow:hidden;
+    box-sizing:border-box;
+}
+
+.mc-stats{display:flex;gap:8px;flex-wrap:wrap;flex-shrink:0;}
 
 .mc-pill{
     display:inline-flex;
     align-items:center;
-    gap:5px;
+    gap:6px;
     background:var(--mc-purple-soft);
     border:1px solid #d8d3f5;
     color:var(--mc-purple-dark);
     font-weight:800;
-    font-size:12px;
-    padding:4px 12px;
+    font-size:13px;
+    padding:8px 12px;
     border-radius:999px;
 }
 
-/* Board fills remaining height and divides it into equal rows */
 .mc-board{
     display:grid;
     grid-template-columns:repeat(var(--mc-cols),1fr);
-    grid-template-rows:repeat(var(--mc-rows),1fr);
     gap:var(--mc-gap);
     flex:1;
     min-height:0;
     width:100%;
     box-sizing:border-box;
+    overflow:hidden;
 }
 
-/* Cards fill their grid cell — no aspect-ratio, size is driven by the grid */
-.mc-card{
+/* KEY FIX: cards use aspect-ratio so they always have visible height */
+.mc-card,
+.viewer-content .mc-card{
     position:relative;
     width:100%;
-    height:100%;
+    aspect-ratio:1/1;
     cursor:pointer;
     border:none;
     background:transparent;
     padding:0;
     perspective:900px;
     display:block;
-    min-height:0;
 }
 
 .mc-card:disabled{cursor:default;}
@@ -459,32 +508,34 @@ body{
 
 .mc-card.is-flipped .mc-card-inner{transform:rotateY(180deg);}
 
-.mc-card-face{
+.mc-card-face,
+.mc-card-back{
     position:absolute;
     inset:0;
+    width:100%;
+    height:100%;
     backface-visibility:hidden;
     border-radius:16px;
     display:flex;
     align-items:center;
     justify-content:center;
-    overflow:hidden;
 }
+
+.mc-card-face{border:1px solid #EDE9FA;overflow:hidden;}
 
 .mc-card-front{
     background:linear-gradient(145deg,var(--mc-purple),var(--mc-purple-dark));
     color:#e9e7fb;
     font-family:'Fredoka','Trebuchet MS',sans-serif;
-    font-size:clamp(18px,3.5vw,42px);
-    box-shadow:0 4px 16px rgba(127,119,221,.35);
-    border:2px solid transparent;
+    font-size:clamp(22px,4vw,46px);
+    box-shadow:0 14px 24px rgba(127,119,221,.35);
 }
 
 .mc-card-back{
     transform:rotateY(180deg);
     background:#fff;
-    border:2px solid var(--mc-border);
-    padding:6px;
-    box-shadow:0 4px 14px rgba(15,23,42,.08);
+    padding:4px;
+    box-shadow:0 10px 20px rgba(15,23,42,.08);
 }
 
 .mc-card-back p{
@@ -492,8 +543,8 @@ body{
     text-align:center;
     color:#1e293b;
     font-weight:800;
-    font-size:clamp(10px,1.6vw,17px);
-    line-height:1.3;
+    font-size:clamp(11px,1.8vw,18px);
+    line-height:1.35;
     word-break:break-word;
 }
 
@@ -504,84 +555,55 @@ body{
     border-radius:10px;
 }
 
-.mc-card.is-matched .mc-card-front{border-color:#34d399;box-shadow:0 4px 16px rgba(52,211,153,.3);}
+.mc-card.is-matched .mc-card-face{border-color:#34d399;}
 .mc-card.is-vanishing{pointer-events:none;}
 .mc-card.is-vanishing .mc-card-inner{animation:mcVanish .34s ease forwards;}
 .mc-card.is-hidden{opacity:0;visibility:hidden;pointer-events:none;}
 
-.mc-btn-row{
-    display:flex;
-    gap:0.3cm;
-    justify-content:center;
-    flex-wrap:wrap;
+.mc-restart-row{
     flex-shrink:0;
+    display:flex;
+    justify-content:center;
+    padding:4px 0 0;
 }
 
 .mc-btn{
     border:none;
     border-radius:999px;
-    padding:8px 20px;
+    padding:10px 16px;
     font-weight:800;
-    font-size:13px;
+    font-size:14px;
     cursor:pointer;
-    font-family:'Nunito',sans-serif;
-    transition:transform .15s ease,filter .15s ease;
-}
-.mc-btn:hover{transform:scale(1.04);filter:brightness(1.06);}
-
-.mc-btn-restart{
-    background:#f1f5f9;
-    color:#475569;
-    box-shadow:0 2px 8px rgba(0,0,0,.08);
-}
-
-.mc-btn-finish{
+    box-shadow:0 8px 18px rgba(127,119,221,.18);
     background:var(--mc-orange);
     color:#fff;
-    box-shadow:0 4px 16px rgba(249,115,22,.28);
 }
 
-.mc-empty{text-align:center;padding:2cm;font-weight:800;color:#b91c1c;}
+.mc-empty{text-align:center;padding:28px;font-weight:800;color:#b91c1c;}
 
-.mc-activity{display:flex;flex-direction:column;flex:1;min-height:0;gap:0.4cm;}
+.completed-screen{display:none;}
+.completed-screen.active{display:block;}
 .mc-activity.is-hidden{display:none;}
-
-.completed-screen{
-    display:none;
-    flex-direction:column;
-    align-items:center;
-    justify-content:center;
-    text-align:center;
-    flex:1;
-    min-height:0;
-    padding:1cm;
-    gap:0.6cm;
+.passive-done {
+    display: none;
+    width: min(680px, 100%);
+    margin: 24px auto 0;
+    text-align: center;
+    padding: clamp(28px, 5vw, 54px);
+    border-radius: 34px;
+    background: #fff;
+    border: 1px solid #E2F7EF;
+    box-shadow: 0 8px 40px rgba(8,80,65,.12);
 }
-.completed-screen.active{display:flex;}
-.completed-icon{font-size:clamp(48px,8vw,80px);line-height:1;}
-.completed-title{
-    font-family:'Fredoka',sans-serif;
-    font-size:clamp(24px,4vw,48px);
-    font-weight:700;
-    color:var(--mc-orange);
-    margin:0;
-    line-height:1.1;
-}
-.completed-text{font-size:clamp(13px,1.6vw,16px);color:var(--mc-muted);margin:0;font-weight:700;line-height:1.6;}
-.completed-button{
-    padding:10px 26px;
-    border:none;
-    border-radius:999px;
-    background:var(--mc-purple);
-    color:#fff;
-    font-weight:700;
-    font-size:15px;
-    cursor:pointer;
-    font-family:'Nunito',sans-serif;
-    box-shadow:0 4px 16px rgba(127,119,221,.3);
-    transition:transform .18s ease,filter .18s ease;
-}
-.completed-button:hover{transform:scale(1.05);filter:brightness(1.07);}
+.passive-done.active { display: block; animation: passivePop .45s cubic-bezier(.2,.9,.2,1); }
+@keyframes passivePop { from { opacity:0; transform:scale(.92); } to { opacity:1; transform:scale(1); } }
+.passive-done-icon { font-size: clamp(66px,12vw,100px); margin-bottom: 12px; }
+.passive-done-title { margin: 0 0 10px; font-family: 'Fredoka', sans-serif; font-size: clamp(34px,6vw,60px); color: #085041; line-height: 1; }
+.passive-done-text { margin: 0 auto 22px; max-width: 520px; color: #7C739B; font-size: clamp(14px,2vw,17px); font-weight: 800; line-height: 1.5; }
+.passive-done-track { height: 14px; max-width: 420px; margin: 0 auto 18px; border-radius: 999px; background: #E2F7EF; overflow: hidden; }
+.passive-done-fill { height: 100%; width: 0%; border-radius: 999px; background: linear-gradient(90deg, #1D9E75, #7F77DD, #EC4899); transition: width .8s cubic-bezier(.2,.9,.2,1); }
+.passive-done-btn { display: inline-flex; align-items: center; gap: 8px; padding: 13px 28px; border-radius: 999px; border: 0; background: #1D9E75; color: #fff; font-family: 'Nunito', sans-serif; font-size: 15px; font-weight: 900; cursor: pointer; box-shadow: 0 6px 18px rgba(29,158,117,.30); transition: .18s; }
+.passive-done-btn:hover { transform: translateY(-2px); }
 
 @keyframes mcVanish{
     0%  {opacity:1;transform:scale(1);}
@@ -589,50 +611,55 @@ body{
 }
 
 @media(max-width:900px){
-    :root{--mc-cols:<?= (int) $tabletCols ?>;--mc-rows:<?= (int) $tabletRows ?>;--mc-gap:0.5cm;}
-    .mc-page{padding:0.4cm 0.6cm;gap:0.3cm;}
+    :root{--mc-cols:<?= (int) $tabletCols ?>;--mc-gap:10px;}
+    .mc-page{padding:10px;}
+    .mc-stage{border-radius:26px;padding:12px;}
 }
 @media(max-width:640px){
-    :root{--mc-cols:<?= (int) $mobileCols ?>;--mc-rows:<?= (int) $mobileRows ?>;--mc-gap:0.3cm;}
-    .mc-page{padding:0.3cm;gap:0.2cm;}
+    :root{--mc-cols:<?= (int) $mobileCols ?>;--mc-gap:8px;}
 }
 @media(max-width:420px){
-    :root{--mc-cols:2;--mc-rows:<?= (int) ceil($totalCards / 2) ?>;--mc-gap:0.25cm;}
+    :root{--mc-cols:2;}
 }
 </style>
 
 <div class="mc-page">
-<?php if (empty($cards)): ?>
-  <div class="mc-empty">No pairs configured yet for this activity.</div>
-<?php else: ?>
-  <section class="mc-activity" id="mc-activity">
-    <h1 class="mc-title"><?= htmlspecialchars($viewerTitle, ENT_QUOTES, 'UTF-8') ?></h1>
-
-    <div class="mc-stats">
-      <div class="mc-pill">&#x1F3AF; Pairs: <span id="mc-total"><?= (int) $totalPairs ?></span></div>
-      <div class="mc-pill">&#x2705; Matched: <span id="mc-matched">0</span></div>
-    </div>
-
-    <div id="mc-board" class="mc-board"></div>
-
-    <div class="mc-btn-row">
-      <button type="button" class="mc-btn mc-btn-restart" id="mc-restart">&#x21BA; Restart</button>
-      <button type="button" class="mc-btn mc-btn-finish" id="mc-finish">Finished &#x2192;</button>
-    </div>
-  </section>
-
-  <div id="mc-complete" class="completed-screen">
-    <div class="completed-icon">&#x2705;</div>
-    <h2 class="completed-title" id="mc-completed-title"></h2>
-    <p class="completed-text" id="mc-completed-text"></p>
-    <button type="button" class="completed-button" id="mc-completed-restart">&#x21BA; Play Again</button>
+<div class="mc-app">
+  <div class="mc-hero">
+    <div class="mc-kicker">Activity</div>
+    <h1><?= htmlspecialchars($viewerTitle, ENT_QUOTES, 'UTF-8') ?></h1>
+    <p>Match every pair to complete the memory challenge.</p>
   </div>
 
-  <audio id="mc-audio-match" preload="auto" src="../../hangman/assets/swoosh%20sound.mp3"></audio>
-  <audio id="mc-audio-lose"  preload="auto" src="../../hangman/assets/losefun.mp3"></audio>
-  <audio id="mc-audio-win"   preload="auto" src="../../hangman/assets/win.mp3"></audio>
+  <div class="mc-stage">
+    <div class="mc-viewer" id="mc-app">
+<?php if (empty($cards)): ?>
+      <div class="mc-shell">
+        <div class="mc-empty">No pairs configured yet for this activity.</div>
+      </div>
+<?php else: ?>
+      <section class="mc-shell mc-activity" id="mc-activity">
+        <div class="mc-stats">
+          <div class="mc-pill">Pairs: <span id="mc-total"><?= (int) $totalPairs ?></span></div>
+          <div class="mc-pill">Matched: <span id="mc-matched">0</span></div>
+          <div class="mc-pill">Moves: <span id="mc-moves">0</span></div>
+        </div>
 
-  <script>
+        <div id="mc-board" class="mc-board"></div>
+
+        <div class="mc-restart-row">
+          <button type="button" class="mc-btn" id="mc-restart">Restart</button>
+        </div>
+      </section>
+
+      <div id="mc-complete" class="completed-screen"></div>
+
+      <audio id="mc-audio-flip"  preload="auto" src="../../hangman/assets/card%20flip.mp3.mp3"></audio>
+      <audio id="mc-audio-match" preload="auto" src="../../hangman/assets/swoosh%20sound.mp3"></audio>
+      <audio id="mc-audio-lose"  preload="auto" src="../../hangman/assets/losefun.mp3"></audio>
+      <audio id="mc-audio-win"   preload="auto" src="../../hangman/assets/win.mp3"></audio>
+
+      <script>
 (function () {
     const seedCards     = <?= json_encode($cards, JSON_UNESCAPED_UNICODE) ?>;
     const totalPairs    = <?= (int) $totalPairs ?>;
@@ -640,13 +667,10 @@ body{
 
     const board               = document.getElementById('mc-board');
     const matchedEl           = document.getElementById('mc-matched');
+    const movesEl             = document.getElementById('mc-moves');
     const restartBtn          = document.getElementById('mc-restart');
-    const finishBtn           = document.getElementById('mc-finish');
     const completeEl          = document.getElementById('mc-complete');
     const activityEl          = document.getElementById('mc-activity');
-    const completedTitleEl    = document.getElementById('mc-completed-title');
-    const completedTextEl     = document.getElementById('mc-completed-text');
-    const completedRestartBtn = document.getElementById('mc-completed-restart');
     const matchAudioEl        = document.getElementById('mc-audio-match');
     const loseAudioEl         = document.getElementById('mc-audio-lose');
     const winAudioEl          = document.getElementById('mc-audio-win');
@@ -657,11 +681,12 @@ body{
     let selected  = [];
     let matched   = new Set();
     let lockBoard = false;
+    let moves     = 0;
 
     const matchDelayMs            = 620;
     const vanishDurationMs        = 340;
     const mismatchFlipBackDelayMs = 760;
-    const completedDelayMs        = 600;
+    const completedDelayMs        = 900;
 
     function shuffle(list) {
         const copy = list.slice();
@@ -687,6 +712,7 @@ body{
 
     function updateStats() {
         if (matchedEl) matchedEl.textContent = String(Math.floor(matched.size / 2));
+        if (movesEl)   movesEl.textContent   = String(moves);
     }
 
     function playAudio(el, vol) {
@@ -702,19 +728,51 @@ body{
         else if (kind === 'win')   playAudio(winAudioEl,   0.9);
     }
 
-    function showCompleted(isAutomatic) {
-        if (completedTitleEl) completedTitleEl.textContent = activityTitle || 'Memory Cards';
-        if (completedTextEl) {
-            const pairsMatched = Math.floor(matched.size / 2);
-            completedTextEl.textContent = isAutomatic
-                ? 'Amazing! You matched all ' + totalPairs + ' pairs!'
-                : 'You matched ' + pairsMatched + ' of ' + totalPairs + ' pairs. Great work!';
+    function showPassiveDone(containerEl, opts) {
+        containerEl.innerHTML =
+            '<div class="passive-done" id="passive-done-card">' +
+            '  <div class="passive-done-icon">🎉</div>' +
+            '  <h2 class="passive-done-title">All Done!</h2>' +
+            '  <p class="passive-done-text">' + (opts.text || 'Great work!') + '</p>' +
+            '  <div class="passive-done-track"><div class="passive-done-fill" id="passive-fill"></div></div>' +
+            '  <div><button class="passive-done-btn" id="passive-restart-btn">&#8635; ' + (opts.restartLabel || 'Play Again') + '</button></div>' +
+            '</div>';
+        var card = document.getElementById('passive-done-card');
+        var fill = document.getElementById('passive-fill');
+        var btn  = document.getElementById('passive-restart-btn');
+        requestAnimationFrame(function () {
+            card.classList.add('active');
+            setTimeout(function () { if (fill) fill.style.width = '100%'; }, 80);
+        });
+        if (btn && opts.onRestart) btn.addEventListener('click', opts.onRestart);
+        if (opts.winAudio) { try { opts.winAudio.currentTime = 0; opts.winAudio.play(); } catch(e){} }
+        if (opts.returnTo && opts.activityId) {
+            var sep = opts.returnTo.indexOf('?') !== -1 ? '&' : '?';
+            fetch(opts.returnTo + sep + 'activity_percent=100&activity_errors=0&activity_total=' + (opts.total||1) +
+                '&activity_id=' + encodeURIComponent(opts.activityId) +
+                '&activity_type=' + encodeURIComponent(opts.activityType || 'activity'),
+                { method: 'GET', credentials: 'same-origin', cache: 'no-store' }).catch(function(){});
         }
+    }
+
+    function showCompleted() {
         playSound('win');
         if (activityEl) activityEl.classList.add('is-hidden');
         window.setTimeout(function () {
-            if (completeEl) completeEl.classList.add('active');
-        }, isAutomatic ? completedDelayMs : 0);
+            if (completeEl) {
+                completeEl.classList.add('active');
+                showPassiveDone(completeEl, {
+                    text: 'You matched all ' + totalPairs + ' pairs in ' + moves + ' moves!',
+                    restartLabel: 'Play Again',
+                    onRestart: function () {
+                        completeEl.classList.remove('active');
+                        completeEl.innerHTML = '';
+                        restart();
+                    },
+                    winAudio: winAudioEl
+                });
+            }
+        }, completedDelayMs);
     }
 
     function handleCardClick(index) {
@@ -726,6 +784,9 @@ body{
         if (node) node.classList.add('is-flipped');
 
         if (selected.length < 2) return;
+
+        moves++;
+        updateStats();
 
         const ai = selected[0], bi = selected[1];
         const a  = deck[ai],    b  = deck[bi];
@@ -745,12 +806,13 @@ body{
 
             const isFinal = matched.size === deck.length;
             window.setTimeout(function () {
+                playSound('match');
                 if (an) an.classList.add('is-vanishing');
                 if (bn) bn.classList.add('is-vanishing');
                 window.setTimeout(function () {
                     if (an) an.classList.add('is-hidden');
                     if (bn) bn.classList.add('is-hidden');
-                    if (isFinal) { showCompleted(true); } else { lockBoard = false; }
+                    if (isFinal) { showCompleted(); } else { lockBoard = false; }
                 }, vanishDurationMs);
             }, matchDelayMs);
             return;
@@ -771,11 +833,11 @@ body{
     function renderBoard() {
         board.innerHTML = '';
         deck.forEach(function (card, index) {
-            const btn             = document.createElement('button');
-            btn.type              = 'button';
-            btn.className         = 'mc-card';
+            const btn         = document.createElement('button');
+            btn.type          = 'button';
+            btn.className     = 'mc-card';
             btn.dataset.cardIndex = String(index);
-            btn.innerHTML =
+            btn.innerHTML     =
                 '<span class="mc-card-inner">' +
                     '<span class="mc-card-face mc-card-front">?</span>' +
                     '<span class="mc-card-face mc-card-back">' + cardBackMarkup(card) + '</span>' +
@@ -790,20 +852,23 @@ body{
         selected  = [];
         matched   = new Set();
         lockBoard = false;
+        moves     = 0;
         if (activityEl) activityEl.classList.remove('is-hidden');
         if (completeEl) completeEl.classList.remove('active');
         renderBoard();
         updateStats();
     }
 
-    if (restartBtn)          restartBtn.addEventListener('click', restart);
-    if (finishBtn)           finishBtn.addEventListener('click', function () { showCompleted(false); });
-    if (completedRestartBtn) completedRestartBtn.addEventListener('click', restart);
+    if (restartBtn) restartBtn.addEventListener('click', restart);
+    // completedRestartBtn is now injected by showPassiveDone
 
     restart();
 })();
-  </script>
+      </script>
 <?php endif; ?>
+    </div>
+  </div>
+</div>
 </div>
 <?php
 $content = ob_get_clean();
