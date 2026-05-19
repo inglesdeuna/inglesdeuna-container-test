@@ -570,7 +570,7 @@ ob_start();
     .qa-premium-text{font-size:clamp(14px,4vw,22px)}
 }
 
-/* ── Fullscreen / embedded: equal margin on all 4 sides ── */
+/* ── Fullscreen / embedded: sized like Pronunciation container ── */
 body.embedded-mode .viewer-content,
 body.fullscreen-embedded .viewer-content,
 body.presentation-mode .viewer-content {
@@ -578,7 +578,7 @@ body.presentation-mode .viewer-content {
     position: relative !important;
 }
 
-/* Shell fills the iframe completely */
+/* Shell: fills iframe, centers the app horizontally and vertically */
 body.embedded-mode .qa-premium-shell,
 body.fullscreen-embedded .qa-premium-shell,
 body.presentation-mode .qa-premium-shell {
@@ -586,33 +586,34 @@ body.presentation-mode .qa-premium-shell {
     inset: 0 !important;
     max-width: none !important;
     margin: 0 !important;
-    padding: 0 !important;
+    padding: clamp(20px,3vh,40px) 0 !important;
     border-radius: 0 !important;
-    display: block !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
     overflow: hidden !important;
-    align-items: unset !important;
-    justify-content: unset !important;
 }
 
-/* App is a positioning context that also fills the iframe */
+/* App: max-width centered, acts as positioning context for the floating title */
 body.embedded-mode .qa-premium-app,
 body.fullscreen-embedded .qa-premium-app,
 body.presentation-mode .qa-premium-app {
-    position: absolute !important;
-    inset: 0 !important;
-    flex: none !important;
-    width: auto !important;
+    position: relative !important;
+    flex: 1 !important;
+    width: min(860px, calc(100% - clamp(48px,8vw,120px))) !important;
     min-height: 0 !important;
-    display: block !important;
+    display: flex !important;
+    flex-direction: column !important;
     gap: 0 !important;
 }
 
-/* Title floats at the top, centered, at the same offset as the board margin */
+/* Title: floats at the very top of the app area */
 body.embedded-mode .qa-premium-app > div:first-child,
 body.fullscreen-embedded .qa-premium-app > div:first-child,
 body.presentation-mode .qa-premium-app > div:first-child {
     position: absolute !important;
-    top: clamp(14px,2vw,26px) !important;
+    top: 0 !important;
     left: 0 !important;
     right: 0 !important;
     z-index: 10 !important;
@@ -620,29 +621,31 @@ body.presentation-mode .qa-premium-app > div:first-child {
     pointer-events: none !important;
 }
 
-/* Board: equal inset from all 4 iframe edges */
+/* Board: fills app height, padding-top reserves space for the floating title */
 body.embedded-mode .qa-premium-board,
 body.fullscreen-embedded .qa-premium-board,
 body.presentation-mode .qa-premium-board {
-    position: absolute !important;
-    inset: clamp(14px,2vw,26px) !important;
-    flex: none !important;
+    position: relative !important;
+    inset: auto !important;
+    flex: 1 !important;
+    min-height: 0 !important;
     display: flex !important;
     flex-direction: column !important;
     justify-content: flex-start !important;
-    padding: clamp(58px,9vh,80px) 20px 16px !important;
+    padding: clamp(56px,9vh,80px) 20px 16px !important;
     border-radius: 24px !important;
-    width: auto !important;
+    width: 100% !important;
     height: auto !important;
 }
 
-/* Completed screen fills the same space as board */
+/* Completed: fills the same app slot as the board */
 body.embedded-mode .qa-premium-completed,
 body.fullscreen-embedded .qa-premium-completed,
 body.presentation-mode .qa-premium-completed {
-    position: absolute !important;
-    inset: clamp(14px,2vw,26px) !important;
-    width: auto !important;
+    position: relative !important;
+    inset: auto !important;
+    flex: 1 !important;
+    width: 100% !important;
     max-width: none !important;
     margin: 0 !important;
     padding: clamp(28px,5vw,54px) !important;
@@ -655,7 +658,7 @@ body.presentation-mode .qa-premium-card-wrap {
     flex: 1 !important;
     min-height: 0 !important;
     align-items: center !important;
-    grid-template-columns: auto minmax(0, 760px) auto !important;
+    grid-template-columns: auto minmax(0, 1fr) auto !important;
     grid-template-rows: 1fr !important;
     width: 100% !important;
 }
@@ -664,7 +667,7 @@ body.embedded-mode .qa-premium-card,
 body.fullscreen-embedded .qa-premium-card,
 body.presentation-mode .qa-premium-card {
     min-height: clamp(180px, 24vh, 260px) !important;
-    max-width: 760px !important;
+    max-width: none !important;
     width: 100% !important;
     align-self: stretch !important;
     height: 100% !important;
@@ -681,7 +684,7 @@ body.embedded-mode .qa-premium-text,
 body.fullscreen-embedded .qa-premium-text,
 body.presentation-mode .qa-premium-text {
     font-size: clamp(20px, 3.5vh, 42px) !important;
-    max-width: 860px !important;
+    max-width: 760px !important;
 }
 </style>
 
