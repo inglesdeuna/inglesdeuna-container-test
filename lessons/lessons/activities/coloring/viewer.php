@@ -439,6 +439,7 @@ body {
     /* ── state ───────────────────────────────────────── */
     var currentIndex      = 0;
     var originalImageData = null;
+    var paintedSnapshots  = [];
 
     /* ── color names ─────────────────────────────────── */
     var colorNames = {
@@ -540,6 +541,7 @@ body {
                 completedEl.classList.remove('active');
                 completedEl.innerHTML = '';
                 currentIndex = 0;
+                paintedSnapshots = [];
                 loadImageAt(0);
                 updateProgress();
             },
@@ -611,15 +613,26 @@ body {
                Math.abs(px[2] - rgb[2]) < tolerance;
     }
 
+    function saveCurrentSnapshot() {
+        if (!canvas || !uploadedImages.length || currentIndex >= uploadedImages.length) return;
+        try {
+            paintedSnapshots[currentIndex] = canvas.toDataURL('image/png');
+        } catch (e) {
+            /* no-op if snapshot cannot be generated */
+        }
+    }
+
     function floodFill(x, y, newColor) {
         if (!ctx || !canvas) return;
         x = Math.floor(x);
         y = Math.floor(y);
         if (x < 0 || y < 0 || x >= canvas.width || y >= canvas.height) return;
         
+        var targetTolerance = 24;
+        var newColorTolerance = 8;
         var newRgb = hex2rgb(newColor);
         var targetPixels = getPixels(x, y);
-        if (!targetPixels || pixelsMatch(targetPixels, newRgb, 10)) return;
+        if (!targetPixels || pixelsMatch(targetPixels, newRgb, newColorTolerance)) return;
 
         var imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
         var data = imgData.data;
@@ -637,7 +650,7 @@ body {
             if (cx < 0 || cy < 0 || cx >= canvas.width || cy >= canvas.height) continue;
             var idx = (cy * canvas.width + cx) * 4;
             var px = [data[idx], data[idx+1], data[idx+2], data[idx+3]];
-            if (!pixelsMatch(px, targetPixels)) continue;
+            if (!pixelsMatch(px, targetPixels, targetTolerance)) continue;
 
             data[idx] = newRgb[0];
             data[idx+1] = newRgb[1];
@@ -650,9 +663,13 @@ body {
     function handleFill(e) {
         if (!canvas || !ctx) return;
         var rect = canvas.getBoundingClientRect();
-        var x = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
-        var y = (e.touches ? e.touches[0].clientY : e.clientY) - rect.top;
+        var point = e.touches ? e.touches[0] : e;
+        var scaleX = canvas.width / rect.width;
+        var scaleY = canvas.height / rect.height;
+        var x = (point.clientX - rect.left) * scaleX;
+        var y = (point.clientY - rect.top) * scaleY;
         floodFill(x, y, selectedColor);
+        saveCurrentSnapshot();
         if (e.preventDefault) e.preventDefault();
     }
 
@@ -678,6 +695,15 @@ body {
             try {
                 originalImageData = ctx.getImageData(0, 0, w, h);
             } catch (e) { /* no-op */ }
+
+            var snapshotSrc = paintedSnapshots[idx];
+            if (snapshotSrc) {
+                var paintedImg = new Image();
+                paintedImg.onload = function () {
+                    ctx.drawImage(paintedImg, 0, 0, w, h);
+                };
+                paintedImg.src = snapshotSrc;
+            }
         };
         img.onerror = function () {
             console.warn('Failed to load image:', uploadedImages[idx]);
@@ -692,6 +718,7 @@ body {
     /* ── button handlers ─────────────────────────────– */
     finishBtn.addEventListener('click', function () {
         if (currentIndex < uploadedImages.length - 1) {
+            saveCurrentSnapshot();
             currentIndex++;
             loadImageAt(currentIndex);
             updateProgress();
@@ -704,12 +731,14 @@ body {
 
     resetBtn.addEventListener('click', function () {
         if (uploadedImages.length && currentIndex < uploadedImages.length) {
+            paintedSnapshots[currentIndex] = null;
             loadImageAt(currentIndex);
         }
     });
 
     window.addEventListener('resize', function () {
         if (!uploadedImages.length || currentIndex >= uploadedImages.length) return;
+        saveCurrentSnapshot();
         loadImageAt(currentIndex);
     });
 
