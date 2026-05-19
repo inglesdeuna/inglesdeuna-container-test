@@ -384,7 +384,7 @@ function save_memory_cards_activity(PDO $pdo, string $unit, string $activityId, 
     }
 
     $newId = function_exists('uuid_create')
-        ? uuid_create(UUID_TYPE_RANDOM)
+        ? (defined('UUID_TYPE_RANDOM') ? uuid_create(UUID_TYPE_RANDOM) : uuid_create())
         : uniqid('memory_cards_', true);
 
     $insertColumns = array('id');
