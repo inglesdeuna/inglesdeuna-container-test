@@ -49,11 +49,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $instruction,
         $image,
         $points,
-        $canvasWidth,
-        $canvasHeight
+        dot_to_dot_default_label_settings()
     );
 
-    header('Location: viewer.php?id=' . urlencode((string)$savedId) . '&unit=' . urlencode($unit));
+    $params = ['unit=' . urlencode($unit), 'saved=1'];
+    if ($savedId !== '') {
+        $params[] = 'id=' . urlencode((string)$savedId);
+    } elseif ($id !== '') {
+        $params[] = 'id=' . urlencode($id);
+    }
+    header('Location: editor.php?' . implode('&', $params));
     exit;
 }
 ?>
@@ -201,6 +206,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 <body>
     <main class="editor-page">
+        <?php if (isset($_GET['saved'])): ?>
+        <p style="color:#16a34a;font-weight:900;margin-bottom:12px;">✔ Saved successfully</p>
+        <?php endif; ?>
         <form class="editor-card" method="post">
             <h1>Dot to Dot Editor</h1>
 
@@ -288,6 +296,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         let uploadedImage = null;
         let uploadedImageData = <?= json_encode($image, JSON_UNESCAPED_UNICODE) ?>;
         let points = <?= json_encode(array_values($points), JSON_UNESCAPED_UNICODE) ?>;
+        // If points are legacy pixel coords (x > 1 or y > 1), they cannot be
+        // converted to ratios — clear them so we don't corrupt the DB again.
+        if (points.length > 0 && (points[0].x > 1 || points[0].y > 1)) {
+            points = [];
+        }
 
         canvas.width = <?= json_encode($canvasWidth) ?>;
         canvas.height = <?= json_encode($canvasHeight) ?>;
@@ -339,10 +352,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         function syncHiddenInputs() {
-            pointsInput.value = JSON.stringify(points);
+            const normalizedPoints = points.map(p => ({
+                x: parseFloat((p.x / canvas.width).toFixed(6)),
+                y: parseFloat((p.y / canvas.height).toFixed(6))
+            }));
+            pointsInput.value = JSON.stringify(normalizedPoints);
             imageDataInput.value = uploadedImageData;
             canvasWidthInput.value = canvas.width;
             canvasHeightInput.value = canvas.height;
+        }
+
+        function ratioPointsToPixels(ratioPoints) {
+            return ratioPoints.map(p => ({
+                x: Math.round(p.x * canvas.width),
+                y: Math.round(p.y * canvas.height)
+            }));
         }
 
         function drawEmptyCanvas() {
@@ -433,6 +457,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             uploadedImage = new Image();
 
             uploadedImage.onload = function () {
+                resizeCanvasToImage();           // size canvas before coordinate math
+                points = ratioPointsToPixels(points); // convert stored 0-1 ratios to pixels
                 renderEditor();
             };
 

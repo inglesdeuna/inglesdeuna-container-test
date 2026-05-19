@@ -1,399 +1,302 @@
 <?php
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
+if (session_status() === PHP_SESSION_NONE) session_start();
 
 require_once __DIR__ . "/../../config/db.php";
 require_once __DIR__ . "/../../core/cloudinary_upload.php";
 require_once __DIR__ . "/../../core/_activity_editor_template.php";
 
-// Block student access to editor
 if (isset($_SESSION['student_logged']) && $_SESSION['student_logged']) {
     header('Location: /lessons/lessons/academic/student_dashboard.php?error=access_denied');
     exit;
 }
 
-// Accept admin OR teacher session
-$isLoggedIn = !empty($_SESSION['academic_logged']) || !empty($_SESSION['admin_logged']);
-if (!$isLoggedIn) {
+if (empty($_SESSION['academic_logged']) && empty($_SESSION['admin_logged'])) {
     header('Location: /lessons/lessons/academic/login.php');
     exit;
 }
 
-$activityId = isset($_GET["id"]) ? trim((string) $_GET["id"]) : "";
-$unit = isset($_GET["unit"]) ? trim((string) $_GET["unit"]) : "";
-$source = isset($_GET["source"]) ? trim((string) $_GET["source"]) : "";
-$assignment = isset($_GET["assignment"]) ? trim((string) $_GET["assignment"]) : "";
+$activityId = trim((string)($_GET["id"] ?? ""));
+$unit       = trim((string)($_GET["unit"] ?? ""));
+$source     = trim((string)($_GET["source"] ?? ""));
+$assignment = trim((string)($_GET["assignment"] ?? ""));
 
-function resolve_unit_from_activity(PDO $pdo, string $activityId): string
-{
-    if ($activityId === "") {
-        return "";
-    }
-
-    $stmt = $pdo->prepare("
-        SELECT unit_id
-        FROM activities
-        WHERE id = :id
-        LIMIT 1
-    ");
-    $stmt->execute(["id" => $activityId]);
-    $row = $stmt->fetch(PDO::FETCH_ASSOC);
-
-    return $row && isset($row["unit_id"]) ? (string) $row["unit_id"] : "";
-}
-
-function default_listen_order_title(): string
-{
+function lo_default_title(): string {
     return "Listen & Order";
 }
 
-function normalize_listen_order_title(string $title): string
-{
-    $title = trim($title);
-    return $title !== "" ? $title : default_listen_order_title();
+function lo_resolve_unit(PDO $pdo, string $id): string {
+    if ($id === "") return "";
+    $st = $pdo->prepare("SELECT unit_id FROM activities WHERE id=:id LIMIT 1");
+    $st->execute(["id" => $id]);
+    $r = $st->fetch(PDO::FETCH_ASSOC);
+    return $r ? (string)$r["unit_id"] : "";
 }
 
-function normalize_listen_order_payload(mixed $rawData): array
-{
-    $default = [
-        "title"        => default_listen_order_title(),
+function lo_normalize(mixed $raw): array {
+    $def = [
+        "title" => lo_default_title(),
         "instructions" => "",
-        "blocks"       => [],
+        "blocks" => [],
     ];
 
-    if ($rawData === null || $rawData === "") {
-        return $default;
-    }
+    if (!$raw) return $def;
 
-    $decoded = is_string($rawData) ? json_decode($rawData, true) : $rawData;
-    if (!is_array($decoded)) {
-        return $default;
-    }
+    $d = is_string($raw) ? json_decode($raw, true) : $raw;
+    if (!is_array($d)) return $def;
 
-    $title        = isset($decoded["title"])        ? trim((string) $decoded["title"])        : "";
-    $instructions = isset($decoded["instructions"]) ? trim((string) $decoded["instructions"]) : "";
-    $blocksSource = $decoded;
-
-    if (isset($decoded["blocks"]) && is_array($decoded["blocks"])) {
-        $blocksSource = $decoded["blocks"];
-    }
+    $title = trim((string)($d["title"] ?? ""));
+    $instr = trim((string)($d["instructions"] ?? ""));
+    $src   = isset($d["blocks"]) && is_array($d["blocks"]) ? $d["blocks"] : $d;
 
     $blocks = [];
 
-    foreach ($blocksSource as $block) {
-        if (!is_array($block)) {
-            continue;
-        }
+    foreach ($src as $b) {
+        if (!is_array($b)) continue;
 
-        $sentence = trim((string) ($block["sentence"] ?? ""));
+        $sentence = trim((string)($b["sentence"] ?? ""));
+        $videoUrl = trim((string)($b["video_url"] ?? ""));
+
         $images = [];
-
-        if (isset($block["images"]) && is_array($block["images"])) {
-            foreach ($block["images"] as $img) {
-                $url = trim((string) $img);
-                if ($url !== "") {
-                    $images[] = $url;
-                }
-            }
+        foreach ((array)($b["images"] ?? []) as $img) {
+            $u = trim((string)$img);
+            if ($u !== "") $images[] = $u;
         }
 
         $dropZoneImages = [];
-        if (isset($block["dropZoneImages"]) && is_array($block["dropZoneImages"])) {
-            foreach ($block["dropZoneImages"] as $dzi) {
-                if (!is_array($dzi)) {
-                    continue;
-                }
-                $dzSrc = trim((string) ($dzi["src"] ?? ""));
-                if ($dzSrc === "") {
-                    continue;
-                }
-                $dropZoneImages[] = [
-                    "id"    => trim((string) ($dzi["id"] ?? uniqid("dzi_"))),
-                    "src"   => $dzSrc,
-                    "left"  => (int) ($dzi["left"] ?? 0),
-                    "top"   => (int) ($dzi["top"] ?? 0),
-                    "width" => max(60, min(800, (int) ($dzi["width"] ?? 180))),
-                ];
-            }
+        foreach ((array)($b["dropZoneImages"] ?? []) as $dzi) {
+            if (!is_array($dzi)) continue;
+            $srcUrl = trim((string)($dzi["src"] ?? ""));
+            if ($srcUrl === "") continue;
+
+            $dropZoneImages[] = [
+                "id"    => trim((string)($dzi["id"] ?? uniqid("dzi_"))),
+                "src"   => $srcUrl,
+                "left"  => (int)($dzi["left"] ?? 0),
+                "top"   => (int)($dzi["top"] ?? 0),
+                "width" => max(60, min(800, (int)($dzi["width"] ?? 180))),
+            ];
         }
 
-        if ($sentence === "") {
-            continue;
-        }
+        $audioUrl = trim((string)($b["audio_url"] ?? ""));
+        $voiceId  = trim((string)($b["voice_id"]  ?? "nzFihrBIvB34imQBuxub"));
+        if ($voiceId === "") $voiceId = "nzFihrBIvB34imQBuxub";
+
+        if ($sentence === "" && $videoUrl === "" && empty($images)) continue;
 
         $blocks[] = [
-            "id"             => trim((string) ($block["id"] ?? uniqid("listen_order_"))),
+            "id"             => trim((string)($b["id"] ?? uniqid("lo_"))),
             "sentence"       => $sentence,
+            "voice_id"       => $voiceId,
+            "audio_url"      => $audioUrl,
+            "video_url"      => $videoUrl,
             "images"         => $images,
             "dropZoneImages" => $dropZoneImages,
         ];
     }
 
     return [
-        "title"        => normalize_listen_order_title($title),
-        "instructions" => $instructions,
+        "title"        => $title !== "" ? $title : lo_default_title(),
+        "instructions" => $instr,
         "blocks"       => $blocks,
     ];
 }
 
-function encode_listen_order_payload(array $payload): string
-{
-    return json_encode([
-        "title"        => normalize_listen_order_title((string) ($payload["title"]        ?? "")),
-        "instructions" => trim((string) ($payload["instructions"] ?? "")),
-        "blocks"       => array_values($payload["blocks"] ?? []),
-    ], JSON_UNESCAPED_UNICODE);
-}
-
-function load_listen_order_activity(PDO $pdo, string $unit, string $activityId): array
-{
+function lo_load(PDO $pdo, string $unit, string $activityId): array {
     $fallback = [
-        "id"           => "",
-        "title"        => default_listen_order_title(),
+        "id" => "",
+        "title" => lo_default_title(),
         "instructions" => "",
-        "blocks"       => [],
+        "blocks" => [],
     ];
 
     $row = null;
 
     if ($activityId !== "") {
-        $stmt = $pdo->prepare("
+        $st = $pdo->prepare("
             SELECT id, data
             FROM activities
-            WHERE id = :id
-              AND type = 'listen_order'
+            WHERE id=:id
+              AND type IN ('listen_order','listen_and_order','listenorder')
             LIMIT 1
         ");
-        $stmt->execute(["id" => $activityId]);
-        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        $st->execute(["id" => $activityId]);
+        $row = $st->fetch(PDO::FETCH_ASSOC);
     }
 
     if (!$row && $unit !== "") {
-        $stmt = $pdo->prepare("
+        $st = $pdo->prepare("
             SELECT id, data
             FROM activities
-            WHERE unit_id = :unit
-              AND type = 'listen_order'
+            WHERE unit_id=:unit
+              AND type IN ('listen_order','listen_and_order','listenorder')
             ORDER BY id ASC
             LIMIT 1
         ");
-        $stmt->execute(["unit" => $unit]);
-        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        $st->execute(["unit" => $unit]);
+        $row = $st->fetch(PDO::FETCH_ASSOC);
     }
 
-    if (!$row) {
-        return $fallback;
-    }
+    if (!$row) return $fallback;
 
-    $payload = normalize_listen_order_payload($row["data"] ?? null);
-
-    return [
-        "id"           => (string) ($row["id"] ?? ""),
-        "title"        => (string) ($payload["title"]        ?? default_listen_order_title()),
-        "instructions" => (string) ($payload["instructions"] ?? ""),
-        "blocks"       => is_array($payload["blocks"] ?? null) ? $payload["blocks"] : [],
-    ];
+    $p = lo_normalize($row["data"] ?? null);
+    return array_merge($p, ["id" => (string)($row["id"] ?? "")]);
 }
 
-function save_listen_order_activity(PDO $pdo, string $unit, string $activityId, string $title, string $instructions, array $blocks): string
-{
-    $json = encode_listen_order_payload([
-        "title"        => $title,
-        "instructions" => $instructions,
-        "blocks"       => $blocks,
-    ]);
+function lo_save(PDO $pdo, string $unit, string $actId, string $title, string $instr, array $blocks): string {
+    $json = json_encode([
+        "title"        => $title !== "" ? $title : lo_default_title(),
+        "instructions" => $instr,
+        "blocks"       => array_values($blocks),
+    ], JSON_UNESCAPED_UNICODE);
 
-    $targetId = $activityId;
+    $tid = $actId;
 
-    if ($targetId === "") {
-        $stmt = $pdo->prepare("
+    if ($tid === "") {
+        $st = $pdo->prepare("
             SELECT id
             FROM activities
-            WHERE unit_id = :unit
-              AND type = 'listen_order'
+            WHERE unit_id=:unit
+              AND type IN ('listen_order','listen_and_order','listenorder')
             ORDER BY id ASC
             LIMIT 1
         ");
-        $stmt->execute(["unit" => $unit]);
-        $targetId = trim((string) $stmt->fetchColumn());
+        $st->execute(["unit" => $unit]);
+        $tid = trim((string)$st->fetchColumn());
     }
 
-    if ($targetId !== "") {
-        $stmt = $pdo->prepare("
+    if ($tid !== "") {
+        $st = $pdo->prepare("
             UPDATE activities
-            SET data = :data
-            WHERE id = :id
-              AND type = 'listen_order'
+            SET data=:data, type='listen_order'
+            WHERE id=:id
         ");
-        $stmt->execute([
-            "data" => $json,
-            "id" => $targetId,
-        ]);
-
-        return $targetId;
+        $st->execute(["data" => $json, "id" => $tid]);
+        return $tid;
     }
 
-    $stmt = $pdo->prepare("
-        INSERT INTO activities (unit_id, type, data, position, created_at)
+    $st = $pdo->prepare("
+        INSERT INTO activities (unit_id,type,data,position,created_at)
         VALUES (
-            :unit_id,
+            :u,
             'listen_order',
-            :data,
-            (
-                SELECT COALESCE(MAX(position), 0) + 1
-                FROM activities
-                WHERE unit_id = :unit_id2
-            ),
+            :d,
+            (SELECT COALESCE(MAX(position),0)+1 FROM activities WHERE unit_id=:u2),
             CURRENT_TIMESTAMP
         )
         RETURNING id
     ");
-    $stmt->execute([
-        "unit_id" => $unit,
-        "unit_id2" => $unit,
-        "data" => $json,
-    ]);
+    $st->execute(["u" => $unit, "u2" => $unit, "d" => $json]);
 
-    return (string) $stmt->fetchColumn();
+    return (string)$st->fetchColumn();
 }
 
 if ($unit === "" && $activityId !== "") {
-    $unit = resolve_unit_from_activity($pdo, $activityId);
+    $unit = lo_resolve_unit($pdo, $activityId);
 }
 
-if ($unit === "") {
-    die("Unit not specified");
-}
+if ($unit === "") die("Unit not specified");
 
-$activity = load_listen_order_activity($pdo, $unit, $activityId);
-$activityTitle        = (string) ($activity["title"]        ?? default_listen_order_title());
-$activityInstructions = (string) ($activity["instructions"] ?? "");
-$blocks               = is_array($activity["blocks"] ?? null) ? $activity["blocks"] : [];
+$activity = lo_load($pdo, $unit, $activityId);
+$edTitle  = (string)($activity["title"] ?? lo_default_title());
+$edInstr  = (string)($activity["instructions"] ?? "");
+$blocks   = is_array($activity["blocks"] ?? null) ? $activity["blocks"] : [];
 
 if ($activityId === "" && !empty($activity["id"])) {
-    $activityId = (string) $activity["id"];
+    $activityId = (string)$activity["id"];
 }
 
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
-    $postedTitle        = trim((string) ($_POST["activity_title"]        ?? ""));
-    $postedInstructions = trim((string) ($_POST["activity_instructions"] ?? ""));
-    $blockIds       = isset($_POST["block_id"])        && is_array($_POST["block_id"])        ? $_POST["block_id"]        : [];
-    $sentences      = isset($_POST["sentence"])        && is_array($_POST["sentence"])        ? $_POST["sentence"]        : [];
-    $existingImages = isset($_POST["images_existing"]) && is_array($_POST["images_existing"]) ? $_POST["images_existing"] : [];
-    $imageFiles     = isset($_FILES["images"])         ? $_FILES["images"]                   : null;
+    $postedTitle = trim((string)($_POST["activity_title"] ?? ""));
+    $postedInstr = trim((string)($_POST["activity_instructions"] ?? ""));
 
-    /* Drop zone image POST fields */
-    $dzExistingByBlock = isset($_POST["dz_image_existing"]) && is_array($_POST["dz_image_existing"]) ? $_POST["dz_image_existing"] : [];
-    $dzLeftByBlock     = isset($_POST["dz_image_left"])     && is_array($_POST["dz_image_left"])     ? $_POST["dz_image_left"]     : [];
-    $dzTopByBlock      = isset($_POST["dz_image_top"])      && is_array($_POST["dz_image_top"])      ? $_POST["dz_image_top"]      : [];
-    $dzWidthByBlock    = isset($_POST["dz_image_width"])    && is_array($_POST["dz_image_width"])    ? $_POST["dz_image_width"]    : [];
-    $dzIdByBlock       = isset($_POST["dz_image_id"])       && is_array($_POST["dz_image_id"])       ? $_POST["dz_image_id"]       : [];
-    $dzFileInput       = isset($_FILES["dz_image_file"])    ? $_FILES["dz_image_file"]               : null;
+    $blockIds       = is_array($_POST["block_id"] ?? null) ? $_POST["block_id"] : [];
+    $videoExisting  = is_array($_POST["video_url_existing"] ?? null) ? $_POST["video_url_existing"] : [];
+    $audioExisting  = is_array($_POST["audio_url_existing"] ?? null) ? $_POST["audio_url_existing"] : [];
+    $sentences      = is_array($_POST["sentence"] ?? null) ? $_POST["sentence"] : [];
+    $voiceIds       = is_array($_POST["voice_id"] ?? null) ? $_POST["voice_id"] : [];
+    $imagesExisting = is_array($_POST["images_existing"] ?? null) ? $_POST["images_existing"] : [];
+
+    $videoFiles = $_FILES["video_file"] ?? null;
+    $imageFiles = $_FILES["images"] ?? null;
+
+    $blockCount = max(
+        count($blockIds),
+        count($videoExisting),
+        count($audioExisting),
+        count($sentences),
+        count($voiceIds),
+        count($imagesExisting),
+        is_array($videoFiles["name"] ?? null) ? count($videoFiles["name"]) : 0,
+        is_array($imageFiles["name"] ?? null) ? count($imageFiles["name"]) : 0
+    );
 
     $sanitized = [];
 
-    foreach ($sentences as $i => $sentenceRaw) {
-        $sentence = trim((string) $sentenceRaw);
-        $blockId  = trim((string) ($blockIds[$i] ?? uniqid("listen_order_")));
+    for ($i = 0; $i < $blockCount; $i++) {
+        $blockId  = trim((string)($blockIds[$i] ?? uniqid("lo_")));
 
-        /* Chip images */
+        $sentence = trim((string)($sentences[$i] ?? ""));
+        $audioUrl = trim((string)($audioExisting[$i] ?? ""));
+        $videoUrl = trim((string)($videoExisting[$i] ?? ""));
+        $voiceId  = trim((string)($voiceIds[$i] ?? "nzFihrBIvB34imQBuxub"));
+        if ($voiceId === "" || !preg_match('/^[A-Za-z0-9]+$/', $voiceId)) $voiceId = "nzFihrBIvB34imQBuxub";
+
+        if (
+            $videoFiles &&
+            isset($videoFiles["tmp_name"][$i]) &&
+            !empty($videoFiles["tmp_name"][$i]) &&
+            ($videoFiles["error"][$i] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_OK
+        ) {
+            $uploadedVideo = upload_video_to_cloudinary($videoFiles["tmp_name"][$i]);
+            if ($uploadedVideo) {
+                $videoUrl = $uploadedVideo;
+            }
+        }
+
         $images = [];
-        if (isset($existingImages[$i]) && is_array($existingImages[$i])) {
-            foreach ($existingImages[$i] as $img) {
-                $url = trim((string) $img);
-                if ($url !== "") {
-                    $images[] = $url;
-                }
+
+        if (isset($imagesExisting[$i]) && is_array($imagesExisting[$i])) {
+            foreach ($imagesExisting[$i] as $img) {
+                $u = trim((string)$img);
+                if ($u !== "") $images[] = $u;
             }
         }
 
-        if (
-            $imageFiles &&
-            isset($imageFiles["name"][$i]) &&
-            is_array($imageFiles["name"][$i])
-        ) {
+        if ($imageFiles && isset($imageFiles["name"][$i]) && is_array($imageFiles["name"][$i])) {
             foreach ($imageFiles["name"][$i] as $k => $name) {
-                if (!$name || empty($imageFiles["tmp_name"][$i][$k])) {
-                    continue;
-                }
+                if (!$name || empty($imageFiles["tmp_name"][$i][$k])) continue;
+                if (($imageFiles["error"][$i][$k] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) continue;
 
-                $url = upload_to_cloudinary($imageFiles["tmp_name"][$i][$k]);
-                if ($url) {
-                    $images[] = $url;
+                $uploadedImage = upload_to_cloudinary($imageFiles["tmp_name"][$i][$k]);
+                if ($uploadedImage) {
+                    $images[] = $uploadedImage;
                 }
             }
         }
 
-        /* Drop zone background image */
-        $dzSrc   = trim((string) ($dzExistingByBlock[$i] ?? ""));
-        $dzLeft  = (int) ($dzLeftByBlock[$i]  ?? 0);
-        $dzTop   = (int) ($dzTopByBlock[$i]   ?? 0);
-        $dzWidth = max(60, min(800, (int) ($dzWidthByBlock[$i] ?? 180)));
-        $dzId    = trim((string) ($dzIdByBlock[$i] ?? ""));
-
-        if (
-            $dzFileInput &&
-            isset($dzFileInput["tmp_name"][$i]) &&
-            !empty($dzFileInput["tmp_name"][$i]) &&
-            ($dzFileInput["error"][$i] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_OK
-        ) {
-            $uploadedDz = upload_to_cloudinary($dzFileInput["tmp_name"][$i]);
-            if ($uploadedDz) {
-                $dzSrc = $uploadedDz;
-                $dzId  = uniqid("dzi_");
-            }
-        }
-
-        if ($dzId === "") {
-            $dzId = uniqid("dzi_");
-        }
-
-        $dzImages = [];
-        if ($dzSrc !== "") {
-            $dzImages = [
-                [
-                    "id"    => $dzId,
-                    "src"   => $dzSrc,
-                    "left"  => $dzLeft,
-                    "top"   => $dzTop,
-                    "width" => $dzWidth,
-                ],
-            ];
-        }
-
-        if ($sentence === "") {
+        if ($videoUrl === "" && empty($images)) {
             continue;
         }
 
         $sanitized[] = [
-            "id"             => $blockId !== "" ? $blockId : uniqid("listen_order_"),
+            "id"             => $blockId !== "" ? $blockId : uniqid("lo_"),
             "sentence"       => $sentence,
+            "voice_id"       => $voiceId,
+            "audio_url"      => $audioUrl,
+            "video_url"      => $videoUrl,
             "images"         => array_values($images),
-            "dropZoneImages" => $dzImages,
+            "dropZoneImages" => [],
         ];
     }
 
-    $savedActivityId = save_listen_order_activity($pdo, $unit, $activityId, $postedTitle, $postedInstructions, $sanitized);
+    $savedId = lo_save($pdo, $unit, $activityId, $postedTitle, $postedInstr, $sanitized);
 
-    $params = [
-        "unit=" . urlencode($unit),
-        "saved=1"
-    ];
+    $qs = "unit=" . urlencode($unit) . "&saved=1";
+    if ($savedId !== "") $qs .= "&id=" . urlencode($savedId);
+    if ($assignment !== "") $qs .= "&assignment=" . urlencode($assignment);
+    if ($source !== "") $qs .= "&source=" . urlencode($source);
 
-    if ($savedActivityId !== "") {
-        $params[] = "id=" . urlencode($savedActivityId);
-    }
-
-    if ($assignment !== "") {
-        $params[] = "assignment=" . urlencode($assignment);
-    }
-
-    if ($source !== "") {
-        $params[] = "source=" . urlencode($source);
-    }
-
-    header("Location: editor.php?" . implode("&", $params));
+    header("Location: editor.php?" . $qs);
     exit;
 }
 
@@ -408,1000 +311,564 @@ if (isset($_GET["saved"])) {
 
 <style>
 *{box-sizing:border-box}
-
-body{background:#f8f7ff!important;font-family:'Nunito','Segoe UI',sans-serif!important}
-
-.lo-form{
-    max-width:780px;
-    margin:0 auto;
-    text-align:left;
-    font-family:'Nunito','Segoe UI',sans-serif;
-}
-
-/* Saved message */
-.lo-saved{
-    background:#E6F9F2;
-    border:1px solid #9FE1CB;
-    border-radius:12px;
-    padding:10px 16px;
-    color:#0F6E56;
-    font-family:'Nunito',sans-serif;
-    font-size:13px;
-    font-weight:900;
-    margin-bottom:16px;
-}
-
-/* Cards */
-.lo-card,
-.block-item{
-    background:#ffffff;
-    border:1px solid #F0EEF8;
-    border-radius:20px;
-    padding:20px 22px;
-    margin-bottom:14px;
-    box-shadow:0 4px 18px rgba(127,119,221,.08);
-}
-
-/* Field labels */
-.field-label{
-    display:block;
-    font-size:12px;
-    font-weight:900;
-    letter-spacing:.08em;
-    text-transform:uppercase;
-    color:#9B94BE;
-    margin-bottom:8px;
-    font-family:'Nunito',sans-serif;
-}
-
-.field-badge{
-    display:inline-block;
-    background:#EEEDFE;
-    color:#534AB7;
-    border-radius:999px;
-    padding:2px 8px;
-    font-size:10px;
-    font-weight:700;
-    letter-spacing:0;
-    text-transform:none;
-    margin-left:6px;
-    vertical-align:middle;
-}
-
-/* Inputs */
-.lo-form input[type="text"],
-.lo-form input[type="url"],
-.lo-form input[type="number"],
-.lo-form textarea{
-    width:100%;
-    border:1.5px solid #EDE9FA;
-    border-radius:12px;
-    padding:11px 14px;
-    font-family:'Nunito',sans-serif;
-    font-size:14px;
-    font-weight:700;
-    color:#271B5D;
-    background:#ffffff;
-    outline:none;
-    margin-bottom:12px;
-    transition:border-color .15s,box-shadow .15s;
-}
-
-.lo-form input[type="text"]:focus,
-.lo-form input[type="url"]:focus,
-.lo-form input[type="number"]:focus,
-.lo-form textarea:focus{
-    border-color:#7F77DD;
-    box-shadow:0 0 0 3px rgba(127,119,221,.10);
-}
-
-.lo-form textarea{
-    min-height:60px;
-    resize:vertical;
-}
-
-/* Block header */
-.block-header-row{
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
-    margin-bottom:16px;
-}
-
-.block-badge{
-    background:#EEEDFE;
-    color:#534AB7;
-    border-radius:999px;
-    padding:4px 14px;
-    font-family:'Nunito',sans-serif;
-    font-size:12px;
-    font-weight:900;
-}
-
-.btn-remove{
-    background:#FCEBEB;
-    color:#E24B4A;
-    border:1px solid #F7C1C1;
-    border-radius:999px;
-    padding:5px 14px;
-    font-family:'Nunito',sans-serif;
-    font-size:12px;
-    font-weight:900;
-    cursor:pointer;
-    transition:transform .12s;
-}
-.btn-remove:hover{transform:translateY(-1px)}
-
-/* Media toggle */
-.media-toggle-row{
-    display:flex;
-    gap:8px;
-    flex-wrap:wrap;
-    margin-bottom:14px;
-}
-
-.media-tab{
-    border:1.5px solid #EDE9FA;
-    background:#ffffff;
-    color:#534AB7;
-    border-radius:999px;
-    padding:7px 18px;
-    font-family:'Nunito',sans-serif;
-    font-size:12px;
-    font-weight:900;
-    cursor:pointer;
-    transition:all .15s;
-}
-
-.media-tab.active{
-    background:#7F77DD;
-    color:#ffffff;
-    border-color:#7F77DD;
-    box-shadow:0 6px 18px rgba(127,119,221,.22);
-}
-
-/* Audio upload zone */
-.audio-upload-zone{
-    border:2px dashed #EDE9FA;
-    border-radius:14px;
-    background:#FAFAFE;
-    padding:20px;
-    text-align:center;
-    cursor:pointer;
-    margin-bottom:14px;
-    transition:border-color .15s,background .15s;
-}
-.audio-upload-zone:hover{
-    border-color:#7F77DD;
-    background:#EEEDFE;
-}
-.audio-upload-icon{
-    width:40px;
-    height:40px;
-    border-radius:50%;
-    background:#EEEDFE;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    margin:0 auto 8px;
-    font-size:18px;
-}
-.audio-upload-title{
-    font-family:'Nunito',sans-serif;
-    font-size:13px;
-    font-weight:900;
-    color:#534AB7;
-    margin-bottom:3px;
-}
-.audio-upload-sub{
-    font-family:'Nunito',sans-serif;
-    font-size:11px;
-    font-weight:700;
-    color:#9B94BE;
-}
-.audio-file-pill{
-    display:inline-block;
-    background:#EEEDFE;
-    color:#534AB7;
-    border-radius:999px;
-    padding:4px 12px;
-    font-family:'Nunito',sans-serif;
-    font-size:12px;
-    font-weight:900;
-    margin-top:8px;
-}
-
-/* Video URL hint */
-.field-hint{
-    color:#9B94BE;
-    font-family:'Nunito',sans-serif;
-    font-size:12px;
-    font-weight:800;
-    margin:-6px 0 12px;
-}
-
-/* Image grid */
-.img-grid{
-    display:flex;
-    flex-wrap:wrap;
-    gap:10px;
-    margin-bottom:8px;
-    align-items:flex-start;
-}
-
-.img-card{
-    position:relative;
-    width:86px;
-    border-radius:14px;
-    border:1.5px solid #EDE9FA;
-    overflow:visible;
-    background:#ffffff;
-    display:flex;
-    flex-direction:column;
-    align-items:center;
-}
-
-.img-card img{
-    width:86px;
-    height:86px;
-    object-fit:cover;
-    border-radius:12px;
-    display:block;
-}
-
-.img-pos-badge{
-    position:absolute;
-    top:4px;
-    left:4px;
-    width:20px;
-    height:20px;
-    border-radius:50%;
-    background:#7F77DD;
-    color:#ffffff;
-    font-size:10px;
-    font-family:'Nunito',sans-serif;
-    font-weight:900;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    z-index:2;
-    pointer-events:none;
-}
-
-.img-remove-btn{
-    border:none;
-    background:none;
-    color:#E24B4A;
-    font-size:10px;
-    font-family:'Nunito',sans-serif;
-    font-weight:900;
-    cursor:pointer;
-    padding:3px 0 2px;
-    text-align:center;
-    width:100%;
-    line-height:1;
-}
-
-.img-add-slot{
-    width:86px;
-    height:86px;
-    border-radius:14px;
-    border:1.5px dashed #EDE9FA;
-    background:#FAFAFE;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    cursor:pointer;
-    transition:border-color .15s,background .15s;
-}
-
-.img-add-slot:hover{
-    border-color:#7F77DD;
-    background:#EEEDFE;
-}
-
-.img-add-slot label{
-    cursor:pointer;
-    display:flex;
-    flex-direction:column;
-    align-items:center;
-    justify-content:center;
-    width:100%;
-    height:100%;
-    font-family:'Nunito',sans-serif;
-    font-size:11px;
-    font-weight:900;
-    color:#9B94BE;
-    gap:4px;
-    margin:0;
-    letter-spacing:0;
-    text-transform:none;
-}
-
-.img-add-slot label .plus{
-    font-size:22px;
-    color:#7F77DD;
-    line-height:1;
-}
-
-/* Drop zone section */
-.dz-section{
-    margin-top:14px;
-    padding-top:14px;
-    border-top:1px solid #F0EEF8;
-}
-
-.dz-preview-area{
-    position:relative;
-    width:100%;
-    max-width:680px;
-    height:160px;
-    border:2px dashed #EDE9FA;
-    border-radius:14px;
-    background:#FAFAFE;
-    overflow:hidden;
-    margin-bottom:8px;
-    cursor:default;
-}
-
-.dz-preview-hint{
-    position:absolute;
-    inset:0;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    color:#9B94BE;
-    font-size:13px;
-    font-style:italic;
-    pointer-events:none;
-    font-family:'Nunito',sans-serif;
-}
-
-.dz-preview-image{
-    position:absolute;
-    cursor:move;
-    user-select:none;
-    touch-action:none;
-    height:auto;
-    border:2px solid #7F77DD;
-    border-radius:6px;
-    box-shadow:0 2px 8px rgba(0,0,0,.15);
-}
-
-.dz-controls-row{
-    display:flex;
-    gap:8px;
-    align-items:center;
-    flex-wrap:wrap;
-    margin-bottom:8px;
-}
-
-.dz-width-control{
-    display:flex;
-    align-items:center;
-    gap:6px;
-    font-size:13px;
-    color:#534AB7;
-    font-family:'Nunito',sans-serif;
-    font-weight:700;
-}
-
-.dz-width-control input{
-    width:70px!important;
-    padding:4px 6px!important;
-    margin-bottom:0!important;
-}
-
-.btn-remove-dz{
-    background:#FCEBEB;
-    color:#E24B4A;
-    border:1px solid #F7C1C1;
-    border-radius:999px;
-    padding:5px 14px;
-    font-family:'Nunito',sans-serif;
-    font-size:12px;
-    font-weight:900;
-    cursor:pointer;
-    transition:transform .12s;
-    white-space:nowrap;
-}
-.btn-remove-dz:hover{transform:translateY(-1px)}
-
-/* Toolbar */
-.toolbar-row{
-    display:flex;
-    gap:10px;
-    flex-wrap:wrap;
-    justify-content:center;
-    padding-top:20px;
-    border-top:1px solid #F0EEF8;
-    margin-top:8px;
-}
-
-.btn-add{
-    background:#ffffff;
-    color:#534AB7;
-    border:1.5px solid #EDE9FA;
-    border-radius:999px;
-    padding:12px 26px;
-    font-family:'Nunito',sans-serif;
-    font-size:13px;
-    font-weight:900;
-    cursor:pointer;
-    transition:transform .12s;
-}
-.btn-add:hover{transform:translateY(-2px)}
-
-.save-btn{
-    background:#F97316;
-    color:#ffffff;
-    border:none;
-    border-radius:999px;
-    padding:12px 26px;
-    font-family:'Nunito',sans-serif;
-    font-size:13px;
-    font-weight:900;
-    cursor:pointer;
-    box-shadow:0 6px 18px rgba(249,115,22,.22);
-    transition:transform .12s,filter .12s;
-}
-.save-btn:hover{transform:translateY(-2px);filter:brightness(1.07)}
-
-@media(max-width:640px){
-    .lo-form{padding:0 4px}
-    .media-toggle-row{gap:6px}
-    .media-tab{padding:6px 12px;font-size:11px}
-    .toolbar-row{flex-direction:column;align-items:center}
-    .btn-add,.save-btn{width:100%;max-width:300px;justify-content:center}
-}
+body{background:#f8f7ff!important;font-family:'Nunito',sans-serif!important}
+.lo-form{max-width:780px;margin:0 auto}
+.lo-saved{background:#E6F9F2;border:1px solid #9FE1CB;border-radius:12px;padding:10px 16px;color:#0F6E56;font-size:13px;font-weight:900;margin-bottom:16px}
+.lo-card,.block-item{background:#fff;border:1px solid #F0EEF8;border-radius:20px;padding:20px 22px;margin-bottom:14px;box-shadow:0 4px 18px rgba(127,119,221,.08)}
+.field-label{display:block;font-size:12px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:#9B94BE;margin-bottom:8px}
+.field-badge{display:inline-block;background:#EEEDFE;color:#534AB7;border-radius:999px;padding:2px 8px;font-size:10px;font-weight:700;text-transform:none;margin-left:6px}
+.lo-form input[type=text],.lo-form textarea{width:100%;border:1.5px solid #EDE9FA;border-radius:12px;padding:11px 14px;font-family:'Nunito',sans-serif;font-size:14px;font-weight:700;color:#271B5D;background:#fff;outline:none;margin-bottom:12px}
+.lo-form input:focus,.lo-form textarea:focus{border-color:#7F77DD;box-shadow:0 0 0 3px rgba(127,119,221,.1)}
+.lo-form textarea{min-height:60px;resize:vertical}
+.block-header-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
+.block-badge{background:#EEEDFE;color:#534AB7;border-radius:999px;padding:4px 14px;font-size:12px;font-weight:900}
+.btn-remove{background:#FCEBEB;color:#E24B4A;border:1px solid #F7C1C1;border-radius:999px;padding:5px 14px;font-size:12px;font-weight:900;cursor:pointer}
+.media-box{border:1.5px solid #EDE9FA;border-radius:16px;padding:14px;margin-bottom:16px;background:#FAFAFE}
+.upload-zone{border:2px dashed #EDE9FA;border-radius:14px;background:#fff;padding:20px;text-align:center;cursor:pointer;margin-bottom:12px}
+.upload-zone:hover{border-color:#7F77DD;background:#EEEDFE}
+.upload-zone-icon{width:40px;height:40px;border-radius:50%;background:#EEEDFE;display:flex;align-items:center;justify-content:center;margin:0 auto 8px;font-size:18px}
+.upload-zone-title{font-size:13px;font-weight:900;color:#534AB7;margin-bottom:3px}
+.upload-zone-sub{font-size:11px;font-weight:700;color:#9B94BE}
+.file-input-hidden{position:absolute;width:1px;height:1px;opacity:0;left:-9999px}
+.video-preview-wrap{border-radius:12px;overflow:hidden;background:#000;margin-bottom:10px;max-height:240px;display:flex;align-items:center;justify-content:center}
+.video-preview-wrap video{width:100%;max-height:240px;object-fit:contain;display:block}
+.btn-remove-video{background:#FCEBEB;color:#E24B4A;border:1px solid #F7C1C1;border-radius:999px;padding:5px 14px;font-size:12px;font-weight:900;cursor:pointer;margin-bottom:10px}
+.img-grid{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:8px;align-items:flex-start}
+.img-card{position:relative;width:86px;border-radius:14px;border:1.5px solid #EDE9FA;overflow:visible;background:#fff;display:flex;flex-direction:column;align-items:center}
+.img-card img{width:86px;height:86px;object-fit:cover;border-radius:12px;display:block}
+.img-pos-badge{position:absolute;top:4px;left:4px;width:20px;height:20px;border-radius:50%;background:#7F77DD;color:#fff;font-size:10px;font-weight:900;display:flex;align-items:center;justify-content:center;z-index:2}
+.img-remove-btn{border:none;background:none;color:#E24B4A;font-size:10px;font-weight:900;cursor:pointer;padding:3px 0 2px;text-align:center;width:100%;line-height:1}
+.img-add-slot{width:86px;height:86px;border-radius:14px;border:1.5px dashed #EDE9FA;background:#FAFAFE;display:flex;align-items:center;justify-content:center;cursor:pointer}
+.img-add-slot label{cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;width:100%;height:100%;font-size:11px;font-weight:900;color:#9B94BE;gap:4px;margin:0}
+.img-add-slot .plus{font-size:22px;color:#7F77DD;line-height:1}
+.field-hint{color:#9B94BE;font-size:12px;font-weight:800;margin:-6px 0 12px}
+.tts-box{border:1.5px solid #EDE9FA;border-radius:16px;padding:14px;margin-bottom:16px;background:#FAFAFE}
+.tts-row{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap}
+.tts-row input[type=text]{flex:1;min-width:160px;margin-bottom:0!important}
+.tts-voice{border:1.5px solid #EDE9FA;border-radius:12px;padding:10px 12px;font-family:'Nunito',sans-serif;font-size:13px;font-weight:700;color:#271B5D;background:#fff;outline:none;cursor:pointer;margin-bottom:0!important}
+.tts-voice:focus{border-color:#7F77DD;box-shadow:0 0 0 3px rgba(127,119,221,.1)}
+.btn-tts{background:#7F77DD;color:#fff;border:none;border-radius:999px;padding:11px 18px;font-size:12px;font-weight:900;cursor:pointer;white-space:nowrap;flex-shrink:0;display:inline-flex;align-items:center;gap:6px}
+.btn-tts:disabled{opacity:.55;cursor:not-allowed}
+.tts-status{font-size:12px;font-weight:800;margin-top:8px;min-height:18px}
+.tts-status.ok{color:#1D9E75}.tts-status.err{color:#E24B4A}
+.tts-preview{margin-top:10px;display:flex;align-items:center;gap:10px}
+.tts-preview audio{flex:1;height:36px}
+.btn-tts-remove{background:none;border:none;color:#E24B4A;font-size:11px;font-weight:900;cursor:pointer;padding:0}
+.toolbar-row{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;padding-top:20px;border-top:1px solid #F0EEF8;margin-top:8px}
+.btn-add{background:#fff;color:#534AB7;border:1.5px solid #EDE9FA;border-radius:999px;padding:12px 26px;font-size:13px;font-weight:900;cursor:pointer}
+.save-btn{background:#F97316;color:#fff;border:none;border-radius:999px;padding:12px 26px;font-size:13px;font-weight:900;cursor:pointer;box-shadow:0 6px 18px rgba(249,115,22,.22)}
+@media(max-width:640px){.toolbar-row{flex-direction:column;align-items:center}.btn-add,.save-btn{width:100%;max-width:300px}}
 </style>
 
-<form method="post" enctype="multipart/form-data" class="lo-form" id="listenOrderForm">
-
-    <!-- Activity meta -->
+<form method="post" enctype="multipart/form-data" class="lo-form" id="loForm">
     <div class="lo-card">
-        <label class="field-label" for="activity_title">Activity title</label>
-        <input
-            id="activity_title"
-            type="text"
-            name="activity_title"
-            value="<?= htmlspecialchars($activityTitle, ENT_QUOTES, 'UTF-8') ?>"
-            placeholder="Example: Listen and order"
-            required
-        >
+        <label class="field-label" for="lo_title">Activity title</label>
+        <input id="lo_title" type="text" name="activity_title" value="<?= htmlspecialchars($edTitle, ENT_QUOTES, 'UTF-8') ?>" placeholder="Listen and order" required>
 
-        <label class="field-label" for="activity_instructions">
-            Instructions
-            <span class="field-badge">shown below the title</span>
-        </label>
-        <textarea
-            id="activity_instructions"
-            name="activity_instructions"
-            placeholder="Example: Listen to the audio and put the pictures in the correct order."
-        ><?= htmlspecialchars($activityInstructions, ENT_QUOTES, 'UTF-8') ?></textarea>
+        <label class="field-label" for="lo_instr">Instructions <span class="field-badge">shown below title</span></label>
+        <textarea id="lo_instr" name="activity_instructions" placeholder="Watch the video and order the images."><?= htmlspecialchars($edInstr, ENT_QUOTES, 'UTF-8') ?></textarea>
     </div>
 
     <div id="blocksContainer">
-        <?php foreach ($blocks as $blockIndex => $block):
-            $dzImages  = is_array($block["dropZoneImages"] ?? null) ? $block["dropZoneImages"] : [];
-            $firstDzi  = $dzImages[0] ?? null;
-            $dzSrc     = (string)  ($firstDzi["src"]   ?? "");
-            $dzLeft    = (int)     ($firstDzi["left"]  ?? 10);
-            $dzTop     = (int)     ($firstDzi["top"]   ?? 10);
-            $dzWidth   = max(60, min(800, (int) ($firstDzi["width"] ?? 180)));
-            $dzId      = (string)  ($firstDzi["id"]    ?? uniqid("dzi_"));
-            $blockImages = is_array($block["images"] ?? null) ? $block["images"] : [];
-            $hasSentence = trim((string) ($block["sentence"] ?? "")) !== "";
+        <?php foreach ($blocks as $bi => $block):
+            $bVideoUrl  = trim((string)($block["video_url"]  ?? ""));
+            $bSentence  = trim((string)($block["sentence"]   ?? ""));
+            $bAudioUrl  = trim((string)($block["audio_url"]  ?? ""));
+            $bImages    = is_array($block["images"] ?? null) ? $block["images"] : [];
         ?>
         <div class="block-item">
-            <input type="hidden" name="block_id[]" value="<?= htmlspecialchars((string) ($block["id"] ?? uniqid("listen_order_")), ENT_QUOTES, 'UTF-8') ?>">
+            <input type="hidden" name="block_id[]" value="<?= htmlspecialchars((string)($block["id"] ?? uniqid("lo_")), ENT_QUOTES, 'UTF-8') ?>">
+            <input type="hidden" name="video_url_existing[]" class="js-vidurl" value="<?= htmlspecialchars($bVideoUrl, ENT_QUOTES, 'UTF-8') ?>">
+            <input type="hidden" name="audio_url_existing[]" class="js-audiourl" value="<?= htmlspecialchars($bAudioUrl, ENT_QUOTES, 'UTF-8') ?>">
 
-            <!-- Block header -->
             <div class="block-header-row">
-                <span class="block-badge">Block <?= (int) $blockIndex + 1 ?></span>
-                <button type="button" class="btn-remove" onclick="removeBlock(this)">✖ Remove</button>
+                <span class="block-badge">Block <?= $bi + 1 ?></span>
+                <button type="button" class="btn-remove" onclick="loRemoveBlock(this)">✖ Remove</button>
             </div>
 
-            <!-- Media type toggle -->
-            <div class="media-toggle-row">
-                <button type="button" class="media-tab<?= $hasSentence ? ' active' : '' ?>" data-mode="audio" onclick="setMediaMode(this,'audio')">Audio file</button>
-                <button type="button" class="media-tab" data-mode="video" onclick="setMediaMode(this,'video')">Video URL</button>
-                <button type="button" class="media-tab<?= !$hasSentence ? ' active' : '' ?>" data-mode="none" onclick="setMediaMode(this,'none')">No media</button>
-            </div>
-
-            <!-- Audio section -->
-            <div class="media-section audio-section"<?= !$hasSentence ? ' style="display:none"' : '' ?>>
-                <div class="audio-upload-zone" onclick="this.querySelector('input[type=file]').click()">
-                    <div class="audio-upload-icon">🎵</div>
-                    <div class="audio-upload-title">Upload audio file</div>
-                    <div class="audio-upload-sub">MP3, WAV, OGG</div>
-                    <input type="file" accept="audio/*" style="display:none" onchange="showAudioPill(this)">
+            <div class="tts-box">
+                <label class="field-label">Sentence to speak <span class="field-badge">ElevenLabs TTS</span></label>
+                <div class="tts-row">
+                    <input type="text" name="sentence[]" class="js-sentence" value="<?= htmlspecialchars($bSentence, ENT_QUOTES, 'UTF-8') ?>" placeholder="Type the sentence students will hear…">
+                    <select name="voice_id[]" class="js-voiceid tts-voice">
+                        <option value="nzFihrBIvB34imQBuxub"<?= ($block["voice_id"]??"nzFihrBIvB34imQBuxub")==="nzFihrBIvB34imQBuxub"?" selected":"" ?>>👨 Adult Male (Josh)</option>
+                        <option value="NoOVOzCQFLOvtsMoNcdT"<?= ($block["voice_id"]??"")==="NoOVOzCQFLOvtsMoNcdT"?" selected":"" ?>>👩 Adult Female (Lily)</option>
+                        <option value="Nggzl2QAXh3OijoXD116"<?= ($block["voice_id"]??"")==="Nggzl2QAXh3OijoXD116"?" selected":"" ?>>🧒 Child (Candy)</option>
+                    </select>
+                    <button type="button" class="btn-tts" onclick="loGenerateTTS(this)">🔊 Generate audio</button>
                 </div>
-                <label class="field-label">
-                    Sentence / transcript
-                    <span class="field-badge">optional — shown to students</span>
-                </label>
-                <textarea name="sentence[]"><?= htmlspecialchars((string) ($block["sentence"] ?? ""), ENT_QUOTES, 'UTF-8') ?></textarea>
-            </div>
-
-            <!-- Video section -->
-            <div class="media-section video-section" style="display:none">
-                <label class="field-label">Video URL</label>
-                <input type="url" placeholder="https://youtube.com/watch?v=... or direct video URL">
-                <div class="field-hint">Supports YouTube, Vimeo, or direct MP4 links.</div>
-                <!-- sentence hidden so it still submits when video mode active -->
-                <textarea name="sentence[]" style="display:none"><?= htmlspecialchars((string) ($block["sentence"] ?? ""), ENT_QUOTES, 'UTF-8') ?></textarea>
-            </div>
-
-            <!-- No media section -->
-            <div class="media-section none-section" style="display:none">
-                <textarea name="sentence[]" style="display:none"><?= htmlspecialchars((string) ($block["sentence"] ?? ""), ENT_QUOTES, 'UTF-8') ?></textarea>
-            </div>
-
-            <!-- Images in correct order -->
-            <label class="field-label" style="margin-top:4px;">
-                Images in correct order
-                <span class="field-badge">upload in the exact order students should arrange them</span>
-            </label>
-
-            <div class="img-grid">
-                <?php foreach ($blockImages as $imgIdx => $img): ?>
-                <div class="img-card">
-                    <span class="img-pos-badge"><?= (int) $imgIdx + 1 ?></span>
-                    <img src="<?= htmlspecialchars($img, ENT_QUOTES, 'UTF-8') ?>" alt="image <?= (int) $imgIdx + 1 ?>">
-                    <input type="hidden" name="images_existing[<?= (int) $blockIndex ?>][]" value="<?= htmlspecialchars($img, ENT_QUOTES, 'UTF-8') ?>">
-                    <button type="button" class="img-remove-btn" onclick="removeImgCard(this)">Remove</button>
+                <div class="tts-status"></div>
+                <?php if ($bAudioUrl !== ""): ?>
+                <div class="tts-preview">
+                    <audio src="<?= htmlspecialchars($bAudioUrl, ENT_QUOTES, 'UTF-8') ?>" controls preload="none"></audio>
+                    <button type="button" class="btn-tts-remove" onclick="loRemoveAudio(this)">✖ Remove</button>
                 </div>
-                <?php endforeach; ?>
-                <?php if (empty($blockImages)): ?>
-                    <input type="hidden" name="images_existing[<?= (int) $blockIndex ?>][]" value="">
                 <?php endif; ?>
+            </div>
+
+            <div class="media-box">
+                <label class="field-label">Video for this order activity</label>
+
+                <input type="file" name="video_file[<?= $bi ?>]" accept="video/*" class="js-vf-input file-input-hidden" onchange="loVideoPreview(this)">
+
+                <?php if ($bVideoUrl !== ""): ?>
+                    <div class="video-preview-wrap">
+                        <video src="<?= htmlspecialchars($bVideoUrl, ENT_QUOTES, 'UTF-8') ?>" controls preload="metadata"></video>
+                    </div>
+                    <button type="button" class="btn-remove-video" onclick="loRemoveVideo(this)">✖ Remove video</button>
+                <?php else: ?>
+                    <div class="upload-zone js-vf-zone" onclick="this.closest('.media-box').querySelector('.js-vf-input').click()">
+                        <div class="upload-zone-icon">🎬</div>
+                        <div class="upload-zone-title">Upload video file</div>
+                        <div class="upload-zone-sub">MP4, MOV, WEBM</div>
+                    </div>
+                <?php endif; ?>
+
+                <div class="js-video-anchor"></div>
+            </div>
+
+            <label class="field-label">Images in correct order <span class="field-badge">students see them shuffled</span></label>
+            <div class="img-grid">
+                <?php foreach ($bImages as $ii => $img): ?>
+                    <div class="img-card">
+                        <span class="img-pos-badge"><?= $ii + 1 ?></span>
+                        <img src="<?= htmlspecialchars($img, ENT_QUOTES, 'UTF-8') ?>" alt="">
+                        <input type="hidden" name="images_existing[<?= $bi ?>][]" value="<?= htmlspecialchars($img, ENT_QUOTES, 'UTF-8') ?>">
+                        <button type="button" class="img-remove-btn" onclick="loRemoveImg(this)">Remove</button>
+                    </div>
+                <?php endforeach; ?>
+
+                <?php if (empty($bImages)): ?>
+                    <input type="hidden" name="images_existing[<?= $bi ?>][]" value="">
+                <?php endif; ?>
+
                 <div class="img-add-slot">
                     <label>
                         <span class="plus">+</span>
-                        <span>Add more</span>
-                        <input type="file" name="images[<?= (int) $blockIndex ?>][]" multiple accept="image/*" style="display:none">
+                        <span>Add</span>
+                        <input type="file" name="images[<?= $bi ?>][]" multiple accept="image/*" style="display:none" onchange="loPreviewImages(this)">
                     </label>
                 </div>
             </div>
-            <div class="field-hint">Upload images in the exact correct order. Students will see them shuffled.</div>
 
-            <!-- Drop zone background image -->
-            <div class="dz-section">
-                <label class="field-label">
-                    Drop zone background image
-                    <span class="field-badge">optional — visible behind answer chips</span>
-                </label>
-
-                <input type="hidden" name="dz_image_existing[<?= (int) $blockIndex ?>]" class="dz-src"   value="<?= htmlspecialchars($dzSrc, ENT_QUOTES, 'UTF-8') ?>">
-                <input type="hidden" name="dz_image_left[<?= (int) $blockIndex ?>]"     class="dz-left"  value="<?= $dzLeft ?>">
-                <input type="hidden" name="dz_image_top[<?= (int) $blockIndex ?>]"      class="dz-top"   value="<?= $dzTop ?>">
-                <input type="hidden" name="dz_image_width[<?= (int) $blockIndex ?>]"    class="dz-width" value="<?= $dzWidth ?>">
-                <input type="hidden" name="dz_image_id[<?= (int) $blockIndex ?>]"       class="dz-imgid" value="<?= htmlspecialchars($dzId, ENT_QUOTES, 'UTF-8') ?>">
-
-                <div class="dz-preview-area"<?= $dzSrc ? '' : ' style="display:none;"' ?>>
-                    <div class="dz-preview-hint">Drag the image to reposition it</div>
-                    <?php if ($dzSrc): ?>
-                    <img
-                        src="<?= htmlspecialchars($dzSrc, ENT_QUOTES, 'UTF-8') ?>"
-                        class="dz-preview-image"
-                        style="left:<?= $dzLeft ?>px;top:<?= $dzTop ?>px;width:<?= $dzWidth ?>px;"
-                        draggable="false"
-                        alt=""
-                    >
-                    <?php endif; ?>
-                </div>
-
-                <div class="dz-controls-row">
-                    <input type="file" name="dz_image_file[<?= (int) $blockIndex ?>]" accept="image/*" class="dz-file-input" style="margin-bottom:0;">
-                    <button type="button" class="btn-remove-dz" onclick="removeDzImage(this)"<?= $dzSrc ? '' : ' style="display:none;"' ?>>✖ Remove BG image</button>
-                </div>
-
-                <div class="dz-width-control"<?= $dzSrc ? '' : ' style="display:none;"' ?>>
-                    <span>Width:</span>
-                    <input type="number" min="60" max="800" value="<?= $dzWidth ?>" class="dz-width-display">
-                    <span>px</span>
-                </div>
-            </div>
+            <div class="field-hint">Upload images in the correct order. Students will see them shuffled.</div>
         </div>
         <?php endforeach; ?>
     </div>
 
     <div class="toolbar-row">
-        <button type="button" class="btn-add" onclick="addBlock()">+ Add Block</button>
+        <button type="button" class="btn-add" onclick="loAddBlock()">+ Add Block</button>
         <button type="submit" class="save-btn">💾 Save</button>
     </div>
 </form>
 
 <script>
-var formChanged = false;
-var formSubmitted = false;
+var loChanged=false, loSubmitted=false;
+var loInputSeq=0;
+function loMark(){ loChanged=true; }
 
-function markChanged() {
-    formChanged = true;
-}
-
-/* ── Media mode toggle ── */
-function setMediaMode(btn, mode) {
-    var block = btn.closest('.block-item');
-    if (!block) return;
-    block.querySelectorAll('.media-tab').forEach(function (tab) {
-        tab.classList.remove('active');
-    });
-    btn.classList.add('active');
-    block.querySelectorAll('.media-section').forEach(function (section) {
-        section.style.display = 'none';
-    });
-    var target = block.querySelector('.' + mode + '-section');
-    if (target) target.style.display = '';
-    markChanged();
-}
-
-/* ── Audio file pill ── */
-function showAudioPill(input) {
-    var zone = input.closest('.audio-upload-zone');
-    if (!zone) return;
-    var existing = zone.querySelector('.audio-file-pill');
-    if (existing) existing.remove();
-    if (input.files && input.files[0]) {
-        var pill = document.createElement('div');
-        pill.className = 'audio-file-pill';
-        pill.textContent = input.files[0].name;
-        zone.appendChild(pill);
+function loEnsureInputId(input){
+    if (!input) return '';
+    if (!input.dataset.inputId) {
+        loInputSeq += 1;
+        input.dataset.inputId = 'lo_img_input_' + Date.now() + '_' + loInputSeq;
     }
+    return input.dataset.inputId;
 }
 
-/* ── Image card removal ── */
-function removeImgCard(btn) {
+function loVideoPreview(input){
+    if (!input.files || !input.files[0]) return;
+
+    var box = input.closest('.media-box');
+    var zone = box.querySelector('.js-vf-zone');
+    if (zone) zone.remove();
+
+    var oldWrap = box.querySelector('.video-preview-wrap');
+    if (oldWrap) oldWrap.remove();
+
+    var oldBtn = box.querySelector('.btn-remove-video');
+    if (oldBtn) oldBtn.remove();
+
+    var wrap = document.createElement('div');
+    wrap.className = 'video-preview-wrap';
+    wrap.innerHTML = '<video src="'+URL.createObjectURL(input.files[0])+'" controls preload="metadata"></video>';
+
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'btn-remove-video';
+    btn.textContent = '✖ Remove video';
+    btn.onclick = function(){ loRemoveVideo(btn); };
+
+    var anchor = box.querySelector('.js-video-anchor');
+    if (anchor) {
+        box.insertBefore(wrap, anchor);
+        box.insertBefore(btn, anchor);
+    } else {
+        box.appendChild(wrap);
+        box.appendChild(btn);
+    }
+
+    loMark();
+}
+
+function loRemoveVideo(btn){
+    var block = btn.closest('.block-item');
+    var box = btn.closest('.media-box');
+
+    var wrap = box.querySelector('.video-preview-wrap');
+    if (wrap) wrap.remove();
+
+    btn.remove();
+
+    var input = box.querySelector('.js-vf-input');
+    if (input) input.value = '';
+
+    var hidden = block.querySelector('.js-vidurl');
+    if (hidden) hidden.value = '';
+
+    if (!box.querySelector('.js-vf-zone')) {
+        var zone = document.createElement('div');
+        zone.className = 'upload-zone js-vf-zone';
+        zone.onclick = function(){
+            box.querySelector('.js-vf-input').click();
+        };
+        zone.innerHTML =
+            '<div class="upload-zone-icon">🎬</div>'+
+            '<div class="upload-zone-title">Upload video file</div>'+
+            '<div class="upload-zone-sub">MP4, MOV, WEBM</div>';
+
+        var anchor = box.querySelector('.js-video-anchor');
+        if (anchor) {
+            box.insertBefore(zone, anchor);
+        } else {
+            box.appendChild(zone);
+        }
+    }
+
+    loMark();
+}
+
+function loPreviewImages(input){
+    if (!input.files || !input.files.length) return;
+
+    var grid = input.closest('.img-grid');
+    var slot = input.closest('.img-add-slot');
+    if (!grid || !slot) return;
+
+    var block = input.closest('.block-item');
+    var blocks = Array.from(document.querySelectorAll('#blocksContainer .block-item'));
+    var bi = blocks.indexOf(block);
+    if (bi < 0) bi = 0;
+
+    var base = grid.querySelectorAll('.img-card').length;
+    var inputId = loEnsureInputId(input);
+
+    Array.from(input.files).forEach(function(file, idx){
+        var r = new FileReader();
+        r.onload = function(e){
+            var card = document.createElement('div');
+            card.className = 'img-card';
+            card.dataset.fileInputId = inputId;
+            card.dataset.fileIndex = String(idx);
+            card.innerHTML =
+                '<span class="img-pos-badge">'+(base + idx + 1)+'</span>'+
+                '<img src="'+e.target.result+'" alt="">'+
+                '<button type="button" class="img-remove-btn" onclick="loRemoveImg(this)">Remove</button>';
+            grid.insertBefore(card, slot);
+        };
+        r.readAsDataURL(file);
+    });
+
+    input.name = 'images['+bi+'][]';
+    input.style.display = 'none';
+    input.onchange = null;
+    grid.insertBefore(input, slot);
+
+    var clone = document.createElement('input');
+    clone.type = 'file';
+    clone.multiple = true;
+    clone.accept = 'image/*';
+    clone.name = 'images['+bi+'][]';
+    clone.style.display = 'none';
+    clone.onchange = function(){ loPreviewImages(clone); };
+    slot.querySelector('label').appendChild(clone);
+
+    loMark();
+}
+
+function loRemoveImg(btn){
     var card = btn.closest('.img-card');
-    if (!card) return;
-    var grid = card.closest('.img-grid');
-    card.remove();
+    var grid = card ? card.closest('.img-grid') : null;
+
+    if (card && grid && card.dataset.fileInputId) {
+        var fileInputId = card.dataset.fileInputId;
+        var fileIndex = parseInt(card.dataset.fileIndex || '-1', 10);
+        var fileInput = grid.querySelector('input[type="file"][data-input-id="'+fileInputId+'"]');
+
+        if (fileInput && fileInput.files && fileInput.files.length && fileIndex >= 0 && typeof DataTransfer !== 'undefined') {
+            try {
+                var dt = new DataTransfer();
+                Array.from(fileInput.files).forEach(function(file, idx){
+                    if (idx !== fileIndex) dt.items.add(file);
+                });
+                fileInput.files = dt.files;
+            } catch (e) {
+                // If browser blocks DataTransfer mutation, keep UI removal only.
+            }
+        }
+    }
+
+    if (card) card.remove();
+
     if (grid) {
-        grid.querySelectorAll('.img-card').forEach(function (c, i) {
+        grid.querySelectorAll('.img-card').forEach(function(c, i){
             var badge = c.querySelector('.img-pos-badge');
             if (badge) badge.textContent = String(i + 1);
         });
+
+        var groupedCards = {};
+        grid.querySelectorAll('.img-card[data-file-input-id]').forEach(function(c){
+            var id = c.dataset.fileInputId;
+            if (!groupedCards[id]) groupedCards[id] = [];
+            groupedCards[id].push(c);
+        });
+        Object.keys(groupedCards).forEach(function(id){
+            groupedCards[id].forEach(function(c, idx){
+                c.dataset.fileIndex = String(idx);
+            });
+        });
     }
-    markChanged();
+
+    loMark();
 }
 
-/* ── Block badge renumber ── */
-function reindexBlockBadges() {
-    document.querySelectorAll('#blocksContainer .block-item').forEach(function (block, i) {
+function loReindex(){
+    document.querySelectorAll('#blocksContainer .block-item').forEach(function(block, idx){
+        var videoInput = block.querySelector('.js-vf-input');
+        if (videoInput) videoInput.name = 'video_file['+idx+']';
+
+        block.querySelectorAll('input[type="file"][name^="images["]').forEach(function(input){
+            input.name = 'images['+idx+'][]';
+        });
+
+        block.querySelectorAll('input[type="hidden"][name^="images_existing["]').forEach(function(input){
+            input.name = 'images_existing['+idx+'][]';
+        });
+    });
+}
+
+function loRenumber(){
+    document.querySelectorAll('#blocksContainer .block-item').forEach(function(block, idx){
         var badge = block.querySelector('.block-badge');
-        if (badge) badge.textContent = 'Block ' + (i + 1);
+        if (badge) badge.textContent = 'Block ' + (idx + 1);
     });
 }
 
-function reindexBlockInputs() {
-    var blocks = document.querySelectorAll('#blocksContainer .block-item');
-
-    blocks.forEach(function (block, index) {
-        var fileInput = block.querySelector('input[type="file"][name^="images["]');
-        if (fileInput) {
-            fileInput.name = 'images[' + index + '][]';
-        }
-
-        var existingInputs = block.querySelectorAll('input[type="hidden"][name^="images_existing["]');
-        existingInputs.forEach(function (input) {
-            input.name = 'images_existing[' + index + '][]';
-        });
-
-        var dzFields = ['dz_image_existing', 'dz_image_left', 'dz_image_top', 'dz_image_width', 'dz_image_id'];
-        dzFields.forEach(function (field) {
-            var el = block.querySelector('[name^="' + field + '["]');
-            if (el) el.name = field + '[' + index + ']';
-        });
-        var dzFile = block.querySelector('input[type="file"][name^="dz_image_file["]');
-        if (dzFile) dzFile.name = 'dz_image_file[' + index + ']';
-    });
-}
-
-function removeBlock(button) {
-    var item = button.closest('.block-item');
+function loRemoveBlock(btn){
+    var item = btn.closest('.block-item');
     if (item) {
         item.remove();
-        reindexBlockInputs();
-        reindexBlockBadges();
-        markChanged();
+        loReindex();
+        loRenumber();
+        loMark();
     }
 }
 
-function addBlock() {
+function loRemoveAudio(btn){
+    var box = btn.closest('.tts-box');
+    if (!box) return;
+    var hidden = btn.closest('.block-item').querySelector('.js-audiourl');
+    if (hidden) hidden.value = '';
+    var preview = box.querySelector('.tts-preview');
+    if (preview) preview.remove();
+    var statusEl = box.querySelector('.tts-status');
+    if (statusEl) { statusEl.textContent = 'Audio removed.'; statusEl.className = 'tts-status'; }
+    loMark();
+}
+
+function loInvalidateGeneratedAudio(box, reason){
+    if (!box) return;
+
+    var blockItem = box.closest('.block-item');
+    var hidden = blockItem ? blockItem.querySelector('.js-audiourl') : null;
+    var preview = box.querySelector('.tts-preview');
+    var statusEl = box.querySelector('.tts-status');
+
+    if (!hidden || String(hidden.value || '').trim() === '') {
+        return;
+    }
+
+    hidden.value = '';
+    if (preview) preview.remove();
+    if (statusEl) {
+        statusEl.textContent = reason || 'Voice/text changed. Generate audio again.';
+        statusEl.className = 'tts-status';
+    }
+    loMark();
+}
+
+function loGenerateTTS(btn){
+    var box = btn.closest('.tts-box');
+    if (!box) return;
+    var sentenceInput = box.querySelector('.js-sentence');
+    var text = sentenceInput ? sentenceInput.value.trim() : '';
+    if (!text) { alert('Please enter a sentence first.'); return; }
+    var voiceSelect = box.querySelector('.js-voiceid');
+    var voiceId = voiceSelect ? voiceSelect.value : 'nzFihrBIvB34imQBuxub';
+    var statusEl  = box.querySelector('.tts-status');
+    var blockItem = btn.closest('.block-item');
+    var audioHidden = blockItem ? blockItem.querySelector('.js-audiourl') : null;
+
+    btn.disabled = true;
+    if (statusEl) { statusEl.textContent = 'Generating…'; statusEl.className = 'tts-status'; }
+
+    var fd = new FormData();
+    fd.append('text', text);
+    fd.append('voice_id', voiceId);
+
+    fetch('tts.php', { method: 'POST', body: fd, credentials: 'same-origin' })
+        .then(function(r){ return r.json(); })
+        .then(function(data){
+            if (data.error) throw new Error(data.error);
+            if (audioHidden) audioHidden.value = data.url;
+
+            // Remove old preview if any
+            var old = box.querySelector('.tts-preview');
+            if (old) old.remove();
+
+            var div = document.createElement('div');
+            div.className = 'tts-preview';
+            div.innerHTML =
+                '<audio src="'+data.url+'" controls preload="none"></audio>'+
+                '<button type="button" class="btn-tts-remove" onclick="loRemoveAudio(this)">✖ Remove</button>';
+            box.appendChild(div);
+
+            if (statusEl) { statusEl.textContent = '✓ Audio generated successfully'; statusEl.className = 'tts-status ok'; }
+            loMark();
+        })
+        .catch(function(err){
+            if (statusEl) { statusEl.textContent = '✘ ' + (err.message || 'Generation failed'); statusEl.className = 'tts-status err'; }
+        })
+        .finally(function(){ btn.disabled = false; });
+}
+
+function loAddBlock(){
     var container = document.getElementById('blocksContainer');
-    var index = container.querySelectorAll('.block-item').length;
-    var blockNum = index + 1;
+    var idx = container.querySelectorAll('.block-item').length;
+
     var div = document.createElement('div');
     div.className = 'block-item';
+
     div.innerHTML =
-        '<input type="hidden" name="block_id[]" value="listen_order_' + Date.now() + '_' + Math.floor(Math.random() * 1000) + '">' +
+        '<input type="hidden" name="block_id[]" value="lo_'+Date.now()+'_'+(Math.random()*10000|0)+'">'+
+        '<input type="hidden" name="video_url_existing[]" class="js-vidurl" value="">'+
+        '<input type="hidden" name="audio_url_existing[]" class="js-audiourl" value="">'+
 
-        '<div class="block-header-row">' +
-            '<span class="block-badge">Block ' + blockNum + '</span>' +
-            '<button type="button" class="btn-remove" onclick="removeBlock(this)">&#x2716; Remove</button>' +
-        '</div>' +
+        '<div class="block-header-row">'+
+            '<span class="block-badge">Block '+(idx+1)+'</span>'+
+            '<button type="button" class="btn-remove" onclick="loRemoveBlock(this)">✖ Remove</button>'+
+        '</div>'+
 
-        '<div class="media-toggle-row">' +
-            '<button type="button" class="media-tab active" data-mode="audio" onclick="setMediaMode(this,\'audio\')">Audio file</button>' +
-            '<button type="button" class="media-tab" data-mode="video" onclick="setMediaMode(this,\'video\')">Video URL</button>' +
-            '<button type="button" class="media-tab" data-mode="none" onclick="setMediaMode(this,\'none\')">No media</button>' +
-        '</div>' +
+        '<div class="tts-box">'+
+            '<label class="field-label">Sentence to speak <span class="field-badge">ElevenLabs TTS</span></label>'+
+            '<div class="tts-row">'+
+                '<input type="text" name="sentence[]" class="js-sentence" value="" placeholder="Type the sentence students will hear…">'+
+                '<select name="voice_id[]" class="js-voiceid tts-voice">'+
+                    '<option value="nzFihrBIvB34imQBuxub" selected>\u{1F468} Adult Male (Josh)</option>'+ 
+                    '<option value="NoOVOzCQFLOvtsMoNcdT">\u{1F469} Adult Female (Lily)</option>'+ 
+                    '<option value="Nggzl2QAXh3OijoXD116">\u{1F9D2} Child (Candy)</option>'+ 
+                '</select>'+
+                '<button type="button" class="btn-tts" onclick="loGenerateTTS(this)">\uD83D\uDD0A Generate audio</button>'+
+            '</div>'+
+            '<div class="tts-status"></div>'+
+        '</div>'+
 
-        '<div class="media-section audio-section">' +
-            '<div class="audio-upload-zone" onclick="this.querySelector(\'input[type=file]\').click()">' +
-                '<div class="audio-upload-icon">&#x1F3B5;</div>' +
-                '<div class="audio-upload-title">Upload audio file</div>' +
-                '<div class="audio-upload-sub">MP3, WAV, OGG</div>' +
-                '<input type="file" accept="audio/*" style="display:none" onchange="showAudioPill(this)">' +
-            '</div>' +
-            '<label class="field-label">Sentence / transcript <span class="field-badge">optional — shown to students</span></label>' +
-            '<textarea name="sentence[]" required></textarea>' +
-        '</div>' +
+        '<div class="media-box">'+
+            '<label class="field-label">Video for this order activity</label>'+
+            '<input type="file" name="video_file['+idx+']" accept="video/*" class="js-vf-input file-input-hidden" onchange="loVideoPreview(this)">'+
+            '<div class="upload-zone js-vf-zone" onclick="this.closest(\'.media-box\').querySelector(\'.js-vf-input\').click()">'+
+                '<div class="upload-zone-icon">🎬</div>'+
+                '<div class="upload-zone-title">Upload video file</div>'+
+                '<div class="upload-zone-sub">MP4, MOV, WEBM</div>'+
+            '</div>'+
+            '<div class="js-video-anchor"></div>'+
+        '</div>'+
 
-        '<div class="media-section video-section" style="display:none">' +
-            '<label class="field-label">Video URL</label>' +
-            '<input type="url" placeholder="https://youtube.com/watch?v=... or direct video URL">' +
-            '<div class="field-hint">Supports YouTube, Vimeo, or direct MP4 links.</div>' +
-            '<textarea name="sentence[]" style="display:none"></textarea>' +
-        '</div>' +
-
-        '<div class="media-section none-section" style="display:none">' +
-            '<textarea name="sentence[]" style="display:none"></textarea>' +
-        '</div>' +
-
-        '<label class="field-label" style="margin-top:4px;">Images in correct order <span class="field-badge">upload in the exact order students should arrange them</span></label>' +
-
-        '<div class="img-grid">' +
-            '<input type="hidden" name="images_existing[' + index + '][]" value="">' +
-            '<div class="img-add-slot">' +
-                '<label>' +
-                    '<span class="plus">+</span>' +
-                    '<span>Add more</span>' +
-                    '<input type="file" name="images[' + index + '][]" multiple accept="image/*" style="display:none">' +
-                '</label>' +
-            '</div>' +
-        '</div>' +
-        '<div class="field-hint">Upload images in the exact correct order. Students will see them shuffled.</div>' +
-
-        '<div class="dz-section">' +
-            '<label class="field-label">Drop zone background image <span class="field-badge">optional — visible behind answer chips</span></label>' +
-            '<input type="hidden" name="dz_image_existing[' + index + ']" class="dz-src"   value="">' +
-            '<input type="hidden" name="dz_image_left[' + index + ']"     class="dz-left"  value="10">' +
-            '<input type="hidden" name="dz_image_top[' + index + ']"      class="dz-top"   value="10">' +
-            '<input type="hidden" name="dz_image_width[' + index + ']"    class="dz-width" value="180">' +
-            '<input type="hidden" name="dz_image_id[' + index + ']"       class="dz-imgid" value="">' +
-            '<div class="dz-preview-area" style="display:none;">' +
-                '<div class="dz-preview-hint">Drag the image to reposition it</div>' +
-            '</div>' +
-            '<div class="dz-controls-row">' +
-                '<input type="file" name="dz_image_file[' + index + ']" accept="image/*" class="dz-file-input" style="margin-bottom:0;">' +
-                '<button type="button" class="btn-remove-dz" onclick="removeDzImage(this)" style="display:none;">&#x2716; Remove BG image</button>' +
-            '</div>' +
-            '<div class="dz-width-control" style="display:none;">' +
-                '<span>Width:</span>' +
-                '<input type="number" min="60" max="800" value="180" class="dz-width-display">' +
-                '<span>px</span>' +
-            '</div>' +
-        '</div>';
+        '<label class="field-label">Images in correct order <span class="field-badge">students see them shuffled</span></label>'+
+        '<div class="img-grid">'+
+            '<input type="hidden" name="images_existing['+idx+'][]" value="">'+
+            '<div class="img-add-slot">'+
+                '<label>'+
+                    '<span class="plus">+</span>'+
+                    '<span>Add</span>'+
+                    '<input type="file" name="images['+idx+'][]" multiple accept="image/*" style="display:none" onchange="loPreviewImages(this)">'+
+                '</label>'+
+            '</div>'+
+        '</div>'+
+        '<div class="field-hint">Upload images in the correct order. Students will see them shuffled.</div>';
 
     container.appendChild(div);
-    reindexBlockInputs();
-    initDzPreview(div);
-    bindChangeTracking(div);
-    markChanged();
+    loReindex();
+    loRenumber();
+    loMark();
 }
 
-/* ══════════════════════════════════════════
-   Drop Zone Image — preview drag logic
-   ══════════════════════════════════════════ */
-
-function initDzPreview(blockEl) {
-    var previewArea  = blockEl.querySelector('.dz-preview-area');
-    var fileInput    = blockEl.querySelector('.dz-file-input');
-    var removeBtn    = blockEl.querySelector('.btn-remove-dz');
-    var widthControl = blockEl.querySelector('.dz-width-control');
-    var widthDisplay = blockEl.querySelector('.dz-width-display');
-    var srcInput     = blockEl.querySelector('.dz-src');
-    var leftInput    = blockEl.querySelector('.dz-left');
-    var topInput     = blockEl.querySelector('.dz-top');
-    var widthInput   = blockEl.querySelector('.dz-width');
-    var idInput      = blockEl.querySelector('.dz-imgid');
-
-    if (!previewArea) return;
-
-    function getImg() {
-        return previewArea.querySelector('.dz-preview-image');
-    }
-
-    function syncHiddens() {
-        var img = getImg();
-        if (!img) return;
-        leftInput.value  = parseInt(img.style.left,  10) || 0;
-        topInput.value   = parseInt(img.style.top,   10) || 0;
-        widthInput.value = parseInt(img.style.width, 10) || 180;
-    }
-
-    function clamp(img) {
-        var pw = previewArea.offsetWidth;
-        var ph = previewArea.offsetHeight;
-        var iw = img.offsetWidth;
-        var ih = img.offsetHeight;
-        var left = parseInt(img.style.left,  10) || 0;
-        var top  = parseInt(img.style.top,   10) || 0;
-        img.style.left = Math.max(0, Math.min(pw - Math.max(iw, 1), left)) + 'px';
-        img.style.top  = Math.max(0, Math.min(ph - Math.max(ih, 1), top))  + 'px';
-        syncHiddens();
-    }
-
-    function addDragBehavior(img) {
-        var active = false;
-        var startX, startY, startLeft, startTop;
-
-        img.addEventListener('mousedown', function (e) {
-            e.preventDefault();
-            active    = true;
-            startX    = e.clientX;
-            startY    = e.clientY;
-            startLeft = parseInt(img.style.left, 10) || 0;
-            startTop  = parseInt(img.style.top,  10) || 0;
-        });
-
-        document.addEventListener('mousemove', function (e) {
-            if (!active) return;
-            img.style.left = (startLeft + (e.clientX - startX)) + 'px';
-            img.style.top  = (startTop  + (e.clientY - startY)) + 'px';
-        });
-
-        document.addEventListener('mouseup', function () {
-            if (!active) return;
-            active = false;
-            clamp(img);
-            markChanged();
-        });
-
-        img.addEventListener('touchstart', function (e) {
-            e.preventDefault();
-            var t = e.touches[0];
-            active    = true;
-            startX    = t.clientX;
-            startY    = t.clientY;
-            startLeft = parseInt(img.style.left, 10) || 0;
-            startTop  = parseInt(img.style.top,  10) || 0;
-        }, { passive: false });
-
-        document.addEventListener('touchmove', function (e) {
-            if (!active) return;
-            var t = e.touches[0];
-            img.style.left = (startLeft + (t.clientX - startX)) + 'px';
-            img.style.top  = (startTop  + (t.clientY - startY)) + 'px';
-        }, { passive: true });
-
-        document.addEventListener('touchend', function () {
-            if (!active) return;
-            active = false;
-            clamp(img);
-            markChanged();
-        });
-    }
-
-    function showDzUI() {
-        previewArea.style.display  = '';
-        if (removeBtn)    removeBtn.style.display    = '';
-        if (widthControl) widthControl.style.display = '';
-    }
-
-    function createPreviewImg(src, left, top, width) {
-        var img = document.createElement('img');
-        img.className    = 'dz-preview-image';
-        img.src          = src;
-        img.draggable    = false;
-        img.style.left   = (left  || 10)  + 'px';
-        img.style.top    = (top   || 10)  + 'px';
-        img.style.width  = (width || 180) + 'px';
-        img.alt          = '';
-        previewArea.appendChild(img);
-        addDragBehavior(img);
-        return img;
-    }
-
-    if (fileInput) {
-        fileInput.addEventListener('change', function () {
-            if (!fileInput.files || !fileInput.files[0]) return;
-            var reader = new FileReader();
-            reader.onload = function (e) {
-                var existingImg = getImg();
-                if (existingImg) existingImg.remove();
-
-                var w = parseInt(widthInput.value, 10) || 180;
-                createPreviewImg(e.target.result, 10, 10, w);
-
-                if (srcInput) srcInput.value = '';
-                if (idInput)  idInput.value  = 'dzi_' + Date.now();
-                if (widthDisplay) widthDisplay.value = w;
-                showDzUI();
-                syncHiddens();
-                markChanged();
-            };
-            reader.readAsDataURL(fileInput.files[0]);
-        });
-    }
-
-    if (widthDisplay) {
-        widthDisplay.addEventListener('input', function () {
-            var img = getImg();
-            if (!img) return;
-            var w = Math.max(60, Math.min(800, parseInt(widthDisplay.value, 10) || 180));
-            img.style.width = w + 'px';
-            widthInput.value = w;
-            markChanged();
-        });
-    }
-
-    var existingImg = getImg();
-    if (existingImg) {
-        addDragBehavior(existingImg);
-        showDzUI();
-        if (widthDisplay) widthDisplay.value = parseInt(widthInput.value, 10) || 180;
-    }
-}
-
-function removeDzImage(btn) {
-    var blockEl      = btn.closest('.block-item');
-    if (!blockEl) return;
-    var previewArea  = blockEl.querySelector('.dz-preview-area');
-    var srcInput     = blockEl.querySelector('.dz-src');
-    var leftInput    = blockEl.querySelector('.dz-left');
-    var topInput     = blockEl.querySelector('.dz-top');
-    var widthInput   = blockEl.querySelector('.dz-width');
-    var idInput      = blockEl.querySelector('.dz-imgid');
-    var fileInput    = blockEl.querySelector('.dz-file-input');
-    var widthControl = blockEl.querySelector('.dz-width-control');
-
-    if (previewArea) {
-        var img = previewArea.querySelector('.dz-preview-image');
-        if (img) img.remove();
-        previewArea.style.display = 'none';
-    }
-    if (srcInput)     srcInput.value   = '';
-    if (leftInput)    leftInput.value  = '10';
-    if (topInput)     topInput.value   = '10';
-    if (widthInput)   widthInput.value = '180';
-    if (idInput)      idInput.value    = '';
-    if (fileInput)    fileInput.value  = '';
-    if (widthControl) widthControl.style.display = 'none';
-    btn.style.display = 'none';
-    markChanged();
-}
-
-function bindChangeTracking(scope) {
-    var elements = scope.querySelectorAll('input, textarea, select');
-    elements.forEach(function (el) {
-        el.addEventListener('input',  markChanged);
-        el.addEventListener('change', markChanged);
-    });
-}
-
-document.addEventListener('DOMContentLoaded', function () {
-    bindChangeTracking(document);
-    reindexBlockInputs();
-
-    document.querySelectorAll('#blocksContainer .block-item').forEach(function (blockEl) {
-        initDzPreview(blockEl);
+document.addEventListener('DOMContentLoaded', function(){
+    document.querySelectorAll('#blocksContainer input[type="file"][name^="images["]').forEach(function(input){
+        loEnsureInputId(input);
     });
 
-    var form = document.getElementById('listenOrderForm');
+    var form = document.getElementById('loForm');
     if (form) {
-        form.addEventListener('submit', function () {
-            reindexBlockInputs();
-            formSubmitted = true;
-            formChanged   = false;
+        form.addEventListener('input', function(e){
+            loMark();
+
+            var target = e.target;
+            if (!target || !target.matches('.js-sentence')) return;
+
+            var box = target.closest('.tts-box');
+            loInvalidateGeneratedAudio(box, 'Voice/text changed. Generate audio again.');
         });
+
+        form.addEventListener('change', function(e){
+            loMark();
+
+            var target = e.target;
+            if (!target) return;
+
+            if (target.matches('.js-voiceid')) {
+                var box = target.closest('.tts-box');
+                loInvalidateGeneratedAudio(box, 'Voice/text changed. Generate audio again.');
+            }
+        });
+
+        form.addEventListener('submit', function(){
+            var blocks = Array.from(document.querySelectorAll('#blocksContainer .block-item'));
+            for (var i = 0; i < blocks.length; i++) {
+                var sentenceEl = blocks[i].querySelector('.js-sentence');
+                var audioEl = blocks[i].querySelector('.js-audiourl');
+                var sentence = sentenceEl ? sentenceEl.value.trim() : '';
+                var audioUrl = audioEl ? String(audioEl.value || '').trim() : '';
+                if (sentence !== '' && audioUrl === '') {
+                    alert('Block ' + (i + 1) + ': Generate ElevenLabs audio before saving.');
+                    if (sentenceEl) sentenceEl.focus();
+                    return false;
+                }
+            }
+            loReindex();
+            loSubmitted = true;
+            loChanged = false;
+        });
+    }
+
+    if (document.querySelectorAll('#blocksContainer .block-item').length === 0) {
+        loAddBlock();
+        loChanged = false;
     }
 });
 
-window.addEventListener('beforeunload', function (e) {
-    if (formChanged && !formSubmitted) {
+window.addEventListener('beforeunload', function(e){
+    if (loChanged && !loSubmitted) {
         e.preventDefault();
         e.returnValue = '';
     }
@@ -1410,4 +877,4 @@ window.addEventListener('beforeunload', function (e) {
 
 <?php
 $content = ob_get_clean();
-render_activity_editor("🎧 Listen & Order Editor", "🎧", $content);
+render_activity_editor("🎧 Listen & Order Editor", "🎧", $content, $source, $assignment);

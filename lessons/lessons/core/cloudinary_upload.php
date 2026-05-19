@@ -1,10 +1,20 @@
 <?php
 
+function cloudinary_env(string $key): string
+{
+    $val = $_ENV[$key] ?? getenv($key) ?? '';
+    return is_string($val) ? trim($val) : '';
+}
+
 function upload_to_cloudinary($filePath)
 {
-    $cloud_name = $_ENV['CLOUDINARY_CLOUD_NAME'];
-    $api_key    = $_ENV['CLOUDINARY_API_KEY'];
-    $api_secret = $_ENV['CLOUDINARY_API_SECRET'];
+    $cloud_name = cloudinary_env('CLOUDINARY_CLOUD_NAME');
+    $api_key    = cloudinary_env('CLOUDINARY_API_KEY');
+    $api_secret = cloudinary_env('CLOUDINARY_API_SECRET');
+
+    if ($cloud_name === '' || $api_key === '' || $api_secret === '') {
+        return null;
+    }
 
     $timestamp = time();
     $signature = sha1("timestamp={$timestamp}{$api_secret}");
@@ -34,9 +44,9 @@ function upload_to_cloudinary($filePath)
 
 function upload_video_to_cloudinary(string $filePath): ?string
 {
-    $cloud_name = $_ENV['CLOUDINARY_CLOUD_NAME'] ?? '';
-    $api_key    = $_ENV['CLOUDINARY_API_KEY'] ?? '';
-    $api_secret = $_ENV['CLOUDINARY_API_SECRET'] ?? '';
+    $cloud_name = cloudinary_env('CLOUDINARY_CLOUD_NAME');
+    $api_key    = cloudinary_env('CLOUDINARY_API_KEY');
+    $api_secret = cloudinary_env('CLOUDINARY_API_SECRET');
 
     if ($cloud_name === '' || $api_key === '' || $api_secret === '') {
         return null;

@@ -57,7 +57,7 @@ function qa_normalize_title(string $title): string
 
 function qa_normalize_payload($rawData): array
 {
-    $default = array('title' => qa_default_title(), 'cards' => array());
+    $default = array('title' => qa_default_title(), 'voice_id' => 'nzFihrBIvB34imQBuxub', 'cards' => array());
     if ($rawData === null || $rawData === '') return $default;
 
     $decoded = is_string($rawData) ? json_decode($rawData, true) : $rawData;
@@ -79,7 +79,11 @@ function qa_normalize_payload($rawData): array
         );
     }
 
-    return array('title' => qa_normalize_title($title), 'cards' => $cards);
+    return array(
+        'title' => qa_normalize_title($title),
+        'voice_id' => trim((string) ($decoded['voice_id'] ?? 'nzFihrBIvB34imQBuxub')) ?: 'nzFihrBIvB34imQBuxub',
+        'cards' => $cards
+    );
 }
 
 function qa_load_activity(PDO $pdo, string $unit, string $activityId): array
@@ -128,6 +132,7 @@ function qa_load_activity(PDO $pdo, string $unit, string $activityId): array
 
     return array(
         'title' => qa_normalize_title((string) $payload['title']),
+        'voice_id' => isset($payload['voice_id']) ? (string) $payload['voice_id'] : 'nzFihrBIvB34imQBuxub',
         'cards' => isset($payload['cards']) && is_array($payload['cards']) ? $payload['cards'] : array(),
     );
 }
@@ -154,9 +159,9 @@ ob_start();
     --li-blue-dark:#1D4ED8;
     --li-pink:#EC4899;
     --li-pink-dark:#BE185D;
-    --li-teal:#1D9E75;
-    --li-teal-dark:#085041;
-    --li-teal-soft:#DDF8EF;
+    --li-teal:#F97316;
+    --li-teal-dark:#C2580A;
+    --li-teal-soft:#FFF0E6;
     --li-ink:#271B5D;
     --li-muted:#7C739B;
     --li-white:#FFFFFF;
@@ -175,14 +180,20 @@ ob_start();
 
 .qa-premium-shell{
     max-width:980px;
-    margin:16px auto 28px;
+    margin:0 auto;
     padding:18px;
     border-radius:28px;
     background: #ffffff;
+    min-height:100%;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    box-sizing:border-box;
 }
 
 .qa-premium-app{
     width:min(960px,100%);
+    margin:0 auto;
     display:grid;
     grid-template-columns:minmax(0,1fr);
     gap:0;
@@ -209,12 +220,14 @@ ob_start();
     margin-bottom:6px;
     padding:5px 12px;
     border-radius:999px;
-    background:linear-gradient(135deg,var(--li-teal),var(--li-teal-dark));
-    color:#fff;
+    background:#FFF0E6;
+    color:#F97316;
+    font-family:'Fredoka',sans-serif;
     font-size:11px;
-    font-weight:900;
+    font-weight:700;
     letter-spacing:.06em;
     text-transform:uppercase;
+    border:1px solid rgba(249,115,22,.18);
 }
 
 .qa-premium-title{
@@ -345,7 +358,8 @@ ob_start();
 
 .qa-premium-back{
     transform:rotateY(180deg);
-    background:linear-gradient(135deg, #F97316 0%, #C2580A 100%);
+    background:linear-gradient(135deg, #FFF0E6 0%, #FFEBD9 100%);
+    border:1px solid rgba(249,115,22,.20);
 }
 
 .qa-premium-label{
@@ -367,8 +381,8 @@ ob_start();
 }
 
 .qa-premium-back .qa-premium-label{
-    background:rgba(255,255,255,.20);
-    color:#fff;
+    background:rgba(249,115,22,.15);
+    color:#F97316;
 }
 
 .qa-premium-text{
@@ -388,8 +402,8 @@ ob_start();
 }
 
 .qa-premium-back .qa-premium-text{
-    color:#fff;
-    text-shadow:0 8px 22px rgba(0,0,0,.18);
+    color:#F97316;
+    text-shadow:none;
 }
 
 .qa-premium-hint{
@@ -406,7 +420,7 @@ ob_start();
 }
 
 .qa-premium-back .qa-premium-hint{
-    color:rgba(255,255,255,.78);
+    color:rgba(249,115,22,.65);
 }
 
 .qa-premium-actions{
@@ -446,8 +460,8 @@ ob_start();
 .qa-premium-btn-pink{background: #7F77DD;box-shadow: 0 6px 18px rgba(127,119,221,.18);}
 
 .qa-premium-btn-teal{
-    background:linear-gradient(135deg,var(--li-teal),var(--li-teal-dark));
-    box-shadow:0 12px 22px rgba(8,80,65,.20);
+    background:#7F77DD;
+    box-shadow:0 6px 18px rgba(127,119,221,.22);
 }
 
 .qa-premium-completed{
@@ -477,7 +491,7 @@ ob_start();
     margin:0 0 10px;
     font-family:'Fredoka',sans-serif;
     font-size:clamp(34px,6vw,62px);
-    color:var(--li-teal-dark);
+    color:#7F77DD;
     line-height:1;
 }
 
@@ -503,7 +517,7 @@ ob_start();
     height:100%;
     width:0%;
     border-radius:999px;
-    background:linear-gradient(90deg,var(--li-teal),var(--li-purple),var(--li-pink));
+    background:linear-gradient(90deg,#F97316,#7F77DD);
     transition:width .8s cubic-bezier(.2,.9,.2,1);
 }
 
@@ -533,7 +547,7 @@ ob_start();
 }
 
 @media(max-width:640px){
-    .qa-premium-shell{min-height:calc(100vh - 70px);padding:12px;border-radius:12px}
+    .qa-premium-shell{min-height:0;padding:12px;border-radius:12px}
     .qa-premium-board{border-radius:26px;padding:14px}
     .qa-premium-title-panel{width:100%;border-radius:22px}
     .qa-premium-progress-row{grid-template-columns:1fr;gap:8px}
@@ -569,12 +583,13 @@ body.fullscreen-embedded .qa-premium-shell,
 body.presentation-mode .qa-premium-shell {
     position: absolute !important;
     inset: 0 !important;
-    max-width: none !important;
-    margin: 0 !important;
-    padding: 10px 12px !important;
+    max-width: 100% !important;
+    margin: 0 auto !important;
+    padding: 16px clamp(16px,4vw,48px) !important;
     border-radius: 0 !important;
     display: flex !important;
     flex-direction: column !important;
+    align-items: center !important;
     overflow: hidden !important;
 }
 
@@ -582,11 +597,11 @@ body.embedded-mode .qa-premium-app,
 body.fullscreen-embedded .qa-premium-app,
 body.presentation-mode .qa-premium-app {
     flex: 1 !important;
-    width: 100% !important;
+    width: min(100%, 1100px) !important;
     min-height: 0 !important;
     display: flex !important;
     flex-direction: column !important;
-    gap: 8px !important;
+    gap: 10px !important;
 }
 
 body.embedded-mode .qa-premium-board,
@@ -596,36 +611,44 @@ body.presentation-mode .qa-premium-board {
     min-height: 0 !important;
     display: flex !important;
     flex-direction: column !important;
-    padding: 14px !important;
-    border-radius: 16px !important;
+    justify-content: flex-start !important;
+    padding: 14px 20px !important;
+    border-radius: 24px !important;
+    width: 100% !important;
 }
 
 body.embedded-mode .qa-premium-card-wrap,
 body.fullscreen-embedded .qa-premium-card-wrap,
 body.presentation-mode .qa-premium-card-wrap {
-    flex: 1 !important;
+    flex: 0 0 auto !important;
     min-height: 0 !important;
-    align-items: stretch !important;
+    align-items: center !important;
+    grid-template-columns: auto minmax(0, 760px) auto !important;
+    margin: 0 auto !important;
 }
 
 body.embedded-mode .qa-premium-card,
 body.fullscreen-embedded .qa-premium-card,
 body.presentation-mode .qa-premium-card {
-    min-height: 0 !important;
-    flex: 1 !important;
-    height: 100% !important;
+    min-height: clamp(180px, 24vh, 260px) !important;
+    max-width: 760px !important;
+    width: 100% !important;
+    flex: 0 0 auto !important;
+    height: auto !important;
 }
 
 body.embedded-mode .qa-premium-card-inner,
 body.fullscreen-embedded .qa-premium-card-inner,
 body.presentation-mode .qa-premium-card-inner {
-    height: 100% !important;
+    height: auto !important;
+    min-height: inherit !important;
 }
 
 body.embedded-mode .qa-premium-text,
 body.fullscreen-embedded .qa-premium-text,
 body.presentation-mode .qa-premium-text {
-    font-size: clamp(18px, 4vh, 36px) !important;
+    font-size: clamp(20px, 3.5vh, 42px) !important;
+    max-width: 860px !important;
 }
 </style>
 
@@ -680,7 +703,6 @@ body.presentation-mode .qa-premium-text {
             </div>
             <div class="qa-premium-actions">
                 <button type="button" class="qa-premium-btn qa-premium-btn-teal" id="qa-premium-restart">&#8635; Review Again</button>
-                <button type="button" class="qa-premium-btn qa-premium-btn-blue" onclick="history.back()">&#8592; Back</button>
             </div>
         </section>
     </div>
@@ -694,6 +716,8 @@ body.presentation-mode .qa-premium-text {
 
 var CARDS = <?php echo json_encode($cards, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
 var TOTAL = CARDS.length;
+var QA_VOICE_ID = <?php echo json_encode((string) ($activity['voice_id'] ?? 'nzFihrBIvB34imQBuxub'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
+var QA_TTS_URL = 'tts.php';
 var idx = 0;
 var flipped = false;
 var done = false;
@@ -712,71 +736,61 @@ var els = {
 };
 
 var TTS = (function(){
-    var preferred = ['zira','samantha','karen','aria','jenny','emma','ava','siri','google us english','female','woman'];
-    var cache = null;
-    var attempts = 0;
+    var audio = null;
+    var audioUrl = '';
 
-    function load(cb){
-        if (!window.speechSynthesis) return;
-        var voices = window.speechSynthesis.getVoices();
-        if (voices && voices.length) {
-            cache = voices;
-            cb(voices);
-            return;
+    function cleanup() {
+        if (audio) {
+            try { audio.pause(); } catch (e) {}
+            try { audio.currentTime = 0; } catch (e) {}
+            audio = null;
         }
-        if (window.speechSynthesis.onvoiceschanged !== undefined) {
-            window.speechSynthesis.onvoiceschanged = function(){
-                cache = window.speechSynthesis.getVoices();
-                if (cache.length) cb(cache);
-            };
+        if (audioUrl) {
+            try { URL.revokeObjectURL(audioUrl); } catch (e) {}
+            audioUrl = '';
         }
-        if (attempts < 12) {
-            attempts++;
-            setTimeout(function(){ load(cb); }, 150);
-        }
-    }
-
-    function pick(voices){
-        if (!voices || !voices.length) return null;
-        var pool = [];
-        voices.forEach(function(v){
-            var lang = String(v.lang || '').toLowerCase();
-            if (lang.indexOf('en') === 0) pool.push(v);
-        });
-        if (!pool.length) pool = voices;
-
-        for (var i = 0; i < preferred.length; i++) {
-            for (var j = 0; j < pool.length; j++) {
-                var label = (String(pool[j].name || '') + ' ' + String(pool[j].voiceURI || '')).toLowerCase();
-                if (label.indexOf(preferred[i]) !== -1) return pool[j];
-            }
-        }
-        return pool[0] || null;
     }
 
     function speak(text){
         text = String(text || '').trim();
-        if (!text || !window.speechSynthesis) return;
+        if (!text) return;
 
-        window.speechSynthesis.cancel();
-
-        function run(voices){
-            var utterance = new SpeechSynthesisUtterance(text);
-            utterance.lang = 'en-US';
-            utterance.rate = 0.84;
-            utterance.pitch = 1.08;
-            utterance.volume = 1;
-            var voice = pick(voices);
-            if (voice) utterance.voice = voice;
-            window.speechSynthesis.speak(utterance);
+        if (audio) {
+            if (!audio.paused) {
+                audio.pause();
+            } else {
+                audio.play().catch(function(){});
+            }
+            return;
         }
 
-        if (cache && cache.length) run(cache);
-        else load(run);
+        var fd = new FormData();
+        fd.append('text', text);
+        fd.append('voice_id', QA_VOICE_ID || 'nzFihrBIvB34imQBuxub');
+
+        fetch(QA_TTS_URL, { method: 'POST', body: fd, credentials: 'same-origin' })
+            .then(function (res) {
+                if (!res.ok) throw new Error('TTS error ' + res.status);
+                return res.blob();
+            })
+            .then(function (blob) {
+                audioUrl = URL.createObjectURL(blob);
+                audio = new Audio(audioUrl);
+
+                audio.onended = function () {
+                    cleanup();
+                };
+
+                audio.play().catch(function () {
+                    cleanup();
+                });
+            })
+            .catch(function () {
+                cleanup();
+            });
     }
 
-    if (window.speechSynthesis) load(function(){});
-    return { speak: speak };
+    return { speak: speak, stop: cleanup };
 })();
 
 function getQuestion(card){
@@ -832,6 +846,7 @@ function nextCard(){
 
 function showDone(){
     done = true;
+    TTS.stop();
     els.board.style.display = 'none';
     els.completed.classList.add('active');
     setTimeout(function(){ els.doneFill.style.width = '100%'; }, 120);
@@ -845,6 +860,7 @@ function showDone(){
 
 function restart(){
     done = false;
+    TTS.stop();
     idx = 0;
     els.doneFill.style.width = '0%';
     els.completed.classList.remove('active');

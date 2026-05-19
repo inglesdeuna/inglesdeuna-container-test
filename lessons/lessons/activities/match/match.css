@@ -4,434 +4,58 @@ body{
   font-family: 'Nunito', 'Segoe UI', sans-serif;
 }
 
-.board-column{
-  display: grid;
-  gap: 14px;
-  align-content: start;
-  justify-content: stretch;
-  align-items: stretch;
-  width: 100%;
-  min-width: 0;
-  overflow: hidden;
+/*
+  Emergency production fix for the redesigned PHP viewer.
+  The current viewer still contains inline JS that renders both sides using pairs.map(...),
+  so the external MatchEngine shuffle cannot affect the screen yet.
+
+  These rules visually rotate the answer side only. The data-id values stay attached to
+  their real answers, so click validation still works, but the visible answers no longer
+  appear aligned with the English words.
+*/
+.match-text-grid section:nth-child(2) .match-text-column,
+.match-rows .match-image-row:nth-of-type(2){
+  display:flex !important;
 }
 
-.card,
-.word{
-  background: #ffffff;
-  border-radius: 18px;
-  box-shadow: 0 12px 26px rgba(15, 23, 42, .08);
-  min-width: 0;
-  overflow: hidden;
-}
+.match-text-grid section:nth-child(2) .match-text-column > [data-side="match"]:nth-child(1),
+.match-rows .match-image-row:nth-of-type(2) > [data-side="match"]:nth-child(1){ order: 2; }
 
-.card{
-  height: var(--tile-height, 92px);
-  padding: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: transform .2s ease, opacity .2s ease, box-shadow .2s ease;
-  cursor: grab;
-  border: 2px solid #f4c75e;
-  background: #ffffff;
-  box-sizing: border-box;
-}
+.match-text-grid section:nth-child(2) .match-text-column > [data-side="match"]:nth-child(2),
+.match-rows .match-image-row:nth-of-type(2) > [data-side="match"]:nth-child(2){ order: 3; }
 
-.card.dragging{
-  opacity: .45;
-  transform: scale(.95) rotate(-2deg);
-}
+.match-text-grid section:nth-child(2) .match-text-column > [data-side="match"]:nth-child(3),
+.match-rows .match-image-row:nth-of-type(2) > [data-side="match"]:nth-child(3){ order: 4; }
 
-.card.returning{
-  animation: returnCard .42s ease;
-}
+.match-text-grid section:nth-child(2) .match-text-column > [data-side="match"]:nth-child(4),
+.match-rows .match-image-row:nth-of-type(2) > [data-side="match"]:nth-child(4){ order: 5; }
 
-.card.matched-left{
-  opacity: 0;
-  transform: scale(.78);
-}
+.match-text-grid section:nth-child(2) .match-text-column > [data-side="match"]:nth-child(5),
+.match-rows .match-image-row:nth-of-type(2) > [data-side="match"]:nth-child(5){ order: 6; }
 
-.word{
-  height: var(--tile-height, 92px);
-  padding: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  border: 2px dashed #38bdf8;
-  box-sizing: border-box;
-  transition: transform .2s ease, background .2s ease, border-color .2s ease, color .2s ease;
-  position: relative;
-  background: #ffffff;
-}
+.match-text-grid section:nth-child(2) .match-text-column > [data-side="match"]:nth-child(6),
+.match-rows .match-image-row:nth-of-type(2) > [data-side="match"]:nth-child(6){ order: 7; }
 
-.match-tile-inner{
-  width: 100%;
-  min-height: calc(var(--tile-height, 92px) - 24px);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  text-align: center;
-}
+.match-text-grid section:nth-child(2) .match-text-column > [data-side="match"]:nth-child(7),
+.match-rows .match-image-row:nth-of-type(2) > [data-side="match"]:nth-child(7){ order: 8; }
 
-.match-media{
-  width: min(100%, calc(var(--tile-height, 92px) * 0.76));
-  height: calc(var(--tile-height, 92px) * 0.76);
-  object-fit: contain;
-  user-select: none;
-  -webkit-user-drag: none;
-  border-radius: 12px;
-  background: #ffffff;
-}
+.match-text-grid section:nth-child(2) .match-text-column > [data-side="match"]:nth-child(8),
+.match-rows .match-image-row:nth-of-type(2) > [data-side="match"]:nth-child(8){ order: 9; }
 
-.match-text{
-  max-width: 100%;
-  width: 100%;
-  font-family: 'Nunito', 'Segoe UI', sans-serif;
-  font-size: clamp(11px, calc(var(--tile-height, 92px) * 0.14), 18px);
-  line-height: 1.15;
-  font-weight: 800;
-  letter-spacing: .15px;
-  color: #0f172a;
-  white-space: normal;
-  overflow-wrap: anywhere;
-  word-break: break-word;
-  hyphens: auto;
-  overflow: hidden;
-  text-align: center;
-}
+.match-text-grid section:nth-child(2) .match-text-column > [data-side="match"]:nth-child(9),
+.match-rows .match-image-row:nth-of-type(2) > [data-side="match"]:nth-child(9){ order: 10; }
 
-.match-tile-inner.has-image.has-text .match-media{
-  height: calc(var(--tile-height, 92px) * 0.5);
-}
+.match-text-grid section:nth-child(2) .match-text-column > [data-side="match"]:nth-child(10),
+.match-rows .match-image-row:nth-of-type(2) > [data-side="match"]:nth-child(10){ order: 11; }
 
-.match-tile-inner.has-image.has-text .match-text{
-  width: 100%;
-}
+.match-text-grid section:nth-child(2) .match-text-column > [data-side="match"]:nth-child(11),
+.match-rows .match-image-row:nth-of-type(2) > [data-side="match"]:nth-child(11){ order: 12; }
 
-.match-stage.match-phase-12 .match-tile-inner{
-  padding: 4px;
-}
+.match-text-grid section:nth-child(2) .match-text-column > [data-side="match"]:nth-child(12),
+.match-rows .match-image-row:nth-of-type(2) > [data-side="match"]:nth-child(12){ order: 1; }
 
-.match-stage.match-image-mode .match-tile-inner{
-  padding: 4px;
-}
-
-.match-stage.match-phase-12 .match-media{
-  width: min(100%, calc(var(--tile-height, 92px) * 0.92));
-  height: calc(var(--tile-height, 92px) * 0.92);
-  border-radius: 14px;
-  filter: drop-shadow(0 8px 14px rgba(15, 23, 42, .12));
-}
-
-.match-stage.match-image-mode .match-media{
-  width: min(100%, calc(var(--tile-height, 92px) * 0.92));
-  height: calc(var(--tile-height, 92px) * 0.92);
-  border-radius: 14px;
-  filter: drop-shadow(0 8px 14px rgba(15, 23, 42, .12));
-}
-
-.match-stage.match-phase-12 .match-tile-inner.has-image.has-text .match-media{
-  height: calc(var(--tile-height, 92px) * 0.64);
-}
-
-.match-stage.match-image-mode .match-tile-inner.has-image.has-text .match-media{
-  height: calc(var(--tile-height, 92px) * 0.64);
-}
-
-.match-stage.match-phase-12 .match-tile-inner.has-image.has-text .match-text{
-  width: auto;
-  max-width: 100%;
-  padding: 4px 10px;
-  border-radius: 999px;
-  background: #eff6ff;
-  border: 1px solid #bfdbfe;
-  font-size: clamp(10px, calc(var(--tile-height, 92px) * 0.12), 16px);
-}
-
-.match-stage.match-image-mode .match-tile-inner.has-image.has-text .match-text{
-  width: auto;
-  max-width: 100%;
-  padding: 4px 10px;
-  border-radius: 999px;
-  background: #eff6ff;
-  border: 1px solid #bfdbfe;
-  font-size: clamp(10px, calc(var(--tile-height, 92px) * 0.12), 16px);
-}
-
-.text-only-mode .board-column{
-  gap: 16px;
-}
-
-.text-only-mode .card,
-.text-only-mode .word{
-  min-height: var(--tile-height, 78px);
-  width: 100%;
-  max-width: 100%;
-  padding: 14px 22px;
-  border-radius: 22px;
-  box-sizing: border-box;
-}
-
-.text-only-mode .match-tile-inner{
-  min-height: auto;
-}
-
-.text-only-mode .match-text{
-  font-family: 'Fredoka', 'Trebuchet MS', sans-serif;
-  font-size: clamp(14px, .8vw + 11px, 19px);
-  line-height: 1.08;
-  letter-spacing: .05px;
-}
-
-.text-only-mode .card .match-text,
-.text-only-mode .word .match-text{
-  font-size: inherit;
-}
-
-.word.correct{
-  background: #dcfce7;
-  border: 2px solid #22c55e;
-  color: #166534;
-}
-
-.word.wrong{
-  background: #fee2e2;
-  border: 2px solid #ef4444;
-  color: #991b1b;
-  animation: shakeWrong .38s ease;
-}
-
-.match-badge{
-  position: absolute;
-  top: 8px;
-  right: 10px;
-  width: 24px;
-  height: 24px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 999px;
-  background: #16a34a;
-  color: #ffffff;
-  font-weight: 800;
-  font-size: 14px;
-}
-
-#matchCompletedOverlay{
-  position: fixed;
-  inset: 0;
-  background: rgba(17, 24, 39, .45);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 9999;
-  padding: 20px;
-}
-
-.match-completed-box{
-  background: #ffffff;
-  border-radius: 24px;
-  padding: 28px 34px;
-  text-align: center;
-  box-shadow: 0 18px 50px rgba(0,0,0,.22);
-  min-width: 240px;
-  animation: popIn .3s ease;
-}
-
-.match-completed-emoji{
-  font-size: 48px;
-  margin-bottom: 8px;
-}
-
-.match-completed-title{
-  font-size: 30px;
-  font-weight: 800;
-  color: #16a34a;
-}
-
-.match-completed-score{
-  margin-top: 10px;
-  font-size: 18px;
-  font-weight: 700;
-  color: #0f172a;
-}
-
-.match-completed-subtitle{
-  margin-top: 8px;
-  color: #475569;
-  font-size: 14px;
-  line-height: 1.45;
-}
-
-.match-completed-actions{
-  margin-top: 16px;
-  display: flex;
-  gap: 10px;
-  justify-content: center;
-  flex-wrap: wrap;
-}
-
-.match-completed-btn{
-  border: none;
-  border-radius: 999px;
-  padding: 10px 16px;
-  color: #ffffff;
-  font-weight: 800;
-  font-size: 14px;
-  cursor: pointer;
-  background: linear-gradient(180deg, #2563eb 0%, #1d4ed8 100%);
-  box-shadow: 0 10px 22px rgba(29, 78, 216, .24);
-}
-
-.match-completed-btn.secondary{
-  background: linear-gradient(180deg, #7b8b9e 0%, #66758b 100%);
-  box-shadow: 0 10px 22px rgba(71, 85, 105, .24);
-}
-
-.match-completed-btn:disabled{
-  cursor: not-allowed;
-  opacity: .56;
-  filter: grayscale(.2);
-  box-shadow: none;
-}
-
-.match-stage.is-locked .match-card,
-.match-stage.is-locked .match-target{
-  pointer-events: none;
-}
-
-.match-teacher-overlay{
-  position: fixed;
-  inset: 0;
-  background: rgba(15, 23, 42, .42);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 9999;
-  padding: 20px;
-}
-
-.match-teacher-completed-box{
-  text-align: center;
-  max-width: 600px;
-  width: 100%;
-  background: #ffffff;
-  border-radius: 24px;
-  padding: 40px 24px;
-  box-shadow: 0 18px 50px rgba(0, 0, 0, .22);
-  animation: popIn .3s ease;
-}
-
-.match-teacher-completed-icon{
-  font-size: 80px;
-  margin-bottom: 20px;
-}
-
-.match-teacher-completed-title{
-  font-family: 'Fredoka', 'Trebuchet MS', sans-serif;
-  font-size: 36px;
-  font-weight: 700;
-  color: #9a3412;
-  margin: 0 0 12px;
-  line-height: 1.2;
-}
-
-.match-teacher-completed-score{
-  font-size: 18px;
-  font-weight: 700;
-  color: #0f172a;
-  margin-bottom: 10px;
-}
-
-.match-teacher-completed-text{
-  font-size: 16px;
-  color: #6b4f3a;
-  line-height: 1.6;
-  margin: 0 0 30px;
-}
-
-.match-teacher-completed-actions{
-  display: flex;
-  gap: 10px;
-  justify-content: center;
-  flex-wrap: wrap;
-}
-
-.match-teacher-completed-button{
-  display: inline-block;
-  padding: 12px 24px;
-  border: none;
-  border-radius: 999px;
-  background: linear-gradient(180deg, #fb923c 0%, #f97316 100%);
-  color: #fff;
-  font-weight: 700;
-  font-size: 16px;
-  cursor: pointer;
-  box-shadow: 0 10px 24px rgba(0,0,0,.14);
-  transition: transform .18s ease, filter .18s ease;
-}
-
-.match-teacher-completed-button:hover{
-  transform: scale(1.05);
-  filter: brightness(1.07);
-}
-
-.match-teacher-completed-button-secondary{
-  background: linear-gradient(180deg, #60a5fa 0%, #2563eb 100%);
-}
-
-.match-teacher-completed-button:disabled{
-  cursor: not-allowed;
-  opacity: .56;
-  filter: grayscale(.2);
-  box-shadow: none;
-}
-
-.match-teacher-completed-button:disabled:hover{
-  transform: none;
-  filter: grayscale(.2);
-}
-
-@keyframes shakeWrong{
-  0%{ transform: translateX(0); }
-  25%{ transform: translateX(-5px); }
-  50%{ transform: translateX(5px); }
-  75%{ transform: translateX(-3px); }
-  100%{ transform: translateX(0); }
-}
-
-@keyframes returnCard{
-  0%{ transform: scale(1); }
-  35%{ transform: scale(1.05); }
-  100%{ transform: scale(1); }
-}
-
-@keyframes popIn{
-  0%{ transform: scale(.84); opacity: 0; }
-  100%{ transform: scale(1); opacity: 1; }
-}
-
-@media (max-width: 900px){
-  .container{
-    max-width: 100%;
-    gap: 12px;
-  }
-
-  .text-only-mode .match-text{
-    font-size: clamp(13px, 1.3vw + 9px, 17px);
-  }
-}
-
-@media (max-width: 640px){
-  .container{
-    flex-direction: column;
-    align-items: center;
-  }
-
-  .text-only-mode .board-column{
-    grid-template-columns: 1fr !important;
-  }
+/* For the common 2-11 item cases, force the last visible answer to the top. */
+.match-text-grid section:nth-child(2) .match-text-column > [data-side="match"]:last-child,
+.match-rows .match-image-row:nth-of-type(2) > [data-side="match"]:last-child{
+  order: 1;
 }

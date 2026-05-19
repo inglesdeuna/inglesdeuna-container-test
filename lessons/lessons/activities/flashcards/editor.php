@@ -144,6 +144,9 @@ function normalize_flashcards_payload($rawData): array
                 'spanish_text' => isset($item['spanish_text']) ? trim((string) $item['spanish_text']) : '',
                 'text' => isset($item['text']) ? trim((string) $item['text']) : '',
                 'image' => isset($item['image']) ? trim((string) $item['image']) : '',
+                'back_image' => isset($item['back_image']) ? trim((string) $item['back_image']) : '',
+                'voice_id' => isset($item['voice_id']) ? trim((string) $item['voice_id']) : 'nzFihrBIvB34imQBuxub',
+                'audio' => isset($item['audio']) ? trim((string) $item['audio']) : '',
             );
         }
     }
@@ -422,14 +425,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $postedTitle = isset($_POST['activity_title']) ? trim((string) $_POST['activity_title']) : '';
     $texts = isset($_POST['text']) && is_array($_POST['text']) ? $_POST['text'] : array();
     $images = isset($_POST['image_existing']) && is_array($_POST['image_existing']) ? $_POST['image_existing'] : array();
+    $audios = isset($_POST['audio']) && is_array($_POST['audio']) ? $_POST['audio'] : array();
+    $voiceIds = isset($_POST['voice_id']) && is_array($_POST['voice_id']) ? $_POST['voice_id'] : array();
     $ids = isset($_POST['card_id']) && is_array($_POST['card_id']) ? $_POST['card_id'] : array();
     $imageFiles = isset($_FILES['image_file']) ? $_FILES['image_file'] : null;
+    $backImages = isset($_POST['back_image_existing']) && is_array($_POST['back_image_existing']) ? $_POST['back_image_existing'] : array();
+    $backImageFiles = isset($_FILES['back_image_file']) ? $_FILES['back_image_file'] : null;
 
     $sanitized = array();
 
     foreach ($texts as $i => $textRaw) {
         $text = trim((string) $textRaw);
         $image = isset($images[$i]) ? trim((string) $images[$i]) : '';
+        $backImage = isset($backImages[$i]) ? trim((string) $backImages[$i]) : '';
+        $audio = isset($audios[$i]) ? trim((string) $audios[$i]) : '';
+        $voiceId = isset($voiceIds[$i]) ? trim((string) $voiceIds[$i]) : 'nzFihrBIvB34imQBuxub';
+        if ($voiceId === '' || !preg_match('/^[A-Za-z0-9]+$/', $voiceId)) $voiceId = 'nzFihrBIvB34imQBuxub';
         $cardId = isset($ids[$i]) && trim((string) $ids[$i]) !== '' ? trim((string) $ids[$i]) : uniqid('flashcard_');
 
         if (
@@ -445,7 +456,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
 
-        if ($text === '' && $image === '') {
+        if (
+            $backImageFiles &&
+            isset($backImageFiles['name'][$i]) &&
+            $backImageFiles['name'][$i] !== '' &&
+            isset($backImageFiles['tmp_name'][$i]) &&
+            $backImageFiles['tmp_name'][$i] !== ''
+        ) {
+            $uploadedBackImage = upload_to_cloudinary($backImageFiles['tmp_name'][$i]);
+            if ($uploadedBackImage) {
+                $backImage = $uploadedBackImage;
+            }
+        }
+
+        if ($text === '' && $image === '' && $backImage === '') {
             continue;
         }
 
@@ -453,6 +477,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'id' => $cardId,
             'text' => $text,
             'image' => $image,
+            'back_image' => $backImage,
+            'voice_id' => $voiceId,
+            'audio' => $audio,
         );
     }
 
@@ -591,6 +618,13 @@ ob_start();
     cursor:pointer;
     font-weight:700;
 }
+
+.fc-tts-row{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin-bottom:8px}
+.fc-tts-row select{min-width:220px;padding:10px;border:1px solid #d1d5db;border-radius:8px}
+.fc-tts-btn{background:#1E9A7A;color:#fff;border:none;border-radius:999px;padding:11px 18px;font-size:12px;font-weight:900;cursor:pointer}
+.fc-tts-status{font-size:12px;font-weight:800;min-height:18px;margin-bottom:8px}
+.fc-tts-preview{display:flex;align-items:center;gap:10px;margin-bottom:10px}.fc-tts-preview audio{flex:1;height:36px}.fc-tts-remove{background:none;border:none;color:#E24B4A;font-size:11px;font-weight:900;cursor:pointer}
+.fc-tts-status.stale{color:#b45309}
 </style>
 
 <?php if (isset($_GET['saved'])) { ?>
@@ -615,15 +649,39 @@ ob_start();
             <div class="card-item">
                 <input type="hidden" name="card_id[]" value="<?= htmlspecialchars(isset($card['id']) ? $card['id'] : uniqid('flashcard_'), ENT_QUOTES, 'UTF-8') ?>">
                 <input type="hidden" name="image_existing[]" value="<?= htmlspecialchars(isset($card['image']) ? $card['image'] : '', ENT_QUOTES, 'UTF-8') ?>">
+                <input type="hidden" name="audio[]" value="<?= htmlspecialchars(isset($card['audio']) ? $card['audio'] : '', ENT_QUOTES, 'UTF-8') ?>">
 
                 <label>Word / text</label>
-                <input type="text" name="text[]" value="<?= htmlspecialchars(isset($card['text']) ? $card['text'] : '', ENT_QUOTES, 'UTF-8') ?>" placeholder="Write the word" required>
+                <input type="text" name="text[]" value="<?= htmlspecialchars(isset($card['text']) ? $card['text'] : '', ENT_QUOTES, 'UTF-8') ?>" placeholder="Write the word">
+
+                <div class="fc-tts-row">
+                    <div>
+                        <label>Voice</label>
+                        <select name="voice_id[]" class="js-fc-voiceid">
+                            <option value="nzFihrBIvB34imQBuxub"<?= ((isset($card['voice_id']) ? $card['voice_id'] : 'nzFihrBIvB34imQBuxub') === 'nzFihrBIvB34imQBuxub') ? ' selected' : '' ?>>Adult Male (Josh)</option>
+                            <option value="NoOVOzCQFLOvtsMoNcdT"<?= ((isset($card['voice_id']) ? $card['voice_id'] : '') === 'NoOVOzCQFLOvtsMoNcdT') ? ' selected' : '' ?>>Adult Female (Lily)</option>
+                            <option value="Nggzl2QAXh3OijoXD116"<?= ((isset($card['voice_id']) ? $card['voice_id'] : '') === 'Nggzl2QAXh3OijoXD116') ? ' selected' : '' ?>>Child (Candy)</option>
+                        </select>
+                    </div>
+                    <button type="button" class="fc-tts-btn js-fc-generate-tts">Generate audio</button>
+                </div>
+                <div class="fc-tts-status js-fc-tts-status"></div>
+                <?php if (!empty($card['audio'])) { ?>
+                    <div class="fc-tts-preview js-fc-tts-preview"><audio src="<?= htmlspecialchars($card['audio'], ENT_QUOTES, 'UTF-8') ?>" controls preload="none"></audio><button type="button" class="fc-tts-remove js-fc-remove-tts">✖ Remove</button></div>
+                <?php } ?>
 
                 <label>Image (optional)</label>
                 <?php if (!empty($card['image'])) { ?>
                     <img src="<?= htmlspecialchars($card['image'], ENT_QUOTES, 'UTF-8') ?>" alt="flashcard-image" class="image-preview">
                 <?php } ?>
                 <input type="file" name="image_file[]" accept="image/*">
+
+                <input type="hidden" name="back_image_existing[]" value="<?= htmlspecialchars($card['back_image'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
+                <label>Back image (optional)</label>
+                <?php if (!empty($card['back_image'])): ?>
+                    <img src="<?= htmlspecialchars($card['back_image'], ENT_QUOTES, 'UTF-8') ?>" alt="back image preview" class="image-preview">
+                <?php endif; ?>
+                <input type="file" name="back_image_file[]" accept="image/*">
 
                 <button type="button" class="btn-remove" onclick="removeCard(this)">✖ Remove</button>
             </div>
@@ -644,6 +702,21 @@ function markChanged() {
     formChanged = true;
 }
 
+function markCardAudioStale(card) {
+    if (!card) return;
+    var audioInput = card.querySelector('input[name="audio[]"]');
+    var preview = card.querySelector('.js-fc-tts-preview');
+    var statusEl = card.querySelector('.js-fc-tts-status');
+    if (audioInput && audioInput.value) {
+        audioInput.value = '';
+        if (preview) preview.remove();
+        if (statusEl) {
+            statusEl.textContent = 'Voice/text changed. Generate audio again.';
+            statusEl.classList.add('stale');
+        }
+    }
+}
+
 function removeCard(button) {
     const item = button.closest('.card-item');
     if (item) {
@@ -659,12 +732,30 @@ function addCard() {
     div.innerHTML = `
         <input type="hidden" name="card_id[]" value="flashcard_${Date.now()}_${Math.floor(Math.random() * 1000)}">
         <input type="hidden" name="image_existing[]" value="">
+        <input type="hidden" name="audio[]" value="">
 
         <label>Word / text</label>
-        <input type="text" name="text[]" placeholder="Write the word" required>
+        <input type="text" name="text[]" placeholder="Write the word">
+
+        <div class="fc-tts-row">
+            <div>
+                <label>Voice</label>
+                <select name="voice_id[]" class="js-fc-voiceid">
+                    <option value="nzFihrBIvB34imQBuxub">Adult Male (Josh)</option>
+                    <option value="NoOVOzCQFLOvtsMoNcdT">Adult Female (Lily)</option>
+                    <option value="Nggzl2QAXh3OijoXD116">Child (Candy)</option>
+                </select>
+            </div>
+            <button type="button" class="fc-tts-btn js-fc-generate-tts">Generate audio</button>
+        </div>
+        <div class="fc-tts-status js-fc-tts-status"></div>
 
         <label>Image (optional)</label>
         <input type="file" name="image_file[]" accept="image/*">
+
+        <input type="hidden" name="back_image_existing[]" value="">
+        <label>Back image (optional)</label>
+        <input type="file" name="back_image_file[]" accept="image/*">
 
         <button type="button" class="btn-remove" onclick="removeCard(this)">✖ Remove</button>
     `;
@@ -683,6 +774,75 @@ function bindChangeTracking(scope) {
 
 document.addEventListener('DOMContentLoaded', function () {
     bindChangeTracking(document);
+
+    document.getElementById('cardsContainer').addEventListener('input', function (e) {
+        if (e.target.matches('input[name="text[]"]')) {
+            markCardAudioStale(e.target.closest('.card-item'));
+        }
+    });
+
+    document.getElementById('cardsContainer').addEventListener('change', function (e) {
+        if (e.target.matches('.js-fc-voiceid')) {
+            markCardAudioStale(e.target.closest('.card-item'));
+        }
+    });
+
+    document.getElementById('cardsContainer').addEventListener('click', function (e) {
+        var generateBtn = e.target.closest('.js-fc-generate-tts');
+        var removeBtn = e.target.closest('.js-fc-remove-tts');
+        if (generateBtn) {
+            var card = generateBtn.closest('.card-item');
+            var textInput = card ? card.querySelector('input[name="text[]"]') : null;
+            var voiceSelect = card ? card.querySelector('.js-fc-voiceid') : null;
+            var statusEl = card ? card.querySelector('.js-fc-tts-status') : null;
+            var audioInput = card ? card.querySelector('input[name="audio[]"]') : null;
+            var text = textInput ? textInput.value.trim() : '';
+            if (!text) { alert('Please enter the word first.'); return; }
+            generateBtn.disabled = true;
+            if (statusEl) { statusEl.textContent = 'Generating...'; statusEl.style.color = ''; }
+            var fd = new FormData();
+            fd.append('text', text);
+            fd.append('voice_id', voiceSelect ? voiceSelect.value : 'nzFihrBIvB34imQBuxub');
+            fetch('tts.php', { method: 'POST', body: fd, credentials: 'same-origin' })
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    if (data.error) throw new Error(data.error);
+                    if (audioInput) audioInput.value = data.url;
+                    var old = card.querySelector('.js-fc-tts-preview');
+                    if (old) old.remove();
+                    var preview = document.createElement('div');
+                    preview.className = 'fc-tts-preview js-fc-tts-preview';
+                    preview.innerHTML = '<audio src="' + data.url + '" controls preload="none"></audio><button type="button" class="fc-tts-remove js-fc-remove-tts">✖ Remove</button>';
+                    card.insertBefore(preview, card.querySelector('label:nth-of-type(2)'));
+                    if (statusEl) { statusEl.textContent = 'Audio generated successfully'; statusEl.style.color = '#1D9E75'; }
+                    if (statusEl) statusEl.classList.remove('stale');
+                    markChanged();
+                })
+                .catch(function (err) {
+                    var msg = err && err.message ? err.message : 'Generation failed';
+                    if (statusEl) {
+                        if (/api key not configured/i.test(msg)) {
+                            statusEl.textContent = 'API key missing: this card will use browser voice profile on playback.';
+                            statusEl.style.color = '#b45309';
+                        } else {
+                            statusEl.textContent = '✘ ' + msg;
+                            statusEl.style.color = '#E24B4A';
+                        }
+                    }
+                })
+                .finally(function () { generateBtn.disabled = false; });
+        }
+        if (removeBtn) {
+            var card2 = removeBtn.closest('.card-item');
+            var audioInput2 = card2 ? card2.querySelector('input[name="audio[]"]') : null;
+            var statusEl2 = card2 ? card2.querySelector('.js-fc-tts-status') : null;
+            if (audioInput2) audioInput2.value = '';
+            var preview2 = card2 ? card2.querySelector('.js-fc-tts-preview') : null;
+            if (preview2) preview2.remove();
+            if (statusEl2) { statusEl2.textContent = 'Audio removed.'; statusEl2.style.color = ''; statusEl2.classList.remove('stale'); }
+            markChanged();
+        }
+    });
 
     const form = document.getElementById('flashcardsForm');
     if (form) {

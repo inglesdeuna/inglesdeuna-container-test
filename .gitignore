@@ -21,3 +21,4 @@ logs/
 *.lock
 /tmp
 /temp
+lessons/lessons/config/tts_secrets.php

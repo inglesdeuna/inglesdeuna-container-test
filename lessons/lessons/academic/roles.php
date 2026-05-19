@@ -45,7 +45,37 @@ $students = json_decode((string) file_get_contents($studentsFile), true);
 if (!is_array($courses))  $courses = [];
 if (!is_array($teachers)) $teachers = [];
 if (!is_array($students)) $students = [];
-      "role" => "editor"
+
+$courseId = isset($_GET['course']) ? (string) $_GET['course'] : '';
+$courseIndex = -1;
+
+foreach ($courses as $idx => $course) {
+  $id = isset($course['id']) ? (string) $course['id'] : '';
+  if ($id === $courseId) {
+    $courseIndex = (int) $idx;
+    break;
+  }
+}
+
+if ($courseIndex < 0) {
+  http_response_code(404);
+  die('Curso no encontrado');
+}
+
+if (!isset($courses[$courseIndex]['teacher']) || !is_array($courses[$courseIndex]['teacher'])) {
+  $courses[$courseIndex]['teacher'] = null;
+}
+if (!isset($courses[$courseIndex]['students']) || !is_array($courses[$courseIndex]['students'])) {
+  $courses[$courseIndex]['students'] = [];
+}
+
+/* ASIGNAR DOCENTE */
+if (isset($_POST['assign_teacher'])) {
+  $teacherId = isset($_POST['teacher_id']) ? (string) $_POST['teacher_id'] : '';
+  if ($teacherId !== '') {
+    $courses[$courseIndex]['teacher'] = [
+      'id' => $teacherId,
+      'role' => 'editor'
     ];
     file_put_contents($coursesFile, json_encode($courses, JSON_PRETTY_PRINT));
   }

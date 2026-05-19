@@ -92,6 +92,7 @@ function normalize_dictation_payload($rawData): array
 {
     $default = array(
         'title' => default_dictation_title(),
+        'voice_id' => 'nzFihrBIvB34imQBuxub',
         'items' => array(),
     );
 
@@ -110,6 +111,11 @@ function normalize_dictation_payload($rawData): array
 
     if (isset($decoded['title'])) {
         $title = trim((string) $decoded['title']);
+    }
+
+    $voiceId = 'nzFihrBIvB34imQBuxub';
+    if (isset($decoded['voice_id']) && trim((string) $decoded['voice_id']) !== '') {
+        $voiceId = trim((string) $decoded['voice_id']);
     }
 
     if (isset($decoded['items']) && is_array($decoded['items'])) {
@@ -148,6 +154,7 @@ function normalize_dictation_payload($rawData): array
 
     return array(
         'title' => normalize_activity_title($title),
+        'voice_id' => $voiceId,
         'items' => $normalizedItems,
     );
 }
@@ -270,6 +277,7 @@ function load_dictation_activity(PDO $pdo, string $activityId, string $unit): ar
     return array(
         'id' => isset($row['id']) ? (string) $row['id'] : '',
         'title' => normalize_activity_title((string) ($payload['title'] ?? '')),
+        'voice_id' => isset($payload['voice_id']) && $payload['voice_id'] !== '' ? (string) $payload['voice_id'] : 'nzFihrBIvB34imQBuxub',
         'items' => isset($payload['items']) && is_array($payload['items']) ? $payload['items'] : array(),
     );
 }
@@ -281,6 +289,7 @@ if ($unit === '' && $activityId !== '') {
 $activity = load_dictation_activity($pdo, $activityId, $unit);
 $items = isset($activity['items']) && is_array($activity['items']) ? $activity['items'] : array();
 $viewerTitle = isset($activity['title']) ? (string) $activity['title'] : default_dictation_title();
+$activityVoiceId = isset($activity['voice_id']) ? (string) $activity['voice_id'] : 'nzFihrBIvB34imQBuxub';
 
 ob_start();
 ?>
@@ -320,7 +329,7 @@ body {
     max-width: 100% !important;
     margin: 0 !important;
     padding: 0 !important;
-    min-height: 100vh;
+    min-height: 0;
     display: flex !important;
     flex-direction: column !important;
     background: transparent !important;
@@ -334,6 +343,7 @@ body {
     flex: 1 !important;
     display: flex !important;
     flex-direction: column !important;
+    min-height: 0 !important;
     padding: 0 !important;
     margin: 0 !important;
     background: transparent !important;
@@ -344,7 +354,9 @@ body {
 
 .dict-page {
     width: 100%;
-    min-height: 100vh;
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
     padding: clamp(14px, 2.5vw, 34px);
     display: flex;
     align-items: flex-start;
@@ -478,6 +490,7 @@ body {
 
 .dict-listen-row {
     display: flex;
+    align-items: center;
     justify-content: center;
     margin-bottom: 16px;
 }
@@ -962,11 +975,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
     var isSpeaking = false;
     var isPaused = false;
-    var speechOffset = 0;
-    var speechSourceText = '';
-    var speechSegmentStart = 0;
-    var dictUtter = null;
     var dictCurrentAudio = null;
+    var DICT_TTS_URL = 'tts.php';
+    var DICT_VOICE_ID = <?php echo json_encode($activityVoiceId, JSON_UNESCAPED_UNICODE); ?>;
 
     if (completedTitleEl) {
         completedTitleEl.textContent = activityTitle || 'Dictation';
@@ -1081,6 +1092,12 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
+        // Always stop browser TTS to avoid overlapping with ElevenLabs audio.
+        if (window.speechSynthesis) {
+            speechSynthesis.cancel();
+        }
+
+        // If a pre-generated audio is stored, play it (toggle pause/resume)
         if (data[index].audio) {
             var audioSrc = data[index].audio;
             if (!dictCurrentAudio || dictCurrentAudio.getAttribute('data-src') !== audioSrc) {
@@ -1111,134 +1128,71 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
-        if (!window.speechSynthesis) { return; }
+        // Toggle pause/resume on ElevenLabs audio if already loaded
+        if (dictCurrentAudio && dictCurrentAudio.getAttribute('data-tts') === '1') {
+            if (!dictCurrentAudio.paused) {
+                dictCurrentAudio.pause();
+                isSpeaking = true;
+                isPaused = true;
+                setListenButtonLabel();
+            } else {
+                dictCurrentAudio.play().then(function () {
+                    isSpeaking = true;
+                    isPaused = false;
+                    setListenButtonLabel();
+                }).catch(function () {});
+            }
+            return;
+        }
 
+        // Call ElevenLabs TTS endpoint
         var text = data[index].en || '';
         if (!text) { return; }
+        var voiceId = DICT_VOICE_ID || 'nzFihrBIvB34imQBuxub';
 
-        if (speechSynthesis.paused || isPaused) {
-            speechSynthesis.resume();
-            isSpeaking = true;
-            isPaused = false;
-            setListenButtonLabel();
+        isSpeaking = true;
+        isPaused = false;
+        if (listenBtn) listenBtn.textContent = '...';
+        if (listenBtn) listenBtn.disabled = true;
 
-            setTimeout(function () {
-                if (!speechSynthesis.speaking && speechOffset < speechSourceText.length) {
-                    dictStartSpeechFromOffset();
-                }
-            }, 80);
+        var fd = new FormData();
+        fd.append('text', text);
+        fd.append('voice_id', voiceId);
 
-            return;
-        }
-
-        if (speechSynthesis.speaking && !speechSynthesis.paused) {
-            speechSynthesis.pause();
-            isSpeaking = true;
-            isPaused = true;
-            setListenButtonLabel();
-            return;
-        }
-
-        speechSynthesis.cancel();
-        speechSourceText = text;
-        speechOffset = 0;
-        dictStartSpeechFromOffset();
-    }
-
-    function dictStartSpeechFromOffset() {
-        var source = speechSourceText;
-        if (!source) { return; }
-
-        var safeOffset = Math.max(0, Math.min(speechOffset, source.length));
-        var remaining = source.slice(safeOffset);
-
-        if (!remaining.trim()) {
-            isSpeaking = false;
-            isPaused = false;
-            speechOffset = 0;
-            setListenButtonLabel();
-            return;
-        }
-
-        speechSynthesis.cancel();
-
-        speechSegmentStart = safeOffset;
-        dictUtter = new SpeechSynthesisUtterance(remaining);
-        dictUtter.lang = 'en-US';
-        dictUtter.rate = 0.9;
-
-        var preferredVoice = getPreferredVoice('en-US');
-        if (preferredVoice) dictUtter.voice = preferredVoice;
-
-        dictUtter.onstart = function () {
-            isSpeaking = true;
-            isPaused = false;
-            setListenButtonLabel();
-        };
-
-        dictUtter.onpause = function () {
-            isPaused = true;
-            isSpeaking = true;
-            setListenButtonLabel();
-        };
-
-        dictUtter.onresume = function () {
-            isPaused = false;
-            isSpeaking = true;
-            setListenButtonLabel();
-        };
-
-        dictUtter.onboundary = function (event) {
-            if (typeof event.charIndex === 'number') {
-                speechOffset = Math.max(speechSegmentStart, Math.min(source.length, speechSegmentStart + event.charIndex));
-            }
-        };
-
-        dictUtter.onend = function () {
-            if (isPaused) { return; }
-            isSpeaking = false;
-            isPaused = false;
-            speechOffset = 0;
-            setListenButtonLabel();
-        };
-
-        dictUtter.onerror = function () {
-            isSpeaking = false;
-            isPaused = false;
-            speechOffset = 0;
-            setListenButtonLabel();
-        };
-
-        speechSynthesis.speak(dictUtter);
-    }
-
-    function getPreferredVoice(lang) {
-        lang = lang || 'en-US';
-        var voices = window.speechSynthesis ? window.speechSynthesis.getVoices() : [];
-
-        if (!Array.isArray(voices) || voices.length === 0) {
-            return null;
-        }
-
-        var langPrefix = lang.split('-')[0].toLowerCase();
-        var matchedVoices = voices.filter(function (voice) {
-            var vl = String(voice.lang || '').toLowerCase();
-            return vl === lang.toLowerCase() || vl.indexOf(langPrefix + '-') === 0 || vl.indexOf(langPrefix + '_') === 0;
-        });
-
-        if (!matchedVoices.length) {
-            return voices[0] || null;
-        }
-
-        var femaleHints = ['female', 'woman', 'zira', 'samantha', 'karen', 'aria', 'jenny', 'emma', 'olivia', 'ava',
-            'paulina', 'sabina', 'esperanza', 'mónica', 'monica', 'conchita'];
-
-        var femaleVoice = matchedVoices.find(function (voice) {
-            var label = (String(voice.name || '') + ' ' + String(voice.voiceURI || '')).toLowerCase();
-            return femaleHints.some(function (hint) { return label.indexOf(hint) !== -1; });
-        });
-
-        return femaleVoice || matchedVoices[0];
+        fetch(DICT_TTS_URL, { method: 'POST', body: fd, credentials: 'same-origin' })
+            .then(function (res) {
+                if (!res.ok) { throw new Error('TTS error ' + res.status); }
+                return res.blob();
+            })
+            .then(function (blob) {
+                var url = URL.createObjectURL(blob);
+                if (dictCurrentAudio) { dictCurrentAudio.pause(); }
+                dictCurrentAudio = new Audio(url);
+                dictCurrentAudio.setAttribute('data-tts', '1');
+                dictCurrentAudio.onended = function () {
+                    URL.revokeObjectURL(url);
+                    dictCurrentAudio = null;
+                    isSpeaking = false;
+                    isPaused = false;
+                    setListenButtonLabel();
+                };
+                if (listenBtn) listenBtn.disabled = false;
+                dictCurrentAudio.play().then(function () {
+                    isSpeaking = true;
+                    isPaused = false;
+                    setListenButtonLabel();
+                }).catch(function () {
+                    isSpeaking = false;
+                    isPaused = false;
+                    setListenButtonLabel();
+                });
+            })
+            .catch(function () {
+                isSpeaking = false;
+                isPaused = false;
+                if (listenBtn) listenBtn.disabled = false;
+                setListenButtonLabel();
+            });
     }
 
     function updateProgress() {
@@ -1254,13 +1208,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
         isSpeaking = false;
         isPaused = false;
-        speechOffset = 0;
-        speechSourceText = '';
-        speechSegmentStart = 0;
-        dictUtter = null;
 
         if (dictCurrentAudio) {
             dictCurrentAudio.pause();
+            if (dictCurrentAudio.getAttribute('data-tts') === '1') {
+                try { URL.revokeObjectURL(dictCurrentAudio.src); } catch (e) {}
+            }
             dictCurrentAudio = null;
         }
 

@@ -152,6 +152,11 @@ function normalize_powerpoint_payload($rawData): array
 
             $allowedAlign = ['left','center','right'];
             $allowedImgPos = ['right','left','top','bottom'];
+            $allowedVoices = ['nzFihrBIvB34imQBuxub', 'NoOVOzCQFLOvtsMoNcdT', 'Nggzl2QAXh3OijoXD116'];
+            $voiceId = trim((string) ($slide['voice_id'] ?? 'nzFihrBIvB34imQBuxub'));
+            if (!in_array($voiceId, $allowedVoices, true)) {
+                $voiceId = 'nzFihrBIvB34imQBuxub';
+            }
 
             $slides[] = [
                 'template'       => normalize_template((string) ($slide['template'] ?? 'title_text')),
@@ -174,6 +179,7 @@ function normalize_powerpoint_payload($rawData): array
                 'music_name'     => trim((string) ($slide['music_name'] ?? '')),
                 'tts_text'       => trim((string) ($slide['tts_text'] ?? '')),
                 'tts_lang'       => in_array($slide['tts_lang'] ?? '', ['en-US','es-MX'], true) ? $slide['tts_lang'] : 'en-US',
+                'voice_id'       => $voiceId,
             ];
         }
     }
@@ -231,7 +237,9 @@ $canvaLink = (string) ($activity['canva_link'] ?? '');
 $canvaOpenLink = powerpoint_open_url($canvaLink);
 $showCanvaBlock = $canvaLink !== '';
 $showSlidesBlock = !$showCanvaBlock && !empty($slides);
-$showEmptyBlock = !$showCanvaBlock && !$showSlidesBlock && $presentationFile === '';
+$showEmptyBlock    = !$showCanvaBlock && !$showSlidesBlock && $presentationFile === '';
+$isPresentationPdf = $presentationFile !== '' && stripos($presentationFile, 'data:application/pdf') === 0;
+$serveUrl          = '/lessons/lessons/activities/powerpoint/serve.php?id=' . urlencode($activityId);
 
 ob_start();
 ?>
@@ -269,20 +277,18 @@ body {
     max-width: 100% !important;
     margin: 0 !important;
     padding: 0 !important;
-    min-height: 100vh;
+    min-height: 0;
     display: flex !important;
     flex-direction: column !important;
     background: transparent !important;
 }
 
-.top-row {
-    display: none !important;
-}
 
 .viewer-content {
     flex: 1 !important;
     display: flex !important;
     flex-direction: column !important;
+    min-height: 0 !important;
     padding: 0 !important;
     margin: 0 !important;
     background: transparent !important;
@@ -293,7 +299,9 @@ body {
 
 .ppt-page {
     width: 100%;
-    min-height: 100vh;
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
     padding: clamp(14px, 2.5vw, 34px);
     display: flex;
     align-items: flex-start;
@@ -323,6 +331,30 @@ body {
     color: #9B94BE;
     letter-spacing: .1em;
     text-transform: uppercase;
+}
+
+.ppt-back-btn {
+    position: absolute;
+    left: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-family: 'Nunito', sans-serif;
+    font-size: 12px;
+    font-weight: 900;
+    color: #7F77DD;
+    text-decoration: none;
+    padding: 4px 8px;
+    border-radius: 999px;
+    transition: background .12s, color .12s;
+}
+
+.ppt-back-btn:hover {
+    background: #EEEDFE;
+    color: #534AB7;
 }
 
 .ppt-hero {
@@ -611,58 +643,32 @@ body {
 
 .ppt-completed-screen {
     display: none;
-    background: #ffffff;
-    border: 1px solid #EDE9FA;
-    border-radius: 28px;
-    box-shadow: 0 12px 36px rgba(127,119,221,.13);
-    min-height: clamp(300px, 42vh, 430px);
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-    padding: clamp(28px, 5vw, 48px) 24px;
-    gap: 12px;
-    box-sizing: border-box;
 }
 
 .ppt-completed-screen.active {
-    display: flex;
+    display: block;
 }
 
-.ppt-completed-icon {
-    font-size: 64px;
-    line-height: 1;
-    margin-bottom: 4px;
+.passive-done {
+    display: none;
+    width: min(680px, 100%);
+    margin: 24px auto 0;
+    text-align: center;
+    padding: clamp(28px, 5vw, 54px);
+    border-radius: 34px;
+    background: #fff;
+    border: 1px solid #E2F7EF;
+    box-shadow: 0 8px 40px rgba(8,80,65,.12);
 }
-
-.ppt-completed-title {
-    font-family: 'Fredoka', 'Trebuchet MS', sans-serif;
-    font-size: clamp(30px, 5.5vw, 58px);
-    font-weight: 700;
-    color: #F97316;
-    margin: 0;
-    line-height: 1.03;
-}
-
-.ppt-completed-text {
-    font-family: 'Nunito', sans-serif;
-    font-size: clamp(13px, 1.8vw, 17px);
-    font-weight: 800;
-    color: #9B94BE;
-    margin: 0;
-}
-
-.ppt-completed-actions {
-    display: flex;
-    gap: 10px;
-    justify-content: center;
-    flex-wrap: wrap;
-}
-
-.ppt-completed-btn {
-    background: #7F77DD;
-    box-shadow: 0 6px 18px rgba(127,119,221,.18);
-}
+.passive-done.active { display: block; animation: passivePop .45s cubic-bezier(.2,.9,.2,1); }
+@keyframes passivePop { from { opacity:0; transform:scale(.92); } to { opacity:1; transform:scale(1); } }
+.passive-done-icon { font-size: clamp(66px,12vw,100px); margin-bottom: 12px; }
+.passive-done-title { margin: 0 0 10px; font-family: 'Fredoka', sans-serif; font-size: clamp(34px,6vw,60px); color: #085041; line-height: 1; }
+.passive-done-text { margin: 0 auto 22px; max-width: 520px; color: #7C739B; font-size: clamp(14px,2vw,17px); font-weight: 800; line-height: 1.5; }
+.passive-done-track { height: 14px; max-width: 420px; margin: 0 auto 18px; border-radius: 999px; background: #E2F7EF; overflow: hidden; }
+.passive-done-fill { height: 100%; width: 0%; border-radius: 999px; background: linear-gradient(90deg, #1D9E75, #7F77DD, #EC4899); transition: width .8s cubic-bezier(.2,.9,.2,1); }
+.passive-done-btn { display: inline-flex; align-items: center; gap: 8px; padding: 13px 28px; border-radius: 999px; border: 0; background: #1D9E75; color: #fff; font-family: 'Nunito', sans-serif; font-size: 15px; font-weight: 900; cursor: pointer; box-shadow: 0 6px 18px rgba(29,158,117,.30); transition: .18s; }
+.passive-done-btn:hover { transform: translateY(-2px); }
 
 @media (max-width: 900px) {
     .ppt-page {
@@ -718,6 +724,7 @@ body {
     <div class="ppt-app">
 
         <div class="ppt-topbar">
+            <button type="button" class="ppt-back-btn" onclick="history.back()">&#8592; Back</button>
             <span class="ppt-topbar-title">PowerPoint</span>
         </div>
 
@@ -733,13 +740,19 @@ body {
                 <div class="ppt-file">
                     <span class="ppt-file-name">Uploaded presentation: <?php echo htmlspecialchars($presentationName !== '' ? $presentationName : 'presentation.pptx', ENT_QUOTES, 'UTF-8'); ?></span>
                     <div class="ppt-actions">
-                        <button type="button" class="ppt-btn ppt-btn-primary" id="btnOpenPresentation">Open File</button>
+                        <a href="<?= htmlspecialchars($serveUrl, ENT_QUOTES, 'UTF-8') ?>"
+                           target="_blank"
+                           class="ppt-btn ppt-btn-primary"
+                           <?= !$isPresentationPdf ? 'download' : '' ?>>
+                            <?= $isPresentationPdf ? 'Open PDF' : 'Download File' ?>
+                        </a>
                     </div>
                 </div>
 
-                <?php if (stripos($presentationFile, 'data:application/pdf') === 0) { ?>
+                <?php if ($isPresentationPdf) { ?>
                     <div class="ppt-embedded-file">
-                        <iframe src="<?php echo htmlspecialchars($presentationFile, ENT_QUOTES, 'UTF-8'); ?>" title="Uploaded presentation PDF"></iframe>
+                        <iframe src="<?= htmlspecialchars($serveUrl, ENT_QUOTES, 'UTF-8') ?>"
+                                title="Uploaded presentation PDF"></iframe>
                     </div>
                 <?php } ?>
             <?php } ?>
@@ -788,14 +801,7 @@ body {
                 </div>
             <?php } ?>
 
-            <div id="ppt-completed-screen" class="ppt-completed-screen">
-                <div class="ppt-completed-icon">✅</div>
-                <h2 class="ppt-completed-title"><?php echo htmlspecialchars($viewerTitle, ENT_QUOTES, 'UTF-8'); ?></h2>
-                <p class="ppt-completed-text">You've reviewed all the slides. Great job!</p>
-                <div class="ppt-completed-actions">
-                    <button type="button" class="ppt-completed-btn" id="ppt-restart-btn">Back</button>
-                </div>
-            </div>
+            <div id="ppt-completed-screen" class="ppt-completed-screen"></div>
 
         </div>
     </div>
@@ -803,13 +809,18 @@ body {
 
 <script>
 const PPT_SLIDES = <?php echo json_encode($slides, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
-const PPT_PRESENTATION_FILE = <?php echo json_encode($presentationFile, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
+const PPT_SERVE_URL = <?php echo json_encode($presentationFile !== '' ? $serveUrl : '', JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
 const PPT_PRESENTATION_NAME = <?php echo json_encode($presentationName, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
 const PPT_CANVA_LINK = <?php echo json_encode($canvaLink, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
 const PPT_CANVA_OPEN_LINK = <?php echo json_encode($canvaOpenLink, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
+const PPT_TTS_URL = 'tts.php';
 
 let slideIndex = 0;
 let currentAudio = null;
+let currentTtsAudio = null;
+let currentTtsAudioUrl = '';
+let ttsAbortController = null;
+let ttsRequestToken = 0;
 
 function escapeHtml(rawValue) {
     return String(rawValue)
@@ -880,6 +891,11 @@ function renderSlide() {
         currentAudio = null;
     }
 
+    if (currentTtsAudio) {
+        currentTtsAudio.pause();
+        currentTtsAudio = null;
+    }
+
     if (slide.music) {
         const audioWrap = document.createElement('div');
         audioWrap.className = 'ppt-slide-audio-wrap';
@@ -925,51 +941,82 @@ function speakSlide() {
     const textToRead = String(slide.tts_text || '').trim() || String(slide.text || '').trim() || String(slide.title || '').trim();
     if (!textToRead) return;
 
-    const ttsLang = String(slide.tts_lang || '').trim() || 'en-US';
-    const utterance = new SpeechSynthesisUtterance(textToRead);
-    utterance.lang = ttsLang;
-    utterance.rate = 1;
+    const allowedVoices = ['nzFihrBIvB34imQBuxub', 'NoOVOzCQFLOvtsMoNcdT', 'Nggzl2QAXh3OijoXD116'];
+    const selectedVoiceId = allowedVoices.includes(String(slide.voice_id || '').trim())
+        ? String(slide.voice_id).trim()
+        : 'nzFihrBIvB34imQBuxub';
 
-    const selectedVoice = getPreferredVoice(ttsLang);
-    if (selectedVoice) {
-        utterance.voice = selectedVoice;
+    stopSpeech();
+
+    ttsRequestToken += 1;
+    const requestToken = ttsRequestToken;
+
+    if (ttsAbortController) {
+        ttsAbortController.abort();
+    }
+    ttsAbortController = new AbortController();
+
+    const fd = new FormData();
+    fd.append('text', textToRead);
+    fd.append('voice_id', selectedVoiceId);
+
+    const btn = document.getElementById('btnTts');
+    if (btn) {
+        btn.textContent = 'Reading...';
+        btn.disabled = true;
     }
 
-    speechSynthesis.cancel();
-    speechSynthesis.speak(utterance);
-}
+    fetch(PPT_TTS_URL, { method: 'POST', body: fd, credentials: 'same-origin', signal: ttsAbortController.signal })
+        .then((res) => {
+            if (!res.ok) throw new Error('TTS error ' + res.status);
+            return res.blob();
+        })
+        .then((blob) => {
+            if (requestToken !== ttsRequestToken) return;
+            if (!blob || blob.size < 100) throw new Error('Empty audio');
 
-function getPreferredVoice(lang) {
-    lang = lang || 'en-US';
-    const voices = window.speechSynthesis ? window.speechSynthesis.getVoices() : [];
-    if (!Array.isArray(voices) || voices.length === 0) {
-        return null;
-    }
+            if (currentTtsAudio) {
+                currentTtsAudio.pause();
+                currentTtsAudio = null;
+            }
+            if (currentTtsAudioUrl) {
+                URL.revokeObjectURL(currentTtsAudioUrl);
+                currentTtsAudioUrl = '';
+            }
 
-    const langPrefix = lang.split('-')[0].toLowerCase();
-    const matchedVoices = voices.filter((voice) => {
-        const vl = String(voice.lang || '').toLowerCase();
-        return vl === lang.toLowerCase() || vl.startsWith(langPrefix + '-') || vl.startsWith(langPrefix + '_');
-    });
-
-    if (!matchedVoices.length) {
-        return voices[0] || null;
-    }
-
-    const femaleHints = ['female', 'woman', 'zira', 'samantha', 'karen', 'aria', 'jenny', 'emma', 'olivia', 'ava',
-        'paulina', 'sabina', 'esperanza', 'mónica', 'monica', 'conchita'];
-
-    const femaleVoice = matchedVoices.find((voice) => {
-        const label = (String(voice.name || '') + ' ' + String(voice.voiceURI || '')).toLowerCase();
-        return femaleHints.some((hint) => label.includes(hint));
-    });
-
-    return femaleVoice || matchedVoices[0];
+            currentTtsAudioUrl = URL.createObjectURL(blob);
+            currentTtsAudio = new Audio(currentTtsAudioUrl);
+            currentTtsAudio.onended = function () {
+                const endBtn = document.getElementById('btnTts');
+                if (endBtn) {
+                    endBtn.textContent = 'Read';
+                    endBtn.disabled = false;
+                }
+            };
+            currentTtsAudio.onerror = function () {
+                const errBtn = document.getElementById('btnTts');
+                if (errBtn) {
+                    errBtn.textContent = 'Read';
+                    errBtn.disabled = false;
+                }
+            };
+            return currentTtsAudio.play();
+        })
+        .catch((err) => {
+            if (requestToken !== ttsRequestToken) return;
+            const failBtn = document.getElementById('btnTts');
+            if (failBtn) {
+                failBtn.textContent = 'Read';
+                failBtn.disabled = false;
+            }
+            if (err && err.name === 'AbortError') return;
+            alert('No se pudo reproducir el TTS en este momento.');
+        });
 }
 
 function openPresentation() {
-    if (!PPT_PRESENTATION_FILE) return;
-    window.open(PPT_PRESENTATION_FILE, '_blank');
+    if (!PPT_SERVE_URL) return;
+    window.open(PPT_SERVE_URL, '_blank');
 }
 
 function openCanva() {
@@ -979,7 +1026,26 @@ function openCanva() {
 }
 
 function stopSpeech() {
-    speechSynthesis.cancel();
+    if (window.speechSynthesis) {
+        speechSynthesis.cancel();
+    }
+    if (currentTtsAudio) {
+        currentTtsAudio.pause();
+        currentTtsAudio = null;
+    }
+    if (currentTtsAudioUrl) {
+        URL.revokeObjectURL(currentTtsAudioUrl);
+        currentTtsAudioUrl = '';
+    }
+    if (ttsAbortController) {
+        ttsAbortController.abort();
+        ttsAbortController = null;
+    }
+    const btn = document.getElementById('btnTts');
+    if (btn) {
+        btn.textContent = 'Read';
+        btn.disabled = false;
+    }
 }
 
 document.getElementById('btnPrev')?.addEventListener('click', function () {
@@ -996,7 +1062,20 @@ document.getElementById('btnNext')?.addEventListener('click', function () {
         const completedEl = document.getElementById('ppt-completed-screen');
 
         if (stageEl) stageEl.style.display = 'none';
-        if (completedEl) completedEl.classList.add('active');
+        if (completedEl) {
+            completedEl.classList.add('active');
+            showPassiveDone(completedEl, {
+                text: 'You reviewed all ' + PPT_SLIDES.length + ' slides. Great job!',
+                restartLabel: 'Review Again',
+                onRestart: function () {
+                    completedEl.classList.remove('active');
+                    completedEl.innerHTML = '';
+                    if (stageEl) stageEl.style.display = '';
+                    slideIndex = 0;
+                    renderSlide();
+                }
+            });
+        }
 
         return;
     }
@@ -1005,25 +1084,36 @@ document.getElementById('btnNext')?.addEventListener('click', function () {
     renderSlide();
 });
 
-document.getElementById('ppt-restart-btn')?.addEventListener('click', function () {
-    const stageEl = document.querySelector('.ppt-stage');
-    const completedEl = document.getElementById('ppt-completed-screen');
-
-    if (completedEl) completedEl.classList.remove('active');
-    if (stageEl) stageEl.style.display = '';
-
-    slideIndex = 0;
-    renderSlide();
-});
+function showPassiveDone(containerEl, opts) {
+    containerEl.innerHTML =
+        '<div class="passive-done" id="passive-done-card">' +
+        '  <div class="passive-done-icon">🎉</div>' +
+        '  <h2 class="passive-done-title">All Done!</h2>' +
+        '  <p class="passive-done-text">' + (opts.text || 'Great work!') + '</p>' +
+        '  <div class="passive-done-track"><div class="passive-done-fill" id="passive-fill"></div></div>' +
+        '  <div><button class="passive-done-btn" id="passive-restart-btn">&#8635; ' + (opts.restartLabel || 'Play Again') + '</button></div>' +
+        '</div>';
+    var card = document.getElementById('passive-done-card');
+    var fill = document.getElementById('passive-fill');
+    var btn  = document.getElementById('passive-restart-btn');
+    requestAnimationFrame(function () {
+        card.classList.add('active');
+        setTimeout(function () { if (fill) fill.style.width = '100%'; }, 80);
+    });
+    if (btn && opts.onRestart) btn.addEventListener('click', opts.onRestart);
+    if (opts.winAudio) { try { opts.winAudio.currentTime = 0; opts.winAudio.play(); } catch(e){} }
+    if (opts.returnTo && opts.activityId) {
+        var sep = opts.returnTo.indexOf('?') !== -1 ? '&' : '?';
+        fetch(opts.returnTo + sep + 'activity_percent=100&activity_errors=0&activity_total=' + (opts.total||1) +
+            '&activity_id=' + encodeURIComponent(opts.activityId) +
+            '&activity_type=' + encodeURIComponent(opts.activityType || 'activity'),
+            { method: 'GET', credentials: 'same-origin', cache: 'no-store' }).catch(function(){});
+    }
+}
 
 document.getElementById('btnTts')?.addEventListener('click', speakSlide);
 document.getElementById('btnStopTts')?.addEventListener('click', stopSpeech);
-document.getElementById('btnOpenPresentation')?.addEventListener('click', openPresentation);
 document.getElementById('btnOpenCanva')?.addEventListener('click', openCanva);
-
-if (window.speechSynthesis) {
-    window.speechSynthesis.onvoiceschanged = function () {};
-}
 
 if (Array.isArray(PPT_SLIDES) && PPT_SLIDES.length) {
     renderSlide();

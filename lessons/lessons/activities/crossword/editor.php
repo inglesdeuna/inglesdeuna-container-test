@@ -247,6 +247,17 @@ ob_start();
 .cw-preview-title {
     font-size:14px; font-weight:700; color:#6d28d9; margin-bottom:14px;
 }
+.cw-preview-note {
+    margin:0 0 12px;
+    padding:9px 12px;
+    border-radius:10px;
+    border:1px solid #fcd34d;
+    background:#fffbeb;
+    color:#92400e;
+    font-size:12px;
+    font-weight:700;
+}
+.cw-preview-note.hidden { display:none; }
 #cwPreviewGrid { display:inline-block; }
 #cwPreviewGrid table {
     border-collapse:collapse;
@@ -278,6 +289,7 @@ ob_start();
 <!-- Live preview -->
 <div class="cw-preview-wrap">
     <div class="cw-preview-title">📐 Auto Grid Preview (updates as you type)</div>
+    <div id="cwPreviewNote" class="cw-preview-note hidden"></div>
     <div id="cwPreviewGrid"></div>
 </div>
 
@@ -479,30 +491,8 @@ function generateLayout(words){
         });
 
         if(!best){
-            let minC = 0;
-            let maxR = 0;
-            let firstBound = true;
-            Object.keys(grid).forEach(function(key){
-                const parts = key.split(',');
-                const r = parseInt(parts[0], 10);
-                const c = parseInt(parts[1], 10);
-                if(firstBound){ minC = c; maxR = r; firstBound = false; }
-                else { minC = Math.min(minC, c); maxR = Math.max(maxR, r); }
-            });
-
-            const preferDown = (p % 2) === 1;
-            best = {
-                idx:candidate.idx,
-                word,
-                row:maxR + 2,
-                col:minC,
-                direction: preferDown ? 'down' : 'across'
-            };
-
-            const fallbackCheck = canPlaceWord(grid, best.word, best.row, best.col, best.direction);
-            if(!fallbackCheck.ok){
-                best.direction = best.direction === 'across' ? 'down' : 'across';
-            }
+            // Keep crossword connected: skip words that cannot intersect existing grid.
+            continue;
         }
 
         placed.push(best);
@@ -533,12 +523,29 @@ function generateLayout(words){
 function renderPreview(){
     const words = collectWords();
     const grid = document.getElementById('cwPreviewGrid');
-    if(!words.length){ grid.innerHTML = '<span style="color:#9ca3af;font-size:13px;">Add words to see the grid preview.</span>'; return; }
+    const note = document.getElementById('cwPreviewNote');
+    if(!words.length){
+        if(note){ note.classList.add('hidden'); note.textContent = ''; }
+        grid.innerHTML = '<span style="color:#9ca3af;font-size:13px;">Add words to see the grid preview.</span>';
+        return;
+    }
 
     const placed = generateLayout(words);
     if(!placed.length){
+        if(note){ note.classList.add('hidden'); note.textContent = ''; }
         grid.innerHTML = '<span style="color:#9ca3af;font-size:13px;">Unable to build crossword from current words.</span>';
         return;
+    }
+
+    const unplaced = Math.max(0, words.length - placed.length);
+    if(note){
+        if(unplaced > 0){
+            note.textContent = unplaced + ' word(s) could not be placed because they do not intersect the connected crossword.';
+            note.classList.remove('hidden');
+        } else {
+            note.classList.add('hidden');
+            note.textContent = '';
+        }
     }
 
     let maxR = 0, maxC = 0;
@@ -597,11 +604,89 @@ function renderPreview(){
     grid.innerHTML = html;
 }
 
+function cwValidateConnectivity(words) {
+    if(!words.length) return null;
+
+    const placed = generateLayout(words);
+    if(!placed.length) return null;
+
+    // Build a set of all occupied cells
+    let maxR = 0, maxC = 0;
+    placed.forEach(function(w){
+        if(w.direction === 'across'){
+            maxR = Math.max(maxR, w.row);
+            maxC = Math.max(maxC, w.col + w.word.length - 1);
+        } else {
+            maxR = Math.max(maxR, w.row + w.word.length - 1);
+            maxC = Math.max(maxC, w.col);
+        }
+    });
+
+    const cells = new Set();
+    placed.forEach(function(w){
+        for(let i = 0; i < w.word.length; i++){
+            const r = w.direction === 'across' ? w.row : w.row + i;
+            const c = w.direction === 'across' ? w.col + i : w.col;
+            cells.add(r + ',' + c);
+        }
+    });
+
+    // BFS from first cell
+    const allCells = Array.from(cells);
+    const start = allCells[0];
+    const visited = new Set([start]);
+    const queue = [start];
+
+    while(queue.length){
+        const key = queue.shift();
+        const parts = key.split(',');
+        const r = parseInt(parts[0], 10);
+        const c = parseInt(parts[1], 10);
+        [[r-1,c],[r+1,c],[r,c-1],[r,c+1]].forEach(function(nb){
+            const nk = nb[0] + ',' + nb[1];
+            if(cells.has(nk) && !visited.has(nk)){
+                visited.add(nk);
+                queue.push(nk);
+            }
+        });
+    }
+
+    if(visited.size === cells.size) return null; // all connected
+
+    // Find the first word that is entirely outside the visited set
+    for(let i = 0; i < placed.length; i++){
+        const w = placed[i];
+        let allOut = true;
+        for(let j = 0; j < w.word.length; j++){
+            const r = w.direction === 'across' ? w.row : w.row + j;
+            const c = w.direction === 'across' ? w.col + j : w.col;
+            if(visited.has(r + ',' + c)){ allOut = false; break; }
+        }
+        if(allOut){
+            return 'Word ' + (i + 1) + ' ("' + w.word + '") is not connected to the crossword.\nAll words must share at least one letter with another word.';
+        }
+    }
+
+    return 'One or more words are not connected to the crossword.\nAll words must share at least one letter with another word.';
+}
+
 document.addEventListener('DOMContentLoaded', function(){
     bindAll(document);
     renderPreview();
     const form = document.getElementById('cwForm');
-    if(form){ form.addEventListener('submit', function(){ formSubmitted=true; formChanged=false; }); }
+    if(form){
+        form.addEventListener('submit', function(e){
+            const words = collectWords();
+            const error = cwValidateConnectivity(words);
+            if(error){
+                e.preventDefault();
+                alert(error);
+                return;
+            }
+            formSubmitted = true;
+            formChanged   = false;
+        });
+    }
 });
 window.addEventListener('beforeunload', function(e){ if(formChanged && !formSubmitted){ e.preventDefault(); e.returnValue=''; } });
 </script>

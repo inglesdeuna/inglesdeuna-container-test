@@ -57,6 +57,7 @@ function us_normalize_payload($rawData): array
 {
     $default = [
         'title' => us_default_title(),
+        'voice_id' => 'nzFihrBIvB34imQBuxub',
         'sentences' => [],
     ];
 
@@ -70,6 +71,11 @@ function us_normalize_payload($rawData): array
     }
 
     $title = trim((string) ($decoded['title'] ?? ''));
+
+    $voiceId = trim((string) ($decoded['voice_id'] ?? 'nzFihrBIvB34imQBuxub'));
+    if ($voiceId === '') {
+        $voiceId = 'nzFihrBIvB34imQBuxub';
+    }
 
     $sentencesSource = [];
     if (isset($decoded['sentences']) && is_array($decoded['sentences'])) {
@@ -109,6 +115,7 @@ function us_normalize_payload($rawData): array
 
     return [
         'title' => us_normalize_title($title),
+        'voice_id' => $voiceId,
         'sentences' => $sentences,
     ];
 }
@@ -117,6 +124,7 @@ function us_encode_payload(array $payload): string
 {
     return json_encode([
         'title' => us_normalize_title((string) ($payload['title'] ?? '')),
+        'voice_id' => trim((string) ($payload['voice_id'] ?? 'nzFihrBIvB34imQBuxub')) ?: 'nzFihrBIvB34imQBuxub',
         'sentences' => array_values($payload['sentences'] ?? []),
     ], JSON_UNESCAPED_UNICODE);
 }
@@ -126,6 +134,7 @@ function us_load_activity(PDO $pdo, string $unit, string $activityId): array
     $fallback = [
         'id' => '',
         'title' => us_default_title(),
+        'voice_id' => 'nzFihrBIvB34imQBuxub',
         'sentences' => [],
     ];
 
@@ -165,14 +174,16 @@ function us_load_activity(PDO $pdo, string $unit, string $activityId): array
     return [
         'id' => (string) ($row['id'] ?? ''),
         'title' => (string) ($payload['title'] ?? us_default_title()),
+        'voice_id' => (string) ($payload['voice_id'] ?? 'nzFihrBIvB34imQBuxub'),
         'sentences' => is_array($payload['sentences'] ?? null) ? $payload['sentences'] : [],
     ];
 }
 
-function us_save_activity(PDO $pdo, string $unit, string $activityId, string $title, array $sentences): string
+function us_save_activity(PDO $pdo, string $unit, string $activityId, string $title, string $voiceId, array $sentences): string
 {
     $json = us_encode_payload([
         'title' => $title,
+        'voice_id' => $voiceId,
         'sentences' => $sentences,
     ]);
 
@@ -240,6 +251,7 @@ if ($unit === '') {
 
 $activity = us_load_activity($pdo, $unit, $activityId);
 $activityTitle = (string) ($activity['title'] ?? us_default_title());
+$activityVoiceId = (string) ($activity['voice_id'] ?? 'nzFihrBIvB34imQBuxub');
 $sentences = is_array($activity['sentences'] ?? null) ? $activity['sentences'] : [];
 
 if ($activityId === '' && !empty($activity['id'])) {
@@ -248,6 +260,10 @@ if ($activityId === '' && !empty($activity['id'])) {
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $postedTitle = trim((string) ($_POST['activity_title'] ?? ''));
+    $allowedVoices = ['nzFihrBIvB34imQBuxub', 'NoOVOzCQFLOvtsMoNcdT', 'Nggzl2QAXh3OijoXD116'];
+    $postedVoiceId = isset($_POST['voice_id']) && in_array(trim((string) $_POST['voice_id']), $allowedVoices, true)
+        ? trim((string) $_POST['voice_id'])
+        : 'nzFihrBIvB34imQBuxub';
     $sentenceIds = isset($_POST['sentence_id']) && is_array($_POST['sentence_id']) ? $_POST['sentence_id'] : [];
     $sentenceTexts = isset($_POST['sentence']) && is_array($_POST['sentence']) ? $_POST['sentence'] : [];
     $listenEnabledValues = isset($_POST['listen_enabled']) && is_array($_POST['listen_enabled']) ? $_POST['listen_enabled'] : [];
@@ -270,7 +286,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         ];
     }
 
-    $savedActivityId = us_save_activity($pdo, $unit, $activityId, $postedTitle, $sanitized);
+    $savedActivityId = us_save_activity($pdo, $unit, $activityId, $postedTitle, $postedVoiceId, $sanitized);
 
     $params = [
         'unit=' . urlencode($unit),
@@ -321,6 +337,7 @@ if (isset($_GET['saved'])) {
     margin-bottom:8px;
 }
 .title-box input,
+.title-box select,
 .sentence-item input,
 .sentence-item textarea{
     width:100%;
@@ -406,6 +423,13 @@ if (isset($_GET['saved'])) {
             placeholder="Example: Unscramble the sentences"
             required
         >
+
+        <label for="voice_id">Voice for students</label>
+        <select id="voice_id" name="voice_id">
+            <option value="nzFihrBIvB34imQBuxub"<?= $activityVoiceId === 'nzFihrBIvB34imQBuxub' ? ' selected' : '' ?>>Adult Male (Josh)</option>
+            <option value="NoOVOzCQFLOvtsMoNcdT"<?= $activityVoiceId === 'NoOVOzCQFLOvtsMoNcdT' ? ' selected' : '' ?>>Adult Female (Lily)</option>
+            <option value="Nggzl2QAXh3OijoXD116"<?= $activityVoiceId === 'Nggzl2QAXh3OijoXD116' ? ' selected' : '' ?>>Child (Candy)</option>
+        </select>
     </div>
 
     <div id="sentencesContainer">

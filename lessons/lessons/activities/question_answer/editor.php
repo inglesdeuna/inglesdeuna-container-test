@@ -120,6 +120,7 @@ function normalize_qa_payload($rawData): array
 {
     $default = array(
         'title' => default_qa_title(),
+        'voice_id' => 'nzFihrBIvB34imQBuxub',
         'cards' => array(),
     );
 
@@ -133,6 +134,10 @@ function normalize_qa_payload($rawData): array
     }
 
     $title = '';
+    $voiceId = trim((string) ($decoded['voice_id'] ?? 'nzFihrBIvB34imQBuxub'));
+    if ($voiceId === '') {
+        $voiceId = 'nzFihrBIvB34imQBuxub';
+    }
     $cardsSource = $decoded;
 
     if (isset($decoded['title'])) {
@@ -161,6 +166,7 @@ function normalize_qa_payload($rawData): array
 
     return array(
         'title' => normalize_qa_title($title),
+        'voice_id' => $voiceId,
         'cards' => $cards,
     );
 }
@@ -170,6 +176,7 @@ function encode_qa_payload(array $payload): string
     return json_encode(
         array(
             'title' => normalize_qa_title(isset($payload['title']) ? (string) $payload['title'] : ''),
+            'voice_id' => trim((string) ($payload['voice_id'] ?? 'nzFihrBIvB34imQBuxub')) ?: 'nzFihrBIvB34imQBuxub',
             'cards' => isset($payload['cards']) && is_array($payload['cards']) ? array_values($payload['cards']) : array(),
         ),
         JSON_UNESCAPED_UNICODE
@@ -197,6 +204,7 @@ function load_qa_activity(PDO $pdo, string $unit, string $activityId): array
     $fallback = array(
         'id' => '',
         'title' => default_qa_title(),
+        'voice_id' => 'nzFihrBIvB34imQBuxub',
         'cards' => array(),
     );
 
@@ -267,16 +275,18 @@ function load_qa_activity(PDO $pdo, string $unit, string $activityId): array
     return array(
         'id' => isset($row['id']) ? (string) $row['id'] : '',
         'title' => normalize_qa_title((string) $payload['title']),
+        'voice_id' => isset($payload['voice_id']) ? (string) $payload['voice_id'] : 'nzFihrBIvB34imQBuxub',
         'cards' => isset($payload['cards']) && is_array($payload['cards']) ? $payload['cards'] : array(),
     );
 }
 
-function save_qa_activity(PDO $pdo, string $unit, string $activityId, string $title, array $cards): string
+function save_qa_activity(PDO $pdo, string $unit, string $activityId, string $title, string $voiceId, array $cards): string
 {
     $columns = activities_columns($pdo);
     $title = normalize_qa_title($title);
     $json = encode_qa_payload(array(
         'title' => $title,
+        'voice_id' => $voiceId,
         'cards' => $cards,
     ));
 
@@ -424,6 +434,7 @@ if ($unit === '') {
 $activity = load_qa_activity($pdo, $unit, $activityId);
 $cards = isset($activity['cards']) && is_array($activity['cards']) ? $activity['cards'] : array();
 $activityTitle = isset($activity['title']) ? (string) $activity['title'] : default_qa_title();
+$activityVoiceId = isset($activity['voice_id']) ? (string) $activity['voice_id'] : 'nzFihrBIvB34imQBuxub';
 
 if ($activityId === '' && !empty($activity['id'])) {
     $activityId = (string) $activity['id'];
@@ -432,6 +443,10 @@ if ($activityId === '' && !empty($activity['id'])) {
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $isAutoSaveRequest = isset($_POST['autosave']) && (string) $_POST['autosave'] === '1';
     $postedTitle = isset($_POST['activity_title']) ? trim((string) $_POST['activity_title']) : '';
+    $allowedVoices = array('nzFihrBIvB34imQBuxub', 'NoOVOzCQFLOvtsMoNcdT', 'Nggzl2QAXh3OijoXD116');
+    $postedVoiceId = isset($_POST['voice_id']) && in_array(trim((string) $_POST['voice_id']), $allowedVoices, true)
+        ? trim((string) $_POST['voice_id'])
+        : 'nzFihrBIvB34imQBuxub';
     $questions = isset($_POST['question']) && is_array($_POST['question']) ? $_POST['question'] : array();
     $answers = isset($_POST['answer']) && is_array($_POST['answer']) ? $_POST['answer'] : array();
     $ids = isset($_POST['card_id']) && is_array($_POST['card_id']) ? $_POST['card_id'] : array();
@@ -454,7 +469,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         );
     }
 
-    $savedActivityId = save_qa_activity($pdo, $unit, $activityId, $postedTitle, $sanitized);
+    $savedActivityId = save_qa_activity($pdo, $unit, $activityId, $postedTitle, $postedVoiceId, $sanitized);
 
     if ($isAutoSaveRequest) {
         http_response_code(204);
@@ -513,6 +528,15 @@ ob_start();
     border-radius: 8px;
     border: 1px solid #ccc;
     font-size: 15px;
+}
+
+.title-box select {
+    width: 100%;
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid #ccc;
+    font-size: 15px;
+    margin-top: 8px;
 }
 
 .card-item {
@@ -609,6 +633,13 @@ ob_start();
             placeholder="Example: Advanced Interview Questions"
             required
         >
+
+        <label for="voice_id" style="margin-top:10px;">Voice for students</label>
+        <select id="voice_id" name="voice_id">
+            <option value="nzFihrBIvB34imQBuxub"<?= $activityVoiceId === 'nzFihrBIvB34imQBuxub' ? ' selected' : '' ?>>Adult Male (Josh)</option>
+            <option value="NoOVOzCQFLOvtsMoNcdT"<?= $activityVoiceId === 'NoOVOzCQFLOvtsMoNcdT' ? ' selected' : '' ?>>Adult Female (Lily)</option>
+            <option value="Nggzl2QAXh3OijoXD116"<?= $activityVoiceId === 'Nggzl2QAXh3OijoXD116' ? ' selected' : '' ?>>Child (Candy)</option>
+        </select>
     </div>
 
     <div id="cardsContainer">

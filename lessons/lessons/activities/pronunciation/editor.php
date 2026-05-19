@@ -15,6 +15,20 @@ if (isset($_SESSION['student_logged']) && $_SESSION['student_logged']) {
 
 // Accept admin OR teacher session
 $isLoggedIn = !empty($_SESSION['academic_logged']) || !empty($_SESSION['admin_logged']);
+
+// Keepalive endpoint for long editing sessions.
+if (isset($_GET['keepalive']) && (string) $_GET['keepalive'] === '1') {
+    if (!$isLoggedIn) {
+        http_response_code(401);
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode(array('ok' => false));
+        exit;
+    }
+
+    http_response_code(204);
+    exit;
+}
+
 if (!$isLoggedIn) {
     header('Location: /lessons/lessons/academic/login.php');
     exit;
@@ -153,6 +167,7 @@ function normalize_pronunciation_payload($rawData): array
                 'en' => $en,
                 'ph' => isset($item['ph']) ? trim((string) $item['ph']) : '',
                 'es' => isset($item['es']) ? trim((string) $item['es']) : '',
+                'voice_id' => isset($item['voice_id']) ? trim((string) $item['voice_id']) : 'nzFihrBIvB34imQBuxub',
                 'audio' => isset($item['audio']) ? trim((string) $item['audio']) : '',
             );
         }
@@ -459,6 +474,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $ess = isset($_POST['es']) && is_array($_POST['es']) ? $_POST['es'] : array();
     $imgs = isset($_POST['img']) && is_array($_POST['img']) ? $_POST['img'] : array();
     $audios = isset($_POST['audio']) && is_array($_POST['audio']) ? $_POST['audio'] : array();
+    $voiceIds = isset($_POST['voice_id']) && is_array($_POST['voice_id']) ? $_POST['voice_id'] : array();
 
     $imageFiles = isset($_FILES['img_file']) ? $_FILES['img_file'] : null;
 
@@ -471,6 +487,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $img = isset($imgs[$i]) ? trim((string) $imgs[$i]) : '';
         $audio = isset($audios[$i]) ? trim((string) $audios[$i]) : '';
+        $voiceId = isset($voiceIds[$i]) ? trim((string) $voiceIds[$i]) : 'nzFihrBIvB34imQBuxub';
+        if ($voiceId === '' || !preg_match('/^[A-Za-z0-9]+$/', $voiceId)) {
+            $voiceId = 'nzFihrBIvB34imQBuxub';
+        }
 
         if (
             $imageFiles &&
@@ -494,6 +514,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'en' => $en,
             'ph' => $ph,
             'es' => $es,
+            'voice_id' => $voiceId,
             'audio' => $audio,
         );
     }
@@ -693,6 +714,60 @@ ob_start();
     grid-column:span 2;
 }
 
+.pron-tts-row{
+    grid-column:span 2;
+    display:flex;
+    gap:10px;
+    align-items:flex-end;
+    flex-wrap:wrap;
+}
+
+.pron-tts-row select{
+    min-width:220px;
+    padding:9px 11px;
+    border-radius:10px;
+    border:1px solid #cbd5e1;
+    font-size:14px;
+    font-family:'Nunito', 'Segoe UI', sans-serif;
+}
+
+.pron-tts-btn{
+    background:#1E9A7A;
+    color:#fff;
+    border:none;
+    border-radius:999px;
+    padding:11px 18px;
+    font-size:12px;
+    font-weight:900;
+    cursor:pointer;
+}
+
+.pron-tts-status{
+    grid-column:span 2;
+    min-height:18px;
+    font-size:12px;
+    font-weight:800;
+}
+.pron-tts-status.stale{color:#b45309}
+
+.pron-tts-preview{
+    grid-column:span 2;
+    display:flex;
+    align-items:center;
+    gap:10px;
+}
+
+.pron-tts-preview audio{flex:1;height:36px}
+
+.pron-tts-remove{
+    background:none;
+    border:none;
+    color:#E24B4A;
+    font-size:11px;
+    font-weight:900;
+    cursor:pointer;
+}
+
 .saved-notice{
     max-width:900px;
     margin:0 auto 14px;
@@ -755,6 +830,18 @@ ob_start();
                 <input type="file" name="img_file[]" accept="image/*">
                 <input type="hidden" name="img[]" value="<?php echo htmlspecialchars(isset($item['img']) ? $item['img'] : '', ENT_QUOTES, 'UTF-8'); ?>">
 
+                <div class="pron-tts-row">
+                    <div>
+                        <label>Voice</label>
+                        <select name="voice_id[]" class="js-pron-voiceid">
+                            <option value="nzFihrBIvB34imQBuxub"<?php echo ((isset($item['voice_id']) ? $item['voice_id'] : 'nzFihrBIvB34imQBuxub') === 'nzFihrBIvB34imQBuxub') ? ' selected' : ''; ?>>Adult Male (Josh)</option>
+                            <option value="NoOVOzCQFLOvtsMoNcdT"<?php echo ((isset($item['voice_id']) ? $item['voice_id'] : '') === 'NoOVOzCQFLOvtsMoNcdT') ? ' selected' : ''; ?>>Adult Female (Lily)</option>
+                            <option value="Nggzl2QAXh3OijoXD116"<?php echo ((isset($item['voice_id']) ? $item['voice_id'] : '') === 'Nggzl2QAXh3OijoXD116') ? ' selected' : ''; ?>>Child (Candy)</option>
+                        </select>
+                    </div>
+                    <button type="button" class="pron-tts-btn js-pron-generate-tts">Generate audio</button>
+                </div>
+
                 <?php if (!empty($item['img'])) { ?>
                     <div class="image-preview-wrap">
                         <p class="preview-label">Current image:</p>
@@ -763,6 +850,13 @@ ob_start();
                 <?php } ?>
 
                 <input type="hidden" name="audio[]" value="<?php echo htmlspecialchars(isset($item['audio']) ? $item['audio'] : '', ENT_QUOTES, 'UTF-8'); ?>">
+                <div class="pron-tts-status js-pron-tts-status"></div>
+                <?php if (!empty($item['audio'])) { ?>
+                    <div class="pron-tts-preview js-pron-tts-preview">
+                        <audio src="<?php echo htmlspecialchars($item['audio'], ENT_QUOTES, 'UTF-8'); ?>" controls preload="none"></audio>
+                        <button type="button" class="pron-tts-remove js-pron-remove-tts">✖ Remove</button>
+                    </div>
+                <?php } ?>
 
                 <button type="button" onclick="removeItem(this)" class="btn-remove">✖ Remove</button>
             </div>
@@ -783,6 +877,43 @@ function markAsChanged() {
     formChanged = true;
 }
 
+function redirectToLogin() {
+    window.location.href = '/lessons/lessons/academic/login.php?error=session_expired';
+}
+
+function keepSessionAlive() {
+    var url = new URL(window.location.href);
+    url.searchParams.set('keepalive', '1');
+
+    fetch(url.toString(), {
+        method: 'GET',
+        credentials: 'same-origin',
+        cache: 'no-store',
+        keepalive: true
+    }).then(function (res) {
+        if (res.status === 401 || res.status === 403) {
+            redirectToLogin();
+        }
+    }).catch(function () {
+        // Ignore transient network issues.
+    });
+}
+
+function markPronAudioStale(block) {
+    if (!block) return;
+    var audioInput = block.querySelector('input[name="audio[]"]');
+    var preview = block.querySelector('.js-pron-tts-preview');
+    var statusEl = block.querySelector('.js-pron-tts-status');
+    if (audioInput && audioInput.value) {
+        audioInput.value = '';
+        if (preview) preview.remove();
+        if (statusEl) {
+            statusEl.textContent = 'Voice/text changed. Generate audio again.';
+            statusEl.classList.add('stale');
+        }
+    }
+}
+
 function addItem() {
     var container = document.getElementById('items');
     var div = document.createElement('div');
@@ -797,7 +928,19 @@ function addItem() {
       '<label>Image (optional)</label>' +
       '<input type="file" name="img_file[]" accept="image/*">' +
       '<input type="hidden" name="img[]" value="">' +
+    '<div class="pron-tts-row">' +
+    '  <div>' +
+    '    <label>Voice</label>' +
+    '    <select name="voice_id[]" class="js-pron-voiceid">' +
+    '      <option value="nzFihrBIvB34imQBuxub">Adult Male (Josh)</option>' +
+    '      <option value="NoOVOzCQFLOvtsMoNcdT">Adult Female (Lily)</option>' +
+    '      <option value="Nggzl2QAXh3OijoXD116">Child (Candy)</option>' +
+    '    </select>' +
+    '  </div>' +
+    '  <button type="button" class="pron-tts-btn js-pron-generate-tts">Generate audio</button>' +
+    '</div>' +
       '<input type="hidden" name="audio[]" value="">' +
+    '<div class="pron-tts-status js-pron-tts-status"></div>' +
       '<button type="button" onclick="removeItem(this)" class="btn-remove">✖ Remove</button>';
 
     container.appendChild(div);
@@ -824,9 +967,114 @@ function bindChangeTracking(scope) {
 document.addEventListener('DOMContentLoaded', function () {
     bindChangeTracking(document);
 
+    document.getElementById('items').addEventListener('input', function (e) {
+        if (e.target.matches('input[name="en[]"]')) {
+            markPronAudioStale(e.target.closest('.pron-block'));
+        }
+    });
+
+    document.getElementById('items').addEventListener('change', function (e) {
+        if (e.target.matches('.js-pron-voiceid')) {
+            markPronAudioStale(e.target.closest('.pron-block'));
+        }
+    });
+
+    document.getElementById('items').addEventListener('click', function (e) {
+        var generateBtn = e.target.closest('.js-pron-generate-tts');
+        var removeBtn = e.target.closest('.js-pron-remove-tts');
+        if (generateBtn) {
+            var block = generateBtn.closest('.pron-block');
+            var textInput = block ? block.querySelector('input[name="en[]"]') : null;
+            var voiceSelect = block ? block.querySelector('.js-pron-voiceid') : null;
+            var statusEl = block ? block.querySelector('.js-pron-tts-status') : null;
+            var audioInput = block ? block.querySelector('input[name="audio[]"]') : null;
+            var text = textInput ? textInput.value.trim() : '';
+            if (!text) { alert('Please enter the English text first.'); return; }
+            generateBtn.disabled = true;
+            if (statusEl) { statusEl.textContent = 'Generating...'; statusEl.style.color = ''; }
+            var fd = new FormData();
+            fd.append('text', text);
+            fd.append('voice_id', voiceSelect ? voiceSelect.value : 'nzFihrBIvB34imQBuxub');
+            fetch('tts.php', { method: 'POST', body: fd, credentials: 'same-origin' })
+                .then(function (r) {
+                    if (r.status === 401 || r.status === 403) {
+                        var unauthorizedError = new Error('Unauthorized');
+                        unauthorizedError.code = 'UNAUTHORIZED';
+                        throw unauthorizedError;
+                    }
+                    return r.json();
+                })
+                .then(function (data) {
+                    if (data.error) {
+                        if (/unauthorized/i.test(String(data.error))) {
+                            var unauthorizedPayloadError = new Error('Unauthorized');
+                            unauthorizedPayloadError.code = 'UNAUTHORIZED';
+                            throw unauthorizedPayloadError;
+                        }
+                        throw new Error(data.error);
+                    }
+                    if (audioInput) audioInput.value = data.url;
+                    var old = block.querySelector('.js-pron-tts-preview');
+                    if (old) old.remove();
+                    var preview = document.createElement('div');
+                    preview.className = 'pron-tts-preview js-pron-tts-preview';
+                    preview.innerHTML = '<audio src="' + data.url + '" controls preload="none"></audio><button type="button" class="pron-tts-remove js-pron-remove-tts">✖ Remove</button>';
+                    block.insertBefore(preview, block.querySelector('.btn-remove'));
+                    if (statusEl) { statusEl.textContent = 'Audio generated successfully'; statusEl.style.color = '#1D9E75'; }
+                    if (statusEl) statusEl.classList.remove('stale');
+                    markAsChanged();
+                })
+                .catch(function (err) {
+                    if (err && err.code === 'UNAUTHORIZED') {
+                        if (statusEl) {
+                            statusEl.textContent = 'Session expired. Redirecting to login...';
+                            statusEl.style.color = '#E24B4A';
+                        }
+                        setTimeout(redirectToLogin, 700);
+                        return;
+                    }
+
+                    var msg = err && err.message ? err.message : 'Generation failed';
+                    if (statusEl) {
+                        if (/api key not configured/i.test(msg)) {
+                            statusEl.textContent = 'API key missing: this item will use browser voice profile on playback.';
+                            statusEl.style.color = '#b45309';
+                        } else {
+                            statusEl.textContent = '✘ ' + msg;
+                            statusEl.style.color = '#E24B4A';
+                        }
+                    }
+                })
+                .finally(function () { generateBtn.disabled = false; });
+        }
+        if (removeBtn) {
+            var block2 = removeBtn.closest('.pron-block');
+            var audioInput2 = block2 ? block2.querySelector('input[name="audio[]"]') : null;
+            var statusEl2 = block2 ? block2.querySelector('.js-pron-tts-status') : null;
+            if (audioInput2) audioInput2.value = '';
+            var preview2 = block2 ? block2.querySelector('.js-pron-tts-preview') : null;
+            if (preview2) preview2.remove();
+            if (statusEl2) { statusEl2.textContent = 'Audio removed.'; statusEl2.style.color = ''; statusEl2.classList.remove('stale'); }
+            markAsChanged();
+        }
+    });
+
     var form = document.getElementById('pronunciationForm');
     if (form) {
-        form.addEventListener('submit', function () {
+        form.addEventListener('submit', function (e) {
+            var blocks = Array.from(document.querySelectorAll('#items .pron-block'));
+            for (var i = 0; i < blocks.length; i++) {
+                var enEl = blocks[i].querySelector('input[name="en[]"]');
+                var audioEl = blocks[i].querySelector('input[name="audio[]"]');
+                var en = enEl ? enEl.value.trim() : '';
+                var audio = audioEl ? String(audioEl.value || '').trim() : '';
+                if (en !== '' && audio === '') {
+                    alert('Card ' + (i + 1) + ': Generate ElevenLabs audio before saving.');
+                    if (enEl) enEl.focus();
+                    e.preventDefault();
+                    return false;
+                }
+            }
             formSubmitted = true;
             formChanged = false;
         });
@@ -839,6 +1087,9 @@ window.addEventListener('beforeunload', function (e) {
         e.returnValue = '';
     }
 });
+
+// Avoid session expiry while editing pronunciation cards for long periods.
+setInterval(keepSessionAlive, 120000);
 </script>
 
 <?php

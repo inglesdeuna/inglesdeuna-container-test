@@ -73,6 +73,7 @@ function normalize_drag_drop_payload($rawData): array
 {
     $default = [
         'title' => default_drag_drop_title(),
+        'voice_id' => 'nzFihrBIvB34imQBuxub',
         'blocks' => [],
     ];
 
@@ -86,6 +87,10 @@ function normalize_drag_drop_payload($rawData): array
     }
 
     $title = '';
+    $voiceId = trim((string) ($decoded['voice_id'] ?? 'nzFihrBIvB34imQBuxub'));
+    if ($voiceId === '') {
+        $voiceId = 'nzFihrBIvB34imQBuxub';
+    }
     $blocksSource = $decoded;
 
     if (isset($decoded['title'])) {
@@ -146,6 +151,7 @@ function normalize_drag_drop_payload($rawData): array
 
     return [
         'title' => normalize_drag_drop_title($title),
+        'voice_id' => $voiceId,
         'blocks' => $blocks,
     ];
 }
@@ -164,6 +170,7 @@ function encode_drag_drop_payload(array $payload): string
 
     return json_encode([
         'title'  => normalize_drag_drop_title((string) ($payload['title'] ?? '')),
+        'voice_id' => trim((string) ($payload['voice_id'] ?? 'nzFihrBIvB34imQBuxub')) ?: 'nzFihrBIvB34imQBuxub',
         'blocks' => $blocks,
     ], JSON_UNESCAPED_UNICODE);
 }
@@ -173,6 +180,7 @@ function load_drag_drop_activity(PDO $pdo, string $unit, string $activityId): ar
     $fallback = [
         'id' => '',
         'title' => default_drag_drop_title(),
+        'voice_id' => 'nzFihrBIvB34imQBuxub',
         'blocks' => [],
     ];
 
@@ -212,14 +220,16 @@ function load_drag_drop_activity(PDO $pdo, string $unit, string $activityId): ar
     return [
         'id' => (string) ($row['id'] ?? ''),
         'title' => (string) ($payload['title'] ?? default_drag_drop_title()),
+        'voice_id' => (string) ($payload['voice_id'] ?? 'nzFihrBIvB34imQBuxub'),
         'blocks' => is_array($payload['blocks'] ?? null) ? $payload['blocks'] : [],
     ];
 }
 
-function save_drag_drop_activity(PDO $pdo, string $unit, string $activityId, string $title, array $blocks): string
+function save_drag_drop_activity(PDO $pdo, string $unit, string $activityId, string $title, string $voiceId, array $blocks): string
 {
     $json = encode_drag_drop_payload([
         'title' => $title,
+        'voice_id' => $voiceId,
         'blocks' => $blocks,
     ]);
 
@@ -287,6 +297,7 @@ if ($unit === '') {
 
 $activity = load_drag_drop_activity($pdo, $unit, $activityId);
 $activityTitle = (string) ($activity['title'] ?? default_drag_drop_title());
+$activityVoiceId = (string) ($activity['voice_id'] ?? 'nzFihrBIvB34imQBuxub');
 $blocks = is_array($activity['blocks'] ?? null) ? $activity['blocks'] : [];
 
 if ($activityId === '' && !empty($activity['id'])) {
@@ -295,6 +306,10 @@ if ($activityId === '' && !empty($activity['id'])) {
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $postedTitle = trim((string) ($_POST['activity_title'] ?? ''));
+    $allowedVoices = ['nzFihrBIvB34imQBuxub', 'NoOVOzCQFLOvtsMoNcdT', 'Nggzl2QAXh3OijoXD116'];
+    $postedVoiceId = isset($_POST['voice_id']) && in_array(trim((string) $_POST['voice_id']), $allowedVoices, true)
+        ? trim((string) $_POST['voice_id'])
+        : 'nzFihrBIvB34imQBuxub';
     $blockIds = isset($_POST['block_id']) && is_array($_POST['block_id']) ? $_POST['block_id'] : [];
     $texts = isset($_POST['text']) && is_array($_POST['text']) ? $_POST['text'] : [];
     $missingWordsRaw = isset($_POST['missing_words']) && is_array($_POST['missing_words']) ? $_POST['missing_words'] : [];
@@ -337,7 +352,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         ];
     }
 
-    $savedActivityId = save_drag_drop_activity($pdo, $unit, $activityId, $postedTitle, $sanitized);
+    $savedActivityId = save_drag_drop_activity($pdo, $unit, $activityId, $postedTitle, $postedVoiceId, $sanitized);
 
     $params = [
         'unit=' . urlencode($unit),
@@ -388,6 +403,7 @@ if (isset($_GET['saved'])) {
     margin-bottom:8px;
 }
 .title-box input,
+.title-box select,
 .block-item input,
 .block-item textarea{
     width:100%;
@@ -482,6 +498,13 @@ if (isset($_GET['saved'])) {
             placeholder="Example: Build the sentence"
             required
         >
+
+        <label for="voice_id">Voice for students</label>
+        <select id="voice_id" name="voice_id">
+            <option value="nzFihrBIvB34imQBuxub"<?= $activityVoiceId === 'nzFihrBIvB34imQBuxub' ? ' selected' : '' ?>>Adult Male (Josh)</option>
+            <option value="NoOVOzCQFLOvtsMoNcdT"<?= $activityVoiceId === 'NoOVOzCQFLOvtsMoNcdT' ? ' selected' : '' ?>>Adult Female (Lily)</option>
+            <option value="Nggzl2QAXh3OijoXD116"<?= $activityVoiceId === 'Nggzl2QAXh3OijoXD116' ? ' selected' : '' ?>>Child (Candy)</option>
+        </select>
     </div>
 
     <div id="blocksContainer">

@@ -34,6 +34,34 @@ $teachers = json_decode((string) file_get_contents($teachersFile), true);
 if (!is_array($teachers)) {
   $teachers = [];
 }
+
+$teacherIdStr = (string) $teacherId;
+$adminName = 'Admin';
+$isAdmin = false;
+
+foreach ($teachers as $teacher) {
+  if (!is_array($teacher)) {
+    continue;
+  }
+
+  $id = isset($teacher['id']) ? (string) $teacher['id'] : '';
+  if ($id !== $teacherIdStr) {
+    continue;
+  }
+
+  $role = isset($teacher['role']) ? strtolower((string) $teacher['role']) : '';
+  $flag = !empty($teacher['is_admin']);
+  $isAdmin = ($role === 'admin') || $flag;
+
+  if (!empty($teacher['name'])) {
+    $adminName = (string) $teacher['name'];
+  } elseif (!empty($teacher['username'])) {
+    $adminName = (string) $teacher['username'];
+  } elseif (!empty($teacher['email'])) {
+    $adminName = (string) $teacher['email'];
+  }
+
+  break;
 }
 
 if (!$isAdmin) {

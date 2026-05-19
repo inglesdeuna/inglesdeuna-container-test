@@ -43,6 +43,8 @@ function os_normalize(mixed $rawData): array
         'media_type'   => 'tts',
         'media_url'    => '',
         'tts_text'     => '',
+        'voice_id'     => 'nzFihrBIvB34imQBuxub',
+        'tts_audio_url'=> '',
         'sentences'    => [],
     ];
 
@@ -73,6 +75,8 @@ function os_normalize(mixed $rawData): array
                             ? $d['media_type'] : 'tts',
         'media_url'    => trim((string) ($d['media_url'] ?? '')),
         'tts_text'     => trim((string) ($d['tts_text'] ?? '')),
+        'voice_id'     => trim((string) ($d['voice_id'] ?? 'nzFihrBIvB34imQBuxub')) ?: 'nzFihrBIvB34imQBuxub',
+        'tts_audio_url'=> trim((string) ($d['tts_audio_url'] ?? '')),
         'sentences'    => $sentences,
     ];
 }
@@ -85,6 +89,8 @@ function os_encode(array $p): string
         'media_type'   => $p['media_type'],
         'media_url'    => $p['media_url'],
         'tts_text'     => $p['tts_text'],
+        'voice_id'     => $p['voice_id'],
+        'tts_audio_url'=> $p['tts_audio_url'],
         'sentences'    => array_map(function ($s) {
             return [
                 'id'      => $s['id'],
@@ -229,6 +235,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'media_type'   => $mediaType,
         'media_url'    => $mediaUrl,
         'tts_text'     => trim((string) ($_POST['tts_text'] ?? '')),
+        'voice_id'     => (function() {
+            $allowedVoices = ['nzFihrBIvB34imQBuxub', 'NoOVOzCQFLOvtsMoNcdT', 'Nggzl2QAXh3OijoXD116'];
+            $v = trim((string) ($_POST['voice_id'] ?? 'nzFihrBIvB34imQBuxub'));
+            return in_array($v, $allowedVoices, true) ? $v : 'nzFihrBIvB34imQBuxub';
+        })(),
+        'tts_audio_url'=> trim((string) ($_POST['tts_audio_url'] ?? '')),
         'sentences'    => $sentences,
     ];
 
@@ -636,6 +648,25 @@ $d = $activity;
                     ><?= htmlspecialchars($d['tts_text'], ENT_QUOTES, 'UTF-8') ?></textarea>
                     <p class="os-help">Leave blank to use the sentence list itself as the audio script.</p>
                 </div>
+                <div class="os-field" style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin-top:4px">
+                    <div style="flex:0 0 auto">
+                        <label class="os-label">Voice</label>
+                        <select name="voice_id" class="os-select js-os-voiceid" style="min-width:210px">
+                            <option value="nzFihrBIvB34imQBuxub"<?= ($d['voice_id'] ?? 'nzFihrBIvB34imQBuxub') === 'nzFihrBIvB34imQBuxub' ? ' selected' : '' ?>>👨 Adult Male (Josh)</option>
+                            <option value="NoOVOzCQFLOvtsMoNcdT"<?= ($d['voice_id'] ?? '') === 'NoOVOzCQFLOvtsMoNcdT' ? ' selected' : '' ?>>👩 Adult Female (Lily)</option>
+                            <option value="Nggzl2QAXh3OijoXD116"<?= ($d['voice_id'] ?? '') === 'Nggzl2QAXh3OijoXD116' ? ' selected' : '' ?>>🧒 Child (Candy)</option>
+                        </select>
+                    </div>
+                    <button type="button" class="js-os-generate-tts" style="background:#1E9A7A;color:#fff;border:none;border-radius:999px;padding:11px 18px;font-size:12px;font-weight:900;cursor:pointer;white-space:nowrap;flex-shrink:0">🔊 Generate audio</button>
+                    <input type="hidden" name="tts_audio_url" class="js-os-audiourl" value="<?= htmlspecialchars($d['tts_audio_url'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
+                </div>
+                <div class="js-os-tts-status" style="font-size:12px;font-weight:800;margin-top:6px;min-height:18px"></div>
+                <?php if (!empty($d['tts_audio_url'])): ?>
+                <div class="js-os-tts-preview" style="margin-top:10px;display:flex;align-items:center;gap:10px">
+                    <audio src="<?= htmlspecialchars($d['tts_audio_url'], ENT_QUOTES, 'UTF-8') ?>" controls preload="none" style="flex:1;height:36px"></audio>
+                    <button type="button" class="js-os-remove-tts" style="background:none;border:none;color:#E24B4A;font-size:11px;font-weight:900;cursor:pointer">✖ Remove</button>
+                </div>
+                <?php endif; ?>
             </div>
 
             <!-- Video -->
@@ -824,11 +855,84 @@ if (_v) _v.addEventListener('input', syncMediaCaches);
 if (_a) _a.addEventListener('input', syncMediaCaches);
 
 document.getElementById('osSentencesForm').addEventListener('submit', function () {
+    var mediaTypeEl = document.getElementById('os-media-type');
+    if (mediaTypeEl && mediaTypeEl.value === 'tts') {
+        var panel = document.getElementById('ms-tts');
+        var textEl = panel ? panel.querySelector('textarea[name="tts_text"]') : null;
+        var audioEl = panel ? panel.querySelector('.js-os-audiourl') : null;
+        var text = textEl ? textEl.value.trim() : '';
+        var audio = audioEl ? String(audioEl.value || '').trim() : '';
+        if (text !== '' && audio === '') {
+            alert('Generate ElevenLabs audio before saving this TTS activity.');
+            if (textEl) textEl.focus();
+            return false;
+        }
+    }
     syncMediaCaches();
     document.querySelectorAll('.os-media-panel:not(.active) input, .os-media-panel:not(.active) textarea').forEach(function (el) {
         el.disabled = true;
     });
 });
+
+// ── ElevenLabs TTS for order_sentences ───────────────────────────────────────
+(function () {
+    var panel = document.getElementById('ms-tts');
+    if (!panel) return;
+
+    var generateBtn = panel.querySelector('.js-os-generate-tts');
+    if (generateBtn) {
+        generateBtn.addEventListener('click', function () {
+            var textarea = panel.querySelector('textarea[name="tts_text"]');
+            var text = textarea ? textarea.value.trim() : '';
+            if (!text) { alert('Please enter TTS text first.'); return; }
+            var voiceSelect = panel.querySelector('.js-os-voiceid');
+            var voiceId = voiceSelect ? voiceSelect.value : 'nzFihrBIvB34imQBuxub';
+            var statusEl = panel.querySelector('.js-os-tts-status');
+            var audioHidden = panel.querySelector('.js-os-audiourl');
+
+            generateBtn.disabled = true;
+            if (statusEl) { statusEl.textContent = 'Generating…'; statusEl.style.color = ''; }
+
+            var fd = new FormData();
+            fd.append('text', text);
+            fd.append('voice_id', voiceId);
+
+            fetch('tts.php', { method: 'POST', body: fd, credentials: 'same-origin' })
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    if (data.error) throw new Error(data.error);
+                    if (audioHidden) audioHidden.value = data.url;
+
+                    var old = panel.querySelector('.js-os-tts-preview');
+                    if (old) old.remove();
+
+                    var div = document.createElement('div');
+                    div.className = 'js-os-tts-preview';
+                    div.style.cssText = 'margin-top:10px;display:flex;align-items:center;gap:10px';
+                    div.innerHTML = '<audio src="' + data.url + '" controls preload="none" style="flex:1;height:36px"></audio>' +
+                        '<button type="button" class="js-os-remove-tts" style="background:none;border:none;color:#E24B4A;font-size:11px;font-weight:900;cursor:pointer">✖ Remove</button>';
+                    panel.appendChild(div);
+
+                    if (statusEl) { statusEl.textContent = '✓ Audio generated successfully'; statusEl.style.color = '#1D9E75'; }
+                })
+                .catch(function (err) {
+                    if (statusEl) { statusEl.textContent = '✘ ' + (err.message || 'Generation failed'); statusEl.style.color = '#E24B4A'; }
+                })
+                .finally(function () { generateBtn.disabled = false; });
+        });
+    }
+
+    panel.addEventListener('click', function (e) {
+        if (e.target && e.target.classList.contains('js-os-remove-tts')) {
+            var audioHidden = panel.querySelector('.js-os-audiourl');
+            if (audioHidden) audioHidden.value = '';
+            var preview = panel.querySelector('.js-os-tts-preview');
+            if (preview) preview.remove();
+            var statusEl = panel.querySelector('.js-os-tts-status');
+            if (statusEl) { statusEl.textContent = 'Audio removed.'; statusEl.style.color = ''; }
+        }
+    });
+}());
 </script>
 
 <?php

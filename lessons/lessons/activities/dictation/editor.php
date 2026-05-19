@@ -107,6 +107,7 @@ function normalize_dictation_payload($rawData): array
 {
     $default = array(
         'title' => default_dictation_title(),
+        'voice_id' => 'nzFihrBIvB34imQBuxub',
         'items' => array(),
     );
 
@@ -125,6 +126,11 @@ function normalize_dictation_payload($rawData): array
 
     if (isset($decoded['title'])) {
         $title = trim((string) $decoded['title']);
+    }
+
+    $voiceId = 'nzFihrBIvB34imQBuxub';
+    if (isset($decoded['voice_id']) && trim((string) $decoded['voice_id']) !== '') {
+        $voiceId = trim((string) $decoded['voice_id']);
     }
 
     if (isset($decoded['items']) && is_array($decoded['items'])) {
@@ -163,15 +169,17 @@ function normalize_dictation_payload($rawData): array
 
     return array(
         'title' => normalize_activity_title($title),
+        'voice_id' => $voiceId,
         'items' => $normalizedItems,
     );
 }
 
-function encode_dictation_payload(string $title, array $items): string
+function encode_dictation_payload(string $title, string $voiceId, array $items): string
 {
     return json_encode(
         array(
             'title' => normalize_activity_title($title),
+            'voice_id' => $voiceId,
             'items' => array_values($items),
         ),
         JSON_UNESCAPED_UNICODE
@@ -296,15 +304,16 @@ function load_dictation_activity(PDO $pdo, string $unit, string $activityId): ar
     return array(
         'id' => isset($row['id']) ? (string) $row['id'] : '',
         'title' => normalize_activity_title((string) ($payload['title'] ?? '')),
+        'voice_id' => isset($payload['voice_id']) && $payload['voice_id'] !== '' ? (string) $payload['voice_id'] : 'nzFihrBIvB34imQBuxub',
         'items' => isset($payload['items']) && is_array($payload['items']) ? $payload['items'] : array(),
     );
 }
 
-function save_dictation_activity(PDO $pdo, string $unit, string $activityId, string $title, array $items): string
+function save_dictation_activity(PDO $pdo, string $unit, string $activityId, string $title, string $voiceId, array $items): string
 {
     $columns = activities_columns($pdo);
     $title = normalize_activity_title($title);
-    $json = encode_dictation_payload($title, $items);
+    $json = encode_dictation_payload($title, $voiceId, $items);
 
     $hasUnitId = in_array('unit_id', $columns, true);
     $hasUnit = in_array('unit', $columns, true);
@@ -450,6 +459,7 @@ if ($unit === '') {
 $activity = load_dictation_activity($pdo, $unit, $activityId);
 $items = isset($activity['items']) && is_array($activity['items']) ? $activity['items'] : array();
 $activityTitle = isset($activity['title']) ? (string) $activity['title'] : default_dictation_title();
+$activityVoiceId = isset($activity['voice_id']) ? (string) $activity['voice_id'] : 'nzFihrBIvB34imQBuxub';
 
 if ($activityId === '' && !empty($activity['id'])) {
     $activityId = (string) $activity['id'];
@@ -457,6 +467,10 @@ if ($activityId === '' && !empty($activity['id'])) {
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $postedTitle = isset($_POST['activity_title']) ? trim((string) $_POST['activity_title']) : '';
+    $allowedVoices = array('nzFihrBIvB34imQBuxub', 'NoOVOzCQFLOvtsMoNcdT', 'Nggzl2QAXh3OijoXD116');
+    $postedVoiceId = isset($_POST['voice_id']) && in_array(trim((string) $_POST['voice_id']), $allowedVoices, true)
+        ? trim((string) $_POST['voice_id'])
+        : 'nzFihrBIvB34imQBuxub';
     $ens = isset($_POST['en']) && is_array($_POST['en']) ? $_POST['en'] : array();
     $phs = isset($_POST['ph']) && is_array($_POST['ph']) ? $_POST['ph'] : array();
     $ess = isset($_POST['es']) && is_array($_POST['es']) ? $_POST['es'] : array();
@@ -501,7 +515,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         );
     }
 
-    $savedActivityId = save_dictation_activity($pdo, $unit, $activityId, $postedTitle, $sanitized);
+    $savedActivityId = save_dictation_activity($pdo, $unit, $activityId, $postedTitle, $postedVoiceId, $sanitized);
 
     $redirectParams = array(
         'unit=' . urlencode($unit),
@@ -587,6 +601,19 @@ ob_start();
     font-size:15px;
     font-family:'Nunito', 'Segoe UI', sans-serif;
     box-sizing:border-box;
+}
+
+.title-box select{
+    width:100%;
+    padding:10px 12px;
+    border-radius:10px;
+    border:1px solid #cbd5e1;
+    font-size:15px;
+    font-family:'Nunito', 'Segoe UI', sans-serif;
+    box-sizing:border-box;
+    background:#fff;
+    color:#1e293b;
+    cursor:pointer;
 }
 
 .dict-block{
@@ -742,6 +769,15 @@ ob_start();
         >
     </div>
 
+    <div class="title-box">
+        <label for="voice_id">Voice for students</label>
+        <select id="voice_id" name="voice_id">
+            <option value="nzFihrBIvB34imQBuxub"<?php echo $activityVoiceId === 'nzFihrBIvB34imQBuxub' ? ' selected' : ''; ?>>Adult Male (Josh)</option>
+            <option value="NoOVOzCQFLOvtsMoNcdT"<?php echo $activityVoiceId === 'NoOVOzCQFLOvtsMoNcdT' ? ' selected' : ''; ?>>Adult Female (Lily)</option>
+            <option value="Nggzl2QAXh3OijoXD116"<?php echo $activityVoiceId === 'Nggzl2QAXh3OijoXD116' ? ' selected' : ''; ?>>Child (Candy)</option>
+        </select>
+    </div>
+
     <div id="items">
         <?php foreach ($items as $item) { ?>
             <div class="dict-block">
@@ -831,7 +867,6 @@ document.addEventListener('DOMContentLoaded', function () {
     if (form) {
         form.addEventListener('submit', function () {
             formSubmitted = true;
-            formChanged = false;
         });
     }
 });

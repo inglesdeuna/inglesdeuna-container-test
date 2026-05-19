@@ -1,4 +1,4 @@
-document.addEventListener('DOMContentLoaded', function () {
+﻿document.addEventListener('DOMContentLoaded', function () {
   const boards = Array.isArray(window.MATCHING_LINES_DATA) ? window.MATCHING_LINES_DATA : [];
 
   const stage = document.getElementById('mlvStage');

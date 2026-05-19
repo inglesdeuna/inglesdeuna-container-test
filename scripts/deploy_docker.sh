@@ -15,6 +15,14 @@ CONTAINER_PORT="${CONTAINER_PORT:-80}"
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
+if [[ -f "$ROOT_DIR/.env" ]]; then
+  printf '[0/5] Cargando variables desde .env\n'
+  set -a
+  # shellcheck disable=SC1091
+  source "$ROOT_DIR/.env"
+  set +a
+fi
+
 printf '\n[1/5] Proyecto: %s\n' "$ROOT_DIR"
 printf '[2/5] Build imagen: %s\n' "$IMAGE_NAME"
 docker build -t "$IMAGE_NAME" "$ROOT_DIR"
@@ -25,10 +33,30 @@ if docker ps -a --format '{{.Names}}' | grep -q "^${APP_NAME}$"; then
 fi
 
 printf '\n[4/5] Levantar contenedor nuevo\n'
+ENV_ARGS=()
+PASSED_KEYS=()
+for key in ELEVENLABS_API_KEY CLOUDINARY_CLOUD_NAME CLOUDINARY_API_KEY CLOUDINARY_API_SECRET DATABASE_URL; do
+  if [[ -n "${!key:-}" ]]; then
+    ENV_ARGS+=("-e" "$key=${!key}")
+    PASSED_KEYS+=("$key")
+  fi
+done
+
+if [[ ${#PASSED_KEYS[@]} -gt 0 ]]; then
+  printf '   Variables inyectadas: %s\n' "$(IFS=', '; echo "${PASSED_KEYS[*]}")"
+else
+  printf '   Advertencia: no se inyectaron variables de entorno.\n'
+fi
+
+if [[ -z "${ELEVENLABS_API_KEY:-}" ]]; then
+  printf '   Advertencia: falta ELEVENLABS_API_KEY (TTS ElevenLabs no funcionara).\n'
+fi
+
 docker run -d \
   --name "$APP_NAME" \
   -p "${PORT}:${CONTAINER_PORT}" \
   --restart unless-stopped \
+  "${ENV_ARGS[@]}" \
   "$IMAGE_NAME"
 
 printf '\n[5/5] Estado y acceso\n'

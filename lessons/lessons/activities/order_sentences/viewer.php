@@ -32,6 +32,7 @@ function os_viewer_normalize(mixed $rawData): array
         'media_type'   => 'tts',
         'media_url'    => '',
         'tts_text'     => '',
+        'voice_id'     => 'nzFihrBIvB34imQBuxub',
         'sentences'    => [],
     ];
 
@@ -59,6 +60,8 @@ function os_viewer_normalize(mixed $rawData): array
         'media_type'   => in_array($d['media_type'] ?? '', ['tts', 'video', 'audio', 'none'], true) ? $d['media_type'] : 'tts',
         'media_url'    => trim((string) ($d['media_url']    ?? '')),
         'tts_text'     => trim((string) ($d['tts_text']     ?? '')),
+        'voice_id'     => trim((string) ($d['voice_id']     ?? 'nzFihrBIvB34imQBuxub')) ?: 'nzFihrBIvB34imQBuxub',
+        'tts_audio_url'=> trim((string) ($d['tts_audio_url'] ?? '')),
         'sentences'    => $sentences,
     ];
 }
@@ -171,7 +174,7 @@ body {
     max-width: 100% !important;
     margin: 0 !important;
     padding: 0 !important;
-    min-height: 100vh;
+    min-height: 0;
     display: flex !important;
     flex-direction: column !important;
     background: transparent !important;
@@ -185,6 +188,7 @@ body {
     flex: 1 !important;
     display: flex !important;
     flex-direction: column !important;
+    min-height: 0 !important;
     padding: 0 !important;
     margin: 0 !important;
     background: transparent !important;
@@ -195,7 +199,9 @@ body {
 
 .os-page {
     width: 100%;
-    min-height: 100vh;
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
     padding: clamp(14px, 2.5vw, 34px);
     display: flex;
     align-items: flex-start;
@@ -216,31 +222,6 @@ body {
     justify-content: center;
     margin-bottom: 6px;
     position: relative;
-}
-
-.os-back-btn {
-    position: absolute;
-    left: 0;
-    background: #EEEDFE;
-    border: 1px solid #EDE9FA;
-    color: #534AB7;
-    font-size: 12px;
-    font-weight: 900;
-    font-family: 'Nunito', sans-serif;
-    border-radius: 999px;
-    padding: 6px 13px;
-    cursor: pointer;
-    transition: filter .15s, transform .15s;
-}
-
-.os-back-btn:hover {
-    filter: brightness(.96);
-    transform: translateY(-1px);
-}
-
-body.presentation-mode .os-back-btn,
-body.embedded-mode .os-back-btn {
-    display: none;
 }
 
 .os-topbar-title {
@@ -380,10 +361,32 @@ body.embedded-mode .os-back-btn {
 .os-list {
     list-style: none;
     margin: 0;
-    padding: 0;
+    padding: 4px 4px 4px 0;
     display: flex;
     flex-direction: column;
     gap: 9px;
+    max-height: clamp(260px, 50vh, 480px);
+    overflow-y: auto;
+    overflow-x: hidden;
+    scroll-behavior: smooth;
+}
+
+.os-list::-webkit-scrollbar {
+    width: 6px;
+}
+
+.os-list::-webkit-scrollbar-track {
+    background: #F4F2FD;
+    border-radius: 999px;
+}
+
+.os-list::-webkit-scrollbar-thumb {
+    background: #C4BFEE;
+    border-radius: 999px;
+}
+
+.os-list::-webkit-scrollbar-thumb:hover {
+    background: #7F77DD;
 }
 
 .os-chip {
@@ -618,12 +621,6 @@ body.embedded-mode .os-back-btn {
         margin-bottom: 4px;
     }
 
-    .os-back-btn {
-        left: -2px;
-        padding: 5px 10px;
-        font-size: 11px;
-    }
-
     .os-board {
         border-radius: 26px;
         padding: 14px;
@@ -674,7 +671,6 @@ body.embedded-mode .os-back-btn {
     <div class="os-app">
 
         <div class="os-topbar">
-            <button class="os-back-btn" onclick="history.back()">Back</button>
             <span class="os-topbar-title">Sentence Ordering</span>
         </div>
 
@@ -710,6 +706,11 @@ body.embedded-mode .os-back-btn {
             <?php elseif (($activity['media_type'] ?? '') === 'audio' && !empty($activity['media_url'])): ?>
                 <div class="os-tts-area">
                     <audio controls src="<?= htmlspecialchars($activity['media_url'], ENT_QUOTES, 'UTF-8') ?>"></audio>
+                </div>
+
+            <?php elseif (!empty($activity['tts_audio_url'])): ?>
+                <div class="os-tts-area">
+                    <audio id="os-tts-audio" src="<?= htmlspecialchars($activity['tts_audio_url'], ENT_QUOTES, 'UTF-8') ?>" controls preload="none" style="width:100%;height:42px"></audio>
                 </div>
 
             <?php else: ?>
@@ -764,6 +765,8 @@ var CORRECT_ORDER  = <?= json_encode($correctOrder,  JSON_UNESCAPED_UNICODE) ?>;
 var OS_RETURN_TO   = <?= json_encode($returnTo,      JSON_UNESCAPED_UNICODE) ?>;
 var OS_ACTIVITY_ID = <?= json_encode($activityId,    JSON_UNESCAPED_UNICODE) ?>;
 var OS_TOTAL       = CORRECT_ORDER.length;
+var OS_VOICE_ID    = <?= json_encode((string) ($activity['voice_id'] ?? 'nzFihrBIvB34imQBuxub'), JSON_UNESCAPED_UNICODE) ?>;
+var OS_TTS_URL     = 'tts.php';
 
 var listEl      = document.getElementById('os-list');
 var checkBtn    = document.getElementById('os-check');
@@ -778,7 +781,7 @@ var doneSound   = document.getElementById('os-done-sound');
 
 var attempts     = 0;
 var done         = false;
-var correctCount = 0;
+var positionScores = Array(OS_TOTAL).fill(null);
 var dragged      = null;
 var touchSel     = null;
 var isTouchDev   = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
@@ -801,6 +804,42 @@ function countCorrect(order) {
         if ((order[i] || '') === CORRECT_ORDER[i]) n++;
     }
     return n;
+}
+
+function mapOrderToScores(order) {
+    var scores = [];
+    for (var i = 0; i < OS_TOTAL; i++) {
+        scores.push((order[i] || '') === CORRECT_ORDER[i] ? 1 : 0);
+    }
+    return scores;
+}
+
+function revealedScores() {
+    return Array(OS_TOTAL).fill(-1);
+}
+
+function computeScore() {
+    var correct = 0;
+    var wrong = 0;
+    var revealed = 0;
+
+    positionScores.forEach(function (value) {
+        if (value === 1) correct++;
+        else if (value === 0) wrong++;
+        else if (value === -1) revealed++;
+    });
+
+    var scorable = correct + wrong;
+    var pct = scorable > 0 ? Math.round((correct / scorable) * 100) : 0;
+
+    return {
+        correct: correct,
+        wrong: wrong,
+        revealed: revealed,
+        total: OS_TOTAL,
+        errors: wrong,
+        percent: pct
+    };
 }
 
 function updateBadges() {
@@ -875,13 +914,12 @@ async function showCompleted() {
     completedEl.classList.add('active');
     playSound(doneSound);
 
-    var pct    = OS_TOTAL > 0 ? Math.round((correctCount / OS_TOTAL) * 100) : 0;
-    var errors = Math.max(0, OS_TOTAL - correctCount);
+    var result = computeScore();
 
-    scoreEl.textContent = 'Score: ' + correctCount + ' / ' + OS_TOTAL + ' (' + pct + '%)';
+    scoreEl.textContent = result.correct + ' correct · ' + result.wrong + ' wrong · ' + result.percent + '%';
 
-    var ok = await persistScore(pct, errors, OS_TOTAL);
-    if (!ok) navigateReturn(pct, errors, OS_TOTAL);
+    var ok = await persistScore(result.percent, result.errors, result.total);
+    if (!ok) navigateReturn(result.percent, result.errors, result.total);
 }
 
 checkBtn.addEventListener('click', function() {
@@ -894,7 +932,7 @@ checkBtn.addEventListener('click', function() {
     markPositions(order);
 
     if (n === OS_TOTAL) {
-        correctCount = n;
+        positionScores = mapOrderToScores(order);
         feedbackEl.textContent = 'Correct! Well done!';
         feedbackEl.className   = 'good';
         playSound(winSound);
@@ -902,7 +940,7 @@ checkBtn.addEventListener('click', function() {
         checkBtn.disabled = true;
         showBtn.disabled  = true;
     } else if (attempts >= 2) {
-        correctCount = n;
+        positionScores = mapOrderToScores(order);
         feedbackEl.textContent = n + '/' + OS_TOTAL + ' correct — showing the right order.';
         feedbackEl.className   = 'bad';
         playSound(loseSound);
@@ -920,9 +958,9 @@ checkBtn.addEventListener('click', function() {
 showBtn.addEventListener('click', function() {
     if (done) return;
 
-    correctCount = 0;
+    positionScores = revealedScores();
     revealAnswer();
-    feedbackEl.textContent = 'Correct order shown.';
+    feedbackEl.textContent = 'Answer revealed — this activity does not affect score.';
     feedbackEl.className   = 'good';
     done = true;
     checkBtn.disabled = true;
@@ -930,7 +968,11 @@ showBtn.addEventListener('click', function() {
 });
 
 nextBtn.addEventListener('click', function() {
-    if (!done) correctCount = countCorrect(userOrder());
+    if (!done) {
+        feedbackEl.textContent = 'Check answers or show answer first.';
+        feedbackEl.className = 'bad';
+        return;
+    }
     showCompleted();
 });
 
@@ -1040,7 +1082,7 @@ sentenceCards().forEach(function(chip) {
 window.osRestart = function() {
     attempts     = 0;
     done         = false;
-    correctCount = 0;
+    positionScores = Array(OS_TOTAL).fill(null);
     touchSel     = null;
 
     completedEl.classList.remove('active');
@@ -1084,135 +1126,87 @@ window.osRestart = function() {
 updateBadges();
 
 var TTS_TEXT = <?= json_encode(
-    !empty($activity['tts_text'])
-        ? $activity['tts_text']
-        : implode('. ', array_column($sentences, 'text')),
+    !empty($activity['tts_audio_url']) ? ''
+        : (!empty($activity['tts_text'])
+            ? $activity['tts_text']
+            : implode('. ', array_column($sentences, 'text'))),
     JSON_UNESCAPED_UNICODE
 ) ?>;
-
 var ttsBtn      = document.getElementById('os-tts-btn');
-var ttsSpeaking = false;
-var ttsPaused   = false;
-var ttsOffset   = 0;
-var ttsSegStart = 0;
-var ttsUtter    = null;
+var ttsAudio    = null;
+var ttsAudioUrl = '';
 
-function ttsPreferredVoice(lang) {
-    var voices = window.speechSynthesis ? window.speechSynthesis.getVoices() : [];
-    if (!voices.length) return null;
-
-    var pre = lang.split('-')[0].toLowerCase();
-
-    var matches = voices.filter(function(v) {
-        var vl = String(v.lang || '').toLowerCase();
-        return vl === lang.toLowerCase() || vl.startsWith(pre + '-') || vl.startsWith(pre + '_');
-    });
-
-    if (!matches.length) return voices[0] || null;
-
-    var hints = ['female','woman','zira','samantha','karen','aria','jenny','emma','olivia','ava'];
-
-    var female = matches.find(function(v) {
-        var label = (String(v.name || '') + ' ' + String(v.voiceURI || '')).toLowerCase();
-        return hints.some(function(h){ return label.indexOf(h) !== -1; });
-    });
-
-    return female || matches[0];
-}
-
-function ttsStart() {
-    var remaining = TTS_TEXT.slice(Math.max(0, ttsOffset));
-
-    if (!remaining.trim()) {
-        ttsSpeaking = false;
-        ttsPaused   = false;
-        ttsOffset   = 0;
-        return;
+function ttsCleanup() {
+    if (ttsAudio) {
+        try { ttsAudio.pause(); } catch(e) {}
+        try { ttsAudio.currentTime = 0; } catch(e) {}
+        ttsAudio = null;
     }
-
-    speechSynthesis.cancel();
-
-    ttsSegStart     = ttsOffset;
-    ttsUtter        = new SpeechSynthesisUtterance(remaining);
-    ttsUtter.lang   = 'en-US';
-    ttsUtter.rate   = 0.7;
-    ttsUtter.pitch  = 1;
-    ttsUtter.volume = 1;
-
-    var pref = ttsPreferredVoice('en-US');
-    if (pref) ttsUtter.voice = pref;
-
-    ttsUtter.onstart = function(){
-        ttsSpeaking = true;
-        ttsPaused   = false;
-        if (ttsBtn) ttsBtn.textContent = 'Pause';
-    };
-
-    ttsUtter.onpause = function(){
-        ttsPaused   = true;
-        ttsSpeaking = true;
-        if (ttsBtn) ttsBtn.textContent = 'Resume';
-    };
-
-    ttsUtter.onresume = function(){
-        ttsPaused   = false;
-        ttsSpeaking = true;
-        if (ttsBtn) ttsBtn.textContent = 'Pause';
-    };
-
-    ttsUtter.onboundary = function(ev) {
-        if (typeof ev.charIndex === 'number') {
-            ttsOffset = Math.max(ttsSegStart, Math.min(TTS_TEXT.length, ttsSegStart + ev.charIndex));
-        }
-    };
-
-    ttsUtter.onend = function(){
-        if (!ttsPaused) {
-            ttsSpeaking = false;
-            ttsPaused   = false;
-            ttsOffset   = 0;
-            if (ttsBtn) ttsBtn.textContent = 'Listen';
-        }
-    };
-
-    ttsUtter.onerror = function(){
-        ttsSpeaking = false;
-        ttsPaused   = false;
-        ttsOffset   = 0;
-        if (ttsBtn) ttsBtn.textContent = 'Listen';
-    };
-
-    speechSynthesis.speak(ttsUtter);
+    if (ttsAudioUrl) {
+        try { URL.revokeObjectURL(ttsAudioUrl); } catch(e) {}
+        ttsAudioUrl = '';
+    }
+    if (ttsBtn) {
+        ttsBtn.disabled = false;
+        ttsBtn.textContent = 'Listen';
+    }
 }
 
 if (ttsBtn) {
     ttsBtn.addEventListener('click', function() {
         if (!TTS_TEXT.trim()) return;
 
-        if (speechSynthesis.paused || ttsPaused) {
-            speechSynthesis.resume();
-            ttsSpeaking = true;
-            ttsPaused   = false;
-            ttsBtn.textContent = 'Pause';
-
-            setTimeout(function(){
-                if (!speechSynthesis.speaking && ttsOffset < TTS_TEXT.length) ttsStart();
-            }, 80);
-
+        if (ttsAudio) {
+            if (!ttsAudio.paused) {
+                ttsAudio.pause();
+                ttsBtn.textContent = 'Resume';
+            } else {
+                ttsAudio.play().then(function(){
+                    ttsBtn.textContent = 'Pause';
+                }).catch(function(){});
+            }
             return;
         }
 
-        if (speechSynthesis.speaking && !speechSynthesis.paused) {
-            speechSynthesis.pause();
-            ttsSpeaking = true;
-            ttsPaused   = true;
-            ttsBtn.textContent = 'Resume';
-            return;
-        }
+        ttsBtn.disabled = true;
+        ttsBtn.textContent = '...';
 
-        speechSynthesis.cancel();
-        ttsOffset = 0;
-        ttsStart();
+        var fd = new FormData();
+        fd.append('text', TTS_TEXT);
+        fd.append('voice_id', OS_VOICE_ID || 'nzFihrBIvB34imQBuxub');
+        fd.append('response_type', 'stream');
+
+        fetch(OS_TTS_URL, { method: 'POST', body: fd, credentials: 'same-origin' })
+            .then(function(res) {
+                if (!res.ok) throw new Error('TTS error ' + res.status);
+                return res.blob();
+            })
+            .then(function(blob) {
+                ttsAudioUrl = URL.createObjectURL(blob);
+                ttsAudio = new Audio(ttsAudioUrl);
+
+                ttsAudio.onended = function() {
+                    ttsCleanup();
+                };
+
+                ttsAudio.onpause = function() {
+                    if (ttsAudio && ttsAudio.currentTime < (ttsAudio.duration || Infinity) && ttsBtn) {
+                        ttsBtn.textContent = 'Resume';
+                    }
+                };
+
+                ttsAudio.play().then(function() {
+                    if (ttsBtn) {
+                        ttsBtn.disabled = false;
+                        ttsBtn.textContent = 'Pause';
+                    }
+                }).catch(function() {
+                    ttsCleanup();
+                });
+            })
+            .catch(function() {
+                ttsCleanup();
+            });
     });
 }
 

@@ -48,6 +48,17 @@ function render_activity_viewer($title, $icon, $content)
             $backUrl .= '&source=' . urlencode($source);
         }
     }
+
+    // Teacher back button: shown when mode=edit or mode=view
+    $mode = isset($_GET['mode']) ? trim((string) $_GET['mode']) : '';
+    $isTeacher = ($mode === 'edit' || $mode === 'view');
+    $teacherBackParams = http_build_query(array_filter([
+        'assignment' => $assignment,
+        'unit'       => $unit,
+        'mode'       => $mode,
+    ]));
+    $teacherBackUrl = '/lessons/lessons/academic/teacher_unit.php'
+                    . ($teacherBackParams !== '' ? '?' . $teacherBackParams : '');
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -79,11 +90,14 @@ function render_activity_viewer($title, $icon, $content)
 
         body{
             margin:0;
-            min-height:100vh;
+            padding:0;
+            height:100vh;
+            overflow:hidden;
+            display:flex;
+            flex-direction:column;
             font-family: Arial, sans-serif;
             color:var(--viewer-text);
             background: #f0faf6;
-            padding: 30px;
         }
 
         /* ─────────────────────────────────────────────── */
@@ -183,39 +197,6 @@ function render_activity_viewer($title, $icon, $content)
             line-height: 1.2 !important;
             margin: 0 !important;
             padding: 16px !important;
-            text-align: center !important;
-        }
-
-        body.presentation-mode .viewer-content :is(.mc-options, .vc-options) {
-            max-height: none !important;
-            flex: 1 !important;
-            overflow-y: auto !important;
-            padding: 12px 16px !important;
-            display: flex !important;
-            flex-direction: column !important;
-            justify-content: center !important;
-        }
-
-        body.presentation-mode .viewer-content :is(.mc-option, .vc-option) {
-            min-height: 60px !important;
-            font-size: clamp(18px, 2vw, 28px) !important;
-            padding: 14px 16px !important;
-            margin-bottom: 10px !important;
-        }
-
-        body.presentation-mode .viewer-content :is(.mc-controls, .controls, .lo-controls, .vc-controls, .qz-actions, .ex-actions, .flipbook-toolbar__right) {
-            gap: 12px !important;
-            flex-shrink: 0 !important;
-            padding: 12px 16px !important;
-            background: #EEEDFE !important;
-            border-top: 1.5px solid #AFA9EC !important;
-            display: flex !important;
-            justify-content: center !important;
-            flex-wrap: wrap !important;
-        }
-
-        body.presentation-mode .viewer-content :is(.mc-btn, .dd-btn, .lo-btn, .vc-btn, .action-btn, .qz-btn, .ppt-btn, .ex-btn, .flash-btn, .flipbook-btn, .dict-stage .btn, .pron-stage .btn) {
-            padding: 14px 20px !important;
             min-width: 160px !important;
             font-size: 16px !important;
             font-weight: 800 !important;
@@ -250,14 +231,18 @@ function render_activity_viewer($title, $icon, $content)
         /* Normal mode (non-presentation) */
         /* ─────────────────────────────────────────────── */
         .activity-wrapper{
-            max-width:1280px;
-            margin:0 auto;
+            width:100vw;
+            height:100vh;
+            display:flex;
+            flex-direction:column;
+            overflow:hidden;
         }
 
         .top-row{
             display:flex;
             align-items:center;
             justify-content:flex-start;
+            flex-shrink:0;
             min-height:42px;
             margin-bottom:0;
             background:#EEEDFE;
@@ -287,6 +272,34 @@ function render_activity_viewer($title, $icon, $content)
             filter:brightness(1.08);
             transform:translateY(-2px) scale(1.04);
             box-shadow:0 8px 22px rgba(127,119,221,.42);
+        }
+
+        /* Teacher back bar — shown when mode=edit|view */
+        .viewer-back-bar {
+            flex-shrink: 0;
+            z-index: 100;
+            padding: 10px 20px;
+            background: #ffffff;
+            border-bottom: 1px solid #F0EEF8;
+        }
+
+        .viewer-back-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: #F97316;
+            color: #ffffff;
+            font-family: 'Nunito', sans-serif;
+            font-size: 14px;
+            font-weight: 700;
+            border-radius: 99px;
+            padding: 8px 20px;
+            text-decoration: none;
+            transition: opacity 0.15s;
+        }
+
+        .viewer-back-btn:hover {
+            opacity: 0.88;
         }
 
         /* ── Canonical action button ───────────────────────────
@@ -337,7 +350,11 @@ function render_activity_viewer($title, $icon, $content)
         }
 
         .viewer-content{
-            margin-top:0;
+            flex:1;
+            overflow:hidden;
+            display:flex;
+            flex-direction:column;
+            min-height:0;
             background: transparent;
             border:none;
             border-radius:0;
@@ -347,15 +364,13 @@ function render_activity_viewer($title, $icon, $content)
 
         /* Global size normalization for activity viewers */
         .viewer-content > :is(div, section){
-            max-width:980px;
-            margin-left:auto;
-            margin-right:auto;
+            width:100%;
+            max-width:100%;
         }
 
         .viewer-content :is(.mc-viewer, .dd-stage, .lo-stage, .vc-viewer, .dict-stage, .pron-stage, .match-stage, .flashcards-wrap, .qz-wrap, .flipbook-viewer, .ppt-viewer-shell, .ex-viewer){
-            max-width:980px !important;
-            margin-left:auto !important;
-            margin-right:auto !important;
+            max-width:100% !important;
+            width:100% !important;
         }
 
         .viewer-content :is(.mc-intro, .dd-intro, .lo-intro, .vc-intro, .dict-intro, .pron-intro, .match-intro, .flashcards-intro, .flipbook-intro, .ex-intro, .ppt-intro){
@@ -447,10 +462,6 @@ function render_activity_viewer($title, $icon, $content)
         }
 
         @media (max-width: 900px){
-            body{
-                padding:20px;
-            }
-
             .top-row{
                 margin-bottom:2px;
                 min-height:34px;
@@ -468,18 +479,9 @@ function render_activity_viewer($title, $icon, $content)
                 padding:8px 16px;
                 font-size:12px;
             }
-
-            .viewer-content{
-                border-radius:14px;
-                padding:20px;
-            }
         }
 
         @media (max-width: 640px){
-            body{
-                padding:12px;
-            }
-
             h1{
                 font-size:22px;
             }
@@ -491,11 +493,6 @@ function render_activity_viewer($title, $icon, $content)
             .back-btn{
                 padding:7px 14px;
                 font-size:12px;
-            }
-
-            .viewer-content{
-                border-radius:12px;
-                padding:14px;
             }
 
             .viewer-content > :is(div, section){
@@ -521,16 +518,8 @@ function render_activity_viewer($title, $icon, $content)
         }
 
         @media (max-width: 420px){
-            body{
-                padding:8px;
-            }
-
             h1{
                 font-size:20px;
-            }
-
-            .viewer-content{
-                padding:10px;
             }
 
             .top-row{
@@ -591,17 +580,16 @@ function render_activity_viewer($title, $icon, $content)
             max-width: 100%;
             display: flex;
             flex-direction: column;
-            padding: 6px 8px 4px;
+            padding: 0;
         }
         body.fullscreen-embedded .top-row { display: none !important; }
-        body.fullscreen-embedded .viewer-header { margin: 0 0 4px !important; }
-        body.fullscreen-embedded h1 { font-size: 18px !important; }
+        body.fullscreen-embedded .viewer-header { display: none !important; }
         body.fullscreen-embedded .viewer-content {
             flex: 1;
             min-height: 0;
-            overflow-y: auto;
-            border-radius: 8px;
-            padding: 10px 14px;
+            overflow: hidden;
+            border-radius: 0;
+            padding: 0;
             margin: 0;
         }
 
@@ -657,11 +645,18 @@ function render_activity_viewer($title, $icon, $content)
 
 <div class="activity-wrapper">
 
-    <?php if (!$embedded && !$isPresentationMode) { ?>
+    <?php if ($isTeacher && !$embedded && !$isPresentationMode): ?>
+    <div class="viewer-back-bar">
+        <a href="<?= htmlspecialchars($teacherBackUrl, ENT_QUOTES, 'UTF-8') ?>"
+           class="viewer-back-btn">
+            &larr; Back to Unit
+        </a>
+    </div>
+    <?php elseif (!$embedded && !$isPresentationMode): ?>
     <div class="top-row">
         <a href="<?= htmlspecialchars($backUrl, ENT_QUOTES, 'UTF-8') ?>" class="back-btn">Back</a>
     </div>
-    <?php } ?>
+    <?php endif; ?>
 
     <div class="viewer-content">
         <?= $content ?>
@@ -706,6 +701,8 @@ window.addEventListener('message', function (e) {
         document.dispatchEvent(new CustomEvent('fullscreen-embedded', { detail: { active: false } }));
     }
 });
+
+// Global browser-TTS voice selection removed for viewers.
 </script>
 
 </body>
