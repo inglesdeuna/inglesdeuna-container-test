@@ -407,7 +407,6 @@ body { margin: 0 !important; padding: 0 !important; background: #fff !important;
 }
 
 #fb-feedback { margin-top: 8px; }
-#fb-completed { }
 
 .fb-image-wrap {
     display: none;
