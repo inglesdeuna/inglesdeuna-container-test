@@ -299,6 +299,10 @@ foreach ($pairs as $pair) {
     );
 }
 
+if (count($cards) > 8) {
+    $cards = array_slice($cards, 0, 8);
+}
+
 $totalPairs = (int) floor(count($cards) / 2);
 $totalCards = count($cards);
 
@@ -374,7 +378,7 @@ body{
     flex:1;
     min-height:0;
     width:100%;
-    padding:clamp(8px,1.5vw,14px);
+    padding:1cm;
     gap:8px;
     box-sizing:border-box;
     overflow:hidden;
@@ -486,7 +490,7 @@ body{
 .viewer-content .mc-card{
     position:relative;
     width:100%;
-    aspect-ratio:1/1;
+    aspect-ratio:16/10;
     cursor:pointer;
     border:none;
     background:transparent;
@@ -612,11 +616,12 @@ body{
 
 @media(max-width:900px){
     :root{--mc-cols:<?= (int) $tabletCols ?>;--mc-gap:10px;}
-    .mc-page{padding:10px;}
+    .mc-page{padding:0.7cm;}
     .mc-stage{border-radius:26px;padding:12px;}
 }
 @media(max-width:640px){
     :root{--mc-cols:<?= (int) $mobileCols ?>;--mc-gap:8px;}
+    .mc-page{padding:0.5cm;}
 }
 @media(max-width:420px){
     :root{--mc-cols:2;}

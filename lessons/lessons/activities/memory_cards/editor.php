@@ -23,6 +23,9 @@ $unit = isset($_GET['unit']) ? trim((string) $_GET['unit']) : '';
 $source = isset($_GET['source']) ? trim((string) $_GET['source']) : '';
 $assignment = isset($_GET['assignment']) ? trim((string) $_GET['assignment']) : '';
 
+const MEMORY_MAX_PAIRS = 4;
+const MEMORY_MAX_BULK_CARDS = 8;
+
 function activities_columns(PDO $pdo): array
 {
     static $cache = null;
@@ -472,6 +475,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $leftImageFiles = isset($_FILES['left_image_file']) ? $_FILES['left_image_file'] : null;
     $rightImageFiles = isset($_FILES['right_image_file']) ? $_FILES['right_image_file'] : null;
+    $bulkCardFiles = isset($_FILES['bulk_card_files']) ? $_FILES['bulk_card_files'] : null;
 
     $count = max(
         count($pairIds),
@@ -553,6 +557,50 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'left' => $leftSide,
             'right' => $rightSide,
         );
+
+        if (count($sanitizedPairs) >= MEMORY_MAX_PAIRS) {
+            break;
+        }
+    }
+
+    $bulkImages = array();
+    if (
+        $bulkCardFiles &&
+        isset($bulkCardFiles['name']) &&
+        is_array($bulkCardFiles['name'])
+    ) {
+        $bulkCount = min(count($bulkCardFiles['name']), MEMORY_MAX_BULK_CARDS);
+        for ($j = 0; $j < $bulkCount; $j++) {
+            $fileName = isset($bulkCardFiles['name'][$j]) ? (string) $bulkCardFiles['name'][$j] : '';
+            $tmpName = isset($bulkCardFiles['tmp_name'][$j]) ? (string) $bulkCardFiles['tmp_name'][$j] : '';
+            if ($fileName === '' || $tmpName === '') {
+                continue;
+            }
+            $uploaded = upload_to_cloudinary($tmpName);
+            if ($uploaded) {
+                $bulkImages[] = $uploaded;
+            }
+        }
+    }
+
+    if (!empty($bulkImages)) {
+        $pairSlotsLeft = MEMORY_MAX_PAIRS - count($sanitizedPairs);
+        $usableImages = array_slice($bulkImages, 0, max(0, $pairSlotsLeft * 2));
+
+        for ($k = 0; $k + 1 < count($usableImages); $k += 2) {
+            $sanitizedPairs[] = array(
+                'id' => uniqid('pair_'),
+                'left' => array('type' => 'image', 'text' => '', 'image' => $usableImages[$k]),
+                'right' => array('type' => 'image', 'text' => '', 'image' => $usableImages[$k + 1]),
+            );
+            if (count($sanitizedPairs) >= MEMORY_MAX_PAIRS) {
+                break;
+            }
+        }
+    }
+
+    if (count($sanitizedPairs) > MEMORY_MAX_PAIRS) {
+        $sanitizedPairs = array_slice($sanitizedPairs, 0, MEMORY_MAX_PAIRS);
     }
 
     $savedActivityId = save_memory_cards_activity($pdo, $unit, $activityId, $postedTitle, $sanitizedPairs);
@@ -636,7 +684,13 @@ ob_start();
         <input id="activity_title" type="text" name="activity_title" required value="<?= htmlspecialchars($activityTitle, ENT_QUOTES, 'UTF-8') ?>" placeholder="e.g. Memory Cards - Unit 1">
     </div>
 
-    <p class="memory-hint">Create pairs with text/text, image/image, or mixed image/text. Cards are shuffled automatically in the viewer. Maximum 6 pairs (12 cards) so all cards are always visible in full screen.</p>
+    <p class="memory-hint">Create pairs with text/text, image/image, or mixed image/text. Cards are shuffled automatically in the viewer. Maximum 4 pairs (8 cards).</p>
+
+    <div class="memory-title-box">
+        <label for="bulkCardFiles">Bulk upload up to 8 card images</label>
+        <input id="bulkCardFiles" class="memory-file" type="file" name="bulk_card_files[]" accept="image/*" multiple>
+        <p class="memory-hint" id="bulkCardFilesHint">Select up to 8 images. Every 2 images create one image/image pair when you save.</p>
+    </div>
 
     <div id="pairsContainer" class="memory-pairs">
         <?php foreach ($pairs as $idx => $pair): ?>
@@ -711,7 +765,8 @@ ob_start();
 </form>
 
 <script>
-const MAX_PAIRS = 6;
+const MAX_PAIRS = 4;
+const MAX_BULK_CARDS = 8;
 let formChanged = false;
 let formSubmitted = false;
 
@@ -811,7 +866,7 @@ function addPair() {
     const container = document.getElementById('pairsContainer');
     const index = container.querySelectorAll('.memory-pair').length;
     if (index >= MAX_PAIRS) {
-        alert('Maximum of ' + MAX_PAIRS + ' pairs (12 cards) reached. All cards are always visible in full screen with this limit.');
+        alert('Maximum of ' + MAX_PAIRS + ' pairs (8 cards) reached.');
         return;
     }
     const pairId = 'pair_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
@@ -892,6 +947,20 @@ document.addEventListener('DOMContentLoaded', function () {
         form.addEventListener('submit', function () {
             formSubmitted = true;
             formChanged = false;
+        });
+    }
+
+    const bulkFilesInput = document.getElementById('bulkCardFiles');
+    const bulkHint = document.getElementById('bulkCardFilesHint');
+    if (bulkFilesInput && bulkHint) {
+        bulkFilesInput.addEventListener('change', function () {
+            const count = bulkFilesInput.files ? bulkFilesInput.files.length : 0;
+            if (count > MAX_BULK_CARDS) {
+                bulkHint.textContent = 'You selected ' + count + ' images. Only the first ' + MAX_BULK_CARDS + ' will be processed.';
+            } else {
+                bulkHint.textContent = 'Selected ' + count + ' image(s). Every 2 images create one image/image pair when you save.';
+            }
+            formChanged = true;
         });
     }
 });
