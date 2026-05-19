@@ -31,7 +31,7 @@ document.addEventListener('DOMContentLoaded', function () {
   var index = 0;
   var answered = false;
   var revealed = false;
-  var scores = questions.map(function () { return 0; });
+  var scores = questions.map(function () { return null; });
   var reviewItems = questions.map(function () { return {}; });
 
   var selectedAnswers = questions.map(function (q) {
@@ -236,6 +236,35 @@ document.addEventListener('DOMContentLoaded', function () {
     }).join(' | ');
   }
 
+  function computeScoreLikeMultipleChoice() {
+    var total = questions.length;
+    var correct = 0;
+    var wrong = 0;
+    var revealedCount = 0;
+
+    scores.forEach(function (value) {
+      if (value === 1) {
+        correct += 1;
+      } else if (value === 0) {
+        wrong += 1;
+      } else if (value === -1) {
+        revealedCount += 1;
+      }
+    });
+
+    var scorable = correct + wrong;
+    var percent = scorable > 0 ? Math.round((correct / scorable) * 100) : 0;
+
+    return {
+      correct: correct,
+      total: total,
+      wrong: wrong,
+      errors: wrong,
+      revealed: revealedCount,
+      percent: percent
+    };
+  }
+
   function loadQuestion() {
     var q = questions[index] || {};
     answered = false;
@@ -356,6 +385,8 @@ document.addEventListener('DOMContentLoaded', function () {
       return;
     }
 
+    var result = computeScoreLikeMultipleChoice();
+
     if (activityEl) {
       activityEl.style.display = 'none';
     }
@@ -378,12 +409,11 @@ document.addEventListener('DOMContentLoaded', function () {
       }
     });
 
-    var result = AF.computeScore(scores);
     if (returnTo && activityId) {
       var sep = returnTo.indexOf('?') !== -1 ? '&' : '?';
       var reportUrl = returnTo
         + sep + 'activity_percent=' + result.percent
-        + '&activity_errors=' + result.wrong
+        + '&activity_errors=' + result.errors
         + '&activity_total=' + result.total
         + '&activity_id=' + encodeURIComponent(activityId)
         + '&activity_type=fillblank';
@@ -400,7 +430,7 @@ document.addEventListener('DOMContentLoaded', function () {
     index = 0;
     answered = false;
     revealed = false;
-    scores = questions.map(function () { return 0; });
+    scores = questions.map(function () { return null; });
     reviewItems = questions.map(function () { return {}; });
 
     selectedAnswers = questions.map(function (q) {
