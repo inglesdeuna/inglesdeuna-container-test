@@ -298,8 +298,8 @@ ob_start();
 
 .qa-premium-arrow:hover{
     transform:translateY(-2px) scale(1.05);
-    background:var(--li-teal-soft);
-    box-shadow:0 16px 28px rgba(8,80,65,.18);
+    background:#EDE9FA;
+    box-shadow:0 16px 28px rgba(127,119,221,.13);
 }
 
 .qa-premium-card{
@@ -495,7 +495,7 @@ ob_start();
     max-width:420px;
     margin:0 auto 18px;
     border-radius:999px;
-    background:#E2F7EF;
+    background:#EDE9FA;
     overflow:hidden;
 }
 
