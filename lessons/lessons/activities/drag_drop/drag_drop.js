@@ -40,6 +40,7 @@ document.addEventListener('DOMContentLoaded', function () {
   var ttsAbortController = null;
   var currentAudioElement = null;
   var currentAudioUrl = '';
+  var browserUtterance = null;
 
   function shuffle(arr) {
     var a = arr.slice();
@@ -81,9 +82,53 @@ document.addEventListener('DOMContentLoaded', function () {
       currentAudioUrl = '';
     }
 
+    if (window.speechSynthesis) {
+      try {
+        window.speechSynthesis.cancel();
+      } catch (e) {}
+    }
+    browserUtterance = null;
+
     if (listenBtn) {
       listenBtn.disabled = false;
       listenBtn.textContent = 'Listen';
+    }
+  }
+
+  function speakWithBrowser(text) {
+    if (!text || !window.speechSynthesis || typeof SpeechSynthesisUtterance === 'undefined') {
+      return false;
+    }
+
+    try {
+      var utterance = new SpeechSynthesisUtterance(text);
+      utterance.rate = 0.95;
+      utterance.pitch = 1;
+      utterance.lang = 'en-US';
+
+      utterance.onend = function () {
+        if (listenBtn) {
+          listenBtn.disabled = false;
+          listenBtn.textContent = 'Listen';
+        }
+      };
+
+      utterance.onerror = function () {
+        if (listenBtn) {
+          listenBtn.disabled = false;
+          listenBtn.textContent = 'Listen';
+        }
+      };
+
+      browserUtterance = utterance;
+      if (listenBtn) {
+        listenBtn.disabled = false;
+        listenBtn.textContent = 'Playing...';
+      }
+      window.speechSynthesis.speak(utterance);
+      return true;
+    } catch (e) {
+      return false;
     }
   }
 
@@ -114,7 +159,15 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!response.ok) {
           throw new Error('TTS request failed: ' + response.status);
         }
-        return response.blob();
+
+        var contentType = String(response.headers.get('content-type') || '').toLowerCase();
+        if (contentType.indexOf('audio/') !== -1) {
+          return response.blob();
+        }
+
+        return response.text().then(function (textBody) {
+          throw new Error('TTS returned non-audio response: ' + textBody);
+        });
       })
       .then(function (audioBlob) {
         if (signal.aborted) {
@@ -146,7 +199,8 @@ document.addEventListener('DOMContentLoaded', function () {
         currentAudioElement.play()
           .then(function () {})
           .catch(function () {
-            if (listenBtn) {
+            var spoke = speakWithBrowser(text);
+            if (!spoke && listenBtn) {
               listenBtn.textContent = 'Listen';
             }
           });
@@ -155,7 +209,8 @@ document.addEventListener('DOMContentLoaded', function () {
         if (signal.aborted) {
           return;
         }
-        if (listenBtn) {
+        var spoke = speakWithBrowser(text);
+        if (!spoke && listenBtn) {
           listenBtn.disabled = false;
           listenBtn.textContent = 'Listen';
         }
