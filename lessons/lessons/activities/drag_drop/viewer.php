@@ -401,12 +401,12 @@ body {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
     gap: 14px;
-    align-items: start;
+    align-items: stretch;
     margin-bottom: 16px;
 }
 
 .dd-prompt-row.dd-prompt-row--with-image {
-    grid-template-columns: minmax(0, 1fr) clamp(170px, 28%, 240px);
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
 }
 
 #dd-instruction {
@@ -425,14 +425,15 @@ body {
     border: 1px solid var(--dd-lila-border);
     border-radius: 16px;
     padding: 8px;
-    min-height: 130px;
+    min-height: 0;
+    height: 100%;
     display: none;
 }
 
 .dd-media img {
     width: 100%;
-    max-height: 220px;
-    height: auto;
+    height: 100%;
+    max-height: none;
     object-fit: contain;
     border-radius: 10px;
     display: block;
