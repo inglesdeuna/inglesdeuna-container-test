@@ -100,7 +100,7 @@ function dd_load_activity(PDO $pdo, string $activityId, string $unit): array
             continue;
         }
 
-        $text = trim((string) ($block['text'] ?? $block['sentence'] ?? ''));
+        $text = trim((string) ($block['text'] ?? $block['sentence'] ?? $block['instruction'] ?? $block['prompt'] ?? ''));
         if ($text === '') {
             continue;
         }
@@ -124,7 +124,17 @@ function dd_load_activity(PDO $pdo, string $activityId, string $unit): array
             $listenEnabled = $parsed === null ? true : (bool) $parsed;
         }
 
-        $imageRaw = (string) ($block['image'] ?? $block['image_url'] ?? $block['imageUrl'] ?? $block['img'] ?? '');
+        $imageRaw = (string) (
+            $block['image'] ??
+            $block['image_url'] ??
+            $block['imageUrl'] ??
+            $block['img'] ??
+            $block['media_url'] ??
+            $block['mediaUrl'] ??
+            $block['prompt_image'] ??
+            $block['picture'] ??
+            ''
+        );
         $voiceId = trim((string) ($block['voice_id'] ?? $defaultVoiceId));
         if ($voiceId === '') {
             $voiceId = $defaultVoiceId;
@@ -577,7 +587,7 @@ window.DRAGDROP_TITLE = <?php echo json_encode($viewerTitle, JSON_UNESCAPED_UNIC
 window.DRAGDROP_RETURN_TO = <?php echo json_encode($returnTo, JSON_UNESCAPED_UNICODE); ?>;
 window.DRAGDROP_ACTIVITY_ID = <?php echo json_encode($activityId, JSON_UNESCAPED_UNICODE); ?>;
 </script>
-<script src="drag_drop.js"></script>
+<script src="drag_drop.js?v=<?php echo urlencode((string) @filemtime(__DIR__ . '/drag_drop.js')); ?>"></script>
 <?php
 $content = ob_get_clean();
 render_activity_viewer($viewerTitle, 'fa-solid fa-arrows-up-down-left-right', $content);
