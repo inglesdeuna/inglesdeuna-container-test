@@ -58,7 +58,10 @@ function dd2_load(PDO $pdo, string $activityId, string $unit): array
                 if ($w !== '') $missing[] = $w;
             }
         }
-        $image = trim((string) ($block['image'] ?? ''));
+        $image = trim((string) ($block['image'] ?? $block['image_url'] ?? $block['imageUrl'] ?? $block['img'] ?? ''));
+        if ($image !== '' && !preg_match('/^(https?:)?\/\//i', $image) && strpos($image, 'data:') !== 0) {
+            $image = '/' . ltrim($image, './');
+        }
         $blocks[] = ['text' => $text, 'missing_words' => $missing, 'image' => $image];
     }
 
