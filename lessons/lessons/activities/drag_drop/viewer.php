@@ -280,6 +280,10 @@ body { margin: 0 !important; padding: 0 !important; background: #fff !important;
     margin-bottom: 16px;
 }
 
+.dd-prompt-row.dd-prompt-row--single {
+    grid-template-columns: minmax(0, 1fr);
+}
+
 /* Instruction paragraph — inline drop zones live inside here */
 #dd-instruction {
     font-size: clamp(16px, 2.2vw, 20px);
@@ -424,7 +428,7 @@ body { margin: 0 !important; padding: 0 !important; background: #fff !important;
                     <div class="dd-badge" id="dd-progress-badge">Q 1 of <?php echo count($jsQuestions); ?></div>
                 </div>
 
-                <div class="dd-prompt-row">
+                <div class="dd-prompt-row dd-prompt-row--single" id="dd-prompt-row">
                     <div id="dd-instruction"></div>
                     <div class="dd-media" id="dd-media" aria-hidden="true">
                         <img id="dd-image" alt="Question image">

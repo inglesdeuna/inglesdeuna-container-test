@@ -5,6 +5,7 @@ document.addEventListener('DOMContentLoaded', function () {
   var progressLabelEl = document.getElementById('dd-progress-label');
   var progressFillEl  = document.getElementById('dd-progress-fill');
   var progressBadgeEl = document.getElementById('dd-progress-badge');
+  var promptRowEl     = document.getElementById('dd-prompt-row');
   var instructionEl   = document.getElementById('dd-instruction');
   var mediaEl         = document.getElementById('dd-media');
   var imageEl         = document.getElementById('dd-image');
@@ -84,12 +85,21 @@ document.addEventListener('DOMContentLoaded', function () {
       imageEl.removeAttribute('src');
       mediaEl.style.display = 'none';
       mediaEl.setAttribute('aria-hidden', 'true');
+      if (promptRowEl) promptRowEl.classList.add('dd-prompt-row--single');
       return;
     }
+
+    imageEl.onerror = function () {
+      mediaEl.style.display = 'none';
+      mediaEl.setAttribute('aria-hidden', 'true');
+      if (promptRowEl) promptRowEl.classList.add('dd-prompt-row--single');
+      imageEl.onerror = null;
+    };
 
     imageEl.src = imageUrl;
     mediaEl.style.display = 'block';
     mediaEl.setAttribute('aria-hidden', 'false');
+    if (promptRowEl) promptRowEl.classList.remove('dd-prompt-row--single');
   }
 
   /* ── render instruction with inline drop zones ── */
