@@ -9,6 +9,7 @@ document.addEventListener('DOMContentLoaded', function () {
   var instructionEl = document.getElementById('dd-instruction');
   var mediaEl = document.getElementById('dd-media');
   var imageEl = document.getElementById('dd-image');
+  var mediaNoteEl = document.getElementById('dd-media-note');
   var wordsEl = document.getElementById('dd-words');
   var listenBtn = document.getElementById('dd-listen');
   var checkBtn = document.getElementById('dd-check');
@@ -167,26 +168,98 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     var imageUrl = q && typeof q.image === 'string' ? q.image.trim() : '';
+    var candidates = [];
 
-    if (!imageUrl) {
+    function addCandidate(url) {
+      if (!url) return;
+      if (candidates.indexOf(url) === -1) {
+        candidates.push(url);
+      }
+    }
+
+    function buildCandidates(raw) {
+      var normalized = raw.trim();
+      if (!normalized) return [];
+
+      addCandidate(normalized);
+
+      if (/^http:\/\//i.test(normalized)) {
+        addCandidate(normalized.replace(/^http:\/\//i, 'https://'));
+      }
+
+      if (!/^https?:\/\//i.test(normalized) && normalized.indexOf('data:') !== 0) {
+        var noLead = normalized.replace(/^\/+/, '');
+        addCandidate('/' + noLead);
+
+        if (noLead.indexOf('uploads/') === 0) {
+          addCandidate('/lessons/lessons/' + noLead);
+        }
+
+        if (noLead.indexOf('lessons/lessons/uploads/') === 0) {
+          addCandidate('/' + noLead);
+          addCandidate('/' + noLead.replace(/^lessons\/lessons\//, ''));
+        }
+      }
+
+      return candidates;
+    }
+
+    function hideImagePanel() {
       mediaEl.style.display = 'none';
       mediaEl.setAttribute('aria-hidden', 'true');
       imageEl.removeAttribute('src');
+      if (mediaNoteEl) {
+        mediaNoteEl.style.display = 'none';
+      }
       promptRowEl.classList.remove('dd-prompt-row--with-image');
+    }
+
+    function showImagePanel() {
+      mediaEl.style.display = 'block';
+      mediaEl.setAttribute('aria-hidden', 'false');
+      promptRowEl.classList.add('dd-prompt-row--with-image');
+    }
+
+    if (!imageUrl) {
+      hideImagePanel();
       return;
     }
 
+    var queue = buildCandidates(imageUrl);
+    var cursor = 0;
+
+    if (!queue.length) {
+      hideImagePanel();
+      return;
+    }
+
+    showImagePanel();
+    if (mediaNoteEl) {
+      mediaNoteEl.style.display = 'none';
+    }
+
     imageEl.onerror = function () {
-      mediaEl.style.display = 'none';
-      mediaEl.setAttribute('aria-hidden', 'true');
-      promptRowEl.classList.remove('dd-prompt-row--with-image');
+      cursor += 1;
+      if (cursor < queue.length) {
+        imageEl.src = queue[cursor];
+        return;
+      }
+
+      imageEl.removeAttribute('src');
+      if (mediaNoteEl) {
+        mediaNoteEl.style.display = 'block';
+      }
       imageEl.onerror = null;
     };
 
-    imageEl.src = imageUrl;
-    mediaEl.style.display = 'block';
-    mediaEl.setAttribute('aria-hidden', 'false');
-    promptRowEl.classList.add('dd-prompt-row--with-image');
+    imageEl.onload = function () {
+      if (mediaNoteEl) {
+        mediaNoteEl.style.display = 'none';
+      }
+      imageEl.onload = null;
+    };
+
+    imageEl.src = queue[cursor];
   }
 
   function renderInstruction(q) {

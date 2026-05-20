@@ -428,6 +428,15 @@ body {
     display: block;
 }
 
+.dd-media-note {
+    display: none;
+    font-size: 12px;
+    font-weight: 800;
+    color: var(--dd-muted);
+    text-align: center;
+    padding: 10px 6px;
+}
+
 .dd-inline-drop {
     display: inline-block;
     min-width: 96px;
@@ -540,6 +549,7 @@ body {
                     <div id="dd-instruction"></div>
                     <div class="dd-media" id="dd-media" aria-hidden="true">
                         <img id="dd-image" alt="Question image">
+                        <div class="dd-media-note" id="dd-media-note">Image unavailable</div>
                     </div>
                 </div>
 
