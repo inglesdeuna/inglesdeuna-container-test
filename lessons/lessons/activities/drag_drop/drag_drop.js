@@ -6,6 +6,8 @@ document.addEventListener('DOMContentLoaded', function () {
   var progressFillEl  = document.getElementById('dd-progress-fill');
   var progressBadgeEl = document.getElementById('dd-progress-badge');
   var instructionEl   = document.getElementById('dd-instruction');
+  var mediaEl         = document.getElementById('dd-media');
+  var imageEl         = document.getElementById('dd-image');
   var wordsEl         = document.getElementById('dd-words');
   var checkBtn        = document.getElementById('dd-check');
   var showBtn         = document.getElementById('dd-show');
@@ -63,6 +65,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     updateProgress();
     renderInstruction(q);
+    renderImage(q);
     renderWords(q);
 
     if (checkBtn) checkBtn.disabled = false;
@@ -71,6 +74,22 @@ document.addEventListener('DOMContentLoaded', function () {
       nextBtn.disabled    = true;
       nextBtn.textContent = index < questions.length - 1 ? 'Next →' : 'Finish';
     }
+  }
+
+  function renderImage(q) {
+    if (!mediaEl || !imageEl) return;
+
+    var imageUrl = (q && typeof q.image === 'string') ? q.image.trim() : '';
+    if (!imageUrl) {
+      imageEl.removeAttribute('src');
+      mediaEl.style.display = 'none';
+      mediaEl.setAttribute('aria-hidden', 'true');
+      return;
+    }
+
+    imageEl.src = imageUrl;
+    mediaEl.style.display = 'block';
+    mediaEl.setAttribute('aria-hidden', 'false');
   }
 
   /* ── render instruction with inline drop zones ── */

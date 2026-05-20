@@ -58,7 +58,8 @@ function dd2_load(PDO $pdo, string $activityId, string $unit): array
                 if ($w !== '') $missing[] = $w;
             }
         }
-        $blocks[] = ['text' => $text, 'missing_words' => $missing];
+        $image = trim((string) ($block['image'] ?? ''));
+        $blocks[] = ['text' => $text, 'missing_words' => $missing, 'image' => $image];
     }
 
     return [
@@ -98,6 +99,7 @@ function dd2_build_js_question(array $block): ?array
 {
     $text    = $block['text'];
     $missing = $block['missing_words'];
+    $image   = isset($block['image']) ? trim((string) $block['image']) : '';
 
     if (empty($missing)) {
         /* Whole-sentence mode: every word is a slot */
@@ -113,6 +115,7 @@ function dd2_build_js_question(array $block): ?array
             'instruction' => 'Build the sentence by placing the words in the correct order.',
             'slots'       => $slots,
             'words'       => $words,
+            'image'       => $image,
         ];
     }
 
@@ -130,6 +133,7 @@ function dd2_build_js_question(array $block): ?array
         'instruction' => $instruction,
         'slots'       => $slots,
         'words'       => $missing,
+        'image'       => $image,
     ];
 }
 
@@ -265,6 +269,14 @@ body { margin: 0 !important; padding: 0 !important; background: #fff !important;
     margin-bottom: 16px;
 }
 
+.dd-prompt-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) clamp(170px, 28%, 240px);
+    gap: 14px;
+    align-items: start;
+    margin-bottom: 16px;
+}
+
 /* Instruction paragraph — inline drop zones live inside here */
 #dd-instruction {
     font-size: clamp(16px, 2.2vw, 20px);
@@ -275,7 +287,24 @@ body { margin: 0 !important; padding: 0 !important; background: #fff !important;
     background: var(--soft);
     border-radius: 16px;
     padding: 20px;
-    margin-bottom: 16px;
+}
+
+.dd-media {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 8px;
+    min-height: 130px;
+    display: none;
+}
+
+.dd-media img {
+    width: 100%;
+    height: auto;
+    max-height: 220px;
+    object-fit: contain;
+    border-radius: 10px;
+    display: block;
 }
 
 /* Inline drop zone replacing ___ in the paragraph */
@@ -361,7 +390,6 @@ body { margin: 0 !important; padding: 0 !important; background: #fff !important;
 .dd-btn-purple { background: var(--purple); }
 
 #dd-feedback { margin-top: 8px; }
-#dd-completed { }
 
 @media (max-width: 640px) {
     .dd-page { padding: 12px; }
@@ -369,6 +397,8 @@ body { margin: 0 !important; padding: 0 !important; background: #fff !important;
     .dd-btn { width: 100%; }
     .dd-slot { flex-wrap: wrap; }
     .dd-dropzone { min-width: 90px; }
+    .dd-prompt-row { grid-template-columns: 1fr; }
+    .dd-media { max-width: 260px; margin: 0 auto; }
 }
 </style>
 
@@ -391,7 +421,12 @@ body { margin: 0 !important; padding: 0 !important; background: #fff !important;
                     <div class="dd-badge" id="dd-progress-badge">Q 1 of <?php echo count($jsQuestions); ?></div>
                 </div>
 
-                <div id="dd-instruction"></div>
+                <div class="dd-prompt-row">
+                    <div id="dd-instruction"></div>
+                    <div class="dd-media" id="dd-media" aria-hidden="true">
+                        <img id="dd-image" alt="Question image">
+                    </div>
+                </div>
                 <div id="dd-words"></div>
 
                 <div class="dd-actions">
