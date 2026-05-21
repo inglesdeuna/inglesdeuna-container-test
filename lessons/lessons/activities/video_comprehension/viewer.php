@@ -252,8 +252,8 @@ ob_start();
 .vc-score-num.p{color:var(--vc-purple)}
 .vc-score-lbl{margin-top:5px;font-size:10px;font-weight:900;color:var(--vc-muted);text-transform:uppercase;letter-spacing:.08em}
 
-.vc-complete-page{display:none;max-width:940px;margin:0 auto;padding:14px;background:transparent;border-radius:18px}
-.vc-complete-page.active{display:block}
+.vc-complete-page{display:none;max-width:940px;margin:0 auto;padding:14px;background:transparent;border-radius:18px;width:100%;min-height:calc(100vh - 220px)}
+.vc-complete-page.active{display:flex;align-items:center;justify-content:center}
 
 .vc-complete-hero{text-align:center;margin-bottom:16px}
 .vc-complete-kicker{display:inline-flex;align-items:center;justify-content:center;padding:6px 14px;border-radius:999px;background:#FFF0E6;color:#F97316;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px}
@@ -741,8 +741,6 @@ body.presentation-mode .vc-video-only .vc-video {
                 if (activityEl) {
                     activityEl.classList.add('is-hidden');
                 }
-
-                completeEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
 
                 const score = computeScore();
                 const pct = score.percent;
