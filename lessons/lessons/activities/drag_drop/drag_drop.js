@@ -27,11 +27,6 @@ document.addEventListener('DOMContentLoaded', function () {
   var restartBtn = document.getElementById('dd-restart');
   var scoreGridEl = document.getElementById('dd-score-grid');
 
-  var scoreStripCorrectEl = document.getElementById('dd-score-correct');
-  var scoreStripWrongEl = document.getElementById('dd-score-wrong');
-  var scoreStripPctEl = document.getElementById('dd-score-pct');
-  var scoreStripEl = document.getElementById('dd-score-strip');
-
   var scoreCompletedCorrectEl = document.getElementById('dd-s-correct');
   var scoreCompletedWrongEl = document.getElementById('dd-s-wrong');
   var scoreCompletedPctEl = document.getElementById('dd-s-pct');
@@ -51,6 +46,7 @@ document.addEventListener('DOMContentLoaded', function () {
   var answered = false;
   var dragging = null;
   var slotContents = {};
+  var scoreVisible = false;
   var scores = questions.map(function () { return 0; });
   var slotCounts = questions.map(function () { return 1; });
   var reviewItems = questions.map(function () { return {}; });
@@ -105,14 +101,16 @@ document.addEventListener('DOMContentLoaded', function () {
     if (progressFillEl) progressFillEl.style.width = pct + '%';
   }
 
-  function updateScoreStrip(show) {
-    if (show && scoreStripEl) scoreStripEl.style.display = '';
+  function updateScoreCards(show, includeAll) {
+    if (typeof show === 'boolean') {
+      scoreVisible = show;
+    }
 
     var totalChips = 0;
     var correctChips = 0;
 
     for (var i = 0; i < scores.length; i++) {
-      if (i < index || (i === index && answered)) {
+      if (includeAll || i < index || (i === index && answered)) {
         totalChips += slotCounts[i] || 1;
         correctChips += Math.max(0, scores[i] || 0);
       }
@@ -121,16 +119,12 @@ document.addEventListener('DOMContentLoaded', function () {
     var wrongChips = totalChips - correctChips;
     var pct = totalChips > 0 ? Math.round((correctChips / totalChips) * 100) : 0;
 
-    if (scoreStripCorrectEl) scoreStripCorrectEl.textContent = String(correctChips);
-    if (scoreStripWrongEl) scoreStripWrongEl.textContent = String(wrongChips);
-    if (scoreStripPctEl) scoreStripPctEl.textContent = pct + '%';
-  }
-
-  function updateCompletedScoreCards(correctCount, wrongCount, pct) {
-    if (scoreCompletedCorrectEl) scoreCompletedCorrectEl.textContent = String(correctCount || 0);
-    if (scoreCompletedWrongEl) scoreCompletedWrongEl.textContent = String(wrongCount || 0);
-    if (scoreCompletedPctEl) scoreCompletedPctEl.textContent = String(pct || 0) + '%';
-    if (scoreGridEl) scoreGridEl.style.display = 'grid';
+    if (scoreCompletedCorrectEl) scoreCompletedCorrectEl.textContent = String(correctChips);
+    if (scoreCompletedWrongEl) scoreCompletedWrongEl.textContent = String(wrongChips);
+    if (scoreCompletedPctEl) scoreCompletedPctEl.textContent = String(pct) + '%';
+    if (scoreGridEl) {
+      scoreGridEl.classList.toggle('visible', !!scoreVisible);
+    }
   }
 
   function stopSpeech() {
@@ -509,7 +503,7 @@ document.addEventListener('DOMContentLoaded', function () {
     var allRight = correct === slots.length && slots.length > 0;
     scores[index] = correct;
     slotCounts[index] = slots.length || 1;
-    updateScoreStrip(true);
+    updateScoreCards(true, false);
 
     reviewItems[index] = {
       question: q.tts_text || q.instruction || ('Question ' + (index + 1)),
@@ -536,7 +530,7 @@ document.addEventListener('DOMContentLoaded', function () {
     answered = true;
     scores[index] = -1;
     slotCounts[index] = slots.length || 1;
-    updateScoreStrip(true);
+    updateScoreCards(true, false);
 
     if (instructionEl) {
       instructionEl.querySelectorAll('.dd-inline-drop').forEach(function (drop, i) {
@@ -586,8 +580,7 @@ document.addEventListener('DOMContentLoaded', function () {
     var wrong = total - correct;
     var pct = total > 0 ? Math.round((correct / total) * 100) : 0;
 
-    updateScoreStrip(true);
-    updateCompletedScoreCards(correct, wrong, pct);
+    updateScoreCards(true, true);
 
     if (completedTitleEl) {
       completedTitleEl.textContent = activityTitle;
@@ -637,8 +630,9 @@ document.addEventListener('DOMContentLoaded', function () {
     scores = questions.map(function () { return 0; });
     slotCounts = questions.map(function () { return 1; });
     reviewItems = questions.map(function () { return {}; });
+    scoreVisible = false;
 
-    if (scoreStripEl) scoreStripEl.style.display = 'none';
+    updateScoreCards(false, false);
     clearTtsError();
     loadQuestion();
   }
