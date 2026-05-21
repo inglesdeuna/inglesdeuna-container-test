@@ -243,13 +243,23 @@ ob_start();
 .vc-feedback.error{background:#fef2f2;border-color:#fca5a5;color:#991b1b}
 .vc-empty{padding:26px;text-align:center;font-weight:800;color:#b91c1c}
 .vc-activity.is-hidden{display:none}
-.completed-screen{display:none;text-align:center;max-width:600px;margin:0 auto;padding:40px 20px}
-.completed-screen.active{display:block}
-.completed-icon{font-size:80px;margin-bottom:20px}
-.completed-title{font-family:'Fredoka','Trebuchet MS',sans-serif;font-size:36px;font-weight:700;color:var(--vc-orange);margin:0 0 16px;line-height:1.2}
-.completed-text{font-size:16px;color:var(--vc-muted);line-height:1.6;margin:0 0 32px;font-weight:800}
-.completed-button{display:inline-block;padding:12px 24px;border:none;border-radius:999px;background:var(--vc-orange);color:#fff;font-weight:900;font-size:16px;cursor:pointer;box-shadow:0 6px 18px rgba(249,115,22,.22);transition:transform .18s ease,filter .18s ease}
-.completed-button:hover{transform:scale(1.05);filter:brightness(1.07)}
+.vc-score-grid{display:none;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:12px 16px 16px}
+.vc-score-grid.visible{display:grid}
+.vc-score-card{background:#FAFAFE;border:1px solid var(--vc-border);border-radius:14px;padding:12px;text-align:center}
+.vc-score-num{font-family:'Fredoka',sans-serif;font-size:28px;line-height:1;font-weight:700}
+.vc-score-num.c{color:#16a34a}
+.vc-score-num.w{color:#dc2626}
+.vc-score-num.p{color:var(--vc-purple)}
+.vc-score-lbl{margin-top:6px;font-size:10px;font-weight:900;color:var(--vc-muted);text-transform:uppercase;letter-spacing:.08em}
+
+.vc-completed-screen{display:none;text-align:center;padding:18px 8px 22px}
+.vc-completed-screen.active{display:block}
+.vc-completed-icon{font-size:30px;line-height:1;margin-bottom:6px}
+.vc-completed-title{margin:0;color:var(--vc-orange);font-family:'Fredoka',sans-serif;font-size:40px;font-weight:700}
+.vc-completed-text{margin:8px 0 0;color:var(--vc-muted);font-size:14px;font-weight:700}
+.vc-score-text{margin:10px 0 0;color:var(--vc-purple-dark);font-size:15px;font-weight:900}
+.vc-restart-btn{margin-top:12px;border:0;border-radius:999px;padding:13px 22px;background:var(--vc-purple);color:#fff;font-family:'Nunito',sans-serif;font-size:14px;font-weight:900;cursor:pointer}
+.vc-restart-btn:hover{filter:brightness(1.06)}
 @media (max-width:860px){.vc-intro{padding:20px 18px}.vc-intro h2{font-size:26px}.vc-question{font-size:18px}}
 
 /* ── Embedded / fullscreen / presentation ── */
