@@ -538,12 +538,103 @@ body {
 
 #dd-feedback { margin-top: 8px; }
 
+.dd-score-grid {
+    display: none;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+    margin-top: 14px;
+}
+
+.dd-score-card {
+    background: #FAFAFE;
+    border: 1px solid var(--dd-lila-border);
+    border-radius: 14px;
+    padding: 12px;
+    text-align: center;
+}
+
+.dd-score-num {
+    font-family: 'Fredoka', sans-serif;
+    font-size: 28px;
+    line-height: 1;
+    font-weight: 700;
+}
+
+.dd-score-num.c { color: var(--dd-green); }
+.dd-score-num.w { color: var(--dd-red); }
+.dd-score-num.p { color: var(--dd-purple); }
+
+.dd-score-lbl {
+    margin-top: 6px;
+    font-size: 10px;
+    font-weight: 900;
+    color: var(--dd-muted);
+    text-transform: uppercase;
+    letter-spacing: .08em;
+}
+
+.dd-completed-screen {
+    display: none;
+    text-align: center;
+    padding: 18px 8px;
+}
+
+.dd-completed-screen.active {
+    display: block;
+}
+
+.dd-completed-icon {
+    font-size: 30px;
+    line-height: 1;
+    margin-bottom: 6px;
+}
+
+.dd-completed-title {
+    margin: 0;
+    color: var(--dd-orange);
+    font-family: 'Fredoka', sans-serif;
+    font-size: 40px;
+    font-weight: 700;
+}
+
+.dd-completed-text {
+    margin: 8px 0 0;
+    color: var(--dd-muted);
+    font-size: 14px;
+    font-weight: 700;
+}
+
+.dd-score-text {
+    margin: 10px 0 0;
+    color: var(--dd-purple-dark);
+    font-size: 15px;
+    font-weight: 900;
+}
+
+.dd-restart-btn {
+    margin-top: 12px;
+    border: 0;
+    border-radius: 999px;
+    padding: 13px 22px;
+    background: var(--dd-purple);
+    color: #fff;
+    font-family: 'Nunito', sans-serif;
+    font-size: 14px;
+    font-weight: 900;
+    cursor: pointer;
+}
+
+.dd-restart-btn:hover {
+    filter: brightness(1.06);
+}
+
 @media (max-width: 640px) {
     .dd-page { padding: 12px; }
     .dd-actions { grid-template-columns: 1fr; }
     .dd-btn { width: 100%; }
     .dd-prompt-row.dd-prompt-row--with-image { grid-template-columns: 1fr; }
     .dd-media { max-width: 260px; margin: 0 auto; }
+    .dd-score-grid { grid-template-columns: 1fr; }
 }
 </style>
 
@@ -601,7 +692,28 @@ body {
             </div>
         </div>
 
-        <div id="dd-completed"></div>
+        <div id="dd-completed" class="dd-completed-screen">
+            <div id="dd-score-grid" class="dd-score-grid">
+                <div class="dd-score-card">
+                    <div class="dd-score-num c" id="dd-s-correct">0</div>
+                    <div class="dd-score-lbl">Correct</div>
+                </div>
+                <div class="dd-score-card">
+                    <div class="dd-score-num w" id="dd-s-wrong">0</div>
+                    <div class="dd-score-lbl">Wrong</div>
+                </div>
+                <div class="dd-score-card">
+                    <div class="dd-score-num p" id="dd-s-pct">0%</div>
+                    <div class="dd-score-lbl">Score</div>
+                </div>
+            </div>
+
+            <div class="dd-completed-icon">✅</div>
+            <h2 class="dd-completed-title" id="dd-completed-title"></h2>
+            <p class="dd-completed-text" id="dd-completed-text"></p>
+            <p class="dd-score-text" id="dd-score-text"></p>
+            <button type="button" class="dd-restart-btn" id="dd-restart">Restart</button>
+        </div>
     </div>
 </div>
 

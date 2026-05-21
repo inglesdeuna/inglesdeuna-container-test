@@ -16,13 +16,24 @@ document.addEventListener('DOMContentLoaded', function () {
   var showBtn = document.getElementById('dd-show');
   var nextBtn = document.getElementById('dd-next');
   var feedbackEl = document.getElementById('dd-feedback');
-    var completedEl    = document.getElementById('dd-completed');
-    var scoreCorrectEl = document.getElementById('dd-score-correct');
-    var scoreWrongEl   = document.getElementById('dd-score-wrong');
-    var scorePctEl     = document.getElementById('dd-score-pct');
-    var scoreStripEl   = document.getElementById('dd-score-strip');
   var activityEl = document.getElementById('dd-activity');
   var completedEl = document.getElementById('dd-completed');
+
+  var completedTitleEl = document.getElementById('dd-completed-title');
+  var completedTextEl = document.getElementById('dd-completed-text');
+  var scoreTextEl = document.getElementById('dd-score-text');
+  var restartBtn = document.getElementById('dd-restart');
+  var scoreGridEl = document.getElementById('dd-score-grid');
+
+  var scoreStripCorrectEl = document.getElementById('dd-score-correct');
+  var scoreStripWrongEl = document.getElementById('dd-score-wrong');
+  var scoreStripPctEl = document.getElementById('dd-score-pct');
+  var scoreStripEl = document.getElementById('dd-score-strip');
+
+  var scoreCompletedCorrectEl = document.getElementById('dd-s-correct');
+  var scoreCompletedWrongEl = document.getElementById('dd-s-wrong');
+  var scoreCompletedPctEl = document.getElementById('dd-s-pct');
+
   var winAudio = new Audio('../../hangman/assets/win.mp3');
 
   var activityTitle = window.DRAGDROP_TITLE || 'Drag & Drop';
@@ -30,9 +41,7 @@ document.addEventListener('DOMContentLoaded', function () {
   var activityId = window.DRAGDROP_ACTIVITY_ID || '';
 
   if (!questions.length) {
-    if (instructionEl) {
-      instructionEl.textContent = 'No questions available.';
-    }
+    if (instructionEl) instructionEl.textContent = 'No questions available.';
     return;
   }
 
@@ -40,25 +49,10 @@ document.addEventListener('DOMContentLoaded', function () {
   var answered = false;
   var dragging = null;
   var slotContents = {};
-  var scores      = questions.map(function () { return 0; });
-  var slotCounts   = questions.map(function () { return 1; });
-  var reviewItems  = questions.map(function () { return {}; });
+  var scores = questions.map(function () { return 0; });
+  var slotCounts = questions.map(function () { return 1; });
+  var reviewItems = questions.map(function () { return {}; });
 
-  function updateScoreCards(show) {
-    if (show && scoreStripEl) scoreStripEl.style.display = '';
-    var totalChips = 0, correctChips = 0;
-    for (var i = 0; i < scores.length; i++) {
-      if (i < index || (i === index && answered)) {
-        totalChips   += slotCounts[i] || 1;
-        correctChips += Math.max(0, scores[i] || 0);
-      }
-    }
-    var wrongChips = totalChips - correctChips;
-    var pct = totalChips > 0 ? Math.round((correctChips / totalChips) * 100) : 0;
-    if (scoreCorrectEl) scoreCorrectEl.textContent = String(correctChips);
-    if (scoreWrongEl)   scoreWrongEl.textContent   = String(wrongChips);
-    if (scorePctEl)     scorePctEl.textContent     = pct + '%';
-  }
   var ttsAbortController = null;
   var currentAudioElement = null;
   var currentAudioUrl = '';
@@ -107,6 +101,34 @@ document.addEventListener('DOMContentLoaded', function () {
     if (progressLabelEl) progressLabelEl.textContent = current + ' / ' + total;
     if (progressBadgeEl) progressBadgeEl.textContent = 'Q ' + current + ' of ' + total;
     if (progressFillEl) progressFillEl.style.width = pct + '%';
+  }
+
+  function updateScoreStrip(show) {
+    if (show && scoreStripEl) scoreStripEl.style.display = '';
+
+    var totalChips = 0;
+    var correctChips = 0;
+
+    for (var i = 0; i < scores.length; i++) {
+      if (i < index || (i === index && answered)) {
+        totalChips += slotCounts[i] || 1;
+        correctChips += Math.max(0, scores[i] || 0);
+      }
+    }
+
+    var wrongChips = totalChips - correctChips;
+    var pct = totalChips > 0 ? Math.round((correctChips / totalChips) * 100) : 0;
+
+    if (scoreStripCorrectEl) scoreStripCorrectEl.textContent = String(correctChips);
+    if (scoreStripWrongEl) scoreStripWrongEl.textContent = String(wrongChips);
+    if (scoreStripPctEl) scoreStripPctEl.textContent = pct + '%';
+  }
+
+  function updateCompletedScoreCards(correctCount, wrongCount, pct) {
+    if (scoreCompletedCorrectEl) scoreCompletedCorrectEl.textContent = String(correctCount || 0);
+    if (scoreCompletedWrongEl) scoreCompletedWrongEl.textContent = String(wrongCount || 0);
+    if (scoreCompletedPctEl) scoreCompletedPctEl.textContent = String(pct || 0) + '%';
+    if (scoreGridEl) scoreGridEl.style.display = 'grid';
   }
 
   function stopSpeech() {
@@ -286,9 +308,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function addCandidate(url) {
       if (!url) return;
-      if (candidates.indexOf(url) === -1) {
-        candidates.push(url);
-      }
+      if (candidates.indexOf(url) === -1) candidates.push(url);
     }
 
     function buildCandidates(raw) {
@@ -322,9 +342,7 @@ document.addEventListener('DOMContentLoaded', function () {
       mediaEl.style.display = 'none';
       mediaEl.setAttribute('aria-hidden', 'true');
       imageEl.removeAttribute('src');
-      if (mediaNoteEl) {
-        mediaNoteEl.style.display = 'none';
-      }
+      if (mediaNoteEl) mediaNoteEl.style.display = 'none';
       promptRowEl.classList.remove('dd-prompt-row--with-image');
     }
 
@@ -348,9 +366,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     showImagePanel();
-    if (mediaNoteEl) {
-      mediaNoteEl.style.display = 'none';
-    }
+    if (mediaNoteEl) mediaNoteEl.style.display = 'none';
 
     imageEl.onerror = function () {
       cursor += 1;
@@ -360,16 +376,12 @@ document.addEventListener('DOMContentLoaded', function () {
       }
 
       imageEl.removeAttribute('src');
-      if (mediaNoteEl) {
-        mediaNoteEl.style.display = 'block';
-      }
+      if (mediaNoteEl) mediaNoteEl.style.display = 'block';
       imageEl.onerror = null;
     };
 
     imageEl.onload = function () {
-      if (mediaNoteEl) {
-        mediaNoteEl.style.display = 'none';
-      }
+      if (mediaNoteEl) mediaNoteEl.style.display = 'none';
       imageEl.onload = null;
     };
 
@@ -384,9 +396,7 @@ document.addEventListener('DOMContentLoaded', function () {
     var parts = text.split('___');
 
     parts.forEach(function (part, i) {
-      if (part) {
-        instructionEl.appendChild(document.createTextNode(part));
-      }
+      if (part) instructionEl.appendChild(document.createTextNode(part));
 
       if (i < parts.length - 1) {
         var drop = document.createElement('span');
@@ -402,7 +412,6 @@ document.addEventListener('DOMContentLoaded', function () {
   function renderWords(q) {
     if (!wordsEl) return;
     wordsEl.innerHTML = '';
-
     var words = shuffle(Array.isArray(q.words) ? q.words : []);
     words.forEach(addWordChip);
   }
@@ -433,9 +442,7 @@ document.addEventListener('DOMContentLoaded', function () {
   function bindDropZone(drop, slotIndex) {
     drop.addEventListener('dragover', function (e) {
       e.preventDefault();
-      if (!answered) {
-        drop.classList.add('dd-inline-drop--over');
-      }
+      if (!answered) drop.classList.add('dd-inline-drop--over');
     });
 
     drop.addEventListener('dragleave', function () {
@@ -446,9 +453,7 @@ document.addEventListener('DOMContentLoaded', function () {
       e.preventDefault();
       drop.classList.remove('dd-inline-drop--over');
 
-      if (!dragging || answered) {
-        return;
-      }
+      if (!dragging || answered) return;
 
       var word = dragging.dataset.word;
 
@@ -467,13 +472,8 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     drop.addEventListener('click', function () {
-      if (answered) {
-        return;
-      }
-
-      if (slotContents[slotIndex] === undefined) {
-        return;
-      }
+      if (answered) return;
+      if (slotContents[slotIndex] === undefined) return;
 
       var word = slotContents[slotIndex];
       delete slotContents[slotIndex];
@@ -497,9 +497,7 @@ document.addEventListener('DOMContentLoaded', function () {
         var given = slotContents[i] !== undefined ? String(slotContents[i]).trim().toLowerCase() : '';
         var isRight = given !== '' && given === expected;
 
-        if (isRight) {
-          correct++;
-        }
+        if (isRight) correct++;
 
         drop.classList.remove('dd-inline-drop--filled');
         drop.classList.add(isRight ? 'dd-inline-drop--correct' : 'dd-inline-drop--wrong');
@@ -508,8 +506,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
     var allRight = correct === slots.length && slots.length > 0;
     scores[index] = correct;
-    slotCounts[index] = slots.length;
-    updateScoreCards(true);
+    slotCounts[index] = slots.length || 1;
+    updateScoreStrip(true);
 
     reviewItems[index] = {
       question: q.tts_text || q.instruction || ('Question ' + (index + 1)),
@@ -535,10 +533,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
     answered = true;
     scores[index] = -1;
+    slotCounts[index] = slots.length || 1;
+    updateScoreStrip(true);
 
     if (instructionEl) {
       instructionEl.querySelectorAll('.dd-inline-drop').forEach(function (drop, i) {
-        var expected = slots[i] ? slots[i].answer || '' : '' ;
+        var expected = slots[i] ? slots[i].answer || '' : '';
         drop.textContent = expected;
         drop.classList.remove('dd-inline-drop--filled');
         drop.classList.add('dd-inline-drop--revealed');
@@ -561,54 +561,51 @@ document.addEventListener('DOMContentLoaded', function () {
     if (nextBtn) nextBtn.disabled = false;
   }
 
-  function escHtml(str) {
-    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-  }
-
   function showCompleted() {
     if (!completedEl) return;
 
     stopSpeech();
 
     if (activityEl) activityEl.style.display = 'none';
+    completedEl.style.display = 'block';
+    completedEl.classList.add('active');
 
-    var tc = 0, cc = 0;
+    var total = 0;
+    var correct = 0;
     for (var i = 0; i < scores.length; i++) {
-      tc += slotCounts[i] || 1;
-      cc += Math.max(0, scores[i] || 0);
-    }
-    var wrongCount = tc - cc;
-    var pct = tc > 0 ? Math.round(cc / tc * 100) : 0;
-
-    updateScoreCards(true);
-
-    completedEl.innerHTML =
-      '<div style="text-align:center;padding:24px 12px;">' +
-        '<div style="font-size:36px;margin-bottom:8px;">&#9989;</div>' +
-        '<h2 style="margin:0 0 6px;color:#F97316;font-family:\'Fredoka\',\'Fredoka One\',\'Trebuchet MS\',sans-serif;font-size:32px;font-weight:700;">' + escHtml(activityTitle) + '</h2>' +
-        '<p style="color:#9B94BE;font-size:14px;font-weight:700;margin:0 0 6px;">You\'ve completed ' + escHtml(activityTitle) + '. Great job practicing.</p>' +
-        '<p style="color:#534AB7;font-size:15px;font-weight:900;margin:0 0 16px;">' + cc + ' correct &middot; ' + wrongCount + ' wrong &middot; ' + pct + '%</p>' +
-        '<button type="button" id="dd-restart-btn" style="background:#7F77DD;color:#fff;border:none;border-radius:999px;padding:12px 28px;font-family:\'Nunito\',sans-serif;font-size:15px;font-weight:900;cursor:pointer;">Restart</button>' +
-      '</div>';
-
-    completedEl.style.display = '';
-
-    var restartBtn = document.getElementById('dd-restart-btn');
-    if (restartBtn) {
-      restartBtn.addEventListener('click', restartActivity);
+      total += slotCounts[i] || 1;
+      correct += Math.max(0, scores[i] || 0);
     }
 
-    if (pct >= 80 && winAudio) {
-      winAudio.play().catch(function () {});
+    var wrong = total - correct;
+    var pct = total > 0 ? Math.round((correct / total) * 100) : 0;
+
+    updateScoreStrip(true);
+    updateCompletedScoreCards(correct, wrong, pct);
+
+    if (completedTitleEl) {
+      completedTitleEl.textContent = activityTitle;
     }
+    if (completedTextEl) {
+      completedTextEl.textContent = "You've completed " + activityTitle + '. Great job practicing.';
+    }
+    if (scoreTextEl) {
+      scoreTextEl.textContent = String(correct) + ' correct · ' + String(wrong) + ' wrong · ' + String(pct) + '%';
+    }
+
+    try {
+      winAudio.pause();
+      winAudio.currentTime = 0;
+      winAudio.play();
+    } catch (e) {}
 
     if (returnTo && activityId) {
       var sep = returnTo.indexOf('?') !== -1 ? '&' : '?';
       fetch(
         returnTo + sep +
         'activity_percent=' + pct +
-        '&activity_errors=' + wrongCount +
-        '&activity_total=' + tc +
+        '&activity_errors=' + wrong +
+        '&activity_total=' + total +
         '&activity_id=' + encodeURIComponent(activityId) +
         '&activity_type=drag_drop',
         { method: 'GET', credentials: 'same-origin', cache: 'no-store' }
@@ -631,10 +628,12 @@ document.addEventListener('DOMContentLoaded', function () {
     stopSpeech();
 
     index = 0;
-    scores      = questions.map(function () { return 0; });
-    slotCounts   = questions.map(function () { return 1; });
-    reviewItems  = questions.map(function () { return {}; });
+    scores = questions.map(function () { return 0; });
+    slotCounts = questions.map(function () { return 1; });
+    reviewItems = questions.map(function () { return {}; });
+
     if (scoreStripEl) scoreStripEl.style.display = 'none';
+    clearTtsError();
     loadQuestion();
   }
 
@@ -645,7 +644,10 @@ document.addEventListener('DOMContentLoaded', function () {
     slotContents = {};
     dragging = null;
 
-    if (completedEl) completedEl.style.display = 'none';
+    if (completedEl) {
+      completedEl.style.display = 'none';
+      completedEl.classList.remove('active');
+    }
     if (activityEl) activityEl.style.display = '';
     if (feedbackEl) AF.clearFeedback(feedbackEl);
 
@@ -674,17 +676,10 @@ document.addEventListener('DOMContentLoaded', function () {
   if (listenBtn) {
     listenBtn.addEventListener('click', function () {
       var q = questions[index] || {};
-      if (!q.listen_enabled) {
-        return;
-      }
+      if (!q.listen_enabled) return;
+      if (isTtsLoading) return;
 
-       if (isTtsLoading) {
-        return;
-      }
-
-      if (togglePauseResume()) {
-        return;
-      }
+      if (togglePauseResume()) return;
 
       speakText((q.tts_text || '').trim(), q.voice_id || 'nzFihrBIvB34imQBuxub');
     });
@@ -693,6 +688,7 @@ document.addEventListener('DOMContentLoaded', function () {
   if (checkBtn) checkBtn.addEventListener('click', checkAnswers);
   if (showBtn) showBtn.addEventListener('click', showAnswers);
   if (nextBtn) nextBtn.addEventListener('click', nextQuestion);
+  if (restartBtn) restartBtn.addEventListener('click', restartActivity);
 
   loadQuestion();
 });
