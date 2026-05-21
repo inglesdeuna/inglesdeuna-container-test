@@ -544,6 +544,10 @@ body.presentation-mode .vc-video-only .vc-video {
             const shellEl = document.getElementById('vc-quizShell');
             const completedPageEl = document.getElementById('vc-complete-page');
             const completeEl = document.getElementById('vc-complete');
+            const completeHeroTitleEl = document.getElementById('vc-complete-hero-title');
+            const completeProgressLabelEl = document.getElementById('vc-complete-progress-label');
+            const completeProgressFillEl = document.getElementById('vc-complete-progress-fill');
+            const completeProgressBadgeEl = document.getElementById('vc-complete-progress-badge');
             const completedTitleEl = document.getElementById('vc-completed-title');
             const completedTextEl = document.getElementById('vc-completed-text');
             const scoreTextEl = document.getElementById('vc-score-text');
@@ -562,6 +566,10 @@ body.presentation-mode .vc-video-only .vc-video {
 
             if (completedTitleEl) {
                 completedTitleEl.textContent = activityTitle || 'Video Comprehension';
+            }
+
+            if (completeHeroTitleEl) {
+                completeHeroTitleEl.textContent = activityTitle || 'Video Comprehension';
             }
 
             if (completedTextEl) {
@@ -709,6 +717,18 @@ body.presentation-mode .vc-video-only .vc-video {
                 const pct = score.percent;
                 const errors = score.wrong;
                 const total = score.total;
+
+                if (completeProgressLabelEl) {
+                    completeProgressLabelEl.textContent = total + ' / ' + total;
+                }
+                if (completeProgressBadgeEl) {
+                    completeProgressBadgeEl.textContent = 'Q ' + total + ' of ' + total;
+                }
+                if (completeProgressFillEl) {
+                    completeProgressFillEl.style.width = '100%';
+                }
+
+                updateScoreCards(true);
 
                 if (scoreTextEl) {
                     scoreTextEl.textContent = score.correct + ' correct · ' + errors + ' wrong · ' + pct + '%';
