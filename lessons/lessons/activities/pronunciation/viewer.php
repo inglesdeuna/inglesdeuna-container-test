@@ -223,7 +223,7 @@ body{margin:0!important;padding:0!important;background:#F8F7FE!important;font-fa
 .pron-purple{background:#7F77DD;box-shadow:0 6px 18px rgba(127,119,221,.18)}
 .pron-orange{background:#F97316;box-shadow:0 6px 18px rgba(249,115,22,.22)}
 
-.pron-completed-screen{display:none;text-align:center;padding:24px 12px}
+.pron-completed-screen{display:none;text-align:center;padding:34px 12px 24px;margin-top:10px}
 .pron-completed-screen.active{display:block}
 .pron-completed-icon{font-size:30px;line-height:1;margin-bottom:6px}
 .pron-completed-title{margin:0;color:#F97316;font-family:'Fredoka',sans-serif;font-size:32px;font-weight:700}
