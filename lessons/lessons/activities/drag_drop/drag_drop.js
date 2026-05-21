@@ -17,6 +17,8 @@ document.addEventListener('DOMContentLoaded', function () {
   var nextBtn = document.getElementById('dd-next');
   var feedbackEl = document.getElementById('dd-feedback');
   var activityEl = document.getElementById('dd-activity');
+  var cardShellEl = document.getElementById('dd-card-shell');
+  var cardBodyEl = document.getElementById('dd-card-body');
   var completedEl = document.getElementById('dd-completed');
 
   var completedTitleEl = document.getElementById('dd-completed-title');
@@ -566,7 +568,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
     stopSpeech();
 
-    if (activityEl) activityEl.style.display = 'none';
+    if (cardShellEl) cardShellEl.style.display = 'none';
+    if (feedbackEl) {
+      feedbackEl.textContent = '';
+      feedbackEl.className = '';
+    }
     completedEl.style.display = 'block';
     completedEl.classList.add('active');
 
@@ -648,7 +654,8 @@ document.addEventListener('DOMContentLoaded', function () {
       completedEl.style.display = 'none';
       completedEl.classList.remove('active');
     }
-    if (activityEl) activityEl.style.display = '';
+    if (cardShellEl) cardShellEl.style.display = '';
+    if (cardBodyEl) cardBodyEl.style.display = '';
     if (feedbackEl) AF.clearFeedback(feedbackEl);
 
     updateProgress();

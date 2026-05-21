@@ -647,22 +647,24 @@ body {
         </div>
 
         <div id="dd-activity">
-            <div class="dd-card-shell">
-                <div class="dd-progress">
-                    <span class="dd-progress-label" id="dd-progress-label"></span>
-                    <div class="dd-track"><div class="dd-fill" id="dd-progress-fill"></div></div>
-                    <div class="dd-badge" id="dd-progress-badge"></div>
-                </div>
+            <div class="dd-progress">
+                <span class="dd-progress-label" id="dd-progress-label"></span>
+                <div class="dd-track"><div class="dd-fill" id="dd-progress-fill"></div></div>
+                <div class="dd-badge" id="dd-progress-badge"></div>
+            </div>
 
-                <div class="dd-prompt-row" id="dd-prompt-row">
-                    <div id="dd-instruction"></div>
-                    <div class="dd-media" id="dd-media" aria-hidden="true">
-                        <img id="dd-image" alt="Question image">
-                        <div class="dd-media-note" id="dd-media-note">Image unavailable</div>
+            <div class="dd-card-shell" id="dd-card-shell">
+                <div id="dd-card-body">
+                    <div class="dd-prompt-row" id="dd-prompt-row">
+                        <div id="dd-instruction"></div>
+                        <div class="dd-media" id="dd-media" aria-hidden="true">
+                            <img id="dd-image" alt="Question image">
+                            <div class="dd-media-note" id="dd-media-note">Image unavailable</div>
+                        </div>
                     </div>
-                </div>
 
-                <div id="dd-words"></div>
+                    <div id="dd-words"></div>
+                </div>
 
                 <div class="dd-actions">
                     <button class="dd-btn dd-btn-purple" id="dd-listen">Listen</button>
@@ -690,29 +692,29 @@ body {
                     </div>
                 </div>
             </div>
-        </div>
 
-        <div id="dd-completed" class="dd-completed-screen">
-            <div id="dd-score-grid" class="dd-score-grid">
-                <div class="dd-score-card">
-                    <div class="dd-score-num c" id="dd-s-correct">0</div>
-                    <div class="dd-score-lbl">Correct</div>
+            <div id="dd-completed" class="dd-completed-screen">
+                <div id="dd-score-grid" class="dd-score-grid">
+                    <div class="dd-score-card">
+                        <div class="dd-score-num c" id="dd-s-correct">0</div>
+                        <div class="dd-score-lbl">Correct</div>
+                    </div>
+                    <div class="dd-score-card">
+                        <div class="dd-score-num w" id="dd-s-wrong">0</div>
+                        <div class="dd-score-lbl">Wrong</div>
+                    </div>
+                    <div class="dd-score-card">
+                        <div class="dd-score-num p" id="dd-s-pct">0%</div>
+                        <div class="dd-score-lbl">Score</div>
+                    </div>
                 </div>
-                <div class="dd-score-card">
-                    <div class="dd-score-num w" id="dd-s-wrong">0</div>
-                    <div class="dd-score-lbl">Wrong</div>
-                </div>
-                <div class="dd-score-card">
-                    <div class="dd-score-num p" id="dd-s-pct">0%</div>
-                    <div class="dd-score-lbl">Score</div>
-                </div>
+
+                <div class="dd-completed-icon">✅</div>
+                <h2 class="dd-completed-title" id="dd-completed-title"></h2>
+                <p class="dd-completed-text" id="dd-completed-text"></p>
+                <p class="dd-score-text" id="dd-score-text"></p>
+                <button type="button" class="dd-restart-btn" id="dd-restart">Restart</button>
             </div>
-
-            <div class="dd-completed-icon">✅</div>
-            <h2 class="dd-completed-title" id="dd-completed-title"></h2>
-            <p class="dd-completed-text" id="dd-completed-text"></p>
-            <p class="dd-score-text" id="dd-score-text"></p>
-            <button type="button" class="dd-restart-btn" id="dd-restart">Restart</button>
         </div>
     </div>
 </div>
