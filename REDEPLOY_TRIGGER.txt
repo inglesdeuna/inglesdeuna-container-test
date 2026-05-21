@@ -1,2 +1,1 @@
-﻿# Dummy file to force full redeploy
-Redeploy triggered at 2026-05-20 00:15:00
+Render redeploy trigger: 2026-05-21T16:32:54Z
