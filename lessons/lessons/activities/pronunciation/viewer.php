@@ -172,12 +172,12 @@ ob_start();
 <style>
 *{box-sizing:border-box}
 html,body{width:100%;min-height:100%}
-body{margin:0!important;padding:0!important;background:#ffffff!important;font-family:'Nunito','Segoe UI',sans-serif!important}
+body{margin:0!important;padding:0!important;background:#F8F7FE!important;font-family:'Nunito','Segoe UI',sans-serif!important}
 .activity-wrapper{max-width:100%!important;margin:0!important;padding:0!important;min-height:0;display:flex!important;flex-direction:column!important;background:transparent!important}
 .top-row{display:none!important}
 .viewer-content{flex:1!important;display:flex!important;flex-direction:column!important;min-height:0!important;padding:0!important;margin:0!important;background:transparent!important;border:none!important;box-shadow:none!important;border-radius:0!important}
 
-.pron-shell{width:100%;flex:1;min-height:0;overflow-y:auto;padding:clamp(14px,2.5vw,34px);display:flex;align-items:flex-start;justify-content:center;background:#ffffff;font-family:'Nunito','Segoe UI',sans-serif}
+.pron-shell{width:100%;flex:1;min-height:0;overflow-y:auto;padding:clamp(14px,2.5vw,34px);display:flex;align-items:flex-start;justify-content:center;background:#F8F7FE;font-family:'Nunito','Segoe UI',sans-serif}
 .pron-app{width:min(760px,100%);margin:0 auto}
 .pron-board{width:min(760px,100%);margin:0 auto;background:#ffffff;border:1px solid #F0EEF8;border-radius:34px;padding:clamp(16px,2.6vw,26px);box-shadow:0 8px 40px rgba(127,119,221,.13)}
 .pron-header{text-align:center;margin-bottom:14px}
@@ -223,14 +223,13 @@ body{margin:0!important;padding:0!important;background:#ffffff!important;font-fa
 .pron-purple{background:#7F77DD;box-shadow:0 6px 18px rgba(127,119,221,.18)}
 .pron-orange{background:#F97316;box-shadow:0 6px 18px rgba(249,115,22,.22)}
 
-.pron-completed{display:none;width:min(760px,100%);margin:0 auto;background:#ffffff;border:1px solid #F0EEF8;border-radius:34px;box-shadow:0 8px 40px rgba(127,119,221,.13);min-height:300px;padding:34px 22px;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:12px}
-.pron-completed.active{display:flex}
-.pron-done-icon{font-size:42px;line-height:1;color:#7F77DD}
-.pron-done-title{margin:0;font-family:'Fredoka',sans-serif;font-size:clamp(30px,5.5vw,58px);color:#F97316;line-height:1.03;font-weight:700}
-.pron-done-text{margin:0;max-width:520px;color:#9B94BE;font-size:clamp(13px,1.8vw,17px);font-weight:800;line-height:1.5}
-.pron-score{margin:0;color:#534AB7;font-size:15px;font-weight:900}
-.pron-done-track{height:12px;width:min(420px,100%);border-radius:999px;background:#F4F2FD;border:1px solid #E4E1F8;overflow:hidden}
-.pron-done-fill{height:100%;width:0%;background:linear-gradient(90deg,#F97316,#7F77DD);transition:width .8s ease}
+.pron-completed-screen{display:none;text-align:center;padding:24px 12px}
+.pron-completed-screen.active{display:block}
+.pron-completed-icon{font-size:30px;line-height:1;margin-bottom:6px}
+.pron-completed-title{margin:0;color:#F97316;font-family:'Fredoka',sans-serif;font-size:32px;font-weight:700}
+.pron-completed-text{color:#9B94BE;font-size:14px;font-weight:700}
+#pron-score-text{color:#666;font-size:14px;font-weight:800}
+.pron-completed-button{border:none;border-radius:999px;color:#fff;min-width:128px;padding:11px 20px;font-size:14px;font-weight:700;font-family:'Nunito',sans-serif;cursor:pointer;background:#7F77DD}
 
 body.embedded-mode .pron-shell,
 body.fullscreen-embedded .pron-shell,
@@ -246,10 +245,68 @@ body.presentation-mode .pron-shell{position:absolute!important;inset:0!important
     .pron-card.text-only .pron-word{font-size:clamp(26px,7vw,40px)}
     .pron-actions{display:grid;grid-template-columns:1fr;gap:9px}
     .pron-btn{width:100%}
+    .pron-completed-button{width:100%}
 }
 </style>
 
-<div class="pron-shell"><div class="pron-app"><section class="pron-board" id="pron-board"><div class="pron-header"><div class="pron-kicker">Activity <span id="pron-kicker-count">1 / <?php echo count($items); ?></span></div><h1 class="pron-title"><?php echo htmlspecialchars($viewerTitle, ENT_QUOTES, 'UTF-8'); ?></h1><p class="pron-subtitle">Pronunciation practice</p></div><div class="pron-progress"><div class="pron-track"><div class="pron-fill" id="pron-progress-fill"></div></div><div class="pron-count" id="pron-progress-count">1 / <?php echo count($items); ?></div></div><div class="pron-card" id="pron-card"><div class="pron-listen-cue">Listen first</div><div class="pron-image"><img id="pron-img" src="" alt="" style="display:none;"><div class="pron-placeholder" id="pron-placeholder">A</div></div><div class="pron-word" id="pron-word"></div><div class="pron-phonetic" id="pron-phonetic"></div><div class="pron-box pron-captured" id="pron-captured"></div><div class="pron-box pron-answer" id="pron-answer"></div><div class="pron-box pron-feedback" id="pron-feedback"></div></div><div class="pron-actions"><button type="button" class="pron-btn pron-purple" id="pron-listen">Listen</button><button type="button" class="pron-btn pron-purple" id="pron-speak">Speaker</button><button type="button" class="pron-btn pron-orange" id="pron-next">Next</button></div><div id="pron-score-grid" class="pron-score-grid"><div class="pron-score-card"><div class="pron-score-num" id="pron-score-correct">0</div><div class="pron-score-lbl">Correct</div></div><div class="pron-score-card"><div class="pron-score-num" id="pron-score-wrong">0</div><div class="pron-score-lbl">Wrong</div></div><div class="pron-score-card"><div class="pron-score-num" id="pron-score-pct">0%</div><div class="pron-score-lbl">Score</div></div></div></section><section class="pron-completed" id="pron-completed"><div class="pron-done-icon">Done</div><h2 class="pron-done-title" id="pron-completed-title">All Done!</h2><p class="pron-done-text" id="pron-completed-text">Great job practicing pronunciation.</p><p class="pron-score" id="pron-score-text"></p><div class="pron-done-track"><div class="pron-done-fill" id="pron-done-fill"></div></div><div class="pron-actions"><button type="button" class="pron-btn pron-orange" id="pron-restart">Restart</button></div></section></div></div>
+<div class="pron-shell">
+    <div class="pron-app">
+        <section class="pron-board" id="pron-board">
+            <div class="pron-header">
+                <div class="pron-kicker">Activity <span id="pron-kicker-count">1 / <?php echo count($items); ?></span></div>
+                <h1 class="pron-title"><?php echo htmlspecialchars($viewerTitle, ENT_QUOTES, 'UTF-8'); ?></h1>
+                <p class="pron-subtitle">Pronunciation practice</p>
+            </div>
+
+            <div class="pron-progress">
+                <div class="pron-track"><div class="pron-fill" id="pron-progress-fill"></div></div>
+                <div class="pron-count" id="pron-progress-count">1 / <?php echo count($items); ?></div>
+            </div>
+
+            <div class="pron-card" id="pron-card">
+                <div class="pron-listen-cue">Listen first</div>
+                <div class="pron-image">
+                    <img id="pron-img" src="" alt="" style="display:none;">
+                    <div class="pron-placeholder" id="pron-placeholder">A</div>
+                </div>
+                <div class="pron-word" id="pron-word"></div>
+                <div class="pron-phonetic" id="pron-phonetic"></div>
+                <div class="pron-box pron-captured" id="pron-captured"></div>
+                <div class="pron-box pron-answer" id="pron-answer"></div>
+                <div class="pron-box pron-feedback" id="pron-feedback"></div>
+            </div>
+
+            <div class="pron-actions" id="pron-actions">
+                <button type="button" class="pron-btn pron-purple" id="pron-listen">Listen</button>
+                <button type="button" class="pron-btn pron-purple" id="pron-speak">Speaker</button>
+                <button type="button" class="pron-btn pron-orange" id="pron-next">Next</button>
+            </div>
+
+            <div id="pron-score-grid" class="pron-score-grid">
+                <div class="pron-score-card">
+                    <div class="pron-score-num" id="pron-score-correct">0</div>
+                    <div class="pron-score-lbl">Correct</div>
+                </div>
+                <div class="pron-score-card">
+                    <div class="pron-score-num" id="pron-score-wrong">0</div>
+                    <div class="pron-score-lbl">Wrong</div>
+                </div>
+                <div class="pron-score-card">
+                    <div class="pron-score-num" id="pron-score-pct">0%</div>
+                    <div class="pron-score-lbl">Score</div>
+                </div>
+            </div>
+
+            <div id="pron-completed" class="pron-completed-screen">
+                <div class="pron-completed-icon">✅</div>
+                <h2 class="pron-completed-title" id="pron-completed-title">All Done!</h2>
+                <p class="pron-completed-text" id="pron-completed-text">Great job practicing pronunciation.</p>
+                <p id="pron-score-text"></p>
+                <button type="button" class="pron-completed-button" id="pron-restart">Restart</button>
+            </div>
+        </section>
+    </div>
+</div>
 <audio id="pron-win" src="../../hangman/assets/win.mp3" preload="auto"></audio><audio id="pron-lose" src="../../hangman/assets/lose.mp3" preload="auto"></audio>
 <script>
 document.addEventListener('DOMContentLoaded', function () {
@@ -285,13 +342,13 @@ document.addEventListener('DOMContentLoaded', function () {
         captured: document.getElementById('pron-captured'),
         answer: document.getElementById('pron-answer'),
         feedback: document.getElementById('pron-feedback'),
+        actions: document.getElementById('pron-actions'),
         progressFill: document.getElementById('pron-progress-fill'),
         progressCount: document.getElementById('pron-progress-count'),
         kickerCount: document.getElementById('pron-kicker-count'),
         completedTitle: document.getElementById('pron-completed-title'),
         completedText: document.getElementById('pron-completed-text'),
         scoreText: document.getElementById('pron-score-text'),
-        doneFill: document.getElementById('pron-done-fill'),
         scoreGrid: document.getElementById('pron-score-grid'),
         scoreCorrect: document.getElementById('pron-score-correct'),
         scoreWrong: document.getElementById('pron-score-wrong'),
@@ -616,11 +673,11 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     async function showCompleted() {
-        els.board.style.display = 'none';
+        if (els.card) els.card.style.display = 'none';
+        if (els.actions) els.actions.style.display = 'none';
         els.completed.classList.add('active');
-        setTimeout(function () {
-            els.doneFill.style.width = '100%';
-        }, 120);
+
+        updateScoreCards(true);
 
         playSound(els.win);
 
@@ -628,7 +685,7 @@ document.addEventListener('DOMContentLoaded', function () {
         var errors = Math.max(0, TOTAL - correctCount);
         els.completedTitle.textContent = 'All Done!';
         els.completedText.textContent = "You've completed " + (activityTitle || 'this activity') + '. Great job listening and repeating.';
-        els.scoreText.textContent = 'Score: ' + correctCount + ' / ' + TOTAL + ' (' + pct + '%)';
+        els.scoreText.textContent = correctCount + ' correct · ' + errors + ' wrong · ' + pct + '%';
 
         if (PRON_ACTIVITY_ID && PRON_RETURN_TO) {
             var joiner = PRON_RETURN_TO.indexOf('?') !== -1 ? '&' : '?';
@@ -657,9 +714,10 @@ document.addEventListener('DOMContentLoaded', function () {
         checkedCards = {};
         scores = data.map(function () { return null; });
         index = 0;
-        els.doneFill.style.width = '0%';
+
         els.completed.classList.remove('active');
-        els.board.style.display = '';
+        if (els.card) els.card.style.display = '';
+        if (els.actions) els.actions.style.display = '';
         if (els.scoreGrid) els.scoreGrid.classList.remove('visible');
         if (els.scoreCorrect) els.scoreCorrect.textContent = '0';
         if (els.scoreWrong) els.scoreWrong.textContent = '0';
