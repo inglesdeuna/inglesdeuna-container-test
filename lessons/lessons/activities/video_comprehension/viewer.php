@@ -28,6 +28,58 @@ function default_video_comprehension_title(): string
     return 'Video Comprehension';
 }
 
+function normalize_embed_url(string $url): string
+{
+    $url = trim($url);
+    if ($url === '') {
+        return '';
+    }
+
+    if (!preg_match('/^[a-z][a-z0-9+\-.]*:\/\//i', $url) && preg_match('/^(www\.)?[a-z0-9.-]+\.[a-z]{2,}(\/|$)/i', $url)) {
+        $url = 'https://' . ltrim($url, '/');
+    }
+
+    if (!preg_match('/^https?:\/\//i', $url)) {
+        return '';
+    }
+
+    $parts = parse_url($url);
+    if (!$parts || empty($parts['host'])) {
+        return '';
+    }
+
+    $host = strtolower((string) $parts['host']);
+    $path = isset($parts['path']) ? (string) $parts['path'] : '';
+
+    if (strpos($host, 'youtube.com') !== false || strpos($host, 'youtu.be') !== false) {
+        $videoId = '';
+
+        if (strpos($host, 'youtu.be') !== false) {
+            $videoId = trim((string) preg_replace('/\?.*$/', '', trim($path, '/')));
+        } elseif (preg_match('#^/(shorts|embed|live)/([^/?#]+)#i', $path, $m)) {
+            $videoId = trim((string) $m[2]);
+        } elseif (!empty($parts['query'])) {
+            parse_str((string) $parts['query'], $queryParams);
+            if (!empty($queryParams['v'])) {
+                $videoId = trim((string) $queryParams['v']);
+            }
+        }
+
+        if ($videoId !== '') {
+            return 'https://www.youtube.com/embed/' . rawurlencode($videoId);
+        }
+    }
+
+    if (strpos($host, 'vimeo.com') !== false) {
+        $videoId = trim($path, '/');
+        if ($videoId !== '' && ctype_digit($videoId)) {
+            return 'https://player.vimeo.com/video/' . $videoId;
+        }
+    }
+
+    return $url;
+}
+
 function normalize_video_comprehension_payload($rawData): array
 {
     $default = [
@@ -49,7 +101,7 @@ function normalize_video_comprehension_payload($rawData): array
 
     $title = trim((string) ($decoded['title'] ?? ''));
     $mode = trim((string) ($decoded['mode'] ?? 'quiz'));
-    $iframeUrl = trim((string) ($decoded['iframe_url'] ?? ''));
+    $iframeUrl = normalize_embed_url((string) ($decoded['iframe_url'] ?? ''));
     $instructions = trim((string) ($decoded['instructions'] ?? ''));
 
     if ($mode !== 'video_only') {

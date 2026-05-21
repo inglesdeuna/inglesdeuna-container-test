@@ -50,6 +50,10 @@ function normalize_embed_url(string $url): string
         return '';
     }
 
+    if (!preg_match('/^[a-z][a-z0-9+\-.]*:\/\//i', $url) && preg_match('/^(www\.)?[a-z0-9.-]+\.[a-z]{2,}(\/|$)/i', $url)) {
+        $url = 'https://' . ltrim($url, '/');
+    }
+
     if (!preg_match('/^https?:\/\//i', $url)) {
         return '';
     }
@@ -66,7 +70,9 @@ function normalize_embed_url(string $url): string
         $videoId = '';
 
         if (strpos($host, 'youtu.be') !== false) {
-            $videoId = trim($path, '/');
+            $videoId = trim((string) preg_replace('/\?.*$/', '', trim($path, '/')));
+        } elseif (preg_match('#^/(shorts|embed|live)/([^/?#]+)#i', $path, $m)) {
+            $videoId = trim((string) $m[2]);
         } elseif (!empty($parts['query'])) {
             parse_str((string) $parts['query'], $queryParams);
             if (!empty($queryParams['v'])) {
@@ -550,6 +556,11 @@ function markChanged() {
 function normalizeEmbedUrl(url) {
     url = url.trim();
     if (!url) return '';
+
+    if (!/^[a-z][a-z0-9+\-.]*:\/\//i.test(url) && /^(www\.)?[a-z0-9.-]+\.[a-z]{2,}(\/|$)/i.test(url)) {
+        url = 'https://' + url.replace(/^\/+/, '');
+    }
+
     try {
         const u = new URL(url);
         const host = u.hostname.toLowerCase();
@@ -561,6 +572,10 @@ function normalizeEmbedUrl(url) {
         // youtube.com watch
         if (host.includes('youtube.com')) {
             if (u.pathname.startsWith('/embed/')) return url; // already embed
+            if (u.pathname.startsWith('/shorts/') || u.pathname.startsWith('/live/')) {
+                const videoId = u.pathname.split('/').filter(Boolean)[1] || '';
+                return videoId ? 'https://www.youtube.com/embed/' + encodeURIComponent(videoId) : url;
+            }
             const videoId = u.searchParams.get('v');
             return videoId ? 'https://www.youtube.com/embed/' + encodeURIComponent(videoId) : url;
         }
