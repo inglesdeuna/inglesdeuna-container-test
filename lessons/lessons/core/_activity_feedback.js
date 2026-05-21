@@ -195,7 +195,7 @@
       bgStyle = 'background:linear-gradient(160deg,#EDE9FA,#FFF0E6)';
     } else {
       emoji = '&#128170;'; headline = 'Keep practicing!';
-      bgStyle = 'background:linear-gradient(160deg,#fef2f2,#FFF0E6)';
+      bgStyle = 'background:linear-gradient(160deg,#EDE9FA,#FFF0E6)';
     }
 
     /* remove previous completed screen */
