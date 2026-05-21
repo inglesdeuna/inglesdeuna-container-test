@@ -484,22 +484,26 @@ body {
 
 .dd-chip {
     display: inline-block;
-    padding: 8px 18px;
-    border-radius: 999px;
+    padding: 7px 14px;
+    border-radius: 10px;
     background: #EEEDFE;
-    border: 1px solid #d8d3f5;
+    border: 1.5px solid #AFA9EC;
     color: var(--dd-purple-dark);
     font-family: 'Nunito', sans-serif;
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 900;
     cursor: grab;
     user-select: none;
-    transition: transform .12s ease, opacity .12s ease;
+    box-shadow: none;
+    transition: opacity .12s ease, border-color .12s ease, background .12s ease;
 }
 
 .dd-chip:active { cursor: grabbing; }
-.dd-chip:hover { transform: translateY(-2px); }
-.dd-chip.dd-chip--dragging { opacity: .45; transform: scale(.95); }
+.dd-chip:hover {
+    background: #E7E4FB;
+    border-color: #9A93E6;
+}
+.dd-chip.dd-chip--dragging { opacity: .45; transform: none; }
 
 .dd-actions {
     display: grid;
