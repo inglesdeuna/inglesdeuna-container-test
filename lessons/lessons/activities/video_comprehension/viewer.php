@@ -243,24 +243,28 @@ ob_start();
 .vc-feedback.error{background:#fef2f2;border-color:#fca5a5;color:#991b1b}
 .vc-empty{padding:26px;text-align:center;font-weight:800;color:#b91c1c}
 .vc-activity.is-hidden{display:none}
-.vc-score-grid{display:none;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:12px 16px 16px}
+.vc-score-grid{display:none;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:12px}
 .vc-score-grid.visible{display:grid}
 .vc-score-card{background:#FAFAFE;border:1px solid var(--vc-border);border-radius:14px;padding:12px;text-align:center}
-.vc-score-num{font-family:'Fredoka',sans-serif;font-size:28px;line-height:1;font-weight:700}
+.vc-score-num{font-family:'Fredoka One',sans-serif;font-size:26px;line-height:1;font-weight:400}
 .vc-score-num.c{color:#16a34a}
 .vc-score-num.w{color:#dc2626}
 .vc-score-num.p{color:var(--vc-purple)}
-.vc-score-lbl{margin-top:6px;font-size:10px;font-weight:900;color:var(--vc-muted);text-transform:uppercase;letter-spacing:.08em}
+.vc-score-lbl{margin-top:5px;font-size:10px;font-weight:900;color:var(--vc-muted);text-transform:uppercase;letter-spacing:.08em}
 
-.vc-completed-screen{display:none;text-align:center;padding:18px 8px 22px}
+.vc-complete-page{display:none;max-width:860px;margin:0 auto}
+.vc-complete-page.active{display:block}
+
+.vc-completed-screen{display:none;text-align:center;padding:24px 12px}
 .vc-completed-screen.active{display:block}
-.vc-completed-icon{font-size:30px;line-height:1;margin-bottom:6px}
-.vc-completed-title{margin:0;color:var(--vc-orange);font-family:'Fredoka',sans-serif;font-size:40px;font-weight:700}
-.vc-completed-text{margin:8px 0 0;color:var(--vc-muted);font-size:14px;font-weight:700}
-.vc-score-text{margin:10px 0 0;color:var(--vc-purple-dark);font-size:15px;font-weight:900}
-.vc-restart-btn{margin-top:12px;border:0;border-radius:999px;padding:13px 22px;background:var(--vc-purple);color:#fff;font-family:'Nunito',sans-serif;font-size:14px;font-weight:900;cursor:pointer}
+.vc-completed-title{margin:0;color:var(--vc-orange);font-family:'Fredoka One',sans-serif;font-size:32px;font-weight:400}
+.vc-completed-text{color:var(--vc-muted);font-size:14px;font-weight:700}
+.vc-score-text{color:#666;font-size:14px;font-weight:800}
+.vc-restart-btn{border:none;border-radius:999px;color:#fff;min-width:128px;padding:11px 20px;font-size:14px;font-weight:700;font-family:'Nunito',sans-serif;cursor:pointer;background:var(--vc-purple)}
 .vc-restart-btn:hover{filter:brightness(1.06)}
 @media (max-width:860px){.vc-intro{padding:20px 18px}.vc-intro h2{font-size:26px}.vc-question{font-size:18px}}
+@media(max-width:760px){.vc-score-grid{grid-template-columns:1fr}}
+@media(max-width:480px){.vc-restart-btn{width:100%}}
 
 /* ── Embedded / fullscreen / presentation ── */
 
@@ -463,28 +467,32 @@ body.presentation-mode .vc-video-only .vc-video {
                     </div>
 
                     <div class="vc-feedback" id="vc-feedback"></div>
-
-                    <div id="vc-score-grid" class="vc-score-grid">
-                        <div class="vc-score-card">
-                            <div class="vc-score-num c" id="vc-score-correct">0</div>
-                            <div class="vc-score-lbl">Correct</div>
-                        </div>
-                        <div class="vc-score-card">
-                            <div class="vc-score-num w" id="vc-score-wrong">0</div>
-                            <div class="vc-score-lbl">Wrong</div>
-                        </div>
-                        <div class="vc-score-card">
-                            <div class="vc-score-num p" id="vc-score-pct">0%</div>
-                            <div class="vc-score-lbl">Score</div>
-                        </div>
-                    </div>
                 </div>
 
+                <div id="vc-score-grid" class="vc-score-grid" style="margin:12px 16px 16px;">
+                    <div class="vc-score-card">
+                        <div class="vc-score-num c" id="vc-score-correct">0</div>
+                        <div class="vc-score-lbl">Correct</div>
+                    </div>
+                    <div class="vc-score-card">
+                        <div class="vc-score-num w" id="vc-score-wrong">0</div>
+                        <div class="vc-score-lbl">Wrong</div>
+                    </div>
+                    <div class="vc-score-card">
+                        <div class="vc-score-num p" id="vc-score-pct">0%</div>
+                        <div class="vc-score-lbl">Score</div>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <div id="vc-complete-page" class="vc-complete-page">
+            <section class="vc-panel" style="max-width:860px;margin:0 auto;">
                 <div id="vc-complete" class="vc-completed-screen">
                     <div class="vc-completed-icon">✅</div>
                     <h2 class="vc-completed-title" id="vc-completed-title"></h2>
                     <p class="vc-completed-text" id="vc-completed-text"></p>
-                    <p class="vc-score-text" id="vc-score-text"></p>
+                    <p class="vc-score-text" id="vc-score-text" style="font-weight:900;font-size:15px;color:#534AB7;"></p>
                     <button type="button" class="vc-restart-btn" id="vc-completed-restart">Restart</button>
                 </div>
             </section>
@@ -508,6 +516,7 @@ body.presentation-mode .vc-video-only .vc-video {
             const nextBtn = document.getElementById('vc-next');
             const restartBtn = document.getElementById('vc-restart');
             const shellEl = document.getElementById('vc-quizShell');
+            const completedPageEl = document.getElementById('vc-complete-page');
             const completeEl = document.getElementById('vc-complete');
             const completedTitleEl = document.getElementById('vc-completed-title');
             const completedTextEl = document.getElementById('vc-completed-text');
@@ -521,7 +530,9 @@ body.presentation-mode .vc-video-only .vc-video {
             let index = 0;
             let selectedIndex = -1;
             let checked = false;
-            let scores = data.map(function () { return 0; });
+            let answeredCurrent = false;
+            let scoreVisible = false;
+            let scores = data.map(function () { return null; });
 
             if (completedTitleEl) {
                 completedTitleEl.textContent = activityTitle || 'Video Comprehension';
@@ -535,24 +546,42 @@ body.presentation-mode .vc-video-only .vc-video {
                 return data[index] || { question: '', options: ['', '', ''], correct: 0, explanation: '' };
             }
 
-            function updateScoreCards(show) {
-                if (scoreGridEl) scoreGridEl.classList.toggle('visible', !!show);
+            function computeScore() {
+                var correct = 0;
+                var wrong = 0;
 
-                var checkedCount = 0;
-                var correctCount = 0;
-                for (var i = 0; i < scores.length; i++) {
-                    if (i < index || (i === index && checked)) {
-                        checkedCount++;
-                        if (scores[i] === 1) correctCount++;
+                scores.forEach(function (value) {
+                    if (value === 1) {
+                        correct += 1;
+                    } else if (value === 0) {
+                        wrong += 1;
                     }
+                });
+
+                var total = data.length;
+                var scorable = correct + wrong;
+                var percent = scorable > 0 ? Math.round((correct / scorable) * 100) : 0;
+
+                return {
+                    correct: correct,
+                    wrong: wrong,
+                    total: total,
+                    errors: wrong,
+                    percent: percent
+                };
+            }
+
+            function updateScoreCards(show) {
+                if (typeof show === 'boolean') {
+                    scoreVisible = show;
                 }
 
-                var wrongCount = checkedCount - correctCount;
-                var pct = checkedCount > 0 ? Math.round((correctCount / checkedCount) * 100) : 0;
+                var score = computeScore();
 
-                if (scoreCorrectEl) scoreCorrectEl.textContent = String(correctCount);
-                if (scoreWrongEl) scoreWrongEl.textContent = String(wrongCount);
-                if (scorePctEl) scorePctEl.textContent = pct + '%';
+                if (scoreCorrectEl) scoreCorrectEl.textContent = String(score.correct);
+                if (scoreWrongEl) scoreWrongEl.textContent = String(score.wrong);
+                if (scorePctEl) scorePctEl.textContent = score.percent + '%';
+                if (scoreGridEl) scoreGridEl.classList.toggle('visible', !!scoreVisible);
             }
 
             function persistScoreSilently(targetUrl) {
@@ -583,6 +612,7 @@ body.presentation-mode .vc-video-only .vc-video {
                 const current = getCurrent();
                 selectedIndex = -1;
                 checked = false;
+                answeredCurrent = false;
 
                 countEl.textContent = 'Question ' + (index + 1) + ' of ' + data.length;
                 questionEl.textContent = current.question || 'Question';
@@ -615,6 +645,7 @@ body.presentation-mode .vc-video-only .vc-video {
                 const isCorrect = selectedIndex >= 0 && selectedIndex === correctIndex;
 
                 checked = true;
+                answeredCurrent = true;
                 AF.clearHighlights(optionsEl);
                 AF.highlightOption(optionNodes[correctIndex], 'correct');
 
@@ -639,10 +670,16 @@ body.presentation-mode .vc-video-only .vc-video {
                 if (completeEl) {
                     completeEl.classList.add('active');
                 }
+                if (completedPageEl) {
+                    completedPageEl.classList.add('active');
+                }
+                if (activityEl) {
+                    activityEl.classList.add('is-hidden');
+                }
 
                 completeEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
 
-                const score = AF.computeScore(scores);
+                const score = computeScore();
                 const pct = score.percent;
                 const errors = score.wrong;
                 const total = score.total;
@@ -671,11 +708,15 @@ body.presentation-mode .vc-video-only .vc-video {
                 index = 0;
                 selectedIndex = -1;
                 checked = false;
-                scores = data.map(function () { return 0; });
+                answeredCurrent = false;
+                scoreVisible = false;
+                scores = data.map(function () { return null; });
 
                 if (scoreGridEl) scoreGridEl.classList.remove('visible');
                 if (shellEl) shellEl.style.display = '';
                 if (completeEl) completeEl.classList.remove('active');
+                if (completedPageEl) completedPageEl.classList.remove('active');
+                if (activityEl) activityEl.classList.remove('is-hidden');
 
                 render();
             }
@@ -685,8 +726,12 @@ body.presentation-mode .vc-video-only .vc-video {
             });
 
             nextBtn.addEventListener('click', async function () {
-                if (!checked) {
-                    evaluateCurrent();
+                if (!answeredCurrent) {
+                    if (feedbackEl) {
+                        feedbackEl.textContent = 'Select an option first.';
+                        feedbackEl.className = 'vc-feedback error';
+                    }
+                    return;
                 }
 
                 if (index + 1 >= data.length) {
@@ -704,6 +749,7 @@ body.presentation-mode .vc-video-only .vc-video {
                 completedRestartBtn.addEventListener('click', restartQuiz);
             }
 
+            updateScoreCards(false);
             render();
         })();
         </script>
