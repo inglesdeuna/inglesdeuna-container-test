@@ -711,103 +711,89 @@ body {
     color: #dc2626;
 }
 
-.dict-completed {
+.dict-score-grid {
     display: none;
-    background: #ffffff;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-top: 12px;
+}
+
+.dict-score-grid.visible {
+    display: grid;
+}
+
+.dict-score-card {
+    background: #FAFAFE;
     border: 1px solid #EDE9FA;
-    border-radius: 28px;
-    box-shadow: 0 12px 36px rgba(127,119,221,.13);
-    min-height: clamp(300px, 42vh, 430px);
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
+    border-radius: 14px;
+    padding: 12px;
     text-align: center;
-    padding: clamp(28px, 5vw, 48px) 24px;
-    gap: 12px;
-    box-sizing: border-box;
 }
 
-.dict-completed.active {
-    display: flex;
-}
-
-.dict-completed-icon {
-    font-size: 64px;
-    line-height: 1;
-    margin-bottom: 4px;
-}
-
-.dict-completed-title {
+.dict-score-num {
     font-family: 'Fredoka', sans-serif;
-    font-size: clamp(30px, 5.5vw, 58px);
-    font-weight: 700;
-    color: #F97316;
-    margin: 0;
-    line-height: 1.03;
-}
-
-.dict-completed-text {
-    font-family: 'Nunito', sans-serif;
-    font-size: clamp(13px, 1.8vw, 17px);
-    font-weight: 800;
-    color: #9B94BE;
-    margin: 0;
-}
-
-.dict-score-ring {
-    width: 96px;
-    height: 96px;
-    border-radius: 50%;
-    background: #EEEDFE;
-    border: 3px solid #EDE9FA;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    margin-top: 4px;
-}
-
-.dict-score-pct {
-    font-family: 'Fredoka', sans-serif;
-    font-size: 28px;
-    font-weight: 700;
-    color: #534AB7;
+    font-size: 24px;
     line-height: 1;
+    font-weight: 600;
+    color: #7F77DD;
 }
 
 .dict-score-lbl {
+    margin-top: 3px;
     font-size: 10px;
-    font-weight: 900;
-    color: #7F77DD;
-    letter-spacing: .04em;
+    font-weight: 700;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: #bbb;
 }
 
-.dict-score-text {
-    font-family: 'Nunito', sans-serif;
-    font-size: 15px;
-    font-weight: 900;
-    color: #534AB7;
+.dict-completed-screen {
+    display: none;
+    text-align: center;
+    padding: 24px 12px;
+}
+
+.dict-completed-screen.active {
+    display: block;
+}
+
+.dict-completed-icon {
+    font-size: 30px;
+    line-height: 1;
+    margin-bottom: 6px;
+}
+
+.dict-completed-title {
     margin: 0;
+    color: #F97316;
+    font-family: 'Fredoka', sans-serif;
+    font-size: 32px;
+    font-weight: 700;
+}
+
+.dict-completed-text {
+    color: #9B94BE;
+    font-size: 14px;
+    font-weight: 700;
+}
+
+#dict-score-text {
+    color: #666;
+    font-size: 14px;
+    font-weight: 800;
 }
 
 .dict-restart {
-    background: #7F77DD;
-    color: #ffffff;
     border: none;
     border-radius: 999px;
-    padding: 13px 28px;
+    color: #fff;
+    min-width: 128px;
+    padding: 11px 20px;
+    font-size: 14px;
+    font-weight: 700;
     font-family: 'Nunito', sans-serif;
-    font-size: 13px;
-    font-weight: 900;
     cursor: pointer;
-    box-shadow: 0 6px 18px rgba(127,119,221,.18);
-    transition: filter .15s, transform .15s;
-    margin-top: 4px;
-}
-
-.dict-restart:hover {
-    filter: brightness(1.07);
-    transform: scale(1.04);
+    background: #7F77DD;
 }
 
 @media (max-width: 640px) {
@@ -861,8 +847,12 @@ body {
         width: 100%;
     }
 
-    .dict-completed {
-        border-radius: 26px;
+    .dict-score-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .dict-restart {
+        width: 100%;
     }
 }
 </style>
@@ -909,14 +899,25 @@ body {
 
             <div class="dict-feedback" id="dict-feedback"></div>
 
-            <div id="dict-completed" class="dict-completed">
+            <div id="dict-score-grid" class="dict-score-grid">
+                <div class="dict-score-card">
+                    <div class="dict-score-num" id="dict-score-correct">0</div>
+                    <div class="dict-score-lbl">Correct</div>
+                </div>
+                <div class="dict-score-card">
+                    <div class="dict-score-num" id="dict-score-wrong">0</div>
+                    <div class="dict-score-lbl">Wrong</div>
+                </div>
+                <div class="dict-score-card">
+                    <div class="dict-score-num" id="dict-score-pct">0%</div>
+                    <div class="dict-score-lbl">Score</div>
+                </div>
+            </div>
+
+            <div id="dict-completed" class="dict-completed-screen">
                 <div class="dict-completed-icon">✅</div>
                 <h2 class="dict-completed-title" id="dict-completed-title"></h2>
                 <p class="dict-completed-text" id="dict-completed-text"></p>
-                <div class="dict-score-ring">
-                    <span class="dict-score-pct" id="dict-score-pct">—</span>
-                    <span class="dict-score-lbl">SCORE</span>
-                </div>
                 <p class="dict-score-text" id="dict-score-text"></p>
                 <button type="button" class="dict-restart" id="dict-restart">Restart</button>
             </div>
@@ -955,6 +956,9 @@ document.addEventListener('DOMContentLoaded', function () {
     var completedTextEl = document.getElementById('dict-completed-text');
     var scoreTextEl = document.getElementById('dict-score-text');
     var scorePctEl = document.getElementById('dict-score-pct');
+    var scoreGridEl = document.getElementById('dict-score-grid');
+    var scoreCorrectEl = document.getElementById('dict-score-correct');
+    var scoreWrongEl = document.getElementById('dict-score-wrong');
 
     var listenBtn = document.getElementById('dict-listen');
     var checkBtn = document.getElementById('dict-check');
@@ -968,9 +972,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
     var index = 0;
     var finished = false;
-    var correctCount = 0;
+    var scoreVisible = false;
     var totalCount = data.length;
     var checkedCards = {};
+    var scores = data.map(function () { return null; });
     var attemptsByCard = {};
 
     var isSpeaking = false;
@@ -1074,6 +1079,43 @@ document.addEventListener('DOMContentLoaded', function () {
             sound.currentTime = 0;
             sound.play();
         } catch (e) {}
+    }
+
+    function computeScore() {
+        var correct = 0;
+        var wrong = 0;
+        var revealed = 0;
+
+        for (var i = 0; i < scores.length; i++) {
+            if (scores[i] === 1) {
+                correct++;
+            } else if (scores[i] === -1) {
+                revealed++;
+            } else if (scores[i] === 0) {
+                wrong++;
+            }
+        }
+
+        var total = correct + wrong;
+        return {
+            correct: correct,
+            wrong: wrong,
+            revealed: revealed,
+            total: total,
+            percent: total > 0 ? Math.round((correct / total) * 100) : 0
+        };
+    }
+
+    function updateScoreCards(show) {
+        if (typeof show === 'boolean') {
+            scoreVisible = show;
+        }
+
+        var score = computeScore();
+        if (scoreCorrectEl) scoreCorrectEl.textContent = String(score.correct);
+        if (scoreWrongEl) scoreWrongEl.textContent = String(score.wrong);
+        if (scorePctEl) scorePctEl.textContent = score.percent + '%';
+        if (scoreGridEl) scoreGridEl.classList.toggle('visible', !!scoreVisible);
     }
 
     function setListenButtonLabel() {
@@ -1289,7 +1331,7 @@ document.addEventListener('DOMContentLoaded', function () {
             revealEl.textContent = '';
             playSound(correctSound);
             checkedCards[index] = true;
-            correctCount++;
+            scores[index] = 1;
             answerEl.disabled = true;
             checkBtn.disabled = true;
         } else {
@@ -1302,6 +1344,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 feedbackEl.className = 'dict-feedback bad';
                 playSound(wrongSound);
                 checkedCards[index] = true;
+                scores[index] = 0;
                 answerEl.disabled = true;
                 checkBtn.disabled = true;
             } else {
@@ -1310,6 +1353,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 playSound(wrongSound);
             }
         }
+
+        updateScoreCards(true);
     }
 
     function autoCheckIfNeeded() {
@@ -1344,6 +1389,16 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         revealEl.classList.add('show');
+
+        if (!checkedCards[index]) {
+            checkedCards[index] = true;
+            scores[index] = -1;
+            answerEl.disabled = true;
+            checkBtn.disabled = true;
+            feedbackEl.textContent = 'Answer revealed — this item does not affect score.';
+            feedbackEl.className = 'dict-feedback';
+            updateScoreCards(true);
+        }
     }
 
     async function showCompleted() {
@@ -1351,26 +1406,25 @@ document.addEventListener('DOMContentLoaded', function () {
         cardEl.style.display = 'none';
         listenRowEl.style.display = 'none';
         controlsEl.style.display = 'none';
-        if (progressEl) progressEl.style.display = 'none';
-        statusEl.textContent = 'Done';
+        if (progressEl) progressEl.style.display = 'flex';
+        statusEl.textContent = data.length + ' / ' + data.length;
         progressFillEl.style.width = '100%';
         feedbackEl.textContent = '';
         completedEl.classList.add('active');
         playSound(doneSound);
 
-        var pct = totalCount > 0 ? Math.round((correctCount / totalCount) * 100) : 0;
-        var errors = Math.max(0, totalCount - correctCount);
+        updateScoreCards(true);
+
+        var score = computeScore();
+        var pct = score.percent;
+        var errors = score.wrong;
 
         if (completedTextEl) {
             completedTextEl.textContent = "You've completed " + (activityTitle || 'this activity') + '. Great job practicing.';
         }
 
         if (scoreTextEl) {
-            scoreTextEl.textContent = correctCount + ' / ' + totalCount + ' correct';
-        }
-
-        if (scorePctEl) {
-            scorePctEl.textContent = pct + '%';
+            scoreTextEl.textContent = score.correct + ' correct · ' + score.wrong + ' wrong · ' + pct + '%';
         }
 
         if (DICT_ACTIVITY_ID && DICT_RETURN_TO) {
@@ -1409,12 +1463,14 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function restart() {
-        correctCount = 0;
         totalCount = data.length;
         checkedCards = {};
+        scores = data.map(function () { return null; });
         attemptsByCard = {};
+        scoreVisible = false;
         index = 0;
         loadCard();
+        updateScoreCards(false);
     }
 
     if (!data.length) {
@@ -1443,6 +1499,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
+    updateScoreCards(false);
     loadCard();
 });
 </script>
