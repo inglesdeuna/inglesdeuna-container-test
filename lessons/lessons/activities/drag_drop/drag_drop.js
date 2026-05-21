@@ -15,8 +15,8 @@ document.addEventListener('DOMContentLoaded', function () {
   var completedEl     = document.getElementById('dd-completed');
   var winAudio        = new Audio('../../hangman/assets/win.mp3');
 
-  var activityTitle = window.DRAGDROP_TITLE      || 'Drag & Drop';
-  var returnTo      = window.DRAGDROP_RETURN_TO  || '';
+  var activityTitle = window.DRAGDROP_TITLE       || 'Drag & Drop';
+  var returnTo      = window.DRAGDROP_RETURN_TO   || '';
   var activityId    = window.DRAGDROP_ACTIVITY_ID || '';
 
   if (!questions.length) {
@@ -26,12 +26,17 @@ document.addEventListener('DOMContentLoaded', function () {
 
   var index        = 0;
   var answered     = false;
-  var dragging     = null;  /* currently dragged chip element */
-  var slotContents = {};    /* slotIndex (number) -> word (string) */
+  var dragging     = null;
+  var slotContents = {};
   var scores       = questions.map(function () { return 0; });
   var reviewItems  = questions.map(function () { return {}; });
 
-  /* ── progress ─────────────────────────────── */
+  /* score strip DOM refs */
+  var scoreCorrectEl = document.getElementById('dd-score-correct');
+  var scoreWrongEl   = document.getElementById('dd-score-wrong');
+  var scorePctEl     = document.getElementById('dd-score-pct');
+  var scoreStripEl   = document.getElementById('dd-score-strip');
+
   function updateProgress() {
     var total   = questions.length;
     var current = index + 1;
@@ -39,6 +44,24 @@ document.addEventListener('DOMContentLoaded', function () {
     if (progressLabelEl) progressLabelEl.textContent = current + ' / ' + total;
     if (progressBadgeEl) progressBadgeEl.textContent = 'Q ' + current + ' of ' + total;
     if (progressFillEl)  progressFillEl.style.width  = pct + '%';
+  }
+
+  function updateScoreCards(show) {
+    if (show && scoreStripEl) scoreStripEl.style.display = '';
+    var checkedCount = 0;
+    var correctCount = 0;
+    for (var i = 0; i < scores.length; i++) {
+      if (i < index || (i === index && answered)) {
+        checkedCount++;
+        if (scores[i] === 1) correctCount++;
+      }
+    }
+    var wrongCount = checkedCount - correctCount;
+    var total      = questions.length;
+    var pct        = total > 0 ? Math.round((correctCount / total) * 100) : 0;
+    if (scoreCorrectEl) scoreCorrectEl.textContent = String(correctCount);
+    if (scoreWrongEl)   scoreWrongEl.textContent   = String(wrongCount);
+    if (scorePctEl)     scorePctEl.textContent     = pct + '%';
   }
 
   function shuffle(arr) {
@@ -50,95 +73,64 @@ document.addEventListener('DOMContentLoaded', function () {
     return a;
   }
 
-  /* ── load question ────────────────────────── */
   function loadQuestion() {
-    var q    = questions[index] || {};
     answered     = false;
     slotContents = {};
-    dragging     = null;
-
-    if (completedEl) completedEl.style.display = 'none';
-    if (activityEl)  activityEl.style.display  = '';
-    if (feedbackEl)  AF.clearFeedback(feedbackEl);
-
     updateProgress();
+    if (checkBtn) { checkBtn.disabled = false; checkBtn.style.display = ''; }
+    if (showBtn)  showBtn.style.display = '';
+    if (nextBtn)  nextBtn.disabled = true;
+    if (nextBtn)  nextBtn.textContent = index < questions.length - 1 ? 'Next \u2192' : 'Finish';
+    var q = questions[index] || {};
     renderInstruction(q);
     renderWords(q);
-
-    if (checkBtn) checkBtn.disabled = false;
-    if (showBtn)  { showBtn.style.display = ''; showBtn.disabled = false; }
-    if (nextBtn)  {
-      nextBtn.disabled    = true;
-      nextBtn.textContent = index < questions.length - 1 ? 'Next →' : 'Finish';
-    }
+    if (feedbackEl) feedbackEl.innerHTML = '';
   }
 
-  /* ── render instruction with inline drop zones ── */
   function renderInstruction(q) {
     if (!instructionEl) return;
     instructionEl.innerHTML = '';
-
     var text  = q.instruction || '';
     var parts = text.split('___');
-
     parts.forEach(function (part, i) {
-      if (part) {
-        instructionEl.appendChild(document.createTextNode(part));
-      }
-      /* add a drop zone between every pair of parts */
+      if (part) instructionEl.appendChild(document.createTextNode(part));
       if (i < parts.length - 1) {
         var drop = document.createElement('span');
         drop.className    = 'dd-inline-drop';
         drop.dataset.slot = String(i);
-        drop.textContent  = '___';
-        bindDropZone(drop, i);
+        drop.textContent  = '\u00b7\u00b7\u00b7';
+        drop.addEventListener('dragover', function (e) { e.preventDefault(); drop.classList.add('dd-inline-drop--over'); });
+        drop.addEventListener('dragleave', function () { drop.classList.remove('dd-inline-drop--over'); });
+        drop.addEventListener('drop', function (e) {
+          e.preventDefault();
+          drop.classList.remove('dd-inline-drop--over');
+          if (!dragging) return;
+          var word    = dragging.dataset.word;
+          var slotIdx = Number(drop.dataset.slot);
+          if (slotContents[slotIdx] !== undefined) returnWordToBank(slotContents[slotIdx]);
+          slotContents[slotIdx] = word;
+          drop.textContent = word;
+          drop.classList.add('dd-inline-drop--filled');
+          dragging.remove();
+          dragging = null;
+        });
+        drop.addEventListener('click', function () {
+          if (answered) return;
+          var active = wordsEl ? wordsEl.querySelector('.dd-chip--selected') : null;
+          if (!active) return;
+          var word    = active.dataset.word;
+          var slotIdx = Number(drop.dataset.slot);
+          if (slotContents[slotIdx] !== undefined) returnWordToBank(slotContents[slotIdx]);
+          slotContents[slotIdx] = word;
+          drop.textContent = word;
+          drop.classList.add('dd-inline-drop--filled');
+          active.remove();
+        });
         instructionEl.appendChild(drop);
       }
     });
   }
 
-  function bindDropZone(drop, slotIndex) {
-    drop.addEventListener('dragover', function (e) {
-      e.preventDefault();
-      if (!answered) drop.classList.add('dd-inline-drop--over');
-    });
-    drop.addEventListener('dragleave', function () {
-      drop.classList.remove('dd-inline-drop--over');
-    });
-    drop.addEventListener('drop', function (e) {
-      e.preventDefault();
-      drop.classList.remove('dd-inline-drop--over');
-      if (!dragging || answered) return;
-
-      var word = dragging.dataset.word;
-
-      /* if slot already filled, return old word to bank */
-      if (slotContents[slotIndex] !== undefined) {
-        addWordChip(slotContents[slotIndex]);
-      }
-
-      slotContents[slotIndex] = word;
-      drop.textContent = word;
-      drop.classList.add('dd-inline-drop--filled');
-
-      /* remove chip from bank */
-      if (dragging.parentNode) dragging.parentNode.removeChild(dragging);
-      dragging = null;
-    });
-
-    /* click filled drop to return word to bank */
-    drop.addEventListener('click', function () {
-      if (answered) return;
-      if (slotContents[slotIndex] === undefined) return;
-      var word = slotContents[slotIndex];
-      delete slotContents[slotIndex];
-      drop.textContent = '___';
-      drop.classList.remove('dd-inline-drop--filled');
-      addWordChip(word);
-    });
-  }
-
-  /* ── word chips ───────────────────────────── */
   function renderWords(q) {
     if (!wordsEl) return;
     wordsEl.innerHTML = '';
@@ -148,12 +140,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
   function addWordChip(word) {
     if (!wordsEl) return;
-    var chip          = document.createElement('div');
+    var chip = document.createElement('div');
     chip.className    = 'dd-chip';
     chip.draggable    = true;
     chip.dataset.word = word;
     chip.textContent  = word;
-
     chip.addEventListener('dragstart', function (e) {
       dragging = chip;
       chip.classList.add('dd-chip--dragging');
@@ -163,18 +154,23 @@ document.addEventListener('DOMContentLoaded', function () {
       chip.classList.remove('dd-chip--dragging');
       dragging = null;
     });
-
+    chip.addEventListener('click', function () {
+      if (answered) return;
+      var prev = wordsEl.querySelector('.dd-chip--selected');
+      if (prev) prev.classList.remove('dd-chip--selected');
+      chip.classList.toggle('dd-chip--selected');
+    });
     wordsEl.appendChild(chip);
   }
 
-  /* ── check ────────────────────────────────── */
+  function returnWordToBank(word) { addWordChip(word); }
+
   function checkAnswers() {
     if (answered) return;
     var q     = questions[index] || {};
     var slots = Array.isArray(q.slots) ? q.slots : [];
     var correct = 0;
     answered = true;
-
     if (instructionEl) {
       instructionEl.querySelectorAll('.dd-inline-drop').forEach(function (drop, i) {
         var expected = slots[i] ? (slots[i].answer || '').trim().toLowerCase() : '';
@@ -185,39 +181,35 @@ document.addEventListener('DOMContentLoaded', function () {
         drop.classList.add(isRight ? 'dd-inline-drop--correct' : 'dd-inline-drop--wrong');
       });
     }
-
     var allRight = correct === slots.length && slots.length > 0;
     scores[index]      = allRight ? 1 : 0;
     reviewItems[index] = {
-      question:      q.instruction || ('Question ' + (index + 1)),
-      yourAnswer:    correct + '/' + slots.length + ' correct',
-      correctAnswer: slots.map(function (s) { return s.answer; }).join(', '),
+      question:      q.instruction || '',
+      yourAnswer:    Object.values(slotContents).join(', '),
+      correctAnswer: slots.map(function(s){ return s.answer || ''; }).join(', '),
       score:         scores[index]
     };
-
-    if (feedbackEl) AF.showFeedback(feedbackEl, allRight, slots.map(function (s) { return s.answer; }).join(', '), false);
+    updateScoreCards(true);
+    if (feedbackEl) AF.showFeedback(feedbackEl, allRight, null, true);
     if (checkBtn) checkBtn.disabled = true;
     if (showBtn)  showBtn.style.display = 'none';
     if (nextBtn)  nextBtn.disabled = false;
+    if (allRight && winAudio) { winAudio.currentTime = 0; winAudio.play().catch(function(){}); }
   }
 
-  /* ── show answer ──────────────────────────── */
   function showAnswers() {
     if (answered) return;
+    answered = true;
     var q     = questions[index] || {};
     var slots = Array.isArray(q.slots) ? q.slots : [];
-    answered      = true;
-    scores[index] = -1;
-
     if (instructionEl) {
       instructionEl.querySelectorAll('.dd-inline-drop').forEach(function (drop, i) {
-        var expected = slots[i] ? (slots[i].answer || '') : '';
+        var expected     = slots[i] ? (slots[i].answer || '') : '';
         drop.textContent = expected;
         drop.classList.remove('dd-inline-drop--filled');
         drop.classList.add('dd-inline-drop--revealed');
       });
     }
-
     reviewItems[index] = { question: q.instruction || '', yourAnswer: '(revealed)', correctAnswer: '', score: -1 };
     if (feedbackEl) AF.showFeedback(feedbackEl, false, null, true);
     if (checkBtn) checkBtn.disabled = true;
@@ -225,21 +217,15 @@ document.addEventListener('DOMContentLoaded', function () {
     if (nextBtn)  nextBtn.disabled = false;
   }
 
-  /* ── next / complete ──────────────────────── */
   function nextQuestion() {
-    if (index < questions.length - 1) {
-      index++;
-      loadQuestion();
-    } else {
-      showCompleted();
-    }
+    if (index < questions.length - 1) { index++; loadQuestion(); }
+    else showCompleted();
   }
 
   function showCompleted() {
     if (!completedEl) return;
     if (activityEl) activityEl.style.display = 'none';
     completedEl.style.display = '';
-
     AF.showCompleted({
       target:        completedEl,
       scores:        scores,
@@ -250,13 +236,12 @@ document.addEventListener('DOMContentLoaded', function () {
       onRetry:       restartActivity,
       onReview:      function () { AF.showReview({ target: completedEl, items: reviewItems, onRetry: restartActivity }); }
     });
-
     var result = AF.computeScore(scores);
     if (returnTo && activityId) {
       var sep = returnTo.indexOf('?') !== -1 ? '&' : '?';
       fetch(
         returnTo + sep +
-        'activity_percent=' + result.percent +
+        'activity_percent='  + result.percent +
         '&activity_errors='  + result.wrong   +
         '&activity_total='   + result.total   +
         '&activity_id='      + encodeURIComponent(activityId) +
@@ -270,6 +255,7 @@ document.addEventListener('DOMContentLoaded', function () {
     index       = 0;
     scores      = questions.map(function () { return 0; });
     reviewItems = questions.map(function () { return {}; });
+    if (scoreStripEl) scoreStripEl.style.display = 'none';
     loadQuestion();
   }
 
