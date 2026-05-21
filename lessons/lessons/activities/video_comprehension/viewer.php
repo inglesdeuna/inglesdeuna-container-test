@@ -208,7 +208,7 @@ ob_start();
     --vc-ink:#271B5D;
 }
 
-.vc-viewer{max-width:1180px;margin:0 auto}
+.vc-viewer{max-width:1180px;margin:0 auto;background:#F8F7FE}
 .vc-intro{margin-bottom:16px;padding:24px 26px;border-radius:26px;border:1px solid var(--vc-border);background:#ffffff;box-shadow:0 8px 40px rgba(127,119,221,.13)}
 .vc-intro h2{margin:0 0 8px;color:var(--vc-orange);font-family:'Fredoka','Trebuchet MS',sans-serif;font-size:30px;line-height:1.1}
 .vc-intro p{margin:0;color:var(--vc-muted);font-size:15px;line-height:1.55;font-weight:800;font-family:'Nunito','Segoe UI',sans-serif}
@@ -252,7 +252,7 @@ ob_start();
 .vc-score-num.p{color:var(--vc-purple)}
 .vc-score-lbl{margin-top:5px;font-size:10px;font-weight:900;color:var(--vc-muted);text-transform:uppercase;letter-spacing:.08em}
 
-.vc-complete-page{display:none;max-width:940px;margin:0 auto;padding:14px;background:#F8F7FE;border-radius:18px}
+.vc-complete-page{display:none;max-width:940px;margin:0 auto;padding:14px;background:transparent;border-radius:18px}
 .vc-complete-page.active{display:block}
 
 .vc-complete-hero{text-align:center;margin-bottom:16px}
@@ -287,12 +287,12 @@ body.presentation-mode .activity-wrapper {
     box-sizing: border-box !important;
 }
 
-/* viewer-content: compact padding, white, rounded */
+/* viewer-content: compact padding, lilac background, rounded */
 body.embedded-mode .viewer-content,
 body.fullscreen-embedded .viewer-content,
 body.presentation-mode .viewer-content {
     padding: 6px 8px !important;
-    background: #fff !important;
+    background: #F8F7FE !important;
     border-radius: 14px !important;
     overflow: hidden !important;
 }
@@ -307,7 +307,7 @@ body.presentation-mode .vc-viewer {
     flex-direction: column !important;
     max-width: none !important;
     margin: 0 !important;
-    background: #fff !important;
+    background: #F8F7FE !important;
 }
 
 /* Hide header, intro, and "Watch And Focus" copy */
