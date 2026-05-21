@@ -40,6 +40,8 @@ document.addEventListener('DOMContentLoaded', function () {
   var ttsAbortController = null;
   var currentAudioElement = null;
   var currentAudioUrl = '';
+  var currentAudioQuestionIndex = -1;
+  var isTtsLoading = false;
 
   function clearTtsError() {
     if (!feedbackEl) return;
@@ -104,6 +106,9 @@ document.addEventListener('DOMContentLoaded', function () {
       currentAudioUrl = '';
     }
 
+    currentAudioQuestionIndex = -1;
+    isTtsLoading = false;
+
     if (listenBtn) {
       listenBtn.disabled = false;
       listenBtn.textContent = 'Listen';
@@ -120,6 +125,7 @@ document.addEventListener('DOMContentLoaded', function () {
     stopSpeech();
     clearTtsError();
 
+    isTtsLoading = true;
     listenBtn.disabled = true;
     listenBtn.textContent = 'Loading...';
 
@@ -162,8 +168,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
         currentAudioUrl = URL.createObjectURL(audioBlob);
         currentAudioElement = new Audio(currentAudioUrl);
+        currentAudioQuestionIndex = index;
 
         currentAudioElement.onended = function () {
+          isTtsLoading = false;
           if (listenBtn) {
             listenBtn.disabled = false;
             listenBtn.textContent = 'Listen';
@@ -171,20 +179,23 @@ document.addEventListener('DOMContentLoaded', function () {
         };
 
         currentAudioElement.onerror = function () {
+          isTtsLoading = false;
           if (listenBtn) {
             listenBtn.disabled = false;
             listenBtn.textContent = 'Listen';
           }
         };
 
-        if (listenBtn) {
-          listenBtn.disabled = false;
-          listenBtn.textContent = 'Playing...';
-        }
-
         currentAudioElement.play()
-          .then(function () {})
+          .then(function () {
+            isTtsLoading = false;
+            if (listenBtn) {
+              listenBtn.disabled = false;
+              listenBtn.textContent = 'Pause';
+            }
+          })
           .catch(function () {
+            isTtsLoading = false;
             showTtsError('ElevenLabs audio could not be played in this browser.');
             if (listenBtn) {
               listenBtn.textContent = 'Listen';
@@ -195,6 +206,8 @@ document.addEventListener('DOMContentLoaded', function () {
         if (signal.aborted) {
           return;
         }
+
+        isTtsLoading = false;
 
         var msg = 'ElevenLabs TTS error. Check API key/voice configuration.';
         if (error && typeof error.message === 'string' && error.message.trim() !== '') {
@@ -207,6 +220,38 @@ document.addEventListener('DOMContentLoaded', function () {
           listenBtn.textContent = 'Listen';
         }
       });
+  }
+
+  function togglePauseResume() {
+    if (!currentAudioElement || currentAudioQuestionIndex !== index) {
+      return false;
+    }
+
+    if (currentAudioElement.ended) {
+      return false;
+    }
+
+    if (currentAudioElement.paused) {
+      currentAudioElement.play()
+        .then(function () {
+          if (listenBtn) {
+            listenBtn.textContent = 'Pause';
+          }
+        })
+        .catch(function () {
+          showTtsError('Unable to resume ElevenLabs audio.');
+          if (listenBtn) {
+            listenBtn.textContent = 'Listen';
+          }
+        });
+      return true;
+    }
+
+    currentAudioElement.pause();
+    if (listenBtn) {
+      listenBtn.textContent = 'Resume';
+    }
+    return true;
   }
 
   function renderImage(q) {
@@ -591,6 +636,15 @@ document.addEventListener('DOMContentLoaded', function () {
       if (!q.listen_enabled) {
         return;
       }
+
+       if (isTtsLoading) {
+        return;
+      }
+
+      if (togglePauseResume()) {
+        return;
+      }
+
       speakText((q.tts_text || '').trim(), q.voice_id || 'nzFihrBIvB34imQBuxub');
     });
   }
