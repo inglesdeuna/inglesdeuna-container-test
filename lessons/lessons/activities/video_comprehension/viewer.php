@@ -557,6 +557,9 @@ body.presentation-mode .vc-video-only .vc-video {
             const scorePctEl = document.getElementById('vc-score-pct');
             const scoreGridEl = document.getElementById('vc-score-grid');
 
+            const correctSound = new Audio('../../hangman/assets/realcorrect.mp3');
+            const wrongSound = new Audio('../../hangman/assets/lose.mp3');
+
             let index = 0;
             let selectedIndex = -1;
             let checked = false;
@@ -618,6 +621,14 @@ body.presentation-mode .vc-video-only .vc-video {
                 if (scoreGridEl) scoreGridEl.classList.toggle('visible', !!scoreVisible);
             }
 
+            function playSound(audio) {
+                try {
+                    audio.pause();
+                    audio.currentTime = 0;
+                    audio.play();
+                } catch (e) {}
+            }
+
             function persistScoreSilently(targetUrl) {
                 if (!targetUrl) return Promise.resolve(false);
                 return fetch(targetUrl, {
@@ -663,6 +674,7 @@ body.presentation-mode .vc-video-only .vc-video {
                         selectedIndex = optionIndex;
                         Array.from(optionsEl.children).forEach(node => node.classList.remove('active'));
                         btn.classList.add('active');
+                        evaluateCurrent();
                     });
                     optionsEl.appendChild(btn);
                 });
@@ -697,6 +709,7 @@ body.presentation-mode .vc-video-only .vc-video {
                 scores[index] = isCorrect ? 1 : 0;
                 updateScoreCards(true);
                 AF.showFeedback(feedbackEl, isCorrect, correctAnswerText, false);
+                playSound(isCorrect ? correctSound : wrongSound);
             }
 
             async function showCompletion() {
