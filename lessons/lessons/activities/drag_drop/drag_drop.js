@@ -40,7 +40,29 @@ document.addEventListener('DOMContentLoaded', function () {
   var ttsAbortController = null;
   var currentAudioElement = null;
   var currentAudioUrl = '';
-  var browserUtterance = null;
+
+  function clearTtsError() {
+    if (!feedbackEl) return;
+    var old = document.getElementById('dd-tts-error');
+    if (old) old.remove();
+  }
+
+  function showTtsError(message) {
+    if (!feedbackEl) return;
+    clearTtsError();
+    var box = document.createElement('div');
+    box.id = 'dd-tts-error';
+    box.style.marginTop = '8px';
+    box.style.padding = '10px 12px';
+    box.style.borderRadius = '10px';
+    box.style.border = '1px solid #fecaca';
+    box.style.background = '#fff1f2';
+    box.style.color = '#991b1b';
+    box.style.fontWeight = '800';
+    box.style.fontSize = '13px';
+    box.textContent = message || 'TTS failed.';
+    feedbackEl.prepend(box);
+  }
 
   function shuffle(arr) {
     var a = arr.slice();
@@ -82,54 +104,12 @@ document.addEventListener('DOMContentLoaded', function () {
       currentAudioUrl = '';
     }
 
-    if (window.speechSynthesis) {
-      try {
-        window.speechSynthesis.cancel();
-      } catch (e) {}
-    }
-    browserUtterance = null;
-
     if (listenBtn) {
       listenBtn.disabled = false;
       listenBtn.textContent = 'Listen';
     }
-  }
 
-  function speakWithBrowser(text) {
-    if (!text || !window.speechSynthesis || typeof SpeechSynthesisUtterance === 'undefined') {
-      return false;
-    }
-
-    try {
-      var utterance = new SpeechSynthesisUtterance(text);
-      utterance.rate = 0.95;
-      utterance.pitch = 1;
-      utterance.lang = 'en-US';
-
-      utterance.onend = function () {
-        if (listenBtn) {
-          listenBtn.disabled = false;
-          listenBtn.textContent = 'Listen';
-        }
-      };
-
-      utterance.onerror = function () {
-        if (listenBtn) {
-          listenBtn.disabled = false;
-          listenBtn.textContent = 'Listen';
-        }
-      };
-
-      browserUtterance = utterance;
-      if (listenBtn) {
-        listenBtn.disabled = false;
-        listenBtn.textContent = 'Playing...';
-      }
-      window.speechSynthesis.speak(utterance);
-      return true;
-    } catch (e) {
-      return false;
-    }
+    clearTtsError();
   }
 
   function speakText(text, voiceId) {
@@ -138,6 +118,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     stopSpeech();
+    clearTtsError();
 
     listenBtn.disabled = true;
     listenBtn.textContent = 'Loading...';
@@ -166,7 +147,12 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         return response.text().then(function (textBody) {
-          throw new Error('TTS returned non-audio response: ' + textBody);
+          var parsedMessage = textBody;
+          try {
+            var json = JSON.parse(textBody);
+            parsedMessage = json.error || textBody;
+          } catch (e) {}
+          throw new Error(parsedMessage || 'TTS returned non-audio response.');
         });
       })
       .then(function (audioBlob) {
@@ -199,18 +185,24 @@ document.addEventListener('DOMContentLoaded', function () {
         currentAudioElement.play()
           .then(function () {})
           .catch(function () {
-            var spoke = speakWithBrowser(text);
-            if (!spoke && listenBtn) {
+            showTtsError('ElevenLabs audio could not be played in this browser.');
+            if (listenBtn) {
               listenBtn.textContent = 'Listen';
             }
           });
       })
-      .catch(function () {
+      .catch(function (error) {
         if (signal.aborted) {
           return;
         }
-        var spoke = speakWithBrowser(text);
-        if (!spoke && listenBtn) {
+
+        var msg = 'ElevenLabs TTS error. Check API key/voice configuration.';
+        if (error && typeof error.message === 'string' && error.message.trim() !== '') {
+          msg = 'ElevenLabs: ' + error.message.trim();
+        }
+        showTtsError(msg);
+
+        if (listenBtn) {
           listenBtn.disabled = false;
           listenBtn.textContent = 'Listen';
         }
