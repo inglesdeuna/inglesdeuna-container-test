@@ -547,14 +547,16 @@ body {
 
 .dict-answer-box.ok {
     border-color: #16a34a;
-    background: #ffffff;
-    color: #16a34a;
+    background: rgba(22,163,74,.10);
+    color: #166534;
+    box-shadow: 0 0 0 3px rgba(22,163,74,.16);
 }
 
 .dict-answer-box.bad {
     border-color: #dc2626;
-    background: #ffffff;
-    color: #dc2626;
+    background: rgba(220,38,38,.12);
+    color: #991b1b;
+    box-shadow: 0 0 0 3px rgba(220,38,38,.16);
 }
 
 .dict-answer-reveal {
