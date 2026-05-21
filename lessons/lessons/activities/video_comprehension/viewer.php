@@ -57,7 +57,7 @@ function normalize_embed_url(string $url): string
 
         if (strpos($host, 'youtu.be') !== false) {
             $videoId = trim((string) preg_replace('/\?.*$/', '', trim($path, '/')));
-        } elseif (preg_match('#^/(shorts|embed|live)/([^/?#]+)#i', $path, $m)) {
+        } elseif (preg_match('~^/(shorts|embed|live)/([^/?#]+)~i', $path, $m)) {
             $videoId = trim((string) $m[2]);
         } elseif ($query !== '') {
             parse_str($query, $queryParams);
