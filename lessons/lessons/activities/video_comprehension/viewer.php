@@ -43,13 +43,14 @@ function normalize_embed_url(string $url): string
         return '';
     }
 
-    $parts = parse_url($url);
-    if (!$parts || empty($parts['host'])) {
+    $host = (string) parse_url($url, PHP_URL_HOST);
+    if ($host === '') {
         return '';
     }
 
-    $host = strtolower((string) $parts['host']);
-    $path = isset($parts['path']) ? (string) $parts['path'] : '';
+    $host = strtolower($host);
+    $path = (string) parse_url($url, PHP_URL_PATH);
+    $query = (string) parse_url($url, PHP_URL_QUERY);
 
     if (strpos($host, 'youtube.com') !== false || strpos($host, 'youtu.be') !== false) {
         $videoId = '';
@@ -58,8 +59,8 @@ function normalize_embed_url(string $url): string
             $videoId = trim((string) preg_replace('/\?.*$/', '', trim($path, '/')));
         } elseif (preg_match('#^/(shorts|embed|live)/([^/?#]+)#i', $path, $m)) {
             $videoId = trim((string) $m[2]);
-        } elseif (!empty($parts['query'])) {
-            parse_str((string) $parts['query'], $queryParams);
+        } elseif ($query !== '') {
+            parse_str($query, $queryParams);
             if (!empty($queryParams['v'])) {
                 $videoId = trim((string) $queryParams['v']);
             }
