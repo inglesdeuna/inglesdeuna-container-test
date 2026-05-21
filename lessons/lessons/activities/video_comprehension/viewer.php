@@ -452,23 +452,36 @@ body.presentation-mode .vc-video-only .vc-video {
                         <button type="button" class="vc-btn vc-btn-restart" id="vc-restart">Restart</button>
                     </div>
 
-                    <div class="vc-feedback" id="vc-feedback">Select an option to begin.</div>
+                    <div class="vc-feedback" id="vc-feedback"></div>
+
+                    <div id="vc-score-strip" style="display:none; margin:12px 16px 16px;">
+                        <div style="display:flex; border:1px solid #EDE9FA; border-radius:14px; overflow:hidden;">
+                            <div style="flex:1; padding:12px 0 10px; text-align:center; background:#fff;">
+                                <div id="vc-score-correct" style="font-family:'Fredoka',sans-serif; font-size:24px; font-weight:600; color:#7F77DD; line-height:1;">0</div>
+                                <div style="font-size:10px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:#bbb; margin-top:3px;">Correct</div>
+                            </div>
+                            <div style="flex:1; padding:12px 0 10px; text-align:center; background:#fff; border-left:1px solid #EDE9FA;">
+                                <div id="vc-score-wrong" style="font-family:'Fredoka',sans-serif; font-size:24px; font-weight:600; color:#7F77DD; line-height:1;">0</div>
+                                <div style="font-size:10px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:#bbb; margin-top:3px;">Wrong</div>
+                            </div>
+                            <div style="flex:1; padding:12px 0 10px; text-align:center; background:#fff; border-left:1px solid #EDE9FA;">
+                                <div id="vc-score-pct" style="font-family:'Fredoka',sans-serif; font-size:24px; font-weight:600; color:#7F77DD; line-height:1;">0%</div>
+                                <div style="font-size:10px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:#bbb; margin-top:3px;">Score</div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </section>
         </div>
 
-        <div id="vc-complete" class="completed-screen">
-            <div class="completed-icon">✅</div>
-            <h2 class="completed-title" id="vc-completed-title"></h2>
-            <p class="completed-text" id="vc-completed-text"></p>
-            <p class="completed-text" id="vc-score-text" style="font-weight:800;font-size:20px;color:#534AB7;"></p>
-            <button type="button" class="completed-button" id="vc-completed-restart">Restart</button>
-        </div>
+        <div id="vc-complete"></div>
 
+        <script src="../../core/_activity_feedback.js"></script>
         <script>
         (function () {
+            var AF = window.ActivityFeedback;
             const data = <?= json_encode($questions, JSON_UNESCAPED_UNICODE) ?>;
-            if (!Array.isArray(data) || data.length === 0) return;
+            if (!AF || !Array.isArray(data) || data.length === 0) return;
             const activityTitle = <?= json_encode($viewerTitle, JSON_UNESCAPED_UNICODE) ?>;
             const RETURN_TO = <?= json_encode($returnTo, JSON_UNESCAPED_UNICODE) ?>;
             const ACTIVITY_ID = <?= json_encode($activityId, JSON_UNESCAPED_UNICODE) ?>;
@@ -482,34 +495,39 @@ body.presentation-mode .vc-video-only .vc-video {
             const restartBtn = document.getElementById('vc-restart');
             const completeEl = document.getElementById('vc-complete');
             const activityEl = document.getElementById('vc-activity');
-            const shellEl = document.getElementById('vc-quizShell');
-            const completedTitleEl = document.getElementById('vc-completed-title');
-            const completedTextEl = document.getElementById('vc-completed-text');
-            const scoreTextEl = document.getElementById('vc-score-text');
-            const completedRestartBtn = document.getElementById('vc-completed-restart');
+            const scoreCorrectEl = document.getElementById('vc-score-correct');
+            const scoreWrongEl = document.getElementById('vc-score-wrong');
+            const scorePctEl = document.getElementById('vc-score-pct');
+            const scoreStripEl = document.getElementById('vc-score-strip');
 
             let index = 0;
             let selectedIndex = -1;
             let checked = false;
-            let results = Array(data.length).fill(null);
-
-            if (completedTitleEl) {
-                completedTitleEl.textContent = activityTitle || 'Video Comprehension';
-            }
-
-            if (completedTextEl) {
-                completedTextEl.textContent = "You've completed " + (activityTitle || 'this activity') + '. Great job practicing.';
-            }
+            let scores = data.map(function () { return 0; });
+            let reviewItems = data.map(function () { return {}; });
 
             function getCurrent() {
                 return data[index] || { question: '', options: ['', '', ''], correct: 0, explanation: '' };
             }
 
-            function setFeedback(message, kind) {
-                feedbackEl.textContent = message;
-                feedbackEl.classList.remove('success', 'error');
-                if (kind === 'success') feedbackEl.classList.add('success');
-                if (kind === 'error') feedbackEl.classList.add('error');
+            function updateScoreCards(show) {
+                if (show && scoreStripEl) scoreStripEl.style.display = '';
+
+                var checkedCount = 0;
+                var correctCount = 0;
+                for (var i = 0; i < scores.length; i++) {
+                    if (i < index || (i === index && checked)) {
+                        checkedCount++;
+                        if (scores[i] === 1) correctCount++;
+                    }
+                }
+
+                var wrongCount = checkedCount - correctCount;
+                var pct = checkedCount > 0 ? Math.round((correctCount / checkedCount) * 100) : 0;
+
+                if (scoreCorrectEl) scoreCorrectEl.textContent = String(correctCount);
+                if (scoreWrongEl) scoreWrongEl.textContent = String(wrongCount);
+                if (scorePctEl) scorePctEl.textContent = pct + '%';
             }
 
             function persistScoreSilently(targetUrl) {
@@ -541,26 +559,25 @@ body.presentation-mode .vc-video-only .vc-video {
                 selectedIndex = -1;
                 checked = false;
 
-                countEl.textContent = `Question ${index + 1} of ${data.length}`;
+                countEl.textContent = 'Question ' + (index + 1) + ' of ' + data.length;
                 questionEl.textContent = current.question || 'Question';
                 optionsEl.innerHTML = '';
+                AF.clearFeedback(feedbackEl);
 
                 (current.options || ['', '', '']).forEach((optionText, optionIndex) => {
                     const btn = document.createElement('button');
                     btn.type = 'button';
                     btn.className = 'vc-option';
-                    btn.textContent = optionText !== '' ? optionText : `Option ${optionIndex + 1}`;
+                    btn.textContent = optionText !== '' ? optionText : ('Option ' + (optionIndex + 1));
                     btn.addEventListener('click', function () {
                         if (checked) return;
                         selectedIndex = optionIndex;
                         Array.from(optionsEl.children).forEach(node => node.classList.remove('active'));
                         btn.classList.add('active');
-                        setFeedback('Answer selected. Press Check Answer.', '');
                     });
                     optionsEl.appendChild(btn);
                 });
-
-                setFeedback('Select an option to begin.', '');
+                nextBtn.textContent = index + 1 >= data.length ? 'Finish' : 'Next';
             }
 
             function evaluateCurrent() {
@@ -569,57 +586,66 @@ body.presentation-mode .vc-video-only .vc-video {
                 const current = getCurrent();
                 const correctIndex = Number(current.correct || 0);
                 const optionNodes = Array.from(optionsEl.children);
+                const correctAnswerText = (current.options && current.options[correctIndex]) ? current.options[correctIndex] : '';
+                const isCorrect = selectedIndex >= 0 && selectedIndex === correctIndex;
 
                 checked = true;
+                AF.clearHighlights(optionsEl);
+                AF.highlightOption(optionNodes[correctIndex], 'correct');
 
                 if (selectedIndex < 0) {
-                    optionNodes.forEach(function (node, nodeIndex) {
-                        if (nodeIndex === correctIndex) {
-                            node.classList.add('correct');
-                        }
-                    });
-                    if (results[index] === null) {
-                        results[index] = false;
-                    }
-                    setFeedback('Incorrect. ' + (current.explanation || ''), 'error');
+                    scores[index] = 0;
+                    updateScoreCards(true);
+                    AF.showFeedback(feedbackEl, false, correctAnswerText, false);
+                    reviewItems[index] = {
+                        question: current.question || ('Question ' + (index + 1)),
+                        yourAnswer: '(no answer)',
+                        correctAnswer: correctAnswerText,
+                        score: 0
+                    };
                     return;
                 }
 
-                optionNodes.forEach(function (node, nodeIndex) {
-                    node.classList.remove('active');
-                    if (nodeIndex === correctIndex) {
-                        node.classList.add('correct');
-                    } else if (nodeIndex === selectedIndex) {
-                        node.classList.add('wrong');
-                    }
-                });
-
-                if (selectedIndex === correctIndex) {
-                    if (results[index] === null) {
-                        results[index] = true;
-                    }
-                    setFeedback('Correct! ' + (current.explanation || ''), 'success');
-                } else {
-                    if (results[index] === null) {
-                        results[index] = false;
-                    }
-                    setFeedback('Incorrect. ' + (current.explanation || ''), 'error');
+                if (!isCorrect) {
+                    AF.highlightOption(optionNodes[selectedIndex], 'wrong');
                 }
+
+                scores[index] = isCorrect ? 1 : 0;
+                updateScoreCards(true);
+                AF.showFeedback(feedbackEl, isCorrect, correctAnswerText, false);
+
+                reviewItems[index] = {
+                    question: current.question || ('Question ' + (index + 1)),
+                    yourAnswer: (current.options && current.options[selectedIndex]) ? current.options[selectedIndex] : '(no answer)',
+                    correctAnswer: correctAnswerText,
+                    score: scores[index]
+                };
             }
 
             async function showCompletion() {
-                if (activityEl) activityEl.classList.add('is-hidden');
-                completeEl.classList.add('active');
+                AF.showCompleted({
+                    target: completeEl,
+                    scores: scores,
+                    title: activityTitle || 'Video Comprehension',
+                    activityType: 'Video Comprehension',
+                    questionCount: data.length,
+                    onRetry: restartQuiz,
+                    onReview: function () {
+                        AF.showReview({
+                            target: completeEl,
+                            items: reviewItems,
+                            onRetry: restartQuiz
+                        });
+                    },
+                    hideActivity: activityEl
+                });
+
                 completeEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
 
-                const score = results.filter(function (r) { return r === true; }).length;
-                const total = data.length;
-                const pct = total > 0 ? Math.round((score / total) * 100) : 0;
-                const errors = Math.max(0, total - score);
-
-                if (scoreTextEl) {
-                    scoreTextEl.textContent = 'Score: ' + score + ' / ' + total + ' (' + pct + '%)';
-                }
+                const score = AF.computeScore(scores);
+                const pct = score.percent;
+                const errors = score.wrong;
+                const total = score.total;
 
                 if (RETURN_TO && ACTIVITY_ID) {
                     const joiner = RETURN_TO.indexOf('?') !== -1 ? '&' : '?';
@@ -641,10 +667,13 @@ body.presentation-mode .vc-video-only .vc-video {
                 index = 0;
                 selectedIndex = -1;
                 checked = false;
-                results = Array(data.length).fill(null);
-                shellEl.style.display = 'block';
-                if (activityEl) activityEl.classList.remove('is-hidden');
-                completeEl.classList.remove('active');
+                scores = data.map(function () { return 0; });
+                reviewItems = data.map(function () { return {}; });
+
+                if (scoreStripEl) scoreStripEl.style.display = 'none';
+                if (activityEl) activityEl.style.display = '';
+                if (completeEl) completeEl.innerHTML = '';
+
                 render();
             }
 
@@ -667,10 +696,6 @@ body.presentation-mode .vc-video-only .vc-video {
             });
 
             restartBtn.addEventListener('click', restartQuiz);
-
-            if (completedRestartBtn) {
-                completedRestartBtn.addEventListener('click', restartQuiz);
-            }
 
             render();
         })();
