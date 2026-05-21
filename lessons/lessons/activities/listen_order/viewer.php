@@ -141,11 +141,9 @@ body{margin:0!important;padding:0!important;background:#fff!important;font-famil
 .lo-completed.active{display:block}
 .lo-done-icon{font-size:30px;line-height:1;margin-bottom:6px}
 .lo-done-title{margin:0;font-family:'Fredoka',sans-serif;font-size:32px;color:#F97316;font-weight:700}
-.lo-completed .lo-done-title{display:none}
 .lo-done-text{margin:0;max-width:520px;color:#9B94BE;font-size:14px;font-weight:800;line-height:1.5}
 .lo-done-score{margin:0;color:#666;font-size:14px;font-weight:800}
-.lo-done-track{height:12px;width:min(420px,100%);margin:4px auto;border-radius:999px;background:#F4F2FD;border:1px solid #E4E1F8;overflow:hidden}
-.lo-done-fill{height:100%;width:0%;background:linear-gradient(90deg,#F97316,#7F77DD);transition:width .8s ease}
+.lo-done-restart{border:none;border-radius:999px;color:#fff;min-width:128px;padding:11px 20px;font-size:14px;font-weight:700;font-family:'Nunito',sans-serif;cursor:pointer;background:#7F77DD;box-shadow:0 6px 18px rgba(127,119,221,.18)}
 @media(max-width:640px){
     .lo-shell{padding:12px}.lo-board{border-radius:22px;padding:14px}
     .lo-grid{grid-template-columns:repeat(auto-fit,minmax(96px,1fr));gap:10px}
@@ -153,6 +151,7 @@ body{margin:0!important;padding:0!important;background:#fff!important;font-famil
     .lo-card-badge{top:6px;left:6px;width:22px;height:22px;font-size:11px}
     .lo-actions{flex-direction:column;align-items:center}.lo-btn{width:100%;max-width:280px}
     .lo-audio-player{flex-wrap:wrap;gap:10px}
+    .lo-done-restart{width:100%}
 }
 </style>
 
@@ -204,7 +203,7 @@ body{margin:0!important;padding:0!important;background:#fff!important;font-famil
         <h2 class="lo-done-title" id="lo-done-title"></h2>
         <p class="lo-done-text" id="lo-done-text"></p>
         <p class="lo-done-score" id="lo-done-score"></p>
-        <div class="lo-done-track"><div class="lo-done-fill" id="lo-done-fill"></div></div>
+        <button type="button" class="lo-done-restart" id="lo-done-restart">Restart</button>
     </div>
 </div></div>
 
@@ -278,7 +277,7 @@ var ttsAudio  = document.getElementById('lo-tts-audio');
 var doneTitleEl = document.getElementById('lo-done-title');
 var doneTextEl  = document.getElementById('lo-done-text');
 var doneScoreEl = document.getElementById('lo-done-score');
-var doneFillEl  = document.getElementById('lo-done-fill');
+var doneRestartEl = document.getElementById('lo-done-restart');
 
 if(doneTitleEl) doneTitleEl.textContent = ACTIVITY_TTL||'Listen & Order';
 if(doneTextEl)  doneTextEl.textContent  = "You've completed "+(ACTIVITY_TTL||'this activity')+'. Great job!';
@@ -494,7 +493,6 @@ async function showCompleted(){
     done=true; blockDone=true; feedEl.textContent=''; feedEl.className='';
     if(boardEl) boardEl.style.display='none';
     if(compEl)  compEl.classList.add('active');
-    setTimeout(function(){ if(doneFillEl) doneFillEl.style.width='100%'; },120);
     playSound(sndDone);
     var result = computeFinalScore();
     if(doneScoreEl) doneScoreEl.textContent=result.correct+' correct · '+result.wrong+' wrong · '+result.percent+'%';
@@ -507,14 +505,23 @@ async function showCompleted(){
 }
 
 function nextBlock(){
-    if(blockDone||checked[idx]){ if(idx>=BLOCKS.length-1){ showCompleted(); return; } idx++; loadBlock(); }
-    else{ feedEl.textContent='Check your answer first.'; feedEl.className='bad'; }
+    if(done) return;
+
+    if(!blockDone && !checked[idx]){
+        checkAnswer();
+    }
+
+    if(blockDone || checked[idx]){
+        if(idx>=BLOCKS.length-1){ showCompleted(); return; }
+        idx++;
+        loadBlock();
+    }
 }
 
 function loRestart(){
     idx=0; totalBlocks=BLOCKS.length; blockScores={}; attempts={}; checked={};
-    if(doneFillEl) doneFillEl.style.width='0%';
     if(compEl) compEl.classList.remove('active');
+    if(boardEl) boardEl.style.display='';
     loadBlock();
 }
 
@@ -522,6 +529,7 @@ if(listenBtn) listenBtn.addEventListener('click',playAudio);
 document.getElementById('lo-btn-show').addEventListener('click',showAnswer);
 document.getElementById('lo-btn-check').addEventListener('click',checkAnswer);
 document.getElementById('lo-btn-next').addEventListener('click',nextBlock);
+if(doneRestartEl) doneRestartEl.addEventListener('click',loRestart);
 
 loadBlock();
 </script>
