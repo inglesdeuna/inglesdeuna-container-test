@@ -409,6 +409,10 @@ body{margin:0!important;padding:0!important;background:var(--m-bg)!important;fon
 /* ── Board ── */
 .m-board{height:100%;min-height:0;background:#fff;border:1px solid #F0EEF8;border-radius:28px;padding:clamp(12px,2vw,20px);box-shadow:0 8px 40px rgba(127,119,221,.12);display:grid;grid-template-rows:auto auto minmax(0,1fr) auto auto auto;gap:12px;overflow:hidden;}
 
+.m-page.is-completed{align-items:flex-start;overflow-y:auto;}
+.m-app.is-completed{height:auto;grid-template-rows:auto auto;}
+.m-board.is-completed{height:auto;display:block;overflow:visible;}
+
 /* ── Progress ── */
 .m-progress-row{display:grid;grid-template-columns:1fr auto;gap:12px;align-items:center;}
 .m-progress-track{height:10px;background:#F4F2FD;border:1px solid #E4E1F8;border-radius:999px;overflow:hidden;}
@@ -568,8 +572,8 @@ $rightHasImages = (bool) array_reduce($pairs, fn($c,$p) => $c || trim((string)($
 
 <div id="m-ghost"></div>
 
-<div class="m-page">
-    <div class="m-app">
+<div class="m-page" id="m-page">
+    <div class="m-app" id="m-app">
 
         <header class="m-hero">
             <div class="m-kicker">Match Activity</div>
@@ -577,7 +581,7 @@ $rightHasImages = (bool) array_reduce($pairs, fn($c,$p) => $c || trim((string)($
             <p class="m-subtitle">Drag each answer to its matching prompt.</p>
         </header>
 
-        <main class="m-board">
+        <main class="m-board" id="m-board">
 
             <div class="m-progress-row">
                 <div class="m-progress-track">
@@ -666,6 +670,9 @@ function shuffle(arr) {
 /* ── DOM refs ── */
 const fillEl   = document.getElementById('m-fill');
 const badgeEl  = document.getElementById('m-badge');
+const pageEl   = document.getElementById('m-page');
+const appEl    = document.getElementById('m-app');
+const boardEl  = document.getElementById('m-board');
 const hintEl   = document.getElementById('m-hint');
 const hintWrapEl = document.querySelector('.m-hint-wrap');
 const progressEl = document.querySelector('.m-progress-row');
@@ -1037,6 +1044,9 @@ function resetGame() {
     if (pairsEl) pairsEl.style.display = '';
     if (poolWrapEl) poolWrapEl.style.display = '';
     if (actionsEl) actionsEl.style.display = '';
+    if (pageEl) pageEl.classList.remove('is-completed');
+    if (appEl) appEl.classList.remove('is-completed');
+    if (boardEl) boardEl.classList.remove('is-completed');
     if (completedEl) completedEl.classList.remove('active');
     checkBtn.disabled = false;
     answerBtn.disabled = false;
@@ -1082,6 +1092,9 @@ async function showCompleted() {
     if (pairsEl) pairsEl.style.display = 'none';
     if (poolWrapEl) poolWrapEl.style.display = 'none';
     if (actionsEl) actionsEl.style.display = 'none';
+    if (pageEl) pageEl.classList.add('is-completed');
+    if (appEl) appEl.classList.add('is-completed');
+    if (boardEl) boardEl.classList.add('is-completed');
     if (completedEl) completedEl.classList.add('active');
 
     const summary = scoreSummary();
