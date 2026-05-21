@@ -464,27 +464,31 @@ body.presentation-mode .vc-video-only .vc-video {
 
                     <div class="vc-feedback" id="vc-feedback"></div>
 
-                    <div id="vc-score-strip" style="display:none; margin:12px 16px 16px;">
-                        <div style="display:flex; border:1px solid #EDE9FA; border-radius:14px; overflow:hidden;">
-                            <div style="flex:1; padding:12px 0 10px; text-align:center; background:#fff;">
-                                <div id="vc-score-correct" style="font-family:'Fredoka',sans-serif; font-size:24px; font-weight:600; color:#7F77DD; line-height:1;">0</div>
-                                <div style="font-size:10px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:#bbb; margin-top:3px;">Correct</div>
-                            </div>
-                            <div style="flex:1; padding:12px 0 10px; text-align:center; background:#fff; border-left:1px solid #EDE9FA;">
-                                <div id="vc-score-wrong" style="font-family:'Fredoka',sans-serif; font-size:24px; font-weight:600; color:#7F77DD; line-height:1;">0</div>
-                                <div style="font-size:10px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:#bbb; margin-top:3px;">Wrong</div>
-                            </div>
-                            <div style="flex:1; padding:12px 0 10px; text-align:center; background:#fff; border-left:1px solid #EDE9FA;">
-                                <div id="vc-score-pct" style="font-family:'Fredoka',sans-serif; font-size:24px; font-weight:600; color:#7F77DD; line-height:1;">0%</div>
-                                <div style="font-size:10px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:#bbb; margin-top:3px;">Score</div>
-                            </div>
+                    <div id="vc-score-grid" class="vc-score-grid">
+                        <div class="vc-score-card">
+                            <div class="vc-score-num c" id="vc-score-correct">0</div>
+                            <div class="vc-score-lbl">Correct</div>
+                        </div>
+                        <div class="vc-score-card">
+                            <div class="vc-score-num w" id="vc-score-wrong">0</div>
+                            <div class="vc-score-lbl">Wrong</div>
+                        </div>
+                        <div class="vc-score-card">
+                            <div class="vc-score-num p" id="vc-score-pct">0%</div>
+                            <div class="vc-score-lbl">Score</div>
                         </div>
                     </div>
                 </div>
+
+                <div id="vc-complete" class="vc-completed-screen">
+                    <div class="vc-completed-icon">✅</div>
+                    <h2 class="vc-completed-title" id="vc-completed-title"></h2>
+                    <p class="vc-completed-text" id="vc-completed-text"></p>
+                    <p class="vc-score-text" id="vc-score-text"></p>
+                    <button type="button" class="vc-restart-btn" id="vc-completed-restart">Restart</button>
+                </div>
             </section>
         </div>
-
-        <div id="vc-complete"></div>
 
         <script src="../../core/_activity_feedback.js"></script>
         <script>
