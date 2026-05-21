@@ -402,6 +402,23 @@ body { margin: 0 !important; padding: 0 !important; background: #fff !important;
             </div>
 
             <div id="dd-feedback"></div>
+
+            <div id="dd-score-strip" style="display:none; margin-top:12px;">
+                <div style="display:flex; border:1px solid #EDE9FA; border-radius:14px; overflow:hidden;">
+                    <div style="flex:1; padding:12px 0 10px; text-align:center; background:#fff;">
+                        <div id="dd-score-correct" style="font-family:'Fredoka',sans-serif; font-size:24px; font-weight:600; color:#7F77DD; line-height:1;">0</div>
+                        <div style="font-size:10px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:#bbb; margin-top:3px;">Correct</div>
+                    </div>
+                    <div style="flex:1; padding:12px 0 10px; text-align:center; background:#fff; border-left:1px solid #EDE9FA;">
+                        <div id="dd-score-wrong" style="font-family:'Fredoka',sans-serif; font-size:24px; font-weight:600; color:#7F77DD; line-height:1;">0</div>
+                        <div style="font-size:10px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:#bbb; margin-top:3px;">Wrong</div>
+                    </div>
+                    <div style="flex:1; padding:12px 0 10px; text-align:center; background:#fff; border-left:1px solid #EDE9FA;">
+                        <div id="dd-score-pct" style="font-family:'Fredoka',sans-serif; font-size:24px; font-weight:600; color:#7F77DD; line-height:1;">0%</div>
+                        <div style="font-size:10px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:#bbb; margin-top:3px;">Score</div>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <div id="dd-completed"></div>
