@@ -483,7 +483,9 @@ body {
 }
 
 .dd-chip {
-    display: inline-block;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     padding: 7px 14px;
     border-radius: 10px;
     background: #EEEDFE;
@@ -492,6 +494,7 @@ body {
     font-family: 'Nunito', sans-serif;
     font-size: 13px;
     font-weight: 900;
+    text-align: center;
     cursor: grab;
     user-select: none;
     box-shadow: none;
