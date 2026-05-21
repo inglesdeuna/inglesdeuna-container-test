@@ -255,6 +255,7 @@ ob_start();
     --dd-lila-border: #EDE9FA;
     --dd-muted: #9B94BE;
     --dd-ink: #271B5D;
+    --dd-bg: #F8F7FE;
     --dd-green: #16a34a;
     --dd-red: #dc2626;
 }
@@ -265,7 +266,7 @@ html, body { width: 100%; min-height: 100%; margin: 0; padding: 0; }
 body {
     margin: 0 !important;
     padding: 0 !important;
-    background: #ffffff !important;
+    background: var(--dd-bg) !important;
     font-family: 'Nunito', sans-serif !important;
 }
 
@@ -303,12 +304,22 @@ body {
     display: flex;
     align-items: flex-start;
     justify-content: center;
-    background: #ffffff;
+    background: var(--dd-bg);
 }
 
 .dd-app {
+    width: min(940px, 100%);
+    margin: 0 auto;
+}
+
+#dd-activity {
     width: min(860px, 100%);
     margin: 0 auto;
+    background: #fff;
+    border: 1px solid var(--dd-lila-border);
+    border-radius: 24px;
+    box-shadow: 0 8px 40px rgba(127,119,221,.13);
+    padding: 18px;
 }
 
 .dd-hero {
