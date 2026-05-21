@@ -40,19 +40,23 @@ document.addEventListener('DOMContentLoaded', function () {
   var answered = false;
   var dragging = null;
   var slotContents = {};
-  var scores = questions.map(function () { return 0; });
-    if (scoreStripEl) scoreStripEl.style.display = 'none';
-  var reviewItems = questions.map(function () { return {}; });
+  var scores      = questions.map(function () { return 0; });
+  var slotCounts   = questions.map(function () { return 1; });
+  var reviewItems  = questions.map(function () { return {}; });
 
   function updateScoreCards(show) {
     if (show && scoreStripEl) scoreStripEl.style.display = '';
-    var checked = 0, correct = 0;
+    var totalChips = 0, correctChips = 0;
     for (var i = 0; i < scores.length; i++) {
-      if (i < index || (i === index && answered)) { checked++; if (scores[i] === 1) correct++; }
+      if (i < index || (i === index && answered)) {
+        totalChips   += slotCounts[i] || 1;
+        correctChips += Math.max(0, scores[i] || 0);
+      }
     }
-    var pct = questions.length > 0 ? Math.round((correct / questions.length) * 100) : 0;
-    if (scoreCorrectEl) scoreCorrectEl.textContent = String(correct);
-    if (scoreWrongEl)   scoreWrongEl.textContent   = String(checked - correct);
+    var wrongChips = totalChips - correctChips;
+    var pct = totalChips > 0 ? Math.round((correctChips / totalChips) * 100) : 0;
+    if (scoreCorrectEl) scoreCorrectEl.textContent = String(correctChips);
+    if (scoreWrongEl)   scoreWrongEl.textContent   = String(wrongChips);
     if (scorePctEl)     scorePctEl.textContent     = pct + '%';
   }
   var ttsAbortController = null;
@@ -503,7 +507,8 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     var allRight = correct === slots.length && slots.length > 0;
-    scores[index] = allRight ? 1 : 0;
+    scores[index] = correct;
+    slotCounts[index] = slots.length;
     updateScoreCards(true);
 
     reviewItems[index] = {
@@ -566,10 +571,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
     AF.showCompleted({
       target: completedEl,
-      scores: scores,
+      scores: (function() { var arr=[]; for(var i=0;i<scores.length;i++){var n=slotCounts[i]||1;for(var j=0;j<n;j++){arr.push(scores[i]>0&&j<scores[i]?1:0);}} return arr; })(),
       title: activityTitle,
       activityType: 'Drag & Drop',
-      questionCount: questions.length,
+      questionCount: (function(){ var t=0; for(var i=0;i<slotCounts.length;i++) t+=slotCounts[i]||1; return t; })(),
       winAudio: winAudio,
       onRetry: restartActivity,
       onReview: function () {
@@ -581,7 +586,12 @@ document.addEventListener('DOMContentLoaded', function () {
       }
     });
 
-    var result = AF.computeScore(scores);
+    var result = (function() {
+      var tc = 0, cc = 0;
+      for (var i = 0; i < scores.length; i++) { tc += slotCounts[i] || 1; cc += Math.max(0, scores[i] || 0); }
+      var p = tc > 0 ? Math.round(cc / tc * 100) : 0;
+      return { percent: p, correct: cc, wrong: tc - cc, total: tc };
+    })();
     if (returnTo && activityId) {
       var sep = returnTo.indexOf('?') !== -1 ? '&' : '?';
       fetch(
@@ -611,8 +621,10 @@ document.addEventListener('DOMContentLoaded', function () {
     stopSpeech();
 
     index = 0;
-    scores = questions.map(function () { return 0; });
-    reviewItems = questions.map(function () { return {}; });
+    scores      = questions.map(function () { return 0; });
+    slotCounts   = questions.map(function () { return 1; });
+    reviewItems  = questions.map(function () { return {}; });
+    if (scoreStripEl) scoreStripEl.style.display = 'none';
     loadQuestion();
   }
 
