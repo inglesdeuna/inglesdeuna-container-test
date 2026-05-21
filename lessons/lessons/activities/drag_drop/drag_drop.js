@@ -538,7 +538,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     if (instructionEl) {
       instructionEl.querySelectorAll('.dd-inline-drop').forEach(function (drop, i) {
-        var expected = slots[i] ? slots[i].answer || '' : '';
+        var expected = slots[i] ? slots[i].answer || '' : '' ;
         drop.textContent = expected;
         drop.classList.remove('dd-inline-drop--filled');
         drop.classList.add('dd-inline-drop--revealed');
@@ -561,44 +561,54 @@ document.addEventListener('DOMContentLoaded', function () {
     if (nextBtn) nextBtn.disabled = false;
   }
 
+  function escHtml(str) {
+    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
   function showCompleted() {
     if (!completedEl) return;
 
     stopSpeech();
 
     if (activityEl) activityEl.style.display = 'none';
+
+    var tc = 0, cc = 0;
+    for (var i = 0; i < scores.length; i++) {
+      tc += slotCounts[i] || 1;
+      cc += Math.max(0, scores[i] || 0);
+    }
+    var wrongCount = tc - cc;
+    var pct = tc > 0 ? Math.round(cc / tc * 100) : 0;
+
+    updateScoreCards(true);
+
+    completedEl.innerHTML =
+      '<div style="text-align:center;padding:24px 12px;">' +
+        '<div style="font-size:36px;margin-bottom:8px;">&#9989;</div>' +
+        '<h2 style="margin:0 0 6px;color:#F97316;font-family:\'Fredoka\',\'Fredoka One\',\'Trebuchet MS\',sans-serif;font-size:32px;font-weight:700;">' + escHtml(activityTitle) + '</h2>' +
+        '<p style="color:#9B94BE;font-size:14px;font-weight:700;margin:0 0 6px;">You\'ve completed ' + escHtml(activityTitle) + '. Great job practicing.</p>' +
+        '<p style="color:#534AB7;font-size:15px;font-weight:900;margin:0 0 16px;">' + cc + ' correct &middot; ' + wrongCount + ' wrong &middot; ' + pct + '%</p>' +
+        '<button type="button" id="dd-restart-btn" style="background:#7F77DD;color:#fff;border:none;border-radius:999px;padding:12px 28px;font-family:\'Nunito\',sans-serif;font-size:15px;font-weight:900;cursor:pointer;">Restart</button>' +
+      '</div>';
+
     completedEl.style.display = '';
 
-    AF.showCompleted({
-      target: completedEl,
-      scores: (function() { var arr=[]; for(var i=0;i<scores.length;i++){var n=slotCounts[i]||1;for(var j=0;j<n;j++){arr.push(scores[i]>0&&j<scores[i]?1:0);}} return arr; })(),
-      title: activityTitle,
-      activityType: 'Drag & Drop',
-      questionCount: (function(){ var t=0; for(var i=0;i<slotCounts.length;i++) t+=slotCounts[i]||1; return t; })(),
-      winAudio: winAudio,
-      onRetry: restartActivity,
-      onReview: function () {
-        AF.showReview({
-          target: completedEl,
-          items: reviewItems,
-          onRetry: restartActivity
-        });
-      }
-    });
+    var restartBtn = document.getElementById('dd-restart-btn');
+    if (restartBtn) {
+      restartBtn.addEventListener('click', restartActivity);
+    }
 
-    var result = (function() {
-      var tc = 0, cc = 0;
-      for (var i = 0; i < scores.length; i++) { tc += slotCounts[i] || 1; cc += Math.max(0, scores[i] || 0); }
-      var p = tc > 0 ? Math.round(cc / tc * 100) : 0;
-      return { percent: p, correct: cc, wrong: tc - cc, total: tc };
-    })();
+    if (pct >= 80 && winAudio) {
+      winAudio.play().catch(function () {});
+    }
+
     if (returnTo && activityId) {
       var sep = returnTo.indexOf('?') !== -1 ? '&' : '?';
       fetch(
         returnTo + sep +
-        'activity_percent=' + result.percent +
-        '&activity_errors=' + result.wrong +
-        '&activity_total=' + result.total +
+        'activity_percent=' + pct +
+        '&activity_errors=' + wrongCount +
+        '&activity_total=' + tc +
         '&activity_id=' + encodeURIComponent(activityId) +
         '&activity_type=drag_drop',
         { method: 'GET', credentials: 'same-origin', cache: 'no-store' }
