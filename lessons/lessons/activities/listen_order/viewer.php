@@ -137,13 +137,13 @@ body{margin:0!important;padding:0!important;background:#fff!important;font-famil
 .lo-btn-check{background:#F97316;color:#fff;box-shadow:0 6px 18px rgba(249,115,22,.22)}
 .lo-btn-next{background:#7F77DD;color:#fff;box-shadow:0 6px 18px rgba(127,119,221,.22)}
 #lo-status{text-align:center;margin-top:10px;font-size:13px;color:#9B94BE;font-weight:900}
-.lo-completed{display:none;background:#fff;border:1px solid #EDE9FA;border-radius:28px;box-shadow:0 12px 36px rgba(127,119,221,.13);min-height:clamp(300px,42vh,430px);flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:clamp(28px,5vw,48px) 24px;gap:12px;width:min(860px,100%);margin:0 auto}
-.lo-completed.active{display:flex}
-.lo-done-icon{font-size:64px;line-height:1}
-.lo-done-title{margin:0;font-family:'Fredoka',sans-serif;font-size:clamp(30px,5.5vw,58px);color:#F97316;font-weight:700}
+.lo-completed{display:none;text-align:center;padding:24px 12px;max-width:520px;margin:0 auto}
+.lo-completed.active{display:block}
+.lo-done-icon{font-size:30px;line-height:1;margin-bottom:6px}
+.lo-done-title{margin:0;font-family:'Fredoka',sans-serif;font-size:32px;color:#F97316;font-weight:700}
 .lo-completed .lo-done-title{display:none}
-.lo-done-text{margin:0;max-width:520px;color:#9B94BE;font-size:clamp(13px,1.8vw,17px);font-weight:800;line-height:1.5}
-.lo-done-score{margin:0;color:#534AB7;font-size:15px;font-weight:900}
+.lo-done-text{margin:0;max-width:520px;color:#9B94BE;font-size:14px;font-weight:800;line-height:1.5}
+.lo-done-score{margin:0;color:#666;font-size:14px;font-weight:800}
 .lo-done-track{height:12px;width:min(420px,100%);margin:4px auto;border-radius:999px;background:#F4F2FD;border:1px solid #E4E1F8;overflow:hidden}
 .lo-done-fill{height:100%;width:0%;background:linear-gradient(90deg,#F97316,#7F77DD);transition:width .8s ease}
 @media(max-width:640px){
