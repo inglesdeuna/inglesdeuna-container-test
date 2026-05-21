@@ -252,8 +252,20 @@ ob_start();
 .vc-score-num.p{color:var(--vc-purple)}
 .vc-score-lbl{margin-top:5px;font-size:10px;font-weight:900;color:var(--vc-muted);text-transform:uppercase;letter-spacing:.08em}
 
-.vc-complete-page{display:none;max-width:860px;margin:0 auto}
+.vc-complete-page{display:none;max-width:940px;margin:0 auto;padding:14px;background:#F8F7FE;border-radius:18px}
 .vc-complete-page.active{display:block}
+
+.vc-complete-hero{text-align:center;margin-bottom:16px}
+.vc-complete-kicker{display:inline-flex;align-items:center;justify-content:center;padding:6px 14px;border-radius:999px;background:#FFF0E6;color:#F97316;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px}
+.vc-complete-hero h1{margin:0;font-family:'Fredoka One',sans-serif;font-size:clamp(30px,4.8vw,44px);color:#F97316;line-height:1.06;font-weight:400}
+.vc-complete-hero p{margin:8px 0 0;color:#9B94BE;font-size:14px;font-weight:700}
+
+.vc-complete-stage{width:min(860px,100%);margin:0 auto;background:#fff;border:1px solid #EDE9FA;border-radius:24px;box-shadow:0 8px 40px rgba(127,119,221,.13);padding:18px}
+.vc-complete-progress{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:12px;margin-bottom:14px}
+.vc-complete-progress-label{color:#7F77DD;font-size:13px;font-weight:800}
+.vc-complete-progress-track{height:7px;border-radius:99px;background:#EDE9FA;overflow:hidden}
+.vc-complete-progress-fill{height:100%;width:100%;border-radius:99px;background:linear-gradient(90deg,#F97316,#7F77DD)}
+.vc-complete-progress-badge{background:#7F77DD;color:#fff;border-radius:999px;padding:5px 12px;font-size:12px;font-weight:800;white-space:nowrap}
 
 .vc-completed-screen{display:none;text-align:center;padding:24px 12px}
 .vc-completed-screen.active{display:block}
@@ -469,7 +481,24 @@ body.presentation-mode .vc-video-only .vc-video {
                     <div class="vc-feedback" id="vc-feedback"></div>
                 </div>
 
-                <div id="vc-score-grid" class="vc-score-grid" style="margin:12px 16px 16px;">
+            </section>
+        </div>
+
+        <div id="vc-complete-page" class="vc-complete-page">
+            <div class="vc-complete-hero">
+                <div class="vc-complete-kicker">Activity</div>
+                <h1 id="vc-complete-hero-title"></h1>
+                <p>Watch the video and answer each question.</p>
+            </div>
+
+            <section class="vc-complete-stage">
+                <div class="vc-complete-progress">
+                    <div class="vc-complete-progress-label" id="vc-complete-progress-label"></div>
+                    <div class="vc-complete-progress-track"><div class="vc-complete-progress-fill" id="vc-complete-progress-fill"></div></div>
+                    <div class="vc-complete-progress-badge" id="vc-complete-progress-badge"></div>
+                </div>
+
+                <div id="vc-score-grid" class="vc-score-grid">
                     <div class="vc-score-card">
                         <div class="vc-score-num c" id="vc-score-correct">0</div>
                         <div class="vc-score-lbl">Correct</div>
@@ -483,11 +512,7 @@ body.presentation-mode .vc-video-only .vc-video {
                         <div class="vc-score-lbl">Score</div>
                     </div>
                 </div>
-            </section>
-        </div>
 
-        <div id="vc-complete-page" class="vc-complete-page">
-            <section class="vc-panel" style="max-width:860px;margin:0 auto;">
                 <div id="vc-complete" class="vc-completed-screen">
                     <div class="vc-completed-icon">✅</div>
                     <h2 class="vc-completed-title" id="vc-completed-title"></h2>
