@@ -507,25 +507,36 @@ body.presentation-mode .vc-video-only .vc-video {
             const checkBtn = document.getElementById('vc-check');
             const nextBtn = document.getElementById('vc-next');
             const restartBtn = document.getElementById('vc-restart');
+            const shellEl = document.getElementById('vc-quizShell');
             const completeEl = document.getElementById('vc-complete');
-            const activityEl = document.getElementById('vc-activity');
+            const completedTitleEl = document.getElementById('vc-completed-title');
+            const completedTextEl = document.getElementById('vc-completed-text');
+            const scoreTextEl = document.getElementById('vc-score-text');
+            const completedRestartBtn = document.getElementById('vc-completed-restart');
             const scoreCorrectEl = document.getElementById('vc-score-correct');
             const scoreWrongEl = document.getElementById('vc-score-wrong');
             const scorePctEl = document.getElementById('vc-score-pct');
-            const scoreStripEl = document.getElementById('vc-score-strip');
+            const scoreGridEl = document.getElementById('vc-score-grid');
 
             let index = 0;
             let selectedIndex = -1;
             let checked = false;
             let scores = data.map(function () { return 0; });
-            let reviewItems = data.map(function () { return {}; });
+
+            if (completedTitleEl) {
+                completedTitleEl.textContent = activityTitle || 'Video Comprehension';
+            }
+
+            if (completedTextEl) {
+                completedTextEl.textContent = "You've completed " + (activityTitle || 'Video Comprehension') + '. Great job practicing.';
+            }
 
             function getCurrent() {
                 return data[index] || { question: '', options: ['', '', ''], correct: 0, explanation: '' };
             }
 
             function updateScoreCards(show) {
-                if (show && scoreStripEl) scoreStripEl.style.display = '';
+                if (scoreGridEl) scoreGridEl.classList.toggle('visible', !!show);
 
                 var checkedCount = 0;
                 var correctCount = 0;
@@ -611,12 +622,6 @@ body.presentation-mode .vc-video-only .vc-video {
                     scores[index] = 0;
                     updateScoreCards(true);
                     AF.showFeedback(feedbackEl, false, correctAnswerText, false);
-                    reviewItems[index] = {
-                        question: current.question || ('Question ' + (index + 1)),
-                        yourAnswer: '(no answer)',
-                        correctAnswer: correctAnswerText,
-                        score: 0
-                    };
                     return;
                 }
 
@@ -627,32 +632,13 @@ body.presentation-mode .vc-video-only .vc-video {
                 scores[index] = isCorrect ? 1 : 0;
                 updateScoreCards(true);
                 AF.showFeedback(feedbackEl, isCorrect, correctAnswerText, false);
-
-                reviewItems[index] = {
-                    question: current.question || ('Question ' + (index + 1)),
-                    yourAnswer: (current.options && current.options[selectedIndex]) ? current.options[selectedIndex] : '(no answer)',
-                    correctAnswer: correctAnswerText,
-                    score: scores[index]
-                };
             }
 
             async function showCompletion() {
-                AF.showCompleted({
-                    target: completeEl,
-                    scores: scores,
-                    title: activityTitle || 'Video Comprehension',
-                    activityType: 'Video Comprehension',
-                    questionCount: data.length,
-                    onRetry: restartQuiz,
-                    onReview: function () {
-                        AF.showReview({
-                            target: completeEl,
-                            items: reviewItems,
-                            onRetry: restartQuiz
-                        });
-                    },
-                    hideActivity: activityEl
-                });
+                if (shellEl) shellEl.style.display = 'none';
+                if (completeEl) {
+                    completeEl.classList.add('active');
+                }
 
                 completeEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
 
@@ -660,6 +646,10 @@ body.presentation-mode .vc-video-only .vc-video {
                 const pct = score.percent;
                 const errors = score.wrong;
                 const total = score.total;
+
+                if (scoreTextEl) {
+                    scoreTextEl.textContent = score.correct + ' correct · ' + errors + ' wrong · ' + pct + '%';
+                }
 
                 if (RETURN_TO && ACTIVITY_ID) {
                     const joiner = RETURN_TO.indexOf('?') !== -1 ? '&' : '?';
@@ -682,11 +672,10 @@ body.presentation-mode .vc-video-only .vc-video {
                 selectedIndex = -1;
                 checked = false;
                 scores = data.map(function () { return 0; });
-                reviewItems = data.map(function () { return {}; });
 
-                if (scoreStripEl) scoreStripEl.style.display = 'none';
-                if (activityEl) activityEl.style.display = '';
-                if (completeEl) completeEl.innerHTML = '';
+                if (scoreGridEl) scoreGridEl.classList.remove('visible');
+                if (shellEl) shellEl.style.display = '';
+                if (completeEl) completeEl.classList.remove('active');
 
                 render();
             }
@@ -710,6 +699,10 @@ body.presentation-mode .vc-video-only .vc-video {
             });
 
             restartBtn.addEventListener('click', restartQuiz);
+
+            if (completedRestartBtn) {
+                completedRestartBtn.addEventListener('click', restartQuiz);
+            }
 
             render();
         })();
