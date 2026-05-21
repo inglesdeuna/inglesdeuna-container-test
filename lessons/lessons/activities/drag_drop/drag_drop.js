@@ -16,6 +16,11 @@ document.addEventListener('DOMContentLoaded', function () {
   var showBtn = document.getElementById('dd-show');
   var nextBtn = document.getElementById('dd-next');
   var feedbackEl = document.getElementById('dd-feedback');
+    var completedEl    = document.getElementById('dd-completed');
+    var scoreCorrectEl = document.getElementById('dd-score-correct');
+    var scoreWrongEl   = document.getElementById('dd-score-wrong');
+    var scorePctEl     = document.getElementById('dd-score-pct');
+    var scoreStripEl   = document.getElementById('dd-score-strip');
   var activityEl = document.getElementById('dd-activity');
   var completedEl = document.getElementById('dd-completed');
   var winAudio = new Audio('../../hangman/assets/win.mp3');
@@ -36,7 +41,20 @@ document.addEventListener('DOMContentLoaded', function () {
   var dragging = null;
   var slotContents = {};
   var scores = questions.map(function () { return 0; });
+    if (scoreStripEl) scoreStripEl.style.display = 'none';
   var reviewItems = questions.map(function () { return {}; });
+
+  function updateScoreCards(show) {
+    if (show && scoreStripEl) scoreStripEl.style.display = '';
+    var checked = 0, correct = 0;
+    for (var i = 0; i < scores.length; i++) {
+      if (i < index || (i === index && answered)) { checked++; if (scores[i] === 1) correct++; }
+    }
+    var pct = questions.length > 0 ? Math.round((correct / questions.length) * 100) : 0;
+    if (scoreCorrectEl) scoreCorrectEl.textContent = String(correct);
+    if (scoreWrongEl)   scoreWrongEl.textContent   = String(checked - correct);
+    if (scorePctEl)     scorePctEl.textContent     = pct + '%';
+  }
   var ttsAbortController = null;
   var currentAudioElement = null;
   var currentAudioUrl = '';
@@ -486,6 +504,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     var allRight = correct === slots.length && slots.length > 0;
     scores[index] = allRight ? 1 : 0;
+    updateScoreCards(true);
 
     reviewItems[index] = {
       question: q.tts_text || q.instruction || ('Question ' + (index + 1)),
