@@ -473,9 +473,8 @@ body.presentation-mode .vc-video-only .vc-video {
                     </div>
 
                     <div class="vc-controls">
-                        <button type="button" class="vc-btn vc-btn-check" id="vc-check">Check Answer</button>
+                        <button type="button" class="vc-btn vc-btn-check" id="vc-show">Show Answer</button>
                         <button type="button" class="vc-btn vc-btn-next" id="vc-next">Next</button>
-                        <button type="button" class="vc-btn vc-btn-restart" id="vc-restart">Restart</button>
                     </div>
 
                     <div class="vc-feedback" id="vc-feedback"></div>
@@ -537,9 +536,8 @@ body.presentation-mode .vc-video-only .vc-video {
             const questionEl = document.getElementById('vc-question');
             const optionsEl = document.getElementById('vc-options');
             const feedbackEl = document.getElementById('vc-feedback');
-            const checkBtn = document.getElementById('vc-check');
+            const showBtn = document.getElementById('vc-show');
             const nextBtn = document.getElementById('vc-next');
-            const restartBtn = document.getElementById('vc-restart');
             const activityEl = document.getElementById('vc-activity');
             const shellEl = document.getElementById('vc-quizShell');
             const completedPageEl = document.getElementById('vc-complete-page');
@@ -712,6 +710,26 @@ body.presentation-mode .vc-video-only .vc-video {
                 playSound(isCorrect ? correctSound : wrongSound);
             }
 
+            function showAnswer() {
+                if (checked) return;
+
+                const current = getCurrent();
+                const correctIndex = Number(current.correct || 0);
+                const optionNodes = Array.from(optionsEl.children);
+                const correctAnswerText = (current.options && current.options[correctIndex]) ? current.options[correctIndex] : '';
+
+                checked = true;
+                answeredCurrent = true;
+                AF.clearHighlights(optionsEl);
+                if (optionNodes[correctIndex]) {
+                    AF.highlightOption(optionNodes[correctIndex], 'correct');
+                }
+
+                scores[index] = -1;
+                updateScoreCards(true);
+                AF.showFeedback(feedbackEl, false, correctAnswerText, true);
+            }
+
             async function showCompletion() {
                 if (shellEl) shellEl.style.display = 'none';
                 if (completeEl) {
@@ -780,9 +798,11 @@ body.presentation-mode .vc-video-only .vc-video {
                 render();
             }
 
-            checkBtn.addEventListener('click', function () {
-                evaluateCurrent();
-            });
+            if (showBtn) {
+                showBtn.addEventListener('click', function () {
+                    showAnswer();
+                });
+            }
 
             nextBtn.addEventListener('click', async function () {
                 if (!answeredCurrent) {
@@ -801,8 +821,6 @@ body.presentation-mode .vc-video-only .vc-video {
                 index += 1;
                 render();
             });
-
-            restartBtn.addEventListener('click', restartQuiz);
 
             if (completedRestartBtn) {
                 completedRestartBtn.addEventListener('click', restartQuiz);
