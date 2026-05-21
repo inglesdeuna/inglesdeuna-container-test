@@ -193,7 +193,7 @@ if ($iframeUrl === '' && $activityId !== '') {
 ob_start();
 ?>
 
-<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@600;700;800;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Fredoka:wght@500;600;700&family=Nunito:wght@600;700;800;900&display=swap" rel="stylesheet">
 
 <style>
 :root{
@@ -515,6 +515,7 @@ body.presentation-mode .vc-video-only .vc-video {
             const checkBtn = document.getElementById('vc-check');
             const nextBtn = document.getElementById('vc-next');
             const restartBtn = document.getElementById('vc-restart');
+            const activityEl = document.getElementById('vc-activity');
             const shellEl = document.getElementById('vc-quizShell');
             const completedPageEl = document.getElementById('vc-complete-page');
             const completeEl = document.getElementById('vc-complete');
