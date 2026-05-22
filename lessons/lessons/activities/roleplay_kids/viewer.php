@@ -1461,6 +1461,19 @@ function RoleplayActivity() {
   const [isListeningFull, setIsListeningFull] = useState(false);
   const listenCancelRef = useRef(false);
 
+  const pickStudentVoice = useCallback(() => {
+    if (!window.speechSynthesis) return null;
+    const voices = window.speechSynthesis.getVoices() || [];
+    if (!voices.length) return null;
+
+    const preferredByName = /(female|woman|girl|child|aria|samantha|zoe|ava|emma|luna)/i;
+    let selected = voices.find(v => /en[-_ ]?us/i.test(v.lang) && preferredByName.test(`${v.name} ${v.voiceURI}`));
+    if (!selected) selected = voices.find(v => /^en/i.test(v.lang) && preferredByName.test(`${v.name} ${v.voiceURI}`));
+    if (!selected) selected = voices.find(v => /en[-_ ]?us/i.test(v.lang));
+    if (!selected) selected = voices.find(v => /^en/i.test(v.lang));
+    return selected || voices[0] || null;
+  }, []);
+
   const handleListenFull = useCallback(() => {
     if (!window.speechSynthesis) return;
 
@@ -1483,6 +1496,7 @@ function RoleplayActivity() {
     listenCancelRef.current = false;
     window.speechSynthesis.cancel();
     setIsListeningFull(true);
+    const studentVoice = pickStudentVoice();
 
     let i = 0;
     const speakNext = () => {
@@ -1493,15 +1507,16 @@ function RoleplayActivity() {
       const item = queue[i++];
       const u = new SpeechSynthesisUtterance(item.text);
       u.lang = "en-US";
-      u.rate = item.role === "teacher" ? 0.94 : 1.0;
-      u.pitch = item.role === "teacher" ? 0.92 : 1.05;
+      if (studentVoice) u.voice = studentVoice;
+      u.rate = 1.0;
+      u.pitch = 1.08;
       u.onend = speakNext;
       u.onerror = speakNext;
       window.speechSynthesis.speak(u);
     };
 
     speakNext();
-  }, [isListeningFull, turns]);
+  }, [isListeningFull, pickStudentVoice, turns]);
 
   useEffect(() => {
     return () => {
