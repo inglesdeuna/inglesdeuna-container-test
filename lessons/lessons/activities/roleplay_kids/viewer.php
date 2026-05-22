@@ -1179,8 +1179,8 @@ function PlayerView({ scene, turns, onComplete, onBack }) {
                           <img src={avatarSrc(teacherAvatar)} alt="Teacher avatar" style={{ width: 74, height: 74, borderRadius: "50%", objectFit: "contain", border: "1px solid #D9D5F2", background: "#fff", padding: 3, flexShrink: 0 }} />
                           <div style={{ fontSize: 14, fontWeight: 800, color: "#5A51C0" }}>{scene.agentName || "Teacher"}</div>
                         </div>
-                        <button onClick={() => speakAgentLine(turn.agent)} disabled={ttsState !== "idle"} style={{ background: ttsState !== "idle" ? "#C5C1ED" : "#7F77DD", color: "#fff", border: "none", borderRadius: 999, padding: "6px 14px", fontSize: 12, fontWeight: 800, cursor: ttsState !== "idle" ? "not-allowed" : "pointer" }}>
-                          {ttsState === "loading" ? "Loading..." : ttsState === "playing" ? "Playing..." : "Speaker"}
+                        <button onClick={() => speakAgentLine(turn.agent)} disabled={ttsState !== "idle"} style={{ background: ttsState !== "idle" ? "#C5C1ED" : "#7F77DD", color: "#fff", border: "none", borderRadius: 12, padding: "10px 14px", fontSize: 13, fontWeight: 800, cursor: ttsState !== "idle" ? "not-allowed" : "pointer", minWidth: 94 }}>
+                          {ttsState === "loading" ? "Loading..." : ttsState === "playing" ? "Playing..." : "Listen"}
                         </button>
                       </div>
                       <div style={{ background: "#fff", border: "1px solid #EDE9FA", borderRadius: 12, padding: "8px 12px", fontSize: 13, fontWeight: 700, color: "#2E2A45", lineHeight: 1.5 }}>
@@ -1216,43 +1216,50 @@ function PlayerView({ scene, turns, onComplete, onBack }) {
 
                       {isActive && (
                         <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 8 }}>
+                          {(() => {
+                            const currentTranscript = (recorder.finalText + recorder.interimText).trim();
+                            const currentScore = currentTranscript ? computeScore(currentTranscript, studentLine) : 0;
+                            const isCorrect = currentTranscript && currentScore >= 80;
+                            return (
+                              <>
                           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                             <button
-                              onClick={() => speakAgentLine(studentLine || turn.agent)}
-                              disabled={ttsState !== "idle"}
-                              style={{ background: ttsState !== "idle" ? "#C5C1ED" : "#7F77DD", color: "#fff", border: "none", borderRadius: 12, padding: "10px 14px", fontSize: 13, fontWeight: 800, cursor: ttsState !== "idle" ? "not-allowed" : "pointer" }}
+                              onClick={recorder.isRecording ? recorder.stop : recorder.start}
+                              style={{ background: recorder.isRecording ? "#EF4444" : "#7F77DD", color: "#fff", border: "none", borderRadius: 12, padding: "10px 14px", fontSize: 13, fontWeight: 800, cursor: "pointer", minWidth: 94 }}
                             >
-                              Speaker
+                              {recorder.isRecording ? "Stop" : "Record"}
                             </button>
                             <button
                               onClick={recorder.playRecording}
                               disabled={!recorder.recordedAudioUrl}
-                              style={{ background: recorder.recordedAudioUrl ? "#F97316" : "#FCDDBF", color: "#fff", border: "none", borderRadius: 12, padding: "10px 14px", fontSize: 13, fontWeight: 800, cursor: recorder.recordedAudioUrl ? "pointer" : "not-allowed" }}
+                              style={{ background: recorder.recordedAudioUrl ? "#F97316" : "#FCDDBF", color: "#fff", border: "none", borderRadius: 12, padding: "10px 14px", fontSize: 13, fontWeight: 800, cursor: recorder.recordedAudioUrl ? "pointer" : "not-allowed", minWidth: 94 }}
                             >
                               Listen
                             </button>
                           </div>
 
-                          <button
-                            onClick={recorder.isRecording ? recorder.stop : recorder.start}
-                            style={{ background: recorder.isRecording ? "#EF4444" : "#7F77DD", color: "#fff", border: "none", borderRadius: 12, padding: "11px 14px", fontSize: 13, fontWeight: 800, cursor: "pointer" }}
-                          >
-                            {recorder.isRecording ? "Stop recording" : "Record voice"}
-                          </button>
-
-                          <div style={{ fontSize: 12, fontWeight: 700, color: "#6A63B0", minHeight: 18 }}>
-                            {(recorder.finalText + recorder.interimText).trim()
-                              ? `Transcript: ${(recorder.finalText + recorder.interimText).trim()}`
+                          <div style={{ fontSize: 12, fontWeight: 800, color: currentTranscript ? (isCorrect ? "#166534" : "#B91C1C") : "#6A63B0", minHeight: 18 }}>
+                            {currentTranscript
+                              ? `${isCorrect ? "Correct" : "Incorrect"}: ${currentTranscript}`
                               : "Waiting for student recording..."}
                           </div>
 
+                          {currentTranscript && (
+                            <div style={{ fontSize: 11, fontWeight: 700, color: isCorrect ? "#166534" : "#B91C1C" }}>
+                              {isCorrect ? "Good repetition." : "Try again and repeat exactly the line."}
+                            </div>
+                          )}
+
                           <button
                             onClick={handleAdvanceCurrentTurn}
-                            disabled={(recorder.finalText + recorder.interimText).trim() === ""}
-                            style={{ background: (recorder.finalText + recorder.interimText).trim() ? "#F97316" : "#E5E1F8", color: (recorder.finalText + recorder.interimText).trim() ? "#fff" : "#AAA2D8", border: "none", borderRadius: 12, padding: "10px 14px", fontSize: 13, fontWeight: 800, cursor: (recorder.finalText + recorder.interimText).trim() ? "pointer" : "not-allowed" }}
+                            disabled={currentTranscript === ""}
+                            style={{ background: currentTranscript ? "#F97316" : "#E5E1F8", color: currentTranscript ? "#fff" : "#AAA2D8", border: "none", borderRadius: 12, padding: "10px 14px", fontSize: 13, fontWeight: 800, cursor: currentTranscript ? "pointer" : "not-allowed" }}
                           >
                             {currentTurn === safeTurns.length - 1 ? "Finish Roleplay" : "Save and Next Turn"}
                           </button>
+                              </>
+                            );
+                          })()}
                         </div>
                       )}
                     </div>
