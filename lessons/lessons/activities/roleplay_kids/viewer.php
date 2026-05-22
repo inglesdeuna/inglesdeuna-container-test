@@ -1085,8 +1085,8 @@ function PlayerView({ scene, turns, onComplete, onBack }) {
 
           <div style={{ background: "#fff", border: "1px solid #EDE9FA", borderRadius: 24, overflow: "hidden" }}>
 
-            <div style={{ padding: "14px 14px 10px", background: "#fff" }}>
-              <div style={{ height: 220, borderRadius: 18, border: "1.5px solid #C9B5EB", overflow: "hidden", background: "#F5F4FA", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <div style={{ padding: "14px 14px 10px", background: "#fff", display: "flex", justifyContent: "center" }}>
+              <div style={{ width: "100%", maxWidth: 460, aspectRatio: "1 / 1", borderRadius: 18, border: "1.5px solid #C9B5EB", overflow: "hidden", background: "#F5F4FA", display: "flex", alignItems: "center", justifyContent: "center" }}>
                 {scene.sceneImage
                   ? <img src={scene.sceneImage} alt="Scene" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                   : <div style={{ fontFamily: "'Fredoka', sans-serif", fontSize: 42, color: "#3F3A4F" }}>Imagen</div>
@@ -1109,9 +1109,9 @@ function PlayerView({ scene, turns, onComplete, onBack }) {
                     </div>
 
                     <div style={{ background: "#F5F3FF", border: "1px solid #EDE9FA", borderRadius: 14, padding: "10px 12px", marginBottom: 8 }}>
-                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 6 }}>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 6, minHeight: 44 }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                          <img src={avatarSrc(teacherAvatar)} alt="Teacher avatar" style={{ width: 56, height: 56, borderRadius: "50%", objectFit: "contain", border: "1px solid #D9D5F2", background: "#fff", padding: 3 }} />
+                          <img src={avatarSrc(teacherAvatar)} alt="Teacher avatar" style={{ width: 74, height: 74, borderRadius: "50%", objectFit: "contain", border: "1px solid #D9D5F2", background: "#fff", padding: 3, flexShrink: 0 }} />
                           <div style={{ fontSize: 14, fontWeight: 800, color: "#5A51C0" }}>{scene.agentName || "Teacher"}</div>
                         </div>
                         <button onClick={() => speakAgentLine(turn.agent)} disabled={ttsState !== "idle"} style={{ background: ttsState !== "idle" ? "#C5C1ED" : "#7F77DD", color: "#fff", border: "none", borderRadius: 999, padding: "6px 14px", fontSize: 12, fontWeight: 800, cursor: ttsState !== "idle" ? "not-allowed" : "pointer" }}>
@@ -1124,9 +1124,9 @@ function PlayerView({ scene, turns, onComplete, onBack }) {
                     </div>
 
                     <div style={{ background: "#FFF7ED", border: "1px solid #FCDDBF", borderRadius: 14, padding: "10px 12px" }}>
-                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 6 }}>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 6, minHeight: 44 }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                          <img src={avatarSrc(studentAvatar)} alt="Student avatar" style={{ width: 56, height: 56, borderRadius: "50%", objectFit: "contain", border: "1px solid #F3CC9C", background: "#fff", padding: 3 }} />
+                          <img src={avatarSrc(studentAvatar)} alt="Student avatar" style={{ width: 74, height: 74, borderRadius: "50%", objectFit: "contain", border: "1px solid #F3CC9C", background: "#fff", padding: 3, flexShrink: 0 }} />
                           <div style={{ fontSize: 13, fontWeight: 800, color: "#C2580A" }}>Repeat exactly this line</div>
                         </div>
                         <span style={{ fontSize: 10, color: "#9B8FCC", fontWeight: 800 }}>STUDENT</span>
