@@ -44,6 +44,9 @@ if (is_array($savedScene)) {
   if (!isset($savedScene['studentAvatarId']) || trim((string) $savedScene['studentAvatarId']) === '') {
     $savedScene['studentAvatarId'] = 'ANGIE';
   }
+  if (!isset($savedScene['teacherVoiceId']) || trim((string) $savedScene['teacherVoiceId']) === '') {
+    $savedScene['teacherVoiceId'] = 'nzFihrBIvB34imQBuxub';
+  }
 }
 
 if (is_array($savedTurns)) {
@@ -126,8 +129,14 @@ const DEFAULT_TURNS = [
 ];
 
 const DEFAULT_SCENE = {
-  title: "Kids Roleplay", icon: "🎭", desc: "Practice speaking English!", agentName: "Teacher", agentRole: "Teacher", studentRole: "Student", sceneImage: "", teacherAvatarId: "TEACHER", studentAvatarId: "ANGIE",
+  title: "Kids Roleplay", icon: "🎭", desc: "Practice speaking English!", agentName: "Teacher", agentRole: "Teacher", studentRole: "Student", sceneImage: "", teacherAvatarId: "TEACHER", studentAvatarId: "ANGIE", teacherVoiceId: "nzFihrBIvB34imQBuxub",
 };
+
+const RK_VOICES = [
+  { id: "nzFihrBIvB34imQBuxub", label: "Adult Male (Josh)" },
+  { id: "NoOVOzCQFLOvtsMoNcdT", label: "Adult Female (Lily)" },
+  { id: "Nggzl2QAXh3OijoXD116", label: "Child (Candy)" },
+];
 
 const RK_AVATARS = [
   { id: "TEACHER", label: "Teacher" },
@@ -724,6 +733,13 @@ function EditorView({ scene, turns, onSceneChange, onTurnsChange, onStart }) {
               </select>
             </div>
           </div>
+
+          <div style={{ marginTop: 10 }}>
+            <MiniLabel>Teacher voice</MiniLabel>
+            <select value={scene.teacherVoiceId || "nzFihrBIvB34imQBuxub"} onChange={e => onSceneChange({ ...scene, teacherVoiceId: e.target.value })} style={inputStyle}>
+              {RK_VOICES.map(v => <option key={v.id} value={v.id}>{v.label}</option>)}
+            </select>
+          </div>
         </Card>
 
         {/* Turn Cards */}
@@ -1011,13 +1027,17 @@ function PlayerView({ scene, turns, onComplete, onBack, onListenFull }) {
   const safeTurns = (turns && turns.length) ? turns : DEFAULT_TURNS;
   const [currentTurn, setCurrentTurn] = useState(0);
   const [results, setResults] = useState([]);
-  const [voiceId, setVoiceId] = useState("nzFihrBIvB34imQBuxub");
+  const [voiceId, setVoiceId] = useState(scene.teacherVoiceId || "nzFihrBIvB34imQBuxub");
   const studentVoiceId = "Nggzl2QAXh3OijoXD116";
   const [ttsState, setTtsState] = useState("idle"); // "idle" | "loading" | "playing"
   const recorder = useRecorder();
   const currentAudioRef = useRef(null);
   const teacherAvatar = scene.teacherAvatarId || "TEACHER";
   const studentAvatar = scene.studentAvatarId || "ANGIE";
+
+  useEffect(() => {
+    setVoiceId(scene.teacherVoiceId || "nzFihrBIvB34imQBuxub");
+  }, [scene.teacherVoiceId]);
 
   const speakWithVoice = useCallback(async (text, selectedVoiceId, opts = {}) => {
     const silent = !!opts.silent;
@@ -1487,11 +1507,12 @@ function RoleplayActivity() {
   const [results, setResults] = useState([]);
   const [isListeningFull, setIsListeningFull] = useState(false);
   const listenCancelRef = useRef(false);
-  const replayVoiceCandidates = ["Nggzl2QAXh3OijoXD116", "NoOVOzCQFLOvtsMoNcdT", "nzFihrBIvB34imQBuxub"];
+  const replayStudentVoiceCandidates = ["Nggzl2QAXh3OijoXD116", "NoOVOzCQFLOvtsMoNcdT", "nzFihrBIvB34imQBuxub"];
 
-  const playReplayLine = useCallback(async (text) => {
+  const playReplayLine = useCallback(async (text, voiceCandidates) => {
     if (!text) return;
-    for (const voiceId of replayVoiceCandidates) {
+    const candidateList = Array.isArray(voiceCandidates) && voiceCandidates.length ? voiceCandidates : ["nzFihrBIvB34imQBuxub"];
+    for (const voiceId of candidateList) {
       try {
         const fd = new FormData();
         fd.append("text", text);
@@ -1564,7 +1585,11 @@ function RoleplayActivity() {
       }
       const item = queue[i++];
       try {
-        await playReplayLine(item.text);
+        const teacherVoice = scene.teacherVoiceId || "nzFihrBIvB34imQBuxub";
+        const voiceCandidates = item.role === "teacher"
+          ? [teacherVoice, "NoOVOzCQFLOvtsMoNcdT", "Nggzl2QAXh3OijoXD116", "nzFihrBIvB34imQBuxub"]
+          : replayStudentVoiceCandidates;
+        await playReplayLine(item.text, voiceCandidates);
       } catch (e) {
         console.warn("Roleplay Kids full replay failed:", e && e.message ? e.message : e);
       }
@@ -1572,7 +1597,7 @@ function RoleplayActivity() {
     };
 
     speakNext();
-  }, [isListeningFull, playReplayLine, turns]);
+  }, [isListeningFull, playReplayLine, replayStudentVoiceCandidates, scene.teacherVoiceId, turns]);
 
   useEffect(() => {
     return () => {
