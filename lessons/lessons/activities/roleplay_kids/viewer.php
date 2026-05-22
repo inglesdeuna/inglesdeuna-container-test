@@ -785,14 +785,14 @@ function EditorView({ scene, turns, onSceneChange, onTurnsChange, onStart }) {
 
           <div style={{ marginTop: 10 }}>
             <MiniLabel>Teacher voice</MiniLabel>
-            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-              <select value={scene.teacherVoiceId || "nzFihrBIvB34imQBuxub"} onChange={e => onSceneChange({ ...scene, teacherVoiceId: e.target.value })} style={{ ...inputStyle, margin: 0 }}>
+            <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+              <select value={scene.teacherVoiceId || "nzFihrBIvB34imQBuxub"} onChange={e => onSceneChange({ ...scene, teacherVoiceId: e.target.value })} style={{ ...inputStyle, margin: 0, flex: "1 1 260px", width: "auto", minWidth: 0 }}>
                 {RK_VOICES.map(v => <option key={v.id} value={v.id}>{v.label}</option>)}
               </select>
               <button
                 onClick={handlePreviewTeacherVoice}
                 disabled={ttsPreviewState !== "idle"}
-                style={{ background: ttsPreviewState !== "idle" ? "#C5C1ED" : C.purple, color: C.white, border: "none", borderRadius: 10, padding: "10px 14px", fontSize: 12, fontWeight: 800, cursor: ttsPreviewState !== "idle" ? "not-allowed" : "pointer", whiteSpace: "nowrap" }}
+                style={{ background: ttsPreviewState !== "idle" ? "#C5C1ED" : C.purple, color: C.white, border: "none", borderRadius: 10, padding: "10px 14px", fontSize: 12, fontWeight: 800, cursor: ttsPreviewState !== "idle" ? "not-allowed" : "pointer", whiteSpace: "nowrap", flexShrink: 0 }}
               >
                 {ttsPreviewState === "loading" ? "Loading..." : ttsPreviewState === "playing" ? "Playing..." : "Listen"}
               </button>
