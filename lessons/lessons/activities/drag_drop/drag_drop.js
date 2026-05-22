@@ -435,6 +435,28 @@ document.addEventListener('DOMContentLoaded', function () {
     wordsEl.appendChild(chip);
   }
 
+  function decodeHtmlEntities(value) {
+    var text = document.createElement('textarea');
+    text.innerHTML = String(value == null ? '' : value);
+    return text.value;
+  }
+
+  function normalizeForCompare(value) {
+    var s = decodeHtmlEntities(value);
+    s = s.replace(/\u00A0/g, ' ');
+    s = s.replace(/[\u2018\u2019\u02BC\u2032]/g, "'");
+    s = s.replace(/[\u201C\u201D\u2033]/g, '"');
+    s = s.replace(/[\u2010-\u2015]/g, '-');
+
+    if (typeof s.normalize === 'function') {
+      s = s.normalize('NFKC');
+    }
+
+    s = s.replace(/\s+/g, ' ').trim().toLowerCase();
+    s = s.replace(/^[\s"'“”‘’.,;:!?()\[\]{}]+|[\s"'“”‘’.,;:!?()\[\]{}]+$/g, '');
+    return s;
+  }
+
   function bindDropZone(drop, slotIndex) {
     drop.addEventListener('dragover', function (e) {
       e.preventDefault();
@@ -489,8 +511,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
     if (instructionEl) {
       instructionEl.querySelectorAll('.dd-inline-drop').forEach(function (drop, i) {
-        var expected = slots[i] ? String(slots[i].answer || '').trim().toLowerCase() : '';
-        var given = slotContents[i] !== undefined ? String(slotContents[i]).trim().toLowerCase() : '';
+        var expected = slots[i] ? normalizeForCompare(slots[i].answer || '') : '';
+        var given = slotContents[i] !== undefined ? normalizeForCompare(slotContents[i]) : '';
         var isRight = given !== '' && given === expected;
 
         if (isRight) correct++;
