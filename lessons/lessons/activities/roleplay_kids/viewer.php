@@ -41,7 +41,7 @@ ob_start();
 
 /* ── Shell & layout ─────────────────────────────────────── */
 .rk-shell{width:100%;flex:1;min-height:0;overflow-y:auto;padding:clamp(14px,2.5vw,34px);display:flex;align-items:flex-start;justify-content:center;background:#fff;}
-.rk-app{width:min(680px,100%);display:grid;grid-template-columns:minmax(0,1fr);gap:clamp(10px,2vw,18px);}
+.rk-app{width:min(1120px,100%);display:grid;grid-template-columns:minmax(0,1fr);gap:clamp(10px,2vw,18px);}
 
 /* ── Hero ───────────────────────────────────────────────── */
 .rk-hero{text-align:center;}
@@ -127,33 +127,33 @@ ob_start();
 .rk-textarea:focus{border-color:#F97316;box-shadow:0 0 0 3px rgba(249,115,22,.12);}
 
 /* ── Chat play layout (single-page conversation) ───────────── */
-.rk-chat-wrap{display:flex;flex-direction:column;min-height:72vh;}
-.rk-chat-scroll{flex:1;overflow-y:auto;padding:14px 18px 8px;background:#F8F7FD;}
-.rk-chat-turn{background:#fff;border:1px solid #EDE9FA;border-radius:16px;padding:12px;margin-bottom:12px;box-shadow:0 2px 10px rgba(127,119,221,.08);}
+.rk-chat-wrap{display:flex;flex-direction:column;min-height:82vh;}
+.rk-chat-scroll{flex:1;overflow-y:auto;padding:18px 20px 10px;background:#F8F7FD;}
+.rk-chat-turn{background:#fff;border:1px solid #EDE9FA;border-radius:16px;padding:14px 16px;margin-bottom:14px;box-shadow:0 2px 10px rgba(127,119,221,.08);}
 .rk-chat-teacher-row{display:flex;align-items:flex-start;gap:10px;}
 .rk-chat-student-row{display:flex;align-items:flex-start;justify-content:flex-end;gap:10px;margin-top:10px;}
-.rk-bubble-teacher{max-width:min(78%,540px);background:#EEEDFE;border:1px solid #DAD5FB;border-radius:14px 14px 14px 6px;padding:10px 12px;color:#3E3792;font-weight:800;line-height:1.5;}
-.rk-bubble-student{max-width:min(78%,540px);background:#FFF0E6;border:1px solid #FCDDBF;border-radius:14px 14px 6px 14px;padding:10px 12px;color:#C2580A;font-weight:800;line-height:1.5;}
-.rk-bubble-placeholder{max-width:min(78%,540px);border:2px dashed #DDD8F8;background:#FBFAFF;color:#9B94BE;font-style:italic;border-radius:14px 14px 6px 14px;padding:10px 12px;font-weight:800;}
+.rk-bubble-teacher{max-width:min(78%,680px);background:#EEEDFE;border:1px solid #DAD5FB;border-radius:14px 14px 14px 6px;padding:12px 14px;color:#3E3792;font-weight:800;line-height:1.5;font-size:17px;}
+.rk-bubble-student{max-width:min(78%,680px);background:#FFF0E6;border:1px solid #FCDDBF;border-radius:14px 14px 6px 14px;padding:12px 14px;color:#C2580A;font-weight:800;line-height:1.5;font-size:17px;}
+.rk-bubble-placeholder{max-width:min(78%,680px);border:2px dashed #DDD8F8;background:#FBFAFF;color:#9B94BE;font-style:italic;border-radius:14px 14px 6px 14px;padding:12px 14px;font-weight:800;font-size:17px;}
 .rk-turn-chip{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:#EEF9F0;border:1px solid #BEE7C3;color:#166534;font-size:11px;font-weight:900;white-space:nowrap;}
 .rk-turn-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;gap:8px;flex-wrap:wrap;}
-.rk-turn-label{font-size:12px;font-weight:900;color:#6B64B3;}
+.rk-turn-label{font-size:14px;font-weight:900;color:#6B64B3;}
 .rk-progress-dots{display:flex;align-items:center;gap:6px;}
 .rk-dot{width:10px;height:10px;border-radius:50%;background:#E2DEFA;border:1px solid #D4CFF5;}
 .rk-dot.is-done{background:#7F77DD;border-color:#7F77DD;}
 .rk-dot.is-current{background:#F97316;border-color:#F97316;animation:rk-bounce .8s ease-in-out infinite;}
-.rk-chat-hint{margin-top:6px;font-size:12px;color:#7F77DD;font-weight:800;}
+.rk-chat-hint{margin-top:6px;font-size:13px;color:#7F77DD;font-weight:800;}
 .rk-input-sticky{position:sticky;bottom:0;z-index:5;background:#fff;border-top:1px solid #EDE9FA;padding:12px 18px;box-shadow:0 -8px 20px rgba(127,119,221,.08);}
 .rk-input-card{background:#F7F6FD;border:1px solid #DDD8F8;border-radius:14px;padding:10px;}
 .rk-input-row{display:flex;align-items:stretch;gap:8px;}
-.rk-input-text{flex:1;min-height:58px;border:1.5px solid #D9D4F8;background:#fff;border-radius:12px;padding:10px 12px;font-family:'Nunito',sans-serif;font-size:16px;font-weight:800;color:#271B5D;resize:none;outline:none;}
+.rk-input-text{flex:1;min-height:62px;border:1.5px solid #D9D4F8;background:#fff;border-radius:12px;padding:12px 14px;font-family:'Nunito',sans-serif;font-size:17px;font-weight:800;color:#271B5D;resize:none;outline:none;}
 .rk-send-btn{width:44px;min-width:44px;border-radius:12px;border:1.5px solid #D9D4F8;background:#fff;color:#7F77DD;font-size:20px;font-weight:900;cursor:pointer;}
 .rk-send-btn:hover:not(:disabled){background:#EEEDFE;}
 .rk-input-actions{display:flex;align-items:center;justify-content:center;gap:10px;margin-top:8px;flex-wrap:wrap;}
 .rk-input-divider{font-size:12px;font-weight:900;color:#9B94BE;}
 .rk-mic-inline{padding:10px 18px;border-radius:12px;border:1.5px solid #EDE9FA;background:#fff;color:#271B5D;font-size:14px;font-weight:900;cursor:pointer;}
 .rk-mic-inline.is-recording{border-color:#E24B4A;background:#FEF2F2;color:#991B1B;animation:rk-pulse 1s ease-in-out infinite;}
-.rk-top-score{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:999px;background:#F0FDF4;border:1px solid #BEE7C3;color:#166534;font-size:12px;font-weight:900;}
+.rk-top-score{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:999px;background:#F0FDF4;border:1px solid #BEE7C3;color:#166534;font-size:13px;font-weight:900;}
 
 /* ── Bottom bar ─────────────────────────────────────────── */
 .rk-bottombar{display:flex;justify-content:space-between;align-items:center;padding:12px 18px;margin-top:14px;border-top:1px solid #F0EEF8;}
@@ -211,7 +211,19 @@ body.embedded-mode .rk-shell,body.fullscreen-embedded .rk-shell,body.presentatio
   padding:8px 12px!important;flex-direction:column!important;align-items:center!important;overflow-y:auto!important;
 }
 body.embedded-mode .rk-app,body.fullscreen-embedded .rk-app,body.presentation-mode .rk-app{
-  width:min(680px,100%)!important;margin:0 auto!important;
+  width:min(1180px,98vw)!important;margin:0 auto!important;
+}
+body.embedded-mode .rk-chat-wrap,body.fullscreen-embedded .rk-chat-wrap,body.presentation-mode .rk-chat-wrap{
+  min-height:calc(100vh - 24px)!important;
+}
+body.embedded-mode .rk-topbar,body.fullscreen-embedded .rk-topbar,body.presentation-mode .rk-topbar{
+  padding:14px 20px!important;
+}
+body.embedded-mode .rk-scene-title,body.fullscreen-embedded .rk-scene-title,body.presentation-mode .rk-scene-title{
+  font-size:20px!important;
+}
+body.embedded-mode .rk-scene-bar-left,body.fullscreen-embedded .rk-scene-bar-left,body.presentation-mode .rk-scene-bar-left{
+  font-size:15px!important;
 }
 </style>
 
@@ -754,7 +766,7 @@ function PlayerView({ scene: sc, turns, activityId }) {
           <p className="rk-subtitle">Choose your character to get started!</p>
           <div className="rk-kicker-badge">
             <span style={{width:8,height:8,borderRadius:"50%",background:"linear-gradient(135deg,#F97316,#7F77DD)",display:"inline-block",flexShrink:0}}></span>
-            {(scene.turns||[]).length} turns
+            {total} turns
           </div>
         </div>
         <div className="rk-board rk-board-padded">
