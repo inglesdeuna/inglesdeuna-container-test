@@ -1007,7 +1007,7 @@ function FeedbackCard({ data, transcript, turnIndex, isLast, onNext, onFinish })
 }
 
 // ── PLAYER VIEW ───────────────────────────────────────────────
-function PlayerView({ scene, turns, onComplete, onBack }) {
+function PlayerView({ scene, turns, onComplete, onBack, onListenFull }) {
   const safeTurns = (turns && turns.length) ? turns : DEFAULT_TURNS;
   const [currentTurn, setCurrentTurn] = useState(0);
   const [results, setResults] = useState([]);
@@ -1260,13 +1260,31 @@ function PlayerView({ scene, turns, onComplete, onBack }) {
                             </div>
                           )}
 
-                          <button
-                            onClick={handleAdvanceCurrentTurn}
-                            disabled={currentTranscript === ""}
-                            style={{ background: currentTranscript ? "#F97316" : "#E5E1F8", color: currentTranscript ? "#fff" : "#AAA2D8", border: "none", borderRadius: 12, padding: "10px 14px", fontSize: 13, fontWeight: 800, cursor: currentTranscript ? "pointer" : "not-allowed" }}
-                          >
-                            {currentTurn === safeTurns.length - 1 ? "Finish Roleplay" : "Save and Next Turn"}
-                          </button>
+                          {currentTurn === safeTurns.length - 1 ? (
+                            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                              <button
+                                onClick={onListenFull}
+                                style={{ background: C.purple, color: "#fff", border: "none", borderRadius: 12, padding: "10px 14px", fontSize: 13, fontWeight: 800, cursor: "pointer", minWidth: 94 }}
+                              >
+                                Listen full roleplay
+                              </button>
+                              <button
+                                onClick={handleAdvanceCurrentTurn}
+                                disabled={currentTranscript === ""}
+                                style={{ background: currentTranscript ? "#F97316" : "#E5E1F8", color: currentTranscript ? "#fff" : "#AAA2D8", border: "none", borderRadius: 12, padding: "10px 14px", fontSize: 13, fontWeight: 800, cursor: currentTranscript ? "pointer" : "not-allowed", minWidth: 94 }}
+                              >
+                                Next
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              onClick={handleAdvanceCurrentTurn}
+                              disabled={currentTranscript === ""}
+                              style={{ background: currentTranscript ? "#F97316" : "#E5E1F8", color: currentTranscript ? "#fff" : "#AAA2D8", border: "none", borderRadius: 12, padding: "10px 14px", fontSize: 13, fontWeight: 800, cursor: currentTranscript ? "pointer" : "not-allowed" }}
+                            >
+                              Save and Next Turn
+                            </button>
+                          )}
                               </>
                             );
                           })()}
@@ -1290,7 +1308,7 @@ function PlayerView({ scene, turns, onComplete, onBack }) {
 }
 
 // ── COMPLETION VIEW ───────────────────────────────────────────
-function CompletionView({ scene, turns, results, onReview, onRetry, onListenFull, isListeningFull }) {
+function CompletionView({ scene, turns, results, onReview, onRetry }) {
   const total = results.reduce((s, r) => s + r.feedback.total, 0);
   const avg = k => Math.round(results.reduce((s, r) => s + r.feedback[k], 0) / results.length);
 
@@ -1324,7 +1342,6 @@ function CompletionView({ scene, turns, results, onReview, onRetry, onListenFull
 
           {/* Buttons */}
           <div style={{ display: "flex", justifyContent: "center", gap: 10, marginTop: 14 }}>
-            <button onClick={onListenFull} style={{ background: C.purple, color: C.white, border: "none", borderRadius: 14, padding: "11px 22px", fontSize: 13, fontWeight: 800, fontFamily: "'Nunito',sans-serif", cursor: "pointer" }}>{isListeningFull ? "Stop listen" : "Listen full roleplay"}</button>
             <button onClick={onReview} style={{ background: "#fff", border: `1.5px solid ${C.cardBorder}`, color: C.purple, borderRadius: 14, padding: "11px 22px", fontSize: 13, fontWeight: 800, fontFamily: "'Nunito',sans-serif", cursor: "pointer" }}>See review</button>
             <button onClick={onRetry} style={{ background: C.white, border: `1.5px solid ${C.cardBorder}`, color: C.purple, borderRadius: 14, padding: "11px 22px", fontSize: 13, fontWeight: 800, fontFamily: "'Nunito',sans-serif", cursor: "pointer" }}>Try again</button>
           </div>
@@ -1554,13 +1571,12 @@ function RoleplayActivity() {
           scene={scene} turns={turns}
           onComplete={r => { setResults(r); setView("completion"); }}
           onBack={allowEditor ? () => setView("editor") : null}
+          onListenFull={handleListenFull}
         />
       )}
       {view === "completion" && (
         <CompletionView
           scene={scene} turns={turns} results={results}
-          onListenFull={handleListenFull}
-          isListeningFull={isListeningFull}
           onReview={() => setView("replay")}
           onRetry={() => setView("player")}
         />
