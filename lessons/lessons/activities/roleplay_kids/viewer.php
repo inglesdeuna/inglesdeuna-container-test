@@ -589,6 +589,8 @@ function EditorView({ scene, turns, onSceneChange, onTurnsChange, onStart }) {
   const [saveMsg, setSaveMsg] = useState("");
   const [showTemplates, setShowTemplates] = useState(false);
   const [activeTemplate, setActiveTemplate] = useState(null);
+  const [ttsPreviewState, setTtsPreviewState] = useState("idle");
+  const previewAudioRef = useRef(null);
 
   const addTurn = () => onTurnsChange([...turns, { agent: "", hint: "", ideal: "", criteria: "" }]);
   const deleteTurn = i => {
@@ -619,6 +621,53 @@ function EditorView({ scene, turns, onSceneChange, onTurnsChange, onStart }) {
     setSaveMsg(res.ok ? "✓ Guardado" : "✗ Error al guardar");
     setTimeout(() => setSaveMsg(""), 3000);
   };
+
+  const handlePreviewTeacherVoice = useCallback(async () => {
+    const previewText = (turns.find(t => String(t.agent || "").trim() !== "")?.agent || "Hello! Let's practice English together.").trim();
+    if (!previewText) return;
+    if (previewAudioRef.current) {
+      previewAudioRef.current.pause();
+      previewAudioRef.current = null;
+    }
+
+    setTtsPreviewState("loading");
+    try {
+      const fd = new FormData();
+      fd.append("text", previewText);
+      fd.append("voice_id", scene.teacherVoiceId || "nzFihrBIvB34imQBuxub");
+      const res = await fetch("tts.php", { method: "POST", body: fd, credentials: "same-origin" });
+      if (!res.ok) throw new Error("TTS error " + res.status);
+
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const audio = new Audio(url);
+      previewAudioRef.current = audio;
+      setTtsPreviewState("playing");
+      audio.onended = () => {
+        URL.revokeObjectURL(url);
+        setTtsPreviewState("idle");
+        previewAudioRef.current = null;
+      };
+      audio.onerror = () => {
+        URL.revokeObjectURL(url);
+        setTtsPreviewState("idle");
+        previewAudioRef.current = null;
+      };
+      await audio.play();
+    } catch (e) {
+      setTtsPreviewState("idle");
+      alert("Could not play teacher voice preview.");
+    }
+  }, [scene.teacherVoiceId, turns]);
+
+  useEffect(() => {
+    return () => {
+      if (previewAudioRef.current) {
+        previewAudioRef.current.pause();
+        previewAudioRef.current = null;
+      }
+    };
+  }, []);
 
   const arrowBtnStyle = disabled => ({
     background: "none", border: `1.5px solid ${disabled ? C.purpleLight : C.purpleMid}`,
@@ -736,9 +785,18 @@ function EditorView({ scene, turns, onSceneChange, onTurnsChange, onStart }) {
 
           <div style={{ marginTop: 10 }}>
             <MiniLabel>Teacher voice</MiniLabel>
-            <select value={scene.teacherVoiceId || "nzFihrBIvB34imQBuxub"} onChange={e => onSceneChange({ ...scene, teacherVoiceId: e.target.value })} style={inputStyle}>
-              {RK_VOICES.map(v => <option key={v.id} value={v.id}>{v.label}</option>)}
-            </select>
+            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <select value={scene.teacherVoiceId || "nzFihrBIvB34imQBuxub"} onChange={e => onSceneChange({ ...scene, teacherVoiceId: e.target.value })} style={{ ...inputStyle, margin: 0 }}>
+                {RK_VOICES.map(v => <option key={v.id} value={v.id}>{v.label}</option>)}
+              </select>
+              <button
+                onClick={handlePreviewTeacherVoice}
+                disabled={ttsPreviewState !== "idle"}
+                style={{ background: ttsPreviewState !== "idle" ? "#C5C1ED" : C.purple, color: C.white, border: "none", borderRadius: 10, padding: "10px 14px", fontSize: 12, fontWeight: 800, cursor: ttsPreviewState !== "idle" ? "not-allowed" : "pointer", whiteSpace: "nowrap" }}
+              >
+                {ttsPreviewState === "loading" ? "Loading..." : ttsPreviewState === "playing" ? "Playing..." : "Listen"}
+              </button>
+            </div>
           </div>
         </Card>
 
