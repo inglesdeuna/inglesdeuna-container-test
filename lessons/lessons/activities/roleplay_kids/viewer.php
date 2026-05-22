@@ -31,7 +31,7 @@ ob_start();
 <style>
 /* ── Reset ──────────────────────────────────────────────── */
 #roleplay-kids-root *{box-sizing:border-box;margin:0;padding:0;}
-#roleplay-kids-root{font-family:'Nunito','Segoe UI',system-ui,sans-serif;flex:1;min-height:0;overflow-y:auto;background:#fff;}
+#roleplay-kids-root{font-family:'Nunito','Segoe UI',system-ui,sans-serif;font-size:16px;line-height:1.4;flex:1;min-height:0;overflow-y:auto;background:#fff;}
 
 /* ── Keyframes ──────────────────────────────────────────── */
 @keyframes rk-spin   {to{transform:rotate(360deg)}}
@@ -41,7 +41,7 @@ ob_start();
 
 /* ── Shell & layout ─────────────────────────────────────── */
 .rk-shell{width:100%;flex:1;min-height:0;overflow-y:auto;padding:clamp(14px,2.5vw,34px);display:flex;align-items:flex-start;justify-content:center;background:#fff;}
-.rk-app{width:min(1120px,100%);display:grid;grid-template-columns:minmax(0,1fr);gap:clamp(10px,2vw,18px);}
+.rk-app{width:min(1280px,100%);display:grid;grid-template-columns:minmax(0,1fr);gap:clamp(10px,2vw,18px);}
 
 /* ── Hero ───────────────────────────────────────────────── */
 .rk-hero{text-align:center;}
@@ -210,8 +210,11 @@ body.embedded-mode .rk-shell,body.fullscreen-embedded .rk-shell,body.presentatio
   position:absolute!important;inset:0!important;max-width:none!important;margin:0!important;
   padding:8px 12px!important;flex-direction:column!important;align-items:center!important;overflow-y:auto!important;
 }
+body.embedded-mode #roleplay-kids-root,body.fullscreen-embedded #roleplay-kids-root,body.presentation-mode #roleplay-kids-root{
+  font-size:18px!important;
+}
 body.embedded-mode .rk-app,body.fullscreen-embedded .rk-app,body.presentation-mode .rk-app{
-  width:min(1180px,98vw)!important;margin:0 auto!important;
+  width:min(1360px,100vw)!important;margin:0 auto!important;
 }
 body.embedded-mode .rk-chat-wrap,body.fullscreen-embedded .rk-chat-wrap,body.presentation-mode .rk-chat-wrap{
   min-height:calc(100vh - 24px)!important;
