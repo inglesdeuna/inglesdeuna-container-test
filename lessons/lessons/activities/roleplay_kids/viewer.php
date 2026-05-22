@@ -1180,7 +1180,7 @@ function PlayerView({ scene, turns, onComplete, onBack }) {
                           <div style={{ fontSize: 14, fontWeight: 800, color: "#5A51C0" }}>{scene.agentName || "Teacher"}</div>
                         </div>
                         <button onClick={() => speakAgentLine(turn.agent)} disabled={ttsState !== "idle"} style={{ background: ttsState !== "idle" ? "#C5C1ED" : "#7F77DD", color: "#fff", border: "none", borderRadius: 999, padding: "6px 14px", fontSize: 12, fontWeight: 800, cursor: ttsState !== "idle" ? "not-allowed" : "pointer" }}>
-                          {ttsState === "loading" ? "Loading..." : ttsState === "playing" ? "Playing..." : "Listen"}
+                          {ttsState === "loading" ? "Loading..." : ttsState === "playing" ? "Playing..." : "Speaker"}
                         </button>
                       </div>
                       <div style={{ background: "#fff", border: "1px solid #EDE9FA", borderRadius: 12, padding: "8px 12px", fontSize: 13, fontWeight: 700, color: "#2E2A45", lineHeight: 1.5 }}>
@@ -1199,6 +1199,14 @@ function PlayerView({ scene, turns, onComplete, onBack }) {
                       <div style={{ background: "#fff", border: "1px solid #FCDDBF", borderRadius: 12, padding: "8px 12px", fontSize: 13, fontWeight: 700, color: "#8C4A0E", lineHeight: 1.5 }}>
                         {studentLine || "(No student line configured)"}
                       </div>
+                      {turnResult && turnResult.feedback && turnResult.feedback.corrected && (
+                        <div style={{ marginTop: 6, background: "#FFF0E6", border: "1px solid #FCDDBF", borderRadius: 10, padding: "8px 10px" }}>
+                          <div style={{ fontSize: 10, fontWeight: 800, color: "#C2580A", textTransform: "uppercase", letterSpacing: ".05em", marginBottom: 2 }}>Correction</div>
+                          <div style={{ fontSize: 12, fontWeight: 700, color: "#9A3412", lineHeight: 1.5 }}>
+                            {turnResult.feedback.corrected}
+                          </div>
+                        </div>
+                      )}
 
                       {turnResult && (
                         <div style={{ marginTop: 8, fontSize: 12, fontWeight: 700, color: "#534AB7" }}>
@@ -1208,11 +1216,28 @@ function PlayerView({ scene, turns, onComplete, onBack }) {
 
                       {isActive && (
                         <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 8 }}>
+                          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                            <button
+                              onClick={() => speakAgentLine(studentLine || turn.agent)}
+                              disabled={ttsState !== "idle"}
+                              style={{ background: ttsState !== "idle" ? "#C5C1ED" : "#7F77DD", color: "#fff", border: "none", borderRadius: 12, padding: "10px 14px", fontSize: 13, fontWeight: 800, cursor: ttsState !== "idle" ? "not-allowed" : "pointer" }}
+                            >
+                              Speaker
+                            </button>
+                            <button
+                              onClick={recorder.playRecording}
+                              disabled={!recorder.recordedAudioUrl}
+                              style={{ background: recorder.recordedAudioUrl ? "#F97316" : "#FCDDBF", color: "#fff", border: "none", borderRadius: 12, padding: "10px 14px", fontSize: 13, fontWeight: 800, cursor: recorder.recordedAudioUrl ? "pointer" : "not-allowed" }}
+                            >
+                              Listen
+                            </button>
+                          </div>
+
                           <button
                             onClick={recorder.isRecording ? recorder.stop : recorder.start}
                             style={{ background: recorder.isRecording ? "#EF4444" : "#7F77DD", color: "#fff", border: "none", borderRadius: 12, padding: "11px 14px", fontSize: 13, fontWeight: 800, cursor: "pointer" }}
                           >
-                            {recorder.isRecording ? "Stop recording" : "Tap to speak your response"}
+                            {recorder.isRecording ? "Stop recording" : "Record voice"}
                           </button>
 
                           <div style={{ fontSize: 12, fontWeight: 700, color: "#6A63B0", minHeight: 18 }}>
