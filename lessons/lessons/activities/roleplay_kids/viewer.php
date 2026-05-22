@@ -155,6 +155,60 @@ ob_start();
 .rk-mic-inline.is-recording{border-color:#E24B4A;background:#FEF2F2;color:#991B1B;animation:rk-pulse 1s ease-in-out infinite;}
 .rk-top-score{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:999px;background:#F0FDF4;border:1px solid #BEE7C3;color:#166534;font-size:13px;font-weight:900;}
 
+/* ── Mockup-accurate player layout ─────────────────────────── */
+.rk-mock-header{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid #E6E2F8;background:#fff;}
+.rk-mock-back{width:40px;height:40px;border-radius:999px;border:2px solid #DAD5FB;background:#F7F6FF;color:#7F77DD;font-size:24px;line-height:1;display:flex;align-items:center;justify-content:center;cursor:pointer;}
+.rk-mock-title{text-align:center;flex:1;}
+.rk-mock-kicker{display:block;font-size:12px;font-weight:900;letter-spacing:.08em;color:#9B94BE;line-height:1;text-transform:uppercase;}
+.rk-mock-main-title{display:block;font-family:'Fredoka',sans-serif;font-size:36px;font-weight:700;line-height:1.05;color:#F97316;margin-top:2px;}
+.rk-mock-points{min-width:82px;text-align:center;padding:8px 12px;border-radius:999px;background:#EEEDFE;color:#4D46AF;font-size:20px;font-weight:900;}
+
+.rk-mock-scene{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 16px;background:#DFF0FF;border-top:1px solid #D0E6FA;border-bottom:1px solid #D0E6FA;}
+.rk-mock-scene-left{display:flex;align-items:center;gap:12px;}
+.rk-mock-scene-icon{width:42px;height:42px;border-radius:12px;border:1.5px solid #9FC4E4;background:#fff;display:flex;align-items:center;justify-content:center;font-size:22px;}
+.rk-mock-scene-title{font-size:34px;font-weight:900;color:#145DA0;line-height:1.05;}
+.rk-mock-scene-sub{font-size:26px;font-weight:800;color:#2E7AC8;line-height:1.1;}
+.rk-mock-rolechips{display:flex;align-items:center;gap:8px;}
+.rk-mock-chip{display:inline-flex;align-items:center;gap:8px;padding:8px 14px;border-radius:999px;background:#fff;border:2px solid #D8D3F7;color:#5C54BA;font-size:20px;font-weight:900;}
+.rk-mock-chip.you{border-color:#F97316;color:#D45F0A;}
+.rk-mock-chip-badge{width:28px;height:28px;border-radius:999px;background:#EEEDFE;color:#5C54BA;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:900;}
+
+.rk-mock-turn-pill-wrap{padding:14px 16px 8px;text-align:center;background:#F8F7FD;}
+.rk-mock-turn-pill{display:inline-flex;align-items:center;justify-content:center;padding:8px 16px;border-radius:999px;background:#EEEDFE;color:#6A63C2;font-size:20px;font-weight:900;}
+
+.rk-mock-conversation{background:#F8F7FD;padding:8px 16px 12px;}
+.rk-mock-turn-block{padding:8px 0 18px;border-bottom:1px solid #ECE8FA;}
+.rk-mock-turn-block:last-child{border-bottom:none;}
+.rk-mock-teacher-line{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
+.rk-mock-teacher-name{font-size:28px;font-weight:900;color:#928AC8;}
+.rk-mock-play{height:56px;padding:0 18px;border-radius:14px;border:2px solid #B8B3D2;background:#F4F4F8;color:#222;font-size:38px;font-weight:900;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;}
+.rk-mock-bubble-teacher{display:inline-block;max-width:min(76%,760px);background:#EEEDFE;border:1.5px solid #D6D2F6;border-radius:18px;padding:13px 18px;font-size:36px;font-weight:900;color:#3B368B;line-height:1.25;}
+.rk-mock-hint{display:inline-flex;align-items:center;gap:8px;background:#FFF2E6;border:1.5px solid #F4C798;border-radius:12px;padding:8px 14px;margin-top:12px;font-size:30px;font-weight:900;color:#C46A1A;}
+.rk-mock-student-row{display:flex;justify-content:flex-end;align-items:flex-start;gap:10px;margin-top:10px;}
+.rk-mock-student-name{font-size:32px;font-weight:900;color:#D06A1B;text-align:right;margin-bottom:6px;}
+.rk-mock-bubble-student{display:inline-block;max-width:min(76%,760px);background:#FFF0E6;border:1.5px solid #F3C799;border-radius:18px;padding:13px 18px;font-size:36px;font-weight:900;color:#C15E12;line-height:1.25;}
+.rk-mock-bubble-placeholder{display:inline-block;max-width:min(76%,760px);background:#FBFAFF;border:2px dashed #D8D3F7;border-radius:18px;padding:13px 18px;font-size:34px;font-weight:900;font-style:italic;color:#9B94BE;line-height:1.25;}
+
+.rk-mock-input{position:sticky;bottom:0;z-index:8;background:#F8F7FD;padding:8px 16px 10px;border-top:1px solid #E5E1F8;}
+.rk-mock-input-card{background:#fff;border:1.5px solid #DAD5FB;border-radius:22px;padding:12px 14px;}
+.rk-mock-input-head{display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap;}
+.rk-mock-yourturn-pill{display:inline-flex;align-items:center;padding:6px 14px;border-radius:999px;background:#F97316;color:#fff;font-size:20px;font-weight:900;}
+.rk-mock-yourturn-text{font-size:30px;font-weight:900;color:#C15E12;}
+.rk-mock-type-row{display:flex;align-items:stretch;gap:8px;}
+.rk-mock-textarea{flex:1;min-height:72px;border:2px solid #7F77DD;border-radius:14px;background:#fff;padding:12px 16px;font-size:34px;font-weight:900;color:#1E1D1F;outline:none;resize:none;line-height:1.2;}
+.rk-mock-send{width:56px;min-width:56px;border:2px solid #BDB8D9;border-radius:14px;background:#F3F3F8;color:#6B66A6;font-size:34px;font-weight:900;cursor:pointer;}
+.rk-mock-input-divider{text-align:center;margin:8px 0 10px;font-size:24px;font-weight:800;color:#8E88BF;}
+.rk-mock-mic{width:100%;height:62px;border:2px solid #BDB8D9;border-radius:12px;background:#fff;color:#1F1E23;font-size:38px;font-weight:900;cursor:pointer;}
+.rk-mock-mic.is-recording{border-color:#E24B4A;background:#FEF2F2;color:#991B1B;animation:rk-pulse 1s ease-in-out infinite;}
+
+.rk-mock-footer{display:flex;justify-content:space-between;align-items:center;padding:6px 4px 0;}
+.rk-mock-dots{display:flex;align-items:center;gap:8px;}
+.rk-mock-dot{width:14px;height:14px;border-radius:999px;background:#DCD9EE;}
+.rk-mock-dot.done{background:#7F77DD;}
+.rk-mock-dot.current{background:#F97316;}
+.rk-mock-score{font-size:30px;font-weight:900;color:#6D66B5;}
+.rk-mock-score strong{color:#F97316;}
+
 /* ── Bottom bar ─────────────────────────────────────────── */
 .rk-bottombar{display:flex;justify-content:space-between;align-items:center;padding:12px 18px;margin-top:14px;border-top:1px solid #F0EEF8;}
 .rk-status-text{font-size:13px;font-weight:700;color:#9B94BE;}
@@ -203,6 +257,24 @@ ob_start();
   .rk-topbar,.rk-scene-bar,.rk-progress-row,.rk-content,.rk-bottombar{padding-left:14px;padding-right:14px;}
   .rk-scene-bar-right{display:none;}
   .rk-title{font-size:clamp(26px,8vw,36px);}
+  .rk-mock-main-title{font-size:26px;}
+  .rk-mock-points{font-size:14px;min-width:70px;padding:6px 10px;}
+  .rk-mock-scene-title{font-size:22px;}
+  .rk-mock-scene-sub{font-size:16px;}
+  .rk-mock-chip{font-size:13px;padding:6px 10px;}
+  .rk-mock-turn-pill{font-size:14px;}
+  .rk-mock-teacher-name{font-size:18px;}
+  .rk-mock-play{height:42px;font-size:20px;padding:0 12px;}
+  .rk-mock-bubble-teacher,.rk-mock-bubble-student,.rk-mock-bubble-placeholder{font-size:18px;padding:10px 12px;}
+  .rk-mock-hint{font-size:14px;padding:7px 10px;}
+  .rk-mock-student-name{font-size:16px;}
+  .rk-mock-yourturn-pill{font-size:13px;}
+  .rk-mock-yourturn-text{font-size:18px;}
+  .rk-mock-textarea{font-size:18px;min-height:58px;}
+  .rk-mock-send{font-size:18px;width:44px;min-width:44px;}
+  .rk-mock-input-divider{font-size:12px;}
+  .rk-mock-mic{font-size:20px;height:46px;}
+  .rk-mock-score{font-size:16px;}
 }
 
 /* ── Embedded / presentation modes ─────────────────────── */
@@ -829,85 +901,88 @@ function PlayerView({ scene: sc, turns, activityId }) {
     <div className="rk-shell">
       <div className="rk-app">
         <div className="rk-board rk-chat-wrap">
-          <div className="rk-topbar">
-            <button className="rk-back-btn" onClick={handleRestart}>◁ Back</button>
-            <span className="rk-scene-title">{scene.title || "Roleplay"}</span>
-            <div className="rk-topbar-right">
-              <div className="rk-voice-chip">{voiceLabelShort}</div>
-              <div className="rk-top-score">{totalPts} / {maxPts} pts</div>
+          <div className="rk-mock-header">
+            <button className="rk-mock-back" onClick={handleRestart}>‹</button>
+            <div className="rk-mock-title">
+              <span className="rk-mock-kicker">Activity</span>
+              <span className="rk-mock-main-title">{scene.title || "Kids Roleplay"}</span>
+            </div>
+            <div className="rk-mock-points">{totalPts} pts</div>
+          </div>
+
+          <div className="rk-mock-scene">
+            <div className="rk-mock-scene-left">
+              <div className="rk-mock-scene-icon">☕</div>
+              <div>
+                <div className="rk-mock-scene-title">{scene.title === "Kids Roleplay" ? "At the Cafe" : (scene.title || "At the Cafe")}</div>
+                <div className="rk-mock-scene-sub">{scene.desc || "Practice speaking English!"}</div>
+              </div>
+            </div>
+            <div className="rk-mock-rolechips">
+              <span className="rk-mock-chip"><span className="rk-mock-chip-badge">T</span>Teacher</span>
+              <span className="rk-mock-chip you"><span className="rk-mock-chip-badge">{(avatarLabel || "Y")[0].toUpperCase()}</span>You</span>
             </div>
           </div>
 
-          <div className="rk-scene-bar">
-            <span className="rk-scene-bar-left">▣ {scene.desc || "Practice speaking English!"}</span>
-            <span className="rk-scene-bar-right">{scene.agentName || "Teacher"} vs {avatarLabel}</span>
+          <div className="rk-mock-turn-pill-wrap">
+            <span className="rk-mock-turn-pill">Turn {turnIndex + 1} of {total}</span>
           </div>
 
-          <div className="rk-progress-row">
-            <span className="rk-progress-counter">{Math.min(completedTurns + 1, total)} / {total}</span>
-            <div className="rk-progress-track">
-              <div className="rk-progress-fill" style={{ width: `${progressPct}%` }} />
-            </div>
-            <div className="rk-progress-dots">
-              {safeT.map((_, idx) => (
-                <span
-                  key={idx}
-                  className={`rk-dot${idx < completedTurns ? " is-done" : ""}${idx === turnIndex ? " is-current" : ""}`}
-                />
-              ))}
-            </div>
-          </div>
-
-          <div className="rk-chat-scroll" ref={chatScrollRef}>
+          <div className="rk-chat-scroll rk-mock-conversation" ref={chatScrollRef}>
             {safeT.slice(0, turnsVisible).map((t, idx) => {
               const result = turnResults[idx] || null;
               const teacherInitial = (scene.agentName || "T")[0].toUpperCase();
               const studentInitial = (avatarLabel || "Y")[0].toUpperCase();
               return (
-                <div key={idx} className="rk-chat-turn">
+                <div key={idx} className="rk-mock-turn-block">
                   <div className="rk-turn-head">
                     <div className="rk-turn-label">Turn {idx + 1} of {total}</div>
                     {result && <div className="rk-turn-chip">+{result.score10} pts</div>}
                   </div>
 
-                  <div className="rk-chat-teacher-row">
-                    <div className="rk-avatar rk-avatar-purple" style={{ width: 36, height: 36, fontSize: 16 }}>{teacherInitial}</div>
-                    <div className="rk-bubble-teacher">{t.teacherLine || "..."}</div>
+                  <div className="rk-mock-teacher-line">
+                    <div className="rk-avatar rk-avatar-purple" style={{ width: 44, height: 44, fontSize: 20 }}>{teacherInitial}</div>
+                    <span className="rk-mock-teacher-name">Teacher</span>
                     {idx === turnIndex && (
                       <button
-                        className={`rk-tts-btn${ttsPlaying ? " is-playing" : ""}`}
+                        className="rk-mock-play"
                         onClick={ttsPlaying ? stopTTS : () => replayTeacher(t)}
-                        style={{ alignSelf: "center" }}
                       >
-                        {ttsPlaying ? "■" : "▶"}
+                        {ttsPlaying ? "■" : "▶ Play"}
                       </button>
                     )}
                   </div>
 
-                  <div className="rk-chat-hint">Hint: {t.studentLine || "Try answering naturally."}</div>
+                  <div className="rk-mock-bubble-teacher">{t.teacherLine || "..."}</div>
 
-                  <div className="rk-chat-student-row">
-                    {result ? (
-                      <div className="rk-bubble-student">{result.answer}</div>
-                    ) : (
-                      <div className="rk-bubble-placeholder">Your answer goes here...</div>
-                    )}
-                    <div className="rk-avatar rk-avatar-orange" style={{ width: 36, height: 36, fontSize: 16 }}>{studentInitial}</div>
+                  <div className="rk-mock-hint">💡 {t.studentLine || "Try answering naturally."}</div>
+
+                  <div className="rk-mock-student-row">
+                    <div>
+                      <div className="rk-mock-student-name">{avatarLabel} · You</div>
+                      {result ? (
+                        <div className="rk-mock-bubble-student">{result.answer}</div>
+                      ) : (
+                        <div className="rk-mock-bubble-placeholder">Your answer goes here...</div>
+                      )}
+                    </div>
+                    <div className="rk-avatar rk-avatar-orange" style={{ width: 44, height: 44, fontSize: 20 }}>{studentInitial}</div>
                   </div>
                 </div>
               );
             })}
           </div>
 
-          <div className="rk-input-sticky">
-            <div className="rk-input-card">
-              <div style={{ fontSize: 13, fontWeight: 900, color: C.orange, marginBottom: 8 }}>
-                Your turn: {avatarLabel} - Turn {turnIndex + 1}
+          <div className="rk-mock-input">
+            <div className="rk-mock-input-card">
+              <div className="rk-mock-input-head">
+                <span className="rk-mock-yourturn-pill">YOUR TURN</span>
+                <span className="rk-mock-yourturn-text">{avatarLabel} - Turn {turnIndex + 1}</span>
               </div>
 
-              <div className="rk-input-row">
+              <div className="rk-mock-type-row">
                 <textarea
-                  className="rk-input-text"
+                  className="rk-mock-textarea"
                   value={written}
                   onChange={e => setWritten(e.target.value)}
                   placeholder="Write your answer first, then say it..."
@@ -919,23 +994,28 @@ function PlayerView({ scene: sc, turns, activityId }) {
                     }
                   }}
                 />
-                <button className="rk-send-btn" onClick={submitTyped} disabled={!written.trim()}>↑</button>
+                <button className="rk-mock-send" onClick={submitTyped} disabled={!written.trim()}>↑</button>
               </div>
 
-              <div className="rk-input-actions">
-                <span className="rk-input-divider">- or speak directly -</span>
-                <button
-                  className={`rk-mic-inline${micState === "recording" ? " is-recording" : ""}`}
-                  onClick={toggleMicSimulation}
-                >
-                  {micState === "recording" ? "Stop recording" : "Tap to speak your answer"}
-                </button>
-              </div>
+              <div className="rk-mock-input-divider">- or speak directly -</div>
+              <button
+                className={`rk-mock-mic${micState === "recording" ? " is-recording" : ""}`}
+                onClick={toggleMicSimulation}
+              >
+                {micState === "recording" ? "Stop recording" : "Tap to speak your answer"}
+              </button>
             </div>
 
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 8 }}>
-              <span className="rk-status-text">Score: {totalPts} / {maxPts} pts</span>
-              <span className="rk-turn-chip">{completedTurns} completed</span>
+            <div className="rk-mock-footer">
+              <div className="rk-mock-dots">
+                {safeT.map((_, idx) => (
+                  <span
+                    key={idx}
+                    className={`rk-mock-dot${idx < completedTurns ? " done" : ""}${idx === turnIndex ? " current" : ""}`}
+                  />
+                ))}
+              </div>
+              <div className="rk-mock-score">Score: <strong>{totalPts}</strong> / {maxPts} pts</div>
             </div>
           </div>
         </div>
