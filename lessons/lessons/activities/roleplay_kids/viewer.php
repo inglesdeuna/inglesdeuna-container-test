@@ -1084,18 +1084,6 @@ function PlayerView({ scene, turns, onComplete, onBack }) {
           </div>
 
           <div style={{ background: "#fff", border: "1px solid #EDE9FA", borderRadius: 24, overflow: "hidden" }}>
-            <div style={{ background: "#FFF0E6", borderBottom: "1px solid #EDE9FA", padding: "10px 18px", display: "flex", alignItems: "center", gap: 12 }}>
-              <div style={{ width: 32, height: 32, borderRadius: "50%", background: "#FFF0E6", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>{scene.icon}</div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontFamily: "'Nunito',sans-serif", fontSize: 14, color: "#F97316", fontWeight: 800, lineHeight: 1.2 }}>{scene.title || "Roleplay Kids"}</div>
-                <div style={{ fontFamily: "'Nunito',sans-serif", fontSize: 11, fontWeight: 700, color: "#9B8FCC" }}>
-                  {scene.agentName || "Teacher"}{scene.agentRole ? ` · ${scene.agentRole}` : ""}{"  |  "}{scene.studentRole || "Student"} · You
-                </div>
-              </div>
-              <div style={{ background: "#7F77DD", color: "#fff", borderRadius: 999, padding: "4px 12px", fontSize: 12, fontWeight: 800, fontFamily: "'Nunito',sans-serif", flexShrink: 0 }}>
-                Turn {currentTurn + 1} / {safeTurns.length}
-              </div>
-            </div>
 
             <div style={{ padding: "14px 14px 10px", background: "#fff" }}>
               <div style={{ height: 220, borderRadius: 18, border: "1.5px solid #C9B5EB", overflow: "hidden", background: "#F5F4FA", display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -1123,7 +1111,7 @@ function PlayerView({ scene, turns, onComplete, onBack }) {
                     <div style={{ background: "#F5F3FF", border: "1px solid #EDE9FA", borderRadius: 14, padding: "10px 12px", marginBottom: 8 }}>
                       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 6 }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                          <img src={avatarSrc(teacherAvatar)} alt="Teacher avatar" style={{ width: 34, height: 34, borderRadius: "50%", objectFit: "cover", border: "1px solid #D9D5F2", background: "#fff" }} />
+                          <img src={avatarSrc(teacherAvatar)} alt="Teacher avatar" style={{ width: 56, height: 56, borderRadius: "50%", objectFit: "contain", border: "1px solid #D9D5F2", background: "#fff", padding: 3 }} />
                           <div style={{ fontSize: 14, fontWeight: 800, color: "#5A51C0" }}>{scene.agentName || "Teacher"}</div>
                         </div>
                         <button onClick={() => speakAgentLine(turn.agent)} disabled={ttsState !== "idle"} style={{ background: ttsState !== "idle" ? "#C5C1ED" : "#7F77DD", color: "#fff", border: "none", borderRadius: 999, padding: "6px 14px", fontSize: 12, fontWeight: 800, cursor: ttsState !== "idle" ? "not-allowed" : "pointer" }}>
@@ -1138,7 +1126,7 @@ function PlayerView({ scene, turns, onComplete, onBack }) {
                     <div style={{ background: "#FFF7ED", border: "1px solid #FCDDBF", borderRadius: 14, padding: "10px 12px" }}>
                       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 6 }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                          <img src={avatarSrc(studentAvatar)} alt="Student avatar" style={{ width: 34, height: 34, borderRadius: "50%", objectFit: "cover", border: "1px solid #F3CC9C", background: "#fff" }} />
+                          <img src={avatarSrc(studentAvatar)} alt="Student avatar" style={{ width: 56, height: 56, borderRadius: "50%", objectFit: "contain", border: "1px solid #F3CC9C", background: "#fff", padding: 3 }} />
                           <div style={{ fontSize: 13, fontWeight: 800, color: "#C2580A" }}>Repeat exactly this line</div>
                         </div>
                         <span style={{ fontSize: 10, color: "#9B8FCC", fontWeight: 800 }}>STUDENT</span>
