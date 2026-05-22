@@ -1273,7 +1273,7 @@ function PlayerView({ scene, turns, onComplete, onBack, onListenFull }) {
                                 disabled={currentTranscript === ""}
                                 style={{ background: currentTranscript ? "#F97316" : "#E5E1F8", color: currentTranscript ? "#fff" : "#AAA2D8", border: "none", borderRadius: 12, padding: "10px 14px", fontSize: 13, fontWeight: 800, cursor: currentTranscript ? "pointer" : "not-allowed", minWidth: 94 }}
                               >
-                                Guardar
+                                Next
                               </button>
                             </div>
                           ) : (
