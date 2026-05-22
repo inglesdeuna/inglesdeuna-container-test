@@ -126,6 +126,35 @@ ob_start();
 .rk-textarea{width:100%;min-height:96px;border:1.5px solid #EDE9FA;border-radius:14px;padding:12px 14px;font-family:'Nunito',sans-serif;font-size:15px;font-weight:700;color:#271B5D;resize:none;outline:none;background:#FAFAFE;transition:border-color .18s,box-shadow .18s;margin-bottom:10px;}
 .rk-textarea:focus{border-color:#F97316;box-shadow:0 0 0 3px rgba(249,115,22,.12);}
 
+/* ── Chat play layout (single-page conversation) ───────────── */
+.rk-chat-wrap{display:flex;flex-direction:column;min-height:72vh;}
+.rk-chat-scroll{flex:1;overflow-y:auto;padding:14px 18px 8px;background:#F8F7FD;}
+.rk-chat-turn{background:#fff;border:1px solid #EDE9FA;border-radius:16px;padding:12px;margin-bottom:12px;box-shadow:0 2px 10px rgba(127,119,221,.08);}
+.rk-chat-teacher-row{display:flex;align-items:flex-start;gap:10px;}
+.rk-chat-student-row{display:flex;align-items:flex-start;justify-content:flex-end;gap:10px;margin-top:10px;}
+.rk-bubble-teacher{max-width:min(78%,540px);background:#EEEDFE;border:1px solid #DAD5FB;border-radius:14px 14px 14px 6px;padding:10px 12px;color:#3E3792;font-weight:800;line-height:1.5;}
+.rk-bubble-student{max-width:min(78%,540px);background:#FFF0E6;border:1px solid #FCDDBF;border-radius:14px 14px 6px 14px;padding:10px 12px;color:#C2580A;font-weight:800;line-height:1.5;}
+.rk-bubble-placeholder{max-width:min(78%,540px);border:2px dashed #DDD8F8;background:#FBFAFF;color:#9B94BE;font-style:italic;border-radius:14px 14px 6px 14px;padding:10px 12px;font-weight:800;}
+.rk-turn-chip{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:#EEF9F0;border:1px solid #BEE7C3;color:#166534;font-size:11px;font-weight:900;white-space:nowrap;}
+.rk-turn-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;gap:8px;flex-wrap:wrap;}
+.rk-turn-label{font-size:12px;font-weight:900;color:#6B64B3;}
+.rk-progress-dots{display:flex;align-items:center;gap:6px;}
+.rk-dot{width:10px;height:10px;border-radius:50%;background:#E2DEFA;border:1px solid #D4CFF5;}
+.rk-dot.is-done{background:#7F77DD;border-color:#7F77DD;}
+.rk-dot.is-current{background:#F97316;border-color:#F97316;animation:rk-bounce .8s ease-in-out infinite;}
+.rk-chat-hint{margin-top:6px;font-size:12px;color:#7F77DD;font-weight:800;}
+.rk-input-sticky{position:sticky;bottom:0;z-index:5;background:#fff;border-top:1px solid #EDE9FA;padding:12px 18px;box-shadow:0 -8px 20px rgba(127,119,221,.08);}
+.rk-input-card{background:#F7F6FD;border:1px solid #DDD8F8;border-radius:14px;padding:10px;}
+.rk-input-row{display:flex;align-items:stretch;gap:8px;}
+.rk-input-text{flex:1;min-height:58px;border:1.5px solid #D9D4F8;background:#fff;border-radius:12px;padding:10px 12px;font-family:'Nunito',sans-serif;font-size:16px;font-weight:800;color:#271B5D;resize:none;outline:none;}
+.rk-send-btn{width:44px;min-width:44px;border-radius:12px;border:1.5px solid #D9D4F8;background:#fff;color:#7F77DD;font-size:20px;font-weight:900;cursor:pointer;}
+.rk-send-btn:hover:not(:disabled){background:#EEEDFE;}
+.rk-input-actions{display:flex;align-items:center;justify-content:center;gap:10px;margin-top:8px;flex-wrap:wrap;}
+.rk-input-divider{font-size:12px;font-weight:900;color:#9B94BE;}
+.rk-mic-inline{padding:10px 18px;border-radius:12px;border:1.5px solid #EDE9FA;background:#fff;color:#271B5D;font-size:14px;font-weight:900;cursor:pointer;}
+.rk-mic-inline.is-recording{border-color:#E24B4A;background:#FEF2F2;color:#991B1B;animation:rk-pulse 1s ease-in-out infinite;}
+.rk-top-score{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:999px;background:#F0FDF4;border:1px solid #BEE7C3;color:#166534;font-size:12px;font-weight:900;}
+
 /* ── Bottom bar ─────────────────────────────────────────── */
 .rk-bottombar{display:flex;justify-content:space-between;align-items:center;padding:12px 18px;margin-top:14px;border-top:1px solid #F0EEF8;}
 .rk-status-text{font-size:13px;font-weight:700;color:#9B94BE;}
@@ -563,76 +592,34 @@ function PlayerView({ scene: sc, turns, activityId }) {
   const scene = sc || DEFAULT_SCENE;
   const safeT = (turns && turns.length) ? turns : DEFAULT_TURNS;
 
-  // phase: "avatar" | "playing" | "done"
-  // subPhase: "teacher" | "feedback"
-  const [phase,       setPhase]      = useState("avatar");
-  const [subPhase,    setSubPhase]   = useState("teacher");
-  const [avatarId,    setAvatarId]   = useState(null);
-  const [turnIndex,   setTurnIndex]  = useState(0);
-  const [pts,         setPts]        = useState(0);
-  const [written,     setWritten]    = useState("");
-  const [micState,    setMicState]   = useState("idle");
-  const [transcript,  setTranscript] = useState("");
-  const [pronScore,   setPronScore]  = useState(null);
-  const [turnScores,  setTurnScores] = useState([]);
-  const [reviewItems, setReviewItems]= useState([]);
-  const [ttsPlaying,  setTtsPlaying] = useState(false);
-  const [showTyping,  setShowTyping] = useState(false);
+  const [phase, setPhase] = useState("avatar");
+  const [avatarId, setAvatarId] = useState(null);
+  const [turnIndex, setTurnIndex] = useState(0);
+  const [written, setWritten] = useState("");
+  const [micState, setMicState] = useState("idle");
+  const [turnResults, setTurnResults] = useState([]);
+  const [totalPts, setTotalPts] = useState(0);
+  const [turnScores, setTurnScores] = useState([]);
+  const [reviewItems, setReviewItems] = useState([]);
+  const [ttsPlaying, setTtsPlaying] = useState(false);
+
   const completedRef = useRef(null);
-  const recRef       = useRef(null);
+  const chatScrollRef = useRef(null);
 
-  const turn        = safeT[turnIndex] || { teacherLine: "", studentLine: "" };
+  const total = safeT.length;
+  const maxPts = total * 10;
   const avatarLabel = AVATARS.find(a => a.id === avatarId)?.label || "You";
-  const total       = safeT.length;
-  const pct         = total > 0 ? Math.round(((turnIndex + (phase === "done" ? 1 : 0)) / total) * 100) : 0;
-
+  const currentTurn = safeT[turnIndex] || { teacherLine: "", studentLine: "" };
   const voiceId = scene.voiceId || VOICES[0].id;
+  const turnsVisible = Math.min(turnIndex + 1, total);
+  const completedTurns = turnResults.length;
+  const progressPct = total > 0 ? Math.round((completedTurns / total) * 100) : 0;
 
-  // ── Auto-play teacher when turn starts ───────────────────────
-  useEffect(() => {
-    if (phase === "playing" && subPhase === "teacher" && turn.teacherLine) {
-      setTtsPlaying(true);
-      playElevenLabs(turn.teacherLine, voiceId,
-        () => setTtsPlaying(false),
-        () => setTtsPlaying(false));
-    }
-    if (subPhase !== "teacher") setTtsPlaying(false);
-  }, [turnIndex, phase, subPhase]);
-
-  // ── Mic ──────────────────────────────────────────────────────
-  const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
-
-  function startRecording() {
-    if (!SpeechRec) { alert("Speech recognition not supported in this browser."); return; }
-    const rec = new SpeechRec();
-    rec.lang = "en-US";
-    rec.interimResults = false;
-    rec.maxAlternatives = 1;
-    recRef.current = rec;
-    setMicState("recording");
-    setTranscript("");
-    setPronScore(null);
-    rec.onresult = (e) => {
-      const text = e.results[0][0].transcript;
-      setTranscript(text);
-      setMicState("processing");
-      scorePronunciation(text, turn.studentLine);
-    };
-    rec.onerror = () => setMicState("idle");
-    rec.onend   = () => { if (micState === "recording") setMicState("idle"); };
-    rec.start();
-  }
-
-  function stopRecording() {
-    if (recRef.current) { try { recRef.current.stop(); } catch {} }
-    setMicState("idle");
-  }
-
-  // ── Client-side pronunciation scoring ────────────────────────
   function normalizeStr(s) {
     return String(s || "").toLowerCase().trim()
       .replace(/[.,!?;:'"]/g, "").replace(/\s+/g, " ");
   }
+
   function wordOverlapScore(a, b) {
     const wa = a.split(" ").filter(Boolean);
     const wb = b.split(" ").filter(Boolean);
@@ -640,97 +627,112 @@ function PlayerView({ scene: sc, turns, activityId }) {
     const matches = wa.filter(w => wb.includes(w)).length;
     return matches / Math.max(wa.length, wb.length);
   }
-  function scorePronunciation(text, expected) {
-    const said    = normalizeStr(text);
-    const exp     = normalizeStr(expected);
-    const overlap = wordOverlapScore(said, exp);
-    const score   = Math.round(overlap * 100);
-    const pass    = score >= 50 ? 1 : 0;
-    setPts(prev => prev + score);
-    setPronScore(score);
-    setMicState("idle");
-    setSubPhase("feedback");
-    setTurnScores(prev => [...prev, pass]);
-    setReviewItems(prev => [...prev, {
-      question:      turn.teacherLine || ("Turn " + (turnIndex + 1)),
-      yourAnswer:    text || "(no recording)",
-      correctAnswer: expected,
-      score:         pass,
-    }]);
-  }
-
-  function goToNextTurn() {
-    setWritten(""); setTranscript(""); setPronScore(null); setMicState("idle");
-    setShowTyping(false);
-    if (turnIndex < total - 1) {
-      setTurnIndex(i => i + 1);
-      setSubPhase("teacher");
-    } else {
-      setPhase("done");
-    }
-  }
-
-  function scoreWritten(text) {
-    if (!text.trim()) return;
-    const said    = normalizeStr(text);
-    const exp     = normalizeStr(turn.studentLine);
-    const overlap = wordOverlapScore(said, exp);
-    const score   = Math.round(overlap * 100);
-    const pass    = score >= 50 ? 1 : 0;
-    setPts(prev => prev + score);
-    setPronScore(score);
-    setTranscript("");
-    setMicState("idle");
-    setSubPhase("feedback");
-    setTurnScores(prev => [...prev, pass]);
-    setReviewItems(prev => [...prev, {
-      question:      turn.teacherLine || ("Turn " + (turnIndex + 1)),
-      yourAnswer:    text,
-      correctAnswer: turn.studentLine,
-      score:         pass,
-    }]);
-  }
-
-  function handleNext() {
-    if (subPhase === "feedback") { goToNextTurn(); return; }
-    if (showTyping && written.trim()) { scoreWritten(written); return; }
-    setTurnScores(prev => [...prev, 0]);
-    setReviewItems(prev => [...prev, {
-      question: turn.teacherLine || ("Turn " + (turnIndex + 1)),
-      yourAnswer: "(skipped)", correctAnswer: turn.studentLine, score: 0,
-    }]);
-    goToNextTurn();
-  }
-
-  function replayTTS() {
-    setTtsPlaying(true);
-    playElevenLabs(turn.teacherLine, voiceId,
-      () => setTtsPlaying(false),
-      () => setTtsPlaying(false));
-  }
 
   function stopTTS() {
     if (currentAudioRef) { currentAudioRef.pause(); currentAudioRef = null; }
     setTtsPlaying(false);
   }
 
-  // ── AF.showCompleted when done ────────────────────────────────
+  function replayTeacher(turnObj) {
+    if (!turnObj || !turnObj.teacherLine) return;
+    setTtsPlaying(true);
+    playElevenLabs(turnObj.teacherLine, voiceId,
+      () => setTtsPlaying(false),
+      () => setTtsPlaying(false));
+  }
+
+  function pushAnswer(answerText, source) {
+    const turn = safeT[turnIndex] || { teacherLine: "", studentLine: "" };
+    const said = normalizeStr(answerText);
+    const exp = normalizeStr(turn.studentLine);
+    const overlap = wordOverlapScore(said, exp);
+    const score10 = Math.max(0, Math.min(10, Math.round(overlap * 10)));
+    const pass = score10 >= 5 ? 1 : 0;
+
+    setTurnResults(prev => [...prev, {
+      turn: turnIndex,
+      answer: answerText,
+      expected: turn.studentLine || "",
+      score10,
+      source,
+    }]);
+    setTurnScores(prev => [...prev, pass]);
+    setReviewItems(prev => [...prev, {
+      question: turn.teacherLine || ("Turn " + (turnIndex + 1)),
+      yourAnswer: answerText || "(empty)",
+      correctAnswer: turn.studentLine || "",
+      score: pass,
+    }]);
+    setTotalPts(prev => prev + score10);
+    setWritten("");
+    setMicState("idle");
+
+    if (turnIndex < total - 1) {
+      setTurnIndex(prev => prev + 1);
+    } else {
+      setPhase("done");
+    }
+  }
+
+  function submitTyped() {
+    if (!written.trim() || phase !== "playing") return;
+    pushAnswer(written.trim(), "typed");
+  }
+
+  function toggleMicSimulation() {
+    if (phase !== "playing") return;
+    if (micState === "recording") {
+      const simulated = (safeT[turnIndex]?.studentLine || "I am okay, thank you.").trim();
+      pushAnswer(simulated, "mic");
+      return;
+    }
+    setMicState("recording");
+  }
+
+  function handleRestart() {
+    stopTTS();
+    setPhase("avatar");
+    setAvatarId(null);
+    setTurnIndex(0);
+    setWritten("");
+    setMicState("idle");
+    setTurnResults([]);
+    setTotalPts(0);
+    setTurnScores([]);
+    setReviewItems([]);
+  }
+
+  function startPlaying() {
+    setPhase("playing");
+    setTurnIndex(0);
+  }
+
+  useEffect(() => {
+    if (phase !== "playing") return;
+    replayTeacher(currentTurn);
+  }, [phase, turnIndex]);
+
+  useEffect(() => {
+    if (!chatScrollRef.current || phase !== "playing") return;
+    chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
+  }, [phase, turnIndex, turnResults.length]);
+
   useEffect(() => {
     if (phase !== "done" || !completedRef.current) return;
     const AF = window.ActivityFeedback;
     if (!AF) return;
-    const winAudio  = new Audio("../../hangman/assets/win.mp3");
-    const returnTo  = window.RK_RETURN_TO  || "";
-    const actId     = window.RK_ACTIVITY_ID || "";
+    const winAudio = new Audio("../../hangman/assets/win.mp3");
+    const returnTo = window.RK_RETURN_TO || "";
+    const actId = window.RK_ACTIVITY_ID || "";
     const snapScores = turnScores.slice();
     AF.showCompleted({
-      target:        completedRef.current,
-      scores:        snapScores,
-      title:         scene.title || "Roleplay Kids",
-      activityType:  "Roleplay (Kids)",
+      target: completedRef.current,
+      scores: snapScores,
+      title: scene.title || "Roleplay Kids",
+      activityType: "Roleplay (Kids)",
       questionCount: total,
-      winAudio:      winAudio,
-      onRetry:       handleRestart,
+      winAudio: winAudio,
+      onRetry: handleRestart,
       onReview: function () {
         AF.showReview({ target: completedRef.current, items: reviewItems, onRetry: handleRestart });
       },
@@ -743,22 +745,11 @@ function PlayerView({ scene: sc, turns, activityId }) {
     }
   }, [phase]);
 
-  function handleRestart() {
-    setPhase("avatar"); setAvatarId(null); setTurnIndex(0); setPts(0);
-    setSubPhase("teacher"); setWritten(""); setTranscript(""); setPronScore(null);
-    setMicState("idle"); setTurnScores([]); setReviewItems([]);
-  }
-
-  function startPlaying() { setPhase("playing"); setSubPhase("teacher"); }
-
-  // ════════════════════════════════════════════════════════════
-  // AVATAR PICKER
-  // ════════════════════════════════════════════════════════════
   if (phase === "avatar") return (
     <div className="rk-shell">
       <div className="rk-app">
         <div className="rk-hero">
-          <div className="rk-kicker">🎭 Activity</div>
+          <div className="rk-kicker">Activity</div>
           <h1 className="rk-title">{scene.title || "Roleplay"}</h1>
           <p className="rk-subtitle">Choose your character to get started!</p>
           <div className="rk-kicker-badge">
@@ -816,179 +807,124 @@ function PlayerView({ scene: sc, turns, activityId }) {
     </div>
   );
 
-  // ════════════════════════════════════════════════════════════
-  // PLAYING SCREEN
-  // ════════════════════════════════════════════════════════════
-  const voiceLabelShort = (VOICES.find(v => v.id === voiceId)?.label || "Adult Male")
+  const voiceLabelShort = (VOICES.find(v => v.id === voiceId)?.label || "Teacher")
     .split("(")[0].trim();
-  const agentInitial   = (scene.agentName || "T")[0].toUpperCase();
-  const studentInitial = (avatarLabel || "Y")[0].toUpperCase();
 
   return (
     <div className="rk-shell">
       <div className="rk-app">
-
-        {/* Hero */}
-        <div className="rk-hero">
-          <div className="rk-kicker">ACTIVITY</div>
-          <h1 className="rk-title">{scene.title || "Roleplay"}</h1>
-          <p className="rk-subtitle">{scene.desc || "Practice real conversations in English."}</p>
-        </div>
-
-        {/* Main board */}
-        <div className="rk-board">
-
-          {/* Top bar */}
+        <div className="rk-board rk-chat-wrap">
           <div className="rk-topbar">
             <button className="rk-back-btn" onClick={handleRestart}>◁ Back</button>
             <span className="rk-scene-title">{scene.title || "Roleplay"}</span>
             <div className="rk-topbar-right">
               <div className="rk-voice-chip">{voiceLabelShort}</div>
-              <div className="rk-turn-badge">Turn {turnIndex + 1} / {total}</div>
+              <div className="rk-top-score">{totalPts} / {maxPts} pts</div>
             </div>
           </div>
 
-          {/* Scene bar */}
           <div className="rk-scene-bar">
-            <span className="rk-scene-bar-left">
-              ▣ {scene.title || "Scene"}{scene.desc ? ` — ${scene.desc}` : ""}
-            </span>
-            <span className="rk-scene-bar-right">
-              {scene.agentName || "Teacher"} · Teacher | {avatarLabel} · You
-            </span>
+            <span className="rk-scene-bar-left">▣ {scene.desc || "Practice speaking English!"}</span>
+            <span className="rk-scene-bar-right">{scene.agentName || "Teacher"} vs {avatarLabel}</span>
           </div>
 
-          {/* Progress */}
           <div className="rk-progress-row">
-            <span className="rk-progress-counter">{turnIndex + 1} / {total}</span>
+            <span className="rk-progress-counter">{Math.min(completedTurns + 1, total)} / {total}</span>
             <div className="rk-progress-track">
-              <div className="rk-progress-fill" style={{ width: `${pct}%` }} />
+              <div className="rk-progress-fill" style={{ width: `${progressPct}%` }} />
             </div>
-            <div className="rk-progress-badge">Turn {turnIndex + 1} of {total}</div>
+            <div className="rk-progress-dots">
+              {safeT.map((_, idx) => (
+                <span
+                  key={idx}
+                  className={`rk-dot${idx < completedTurns ? " is-done" : ""}${idx === turnIndex ? " is-current" : ""}`}
+                />
+              ))}
+            </div>
           </div>
 
-          {/* Content */}
-          <div className="rk-content">
+          <div className="rk-chat-scroll" ref={chatScrollRef}>
+            {safeT.slice(0, turnsVisible).map((t, idx) => {
+              const result = turnResults[idx] || null;
+              const teacherInitial = (scene.agentName || "T")[0].toUpperCase();
+              const studentInitial = (avatarLabel || "Y")[0].toUpperCase();
+              return (
+                <div key={idx} className="rk-chat-turn">
+                  <div className="rk-turn-head">
+                    <div className="rk-turn-label">Turn {idx + 1} of {total}</div>
+                    {result && <div className="rk-turn-chip">+{result.score10} pts</div>}
+                  </div>
 
-            {/* Teacher card */}
-            <div className="rk-teacher-card">
-              <div className="rk-card-header">
-                <div className="rk-avatar rk-avatar-purple">{agentInitial}</div>
-                <div>
-                  <div className="rk-speaker-name">{scene.agentName || "Teacher"}</div>
-                  <div className="rk-speaker-role">TEACHER</div>
+                  <div className="rk-chat-teacher-row">
+                    <div className="rk-avatar rk-avatar-purple" style={{ width: 36, height: 36, fontSize: 16 }}>{teacherInitial}</div>
+                    <div className="rk-bubble-teacher">{t.teacherLine || "..."}</div>
+                    {idx === turnIndex && (
+                      <button
+                        className={`rk-tts-btn${ttsPlaying ? " is-playing" : ""}`}
+                        onClick={ttsPlaying ? stopTTS : () => replayTeacher(t)}
+                        style={{ alignSelf: "center" }}
+                      >
+                        {ttsPlaying ? "■" : "▶"}
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="rk-chat-hint">Hint: {t.studentLine || "Try answering naturally."}</div>
+
+                  <div className="rk-chat-student-row">
+                    {result ? (
+                      <div className="rk-bubble-student">{result.answer}</div>
+                    ) : (
+                      <div className="rk-bubble-placeholder">Your answer goes here...</div>
+                    )}
+                    <div className="rk-avatar rk-avatar-orange" style={{ width: 36, height: 36, fontSize: 16 }}>{studentInitial}</div>
+                  </div>
                 </div>
+              );
+            })}
+          </div>
+
+          <div className="rk-input-sticky">
+            <div className="rk-input-card">
+              <div style={{ fontSize: 13, fontWeight: 900, color: C.orange, marginBottom: 8 }}>
+                Your turn: {avatarLabel} - Turn {turnIndex + 1}
+              </div>
+
+              <div className="rk-input-row">
+                <textarea
+                  className="rk-input-text"
+                  value={written}
+                  onChange={e => setWritten(e.target.value)}
+                  placeholder="Write your answer first, then say it..."
+                  rows={2}
+                  onKeyDown={e => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      submitTyped();
+                    }
+                  }}
+                />
+                <button className="rk-send-btn" onClick={submitTyped} disabled={!written.trim()}>↑</button>
+              </div>
+
+              <div className="rk-input-actions">
+                <span className="rk-input-divider">- or speak directly -</span>
                 <button
-                  className={`rk-tts-btn${ttsPlaying ? " is-playing" : ""}`}
-                  onClick={ttsPlaying ? stopTTS : replayTTS}
+                  className={`rk-mic-inline${micState === "recording" ? " is-recording" : ""}`}
+                  onClick={toggleMicSimulation}
                 >
-                  {ttsPlaying ? "■ Playing…" : "▶ Play"}
+                  {micState === "recording" ? "Stop recording" : "Tap to speak your answer"}
                 </button>
               </div>
-              <div className="rk-dialog-text">{turn.teacherLine || "…"}</div>
             </div>
 
-            {/* Hint card */}
-            {turn.studentLine && subPhase !== "feedback" && (
-              <div className="rk-hint-card">
-                <div className="rk-hint-label">💡 HINT</div>
-                <div className="rk-hint-text">{turn.studentLine}</div>
-              </div>
-            )}
-
-            {/* Feedback */}
-            {subPhase === "feedback" && (
-              <div className="rk-feedback-wrap">
-                {(written.trim() || transcript) && (
-                  <div className="rk-feedback-block rk-fb-purple">
-                    <div className="rk-feedback-label purple">
-                      {transcript ? "You said" : "You wrote"}
-                    </div>
-                    <div className="rk-feedback-text">"{transcript || written}"</div>
-                  </div>
-                )}
-                <div className="rk-feedback-block rk-fb-orange">
-                  <div className="rk-feedback-label orange">Correct answer</div>
-                  <div className="rk-feedback-text orange">{turn.studentLine}</div>
-                </div>
-                {pronScore !== null && (
-                  <div className="rk-score-wrap">
-                    <div className="rk-score-header">
-                      <span className="rk-score-lbl">Score</span>
-                      <span className="rk-score-pts">{pronScore} pts</span>
-                    </div>
-                    <div className="rk-score-track">
-                      <div className="rk-score-fill" style={{ width: `${pronScore}%` }} />
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Your turn card */}
-            {subPhase !== "feedback" && (
-              <div className="rk-your-turn-card">
-                <div className="rk-card-header">
-                  <div className="rk-avatar rk-avatar-orange">{studentInitial}</div>
-                  <div>
-                    <div className="rk-speaker-name rk-speaker-name-you">Your turn</div>
-                    <div className="rk-speaker-role">{avatarLabel.toUpperCase()}</div>
-                  </div>
-                </div>
-
-                {!showTyping ? (
-                  <div className="rk-mic-area">
-                    <button
-                      className={`rk-mic-btn${micState === "recording" ? " rk-recording" : ""}`}
-                      onClick={() => micState === "recording" ? stopRecording() : startRecording()}
-                      disabled={micState === "processing"}
-                      style={micState === "recording" ? { animation: "rk-pulse 1s ease-in-out infinite" } : {}}
-                    >
-                      {micState === "processing" ? "⏳" : micState === "recording" ? "⏹" : "🎤"}
-                    </button>
-                    <div className={`rk-mic-hint${micState === "recording" ? " rk-recording" : ""}`}>
-                      {micState === "processing" ? "Processing…"
-                        : micState === "recording" ? "Recording… tap to stop"
-                        : "Tap to speak your response"}
-                    </div>
-                    <div className="rk-or-divider">— or —</div>
-                    <button className="rk-btn-ghost" onClick={() => { stopTTS(); setShowTyping(true); }}>
-                      Type instead
-                    </button>
-                  </div>
-                ) : (
-                  <div>
-                    <textarea
-                      className="rk-textarea"
-                      value={written}
-                      onChange={e => setWritten(e.target.value)}
-                      placeholder="Type your response here…"
-                      rows={3}
-                    />
-                    <button className="rk-btn-ghost" onClick={() => setShowTyping(false)}>
-                      🎤 Speak instead
-                    </button>
-                  </div>
-                )}
-              </div>
-            )}
-
-          </div>{/* end rk-content */}
-
-          {/* Bottom bar */}
-          <div className="rk-bottombar">
-            <span className="rk-status-text">
-              {subPhase === "feedback" ? "Nice work!" : "Speak or type to continue"}
-            </span>
-            <button className="rk-btn rk-btn-outline" onClick={handleNext}>
-              {subPhase === "feedback"
-                ? (turnIndex < total - 1 ? "Next →" : "Finish 🎉")
-                : "Next →"}
-            </button>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 8 }}>
+              <span className="rk-status-text">Score: {totalPts} / {maxPts} pts</span>
+              <span className="rk-turn-chip">{completedTurns} completed</span>
+            </div>
           </div>
-
-        </div>{/* end rk-board */}
-      </div>{/* end rk-app */}
+        </div>
+      </div>
     </div>
   );
 }
