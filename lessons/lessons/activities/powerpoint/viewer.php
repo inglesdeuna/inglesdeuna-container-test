@@ -941,6 +941,74 @@ function playTtsBlob(blob, requestToken) {
     });
 }
 
+function pickSpeechVoice(lang) {
+    if (!window.speechSynthesis) return null;
+
+    const voices = window.speechSynthesis.getVoices ? window.speechSynthesis.getVoices() : [];
+    if (!Array.isArray(voices) || !voices.length) return null;
+
+    const cleanLang = String(lang || '').trim().toLowerCase();
+    const exactMatch = voices.find((voice) => String(voice.lang || '').trim().toLowerCase() === cleanLang);
+    if (exactMatch) return exactMatch;
+
+    const prefix = cleanLang.split('-')[0];
+    if (!prefix) return voices[0] || null;
+
+    return voices.find((voice) => String(voice.lang || '').trim().toLowerCase().startsWith(prefix)) || voices[0] || null;
+}
+
+function speakWithBrowserVoice(text, lang, requestToken) {
+    return new Promise((resolve, reject) => {
+        if (!window.speechSynthesis || typeof window.SpeechSynthesisUtterance !== 'function') {
+            reject(new Error('Speech synthesis not supported'));
+            return;
+        }
+
+        const chunks = splitTtsText(text, 1800);
+        if (!chunks.length) {
+            resolve();
+            return;
+        }
+
+        const speech = window.speechSynthesis;
+        const chosenVoice = pickSpeechVoice(lang);
+
+        let index = 0;
+        const speakNext = function () {
+            if (requestToken !== ttsRequestToken) {
+                resolve();
+                return;
+            }
+
+            if (index >= chunks.length) {
+                resolve();
+                return;
+            }
+
+            const utterance = new SpeechSynthesisUtterance(chunks[index]);
+            utterance.lang = String(lang || 'en-US');
+            utterance.rate = 0.98;
+            utterance.pitch = 1;
+            if (chosenVoice) {
+                utterance.voice = chosenVoice;
+            }
+
+            utterance.onend = function () {
+                index += 1;
+                speakNext();
+            };
+            utterance.onerror = function () {
+                reject(new Error('Browser speech failed'));
+            };
+
+            speech.cancel();
+            speech.speak(utterance);
+        };
+
+        speakNext();
+    });
+}
+
 function renderSlide() {
     const stage = document.getElementById('pptSlide');
     const counter = document.getElementById('pptCounter');
@@ -1100,7 +1168,12 @@ async function speakSlide() {
     } catch (err) {
         if (requestToken !== ttsRequestToken) return;
         if (err && err.name === 'AbortError') return;
-        alert('No se pudo reproducir el TTS en este momento.');
+        try {
+            await speakWithBrowserVoice(textToRead, String(slide.tts_lang || 'en-US'), requestToken);
+        } catch (fallbackErr) {
+            if (requestToken !== ttsRequestToken) return;
+            alert('No se pudo reproducir el TTS en este momento.');
+        }
     } finally {
         if (requestToken === ttsRequestToken) {
             setTtsButtonState('Read', false);
