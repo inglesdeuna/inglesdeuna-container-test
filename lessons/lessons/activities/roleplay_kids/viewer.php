@@ -1261,7 +1261,7 @@ function PlayerView({ scene, turns, onComplete, onBack, onListenFull }) {
                           )}
 
                           {currentTurn === safeTurns.length - 1 ? (
-                            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "center" }}>
                               <button
                                 onClick={onListenFull}
                                 style={{ background: C.purple, color: "#fff", border: "none", borderRadius: 12, padding: "10px 14px", fontSize: 13, fontWeight: 800, cursor: "pointer", minWidth: 94 }}
@@ -1487,28 +1487,52 @@ function RoleplayActivity() {
   const [results, setResults] = useState([]);
   const [isListeningFull, setIsListeningFull] = useState(false);
   const listenCancelRef = useRef(false);
-  const studentReplayVoiceId = "Nggzl2QAXh3OijoXD116";
+  const replayVoiceCandidates = ["Nggzl2QAXh3OijoXD116", "NoOVOzCQFLOvtsMoNcdT", "nzFihrBIvB34imQBuxub"];
 
   const playReplayLine = useCallback(async (text) => {
     if (!text) return;
-    const fd = new FormData();
-    fd.append("text", text);
-    fd.append("voice_id", studentReplayVoiceId);
-    const res = await fetch("tts.php", { method: "POST", body: fd, credentials: "same-origin" });
-    if (!res.ok) {
-      throw new Error("TTS error " + res.status);
+    for (const voiceId of replayVoiceCandidates) {
+      try {
+        const fd = new FormData();
+        fd.append("text", text);
+        fd.append("voice_id", voiceId);
+        const res = await fetch("tts.php", { method: "POST", body: fd, credentials: "same-origin" });
+        if (!res.ok) throw new Error("TTS error " + res.status);
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        await new Promise((resolve, reject) => {
+          const audio = new Audio(url);
+          audio.onended = () => { URL.revokeObjectURL(url); resolve(); };
+          audio.onerror = () => { URL.revokeObjectURL(url); reject(new Error("Audio playback failed")); };
+          audio.play().catch(err => {
+            URL.revokeObjectURL(url);
+            reject(err);
+          });
+        });
+        return;
+      } catch (err) {
+        // Try next configured voice.
+      }
     }
-    const blob = await res.blob();
-    const url = URL.createObjectURL(blob);
-    await new Promise((resolve, reject) => {
-      const audio = new Audio(url);
-      audio.onended = () => { URL.revokeObjectURL(url); resolve(); };
-      audio.onerror = () => { URL.revokeObjectURL(url); reject(new Error("Audio playback failed")); };
-      audio.play().catch(err => {
-        URL.revokeObjectURL(url);
-        reject(err);
+
+    if (window.speechSynthesis) {
+      await new Promise((resolve) => {
+        try {
+          const utt = new SpeechSynthesisUtterance(text);
+          utt.lang = "en-US";
+          utt.rate = 1.0;
+          utt.pitch = 1.08;
+          utt.onend = () => resolve();
+          utt.onerror = () => resolve();
+          window.speechSynthesis.speak(utt);
+        } catch (e) {
+          resolve();
+        }
       });
-    });
+      return;
+    }
+
+    throw new Error("No replay voice available");
   }, []);
 
   const handleListenFull = useCallback(() => {
