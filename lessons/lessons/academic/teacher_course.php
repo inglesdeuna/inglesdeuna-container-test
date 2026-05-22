@@ -779,6 +779,7 @@ $lowestScoredActivities = build_lowest_scored_activities(
 
 $viewerHref = null;
 $currentTypeLabel = 'Activity';
+$viewerCacheBust = (string) (@filemtime(__DIR__ . '/../../../REDEPLOY_TRIGGER.txt') ?: time());
 
 if ($current) {
     $type = (string) ($current['type'] ?? '');
@@ -798,6 +799,7 @@ if ($current) {
             'from' => 'teacher_course',
             'assignment' => $assignmentId,
             'return_to' => $returnUrl,
+          'v' => $viewerCacheBust,
         ]);
 
         $viewerHref = $activityPath . '/viewer.php?' . $query;
@@ -821,6 +823,7 @@ foreach ($activities as $_act) {
             'from'       => 'teacher_course',
             'assignment' => $assignmentId,
             'return_to'  => $_fsReturnUrl,
+          'v'          => $viewerCacheBust,
         ]);
         $allViewerHrefs[] = $_path . '/viewer.php?' . $_q;
     } else {
