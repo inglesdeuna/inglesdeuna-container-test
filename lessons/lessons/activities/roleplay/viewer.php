@@ -860,7 +860,21 @@ function PlayerView({ scene, turns, onComplete, onBack }) {
   const [ttsState, setTtsState] = useState("idle"); // "idle" | "loading" | "playing"
   const currentAudioRef = useRef(null);
 
-  const speakAgentLine = useCallback(async (text) => {
+  const fallbackBrowserTts = useCallback((text) => {
+    if (!text || !window.speechSynthesis) return;
+    try {
+      window.speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(text);
+      u.lang = "en-US";
+      u.rate = 0.95;
+      window.speechSynthesis.speak(u);
+    } catch (e) {
+      // Ignore fallback errors.
+    }
+  }, []);
+
+  const speakAgentLine = useCallback(async (text, opts = {}) => {
+    const silent = !!opts.silent;
     if (currentAudioRef.current) {
       currentAudioRef.current.pause();
       currentAudioRef.current = null;
@@ -871,7 +885,16 @@ function PlayerView({ scene, turns, onComplete, onBack }) {
       fd.append("text", text);
       fd.append("voice_id", voiceId);
       const res = await fetch("tts.php", { method: "POST", body: fd, credentials: "same-origin" });
-      if (!res.ok) throw new Error("TTS error " + res.status);
+      if (!res.ok) {
+        let detail = "TTS error " + res.status;
+        try {
+          const j = await res.json();
+          if (j && typeof j.error === "string" && j.error.trim() !== "") detail = j.error;
+        } catch (e) {
+          // Ignore non-JSON error payloads.
+        }
+        throw new Error(detail);
+      }
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const audio = new Audio(url);
@@ -879,16 +902,20 @@ function PlayerView({ scene, turns, onComplete, onBack }) {
       setTtsState("playing");
       audio.onended = () => { URL.revokeObjectURL(url); setTtsState("idle"); currentAudioRef.current = null; };
       audio.onerror = () => { URL.revokeObjectURL(url); setTtsState("idle"); currentAudioRef.current = null; };
-      audio.play();
+      await audio.play();
     } catch (e) {
       setTtsState("idle");
+      fallbackBrowserTts(text);
+      if (!silent) {
+        console.warn("Roleplay TTS fallback:", e && e.message ? e.message : e);
+      }
     }
-  }, [voiceId]);
+  }, [voiceId, fallbackBrowserTts]);
 
   // Auto-play agent line whenever a new AI message is added
   useEffect(() => {
     const last = messages[messages.length - 1];
-    if (last && last.role === "ai") speakAgentLine(last.text);
+    if (last && last.role === "ai") speakAgentLine(last.text, { silent: true });
   }, [messages.length]); // eslint-disable-line
 
   // Stop audio on unmount
