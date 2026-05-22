@@ -1019,19 +1019,6 @@ function PlayerView({ scene, turns, onComplete, onBack }) {
   const teacherAvatar = scene.teacherAvatarId || "TEACHER";
   const studentAvatar = scene.studentAvatarId || "ANGIE";
 
-  const fallbackBrowserTts = useCallback((text) => {
-    if (!text || !window.speechSynthesis) return;
-    try {
-      window.speechSynthesis.cancel();
-      const u = new SpeechSynthesisUtterance(text);
-      u.lang = "en-US";
-      u.rate = 0.95;
-      window.speechSynthesis.speak(u);
-    } catch (e) {
-      // Ignore fallback errors.
-    }
-  }, []);
-
   const speakWithVoice = useCallback(async (text, selectedVoiceId, opts = {}) => {
     const silent = !!opts.silent;
     const useVoiceId = selectedVoiceId || voiceId;
@@ -1073,12 +1060,22 @@ function PlayerView({ scene, turns, onComplete, onBack }) {
       });
     } catch (e) {
       setTtsState("idle");
-      fallbackBrowserTts(text);
+      if (window.speechSynthesis) {
+        try {
+          window.speechSynthesis.cancel();
+          const u = new SpeechSynthesisUtterance(text);
+          u.lang = "en-US";
+          u.rate = 0.95;
+          window.speechSynthesis.speak(u);
+        } catch (err) {
+          // Ignore fallback errors.
+        }
+      }
       if (!silent) {
         console.warn("Roleplay Kids TTS fallback:", e && e.message ? e.message : e);
       }
     }
-  }, [fallbackBrowserTts, voiceId]);
+  }, [voiceId]);
 
   const speakAgentLine = useCallback(async (text, opts = {}) => {
     return speakWithVoice(text, voiceId, opts);
