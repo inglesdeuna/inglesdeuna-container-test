@@ -1473,6 +1473,29 @@ function RoleplayActivity() {
   const [results, setResults] = useState([]);
   const [isListeningFull, setIsListeningFull] = useState(false);
   const listenCancelRef = useRef(false);
+  const studentReplayVoiceId = "Nggzl2QAXh3OijoXD116";
+
+  const playReplayLine = useCallback(async (text) => {
+    if (!text) return;
+    const fd = new FormData();
+    fd.append("text", text);
+    fd.append("voice_id", studentReplayVoiceId);
+    const res = await fetch("tts.php", { method: "POST", body: fd, credentials: "same-origin" });
+    if (!res.ok) {
+      throw new Error("TTS error " + res.status);
+    }
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    await new Promise((resolve, reject) => {
+      const audio = new Audio(url);
+      audio.onended = () => { URL.revokeObjectURL(url); resolve(); };
+      audio.onerror = () => { URL.revokeObjectURL(url); reject(new Error("Audio playback failed")); };
+      audio.play().catch(err => {
+        URL.revokeObjectURL(url);
+        reject(err);
+      });
+    });
+  }, []);
 
   const handleListenFull = useCallback(() => {
     if (isListeningFull) {
@@ -1503,16 +1526,15 @@ function RoleplayActivity() {
       }
       const item = queue[i++];
       try {
-        await speakWithVoice(item.text, studentVoiceId, { silent: true });
+        await playReplayLine(item.text);
       } catch (e) {
-        // Fall back to the browser voice if ElevenLabs playback fails.
-        fallbackBrowserTts(item.text);
+        console.warn("Roleplay Kids full replay failed:", e && e.message ? e.message : e);
       }
       speakNext();
     };
 
     speakNext();
-  }, [fallbackBrowserTts, isListeningFull, speakWithVoice, studentVoiceId, turns]);
+  }, [isListeningFull, playReplayLine, turns]);
 
   useEffect(() => {
     return () => {
