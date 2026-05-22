@@ -35,6 +35,15 @@ if (is_array($savedScene)) {
   if (!isset($savedScene['studentRole']) || trim((string) $savedScene['studentRole']) === '') {
     $savedScene['studentRole'] = 'Student';
   }
+  if (!isset($savedScene['sceneImage'])) {
+    $savedScene['sceneImage'] = '';
+  }
+  if (!isset($savedScene['teacherAvatarId']) || trim((string) $savedScene['teacherAvatarId']) === '') {
+    $savedScene['teacherAvatarId'] = 'TEACHER';
+  }
+  if (!isset($savedScene['studentAvatarId']) || trim((string) $savedScene['studentAvatarId']) === '') {
+    $savedScene['studentAvatarId'] = 'ANGIE';
+  }
 }
 
 if (is_array($savedTurns)) {
@@ -117,8 +126,27 @@ const DEFAULT_TURNS = [
 ];
 
 const DEFAULT_SCENE = {
-  title: "Kids Roleplay", icon: "🎭", desc: "Practice speaking English!", agentName: "Teacher", agentRole: "Teacher", studentRole: "Student",
+  title: "Kids Roleplay", icon: "🎭", desc: "Practice speaking English!", agentName: "Teacher", agentRole: "Teacher", studentRole: "Student", sceneImage: "", teacherAvatarId: "TEACHER", studentAvatarId: "ANGIE",
 };
+
+const RK_AVATARS = [
+  { id: "TEACHER", label: "Teacher" },
+  { id: "ANGIE", label: "Angie" },
+  { id: "ANY", label: "Any" },
+  { id: "BENNY", label: "Benny" },
+  { id: "JAY JAY", label: "Jay Jay" },
+  { id: "JESUS", label: "Jesus" },
+  { id: "JOHN", label: "John" },
+  { id: "LeeAnn", label: "LeeAnn" },
+  { id: "MARY JAY", label: "Mary Jay" },
+  { id: "NELLA", label: "Nella" },
+  { id: "VICTOR", label: "Victor" },
+  { id: "VIOLET", label: "Violet" },
+];
+
+function avatarSrc(id) {
+  return `assets/avatars/${encodeURIComponent(String(id || "ANGIE"))}.png`;
+}
 
 // ── SHARED COMPONENTS ─────────────────────────────────────────
 const Kicker = ({ children }) => (
@@ -623,6 +651,27 @@ function EditorView({ scene, turns, onSceneChange, onTurnsChange, onStart }) {
             <input value={scene.studentRole} onChange={e => onSceneChange({ ...scene, studentRole: e.target.value })}
               style={inputStyle} placeholder="e.g. Customer, Patient, Tourist" />
           </div>
+
+          <div style={{ marginTop: 10 }}>
+            <MiniLabel>Scene image URL</MiniLabel>
+            <input value={scene.sceneImage || ""} onChange={e => onSceneChange({ ...scene, sceneImage: e.target.value })}
+              style={inputStyle} placeholder="https://... (optional)" />
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 10 }}>
+            <div>
+              <MiniLabel>Teacher avatar</MiniLabel>
+              <select value={scene.teacherAvatarId || "TEACHER"} onChange={e => onSceneChange({ ...scene, teacherAvatarId: e.target.value })} style={inputStyle}>
+                {RK_AVATARS.map(a => <option key={a.id} value={a.id}>{a.label}</option>)}
+              </select>
+            </div>
+            <div>
+              <MiniLabel>Student avatar</MiniLabel>
+              <select value={scene.studentAvatarId || "ANGIE"} onChange={e => onSceneChange({ ...scene, studentAvatarId: e.target.value })} style={inputStyle}>
+                {RK_AVATARS.filter(a => a.id !== "TEACHER").map(a => <option key={a.id} value={a.id}>{a.label}</option>)}
+              </select>
+            </div>
+          </div>
         </Card>
 
         {/* Turn Cards */}
@@ -901,6 +950,8 @@ function PlayerView({ scene, turns, onComplete, onBack }) {
   const [ttsState, setTtsState] = useState("idle"); // "idle" | "loading" | "playing"
   const recorder = useRecorder();
   const currentAudioRef = useRef(null);
+  const teacherAvatar = scene.teacherAvatarId || "TEACHER";
+  const studentAvatar = scene.studentAvatarId || "ANGIE";
 
   const fallbackBrowserTts = useCallback((text) => {
     if (!text || !window.speechSynthesis) return;
@@ -1046,6 +1097,15 @@ function PlayerView({ scene, turns, onComplete, onBack }) {
               </div>
             </div>
 
+            <div style={{ padding: "14px 14px 10px", background: "#fff" }}>
+              <div style={{ height: 220, borderRadius: 18, border: "1.5px solid #C9B5EB", overflow: "hidden", background: "#F5F4FA", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                {scene.sceneImage
+                  ? <img src={scene.sceneImage} alt="Scene" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                  : <div style={{ fontFamily: "'Fredoka', sans-serif", fontSize: 42, color: "#3F3A4F" }}>Imagen</div>
+                }
+              </div>
+            </div>
+
             <div style={{ padding: "14px 14px 18px", maxHeight: "72vh", overflowY: "auto", display: "flex", flexDirection: "column", gap: 12, background: "#F9F8FF" }}>
               {safeTurns.map((turn, idx) => {
                 const turnResult = results.find(r => r.turnIdx === idx);
@@ -1062,7 +1122,10 @@ function PlayerView({ scene, turns, onComplete, onBack }) {
 
                     <div style={{ background: "#F5F3FF", border: "1px solid #EDE9FA", borderRadius: 14, padding: "10px 12px", marginBottom: 8 }}>
                       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 6 }}>
-                        <div style={{ fontSize: 14, fontWeight: 800, color: "#5A51C0" }}>{scene.agentName || "Teacher"}</div>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                          <img src={avatarSrc(teacherAvatar)} alt="Teacher avatar" style={{ width: 34, height: 34, borderRadius: "50%", objectFit: "cover", border: "1px solid #D9D5F2", background: "#fff" }} />
+                          <div style={{ fontSize: 14, fontWeight: 800, color: "#5A51C0" }}>{scene.agentName || "Teacher"}</div>
+                        </div>
                         <button onClick={() => speakAgentLine(turn.agent)} disabled={ttsState !== "idle"} style={{ background: ttsState !== "idle" ? "#C5C1ED" : "#7F77DD", color: "#fff", border: "none", borderRadius: 999, padding: "6px 14px", fontSize: 12, fontWeight: 800, cursor: ttsState !== "idle" ? "not-allowed" : "pointer" }}>
                           {ttsState === "loading" ? "Loading..." : ttsState === "playing" ? "Playing..." : "Listen"}
                         </button>
@@ -1074,7 +1137,10 @@ function PlayerView({ scene, turns, onComplete, onBack }) {
 
                     <div style={{ background: "#FFF7ED", border: "1px solid #FCDDBF", borderRadius: 14, padding: "10px 12px" }}>
                       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 6 }}>
-                        <div style={{ fontSize: 13, fontWeight: 800, color: "#C2580A" }}>Repeat exactly this line</div>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                          <img src={avatarSrc(studentAvatar)} alt="Student avatar" style={{ width: 34, height: 34, borderRadius: "50%", objectFit: "cover", border: "1px solid #F3CC9C", background: "#fff" }} />
+                          <div style={{ fontSize: 13, fontWeight: 800, color: "#C2580A" }}>Repeat exactly this line</div>
+                        </div>
                         <span style={{ fontSize: 10, color: "#9B8FCC", fontWeight: 800 }}>STUDENT</span>
                       </div>
                       <div style={{ background: "#fff", border: "1px solid #FCDDBF", borderRadius: 12, padding: "8px 12px", fontSize: 13, fontWeight: 700, color: "#8C4A0E", lineHeight: 1.5 }}>
