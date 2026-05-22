@@ -894,14 +894,12 @@ function FeedbackCard({ data, transcript, turnIndex, isLast, onNext, onFinish })
 
 // ── PLAYER VIEW ───────────────────────────────────────────────
 function PlayerView({ scene, turns, onComplete, onBack }) {
-  const [messages, setMessages] = useState([{ role: "ai", text: turns[0].agent }]);
+  const safeTurns = (turns && turns.length) ? turns : DEFAULT_TURNS;
   const [currentTurn, setCurrentTurn] = useState(0);
-  const [phase, setPhase] = useState("record");
-  const [feedback, setFeedback] = useState(null);
-  const [lastTranscript, setLastTranscript] = useState("");
   const [results, setResults] = useState([]);
   const [voiceId, setVoiceId] = useState("nzFihrBIvB34imQBuxub");
   const [ttsState, setTtsState] = useState("idle"); // "idle" | "loading" | "playing"
+  const recorder = useRecorder();
   const currentAudioRef = useRef(null);
 
   const fallbackBrowserTts = useCallback((text) => {
@@ -919,6 +917,7 @@ function PlayerView({ scene, turns, onComplete, onBack }) {
 
   const speakAgentLine = useCallback(async (text, opts = {}) => {
     const silent = !!opts.silent;
+    if (!text) return;
     if (currentAudioRef.current) {
       currentAudioRef.current.pause();
       currentAudioRef.current = null;
@@ -956,104 +955,181 @@ function PlayerView({ scene, turns, onComplete, onBack }) {
     }
   }, [voiceId, fallbackBrowserTts]);
 
-  // Auto-play agent line whenever a new AI message is added
+  function normalize(text) {
+    return String(text || "")
+      .toLowerCase()
+      .trim()
+      .replace(/[.,!?;:'"]/g, "")
+      .replace(/\s+/g, " ");
+  }
+
+  function computeScore(transcript, target) {
+    const a = normalize(transcript).split(" ").filter(Boolean);
+    const b = normalize(target).split(" ").filter(Boolean);
+    if (!a.length || !b.length) return 0;
+    const matches = a.filter(w => b.includes(w)).length;
+    return Math.max(0, Math.min(100, Math.round((matches / Math.max(a.length, b.length)) * 100)));
+  }
+
+  function targetLine(turn) {
+    return (turn.ideal || turn.hint || "").trim();
+  }
+
+  function buildFeedback(transcript, target) {
+    const total = computeScore(transcript, target);
+    return {
+      grammar: total,
+      vocabulary: total,
+      fluency: total,
+      total,
+      corrected: target || transcript,
+      praise: total >= 80 ? "Great repetition!" : total >= 55 ? "Good effort, keep practicing!" : "Nice try, listen and repeat again.",
+      tips: ["Listen carefully and repeat with clear pronunciation."],
+      passed: total >= 50,
+    };
+  }
+
+  const currentTurnData = safeTurns[currentTurn] || { agent: "", ideal: "", hint: "" };
+
   useEffect(() => {
-    const last = messages[messages.length - 1];
-    if (last && last.role === "ai") speakAgentLine(last.text, { silent: true });
-  }, [messages.length]); // eslint-disable-line
+    if (currentTurnData && currentTurnData.agent) {
+      speakAgentLine(currentTurnData.agent, { silent: true });
+    }
+  }, [currentTurn]); // eslint-disable-line
 
   // Stop audio on unmount
-  useEffect(() => () => { if (currentAudioRef.current) currentAudioRef.current.pause(); }, []);
+  useEffect(() => () => {
+    if (currentAudioRef.current) currentAudioRef.current.pause();
+    if (window.speechSynthesis) window.speechSynthesis.cancel();
+  }, []);
 
-  const handleSubmit = async (transcript) => {
-    setMessages(m => [...m, { role: "you", text: transcript }]);
-    setLastTranscript(transcript);
-    setPhase("loading");
-    const data = await callClaude(transcript, turns[currentTurn]);
-    const newResults = [...results, { transcript, feedback: data, turnIdx: currentTurn }];
+  function handleAdvanceCurrentTurn() {
+    const transcript = (recorder.finalText + recorder.interimText).trim();
+    if (!transcript) {
+      alert("Please record the student repetition first.");
+      return;
+    }
+
+    const target = targetLine(currentTurnData);
+    const fb = buildFeedback(transcript, target);
+    const newResults = [...results, { transcript, feedback: fb, turnIdx: currentTurn }];
     setResults(newResults);
-    setFeedback(data);
-    setPhase("feedback");
-  };
+    recorder.reset();
 
-  const handleNext = () => {
-    const next = currentTurn + 1;
-    setCurrentTurn(next);
-    setMessages(m => [...m, { role: "ai", text: turns[next].agent }]);
-    setFeedback(null);
-    setPhase("record");
-  };
+    if (currentTurn >= safeTurns.length - 1) {
+      onComplete(newResults);
+      return;
+    }
+    setCurrentTurn(prev => prev + 1);
+  }
 
   return (
     <div style={{ background: "#ffffff", minHeight: "100%" }}>
-        <div style={{ maxWidth: 680, margin: "0 auto", padding: "12px 16px 60px", background: "#fff", border: "1px solid #EDE9FA", borderRadius: 24, boxShadow: "0 4px 24px rgba(127,119,221,.13)", overflow: "hidden" }}>
-          {/* Header bar with Back, Title, Voice selector, Turn info */}
-          <div style={{ textAlign: "center", padding: "8px 0 4px" }}>
+      <div style={{ maxWidth: 760, margin: "0 auto", padding: "12px 16px 60px", background: "#fff", border: "1px solid #EDE9FA", borderRadius: 24, boxShadow: "0 4px 24px rgba(127,119,221,.13)", overflow: "hidden" }}>
+          <div style={{ textAlign: "center", padding: "8px 0 6px" }}>
             <span style={{ display: "inline-block", background: "#FFF0E6", color: "#F97316", fontFamily: "'Nunito', sans-serif", fontSize: 11, fontWeight: 800, letterSpacing: ".07em", textTransform: "uppercase", borderRadius: 99, padding: "3px 14px", marginBottom: 6 }}>Activity</span>
             <div style={{ fontFamily: "'Fredoka', sans-serif", fontSize: 28, fontWeight: 600, color: "#F97316", lineHeight: 1.2 }}>Roleplay Kids</div>
             <div style={{ fontFamily: "'Nunito', sans-serif", fontSize: 13, color: "#9B8FCC", fontWeight: 600 }}>Practice real conversations in English.</div>
           </div>
 
-        <div style={{ background: "#fff", border: "1px solid #EDE9FA", borderRadius: 24, overflow: "hidden" }}>
-
-        {/* Scene bar — record phase only */}
-        {phase === "record" && (
-          <div style={{ background: "#FFF0E6", borderBottom: "1px solid #EDE9FA", padding: "10px 18px", display: "flex", alignItems: "center", gap: 12 }}>
-            <div style={{ width: 32, height: 32, borderRadius: "50%", background: "#FFF0E6", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>{scene.icon}</div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontFamily: "'Nunito',sans-serif", fontSize: 14, color: "#F97316", fontWeight: 800, lineHeight: 1.2 }}>{scene.title}</div>
-              <div style={{ fontFamily: "'Nunito',sans-serif", fontSize: 11, fontWeight: 700, color: "#9B8FCC" }}>
-                {scene.agentName}{scene.agentRole ? ` · ${scene.agentRole}` : ""}{"  |  "}{scene.studentRole || "Student"} · You
+          <div style={{ background: "#fff", border: "1px solid #EDE9FA", borderRadius: 24, overflow: "hidden" }}>
+            <div style={{ background: "#FFF0E6", borderBottom: "1px solid #EDE9FA", padding: "10px 18px", display: "flex", alignItems: "center", gap: 12 }}>
+              <div style={{ width: 32, height: 32, borderRadius: "50%", background: "#FFF0E6", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>{scene.icon}</div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontFamily: "'Nunito',sans-serif", fontSize: 14, color: "#F97316", fontWeight: 800, lineHeight: 1.2 }}>{scene.title || "Roleplay Kids"}</div>
+                <div style={{ fontFamily: "'Nunito',sans-serif", fontSize: 11, fontWeight: 700, color: "#9B8FCC" }}>
+                  {scene.agentName || "Teacher"}{scene.agentRole ? ` · ${scene.agentRole}` : ""}{"  |  "}{scene.studentRole || "Student"} · You
+                </div>
+              </div>
+              <div style={{ background: "#7F77DD", color: "#fff", borderRadius: 999, padding: "4px 12px", fontSize: 12, fontWeight: 800, fontFamily: "'Nunito',sans-serif", flexShrink: 0 }}>
+                Turn {currentTurn + 1} / {safeTurns.length}
               </div>
             </div>
-            <div style={{ background: "#7F77DD", color: "#fff", borderRadius: 999, padding: "4px 12px", fontSize: 12, fontWeight: 800, fontFamily: "'Nunito',sans-serif", flexShrink: 0 }}>
-              Turn {currentTurn + 1} / {turns.length}
+
+            <div style={{ padding: "14px 14px 18px", maxHeight: "72vh", overflowY: "auto", display: "flex", flexDirection: "column", gap: 12, background: "#F9F8FF" }}>
+              {safeTurns.map((turn, idx) => {
+                const turnResult = results.find(r => r.turnIdx === idx);
+                const isActive = idx === currentTurn;
+                const studentLine = targetLine(turn);
+                return (
+                  <div key={idx} style={{ background: "#fff", border: "1.5px solid #EDE9FA", borderRadius: 18, padding: 12 }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+                      <span style={{ background: "#EEEDFE", color: "#5A51C0", borderRadius: 999, padding: "4px 10px", fontSize: 11, fontWeight: 800 }}>Turn {idx + 1}</span>
+                      {turnResult && (
+                        <span style={{ background: "#F0FDF4", color: "#166534", border: "1px solid #86EFAC", borderRadius: 999, padding: "4px 10px", fontSize: 11, fontWeight: 800 }}>{turnResult.feedback.total} pts</span>
+                      )}
+                    </div>
+
+                    <div style={{ background: "#F5F3FF", border: "1px solid #EDE9FA", borderRadius: 14, padding: "10px 12px", marginBottom: 8 }}>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 6 }}>
+                        <div style={{ fontSize: 14, fontWeight: 800, color: "#5A51C0" }}>{scene.agentName || "Teacher"}</div>
+                        <button onClick={() => speakAgentLine(turn.agent)} disabled={ttsState !== "idle"} style={{ background: ttsState !== "idle" ? "#C5C1ED" : "#7F77DD", color: "#fff", border: "none", borderRadius: 999, padding: "6px 14px", fontSize: 12, fontWeight: 800, cursor: ttsState !== "idle" ? "not-allowed" : "pointer" }}>
+                          {ttsState === "loading" ? "Loading..." : ttsState === "playing" ? "Playing..." : "Listen"}
+                        </button>
+                      </div>
+                      <div style={{ background: "#fff", border: "1px solid #EDE9FA", borderRadius: 12, padding: "8px 12px", fontSize: 13, fontWeight: 700, color: "#2E2A45", lineHeight: 1.5 }}>
+                        {turn.agent || "..."}
+                      </div>
+                    </div>
+
+                    <div style={{ background: "#FFF7ED", border: "1px solid #FCDDBF", borderRadius: 14, padding: "10px 12px" }}>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 6 }}>
+                        <div style={{ fontSize: 13, fontWeight: 800, color: "#C2580A" }}>Repeat exactly this line</div>
+                        <span style={{ fontSize: 10, color: "#9B8FCC", fontWeight: 800 }}>STUDENT</span>
+                      </div>
+                      <div style={{ background: "#fff", border: "1px solid #FCDDBF", borderRadius: 12, padding: "8px 12px", fontSize: 13, fontWeight: 700, color: "#8C4A0E", lineHeight: 1.5 }}>
+                        {studentLine || "(No student line configured)"}
+                      </div>
+
+                      {turnResult && (
+                        <div style={{ marginTop: 8, fontSize: 12, fontWeight: 700, color: "#534AB7" }}>
+                          Student said: "{turnResult.transcript}"
+                        </div>
+                      )}
+
+                      {isActive && (
+                        <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 8 }}>
+                          <button
+                            onClick={recorder.isRecording ? recorder.stop : recorder.start}
+                            style={{ background: recorder.isRecording ? "#EF4444" : "#7F77DD", color: "#fff", border: "none", borderRadius: 12, padding: "11px 14px", fontSize: 13, fontWeight: 800, cursor: "pointer" }}
+                          >
+                            {recorder.isRecording ? "Stop recording" : "Tap to speak your response"}
+                          </button>
+
+                          <div style={{ fontSize: 12, fontWeight: 700, color: "#6A63B0", minHeight: 18 }}>
+                            {(recorder.finalText + recorder.interimText).trim()
+                              ? `Transcript: ${(recorder.finalText + recorder.interimText).trim()}`
+                              : "Waiting for student recording..."}
+                          </div>
+
+                          <button
+                            onClick={handleAdvanceCurrentTurn}
+                            disabled={(recorder.finalText + recorder.interimText).trim() === ""}
+                            style={{ background: (recorder.finalText + recorder.interimText).trim() ? "#F97316" : "#E5E1F8", color: (recorder.finalText + recorder.interimText).trim() ? "#fff" : "#AAA2D8", border: "none", borderRadius: 12, padding: "10px 14px", fontSize: 13, fontWeight: 800, cursor: (recorder.finalText + recorder.interimText).trim() ? "pointer" : "not-allowed" }}
+                          >
+                            {currentTurn === safeTurns.length - 1 ? "Finish Roleplay" : "Save and Next Turn"}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
-        )}
 
-        <div style={{ padding: "18px 16px 24px" }}>
-        <Messages messages={messages} />
-
-        {phase === "record" && (
-          <RecorderCard
-            turn={turns[currentTurn]}
-            turnIndex={currentTurn}
-            totalTurns={turns.length}
-            onSubmit={handleSubmit}
-            scene={scene}
-            ttsState={ttsState}
-            speakAgentLine={speakAgentLine}
-            onBack={onBack}
-          />
-        )}
-
-        {phase === "loading" && (
-          <div style={{ background: C.white, border: `1.5px solid ${C.cardBorder}`, borderRadius: 18, padding: 28, textAlign: "center", marginTop: 14 }}>
-            <div style={{ width: 36, height: 36, border: `3px solid ${C.purpleLight}`, borderTop: `3px solid ${C.purple}`, borderRadius: "50%", animation: "rp-spin .8s linear infinite", margin: "0 auto 12px" }} />
-            <div style={{ fontSize: 13, fontWeight: 700, color: C.purple }}>Reviewing your response…</div>
-          </div>
-        )}
-
-        {phase === "feedback" && feedback && (
-          <FeedbackCard
-            data={feedback}
-            transcript={lastTranscript}
-            turnIndex={currentTurn}
-            isLast={currentTurn === turns.length - 1}
-            onNext={handleNext}
-            onFinish={() => onComplete(results)}
-          />
-        )}
+          {onBack && (
+            <div style={{ marginTop: 10, display: "flex", justifyContent: "flex-start" }}>
+              <button onClick={onBack} style={{ background: "#fff", border: "1.5px solid #EDE9FA", color: "#7F77DD", borderRadius: 999, padding: "10px 20px", fontSize: 13, fontWeight: 800, cursor: "pointer" }}>← Back</button>
+            </div>
+          )}
         </div>
-        </div>
-      </div>
     </div>
   );
 }
 
 // ── COMPLETION VIEW ───────────────────────────────────────────
-function CompletionView({ scene, turns, results, onReview, onRetry }) {
+function CompletionView({ scene, turns, results, onReview, onRetry, onListenFull, isListeningFull }) {
   const total = results.reduce((s, r) => s + r.feedback.total, 0);
   const avg = k => Math.round(results.reduce((s, r) => s + r.feedback[k], 0) / results.length);
 
@@ -1087,7 +1163,8 @@ function CompletionView({ scene, turns, results, onReview, onRetry }) {
 
           {/* Buttons */}
           <div style={{ display: "flex", justifyContent: "center", gap: 10, marginTop: 14 }}>
-            <button onClick={onReview} style={{ background: C.purple, color: C.white, border: "none", borderRadius: 14, padding: "11px 22px", fontSize: 13, fontWeight: 800, fontFamily: "'Nunito',sans-serif", cursor: "pointer" }}>See review</button>
+            <button onClick={onListenFull} style={{ background: C.purple, color: C.white, border: "none", borderRadius: 14, padding: "11px 22px", fontSize: 13, fontWeight: 800, fontFamily: "'Nunito',sans-serif", cursor: "pointer" }}>{isListeningFull ? "Stop listen" : "Listen full roleplay"}</button>
+            <button onClick={onReview} style={{ background: "#fff", border: `1.5px solid ${C.cardBorder}`, color: C.purple, borderRadius: 14, padding: "11px 22px", fontSize: 13, fontWeight: 800, fontFamily: "'Nunito',sans-serif", cursor: "pointer" }}>See review</button>
             <button onClick={onRetry} style={{ background: C.white, border: `1.5px solid ${C.cardBorder}`, color: C.purple, borderRadius: 14, padding: "11px 22px", fontSize: 13, fontWeight: 800, fontFamily: "'Nunito',sans-serif", cursor: "pointer" }}>Try again</button>
           </div>
         </div>
@@ -1230,6 +1307,57 @@ function RoleplayActivity() {
   const [scene, setScene] = useState(window.RK_SAVED_SCENE || DEFAULT_SCENE);
   const [turns, setTurns] = useState(window.RK_SAVED_TURNS || JSON.parse(JSON.stringify(DEFAULT_TURNS)));
   const [results, setResults] = useState([]);
+  const [isListeningFull, setIsListeningFull] = useState(false);
+  const listenCancelRef = useRef(false);
+
+  const handleListenFull = useCallback(() => {
+    if (!window.speechSynthesis) return;
+
+    if (isListeningFull) {
+      listenCancelRef.current = true;
+      window.speechSynthesis.cancel();
+      setIsListeningFull(false);
+      return;
+    }
+
+    const queue = [];
+    turns.forEach((t) => {
+      const teacher = String(t.agent || "").trim();
+      const student = String(t.ideal || t.hint || "").trim();
+      if (teacher) queue.push({ text: teacher, role: "teacher" });
+      if (student) queue.push({ text: student, role: "student" });
+    });
+
+    if (!queue.length) return;
+    listenCancelRef.current = false;
+    window.speechSynthesis.cancel();
+    setIsListeningFull(true);
+
+    let i = 0;
+    const speakNext = () => {
+      if (listenCancelRef.current || i >= queue.length) {
+        setIsListeningFull(false);
+        return;
+      }
+      const item = queue[i++];
+      const u = new SpeechSynthesisUtterance(item.text);
+      u.lang = "en-US";
+      u.rate = item.role === "teacher" ? 0.94 : 1.0;
+      u.pitch = item.role === "teacher" ? 0.92 : 1.05;
+      u.onend = speakNext;
+      u.onerror = speakNext;
+      window.speechSynthesis.speak(u);
+    };
+
+    speakNext();
+  }, [isListeningFull, turns]);
+
+  useEffect(() => {
+    return () => {
+      listenCancelRef.current = true;
+      if (window.speechSynthesis) window.speechSynthesis.cancel();
+    };
+  }, []);
 
   return (
     <div>
@@ -1250,6 +1378,8 @@ function RoleplayActivity() {
       {view === "completion" && (
         <CompletionView
           scene={scene} turns={turns} results={results}
+          onListenFull={handleListenFull}
+          isListeningFull={isListeningFull}
           onReview={() => setView("replay")}
           onRetry={() => setView("player")}
         />
