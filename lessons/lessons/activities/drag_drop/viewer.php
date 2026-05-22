@@ -198,17 +198,45 @@ function dd_build_question(array $block): ?array
     }
 
     $instruction = $text;
-    $slots = [];
+    $slotsWithPosition = [];
     foreach ($missingWords as $word) {
         $escaped = preg_quote((string) $word, '/');
-        $instruction = preg_replace('/\b' . $escaped . '\b/i', '___', $instruction, 1);
-        $slots[] = ['answer' => (string) $word];
+        $pattern = '/\b' . $escaped . '\b/i';
+
+        if (!preg_match($pattern, $instruction, $match, PREG_OFFSET_CAPTURE)) {
+            $slotsWithPosition[] = [
+                'answer' => (string) $word,
+                'position' => PHP_INT_MAX,
+            ];
+            continue;
+        }
+
+        $position = isset($match[0][1]) ? (int) $match[0][1] : PHP_INT_MAX;
+        $instruction = preg_replace($pattern, '___', $instruction, 1);
+        $slotsWithPosition[] = [
+            'answer' => (string) $word,
+            'position' => $position,
+        ];
     }
+
+    usort($slotsWithPosition, function (array $left, array $right): int {
+        if ($left['position'] === $right['position']) {
+            return 0;
+        }
+
+        return $left['position'] <=> $right['position'];
+    });
+
+    $slots = array_map(function (array $slot): array {
+        return ['answer' => (string) ($slot['answer'] ?? '')];
+    }, $slotsWithPosition);
 
     return [
         'instruction' => $instruction,
         'slots' => $slots,
-        'words' => array_values($missingWords),
+        'words' => array_map(function (array $slot): string {
+            return (string) ($slot['answer'] ?? '');
+        }, $slotsWithPosition),
         'image' => $image,
         'tts_text' => $text,
         'listen_enabled' => $listenEnabled,
