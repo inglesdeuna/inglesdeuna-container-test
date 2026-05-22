@@ -264,11 +264,14 @@ function useRecorder() {
   const [interimText, setInterimText] = useState("");
   const [recSecs, setRecSecs] = useState(0);
   const [hasRecorded, setHasRecorded] = useState(false);
+  const [recordedAudioUrl, setRecordedAudioUrl] = useState("");
   const recognitionRef = useRef(null);
   const mediaRecRef = useRef(null);
   const analyserRef = useRef(null);
   const audioCtxRef = useRef(null);
   const timerRef = useRef(null);
+  const audioChunksRef = useRef([]);
+  const playbackAudioRef = useRef(null);
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
 
   const setupSR = useCallback(() => {
@@ -294,8 +297,21 @@ function useRecorder() {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const mr = new MediaRecorder(stream);
-      mr.ondataavailable = () => {};
-      mr.onstop = () => stream.getTracks().forEach(t => t.stop());
+      audioChunksRef.current = [];
+      if (recordedAudioUrl) {
+        URL.revokeObjectURL(recordedAudioUrl);
+        setRecordedAudioUrl("");
+      }
+      mr.ondataavailable = (event) => {
+        if (event.data && event.data.size > 0) audioChunksRef.current.push(event.data);
+      };
+      mr.onstop = () => {
+        stream.getTracks().forEach(t => t.stop());
+        if (audioChunksRef.current.length > 0) {
+          const blob = new Blob(audioChunksRef.current, { type: "audio/webm" });
+          setRecordedAudioUrl(URL.createObjectURL(blob));
+        }
+      };
       mr.start();
       mediaRecRef.current = mr;
 
@@ -333,10 +349,46 @@ function useRecorder() {
 
   const reset = useCallback(() => {
     stop();
+    if (playbackAudioRef.current) {
+      playbackAudioRef.current.pause();
+      playbackAudioRef.current = null;
+    }
+    if (recordedAudioUrl) URL.revokeObjectURL(recordedAudioUrl);
     setFinalText(""); setInterimText(""); setRecSecs(0); setHasRecorded(false); setIsRecording(false);
-  }, [stop]);
+    setRecordedAudioUrl("");
+  }, [recordedAudioUrl, stop]);
 
-  return { isRecording, finalText, interimText, recSecs, hasRecorded, analyserRef, start, stop, reset };
+  const playRecording = useCallback(() => {
+    if (!recordedAudioUrl) return;
+    if (playbackAudioRef.current) {
+      playbackAudioRef.current.pause();
+      playbackAudioRef.current = null;
+    }
+    const audio = new Audio(recordedAudioUrl);
+    playbackAudioRef.current = audio;
+    audio.play().catch(() => {});
+  }, [recordedAudioUrl]);
+
+  useEffect(() => {
+    return () => {
+      if (playbackAudioRef.current) playbackAudioRef.current.pause();
+      if (recordedAudioUrl) URL.revokeObjectURL(recordedAudioUrl);
+    };
+  }, [recordedAudioUrl]);
+
+  return {
+    isRecording,
+    finalText,
+    interimText,
+    recSecs,
+    hasRecorded,
+    recordedAudioUrl,
+    analyserRef,
+    start,
+    stop,
+    reset,
+    playRecording,
+  };
 }
 
 // ── CLAUDE API (via server-side proxy) ────────────────────────
@@ -810,12 +862,18 @@ function RecorderCard({ turn, turnIndex, totalTurns, onSubmit, scene, ttsState, 
           </div>
           <button onClick={() => speakAgentLine(turn.agent)} disabled={ttsState !== "idle"} style={{ background: ttsState !== "idle" ? "#C5C1ED" : "#7F77DD", color: "#fff", border: "none", borderRadius: 999, padding: "8px 14px", fontSize: 12, fontWeight: 800, fontFamily: "'Nunito',sans-serif", cursor: ttsState !== "idle" ? "not-allowed" : "pointer", display: "flex", alignItems: "center", gap: 5, flexShrink: 0 }}>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-            {ttsState === "loading" ? "Loading…" : ttsState === "playing" ? "Playing…" : "Listen"}
+            {ttsState === "loading" ? "Loading..." : ttsState === "playing" ? "Playing..." : "Speaker"}
           </button>
         </div>
         <div style={{ background: "#fff", border: "1px solid #EDE9FA", borderRadius: "0 16px 16px 16px", padding: "12px 14px", fontSize: 14, fontWeight: 700, color: "#3C3489", lineHeight: 1.6 }}>
           {turn.agent}
         </div>
+        {turn.ideal ? (
+          <div style={{ marginTop: 8, background: "#FFF0E6", border: "1px solid #FDDCBE", borderRadius: 12, padding: "10px 12px" }}>
+            <div style={{ fontSize: 10, fontWeight: 800, color: C.orange, textTransform: "uppercase", letterSpacing: ".05em", marginBottom: 3 }}>Correction</div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: "#9A3412", lineHeight: 1.55 }}>{turn.ideal}</div>
+          </div>
+        ) : null}
       </div>
 
       {/* 3. HINT BOX */}
@@ -846,9 +904,16 @@ function RecorderCard({ turn, turnIndex, totalTurns, onSubmit, scene, ttsState, 
             }
           </button>
           <div style={{ fontSize: 12, fontWeight: 800, color: rec.isRecording ? C.orange : muted, textAlign: "center" }}>
-            {rec.isRecording ? "🔴 Listening..." : rec.hasRecorded ? `✓ "${displayText.slice(0, 42)}${displayText.length > 42 ? "…" : ""}"` : "Tap to speak your response"}
+            {rec.isRecording ? "🔴 Listening..." : rec.hasRecorded ? `✓ "${displayText.slice(0, 42)}${displayText.length > 42 ? "..." : ""}"` : "Press mic to record"}
           </div>
-          <div style={{ fontSize: 11, fontWeight: 800, color: muted }}>— or —</div>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, flexWrap: "wrap" }}>
+            <button onClick={() => speakAgentLine(turn.agent)} disabled={ttsState !== "idle"} style={{ background: ttsState !== "idle" ? "#C5C1ED" : "#7F77DD", color: "#fff", border: "none", borderRadius: 999, padding: "8px 16px", fontSize: 12, fontWeight: 800, fontFamily: "'Nunito',sans-serif", cursor: ttsState !== "idle" ? "not-allowed" : "pointer" }}>
+              Speaker
+            </button>
+            <button onClick={rec.playRecording} disabled={!rec.recordedAudioUrl} style={{ background: rec.recordedAudioUrl ? "#F97316" : "#FED7AA", color: "#fff", border: "none", borderRadius: 999, padding: "8px 16px", fontSize: 12, fontWeight: 800, fontFamily: "'Nunito',sans-serif", cursor: rec.recordedAudioUrl ? "pointer" : "not-allowed" }}>
+              Listen
+            </button>
+          </div>
           <button onClick={() => setShowTyping(v => !v)} style={{ background: "#fff", border: "1.5px solid #EDE9FA", borderRadius: 999, padding: "8px 18px", fontSize: 12, fontWeight: 800, color: "#7F77DD", fontFamily: "'Nunito',sans-serif", cursor: "pointer" }}>
             {showTyping ? "Hide keyboard" : "Type instead"}
           </button>
