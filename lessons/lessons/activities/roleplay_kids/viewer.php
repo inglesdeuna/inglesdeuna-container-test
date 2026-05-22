@@ -148,13 +148,24 @@ ob_start();
 .rk-score-fill{height:100%;background:linear-gradient(90deg,#F97316,#7F77DD);border-radius:999px;transition:width .5s;}
 
 /* ── Avatar picker grid ─────────────────────────────────── */
-.rk-avatar-grid{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-bottom:24px;}
-.rk-avatar-card{background:#fff;border:2px solid #EDE9FA;border-radius:18px;padding:12px 10px;cursor:pointer;transition:all .15s;min-width:72px;text-align:center;font-family:'Nunito',sans-serif;}
-.rk-avatar-card:hover{border-color:#7F77DD;transform:translateY(-2px);box-shadow:0 4px 14px rgba(127,119,221,.14);}
-.rk-avatar-card.rk-selected{background:#FFF0E6;border-color:#F97316;box-shadow:0 0 0 3px rgba(249,115,22,.14);transform:scale(1.04);}
-.rk-avatar-lbl{margin-top:7px;font-weight:800;font-size:12px;color:#9B94BE;}
+.rk-pick-label{font-size:11px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:#9B94BE;margin-bottom:14px;text-align:center;}
+.rk-avatar-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:22px;}
+.rk-avatar-card{background:#fff;border:2px solid #EDE9FA;border-radius:18px;padding:12px 6px 10px;cursor:pointer;transition:all .18s cubic-bezier(.34,1.56,.64,1);text-align:center;position:relative;outline:none;font-family:'Nunito',sans-serif;}
+.rk-avatar-card:hover{border-color:#7F77DD;transform:translateY(-3px);box-shadow:0 6px 18px rgba(127,119,221,.16);}
+.rk-avatar-card.rk-selected{background:#FFF0E6;border-color:#F97316;box-shadow:0 0 0 3px rgba(249,115,22,.14);transform:scale(1.06) translateY(-2px);}
+.rk-avatar-check{position:absolute;top:7px;right:7px;width:18px;height:18px;border-radius:50%;background:#F97316;display:flex;align-items:center;justify-content:center;opacity:0;transform:scale(0.4);transition:all .18s cubic-bezier(.34,1.56,.64,1);}
+.rk-avatar-card.rk-selected .rk-avatar-check{opacity:1;transform:scale(1);}
+.rk-avatar-img-wrap{width:54px;height:54px;border-radius:50%;margin:0 auto 8px;background:#EDE9FA;border:2.5px solid #EDE9FA;display:flex;align-items:center;justify-content:center;overflow:hidden;transition:border-color .18s;}
+.rk-avatar-card.rk-selected .rk-avatar-img-wrap{border-color:#F97316;}
+.rk-avatar-img-wrap img{width:100%;height:100%;object-fit:cover;border-radius:50%;}
+.rk-avatar-lbl{font-size:11px;font-weight:800;color:#9B94BE;letter-spacing:.02em;transition:color .18s;}
 .rk-avatar-card.rk-selected .rk-avatar-lbl{color:#C2580A;}
-.rk-avatar-start{text-align:center;}
+.rk-avatar-start{text-align:center;display:flex;flex-direction:column;align-items:center;gap:10px;}
+.rk-avatar-preview{display:flex;align-items:center;gap:8px;background:#F5F3FF;border-radius:999px;padding:7px 16px;font-size:13px;font-weight:800;color:#534AB7;min-height:36px;transition:all .2s;}
+.rk-avatar-preview.empty{color:#9B94BE;background:#F9F8FF;}
+.rk-avatar-preview-dot{width:10px;height:10px;border-radius:50%;background:#7F77DD;flex-shrink:0;}
+.rk-kicker-badge{display:inline-flex;align-items:center;gap:6px;background:#fff;border:1.5px solid #EDE9FA;border-radius:999px;padding:5px 14px;font-size:12px;font-weight:800;color:#7F77DD;margin-top:10px;}
+
 
 /* ── Responsive ─────────────────────────────────────────── */
 @media(max-width:640px){
@@ -750,8 +761,13 @@ function PlayerView({ scene: sc, turns, activityId }) {
           <div className="rk-kicker">🎭 Activity</div>
           <h1 className="rk-title">{scene.title || "Roleplay"}</h1>
           <p className="rk-subtitle">Choose your character to get started!</p>
+          <div className="rk-kicker-badge">
+            <span style={{width:8,height:8,borderRadius:"50%",background:"linear-gradient(135deg,#F97316,#7F77DD)",display:"inline-block",flexShrink:0}}></span>
+            {(scene.turns||[]).length} turns
+          </div>
         </div>
         <div className="rk-board rk-board-padded">
+          <div className="rk-pick-label">Who are you today?</div>
           <div className="rk-avatar-grid">
             {AVATARS.map(av => (
               <button
@@ -759,25 +775,37 @@ function PlayerView({ scene: sc, turns, activityId }) {
                 className={`rk-avatar-card${avatarId === av.id ? " rk-selected" : ""}`}
                 onClick={() => setAvatarId(av.id)}
               >
-                <AvatarImg id={av.id} size={58} />
+                <div className="rk-avatar-check">
+                  <svg width="10" height="8" viewBox="0 0 10 8" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="1,4 4,7 9,1"/></svg>
+                </div>
+                <div className="rk-avatar-img-wrap">
+                  <AvatarImg id={av.id} size={54} />
+                </div>
                 <div className="rk-avatar-lbl">{av.label}</div>
               </button>
             ))}
           </div>
+          <div style={{height:1,background:"#F0EEF8",margin:"0 0 20px"}}></div>
           <div className="rk-avatar-start">
+            <div className={`rk-avatar-preview${avatarId ? "" : " empty"}`}>
+              {avatarId
+                ? <><span className="rk-avatar-preview-dot"></span><span>Playing as <strong>{AVATARS.find(a=>a.id===avatarId)?.label}</strong></span></>
+                : <span>No character selected</span>
+              }
+            </div>
             <button
               className="rk-btn rk-btn-orange"
               onClick={startPlaying}
               disabled={!avatarId}
               style={{ minWidth: 180, padding: "13px 32px", fontSize: 15 }}
-            >Let's go! →</button>
+            >Start Roleplay ✦</button>
+            <span style={{fontSize:11,fontWeight:700,color:"#9B94BE",letterSpacing:".04em"}}>Tap a character above to begin</span>
           </div>
         </div>
       </div>
     </div>
   );
 
-  // ════════════════════════════════════════════════════════════
   // DONE — AF.showCompleted populates this div via useEffect
   // ════════════════════════════════════════════════════════════
   if (phase === "done") return (
