@@ -4,6 +4,7 @@ require_once __DIR__ . '/../../core/_activity_viewer_template.php';
 
 $activityId = isset($_GET['id']) ? trim((string) $_GET['id']) : '';
 $mode = isset($_GET['mode']) ? trim((string) $_GET['mode']) : '';
+$returnTo = isset($_GET['return_to']) ? trim((string) $_GET['return_to']) : '';
 $allowEditor = ($mode === 'edit');
 $startView = $allowEditor ? 'editor' : 'player';
 
@@ -23,29 +24,72 @@ if ($activityId !== '') {
     }
 }
 
+// Backward compatibility: map old roleplay_kids schema to roleplay schema.
+if (is_array($savedScene)) {
+  if (!isset($savedScene['icon']) || trim((string) $savedScene['icon']) === '') {
+    $savedScene['icon'] = '🎭';
+  }
+  if (!isset($savedScene['agentRole']) || trim((string) $savedScene['agentRole']) === '') {
+    $savedScene['agentRole'] = 'Teacher';
+  }
+  if (!isset($savedScene['studentRole']) || trim((string) $savedScene['studentRole']) === '') {
+    $savedScene['studentRole'] = 'Student';
+  }
+}
+
+if (is_array($savedTurns)) {
+  $normalizedTurns = [];
+  foreach ($savedTurns as $turn) {
+    if (!is_array($turn)) {
+      continue;
+    }
+
+    if (array_key_exists('agent', $turn) || array_key_exists('ideal', $turn) || array_key_exists('hint', $turn) || array_key_exists('criteria', $turn)) {
+      $normalizedTurns[] = [
+        'agent' => (string) ($turn['agent'] ?? ''),
+        'hint' => (string) ($turn['hint'] ?? ''),
+        'ideal' => (string) ($turn['ideal'] ?? ''),
+        'criteria' => (string) ($turn['criteria'] ?? ''),
+      ];
+      continue;
+    }
+
+    $teacherLine = (string) ($turn['teacherLine'] ?? '');
+    $studentLine = (string) ($turn['studentLine'] ?? '');
+    $normalizedTurns[] = [
+      'agent' => $teacherLine,
+      'hint' => $studentLine,
+      'ideal' => $studentLine,
+      'criteria' => '',
+    ];
+  }
+  $savedTurns = $normalizedTurns;
+}
+
 ob_start();
 ?>
 <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
-#roleplay-root * { box-sizing: border-box; margin: 0; padding: 0; }
-#roleplay-root { font-family: 'Nunito', sans-serif; flex: 1; min-height: 0; overflow-y: auto; }
+#roleplay-kids-root * { box-sizing: border-box; margin: 0; padding: 0; }
+#roleplay-kids-root { font-family: 'Nunito', sans-serif; flex: 1; min-height: 0; overflow-y: auto; }
 body { background: #ffffff; font-family: 'Nunito', sans-serif; }
 @keyframes rp-spin { to { transform: rotate(360deg); } }
 @keyframes rp-pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
 </style>
 
-<div id="roleplay-root" style="flex:1;min-height:0;overflow-y:auto;"></div>
+<div id="roleplay-kids-root" style="flex:1;min-height:0;overflow-y:auto;"></div>
 
 <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
 <script>
-window.ROLEPLAY_ACTIVITY_ID = <?= json_encode($activityId) ?>;
-window.ROLEPLAY_SAVED_SCENE  = <?= json_encode($savedScene) ?>;
-window.ROLEPLAY_SAVED_TURNS  = <?= json_encode($savedTurns) ?>;
-window.ROLEPLAY_ALLOW_EDITOR = <?= json_encode($allowEditor) ?>;
-window.ROLEPLAY_START_VIEW = <?= json_encode($startView) ?>;
+window.RK_ACTIVITY_ID = <?= json_encode($activityId) ?>;
+window.RK_RETURN_TO = <?= json_encode($returnTo) ?>;
+window.RK_SAVED_SCENE  = <?= json_encode($savedScene) ?>;
+window.RK_SAVED_TURNS  = <?= json_encode($savedTurns) ?>;
+window.RK_ALLOW_EDITOR = <?= json_encode($allowEditor) ?>;
+window.RK_START_VIEW = <?= json_encode($startView) ?>;
 </script>
 
 <script type="text/babel">
@@ -73,7 +117,7 @@ const DEFAULT_TURNS = [
 ];
 
 const DEFAULT_SCENE = {
-  title: "", icon: "🎭", desc: "", agentName: "", agentRole: "", studentRole: "",
+  title: "Kids Roleplay", icon: "🎭", desc: "Practice speaking English!", agentName: "Teacher", agentRole: "Teacher", studentRole: "Student",
 };
 
 // ── SHARED COMPONENTS ─────────────────────────────────────────
@@ -308,7 +352,7 @@ const inputStyle = {
 };
 
 async function saveActivity(scene, turns) {
-  const id = window.ROLEPLAY_ACTIVITY_ID;
+  const id = window.RK_ACTIVITY_ID;
   if (!id) return { ok: false, error: "No activity ID" };
   try {
     const r = await fetch("save.php", {
@@ -496,7 +540,7 @@ function EditorView({ scene, turns, onSceneChange, onTurnsChange, onStart }) {
 
   return (
     <div style={{ background: C.bg, minHeight: "100%" }}>
-      <Topbar title="🎭 Roleplay" right={
+      <Topbar title="🎭 Roleplay Kids" right={
         <span style={{ fontSize: 12, color: C.purpleSub, fontWeight: 700 }}>Activity Editor</span>
       } />
       <div style={{ maxWidth: 680, margin: "0 auto", padding: "20px 16px 60px" }}>
@@ -629,7 +673,7 @@ function EditorView({ scene, turns, onSceneChange, onTurnsChange, onStart }) {
           fontSize: 13, fontWeight: 800, color: C.purple, marginBottom: 14,
         }}>＋ Add Turn</button>
 
-        {window.ROLEPLAY_ACTIVITY_ID && (
+        {window.RK_ACTIVITY_ID && (
           <div style={{ display: "flex", gap: 8, marginBottom: 10, alignItems: "center" }}>
             <Btn onClick={handleSave} color={C.purple} disabled={saving} style={{ flex: 1 }}>
               {saving ? "Guardando…" : "💾 Guardar"}
@@ -642,7 +686,7 @@ function EditorView({ scene, turns, onSceneChange, onTurnsChange, onStart }) {
           </div>
         )}
 
-        <Btn onClick={onStart}>▶ Start Roleplay</Btn>
+        <Btn onClick={onStart}>▶ Start Roleplay Kids</Btn>
       </div>
     </div>
   );
@@ -919,7 +963,7 @@ function PlayerView({ scene, turns, onComplete, onBack }) {
           {/* Header bar with Back, Title, Voice selector, Turn info */}
           <div style={{ textAlign: "center", padding: "8px 0 4px" }}>
             <span style={{ display: "inline-block", background: "#FFF0E6", color: "#F97316", fontFamily: "'Nunito', sans-serif", fontSize: 11, fontWeight: 800, letterSpacing: ".07em", textTransform: "uppercase", borderRadius: 99, padding: "3px 14px", marginBottom: 6 }}>Activity</span>
-            <div style={{ fontFamily: "'Fredoka', sans-serif", fontSize: 28, fontWeight: 600, color: "#F97316", lineHeight: 1.2 }}>Roleplay</div>
+            <div style={{ fontFamily: "'Fredoka', sans-serif", fontSize: 28, fontWeight: 600, color: "#F97316", lineHeight: 1.2 }}>Roleplay Kids</div>
             <div style={{ fontFamily: "'Nunito', sans-serif", fontSize: 13, color: "#9B8FCC", fontWeight: 600 }}>Practice real conversations in English.</div>
           </div>
 
@@ -1153,11 +1197,11 @@ function ReplayView({ scene, turns, results, onBack }) {
 
 // ── ROOT APP ──────────────────────────────────────────────────
 function RoleplayActivity() {
-  const allowEditor = !!window.ROLEPLAY_ALLOW_EDITOR;
-  const initialView = window.ROLEPLAY_START_VIEW === "editor" && allowEditor ? "editor" : "player";
+  const allowEditor = !!window.RK_ALLOW_EDITOR;
+  const initialView = window.RK_START_VIEW === "editor" && allowEditor ? "editor" : "player";
   const [view, setView] = useState(initialView);
-  const [scene, setScene] = useState(window.ROLEPLAY_SAVED_SCENE || DEFAULT_SCENE);
-  const [turns, setTurns] = useState(window.ROLEPLAY_SAVED_TURNS || JSON.parse(JSON.stringify(DEFAULT_TURNS)));
+  const [scene, setScene] = useState(window.RK_SAVED_SCENE || DEFAULT_SCENE);
+  const [turns, setTurns] = useState(window.RK_SAVED_TURNS || JSON.parse(JSON.stringify(DEFAULT_TURNS)));
   const [results, setResults] = useState([]);
 
   return (
@@ -1193,9 +1237,9 @@ function RoleplayActivity() {
   );
 }
 
-const _rpRoot = document.getElementById('roleplay-root');
+const _rpRoot = document.getElementById('roleplay-kids-root');
 if (_rpRoot) ReactDOM.createRoot(_rpRoot).render(React.createElement(RoleplayActivity));
 </script>
 <?php
 $content = ob_get_clean();
-render_activity_viewer('Roleplay', 'fa-solid fa-comments', $content);
+render_activity_viewer('Roleplay Kids', 'fa-solid fa-children', $content);
