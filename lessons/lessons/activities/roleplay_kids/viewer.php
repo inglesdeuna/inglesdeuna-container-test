@@ -1012,6 +1012,7 @@ function PlayerView({ scene, turns, onComplete, onBack }) {
   const [currentTurn, setCurrentTurn] = useState(0);
   const [results, setResults] = useState([]);
   const [voiceId, setVoiceId] = useState("nzFihrBIvB34imQBuxub");
+  const studentVoiceId = "Nggzl2QAXh3OijoXD116";
   const [ttsState, setTtsState] = useState("idle"); // "idle" | "loading" | "playing"
   const recorder = useRecorder();
   const currentAudioRef = useRef(null);
@@ -1031,9 +1032,10 @@ function PlayerView({ scene, turns, onComplete, onBack }) {
     }
   }, []);
 
-  const speakAgentLine = useCallback(async (text, opts = {}) => {
+  const speakWithVoice = useCallback(async (text, selectedVoiceId, opts = {}) => {
     const silent = !!opts.silent;
-    if (!text) return;
+    const useVoiceId = selectedVoiceId || voiceId;
+    if (!text || !useVoiceId) return;
     if (currentAudioRef.current) {
       currentAudioRef.current.pause();
       currentAudioRef.current = null;
@@ -1042,7 +1044,7 @@ function PlayerView({ scene, turns, onComplete, onBack }) {
     try {
       const fd = new FormData();
       fd.append("text", text);
-      fd.append("voice_id", voiceId);
+      fd.append("voice_id", useVoiceId);
       const res = await fetch("tts.php", { method: "POST", body: fd, credentials: "same-origin" });
       if (!res.ok) {
         let detail = "TTS error " + res.status;
@@ -1056,12 +1058,19 @@ function PlayerView({ scene, turns, onComplete, onBack }) {
       }
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
-      const audio = new Audio(url);
-      currentAudioRef.current = audio;
-      setTtsState("playing");
-      audio.onended = () => { URL.revokeObjectURL(url); setTtsState("idle"); currentAudioRef.current = null; };
-      audio.onerror = () => { URL.revokeObjectURL(url); setTtsState("idle"); currentAudioRef.current = null; };
-      await audio.play();
+      await new Promise((resolve, reject) => {
+        const audio = new Audio(url);
+        currentAudioRef.current = audio;
+        setTtsState("playing");
+        audio.onended = () => { URL.revokeObjectURL(url); setTtsState("idle"); currentAudioRef.current = null; resolve(); };
+        audio.onerror = () => { URL.revokeObjectURL(url); setTtsState("idle"); currentAudioRef.current = null; reject(new Error("Audio playback failed")); };
+        audio.play().catch(err => {
+          URL.revokeObjectURL(url);
+          setTtsState("idle");
+          currentAudioRef.current = null;
+          reject(err);
+        });
+      });
     } catch (e) {
       setTtsState("idle");
       fallbackBrowserTts(text);
@@ -1069,7 +1078,11 @@ function PlayerView({ scene, turns, onComplete, onBack }) {
         console.warn("Roleplay Kids TTS fallback:", e && e.message ? e.message : e);
       }
     }
-  }, [voiceId, fallbackBrowserTts]);
+  }, [fallbackBrowserTts, voiceId]);
+
+  const speakAgentLine = useCallback(async (text, opts = {}) => {
+    return speakWithVoice(text, voiceId, opts);
+  }, [speakWithVoice, voiceId]);
 
   function normalize(text) {
     return String(text || "")
@@ -1461,25 +1474,10 @@ function RoleplayActivity() {
   const [isListeningFull, setIsListeningFull] = useState(false);
   const listenCancelRef = useRef(false);
 
-  const pickStudentVoice = useCallback(() => {
-    if (!window.speechSynthesis) return null;
-    const voices = window.speechSynthesis.getVoices() || [];
-    if (!voices.length) return null;
-
-    const preferredByName = /(female|woman|girl|child|aria|samantha|zoe|ava|emma|luna)/i;
-    let selected = voices.find(v => /en[-_ ]?us/i.test(v.lang) && preferredByName.test(`${v.name} ${v.voiceURI}`));
-    if (!selected) selected = voices.find(v => /^en/i.test(v.lang) && preferredByName.test(`${v.name} ${v.voiceURI}`));
-    if (!selected) selected = voices.find(v => /en[-_ ]?us/i.test(v.lang));
-    if (!selected) selected = voices.find(v => /^en/i.test(v.lang));
-    return selected || voices[0] || null;
-  }, []);
-
   const handleListenFull = useCallback(() => {
-    if (!window.speechSynthesis) return;
-
     if (isListeningFull) {
       listenCancelRef.current = true;
-      window.speechSynthesis.cancel();
+      if (window.speechSynthesis) window.speechSynthesis.cancel();
       setIsListeningFull(false);
       return;
     }
@@ -1494,29 +1492,27 @@ function RoleplayActivity() {
 
     if (!queue.length) return;
     listenCancelRef.current = false;
-    window.speechSynthesis.cancel();
+    if (window.speechSynthesis) window.speechSynthesis.cancel();
     setIsListeningFull(true);
-    const studentVoice = pickStudentVoice();
 
     let i = 0;
-    const speakNext = () => {
+    const speakNext = async () => {
       if (listenCancelRef.current || i >= queue.length) {
         setIsListeningFull(false);
         return;
       }
       const item = queue[i++];
-      const u = new SpeechSynthesisUtterance(item.text);
-      u.lang = "en-US";
-      if (studentVoice) u.voice = studentVoice;
-      u.rate = 1.0;
-      u.pitch = 1.08;
-      u.onend = speakNext;
-      u.onerror = speakNext;
-      window.speechSynthesis.speak(u);
+      try {
+        await speakWithVoice(item.text, studentVoiceId, { silent: true });
+      } catch (e) {
+        // Fall back to the browser voice if ElevenLabs playback fails.
+        fallbackBrowserTts(item.text);
+      }
+      speakNext();
     };
 
     speakNext();
-  }, [isListeningFull, pickStudentVoice, turns]);
+  }, [fallbackBrowserTts, isListeningFull, speakWithVoice, studentVoiceId, turns]);
 
   useEffect(() => {
     return () => {
