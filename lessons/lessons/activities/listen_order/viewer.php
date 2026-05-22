@@ -89,7 +89,7 @@ body{margin:0!important;padding:0!important;background:#fff!important;font-famil
 .activity-wrapper{max-width:100%!important;margin:0!important;padding:0!important;min-height:0;display:flex!important;flex-direction:column!important;background:transparent!important}
 .top-row{display:none!important}
 .viewer-content{flex:1!important;display:flex!important;flex-direction:column!important;min-height:0!important;padding:0!important;margin:0!important;background:transparent!important;border:none!important;box-shadow:none!important;border-radius:0!important}
-.lo-shell{width:100%;flex:1;min-height:0;overflow-y:auto;padding:clamp(14px,2.5vw,34px);display:flex;align-items:flex-start;justify-content:center;background:#fff}
+.lo-shell{width:100%;flex:1;min-height:0;overflow-y:auto;padding:clamp(14px,2.5vw,34px);display:flex;align-items:flex-start;justify-content:center;background:#F5F3FF}
 .lo-app{width:min(980px,100%);margin:0 auto;display:flex;flex-direction:column}
 .lo-hero{text-align:center;margin-bottom:clamp(14px,2vw,22px)}
 .lo-kicker{display:inline-flex;align-items:center;justify-content:center;margin-bottom:10px;padding:7px 14px;border-radius:999px;background:#FFF0E6;border:1px solid #FCDDBF;color:#C2580A;font-size:12px;font-weight:900;letter-spacing:.08em;text-transform:uppercase}
@@ -137,8 +137,8 @@ body{margin:0!important;padding:0!important;background:#fff!important;font-famil
 .lo-btn-check{background:#F97316;color:#fff;box-shadow:0 6px 18px rgba(249,115,22,.22)}
 .lo-btn-next{background:#7F77DD;color:#fff;box-shadow:0 6px 18px rgba(127,119,221,.22)}
 #lo-status{text-align:center;margin-top:10px;font-size:13px;color:#9B94BE;font-weight:900}
-.lo-completed{display:none;text-align:center;padding:24px 12px;max-width:520px;margin:0 auto}
-.lo-completed.active{display:block}
+.lo-completed{display:none;background:#fff;border:1px solid #EDE9FA;border-radius:28px;box-shadow:0 12px 36px rgba(127,119,221,.13);min-height:clamp(300px,42vh,430px);flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:clamp(28px,5vw,48px) 24px;gap:12px;width:min(760px,100%);margin:0 auto}
+.lo-completed.active{display:flex}
 .lo-done-icon{font-size:30px;line-height:1;margin-bottom:6px}
 .lo-done-title{margin:0;font-family:'Fredoka',sans-serif;font-size:32px;color:#F97316;font-weight:700}
 .lo-done-text{margin:0;max-width:520px;color:#9B94BE;font-size:14px;font-weight:800;line-height:1.5}
@@ -151,6 +151,7 @@ body{margin:0!important;padding:0!important;background:#fff!important;font-famil
     .lo-card-badge{top:6px;left:6px;width:22px;height:22px;font-size:11px}
     .lo-actions{flex-direction:column;align-items:center}.lo-btn{width:100%;max-width:280px}
     .lo-audio-player{flex-wrap:wrap;gap:10px}
+    .lo-completed{border-radius:26px}
     .lo-done-restart{width:100%}
 }
 </style>
