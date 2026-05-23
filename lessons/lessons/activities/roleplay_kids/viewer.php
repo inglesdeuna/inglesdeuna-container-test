@@ -1085,8 +1085,6 @@ function PlayerView({ scene, turns, onComplete, onBack, onListenFull }) {
   const safeTurns = (turns && turns.length) ? turns : DEFAULT_TURNS;
   const [currentTurn, setCurrentTurn] = useState(0);
   const [results, setResults] = useState([]);
-  const [typedText, setTypedText] = useState("");
-  const [showTyping, setShowTyping] = useState(false);
   const [voiceId, setVoiceId] = useState(scene.teacherVoiceId || "nzFihrBIvB34imQBuxub");
   const studentVoiceId = "Nggzl2QAXh3OijoXD116";
   const [ttsState, setTtsState] = useState("idle"); // "idle" | "loading" | "playing"
@@ -1201,8 +1199,6 @@ function PlayerView({ scene, turns, onComplete, onBack, onListenFull }) {
     if (currentTurnData && currentTurnData.agent) {
       speakAgentLine(currentTurnData.agent, { silent: true });
     }
-    setTypedText("");
-    setShowTyping(false);
   }, [currentTurn]); // eslint-disable-line
 
   // Stop audio on unmount
@@ -1213,10 +1209,9 @@ function PlayerView({ scene, turns, onComplete, onBack, onListenFull }) {
 
   function handleAdvanceCurrentTurn() {
     const spokenText = (recorder.finalText + recorder.interimText).trim();
-    const typedResponse = typedText.trim();
-    const transcript = spokenText || typedResponse || (recorder.hasRecorded ? "(Audio response)" : "");
+    const transcript = spokenText || (recorder.hasRecorded ? "(Audio response)" : "");
     if (!transcript) {
-      alert("Please record or type the student repetition first.");
+      alert("Please record the student repetition first.");
       return;
     }
 
@@ -1230,8 +1225,6 @@ function PlayerView({ scene, turns, onComplete, onBack, onListenFull }) {
       : [...results, updatedTurnResult];
     setResults(newResults);
     recorder.reset();
-    setTypedText("");
-    setShowTyping(false);
 
     const completedTurns = new Set(newResults.map(r => r.turnIdx));
     const isAllCompleted = safeTurns.every((_, idx) => completedTurns.has(idx));
@@ -1251,9 +1244,30 @@ function PlayerView({ scene, turns, onComplete, onBack, onListenFull }) {
   }
 
   const globalSpokenText = (recorder.finalText + recorder.interimText).trim();
-  const globalTypedResponse = typedText.trim();
-  const globalTranscript = globalSpokenText || globalTypedResponse || (recorder.hasRecorded ? "(Audio response)" : "");
+  const globalTranscript = globalSpokenText || (recorder.hasRecorded ? "(Audio response)" : "");
   const canAdvanceTurn = globalTranscript !== "";
+
+  function selectTurnForPractice(idx) {
+    if (idx === currentTurn) return;
+    recorder.reset();
+    setCurrentTurn(idx);
+  }
+
+  function toggleRecordingForTurn(idx) {
+    if (idx !== currentTurn) {
+      recorder.reset();
+      setCurrentTurn(idx);
+      setTimeout(() => {
+        recorder.start();
+      }, 0);
+      return;
+    }
+    if (recorder.isRecording) {
+      recorder.stop();
+      return;
+    }
+    recorder.start();
+  }
 
   return (
     <div style={{ background: "#ffffff", minHeight: "100%" }}>
@@ -1287,12 +1301,7 @@ function PlayerView({ scene, turns, onComplete, onBack, onListenFull }) {
                       <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                         {!isActive && (
                           <button
-                            onClick={() => {
-                              setCurrentTurn(idx);
-                              recorder.reset();
-                              setTypedText("");
-                              setShowTyping(false);
-                            }}
+                            onClick={() => selectTurnForPractice(idx)}
                             style={{ background: "#fff", color: "#7F77DD", border: "1.5px solid #EDE9FA", borderRadius: 999, padding: "4px 10px", fontSize: 11, fontWeight: 800, cursor: "pointer" }}
                           >
                             Practice this block
@@ -1345,58 +1354,45 @@ function PlayerView({ scene, turns, onComplete, onBack, onListenFull }) {
                         </div>
                       )}
 
-                      {isActive && (
-                        <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 8 }}>
+                      <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 8 }}>
                           {(() => {
                             const spokenText = (recorder.finalText + recorder.interimText).trim();
-                            const typedResponse = typedText.trim();
-                            const currentTranscript = spokenText || typedResponse || (recorder.hasRecorded ? "(Audio response)" : "");
+                            const currentTranscript = spokenText || (recorder.hasRecorded ? "(Audio response)" : "");
                             const currentScore = currentTranscript ? computeScore(currentTranscript, studentLine) : 0;
                             const isCorrect = currentTranscript && currentScore >= 80;
-                            const canAdvance = currentTranscript !== "";
                             return (
                               <>
                           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                             <button
-                              onClick={recorder.isRecording ? recorder.stop : recorder.start}
+                              onClick={() => toggleRecordingForTurn(idx)}
                               style={{ background: recorder.isRecording ? "#EF4444" : "#7F77DD", color: "#fff", border: "none", borderRadius: 12, padding: "10px 14px", fontSize: 13, fontWeight: 800, cursor: "pointer", minWidth: 94 }}
                             >
-                              {recorder.isRecording ? "Stop" : "Record"}
+                              {isActive && recorder.isRecording ? "Stop" : "Record"}
                             </button>
                             <button
-                              onClick={recorder.playRecording}
-                              disabled={!recorder.recordedAudioUrl}
-                              style={{ background: recorder.recordedAudioUrl ? "#F97316" : "#FCDDBF", color: "#fff", border: "none", borderRadius: 12, padding: "10px 14px", fontSize: 13, fontWeight: 800, cursor: recorder.recordedAudioUrl ? "pointer" : "not-allowed", minWidth: 94 }}
+                              onClick={() => {
+                                if (!isActive) {
+                                  selectTurnForPractice(idx);
+                                  return;
+                                }
+                                recorder.playRecording();
+                              }}
+                              disabled={!isActive || !recorder.recordedAudioUrl}
+                              style={{ background: (isActive && recorder.recordedAudioUrl) ? "#F97316" : "#FCDDBF", color: "#fff", border: "none", borderRadius: 12, padding: "10px 14px", fontSize: 13, fontWeight: 800, cursor: (isActive && recorder.recordedAudioUrl) ? "pointer" : "not-allowed", minWidth: 94 }}
                             >
                               Listen
                             </button>
-                            <button
-                              onClick={() => setShowTyping(v => !v)}
-                              style={{ background: "#fff", color: "#7F77DD", border: "1.5px solid #EDE9FA", borderRadius: 12, padding: "10px 14px", fontSize: 13, fontWeight: 800, cursor: "pointer", minWidth: 94 }}
-                            >
-                              {showTyping ? "Hide typing" : "Type"}
-                            </button>
                           </div>
 
-                          {showTyping && (
-                            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                              <textarea
-                                value={typedText}
-                                onChange={(e) => setTypedText(e.target.value)}
-                                placeholder="Type student response..."
-                                rows={3}
-                                style={{ width: "100%", border: "1.5px solid #EDE9FA", borderRadius: 12, padding: "8px 10px", fontSize: 13, fontWeight: 700, fontFamily: "'Nunito', sans-serif", resize: "none", outline: "none", color: "#2E2A45", background: "#fff", boxSizing: "border-box" }}
-                              />
-                            </div>
-                          )}
-
-                          <div style={{ fontSize: 12, fontWeight: 800, color: currentTranscript ? (isCorrect ? "#166534" : "#B91C1C") : "#6A63B0", minHeight: 18 }}>
-                            {currentTranscript
-                              ? `${isCorrect ? "Correct" : "Incorrect"}: ${currentTranscript}`
-                              : "Waiting for student response..."}
+                          <div style={{ fontSize: 12, fontWeight: 800, color: isActive ? (currentTranscript ? (isCorrect ? "#166534" : "#B91C1C") : "#6A63B0") : "#6A63B0", minHeight: 18 }}>
+                            {isActive
+                              ? (currentTranscript
+                                ? `${isCorrect ? "Correct" : "Incorrect"}: ${currentTranscript}`
+                                : "Waiting for student response...")
+                              : "Tap Record to practice this block."}
                           </div>
 
-                          {currentTranscript && (
+                          {isActive && currentTranscript && (
                             <div style={{ fontSize: 11, fontWeight: 700, color: isCorrect ? "#166534" : "#B91C1C" }}>
                               {isCorrect ? "Good repetition." : "Try again and repeat exactly the line."}
                             </div>
@@ -1408,8 +1404,7 @@ function PlayerView({ scene, turns, onComplete, onBack, onListenFull }) {
                               </>
                             );
                           })()}
-                        </div>
-                      )}
+                      </div>
                     </div>
                   </div>
                 );
