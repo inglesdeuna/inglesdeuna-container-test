@@ -1387,44 +1387,58 @@ function PlayerView({ scene, turns, onComplete, onBack, onListenFull }) {
 
 // ── COMPLETION VIEW ───────────────────────────────────────────
 function CompletionView({ scene, turns, results, onReview, onRetry }) {
-  const total = results.reduce((s, r) => s + r.feedback.total, 0);
-  const avg = k => Math.round(results.reduce((s, r) => s + r.feedback[k], 0) / results.length);
+  const totalTurns = Array.isArray(results) ? results.length : 0;
+  const correctTurns = (results || []).filter(r => !!(r && r.feedback && r.feedback.passed)).length;
+  const wrongTurns = Math.max(0, totalTurns - correctTurns);
+  const scorePct = totalTurns > 0 ? Math.round((correctTurns / totalTurns) * 100) : 0;
 
-  const muted = "#9B8FCC";
+  const total = (results || []).reduce((s, r) => s + (r && r.feedback ? (r.feedback.total || 0) : 0), 0);
+  const avg = k => totalTurns > 0
+    ? Math.round((results || []).reduce((s, r) => s + (r && r.feedback ? (r.feedback[k] || 0) : 0), 0) / totalTurns)
+    : 0;
+
   return (
     <div style={{ background: C.bg, minHeight: "100%" }}>
-      <div style={{ maxWidth: 680, margin: "0 auto", padding: "18px 16px 60px", display: "flex", flexDirection: "column", gap: 14 }}>
+      <div style={{ maxWidth: 760, margin: "0 auto", padding: "18px 16px 60px", display: "flex", flexDirection: "column", gap: 12 }}>
 
-        {/* HERO CARD */}
-        <div style={{ background: "linear-gradient(160deg,#EDE9FA,#FFF0E6)", borderRadius: 18, padding: "24px 18px", textAlign: "center" }}>
-          <div style={{ fontFamily: "'Fredoka',sans-serif", fontSize: 22, color: C.purple, fontWeight: 600, marginBottom: 4 }}>
-            Conversation complete!
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 10 }}>
+          <div style={{ background: "#FAFAFE", border: `1px solid ${C.cardBorder}`, borderRadius: 14, padding: 12, textAlign: "center" }}>
+            <div style={{ fontFamily: "'Fredoka',sans-serif", fontSize: 24, lineHeight: 1, fontWeight: 600, color: C.purple }}>{correctTurns}</div>
+            <div style={{ marginTop: 3, fontSize: 10, fontWeight: 800, letterSpacing: ".08em", textTransform: "uppercase", color: "#9B94BE" }}>Correct</div>
           </div>
-          <div style={{ fontSize: 12, fontWeight: 800, color: muted, marginBottom: 14 }}>
-            You completed all {turns.length} turns
+          <div style={{ background: "#FAFAFE", border: `1px solid ${C.cardBorder}`, borderRadius: 14, padding: 12, textAlign: "center" }}>
+            <div style={{ fontFamily: "'Fredoka',sans-serif", fontSize: 24, lineHeight: 1, fontWeight: 600, color: C.purple }}>{wrongTurns}</div>
+            <div style={{ marginTop: 3, fontSize: 10, fontWeight: 800, letterSpacing: ".08em", textTransform: "uppercase", color: "#9B94BE" }}>Wrong</div>
           </div>
-          <div style={{ fontFamily: "'Fredoka',sans-serif", fontSize: 52, color: C.orange, lineHeight: 1 }}>{total}</div>
-          <div style={{ fontSize: 14, fontWeight: 800, color: muted }}>out of {turns.length * 100} points</div>
-
-          {/* Chips */}
-          <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 8, marginTop: 14 }}>
-            {[
-              `${turns.length} turns`,
-              `Avg Grammar: ${avg("grammar")}`,
-              `Avg Vocab: ${avg("vocabulary")}`,
-              `Avg Fluency: ${avg("fluency")}`,
-            ].map(lbl => (
-              <span key={lbl} style={{ background: C.white, border: `1.5px solid ${C.cardBorder}`, borderRadius: 20, padding: "6px 14px", fontSize: 12, fontWeight: 800, color: C.purple }}>{lbl}</span>
-            ))}
-          </div>
-
-          {/* Buttons */}
-          <div style={{ display: "flex", justifyContent: "center", gap: 10, marginTop: 14 }}>
-            <button onClick={onReview} style={{ background: "#fff", border: `1.5px solid ${C.cardBorder}`, color: C.purple, borderRadius: 14, padding: "11px 22px", fontSize: 13, fontWeight: 800, fontFamily: "'Nunito',sans-serif", cursor: "pointer" }}>See review</button>
-            <button onClick={onRetry} style={{ background: C.white, border: `1.5px solid ${C.cardBorder}`, color: C.purple, borderRadius: 14, padding: "11px 22px", fontSize: 13, fontWeight: 800, fontFamily: "'Nunito',sans-serif", cursor: "pointer" }}>Try again</button>
+          <div style={{ background: "#FAFAFE", border: `1px solid ${C.cardBorder}`, borderRadius: 14, padding: 12, textAlign: "center" }}>
+            <div style={{ fontFamily: "'Fredoka',sans-serif", fontSize: 24, lineHeight: 1, fontWeight: 600, color: C.purple }}>{scorePct}%</div>
+            <div style={{ marginTop: 3, fontSize: 10, fontWeight: 800, letterSpacing: ".08em", textTransform: "uppercase", color: "#9B94BE" }}>Score</div>
           </div>
         </div>
 
+        <div style={{ background: C.white, border: `1px solid ${C.cardBorder}`, borderRadius: 28, boxShadow: "0 12px 36px rgba(127,119,221,.13)", minHeight: "clamp(300px,42vh,430px)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", padding: "clamp(28px,5vw,48px) 24px", gap: 12 }}>
+          <div style={{ fontSize: 30, lineHeight: 1 }}>✅</div>
+          <h2 style={{ margin: 0, color: C.orange, fontFamily: "'Fredoka',sans-serif", fontSize: 32, fontWeight: 700 }}>{scene.title || "Roleplay Kids"}</h2>
+          <p style={{ margin: 0, color: "#9B94BE", fontSize: 14, fontWeight: 800 }}>You've completed this activity. Great job practicing.</p>
+          <p style={{ margin: 0, color: "#666", fontSize: 14, fontWeight: 800 }}>{correctTurns} correct · {wrongTurns} wrong · {scorePct}%</p>
+
+          <div style={{ display: "flex", justifyContent: "center", gap: 10, marginTop: 4, flexWrap: "wrap" }}>
+            <button onClick={onReview} style={{ background: "#fff", border: `1.5px solid ${C.cardBorder}`, color: C.purple, borderRadius: 999, padding: "11px 20px", fontSize: 13, fontWeight: 800, fontFamily: "'Nunito',sans-serif", cursor: "pointer" }}>See review</button>
+            <button onClick={onRetry} style={{ background: C.purple, border: "none", color: "#fff", borderRadius: 999, padding: "11px 20px", fontSize: 13, fontWeight: 800, fontFamily: "'Nunito',sans-serif", cursor: "pointer" }}>Restart</button>
+          </div>
+
+          <div style={{ marginTop: 4, display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "center" }}>
+            {[
+              `${totalTurns} turns`,
+              `Avg Grammar: ${avg("grammar")}`,
+              `Avg Vocab: ${avg("vocabulary")}`,
+              `Avg Fluency: ${avg("fluency")}`,
+              `${total} / ${Math.max(1, turns.length) * 100} points`,
+            ].map(lbl => (
+              <span key={lbl} style={{ background: "#FAFAFE", border: `1px solid ${C.cardBorder}`, borderRadius: 20, padding: "5px 12px", fontSize: 11, fontWeight: 800, color: C.purple }}>{lbl}</span>
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   );
