@@ -1147,8 +1147,20 @@ function PlayerView({ scene, turns, onComplete, onBack, onListenFull }) {
   const [ttsState, setTtsState] = useState("idle"); // "idle" | "loading" | "playing"
   const recorder = useRecorder();
   const currentAudioRef = useRef(null);
+  const suppressNextAutoPlayRef = useRef(false);
   const teacherAvatar = scene.teacherAvatarId || "TEACHER";
   const studentAvatar = scene.studentAvatarId || "ANGIE";
+
+  const stopAgentAudio = useCallback(() => {
+    if (currentAudioRef.current) {
+      currentAudioRef.current.pause();
+      currentAudioRef.current = null;
+    }
+    if (window.speechSynthesis) {
+      window.speechSynthesis.cancel();
+    }
+    setTtsState("idle");
+  }, []);
 
   useEffect(() => {
     setVoiceId(scene.teacherVoiceId || "nzFihrBIvB34imQBuxub");
@@ -1156,6 +1168,7 @@ function PlayerView({ scene, turns, onComplete, onBack, onListenFull }) {
 
   const speakWithVoice = useCallback(async (text, selectedVoiceId, opts = {}) => {
     const silent = !!opts.silent;
+    if (recorder.isRecording) return;
     const useVoiceId = selectedVoiceId || voiceId;
     if (!text || !useVoiceId) return;
     if (currentAudioRef.current) {
@@ -1210,7 +1223,7 @@ function PlayerView({ scene, turns, onComplete, onBack, onListenFull }) {
         console.warn("Roleplay Kids TTS fallback:", e && e.message ? e.message : e);
       }
     }
-  }, [voiceId]);
+  }, [recorder.isRecording, voiceId]);
 
   const speakAgentLine = useCallback(async (text, opts = {}) => {
     return speakWithVoice(text, voiceId, opts);
@@ -1253,10 +1266,15 @@ function PlayerView({ scene, turns, onComplete, onBack, onListenFull }) {
   const currentTurnData = safeTurns[currentTurn] || { agent: "", ideal: "", hint: "" };
 
   useEffect(() => {
+    if (suppressNextAutoPlayRef.current) {
+      suppressNextAutoPlayRef.current = false;
+      return;
+    }
+    if (recorder.isRecording) return;
     if (currentTurnData && currentTurnData.agent) {
       speakAgentLine(currentTurnData.agent, { silent: true });
     }
-  }, [currentTurn]); // eslint-disable-line
+  }, [currentTurn, recorder.isRecording]); // eslint-disable-line
 
   // Stop audio on unmount
   useEffect(() => () => {
@@ -1312,6 +1330,8 @@ function PlayerView({ scene, turns, onComplete, onBack, onListenFull }) {
 
   function toggleRecordingForTurn(idx) {
     if (idx !== currentTurn) {
+      stopAgentAudio();
+      suppressNextAutoPlayRef.current = true;
       recorder.reset();
       setCurrentTurn(idx);
       setTimeout(() => {
@@ -1323,6 +1343,7 @@ function PlayerView({ scene, turns, onComplete, onBack, onListenFull }) {
       recorder.stop();
       return;
     }
+    stopAgentAudio();
     recorder.start();
   }
 
