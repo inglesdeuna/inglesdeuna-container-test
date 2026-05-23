@@ -1371,6 +1371,24 @@ function PlayerView({ scene, turns, onComplete, onBack, onListenFull, persistedR
     return newResults;
   }
 
+  function advanceFromResults(turnIdx, sourceResults) {
+    const completedTurns = new Set(sourceResults.map(r => r.turnIdx));
+    const isAllCompleted = safeTurns.every((_, idx) => completedTurns.has(idx));
+    if (isAllCompleted) {
+      onComplete(sourceResults);
+      return;
+    }
+
+    let nextIdx = safeTurns.findIndex((_, idx) => idx > turnIdx && !completedTurns.has(idx));
+    if (nextIdx === -1) {
+      nextIdx = safeTurns.findIndex((_, idx) => !completedTurns.has(idx));
+    }
+    if (nextIdx === -1) {
+      nextIdx = Math.min(turnIdx + 1, safeTurns.length - 1);
+    }
+    setCurrentTurn(nextIdx);
+  }
+
   function evaluateBlock(turnIdx, transcript, options = {}) {
     const shouldAdvance = !!options.advance;
     const shouldResetRecorder = options.resetRecorder !== false;
@@ -1395,21 +1413,7 @@ function PlayerView({ scene, turns, onComplete, onBack, onListenFull, persistedR
 
     if (!shouldAdvance) return true;
 
-    const completedTurns = new Set(newResults.map(r => r.turnIdx));
-    const isAllCompleted = safeTurns.every((_, idx) => completedTurns.has(idx));
-    if (isAllCompleted) {
-      onComplete(newResults);
-      return true;
-    }
-
-    let nextIdx = safeTurns.findIndex((_, idx) => idx > turnIdx && !completedTurns.has(idx));
-    if (nextIdx === -1) {
-      nextIdx = safeTurns.findIndex((_, idx) => !completedTurns.has(idx));
-    }
-    if (nextIdx === -1) {
-      nextIdx = Math.min(turnIdx + 1, safeTurns.length - 1);
-    }
-    setCurrentTurn(nextIdx);
+    advanceFromResults(turnIdx, newResults);
     return true;
   }
 
@@ -1420,8 +1424,13 @@ function PlayerView({ scene, turns, onComplete, onBack, onListenFull, persistedR
   }, []);
 
   function handleAdvanceCurrentTurn() {
+    const existingResult = results.find(r => r.turnIdx === currentTurn);
     const spokenText = (recorder.finalText + recorder.interimText).trim();
     const transcript = spokenText || (recorder.hasRecorded ? "(Audio response)" : "");
+    if (!transcript && existingResult) {
+      advanceFromResults(currentTurn, results);
+      return;
+    }
     if (!transcript) {
       alert("Please record the student repetition first.");
       return;
@@ -1431,7 +1440,8 @@ function PlayerView({ scene, turns, onComplete, onBack, onListenFull, persistedR
 
   const globalSpokenText = (recorder.finalText + recorder.interimText).trim();
   const globalTranscript = globalSpokenText || (recorder.hasRecorded ? "(Audio response)" : "");
-  const canAdvanceTurn = globalTranscript !== "";
+  const currentTurnHasScore = results.some(r => r.turnIdx === currentTurn);
+  const canAdvanceTurn = currentTurnHasScore || globalTranscript !== "";
 
   function selectTurnForPractice(idx) {
     if (idx === currentTurn) return;
@@ -1651,16 +1661,23 @@ function PlayerView({ scene, turns, onComplete, onBack, onListenFull, persistedR
 }
 
 // ── COMPLETION VIEW ───────────────────────────────────────────
-function CompletionView({ scene, turns, results, onReview, onRetry }) {
-  const totalTurns = Array.isArray(results) ? results.length : 0;
-  const correctTurns = (results || []).filter(r => !!(r && r.feedback && r.feedback.passed)).length;
-  const wrongTurns = Math.max(0, totalTurns - correctTurns);
-  const scorePct = totalTurns > 0 ? Math.round((correctTurns / totalTurns) * 100) : 0;
+function CompletionView({ scene, turns, results, onRetry }) {
+  const totalBlocks = Array.isArray(turns) ? turns.length : 0;
+  const scoredByTurn = new Map((results || []).map(r => [Number(r.turnIdx), r]));
+  let completedBlocks = 0;
+  let correctBlocks = 0;
 
-  const total = (results || []).reduce((s, r) => s + (r && r.feedback ? (r.feedback.total || 0) : 0), 0);
-  const avg = k => totalTurns > 0
-    ? Math.round((results || []).reduce((s, r) => s + (r && r.feedback ? (r.feedback[k] || 0) : 0), 0) / totalTurns)
-    : 0;
+  for (let i = 0; i < totalBlocks; i += 1) {
+    const row = scoredByTurn.get(i);
+    if (!row || !row.feedback) continue;
+    completedBlocks += 1;
+    if (Number(row.feedback.total || 0) >= BLOCK_PASS_SCORE) {
+      correctBlocks += 1;
+    }
+  }
+
+  const wrongBlocks = Math.max(0, totalBlocks - correctBlocks);
+  const scorePct = totalBlocks > 0 ? Math.round((correctBlocks / totalBlocks) * 100) : 0;
 
   return (
     <div style={{ background: C.bg, minHeight: "100%" }}>
@@ -1668,11 +1685,11 @@ function CompletionView({ scene, turns, results, onReview, onRetry }) {
 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 10 }}>
           <div style={{ background: "#FAFAFE", border: `1px solid ${C.cardBorder}`, borderRadius: 14, padding: 12, textAlign: "center" }}>
-            <div style={{ fontFamily: "'Fredoka',sans-serif", fontSize: 24, lineHeight: 1, fontWeight: 600, color: C.purple }}>{correctTurns}</div>
+            <div style={{ fontFamily: "'Fredoka',sans-serif", fontSize: 24, lineHeight: 1, fontWeight: 600, color: "#16a34a" }}>{correctBlocks}</div>
             <div style={{ marginTop: 3, fontSize: 10, fontWeight: 800, letterSpacing: ".08em", textTransform: "uppercase", color: "#9B94BE" }}>Correct</div>
           </div>
           <div style={{ background: "#FAFAFE", border: `1px solid ${C.cardBorder}`, borderRadius: 14, padding: 12, textAlign: "center" }}>
-            <div style={{ fontFamily: "'Fredoka',sans-serif", fontSize: 24, lineHeight: 1, fontWeight: 600, color: C.purple }}>{wrongTurns}</div>
+            <div style={{ fontFamily: "'Fredoka',sans-serif", fontSize: 24, lineHeight: 1, fontWeight: 600, color: "#ef4444" }}>{wrongBlocks}</div>
             <div style={{ marginTop: 3, fontSize: 10, fontWeight: 800, letterSpacing: ".08em", textTransform: "uppercase", color: "#9B94BE" }}>Wrong</div>
           </div>
           <div style={{ background: "#FAFAFE", border: `1px solid ${C.cardBorder}`, borderRadius: 14, padding: 12, textAlign: "center" }}>
@@ -1685,23 +1702,11 @@ function CompletionView({ scene, turns, results, onReview, onRetry }) {
           <div style={{ fontSize: 30, lineHeight: 1 }}>✅</div>
           <h2 style={{ margin: 0, color: C.orange, fontFamily: "'Fredoka',sans-serif", fontSize: 32, fontWeight: 700 }}>{scene.title || "Roleplay Kids"}</h2>
           <p style={{ margin: 0, color: "#9B94BE", fontSize: 14, fontWeight: 800 }}>You've completed this activity. Great job practicing.</p>
-          <p style={{ margin: 0, color: "#666", fontSize: 14, fontWeight: 800 }}>{correctTurns} correct · {wrongTurns} wrong · {scorePct}%</p>
+          <p style={{ margin: 0, color: "#666", fontSize: 14, fontWeight: 800 }}>{correctBlocks} correct · {wrongBlocks} wrong · {scorePct}%</p>
+          <p style={{ margin: 0, color: C.purple, fontSize: 14, fontWeight: 900 }}>Progress: {completedBlocks} / {totalBlocks}</p>
 
           <div style={{ display: "flex", justifyContent: "center", gap: 10, marginTop: 4, flexWrap: "wrap" }}>
-            <button onClick={onReview} style={{ background: "#fff", border: `1.5px solid ${C.cardBorder}`, color: C.purple, borderRadius: 999, padding: "11px 20px", fontSize: 13, fontWeight: 800, fontFamily: "'Nunito',sans-serif", cursor: "pointer" }}>See review</button>
             <button onClick={onRetry} style={{ background: C.purple, border: "none", color: "#fff", borderRadius: 999, padding: "11px 20px", fontSize: 13, fontWeight: 800, fontFamily: "'Nunito',sans-serif", cursor: "pointer" }}>Restart</button>
-          </div>
-
-          <div style={{ marginTop: 4, display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "center" }}>
-            {[
-              `${totalTurns} turns`,
-              `Avg Grammar: ${avg("grammar")}`,
-              `Avg Vocab: ${avg("vocabulary")}`,
-              `Avg Fluency: ${avg("fluency")}`,
-              `${total} / ${Math.max(1, turns.length) * 100} points`,
-            ].map(lbl => (
-              <span key={lbl} style={{ background: "#FAFAFE", border: `1px solid ${C.cardBorder}`, borderRadius: 20, padding: "5px 12px", fontSize: 11, fontWeight: 800, color: C.purple }}>{lbl}</span>
-            ))}
           </div>
         </div>
       </div>
@@ -1987,7 +1992,6 @@ function RoleplayActivity() {
       {view === "completion" && (
         <CompletionView
           scene={scene} turns={turns} results={results}
-          onReview={() => setView("replay")}
           onRetry={() => setView("player")}
         />
       )}
