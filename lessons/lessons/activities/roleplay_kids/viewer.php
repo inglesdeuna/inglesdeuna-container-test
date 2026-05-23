@@ -1236,6 +1236,11 @@ function PlayerView({ scene, turns, onComplete, onBack, onListenFull }) {
     setCurrentTurn(prev => prev + 1);
   }
 
+  const globalSpokenText = (recorder.finalText + recorder.interimText).trim();
+  const globalTypedResponse = typedText.trim();
+  const globalTranscript = globalSpokenText || globalTypedResponse || (recorder.hasRecorded ? "(Audio response)" : "");
+  const canAdvanceTurn = globalTranscript !== "";
+
   return (
     <div style={{ background: "#ffffff", minHeight: "100%" }}>
       <div style={{ maxWidth: 760, margin: "0 auto", padding: "12px 16px 60px", background: "#fff", border: "1px solid #EDE9FA", borderRadius: 24, boxShadow: "0 4px 24px rgba(127,119,221,.13)", overflow: "hidden" }}>
@@ -1392,6 +1397,22 @@ function PlayerView({ scene, turns, onComplete, onBack, onListenFull }) {
                   </div>
                 );
               })}
+
+              <div style={{ position: "sticky", bottom: 0, zIndex: 20, background: "#FFFFFF", border: "1.5px solid #EDE9FA", borderRadius: 14, padding: "10px", display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap", boxShadow: "0 8px 20px rgba(127,119,221,.12)" }}>
+                <button
+                  onClick={onListenFull}
+                  style={{ background: C.purple, color: "#fff", border: "none", borderRadius: 12, padding: "10px 14px", fontSize: 13, fontWeight: 800, cursor: "pointer", minWidth: 148 }}
+                >
+                  Listen to roleplay
+                </button>
+                <button
+                  onClick={handleAdvanceCurrentTurn}
+                  disabled={!canAdvanceTurn}
+                  style={{ background: canAdvanceTurn ? "#F97316" : "#E5E1F8", color: canAdvanceTurn ? "#fff" : "#AAA2D8", border: "none", borderRadius: 12, padding: "10px 14px", fontSize: 13, fontWeight: 800, cursor: canAdvanceTurn ? "pointer" : "not-allowed", minWidth: 94 }}
+                >
+                  Next
+                </button>
+              </div>
             </div>
           </div>
 
