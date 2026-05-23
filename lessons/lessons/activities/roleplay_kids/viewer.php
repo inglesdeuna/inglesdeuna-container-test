@@ -55,8 +55,17 @@ if (is_array($savedScene)) {
   if (!isset($savedScene['studentAvatarId']) || trim((string) $savedScene['studentAvatarId']) === '') {
     $savedScene['studentAvatarId'] = 'ANGIE';
   }
+  $legacyVoice = '';
+  if (isset($savedScene['teacherVoice'])) {
+    $legacyVoice = trim((string) $savedScene['teacherVoice']);
+  } elseif (isset($savedScene['voice_id'])) {
+    $legacyVoice = trim((string) $savedScene['voice_id']);
+  } elseif (isset($savedScene['voiceId'])) {
+    $legacyVoice = trim((string) $savedScene['voiceId']);
+  }
+
   if (!isset($savedScene['teacherVoiceId']) || trim((string) $savedScene['teacherVoiceId']) === '') {
-    $savedScene['teacherVoiceId'] = 'nzFihrBIvB34imQBuxub';
+    $savedScene['teacherVoiceId'] = $legacyVoice !== '' ? $legacyVoice : 'nzFihrBIvB34imQBuxub';
   }
 }
 
@@ -148,6 +157,19 @@ const RK_VOICES = [
   { id: "NoOVOzCQFLOvtsMoNcdT", label: "Adult Female (Lily)" },
   { id: "Nggzl2QAXh3OijoXD116", label: "Child (Candy)" },
 ];
+
+const DEFAULT_TEACHER_VOICE_ID = "nzFihrBIvB34imQBuxub";
+const ALLOWED_TEACHER_VOICE_IDS = new Set(RK_VOICES.map(v => v.id));
+
+function resolveTeacherVoiceId(scene) {
+  const direct = String(scene?.teacherVoiceId || "").trim();
+  if (ALLOWED_TEACHER_VOICE_IDS.has(direct)) return direct;
+
+  const legacy = String(scene?.teacherVoice || scene?.voice_id || scene?.voiceId || "").trim();
+  if (ALLOWED_TEACHER_VOICE_IDS.has(legacy)) return legacy;
+
+  return DEFAULT_TEACHER_VOICE_ID;
+}
 
 const RK_AVATARS = [
   { id: "TEACHER", label: "Teacher" },
@@ -456,7 +478,8 @@ async function saveActivity(scene, turns) {
   if (!id) return { ok: false, error: "No activity ID" };
   const saveUrl = new URL("save.php", window.location.href);
   saveUrl.searchParams.set("_ts", String(Date.now()));
-  const payload = { id, scene, turns };
+  const normalizedScene = { ...scene, teacherVoiceId: resolveTeacherVoiceId(scene) };
+  const payload = { id, scene: normalizedScene, turns };
 
   console.log("[roleplay_kids] saveActivity called", {
     activityId: id,
@@ -701,7 +724,7 @@ function EditorView({ scene, turns, onSceneChange, onTurnsChange, onStart }) {
     try {
       const fd = new FormData();
       fd.append("text", previewText);
-      fd.append("voice_id", scene.teacherVoiceId || "nzFihrBIvB34imQBuxub");
+      fd.append("voice_id", resolveTeacherVoiceId(scene));
       const res = await fetch("tts.php", { method: "POST", body: fd, credentials: "same-origin" });
       if (!res.ok) throw new Error("TTS error " + res.status);
 
@@ -725,7 +748,7 @@ function EditorView({ scene, turns, onSceneChange, onTurnsChange, onStart }) {
       setTtsPreviewState("idle");
       alert("Could not play teacher voice preview.");
     }
-  }, [scene.teacherVoiceId, turns]);
+  }, [scene, turns]);
 
   useEffect(() => {
     return () => {
@@ -853,7 +876,7 @@ function EditorView({ scene, turns, onSceneChange, onTurnsChange, onStart }) {
           <div style={{ marginTop: 10 }}>
             <MiniLabel>Teacher voice</MiniLabel>
             <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-              <select value={scene.teacherVoiceId || "nzFihrBIvB34imQBuxub"} onChange={e => onSceneChange({ ...scene, teacherVoiceId: e.target.value })} style={{ ...inputStyle, margin: 0, flex: "1 1 260px", width: "auto", minWidth: 0 }}>
+              <select value={resolveTeacherVoiceId(scene)} onChange={e => onSceneChange({ ...scene, teacherVoiceId: e.target.value })} style={{ ...inputStyle, margin: 0, flex: "1 1 260px", width: "auto", minWidth: 0 }}>
                 {RK_VOICES.map(v => <option key={v.id} value={v.id}>{v.label}</option>)}
               </select>
               <button
@@ -1142,7 +1165,7 @@ function PlayerView({ scene, turns, onComplete, onBack, onListenFull }) {
   const safeTurns = (turns && turns.length) ? turns : DEFAULT_TURNS;
   const [currentTurn, setCurrentTurn] = useState(0);
   const [results, setResults] = useState([]);
-  const [voiceId, setVoiceId] = useState(scene.teacherVoiceId || "nzFihrBIvB34imQBuxub");
+  const teacherVoiceId = resolveTeacherVoiceId(scene);
   const studentVoiceId = "Nggzl2QAXh3OijoXD116";
   const [ttsState, setTtsState] = useState("idle"); // "idle" | "loading" | "playing"
   const recorder = useRecorder();
@@ -1161,14 +1184,10 @@ function PlayerView({ scene, turns, onComplete, onBack, onListenFull }) {
     setTtsState("idle");
   }, []);
 
-  useEffect(() => {
-    setVoiceId(scene.teacherVoiceId || "nzFihrBIvB34imQBuxub");
-  }, [scene.teacherVoiceId]);
-
   const speakWithVoice = useCallback(async (text, selectedVoiceId, opts = {}) => {
     const silent = !!opts.silent;
     if (recorder.isRecording) return;
-    const useVoiceId = selectedVoiceId || voiceId;
+    const useVoiceId = selectedVoiceId || teacherVoiceId;
     if (!text || !useVoiceId) return;
     if (currentAudioRef.current) {
       currentAudioRef.current.pause();
@@ -1222,11 +1241,11 @@ function PlayerView({ scene, turns, onComplete, onBack, onListenFull }) {
         console.warn("Roleplay Kids TTS fallback:", e && e.message ? e.message : e);
       }
     }
-  }, [recorder.isRecording, voiceId]);
+  }, [recorder.isRecording, teacherVoiceId]);
 
   const speakAgentLine = useCallback(async (text, opts = {}) => {
-    return speakWithVoice(text, voiceId, opts);
-  }, [speakWithVoice, voiceId]);
+    return speakWithVoice(text, teacherVoiceId, opts);
+  }, [speakWithVoice, teacherVoiceId]);
 
   function normalize(text) {
     return String(text || "")
@@ -1775,7 +1794,7 @@ function RoleplayActivity() {
       }
       const item = queue[i++];
       try {
-        const teacherVoice = scene.teacherVoiceId || "nzFihrBIvB34imQBuxub";
+        const teacherVoice = resolveTeacherVoiceId(scene);
         const voiceCandidates = item.role === "teacher"
           ? [teacherVoice, "NoOVOzCQFLOvtsMoNcdT", "Nggzl2QAXh3OijoXD116", "nzFihrBIvB34imQBuxub"]
           : replayStudentVoiceCandidates;
