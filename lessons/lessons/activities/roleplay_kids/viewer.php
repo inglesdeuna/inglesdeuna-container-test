@@ -164,6 +164,72 @@ const DEFAULT_TURNS = [
 
 const BLOCK_PASS_SCORE = 80;
 
+function computeRoleplayCompletionSummary(turns, results) {
+  const safeTurns = Array.isArray(turns) ? turns : [];
+  const safeResults = Array.isArray(results) ? results : [];
+  const totalBlocks = safeTurns.length;
+  const scoredByTurn = new Map(safeResults.map(r => [Number(r.turnIdx), r]));
+
+  let completedBlocks = 0;
+  let correctBlocks = 0;
+  for (let i = 0; i < totalBlocks; i += 1) {
+    const row = scoredByTurn.get(i);
+    if (!row || !row.feedback) continue;
+    completedBlocks += 1;
+    if (Number(row.feedback.total || 0) >= BLOCK_PASS_SCORE) {
+      correctBlocks += 1;
+    }
+  }
+
+  const wrongBlocks = Math.max(0, totalBlocks - correctBlocks);
+  const scorePct = totalBlocks > 0 ? Math.round((correctBlocks / totalBlocks) * 100) : 0;
+
+  return {
+    totalBlocks,
+    completedBlocks,
+    correctBlocks,
+    wrongBlocks,
+    scorePct,
+  };
+}
+
+function buildActivitySaveUrl(returnTo, activityId, activityType, percent, errors, total) {
+  const safeReturnTo = String(returnTo || "").trim();
+  const safeActivityId = String(activityId || "").trim();
+  if (!safeReturnTo || !safeActivityId) return "";
+  const joiner = safeReturnTo.indexOf("?") !== -1 ? "&" : "?";
+  return safeReturnTo
+    + joiner + "activity_percent=" + encodeURIComponent(String(percent))
+    + "&activity_errors=" + encodeURIComponent(String(errors))
+    + "&activity_total=" + encodeURIComponent(String(total))
+    + "&activity_id=" + encodeURIComponent(safeActivityId)
+    + "&activity_type=" + encodeURIComponent(String(activityType || "roleplay_kids"));
+}
+
+function persistScoreSilently(targetUrl) {
+  if (!targetUrl) return Promise.resolve(false);
+  return fetch(targetUrl, {
+    method: "GET",
+    credentials: "same-origin",
+    cache: "no-store",
+  }).then((response) => {
+    return !!(response && response.ok);
+  }).catch(() => false);
+}
+
+function navigateToReturn(targetUrl) {
+  if (!targetUrl) return;
+  try {
+    if (window.top && window.top !== window.self) {
+      window.top.location.href = targetUrl;
+      return;
+    }
+  } catch (e) {
+    // Ignore frame access errors.
+  }
+  window.location.href = targetUrl;
+}
+
 const DEFAULT_SCENE = {
   title: "Kids Roleplay", icon: "🎭", desc: "Practice speaking English!", agentName: "Teacher", agentRole: "Teacher", studentRole: "Student", sceneImage: "", teacherAvatarId: "TEACHER", studentAvatarId: "ANGIE", teacherVoiceId: "nzFihrBIvB34imQBuxub",
 };
@@ -1662,51 +1728,61 @@ function PlayerView({ scene, turns, onComplete, onBack, onListenFull, persistedR
 
 // ── COMPLETION VIEW ───────────────────────────────────────────
 function CompletionView({ scene, turns, results, onRetry }) {
-  const totalBlocks = Array.isArray(turns) ? turns.length : 0;
-  const scoredByTurn = new Map((results || []).map(r => [Number(r.turnIdx), r]));
-  let completedBlocks = 0;
-  let correctBlocks = 0;
-
-  for (let i = 0; i < totalBlocks; i += 1) {
-    const row = scoredByTurn.get(i);
-    if (!row || !row.feedback) continue;
-    completedBlocks += 1;
-    if (Number(row.feedback.total || 0) >= BLOCK_PASS_SCORE) {
-      correctBlocks += 1;
-    }
-  }
-
-  const wrongBlocks = Math.max(0, totalBlocks - correctBlocks);
-  const scorePct = totalBlocks > 0 ? Math.round((correctBlocks / totalBlocks) * 100) : 0;
+  const summary = computeRoleplayCompletionSummary(turns, results);
+  const progressPct = summary.totalBlocks > 0
+    ? Math.round((summary.completedBlocks / summary.totalBlocks) * 100)
+    : 0;
+  const title = scene.title || "Roleplay Kids";
 
   return (
-    <div style={{ background: C.bg, minHeight: "100%" }}>
-      <div style={{ maxWidth: 760, margin: "0 auto", padding: "18px 16px 60px", display: "flex", flexDirection: "column", gap: 12 }}>
+    <div style={{ background: "#F8F7FE", minHeight: "100%", padding: "clamp(14px,2.2vw,30px)", boxSizing: "border-box" }}>
+      <div style={{ width: "min(940px,100%)", margin: "0 auto" }}>
 
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 10 }}>
-          <div style={{ background: "#FAFAFE", border: `1px solid ${C.cardBorder}`, borderRadius: 14, padding: 12, textAlign: "center" }}>
-            <div style={{ fontFamily: "'Fredoka',sans-serif", fontSize: 24, lineHeight: 1, fontWeight: 600, color: "#16a34a" }}>{correctBlocks}</div>
-            <div style={{ marginTop: 3, fontSize: 10, fontWeight: 800, letterSpacing: ".08em", textTransform: "uppercase", color: "#9B94BE" }}>Correct</div>
-          </div>
-          <div style={{ background: "#FAFAFE", border: `1px solid ${C.cardBorder}`, borderRadius: 14, padding: 12, textAlign: "center" }}>
-            <div style={{ fontFamily: "'Fredoka',sans-serif", fontSize: 24, lineHeight: 1, fontWeight: 600, color: "#ef4444" }}>{wrongBlocks}</div>
-            <div style={{ marginTop: 3, fontSize: 10, fontWeight: 800, letterSpacing: ".08em", textTransform: "uppercase", color: "#9B94BE" }}>Wrong</div>
-          </div>
-          <div style={{ background: "#FAFAFE", border: `1px solid ${C.cardBorder}`, borderRadius: 14, padding: 12, textAlign: "center" }}>
-            <div style={{ fontFamily: "'Fredoka',sans-serif", fontSize: 24, lineHeight: 1, fontWeight: 600, color: C.purple }}>{scorePct}%</div>
-            <div style={{ marginTop: 3, fontSize: 10, fontWeight: 800, letterSpacing: ".08em", textTransform: "uppercase", color: "#9B94BE" }}>Score</div>
-          </div>
+        <div style={{ textAlign: "center", marginBottom: 16 }}>
+          <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", padding: "6px 14px", borderRadius: 999, background: "#FFF0E6", color: C.orange, fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: ".08em", marginBottom: 10 }}>
+            Activity
+          </span>
+          <h1 style={{ margin: 0, fontFamily: "'Fredoka',sans-serif", fontSize: "clamp(30px,4.8vw,44px)", color: C.orange, lineHeight: 1.06, fontWeight: 600 }}>
+            {title}
+          </h1>
+          <p style={{ margin: "8px 0 0", color: "#9B94BE", fontSize: 14, fontWeight: 700 }}>Practice real conversations in English.</p>
         </div>
 
-        <div style={{ background: C.white, border: `1px solid ${C.cardBorder}`, borderRadius: 28, boxShadow: "0 12px 36px rgba(127,119,221,.13)", minHeight: "clamp(300px,42vh,430px)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", padding: "clamp(28px,5vw,48px) 24px", gap: 12 }}>
-          <div style={{ fontSize: 30, lineHeight: 1 }}>✅</div>
-          <h2 style={{ margin: 0, color: C.orange, fontFamily: "'Fredoka',sans-serif", fontSize: 32, fontWeight: 700 }}>{scene.title || "Roleplay Kids"}</h2>
-          <p style={{ margin: 0, color: "#9B94BE", fontSize: 14, fontWeight: 800 }}>You've completed this activity. Great job practicing.</p>
-          <p style={{ margin: 0, color: "#666", fontSize: 14, fontWeight: 800 }}>{correctBlocks} correct · {wrongBlocks} wrong · {scorePct}%</p>
-          <p style={{ margin: 0, color: C.purple, fontSize: 14, fontWeight: 900 }}>Progress: {completedBlocks} / {totalBlocks}</p>
+        <div style={{ width: "min(860px,100%)", margin: "0 auto", background: "#fff", border: "1px solid #EDE9FA", borderRadius: 24, boxShadow: "0 8px 40px rgba(127,119,221,.13)", padding: 18 }}>
 
-          <div style={{ display: "flex", justifyContent: "center", gap: 10, marginTop: 4, flexWrap: "wrap" }}>
-            <button onClick={onRetry} style={{ background: C.purple, border: "none", color: "#fff", borderRadius: 999, padding: "11px 20px", fontSize: 13, fontWeight: 800, fontFamily: "'Nunito',sans-serif", cursor: "pointer" }}>Restart</button>
+          <div style={{ display: "grid", gridTemplateColumns: "auto 1fr auto", alignItems: "center", gap: 12, marginBottom: 14 }}>
+            <div style={{ color: C.purple, fontSize: 13, fontWeight: 800 }}>{summary.completedBlocks} / {summary.totalBlocks}</div>
+            <div style={{ height: 7, borderRadius: 99, background: "#EDE9FA", overflow: "hidden" }}>
+              <div style={{ height: "100%", width: `${progressPct}%`, borderRadius: 99, background: "linear-gradient(90deg,#F97316,#7F77DD)", transition: "width .2s ease" }} />
+            </div>
+            <div style={{ background: C.purple, color: "#fff", borderRadius: 999, padding: "5px 12px", fontSize: 12, fontWeight: 800, whiteSpace: "nowrap" }}>
+              Q {summary.completedBlocks} of {summary.totalBlocks}
+            </div>
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 10, marginTop: 12 }}>
+            <div style={{ background: "#FAFAFE", border: "1px solid #EDE9FA", borderRadius: 14, padding: 12, textAlign: "center" }}>
+              <div style={{ fontFamily: "'Fredoka',sans-serif", fontSize: 24, lineHeight: 1, fontWeight: 600, color: C.purple }}>{summary.correctBlocks}</div>
+              <div style={{ marginTop: 3, fontSize: 10, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: "#bbb" }}>Correct</div>
+            </div>
+            <div style={{ background: "#FAFAFE", border: "1px solid #EDE9FA", borderRadius: 14, padding: 12, textAlign: "center" }}>
+              <div style={{ fontFamily: "'Fredoka',sans-serif", fontSize: 24, lineHeight: 1, fontWeight: 600, color: C.purple }}>{summary.wrongBlocks}</div>
+              <div style={{ marginTop: 3, fontSize: 10, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: "#bbb" }}>Wrong</div>
+            </div>
+            <div style={{ background: "#FAFAFE", border: "1px solid #EDE9FA", borderRadius: 14, padding: 12, textAlign: "center" }}>
+              <div style={{ fontFamily: "'Fredoka',sans-serif", fontSize: 24, lineHeight: 1, fontWeight: 600, color: C.purple }}>{summary.scorePct}%</div>
+              <div style={{ marginTop: 3, fontSize: 10, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: "#bbb" }}>Score</div>
+            </div>
+          </div>
+
+          <div style={{ marginTop: 14, background: "#fff", border: "1px solid #EDE9FA", borderRadius: 30, boxShadow: "0 12px 36px rgba(127,119,221,.13)", minHeight: "clamp(300px,42vh,430px)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", padding: "clamp(28px,5vw,48px) 24px", gap: 10 }}>
+            <div style={{ fontSize: 30, lineHeight: 1 }}>✅</div>
+            <h2 style={{ margin: 0, fontFamily: "'Fredoka',sans-serif", fontSize: "clamp(30px,5.5vw,42px)", color: C.orange, lineHeight: 1.05, fontWeight: 600 }}>{title}</h2>
+            <p style={{ margin: 0, color: "#9B94BE", fontSize: 14, fontWeight: 700 }}>You've completed {title}. Great job practicing.</p>
+            <p style={{ margin: 0, color: "#534AB7", fontSize: 15, fontWeight: 900 }}>{summary.correctBlocks} correct · {summary.wrongBlocks} wrong · {summary.scorePct}%</p>
+            <button type="button" onClick={onRetry} style={{ marginTop: 6, border: "none", borderRadius: 999, color: "#fff", minWidth: 128, padding: "11px 20px", fontSize: 14, fontWeight: 700, fontFamily: "'Nunito',sans-serif", cursor: "pointer", background: C.purple }}>
+              Restart
+            </button>
           </div>
         </div>
       </div>
@@ -1847,7 +1923,6 @@ function RoleplayActivity() {
   const [scene, setScene] = useState(canonicalizeScene(window.RK_SAVED_SCENE || DEFAULT_SCENE));
   const [turns, setTurns] = useState(window.RK_SAVED_TURNS || JSON.parse(JSON.stringify(DEFAULT_TURNS)));
   const [results, setResults] = useState([]);
-  const resultsStorageKey = `rk_results_${String(window.RK_ACTIVITY_ID || "new")}`;
   const [isListeningFull, setIsListeningFull] = useState(false);
   const listenCancelRef = useRef(false);
   const replayStudentVoiceCandidates = ["Nggzl2QAXh3OijoXD116", "NoOVOzCQFLOvtsMoNcdT", "nzFihrBIvB34imQBuxub"];
@@ -1928,26 +2003,33 @@ function RoleplayActivity() {
     speakNext();
   }, [isListeningFull, playReplayLine, replayStudentVoiceCandidates, scene.teacherVoiceId, turns]);
 
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(resultsStorageKey);
-      if (!raw) return;
-      const parsed = JSON.parse(raw);
-      if (!Array.isArray(parsed)) return;
-      const hydrated = parsed.filter(r => r && typeof r.turnIdx === "number" && r.feedback && typeof r.feedback.total === "number");
-      if (hydrated.length) setResults(hydrated);
-    } catch (e) {
-      // Ignore malformed persisted progress.
-    }
-  }, [resultsStorageKey]);
+  const handleCompletion = useCallback(async (completedResults) => {
+    const safeResults = Array.isArray(completedResults) ? completedResults : [];
+    setResults(safeResults);
+    setView("completion");
 
-  useEffect(() => {
-    try {
-      localStorage.setItem(resultsStorageKey, JSON.stringify(results));
-    } catch (e) {
-      // Ignore storage errors (quota/private mode).
+    const summary = computeRoleplayCompletionSummary(turns, safeResults);
+    const saveUrl = buildActivitySaveUrl(
+      window.RK_RETURN_TO,
+      window.RK_ACTIVITY_ID,
+      "roleplay_kids",
+      summary.scorePct,
+      summary.wrongBlocks,
+      summary.totalBlocks
+    );
+    if (!saveUrl) return;
+
+    const ok = await persistScoreSilently(saveUrl);
+    if (!ok) {
+      navigateToReturn(saveUrl);
     }
-  }, [results, resultsStorageKey]);
+  }, [turns]);
+
+  const handleRetry = useCallback(() => {
+    // Keep graded attempts in backend, but restart the live activity UI.
+    setResults([]);
+    setView("player");
+  }, []);
 
   useEffect(() => {
     return () => {
@@ -1982,7 +2064,7 @@ function RoleplayActivity() {
       {view === "player" && (
         <PlayerView
           scene={scene} turns={turns}
-          onComplete={r => { setResults(r); setView("completion"); }}
+          onComplete={handleCompletion}
           persistedResults={results}
           onResultsChange={setResults}
           onBack={allowEditor ? () => setView("editor") : null}
@@ -1992,7 +2074,7 @@ function RoleplayActivity() {
       {view === "completion" && (
         <CompletionView
           scene={scene} turns={turns} results={results}
-          onRetry={() => setView("player")}
+          onRetry={handleRetry}
         />
       )}
       {view === "replay" && (
