@@ -1147,7 +1147,6 @@ function PlayerView({ scene, turns, onComplete, onBack, onListenFull }) {
   const [ttsState, setTtsState] = useState("idle"); // "idle" | "loading" | "playing"
   const recorder = useRecorder();
   const currentAudioRef = useRef(null);
-  const suppressNextAutoPlayRef = useRef(false);
   const teacherAvatar = scene.teacherAvatarId || "TEACHER";
   const studentAvatar = scene.studentAvatarId || "ANGIE";
 
@@ -1265,17 +1264,6 @@ function PlayerView({ scene, turns, onComplete, onBack, onListenFull }) {
 
   const currentTurnData = safeTurns[currentTurn] || { agent: "", ideal: "", hint: "" };
 
-  useEffect(() => {
-    if (suppressNextAutoPlayRef.current) {
-      suppressNextAutoPlayRef.current = false;
-      return;
-    }
-    if (recorder.isRecording) return;
-    if (currentTurnData && currentTurnData.agent) {
-      speakAgentLine(currentTurnData.agent, { silent: true });
-    }
-  }, [currentTurn, recorder.isRecording]); // eslint-disable-line
-
   // Stop audio on unmount
   useEffect(() => () => {
     if (currentAudioRef.current) currentAudioRef.current.pause();
@@ -1331,7 +1319,6 @@ function PlayerView({ scene, turns, onComplete, onBack, onListenFull }) {
   function toggleRecordingForTurn(idx) {
     if (idx !== currentTurn) {
       stopAgentAudio();
-      suppressNextAutoPlayRef.current = true;
       recorder.reset();
       setCurrentTurn(idx);
       setTimeout(() => {
