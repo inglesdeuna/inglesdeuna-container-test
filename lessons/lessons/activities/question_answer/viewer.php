@@ -349,18 +349,21 @@ html, body { width: 100%; margin: 0; padding: 0; background: #F8F7FE; font-famil
 
 .qa-premium-text {
     width: 100%;
-    height: 100%;
-    max-height: 100%;
+    max-width: 100%;
+    max-height: calc(100% - 64px);
     font-family: 'Fredoka', sans-serif;
     font-size: clamp(18px, 3.1vw, 34px);
     font-weight: 600;
     line-height: 1.22;
     text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     color: var(--fc-purple-dark);
     overflow: auto;
     overflow-wrap: break-word;
     word-break: break-word;
-    padding: 28px 8px 16px;
+    padding: 0 8px;
     scrollbar-width: thin;
 }
 

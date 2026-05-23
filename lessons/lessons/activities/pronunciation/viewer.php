@@ -217,7 +217,7 @@ body{margin:0!important;padding:0!important;background:#F8F7FE!important;font-fa
 .pron-score-num{font-family:'Fredoka',sans-serif;font-size:24px;line-height:1;font-weight:600;color:#7F77DD}
 .pron-score-lbl{margin-top:3px;font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#bbb}
 .pron-actions{display:flex;justify-content:center;align-items:center;gap:10px;flex-wrap:wrap;margin-top:16px;padding-top:16px;border-top:1px solid #F0EEF8}
-.pron-btn{border:0;border-radius:999px;min-width:clamp(104px,16vw,146px);padding:13px 20px;color:#ffffff;font-family:'Nunito',sans-serif;font-size:13px;font-weight:900;cursor:pointer;box-shadow:0 6px 18px rgba(127,119,221,.18);transition:filter .15s,transform .15s}
+.pron-btn{border:0;border-radius:10px;min-width:clamp(104px,16vw,146px);padding:13px 20px;color:#ffffff;font-family:'Nunito',sans-serif;font-size:13px;font-weight:900;cursor:pointer;box-shadow:0 6px 18px rgba(127,119,221,.18);transition:filter .15s,transform .15s}
 .pron-btn:hover{filter:brightness(1.07);transform:translateY(-1px)}
 .pron-btn:disabled{opacity:.55;cursor:not-allowed;transform:none;filter:none}
 .pron-purple{background:#7F77DD;box-shadow:0 6px 18px rgba(127,119,221,.18)}
@@ -229,7 +229,7 @@ body{margin:0!important;padding:0!important;background:#F8F7FE!important;font-fa
 .pron-completed-title{margin:0;color:#F97316;font-family:'Fredoka',sans-serif;font-size:32px;font-weight:700}
 .pron-completed-text{color:#9B94BE;font-size:14px;font-weight:700}
 #pron-score-text{color:#666;font-size:14px;font-weight:800}
-.pron-completed-button{border:none;border-radius:999px;color:#fff;min-width:128px;padding:11px 20px;font-size:14px;font-weight:700;font-family:'Nunito',sans-serif;cursor:pointer;background:#7F77DD}
+.pron-completed-button{border:none;border-radius:10px;color:#fff;min-width:128px;padding:11px 20px;font-size:14px;font-weight:700;font-family:'Nunito',sans-serif;cursor:pointer;background:#7F77DD}
 
 body.embedded-mode .pron-shell,
 body.fullscreen-embedded .pron-shell,
