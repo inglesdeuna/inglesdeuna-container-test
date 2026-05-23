@@ -2,6 +2,10 @@
 require_once __DIR__ . '/../../config/db.php';
 require_once __DIR__ . '/../../core/_activity_viewer_template.php';
 
+header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+header('Pragma: no-cache');
+header('Expires: 0');
+
 $activityId = isset($_GET['id']) ? trim((string) $_GET['id']) : '';
 $mode = isset($_GET['mode']) ? trim((string) $_GET['mode']) : '';
 $returnTo = isset($_GET['return_to']) ? trim((string) $_GET['return_to']) : '';
@@ -23,6 +27,13 @@ if ($activityId !== '') {
         }
     }
 }
+
+  error_log('[roleplay_kids/viewer] Viewer loaded data ' . json_encode([
+    'activity_id' => $activityId,
+    'viewer_path' => $_SERVER['REQUEST_URI'] ?? '',
+    'has_scene' => is_array($savedScene),
+    'turns_count' => is_array($savedTurns) ? count($savedTurns) : 0,
+  ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
 
 // Backward compatibility: map old roleplay_kids schema to roleplay schema.
 if (is_array($savedScene)) {
@@ -443,14 +454,50 @@ const inputStyle = {
 async function saveActivity(scene, turns) {
   const id = window.RK_ACTIVITY_ID;
   if (!id) return { ok: false, error: "No activity ID" };
+  const saveUrl = new URL("save.php", window.location.href);
+  saveUrl.searchParams.set("_ts", String(Date.now()));
+  const payload = { id, scene, turns };
+
+  console.log("[roleplay_kids] saveActivity called", {
+    activityId: id,
+    saveDestination: "activities.data",
+    saveUrl: saveUrl.toString(),
+    savePayload: payload,
+  });
+
   try {
-    const r = await fetch("save.php", {
+    const r = await fetch(saveUrl.toString(), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id, scene, turns }),
+      credentials: "same-origin",
+      cache: "no-store",
+      body: JSON.stringify(payload),
     });
-    return await r.json();
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) {
+      const errorMsg = data?.error || `HTTP ${r.status}`;
+      console.error("[roleplay_kids] saveActivity failed", {
+        activityId: id,
+        saveDestination: "activities.data",
+        saveUrl: saveUrl.toString(),
+        responseStatus: r.status,
+        responseBody: data,
+      });
+      return { ok: false, error: errorMsg };
+    }
+
+    console.log("[roleplay_kids] saveActivity success", {
+      activityId: id,
+      saveDestination: "activities.data",
+      responseBody: data,
+    });
+    return data;
   } catch (e) {
+    console.error("[roleplay_kids] saveActivity exception", {
+      activityId: id,
+      saveDestination: "activities.data",
+      error: String(e),
+    });
     return { ok: false, error: String(e) };
   }
 }
@@ -615,11 +662,31 @@ function EditorView({ scene, turns, onSceneChange, onTurnsChange, onStart }) {
   };
 
   const handleSave = async () => {
+    console.log("[roleplay_kids] handleSave triggered", {
+      activityId: window.RK_ACTIVITY_ID || null,
+      turnsCount: Array.isArray(turns) ? turns.length : 0,
+    });
     setSaving(true); setSaveMsg("");
     const res = await saveActivity(scene, turns);
     setSaving(false);
     setSaveMsg(res.ok ? "✓ Guardado" : "✗ Error al guardar");
+    if (!res.ok) {
+      console.error("[roleplay_kids] Save failed", {
+        activityId: window.RK_ACTIVITY_ID || null,
+        error: res.error || "Unknown save error",
+      });
+      alert(`Save failed: ${res.error || "Unknown error"}`);
+    }
     setTimeout(() => setSaveMsg(""), 3000);
+    return res;
+  };
+
+  const handleStart = async () => {
+    if (window.RK_ACTIVITY_ID) {
+      const res = await handleSave();
+      if (!res?.ok) return;
+    }
+    onStart();
   };
 
   const handlePreviewTeacherVoice = useCallback(async () => {
@@ -861,7 +928,7 @@ function EditorView({ scene, turns, onSceneChange, onTurnsChange, onStart }) {
           </div>
         )}
 
-        <Btn onClick={onStart}>▶ Start Roleplay Kids</Btn>
+        <Btn onClick={handleStart}>▶ Start Roleplay Kids</Btn>
       </div>
     </div>
   );
@@ -1719,6 +1786,20 @@ function RoleplayActivity() {
       listenCancelRef.current = true;
       if (window.speechSynthesis) window.speechSynthesis.cancel();
     };
+  }, []);
+
+  useEffect(() => {
+    console.log("[roleplay_kids] viewer bootstrap", {
+      activityId: window.RK_ACTIVITY_ID || null,
+      viewerPath: window.location.pathname,
+      allowEditor,
+      initialView,
+      savedScene: window.RK_SAVED_SCENE,
+      savedTurns: window.RK_SAVED_TURNS,
+      loadedSceneState: scene,
+      loadedTurnsState: turns,
+      loadedTurnsCount: Array.isArray(turns) ? turns.length : 0,
+    });
   }, []);
 
   return (
