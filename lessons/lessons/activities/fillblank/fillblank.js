@@ -362,10 +362,10 @@ document.addEventListener('DOMContentLoaded', function () {
     scores.forEach(function (value) {
       if (value === 1) {
         correct += 1;
-      } else if (value === 0) {
-        wrong += 1;
       } else if (value === -1) {
         revealedCount += 1;
+      } else {
+        wrong += 1;
       }
     });
 
