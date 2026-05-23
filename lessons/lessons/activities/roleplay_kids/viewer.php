@@ -897,17 +897,15 @@ function Messages({ messages }) {
 // ── RECORDER CARD ─────────────────────────────────────────────
 function RecorderCard({ turn, turnIndex, totalTurns, onSubmit, scene, ttsState, speakAgentLine, onBack }) {
   const rec = useRecorder();
-  const [showTyping, setShowTyping] = useState(false);
-  const [typedText, setTypedText] = useState("");
   const displayText = (rec.finalText + rec.interimText).trim();
-  const canSubmit = rec.hasRecorded || typedText.trim() !== "";
+  const canSubmit = rec.hasRecorded;
   const canGoBack = typeof onBack === "function";
   const muted = "#9B8FCC";
   const ink = "#1e1b2e";
 
   const handleSubmit = () => {
-    const t = displayText || typedText.trim();
-    if (!t) { alert("Please speak or type your response."); return; }
+    const t = displayText;
+    if (!t) { alert("Please speak your response."); return; }
     onSubmit(t);
   };
 
@@ -988,15 +986,7 @@ function RecorderCard({ turn, turnIndex, totalTurns, onSubmit, scene, ttsState, 
               Listen
             </button>
           </div>
-          <button onClick={() => setShowTyping(v => !v)} style={{ background: "#fff", border: "1.5px solid #EDE9FA", borderRadius: 999, padding: "8px 18px", fontSize: 12, fontWeight: 800, color: "#7F77DD", fontFamily: "'Nunito',sans-serif", cursor: "pointer" }}>
-            {showTyping ? "Hide keyboard" : "Type instead"}
-          </button>
-          {showTyping && (
-            <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: 8 }}>
-              <textarea value={typedText} onChange={e => setTypedText(e.target.value)} placeholder="Type your response here..." rows={3} style={{ width: "100%", background: C.white, border: `1.5px solid ${C.cardBorder}`, borderRadius: 14, padding: "10px 14px", fontSize: 13, fontWeight: 700, color: ink, fontFamily: "'Nunito',sans-serif", resize: "none", outline: "none", boxSizing: "border-box", lineHeight: 1.5 }} />
-              <button onClick={() => { if (typedText.trim()) onSubmit(typedText.trim()); }} disabled={!typedText.trim()} style={{ background: typedText.trim() ? C.orange : "#ddd", color: typedText.trim() ? C.white : "#aaa", border: "none", borderRadius: 12, padding: "10px 20px", fontSize: 13, fontWeight: 800, fontFamily: "'Nunito',sans-serif", cursor: typedText.trim() ? "pointer" : "not-allowed" }}>Submit</button>
-            </div>
-          )}
+
         </div>
       </div>
 
@@ -1005,7 +995,7 @@ function RecorderCard({ turn, turnIndex, totalTurns, onSubmit, scene, ttsState, 
         {canGoBack && (
           <button onClick={onBack} style={{ background: "#fff", border: "1.5px solid #EDE9FA", color: "#7F77DD", borderRadius: 999, padding: "10px 20px", fontSize: 13, fontWeight: 800, fontFamily: "'Nunito',sans-serif", cursor: "pointer" }}>← Back</button>
         )}
-        {!canSubmit && <span style={{ fontSize: 12, fontWeight: 700, color: "#C5C1ED", fontFamily: "'Nunito',sans-serif" }}>Speak or type to continue</span>}
+        {!canSubmit && <span style={{ fontSize: 12, fontWeight: 700, color: "#C5C1ED", fontFamily: "'Nunito',sans-serif" }}>Speak to continue</span>}
         <button onClick={handleSubmit} disabled={!canSubmit} style={{ background: canSubmit ? "#F97316" : "#EDE9FA", color: canSubmit ? "#fff" : "#C5C1ED", cursor: canSubmit ? "pointer" : "not-allowed", border: "none", borderRadius: 999, padding: "10px 20px", fontSize: 13, fontWeight: 800, fontFamily: "'Nunito',sans-serif" }}>Next →</button>
       </div>
 
