@@ -380,7 +380,7 @@ body { margin: 0 !important; padding: 0 !important; background: #fff !important;
 
 .fb-btn {
     border: none;
-    border-radius: 99px;
+    border-radius: 8px;
     padding: 10px 24px;
     color: #fff;
     cursor: pointer;
@@ -454,18 +454,13 @@ body { margin: 0 !important; padding: 0 !important; background: #fff !important;
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 10px;
+    gap: 0;
     flex-wrap: wrap;
     margin-bottom: 14px;
 }
 
 .fb-btn-listen {
     background: var(--purple);
-}
-
-.fb-listen-text {
-    font: 800 12px 'Nunito', sans-serif;
-    color: var(--muted);
 }
 
 /* ── Word bank — Option A chip style (same as unscramble) ── */
@@ -564,7 +559,6 @@ body { margin: 0 !important; padding: 0 !important; background: #fff !important;
                 <?php if (($fbMediaType === 'audio' && $fbMediaUrl !== '') || $fbMediaType === 'tts' || $fbTtsAudioUrl !== ''): ?>
                     <div class="fb-listen-panel">
                         <button type="button" class="fb-btn fb-btn-listen" id="fb-listen-btn">Listen</button>
-                        <span class="fb-listen-text">Listen and complete the blanks.</span>
                     </div>
                     <audio id="fb-audio-player"
                            src="<?php echo htmlspecialchars($fbMediaType === 'audio' ? $fbMediaUrl : $fbTtsAudioUrl, ENT_QUOTES, 'UTF-8'); ?>"

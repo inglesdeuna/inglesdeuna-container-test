@@ -406,7 +406,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
     if (nextBtn) {
       nextBtn.disabled = true;
-      nextBtn.textContent = index < questions.length - 1 ? 'Next \u2192' : 'Finish';
+      nextBtn.textContent = 'Next \u2192';
     }
 
     updateProgress();
