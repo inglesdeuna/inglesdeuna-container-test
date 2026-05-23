@@ -13,6 +13,7 @@ document.addEventListener('DOMContentLoaded', function () {
   var nextBtn = document.getElementById('fb-next');
   var feedbackEl = document.getElementById('fb-feedback');
   var activityEl = document.getElementById('fb-activity');
+  var cardEl = activityEl ? activityEl.querySelector('.fb-card-shell') : null;
   var completedEl = document.getElementById('fb-completed');
   var completedTitleEl = document.getElementById('fb-completed-title');
   var completedTextEl = document.getElementById('fb-completed-text');
@@ -413,9 +414,13 @@ document.addEventListener('DOMContentLoaded', function () {
     if (activityEl) {
       activityEl.style.display = '';
     }
+    if (cardEl) {
+      cardEl.style.display = 'block';
+    }
     if (feedbackEl) {
       feedbackEl.textContent = '';
       feedbackEl.className = 'fb-feedback';
+      feedbackEl.style.display = '';
     }
 
     if (checkBtn) {
@@ -531,8 +536,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
     var result = computeScoreLikeMultipleChoice();
 
-    if (activityEl) {
-      activityEl.style.display = 'none';
+    if (cardEl) {
+      cardEl.style.display = 'none';
+    }
+    if (feedbackEl) {
+      feedbackEl.style.display = 'none';
     }
     completedEl.classList.add('active');
 

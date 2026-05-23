@@ -143,7 +143,7 @@ if ($fbTtsText === '') {
 
 ob_start();
 ?>
-<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@600;700;800;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Fredoka+One&family=Nunito:wght@600;700;800;900&display=swap" rel="stylesheet">
 
 <style>
 :root {
@@ -235,9 +235,10 @@ body { margin: 0 !important; padding: 0 !important; background: var(--fb-bg) !im
 
 /* Progress */
 .fb-progress {
-    display: flex;
+    display: grid;
+    grid-template-columns: auto 1fr auto;
     align-items: center;
-    gap: 10px;
+    gap: 12px;
     margin-bottom: 16px;
 }
 .fb-progress-label {
@@ -486,10 +487,10 @@ body { margin: 0 !important; padding: 0 !important; background: var(--fb-bg) !im
 }
 
 .fb-score-num {
-    font-family: 'Fredoka', sans-serif;
+    font-family: 'Fredoka One', sans-serif;
     font-size: 26px;
     line-height: 1;
-    font-weight: 700;
+    font-weight: 400;
 }
 
 .fb-score-num.c {
@@ -526,9 +527,9 @@ body { margin: 0 !important; padding: 0 !important; background: var(--fb-bg) !im
 .fb-completed-title {
     margin: 0;
     color: var(--orange);
-    font-family: 'Fredoka', sans-serif;
+    font-family: 'Fredoka One', sans-serif;
     font-size: 32px;
-    font-weight: 700;
+    font-weight: 400;
 }
 
 .fb-completed-text {
@@ -650,15 +651,21 @@ body { margin: 0 !important; padding: 0 !important; background: var(--fb-bg) !im
 }
 .fb-blank-chip:hover { transform: translateY(-1px); }
 
-@media (max-width: 640px) {
+@media (max-width: 760px) {
+    .fb-stage-shell { padding: 14px; }
+    .fb-progress { grid-template-columns: 1fr; gap: 8px; }
+    .fb-score-grid { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 480px) {
     .fb-page { padding: 12px; }
     .fb-app { width: 100%; }
     .fb-card-shell { padding: 1rem; }
     .fb-actions { display: grid; grid-template-columns: 1fr; gap: 9px; }
     .fb-btn { width: 100%; }
+    .fb-completed-button { width: 100%; }
     .fb-wb-words { gap: 6px; }
     .fb-chip { padding: 6px 12px; font-size: 12px; }
-    .fb-score-grid { grid-template-columns: 1fr; }
 }
 </style>
 
@@ -674,15 +681,15 @@ body { margin: 0 !important; padding: 0 !important; background: var(--fb-bg) !im
         <div class="fb-stage-shell">
 
         <div id="fb-activity">
-            <div class="fb-card-shell">
-                <div class="fb-progress">
-                    <span class="fb-progress-label" id="fb-progress-label">1 / <?php echo count($jsQuestions); ?></span>
-                    <div class="fb-track">
-                        <div class="fb-fill" id="fb-progress-fill"></div>
-                    </div>
-                    <div class="fb-badge" id="fb-progress-badge">Q 1 of <?php echo count($jsQuestions); ?></div>
+            <div class="fb-progress">
+                <span class="fb-progress-label" id="fb-progress-label">1 / <?php echo count($jsQuestions); ?></span>
+                <div class="fb-track">
+                    <div class="fb-fill" id="fb-progress-fill"></div>
                 </div>
+                <div class="fb-badge" id="fb-progress-badge">Q 1 of <?php echo count($jsQuestions); ?></div>
+            </div>
 
+            <div class="fb-card-shell">
                 <?php if (($fbMediaType === 'audio' && $fbMediaUrl !== '') || $fbMediaType === 'tts' || $fbTtsAudioUrl !== ''): ?>
                     <div class="fb-listen-panel">
                         <button type="button" class="fb-btn fb-btn-listen" id="fb-listen-btn">Listen</button>
@@ -709,24 +716,24 @@ body { margin: 0 !important; padding: 0 !important; background: var(--fb-bg) !im
                     <button class="fb-btn fb-btn-show" id="fb-show">Show Answer</button>
                     <button class="fb-btn fb-btn-next" id="fb-next">Next</button>
                 </div>
-
-                <div id="fb-score-grid" class="fb-score-grid">
-                    <div class="fb-score-card">
-                        <div class="fb-score-num c" id="fb-s-correct">0</div>
-                        <div class="fb-score-lbl">Correct</div>
-                    </div>
-                    <div class="fb-score-card">
-                        <div class="fb-score-num w" id="fb-s-wrong">0</div>
-                        <div class="fb-score-lbl">Wrong</div>
-                    </div>
-                    <div class="fb-score-card">
-                        <div class="fb-score-num p" id="fb-s-pct">0%</div>
-                        <div class="fb-score-lbl">Score</div>
-                    </div>
-                </div>
             </div>
 
             <div id="fb-feedback" class="fb-feedback"></div>
+
+            <div id="fb-score-grid" class="fb-score-grid">
+                <div class="fb-score-card">
+                    <div class="fb-score-num c" id="fb-s-correct">0</div>
+                    <div class="fb-score-lbl">Correct</div>
+                </div>
+                <div class="fb-score-card">
+                    <div class="fb-score-num w" id="fb-s-wrong">0</div>
+                    <div class="fb-score-lbl">Wrong</div>
+                </div>
+                <div class="fb-score-card">
+                    <div class="fb-score-num p" id="fb-s-pct">0%</div>
+                    <div class="fb-score-lbl">Score</div>
+                </div>
+            </div>
         </div>
 
         <div id="fb-completed" class="fb-completed-screen">
