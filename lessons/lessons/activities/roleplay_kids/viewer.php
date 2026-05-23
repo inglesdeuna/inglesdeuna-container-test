@@ -162,6 +162,8 @@ const DEFAULT_TURNS = [
   { agent: "", hint: "", ideal: "", criteria: "" },
 ];
 
+const BLOCK_PASS_SCORE = 80;
+
 const DEFAULT_SCENE = {
   title: "Kids Roleplay", icon: "🎭", desc: "Practice speaking English!", agentName: "Teacher", agentRole: "Teacher", studentRole: "Student", sceneImage: "", teacherAvatarId: "TEACHER", studentAvatarId: "ANGIE", teacherVoiceId: "nzFihrBIvB34imQBuxub",
 };
@@ -1344,7 +1346,7 @@ function PlayerView({ scene, turns, onComplete, onBack, onListenFull }) {
       corrected: target || transcript,
       praise: total >= 80 ? "Great repetition!" : total >= 55 ? "Good effort, keep practicing!" : "Nice try, listen and repeat again.",
       tips: ["Listen carefully and repeat with clear pronunciation."],
-      passed: total >= 50,
+      passed: total >= BLOCK_PASS_SCORE,
     };
   }
 
@@ -1443,6 +1445,15 @@ function PlayerView({ scene, turns, onComplete, onBack, onListenFull }) {
             <div style={{ padding: "14px 14px 110px", display: "flex", flexDirection: "column", gap: 12, background: "#F9F8FF" }}>
               {safeTurns.map((turn, idx) => {
                 const turnResult = results.find(r => r.turnIdx === idx);
+                const turnScore = Number(turnResult?.feedback?.total || 0);
+                const hasScored = !!turnResult && Number.isFinite(turnScore);
+                const isPassed = hasScored && turnScore >= BLOCK_PASS_SCORE;
+                const progressLabel = hasScored ? (isPassed ? "100%" : "Try again") : "Pending";
+                const progressStyle = isPassed
+                  ? { background: "#F0FDF4", color: "#166534", border: "1px solid #86EFAC" }
+                  : hasScored
+                    ? { background: "#FFF0E6", color: "#C2580A", border: "1px solid #FCDDBF" }
+                    : { background: "#EEEDFE", color: "#5A51C0", border: "1px solid #D9D5F2" };
                 const isActive = idx === currentTurn;
                 const studentLine = targetLine(turn);
                 return (
@@ -1450,16 +1461,16 @@ function PlayerView({ scene, turns, onComplete, onBack, onListenFull }) {
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
                       <span style={{ background: "#EEEDFE", color: "#5A51C0", borderRadius: 999, padding: "4px 10px", fontSize: 11, fontWeight: 800 }}>Turn {idx + 1}</span>
                       <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                        <span style={{ ...progressStyle, borderRadius: 999, padding: "4px 10px", fontSize: 11, fontWeight: 800 }}>
+                          {progressLabel}
+                        </span>
                         {!isActive && (
                           <button
                             onClick={() => selectTurnForPractice(idx)}
                             style={{ background: "#fff", color: "#7F77DD", border: "1.5px solid #EDE9FA", borderRadius: 999, padding: "4px 10px", fontSize: 11, fontWeight: 800, cursor: "pointer" }}
                           >
-                            Practice this block
+                            {hasScored ? (isPassed ? "Review block" : "Try again") : "Start block"}
                           </button>
-                        )}
-                        {turnResult && (
-                          <span style={{ background: "#F0FDF4", color: "#166534", border: "1px solid #86EFAC", borderRadius: 999, padding: "4px 10px", fontSize: 11, fontWeight: 800 }}>{turnResult.feedback.total} pts</span>
                         )}
                       </div>
                     </div>
@@ -1510,7 +1521,7 @@ function PlayerView({ scene, turns, onComplete, onBack, onListenFull }) {
                             const spokenText = (recorder.finalText + recorder.interimText).trim();
                             const currentTranscript = spokenText || (recorder.hasRecorded ? "(Audio response)" : "");
                             const currentScore = currentTranscript ? computeScore(currentTranscript, studentLine) : 0;
-                            const isCorrect = currentTranscript && currentScore >= 80;
+                            const isCorrect = currentTranscript && currentScore >= BLOCK_PASS_SCORE;
                             return (
                               <>
                           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -1781,6 +1792,7 @@ function RoleplayActivity() {
   const [scene, setScene] = useState(canonicalizeScene(window.RK_SAVED_SCENE || DEFAULT_SCENE));
   const [turns, setTurns] = useState(window.RK_SAVED_TURNS || JSON.parse(JSON.stringify(DEFAULT_TURNS)));
   const [results, setResults] = useState([]);
+  const resultsStorageKey = `rk_results_${String(window.RK_ACTIVITY_ID || "new")}`;
   const [isListeningFull, setIsListeningFull] = useState(false);
   const listenCancelRef = useRef(false);
   const replayStudentVoiceCandidates = ["Nggzl2QAXh3OijoXD116", "NoOVOzCQFLOvtsMoNcdT", "nzFihrBIvB34imQBuxub"];
@@ -1860,6 +1872,27 @@ function RoleplayActivity() {
 
     speakNext();
   }, [isListeningFull, playReplayLine, replayStudentVoiceCandidates, scene.teacherVoiceId, turns]);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(resultsStorageKey);
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed)) return;
+      const hydrated = parsed.filter(r => r && typeof r.turnIdx === "number" && r.feedback && typeof r.feedback.total === "number");
+      if (hydrated.length) setResults(hydrated);
+    } catch (e) {
+      // Ignore malformed persisted progress.
+    }
+  }, [resultsStorageKey]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(resultsStorageKey, JSON.stringify(results));
+    } catch (e) {
+      // Ignore storage errors (quota/private mode).
+    }
+  }, [results, resultsStorageKey]);
 
   useEffect(() => {
     return () => {
