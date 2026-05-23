@@ -507,7 +507,7 @@ body{margin:0!important;padding:0!important;background:var(--m-bg)!important;fon
 
 /* ── Buttons ── */
 .m-actions{display:flex;justify-content:center;gap:10px;flex-wrap:wrap;}
-.m-btn{padding:12px 24px;border-radius:999px;font-family:'Nunito',sans-serif;font-size:13px;font-weight:900;cursor:pointer;transition:transform .15s,filter .15s;border:none;min-width:120px;}
+.m-btn{padding:12px 24px;border-radius:10px;font-family:'Nunito',sans-serif;font-size:13px;font-weight:900;cursor:pointer;transition:transform .15s,filter .15s;border:none;min-width:120px;}
 .m-btn:hover{transform:translateY(-2px);filter:brightness(1.07);}
 .m-btn-check{background:var(--m-orange);color:#fff;box-shadow:0 6px 18px rgba(249,115,22,.22);}
 .m-btn-answer{background:var(--m-purple);color:#fff;box-shadow:0 6px 18px rgba(127,119,221,.18);}
@@ -520,7 +520,7 @@ body{margin:0!important;padding:0!important;background:var(--m-bg)!important;fon
 .m-completed-title{margin:0;color:var(--m-orange);font-family:'Fredoka',sans-serif;font-size:32px;font-weight:700;}
 .m-completed-text{color:var(--m-muted);font-size:14px;font-weight:800;}
 .m-completed-score{color:#666;font-size:14px;font-weight:800;}
-.m-restart-btn{border:none;border-radius:999px;color:#fff;min-width:128px;padding:11px 20px;font-size:14px;font-weight:700;font-family:'Nunito',sans-serif;cursor:pointer;background:var(--m-purple);}
+.m-restart-btn{border:none;border-radius:10px;color:#fff;min-width:128px;padding:11px 20px;font-size:14px;font-weight:700;font-family:'Nunito',sans-serif;cursor:pointer;background:var(--m-purple);}
 
 /* ── Ghost tile for touch drag ── */
 #m-ghost{
