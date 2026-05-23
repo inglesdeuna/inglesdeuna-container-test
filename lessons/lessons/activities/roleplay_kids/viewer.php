@@ -174,15 +174,108 @@ const RK_VOICES = [
 
 const DEFAULT_TEACHER_VOICE_ID = "nzFihrBIvB34imQBuxub";
 const ALLOWED_TEACHER_VOICE_IDS = new Set(RK_VOICES.map(v => v.id));
+const TEACHER_VOICE_FIELD = "teacherVoiceId";
 
 function resolveTeacherVoiceId(scene) {
-  const direct = String(scene?.teacherVoiceId || "").trim();
+  const direct = String(scene?.[TEACHER_VOICE_FIELD] || "").trim();
   if (ALLOWED_TEACHER_VOICE_IDS.has(direct)) return direct;
 
   const legacy = String(scene?.teacherVoice || scene?.voice_id || scene?.voiceId || "").trim();
   if (ALLOWED_TEACHER_VOICE_IDS.has(legacy)) return legacy;
 
   return DEFAULT_TEACHER_VOICE_ID;
+}
+
+function canonicalizeScene(scene) {
+  const base = (scene && typeof scene === "object") ? scene : {};
+  const canonical = { ...base, [TEACHER_VOICE_FIELD]: resolveTeacherVoiceId(base) };
+  delete canonical.teacherVoice;
+  delete canonical.voice_id;
+  delete canonical.voiceId;
+  return canonical;
+}
+
+function buildTtsError(message, code) {
+  const err = new Error(message || "TTS error");
+  err.code = code || "tts_error";
+  return err;
+}
+
+async function fetchElevenLabsAudioBlob(text, voiceId) {
+  const cleanText = String(text || "").trim();
+  if (!cleanText) throw buildTtsError("Text is required for TTS", "missing_text");
+
+  const cleanVoiceId = String(voiceId || "").trim();
+  if (!cleanVoiceId) throw buildTtsError("Teacher voice is missing", "missing_voice_id");
+  if (!ALLOWED_TEACHER_VOICE_IDS.has(cleanVoiceId)) {
+    throw buildTtsError(`Invalid teacher voice ID: ${cleanVoiceId}`, "invalid_voice_id");
+  }
+
+  const fd = new FormData();
+  fd.append("text", cleanText);
+  fd.append("voice_id", cleanVoiceId);
+
+  let res;
+  try {
+    res = await fetch("tts.php", {
+      method: "POST",
+      body: fd,
+      credentials: "same-origin",
+      cache: "no-store",
+    });
+  } catch (err) {
+    throw buildTtsError("Could not contact ElevenLabs TTS endpoint", "elevenlabs_request_failed");
+  }
+
+  if (!res.ok) {
+    let detail = `TTS error ${res.status}`;
+    try {
+      const j = await res.json();
+      if (j && typeof j.error === "string" && j.error.trim() !== "") detail = j.error;
+    } catch (e) {
+      // Ignore non-JSON error responses.
+    }
+    throw buildTtsError(detail, "elevenlabs_request_failed");
+  }
+
+  return await res.blob();
+}
+
+async function playAudioBlob(blob, audioRef, hooks = {}) {
+  const onPlaying = typeof hooks.onPlaying === "function" ? hooks.onPlaying : () => {};
+  const onIdle = typeof hooks.onIdle === "function" ? hooks.onIdle : () => {};
+
+  if (audioRef && audioRef.current) {
+    audioRef.current.pause();
+    audioRef.current = null;
+  }
+
+  const url = URL.createObjectURL(blob);
+  await new Promise((resolve, reject) => {
+    const audio = new Audio(url);
+    if (audioRef) audioRef.current = audio;
+    onPlaying();
+
+    audio.onended = () => {
+      URL.revokeObjectURL(url);
+      if (audioRef) audioRef.current = null;
+      onIdle();
+      resolve();
+    };
+    audio.onerror = () => {
+      URL.revokeObjectURL(url);
+      if (audioRef) audioRef.current = null;
+      onIdle();
+      reject(buildTtsError("Audio playback failed", "playback_failed"));
+    };
+
+    audio.play().catch(() => {
+      URL.revokeObjectURL(url);
+      if (audioRef) audioRef.current = null;
+      onIdle();
+      reject(buildTtsError("Audio playback blocked", "playback_failed"));
+    });
+  });
 }
 
 const RK_AVATARS = [
@@ -492,7 +585,7 @@ async function saveActivity(scene, turns) {
   if (!id) return { ok: false, error: "No activity ID" };
   const saveUrl = new URL("save.php", window.location.href);
   saveUrl.searchParams.set("_ts", String(Date.now()));
-  const normalizedScene = { ...scene, teacherVoiceId: resolveTeacherVoiceId(scene) };
+  const normalizedScene = canonicalizeScene(scene);
   const payload = { id, scene: normalizedScene, turns };
 
   console.log("[roleplay_kids] saveActivity called", {
@@ -736,31 +829,16 @@ function EditorView({ scene, turns, onSceneChange, onTurnsChange, onStart }) {
 
     setTtsPreviewState("loading");
     try {
-      const fd = new FormData();
-      fd.append("text", previewText);
-      fd.append("voice_id", resolveTeacherVoiceId(scene));
-      const res = await fetch("tts.php", { method: "POST", body: fd, credentials: "same-origin" });
-      if (!res.ok) throw new Error("TTS error " + res.status);
-
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const audio = new Audio(url);
-      previewAudioRef.current = audio;
-      setTtsPreviewState("playing");
-      audio.onended = () => {
-        URL.revokeObjectURL(url);
-        setTtsPreviewState("idle");
-        previewAudioRef.current = null;
-      };
-      audio.onerror = () => {
-        URL.revokeObjectURL(url);
-        setTtsPreviewState("idle");
-        previewAudioRef.current = null;
-      };
-      await audio.play();
+      const voiceId = resolveTeacherVoiceId(scene);
+      const blob = await fetchElevenLabsAudioBlob(previewText, voiceId);
+      await playAudioBlob(blob, previewAudioRef, {
+        onPlaying: () => setTtsPreviewState("playing"),
+        onIdle: () => setTtsPreviewState("idle"),
+      });
     } catch (e) {
       setTtsPreviewState("idle");
-      alert("Could not play teacher voice preview.");
+      const detail = e && e.message ? e.message : "Unknown error";
+      alert("Could not play teacher voice preview: " + detail);
     }
   }, [scene, turns]);
 
@@ -1180,7 +1258,6 @@ function PlayerView({ scene, turns, onComplete, onBack, onListenFull }) {
   const [currentTurn, setCurrentTurn] = useState(0);
   const [results, setResults] = useState([]);
   const teacherVoiceId = resolveTeacherVoiceId(scene);
-  const studentVoiceId = "Nggzl2QAXh3OijoXD116";
   const [ttsState, setTtsState] = useState("idle"); // "idle" | "loading" | "playing"
   const recorder = useRecorder();
   const currentAudioRef = useRef(null);
@@ -1203,44 +1280,16 @@ function PlayerView({ scene, turns, onComplete, onBack, onListenFull }) {
     if (recorder.isRecording) return;
     const useVoiceId = selectedVoiceId || teacherVoiceId;
     if (!text || !useVoiceId) return;
-    if (currentAudioRef.current) {
-      currentAudioRef.current.pause();
-      currentAudioRef.current = null;
-    }
     setTtsState("loading");
     try {
-      const fd = new FormData();
-      fd.append("text", text);
-      fd.append("voice_id", useVoiceId);
-      const res = await fetch("tts.php", { method: "POST", body: fd, credentials: "same-origin" });
-      if (!res.ok) {
-        let detail = "TTS error " + res.status;
-        try {
-          const j = await res.json();
-          if (j && typeof j.error === "string" && j.error.trim() !== "") detail = j.error;
-        } catch (e) {
-          // Ignore non-JSON error payloads.
-        }
-        throw new Error(detail);
-      }
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      await new Promise((resolve, reject) => {
-        const audio = new Audio(url);
-        currentAudioRef.current = audio;
-        setTtsState("playing");
-        audio.onended = () => { URL.revokeObjectURL(url); setTtsState("idle"); currentAudioRef.current = null; resolve(); };
-        audio.onerror = () => { URL.revokeObjectURL(url); setTtsState("idle"); currentAudioRef.current = null; reject(new Error("Audio playback failed")); };
-        audio.play().catch(err => {
-          URL.revokeObjectURL(url);
-          setTtsState("idle");
-          currentAudioRef.current = null;
-          reject(err);
-        });
+      const blob = await fetchElevenLabsAudioBlob(text, useVoiceId);
+      await playAudioBlob(blob, currentAudioRef, {
+        onPlaying: () => setTtsState("playing"),
+        onIdle: () => setTtsState("idle"),
       });
     } catch (e) {
       setTtsState("idle");
-      if (window.speechSynthesis) {
+      if (e && e.code === "elevenlabs_request_failed" && window.speechSynthesis) {
         try {
           window.speechSynthesis.cancel();
           const u = new SpeechSynthesisUtterance(text);
@@ -1252,7 +1301,11 @@ function PlayerView({ scene, turns, onComplete, onBack, onListenFull }) {
         }
       }
       if (!silent) {
-        console.warn("Roleplay Kids TTS fallback:", e && e.message ? e.message : e);
+        const detail = e && e.message ? e.message : String(e);
+        console.warn("Roleplay Kids TTS error:", detail);
+        if (!(e && e.code === "elevenlabs_request_failed")) {
+          alert("Could not play teacher audio: " + detail);
+        }
       }
     }
   }, [recorder.isRecording, teacherVoiceId]);
@@ -1725,7 +1778,7 @@ function RoleplayActivity() {
   const allowEditor = !!window.RK_ALLOW_EDITOR;
   const initialView = window.RK_START_VIEW === "editor" && allowEditor ? "editor" : "player";
   const [view, setView] = useState(initialView);
-  const [scene, setScene] = useState(window.RK_SAVED_SCENE || DEFAULT_SCENE);
+  const [scene, setScene] = useState(canonicalizeScene(window.RK_SAVED_SCENE || DEFAULT_SCENE));
   const [turns, setTurns] = useState(window.RK_SAVED_TURNS || JSON.parse(JSON.stringify(DEFAULT_TURNS)));
   const [results, setResults] = useState([]);
   const [isListeningFull, setIsListeningFull] = useState(false);
@@ -1737,22 +1790,8 @@ function RoleplayActivity() {
     const candidateList = Array.isArray(voiceCandidates) && voiceCandidates.length ? voiceCandidates : ["nzFihrBIvB34imQBuxub"];
     for (const voiceId of candidateList) {
       try {
-        const fd = new FormData();
-        fd.append("text", text);
-        fd.append("voice_id", voiceId);
-        const res = await fetch("tts.php", { method: "POST", body: fd, credentials: "same-origin" });
-        if (!res.ok) throw new Error("TTS error " + res.status);
-        const blob = await res.blob();
-        const url = URL.createObjectURL(blob);
-        await new Promise((resolve, reject) => {
-          const audio = new Audio(url);
-          audio.onended = () => { URL.revokeObjectURL(url); resolve(); };
-          audio.onerror = () => { URL.revokeObjectURL(url); reject(new Error("Audio playback failed")); };
-          audio.play().catch(err => {
-            URL.revokeObjectURL(url);
-            reject(err);
-          });
-        });
+        const blob = await fetchElevenLabsAudioBlob(text, voiceId);
+        await playAudioBlob(blob, null);
         return;
       } catch (err) {
         // Try next configured voice.

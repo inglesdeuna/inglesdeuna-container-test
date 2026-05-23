@@ -45,6 +45,12 @@ $activityId = isset($payload['id']) ? trim((string) $payload['id']) : '';
 $scene      = $payload['scene'] ?? null;
 $turns      = $payload['turns'] ?? null;
 
+$allowedVoiceIds = [
+    'nzFihrBIvB34imQBuxub',
+    'NoOVOzCQFLOvtsMoNcdT',
+    'Nggzl2QAXh3OijoXD116',
+];
+
 rk_log_save('Incoming save request', [
     'activity_id' => $activityId,
     'save_destination' => 'activities.data',
@@ -56,6 +62,18 @@ rk_log_save('Incoming save request', [
 if ($activityId === '' || !is_array($scene) || !is_array($turns)) {
     http_response_code(400);
     echo json_encode(['error' => 'Missing required fields']);
+    exit;
+}
+
+$teacherVoiceId = isset($scene['teacherVoiceId']) ? trim((string) $scene['teacherVoiceId']) : '';
+if ($teacherVoiceId === '') {
+    http_response_code(400);
+    echo json_encode(['error' => 'Missing teacherVoiceId']);
+    exit;
+}
+if (!in_array($teacherVoiceId, $allowedVoiceIds, true)) {
+    http_response_code(400);
+    echo json_encode(['error' => 'Invalid teacherVoiceId']);
     exit;
 }
 
