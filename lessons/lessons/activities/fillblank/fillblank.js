@@ -20,6 +20,16 @@ document.addEventListener('DOMContentLoaded', function () {
   var activityTitle = window.FILLBLANK_TITLE || 'Fill in the Blank';
   var returnTo = window.FILLBLANK_RETURN_TO || '';
   var activityId = window.FILLBLANK_ACTIVITY_ID || '';
+  var mediaType = String(window.FILLBLANK_MEDIA_TYPE || 'none');
+  var mediaUrl = String(window.FILLBLANK_MEDIA_URL || '').trim();
+  var ttsAudioUrl = String(window.FILLBLANK_TTS_AUDIO_URL || '').trim();
+  var ttsText = String(window.FILLBLANK_TTS_TEXT || '').trim();
+  var voiceId = String(window.FILLBLANK_VOICE_ID || 'nzFihrBIvB34imQBuxub');
+  var ttsUrl = String(window.FILLBLANK_TTS_URL || 'tts.php');
+  var listenBtn = document.getElementById('fb-listen-btn');
+  var mediaAudioEl = document.getElementById('fb-audio-player');
+  var streamAudio = null;
+  var streamAudioUrl = '';
 
   if (!questions.length) {
     if (sentenceEl) {
@@ -45,6 +55,113 @@ document.addEventListener('DOMContentLoaded', function () {
       .toLowerCase()
       .replace(/[^a-z0-9\s]/g, '')
       .replace(/\s+/g, ' ');
+  }
+
+  function resetListenButton() {
+    if (listenBtn) {
+      listenBtn.disabled = false;
+      listenBtn.textContent = 'Listen';
+    }
+  }
+
+  function cleanupStreamAudio() {
+    if (streamAudio) {
+      try { streamAudio.pause(); } catch (e) {}
+      try { streamAudio.currentTime = 0; } catch (e) {}
+      streamAudio = null;
+    }
+    if (streamAudioUrl) {
+      try { URL.revokeObjectURL(streamAudioUrl); } catch (e) {}
+      streamAudioUrl = '';
+    }
+  }
+
+  function playMediaAudio() {
+    if (!mediaAudioEl || !listenBtn) {
+      return;
+    }
+
+    if (!mediaAudioEl.src) {
+      var chosen = mediaType === 'audio' ? mediaUrl : ttsAudioUrl;
+      if (chosen) {
+        mediaAudioEl.src = chosen;
+      }
+    }
+
+    if (!mediaAudioEl.src) {
+      return;
+    }
+
+    if (!mediaAudioEl.paused) {
+      mediaAudioEl.pause();
+      listenBtn.textContent = 'Resume';
+      return;
+    }
+
+    mediaAudioEl.play().then(function () {
+      listenBtn.textContent = 'Pause';
+    }).catch(function () {
+      resetListenButton();
+    });
+  }
+
+  function playStreamTts() {
+    if (!listenBtn || !ttsText) {
+      return;
+    }
+
+    if (streamAudio) {
+      if (!streamAudio.paused) {
+        streamAudio.pause();
+        listenBtn.textContent = 'Resume';
+      } else {
+        streamAudio.play().then(function () {
+          listenBtn.textContent = 'Pause';
+        }).catch(function () {
+          resetListenButton();
+        });
+      }
+      return;
+    }
+
+    listenBtn.disabled = true;
+    listenBtn.textContent = '...';
+
+    var fd = new FormData();
+    fd.append('text', ttsText);
+    fd.append('voice_id', voiceId || 'nzFihrBIvB34imQBuxub');
+    fd.append('response_type', 'stream');
+
+    fetch(ttsUrl, { method: 'POST', body: fd, credentials: 'same-origin' })
+      .then(function (res) {
+        if (!res.ok) throw new Error('TTS error ' + res.status);
+        return res.blob();
+      })
+      .then(function (blob) {
+        streamAudioUrl = URL.createObjectURL(blob);
+        streamAudio = new Audio(streamAudioUrl);
+
+        streamAudio.onended = function () {
+          cleanupStreamAudio();
+          resetListenButton();
+        };
+
+        streamAudio.onpause = function () {
+          if (streamAudio && streamAudio.currentTime < (streamAudio.duration || Infinity)) {
+            listenBtn.textContent = 'Resume';
+          }
+        };
+
+        return streamAudio.play();
+      })
+      .then(function () {
+        listenBtn.disabled = false;
+        listenBtn.textContent = 'Pause';
+      })
+      .catch(function () {
+        cleanupStreamAudio();
+        resetListenButton();
+      });
   }
 
   function escHtml(s) {
@@ -449,6 +566,27 @@ document.addEventListener('DOMContentLoaded', function () {
   }
   if (nextBtn) {
     nextBtn.addEventListener('click', nextQuestion);
+  }
+
+  if (mediaAudioEl) {
+    mediaAudioEl.addEventListener('ended', resetListenButton);
+    mediaAudioEl.addEventListener('pause', function () {
+      if (mediaAudioEl.currentTime < (mediaAudioEl.duration || Infinity) && listenBtn) {
+        listenBtn.textContent = 'Resume';
+      }
+    });
+  }
+
+  if (listenBtn) {
+    listenBtn.addEventListener('click', function () {
+      if ((mediaType === 'audio' && mediaUrl) || ttsAudioUrl) {
+        playMediaAudio();
+        return;
+      }
+      if (mediaType === 'tts' && ttsText) {
+        playStreamTts();
+      }
+    });
   }
 
   loadQuestion();

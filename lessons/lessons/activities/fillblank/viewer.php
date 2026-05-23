@@ -37,6 +37,11 @@ function fb2_load(PDO $pdo, string $unit, string $activityId): array
         'id'           => '',
         'instructions' => 'Write the missing words in the blanks.',
         'blocks'       => [],
+        'media_type'   => 'none',
+        'media_url'    => '',
+        'tts_text'     => '',
+        'voice_id'     => 'nzFihrBIvB34imQBuxub',
+        'tts_audio_url'=> '',
     ];
 
     $row = null;
@@ -78,6 +83,11 @@ function fb2_load(PDO $pdo, string $unit, string $activityId): array
         'instructions' => isset($data['instructions']) ? $data['instructions'] : $fallback['instructions'],
         'blocks'       => $blocks,
         'options'      => $options,
+        'media_type'   => in_array($data['media_type'] ?? '', ['tts', 'audio', 'none'], true) ? (string)$data['media_type'] : 'none',
+        'media_url'    => trim((string)($data['media_url'] ?? '')),
+        'tts_text'     => trim((string)($data['tts_text'] ?? '')),
+        'voice_id'     => trim((string)($data['voice_id'] ?? 'nzFihrBIvB34imQBuxub')) ?: 'nzFihrBIvB34imQBuxub',
+        'tts_audio_url'=> trim((string)($data['tts_audio_url'] ?? '')),
     ];
 }
 
@@ -116,6 +126,20 @@ if (empty($jsQuestions)) {
 }
 
 $viewerTitle = 'Fill in the Blank';
+
+$fbMediaType = (string)($activity['media_type'] ?? 'none');
+$fbMediaUrl = trim((string)($activity['media_url'] ?? ''));
+$fbTtsAudioUrl = trim((string)($activity['tts_audio_url'] ?? ''));
+$fbVoiceId = trim((string)($activity['voice_id'] ?? 'nzFihrBIvB34imQBuxub')) ?: 'nzFihrBIvB34imQBuxub';
+$fbBlockTexts = [];
+foreach ($blocks as $fbBlock) {
+    $fbText = trim((string)($fbBlock['text'] ?? ''));
+    if ($fbText !== '') $fbBlockTexts[] = $fbText;
+}
+$fbTtsText = trim((string)($activity['tts_text'] ?? ''));
+if ($fbTtsText === '') {
+    $fbTtsText = implode('. ', $fbBlockTexts);
+}
 
 ob_start();
 ?>
@@ -426,6 +450,24 @@ body { margin: 0 !important; padding: 0 !important; background: #fff !important;
     display: block;
 }
 
+.fb-listen-panel {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 14px;
+}
+
+.fb-btn-listen {
+    background: var(--purple);
+}
+
+.fb-listen-text {
+    font: 800 12px 'Nunito', sans-serif;
+    color: var(--muted);
+}
+
 /* ── Word bank — Option A chip style (same as unscramble) ── */
 #fb-wordbank-wrap {
     border: 1.5px dashed var(--border);
@@ -519,6 +561,17 @@ body { margin: 0 !important; padding: 0 !important; background: #fff !important;
                     <div class="fb-badge" id="fb-progress-badge">Q 1 of <?php echo count($jsQuestions); ?></div>
                 </div>
 
+                <?php if (($fbMediaType === 'audio' && $fbMediaUrl !== '') || $fbMediaType === 'tts' || $fbTtsAudioUrl !== ''): ?>
+                    <div class="fb-listen-panel">
+                        <button type="button" class="fb-btn fb-btn-listen" id="fb-listen-btn">Listen</button>
+                        <span class="fb-listen-text">Listen and complete the blanks.</span>
+                    </div>
+                    <audio id="fb-audio-player"
+                           src="<?php echo htmlspecialchars($fbMediaType === 'audio' ? $fbMediaUrl : $fbTtsAudioUrl, ENT_QUOTES, 'UTF-8'); ?>"
+                           preload="none"
+                           style="display:none"></audio>
+                <?php endif; ?>
+
                 <div id="fb-sentence"></div>
 
                 <div class="fb-image-wrap" id="fb-image-wrap" aria-live="polite">
@@ -551,6 +604,12 @@ window.FILLBLANK_DATA        = <?php echo json_encode($jsQuestions, JSON_UNESCAP
 window.FILLBLANK_TITLE       = <?php echo json_encode($viewerTitle, JSON_UNESCAPED_UNICODE); ?>;
 window.FILLBLANK_RETURN_TO   = <?php echo json_encode($returnTo,    JSON_UNESCAPED_UNICODE); ?>;
 window.FILLBLANK_ACTIVITY_ID = <?php echo json_encode($activityId,  JSON_UNESCAPED_UNICODE); ?>;
+window.FILLBLANK_MEDIA_TYPE  = <?php echo json_encode($fbMediaType,  JSON_UNESCAPED_UNICODE); ?>;
+window.FILLBLANK_MEDIA_URL   = <?php echo json_encode($fbMediaUrl,   JSON_UNESCAPED_UNICODE); ?>;
+window.FILLBLANK_TTS_AUDIO_URL = <?php echo json_encode($fbTtsAudioUrl, JSON_UNESCAPED_UNICODE); ?>;
+window.FILLBLANK_TTS_TEXT    = <?php echo json_encode($fbTtsText,    JSON_UNESCAPED_UNICODE); ?>;
+window.FILLBLANK_VOICE_ID    = <?php echo json_encode($fbVoiceId,    JSON_UNESCAPED_UNICODE); ?>;
+window.FILLBLANK_TTS_URL     = 'tts.php';
 </script>
 <script src="fillblank.js?v=<?php echo filemtime(__FILE__); ?>"></script>
 <?php
