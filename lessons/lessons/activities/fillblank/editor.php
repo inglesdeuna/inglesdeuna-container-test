@@ -682,7 +682,7 @@ if (isset($_GET['saved'])) {
 
                 <div class="fb-field">
                     <label class="fb-label">Or upload audio file</label>
-                    <input type="file" name="media_file" accept="audio/*" style="font-size:13px;font-family:'Nunito',sans-serif">
+                    <input type="file" name="media_file" accept="audio/mpeg,audio/mp3,audio/*" style="font-size:13px;font-family:'Nunito',sans-serif">
                     <?php if ($activity['media_type']==='audio' && !empty($activity['media_url'])): ?>
                         <p class="fb-help">Current: <a href="<?php echo htmlspecialchars($activity['media_url'], ENT_QUOTES, 'UTF-8'); ?>" target="_blank" style="color:#534AB7;font-weight:900">Listen</a></p>
                     <?php endif; ?>
