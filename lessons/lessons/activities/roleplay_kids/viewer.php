@@ -1223,17 +1223,31 @@ function PlayerView({ scene, turns, onComplete, onBack, onListenFull }) {
     const target = targetLine(currentTurnData);
     const scorableTranscript = transcript === "(Audio response)" ? "" : transcript;
     const fb = buildFeedback(scorableTranscript, target);
-    const newResults = [...results, { transcript, feedback: fb, turnIdx: currentTurn }];
+    const updatedTurnResult = { transcript, feedback: fb, turnIdx: currentTurn };
+    const existingIdx = results.findIndex(r => r.turnIdx === currentTurn);
+    const newResults = existingIdx >= 0
+      ? results.map((r, i) => (i === existingIdx ? updatedTurnResult : r))
+      : [...results, updatedTurnResult];
     setResults(newResults);
     recorder.reset();
     setTypedText("");
     setShowTyping(false);
 
-    if (currentTurn >= safeTurns.length - 1) {
+    const completedTurns = new Set(newResults.map(r => r.turnIdx));
+    const isAllCompleted = safeTurns.every((_, idx) => completedTurns.has(idx));
+    if (isAllCompleted) {
       onComplete(newResults);
       return;
     }
-    setCurrentTurn(prev => prev + 1);
+
+    let nextIdx = safeTurns.findIndex((_, idx) => idx > currentTurn && !completedTurns.has(idx));
+    if (nextIdx === -1) {
+      nextIdx = safeTurns.findIndex((_, idx) => !completedTurns.has(idx));
+    }
+    if (nextIdx === -1) {
+      nextIdx = Math.min(currentTurn + 1, safeTurns.length - 1);
+    }
+    setCurrentTurn(nextIdx);
   }
 
   const globalSpokenText = (recorder.finalText + recorder.interimText).trim();
@@ -1267,12 +1281,27 @@ function PlayerView({ scene, turns, onComplete, onBack, onListenFull }) {
                 const isActive = idx === currentTurn;
                 const studentLine = targetLine(turn);
                 return (
-                  <div key={idx} style={{ background: "#fff", border: "1.5px solid #EDE9FA", borderRadius: 18, padding: 12 }}>
+                  <div key={idx} style={{ background: "#fff", border: isActive ? "2px solid #7F77DD" : "1.5px solid #EDE9FA", borderRadius: 18, padding: 12 }}>
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
                       <span style={{ background: "#EEEDFE", color: "#5A51C0", borderRadius: 999, padding: "4px 10px", fontSize: 11, fontWeight: 800 }}>Turn {idx + 1}</span>
-                      {turnResult && (
-                        <span style={{ background: "#F0FDF4", color: "#166534", border: "1px solid #86EFAC", borderRadius: 999, padding: "4px 10px", fontSize: 11, fontWeight: 800 }}>{turnResult.feedback.total} pts</span>
-                      )}
+                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                        {!isActive && (
+                          <button
+                            onClick={() => {
+                              setCurrentTurn(idx);
+                              recorder.reset();
+                              setTypedText("");
+                              setShowTyping(false);
+                            }}
+                            style={{ background: "#fff", color: "#7F77DD", border: "1.5px solid #EDE9FA", borderRadius: 999, padding: "4px 10px", fontSize: 11, fontWeight: 800, cursor: "pointer" }}
+                          >
+                            Practice this block
+                          </button>
+                        )}
+                        {turnResult && (
+                          <span style={{ background: "#F0FDF4", color: "#166534", border: "1px solid #86EFAC", borderRadius: 999, padding: "4px 10px", fontSize: 11, fontWeight: 800 }}>{turnResult.feedback.total} pts</span>
+                        )}
+                      </div>
                     </div>
 
                     <div style={{ background: "#F5F3FF", border: "1px solid #EDE9FA", borderRadius: 14, padding: "10px 12px", marginBottom: 8 }}>
