@@ -1261,7 +1261,7 @@ function PlayerView({ scene, turns, onComplete, onBack, onListenFull }) {
               </div>
             </div>
 
-            <div style={{ padding: "14px 14px 18px", display: "flex", flexDirection: "column", gap: 12, background: "#F9F8FF" }}>
+            <div style={{ padding: "14px 14px 110px", display: "flex", flexDirection: "column", gap: 12, background: "#F9F8FF" }}>
               {safeTurns.map((turn, idx) => {
                 const turnResult = results.find(r => r.turnIdx === idx);
                 const isActive = idx === currentTurn;
@@ -1373,20 +1373,8 @@ function PlayerView({ scene, turns, onComplete, onBack, onListenFull }) {
                             </div>
                           )}
 
-                          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "center" }}>
-                            <button
-                              onClick={onListenFull}
-                              style={{ background: C.purple, color: "#fff", border: "none", borderRadius: 12, padding: "10px 14px", fontSize: 13, fontWeight: 800, cursor: "pointer", minWidth: 138 }}
-                            >
-                              Listen to roleplay
-                            </button>
-                            <button
-                              onClick={handleAdvanceCurrentTurn}
-                              disabled={!canAdvance}
-                              style={{ background: canAdvance ? "#F97316" : "#E5E1F8", color: canAdvance ? "#fff" : "#AAA2D8", border: "none", borderRadius: 12, padding: "10px 14px", fontSize: 13, fontWeight: 800, cursor: canAdvance ? "pointer" : "not-allowed", minWidth: 94 }}
-                            >
-                              Next
-                            </button>
+                          <div style={{ fontSize: 11, fontWeight: 700, color: "#6A63B0" }}>
+                            Use the fixed action bar below to continue.
                           </div>
                               </>
                             );
@@ -1398,7 +1386,7 @@ function PlayerView({ scene, turns, onComplete, onBack, onListenFull }) {
                 );
               })}
 
-              <div style={{ position: "sticky", bottom: 0, zIndex: 20, background: "#FFFFFF", border: "1.5px solid #EDE9FA", borderRadius: 14, padding: "10px", display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap", boxShadow: "0 8px 20px rgba(127,119,221,.12)" }}>
+              <div style={{ position: "fixed", left: "50%", transform: "translateX(-50%)", bottom: 12, width: "min(720px, calc(100vw - 24px))", zIndex: 999, background: "#FFFFFF", border: "1.5px solid #EDE9FA", borderRadius: 14, padding: "10px", display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap", boxShadow: "0 8px 20px rgba(127,119,221,.18)" }}>
                 <button
                   onClick={onListenFull}
                   style={{ background: C.purple, color: "#fff", border: "none", borderRadius: 12, padding: "10px 14px", fontSize: 13, fontWeight: 800, cursor: "pointer", minWidth: 148 }}
