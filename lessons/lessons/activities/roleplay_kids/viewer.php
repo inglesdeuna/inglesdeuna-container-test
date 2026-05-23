@@ -1247,7 +1247,7 @@ function PlayerView({ scene, turns, onComplete, onBack, onListenFull }) {
               </div>
             </div>
 
-            <div style={{ padding: "14px 14px 18px", maxHeight: "72vh", overflowY: "auto", display: "flex", flexDirection: "column", gap: 12, background: "#F9F8FF" }}>
+            <div style={{ padding: "14px 14px 18px", display: "flex", flexDirection: "column", gap: 12, background: "#F9F8FF" }}>
               {safeTurns.map((turn, idx) => {
                 const turnResult = results.find(r => r.turnIdx === idx);
                 const isActive = idx === currentTurn;
