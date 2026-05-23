@@ -8,7 +8,9 @@ header('Expires: 0');
 
 $isAuth = !empty($_SESSION['admin_logged'])
     || !empty($_SESSION['academic_logged'])
-    || !empty($_SESSION['teacher_logged']);
+    || !empty($_SESSION['teacher_logged'])
+    || !empty($_SESSION['teacher_id'])
+    || !empty($_SESSION['teacher_username']);
 
 if (!$isAuth) {
     http_response_code(403);

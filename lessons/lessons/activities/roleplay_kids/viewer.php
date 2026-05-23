@@ -9,6 +9,18 @@ header('Expires: 0');
 $activityId = isset($_GET['id']) ? trim((string) $_GET['id']) : '';
 $mode = isset($_GET['mode']) ? trim((string) $_GET['mode']) : '';
 $returnTo = isset($_GET['return_to']) ? trim((string) $_GET['return_to']) : '';
+
+$isEditorAuth = !empty($_SESSION['admin_logged'])
+  || !empty($_SESSION['academic_logged'])
+  || !empty($_SESSION['teacher_logged'])
+  || !empty($_SESSION['teacher_id'])
+  || !empty($_SESSION['teacher_username']);
+
+if ($mode === 'edit' && !$isEditorAuth) {
+  header('Location: /lessons/lessons/academic/login.php');
+  exit;
+}
+
 $allowEditor = ($mode === 'edit');
 $startView = $allowEditor ? 'editor' : 'player';
 

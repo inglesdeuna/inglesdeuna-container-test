@@ -50,7 +50,10 @@ function tts_env(string $key): string
 $allowed =
     (!empty($_SESSION['academic_logged']) && $_SESSION['academic_logged']) ||
     (!empty($_SESSION['admin_logged'])    && $_SESSION['admin_logged'])    ||
-    (!empty($_SESSION['student_logged'])  && $_SESSION['student_logged']);
+    (!empty($_SESSION['student_logged'])  && $_SESSION['student_logged'])  ||
+    (!empty($_SESSION['teacher_logged'])  && $_SESSION['teacher_logged'])  ||
+    !empty($_SESSION['teacher_id'])
+    || !empty($_SESSION['teacher_username']);
 
 if (!$allowed) {
     http_response_code(403);
