@@ -149,6 +149,7 @@ ob_start();
 :root {
     --orange: #F97316;
     --purple: #7F77DD;
+    --fb-bg: #F8F7FE;
     --muted: #9B8FCC;
     --light-purple-bg: #F9F8FF;
     --border: #EDE9FA;
@@ -164,8 +165,8 @@ ob_start();
     --fb-red-dark: #b91c1c;
 }
 * { box-sizing: border-box; }
-html, body { width: 100%; min-height: 100%; margin: 0; padding: 0; background: #fff; font-family: 'Nunito', sans-serif; }
-body { margin: 0 !important; padding: 0 !important; background: #fff !important; }
+html, body { width: 100%; min-height: 100%; margin: 0; padding: 0; background: var(--fb-bg); font-family: 'Nunito', sans-serif; }
+body { margin: 0 !important; padding: 0 !important; background: var(--fb-bg) !important; }
 .activity-wrapper { max-width: 100% !important; margin: 0 !important; padding: 0 !important; display: flex !important; flex-direction: column !important; background: transparent !important; }
 .top-row, .activity-header { display: none !important; }
 .viewer-content { flex: 1 !important; display: flex !important; flex-direction: column !important; padding: 0 !important; margin: 0 !important; background: transparent !important; border: none !important; box-shadow: none !important; border-radius: 0 !important; }
@@ -179,12 +180,22 @@ body { margin: 0 !important; padding: 0 !important; background: #fff !important;
     display: flex;
     align-items: flex-start;
     justify-content: center;
-    background: #fff;
+    background: var(--fb-bg);
     box-sizing: border-box;
 }
 .fb-app {
     width: min(580px, 100%);
     margin: 0 auto;
+}
+
+.fb-stage-shell {
+    width: min(860px, 100%);
+    margin: 0 auto;
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 24px;
+    box-shadow: 0 8px 40px rgba(127,119,221,.13);
+    padding: 18px;
 }
 .fb-hero {
     text-align: center;
@@ -660,6 +671,8 @@ body { margin: 0 !important; padding: 0 !important; background: #fff !important;
             <p><?php echo htmlspecialchars($activity['instructions'], ENT_QUOTES, 'UTF-8'); ?></p>
         </div>
 
+        <div class="fb-stage-shell">
+
         <div id="fb-activity">
             <div class="fb-card-shell">
                 <div class="fb-progress">
@@ -722,6 +735,8 @@ body { margin: 0 !important; padding: 0 !important; background: #fff !important;
             <p class="fb-completed-text" id="fb-completed-text"></p>
             <p class="fb-completed-text" id="fb-score-text" style="font-weight:900;font-size:15px;color:#534AB7;"></p>
             <button type="button" class="fb-completed-button" id="fb-restart">Restart</button>
+        </div>
+
         </div>
 
     </div>
