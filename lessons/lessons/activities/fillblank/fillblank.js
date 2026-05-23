@@ -1,5 +1,4 @@
 document.addEventListener('DOMContentLoaded', function () {
-  var AF = window.ActivityFeedback;
   var questions = Array.isArray(window.FILLBLANK_DATA) ? window.FILLBLANK_DATA : [];
 
   var progressLabelEl = document.getElementById('fb-progress-label');
@@ -15,6 +14,14 @@ document.addEventListener('DOMContentLoaded', function () {
   var feedbackEl = document.getElementById('fb-feedback');
   var activityEl = document.getElementById('fb-activity');
   var completedEl = document.getElementById('fb-completed');
+  var completedTitleEl = document.getElementById('fb-completed-title');
+  var completedTextEl = document.getElementById('fb-completed-text');
+  var scoreTextEl = document.getElementById('fb-score-text');
+  var restartBtn = document.getElementById('fb-restart');
+  var scoreGridEl = document.getElementById('fb-score-grid');
+  var scoreCorrectEl = document.getElementById('fb-s-correct');
+  var scoreWrongEl = document.getElementById('fb-s-wrong');
+  var scorePctEl = document.getElementById('fb-s-pct');
   var winAudio = new Audio('../../hangman/assets/win.mp3');
 
   var activityTitle = window.FILLBLANK_TITLE || 'Fill in the Blank';
@@ -41,8 +48,9 @@ document.addEventListener('DOMContentLoaded', function () {
   var index = 0;
   var answered = false;
   var revealed = false;
+  var finished = false;
+  var scoreVisible = false;
   var scores = questions.map(function () { return null; });
-  var reviewItems = questions.map(function () { return {}; });
 
   var selectedAnswers = questions.map(function (q) {
     var answerCount = Array.isArray(q.answers) ? q.answers.length : 1;
@@ -247,12 +255,12 @@ document.addEventListener('DOMContentLoaded', function () {
         var ok = normalize(value) === normalize(correct);
 
         if (revealed) {
-          html += ' <span class="fb-blank-filled" style="background:#7F77DD; cursor:default;"><span class="fb-blank-text">' + escHtml(correct) + '</span></span> ';
+          html += ' <span class="fb-blank-filled" style="background:#f0fdf4; color:#15803d; cursor:default;"><span class="fb-blank-text">' + escHtml(correct) + '</span></span> ';
         } else if (ok) {
-          html += ' <span class="fb-blank-filled" style="background:#22c55e; cursor:default;"><span class="fb-blank-text">' + escHtml(value) + '</span></span> ';
+          html += ' <span class="fb-blank-filled" style="background:#f0fdf4; color:#15803d; cursor:default;"><span class="fb-blank-text">' + escHtml(value) + '</span></span> ';
         } else {
-          html += ' <span class="fb-blank-filled" style="background:#ef4444; cursor:default;"><span class="fb-blank-text" style="text-decoration:line-through;">' + escHtml(value || '\u2014') + '</span></span> ';
-          html += ' <span style="background:#EDE9FA; color:#7F77DD; border-radius:8px; padding:2px 8px; font-weight:800; display:inline-flex; align-items:center; vertical-align:bottom; margin:0 6px;">' + escHtml(correct) + '</span> ';
+          html += ' <span class="fb-blank-filled" style="background:#fef2f2; color:#b91c1c; cursor:default;"><span class="fb-blank-text" style="text-decoration:line-through;">' + escHtml(value || '\u2014') + '</span></span> ';
+          html += ' <span style="background:#f0fdf4; color:#15803d; border-radius:8px; padding:2px 8px; font-weight:800; display:inline-flex; align-items:center; vertical-align:bottom; margin:0 6px;">' + escHtml(correct) + '</span> ';
         }
       }
     }
@@ -343,16 +351,6 @@ document.addEventListener('DOMContentLoaded', function () {
     return true;
   }
 
-  function buildReviewQuestionText(q) {
-    return String(q.text || '');
-  }
-
-  function buildAnswerSummary(arr) {
-    return (arr || []).map(function (v) {
-      return String(v || '').trim() || '\u2014';
-    }).join(' | ');
-  }
-
   function computeScoreLikeMultipleChoice() {
     var total = questions.length;
     var correct = 0;
@@ -382,19 +380,42 @@ document.addEventListener('DOMContentLoaded', function () {
     };
   }
 
+  function updateScoreCards(show) {
+    if (typeof show === 'boolean') {
+      scoreVisible = show;
+    }
+
+    var result = computeScoreLikeMultipleChoice();
+
+    if (scoreCorrectEl) {
+      scoreCorrectEl.textContent = String(result.correct);
+    }
+    if (scoreWrongEl) {
+      scoreWrongEl.textContent = String(result.wrong);
+    }
+    if (scorePctEl) {
+      scorePctEl.textContent = result.percent + '%';
+    }
+    if (scoreGridEl) {
+      scoreGridEl.classList.toggle('visible', !!scoreVisible);
+    }
+  }
+
   function loadQuestion() {
     var q = questions[index] || {};
     answered = false;
     revealed = false;
+    finished = false;
 
     if (completedEl) {
-      completedEl.style.display = 'none';
+      completedEl.classList.remove('active');
     }
     if (activityEl) {
       activityEl.style.display = '';
     }
-    if (feedbackEl && AF && typeof AF.clearFeedback === 'function') {
-      AF.clearFeedback(feedbackEl);
+    if (feedbackEl) {
+      feedbackEl.textContent = '';
+      feedbackEl.className = 'fb-feedback';
     }
 
     if (checkBtn) {
@@ -417,7 +438,7 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   function checkAnswer() {
-    if (answered) {
+    if (answered || finished) {
       return;
     }
 
@@ -429,17 +450,17 @@ document.addEventListener('DOMContentLoaded', function () {
     answered = true;
     scores[index] = allCorrect ? 1 : 0;
 
-    reviewItems[index] = {
-      question: buildReviewQuestionText(q),
-      yourAnswer: buildAnswerSummary(user),
-      correctAnswer: buildAnswerSummary(correct),
-      score: scores[index]
-    };
-
     renderSentence(q, user, true);
+    updateScoreCards(true);
 
-    if (feedbackEl && AF && typeof AF.showFeedback === 'function') {
-      AF.showFeedback(feedbackEl, allCorrect, buildAnswerSummary(correct), false);
+    if (feedbackEl) {
+      if (allCorrect) {
+        feedbackEl.textContent = 'Correct! Great job.';
+        feedbackEl.className = 'fb-feedback good';
+      } else {
+        feedbackEl.textContent = 'Incorrect. Correct option highlighted.';
+        feedbackEl.className = 'fb-feedback bad';
+      }
     }
     if (checkBtn) {
       checkBtn.disabled = true;
@@ -453,7 +474,7 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   function showAnswer() {
-    if (answered) {
+    if (answered || finished) {
       return;
     }
 
@@ -465,17 +486,12 @@ document.addEventListener('DOMContentLoaded', function () {
     scores[index] = -1;
     selectedAnswers[index] = correct.slice();
 
-    reviewItems[index] = {
-      question: buildReviewQuestionText(q),
-      yourAnswer: '(revealed)',
-      correctAnswer: buildAnswerSummary(correct),
-      score: -1
-    };
-
     renderSentence(q, correct, true);
+    updateScoreCards(true);
 
-    if (feedbackEl && AF && typeof AF.showFeedback === 'function') {
-      AF.showFeedback(feedbackEl, false, null, true);
+    if (feedbackEl) {
+      feedbackEl.textContent = 'Answer revealed — this question does not affect score.';
+      feedbackEl.className = 'fb-feedback';
     }
     if (checkBtn) {
       checkBtn.disabled = true;
@@ -489,6 +505,10 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   function nextQuestion() {
+    if (finished) {
+      return;
+    }
+
     if (index < questions.length - 1) {
       index++;
       loadQuestion();
@@ -498,8 +518,15 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   function showCompleted() {
-    if (!completedEl || !AF) {
+    if (!completedEl) {
       return;
+    }
+
+    finished = true;
+
+    if (feedbackEl) {
+      feedbackEl.textContent = '';
+      feedbackEl.className = 'fb-feedback';
     }
 
     var result = computeScoreLikeMultipleChoice();
@@ -507,24 +534,25 @@ document.addEventListener('DOMContentLoaded', function () {
     if (activityEl) {
       activityEl.style.display = 'none';
     }
-    completedEl.style.display = '';
+    completedEl.classList.add('active');
 
-    AF.showCompleted({
-      target: completedEl,
-      scores: scores,
-      title: activityTitle,
-      activityType: 'Fill in the Blank',
-      questionCount: questions.length,
-      winAudio: winAudio,
-      onRetry: restartActivity,
-      onReview: function () {
-        AF.showReview({
-          target: completedEl,
-          items: reviewItems,
-          onRetry: restartActivity
-        });
-      }
-    });
+    updateScoreCards(true);
+
+    if (completedTitleEl) {
+      completedTitleEl.textContent = activityTitle;
+    }
+    if (completedTextEl) {
+      completedTextEl.textContent = "You've completed " + activityTitle + '. Great job practicing.';
+    }
+    if (scoreTextEl) {
+      scoreTextEl.textContent = result.correct + ' correct · ' + result.wrong + ' wrong · ' + result.percent + '%';
+    }
+
+    try {
+      winAudio.pause();
+      winAudio.currentTime = 0;
+      winAudio.play();
+    } catch (e) {}
 
     if (returnTo && activityId) {
       var sep = returnTo.indexOf('?') !== -1 ? '&' : '?';
@@ -547,8 +575,10 @@ document.addEventListener('DOMContentLoaded', function () {
     index = 0;
     answered = false;
     revealed = false;
+    finished = false;
+    scoreVisible = false;
     scores = questions.map(function () { return null; });
-    reviewItems = questions.map(function () { return {}; });
+    updateScoreCards(false);
 
     selectedAnswers = questions.map(function (q) {
       var answerCount = Array.isArray(q.answers) ? q.answers.length : 1;
@@ -566,6 +596,9 @@ document.addEventListener('DOMContentLoaded', function () {
   }
   if (nextBtn) {
     nextBtn.addEventListener('click', nextQuestion);
+  }
+  if (restartBtn) {
+    restartBtn.addEventListener('click', restartActivity);
   }
 
   if (mediaAudioEl) {

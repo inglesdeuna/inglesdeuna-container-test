@@ -156,6 +156,12 @@ ob_start();
     --chip-border: #B8B2E8;
     --medium-purple: #5A51C0;
     --inactive: #C5C1ED;
+    --fb-green: #16a34a;
+    --fb-green-soft: #f0fdf4;
+    --fb-green-dark: #15803d;
+    --fb-red: #ef4444;
+    --fb-red-soft: #fef2f2;
+    --fb-red-dark: #b91c1c;
 }
 * { box-sizing: border-box; }
 html, body { width: 100%; min-height: 100%; margin: 0; padding: 0; background: #fff; font-family: 'Nunito', sans-serif; }
@@ -432,6 +438,113 @@ body { margin: 0 !important; padding: 0 !important; background: #fff !important;
 
 #fb-feedback { margin-top: 8px; }
 
+.fb-feedback {
+    min-height: 18px;
+    margin-top: 8px;
+    text-align: center;
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 800;
+}
+
+.fb-feedback.good {
+    color: var(--fb-green-dark);
+}
+
+.fb-feedback.bad {
+    color: var(--fb-red-dark);
+}
+
+.fb-score-grid {
+    display: none;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-top: 12px;
+}
+
+.fb-score-grid.visible {
+    display: grid;
+}
+
+.fb-score-card {
+    background: #FAFAFE;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 12px;
+    text-align: center;
+}
+
+.fb-score-num {
+    font-family: 'Fredoka', sans-serif;
+    font-size: 26px;
+    line-height: 1;
+    font-weight: 700;
+}
+
+.fb-score-num.c {
+    color: var(--fb-green);
+}
+
+.fb-score-num.w {
+    color: var(--fb-red);
+}
+
+.fb-score-num.p {
+    color: var(--purple);
+}
+
+.fb-score-lbl {
+    margin-top: 5px;
+    font-size: 10px;
+    font-weight: 900;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: .08em;
+}
+
+.fb-completed-screen {
+    display: none;
+    text-align: center;
+    padding: 24px 12px;
+}
+
+.fb-completed-screen.active {
+    display: block;
+}
+
+.fb-completed-title {
+    margin: 0;
+    color: var(--orange);
+    font-family: 'Fredoka', sans-serif;
+    font-size: 32px;
+    font-weight: 700;
+}
+
+.fb-completed-text {
+    color: var(--muted);
+    font-size: 14px;
+    font-weight: 700;
+}
+
+#fb-score-text {
+    color: #666;
+    font-size: 14px;
+    font-weight: 800;
+}
+
+.fb-completed-button {
+    border: none;
+    border-radius: 999px;
+    color: #fff;
+    min-width: 128px;
+    padding: 11px 20px;
+    font-size: 14px;
+    font-weight: 700;
+    font-family: 'Nunito', sans-serif;
+    cursor: pointer;
+    background: var(--purple);
+}
+
 .fb-image-wrap {
     display: none;
     margin: 0 auto 16px;
@@ -534,6 +647,7 @@ body { margin: 0 !important; padding: 0 !important; background: #fff !important;
     .fb-btn { width: 100%; }
     .fb-wb-words { gap: 6px; }
     .fb-chip { padding: 6px 12px; font-size: 12px; }
+    .fb-score-grid { grid-template-columns: 1fr; }
 }
 </style>
 
@@ -582,17 +696,37 @@ body { margin: 0 !important; padding: 0 !important; background: #fff !important;
                     <button class="fb-btn fb-btn-show" id="fb-show">Show Answer</button>
                     <button class="fb-btn fb-btn-next" id="fb-next">Next</button>
                 </div>
+
+                <div id="fb-score-grid" class="fb-score-grid">
+                    <div class="fb-score-card">
+                        <div class="fb-score-num c" id="fb-s-correct">0</div>
+                        <div class="fb-score-lbl">Correct</div>
+                    </div>
+                    <div class="fb-score-card">
+                        <div class="fb-score-num w" id="fb-s-wrong">0</div>
+                        <div class="fb-score-lbl">Wrong</div>
+                    </div>
+                    <div class="fb-score-card">
+                        <div class="fb-score-num p" id="fb-s-pct">0%</div>
+                        <div class="fb-score-lbl">Score</div>
+                    </div>
+                </div>
             </div>
 
-            <div id="fb-feedback"></div>
+            <div id="fb-feedback" class="fb-feedback"></div>
         </div>
 
-        <div id="fb-completed"></div>
+        <div id="fb-completed" class="fb-completed-screen">
+            <div class="fb-completed-icon">✅</div>
+            <h2 class="fb-completed-title" id="fb-completed-title"></h2>
+            <p class="fb-completed-text" id="fb-completed-text"></p>
+            <p class="fb-completed-text" id="fb-score-text" style="font-weight:900;font-size:15px;color:#534AB7;"></p>
+            <button type="button" class="fb-completed-button" id="fb-restart">Restart</button>
+        </div>
 
     </div>
 </div>
 
-<script src="../../core/_activity_feedback.js"></script>
 <script>
 window.FILLBLANK_DATA        = <?php echo json_encode($jsQuestions, JSON_UNESCAPED_UNICODE); ?>;
 window.FILLBLANK_TITLE       = <?php echo json_encode($viewerTitle, JSON_UNESCAPED_UNICODE); ?>;
