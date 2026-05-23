@@ -1255,16 +1255,22 @@ function FeedbackCard({ data, transcript, turnIndex, isLast, onNext, onFinish })
 }
 
 // ── PLAYER VIEW ───────────────────────────────────────────────
-function PlayerView({ scene, turns, onComplete, onBack, onListenFull }) {
+function PlayerView({ scene, turns, onComplete, onBack, onListenFull, persistedResults = [], onResultsChange = null }) {
   const safeTurns = (turns && turns.length) ? turns : DEFAULT_TURNS;
   const [currentTurn, setCurrentTurn] = useState(0);
-  const [results, setResults] = useState([]);
+  const [results, setResults] = useState(Array.isArray(persistedResults) ? persistedResults : []);
   const teacherVoiceId = resolveTeacherVoiceId(scene);
   const [ttsState, setTtsState] = useState("idle"); // "idle" | "loading" | "playing"
   const recorder = useRecorder();
   const currentAudioRef = useRef(null);
+  const pendingAutoEvalTurnRef = useRef(null);
   const teacherAvatar = scene.teacherAvatarId || "TEACHER";
   const studentAvatar = scene.studentAvatarId || "ANGIE";
+
+  useEffect(() => {
+    if (!Array.isArray(persistedResults)) return;
+    setResults(persistedResults);
+  }, [persistedResults]);
 
   const stopAgentAudio = useCallback(() => {
     if (currentAudioRef.current) {
@@ -1352,6 +1358,61 @@ function PlayerView({ scene, turns, onComplete, onBack, onListenFull }) {
 
   const currentTurnData = safeTurns[currentTurn] || { agent: "", ideal: "", hint: "" };
 
+  function applyTurnResult(updatedTurnResult) {
+    const existingIdx = results.findIndex(r => r.turnIdx === updatedTurnResult.turnIdx);
+    const newResults = existingIdx >= 0
+      ? results.map((r, i) => (i === existingIdx ? updatedTurnResult : r))
+      : [...results, updatedTurnResult];
+
+    setResults(newResults);
+    if (typeof onResultsChange === "function") {
+      onResultsChange(newResults);
+    }
+    return newResults;
+  }
+
+  function evaluateBlock(turnIdx, transcript, options = {}) {
+    const shouldAdvance = !!options.advance;
+    const shouldResetRecorder = options.resetRecorder !== false;
+    const safeTranscript = String(transcript || "").trim();
+    if (!safeTranscript) return false;
+
+    const turn = safeTurns[turnIdx] || { ideal: "", hint: "" };
+    const target = targetLine(turn);
+    const scorableTranscript = safeTranscript === "(Audio response)" ? "" : safeTranscript;
+    const fb = buildFeedback(scorableTranscript, target);
+    const updatedTurnResult = {
+      blockId: turnIdx,
+      turnIdx,
+      transcript: safeTranscript,
+      feedback: fb,
+    };
+    const newResults = applyTurnResult(updatedTurnResult);
+
+    if (shouldResetRecorder) {
+      recorder.reset();
+    }
+
+    if (!shouldAdvance) return true;
+
+    const completedTurns = new Set(newResults.map(r => r.turnIdx));
+    const isAllCompleted = safeTurns.every((_, idx) => completedTurns.has(idx));
+    if (isAllCompleted) {
+      onComplete(newResults);
+      return true;
+    }
+
+    let nextIdx = safeTurns.findIndex((_, idx) => idx > turnIdx && !completedTurns.has(idx));
+    if (nextIdx === -1) {
+      nextIdx = safeTurns.findIndex((_, idx) => !completedTurns.has(idx));
+    }
+    if (nextIdx === -1) {
+      nextIdx = Math.min(turnIdx + 1, safeTurns.length - 1);
+    }
+    setCurrentTurn(nextIdx);
+    return true;
+  }
+
   // Stop audio on unmount
   useEffect(() => () => {
     if (currentAudioRef.current) currentAudioRef.current.pause();
@@ -1365,33 +1426,7 @@ function PlayerView({ scene, turns, onComplete, onBack, onListenFull }) {
       alert("Please record the student repetition first.");
       return;
     }
-
-    const target = targetLine(currentTurnData);
-    const scorableTranscript = transcript === "(Audio response)" ? "" : transcript;
-    const fb = buildFeedback(scorableTranscript, target);
-    const updatedTurnResult = { transcript, feedback: fb, turnIdx: currentTurn };
-    const existingIdx = results.findIndex(r => r.turnIdx === currentTurn);
-    const newResults = existingIdx >= 0
-      ? results.map((r, i) => (i === existingIdx ? updatedTurnResult : r))
-      : [...results, updatedTurnResult];
-    setResults(newResults);
-    recorder.reset();
-
-    const completedTurns = new Set(newResults.map(r => r.turnIdx));
-    const isAllCompleted = safeTurns.every((_, idx) => completedTurns.has(idx));
-    if (isAllCompleted) {
-      onComplete(newResults);
-      return;
-    }
-
-    let nextIdx = safeTurns.findIndex((_, idx) => idx > currentTurn && !completedTurns.has(idx));
-    if (nextIdx === -1) {
-      nextIdx = safeTurns.findIndex((_, idx) => !completedTurns.has(idx));
-    }
-    if (nextIdx === -1) {
-      nextIdx = Math.min(currentTurn + 1, safeTurns.length - 1);
-    }
-    setCurrentTurn(nextIdx);
+    evaluateBlock(currentTurn, transcript, { advance: true, resetRecorder: true });
   }
 
   const globalSpokenText = (recorder.finalText + recorder.interimText).trim();
@@ -1415,12 +1450,27 @@ function PlayerView({ scene, turns, onComplete, onBack, onListenFull }) {
       return;
     }
     if (recorder.isRecording) {
+      pendingAutoEvalTurnRef.current = idx;
       recorder.stop();
       return;
     }
     stopAgentAudio();
+    pendingAutoEvalTurnRef.current = null;
     recorder.start();
   }
+
+  useEffect(() => {
+    if (recorder.isRecording) return;
+    const turnToEval = pendingAutoEvalTurnRef.current;
+    if (turnToEval === null || typeof turnToEval !== "number") return;
+
+    const spokenText = (recorder.finalText + recorder.interimText).trim();
+    const transcript = spokenText || (recorder.hasRecorded ? "(Audio response)" : "");
+    if (!transcript) return;
+
+    pendingAutoEvalTurnRef.current = null;
+    evaluateBlock(turnToEval, transcript, { advance: false, resetRecorder: true });
+  }, [recorder.isRecording, recorder.hasRecorded, recorder.finalText, recorder.interimText]);
 
   return (
     <div style={{ background: "#ffffff", minHeight: "100%" }}>
@@ -1928,6 +1978,8 @@ function RoleplayActivity() {
         <PlayerView
           scene={scene} turns={turns}
           onComplete={r => { setResults(r); setView("completion"); }}
+          persistedResults={results}
+          onResultsChange={setResults}
           onBack={allowEditor ? () => setView("editor") : null}
           onListenFull={handleListenFull}
         />
