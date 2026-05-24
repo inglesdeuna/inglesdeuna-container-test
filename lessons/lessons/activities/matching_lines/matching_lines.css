@@ -19,7 +19,7 @@ body { width:100%; min-height:100% }
 body {
     margin:0!important;
     padding:0!important;
-    background:#ffffff!important;
+  background:#f7ecff!important;
     font-family:'Nunito','Segoe UI',sans-serif!important;
 }
 
@@ -30,7 +30,7 @@ body {
     min-height:100vh;
     display:flex!important;
     flex-direction:column!important;
-    background:transparent!important;
+  background:#f7ecff!important;
 }
 
 .top-row,
@@ -46,7 +46,7 @@ body {
     flex-direction:column!important;
     padding:0!important;
     margin:0!important;
-    background:transparent!important;
+  background:#f7ecff!important;
     border:none!important;
     box-shadow:none!important;
     border-radius:0!important;
