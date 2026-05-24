@@ -19,7 +19,7 @@ body { width:100%; min-height:100% }
 body {
     margin:0!important;
     padding:0!important;
-  background:#f7ecff!important;
+  background:linear-gradient(135deg, #f7ecff 0%, #fff3eb 48%, #fff9d9 100%)!important;
     font-family:'Nunito','Segoe UI',sans-serif!important;
 }
 
@@ -30,7 +30,7 @@ body {
     min-height:100vh;
     display:flex!important;
     flex-direction:column!important;
-  background:#f7ecff!important;
+  background:linear-gradient(135deg, #f7ecff 0%, #fff3eb 48%, #fff9d9 100%)!important;
 }
 
 .top-row,
@@ -46,7 +46,7 @@ body {
     flex-direction:column!important;
     padding:0!important;
     margin:0!important;
-  background:#f7ecff!important;
+  background:linear-gradient(135deg, #f7ecff 0%, #fff3eb 48%, #fff9d9 100%)!important;
     border:none!important;
     box-shadow:none!important;
     border-radius:0!important;
@@ -59,7 +59,7 @@ body {
     display:flex;
     align-items:center;
     justify-content:center;
-  background:#f7ecff;
+  background:linear-gradient(135deg, #f7ecff 0%, #fff3eb 48%, #fff9d9 100%);
     box-sizing:border-box;
 }
 
