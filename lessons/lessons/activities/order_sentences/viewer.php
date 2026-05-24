@@ -425,10 +425,10 @@ body {
 }
 
 .os-chip-label {
-    font-family: 'Fredoka', sans-serif;
-    font-size: clamp(17px, 2.4vw, 24px);
-    font-weight: 600;
-    color: #534AB7;
+    font-family: 'Nunito', sans-serif;
+    font-size: 15px;
+    font-weight: 700;
+    color: #666;
     text-align: left;
     line-height: 1.18;
     padding: 0;
@@ -683,7 +683,7 @@ body {
     }
 
     .os-chip-label {
-        font-size: clamp(15px, 4.4vw, 19px);
+        font-size: 15px;
     }
 
     .os-controls {
