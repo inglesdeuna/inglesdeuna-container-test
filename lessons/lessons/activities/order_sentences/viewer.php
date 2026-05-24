@@ -257,9 +257,9 @@ body {
 
 .os-hero h1 {
     font-family: 'Fredoka', sans-serif;
-    font-size: clamp(30px, 5.5vw, 58px);
+    font-size: clamp(28px, 5vw, 48px);
     font-weight: 700;
-    color: #F97316;
+    color: var(--os-orange);
     margin: 0;
     line-height: 1.03;
 }
@@ -501,7 +501,7 @@ body {
     justify-content: center;
     padding: 13px 20px;
     min-width: clamp(112px, 15vw, 150px);
-    border-radius: 999px;
+    border-radius: 10px;
     font-family: 'Nunito', sans-serif;
     font-size: 13px;
     font-weight: 900;
@@ -637,7 +637,7 @@ body {
     background: #7F77DD;
     color: #ffffff;
     border: none;
-    border-radius: 999px;
+    border-radius: 10px;
     min-width: 128px;
     padding: 11px 20px;
     font-family: 'Nunito', sans-serif;
