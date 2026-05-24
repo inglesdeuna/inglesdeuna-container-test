@@ -647,7 +647,7 @@ body {
     padding: 13px 20px;
     min-width: clamp(112px, 16vw, 154px);
     border: none;
-    border-radius: 999px;
+    border-radius: 10px;
     font-family: 'Nunito', sans-serif;
     font-size: 13px;
     font-weight: 900;
@@ -787,7 +787,7 @@ body {
 
 .dict-restart {
     border: none;
-    border-radius: 999px;
+    border-radius: 10px;
     color: #fff;
     min-width: 128px;
     padding: 11px 20px;
