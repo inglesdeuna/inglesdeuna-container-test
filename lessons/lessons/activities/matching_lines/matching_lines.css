@@ -63,6 +63,24 @@ body {
     box-sizing:border-box;
 }
 
+  body.embedded-mode .mlv-page,
+  body.fullscreen-embedded .mlv-page{
+    min-height:0;
+    align-items:flex-start;
+    justify-content:flex-start;
+    padding:12px;
+  }
+
+  body.embedded-mode .mlv-hero,
+  body.fullscreen-embedded .mlv-hero{
+    margin-bottom:10px;
+  }
+
+  body.embedded-mode .mlv-hero h1,
+  body.fullscreen-embedded .mlv-hero h1{
+    font-size:clamp(24px,6vw,34px);
+  }
+
 .mlv-app{
     width:min(1120px,100%);
     margin:0 auto;
