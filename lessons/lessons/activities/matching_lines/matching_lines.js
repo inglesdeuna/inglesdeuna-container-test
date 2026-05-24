@@ -10,8 +10,14 @@
   const prevBtn = document.getElementById('mlvPrevBtn');
   const nextBtn = document.getElementById('mlvNextBtn');
   const showBtn = document.getElementById('mlvShowBtn');
+  const playArea = document.getElementById('mlvPlayArea');
+  const completedEl = document.getElementById('mlvCompleted');
+  const completedTitleEl = document.getElementById('mlvCompletedTitle');
+  const scoreTextEl = document.getElementById('mlvScoreText');
+  const restartBtn = document.getElementById('mlvRestartBtn');
   const returnTo = typeof window.MATCHING_LINES_RETURN_TO === 'string' ? window.MATCHING_LINES_RETURN_TO : '';
   const activityId = typeof window.MATCHING_LINES_ACTIVITY_ID === 'string' ? window.MATCHING_LINES_ACTIVITY_ID : '';
+  const viewerTitle = typeof window.MATCHING_LINES_TITLE === 'string' ? window.MATCHING_LINES_TITLE : 'Matching Lines';
 
   const clickSound = new Audio('../../hangman/assets/pageflip.mp3');
   const correctSound = new Audio('../../hangman/assets/realcorrect.mp3');
@@ -143,6 +149,22 @@
     }, 0);
   }
 
+  function computeScoreResult() {
+    const correct = getMatchedTotal();
+    const wrong = Math.max(0, wrongAttempts);
+    const total = getTotalPairs();
+    const scorable = correct + wrong;
+    const percent = scorable > 0 ? Math.round((correct / scorable) * 100) : 0;
+
+    return {
+      correct: correct,
+      wrong: wrong,
+      total: total,
+      errors: wrong,
+      percent: percent,
+    };
+  }
+
   function isAllBoardsCompleted() {
     return boards.every(function (board, idx) {
       const total = Array.isArray(board.pairs) ? board.pairs.length : 0;
@@ -158,14 +180,12 @@
     }
 
     const total = getTotalPairs();
-    const matched = getMatchedTotal();
     if (total <= 0) {
       return;
     }
 
-    const percent = Math.round((matched / total) * 100);
-    const safeErrors = Math.max(0, Math.min(total, wrongAttempts));
-    const saveUrl = buildReturnUrl(percent, safeErrors, total);
+    const result = computeScoreResult();
+    const saveUrl = buildReturnUrl(result.percent, result.errors, result.total);
 
     if (!saveUrl) {
       return;
@@ -311,6 +331,28 @@
     nextBtn.disabled = hasCompletionTarget ? false : currentIndex >= boards.length - 1;
     nextBtn.textContent = hasCompletionTarget ? 'Next' : 'Next';
     showBtn.textContent = boardState.showAnswer ? 'Hide Answer' : 'Show Answer';
+  }
+
+  function showCompleted() {
+    const result = computeScoreResult();
+
+    if (playArea) {
+      playArea.style.display = 'none';
+    }
+
+    if (completedTitleEl) {
+      completedTitleEl.textContent = viewerTitle;
+    }
+
+    if (scoreTextEl) {
+      scoreTextEl.textContent = result.correct + ' correct · ' + result.wrong + ' wrong · ' + result.percent + '%';
+    }
+
+    if (completedEl) {
+      completedEl.classList.add('active');
+    }
+
+    persistScoreIfCompleted();
   }
 
   function updateProgress(board, boardState) {
@@ -615,15 +657,7 @@
 
   nextBtn.addEventListener('click', function () {
     if (completionUrl !== '' && isAllBoardsCompleted()) {
-      try {
-        if (window.top && window.top !== window.self) {
-          window.top.location.href = completionUrl;
-          return;
-        }
-      } catch (e) {
-        // Fall back to same frame.
-      }
-      window.location.href = completionUrl;
+      showCompleted();
       return;
     }
 
@@ -647,6 +681,12 @@
     updateButtonState(boardState);
     renderLines(board, boardState);
   });
+
+  if (restartBtn) {
+    restartBtn.addEventListener('click', function () {
+      window.location.reload();
+    });
+  }
 
   window.addEventListener('resize', function () {
     const board = boards[currentIndex];

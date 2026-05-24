@@ -459,6 +459,54 @@ body {
     box-shadow:0 8px 40px rgba(127,119,221,.13);
 }
 
+.mlv-completed-screen{
+  display:none;
+  text-align:center;
+  padding:24px 12px;
+}
+
+.mlv-completed-screen.active{
+  display:block;
+}
+
+.mlv-completed-icon{
+  font-size:80px;
+  margin-bottom:20px;
+}
+
+.mlv-completed-title{
+  margin:0;
+  color:var(--mlv-orange);
+  font-family:'Fredoka',sans-serif;
+  font-size:32px;
+  font-weight:700;
+}
+
+.mlv-completed-text{
+  color:var(--mlv-muted);
+  font-size:14px;
+  font-weight:700;
+}
+
+.mlv-completed-score{
+  color:#534AB7;
+  font-size:15px;
+  font-weight:900;
+}
+
+.mlv-completed-btn{
+  border:none;
+  border-radius:10px;
+  color:#fff;
+  min-width:128px;
+  padding:11px 20px;
+  font-size:14px;
+  font-weight:700;
+  font-family:'Nunito',sans-serif;
+  cursor:pointer;
+  background:#7F77DD;
+}
+
 @keyframes mlvGlow{
   0%{ box-shadow:0 0 0 0 rgba(16,185,129,.1); }
   50%{ box-shadow:0 0 0 8px rgba(16,185,129,.18); }
