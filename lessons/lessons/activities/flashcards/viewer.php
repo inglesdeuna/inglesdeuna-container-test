@@ -196,7 +196,7 @@ html, body { width: 100%; margin: 0; padding: 0; background: #fff; font-family: 
 }
 .fc-btn {
     border: 0;
-    border-radius: 999px;
+    border-radius: 10px;
     padding: 12px 22px;
     min-width: 110px;
     color: #fff;
@@ -233,7 +233,7 @@ html, body { width: 100%; margin: 0; padding: 0; background: #fff; font-family: 
 .passive-done-text { margin: 0 auto 22px; max-width: 520px; color: #7C739B; font-size: clamp(14px,2vw,17px); font-weight: 800; line-height: 1.5; }
 .passive-done-track { height: 14px; max-width: 420px; margin: 0 auto 18px; border-radius: 999px; background: #E2F7EF; overflow: hidden; }
 .passive-done-fill { height: 100%; width: 0%; border-radius: 999px; background: linear-gradient(90deg, #1D9E75, #7F77DD, #EC4899); transition: width .8s cubic-bezier(.2,.9,.2,1); }
-.passive-done-btn { display: inline-flex; align-items: center; gap: 8px; padding: 13px 28px; border-radius: 999px; border: 0; background: #1D9E75; color: #fff; font-family: 'Nunito', sans-serif; font-size: 15px; font-weight: 900; cursor: pointer; box-shadow: 0 6px 18px rgba(29,158,117,.30); transition: .18s; }
+.passive-done-btn { display: inline-flex; align-items: center; gap: 8px; padding: 13px 28px; border-radius: 10px; border: 0; background: #1D9E75; color: #fff; font-family: 'Nunito', sans-serif; font-size: 15px; font-weight: 900; cursor: pointer; box-shadow: 0 6px 18px rgba(29,158,117,.30); transition: .18s; }
 .passive-done-btn:hover { transform: translateY(-2px); }
 
 @media (max-width: 560px) {
