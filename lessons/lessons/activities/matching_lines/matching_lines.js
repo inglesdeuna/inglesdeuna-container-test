@@ -36,6 +36,39 @@
   let winPlayed = false;
   let completionUrl = '';
 
+  function persistScoreSilently(targetUrl) {
+    if (!targetUrl) {
+      return Promise.resolve(false);
+    }
+
+    return fetch(targetUrl, {
+      method: 'GET',
+      credentials: 'same-origin',
+      cache: 'no-store',
+    }).then(function (response) {
+      return !!(response && response.ok);
+    }).catch(function () {
+      return false;
+    });
+  }
+
+  function navigateToReturn(targetUrl) {
+    if (!targetUrl) {
+      return;
+    }
+
+    try {
+      if (window.top && window.top !== window.self) {
+        window.top.location.href = targetUrl;
+        return;
+      }
+    } catch (e) {
+      // Ignore cross-origin frame access errors.
+    }
+
+    window.location.href = targetUrl;
+  }
+
   function playSound(audio) {
     if (!audio) {
       return;
@@ -174,7 +207,7 @@
     });
   }
 
-  function persistScoreIfCompleted() {
+  async function persistScoreIfCompleted() {
     if (scorePersisted || !isAllBoardsCompleted()) {
       return;
     }
@@ -199,18 +232,10 @@
       playSound(winSound);
     }
 
-    // Save score in background so Next can send student to completed page.
-    try {
-      fetch(saveUrl, {
-        method: 'GET',
-        credentials: 'same-origin',
-        cache: 'no-store',
-        keepalive: true,
-      }).catch(function () {
-        scorePersisted = false;
-      });
-    } catch (e) {
+    const ok = await persistScoreSilently(saveUrl);
+    if (!ok) {
       scorePersisted = false;
+      navigateToReturn(saveUrl);
     }
 
     const board = boards[currentIndex];
@@ -675,9 +700,6 @@
     }
     const boardState = getBoardState(board);
     boardState.showAnswer = !boardState.showAnswer;
-    if (boardState.showAnswer) {
-      wrongAttempts += 1;
-    }
     updateButtonState(boardState);
     renderLines(board, boardState);
   });
