@@ -887,15 +887,6 @@ function PlayerView({ scene, turns, onComplete, onBack, onListenFull, persistedR
 
         <div style={{ background: "#fff", border: "1px solid #EDE9FA", borderRadius: 24, overflow: "hidden" }}>
 
-          <div style={{ padding: "14px 14px 10px", background: "#fff", display: "flex", justifyContent: "center" }}>
-            <div style={{ width: "100%", maxWidth: 460, aspectRatio: "1 / 1", borderRadius: 18, border: "1.5px solid #C9B5EB", overflow: "hidden", background: "#F5F4FA", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              {scene.sceneImage
-                ? <img src={scene.sceneImage} alt="Scene" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                : <div style={{ fontFamily: "'Fredoka', sans-serif", fontSize: 42, color: "#3F3A4F" }}>{scene.icon || "🎭"}</div>
-              }
-            </div>
-          </div>
-
           <div style={{ padding: "14px 14px 110px", display: "flex", flexDirection: "column", gap: 12, background: "#F9F8FF" }}>
             {safeTurns.map((turn, idx) => {
               const turnResult = results.find(r => r.turnIdx === idx);
