@@ -432,12 +432,12 @@
         var total = images.length;
         completedEl.innerHTML =
             '<div class="af-unscored__card">' +
+            '  <div class="af-unscored__title" style="font-size:28px;font-family:Fredoka,sans-serif;color:#7F77DD;margin-bottom:2px;">Tracing Completed!</div>' +
+            '  <div class="af-unscored__sub" style="font-size:15px;color:#9B8FCC;margin-bottom:18px;">You finished all the tracing pages. Great job practicing!</div>' +
             '  <div class="af-unscored__prog-label">PAGES TRACED</div>' +
             '  <div class="af-unscored__prog-track"><div class="af-unscored__prog-fill" id="af-prog-fill" style="width:0%"></div></div>' +
             '  <div class="af-unscored__prog-nums"><span>0</span><strong id="af-prog-text">0 / 0</strong></div>' +
             '  <div class="af-unscored__icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#7F77DD" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></div>' +
-            '  <p class="af-unscored__title">All pages traced!</p>' +
-            '  <p class="af-unscored__sub">You\'ve traced all the pages.</p>' +
             '  <div class="af-unscored__chips af-unscored__chips--2">' +
             '    <div class="af-unscored__chip"><div class="af-unscored__chip-val" id="af-stat1-val">0</div><div class="af-unscored__chip-lbl">PAGES</div></div>' +
             '    <div class="af-unscored__chip"><div class="af-unscored__chip-val" id="af-stat2-val">0</div><div class="af-unscored__chip-lbl">ROUNDS</div></div>' +
