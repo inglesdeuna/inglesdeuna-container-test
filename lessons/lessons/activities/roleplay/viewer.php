@@ -881,8 +881,15 @@ function PlayerView({ scene, turns, onComplete, onBack, onListenFull, persistedR
       <div style={{ maxWidth: 760, margin: "0 auto", padding: "12px 16px 60px", background: "#fff", border: "1px solid #EDE9FA", borderRadius: 24, boxShadow: "0 4px 24px rgba(127,119,221,.13)", overflow: "hidden" }}>
         <div style={{ textAlign: "center", padding: "8px 0 6px" }}>
           <span style={{ display: "inline-block", background: "#FFF0E6", color: "#F97316", fontFamily: "'Nunito', sans-serif", fontSize: 11, fontWeight: 800, letterSpacing: ".07em", textTransform: "uppercase", borderRadius: 99, padding: "3px 14px", marginBottom: 6 }}>Activity</span>
-          <div style={{ fontFamily: "'Fredoka', sans-serif", fontSize: 28, fontWeight: 600, color: "#F97316", lineHeight: 1.2 }}>Roleplay</div>
-          <div style={{ fontFamily: "'Nunito', sans-serif", fontSize: 13, color: "#9B8FCC", fontWeight: 600 }}>Practice real conversations in English.</div>
+          <div style={{ fontFamily: "'Fredoka', sans-serif", fontSize: 28, fontWeight: 600, color: "#F97316", lineHeight: 1.2 }}>
+            {scene.icon ? <span style={{ marginRight: 6 }}>{scene.icon}</span> : null}{scene.title || "Roleplay"}
+          </div>
+          {scene.desc && (
+            <div style={{ margin: "10px auto 4px", maxWidth: 560, background: "#F5F4FA", border: "1.5px solid #C9B5EB", borderRadius: 14, padding: "10px 18px", fontFamily: "'Nunito', sans-serif", fontSize: 13, color: "#4B456E", fontWeight: 600, lineHeight: 1.6, textAlign: "left" }}>
+              <span style={{ display: "block", fontSize: 10, fontWeight: 800, color: "#9B8FCC", textTransform: "uppercase", letterSpacing: ".08em", marginBottom: 4 }}>Situation</span>
+              {scene.desc}
+            </div>
+          )}
         </div>
 
         <div style={{ background: "#fff", border: "1px solid #EDE9FA", borderRadius: 24, overflow: "hidden" }}>
