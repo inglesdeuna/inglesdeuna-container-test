@@ -590,8 +590,8 @@ body{
 
 .mc-empty{text-align:center;padding:28px;font-weight:800;color:#b91c1c;}
 
-.completed-screen{display:none;flex-direction:column;align-items:center;justify-content:center;}
-.completed-screen.active{display:flex;}
+.completed-screen{display:none;flex-direction:column;align-items:stretch;justify-content:flex-start;}
+.completed-screen.active{display:flex;flex:1;}
 .mc-activity.is-hidden{display:none;}
 
 .mc-done{display:none;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:clamp(28px,5vw,54px);gap:12px;}
@@ -625,7 +625,7 @@ body{
 }
 
 /* ── Unified unscored completed screen ── */
-.af-unscored__card{background:#fff;border:1.5px solid #EDE9FA;border-radius:24px;padding:28px 32px;max-width:520px;margin:0 auto;font-family:'Nunito','Segoe UI',sans-serif;}
+.af-unscored__card{background:#fff;border:1.5px solid #EDE9FA;border-radius:14px;padding:28px 32px;width:100%;max-width:100%;box-sizing:border-box;font-family:'Nunito','Segoe UI',sans-serif;}
 .af-unscored__prog-label{font-size:11px;color:#9B8FCC;font-weight:700;letter-spacing:.06em;text-align:center;margin-bottom:6px;text-transform:uppercase;}
 .af-unscored__prog-track{background:#EDE9FA;border-radius:99px;height:9px;overflow:hidden;margin-bottom:4px;}
 .af-unscored__prog-fill{height:100%;border-radius:99px;background:linear-gradient(90deg,#F97316,#7F77DD);transition:width .4s ease;}
