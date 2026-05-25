@@ -130,11 +130,6 @@ body {
     display: flex;
     flex-direction: column;
     align-items: center;
-    background: #ffffff;
-    border: 1px solid #F0EEF8;
-    border-radius: 34px;
-    box-shadow: 0 8px 40px rgba(127,119,221,.13);
-    padding: clamp(16px,2.6vw,26px);
 }
 
 /* ── Progress row ── */
@@ -250,7 +245,7 @@ body {
     align-items: center;
     justify-content: center;
     border: none;
-    border-radius: 999px;
+    border-radius: 10px;
     padding: 13px clamp(20px,3vw,32px);
     min-width: clamp(104px,16vw,146px);
     font-weight: 900;
@@ -262,11 +257,11 @@ body {
 }
 .d2dv-btn:hover { transform: translateY(-1px); filter: brightness(1.05); }
 
-/* Reset — orange (primary action) */
+/* Reset — purple */
 .d2dv-btn-soft {
-    background: var(--d2d-orange);
+    background: var(--d2d-purple);
     color: #ffffff;
-    box-shadow: 0 6px 18px rgba(249,115,22,.22);
+    box-shadow: 0 6px 18px rgba(127,119,221,.18);
 }
 
 /* Hint / Reveal — purple (secondary action) */
@@ -298,33 +293,7 @@ body {
     box-shadow: 0 8px 40px rgba(127,119,221,.13);
 }
 
-/* ── Completion panel ── */
-.d2dv-completion-panel {
-    width: 100%;
-    margin-top: 12px;
-    padding: 16px;
-    border-radius: 18px;
-    background: #ffffff;
-    border: 1px solid #EDE9FA;
-    text-align: center;
-    box-sizing: border-box;
-    box-shadow: 0 8px 40px rgba(127,119,221,.13);
-}
-.d2dv-completion-icon  { font-size: 38px; margin-bottom: 6px; }
-.d2dv-completion-title {
-    margin: 0 0 4px;
-    font-family: 'Fredoka', 'Trebuchet MS', sans-serif;
-    font-size: 24px;
-    font-weight: 700;
-    color: var(--d2d-orange);
-}
-.d2dv-completion-score {
-    margin: 0;
-    font-size: 17px;
-    font-weight: 900;
-    color: var(--d2d-purple-dark);
-    font-family: 'Nunito', 'Segoe UI', sans-serif;
-}
+/* ── Completion panel (af-unscored fills this) ── */
 
 /* ── Mobile ── */
 @media (max-width: 640px) {
