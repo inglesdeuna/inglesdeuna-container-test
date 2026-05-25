@@ -1076,27 +1076,44 @@ body{
             </div>
 
             <div class="cw-completed" id="cw-completed">
-
-                <div class="cw-completed-icon">
-                    ✓
+                <div class="af-unscored__card">
+                  <div class="af-unscored__prog-label">WORDS FOUND</div>
+                  <div class="af-unscored__prog-track">
+                    <div class="af-unscored__prog-fill" id="af-prog-fill" style="width:0%"></div>
+                  </div>
+                  <div class="af-unscored__prog-nums">
+                    <span>0</span>
+                    <strong id="af-prog-text">0 / 0</strong>
+                  </div>
+                  <div class="af-unscored__icon">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#7F77DD" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+                  </div>
+                  <p class="af-unscored__title">Crossword complete!</p>
+                  <p class="af-unscored__sub">You found all the words.</p>
+                  <div class="af-unscored__chips af-unscored__chips--2">
+                    <div class="af-unscored__chip">
+                      <div class="af-unscored__chip-val" id="af-stat1-val">0</div>
+                      <div class="af-unscored__chip-lbl">WORDS FOUND</div>
+                    </div>
+                    <div class="af-unscored__chip">
+                      <div class="af-unscored__chip-val" id="af-stat2-val">0</div>
+                      <div class="af-unscored__chip-lbl">ROUNDS</div>
+                    </div>
+                  </div>
+                  <div class="af-unscored__banner af-unscored__banner--purple">
+                    <div class="af-unscored__banner-icon af-unscored__banner-icon--purple">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                    </div>
+                    <div class="af-unscored__banner-text af-unscored__banner-text--purple">
+                      <span class="af-unscored__banner-title">Word master!</span>
+                      Ready for the next challenge?
+                    </div>
+                  </div>
+                  <div class="af-unscored__btns">
+                    <button class="af-unscored__btn-secondary" id="af-btn-retry">↺ Try again</button>
+                    <button class="af-unscored__btn-primary" id="af-btn-next">Next →</button>
+                  </div>
                 </div>
-
-                <h2 class="cw-completed-title">
-                    Complete
-                </h2>
-
-                <p class="cw-completed-text" id="cw-score-text">
-                    Great crossword practice.
-                </p>
-
-                <button
-                    type="button"
-                    class="cw-btn cw-btn-orange"
-                    onclick="cwRestart()"
-                >
-                    Restart
-                </button>
-
             </div>
 
         </section>
