@@ -2,8 +2,9 @@
 require_once __DIR__ . '/../../config/db.php';
 require_once __DIR__ . '/../../core/_activity_viewer_template.php';
 
-$activityId = isset($_GET['id']) ? trim((string) $_GET['id']) : '';
-$unit = isset($_GET['unit']) ? trim((string) $_GET['unit']) : '';
+$activityId = isset($_GET['id'])       ? trim((string) $_GET['id'])       : '';
+$unit       = isset($_GET['unit'])      ? trim((string) $_GET['unit'])      : '';
+$returnTo   = isset($_GET['return_to']) ? trim((string) $_GET['return_to']) : '';
 
 if ($activityId === '' && $unit === '') {
     die('Activity not specified');
@@ -617,7 +618,6 @@ var els = {
     answer: document.getElementById('qa-premium-answer'),
     progressFill: document.getElementById('qa-premium-progress-fill'),
     progressCount: document.getElementById('qa-premium-progress-count'),
-    doneFill: document.getElementById('qa-premium-done-fill'),
     win: document.getElementById('qa-premium-win')
 };
 
