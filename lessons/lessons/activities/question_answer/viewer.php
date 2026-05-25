@@ -479,7 +479,7 @@ html, body { width: 100%; margin: 0; padding: 0; background: #F8F7FE; font-famil
 }
 
 /* ── Unified unscored completed screen ── */
-.af-unscored__card{background:#fff;border:1.5px solid #EDE9FA;border-radius:24px;padding:28px 32px;max-width:520px;margin:0 auto;font-family:'Nunito','Segoe UI',sans-serif;}
+.af-unscored__card{background:#fff;border:1.5px solid #EDE9FA;border-radius:14px;padding:28px 32px;width:100%;max-width:100%;box-sizing:border-box;font-family:'Nunito','Segoe UI',sans-serif;}
 .af-unscored__prog-label{font-size:11px;color:#9B8FCC;font-weight:700;letter-spacing:.06em;text-align:center;margin-bottom:6px;text-transform:uppercase;}
 .af-unscored__prog-track{background:#EDE9FA;border-radius:99px;height:9px;overflow:hidden;margin-bottom:4px;}
 .af-unscored__prog-fill{height:100%;border-radius:99px;background:linear-gradient(90deg,#F97316,#7F77DD);transition:width .4s ease;}
