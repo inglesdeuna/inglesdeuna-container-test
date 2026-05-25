@@ -367,7 +367,7 @@ body{
     min-height:0!important;
     padding:0!important;
     margin:0!important;
-    background:transparent!important;
+    background:#ffffff!important;
     border:none!important;
     box-shadow:none!important;
     border-radius:0!important;
@@ -383,6 +383,7 @@ body{
     gap:8px;
     box-sizing:border-box;
     overflow:hidden;
+    background:#ffffff;
 }
 
 .mc-app{
