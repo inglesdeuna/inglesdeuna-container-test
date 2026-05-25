@@ -19,6 +19,9 @@ const completionScore = document.getElementById("d2dvCompletionScore");
 
 const mainPanel = document.getElementById('d2dvMain');
 
+const winAudio   = new Audio('../../hangman/assets/win.mp3');
+const errorAudio = new Audio('../../hangman/assets/wrong.wav');
+
 let points = [];
 let current = 1;
 let completed = false;
@@ -210,6 +213,8 @@ function fadeInImage(durationMs, onDone) {
 }
 
 function launchConfetti() {
+  try { winAudio.currentTime = 0; winAudio.play(); } catch(e) {}
+
   const cc = document.createElement('canvas');
   cc.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:9999;';
   document.body.appendChild(cc);
@@ -454,6 +459,14 @@ function endDrag(event) {
     if (current === points.length) {
       completeGame();
       return;
+    }
+  } else {
+    /* Released near a wrong dot — play error sound */
+    const nearWrong = points.some(function (p, i) {
+      return i !== current && isNearDot(pos, p);
+    });
+    if (nearWrong) {
+      try { errorAudio.currentTime = 0; errorAudio.play(); } catch(e) {}
     }
   }
 
