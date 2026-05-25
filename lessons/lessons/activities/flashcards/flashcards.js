@@ -185,21 +185,100 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   /* ── Completed ──────────────────────────────────────────────── */
+  var fcRounds = 0;
+
   function showCompleted() {
     if (!completedEl) return;
     if (activityEl) activityEl.style.display = 'none';
     completedEl.style.display = '';
+    fcRounds += 1;
 
-    showPassiveDone(completedEl, {
-      text: 'You studied all ' + cards.length + ' cards. Keep it up!',
-      restartLabel: 'Review Again',
-      onRestart: restart,
-      winAudio: winAudio,
-      returnTo: returnTo,
-      activityId: activityId,
-      activityType: 'flashcards',
-      total: cards.length
-    });
+    var total = cards.length;
+
+    completedEl.innerHTML =
+      '<div class="af-unscored__card">' +
+      '  <div class="af-unscored__prog-label">CARDS REVIEWED</div>' +
+      '  <div class="af-unscored__prog-track">' +
+      '    <div class="af-unscored__prog-fill" id="af-prog-fill" style="width:0%"></div>' +
+      '  </div>' +
+      '  <div class="af-unscored__prog-nums">' +
+      '    <span>0</span>' +
+      '    <strong id="af-prog-text">0 / 0</strong>' +
+      '  </div>' +
+      '  <div class="af-unscored__icon">' +
+      '    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#7F77DD" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>' +
+      '  </div>' +
+      '  <p class="af-unscored__title" id="af-comp-title">Vocabulary reviewed!</p>' +
+      '  <p class="af-unscored__sub">You\'ve seen all the cards.</p>' +
+      '  <div class="af-unscored__chips af-unscored__chips--2">' +
+      '    <div class="af-unscored__chip">' +
+      '      <div class="af-unscored__chip-val" id="af-stat1-val">0</div>' +
+      '      <div class="af-unscored__chip-lbl">CARDS SEEN</div>' +
+      '    </div>' +
+      '    <div class="af-unscored__chip">' +
+      '      <div class="af-unscored__chip-val" id="af-stat2-val">0</div>' +
+      '      <div class="af-unscored__chip-lbl">ROUNDS</div>' +
+      '    </div>' +
+      '  </div>' +
+      '  <div class="af-unscored__banner af-unscored__banner--orange">' +
+      '    <div class="af-unscored__banner-icon af-unscored__banner-icon--orange">' +
+      '      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>' +
+      '    </div>' +
+      '    <div class="af-unscored__banner-text af-unscored__banner-text--orange">' +
+      '      <span class="af-unscored__banner-title">Ready to practice?</span>' +
+      '      Try the next activity to use this vocabulary.' +
+      '    </div>' +
+      '  </div>' +
+      '  <div class="af-unscored__btns">' +
+      '    <button class="af-unscored__btn-secondary" id="af-btn-retry">↺ Review again</button>' +
+      '    <button class="af-unscored__btn-primary" id="af-btn-next">Next →</button>' +
+      '  </div>' +
+      '</div>';
+
+    /* Populate stats */
+    var fillEl    = document.getElementById('af-prog-fill');
+    var textEl    = document.getElementById('af-prog-text');
+    var stat1El   = document.getElementById('af-stat1-val');
+    var stat2El   = document.getElementById('af-stat2-val');
+    var retryBtn  = document.getElementById('af-btn-retry');
+    var nextBtn2  = document.getElementById('af-btn-next');
+
+    if (fillEl)  fillEl.style.width  = '100%';
+    if (textEl)  textEl.textContent  = total + ' / ' + total;
+    if (stat1El) stat1El.textContent = String(total);
+    if (stat2El) stat2El.textContent = String(fcRounds);
+
+    if (retryBtn) retryBtn.addEventListener('click', restart);
+
+    if (nextBtn2) {
+      if (returnTo) {
+        nextBtn2.addEventListener('click', function () {
+          var sep = returnTo.indexOf('?') !== -1 ? '&' : '?';
+          var saveUrl = returnTo + sep + 'activity_percent=100&activity_errors=0&activity_total=' + total +
+            '&activity_id=' + encodeURIComponent(activityId) + '&activity_type=flashcards';
+          fetch(saveUrl, { method: 'GET', credentials: 'same-origin', cache: 'no-store' })
+            .catch(function(){});
+          setTimeout(function () {
+            try {
+              if (window.top && window.top !== window.self) { window.top.location.href = returnTo; return; }
+            } catch(e) {}
+            window.location.href = returnTo;
+          }, 200);
+        });
+      } else {
+        nextBtn2.style.display = 'none';
+      }
+    }
+
+    try { winAudio.currentTime = 0; winAudio.play(); } catch(e) {}
+
+    /* Persist score silently */
+    if (returnTo && activityId) {
+      var sep = returnTo.indexOf('?') !== -1 ? '&' : '?';
+      fetch(returnTo + sep + 'activity_percent=100&activity_errors=0&activity_total=' + total +
+        '&activity_id=' + encodeURIComponent(activityId) + '&activity_type=flashcards',
+        { method: 'GET', credentials: 'same-origin', cache: 'no-store' }).catch(function(){});
+    }
   }
 
   /* ── Restart ────────────────────────────────────────────────── */
