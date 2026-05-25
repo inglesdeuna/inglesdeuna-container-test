@@ -11,6 +11,7 @@
     --mlv-purple-soft:#EEEDFE;
     --mlv-muted:#9B94BE;
     --mlv-border:#F0EEF8;
+  --mlv-bg:#F8F7FE;
 }
 
 html,
@@ -19,7 +20,7 @@ body { width:100%; min-height:100% }
 body {
     margin:0!important;
     padding:0!important;
-  background:linear-gradient(135deg, #f7ecff 0%, #fff3eb 48%, #fff9d9 100%)!important;
+    background:var(--mlv-bg)!important;
     font-family:'Nunito','Segoe UI',sans-serif!important;
 }
 
@@ -30,7 +31,7 @@ body {
     min-height:100vh;
     display:flex!important;
     flex-direction:column!important;
-  background:linear-gradient(135deg, #f7ecff 0%, #fff3eb 48%, #fff9d9 100%)!important;
+    background:var(--mlv-bg)!important;
 }
 
 .top-row,
@@ -46,7 +47,7 @@ body {
     flex-direction:column!important;
     padding:0!important;
     margin:0!important;
-  background:linear-gradient(135deg, #f7ecff 0%, #fff3eb 48%, #fff9d9 100%)!important;
+    background:var(--mlv-bg)!important;
     border:none!important;
     box-shadow:none!important;
     border-radius:0!important;
@@ -59,7 +60,7 @@ body {
     display:flex;
     align-items:center;
     justify-content:center;
-  background:linear-gradient(135deg, #f7ecff 0%, #fff3eb 48%, #fff9d9 100%);
+    background:var(--mlv-bg);
     box-sizing:border-box;
 }
 
