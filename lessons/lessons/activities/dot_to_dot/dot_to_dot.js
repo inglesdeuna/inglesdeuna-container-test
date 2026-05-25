@@ -20,7 +20,7 @@ const completionScore = document.getElementById("d2dvCompletionScore");
 const mainPanel = document.getElementById('d2dvMain');
 
 const winAudio   = new Audio('../../hangman/assets/win.mp3');
-const errorAudio = new Audio('../../hangman/assets/wrong.wav');
+const errorAudio = new Audio('../../hangman/assets/lose.mp3');
 
 let points = [];
 let current = 1;
