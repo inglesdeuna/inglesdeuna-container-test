@@ -432,8 +432,11 @@
         var total = images.length;
         completedEl.innerHTML =
             '<div class="af-unscored__card">' +
-            '  <div class="af-unscored__title" style="font-size:28px;font-family:Fredoka,sans-serif;color:#7F77DD;margin-bottom:2px;">Tracing Completed!</div>' +
-            '  <div class="af-unscored__sub" style="font-size:15px;color:#9B8FCC;margin-bottom:18px;">You finished all the tracing pages. Great job practicing!</div>' +
+            '  <div class="mc-hero" style="margin-bottom:18px;">' +
+            '    <div class="mc-kicker">Activity</div>' +
+            '    <h1 style="font-family:Fredoka,sans-serif;font-size:clamp(26px,4.5vw,50px);font-weight:700;color:#F97316;margin:0;line-height:1.03;text-align:center;">Tracing</h1>' +
+            '    <p style="font-size:clamp(12px,1.6vw,15px);font-weight:800;color:#9B94BE;margin:6px 0 0;text-align:center;">Choose a color, pick a pencil size, and trace each page in order.</p>' +
+            '  </div>' +
             '  <div class="af-unscored__prog-label">PAGES TRACED</div>' +
             '  <div class="af-unscored__prog-track"><div class="af-unscored__prog-fill" id="af-prog-fill" style="width:0%"></div></div>' +
             '  <div class="af-unscored__prog-nums"><span>0</span><strong id="af-prog-text">0 / 0</strong></div>' +
