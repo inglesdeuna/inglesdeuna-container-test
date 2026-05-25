@@ -1,2 +1,3 @@
 2026-05-25T10:40:00Z memory_cards: rename mc-btn to mc-ingame-btn to avoid template purple override
 2026-05-25T12:00:00Z unified completed screens: flashcards, qa, crossword, hangman, memory_cards
+2026-05-25T14:00:00Z completed card: full-width rectangular (border-radius 14px, width 100%)
