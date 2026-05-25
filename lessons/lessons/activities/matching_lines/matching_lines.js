@@ -34,7 +34,6 @@
   let wrongAttempts = 0;
   let scorePersisted = false;
   let winPlayed = false;
-  let completionUrl = '';
 
   function persistScoreSilently(targetUrl) {
     if (!targetUrl) {
@@ -207,8 +206,8 @@
     });
   }
 
-  async function persistScoreIfCompleted() {
-    if (scorePersisted || !isAllBoardsCompleted()) {
+  function markCompletedIfReady() {
+    if (winPlayed || !isAllBoardsCompleted()) {
       return;
     }
 
@@ -217,26 +216,8 @@
       return;
     }
 
-    const result = computeScoreResult();
-    const saveUrl = buildReturnUrl(result.percent, result.errors, result.total);
-
-    if (!saveUrl) {
-      return;
-    }
-
-    completionUrl = saveUrl;
-    scorePersisted = true;
-
-    if (!winPlayed) {
-      winPlayed = true;
-      playSound(winSound);
-    }
-
-    const ok = await persistScoreSilently(saveUrl);
-    if (!ok) {
-      scorePersisted = false;
-      navigateToReturn(saveUrl);
-    }
+    winPlayed = true;
+    playSound(winSound);
 
     const board = boards[currentIndex];
     const boardState = board ? getBoardState(board) : null;
@@ -352,13 +333,13 @@
 
   function updateButtonState(boardState) {
     prevBtn.disabled = currentIndex <= 0;
-    const hasCompletionTarget = completionUrl !== '' && isAllBoardsCompleted();
-    nextBtn.disabled = hasCompletionTarget ? false : currentIndex >= boards.length - 1;
-    nextBtn.textContent = hasCompletionTarget ? 'Next' : 'Next';
+    const allDone = isAllBoardsCompleted();
+    nextBtn.disabled = !allDone && currentIndex >= boards.length - 1;
+    nextBtn.textContent = allDone ? 'Finish' : 'Next';
     showBtn.textContent = boardState.showAnswer ? 'Hide Answer' : 'Show Answer';
   }
 
-  function showCompleted() {
+  async function showCompleted() {
     const result = computeScoreResult();
 
     if (playArea) {
@@ -377,7 +358,16 @@
       completedEl.classList.add('active');
     }
 
-    persistScoreIfCompleted();
+    if (!scorePersisted) {
+      scorePersisted = true;
+      const saveUrl = buildReturnUrl(result.percent, result.errors, result.total);
+      if (saveUrl) {
+        const ok = await persistScoreSilently(saveUrl);
+        if (!ok) {
+          navigateToReturn(saveUrl);
+        }
+      }
+    }
   }
 
   function updateProgress(board, boardState) {
@@ -437,7 +427,7 @@
 
     updateProgress(board, boardState);
     renderLines(board, boardState);
-    persistScoreIfCompleted();
+    markCompletedIfReady();
   }
 
   function clearDragClasses() {
@@ -669,7 +659,7 @@
 
     bindDrag(board, boardState);
     renderLines(board, boardState);
-    persistScoreIfCompleted();
+    markCompletedIfReady();
   }
 
   prevBtn.addEventListener('click', function () {
@@ -681,7 +671,7 @@
   });
 
   nextBtn.addEventListener('click', function () {
-    if (completionUrl !== '' && isAllBoardsCompleted()) {
+    if (isAllBoardsCompleted()) {
       showCompleted();
       return;
     }
