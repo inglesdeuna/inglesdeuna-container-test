@@ -575,14 +575,14 @@ body{
 
 .mc-ingame-btn{
     border:none;
-    border-radius:999px;
+    border-radius:10px;
     padding:10px 24px;
     font-family:'Nunito',sans-serif;
     font-weight:900;
     font-size:14px;
     cursor:pointer;
-    box-shadow:0 6px 18px rgba(249,115,22,.22);
-    background:#F97316;
+    box-shadow:0 6px 18px rgba(127,119,221,.22);
+    background:#7F77DD;
     color:#fff;
     transition:.18s;
 }
