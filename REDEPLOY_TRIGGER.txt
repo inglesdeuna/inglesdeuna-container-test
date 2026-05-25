@@ -1,1 +1,1 @@
-2026-05-25T00:00:00Z memory_cards: white bg, orange Restart+Next buttons on completed screen
+2026-05-25T10:40:00Z memory_cards: rename mc-btn to mc-ingame-btn to avoid template purple override

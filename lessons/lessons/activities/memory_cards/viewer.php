@@ -573,17 +573,20 @@ body{
     padding:4px 0 0;
 }
 
-.mc-btn{
+.mc-ingame-btn{
     border:none;
     border-radius:999px;
-    padding:10px 16px;
-    font-weight:800;
+    padding:10px 24px;
+    font-family:'Nunito',sans-serif;
+    font-weight:900;
     font-size:14px;
     cursor:pointer;
-    box-shadow:0 8px 18px rgba(127,119,221,.18);
-    background:var(--mc-orange);
+    box-shadow:0 6px 18px rgba(249,115,22,.22);
+    background:#F97316;
     color:#fff;
+    transition:.18s;
 }
+.mc-ingame-btn:hover{transform:translateY(-2px);}
 
 .mc-empty{text-align:center;padding:28px;font-weight:800;color:#b91c1c;}
 
@@ -647,7 +650,7 @@ body{
         <div id="mc-board" class="mc-board"></div>
 
         <div class="mc-restart-row">
-          <button type="button" class="mc-btn" id="mc-restart">Restart</button>
+          <button type="button" class="mc-ingame-btn" id="mc-restart">Restart</button>
         </div>
       </section>
 
