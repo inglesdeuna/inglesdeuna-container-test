@@ -445,12 +445,8 @@ a.back{background:var(--hg-purple);box-shadow:0 6px 18px rgba(127,119,221,.18);j
 
 .hg-completed-screen{
   display:none;
-  width:min(680px,100%);
-  margin:0 auto;
-  text-align:center;
-  padding:clamp(34px,5vw,54px) clamp(18px,4vw,34px);
-  border-radius:34px;
-  background:#ffffff;
+  width:100%;
+  padding:0;
 }
 
 .hg-completed-screen.active{display:block;animation:hgPop .35s ease}

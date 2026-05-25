@@ -773,12 +773,9 @@ body{
 
 .cw-completed{
     display:none;
-    min-height:360px;
-    align-items:center;
-    justify-content:center;
-    text-align:center;
+    align-items:stretch;
     flex-direction:column;
-    padding:clamp(28px,5vw,48px);
+    padding:0;
 }
 
 .cw-completed.active{

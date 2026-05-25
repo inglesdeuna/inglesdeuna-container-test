@@ -412,14 +412,8 @@ html, body { width: 100%; margin: 0; padding: 0; background: #F8F7FE; font-famil
 
 .qa-premium-completed {
     display: none;
-    width: min(680px, 100%);
-    margin: 24px auto 0;
-    text-align: center;
-    padding: clamp(28px, 5vw, 54px);
-    border-radius: 34px;
-    background: #fff;
-    border: 1px solid #E2F7EF;
-    box-shadow: 0 8px 40px rgba(8,80,65,.12);
+    width: 100%;
+    padding: 0;
 }
 
 .qa-premium-completed.active {
