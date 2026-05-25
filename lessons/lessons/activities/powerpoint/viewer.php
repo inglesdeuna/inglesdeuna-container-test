@@ -647,28 +647,36 @@ body {
 
 .ppt-completed-screen.active {
     display: block;
+    margin-top: 16px;
 }
 
-.passive-done {
-    display: none;
-    width: min(680px, 100%);
-    margin: 24px auto 0;
-    text-align: center;
-    padding: clamp(28px, 5vw, 54px);
-    border-radius: 34px;
-    background: #fff;
-    border: 1px solid #E2F7EF;
-    box-shadow: 0 8px 40px rgba(8,80,65,.12);
-}
-.passive-done.active { display: block; animation: passivePop .45s cubic-bezier(.2,.9,.2,1); }
-@keyframes passivePop { from { opacity:0; transform:scale(.92); } to { opacity:1; transform:scale(1); } }
-.passive-done-icon { font-size: clamp(66px,12vw,100px); margin-bottom: 12px; }
-.passive-done-title { margin: 0 0 10px; font-family: 'Fredoka', sans-serif; font-size: clamp(34px,6vw,60px); color: #085041; line-height: 1; }
-.passive-done-text { margin: 0 auto 22px; max-width: 520px; color: #7C739B; font-size: clamp(14px,2vw,17px); font-weight: 800; line-height: 1.5; }
-.passive-done-track { height: 14px; max-width: 420px; margin: 0 auto 18px; border-radius: 999px; background: #E2F7EF; overflow: hidden; }
-.passive-done-fill { height: 100%; width: 0%; border-radius: 999px; background: linear-gradient(90deg, #1D9E75, #7F77DD, #EC4899); transition: width .8s cubic-bezier(.2,.9,.2,1); }
-.passive-done-btn { display: inline-flex; align-items: center; gap: 8px; padding: 13px 28px; border-radius: 999px; border: 0; background: #1D9E75; color: #fff; font-family: 'Nunito', sans-serif; font-size: 15px; font-weight: 900; cursor: pointer; box-shadow: 0 6px 18px rgba(29,158,117,.30); transition: .18s; }
-.passive-done-btn:hover { transform: translateY(-2px); }
+/* ── Unified unscored completed screen ── */
+.af-unscored__card{background:#fff;border:1.5px solid #EDE9FA;border-radius:14px;padding:28px 32px;width:100%;max-width:100%;box-sizing:border-box;font-family:'Nunito','Segoe UI',sans-serif;}
+.af-unscored__prog-label{font-size:11px;color:#9B8FCC;font-weight:700;letter-spacing:.06em;text-align:center;margin-bottom:6px;text-transform:uppercase;}
+.af-unscored__prog-track{background:#EDE9FA;border-radius:99px;height:9px;overflow:hidden;margin-bottom:4px;}
+.af-unscored__prog-fill{height:100%;border-radius:99px;background:linear-gradient(90deg,#F97316,#7F77DD);transition:width .4s ease;}
+.af-unscored__prog-nums{display:flex;justify-content:space-between;font-size:11px;color:#9B8FCC;margin-bottom:16px;}
+.af-unscored__prog-nums strong{color:#7F77DD;}
+.af-unscored__icon{width:48px;height:48px;border-radius:50%;background:#EDE9FA;display:flex;align-items:center;justify-content:center;margin:0 auto 10px;}
+.af-unscored__title{font-family:'Fredoka','Trebuchet MS',sans-serif;font-size:20px;font-weight:600;color:#7F77DD;text-align:center;margin:0 0 3px;}
+.af-unscored__sub{font-size:13px;color:#9B8FCC;font-weight:600;text-align:center;margin:0 0 16px;}
+.af-unscored__chips{display:grid;gap:8px;margin-bottom:16px;}
+.af-unscored__chips--2{grid-template-columns:1fr 1fr;}
+.af-unscored__chips--3{grid-template-columns:1fr 1fr 1fr;}
+.af-unscored__chip{background:#F9F8FF;border:1.5px solid #EDE9FA;border-radius:12px;padding:10px 6px;text-align:center;}
+.af-unscored__chip-val{font-family:'Fredoka','Trebuchet MS',sans-serif;font-size:24px;color:#7F77DD;line-height:1;}
+.af-unscored__chip-val--orange{color:#F97316;}
+.af-unscored__chip-lbl{font-size:10px;color:#9B8FCC;font-weight:700;letter-spacing:.05em;margin-top:2px;text-transform:uppercase;}
+.af-unscored__banner{border-radius:12px;padding:9px 14px;display:flex;align-items:center;gap:10px;margin-bottom:16px;}
+.af-unscored__banner--purple{background:#F5F3FF;}
+.af-unscored__banner-icon{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.af-unscored__banner-icon--purple{background:#7F77DD;}
+.af-unscored__banner-text{font-size:12px;font-weight:600;}
+.af-unscored__banner-text--purple{color:#5046a6;}
+.af-unscored__banner-title{font-family:'Fredoka','Trebuchet MS',sans-serif;font-size:15px;display:block;}
+.af-unscored__btns{display:flex;gap:8px;}
+.af-unscored__btn-primary{flex:1;background:#F97316;color:#fff;border:none;border-radius:10px;padding:11px 0;font-family:'Nunito','Segoe UI',sans-serif;font-size:14px;font-weight:700;cursor:pointer;}
+.af-unscored__btn-secondary{flex:1;background:#fff;color:#7F77DD;border:1.5px solid #EDE9FA;border-radius:10px;padding:11px 0;font-family:'Nunito','Segoe UI',sans-serif;font-size:14px;font-weight:700;cursor:pointer;}
 
 @media (max-width: 900px) {
     .ppt-page {
@@ -814,9 +822,11 @@ const PPT_PRESENTATION_NAME = <?php echo json_encode($presentationName, JSON_UNE
 const PPT_CANVA_LINK = <?php echo json_encode($canvaLink, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
 const PPT_CANVA_OPEN_LINK = <?php echo json_encode($canvaOpenLink, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
 const PPT_TTS_URL = 'tts.php';
+const PPT_RETURN_TO = <?php echo json_encode($returnTo, JSON_UNESCAPED_UNICODE); ?>;
 
 let slideIndex = 0;
 let currentAudio = null;
+let pptRounds = 0;
 let currentTtsAudio = null;
 let currentTtsAudioUrl = '';
 let ttsAbortController = null;
@@ -1230,18 +1240,61 @@ document.getElementById('btnNext')?.addEventListener('click', function () {
 
         if (stageEl) stageEl.style.display = 'none';
         if (completedEl) {
+            pptRounds += 1;
+            const total = PPT_SLIDES.length;
+
+            completedEl.innerHTML =
+                '<div class="af-unscored__card">' +
+                '  <div class="af-unscored__prog-label">SLIDES REVIEWED</div>' +
+                '  <div class="af-unscored__prog-track"><div class="af-unscored__prog-fill" id="af-prog-fill" style="width:0%"></div></div>' +
+                '  <div class="af-unscored__prog-nums"><span>0</span><strong id="af-prog-text">0 / 0</strong></div>' +
+                '  <div class="af-unscored__icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#7F77DD" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></div>' +
+                '  <p class="af-unscored__title">All slides done!</p>' +
+                '  <p class="af-unscored__sub">You\'ve reviewed all the slides.</p>' +
+                '  <div class="af-unscored__chips af-unscored__chips--2">' +
+                '    <div class="af-unscored__chip"><div class="af-unscored__chip-val" id="af-stat1-val">0</div><div class="af-unscored__chip-lbl">SLIDES</div></div>' +
+                '    <div class="af-unscored__chip"><div class="af-unscored__chip-val" id="af-stat2-val">0</div><div class="af-unscored__chip-lbl">ROUNDS</div></div>' +
+                '  </div>' +
+                '  <div class="af-unscored__banner af-unscored__banner--purple">' +
+                '    <div class="af-unscored__banner-icon af-unscored__banner-icon--purple"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>' +
+                '    <div class="af-unscored__banner-text af-unscored__banner-text--purple"><span class="af-unscored__banner-title">Keep it up!</span>Practice makes perfect. Try the next activity.</div>' +
+                '  </div>' +
+                '  <div class="af-unscored__btns">' +
+                '    <button class="af-unscored__btn-secondary" id="af-btn-retry">↺ Review again</button>' +
+                '    <button class="af-unscored__btn-primary" id="af-btn-next" style="' + (PPT_RETURN_TO ? '' : 'display:none') + '">Next →</button>' +
+                '  </div>' +
+                '</div>';
+
             completedEl.classList.add('active');
-            showPassiveDone(completedEl, {
-                text: 'You reviewed all ' + PPT_SLIDES.length + ' slides. Great job!',
-                restartLabel: 'Review Again',
-                onRestart: function () {
-                    completedEl.classList.remove('active');
-                    completedEl.innerHTML = '';
-                    if (stageEl) stageEl.style.display = '';
-                    slideIndex = 0;
-                    renderSlide();
-                }
+
+            const fillEl  = document.getElementById('af-prog-fill');
+            const textEl  = document.getElementById('af-prog-text');
+            const stat1El = document.getElementById('af-stat1-val');
+            const stat2El = document.getElementById('af-stat2-val');
+            const retryBtn = document.getElementById('af-btn-retry');
+            const nextBtn  = document.getElementById('af-btn-next');
+
+            setTimeout(function () { if (fillEl) fillEl.style.width = '100%'; }, 120);
+            if (textEl)  textEl.textContent  = total + ' / ' + total;
+            if (stat1El) stat1El.textContent = String(total);
+            if (stat2El) stat2El.textContent = String(pptRounds);
+
+            if (retryBtn) retryBtn.addEventListener('click', function () {
+                completedEl.classList.remove('active');
+                completedEl.innerHTML = '';
+                if (stageEl) stageEl.style.display = '';
+                slideIndex = 0;
+                renderSlide();
             });
+
+            if (nextBtn && PPT_RETURN_TO) {
+                nextBtn.addEventListener('click', function () {
+                    try {
+                        if (window.top && window.top !== window.self) { window.top.location.href = PPT_RETURN_TO; return; }
+                    } catch(e) {}
+                    window.location.href = PPT_RETURN_TO;
+                });
+            }
         }
 
         return;
@@ -1250,33 +1303,6 @@ document.getElementById('btnNext')?.addEventListener('click', function () {
     slideIndex = Math.min(PPT_SLIDES.length - 1, slideIndex + 1);
     renderSlide();
 });
-
-function showPassiveDone(containerEl, opts) {
-    containerEl.innerHTML =
-        '<div class="passive-done" id="passive-done-card">' +
-        '  <div class="passive-done-icon">🎉</div>' +
-        '  <h2 class="passive-done-title">All Done!</h2>' +
-        '  <p class="passive-done-text">' + (opts.text || 'Great work!') + '</p>' +
-        '  <div class="passive-done-track"><div class="passive-done-fill" id="passive-fill"></div></div>' +
-        '  <div><button class="passive-done-btn" id="passive-restart-btn">&#8635; ' + (opts.restartLabel || 'Play Again') + '</button></div>' +
-        '</div>';
-    var card = document.getElementById('passive-done-card');
-    var fill = document.getElementById('passive-fill');
-    var btn  = document.getElementById('passive-restart-btn');
-    requestAnimationFrame(function () {
-        card.classList.add('active');
-        setTimeout(function () { if (fill) fill.style.width = '100%'; }, 80);
-    });
-    if (btn && opts.onRestart) btn.addEventListener('click', opts.onRestart);
-    if (opts.winAudio) { try { opts.winAudio.currentTime = 0; opts.winAudio.play(); } catch(e){} }
-    if (opts.returnTo && opts.activityId) {
-        var sep = opts.returnTo.indexOf('?') !== -1 ? '&' : '?';
-        fetch(opts.returnTo + sep + 'activity_percent=100&activity_errors=0&activity_total=' + (opts.total||1) +
-            '&activity_id=' + encodeURIComponent(opts.activityId) +
-            '&activity_type=' + encodeURIComponent(opts.activityType || 'activity'),
-            { method: 'GET', credentials: 'same-origin', cache: 'no-store' }).catch(function(){});
-    }
-}
 
 document.getElementById('btnTts')?.addEventListener('click', speakSlide);
 document.getElementById('btnStopTts')?.addEventListener('click', stopSpeech);
