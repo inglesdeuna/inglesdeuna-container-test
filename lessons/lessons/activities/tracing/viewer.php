@@ -30,7 +30,41 @@ ob_start();
 ?>
 <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@600;700;800;900&display=swap" rel="stylesheet">
 
-<style>
+:root{
+    --tr-orange:#F97316;
+    --tr-orange-dark:#C2580A;
+    --tr-orange-soft:#FFF0E6;
+    --tr-purple:#7F77DD;
+    --tr-purple-dark:#534AB7;
+    --tr-purple-soft:#EEEDFE;
+    --tr-muted:#9B94BE;
+    --tr-border:#F0EEF8;
+}
+/* --- Unscored completed screen styles (copied from flashcards/powerpoint) --- */
+.af-unscored__card{background:#fff;border:1.5px solid #EDE9FA;border-radius:14px;padding:28px 32px;width:100%;max-width:100%;box-sizing:border-box;font-family:'Nunito','Segoe UI',sans-serif;}
+.af-unscored__prog-label{font-size:11px;color:#9B8FCC;font-weight:700;letter-spacing:.06em;text-align:center;margin-bottom:6px;text-transform:uppercase;}
+.af-unscored__prog-track{background:#EDE9FA;border-radius:99px;height:9px;overflow:hidden;margin-bottom:4px;}
+.af-unscored__prog-fill{height:100%;border-radius:99px;background:linear-gradient(90deg,#F97316,#7F77DD);transition:width .4s ease;}
+.af-unscored__prog-nums{display:flex;justify-content:space-between;font-size:11px;color:#9B8FCC;margin-bottom:16px;}
+.af-unscored__prog-nums strong{color:#7F77DD;}
+.af-unscored__icon{width:48px;height:48px;border-radius:50%;background:#EDE9FA;display:flex;align-items:center;justify-content:center;margin:0 auto 10px;}
+.af-unscored__title{font-family:'Fredoka','Trebuchet MS',sans-serif;font-size:20px;font-weight:600;color:#7F77DD;text-align:center;margin:0 0 3px;}
+.af-unscored__sub{font-size:13px;color:#9B8FCC;font-weight:600;text-align:center;margin:0 0 16px;}
+.af-unscored__chips{display:grid;gap:8px;margin-bottom:16px;}
+.af-unscored__chips--2{grid-template-columns:1fr 1fr;}
+.af-unscored__chip{background:#F9F8FF;border:1.5px solid #EDE9FA;border-radius:12px;padding:10px 6px;text-align:center;}
+.af-unscored__chip-val{font-family:'Fredoka','Trebuchet MS',sans-serif;font-size:24px;color:#7F77DD;line-height:1;}
+.af-unscored__chip-lbl{font-size:10px;color:#9B8FCC;font-weight:700;letter-spacing:.05em;margin-top:2px;text-transform:uppercase;}
+.af-unscored__banner{border-radius:12px;padding:9px 14px;display:flex;align-items:center;gap:10px;margin-bottom:16px;}
+.af-unscored__banner--purple{background:#F5F3FF;}
+.af-unscored__banner-icon{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.af-unscored__banner-icon--purple{background:#7F77DD;}
+.af-unscored__banner-text{font-size:12px;font-weight:600;}
+.af-unscored__banner-text--purple{color:#5046a6;}
+.af-unscored__banner-title{font-family:'Fredoka','Trebuchet MS',sans-serif;font-size:15px;display:block;}
+.af-unscored__btns{display:flex;gap:8px;}
+.af-unscored__btn-primary{flex:1;background:#F97316;color:#fff;border:none;border-radius:10px;padding:11px 0;font-family:'Nunito','Segoe UI',sans-serif;font-size:14px;font-weight:700;cursor:pointer;}
+.af-unscored__btn-secondary{flex:1;background:#fff;color:#7F77DD;border:1.5px solid #EDE9FA;border-radius:10px;padding:11px 0;font-family:'Nunito','Segoe UI',sans-serif;font-size:14px;font-weight:700;cursor:pointer;}
 :root{
     --tr-orange:#F97316;
     --tr-orange-dark:#C2580A;
@@ -386,31 +420,62 @@ ob_start();
     }
 
 
+    // --- Unscored completed page (flashcards/powerpoint style) ---
+    var tracingRounds = 0;
     function showCompleted() {
         counterEl.classList.add('is-hidden');
         wrapEl.classList.add('is-hidden');
         toolbarEl.classList.add('is-hidden');
         actionsEl.classList.add('is-hidden');
         completedEl.classList.add('active');
+        tracingRounds += 1;
+        var total = images.length;
+        completedEl.innerHTML =
+            '<div class="af-unscored__card">' +
+            '  <div class="af-unscored__prog-label">PAGES TRACED</div>' +
+            '  <div class="af-unscored__prog-track"><div class="af-unscored__prog-fill" id="af-prog-fill" style="width:0%"></div></div>' +
+            '  <div class="af-unscored__prog-nums"><span>0</span><strong id="af-prog-text">0 / 0</strong></div>' +
+            '  <div class="af-unscored__icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#7F77DD" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></div>' +
+            '  <p class="af-unscored__title">All pages traced!</p>' +
+            '  <p class="af-unscored__sub">You\'ve traced all the pages.</p>' +
+            '  <div class="af-unscored__chips af-unscored__chips--2">' +
+            '    <div class="af-unscored__chip"><div class="af-unscored__chip-val" id="af-stat1-val">0</div><div class="af-unscored__chip-lbl">PAGES</div></div>' +
+            '    <div class="af-unscored__chip"><div class="af-unscored__chip-val" id="af-stat2-val">0</div><div class="af-unscored__chip-lbl">ROUNDS</div></div>' +
+            '  </div>' +
+            '  <div class="af-unscored__banner af-unscored__banner--purple">' +
+            '    <div class="af-unscored__banner-icon af-unscored__banner-icon--purple"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>' +
+            '    <div class="af-unscored__banner-text af-unscored__banner-text--purple"><span class="af-unscored__banner-title">Keep it up!</span>Practice makes perfect. Try the next activity.</div>' +
+            '  </div>' +
+            '  <div class="af-unscored__btns">' +
+            '    <button class="af-unscored__btn-secondary" id="af-btn-retry">↺ Review again</button>' +
+            '    <button class="af-unscored__btn-primary" id="af-btn-next" style="' + (RETURN_TO ? '' : 'display:none') + '">Next →</button>' +
+            '  </div>' +
+            '</div>';
 
-        showPassiveDone(completedEl, {
-            text: "You traced all " + images.length + " pages. Great job practicing!",
-            restartLabel: 'Play Again',
-            onRestart: function () {
-                completedEl.classList.remove('active');
-                completedEl.innerHTML = '';
-                counterEl.classList.remove('is-hidden');
-                wrapEl.classList.remove('is-hidden');
-                toolbarEl.classList.remove('is-hidden');
-                actionsEl.classList.remove('is-hidden');
-                currentIdx = 0;
-                renderPage();
-            },
-            returnTo: RETURN_TO,
-            activityId: ACTIVITY_ID,
-            activityType: 'tracing',
-            total: images.length
-        });
+        // Populate stats
+        var fillEl    = document.getElementById('af-prog-fill');
+        var textEl    = document.getElementById('af-prog-text');
+        var stat1El   = document.getElementById('af-stat1-val');
+        var stat2El   = document.getElementById('af-stat2-val');
+        var retryBtn  = document.getElementById('af-btn-retry');
+        var nextBtn2  = document.getElementById('af-btn-next');
+        if (fillEl)  fillEl.style.width  = '100%';
+        if (textEl)  textEl.textContent  = total + ' / ' + total;
+        if (stat1El) stat1El.textContent = String(total);
+        if (stat2El) stat2El.textContent = String(tracingRounds);
+        if (retryBtn) retryBtn.onclick = function() {
+            completedEl.classList.remove('active');
+            completedEl.innerHTML = '';
+            counterEl.classList.remove('is-hidden');
+            wrapEl.classList.remove('is-hidden');
+            toolbarEl.classList.remove('is-hidden');
+            actionsEl.classList.remove('is-hidden');
+            currentIdx = 0;
+            renderPage();
+        };
+        if (nextBtn2) nextBtn2.onclick = function() {
+            if (RETURN_TO) navigateToReturn(RETURN_TO);
+        };
     }
 
     function showPassiveDone(containerEl, opts) {
