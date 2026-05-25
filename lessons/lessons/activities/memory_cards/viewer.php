@@ -2,8 +2,9 @@
 require_once __DIR__ . '/../../config/db.php';
 require_once __DIR__ . '/../../core/_activity_viewer_template.php';
 
-$activityId = isset($_GET['id']) ? trim((string) $_GET['id']) : '';
-$unit = isset($_GET['unit']) ? trim((string) $_GET['unit']) : '';
+$activityId = isset($_GET['id'])        ? trim((string) $_GET['id'])        : '';
+$unit       = isset($_GET['unit'])       ? trim((string) $_GET['unit'])       : '';
+$returnTo   = isset($_GET['return_to'])  ? trim((string) $_GET['return_to'])  : '';
 
 if ($activityId === '' && $unit === '') {
     die('Activity not specified');
@@ -585,29 +586,21 @@ body{
 
 .mc-empty{text-align:center;padding:28px;font-weight:800;color:#b91c1c;}
 
-.completed-screen{display:none;}
-.completed-screen.active{display:block;}
+.completed-screen{display:none;flex-direction:column;align-items:center;justify-content:center;}
+.completed-screen.active{display:flex;}
 .mc-activity.is-hidden{display:none;}
-.passive-done {
-    display: none;
-    width: min(680px, 100%);
-    margin: 24px auto 0;
-    text-align: center;
-    padding: clamp(28px, 5vw, 54px);
-    border-radius: 34px;
-    background: #fff;
-    border: 1px solid #E2F7EF;
-    box-shadow: 0 8px 40px rgba(8,80,65,.12);
-}
-.passive-done.active { display: block; animation: passivePop .45s cubic-bezier(.2,.9,.2,1); }
-@keyframes passivePop { from { opacity:0; transform:scale(.92); } to { opacity:1; transform:scale(1); } }
-.passive-done-icon { font-size: clamp(66px,12vw,100px); margin-bottom: 12px; }
-.passive-done-title { margin: 0 0 10px; font-family: 'Fredoka', sans-serif; font-size: clamp(34px,6vw,60px); color: #085041; line-height: 1; }
-.passive-done-text { margin: 0 auto 22px; max-width: 520px; color: #7C739B; font-size: clamp(14px,2vw,17px); font-weight: 800; line-height: 1.5; }
-.passive-done-track { height: 14px; max-width: 420px; margin: 0 auto 18px; border-radius: 999px; background: #E2F7EF; overflow: hidden; }
-.passive-done-fill { height: 100%; width: 0%; border-radius: 999px; background: linear-gradient(90deg, #1D9E75, #7F77DD, #EC4899); transition: width .8s cubic-bezier(.2,.9,.2,1); }
-.passive-done-btn { display: inline-flex; align-items: center; gap: 8px; padding: 13px 28px; border-radius: 999px; border: 0; background: #1D9E75; color: #fff; font-family: 'Nunito', sans-serif; font-size: 15px; font-weight: 900; cursor: pointer; box-shadow: 0 6px 18px rgba(29,158,117,.30); transition: .18s; }
-.passive-done-btn:hover { transform: translateY(-2px); }
+
+.mc-done{display:none;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:clamp(28px,5vw,54px);gap:12px;}
+.mc-done.active{display:flex;animation:mcPop .4s cubic-bezier(.2,.9,.2,1);}
+@keyframes mcPop{from{opacity:0;transform:scale(.93);}to{opacity:1;transform:scale(1);}}
+.mc-done-icon{font-size:clamp(54px,10vw,88px);}
+.mc-done-title{margin:0;font-family:'Fredoka',sans-serif;font-size:clamp(30px,5vw,52px);font-weight:700;color:#F97316;line-height:1.05;}
+.mc-done-text{margin:0;color:#9B94BE;font-size:clamp(13px,1.8vw,16px);font-weight:800;max-width:420px;}
+.mc-done-track{height:12px;width:min(380px,90%);border-radius:999px;background:#F4F2FD;border:1px solid #E4E1F8;overflow:hidden;}
+.mc-done-fill{height:100%;width:0%;border-radius:999px;background:linear-gradient(90deg,#F97316,#7F77DD);transition:width .8s cubic-bezier(.2,.9,.2,1);}
+.mc-done-btns{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:4px;}
+.mc-done-btn{border:none;border-radius:999px;padding:13px 28px;min-width:clamp(104px,16vw,140px);font-family:'Nunito',sans-serif;font-size:15px;font-weight:900;color:#fff;cursor:pointer;background:#F97316;box-shadow:0 6px 18px rgba(249,115,22,.22);transition:.18s;}
+.mc-done-btn:hover{transform:translateY(-2px);}
 
 @keyframes mcVanish{
     0%  {opacity:1;transform:scale(1);}
@@ -733,50 +726,49 @@ body{
         else if (kind === 'win')   playAudio(winAudioEl,   0.9);
     }
 
-    function showPassiveDone(containerEl, opts) {
-        containerEl.innerHTML =
-            '<div class="passive-done" id="passive-done-card">' +
-            '  <div class="passive-done-icon">🎉</div>' +
-            '  <h2 class="passive-done-title">All Done!</h2>' +
-            '  <p class="passive-done-text">' + (opts.text || 'Great work!') + '</p>' +
-            '  <div class="passive-done-track"><div class="passive-done-fill" id="passive-fill"></div></div>' +
-            '  <div><button class="passive-done-btn" id="passive-restart-btn">&#8635; ' + (opts.restartLabel || 'Play Again') + '</button></div>' +
-            '</div>';
-        var card = document.getElementById('passive-done-card');
-        var fill = document.getElementById('passive-fill');
-        var btn  = document.getElementById('passive-restart-btn');
-        requestAnimationFrame(function () {
-            card.classList.add('active');
-            setTimeout(function () { if (fill) fill.style.width = '100%'; }, 80);
-        });
-        if (btn && opts.onRestart) btn.addEventListener('click', opts.onRestart);
-        if (opts.winAudio) { try { opts.winAudio.currentTime = 0; opts.winAudio.play(); } catch(e){} }
-        if (opts.returnTo && opts.activityId) {
-            var sep = opts.returnTo.indexOf('?') !== -1 ? '&' : '?';
-            fetch(opts.returnTo + sep + 'activity_percent=100&activity_errors=0&activity_total=' + (opts.total||1) +
-                '&activity_id=' + encodeURIComponent(opts.activityId) +
-                '&activity_type=' + encodeURIComponent(opts.activityType || 'activity'),
-                { method: 'GET', credentials: 'same-origin', cache: 'no-store' }).catch(function(){});
-        }
+    var MC_RETURN_TO = <?= json_encode($returnTo, JSON_UNESCAPED_UNICODE) ?>;
+
+    function navigateNext() {
+        if (!MC_RETURN_TO) return;
+        try {
+            if (window.top && window.top !== window.self) {
+                window.top.location.href = MC_RETURN_TO;
+                return;
+            }
+        } catch(e) {}
+        window.location.href = MC_RETURN_TO;
     }
 
     function showCompleted() {
         playSound('win');
         if (activityEl) activityEl.classList.add('is-hidden');
         window.setTimeout(function () {
-            if (completeEl) {
-                completeEl.classList.add('active');
-                showPassiveDone(completeEl, {
-                    text: 'You matched all ' + totalPairs + ' pairs in ' + moves + ' moves!',
-                    restartLabel: 'Play Again',
-                    onRestart: function () {
-                        completeEl.classList.remove('active');
-                        completeEl.innerHTML = '';
-                        restart();
-                    },
-                    winAudio: winAudioEl
-                });
-            }
+            if (!completeEl) return;
+            completeEl.innerHTML =
+                '<div class="mc-done" id="mc-done">' +
+                '<div class="mc-done-icon">🎉</div>' +
+                '<h2 class="mc-done-title">All Done!</h2>' +
+                '<p class="mc-done-text">You matched all ' + totalPairs + ' pairs in ' + moves + ' moves!</p>' +
+                '<div class="mc-done-track"><div class="mc-done-fill" id="mc-done-fill"></div></div>' +
+                '<div class="mc-done-btns">' +
+                '<button type="button" class="mc-done-btn" id="mc-done-restart">Restart</button>' +
+                '<button type="button" class="mc-done-btn" id="mc-done-next">Next</button>' +
+                '</div></div>';
+            var doneEl   = document.getElementById('mc-done');
+            var fill     = document.getElementById('mc-done-fill');
+            var restBtn  = document.getElementById('mc-done-restart');
+            var nextBtn  = document.getElementById('mc-done-next');
+            requestAnimationFrame(function () {
+                doneEl.classList.add('active');
+                setTimeout(function () { if (fill) fill.style.width = '100%'; }, 80);
+            });
+            if (restBtn) restBtn.addEventListener('click', function () {
+                completeEl.classList.remove('active');
+                completeEl.innerHTML = '';
+                restart();
+            });
+            if (nextBtn) nextBtn.addEventListener('click', navigateNext);
+            completeEl.classList.add('active');
         }, completedDelayMs);
     }
 
