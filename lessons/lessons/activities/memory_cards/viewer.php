@@ -623,6 +623,40 @@ body{
 @media(max-width:420px){
     :root{--mc-cols:2;}
 }
+
+/* ── Unified unscored completed screen ── */
+.af-unscored__card{background:#fff;border:1.5px solid #EDE9FA;border-radius:24px;padding:28px 32px;max-width:520px;margin:0 auto;font-family:'Nunito','Segoe UI',sans-serif;}
+.af-unscored__prog-label{font-size:11px;color:#9B8FCC;font-weight:700;letter-spacing:.06em;text-align:center;margin-bottom:6px;text-transform:uppercase;}
+.af-unscored__prog-track{background:#EDE9FA;border-radius:99px;height:9px;overflow:hidden;margin-bottom:4px;}
+.af-unscored__prog-fill{height:100%;border-radius:99px;background:linear-gradient(90deg,#F97316,#7F77DD);transition:width .4s ease;}
+.af-unscored__prog-nums{display:flex;justify-content:space-between;font-size:11px;color:#9B8FCC;margin-bottom:16px;}
+.af-unscored__prog-nums strong{color:#7F77DD;}
+.af-unscored__icon{width:48px;height:48px;border-radius:50%;background:#EDE9FA;display:flex;align-items:center;justify-content:center;margin:0 auto 10px;}
+.af-unscored__title{font-family:'Fredoka','Trebuchet MS',sans-serif;font-size:20px;font-weight:600;color:#7F77DD;text-align:center;margin:0 0 3px;}
+.af-unscored__sub{font-size:13px;color:#9B8FCC;font-weight:600;text-align:center;margin:0 0 16px;}
+.af-unscored__chips{display:grid;gap:8px;margin-bottom:16px;}
+.af-unscored__chips--2{grid-template-columns:1fr 1fr;}
+.af-unscored__chips--3{grid-template-columns:1fr 1fr 1fr;}
+.af-unscored__chip{background:#F9F8FF;border:1.5px solid #EDE9FA;border-radius:12px;padding:10px 6px;text-align:center;}
+.af-unscored__chip-val{font-family:'Fredoka','Trebuchet MS',sans-serif;font-size:24px;color:#7F77DD;line-height:1;}
+.af-unscored__chip-val--orange{color:#F97316;}
+.af-unscored__chip-lbl{font-size:10px;color:#9B8FCC;font-weight:700;letter-spacing:.05em;margin-top:2px;text-transform:uppercase;}
+.af-unscored__banner{border-radius:12px;padding:9px 14px;display:flex;align-items:center;gap:10px;margin-bottom:16px;}
+.af-unscored__banner--orange{background:#FFF0E6;}
+.af-unscored__banner--purple{background:#F5F3FF;}
+.af-unscored__banner--green{background:#F0FDF4;}
+.af-unscored__banner-icon{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.af-unscored__banner-icon--orange{background:#F97316;}
+.af-unscored__banner-icon--purple{background:#7F77DD;}
+.af-unscored__banner-icon--green{background:#22c55e;}
+.af-unscored__banner-text{font-size:12px;font-weight:600;}
+.af-unscored__banner-text--orange{color:#b85a10;}
+.af-unscored__banner-text--purple{color:#5046a6;}
+.af-unscored__banner-text--green{color:#166534;}
+.af-unscored__banner-title{font-family:'Fredoka','Trebuchet MS',sans-serif;font-size:15px;display:block;}
+.af-unscored__btns{display:flex;gap:8px;}
+.af-unscored__btn-primary{flex:1;background:#F97316;color:#fff;border:none;border-radius:10px;padding:11px 0;font-family:'Nunito','Segoe UI',sans-serif;font-size:14px;font-weight:700;cursor:pointer;}
+.af-unscored__btn-secondary{flex:1;background:#fff;color:#7F77DD;border:1.5px solid #EDE9FA;border-radius:10px;padding:11px 0;font-family:'Nunito','Segoe UI',sans-serif;font-size:14px;font-weight:700;cursor:pointer;}
 </style>
 
 <div class="mc-page">
@@ -749,30 +783,54 @@ body{
         window.setTimeout(function () {
             if (!completeEl) return;
             completeEl.innerHTML =
-                '<div class="mc-done" id="mc-done">' +
-                '<div class="mc-done-icon">🎉</div>' +
-                '<h2 class="mc-done-title">All Done!</h2>' +
-                '<p class="mc-done-text">You matched all ' + totalPairs + ' pairs in ' + moves + ' moves!</p>' +
-                '<div class="mc-done-track"><div class="mc-done-fill" id="mc-done-fill"></div></div>' +
-                '<div class="mc-done-btns">' +
-                '<button type="button" class="mc-done-btn" id="mc-done-restart">Restart</button>' +
-                '<button type="button" class="mc-done-btn" id="mc-done-next">Next</button>' +
-                '</div></div>';
-            var doneEl   = document.getElementById('mc-done');
-            var fill     = document.getElementById('mc-done-fill');
-            var restBtn  = document.getElementById('mc-done-restart');
-            var nextBtn  = document.getElementById('mc-done-next');
-            requestAnimationFrame(function () {
-                doneEl.classList.add('active');
-                setTimeout(function () { if (fill) fill.style.width = '100%'; }, 80);
-            });
+                '<div class="af-unscored__card">' +
+                '  <div class="af-unscored__prog-label">PAIRS MATCHED</div>' +
+                '  <div class="af-unscored__prog-track">' +
+                '    <div class="af-unscored__prog-fill" id="af-prog-fill" style="width:100%"></div>' +
+                '  </div>' +
+                '  <div class="af-unscored__prog-nums">' +
+                '    <span>0</span>' +
+                '    <strong id="af-prog-text">' + totalPairs + ' / ' + totalPairs + '</strong>' +
+                '  </div>' +
+                '  <div class="af-unscored__icon">' +
+                '    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#7F77DD" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>' +
+                '  </div>' +
+                '  <p class="af-unscored__title">All matched!</p>' +
+                '  <p class="af-unscored__sub">You matched all pairs in ' + moves + ' moves!</p>' +
+                '  <div class="af-unscored__chips af-unscored__chips--3">' +
+                '    <div class="af-unscored__chip">' +
+                '      <div class="af-unscored__chip-val" id="af-stat1-val">' + totalPairs + '</div>' +
+                '      <div class="af-unscored__chip-lbl">PAIRS</div>' +
+                '    </div>' +
+                '    <div class="af-unscored__chip">' +
+                '      <div class="af-unscored__chip-val af-unscored__chip-val--orange" id="af-stat2-val">' + moves + '</div>' +
+                '      <div class="af-unscored__chip-lbl">MOVES</div>' +
+                '    </div>' +
+                '    <div class="af-unscored__chip">' +
+                '      <div class="af-unscored__chip-val" id="af-stat3-val">1</div>' +
+                '      <div class="af-unscored__chip-lbl">ROUNDS</div>' +
+                '    </div>' +
+                '  </div>' +
+                '  <div class="af-unscored__banner af-unscored__banner--orange">' +
+                '    <div class="af-unscored__banner-icon af-unscored__banner-icon--orange">' +
+                '      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>' +
+                '    </div>' +
+                '    <div class="af-unscored__banner-text af-unscored__banner-text--orange">' +
+                '      <span class="af-unscored__banner-title">Memory champion!</span>' +
+                '      Your memory is getting stronger.' +
+                '    </div>' +
+                '  </div>' +
+                '  <div class="af-unscored__btns">' +
+                '    <button class="af-unscored__btn-secondary" id="mc-done-restart">↺ Play again</button>' +
+                '  </div>' +
+                '</div>';
+            completeEl.classList.add('active');
+            var restBtn = document.getElementById('mc-done-restart');
             if (restBtn) restBtn.addEventListener('click', function () {
                 completeEl.classList.remove('active');
                 completeEl.innerHTML = '';
                 restart();
             });
-            if (nextBtn) nextBtn.addEventListener('click', navigateNext);
-            completeEl.classList.add('active');
         }, completedDelayMs);
     }
 
