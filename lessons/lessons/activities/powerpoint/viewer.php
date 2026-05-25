@@ -2,9 +2,10 @@
 require_once __DIR__ . '/../../config/db.php';
 require_once __DIR__ . '/../../core/_activity_viewer_template.php';
 
-$activityId = isset($_GET['id']) ? trim((string) $_GET['id']) : '';
-$unit = isset($_GET['unit']) ? trim((string) $_GET['unit']) : '';
-$nextUrl = isset($_GET['next']) ? trim((string) $_GET['next']) : '';
+$activityId = isset($_GET['id'])        ? trim((string) $_GET['id'])        : '';
+$unit       = isset($_GET['unit'])       ? trim((string) $_GET['unit'])       : '';
+$nextUrl    = isset($_GET['next'])       ? trim((string) $_GET['next'])       : '';
+$returnTo   = isset($_GET['return_to'])  ? trim((string) $_GET['return_to'])  : '';
 
 if ($activityId === '' && $unit === '') {
     die('Activity not specified');
