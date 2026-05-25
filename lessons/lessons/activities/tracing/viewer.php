@@ -262,7 +262,7 @@
 <div class="tr-app">
     <div class="tr-hero">
         <div class="tr-kicker">Activity</div>
-        <h1><?= htmlspecialchars($viewerTitle, ENT_QUOTES, 'UTF-8') ?></h1>
+        <h1><?= htmlspecialchars($viewerTitle ?? '', ENT_QUOTES, 'UTF-8') ?></h1>
         <p>Choose a color, pick a pencil size, and trace each page in order.</p>
     </div>
 
