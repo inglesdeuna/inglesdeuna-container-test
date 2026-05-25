@@ -214,7 +214,7 @@ body{margin:0!important;padding:0!important;background:#fff!important;font-famil
 .us-chip.correct-chip{background:var(--us-green-soft);border-color:var(--us-green);border-bottom-color:var(--us-green);color:var(--us-green-dark);box-shadow:none;cursor:default}
 .us-chip.incorrect-chip{background:var(--us-red-soft);border-color:var(--us-red);border-bottom-color:var(--us-red);color:var(--us-red-dark);box-shadow:none;cursor:default}
 #wordBank{display:flex;flex-wrap:wrap;justify-content:center;gap:12px;margin:20px 0 0;min-height:64px}
-.us-btn,.us-completed-button{display:inline-flex;align-items:center;justify-content:center;padding:13px 20px;border:none;border-radius:999px;color:#fff;cursor:pointer;min-width:clamp(104px,16vw,146px);font-weight:900;font-family:'Nunito','Segoe UI',sans-serif;font-size:13px;line-height:1;box-shadow:0 6px 18px rgba(127,119,221,.18);transition:transform .12s,filter .12s,box-shadow .12s}
+.us-btn,.us-completed-button{display:inline-flex;align-items:center;justify-content:center;padding:13px 20px;border:none;border-radius:8px;color:#fff;cursor:pointer;min-width:clamp(104px,16vw,146px);font-weight:900;font-family:'Nunito','Segoe UI',sans-serif;font-size:13px;line-height:1;box-shadow:0 6px 18px rgba(127,119,221,.18);transition:transform .12s,filter .12s,box-shadow .12s}
 .us-btn:hover,.us-completed-button:hover{filter:brightness(1.07);transform:translateY(-1px)}
 .us-btn:active,.us-completed-button:active{transform:scale(.98)}
 .us-btn-listen{background:#7F77DD;box-shadow:0 6px 18px rgba(127,119,221,.18);margin-bottom:16px}
