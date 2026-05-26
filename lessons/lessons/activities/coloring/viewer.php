@@ -429,25 +429,16 @@ body {
 (function () {
     'use strict';
 
-    /* ── data from PHP ───────────────────────────────── */
-    var uploadedImages = <?= json_encode($imageUrls, JSON_UNESCAPED_UNICODE) ?>;
-    var nextActivityUrl = <?= json_encode($nextUrl, JSON_UNESCAPED_UNICODE) ?>;
+    var uploadedImages     = <?= json_encode($imageUrls, JSON_UNESCAPED_UNICODE) ?>;
+    var nextActivityUrl    = <?= json_encode($nextUrl, JSON_UNESCAPED_UNICODE) ?>;
     var COLORING_RETURN_TO = <?= json_encode($returnTo, JSON_UNESCAPED_UNICODE) ?>;
     var COLORING_ACTIVITY_ID = <?= json_encode($activityId, JSON_UNESCAPED_UNICODE) ?>;
 
-    /* ── palette colors ──────────────────────────────── */
     var colors = [
-        '#ef4444', '#f97316', '#cc7722', '#f5e6c8', '#facc15', '#22c55e', '#14b8a6', '#3b82f6',
-        '#8b5cf6', '#c4b5fd', '#ec4899', '#8b5a2b', '#84cc16', '#9ca3af', '#111827', '#ffffff'
+        '#ef4444','#f97316','#cc7722','#f5e6c8','#facc15','#22c55e','#14b8a6','#3b82f6',
+        '#8b5cf6','#c4b5fd','#ec4899','#8b5a2b','#84cc16','#9ca3af','#111827','#ffffff'
     ];
     var selectedColor = colors[0];
-
-    /* ── state ───────────────────────────────────────── */
-    var currentIndex      = 0;
-    var originalImageData = null;
-    var paintedSnapshots  = [];
-
-    /* ── color names ─────────────────────────────────── */
     var colorNames = {
         '#ef4444':'Red','#f97316':'Orange','#cc7722':'Brown','#f5e6c8':'Cream',
         '#facc15':'Yellow','#22c55e':'Green','#14b8a6':'Teal','#3b82f6':'Blue',
@@ -455,53 +446,65 @@ body {
         '#84cc16':'Lime','#9ca3af':'Gray','#111827':'Black','#ffffff':'White'
     };
 
-    /* ── DOM refs ────────────────────────────────────── */
-    var canvas       = document.getElementById('coloringCanvas');
-    var ctx          = canvas.getContext('2d', { willReadFrequently: true });
+    var currentIndex     = 0;
+    var paintedSnapshots = [];
+    var origData         = null; // pixel data of original image — used only for boundary detection
+    var origImg          = null; // Image element kept alive for re-compositing
+
+    var canvas      = document.getElementById('coloringCanvas');
+    var ctx         = canvas.getContext('2d');
     var progressText = document.getElementById('progressText');
-    var progFill     = document.getElementById('progFill');
-    var progBadge    = document.getElementById('progBadge');
-    var selDot       = document.getElementById('sel-dot');
-    var selLabel     = document.getElementById('sel-label');
-    var stage        = document.getElementById('coloringStage');
-    var completedEl  = document.getElementById('coloringCompleted');
-    var finishBtn    = document.getElementById('btn-finish');
-    var resetBtn     = document.getElementById('btn-reset');
-    var restartBtn   = document.getElementById('restartBtn');
-    var paletteEl    = document.getElementById('coloringPalette');
+    var progFill    = document.getElementById('progFill');
+    var progBadge   = document.getElementById('progBadge');
+    var selDot      = document.getElementById('sel-dot');
+    var selLabel    = document.getElementById('sel-label');
+    var stage       = document.getElementById('coloringStage');
+    var completedEl = document.getElementById('coloringCompleted');
+    var finishBtn   = document.getElementById('btn-finish');
+    var resetBtn    = document.getElementById('btn-reset');
+    var paletteEl   = document.getElementById('coloringPalette');
+
+    /*
+     * Two-layer compositing approach:
+     *   colorCanvas  — off-screen canvas holding only flat fill colors (starts white)
+     *   visible canvas = colorCanvas drawn first, then original outline image on top
+     *                    with 'multiply' blend mode.
+     *
+     * Why multiply works for coloring books:
+     *   white(255) * color = color  →  white areas show the fill color through
+     *   black(0)   * anything = 0   →  black outlines always stay pure black
+     *   Anti-aliased gray pixels multiply cleanly, preserving smooth edges.
+     *
+     * Flood-fill never touches the visible canvas directly; it only modifies
+     * colorCanvas, then render() recomposites both layers.
+     */
+    var colorCanvas = document.createElement('canvas');
+    var colorCtx    = colorCanvas.getContext('2d', { willReadFrequently: true });
+
     var clickAudioCtx = null;
 
     function playClickSound() {
         try {
-            var AudioCtx = window.AudioContext || window.webkitAudioContext;
-            if (!AudioCtx) return;
-            if (!clickAudioCtx) clickAudioCtx = new AudioCtx();
-            if (clickAudioCtx.state === 'suspended') {
-                clickAudioCtx.resume();
-            }
-
+            var AC = window.AudioContext || window.webkitAudioContext;
+            if (!AC) return;
+            if (!clickAudioCtx) clickAudioCtx = new AC();
+            if (clickAudioCtx.state === 'suspended') clickAudioCtx.resume();
             var now = clickAudioCtx.currentTime;
-            var osc = clickAudioCtx.createOscillator();
+            var osc  = clickAudioCtx.createOscillator();
             var gain = clickAudioCtx.createGain();
-
             osc.type = 'triangle';
             osc.frequency.setValueAtTime(720, now);
             osc.frequency.exponentialRampToValueAtTime(980, now + 0.05);
-
             gain.gain.setValueAtTime(0.0001, now);
             gain.gain.exponentialRampToValueAtTime(0.12, now + 0.01);
             gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.08);
-
             osc.connect(gain);
             gain.connect(clickAudioCtx.destination);
             osc.start(now);
             osc.stop(now + 0.09);
-        } catch (e) {
-            /* no-op if audio is not available */
-        }
+        } catch (e) {}
     }
 
-    /* ── build palette ───────────────────────────────── */
     function buildPalette() {
         paletteEl.innerHTML = '';
         colors.forEach(function (color) {
@@ -521,11 +524,10 @@ body {
         });
     }
 
-    /* ── progress text ───────────────────────────────── */
     function updateProgress() {
         if (!uploadedImages.length) {
             progressText.textContent = 'No images';
-            progBadge.textContent = '\u2014';
+            progBadge.textContent = '—';
             progFill.style.width = '0%';
             return;
         }
@@ -535,7 +537,167 @@ body {
         finishBtn.textContent = currentIndex < uploadedImages.length - 1 ? 'Next →' : 'Finish ✓';
     }
 
-    /* ── show / hide sections ────────────────────────── */
+    function render() {
+        if (!origImg) return;
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(colorCanvas, 0, 0);                          // 1. flat color fills
+        ctx.globalCompositeOperation = 'multiply';
+        ctx.drawImage(origImg, 0, 0, canvas.width, canvas.height); // 2. sharp outlines on top
+        ctx.globalCompositeOperation = 'source-over';
+    }
+
+    function saveCurrentSnapshot() {
+        if (!uploadedImages.length || currentIndex >= uploadedImages.length) return;
+        try { paintedSnapshots[currentIndex] = colorCanvas.toDataURL('image/png'); } catch (e) {}
+    }
+
+    function hex2rgb(hex) {
+        var m = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+        return m ? [parseInt(m[1],16), parseInt(m[2],16), parseInt(m[3],16)] : [0,0,0];
+    }
+
+    function floodFill(x, y, newColor) {
+        x = Math.round(x);
+        y = Math.round(y);
+        var w = canvas.width, h = canvas.height;
+        if (x < 0 || y < 0 || x >= w || y >= h || !origData) return;
+
+        var nr = hex2rgb(newColor);
+        var nR = nr[0], nG = nr[1], nB = nr[2];
+
+        // Don't start a fill on a dark outline pixel
+        var oi  = (y * w + x) * 4;
+        var lum = 0.299 * origData[oi] + 0.587 * origData[oi+1] + 0.114 * origData[oi+2];
+        if (lum < 100) return;
+
+        // Get current color-layer state
+        var imgd = colorCtx.getImageData(0, 0, w, h);
+        var d    = imgd.data;
+        var ci   = (y * w + x) * 4;
+        var tR = d[ci], tG = d[ci+1], tB = d[ci+2];
+
+        // Nothing to do if already this color
+        if (Math.abs(tR-nR) < 6 && Math.abs(tG-nG) < 6 && Math.abs(tB-nB) < 6) return;
+
+        var TOL     = 50;
+        var visited = new Uint8Array(w * h);
+        var stack   = [y * w + x];
+
+        while (stack.length) {
+            var pos = stack.pop();
+            if (visited[pos]) continue;
+            visited[pos] = 1;
+
+            var px = pos % w;
+            var py = (pos - px) / w;
+
+            // Outline boundary: skip dark pixels in original image
+            var oa  = pos * 4;
+            var ol  = 0.299 * origData[oa] + 0.587 * origData[oa+1] + 0.114 * origData[oa+2];
+            if (ol < 100) continue;
+
+            // Color boundary: skip pixels too different from seed color in fill layer
+            var ca = pos * 4;
+            if (Math.abs(d[ca]-tR) > TOL || Math.abs(d[ca+1]-tG) > TOL || Math.abs(d[ca+2]-tB) > TOL) continue;
+
+            d[ca]   = nR;
+            d[ca+1] = nG;
+            d[ca+2] = nB;
+
+            if (px > 0)     stack.push(pos - 1);
+            if (px < w - 1) stack.push(pos + 1);
+            if (py > 0)     stack.push(pos - w);
+            if (py < h - 1) stack.push(pos + w);
+        }
+
+        colorCtx.putImageData(imgd, 0, 0);
+        render();
+    }
+
+    function handleFill(e) {
+        if (!origData) return;
+        var rect  = canvas.getBoundingClientRect();
+        var point = e.touches ? e.touches[0] : e;
+        var x = (point.clientX - rect.left) * canvas.width  / rect.width;
+        var y = (point.clientY - rect.top)  * canvas.height / rect.height;
+        floodFill(x, y, selectedColor);
+        saveCurrentSnapshot();
+        if (e.preventDefault) e.preventDefault();
+    }
+
+    function loadImageAt(idx) {
+        if (!uploadedImages.length || idx >= uploadedImages.length) return;
+        var img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = function () {
+            var ratio = img.width / img.height;
+            var maxW  = canvas.parentElement.clientWidth  - 16;
+            var maxH  = canvas.parentElement.clientHeight - 16;
+            var cw = maxW, ch = maxW / ratio;
+            if (ch > maxH) { ch = maxH; cw = ch * ratio; }
+            cw = Math.round(cw); ch = Math.round(ch);
+
+            canvas.width      = cw; canvas.height      = ch;
+            colorCanvas.width = cw; colorCanvas.height = ch;
+            origImg = img;
+
+            // Draw original once to capture pixel data for boundary detection
+            ctx.globalCompositeOperation = 'source-over';
+            ctx.drawImage(img, 0, 0, cw, ch);
+            try { origData = ctx.getImageData(0, 0, cw, ch).data; } catch(e) { origData = null; }
+
+            // Initialize fill layer as solid white
+            colorCtx.fillStyle = '#ffffff';
+            colorCtx.fillRect(0, 0, cw, ch);
+
+            var snap = paintedSnapshots[idx];
+            if (snap) {
+                var si = new Image();
+                si.onload = function () {
+                    colorCtx.clearRect(0, 0, cw, ch);
+                    colorCtx.drawImage(si, 0, 0, cw, ch);
+                    render();
+                };
+                si.src = snap;
+            } else {
+                render();
+            }
+        };
+        img.src = uploadedImages[idx];
+    }
+
+    canvas.addEventListener('click',      handleFill);
+    canvas.addEventListener('touchstart', handleFill, { passive: false });
+
+    finishBtn.addEventListener('click', function () {
+        if (currentIndex < uploadedImages.length - 1) {
+            saveCurrentSnapshot();
+            currentIndex++;
+            loadImageAt(currentIndex);
+            updateProgress();
+        } else if (nextActivityUrl) {
+            window.location.href = nextActivityUrl;
+        } else {
+            showCompleted();
+        }
+    });
+
+    resetBtn.addEventListener('click', function () {
+        if (uploadedImages.length && currentIndex < uploadedImages.length) {
+            paintedSnapshots[currentIndex] = null;
+            colorCtx.fillStyle = '#ffffff';
+            colorCtx.fillRect(0, 0, colorCanvas.width, colorCanvas.height);
+            render();
+        }
+    });
+
+    window.addEventListener('resize', function () {
+        if (!uploadedImages.length || currentIndex >= uploadedImages.length) return;
+        saveCurrentSnapshot();
+        loadImageAt(currentIndex);
+    });
+
     function showCompleted() {
         stage.classList.add('is-completed');
         completedEl.classList.add('active');
@@ -561,11 +723,11 @@ body {
     function showPassiveDone(containerEl, opts) {
         containerEl.innerHTML =
             '<div class="passive-done" id="passive-done-card">' +
-            '  <div class="passive-done-icon">🎉</div>' +
-            '  <h2 class="passive-done-title">All Done!</h2>' +
-            '  <p class="passive-done-text">' + (opts.text || 'Great work!') + '</p>' +
-            '  <div class="passive-done-track"><div class="passive-done-fill" id="passive-fill"></div></div>' +
-            '  <div><button class="passive-done-btn" id="passive-restart-btn">&#8635; ' + (opts.restartLabel || 'Play Again') + '</button></div>' +
+            '<div class="passive-done-icon">🎉</div>' +
+            '<h2 class="passive-done-title">All Done!</h2>' +
+            '<p class="passive-done-text">' + (opts.text || 'Great work!') + '</p>' +
+            '<div class="passive-done-track"><div class="passive-done-fill" id="passive-fill"></div></div>' +
+            '<div><button class="passive-done-btn" id="passive-restart-btn">&#8635; ' + (opts.restartLabel || 'Play Again') + '</button></div>' +
             '</div>';
         var card = document.getElementById('passive-done-card');
         var fill = document.getElementById('passive-fill');
@@ -575,7 +737,6 @@ body {
             setTimeout(function () { if (fill) fill.style.width = '100%'; }, 80);
         });
         if (btn && opts.onRestart) btn.addEventListener('click', opts.onRestart);
-        if (opts.winAudio) { try { opts.winAudio.currentTime = 0; opts.winAudio.play(); } catch(e){} }
         if (opts.returnTo && opts.activityId) {
             var sep = opts.returnTo.indexOf('?') !== -1 ? '&' : '?';
             fetch(opts.returnTo + sep + 'activity_percent=100&activity_errors=0&activity_total=' + (opts.total||1) +
@@ -585,187 +746,10 @@ body {
         }
     }
 
-    /* ── resize canvas on window resize ──────────────– */
-    function resizeCanvas() {
-        if (!uploadedImages.length || currentIndex >= uploadedImages.length) return;
-        loadImageAt(currentIndex);
-    }
-
-    /* ── paint system ────────────────────────────────– */
-    function getPixels(x, y) {
-        if (!ctx || !canvas) return null;
-        try {
-            var imgData = ctx.getImageData(x, y, 1, 1);
-            return imgData.data;
-        } catch (e) {
-            return null;
-        }
-    }
-
-    function hex2rgb(hex) {
-        var result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-        return result ? [
-            parseInt(result[1], 16),
-            parseInt(result[2], 16),
-            parseInt(result[3], 16)
-        ] : [0, 0, 0];
-    }
-
-    function pixelsMatch(px, rgb, tolerance) {
-        if (!px) return false;
-        tolerance = tolerance || 30;
-        return Math.abs(px[0] - rgb[0]) < tolerance &&
-               Math.abs(px[1] - rgb[1]) < tolerance &&
-               Math.abs(px[2] - rgb[2]) < tolerance;
-    }
-
-    function saveCurrentSnapshot() {
-        if (!canvas || !uploadedImages.length || currentIndex >= uploadedImages.length) return;
-        try {
-            paintedSnapshots[currentIndex] = canvas.toDataURL('image/png');
-        } catch (e) {
-            /* no-op if snapshot cannot be generated */
-        }
-    }
-
-    function floodFill(x, y, newColor) {
-        if (!ctx || !canvas) return;
-        x = Math.round(x);
-        y = Math.round(y);
-        if (x < 0 || y < 0 || x >= canvas.width || y >= canvas.height) return;
-        
-        var newRgb = hex2rgb(newColor);
-        var targetPixels = getPixels(x, y);
-        if (!targetPixels || pixelsMatch(targetPixels, newRgb, 10)) return;
-
-        var imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        var data = imgData.data;
-        
-        var targetTolerance = 20;
-        var visited = {};
-        var stack = [[x, y]];
-
-        while (stack.length > 0) {
-            var coord = stack.pop();
-            var cx = coord[0];
-            var cy = coord[1];
-            var key = cx + ',' + cy;
-            if (visited[key]) continue;
-            visited[key] = true;
-
-            if (cx < 0 || cy < 0 || cx >= canvas.width || cy >= canvas.height) continue;
-            var idx = (cy * canvas.width + cx) * 4;
-            var px = [data[idx], data[idx+1], data[idx+2], data[idx+3]];
-            if (!pixelsMatch(px, targetPixels, targetTolerance)) continue;
-
-            data[idx] = newRgb[0];
-            data[idx+1] = newRgb[1];
-            data[idx+2] = newRgb[2];
-            
-            stack.push([cx+1, cy], [cx-1, cy], [cx, cy+1], [cx, cy-1], [cx+1, cy+1], [cx-1, cy-1], [cx+1, cy-1], [cx-1, cy+1]);
-        }
-        ctx.putImageData(imgData, 0, 0);
-    }
-
-    function handleFill(e) {
-        if (!canvas || !ctx) return;
-        var rect = canvas.getBoundingClientRect();
-        var point = e.touches ? e.touches[0] : e;
-        var dpr = window.devicePixelRatio || 1;
-        var scaleX = (canvas.width * dpr) / rect.width;
-        var scaleY = (canvas.height * dpr) / rect.height;
-        var x = (point.clientX - rect.left) * scaleX / dpr;
-        var y = (point.clientY - rect.top) * scaleY / dpr;
-        
-        console.log('Click:', {
-            clientX: point.clientX,
-            clientY: point.clientY,
-            rect: { left: rect.left, top: rect.top, width: rect.width, height: rect.height },
-            canvas: { width: canvas.width, height: canvas.height },
-            dpr: dpr,
-            x: x,
-            y: y,
-            pixel: getPixels(x, y)
-        });
-        
-        floodFill(x, y, selectedColor);
-        saveCurrentSnapshot();
-        if (e.preventDefault) e.preventDefault();
-    }
-
-    /* ── load image ──────────────────────────────────– */
-    function loadImageAt(idx) {
-        if (!uploadedImages.length || idx >= uploadedImages.length || !ctx || !canvas) return;
-        
-        var img = new Image();
-        img.crossOrigin = 'anonymous';
-        img.onload = function () {
-            var ratio = img.width / img.height;
-            var maxW = canvas.parentElement.clientWidth - 16;
-            var maxH = canvas.parentElement.clientHeight - 16;
-            var w = maxW;
-            var h = w / ratio;
-            if (h > maxH) {
-                h = maxH;
-                w = h * ratio;
-            }
-            canvas.width = w;
-            canvas.height = h;
-            ctx.drawImage(img, 0, 0, w, h);
-            try {
-                originalImageData = ctx.getImageData(0, 0, w, h);
-            } catch (e) { /* no-op */ }
-
-            var snapshotSrc = paintedSnapshots[idx];
-            if (snapshotSrc) {
-                var paintedImg = new Image();
-                paintedImg.onload = function () {
-                    ctx.drawImage(paintedImg, 0, 0, w, h);
-                };
-                paintedImg.src = snapshotSrc;
-            }
-        };
-        img.onerror = function () {
-            console.warn('Failed to load image:', uploadedImages[idx]);
-        };
-        img.src = uploadedImages[idx];
-    }
-
-    /* ── canvas fill handlers ───────────────────────── */
-    canvas.addEventListener('click',      handleFill);
-    canvas.addEventListener('touchstart', handleFill, { passive: false });
-
-    /* ── button handlers ─────────────────────────────– */
-    finishBtn.addEventListener('click', function () {
-        if (currentIndex < uploadedImages.length - 1) {
-            saveCurrentSnapshot();
-            currentIndex++;
-            loadImageAt(currentIndex);
-            updateProgress();
-        } else if (nextActivityUrl) {
-            window.location.href = nextActivityUrl;
-        } else {
-            showCompleted();
-        }
-    });
-
-    resetBtn.addEventListener('click', function () {
-        if (uploadedImages.length && currentIndex < uploadedImages.length) {
-            paintedSnapshots[currentIndex] = null;
-            loadImageAt(currentIndex);
-        }
-    });
-
-    window.addEventListener('resize', function () {
-        if (!uploadedImages.length || currentIndex >= uploadedImages.length) return;
-        saveCurrentSnapshot();
-        loadImageAt(currentIndex);
-    });
-
-    /* ── init ────────────────────────────────────────── */
     buildPalette();
     if (uploadedImages.length > 0) {
         loadImageAt(0);
+        updateProgress();
     } else {
         progressText.textContent = 'No images uploaded for this activity.';
     }
