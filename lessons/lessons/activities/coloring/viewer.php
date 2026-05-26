@@ -716,7 +716,7 @@ body {
         var ratio = origImg.width / origImg.height;
         var maxW  = canvas.parentElement.clientWidth  - 16;
         var maxH  = canvas.parentElement.clientHeight - 16;
-        if (maxW <= 0 || maxH <= 0) return;
+        if (maxW < 100 || maxH < 100) return;
         var cw = maxW, ch = maxW / ratio;
         if (ch > maxH) { ch = maxH; cw = ch * ratio; }
         cw = Math.round(cw); ch = Math.round(ch);
@@ -751,13 +751,9 @@ body {
         resizeTimer = setTimeout(redrawAtCurrentSize, 150);
     }
 
-    // ResizeObserver fires whenever the canvas container changes size —
-    // handles browser fullscreen, iframe expansion, and any CSS-driven resize.
-    if (window.ResizeObserver) {
-        new ResizeObserver(scheduleResize).observe(canvas.parentElement);
-    }
-    // window.resize as fallback for older browsers
     window.addEventListener('resize', scheduleResize);
+    document.addEventListener('fullscreenchange', scheduleResize);
+    document.addEventListener('webkitfullscreenchange', scheduleResize);
 
     function showCompleted() {
         stage.classList.add('is-completed');
