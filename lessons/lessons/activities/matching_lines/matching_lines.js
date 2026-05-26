@@ -10,8 +10,14 @@
   const prevBtn = document.getElementById('mlvPrevBtn');
   const nextBtn = document.getElementById('mlvNextBtn');
   const showBtn = document.getElementById('mlvShowBtn');
+  const playArea = document.getElementById('mlvPlayArea');
+  const completedEl = document.getElementById('mlvCompleted');
+  const completedTitleEl = document.getElementById('mlvCompletedTitle');
+  const scoreTextEl = document.getElementById('mlvScoreText');
+  const restartBtn = document.getElementById('mlvRestartBtn');
   const returnTo = typeof window.MATCHING_LINES_RETURN_TO === 'string' ? window.MATCHING_LINES_RETURN_TO : '';
   const activityId = typeof window.MATCHING_LINES_ACTIVITY_ID === 'string' ? window.MATCHING_LINES_ACTIVITY_ID : '';
+  const viewerTitle = typeof window.MATCHING_LINES_TITLE === 'string' ? window.MATCHING_LINES_TITLE : 'Matching Lines';
 
   const clickSound = new Audio('../../hangman/assets/pageflip.mp3');
   const correctSound = new Audio('../../hangman/assets/realcorrect.mp3');
@@ -28,7 +34,39 @@
   let wrongAttempts = 0;
   let scorePersisted = false;
   let winPlayed = false;
-  let completionUrl = '';
+
+  function persistScoreSilently(targetUrl) {
+    if (!targetUrl) {
+      return Promise.resolve(false);
+    }
+
+    return fetch(targetUrl, {
+      method: 'GET',
+      credentials: 'same-origin',
+      cache: 'no-store',
+    }).then(function (response) {
+      return !!(response && response.ok);
+    }).catch(function () {
+      return false;
+    });
+  }
+
+  function navigateToReturn(targetUrl) {
+    if (!targetUrl) {
+      return;
+    }
+
+    try {
+      if (window.top && window.top !== window.self) {
+        window.top.location.href = targetUrl;
+        return;
+      }
+    } catch (e) {
+      // Ignore cross-origin frame access errors.
+    }
+
+    window.location.href = targetUrl;
+  }
 
   function playSound(audio) {
     if (!audio) {
@@ -143,6 +181,22 @@
     }, 0);
   }
 
+  function computeScoreResult() {
+    const correct = getMatchedTotal();
+    const wrong = Math.max(0, wrongAttempts);
+    const total = getTotalPairs();
+    const scorable = correct + wrong;
+    const percent = scorable > 0 ? Math.round((correct / scorable) * 100) : 0;
+
+    return {
+      correct: correct,
+      wrong: wrong,
+      total: total,
+      errors: wrong,
+      percent: percent,
+    };
+  }
+
   function isAllBoardsCompleted() {
     return boards.every(function (board, idx) {
       const total = Array.isArray(board.pairs) ? board.pairs.length : 0;
@@ -152,46 +206,18 @@
     });
   }
 
-  function persistScoreIfCompleted() {
-    if (scorePersisted || !isAllBoardsCompleted()) {
+  function markCompletedIfReady() {
+    if (winPlayed || !isAllBoardsCompleted()) {
       return;
     }
 
     const total = getTotalPairs();
-    const matched = getMatchedTotal();
     if (total <= 0) {
       return;
     }
 
-    const percent = Math.round((matched / total) * 100);
-    const safeErrors = Math.max(0, Math.min(total, wrongAttempts));
-    const saveUrl = buildReturnUrl(percent, safeErrors, total);
-
-    if (!saveUrl) {
-      return;
-    }
-
-    completionUrl = saveUrl;
-    scorePersisted = true;
-
-    if (!winPlayed) {
-      winPlayed = true;
-      playSound(winSound);
-    }
-
-    // Save score in background so Next can send student to completed page.
-    try {
-      fetch(saveUrl, {
-        method: 'GET',
-        credentials: 'same-origin',
-        cache: 'no-store',
-        keepalive: true,
-      }).catch(function () {
-        scorePersisted = false;
-      });
-    } catch (e) {
-      scorePersisted = false;
-    }
+    winPlayed = true;
+    playSound(winSound);
 
     const board = boards[currentIndex];
     const boardState = board ? getBoardState(board) : null;
@@ -307,10 +333,41 @@
 
   function updateButtonState(boardState) {
     prevBtn.disabled = currentIndex <= 0;
-    const hasCompletionTarget = completionUrl !== '' && isAllBoardsCompleted();
-    nextBtn.disabled = hasCompletionTarget ? false : currentIndex >= boards.length - 1;
-    nextBtn.textContent = hasCompletionTarget ? 'Next' : 'Next';
+    const allDone = isAllBoardsCompleted();
+    nextBtn.disabled = !allDone && currentIndex >= boards.length - 1;
+    nextBtn.textContent = allDone ? 'Finish' : 'Next';
     showBtn.textContent = boardState.showAnswer ? 'Hide Answer' : 'Show Answer';
+  }
+
+  async function showCompleted() {
+    const result = computeScoreResult();
+
+    if (playArea) {
+      playArea.style.display = 'none';
+    }
+
+    if (completedTitleEl) {
+      completedTitleEl.textContent = viewerTitle;
+    }
+
+    if (scoreTextEl) {
+      scoreTextEl.textContent = result.correct + ' correct · ' + result.wrong + ' wrong · ' + result.percent + '%';
+    }
+
+    if (completedEl) {
+      completedEl.classList.add('active');
+    }
+
+    if (!scorePersisted) {
+      scorePersisted = true;
+      const saveUrl = buildReturnUrl(result.percent, result.errors, result.total);
+      if (saveUrl) {
+        const ok = await persistScoreSilently(saveUrl);
+        if (!ok) {
+          navigateToReturn(saveUrl);
+        }
+      }
+    }
   }
 
   function updateProgress(board, boardState) {
@@ -370,7 +427,7 @@
 
     updateProgress(board, boardState);
     renderLines(board, boardState);
-    persistScoreIfCompleted();
+    markCompletedIfReady();
   }
 
   function clearDragClasses() {
@@ -602,7 +659,7 @@
 
     bindDrag(board, boardState);
     renderLines(board, boardState);
-    persistScoreIfCompleted();
+    markCompletedIfReady();
   }
 
   prevBtn.addEventListener('click', function () {
@@ -614,16 +671,8 @@
   });
 
   nextBtn.addEventListener('click', function () {
-    if (completionUrl !== '' && isAllBoardsCompleted()) {
-      try {
-        if (window.top && window.top !== window.self) {
-          window.top.location.href = completionUrl;
-          return;
-        }
-      } catch (e) {
-        // Fall back to same frame.
-      }
-      window.location.href = completionUrl;
+    if (isAllBoardsCompleted()) {
+      showCompleted();
       return;
     }
 
@@ -641,12 +690,15 @@
     }
     const boardState = getBoardState(board);
     boardState.showAnswer = !boardState.showAnswer;
-    if (boardState.showAnswer) {
-      wrongAttempts += 1;
-    }
     updateButtonState(boardState);
     renderLines(board, boardState);
   });
+
+  if (restartBtn) {
+    restartBtn.addEventListener('click', function () {
+      window.location.reload();
+    });
+  }
 
   window.addEventListener('resize', function () {
     const board = boards[currentIndex];

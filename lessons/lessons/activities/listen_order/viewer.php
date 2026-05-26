@@ -89,7 +89,7 @@ body{margin:0!important;padding:0!important;background:#fff!important;font-famil
 .activity-wrapper{max-width:100%!important;margin:0!important;padding:0!important;min-height:0;display:flex!important;flex-direction:column!important;background:transparent!important}
 .top-row{display:none!important}
 .viewer-content{flex:1!important;display:flex!important;flex-direction:column!important;min-height:0!important;padding:0!important;margin:0!important;background:transparent!important;border:none!important;box-shadow:none!important;border-radius:0!important}
-.lo-shell{width:100%;flex:1;min-height:0;overflow-y:auto;padding:clamp(14px,2.5vw,34px);display:flex;align-items:flex-start;justify-content:center;background:#fff}
+.lo-shell{width:100%;flex:1;min-height:0;overflow-y:auto;padding:clamp(14px,2.5vw,34px);display:flex;align-items:flex-start;justify-content:center;background:#F5F3FF}
 .lo-app{width:min(980px,100%);margin:0 auto;display:flex;flex-direction:column}
 .lo-hero{text-align:center;margin-bottom:clamp(14px,2vw,22px)}
 .lo-kicker{display:inline-flex;align-items:center;justify-content:center;margin-bottom:10px;padding:7px 14px;border-radius:999px;background:#FFF0E6;border:1px solid #FCDDBF;color:#C2580A;font-size:12px;font-weight:900;letter-spacing:.08em;text-transform:uppercase}
@@ -137,15 +137,13 @@ body{margin:0!important;padding:0!important;background:#fff!important;font-famil
 .lo-btn-check{background:#F97316;color:#fff;box-shadow:0 6px 18px rgba(249,115,22,.22)}
 .lo-btn-next{background:#7F77DD;color:#fff;box-shadow:0 6px 18px rgba(127,119,221,.22)}
 #lo-status{text-align:center;margin-top:10px;font-size:13px;color:#9B94BE;font-weight:900}
-.lo-completed{display:none;background:#fff;border:1px solid #EDE9FA;border-radius:28px;box-shadow:0 12px 36px rgba(127,119,221,.13);min-height:clamp(300px,42vh,430px);flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:clamp(28px,5vw,48px) 24px;gap:12px;width:min(860px,100%);margin:0 auto}
+.lo-completed{display:none;background:#fff;border:1px solid #EDE9FA;border-radius:28px;box-shadow:0 12px 36px rgba(127,119,221,.13);min-height:clamp(300px,42vh,430px);flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:clamp(28px,5vw,48px) 24px;gap:12px;width:min(760px,100%);margin:0 auto}
 .lo-completed.active{display:flex}
-.lo-done-icon{font-size:64px;line-height:1}
-.lo-done-title{margin:0;font-family:'Fredoka',sans-serif;font-size:clamp(30px,5.5vw,58px);color:#F97316;font-weight:700}
-.lo-completed .lo-done-title{display:none}
-.lo-done-text{margin:0;max-width:520px;color:#9B94BE;font-size:clamp(13px,1.8vw,17px);font-weight:800;line-height:1.5}
-.lo-done-score{margin:0;color:#534AB7;font-size:15px;font-weight:900}
-.lo-done-track{height:12px;width:min(420px,100%);margin:4px auto;border-radius:999px;background:#F4F2FD;border:1px solid #E4E1F8;overflow:hidden}
-.lo-done-fill{height:100%;width:0%;background:linear-gradient(90deg,#F97316,#7F77DD);transition:width .8s ease}
+.lo-done-icon{font-size:30px;line-height:1;margin-bottom:6px}
+.lo-done-title{margin:0;font-family:'Fredoka',sans-serif;font-size:32px;color:#F97316;font-weight:700}
+.lo-done-text{margin:0;max-width:520px;color:#9B94BE;font-size:14px;font-weight:800;line-height:1.5}
+.lo-done-score{margin:0;color:#666;font-size:14px;font-weight:800}
+.lo-done-restart{border:none;border-radius:999px;color:#fff;min-width:128px;padding:11px 20px;font-size:14px;font-weight:700;font-family:'Nunito',sans-serif;cursor:pointer;background:#7F77DD;box-shadow:0 6px 18px rgba(127,119,221,.18)}
 @media(max-width:640px){
     .lo-shell{padding:12px}.lo-board{border-radius:22px;padding:14px}
     .lo-grid{grid-template-columns:repeat(auto-fit,minmax(96px,1fr));gap:10px}
@@ -153,6 +151,8 @@ body{margin:0!important;padding:0!important;background:#fff!important;font-famil
     .lo-card-badge{top:6px;left:6px;width:22px;height:22px;font-size:11px}
     .lo-actions{flex-direction:column;align-items:center}.lo-btn{width:100%;max-width:280px}
     .lo-audio-player{flex-wrap:wrap;gap:10px}
+    .lo-completed{border-radius:26px}
+    .lo-done-restart{width:100%}
 }
 </style>
 
@@ -204,7 +204,7 @@ body{margin:0!important;padding:0!important;background:#fff!important;font-famil
         <h2 class="lo-done-title" id="lo-done-title"></h2>
         <p class="lo-done-text" id="lo-done-text"></p>
         <p class="lo-done-score" id="lo-done-score"></p>
-        <div class="lo-done-track"><div class="lo-done-fill" id="lo-done-fill"></div></div>
+        <button type="button" class="lo-done-restart" id="lo-done-restart">Restart</button>
     </div>
 </div></div>
 
@@ -278,7 +278,7 @@ var ttsAudio  = document.getElementById('lo-tts-audio');
 var doneTitleEl = document.getElementById('lo-done-title');
 var doneTextEl  = document.getElementById('lo-done-text');
 var doneScoreEl = document.getElementById('lo-done-score');
-var doneFillEl  = document.getElementById('lo-done-fill');
+var doneRestartEl = document.getElementById('lo-done-restart');
 
 if(doneTitleEl) doneTitleEl.textContent = ACTIVITY_TTL||'Listen & Order';
 if(doneTextEl)  doneTextEl.textContent  = "You've completed "+(ACTIVITY_TTL||'this activity')+'. Great job!';
@@ -494,7 +494,6 @@ async function showCompleted(){
     done=true; blockDone=true; feedEl.textContent=''; feedEl.className='';
     if(boardEl) boardEl.style.display='none';
     if(compEl)  compEl.classList.add('active');
-    setTimeout(function(){ if(doneFillEl) doneFillEl.style.width='100%'; },120);
     playSound(sndDone);
     var result = computeFinalScore();
     if(doneScoreEl) doneScoreEl.textContent=result.correct+' correct · '+result.wrong+' wrong · '+result.percent+'%';
@@ -507,14 +506,23 @@ async function showCompleted(){
 }
 
 function nextBlock(){
-    if(blockDone||checked[idx]){ if(idx>=BLOCKS.length-1){ showCompleted(); return; } idx++; loadBlock(); }
-    else{ feedEl.textContent='Check your answer first.'; feedEl.className='bad'; }
+    if(done) return;
+
+    if(!blockDone && !checked[idx]){
+        checkAnswer();
+    }
+
+    if(blockDone || checked[idx]){
+        if(idx>=BLOCKS.length-1){ showCompleted(); return; }
+        idx++;
+        loadBlock();
+    }
 }
 
 function loRestart(){
     idx=0; totalBlocks=BLOCKS.length; blockScores={}; attempts={}; checked={};
-    if(doneFillEl) doneFillEl.style.width='0%';
     if(compEl) compEl.classList.remove('active');
+    if(boardEl) boardEl.style.display='';
     loadBlock();
 }
 
@@ -522,6 +530,7 @@ if(listenBtn) listenBtn.addEventListener('click',playAudio);
 document.getElementById('lo-btn-show').addEventListener('click',showAnswer);
 document.getElementById('lo-btn-check').addEventListener('click',checkAnswer);
 document.getElementById('lo-btn-next').addEventListener('click',nextBlock);
+if(doneRestartEl) doneRestartEl.addEventListener('click',loRestart);
 
 loadBlock();
 </script>

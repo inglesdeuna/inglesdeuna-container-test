@@ -50,7 +50,10 @@ function tts_env(string $key): string
 $allowed =
     (!empty($_SESSION['academic_logged']) && $_SESSION['academic_logged']) ||
     (!empty($_SESSION['admin_logged'])    && $_SESSION['admin_logged'])    ||
-    (!empty($_SESSION['student_logged'])  && $_SESSION['student_logged']);
+    (!empty($_SESSION['student_logged'])  && $_SESSION['student_logged'])  ||
+    (!empty($_SESSION['teacher_logged'])  && $_SESSION['teacher_logged'])  ||
+    !empty($_SESSION['teacher_id'])
+    || !empty($_SESSION['teacher_username']);
 
 if (!$allowed) {
     http_response_code(403);
@@ -69,6 +72,12 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 $text    = trim((string) ($_POST['text']     ?? ''));
 $voiceId = trim((string) ($_POST['voice_id'] ?? 'nzFihrBIvB34imQBuxub'));
 
+$allowedVoices = [
+    'nzFihrBIvB34imQBuxub',
+    'NoOVOzCQFLOvtsMoNcdT',
+    'Nggzl2QAXh3OijoXD116',
+];
+
 if ($text === '') {
     http_response_code(400);
     header('Content-Type: application/json');
@@ -85,6 +94,12 @@ if (!preg_match('/^[A-Za-z0-9]+$/', $voiceId)) {
     http_response_code(400);
     header('Content-Type: application/json');
     echo json_encode(['error' => 'Invalid voice ID']);
+    exit;
+}
+if (!in_array($voiceId, $allowedVoices, true)) {
+    http_response_code(400);
+    header('Content-Type: application/json');
+    echo json_encode(['error' => 'Unsupported voice ID']);
     exit;
 }
 

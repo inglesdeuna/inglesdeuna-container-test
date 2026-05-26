@@ -773,12 +773,9 @@ body{
 
 .cw-completed{
     display:none;
-    min-height:360px;
-    align-items:center;
-    justify-content:center;
-    text-align:center;
+    align-items:stretch;
     flex-direction:column;
-    padding:clamp(28px,5vw,48px);
+    padding:0;
 }
 
 .cw-completed.active{
@@ -914,6 +911,40 @@ body{
     border-color:var(--cw-orange);
     border-width:2px;
 }
+
+/* ── Unified unscored completed screen ── */
+.af-unscored__card{background:#fff;border:1.5px solid #EDE9FA;border-radius:14px;padding:28px 32px;width:100%;max-width:100%;box-sizing:border-box;font-family:'Nunito','Segoe UI',sans-serif;}
+.af-unscored__prog-label{font-size:11px;color:#9B8FCC;font-weight:700;letter-spacing:.06em;text-align:center;margin-bottom:6px;text-transform:uppercase;}
+.af-unscored__prog-track{background:#EDE9FA;border-radius:99px;height:9px;overflow:hidden;margin-bottom:4px;}
+.af-unscored__prog-fill{height:100%;border-radius:99px;background:linear-gradient(90deg,#F97316,#7F77DD);transition:width .4s ease;}
+.af-unscored__prog-nums{display:flex;justify-content:space-between;font-size:11px;color:#9B8FCC;margin-bottom:16px;}
+.af-unscored__prog-nums strong{color:#7F77DD;}
+.af-unscored__icon{width:48px;height:48px;border-radius:50%;background:#EDE9FA;display:flex;align-items:center;justify-content:center;margin:0 auto 10px;}
+.af-unscored__title{font-family:'Fredoka','Trebuchet MS',sans-serif;font-size:20px;font-weight:600;color:#7F77DD;text-align:center;margin:0 0 3px;}
+.af-unscored__sub{font-size:13px;color:#9B8FCC;font-weight:600;text-align:center;margin:0 0 16px;}
+.af-unscored__chips{display:grid;gap:8px;margin-bottom:16px;}
+.af-unscored__chips--2{grid-template-columns:1fr 1fr;}
+.af-unscored__chips--3{grid-template-columns:1fr 1fr 1fr;}
+.af-unscored__chip{background:#F9F8FF;border:1.5px solid #EDE9FA;border-radius:12px;padding:10px 6px;text-align:center;}
+.af-unscored__chip-val{font-family:'Fredoka','Trebuchet MS',sans-serif;font-size:24px;color:#7F77DD;line-height:1;}
+.af-unscored__chip-val--orange{color:#F97316;}
+.af-unscored__chip-lbl{font-size:10px;color:#9B8FCC;font-weight:700;letter-spacing:.05em;margin-top:2px;text-transform:uppercase;}
+.af-unscored__banner{border-radius:12px;padding:9px 14px;display:flex;align-items:center;gap:10px;margin-bottom:16px;}
+.af-unscored__banner--orange{background:#FFF0E6;}
+.af-unscored__banner--purple{background:#F5F3FF;}
+.af-unscored__banner--green{background:#F0FDF4;}
+.af-unscored__banner-icon{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.af-unscored__banner-icon--orange{background:#F97316;}
+.af-unscored__banner-icon--purple{background:#7F77DD;}
+.af-unscored__banner-icon--green{background:#22c55e;}
+.af-unscored__banner-text{font-size:12px;font-weight:600;}
+.af-unscored__banner-text--orange{color:#b85a10;}
+.af-unscored__banner-text--purple{color:#5046a6;}
+.af-unscored__banner-text--green{color:#166534;}
+.af-unscored__banner-title{font-family:'Fredoka','Trebuchet MS',sans-serif;font-size:15px;display:block;}
+.af-unscored__btns{display:flex;gap:8px;}
+.af-unscored__btn-primary{flex:1;background:#F97316;color:#fff;border:none;border-radius:10px;padding:11px 0;font-family:'Nunito','Segoe UI',sans-serif;font-size:14px;font-weight:700;cursor:pointer;}
+.af-unscored__btn-secondary{flex:1;background:#fff;color:#7F77DD;border:1.5px solid #EDE9FA;border-radius:10px;padding:11px 0;font-family:'Nunito','Segoe UI',sans-serif;font-size:14px;font-weight:700;cursor:pointer;}
 
 </style><div class="cw-page">
     <div class="cw-app">
@@ -1076,27 +1107,44 @@ body{
             </div>
 
             <div class="cw-completed" id="cw-completed">
-
-                <div class="cw-completed-icon">
-                    ✓
+                <div class="af-unscored__card">
+                  <div class="af-unscored__prog-label">WORDS FOUND</div>
+                  <div class="af-unscored__prog-track">
+                    <div class="af-unscored__prog-fill" id="af-prog-fill" style="width:0%"></div>
+                  </div>
+                  <div class="af-unscored__prog-nums">
+                    <span>0</span>
+                    <strong id="af-prog-text">0 / 0</strong>
+                  </div>
+                  <div class="af-unscored__icon">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#7F77DD" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+                  </div>
+                  <p class="af-unscored__title">Crossword complete!</p>
+                  <p class="af-unscored__sub">You found all the words.</p>
+                  <div class="af-unscored__chips af-unscored__chips--2">
+                    <div class="af-unscored__chip">
+                      <div class="af-unscored__chip-val" id="af-stat1-val">0</div>
+                      <div class="af-unscored__chip-lbl">WORDS FOUND</div>
+                    </div>
+                    <div class="af-unscored__chip">
+                      <div class="af-unscored__chip-val" id="af-stat2-val">0</div>
+                      <div class="af-unscored__chip-lbl">ROUNDS</div>
+                    </div>
+                  </div>
+                  <div class="af-unscored__banner af-unscored__banner--purple">
+                    <div class="af-unscored__banner-icon af-unscored__banner-icon--purple">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                    </div>
+                    <div class="af-unscored__banner-text af-unscored__banner-text--purple">
+                      <span class="af-unscored__banner-title">Word master!</span>
+                      Ready for the next challenge?
+                    </div>
+                  </div>
+                  <div class="af-unscored__btns">
+                    <button class="af-unscored__btn-secondary" id="af-btn-retry">↺ Try again</button>
+                    <button class="af-unscored__btn-primary" id="af-btn-next">Next →</button>
+                  </div>
                 </div>
-
-                <h2 class="cw-completed-title">
-                    Complete
-                </h2>
-
-                <p class="cw-completed-text" id="cw-score-text">
-                    Great crossword practice.
-                </p>
-
-                <button
-                    type="button"
-                    class="cw-btn cw-btn-orange"
-                    onclick="cwRestart()"
-                >
-                    Restart
-                </button>
-
             </div>
 
         </section>
@@ -1129,6 +1177,7 @@ const CW_RETURN_TO =
 
 let cwSelectedWord = null;
 let cwActiveTab = 'across';
+let cwRounds = 0;
 
 const cwProgress =
 document.getElementById('cw-progress');
@@ -1418,21 +1467,12 @@ function cwFinish(){
     .classList
     .add('hide');
 
+    cwRounds += 1;
+
     document
     .getElementById('cw-completed')
     .classList
     .add('active');
-
-    document
-    .getElementById('cw-score-text')
-    .textContent =
-        'Score: ' +
-        correct +
-        ' / ' +
-        cells.length +
-        ' (' +
-        pct +
-        '%)';
 
     cwPlay(cwWin);
 
@@ -1441,6 +1481,34 @@ function cwFinish(){
         cells.length,
         Math.max(0,cells.length - correct)
     );
+
+    /* Populate unified completed screen stats */
+    var totalWords = CW_WORDS.length;
+    var fillEl   = document.getElementById('af-prog-fill');
+    var textEl   = document.getElementById('af-prog-text');
+    var stat1El  = document.getElementById('af-stat1-val');
+    var stat2El  = document.getElementById('af-stat2-val');
+    var retryBtn = document.getElementById('af-btn-retry');
+    var nextBtn  = document.getElementById('af-btn-next');
+
+    if (fillEl)  { setTimeout(function(){ fillEl.style.width = '100%'; }, 120); }
+    if (textEl)  textEl.textContent  = totalWords + ' / ' + totalWords;
+    if (stat1El) stat1El.textContent = String(totalWords);
+    if (stat2El) stat2El.textContent = String(cwRounds);
+
+    if (retryBtn) retryBtn.addEventListener('click', cwRestart);
+    if (nextBtn) {
+        if (CW_RETURN_TO) {
+            nextBtn.addEventListener('click', function () {
+                try {
+                    if (window.top && window.top !== window.self) { window.top.location.href = CW_RETURN_TO; return; }
+                } catch(e) {}
+                window.location.href = CW_RETURN_TO;
+            });
+        } else {
+            nextBtn.style.display = 'none';
+        }
+    }
 }
 
 function cwRestart(){
@@ -1454,6 +1522,9 @@ function cwRestart(){
     .getElementById('cw-completed')
     .classList
     .remove('active');
+
+    var fillEl = document.getElementById('af-prog-fill');
+    if (fillEl) fillEl.style.width = '0%';
 
     cwClear();
 }

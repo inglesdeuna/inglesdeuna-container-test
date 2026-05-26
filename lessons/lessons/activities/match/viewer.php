@@ -409,6 +409,10 @@ body{margin:0!important;padding:0!important;background:var(--m-bg)!important;fon
 /* ── Board ── */
 .m-board{height:100%;min-height:0;background:#fff;border:1px solid #F0EEF8;border-radius:28px;padding:clamp(12px,2vw,20px);box-shadow:0 8px 40px rgba(127,119,221,.12);display:grid;grid-template-rows:auto auto minmax(0,1fr) auto auto auto;gap:12px;overflow:hidden;}
 
+.m-page.is-completed{align-items:flex-start;overflow-y:auto;}
+.m-app.is-completed{height:auto;grid-template-rows:auto auto;}
+.m-board.is-completed{height:auto;display:block;overflow:visible;}
+
 /* ── Progress ── */
 .m-progress-row{display:grid;grid-template-columns:1fr auto;gap:12px;align-items:center;}
 .m-progress-track{height:10px;background:#F4F2FD;border:1px solid #E4E1F8;border-radius:999px;overflow:hidden;}
@@ -498,17 +502,25 @@ body{margin:0!important;padding:0!important;background:var(--m-bg)!important;fon
 .m-score-grid{display:none;grid-template-columns:repeat(3,1fr);gap:10px;}
 .m-score-grid.visible{display:grid;}
 .m-score-card{background:#FAFAFE;border:1px solid var(--m-border);border-radius:14px;padding:12px;text-align:center;}
-.m-score-num{font-family:'Fredoka',sans-serif;font-weight:700;font-size:28px;line-height:1;}
-.m-score-num.c{color:#16a34a;}.m-score-num.w{color:var(--m-orange);}.m-score-num.p{color:var(--m-purple);}
+.m-score-num{font-family:'Fredoka',sans-serif;font-size:24px;line-height:1;font-weight:600;color:var(--m-purple);}
 .m-score-lbl{margin-top:5px;font-size:10px;font-weight:900;color:var(--m-muted);text-transform:uppercase;letter-spacing:.08em;}
 
 /* ── Buttons ── */
 .m-actions{display:flex;justify-content:center;gap:10px;flex-wrap:wrap;}
-.m-btn{padding:12px 24px;border-radius:999px;font-family:'Nunito',sans-serif;font-size:13px;font-weight:900;cursor:pointer;transition:transform .15s,filter .15s;border:none;min-width:120px;}
+.m-btn{padding:12px 24px;border-radius:10px;font-family:'Nunito',sans-serif;font-size:13px;font-weight:900;cursor:pointer;transition:transform .15s,filter .15s;border:none;min-width:120px;}
 .m-btn:hover{transform:translateY(-2px);filter:brightness(1.07);}
 .m-btn-check{background:var(--m-orange);color:#fff;box-shadow:0 6px 18px rgba(249,115,22,.22);}
 .m-btn-answer{background:var(--m-purple);color:#fff;box-shadow:0 6px 18px rgba(127,119,221,.18);}
+.m-btn-next{background:var(--m-orange);color:#fff;box-shadow:0 6px 18px rgba(249,115,22,.22);}
 .m-btn-reset{background:#fff;color:var(--m-purple-dark);border:1.5px solid var(--m-border)!important;}
+
+.m-completed{display:none;text-align:center;padding:24px 12px;}
+.m-completed.active{display:block;}
+.m-completed-icon{font-size:30px;line-height:1;margin-bottom:6px;}
+.m-completed-title{margin:0;color:var(--m-orange);font-family:'Fredoka',sans-serif;font-size:32px;font-weight:700;}
+.m-completed-text{color:var(--m-muted);font-size:14px;font-weight:800;}
+.m-completed-score{color:#666;font-size:14px;font-weight:800;}
+.m-restart-btn{border:none;border-radius:10px;color:#fff;min-width:128px;padding:11px 20px;font-size:14px;font-weight:700;font-family:'Nunito',sans-serif;cursor:pointer;background:var(--m-purple);}
 
 /* ── Ghost tile for touch drag ── */
 #m-ghost{
@@ -538,6 +550,7 @@ body{margin:0!important;padding:0!important;background:var(--m-bg)!important;fon
     .m-page{padding:10px;}
     .m-board{padding:12px;border-radius:22px;gap:10px;}
     .m-score-grid{grid-template-columns:1fr;}
+    .m-restart-btn{width:100%;}
 }
 @media(max-width:420px){
     .m-pair-row{grid-template-columns:1fr;}
@@ -559,8 +572,8 @@ $rightHasImages = (bool) array_reduce($pairs, fn($c,$p) => $c || trim((string)($
 
 <div id="m-ghost"></div>
 
-<div class="m-page">
-    <div class="m-app">
+<div class="m-page" id="m-page">
+    <div class="m-app" id="m-app">
 
         <header class="m-hero">
             <div class="m-kicker">Match Activity</div>
@@ -568,7 +581,7 @@ $rightHasImages = (bool) array_reduce($pairs, fn($c,$p) => $c || trim((string)($
             <p class="m-subtitle">Drag each answer to its matching prompt.</p>
         </header>
 
-        <main class="m-board">
+        <main class="m-board" id="m-board">
 
             <div class="m-progress-row">
                 <div class="m-progress-track">
@@ -609,11 +622,24 @@ $rightHasImages = (bool) array_reduce($pairs, fn($c,$p) => $c || trim((string)($
             <div class="m-actions">
                 <button type="button" class="m-btn m-btn-check"  id="m-check">Check</button>
                 <button type="button" class="m-btn m-btn-answer" id="m-answer">Show Answer</button>
+                <button type="button" class="m-btn m-btn-next" id="m-next">Next</button>
+            </div>
+
+            <div class="m-completed" id="m-completed">
+                <div class="m-completed-icon">✅</div>
+                <h2 class="m-completed-title" id="m-completed-title"></h2>
+                <p class="m-completed-text" id="m-completed-text"></p>
+                <p class="m-completed-score" id="m-completed-score"></p>
+                <button type="button" class="m-restart-btn" id="m-restart">Restart</button>
             </div>
 
         </main>
     </div>
 </div>
+
+<audio id="m-win-sound" src="../../hangman/assets/win.mp3" preload="auto"></audio>
+<audio id="m-lose-sound" src="../../hangman/assets/lose.mp3" preload="auto"></audio>
+<audio id="m-done-sound" src="../../hangman/assets/win (1).mp3" preload="auto"></audio>
 
 <script>
 (function () {
@@ -644,13 +670,31 @@ function shuffle(arr) {
 /* ── DOM refs ── */
 const fillEl   = document.getElementById('m-fill');
 const badgeEl  = document.getElementById('m-badge');
+const pageEl   = document.getElementById('m-page');
+const appEl    = document.getElementById('m-app');
+const boardEl  = document.getElementById('m-board');
 const hintEl   = document.getElementById('m-hint');
+const hintWrapEl = document.querySelector('.m-hint-wrap');
+const progressEl = document.querySelector('.m-progress-row');
 const pairsEl  = document.getElementById('m-pairs');
 const poolEl   = document.getElementById('m-pool');
+const poolWrapEl = poolEl ? poolEl.parentElement : null;
 const scoreGrid= document.getElementById('m-score-grid');
 const sCorrect = document.getElementById('m-s-correct');
 const sWrong   = document.getElementById('m-s-wrong');
 const sPct     = document.getElementById('m-s-pct');
+const checkBtn = document.getElementById('m-check');
+const answerBtn = document.getElementById('m-answer');
+const nextBtn = document.getElementById('m-next');
+const actionsEl = document.querySelector('.m-actions');
+const completedEl = document.getElementById('m-completed');
+const completedTitleEl = document.getElementById('m-completed-title');
+const completedTextEl = document.getElementById('m-completed-text');
+const completedScoreEl = document.getElementById('m-completed-score');
+const restartBtn = document.getElementById('m-restart');
+const winSound = document.getElementById('m-win-sound');
+const loseSound = document.getElementById('m-lose-sound');
+const doneSound = document.getElementById('m-done-sound');
 const ghost    = document.getElementById('m-ghost');
 
 /* ── State ── */
@@ -658,7 +702,13 @@ let slots   = {};   // pairId → placed tileId (or null)
 let wrongs  = 0;
 let checked = new Set(); // pairIds that passed check
 let answered= false;
+let finished = false;
+let revealedByAnswer = false;
 let poolOrder = [];  // shuffled ids for answer pool rendering
+
+function playSound(el) {
+    try { el.pause(); el.currentTime = 0; el.play(); } catch (e) {}
+}
 
 /* ── Build tile HTML ── */
 function tileHTML(p, extraClass) {
@@ -897,8 +947,20 @@ function setHint(text, state) {
     hintEl.className = 'm-hint' + (state ? ' is-' + state : '');
 }
 
+function scoreSummary() {
+    if (revealedByAnswer) {
+        return { correct: 0, wrong: 0, percent: 0 };
+    }
+
+    const attempts = checked.size + wrongs;
+    const pct = attempts > 0 ? Math.round((checked.size / attempts) * 100) : 0;
+    return { correct: checked.size, wrong: wrongs, percent: pct };
+}
+
 /* ── Check ── */
 function checkAnswers() {
+    if (finished) return;
+
     let anyNew = false;
     PAIRS.forEach(p => {
         const pid = String(p.id);
@@ -928,30 +990,43 @@ function checkAnswers() {
 
     if (!anyNew) {
         setHint('Place all answers first', 'wrong');
+        playSound(loseSound);
         return;
     }
 
-    updateScores(checked.size === TOTAL);
+    updateScores(true);
     if (checked.size === TOTAL) {
-        setHint('🎉 All matched!', 'complete');
+        setHint('🎉 All matched! Press Next.', 'complete');
+        playSound(winSound);
         render();
-        persistScore();
+        finished = true;
+        checkBtn.disabled = true;
+        answerBtn.disabled = true;
     } else {
         setHint(checked.size + ' correct, keep going…', 'correct');
+        playSound(loseSound);
         render();
     }
 }
 
 /* ── Show Answer ── */
 function showAnswers() {
+    if (finished) return;
+
     answered = true;
+    revealedByAnswer = true;
+    wrongs = 0;
     PAIRS.forEach(p => {
         slots[String(p.id)] = String(p.id);
         checked.add(String(p.id));
     });
-    setHint('🎉 All answers shown!', 'complete');
+    setHint('Answer revealed — this activity does not affect score.', null);
+    playSound(winSound);
     updateScores(true);
     render();
+    finished = true;
+    checkBtn.disabled = true;
+    answerBtn.disabled = true;
 }
 
 /* ── Reset ── */
@@ -960,8 +1035,21 @@ function resetGame() {
     wrongs  = 0;
     checked = new Set();
     answered= false;
+    finished = false;
+    revealedByAnswer = false;
     poolOrder = shuffle(PAIRS.map(p => String(p.id)));
     PAIRS.forEach(p => { slots[String(p.id)] = null; });
+    if (progressEl) progressEl.style.display = '';
+    if (hintWrapEl) hintWrapEl.style.display = '';
+    if (pairsEl) pairsEl.style.display = '';
+    if (poolWrapEl) poolWrapEl.style.display = '';
+    if (actionsEl) actionsEl.style.display = '';
+    if (pageEl) pageEl.classList.remove('is-completed');
+    if (appEl) appEl.classList.remove('is-completed');
+    if (boardEl) boardEl.classList.remove('is-completed');
+    if (completedEl) completedEl.classList.remove('active');
+    checkBtn.disabled = false;
+    answerBtn.disabled = false;
     setHint('Drag an answer onto its prompt');
     updateScores(false);
     render();
@@ -969,30 +1057,67 @@ function resetGame() {
 
 /* ── Scores ── */
 function updateScores(show) {
-    const attempts = checked.size + wrongs;
-    const pct = attempts > 0 ? Math.round((checked.size / attempts) * 100) : 0;
-    sCorrect.textContent = checked.size;
-    sWrong.textContent   = wrongs;
-    sPct.textContent     = pct + '%';
+    const summary = scoreSummary();
+    sCorrect.textContent = summary.correct;
+    sWrong.textContent   = summary.wrong;
+    sPct.textContent     = summary.percent + '%';
     scoreGrid.classList.toggle('visible', !!show);
 }
 
 /* ── Persist ── */
 async function persistScore() {
-    if (!RETURN_TO || !ACT_ID) return;
-    const attempts = checked.size + wrongs;
-    const pct = attempts > 0 ? Math.round((checked.size / attempts) * 100) : 100;
+    if (!RETURN_TO || !ACT_ID) return true;
+    const summary = scoreSummary();
+    const pct = summary.percent;
     const sep = RETURN_TO.includes('?') ? '&' : '?';
-    const url = RETURN_TO + sep + 'activity_percent=' + pct + '&activity_errors=' + wrongs + '&activity_total=' + TOTAL + '&activity_id=' + encodeURIComponent(ACT_ID) + '&activity_type=match';
+    const url = RETURN_TO + sep + 'activity_percent=' + pct + '&activity_errors=' + summary.wrong + '&activity_total=' + TOTAL + '&activity_id=' + encodeURIComponent(ACT_ID) + '&activity_type=match';
     try {
         const r = await fetch(url, {method:'GET',credentials:'same-origin',cache:'no-store'});
-        if (!r.ok) window.location.href = url;
-    } catch(e) { window.location.href = url; }
+        if (!r.ok) {
+            window.location.href = url;
+            return false;
+        }
+        return true;
+    } catch(e) {
+        window.location.href = url;
+        return false;
+    }
+}
+
+async function showCompleted() {
+    if (!finished) return;
+
+    if (progressEl) progressEl.style.display = 'none';
+    if (hintWrapEl) hintWrapEl.style.display = 'none';
+    if (pairsEl) pairsEl.style.display = 'none';
+    if (poolWrapEl) poolWrapEl.style.display = 'none';
+    if (actionsEl) actionsEl.style.display = 'none';
+    if (pageEl) pageEl.classList.add('is-completed');
+    if (appEl) appEl.classList.add('is-completed');
+    if (boardEl) boardEl.classList.add('is-completed');
+    if (completedEl) completedEl.classList.add('active');
+
+    const summary = scoreSummary();
+    if (completedTitleEl) completedTitleEl.textContent = <?= json_encode($viewerTitle, JSON_UNESCAPED_UNICODE) ?> || 'Match';
+    if (completedTextEl) completedTextEl.textContent = "You've completed this activity. Great job practicing.";
+    if (completedScoreEl) completedScoreEl.textContent = summary.correct + ' correct · ' + summary.wrong + ' wrong · ' + summary.percent + '%';
+
+    playSound(doneSound);
+    await persistScore();
 }
 
 /* ── Wire buttons ── */
-document.getElementById('m-check') .addEventListener('click', checkAnswers);
-document.getElementById('m-answer').addEventListener('click', showAnswers);
+checkBtn.addEventListener('click', checkAnswers);
+answerBtn.addEventListener('click', showAnswers);
+nextBtn.addEventListener('click', function () {
+    if (!finished) {
+        setHint('Check answers or show answer first.', 'wrong');
+        playSound(loseSound);
+        return;
+    }
+    showCompleted();
+});
+restartBtn.addEventListener('click', resetGame);
 
 resetGame();
 })();

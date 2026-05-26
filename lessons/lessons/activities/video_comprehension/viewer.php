@@ -28,6 +28,59 @@ function default_video_comprehension_title(): string
     return 'Video Comprehension';
 }
 
+function normalize_embed_url(string $url): string
+{
+    $url = trim($url);
+    if ($url === '') {
+        return '';
+    }
+
+    if (!preg_match('/^[a-z][a-z0-9+\-.]*:\/\//i', $url) && preg_match('/^(www\.)?[a-z0-9.-]+\.[a-z]{2,}(\/|$)/i', $url)) {
+        $url = 'https://' . ltrim($url, '/');
+    }
+
+    if (!preg_match('/^https?:\/\//i', $url)) {
+        return '';
+    }
+
+    $host = (string) parse_url($url, PHP_URL_HOST);
+    if ($host === '') {
+        return '';
+    }
+
+    $host = strtolower($host);
+    $path = (string) parse_url($url, PHP_URL_PATH);
+    $query = (string) parse_url($url, PHP_URL_QUERY);
+
+    if (strpos($host, 'youtube.com') !== false || strpos($host, 'youtu.be') !== false) {
+        $videoId = '';
+
+        if (strpos($host, 'youtu.be') !== false) {
+            $videoId = trim((string) preg_replace('/\?.*$/', '', trim($path, '/')));
+        } elseif (preg_match('~^/(shorts|embed|live)/([^/?#]+)~i', $path, $m)) {
+            $videoId = trim((string) $m[2]);
+        } elseif ($query !== '') {
+            parse_str($query, $queryParams);
+            if (!empty($queryParams['v'])) {
+                $videoId = trim((string) $queryParams['v']);
+            }
+        }
+
+        if ($videoId !== '') {
+            return 'https://www.youtube.com/embed/' . rawurlencode($videoId);
+        }
+    }
+
+    if (strpos($host, 'vimeo.com') !== false) {
+        $videoId = trim($path, '/');
+        if ($videoId !== '' && ctype_digit($videoId)) {
+            return 'https://player.vimeo.com/video/' . $videoId;
+        }
+    }
+
+    return $url;
+}
+
 function normalize_video_comprehension_payload($rawData): array
 {
     $default = [
@@ -49,7 +102,7 @@ function normalize_video_comprehension_payload($rawData): array
 
     $title = trim((string) ($decoded['title'] ?? ''));
     $mode = trim((string) ($decoded['mode'] ?? 'quiz'));
-    $iframeUrl = trim((string) ($decoded['iframe_url'] ?? ''));
+    $iframeUrl = normalize_embed_url((string) ($decoded['iframe_url'] ?? ''));
     $instructions = trim((string) ($decoded['instructions'] ?? ''));
 
     if ($mode !== 'video_only') {
@@ -140,7 +193,7 @@ if ($iframeUrl === '' && $activityId !== '') {
 ob_start();
 ?>
 
-<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@600;700;800;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Fredoka:wght@500;600;700&family=Nunito:wght@600;700;800;900&display=swap" rel="stylesheet">
 
 <style>
 :root{
@@ -155,7 +208,7 @@ ob_start();
     --vc-ink:#271B5D;
 }
 
-.vc-viewer{max-width:1180px;margin:0 auto}
+.vc-viewer{max-width:1180px;margin:0 auto;background:#F8F7FE}
 .vc-intro{margin-bottom:16px;padding:24px 26px;border-radius:26px;border:1px solid var(--vc-border);background:#ffffff;box-shadow:0 8px 40px rgba(127,119,221,.13)}
 .vc-intro h2{margin:0 0 8px;color:var(--vc-orange);font-family:'Fredoka','Trebuchet MS',sans-serif;font-size:30px;line-height:1.1}
 .vc-intro p{margin:0;color:var(--vc-muted);font-size:15px;line-height:1.55;font-weight:800;font-family:'Nunito','Segoe UI',sans-serif}
@@ -190,14 +243,40 @@ ob_start();
 .vc-feedback.error{background:#fef2f2;border-color:#fca5a5;color:#991b1b}
 .vc-empty{padding:26px;text-align:center;font-weight:800;color:#b91c1c}
 .vc-activity.is-hidden{display:none}
-.completed-screen{display:none;text-align:center;max-width:600px;margin:0 auto;padding:40px 20px}
-.completed-screen.active{display:block}
-.completed-icon{font-size:80px;margin-bottom:20px}
-.completed-title{font-family:'Fredoka','Trebuchet MS',sans-serif;font-size:36px;font-weight:700;color:var(--vc-orange);margin:0 0 16px;line-height:1.2}
-.completed-text{font-size:16px;color:var(--vc-muted);line-height:1.6;margin:0 0 32px;font-weight:800}
-.completed-button{display:inline-block;padding:12px 24px;border:none;border-radius:999px;background:var(--vc-orange);color:#fff;font-weight:900;font-size:16px;cursor:pointer;box-shadow:0 6px 18px rgba(249,115,22,.22);transition:transform .18s ease,filter .18s ease}
-.completed-button:hover{transform:scale(1.05);filter:brightness(1.07)}
+.vc-score-grid{display:none;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:12px}
+.vc-score-grid.visible{display:grid}
+.vc-score-card{background:#FAFAFE;border:1px solid var(--vc-border);border-radius:14px;padding:12px;text-align:center}
+.vc-score-num{font-family:'Fredoka One',sans-serif;font-size:26px;line-height:1;font-weight:400}
+.vc-score-num.c{color:#16a34a}
+.vc-score-num.w{color:#dc2626}
+.vc-score-num.p{color:var(--vc-purple)}
+.vc-score-lbl{margin-top:5px;font-size:10px;font-weight:900;color:var(--vc-muted);text-transform:uppercase;letter-spacing:.08em}
+
+.vc-complete-page{display:none;max-width:940px;margin:0 auto;padding:14px;background:transparent;border-radius:18px;width:100%;min-height:calc(100vh - 220px)}
+.vc-complete-page.active{display:flex;align-items:center;justify-content:center}
+
+.vc-complete-hero{text-align:center;margin-bottom:16px}
+.vc-complete-kicker{display:inline-flex;align-items:center;justify-content:center;padding:6px 14px;border-radius:999px;background:#FFF0E6;color:#F97316;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px}
+.vc-complete-hero h1{margin:0;font-family:'Fredoka One',sans-serif;font-size:clamp(30px,4.8vw,44px);color:#F97316;line-height:1.06;font-weight:400}
+.vc-complete-hero p{margin:8px 0 0;color:#9B94BE;font-size:14px;font-weight:700}
+
+.vc-complete-stage{width:min(860px,100%);margin:0 auto;background:#fff;border:1px solid #EDE9FA;border-radius:24px;box-shadow:0 8px 40px rgba(127,119,221,.13);padding:18px}
+.vc-complete-progress{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:12px;margin-bottom:14px}
+.vc-complete-progress-label{color:#7F77DD;font-size:13px;font-weight:800}
+.vc-complete-progress-track{height:7px;border-radius:99px;background:#EDE9FA;overflow:hidden}
+.vc-complete-progress-fill{height:100%;width:100%;border-radius:99px;background:linear-gradient(90deg,#F97316,#7F77DD)}
+.vc-complete-progress-badge{background:#7F77DD;color:#fff;border-radius:999px;padding:5px 12px;font-size:12px;font-weight:800;white-space:nowrap}
+
+.vc-completed-screen{display:none;text-align:center;padding:24px 12px}
+.vc-completed-screen.active{display:block}
+.vc-completed-title{margin:0;color:var(--vc-orange);font-family:'Fredoka One',sans-serif;font-size:32px;font-weight:400}
+.vc-completed-text{color:var(--vc-muted);font-size:14px;font-weight:700}
+.vc-score-text{color:#666;font-size:14px;font-weight:800}
+.vc-restart-btn{border:none;border-radius:999px;color:#fff;min-width:128px;padding:11px 20px;font-size:14px;font-weight:700;font-family:'Nunito',sans-serif;cursor:pointer;background:var(--vc-purple)}
+.vc-restart-btn:hover{filter:brightness(1.06)}
 @media (max-width:860px){.vc-intro{padding:20px 18px}.vc-intro h2{font-size:26px}.vc-question{font-size:18px}}
+@media(max-width:760px){.vc-score-grid{grid-template-columns:1fr}}
+@media(max-width:480px){.vc-restart-btn{width:100%}}
 
 /* ── Embedded / fullscreen / presentation ── */
 
@@ -208,12 +287,12 @@ body.presentation-mode .activity-wrapper {
     box-sizing: border-box !important;
 }
 
-/* viewer-content: compact padding, white, rounded */
+/* viewer-content: compact padding, lilac background, rounded */
 body.embedded-mode .viewer-content,
 body.fullscreen-embedded .viewer-content,
 body.presentation-mode .viewer-content {
     padding: 6px 8px !important;
-    background: #fff !important;
+    background: #F8F7FE !important;
     border-radius: 14px !important;
     overflow: hidden !important;
 }
@@ -228,7 +307,7 @@ body.presentation-mode .vc-viewer {
     flex-direction: column !important;
     max-width: none !important;
     margin: 0 !important;
-    background: #fff !important;
+    background: #F8F7FE !important;
 }
 
 /* Hide header, intro, and "Watch And Focus" copy */
@@ -394,28 +473,61 @@ body.presentation-mode .vc-video-only .vc-video {
                     </div>
 
                     <div class="vc-controls">
-                        <button type="button" class="vc-btn vc-btn-check" id="vc-check">Check Answer</button>
+                        <button type="button" class="vc-btn vc-btn-check" id="vc-show">Show Answer</button>
                         <button type="button" class="vc-btn vc-btn-next" id="vc-next">Next</button>
-                        <button type="button" class="vc-btn vc-btn-restart" id="vc-restart">Restart</button>
                     </div>
 
-                    <div class="vc-feedback" id="vc-feedback">Select an option to begin.</div>
+                    <div class="vc-feedback" id="vc-feedback"></div>
+                </div>
+
+            </section>
+        </div>
+
+        <div id="vc-complete-page" class="vc-complete-page">
+            <div class="vc-complete-hero">
+                <div class="vc-complete-kicker">Activity</div>
+                <h1 id="vc-complete-hero-title"></h1>
+                <p>Watch the video and answer each question.</p>
+            </div>
+
+            <section class="vc-complete-stage">
+                <div class="vc-complete-progress">
+                    <div class="vc-complete-progress-label" id="vc-complete-progress-label"></div>
+                    <div class="vc-complete-progress-track"><div class="vc-complete-progress-fill" id="vc-complete-progress-fill"></div></div>
+                    <div class="vc-complete-progress-badge" id="vc-complete-progress-badge"></div>
+                </div>
+
+                <div id="vc-score-grid" class="vc-score-grid">
+                    <div class="vc-score-card">
+                        <div class="vc-score-num c" id="vc-score-correct">0</div>
+                        <div class="vc-score-lbl">Correct</div>
+                    </div>
+                    <div class="vc-score-card">
+                        <div class="vc-score-num w" id="vc-score-wrong">0</div>
+                        <div class="vc-score-lbl">Wrong</div>
+                    </div>
+                    <div class="vc-score-card">
+                        <div class="vc-score-num p" id="vc-score-pct">0%</div>
+                        <div class="vc-score-lbl">Score</div>
+                    </div>
+                </div>
+
+                <div id="vc-complete" class="vc-completed-screen">
+                    <div class="vc-completed-icon">✅</div>
+                    <h2 class="vc-completed-title" id="vc-completed-title"></h2>
+                    <p class="vc-completed-text" id="vc-completed-text"></p>
+                    <p class="vc-score-text" id="vc-score-text" style="font-weight:900;font-size:15px;color:#534AB7;"></p>
+                    <button type="button" class="vc-restart-btn" id="vc-completed-restart">Restart</button>
                 </div>
             </section>
         </div>
 
-        <div id="vc-complete" class="completed-screen">
-            <div class="completed-icon">✅</div>
-            <h2 class="completed-title" id="vc-completed-title"></h2>
-            <p class="completed-text" id="vc-completed-text"></p>
-            <p class="completed-text" id="vc-score-text" style="font-weight:800;font-size:20px;color:#534AB7;"></p>
-            <button type="button" class="completed-button" id="vc-completed-restart">Restart</button>
-        </div>
-
+        <script src="../../core/_activity_feedback.js"></script>
         <script>
         (function () {
+            var AF = window.ActivityFeedback;
             const data = <?= json_encode($questions, JSON_UNESCAPED_UNICODE) ?>;
-            if (!Array.isArray(data) || data.length === 0) return;
+            if (!AF || !Array.isArray(data) || data.length === 0) return;
             const activityTitle = <?= json_encode($viewerTitle, JSON_UNESCAPED_UNICODE) ?>;
             const RETURN_TO = <?= json_encode($returnTo, JSON_UNESCAPED_UNICODE) ?>;
             const ACTIVITY_ID = <?= json_encode($activityId, JSON_UNESCAPED_UNICODE) ?>;
@@ -424,39 +536,95 @@ body.presentation-mode .vc-video-only .vc-video {
             const questionEl = document.getElementById('vc-question');
             const optionsEl = document.getElementById('vc-options');
             const feedbackEl = document.getElementById('vc-feedback');
-            const checkBtn = document.getElementById('vc-check');
+            const showBtn = document.getElementById('vc-show');
             const nextBtn = document.getElementById('vc-next');
-            const restartBtn = document.getElementById('vc-restart');
-            const completeEl = document.getElementById('vc-complete');
             const activityEl = document.getElementById('vc-activity');
             const shellEl = document.getElementById('vc-quizShell');
+            const completedPageEl = document.getElementById('vc-complete-page');
+            const completeEl = document.getElementById('vc-complete');
+            const completeHeroTitleEl = document.getElementById('vc-complete-hero-title');
+            const completeProgressLabelEl = document.getElementById('vc-complete-progress-label');
+            const completeProgressFillEl = document.getElementById('vc-complete-progress-fill');
+            const completeProgressBadgeEl = document.getElementById('vc-complete-progress-badge');
             const completedTitleEl = document.getElementById('vc-completed-title');
             const completedTextEl = document.getElementById('vc-completed-text');
             const scoreTextEl = document.getElementById('vc-score-text');
             const completedRestartBtn = document.getElementById('vc-completed-restart');
+            const scoreCorrectEl = document.getElementById('vc-score-correct');
+            const scoreWrongEl = document.getElementById('vc-score-wrong');
+            const scorePctEl = document.getElementById('vc-score-pct');
+            const scoreGridEl = document.getElementById('vc-score-grid');
+
+            const correctSound = new Audio('../../hangman/assets/realcorrect.mp3');
+            const wrongSound = new Audio('../../hangman/assets/lose.mp3');
 
             let index = 0;
             let selectedIndex = -1;
             let checked = false;
-            let results = Array(data.length).fill(null);
+            let answeredCurrent = false;
+            let scoreVisible = false;
+            let scores = data.map(function () { return null; });
 
             if (completedTitleEl) {
                 completedTitleEl.textContent = activityTitle || 'Video Comprehension';
             }
 
+            if (completeHeroTitleEl) {
+                completeHeroTitleEl.textContent = activityTitle || 'Video Comprehension';
+            }
+
             if (completedTextEl) {
-                completedTextEl.textContent = "You've completed " + (activityTitle || 'this activity') + '. Great job practicing.';
+                completedTextEl.textContent = "You've completed " + (activityTitle || 'Video Comprehension') + '. Great job practicing.';
             }
 
             function getCurrent() {
                 return data[index] || { question: '', options: ['', '', ''], correct: 0, explanation: '' };
             }
 
-            function setFeedback(message, kind) {
-                feedbackEl.textContent = message;
-                feedbackEl.classList.remove('success', 'error');
-                if (kind === 'success') feedbackEl.classList.add('success');
-                if (kind === 'error') feedbackEl.classList.add('error');
+            function computeScore() {
+                var correct = 0;
+                var wrong = 0;
+
+                scores.forEach(function (value) {
+                    if (value === 1) {
+                        correct += 1;
+                    } else if (value === 0) {
+                        wrong += 1;
+                    }
+                });
+
+                var total = data.length;
+                var scorable = correct + wrong;
+                var percent = scorable > 0 ? Math.round((correct / scorable) * 100) : 0;
+
+                return {
+                    correct: correct,
+                    wrong: wrong,
+                    total: total,
+                    errors: wrong,
+                    percent: percent
+                };
+            }
+
+            function updateScoreCards(show) {
+                if (typeof show === 'boolean') {
+                    scoreVisible = show;
+                }
+
+                var score = computeScore();
+
+                if (scoreCorrectEl) scoreCorrectEl.textContent = String(score.correct);
+                if (scoreWrongEl) scoreWrongEl.textContent = String(score.wrong);
+                if (scorePctEl) scorePctEl.textContent = score.percent + '%';
+                if (scoreGridEl) scoreGridEl.classList.toggle('visible', !!scoreVisible);
+            }
+
+            function playSound(audio) {
+                try {
+                    audio.pause();
+                    audio.currentTime = 0;
+                    audio.play();
+                } catch (e) {}
             }
 
             function persistScoreSilently(targetUrl) {
@@ -487,27 +655,28 @@ body.presentation-mode .vc-video-only .vc-video {
                 const current = getCurrent();
                 selectedIndex = -1;
                 checked = false;
+                answeredCurrent = false;
 
-                countEl.textContent = `Question ${index + 1} of ${data.length}`;
+                countEl.textContent = 'Question ' + (index + 1) + ' of ' + data.length;
                 questionEl.textContent = current.question || 'Question';
                 optionsEl.innerHTML = '';
+                AF.clearFeedback(feedbackEl);
 
                 (current.options || ['', '', '']).forEach((optionText, optionIndex) => {
                     const btn = document.createElement('button');
                     btn.type = 'button';
                     btn.className = 'vc-option';
-                    btn.textContent = optionText !== '' ? optionText : `Option ${optionIndex + 1}`;
+                    btn.textContent = optionText !== '' ? optionText : ('Option ' + (optionIndex + 1));
                     btn.addEventListener('click', function () {
                         if (checked) return;
                         selectedIndex = optionIndex;
                         Array.from(optionsEl.children).forEach(node => node.classList.remove('active'));
                         btn.classList.add('active');
-                        setFeedback('Answer selected. Press Check Answer.', '');
+                        evaluateCurrent();
                     });
                     optionsEl.appendChild(btn);
                 });
-
-                setFeedback('Select an option to begin.', '');
+                nextBtn.textContent = index + 1 >= data.length ? 'Finish' : 'Next';
             }
 
             function evaluateCurrent() {
@@ -516,56 +685,82 @@ body.presentation-mode .vc-video-only .vc-video {
                 const current = getCurrent();
                 const correctIndex = Number(current.correct || 0);
                 const optionNodes = Array.from(optionsEl.children);
+                const correctAnswerText = (current.options && current.options[correctIndex]) ? current.options[correctIndex] : '';
+                const isCorrect = selectedIndex >= 0 && selectedIndex === correctIndex;
 
                 checked = true;
+                answeredCurrent = true;
+                AF.clearHighlights(optionsEl);
+                AF.highlightOption(optionNodes[correctIndex], 'correct');
 
                 if (selectedIndex < 0) {
-                    optionNodes.forEach(function (node, nodeIndex) {
-                        if (nodeIndex === correctIndex) {
-                            node.classList.add('correct');
-                        }
-                    });
-                    if (results[index] === null) {
-                        results[index] = false;
-                    }
-                    setFeedback('Incorrect. ' + (current.explanation || ''), 'error');
+                    scores[index] = 0;
+                    updateScoreCards(true);
+                    AF.showFeedback(feedbackEl, false, correctAnswerText, false);
                     return;
                 }
 
-                optionNodes.forEach(function (node, nodeIndex) {
-                    node.classList.remove('active');
-                    if (nodeIndex === correctIndex) {
-                        node.classList.add('correct');
-                    } else if (nodeIndex === selectedIndex) {
-                        node.classList.add('wrong');
-                    }
-                });
-
-                if (selectedIndex === correctIndex) {
-                    if (results[index] === null) {
-                        results[index] = true;
-                    }
-                    setFeedback('Correct! ' + (current.explanation || ''), 'success');
-                } else {
-                    if (results[index] === null) {
-                        results[index] = false;
-                    }
-                    setFeedback('Incorrect. ' + (current.explanation || ''), 'error');
+                if (!isCorrect) {
+                    AF.highlightOption(optionNodes[selectedIndex], 'wrong');
                 }
+
+                scores[index] = isCorrect ? 1 : 0;
+                updateScoreCards(true);
+                AF.showFeedback(feedbackEl, isCorrect, correctAnswerText, false);
+                playSound(isCorrect ? correctSound : wrongSound);
+            }
+
+            function showAnswer() {
+                if (checked) return;
+
+                const current = getCurrent();
+                const correctIndex = Number(current.correct || 0);
+                const optionNodes = Array.from(optionsEl.children);
+                const correctAnswerText = (current.options && current.options[correctIndex]) ? current.options[correctIndex] : '';
+
+                checked = true;
+                answeredCurrent = true;
+                AF.clearHighlights(optionsEl);
+                if (optionNodes[correctIndex]) {
+                    AF.highlightOption(optionNodes[correctIndex], 'correct');
+                }
+
+                scores[index] = -1;
+                updateScoreCards(true);
+                AF.showFeedback(feedbackEl, false, correctAnswerText, true);
             }
 
             async function showCompletion() {
-                if (activityEl) activityEl.classList.add('is-hidden');
-                completeEl.classList.add('active');
-                completeEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                if (shellEl) shellEl.style.display = 'none';
+                if (completeEl) {
+                    completeEl.classList.add('active');
+                }
+                if (completedPageEl) {
+                    completedPageEl.classList.add('active');
+                }
+                if (activityEl) {
+                    activityEl.classList.add('is-hidden');
+                }
 
-                const score = results.filter(function (r) { return r === true; }).length;
-                const total = data.length;
-                const pct = total > 0 ? Math.round((score / total) * 100) : 0;
-                const errors = Math.max(0, total - score);
+                const score = computeScore();
+                const pct = score.percent;
+                const errors = score.wrong;
+                const total = score.total;
+
+                if (completeProgressLabelEl) {
+                    completeProgressLabelEl.textContent = total + ' / ' + total;
+                }
+                if (completeProgressBadgeEl) {
+                    completeProgressBadgeEl.textContent = 'Q ' + total + ' of ' + total;
+                }
+                if (completeProgressFillEl) {
+                    completeProgressFillEl.style.width = '100%';
+                }
+
+                updateScoreCards(true);
 
                 if (scoreTextEl) {
-                    scoreTextEl.textContent = 'Score: ' + score + ' / ' + total + ' (' + pct + '%)';
+                    scoreTextEl.textContent = score.correct + ' correct · ' + errors + ' wrong · ' + pct + '%';
                 }
 
                 if (RETURN_TO && ACTIVITY_ID) {
@@ -588,20 +783,32 @@ body.presentation-mode .vc-video-only .vc-video {
                 index = 0;
                 selectedIndex = -1;
                 checked = false;
-                results = Array(data.length).fill(null);
-                shellEl.style.display = 'block';
+                answeredCurrent = false;
+                scoreVisible = false;
+                scores = data.map(function () { return null; });
+
+                if (scoreGridEl) scoreGridEl.classList.remove('visible');
+                if (shellEl) shellEl.style.display = '';
+                if (completeEl) completeEl.classList.remove('active');
+                if (completedPageEl) completedPageEl.classList.remove('active');
                 if (activityEl) activityEl.classList.remove('is-hidden');
-                completeEl.classList.remove('active');
+
                 render();
             }
 
-            checkBtn.addEventListener('click', function () {
-                evaluateCurrent();
-            });
+            if (showBtn) {
+                showBtn.addEventListener('click', function () {
+                    showAnswer();
+                });
+            }
 
             nextBtn.addEventListener('click', async function () {
-                if (!checked) {
-                    evaluateCurrent();
+                if (!answeredCurrent) {
+                    if (feedbackEl) {
+                        feedbackEl.textContent = 'Select an option first.';
+                        feedbackEl.className = 'vc-feedback error';
+                    }
+                    return;
                 }
 
                 if (index + 1 >= data.length) {
@@ -613,12 +820,11 @@ body.presentation-mode .vc-video-only .vc-video {
                 render();
             });
 
-            restartBtn.addEventListener('click', restartQuiz);
-
             if (completedRestartBtn) {
                 completedRestartBtn.addEventListener('click', restartQuiz);
             }
 
+            updateScoreCards(false);
             render();
         })();
         </script>

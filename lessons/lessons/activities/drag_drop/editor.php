@@ -69,6 +69,42 @@ function normalize_words($rawWords): array
     return array_values(array_unique($clean));
 }
 
+function save_drag_drop_image_local(array $file, int $index): ?string
+{
+    if (!isset($file['error'][$index]) || (int) $file['error'][$index] !== UPLOAD_ERR_OK) {
+        return null;
+    }
+
+    $tmpPath = (string) ($file['tmp_name'][$index] ?? '');
+    if ($tmpPath === '' || !is_uploaded_file($tmpPath)) {
+        return null;
+    }
+
+    $mime = @mime_content_type($tmpPath) ?: '';
+    if (strpos($mime, 'image/') !== 0) {
+        return null;
+    }
+
+    $ext = strtolower((string) pathinfo((string) ($file['name'][$index] ?? ''), PATHINFO_EXTENSION));
+    if ($ext === '' || !preg_match('/^[a-z0-9]{2,5}$/', $ext)) {
+        $ext = 'jpg';
+    }
+
+    $uploadDir = __DIR__ . '/../../uploads/activities/drag_drop';
+    if (!is_dir($uploadDir) && !mkdir($uploadDir, 0775, true) && !is_dir($uploadDir)) {
+        return null;
+    }
+
+    $filename = 'dd_' . date('Ymd_His') . '_' . bin2hex(random_bytes(5)) . '.' . $ext;
+    $target = $uploadDir . '/' . $filename;
+
+    if (!move_uploaded_file($tmpPath, $target)) {
+        return null;
+    }
+
+    return '/lessons/lessons/uploads/activities/drag_drop/' . $filename;
+}
+
 function normalize_drag_drop_payload($rawData): array
 {
     $default = [
@@ -334,6 +370,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $imageFiles['tmp_name'][$i] !== ''
         ) {
             $uploadedImage = upload_to_cloudinary($imageFiles['tmp_name'][$i]);
+            if (!$uploadedImage) {
+                $uploadedImage = save_drag_drop_image_local($imageFiles, $i);
+            }
             if ($uploadedImage) {
                 $image = $uploadedImage;
             }

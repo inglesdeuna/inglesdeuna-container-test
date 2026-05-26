@@ -1,294 +1,519 @@
 document.addEventListener('DOMContentLoaded', function () {
-  var AF = window.ActivityFeedback;
   var questions = Array.isArray(window.FILLBLANK_DATA) ? window.FILLBLANK_DATA : [];
 
   var progressLabelEl = document.getElementById('fb-progress-label');
-  var progressFillEl  = document.getElementById('fb-progress-fill');
+  var progressFillEl = document.getElementById('fb-progress-fill');
   var progressBadgeEl = document.getElementById('fb-progress-badge');
-  var sentenceEl      = document.getElementById('fb-sentence');
-  var imageEl         = document.getElementById('fb-image');
-  var wordBankWrapEl  = document.getElementById('fb-wordbank-wrap');
-  var wordBankEl      = document.getElementById('fb-wordbank');
-  var checkBtn        = document.getElementById('fb-check');
-  var showBtn         = document.getElementById('fb-show');
-  var nextBtn         = document.getElementById('fb-next');
-  var feedbackEl      = document.getElementById('fb-feedback');
-  var activityEl      = document.getElementById('fb-activity');
-  var completedEl     = document.getElementById('fb-completed');
-  var winAudio        = new Audio('../../hangman/assets/win.mp3');
+  var sentenceEl = document.getElementById('fb-sentence');
+  var imageWrapEl = document.getElementById('fb-image-wrap');
+  var imageEl = document.getElementById('fb-image');
+  var wordBankWordsEl = document.getElementById('fb-wb-words');
+  var checkBtn = document.getElementById('fb-check');
+  var showBtn = document.getElementById('fb-show');
+  var nextBtn = document.getElementById('fb-next');
+  var feedbackEl = document.getElementById('fb-feedback');
+  var activityEl = document.getElementById('fb-activity');
+  var cardEl = activityEl ? activityEl.querySelector('.fb-card-shell') : null;
+  var completedEl = document.getElementById('fb-completed');
+  var completedTitleEl = document.getElementById('fb-completed-title');
+  var completedTextEl = document.getElementById('fb-completed-text');
+  var scoreTextEl = document.getElementById('fb-score-text');
+  var restartBtn = document.getElementById('fb-restart');
+  var scoreGridEl = document.getElementById('fb-score-grid');
+  var scoreCorrectEl = document.getElementById('fb-s-correct');
+  var scoreWrongEl = document.getElementById('fb-s-wrong');
+  var scorePctEl = document.getElementById('fb-s-pct');
+  var winAudio = new Audio('../../hangman/assets/win.mp3');
 
-  var activityTitle = window.FILLBLANK_TITLE    || 'Fill in the Blank';
-  var returnTo      = window.FILLBLANK_RETURN_TO   || '';
-  var activityId    = window.FILLBLANK_ACTIVITY_ID || '';
+  var activityTitle = window.FILLBLANK_TITLE || 'Fill in the Blank';
+  var returnTo = window.FILLBLANK_RETURN_TO || '';
+  var activityId = window.FILLBLANK_ACTIVITY_ID || '';
+  var mediaType = String(window.FILLBLANK_MEDIA_TYPE || 'none');
+  var mediaUrl = String(window.FILLBLANK_MEDIA_URL || '').trim();
+  var ttsAudioUrl = String(window.FILLBLANK_TTS_AUDIO_URL || '').trim();
+  var ttsText = String(window.FILLBLANK_TTS_TEXT || '').trim();
+  var voiceId = String(window.FILLBLANK_VOICE_ID || 'nzFihrBIvB34imQBuxub');
+  var ttsUrl = String(window.FILLBLANK_TTS_URL || 'tts.php');
+  var listenBtn = document.getElementById('fb-listen-btn');
+  var mediaAudioEl = document.getElementById('fb-audio-player');
+  var streamAudio = null;
+  var streamAudioUrl = '';
 
   if (!questions.length) {
-    if (sentenceEl) sentenceEl.textContent = 'No questions available.';
+    if (sentenceEl) {
+      sentenceEl.textContent = 'No questions available.';
+    }
     return;
   }
 
-  /* Blank marker: 3 or more underscores */
-  var BLANK_RE = /_{3,}/g;
+  var index = 0;
+  var answered = false;
+  var revealed = false;
+  var finished = false;
+  var scoreVisible = false;
+  var scores = questions.map(function () { return null; });
 
-  var index       = 0;
-  var answered    = false;
-  var revealed    = false;
-  var scores      = questions.map(function () { return 0; });
-  var reviewItems = questions.map(function () { return {}; });
-
-  /* userAnswers[questionIdx] = string[] — one entry per blank */
-  var userAnswers = questions.map(function (q) {
-    var count = String(q.text || '').split(BLANK_RE).length - 1;
-    return new Array(Math.max(0, count)).fill('');
+  var selectedAnswers = questions.map(function (q) {
+    var answerCount = Array.isArray(q.answers) ? q.answers.length : 1;
+    return new Array(Math.max(1, answerCount)).fill('');
   });
 
-  /* ── helpers ── */
   function normalize(s) {
-    return String(s || '').trim().toLowerCase().replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, ' ');
+    return String(s || '')
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, '')
+      .replace(/\s+/g, ' ');
+  }
+
+  function resetListenButton() {
+    if (listenBtn) {
+      listenBtn.disabled = false;
+      listenBtn.textContent = 'Listen';
+    }
+  }
+
+  function cleanupStreamAudio() {
+    if (streamAudio) {
+      try { streamAudio.pause(); } catch (e) {}
+      try { streamAudio.currentTime = 0; } catch (e) {}
+      streamAudio = null;
+    }
+    if (streamAudioUrl) {
+      try { URL.revokeObjectURL(streamAudioUrl); } catch (e) {}
+      streamAudioUrl = '';
+    }
+  }
+
+  function playMediaAudio() {
+    if (!mediaAudioEl || !listenBtn) {
+      return;
+    }
+
+    if (!mediaAudioEl.src) {
+      var chosen = mediaType === 'audio' ? mediaUrl : ttsAudioUrl;
+      if (chosen) {
+        mediaAudioEl.src = chosen;
+      }
+    }
+
+    if (!mediaAudioEl.src) {
+      return;
+    }
+
+    if (!mediaAudioEl.paused) {
+      mediaAudioEl.pause();
+      listenBtn.textContent = 'Resume';
+      return;
+    }
+
+    mediaAudioEl.play().then(function () {
+      listenBtn.textContent = 'Pause';
+    }).catch(function () {
+      resetListenButton();
+    });
+  }
+
+  function playStreamTts() {
+    if (!listenBtn || !ttsText) {
+      return;
+    }
+
+    if (streamAudio) {
+      if (!streamAudio.paused) {
+        streamAudio.pause();
+        listenBtn.textContent = 'Resume';
+      } else {
+        streamAudio.play().then(function () {
+          listenBtn.textContent = 'Pause';
+        }).catch(function () {
+          resetListenButton();
+        });
+      }
+      return;
+    }
+
+    listenBtn.disabled = true;
+    listenBtn.textContent = '...';
+
+    var fd = new FormData();
+    fd.append('text', ttsText);
+    fd.append('voice_id', voiceId || 'nzFihrBIvB34imQBuxub');
+    fd.append('response_type', 'stream');
+
+    fetch(ttsUrl, { method: 'POST', body: fd, credentials: 'same-origin' })
+      .then(function (res) {
+        if (!res.ok) throw new Error('TTS error ' + res.status);
+        return res.blob();
+      })
+      .then(function (blob) {
+        streamAudioUrl = URL.createObjectURL(blob);
+        streamAudio = new Audio(streamAudioUrl);
+
+        streamAudio.onended = function () {
+          cleanupStreamAudio();
+          resetListenButton();
+        };
+
+        streamAudio.onpause = function () {
+          if (streamAudio && streamAudio.currentTime < (streamAudio.duration || Infinity)) {
+            listenBtn.textContent = 'Resume';
+          }
+        };
+
+        return streamAudio.play();
+      })
+      .then(function () {
+        listenBtn.disabled = false;
+        listenBtn.textContent = 'Pause';
+      })
+      .catch(function () {
+        cleanupStreamAudio();
+        resetListenButton();
+      });
   }
 
   function escHtml(s) {
     return String(s || '')
-      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
   }
 
-  function segments(text) {
-    return String(text || '').split(BLANK_RE);
+  function splitTextByBlanks(text) {
+    var source = String(text || '');
+    return source.split(/___+/g);
   }
 
-  /* ── render image ── */
-  function renderImage(q) {
-    if (!imageEl) return;
-    var url = q.image || '';
-    if (url) {
-      imageEl.innerHTML = '<img src="' + escHtml(url) + '" alt="" class="fb-image-img">';
-      imageEl.style.display = '';
-    } else {
-      imageEl.innerHTML = '';
-      imageEl.style.display = 'none';
+  function getBlankCount(q) {
+    var parts = splitTextByBlanks(q.text || '');
+    var fromText = Math.max(0, parts.length - 1);
+    var fromAnswers = Array.isArray(q.answers) ? q.answers.length : 0;
+    return Math.max(1, fromText, fromAnswers);
+  }
+
+  function getOptionsForQuestion(q) {
+    if (Array.isArray(q.options) && q.options.length) {
+      return q.options.slice();
+    }
+    return [];
+  }
+
+  function updateProgress() {
+    var total = questions.length;
+    var current = index + 1;
+    var pct = Math.round((current / total) * 100);
+
+    if (progressLabelEl) {
+      progressLabelEl.textContent = current + ' / ' + total;
+    }
+    if (progressBadgeEl) {
+      progressBadgeEl.textContent = 'Q ' + current + ' of ' + total;
+    }
+    if (progressFillEl) {
+      progressFillEl.style.width = pct + '%';
     }
   }
 
-  /* ── render sentence with blanks ── */
-  function renderSentence(q, userAns, isAnswered) {
-    if (!sentenceEl) return;
-    var segs    = segments(q.text || '');
-    var answers = q.answers || [];
-    var hasOptions = (q.options || []).length > 0;
-    var html    = '';
-
-    segs.forEach(function (seg, i) {
-      html += escHtml(seg);
-      if (i >= segs.length - 1) return; /* no blank after last segment */
-
-      var ua      = (userAns || [])[i] || '';
-      var correct = answers[i] || '';
-
-      if (isAnswered) {
-        var ok = normalize(ua) === normalize(correct);
-        if (ok) {
-          html += '<span class="fb-answer-correct">' + escHtml(ua) + '</span>';
-        } else {
-          html += '<span class="fb-answer-wrong">' + escHtml(ua || '—') + '</span>';
-          if (correct) html += '<span class="fb-answer-hint">' + escHtml(correct) + '</span>';
-        }
-      } else if (ua) {
-        /* filled blank — click to clear */
-        html += '<span class="fb-blank-chip" data-blank-idx="' + i + '">'
-              + escHtml(ua)
-              + '<span class="fb-blank-remove"> ✕</span>'
-              + '</span>';
-      } else if (hasOptions) {
-        /* chip-based blank (empty) */
-        html += '<span class="fb-blank" data-blank-idx="' + i + '"></span>';
-      } else {
-        /* text-input blank */
-        html += '<input class="fb-input" type="text" data-blank-idx="' + i + '" '
-              + 'value="" placeholder="..." autocomplete="off" spellcheck="false">';
-      }
-    });
-
-    sentenceEl.innerHTML = html;
-    attachSentenceListeners();
-  }
-
-  function attachSentenceListeners() {
-    if (!sentenceEl) return;
-
-    /* Remove-chip listeners */
-    sentenceEl.querySelectorAll('.fb-blank-chip').forEach(function (chip) {
-      chip.addEventListener('click', function () {
-        if (answered || revealed) return;
-        var idx = parseInt(chip.getAttribute('data-blank-idx') || '0', 10);
-        userAnswers[index][idx] = '';
-        renderSentence(questions[index], userAnswers[index], false);
-        updateWordBank();
-      });
-    });
-
-    /* Text-input listeners */
-    sentenceEl.querySelectorAll('.fb-input').forEach(function (input) {
-      input.addEventListener('input', function () {
-        var idx = parseInt(input.getAttribute('data-blank-idx') || '0', 10);
-        userAnswers[index][idx] = input.value;
-      });
-    });
-  }
-
-  /* ── word bank ── */
-  function renderWordBank(q) {
-    if (!wordBankWrapEl || !wordBankEl) return;
-    var options = q.options || [];
-
-    if (!options.length) {
-      wordBankWrapEl.style.display = 'none';
+  function renderImage(q) {
+    if (!imageWrapEl || !imageEl) {
       return;
     }
 
-    wordBankWrapEl.style.display = '';
-    wordBankEl.innerHTML = '';
+    var imageUrl = String(q.image_url || q.image || '').trim();
+    if (imageUrl === '') {
+      imageWrapEl.style.display = 'none';
+      imageEl.removeAttribute('src');
+      return;
+    }
 
-    var used = userAnswers[index] || [];
+    imageEl.src = imageUrl;
+    imageWrapEl.style.display = 'block';
+  }
 
-    options.forEach(function (opt) {
+  function renderSentence(q, values, isAnswered) {
+    if (!sentenceEl) {
+      return;
+    }
+
+    var parts = splitTextByBlanks(q.text || '');
+    var blankCount = getBlankCount(q);
+    var answers = Array.isArray(q.answers) ? q.answers : [];
+    var html = '';
+
+    for (var i = 0; i < blankCount; i++) {
+      var leftPart = parts[i] !== undefined ? parts[i] : '';
+      html += escHtml(leftPart);
+
+      var value = String(values[i] || '');
+
+      if (!isAnswered) {
+        html += ' <input class="fb-blank" data-blank-input="' + i + '" type="text" autocomplete="off" value="' + escHtml(value) + '" style="border:none;border-bottom:2.5px solid #7F77DD;border-radius:0;background:transparent;outline:none;text-align:center;font:700 16px Nunito,sans-serif;color:#5A51C0;padding:0 4px;min-width:44px;max-width:100%;width:4ch;height:24px;"> ';
+      } else {
+        var correct = String(answers[i] || '');
+        var ok = normalize(value) === normalize(correct);
+
+        if (revealed) {
+          html += ' <span class="fb-blank-filled" style="background:#f0fdf4; color:#15803d; cursor:default;"><span class="fb-blank-text">' + escHtml(correct) + '</span></span> ';
+        } else if (ok) {
+          html += ' <span class="fb-blank-filled" style="background:#f0fdf4; color:#15803d; cursor:default;"><span class="fb-blank-text">' + escHtml(value) + '</span></span> ';
+        } else {
+          html += ' <span class="fb-blank-filled" style="background:#fef2f2; color:#b91c1c; cursor:default;"><span class="fb-blank-text" style="text-decoration:line-through;">' + escHtml(value || '\u2014') + '</span></span> ';
+          html += ' <span style="background:#f0fdf4; color:#15803d; border-radius:8px; padding:2px 8px; font-weight:800; display:inline-flex; align-items:center; vertical-align:bottom; margin:0 6px;">' + escHtml(correct) + '</span> ';
+        }
+      }
+    }
+
+    html += escHtml(parts[blankCount] !== undefined ? parts[blankCount] : '');
+    sentenceEl.innerHTML = html;
+  }
+
+  function renderWordBank(q) {
+    if (!wordBankWordsEl) {
+      return;
+    }
+
+    wordBankWordsEl.innerHTML = '';
+    var wordBankWrap = wordBankWordsEl.closest('.fb-wordbank');
+
+    var options = getOptionsForQuestion(q);
+    if (!options.length) {
+      if (wordBankWrap) {
+        wordBankWrap.style.display = 'none';
+      }
+      return;
+    }
+
+    if (wordBankWrap) {
+      wordBankWrap.style.display = '';
+    }
+
+    options.forEach(function (word) {
       var chip = document.createElement('span');
       chip.className = 'fb-chip';
-      chip.textContent = opt;
-      if (used.indexOf(opt) !== -1) chip.classList.add('used');
+      chip.textContent = word;
 
-      chip.addEventListener('click', function () {
-        if (answered || revealed || chip.classList.contains('used')) return;
-        fillNextBlank(opt);
-      });
-
-      wordBankEl.appendChild(chip);
+      wordBankWordsEl.appendChild(chip);
     });
   }
 
-  function fillNextBlank(word) {
-    var q    = questions[index] || {};
-    var segs = segments(q.text || '');
-    var ans  = userAnswers[index];
+  function attachSentenceListeners() {
+    if (!sentenceEl) {
+      return;
+    }
 
-    for (var i = 0; i < segs.length - 1; i++) {
-      if (!ans[i]) {
-        ans[i] = word;
-        renderSentence(q, ans, false);
-        updateWordBank();
-        return;
-      }
+    var inputEls = sentenceEl.querySelectorAll('input[data-blank-input]');
+    inputEls.forEach(function (input, idx) {
+      resizeBlankInput(input);
+
+      input.addEventListener('input', function () {
+        if (answered || revealed) {
+          return;
+        }
+        selectedAnswers[index][idx] = input.value;
+        resizeBlankInput(input);
+      });
+
+      input.addEventListener('keydown', function (evt) {
+        if (evt.key === 'Enter') {
+          evt.preventDefault();
+          if (!answered && !revealed) {
+            checkAnswer();
+          }
+        }
+      });
+    });
+
+    if (inputEls.length) {
+      inputEls[0].focus();
+      inputEls[0].select();
     }
   }
 
-  function updateWordBank() {
-    if (!wordBankEl) return;
-    var used = userAnswers[index] || [];
-    wordBankEl.querySelectorAll('.fb-chip').forEach(function (chip) {
-      chip.classList.toggle('used', used.indexOf(chip.textContent) !== -1);
+  function resizeBlankInput(input) {
+    var typed = String(input.value || '').trim();
+    var minChars = 4;
+    var maxChars = 20;
+    var targetChars = Math.min(maxChars, Math.max(minChars, typed.length + 1));
+    input.style.width = targetChars + 'ch';
+  }
+
+  function isAllCorrect(q, values) {
+    var answers = Array.isArray(q.answers) ? q.answers : [];
+    var count = Math.max(getBlankCount(q), answers.length);
+
+    for (var i = 0; i < count; i++) {
+      if (normalize(values[i] || '') !== normalize(answers[i] || '')) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  function computeScoreLikeMultipleChoice() {
+    var total = questions.length;
+    var correct = 0;
+    var wrong = 0;
+    var revealedCount = 0;
+
+    scores.forEach(function (value) {
+      if (value === 1) {
+        correct += 1;
+      } else if (value === -1) {
+        revealedCount += 1;
+      } else {
+        wrong += 1;
+      }
     });
+
+    var scorable = correct + wrong;
+    var percent = scorable > 0 ? Math.round((correct / scorable) * 100) : 0;
+
+    return {
+      correct: correct,
+      total: total,
+      wrong: wrong,
+      errors: wrong,
+      revealed: revealedCount,
+      percent: percent
+    };
   }
 
-  /* ── progress ── */
-  function updateProgress() {
-    var total   = questions.length;
-    var current = index + 1;
-    var pct     = Math.round((current / total) * 100);
-    if (progressLabelEl) progressLabelEl.textContent = current + ' / ' + total;
-    if (progressBadgeEl) progressBadgeEl.textContent = 'Q ' + current + ' of ' + total;
-    if (progressFillEl)  progressFillEl.style.width  = pct + '%';
+  function updateScoreCards(show) {
+    if (typeof show === 'boolean') {
+      scoreVisible = show;
+    }
+
+    var result = computeScoreLikeMultipleChoice();
+
+    if (scoreCorrectEl) {
+      scoreCorrectEl.textContent = String(result.correct);
+    }
+    if (scoreWrongEl) {
+      scoreWrongEl.textContent = String(result.wrong);
+    }
+    if (scorePctEl) {
+      scorePctEl.textContent = result.percent + '%';
+    }
+    if (scoreGridEl) {
+      scoreGridEl.classList.toggle('visible', !!scoreVisible);
+    }
   }
 
-  /* ── load question ── */
   function loadQuestion() {
     var q = questions[index] || {};
     answered = false;
     revealed = false;
+    finished = false;
 
-    if (completedEl) completedEl.style.display = 'none';
-    if (activityEl)  activityEl.style.display  = '';
-    if (feedbackEl)  AF.clearFeedback(feedbackEl);
+    if (completedEl) {
+      completedEl.classList.remove('active');
+    }
+    if (activityEl) {
+      activityEl.style.display = '';
+    }
+    if (cardEl) {
+      cardEl.style.display = 'block';
+    }
+    if (feedbackEl) {
+      feedbackEl.textContent = '';
+      feedbackEl.className = 'fb-feedback';
+      feedbackEl.style.display = '';
+    }
 
-    if (checkBtn) checkBtn.disabled = false;
-    if (showBtn)  { showBtn.style.display = ''; showBtn.disabled = false; }
-    if (nextBtn)  {
-      nextBtn.disabled    = true;
-      nextBtn.textContent = index < questions.length - 1 ? 'Next →' : 'Finish';
+    if (checkBtn) {
+      checkBtn.disabled = false;
+    }
+    if (showBtn) {
+      showBtn.style.display = '';
+      showBtn.disabled = false;
+    }
+    if (nextBtn) {
+      nextBtn.disabled = true;
+      nextBtn.textContent = 'Next \u2192';
     }
 
     updateProgress();
     renderImage(q);
-    renderSentence(q, userAnswers[index] || [], false);
+    renderSentence(q, selectedAnswers[index], false);
     renderWordBank(q);
-  }
-
-  /* ── check ── */
-  function syncInputValues() {
-    if (!sentenceEl) return;
-    sentenceEl.querySelectorAll('.fb-input').forEach(function (input) {
-      var idx = parseInt(input.getAttribute('data-blank-idx') || '0', 10);
-      userAnswers[index][idx] = input.value;
-    });
+    attachSentenceListeners();
   }
 
   function checkAnswer() {
-    if (answered) return;
-    syncInputValues();
+    if (answered || finished) {
+      return;
+    }
 
-    var q       = questions[index] || {};
-    var answers = q.answers || [];
-    var userAns = userAnswers[index] || [];
-
-    var allCorrect = answers.length > 0;
-    var anyFilled  = false;
-
-    answers.forEach(function (correct, i) {
-      var ua = userAns[i] || '';
-      if (ua) anyFilled = true;
-      if (normalize(ua) !== normalize(correct)) allCorrect = false;
-    });
-
-    if (!anyFilled) return;
+    var q = questions[index] || {};
+    var user = selectedAnswers[index].slice();
+    var correct = Array.isArray(q.answers) ? q.answers : [];
+    var allCorrect = isAllCorrect(q, user);
 
     answered = true;
     scores[index] = allCorrect ? 1 : 0;
-    reviewItems[index] = {
-      question:      q.text || '',
-      yourAnswer:    userAns.join(' / '),
-      correctAnswer: answers.join(' / '),
-      score:         scores[index],
-    };
 
-    renderSentence(q, userAns, true);
-    if (feedbackEl) AF.showFeedback(feedbackEl, allCorrect, answers.join(', '), false);
-    if (checkBtn)   checkBtn.disabled = true;
-    if (showBtn)    showBtn.style.display = 'none';
-    if (nextBtn)    nextBtn.disabled = false;
+    renderSentence(q, user, true);
+    updateScoreCards(true);
+
+    if (feedbackEl) {
+      if (allCorrect) {
+        feedbackEl.textContent = 'Correct! Great job.';
+        feedbackEl.className = 'fb-feedback good';
+      } else {
+        feedbackEl.textContent = 'Incorrect. Correct option highlighted.';
+        feedbackEl.className = 'fb-feedback bad';
+      }
+    }
+    if (checkBtn) {
+      checkBtn.disabled = true;
+    }
+    if (showBtn) {
+      showBtn.style.display = 'none';
+    }
+    if (nextBtn) {
+      nextBtn.disabled = false;
+    }
   }
 
-  /* ── show answer ── */
   function showAnswer() {
-    if (answered) return;
-    var q       = questions[index] || {};
-    var answers = q.answers || [];
+    if (answered || finished) {
+      return;
+    }
+
+    var q = questions[index] || {};
+    var correct = Array.isArray(q.answers) ? q.answers.slice() : [];
+
     answered = true;
     revealed = true;
     scores[index] = -1;
-    reviewItems[index] = {
-      question:      q.text || '',
-      yourAnswer:    '(revealed)',
-      correctAnswer: answers.join(' / '),
-      score:         -1,
-    };
+    selectedAnswers[index] = correct.slice();
 
-    renderSentence(q, answers, true);
-    if (feedbackEl) AF.showFeedback(feedbackEl, false, null, true);
-    if (checkBtn)   checkBtn.disabled = true;
-    if (showBtn)    showBtn.style.display = 'none';
-    if (nextBtn)    nextBtn.disabled = false;
+    renderSentence(q, correct, true);
+    updateScoreCards(true);
+
+    if (feedbackEl) {
+      feedbackEl.textContent = 'Answer revealed — this question does not affect score.';
+      feedbackEl.className = 'fb-feedback';
+    }
+    if (checkBtn) {
+      checkBtn.disabled = true;
+    }
+    if (showBtn) {
+      showBtn.style.display = 'none';
+    }
+    if (nextBtn) {
+      nextBtn.disabled = false;
+    }
   }
 
-  /* ── next ── */
   function nextQuestion() {
+    if (finished) {
+      return;
+    }
+
     if (index < questions.length - 1) {
       index++;
       loadQuestion();
@@ -297,66 +522,113 @@ document.addEventListener('DOMContentLoaded', function () {
     }
   }
 
-  /* ── completed ── */
   function showCompleted() {
-    if (!completedEl) return;
-    if (activityEl) activityEl.style.display = 'none';
-    completedEl.style.display = '';
+    if (!completedEl) {
+      return;
+    }
 
-    AF.showCompleted({
-      target:        completedEl,
-      scores:        scores,
-      title:         activityTitle,
-      activityType:  'Fill in the Blank',
-      questionCount: questions.length,
-      winAudio:      winAudio,
-      onRetry:       restartActivity,
-      onReview:      function () {
-        AF.showReview({ target: completedEl, items: reviewItems, onRetry: restartActivity });
-      },
-    });
+    finished = true;
 
-    var result = AF.computeScore(scores);
+    if (feedbackEl) {
+      feedbackEl.textContent = '';
+      feedbackEl.className = 'fb-feedback';
+    }
+
+    var result = computeScoreLikeMultipleChoice();
+
+    if (cardEl) {
+      cardEl.style.display = 'none';
+    }
+    if (feedbackEl) {
+      feedbackEl.style.display = 'none';
+    }
+    completedEl.classList.add('active');
+
+    updateScoreCards(true);
+
+    if (completedTitleEl) {
+      completedTitleEl.textContent = activityTitle;
+    }
+    if (completedTextEl) {
+      completedTextEl.textContent = "You've completed " + activityTitle + '. Great job practicing.';
+    }
+    if (scoreTextEl) {
+      scoreTextEl.textContent = result.correct + ' correct · ' + result.wrong + ' wrong · ' + result.percent + '%';
+    }
+
+    try {
+      winAudio.pause();
+      winAudio.currentTime = 0;
+      winAudio.play();
+    } catch (e) {}
+
     if (returnTo && activityId) {
       var sep = returnTo.indexOf('?') !== -1 ? '&' : '?';
-      fetch(returnTo + sep
-        + 'activity_percent=' + result.percent
-        + '&activity_errors=' + result.wrong
-        + '&activity_total='  + result.total
-        + '&activity_id='     + encodeURIComponent(activityId)
-        + '&activity_type=fillblank',
-        { method: 'GET', credentials: 'same-origin', cache: 'no-store' }
-      ).catch(function () {});
+      var reportUrl = returnTo
+        + sep + 'activity_percent=' + result.percent
+        + '&activity_errors=' + result.errors
+        + '&activity_total=' + result.total
+        + '&activity_id=' + encodeURIComponent(activityId)
+        + '&activity_type=fillblank';
+
+      fetch(reportUrl, {
+        method: 'GET',
+        credentials: 'same-origin',
+        cache: 'no-store'
+      }).catch(function () {});
     }
   }
 
   function restartActivity() {
-    index       = 0;
-    scores      = questions.map(function () { return 0; });
-    reviewItems = questions.map(function () { return {}; });
-    userAnswers = questions.map(function (q) {
-      var count = String(q.text || '').split(BLANK_RE).length - 1;
-      return new Array(Math.max(0, count)).fill('');
+    index = 0;
+    answered = false;
+    revealed = false;
+    finished = false;
+    scoreVisible = false;
+    scores = questions.map(function () { return null; });
+    updateScoreCards(false);
+
+    selectedAnswers = questions.map(function (q) {
+      var answerCount = Array.isArray(q.answers) ? q.answers.length : 1;
+      return new Array(Math.max(1, answerCount)).fill('');
     });
+
     loadQuestion();
   }
 
-  /* ── extra CSS injected once ── */
-  if (!document.getElementById('fb-dyn-css')) {
-    var st = document.createElement('style');
-    st.id  = 'fb-dyn-css';
-    st.textContent =
-      '.fb-answer-correct{display:inline-block;padding:2px 8px;border-radius:6px;font-weight:700;background:#f0fdf4;color:#166534;font-size:1em;vertical-align:middle;margin:0 4px}' +
-      '.fb-answer-wrong{display:inline-block;padding:2px 8px;border-radius:6px;font-weight:700;background:#fef2f2;color:#991b1b;text-decoration:line-through;font-size:1em;vertical-align:middle;margin:0 4px}' +
-      '.fb-answer-hint{display:inline-block;background:#EDE9FA;color:#7F77DD;border-radius:6px;padding:2px 8px;font-weight:800;font-size:.9em;vertical-align:middle;margin:0 4px}' +
-      '.fb-input{border:none;border-bottom:2.5px solid #7F77DD;background:transparent;font-family:inherit;font-size:inherit;font-weight:700;color:#534AB7;min-width:80px;width:120px;padding:2px 4px;outline:none;text-align:center;vertical-align:middle;margin:0 6px}' +
-      '.fb-image-img{max-width:100%;max-height:200px;border-radius:14px;object-fit:contain;display:block;margin:0 auto}';
-    document.head.appendChild(st);
+  if (checkBtn) {
+    checkBtn.addEventListener('click', checkAnswer);
+  }
+  if (showBtn) {
+    showBtn.addEventListener('click', showAnswer);
+  }
+  if (nextBtn) {
+    nextBtn.addEventListener('click', nextQuestion);
+  }
+  if (restartBtn) {
+    restartBtn.addEventListener('click', restartActivity);
   }
 
-  if (checkBtn) checkBtn.addEventListener('click', checkAnswer);
-  if (showBtn)  showBtn.addEventListener('click', showAnswer);
-  if (nextBtn)  nextBtn.addEventListener('click', nextQuestion);
+  if (mediaAudioEl) {
+    mediaAudioEl.addEventListener('ended', resetListenButton);
+    mediaAudioEl.addEventListener('pause', function () {
+      if (mediaAudioEl.currentTime < (mediaAudioEl.duration || Infinity) && listenBtn) {
+        listenBtn.textContent = 'Resume';
+      }
+    });
+  }
+
+  if (listenBtn) {
+    listenBtn.addEventListener('click', function () {
+      if ((mediaType === 'audio' && mediaUrl) || ttsAudioUrl) {
+        playMediaAudio();
+        return;
+      }
+      if (mediaType === 'tts' && ttsText) {
+        playStreamTts();
+      }
+    });
+  }
 
   loadQuestion();
 });

@@ -269,7 +269,7 @@ ob_start();
 }
 
 .wp-btn{
-    border:0;border-radius:999px;
+    border:0;border-radius:8px;
     min-width:clamp(100px,14vw,136px);
     padding:13px 20px;color:#fff;
     font-family:'Nunito',sans-serif;

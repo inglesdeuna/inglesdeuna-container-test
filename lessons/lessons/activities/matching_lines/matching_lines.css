@@ -11,6 +11,7 @@
     --mlv-purple-soft:#EEEDFE;
     --mlv-muted:#9B94BE;
     --mlv-border:#F0EEF8;
+  --mlv-bg:#F8F7FE;
 }
 
 html,
@@ -19,7 +20,7 @@ body { width:100%; min-height:100% }
 body {
     margin:0!important;
     padding:0!important;
-    background:#ffffff!important;
+    background:var(--mlv-bg)!important;
     font-family:'Nunito','Segoe UI',sans-serif!important;
 }
 
@@ -30,7 +31,7 @@ body {
     min-height:100vh;
     display:flex!important;
     flex-direction:column!important;
-    background:transparent!important;
+    background:var(--mlv-bg)!important;
 }
 
 .top-row,
@@ -46,7 +47,7 @@ body {
     flex-direction:column!important;
     padding:0!important;
     margin:0!important;
-    background:transparent!important;
+    background:var(--mlv-bg)!important;
     border:none!important;
     box-shadow:none!important;
     border-radius:0!important;
@@ -59,9 +60,27 @@ body {
     display:flex;
     align-items:center;
     justify-content:center;
-    background:#fff;
+    background:var(--mlv-bg);
     box-sizing:border-box;
 }
+
+  body.embedded-mode .mlv-page,
+  body.fullscreen-embedded .mlv-page{
+    min-height:0;
+    align-items:flex-start;
+    justify-content:flex-start;
+    padding:12px;
+  }
+
+  body.embedded-mode .mlv-hero,
+  body.fullscreen-embedded .mlv-hero{
+    margin-bottom:10px;
+  }
+
+  body.embedded-mode .mlv-hero h1,
+  body.fullscreen-embedded .mlv-hero h1{
+    font-size:clamp(24px,6vw,34px);
+  }
 
 .mlv-app{
     width:min(1120px,100%);
@@ -155,12 +174,12 @@ body {
 .mlv-stage{
   --tile-height: 92px;
   position:relative;
-  border:3px solid #0e7490;
+  border:3px solid transparent;
   border-radius:24px;
   background:
-    linear-gradient(180deg, rgba(255,255,255,.09) 0%, rgba(255,255,255,.04) 100%),
-    repeating-linear-gradient(135deg, rgba(255,255,255,.05) 0 14px, rgba(255,255,255,.02) 14px 28px),
-    #06b6c9;
+    linear-gradient(180deg, rgba(255,255,255,.94) 0%, rgba(243,244,246,.9) 100%),
+    repeating-linear-gradient(135deg, rgba(255,255,255,.38) 0 14px, rgba(229,231,235,.32) 14px 28px),
+    #e5e7eb;
   min-height: 420px;
   padding: 16px;
   display:grid;
@@ -228,12 +247,12 @@ body {
 }
 
 .mlv-left .mlv-card{
-  border-color:#f97316;
+  border-color:transparent;
   background:#ffffff;
 }
 
 .mlv-right .mlv-card{
-  border-color:#d1d5db;
+  border-color:transparent;
   background:#ffffff;
 }
 
@@ -400,7 +419,7 @@ body {
     align-items:center;
     justify-content:center;
     border:none;
-    border-radius:999px;
+  border-radius:10px;
     padding:13px clamp(20px,3vw,32px);
     min-width:clamp(104px,16vw,146px);
     font-weight:900;
@@ -439,6 +458,54 @@ body {
     font-weight:800;
     font-family:'Nunito','Segoe UI',sans-serif;
     box-shadow:0 8px 40px rgba(127,119,221,.13);
+}
+
+.mlv-completed-screen{
+  display:none;
+  text-align:center;
+  padding:24px 12px;
+}
+
+.mlv-completed-screen.active{
+  display:block;
+}
+
+.mlv-completed-icon{
+  font-size:80px;
+  margin-bottom:20px;
+}
+
+.mlv-completed-title{
+  margin:0;
+  color:var(--mlv-orange);
+  font-family:'Fredoka',sans-serif;
+  font-size:32px;
+  font-weight:700;
+}
+
+.mlv-completed-text{
+  color:var(--mlv-muted);
+  font-size:14px;
+  font-weight:700;
+}
+
+.mlv-completed-score{
+  color:#534AB7;
+  font-size:15px;
+  font-weight:900;
+}
+
+.mlv-completed-btn{
+  border:none;
+  border-radius:10px;
+  color:#fff;
+  min-width:128px;
+  padding:11px 20px;
+  font-size:14px;
+  font-weight:700;
+  font-family:'Nunito',sans-serif;
+  cursor:pointer;
+  background:#7F77DD;
 }
 
 @keyframes mlvGlow{

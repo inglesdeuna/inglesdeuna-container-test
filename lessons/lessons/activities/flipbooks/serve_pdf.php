@@ -39,6 +39,13 @@ if ($pdfUrl === '') {
     exit('No hay PDF guardado para esta actividad.');
 }
 
+// Handle remote URL storage (Cloudinary/raw) through the proxy.
+if (preg_match('/^https?:\/\//i', $pdfUrl)) {
+    $proxyUrl = '/lessons/lessons/activities/flipbooks/pdf_proxy.php?url=' . rawurlencode($pdfUrl);
+    header('Location: ' . $proxyUrl, true, 302);
+    exit;
+}
+
 // Handle base64 data URI (new storage method)
 if (str_starts_with($pdfUrl, 'data:application/pdf;base64,')) {
     $base64 = substr($pdfUrl, strlen('data:application/pdf;base64,'));
@@ -59,7 +66,8 @@ if (str_starts_with($pdfUrl, 'data:application/pdf;base64,')) {
 
 // Handle legacy local file path (fallback for any previously uploaded files)
 if (str_starts_with($pdfUrl, '/')) {
-    $localPath = __DIR__ . '/../../../../..' . $pdfUrl;
+    // Repo root from this file: flipbooks -> activities -> lessons -> lessons -> repo root
+    $localPath = __DIR__ . '/../../../../' . $pdfUrl;
     $realLocal = realpath($localPath);
 
     // Security: ensure the resolved path is inside the uploads directory

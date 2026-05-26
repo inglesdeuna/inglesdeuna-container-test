@@ -129,10 +129,11 @@ ob_start();
 .ex-viewer{
     max-width:860px;
     margin:0 auto;
-    min-height:calc(100vh - 120px);
+    min-height:0;
     display:flex;
     flex-direction:column;
     justify-content:center;
+    align-items:center;
 }
 .ex-intro{
     margin-bottom:18px;
@@ -156,6 +157,7 @@ ob_start();
     font-size:16px;
 }
 .ex-card{
+    width:min(760px,100%);
     background:linear-gradient(180deg,#fffdf9 0%, #ffffff 100%);
     border:1px solid #cdeee4;
     border-radius:24px;

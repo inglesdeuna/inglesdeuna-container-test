@@ -257,9 +257,9 @@ body {
 
 .os-hero h1 {
     font-family: 'Fredoka', sans-serif;
-    font-size: clamp(30px, 5.5vw, 58px);
+    font-size: clamp(28px, 5vw, 48px);
     font-weight: 700;
-    color: #F97316;
+    color: var(--os-orange);
     margin: 0;
     line-height: 1.03;
 }
@@ -425,10 +425,10 @@ body {
 }
 
 .os-chip-label {
-    font-family: 'Fredoka', sans-serif;
-    font-size: clamp(17px, 2.4vw, 24px);
-    font-weight: 600;
-    color: #534AB7;
+    font-family: 'Nunito', sans-serif;
+    font-size: 15px;
+    font-weight: 700;
+    color: #666;
     text-align: left;
     line-height: 1.18;
     padding: 0;
@@ -458,12 +458,30 @@ body {
 
 .os-chip.correct-pos {
     border-color: #16a34a;
+    background: rgba(22,163,74,.10);
     box-shadow: 0 0 0 2px #16a34a;
 }
 
 .os-chip.wrong-pos {
     border-color: #dc2626;
+    background: rgba(220,38,38,.12);
     box-shadow: 0 0 0 2px #dc2626;
+}
+
+.os-chip.correct-pos .os-chip-label {
+    color: #166534;
+}
+
+.os-chip.wrong-pos .os-chip-label {
+    color: #991b1b;
+}
+
+.os-chip.correct-pos .os-chip-badge {
+    background: #16a34a;
+}
+
+.os-chip.wrong-pos .os-chip-badge {
+    background: #dc2626;
 }
 
 .os-controls {
@@ -483,7 +501,7 @@ body {
     justify-content: center;
     padding: 13px 20px;
     min-width: clamp(112px, 15vw, 150px);
-    border-radius: 999px;
+    border-radius: 10px;
     font-family: 'Nunito', sans-serif;
     font-size: 13px;
     font-weight: 900;
@@ -543,72 +561,89 @@ body {
     color: #dc2626;
 }
 
+.os-score-grid {
+    display: none;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-top: 12px;
+}
+
+.os-score-grid.visible {
+    display: grid;
+}
+
+.os-score-card {
+    background: #FAFAFE;
+    border: 1px solid #EDE9FA;
+    border-radius: 14px;
+    padding: 12px;
+    text-align: center;
+}
+
+.os-score-num {
+    font-family: 'Fredoka', sans-serif;
+    font-size: 24px;
+    line-height: 1;
+    font-weight: 600;
+    color: #7F77DD;
+}
+
+.os-score-lbl {
+    margin-top: 3px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: #bbb;
+}
+
 .os-completed {
     display: none;
-    position: absolute;
-    inset: 0;
-    background: #ffffff;
-    border-radius: 34px;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
     text-align: center;
-    padding: 40px 24px;
-    z-index: 20;
+    padding: 24px 12px;
 }
 
 .os-completed.active {
-    display: flex;
+    display: block;
 }
 
 .os-completed-icon {
-    font-size: 64px;
-    margin-bottom: 12px;
+    font-size: 30px;
+    margin-bottom: 6px;
     line-height: 1;
 }
 
 .os-completed-title {
-    font-family: 'Fredoka', sans-serif;
-    font-size: clamp(30px, 5.5vw, 58px);
-    font-weight: 700;
+    margin: 0;
     color: #F97316;
-    margin: 0 0 8px;
+    font-weight: 700;
+    font-family: 'Fredoka', sans-serif;
+    font-size: 32px;
 }
 
 .os-completed-text {
-    font-family: 'Nunito', sans-serif;
-    font-size: clamp(13px, 1.8vw, 17px);
-    font-weight: 800;
     color: #9B94BE;
-    margin: 0 0 6px;
+    font-size: 14px;
+    font-weight: 800;
 }
 
 .os-score {
-    font-family: 'Fredoka', sans-serif;
-    font-size: clamp(20px, 3vw, 28px);
-    font-weight: 700;
-    color: #534AB7;
-    margin: 0 0 24px;
+    color: #666;
+    font-size: 14px;
+    font-weight: 800;
 }
 
 .os-restart-btn {
     background: #7F77DD;
     color: #ffffff;
     border: none;
-    border-radius: 999px;
-    padding: 13px 24px;
-    min-width: clamp(104px, 16vw, 146px);
+    border-radius: 10px;
+    min-width: 128px;
+    padding: 11px 20px;
     font-family: 'Nunito', sans-serif;
-    font-size: 13px;
-    font-weight: 900;
+    font-size: 14px;
+    font-weight: 700;
     cursor: pointer;
-    transition: filter .15s, transform .15s;
-    box-shadow: 0 6px 18px rgba(127,119,221,.18);
-}
-
-.os-restart-btn:hover {
-    filter: brightness(1.07);
-    transform: scale(1.04);
 }
 
 @media (max-width: 640px) {
@@ -648,7 +683,7 @@ body {
     }
 
     .os-chip-label {
-        font-size: clamp(15px, 4.4vw, 19px);
+        font-size: 15px;
     }
 
     .os-controls {
@@ -661,8 +696,12 @@ body {
         width: 100%;
     }
 
-    .os-completed {
-        border-radius: 26px;
+    .os-score-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .os-restart-btn {
+        width: 100%;
     }
 }
 </style>
@@ -688,7 +727,7 @@ body {
                     $osEmbedUrl   = os_viewer_video_embed_url($osVideoUrl);
                     $osDirectVideo = os_viewer_is_direct_video($osVideoUrl);
                 ?>
-                <div class="os-media-area">
+                <div class="os-media-area" id="os-media-wrap">
                     <?php if ($osEmbedUrl !== ''): ?>
                         <iframe
                             src="<?= htmlspecialchars($osEmbedUrl, ENT_QUOTES, 'UTF-8') ?>"
@@ -704,17 +743,17 @@ body {
                 </div>
 
             <?php elseif (($activity['media_type'] ?? '') === 'audio' && !empty($activity['media_url'])): ?>
-                <div class="os-tts-area">
+                <div class="os-tts-area" id="os-media-wrap">
                     <audio controls src="<?= htmlspecialchars($activity['media_url'], ENT_QUOTES, 'UTF-8') ?>"></audio>
                 </div>
 
             <?php elseif (!empty($activity['tts_audio_url'])): ?>
-                <div class="os-tts-area">
+                <div class="os-tts-area" id="os-media-wrap">
                     <audio id="os-tts-audio" src="<?= htmlspecialchars($activity['tts_audio_url'], ENT_QUOTES, 'UTF-8') ?>" controls preload="none" style="width:100%;height:42px"></audio>
                 </div>
 
             <?php else: ?>
-                <div class="os-tts-area">
+                <div class="os-tts-area" id="os-media-wrap">
                     <div class="os-listen-panel">
                         <button type="button" id="os-tts-btn" class="os-btn os-btn-tts">Listen</button>
                         <span class="os-listen-text">Listen and put the sentences in order.</span>
@@ -722,7 +761,7 @@ body {
                 </div>
             <?php endif; ?>
 
-            <div class="os-zone-label">Drag the sentences to change their order</div>
+            <div class="os-zone-label" id="os-zone-label">Drag the sentences to change their order</div>
 
             <ul class="os-list" id="os-list">
                 <?php foreach ($shuffled as $index => $s): ?>
@@ -735,11 +774,26 @@ body {
                 <?php endforeach; ?>
             </ul>
 
-            <div class="os-controls">
+            <div class="os-controls" id="os-controls">
                 <button type="button" class="os-btn os-btn-check" id="os-check">Check Answers</button>
                 <button type="button" class="os-btn os-btn-show"  id="os-show">Show Answer</button>
                 <button type="button" class="os-btn os-btn-next"  id="os-next">Next</button>
                 <div id="os-feedback"></div>
+            </div>
+
+            <div id="os-score-grid" class="os-score-grid">
+                <div class="os-score-card">
+                    <div class="os-score-num" id="os-score-correct">0</div>
+                    <div class="os-score-lbl">Correct</div>
+                </div>
+                <div class="os-score-card">
+                    <div class="os-score-num" id="os-score-wrong">0</div>
+                    <div class="os-score-lbl">Wrong</div>
+                </div>
+                <div class="os-score-card">
+                    <div class="os-score-num" id="os-score-pct">0%</div>
+                    <div class="os-score-lbl">Score</div>
+                </div>
             </div>
 
             <div class="os-completed" id="os-completed">
@@ -774,7 +828,14 @@ var showBtn     = document.getElementById('os-show');
 var nextBtn     = document.getElementById('os-next');
 var feedbackEl  = document.getElementById('os-feedback');
 var completedEl = document.getElementById('os-completed');
+var controlsEl  = document.getElementById('os-controls');
+var zoneLabelEl = document.getElementById('os-zone-label');
+var mediaWrapEl = document.getElementById('os-media-wrap');
 var scoreEl     = document.getElementById('os-score');
+var scoreGridEl = document.getElementById('os-score-grid');
+var scoreCorrectEl = document.getElementById('os-score-correct');
+var scoreWrongEl = document.getElementById('os-score-wrong');
+var scorePctEl = document.getElementById('os-score-pct');
 var winSound    = document.getElementById('os-win-sound');
 var loseSound   = document.getElementById('os-lose-sound');
 var doneSound   = document.getElementById('os-done-sound');
@@ -782,6 +843,7 @@ var doneSound   = document.getElementById('os-done-sound');
 var attempts     = 0;
 var done         = false;
 var positionScores = Array(OS_TOTAL).fill(null);
+var scoreVisible = false;
 var dragged      = null;
 var touchSel     = null;
 var isTouchDev   = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
@@ -840,6 +902,19 @@ function computeScore() {
         errors: wrong,
         percent: pct
     };
+}
+
+function updateScoreCards(show) {
+    if (typeof show === 'boolean') {
+        scoreVisible = show;
+    }
+
+    var result = computeScore();
+
+    if (scoreCorrectEl) scoreCorrectEl.textContent = String(result.correct);
+    if (scoreWrongEl) scoreWrongEl.textContent = String(result.wrong);
+    if (scorePctEl) scorePctEl.textContent = result.percent + '%';
+    if (scoreGridEl) scoreGridEl.classList.toggle('visible', !!scoreVisible);
 }
 
 function updateBadges() {
@@ -911,9 +986,14 @@ function navigateReturn(pct, errors, total) {
 
 async function showCompleted() {
     done = true;
+    if (mediaWrapEl) mediaWrapEl.style.display = 'none';
+    if (zoneLabelEl) zoneLabelEl.style.display = 'none';
+    if (listEl) listEl.style.display = 'none';
+    if (controlsEl) controlsEl.style.display = 'none';
     completedEl.classList.add('active');
     playSound(doneSound);
 
+    updateScoreCards(true);
     var result = computeScore();
 
     scoreEl.textContent = result.correct + ' correct · ' + result.wrong + ' wrong · ' + result.percent + '%';
@@ -953,6 +1033,8 @@ checkBtn.addEventListener('click', function() {
         feedbackEl.className   = 'bad';
         playSound(loseSound);
     }
+
+    updateScoreCards(true);
 });
 
 showBtn.addEventListener('click', function() {
@@ -965,6 +1047,7 @@ showBtn.addEventListener('click', function() {
     done = true;
     checkBtn.disabled = true;
     showBtn.disabled  = true;
+    updateScoreCards(true);
 });
 
 nextBtn.addEventListener('click', function() {
@@ -1086,10 +1169,15 @@ window.osRestart = function() {
     touchSel     = null;
 
     completedEl.classList.remove('active');
+    if (mediaWrapEl) mediaWrapEl.style.display = '';
+    if (zoneLabelEl) zoneLabelEl.style.display = '';
+    if (listEl) listEl.style.display = '';
+    if (controlsEl) controlsEl.style.display = '';
     checkBtn.disabled      = false;
     showBtn.disabled       = false;
     feedbackEl.textContent = '';
     feedbackEl.className   = '';
+    scoreVisible = false;
 
     var chips = sentenceCards();
 
@@ -1106,6 +1194,7 @@ window.osRestart = function() {
     });
 
     updateBadges();
+    updateScoreCards(false);
 };
 
 (function shuffleListOnLoad() {
@@ -1124,6 +1213,7 @@ window.osRestart = function() {
 })();
 
 updateBadges();
+updateScoreCards(false);
 
 var TTS_TEXT = <?= json_encode(
     !empty($activity['tts_audio_url']) ? ''
