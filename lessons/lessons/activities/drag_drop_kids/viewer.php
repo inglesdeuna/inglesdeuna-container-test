@@ -150,8 +150,8 @@ ob_start();
 .ddk-zone {
     position: absolute;
     border: 2.5px solid #7F77DD;
-    border-radius: 8px;
-    background: rgba(127,119,221,.12);
+    border-radius: 6px;
+    background: rgba(127,119,221,.30);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -168,13 +168,13 @@ ob_start();
     line-height: 1.2;
 }
 .ddk-zone.drag-over {
-    background: rgba(127,119,221,.28);
+    background: rgba(127,119,221,.50);
     border-color: #5b52d1;
     transform: scale(1.06);
 }
 .ddk-zone.filled {
     border-color: #7F77DD;
-    background: rgba(127,119,221,.22);
+    background: rgba(127,119,221,.35);
     color: #4c1d95;
     cursor: default;
 }
@@ -201,7 +201,7 @@ ob_start();
 }
 .ddk-chip {
     padding: 8px 16px;
-    border-radius: 10px;
+    border-radius: 5px;
     color: #4c1d95;
     font-weight: 800;
     font-family: 'Fredoka', 'Trebuchet MS', sans-serif;
@@ -244,7 +244,7 @@ ob_start();
     justify-content: center;
     padding: 9px 18px;
     border: none;
-    border-radius: 8px;
+    border-radius: 6px;
     color: #fff;
     cursor: pointer;
     min-width: 130px;
@@ -286,7 +286,7 @@ ob_start();
     display: inline-block;
     padding: 10px 24px;
     border: none;
-    border-radius: 8px;
+    border-radius: 6px;
     background: #7F77DD;
     color: #fff;
     font-weight: 700;
