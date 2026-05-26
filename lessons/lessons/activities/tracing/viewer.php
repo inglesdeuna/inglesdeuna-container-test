@@ -185,8 +185,21 @@ body{
 .tracing-size-btn.active{border-color:#2563eb}
 .tracing-size-btn .dot{border-radius:50%;background:#1e293b;display:block}
 .tracing-actions{flex-shrink:0;display:flex;justify-content:center;gap:10px;padding-top:6px}
-.tracing-completed{display:none}
-.tracing-completed.active{display:flex;flex:1;min-height:0;align-items:center;justify-content:center}
+.tracing-completed{
+    display:none;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    text-align:center;
+    padding:40px 24px;
+    gap:12px;
+    flex:1;
+    min-height:0;
+}
+.tracing-completed.active{display:flex}
+.tr-done-icon{font-size:56px;line-height:1}
+.tr-done-title{font-family:'Fredoka',sans-serif;font-size:26px;font-weight:700;color:var(--tr-purple-dark);margin:0}
+.tr-done-msg{font-size:13px;font-weight:600;color:#5a7a6a;margin:0}
 .is-hidden{display:none!important}
 
 .tracing-btn{
@@ -207,27 +220,6 @@ body{
 }
 .tracing-btn:hover{filter:brightness(1.04);transform:translateY(-1px)}
 .tracing-btn-next{background:var(--tr-purple);color:#fff;box-shadow:0 6px 18px rgba(127,119,221,.24)}
-
-/* passive-done completed card */
-.passive-done{
-    display:none;
-    width:min(520px,100%);
-    text-align:center;
-    padding:clamp(20px,4vw,40px);
-    border-radius:20px;
-    background:#fff;
-    border:1px solid #E2F7EF;
-    box-shadow:0 8px 32px rgba(8,80,65,.12);
-}
-.passive-done.active{display:block;animation:passivePop .45s cubic-bezier(.2,.9,.2,1)}
-@keyframes passivePop{from{opacity:0;transform:scale(.92)}to{opacity:1;transform:scale(1)}}
-.passive-done-icon{font-size:clamp(48px,8vw,72px);margin-bottom:10px}
-.passive-done-title{margin:0 0 8px;font-family:'Fredoka',sans-serif;font-size:clamp(26px,4.5vw,46px);color:#085041;line-height:1}
-.passive-done-text{margin:0 auto 16px;max-width:420px;color:#7C739B;font-size:clamp(13px,1.5vw,15px);font-weight:800;line-height:1.5}
-.passive-done-track{height:12px;max-width:360px;margin:0 auto 14px;border-radius:999px;background:#E2F7EF;overflow:hidden}
-.passive-done-fill{height:100%;width:0%;border-radius:999px;background:linear-gradient(90deg,#1D9E75,#7F77DD,#EC4899);transition:width .8s cubic-bezier(.2,.9,.2,1)}
-.passive-done-btn{display:inline-flex;align-items:center;gap:8px;padding:11px 26px;border-radius:10px;border:0;background:#1D9E75;color:#fff;font-family:'Nunito',sans-serif;font-size:14px;font-weight:900;cursor:pointer;box-shadow:0 4px 14px rgba(29,158,117,.28);transition:.18s}
-.passive-done-btn:hover{transform:translateY(-2px)}
 </style>
 
 <div class="tr-page">
@@ -291,7 +283,12 @@ body{
                     <button type="button" class="tracing-btn tracing-btn-next" id="nextBtn">Next</button>
                 </div>
 
-                <div class="tracing-completed" id="tracingCompleted"></div>
+                <div class="tracing-completed" id="tracingCompleted">
+                    <div class="tr-done-icon">&#x2705;</div>
+                    <h2 class="tr-done-title">All done!</h2>
+                    <p class="tr-done-msg">You traced all the pages. Great job practicing!</p>
+                    <button type="button" class="tracing-btn tracing-btn-next" id="tracingRestartBtn">&#8635; Play Again</button>
+                </div>
 
             </div>
         </div>
@@ -444,37 +441,6 @@ body{
         actionsEl.classList.add('is-hidden');
         completedEl.classList.add('active');
 
-        completedEl.innerHTML =
-            '<div class="passive-done" id="passive-done-card">' +
-            '  <div class="passive-done-icon">🎉</div>' +
-            '  <h2 class="passive-done-title">All Done!</h2>' +
-            '  <p class="passive-done-text">You traced all ' + images.length + ' pages. Great job practicing!</p>' +
-            '  <div class="passive-done-track"><div class="passive-done-fill" id="passive-fill"></div></div>' +
-            '  <div><button class="passive-done-btn" id="passive-restart-btn">↻ Play Again</button></div>' +
-            '</div>';
-
-        var card       = document.getElementById('passive-done-card');
-        var fill       = document.getElementById('passive-fill');
-        var restartBtn = document.getElementById('passive-restart-btn');
-
-        requestAnimationFrame(function () {
-            card.classList.add('active');
-            setTimeout(function () { if (fill) fill.style.width = '100%'; }, 80);
-        });
-
-        if (restartBtn) {
-            restartBtn.addEventListener('click', function () {
-                completedEl.classList.remove('active');
-                completedEl.innerHTML = '';
-                counterEl.classList.remove('is-hidden');
-                wrapEl.classList.remove('is-hidden');
-                toolbarEl.classList.remove('is-hidden');
-                actionsEl.classList.remove('is-hidden');
-                currentIdx = 0;
-                renderPage();
-            });
-        }
-
         // Report completion score
         if (RETURN_TO && ACTIVITY_ID) {
             var sep = RETURN_TO.indexOf('?') !== -1 ? '&' : '?';
@@ -487,6 +453,16 @@ body{
             ).catch(function () {});
         }
     }
+
+    document.getElementById('tracingRestartBtn').addEventListener('click', function () {
+        completedEl.classList.remove('active');
+        counterEl.classList.remove('is-hidden');
+        wrapEl.classList.remove('is-hidden');
+        toolbarEl.classList.remove('is-hidden');
+        actionsEl.classList.remove('is-hidden');
+        currentIdx = 0;
+        renderPage();
+    });
 
     renderPage();
 })();
