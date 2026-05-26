@@ -292,10 +292,9 @@ body {
 .bottom-row {
     flex-shrink: 0;
     display: flex;
+    flex-direction: column;
     align-items: center;
-    justify-content: space-between;
-    gap: 10px;
-    flex-wrap: wrap;
+    gap: 6px;
     padding-top: 4px;
 }
 
@@ -306,13 +305,13 @@ body {
     color: var(--col-muted);
 }
 
-.btns { display: flex; gap: 10px; flex-wrap: wrap; }
+.btns { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
 
 .btn-purple,
 .btn-orange {
     border: none;
-    border-radius: 999px;
-    padding: 13px clamp(20px, 3vw, 32px);
+    border-radius: 10px;
+    padding: 11px clamp(20px, 3vw, 32px);
     font-family: 'Nunito', sans-serif;
     font-weight: 900;
     font-size: clamp(13px, 1.8vw, 15px);
@@ -413,11 +412,11 @@ body {
                 </div>
 
                 <div class="bottom-row">
-                    <span class="page-info" id="progressText">Page 1 of 1</span>
                     <div class="btns">
                         <button class="btn-orange" id="btn-reset" type="button">Clear</button>
                         <button class="btn-purple" id="btn-finish" type="button">Next</button>
                     </div>
+                    <span class="page-info" id="progressText">Page 1 of 1</span>
                 </div>
 
                 <div class="coloring-completed" id="coloringCompleted"></div>
