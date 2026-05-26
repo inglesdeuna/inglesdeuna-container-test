@@ -101,6 +101,9 @@ if (empty($pairs) || $bgImage === '') {
 ob_start();
 ?>
 <style>
+/* White background to match other activities */
+body { background: #fff !important; }
+
 /* ── Title header: compact, centred with stage ─ */
 .act-header {
     max-width: 900px !important;
@@ -108,6 +111,8 @@ ob_start();
     margin-right: auto !important;
     margin-bottom: 10px !important;
     padding: 12px 18px !important;
+    background: linear-gradient(135deg, #f0ebff 0%, #ede9fe 100%) !important;
+    border-color: #d9cff6 !important;
 }
 .act-header h2 { font-size: clamp(18px, 2.6vw, 26px) !important; margin: 0 0 4px !important; }
 .act-header p  { font-size: 13px !important; }
