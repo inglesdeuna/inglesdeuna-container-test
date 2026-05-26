@@ -114,8 +114,8 @@ body { background: #fff !important; }
     background: linear-gradient(135deg, #f0ebff 0%, #ede9fe 100%) !important;
     border-color: #d9cff6 !important;
 }
-.act-header h2 { font-size: clamp(18px, 2.6vw, 26px) !important; margin: 0 0 4px !important; }
-.act-header p  { font-size: 13px !important; }
+.act-header h2 { font-size: clamp(18px, 2.6vw, 26px) !important; margin: 0 0 4px !important; color: #F97316 !important; text-align: center !important; }
+.act-header p  { font-size: 13px !important; color: #C2580A !important; text-align: center !important; }
 
 /* ── drag drop kids (ddk) ───────────────────────── */
 .ddk-stage {
