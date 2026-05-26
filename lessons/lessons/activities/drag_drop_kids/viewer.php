@@ -104,18 +104,20 @@ ob_start();
 /* White background to match other activities */
 body { background: #fff !important; }
 
-/* ── Title header: compact, centred with stage ─ */
+/* ── Title header: no box, matches Tracing/other activity style ─ */
 .act-header {
     max-width: 900px !important;
     margin-left: auto !important;
     margin-right: auto !important;
     margin-bottom: 10px !important;
-    padding: 12px 18px !important;
-    background: linear-gradient(135deg, #f0ebff 0%, #ede9fe 100%) !important;
-    border-color: #d9cff6 !important;
+    padding: 8px 18px !important;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    text-align: center !important;
 }
-.act-header h2 { font-size: clamp(18px, 2.6vw, 26px) !important; margin: 0 0 4px !important; color: #F97316 !important; text-align: center !important; }
-.act-header p  { font-size: 13px !important; color: #C2580A !important; text-align: center !important; }
+.act-header h2 { font-size: clamp(18px, 2.8vw, 34px) !important; margin: 0 0 4px !important; color: #F97316 !important; text-align: center !important; }
+.act-header p  { font-size: clamp(11px, 1.1vw, 13px) !important; color: #9B94BE !important; text-align: center !important; }
 
 /* ── drag drop kids (ddk) ───────────────────────── */
 .ddk-stage {
