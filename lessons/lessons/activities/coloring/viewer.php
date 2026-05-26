@@ -702,9 +702,9 @@ body {
         img.crossOrigin = 'anonymous';
         img.onload = function () {
             var ratio = img.width / img.height;
-            var maxW = canvas.parentElement.clientWidth - 20;
-            var maxH = canvas.parentElement.clientHeight - 20;
-            var w = Math.min(600, maxW);
+            var maxW = canvas.parentElement.clientWidth - 16;
+            var maxH = canvas.parentElement.clientHeight - 16;
+            var w = maxW;
             var h = w / ratio;
             if (h > maxH) {
                 h = maxH;
