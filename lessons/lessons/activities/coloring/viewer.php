@@ -709,11 +709,55 @@ body {
         }
     });
 
-    window.addEventListener('resize', function () {
-        if (!uploadedImages.length || currentIndex >= uploadedImages.length) return;
+    // Redraw at new container size reusing the already-loaded origImg (no re-fetch).
+    var resizeTimer = null;
+    function redrawAtCurrentSize() {
+        if (!origImg || !uploadedImages.length || currentIndex >= uploadedImages.length) return;
+        var ratio = origImg.width / origImg.height;
+        var maxW  = canvas.parentElement.clientWidth  - 16;
+        var maxH  = canvas.parentElement.clientHeight - 16;
+        if (maxW <= 0 || maxH <= 0) return;
+        var cw = maxW, ch = maxW / ratio;
+        if (ch > maxH) { ch = maxH; cw = ch * ratio; }
+        cw = Math.round(cw); ch = Math.round(ch);
+        if (cw === canvas.width && ch === canvas.height) return; // nothing changed
+
         saveCurrentSnapshot();
-        loadImageAt(currentIndex);
-    });
+        canvas.width      = cw; canvas.height      = ch;
+        colorCanvas.width = cw; colorCanvas.height = ch;
+
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.drawImage(origImg, 0, 0, cw, ch);
+        try { origData = ctx.getImageData(0, 0, cw, ch).data; } catch(e) { origData = null; }
+
+        var snap = paintedSnapshots[currentIndex];
+        if (snap) {
+            var si = new Image();
+            si.onload = function () {
+                colorCtx.clearRect(0, 0, cw, ch);
+                colorCtx.drawImage(si, 0, 0, cw, ch);
+                render();
+            };
+            si.src = snap;
+        } else {
+            colorCtx.fillStyle = '#ffffff';
+            colorCtx.fillRect(0, 0, cw, ch);
+            render();
+        }
+    }
+
+    function scheduleResize() {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(redrawAtCurrentSize, 150);
+    }
+
+    // ResizeObserver fires whenever the canvas container changes size —
+    // handles browser fullscreen, iframe expansion, and any CSS-driven resize.
+    if (window.ResizeObserver) {
+        new ResizeObserver(scheduleResize).observe(canvas.parentElement);
+    }
+    // window.resize as fallback for older browsers
+    window.addEventListener('resize', scheduleResize);
 
     function showCompleted() {
         stage.classList.add('is-completed');
