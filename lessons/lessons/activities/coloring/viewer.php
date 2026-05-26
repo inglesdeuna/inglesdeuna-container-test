@@ -41,7 +41,8 @@ ob_start();
 html,
 body {
     width: 100%;
-    min-height: 100%;
+    height: 100%;
+    overflow: hidden;
 }
 
 body {
@@ -52,13 +53,14 @@ body {
 }
 
 .activity-wrapper {
+    height: 100vh !important;
     max-width: 100% !important;
     margin: 0 !important;
     padding: 0 !important;
-    min-height: 0;
     display: flex !important;
     flex-direction: column !important;
     background: transparent !important;
+    overflow: hidden !important;
 }
 
 .top-row,
@@ -80,84 +82,89 @@ body {
     border: none !important;
     box-shadow: none !important;
     border-radius: 0 !important;
+    overflow: hidden !important;
 }
 
 .col-page {
     width: 100%;
     flex: 1;
     min-height: 0;
-    overflow-y: auto;
-    padding: clamp(14px, 2.5vw, 34px);
+    overflow: hidden;
+    padding: clamp(8px, 1.2vw, 16px) clamp(10px, 1.5vw, 20px);
     display: flex;
-    align-items: flex-start;
-    justify-content: center;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
     background: #fff;
+    box-sizing: border-box;
 }
 
 .col-app {
     width: min(1120px, 100%);
     margin: 0 auto;
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
 }
 
 .col-hero {
+    flex-shrink: 0;
     text-align: center;
-    margin-bottom: clamp(14px, 2vw, 22px);
+    padding-bottom: clamp(5px, 0.8vh, 10px);
 }
 
-.col-kicker {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    padding: 7px 14px;
-    border-radius: 999px;
-    background: var(--col-orange-soft);
-    border: 1px solid #FCDDBF;
-    color: var(--col-orange-dark);
-    font-size: 12px;
-    font-weight: 900;
-    letter-spacing: .08em;
-    text-transform: uppercase;
-    margin-bottom: 10px;
-}
+.col-kicker { display: none; }
 
 .col-hero h1 {
     font-family: 'Fredoka', sans-serif;
-    font-size: clamp(30px, 5.5vw, 58px);
+    font-size: clamp(18px, 2.8vw, 34px);
     font-weight: 700;
     color: var(--col-orange);
     margin: 0;
-    line-height: 1.03;
+    line-height: 1.1;
 }
 
 .col-hero p {
-    font-size: clamp(13px, 1.8vw, 17px);
-    font-weight: 800;
+    font-size: clamp(11px, 1.1vw, 13px);
+    font-weight: 700;
     color: var(--col-muted);
-    margin: 8px 0 0;
+    margin: 3px 0 0;
 }
 
 .col-stage-shell {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
     background: #fff;
     border: 1px solid var(--col-border);
-    border-radius: 34px;
-    padding: clamp(16px, 2.6vw, 26px);
+    border-radius: 20px;
+    padding: clamp(10px, 1.4vw, 18px);
     box-shadow: 0 8px 40px rgba(127, 119, 221, .13);
+    box-sizing: border-box;
 }
 
 .board {
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
     width: min(100%, 980px);
     margin: 0 auto;
     border: 1px solid #EDE9FA;
-    border-radius: 28px;
+    border-radius: 20px;
     background: #fff;
     box-shadow: 0 12px 36px rgba(127, 119, 221, .13);
-    padding: clamp(14px, 2vw, 20px);
+    padding: clamp(10px, 1.4vw, 16px);
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 8px;
+    box-sizing: border-box;
 }
 
 .prog-row {
+    flex-shrink: 0;
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -193,10 +200,11 @@ body {
 }
 
 .picker-section {
+    flex-shrink: 0;
     background: #F5F3FF;
     border: 1px solid #EDE9FA;
-    border-radius: 18px;
-    padding: 14px 16px;
+    border-radius: 14px;
+    padding: 8px 12px;
 }
 
 .picker-label {
@@ -207,7 +215,7 @@ body {
     letter-spacing: .08em;
     text-transform: uppercase;
     text-align: center;
-    margin-bottom: 12px;
+    margin-bottom: 8px;
 }
 
 .colors-grid {
@@ -232,6 +240,7 @@ body {
 .swatch.active { border-color: #271B5D; box-shadow: 0 0 0 3px #fff inset, 0 4px 12px rgba(0, 0, 0, .2); }
 
 .sel-bar {
+    flex-shrink: 0;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -257,17 +266,17 @@ body {
 }
 
 .canvas-wrap {
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
     border: 1px solid #EDE9FA;
     border-radius: 20px;
     background: #fff;
-    overflow: auto;
-    min-height: clamp(360px, 52vw, 520px);
-    max-height: clamp(380px, 56vw, 560px);
     display: flex;
     justify-content: center;
     align-items: center;
     touch-action: manipulation;
-    padding: 10px;
+    padding: 8px;
 }
 
 #coloringCanvas {
@@ -281,12 +290,13 @@ body {
 }
 
 .bottom-row {
+    flex-shrink: 0;
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 10px;
     flex-wrap: wrap;
-    padding-top: 6px;
+    padding-top: 4px;
 }
 
 .page-info {
@@ -368,11 +378,8 @@ body {
 .passive-done-btn:hover { transform: translateY(-2px); }
 
 @media (max-width: 900px) {
-    .col-page { padding: 12px; }
-    .col-stage-shell { border-radius: 26px; padding: 14px; }
-    .board { border-radius: 22px; padding: 12px; }
-    .colors-grid { grid-template-columns: repeat(4, minmax(36px, 1fr)); }
-    .canvas-wrap { min-height: 300px; }
+    .colors-grid { grid-template-columns: repeat(4, minmax(32px, 1fr)); }
+    .swatch { width: 34px; height: 34px; }
 }
 </style>
 
