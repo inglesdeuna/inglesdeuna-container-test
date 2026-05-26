@@ -264,7 +264,7 @@ body{
 
                     <div class="tracing-color-group">
                         <?php
-                        $colors = ['#2563eb','#ef4444','#f59e0b','#22c55e','#a855f7','#ec4899'];
+                        $colors = ['#2563eb','#ef4444','#f59e0b','#22c55e','#a855f7','#ec4899','#92400e','#111827','#67e8f9','#fbcfe8','#fdba74','#86efac','#c4b5fd','#d1d5db'];
                         foreach ($colors as $i => $color):
                         ?>
                             <button
