@@ -566,10 +566,27 @@ body {
         var nr = hex2rgb(newColor);
         var nR = nr[0], nG = nr[1], nB = nr[2];
 
-        // Don't start a fill on a dark outline pixel
+        // Don't start a fill on a dark outline pixel.
+        // If the exact click lands on an outline, search a small radius for the
+        // nearest light pixel — handles clicks that fall on the edge of tiny regions.
         var oi  = (y * w + x) * 4;
         var lum = 0.299 * origData[oi] + 0.587 * origData[oi+1] + 0.114 * origData[oi+2];
-        if (lum < 100) return;
+        if (lum < 100) {
+            var found = false;
+            outer: for (var r = 1; r <= 4; r++) {
+                for (var dy = -r; dy <= r; dy++) {
+                    for (var dx = -r; dx <= r; dx++) {
+                        if (Math.abs(dx) !== r && Math.abs(dy) !== r) continue; // perimeter only
+                        var nx = x + dx, ny = y + dy;
+                        if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+                        var ni = (ny * w + nx) * 4;
+                        var nl = 0.299 * origData[ni] + 0.587 * origData[ni+1] + 0.114 * origData[ni+2];
+                        if (nl >= 100) { x = nx; y = ny; found = true; break outer; }
+                    }
+                }
+            }
+            if (!found) return;
+        }
 
         // Get current color-layer state
         var imgd = colorCtx.getImageData(0, 0, w, h);
