@@ -98,6 +98,7 @@ $instruction = $activity['instructions'];
 foreach ($blocks as $block) {
     $text    = isset($block['text']) ? $block['text'] : '';
     $answers = isset($block['answers']) && is_array($block['answers']) ? $block['answers'] : [];
+    $image   = isset($block['image']) ? trim((string)$block['image']) : '';
 
     if (empty($answers)) continue;
 
@@ -106,6 +107,7 @@ foreach ($blocks as $block) {
         'text'        => $text,
         'answers'     => array_map('trim', $answers),
         'options'     => $activity['options'] ?? [],
+        'image'       => $image,
     ];
 }
 
@@ -500,15 +502,12 @@ body { margin: 0 !important; padding: 0 !important; background: #fff !important;
                     <div class="fb-badge" id="fb-progress-badge">Q 1 of <?php echo count($jsQuestions); ?></div>
                 </div>
 
+                <div id="fb-image" style="display:none;margin-bottom:14px;"></div>
+
                 <div id="fb-sentence"></div>
-                
-                <div class="fb-wordbank">
-                    <p class="fb-wb-label">Word bank</p>
-                    <div class="fb-wb-words" id="fb-wb-words"></div>
-                </div>
 
                 <!-- Word bank — shown by JS when question has options -->
-                <div id="fb-wordbank-wrap">
+                <div id="fb-wordbank-wrap" style="display:none;">
                     <span class="fb-wordbank-label">Word Bank</span>
                     <div id="fb-wordbank"></div>
                 </div>

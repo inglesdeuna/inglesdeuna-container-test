@@ -6,7 +6,9 @@ document.addEventListener('DOMContentLoaded', function () {
   var progressFillEl  = document.getElementById('fb-progress-fill');
   var progressBadgeEl = document.getElementById('fb-progress-badge');
   var sentenceEl      = document.getElementById('fb-sentence');
-  var wordBankWordsEl = document.getElementById('fb-wb-words');
+  var imageEl         = document.getElementById('fb-image');
+  var wordBankWrapEl  = document.getElementById('fb-wordbank-wrap');
+  var wordBankEl      = document.getElementById('fb-wordbank');
   var checkBtn        = document.getElementById('fb-check');
   var showBtn         = document.getElementById('fb-show');
   var nextBtn         = document.getElementById('fb-next');
@@ -15,8 +17,8 @@ document.addEventListener('DOMContentLoaded', function () {
   var completedEl     = document.getElementById('fb-completed');
   var winAudio        = new Audio('../../hangman/assets/win.mp3');
 
-  var activityTitle = window.FILLBLANK_TITLE || 'Fill in the Blank';
-  var returnTo      = window.FILLBLANK_RETURN_TO || '';
+  var activityTitle = window.FILLBLANK_TITLE    || 'Fill in the Blank';
+  var returnTo      = window.FILLBLANK_RETURN_TO   || '';
   var activityId    = window.FILLBLANK_ACTIVITY_ID || '';
 
   if (!questions.length) {
@@ -24,18 +26,169 @@ document.addEventListener('DOMContentLoaded', function () {
     return;
   }
 
+  /* Blank marker: 3 or more underscores */
+  var BLANK_RE = /_{3,}/g;
+
   var index       = 0;
   var answered    = false;
   var revealed    = false;
   var scores      = questions.map(function () { return 0; });
   var reviewItems = questions.map(function () { return {}; });
-  var userAnswers = questions.map(function () { return ''; });
-  var usedChips   = questions.map(function () { return {}; });
 
+  /* userAnswers[questionIdx] = string[] — one entry per blank */
+  var userAnswers = questions.map(function (q) {
+    var count = String(q.text || '').split(BLANK_RE).length - 1;
+    return new Array(Math.max(0, count)).fill('');
+  });
+
+  /* ── helpers ── */
   function normalize(s) {
     return String(s || '').trim().toLowerCase().replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, ' ');
   }
 
+  function escHtml(s) {
+    return String(s || '')
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+
+  function segments(text) {
+    return String(text || '').split(BLANK_RE);
+  }
+
+  /* ── render image ── */
+  function renderImage(q) {
+    if (!imageEl) return;
+    var url = q.image || '';
+    if (url) {
+      imageEl.innerHTML = '<img src="' + escHtml(url) + '" alt="" class="fb-image-img">';
+      imageEl.style.display = '';
+    } else {
+      imageEl.innerHTML = '';
+      imageEl.style.display = 'none';
+    }
+  }
+
+  /* ── render sentence with blanks ── */
+  function renderSentence(q, userAns, isAnswered) {
+    if (!sentenceEl) return;
+    var segs    = segments(q.text || '');
+    var answers = q.answers || [];
+    var hasOptions = (q.options || []).length > 0;
+    var html    = '';
+
+    segs.forEach(function (seg, i) {
+      html += escHtml(seg);
+      if (i >= segs.length - 1) return; /* no blank after last segment */
+
+      var ua      = (userAns || [])[i] || '';
+      var correct = answers[i] || '';
+
+      if (isAnswered) {
+        var ok = normalize(ua) === normalize(correct);
+        if (ok) {
+          html += '<span class="fb-answer-correct">' + escHtml(ua) + '</span>';
+        } else {
+          html += '<span class="fb-answer-wrong">' + escHtml(ua || '—') + '</span>';
+          if (correct) html += '<span class="fb-answer-hint">' + escHtml(correct) + '</span>';
+        }
+      } else if (ua) {
+        /* filled blank — click to clear */
+        html += '<span class="fb-blank-chip" data-blank-idx="' + i + '">'
+              + escHtml(ua)
+              + '<span class="fb-blank-remove"> ✕</span>'
+              + '</span>';
+      } else if (hasOptions) {
+        /* chip-based blank (empty) */
+        html += '<span class="fb-blank" data-blank-idx="' + i + '"></span>';
+      } else {
+        /* text-input blank */
+        html += '<input class="fb-input" type="text" data-blank-idx="' + i + '" '
+              + 'value="" placeholder="..." autocomplete="off" spellcheck="false">';
+      }
+    });
+
+    sentenceEl.innerHTML = html;
+    attachSentenceListeners();
+  }
+
+  function attachSentenceListeners() {
+    if (!sentenceEl) return;
+
+    /* Remove-chip listeners */
+    sentenceEl.querySelectorAll('.fb-blank-chip').forEach(function (chip) {
+      chip.addEventListener('click', function () {
+        if (answered || revealed) return;
+        var idx = parseInt(chip.getAttribute('data-blank-idx') || '0', 10);
+        userAnswers[index][idx] = '';
+        renderSentence(questions[index], userAnswers[index], false);
+        updateWordBank();
+      });
+    });
+
+    /* Text-input listeners */
+    sentenceEl.querySelectorAll('.fb-input').forEach(function (input) {
+      input.addEventListener('input', function () {
+        var idx = parseInt(input.getAttribute('data-blank-idx') || '0', 10);
+        userAnswers[index][idx] = input.value;
+      });
+    });
+  }
+
+  /* ── word bank ── */
+  function renderWordBank(q) {
+    if (!wordBankWrapEl || !wordBankEl) return;
+    var options = q.options || [];
+
+    if (!options.length) {
+      wordBankWrapEl.style.display = 'none';
+      return;
+    }
+
+    wordBankWrapEl.style.display = '';
+    wordBankEl.innerHTML = '';
+
+    var used = userAnswers[index] || [];
+
+    options.forEach(function (opt) {
+      var chip = document.createElement('span');
+      chip.className = 'fb-chip';
+      chip.textContent = opt;
+      if (used.indexOf(opt) !== -1) chip.classList.add('used');
+
+      chip.addEventListener('click', function () {
+        if (answered || revealed || chip.classList.contains('used')) return;
+        fillNextBlank(opt);
+      });
+
+      wordBankEl.appendChild(chip);
+    });
+  }
+
+  function fillNextBlank(word) {
+    var q    = questions[index] || {};
+    var segs = segments(q.text || '');
+    var ans  = userAnswers[index];
+
+    for (var i = 0; i < segs.length - 1; i++) {
+      if (!ans[i]) {
+        ans[i] = word;
+        renderSentence(q, ans, false);
+        updateWordBank();
+        return;
+      }
+    }
+  }
+
+  function updateWordBank() {
+    if (!wordBankEl) return;
+    var used = userAnswers[index] || [];
+    wordBankEl.querySelectorAll('.fb-chip').forEach(function (chip) {
+      chip.classList.toggle('used', used.indexOf(chip.textContent) !== -1);
+    });
+  }
+
+  /* ── progress ── */
   function updateProgress() {
     var total   = questions.length;
     var current = index + 1;
@@ -45,107 +198,9 @@ document.addEventListener('DOMContentLoaded', function () {
     if (progressFillEl)  progressFillEl.style.width  = pct + '%';
   }
 
-  function renderSentence(q, userAnswer, isAnswered) {
-    if (!sentenceEl) return;
-    var before = q.before || '';
-    var after  = q.after  || '';
-    var correct = q.answer || '';
-
-    if (!isAnswered) {
-      if (userAnswer) {
-        sentenceEl.innerHTML = escHtml(before) + ' <span class="fb-blank-filled"><span class="fb-blank-text">' + escHtml(userAnswer) + '</span><span class="fb-blank-remove">✕</span></span> ' + escHtml(after);
-      } else {
-        sentenceEl.innerHTML = escHtml(before) + ' <span class="fb-blank"></span> ' + escHtml(after);
-      }
-      return;
-    }
-
-    var isRight = normalize(userAnswer) === normalize(correct);
-    var blankHtml = '';
-    if (isRight) {
-      blankHtml = '<span class="fb-blank-filled" style="background: #22c55e; cursor: default;"><span class="fb-blank-text">' + escHtml(userAnswer) + '</span></span>';
-    } else {
-      blankHtml = '<span class="fb-blank-filled" style="background: #ef4444; cursor: default;"><span class="fb-blank-text" style="text-decoration: line-through;">' + escHtml(userAnswer || '\u2014') + '</span></span>'
-                + ' <span style="background: #EDE9FA; color: #7F77DD; border-radius: 8px; padding: 2px 8px; font-weight: 800; display: inline-flex; align-items: center; vertical-align: bottom; margin: 0 6px;">' + escHtml(correct) + '</span>';
-    }
-  }
-
-  function escHtml(s) {
-    return String(s || '')
-      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
-      .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
-  }
-
-  function renderWordBank(answers) {
-    if (!wordBankWordsEl) return;
-    wordBankWordsEl.innerHTML = '';
-    
-    answers.forEach(function (answer, idx) {
-      var chip = document.createElement('div');
-      chip.className = 'fb-chip';
-      chip.textContent = answer;
-      chip.dataset.index = idx;
-      chip.dataset.answer = answer;
-      
-      if (usedChips[index] && usedChips[index][idx]) {
-        chip.classList.add('used');
-      }
-      
-      chip.addEventListener('click', function () {
-        if (answered || revealed || chip.classList.contains('used')) return;
-        selectWordFromBank(answer, idx);
-      });
-      
-      wordBankWordsEl.appendChild(chip);
-    });
-  }
-
-  function selectWordFromBank(answer, chipIndex) {
-    userAnswers[index] = answer;
-    if (!usedChips[index]) usedChips[index] = {};
-    usedChips[index][chipIndex] = true;
-    
-    renderSentence(questions[index], answer, false);
-    attachRemoveListener();
-    updateWordBankUI();
-  }
-
-  function attachRemoveListener() {
-    var removeBtn = sentenceEl.querySelector('.fb-blank-remove');
-    if (removeBtn) {
-      removeBtn.addEventListener('click', function () {
-        clearAnswer();
-      });
-    }
-  }
-
-  function clearAnswer() {
-    if (answered || revealed) return;
-    var chipIndex = Object.keys(usedChips[index] || {}).find(function (k) { return usedChips[index][k]; });
-    if (chipIndex !== undefined) {
-      delete usedChips[index][chipIndex];
-    }
-    userAnswers[index] = '';
-    renderSentence(questions[index], '', false);
-    updateWordBankUI();
-  }
-
-  function updateWordBankUI() {
-    var chips = wordBankWordsEl ? wordBankWordsEl.querySelectorAll('.fb-chip') : [];
-    chips.forEach(function (chip) {
-      var idx = parseInt(chip.dataset.index, 10);
-      if (usedChips[index] && usedChips[index][idx]) {
-        chip.classList.add('used');
-      } else {
-        chip.classList.remove('used');
-      }
-    });
-  }
-
+  /* ── load question ── */
   function loadQuestion() {
     var q = questions[index] || {};
-    var answers = q.answer ? [q.answer] : [];
-    
     answered = false;
     revealed = false;
 
@@ -157,49 +212,82 @@ document.addEventListener('DOMContentLoaded', function () {
     if (showBtn)  { showBtn.style.display = ''; showBtn.disabled = false; }
     if (nextBtn)  {
       nextBtn.disabled    = true;
-      nextBtn.textContent = index < questions.length - 1 ? 'Next \u2192' : 'Finish';
+      nextBtn.textContent = index < questions.length - 1 ? 'Next →' : 'Finish';
     }
 
     updateProgress();
-    renderSentence(q, userAnswers[index] || '', false);
-    renderWordBank(answers);
-    attachRemoveListener();
+    renderImage(q);
+    renderSentence(q, userAnswers[index] || [], false);
+    renderWordBank(q);
+  }
+
+  /* ── check ── */
+  function syncInputValues() {
+    if (!sentenceEl) return;
+    sentenceEl.querySelectorAll('.fb-input').forEach(function (input) {
+      var idx = parseInt(input.getAttribute('data-blank-idx') || '0', 10);
+      userAnswers[index][idx] = input.value;
+    });
   }
 
   function checkAnswer() {
     if (answered) return;
+    syncInputValues();
+
     var q       = questions[index] || {};
-    var correct = q.answer || '';
-    var user    = userAnswers[index] || '';
-    var isRight = normalize(user) === normalize(correct);
+    var answers = q.answers || [];
+    var userAns = userAnswers[index] || [];
 
-    answered    = true;
-    scores[index] = isRight ? 1 : 0;
-    reviewItems[index] = { question: (q.before || '') + ' ___ ' + (q.after || ''), yourAnswer: user, correctAnswer: correct, score: scores[index] };
+    var allCorrect = answers.length > 0;
+    var anyFilled  = false;
 
-    renderSentence(q, user, true);
-    if (feedbackEl) AF.showFeedback(feedbackEl, isRight, correct, false);
+    answers.forEach(function (correct, i) {
+      var ua = userAns[i] || '';
+      if (ua) anyFilled = true;
+      if (normalize(ua) !== normalize(correct)) allCorrect = false;
+    });
+
+    if (!anyFilled) return;
+
+    answered = true;
+    scores[index] = allCorrect ? 1 : 0;
+    reviewItems[index] = {
+      question:      q.text || '',
+      yourAnswer:    userAns.join(' / '),
+      correctAnswer: answers.join(' / '),
+      score:         scores[index],
+    };
+
+    renderSentence(q, userAns, true);
+    if (feedbackEl) AF.showFeedback(feedbackEl, allCorrect, answers.join(', '), false);
     if (checkBtn)   checkBtn.disabled = true;
     if (showBtn)    showBtn.style.display = 'none';
     if (nextBtn)    nextBtn.disabled = false;
   }
 
+  /* ── show answer ── */
   function showAnswer() {
     if (answered) return;
-    var q = questions[index] || {};
-    var correct = q.answer || '';
+    var q       = questions[index] || {};
+    var answers = q.answers || [];
     answered = true;
     revealed = true;
     scores[index] = -1;
-    reviewItems[index] = { question: (q.before || '') + ' ___ ' + (q.after || ''), yourAnswer: '(revealed)', correctAnswer: correct, score: -1 };
+    reviewItems[index] = {
+      question:      q.text || '',
+      yourAnswer:    '(revealed)',
+      correctAnswer: answers.join(' / '),
+      score:         -1,
+    };
 
-    renderSentence(q, correct, true);
+    renderSentence(q, answers, true);
     if (feedbackEl) AF.showFeedback(feedbackEl, false, null, true);
     if (checkBtn)   checkBtn.disabled = true;
     if (showBtn)    showBtn.style.display = 'none';
     if (nextBtn)    nextBtn.disabled = false;
   }
 
+  /* ── next ── */
   function nextQuestion() {
     if (index < questions.length - 1) {
       index++;
@@ -209,6 +297,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
   }
 
+  /* ── completed ── */
   function showCompleted() {
     if (!completedEl) return;
     if (activityEl) activityEl.style.display = 'none';
@@ -224,14 +313,20 @@ document.addEventListener('DOMContentLoaded', function () {
       onRetry:       restartActivity,
       onReview:      function () {
         AF.showReview({ target: completedEl, items: reviewItems, onRetry: restartActivity });
-      }
+      },
     });
 
     var result = AF.computeScore(scores);
     if (returnTo && activityId) {
       var sep = returnTo.indexOf('?') !== -1 ? '&' : '?';
-      fetch(returnTo + sep + 'activity_percent=' + result.percent + '&activity_errors=' + result.wrong + '&activity_total=' + result.total + '&activity_id=' + encodeURIComponent(activityId) + '&activity_type=fillblank',
-        { method: 'GET', credentials: 'same-origin', cache: 'no-store' }).catch(function () {});
+      fetch(returnTo + sep
+        + 'activity_percent=' + result.percent
+        + '&activity_errors=' + result.wrong
+        + '&activity_total='  + result.total
+        + '&activity_id='     + encodeURIComponent(activityId)
+        + '&activity_type=fillblank',
+        { method: 'GET', credentials: 'same-origin', cache: 'no-store' }
+      ).catch(function () {});
     }
   }
 
@@ -239,19 +334,23 @@ document.addEventListener('DOMContentLoaded', function () {
     index       = 0;
     scores      = questions.map(function () { return 0; });
     reviewItems = questions.map(function () { return {}; });
-    userAnswers = questions.map(function () { return ''; });
-    usedChips   = questions.map(function () { return {}; });
+    userAnswers = questions.map(function (q) {
+      var count = String(q.text || '').split(BLANK_RE).length - 1;
+      return new Array(Math.max(0, count)).fill('');
+    });
     loadQuestion();
   }
 
-  /* inject blank highlight CSS */
-  if (!document.getElementById('fb-blank-css')) {
+  /* ── extra CSS injected once ── */
+  if (!document.getElementById('fb-dyn-css')) {
     var st = document.createElement('style');
-    st.id = 'fb-blank-css';
+    st.id  = 'fb-dyn-css';
     st.textContent =
-      '.fb-answer-correct{display:inline-block;padding:2px 8px;border-radius:6px;font-weight:700;background:#f0fdf4;color:#166534;font-size:16px;vertical-align:bottom;margin:0 6px}' +
-      '.fb-answer-wrong{display:inline-block;padding:2px 8px;border-radius:6px;font-weight:700;background:#fef2f2;color:#991b1b;text-decoration:line-through;font-size:16px;vertical-align:bottom;margin:0 6px}' +
-      '.fb-answer-hint{display:inline-block;background:#EDE9FA;color:#7F77DD;border-radius:6px;padding:2px 8px;font-weight:800;font-size:14px;vertical-align:bottom;margin:0 6px}';
+      '.fb-answer-correct{display:inline-block;padding:2px 8px;border-radius:6px;font-weight:700;background:#f0fdf4;color:#166534;font-size:1em;vertical-align:middle;margin:0 4px}' +
+      '.fb-answer-wrong{display:inline-block;padding:2px 8px;border-radius:6px;font-weight:700;background:#fef2f2;color:#991b1b;text-decoration:line-through;font-size:1em;vertical-align:middle;margin:0 4px}' +
+      '.fb-answer-hint{display:inline-block;background:#EDE9FA;color:#7F77DD;border-radius:6px;padding:2px 8px;font-weight:800;font-size:.9em;vertical-align:middle;margin:0 4px}' +
+      '.fb-input{border:none;border-bottom:2.5px solid #7F77DD;background:transparent;font-family:inherit;font-size:inherit;font-weight:700;color:#534AB7;min-width:80px;width:120px;padding:2px 4px;outline:none;text-align:center;vertical-align:middle;margin:0 6px}' +
+      '.fb-image-img{max-width:100%;max-height:200px;border-radius:14px;object-fit:contain;display:block;margin:0 auto}';
     document.head.appendChild(st);
   }
 
