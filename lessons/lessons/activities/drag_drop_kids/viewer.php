@@ -101,14 +101,13 @@ if (empty($pairs) || $bgImage === '') {
 ob_start();
 ?>
 <style>
-/* ── Title header: 25% smaller, centred with stage ─ */
+/* ── Title header: compact, centred with stage ─ */
 .act-header {
     max-width: 900px !important;
     margin-left: auto !important;
     margin-right: auto !important;
     margin-bottom: 10px !important;
     padding: 12px 18px !important;
-    border-radius: 16px !important;
 }
 .act-header h2 { font-size: clamp(18px, 2.6vw, 26px) !important; margin: 0 0 4px !important; }
 .act-header p  { font-size: 13px !important; }
@@ -147,19 +146,19 @@ ob_start();
     box-shadow: 0 10px 28px rgba(15,23,42,.13);
 }
 
-/* Drop zones – teal, solid, equal padding, centred text */
+/* Drop zones – lilac/purple */
 .ddk-zone {
     position: absolute;
-    border: 2.5px solid #14b8a6;
-    border-radius: 10px;
-    background: rgba(204,251,241,.6);
+    border: 2.5px solid #7F77DD;
+    border-radius: 8px;
+    background: rgba(127,119,221,.12);
     display: flex;
     align-items: center;
     justify-content: center;
     font-family: 'Fredoka', 'Trebuchet MS', sans-serif;
     font-size: clamp(10px, 1.2vw, 16px);
     font-weight: 700;
-    color: #134e4a;
+    color: #4c1d95;
     cursor: pointer;
     transition: background .18s, border-color .18s, transform .15s;
     box-sizing: border-box;
@@ -169,14 +168,14 @@ ob_start();
     line-height: 1.2;
 }
 .ddk-zone.drag-over {
-    background: rgba(153,246,228,.75);
-    border-color: #0d9488;
+    background: rgba(127,119,221,.28);
+    border-color: #5b52d1;
     transform: scale(1.06);
 }
 .ddk-zone.filled {
-    border-color: #16a34a;
-    background: rgba(220,252,231,.9);
-    color: #14532d;
+    border-color: #7F77DD;
+    background: rgba(127,119,221,.22);
+    color: #4c1d95;
     cursor: default;
 }
 .ddk-zone.wrong {
@@ -202,7 +201,7 @@ ob_start();
 }
 .ddk-chip {
     padding: 8px 16px;
-    border-radius: 999px;
+    border-radius: 10px;
     color: #4c1d95;
     font-weight: 800;
     font-family: 'Fredoka', 'Trebuchet MS', sans-serif;
@@ -230,7 +229,7 @@ ob_start();
 
 .ddk-touch-hint {
     text-align: center;
-    color: #7c2d12;
+    color: #5b516f;
     font-size: 12px;
     font-weight: 700;
     margin: 0 0 4px;
@@ -245,19 +244,19 @@ ob_start();
     justify-content: center;
     padding: 9px 18px;
     border: none;
-    border-radius: 999px;
+    border-radius: 8px;
     color: #fff;
     cursor: pointer;
     min-width: 130px;
     font-weight: 800;
     font-family: 'Nunito', 'Segoe UI', sans-serif;
     font-size: 13px;
-    box-shadow: 0 8px 18px rgba(15,23,42,.12);
+    box-shadow: 0 6px 18px rgba(127,119,221,.22);
     transition: transform .15s, filter .15s;
     line-height: 1;
 }
 .ddk-btn:hover { filter: brightness(1.05); transform: translateY(-1px); }
-.ddk-btn-show { background: linear-gradient(180deg, #d8b4fe 0%, #a855f7 100%); }
+.ddk-btn-show { background: #7F77DD; }
 
 /* Feedback */
 #ddkFeedback {
@@ -278,22 +277,22 @@ ob_start();
     font-family: 'Fredoka', 'Trebuchet MS', sans-serif;
     font-size: 30px;
     font-weight: 700;
-    color: #9a3412;
+    color: #4c1d95;
     margin: 0 0 8px;
 }
-.ddk-completed-text  { font-size: 14px; color: #6b4f3a; line-height: 1.5; margin: 0 0 4px; }
-.ddk-completed-score { font-size: 16px; font-weight: 800; color: #9a3412; margin: 0 0 20px; }
+.ddk-completed-text  { font-size: 14px; color: #5b516f; line-height: 1.5; margin: 0 0 4px; }
+.ddk-completed-score { font-size: 16px; font-weight: 800; color: #4c1d95; margin: 0 0 20px; }
 .ddk-completed-btn {
     display: inline-block;
     padding: 10px 24px;
     border: none;
-    border-radius: 999px;
-    background: linear-gradient(180deg, #fb923c 0%, #f97316 100%);
+    border-radius: 8px;
+    background: #7F77DD;
     color: #fff;
     font-weight: 700;
     font-size: 14px;
     cursor: pointer;
-    box-shadow: 0 8px 20px rgba(0,0,0,.13);
+    box-shadow: 0 6px 18px rgba(127,119,221,.28);
     transition: transform .18s, filter .18s;
 }
 .ddk-completed-btn:hover { transform: scale(1.05); filter: brightness(1.07); }
