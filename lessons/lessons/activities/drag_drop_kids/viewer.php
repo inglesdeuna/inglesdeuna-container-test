@@ -101,8 +101,12 @@ if (empty($pairs) || $bgImage === '') {
 ob_start();
 ?>
 <style>
-/* White background to match other activities */
-body { background: #fff !important; }
+/* White background — override all containers including presentation mode */
+body,
+.activity-wrapper,
+.viewer-content,
+body.presentation-mode .viewer-content,
+body.fullscreen-embedded .viewer-content { background: #fff !important; }
 
 /* ── Title header: no box, matches Tracing/other activity style ─ */
 .act-header {
