@@ -208,50 +208,143 @@ function load_quiz_fallback_from_multiple_choice(PDO $pdo, string $unit): array
     $classifyToken = static function (string $value) use ($normalizeKey): string {
       $v = $normalizeKey($value);
       if ($v === '') {
-        return 'other';
-      }
 
-      $be = ['am','is','are','was','were','be','been','being'];
-      $aux = ['do','does','did','have','has','had','can','could','will','would','should','may','might','must'];
-      $articles = ['a','an','the'];
-      $preps = ['in','on','at','to','for','from','with','by','about','under','over','into','between','after','before'];
-      $pronouns = ['i','you','he','she','it','we','they','me','him','her','us','them','my','your','his','its','our','their'];
-      $questions = ['who','what','where','when','why','which','how'];
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Quiz de Unidad — inglésdeuna Mockup</title>
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600&family=Nunito:wght@500;600;700&display=swap" rel="stylesheet">
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+        <style>
+        *{box-sizing:border-box;margin:0;padding:0}
+        body{font-family:'Nunito',sans-serif;background:#F8F7FF;min-height:100vh;padding:24px 16px}
+        /* ... (todo el CSS del mockup, igual que el HTML proporcionado) ... */
+        </style>
 
-      if (in_array($v, $be, true)) return 'be';
-      if (in_array($v, $aux, true)) return 'aux';
-      if (in_array($v, $articles, true)) return 'article';
-      if (in_array($v, $preps, true)) return 'prep';
-      if (in_array($v, $pronouns, true)) return 'pronoun';
-      if (in_array($v, $questions, true)) return 'question';
-      if (preg_match('/^[0-9]+$/', $v)) return 'number';
-      return 'other';
-    };
+        <body>
 
-    $rankCandidates = static function (string $correct, array $candidates) use ($normalizeKey, $classifyToken): array {
-      $correctKey = $normalizeKey($correct);
-      $correctClass = $classifyToken($correct);
-      $correctLen = strlen($correctKey);
+        <!-- DOWNLOAD BAR -->
+        <div class="dl-bar">
+          <div class="dl-bar-info">
+            <span>Quiz de Unidad — Mockup</span>
+            inglésdeuna · 7 pantallas interactivas
+          </div>
+          <a class="dl-btn" id="dl-link" href="#" download="quiz_unit_mockup.html">
+            <i class="ti ti-download"></i> Descargar HTML
+          </a>
+        </div>
 
-      $scored = [];
-      foreach ($candidates as $candidateRaw) {
-        $candidate = trim((string) $candidateRaw);
-        $candidateKey = $normalizeKey($candidate);
-        if ($candidateKey === '' || $candidateKey === $correctKey) {
-          continue;
+        <!-- TABS -->
+        <div class="qm-tabs">
+          <button class="qm-tab on"  onclick="show('intro',this)"><i class="ti ti-home"></i> Intro</button>
+          <button class="qm-tab" onclick="show('mc',this)"><i class="ti ti-checks"></i> Multiple choice</button>
+          <button class="qm-tab" onclick="show('fill',this)"><i class="ti ti-pencil"></i> Fill in blank</button>
+          <button class="qm-tab" onclick="show('match',this)"><i class="ti ti-arrows-shuffle"></i> Match</button>
+          <button class="qm-tab" onclick="show('dict',this)"><i class="ti ti-ear"></i> Dictation</button>
+          <button class="qm-tab" onclick="show('pron',this)"><i class="ti ti-microphone"></i> Pronunciation</button>
+          <button class="qm-tab" onclick="show('result',this)"><i class="ti ti-trophy"></i> Resultado</button>
+          <button class="qm-tab" onclick="show('review',this)"><i class="ti ti-list-search"></i> Review</button>
+        </div>
+
+        <!-- ── INTRO ── -->
+        <div class="qm-screen on" id="sc-intro">
+          <p class="screen-label">Pantalla 1 — Portada del quiz</p>
+          <div class="qz-wrap">
+            <div class="qz-kicker">Unit 3 · Quiz</div>
+            <h1 class="qz-title">Unit Quiz</h1>
+            <p class="qz-lead">Answer all questions to complete this unit and unlock the next one.</p>
+            <div class="qz-chips">
+              <span class="qz-chip"><i class="ti ti-list-check"></i> 12 questions</span>
+              <span class="qz-chip"><i class="ti ti-clock"></i> ~8 min</span>
+              <span class="qz-chip"><i class="ti ti-repeat"></i> 3 attempts</span>
+            </div>
+            <div class="qz-intro-divider"></div>
+            <p style="font-size:12px;font-weight:700;color:#9B8FCC;text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">What's included</p>
+            <div class="qz-intro-types">
+              <div class="qz-type-row">
+                <div class="qz-type-icon pu"><i class="ti ti-checks"></i></div>
+                <div class="qz-type-info">
+                  <div class="qz-type-name">Multiple choice</div>
+                  <div class="qz-type-desc">Pick the correct answer</div>
+                </div>
+                <span class="qz-type-count">5</span>
+              </div>
+              <div class="qz-type-row">
+                <div class="qz-type-icon or"><i class="ti ti-pencil"></i></div>
+                <div class="qz-type-info">
+                  <div class="qz-type-name">Fill in the blank</div>
+                  <div class="qz-type-desc">Complete the sentence</div>
+                </div>
+                <span class="qz-type-count">3</span>
+              </div>
+              <div class="qz-type-row">
+                <div class="qz-type-icon pu"><i class="ti ti-arrows-shuffle"></i></div>
+                <div class="qz-type-info">
+                  <div class="qz-type-name">Match pairs</div>
+                  <div class="qz-type-desc">Connect each word to its pair</div>
+                </div>
+                <span class="qz-type-count">2</span>
+              </div>
+              <div class="qz-type-row">
+                <div class="qz-type-icon gr"><i class="ti ti-ear"></i></div>
+                <div class="qz-type-info">
+                  <div class="qz-type-name">Dictation</div>
+                  <div class="qz-type-desc">Listen and write what you hear</div>
+                </div>
+                <span class="qz-type-count">2</span>
+              </div>
+            </div>
+            <div class="qz-intro-divider"></div>
+            <button class="qz-btn-start" onclick="show('mc', document.querySelectorAll('.qm-tab')[1])">
+              <i class="ti ti-player-play"></i> Start quiz
+            </button>
+          </div>
+        </div>
+
+        <!-- ... (resto de pantallas del mockup, igual que el HTML proporcionado) ... -->
+
+        <script>
+        function show(id, btn) {
+          document.querySelectorAll('.qm-screen').forEach(s => s.classList.remove('on'));
+          document.querySelectorAll('.qm-tab').forEach(t => t.classList.remove('on'));
+          var sc = document.getElementById('sc-' + id);
+          if (sc) sc.classList.add('on');
+          if (btn) btn.classList.add('on');
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+        function selectOpt(el, groupId) {
+          document.getElementById(groupId).querySelectorAll('.qz-opt').forEach(o => o.classList.remove('sel'));
+          el.classList.add('sel');
+          var letter = el.querySelector('.qz-opt-letter');
+          if (letter) {
+            document.getElementById(groupId).querySelectorAll('.qz-opt-letter').forEach(l => {
+              l.style.background = '#EDE9FA';
+              l.style.color = '#7F77DD';
+            });
+            letter.style.background = '#7F77DD';
+            letter.style.color = '#fff';
+          }
+        }
+        function togglePick(el) {
+          if (el.classList.contains('matched')) return;
+          el.classList.toggle('picked');
         }
 
-        $sameClass = $classifyToken($candidate) === $correctClass ? 1 : 0;
-        $lenDelta = abs(strlen($candidateKey) - $correctLen);
-        $isSingleWord = strpos($candidateKey, ' ') === false ? 1 : 0;
-        $score = ($sameClass * 1000) + ($isSingleWord * 100) - $lenDelta;
-
-        if (!isset($scored[$candidateKey]) || $score > $scored[$candidateKey]['score']) {
-          $scored[$candidateKey] = ['value' => $candidate, 'score' => $score];
-        }
-      }
-
-      uasort($scored, static function (array $a, array $b): int {
+        /* Self-download button */
+        document.addEventListener('DOMContentLoaded', function() {
+          var link = document.getElementById('dl-link');
+          if (!link) return;
+          var html = '<!DOCTYPE html>\n' + document.documentElement.outerHTML;
+          var blob = new Blob([html], { type: 'text/html' });
+          link.href = URL.createObjectURL(blob);
+          link.download = 'quiz_unit_mockup.html';
+        });
+        </script>
+        </body>
+        </html>
         return $b['score'] <=> $a['score'];
       });
 
