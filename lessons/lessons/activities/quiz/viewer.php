@@ -492,50 +492,8 @@ function load_quiz_fallback_from_multiple_choice(PDO $pdo, string $unit): array
               'correct' => (int) $correct,
               'explanation' => $instruction,
               'option_type' => 'text',
-              'image' => '',
-            ];
-          }
-        }
-        continue;
-      } elseif ($activityType === 'match') {
-        $pairs = [];
-        if (isset($decoded['pairs']) && is_array($decoded['pairs'])) {
-          $pairs = $decoded['pairs'];
-        } elseif (isset($decoded['items']) && is_array($decoded['items'])) {
-          $pairs = $decoded['items'];
-        } elseif (isset($decoded['data']) && is_array($decoded['data'])) {
-          $pairs = $decoded['data'];
-        } else {
-          $pairs = $decoded;
-        }
 
-        foreach ($pairs as $pair) {
-          if (!is_array($pair)) {
-            continue;
-          }
-
-          $legacyText = isset($pair['text']) ? trim((string) $pair['text']) : (isset($pair['word']) ? trim((string) $pair['word']) : '');
-          $leftText = isset($pair['left_text']) ? trim((string) $pair['left_text']) : '';
-          $rightText = isset($pair['right_text']) ? trim((string) $pair['right_text']) : $legacyText;
-
-          if ($leftText === '' || $rightText === '') {
-            continue;
-          }
-
-          $options = $buildOptions($rightText, $matchRightPool, $writingAnswerPool);
-          if (count($options) < 2) {
-            continue;
-          }
-          $correct = array_search($rightText, $options, true);
-          if ($correct === false) {
-            continue;
-          }
-
-          $questions[] = [
-            'question' => 'Match pair: ' . $leftText,
-            'options' => $options,
-            'correct' => (int) $correct,
-            'explanation' => '',
+              <!-- El archivo es ahora solo HTML, sin apertura PHP -->
             'option_type' => 'text',
             'image' => '',
           ];
