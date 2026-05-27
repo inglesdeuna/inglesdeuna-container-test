@@ -1065,6 +1065,28 @@ function get_quiz_attempt_policy(PDO $pdo, string $studentId, string $assignment
   return $state;
 }
 
+function quiz_balance_by_type(array $questionsByType, int $totalTarget): array
+{
+  $guaranteed = [];
+  $pool       = [];
+
+  foreach ($questionsByType as $type => $questions) {
+    if (empty($questions)) continue;
+    $shuffled = $questions;
+    shuffle($shuffled);
+    $guaranteed[] = array_shift($shuffled);
+    foreach ($shuffled as $q) $pool[] = $q;
+  }
+
+  $remaining = max(0, $totalTarget - count($guaranteed));
+  shuffle($pool);
+  $extra = array_slice($pool, 0, $remaining);
+
+  $final = array_merge($guaranteed, $extra);
+  shuffle($final);
+  return $final;
+}
+
 if ($unit === '' && $activityId !== '') {
     $unit = resolve_unit_from_activity($pdo, $activityId);
 }
@@ -1086,7 +1108,21 @@ if ($isTeacher || $isAdmin) {
   }
 }
 
+// Resolve attempt number for stable shuffle seed, then set seed before any load call
+ensure_quiz_attempts_column($pdo);
+$studentId    = trim((string) ($_SESSION['student_id'] ?? ''));
+$assignmentId = trim((string) ($_GET['assignment'] ?? ''));
+$quizAttemptPolicy  = get_quiz_attempt_policy($pdo, $studentId, $assignmentId, $unit, $activityId);
+$currentAttempt     = max(1, (int)($quizAttemptPolicy['attempts_used'] ?? 0) + 1);
+$GLOBALS['_quiz_shuffle_seed'] = quiz_get_attempt_seed($unit, $currentAttempt);
+
 $activity = load_quiz_activity($pdo, $activityId, $unit);
+
+// Re-fetch policy with the resolved activity ID (may differ when found by unit)
+if ((string)($activity['id'] ?? '') !== '' && (string)($activity['id'] ?? '') !== $activityId) {
+  $quizAttemptPolicy = get_quiz_attempt_policy($pdo, $studentId, $assignmentId, $unit, (string) $activity['id']);
+}
+
 $viewerTitle = (string) ($activity['title'] ?? 'Unit Quiz');
 $questions = isset($activity['questions']) && is_array($activity['questions']) ? $activity['questions'] : [];
 $questions = build_fixed_quiz_question_set($questions);
@@ -1096,14 +1132,44 @@ $quizPronunciationItems = load_quiz_pronunciation_items($pdo, $unit);
 $quizWritingQuestions = load_quiz_writing_questions($pdo, $unit);
 $quizDictationItems = load_quiz_dictation_items($pdo, $unit);
 $quizListenOrderBlocks = load_quiz_listen_order_blocks($pdo, $unit);
+
+// Balance: guarantee ≥1 question from each non-empty type, fill to computed target
+$_qByType = array_filter([
+  'mc'            => array_map(function($q) { return $q + ['_qtype' => 'mc']; },            $questions),
+  'match'         => array_map(function($q) { return $q + ['_qtype' => 'match']; },         $quizMatchPairs),
+  'pronunciation' => array_map(function($q) { return $q + ['_qtype' => 'pronunciation']; }, $quizPronunciationItems),
+  'writing'       => array_map(function($q) { return $q + ['_qtype' => 'writing']; },       $quizWritingQuestions),
+  'dictation'     => array_map(function($q) { return $q + ['_qtype' => 'dictation']; },     $quizDictationItems),
+  'listen_order'  => array_map(function($q) { return $q + ['_qtype' => 'listen_order']; },  $quizListenOrderBlocks),
+], function($arr) { return !empty($arr); });
+
+if (!empty($_qByType)) {
+  $_totalAvailable = (int) array_sum(array_map('count', $_qByType));
+  $_targetCount    = quiz_compute_target_count($_totalAvailable);
+  $_balanced       = quiz_balance_by_type($_qByType, $_targetCount);
+
+  $questions             = [];
+  $quizMatchPairs        = [];
+  $quizPronunciationItems = [];
+  $quizWritingQuestions  = [];
+  $quizDictationItems    = [];
+  $quizListenOrderBlocks = [];
+  foreach ($_balanced as $_bq) {
+    $_t = $_bq['_qtype'] ?? 'mc';
+    unset($_bq['_qtype']);
+    switch ($_t) {
+      case 'match':         $quizMatchPairs[]          = $_bq; break;
+      case 'pronunciation': $quizPronunciationItems[]  = $_bq; break;
+      case 'writing':       $quizWritingQuestions[]    = $_bq; break;
+      case 'dictation':     $quizDictationItems[]      = $_bq; break;
+      case 'listen_order':  $quizListenOrderBlocks[]   = $_bq; break;
+      default:              $questions[]               = $_bq; break;
+    }
+  }
+}
+
 $hasAnyQuizBlock = !empty($questions) || !empty($quizMatchPairs) || !empty($quizPronunciationItems)
   || !empty($quizWritingQuestions) || !empty($quizDictationItems) || !empty($quizListenOrderBlocks);
-
-ensure_quiz_attempts_column($pdo);
-
-$studentId = trim((string) ($_SESSION['student_id'] ?? ''));
-$assignmentId = trim((string) ($_GET['assignment'] ?? ''));
-$quizAttemptPolicy = get_quiz_attempt_policy($pdo, $studentId, $assignmentId, $unit, (string) ($activity['id'] ?? $activityId));
 
 ob_start();
 ?>
