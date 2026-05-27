@@ -334,7 +334,7 @@ body{
   width:40px;
   height:40px;
   border:1px solid #EDE9FA;
-  border-radius:14px;
+  border-radius:8px;
   background:#ffffff;
   color:var(--hg-purple-dark);
   font-family:'Nunito','Segoe UI',sans-serif;
@@ -375,7 +375,7 @@ a.back{
   min-width:clamp(104px,16vw,146px);
   padding:13px 20px;
   border:0;
-  border-radius:999px;
+  border-radius:10px;
   color:#ffffff;
   font-family:'Nunito','Segoe UI',sans-serif;
   font-size:13px;
@@ -498,7 +498,7 @@ a.back{background:var(--hg-purple);box-shadow:0 6px 18px rgba(127,119,221,.18);j
   #hangmanImg{max-width:122px}
   .word-char{min-width:24px;height:34px;font-size:20px}
   .keyboard{gap:7px}
-  .keyboard button{width:34px;height:34px;border-radius:12px;font-size:12px}
+  .keyboard button{width:34px;height:34px;border-radius:6px;font-size:12px}
   .controls{display:grid;grid-template-columns:1fr;gap:9px;width:100%}
   .action-btn{width:100%}
 }
