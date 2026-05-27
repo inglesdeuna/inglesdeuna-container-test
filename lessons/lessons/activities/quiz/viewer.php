@@ -1,63 +1,85 @@
-<?php
-require_once __DIR__ . '/../../config/db.php';
-require_once __DIR__ . '/../../core/_activity_viewer_template.php';
-
-if (session_status() !== PHP_SESSION_ACTIVE) {
-  session_start();
-}
-
-
-$activityId = isset($_GET['id']) ? trim((string) $_GET['id']) : '';
-$unit = isset($_GET['unit']) ? trim((string) $_GET['unit']) : '';
-$returnTo = isset($_GET['return_to']) ? trim((string) $_GET['return_to']) : '';
-
-// Cargar configuración de la unidad desde units.json
-$unitConfig = null;
-if ($unit !== '') {
-  $unitsFile = __DIR__ . '/../../academic/data/units.json';
-  if (file_exists($unitsFile)) {
-    $unitsArr = json_decode(file_get_contents($unitsFile), true);
-    if (is_array($unitsArr)) {
-      foreach ($unitsArr as $u) {
-        if (isset($u['id']) && (string)$u['id'] === (string)$unit) {
-          $unitConfig = $u;
-          break;
-        }
-      }
+<!--
+  Static HTML mockup for Quiz Viewer
+  (Pixel-perfect, no PHP)
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Quiz Viewer</title>
+  <!-- Tabler Icons & Google Fonts -->
+  <link href="https://unpkg.com/@tabler/icons-webfont@2.43.0/tabler-icons.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;700&family=Nunito:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../assets/quiz-mockup.css">
+</head>
+<body>
+  <div id="quiz-app">
+    <!-- Intro Screen -->
+    <div class="quiz-screen" id="screen-intro">
+      <h1>Unit Quiz</h1>
+      <p>Welcome to your quiz! Press Start to begin.</p>
+      <button class="btn-primary" onclick="showScreen('screen-mc')">Start</button>
+    </div>
+    <!-- Multiple Choice Screen -->
+    <div class="quiz-screen" id="screen-mc" style="display:none">
+      <h2>Multiple Choice</h2>
+      <div class="question">What is the capital of France?</div>
+      <ul class="choices">
+        <li><button>A) Madrid</button></li>
+        <li><button>B) Paris</button></li>
+        <li><button>C) Rome</button></li>
+      </ul>
+      <button class="btn-secondary" onclick="showScreen('screen-fill')">Next</button>
+    </div>
+    <!-- Fill in the Blank Screen -->
+    <div class="quiz-screen" id="screen-fill" style="display:none">
+      <h2>Fill in the Blank</h2>
+      <div class="question">The sky is <input type="text" placeholder="...">.</div>
+      <button class="btn-secondary" onclick="showScreen('screen-match')">Next</button>
+    </div>
+    <!-- Match Screen -->
+    <div class="quiz-screen" id="screen-match" style="display:none">
+      <h2>Match</h2>
+      <div class="match-pair">Dog <span class="ti ti-arrow-right"></span> Perro</div>
+      <div class="match-pair">Cat <span class="ti ti-arrow-right"></span> Gato</div>
+      <button class="btn-secondary" onclick="showScreen('screen-dict')">Next</button>
+    </div>
+    <!-- Dictation Screen -->
+    <div class="quiz-screen" id="screen-dict" style="display:none">
+      <h2>Dictation</h2>
+      <div class="question">Listen and type what you hear.</div>
+      <input type="text" placeholder="Type here...">
+      <button class="btn-secondary" onclick="showScreen('screen-pron')">Next</button>
+    </div>
+    <!-- Pronunciation Screen -->
+    <div class="quiz-screen" id="screen-pron" style="display:none">
+      <h2>Pronunciation</h2>
+      <div class="question">Say: "Hello, world!"</div>
+      <button class="btn-secondary" onclick="showScreen('screen-result')">Finish</button>
+    </div>
+    <!-- Result Screen -->
+    <div class="quiz-screen" id="screen-result" style="display:none">
+      <h2>Results</h2>
+      <div class="score">Score: 5/5</div>
+      <button class="btn-primary" onclick="showScreen('screen-review')">Review</button>
+    </div>
+    <!-- Review Screen -->
+    <div class="quiz-screen" id="screen-review" style="display:none">
+      <h2>Review</h2>
+      <div class="review-item">1. What is the capital of France? <span class="correct">Paris</span></div>
+      <div class="review-item">2. The sky is <span class="correct">blue</span>.</div>
+      <button class="btn-primary" onclick="showScreen('screen-intro')">Restart</button>
+    </div>
+  </div>
+  <script>
+    function showScreen(id) {
+      document.querySelectorAll('.quiz-screen').forEach(div => div.style.display = 'none');
+      document.getElementById(id).style.display = '';
     }
-  }
-}
-
-// Leer ratio de quiz de la unidad, si existe
-$quizRatio = 0.75;
-if (is_array($unitConfig) && isset($unitConfig['quiz_ratio'])) {
-  $quizRatio = floatval($unitConfig['quiz_ratio']);
-  if ($quizRatio <= 0 || $quizRatio > 1) {
-    $quizRatio = 0.75;
-  }
-}
-
-if ($activityId === '' && $unit === '') {
-    die('Activity not specified');
-}
-
-function resolve_unit_from_activity(PDO $pdo, string $activityId): string
-{
-    if ($activityId === '') {
-        return '';
-    }
-
-    $stmt = $pdo->prepare("SELECT unit_id FROM activities WHERE id = :id LIMIT 1");
-    $stmt->execute(['id' => $activityId]);
-    $row = $stmt->fetch(PDO::FETCH_ASSOC);
-
-    return $row && isset($row['unit_id']) ? (string) $row['unit_id'] : '';
-}
-
-function normalize_quiz_payload($rawData): array
-{
-    $default = [
-        'title' => 'Unit Quiz',
+  </script>
+</body>
+</html>
         'description' => 'Answer and submit your result.',
         'questions' => [],
     ];
