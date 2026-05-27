@@ -768,50 +768,91 @@ body {
     document.addEventListener('webkitfullscreenchange', scheduleResize);
 
     function showCompleted() {
+        coloringRounds++;
         stage.classList.add('is-completed');
         completedEl.classList.add('active');
-        showPassiveDone(completedEl, {
-            text: 'You finished coloring! Great job!',
-            restartLabel: 'Play Again',
-            onRestart: function () {
-                stage.classList.remove('is-completed');
-                completedEl.classList.remove('active');
-                completedEl.innerHTML = '';
-                currentIndex = 0;
-                paintedSnapshots = [];
-                loadImageAt(0);
-                updateProgress();
-            },
-            returnTo: COLORING_RETURN_TO,
-            activityId: COLORING_ACTIVITY_ID,
-            activityType: 'coloring',
-            total: uploadedImages.length
-        });
-    }
 
-    function showPassiveDone(containerEl, opts) {
-        containerEl.innerHTML =
-            '<div class="passive-done" id="passive-done-card">' +
-            '<div class="passive-done-icon">🎉</div>' +
-            '<h2 class="passive-done-title">All Done!</h2>' +
-            '<p class="passive-done-text">' + (opts.text || 'Great work!') + '</p>' +
-            '<div class="passive-done-track"><div class="passive-done-fill" id="passive-fill"></div></div>' +
-            '<div><button class="passive-done-btn" id="passive-restart-btn">&#8635; ' + (opts.restartLabel || 'Play Again') + '</button></div>' +
+        var n           = uploadedImages.length;
+        var hasNext     = !!(nextActivityUrl || COLORING_RETURN_TO);
+        var nextBtnHtml = hasNext
+            ? '<button class="af-unscored__btn-primary" id="coloringNextBtn">Next →</button>'
+            : '';
+
+        completedEl.innerHTML =
+            '<div class="af-unscored__card">' +
+                '<p class="af-unscored__prog-label">Pages Colored</p>' +
+                '<div class="af-unscored__prog-track">' +
+                    '<div class="af-unscored__prog-fill" style="width:100%"></div>' +
+                '</div>' +
+                '<div class="af-unscored__prog-nums">' +
+                    '<span>0</span><strong>' + n + ' / ' + n + '</strong>' +
+                '</div>' +
+                '<div class="af-unscored__icon">' +
+                    '<svg width="22" height="22" fill="none" viewBox="0 0 24 24">' +
+                        '<path stroke="#7F77DD" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>' +
+                    '</svg>' +
+                '</div>' +
+                '<p class="af-unscored__title">Coloring complete!</p>' +
+                '<p class="af-unscored__sub">Great job! You colored all the pages.</p>' +
+                '<div class="af-unscored__chips af-unscored__chips--2">' +
+                    '<div class="af-unscored__chip">' +
+                        '<div class="af-unscored__chip-val af-unscored__chip-val--orange">' + n + '</div>' +
+                        '<div class="af-unscored__chip-lbl">Pages</div>' +
+                    '</div>' +
+                    '<div class="af-unscored__chip">' +
+                        '<div class="af-unscored__chip-val">' + coloringRounds + '</div>' +
+                        '<div class="af-unscored__chip-lbl">Rounds</div>' +
+                    '</div>' +
+                '</div>' +
+                '<div class="af-unscored__banner af-unscored__banner--orange">' +
+                    '<div class="af-unscored__banner-icon af-unscored__banner-icon--orange">' +
+                        '<svg width="16" height="16" fill="none" viewBox="0 0 24 24">' +
+                            '<path stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>' +
+                        '</svg>' +
+                    '</div>' +
+                    '<div class="af-unscored__banner-text af-unscored__banner-text--orange">' +
+                        '<span class="af-unscored__banner-title">Keep up the great work!</span>' +
+                        'Try coloring again with different color combinations.' +
+                    '</div>' +
+                '</div>' +
+                '<div class="af-unscored__btns">' +
+                    '<button class="af-unscored__btn-secondary" id="coloringRestartBtn">↺ Play Again</button>' +
+                    nextBtnHtml +
+                '</div>' +
             '</div>';
-        var card = document.getElementById('passive-done-card');
-        var fill = document.getElementById('passive-fill');
-        var btn  = document.getElementById('passive-restart-btn');
-        requestAnimationFrame(function () {
-            card.classList.add('active');
-            setTimeout(function () { if (fill) fill.style.width = '100%'; }, 80);
+
+        document.getElementById('coloringRestartBtn').addEventListener('click', function () {
+            stage.classList.remove('is-completed');
+            completedEl.classList.remove('active');
+            completedEl.innerHTML = '';
+            currentIndex = 0;
+            paintedSnapshots = [];
+            loadImageAt(0);
+            updateProgress();
         });
-        if (btn && opts.onRestart) btn.addEventListener('click', opts.onRestart);
-        if (opts.returnTo && opts.activityId) {
-            var sep = opts.returnTo.indexOf('?') !== -1 ? '&' : '?';
-            fetch(opts.returnTo + sep + 'activity_percent=100&activity_errors=0&activity_total=' + (opts.total||1) +
-                '&activity_id=' + encodeURIComponent(opts.activityId) +
-                '&activity_type=' + encodeURIComponent(opts.activityType || 'activity'),
-                { method: 'GET', credentials: 'same-origin', cache: 'no-store' }).catch(function(){});
+
+        if (hasNext) {
+            document.getElementById('coloringNextBtn').addEventListener('click', function () {
+                var target = nextActivityUrl || COLORING_RETURN_TO;
+                try {
+                    if (window.top && window.top !== window.self) {
+                        window.top.location.href = target;
+                        return;
+                    }
+                } catch (e) {}
+                window.location.href = target;
+            });
+        }
+
+        if (COLORING_RETURN_TO && COLORING_ACTIVITY_ID) {
+            var sep = COLORING_RETURN_TO.indexOf('?') !== -1 ? '&' : '?';
+            fetch(
+                COLORING_RETURN_TO + sep +
+                'activity_percent=100&activity_errors=0&activity_total=' + n +
+                '&activity_id=' + encodeURIComponent(COLORING_ACTIVITY_ID) +
+                '&activity_type=coloring',
+                { method: 'GET', credentials: 'same-origin', cache: 'no-store' }
+            ).catch(function () {});
         }
     }
 
