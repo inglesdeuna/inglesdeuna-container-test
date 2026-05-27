@@ -16,8 +16,9 @@ if (!is_array($parts) || !isset($parts['scheme'], $parts['host'])) {
     exit;
 }
 
-$scheme = strtolower((string) $parts['scheme']);
-$host = strtolower((string) $parts['host']);
+$scheme     = strtolower((string) $parts['scheme']);
+$host       = strtolower((string) $parts['host']);
+$forceDownload = isset($_GET['dl']) && $_GET['dl'] === '1';
 
 if ($scheme !== 'http' && $scheme !== 'https') {
     http_response_code(400);
@@ -133,9 +134,12 @@ if ($httpCode === 206) {
     http_response_code(200);
 }
 
-header('Content-Type: ' . $contentType);
+// Always override with application/pdf — Cloudinary raw files often return
+// application/octet-stream which causes browsers to refuse inline display.
+header('Content-Type: application/pdf');
 header('Cache-Control: public, max-age=600');
 header('X-Content-Type-Options: nosniff');
+header('Content-Disposition: ' . ($forceDownload ? 'attachment' : 'inline') . '; filename="document.pdf"');
 
 if (isset($responseHeaders['accept-ranges'])) {
     header('Accept-Ranges: ' . $responseHeaders['accept-ranges']);

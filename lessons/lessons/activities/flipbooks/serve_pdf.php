@@ -10,7 +10,8 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../../config/db.php';
 
-$activityId = isset($_GET['id']) ? trim((string) $_GET['id']) : '';
+$activityId    = isset($_GET['id']) ? trim((string) $_GET['id']) : '';
+$forceDownload = isset($_GET['dl']) && $_GET['dl'] === '1';
 
 if ($activityId === '') {
     http_response_code(400);
@@ -41,7 +42,8 @@ if ($pdfUrl === '') {
 
 // Handle remote URL storage (Cloudinary/raw) through the proxy.
 if (preg_match('/^https?:\/\//i', $pdfUrl)) {
-    $proxyUrl = '/lessons/lessons/activities/flipbooks/pdf_proxy.php?url=' . rawurlencode($pdfUrl);
+    $proxyUrl = '/lessons/lessons/activities/flipbooks/pdf_proxy.php?url=' . rawurlencode($pdfUrl)
+        . ($forceDownload ? '&dl=1' : '');
     header('Location: ' . $proxyUrl, true, 302);
     exit;
 }
@@ -58,7 +60,7 @@ if (str_starts_with($pdfUrl, 'data:application/pdf;base64,')) {
 
     header('Content-Type: application/pdf');
     header('Content-Length: ' . strlen($binary));
-    header('Content-Disposition: inline; filename="document.pdf"');
+    header('Content-Disposition: ' . ($forceDownload ? 'attachment' : 'inline') . '; filename="document.pdf"');
     header('Cache-Control: private, max-age=3600');
     echo $binary;
     exit;
@@ -80,7 +82,7 @@ if (str_starts_with($pdfUrl, '/')) {
     ) {
         header('Content-Type: application/pdf');
         header('Content-Length: ' . filesize($realLocal));
-        header('Content-Disposition: inline; filename="document.pdf"');
+        header('Content-Disposition: ' . ($forceDownload ? 'attachment' : 'inline') . '; filename="document.pdf"');
         header('Cache-Control: private, max-age=3600');
         readfile($realLocal);
         exit;
