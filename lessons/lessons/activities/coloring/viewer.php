@@ -440,10 +440,11 @@ body {
 (function () {
     'use strict';
 
-    var uploadedImages     = <?= json_encode($imageUrls, JSON_UNESCAPED_UNICODE) ?>;
-    var nextActivityUrl    = <?= json_encode($nextUrl, JSON_UNESCAPED_UNICODE) ?>;
-    var COLORING_RETURN_TO = <?= json_encode($returnTo, JSON_UNESCAPED_UNICODE) ?>;
+    var uploadedImages       = <?= json_encode($imageUrls, JSON_UNESCAPED_UNICODE) ?>;
+    var nextActivityUrl      = <?= json_encode($nextUrl, JSON_UNESCAPED_UNICODE) ?>;
+    var COLORING_RETURN_TO   = <?= json_encode($returnTo, JSON_UNESCAPED_UNICODE) ?>;
     var COLORING_ACTIVITY_ID = <?= json_encode($activityId, JSON_UNESCAPED_UNICODE) ?>;
+    var coloringRounds       = 0;
 
     var colors = [
         '#ef4444','#f97316','#cc7722','#f5e6c8','#facc15','#22c55e','#14b8a6','#3b82f6',
