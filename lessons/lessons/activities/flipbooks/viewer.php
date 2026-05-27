@@ -97,12 +97,18 @@ ob_start();
             </div>
 
             <div class="flipbook-stage" id="flipbook-stage">
-                <iframe
+                <object
                     id="pdf-frame"
                     class="flipbook-pdf-frame"
-                    src="<?php echo htmlspecialchars($pdfDisplayUrl, ENT_QUOTES, 'UTF-8'); ?>#toolbar=1&navpanes=0&scrollbar=1"
-                    title="Documento PDF"
-                ></iframe>
+                    data="<?php echo htmlspecialchars($pdfDisplayUrl, ENT_QUOTES, 'UTF-8'); ?>"
+                    type="application/pdf"
+                >
+                    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:16px;padding:32px;text-align:center;color:#64748b;">
+                        <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="#db2777" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="12" x2="12" y2="18"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+                        <p style="margin:0;font-size:15px;font-weight:600;color:#0f172a;">PDF preview is not available in your browser</p>
+                        <p style="margin:0;font-size:13px;">Use the buttons above to open or download the PDF.</p>
+                    </div>
+                </object>
             </div>
         </div>
     </div>
