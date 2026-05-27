@@ -281,32 +281,8 @@ body.fullscreen-embedded .viewer-content { background: #fff !important; }
 .bad  { color: #dc2626; }
 
 /* Completion */
-.ddk-completed { display: none; text-align: center; padding: 28px 20px; }
+.ddk-completed { display: none; padding: 8px 0; }
 .ddk-completed.active { display: block; }
-.ddk-completed-icon  { font-size: 60px; margin-bottom: 10px; }
-.ddk-completed-title {
-    font-family: 'Fredoka', 'Trebuchet MS', sans-serif;
-    font-size: 30px;
-    font-weight: 700;
-    color: #4c1d95;
-    margin: 0 0 8px;
-}
-.ddk-completed-text  { font-size: 14px; color: #5b516f; line-height: 1.5; margin: 0 0 4px; }
-.ddk-completed-score { font-size: 16px; font-weight: 800; color: #4c1d95; margin: 0 0 20px; }
-.ddk-completed-btn {
-    display: inline-block;
-    padding: 10px 24px;
-    border: none;
-    border-radius: 6px;
-    background: #7F77DD;
-    color: #fff;
-    font-weight: 700;
-    font-size: 14px;
-    cursor: pointer;
-    box-shadow: 0 6px 18px rgba(127,119,221,.28);
-    transition: transform .18s, filter .18s;
-}
-.ddk-completed-btn:hover { transform: scale(1.05); filter: brightness(1.07); }
 
 @media (max-width: 640px) {
     .ddk-bg { max-height: calc(100vh - 210px); }
@@ -376,21 +352,14 @@ body.fullscreen-embedded .act-header h2 {
 
     <div id="ddkFeedback"></div>
 
-    <div id="ddkCompleted" class="ddk-completed">
-        <div class="ddk-completed-icon">🎉</div>
-        <h2 class="ddk-completed-title">Great job!</h2>
-        <p class="ddk-completed-text">
-            You completed <strong><?= htmlspecialchars($title, ENT_QUOTES, 'UTF-8') ?></strong>.
-        </p>
-        <p class="ddk-completed-score" id="ddkScore"></p>
-        <button class="ddk-completed-btn" type="button" onclick="restartActivity()">Play Again</button>
-    </div>
+    <div id="ddkCompleted" class="ddk-completed"></div>
 </div>
 
 <audio id="winSnd"  src="../../hangman/assets/win.mp3"       preload="auto"></audio>
 <audio id="loseSnd" src="../../hangman/assets/lose.mp3"      preload="auto"></audio>
 <audio id="doneSnd" src="../../hangman/assets/win (1).mp3"   preload="auto"></audio>
 
+<script src="../../core/_activity_feedback.js"></script>
 <script>
 const DDK_PAIRS       = <?= json_encode($pairs, JSON_UNESCAPED_UNICODE) ?>;
 const DDK_ACTIVITY_ID = <?= json_encode($activityId, JSON_UNESCAPED_UNICODE) ?>;
@@ -403,7 +372,6 @@ const doneSnd     = document.getElementById('doneSnd');
 const bank        = document.getElementById('ddkBank');
 const feedbackEl  = document.getElementById('ddkFeedback');
 const completedEl = document.getElementById('ddkCompleted');
-const scoreEl     = document.getElementById('ddkScore');
 const touchHint   = document.getElementById('ddkTouchHint');
 const controls    = document.getElementById('ddkControls');
 
@@ -529,11 +497,27 @@ async function showCompleted() {
     if (controls) controls.style.display = 'none';
     setFeedback('', '');
 
-    const total = DDK_PAIRS.length;
-    const pct   = total > 0 ? Math.round((correctCount / total) * 100) : 0;
+    const total  = DDK_PAIRS.length;
+    const pct    = total > 0 ? Math.round((correctCount / total) * 100) : 0;
     const errors = Math.max(0, total - correctCount);
-    if (scoreEl) scoreEl.textContent = 'Score: ' + correctCount + ' / ' + total + ' (' + pct + '%)';
-    if (completedEl) completedEl.classList.add('active');
+
+    // Build scores array for ActivityFeedback (1 = correct, 0 = not placed by user)
+    var scores = [];
+    for (var i = 0; i < total; i++) {
+        scores.push(i < correctCount ? 1 : 0);
+    }
+
+    completedEl.classList.add('active');
+    completedEl.innerHTML = '';
+
+    window.ActivityFeedback.showCompleted({
+        target:        completedEl,
+        scores:        scores,
+        title:         DDK_TITLE,
+        activityType:  'Drag & Drop',
+        questionCount: total,
+        onRetry:       restartActivity
+    });
 
     if (DDK_ACTIVITY_ID && DDK_RETURN_TO) {
         const joiner  = DDK_RETURN_TO.indexOf('?') !== -1 ? '&' : '?';
@@ -578,8 +562,11 @@ function restartActivity() {
     done         = false;
     correctCount = 0;
     clearChip();
-    if (completedEl) completedEl.classList.remove('active');
-    if (controls)    controls.style.display = '';
+    if (completedEl) {
+        completedEl.classList.remove('active');
+        completedEl.innerHTML = '';
+    }
+    if (controls) controls.style.display = '';
     setFeedback('', '');
     document.querySelectorAll('.ddk-zone').forEach(function (z) {
         z.classList.remove('filled', 'wrong');
