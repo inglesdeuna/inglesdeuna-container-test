@@ -2168,8 +2168,16 @@ ob_start();
 }
 </style>
 
+
 <div class="qz-wrap" id="quizApp">
-  <section class="qz-hero">
+  <div class="qz-tabs" id="qzTabs">
+    <button class="qz-tab" data-tab="intro" id="tab-intro">Intro</button>
+    <button class="qz-tab" data-tab="quiz" id="tab-quiz">Quiz</button>
+    <button class="qz-tab" data-tab="result" id="tab-result">Resultado</button>
+    <button class="qz-tab" data-tab="review" id="tab-review">Review</button>
+  </div>
+
+  <section class="qz-hero qz-tab-section" id="section-intro">
     <h2 class="qz-title"><?php echo htmlspecialchars($viewerTitle, ENT_QUOTES, 'UTF-8'); ?></h2>
     <?php if ($description !== '') { ?>
       <p class="qz-lead"><?php echo htmlspecialchars($description, ENT_QUOTES, 'UTF-8'); ?></p>
@@ -2189,37 +2197,62 @@ ob_start();
     <div class="qz-progress-track">
       <div class="qz-progress-fill" id="qz-progress-fill"></div>
     </div>
+    <div style="margin-top:32px;text-align:center;">
+      <button class="qz-btn" id="btnStartQuiz">Start quiz</button>
+    </div>
   </section>
 
-  <?php if (!empty($quizAttemptPolicy['message'])) { ?>
-    <div class="qz-alert"><?php echo htmlspecialchars((string) $quizAttemptPolicy['message'], ENT_QUOTES, 'UTF-8'); ?></div>
-  <?php } ?>
+  <section class="qz-tab-section" id="section-quiz" style="display:none;">
+    <?php if (!empty($quizAttemptPolicy['message'])) { ?>
+      <div class="qz-alert"><?php echo htmlspecialchars((string) $quizAttemptPolicy['message'], ENT_QUOTES, 'UTF-8'); ?></div>
+    <?php } ?>
 
-  <?php if (!$hasAnyQuizBlock) { ?>
-    <div class="qz-empty">This quiz does not have questions yet. Open the editor to configure it.</div>
-  <?php } else { ?>
-    <div id="qz-questions-wrap">
-      <div class="qz-list" id="qz-list"></div>
-      <div class="qz-actions">
-        <button type="button" class="qz-btn" id="btnCheckQuiz" <?php echo !empty($quizAttemptPolicy['finish_enabled']) ? '' : 'disabled'; ?>>Finish quiz</button>
+    <?php if (!$hasAnyQuizBlock) { ?>
+      <div class="qz-empty">This quiz does not have questions yet. Open the editor to configure it.</div>
+    <?php } else { ?>
+      <div id="qz-questions-wrap">
+        <div class="qz-list" id="qz-list"></div>
+        <div class="qz-actions">
+          <button type="button" class="qz-btn" id="btnCheckQuiz" <?php echo !empty($quizAttemptPolicy['finish_enabled']) ? '' : 'disabled'; ?>>Finish quiz</button>
+        </div>
+        <div class="qz-result" id="quizResult"></div>
       </div>
-      <div class="qz-result" id="quizResult"></div>
-    </div>
+    <?php } ?>
+  </section>
 
+  <section class="qz-tab-section" id="section-result" style="display:none;">
     <div id="qz-completed" class="qz-completed-screen">
       <div class="qz-completed-icon">✅</div>
       <h2 class="qz-completed-title"><?php echo htmlspecialchars($viewerTitle, ENT_QUOTES, 'UTF-8'); ?></h2>
       <p class="qz-completed-score" id="qz-score-text"></p>
       <p class="qz-completed-text" id="qz-completed-text">Your percentage was added to the unit score.</p>
       <p class="qz-completed-note" id="qz-attempt-note"></p>
-      <?php if ($returnTo !== '') { ?>
       <div class="qz-actions" style="margin-top:20px;">
+        <button class="qz-btn" id="btnGoReview">Review answers</button>
+        <?php if ($returnTo !== '') { ?>
         <a class="qz-btn" href="<?php echo htmlspecialchars($returnTo, ENT_QUOTES, 'UTF-8'); ?>">&#8592; Return to course</a>
+        <?php } ?>
       </div>
-      <?php } ?>
     </div>
-  <?php } ?>
+  </section>
+
+  <section class="qz-tab-section" id="section-review" style="display:none;">
+    <div class="qz-review-list" id="qz-review-list">
+      <!-- Aquí se renderiza el review de respuestas -->
+    </div>
+    <div class="qz-actions" style="margin-top:20px;">
+      <button class="qz-btn" id="btnBackToResult">Back to result</button>
+    </div>
+  </section>
 </div>
+
+<style>
+.qz-tabs { display: flex; gap: 8px; margin-bottom: 24px; }
+.qz-tab { background: #f3f3fa; border: none; border-radius: 8px 8px 0 0; padding: 10px 24px; font-weight: bold; cursor: pointer; color: #555; }
+.qz-tab.active { background: #fff; color: #2a2a6a; border-bottom: 2px solid #2a2a6a; }
+.qz-tab-section { display: none; }
+.qz-tab-section.active { display: block !important; }
+</style>
 
 <script>
 window.QUIZ_DATA = <?php echo json_encode($questions, JSON_UNESCAPED_UNICODE); ?>;
@@ -2231,6 +2264,41 @@ window.QUIZ_PRONUNCIATION_DATA = <?php echo json_encode($quizPronunciationItems,
 window.QUIZ_WRITING_DATA = <?php echo json_encode($quizWritingQuestions, JSON_UNESCAPED_UNICODE); ?>;
 window.QUIZ_DICTATION_DATA = <?php echo json_encode($quizDictationItems, JSON_UNESCAPED_UNICODE); ?>;
 window.QUIZ_LISTEN_ORDER_DATA = <?php echo json_encode($quizListenOrderBlocks, JSON_UNESCAPED_UNICODE); ?>;
+// Tabs navigation logic
+function setActiveTab(tab) {
+  const tabs = document.querySelectorAll('.qz-tab');
+  const sections = document.querySelectorAll('.qz-tab-section');
+  tabs.forEach(t => t.classList.remove('active'));
+  sections.forEach(s => s.classList.remove('active'));
+  if (tab === 'intro') {
+    document.getElementById('tab-intro').classList.add('active');
+    document.getElementById('section-intro').classList.add('active');
+  } else if (tab === 'quiz') {
+    document.getElementById('tab-quiz').classList.add('active');
+    document.getElementById('section-quiz').classList.add('active');
+  } else if (tab === 'result') {
+    document.getElementById('tab-result').classList.add('active');
+    document.getElementById('section-result').classList.add('active');
+  } else if (tab === 'review') {
+    document.getElementById('tab-review').classList.add('active');
+    document.getElementById('section-review').classList.add('active');
+  }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  setActiveTab('intro');
+  document.getElementById('tab-intro').addEventListener('click', function() { setActiveTab('intro'); });
+  document.getElementById('tab-quiz').addEventListener('click', function() { setActiveTab('quiz'); });
+  document.getElementById('tab-result').addEventListener('click', function() { setActiveTab('result'); });
+  document.getElementById('tab-review').addEventListener('click', function() { setActiveTab('review'); });
+  var btnStartQuiz = document.getElementById('btnStartQuiz');
+  if (btnStartQuiz) btnStartQuiz.addEventListener('click', function() { setActiveTab('quiz'); });
+  var btnGoReview = document.getElementById('btnGoReview');
+  if (btnGoReview) btnGoReview.addEventListener('click', function() { setActiveTab('review'); });
+  var btnBackToResult = document.getElementById('btnBackToResult');
+  if (btnBackToResult) btnBackToResult.addEventListener('click', function() { setActiveTab('result'); });
+});
+
 (function(){
   const btn = document.getElementById('btnCheckQuiz');
   const questionsWrap = document.getElementById('qz-questions-wrap');
