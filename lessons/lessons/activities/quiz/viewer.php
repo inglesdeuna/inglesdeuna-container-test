@@ -6,9 +6,36 @@ if (session_status() !== PHP_SESSION_ACTIVE) {
   session_start();
 }
 
+
 $activityId = isset($_GET['id']) ? trim((string) $_GET['id']) : '';
 $unit = isset($_GET['unit']) ? trim((string) $_GET['unit']) : '';
 $returnTo = isset($_GET['return_to']) ? trim((string) $_GET['return_to']) : '';
+
+// Cargar configuración de la unidad desde units.json
+$unitConfig = null;
+if ($unit !== '') {
+  $unitsFile = __DIR__ . '/../../academic/data/units.json';
+  if (file_exists($unitsFile)) {
+    $unitsArr = json_decode(file_get_contents($unitsFile), true);
+    if (is_array($unitsArr)) {
+      foreach ($unitsArr as $u) {
+        if (isset($u['id']) && (string)$u['id'] === (string)$unit) {
+          $unitConfig = $u;
+          break;
+        }
+      }
+    }
+  }
+}
+
+// Leer ratio de quiz de la unidad, si existe
+$quizRatio = 0.75;
+if (is_array($unitConfig) && isset($unitConfig['quiz_ratio'])) {
+  $quizRatio = floatval($unitConfig['quiz_ratio']);
+  if ($quizRatio <= 0 || $quizRatio > 1) {
+    $quizRatio = 0.75;
+  }
+}
 
 if ($activityId === '' && $unit === '') {
     die('Activity not specified');
@@ -1145,7 +1172,7 @@ $_qByType = array_filter([
 
 if (!empty($_qByType)) {
   $_totalAvailable = (int) array_sum(array_map('count', $_qByType));
-  $_targetCount    = quiz_compute_target_count($_totalAvailable);
+  $_targetCount    = quiz_compute_target_count($_totalAvailable, $quizRatio);
   $_balanced       = quiz_balance_by_type($_qByType, $_targetCount);
 
   $questions             = [];
