@@ -782,33 +782,29 @@ body {
             '<div class="af-unscored__card">' +
                 '<p class="af-unscored__prog-label">Pages Colored</p>' +
                 '<div class="af-unscored__prog-track">' +
-                    '<div class="af-unscored__prog-fill" style="width:100%"></div>' +
+                    '<div class="af-unscored__prog-fill" id="col-prog-fill" style="width:0%"></div>' +
                 '</div>' +
                 '<div class="af-unscored__prog-nums">' +
-                    '<span>0</span><strong>' + n + ' / ' + n + '</strong>' +
+                    '<span>0</span><strong id="col-prog-text">0 / 0</strong>' +
                 '</div>' +
                 '<div class="af-unscored__icon">' +
-                    '<svg width="22" height="22" fill="none" viewBox="0 0 24 24">' +
-                        '<path stroke="#7F77DD" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>' +
-                    '</svg>' +
+                    '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#7F77DD" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>' +
                 '</div>' +
                 '<p class="af-unscored__title">Coloring complete!</p>' +
                 '<p class="af-unscored__sub">Great job! You colored all the pages.</p>' +
                 '<div class="af-unscored__chips af-unscored__chips--2">' +
                     '<div class="af-unscored__chip">' +
-                        '<div class="af-unscored__chip-val af-unscored__chip-val--orange">' + n + '</div>' +
-                        '<div class="af-unscored__chip-lbl">Pages</div>' +
+                        '<div class="af-unscored__chip-val af-unscored__chip-val--orange" id="col-stat1">0</div>' +
+                        '<div class="af-unscored__chip-lbl">Pages Colored</div>' +
                     '</div>' +
                     '<div class="af-unscored__chip">' +
-                        '<div class="af-unscored__chip-val">' + coloringRounds + '</div>' +
+                        '<div class="af-unscored__chip-val" id="col-stat2">0</div>' +
                         '<div class="af-unscored__chip-lbl">Rounds</div>' +
                     '</div>' +
                 '</div>' +
                 '<div class="af-unscored__banner af-unscored__banner--orange">' +
                     '<div class="af-unscored__banner-icon af-unscored__banner-icon--orange">' +
-                        '<svg width="16" height="16" fill="none" viewBox="0 0 24 24">' +
-                            '<path stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>' +
-                        '</svg>' +
+                        '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>' +
                     '</div>' +
                     '<div class="af-unscored__banner-text af-unscored__banner-text--orange">' +
                         '<span class="af-unscored__banner-title">Keep up the great work!</span>' +
@@ -820,6 +816,16 @@ body {
                     nextBtnHtml +
                 '</div>' +
             '</div>';
+
+        var fillEl  = document.getElementById('col-prog-fill');
+        var textEl  = document.getElementById('col-prog-text');
+        var stat1El = document.getElementById('col-stat1');
+        var stat2El = document.getElementById('col-stat2');
+
+        if (fillEl)  fillEl.style.width  = '100%';
+        if (textEl)  textEl.textContent  = n + ' / ' + n;
+        if (stat1El) stat1El.textContent = String(n);
+        if (stat2El) stat2El.textContent = String(coloringRounds);
 
         document.getElementById('coloringRestartBtn').addEventListener('click', function () {
             stage.classList.remove('is-completed');
