@@ -519,7 +519,7 @@ function load_quiz_fallback_from_multiple_choice(PDO $pdo, string $unit): array
       'id' => 'quiz_unit_' . $unit,
       'title' => 'Unit Quiz',
       'description' => 'Answer and submit your result.',
-      'questions' => $questions,
+      'questions' => quiz_take_random_subset($questions, 6),
     ];
   } catch (Throwable $e) {
     return [
@@ -531,7 +531,20 @@ function load_quiz_fallback_from_multiple_choice(PDO $pdo, string $unit): array
   }
 }
 
-function quiz_compute_target_count(int $available, float $ratio = 0.75): int
+function quiz_get_attempt_seed(string $unitId, int $attemptNumber): int
+{
+  $sessionKey = 'qz_seed_' . md5($unitId . '_' . $attemptNumber);
+  if (!isset($_SESSION[$sessionKey])) {
+    try {
+      $_SESSION[$sessionKey] = random_int(100000, 999999);
+    } catch (Throwable $e) {
+      $_SESSION[$sessionKey] = mt_rand(100000, 999999);
+    }
+  }
+  return (int) $_SESSION[$sessionKey];
+}
+
+function quiz_compute_target_count(int $available, float $ratio = 0.75, int $min = 5, int $max = 15): int
 {
   if ($available <= 0) {
     return 0;
@@ -542,9 +555,7 @@ function quiz_compute_target_count(int $available, float $ratio = 0.75): int
   }
 
   $target = (int) floor($available * $ratio);
-  if ($target < 1) {
-    $target = 1;
-  }
+  $target = max($min, min($max, $target));
 
   return min($available, $target);
 }
@@ -560,7 +571,12 @@ function quiz_take_random_subset(array $items, ?int $targetCount = null, float $
     $targetCount = quiz_compute_target_count(count($clean), $ratio);
   }
 
+  if (isset($GLOBALS['_quiz_shuffle_seed'])) {
+    mt_srand($GLOBALS['_quiz_shuffle_seed']);
+  }
   shuffle($clean);
+  mt_srand();
+
   return array_slice($clean, 0, min($targetCount, count($clean)));
 }
 
@@ -799,7 +815,7 @@ function load_quiz_writing_questions(PDO $pdo, string $unit): array
     }
   }
 
-  return quiz_take_random_subset($questions);
+  return quiz_take_random_subset($questions, 6);
 }
 
 function load_quiz_dictation_items(PDO $pdo, string $unit): array
@@ -825,7 +841,7 @@ function load_quiz_dictation_items(PDO $pdo, string $unit): array
     }
   }
 
-  return quiz_take_random_subset($items);
+  return quiz_take_random_subset($items, 6);
 }
 
 function load_quiz_listen_order_blocks(PDO $pdo, string $unit): array
@@ -850,7 +866,7 @@ function load_quiz_listen_order_blocks(PDO $pdo, string $unit): array
     }
   }
 
-  return quiz_take_random_subset($blocks);
+  return quiz_take_random_subset($blocks, 6);
 }
 
 function load_quiz_match_pairs(PDO $pdo, string $unit): array
@@ -901,7 +917,7 @@ function load_quiz_match_pairs(PDO $pdo, string $unit): array
       }
     }
 
-    return quiz_take_random_subset($pairs);
+    return quiz_take_random_subset($pairs, 6);
   } catch (Throwable $e) {
     return [];
   }
@@ -951,7 +967,7 @@ function load_quiz_pronunciation_items(PDO $pdo, string $unit): array
       }
     }
 
-    return quiz_take_random_subset($items);
+    return quiz_take_random_subset($items, 6);
   } catch (Throwable $e) {
     return [];
   }
