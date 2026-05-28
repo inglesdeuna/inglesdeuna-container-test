@@ -208,6 +208,22 @@ if ($step === 0) {
     $userAnswer = $answers['mc'][$qIdx] ?? null;
     $showFeedback = false;
     $isCorrect = false;
+    // Validación robusta de campos requeridos
+    $q_question = isset($q['question']) && $q['question'] !== null ? $q['question'] : '';
+    $q_options_raw = isset($q['options']) && $q['options'] !== null ? $q['options'] : '';
+    $opts = [];
+    if ($q_options_raw !== '') {
+      $opts = json_decode($q_options_raw, true);
+      if (!is_array($opts)) $opts = [];
+    }
+    if ($q_question === '' || empty($opts)) {
+      echo '<div class="qm-screen on" id="sc-mc">';
+      echo '<div class="qz-wrap">';
+      echo '<div style="color:#f14902;font-weight:700;text-align:center;padding:32px 0;">Error: Esta pregunta de opción múltiple no tiene datos válidos.<br>Verifica los campos "question" y "options" en la base de datos.</div>';
+      echo '<a href="?step=1&q='.($qIdx+1).'&unit='.$unit_id.'&assignment='.$assignment.'" class="btn btn-primary mt-3">Siguiente pregunta</a>';
+      echo '</div></div>';
+      return;
+    }
     if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['answer'])) {
       $userAnswer = (int)$_POST['answer'];
       $answers['mc'][$qIdx] = $userAnswer;
@@ -229,10 +245,9 @@ if ($step === 0) {
     echo '</div>';
     echo '<div class="qz-prog-track"><div class="qz-prog-fill" style="width:'.$progress.'%"></div></div>';
     echo '<div class="qz-section-tag"><i class="ti ti-checks"></i> Multiple choice</div>';
-    echo '<p class="qz-q-text">'.htmlspecialchars($q['question']).'</p>';
+    echo '<p class="qz-q-text">'.htmlspecialchars($q_question).'</p>';
     echo '<form method="post">';
     echo '<div class="qz-options" id="mc-opts">';
-    $opts = json_decode($q['options'], true);
     foreach ($opts as $i => $opt) {
       $sel = ($userAnswer !== null && $userAnswer == $i) ? ' sel' : '';
       $letter = chr(65+$i);
