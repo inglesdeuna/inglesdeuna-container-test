@@ -5,52 +5,28 @@ session_start();
 $step = isset($_GET['step']) ? (int)$_GET['step'] : 0;
 if ($step < 0 || $step > 7) $step = 0;
 
-// --- Preguntas mock para demo (reemplazar por carga real) ---
-if (!isset($_SESSION['quiz_questions'])) {
-  $_SESSION['quiz_questions'] = [
-    [
-      'type' => 'mc',
-      'question' => 'What is the capital of France?',
-      'options' => ['Madrid', 'Paris', 'Rome', 'Berlin'],
-      'correct' => 1,
-    ],
-    [
-      'type' => 'mc',
-      'question' => 'Which is the largest planet?',
-      'options' => ['Earth', 'Jupiter', 'Mars', 'Venus'],
-      'correct' => 1,
-    ],
-    [
-      'type' => 'fill',
-      'question' => 'The sky is _____.',
-      'answer' => 'blue',
-    ],
-    [
-      'type' => 'fill',
-      'question' => 'Grass is _____.',
-      'answer' => 'green',
-    ],
-    [
-      'type' => 'match',
-      'pairs' => [
-        ['left' => 'Dog', 'right' => 'Perro'],
-        ['left' => 'Cat', 'right' => 'Gato'],
-      ],
-    ],
-    [
-      'type' => 'dictation',
-      'audio' => 'https://cdn.pixabay.com/audio/2022/10/16/audio_12b5fae3b2.mp3',
-      'answer' => 'Hello world',
-    ],
-    [
-      'type' => 'pronunciation',
-      'prompt' => 'Say: "Good morning"',
-      'expected' => 'Good morning',
-    ],
-  ];
+// --- Cargar actividades reales de la unidad ---
+require_once __DIR__ . '/../../config/db.php';
+$unit_id = $_GET['unit'] ?? '';
+if (!$unit_id) { die('Unidad no especificada.'); }
+
+// Tipos de actividad de puntaje
+$score_types = ['quiz', 'multiple_choice', 'fill', 'match', 'dictation', 'pronunciation'];
+
+// Obtener actividades de la unidad
+$stmt = $pdo->prepare("SELECT * FROM activities WHERE unit_id = :unit_id ORDER BY position ASC, id ASC");
+$stmt->execute(['unit_id' => $unit_id]);
+$all_activities = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+// Filtrar solo actividades de puntaje
+$questions = array_values(array_filter($all_activities, function($a) use ($score_types) {
+  return in_array(strtolower($a['type'] ?? ''), $score_types, true);
+}));
+
+// Inicializar respuestas en sesión si no existen
+if (!isset($_SESSION['quiz_answers'])) {
   $_SESSION['quiz_answers'] = [];
 }
-$questions = $_SESSION['quiz_questions'];
 $answers = &$_SESSION['quiz_answers'];
 
 // --- Manejo de POST y redirecciones antes de cualquier salida HTML ---
@@ -207,23 +183,61 @@ if (!isset($_SESSION['quiz_questions'])) {
 $questions = $_SESSION['quiz_questions'];
 $answers = &$_SESSION['quiz_answers'];
 
-// --- Pantalla 0: Intro ---
+// --- Pantalla 0: Intro (diseño igual al mockup) ---
 if ($step === 0) {
-  // Meta chips y desglose
-  echo '<div class="qz-title mb-2">Unit Quiz</div>';
-  echo '<div class="qz-lead">Answer all questions to complete this unit and unlock the next one.</div>';
-  echo '<div class="mb-3">';
-  echo '<span class="qz-chip">' . count($questions) . ' questions</span>';
-  echo '<span class="qz-chip">~8 min</span>';
-  echo '<span class="qz-chip">3 attempts</span>';
+  // Contar por tipo
+  $type_labels = [
+    'multiple_choice' => ['Multiple choice', 'Pick the correct answer', 'primary', 'bi-list-check', '#ede9fe'],
+    'fill' => ['Fill in the blank', 'Complete the sentence', 'warning', 'bi-input-cursor-text', '#fff7e6'],
+    'match' => ['Match pairs', 'Connect each word to its pair', 'info', 'bi-shuffle', '#e0f7fa'],
+    'dictation' => ['Dictation', 'Listen and write what you hear', 'success', 'bi-mic', '#e6fbe6'],
+    'pronunciation' => ['Pronunciation', 'Say the phrase', 'secondary', 'bi-emoji-smile', '#f3f3fa'],
+  ];
+  $counts = [];
+  foreach ($questions as $q) {
+    $type = strtolower($q['type']);
+    if (!isset($counts[$type])) $counts[$type] = 0;
+    $counts[$type]++;
+  }
+  echo '<div style="text-align:center;margin-bottom:18px;">';
+  echo '<div style="color:#7c3aed;font-weight:700;font-size:1.1rem;letter-spacing:.5px;">Quiz de Unidad – Mockup</div>';
+  echo '<div style="color:#a3a3b3;font-size:.95rem;">inglesdeuna · 7 pantallas interactivas</div>';
+  echo '<button class="btn btn-light btn-sm mt-2" style="border-radius:8px;font-size:.95rem;"><i class="bi bi-download"></i> Descargar HTML</button>';
   echo '</div>';
-  echo '<div class="mb-3"><strong>What\'s included</strong></div>';
-  echo '<ul class="list-group mb-4">';
-  echo '<li class="list-group-item">Multiple choice <span class="badge bg-primary float-end">' . count(array_filter($questions, fn($q) => $q['type']==='mc')) . '</span></li>';
-  echo '<li class="list-group-item">Fill in the blank <span class="badge bg-warning text-dark float-end">' . count(array_filter($questions, fn($q) => $q['type']==='fill')) . '</span></li>';
-  echo '<li class="list-group-item">Match pairs <span class="badge bg-info text-dark float-end">' . count(array_filter($questions, fn($q) => $q['type']==='match')) . '</span></li>';
-  echo '</ul>';
-  echo '<form method="get"><input type="hidden" name="step" value="1"><button class="btn btn-lg btn-primary w-100">Start quiz</button></form>';
+  echo '<div class="d-flex justify-content-center mb-3">';
+  $steps = ['Intro','Multiple choice','Fill in blank','Match','Dictation','Pronunciation','Resultado','Review'];
+  foreach ($steps as $i => $label) {
+    $active = $i === 0 ? 'btn-primary' : 'btn-outline-primary';
+    echo '<button class="btn '.$active.' btn-sm mx-1" style="border-radius:16px;min-width:90px;">'.$label.'</button>';
+  }
+  echo '</div>';
+  echo '<div style="text-align:center;color:#b0b0c3;font-size:.95rem;margin-bottom:8px;">PANTALLA 1 — PORTADA DEL QUIZ</div>';
+  echo '<div class="card shadow-sm mx-auto" style="max-width:420px;border-radius:18px;background:#fff;padding:32px 24px 24px 24px;">';
+  echo '<div style="margin-bottom:10px;"><span class="badge bg-warning text-dark" style="font-size:.85rem;border-radius:8px 8px 8px 0;padding:4px 12px 4px 10px;">UNIT 3 · QUIZ</span></div>';
+  echo '<div class="qz-title mb-2" style="font-size:2.1rem;color:#f14902;">Unit Quiz</div>';
+  echo '<div class="qz-lead mb-3" style="color:#7c3aed;font-size:1.1rem;">Answer all questions to complete this unit and unlock the next one.</div>';
+  echo '<div class="d-flex justify-content-between mb-2" style="gap:8px;">';
+  echo '<span class="qz-chip" style="background:#ede9fe;"><i class="bi bi-list-ol"></i> '.count($questions).' questions</span>';
+  echo '<span class="qz-chip" style="background:#e0f2fe;"><i class="bi bi-clock"></i> ~8 min</span>';
+  echo '<span class="qz-chip" style="background:#ffe4e6;"><i class="bi bi-arrow-repeat"></i> 3 attempts</span>';
+  echo '</div>';
+  echo '<hr style="margin:18px 0 18px 0;">';
+  echo '<div style="font-weight:600;color:#7c3aed;margin-bottom:10px;">WHAT\'S INCLUDED</div>';
+  echo '<div class="list-group mb-4">';
+  foreach ($type_labels as $type => [$label, $desc, $color, $icon, $bg]) {
+    if (!isset($counts[$type])) continue;
+    echo '<div class="list-group-item d-flex align-items-center justify-content-between" style="border:none;background:'.$bg.';margin-bottom:6px;border-radius:12px;">';
+    echo '<div class="d-flex align-items-center">';
+    echo '<i class="bi '.$icon.' me-2" style="font-size:1.3em;color:#7c3aed;"></i>';
+    echo '<div><div style="font-weight:600;font-size:1.08em;">'.$label.'</div>';
+    echo '<div style="font-size:.97em;color:#7c3aed;">'.$desc.'</div></div>';
+    echo '</div>';
+    echo '<span class="badge bg-'.$color.'" style="font-size:1em;min-width:32px;">'.$counts[$type].'</span>';
+    echo '</div>';
+  }
+  echo '</div>';
+  echo '<form method="get"><input type="hidden" name="step" value="1"><input type="hidden" name="unit" value="'.htmlspecialchars($unit_id).'"><button class="btn btn-lg w-100" style="background:#7c3aed;color:#fff;font-weight:700;font-size:1.15em;border-radius:12px;">▶ Start quiz</button></form>';
+  echo '</div>';
 }
 // --- Pantalla 1: Multiple Choice ---
 elseif ($step === 1) {
