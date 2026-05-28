@@ -63,6 +63,47 @@ if (!isset($_SESSION['quiz_questions'])) {
       'audio' => 'https://cdn.pixabay.com/audio/2022/10/16/audio_12b5fae3b2.mp3',
       'answer' => 'Hello world',
     ],
+    [
+      'type' => 'pronunciation',
+      'prompt' => 'Say: "Good morning"',
+      'expected' => 'Good morning',
+    ],
+  // --- Pantalla 5: Pronunciation ---
+  elseif ($step === 5) {
+    $pronQuestions = array_values(array_filter($questions, fn($q) => $q['type']==='pronunciation'));
+    $qIdx = 0; // Solo un bloque de pronunciation en este mock
+    $q = $pronQuestions[$qIdx] ?? null;
+    if (!$q) { header('Location: ?step=6'); exit; }
+    $userAnswer = $answers['pronunciation'][$qIdx] ?? '';
+    $feedback = null;
+
+    // Guardar respuesta (simulada, ya que no hay grabación real)
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['answer'])) {
+      $userAnswer = trim($_POST['answer']);
+      $answers['pronunciation'][$qIdx] = $userAnswer;
+      // Aquí se simularía la validación de pronunciación
+      $isCorrect = (strcasecmp($userAnswer, $q['expected']) === 0);
+      $feedback = $isCorrect ? 'correct' : 'incorrect';
+      header('Location: ?step=6');
+      exit;
+    }
+
+    echo '<div class="mb-3"><span class="badge bg-secondary">Pronunciation</span></div>';
+    echo '<div class="mb-3"><strong>Say the following phrase</strong></div>';
+    echo '<form method="post">';
+    echo '<div class="mb-3 fs-5">' . htmlspecialchars($q['prompt']) . '</div>';
+    echo '<input type="text" class="form-control mb-2" name="answer" value="' . htmlspecialchars($userAnswer) . '" required autocomplete="off" placeholder="Simulate speaking by typing...">';
+    if ($userAnswer !== '') {
+      $isCorrect = (strcasecmp($userAnswer, $q['expected']) === 0);
+      if ($isCorrect) {
+        echo '<div class="alert alert-success">Correct (simulated)!</div>';
+      } else {
+        echo '<div class="alert alert-danger">Incorrect. Expected: <strong>' . htmlspecialchars($q['expected']) . '</strong></div>';
+      }
+    }
+    echo '<button class="btn btn-primary mt-3">Continue</button>';
+    echo '</form>';
+  }
   ];
   $_SESSION['quiz_answers'] = [];
 }
