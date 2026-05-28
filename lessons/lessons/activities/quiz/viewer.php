@@ -521,22 +521,6 @@ if ($step === 0) {
         $user = $answers['fill'][$idx] ?? '';
         echo '<div style="margin-bottom:6px;">'.htmlspecialchars($q['question']).'</div>';
         echo '<div class="qz-opt" style="background:#e0fbe6;">Correct: '.htmlspecialchars($q['answer']).'</div>';
-        echo '<div class="qz-opt" style="background:#ffe4e6;">Your answer: '.htmlspecialchars($user).'</div>';
-      } elseif ($type === 'match') {
-        $idx = array_search($q, get_questions_by_type($questions, 'match'));
-        $pairs = json_decode($q['pairs'], true);
-        $user = $answers['match'][$idx] ?? [];
-        echo '<div style="margin-bottom:6px;">Match:</div>';
-        foreach ($pairs as $i => $pair) {
-          $userVal = $user[$i] ?? '';
-          $isCorrect = ($userVal == $pair['right']);
-          $style = $isCorrect ? 'background:#e0fbe6;' : 'background:#ffe4e6;';
-          echo '<div class="qz-opt" style="'.$style.'">'.htmlspecialchars($pair['left']).' → '.htmlspecialchars($userVal).' '.($isCorrect?'✔️':'❌').'</div>';
-        }
-      } elseif ($type === 'dictation') {
-        $idx = array_search($q, get_questions_by_type($questions, 'dictation'));
-        $user = $answers['dictation'][$idx] ?? '';
-        echo '<div style="margin-bottom:6px;">'.htmlspecialchars($q['question']).'</div>';
         echo '<div class="qz-opt" style="background:#e0fbe6;">Correct: '.htmlspecialchars($q['answer']).'</div>';
         echo '<div class="qz-opt" style="background:#ffe4e6;">Your answer: '.htmlspecialchars($user).'</div>';
       } elseif ($type === 'pronunciation') {
@@ -557,33 +541,7 @@ if ($step === 0) {
     echo '</div></div>';
   }
 
-  // --- Fin del flujo principal ---
-    echo '<input type="radio" name="answer" value="'.$i.'" style="display:none"'.($userAnswer!==null && $userAnswer==$i?' checked':'').'>';
-    echo '<div class="qz-opt-letter">'.$letter.'</div>'.htmlspecialchars($opt);
-    echo '</label>';
-  }
-  echo '</div>';
-  echo '<div class="qz-btns">';
-  if ($qIdx+1<$total) {
-    echo '<button class="qz-btn-next">Next question →</button>';
-  } else {
-    echo '<button class="qz-btn-next">Continue</button>';
-  }
-  echo '</div>';
-  echo '</form>';
-  echo '</div>';
-  echo '</div>';
-}
-// --- Pantalla 2: Fill in the blank ---
-elseif ($step === 2) {
-  $qIdx = isset($_GET['q']) ? (int)$_GET['q'] : 0;
-  $fillQuestions = array_values(array_filter($questions, fn($q) => $q['type']==='fill'));
-  $total = count($fillQuestions);
-  if ($qIdx < 0) $qIdx = 0;
-  if ($qIdx >= $total) $qIdx = $total-1;
-  $q = $fillQuestions[$qIdx];
-  $feedback = null;
-  $answered = isset($answers['fill'][$qIdx]);
+// --- Fin del flujo principal ---
 
   // Guardar respuesta y feedback
   if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['answer'])) {
