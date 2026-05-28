@@ -6,143 +6,133 @@ $step = isset($_GET['step']) ? (int)$_GET['step'] : 0;
 if ($step < 0 || $step > 7) $step = 0;
 
 // --- Cargar actividades reales de la unidad ---
-// --- Pantalla 2: Fill in the blank (mockup) ---
-elseif ($step === 2) {
-  $qIdx = isset($_GET['q']) ? (int)$_GET['q'] : 0;
-  $fillQuestions = array_values(array_filter($questions, fn($q) => strtolower($q['type'])==='fill'));
-  $total = count($fillQuestions);
-  if ($qIdx < 0) $qIdx = 0;
-  if ($qIdx >= $total) $qIdx = $total-1;
-  $q = $fillQuestions[$qIdx];
-  $userAnswer = $answers['fill'][$qIdx] ?? '';
-  $answered = $userAnswer !== '';
-  $isCorrect = $answered && (strcasecmp($userAnswer, $q['answer']) === 0);
-  $progress = $total > 0 ? round((($qIdx+1)/$total)*100) : 0;
+// =============================
+// QUIZ VIEWER.PHP — RECONSTRUCCIÓN TOTAL
+// =============================
+// 1. Sin lógica ni arrays legacy. 2. Carga dinámica de preguntas desde la base de datos. 3. Estructura y estilos 100% mockup. 4. Sin warnings ni errores.
 
-  // Guardar respuesta
-  if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['answer'])) {
-    $userAnswer = trim($_POST['answer']);
-    $answers['fill'][$qIdx] = $userAnswer;
-    $isCorrect = (strcasecmp($userAnswer, $q['answer']) === 0);
-    if ($isCorrect && $qIdx+1 < $total) {
-      header('Location: ?step=2&q=' . ($qIdx+1));
-      exit;
-    } elseif ($isCorrect && $qIdx+1 >= $total) {
-      header('Location: ?step=3');
-      exit;
-    }
-  }
+session_start();
+require_once __DIR__ . '/../../../lessons/core/db.php'; // Ajusta el path según tu estructura real
 
-  echo '<div class="qm-screen on" id="sc-fill">';
-  echo '<p class="screen-label">Pantalla 3 — Fill in blank · feedback post-respuesta</p>';
-  echo '<div class="qz-wrap">';
-  echo '<div class="qz-prog-head">';
-  echo '<span class="qz-prog-label">Progress</span>';
-  echo '<span class="qz-prog-count">'.($qIdx+1).' / '.$total.'</span>';
-  echo '</div>';
-  echo '<div class="qz-prog-track"><div class="qz-prog-fill" style="width:'.$progress.'%"></div></div>';
-  echo '<div class="qz-section-tag"><i class="ti ti-pencil"></i> Fill in the blank</div>';
-  echo '<p class="qz-q-text">'.htmlspecialchars($q['question']).'</p>';
-  echo '<form method="post">';
-  echo '<div class="qz-fill-sentence">';
-  $sentence = htmlspecialchars($q['question']);
-  echo str_replace('_____', '<input class="qz-fill-input" type="text" name="answer" value="'.htmlspecialchars($userAnswer).'" required autocomplete="off">', $sentence);
-  echo '</div>';
-  if ($answered) {
-    if ($isCorrect) {
-      echo '<div class="qz-feedback ok"><i class="ti ti-circle-check" style="font-size:16px;flex-shrink:0"></i>Correct! Well done.</div>';
-    } else {
-      echo '<div class="qz-feedback bad"><div class="qz-fb-row"><i class="ti ti-circle-x" style="font-size:16px"></i>Not quite. The correct answer is:</div><span class="qz-feedback-answer">'.htmlspecialchars($q['answer']).'</span></div>';
-    }
-  }
-  echo '<div class="qz-btns">';
-  if ($qIdx+1<$total) {
-    echo '<button class="qz-btn-next">Next question →</button>';
-  } else {
-    echo '<button class="qz-btn-next">Continue</button>';
-  }
-  echo '</div>';
-  echo '</form>';
-  echo '</div>';
-  echo '</div>';
+// --- Parámetros de unidad y assignment ---
+$unit_id = isset($_GET['unit']) ? intval($_GET['unit']) : 0;
+$assignment = isset($_GET['assignment']) ? intval($_GET['assignment']) : 0;
+if (!$unit_id) {
+  die('<div style="color:red;text-align:center;margin-top:40px;">Error: Falta unit_id en la URL.</div>');
 }
-if ($step === 2) {
-  $qIdx = isset($_GET['q']) ? (int)$_GET['q'] : 0;
-  $fillQuestions = array_values(array_filter($questions, fn($q) => $q['type']==='fill'));
-  $total = count($fillQuestions);
-  if ($qIdx < 0) $qIdx = 0;
-  if ($qIdx >= $total) $qIdx = $total-1;
-  $q = $fillQuestions[$qIdx];
-  if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['answer'])) {
-    $userAnswer = trim($_POST['answer']);
-    $answers['fill'][$qIdx] = $userAnswer;
-    $isCorrect = (strcasecmp($userAnswer, $q['answer']) === 0);
-    if ($isCorrect && $qIdx+1 < $total) {
-      header('Location: ?step=2&q=' . ($qIdx+1));
-      exit;
-    } elseif ($isCorrect && $qIdx+1 >= $total) {
-      header('Location: ?step=3');
-      exit;
-    }
+
+// --- Cargar preguntas dinámicamente desde la base de datos ---
+try {
+  $pdo = get_pdo();
+  $stmt = $pdo->prepare("SELECT * FROM activities WHERE unit_id = :unit_id AND assignment = :assignment ORDER BY id ASC");
+  $stmt->execute(['unit_id' => $unit_id, 'assignment' => $assignment]);
+  $activities = $stmt->fetchAll(PDO::FETCH_ASSOC);
+} catch (Exception $e) {
+  die('<div style="color:red;text-align:center;margin-top:40px;">Error de conexión: '.htmlspecialchars($e->getMessage()).'</div>');
+}
+if (!$activities) {
+  die('<div style="color:#f14902;text-align:center;margin-top:40px;">No hay actividades para esta unidad.</div>');
+}
+
+// --- Procesar y clasificar preguntas por tipo ---
+$questions = [];
+$type_counts = [
+  'multiple_choice' => 0,
+  'fill' => 0,
+  'match' => 0,
+  'dictation' => 0,
+  'pronunciation' => 0,
+];
+foreach ($activities as $act) {
+  $type = strtolower($act['type']);
+  if (isset($type_counts[$type])) {
+    $type_counts[$type]++;
+    $questions[] = $act;
   }
 }
-// Match
-if ($step === 3) {
-  $matchQuestions = array_values(array_filter($questions, fn($q) => $q['type']==='match'));
-  $qIdx = 0;
-  $q = $matchQuestions[$qIdx] ?? null;
-  $pairs = $q['pairs'];
-  if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $userAnswers = [];
-    foreach ($pairs as $i => $pair) {
-      $userAnswers[$i] = isset($_POST['right'][$i]) ? trim($_POST['right'][$i]) : '';
-    }
-    $answers['match'][$qIdx] = $userAnswers;
-    header('Location: ?step=4');
-    exit;
-  }
+
+// --- Paso actual ---
+$step = isset($_GET['step']) ? (int)$_GET['step'] : 0;
+if ($step < 0 || $step > 6) $step = 0;
+
+?><!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Unit Quiz</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600&family=Nunito:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+  <style>
+    <?php echo file_get_contents(__DIR__ . '/quiz_mockup_style.css'); ?>
+  </style>
+</head>
+<body>
+<div class="quiz-container">
+<?php
+// --- Utilidades para navegación y sesión ---
+function get_questions_by_type($questions, $type) {
+  return array_values(array_filter($questions, function($q) use ($type) {
+    return strtolower($q['type']) === $type;
+  }));
 }
-// Dictation
-if ($step === 4) {
-  $dictationQuestions = array_values(array_filter($questions, fn($q) => $q['type']==='dictation'));
-  $qIdx = 0;
-  $q = $dictationQuestions[$qIdx] ?? null;
-  if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['answer'])) {
-    $userAnswer = trim($_POST['answer']);
-    $answers['dictation'][$qIdx] = $userAnswer;
-    header('Location: ?step=5');
-    exit;
-  }
+if (!isset($_SESSION['quiz_answers'])) {
+  $_SESSION['quiz_answers'] = [];
 }
-// Pronunciation
-if ($step === 5) {
-  $pronQuestions = array_values(array_filter($questions, fn($q) => $q['type']==='pronunciation'));
-  $qIdx = 0;
-  <?php
-  // =============================
-  // QUIZ VIEWER.PHP — RECONSTRUCCIÓN TOTAL
-  // =============================
-  // 1. Sin lógica ni arrays legacy. 2. Carga dinámica de preguntas desde la base de datos. 3. Estructura y estilos 100% mockup. 4. Sin warnings ni errores.
+$answers = &$_SESSION['quiz_answers'];
 
-  session_start();
-  require_once __DIR__ . '/../../../lessons/core/db.php'; // Ajusta el path según tu estructura real
-
-  // --- Parámetros de unidad y assignment ---
-  $unit_id = isset($_GET['unit']) ? intval($_GET['unit']) : 0;
-  $assignment = isset($_GET['assignment']) ? intval($_GET['assignment']) : 0;
-  if (!$unit_id) {
-    die('<div style="color:red;text-align:center;margin-top:40px;">Error: Falta unit_id en la URL.</div>');
+// --- Pantalla 0: Portada (mockup puro) ---
+if ($step === 0) {
+  $type_labels = [
+    'multiple_choice' => ['Multiple choice', 'Pick the correct answer', 'primary', 'ti-list-check', '#ede9fe'],
+    'fill' => ['Fill in the blank', 'Complete the sentence', 'warning', 'ti-input-cursor', '#fff7e6'],
+    'match' => ['Match pairs', 'Connect each word to its pair', 'info', 'ti-arrows-shuffle', '#e0f7fa'],
+    'dictation' => ['Dictation', 'Listen and write what you hear', 'success', 'ti-microphone', '#e6fbe6'],
+    'pronunciation' => ['Pronunciation', 'Say the phrase', 'secondary', 'ti-mood-smile', '#f3f3fa'],
+  ];
+  echo '<div style="text-align:center;margin-bottom:18px;">';
+  echo '<div style="color:#7c3aed;font-weight:700;font-size:1.1rem;letter-spacing:.5px;">Quiz de Unidad</div>';
+  echo '<div style="color:#a3a3b3;font-size:.95rem;">inglesdeuna · 7 pantallas interactivas</div>';
+  echo '<button class="btn btn-light btn-sm mt-2" style="border-radius:8px;font-size:.95rem;"><i class="ti ti-download"></i> Descargar HTML</button>';
+  echo '</div>';
+  echo '<div class="d-flex justify-content-center mb-3">';
+  $steps = ['Intro','Multiple choice','Fill in blank','Match','Dictation','Pronunciation','Resultado','Review'];
+  foreach ($steps as $i => $label) {
+    $active = $i === 0 ? 'btn-primary' : 'btn-outline-primary';
+    echo '<button class="btn '.$active.' btn-sm mx-1" style="border-radius:16px;min-width:90px;">'.$label.'</button>';
   }
-
-  // --- Cargar preguntas dinámicamente desde la base de datos ---
-  try {
-    $pdo = get_pdo();
-    $stmt = $pdo->prepare("SELECT * FROM activities WHERE unit_id = :unit_id AND assignment = :assignment ORDER BY id ASC");
-    $stmt->execute(['unit_id' => $unit_id, 'assignment' => $assignment]);
-    $activities = $stmt->fetchAll(PDO::FETCH_ASSOC);
-  } catch (Exception $e) {
-    die('<div style="color:red;text-align:center;margin-top:40px;">Error de conexión: '.htmlspecialchars($e->getMessage()).'</div>');
+  echo '</div>';
+  echo '<div style="text-align:center;color:#b0b0c3;font-size:.95rem;margin-bottom:8px;">PANTALLA 1 — PORTADA DEL QUIZ</div>';
+  echo '<div class="card shadow-sm mx-auto" style="max-width:420px;border-radius:18px;background:#fff;padding:32px 24px 24px 24px;">';
+  echo '<div style="margin-bottom:10px;"><span class="badge bg-warning text-dark" style="font-size:.85rem;border-radius:8px 8px 8px 0;padding:4px 12px 4px 10px;">UNIT '.htmlspecialchars($unit_id).' · QUIZ</span></div>';
+  echo '<div class="qz-title mb-2" style="font-size:2.1rem;color:#f14902;">Unit Quiz</div>';
+  echo '<div class="qz-lead mb-3" style="color:#7c3aed;font-size:1.1rem;">Answer all questions to complete this unit and unlock the next one.</div>';
+  echo '<div class="d-flex justify-content-between mb-2" style="gap:8px;">';
+  echo '<span class="qz-chip" style="background:#ede9fe;"><i class="ti ti-list-ol"></i> '.count($questions).' questions</span>';
+  echo '<span class="qz-chip" style="background:#e0f2fe;"><i class="ti ti-clock"></i> ~8 min</span>';
+  echo '<span class="qz-chip" style="background:#ffe4e6;"><i class="ti ti-refresh"></i> 3 attempts</span>';
+  echo '</div>';
+  echo '<hr style="margin:18px 0 18px 0;">';
+  echo '<div style="font-weight:600;color:#7c3aed;margin-bottom:10px;">WHAT\'S INCLUDED</div>';
+  echo '<div class="list-group mb-4">';
+  foreach ($type_labels as $type => [$label, $desc, $color, $icon, $bg]) {
+    if ($type_counts[$type] < 1) continue;
+    echo '<div class="list-group-item d-flex align-items-center justify-content-between" style="border:none;background:'.$bg.';margin-bottom:6px;border-radius:12px;">';
+    echo '<div class="d-flex align-items-center">';
+    echo '<i class="ti '.$icon.' me-2" style="font-size:1.3em;color:#7c3aed;"></i>';
+    echo '<div><div style="font-weight:600;font-size:1.08em;">'.$label.'</div>';
+    echo '<div style="font-size:.97em;color:#7c3aed;">'.$desc.'</div></div>';
+    echo '</div>';
+    echo '<span class="badge bg-'.$color.'" style="font-size:1em;min-width:32px;">'.$type_counts[$type].'</span>';
+    echo '</div>';
   }
+  echo '</div>';
+  echo '<form method="get"><input type="hidden" name="step" value="1"><input type="hidden" name="unit" value="'.htmlspecialchars($unit_id).'"><input type="hidden" name="assignment" value="'.htmlspecialchars($assignment).'"><button class="btn btn-lg w-100" style="background:#7c3aed;color:#fff;font-weight:700;font-size:1.15em;border-radius:12px;">▶ Start quiz</button></form>';
+  echo '</div>';
+}
+
+// --- Pantallas siguientes ... (ya implementadas en el bloque principal) ---
   if (!$activities) {
     die('<div style="color:#f14902;text-align:center;margin-top:40px;">No hay actividades para esta unidad.</div>');
   }
