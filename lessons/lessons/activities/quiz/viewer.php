@@ -72,11 +72,6 @@ if ($step < 0 || $step > 6) $step = 0;
 <div class="quiz-container">
 <?php
 // --- Utilidades para navegación y sesión ---
-function get_questions_by_type($questions, $type) {
-  return array_values(array_filter($questions, function($q) use ($type) {
-    return strtolower($q['type']) === $type;
-  }));
-}
 if (!isset($_SESSION['quiz_answers'])) {
   $_SESSION['quiz_answers'] = [];
 }
