@@ -51,6 +51,13 @@ if (!isset($_SESSION['quiz_questions'])) {
       'question' => 'Grass is _____.',
       'answer' => 'green',
     ],
+    [
+      'type' => 'match',
+      'pairs' => [
+        ['left' => 'Dog', 'right' => 'Perro'],
+        ['left' => 'Cat', 'right' => 'Gato'],
+      ],
+    ],
     // ...más preguntas...
   ];
   $_SESSION['quiz_answers'] = [];
@@ -72,6 +79,7 @@ if ($step === 0) {
   echo '<ul class="list-group mb-4">';
   echo '<li class="list-group-item">Multiple choice <span class="badge bg-primary float-end">' . count(array_filter($questions, fn($q) => $q['type']==='mc')) . '</span></li>';
   echo '<li class="list-group-item">Fill in the blank <span class="badge bg-warning text-dark float-end">' . count(array_filter($questions, fn($q) => $q['type']==='fill')) . '</span></li>';
+  echo '<li class="list-group-item">Match pairs <span class="badge bg-info text-dark float-end">' . count(array_filter($questions, fn($q) => $q['type']==='match')) . '</span></li>';
   echo '</ul>';
   echo '<form method="get"><input type="hidden" name="step" value="1"><button class="btn btn-lg btn-primary w-100">Start quiz</button></form>';
 }
@@ -153,16 +161,40 @@ elseif ($step === 2) {
   echo '<button class="btn btn-primary mt-3">'.($qIdx+1<$total?'Next':'Continue').'</button>';
   echo '</form>';
 }
-// --- Pantalla 3: Pregunta 3 ---
-if ($step === 3) {
-  echo '<div class="qz-title mb-2">Question 3</div>';
-  echo '<div class="qz-lead">What is the capital of Italy?</div>';
+// --- Pantalla 3: Match ---
+elseif ($step === 3) {
+  $matchQuestions = array_values(array_filter($questions, fn($q) => $q['type']==='match'));
+  $qIdx = 0; // Solo un bloque de match en este mock
+  $q = $matchQuestions[$qIdx] ?? null;
+  if (!$q) { header('Location: ?step=4'); exit; }
+  $pairs = $q['pairs'];
+  $userAnswers = $answers['match'][$qIdx] ?? [];
+  $feedback = null;
+
+  // Guardar respuesta
+  if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $userAnswers = [];
+    foreach ($pairs as $i => $pair) {
+      $userAnswers[$i] = isset($_POST['right'][$i]) ? trim($_POST['right'][$i]) : '';
+    }
+    $answers['match'][$qIdx] = $userAnswers;
+    // Avanzar al siguiente paso
+    header('Location: ?step=4');
+    exit;
+  }
+
+  echo '<div class="mb-3"><span class="badge bg-info text-dark">Match pairs</span></div>';
+  echo '<div class="mb-3"><strong>Match the pairs</strong></div>';
   echo '<form method="post">';
-  echo '<input type="radio" name="answer" value="Rome">';
-  echo '<input type="radio" name="answer" value="Paris">';
-  echo '<input type="radio" name="answer" value="London">';
-  echo '<input type="radio" name="answer" value="Madrid">';
-  echo '<button type="submit">Submit</button>';
+  echo '<div class="row">';
+  foreach ($pairs as $i => $pair) {
+    echo '<div class="col-6 mb-2">' . htmlspecialchars($pair['left']) . '</div>';
+    echo '<div class="col-6 mb-2">';
+    echo '<input type="text" class="form-control" name="right['.$i.']" value="' . htmlspecialchars($userAnswers[$i] ?? '') . '" placeholder="Match..." required>';
+    echo '</div>';
+  }
+  echo '</div>';
+  echo '<button class="btn btn-primary mt-3">Continue</button>';
   echo '</form>';
 }
 // --- Pantalla 4: Pregunta 4 ---
