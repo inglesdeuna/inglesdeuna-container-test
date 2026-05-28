@@ -278,17 +278,148 @@ elseif ($step === 4) {
   echo '<button class="btn btn-primary mt-3">Continue</button>';
   echo '</form>';
 }
-// --- Pantalla 7: Resultados ---
-if ($step === 7) {
+// --- Pantalla 6: Resultados ---
+elseif ($step === 6) {
+  // Calcular puntaje simple (mock)
+  $score = 0;
+  $total = 0;
+  // Multiple choice
+  $mcQuestions = array_values(array_filter($questions, fn($q) => $q['type']==='mc'));
+  foreach ($mcQuestions as $i => $q) {
+    $total++;
+    if (isset($answers['mc'][$i]) && $answers['mc'][$i] == $q['correct']) $score++;
+  }
+  // Fill in the blank
+  $fillQuestions = array_values(array_filter($questions, fn($q) => $q['type']==='fill'));
+  foreach ($fillQuestions as $i => $q) {
+    $total++;
+    if (isset($answers['fill'][$i]) && strcasecmp($answers['fill'][$i], $q['answer']) === 0) $score++;
+  }
+  // Match
+  $matchQuestions = array_values(array_filter($questions, fn($q) => $q['type']==='match'));
+  foreach ($matchQuestions as $i => $q) {
+    $total++;
+    $user = $answers['match'][$i] ?? [];
+    $correct = true;
+    foreach ($q['pairs'] as $j => $pair) {
+      if (!isset($user[$j]) || strcasecmp($user[$j], $pair['right']) !== 0) $correct = false;
+    }
+    if ($correct) $score++;
+  }
+  // Dictation
+  $dictationQuestions = array_values(array_filter($questions, fn($q) => $q['type']==='dictation'));
+  foreach ($dictationQuestions as $i => $q) {
+    $total++;
+    if (isset($answers['dictation'][$i]) && strcasecmp($answers['dictation'][$i], $q['answer']) === 0) $score++;
+  }
+  // Pronunciation (simulado)
+  $pronQuestions = array_values(array_filter($questions, fn($q) => $q['type']==='pronunciation'));
+  foreach ($pronQuestions as $i => $q) {
+    $total++;
+    if (isset($answers['pronunciation'][$i]) && strcasecmp($answers['pronunciation'][$i], $q['expected']) === 0) $score++;
+  }
+
   echo '<div class="qz-title mb-2">Results</div>';
-  echo '<div class="qz-lead">You answered all questions correctly.</div>';
-  echo '<form method="get"><input type="hidden" name="step" value="0"><button class="btn btn-lg btn-primary w-100">Start over</button></form>';
+  echo '<div class="qz-lead">You scored <strong>' . $score . ' / ' . $total . '</strong></div>';
+  echo '<div class="mb-4">';
+  echo '<form method="get">';
+  echo '<input type="hidden" name="step" value="7">';
+  echo '<button class="btn btn-lg btn-primary w-100">Review answers</button>';
+  echo '</form>';
+  echo '</div>';
+  echo '<form method="get"><input type="hidden" name="step" value="0"><button class="btn btn-outline-secondary w-100">Start over</button></form>';
 }
-// --- Pantalla 8: Fin ---
-if ($step === 8) {
-  echo '<div class="qz-title mb-2">Quiz ended.</div>';
-  echo '<div class="qz-lead">Thank you for playing.</div>';
-  echo '<form method="get"><input type="hidden" name="step" value="0"><button class="btn btn-lg btn-primary w-100">Start over</button></form>';
+
+// --- Pantalla 7: Review ---
+elseif ($step === 7) {
+  echo '<div class="qz-title mb-2">Review your answers</div>';
+  echo '<div class="qz-section">';
+  // Multiple choice
+  $mcQuestions = array_values(array_filter($questions, fn($q) => $q['type']==='mc'));
+  if ($mcQuestions) {
+    echo '<div class="mb-2"><strong>Multiple choice</strong></div>';
+    foreach ($mcQuestions as $i => $q) {
+      $user = $answers['mc'][$i] ?? null;
+      $isCorrect = ($user !== null && $user == $q['correct']);
+      echo '<div class="mb-1">Q: ' . htmlspecialchars($q['question']) . '<br>';
+      echo 'Your answer: <span class="' . ($isCorrect ? 'text-success' : 'text-danger') . '">' .
+        ($user !== null ? htmlspecialchars($q['options'][$user]) : '<em>No answer</em>') . '</span>';
+      if (!$isCorrect && $user !== null) {
+        echo ' <span class="text-muted">(Correct: ' . htmlspecialchars($q['options'][$q['correct']]) . ')</span>';
+      }
+      echo '</div>';
+    }
+  }
+  // Fill in the blank
+  $fillQuestions = array_values(array_filter($questions, fn($q) => $q['type']==='fill'));
+  if ($fillQuestions) {
+    echo '<div class="mt-3 mb-2"><strong>Fill in the blank</strong></div>';
+    foreach ($fillQuestions as $i => $q) {
+      $user = $answers['fill'][$i] ?? null;
+      $isCorrect = ($user !== null && strcasecmp($user, $q['answer']) === 0);
+      echo '<div class="mb-1">Q: ' . htmlspecialchars($q['question']) . '<br>';
+      echo 'Your answer: <span class="' . ($isCorrect ? 'text-success' : 'text-danger') . '">' .
+        ($user !== null ? htmlspecialchars($user) : '<em>No answer</em>') . '</span>';
+      if (!$isCorrect && $user !== null) {
+        echo ' <span class="text-muted">(Correct: ' . htmlspecialchars($q['answer']) . ')</span>';
+      }
+      echo '</div>';
+    }
+  }
+  // Match
+  $matchQuestions = array_values(array_filter($questions, fn($q) => $q['type']==='match'));
+  if ($matchQuestions) {
+    echo '<div class="mt-3 mb-2"><strong>Match pairs</strong></div>';
+    foreach ($matchQuestions as $i => $q) {
+      $user = $answers['match'][$i] ?? [];
+      $allCorrect = true;
+      foreach ($q['pairs'] as $j => $pair) {
+        $isCorrect = (isset($user[$j]) && strcasecmp($user[$j], $pair['right']) === 0);
+        if (!$isCorrect) $allCorrect = false;
+        echo '<div class="mb-1">' . htmlspecialchars($pair['left']) . ' → ';
+        echo '<span class="' . ($isCorrect ? 'text-success' : 'text-danger') . '">' .
+          (isset($user[$j]) ? htmlspecialchars($user[$j]) : '<em>No answer</em>') . '</span>';
+        if (!$isCorrect && isset($user[$j])) {
+          echo ' <span class="text-muted">(Correct: ' . htmlspecialchars($pair['right']) . ')</span>';
+        }
+        echo '</div>';
+      }
+    }
+  }
+  // Dictation
+  $dictationQuestions = array_values(array_filter($questions, fn($q) => $q['type']==='dictation'));
+  if ($dictationQuestions) {
+    echo '<div class="mt-3 mb-2"><strong>Dictation</strong></div>';
+    foreach ($dictationQuestions as $i => $q) {
+      $user = $answers['dictation'][$i] ?? null;
+      $isCorrect = ($user !== null && strcasecmp($user, $q['answer']) === 0);
+      echo '<div class="mb-1">Q: [audio] <em>' . htmlspecialchars($q['answer']) . '</em><br>';
+      echo 'Your answer: <span class="' . ($isCorrect ? 'text-success' : 'text-danger') . '">' .
+        ($user !== null ? htmlspecialchars($user) : '<em>No answer</em>') . '</span>';
+      if (!$isCorrect && $user !== null) {
+        echo ' <span class="text-muted">(Correct: ' . htmlspecialchars($q['answer']) . ')</span>';
+      }
+      echo '</div>';
+    }
+  }
+  // Pronunciation
+  $pronQuestions = array_values(array_filter($questions, fn($q) => $q['type']==='pronunciation'));
+  if ($pronQuestions) {
+    echo '<div class="mt-3 mb-2"><strong>Pronunciation</strong></div>';
+    foreach ($pronQuestions as $i => $q) {
+      $user = $answers['pronunciation'][$i] ?? null;
+      $isCorrect = ($user !== null && strcasecmp($user, $q['expected']) === 0);
+      echo '<div class="mb-1">Q: ' . htmlspecialchars($q['prompt']) . '<br>';
+      echo 'Your answer: <span class="' . ($isCorrect ? 'text-success' : 'text-danger') . '">' .
+        ($user !== null ? htmlspecialchars($user) : '<em>No answer</em>') . '</span>';
+      if (!$isCorrect && $user !== null) {
+        echo ' <span class="text-muted">(Expected: ' . htmlspecialchars($q['expected']) . ')</span>';
+      }
+      echo '</div>';
+    }
+  }
+  echo '</div>';
+  echo '<form method="get" class="mt-4"><input type="hidden" name="step" value="0"><button class="btn btn-lg btn-primary w-100">Start over</button></form>';
 }
 ?>
 </div>
