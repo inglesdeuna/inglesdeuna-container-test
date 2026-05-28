@@ -30,3 +30,10 @@ try {
 } catch (PDOException $e) {
     die("DB Connection failed: " . $e->getMessage());
 }
+
+if (!function_exists('get_pdo')) {
+    function get_pdo() {
+        global $pdo;
+        return $pdo;
+    }
+}
