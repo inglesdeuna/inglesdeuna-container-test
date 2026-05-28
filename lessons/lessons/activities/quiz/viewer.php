@@ -9,302 +9,79 @@ if (!function_exists('get_pdo')) {
     die('Error: get_pdo() was not found.');
 }
 
-function qz_h($value) {
-    return htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8');
-}
-
-function qz_json($value) {
-    if ($value === null || $value === '') return [];
-    if (is_array($value)) return $value;
-    $decoded = json_decode((string)$value, true);
-    return is_array($decoded) ? $decoded : [];
-}
-
-function qz_norm($value) {
-    return strtolower(trim(preg_replace('/\s+/', ' ', (string)$value)));
-}
-
-function qz_redirect($mode, $unitId, $assignment, $q = null, $extra = []) {
-    $url = '?mode=' . urlencode($mode) . '&unit=' . intval($unitId) . '&assignment=' . intval($assignment);
-    if ($q !== null) $url .= '&q=' . intval($q);
-    foreach ($extra as $k => $v) $url .= '&' . urlencode($k) . '=' . urlencode((string)$v);
-    header('Location: ' . $url);
-    exit;
-}
-
-function qz_pick_first($row, array $keys, $default = '') {
-    foreach ($keys as $key) {
-        if (isset($row[$key]) && trim((string)$row[$key]) !== '') return $row[$key];
-    }
-    return $default;
-}
-
-function qz_first_json_list($row, array $keys) {
-    foreach ($keys as $key) {
-        if (!isset($row[$key])) continue;
-        $value = qz_json($row[$key]);
-        if (!empty($value)) return $value;
-    }
-    return [];
-}
+function qz_h($value) { return htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8'); }
+function qz_json($value) { if ($value === null || $value === '') return []; if (is_array($value)) return $value; $decoded = json_decode((string)$value, true); return is_array($decoded) ? $decoded : []; }
+function qz_norm($value) { return strtolower(trim(preg_replace('/\s+/', ' ', (string)$value))); }
+function qz_redirect($mode, $unitId, $assignment, $q = null, $extra = []) { $url = '?mode=' . urlencode($mode) . '&unit=' . intval($unitId) . '&assignment=' . intval($assignment); if ($q !== null) $url .= '&q=' . intval($q); foreach ($extra as $k => $v) $url .= '&' . urlencode($k) . '=' . urlencode((string)$v); header('Location: ' . $url); exit; }
+function qz_pick_first($row, array $keys, $default = '') { foreach ($keys as $key) { if (isset($row[$key]) && trim((string)$row[$key]) !== '') return $row[$key]; } return $default; }
+function qz_first_json_list($row, array $keys) { foreach ($keys as $key) { if (!isset($row[$key])) continue; $value = qz_json($row[$key]); if (!empty($value)) return $value; } return []; }
 
 function qz_normalize_activity($act) {
     $rawType = strtolower(trim((string)($act['type'] ?? '')));
-    $typeMap = [
-        'writing_practice' => 'fill',
-        'write' => 'fill',
-        'fill_blank' => 'fill',
-        'fill_in_blank' => 'fill',
-        'multiple-choice' => 'multiple_choice',
-        'mc' => 'multiple_choice',
-        'video_comprehension' => 'multiple_choice',
-        'listen_order' => 'match'
-    ];
+    $typeMap = ['quiz'=>'multiple_choice','writing_practice'=>'fill','write'=>'fill','fill_blank'=>'fill','fill_in_blank'=>'fill','multiple-choice'=>'multiple_choice','mc'=>'multiple_choice','video_comprehension'=>'multiple_choice','listen_order'=>'match'];
     $type = $typeMap[$rawType] ?? $rawType;
     $items = [];
-
     $jsonPools = [];
     foreach (['questions','items','content','data','payload','config','json','settings'] as $key) {
-        if (isset($act[$key])) {
-            $decoded = qz_json($act[$key]);
-            if (!empty($decoded)) $jsonPools[] = $decoded;
-        }
+        if (isset($act[$key])) { $decoded = qz_json($act[$key]); if (!empty($decoded)) $jsonPools[] = $decoded; }
     }
-
     $candidateRows = [$act];
     foreach ($jsonPools as $pool) {
-        if (isset($pool[0]) && is_array($pool[0])) {
-            foreach ($pool as $p) $candidateRows[] = array_merge($act, $p);
-        } else {
+        if (isset($pool[0]) && is_array($pool[0])) { foreach ($pool as $p) $candidateRows[] = array_merge($act, ['type'=>$type], $p); }
+        else {
             foreach (['questions','items','sentences','prompts'] as $nested) {
-                if (isset($pool[$nested]) && is_array($pool[$nested])) {
-                    foreach ($pool[$nested] as $p) if (is_array($p)) $candidateRows[] = array_merge($act, $p);
-                }
+                if (isset($pool[$nested]) && is_array($pool[$nested])) foreach ($pool[$nested] as $p) if (is_array($p)) $candidateRows[] = array_merge($act, ['type'=>$type], $p);
             }
-            $candidateRows[] = array_merge($act, $pool);
+            $candidateRows[] = array_merge($act, ['type'=>$type], $pool);
         }
     }
-
     foreach ($candidateRows as $row) {
         $rowType = strtolower(trim((string)($row['type'] ?? $rawType)));
         $rowType = $typeMap[$rowType] ?? $type;
         $id = (string)($act['id'] ?? uniqid('qz_', true)) . '_' . count($items);
-
         if ($rowType === 'multiple_choice') {
             $question = qz_pick_first($row, ['question','prompt','title','text']);
             $options = qz_first_json_list($row, ['options','choices','answers']);
-            if (empty($options) && isset($row['option_a'])) {
-                $options = array_values(array_filter([$row['option_a'] ?? '', $row['option_b'] ?? '', $row['option_c'] ?? '', $row['option_d'] ?? ''], fn($v) => trim((string)$v) !== ''));
-            }
+            if (empty($options) && isset($row['option_a'])) $options = array_values(array_filter([$row['option_a'] ?? '', $row['option_b'] ?? '', $row['option_c'] ?? '', $row['option_d'] ?? ''], fn($v) => trim((string)$v) !== ''));
             $correct = qz_pick_first($row, ['correct','correct_answer','answer','expected'], '');
-            if ($question !== '' && count($options) > 0) {
-                $items[] = ['id'=>$id,'type'=>'multiple_choice','question'=>$question,'options'=>$options,'correct'=>$correct,'audio'=>'','image'=>qz_pick_first($row,['image','image_url']),'pairs'=>[]];
-            }
+            if ($question !== '' && count(array_filter($options, fn($v) => trim((string)$v) !== '')) >= 2) $items[] = ['id'=>$id,'type'=>'multiple_choice','question'=>$question,'options'=>$options,'correct'=>$correct,'audio'=>'','image'=>qz_pick_first($row,['image','image_url']),'pairs'=>[]];
         } elseif ($rowType === 'fill') {
-            $question = qz_pick_first($row, ['question','prompt','sentence','text']);
-            $answer = qz_pick_first($row, ['answer','correct','correct_answer','expected']);
-            $options = qz_first_json_list($row, ['options','choices']);
-            if ($question !== '' && $answer !== '') {
-                $items[] = ['id'=>$id,'type'=>'fill','question'=>$question,'options'=>$options,'correct'=>$answer,'audio'=>'','image'=>'','pairs'=>[]];
-            }
+            $question = qz_pick_first($row, ['question','prompt','sentence','text']); $answer = qz_pick_first($row, ['answer','correct','correct_answer','expected']); $options = qz_first_json_list($row, ['options','choices']);
+            if ($question !== '' && $answer !== '') $items[] = ['id'=>$id,'type'=>'fill','question'=>$question,'options'=>$options,'correct'=>$answer,'audio'=>'','image'=>'','pairs'=>[]];
         } elseif ($rowType === 'match') {
-            $pairs = qz_first_json_list($row, ['pairs','matches','items']);
-            if (!empty($pairs)) {
-                $cleanPairs = [];
-                foreach ($pairs as $pair) {
-                    if (is_array($pair)) {
-                        $left = qz_pick_first($pair, ['left','term','word','question','a']);
-                        $right = qz_pick_first($pair, ['right','match','translation','answer','b']);
-                        if ($left !== '' && $right !== '') $cleanPairs[] = ['left'=>$left,'right'=>$right];
-                    }
-                }
-                if (!empty($cleanPairs)) $items[] = ['id'=>$id,'type'=>'match','question'=>qz_pick_first($row,['question','prompt'],'Match each item with the correct option.'),'options'=>[],'correct'=>'','audio'=>'','image'=>'','pairs'=>$cleanPairs];
-            }
+            $pairs = qz_first_json_list($row, ['pairs','matches','items']); $cleanPairs = [];
+            foreach ($pairs as $pair) if (is_array($pair)) { $left = qz_pick_first($pair, ['left','term','word','question','a']); $right = qz_pick_first($pair, ['right','match','translation','answer','b']); if ($left !== '' && $right !== '') $cleanPairs[] = ['left'=>$left,'right'=>$right]; }
+            if (!empty($cleanPairs)) $items[] = ['id'=>$id,'type'=>'match','question'=>qz_pick_first($row,['question','prompt'],'Match each item with the correct option.'),'options'=>[],'correct'=>'','audio'=>'','image'=>'','pairs'=>$cleanPairs];
         } elseif ($rowType === 'dictation') {
-            $audio = qz_pick_first($row, ['audio','audio_url','file','media']);
-            $answer = qz_pick_first($row, ['answer','correct','correct_answer','expected','text']);
-            if ($audio !== '' && $answer !== '') {
-                $items[] = ['id'=>$id,'type'=>'dictation','question'=>qz_pick_first($row,['question','prompt'],'Listen carefully and write what you hear.'),'options'=>[],'correct'=>$answer,'audio'=>$audio,'image'=>'','pairs'=>[]];
-            }
+            $audio = qz_pick_first($row, ['audio','audio_url','file','media']); $answer = qz_pick_first($row, ['answer','correct','correct_answer','expected','text']);
+            if ($audio !== '' && $answer !== '') $items[] = ['id'=>$id,'type'=>'dictation','question'=>qz_pick_first($row,['question','prompt'],'Listen carefully and write what you hear.'),'options'=>[],'correct'=>$answer,'audio'=>$audio,'image'=>'','pairs'=>[]];
         } elseif ($rowType === 'pronunciation') {
-            $prompt = qz_pick_first($row, ['prompt','question','text','phrase','word']);
-            $expected = qz_pick_first($row, ['expected','answer','correct','correct_answer'], $prompt);
-            if ($prompt !== '') {
-                $options = qz_first_json_list($row, ['options','choices']);
-                $items[] = ['id'=>$id,'type'=>'pronunciation','question'=>$prompt,'options'=>$options,'correct'=>$expected,'audio'=>qz_pick_first($row,['audio','audio_url']),'image'=>qz_pick_first($row,['image','image_url']),'pairs'=>[]];
-            }
+            $prompt = qz_pick_first($row, ['prompt','question','text','phrase','word']); $expected = qz_pick_first($row, ['expected','answer','correct','correct_answer'], $prompt);
+            if ($prompt !== '') $items[] = ['id'=>$id,'type'=>'pronunciation','question'=>$prompt,'options'=>qz_first_json_list($row, ['options','choices']),'correct'=>$expected,'audio'=>qz_pick_first($row,['audio','audio_url']),'image'=>qz_pick_first($row,['image','image_url']),'pairs'=>[]];
         }
     }
-
-    $unique = [];
-    foreach ($items as $item) $unique[$item['type'] . '|' . md5(json_encode($item))] = $item;
-    return array_values($unique);
+    $unique = []; foreach ($items as $item) $unique[$item['type'] . '|' . md5(json_encode($item))] = $item; return array_values($unique);
 }
+function qz_target_count($available, $ratio = 0.75, $min = 5, $max = 15) { if ($available <= 0) return 0; if ($available === 1) return 1; $target = (int)floor($available * $ratio); $target = max($min, min($max, $target)); return min($available, $target); }
+function qz_attempt_seed($unitId, $assignment, $attempt) { $key = 'qz_seed_' . md5($unitId . '_' . $assignment . '_' . $attempt); if (!isset($_SESSION[$key])) $_SESSION[$key] = random_int(100000, 999999); return (int)$_SESSION[$key]; }
+function qz_shuffle(&$arr, $seed) { mt_srand($seed); for ($i=count($arr)-1;$i>0;$i--) { $j=mt_rand(0,$i); [$arr[$i],$arr[$j]]=[$arr[$j],$arr[$i]]; } mt_srand(); }
+function qz_build_set($allQuestions, $unitId, $assignment, $attempt) { $byType=[]; foreach($allQuestions as $q)$byType[$q['type']][]=$q; $seed=qz_attempt_seed($unitId,$assignment,$attempt); foreach($byType as $type=>&$list){ qz_shuffle($list,$seed+crc32($type)); $list=array_slice($list,0,6);} unset($list); $available=array_sum(array_map('count',$byType)); $target=qz_target_count($available); $final=[];$pool=[]; foreach($byType as $type=>$list){ if(empty($list))continue; $final[]=array_shift($list); foreach($list as $q)$pool[]=$q;} qz_shuffle($pool,$seed+77); $final=array_merge($final,array_slice($pool,0,max(0,$target-count($final)))); qz_shuffle($final,$seed+99); return $final; }
+function qz_is_correct($question,$answer){ if($answer===null||$answer==='')return false; if($question['type']==='match'){ if(!is_array($answer))return false; foreach($question['pairs'] as $i=>$pair) if(!isset($answer[$i])||(string)$answer[$i]!==(string)$pair['right']) return false; return true;} if($question['type']==='multiple_choice'){ $correct=$question['correct']; if(is_numeric($correct))return (string)$answer===(string)$correct; $opts=$question['options']; return isset($opts[(int)$answer])&&qz_norm($opts[(int)$answer])===qz_norm($correct);} return qz_norm($answer)===qz_norm($question['correct']); }
 
-function qz_target_count($available, $ratio = 0.75, $min = 5, $max = 15) {
-    if ($available <= 0) return 0;
-    if ($available === 1) return 1;
-    $target = (int)floor($available * $ratio);
-    $target = max($min, min($max, $target));
-    return min($available, $target);
-}
-
-function qz_attempt_seed($unitId, $assignment, $attempt) {
-    $key = 'qz_seed_' . md5($unitId . '_' . $assignment . '_' . $attempt);
-    if (!isset($_SESSION[$key])) $_SESSION[$key] = random_int(100000, 999999);
-    return (int)$_SESSION[$key];
-}
-
-function qz_shuffle(&$arr, $seed) {
-    mt_srand($seed);
-    for ($i = count($arr) - 1; $i > 0; $i--) {
-        $j = mt_rand(0, $i);
-        [$arr[$i], $arr[$j]] = [$arr[$j], $arr[$i]];
-    }
-    mt_srand();
-}
-
-function qz_build_set($allQuestions, $unitId, $assignment, $attempt) {
-    $byType = [];
-    foreach ($allQuestions as $q) $byType[$q['type']][] = $q;
-    $seed = qz_attempt_seed($unitId, $assignment, $attempt);
-    foreach ($byType as $type => &$list) {
-        qz_shuffle($list, $seed + crc32($type));
-        $list = array_slice($list, 0, 6);
-    }
-    unset($list);
-    $available = array_sum(array_map('count', $byType));
-    $target = qz_target_count($available);
-    $final = [];
-    $pool = [];
-    foreach ($byType as $type => $list) {
-        if (empty($list)) continue;
-        $final[] = array_shift($list);
-        foreach ($list as $q) $pool[] = $q;
-    }
-    qz_shuffle($pool, $seed + 77);
-    $need = max(0, $target - count($final));
-    $final = array_merge($final, array_slice($pool, 0, $need));
-    qz_shuffle($final, $seed + 99);
-    return $final;
-}
-
-function qz_is_correct($question, $answer) {
-    if ($answer === null || $answer === '') return false;
-    if ($question['type'] === 'match') {
-        if (!is_array($answer)) return false;
-        foreach ($question['pairs'] as $i => $pair) {
-            if (!isset($answer[$i]) || (string)$answer[$i] !== (string)$pair['right']) return false;
-        }
-        return true;
-    }
-    if ($question['type'] === 'multiple_choice') {
-        $correct = $question['correct'];
-        if (is_numeric($correct)) return (string)$answer === (string)$correct;
-        $opts = $question['options'];
-        return isset($opts[(int)$answer]) && qz_norm($opts[(int)$answer]) === qz_norm($correct);
-    }
-    return qz_norm($answer) === qz_norm($question['correct']);
-}
-
-$unitId = isset($_GET['unit']) ? intval($_GET['unit']) : 0;
-$assignment = isset($_GET['assignment']) ? intval($_GET['assignment']) : 0;
-$mode = isset($_GET['mode']) ? (string)$_GET['mode'] : (isset($_GET['step']) && intval($_GET['step']) > 0 ? 'quiz' : 'intro');
-$qIndex = isset($_GET['q']) ? intval($_GET['q']) : 0;
-if (!$unitId) die('Missing unit id.');
-
-$pdo = get_pdo();
-$stmt = $pdo->prepare('SELECT * FROM activities WHERE unit_id = :unit_id ORDER BY id ASC');
-$stmt->execute(['unit_id' => $unitId]);
-$activities = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-$allQuestions = [];
-foreach ($activities as $act) {
-    foreach (qz_normalize_activity($act) as $item) $allQuestions[] = $item;
-}
-if (empty($allQuestions)) die('No quiz-compatible activities found for this unit.');
-
-$attemptKey = 'qz_attempt_' . $unitId . '_' . $assignment;
-if (!isset($_SESSION[$attemptKey])) $_SESSION[$attemptKey] = 1;
-$attempt = (int)$_SESSION[$attemptKey];
-$setKey = 'qz_set_' . $unitId . '_' . $assignment . '_' . $attempt;
-$answersKey = 'qz_answers_' . $unitId . '_' . $assignment . '_' . $attempt;
-
-if (isset($_GET['reset'])) {
-    $_SESSION[$attemptKey] = $attempt + 1;
-    unset($_SESSION[$setKey], $_SESSION[$answersKey]);
-    qz_redirect('intro', $unitId, $assignment);
-}
-
-if (!isset($_SESSION[$setKey])) $_SESSION[$setKey] = qz_build_set($allQuestions, $unitId, $assignment, $attempt);
-if (!isset($_SESSION[$answersKey])) $_SESSION[$answersKey] = [];
-$quiz = $_SESSION[$setKey];
-$answers = &$_SESSION[$answersKey];
-$total = count($quiz);
-
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && $mode === 'quiz') {
-    if ($qIndex < 0) $qIndex = 0;
-    if ($qIndex >= $total) $qIndex = $total - 1;
-    $question = $quiz[$qIndex];
-    if (isset($_POST['skip'])) {
-        $answers[$qIndex] = ['answer'=>null,'skipped'=>true,'correct'=>false];
-        $next = $qIndex + 1;
-        qz_redirect($next >= $total ? 'result' : 'quiz', $unitId, $assignment, $next >= $total ? null : $next);
-    }
-    $answer = null;
-    if ($question['type'] === 'match') $answer = isset($_POST['answer']) && is_array($_POST['answer']) ? $_POST['answer'] : [];
-    else $answer = $_POST['answer'] ?? '';
-    $correct = qz_is_correct($question, $answer);
-    $answers[$qIndex] = ['answer'=>$answer,'skipped'=>false,'correct'=>$correct];
-    qz_redirect('quiz', $unitId, $assignment, $qIndex, ['feedback'=>1]);
-}
-
-$typeLabels = [
-    'multiple_choice'=>['Multiple choice','Pick the correct answer','ti-checks'],
-    'fill'=>['Fill in the blank','Complete the sentence','ti-pencil'],
-    'match'=>['Match pairs','Connect each word to its pair','ti-arrows-shuffle'],
-    'dictation'=>['Dictation','Listen and write what you hear','ti-volume'],
-    'pronunciation'=>['Pronunciation','Say the phrase','ti-microphone']
-];
-$typeCounts = [];
-foreach ($quiz as $q) $typeCounts[$q['type']] = ($typeCounts[$q['type']] ?? 0) + 1;
-$answered = count($answers);
-$correctCount = 0; $skippedCount = 0;
-foreach ($answers as $a) { if (!empty($a['correct'])) $correctCount++; if (!empty($a['skipped'])) $skippedCount++; }
-$wrongCount = max(0, $answered - $correctCount - $skippedCount);
-$percent = $total ? round(($correctCount / $total) * 100) : 0;
+$unitId=isset($_GET['unit'])?intval($_GET['unit']):0; $assignment=isset($_GET['assignment'])?intval($_GET['assignment']):0; $mode=isset($_GET['mode'])?(string)$_GET['mode']:(isset($_GET['step'])&&intval($_GET['step'])>0?'quiz':'intro'); $qIndex=isset($_GET['q'])?intval($_GET['q']):0; if(!$unitId)die('Missing unit id.');
+$pdo=get_pdo(); $stmt=$pdo->prepare('SELECT * FROM activities WHERE unit_id = :unit_id ORDER BY id ASC'); $stmt->execute(['unit_id'=>$unitId]); $activities=$stmt->fetchAll(PDO::FETCH_ASSOC);
+$allQuestions=[]; foreach($activities as $act) foreach(qz_normalize_activity($act) as $item) $allQuestions[]=$item;
+if(empty($allQuestions)){ echo '<div style="font-family:Arial;padding:30px;color:#7c3aed"><h2>No quiz-compatible activities found for this unit.</h2><p>Debug: activities found: '.count($activities).'</p><ul>'; foreach($activities as $a) echo '<li>id '.qz_h($a['id']??'').' — type: <b>'.qz_h($a['type']??'').'</b> — columns: '.qz_h(implode(', ',array_keys($a))).'</li>'; echo '</ul></div>'; exit; }
+$attemptKey='qz_attempt_'.$unitId.'_'.$assignment; if(!isset($_SESSION[$attemptKey]))$_SESSION[$attemptKey]=1; $attempt=(int)$_SESSION[$attemptKey]; $setKey='qz_set_'.$unitId.'_'.$assignment.'_'.$attempt; $answersKey='qz_answers_'.$unitId.'_'.$assignment.'_'.$attempt;
+if(isset($_GET['reset'])){ $_SESSION[$attemptKey]=$attempt+1; unset($_SESSION[$setKey],$_SESSION[$answersKey]); qz_redirect('intro',$unitId,$assignment); }
+if(!isset($_SESSION[$setKey]))$_SESSION[$setKey]=qz_build_set($allQuestions,$unitId,$assignment,$attempt); if(!isset($_SESSION[$answersKey]))$_SESSION[$answersKey]=[]; $quiz=$_SESSION[$setKey]; $answers=&$_SESSION[$answersKey]; $total=count($quiz);
+if($_SERVER['REQUEST_METHOD']==='POST'&&$mode==='quiz'){ $qIndex=max(0,min($qIndex,$total-1)); $question=$quiz[$qIndex]; if(isset($_POST['skip'])){ $answers[$qIndex]=['answer'=>null,'skipped'=>true,'correct'=>false]; $next=$qIndex+1; qz_redirect($next>=$total?'result':'quiz',$unitId,$assignment,$next>=$total?null:$next);} $answer=$question['type']==='match'?(isset($_POST['answer'])&&is_array($_POST['answer'])?$_POST['answer']:[]):($_POST['answer']??''); $correct=qz_is_correct($question,$answer); $answers[$qIndex]=['answer'=>$answer,'skipped'=>false,'correct'=>$correct]; qz_redirect('quiz',$unitId,$assignment,$qIndex,['feedback'=>1]); }
+$typeLabels=['multiple_choice'=>['Multiple choice','Pick the correct answer','ti-checks'],'fill'=>['Fill in the blank','Complete the sentence','ti-pencil'],'match'=>['Match pairs','Connect each word to its pair','ti-arrows-shuffle'],'dictation'=>['Dictation','Listen and write what you hear','ti-volume'],'pronunciation'=>['Pronunciation','Say the phrase','ti-microphone']]; $typeCounts=[]; foreach($quiz as $q)$typeCounts[$q['type']]=($typeCounts[$q['type']]??0)+1; $answered=count($answers); $correctCount=0;$skippedCount=0; foreach($answers as $a){ if(!empty($a['correct']))$correctCount++; if(!empty($a['skipped']))$skippedCount++; } $wrongCount=max(0,$answered-$correctCount-$skippedCount); $percent=$total?round(($correctCount/$total)*100):0;
 ?>
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Unit Quiz</title>
-<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
-<style>
-:root{--pu:#8070dd;--or:#ff7315;--ink:#14113a;--mut:#8f86c5;--line:#e9e3fb;--bg:#f8f7ff;--good:#18c86b;--bad:#ff4d4d}*{box-sizing:border-box}body{margin:0;background:var(--bg);font-family:Nunito,sans-serif;color:var(--ink);min-height:100vh}.page{max-width:720px;margin:0 auto;padding:28px 16px 48px}.top{background:white;border:1px solid var(--line);border-radius:14px;padding:14px 22px;display:flex;align-items:center;justify-content:space-between;margin:0 auto 22px;max-width:520px}.brand{font-weight:900;color:var(--pu)}.sub{font-size:13px;color:var(--mut)}.download{background:var(--pu);color:white;border:0;border-radius:10px;padding:12px 24px;font-weight:900}.tabs{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:16px}.tab{border:1px solid var(--line);background:white;color:var(--mut);border-radius:999px;padding:7px 13px;font-size:12px;font-weight:900}.tab.on{background:var(--pu);color:white}.screen-title{text-align:center;color:#c0b8e8;font-size:12px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;margin-bottom:12px}.card{background:white;border:1px solid var(--line);border-radius:18px;max-width:440px;margin:0 auto;padding:24px;box-shadow:0 1px 0 rgba(0,0,0,.02)}.kicker{display:inline-block;background:#fff0e6;color:var(--or);border:1px solid #ffd1ad;border-radius:999px;padding:5px 13px;font-weight:900;font-size:12px}.title{font:700 29px Fredoka,sans-serif;color:var(--or);margin:10px 0 4px}.lead{color:var(--pu);font-size:14px}.chips{display:flex;gap:8px;flex-wrap:wrap;margin:18px 0}.chip{border:1px solid var(--line);border-radius:999px;color:var(--pu);padding:7px 12px;font-size:12px;font-weight:900;background:#fbfaff}.hr{height:1px;background:var(--line);margin:18px 0}.included{color:#a99ee0;font-size:12px;font-weight:900;margin-bottom:10px}.type-row{display:flex;align-items:center;gap:12px;background:#f6f3ff;border-radius:12px;padding:12px;margin-bottom:8px}.type-row i{color:var(--pu);font-size:20px}.type-row b{font-size:13px}.type-row small{display:block;color:var(--mut);font-size:11px}.type-row span:last-child{margin-left:auto;color:var(--pu);font-weight:900}.btn{border:0;border-radius:10px;padding:13px 16px;font-weight:900;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:6px}.btn-primary{background:var(--or);color:white}.btn-purple{background:var(--pu);color:white}.btn-light{background:white;color:var(--pu);border:1px solid var(--line)}.w100{width:100%}.progress-head{display:flex;justify-content:space-between;color:var(--pu);font-size:12px;font-weight:900;margin-bottom:8px}.track{height:7px;background:#eeeafa;border-radius:999px;overflow:hidden;margin-bottom:18px}.bar{height:100%;background:linear-gradient(90deg,var(--or),var(--pu));border-radius:999px}.tag{display:inline-flex;gap:6px;align-items:center;background:#f0ecff;color:var(--pu);border-radius:999px;padding:6px 10px;font-size:12px;font-weight:900;text-transform:uppercase;margin-bottom:12px}.question{font-weight:900;line-height:1.35;margin-bottom:16px}.option{border:1px solid var(--line);border-radius:10px;padding:12px;margin-bottom:8px;display:flex;gap:12px;align-items:center;font-weight:800;font-size:14px;background:white}.option input{display:none}.letter{background:#eeeafa;color:var(--pu);border-radius:999px;width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-weight:900}.option:has(input:checked){border-color:var(--pu);background:#f8f6ff}.feedback{border-radius:10px;padding:12px;margin:12px 0;font-size:13px;font-weight:900}.good{background:#eafff3;border:1px solid #9af0bf;color:#07823f}.bad{background:#fff0f0;border:1px solid #ffb4b4;color:#c82020}.input{width:100%;border:1px solid var(--line);border-radius:10px;padding:13px;font:800 14px Nunito;margin-bottom:10px}.match-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.match-left{padding:11px;border:1px solid var(--pu);border-radius:9px;text-align:center;font-weight:900;background:#fbfaff}.select{width:100%;padding:11px;border:1px solid var(--line);border-radius:9px;font-weight:800}.actions{display:flex;gap:8px;margin-top:14px}.result-hero{background:linear-gradient(135deg,#eee9ff,#fff0e6);border-radius:14px;text-align:center;padding:28px 16px;margin-bottom:18px}.trophy{width:50px;height:50px;border-radius:50%;background:var(--pu);color:white;display:inline-flex;align-items:center;justify-content:center;font-size:28px}.pct{font:700 44px Fredoka,sans-serif;color:var(--or);margin-top:8px}.pill{display:inline-flex;border-radius:999px;padding:5px 10px;font-size:12px;font-weight:900;margin:4px}.pill.good{background:#eafff3}.pill.bad{background:#fff0f0}.pill.skip{background:#f0ecff;color:var(--pu)}.review{border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:10px}.media-box{height:120px;border-radius:12px;background:#f3f0ff;display:flex;align-items:center;justify-content:center;color:#cbc4ed;font-size:38px;margin-bottom:12px}
-</style>
-</head>
-<body><div class="page">
-<div class="top"><div><div class="brand">Quiz de Unidad – Mockup</div><div class="sub">inglésdeuna · <?php echo $total; ?> preguntas dinámicas</div></div><button class="download"><i class="ti ti-download"></i> Descargar HTML</button></div>
-<div class="tabs">
-<?php foreach (['intro'=>'Intro','quiz'=>'Multiple choice','fill'=>'Fill in blank','match'=>'Match','dictation'=>'Dictation','pronunciation'=>'Pronunciation','result'=>'Resultado','review'=>'Review'] as $m=>$label): ?>
-<button class="tab <?php echo ($mode===$m || ($mode==='quiz' && isset($quiz[$qIndex]) && $quiz[$qIndex]['type']===$m))?'on':''; ?>"><?php echo qz_h($label); ?></button>
-<?php endforeach; ?>
-</div>
-<?php if ($mode === 'intro'): ?>
-<div class="screen-title">Pantalla 1 — Portada del quiz</div><div class="card"><span class="kicker">UNIT <?php echo $unitId; ?> · QUIZ</span><div class="title">Unit Quiz</div><div class="lead">Answer all questions to complete this unit and unlock the next one.</div><div class="chips"><span class="chip"><i class="ti ti-list"></i> <?php echo $total; ?> questions</span><span class="chip"><i class="ti ti-clock"></i> ~8 min</span><span class="chip"><i class="ti ti-refresh"></i> 3 attempts</span></div><div class="hr"></div><div class="included">WHAT'S INCLUDED</div><?php foreach ($typeCounts as $type=>$count): $info=$typeLabels[$type]??[$type,'','ti-circle']; ?><div class="type-row"><i class="ti <?php echo qz_h($info[2]); ?>"></i><div><b><?php echo qz_h($info[0]); ?></b><small><?php echo qz_h($info[1]); ?></small></div><span><?php echo $count; ?></span></div><?php endforeach; ?><div class="hr"></div><a class="btn btn-purple w100" href="?mode=quiz&q=0&unit=<?php echo $unitId; ?>&assignment=<?php echo $assignment; ?>"><i class="ti ti-player-play"></i> Start quiz</a></div>
-<?php elseif ($mode === 'quiz'): $qIndex=max(0,min($qIndex,$total-1)); $q=$quiz[$qIndex]; $info=$typeLabels[$q['type']]??[$q['type'],'','ti-circle']; $hasFeedback=isset($_GET['feedback']) && isset($answers[$qIndex]); $saved=$answers[$qIndex]['answer']??null; $isCorrect=$answers[$qIndex]['correct']??false; ?>
-<div class="screen-title">Pregunta <?php echo $qIndex+1; ?> — <?php echo qz_h($info[0]); ?></div><div class="card"><div class="progress-head"><span>PROGRESS</span><span><?php echo $qIndex+1; ?> / <?php echo $total; ?></span></div><div class="track"><div class="bar" style="width:<?php echo round((($qIndex+1)/$total)*100); ?>%"></div></div><div class="tag"><i class="ti <?php echo qz_h($info[2]); ?>"></i> <?php echo qz_h($info[0]); ?></div><div class="question"><?php echo qz_h($q['question']); ?></div><?php if ($q['image']): ?><img src="<?php echo qz_h($q['image']); ?>" class="media-box" style="object-fit:cover;width:100%" alt="Question image"><?php elseif ($q['type']==='pronunciation' && !empty($q['options'])): ?><div class="media-box"><i class="ti ti-photo"></i></div><?php endif; ?><?php if ($q['audio']): ?><audio controls src="<?php echo qz_h($q['audio']); ?>" style="width:100%;margin-bottom:12px"></audio><?php endif; ?>
-<?php if ($hasFeedback): ?><div class="feedback <?php echo $isCorrect?'good':'bad'; ?>"><?php echo $isCorrect?'Correct! Well done.':'Not quite. Correct answer: '.qz_h($q['type']==='match'?'See matches below':$q['correct']); ?></div><a class="btn btn-primary w100" href="?mode=<?php echo $qIndex+1 >= $total ? 'result' : 'quiz'; ?>&q=<?php echo $qIndex+1; ?>&unit=<?php echo $unitId; ?>&assignment=<?php echo $assignment; ?>">Next question <i class="ti ti-arrow-right"></i></a>
-<?php else: ?><form method="post">
-<?php if ($q['type']==='multiple_choice' || ($q['type']==='pronunciation' && !empty($q['options']))): foreach ($q['options'] as $i=>$opt): ?><label class="option"><input type="radio" name="answer" value="<?php echo $i; ?>" required><span class="letter"><?php echo chr(65+$i); ?></span><?php echo qz_h($opt); ?></label><?php endforeach; ?>
-<?php elseif ($q['type']==='fill' || $q['type']==='dictation' || $q['type']==='pronunciation'): ?><input class="input" type="text" name="answer" required autocomplete="off" placeholder="Type your answer">
-<?php elseif ($q['type']==='match'): ?><div class="match-grid"><?php foreach ($q['pairs'] as $i=>$pair): ?><div class="match-left"><?php echo qz_h($pair['left']); ?></div><select class="select" name="answer[<?php echo $i; ?>]" required><option value="">Select</option><?php foreach ($q['pairs'] as $p): ?><option value="<?php echo qz_h($p['right']); ?>"><?php echo qz_h($p['right']); ?></option><?php endforeach; ?></select><?php endforeach; ?></div><?php endif; ?><div class="actions"><button class="btn btn-light" name="skip" value="1" formnovalidate>Skip</button><button class="btn btn-primary w100" type="submit">Check answer <i class="ti ti-arrow-right"></i></button></div></form><?php endif; ?></div>
-<?php elseif ($mode === 'result'): ?>
-<div class="screen-title">Pantalla 7 — Resultado final</div><div class="card"><div class="result-hero"><div class="trophy"><i class="ti ti-trophy"></i></div><h2 style="color:var(--pu);margin:12px 0 0">Quiz complete!</h2><div class="sub">Unit <?php echo $unitId; ?> · <?php echo $total; ?> questions</div><div class="pct"><?php echo $percent; ?>%</div><div class="sub"><?php echo $correctCount; ?> out of <?php echo $total; ?> correct</div><div><span class="pill good"><?php echo $correctCount; ?> correct</span><span class="pill bad"><?php echo $wrongCount; ?> wrong</span><span class="pill skip"><?php echo $skippedCount; ?> skipped</span></div></div><div class="actions"><a class="btn btn-light w100" href="?mode=review&unit=<?php echo $unitId; ?>&assignment=<?php echo $assignment; ?>">See review</a><a class="btn btn-primary w100" href="../hub/?unit=<?php echo $unitId; ?>">Back to unit <i class="ti ti-arrow-right"></i></a></div><a class="btn btn-purple w100" style="margin-top:12px" href="?reset=1&unit=<?php echo $unitId; ?>&assignment=<?php echo $assignment; ?>"><i class="ti ti-refresh"></i> Try again</a></div>
-<?php elseif ($mode === 'review'): ?>
-<div class="screen-title">Pantalla 8 — Review</div><div class="card"><div class="title">Review</div><?php foreach ($quiz as $i=>$q): $a=$answers[$i]??['answer'=>null,'correct'=>false,'skipped'=>true]; ?><div class="review"><b><?php echo ($i+1) . '. ' . qz_h($q['question']); ?></b><br><small><?php echo !empty($a['correct'])?'Correct':'Incorrect/skipped'; ?></small><div class="sub">Correct: <?php echo qz_h($q['type']==='match'?json_encode(array_column($q['pairs'],'right')):$q['correct']); ?></div></div><?php endforeach; ?><a class="btn btn-purple w100" href="?mode=result&unit=<?php echo $unitId; ?>&assignment=<?php echo $assignment; ?>">Back to results</a></div>
-<?php endif; ?>
-</div></body></html>
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Unit Quiz</title><link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@500;600;700;800&display=swap" rel="stylesheet"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css"><style>
+:root{--pu:#8070dd;--or:#ff7315;--ink:#14113a;--mut:#8f86c5;--line:#e9e3fb;--bg:#f8f7ff;--good:#18c86b;--bad:#ff4d4d}*{box-sizing:border-box}body{margin:0;background:var(--bg);font-family:Nunito,sans-serif;color:var(--ink);min-height:100vh}.page{max-width:720px;margin:0 auto;padding:28px 16px 48px}.top{background:white;border:1px solid var(--line);border-radius:14px;padding:14px 22px;display:flex;align-items:center;justify-content:space-between;margin:0 auto 22px;max-width:520px}.brand{font-weight:900;color:var(--pu)}.sub{font-size:13px;color:var(--mut)}.download{background:var(--pu);color:white;border:0;border-radius:10px;padding:12px 24px;font-weight:900}.tabs{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:16px}.tab{border:1px solid var(--line);background:white;color:var(--mut);border-radius:999px;padding:7px 13px;font-size:12px;font-weight:900}.tab.on{background:var(--pu);color:white}.screen-title{text-align:center;color:#c0b8e8;font-size:12px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;margin-bottom:12px}.card{background:white;border:1px solid var(--line);border-radius:18px;max-width:440px;margin:0 auto;padding:24px;box-shadow:0 1px 0 rgba(0,0,0,.02)}.kicker{display:inline-block;background:#fff0e6;color:var(--or);border:1px solid #ffd1ad;border-radius:999px;padding:5px 13px;font-weight:900;font-size:12px}.title{font:700 29px Fredoka,sans-serif;color:var(--or);margin:10px 0 4px}.lead{color:var(--pu);font-size:14px}.chips{display:flex;gap:8px;flex-wrap:wrap;margin:18px 0}.chip{border:1px solid var(--line);border-radius:999px;color:var(--pu);padding:7px 12px;font-size:12px;font-weight:900;background:#fbfaff}.hr{height:1px;background:var(--line);margin:18px 0}.included{color:#a99ee0;font-size:12px;font-weight:900;margin-bottom:10px}.type-row{display:flex;align-items:center;gap:12px;background:#f6f3ff;border-radius:12px;padding:12px;margin-bottom:8px}.type-row i{color:var(--pu);font-size:20px}.type-row b{font-size:13px}.type-row small{display:block;color:var(--mut);font-size:11px}.type-row span:last-child{margin-left:auto;color:var(--pu);font-weight:900}.btn{border:0;border-radius:10px;padding:13px 16px;font-weight:900;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:6px}.btn-primary{background:var(--or);color:white}.btn-purple{background:var(--pu);color:white}.btn-light{background:white;color:var(--pu);border:1px solid var(--line)}.w100{width:100%}.progress-head{display:flex;justify-content:space-between;color:var(--pu);font-size:12px;font-weight:900;margin-bottom:8px}.track{height:7px;background:#eeeafa;border-radius:999px;overflow:hidden;margin-bottom:18px}.bar{height:100%;background:linear-gradient(90deg,var(--or),var(--pu));border-radius:999px}.tag{display:inline-flex;gap:6px;align-items:center;background:#f0ecff;color:var(--pu);border-radius:999px;padding:6px 10px;font-size:12px;font-weight:900;text-transform:uppercase;margin-bottom:12px}.question{font-weight:900;line-height:1.35;margin-bottom:16px}.option{border:1px solid var(--line);border-radius:10px;padding:12px;margin-bottom:8px;display:flex;gap:12px;align-items:center;font-weight:800;font-size:14px;background:white}.option input{display:none}.letter{background:#eeeafa;color:var(--pu);border-radius:999px;width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-weight:900}.option:has(input:checked){border-color:var(--pu);background:#f8f6ff}.feedback{border-radius:10px;padding:12px;margin:12px 0;font-size:13px;font-weight:900}.good{background:#eafff3;border:1px solid #9af0bf;color:#07823f}.bad{background:#fff0f0;border:1px solid #ffb4b4;color:#c82020}.input{width:100%;border:1px solid var(--line);border-radius:10px;padding:13px;font:800 14px Nunito;margin-bottom:10px}.match-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.match-left{padding:11px;border:1px solid var(--pu);border-radius:9px;text-align:center;font-weight:900;background:#fbfaff}.select{width:100%;padding:11px;border:1px solid var(--line);border-radius:9px;font-weight:800}.actions{display:flex;gap:8px;margin-top:14px}.result-hero{background:linear-gradient(135deg,#eee9ff,#fff0e6);border-radius:14px;text-align:center;padding:28px 16px;margin-bottom:18px}.trophy{width:50px;height:50px;border-radius:50%;background:var(--pu);color:white;display:inline-flex;align-items:center;justify-content:center;font-size:28px}.pct{font:700 44px Fredoka,sans-serif;color:var(--or);margin-top:8px}.pill{display:inline-flex;border-radius:999px;padding:5px 10px;font-size:12px;font-weight:900;margin:4px}.pill.skip{background:#f0ecff;color:var(--pu)}.review{border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:10px}.media-box{height:120px;border-radius:12px;background:#f3f0ff;display:flex;align-items:center;justify-content:center;color:#cbc4ed;font-size:38px;margin-bottom:12px}
+</style></head><body><div class="page"><div class="top"><div><div class="brand">Quiz de Unidad – Mockup</div><div class="sub">inglésdeuna · <?php echo $total; ?> preguntas dinámicas</div></div><button class="download"><i class="ti ti-download"></i> Descargar HTML</button></div><div class="tabs"><?php foreach(['intro'=>'Intro','quiz'=>'Multiple choice','fill'=>'Fill in blank','match'=>'Match','dictation'=>'Dictation','pronunciation'=>'Pronunciation','result'=>'Resultado','review'=>'Review'] as $m=>$label): ?><button class="tab <?php echo ($mode===$m||($mode==='quiz'&&isset($quiz[$qIndex])&&$quiz[$qIndex]['type']===$m))?'on':''; ?>"><?php echo qz_h($label); ?></button><?php endforeach; ?></div>
+<?php if($mode==='intro'): ?><div class="screen-title">Pantalla 1 — Portada del quiz</div><div class="card"><span class="kicker">UNIT <?php echo $unitId; ?> · QUIZ</span><div class="title">Unit Quiz</div><div class="lead">Answer all questions to complete this unit and unlock the next one.</div><div class="chips"><span class="chip"><i class="ti ti-list"></i> <?php echo $total; ?> questions</span><span class="chip"><i class="ti ti-clock"></i> ~8 min</span><span class="chip"><i class="ti ti-refresh"></i> 3 attempts</span></div><div class="hr"></div><div class="included">WHAT'S INCLUDED</div><?php foreach($typeCounts as $type=>$count):$info=$typeLabels[$type]??[$type,'','ti-circle'];?><div class="type-row"><i class="ti <?php echo qz_h($info[2]); ?>"></i><div><b><?php echo qz_h($info[0]); ?></b><small><?php echo qz_h($info[1]); ?></small></div><span><?php echo $count; ?></span></div><?php endforeach;?><div class="hr"></div><a class="btn btn-purple w100" href="?mode=quiz&q=0&unit=<?php echo $unitId; ?>&assignment=<?php echo $assignment; ?>"><i class="ti ti-player-play"></i> Start quiz</a></div>
+<?php elseif($mode==='quiz'): $qIndex=max(0,min($qIndex,$total-1));$q=$quiz[$qIndex];$info=$typeLabels[$q['type']]??[$q['type'],'','ti-circle'];$hasFeedback=isset($_GET['feedback'])&&isset($answers[$qIndex]);$isCorrect=$answers[$qIndex]['correct']??false;?><div class="screen-title">Pregunta <?php echo $qIndex+1;?> — <?php echo qz_h($info[0]);?></div><div class="card"><div class="progress-head"><span>PROGRESS</span><span><?php echo $qIndex+1;?> / <?php echo $total;?></span></div><div class="track"><div class="bar" style="width:<?php echo round((($qIndex+1)/$total)*100);?>%"></div></div><div class="tag"><i class="ti <?php echo qz_h($info[2]);?>"></i> <?php echo qz_h($info[0]);?></div><div class="question"><?php echo qz_h($q['question']);?></div><?php if($q['image']):?><img src="<?php echo qz_h($q['image']);?>" class="media-box" style="object-fit:cover;width:100%" alt="Question image"><?php elseif($q['type']==='pronunciation'&&!empty($q['options'])):?><div class="media-box"><i class="ti ti-photo"></i></div><?php endif;?><?php if($q['audio']):?><audio controls src="<?php echo qz_h($q['audio']);?>" style="width:100%;margin-bottom:12px"></audio><?php endif;?><?php if($hasFeedback):?><div class="feedback <?php echo $isCorrect?'good':'bad';?>"><?php echo $isCorrect?'Correct! Well done.':'Not quite. Correct answer: '.qz_h($q['type']==='match'?'See matches below':$q['correct']);?></div><a class="btn btn-primary w100" href="?mode=<?php echo $qIndex+1>=$total?'result':'quiz';?>&q=<?php echo $qIndex+1;?>&unit=<?php echo $unitId;?>&assignment=<?php echo $assignment;?>">Next question <i class="ti ti-arrow-right"></i></a><?php else:?><form method="post"><?php if($q['type']==='multiple_choice'||($q['type']==='pronunciation'&&!empty($q['options']))): foreach($q['options'] as $i=>$opt): if(trim((string)$opt)==='')continue;?><label class="option"><input type="radio" name="answer" value="<?php echo $i;?>" required><span class="letter"><?php echo chr(65+$i);?></span><?php echo qz_h($opt);?></label><?php endforeach;?><?php elseif($q['type']==='fill'||$q['type']==='dictation'||$q['type']==='pronunciation'):?><input class="input" type="text" name="answer" required autocomplete="off" placeholder="Type your answer"><?php elseif($q['type']==='match'):?><div class="match-grid"><?php foreach($q['pairs'] as $i=>$pair):?><div class="match-left"><?php echo qz_h($pair['left']);?></div><select class="select" name="answer[<?php echo $i;?>]" required><option value="">Select</option><?php foreach($q['pairs'] as $p):?><option value="<?php echo qz_h($p['right']);?>"><?php echo qz_h($p['right']);?></option><?php endforeach;?></select><?php endforeach;?></div><?php endif;?><div class="actions"><button class="btn btn-light" name="skip" value="1" formnovalidate>Skip</button><button class="btn btn-primary w100" type="submit">Check answer <i class="ti ti-arrow-right"></i></button></div></form><?php endif;?></div>
+<?php elseif($mode==='result'):?><div class="screen-title">Pantalla 7 — Resultado final</div><div class="card"><div class="result-hero"><div class="trophy"><i class="ti ti-trophy"></i></div><h2 style="color:var(--pu);margin:12px 0 0">Quiz complete!</h2><div class="sub">Unit <?php echo $unitId;?> · <?php echo $total;?> questions</div><div class="pct"><?php echo $percent;?>%</div><div class="sub"><?php echo $correctCount;?> out of <?php echo $total;?> correct</div><div><span class="pill good"><?php echo $correctCount;?> correct</span><span class="pill bad"><?php echo $wrongCount;?> wrong</span><span class="pill skip"><?php echo $skippedCount;?> skipped</span></div></div><div class="actions"><a class="btn btn-light w100" href="?mode=review&unit=<?php echo $unitId;?>&assignment=<?php echo $assignment;?>">See review</a><a class="btn btn-primary w100" href="../hub/?unit=<?php echo $unitId;?>">Back to unit <i class="ti ti-arrow-right"></i></a></div><a class="btn btn-purple w100" style="margin-top:12px" href="?reset=1&unit=<?php echo $unitId;?>&assignment=<?php echo $assignment;?>"><i class="ti ti-refresh"></i> Try again</a></div>
+<?php elseif($mode==='review'):?><div class="screen-title">Pantalla 8 — Review</div><div class="card"><div class="title">Review</div><?php foreach($quiz as $i=>$q):$a=$answers[$i]??['answer'=>null,'correct'=>false,'skipped'=>true];?><div class="review"><b><?php echo ($i+1).'. '.qz_h($q['question']);?></b><br><small><?php echo !empty($a['correct'])?'Correct':'Incorrect/skipped';?></small><div class="sub">Correct: <?php echo qz_h($q['type']==='match'?json_encode(array_column($q['pairs'],'right')):$q['correct']);?></div></div><?php endforeach;?><a class="btn btn-purple w100" href="?mode=result&unit=<?php echo $unitId;?>&assignment=<?php echo $assignment;?>">Back to results</a></div><?php endif;?></div></body></html>
