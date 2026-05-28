@@ -11,8 +11,15 @@ if ($step < 0 || $step > 7) $step = 0;
 // =============================
 // 1. Sin lógica ni arrays legacy. 2. Carga dinámica de preguntas desde la base de datos. 3. Estructura y estilos 100% mockup. 4. Sin warnings ni errores.
 
-session_start();
+
+if (session_status() === PHP_SESSION_NONE) {
+  session_start();
+}
 require_once __DIR__ . '/../../../lessons/core/db.php'; // Ajusta el path según tu estructura real
+
+if (!function_exists('get_pdo')) {
+  die('<div style="color:red;text-align:center;margin-top:40px;">Error: No se encontró la función get_pdo(). Verifica que el archivo db.php la defina correctamente.</div>');
+}
 
 // --- Parámetros de unidad y assignment ---
 $unit_id = isset($_GET['unit']) ? intval($_GET['unit']) : 0;
