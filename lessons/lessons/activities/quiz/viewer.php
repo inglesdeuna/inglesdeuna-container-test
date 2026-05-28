@@ -117,16 +117,12 @@ if ($step === 5) {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Unit Quiz</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600&family=Nunito:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
   <style>
-    body { background: #f8f7ff; }
-    .quiz-container { max-width: 600px; margin: 40px auto; background: #fff; border-radius: 18px; box-shadow: 0 4px 24px #0001; padding: 32px 24px; }
-    .qz-chip { display: inline-block; background: #f5f3ff; color: #7c3aed; border-radius: 16px; padding: 4px 12px; font-size: 13px; margin-right: 6px; margin-bottom: 6px; font-weight: 600; }
-    .qz-title { font-family: 'Fredoka', 'Trebuchet MS', sans-serif; font-size: 2rem; color: #f14902; font-weight: 700; }
-    .qz-lead { color: #7c3aed; font-size: 1.1rem; margin-bottom: 18px; }
-    .qz-section { margin-top: 32px; }
+    <?php echo file_get_contents(__DIR__ . '/quiz_mockup_style.css'); ?>
   </style>
-  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;700&family=Nunito:wght@400;700&display=swap" rel="stylesheet">
 </head>
 <body>
 <div class="quiz-container">
