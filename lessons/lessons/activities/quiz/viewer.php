@@ -26,35 +26,77 @@ session_start();
 $step = isset($_GET['step']) ? (int)$_GET['step'] : 0;
 if ($step < 0 || $step > 6) $step = 0;
 
+// --- Preguntas mock para demo (reemplazar por carga real) ---
+if (!isset($_SESSION['quiz_questions'])) {
+  $_SESSION['quiz_questions'] = [
+    [
+      'type' => 'mc',
+      'question' => 'What is the capital of France?',
+      'options' => ['Madrid', 'Paris', 'Rome', 'Berlin'],
+      'correct' => 1,
+    ],
+    [
+      'type' => 'mc',
+      'question' => 'Which is the largest planet?',
+      'options' => ['Earth', 'Jupiter', 'Mars', 'Venus'],
+      'correct' => 1,
+    ],
+    // ...más preguntas...
+  ];
+  $_SESSION['quiz_answers'] = [];
+}
+$questions = $_SESSION['quiz_questions'];
+$answers = &$_SESSION['quiz_answers'];
+
 // --- Pantalla 0: Intro ---
 if ($step === 0) {
   // Meta chips y desglose
   echo '<div class="qz-title mb-2">Unit Quiz</div>';
   echo '<div class="qz-lead">Answer all questions to complete this unit and unlock the next one.</div>';
   echo '<div class="mb-3">';
-  echo '<span class="qz-chip">12 questions</span>';
+  echo '<span class="qz-chip">' . count($questions) . ' questions</span>';
   echo '<span class="qz-chip">~8 min</span>';
   echo '<span class="qz-chip">3 attempts</span>';
   echo '</div>';
   echo '<div class="mb-3"><strong>What\'s included</strong></div>';
   echo '<ul class="list-group mb-4">';
-  echo '<li class="list-group-item">Multiple choice <span class="badge bg-primary float-end">5</span></li>';
-  echo '<li class="list-group-item">Fill in the blank <span class="badge bg-warning text-dark float-end">3</span></li>';
-  echo '<li class="list-group-item">Match pairs <span class="badge bg-info text-dark float-end">2</span></li>';
-  echo '<li class="list-group-item">Dictation <span class="badge bg-success float-end">2</span></li>';
+  echo '<li class="list-group-item">Multiple choice <span class="badge bg-primary float-end">' . count(array_filter($questions, fn($q) => $q['type']==='mc')) . '</span></li>';
   echo '</ul>';
   echo '<form method="get"><input type="hidden" name="step" value="1"><button class="btn btn-lg btn-primary w-100">Start quiz</button></form>';
 }
-// --- Pantalla 1: Pregunta 1 ---
-if ($step === 1) {
-  echo '<div class="qz-title mb-2">Question 1</div>';
-  echo '<div class="qz-lead">What is the capital of France?</div>';
+// --- Pantalla 1: Multiple Choice ---
+elseif ($step === 1) {
+  $qIdx = isset($_GET['q']) ? (int)$_GET['q'] : 0;
+  $mcQuestions = array_values(array_filter($questions, fn($q) => $q['type']==='mc'));
+  $total = count($mcQuestions);
+  if ($qIdx < 0) $qIdx = 0;
+  if ($qIdx >= $total) $qIdx = $total-1;
+  $q = $mcQuestions[$qIdx];
+
+  // Guardar respuesta si viene por POST
+  if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['answer'])) {
+    $answers['mc'][$qIdx] = (int)$_POST['answer'];
+    // Siguiente pregunta o paso
+    if ($qIdx+1 < $total) {
+      header('Location: ?step=1&q=' . ($qIdx+1));
+      exit;
+    } else {
+      header('Location: ?step=2'); // Siguiente bloque
+      exit;
+    }
+  }
+
+  echo '<div class="mb-3"><span class="badge bg-primary">Multiple choice</span></div>';
+  echo '<div class="mb-3"><strong>Question ' . ($qIdx+1) . ' of ' . $total . '</strong></div>';
   echo '<form method="post">';
-  echo '<input type="radio" name="answer" value="Paris">';
-  echo '<input type="radio" name="answer" value="London">';
-  echo '<input type="radio" name="answer" value="Berlin">';
-  echo '<input type="radio" name="answer" value="Madrid">';
-  echo '<button type="submit">Submit</button>';
+  echo '<div class="mb-3 fs-5">' . htmlspecialchars($q['question']) . '</div>';
+  foreach ($q['options'] as $i => $opt) {
+    echo '<div class="form-check mb-2">';
+    echo '<input class="form-check-input" type="radio" name="answer" id="opt'.$i.'" value="'.$i.'" required>';
+    echo '<label class="form-check-label" for="opt'.$i.'">' . htmlspecialchars($opt) . '</label>';
+    echo '</div>';
+  }
+  echo '<button class="btn btn-primary mt-3">'.($qIdx+1<$total?'Next':'Continue').'</button>';
   echo '</form>';
 }
 // --- Pantalla 2: Pregunta 2 ---
