@@ -631,6 +631,7 @@ function load_quiz_fallback_from_multiple_choice(PDO $pdo, string $unit): array
   }
 }
 
+<<<<<<< HEAD
 function quiz_get_attempt_seed(string $unitId, int $attemptNumber): int
 {
   $sessionKey = 'qz_seed_' . md5($unitId . '_' . $attemptNumber);
@@ -658,6 +659,15 @@ function quiz_compute_target_count(int $available, float $ratio = 0.75, int $min
   $target = max($min, min($max, $target));
 
   return min($available, $target);
+=======
+function quiz_compute_target_count(int $available, float $ratio = 0.75, int $min = 5, int $max = 15): int
+{
+    if ($available <= 0) return 0;
+    if ($available === 1) return 1;
+    $target = (int) floor($available * $ratio);
+    $target = max($min, min($max, $target));
+    return min($available, $target);
+>>>>>>> 3f71433a (Quiz new design)
 }
 
 function quiz_take_random_subset(array $items, ?int $targetCount = null, float $ratio = 0.75): array
@@ -673,10 +683,18 @@ function quiz_take_random_subset(array $items, ?int $targetCount = null, float $
 
   if (isset($GLOBALS['_quiz_shuffle_seed'])) {
     mt_srand($GLOBALS['_quiz_shuffle_seed']);
+<<<<<<< HEAD
   }
   shuffle($clean);
   mt_srand();
 
+=======
+    shuffle($clean);
+    mt_srand(); // reset para no afectar otras operaciones
+  } else {
+    shuffle($clean);
+  }
+>>>>>>> 3f71433a (Quiz new design)
   return array_slice($clean, 0, min($targetCount, count($clean)));
 }
 
@@ -1271,6 +1289,17 @@ if (!empty($_qByType)) {
 $hasAnyQuizBlock = !empty($questions) || !empty($quizMatchPairs) || !empty($quizPronunciationItems)
   || !empty($quizWritingQuestions) || !empty($quizDictationItems) || !empty($quizListenOrderBlocks);
 
+<<<<<<< HEAD
+=======
+ensure_quiz_attempts_column($pdo);
+
+$studentId = trim((string) ($_SESSION['student_id'] ?? ''));
+$assignmentId = trim((string) ($_GET['assignment'] ?? ''));
+$quizAttemptPolicy = get_quiz_attempt_policy($pdo, $studentId, $assignmentId, $unit, (string) ($activity['id'] ?? $activityId));
+$currentAttempt = max(1, (int)($quizAttemptPolicy['attempts_used'] ?? 0) + 1);
+$GLOBALS['_quiz_shuffle_seed'] = quiz_get_attempt_seed($unit, $currentAttempt);
+
+>>>>>>> 3f71433a (Quiz new design)
 ob_start();
 ?>
 <style>
