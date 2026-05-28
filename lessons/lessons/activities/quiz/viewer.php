@@ -94,44 +94,7 @@ if ($step === 0) {
     'pronunciation' => ['Pronunciation', 'Say the phrase', 'secondary', 'ti-mood-smile', '#f3f3fa'],
   ];
   echo '<div style="text-align:center;margin-bottom:18px;">';
-  echo '<div style="color:#7c3aed;font-weight:700;font-size:1.1rem;letter-spacing:.5px;">Quiz de Unidad</div>';
-  echo '<div style="color:#a3a3b3;font-size:.95rem;">inglesdeuna · 7 pantallas interactivas</div>';
-  echo '<button class="btn btn-light btn-sm mt-2" style="border-radius:8px;font-size:.95rem;"><i class="ti ti-download"></i> Descargar HTML</button>';
-  echo '</div>';
-  echo '<div class="d-flex justify-content-center mb-3">';
-  $steps = ['Intro','Multiple choice','Fill in blank','Match','Dictation','Pronunciation','Resultado','Review'];
-  foreach ($steps as $i => $label) {
-    $active = $i === 0 ? 'btn-primary' : 'btn-outline-primary';
-    echo '<button class="btn '.$active.' btn-sm mx-1" style="border-radius:16px;min-width:90px;">'.$label.'</button>';
-  }
-  echo '</div>';
-  echo '<div style="text-align:center;color:#b0b0c3;font-size:.95rem;margin-bottom:8px;">PANTALLA 1 — PORTADA DEL QUIZ</div>';
-  echo '<div class="card shadow-sm mx-auto" style="max-width:420px;border-radius:18px;background:#fff;padding:32px 24px 24px 24px;">';
-  echo '<div style="margin-bottom:10px;"><span class="badge bg-warning text-dark" style="font-size:.85rem;border-radius:8px 8px 8px 0;padding:4px 12px 4px 10px;">UNIT '.htmlspecialchars($unit_id).' · QUIZ</span></div>';
-  echo '<div class="qz-title mb-2" style="font-size:2.1rem;color:#f14902;">Unit Quiz</div>';
-  echo '<div class="qz-lead mb-3" style="color:#7c3aed;font-size:1.1rem;">Answer all questions to complete this unit and unlock the next one.</div>';
-  echo '<div class="d-flex justify-content-between mb-2" style="gap:8px;">';
-  echo '<span class="qz-chip" style="background:#ede9fe;"><i class="ti ti-list-ol"></i> '.count($questions).' questions</span>';
-  echo '<span class="qz-chip" style="background:#e0f2fe;"><i class="ti ti-clock"></i> ~8 min</span>';
-  echo '<span class="qz-chip" style="background:#ffe4e6;"><i class="ti ti-refresh"></i> 3 attempts</span>';
-  echo '</div>';
-  echo '<hr style="margin:18px 0 18px 0;">';
-  echo '<div style="font-weight:600;color:#7c3aed;margin-bottom:10px;">WHAT\'S INCLUDED</div>';
-  echo '<div class="list-group mb-4">';
-  foreach ($type_labels as $type => [$label, $desc, $color, $icon, $bg]) {
-    if ($type_counts[$type] < 1) continue;
-    echo '<div class="list-group-item d-flex align-items-center justify-content-between" style="border:none;background:'.$bg.';margin-bottom:6px;border-radius:12px;">';
-    echo '<div class="d-flex align-items-center">';
-    echo '<i class="ti '.$icon.' me-2" style="font-size:1.3em;color:#7c3aed;"></i>';
-    echo '<div><div style="font-weight:600;font-size:1.08em;">'.$label.'</div>';
-    echo '<div style="font-size:.97em;color:#7c3aed;">'.$desc.'</div></div>';
-    echo '</div>';
-    echo '<span class="badge bg-'.$color.'" style="font-size:1em;min-width:32px;">'.$type_counts[$type].'</span>';
-    echo '</div>';
-  }
-  echo '</div>';
-  echo '<form method="get"><input type="hidden" name="step" value="1"><input type="hidden" name="unit" value="'.htmlspecialchars($unit_id).'"><input type="hidden" name="assignment" value="'.htmlspecialchars($assignment).'"><button class="btn btn-lg w-100" style="background:#7c3aed;color:#fff;font-weight:700;font-size:1.15em;border-radius:12px;">▶ Start quiz</button></form>';
-  echo '</div>';
+// ...existing code...
 }
 
 // --- Pantallas siguientes ... (ya implementadas en el bloque principal) ---
