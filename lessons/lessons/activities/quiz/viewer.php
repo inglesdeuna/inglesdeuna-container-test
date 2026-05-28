@@ -58,7 +58,11 @@ if (!isset($_SESSION['quiz_questions'])) {
         ['left' => 'Cat', 'right' => 'Gato'],
       ],
     ],
-    // ...más preguntas...
+    [
+      'type' => 'dictation',
+      'audio' => 'https://cdn.pixabay.com/audio/2022/10/16/audio_12b5fae3b2.mp3',
+      'answer' => 'Hello world',
+    ],
   ];
   $_SESSION['quiz_answers'] = [];
 }
@@ -197,40 +201,40 @@ elseif ($step === 3) {
   echo '<button class="btn btn-primary mt-3">Continue</button>';
   echo '</form>';
 }
-// --- Pantalla 4: Pregunta 4 ---
-if ($step === 4) {
-  echo '<div class="qz-title mb-2">Question 4</div>';
-  echo '<div class="qz-lead">What is the capital of Spain?</div>';
+// --- Pantalla 4: Dictation ---
+elseif ($step === 4) {
+  $dictationQuestions = array_values(array_filter($questions, fn($q) => $q['type']==='dictation'));
+  $qIdx = 0; // Solo un bloque de dictation en este mock
+  $q = $dictationQuestions[$qIdx] ?? null;
+  if (!$q) { header('Location: ?step=5'); exit; }
+  $userAnswer = $answers['dictation'][$qIdx] ?? '';
+  $feedback = null;
+
+  // Guardar respuesta
+  if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['answer'])) {
+    $userAnswer = trim($_POST['answer']);
+    $answers['dictation'][$qIdx] = $userAnswer;
+    $isCorrect = (strcasecmp($userAnswer, $q['answer']) === 0);
+    $feedback = $isCorrect ? 'correct' : 'incorrect';
+    // Avanzar al siguiente paso
+    header('Location: ?step=5');
+    exit;
+  }
+
+  echo '<div class="mb-3"><span class="badge bg-success">Dictation</span></div>';
+  echo '<div class="mb-3"><strong>Listen and type what you hear</strong></div>';
   echo '<form method="post">';
-  echo '<input type="radio" name="answer" value="Madrid">';
-  echo '<input type="radio" name="answer" value="Paris">';
-  echo '<input type="radio" name="answer" value="London">';
-  echo '<input type="radio" name="answer" value="Berlin">';
-  echo '<button type="submit">Submit</button>';
-  echo '</form>';
-}
-// --- Pantalla 5: Pregunta 5 ---
-if ($step === 5) {
-  echo '<div class="qz-title mb-2">Question 5</div>';
-  echo '<div class="qz-lead">What is the capital of Portugal?</div>';
-  echo '<form method="post">';
-  echo '<input type="radio" name="answer" value="Lisbon">';
-  echo '<input type="radio" name="answer" value="Paris">';
-  echo '<input type="radio" name="answer" value="London">';
-  echo '<input type="radio" name="answer" value="Madrid">';
-  echo '<button type="submit">Submit</button>';
-  echo '</form>';
-}
-// --- Pantalla 6: Pregunta 6 ---
-if ($step === 6) {
-  echo '<div class="qz-title mb-2">Question 6</div>';
-  echo '<div class="qz-lead">What is the capital of Switzerland?</div>';
-  echo '<form method="post">';
-  echo '<input type="radio" name="answer" value="Bern">';
-  echo '<input type="radio" name="answer" value="Paris">';
-  echo '<input type="radio" name="answer" value="London">';
-  echo '<input type="radio" name="answer" value="Madrid">';
-  echo '<button type="submit">Submit</button>';
+  echo '<audio controls class="mb-3" src="'.htmlspecialchars($q['audio']).'"></audio>';
+  echo '<input type="text" class="form-control mb-2" name="answer" value="' . htmlspecialchars($userAnswer) . '" required autocomplete="off" placeholder="Type what you hear...">';
+  if ($userAnswer !== '') {
+    $isCorrect = (strcasecmp($userAnswer, $q['answer']) === 0);
+    if ($isCorrect) {
+      echo '<div class="alert alert-success">Correct!</div>';
+    } else {
+      echo '<div class="alert alert-danger">Incorrect. Correct answer: <strong>' . htmlspecialchars($q['answer']) . '</strong></div>';
+    }
+  }
+  echo '<button class="btn btn-primary mt-3">Continue</button>';
   echo '</form>';
 }
 // --- Pantalla 7: Resultados ---
