@@ -236,32 +236,10 @@ if ($step === 0) {
     $qIdx = isset($_GET['q']) ? (int)$_GET['q'] : 0;
     $total = count($mcQuestions);
     if ($total === 0) { header('Location: ?step=2&unit='.$unit_id.'&assignment='.$assignment); exit; }
-    // Buscar la siguiente pregunta válida
-    $found = false;
-    while ($qIdx < $total) {
-      $q = $mcQuestions[$qIdx];
-      $q_question = isset($q['question']) && $q['question'] !== null ? $q['question'] : '';
-      $q_options_raw = isset($q['options']) && $q['options'] !== null ? $q['options'] : '';
-      $opts = [];
-      if ($q_options_raw !== '') {
-        $opts = json_decode($q_options_raw, true);
-        if (!is_array($opts)) $opts = [];
-      }
-      if ($q_question !== '' && !empty($opts)) {
-        $found = true;
-        break;
-      }
-      $qIdx++;
-    }
-    if (!$found) {
-      // No hay ninguna pregunta válida
-      echo '<div class="qm-screen on" id="sc-mc">';
-      echo '<div class="qz-wrap">';
-      echo '<div style="color:#f14902;font-weight:700;text-align:center;padding:32px 0;">No hay preguntas de opción múltiple válidas para esta unidad.</div>';
-      echo '<a href="?step=2&unit='.$unit_id.'&assignment='.$assignment.'" class="btn btn-primary mt-3">Siguiente sección</a>';
-      echo '</div></div>';
-      return;
-    }
+    // En este punto, $qIdx apunta a una pregunta válida (o ya se redirigió antes del HTML)
+    $q = $mcQuestions[$qIdx];
+    $q_question = $q['question'];
+    $opts = json_decode($q['options'], true);
     $userAnswer = $answers['mc'][$qIdx] ?? null;
     $showFeedback = false;
     $isCorrect = false;
