@@ -31,8 +31,8 @@ if (!$unit_id) {
 // --- Cargar preguntas dinámicamente desde la base de datos ---
 try {
   $pdo = get_pdo();
-  $stmt = $pdo->prepare("SELECT * FROM activities WHERE unit_id = :unit_id AND assignment = :assignment ORDER BY id ASC");
-  $stmt->execute(['unit_id' => $unit_id, 'assignment' => $assignment]);
+  $stmt = $pdo->prepare("SELECT * FROM activities WHERE unit_id = :unit_id ORDER BY id ASC");
+  $stmt->execute(['unit_id' => $unit_id]);
   $activities = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (Exception $e) {
   die('<div style="color:red;text-align:center;margin-top:40px;">Error de conexión: '.htmlspecialchars($e->getMessage()).'</div>');
