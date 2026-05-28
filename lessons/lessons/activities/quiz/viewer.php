@@ -62,6 +62,40 @@ foreach ($activities as $act) {
 $step = isset($_GET['step']) ? (int)$_GET['step'] : 0;
 if ($step < 0 || $step > 6) $step = 0;
 
+// --- Redirección anticipada para preguntas inválidas (multiple_choice) ---
+if ($step === 1) {
+  $mcQuestions = get_questions_by_type($questions, 'multiple_choice');
+  $qIdx = isset($_GET['q']) ? (int)$_GET['q'] : 0;
+  $total = count($mcQuestions);
+  if ($total === 0) {
+    header('Location: ?step=2&unit='.$unit_id.'&assignment='.$assignment); exit;
+  }
+  $found = false;
+  $origIdx = $qIdx;
+  while ($qIdx < $total) {
+    $q = $mcQuestions[$qIdx];
+    $q_question = isset($q['question']) && $q['question'] !== null ? $q['question'] : '';
+    $q_options_raw = isset($q['options']) && $q['options'] !== null ? $q['options'] : '';
+    $opts = [];
+    if ($q_options_raw !== '') {
+      $opts = json_decode($q_options_raw, true);
+      if (!is_array($opts)) $opts = [];
+    }
+    if ($q_question !== '' && !empty($opts)) {
+      $found = true;
+      break;
+    }
+    $qIdx++;
+  }
+  if (!$found) {
+    // No hay ninguna pregunta válida
+    // No redirige, deja que el flujo muestre el mensaje de error en el render principal
+  } elseif ($qIdx !== $origIdx) {
+    // Redirige automáticamente a la siguiente pregunta válida
+    header('Location: ?step=1&q='.$qIdx.'&unit='.$unit_id.'&assignment='.$assignment); exit;
+  }
+}
+
 ?><!DOCTYPE html>
 <html lang="en">
 <head>
