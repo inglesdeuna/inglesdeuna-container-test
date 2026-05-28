@@ -235,18 +235,24 @@ if ($step === 0) {
   echo '<form method="get"><input type="hidden" name="step" value="1"><input type="hidden" name="unit" value="'.htmlspecialchars($unit_id).'"><button class="btn btn-lg w-100" style="background:#7c3aed;color:#fff;font-weight:700;font-size:1.15em;border-radius:12px;">▶ Start quiz</button></form>';
   echo '</div>';
 }
-// --- Pantalla 1: Multiple Choice ---
+// --- Pantalla 1: Multiple Choice (mockup) ---
 elseif ($step === 1) {
   $qIdx = isset($_GET['q']) ? (int)$_GET['q'] : 0;
-  $mcQuestions = array_values(array_filter($questions, fn($q) => $q['type']==='mc'));
+  $mcQuestions = array_values(array_filter($questions, fn($q) => strtolower($q['type'])==='multiple_choice' || strtolower($q['type'])==='mc'));
   $total = count($mcQuestions);
   if ($qIdx < 0) $qIdx = 0;
   if ($qIdx >= $total) $qIdx = $total-1;
   $q = $mcQuestions[$qIdx];
+  $userAnswer = $answers['mc'][$qIdx] ?? null;
+  $showFeedback = false;
+  $isCorrect = false;
 
   // Guardar respuesta si viene por POST
   if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['answer'])) {
-    $answers['mc'][$qIdx] = (int)$_POST['answer'];
+    $userAnswer = (int)$_POST['answer'];
+    $answers['mc'][$qIdx] = $userAnswer;
+    $showFeedback = true;
+    $isCorrect = ($userAnswer == $q['correct']);
     // Siguiente pregunta o paso
     if ($qIdx+1 < $total) {
       header('Location: ?step=1&q=' . ($qIdx+1));
@@ -257,18 +263,39 @@ elseif ($step === 1) {
     }
   }
 
-  echo '<div class="mb-3"><span class="badge bg-primary">Multiple choice</span></div>';
-  echo '<div class="mb-3"><strong>Question ' . ($qIdx+1) . ' of ' . $total . '</strong></div>';
+  // Progreso visual
+  $progress = $total > 0 ? round((($qIdx+1)/$total)*100) : 0;
+  echo '<div class="qm-screen on" id="sc-mc">';
+  echo '<p class="screen-label">Pantalla 2 — Multiple choice · pregunta activa</p>';
+  echo '<div class="qz-wrap">';
+  echo '<div class="qz-prog-head">';
+  echo '<span class="qz-prog-label">Progress</span>';
+  echo '<span class="qz-prog-count">'.($qIdx+1).' / '.$total.'</span>';
+  echo '</div>';
+  echo '<div class="qz-prog-track"><div class="qz-prog-fill" style="width:'.$progress.'%"></div></div>';
+  echo '<div class="qz-section-tag"><i class="ti ti-checks"></i> Multiple choice</div>';
+  echo '<p class="qz-q-text">'.htmlspecialchars($q['question']).'</p>';
   echo '<form method="post">';
-  echo '<div class="mb-3 fs-5">' . htmlspecialchars($q['question']) . '</div>';
+  echo '<div class="qz-options" id="mc-opts">';
   foreach ($q['options'] as $i => $opt) {
-    echo '<div class="form-check mb-2">';
-    echo '<input class="form-check-input" type="radio" name="answer" id="opt'.$i.'" value="'.$i.'" required>';
-    echo '<label class="form-check-label" for="opt'.$i.'">' . htmlspecialchars($opt) . '</label>';
-    echo '</div>';
+    $sel = ($userAnswer !== null && $userAnswer == $i) ? ' sel' : '';
+    $letter = chr(65+$i);
+    echo '<label class="qz-opt'.$sel.'">';
+    echo '<input type="radio" name="answer" value="'.$i.'" style="display:none"'.($userAnswer!==null && $userAnswer==$i?' checked':'').'>';
+    echo '<div class="qz-opt-letter">'.$letter.'</div>'.htmlspecialchars($opt);
+    echo '</label>';
   }
-  echo '<button class="btn btn-primary mt-3">'.($qIdx+1<$total?'Next':'Continue').'</button>';
+  echo '</div>';
+  echo '<div class="qz-btns">';
+  if ($qIdx+1<$total) {
+    echo '<button class="qz-btn-next">Next question →</button>';
+  } else {
+    echo '<button class="qz-btn-next">Continue</button>';
+  }
+  echo '</div>';
   echo '</form>';
+  echo '</div>';
+  echo '</div>';
 }
 // --- Pantalla 2: Fill in the blank ---
 elseif ($step === 2) {
