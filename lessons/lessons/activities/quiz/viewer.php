@@ -164,6 +164,12 @@ foreach ($activities as $act) {
   }
 }
 
+
+// --- Iniciar sesión solo si no está activa y no se ha enviado salida ---
+if (session_status() === PHP_SESSION_NONE && !headers_sent()) {
+  session_start();
+}
+
 // --- Paso actual ---
 $step = isset($_GET['step']) ? (int)$_GET['step'] : 0;
 if ($step < 0 || $step > 6) $step = 0;
@@ -342,18 +348,18 @@ if ($step === 0) {
     $qIdx = isset($_GET['q']) ? (int)$_GET['q'] : 0;
     $total = count($mcQuestions);
     if ($total === 0) { header('Location: ?step=2&unit='.$unit_id.'&assignment='.$assignment); exit; }
-    // En este punto, $qIdx apunta a una pregunta válida (o ya se redirigió antes del HTML)
     $q = $mcQuestions[$qIdx];
-    $q_question = $q['question'];
-    $opts = json_decode($q['options'], true);
-    $userAnswer = $answers['mc'][$qIdx] ?? null;
+    $q_question = isset($q['question']) && $q['question'] !== null ? $q['question'] : '';
+    $opts = isset($q['options']) && $q['options'] !== null ? json_decode($q['options'], true) : [];
+    if (!is_array($opts)) $opts = [];
+    $userAnswer = isset($answers['mc'][$qIdx]) ? $answers['mc'][$qIdx] : null;
     $showFeedback = false;
     $isCorrect = false;
     if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['answer'])) {
       $userAnswer = (int)$_POST['answer'];
       $answers['mc'][$qIdx] = $userAnswer;
       $showFeedback = true;
-      $isCorrect = ($userAnswer == $q['correct']);
+      $isCorrect = (isset($q['correct']) && $userAnswer == $q['correct']);
       if ($qIdx+1 < $total) {
         header('Location: ?step=1&q=' . ($qIdx+1) . '&unit='.$unit_id.'&assignment='.$assignment); exit;
       } else {
@@ -370,15 +376,17 @@ if ($step === 0) {
     echo '</div>';
     echo '<div class="qz-prog-track"><div class="qz-prog-fill" style="width:'.$progress.'%"></div></div>';
     echo '<div class="qz-section-tag"><i class="ti ti-checks"></i> Multiple choice</div>';
-    echo '<p class="qz-q-text">'.htmlspecialchars($q_question).'</p>';
+    echo '<p class="qz-q-text">'.htmlspecialchars((string)$q_question).'</p>';
     echo '<form method="post">';
     echo '<div class="qz-options" id="mc-opts">';
-    foreach ($opts as $i => $opt) {
-      $sel = ($userAnswer !== null && $userAnswer == $i) ? ' sel' : '';
-      $letter = chr(65+$i);
-      echo '<label class="qz-opt'.$sel.'">';
-      echo '<input type="radio" name="answer" value="'.$i.'" '.($userAnswer == $i ? 'checked' : '').' required> <span class="qz-opt-letter">'.$letter.'</span> '.htmlspecialchars($opt);
-      echo '</label>';
+    if (!empty($opts)) {
+      foreach ($opts as $i => $opt) {
+        $sel = ($userAnswer !== null && $userAnswer == $i) ? ' sel' : '';
+        $letter = chr(65+$i);
+        echo '<label class="qz-opt'.$sel.'">';
+        echo '<input type="radio" name="answer" value="'.$i.'" '.($userAnswer == $i ? 'checked' : '').' required> <span class="qz-opt-letter">'.$letter.'</span> '.htmlspecialchars((string)$opt);
+        echo '</label>';
+      }
     }
     echo '</div>';
     echo '<button class="btn btn-primary w-100 mt-3" style="border-radius:10px;">'.($qIdx+1<$total?'Next':'Continue').'</button>';
