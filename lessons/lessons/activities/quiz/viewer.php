@@ -202,28 +202,35 @@ if ($step === 0) {
     $qIdx = isset($_GET['q']) ? (int)$_GET['q'] : 0;
     $total = count($mcQuestions);
     if ($total === 0) { header('Location: ?step=2&unit='.$unit_id.'&assignment='.$assignment); exit; }
-    if ($qIdx < 0) $qIdx = 0;
-    if ($qIdx >= $total) $qIdx = $total-1;
-    $q = $mcQuestions[$qIdx];
-    $userAnswer = $answers['mc'][$qIdx] ?? null;
-    $showFeedback = false;
-    $isCorrect = false;
-    // Validación robusta de campos requeridos
-    $q_question = isset($q['question']) && $q['question'] !== null ? $q['question'] : '';
-    $q_options_raw = isset($q['options']) && $q['options'] !== null ? $q['options'] : '';
-    $opts = [];
-    if ($q_options_raw !== '') {
-      $opts = json_decode($q_options_raw, true);
-      if (!is_array($opts)) $opts = [];
+    // Buscar la siguiente pregunta válida
+    $found = false;
+    while ($qIdx < $total) {
+      $q = $mcQuestions[$qIdx];
+      $q_question = isset($q['question']) && $q['question'] !== null ? $q['question'] : '';
+      $q_options_raw = isset($q['options']) && $q['options'] !== null ? $q['options'] : '';
+      $opts = [];
+      if ($q_options_raw !== '') {
+        $opts = json_decode($q_options_raw, true);
+        if (!is_array($opts)) $opts = [];
+      }
+      if ($q_question !== '' && !empty($opts)) {
+        $found = true;
+        break;
+      }
+      $qIdx++;
     }
-    if ($q_question === '' || empty($opts)) {
+    if (!$found) {
+      // No hay ninguna pregunta válida
       echo '<div class="qm-screen on" id="sc-mc">';
       echo '<div class="qz-wrap">';
-      echo '<div style="color:#f14902;font-weight:700;text-align:center;padding:32px 0;">Error: Esta pregunta de opción múltiple no tiene datos válidos.<br>Verifica los campos "question" y "options" en la base de datos.</div>';
-      echo '<a href="?step=1&q='.($qIdx+1).'&unit='.$unit_id.'&assignment='.$assignment.'" class="btn btn-primary mt-3">Siguiente pregunta</a>';
+      echo '<div style="color:#f14902;font-weight:700;text-align:center;padding:32px 0;">No hay preguntas de opción múltiple válidas para esta unidad.</div>';
+      echo '<a href="?step=2&unit='.$unit_id.'&assignment='.$assignment.'" class="btn btn-primary mt-3">Siguiente sección</a>';
       echo '</div></div>';
       return;
     }
+    $userAnswer = $answers['mc'][$qIdx] ?? null;
+    $showFeedback = false;
+    $isCorrect = false;
     if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['answer'])) {
       $userAnswer = (int)$_POST['answer'];
       $answers['mc'][$qIdx] = $userAnswer;
