@@ -1,6 +1,139 @@
 <?php
 session_start();
 
+// --- Paso actual ---
+$step = isset($_GET['step']) ? (int)$_GET['step'] : 0;
+if ($step < 0 || $step > 7) $step = 0;
+
+// --- Preguntas mock para demo (reemplazar por carga real) ---
+if (!isset($_SESSION['quiz_questions'])) {
+  $_SESSION['quiz_questions'] = [
+    [
+      'type' => 'mc',
+      'question' => 'What is the capital of France?',
+      'options' => ['Madrid', 'Paris', 'Rome', 'Berlin'],
+      'correct' => 1,
+    ],
+    [
+      'type' => 'mc',
+      'question' => 'Which is the largest planet?',
+      'options' => ['Earth', 'Jupiter', 'Mars', 'Venus'],
+      'correct' => 1,
+    ],
+    [
+      'type' => 'fill',
+      'question' => 'The sky is _____.',
+      'answer' => 'blue',
+    ],
+    [
+      'type' => 'fill',
+      'question' => 'Grass is _____.',
+      'answer' => 'green',
+    ],
+    [
+      'type' => 'match',
+      'pairs' => [
+        ['left' => 'Dog', 'right' => 'Perro'],
+        ['left' => 'Cat', 'right' => 'Gato'],
+      ],
+    ],
+    [
+      'type' => 'dictation',
+      'audio' => 'https://cdn.pixabay.com/audio/2022/10/16/audio_12b5fae3b2.mp3',
+      'answer' => 'Hello world',
+    ],
+    [
+      'type' => 'pronunciation',
+      'prompt' => 'Say: "Good morning"',
+      'expected' => 'Good morning',
+    ],
+  ];
+  $_SESSION['quiz_answers'] = [];
+}
+$questions = $_SESSION['quiz_questions'];
+$answers = &$_SESSION['quiz_answers'];
+
+// --- Manejo de POST y redirecciones antes de cualquier salida HTML ---
+// Multiple Choice
+if ($step === 1) {
+  $qIdx = isset($_GET['q']) ? (int)$_GET['q'] : 0;
+  $mcQuestions = array_values(array_filter($questions, fn($q) => $q['type']==='mc'));
+  $total = count($mcQuestions);
+  if ($qIdx < 0) $qIdx = 0;
+  if ($qIdx >= $total) $qIdx = $total-1;
+  if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['answer'])) {
+    $answers['mc'][$qIdx] = (int)$_POST['answer'];
+    if ($qIdx+1 < $total) {
+      header('Location: ?step=1&q=' . ($qIdx+1));
+      exit;
+    } else {
+      header('Location: ?step=2');
+      exit;
+    }
+  }
+}
+// Fill in the blank
+if ($step === 2) {
+  $qIdx = isset($_GET['q']) ? (int)$_GET['q'] : 0;
+  $fillQuestions = array_values(array_filter($questions, fn($q) => $q['type']==='fill'));
+  $total = count($fillQuestions);
+  if ($qIdx < 0) $qIdx = 0;
+  if ($qIdx >= $total) $qIdx = $total-1;
+  $q = $fillQuestions[$qIdx];
+  if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['answer'])) {
+    $userAnswer = trim($_POST['answer']);
+    $answers['fill'][$qIdx] = $userAnswer;
+    $isCorrect = (strcasecmp($userAnswer, $q['answer']) === 0);
+    if ($isCorrect && $qIdx+1 < $total) {
+      header('Location: ?step=2&q=' . ($qIdx+1));
+      exit;
+    } elseif ($isCorrect && $qIdx+1 >= $total) {
+      header('Location: ?step=3');
+      exit;
+    }
+  }
+}
+// Match
+if ($step === 3) {
+  $matchQuestions = array_values(array_filter($questions, fn($q) => $q['type']==='match'));
+  $qIdx = 0;
+  $q = $matchQuestions[$qIdx] ?? null;
+  $pairs = $q['pairs'];
+  if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $userAnswers = [];
+    foreach ($pairs as $i => $pair) {
+      $userAnswers[$i] = isset($_POST['right'][$i]) ? trim($_POST['right'][$i]) : '';
+    }
+    $answers['match'][$qIdx] = $userAnswers;
+    header('Location: ?step=4');
+    exit;
+  }
+}
+// Dictation
+if ($step === 4) {
+  $dictationQuestions = array_values(array_filter($questions, fn($q) => $q['type']==='dictation'));
+  $qIdx = 0;
+  $q = $dictationQuestions[$qIdx] ?? null;
+  if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['answer'])) {
+    $userAnswer = trim($_POST['answer']);
+    $answers['dictation'][$qIdx] = $userAnswer;
+    header('Location: ?step=5');
+    exit;
+  }
+}
+// Pronunciation
+if ($step === 5) {
+  $pronQuestions = array_values(array_filter($questions, fn($q) => $q['type']==='pronunciation'));
+  $qIdx = 0;
+  $q = $pronQuestions[$qIdx] ?? null;
+  if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['answer'])) {
+    $userAnswer = trim($_POST['answer']);
+    $answers['pronunciation'][$qIdx] = $userAnswer;
+    header('Location: ?step=6');
+    exit;
+  }
+}
+
 // --- Configuración Bootstrap y meta ---
 ?><!DOCTYPE html>
 <html lang="en">
