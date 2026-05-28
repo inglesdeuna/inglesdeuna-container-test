@@ -6,49 +6,66 @@ $step = isset($_GET['step']) ? (int)$_GET['step'] : 0;
 if ($step < 0 || $step > 7) $step = 0;
 
 // --- Cargar actividades reales de la unidad ---
-require_once __DIR__ . '/../../config/db.php';
-$unit_id = $_GET['unit'] ?? '';
-if (!$unit_id) { die('Unidad no especificada.'); }
-
-// Tipos de actividad de puntaje
-$score_types = ['quiz', 'multiple_choice', 'fill', 'match', 'dictation', 'pronunciation'];
-
-// Obtener actividades de la unidad
-$stmt = $pdo->prepare("SELECT * FROM activities WHERE unit_id = :unit_id ORDER BY position ASC, id ASC");
-$stmt->execute(['unit_id' => $unit_id]);
-$all_activities = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-// Filtrar solo actividades de puntaje
-$questions = array_values(array_filter($all_activities, function($a) use ($score_types) {
-  return in_array(strtolower($a['type'] ?? ''), $score_types, true);
-}));
-
-// Inicializar respuestas en sesión si no existen
-if (!isset($_SESSION['quiz_answers'])) {
-  $_SESSION['quiz_answers'] = [];
-}
-$answers = &$_SESSION['quiz_answers'];
-
-// --- Manejo de POST y redirecciones antes de cualquier salida HTML ---
-// Multiple Choice
-if ($step === 1) {
+// --- Pantalla 2: Fill in the blank (mockup) ---
+elseif ($step === 2) {
   $qIdx = isset($_GET['q']) ? (int)$_GET['q'] : 0;
-  $mcQuestions = array_values(array_filter($questions, fn($q) => $q['type']==='mc'));
-  $total = count($mcQuestions);
+  $fillQuestions = array_values(array_filter($questions, fn($q) => strtolower($q['type'])==='fill'));
+  $total = count($fillQuestions);
   if ($qIdx < 0) $qIdx = 0;
   if ($qIdx >= $total) $qIdx = $total-1;
+  $q = $fillQuestions[$qIdx];
+  $userAnswer = $answers['fill'][$qIdx] ?? '';
+  $answered = $userAnswer !== '';
+  $isCorrect = $answered && (strcasecmp($userAnswer, $q['answer']) === 0);
+  $progress = $total > 0 ? round((($qIdx+1)/$total)*100) : 0;
+
+  // Guardar respuesta
   if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['answer'])) {
-    $answers['mc'][$qIdx] = (int)$_POST['answer'];
-    if ($qIdx+1 < $total) {
-      header('Location: ?step=1&q=' . ($qIdx+1));
+    $userAnswer = trim($_POST['answer']);
+    $answers['fill'][$qIdx] = $userAnswer;
+    $isCorrect = (strcasecmp($userAnswer, $q['answer']) === 0);
+    if ($isCorrect && $qIdx+1 < $total) {
+      header('Location: ?step=2&q=' . ($qIdx+1));
       exit;
-    } else {
-      header('Location: ?step=2');
+    } elseif ($isCorrect && $qIdx+1 >= $total) {
+      header('Location: ?step=3');
       exit;
     }
   }
+
+  echo '<div class="qm-screen on" id="sc-fill">';
+  echo '<p class="screen-label">Pantalla 3 — Fill in blank · feedback post-respuesta</p>';
+  echo '<div class="qz-wrap">';
+  echo '<div class="qz-prog-head">';
+  echo '<span class="qz-prog-label">Progress</span>';
+  echo '<span class="qz-prog-count">'.($qIdx+1).' / '.$total.'</span>';
+  echo '</div>';
+  echo '<div class="qz-prog-track"><div class="qz-prog-fill" style="width:'.$progress.'%"></div></div>';
+  echo '<div class="qz-section-tag"><i class="ti ti-pencil"></i> Fill in the blank</div>';
+  echo '<p class="qz-q-text">'.htmlspecialchars($q['question']).'</p>';
+  echo '<form method="post">';
+  echo '<div class="qz-fill-sentence">';
+  $sentence = htmlspecialchars($q['question']);
+  echo str_replace('_____', '<input class="qz-fill-input" type="text" name="answer" value="'.htmlspecialchars($userAnswer).'" required autocomplete="off">', $sentence);
+  echo '</div>';
+  if ($answered) {
+    if ($isCorrect) {
+      echo '<div class="qz-feedback ok"><i class="ti ti-circle-check" style="font-size:16px;flex-shrink:0"></i>Correct! Well done.</div>';
+    } else {
+      echo '<div class="qz-feedback bad"><div class="qz-fb-row"><i class="ti ti-circle-x" style="font-size:16px"></i>Not quite. The correct answer is:</div><span class="qz-feedback-answer">'.htmlspecialchars($q['answer']).'</span></div>';
+    }
+  }
+  echo '<div class="qz-btns">';
+  if ($qIdx+1<$total) {
+    echo '<button class="qz-btn-next">Next question →</button>';
+  } else {
+    echo '<button class="qz-btn-next">Continue</button>';
+  }
+  echo '</div>';
+  echo '</form>';
+  echo '</div>';
+  echo '</div>';
 }
-// Fill in the blank
 if ($step === 2) {
   $qIdx = isset($_GET['q']) ? (int)$_GET['q'] : 0;
   $fillQuestions = array_values(array_filter($questions, fn($q) => $q['type']==='fill'));
