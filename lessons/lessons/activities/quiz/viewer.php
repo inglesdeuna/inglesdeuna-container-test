@@ -1,3 +1,109 @@
+// --- Redirección anticipada para preguntas inválidas (fill in the blank) ---
+if ($step === 2) {
+  $fillQuestions = get_questions_by_type($questions, 'fill');
+  $qIdx = isset($_GET['q']) ? (int)$_GET['q'] : 0;
+  $total = count($fillQuestions);
+  if ($total === 0) {
+    header('Location: ?step=3&unit='.$unit_id.'&assignment='.$assignment); exit;
+  }
+  $found = false;
+  $origIdx = $qIdx;
+  while ($qIdx < $total) {
+    $q = $fillQuestions[$qIdx];
+    $q_question = isset($q['question']) && $q['question'] !== null ? $q['question'] : '';
+    $q_answer = isset($q['answer']) && $q['answer'] !== null ? $q['answer'] : '';
+    if ($q_question !== '' && $q_answer !== '') {
+      $found = true;
+      break;
+    }
+    $qIdx++;
+  }
+  if (!$found) {
+    // No hay ninguna pregunta válida
+  } elseif ($qIdx !== $origIdx) {
+    header('Location: ?step=2&q='.$qIdx.'&unit='.$unit_id.'&assignment='.$assignment); exit;
+  }
+}
+
+// --- Redirección anticipada para preguntas inválidas (match) ---
+if ($step === 3) {
+  $matchQuestions = get_questions_by_type($questions, 'match');
+  $qIdx = isset($_GET['q']) ? (int)$_GET['q'] : 0;
+  $total = count($matchQuestions);
+  if ($total === 0) {
+    header('Location: ?step=4&unit='.$unit_id.'&assignment='.$assignment); exit;
+  }
+  $found = false;
+  $origIdx = $qIdx;
+  while ($qIdx < $total) {
+    $q = $matchQuestions[$qIdx];
+    $pairs = isset($q['pairs']) && $q['pairs'] !== null ? json_decode($q['pairs'], true) : [];
+    if (is_array($pairs) && count($pairs) > 0) {
+      $found = true;
+      break;
+    }
+    $qIdx++;
+  }
+  if (!$found) {
+    // No hay ninguna pregunta válida
+  } elseif ($qIdx !== $origIdx) {
+    header('Location: ?step=3&q='.$qIdx.'&unit='.$unit_id.'&assignment='.$assignment); exit;
+  }
+}
+
+// --- Redirección anticipada para preguntas inválidas (dictation) ---
+if ($step === 4) {
+  $dictQuestions = get_questions_by_type($questions, 'dictation');
+  $qIdx = isset($_GET['q']) ? (int)$_GET['q'] : 0;
+  $total = count($dictQuestions);
+  if ($total === 0) {
+    header('Location: ?step=5&unit='.$unit_id.'&assignment='.$assignment); exit;
+  }
+  $found = false;
+  $origIdx = $qIdx;
+  while ($qIdx < $total) {
+    $q = $dictQuestions[$qIdx];
+    $q_audio = isset($q['audio']) && $q['audio'] !== null ? $q['audio'] : '';
+    $q_answer = isset($q['answer']) && $q['answer'] !== null ? $q['answer'] : '';
+    if ($q_audio !== '' && $q_answer !== '') {
+      $found = true;
+      break;
+    }
+    $qIdx++;
+  }
+  if (!$found) {
+    // No hay ninguna pregunta válida
+  } elseif ($qIdx !== $origIdx) {
+    header('Location: ?step=4&q='.$qIdx.'&unit='.$unit_id.'&assignment='.$assignment); exit;
+  }
+}
+
+// --- Redirección anticipada para preguntas inválidas (pronunciation) ---
+if ($step === 5) {
+  $pronQuestions = get_questions_by_type($questions, 'pronunciation');
+  $qIdx = isset($_GET['q']) ? (int)$_GET['q'] : 0;
+  $total = count($pronQuestions);
+  if ($total === 0) {
+    header('Location: ?step=6&unit='.$unit_id.'&assignment='.$assignment); exit;
+  }
+  $found = false;
+  $origIdx = $qIdx;
+  while ($qIdx < $total) {
+    $q = $pronQuestions[$qIdx];
+    $q_prompt = isset($q['prompt']) && $q['prompt'] !== null ? $q['prompt'] : '';
+    $q_expected = isset($q['expected']) && $q['expected'] !== null ? $q['expected'] : '';
+    if ($q_prompt !== '' && $q_expected !== '') {
+      $found = true;
+      break;
+    }
+    $qIdx++;
+  }
+  if (!$found) {
+    // No hay ninguna pregunta válida
+  } elseif ($qIdx !== $origIdx) {
+    header('Location: ?step=5&q='.$qIdx.'&unit='.$unit_id.'&assignment='.$assignment); exit;
+  }
+}
 <?php
 session_start();
 
