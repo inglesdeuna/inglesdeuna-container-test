@@ -310,7 +310,8 @@ foreach ($placed as $idx => $w) {
     $placed[$idx]["num"] = $wordNumber[$idx];
 }
 
-$gridGap = ($gridCols >= 15 || $gridRows >= 15) ? 3 : 4;
+$largestGridSide = max($gridRows, $gridCols);
+$gridGap = $largestGridSide >= 22 ? 2 : ($largestGridSide >= 15 ? 3 : 4);
 
 $desktopGridMaxW = 860;
 $desktopGridMaxH = 640;
@@ -318,7 +319,19 @@ $desktopGridMaxH = 640;
 $cellByDesktopW = (int) floor(($desktopGridMaxW - (($gridCols - 1) * $gridGap)) / max(1, $gridCols));
 $cellByDesktopH = (int) floor(($desktopGridMaxH - (($gridRows - 1) * $gridGap)) / max(1, $gridRows));
 
-$cellSize = max(24, min(62, $cellByDesktopW, $cellByDesktopH));
+if ($largestGridSide <= 12) {
+    $preferredCellSize = 62;
+} elseif ($largestGridSide <= 16) {
+    $preferredCellSize = 56;
+} elseif ($largestGridSide <= 20) {
+    $preferredCellSize = 48;
+} elseif ($largestGridSide <= 24) {
+    $preferredCellSize = 40;
+} else {
+    $preferredCellSize = 34;
+}
+
+$cellSize = max(28, min($preferredCellSize, $cellByDesktopW, $cellByDesktopH));
 
 $mobileGridMaxW = 360;
 $mobileGridMaxH = 420;
@@ -326,7 +339,7 @@ $mobileGridMaxH = 420;
 $cellByMobileW = (int) floor(($mobileGridMaxW - (($gridCols - 1) * $gridGap)) / max(1, $gridCols));
 $cellByMobileH = (int) floor(($mobileGridMaxH - (($gridRows - 1) * $gridGap)) / max(1, $gridRows));
 
-$mobileCellSize = max(18, min($cellSize, $cellByMobileW, $cellByMobileH));
+$mobileCellSize = max(22, min($cellSize, $cellByMobileW, $cellByMobileH));
 
 ob_start();
 ?>
