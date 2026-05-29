@@ -32,12 +32,10 @@ if ($title === "") $title = "Crossword Puzzle";
 
 $rawWords = is_array($raw["words"] ?? null) ? $raw["words"] : [];
 
-// --- PARCHE LOCALIZADO: Corrige dato corrupto SOLO para id=550 ---
 $sourceWords = [];
 foreach ($rawWords as $idx => $w) {
     if (!is_array($w)) continue;
 
-    // Corrige SOLO la palabra 4 si es la actividad 550
     if ($activityId === "550" && $idx === 3) {
         $w["word"] = "HAVEAPIECEOFTHISCAKE";
         $w["clue"] = "Come una porción de esta torta.";
@@ -161,18 +159,7 @@ function cw_generate_layout(array $words): array {
                     $startCol = $dir === "across" ? $c0 - $i : $c0;
                     [$ok, $overlaps] = cw_can_place_word($grid, $word, $startRow, $startCol, $dir);
                     if (!$ok || $overlaps < 1) continue;
-                    // --- PARCHE LOCALIZADO SOLO PARA ACTIVIDAD 550 ---
-                    if (isset($_GET['id']) && $_GET['id'] === '550') {
-                        // Calcula área ocupada igual que en el editor JS
-                        $minR = $startRow;
-                        $maxR = $dir === 'down' ? $startRow + $len - 1 : $startRow;
-                        $minC = $startCol;
-                        $maxC = $dir === 'across' ? $startCol + $len - 1 : $startCol;
-                        $areaPenalty = ($maxR - $minR + 1) * ($maxC - $minC + 1);
-                        $score = ($overlaps * 1000) - $areaPenalty;
-                    } else {
-                        $score = ($overlaps * 1000) - abs($startRow) - abs($startCol);
-                    }
+                    $score = ($overlaps * 1000) - abs($startRow) - abs($startCol);
                     if ($score > $bestScore) {
                         $bestScore = $score;
                         $best = [
@@ -186,10 +173,7 @@ function cw_generate_layout(array $words): array {
                 }
             }
         }
-        if ($best === null) {
-            // Keep crossword as a connected graph: skip words that cannot intersect.
-            continue;
-        }
+        if ($best === null) continue;
         $placed[] = $best;
         cw_place_word($grid, $best);
     }
@@ -216,15 +200,6 @@ function cw_generate_layout(array $words): array {
     }
 
     return $placed;
-}
-
-// --- DEBUG LOG SOLO PARA ACTIVIDAD 550 ---
-if ($activityId === "550") {
-    echo '<div style="background:#222;color:#fff;padding:12px 18px;margin:18px 0 0 0;z-index:9999;position:relative;font-size:13px;max-width:900px;overflow-x:auto;">';
-    echo '<b>DEBUG: sourceWords</b><br><pre>' . htmlspecialchars(json_encode($sourceWords, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE), ENT_QUOTES, 'UTF-8') . '</pre>';
-    $debugPlaced = cw_generate_layout($sourceWords);
-    echo '<b>DEBUG: placedWords</b><br><pre>' . htmlspecialchars(json_encode($debugPlaced, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE), ENT_QUOTES, 'UTF-8') . '</pre>';
-    echo '</div>';
 }
 
 $placedWords = cw_generate_layout($sourceWords);
@@ -265,10 +240,8 @@ foreach ($placed as $w) {
     }
 }
 
-$MAX_GRID_SIZE = 18;
-
-$gridRows = min($maxRow + 1, $MAX_GRID_SIZE);
-$gridCols = min($maxCol + 1, $MAX_GRID_SIZE);
+$gridRows = $maxRow + 1;
+$gridCols = $maxCol + 1;
 
 $cellMap = [];
 
@@ -345,7 +318,7 @@ $desktopGridMaxH = 640;
 $cellByDesktopW = (int) floor(($desktopGridMaxW - (($gridCols - 1) * $gridGap)) / max(1, $gridCols));
 $cellByDesktopH = (int) floor(($desktopGridMaxH - (($gridRows - 1) * $gridGap)) / max(1, $gridRows));
 
-$cellSize = max(28, min(62, $cellByDesktopW, $cellByDesktopH));
+$cellSize = max(24, min(62, $cellByDesktopW, $cellByDesktopH));
 
 $mobileGridMaxW = 360;
 $mobileGridMaxH = 420;
@@ -353,7 +326,7 @@ $mobileGridMaxH = 420;
 $cellByMobileW = (int) floor(($mobileGridMaxW - (($gridCols - 1) * $gridGap)) / max(1, $gridCols));
 $cellByMobileH = (int) floor(($mobileGridMaxH - (($gridRows - 1) * $gridGap)) / max(1, $gridRows));
 
-$mobileCellSize = max(22, min($cellSize, $cellByMobileW, $cellByMobileH));
+$mobileCellSize = max(18, min($cellSize, $cellByMobileW, $cellByMobileH));
 
 ob_start();
 ?>
@@ -618,7 +591,6 @@ body{
     background:#fff0e6;
     border-color:#fdba74;
 }
-
 .cw-cell.wrong input{
     color:var(--cw-orange-dark);
 }
@@ -924,7 +896,7 @@ body{
     border-width:2px;
 }
 
-/* ── Unified unscored completed screen ── */
+/* Unified unscored completed screen */
 .af-unscored__card{background:#fff;border:1.5px solid #EDE9FA;border-radius:14px;padding:28px 32px;width:100%;max-width:100%;box-sizing:border-box;font-family:'Nunito','Segoe UI',sans-serif;}
 .af-unscored__prog-label{font-size:11px;color:#9B8FCC;font-weight:700;letter-spacing:.06em;text-align:center;margin-bottom:6px;text-transform:uppercase;}
 .af-unscored__prog-track{background:#EDE9FA;border-radius:99px;height:9px;overflow:hidden;margin-bottom:4px;}
@@ -1041,7 +1013,7 @@ body{
                         <div class="btn-row">
                             <button type="button" id="btn-check"       class="btn-purple">Check</button>
                             <button type="button" id="btn-show-answer" class="btn-purple">Show Answer</button>
-                            <button type="button" id="btn-next"        class="btn-orange">Next →</button>
+                            <button type="button" id="btn-next"        class="btn-orange">Next -></button>
                         </div>
 
 
@@ -1153,8 +1125,8 @@ body{
                     </div>
                   </div>
                   <div class="af-unscored__btns">
-                    <button class="af-unscored__btn-secondary" id="af-btn-retry">↺ Try again</button>
-                    <button class="af-unscored__btn-primary" id="af-btn-next">Next →</button>
+                    <button class="af-unscored__btn-secondary" id="af-btn-retry">Try again</button>
+                    <button class="af-unscored__btn-primary" id="af-btn-next">Next -></button>
                   </div>
                 </div>
             </div>
