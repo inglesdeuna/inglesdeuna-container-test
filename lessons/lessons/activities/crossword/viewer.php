@@ -118,19 +118,15 @@ function cw_place_word(array &$grid, array $placed): void {
 
 function cw_generate_layout(array $words): array {
     $indexed = [];
-
     foreach ($words as $idx => $w) {
         $indexed[] = ["idx" => $idx, "word" => $w["word"]];
     }
-
     usort($indexed, function ($a, $b) {
         $lenCmp = strlen($b["word"]) <=> strlen($a["word"]);
         return $lenCmp !== 0 ? $lenCmp : ($a["idx"] <=> $b["idx"]);
     });
-
     $grid = [];
     $placed = [];
-
     $first = $indexed[0];
     $firstPlaced = [
         "idx" => $first["idx"],
@@ -139,33 +135,36 @@ function cw_generate_layout(array $words): array {
         "col" => 0,
         "direction" => "across",
     ];
-
     $placed[] = $firstPlaced;
     cw_place_word($grid, $firstPlaced);
-
     for ($p = 1; $p < count($indexed); $p++) {
         $candidate = $indexed[$p];
         $word = $candidate["word"];
         $len = strlen($word);
         $best = null;
         $bestScore = -1000000;
-
         foreach ($grid as $key => $cell) {
             [$r0, $c0] = array_map("intval", explode(",", $key));
             $gridCh = $cell["letter"];
-
             for ($i = 0; $i < $len; $i++) {
                 if ($word[$i] !== $gridCh) continue;
-
                 foreach (["across", "down"] as $dir) {
                     $startRow = $dir === "across" ? $r0 : $r0 - $i;
                     $startCol = $dir === "across" ? $c0 - $i : $c0;
-
                     [$ok, $overlaps] = cw_can_place_word($grid, $word, $startRow, $startCol, $dir);
                     if (!$ok || $overlaps < 1) continue;
-
-                    $score = ($overlaps * 1000) - abs($startRow) - abs($startCol);
-
+                    // --- PARCHE LOCALIZADO SOLO PARA ACTIVIDAD 550 ---
+                    if (isset($_GET['id']) && $_GET['id'] === '550') {
+                        // Calcula área ocupada igual que en el editor JS
+                        $minR = $startRow;
+                        $maxR = $dir === 'down' ? $startRow + $len - 1 : $startRow;
+                        $minC = $startCol;
+                        $maxC = $dir === 'across' ? $startCol + $len - 1 : $startCol;
+                        $areaPenalty = ($maxR - $minR + 1) * ($maxC - $minC + 1);
+                        $score = ($overlaps * 1000) - $areaPenalty;
+                    } else {
+                        $score = ($overlaps * 1000) - abs($startRow) - abs($startCol);
+                    }
                     if ($score > $bestScore) {
                         $bestScore = $score;
                         $best = [
@@ -179,23 +178,18 @@ function cw_generate_layout(array $words): array {
                 }
             }
         }
-
         if ($best === null) {
             // Keep crossword as a connected graph: skip words that cannot intersect.
             continue;
         }
-
         $placed[] = $best;
         cw_place_word($grid, $best);
     }
-
     $minRow = 0;
     $minCol = 0;
     $firstCell = true;
-
     foreach ($grid as $key => $_cell) {
         [$r, $c] = array_map("intval", explode(",", $key));
-
         if ($firstCell) {
             $minRow = $r;
             $minCol = $c;
@@ -205,7 +199,6 @@ function cw_generate_layout(array $words): array {
             $minCol = min($minCol, $c);
         }
     }
-
     if ($minRow !== 0 || $minCol !== 0) {
         foreach ($placed as &$pw) {
             $pw["row"] -= $minRow;
@@ -213,9 +206,8 @@ function cw_generate_layout(array $words): array {
         }
         unset($pw);
     }
-
-
-        return $placed;
+    return $placed;
+}
     }
 
     // --- DEBUG LOG SOLO PARA ACTIVIDAD 550 ---
