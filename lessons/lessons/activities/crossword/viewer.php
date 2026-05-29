@@ -31,10 +31,18 @@ $title = trim((string)($raw["title"] ?? "Crossword Puzzle"));
 if ($title === "") $title = "Crossword Puzzle";
 
 $rawWords = is_array($raw["words"] ?? null) ? $raw["words"] : [];
-$sourceWords = [];
 
-foreach ($rawWords as $w) {
+// --- PARCHE LOCALIZADO: Corrige dato corrupto SOLO para id=550 ---
+$sourceWords = [];
+foreach ($rawWords as $idx => $w) {
     if (!is_array($w)) continue;
+
+    // Corrige SOLO la palabra 4 si es la actividad 550
+    if ($activityId === "550" && $idx === 3) {
+        $w["word"] = "HAVEAPIECEOFTHISCAKE";
+        $w["clue"] = "Come una porción de esta torta.";
+        $w["image"] = "";
+    }
 
     $word = strtoupper(trim((string)($w["word"] ?? "")));
     $word = preg_replace('/[^A-Z0-9]/', '', $word);
