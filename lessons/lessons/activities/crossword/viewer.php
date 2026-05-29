@@ -207,9 +207,6 @@ function cw_generate_layout(array $words): array {
         unset($pw);
     }
     return $placed;
-}
-    }
-
     // --- DEBUG LOG SOLO PARA ACTIVIDAD 550 ---
     if ($activityId === "550") {
         echo '<div style="background:#222;color:#fff;padding:12px 18px;margin:18px 0 0 0;z-index:9999;position:relative;font-size:13px;max-width:900px;overflow-x:auto;">';
