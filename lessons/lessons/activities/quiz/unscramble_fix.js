@@ -76,13 +76,16 @@
     var selected = null;
     var dragged = null;
 
-    function submitIfCorrect() {
+    function updateAnswer() {
       answer.value = currentSentence(list);
       renumber(list);
-      if (!submitted && answerIsCorrect(list, correct)) {
-        submitted = true;
-        setTimeout(function () { form.submit(); }, 250);
-      }
+    }
+
+    function manualSubmit() {
+      if (submitted) return;
+      submitted = true;
+      updateAnswer();
+      form.submit();
     }
 
     chips.forEach(function (chip) {
@@ -97,7 +100,7 @@
       chip.addEventListener('dragend', function () {
         chip.classList.remove('dragging');
         dragged = null;
-        submitIfCorrect();
+        updateAnswer();
       });
 
       chip.addEventListener('click', function () {
@@ -123,7 +126,7 @@
 
         a.classList.remove('selected-swap');
         selected = null;
-        submitIfCorrect();
+        updateAnswer();
       });
     });
 
@@ -136,11 +139,21 @@
       } else {
         list.insertBefore(dragged, afterElement);
       }
-      renumber(list);
+      updateAnswer();
     });
 
-    renumber(list);
-    submitIfCorrect();
+    var actions = form.querySelector('.actions');
+    if (actions && !document.getElementById('us-next-btn')) {
+      var nextBtn = document.createElement('button');
+      nextBtn.type = 'button';
+      nextBtn.id = 'us-next-btn';
+      nextBtn.className = 'btn btn-purple us-next-btn';
+      nextBtn.textContent = 'Next';
+      nextBtn.addEventListener('click', manualSubmit);
+      actions.insertBefore(nextBtn, actions.firstChild);
+    }
+
+    updateAnswer();
   }
 
   var style = document.createElement('style');
@@ -152,6 +165,7 @@
     '.us-chip.us-chip-horizontal:hover{border-color:#7F77DD!important;transform:translateY(-1px)!important;box-shadow:0 8px 18px rgba(127,119,221,.18)!important}',
     '.us-chip.dragging{opacity:.35!important;transform:scale(.98)!important}',
     '.us-chip.selected-swap{outline:3px solid rgba(127,119,221,.28)!important;border-color:#7F77DD!important}',
+    '.us-next-btn{background:#8070dd!important;color:#fff!important}',
     '@media(max-width:760px){.card.us-wide-card{width:100%!important}.us-list.us-list-horizontal{min-height:150px!important}.us-chip.us-chip-horizontal{min-width:72px!important;padding:12px 14px!important}}'
   ].join('\n');
   document.head.appendChild(style);
