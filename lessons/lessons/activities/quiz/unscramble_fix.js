@@ -20,12 +20,17 @@
     return norm(currentSentence(list)) === norm(correct);
   }
 
-  function getAfterElement(container, y) {
+  function getAfterElement(container, x, y) {
     var chips = Array.from(container.querySelectorAll('.us-chip:not(.dragging)'));
-
-    return chips.reduce(function (closest, child) {
+    var sameRow = chips.filter(function (child) {
       var box = child.getBoundingClientRect();
-      var offset = y - box.top - box.height / 2;
+      return y >= box.top - 8 && y <= box.bottom + 8;
+    });
+    var candidates = sameRow.length ? sameRow : chips;
+
+    return candidates.reduce(function (closest, child) {
+      var box = child.getBoundingClientRect();
+      var offset = x - box.left - box.width / 2;
 
       if (offset < 0 && offset > closest.offset) {
         return { offset: offset, element: child };
@@ -37,9 +42,15 @@
 
   function renumber(list) {
     Array.from(list.querySelectorAll('.us-chip')).forEach(function (chip, index) {
-      chip.style.setProperty('--us-num', '"' + (index + 1) + '"');
       chip.setAttribute('data-pos', String(index + 1));
     });
+  }
+
+  function widenQuizCard() {
+    var form = findUnscrambleForm();
+    if (!form) return;
+    var card = form.closest('.card');
+    if (card) card.classList.add('us-wide-card');
   }
 
   function enhanceUnscramble() {
@@ -51,7 +62,8 @@
     if (!list || !answer) return;
 
     form.dataset.usEnhanced = '1';
-    list.classList.add('us-list-vertical');
+    list.classList.add('us-list-horizontal');
+    widenQuizCard();
 
     var chips = Array.from(list.querySelectorAll('.us-chip'));
     var correct = chips.map(function (chip) { return chip.textContent.trim(); }).sort().join(' ');
@@ -75,7 +87,7 @@
 
     chips.forEach(function (chip) {
       chip.setAttribute('draggable', 'true');
-      chip.classList.add('us-chip-vertical');
+      chip.classList.add('us-chip-horizontal');
 
       chip.addEventListener('dragstart', function () {
         dragged = chip;
@@ -118,7 +130,7 @@
     list.addEventListener('dragover', function (e) {
       e.preventDefault();
       if (!dragged) return;
-      var afterElement = getAfterElement(list, e.clientY);
+      var afterElement = getAfterElement(list, e.clientX, e.clientY);
       if (afterElement == null) {
         list.appendChild(dragged);
       } else {
@@ -133,13 +145,14 @@
 
   var style = document.createElement('style');
   style.textContent = [
-    '.us-list.us-list-vertical{display:flex!important;flex-direction:column!important;flex-wrap:nowrap!important;gap:10px!important;min-height:220px!important;padding:14px!important;background:#fbfaff!important;border:1px solid #e9e3fb!important;border-radius:18px!important}',
-    '.us-chip.us-chip-vertical{width:100%!important;display:flex!important;align-items:center!important;gap:12px!important;cursor:grab!important;text-align:left!important;padding:14px 16px!important;border-radius:16px!important;background:#fff!important;border:1px solid #EDE9FA!important;box-shadow:0 5px 15px rgba(127,119,221,.12)!important;color:#534AB7!important;font-weight:900!important;transition:transform .12s ease, border-color .12s ease, box-shadow .12s ease!important}',
-    '.us-chip.us-chip-vertical:before{content:attr(data-pos);width:28px;height:28px;display:inline-flex;align-items:center;justify-content:center;border-radius:999px;background:#EEEDFE;color:#534AB7;font-size:12px;font-weight:900;flex:0 0 auto}',
-    '.us-chip.us-chip-vertical:hover{border-color:#7F77DD!important;transform:translateY(-1px)!important;box-shadow:0 8px 18px rgba(127,119,221,.18)!important}',
+    '.card.us-wide-card{max-width:980px!important;width:min(980px,96vw)!important}',
+    '.us-list.us-list-horizontal{display:flex!important;flex-direction:row!important;flex-wrap:wrap!important;align-items:center!important;gap:12px!important;min-height:150px!important;padding:16px!important;background:#fbfaff!important;border:1px solid #e9e3fb!important;border-radius:18px!important}',
+    '.us-chip.us-chip-horizontal{width:auto!important;min-width:86px!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;gap:8px!important;cursor:grab!important;text-align:center!important;padding:13px 18px!important;border-radius:16px!important;background:#fff!important;border:1px solid #EDE9FA!important;box-shadow:0 5px 15px rgba(127,119,221,.12)!important;color:#534AB7!important;font-weight:900!important;transition:transform .12s ease, border-color .12s ease, box-shadow .12s ease!important}',
+    '.us-chip.us-chip-horizontal:before{content:attr(data-pos);width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;border-radius:999px;background:#EEEDFE;color:#534AB7;font-size:11px;font-weight:900;flex:0 0 auto}',
+    '.us-chip.us-chip-horizontal:hover{border-color:#7F77DD!important;transform:translateY(-1px)!important;box-shadow:0 8px 18px rgba(127,119,221,.18)!important}',
     '.us-chip.dragging{opacity:.35!important;transform:scale(.98)!important}',
     '.us-chip.selected-swap{outline:3px solid rgba(127,119,221,.28)!important;border-color:#7F77DD!important}',
-    '@media(max-width:760px){.us-list.us-list-vertical{min-height:180px!important}.us-chip.us-chip-vertical{padding:13px 14px!important}}'
+    '@media(max-width:760px){.card.us-wide-card{width:100%!important}.us-list.us-list-horizontal{min-height:150px!important}.us-chip.us-chip-horizontal{min-width:72px!important;padding:12px 14px!important}}'
   ].join('\n');
   document.head.appendChild(style);
 
