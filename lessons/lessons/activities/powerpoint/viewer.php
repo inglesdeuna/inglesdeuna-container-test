@@ -181,6 +181,7 @@ function normalize_powerpoint_payload($rawData): array
                 'tts_text'       => trim((string) ($slide['tts_text'] ?? '')),
                 'tts_lang'       => in_array($slide['tts_lang'] ?? '', ['en-US','es-MX'], true) ? $slide['tts_lang'] : 'en-US',
                 'voice_id'       => $voiceId,
+                'audio_url'      => trim((string) ($slide['audio'] ?? $slide['audio_url'] ?? '')),
             ];
         }
     }
@@ -1127,6 +1128,29 @@ async function speakSlide() {
     if (!Array.isArray(PPT_SLIDES) || !PPT_SLIDES.length) return;
 
     const slide = PPT_SLIDES[slideIndex] || {};
+
+    // Use pre-generated audio URL if available
+    if (slide.audio_url) {
+        stopSpeech();
+        ttsRequestToken += 1;
+        const reqToken = ttsRequestToken;
+        setTtsButtonState('Reading...', true);
+        currentTtsAudio = new Audio(slide.audio_url);
+        currentTtsAudio.onended = function () {
+            if (reqToken === ttsRequestToken) setTtsButtonState('Read', false);
+            currentTtsAudio = null;
+        };
+        currentTtsAudio.onerror = function () {
+            if (reqToken === ttsRequestToken) setTtsButtonState('Read', false);
+            currentTtsAudio = null;
+        };
+        currentTtsAudio.play().catch(function () {
+            if (reqToken === ttsRequestToken) setTtsButtonState('Read', false);
+            currentTtsAudio = null;
+        });
+        return;
+    }
+
     const textToRead = String(slide.tts_text || '').trim() || String(slide.text || '').trim() || String(slide.title || '').trim();
     if (!textToRead) return;
 
