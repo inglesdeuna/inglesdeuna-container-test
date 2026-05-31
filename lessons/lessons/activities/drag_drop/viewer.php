@@ -140,12 +140,15 @@ function dd_load_activity(PDO $pdo, string $activityId, string $unit): array
             $voiceId = $defaultVoiceId;
         }
 
+        $audioUrl = trim((string) ($block['audio'] ?? $block['audio_url'] ?? ''));
+
         $blocks[] = [
             'text' => $text,
             'missing_words' => $missingWords,
             'image' => dd_normalize_image_url($imageRaw),
             'listen_enabled' => $listenEnabled,
             'voice_id' => $voiceId,
+            'audio_url' => $audioUrl,
         ];
     }
 
@@ -194,6 +197,7 @@ function dd_build_question(array $block): ?array
             'tts_text' => $text,
             'listen_enabled' => $listenEnabled,
             'voice_id' => $voiceId,
+            'audio_url' => trim((string) ($block['audio_url'] ?? '')),
         ];
     }
 
@@ -219,72 +223,7 @@ function dd_build_question(array $block): ?array
         ];
     }
 
-    usort($slotsWithPosition, function (array $left, array $right): int {
-        if ($left['position'] === $right['position']) {
-            return 0;
-        }
-
-        return $left['position'] <=> $right['position'];
-    });
-
-    $slots = array_map(function (array $slot): array {
-        return ['answer' => (string) ($slot['answer'] ?? '')];
-    }, $slotsWithPosition);
-
-    return [
-        'instruction' => $instruction,
-        'slots' => $slots,
-        'words' => array_map(function (array $slot): string {
-            return (string) ($slot['answer'] ?? '');
-        }, $slotsWithPosition),
-        'image' => $image,
-        'tts_text' => $text,
-        'listen_enabled' => $listenEnabled,
-        'voice_id' => $voiceId,
-    ];
-}
-
-if ($unit === '' && $activityId !== '') {
-    $unit = dd_resolve_unit($pdo, $activityId);
-}
-
-$activity = dd_load_activity($pdo, $activityId, $unit);
-if ($activityId === '' && !empty($activity['id'])) {
-    $activityId = (string) $activity['id'];
-}
-
-$questions = [];
-foreach ((array) ($activity['blocks'] ?? []) as $block) {
-    $q = dd_build_question($block);
-    if ($q !== null) {
-        $questions[] = $q;
-    }
-}
-
-if (count($questions) === 0) {
-    die('No valid drag-drop questions found.');
-}
-
-$viewerTitle = (string) ($activity['title'] ?? 'Drag & Drop');
-
-ob_start();
-?>
-<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@600;700;800;900&display=swap" rel="stylesheet">
-
-<style>
-:root {
-    --dd-orange: #F97316;
-    --dd-orange-dark: #C2580A;
-    --dd-orange-soft: #FFF0E6;
-    --dd-purple: #7F77DD;
-    --dd-purple-dark: #534AB7;
-    --dd-purple-soft: #EEEDFE;
-    --dd-white: #FFFFFF;
-    --dd-lila-border: #EDE9FA;
-    --dd-muted: #9B94BE;
-    --dd-ink: #271B5D;
-    --dd-bg: #F8F7FE;
-    --dd-green: #16a34a;
+    usort($slotsWithPosition, function (array $left, array $righgreen: #16a34a;
     --dd-red: #dc2626;
 }
 
@@ -753,6 +692,43 @@ window.DRAGDROP_RETURN_TO = <?php echo json_encode($returnTo, JSON_UNESCAPED_UNI
 window.DRAGDROP_ACTIVITY_ID = <?php echo json_encode($activityId, JSON_UNESCAPED_UNICODE); ?>;
 </script>
 <script src="drag_drop.js?v=<?php echo urlencode((string) @filemtime(__DIR__ . '/drag_drop.js')); ?>"></script>
+<?php
+$content = ob_get_clean();
+render_activity_viewer($viewerTitle, 'fa-solid fa-arrows-up-down-left-right', $content);
+id">
+                <div class="dd-score-card">
+                    <div class="dd-score-num w" id="dd-s-wrong">0</div>
+                    <div class="dd-score-lbl">Wrong</div>
+                </div>
+                <div class="dd-score-card">
+                    <div class="dd-score-num p" id="dd-s-pct">0%</div>
+                    <div class="dd-score-lbl">Score</div>
+                </div>
+            </div>
+
+            <div id="dd-completed" class="dd-completed-screen">
+                <div class="dd-completed-icon">✅</div>
+                <h2 class="dd-completed-title" id="dd-completed-title"></h2>
+                <p class="dd-completed-text" id="dd-completed-text"></p>
+                <p class="dd-score-text" id="dd-score-text"></p>
+                <button type="button" class="dd-restart-btn" id="dd-restart">Restart</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="../../core/_activity_feedback.js"></script>
+<script>
+window.DRAGDROP_DATA = <?php echo json_encode($questions, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
+window.DRAGDROP_TITLE = <?php echo json_encode($viewerTitle, JSON_UNESCAPED_UNICODE); ?>;
+window.DRAGDROP_RETURN_TO = <?php echo json_encode($returnTo, JSON_UNESCAPED_UNICODE); ?>;
+window.DRAGDROP_ACTIVITY_ID = <?php echo json_encode($activityId, JSON_UNESCAPED_UNICODE); ?>;
+</script>
+<script src="drag_drop.js?v=<?php echo urlencode((string) @filemtime(__DIR__ . '/drag_drop.js')); ?>"></script>
+<?php
+$content = ob_get_clean();
+render_activity_viewer($viewerTitle, 'fa-solid fa-arrows-up-down-left-right', $content);
+ echo urlencode((string) @filemtime(__DIR__ . '/drag_drop.js')); ?>"></script>
 <?php
 $content = ob_get_clean();
 render_activity_viewer($viewerTitle, 'fa-solid fa-arrows-up-down-left-right', $content);
