@@ -99,6 +99,7 @@ function us_normalize_payload_view($rawData): array
         $sentences[] = [
             'sentence' => $sentence,
             'listen_enabled' => $listenEnabled,
+            'audio' => isset($item['audio']) ? trim((string) $item['audio']) : '',
         ];
     }
 
@@ -323,6 +324,7 @@ let usIsSpeaking = false;
 let usIsPaused = false;
 let usCurrentAudio = null;
 let usCurrentAudioUrl = '';
+let usStoredAudioUrl = ''; // pre-downloaded Cloudinary URL
 let usFinished = false;
 let usBlockFinished = false;
 let usCorrectCount = 0;
@@ -599,6 +601,8 @@ function usLoadSentence() {
     const block = usBlocks[usIndex] || {};
     usCurrentSentence = typeof block.sentence === 'string' ? block.sentence.trim() : '';
     usListenEnabled = !!block.listen_enabled;
+    var _storedAudio = String(block.audio || '').trim();
+    usStoredAudioUrl = (_storedAudio.indexOf('http') === 0) ? _storedAudio : '';
     usSetListenVisible(usListenEnabled);
 
     if (!usCurrentSentence) {
@@ -885,6 +889,17 @@ function usSpeak() {
     usIsPaused = false;
     usListenBtn.textContent = '...';
     usListenBtn.disabled = true;
+
+    // If a pre-downloaded Cloudinary URL exists, play it directly — no ElevenLabs call needed
+    if (usStoredAudioUrl) {
+        usCurrentAudio = new Audio(usStoredAudioUrl);
+        usCurrentAudio.onended = function () {
+            usIsSpeaking = false; usIsPaused = false; usSetListenLabel(); usCurrentAudio = null;
+        };
+        usCurrentAudio.play().catch(function () { usIsSpeaking = false; usSetListenLabel(); usCurrentAudio = null; });
+        usListenBtn.disabled = false;
+        return;
+    }
 
     const fd = new FormData();
     fd.append('text', usCurrentSentence);
