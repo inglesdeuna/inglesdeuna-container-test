@@ -450,6 +450,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $questions = isset($_POST['question']) && is_array($_POST['question']) ? $_POST['question'] : array();
     $answers = isset($_POST['answer']) && is_array($_POST['answer']) ? $_POST['answer'] : array();
     $ids = isset($_POST['card_id']) && is_array($_POST['card_id']) ? $_POST['card_id'] : array();
+    $audios = isset($_POST['audio']) && is_array($_POST['audio']) ? $_POST['audio'] : array();
 
     $sanitized = array();
 
@@ -457,6 +458,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $question = trim((string) $questionRaw);
         $answer = isset($answers[$i]) ? trim((string) $answers[$i]) : '';
         $cardId = isset($ids[$i]) && trim((string) $ids[$i]) !== '' ? trim((string) $ids[$i]) : uniqid('qa_');
+        $audioUrl = isset($audios[$i]) ? trim((string) $audios[$i]) : '';
 
         if ($question === '' && $answer === '') {
             continue;
@@ -466,6 +468,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'id' => $cardId,
             'question' => $question,
             'answer' => $answer,
+            'audio' => $audioUrl,
         );
     }
 
@@ -646,12 +649,18 @@ ob_start();
         <?php foreach ($cards as $card) { ?>
             <div class="card-item">
                 <input type="hidden" name="card_id[]" value="<?= htmlspecialchars(isset($card['id']) ? $card['id'] : uniqid('qa_'), ENT_QUOTES, 'UTF-8') ?>">
+                <input type="hidden" name="audio[]" class="js-audio-url" value="<?= htmlspecialchars(isset($card['audio']) ? $card['audio'] : '', ENT_QUOTES, 'UTF-8') ?>">
 
                 <label>Question</label>
                 <textarea name="question[]" placeholder="Write the question" required><?= htmlspecialchars(isset($card['question']) ? $card['question'] : '', ENT_QUOTES, 'UTF-8') ?></textarea>
 
                 <label>Answer</label>
                 <textarea name="answer[]" placeholder="Write the complete answer" required><?= htmlspecialchars(isset($card['answer']) ? $card['answer'] : '', ENT_QUOTES, 'UTF-8') ?></textarea>
+
+                <div style="display:flex;align-items:center;gap:8px;margin-top:4px;">
+                    <button type="button" class="tts-btn js-gen-tts">&#x1F50A; Generate audio</button>
+                    <span class="js-tts-status" style="font-size:12px;color:#9B8FCC;"><?= !empty($card['audio']) ? '✔ Audio ready' : '' ?></span>
+                </div>
 
                 <button type="button" class="btn-remove" onclick="removeCard(this)">✖ Remove</button>
             </div>
@@ -682,18 +691,52 @@ function removeCard(button) {
     }
 }
 
+// TTS generation for Q&A editor
+document.getElementById('cardsContainer').addEventListener('click', function(e) {
+    const genBtn = e.target.closest('.js-gen-tts');
+    if (!genBtn) return;
+    const card = genBtn.closest('.card-item');
+    const questionEl = card.querySelector('textarea[name="question[]"]');
+    const audioInput = card.querySelector('input.js-audio-url');
+    const st = card.querySelector('.js-tts-status');
+    const txt = (questionEl ? questionEl.value.trim() : '') || '';
+    const voice = document.getElementById('voice_id') ? document.getElementById('voice_id').value : 'nzFihrBIvB34imQBuxub';
+    if (!txt) { alert('Enter the question first.'); return; }
+    genBtn.disabled = true;
+    if (st) { st.textContent = 'Generating…'; st.style.color = ''; }
+    const fd = new FormData(); fd.append('text', txt); fd.append('voice_id', voice);
+    fetch('tts.php', { method: 'POST', body: fd, credentials: 'same-origin' })
+        .then(r => r.json())
+        .then(data => {
+            if (data.error) throw new Error(data.error);
+            if (audioInput) audioInput.value = data.url;
+            if (st) { st.textContent = '✔ Audio ready'; st.style.color = '#16a34a'; }
+            markChanged();
+        })
+        .catch(err => {
+            if (st) { st.textContent = '✘ ' + (err?.message || 'Failed'); st.style.color = '#E24B4A'; }
+        })
+        .finally(() => { genBtn.disabled = false; });
+});
+
 function addCard() {
     const container = document.getElementById('cardsContainer');
     const div = document.createElement('div');
     div.className = 'card-item';
     div.innerHTML = `
         <input type="hidden" name="card_id[]" value="qa_${Date.now()}_${Math.floor(Math.random() * 1000)}">
+        <input type="hidden" name="audio[]" class="js-audio-url" value="">
 
         <label>Question</label>
         <textarea name="question[]" placeholder="Write the question" required></textarea>
 
         <label>Answer</label>
         <textarea name="answer[]" placeholder="Write the complete answer" required></textarea>
+
+        <div style="display:flex;align-items:center;gap:8px;margin-top:4px;">
+            <button type="button" class="tts-btn js-gen-tts">&#x1F50A; Generate audio</button>
+            <span class="js-tts-status" style="font-size:12px;color:#9B8FCC;"></span>
+        </div>
 
         <button type="button" class="btn-remove" onclick="removeCard(this)">✖ Remove</button>
     `;
