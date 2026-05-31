@@ -157,7 +157,7 @@ document.addEventListener('DOMContentLoaded', function () {
     clearTtsError();
   }
 
-  function speakText(text, voiceId) {
+  function speakText(text, voiceId, audioUrl) {
     if (!text || !listenBtn) {
       return;
     }
@@ -168,6 +168,27 @@ document.addEventListener('DOMContentLoaded', function () {
     isTtsLoading = true;
     listenBtn.disabled = true;
     listenBtn.textContent = 'Loading...';
+
+    // Use pre-generated audio URL if available
+    if (audioUrl) {
+      currentAudioElement = new Audio(audioUrl);
+      currentAudioElement.onended = function () {
+        isTtsLoading = false;
+        if (listenBtn) { listenBtn.disabled = false; listenBtn.textContent = 'Listen'; }
+        currentAudioElement = null;
+      };
+      currentAudioElement.onerror = function () {
+        isTtsLoading = false;
+        if (listenBtn) { listenBtn.disabled = false; listenBtn.textContent = 'Listen'; }
+        currentAudioElement = null;
+      };
+      currentAudioElement.play().catch(function () {
+        isTtsLoading = false;
+        if (listenBtn) { listenBtn.disabled = false; listenBtn.textContent = 'Listen'; }
+        currentAudioElement = null;
+      });
+      return;
+    }
 
     var fd = new FormData();
     fd.append('text', text);
@@ -704,7 +725,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
       if (togglePauseResume()) return;
 
-      speakText((q.tts_text || '').trim(), q.voice_id || 'nzFihrBIvB34imQBuxub');
+      speakText((q.tts_text || '').trim(), q.voice_id || 'nzFihrBIvB34imQBuxub', q.audio_url || '');
     });
   }
 
