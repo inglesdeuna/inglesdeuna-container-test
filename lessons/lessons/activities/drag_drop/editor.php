@@ -205,7 +205,7 @@ function encode_drag_drop_payload(array $payload): string
     }, array_values($payload['blocks'] ?? []));
 
     return json_encode([
-        'title'  => normalize_drag_drop_title((string) ($payload['title'] ?? '')),
+        'title'  => normalize_drag_drop_title($payload['title'] ?? '', true, true, true)),
         'voice_id' => trim((string) ($payload['voice_id'] ?? 'nzFihrBIvB34imQBuxub')) ?: 'nzFihrBIvB34imQBuxub',
         'blocks' => $blocks,
     ], JSON_UNESCAPED_UNICODE);
@@ -263,8 +263,7 @@ function load_drag_drop_activity(PDO $pdo, string $unit, string $activityId): ar
 
 function save_drag_drop_activity(PDO $pdo, string $unit, string $activityId, string $title, string $voiceId, array $blocks): string
 {
-    $json = encode_drag_drop_payload([
-        'title' => $title,
+    $json = encode_drag_drop_payloa    'title' => $title,
         'voice_id' => $voiceId,
         'blocks' => $blocks,
     ]);
@@ -350,6 +349,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $texts = isset($_POST['text']) && is_array($_POST['text']) ? $_POST['text'] : [];
     $missingWordsRaw = isset($_POST['missing_words']) && is_array($_POST['missing_words']) ? $_POST['missing_words'] : [];
     $listenEnabledValues = isset($_POST['listen_enabled']) && is_array($_POST['listen_enabled']) ? $_POST['listen_enabled'] : [];
+    $audioValues = isset($_POST['audio']) && is_array($_POST['audio']) ? $_POST['audio'] : [];
     $existingImages = isset($_POST['image_existing']) && is_array($_POST['image_existing']) ? $_POST['image_existing'] : [];
     $imageFiles = isset($_FILES['image_file']) ? $_FILES['image_file'] : null;
 
@@ -388,6 +388,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'missing_words' => $missingWords,
             'listen_enabled' => $listenEnabled,
             'image' => $image,
+            'audio' => trim((string) ($audioValues[$i] ?? '')),
         ];
     }
 
@@ -524,6 +525,12 @@ if (isset($_GET['saved'])) {
     object-fit:contain;
     border:1px solid #e5e7eb;
 }
+.tts-btn{background:#7c3aed;color:#fff;border:none;border-radius:999px;padding:10px 16px;font-size:12px;font-weight:900;cursor:pointer;font-family:'Nunito','Segoe UI',sans-serif}
+.tts-btn:disabled{opacity:.5;cursor:not-allowed}
+.tts-status{font-size:11px;margin-top:4px}
+.tts-status.stale{color:#b45309}
+.tts-preview{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.tts-preview audio{flex:1;height:36px}
 </style>
 
 <form method="post" enctype="multipart/form-data" class="dd-form" id="dragDropForm">
@@ -576,6 +583,16 @@ if (isset($_GET['saved'])) {
                     <input type="checkbox" value="1" <?= !empty($block['listen_enabled']) ? 'checked' : '' ?> onchange="syncCheckboxValue(this)">
                     Activate Listen in this block
                 </label>
+
+                <button type="button" class="tts-btn js-gen-tts">Generate audio</button>
+                <span class="tts-status js-tts-status"></span>
+                <input type="hidden" name="audio[]" value="<?= htmlspecialchars((string) ($block['audio'] ?? ''), ENT_QUOTES, 'UTF-8') ?>">
+                <?php if (!empty($block['audio'])) { ?>
+                <div class="tts-preview js-tts-preview">
+                    <audio src="<?= htmlspecialchars($block['audio'], ENT_QUOTES, 'UTF-8') ?>" controls preload="none"></audio>
+                    <button type="button" class="tts-remove js-remove-tts">✖ Remove</button>
+                </div>
+                <?php } ?>
 
                 <button type="button" class="btn-remove" onclick="removeBlock(this)">✖ Remove</button>
             </div>
@@ -636,6 +653,10 @@ function addBlock() {
             Activate Listen in this block
         </label>
 
+        <button type="button" class="tts-btn js-gen-tts">Generate audio</button>
+        <span class="tts-status js-tts-status"></span>
+        <input type="hidden" name="audio[]" value="">
+
         <button type="button" class="btn-remove" onclick="removeBlock(this)">✖ Remove</button>
     `;
     container.appendChild(div);
@@ -674,6 +695,49 @@ window.addEventListener('beforeunload', function (e) {
     if (formChanged && !formSubmitted) {
         e.preventDefault();
         e.returnValue = '';
+    }
+});
+
+// TTS generation for drag & drop editor
+document.getElementById('blocksContainer').addEventListener('click', function(e) {
+    const genBtn = e.target.closest('.js-gen-tts');
+    const remBtn = e.target.closest('.js-remove-tts');
+    if (genBtn) {
+        const block = genBtn.closest('.block-item');
+        const txt = block.querySelector('textarea[name="text[]"]')?.value.trim() || '';
+        const voice = document.getElementById('voice_id')?.value || 'nzFihrBIvB34imQBuxub';
+        const ai = block.querySelector('input[name="audio[]"]');
+        const st = block.querySelector('.js-tts-status');
+        if (!txt) { alert('Enter the sentence first.'); return; }
+        genBtn.disabled = true;
+        if (st) { st.textContent = 'Generating…'; st.style.color = ''; st.classList.remove('stale'); }
+        const fd = new FormData(); fd.append('text', txt); fd.append('voice_id', voice);
+        fetch('tts.php', { method: 'POST', body: fd, credentials: 'same-origin' })
+            .then(r => { if (r.status === 401 || r.status === 403) throw Object.assign(new Error('Unauthorized'), {code:'AUTH'}); return r.json(); })
+            .then(data => {
+                if (data.error) { if (/unauthorized/i.test(data.error)) throw Object.assign(new Error('Unauthorized'), {code:'AUTH'}); throw new Error(data.error); }
+                if (ai) ai.value = data.url;
+                const old = block.querySelector('.js-tts-preview'); if (old) old.remove();
+                const pr = document.createElement('div'); pr.className = 'tts-preview js-tts-preview';
+                pr.innerHTML = `<audio src="${data.url}" controls preload="none"></audio><button type="button" class="tts-remove js-remove-tts">✖ Remove</button>`;
+                block.insertBefore(pr, block.querySelector('.btn-remove'));
+                if (st) { st.textContent = '✔ Audio generated'; st.style.color = '#16a34a'; }
+                markChanged();
+            })
+            .catch(err => {
+                if (err && err.code === 'AUTH') { if (st) { st.textContent = 'Session expired'; st.style.color = '#E24B4A'; } setTimeout(() => location.href = '/lessons/lessons/academic/login.php?error=session_expired', 700); return; }
+                if (st) { st.textContent = '✘ ' + (err?.message || 'Failed'); st.style.color = '#E24B4A'; }
+            })
+            .finally(() => { genBtn.disabled = false; });
+    }
+    if (remBtn) {
+        const block = remBtn.closest('.block-item');
+        const ai = block?.querySelector('input[name="audio[]"]');
+        const st = block?.querySelector('.js-tts-status');
+        const pr = block?.querySelector('.js-tts-preview');
+        if (ai) ai.value = ''; if (pr) pr.remove();
+        if (st) { st.textContent = 'Audio removed.'; st.style.color = ''; }
+        markChanged();
     }
 });
 </script>
