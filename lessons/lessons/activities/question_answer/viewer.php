@@ -74,9 +74,10 @@ function qa_normalize_payload($rawData): array
     foreach ($cardsSource as $item) {
         if (!is_array($item)) continue;
         $cards[] = array(
-            'id'       => isset($item['id'])       ? trim((string) $item['id'])       : uniqid('qa_'),
-            'question' => isset($item['question']) ? trim((string) $item['question']) : '',
-            'answer'   => isset($item['answer'])   ? trim((string) $item['answer'])   : '',
+            'id'        => isset($item['id'])        ? trim((string) $item['id'])        : uniqid('qa_'),
+            'question'  => isset($item['question'])  ? trim((string) $item['question'])  : '',
+            'answer'    => isset($item['answer'])    ? trim((string) $item['answer'])    : '',
+            'audio_url' => trim((string) ($item['audio'] ?? $item['audio_url'] ?? '')),
         );
     }
 
@@ -637,9 +638,9 @@ var TTS = (function(){
         }
     }
 
-    function speak(text){
+    function speak(text, audioUrl){
         text = String(text || '').trim();
-        if (!text) return;
+        if (!text && !audioUrl) return;
 
         if (audio) {
             if (!audio.paused) {
@@ -647,6 +648,14 @@ var TTS = (function(){
             } else {
                 audio.play().catch(function(){});
             }
+            return;
+        }
+
+        if (audioUrl) {
+            audio = new Audio(audioUrl);
+            audio.onended = function () { cleanup(); };
+            audio.onerror = function () { cleanup(); };
+            audio.play().catch(function () { cleanup(); });
             return;
         }
 
@@ -801,7 +810,7 @@ bind('qa-premium-next', 'click', nextCard);
 bind('qa-premium-restart', 'click', restart);
 bind('qa-premium-listen', 'click', function(){
     var card = CARDS[idx] || {};
-    TTS.speak(flipped ? getAnswer(card) : getQuestion(card));
+    TTS.speak(flipped ? getAnswer(card) : getQuestion(card), card.audio_url || '');
 });
 
 document.addEventListener('keydown', function(e){
