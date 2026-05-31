@@ -256,6 +256,7 @@ function normalize_powerpoint_payload($rawData): array
                 'tts_text'       => trim((string) ($slide['tts_text'] ?? '')),
                 'tts_lang'       => in_array($slide['tts_lang'] ?? '', ['en-US','es-MX'], true) ? $slide['tts_lang'] : 'en-US',
                 'voice_id'       => $voiceId,
+                'audio_url'      => trim((string) ($slide['audio'] ?? $slide['audio_url'] ?? '')),
             ];
         }
     }
@@ -622,7 +623,8 @@ function createSlideModel(tpl) {
     music_name: '',
     tts_text: '',
     tts_lang: 'en-US',
-    voice_id: 'nzFihrBIvB34imQBuxub'
+    voice_id: 'nzFihrBIvB34imQBuxub',
+    audio_url: ''
   };
 }
 
@@ -651,7 +653,8 @@ function normalizeSlideState(s) {
     music_name:     String(s.music_name||''),
     tts_text:       String(s.tts_text||''),
     tts_lang:       ['en-US','es-MX'].includes(s.tts_lang) ? s.tts_lang : 'en-US',
-    voice_id:       allowedVoices.includes(voiceId) ? voiceId : 'nzFihrBIvB34imQBuxub'
+    voice_id:       allowedVoices.includes(voiceId) ? voiceId : 'nzFihrBIvB34imQBuxub',
+    audio_url:      String(s.audio_url||'')
   };
 }
 
@@ -897,6 +900,10 @@ function renderSlides() {
         '<div class="ppt-row ppt-row-2">'+
           '<div><label class="ppt-label">🔊 Texto TTS <span style="font-weight:400;font-size:11px">(opcional &mdash; se lee en voz alta)</span></label>'+
             '<textarea class="ppt-textarea" data-field="tts_text" style="min-height:60px" placeholder="Deja vacío para usar el texto del slide...">'+escapeHtml(slide.tts_text)+'</textarea>'+
+            '<div style="display:flex;align-items:center;gap:8px;margin-top:6px">'+
+              '<button type="button" class="tts-btn js-ppt-gen-tts">&#x1F50A; Generate audio</button>'+
+              '<span class="js-ppt-tts-status" style="font-size:12px;color:#9B8FCC;">'+(slide.audio_url ? '✔ Audio ready' : '')+'</span>'+
+            '</div>'+
           '</div>'+
           '<div style="display:flex;flex-direction:column;gap:10px">'+
             '<div><label class="ppt-label">🌐 Idioma del TTS</label>'+
@@ -1035,6 +1042,34 @@ function bindSlideCardEvents(cardBody, sidx) {
       if (clrBtn) clrBtn.addEventListener('click', () => { slidesState[sidx].music=''; slidesState[sidx].music_name=''; const pd=cardBody.querySelector('[data-audiopreview]'); if(pd) pd.innerHTML='<span style="color:#94a3b8;font-size:13px">Sin audio</span><button type="button" class="ppt-btn ppt-btn-light ppt-btn-sm" data-action="clear-music">✕ Quitar</button>'; });
     } catch(e) { alert('No se pudo procesar el audio.'); }
   });
+
+  /* Generate audio button */
+  const genTtsBtn = cardBody.querySelector('.js-ppt-gen-tts');
+  if (genTtsBtn) {
+    genTtsBtn.addEventListener('click', function() {
+      const ttsEl = cardBody.querySelector('[data-field="tts_text"]');
+      const statusEl = cardBody.querySelector('.js-ppt-tts-status');
+      const txt = (ttsEl ? ttsEl.value.trim() : '') || slidesState[sidx].text || slidesState[sidx].title || '';
+      if (!txt) { alert('Enter the TTS text or slide text first.'); return; }
+      genTtsBtn.disabled = true;
+      if (statusEl) { statusEl.textContent = 'Generating…'; statusEl.style.color = ''; }
+      const fd = new FormData();
+      fd.append('text', txt);
+      fd.append('voice_id', slidesState[sidx].voice_id || 'nzFihrBIvB34imQBuxub');
+      fetch('tts.php', { method: 'POST', body: fd, credentials: 'same-origin' })
+        .then(r => r.json())
+        .then(data => {
+          if (data.error) throw new Error(data.error);
+          slidesState[sidx].audio_url = data.url;
+          if (statusEl) { statusEl.textContent = '✔ Audio ready'; statusEl.style.color = '#16a34a'; }
+          markChanged();
+        })
+        .catch(err => {
+          if (statusEl) { statusEl.textContent = '✘ ' + (err?.message || 'Failed'); statusEl.style.color = '#E24B4A'; }
+        })
+        .finally(() => { genTtsBtn.disabled = false; });
+    });
+  }
 
   /* action buttons in header */
   cardBody.closest('.ppt-slide-card').querySelectorAll('[data-action]').forEach(btn => {
