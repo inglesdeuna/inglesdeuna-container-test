@@ -205,7 +205,7 @@ function encode_drag_drop_payload(array $payload): string
     }, array_values($payload['blocks'] ?? []));
 
     return json_encode([
-        'title'  => normalize_drag_drop_title($payload['title'] ?? '', true, true, true)),
+        'title'  => normalize_drag_drop_title((string) ($payload['title'] ?? '')),
         'voice_id' => trim((string) ($payload['voice_id'] ?? 'nzFihrBIvB34imQBuxub')) ?: 'nzFihrBIvB34imQBuxub',
         'blocks' => $blocks,
     ], JSON_UNESCAPED_UNICODE);
@@ -263,7 +263,8 @@ function load_drag_drop_activity(PDO $pdo, string $unit, string $activityId): ar
 
 function save_drag_drop_activity(PDO $pdo, string $unit, string $activityId, string $title, string $voiceId, array $blocks): string
 {
-    $json = encode_drag_drop_payloa    'title' => $title,
+    $json = encode_drag_drop_payload([
+        'title' => $title,
         'voice_id' => $voiceId,
         'blocks' => $blocks,
     ]);
