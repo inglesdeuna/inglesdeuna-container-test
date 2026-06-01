@@ -1,0 +1,355 @@
+:root {
+    --orange: #F97316;
+    --purple: #7F77DD;
+    --purple-dark: #534AB7;
+    --kicker-bg: #FFF0E6;
+    --card-border: #EDE9FA;
+    --purple-light: #EEEDFE;
+    --purple-muted: #CECBF6;
+    --text-purple: #3C3489;
+    --text-muted: #9B8FCC;
+    --bg-input: #F9F8FF;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+html,
+body {
+    min-height: 100%;
+}
+
+body {
+    margin: 0;
+    background: #ffffff;
+    font-family: 'Nunito', Arial, sans-serif;
+    color: var(--text-purple);
+}
+
+.page {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+}
+
+.outer {
+    width: 100%;
+    max-width: 680px;
+    background: var(--card-border);
+    border-radius: 32px;
+    padding: 2.5rem 2rem;
+    box-shadow:
+        0 8px 40px rgba(127, 119, 221, 0.18),
+        0 2px 8px rgba(127, 119, 221, 0.10);
+}
+
+.card {
+    display: flex;
+    border-radius: 18px;
+    overflow: hidden;
+    border: 1px solid #ffffff;
+    background: #ffffff;
+    box-shadow: 0 4px 24px rgba(127, 119, 221, 0.13);
+}
+
+.panel-left {
+    width: 240px;
+    background: var(--purple);
+    padding: 1.875rem 1.5rem;
+    color: #ffffff;
+    display: flex;
+    flex-direction: column;
+}
+
+.brand-row {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    margin-bottom: 1.35rem;
+}
+
+.brand-name {
+    margin: 0;
+    font-family: 'Fredoka One', cursive;
+    font-size: 1.45rem;
+    line-height: 1;
+}
+
+.brand-subtitle {
+    margin: 0.15rem 0 0;
+    font-size: 0.42rem;
+    letter-spacing: 0.12em;
+    font-weight: 700;
+    color: var(--purple-muted);
+}
+
+.portal-title {
+    margin: 0 0 0.65rem;
+    font-family: 'Fredoka One', cursive;
+    font-size: 1.7rem;
+    line-height: 1.12;
+}
+
+.portal-copy {
+    margin: 0 0 1rem;
+    font-size: 0.75rem;
+    line-height: 1.45;
+    color: var(--purple-muted);
+}
+
+.left-pills {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.left-pills span {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 31px;
+    border-radius: 999px;
+    font-size: 0.68rem;
+    font-weight: 800;
+    padding: 0.35rem 0.8rem;
+    color: #ffffff;
+    background: rgba(255, 255, 255, 0.17);
+}
+
+.left-footer {
+    margin-top: auto;
+    padding-top: 1rem;
+    font-size: 0.48rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.34);
+    font-weight: 800;
+}
+
+.panel-right {
+    flex: 1;
+    background: #ffffff;
+    padding: 1.95rem 1.8rem;
+}
+
+.kicker {
+    display: inline-flex;
+    align-items: center;
+    min-height: 28px;
+    border-radius: 999px;
+    padding: 0.25rem 0.75rem;
+    background: var(--kicker-bg);
+    color: var(--orange);
+    font-size: 0.68rem;
+    font-weight: 800;
+    letter-spacing: 0.02em;
+    margin-bottom: 0.7rem;
+}
+
+.login-title {
+    margin: 0;
+    font-family: 'Fredoka One', cursive;
+    font-size: 1.55rem;
+    line-height: 1.1;
+    color: var(--orange);
+}
+
+.login-subtitle {
+    margin: 0.25rem 0 1.1rem;
+    font-size: 0.78rem;
+    color: var(--text-muted);
+}
+
+.form-group {
+    margin-bottom: 0.72rem;
+}
+
+label {
+    display: block;
+    margin-bottom: 0.35rem;
+    font-size: 0.58rem;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--purple-dark);
+}
+
+.text-input {
+    width: 100%;
+    height: 42px;
+    border: 1.5px solid var(--card-border);
+    border-radius: 10px;
+    background: var(--bg-input);
+    padding: 0 0.75rem;
+    color: var(--text-purple);
+    font: 700 0.86rem 'Nunito', Arial, sans-serif;
+}
+
+.text-input:focus {
+    outline: none;
+    border-color: var(--purple);
+    box-shadow: 0 0 0 3px rgba(127, 119, 221, 0.14);
+}
+
+.password-wrap {
+    position: relative;
+}
+
+.password-wrap .text-input {
+    padding-right: 2.65rem;
+}
+
+.toggle-password {
+    position: absolute;
+    top: 3px;
+    right: 3px;
+    width: 36px;
+    height: 36px;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--purple-dark);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+}
+
+.toggle-password .hide {
+    display: none;
+}
+
+.toggle-password.is-visible .show {
+    display: none;
+}
+
+.toggle-password.is-visible .hide {
+    display: inline;
+}
+
+.submit-btn {
+    width: 100%;
+    height: 44px;
+    margin-top: 0.55rem;
+    border: 0;
+    border-radius: 12px;
+    background: var(--orange);
+    color: #ffffff;
+    font: 800 0.9rem 'Nunito', Arial, sans-serif;
+    cursor: pointer;
+}
+
+.submit-btn:hover {
+    background: #eb6a12;
+}
+
+.secondary-actions {
+    margin-top: 0.74rem;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+}
+
+.secondary-actions a {
+    min-height: 38px;
+    border-radius: 10px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    text-decoration: none;
+    font: 800 0.73rem 'Nunito', Arial, sans-serif;
+    padding: 0 0.5rem;
+    color: #ffffff;
+}
+
+.secondary-actions .forgot {
+    background: var(--purple);
+}
+
+.secondary-actions .teacher {
+    background: var(--purple-dark);
+}
+
+.error,
+.success {
+    margin-top: 0.72rem;
+    border-radius: 10px;
+    padding: 0.6rem 0.7rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+}
+
+.error {
+    border: 1px solid #f5b8b8;
+    background: #fff3f3;
+    color: #a21c1c;
+}
+
+.success {
+    border: 1px solid #bdeac8;
+    background: #f0fff4;
+    color: #166534;
+}
+
+.divider {
+    margin: 0.95rem 0 0.78rem;
+    border: 0;
+    border-top: 1px solid var(--card-border);
+}
+
+.bottom-note {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    text-align: center;
+    font-size: 0.59rem;
+    color: var(--text-muted);
+}
+
+@media (max-width: 760px) {
+    .page {
+        padding: 1rem;
+    }
+
+    .outer {
+        padding: 1rem;
+        border-radius: 24px;
+    }
+
+    .card {
+        flex-direction: column;
+    }
+
+    .panel-left {
+        width: 100%;
+    }
+
+    .left-pills {
+        flex-direction: row;
+        flex-wrap: wrap;
+    }
+
+    .left-pills span {
+        flex: 1 1 calc(50% - 0.5rem);
+    }
+}
+
+@media (max-width: 480px) {
+    .secondary-actions {
+        grid-template-columns: 1fr;
+    }
+
+    .panel-right {
+        padding: 1.4rem 1.15rem;
+    }
+
+    .portal-title {
+        font-size: 1.45rem;
+    }
+}
