@@ -326,321 +326,374 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Login Estudiante</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;700;800&display=swap" rel="stylesheet">
 <style>
-:root{
-    --bg:#fff8e6;
-    --card:#ffffff;
-    --line:#dcc4f0;
-    --title:#a855c8;
-    --text:#f14902;
-    --muted:#b8551f;
-    --ocre:#f14902;
-    --ocre-dark:#d33d00;
-    --ocre-soft:#eddeff;
-    --danger:#b42318;
-    --ok:#166534;
-    --shadow:0 18px 42px rgba(120,40,160,.14);
+:root {
+    --orange: #F97316;
+    --purple: #7F77DD;
+    --kicker-bg: #FFF0E6;
+    --card-border: #EDE9FA;
+    --page-bg: #ffffff;
+    --left-text: #CECBF6;
 }
 
-*{box-sizing:border-box;}
-html, body{height:100%;}
+* { box-sizing: border-box; }
+html, body { height: 100%; }
 
-body{
-    margin:0;
-    font-family:Arial, "Segoe UI", sans-serif;
-    background:linear-gradient(145deg, #fff8e6 0%, #fdeaff 55%, #f0e0ff 100%);
-    color:var(--text);
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    padding:24px;
+body {
+    margin: 0;
+    padding: 20px;
+    background: var(--page-bg);
+    font-family: 'Nunito', Arial, sans-serif;
+    color: #342f58;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
-.login-wrap{
-    width:100%;
-    max-width:980px;
-    display:grid;
-    grid-template-columns:1.05fr .95fr;
-    background:var(--card);
-    border:1px solid var(--line);
-    border-radius:28px;
-    overflow:hidden;
-    box-shadow:var(--shadow);
+.login-card {
+    width: 100%;
+    max-width: 640px;
+    border: 1px solid var(--card-border);
+    border-radius: 22px;
+    overflow: hidden;
+    display: flex;
+    background: #fff;
 }
 
-.login-side{
-    background:linear-gradient(180deg, #c97de8 0%, #8b1a9a 100%);
-    color:#fff;
-    padding:44px 40px;
-    display:flex;
-    flex-direction:column;
-    justify-content:center;
-    min-height:600px;
+.panel-left {
+    width: 240px;
+    background: var(--purple);
+    color: #fff;
+    padding: 1.6rem 1.25rem;
+    display: flex;
+    flex-direction: column;
 }
 
-.brand-badge{
-    width:76px;
-    height:76px;
-    border-radius:20px;
-    background:rgba(255,255,255,.24);
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    font-size:34px;
-    margin-bottom:22px;
+.brand-row {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin-bottom: 1.25rem;
 }
 
-.login-side h1{
-    margin:0 0 14px;
-    font-size:40px;
-    line-height:1.05;
-    font-weight:800;
+.brand-name {
+    margin: 0;
+    font-family: 'Fredoka One', cursive;
+    font-size: 1.45rem;
+    line-height: 1;
+    letter-spacing: 0.3px;
 }
 
-.login-side p{
-    margin:0 0 16px;
-    font-size:17px;
-    line-height:1.5;
-    color:rgba(255,255,255,.92);
+.brand-subtitle {
+    margin: 0.1rem 0 0;
+    font-size: 7px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    color: var(--left-text);
 }
 
-.side-pills{display:flex;gap:10px;flex-wrap:wrap;}
-.side-pills span{
-    border:1px solid rgba(255,255,255,.34);
-    border-radius:999px;
-    padding:8px 14px;
-    font-size:13px;
-    background:rgba(255,255,255,.12);
+.portal-title {
+    margin: 0 0 0.65rem;
+    font-family: 'Fredoka One', cursive;
+    font-size: 27px;
+    line-height: 1.08;
+    color: #fff;
 }
 
-.form-side{
-    padding:40px 36px;
-    display:flex;
-    align-items:center;
-    justify-content:center;
+.portal-copy {
+    margin: 0 0 1rem;
+    font-size: 11.5px;
+    line-height: 1.45;
+    color: var(--left-text);
 }
 
-.card{width:100%;max-width:380px;}
-.card h2{margin:0 0 8px;font-size:30px;color:var(--title);}
-.card p{margin:0 0 18px;color:var(--muted);}
-
-label{
-    display:block;
-    margin-bottom:6px;
-    font-size:13px;
-    color:var(--muted);
-    font-weight:700;
+.left-pills {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
 }
 
-input{
-    width:100%;
-    height:46px;
-    border-radius:12px;
-    border:1px solid var(--line);
-    padding:0 44px 0 12px;
-    font-size:15px;
-    background:#fff;
+.left-pills span {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 30px;
+    padding: 0.35rem 0.9rem;
+    border-radius: 20px;
+    background: rgba(255, 255, 255, 0.18);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
 }
 
-input:focus{
-    outline:none;
-    border-color:var(--ocre);
-    box-shadow:0 0 0 3px rgba(183,121,31,.16);
+.left-footer {
+    margin-top: auto;
+    padding-top: 1rem;
+    font-size: 8px;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.28);
+    font-weight: 800;
 }
 
-.field{margin-bottom:12px;}
-
-.password-wrap{
-    position:relative;
+.panel-right {
+    flex: 1;
+    background: #fff;
+    padding: 2rem 1.875rem;
 }
 
-.toggle-password{
-    position:absolute;
-    right:7px;
-    top:6px;
-    width:34px;
-    height:34px;
-    border:1px solid var(--line);
-    background:#fff;
-    color:var(--ocre-dark);
-    border-radius:8px;
-    cursor:pointer;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    padding:0;
+.login-title {
+    margin: 0;
+    font-family: 'Fredoka One', cursive;
+    font-size: 24px;
+    color: var(--orange);
 }
 
-.toggle-password:hover{
-    background:var(--ocre-soft);
+.login-subtitle {
+    margin: 0.25rem 0 1.1rem;
+    font-size: 12px;
+    color: #9B8FCC;
 }
 
-.toggle-password svg{
-    width:18px;
-    height:18px;
-    fill:none;
-    stroke:currentColor;
-    stroke-width:2;
-    stroke-linecap:round;
-    stroke-linejoin:round;
+.form-group { margin-bottom: 0.7rem; }
+
+label {
+    display: block;
+    margin-bottom: 0.35rem;
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--purple);
 }
 
-.toggle-password .icon-off{display:none;}
-.toggle-password.is-visible .icon-on{display:none;}
-.toggle-password.is-visible .icon-off{display:block;}
-
-.sr-only{
-    position:absolute;
-    width:1px;
-    height:1px;
-    padding:0;
-    margin:-1px;
-    overflow:hidden;
-    clip:rect(0,0,0,0);
-    white-space:nowrap;
-    border:0;
+.text-input {
+    width: 100%;
+    height: 40px;
+    border-radius: 0;
+    border: 1.5px solid var(--card-border);
+    background: #F9F8FF;
+    padding: 0 0.7rem;
+    font: 700 13px 'Nunito', Arial, sans-serif;
+    color: #3a3369;
 }
 
-.submit-btn{
-    width:100%;
-    height:46px;
-    border:none;
-    border-radius:12px;
-    background:var(--ocre);
-    color:#fff;
-    font-weight:800;
-    cursor:pointer;
-    margin-top:6px;
+.text-input:focus {
+    outline: none;
+    border-color: var(--purple);
 }
 
-.submit-btn:hover{background:var(--ocre-dark);}
-
-.inline-links{
-    margin-top:12px;
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
-    gap:12px;
-    font-size:13px;
+.password-wrap {
+    position: relative;
 }
 
-.inline-links a{
-    color:#fff;
-    text-decoration:none;
-    font-weight:700;
-    background:var(--ocre);
-    padding:10px 12px;
-    border-radius:10px;
-    display:inline-flex;
-    align-items:center;
-    justify-content:center;
-}
-.inline-links a:hover{background:var(--ocre-dark);}
-
-.recover-card{
-    margin-top:14px;
-    border:1px solid var(--line);
-    border-radius:12px;
-    padding:12px;
-    background:#fffdf7;
-    display:none;
+.password-wrap .text-input {
+    padding-right: 2.45rem;
 }
 
-.recover-card.visible{display:block;}
-
-.recover-btn{
-    width:100%;
-    margin-top:10px;
-    height:40px;
-    border:none;
-    border-radius:10px;
-    background:var(--title);
-    color:#fff;
-    font-weight:700;
-    cursor:pointer;
+.toggle-password {
+    position: absolute;
+    top: 1px;
+    right: 1px;
+    width: 38px;
+    height: 38px;
+    border: none;
+    border-radius: 0;
+    background: transparent;
+    color: var(--purple);
+    cursor: pointer;
+    font-size: 15px;
+    font-weight: 800;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
 }
 
-.error{margin-top:12px;padding:12px 14px;border-radius:12px;border:1px solid #f7c7c2;background:#fef2f2;color:var(--danger);font-weight:800;font-size:14px;box-shadow:0 4px 12px rgba(180,35,24,.12)}
-.success{margin-top:10px;color:var(--ok);font-weight:700;font-size:14px;}
+.toggle-password .hide { display: none; }
+.toggle-password.is-visible .show { display: none; }
+.toggle-password.is-visible .hide { display: inline; }
 
-@media (max-width: 900px){
-    .login-wrap{grid-template-columns:1fr;max-width:520px;}
-    .login-side{min-height:auto;padding:28px 26px;}
-    .login-side h1{font-size:30px;}
-    .form-side{padding:26px 22px 30px;}
+.submit-btn {
+    width: 100%;
+    height: 42px;
+    border: none;
+    border-radius: 0;
+    background: var(--orange);
+    color: #fff;
+    font: 800 14px 'Nunito', Arial, sans-serif;
+    cursor: pointer;
+    margin-top: 0.55rem;
+}
+
+.secondary-actions {
+    margin-top: 0.7rem;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+}
+
+.secondary-actions a {
+    height: 38px;
+    border-radius: 0;
+    border: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+    text-align: center;
+    font: 800 11.5px 'Nunito', Arial, sans-serif;
+    color: #fff;
+    padding: 0 0.45rem;
+}
+
+.secondary-actions .forgot { background: var(--purple); }
+.secondary-actions .teacher { background: var(--orange); }
+
+.error,
+.success {
+    margin-top: 0.7rem;
+    padding: 0.55rem 0.6rem;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.error {
+    border: 1px solid #f5b8b8;
+    background: #fff2f2;
+    color: #a21c1c;
+}
+
+.success {
+    border: 1px solid #bdeac8;
+    background: #f0fff4;
+    color: #166534;
+}
+
+.divider {
+    margin: 0.95rem 0 0.8rem;
+    border: 0;
+    border-top: 1px solid var(--card-border);
+}
+
+.bottom-note {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem;
+    color: #C4BDED;
+    font-size: 9.5px;
+    text-align: center;
+}
+
+@media (max-width: 560px) {
+    .login-card {
+        flex-direction: column;
+    }
+
+    .panel-left {
+        width: 100%;
+    }
+
+    .left-pills {
+        flex-direction: row;
+        flex-wrap: wrap;
+    }
+
+    .left-pills span {
+        flex: 1 1 auto;
+    }
+
+    .secondary-actions {
+        grid-template-columns: 1fr;
+    }
 }
 </style>
 </head>
 <body>
-<div class="login-wrap">
-    <aside class="login-side">
-        <div class="brand-badge">🎓</div>
-        <h1>Portal<br>Estudiante</h1>
-        <p>Ingresa con tu usuario y contraseña para acceder a tus cursos, unidades y puntajes.</p>
-        <div class="side-pills">
+<div class="login-card">
+    <aside class="panel-left">
+        <div class="brand-row">
+            <svg width="36" height="36" viewBox="0 0 36 36" aria-hidden="true">
+                <rect width="36" height="36" rx="9" fill="rgba(255,255,255,0.18)"></rect>
+                <circle cx="17" cy="15" r="8.5" fill="#ffffff"></circle>
+                <polygon points="12,22 7,30 21,26" fill="#ffffff"></polygon>
+                <circle cx="17" cy="15" r="4.5" fill="#7F77DD"></circle>
+                <circle cx="24" cy="9" r="3.5" fill="#7F77DD"></circle>
+                <circle cx="24" cy="9" r="1.75" fill="#ffffff"></circle>
+            </svg>
+            <div>
+                <p class="brand-name">ONES</p>
+                <p class="brand-subtitle">ONLINE ENGLISH SOLUTION</p>
+            </div>
+        </div>
+
+        <h1 class="portal-title">Portal Estudiante</h1>
+        <p class="portal-copy">Ingresa con tu usuario y contraseña para revisar tu avance académico y contenidos asignados.</p>
+
+        <div class="left-pills">
             <span>Acceso seguro</span>
             <span>Modo estudiante</span>
             <span>Cambio de clave</span>
         </div>
+
+        <div class="left-footer">ONES · LET'S INSTITUTE</div>
     </aside>
 
-    <section class="form-side">
-        <div class="card">
-            <h2>Iniciar sesión</h2>
-            <p>Accede a tu perfil académico.</p>
+    <section class="panel-right">
+        <h2 class="login-title">Iniciar sesión</h2>
+        <p class="login-subtitle">Accede a tu perfil académico.</p>
 
-            <form method="post" autocomplete="off">
-                <input type="hidden" name="action" value="login">
+        <form method="post" autocomplete="off">
+            <input type="hidden" name="action" value="login">
 
-                <div class="field">
-                    <label for="username">Usuario o ID</label>
-                    <input id="username" type="text" name="username" value="<?php echo h($usernameValue); ?>" placeholder="Usuario o ID del estudiante" required>
-                </div>
-
-                <div class="field">
-                    <label for="password">Contraseña</label>
-                    <div class="password-wrap">
-                        <input id="password" type="password" name="password" placeholder="Contraseña" required>
-                        <button type="button" class="toggle-password" id="togglePassword" aria-label="Mostrar contraseña" title="Mostrar contraseña">
-                            <svg class="icon-on" viewBox="0 0 24 24" aria-hidden="true">
-                                <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"></path>
-                                <circle cx="12" cy="12" r="3"></circle>
-                            </svg>
-                            <svg class="icon-off" viewBox="0 0 24 24" aria-hidden="true">
-                                <path d="M3 3l18 18"></path>
-                                <path d="M10.58 10.58a2 2 0 102.83 2.83"></path>
-                                <path d="M9.88 5.09A10.94 10.94 0 0112 5c7 0 11 7 11 7a21.77 21.77 0 01-2.16 3.19"></path>
-                                <path d="M6.61 6.61A21.75 21.75 0 001 12s4 7 11 7a10.94 10.94 0 005.39-1.61"></path>
-                            </svg>
-                            <span class="sr-only">Mostrar contraseña</span>
-                        </button>
-                    </div>
-                </div>
-
-                <button type="submit" class="submit-btn">Entrar</button>
-            </form>
-
-            <div class="inline-links">
-                <a href="#" id="forgotPasswordLink">¿Olvidaste tu contraseña?</a>
-                <a href="login.php">Login docente</a>
+            <div class="form-group">
+                <label for="username">Usuario o ID</label>
+                <input class="text-input" id="username" type="text" name="username" value="<?php echo h($usernameValue); ?>" required>
             </div>
 
-            <div class="recover-card" id="recoverCard">
-                <form method="post" autocomplete="off">
-                    <input type="hidden" name="action" value="recover_password">
-                    <label for="recovery_username">Usuario o ID del estudiante</label>
-                    <input id="recovery_username" type="text" name="recovery_username" placeholder="Ej: maria.1020 o 1020" required>
-                    <button type="submit" class="recover-btn">Restablecer a 1234</button>
-                </form>
+            <div class="form-group">
+                <label for="password">Contraseña</label>
+                <div class="password-wrap">
+                    <input class="text-input" id="password" type="password" name="password" required>
+                    <button type="button" class="toggle-password" id="togglePassword" aria-label="Mostrar contraseña" title="Mostrar contraseña">
+                        <span class="show">👁</span>
+                        <span class="hide">🙈</span>
+                    </button>
+                </div>
             </div>
 
-            <?php if ($error): ?>
-                <div class="error" role="alert" aria-live="assertive"><?php echo h($error); ?></div>
-            <?php endif; ?>
+            <button type="submit" class="submit-btn">Entrar</button>
+        </form>
 
-            <?php if ($success): ?>
-                <div class="success"><?php echo h($success); ?></div>
-            <?php endif; ?>
+        <div class="secondary-actions">
+            <a class="forgot" href="forgot_password.php">¿Olvidaste tu contraseña?</a>
+            <a class="teacher" href="login_teacher.php">Login docente</a>
+        </div>
+
+        <?php if ($error): ?>
+            <div class="error" role="alert" aria-live="assertive"><?php echo h($error); ?></div>
+        <?php endif; ?>
+
+        <?php if ($success): ?>
+            <div class="success"><?php echo h($success); ?></div>
+        <?php endif; ?>
+
+        <hr class="divider">
+
+        <div class="bottom-note">
+            <svg width="18" height="18" viewBox="0 0 36 36" aria-hidden="true">
+                <rect width="36" height="36" rx="9" fill="#FFF0E6"></rect>
+                <circle cx="17" cy="15" r="8.5" fill="#7F77DD"></circle>
+                <polygon points="12,22 7,30 21,26" fill="#7F77DD"></polygon>
+                <circle cx="17" cy="15" r="4.5" fill="#ffffff"></circle>
+                <circle cx="24" cy="9" r="3.5" fill="#F97316"></circle>
+                <circle cx="24" cy="9" r="1.75" fill="#ffffff"></circle>
+            </svg>
+            <span>Online English Solution · Let's Institute · 2026</span>
         </div>
     </section>
 </div>
@@ -648,8 +701,6 @@ input:focus{
 <script>
 const passwordInput = document.getElementById('password');
 const togglePassword = document.getElementById('togglePassword');
-const forgotPasswordLink = document.getElementById('forgotPasswordLink');
-const recoverCard = document.getElementById('recoverCard');
 
 if (togglePassword && passwordInput) {
     togglePassword.addEventListener('click', function () {
@@ -658,13 +709,6 @@ if (togglePassword && passwordInput) {
         togglePassword.classList.toggle('is-visible', isPassword);
         togglePassword.setAttribute('aria-label', isPassword ? 'Ocultar contraseña' : 'Mostrar contraseña');
         togglePassword.setAttribute('title', isPassword ? 'Ocultar contraseña' : 'Mostrar contraseña');
-    });
-}
-
-if (forgotPasswordLink && recoverCard) {
-    forgotPasswordLink.addEventListener('click', function (event) {
-        event.preventDefault();
-        recoverCard.classList.toggle('visible');
     });
 }
 </script>
