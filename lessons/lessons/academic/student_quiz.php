@@ -81,7 +81,7 @@ function load_assignment(PDO $pdo, string $assignmentId): ?array
 function load_unit_scores(PDO $pdo, string $studentId, string $assignmentId): array
 {
     try {
-    $stmt = $pdo->prepare("\n            SELECT sur.unit_id, sur.completion_percent, sur.quiz_errors, sur.quiz_total, u.name AS unit_name\n            FROM student_unit_results sur\n            LEFT JOIN units u ON u.id::text = sur.unit_id\n            WHERE sur.student_id = :student_id\n              AND sur.assignment_id = :assignment_id\n            ORDER BY u.name ASC NULLS LAST, sur.unit_id ASC\n        ");
+    $stmt = $pdo->prepare("\n            SELECT sur.unit_id, sur.completion_percent, sur.quiz_errors, sur.quiz_total, COALESCE(sur.quiz_score_percent, 0) AS quiz_score_percent, u.name AS unit_name\n            FROM student_unit_results sur\n            LEFT JOIN units u ON u.id::text = sur.unit_id\n            WHERE sur.student_id = :student_id\n              AND sur.assignment_id = :assignment_id\n            ORDER BY u.name ASC NULLS LAST, sur.unit_id ASC\n        ");
         $stmt->execute([
             'student_id' => $studentId,
             'assignment_id' => $assignmentId,
@@ -237,8 +237,9 @@ th{color:var(--title)}
         <thead>
           <tr>
             <th>Unit</th>
-            <th>Score</th>
-            <th>Quiz errors</th>
+            <th>Actividades (60%)</th>
+            <th>Quiz (40%)</th>
+            <th>Nota Final</th>
           </tr>
         </thead>
         <tbody>
@@ -247,14 +248,18 @@ th{color:var(--title)}
               $unitLabel = $toUpper((string) ($row['unit_name'] ?: ('Unit ' . (string) ($row['unit_id'] ?? ''))));
               $unitId = (string) ($row['unit_id'] ?? '');
               $activities = $unitId !== '' ? load_activity_scores($pdo, $studentId, $assignmentId, $unitId) : [];
+              $actScore = (int) ($row['completion_percent'] ?? 0);
+              $quizScore = (int) ($row['quiz_score_percent'] ?? 0);
+              $finalGrade = (int) round(0.6 * $actScore + 0.4 * $quizScore);
             ?>
             <tr class="unit-row" data-unit-id="<?php echo h($unitId); ?>">
               <td>
                 <span class="toggle-icon">▼</span>
                 <?php echo h($unitLabel); ?>
               </td>
-              <td><?php echo (int) ($row['completion_percent'] ?? 0); ?>%</td>
-              <td><?php echo (int) ($row['quiz_errors'] ?? 0); ?>/<?php echo (int) ($row['quiz_total'] ?? 0); ?></td>
+              <td><?php echo $actScore; ?>%</td>
+              <td><?php echo $quizScore; ?>%</td>
+              <td style="font-weight:900;color:<?php echo $finalGrade>=60?'#166534':'#991b1b';?>"><?php echo $finalGrade; ?>%</td>
             </tr>
             <?php foreach ($activities as $activity) { ?>
               <?php $attemptsCount = max(1, min(2, (int) ($activity['attempts_count'] ?? 1))); ?>
@@ -263,7 +268,7 @@ th{color:var(--title)}
                   <span class="activity-type"><?php echo h((string) ($activity['activity_type'] ?? 'Activity')); ?></span>
                   <span class="attempt-badge">INTENTO <?php echo $attemptsCount; ?>/2</span>
                 </td>
-                <td class="activity-percent"><?php echo (int) ($activity['completion_percent'] ?? 0); ?>%</td>
+                <td class="activity-percent" colspan="2"><?php echo (int) ($activity['completion_percent'] ?? 0); ?>%</td>
                 <td class="activity-errors"><?php echo (int) ($activity['errors_count'] ?? 0); ?>/<?php echo (int) ($activity['total_count'] ?? 0); ?></td>
               </tr>
             <?php } ?>

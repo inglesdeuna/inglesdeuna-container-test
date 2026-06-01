@@ -204,22 +204,7 @@ function save_student_activity_performance(PDO $pdo, string $studentId, string $
             $existingAttempts = max(1, (int) floor($existingTotal / $cleanTotal));
         }
 
-        $maxAttempts = $isQuizType ? 3 : 2;
-
-        // Quiz policy: one attempt per day and max 3 attempts in total.
-        if ($isQuizType) {
-            $updatedAtRaw = trim((string) ($existing['updated_at'] ?? ''));
-            if ($updatedAtRaw !== '') {
-                try {
-                    $existingDate = (new DateTimeImmutable($updatedAtRaw))->format('Y-m-d');
-                    $todayDate = (new DateTimeImmutable('now'))->format('Y-m-d');
-                    if ($existingAttempts >= 1 && $existingDate === $todayDate) {
-                        return;
-                    }
-                } catch (Throwable $e) {
-                }
-            }
-        }
+        $maxAttempts = 2;
 
         if ($existingAttempts >= $maxAttempts) {
             return;
@@ -304,7 +289,7 @@ function aggregate_student_activity_performance(PDO $pdo, string $studentId, str
     }
 
     try {
-        $stmt = $pdo->prepare("\n            SELECT SUM(errors_count) AS errors_sum, SUM(total_count) AS total_sum\n            FROM student_activity_results\n            WHERE student_id = :student_id\n              AND assignment_id = :assignment_id\n              AND unit_id = :unit_id\n        ");
+        $stmt = $pdo->prepare("\n            SELECT SUM(errors_count) AS errors_sum, SUM(total_count) AS total_sum\n            FROM student_activity_results\n            WHERE student_id = :student_id\n              AND assignment_id = :assignment_id\n              AND unit_id = :unit_id\n              AND LOWER(activity_type) != 'quiz'\n        ");
         $stmt->execute([
             'student_id' => $studentId,
             'assignment_id' => $assignmentId,

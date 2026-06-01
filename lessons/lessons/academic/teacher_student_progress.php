@@ -72,7 +72,30 @@ function ensure_student_performance_tables(PDO $pdo): void
         $pdo->exec("\n            CREATE TABLE IF NOT EXISTS student_unit_results (\n              student_id TEXT NOT NULL,\n              assignment_id TEXT NOT NULL,\n              unit_id TEXT NOT NULL,\n              completion_percent INTEGER NOT NULL DEFAULT 0,\n              quiz_errors INTEGER NOT NULL DEFAULT 0,\n              quiz_total INTEGER NOT NULL DEFAULT 0,\n              updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),\n              PRIMARY KEY (student_id, assignment_id, unit_id)\n            )\n        ");
         $pdo->exec("\n            CREATE TABLE IF NOT EXISTS student_activity_results (\n              student_id TEXT NOT NULL,\n              assignment_id TEXT NOT NULL,\n              unit_id TEXT NOT NULL,\n              activity_id TEXT NOT NULL,\n              activity_type TEXT NOT NULL DEFAULT '',\n              completion_percent INTEGER NOT NULL DEFAULT 0,\n              errors_count INTEGER NOT NULL DEFAULT 0,\n              total_count INTEGER NOT NULL DEFAULT 0,\n              attempts_count INTEGER NOT NULL DEFAULT 1,\n              updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),\n              PRIMARY KEY (student_id, assignment_id, unit_id, activity_id)\n            )\n        ");
         $pdo->exec("ALTER TABLE student_activity_results ADD COLUMN IF NOT EXISTS attempts_count INTEGER NOT NULL DEFAULT 1");
+        $pdo->exec("ALTER TABLE student_unit_results ADD COLUMN IF NOT EXISTS quiz_score_percent INTEGER");
     } catch (Throwable $e) {
+    }
+}
+
+function ensure_quiz_state_table(PDO $pdo): void
+{
+    try {
+        $pdo->exec("CREATE TABLE IF NOT EXISTS student_quiz_state(student_id TEXT NOT NULL,assignment_id TEXT NOT NULL,unit_id TEXT NOT NULL,attempt_number INTEGER NOT NULL DEFAULT 1,quiz_set_json TEXT NOT NULL DEFAULT '[]',answers_json TEXT NOT NULL DEFAULT '{}',is_completed BOOLEAN NOT NULL DEFAULT FALSE,score_percent INTEGER NOT NULL DEFAULT 0,correct_count INTEGER NOT NULL DEFAULT 0,wrong_count INTEGER NOT NULL DEFAULT 0,skip_count INTEGER NOT NULL DEFAULT 0,total_count INTEGER NOT NULL DEFAULT 0,started_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),completed_at TIMESTAMPTZ,PRIMARY KEY(student_id,assignment_id,unit_id,attempt_number))");
+    } catch (Throwable $e) {
+    }
+}
+
+function load_student_quiz_attempts(PDO $pdo, string $studentId, string $assignmentId, string $unitId): array
+{
+    if ($studentId === '' || $assignmentId === '' || $unitId === '') {
+        return [];
+    }
+    try {
+        $stmt = $pdo->prepare("SELECT attempt_number,is_completed,score_percent,correct_count,wrong_count,skip_count,total_count,started_at,completed_at FROM student_quiz_state WHERE student_id=:s AND assignment_id=:a AND unit_id=:u ORDER BY attempt_number ASC");
+        $stmt->execute(['s' => $studentId, 'a' => $assignmentId, 'u' => $unitId]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    } catch (Throwable $e) {
+        return [];
     }
 }
 
@@ -159,7 +182,8 @@ function load_student_unit_scores(PDO $pdo, string $studentId, string $assignmen
 {
     try {
         $stmt = $pdo->prepare("
-            SELECT sur.unit_id, sur.completion_percent, sur.quiz_errors, sur.quiz_total, 
+            SELECT sur.unit_id, sur.completion_percent, sur.quiz_errors, sur.quiz_total,
+                   COALESCE(sur.quiz_score_percent, 0) AS quiz_score_percent,
                    COALESCE(NULLIF(TRIM(u.name), ''), 'Unidad ' || sur.unit_id) AS unit_name
             FROM student_unit_results sur
             LEFT JOIN units u ON u.id::text = sur.unit_id
@@ -234,6 +258,7 @@ if (!$pdo) {
 
 ensure_student_performance_tables($pdo);
 ensure_teacher_quiz_unlocks_table($pdo);
+ensure_quiz_state_table($pdo);
 
 $assignment = load_student_assignment($pdo, $assignmentId, $teacherId);
 if (!$assignment || (string) ($assignment['student_id'] ?? '') !== $studentId) {
@@ -571,8 +596,9 @@ $showQuizEnabledMessage = isset($_GET['quiz_enabled']) && (string) $_GET['quiz_e
                         <tr>
                             <th>Unidad</th>
                             <th>Progreso</th>
-                            <th>Errores Quiz</th>
-                            <th>%</th>
+                            <th>Actividades (60%)</th>
+                            <th>Quiz (40%)</th>
+                            <th>Nota Final</th>
                             <th>Acciones</th>
                         </tr>
                     </thead>
@@ -584,21 +610,14 @@ $showQuizEnabledMessage = isset($_GET['quiz_enabled']) && (string) $_GET['quiz_e
                             $completion = (int) ($row['completion_percent'] ?? 0);
                             $errors = (int) ($row['quiz_errors'] ?? 0);
                             $total = (int) ($row['quiz_total'] ?? 0);
-                            $percent = $completion;
+                            $quizScore = (int) ($row['quiz_score_percent'] ?? 0);
+                            $finalGrade = (int) round(0.6 * $completion + 0.4 * $quizScore);
                             $activities = $unitId !== '' ? load_activity_scores($pdo, $studentId, $assignmentId, $unitId) : [];
+                            $quizAttempts = $unitId !== '' ? load_student_quiz_attempts($pdo, $studentId, $assignmentId, $unitId) : [];
+                            $completedQuizAttempts = count(array_filter($quizAttempts, function($a) { return $a['is_completed'] === true || $a['is_completed'] === 't' || $a['is_completed'] === '1' || (int)$a['is_completed'] === 1; }));
                             $unitIsEnabledByTeacher = $unitId !== '' && isset($teacherQuizUnlockUnits[$unitId]);
-                            $hasTwoAttempts = false;
-                            foreach ($activities as $activityRow) {
-                                $typeName = strtolower(trim((string) ($activityRow['activity_type'] ?? '')));
-                                if ($typeName === 'quiz') {
-                                    continue;
-                                }
-                                if ((int) ($activityRow['attempts_count'] ?? 1) >= 2) {
-                                    $hasTwoAttempts = true;
-                                    break;
-                                }
-                            }
-                            $canEnableQuiz = !$unitIsEnabledByTeacher && $hasTwoAttempts;
+                            $canEnableQuiz = !$unitIsEnabledByTeacher && $completedQuizAttempts >= 2;
+                            $quizAttemptLabel = $completedQuizAttempts > 0 ? $completedQuizAttempts . '/2 intentos' : 'Sin intentos';
                             ?>
                             <tr class="unit-row" data-unit-id="<?php echo h($unitId); ?>">
                                 <td>
@@ -607,11 +626,15 @@ $showQuizEnabledMessage = isset($_GET['quiz_enabled']) && (string) $_GET['quiz_e
                                 </td>
                                 <td>
                                     <div class="completion-bar">
-                                        <div class="completion-fill" style="width: <?php echo min($percent, 100); ?>%;"></div>
+                                        <div class="completion-fill" style="width: <?php echo min($completion, 100); ?>%;"></div>
                                     </div>
                                 </td>
-                                <td><?php echo $errors; ?> / <?php echo $total; ?></td>
-                                <td style="font-weight: 700; color: var(--primary-dark);"><?php echo $percent; ?>%</td>
+                                <td style="font-weight: 700; color: var(--primary-dark);"><?php echo $completion; ?>%</td>
+                                <td style="font-weight: 700; color: var(--primary-dark);">
+                                    <?php echo $quizScore; ?>%
+                                    <span style="font-size:11px;font-weight:400;color:#888;display:block;"><?php echo $quizAttemptLabel; ?></span>
+                                </td>
+                                <td style="font-weight: 900; color: <?php echo $finalGrade >= 60 ? '#166534' : '#991b1b'; ?>; font-size: 18px;"><?php echo $finalGrade; ?>%</td>
                                 <td class="teacher-actions">
                                     <?php if ($unitIsEnabledByTeacher): ?>
                                         <span class="teacher-action-enabled">Quiz habilitado</span>
