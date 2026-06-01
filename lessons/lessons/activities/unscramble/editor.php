@@ -53,6 +53,42 @@ function us_normalize_title(string $title): string
     return $title !== '' ? $title : us_default_title();
 }
 
+function us_save_image_local(array $file, int $index): ?string
+{
+    if (!isset($file['error'][$index]) || (int) $file['error'][$index] !== UPLOAD_ERR_OK) {
+        return null;
+    }
+
+    $tmpPath = (string) ($file['tmp_name'][$index] ?? '');
+    if ($tmpPath === '' || !is_uploaded_file($tmpPath)) {
+        return null;
+    }
+
+    $mime = @mime_content_type($tmpPath) ?: '';
+    if (strpos($mime, 'image/') !== 0) {
+        return null;
+    }
+
+    $ext = strtolower((string) pathinfo((string) ($file['name'][$index] ?? ''), PATHINFO_EXTENSION));
+    if ($ext === '' || !preg_match('/^[a-z0-9]{2,5}$/', $ext)) {
+        $ext = 'jpg';
+    }
+
+    $uploadDir = __DIR__ . '/../../uploads/activities/unscramble';
+    if (!is_dir($uploadDir) && !mkdir($uploadDir, 0775, true) && !is_dir($uploadDir)) {
+        return null;
+    }
+
+    $filename = 'us_' . date('Ymd_His') . '_' . bin2hex(random_bytes(5)) . '.' . $ext;
+    $target = $uploadDir . '/' . $filename;
+
+    if (!move_uploaded_file($tmpPath, $target)) {
+        return null;
+    }
+
+    return '/lessons/lessons/uploads/activities/unscramble/' . $filename;
+}
+
 function us_normalize_payload($rawData): array
 {
     $default = [
@@ -110,6 +146,7 @@ function us_normalize_payload($rawData): array
             'id' => trim((string) ($item['id'] ?? uniqid('us_'))),
             'sentence' => $sentence,
             'listen_enabled' => (bool) $listenEnabled,
+            'image' => trim((string) ($item['image'] ?? $item['img'] ?? $item['image_url'] ?? '')),
         ];
     }
 
@@ -267,6 +304,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $sentenceIds = isset($_POST['sentence_id']) && is_array($_POST['sentence_id']) ? $_POST['sentence_id'] : [];
     $sentenceTexts = isset($_POST['sentence']) && is_array($_POST['sentence']) ? $_POST['sentence'] : [];
     $listenEnabledValues = isset($_POST['listen_enabled']) && is_array($_POST['listen_enabled']) ? $_POST['listen_enabled'] : [];
+    $existingImages = isset($_POST['sentence_image_existing']) && is_array($_POST['sentence_image_existing']) ? $_POST['sentence_image_existing'] : [];
+    $imageFiles = isset($_FILES['sentence_image']) ? $_FILES['sentence_image'] : null;
 
     $sanitized = [];
 
@@ -278,11 +317,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $listenEnabled = isset($listenEnabledValues[$i]) && (string) $listenEnabledValues[$i] === '1';
         $sentenceId = trim((string) ($sentenceIds[$i] ?? uniqid('us_')));
+        $image = isset($existingImages[$i]) ? trim((string) $existingImages[$i]) : '';
+
+        if (
+            $imageFiles &&
+            isset($imageFiles['name'][$i]) &&
+            $imageFiles['name'][$i] !== '' &&
+            isset($imageFiles['tmp_name'][$i]) &&
+            $imageFiles['tmp_name'][$i] !== ''
+        ) {
+            $uploadedImage = upload_to_cloudinary($imageFiles['tmp_name'][$i]);
+            if (!$uploadedImage) {
+                $uploadedImage = us_save_image_local($imageFiles, $i);
+            }
+            if ($uploadedImage) {
+                $image = $uploadedImage;
+            }
+        }
 
         $sanitized[] = [
             'id' => $sentenceId !== '' ? $sentenceId : uniqid('us_'),
             'sentence' => $sentence,
             'listen_enabled' => $listenEnabled,
+            'image' => $image,
         ];
     }
 
@@ -412,7 +469,7 @@ if (isset($_GET['saved'])) {
 }
 </style>
 
-<form method="post" class="us-form" id="unscrambleForm">
+<form method="post" enctype="multipart/form-data" class="us-form" id="unscrambleForm">
     <div class="title-box">
         <label for="activity_title">Activity title</label>
         <input
@@ -440,6 +497,13 @@ if (isset($_GET['saved'])) {
                 <label>Sentence (all words will be scrambled)</label>
                 <textarea name="sentence[]" required><?= htmlspecialchars((string) ($item['sentence'] ?? ''), ENT_QUOTES, 'UTF-8') ?></textarea>
                 <p class="help">Write the complete sentence. Students will drag the scrambled words into the correct order.</p>
+
+                <label>Optional image</label>
+                <input type="hidden" name="sentence_image_existing[]" value="<?= htmlspecialchars((string) ($item['image'] ?? ''), ENT_QUOTES, 'UTF-8') ?>">
+                <input type="file" name="sentence_image[]" accept="image/*">
+                <?php if (!empty($item['image'])) { ?>
+                    <img src="<?= htmlspecialchars((string) $item['image'], ENT_QUOTES, 'UTF-8') ?>" alt="" style="max-width:180px;display:block;margin:0 0 12px;border-radius:10px;border:1px solid #d1d5db;">
+                <?php } ?>
 
                 <label class="checkbox-row">
                     <input type="hidden" name="listen_enabled[]" value="0">
@@ -492,6 +556,10 @@ function addSentence() {
         <label>Sentence (all words will be scrambled)</label>
         <textarea name="sentence[]" required></textarea>
         <p class="help">Write the complete sentence. Students will drag the scrambled words into the correct order.</p>
+
+        <label>Optional image</label>
+        <input type="hidden" name="sentence_image_existing[]" value="">
+        <input type="file" name="sentence_image[]" accept="image/*">
 
         <label class="checkbox-row">
             <input type="hidden" name="listen_enabled[]" value="1">

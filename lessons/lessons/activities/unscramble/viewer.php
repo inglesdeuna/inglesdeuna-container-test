@@ -99,6 +99,7 @@ function us_normalize_payload_view($rawData): array
         $sentences[] = [
             'sentence' => $sentence,
             'listen_enabled' => $listenEnabled,
+            'image' => trim((string) ($item['image'] ?? $item['img'] ?? $item['image_url'] ?? '')),
         ];
     }
 
@@ -202,6 +203,9 @@ body{margin:0!important;padding:0!important;background:#fff!important;font-famil
 .us-stage.is-completed{height:auto;overflow:visible}
 .us-intro{display:none}
 #sentenceBox{margin:0 auto;padding:clamp(18px,3vw,28px);background:#fff;border:1px solid #EDE9FA;border-radius:28px;max-width:100%;min-height:clamp(240px,34vh,380px);box-shadow:0 12px 36px rgba(127,119,221,.13);box-sizing:border-box;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
+.us-image-wrap{width:100%;display:flex;align-items:center;justify-content:center;margin:0 0 16px}
+.us-image-wrap.hidden{display:none}
+.us-image{max-width:100%;max-height:220px;object-fit:contain;border-radius:18px;border:1px solid #EDE9FA;background:#fff;padding:8px}
 #buildArea{width:100%;display:flex;flex-wrap:wrap;align-items:center;justify-content:center;min-height:86px;gap:12px;padding:16px;border-radius:22px;border:2px dashed #EDE9FA;background:#fff;margin-top:12px;box-shadow:0 4px 14px rgba(127,119,221,.08);transition:border-color .15s,background .15s,box-shadow .15s}
 #buildArea.drag-over{border-color:#7F77DD;background:#FAFAFE;box-shadow:0 8px 24px rgba(127,119,221,.12)}
 .us-placeholder{color:#9B94BE;font-size:15px;font-weight:800;font-style:normal;pointer-events:none}
@@ -257,6 +261,9 @@ body{margin:0!important;padding:0!important;background:#fff!important;font-famil
         <div class="us-stage" id="us-stage">
             <div id="sentenceBox">
                 <button id="listenBtn" class="us-btn us-btn-listen" type="button" onclick="usSpeak()">Listen</button>
+                <div id="us-image-wrap" class="us-image-wrap hidden">
+                    <img id="us-image" class="us-image" alt="">
+                </div>
                 <div id="buildArea">
                     <span class="us-placeholder" id="buildPlaceholder">Drag words here to build the sentence…</span>
                 </div>
@@ -355,6 +362,8 @@ const usScoreGridEl = document.getElementById('us-score-grid');
 const usScoreCorrectEl = document.getElementById('us-s-correct');
 const usScoreWrongEl = document.getElementById('us-s-wrong');
 const usScorePctEl = document.getElementById('us-s-pct');
+const usImageWrap = document.getElementById('us-image-wrap');
+const usImage = document.getElementById('us-image');
 
 function usGetScorePercent() {
     const attempts = usCorrectCount + usWrongCount;
@@ -600,6 +609,16 @@ function usLoadSentence() {
     usCurrentSentence = typeof block.sentence === 'string' ? block.sentence.trim() : '';
     usListenEnabled = !!block.listen_enabled;
     usSetListenVisible(usListenEnabled);
+    if (usImageWrap && usImage) {
+        const image = typeof block.image === 'string' ? block.image.trim() : '';
+        if (image) {
+            usImage.src = image;
+            usImageWrap.classList.remove('hidden');
+        } else {
+            usImage.removeAttribute('src');
+            usImageWrap.classList.add('hidden');
+        }
+    }
 
     if (!usCurrentSentence) {
         usFeedback.textContent = 'Empty sentence';
