@@ -1044,6 +1044,24 @@ function bindSlideCardEvents(cardBody, sidx) {
         if (slidesState.length === 1) { alert('Debe haber al menos un slide.'); return; }
         slidesState.splice(sidx, 1); renderSlides(); return;
       }
+      if (a === 'clear-image') {
+        slidesState[sidx].image = '';
+        const imageInput = cardBody.querySelector('[data-upload="image"]');
+        if (imageInput) imageInput.value = '';
+        const pd = cardBody.querySelector('[data-imgpreview]');
+        if (pd) pd.innerHTML = '<span style="color:#94a3b8;font-size:13px">Sin imagen</span><button type="button" class="ppt-btn ppt-btn-light ppt-btn-sm" data-action="clear-image">✕ Quitar</button>';
+        refreshPreview(cardBody, sidx);
+        return;
+      }
+      if (a === 'clear-music') {
+        slidesState[sidx].music = '';
+        slidesState[sidx].music_name = '';
+        const musicInput = cardBody.querySelector('[data-upload="music"]');
+        if (musicInput) musicInput.value = '';
+        const pd = cardBody.querySelector('[data-audiopreview]');
+        if (pd) pd.innerHTML = '<span style="color:#94a3b8;font-size:13px">Sin audio</span><button type="button" class="ppt-btn ppt-btn-light ppt-btn-sm" data-action="clear-music">✕ Quitar</button>';
+        return;
+      }
       if (a === 'up' && sidx > 0) {
         [slidesState[sidx-1],slidesState[sidx]] = [slidesState[sidx],slidesState[sidx-1]]; renderSlides(); return;
       }
@@ -1053,7 +1071,6 @@ function bindSlideCardEvents(cardBody, sidx) {
       if (a === 'duplicate') {
         slidesState.splice(sidx+1, 0, JSON.parse(JSON.stringify(slidesState[sidx]))); renderSlides(); return;
       }
-      /* clear actions handled inline via re-bind above */
     });
   });
 }

@@ -1,6 +1,7 @@
 [
   {
     "id": "unit1",
-    "name": "Unidad 1 – Vocabulary Basics"
+    "name": "Unidad 1 – Vocabulary Basics",
+    "quiz_ratio": 0.6
   }
 ]

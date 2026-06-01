@@ -352,7 +352,7 @@ body {
 
 .mc-listen-btn {
     border:none;
-    border-radius:999px;
+    border-radius:8px;
     background:var(--mc-orange);
     color:#fff;
     padding:10px 18px;

@@ -2,6 +2,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../../config/db.php';
+require_once __DIR__ . '/../../core/cloudinary_upload.php';
 
 set_time_limit(300);
 $pdo->exec("SET statement_timeout = 0");
@@ -23,6 +24,117 @@ function respond_error(string $message, int $statusCode = 400): void
         'status' => 'error',
         'message' => $message
     ], $statusCode);
+}
+
+function upload_pdf_to_cloudinary_raw(string $filePath): ?string
+{
+    $cloudName = cloudinary_env('CLOUDINARY_CLOUD_NAME');
+    $apiKey = cloudinary_env('CLOUDINARY_API_KEY');
+    $apiSecret = cloudinary_env('CLOUDINARY_API_SECRET');
+
+    if ($cloudName === '' || $apiKey === '' || $apiSecret === '') {
+        return null;
+    }
+
+    $timestamp = time();
+    $signature = sha1("timestamp={$timestamp}{$apiSecret}");
+    $url = "https://api.cloudinary.com/v1_1/{$cloudName}/raw/upload";
+
+    $post = [
+        'file' => new CURLFile($filePath, 'application/pdf', basename($filePath)),
+        'api_key' => $apiKey,
+        'timestamp' => $timestamp,
+        'signature' => $signature,
+    ];
+
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_URL, $url);
+    curl_setopt($ch, CURLOPT_POST, 1);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, $post);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 180);
+
+    $result = curl_exec($ch);
+    $httpCode = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+
+    if ($result === false || $httpCode >= 400) {
+        return null;
+    }
+
+    $decoded = json_decode((string) $result, true);
+    if (!is_array($decoded)) {
+        return null;
+    }
+
+    return isset($decoded['secure_url']) ? (string) $decoded['secure_url'] : null;
+}
+
+function store_pdf_locally(string $sourcePath, string $originalName): ?string
+{
+    $uploadDir = __DIR__ . '/uploads/pdfs';
+    if (!is_dir($uploadDir) && !mkdir($uploadDir, 0775, true) && !is_dir($uploadDir)) {
+        return null;
+    }
+
+    $base = pathinfo($originalName, PATHINFO_FILENAME);
+    $safeBase = preg_replace('/[^a-zA-Z0-9_-]/', '_', (string) $base);
+    if ($safeBase === '' || $safeBase === null) {
+        $safeBase = 'flipbook_pdf';
+    }
+
+    $fileName = $safeBase . '_' . date('Ymd_His') . '_' . bin2hex(random_bytes(4)) . '.pdf';
+    $targetPath = $uploadDir . '/' . $fileName;
+
+    if (!@copy($sourcePath, $targetPath)) {
+        return null;
+    }
+
+    return '/lessons/lessons/activities/flipbooks/uploads/pdfs/' . $fileName;
+}
+
+function persist_pdf(string $sourcePath, string $originalName): ?string
+{
+    $cloudinaryUrl = upload_pdf_to_cloudinary_raw($sourcePath);
+    if ($cloudinaryUrl !== null && $cloudinaryUrl !== '') {
+        return $cloudinaryUrl;
+    }
+
+    return store_pdf_locally($sourcePath, $originalName);
+}
+
+function migrate_base64_pdf_if_needed(string $pdfUrl): ?string
+{
+    $prefix = 'data:application/pdf;base64,';
+    if (!str_starts_with($pdfUrl, $prefix)) {
+        return $pdfUrl;
+    }
+
+    $base64 = substr($pdfUrl, strlen($prefix));
+    if ($base64 === false || $base64 === '') {
+        return null;
+    }
+
+    $binary = base64_decode($base64, true);
+    if ($binary === false || $binary === '') {
+        return null;
+    }
+
+    $tmpFile = tempnam(sys_get_temp_dir(), 'flipbook_pdf_');
+    if ($tmpFile === false) {
+        return null;
+    }
+
+    $bytesWritten = file_put_contents($tmpFile, $binary);
+    if ($bytesWritten === false || $bytesWritten <= 0) {
+        @unlink($tmpFile);
+        return null;
+    }
+
+    $storedUrl = persist_pdf($tmpFile, 'flipbook_migrated.pdf');
+    @unlink($tmpFile);
+
+    return $storedUrl;
 }
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -59,6 +171,14 @@ try {
     }
 
     $pdfUrl = isset($currentData['pdf_url']) ? (string) $currentData['pdf_url'] : '';
+
+    if ($pdfUrl !== '') {
+        $migratedPdfUrl = migrate_base64_pdf_if_needed($pdfUrl);
+        if ($migratedPdfUrl === null || $migratedPdfUrl === '') {
+            respond_error('No se pudo procesar el PDF existente. Vuelve a subir el archivo.');
+        }
+        $pdfUrl = $migratedPdfUrl;
+    }
 
     $pageTextsRaw = $_POST['page_texts'] ?? '[]';
     $decodedPageTexts = json_decode($pageTextsRaw, true);
@@ -117,13 +237,12 @@ try {
                 }
             }
 
-            // Store PDF as base64 in DB — no filesystem dependency (Render ephemeral storage)
-            $binaryContent = file_get_contents($tmpPath);
-            if ($binaryContent === false) {
-                respond_error('No se pudo leer el archivo PDF.');
+            $storedPdfUrl = persist_pdf($tmpPath, $originalName);
+            if ($storedPdfUrl === null || $storedPdfUrl === '') {
+                respond_error('No se pudo almacenar el PDF. Verifica la configuracion de Cloudinary o intenta de nuevo.');
             }
 
-            $pdfUrl = 'data:application/pdf;base64,' . base64_encode($binaryContent);
+            $pdfUrl = $storedPdfUrl;
         }
     }
 

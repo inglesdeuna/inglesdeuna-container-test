@@ -9,13 +9,15 @@ function normalize_tracing_title(string $title): string {
 }
 
 function normalize_tracing_payload($rawData): array {
-    $default = array('title' => default_tracing_title(), 'images' => array());
+    $default = array('title' => default_tracing_title(), 'subtitle' => '', 'images' => array());
     if ($rawData === null || $rawData === '') return $default;
     $decoded = is_string($rawData) ? json_decode($rawData, true) : $rawData;
     if (!is_array($decoded)) return $default;
     $title = '';
+    $subtitle = '';
     $imagesSource = $decoded;
     if (isset($decoded['title'])) $title = trim((string) $decoded['title']);
+    if (isset($decoded['subtitle'])) $subtitle = trim((string) $decoded['subtitle']);
     if (isset($decoded['images']) && is_array($decoded['images'])) $imagesSource = $decoded['images'];
     $images = array();
     if (is_array($imagesSource)) {
@@ -27,7 +29,7 @@ function normalize_tracing_payload($rawData): array {
             );
         }
     }
-    return array('title' => normalize_tracing_title($title), 'images' => $images);
+    return array('title' => normalize_tracing_title($title), 'subtitle' => $subtitle, 'images' => $images);
 }
 
 function activities_columns(PDO $pdo): array {
@@ -48,7 +50,7 @@ function load_tracing_activity(PDO $pdo, string $unit, string $activityId): arra
     if (in_array('content_json', $columns, true)) $selectFields[] = 'content_json';
     if (in_array('title', $columns, true)) $selectFields[] = 'title';
     if (in_array('name', $columns, true)) $selectFields[] = 'name';
-    $fallback = array('id' => '', 'title' => default_tracing_title(), 'images' => array());
+    $fallback = array('id' => '', 'title' => default_tracing_title(), 'subtitle' => '', 'images' => array());
     $row = null;
     if ($activityId !== '') {
         $stmt = $pdo->prepare("SELECT " . implode(', ', $selectFields) . " FROM activities WHERE id = :id AND type = 'tracing' LIMIT 1");
@@ -74,15 +76,21 @@ function load_tracing_activity(PDO $pdo, string $unit, string $activityId): arra
     if (isset($row['title']) && trim((string) $row['title']) !== '') $columnTitle = trim((string) $row['title']);
     elseif (isset($row['name']) && trim((string) $row['name']) !== '') $columnTitle = trim((string) $row['name']);
     if ($columnTitle !== '') $payload['title'] = $columnTitle;
-    return array('id' => isset($row['id']) ? (string) $row['id'] : '', 'title' => normalize_tracing_title((string) $payload['title']), 'images' => isset($payload['images']) && is_array($payload['images']) ? $payload['images'] : array());
+    return array(
+        'id'       => isset($row['id']) ? (string) $row['id'] : '',
+        'title'    => normalize_tracing_title((string) $payload['title']),
+        'subtitle' => isset($payload['subtitle']) ? (string) $payload['subtitle'] : '',
+        'images'   => isset($payload['images']) && is_array($payload['images']) ? $payload['images'] : array(),
+    );
 }
 
-function save_tracing_activity(PDO $pdo, string $unit, string $activityId, string $title, array $images): string {
+function save_tracing_activity(PDO $pdo, string $unit, string $activityId, string $title, string $subtitle, array $images): string {
     $columns = activities_columns($pdo);
     $title = normalize_tracing_title($title);
     $json = json_encode([
-        'title' => $title,
-        'images' => array_values($images),
+        'title'    => $title,
+        'subtitle' => trim($subtitle),
+        'images'   => array_values($images),
     ], JSON_UNESCAPED_UNICODE);
 
     $hasUnitId = in_array('unit_id', $columns, true);

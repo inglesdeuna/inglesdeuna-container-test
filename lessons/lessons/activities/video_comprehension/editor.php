@@ -50,25 +50,32 @@ function normalize_embed_url(string $url): string
         return '';
     }
 
+    if (!preg_match('/^[a-z][a-z0-9+\-.]*:\/\//i', $url) && preg_match('/^(www\.)?[a-z0-9.-]+\.[a-z]{2,}(\/|$)/i', $url)) {
+        $url = 'https://' . ltrim($url, '/');
+    }
+
     if (!preg_match('/^https?:\/\//i', $url)) {
         return '';
     }
 
-    $parts = parse_url($url);
-    if (!$parts || empty($parts['host'])) {
+    $host = (string) parse_url($url, PHP_URL_HOST);
+    if ($host === '') {
         return '';
     }
 
-    $host = strtolower((string) $parts['host']);
-    $path = isset($parts['path']) ? (string) $parts['path'] : '';
+    $host = strtolower($host);
+    $path = (string) parse_url($url, PHP_URL_PATH);
+    $query = (string) parse_url($url, PHP_URL_QUERY);
 
     if (strpos($host, 'youtube.com') !== false || strpos($host, 'youtu.be') !== false) {
         $videoId = '';
 
         if (strpos($host, 'youtu.be') !== false) {
-            $videoId = trim($path, '/');
-        } elseif (!empty($parts['query'])) {
-            parse_str((string) $parts['query'], $queryParams);
+            $videoId = trim((string) preg_replace('/\?.*$/', '', trim($path, '/')));
+        } elseif (preg_match('~^/(shorts|embed|live)/([^/?#]+)~i', $path, $m)) {
+            $videoId = trim((string) $m[2]);
+        } elseif ($query !== '') {
+            parse_str($query, $queryParams);
             if (!empty($queryParams['v'])) {
                 $videoId = trim((string) $queryParams['v']);
             }
@@ -550,6 +557,11 @@ function markChanged() {
 function normalizeEmbedUrl(url) {
     url = url.trim();
     if (!url) return '';
+
+    if (!/^[a-z][a-z0-9+\-.]*:\/\//i.test(url) && /^(www\.)?[a-z0-9.-]+\.[a-z]{2,}(\/|$)/i.test(url)) {
+        url = 'https://' + url.replace(/^\/+/, '');
+    }
+
     try {
         const u = new URL(url);
         const host = u.hostname.toLowerCase();
@@ -561,6 +573,10 @@ function normalizeEmbedUrl(url) {
         // youtube.com watch
         if (host.includes('youtube.com')) {
             if (u.pathname.startsWith('/embed/')) return url; // already embed
+            if (u.pathname.startsWith('/shorts/') || u.pathname.startsWith('/live/')) {
+                const videoId = u.pathname.split('/').filter(Boolean)[1] || '';
+                return videoId ? 'https://www.youtube.com/embed/' + encodeURIComponent(videoId) : url;
+            }
             const videoId = u.searchParams.get('v');
             return videoId ? 'https://www.youtube.com/embed/' + encodeURIComponent(videoId) : url;
         }

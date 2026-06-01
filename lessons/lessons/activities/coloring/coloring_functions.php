@@ -49,7 +49,7 @@ function load_coloring_activity(PDO $pdo, string $unit, string $activityId): arr
     if (in_array('name', $columns, true)) $selectFields[] = 'name';
     $fallback = array('id' => '', 'title' => default_coloring_title(), 'images' => array());
     $row = null;
-    if ($activityId !== '') {
+    if ($activityId !== '' && ctype_digit($activityId)) {
         $stmt = $pdo->prepare("SELECT " . implode(', ', $selectFields) . " FROM activities WHERE id = :id AND type = 'coloring' LIMIT 1");
         $stmt->execute(array('id' => $activityId));
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -92,7 +92,7 @@ function save_coloring_activity(PDO $pdo, string $unit, string $activityId, stri
     $hasTitle = in_array('title', $columns, true);
     $hasName = in_array('name', $columns, true);
 
-    $targetId = $activityId;
+    $targetId = ($activityId !== '' && ctype_digit($activityId)) ? $activityId : '';
     if ($targetId === '') {
         if ($hasUnitId) {
             $stmt = $pdo->prepare("SELECT id FROM activities WHERE unit_id = :unit AND type = 'coloring' ORDER BY id ASC LIMIT 1");

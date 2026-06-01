@@ -190,6 +190,8 @@ body{margin:0!important;padding:0!important;background:#fff!important;font-famil
 .viewer-content{flex:1!important;display:flex!important;flex-direction:column!important;min-height:0!important;padding:0!important;margin:0!important;background:transparent!important;border:none!important;box-shadow:none!important;border-radius:0!important}
 .us-page{width:100%;flex:1;min-height:0;overflow-y:auto;padding:clamp(14px,2.5vw,34px);display:flex;align-items:flex-start;justify-content:center;background:#fff;box-sizing:border-box}
 .us-app{width:min(860px,100%);margin:0 auto}
+.us-page.is-completed{align-items:flex-start}
+.us-app.is-completed{width:min(760px,100%)}
 .us-topbar{height:36px;display:flex;align-items:center;justify-content:center;margin-bottom:8px}
 .us-topbar-title{font-family:'Nunito',sans-serif;font-size:12px;font-weight:900;color:#9B94BE;letter-spacing:.1em;text-transform:uppercase}
 .us-hero{text-align:center;margin-bottom:clamp(14px,2vw,22px)}
@@ -197,6 +199,7 @@ body{margin:0!important;padding:0!important;background:#fff!important;font-famil
 .us-hero h1{font-family:'Fredoka',sans-serif;font-size:clamp(30px,5.5vw,58px);font-weight:700;color:#F97316;margin:0;line-height:1.03}
 .us-hero p{font-family:'Nunito',sans-serif;font-size:clamp(13px,1.8vw,17px);font-weight:800;color:#9B94BE;margin:8px 0 0}
 .us-stage{background:#fff;border:1px solid #F0EEF8;border-radius:34px;padding:clamp(16px,2.6vw,26px);box-shadow:0 8px 40px rgba(127,119,221,.13);width:min(760px,100%);margin:0 auto;box-sizing:border-box;position:relative}
+.us-stage.is-completed{height:auto;overflow:visible}
 .us-intro{display:none}
 #sentenceBox{margin:0 auto;padding:clamp(18px,3vw,28px);background:#fff;border:1px solid #EDE9FA;border-radius:28px;max-width:100%;min-height:clamp(240px,34vh,380px);box-shadow:0 12px 36px rgba(127,119,221,.13);box-sizing:border-box;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
 #buildArea{width:100%;display:flex;flex-wrap:wrap;align-items:center;justify-content:center;min-height:86px;gap:12px;padding:16px;border-radius:22px;border:2px dashed #EDE9FA;background:#fff;margin-top:12px;box-shadow:0 4px 14px rgba(127,119,221,.08);transition:border-color .15s,background .15s,box-shadow .15s}
@@ -211,7 +214,7 @@ body{margin:0!important;padding:0!important;background:#fff!important;font-famil
 .us-chip.correct-chip{background:var(--us-green-soft);border-color:var(--us-green);border-bottom-color:var(--us-green);color:var(--us-green-dark);box-shadow:none;cursor:default}
 .us-chip.incorrect-chip{background:var(--us-red-soft);border-color:var(--us-red);border-bottom-color:var(--us-red);color:var(--us-red-dark);box-shadow:none;cursor:default}
 #wordBank{display:flex;flex-wrap:wrap;justify-content:center;gap:12px;margin:20px 0 0;min-height:64px}
-.us-btn,.us-completed-button{display:inline-flex;align-items:center;justify-content:center;padding:13px 20px;border:none;border-radius:999px;color:#fff;cursor:pointer;min-width:clamp(104px,16vw,146px);font-weight:900;font-family:'Nunito','Segoe UI',sans-serif;font-size:13px;line-height:1;box-shadow:0 6px 18px rgba(127,119,221,.18);transition:transform .12s,filter .12s,box-shadow .12s}
+.us-btn,.us-completed-button{display:inline-flex;align-items:center;justify-content:center;padding:13px 20px;border:none;border-radius:8px;color:#fff;cursor:pointer;min-width:clamp(104px,16vw,146px);font-weight:900;font-family:'Nunito','Segoe UI',sans-serif;font-size:13px;line-height:1;box-shadow:0 6px 18px rgba(127,119,221,.18);transition:transform .12s,filter .12s,box-shadow .12s}
 .us-btn:hover,.us-completed-button:hover{filter:brightness(1.07);transform:translateY(-1px)}
 .us-btn:active,.us-completed-button:active{transform:scale(.98)}
 .us-btn-listen{background:#7F77DD;box-shadow:0 6px 18px rgba(127,119,221,.18);margin-bottom:16px}
@@ -229,18 +232,18 @@ body{margin:0!important;padding:0!important;background:#fff!important;font-famil
 .us-score-num.p{color:#7F77DD}
 .us-score-lbl{margin-top:5px;font-size:10px;font-weight:900;color:#9B94BE;text-transform:uppercase;letter-spacing:.08em}
 .controls{border-top:1px solid #F0EEF8;margin-top:16px;padding-top:16px;text-align:center;display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;background:#fff}
-.us-completed-screen{display:none;background:#fff;border:1px solid #EDE9FA;border-radius:28px;box-shadow:0 12px 36px rgba(127,119,221,.13);min-height:clamp(300px,42vh,430px);flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:clamp(28px,5vw,48px) 24px;gap:12px;box-sizing:border-box}
-.us-completed-screen.active{display:flex}
-.us-completed-icon{font-size:64px;line-height:1;margin-bottom:4px}
-.us-completed-title{font-family:'Fredoka','Trebuchet MS',sans-serif;font-size:clamp(30px,5.5vw,58px);font-weight:700;color:#F97316;margin:0;line-height:1.03}
-.us-completed-text{font-family:'Nunito',sans-serif;font-size:clamp(13px,1.8vw,17px);font-weight:800;color:#9B94BE;line-height:1.5;margin:0}
-#us-score-text{color:#534AB7!important;font-family:'Nunito',sans-serif!important;font-size:15px!important;font-weight:900!important}
-.us-completed-button{background:#7F77DD;box-shadow:0 6px 18px rgba(127,119,221,.18);margin-top:4px}
-@media(max-width:760px){.us-page{padding:12px}.us-topbar{height:30px;margin-bottom:4px}.us-kicker{padding:5px 11px;font-size:11px;margin-bottom:6px}.us-hero h1{font-size:clamp(26px,8vw,38px)}.us-stage{border-radius:26px;padding:14px;width:100%}#sentenceBox{border-radius:22px;padding:18px;min-height:260px}#buildArea{border-radius:18px;min-height:74px;padding:12px;gap:10px}.us-chip{padding:11px 14px;min-height:42px;min-width:64px;font-size:clamp(16px,4.4vw,18px)}#wordBank{gap:10px;min-height:58px}.controls{display:grid;grid-template-columns:1fr;gap:9px}.us-score-grid{grid-template-columns:1fr}.us-btn,.us-completed-button{width:100%}.us-completed-screen{border-radius:26px}}
+.us-completed-screen{display:none;text-align:center;padding:24px 12px;max-width:520px;margin:0 auto}
+.us-completed-screen.active{display:block}
+.us-completed-icon{font-size:30px;line-height:1;margin-bottom:6px}
+.us-completed-title{margin:0;color:#F97316;font-family:'Fredoka','Trebuchet MS',sans-serif;font-size:32px;font-weight:700}
+.us-completed-text{color:#9B94BE;font-size:14px;font-weight:800;line-height:1.5;margin:0}
+#us-score-text{color:#666!important;font-family:'Nunito',sans-serif!important;font-size:14px!important;font-weight:800!important}
+.us-completed-button{background:#7F77DD;box-shadow:0 6px 18px rgba(127,119,221,.18);margin-top:4px;min-width:128px;padding:11px 20px;font-size:14px;font-weight:700}
+@media(max-width:760px){.us-page{padding:12px}.us-topbar{height:30px;margin-bottom:4px}.us-kicker{padding:5px 11px;font-size:11px;margin-bottom:6px}.us-hero h1{font-size:clamp(26px,8vw,38px)}.us-stage{border-radius:26px;padding:14px;width:100%}#sentenceBox{border-radius:22px;padding:18px;min-height:260px}#buildArea{border-radius:18px;min-height:74px;padding:12px;gap:10px}.us-chip{padding:11px 14px;min-height:42px;min-width:64px;font-size:clamp(16px,4.4vw,18px)}#wordBank{gap:10px;min-height:58px}.controls{display:grid;grid-template-columns:1fr;gap:9px}.us-score-grid{grid-template-columns:1fr}.us-btn,.us-completed-button{width:100%}}
 </style>
 
-<div class="us-page">
-    <div class="us-app">
+<div class="us-page" id="us-page">
+    <div class="us-app" id="us-app">
         <div class="us-topbar">
             <span class="us-topbar-title">Unscramble</span>
         </div>
@@ -251,7 +254,7 @@ body{margin:0!important;padding:0!important;background:#fff!important;font-famil
             <p>Unscramble the words to form the correct sentence.</p>
         </div>
 
-        <div class="us-stage">
+        <div class="us-stage" id="us-stage">
             <div id="sentenceBox">
                 <button id="listenBtn" class="us-btn us-btn-listen" type="button" onclick="usSpeak()">Listen</button>
                 <div id="buildArea">
@@ -333,6 +336,9 @@ let selectedVoice = null;
 
 const usBuildArea = document.getElementById('buildArea');
 const usWordBank = document.getElementById('wordBank');
+const usPageEl = document.getElementById('us-page');
+const usAppEl = document.getElementById('us-app');
+const usStageEl = document.getElementById('us-stage');
 const usFeedback = document.getElementById('feedback');
 const usListenBtn = document.getElementById('listenBtn');
 const usWinSound = document.getElementById('winSound');
@@ -575,6 +581,9 @@ function usLoadSentence() {
     usBlockFinished = false;
 
     if (usCompletedEl) usCompletedEl.classList.remove('active');
+    if (usPageEl) usPageEl.classList.remove('is-completed');
+    if (usAppEl) usAppEl.classList.remove('is-completed');
+    if (usStageEl) usStageEl.classList.remove('is-completed');
     if (usSentenceBox) usSentenceBox.style.display = 'block';
     if (usWordBank) usWordBank.style.display = 'flex';
     if (usControls) usControls.style.display = 'flex';
@@ -627,6 +636,9 @@ async function usShowCompleted() {
     if (usSentenceBox) usSentenceBox.style.display = 'none';
     if (usWordBank) usWordBank.style.display = 'none';
     if (usControls) usControls.style.display = 'none';
+    if (usPageEl) usPageEl.classList.add('is-completed');
+    if (usAppEl) usAppEl.classList.add('is-completed');
+    if (usStageEl) usStageEl.classList.add('is-completed');
     if (usCompletedEl) usCompletedEl.classList.add('active');
 
     usPlaySound(usDoneSound);
@@ -801,6 +813,54 @@ function usRestartActivity() {
     usLoadSentence();
 }
 
+/* ── Web Speech API fallback ── */
+var usBrowserTTS = (function () {
+    var preferred = ['zira','samantha','karen','aria','jenny','emma','ava','google us english'];
+    var cache = null;
+
+    function loadVoices(cb) {
+        if (!window.speechSynthesis) return;
+        var v = window.speechSynthesis.getVoices();
+        if (v && v.length) { cache = v; cb(v); return; }
+        if (window.speechSynthesis.onvoiceschanged !== undefined) {
+            window.speechSynthesis.onvoiceschanged = function () {
+                cache = window.speechSynthesis.getVoices();
+                if (cache.length) cb(cache);
+            };
+        }
+    }
+
+    function pickVoice(voices) {
+        var pool = voices.filter(function (v) { return String(v.lang).toLowerCase().indexOf('en') === 0; });
+        if (!pool.length) pool = voices;
+        for (var i = 0; i < preferred.length; i++) {
+            for (var j = 0; j < pool.length; j++) {
+                if ((pool[j].name + ' ' + pool[j].voiceURI).toLowerCase().indexOf(preferred[i]) !== -1) return pool[j];
+            }
+        }
+        return pool[0] || null;
+    }
+
+    function speak(text) {
+        if (!window.speechSynthesis) return;
+        window.speechSynthesis.cancel();
+        function run(voices) {
+            var u = new SpeechSynthesisUtterance(text);
+            u.lang = 'en-US'; u.rate = 0.88; u.pitch = 1.05; u.volume = 1;
+            var voice = pickVoice(voices);
+            if (voice) u.voice = voice;
+            u.onend = function () { usIsSpeaking = false; usIsPaused = false; usSetListenLabel(); };
+            window.speechSynthesis.speak(u);
+            usIsSpeaking = true; usIsPaused = false; usSetListenLabel();
+        }
+        if (cache && cache.length) run(cache);
+        else loadVoices(run);
+    }
+
+    if (window.speechSynthesis) loadVoices(function () {});
+    return { speak: speak };
+})();
+
 function usSpeak() {
     if (!usListenEnabled) return;
     if (!usCurrentSentence || String(usCurrentSentence).trim() === '') return;
@@ -870,9 +930,9 @@ function usSpeak() {
             });
         })
         .catch(function () {
-            usIsSpeaking = false;
-            usIsPaused = false;
-            usSetListenLabel();
+            /* ElevenLabs failed — fall back to browser Web Speech API */
+            usListenBtn.disabled = false;
+            usBrowserTTS.speak(usCurrentSentence);
         })
         .finally(function () {
             usListenBtn.disabled = false;

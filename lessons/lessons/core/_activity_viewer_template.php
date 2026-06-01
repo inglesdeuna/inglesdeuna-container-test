@@ -623,16 +623,18 @@ function render_activity_viewer($title, $icon, $content)
         body.embedded-mode .viewer-content {
             flex: 1;
             min-height: 0;
-            overflow: hidden;
+            overflow-x: hidden;
+            overflow-y: auto;
             display: flex !important;
             flex-direction: column !important;
             border-radius: 0;
-            padding: 10px 12px;
+            padding: 10px 12px 84px;
             margin-top: 0;
             background: #fff;
             box-shadow: none;
             border: none;
             backdrop-filter: none;
+            -webkit-overflow-scrolling: touch;
         }
 
         body.embedded-mode .viewer-content > :is(div, section) {

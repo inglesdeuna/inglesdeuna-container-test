@@ -334,7 +334,7 @@ body{
   width:40px;
   height:40px;
   border:1px solid #EDE9FA;
-  border-radius:14px;
+  border-radius:8px;
   background:#ffffff;
   color:var(--hg-purple-dark);
   font-family:'Nunito','Segoe UI',sans-serif;
@@ -375,7 +375,7 @@ a.back{
   min-width:clamp(104px,16vw,146px);
   padding:13px 20px;
   border:0;
-  border-radius:999px;
+  border-radius:10px;
   color:#ffffff;
   font-family:'Nunito','Segoe UI',sans-serif;
   font-size:13px;
@@ -445,12 +445,8 @@ a.back{background:var(--hg-purple);box-shadow:0 6px 18px rgba(127,119,221,.18);j
 
 .hg-completed-screen{
   display:none;
-  width:min(680px,100%);
-  margin:0 auto;
-  text-align:center;
-  padding:clamp(34px,5vw,54px) clamp(18px,4vw,34px);
-  border-radius:34px;
-  background:#ffffff;
+  width:100%;
+  padding:0;
 }
 
 .hg-completed-screen.active{display:block;animation:hgPop .35s ease}
@@ -502,10 +498,44 @@ a.back{background:var(--hg-purple);box-shadow:0 6px 18px rgba(127,119,221,.18);j
   #hangmanImg{max-width:122px}
   .word-char{min-width:24px;height:34px;font-size:20px}
   .keyboard{gap:7px}
-  .keyboard button{width:34px;height:34px;border-radius:12px;font-size:12px}
+  .keyboard button{width:34px;height:34px;border-radius:6px;font-size:12px}
   .controls{display:grid;grid-template-columns:1fr;gap:9px;width:100%}
   .action-btn{width:100%}
 }
+
+/* ── Unified unscored completed screen ── */
+.af-unscored__card{background:#fff;border:1.5px solid #EDE9FA;border-radius:14px;padding:28px 32px;width:100%;max-width:100%;box-sizing:border-box;font-family:'Nunito','Segoe UI',sans-serif;}
+.af-unscored__prog-label{font-size:11px;color:#9B8FCC;font-weight:700;letter-spacing:.06em;text-align:center;margin-bottom:6px;text-transform:uppercase;}
+.af-unscored__prog-track{background:#EDE9FA;border-radius:99px;height:9px;overflow:hidden;margin-bottom:4px;}
+.af-unscored__prog-fill{height:100%;border-radius:99px;background:linear-gradient(90deg,#F97316,#7F77DD);transition:width .4s ease;}
+.af-unscored__prog-nums{display:flex;justify-content:space-between;font-size:11px;color:#9B8FCC;margin-bottom:16px;}
+.af-unscored__prog-nums strong{color:#7F77DD;}
+.af-unscored__icon{width:48px;height:48px;border-radius:50%;background:#EDE9FA;display:flex;align-items:center;justify-content:center;margin:0 auto 10px;}
+.af-unscored__title{font-family:'Fredoka','Trebuchet MS',sans-serif;font-size:20px;font-weight:600;color:#7F77DD;text-align:center;margin:0 0 3px;}
+.af-unscored__sub{font-size:13px;color:#9B8FCC;font-weight:600;text-align:center;margin:0 0 16px;}
+.af-unscored__chips{display:grid;gap:8px;margin-bottom:16px;}
+.af-unscored__chips--2{grid-template-columns:1fr 1fr;}
+.af-unscored__chips--3{grid-template-columns:1fr 1fr 1fr;}
+.af-unscored__chip{background:#F9F8FF;border:1.5px solid #EDE9FA;border-radius:12px;padding:10px 6px;text-align:center;}
+.af-unscored__chip-val{font-family:'Fredoka','Trebuchet MS',sans-serif;font-size:24px;color:#7F77DD;line-height:1;}
+.af-unscored__chip-val--orange{color:#F97316;}
+.af-unscored__chip-lbl{font-size:10px;color:#9B8FCC;font-weight:700;letter-spacing:.05em;margin-top:2px;text-transform:uppercase;}
+.af-unscored__banner{border-radius:12px;padding:9px 14px;display:flex;align-items:center;gap:10px;margin-bottom:16px;}
+.af-unscored__banner--orange{background:#FFF0E6;}
+.af-unscored__banner--purple{background:#F5F3FF;}
+.af-unscored__banner--green{background:#F0FDF4;}
+.af-unscored__banner-icon{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.af-unscored__banner-icon--orange{background:#F97316;}
+.af-unscored__banner-icon--purple{background:#7F77DD;}
+.af-unscored__banner-icon--green{background:#22c55e;}
+.af-unscored__banner-text{font-size:12px;font-weight:600;}
+.af-unscored__banner-text--orange{color:#b85a10;}
+.af-unscored__banner-text--purple{color:#5046a6;}
+.af-unscored__banner-text--green{color:#166534;}
+.af-unscored__banner-title{font-family:'Fredoka','Trebuchet MS',sans-serif;font-size:15px;display:block;}
+.af-unscored__btns{display:flex;gap:8px;}
+.af-unscored__btn-primary{flex:1;background:#F97316;color:#fff;border:none;border-radius:10px;padding:11px 0;font-family:'Nunito','Segoe UI',sans-serif;font-size:14px;font-weight:700;cursor:pointer;}
+.af-unscored__btn-secondary{flex:1;background:#fff;color:#7F77DD;border:1.5px solid #EDE9FA;border-radius:10px;padding:11px 0;font-family:'Nunito','Segoe UI',sans-serif;font-size:14px;font-weight:700;cursor:pointer;}
 </style>
 </head>
 
@@ -554,11 +584,48 @@ a.back{background:var(--hg-purple);box-shadow:0 6px 18px rgba(127,119,221,.18);j
       </div>
 
       <div id="hg-completed" class="hg-completed-screen">
-        <div class="hg-completed-icon">✓</div>
-        <h2 class="hg-completed-title" id="hg-completed-title"></h2>
-        <p class="hg-completed-text" id="hg-completed-text"></p>
-        <p class="hg-completed-text" id="hg-score-text"></p>
-        <button type="button" class="hg-completed-button" id="hg-restart" onclick="restartActivity()">Restart</button>
+        <div class="af-unscored__card">
+          <div class="af-unscored__prog-label">WORDS GUESSED</div>
+          <div class="af-unscored__prog-track">
+            <div class="af-unscored__prog-fill" id="af-prog-fill" style="width:0%"></div>
+          </div>
+          <div class="af-unscored__prog-nums">
+            <span>0</span>
+            <strong id="af-prog-text">0 / 0</strong>
+          </div>
+          <div class="af-unscored__icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#7F77DD" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+          </div>
+          <p class="af-unscored__title">You did it!</p>
+          <p class="af-unscored__sub">All words guessed successfully.</p>
+          <div class="af-unscored__chips af-unscored__chips--3">
+            <div class="af-unscored__chip">
+              <div class="af-unscored__chip-val" id="af-stat1-val">0</div>
+              <div class="af-unscored__chip-lbl">WORDS</div>
+            </div>
+            <div class="af-unscored__chip">
+              <div class="af-unscored__chip-val af-unscored__chip-val--orange" id="af-stat2-val">0</div>
+              <div class="af-unscored__chip-lbl">ROUNDS</div>
+            </div>
+            <div class="af-unscored__chip">
+              <div class="af-unscored__chip-val" id="af-stat3-val">0</div>
+              <div class="af-unscored__chip-lbl">HINTS USED</div>
+            </div>
+          </div>
+          <div class="af-unscored__banner af-unscored__banner--green">
+            <div class="af-unscored__banner-icon af-unscored__banner-icon--green">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+            </div>
+            <div class="af-unscored__banner-text af-unscored__banner-text--green">
+              <span class="af-unscored__banner-title">Great guessing!</span>
+              You're building strong vocabulary skills.
+            </div>
+          </div>
+          <div class="af-unscored__btns">
+            <button class="af-unscored__btn-secondary" id="af-btn-retry">↺ Play again</button>
+            <button class="af-unscored__btn-primary" id="af-btn-next">Next →</button>
+          </div>
+        </div>
       </div>
     </section>
 
@@ -603,8 +670,7 @@ const progressFillEl = document.getElementById("hg-progress-fill");
 const progressCountEl = document.getElementById("hg-progress-count");
 const kickerCountEl = document.getElementById("hg-kicker-count");
 
-if (completedTitleEl) completedTitleEl.textContent = activityTitle || 'Hangman';
-if (completedTextEl) completedTextEl.textContent = "You've completed " + (activityTitle || 'this activity') + '. Great job practicing.';
+/* completedTitleEl / completedTextEl replaced by unified completed screen */
 
 let index = 0;
 let word = "";
@@ -618,6 +684,8 @@ let hintVisible = false;
 let correctCount = 0;
 let totalCount = items.length;
 let scoredWordsByIndex = {};
+let hgRounds = 0;
+let hgHintsUsed = 0;
 
 function updateProgress(){
   const countText = (index + 1) + ' / ' + totalCount;
@@ -709,14 +777,38 @@ async function showCompleted() {
   feedback.textContent = '';
   feedback.className = '';
   setKeyboardDisabled(true);
+  hgRounds += 1;
 
   const pct = totalCount > 0 ? Math.round((correctCount / totalCount) * 100) : 0;
   const errors = Math.max(0, totalCount - correctCount);
 
   if (gameLayout) gameLayout.style.display = 'none';
   if (completedEl) completedEl.classList.add('active');
-  if (scoreTextEl) scoreTextEl.textContent = 'Score: ' + correctCount + ' / ' + totalCount + ' (' + pct + '%)';
   playSound(winSound);
+
+  /* Populate unified completed screen stats */
+  const fillEl   = document.getElementById('af-prog-fill');
+  const textEl   = document.getElementById('af-prog-text');
+  const stat1El  = document.getElementById('af-stat1-val');
+  const stat2El  = document.getElementById('af-stat2-val');
+  const stat3El  = document.getElementById('af-stat3-val');
+  const retryBtn = document.getElementById('af-btn-retry');
+  const nextBtn  = document.getElementById('af-btn-next');
+
+  if (fillEl)  { setTimeout(function(){ fillEl.style.width = pct + '%'; }, 120); }
+  if (textEl)  textEl.textContent  = correctCount + ' / ' + totalCount;
+  if (stat1El) stat1El.textContent = String(totalCount);
+  if (stat2El) stat2El.textContent = String(hgRounds);
+  if (stat3El) stat3El.textContent = String(hgHintsUsed);
+
+  if (retryBtn) retryBtn.addEventListener('click', restartActivity);
+  if (nextBtn) {
+    if (HG_RETURN_TO) {
+      nextBtn.addEventListener('click', function () { navigateToReturn(HG_RETURN_TO); });
+    } else {
+      nextBtn.style.display = 'none';
+    }
+  }
 
   if (HG_ACTIVITY_ID && HG_RETURN_TO) {
     const joiner = HG_RETURN_TO.indexOf('?') !== -1 ? '&' : '?';
@@ -737,6 +829,9 @@ function restartActivity() {
   correctCount = 0;
   totalCount = items.length;
   scoredWordsByIndex = {};
+  hgHintsUsed = 0;
+  const fillEl = document.getElementById('af-prog-fill');
+  if (fillEl) fillEl.style.width = '0%';
   loadWord();
 }
 
@@ -752,6 +847,7 @@ function renderWord(revealMissing = false){
 }
 
 function showHint(){
+  if (!hintVisible) hgHintsUsed++;
   hintVisible = true;
   hintEl.textContent = hint ? `Hint: ${hint}` : "No hint available.";
   if (hintImage) {

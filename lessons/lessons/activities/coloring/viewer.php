@@ -41,7 +41,8 @@ ob_start();
 html,
 body {
     width: 100%;
-    min-height: 100%;
+    height: 100%;
+    overflow: hidden;
 }
 
 body {
@@ -52,13 +53,14 @@ body {
 }
 
 .activity-wrapper {
+    height: 100vh !important;
     max-width: 100% !important;
     margin: 0 !important;
     padding: 0 !important;
-    min-height: 0;
     display: flex !important;
     flex-direction: column !important;
     background: transparent !important;
+    overflow: hidden !important;
 }
 
 .top-row,
@@ -80,84 +82,89 @@ body {
     border: none !important;
     box-shadow: none !important;
     border-radius: 0 !important;
+    overflow: hidden !important;
 }
 
 .col-page {
     width: 100%;
     flex: 1;
     min-height: 0;
-    overflow-y: auto;
-    padding: clamp(14px, 2.5vw, 34px);
+    overflow: hidden;
+    padding: clamp(8px, 1.2vw, 16px) clamp(10px, 1.5vw, 20px);
     display: flex;
-    align-items: flex-start;
-    justify-content: center;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
     background: #fff;
+    box-sizing: border-box;
 }
 
 .col-app {
     width: min(1120px, 100%);
     margin: 0 auto;
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
 }
 
 .col-hero {
+    flex-shrink: 0;
     text-align: center;
-    margin-bottom: clamp(14px, 2vw, 22px);
+    padding-bottom: clamp(5px, 0.8vh, 10px);
 }
 
-.col-kicker {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    padding: 7px 14px;
-    border-radius: 999px;
-    background: var(--col-orange-soft);
-    border: 1px solid #FCDDBF;
-    color: var(--col-orange-dark);
-    font-size: 12px;
-    font-weight: 900;
-    letter-spacing: .08em;
-    text-transform: uppercase;
-    margin-bottom: 10px;
-}
+.col-kicker { display: none; }
 
 .col-hero h1 {
     font-family: 'Fredoka', sans-serif;
-    font-size: clamp(30px, 5.5vw, 58px);
+    font-size: clamp(18px, 2.8vw, 34px);
     font-weight: 700;
     color: var(--col-orange);
     margin: 0;
-    line-height: 1.03;
+    line-height: 1.1;
 }
 
 .col-hero p {
-    font-size: clamp(13px, 1.8vw, 17px);
-    font-weight: 800;
+    font-size: clamp(11px, 1.1vw, 13px);
+    font-weight: 700;
     color: var(--col-muted);
-    margin: 8px 0 0;
+    margin: 3px 0 0;
 }
 
 .col-stage-shell {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
     background: #fff;
     border: 1px solid var(--col-border);
-    border-radius: 34px;
-    padding: clamp(16px, 2.6vw, 26px);
+    border-radius: 20px;
+    padding: clamp(10px, 1.4vw, 18px);
     box-shadow: 0 8px 40px rgba(127, 119, 221, .13);
+    box-sizing: border-box;
 }
 
 .board {
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
     width: min(100%, 980px);
     margin: 0 auto;
     border: 1px solid #EDE9FA;
-    border-radius: 28px;
+    border-radius: 20px;
     background: #fff;
     box-shadow: 0 12px 36px rgba(127, 119, 221, .13);
-    padding: clamp(14px, 2vw, 20px);
+    padding: clamp(10px, 1.4vw, 16px);
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 8px;
+    box-sizing: border-box;
 }
 
 .prog-row {
+    flex-shrink: 0;
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -193,10 +200,11 @@ body {
 }
 
 .picker-section {
+    flex-shrink: 0;
     background: #F5F3FF;
     border: 1px solid #EDE9FA;
-    border-radius: 18px;
-    padding: 14px 16px;
+    border-radius: 14px;
+    padding: 8px 12px;
 }
 
 .picker-label {
@@ -207,7 +215,7 @@ body {
     letter-spacing: .08em;
     text-transform: uppercase;
     text-align: center;
-    margin-bottom: 12px;
+    margin-bottom: 8px;
 }
 
 .colors-grid {
@@ -232,6 +240,7 @@ body {
 .swatch.active { border-color: #271B5D; box-shadow: 0 0 0 3px #fff inset, 0 4px 12px rgba(0, 0, 0, .2); }
 
 .sel-bar {
+    flex-shrink: 0;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -257,17 +266,17 @@ body {
 }
 
 .canvas-wrap {
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
     border: 1px solid #EDE9FA;
     border-radius: 20px;
     background: #fff;
-    overflow: auto;
-    min-height: clamp(360px, 52vw, 520px);
-    max-height: clamp(380px, 56vw, 560px);
     display: flex;
     justify-content: center;
     align-items: center;
     touch-action: manipulation;
-    padding: 10px;
+    padding: 8px;
 }
 
 #coloringCanvas {
@@ -281,12 +290,12 @@ body {
 }
 
 .bottom-row {
+    flex-shrink: 0;
     display: flex;
+    flex-direction: column;
     align-items: center;
-    justify-content: space-between;
-    gap: 10px;
-    flex-wrap: wrap;
-    padding-top: 6px;
+    gap: 6px;
+    padding-top: 4px;
 }
 
 .page-info {
@@ -296,13 +305,13 @@ body {
     color: var(--col-muted);
 }
 
-.btns { display: flex; gap: 10px; flex-wrap: wrap; }
+.btns { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
 
 .btn-purple,
 .btn-orange {
     border: none;
-    border-radius: 999px;
-    padding: 13px clamp(20px, 3vw, 32px);
+    border-radius: 10px;
+    padding: 11px clamp(20px, 3vw, 32px);
     font-family: 'Nunito', sans-serif;
     font-weight: 900;
     font-size: clamp(13px, 1.8vw, 15px);
@@ -332,10 +341,15 @@ body {
 
 .coloring-completed {
     display: none;
+    flex: 1;
+    min-height: 0;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
 }
 
 .coloring-completed.active {
-    display: block;
+    display: flex;
 }
 
 .board.is-completed .prog-row,
@@ -346,33 +360,36 @@ body {
     display: none;
 }
 
-.passive-done {
-    display: none;
-    width: min(680px, 100%);
-    margin: 24px auto 0;
-    text-align: center;
-    padding: clamp(28px, 5vw, 54px);
-    border-radius: 34px;
-    background: #fff;
-    border: 1px solid #E2F7EF;
-    box-shadow: 0 8px 40px rgba(8,80,65,.12);
-}
-.passive-done.active { display: block; animation: passivePop .45s cubic-bezier(.2,.9,.2,1); }
-@keyframes passivePop { from { opacity:0; transform:scale(.92); } to { opacity:1; transform:scale(1); } }
-.passive-done-icon { font-size: clamp(66px,12vw,100px); margin-bottom: 12px; }
-.passive-done-title { margin: 0 0 10px; font-family: 'Fredoka', sans-serif; font-size: clamp(34px,6vw,60px); color: #085041; line-height: 1; }
-.passive-done-text { margin: 0 auto 22px; max-width: 520px; color: #7C739B; font-size: clamp(14px,2vw,17px); font-weight: 800; line-height: 1.5; }
-.passive-done-track { height: 14px; max-width: 420px; margin: 0 auto 18px; border-radius: 999px; background: #E2F7EF; overflow: hidden; }
-.passive-done-fill { height: 100%; width: 0%; border-radius: 999px; background: linear-gradient(90deg, #1D9E75, #7F77DD, #EC4899); transition: width .8s cubic-bezier(.2,.9,.2,1); }
-.passive-done-btn { display: inline-flex; align-items: center; gap: 8px; padding: 13px 28px; border-radius: 999px; border: 0; background: #1D9E75; color: #fff; font-family: 'Nunito', sans-serif; font-size: 15px; font-weight: 900; cursor: pointer; box-shadow: 0 6px 18px rgba(29,158,117,.30); transition: .18s; }
-.passive-done-btn:hover { transform: translateY(-2px); }
+/* ── Unified unscored completed screen ── */
+.af-unscored__card{background:#fff;border:1.5px solid #EDE9FA;border-radius:14px;padding:28px 32px;width:100%;max-width:520px;box-sizing:border-box;font-family:'Nunito','Segoe UI',sans-serif;}
+.af-unscored__prog-label{font-size:11px;color:#9B8FCC;font-weight:700;letter-spacing:.06em;text-align:center;margin-bottom:6px;text-transform:uppercase;}
+.af-unscored__prog-track{background:#EDE9FA;border-radius:99px;height:9px;overflow:hidden;margin-bottom:4px;}
+.af-unscored__prog-fill{height:100%;border-radius:99px;background:linear-gradient(90deg,#F97316,#7F77DD);transition:width .4s ease;}
+.af-unscored__prog-nums{display:flex;justify-content:space-between;font-size:11px;color:#9B8FCC;margin-bottom:16px;}
+.af-unscored__prog-nums strong{color:#7F77DD;}
+.af-unscored__icon{width:48px;height:48px;border-radius:50%;background:#EDE9FA;display:flex;align-items:center;justify-content:center;margin:0 auto 10px;}
+.af-unscored__title{font-family:'Fredoka','Trebuchet MS',sans-serif;font-size:20px;font-weight:600;color:#7F77DD;text-align:center;margin:0 0 3px;}
+.af-unscored__sub{font-size:13px;color:#9B8FCC;font-weight:600;text-align:center;margin:0 0 16px;}
+.af-unscored__chips{display:grid;gap:8px;margin-bottom:16px;}
+.af-unscored__chips--2{grid-template-columns:1fr 1fr;}
+.af-unscored__chip{background:#F9F8FF;border:1.5px solid #EDE9FA;border-radius:12px;padding:10px 6px;text-align:center;}
+.af-unscored__chip-val{font-family:'Fredoka','Trebuchet MS',sans-serif;font-size:24px;color:#7F77DD;line-height:1;}
+.af-unscored__chip-val--orange{color:#F97316;}
+.af-unscored__chip-lbl{font-size:10px;color:#9B8FCC;font-weight:700;letter-spacing:.05em;margin-top:2px;text-transform:uppercase;}
+.af-unscored__banner{border-radius:12px;padding:9px 14px;display:flex;align-items:center;gap:10px;margin-bottom:16px;}
+.af-unscored__banner--orange{background:#FFF0E6;}
+.af-unscored__banner-icon{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.af-unscored__banner-icon--orange{background:#F97316;}
+.af-unscored__banner-text{font-size:12px;font-weight:600;}
+.af-unscored__banner-text--orange{color:#b85a10;}
+.af-unscored__banner-title{font-family:'Fredoka','Trebuchet MS',sans-serif;font-size:15px;display:block;}
+.af-unscored__btns{display:flex;gap:8px;}
+.af-unscored__btn-primary{flex:1;background:#F97316;color:#fff;border:none;border-radius:10px;padding:11px 0;font-family:'Nunito','Segoe UI',sans-serif;font-size:14px;font-weight:700;cursor:pointer;}
+.af-unscored__btn-secondary{flex:1;background:#fff;color:#7F77DD;border:1.5px solid #EDE9FA;border-radius:10px;padding:11px 0;font-family:'Nunito','Segoe UI',sans-serif;font-size:14px;font-weight:700;cursor:pointer;}
 
 @media (max-width: 900px) {
-    .col-page { padding: 12px; }
-    .col-stage-shell { border-radius: 26px; padding: 14px; }
-    .board { border-radius: 22px; padding: 12px; }
-    .colors-grid { grid-template-columns: repeat(4, minmax(36px, 1fr)); }
-    .canvas-wrap { min-height: 300px; }
+    .colors-grid { grid-template-columns: repeat(4, minmax(32px, 1fr)); }
+    .swatch { width: 34px; height: 34px; }
 }
 </style>
 
@@ -406,11 +423,11 @@ body {
                 </div>
 
                 <div class="bottom-row">
-                    <span class="page-info" id="progressText">Page 1 of 1</span>
                     <div class="btns">
                         <button class="btn-orange" id="btn-reset" type="button">Clear</button>
                         <button class="btn-purple" id="btn-finish" type="button">Next</button>
                     </div>
+                    <span class="page-info" id="progressText">Page 1 of 1</span>
                 </div>
 
                 <div class="coloring-completed" id="coloringCompleted"></div>
@@ -423,24 +440,17 @@ body {
 (function () {
     'use strict';
 
-    /* ── data from PHP ───────────────────────────────── */
-    var uploadedImages = <?= json_encode($imageUrls, JSON_UNESCAPED_UNICODE) ?>;
-    var nextActivityUrl = <?= json_encode($nextUrl, JSON_UNESCAPED_UNICODE) ?>;
-    var COLORING_RETURN_TO = <?= json_encode($returnTo, JSON_UNESCAPED_UNICODE) ?>;
+    var uploadedImages       = <?= json_encode($imageUrls, JSON_UNESCAPED_UNICODE) ?>;
+    var nextActivityUrl      = <?= json_encode($nextUrl, JSON_UNESCAPED_UNICODE) ?>;
+    var COLORING_RETURN_TO   = <?= json_encode($returnTo, JSON_UNESCAPED_UNICODE) ?>;
     var COLORING_ACTIVITY_ID = <?= json_encode($activityId, JSON_UNESCAPED_UNICODE) ?>;
+    var coloringRounds       = 0;
 
-    /* ── palette colors ──────────────────────────────── */
     var colors = [
-        '#ef4444', '#f97316', '#cc7722', '#f5e6c8', '#facc15', '#22c55e', '#14b8a6', '#3b82f6',
-        '#8b5cf6', '#c4b5fd', '#ec4899', '#8b5a2b', '#84cc16', '#9ca3af', '#111827', '#ffffff'
+        '#ef4444','#f97316','#cc7722','#f5e6c8','#facc15','#22c55e','#14b8a6','#3b82f6',
+        '#8b5cf6','#c4b5fd','#ec4899','#8b5a2b','#84cc16','#9ca3af','#111827','#ffffff'
     ];
     var selectedColor = colors[0];
-
-    /* ── state ───────────────────────────────────────── */
-    var currentIndex      = 0;
-    var originalImageData = null;
-
-    /* ── color names ─────────────────────────────────── */
     var colorNames = {
         '#ef4444':'Red','#f97316':'Orange','#cc7722':'Brown','#f5e6c8':'Cream',
         '#facc15':'Yellow','#22c55e':'Green','#14b8a6':'Teal','#3b82f6':'Blue',
@@ -448,53 +458,65 @@ body {
         '#84cc16':'Lime','#9ca3af':'Gray','#111827':'Black','#ffffff':'White'
     };
 
-    /* ── DOM refs ────────────────────────────────────── */
-    var canvas       = document.getElementById('coloringCanvas');
-    var ctx          = canvas.getContext('2d', { willReadFrequently: true });
+    var currentIndex     = 0;
+    var paintedSnapshots = [];
+    var origData         = null; // pixel data of original image — used only for boundary detection
+    var origImg          = null; // Image element kept alive for re-compositing
+
+    var canvas      = document.getElementById('coloringCanvas');
+    var ctx         = canvas.getContext('2d');
     var progressText = document.getElementById('progressText');
-    var progFill     = document.getElementById('progFill');
-    var progBadge    = document.getElementById('progBadge');
-    var selDot       = document.getElementById('sel-dot');
-    var selLabel     = document.getElementById('sel-label');
-    var stage        = document.getElementById('coloringStage');
-    var completedEl  = document.getElementById('coloringCompleted');
-    var finishBtn    = document.getElementById('btn-finish');
-    var resetBtn     = document.getElementById('btn-reset');
-    var restartBtn   = document.getElementById('restartBtn');
-    var paletteEl    = document.getElementById('coloringPalette');
+    var progFill    = document.getElementById('progFill');
+    var progBadge   = document.getElementById('progBadge');
+    var selDot      = document.getElementById('sel-dot');
+    var selLabel    = document.getElementById('sel-label');
+    var stage       = document.getElementById('coloringStage');
+    var completedEl = document.getElementById('coloringCompleted');
+    var finishBtn   = document.getElementById('btn-finish');
+    var resetBtn    = document.getElementById('btn-reset');
+    var paletteEl   = document.getElementById('coloringPalette');
+
+    /*
+     * Two-layer compositing approach:
+     *   colorCanvas  — off-screen canvas holding only flat fill colors (starts white)
+     *   visible canvas = colorCanvas drawn first, then original outline image on top
+     *                    with 'multiply' blend mode.
+     *
+     * Why multiply works for coloring books:
+     *   white(255) * color = color  →  white areas show the fill color through
+     *   black(0)   * anything = 0   →  black outlines always stay pure black
+     *   Anti-aliased gray pixels multiply cleanly, preserving smooth edges.
+     *
+     * Flood-fill never touches the visible canvas directly; it only modifies
+     * colorCanvas, then render() recomposites both layers.
+     */
+    var colorCanvas = document.createElement('canvas');
+    var colorCtx    = colorCanvas.getContext('2d', { willReadFrequently: true });
+
     var clickAudioCtx = null;
 
     function playClickSound() {
         try {
-            var AudioCtx = window.AudioContext || window.webkitAudioContext;
-            if (!AudioCtx) return;
-            if (!clickAudioCtx) clickAudioCtx = new AudioCtx();
-            if (clickAudioCtx.state === 'suspended') {
-                clickAudioCtx.resume();
-            }
-
+            var AC = window.AudioContext || window.webkitAudioContext;
+            if (!AC) return;
+            if (!clickAudioCtx) clickAudioCtx = new AC();
+            if (clickAudioCtx.state === 'suspended') clickAudioCtx.resume();
             var now = clickAudioCtx.currentTime;
-            var osc = clickAudioCtx.createOscillator();
+            var osc  = clickAudioCtx.createOscillator();
             var gain = clickAudioCtx.createGain();
-
             osc.type = 'triangle';
             osc.frequency.setValueAtTime(720, now);
             osc.frequency.exponentialRampToValueAtTime(980, now + 0.05);
-
             gain.gain.setValueAtTime(0.0001, now);
             gain.gain.exponentialRampToValueAtTime(0.12, now + 0.01);
             gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.08);
-
             osc.connect(gain);
             gain.connect(clickAudioCtx.destination);
             osc.start(now);
             osc.stop(now + 0.09);
-        } catch (e) {
-            /* no-op if audio is not available */
-        }
+        } catch (e) {}
     }
 
-    /* ── build palette ───────────────────────────────── */
     function buildPalette() {
         paletteEl.innerHTML = '';
         colors.forEach(function (color) {
@@ -514,11 +536,10 @@ body {
         });
     }
 
-    /* ── progress text ───────────────────────────────── */
     function updateProgress() {
         if (!uploadedImages.length) {
             progressText.textContent = 'No images';
-            progBadge.textContent = '\u2014';
+            progBadge.textContent = '—';
             progFill.style.width = '0%';
             return;
         }
@@ -528,170 +549,159 @@ body {
         finishBtn.textContent = currentIndex < uploadedImages.length - 1 ? 'Next →' : 'Finish ✓';
     }
 
-    /* ── show / hide sections ────────────────────────── */
-    function showCompleted() {
-        stage.classList.add('is-completed');
-        completedEl.classList.add('active');
-        showPassiveDone(completedEl, {
-            text: 'You finished coloring! Great job!',
-            restartLabel: 'Play Again',
-            onRestart: function () {
-                stage.classList.remove('is-completed');
-                completedEl.classList.remove('active');
-                completedEl.innerHTML = '';
-                currentIndex = 0;
-                loadImageAt(0);
-                updateProgress();
-            },
-            returnTo: COLORING_RETURN_TO,
-            activityId: COLORING_ACTIVITY_ID,
-            activityType: 'coloring',
-            total: uploadedImages.length
-        });
+    function render() {
+        if (!origImg) return;
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(colorCanvas, 0, 0);                          // 1. flat color fills
+        ctx.globalCompositeOperation = 'multiply';
+        ctx.drawImage(origImg, 0, 0, canvas.width, canvas.height); // 2. sharp outlines on top
+        ctx.globalCompositeOperation = 'source-over';
     }
 
-    function showPassiveDone(containerEl, opts) {
-        containerEl.innerHTML =
-            '<div class="passive-done" id="passive-done-card">' +
-            '  <div class="passive-done-icon">🎉</div>' +
-            '  <h2 class="passive-done-title">All Done!</h2>' +
-            '  <p class="passive-done-text">' + (opts.text || 'Great work!') + '</p>' +
-            '  <div class="passive-done-track"><div class="passive-done-fill" id="passive-fill"></div></div>' +
-            '  <div><button class="passive-done-btn" id="passive-restart-btn">&#8635; ' + (opts.restartLabel || 'Play Again') + '</button></div>' +
-            '</div>';
-        var card = document.getElementById('passive-done-card');
-        var fill = document.getElementById('passive-fill');
-        var btn  = document.getElementById('passive-restart-btn');
-        requestAnimationFrame(function () {
-            card.classList.add('active');
-            setTimeout(function () { if (fill) fill.style.width = '100%'; }, 80);
-        });
-        if (btn && opts.onRestart) btn.addEventListener('click', opts.onRestart);
-        if (opts.winAudio) { try { opts.winAudio.currentTime = 0; opts.winAudio.play(); } catch(e){} }
-        if (opts.returnTo && opts.activityId) {
-            var sep = opts.returnTo.indexOf('?') !== -1 ? '&' : '?';
-            fetch(opts.returnTo + sep + 'activity_percent=100&activity_errors=0&activity_total=' + (opts.total||1) +
-                '&activity_id=' + encodeURIComponent(opts.activityId) +
-                '&activity_type=' + encodeURIComponent(opts.activityType || 'activity'),
-                { method: 'GET', credentials: 'same-origin', cache: 'no-store' }).catch(function(){});
-        }
-    }
-
-    /* ── resize canvas on window resize ──────────────– */
-    function resizeCanvas() {
+    function saveCurrentSnapshot() {
         if (!uploadedImages.length || currentIndex >= uploadedImages.length) return;
-        loadImageAt(currentIndex);
-    }
-
-    /* ── paint system ────────────────────────────────– */
-    function getPixels(x, y) {
-        if (!ctx || !canvas) return null;
-        try {
-            var imgData = ctx.getImageData(x, y, 1, 1);
-            return imgData.data;
-        } catch (e) {
-            return null;
-        }
+        try { paintedSnapshots[currentIndex] = colorCanvas.toDataURL('image/png'); } catch (e) {}
     }
 
     function hex2rgb(hex) {
-        var result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-        return result ? [
-            parseInt(result[1], 16),
-            parseInt(result[2], 16),
-            parseInt(result[3], 16)
-        ] : [0, 0, 0];
-    }
-
-    function pixelsMatch(px, rgb, tolerance) {
-        if (!px) return false;
-        tolerance = tolerance || 30;
-        return Math.abs(px[0] - rgb[0]) < tolerance &&
-               Math.abs(px[1] - rgb[1]) < tolerance &&
-               Math.abs(px[2] - rgb[2]) < tolerance;
+        var m = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+        return m ? [parseInt(m[1],16), parseInt(m[2],16), parseInt(m[3],16)] : [0,0,0];
     }
 
     function floodFill(x, y, newColor) {
-        if (!ctx || !canvas) return;
-        x = Math.floor(x);
-        y = Math.floor(y);
-        if (x < 0 || y < 0 || x >= canvas.width || y >= canvas.height) return;
-        
-        var newRgb = hex2rgb(newColor);
-        var targetPixels = getPixels(x, y);
-        if (!targetPixels || pixelsMatch(targetPixels, newRgb, 10)) return;
+        x = Math.round(x);
+        y = Math.round(y);
+        var w = canvas.width, h = canvas.height;
+        if (x < 0 || y < 0 || x >= w || y >= h || !origData) return;
 
-        var imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        var data = imgData.data;
-        var stack = [[x, y]];
-        var visited = {};
+        var nr = hex2rgb(newColor);
+        var nR = nr[0], nG = nr[1], nB = nr[2];
+
+        // Don't start a fill on a dark outline pixel.
+        // If the exact click lands on an outline, search a small radius for the
+        // nearest light pixel — handles clicks that fall on the edge of tiny regions.
+        var oi  = (y * w + x) * 4;
+        var lum = 0.299 * origData[oi] + 0.587 * origData[oi+1] + 0.114 * origData[oi+2];
+        if (lum < 100) {
+            var found = false;
+            outer: for (var r = 1; r <= 4; r++) {
+                for (var dy = -r; dy <= r; dy++) {
+                    for (var dx = -r; dx <= r; dx++) {
+                        if (Math.abs(dx) !== r && Math.abs(dy) !== r) continue; // perimeter only
+                        var nx = x + dx, ny = y + dy;
+                        if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+                        var ni = (ny * w + nx) * 4;
+                        var nl = 0.299 * origData[ni] + 0.587 * origData[ni+1] + 0.114 * origData[ni+2];
+                        if (nl >= 100) { x = nx; y = ny; found = true; break outer; }
+                    }
+                }
+            }
+            if (!found) return;
+        }
+
+        // Get current color-layer state
+        var imgd = colorCtx.getImageData(0, 0, w, h);
+        var d    = imgd.data;
+        var ci   = (y * w + x) * 4;
+        var tR = d[ci], tG = d[ci+1], tB = d[ci+2];
+
+        // Nothing to do if already this color
+        if (Math.abs(tR-nR) < 6 && Math.abs(tG-nG) < 6 && Math.abs(tB-nB) < 6) return;
+
+        var TOL     = 50;
+        var visited = new Uint8Array(w * h);
+        var stack   = [y * w + x];
 
         while (stack.length) {
-            var coord = stack.pop();
-            var cx = coord[0];
-            var cy = coord[1];
-            var key = cx + ',' + cy;
-            if (visited[key]) continue;
-            visited[key] = true;
+            var pos = stack.pop();
+            if (visited[pos]) continue;
+            visited[pos] = 1;
 
-            if (cx < 0 || cy < 0 || cx >= canvas.width || cy >= canvas.height) continue;
-            var idx = (cy * canvas.width + cx) * 4;
-            var px = [data[idx], data[idx+1], data[idx+2], data[idx+3]];
-            if (!pixelsMatch(px, targetPixels)) continue;
+            var px = pos % w;
+            var py = (pos - px) / w;
 
-            data[idx] = newRgb[0];
-            data[idx+1] = newRgb[1];
-            data[idx+2] = newRgb[2];
-            stack.push([cx+1, cy], [cx-1, cy], [cx, cy+1], [cx, cy-1]);
+            // Outline boundary: skip dark pixels in original image
+            var oa  = pos * 4;
+            var ol  = 0.299 * origData[oa] + 0.587 * origData[oa+1] + 0.114 * origData[oa+2];
+            if (ol < 100) continue;
+
+            // Color boundary: skip pixels too different from seed color in fill layer
+            var ca = pos * 4;
+            if (Math.abs(d[ca]-tR) > TOL || Math.abs(d[ca+1]-tG) > TOL || Math.abs(d[ca+2]-tB) > TOL) continue;
+
+            d[ca]   = nR;
+            d[ca+1] = nG;
+            d[ca+2] = nB;
+
+            if (px > 0)     stack.push(pos - 1);
+            if (px < w - 1) stack.push(pos + 1);
+            if (py > 0)     stack.push(pos - w);
+            if (py < h - 1) stack.push(pos + w);
         }
-        ctx.putImageData(imgData, 0, 0);
+
+        colorCtx.putImageData(imgd, 0, 0);
+        render();
     }
 
     function handleFill(e) {
-        if (!canvas || !ctx) return;
-        var rect = canvas.getBoundingClientRect();
-        var x = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
-        var y = (e.touches ? e.touches[0].clientY : e.clientY) - rect.top;
+        if (!origData) return;
+        var rect  = canvas.getBoundingClientRect();
+        var point = e.touches ? e.touches[0] : e;
+        var x = (point.clientX - rect.left) * canvas.width  / rect.width;
+        var y = (point.clientY - rect.top)  * canvas.height / rect.height;
         floodFill(x, y, selectedColor);
+        saveCurrentSnapshot();
         if (e.preventDefault) e.preventDefault();
     }
 
-    /* ── load image ──────────────────────────────────– */
     function loadImageAt(idx) {
-        if (!uploadedImages.length || idx >= uploadedImages.length || !ctx || !canvas) return;
-        
+        if (!uploadedImages.length || idx >= uploadedImages.length) return;
         var img = new Image();
         img.crossOrigin = 'anonymous';
         img.onload = function () {
             var ratio = img.width / img.height;
-            var maxW = canvas.parentElement.clientWidth - 20;
-            var maxH = canvas.parentElement.clientHeight - 20;
-            var w = Math.min(600, maxW);
-            var h = w / ratio;
-            if (h > maxH) {
-                h = maxH;
-                w = h * ratio;
+            var maxW  = canvas.parentElement.clientWidth  - 16;
+            var maxH  = canvas.parentElement.clientHeight - 16;
+            var cw = maxW, ch = maxW / ratio;
+            if (ch > maxH) { ch = maxH; cw = ch * ratio; }
+            cw = Math.round(cw); ch = Math.round(ch);
+
+            canvas.width      = cw; canvas.height      = ch;
+            colorCanvas.width = cw; colorCanvas.height = ch;
+            origImg = img;
+
+            // Draw original once to capture pixel data for boundary detection
+            ctx.globalCompositeOperation = 'source-over';
+            ctx.drawImage(img, 0, 0, cw, ch);
+            try { origData = ctx.getImageData(0, 0, cw, ch).data; } catch(e) { origData = null; }
+
+            // Initialize fill layer as solid white
+            colorCtx.fillStyle = '#ffffff';
+            colorCtx.fillRect(0, 0, cw, ch);
+
+            var snap = paintedSnapshots[idx];
+            if (snap) {
+                var si = new Image();
+                si.onload = function () {
+                    colorCtx.clearRect(0, 0, cw, ch);
+                    colorCtx.drawImage(si, 0, 0, cw, ch);
+                    render();
+                };
+                si.src = snap;
+            } else {
+                render();
             }
-            canvas.width = w;
-            canvas.height = h;
-            ctx.drawImage(img, 0, 0, w, h);
-            try {
-                originalImageData = ctx.getImageData(0, 0, w, h);
-            } catch (e) { /* no-op */ }
-        };
-        img.onerror = function () {
-            console.warn('Failed to load image:', uploadedImages[idx]);
         };
         img.src = uploadedImages[idx];
     }
 
-    /* ── canvas fill handlers ───────────────────────── */
     canvas.addEventListener('click',      handleFill);
     canvas.addEventListener('touchstart', handleFill, { passive: false });
 
-    /* ── button handlers ─────────────────────────────– */
     finishBtn.addEventListener('click', function () {
         if (currentIndex < uploadedImages.length - 1) {
+            saveCurrentSnapshot();
             currentIndex++;
             loadImageAt(currentIndex);
             updateProgress();
@@ -704,19 +714,158 @@ body {
 
     resetBtn.addEventListener('click', function () {
         if (uploadedImages.length && currentIndex < uploadedImages.length) {
-            loadImageAt(currentIndex);
+            paintedSnapshots[currentIndex] = null;
+            colorCtx.fillStyle = '#ffffff';
+            colorCtx.fillRect(0, 0, colorCanvas.width, colorCanvas.height);
+            render();
         }
     });
 
-    window.addEventListener('resize', function () {
-        if (!uploadedImages.length || currentIndex >= uploadedImages.length) return;
-        loadImageAt(currentIndex);
-    });
+    // Redraw at new container size reusing the already-loaded origImg (no re-fetch).
+    var resizeTimer = null;
+    function redrawAtCurrentSize() {
+        if (!origImg || !uploadedImages.length || currentIndex >= uploadedImages.length) return;
+        var ratio = origImg.width / origImg.height;
+        var maxW  = canvas.parentElement.clientWidth  - 16;
+        var maxH  = canvas.parentElement.clientHeight - 16;
+        if (maxW < 100 || maxH < 100) return;
+        var cw = maxW, ch = maxW / ratio;
+        if (ch > maxH) { ch = maxH; cw = ch * ratio; }
+        cw = Math.round(cw); ch = Math.round(ch);
+        if (cw === canvas.width && ch === canvas.height) return; // nothing changed
 
-    /* ── init ────────────────────────────────────────── */
+        saveCurrentSnapshot();
+        canvas.width      = cw; canvas.height      = ch;
+        colorCanvas.width = cw; colorCanvas.height = ch;
+
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.drawImage(origImg, 0, 0, cw, ch);
+        try { origData = ctx.getImageData(0, 0, cw, ch).data; } catch(e) { origData = null; }
+
+        var snap = paintedSnapshots[currentIndex];
+        if (snap) {
+            var si = new Image();
+            si.onload = function () {
+                colorCtx.clearRect(0, 0, cw, ch);
+                colorCtx.drawImage(si, 0, 0, cw, ch);
+                render();
+            };
+            si.src = snap;
+        } else {
+            colorCtx.fillStyle = '#ffffff';
+            colorCtx.fillRect(0, 0, cw, ch);
+            render();
+        }
+    }
+
+    function scheduleResize() {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(redrawAtCurrentSize, 150);
+    }
+
+    window.addEventListener('resize', scheduleResize);
+    document.addEventListener('fullscreenchange', scheduleResize);
+    document.addEventListener('webkitfullscreenchange', scheduleResize);
+
+    function showCompleted() {
+        coloringRounds++;
+        stage.classList.add('is-completed');
+        completedEl.classList.add('active');
+
+        var n           = uploadedImages.length;
+        var hasNext     = !!(nextActivityUrl || COLORING_RETURN_TO);
+        var nextBtnHtml = hasNext
+            ? '<button class="af-unscored__btn-primary" id="coloringNextBtn">Next →</button>'
+            : '';
+
+        completedEl.innerHTML =
+            '<div class="af-unscored__card">' +
+                '<p class="af-unscored__prog-label">Pages Colored</p>' +
+                '<div class="af-unscored__prog-track">' +
+                    '<div class="af-unscored__prog-fill" id="col-prog-fill" style="width:0%"></div>' +
+                '</div>' +
+                '<div class="af-unscored__prog-nums">' +
+                    '<span>0</span><strong id="col-prog-text">0 / 0</strong>' +
+                '</div>' +
+                '<div class="af-unscored__icon">' +
+                    '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#7F77DD" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>' +
+                '</div>' +
+                '<p class="af-unscored__title">Coloring complete!</p>' +
+                '<p class="af-unscored__sub">Great job! You colored all the pages.</p>' +
+                '<div class="af-unscored__chips af-unscored__chips--2">' +
+                    '<div class="af-unscored__chip">' +
+                        '<div class="af-unscored__chip-val af-unscored__chip-val--orange" id="col-stat1">0</div>' +
+                        '<div class="af-unscored__chip-lbl">Pages Colored</div>' +
+                    '</div>' +
+                    '<div class="af-unscored__chip">' +
+                        '<div class="af-unscored__chip-val" id="col-stat2">0</div>' +
+                        '<div class="af-unscored__chip-lbl">Rounds</div>' +
+                    '</div>' +
+                '</div>' +
+                '<div class="af-unscored__banner af-unscored__banner--orange">' +
+                    '<div class="af-unscored__banner-icon af-unscored__banner-icon--orange">' +
+                        '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>' +
+                    '</div>' +
+                    '<div class="af-unscored__banner-text af-unscored__banner-text--orange">' +
+                        '<span class="af-unscored__banner-title">Keep up the great work!</span>' +
+                        'Try coloring again with different color combinations.' +
+                    '</div>' +
+                '</div>' +
+                '<div class="af-unscored__btns">' +
+                    '<button class="af-unscored__btn-secondary" id="coloringRestartBtn">↺ Play Again</button>' +
+                    nextBtnHtml +
+                '</div>' +
+            '</div>';
+
+        var fillEl  = document.getElementById('col-prog-fill');
+        var textEl  = document.getElementById('col-prog-text');
+        var stat1El = document.getElementById('col-stat1');
+        var stat2El = document.getElementById('col-stat2');
+
+        if (fillEl)  fillEl.style.width  = '100%';
+        if (textEl)  textEl.textContent  = n + ' / ' + n;
+        if (stat1El) stat1El.textContent = String(n);
+        if (stat2El) stat2El.textContent = String(coloringRounds);
+
+        document.getElementById('coloringRestartBtn').addEventListener('click', function () {
+            stage.classList.remove('is-completed');
+            completedEl.classList.remove('active');
+            completedEl.innerHTML = '';
+            currentIndex = 0;
+            paintedSnapshots = [];
+            loadImageAt(0);
+            updateProgress();
+        });
+
+        if (hasNext) {
+            document.getElementById('coloringNextBtn').addEventListener('click', function () {
+                var target = nextActivityUrl || COLORING_RETURN_TO;
+                try {
+                    if (window.top && window.top !== window.self) {
+                        window.top.location.href = target;
+                        return;
+                    }
+                } catch (e) {}
+                window.location.href = target;
+            });
+        }
+
+        if (COLORING_RETURN_TO && COLORING_ACTIVITY_ID) {
+            var sep = COLORING_RETURN_TO.indexOf('?') !== -1 ? '&' : '?';
+            fetch(
+                COLORING_RETURN_TO + sep +
+                'activity_percent=100&activity_errors=0&activity_total=' + n +
+                '&activity_id=' + encodeURIComponent(COLORING_ACTIVITY_ID) +
+                '&activity_type=coloring',
+                { method: 'GET', credentials: 'same-origin', cache: 'no-store' }
+            ).catch(function () {});
+        }
+    }
+
     buildPalette();
     if (uploadedImages.length > 0) {
         loadImageAt(0);
+        updateProgress();
     } else {
         progressText.textContent = 'No images uploaded for this activity.';
     }

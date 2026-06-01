@@ -35,9 +35,9 @@ $pdfDownloadUrl = '';
 if ($pdfUrl !== '') {
     // Always serve via serve_pdf.php — works for both base64 (DB) and legacy file paths.
     // This is resilient to Render's ephemeral filesystem.
-    $serveUrl = '/lessons/lessons/activities/flipbooks/serve_pdf.php?id=' . rawurlencode($activityId);
-    $pdfDisplayUrl  = $serveUrl;
-    $pdfDownloadUrl = $serveUrl;
+    $serveUrl       = '/lessons/lessons/activities/flipbooks/serve_pdf.php?id=' . rawurlencode($activityId);
+    $pdfDisplayUrl  = $serveUrl;                  // inline display
+    $pdfDownloadUrl = $serveUrl . '&dl=1';        // forced download
 }
 
 ob_start();
@@ -71,27 +71,44 @@ ob_start();
         <div class="flipbook-viewer__card" id="flipbook-fullscreen-target">
             <div class="flipbook-toolbar">
                 <div class="flipbook-toolbar__right">
-                    <button type="button" id="download-pdf-btn" class="flipbook-btn flipbook-btn--primary">
-                        Download PDF
-                    </button>
+                    <a
+                        id="view-pdf-btn"
+                        class="flipbook-btn flipbook-btn--dark"
+                        href="<?php echo htmlspecialchars($pdfDisplayUrl, ENT_QUOTES, 'UTF-8'); ?>"
+                        target="_blank"
+                        rel="noopener"
+                    >&#128065; Open PDF</a>
+
+                    <a
+                        id="download-pdf-btn"
+                        class="flipbook-btn flipbook-btn--primary"
+                        href="<?php echo htmlspecialchars($pdfDownloadUrl, ENT_QUOTES, 'UTF-8'); ?>"
+                        download="downloadable.pdf"
+                    >&#8659; Download PDF</a>
 
                     <button type="button" id="full-screen-btn" class="flipbook-btn flipbook-btn--dark">
                         Full Screen
                     </button>
 
                     <button type="button" id="flipbook-mark-done-btn" class="flipbook-btn flipbook-btn--primary" style="background:linear-gradient(180deg,#16a34a,#15803d);">
-                        ✓ Mark as Completed
+                        &#10003; Mark as Completed
                     </button>
                 </div>
             </div>
 
             <div class="flipbook-stage" id="flipbook-stage">
-                <iframe
+                <object
                     id="pdf-frame"
                     class="flipbook-pdf-frame"
-                    src="<?php echo htmlspecialchars($pdfDisplayUrl, ENT_QUOTES, 'UTF-8'); ?>#toolbar=1&navpanes=0&scrollbar=1"
-                    title="Documento PDF"
-                ></iframe>
+                    data="<?php echo htmlspecialchars($pdfDisplayUrl, ENT_QUOTES, 'UTF-8'); ?>"
+                    type="application/pdf"
+                >
+                    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:16px;padding:32px;text-align:center;color:#64748b;">
+                        <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="#db2777" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="12" x2="12" y2="18"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+                        <p style="margin:0;font-size:15px;font-weight:600;color:#0f172a;">PDF preview is not available in your browser</p>
+                        <p style="margin:0;font-size:13px;">Use the buttons above to open or download the PDF.</p>
+                    </div>
+                </object>
             </div>
         </div>
     </div>
@@ -100,31 +117,10 @@ ob_start();
         const viewer = document.getElementById('flipbook-viewer');
         const pdfFrame = document.getElementById('pdf-frame');
         const fullScreenTarget = document.getElementById('flipbook-fullscreen-target');
-        const downloadBtn = document.getElementById('download-pdf-btn');
         const fullScreenBtn = document.getElementById('full-screen-btn');
 
         if (!viewer) {
             return;
-        }
-
-        const pdfUrl = viewer.getAttribute('data-pdf-url') || '';
-        const pdfDownloadUrl = viewer.getAttribute('data-pdf-download-url') || pdfUrl;
-
-        if (downloadBtn) {
-            downloadBtn.addEventListener('click', function () {
-                if (!pdfDownloadUrl) {
-                    return;
-                }
-
-                const link = document.createElement('a');
-                link.href = pdfDownloadUrl;
-                link.target = '_blank';
-                link.rel = 'noopener';
-                link.download = 'downloadable.pdf';
-                document.body.appendChild(link);
-                link.click();
-                link.remove();
-            });
         }
 
         function updateFullscreenButtonState() {

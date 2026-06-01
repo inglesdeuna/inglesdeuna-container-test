@@ -666,7 +666,8 @@ if ($current) {
     $type = (string) ($current['type'] ?? '');
     $activityPath = get_activity_base_path($type);
     if ($activityPath) {
-        $returnUrl = '../../academic/student_course.php?assignment=' . urlencode($assignmentId) . '&unit=' . urlencode($selectedUnitId);
+        $nextReturnStep = $isLastActivity ? $total : $nextStep;
+        $returnUrl = '../../academic/student_course.php?assignment=' . urlencode($assignmentId) . '&unit=' . urlencode($selectedUnitId) . '&step=' . urlencode((string) $nextReturnStep);
         $query = http_build_query([
             'id'         => (string) ($current['id'] ?? ''),
             'unit'       => $selectedUnitId,
@@ -682,12 +683,14 @@ if ($current) {
 }
 
 // Pre-compute viewer URLs for every step so the fullscreen JS can navigate without a page reload
-$_fsReturnUrl = '../../academic/student_course.php?assignment=' . urlencode($assignmentId) . '&unit=' . urlencode($selectedUnitId);
+$_fsBase = '../../academic/student_course.php?assignment=' . urlencode($assignmentId) . '&unit=' . urlencode($selectedUnitId);
 $allViewerHrefs = [];
-foreach ($activities as $_act) {
+foreach ($activities as $_idx => $_act) {
     $_type = (string) ($_act['type'] ?? '');
     $_path = get_activity_base_path($_type);
     if ($_path) {
+        $_nextReturnStep = ($_idx === $total - 1) ? $total : $_idx + 1;
+        $_fsReturnUrl = $_fsBase . '&step=' . urlencode((string) $_nextReturnStep);
         $_q = http_build_query([
             'id'         => (string) ($_act['id'] ?? ''),
             'unit'       => $selectedUnitId,

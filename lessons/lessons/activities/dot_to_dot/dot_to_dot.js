@@ -17,12 +17,19 @@ const continueBtn = document.getElementById("d2dvContinueBtn");
 const completionPanel = document.getElementById("d2dvCompletionPanel");
 const completionScore = document.getElementById("d2dvCompletionScore");
 
+const mainPanel = document.getElementById('d2dvMain');
+
+const winAudio   = new Audio('../../hangman/assets/win.mp3');
+const errorAudio = new Audio('../../hangman/assets/lose.mp3');
+
 let points = [];
 let current = 1;
 let completed = false;
 let dragging = false;
 let imageOpacity = 0;
+let closingLineProgress = 1; /* 0→1 while animating the last closing segment */
 let mouse = { x: 0, y: 0 };
+let d2dRounds = 0;
 
 function setupCanvas() {
   const rect = stage.getBoundingClientRect();
@@ -113,9 +120,14 @@ function drawPermanentLines() {
   }
 
   if (completed && points.length > 2) {
+    const from = points[points.length - 1];
+    const to = points[0];
     ctx.beginPath();
-    ctx.moveTo(points[points.length - 1].x, points[points.length - 1].y);
-    ctx.lineTo(points[0].x, points[0].y);
+    ctx.moveTo(from.x, from.y);
+    ctx.lineTo(
+      from.x + (to.x - from.x) * closingLineProgress,
+      from.y + (to.y - from.y) * closingLineProgress
+    );
     ctx.stroke();
   }
 }
@@ -181,24 +193,109 @@ function render() {
   updateUI();
 }
 
-function fadeInImage() {
+function fadeInImage(durationMs, onDone) {
   imageOpacity = 0;
+  const dur = durationMs || 2800;
+  let startTime = null;
 
-  function animate() {
-    imageOpacity += 0.025;
-
-    if (imageOpacity > 1) {
-      imageOpacity = 1;
-    }
-
+  function animate(timestamp) {
+    if (!startTime) startTime = timestamp;
+    imageOpacity = Math.min((timestamp - startTime) / dur, 1);
     render();
-
     if (imageOpacity < 1) {
       requestAnimationFrame(animate);
+    } else if (onDone) {
+      onDone();
     }
   }
 
-  animate();
+  requestAnimationFrame(animate);
+}
+
+function launchConfetti() {
+  try { winAudio.currentTime = 0; winAudio.play(); } catch(e) {}
+
+  const cc = document.createElement('canvas');
+  cc.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:9999;';
+  document.body.appendChild(cc);
+  const cx = cc.getContext('2d');
+  cc.width  = window.innerWidth;
+  cc.height = window.innerHeight;
+
+  const colors = ['#F97316','#7F77DD','#EC4899','#22C55E','#EAB308','#3B82F6','#F43F5E','#A855F7','#06B6D4'];
+  const shapes = ['rect', 'rect', 'circle', 'star'];
+
+  const particles = Array.from({ length: 180 }, function () {
+    return {
+      x: Math.random() * cc.width,
+      y: -20 - Math.random() * cc.height * 0.6,
+      w: 7 + Math.random() * 9,
+      h: 4 + Math.random() * 6,
+      color: colors[Math.floor(Math.random() * colors.length)],
+      shape: shapes[Math.floor(Math.random() * shapes.length)],
+      rot: Math.random() * Math.PI * 2,
+      rotV: (Math.random() - 0.5) * 0.18,
+      vx: (Math.random() - 0.5) * 2.5,
+      vy: 1.8 + Math.random() * 3.5,
+    };
+  });
+
+  const totalDur = 4200;
+  let startTime = null;
+
+  function drawStar(ctx2, r) {
+    const pts = 5;
+    ctx2.beginPath();
+    for (let i = 0; i < pts * 2; i++) {
+      const angle = (i * Math.PI) / pts - Math.PI / 2;
+      const rad = i % 2 === 0 ? r : r * 0.45;
+      i === 0 ? ctx2.moveTo(Math.cos(angle) * rad, Math.sin(angle) * rad)
+              : ctx2.lineTo(Math.cos(angle) * rad, Math.sin(angle) * rad);
+    }
+    ctx2.closePath();
+    ctx2.fill();
+  }
+
+  function animateConfetti(timestamp) {
+    if (!startTime) startTime = timestamp;
+    const elapsed = timestamp - startTime;
+    const alpha = Math.max(0, 1 - elapsed / totalDur);
+
+    cx.clearRect(0, 0, cc.width, cc.height);
+
+    particles.forEach(function (p) {
+      p.x  += p.vx;
+      p.y  += p.vy;
+      p.vy += 0.06;
+      p.rot += p.rotV;
+
+      cx.save();
+      cx.globalAlpha = alpha;
+      cx.translate(p.x, p.y);
+      cx.rotate(p.rot);
+      cx.fillStyle = p.color;
+
+      if (p.shape === 'circle') {
+        cx.beginPath();
+        cx.arc(0, 0, p.w / 2, 0, Math.PI * 2);
+        cx.fill();
+      } else if (p.shape === 'star') {
+        drawStar(cx, p.w / 2);
+      } else {
+        cx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+      }
+
+      cx.restore();
+    });
+
+    if (elapsed < totalDur) {
+      requestAnimationFrame(animateConfetti);
+    } else {
+      if (cc.parentNode) cc.parentNode.removeChild(cc);
+    }
+  }
+
+  requestAnimationFrame(animateConfetti);
 }
 
 function resetGame() {
@@ -206,6 +303,7 @@ function resetGame() {
   completed = false;
   dragging = false;
   imageOpacity = 0;
+  closingLineProgress = 1;
 
   img.style.opacity = "0.08";
   canvas.style.cursor = "grab";
@@ -213,61 +311,118 @@ function resetGame() {
   revealBtn.style.display = "none";
   continueBtn.style.display = "none";
   completionPanel.style.display = "none";
+  completionPanel.innerHTML = "";
+  if (mainPanel) mainPanel.style.display = "";
 
   render();
+}
+
+function showCompletedPanel() {
+  if (mainPanel) mainPanel.style.display = "none";
+
+  d2dRounds += 1;
+  var total     = points.length - 1;
+  var returnTo  = data.returnTo  || '';
+  var activityId = data.activityId || '';
+
+  completionPanel.innerHTML =
+    '<div class="af-unscored__card">' +
+    '  <div class="af-unscored__prog-label">DOTS CONNECTED</div>' +
+    '  <div class="af-unscored__prog-track"><div class="af-unscored__prog-fill" id="af-prog-fill" style="width:0%"></div></div>' +
+    '  <div class="af-unscored__prog-nums"><span>0</span><strong id="af-prog-text">0 / 0</strong></div>' +
+    '  <div class="af-unscored__icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#7F77DD" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></div>' +
+    '  <p class="af-unscored__title">Picture revealed!</p>' +
+    '  <p class="af-unscored__sub">You connected all the dots!</p>' +
+    '  <div class="af-unscored__chips af-unscored__chips--2">' +
+    '    <div class="af-unscored__chip"><div class="af-unscored__chip-val" id="af-stat1-val">0</div><div class="af-unscored__chip-lbl">CONNECTIONS</div></div>' +
+    '    <div class="af-unscored__chip"><div class="af-unscored__chip-val" id="af-stat2-val">0</div><div class="af-unscored__chip-lbl">ROUNDS</div></div>' +
+    '  </div>' +
+    '  <div class="af-unscored__banner af-unscored__banner--orange">' +
+    '    <div class="af-unscored__banner-icon af-unscored__banner-icon--orange"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg></div>' +
+    '    <div class="af-unscored__banner-text af-unscored__banner-text--orange"><span class="af-unscored__banner-title">Ready to practice?</span>Try the next activity to use this vocabulary.</div>' +
+    '  </div>' +
+    '  <div class="af-unscored__btns">' +
+    '    <button class="af-unscored__btn-secondary" id="af-btn-retry">&#8635; Play again</button>' +
+    '    <button class="af-unscored__btn-primary" id="af-btn-next"' + (returnTo ? '' : ' style="display:none"') + '>Next →</button>' +
+    '  </div>' +
+    '</div>';
+
+  completionPanel.style.display = "block";
+
+  var fillEl   = document.getElementById('af-prog-fill');
+  var textEl   = document.getElementById('af-prog-text');
+  var stat1El  = document.getElementById('af-stat1-val');
+  var stat2El  = document.getElementById('af-stat2-val');
+  var retryBtn = document.getElementById('af-btn-retry');
+  var nextBtn  = document.getElementById('af-btn-next');
+
+  setTimeout(function () { if (fillEl) fillEl.style.width = '100%'; }, 120);
+  if (textEl)  textEl.textContent  = total + ' / ' + total;
+  if (stat1El) stat1El.textContent = String(total);
+  if (stat2El) stat2El.textContent = String(d2dRounds);
+
+  if (retryBtn) retryBtn.addEventListener('click', resetGame);
+
+  if (nextBtn && returnTo) {
+    nextBtn.addEventListener('click', function () {
+      if (activityId) {
+        var sep = returnTo.indexOf('?') !== -1 ? '&' : '?';
+        fetch(returnTo + sep + 'activity_percent=100&activity_errors=0&activity_total=' + total +
+          '&activity_id=' + encodeURIComponent(activityId) + '&activity_type=dot_to_dot',
+          { method: 'GET', credentials: 'same-origin', cache: 'no-store' }).catch(function(){});
+      }
+      setTimeout(function () {
+        try {
+          if (window.top && window.top !== window.self) { window.top.location.href = returnTo; return; }
+        } catch(e) {}
+        window.location.href = returnTo;
+      }, 200);
+    });
+  }
+
+  if (returnTo && activityId) {
+    var sep = returnTo.indexOf('?') !== -1 ? '&' : '?';
+    fetch(returnTo + sep + 'activity_percent=100&activity_errors=0&activity_total=' + total +
+      '&activity_id=' + encodeURIComponent(activityId) + '&activity_type=dot_to_dot',
+      { method: 'GET', credentials: 'same-origin', cache: 'no-store' }).catch(function(){});
+  }
 }
 
 function completeGame() {
   completed = true;
   dragging = false;
   canvas.style.cursor = "default";
-
   revealBtn.style.display = "none";
   continueBtn.style.display = "none";
-  completionPanel.style.display = "block";
 
-  fadeInImage();
+  /* 1 — Animate the closing segment (last dot → first dot) */
+  closingLineProgress = 0;
+  render();
 
-  showPassiveDone(completionPanel, {
-    text: 'You connected all the dots! Great job!',
-    restartLabel: 'Play Again',
-    onRestart: function () {
-      completionPanel.style.display = "none";
-      completionPanel.innerHTML = "";
-      resetGame();
-    },
-    returnTo: data.returnTo,
-    activityId: data.activityId,
-    activityType: 'dot_to_dot',
-    total: points.length
-  });
-}
+  const closeDur = 520;
+  let closeStart = null;
 
-function showPassiveDone(containerEl, opts) {
-  containerEl.innerHTML =
-    '<div class="passive-done" id="passive-done-card">' +
-    '  <div class="passive-done-icon">🎉</div>' +
-    '  <h2 class="passive-done-title">All Done!</h2>' +
-    '  <p class="passive-done-text">' + (opts.text || 'Great work!') + '</p>' +
-    '  <div class="passive-done-track"><div class="passive-done-fill" id="passive-fill"></div></div>' +
-    '  <div><button class="passive-done-btn" id="passive-restart-btn">&#8635; ' + (opts.restartLabel || 'Play Again') + '</button></div>' +
-    '</div>';
-  var card = document.getElementById('passive-done-card');
-  var fill = document.getElementById('passive-fill');
-  var btn  = document.getElementById('passive-restart-btn');
-  requestAnimationFrame(function () {
-    card.classList.add('active');
-    setTimeout(function () { if (fill) fill.style.width = '100%'; }, 80);
-  });
-  if (btn && opts.onRestart) btn.addEventListener('click', opts.onRestart);
-  if (opts.winAudio) { try { opts.winAudio.currentTime = 0; opts.winAudio.play(); } catch(e){} }
-  if (opts.returnTo && opts.activityId) {
-    var sep = opts.returnTo.indexOf('?') !== -1 ? '&' : '?';
-    fetch(opts.returnTo + sep + 'activity_percent=100&activity_errors=0&activity_total=' + (opts.total||1) +
-      '&activity_id=' + encodeURIComponent(opts.activityId) +
-      '&activity_type=' + encodeURIComponent(opts.activityType || 'activity'),
-      { method: 'GET', credentials: 'same-origin', cache: 'no-store' }).catch(function(){});
+  function animateClose(ts) {
+    if (!closeStart) closeStart = ts;
+    closingLineProgress = Math.min((ts - closeStart) / closeDur, 1);
+    render();
+    if (closingLineProgress < 1) {
+      requestAnimationFrame(animateClose);
+    } else {
+      /* 2 — Brief pause so kids see the complete outline */
+      setTimeout(function () {
+        /* 3 — Confetti burst */
+        launchConfetti();
+        /* 4 — Slow image reveal (lines stay visible underneath) */
+        fadeInImage(3000, function () {
+          /* 5 — Show completed panel after image is fully visible */
+          setTimeout(showCompletedPanel, 400);
+        });
+      }, 350);
+    }
   }
+
+  requestAnimationFrame(animateClose);
 }
 
 function startDrag(event) {
@@ -304,6 +459,14 @@ function endDrag(event) {
     if (current === points.length) {
       completeGame();
       return;
+    }
+  } else {
+    /* Released near a wrong dot — play error sound */
+    const nearWrong = points.some(function (p, i) {
+      return i !== current && isNearDot(pos, p);
+    });
+    if (nearWrong) {
+      try { errorAudio.currentTime = 0; errorAudio.play(); } catch(e) {}
     }
   }
 
