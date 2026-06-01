@@ -277,8 +277,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     } else {
         session_unset();
-        session_destroy();
-        session_start();
+        session_regenerate_id(true);
 
         $username = trim((string) ($_POST['username'] ?? ''));
         $usernameValue = $username;
