@@ -121,6 +121,8 @@ body{
   background:rgba(255,255,255,.2);
   box-shadow:var(--shadow-sm);
 }
+.close-btn{display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,.2);color:#fff;text-decoration:none;font-size:22px;font-weight:400;line-height:1;transition:background .15s,transform .12s;flex-shrink:0}
+.close-btn:hover{background:rgba(255,255,255,.35);transform:scale(1.08)}
 .top-title{
   margin:0;
   font-size:24px;
@@ -213,13 +215,13 @@ body{
   <div class="topbar-inner">
     <a class="top-btn" href="<?php echo h($backHref); ?>">&larr; Volver a Completed</a>
     <h1 class="top-title">Quiz time</h1>
-    <a class="top-btn" href="<?php echo h($dashboardHref); ?>">Panel docente</a>
+    <a class="close-btn" href="<?php echo h($dashboardHref); ?>" title="Cerrar y volver al panel">&times;</a>
   </div>
 </header>
 
 <main class="page">
   <section class="card">
-    <h2 class="title">🧠 Evaluación final de la unidad</h2>
+    <h2 class="title">ð§  EvaluaciÃ³n final de la unidad</h2>
     <div class="badges">
       <span class="badge">Curso: <?php echo h($courseName); ?></span>
       <span class="badge">Unidad: <?php echo h($unitName); ?></span>
