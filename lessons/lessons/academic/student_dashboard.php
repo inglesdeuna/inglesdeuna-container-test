@@ -494,6 +494,13 @@ $studentInitials = student_initials($studentName);
 $myAssignments = load_student_assignments($studentId);
 $scoreSummaryByAssignment = load_assignment_score_summary($studentId);
 
+// Presentation-only stats for sidebar and header meta
+$totalCourses    = count($myAssignments);
+$_allAvgs        = array_filter(array_column($scoreSummaryByAssignment, 'avg_percent'), static fn($v) => $v > 0);
+$overallAvg      = count($_allAvgs) > 0 ? (int) round(array_sum($_allAvgs) / count($_allAvgs)) : 0;
+$firstTeacherName = trim((string) (($myAssignments[0] ?? [])['teacher_name'] ?? ''));
+$firstPeriodLabel = upper_label((string) (($myAssignments[0] ?? [])['period'] ?? ''));
+
 // Check quiz unlock status for the first assignment.
 // Unlocked if: teacher explicitly unlocked it, OR student achieved >= 60% in any unit.
 $firstAssignmentId = (string) (($myAssignments[0] ?? [])['id'] ?? '');
@@ -568,475 +575,528 @@ if ($firstAssignmentId !== '') {
 }
 ?>
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Student Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@600;700;800;900&display=swap');
-:root{
-    --bg:#ffffff;
-    --card:#ffffff;
-    --line:#F0EEF8;
-    --title:#7F77DD;
-    --text:#271B5D;
-    --muted:#9B94BE;
-    --orange:#F97316;
-    --orange-dark:#C2580A;
-    --purple:#7F77DD;
-    --purple-dark:#534AB7;
-    --danger:#c42828;
-    --soft:#EEEDFE;
-    --shadow:0 8px 40px rgba(127,119,221,.13);
-    --shadow-sm:0 4px 14px rgba(127,119,221,.10);
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+/* ─── Reset ─── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* ─── Variables ─── */
+:root {
+  --primary:    #7B6EE6;
+  --secondary:  #30248F;
+  --orange:     #FF6B18;
+  --green:      #35751F;
+  --bg:         #FAF8FF;
+  --border:     #EAE6FF;
+  --white:      #ffffff;
+  --text-dark:  #30248F;
+  --text-mid:   #6B63B5;
+  --text-muted: #9B93CC;
+  --orange-bg:  #FFF4EE;
+  --green-bg:   #EEF6E8;
 }
-*{box-sizing:border-box}
-body{
-    margin:0;
-    font-family:'Nunito','Segoe UI',sans-serif;
-    background:#ffffff;
-    color:var(--text);
+
+/* ─── Base ─── */
+body {
+  font-family: 'Inter', 'Segoe UI', sans-serif;
+  background: var(--bg);
+  color: var(--text-dark);
+  min-height: 100vh;
 }
-.page{max-width:1400px;margin:0 auto;padding:20px 20px 40px;}
-.topbar{
-    display:flex;
-    align-items:center;
-    justify-content:space-between;
-    gap:18px;
-    padding:10px 0 18px;
-    margin-bottom:18px;
-    border-bottom:1px solid var(--line);
+
+/* ─── Header ─── */
+.sd-header {
+  background: var(--white);
+  border-bottom: 2px solid var(--border);
+  padding: 0 28px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  z-index: 100;
 }
-.topbar-brand{
-    display:flex;
-    align-items:center;
-    gap:12px;
+.sd-brand { display: flex; align-items: center; gap: 10px; }
+.sd-brand-name {
+  font-size: 26px; font-weight: 800; color: #FF6B18;
+  line-height: 1; letter-spacing: 0.03em;
 }
-.topbar-name{
-    margin:0;
-    font-size:44px;
-    line-height:1;
-    letter-spacing:.02em;
-    font-weight:700;
-    color:#F97316;
-    font-family:'Fredoka','Trebuchet MS',sans-serif;
+.sd-brand-sub {
+  font-size: 7.5px; font-weight: 700; color: #AFA9EC;
+  letter-spacing: 0.18em; text-transform: uppercase;
+  margin-top: 3px; line-height: 1.4;
 }
-.topbar-sub{
-    margin-top:4px;
-    font-size:9px;
-    font-weight:900;
-    letter-spacing:.28em;
-    text-transform:uppercase;
-    color:#AFA9EC;
+.sd-header-right { display: flex; align-items: center; gap: 12px; }
+.sd-header-student { text-align: right; }
+.sd-header-student-name {
+  font-size: 15px; font-weight: 800; color: #30248F; line-height: 1.2;
 }
-.topbar-right{
-    display:flex;
-    align-items:center;
-    gap:12px;
+.sd-header-student-role { font-size: 11px; color: var(--text-muted); font-weight: 500; }
+.sd-header-avatar {
+  width: 40px; height: 40px; border-radius: 50%;
+  background: #EAE6FF; border: 2px solid var(--primary);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px; font-weight: 800; color: #30248F;
+  overflow: hidden; flex-shrink: 0;
 }
-.topbar-student{
-    text-align:right;
+.sd-header-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.sd-logout-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 7px 16px; border: 1.5px solid #C0B8F0;
+  border-radius: 10px; background: var(--white);
+  color: #30248F; font-size: 13px; font-weight: 700;
+  text-decoration: none; cursor: pointer; transition: background 0.15s;
+  font-family: 'Inter', sans-serif;
 }
-.topbar-student-name{
-    margin:0;
-    font-size:18px;
-    line-height:1.1;
-    color:#3C3489;
-    font-weight:900;
-    font-family:'Fredoka','Trebuchet MS',sans-serif;
+.sd-logout-btn:hover { background: #F5F3FF; }
+
+/* ─── Phase Bar ─── */
+.sd-phase-bar {
+  background: var(--white);
+  border-bottom: 1px solid var(--border);
+  padding: 10px 28px;
+  display: flex; gap: 10px;
 }
-.topbar-student-role{
-    margin:2px 0 0;
-    font-size:12px;
-    color:#8E86C8;
-    font-weight:700;
+.sd-phase-btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 10px 24px; border: 1.5px solid #D8D3F0;
+  border-radius: 12px; background: var(--white);
+  color: #444; font-size: 15px; font-weight: 700;
+  font-family: 'Inter', sans-serif; cursor: pointer;
+  box-shadow: 0 2px 8px rgba(123,110,230,0.07);
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  line-height: 1;
 }
-.topbar-avatar{
-    width:68px;
-    height:68px;
-    border-radius:50%;
-    border:4px solid #7F77DD;
-    background:#EEEDFE;
-    color:#534AB7;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    font-size:28px;
-    font-weight:900;
-    overflow:hidden;
+.sd-phase-btn::before {
+  content: ''; display: inline-block; width: 12px; height: 12px;
+  border: 1.5px solid currentColor; border-radius: 2px; opacity: 0.45;
 }
-.topbar-avatar img{
-    width:100%;
-    height:100%;
-    object-fit:cover;
+.sd-phase-btn.active { background: var(--white); border-color: #444; color: #222; }
+.sd-phase-btn:hover:not(.active) { background: #F5F3FF; border-color: var(--primary); }
+
+/* ─── Body Layout ─── */
+.sd-body {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  gap: 20px;
+  padding: 20px 28px 40px;
+  align-items: start;
 }
-.logout-btn{
-    display:inline-flex;
-    align-items:center;
-    gap:8px;
-    text-decoration:none;
-    color:#1D1D1D;
-    font-size:16px;
-    font-weight:900;
-    border-radius:16px;
-    padding:12px 22px;
-    border:2px solid rgba(0,0,0,.23);
-    background:#fff;
-    transition:filter .2s,transform .15s;
+
+/* ─── Sidebar ─── */
+.sd-sidebar {
+  display: flex; flex-direction: column; gap: 14px;
+  position: sticky; top: 80px;
 }
-.logout-btn:hover{filter:brightness(0.98);transform:translateY(-1px);}
-/* layout */
-.layout{display:grid;grid-template-columns:300px 1fr;gap:28px;align-items:start;}
-/* sidebar panel */
-.panel{
-    background:var(--card);
-    border:1px solid var(--line);
-    border-radius:24px;
-    box-shadow:var(--shadow);
-    padding:24px 20px;
-    position:sticky;
-    top:20px;
+.sd-card {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 20px 16px;
 }
-.profile-box{text-align:center;}
-.avatar{
-    width:160px;
-    height:160px;
-    margin:0 auto 16px;
-    border-radius:50%;
-    overflow:hidden;
-    background:linear-gradient(180deg,#7F77DD,#534AB7);
-    color:#fff;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    font-size:54px;
-    font-weight:800;
-    border:4px solid #EEEDFE;
-    box-shadow:0 8px 20px rgba(127,119,221,.22);
+
+/* Profile card */
+.sd-profile-avatar {
+  width: 90px; height: 90px; border-radius: 50%;
+  background: #EAE6FF; border: 3px solid var(--primary);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 30px; font-weight: 800; color: #30248F;
+  overflow: hidden; margin: 0 auto 12px;
 }
-.avatar img{width:100%;height:100%;object-fit:cover;display:block;}
-.student-name{
-    font-size:20px;
-    font-weight:700;
-    color:var(--orange);
-    margin:0 0 4px;
-    font-family:'Fredoka','Trebuchet MS',sans-serif;
+.sd-profile-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.sd-profile-name {
+  font-size: 16px; font-weight: 700; color: #FF6B18;
+  text-align: center; margin-bottom: 3px;
 }
-.student-role{font-size:13px;color:var(--muted);font-weight:700;margin-bottom:14px;}
-.badge{
-    display:inline-flex;
-    align-items:center;
-    padding:5px 12px;
-    border-radius:999px;
-    font-size:12px;
-    font-weight:900;
-    background:#EEEDFE;
-    color:#534AB7;
-    border:1px solid #C4B5FD;
-    margin-bottom:16px;
+.sd-profile-role { font-size: 12px; color: var(--text-muted); text-align: center; margin-bottom: 14px; }
+.sd-stats-row {
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 8px; margin-bottom: 16px;
 }
-.upload-form{text-align:left;margin:8px 0 4px;}
-.upload-label{display:block;font-size:11px;color:var(--muted);font-weight:900;margin-bottom:6px;text-transform:uppercase;letter-spacing:.06em;}
-.upload-input{width:100%;margin-bottom:8px;padding:7px;border:1px solid var(--line);border-radius:8px;font-size:13px;}
-.upload-btn{
-    width:100%;border:none;border-radius:999px;padding:10px;color:#fff;cursor:pointer;
-    font-size:13px;font-weight:900;
-    background:#7F77DD;
-    box-shadow:0 6px 18px rgba(127,119,221,.18);
-    transition:filter .2s,transform .15s;
-    font-family:'Nunito','Segoe UI',sans-serif;
+.sd-stat-box {
+  border: 1px solid var(--border); border-radius: 10px;
+  padding: 10px 8px; text-align: center; background: #FDFCFF;
 }
-.upload-btn:hover{filter:brightness(1.07);transform:translateY(-1px);}
-/* sidebar action buttons */
-.sidebar-section-title{
-    margin:18px 0 8px;
-    font-size:11px;
-    font-weight:900;
-    text-transform:uppercase;
-    letter-spacing:.08em;
-    color:var(--muted);
+.sd-stat-value {
+  font-size: 20px; font-weight: 800; color: #FF6B18;
+  display: block; line-height: 1; margin-bottom: 3px;
 }
-.side-button{
-    display:block;
-    width:100%;
-    margin-top:8px;
-    padding:12px 16px;
-    border-radius:999px;
-    text-decoration:none;
-    font-size:13px;
-    font-weight:900;
-    color:#fff;
-    background:#7F77DD;
-    text-align:center;
-    transition:filter .2s,transform .15s;
-    box-shadow:0 6px 18px rgba(127,119,221,.18);
-    border:none;
-    cursor:pointer;
-    font-family:'Nunito','Segoe UI',sans-serif;
-    line-height:1;
+.sd-stat-label {
+  font-size: 10px; font-weight: 600; color: var(--text-muted);
+  text-transform: uppercase; letter-spacing: 0.05em;
 }
-.side-button:hover{filter:brightness(1.07);transform:translateY(-1px);}
-.side-button.green{background:#7F77DD;box-shadow:0 6px 18px rgba(127,119,221,.18);}
-.side-button.locked{background:linear-gradient(180deg,#b0b0b0,#888);cursor:default;opacity:.78;box-shadow:none;}
-.side-button.locked:hover{filter:none;transform:none;}
-.side-button.orange{background:#F97316;box-shadow:0 6px 18px rgba(249,115,22,.22);}
-/* notices */
-.notice{padding:10px 12px;border-radius:10px;margin-bottom:14px;font-weight:800;font-size:13px;}
-.notice-ok{background:#ebfff0;border:1px solid #c2efcf;color:#1b7a39;}
-.notice-error{background:#fff0f0;border:1px solid #f3c4c4;color:#b42323;}
-/* main area */
-.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px;}
-.card{
-    background:var(--card);
-    border:1px solid var(--line);
-    border-radius:20px;
-    padding:18px;
-    box-shadow:var(--shadow);
+.sd-photo-label {
+  font-size: 10px; font-weight: 700; color: #B0A8D8;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  margin-bottom: 8px; display: block;
 }
-.card h3{margin:0 0 10px;font-size:20px;color:var(--orange);font-family:'Fredoka','Trebuchet MS',sans-serif;font-weight:700;}
-.student-module-label{margin:0 0 10px;font-size:12px;font-weight:900;color:#534AB7;letter-spacing:.04em;font-family:'Nunito','Segoe UI',sans-serif;}
-.card p{margin:6px 0;color:var(--muted);font-size:15px;font-weight:700;}
-.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;}
-.btn{
-    display:inline-block;
-    padding:10px 16px;
-    background:#F97316;
-    color:#fff;
-    text-decoration:none;
-    border-radius:999px;
-    font-weight:900;
-    font-size:13px;
-    border:none;
-    cursor:pointer;
-    box-shadow:0 6px 18px rgba(249,115,22,.22);
-    transition:filter .2s,transform .15s;
+.sd-photo-input {
+  width: 100%; font-size: 12px; margin-bottom: 8px;
+  padding: 6px 8px; border: 1px solid var(--border);
+  border-radius: 8px; color: #555;
 }
-.btn:hover{filter:brightness(1.07);transform:translateY(-1px);}
-.btn.secondary{background:#7F77DD;box-shadow:0 6px 18px rgba(127,119,221,.18);}
-.btn.quiz-btn{background:linear-gradient(180deg,#22c55e,#15803d);box-shadow:0 6px 18px rgba(22,163,74,.22);}
-.empty{
-    background:#fff;
-    border:1px solid var(--line);
-    border-radius:20px;
-    padding:18px;
-    color:var(--muted);
-    font-weight:700;
-    box-shadow:var(--shadow);
+.sd-photo-btn {
+  width: 100%; padding: 10px; border: none; border-radius: 10px;
+  background: #30248F; color: #fff; font-size: 13px; font-weight: 700;
+  font-family: 'Inter', sans-serif; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; gap: 7px;
+  transition: opacity 0.15s;
 }
-/* tab strip */
-.tab-strip{
-    display:flex;
-    gap:10px;
-    margin-bottom:24px;
-    flex-wrap:wrap;
+.sd-photo-btn::before {
+  content: ''; display: inline-block; width: 11px; height: 11px;
+  border: 1.5px solid rgba(255,255,255,0.65); border-radius: 2px;
 }
-.tab-btn{
-    display:inline-flex;
-    align-items:center;
-    padding:12px 28px;
-    border-radius:16px;
-    border:2px solid rgba(0,0,0,.18);
-    background:#fff;
-    font-size:15px;
-    font-weight:900;
-    color:#1D1D1D;
-    cursor:pointer;
-    transition:background .15s,color .15s,border-color .15s,box-shadow .15s;
-    font-family:'Nunito','Segoe UI',sans-serif;
-    box-shadow:var(--shadow-sm);
-    line-height:1;
+.sd-photo-btn:hover { opacity: 0.88; }
+
+/* Actions card */
+.sd-actions-label {
+  font-size: 10px; font-weight: 700; color: #B0A8D8;
+  letter-spacing: 0.12em; text-transform: uppercase;
+  margin-bottom: 10px; display: block;
 }
-.tab-btn.active{
-    background:var(--purple);
-    color:#fff;
-    border-color:var(--purple);
-    box-shadow:0 6px 18px rgba(127,119,221,.28);
+.sd-action-btn {
+  display: flex; align-items: center; gap: 8px;
+  width: 100%; padding: 11px 14px;
+  border: 1.5px solid var(--border); border-radius: 10px;
+  background: var(--white); color: #30248F;
+  font-size: 13px; font-weight: 700; font-family: 'Inter', sans-serif;
+  text-decoration: none; cursor: pointer; margin-bottom: 8px;
+  transition: background 0.15s;
 }
-.tab-btn:hover:not(.active){
-    background:var(--soft);
-    border-color:var(--purple);
+.sd-action-btn:last-child { margin-bottom: 0; }
+.sd-action-btn::before {
+  content: ''; display: inline-block; width: 11px; height: 11px;
+  border: 1.5px solid #B0A8D8; border-radius: 2px; flex-shrink: 0;
 }
-@media (max-width:1024px){
-    .layout{grid-template-columns:1fr;}
-    .panel{position:static;}
+.sd-action-btn:hover { background: #F5F3FF; }
+.sd-action-btn.locked { color: #B0A8D8; cursor: default; }
+.sd-action-btn.locked:hover { background: var(--white); }
+
+/* ─── Main Content ─── */
+.sd-main { min-width: 0; }
+.sd-notice {
+  padding: 10px 14px; border-radius: 10px;
+  margin-bottom: 14px; font-size: 13px; font-weight: 700;
 }
-@media (max-width:768px){
-    .page{padding:14px;}
-    .topbar{
-        flex-direction:column;
-        align-items:flex-start;
-    }
-    .topbar-right{
-        width:100%;
-        justify-content:space-between;
-    }
-    .topbar-name{font-size:34px;}
-    .topbar-avatar{
-        width:56px;
-        height:56px;
-        font-size:24px;
-    }
-    .tab-btn{padding:10px 20px;font-size:14px;}
+.sd-notice-ok    { background: #EEF6E8; border: 1px solid #B5D9A0; color: #35751F; }
+.sd-notice-error { background: #FEF2F2; border: 1px solid #FCCACA; color: #B91C1C; }
+.sd-main-header {
+  display: flex; align-items: flex-start;
+  justify-content: space-between; margin-bottom: 16px;
+}
+.sd-main-title { font-size: 22px; font-weight: 700; color: var(--primary); }
+.sd-main-meta { font-size: 12px; color: #B0A8D8; text-align: right; line-height: 1.6; }
+
+/* ─── Course Grid ─── */
+.sd-course-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 14px;
+}
+
+/* ─── Course Card ─── */
+.sd-course-card {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 16px;
+  display: flex; flex-direction: column; gap: 10px;
+}
+.sd-course-badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 4px 10px; border-radius: 6px;
+  background: #EAE6FF; color: #30248F;
+  font-size: 10px; font-weight: 700; letter-spacing: 0.04em;
+  width: fit-content;
+}
+.sd-course-badge::before {
+  content: ''; display: inline-block; width: 9px; height: 9px;
+  border: 1.5px solid #7B6EE6; border-radius: 2px; flex-shrink: 0;
+}
+.sd-unit-name {
+  font-size: 15px; font-weight: 700; color: #30248F; line-height: 1.3;
+}
+.sd-course-teacher { font-size: 12px; color: var(--text-muted); font-weight: 500; }
+.sd-course-teacher strong { color: #30248F; font-weight: 700; }
+.sd-progress-row { display: flex; align-items: center; gap: 8px; }
+.sd-progress-track {
+  flex: 1; height: 7px; background: #EAE6FF;
+  border-radius: 4px; overflow: hidden;
+}
+.sd-progress-fill { height: 100%; border-radius: 4px; transition: width 0.4s; }
+.sd-progress-fill.green  { background: #35751F; }
+.sd-progress-fill.orange { background: #FF6B18; }
+.sd-progress-pct { font-size: 13px; font-weight: 800; min-width: 38px; text-align: right; }
+.sd-progress-pct.green  { color: #35751F; }
+.sd-progress-pct.orange { color: #FF6B18; }
+.sd-errors-badge {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 4px 10px; border-radius: 6px;
+  font-size: 11px; font-weight: 600; width: fit-content;
+}
+.sd-errors-badge::before {
+  content: ''; display: inline-block; width: 9px; height: 9px;
+  border: 1.5px solid currentColor; border-radius: 2px;
+  flex-shrink: 0; opacity: 0.6;
+}
+.sd-errors-badge.warn { background: #FFF4EE; border: 1px solid #FFD4BC; color: #B84A0A; }
+.sd-errors-badge.good { background: #EEF6E8; border: 1px solid #B5D9A0; color: #35751F; }
+.sd-card-actions { display: flex; gap: 7px; flex-wrap: wrap; margin-top: 2px; }
+.sd-btn {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 7px 14px; border: 1.5px solid var(--border);
+  border-radius: 8px; background: var(--white); color: #30248F;
+  font-size: 12px; font-weight: 700; font-family: 'Inter', sans-serif;
+  text-decoration: none; cursor: pointer; transition: background 0.15s;
+}
+.sd-btn::before {
+  content: ''; display: inline-block; width: 9px; height: 9px;
+  border: 1.5px solid #9B93CC; border-radius: 2px; flex-shrink: 0;
+}
+.sd-btn:hover { background: #F5F3FF; }
+.sd-empty {
+  grid-column: 1 / -1; background: var(--white);
+  border: 1px solid var(--border); border-radius: 14px;
+  padding: 32px; text-align: center;
+  color: var(--text-muted); font-size: 14px; font-weight: 600;
+}
+
+/* ─── Responsive ─── */
+@media (max-width: 1024px) {
+  .sd-body { grid-template-columns: 1fr; padding: 16px 20px 32px; }
+  .sd-sidebar { position: static; flex-direction: row; flex-wrap: wrap; }
+  .sd-card { flex: 1; min-width: 200px; }
+}
+@media (max-width: 768px) {
+  .sd-header { padding: 0 16px; }
+  .sd-phase-bar { padding: 8px 16px; overflow-x: auto; }
+  .sd-body { padding: 14px 16px 28px; grid-template-columns: 1fr; }
+  .sd-course-grid { grid-template-columns: 1fr 1fr; }
+  .sd-sidebar { flex-direction: column; }
+}
+@media (max-width: 540px) {
+  .sd-course-grid { grid-template-columns: 1fr; }
+  .sd-main-header { flex-direction: column; gap: 6px; }
+  .sd-main-meta { text-align: left; }
 }
 </style>
 </head>
 <body>
-<div class="page">
-    <header class="topbar">
-        <div class="topbar-brand">
-            <svg width="64" height="64" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                <rect width="36" height="36" rx="9" fill="#FFF0E6"/>
-                <circle cx="17" cy="15" r="8.5" fill="#F97316"/>
-                <polygon points="12,22 7,30 21,26" fill="#F97316"/>
-                <circle cx="17" cy="15" r="4.5" fill="#FFF0E6"/>
-                <circle cx="24" cy="9" r="3.5" fill="#7F77DD"/>
-                <circle cx="24" cy="9" r="1.75" fill="#ffffff"/>
-            </svg>
-            <div>
-                <p class="topbar-name">ONES</p>
-                <p class="topbar-sub">ONLINE ENGLISH SOLUTION</p>
-            </div>
+
+<!-- ═══ HEADER ═══ -->
+<header class="sd-header">
+    <div class="sd-brand">
+        <svg width="48" height="48" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <rect width="36" height="36" rx="9" fill="#FFF0E6"/>
+            <circle cx="17" cy="15" r="8.5" fill="#F97316"/>
+            <polygon points="12,22 7,30 21,26" fill="#F97316"/>
+            <circle cx="17" cy="15" r="4.5" fill="#FFF0E6"/>
+            <circle cx="24" cy="9" r="3.5" fill="#7B6EE6"/>
+            <circle cx="24" cy="9" r="1.75" fill="#ffffff"/>
+        </svg>
+        <div>
+            <div class="sd-brand-name">ONES</div>
+            <div class="sd-brand-sub">ONLINE ENGLISH<br>SOLUTION</div>
         </div>
-        <div class="topbar-right">
-            <div class="topbar-student">
-                <p class="topbar-student-name"><?php echo h($studentName); ?></p>
-                <p class="topbar-student-role">Estudiante · ID: <?php echo h($studentId !== '' ? $studentId : 'N/A'); ?></p>
-            </div>
-            <div class="topbar-avatar">
+    </div>
+    <div class="sd-header-right">
+        <div class="sd-header-student">
+            <div class="sd-header-student-name"><?php echo h($studentName); ?></div>
+            <div class="sd-header-student-role">Estudiante · ID: <?php echo h($studentId !== '' ? $studentId : 'N/A'); ?></div>
+        </div>
+        <div class="sd-header-avatar">
+            <?php if ($studentPhotoSrc !== '') { ?>
+                <img src="<?php echo $studentPhotoSrc; ?>" alt="Foto de perfil">
+            <?php } else { ?>
+                <?php echo h($studentInitials); ?>
+            <?php } ?>
+        </div>
+        <a class="sd-logout-btn" href="logout.php">↪ Salir</a>
+    </div>
+</header>
+
+<!-- ═══ PHASE BAR ═══ -->
+<div class="sd-phase-bar">
+    <button class="sd-phase-btn active" data-tab="english">English</button>
+    <button class="sd-phase-btn" data-tab="technical">Technical</button>
+    <button class="sd-phase-btn" data-tab="lifeskills">Life Skills</button>
+</div>
+
+<!-- ═══ BODY ═══ -->
+<div class="sd-body">
+
+    <!-- SIDEBAR -->
+    <aside class="sd-sidebar">
+
+        <!-- Profile card -->
+        <div class="sd-card">
+            <div class="sd-profile-avatar">
                 <?php if ($studentPhotoSrc !== '') { ?>
-                    <img src="<?php echo $studentPhotoSrc; ?>" alt="Student photo">
+                    <img src="<?php echo $studentPhotoSrc; ?>" alt="Foto de perfil">
                 <?php } else { ?>
                     <?php echo h($studentInitials); ?>
                 <?php } ?>
             </div>
-            <a class="logout-btn" href="logout.php">↪ Salir</a>
-        </div>
-    </header>
+            <div class="sd-profile-name"><?php echo h($studentName); ?></div>
+            <div class="sd-profile-role">Estudiante</div>
 
-    <?php if ($flashMessage !== '') { ?>
-        <div class="notice notice-ok"><?php echo h($flashMessage); ?></div>
-    <?php } ?>
-    <?php if ($flashError !== '') { ?>
-        <div class="notice notice-error"><?php echo h($flashError); ?></div>
-    <?php } ?>
-
-    <div class="tab-strip">
-        <button class="tab-btn active" data-tab="english">English</button>
-        <button class="tab-btn" data-tab="tai">TAI</button>
-        <button class="tab-btn" data-tab="progress">Progress</button>
-    </div>
-
-    <div class="layout">
-        <aside class="panel">
-            <div class="profile-box">
-                <div class="avatar">
-                    <?php if ($studentPhotoSrc !== '') { ?>
-                        <img src="<?php echo $studentPhotoSrc; ?>" alt="Student photo">
-                    <?php } else { ?>
-                        <?php echo h($studentInitials); ?>
-                    <?php } ?>
+            <div class="sd-stats-row">
+                <div class="sd-stat-box">
+                    <span class="sd-stat-value"><?php echo $totalCourses; ?></span>
+                    <span class="sd-stat-label">Cursos</span>
                 </div>
-                <div class="student-name"><?php echo h($studentName); ?></div>
-                <div class="student-role">Student</div>
-                <span class="badge"><?php echo h($studentPermission === 'editor' ? 'Editor mode' : 'View mode'); ?></span>
-
-                <form method="post" enctype="multipart/form-data" class="upload-form">
-                    <input type="hidden" name="action" value="upload_student_photo">
-                    <label class="upload-label">Profile photo</label>
-                    <input type="file" name="student_photo" class="upload-input" accept="image/jpeg,image/png,image/webp,image/gif" required>
-                    <button class="upload-btn" type="submit">Update photo</button>
-                </form>
+                <div class="sd-stat-box">
+                    <span class="sd-stat-value"><?php echo $overallAvg; ?>%</span>
+                    <span class="sd-stat-label">Prom.</span>
+                </div>
             </div>
 
-            <div class="sidebar-section-title">Quick Actions</div>
+            <form method="post" enctype="multipart/form-data">
+                <input type="hidden" name="action" value="upload_student_photo">
+                <span class="sd-photo-label">Foto de perfil</span>
+                <input type="file" name="student_photo" class="sd-photo-input" accept="image/jpeg,image/png,image/webp,image/gif" required>
+                <button class="sd-photo-btn" type="submit">Actualizar foto</button>
+            </form>
+        </div>
+
+        <!-- Actions card -->
+        <div class="sd-card">
+            <span class="sd-actions-label">Acciones</span>
 
             <?php if ($quizUnlocked && $quizGoHref !== '') { ?>
-                <a class="side-button green" href="<?php echo h($quizGoHref); ?>">Go to Quiz</a>
+                <a class="sd-action-btn" href="<?php echo h($quizGoHref); ?>">Ir al Quiz</a>
             <?php } else { ?>
-                <span class="side-button locked" title="Ask your teacher to unlock the quiz">Quiz Locked 🔒</span>
+                <span class="sd-action-btn locked" title="Pide a tu profesor que desbloquee el quiz">Ir al Quiz</span>
             <?php } ?>
 
-            <a class="side-button orange" href="change_password_student.php">Change Password</a>
-            <a class="side-button" href="logout.php">Log out</a>
-        </aside>
+            <a class="sd-action-btn" href="change_password_student.php">Cambiar clave</a>
+            <a class="sd-action-btn" href="logout.php">Cerrar sesión</a>
+        </div>
 
-        <main class="main-area">
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <main class="sd-main">
+
+        <?php if ($flashMessage !== '') { ?>
+            <div class="sd-notice sd-notice-ok"><?php echo h($flashMessage); ?></div>
+        <?php } ?>
+        <?php if ($flashError !== '') { ?>
+            <div class="sd-notice sd-notice-error"><?php echo h($flashError); ?></div>
+        <?php } ?>
+
+        <div class="sd-main-header">
+            <h2 class="sd-main-title" id="sd-main-title">English Courses</h2>
+            <span class="sd-main-meta">
+                <?php echo $totalCourses; ?> cursos
+                <?php if ($firstPeriodLabel !== '') { ?> · Período <?php echo h($firstPeriodLabel); ?><?php } ?>
+                <?php if ($firstTeacherName !== '') { ?> · Teacher: <?php echo h($firstTeacherName); ?><?php } ?>
+            </span>
+        </div>
+
+        <div class="sd-course-grid">
             <?php if (empty($myAssignments)) { ?>
-                <div class="empty">You do not have assigned courses yet.</div>
+                <div class="sd-empty">No tienes cursos asignados aún.</div>
             <?php } else { ?>
-                <div class="grid">
-                    <?php foreach ($myAssignments as $assignment) { ?>
-                        <?php
-                        $assignmentId = (string) ($assignment['id'] ?? '');
-                        $program = (string) ($assignment['program'] ?? 'technical');
-                        $programLabel = upper_label($program === 'english' ? 'inglés' : 'técnico');
-                        $courseName = trim((string) ($assignment['course_name'] ?? ''));
-                        if ($courseName === '') {
-                            $courseName = 'Course';
-                        }
-                        $courseName = upper_label($courseName);
-                        $unitName = trim((string) ($assignment['unit_name'] ?? ''));
-                        if ($unitName === '' && $program === 'english') {
-                            $unitName = 'Units by phase';
-                        }
-                        $unitName = upper_label($unitName);
-                        $moduleName = upper_label(trim((string) ($assignment['module_name'] ?? '')));
-                        $periodLabel = upper_label((string) ($assignment['period'] ?? ''));
-                        $scoreSummary = $scoreSummaryByAssignment[$assignmentId] ?? null;
-                        $cardPdo = get_pdo_connection();
-                        $cardQuizHref = $cardPdo ? build_assignment_quiz_href($cardPdo, $studentId, $assignmentId, $assignment) : '';
-                        ?>
-                        <div class="card" data-program="<?php echo h($program); ?>">
-                            <h3><?php echo h($courseName); ?></h3>
-                            <?php if ($moduleName !== '') { ?>
-                                <p class="student-module-label"><?php echo h($moduleName); ?></p>
-                            <?php } ?>
-                            <p>Program: <strong><?php echo h($programLabel); ?></strong></p>
-                            <p>Teacher: <strong><?php echo h((string) ($assignment['teacher_name'] ?? 'Teacher')); ?></strong></p>
-                            <p>Period: <strong><?php echo h($periodLabel); ?></strong></p>
-                            <?php if ($unitName !== '') { ?>
-                                <p>Unit: <strong><?php echo h($unitName); ?></strong></p>
-                            <?php } ?>
-                            <?php if (is_array($scoreSummary)) { ?>
-                                <p>Average score: <strong><?php echo (int) ($scoreSummary['avg_percent'] ?? 0); ?>%</strong></p>
-                                <?php if ((int) ($scoreSummary['total_questions'] ?? 0) > 0) { ?>
-                                    <p>Quiz errors: <strong><?php echo (int) ($scoreSummary['total_errors'] ?? 0); ?>/<?php echo (int) ($scoreSummary['total_questions'] ?? 0); ?></strong></p>
-                                <?php } ?>
-                            <?php } ?>
-                            <div class="actions">
-                                <a class="btn" href="student_course.php?assignment=<?php echo urlencode($assignmentId); ?>">Enter course</a>
-                                <?php if ($cardQuizHref !== '') { ?>
-                                    <a class="btn quiz-btn" href="<?php echo h($cardQuizHref); ?>">Go to Quiz</a>
-                                <?php } ?>
-                                <a class="btn secondary" href="student_quiz.php?assignment=<?php echo urlencode($assignmentId); ?>">View scores</a>
-                            </div>
+                <?php foreach ($myAssignments as $assignment) { ?>
+                    <?php
+                    $assignmentId   = (string) ($assignment['id'] ?? '');
+                    $program        = (string) ($assignment['program'] ?? 'technical');
+                    $programLabel   = upper_label($program === 'english' ? 'inglés' : 'técnico');
+                    $courseName     = trim((string) ($assignment['course_name'] ?? ''));
+                    if ($courseName === '') { $courseName = 'Course'; }
+                    $courseName     = upper_label($courseName);
+                    $unitName       = trim((string) ($assignment['unit_name'] ?? ''));
+                    if ($unitName === '' && $program === 'english') { $unitName = 'Units by phase'; }
+                    $unitName       = upper_label($unitName);
+                    $moduleName     = upper_label(trim((string) ($assignment['module_name'] ?? '')));
+                    $periodLabel    = upper_label((string) ($assignment['period'] ?? ''));
+                    $scoreSummary   = $scoreSummaryByAssignment[$assignmentId] ?? null;
+                    $cardPdo        = get_pdo_connection();
+                    $cardQuizHref   = $cardPdo ? build_assignment_quiz_href($cardPdo, $studentId, $assignmentId, $assignment) : '';
+                    $avgPct         = is_array($scoreSummary) ? (int) ($scoreSummary['avg_percent'] ?? 0) : 0;
+                    $totalErrors    = is_array($scoreSummary) ? (int) ($scoreSummary['total_errors'] ?? 0) : 0;
+                    $totalQuestions = is_array($scoreSummary) ? (int) ($scoreSummary['total_questions'] ?? 0) : 0;
+                    $progressColor  = $avgPct >= 95 ? 'green' : 'orange';
+                    $errorsClass    = $totalErrors === 0 ? 'good' : 'warn';
+                    $displayName    = $unitName !== '' ? $unitName : $courseName;
+                    ?>
+                    <div class="sd-course-card" data-program="<?php echo h($program); ?>">
+
+                        <div class="sd-course-badge">
+                            <?php echo h($programLabel); ?> · <?php echo h($courseName); ?>
                         </div>
-                    <?php } ?>
-                </div>
+
+                        <h3 class="sd-unit-name"><?php echo h($displayName); ?></h3>
+
+                        <p class="sd-course-teacher">
+                            Teacher: <strong><?php echo h((string) ($assignment['teacher_name'] ?? 'Teacher')); ?></strong>
+                        </p>
+
+                        <?php if ($avgPct > 0) { ?>
+                            <div class="sd-progress-row">
+                                <div class="sd-progress-track">
+                                    <div class="sd-progress-fill <?php echo $progressColor; ?>" style="width:<?php echo min($avgPct, 100); ?>%"></div>
+                                </div>
+                                <span class="sd-progress-pct <?php echo $progressColor; ?>"><?php echo $avgPct; ?>%</span>
+                            </div>
+                        <?php } ?>
+
+                        <?php if ($totalQuestions > 0) { ?>
+                            <div class="sd-errors-badge <?php echo $errorsClass; ?>">
+                                <?php echo $totalErrors; ?> / <?php echo $totalQuestions; ?> errores
+                            </div>
+                        <?php } ?>
+
+                        <div class="sd-card-actions">
+                            <a class="sd-btn" href="student_course.php?assignment=<?php echo urlencode($assignmentId); ?>">Entrar</a>
+                            <?php if ($cardQuizHref !== '') { ?>
+                                <a class="sd-btn" href="<?php echo h($cardQuizHref); ?>">Quiz</a>
+                            <?php } ?>
+                            <a class="sd-btn" href="student_quiz.php?assignment=<?php echo urlencode($assignmentId); ?>">Puntajes</a>
+                        </div>
+
+                    </div>
+                <?php } ?>
             <?php } ?>
-        </main>
-    </div>
+        </div>
+
+    </main>
 </div>
+
 <script>
-(function(){
-    var btns = document.querySelectorAll('.tab-btn');
-    var cards = document.querySelectorAll('.card');
-    function applyTab(tab){
-        btns.forEach(function(b){ b.classList.toggle('active', b.dataset.tab === tab); });
-        cards.forEach(function(card){
+(function () {
+    var btns  = document.querySelectorAll('.sd-phase-btn');
+    var cards = document.querySelectorAll('.sd-course-card');
+    var title = document.getElementById('sd-main-title');
+    var labels = { english: 'English Courses', technical: 'Technical Courses', lifeskills: 'Life Skills' };
+
+    function applyTab(tab) {
+        btns.forEach(function (b) { b.classList.toggle('active', b.dataset.tab === tab); });
+        cards.forEach(function (card) {
             var prog = card.dataset.program || '';
-            var show = (tab === 'english' && prog === 'english')
-                    || (tab === 'tai'     && prog === 'technical')
-                    || (tab === 'progress');
+            var show = (tab === 'english'    && prog === 'english')
+                    || (tab === 'technical'  && prog === 'technical')
+                    || (tab === 'lifeskills');
             card.style.display = show ? '' : 'none';
         });
+        if (title) { title.textContent = labels[tab] || 'Courses'; }
     }
-    btns.forEach(function(btn){
-        btn.addEventListener('click', function(){ applyTab(this.dataset.tab); });
+
+    btns.forEach(function (btn) {
+        btn.addEventListener('click', function () { applyTab(this.dataset.tab); });
     });
+
     applyTab('english');
-})();
+}());
 </script>
 </body>
 </html>
